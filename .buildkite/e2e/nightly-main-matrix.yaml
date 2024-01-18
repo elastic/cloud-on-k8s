@@ -16,8 +16,9 @@
     - E2E_STACK_VERSION: "8.8.2"
     - E2E_STACK_VERSION: "8.9.2"
     - E2E_STACK_VERSION: "8.10.4"
-    # current stack version 8.11.x is tested in all other tests no need to test it again
-    - E2E_STACK_VERSION: "8.12.0-SNAPSHOT"
+    - E2E_STACK_VERSION: "8.11.4"
+    # current stack version 8.12.x is tested in all other tests no need to test it again
+    - E2E_STACK_VERSION: "8.13.0-SNAPSHOT"
 
 - label: kind
   fixed:

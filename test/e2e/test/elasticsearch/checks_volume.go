@@ -10,6 +10,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	esv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/elasticsearch/v1"
+	policyv1alpha1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/stackconfigpolicy/v1alpha1"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/volume"
 	"github.com/elastic/cloud-on-k8s/v2/test/e2e/test"
 )
@@ -46,6 +47,33 @@ func CheckESDataVolumeType(es esv1.Elasticsearch, k *test.K8sClient) test.Step {
 						require.Nil(t, v.EmptyDir)
 						require.NotNil(t, v.PersistentVolumeClaim)
 					}
+				}
+			}
+		},
+	}
+}
+
+func CheckStackConfigPolicyESSecretMountsVolume(k *test.K8sClient, es esv1.Elasticsearch, scp policyv1alpha1.StackConfigPolicy) test.Step {
+	//nolint:thelper
+	return test.Step{
+		Name: "Stack Config Policy Elasticsearch Secret Mounts should be present in Pod",
+		Test: func(t *testing.T) {
+			pods, err := k.GetPods(test.ESPodListOptions(es.Namespace, es.Name)...)
+			require.NoError(t, err)
+			for _, p := range pods {
+				volumeMountPathMap := make(map[string]string)
+				for _, c := range p.Spec.Containers {
+					if c.Name == "elasticsearch" {
+						for _, volumeMount := range c.VolumeMounts {
+							volumeMountPathMap[volumeMount.Name] = volumeMount.MountPath
+						}
+					}
+				}
+				// Make sure the secret name and the mountpath match
+				for _, secretMount := range scp.Spec.Elasticsearch.SecretMounts {
+					mountPath, ok := volumeMountPathMap[esv1.StackConfigAdditionalSecretName(es.Name, secretMount.SecretName)]
+					require.True(t, ok)
+					require.Equal(t, secretMount.MountPath, mountPath)
 				}
 			}
 		},

@@ -20,6 +20,7 @@ import (
 
 	"github.com/ghodss/yaml"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/rand"
@@ -57,6 +58,8 @@ func TestStackConfigPolicy(t *testing.T) {
 
 	namespace := test.Ctx().ManagedNamespace(0)
 	secureSettingsSecretName := fmt.Sprintf("test-scp-secure-settings-%s", rand.String(4))
+	secretMountsSecretName := fmt.Sprintf("test-scp-secret-mounts-%s", rand.String(4))
+	clusterNameFromConfig := fmt.Sprintf("test-scp-cluster-%s", rand.String(4))
 
 	// set the policy Elasticsearch settings the policy using the external YAML file
 	var esConfigSpec policyv1alpha1.ElasticsearchConfigPolicySpec
@@ -75,6 +78,20 @@ func TestStackConfigPolicy(t *testing.T) {
 		"/_component_template/component_template_test",
 	}
 
+	esConfigSpec.SecureSettings = []commonv1.SecretSource{
+		{SecretName: secureSettingsSecretName},
+	}
+
+	esConfigSpec.SecretMounts = []policyv1alpha1.SecretMount{
+		{
+			SecretName: secretMountsSecretName,
+			MountPath:  "/test",
+		},
+	}
+
+	scpEsConfig := commonv1.NewConfig(map[string]interface{}{"cluster.name": clusterNameFromConfig})
+	esConfigSpec.Config = &scpEsConfig
+
 	policy := policyv1alpha1.StackConfigPolicy{
 		ObjectMeta: metav1.ObjectMeta{
 			Namespace: namespace,
@@ -83,9 +100,6 @@ func TestStackConfigPolicy(t *testing.T) {
 		Spec: policyv1alpha1.StackConfigPolicySpec{
 			ResourceSelector: metav1.LabelSelector{
 				MatchLabels: map[string]string{"label": "test-scp"},
-			},
-			SecureSettings: []commonv1.SecretSource{
-				{SecretName: secureSettingsSecretName},
 			},
 			Elasticsearch: esConfigSpec,
 		},
@@ -113,6 +127,17 @@ func TestStackConfigPolicy(t *testing.T) {
 		},
 	}
 
+	secretsMountSecretKey := "testfile"
+	secretMountsSecret := corev1.Secret{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      secretMountsSecretName,
+			Namespace: namespace,
+		},
+		Data: map[string][]byte{
+			secretsMountSecretKey: []byte(`testfile content`),
+		},
+	}
+
 	esWithlicense := test.LicenseTestBuilder(es)
 
 	var noEntries []string
@@ -122,6 +147,13 @@ func TestStackConfigPolicy(t *testing.T) {
 				Name: "Create a Secure Settings secret",
 				Test: test.Eventually(func() error {
 					err := k.CreateOrUpdate(&secureSettingsSecret)
+					return err
+				}),
+			},
+			test.Step{
+				Name: "Create a Secret Mounts secret",
+				Test: test.Eventually(func() error {
+					err := k.CreateOrUpdate(&secretMountsSecret)
 					return err
 				}),
 			},
@@ -147,6 +179,21 @@ func TestStackConfigPolicy(t *testing.T) {
 					if settings.Persistent.Indices.Recovery.MaxBytesPerSec != "100mb" {
 						return errors.New("cluster settings not configured")
 					}
+					return nil
+				}),
+			},
+			test.Step{
+				Name: "Cluster name should be as set in the config",
+				Test: test.Eventually(func() error {
+					esClient, err := elasticsearch.NewElasticsearchClient(es.Elasticsearch, k)
+					assert.NoError(t, err)
+
+					var apiResponse ClusterInfoResponse
+					if _, err = request(esClient, http.MethodGet, "/", nil, &apiResponse); err != nil {
+						return err
+					}
+
+					require.Equal(t, clusterNameFromConfig, apiResponse.ClusterName)
 					return nil
 				}),
 			},
@@ -205,6 +252,7 @@ func TestStackConfigPolicy(t *testing.T) {
 			elasticsearch.CheckESKeystoreEntries(k, es, []string{
 				secureServiceAccountSettingKey,
 			}),
+			elasticsearch.CheckStackConfigPolicyESSecretMountsVolume(k, es.Elasticsearch, policy),
 			test.Step{
 				Name: "Deleting the StackConfigPolicy should return no error",
 				Test: test.Eventually(func() error {
@@ -227,6 +275,18 @@ func TestStackConfigPolicy(t *testing.T) {
 			},
 			// keystore entries should be removed
 			elasticsearch.CheckESKeystoreEntries(k, es, noEntries),
+			test.Step{
+				Name: "Delete secure settings secret",
+				Test: test.Eventually(func() error {
+					return k.Client.Delete(context.Background(), &secureSettingsSecret)
+				}),
+			},
+			test.Step{
+				Name: "Delete secure mounts secret",
+				Test: test.Eventually(func() error {
+					return k.Client.Delete(context.Background(), &secretMountsSecret)
+				}),
+			},
 		}
 	}
 
@@ -251,6 +311,10 @@ type ClusterSettings struct {
 			} `json:"recovery"`
 		} `json:"indices"`
 	} `json:"persistent"`
+}
+
+type ClusterInfoResponse struct {
+	ClusterName string `json:"cluster_name"`
 }
 
 type SnapshotRepositories map[string]SnapshotRepository

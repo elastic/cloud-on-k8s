@@ -1,5 +1,5 @@
 # Build the operator binary
-FROM docker.io/library/golang:1.21.5 as builder
+FROM docker.io/library/golang:1.21.6 as builder
 
 ARG VERSION
 ARG SHA1
@@ -30,7 +30,7 @@ RUN --mount=type=cache,mode=0755,target=/go/pkg/mod \
 FROM registry.access.redhat.com/ubi9/ubi-minimal:9.3-1475
 
 # Update the base image packages to the latest versions
-RUN microdnf update --setopt=tsflags=nodocs && microdnf clean all
+RUN microdnf update --setopt=tsflags=nodocs --assumeyes && microdnf clean all
 
 ARG VERSION
 

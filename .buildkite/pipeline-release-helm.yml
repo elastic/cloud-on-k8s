@@ -1,3 +1,6 @@
+env:
+  HELM_DRY_RUN: ${HELM_DRY_RUN:-true}
+
 steps:
 
   - label: ":go: helm releaser tool"
