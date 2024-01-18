@@ -96,7 +96,7 @@ func getEsPod(namespace string, annotations map[string]string) *corev1.Pod {
 	return &corev1.Pod{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "test-es-default-0",
-			Namespace: "ns",
+			Namespace: namespace,
 			Labels: map[string]string{
 				label.ClusterNameLabelName: "test-es",
 			},
