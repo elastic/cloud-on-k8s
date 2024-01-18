@@ -20,7 +20,7 @@ import (
 
 	"github.com/elastic/cloud-on-k8s/v2/pkg/apis/common/v1alpha1"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/version"
-	. "github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/client"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/client"
 )
 
 func TestClient_CreateAutoscalingPolicy(t *testing.T) {
@@ -33,7 +33,7 @@ func TestClient_CreateAutoscalingPolicy(t *testing.T) {
 		},
 	}
 	for _, tt := range tests {
-		testClient := NewMockClient(version.MustParse("7.11.0"), func(req *http.Request) *http.Response {
+		testClient := client.NewMockClient(version.MustParse("7.11.0"), func(req *http.Request) *http.Response {
 			require.Equal(t, tt.expectedPath, req.URL.Path)
 			return &http.Response{
 				StatusCode: 200,
@@ -59,7 +59,7 @@ func TestClient_DeleteAutoscalingPolicies(t *testing.T) {
 		},
 	}
 	for _, tt := range tests {
-		testClient := NewMockClient(version.MustParse("7.11.0"), func(req *http.Request) *http.Response {
+		testClient := client.NewMockClient(version.MustParse("7.11.0"), func(req *http.Request) *http.Response {
 			require.Equal(t, tt.expectedPath, req.URL.Path)
 			return &http.Response{
 				StatusCode: 200,
@@ -73,7 +73,7 @@ func TestClient_DeleteAutoscalingPolicies(t *testing.T) {
 }
 
 func TestClient_GetAutoscalingCapacity(t *testing.T) {
-	testClient := NewMockClient(version.MustParse("7.11.0"), func(req *http.Request) *http.Response {
+	testClient := client.NewMockClient(version.MustParse("7.11.0"), func(req *http.Request) *http.Response {
 		require.Equal(t, "/_autoscaling/capacity", req.URL.Path)
 		fixture, err := os.ReadFile(filepath.Join("testdata", "autoscaling.json"))
 		assert.NoError(t, err)
@@ -95,13 +95,13 @@ func TestClient_GetAutoscalingCapacity(t *testing.T) {
 	// Required capacity
 	assert.Equal(
 		t,
-		AutoscalingCapacityInfo{
-			Node: AutoscalingResources{
+		client.AutoscalingCapacityInfo{
+			Node: client.AutoscalingResources{
 				Processors: newCapacity("2.5"),
 				Storage:    newCapacity("165155770"),
 				Memory:     nil, // No memory capacity expected for the data deciders
 			},
-			Total: AutoscalingResources{
+			Total: client.AutoscalingResources{
 				Processors: newCapacity("5.0"),
 				Storage:    newCapacity("3069911040"),
 				Memory:     nil, // No memory capacity expected for the data deciders
@@ -113,12 +113,12 @@ func TestClient_GetAutoscalingCapacity(t *testing.T) {
 	// Observed capacity
 	assert.Equal(
 		t,
-		AutoscalingCapacityInfo{
-			Node: AutoscalingResources{
+		client.AutoscalingCapacityInfo{
+			Node: client.AutoscalingResources{
 				Storage: newCapacity("1023303680"),
 				Memory:  newCapacity("2147483648"),
 			},
-			Total: AutoscalingResources{
+			Total: client.AutoscalingResources{
 				Storage: newCapacity("3069911040"),
 				Memory:  newCapacity("6442450944"),
 			},
@@ -129,7 +129,7 @@ func TestClient_GetAutoscalingCapacity(t *testing.T) {
 	// Observed data/ingest nodes
 	assert.ElementsMatch(
 		t,
-		[]AutoscalingNodeInfo{{"mldi-sample-es-di-0"}, {"mldi-sample-es-di-1"}, {"mldi-sample-es-di-2"}},
+		[]client.AutoscalingNodeInfo{{"mldi-sample-es-di-0"}, {"mldi-sample-es-di-1"}, {"mldi-sample-es-di-2"}},
 		dataCapacity.CurrentNodes,
 	)
 
@@ -141,12 +141,12 @@ func TestClient_GetAutoscalingCapacity(t *testing.T) {
 	assert.Equal(
 		t,
 		mlCapacity.RequiredCapacity,
-		AutoscalingCapacityInfo{
-			Node: AutoscalingResources{
+		client.AutoscalingCapacityInfo{
+			Node: client.AutoscalingResources{
 				Storage: nil, // No storage capacity expected from the ML decider
 				Memory:  newCapacity("3221225472"),
 			},
-			Total: AutoscalingResources{
+			Total: client.AutoscalingResources{
 				Storage: nil, // No storage capacity expected from the ML decider
 				Memory:  newCapacity("6442450944"),
 			},
@@ -156,12 +156,12 @@ func TestClient_GetAutoscalingCapacity(t *testing.T) {
 	// Observed ML capacity
 	assert.Equal(
 		t,
-		AutoscalingCapacityInfo{
-			Node: AutoscalingResources{
+		client.AutoscalingCapacityInfo{
+			Node: client.AutoscalingResources{
 				Storage: nil,
 				Memory:  newCapacity("3221225472"),
 			},
-			Total: AutoscalingResources{
+			Total: client.AutoscalingResources{
 				Storage: nil,
 				Memory:  newCapacity("6442450944"),
 			},
@@ -172,12 +172,12 @@ func TestClient_GetAutoscalingCapacity(t *testing.T) {
 	// Observed ML nodes
 	assert.ElementsMatch(
 		t,
-		[]AutoscalingNodeInfo{{"mldi-sample-es-ml-0"}, {"mldi-sample-es-ml-1"}},
+		[]client.AutoscalingNodeInfo{{"mldi-sample-es-ml-0"}, {"mldi-sample-es-ml-1"}},
 		mlCapacity.CurrentNodes,
 	)
 }
 
-func newCapacity(q string) *AutoscalingCapacity {
-	v := AutoscalingCapacity{Quantity: resource.MustParse(q)}
+func newCapacity(q string) *client.AutoscalingCapacity {
+	v := client.AutoscalingCapacity{Quantity: resource.MustParse(q)}
 	return &v
 }
