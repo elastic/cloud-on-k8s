@@ -975,17 +975,18 @@ spec:
 
 This example downloads the same `postgres` JDBC driver, and adds it to the {ls} classpath in the Docker image.
 
-First, create a Dockerfile based on the {ls} Docker image, and download the JDBC driver, storing it alongside the other JAR files in the {ls} classpath:
+First, create a Dockerfile based on the {ls} Docker image.
+Download the JDBC driver, and save it alongside the other JAR files in the {ls} classpath:
 
-[source,subs="attributes,+macros,callouts"]
+From docker.elastic.co/logstash/logstash:{version}, run: 
+[source,js]
 ----
-FROM docker.elastic.co/logstash/logstash:{version}
-
-RUN curl -o /usr/share/logstash/logstash-core/lib/jars/postgresql.jar -L https://jdbc.postgresql.org/download/postgresql-42.6.0.jar <1>
+curl -o /usr/share/logstash/logstash-core/lib/jars/postgresql.jar -L https://jdbc.postgresql.org/download/postgresql-42.6.0.jar <1>
 ----
-<1> Placing the JAR file in the `/usr/share/logstash/logstash-core/lib/jars` folder places it on Logstash's classpath.
+<1> Placing the JAR file in the `/usr/share/logstash/logstash-core/lib/jars` folder adds it to the {ls} classpath.
 
-Then after building and deploying the custom image (refer to <<{p}-custom-images>> for more details), include it in the {ls} manifest:
+After you build and deploy the custom image, include it in the {ls} manifest.
+(Check out <<{p}-custom-images>> for more details.)
 
 [source,yaml]
 ----
