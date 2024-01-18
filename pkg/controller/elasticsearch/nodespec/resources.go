@@ -60,7 +60,6 @@ func BuildExpectedResources(
 	existingStatefulSets sset.StatefulSetList,
 	ipFamily corev1.IPFamily,
 	setDefaultSecurityContext bool,
-	stackConfigPolicyConfigSecret corev1.Secret,
 ) (ResourcesList, error) {
 	nodesResources := make(ResourcesList, 0, len(es.Spec.NodeSets))
 
