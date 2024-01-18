@@ -55,7 +55,7 @@ var fakeClientProvider = func(fileSettings esclient.FileSettings, err error) com
 	}
 }
 
-func (c fakeEsClient) GetClusterState(ctx context.Context) (esclient.ClusterState, error) {
+func (c fakeEsClient) GetClusterState(_ context.Context) (esclient.ClusterState, error) {
 	if c.err != nil {
 		return esclient.ClusterState{}, c.err
 	}

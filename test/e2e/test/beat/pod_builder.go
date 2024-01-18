@@ -261,7 +261,7 @@ func (pb PodBuilder) DeletionTestSteps(k *test.K8sClient) test.StepList {
 	}
 }
 
-func (pb PodBuilder) MutationTestSteps(k *test.K8sClient) test.StepList {
+func (pb PodBuilder) MutationTestSteps(_ *test.K8sClient) test.StepList {
 	panic("implement me")
 }
 

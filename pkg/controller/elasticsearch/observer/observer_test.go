@@ -61,7 +61,7 @@ func TestObserver_observe(t *testing.T) {
 	require.Equal(t, int32(2), atomic.LoadInt32(&counter))
 }
 
-func TestObserver_observe_nilFunction(t *testing.T) {
+func TestObserver_observe_nilFunction(_ *testing.T) {
 	var nilFunc OnObservation
 	fakeEsClient := fakeEsClient200(client.BasicAuth{})
 	observer := Observer{

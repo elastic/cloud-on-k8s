@@ -33,11 +33,11 @@ type failingSubClient struct {
 	err error
 }
 
-func (fc failingSubClient) Create(_ context.Context, _ client.Object, subResource client.Object, _ ...client.SubResourceCreateOption) error {
+func (fc failingSubClient) Create(_ context.Context, _ client.Object, _ client.Object, _ ...client.SubResourceCreateOption) error {
 	return fc.err
 }
 
-func (fc failingSubClient) Get(_ context.Context, _ client.Object, subResource client.Object, _ ...client.SubResourceGetOption) error {
+func (fc failingSubClient) Get(_ context.Context, _ client.Object, _ client.Object, _ ...client.SubResourceGetOption) error {
 	return fc.err
 }
 
@@ -45,15 +45,15 @@ func (fc failingSubClient) Update(_ context.Context, _ client.Object, _ ...clien
 	return fc.err
 }
 
-func (fc failingSubClient) Patch(_ context.Context, _ client.Object, patch client.Patch, _ ...client.SubResourcePatchOption) error {
+func (fc failingSubClient) Patch(_ context.Context, _ client.Object, _ client.Patch, _ ...client.SubResourcePatchOption) error {
 	return fc.err
 }
 
-func (fc failingSubClient) GroupVersionKindFor(obj runtime.Object) (schema.GroupVersionKind, error) {
+func (fc failingSubClient) GroupVersionKindFor(_ runtime.Object) (schema.GroupVersionKind, error) {
 	return schema.GroupVersionKind{}, fc.err
 }
 
-func (fc failingSubClient) IsObjectNamespaced(obj runtime.Object) (bool, error) {
+func (fc failingSubClient) IsObjectNamespaced(_ runtime.Object) (bool, error) {
 	return false, fc.err
 }
 
@@ -67,11 +67,11 @@ func NewFailingClient(err error) Client {
 	return failingClient{err: err}
 }
 
-func (fc failingClient) Get(_ context.Context, key client.ObjectKey, _ client.Object, _ ...client.GetOption) error {
+func (fc failingClient) Get(_ context.Context, _ client.ObjectKey, _ client.Object, _ ...client.GetOption) error {
 	return fc.err
 }
 
-func (fc failingClient) List(_ context.Context, list client.ObjectList, _ ...client.ListOption) error {
+func (fc failingClient) List(_ context.Context, _ client.ObjectList, _ ...client.ListOption) error {
 	return fc.err
 }
 
@@ -87,7 +87,7 @@ func (fc failingClient) Update(_ context.Context, _ client.Object, _ ...client.U
 	return fc.err
 }
 
-func (fc failingClient) Patch(_ context.Context, _ client.Object, patch client.Patch, _ ...client.PatchOption) error {
+func (fc failingClient) Patch(_ context.Context, _ client.Object, _ client.Patch, _ ...client.PatchOption) error {
 	return fc.err
 }
 
@@ -99,7 +99,7 @@ func (fc failingClient) Status() client.StatusWriter {
 	return fc.failingSubClient
 }
 
-func (fc failingClient) SubResource(subResource string) client.SubResourceClient {
+func (fc failingClient) SubResource(_ string) client.SubResourceClient {
 	return fc.failingSubClient
 }
 

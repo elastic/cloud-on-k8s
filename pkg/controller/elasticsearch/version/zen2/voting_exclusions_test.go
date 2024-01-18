@@ -24,12 +24,12 @@ type fakeVotingConfigExclusionsESClient struct {
 	client.Client
 }
 
-func (f *fakeVotingConfigExclusionsESClient) DeleteVotingConfigExclusions(ctx context.Context, waitForRemoval bool) error {
+func (f *fakeVotingConfigExclusionsESClient) DeleteVotingConfigExclusions(_ context.Context, _ bool) error {
 	f.called = true
 	return nil
 }
 
-func (f *fakeVotingConfigExclusionsESClient) AddVotingConfigExclusions(ctx context.Context, nodeNames []string) error {
+func (f *fakeVotingConfigExclusionsESClient) AddVotingConfigExclusions(_ context.Context, nodeNames []string) error {
 	f.called = true
 	f.excludedNodes = nodeNames
 	return nil
