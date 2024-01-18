@@ -43,7 +43,7 @@ spec:
         {{- toYaml . | nindent 8 }}
       {{- end }}
       containers:
-        - image: "{{ .Values.image.repository }}:{{ default .Chart.AppVersion .Values.image.tag }}"
+        - image: "{{ .Values.image.repository }}{{- if .Values.config.ubiOnly -}}-ubi{{- end -}}:{{ default .Chart.AppVersion .Values.image.tag }}"
           imagePullPolicy: {{ .Values.image.pullPolicy }}
           name: manager
           args:
