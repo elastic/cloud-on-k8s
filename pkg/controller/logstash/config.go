@@ -17,6 +17,7 @@ import (
 	logstashv1alpha1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/logstash/v1alpha1"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/labels"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/pod"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/reconciler"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/settings"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/tracing"
@@ -199,7 +200,7 @@ func getKeystoreEnvKeyValues(params Params) (map[string]string, error) {
 	data := make(map[string]string)
 
 	// from ENV
-	if c := getLogstashContainer(params.Logstash.Spec.PodTemplate.Spec.Containers); c != nil {
+	if c := pod.ContainerByName(params.Logstash.Spec.PodTemplate.Spec, logstashv1alpha1.LogstashContainerName); c != nil {
 		if err := getEnvKeyValues(params, c, data); err != nil {
 			return nil, err
 		}
@@ -254,15 +255,6 @@ func getEnvKeyValues(params Params, c *corev1.Container, data map[string]string)
 		}
 	}
 
-	return nil
-}
-
-func getLogstashContainer(containers []corev1.Container) *corev1.Container {
-	for _, c := range containers {
-		if c.Name == logstashv1alpha1.LogstashContainerName {
-			return &c
-		}
-	}
 	return nil
 }
 
