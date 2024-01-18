@@ -38,7 +38,7 @@ func Test_newDownscaleState(t *testing.T) {
 			name: "3 masters running in the apiserver, 1 not running",
 			actualPods: []corev1.Pod{
 				// 3 masters running
-				corev1.Pod{
+				{
 					ObjectMeta: metav1.ObjectMeta{
 						Namespace: ssetMaster3Replicas.Namespace,
 						Name:      ssetMaster3Replicas.Name + "-0",
@@ -61,7 +61,7 @@ func Test_newDownscaleState(t *testing.T) {
 						},
 					},
 				},
-				corev1.Pod{
+				{
 					ObjectMeta: metav1.ObjectMeta{
 						Namespace: ssetMaster3Replicas.Namespace,
 						Name:      ssetMaster3Replicas.Name + "-1",
@@ -84,7 +84,7 @@ func Test_newDownscaleState(t *testing.T) {
 						},
 					},
 				},
-				corev1.Pod{
+				{
 					ObjectMeta: metav1.ObjectMeta{
 						Namespace: ssetMaster3Replicas.Namespace,
 						Name:      ssetMaster3Replicas.Name + "-2",
@@ -108,7 +108,7 @@ func Test_newDownscaleState(t *testing.T) {
 					},
 				},
 				// 1 master not ready yet
-				corev1.Pod{
+				{
 					ObjectMeta: metav1.ObjectMeta{
 						Namespace: ssetMaster3Replicas.Namespace,
 						Name:      ssetMaster3Replicas.Name + "-3",
