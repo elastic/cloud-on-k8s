@@ -53,6 +53,7 @@ func reconcileSuspendedPods(ctx context.Context, c k8s.Client, es esv1.Elasticse
 	}
 
 	for i, pod := range knownPods {
+		pod := pod
 		// Pod should be suspended
 		if suspendedPodNames.Has(pod.Name) {
 			for _, s := range pod.Status.ContainerStatuses {
