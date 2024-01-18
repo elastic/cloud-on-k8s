@@ -962,14 +962,14 @@ spec:
       config.string: |
         input {
           jdbc {
-             jdbc_driver_library => "/usr/share/logstash/jars/postgresql.jar" <1>
+             jdbc_driver_library => "/usr/share/logstash/jars/postgresql.jar"
              jdbc_driver_class => "org.postgresql.Driver"
-                :
-                :
+             <2>
           }
         }
 ----
 <1> Referring to the external file should match the `mountPath` of the `container`
+<2> Rest of plugin configuration goes here
 
 === Adding files using a custom image
 
@@ -1000,14 +1000,14 @@ After you build and deploy the custom image, include it in the {ls} manifest.
           jdbc {
               <2>
              jdbc_driver_class => "org.postgresql.Driver"
-                :
-                :
+              <3>
           }
         }
 
 ----
 <1> Providing the correct version is always required as ECK reasons about APIs and capabilities available to it based on the version field.
 <2> Note that when you place the JAR file on the {ls} classpath, you do not need to specify the `jdbc_driver_library` location in the plugin configuration.
+<3> Rest of plugin configuration goes here
 
 [id="{p}-logstash-scaling-logstash"]
 == Scaling Logstash
