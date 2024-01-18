@@ -725,7 +725,7 @@ kind: Logstash
 metadata:
   name: logstash-sample
 spec:
-  version: 8.12.0
+  version: {version}
   count: 1
   config:
     api.auth.type: basic
@@ -761,7 +761,7 @@ metadata:
   name: logstash-sample
 spec:
   count: 1
-  version: 8.12.0
+  version: {version}
   config:
     api.ssl.keystore.password: "${SSL_KEYSTORE_PASSWORD}"
 ----
@@ -779,7 +779,7 @@ kind: Logstash
 metadata:
   name: logstash-sample
 spec:
-  version: 8.12.0
+  version: {version}
   count: 1
   elasticsearchRef:
     name: "elasticsearch-sample"
@@ -803,7 +803,7 @@ kind: Logstash
 metadata:
   name: logstash-sample
 spec:
-  version: 8.12.0
+  version: {version}
   count: 1
   elasticsearchRef:
     name: "elasticsearch-sample"
@@ -963,7 +963,7 @@ kind: Logstash
 metadata:
   name: logstash-sample
 spec:
-  version: 8.8.0
+  version: {version}
   count: 1
   pipelines:
     - pipeline.id: main
