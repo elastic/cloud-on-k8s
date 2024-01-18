@@ -78,7 +78,6 @@ func TestWithMonitoring(t *testing.T) {
 	tests := []struct {
 		name                      string
 		ls                        func() logstashv1alpha1.Logstash
-		useTLS                    bool
 		apiServerConfig           configs.APIServer
 		containersLength          int
 		esEnvVarsLength           int
@@ -100,7 +99,7 @@ func TestWithMonitoring(t *testing.T) {
 				monitoring.GetMetricsAssociation(&sampleLs)[0].SetAssociationConf(&monitoringAssocConf)
 				return sampleLs
 			},
-			apiServerConfig:           GetAPIServerWithAuth(),
+			apiServerConfig:           GetAPIServerWithSSLDisabled(),
 			containersLength:          2,
 			esEnvVarsLength:           0,
 			podVolumesLength:          3,
@@ -113,8 +112,7 @@ func TestWithMonitoring(t *testing.T) {
 				monitoring.GetMetricsAssociation(&sampleLs)[0].SetAssociationConf(&monitoringAssocConf)
 				return sampleLs
 			},
-			useTLS:                    true,
-			apiServerConfig:           GetAPIServerWithAuth(),
+			apiServerConfig:           GetAPIServerWithSSLEnabled(),
 			containersLength:          2,
 			esEnvVarsLength:           0,
 			podVolumesLength:          4,
@@ -128,7 +126,7 @@ func TestWithMonitoring(t *testing.T) {
 				monitoring.GetLogsAssociation(&sampleLs)[0].SetAssociationConf(&monitoringAssocConf)
 				return sampleLs
 			},
-			apiServerConfig:       GetAPIServerWithAuth(),
+			apiServerConfig:       GetAPIServerWithSSLDisabled(),
 			containersLength:      2,
 			esEnvVarsLength:       1,
 			podVolumesLength:      3,
@@ -143,7 +141,7 @@ func TestWithMonitoring(t *testing.T) {
 				monitoring.GetLogsAssociation(&sampleLs)[0].SetAssociationConf(&logsAssocConf)
 				return sampleLs
 			},
-			apiServerConfig:           GetAPIServerWithAuth(),
+			apiServerConfig:           GetAPIServerWithSSLDisabled(),
 			containersLength:          3,
 			esEnvVarsLength:           1,
 			podVolumesLength:          5,
@@ -159,7 +157,7 @@ func TestWithMonitoring(t *testing.T) {
 				monitoring.GetLogsAssociation(&sampleLs)[0].SetAssociationConf(&logsAssocConf)
 				return sampleLs
 			},
-			apiServerConfig:           GetAPIServerWithAuth(),
+			apiServerConfig:           GetAPIServerWithSSLDisabled(),
 			containersLength:          3,
 			esEnvVarsLength:           1,
 			podVolumesLength:          6,
@@ -172,7 +170,7 @@ func TestWithMonitoring(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			ls := tc.ls()
 			builder := defaults.NewPodTemplateBuilder(corev1.PodTemplateSpec{}, logstashv1alpha1.LogstashContainerName)
-			_, err := WithMonitoring(context.Background(), fakeClient, builder, ls, tc.useTLS, tc.apiServerConfig)
+			_, err := WithMonitoring(context.Background(), fakeClient, builder, ls, tc.apiServerConfig)
 			assert.NoError(t, err)
 
 			assert.Equal(t, tc.containersLength, len(builder.PodTemplate.Spec.Containers))
@@ -199,9 +197,19 @@ func TestWithMonitoring(t *testing.T) {
 	}
 }
 
-func GetAPIServerWithAuth() configs.APIServer {
+func GetAPIServerWithSSLEnabled() configs.APIServer {
 	return configs.APIServer{
 		SSLEnabled:       "true",
+		KeystorePassword: "blablabla",
+		AuthType:         "basic",
+		Username:         "logstash",
+		Password:         "whatever",
+	}
+}
+
+func GetAPIServerWithSSLDisabled() configs.APIServer {
+	return configs.APIServer{
+		SSLEnabled:       "false",
 		KeystorePassword: "blablabla",
 		AuthType:         "basic",
 		Username:         "logstash",
