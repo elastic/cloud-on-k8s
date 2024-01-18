@@ -390,6 +390,9 @@ spec:
   minKubeVersion: 1.21.0
   provider:
     name: Elastic
+  relatedImages:
+  - name: eck-operator
+    image: {{ .OperatorRepo }}{{ .Tag }}
   replaces: {{ .PackageName }}.v{{ .PrevVersion }}
   version: {{ .NewVersion }}
   webhookdefinitions:
