@@ -969,7 +969,7 @@ spec:
         }
 ----
 <1> Referring to the external file should match the `mountPath` of the `container`
-<2> Rest of plugin configuration goes here
+<2> Remainder of plugin configuration goes here
 
 === Adding files using a custom image
 
@@ -1007,7 +1007,7 @@ After you build and deploy the custom image, include it in the {ls} manifest.
 ----
 <1> Providing the correct version is always required as ECK reasons about APIs and capabilities available to it based on the version field.
 <2> Note that when you place the JAR file on the {ls} classpath, you do not need to specify the `jdbc_driver_library` location in the plugin configuration.
-<3> Rest of plugin configuration goes here
+<3> Remainder of plugin configuration goes here
 
 [id="{p}-logstash-scaling-logstash"]
 == Scaling Logstash
