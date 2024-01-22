@@ -88,7 +88,7 @@ func TestMultiOutputRecipe(t *testing.T) {
 }
 
 func TestFleetKubernetesIntegrationRecipe(t *testing.T) {
-	v := version.MustParse(test.Ctx().ElasticStackVersion)
+	//v := version.MustParse(test.Ctx().ElasticStackVersion)
 
 	customize := func(builder agent.Builder) agent.Builder {
 		if !builder.Agent.Spec.FleetServerEnabled {
@@ -126,11 +126,11 @@ func TestFleetKubernetesIntegrationRecipe(t *testing.T) {
 			WithDefaultESValidation(agent.HasWorkingDataStream(agent.MetricsType, "system.socket_summary", "default")).
 			WithDefaultESValidation(agent.HasWorkingDataStream(agent.MetricsType, "system.uptime", "default"))
 
-		// https://github.com/elastic/cloud-on-k8s/issues/7389
-		if v.LT(version.MinFor(8, 12, 0)) && v.GE(version.MinFor(8, 14, 0)) {
-			builder = builder.
-				WithDefaultESValidation(agent.HasWorkingDataStream(agent.MetricsType, "elastic_agent.filebeat", "default"))
-		}
+			// https://github.com/elastic/cloud-on-k8s/issues/7389
+			//if v.LT(version.MinFor(8, 12, 0)) && v.GE(version.MinFor(8, 14, 0)) {
+		builder = builder.
+			WithDefaultESValidation(agent.HasWorkingDataStream(agent.MetricsType, "elastic_agent.filebeat", "default"))
+		//}
 
 		return builder
 	}
@@ -225,7 +225,7 @@ func TestFleetCustomLogsIntegrationRecipe(t *testing.T) {
 }
 
 func TestFleetAPMIntegrationRecipe(t *testing.T) {
-	v := version.MustParse(test.Ctx().ElasticStackVersion)
+	//v := version.MustParse(test.Ctx().ElasticStackVersion)
 
 	customize := func(builder agent.Builder) agent.Builder {
 		if !builder.Agent.Spec.FleetServerEnabled {
@@ -241,11 +241,11 @@ func TestFleetAPMIntegrationRecipe(t *testing.T) {
 			WithDefaultESValidation(agent.HasWorkingDataStream(agent.MetricsType, "elastic_agent.fleet_server", "default")).
 			WithDefaultESValidation(agent.HasWorkingDataStream(agent.MetricsType, "elastic_agent.metricbeat", "default"))
 
-		// https://github.com/elastic/cloud-on-k8s/issues/7389
-		if v.LT(version.MinFor(8, 12, 0)) && v.GE(version.MinFor(8, 14, 0)) {
-			builder = builder.
-				WithDefaultESValidation(agent.HasWorkingDataStream(agent.MetricsType, "elastic_agent.filebeat", "default"))
-		}
+			// https://github.com/elastic/cloud-on-k8s/issues/7389
+			//if v.LT(version.MinFor(8, 12, 0)) && v.GE(version.MinFor(8, 14, 0)) {
+		builder = builder.
+			WithDefaultESValidation(agent.HasWorkingDataStream(agent.MetricsType, "elastic_agent.filebeat", "default"))
+		//}
 
 		return builder
 	}
