@@ -214,7 +214,7 @@ func Test_checkSupportedVersion(t *testing.T) {
 		},
 		{
 			name:    "above min supported",
-			version: "8.7.1",
+			version: "8.12.0",
 			wantErr: false,
 		},
 	} {

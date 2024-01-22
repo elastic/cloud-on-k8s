@@ -26,7 +26,7 @@ func TestWebhook(t *testing.T) {
 			Object: func(t *testing.T, uid string) []byte {
 				t.Helper()
 				ls := mkLogstash(uid)
-				ls.Spec.Version = "8.7.0"
+				ls.Spec.Version = "8.12.0"
 				ls.Spec.Monitoring = commonv1.Monitoring{Metrics: commonv1.MetricsMonitoring{ElasticsearchRefs: []commonv1.ObjectSelector{{Name: "esmonname", Namespace: "esmonns"}}}}
 				return serialize(t, ls)
 			},
@@ -38,7 +38,7 @@ func TestWebhook(t *testing.T) {
 			Object: func(t *testing.T, uid string) []byte {
 				t.Helper()
 				ls := mkLogstash(uid)
-				ls.Spec.Version = "8.7.0"
+				ls.Spec.Version = "8.12.0"
 				ls.Spec.Monitoring = commonv1.Monitoring{
 					Metrics: commonv1.MetricsMonitoring{ElasticsearchRefs: []commonv1.ObjectSelector{{SecretName: "es1monname"}}},
 					Logs:    commonv1.LogsMonitoring{ElasticsearchRefs: []commonv1.ObjectSelector{{SecretName: "es2monname"}}},
@@ -48,7 +48,7 @@ func TestWebhook(t *testing.T) {
 			Check: test.ValidationWebhookSucceeded,
 		},
 		{
-			Name:      "invalid-version-for-stackmon",
+			Name:      "invalid-stack-version",
 			Operation: admissionv1beta1.Create,
 			Object: func(t *testing.T, uid string) []byte {
 				t.Helper()
@@ -58,7 +58,7 @@ func TestWebhook(t *testing.T) {
 				return serialize(t, ls)
 			},
 			Check: test.ValidationWebhookFailed(
-				`spec.version: Invalid value: "7.13.0": Unsupported version for Stack Monitoring. Required >= 8.7.0`,
+				`spec.version: Invalid value: "7.13.0": Unsupported version: version 7.13.0 is lower than the lowest supported version of 8.12.0`,
 			),
 		},
 		{
@@ -67,7 +67,7 @@ func TestWebhook(t *testing.T) {
 			Object: func(t *testing.T, uid string) []byte {
 				t.Helper()
 				ls := mkLogstash(uid)
-				ls.Spec.Version = "8.7.0"
+				ls.Spec.Version = "8.12.0"
 				ls.Spec.Monitoring = commonv1.Monitoring{
 					Metrics: commonv1.MetricsMonitoring{ElasticsearchRefs: []commonv1.ObjectSelector{{SecretName: "es1monname", Name: "xx"}}},
 					Logs:    commonv1.LogsMonitoring{ElasticsearchRefs: []commonv1.ObjectSelector{{SecretName: "es2monname"}}},
@@ -84,7 +84,7 @@ func TestWebhook(t *testing.T) {
 			Object: func(t *testing.T, uid string) []byte {
 				t.Helper()
 				ls := mkLogstash(uid)
-				ls.Spec.Version = "8.7.0"
+				ls.Spec.Version = "8.12.0"
 				ls.Spec.Monitoring = commonv1.Monitoring{
 					Metrics: commonv1.MetricsMonitoring{ElasticsearchRefs: []commonv1.ObjectSelector{{SecretName: "es1monname"}}},
 					Logs:    commonv1.LogsMonitoring{ElasticsearchRefs: []commonv1.ObjectSelector{{SecretName: "es2monname", ServiceName: "xx"}}},
@@ -109,7 +109,7 @@ func mkLogstash(uid string) *v1alpha1.Logstash {
 			UID:  types.UID(uid),
 		},
 		Spec: v1alpha1.LogstashSpec{
-			Version: "8.6.0",
+			Version: "8.12.0",
 		},
 	}
 }

@@ -19,7 +19,6 @@ import (
 
 	commonv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/common/v1"
 	logstashv1alpha1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/logstash/v1alpha1"
-	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/version"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/logstash/configs"
 	"github.com/elastic/cloud-on-k8s/v2/test/e2e/test"
 	"github.com/elastic/cloud-on-k8s/v2/test/e2e/test/checks"
@@ -30,11 +29,6 @@ import (
 // TestLogstashStackMonitoring tests that when Logstash is configured with monitoring, its log and metrics are
 // correctly delivered to the referenced monitoring Elasticsearch clusters.
 func TestLogstashStackMonitoring(t *testing.T) {
-	// only execute this test on supported version
-	if version.MustParse(test.Ctx().ElasticStackVersion).LT(logstashv1alpha1.MinStackMonVersion) {
-		t.SkipNow()
-	}
-
 	// create 1 monitored and 2 monitoring clusters to collect separately metrics and logs
 	metrics := elasticsearch.NewBuilder("test-ls-mon-metrics").
 		WithESMasterDataNodes(2, elasticsearch.DefaultResources)
@@ -61,11 +55,6 @@ func TestLogstashStackMonitoring(t *testing.T) {
 // TestLogstashResolvingDollarVariableInStackMonitoring tests that the dollar sign variable is resolved in correct sequence, and
 // Logstash API server setup correctly, and Beats is able to collect metrics using username password.
 func TestLogstashResolvingDollarVariableInStackMonitoring(t *testing.T) {
-	// only execute this test on supported version
-	if version.MustParse(test.Ctx().ElasticStackVersion).LT(logstashv1alpha1.MinStackMonVersion) {
-		t.SkipNow()
-	}
-
 	secureSettingSecretName := "test-ls-mon-secure-settings"
 	username := "batman"
 	password := "i_am_rich$"
