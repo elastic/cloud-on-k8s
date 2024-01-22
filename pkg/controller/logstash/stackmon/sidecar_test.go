@@ -197,9 +197,9 @@ func TestWithMonitoring(t *testing.T) {
 	}
 }
 
-func GetAPIServerWithSSLEnabled() configs.APIServer {
+func GetAPIServerWithSSLEnabled(enabled bool) configs.APIServer {
 	return configs.APIServer{
-		SSLEnabled:       "true",
+		SSLEnabled:       strconv.FormatBoolean(enabled),
 		KeystorePassword: "blablabla",
 		AuthType:         "basic",
 		Username:         "logstash",
@@ -207,12 +207,4 @@ func GetAPIServerWithSSLEnabled() configs.APIServer {
 	}
 }
 
-func GetAPIServerWithSSLDisabled() configs.APIServer {
-	return configs.APIServer{
-		SSLEnabled:       "false",
-		KeystorePassword: "blablabla",
-		AuthType:         "basic",
-		Username:         "logstash",
-		Password:         "whatever",
-	}
-}
+
