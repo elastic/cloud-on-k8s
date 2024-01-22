@@ -8,7 +8,7 @@
 [float]
 === Breaking changes
 
-* The `resourceStatuses` field of the status subresource of the Stack Configuration Policy has been renamed to `details`. {pull}7433[#7433]
+* The `resourceStatuses` field of the status subresource of the Stack Configuration Policy is no longer in use. Instead a new `details` field is being populated which now also contains information about configured Kibana applications. Unless users have build automation that parses the status subresource there should be no user impact as these fields have only informational purpose. {pull}7433[#7433]
 
 
 [[feature-2.11.0]]
