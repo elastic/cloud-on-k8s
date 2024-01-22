@@ -37,7 +37,10 @@ import (
 )
 
 var (
-	truePtr           = true
+	truePtr            = true
+	sampleStorageClass = storagev1.StorageClass{
+		ObjectMeta: metav1.ObjectMeta{Name: "fixed"},
+	}
 	fixedStorageClass = storagev1.StorageClass{
 		ObjectMeta: metav1.ObjectMeta{Name: "fixed"},
 	}
@@ -584,6 +587,7 @@ func TestReconcileLogstash_Resize(t *testing.T) {
 
 				// Third pass of the reconciler should recreates the StatefulSet
 				result, err = r.Reconcile(ctx, request)
+
 				require.NoError(t, err)
 				require.NotZero(t, result.RequeueAfter)
 

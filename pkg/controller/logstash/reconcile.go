@@ -27,6 +27,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/reconciler"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/tracing"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/volume"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/logstash/labels"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/k8s"
 	ulog "github.com/elastic/cloud-on-k8s/v2/pkg/utils/log"
@@ -50,7 +51,7 @@ func reconcileStatefulSet(params Params, podTemplate corev1.PodTemplateSpec) (*r
 
 	recreations := 0
 
-	sSetRecreations, err := recreateStatefulSets(params.Context, params.Client, params.Logstash)
+	sSetRecreations, err := volume.RecreateStatefulSets(params.Context, params.Client, &params.Logstash)
 
 	recreations += sSetRecreations
 	if err != nil {
@@ -92,7 +93,7 @@ func reconcileStatefulSet(params Params, podTemplate corev1.PodTemplateSpec) (*r
 	// recreations := 0
 	for _, actualStatefulSet := range actualStatefulSets {
 		if _, exists := actualStatefulSets.GetByName(actualStatefulSet.Name); exists {
-			recreateSset, err := handleVolumeExpansion(params.Context, params.Client, params.Logstash, expected, actualStatefulSet, true)
+			recreateSset, err := volume.HandleVolumeExpansion(params.Context, params.Client, &params.Logstash, expected, actualStatefulSet, true)
 			if err != nil {
 				return results.WithError(err), params.Status
 			}

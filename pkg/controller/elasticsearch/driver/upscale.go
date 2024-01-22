@@ -13,6 +13,8 @@ import (
 	esv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/elasticsearch/v1"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/expectations"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/volume"
+
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/nodespec"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/reconcile"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/settings"
@@ -73,7 +75,7 @@ func HandleUpscaleAndSpecChanges(
 			return results, fmt.Errorf("reconcile service: %w", err)
 		}
 		if actualSset, exists := actualStatefulSets.GetByName(res.StatefulSet.Name); exists {
-			recreateSset, err := handleVolumeExpansion(ctx.parentCtx, ctx.k8sClient, ctx.es, res.StatefulSet, actualSset, ctx.validateStorageClass)
+			recreateSset, err := volume.HandleVolumeExpansion(ctx.parentCtx, ctx.k8sClient, &ctx.es, res.StatefulSet, actualSset, ctx.validateStorageClass)
 			if err != nil {
 				return results, fmt.Errorf("handle volume expansion: %w", err)
 			}
