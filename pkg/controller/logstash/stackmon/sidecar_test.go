@@ -7,6 +7,7 @@ package stackmon
 import (
 	"context"
 	"fmt"
+	"strconv"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -99,7 +100,7 @@ func TestWithMonitoring(t *testing.T) {
 				monitoring.GetMetricsAssociation(&sampleLs)[0].SetAssociationConf(&monitoringAssocConf)
 				return sampleLs
 			},
-			apiServerConfig:           GetAPIServerWithSSLDisabled(),
+			apiServerConfig:           GetAPIServerWithSSLEnabled(false),
 			containersLength:          2,
 			esEnvVarsLength:           0,
 			podVolumesLength:          3,
@@ -112,7 +113,7 @@ func TestWithMonitoring(t *testing.T) {
 				monitoring.GetMetricsAssociation(&sampleLs)[0].SetAssociationConf(&monitoringAssocConf)
 				return sampleLs
 			},
-			apiServerConfig:           GetAPIServerWithSSLEnabled(),
+			apiServerConfig:           GetAPIServerWithSSLEnabled(true),
 			containersLength:          2,
 			esEnvVarsLength:           0,
 			podVolumesLength:          4,
@@ -126,7 +127,7 @@ func TestWithMonitoring(t *testing.T) {
 				monitoring.GetLogsAssociation(&sampleLs)[0].SetAssociationConf(&monitoringAssocConf)
 				return sampleLs
 			},
-			apiServerConfig:       GetAPIServerWithSSLDisabled(),
+			apiServerConfig:       GetAPIServerWithSSLEnabled(false),
 			containersLength:      2,
 			esEnvVarsLength:       1,
 			podVolumesLength:      3,
@@ -141,7 +142,7 @@ func TestWithMonitoring(t *testing.T) {
 				monitoring.GetLogsAssociation(&sampleLs)[0].SetAssociationConf(&logsAssocConf)
 				return sampleLs
 			},
-			apiServerConfig:           GetAPIServerWithSSLDisabled(),
+			apiServerConfig:           GetAPIServerWithSSLEnabled(false),
 			containersLength:          3,
 			esEnvVarsLength:           1,
 			podVolumesLength:          5,
@@ -157,7 +158,7 @@ func TestWithMonitoring(t *testing.T) {
 				monitoring.GetLogsAssociation(&sampleLs)[0].SetAssociationConf(&logsAssocConf)
 				return sampleLs
 			},
-			apiServerConfig:           GetAPIServerWithSSLDisabled(),
+			apiServerConfig:           GetAPIServerWithSSLEnabled(false),
 			containersLength:          3,
 			esEnvVarsLength:           1,
 			podVolumesLength:          6,
@@ -199,12 +200,10 @@ func TestWithMonitoring(t *testing.T) {
 
 func GetAPIServerWithSSLEnabled(enabled bool) configs.APIServer {
 	return configs.APIServer{
-		SSLEnabled:       strconv.FormatBoolean(enabled),
+		SSLEnabled:       strconv.FormatBool(enabled),
 		KeystorePassword: "blablabla",
 		AuthType:         "basic",
 		Username:         "logstash",
 		Password:         "whatever",
 	}
 }
-
-
