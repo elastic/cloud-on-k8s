@@ -134,7 +134,7 @@ func TestLogstashResolvingDollarVariableInStackMonitoring(t *testing.T) {
 	steps := func(k *test.K8sClient) test.StepList {
 		return checks.MonitoredSteps(&monitored, k).
 			WithStep(test.Step{
-				Name: "Keystore password store in config secret",
+				Name: "Keystore password stored in config secret",
 				Test: test.Eventually(func() error {
 					nsn := types.NamespacedName{Namespace: monitored.Namespace(), Name: logstashv1alpha1.ConfigSecretName(monitored.Name())}
 					var s corev1.Secret
