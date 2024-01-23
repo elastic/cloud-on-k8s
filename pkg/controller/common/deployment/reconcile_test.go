@@ -11,13 +11,13 @@ import (
 	"github.com/stretchr/testify/require"
 	appsv1 "k8s.io/api/apps/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/utils/ptr"
 
 	esv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/elasticsearch/v1"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/comparison"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/hash"
 	controllerscheme "github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/scheme"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/k8s"
-	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/pointer"
 )
 
 func TestWithTemplateHash(t *testing.T) {
@@ -27,7 +27,7 @@ func TestWithTemplateHash(t *testing.T) {
 			Namespace: "ns",
 		},
 		Spec: appsv1.DeploymentSpec{
-			Replicas: pointer.Int32(2),
+			Replicas: ptr.To[int32](2),
 		},
 	}
 
@@ -42,7 +42,7 @@ func TestWithTemplateHash(t *testing.T) {
 	require.Equal(t, withHash.Labels[hash.TemplateHashLabelName], withSameHash.Labels[hash.TemplateHashLabelName])
 
 	// label should be different if the spec changed
-	d.Spec.Replicas = pointer.Int32(3)
+	d.Spec.Replicas = ptr.To[int32](3)
 	withDifferentHash := WithTemplateHash(d)
 	require.NotEmpty(t, withDifferentHash.Labels[hash.TemplateHashLabelName])
 	require.NotEqual(t, withHash.Labels[hash.TemplateHashLabelName], withDifferentHash.Labels[hash.TemplateHashLabelName])
@@ -60,7 +60,7 @@ func TestReconcile(t *testing.T) {
 			},
 		},
 		Spec: appsv1.DeploymentSpec{
-			Replicas: pointer.Int32(2),
+			Replicas: ptr.To[int32](2),
 		},
 	}
 	owner := esv1.Elasticsearch{} // can be any type
@@ -69,7 +69,7 @@ func TestReconcile(t *testing.T) {
 	reconciled, err := Reconcile(context.Background(), k8sClient, expected, &owner)
 	require.NoError(t, err)
 	// reconciled should match expected spec, and have the hash label set
-	require.Equal(t, pointer.Int32(2), reconciled.Spec.Replicas)
+	require.Equal(t, ptr.To[int32](2), reconciled.Spec.Replicas)
 	require.Equal(t, "b", reconciled.Labels["a"])
 	require.NotEmpty(t, reconciled.Labels[hash.TemplateHashLabelName])
 	// resource should exist in the apiserver
@@ -89,7 +89,7 @@ func TestReconcile(t *testing.T) {
 	comparison.RequireEqual(t, &withStatusUpdate, &reconciledAgain)
 
 	// update with a new spec
-	expected.Spec.Replicas = pointer.Int32(3)
+	expected.Spec.Replicas = ptr.To[int32](3)
 	reconciled, err = Reconcile(context.Background(), k8sClient, expected, &owner)
 	require.NoError(t, err)
 	// both returned and retrieved should match that new spec

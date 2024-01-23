@@ -14,7 +14,7 @@ import (
 	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
-	"k8s.io/utils/pointer"
+	"k8s.io/utils/ptr"
 
 	commonv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/common/v1"
 	v1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/elasticsearch/v1"
@@ -111,11 +111,11 @@ func TestNewPodLabels(t *testing.T) {
 				ssetName: "sset",
 				ver:      version.From(7, 1, 0),
 				nodeRoles: &v1.Node{
-					Master:    pointer.Bool(false),
-					Data:      pointer.Bool(false),
-					Ingest:    pointer.Bool(false),
-					ML:        pointer.Bool(false),
-					Transform: pointer.Bool(false),
+					Master:    ptr.To[bool](false),
+					Data:      ptr.To[bool](false),
+					Ingest:    ptr.To[bool](false),
+					ML:        ptr.To[bool](false),
+					Transform: ptr.To[bool](false),
 				},
 				scheme: "https",
 			},
@@ -139,12 +139,12 @@ func TestNewPodLabels(t *testing.T) {
 				ssetName: "sset",
 				ver:      version.From(7, 3, 0),
 				nodeRoles: &v1.Node{
-					Master:     pointer.Bool(false),
-					Data:       pointer.Bool(true),
-					Ingest:     pointer.Bool(false),
-					ML:         pointer.Bool(false),
-					Transform:  pointer.Bool(true),
-					VotingOnly: pointer.Bool(true),
+					Master:     ptr.To[bool](false),
+					Data:       ptr.To[bool](true),
+					Ingest:     ptr.To[bool](false),
+					ML:         ptr.To[bool](false),
+					Transform:  ptr.To[bool](true),
+					VotingOnly: ptr.To[bool](true),
 				},
 				scheme: "https",
 			},
@@ -169,11 +169,11 @@ func TestNewPodLabels(t *testing.T) {
 				ssetName: "sset",
 				ver:      version.From(7, 7, 0),
 				nodeRoles: &v1.Node{
-					Master:    pointer.Bool(false),
-					Data:      pointer.Bool(true),
-					Ingest:    pointer.Bool(false),
-					ML:        pointer.Bool(false),
-					Transform: pointer.Bool(true),
+					Master:    ptr.To[bool](false),
+					Data:      ptr.To[bool](true),
+					Ingest:    ptr.To[bool](false),
+					ML:        ptr.To[bool](false),
+					Transform: ptr.To[bool](true),
 				},
 				scheme: "https",
 			},

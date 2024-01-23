@@ -9,7 +9,7 @@ import (
 
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
-	ptr "k8s.io/utils/pointer"
+	"k8s.io/utils/ptr"
 
 	esv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/elasticsearch/v1"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/version"
@@ -48,7 +48,7 @@ func assertSecurityContext(t *testing.T, ver version.Version, securityContext *c
 	if ver.LT(securitycontext.RunAsNonRootMinStackVersion) {
 		require.Nil(t, securityContext.RunAsNonRoot, "RunAsNonRoot was expected to be nil")
 	} else {
-		require.Equal(t, ptr.Bool(true), securityContext.RunAsNonRoot, "RunAsNonRoot was expected to be true")
+		require.Equal(t, ptr.To[bool](true), securityContext.RunAsNonRoot, "RunAsNonRoot was expected to be true")
 	}
 	require.NotNil(t, securityContext.Privileged)
 	require.False(t, *securityContext.Privileged)

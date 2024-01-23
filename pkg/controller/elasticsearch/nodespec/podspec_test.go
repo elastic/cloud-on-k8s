@@ -15,7 +15,7 @@ import (
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	ptr "k8s.io/utils/pointer"
+	"k8s.io/utils/ptr"
 
 	commonv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/common/v1"
 	esv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/elasticsearch/v1"
@@ -32,7 +32,6 @@ import (
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/user"
 	esvolume "github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/volume"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/k8s"
-	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/pointer"
 )
 
 type esSampleBuilder struct {
@@ -155,8 +154,8 @@ func TestBuildPodTemplateSpecWithDefaultSecurityContext(t *testing.T) {
 			name:                "pre-8.0, setting off, user context",
 			version:             version.MustParse("7.8.0"),
 			setDefaultFSGroup:   false,
-			userSecurityContext: &corev1.PodSecurityContext{FSGroup: pointer.Int64(123)},
-			wantSecurityContext: &corev1.PodSecurityContext{FSGroup: pointer.Int64(123)},
+			userSecurityContext: &corev1.PodSecurityContext{FSGroup: ptr.To[int64](123)},
+			wantSecurityContext: &corev1.PodSecurityContext{FSGroup: ptr.To[int64](123)},
 		},
 		{
 			name:                "pre-8.0, setting on, no user context",
@@ -169,8 +168,8 @@ func TestBuildPodTemplateSpecWithDefaultSecurityContext(t *testing.T) {
 			name:                "pre-8.0, setting on, user context",
 			version:             version.MustParse("7.8.0"),
 			setDefaultFSGroup:   true,
-			userSecurityContext: &corev1.PodSecurityContext{FSGroup: pointer.Int64(123)},
-			wantSecurityContext: &corev1.PodSecurityContext{FSGroup: pointer.Int64(123)},
+			userSecurityContext: &corev1.PodSecurityContext{FSGroup: ptr.To[int64](123)},
+			wantSecurityContext: &corev1.PodSecurityContext{FSGroup: ptr.To[int64](123)},
 		},
 		{
 			name:                "8.0+, setting off, no user context",
@@ -183,22 +182,22 @@ func TestBuildPodTemplateSpecWithDefaultSecurityContext(t *testing.T) {
 			name:                "8.0+, setting off, user context",
 			version:             version.MustParse("8.0.0"),
 			setDefaultFSGroup:   false,
-			userSecurityContext: &corev1.PodSecurityContext{FSGroup: pointer.Int64(123)},
-			wantSecurityContext: &corev1.PodSecurityContext{FSGroup: pointer.Int64(123)},
+			userSecurityContext: &corev1.PodSecurityContext{FSGroup: ptr.To[int64](123)},
+			wantSecurityContext: &corev1.PodSecurityContext{FSGroup: ptr.To[int64](123)},
 		},
 		{
 			name:                "8.0+, setting on, no user context",
 			version:             version.MustParse("8.0.0"),
 			setDefaultFSGroup:   true,
 			userSecurityContext: nil,
-			wantSecurityContext: &corev1.PodSecurityContext{FSGroup: pointer.Int64(1000)},
+			wantSecurityContext: &corev1.PodSecurityContext{FSGroup: ptr.To[int64](1000)},
 		},
 		{
 			name:                "8.0+, setting on, user context",
 			version:             version.MustParse("8.0.0"),
 			setDefaultFSGroup:   true,
-			userSecurityContext: &corev1.PodSecurityContext{FSGroup: pointer.Int64(123)},
-			wantSecurityContext: &corev1.PodSecurityContext{FSGroup: pointer.Int64(123)},
+			userSecurityContext: &corev1.PodSecurityContext{FSGroup: ptr.To[int64](123)},
+			wantSecurityContext: &corev1.PodSecurityContext{FSGroup: ptr.To[int64](123)},
 		},
 		{
 			name:                "8.0+, setting on, empty user context",
@@ -287,9 +286,9 @@ func TestBuildPodTemplateSpec(t *testing.T) {
 		initContainers[i].VolumeMounts = append(initContainers[i].VolumeMounts, volumeMounts...)
 		initContainers[i].Resources = DefaultResources
 		initContainers[i].SecurityContext = &corev1.SecurityContext{
-			Privileged:               ptr.Bool(false),
-			ReadOnlyRootFilesystem:   ptr.Bool(false),
-			AllowPrivilegeEscalation: ptr.Bool(false),
+			Privileged:               ptr.To[bool](false),
+			ReadOnlyRootFilesystem:   ptr.To[bool](false),
+			AllowPrivilegeEscalation: ptr.To[bool](false),
 		}
 	}
 
@@ -336,19 +335,19 @@ func TestBuildPodTemplateSpec(t *testing.T) {
 				VolumeMounts: volumeMounts,
 				Resources:    DefaultResources, // inherited from main container
 				SecurityContext: &corev1.SecurityContext{
-					Privileged: ptr.Bool(false),
+					Privileged: ptr.To[bool](false),
 					// ReadOnlyRootFilesystem is expected to be false in this test because there is no data volume.
-					ReadOnlyRootFilesystem:   ptr.Bool(false),
-					AllowPrivilegeEscalation: ptr.Bool(false),
+					ReadOnlyRootFilesystem:   ptr.To[bool](false),
+					AllowPrivilegeEscalation: ptr.To[bool](false),
 				},
 			}),
 			Containers: []corev1.Container{
 				{
 					Name: "additional-container",
 					SecurityContext: &corev1.SecurityContext{
-						Privileged:               ptr.Bool(false),
-						ReadOnlyRootFilesystem:   ptr.Bool(false),
-						AllowPrivilegeEscalation: ptr.Bool(false),
+						Privileged:               ptr.To[bool](false),
+						ReadOnlyRootFilesystem:   ptr.To[bool](false),
+						AllowPrivilegeEscalation: ptr.To[bool](false),
 					},
 				},
 				{
@@ -368,9 +367,9 @@ func TestBuildPodTemplateSpec(t *testing.T) {
 						PreStop: NewPreStopHook(),
 					},
 					SecurityContext: &corev1.SecurityContext{
-						Privileged:               ptr.Bool(false),
-						ReadOnlyRootFilesystem:   ptr.Bool(false),
-						AllowPrivilegeEscalation: ptr.Bool(false),
+						Privileged:               ptr.To[bool](false),
+						ReadOnlyRootFilesystem:   ptr.To[bool](false),
+						AllowPrivilegeEscalation: ptr.To[bool](false),
 					},
 				},
 			},

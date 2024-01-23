@@ -11,7 +11,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/utils/pointer"
+	"k8s.io/utils/ptr"
 
 	esclient "github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/client"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/user"
@@ -87,7 +87,7 @@ func Test_allNodesRunningServiceAccounts(t *testing.T) {
 					withFileTokens("elastic/kibana", "default_kibana-sample_token1", []string{"elasticsearch-sample-es-default-0", "elasticsearch-sample-es-default-1"}),
 				allPods: set.Make("elasticsearch-sample-es-default-1", "elasticsearch-sample-es-default-0"),
 			},
-			want: pointer.Bool(true),
+			want: ptr.To[bool](true),
 		},
 		{
 			name: "One node is not running with an expected token",
@@ -101,7 +101,7 @@ func Test_allNodesRunningServiceAccounts(t *testing.T) {
 					withFileTokens("elastic/kibana", "default_kibana-sample_token1", []string{"elasticsearch-sample-es-default-0"}),
 				allPods: set.Make("elasticsearch-sample-es-default-0", "elasticsearch-sample-es-default-1"),
 			},
-			want: pointer.Bool(false),
+			want: ptr.To[bool](false),
 		},
 		{
 			name: "More nodes running with tokens than expected",
@@ -115,7 +115,7 @@ func Test_allNodesRunningServiceAccounts(t *testing.T) {
 					withFileTokens("elastic/kibana", "default_kibana-sample_token1", []string{"elasticsearch-sample-es-default-0", "elasticsearch-sample-es-default-1"}),
 				allPods: set.Make("elasticsearch-sample-es-default-0"),
 			},
-			want: pointer.Bool(true),
+			want: ptr.To[bool](true),
 		},
 		{
 			name: "No expected tokens",

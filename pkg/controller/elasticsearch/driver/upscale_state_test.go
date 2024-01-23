@@ -12,13 +12,13 @@ import (
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/utils/ptr"
 
 	esv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/elasticsearch/v1"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/bootstrap"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/nodespec"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/sset"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/k8s"
-	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/pointer"
 )
 
 func Test_upscaleState_limitNodesCreation(t *testing.T) {
@@ -48,67 +48,67 @@ func Test_upscaleState_limitNodesCreation(t *testing.T) {
 		},
 		{
 			name:        "upscale data nodes from 1 to 3: should go through",
-			state:       &upscaleState{allowMasterCreation: true, isBootstrapped: true, createsAllowed: pointer.Int32(2)},
+			state:       &upscaleState{allowMasterCreation: true, isBootstrapped: true, createsAllowed: ptr.To[int32](2)},
 			actual:      sset.TestSset{Name: "sset", Replicas: 1, Master: false}.Build(),
 			ssetToApply: sset.TestSset{Name: "sset", Replicas: 3, Master: false}.Build(),
 			wantSset:    sset.TestSset{Name: "sset", Replicas: 3, Master: false}.Build(),
-			wantState:   &upscaleState{allowMasterCreation: true, isBootstrapped: true, createsAllowed: pointer.Int32(2), recordedCreates: 2},
+			wantState:   &upscaleState{allowMasterCreation: true, isBootstrapped: true, createsAllowed: ptr.To[int32](2), recordedCreates: 2},
 		},
 		{
 			name:        "upscale data nodes from 1 to 4: should limit to 3",
-			state:       &upscaleState{allowMasterCreation: true, isBootstrapped: true, createsAllowed: pointer.Int32(2)},
+			state:       &upscaleState{allowMasterCreation: true, isBootstrapped: true, createsAllowed: ptr.To[int32](2)},
 			actual:      sset.TestSset{Name: "sset", Replicas: 1, Master: false}.Build(),
 			ssetToApply: sset.TestSset{Name: "sset", Replicas: 4, Master: false}.Build(),
 			wantSset:    sset.TestSset{Name: "sset", Replicas: 3, Master: false}.Build(),
-			wantState:   &upscaleState{allowMasterCreation: true, isBootstrapped: true, createsAllowed: pointer.Int32(2), recordedCreates: 2},
+			wantState:   &upscaleState{allowMasterCreation: true, isBootstrapped: true, createsAllowed: ptr.To[int32](2), recordedCreates: 2},
 		},
 		{
 			name:        "upscale master nodes from 1 to 3: should limit to 2",
-			state:       &upscaleState{allowMasterCreation: true, isBootstrapped: true, createsAllowed: pointer.Int32(1)},
+			state:       &upscaleState{allowMasterCreation: true, isBootstrapped: true, createsAllowed: ptr.To[int32](1)},
 			actual:      sset.TestSset{Name: "sset", Replicas: 1, Master: true}.Build(),
 			ssetToApply: sset.TestSset{Name: "sset", Replicas: 3, Master: true}.Build(),
 			wantSset:    sset.TestSset{Name: "sset", Replicas: 2, Master: true}.Build(),
-			wantState:   &upscaleState{allowMasterCreation: false, isBootstrapped: true, createsAllowed: pointer.Int32(1), recordedCreates: 1},
+			wantState:   &upscaleState{allowMasterCreation: false, isBootstrapped: true, createsAllowed: ptr.To[int32](1), recordedCreates: 1},
 		},
 		{
 			name:        "upscale master nodes from 1 to 3 when cluster not yet bootstrapped: should go through",
-			state:       &upscaleState{allowMasterCreation: true, isBootstrapped: false, createsAllowed: pointer.Int32(2)},
+			state:       &upscaleState{allowMasterCreation: true, isBootstrapped: false, createsAllowed: ptr.To[int32](2)},
 			actual:      sset.TestSset{Name: "sset", Replicas: 1, Master: true}.Build(),
 			ssetToApply: sset.TestSset{Name: "sset", Replicas: 3, Master: true}.Build(),
 			wantSset:    sset.TestSset{Name: "sset", Replicas: 3, Master: true}.Build(),
-			wantState:   &upscaleState{allowMasterCreation: true, isBootstrapped: false, createsAllowed: pointer.Int32(2), recordedCreates: 2},
+			wantState:   &upscaleState{allowMasterCreation: true, isBootstrapped: false, createsAllowed: ptr.To[int32](2), recordedCreates: 2},
 		},
 		{
 			name:        "upscale masters from 3 to 4, but no creates allowed: should limit to 0",
-			state:       &upscaleState{allowMasterCreation: true, isBootstrapped: true, createsAllowed: pointer.Int32(0)},
+			state:       &upscaleState{allowMasterCreation: true, isBootstrapped: true, createsAllowed: ptr.To[int32](0)},
 			actual:      sset.TestSset{Name: "sset", Replicas: 3, Master: true}.Build(),
 			ssetToApply: sset.TestSset{Name: "sset", Replicas: 4, Master: true}.Build(),
 			wantSset:    sset.TestSset{Name: "sset", Replicas: 3, Master: true}.Build(),
-			wantState:   &upscaleState{allowMasterCreation: true, isBootstrapped: true, createsAllowed: pointer.Int32(0), recordedCreates: 0},
+			wantState:   &upscaleState{allowMasterCreation: true, isBootstrapped: true, createsAllowed: ptr.To[int32](0), recordedCreates: 0},
 		},
 		{
 			name:        "upscale data nodes from 3 to 4, but no creates allowed: should limit to 0",
-			state:       &upscaleState{allowMasterCreation: true, isBootstrapped: true, createsAllowed: pointer.Int32(0)},
+			state:       &upscaleState{allowMasterCreation: true, isBootstrapped: true, createsAllowed: ptr.To[int32](0)},
 			actual:      sset.TestSset{Name: "sset", Replicas: 3, Master: false}.Build(),
 			ssetToApply: sset.TestSset{Name: "sset", Replicas: 4, Master: false}.Build(),
 			wantSset:    sset.TestSset{Name: "sset", Replicas: 3, Master: false}.Build(),
-			wantState:   &upscaleState{allowMasterCreation: true, isBootstrapped: true, createsAllowed: pointer.Int32(0), recordedCreates: 0},
+			wantState:   &upscaleState{allowMasterCreation: true, isBootstrapped: true, createsAllowed: ptr.To[int32](0), recordedCreates: 0},
 		},
 		{
 			name:        "new StatefulSet with 5 master nodes, cluster isn't bootstrapped yet: should go through",
-			state:       &upscaleState{allowMasterCreation: true, isBootstrapped: false, createsAllowed: pointer.Int32(3)},
+			state:       &upscaleState{allowMasterCreation: true, isBootstrapped: false, createsAllowed: ptr.To[int32](3)},
 			actual:      appsv1.StatefulSet{},
 			ssetToApply: sset.TestSset{Name: "sset", Replicas: 3, Master: true}.Build(),
 			wantSset:    sset.TestSset{Name: "sset", Replicas: 3, Master: true}.Build(),
-			wantState:   &upscaleState{allowMasterCreation: true, isBootstrapped: false, createsAllowed: pointer.Int32(3), recordedCreates: 3},
+			wantState:   &upscaleState{allowMasterCreation: true, isBootstrapped: false, createsAllowed: ptr.To[int32](3), recordedCreates: 3},
 		},
 		{
 			name:        "new StatefulSet with 5 master nodes, cluster already bootstrapped: should limit to 1",
-			state:       &upscaleState{allowMasterCreation: true, isBootstrapped: true, createsAllowed: pointer.Int32(1)},
+			state:       &upscaleState{allowMasterCreation: true, isBootstrapped: true, createsAllowed: ptr.To[int32](1)},
 			actual:      appsv1.StatefulSet{},
 			ssetToApply: sset.TestSset{Name: "sset", Replicas: 3, Master: true}.Build(),
 			wantSset:    sset.TestSset{Name: "sset", Replicas: 1, Master: true}.Build(),
-			wantState:   &upscaleState{allowMasterCreation: false, isBootstrapped: true, createsAllowed: pointer.Int32(1), recordedCreates: 1},
+			wantState:   &upscaleState{allowMasterCreation: false, isBootstrapped: true, createsAllowed: ptr.To[int32](1), recordedCreates: 1},
 		},
 	}
 	for _, tt := range tests {
@@ -333,7 +333,7 @@ func Test_newUpscaleStateWithChangeBudget(t *testing.T) {
 			name: args.name,
 			ctx: upscaleCtx{
 				k8sClient: k8s.NewFakeClient(),
-				es:        bootstrappedESWithChangeBudget(args.maxSurge, pointer.Int32(0)),
+				es:        bootstrappedESWithChangeBudget(args.maxSurge, ptr.To[int32](0)),
 			},
 			actual:   actualSsets,
 			expected: expectedResources,
@@ -344,11 +344,11 @@ func Test_newUpscaleStateWithChangeBudget(t *testing.T) {
 	defaultTest.ctx.es.Spec.UpdateStrategy = esv1.UpdateStrategy{}
 
 	tests := []test{
-		getTest(args{actual: []int{3}, expected: []int{3}, maxSurge: pointer.Int32(0), createsAllowed: pointer.Int32(0), name: "3 nodes present, 3 nodes target - no creates allowed"}),
-		getTest(args{actual: []int{3, 3}, expected: []int{3, 3}, maxSurge: pointer.Int32(0), createsAllowed: pointer.Int32(0), name: "2 ssets, 6 nodes present, 6 nodes target - no creates allowed"}),
-		getTest(args{actual: []int{2}, expected: []int{3}, maxSurge: pointer.Int32(0), createsAllowed: pointer.Int32(1), name: "2 nodes present, 3 nodes target - 1 create allowed"}),
-		getTest(args{actual: []int{}, expected: []int{5}, maxSurge: pointer.Int32(3), createsAllowed: pointer.Int32(8), name: "0 nodes present, 5 nodes target, 3 maxSurge - 8 creates allowed"}),
-		getTest(args{actual: []int{5}, expected: []int{3}, maxSurge: pointer.Int32(3), createsAllowed: pointer.Int32(1), name: "5 nodes present, 3 nodes target, 3 maxSurge - 1 create allowed"}),
+		getTest(args{actual: []int{3}, expected: []int{3}, maxSurge: ptr.To[int32](0), createsAllowed: ptr.To[int32](0), name: "3 nodes present, 3 nodes target - no creates allowed"}),
+		getTest(args{actual: []int{3, 3}, expected: []int{3, 3}, maxSurge: ptr.To[int32](0), createsAllowed: ptr.To[int32](0), name: "2 ssets, 6 nodes present, 6 nodes target - no creates allowed"}),
+		getTest(args{actual: []int{2}, expected: []int{3}, maxSurge: ptr.To[int32](0), createsAllowed: ptr.To[int32](1), name: "2 nodes present, 3 nodes target - 1 create allowed"}),
+		getTest(args{actual: []int{}, expected: []int{5}, maxSurge: ptr.To[int32](3), createsAllowed: ptr.To[int32](8), name: "0 nodes present, 5 nodes target, 3 maxSurge - 8 creates allowed"}),
+		getTest(args{actual: []int{5}, expected: []int{3}, maxSurge: ptr.To[int32](3), createsAllowed: ptr.To[int32](1), name: "5 nodes present, 3 nodes target, 3 maxSurge - 1 create allowed"}),
 		defaultTest,
 	}
 	for _, tt := range tests {
@@ -374,11 +374,11 @@ func Test_calculateCreatesAllowed(t *testing.T) {
 	}
 	tests := []args{
 		{name: "nil budget, 5->6, want max", maxSurge: nil, actual: 5, expected: 6, want: nil},
-		{name: "0 budget, 5->5, want 0", maxSurge: pointer.Int32(0), actual: 5, expected: 5, want: pointer.Int32(0)},
-		{name: "1 budget, 5->5, want 1", maxSurge: pointer.Int32(1), actual: 5, expected: 5, want: pointer.Int32(1)},
-		{name: "2 budget, 5->5, want 2", maxSurge: pointer.Int32(2), actual: 5, expected: 5, want: pointer.Int32(2)},
-		{name: "2 budget, 3->5, want 4", maxSurge: pointer.Int32(2), actual: 3, expected: 5, want: pointer.Int32(4)},
-		{name: "6 budget, 10->5, want 4", maxSurge: pointer.Int32(6), actual: 10, expected: 5, want: pointer.Int32(1)},
+		{name: "0 budget, 5->5, want 0", maxSurge: ptr.To[int32](0), actual: 5, expected: 5, want: ptr.To[int32](0)},
+		{name: "1 budget, 5->5, want 1", maxSurge: ptr.To[int32](1), actual: 5, expected: 5, want: ptr.To[int32](1)},
+		{name: "2 budget, 5->5, want 2", maxSurge: ptr.To[int32](2), actual: 5, expected: 5, want: ptr.To[int32](2)},
+		{name: "2 budget, 3->5, want 4", maxSurge: ptr.To[int32](2), actual: 3, expected: 5, want: ptr.To[int32](4)},
+		{name: "6 budget, 10->5, want 4", maxSurge: ptr.To[int32](6), actual: 10, expected: 5, want: ptr.To[int32](1)},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

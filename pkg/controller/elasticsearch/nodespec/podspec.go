@@ -13,6 +13,7 @@ import (
 
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/utils/ptr"
 
 	esv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/elasticsearch/v1"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/annotation"
@@ -31,7 +32,6 @@ import (
 	esvolume "github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/volume"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/k8s"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/maps"
-	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/pointer"
 )
 
 const (
@@ -90,7 +90,7 @@ func BuildPodTemplateSpec(
 
 	if ver.GTE(minDefaultSecurityContextVersion) && setDefaultSecurityContext {
 		builder = builder.WithPodSecurityContext(corev1.PodSecurityContext{
-			FSGroup: pointer.Int64(defaultFsGroup),
+			FSGroup: ptr.To[int64](defaultFsGroup),
 		})
 	}
 

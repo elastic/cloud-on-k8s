@@ -13,6 +13,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/uuid"
+	"k8s.io/utils/ptr"
 	crclient "sigs.k8s.io/controller-runtime/pkg/client"
 
 	esv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/elasticsearch/v1"
@@ -24,7 +25,6 @@ import (
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/settings"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/sset"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/k8s"
-	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/pointer"
 )
 
 const (
@@ -134,7 +134,7 @@ func (u upgradeTestPods) toES(version string, maxUnavailable int, annotations ma
 			Version: version,
 			UpdateStrategy: esv1.UpdateStrategy{
 				ChangeBudget: esv1.ChangeBudget{
-					MaxUnavailable: pointer.Int32(int32(maxUnavailable)),
+					MaxUnavailable: ptr.To[int32](int32(maxUnavailable)),
 				},
 			},
 		},

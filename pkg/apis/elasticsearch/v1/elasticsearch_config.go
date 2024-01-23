@@ -6,7 +6,7 @@ package v1
 
 import (
 	"github.com/elastic/go-ucfg"
-	"k8s.io/utils/pointer"
+	"k8s.io/utils/ptr"
 
 	commonv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/common/v1"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/version"
@@ -112,23 +112,23 @@ func (n *Node) IsConfiguredWithRole(role NodeRole) bool {
 
 	switch role {
 	case DataRole:
-		return pointer.BoolDeref(n.Data, true)
+		return ptr.Deref(n.Data, true)
 	case DataFrozenRole, DataColdRole, DataContentRole, DataHotRole, DataWarmRole:
 		// These roles should really be defined in node.roles. Since they were not, assume they are enabled unless node.data is set to false.
-		return pointer.BoolDeref(n.Data, true)
+		return ptr.Deref(n.Data, true)
 	case IngestRole:
-		return pointer.BoolDeref(n.Ingest, true)
+		return ptr.Deref(n.Ingest, true)
 	case MLRole:
-		return pointer.BoolDeref(n.ML, true)
+		return ptr.Deref(n.ML, true)
 	case MasterRole:
-		return pointer.BoolDeref(n.Master, true)
+		return ptr.Deref(n.Master, true)
 	case RemoteClusterClientRole:
-		return pointer.BoolDeref(n.RemoteClusterClient, true)
+		return ptr.Deref(n.RemoteClusterClient, true)
 	case TransformRole:
 		// all data nodes are transform nodes by default as well.
-		return pointer.BoolDeref(n.Transform, n.IsConfiguredWithRole(DataRole))
+		return ptr.Deref(n.Transform, n.IsConfiguredWithRole(DataRole))
 	case VotingOnlyRole:
-		return pointer.BoolDeref(n.VotingOnly, false)
+		return ptr.Deref(n.VotingOnly, false)
 	}
 
 	// This point should never be reached. The default is to assume that a node has all roles except voting_only.
@@ -147,10 +147,10 @@ func DefaultCfg(ver version.Version) ElasticsearchSettings {
 	settings := ElasticsearchSettings{
 		// Values below only make sense if there is no "node.roles" in the configuration provided by the user
 		Node: &Node{
-			Master: pointer.Bool(true),
-			Data:   pointer.Bool(true),
-			Ingest: pointer.Bool(true),
-			ML:     pointer.Bool(true),
+			Master: ptr.To[bool](true),
+			Data:   ptr.To[bool](true),
+			Ingest: ptr.To[bool](true),
+			ML:     ptr.To[bool](true),
 		},
 	}
 
@@ -190,5 +190,5 @@ func configureTransformRole(cfg *ElasticsearchSettings, ver version.Version) {
 		cfg.Node = &Node{}
 	}
 
-	cfg.Node.Transform = pointer.Bool(false)
+	cfg.Node.Transform = ptr.To[bool](false)
 }

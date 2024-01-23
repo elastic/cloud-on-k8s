@@ -17,7 +17,7 @@ import (
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes/scheme"
-	"k8s.io/utils/pointer"
+	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 
@@ -35,14 +35,14 @@ var (
 	sampleClaim = corev1.PersistentVolumeClaim{
 		ObjectMeta: metav1.ObjectMeta{Name: "sample-claim"},
 		Spec: corev1.PersistentVolumeClaimSpec{
-			StorageClassName: pointer.String(sampleStorageClass.Name),
+			StorageClassName: ptr.To[string](sampleStorageClass.Name),
 			Resources: corev1.VolumeResourceRequirements{Requests: map[corev1.ResourceName]resource.Quantity{
 				corev1.ResourceStorage: resource.MustParse("1Gi"),
 			}}}}
 	sampleClaim2 = corev1.PersistentVolumeClaim{
 		ObjectMeta: metav1.ObjectMeta{Name: "sample-claim-2"},
 		Spec: corev1.PersistentVolumeClaimSpec{
-			StorageClassName: pointer.String(sampleStorageClass.Name),
+			StorageClassName: ptr.To[string](sampleStorageClass.Name),
 			Resources: corev1.VolumeResourceRequirements{Requests: map[corev1.ResourceName]resource.Quantity{
 				corev1.ResourceStorage: resource.MustParse("1Gi"),
 			}}}}
@@ -51,7 +51,7 @@ var (
 )
 
 func withVolumeExpansion(sc storagev1.StorageClass) *storagev1.StorageClass {
-	sc.AllowVolumeExpansion = pointer.Bool(true)
+	sc.AllowVolumeExpansion = ptr.To[bool](true)
 	return &sc
 }
 
@@ -72,7 +72,7 @@ func Test_handleVolumeExpansion(t *testing.T) {
 	sset := appsv1.StatefulSet{
 		ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: "sample-sset"},
 		Spec: appsv1.StatefulSetSpec{
-			Replicas:             pointer.Int32(3),
+			Replicas:             ptr.To[int32](3),
 			VolumeClaimTemplates: []corev1.PersistentVolumeClaim{sampleClaim},
 		},
 	}

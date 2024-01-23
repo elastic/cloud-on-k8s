@@ -10,7 +10,7 @@ import (
 	"github.com/blang/semver/v4"
 	"github.com/google/go-cmp/cmp"
 	corev1 "k8s.io/api/core/v1"
-	"k8s.io/utils/pointer"
+	"k8s.io/utils/ptr"
 
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/version"
 )
@@ -33,9 +33,9 @@ func TestFor(t *testing.T) {
 			},
 			want: corev1.SecurityContext{
 				Capabilities:             nil,
-				Privileged:               pointer.Bool(false),
-				ReadOnlyRootFilesystem:   pointer.Bool(false),
-				AllowPrivilegeEscalation: pointer.Bool(false),
+				Privileged:               ptr.To[bool](false),
+				ReadOnlyRootFilesystem:   ptr.To[bool](false),
+				AllowPrivilegeEscalation: ptr.To[bool](false),
 			},
 		},
 		{
@@ -46,9 +46,9 @@ func TestFor(t *testing.T) {
 			},
 			want: corev1.SecurityContext{
 				Capabilities:             &corev1.Capabilities{Drop: []corev1.Capability{"ALL"}},
-				Privileged:               pointer.Bool(false),
-				ReadOnlyRootFilesystem:   pointer.Bool(false),
-				AllowPrivilegeEscalation: pointer.Bool(false),
+				Privileged:               ptr.To[bool](false),
+				ReadOnlyRootFilesystem:   ptr.To[bool](false),
+				AllowPrivilegeEscalation: ptr.To[bool](false),
 			},
 		},
 		{
@@ -59,9 +59,9 @@ func TestFor(t *testing.T) {
 			},
 			want: corev1.SecurityContext{
 				Capabilities:             &corev1.Capabilities{Drop: []corev1.Capability{"ALL"}},
-				Privileged:               pointer.Bool(false),
-				ReadOnlyRootFilesystem:   pointer.Bool(true),
-				AllowPrivilegeEscalation: pointer.Bool(false),
+				Privileged:               ptr.To[bool](false),
+				ReadOnlyRootFilesystem:   ptr.To[bool](true),
+				AllowPrivilegeEscalation: ptr.To[bool](false),
 			},
 		},
 	}
@@ -87,9 +87,9 @@ func TestDefaultBeatSecurityContext(t *testing.T) {
 				Capabilities: &corev1.Capabilities{
 					Drop: []corev1.Capability{"ALL"},
 				},
-				Privileged:               pointer.Bool(false),
-				ReadOnlyRootFilesystem:   pointer.Bool(true),
-				AllowPrivilegeEscalation: pointer.Bool(false),
+				Privileged:               ptr.To[bool](false),
+				ReadOnlyRootFilesystem:   ptr.To[bool](true),
+				AllowPrivilegeEscalation: ptr.To[bool](false),
 			},
 		},
 		{
@@ -99,10 +99,10 @@ func TestDefaultBeatSecurityContext(t *testing.T) {
 				Capabilities: &corev1.Capabilities{
 					Drop: []corev1.Capability{"ALL"},
 				},
-				Privileged:               pointer.Bool(false),
-				ReadOnlyRootFilesystem:   pointer.Bool(true),
-				RunAsNonRoot:             pointer.Bool(true),
-				AllowPrivilegeEscalation: pointer.Bool(false),
+				Privileged:               ptr.To[bool](false),
+				ReadOnlyRootFilesystem:   ptr.To[bool](true),
+				RunAsNonRoot:             ptr.To[bool](true),
+				AllowPrivilegeEscalation: ptr.To[bool](false),
 			},
 		},
 	}

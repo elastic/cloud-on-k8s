@@ -14,11 +14,10 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/rand"
-	ptr "k8s.io/utils/pointer"
+	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/k8s"
-	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/pointer"
 	"github.com/elastic/cloud-on-k8s/v2/test/e2e/cmd/run"
 	"github.com/elastic/cloud-on-k8s/v2/test/e2e/test"
 )
@@ -52,7 +51,7 @@ func newPodBuilder(name, suffix string) PodBuilder {
 		Pod: corev1.Pod{
 			ObjectMeta: meta,
 			Spec: corev1.PodSpec{
-				AutomountServiceAccountToken: ptr.Bool(false),
+				AutomountServiceAccountToken: ptr.To[bool](false),
 				Containers: []corev1.Container{
 					{
 						Name:  "ubuntu",
@@ -64,7 +63,7 @@ func newPodBuilder(name, suffix string) PodBuilder {
 						},
 					},
 				},
-				TerminationGracePeriodSeconds: pointer.Int64(0),
+				TerminationGracePeriodSeconds: ptr.To[int64](0),
 				SecurityContext: &corev1.PodSecurityContext{
 					// Security policies forbid root user on secured clusters
 					RunAsUser: &uid1001,
