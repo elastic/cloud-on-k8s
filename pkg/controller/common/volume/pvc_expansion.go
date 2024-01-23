@@ -192,7 +192,11 @@ func RecreateStatefulSets(ctx context.Context, k8sClient k8s.Client, obj client.
 				return recreations, err
 			}
 			if err := deleteStatefulSet(ctx, k8sClient, existing); err != nil {
-				return recreations, err
+				if apierrors.IsNotFound(err) {
+					return recreations, nil
+				} else {
+					return recreations, err
+				}
 			}
 
 		// already deleted: creation case
