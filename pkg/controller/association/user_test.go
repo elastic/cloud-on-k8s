@@ -26,7 +26,7 @@ import (
 
 const (
 	userName                  = "default-kibana-foo-kibana-user"
-	userSecretName            = "kibana-foo-kibana-user" //nolint:gosec
+	userSecretName            = "kibana-foo-kibana-user"
 	associationLabelName      = "association.k8s.elastic.co/name"
 	associationLabelNamespace = "association.k8s.elastic.co/namespace"
 )

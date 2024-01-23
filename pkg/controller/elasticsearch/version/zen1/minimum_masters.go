@@ -45,6 +45,7 @@ func SetupMinimumMasterNodesConfig(
 	//    situation if the container (not the Pod) restarts.
 	masters := 0
 	for _, resource := range nodeSpecResources {
+		resource := resource
 		if label.IsMasterNodeSet(resource.StatefulSet) {
 			// First situation: just check for the replicas
 			masters += int(sset.GetReplicas(resource.StatefulSet))

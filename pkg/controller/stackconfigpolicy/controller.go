@@ -671,7 +671,6 @@ func deleteOrphanSoftOwnedSecrets(
 
 	for i := range secrets.Items {
 		secret := secrets.Items[i]
-		exist := false
 		configuredApplicationType := secret.Labels[commonv1.TypeLabelName]
 
 		switch configuredApplicationType {
@@ -681,7 +680,7 @@ func deleteOrphanSoftOwnedSecrets(
 				Name:      secret.Labels[eslabel.ClusterNameLabelName],
 			}
 			// check if they exist in the es map
-			if _, exist = configuredESResources[namespacedName]; exist {
+			if _, exist := configuredESResources[namespacedName]; exist {
 				continue
 			}
 		case kblabel.Type:
@@ -690,7 +689,7 @@ func deleteOrphanSoftOwnedSecrets(
 				Name:      secret.Labels[kblabel.KibanaNameLabelName],
 			}
 			// check if they exist in the kb map
-			if _, exist = configuredKibanaResources[namespacedName]; exist {
+			if _, exist := configuredKibanaResources[namespacedName]; exist {
 				continue
 			}
 		default:
