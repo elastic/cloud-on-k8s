@@ -127,7 +127,7 @@ type CredentialsCollection struct {
 func (a AppSearchClient) GetAPIKey() (string, error) {
 	url := a.endpoint + "/as/credentials/collection"
 
-	req, err := http.NewRequest(http.MethodGet, url, nil) //nolint:noctx
+	req, err := http.NewRequest(http.MethodGet, url, nil)
 	if err != nil {
 		return "", err
 	}

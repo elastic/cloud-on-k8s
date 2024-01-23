@@ -142,11 +142,9 @@ clean:
 	rm -f pkg/controller/common/license/zz_generated.pubkey.go
 
 ## -- tests
+
 unit: clean
 	ECK_TEST_LOG_LEVEL=$(LOG_VERBOSITY) go test ./pkg/... ./cmd/... -cover $(TEST_OPTS)
-
-fastunit: clean
-	ECK_TEST_LOG_LEVEL=$(LOG_VERBOSITY) go test $(TEST_OPTS)
 
 unit-xml: clean
 	ECK_TEST_LOG_LEVEL=$(LOG_VERBOSITY) gotestsum --junitfile unit-tests.xml -- -cover ./pkg/... ./cmd/... $(TEST_OPTS)

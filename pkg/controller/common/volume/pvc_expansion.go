@@ -319,7 +319,6 @@ func removePodOwner(ctx context.Context, k8sClient k8s.Client, obj client.Object
 // updatePods applies updateFunc on all existing Pods from the StatefulSet, then update those Pods.
 func updatePods(ctx context.Context, k8sClient k8s.Client, obj client.Object, statefulSet appsv1.StatefulSet, updateFunc func(p *corev1.Pod) error) error {
 	pods, err := GetActualPodsForStatefulSet(k8sClient, obj, k8s.ExtractNamespacedName(&statefulSet))
-	ulog.FromContext(ctx).V(1).Info("updating pods", "pod", pods)
 
 	if err != nil {
 		return err

@@ -562,13 +562,14 @@ func Test_recreateStatefulSets(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			k8sClient := k8s.NewFakeClient(append(tt.args.runtimeObjs, &tt.args.es)...)
-			got, err := RecreateStatefulSets(context.Background(), k8sClient, &tt.args.es)
+			es := tt.args.es
+			k8sClient := k8s.NewFakeClient(append(tt.args.runtimeObjs, &es)...)
+			got, err := RecreateStatefulSets(context.Background(), k8sClient, &es)
 			require.NoError(t, err)
 			require.Equal(t, tt.wantRecreations, got)
 
 			var retrievedES esv1.Elasticsearch
-			err = k8sClient.Get(context.Background(), k8s.ExtractNamespacedName(&tt.args.es), &retrievedES)
+			err = k8sClient.Get(context.Background(), k8s.ExtractNamespacedName(&es), &retrievedES)
 			require.NoError(t, err)
 			comparison.RequireEqual(t, &tt.wantES, &retrievedES)
 
@@ -662,7 +663,8 @@ func Test_updatePodOwners(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			err := updatePodOwners(context.Background(), tt.args.k8sClient, &tt.args.es, tt.args.statefulSet)
+			es := tt.args.es
+			err := updatePodOwners(context.Background(), tt.args.k8sClient, &es, tt.args.statefulSet)
 			require.NoError(t, err)
 
 			var retrievedPods corev1.PodList
@@ -748,7 +750,8 @@ func Test_removePodOwner(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			err := removePodOwner(context.Background(), tt.args.k8sClient, &tt.args.es, tt.args.statefulSet)
+			es := tt.args.es
+			err := removePodOwner(context.Background(), tt.args.k8sClient, &es, tt.args.statefulSet)
 			require.NoError(t, err)
 
 			var retrievedPods corev1.PodList
