@@ -174,7 +174,8 @@ func TestElasticsearch_GetAutoscaledNodeSets(t *testing.T) {
 				assert.True(t, hasNodeSets, "node set list was expected")
 				assert.ElementsMatch(t, wantNodeSets, gotNodeSets.Names())
 			}
-			if !reflect.DeepEqual(err, tt.err) {
+			wantErr := tt.err != nil
+			if (err != nil) != wantErr || (wantErr && !reflect.DeepEqual(err.Error(), tt.err.Error())) {
 				t.Errorf("AutoscalingAnnotation.GetAutoscaledNodeSets() err = %v, want %v", err, tt.err)
 			}
 		})
