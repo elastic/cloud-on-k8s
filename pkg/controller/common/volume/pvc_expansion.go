@@ -127,18 +127,15 @@ func annotateForRecreation(
 	actualSset.Spec.VolumeClaimTemplates = expectedClaims
 	asJSON, err := json.Marshal(actualSset)
 
-	accessor := meta.NewAccessor()
-	annotations, err := accessor.Annotations(obj)
-
 	if err != nil {
 		return err
 	}
-	if annotations == nil {
-		annotations = make(map[string]string, 1)
-	}
-	annotations[fmt.Sprintf("%s%s", getRecreateStatefulSetAnnotationPrefix(obj), actualSset.Name)] = string(asJSON)
 
-	accessor.SetAnnotations(obj, annotations)
+	err = setAnnotation(obj, fmt.Sprintf("%s%s", getRecreateStatefulSetAnnotationPrefix(obj), actualSset.Name), string(asJSON))
+	if err != nil {
+		return err
+	}
+
 	return k8sClient.Update(ctx, obj)
 }
 
@@ -213,18 +210,10 @@ func RecreateStatefulSets(ctx context.Context, k8sClient k8s.Client, obj client.
 				return recreations, err
 			}
 			// remove the annotation
-			accessor := meta.NewAccessor()
-			annotations, err := accessor.Annotations(obj)
-
+			err := deleteAnnotation(obj, annotation)
 			if err != nil {
 				return recreations, err
 			}
-
-			if annotations == nil {
-				annotations = make(map[string]string, 1)
-			}
-			delete(annotations, annotation)
-			accessor.SetAnnotations(obj, annotations)
 
 			if err := k8sClient.Update(ctx, obj); err != nil {
 				return recreations, err
@@ -304,12 +293,12 @@ func updatePodOwners(ctx context.Context, k8sClient k8s.Client, obj client.Objec
 // removePodOwner removes any reference to the resource from the Pods, that was set in updatePodOwners.
 func removePodOwner(ctx context.Context, k8sClient k8s.Client, obj client.Object, statefulSet appsv1.StatefulSet) error {
 	accessor := meta.NewAccessor()
-	name, err := accessor.Name(obj)
-	namespace, err := accessor.Namespace(obj)
+	name, _ := accessor.Name(obj)
+	namespace, _ := accessor.Namespace(obj)
 	UID, err := accessor.UID(obj)
 
 	if err != nil {
-		return nil
+		return err
 	}
 
 	ulog.FromContext(ctx).V(1).Info("Removing any Pod owner ref set to the component resource after StatefulSet re-creation",
@@ -369,9 +358,56 @@ func getRecreateStatefulSetAnnotationPrefix(obj client.Object) string {
 	return fmt.Sprintf("%s.k8s.elastic.co/recreate-", strings.ToLower(obj.GetObjectKind().GroupVersionKind().Kind))
 }
 
-func namespacedNameFromObject(obj client.Object) (types.NamespacedName) {
+func namespacedNameFromObject(obj client.Object) types.NamespacedName {
 	accessor := meta.NewAccessor()
-	name, _ := accessor.Name(obj)
+	name, err := accessor.Name(obj)
+	if err != nil {
+		name = "-"
+	}
+
 	namespace, _ := accessor.Namespace(obj)
-	return types.NamespacedName{name, namespace}
+
+	if err != nil {
+		namespace = "-"
+	}
+	return types.NamespacedName{Name: name, Namespace: namespace}
+}
+
+func setAnnotation(obj client.Object, annotationKey string, annotationValue string) error {
+	accessor := meta.NewAccessor()
+	annotations, err := accessor.Annotations(obj)
+
+	if err != nil {
+		return err
+	}
+	if annotations == nil {
+		annotations = make(map[string]string, 1)
+	}
+	annotations[annotationKey] = annotationValue
+
+	err = accessor.SetAnnotations(obj, annotations)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func deleteAnnotation(obj client.Object, annotation string) error {
+	accessor := meta.NewAccessor()
+	annotations, err := accessor.Annotations(obj)
+
+	if err != nil {
+		return err
+	}
+
+	if annotations == nil {
+		annotations = make(map[string]string, 1)
+	}
+	delete(annotations, annotation)
+	err = accessor.SetAnnotations(obj, annotations)
+
+	if err != nil {
+		return err
+	}
+	return nil
 }
