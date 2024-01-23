@@ -124,6 +124,7 @@ func TestMultipleOutputConfig(t *testing.T) {
 }
 
 func TestFleetMode(t *testing.T) {
+	v := version.MustParse(test.Ctx().ElasticStackVersion)
 	name := "test-agent-fleet"
 
 	agentNS := test.Ctx().ManagedNamespace(0)
@@ -150,9 +151,13 @@ func TestFleetMode(t *testing.T) {
 			WithDefaultESValidation(agent.HasWorkingDataStream(agent.LogsType, "elastic_agent.filebeat", "default")).
 			WithDefaultESValidation(agent.HasWorkingDataStream(agent.LogsType, "elastic_agent.metricbeat", "default")).
 			WithDefaultESValidation(agent.HasWorkingDataStream(agent.MetricsType, "elastic_agent.elastic_agent", "default")).
-			// to be re-enabled when https://github.com/elastic/cloud-on-k8s/issues/7389 is resolved
-			//WithDefaultESValidation(agent.HasWorkingDataStream(agent.MetricsType, "elastic_agent.filebeat", "default")).
 			WithDefaultESValidation(agent.HasWorkingDataStream(agent.MetricsType, "elastic_agent.metricbeat", "default"))
+
+		// https://github.com/elastic/cloud-on-k8s/issues/7389
+		if v.LT(version.MinFor(8, 12, 0)) || v.GE(version.MinFor(8, 14, 0)) {
+			fleetServerBuilder = fleetServerBuilder.
+				WithDefaultESValidation(agent.HasWorkingDataStream(agent.MetricsType, "elastic_agent.filebeat", "default"))
+		}
 
 		kbBuilder = kbBuilder.WithConfig(fleetConfigForKibana(t, fleetServerBuilder.Agent.Spec.Version, esBuilder.Ref(), fleetServerBuilder.Ref(), true))
 
@@ -182,9 +187,13 @@ func TestFleetMode(t *testing.T) {
 			WithDefaultESValidation(agent.HasWorkingDataStream(agent.LogsType, "elastic_agent.filebeat", "default")).
 			WithDefaultESValidation(agent.HasWorkingDataStream(agent.LogsType, "elastic_agent.metricbeat", "default")).
 			WithDefaultESValidation(agent.HasWorkingDataStream(agent.MetricsType, "elastic_agent.elastic_agent", "default")).
-			// to be re-enabled when https://github.com/elastic/cloud-on-k8s/issues/7389 is resolved
-			//WithDefaultESValidation(agent.HasWorkingDataStream(agent.MetricsType, "elastic_agent.filebeat", "default")).
 			WithDefaultESValidation(agent.HasWorkingDataStream(agent.MetricsType, "elastic_agent.metricbeat", "default"))
+
+		// https://github.com/elastic/cloud-on-k8s/issues/7389
+		if v.LT(version.MinFor(8, 12, 0)) || v.GE(version.MinFor(8, 14, 0)) {
+			fleetServerBuilder = fleetServerBuilder.
+				WithDefaultESValidation(agent.HasWorkingDataStream(agent.MetricsType, "elastic_agent.filebeat", "default"))
+		}
 
 		kbBuilder = kbBuilder.WithConfig(fleetConfigForKibana(t, fleetServerBuilder.Agent.Spec.Version, esBuilder.Ref(), fleetServerBuilder.Ref(), true))
 

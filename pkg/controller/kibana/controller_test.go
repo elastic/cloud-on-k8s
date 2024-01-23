@@ -437,6 +437,6 @@ func (k *k8sFailingStatusUpdateClient) Status() client.StatusWriter {
 	return k.statusWriter
 }
 
-func (sw *k8sFailingStatusWriter) Update(ctx context.Context, obj client.Object, opts ...client.SubResourceUpdateOption) error {
+func (sw *k8sFailingStatusWriter) Update(_ context.Context, _ client.Object, _ ...client.SubResourceUpdateOption) error {
 	return errors.New("internal error")
 }

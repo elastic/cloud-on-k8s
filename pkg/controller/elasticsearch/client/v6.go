@@ -160,7 +160,7 @@ func (c *clientV6) AddVotingConfigExclusions(_ context.Context, _ []string) erro
 	return errNotSupportedInEs6x
 }
 
-func (c *clientV6) DeleteVotingConfigExclusions(_ context.Context, waitForRemoval bool) error {
+func (c *clientV6) DeleteVotingConfigExclusions(_ context.Context, _ bool) error {
 	return errNotSupportedInEs6x
 }
 

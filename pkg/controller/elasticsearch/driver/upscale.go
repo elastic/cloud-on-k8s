@@ -65,6 +65,7 @@ func HandleUpscaleAndSpecChanges(
 	}
 	// reconcile all resources
 	for _, res := range adjusted {
+		res := res
 		if err := settings.ReconcileConfig(ctx.parentCtx, ctx.k8sClient, ctx.es, res.StatefulSet.Name, res.Config); err != nil {
 			return results, fmt.Errorf("reconcile config: %w", err)
 		}

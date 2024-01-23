@@ -104,9 +104,10 @@ issues:
   max-same-issues: 0
 
   exclude-rules:
-    - path: (^test/.*\.go|.*_test\.go)
+    - path: .*_test\.go
       linters:
         - unparam
+        - gosec
     - path: pkg/controller/common/tracing/apmclientgo/client.go
       linters:
         - staticcheck

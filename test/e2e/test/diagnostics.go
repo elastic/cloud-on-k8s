@@ -18,7 +18,7 @@ import (
 // each test failure, which includes uploading the resulting zip file to a GS bucket. If the job name
 // is set (not empty), the google credentials file exists, and the eck-diagnostics binary exists
 // then we should be able to run diagnostics.
-func canRunDiagnostics(ctx Context) bool {
+func canRunDiagnostics() bool {
 	// If we're not in Kubernetes, then don't run diagnostics on e2e test failures.
 	if _, inK8s := os.LookupEnv("KUBERNETES_SERVICE_HOST"); !inK8s {
 		return false
@@ -40,7 +40,7 @@ func run(ctx context.Context, executable string, args ...string) {
 
 func maybeRunECKDiagnostics(ctx context.Context, testName string, step Step) {
 	testCtx := Ctx()
-	if !canRunDiagnostics(testCtx) {
+	if !canRunDiagnostics() {
 		return
 	}
 	log.Info("Running eck-diagnostics", "cluster", testCtx.ClusterName, "test", testName, "step", step.Name)
