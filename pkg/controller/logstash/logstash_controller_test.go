@@ -669,7 +669,7 @@ func createPod() corev1.Pod {
 				"common.k8s.elastic.co/type":               "logstash",
 				"logstash.k8s.elastic.co/name":             "testLogstash",
 				"logstash.k8s.elastic.co/statefulset-name": "testLogstash-ls",
-				"logstash.k8s.elastic.co/version":          "8.11.0",
+				"logstash.k8s.elastic.co/version":          "8.12.0",
 			},
 		},
 		Status: corev1.PodStatus{
@@ -687,7 +687,7 @@ func createLogstash(capacity string, storageClassName string) logstashv1alpha1.L
 			UID:       uuid.NewUUID(),
 		},
 		Spec: logstashv1alpha1.LogstashSpec{
-			Version: "8.11.0",
+			Version: "8.12.0",
 			Count:   1,
 			VolumeClaimTemplates: []corev1.PersistentVolumeClaim{
 				{ObjectMeta: metav1.ObjectMeta{
