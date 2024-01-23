@@ -37,14 +37,14 @@ var (
 		ObjectMeta: metav1.ObjectMeta{Name: "sample-claim"},
 		Spec: corev1.PersistentVolumeClaimSpec{
 			StorageClassName: pointer.String(sampleStorageClass.Name),
-			Resources: corev1.ResourceRequirements{Requests: map[corev1.ResourceName]resource.Quantity{
+			Resources: corev1.VolumeResourceRequirements{Requests: map[corev1.ResourceName]resource.Quantity{
 				corev1.ResourceStorage: resource.MustParse("1Gi"),
 			}}}}
 	sampleClaim2 = corev1.PersistentVolumeClaim{
 		ObjectMeta: metav1.ObjectMeta{Name: "sample-claim-2"},
 		Spec: corev1.PersistentVolumeClaimSpec{
 			StorageClassName: pointer.String(sampleStorageClass.Name),
-			Resources: corev1.ResourceRequirements{Requests: map[corev1.ResourceName]resource.Quantity{
+			Resources: corev1.VolumeResourceRequirements{Requests: map[corev1.ResourceName]resource.Quantity{
 				corev1.ResourceStorage: resource.MustParse("1Gi"),
 			}}}}
 )

@@ -616,7 +616,7 @@ func (esb esBuilder) toExpectedResources() nodespec.ResourcesList {
 						{
 							ObjectMeta: metav1.ObjectMeta{Name: "elasticsearch-data"},
 							Spec: corev1.PersistentVolumeClaimSpec{
-								Resources: corev1.ResourceRequirements{
+								Resources: corev1.VolumeResourceRequirements{
 									Requests: corev1.ResourceList{
 										corev1.ResourceStorage: fns.claimedStorage.DeepCopy(),
 									},
@@ -673,7 +673,7 @@ func (esb esBuilder) toResources() []crclient.Object {
 					Generation:      1,
 				},
 				Spec: corev1.PersistentVolumeClaimSpec{
-					Resources: corev1.ResourceRequirements{
+					Resources: corev1.VolumeResourceRequirements{
 						Requests: corev1.ResourceList{corev1.ResourceStorage: nodeSet.claimedStorage.DeepCopy()},
 					},
 				},

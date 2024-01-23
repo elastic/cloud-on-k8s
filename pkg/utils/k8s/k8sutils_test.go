@@ -150,8 +150,8 @@ func TestGetServiceIPAddresses(t *testing.T) {
 
 func TestCompareStorageRequests(t *testing.T) {
 	type args struct {
-		initial corev1.ResourceRequirements
-		updated corev1.ResourceRequirements
+		initial corev1.VolumeResourceRequirements
+		updated corev1.VolumeResourceRequirements
 	}
 	tests := []struct {
 		name string
@@ -161,10 +161,10 @@ func TestCompareStorageRequests(t *testing.T) {
 		{
 			name: "same size",
 			args: args{
-				initial: corev1.ResourceRequirements{Requests: map[corev1.ResourceName]resource.Quantity{
+				initial: corev1.VolumeResourceRequirements{Requests: map[corev1.ResourceName]resource.Quantity{
 					corev1.ResourceStorage: resource.MustParse("1Gi"),
 				}},
-				updated: corev1.ResourceRequirements{Requests: map[corev1.ResourceName]resource.Quantity{
+				updated: corev1.VolumeResourceRequirements{Requests: map[corev1.ResourceName]resource.Quantity{
 					corev1.ResourceStorage: resource.MustParse("1Gi"),
 				}},
 			},
@@ -173,10 +173,10 @@ func TestCompareStorageRequests(t *testing.T) {
 		{
 			name: "storage increase",
 			args: args{
-				initial: corev1.ResourceRequirements{Requests: map[corev1.ResourceName]resource.Quantity{
+				initial: corev1.VolumeResourceRequirements{Requests: map[corev1.ResourceName]resource.Quantity{
 					corev1.ResourceStorage: resource.MustParse("1Gi"),
 				}},
-				updated: corev1.ResourceRequirements{Requests: map[corev1.ResourceName]resource.Quantity{
+				updated: corev1.VolumeResourceRequirements{Requests: map[corev1.ResourceName]resource.Quantity{
 					corev1.ResourceStorage: resource.MustParse("2Gi"),
 				}},
 			},
@@ -185,10 +185,10 @@ func TestCompareStorageRequests(t *testing.T) {
 		{
 			name: "storage decrease",
 			args: args{
-				initial: corev1.ResourceRequirements{Requests: map[corev1.ResourceName]resource.Quantity{
+				initial: corev1.VolumeResourceRequirements{Requests: map[corev1.ResourceName]resource.Quantity{
 					corev1.ResourceStorage: resource.MustParse("2Gi"),
 				}},
-				updated: corev1.ResourceRequirements{Requests: map[corev1.ResourceName]resource.Quantity{
+				updated: corev1.VolumeResourceRequirements{Requests: map[corev1.ResourceName]resource.Quantity{
 					corev1.ResourceStorage: resource.MustParse("1Gi"),
 				}},
 			},
@@ -197,16 +197,16 @@ func TestCompareStorageRequests(t *testing.T) {
 		{
 			name: "no storage specified in both",
 			args: args{
-				initial: corev1.ResourceRequirements{},
-				updated: corev1.ResourceRequirements{},
+				initial: corev1.VolumeResourceRequirements{},
+				updated: corev1.VolumeResourceRequirements{},
 			},
 			want: StorageComparison{},
 		},
 		{
 			name: "no initial storage specified: not an increase",
 			args: args{
-				initial: corev1.ResourceRequirements{},
-				updated: corev1.ResourceRequirements{Requests: map[corev1.ResourceName]resource.Quantity{
+				initial: corev1.VolumeResourceRequirements{},
+				updated: corev1.VolumeResourceRequirements{Requests: map[corev1.ResourceName]resource.Quantity{
 					corev1.ResourceStorage: resource.MustParse("1Gi"),
 				}},
 			},
@@ -215,10 +215,10 @@ func TestCompareStorageRequests(t *testing.T) {
 		{
 			name: "no updated storage specified: not a decrease",
 			args: args{
-				initial: corev1.ResourceRequirements{Requests: map[corev1.ResourceName]resource.Quantity{
+				initial: corev1.VolumeResourceRequirements{Requests: map[corev1.ResourceName]resource.Quantity{
 					corev1.ResourceStorage: resource.MustParse("1Gi"),
 				}},
-				updated: corev1.ResourceRequirements{},
+				updated: corev1.VolumeResourceRequirements{},
 			},
 			want: StorageComparison{},
 		},

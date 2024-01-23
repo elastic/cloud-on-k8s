@@ -267,7 +267,7 @@ func TestHandleUpscaleAndSpecChanges_PVCResize(t *testing.T) {
 				VolumeClaimTemplates: []corev1.PersistentVolumeClaim{
 					{ObjectMeta: metav1.ObjectMeta{Name: "elasticsearch-data"},
 						Spec: corev1.PersistentVolumeClaimSpec{
-							Resources: corev1.ResourceRequirements{
+							Resources: corev1.VolumeResourceRequirements{
 								Requests: corev1.ResourceList{
 									corev1.ResourceStorage: resource.MustParse("1Gi"),
 								},
