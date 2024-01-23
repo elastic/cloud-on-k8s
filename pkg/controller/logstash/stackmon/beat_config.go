@@ -9,9 +9,9 @@ import (
 	_ "embed" // for the beats config files
 
 	logstashv1alpha1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/logstash/v1alpha1"
-
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/reconciler"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/stackmon/monitoring"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/logstash/configs"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/k8s"
 )
 
@@ -26,7 +26,7 @@ var (
 )
 
 // ReconcileConfigSecrets reconciles the secrets holding beats configuration
-func ReconcileConfigSecrets(ctx context.Context, client k8s.Client, logstash logstashv1alpha1.Logstash) error {
+func ReconcileConfigSecrets(ctx context.Context, client k8s.Client, logstash logstashv1alpha1.Logstash, apiServer configs.APIServer) error {
 	isMonitoringReconcilable, err := monitoring.IsReconcilable(&logstash)
 	if err != nil {
 		return err
@@ -36,7 +36,7 @@ func ReconcileConfigSecrets(ctx context.Context, client k8s.Client, logstash log
 	}
 
 	if monitoring.IsMetricsDefined(&logstash) {
-		b, err := Metricbeat(ctx, client, logstash)
+		b, err := Metricbeat(ctx, client, logstash, apiServer)
 		if err != nil {
 			return err
 		}

@@ -204,12 +204,16 @@ func TestReconcileServices(t *testing.T) {
 				Client:   client,
 				Logstash: tc.logstash,
 			}
-			haveSvc, err := reconcileServices(params)
+			haveSvc, haveAPISvc, err := reconcileServices(params)
 			require.NoError(t, err)
 			require.Equal(t, len(tc.wantSvc), len(haveSvc))
 
 			for i := range tc.wantSvc {
 				comparison.AssertEqual(t, &tc.wantSvc[i], &haveSvc[i])
+
+				if tc.wantSvc[i].Name == "logstash-ls-api" {
+					comparison.AssertEqual(t, &tc.wantSvc[i], &haveAPISvc)
+				}
 			}
 		})
 	}

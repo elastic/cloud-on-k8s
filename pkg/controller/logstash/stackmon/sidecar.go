@@ -13,10 +13,10 @@ import (
 
 	commonv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/common/v1"
 	logstashv1alpha1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/logstash/v1alpha1"
-
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/defaults"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/stackmon"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/stackmon/monitoring"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/logstash/configs"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/logstash/network"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/logstash/volume"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/k8s"
@@ -27,7 +27,14 @@ const (
 	cfgHashAnnotation = "logstash.k8s.elastic.co/monitoring-config-hash"
 )
 
-func Metricbeat(ctx context.Context, client k8s.Client, logstash logstashv1alpha1.Logstash) (stackmon.BeatSidecar, error) {
+func Metricbeat(ctx context.Context, client k8s.Client, logstash logstashv1alpha1.Logstash, apiServer configs.APIServer) (stackmon.BeatSidecar, error) {
+	useTLS := apiServer.UseTLS()
+
+	var protocol = "http"
+	if useTLS {
+		protocol = "https"
+	}
+
 	metricbeat, err := stackmon.NewMetricBeatSidecar(
 		ctx,
 		client,
@@ -36,11 +43,10 @@ func Metricbeat(ctx context.Context, client k8s.Client, logstash logstashv1alpha
 		logstash.Spec.Version,
 		metricbeatConfigTemplate,
 		logstashv1alpha1.Namer,
-		fmt.Sprintf("%s://localhost:%d", "http" /*logstash.Spec.HTTP.Protocol()*/, network.HTTPPort),
-		//TODO: integrate username password with Logstash metrics API
-		"", /* no username for metrics API */
-		"", /* no password for metrics API */
-		false,
+		fmt.Sprintf("%s://localhost:%d", protocol, network.HTTPPort),
+		apiServer.Username,
+		apiServer.Password,
+		useTLS,
 	)
 	if err != nil {
 		return stackmon.BeatSidecar{}, err
@@ -54,7 +60,7 @@ func Filebeat(ctx context.Context, client k8s.Client, logstash logstashv1alpha1.
 
 // WithMonitoring updates the Logstash Pod template builder to deploy Metricbeat and Filebeat in sidecar containers
 // in the Logstash pod and injects the volumes for the beat configurations and the ES CA certificates.
-func WithMonitoring(ctx context.Context, client k8s.Client, builder *defaults.PodTemplateBuilder, logstash logstashv1alpha1.Logstash) (*defaults.PodTemplateBuilder, error) {
+func WithMonitoring(ctx context.Context, client k8s.Client, builder *defaults.PodTemplateBuilder, logstash logstashv1alpha1.Logstash, apiServer configs.APIServer) (*defaults.PodTemplateBuilder, error) {
 	isMonitoringReconcilable, err := monitoring.IsReconcilable(&logstash)
 	if err != nil {
 		return nil, err
@@ -67,7 +73,7 @@ func WithMonitoring(ctx context.Context, client k8s.Client, builder *defaults.Po
 	var volumes []corev1.Volume
 
 	if monitoring.IsMetricsDefined(&logstash) {
-		b, err := Metricbeat(ctx, client, logstash)
+		b, err := Metricbeat(ctx, client, logstash, apiServer)
 		if err != nil {
 			return nil, err
 		}

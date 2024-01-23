@@ -15,6 +15,7 @@ import (
 	commonv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/common/v1"
 	logstashv1alpha1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/logstash/v1alpha1"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/version"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/logstash/configs"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/logstash/volume"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/k8s"
 	"github.com/elastic/cloud-on-k8s/v2/test/e2e/cmd/run"
@@ -22,8 +23,10 @@ import (
 )
 
 type Builder struct {
-	Logstash    logstashv1alpha1.Logstash
-	MutatedFrom *Builder
+	Logstash          logstashv1alpha1.Logstash
+	MutatedFrom       *Builder
+	GlobalCA          bool
+	ExpectedAPIServer *configs.APIServer
 }
 
 func NewBuilder(name string) Builder {
@@ -200,6 +203,12 @@ func (b Builder) WithPodTemplate(podTemplate corev1.PodTemplateSpec) Builder {
 	return b
 }
 
+// WithExpectedAPIServer builder uses the username password in APIServer to verify endpoint
+func (b Builder) WithExpectedAPIServer(apiServer configs.APIServer) Builder {
+	b.ExpectedAPIServer = &apiServer
+	return b
+}
+
 func (b Builder) Name() string {
 	return b.Logstash.Name
 }
@@ -253,6 +262,24 @@ func (b Builder) SkipTest() bool {
 
 	ver := version.MustParse(b.Logstash.Spec.Version)
 	return supportedVersions.WithinRange(ver) != nil
+}
+
+func (b Builder) WithGlobalCA(v bool) Builder {
+	b.GlobalCA = v
+	return b
+}
+
+func (b Builder) DeepCopy() *Builder {
+	ls := b.Logstash.DeepCopy()
+	builderCopy := Builder{
+		Logstash: *ls,
+	}
+	if b.MutatedFrom != nil {
+		builderCopy.MutatedFrom = b.MutatedFrom.DeepCopy()
+	}
+	builderCopy.GlobalCA = b.GlobalCA
+	builderCopy.ExpectedAPIServer = b.ExpectedAPIServer
+	return &builderCopy
 }
 
 var _ test.Builder = Builder{}

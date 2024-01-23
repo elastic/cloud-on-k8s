@@ -19,8 +19,10 @@ import (
 )
 
 type Request struct {
-	Name string
-	Path string
+	Name     string
+	Path     string
+	Username string
+	Password string
 }
 
 type Want struct {
@@ -38,7 +40,7 @@ func CheckSecrets(b Builder, k *test.K8sClient) test.Step {
 		expected := []test.ExpectedSecret{
 			{
 				Name: logstashName + "-ls-config",
-				Keys: []string{"logstash.yml"},
+				Keys: []string{"logstash.yml", "API_KEYSTORE_PASS"},
 				Labels: map[string]string{
 					"eck.k8s.elastic.co/credentials": "true",
 					"logstash.k8s.elastic.co/name":   logstashName,
@@ -154,19 +156,34 @@ func uniqueAssociationCount(refsList ...[]v1.ObjectSelector) int {
 }
 
 func (b Builder) CheckStackTestSteps(k *test.K8sClient) test.StepList {
+	var username, password string
+
+	if b.ExpectedAPIServer != nil {
+		username = b.ExpectedAPIServer.Username
+		password = b.ExpectedAPIServer.Password
+	} else if b.Logstash.Spec.Config != nil {
+		cfg := settings.MustCanonicalConfig(b.Logstash.Spec.Config.Data)
+		username, _ = cfg.String("api.auth.basic.username")
+		password, _ = cfg.String("api.auth.basic.password")
+	}
+
 	return test.StepList{
 		b.CheckMetricsRequest(k,
 			Request{
-				Name: "metrics",
-				Path: "/",
+				Name:     "metrics",
+				Path:     "/",
+				Username: username,
+				Password: password,
 			},
 			Want{
 				Match: map[string]string{"status": "green"},
 			}),
 		b.CheckMetricsRequest(k,
 			Request{
-				Name: "default pipeline",
-				Path: "/_node/pipelines/main",
+				Name:     "default pipeline",
+				Path:     "/_node/pipelines/main",
+				Username: username,
+				Password: password,
 			},
 			Want{
 				Match: map[string]string{
@@ -187,7 +204,7 @@ func (b Builder) CheckMetricsRequest(k *test.K8sClient, req Request, want Want) 
 				return err
 			}
 
-			bytes, err := DoRequest(client, b.Logstash, "GET", req.Path)
+			bytes, err := DoRequest(client, b.Logstash, "GET", req.Path, req.Username, req.Password)
 			if err != nil {
 				return err
 			}

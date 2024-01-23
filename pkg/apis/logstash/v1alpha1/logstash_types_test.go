@@ -94,3 +94,65 @@ func TestLogstashMonitoringAssociation_AssociationConfAnnotationName(t *testing.
 		})
 	}
 }
+
+func TestLogstash_APIServerTLSOptions(t *testing.T) {
+	for _, tt := range []struct {
+		name     string
+		logstash Logstash
+		want     bool
+	}{
+		{
+			name: "default no service config enable TLS",
+			logstash: Logstash{
+				Spec: LogstashSpec{},
+			},
+			want: true,
+		},
+		{
+			name: "api service disable TLS",
+			logstash: Logstash{
+				Spec: LogstashSpec{
+					Services: []LogstashService{{
+						Name: "api",
+						TLS: commonv1.TLSOptions{
+							SelfSignedCertificate: &commonv1.SelfSignedCertificate{
+								Disabled: true,
+							},
+						},
+					}},
+				},
+			},
+			want: false,
+		},
+		{
+			name: "take api service from services",
+			logstash: Logstash{
+				Spec: LogstashSpec{
+					Services: []LogstashService{
+						{
+							Name: "strong_svc",
+							TLS: commonv1.TLSOptions{
+								SelfSignedCertificate: &commonv1.SelfSignedCertificate{
+									Disabled: false,
+								},
+							},
+						},
+						{
+							Name: "api",
+							TLS: commonv1.TLSOptions{
+								SelfSignedCertificate: &commonv1.SelfSignedCertificate{
+									Disabled: true,
+								},
+							},
+						},
+					},
+				},
+			},
+			want: false,
+		},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			require.Equal(t, tt.want, tt.logstash.APIServerTLSOptions().Enabled())
+		})
+	}
+}

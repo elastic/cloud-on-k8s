@@ -12,6 +12,7 @@ import (
 
 	logstashv1alpha1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/logstash/v1alpha1"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/keystore"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/pod"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/logstash/volume"
 )
 
@@ -64,15 +65,12 @@ func reconcileKeystore(params Params, configHash hash.Hash) (*keystore.Resources
 
 // getKeystorePass return env LOGSTASH_KEYSTORE_PASS from main container if set
 func getKeystorePass(logstash logstashv1alpha1.Logstash) *corev1.EnvVar {
-	for _, c := range logstash.Spec.PodTemplate.Spec.Containers {
-		if c.Name == logstashv1alpha1.LogstashContainerName {
-			for _, env := range c.Env {
-				if env.Name == KeystorePassKey {
-					return &env
-				}
+	if c := pod.ContainerByName(logstash.Spec.PodTemplate.Spec, logstashv1alpha1.LogstashContainerName); c != nil {
+		for _, env := range c.Env {
+			if env.Name == KeystorePassKey {
+				return &env
 			}
 		}
 	}
-
 	return nil
 }

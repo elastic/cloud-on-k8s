@@ -35,9 +35,9 @@ func TestLogstashWithCustomService(t *testing.T) {
 			},
 		},
 	}
-	logstashBuilder := (logstash.NewBuilder(name).
+	logstashBuilder := logstash.NewBuilder(name).
 		WithNodeCount(1).
-		WithServices(service))
+		WithServices(service)
 
 	test.Sequence(nil, test.EmptySteps, logstashBuilder).RunSequential(t)
 }
@@ -55,13 +55,13 @@ func TestLogstashWithReworkedApiService(t *testing.T) {
 			},
 		},
 	}
-	logstashBuilder := (logstash.NewBuilder(name).
+	logstashBuilder := logstash.NewBuilder(name).
 		WithNodeCount(1).
 		// Change the Logstash API service port
 		WithConfig(map[string]interface{}{
 			"api.http.port": 9200,
 		}).
-		WithServices(service))
+		WithServices(service)
 
 	test.Sequence(nil, test.EmptySteps, logstashBuilder).RunSequential(t)
 }
@@ -91,13 +91,13 @@ func TestLogstashWithCustomServiceAndAmendedApi(t *testing.T) {
 		},
 	}
 
-	logstashBuilder := (logstash.NewBuilder(name).
+	logstashBuilder := logstash.NewBuilder(name).
 		WithNodeCount(1).
 		// Change the Logstash API service port
 		WithConfig(map[string]interface{}{
 			"api.http.port": 9601,
 		}).
-		WithServices(apiService, customService))
+		WithServices(apiService, customService)
 
 	test.Sequence(nil, test.EmptySteps, logstashBuilder).RunSequential(t)
 }

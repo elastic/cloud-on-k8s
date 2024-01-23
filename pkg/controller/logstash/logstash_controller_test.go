@@ -62,7 +62,7 @@ func TestReconcileLogstash_Reconcile(t *testing.T) {
 						},
 					},
 					Spec: logstashv1alpha1.LogstashSpec{
-						Version: "8.6.1",
+						Version: "8.12.0",
 					},
 					Status: logstashv1alpha1.LogstashStatus{
 						ObservedGeneration: 1,
@@ -86,7 +86,7 @@ func TestReconcileLogstash_Reconcile(t *testing.T) {
 					},
 				},
 				Spec: logstashv1alpha1.LogstashSpec{
-					Version: "8.6.1",
+					Version: "8.12.0",
 				},
 				Status: logstashv1alpha1.LogstashStatus{
 					ObservedGeneration: 1,
@@ -139,7 +139,7 @@ func TestReconcileLogstash_Reconcile(t *testing.T) {
 						Generation: 2,
 					},
 					Spec: logstashv1alpha1.LogstashSpec{
-						Version: "8.6.1",
+						Version: "8.12.0",
 						Count:   1,
 					},
 					Status: logstashv1alpha1.LogstashStatus{
@@ -163,7 +163,7 @@ func TestReconcileLogstash_Reconcile(t *testing.T) {
 						Name:       "testLogstash-ls",
 						Namespace:  "test",
 						Generation: 2,
-						Labels:     map[string]string{NameLabelName: "testLogstash", VersionLabelName: "8.6.1"},
+						Labels:     map[string]string{NameLabelName: "testLogstash", VersionLabelName: "8.12.0"},
 					},
 					Status: corev1.PodStatus{
 						Phase: corev1.PodRunning,
@@ -199,11 +199,11 @@ func TestReconcileLogstash_Reconcile(t *testing.T) {
 					Generation: 2,
 				},
 				Spec: logstashv1alpha1.LogstashSpec{
-					Version: "8.6.1",
+					Version: "8.12.0",
 					Count:   1,
 				},
 				Status: logstashv1alpha1.LogstashStatus{
-					Version:            "8.6.1",
+					Version:            "8.12.0",
 					ExpectedNodes:      1,
 					AvailableNodes:     1,
 					ObservedGeneration: 2,
@@ -222,7 +222,7 @@ func TestReconcileLogstash_Reconcile(t *testing.T) {
 						Generation: 2,
 					},
 					Spec: logstashv1alpha1.LogstashSpec{
-						Version: "8.6.1",
+						Version: "8.12.0",
 						Count:   1,
 						Services: []logstashv1alpha1.LogstashService{{
 							Name: "test",
@@ -256,7 +256,7 @@ func TestReconcileLogstash_Reconcile(t *testing.T) {
 						Name:       "testLogstash-ls",
 						Namespace:  "test",
 						Generation: 2,
-						Labels:     map[string]string{NameLabelName: "testLogstash", VersionLabelName: "8.6.1"},
+						Labels:     map[string]string{NameLabelName: "testLogstash", VersionLabelName: "8.12.0"},
 					},
 					Status: corev1.PodStatus{
 						Phase: corev1.PodRunning,
@@ -296,7 +296,7 @@ func TestReconcileLogstash_Reconcile(t *testing.T) {
 					Generation: 2,
 				},
 				Spec: logstashv1alpha1.LogstashSpec{
-					Version: "8.6.1",
+					Version: "8.12.0",
 					Count:   1,
 					Services: []logstashv1alpha1.LogstashService{{
 						Name: "test",
@@ -310,7 +310,7 @@ func TestReconcileLogstash_Reconcile(t *testing.T) {
 					}},
 				},
 				Status: logstashv1alpha1.LogstashStatus{
-					Version:            "8.6.1",
+					Version:            "8.12.0",
 					ExpectedNodes:      1,
 					AvailableNodes:     1,
 					ObservedGeneration: 2,
@@ -329,7 +329,7 @@ func TestReconcileLogstash_Reconcile(t *testing.T) {
 						Generation: 2,
 					},
 					Spec: logstashv1alpha1.LogstashSpec{
-						Version: "8.6.1",
+						Version: "8.12.0",
 						Count:   1,
 						Services: []logstashv1alpha1.LogstashService{{
 							Name: "api",
@@ -361,7 +361,7 @@ func TestReconcileLogstash_Reconcile(t *testing.T) {
 						Name:       "testLogstash-ls",
 						Namespace:  "test",
 						Generation: 2,
-						Labels:     map[string]string{NameLabelName: "testLogstash", VersionLabelName: "8.6.1"},
+						Labels:     map[string]string{NameLabelName: "testLogstash", VersionLabelName: "8.12.0"},
 					},
 					Status: corev1.PodStatus{
 						Phase: corev1.PodRunning,
@@ -397,7 +397,7 @@ func TestReconcileLogstash_Reconcile(t *testing.T) {
 					Generation: 2,
 				},
 				Spec: logstashv1alpha1.LogstashSpec{
-					Version: "8.6.1",
+					Version: "8.12.0",
 					Count:   1,
 					Services: []logstashv1alpha1.LogstashService{{
 						Name: "api",
@@ -409,7 +409,7 @@ func TestReconcileLogstash_Reconcile(t *testing.T) {
 					}},
 				},
 				Status: logstashv1alpha1.LogstashStatus{
-					Version:            "8.6.1",
+					Version:            "8.12.0",
 					ExpectedNodes:      1,
 					AvailableNodes:     1,
 					ObservedGeneration: 2,

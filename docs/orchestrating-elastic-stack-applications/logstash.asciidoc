@@ -19,6 +19,7 @@ This section describes how to configure and deploy Logstash with ECK.
 ** <<{p}-logstash-volumes,Configuring Volumes>>
 ** <<{p}-logstash-pipelines-es,Using Elasticsearch in Logstash Pipelines>>
 ** <<{p}-logstash-expose-services,Exposing Services>>
+* <<{p}-logstash-securing-api,Securing Logstash API>>
 * <<{p}-logstash-configuration-examples,Configuration examples>>
 * <<{p}-logstash-advanced-configuration,Advanced Configuration>>
 ** <<{p}-logstash-jvm-options,Setting JVM Options>>
@@ -699,6 +700,121 @@ spec:
 The name of the container in the Pod template must be `logstash`.
 
 
+[id="{p}-logstash-securing-api"]
+== Securing Logstash API
+
+[id="{p}-logstash-https"]
+=== Enable HTTPS
+
+Access to the link:https://www.elastic.co/guide/en/logstash/current/monitoring-logstash.html#monitoring-api-security[Logstash Monitoring APIs] use HTTPS by default - the operator will set the values  `api.ssl.enabled: true`, `api.ssl.keystore.path` and `api.ssl.keystore.password`.
+
+You can further secure the {ls} Monitoring APIs by requiring HTTP Basic authentication by setting `api.auth.type: basic`, and providing the relevant credentials `api.auth.basic.username` and `api.auth.basic.password`:
+
+[source,yaml,subs="attributes,+macros,callouts"]
+----
+apiVersion: v1
+kind: Secret
+metadata:
+  name: logstash-api-secret
+stringData:
+  API_USERNAME: "AWESOME_USER"   <1>
+  API_PASSWORD: "T0p_Secret"     <1>
+---
+apiVersion: logstash.k8s.elastic.co/v1alpha1
+kind: Logstash
+metadata:
+  name: logstash-sample
+spec:
+  version: {version}
+  count: 1
+  config:
+    api.auth.type: basic
+    api.auth.basic.username: "${API_USERNAME}"   <3>
+    api.auth.basic.password: "${API_PASSWORD}"   <3>
+  podTemplate:
+    spec:
+      containers:
+        - name: logstash
+          envFrom:
+            - secretRef:
+                name: logstash-api-secret   <2>
+----
+<1> Store the username and password in a Secret.
+<2> Map the username and password to the environment variables of the Pod.
+<3> At Logstash startup, `${API_USERNAME}` and `${API_PASSWORD}` are replaced by the value of environment variables. Check link:https://www.elastic.co/guide/en/logstash/current/environment-variables.html[using environment variables] for more details.
+
+An alternative is to set up <<{p}-logstash-keystore, keystore>> to resolve `${API_USERNAME}` and `${API_PASSWORD}`
+
+NOTE: The variable substitution in `config` does not support the default value syntax.
+
+[id="{p}-logstash-http-tls-keystore"]
+=== TLS keystore
+
+The TLS Keystore is automatically generated and includes a certificate and a private key, with default password protection set to `changeit`.
+This password can be modified by configuring the `api.ssl.keystore.password` value.
+
+[source,yaml,subs="attributes"]
+----
+apiVersion: logstash.k8s.elastic.co/v1alpha1
+kind: Logstash
+metadata:
+  name: logstash-sample
+spec:
+  count: 1
+  version: {version}
+  config:
+    api.ssl.keystore.password: "${SSL_KEYSTORE_PASSWORD}"
+----
+
+
+[id="{p}-logstash-http-custom-tls"]
+=== Provide your own certificate
+
+If you want to use your own certificate, the required configuration is similar to Elasticsearch. Configure the certificate in `api` Service. Check <<{p}-custom-http-certificate>>.
+
+[source,yaml,subs="attributes,+macros,callouts"]
+----
+apiVersion: logstash.k8s.elastic.co/v1alpha1
+kind: Logstash
+metadata:
+  name: logstash-sample
+spec:
+  version: {version}
+  count: 1
+  elasticsearchRef:
+    name: "elasticsearch-sample"
+  services:
+    - name: api   <1>
+      tls:
+        certificate:
+          secretName: my-cert
+----
+<1> The service name `api` is reserved for {ls} monitoring endpoint.
+
+[id="{p}-logstash-http-disable-tls"]
+=== Disable TLS
+
+You can disable TLS by disabling the generation of the self-signed certificate in the API service definition
+
+[source,yaml,subs="attributes"]
+----
+apiVersion: logstash.k8s.elastic.co/v1alpha1
+kind: Logstash
+metadata:
+  name: logstash-sample
+spec:
+  version: {version}
+  count: 1
+  elasticsearchRef:
+    name: "elasticsearch-sample"
+  services:
+    - name: api
+      tls:
+        selfSignedCertificate:
+          disabled: true
+----
+
+
 [id="{p}-logstash-configuration-examples"]
 == Configuration examples
 
@@ -847,7 +963,7 @@ kind: Logstash
 metadata:
   name: logstash-sample
 spec:
-  version: 8.8.0
+  version: {version}
   count: 1
   pipelines:
     - pipeline.id: main
