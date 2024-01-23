@@ -16,6 +16,8 @@ const (
 	InitConfigContainerName = "logstash-internal-init-config"
 
 	// InitConfigScript is a small bash script to prepare the logstash configuration directory
+	// Logstash rewrites the configuration file (logstash.yml) in the presence of ${VAR} environment variable,
+	// therefore the file is copied to the path instead of creating symbolic link.
 	InitConfigScript = `#!/usr/bin/env bash
 set -eu
 
