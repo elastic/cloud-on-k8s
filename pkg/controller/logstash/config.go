@@ -174,6 +174,14 @@ func baseAPIServer(cfg *settings.CanonicalConfig) configs.APIServer {
 	}
 }
 
+const (
+	varPattern = `^\${([a-zA-Z0-9_]+)}$`
+)
+
+var (
+	varRegex = regexp.MustCompile(varPattern)
+)
+
 // getUnresolvedVars matches pattern ${VAR} against the configuration value in logstash.yml, such as api.auth.basic.username:  ${API_USERNAME}
 // and gives a map of string and string pointer, for example: {"API_USERNAME" : &config.Username}
 // The keys in the map represent variable names that require further resolution, retrieving the values from either the Keystore or Environment variables.
@@ -181,11 +189,8 @@ func baseAPIServer(cfg *settings.CanonicalConfig) configs.APIServer {
 func getUnresolvedVars(config *configs.APIServer) map[string]*string {
 	data := make(map[string]*string)
 
-	pattern := `^\${([a-zA-Z0-9_]+)}$`
-	regex := regexp.MustCompile(pattern)
-
 	for _, configVal := range []*string{&config.SSLEnabled, &config.KeystorePassword, &config.AuthType, &config.Username, &config.Password} {
-		if match := regex.FindStringSubmatch(*configVal); match != nil {
+		if match := varRegex.FindStringSubmatch(*configVal); match != nil {
 			varName := match[1]
 			data[varName] = configVal
 		}
