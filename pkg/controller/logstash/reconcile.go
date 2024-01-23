@@ -6,7 +6,9 @@ package logstash
 
 import (
 	"context"
+    "fmt"
 	"reflect"
+	"time"
 
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/logstash/sset"
 
@@ -16,6 +18,7 @@ import (
 	"k8s.io/client-go/kubernetes/scheme"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
+	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
 	"github.com/pkg/errors"
 
@@ -23,14 +26,25 @@ import (
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/reconciler"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/tracing"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/logstash/labels"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/k8s"
+	ulog "github.com/elastic/cloud-on-k8s/v2/pkg/utils/log"
 )
 
 func reconcileStatefulSet(params Params, podTemplate corev1.PodTemplateSpec) (*reconciler.Results, logstashv1alpha1.LogstashStatus) {
 	defer tracing.Span(&params.Context)()
 	results := reconciler.NewResult(params.Context)
 
-	s := sset.New(sset.Params{
+	ok, _, err := params.expectationsSatisfied(params.Context)
+	if err != nil {
+		return results.WithError(err), params.Status
+	}
+
+	if !ok {
+		return results.WithResult(reconcile.Result{Requeue: true}), params.Status
+	}
+
+	expected := sset.New(sset.Params{
 		Name:                 logstashv1alpha1.Name(params.Logstash.Name),
 		Namespace:            params.Logstash.Namespace,
 		ServiceName:          logstashv1alpha1.APIServiceName(params.Logstash.Name),
@@ -41,11 +55,40 @@ func reconcileStatefulSet(params Params, podTemplate corev1.PodTemplateSpec) (*r
 		RevisionHistoryLimit: params.Logstash.Spec.RevisionHistoryLimit,
 		VolumeClaimTemplates: params.Logstash.Spec.VolumeClaimTemplates,
 	})
-	if err := controllerutil.SetControllerReference(&params.Logstash, &s, scheme.Scheme); err != nil {
+	if err := controllerutil.SetControllerReference(&params.Logstash, &expected, scheme.Scheme); err != nil {
 		return results.WithError(err), params.Status
 	}
 
-	reconciled, err := sset.Reconcile(params.Context, params.Client, s, &params.Logstash)
+	actualStatefulSets, err := sset.RetrieveActualStatefulSets(params.Client, k8s.ExtractNamespacedName(&params.Logstash))
+
+	if (len(actualStatefulSets) > 0) {
+		if _, exists := actualStatefulSets.GetByName(actualStatefulSets[0].Name); exists {
+			recreateSset, err := handleVolumeExpansion(params.Context, params.Client, params.Logstash, expected, actualStatefulSets[0], true)
+
+			if err != nil {
+				return results.WithError(err), params.Status
+			}
+
+			if recreateSset {
+				ulog.FromContext(params.Context).V(1).Info("Handling Volume Expansion")
+				recreations, err := recreateStatefulSets(params.Context, params.Client, params.Logstash)
+				if err != nil {
+					return results.WithError(fmt.Errorf("StatefulSet recreation: %w", err)), params.Status
+				}
+				if recreations > 0 {
+					// Some StatefulSets are in the process of being recreated to handle PVC expansion:
+					// it is safer to requeue until the re-creation is done.
+					// Otherwise, some operation could be performed with wrong assumptions:
+					// the sset doesn't exist (was just deleted), but the Pods do actually exist.
+					ulog.FromContext(params.Context).V(1).Info("StatefulSets recreation in progress, re-queueing after 30 seconds.", "namespace", params.Logstash.Namespace, "ls_name", params.Logstash.Name,
+						"recreations", recreations, "status", params.Status)
+					return results.WithResult(reconcile.Result{RequeueAfter: 30 * time.Second}), params.Status
+				}
+			}
+		}
+	}
+
+	reconciled, err := sset.Reconcile(params.Context, params.Client, expected, &params.Logstash, params.Expectations)
 	if err != nil {
 		return results.WithError(err), params.Status
 	}
@@ -63,7 +106,7 @@ func reconcileStatefulSet(params Params, podTemplate corev1.PodTemplateSpec) (*r
 func calculateStatus(params *Params, sset appsv1.StatefulSet) (logstashv1alpha1.LogstashStatus, error) {
 	logstash := params.Logstash
 	status := params.Status
-	pods, err := k8s.PodsMatchingLabels(params.Client, logstash.Namespace, map[string]string{NameLabelName: logstash.Name})
+	pods, err := k8s.PodsMatchingLabels(params.Client, logstash.Namespace, map[string]string{labels.NameLabelName: logstash.Name})
 	if err != nil {
 		return status, err
 	}

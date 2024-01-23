@@ -24,6 +24,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/pod"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/version"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/logstash/configs"
+	lslabels "github.com/elastic/cloud-on-k8s/v2/pkg/controller/logstash/labels"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/k8s"
 )
 
@@ -151,7 +152,7 @@ func TestNewPodTemplateSpec(t *testing.T) {
 							Labels: map[string]string{
 								"label1":      "value1",
 								"label2":      "value2",
-								NameLabelName: "overridden-logstash-name",
+								lslabels.NameLabelName: "overridden-logstash-name",
 							},
 						},
 					},
@@ -163,7 +164,8 @@ func TestNewPodTemplateSpec(t *testing.T) {
 				labels[VersionLabelName] = "8.6.1"
 				labels["label1"] = "value1"
 				labels["label2"] = "value2"
-				labels[NameLabelName] = "overridden-logstash-name"
+				labels[lslabels.NameLabelName] = "overridden-logstash-name"
+				labels["logstash.k8s.elastic.co/statefulset-name"] = "fake-ls"
 				assert.Equal(t, labels, pod.Labels)
 			},
 		},

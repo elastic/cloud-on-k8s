@@ -6,14 +6,20 @@ package sset
 
 import (
 	"context"
+	"fmt"
 
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	"k8s.io/apimachinery/pkg/types"
 
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/logstash/labels"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/expectations"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/hash"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/reconciler"
+
 	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/k8s"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/maps"
 )
@@ -64,7 +70,7 @@ func New(params Params) appsv1.StatefulSet {
 }
 
 // Reconcile creates or updates the expected StatefulSet.
-func Reconcile(ctx context.Context, c k8s.Client, expected appsv1.StatefulSet, owner client.Object) (appsv1.StatefulSet, error) {
+func Reconcile(ctx context.Context, c k8s.Client, expected appsv1.StatefulSet, owner client.Object, expectations *expectations.Expectations) (appsv1.StatefulSet, error) {
 	var reconciled appsv1.StatefulSet
 
 	err := reconciler.ReconcileResource(reconciler.Params{
@@ -88,6 +94,13 @@ func Reconcile(ctx context.Context, c k8s.Client, expected appsv1.StatefulSet, o
 			reconciled.Annotations = maps.Merge(reconciled.Annotations, expected.Annotations)
 			reconciled.Spec = expected.Spec
 		},
+		PostUpdate: func() {
+			if expectations != nil {
+				// expect the reconciled StatefulSet to be there in the cache for next reconciliations,
+				// to prevent assumptions based on the wrong replica count
+				expectations.ExpectGeneration(reconciled)
+			}
+		},
 	})
 	return reconciled, err
 }
@@ -95,4 +108,76 @@ func Reconcile(ctx context.Context, c k8s.Client, expected appsv1.StatefulSet, o
 // EqualTemplateHashLabels reports whether actual and expected StatefulSets have the same template hash label value.
 func EqualTemplateHashLabels(expected, actual appsv1.StatefulSet) bool {
 	return expected.Labels[hash.TemplateHashLabelName] == actual.Labels[hash.TemplateHashLabelName]
+}
+
+
+// GetReplicas returns the replicas configured for this StatefulSet, or 0 if nil.
+func GetReplicas(statefulSet appsv1.StatefulSet) int32 {
+	if statefulSet.Spec.Replicas != nil {
+		return *statefulSet.Spec.Replicas
+	}
+	return 0
+}
+
+// GetClaim returns a pointer to the claim with the given name, or nil if not found.
+func GetClaim(claims []corev1.PersistentVolumeClaim, claimName string) *corev1.PersistentVolumeClaim {
+	for i, claim := range claims {
+		if claim.Name == claimName {
+			return &claims[i]
+		}
+	}
+	return nil
+}
+
+// RetrieveActualPVCs returns all existing PVCs for that StatefulSet, per claim name.
+func RetrieveActualPVCs(k8sClient k8s.Client, statefulSet appsv1.StatefulSet) (map[string][]corev1.PersistentVolumeClaim, error) {
+	pvcs := make(map[string][]corev1.PersistentVolumeClaim)
+	for _, podName := range PodNames(statefulSet) {
+		for _, claim := range statefulSet.Spec.VolumeClaimTemplates {
+			if claim.Name == "" {
+				continue
+			}
+			pvcName := fmt.Sprintf("%s-%s", claim.Name, podName)
+			var pvc corev1.PersistentVolumeClaim
+			if err := k8sClient.Get(context.Background(), types.NamespacedName{Namespace: statefulSet.Namespace, Name: pvcName}, &pvc); err != nil {
+				if apierrors.IsNotFound(err) {
+					continue // PVC does not exist (yet)
+				}
+				return nil, err
+			}
+			if _, exists := pvcs[claim.Name]; !exists {
+				pvcs[claim.Name] = make([]corev1.PersistentVolumeClaim, 0)
+			}
+			pvcs[claim.Name] = append(pvcs[claim.Name], pvc)
+		}
+	}
+	return pvcs, nil
+}
+
+// PodName returns the name of the pod with the given ordinal for this StatefulSet.
+func PodName(ssetName string, ordinal int32) string {
+	return fmt.Sprintf("%s-%d", ssetName, ordinal)
+}
+
+// PodNames returns the names of the pods for this StatefulSet, according to the number of replicas.
+func PodNames(sset appsv1.StatefulSet) []string {
+	names := make([]string, 0, GetReplicas(sset))
+	for i := int32(0); i < GetReplicas(sset); i++ {
+		names = append(names, PodName(sset.Name, i))
+	}
+	return names
+}
+
+// GetActualPodsForStatefulSet returns the existing pods associated to this StatefulSet.
+// The returned pods may not match the expected StatefulSet replicas in a transient situation.
+func GetActualPodsForStatefulSet(c k8s.Client, sset types.NamespacedName) ([]corev1.Pod, error) {
+	var pods corev1.PodList
+	ns := client.InNamespace(sset.Namespace)
+	matchLabels := client.MatchingLabels(map[string]string{
+		labels.StatefulSetNameLabelName: sset.Name,
+	})
+	if err := c.List(context.Background(), &pods, matchLabels, ns); err != nil {
+		return nil, err
+	}
+	return pods.Items, nil
 }

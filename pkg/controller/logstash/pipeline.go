@@ -15,6 +15,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/labels"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/reconciler"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/tracing"
+	lslabels "github.com/elastic/cloud-on-k8s/v2/pkg/controller/logstash/labels"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/logstash/pipelines"
 )
 
@@ -34,7 +35,7 @@ func reconcilePipeline(params Params) error {
 		ObjectMeta: metav1.ObjectMeta{
 			Namespace: params.Logstash.Namespace,
 			Name:      logstashv1alpha1.PipelineSecretName(params.Logstash.Name),
-			Labels:    labels.AddCredentialsLabel(NewLabels(params.Logstash)),
+			Labels:    labels.AddCredentialsLabel(lslabels.NewLabels(params.Logstash)),
 		},
 		Data: map[string][]byte{
 			PipelineFileName: cfgBytes,
@@ -45,7 +46,7 @@ func reconcilePipeline(params Params) error {
 		reconciler.WithPostUpdate(func() {
 			annotation.MarkPodsAsUpdated(params.Context, params.Client,
 				client.InNamespace(params.Logstash.Namespace),
-				NewLabelSelectorForLogstash(params.Logstash),
+				lslabels.NewLabelSelectorForLogstash(params.Logstash),
 			)
 		}),
 	); err != nil {
