@@ -258,7 +258,7 @@ func getEnvKeyValues(params Params, c *corev1.Container, data map[string]string)
 	return nil
 }
 
-// patchConfigValue updates the configs with the actual values from Env or Keystore
+// patchConfigValue resolves values in `unresolved` using `combinedMap` as a dictionary.
 func patchConfigValue(unresolved map[string]*string, combinedMap map[string]string) {
 	for varName, config := range unresolved {
 		if actualValue, ok := combinedMap[varName]; ok {
