@@ -63,7 +63,7 @@ func TestFleetAgentWithoutTLS(t *testing.T) {
 		WithDefaultESValidation(agent.HasWorkingDataStream(agent.MetricsType, "elastic_agent.metricbeat", "default"))
 
 	// https://github.com/elastic/cloud-on-k8s/issues/7389
-	if v.LT(version.MinFor(8, 12, 0)) && v.GE(version.MinFor(8, 14, 0)) {
+	if v.LT(version.MinFor(8, 12, 0)) || v.GE(version.MinFor(8, 14, 0)) {
 		fleetServerBuilder = fleetServerBuilder.
 			WithDefaultESValidation(agent.HasWorkingDataStream(agent.MetricsType, "elastic_agent.filebeat", "default"))
 	}
