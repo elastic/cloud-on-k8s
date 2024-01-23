@@ -223,7 +223,7 @@ config:
   # Interval between observations of Elasticsearch health, non-positive values disable asynchronous observation.
   elasticsearchObservationInterval: 10s
 
-  # ubiOnly specifies whether the operator will use only UBI container images to deploy Elastic Stack applications. UBI images are only available from 7.10.0 onward.
+  # ubiOnly specifies whether the operator will use only UBI container images to deploy Elastic Stack applications as well as for its own StatefulSet image. UBI images are only available from 7.10.0 onward.
   # Cannot be combined with the containerSuffix value.
   ubiOnly: false
 
