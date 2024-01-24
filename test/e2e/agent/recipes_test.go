@@ -88,21 +88,13 @@ func TestMultiOutputRecipe(t *testing.T) {
 }
 
 func TestFleetKubernetesIntegrationRecipe(t *testing.T) {
-	v := version.MustParse(test.Ctx().ElasticStackVersion)
-
 	customize := func(builder agent.Builder) agent.Builder {
 		if !builder.Agent.Spec.FleetServerEnabled {
 			return builder
 		}
 
 		builder = builder.
-			WithDefaultESValidation(agent.HasWorkingDataStream(agent.LogsType, "elastic_agent", "default")).
-			WithDefaultESValidation(agent.HasWorkingDataStream(agent.LogsType, "elastic_agent.filebeat", "default")).
-			WithDefaultESValidation(agent.HasWorkingDataStream(agent.LogsType, "elastic_agent.fleet_server", "default")).
-			WithDefaultESValidation(agent.HasWorkingDataStream(agent.LogsType, "elastic_agent.metricbeat", "default")).
-			WithDefaultESValidation(agent.HasWorkingDataStream(agent.MetricsType, "elastic_agent.elastic_agent", "default")).
-			WithDefaultESValidation(agent.HasWorkingDataStream(agent.MetricsType, "elastic_agent.fleet_server", "default")).
-			WithDefaultESValidation(agent.HasWorkingDataStream(agent.MetricsType, "elastic_agent.metricbeat", "default")).
+			WithFleetAgentDataStreamsValidation().
 			// TODO API server should generate event in time but on kind we see repeatedly no metrics being reported in time
 			// see https://github.com/elastic/cloud-on-k8s/issues/4092
 			// WithDefaultESValidation(agent.HasWorkingDataStream(agent.MetricsType, "kubernetes.apiserver", "k8s")).
@@ -125,12 +117,6 @@ func TestFleetKubernetesIntegrationRecipe(t *testing.T) {
 			WithDefaultESValidation(agent.HasWorkingDataStream(agent.MetricsType, "system.process.summary", "default")).
 			WithDefaultESValidation(agent.HasWorkingDataStream(agent.MetricsType, "system.socket_summary", "default")).
 			WithDefaultESValidation(agent.HasWorkingDataStream(agent.MetricsType, "system.uptime", "default"))
-
-		// https://github.com/elastic/cloud-on-k8s/issues/7389
-		if v.LT(version.MinFor(8, 12, 0)) || v.GE(version.MinFor(8, 14, 0)) {
-			builder = builder.
-				WithDefaultESValidation(agent.HasWorkingDataStream(agent.MetricsType, "elastic_agent.filebeat", "default"))
-		}
 
 		return builder
 	}
@@ -157,14 +143,7 @@ func TestFleetKubernetesNonRootIntegrationRecipe(t *testing.T) {
 		}
 
 		return builder.
-			WithDefaultESValidation(agent.HasWorkingDataStream(agent.LogsType, "elastic_agent", "default")).
-			WithDefaultESValidation(agent.HasWorkingDataStream(agent.LogsType, "elastic_agent.filebeat", "default")).
-			WithDefaultESValidation(agent.HasWorkingDataStream(agent.LogsType, "elastic_agent.fleet_server", "default")).
-			WithDefaultESValidation(agent.HasWorkingDataStream(agent.LogsType, "elastic_agent.metricbeat", "default")).
-			WithDefaultESValidation(agent.HasWorkingDataStream(agent.MetricsType, "elastic_agent.elastic_agent", "default")).
-			WithDefaultESValidation(agent.HasWorkingDataStream(agent.MetricsType, "elastic_agent.filebeat", "default")).
-			WithDefaultESValidation(agent.HasWorkingDataStream(agent.MetricsType, "elastic_agent.fleet_server", "default")).
-			WithDefaultESValidation(agent.HasWorkingDataStream(agent.MetricsType, "elastic_agent.metricbeat", "default")).
+			WithFleetAgentDataStreamsValidation().
 			// TODO API server should generate event in time but on kind we see repeatedly no metrics being reported in time
 			// see https://github.com/elastic/cloud-on-k8s/issues/4092
 			// WithDefaultESValidation(agent.HasWorkingDataStream(agent.MetricsType, "kubernetes.apiserver", "k8s")).
@@ -209,14 +188,8 @@ func TestFleetCustomLogsIntegrationRecipe(t *testing.T) {
 		}
 
 		return builder.
-			WithDefaultESValidation(agent.HasWorkingDataStream(agent.LogsType, "elastic_agent", "default")).
-			WithDefaultESValidation(agent.HasWorkingDataStream(agent.LogsType, "elastic_agent.filebeat", "default")).
-			WithDefaultESValidation(agent.HasWorkingDataStream(agent.LogsType, "elastic_agent.fleet_server", "default")).
 			WithDefaultESValidation(agent.HasWorkingDataStream(agent.LogsType, "generic", "default")).
-			WithDefaultESValidation(agent.HasWorkingDataStream(agent.MetricsType, "elastic_agent.elastic_agent", "default")).
-			WithDefaultESValidation(agent.HasWorkingDataStream(agent.MetricsType, "elastic_agent.filebeat", "default")).
-			WithDefaultESValidation(agent.HasWorkingDataStream(agent.MetricsType, "elastic_agent.fleet_server", "default")).
-			WithDefaultESValidation(agent.HasWorkingDataStream(agent.MetricsType, "elastic_agent.metricbeat", "default")).
+			WithFleetAgentDataStreamsValidation().
 			WithDefaultESValidation(agent.HasEvent("/_search?q=message:" + loggingPod.Logged)).
 			WithDefaultESValidation(agent.NoEvent("/_search?q=message:" + notLoggingPod.Logged))
 	}
@@ -225,31 +198,12 @@ func TestFleetCustomLogsIntegrationRecipe(t *testing.T) {
 }
 
 func TestFleetAPMIntegrationRecipe(t *testing.T) {
-	v := version.MustParse(test.Ctx().ElasticStackVersion)
-
 	customize := func(builder agent.Builder) agent.Builder {
 		if !builder.Agent.Spec.FleetServerEnabled {
 			return builder
 		}
-
-		builder = builder.
-			WithDefaultESValidation(agent.HasWorkingDataStream(agent.LogsType, "elastic_agent", "default")).
-			WithDefaultESValidation(agent.HasWorkingDataStream(agent.LogsType, "elastic_agent.fleet_server", "default")).
-			WithDefaultESValidation(agent.HasWorkingDataStream(agent.LogsType, "elastic_agent.apm_server", "default")).
-			WithDefaultESValidation(agent.HasWorkingDataStream(agent.MetricsType, "elastic_agent.elastic_agent", "default")).
-			WithDefaultESValidation(agent.HasWorkingDataStream(agent.MetricsType, "elastic_agent.apm_server", "default")).
-			WithDefaultESValidation(agent.HasWorkingDataStream(agent.MetricsType, "elastic_agent.fleet_server", "default")).
-			WithDefaultESValidation(agent.HasWorkingDataStream(agent.MetricsType, "elastic_agent.metricbeat", "default"))
-
-		// https://github.com/elastic/cloud-on-k8s/issues/7389
-		if v.LT(version.MinFor(8, 12, 0)) || v.GE(version.MinFor(8, 14, 0)) {
-			builder = builder.
-				WithDefaultESValidation(agent.HasWorkingDataStream(agent.MetricsType, "elastic_agent.filebeat", "default"))
-		}
-
-		return builder
+		return builder.WithFleetAgentDataStreamsValidation()
 	}
-
 	runAgentRecipe(t, "fleet-apm-integration.yaml", customize)
 }
 
