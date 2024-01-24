@@ -58,7 +58,7 @@ func newReconciler(mgr manager.Manager, params operator.Parameters) *ReconcileLo
 		recorder:       mgr.GetEventRecorderFor(controllerName),
 		dynamicWatches: watches.NewDynamicWatches(),
 		Parameters:     params,
-		expectations:   expectations.NewExpectations(client),
+		expectations:   expectations.NewClustersExpectations(client),
 	}
 }
 
@@ -117,7 +117,7 @@ type ReconcileLogstash struct {
 	operator.Parameters
 	// iteration is the number of times this controller has run its Reconcile method
 	iteration    uint64
-	expectations *expectations.Expectations
+	expectations *expectations.ClustersExpectation
 }
 
 // Reconcile reads that state of the cluster for a Logstash object and makes changes based on the state read
@@ -203,7 +203,7 @@ func (r *ReconcileLogstash) doReconcile(ctx context.Context, logstash logstashv1
 		Logstash:       logstash,
 		Status:         status,
 		OperatorParams: r.Parameters,
-		Expectations:   r.expectations,
+		Expectations:   r.expectations.ForCluster(k8s.ExtractNamespacedName(&logstash)),
 	})
 }
 
@@ -220,6 +220,7 @@ func (r *ReconcileLogstash) validate(ctx context.Context, logstash logstashv1alp
 }
 
 func (r *ReconcileLogstash) onDelete(ctx context.Context, obj types.NamespacedName) error {
+	r.expectations.RemoveCluster(obj)
 	r.dynamicWatches.Secrets.RemoveHandlerForKey(keystore.SecureSettingsWatchName(obj))
 	r.dynamicWatches.Secrets.RemoveHandlerForKey(common.ConfigRefWatchName(obj))
 	r.dynamicWatches.Secrets.RemoveHandlerForKey(pipelines.RefWatchName(obj))
