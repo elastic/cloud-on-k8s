@@ -10829,8 +10829,38 @@ spec:
               resources:
                 description: Resources is the number of resources to be configured.
                 type: integer
-            required:
-            - details
+              resourcesStatuses:
+                additionalProperties:
+                  description: ResourcePolicyStatus models the status of the policy
+                    for one resource to be configured.
+                  properties:
+                    currentVersion:
+                      description: CurrentVersion denotes the current version of filesettings
+                        applied to the Elasticsearch cluster This field does not apply
+                        to Kibana resources
+                      format: int64
+                      type: integer
+                    error:
+                      properties:
+                        message:
+                          type: string
+                        version:
+                          format: int64
+                          type: integer
+                      type: object
+                    expectedVersion:
+                      description: ExpectedVersion denotes the expected version of
+                        filesettings that should be applied to the Elasticsearch cluster
+                        This field does not apply to Kibana resources
+                      format: int64
+                      type: integer
+                    phase:
+                      type: string
+                  type: object
+                description: 'ResourcesStatuses holds the status for each resource
+                  to be configured. Deprecated: Details is used to store the status
+                  of resources from ECK 2.11'
+                type: object
             type: object
         type: object
     served: true
