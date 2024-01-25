@@ -20,6 +20,8 @@ Before upgrading, refer to the <<release-notes-{eck_version}, release notes>> to
 
 Note that the release notes and highlights only list the changes since the last release. If during the upgrade you skip any intermediate versions and go for example from 1.0.0 directly to {eck_version}, review the release notes and highlights of each of the skipped releases to understand all the breaking changes you might encounter during and after the upgrade.
 
+CAUTION: When upgrading always ensure that the version of the CRDs installed in the cluster matches the version of the operator. If you are using Helm, the CRDs are upgraded automatically as part of the Helm chart. If you are using the YAML manifests, you must upgrade the CRDs manually. Running differing versions of the CRDs and the operator is not a supported configuration and can lead to unexpected behavior.
+
 [float]
 [id="{p}-upgrade-instructions"]
 == Upgrade instructions
