@@ -23,6 +23,9 @@ This section describes how to configure and deploy Logstash with ECK.
 * <<{p}-logstash-advanced-configuration,Advanced Configuration>>
 ** <<{p}-logstash-jvm-options,Setting JVM Options>>
 ** <<{p}-logstash-scaling-logstash,Scaling Logstash>>
+* <<{p}-logstash-custom-plugins>>
+* <<{p}-logstash-jar-files>>
+* <<{p}-logstash-scaling-logstash>>
 * <<{p}-logstash-technical-preview-limitations,Technical Preview Limitations>>
 
 
@@ -930,7 +933,7 @@ spec:
 <1> Providing the correct version is always required as ECK reasons about APIs and capabilities available to it based on the version field.
 
 
-[id="({p}-logstash-jar-files"]
+[id="{p}-logstash-jar-files"]
 == Working with plugins that require additional files
 
 Running {ls} may require additional files, such as JAR files needed to load JDBC drivers when using a JDBC or JMS plugin. To add these files, there are two options available - using an `initContainer` to add files before the main container start, or creating a custom Docker image that includes the required files. Refer to <<{p}-bundles-plugins>> for a run down of which option might be most suitable for you.
