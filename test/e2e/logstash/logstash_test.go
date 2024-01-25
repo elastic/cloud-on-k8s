@@ -23,6 +23,28 @@ func TestSingleLogstash(t *testing.T) {
 	test.Sequence(nil, test.EmptySteps, logstashBuilder).RunSequential(t)
 }
 
+func TestLogstashWithEnv(t *testing.T) {
+	name := "test-env-logstash"
+	logstashBuilder := logstash.NewBuilder(name).
+		WithNodeCount(1).
+		WithPodTemplate(corev1.PodTemplateSpec{
+			Spec: corev1.PodSpec{
+				Containers: []corev1.Container{
+					{
+						Name: "logstash",
+						Env: []corev1.EnvVar{
+							{
+								Name:  "NODE_NAME",
+								Value: "node01",
+							},
+						},
+					},
+				},
+			},
+		})
+	test.Sequence(nil, test.EmptySteps, logstashBuilder).RunSequential(t)
+}
+
 func TestLogstashWithCustomService(t *testing.T) {
 	name := "test-multiple-custom-logstash"
 	service := logstashv1alpha1.LogstashService{
