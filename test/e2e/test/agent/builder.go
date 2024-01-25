@@ -181,6 +181,23 @@ func (b Builder) WithESValidation(validation ValidationFunc, outputName string) 
 	return b
 }
 
+func (b Builder) WithFleetAgentDataStreamsValidation() Builder {
+	v := version.MustParse(test.Ctx().ElasticStackVersion)
+	b = b.
+		WithDefaultESValidation(HasWorkingDataStream(LogsType, "elastic_agent", "default")).
+		WithDefaultESValidation(HasWorkingDataStream(LogsType, "elastic_agent.filebeat", "default")).
+		WithDefaultESValidation(HasWorkingDataStream(LogsType, "elastic_agent.fleet_server", "default")).
+		WithDefaultESValidation(HasWorkingDataStream(LogsType, "elastic_agent.metricbeat", "default")).
+		WithDefaultESValidation(HasWorkingDataStream(MetricsType, "elastic_agent.elastic_agent", "default")).
+		WithDefaultESValidation(HasWorkingDataStream(MetricsType, "elastic_agent.fleet_server", "default")).
+		WithDefaultESValidation(HasWorkingDataStream(MetricsType, "elastic_agent.metricbeat", "default"))
+	// https://github.com/elastic/cloud-on-k8s/issues/7389
+	if v.LT(version.MinFor(8, 12, 0)) || v.GE(version.MinFor(8, 14, 0)) {
+		b = b.WithDefaultESValidation(HasWorkingDataStream(MetricsType, "elastic_agent.filebeat", "default"))
+	}
+	return b
+}
+
 func (b Builder) WithElasticsearchRefs(refs ...agentv1alpha1.Output) Builder {
 	b.Agent.Spec.ElasticsearchRefs = refs
 	return b

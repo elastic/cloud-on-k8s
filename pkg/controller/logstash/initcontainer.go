@@ -18,6 +18,8 @@ const (
 	UseTLSEnv               = "USE_TLS"
 
 	// InitConfigScript is a small bash script to prepare the logstash configuration directory
+	// Logstash rewrites the configuration file (logstash.yml) in the presence of ${VAR} environment variable,
+	// therefore the file is copied to the path instead of creating symbolic link.
 	InitConfigScript = `#!/usr/bin/env bash
 set -eu
 
@@ -46,7 +48,7 @@ echo "Setup Logstash configuration"
 
 cp -f /usr/share/logstash/config/*.* "$mount_path"
 
-ln -sf ` + volume.InternalConfigVolumeMountPath + `/` + ConfigFileName + ` $mount_path
+cp ` + volume.InternalConfigVolumeMountPath + `/` + ConfigFileName + ` $mount_path
 ln -sf ` + volume.InternalPipelineVolumeMountPath + `/` + PipelineFileName + ` $mount_path
 
 touch "${init_config_initialized_flag}"
