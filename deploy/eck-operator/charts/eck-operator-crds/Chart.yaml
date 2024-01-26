@@ -1,5 +1,5 @@
 apiVersion: v2
-  
+
 name: eck-operator-crds
 
 icon: https://helm.elastic.co/icons/eck.png
@@ -8,9 +8,9 @@ description: ECK operator Custom Resource Definitions
 
 type: application
 
-version: 2.11.0
+version: 2.11.1
 
-appVersion: 2.11.0
+appVersion: 2.11.1
 
 home: https://github.com/elastic/cloud-on-k8s
 
