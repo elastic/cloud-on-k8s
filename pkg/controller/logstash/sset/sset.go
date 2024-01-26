@@ -7,14 +7,15 @@ package sset
 import (
 	"context"
 	"fmt"
+	"strings"
 
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
-	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
+	lsv1alpha1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/logstash/v1alpha1"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/expectations"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/hash"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/reconciler"
@@ -22,6 +23,8 @@ import (
 
 	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/k8s"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/maps"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/stringsutil"
+	ulog "github.com/elastic/cloud-on-k8s/v2/pkg/utils/log"
 )
 
 type Params struct {
@@ -118,41 +121,6 @@ func GetReplicas(statefulSet appsv1.StatefulSet) int32 {
 	return 0
 }
 
-// GetClaim returns a pointer to the claim with the given name, or nil if not found.
-func GetClaim(claims []corev1.PersistentVolumeClaim, claimName string) *corev1.PersistentVolumeClaim {
-	for i, claim := range claims {
-		if claim.Name == claimName {
-			return &claims[i]
-		}
-	}
-	return nil
-}
-
-// RetrieveActualPVCs returns all existing PVCs for that StatefulSet, per claim name.
-func RetrieveActualPVCs(k8sClient k8s.Client, statefulSet appsv1.StatefulSet) (map[string][]corev1.PersistentVolumeClaim, error) {
-	pvcs := make(map[string][]corev1.PersistentVolumeClaim)
-	for _, podName := range PodNames(statefulSet) {
-		for _, claim := range statefulSet.Spec.VolumeClaimTemplates {
-			if claim.Name == "" {
-				continue
-			}
-			pvcName := fmt.Sprintf("%s-%s", claim.Name, podName)
-			var pvc corev1.PersistentVolumeClaim
-			if err := k8sClient.Get(context.Background(), types.NamespacedName{Namespace: statefulSet.Namespace, Name: pvcName}, &pvc); err != nil {
-				if apierrors.IsNotFound(err) {
-					continue // PVC does not exist (yet)
-				}
-				return nil, err
-			}
-			if _, exists := pvcs[claim.Name]; !exists {
-				pvcs[claim.Name] = make([]corev1.PersistentVolumeClaim, 0)
-			}
-			pvcs[claim.Name] = append(pvcs[claim.Name], pvc)
-		}
-	}
-	return pvcs, nil
-}
-
 // PodName returns the name of the pod with the given ordinal for this StatefulSet.
 func PodName(ssetName string, ordinal int32) string {
 	return fmt.Sprintf("%s-%d", ssetName, ordinal)
@@ -179,4 +147,61 @@ func GetActualPodsForStatefulSet(c k8s.Client, sset types.NamespacedName) ([]cor
 		return nil, err
 	}
 	return pods.Items, nil
+}
+
+// RetrieveActualStatefulSet returns the StatefulSet for the given ls cluster.
+func RetrieveActualStatefulSet(c k8s.Client, ls lsv1alpha1.Logstash) (appsv1.StatefulSet, error) {
+	var sset appsv1.StatefulSet
+	err := c.Get(context.Background(), types.NamespacedName{Name: lsv1alpha1.Name(ls.Name), Namespace: ls.Namespace}, &sset)
+	if err != nil {
+		return appsv1.StatefulSet{}, err
+	}
+
+	return sset, nil
+}
+
+// PodReconciliationDone returns true if actual existing pods match what is specified in the StatefulSetList.
+// It may return false if there are pods in the process of being:
+// - created (but not there in our resources cache)
+// - removed (but still there in our resources cache)
+// Status of the pods (running, error, etc.) is ignored.
+func PodReconciliationDone(ctx context.Context, c k8s.Client, statefulSet appsv1.StatefulSet) (bool, string, error) {
+	pendingCreations, pendingDeletions, err := pendingPodsForStatefulSet(c, statefulSet)
+	if err != nil {
+		return false, "", err
+	}
+	if len(pendingCreations) > 0 || len(pendingDeletions) > 0 {
+		ulog.FromContext(ctx).V(1).Info(
+			"Some pods still need to be created/deleted",
+			"namespace", statefulSet.Namespace, "statefulset_name", statefulSet.Name,
+			"pending_creations", pendingCreations, "pending_deletions", pendingDeletions,
+		)
+
+		var reason strings.Builder
+		if len(pendingCreations) > 0 {
+			reason.WriteString(fmt.Sprintf(", creations: %s", pendingCreations))
+		}
+		if len(pendingDeletions) > 0 {
+			reason.WriteString(fmt.Sprintf(", deletions: %s", pendingDeletions))
+		}
+
+		return false, reason.String(), nil
+	}
+	return true, "", nil
+}
+
+func pendingPodsForStatefulSet(c k8s.Client, statefulSet appsv1.StatefulSet) ([]string, []string, error) {
+	// check all expected pods are there: no more, no less
+	actualPods, err := GetActualPodsForStatefulSet(c, k8s.ExtractNamespacedName(&statefulSet))
+	if err != nil {
+		return nil, nil, err
+	}
+	actualPodNames := k8s.PodNames(actualPods)
+	expectedPodNames := PodNames(statefulSet)
+	pendingCreations, pendingDeletions := stringsutil.Difference(expectedPodNames, actualPodNames)
+	return pendingCreations, pendingDeletions, nil
+}
+
+func IsPendingReconciliation(sset appsv1.StatefulSet) bool {
+	return sset.Generation != sset.Status.ObservedGeneration
 }

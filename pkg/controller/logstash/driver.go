@@ -8,11 +8,11 @@ import (
 	"context"
 	"fmt"
 	"hash/fnv"
-	"strings"
 
 	"github.com/go-logr/logr"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/client-go/tools/record"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 
 	logstashv1alpha1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/logstash/v1alpha1"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/certificates"
@@ -162,15 +162,23 @@ func (p *Params) expectationsSatisfied(ctx context.Context) (bool, string, error
 		log.V(1).Info("Cache expectations are not satisfied yet, re-queueing", "namespace", p.Logstash.Namespace, "ls_name", p.Logstash.Name, "reason", reason)
 		return false, reason, nil
 	}
-	actualStatefulSets, err := sset.RetrieveActualStatefulSets(p.Client, k8s.ExtractNamespacedName(&p.Logstash))
-	if err != nil {
+	actualStatefulSet, err := sset.RetrieveActualStatefulSet(p.Client, p.Logstash)
+	notFound := apierrors.IsNotFound(err)
+
+	if err != nil && !notFound{
+		if notFound {
+			return true, "", nil
+		}
 		return false, "Cannot retrieve actual stateful sets", err
 	}
-	// make sure StatefulSet statuses have been reconciled by the StatefulSet controller
-	pendingStatefulSetReconciliation := actualStatefulSets.PendingReconciliation()
-	if len(pendingStatefulSetReconciliation) > 0 {
-		log.V(1).Info("StatefulSets observedGeneration is not reconciled yet, re-queueing", "namespace", p.Logstash.Namespace, "ls_name", p.Logstash.Name)
-		return false, fmt.Sprintf("observedGeneration is not reconciled yet for StatefulSets %s", strings.Join(pendingStatefulSetReconciliation.Names().AsSlice(), ",")), nil
+
+	if !notFound {
+		// make sure StatefulSet statuses have been reconciled by the StatefulSet controller
+		pendingStatefulSetReconciliation := sset.IsPendingReconciliation(actualStatefulSet)
+		if pendingStatefulSetReconciliation {
+			log.V(1).Info("StatefulSets observedGeneration is not reconciled yet, re-queueing", "namespace", p.Logstash.Namespace, "ls_name", p.Logstash.Name)
+			return false, fmt.Sprintf("observedGeneration is not reconciled yet for StatefulSet %s", actualStatefulSet.Name), nil
+		}
 	}
-	return actualStatefulSets.PodReconciliationDone(ctx, p.Client)
+	return sset.PodReconciliationDone(ctx, p.Client, actualStatefulSet)
 }

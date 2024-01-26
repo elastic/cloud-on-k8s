@@ -33,14 +33,6 @@ func NewLabels(logstash logstashv1alpha1.Logstash) map[string]string {
 	}
 }
 
-func NewPodLabels(logstash logstashv1alpha1.Logstash, ssetName string) map[string]string {
-	return map[string]string{
-		commonv1.TypeLabelName:   TypeLabelValue,
-		NameLabelName:            logstash.Name,
-		StatefulSetNameLabelName: ssetName,
-	}
-}
-
 // NewLabelSelectorForElasticsearch returns a labels.Selector that matches the labels as constructed by NewLabels
 func NewLabelSelectorForLogstash(ls logstashv1alpha1.Logstash) client.MatchingLabels {
 	return NewLabelSelectorForLogstashName(ls.Name)

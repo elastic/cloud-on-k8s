@@ -84,22 +84,20 @@ func reconcileStatefulSet(params Params, podTemplate corev1.PodTemplateSpec) (*r
 		return results.WithError(err), params.Status
 	}
 
-	actualStatefulSets, err := sset.RetrieveActualStatefulSets(params.Client, k8s.ExtractNamespacedName(&params.Logstash))
+	actualStatefulSet, err := sset.RetrieveActualStatefulSet(params.Client, params.Logstash)
+	notFound := apierrors.IsNotFound(err)
 
-	if err != nil {
+	if err != nil && !notFound{
 		return results.WithError(err), params.Status
 	}
 
-	// recreations := 0
-	for _, actualStatefulSet := range actualStatefulSets {
-		if _, exists := actualStatefulSets.GetByName(actualStatefulSet.Name); exists {
-			recreateSset, err := volume.HandleVolumeExpansion(params.Context, params.Client, &params.Logstash, expected, actualStatefulSet, true)
-			if err != nil {
-				return results.WithError(err), params.Status
-			}
-			if recreateSset {
-				return results.WithResult(reconcile.Result{Requeue: true}), params.Status
-			}
+	if !notFound {
+		recreateSset, err := volume.HandleVolumeExpansion(params.Context, params.Client, &params.Logstash, expected, actualStatefulSet, true)
+		if err != nil {
+			return results.WithError(err), params.Status
+		}
+		if recreateSset {
+			return results.WithResult(reconcile.Result{Requeue: true}), params.Status
 		}
 	}
 
