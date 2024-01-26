@@ -58,6 +58,9 @@ func extractAssocConfFromAnnotation(annotations map[string]string, annotationNam
 	return &assocConf, nil
 }
 
+// unsafeStringToBytes converts a string to a byte array without making extra allocations.
+// since we read potentially large strings from annotations on every reconcile loop, this should help
+// reduce the amount of garbage created.
 func unsafeStringToBytes(s string) []byte {
 	if s == "" {
 		return nil
