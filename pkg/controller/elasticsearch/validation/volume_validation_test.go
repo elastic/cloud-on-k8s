@@ -6,7 +6,6 @@ package validation
 
 import (
 	"context"
-	"reflect"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -18,7 +17,6 @@ import (
 	"k8s.io/utils/ptr"
 
 	esv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/elasticsearch/v1"
-	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/comparison"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/k8s"
 )
 

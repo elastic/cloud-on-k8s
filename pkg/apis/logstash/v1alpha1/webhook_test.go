@@ -14,7 +14,7 @@ import (
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
-	"k8s.io/utils/pointer"
+	"k8s.io/utils/ptr"
 
 	commonv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/common/v1"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/apis/logstash/v1alpha1"
@@ -134,7 +134,7 @@ func TestWebhook_Update(t *testing.T) {
 			Object: func(t *testing.T, uid string) []byte {
 				t.Helper()
 				ls := mkLogstash(uid)
-				ls.Spec.VolumeClaimTemplates[0].Spec.StorageClassName = pointer.String("different")
+				ls.Spec.VolumeClaimTemplates[0].Spec.StorageClassName = ptr.To[string]("different")
 				return serialize(t, ls)
 			},
 			Check: test.ValidationWebhookFailed(`Volume claim templates can only have storage requests modified`),
@@ -159,7 +159,7 @@ func mkLogstash(uid string) *v1alpha1.Logstash {
 					Name: "test-pq",
 				},
 					Spec: corev1.PersistentVolumeClaimSpec{
-						Resources: corev1.ResourceRequirements{
+						Resources: corev1.VolumeResourceRequirements{
 							Requests: corev1.ResourceList{
 								corev1.ResourceStorage: resource.MustParse("1Gi"),
 							},

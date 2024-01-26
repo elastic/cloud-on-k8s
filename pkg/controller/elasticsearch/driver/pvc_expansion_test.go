@@ -16,7 +16,7 @@ import (
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes/scheme"
-	"k8s.io/utils/pointer"
+	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 
@@ -34,15 +34,15 @@ var (
 	sampleClaim = corev1.PersistentVolumeClaim{
 		ObjectMeta: metav1.ObjectMeta{Name: "sample-claim"},
 		Spec: corev1.PersistentVolumeClaimSpec{
-			StorageClassName: pointer.String(sampleStorageClass.Name),
-			Resources: corev1.ResourceRequirements{Requests: map[corev1.ResourceName]resource.Quantity{
+			StorageClassName: ptr.To[string](sampleStorageClass.Name),
+			Resources: corev1.VolumeResourceRequirements{Requests: map[corev1.ResourceName]resource.Quantity{
 				corev1.ResourceStorage: resource.MustParse("1Gi"),
 			}}}}
 	sampleClaim2 = corev1.PersistentVolumeClaim{
 		ObjectMeta: metav1.ObjectMeta{Name: "sample-claim-2"},
 		Spec: corev1.PersistentVolumeClaimSpec{
-			StorageClassName: pointer.String(sampleStorageClass.Name),
-			Resources: corev1.ResourceRequirements{Requests: map[corev1.ResourceName]resource.Quantity{
+			StorageClassName: ptr.To[string](sampleStorageClass.Name),
+			Resources: corev1.VolumeResourceRequirements{Requests: map[corev1.ResourceName]resource.Quantity{
 				corev1.ResourceStorage: resource.MustParse("1Gi"),
 			}}}}
 

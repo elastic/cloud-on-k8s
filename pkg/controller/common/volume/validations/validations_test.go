@@ -13,7 +13,7 @@ import (
 	storagev1 "k8s.io/api/storage/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/utils/pointer"
+	"k8s.io/utils/ptr"
 
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/comparison"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/k8s"
@@ -33,21 +33,21 @@ var (
 	sampleClaim = corev1.PersistentVolumeClaim{
 		ObjectMeta: metav1.ObjectMeta{Name: "sample-claim"},
 		Spec: corev1.PersistentVolumeClaimSpec{
-			StorageClassName: pointer.String(sampleStorageClass.Name),
-			Resources: corev1.ResourceRequirements{Requests: map[corev1.ResourceName]resource.Quantity{
+			StorageClassName: ptr.To[string](sampleStorageClass.Name),
+			Resources: corev1.VolumeResourceRequirements{Requests: map[corev1.ResourceName]resource.Quantity{
 				corev1.ResourceStorage: resource.MustParse("1Gi"),
 			}}}}
 	sampleClaim2 = corev1.PersistentVolumeClaim{
 		ObjectMeta: metav1.ObjectMeta{Name: "sample-claim-2"},
 		Spec: corev1.PersistentVolumeClaimSpec{
-			StorageClassName: pointer.String(sampleStorageClass.Name),
-			Resources: corev1.ResourceRequirements{Requests: map[corev1.ResourceName]resource.Quantity{
+			StorageClassName: ptr.To[string](sampleStorageClass.Name),
+			Resources: corev1.VolumeResourceRequirements{Requests: map[corev1.ResourceName]resource.Quantity{
 				corev1.ResourceStorage: resource.MustParse("1Gi"),
 			}}}}
 )
 
 func withVolumeExpansion(sc storagev1.StorageClass) *storagev1.StorageClass {
-	sc.AllowVolumeExpansion = pointer.Bool(true)
+	sc.AllowVolumeExpansion = ptr.To[bool](true)
 	return &sc
 }
 
@@ -118,12 +118,12 @@ func Test_allowsVolumeExpansion(t *testing.T) {
 	}{
 		{
 			name: "allow volume expansion: true",
-			sc:   storagev1.StorageClass{AllowVolumeExpansion: pointer.Bool(true)},
+			sc:   storagev1.StorageClass{AllowVolumeExpansion: ptr.To[bool](true)},
 			want: true,
 		},
 		{
 			name: "allow volume expansion: false",
-			sc:   storagev1.StorageClass{AllowVolumeExpansion: pointer.Bool(false)},
+			sc:   storagev1.StorageClass{AllowVolumeExpansion: ptr.To[bool](false)},
 			want: false,
 		},
 		{
@@ -229,14 +229,14 @@ func Test_getStorageClass(t *testing.T) {
 		{
 			name:      "return the specified storage class",
 			k8sClient: k8s.NewFakeClient(&sampleStorageClass, &defaultStorageClass),
-			claim:     corev1.PersistentVolumeClaim{Spec: corev1.PersistentVolumeClaimSpec{StorageClassName: pointer.String(sampleStorageClass.Name)}},
+			claim:     corev1.PersistentVolumeClaim{Spec: corev1.PersistentVolumeClaimSpec{StorageClassName: ptr.To[string](sampleStorageClass.Name)}},
 			want:      sampleStorageClass,
 			wantErr:   false,
 		},
 		{
 			name:      "error out if not found",
 			k8sClient: k8s.NewFakeClient(&defaultStorageClass),
-			claim:     corev1.PersistentVolumeClaim{Spec: corev1.PersistentVolumeClaimSpec{StorageClassName: pointer.String(sampleStorageClass.Name)}},
+			claim:     corev1.PersistentVolumeClaim{Spec: corev1.PersistentVolumeClaimSpec{StorageClassName: ptr.To[string](sampleStorageClass.Name)}},
 			want:      storagev1.StorageClass{},
 			wantErr:   true,
 		},

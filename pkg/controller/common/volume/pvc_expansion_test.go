@@ -241,7 +241,7 @@ func Test_handleVolumeExpansionLogstash(t *testing.T) {
 	sset := appsv1.StatefulSet{
 		ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: "sample-sset"},
 		Spec: appsv1.StatefulSetSpec{
-			Replicas:             pointer.Int32(3),
+			Replicas:             ptr.To[int32](3),
 			VolumeClaimTemplates: []corev1.PersistentVolumeClaim{sampleClaim},
 		},
 	}

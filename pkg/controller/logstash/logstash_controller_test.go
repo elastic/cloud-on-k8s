@@ -21,7 +21,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/tools/record"
-	"k8s.io/utils/pointer"
+	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
@@ -189,8 +189,8 @@ func TestReconcileLogstash_Reconcile(t *testing.T) {
 									Namespace: "test",
 								},
 								Spec: corev1.PersistentVolumeClaimSpec{
-									StorageClassName: pointer.String(sampleStorageClass.Name),
-									Resources: corev1.ResourceRequirements{
+									StorageClassName: ptr.To[string](sampleStorageClass.Name),
+									Resources: corev1.VolumeResourceRequirements{
 										Requests: corev1.ResourceList{
 											corev1.ResourceStorage: resource.MustParse("1Gi"),
 										},
@@ -300,8 +300,8 @@ func TestReconcileLogstash_Reconcile(t *testing.T) {
 									Namespace: "test",
 								},
 								Spec: corev1.PersistentVolumeClaimSpec{
-									StorageClassName: pointer.String(sampleStorageClass.Name),
-									Resources: corev1.ResourceRequirements{
+									StorageClassName: ptr.To[string](sampleStorageClass.Name),
+									Resources: corev1.VolumeResourceRequirements{
 										Requests: corev1.ResourceList{
 											corev1.ResourceStorage: resource.MustParse("1Gi"),
 										},
@@ -428,8 +428,8 @@ func TestReconcileLogstash_Reconcile(t *testing.T) {
 									Namespace: "test",
 								},
 								Spec: corev1.PersistentVolumeClaimSpec{
-									StorageClassName: pointer.String(sampleStorageClass.Name),
-									Resources: corev1.ResourceRequirements{
+									StorageClassName: ptr.To[string](sampleStorageClass.Name),
+									Resources: corev1.VolumeResourceRequirements{
 										Requests: corev1.ResourceList{
 											corev1.ResourceStorage: resource.MustParse("1Gi"),
 										},
@@ -694,7 +694,7 @@ func createLogstash(capacity string, storageClassName string) logstashv1alpha1.L
 					Name: "test-pq",
 				},
 					Spec: corev1.PersistentVolumeClaimSpec{
-						Resources: corev1.ResourceRequirements{
+						Resources: corev1.VolumeResourceRequirements{
 							Requests: corev1.ResourceList{
 								corev1.ResourceStorage: resource.MustParse(capacity),
 							},
