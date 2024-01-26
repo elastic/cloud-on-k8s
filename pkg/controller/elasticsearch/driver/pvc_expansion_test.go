@@ -12,11 +12,8 @@ import (
 	"github.com/stretchr/testify/require"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
-	storagev1 "k8s.io/api/storage/v1"
-	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes/scheme"
-	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 
@@ -25,28 +22,6 @@ import (
 	controllerscheme "github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/scheme"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/label"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/k8s"
-)
-
-var (
-	sampleStorageClass = storagev1.StorageClass{ObjectMeta: metav1.ObjectMeta{
-		Name: "sample-sc"}}
-
-	sampleClaim = corev1.PersistentVolumeClaim{
-		ObjectMeta: metav1.ObjectMeta{Name: "sample-claim"},
-		Spec: corev1.PersistentVolumeClaimSpec{
-			StorageClassName: ptr.To[string](sampleStorageClass.Name),
-			Resources: corev1.VolumeResourceRequirements{Requests: map[corev1.ResourceName]resource.Quantity{
-				corev1.ResourceStorage: resource.MustParse("1Gi"),
-			}}}}
-	sampleClaim2 = corev1.PersistentVolumeClaim{
-		ObjectMeta: metav1.ObjectMeta{Name: "sample-claim-2"},
-		Spec: corev1.PersistentVolumeClaimSpec{
-			StorageClassName: ptr.To[string](sampleStorageClass.Name),
-			Resources: corev1.VolumeResourceRequirements{Requests: map[corev1.ResourceName]resource.Quantity{
-				corev1.ResourceStorage: resource.MustParse("1Gi"),
-			}}}}
-
-	sampleSset = appsv1.StatefulSet{ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: "sample-sset"}}
 )
 
 func Test_recreateStatefulSets(t *testing.T) {

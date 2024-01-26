@@ -23,13 +23,6 @@ import (
 var (
 	sampleStorageClass = storagev1.StorageClass{ObjectMeta: metav1.ObjectMeta{
 		Name: "sample-sc"}}
-	defaultStorageClass = storagev1.StorageClass{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:        "default-sc",
-			Annotations: map[string]string{"storageclass.kubernetes.io/is-default-class": "true"}}}
-	defaultBetaStorageClass = storagev1.StorageClass{ObjectMeta: metav1.ObjectMeta{
-		Name:        "default-beta-sc",
-		Annotations: map[string]string{"storageclass.beta.kubernetes.io/is-default-class": "true"}}}
 
 	sampleClaim = corev1.PersistentVolumeClaim{
 		ObjectMeta: metav1.ObjectMeta{Name: "sample-claim"},
@@ -46,11 +39,6 @@ var (
 				corev1.ResourceStorage: resource.MustParse("1Gi"),
 			}}}}
 )
-
-func withVolumeExpansion(sc storagev1.StorageClass) *storagev1.StorageClass {
-	sc.AllowVolumeExpansion = ptr.To[bool](true)
-	return &sc
-}
 
 func withStorageReq(claim corev1.PersistentVolumeClaim, size string) corev1.PersistentVolumeClaim {
 	c := claim.DeepCopy()
