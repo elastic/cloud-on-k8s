@@ -166,9 +166,6 @@ func (p *Params) expectationsSatisfied(ctx context.Context) (bool, string, error
 	notFound := apierrors.IsNotFound(err)
 
 	if err != nil && !notFound{
-		if notFound {
-			return true, "", nil
-		}
 		return false, "Cannot retrieve actual stateful sets", err
 	}
 

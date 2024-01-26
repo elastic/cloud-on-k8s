@@ -35,7 +35,14 @@ import (
 
 func reconcileStatefulSet(params Params, podTemplate corev1.PodTemplateSpec) (*reconciler.Results, logstashv1alpha1.LogstashStatus) {
 	defer tracing.Span(&params.Context)()
+
+
 	results := reconciler.NewResult(params.Context)
+
+	ok, _, err := params.expectationsSatisfied(params.Context)
+	if err != nil {
+		return results.WithError(err), params.Status
+	}
 
 	expected := sset.New(sset.Params{
 		Name:                 logstashv1alpha1.Name(params.Logstash.Name),
@@ -71,17 +78,9 @@ func reconcileStatefulSet(params Params, podTemplate corev1.PodTemplateSpec) (*r
 			"recreations", recreations, "status", params.Status)
 		return results.WithResult(reconcile.Result{RequeueAfter: 30 * time.Second}), params.Status
 	}
-	ok, _, err := params.expectationsSatisfied(params.Context)
-	if err != nil {
-		return results.WithError(err), params.Status
-	}
 
 	if !ok {
 		return results.WithResult(reconcile.Result{Requeue: true}), params.Status
-	}
-
-	if err := controllerutil.SetControllerReference(&params.Logstash, &expected, scheme.Scheme); err != nil {
-		return results.WithError(err), params.Status
 	}
 
 	actualStatefulSet, err := sset.RetrieveActualStatefulSet(params.Client, params.Logstash)
@@ -99,6 +98,10 @@ func reconcileStatefulSet(params Params, podTemplate corev1.PodTemplateSpec) (*r
 		if recreateSset {
 			return results.WithResult(reconcile.Result{Requeue: true}), params.Status
 		}
+	}
+
+	if err := controllerutil.SetControllerReference(&params.Logstash, &expected, scheme.Scheme); err != nil {
+		return results.WithError(err), params.Status
 	}
 
 	reconciled, err := sset.Reconcile(params.Context, params.Client, expected, &params.Logstash, params.Expectations)
@@ -146,3 +149,4 @@ func updateStatus(ctx context.Context, logstash logstashv1alpha1.Logstash, clien
 	logstash.Status = status
 	return common.UpdateStatus(ctx, client, &logstash)
 }
+
