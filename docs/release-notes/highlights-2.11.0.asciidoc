@@ -2,6 +2,11 @@
 == 2.11.0 release highlights
 
 [float]
+[id="{p}-2110-known-issues"]
+=== Known issues
+- The `resourceStatuses` field of the status subresource of the Stack Configuration Policy was removed which could cause errors in the operator logs during an upgrade.
+
+[float]
 [id="{p}-2110-new-and-notable"]
 === New and notable
 
