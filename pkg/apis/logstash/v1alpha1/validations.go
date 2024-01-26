@@ -7,7 +7,9 @@ package v1alpha1
 import (
 	"fmt"
 
+	corev1 "k8s.io/api/core/v1"
 	apiequality "k8s.io/apimachinery/pkg/api/equality"
+	"k8s.io/apimachinery/pkg/api/resource"
 	"k8s.io/apimachinery/pkg/util/validation/field"
 
 	commonv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/common/v1"
@@ -15,7 +17,7 @@ import (
 )
 
 const (
-	pvcImmutableMsg = "Volume claim templates cannot be modified"
+	pvcImmutableMsg = "Volume claim templates can only have storage requests modified"
 )
 
 var (
@@ -108,10 +110,24 @@ func checkPVCchanges(current, proposed *Logstash) field.ErrorList {
 		return errs
 	}
 
-	// checking semantic equality here allows providing PVC storage size with different units (eg. 1Ti vs. 1024Gi).
-	if !apiequality.Semantic.DeepEqual(current.Spec.VolumeClaimTemplates, proposed.Spec.VolumeClaimTemplates) {
+	// Check that no modification was made to the claims, except on storage requests.
+	if !apiequality.Semantic.DeepEqual(
+		claimsWithoutStorageReq(current.Spec.VolumeClaimTemplates),
+		claimsWithoutStorageReq(proposed.Spec.VolumeClaimTemplates),
+	) {
 		errs = append(errs, field.Invalid(field.NewPath("spec").Child("volumeClaimTemplates"), proposed.Spec.VolumeClaimTemplates, pvcImmutableMsg))
 	}
 
 	return errs
+}
+
+// claimsWithoutStorageReq returns a copy of the given claims, with all storage requests set to the empty quantity.
+func claimsWithoutStorageReq(claims []corev1.PersistentVolumeClaim) []corev1.PersistentVolumeClaim {
+	result := make([]corev1.PersistentVolumeClaim, 0, len(claims))
+	for _, claim := range claims {
+		patchedClaim := *claim.DeepCopy()
+		patchedClaim.Spec.Resources.Requests[corev1.ResourceStorage] = resource.Quantity{}
+		result = append(result, patchedClaim)
+	}
+	return result
 }
