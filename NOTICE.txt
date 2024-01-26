@@ -4961,11 +4961,11 @@ Contents of probable licence file $GOMODCACHE/k8s.io/utils@v0.0.0-20230726121419
 
 --------------------------------------------------------------------------------
 Module  : sigs.k8s.io/controller-runtime
-Version : v0.16.3
-Time    : 2023-10-18T17:59:06Z
+Version : v0.17.0
+Time    : 2024-01-16T07:21:39Z
 Licence : Apache-2.0
 
-Contents of probable licence file $GOMODCACHE/sigs.k8s.io/controller-runtime@v0.16.3/LICENSE:
+Contents of probable licence file $GOMODCACHE/sigs.k8s.io/controller-runtime@v0.17.0/LICENSE:
 
                                  Apache License
                            Version 2.0, January 2004
@@ -7128,11 +7128,11 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 --------------------------------------------------------------------------------
 Module  : github.com/evanphx/json-patch/v5
-Version : v5.6.0
-Time    : 2021-10-20T18:47:23Z
+Version : v5.8.0
+Time    : 2024-01-12T23:03:35Z
 Licence : BSD-3-Clause
 
-Contents of probable licence file $GOMODCACHE/github.com/evanphx/json-patch/v5@v5.6.0/LICENSE:
+Contents of probable licence file $GOMODCACHE/github.com/evanphx/json-patch/v5@v5.8.0/LICENSE:
 
 Copyright (c) 2014, Evan Phoenix
 All rights reserved.
@@ -7471,11 +7471,11 @@ Contents of probable licence file $GOMODCACHE/github.com/go-jose/go-jose/v3@v3.0
 
 --------------------------------------------------------------------------------
 Module  : github.com/go-logr/zapr
-Version : v1.2.4
-Time    : 2023-05-10T15:05:08Z
+Version : v1.3.0
+Time    : 2023-11-03T09:58:42Z
 Licence : Apache-2.0
 
-Contents of probable licence file $GOMODCACHE/github.com/go-logr/zapr@v1.2.4/LICENSE:
+Contents of probable licence file $GOMODCACHE/github.com/go-logr/zapr@v1.3.0/LICENSE:
 
                                  Apache License
                            Version 2.0, January 2004
@@ -14017,11 +14017,11 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 --------------------------------------------------------------------------------
 Module  : github.com/onsi/ginkgo/v2
-Version : v2.13.0
-Time    : 2023-10-09T12:31:22Z
+Version : v2.14.0
+Time    : 2024-01-11T21:24:28Z
 Licence : MIT
 
-Contents of probable licence file $GOMODCACHE/github.com/onsi/ginkgo/v2@v2.13.0/LICENSE:
+Contents of probable licence file $GOMODCACHE/github.com/onsi/ginkgo/v2@v2.14.0/LICENSE:
 
 Copyright (c) 2013-2014 Onsi Fakhouri
 
@@ -15532,11 +15532,11 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
 
 --------------------------------------------------------------------------------
 Module  : go.uber.org/goleak
-Version : v1.2.1
-Time    : 2023-02-13T19:01:45Z
+Version : v1.3.0
+Time    : 2023-10-24T16:28:03Z
 Licence : MIT
 
-Contents of probable licence file $GOMODCACHE/go.uber.org/goleak@v1.2.1/LICENSE:
+Contents of probable licence file $GOMODCACHE/go.uber.org/goleak@v1.3.0/LICENSE:
 
 The MIT License (MIT)
 
