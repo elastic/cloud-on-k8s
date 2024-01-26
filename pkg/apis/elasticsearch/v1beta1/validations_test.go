@@ -352,7 +352,7 @@ func Test_pvcModified(t *testing.T) {
 										Name: "elasticsearch-data",
 									},
 									Spec: corev1.PersistentVolumeClaimSpec{
-										Resources: corev1.ResourceRequirements{
+										Resources: corev1.VolumeResourceRequirements{
 											Requests: corev1.ResourceList{
 												corev1.ResourceStorage: resource.MustParse("10Gi"),
 											},
@@ -382,7 +382,7 @@ func Test_pvcModified(t *testing.T) {
 										Name: "elasticsearch-data",
 									},
 									Spec: corev1.PersistentVolumeClaimSpec{
-										Resources: corev1.ResourceRequirements{
+										Resources: corev1.VolumeResourceRequirements{
 											Requests: corev1.ResourceList{
 												corev1.ResourceStorage: resource.MustParse("5Gi"),
 											},
@@ -412,7 +412,7 @@ func Test_pvcModified(t *testing.T) {
 										Name: "elasticsearch-data",
 									},
 									Spec: corev1.PersistentVolumeClaimSpec{
-										Resources: corev1.ResourceRequirements{
+										Resources: corev1.VolumeResourceRequirements{
 											Requests: corev1.ResourceList{
 												corev1.ResourceStorage: resource.MustParse("5Gi"),
 											},
@@ -424,7 +424,7 @@ func Test_pvcModified(t *testing.T) {
 										Name: "elasticsearch-data1",
 									},
 									Spec: corev1.PersistentVolumeClaimSpec{
-										Resources: corev1.ResourceRequirements{
+										Resources: corev1.VolumeResourceRequirements{
 											Requests: corev1.ResourceList{
 												corev1.ResourceStorage: resource.MustParse("5Gi"),
 											},
@@ -454,7 +454,7 @@ func Test_pvcModified(t *testing.T) {
 										Name: "elasticsearch-data1",
 									},
 									Spec: corev1.PersistentVolumeClaimSpec{
-										Resources: corev1.ResourceRequirements{
+										Resources: corev1.VolumeResourceRequirements{
 											Requests: corev1.ResourceList{
 												corev1.ResourceStorage: resource.MustParse("5Gi"),
 											},
@@ -484,7 +484,7 @@ func Test_pvcModified(t *testing.T) {
 										Name: "elasticsearch-data",
 									},
 									Spec: corev1.PersistentVolumeClaimSpec{
-										Resources: corev1.ResourceRequirements{
+										Resources: corev1.VolumeResourceRequirements{
 											Requests: corev1.ResourceList{
 												corev1.ResourceStorage: resource.MustParse("5Gi"),
 											},
@@ -501,7 +501,7 @@ func Test_pvcModified(t *testing.T) {
 										Name: "elasticsearch-data",
 									},
 									Spec: corev1.PersistentVolumeClaimSpec{
-										Resources: corev1.ResourceRequirements{
+										Resources: corev1.VolumeResourceRequirements{
 											Requests: corev1.ResourceList{
 												corev1.ResourceStorage: resource.MustParse("10Gi"),
 											},
@@ -645,7 +645,7 @@ func getEsCluster() *Elasticsearch {
 								Name: "elasticsearch-data",
 							},
 							Spec: corev1.PersistentVolumeClaimSpec{
-								Resources: corev1.ResourceRequirements{
+								Resources: corev1.VolumeResourceRequirements{
 									Requests: corev1.ResourceList{
 										corev1.ResourceStorage: resource.MustParse("5Gi"),
 									},

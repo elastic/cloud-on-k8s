@@ -14,6 +14,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/rand"
+	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	commonv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/common/v1"
@@ -21,7 +22,6 @@ import (
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/container"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/version"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/volume"
-	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/pointer"
 	"github.com/elastic/cloud-on-k8s/v2/test/e2e/cmd/run"
 	"github.com/elastic/cloud-on-k8s/v2/test/e2e/test"
 )
@@ -393,7 +393,7 @@ func (b Builder) WithDefaultPersistentVolumes() Builder {
 					AccessModes: []corev1.PersistentVolumeAccessMode{
 						corev1.ReadWriteOnce,
 					},
-					Resources: corev1.ResourceRequirements{
+					Resources: corev1.VolumeResourceRequirements{
 						Requests: corev1.ResourceList{
 							corev1.ResourceStorage: resource.MustParse("1Gi"),
 						},
@@ -436,8 +436,8 @@ func (b Builder) WithAdditionalConfig(nodeSetCfg map[string]map[string]interface
 
 func (b Builder) WithChangeBudget(maxSurge, maxUnavailable int32) Builder {
 	b.Elasticsearch.Spec.UpdateStrategy.ChangeBudget = esv1.ChangeBudget{
-		MaxSurge:       pointer.Int32(maxSurge),
-		MaxUnavailable: pointer.Int32(maxUnavailable),
+		MaxSurge:       ptr.To[int32](maxSurge),
+		MaxUnavailable: ptr.To[int32](maxUnavailable),
 	}
 	return b
 }

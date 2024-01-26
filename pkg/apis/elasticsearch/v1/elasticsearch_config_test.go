@@ -9,7 +9,7 @@ import (
 
 	"github.com/go-test/deep"
 	"github.com/stretchr/testify/require"
-	"k8s.io/utils/pointer"
+	"k8s.io/utils/ptr"
 
 	commonv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/common/v1"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/version"
@@ -30,11 +30,11 @@ func TestConfig_RoleDefaults(t *testing.T) {
 			name: "empty equals defaults",
 			args: args{},
 			wantCfg: Node{
-				Master:    pointer.Bool(true),
-				Data:      pointer.Bool(true),
-				Ingest:    pointer.Bool(true),
-				ML:        pointer.Bool(true),
-				Transform: pointer.Bool(false),
+				Master:    ptr.To[bool](true),
+				Data:      ptr.To[bool](true),
+				Ingest:    ptr.To[bool](true),
+				ML:        ptr.To[bool](true),
+				Transform: ptr.To[bool](false),
 			},
 		},
 		{
@@ -47,11 +47,11 @@ func TestConfig_RoleDefaults(t *testing.T) {
 				},
 			},
 			wantCfg: Node{
-				Master:    pointer.Bool(true),
-				Data:      pointer.Bool(true),
-				Ingest:    pointer.Bool(true),
-				ML:        pointer.Bool(true),
-				Transform: pointer.Bool(false),
+				Master:    ptr.To[bool](true),
+				Data:      ptr.To[bool](true),
+				Ingest:    ptr.To[bool](true),
+				ML:        ptr.To[bool](true),
+				Transform: ptr.To[bool](false),
 			},
 		},
 		{
@@ -64,11 +64,11 @@ func TestConfig_RoleDefaults(t *testing.T) {
 				},
 			},
 			wantCfg: Node{
-				Master:    pointer.Bool(true),
-				Data:      pointer.Bool(false),
-				Ingest:    pointer.Bool(true),
-				ML:        pointer.Bool(true),
-				Transform: pointer.Bool(false),
+				Master:    ptr.To[bool](true),
+				Data:      ptr.To[bool](false),
+				Ingest:    ptr.To[bool](true),
+				ML:        ptr.To[bool](true),
+				Transform: ptr.To[bool](false),
 			},
 		},
 		{
@@ -77,10 +77,10 @@ func TestConfig_RoleDefaults(t *testing.T) {
 				ver: version.From(7, 7, 0),
 			},
 			wantCfg: Node{
-				Master: pointer.Bool(true),
-				Data:   pointer.Bool(true),
-				Ingest: pointer.Bool(true),
-				ML:     pointer.Bool(true),
+				Master: ptr.To[bool](true),
+				Data:   ptr.To[bool](true),
+				Ingest: ptr.To[bool](true),
+				ML:     ptr.To[bool](true),
 			},
 		},
 		{
@@ -96,10 +96,10 @@ func TestConfig_RoleDefaults(t *testing.T) {
 				ver: version.From(7, 7, 0),
 			},
 			wantCfg: Node{
-				Master: pointer.Bool(true),
-				Data:   pointer.Bool(false),
-				Ingest: pointer.Bool(true),
-				ML:     pointer.Bool(true),
+				Master: ptr.To[bool](true),
+				Data:   ptr.To[bool](false),
+				Ingest: ptr.To[bool](true),
+				ML:     ptr.To[bool](true),
 			},
 		},
 		{
@@ -114,11 +114,11 @@ func TestConfig_RoleDefaults(t *testing.T) {
 				ver: version.From(7, 7, 0),
 			},
 			wantCfg: Node{
-				Master:    pointer.Bool(true),
-				Data:      pointer.Bool(false),
-				Ingest:    pointer.Bool(true),
-				ML:        pointer.Bool(true),
-				Transform: pointer.Bool(true),
+				Master:    ptr.To[bool](true),
+				Data:      ptr.To[bool](false),
+				Ingest:    ptr.To[bool](true),
+				ML:        ptr.To[bool](true),
+				Transform: ptr.To[bool](true),
 			},
 		},
 	}
@@ -247,43 +247,43 @@ func TestConfig_IsConfiguredWithRole(t *testing.T) {
 		{
 			name: "node role attributes (all)",
 			node: &Node{
-				Master:              pointer.Bool(true),
-				Data:                pointer.Bool(true),
-				Ingest:              pointer.Bool(true),
-				ML:                  pointer.Bool(true),
-				Transform:           pointer.Bool(true),
-				RemoteClusterClient: pointer.Bool(true),
+				Master:              ptr.To[bool](true),
+				Data:                ptr.To[bool](true),
+				Ingest:              ptr.To[bool](true),
+				ML:                  ptr.To[bool](true),
+				Transform:           ptr.To[bool](true),
+				RemoteClusterClient: ptr.To[bool](true),
 			},
 			wantRoles: defaultRoles,
 		},
 		{
 			name: "node role attributes (no data)",
 			node: &Node{
-				Data: pointer.Bool(false),
+				Data: ptr.To[bool](false),
 			},
 			wantRoles: []NodeRole{IngestRole, MLRole, MasterRole, RemoteClusterClientRole},
 		},
 		{
 			name: "node role attributes (ingest only)",
 			node: &Node{
-				Master:     pointer.Bool(false),
-				Data:       pointer.Bool(false),
-				Ingest:     pointer.Bool(true),
-				ML:         pointer.Bool(false),
-				Transform:  pointer.Bool(false),
-				VotingOnly: pointer.Bool(false),
+				Master:     ptr.To[bool](false),
+				Data:       ptr.To[bool](false),
+				Ingest:     ptr.To[bool](true),
+				ML:         ptr.To[bool](false),
+				Transform:  ptr.To[bool](false),
+				VotingOnly: ptr.To[bool](false),
 			},
 			wantRoles: []NodeRole{IngestRole, RemoteClusterClientRole},
 		},
 		{
 			name: "mixed node.roles and node role attributes",
 			node: &Node{
-				Master:     pointer.Bool(false),
-				Data:       pointer.Bool(false),
-				Ingest:     pointer.Bool(true),
-				ML:         pointer.Bool(false),
-				Transform:  pointer.Bool(false),
-				VotingOnly: pointer.Bool(false),
+				Master:     ptr.To[bool](false),
+				Data:       ptr.To[bool](false),
+				Ingest:     ptr.To[bool](true),
+				ML:         ptr.To[bool](false),
+				Transform:  ptr.To[bool](false),
+				VotingOnly: ptr.To[bool](false),
 				Roles:      []string{"master"},
 			},
 			wantRoles: []NodeRole{MasterRole},
@@ -428,8 +428,8 @@ func TestConfig_Unpack(t *testing.T) {
 			},
 			want: ElasticsearchSettings{
 				Node: &Node{
-					Master: pointer.Bool(false),
-					Data:   pointer.Bool(true),
+					Master: ptr.To[bool](false),
+					Data:   ptr.To[bool](true),
 				},
 				Cluster: ClusterSettings{
 					InitialMasterNodes: []string{"a", "b"},

@@ -9,7 +9,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/rand"
-	ptr "k8s.io/utils/pointer"
+	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	commonv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/common/v1"
@@ -162,7 +162,7 @@ func (b Builder) WithTestStorageClass() Builder {
 
 	// define the default volume claim with the e2e storage class
 	vc := volume.DefaultDataVolumeClaim.DeepCopy()
-	vc.Spec.StorageClassName = ptr.String(test.DefaultStorageClass)
+	vc.Spec.StorageClassName = ptr.To[string](test.DefaultStorageClass)
 	b.Logstash.Spec.VolumeClaimTemplates = append(b.Logstash.Spec.VolumeClaimTemplates, *vc)
 	return b
 }

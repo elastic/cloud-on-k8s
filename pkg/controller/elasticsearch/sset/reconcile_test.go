@@ -14,7 +14,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/kubernetes/scheme"
-	"k8s.io/utils/pointer"
+	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 
 	esv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/elasticsearch/v1"
@@ -43,7 +43,7 @@ func TestReconcileStatefulSet(t *testing.T) {
 			},
 		},
 		Spec: appsv1.StatefulSetSpec{
-			Replicas: pointer.Int32(3),
+			Replicas: ptr.To[int32](3),
 		},
 	}
 	metaObj, err := meta.Accessor(&ssetSample)
@@ -53,7 +53,7 @@ func TestReconcileStatefulSet(t *testing.T) {
 
 	// simulate updated replicas & template hash label
 	updatedSset := *ssetSample.DeepCopy()
-	updatedSset.Spec.Replicas = pointer.Int32(4)
+	updatedSset.Spec.Replicas = ptr.To[int32](4)
 	updatedSset.Labels[hash.TemplateHashLabelName] = "updated"
 
 	tests := []struct {

@@ -14,7 +14,7 @@ import (
 	"github.com/pkg/errors"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/client-go/tools/record"
-	"k8s.io/utils/pointer"
+	"k8s.io/utils/ptr"
 	controller "sigs.k8s.io/controller-runtime/pkg/reconcile"
 
 	esv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/elasticsearch/v1"
@@ -512,11 +512,11 @@ func allNodesRunningServiceAccounts(
 		}
 		diff := allPods.Diff(credentials.Nodes())
 		if len(diff) == 0 {
-			return pointer.Bool(true), nil
+			return ptr.To[bool](true), nil
 		}
 	}
 	// Some nodes are running but did not show up in the security API.
-	return pointer.Bool(false), nil
+	return ptr.To[bool](false), nil
 }
 
 // warnUnsupportedDistro sends an event of type warning if the Elasticsearch Docker image is not a supported

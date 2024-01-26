@@ -11,7 +11,7 @@ import (
 	policyv1 "k8s.io/api/policy/v1"
 	policyv1beta1 "k8s.io/api/policy/v1beta1"
 	"k8s.io/apimachinery/pkg/runtime/schema"
-	"k8s.io/utils/pointer"
+	"k8s.io/utils/ptr"
 
 	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/k8s"
 )
@@ -62,6 +62,6 @@ func initPDBV1Available(k8sClient k8s.Client) (bool, error) {
 	}
 
 	// Rely on v1 as soon as v1beta1 is not the preferred version anymore.
-	pdbV1Available = pointer.Bool(preferredMapping.Resource.Version != "v1beta1")
+	pdbV1Available = ptr.To[bool](preferredMapping.Resource.Version != "v1beta1")
 	return *pdbV1Available, nil
 }

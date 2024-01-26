@@ -19,7 +19,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
-	"k8s.io/utils/pointer"
+	"k8s.io/utils/ptr"
 	"k8s.io/utils/strings/slices"
 
 	beatv1beta1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/beat/v1beta1"
@@ -106,7 +106,7 @@ func Test_buildPodTemplate(t *testing.T) {
 							{
 								Name: "filebeat",
 								SecurityContext: &corev1.SecurityContext{
-									RunAsUser: pointer.Int64(0),
+									RunAsUser: ptr.To[int64](0),
 								},
 								// The "-e" in these arguments should be removed
 								Args: []string{"-e", "-c", "/etc/beat.yml", "-system.hostfs=/hostfs"},
@@ -435,7 +435,7 @@ func Test_runningAsRoot(t *testing.T) {
 									{
 										Name: "filebeat",
 										SecurityContext: &corev1.SecurityContext{
-											RunAsUser: pointer.Int64(0),
+											RunAsUser: ptr.To[int64](0),
 										},
 									},
 								},
@@ -457,7 +457,7 @@ func Test_runningAsRoot(t *testing.T) {
 									{
 										Name: "filebeat",
 										SecurityContext: &corev1.SecurityContext{
-											RunAsUser: pointer.Int64(0),
+											RunAsUser: ptr.To[int64](0),
 										},
 									},
 								},
@@ -479,7 +479,7 @@ func Test_runningAsRoot(t *testing.T) {
 									{
 										Name: "filebeat",
 										SecurityContext: &corev1.SecurityContext{
-											RunAsUser: pointer.Int64(1),
+											RunAsUser: ptr.To[int64](1),
 										},
 									},
 								},
@@ -501,7 +501,7 @@ func Test_runningAsRoot(t *testing.T) {
 									{
 										Name: "filebeat",
 										SecurityContext: &corev1.SecurityContext{
-											RunAsUser: pointer.Int64(1),
+											RunAsUser: ptr.To[int64](1),
 										},
 									},
 								},

@@ -10,7 +10,7 @@ import (
 
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/utils/pointer"
+	"k8s.io/utils/ptr"
 
 	commonv1alpha1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/common/v1alpha1"
 	esv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/elasticsearch/v1"
@@ -90,7 +90,7 @@ func (u *UpscaleReporter) UpdateNodesStatuses(status esv1.NewNodeStatus, statefu
 		podName := sset.PodName(statefulSetName, ord)
 		newNode := u.nodes[podName]
 		newNode.Status = status
-		newNode.Message = pointer.String(message)
+		newNode.Message = ptr.To[string](message)
 		u.nodes[podName] = newNode
 	}
 }
@@ -155,7 +155,7 @@ func (u *UpgradeReporter) recordNodesUpgrade(nodes []string, status string, mess
 		upgradedNode.Name = node
 		upgradedNode.Status = status
 		if len(message) > 0 {
-			upgradedNode.Message = pointer.String(message)
+			upgradedNode.Message = ptr.To[string](message)
 		}
 		u.nodes[node] = upgradedNode
 	}
@@ -183,8 +183,8 @@ func (u *UpgradeReporter) RecordPredicatesResult(predicatesResult map[string]str
 	for node, predicate := range predicatesResult {
 		upgradedNode := u.nodes[node]
 		upgradedNode.Name = node
-		upgradedNode.Predicate = pointer.String(predicate)
-		upgradedNode.Message = pointer.String("Cannot restart node because of failed predicate")
+		upgradedNode.Predicate = ptr.To[string](predicate)
+		upgradedNode.Message = ptr.To[string]("Cannot restart node because of failed predicate")
 		u.nodes[node] = upgradedNode
 	}
 }
@@ -292,11 +292,11 @@ func (d *DownscaleReporter) OnShutdownStatus(
 	node.Name = podName
 	node.ShutdownStatus = string(nodeShutdownStatus.Status)
 	if len(nodeShutdownStatus.Explanation) > 0 {
-		node.Explanation = pointer.String(nodeShutdownStatus.Explanation)
+		node.Explanation = ptr.To[string](nodeShutdownStatus.Explanation)
 	}
 	d.nodes[podName] = node
 	if nodeShutdownStatus.Status == esclient.ShutdownStalled {
-		d.stalled = pointer.Bool(true)
+		d.stalled = ptr.To[bool](true)
 	}
 }
 

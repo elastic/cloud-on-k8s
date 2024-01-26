@@ -10,7 +10,7 @@ import (
 
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
-	"k8s.io/utils/pointer"
+	"k8s.io/utils/ptr"
 
 	beatv1beta1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/beat/v1beta1"
 	commonv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/common/v1"
@@ -157,7 +157,7 @@ func buildPodTemplate(
 		volumes = append(volumes, sideCar.Volumes...)
 		if runningAsRoot(params.Beat) {
 			sideCar.Container.SecurityContext = &corev1.SecurityContext{
-				RunAsUser: pointer.Int64(0),
+				RunAsUser: ptr.To[int64](0),
 			}
 		}
 		sideCars = append(sideCars, sideCar.Container)
@@ -183,7 +183,7 @@ func buildPodTemplate(
 		volumes = append(volumes, sideCar.Volumes...)
 		if runningAsRoot(params.Beat) {
 			sideCar.Container.SecurityContext = &corev1.SecurityContext{
-				RunAsUser: pointer.Int64(0),
+				RunAsUser: ptr.To[int64](0),
 			}
 		}
 		sideCars = append(sideCars, sideCar.Container)

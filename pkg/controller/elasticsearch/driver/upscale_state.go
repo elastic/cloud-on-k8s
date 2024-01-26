@@ -11,6 +11,7 @@ import (
 	"github.com/go-logr/logr"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/utils/ptr"
 	crlog "sigs.k8s.io/controller-runtime/pkg/log"
 
 	esv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/elasticsearch/v1"
@@ -20,7 +21,6 @@ import (
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/reconcile"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/sset"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/k8s"
-	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/pointer"
 )
 
 type upscaleState struct {
@@ -179,12 +179,12 @@ func (s *upscaleState) limitNodesCreation(
 	actualReplicas := sset.GetReplicas(actual)
 	targetReplicas := sset.GetReplicas(toApply)
 
-	nodespec.UpdateReplicas(&toApply, pointer.Int32(actualReplicas))
+	nodespec.UpdateReplicas(&toApply, ptr.To[int32](actualReplicas))
 	replicasToCreate := targetReplicas - actualReplicas
 	replicasToCreate = s.getMaxNodesToCreate(replicasToCreate)
 
 	if replicasToCreate > 0 {
-		nodespec.UpdateReplicas(&toApply, pointer.Int32(actualReplicas+replicasToCreate))
+		nodespec.UpdateReplicas(&toApply, ptr.To[int32](actualReplicas+replicasToCreate))
 		s.recordNodesCreation(replicasToCreate)
 		s.loggerFor(toApply).Info(
 			"Creating nodes",
@@ -219,7 +219,7 @@ func (s *upscaleState) limitMasterNodesCreation(
 	actualReplicas := sset.GetReplicas(actual)
 	targetReplicas := sset.GetReplicas(toApply)
 
-	nodespec.UpdateReplicas(&toApply, pointer.Int32(actualReplicas))
+	nodespec.UpdateReplicas(&toApply, ptr.To[int32](actualReplicas))
 	for rep := actualReplicas + 1; rep <= targetReplicas; rep++ {
 		if !s.canCreateMasterNode() {
 			msg := "Limiting master nodes creation to one at a time"
@@ -232,7 +232,7 @@ func (s *upscaleState) limitMasterNodesCreation(
 			break
 		}
 		// allow one more master node to be created
-		nodespec.UpdateReplicas(&toApply, pointer.Int32(rep))
+		nodespec.UpdateReplicas(&toApply, ptr.To[int32](rep))
 		s.recordMasterNodeCreation()
 		msg := "Creating master node"
 		s.loggerFor(toApply).Info(

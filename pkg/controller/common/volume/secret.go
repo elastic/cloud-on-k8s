@@ -6,8 +6,7 @@ package volume
 
 import (
 	corev1 "k8s.io/api/core/v1"
-
-	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/pointer"
+	"k8s.io/utils/ptr"
 )
 
 // SecretVolume captures a subset of data of the k8s secret volume/mount type.
@@ -36,7 +35,7 @@ func NewSecretVolume(secretName, name, mountPath, subPath string, defaultMode in
 		mountPath:   mountPath,
 		secretName:  secretName,
 		subPath:     subPath,
-		defaultMode: pointer.Int32(defaultMode),
+		defaultMode: ptr.To[int32](defaultMode),
 	}
 }
 

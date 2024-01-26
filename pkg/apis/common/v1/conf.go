@@ -6,7 +6,6 @@ package v1
 
 import (
 	"encoding/json"
-	"reflect"
 	"unsafe"
 
 	"github.com/pkg/errors"
@@ -59,11 +58,12 @@ func extractAssocConfFromAnnotation(annotations map[string]string, annotationNam
 	return &assocConf, nil
 }
 
+// unsafeStringToBytes converts a string to a byte array without making extra allocations.
+// since we read potentially large strings from annotations on every reconcile loop, this should help
+// reduce the amount of garbage created.
 func unsafeStringToBytes(s string) []byte {
-	hdr := *(*reflect.StringHeader)(unsafe.Pointer(&s))    //nolint:govet
-	return *(*[]byte)(unsafe.Pointer(&reflect.SliceHeader{ //nolint:govet
-		Data: hdr.Data,
-		Len:  hdr.Len,
-		Cap:  hdr.Len,
-	}))
+	if s == "" {
+		return nil
+	}
+	return unsafe.Slice(unsafe.StringData(s), len(s))
 }

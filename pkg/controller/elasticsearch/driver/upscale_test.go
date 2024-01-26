@@ -19,6 +19,7 @@ import (
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	esv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/elasticsearch/v1"
@@ -31,7 +32,6 @@ import (
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/settings"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/sset"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/k8s"
-	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/pointer"
 )
 
 var onceDone = &sync.Once{}
@@ -54,11 +54,11 @@ func Test_podsToCreate(t *testing.T) {
 			name: "StatefulSet does not exist yet",
 			args: args{
 				actualStatefulSets: []appsv1.StatefulSet{
-					{ObjectMeta: metav1.ObjectMeta{Name: "sts1"}, Spec: appsv1.StatefulSetSpec{Replicas: pointer.Int32(5)}},
+					{ObjectMeta: metav1.ObjectMeta{Name: "sts1"}, Spec: appsv1.StatefulSetSpec{Replicas: ptr.To[int32](5)}},
 				},
 				expectedStatefulSets: []appsv1.StatefulSet{
-					{ObjectMeta: metav1.ObjectMeta{Name: "sts1"}, Spec: appsv1.StatefulSetSpec{Replicas: pointer.Int32(8)}},
-					{ObjectMeta: metav1.ObjectMeta{Name: "sts2"}, Spec: appsv1.StatefulSetSpec{Replicas: pointer.Int32(2)}},
+					{ObjectMeta: metav1.ObjectMeta{Name: "sts1"}, Spec: appsv1.StatefulSetSpec{Replicas: ptr.To[int32](8)}},
+					{ObjectMeta: metav1.ObjectMeta{Name: "sts2"}, Spec: appsv1.StatefulSetSpec{Replicas: ptr.To[int32](2)}},
 				},
 			},
 			want: []string{"sts1-5", "sts1-6", "sts1-7", "sts2-0", "sts2-1"},
@@ -67,11 +67,11 @@ func Test_podsToCreate(t *testing.T) {
 			name: "StatefulSet with no replica",
 			args: args{
 				actualStatefulSets: []appsv1.StatefulSet{
-					{ObjectMeta: metav1.ObjectMeta{Name: "sts1"}, Spec: appsv1.StatefulSetSpec{Replicas: pointer.Int32(5)}},
+					{ObjectMeta: metav1.ObjectMeta{Name: "sts1"}, Spec: appsv1.StatefulSetSpec{Replicas: ptr.To[int32](5)}},
 				},
 				expectedStatefulSets: []appsv1.StatefulSet{
-					{ObjectMeta: metav1.ObjectMeta{Name: "sts1"}, Spec: appsv1.StatefulSetSpec{Replicas: pointer.Int32(0)}},
-					{ObjectMeta: metav1.ObjectMeta{Name: "sts2"}, Spec: appsv1.StatefulSetSpec{Replicas: pointer.Int32(2)}},
+					{ObjectMeta: metav1.ObjectMeta{Name: "sts1"}, Spec: appsv1.StatefulSetSpec{Replicas: ptr.To[int32](0)}},
+					{ObjectMeta: metav1.ObjectMeta{Name: "sts2"}, Spec: appsv1.StatefulSetSpec{Replicas: ptr.To[int32](2)}},
 				},
 			},
 			want: []string{"sts2-0", "sts2-1"},
@@ -80,10 +80,10 @@ func Test_podsToCreate(t *testing.T) {
 			name: "StatefulSet removed",
 			args: args{
 				actualStatefulSets: []appsv1.StatefulSet{
-					{ObjectMeta: metav1.ObjectMeta{Name: "sts1"}, Spec: appsv1.StatefulSetSpec{Replicas: pointer.Int32(5)}},
+					{ObjectMeta: metav1.ObjectMeta{Name: "sts1"}, Spec: appsv1.StatefulSetSpec{Replicas: ptr.To[int32](5)}},
 				},
 				expectedStatefulSets: []appsv1.StatefulSet{
-					{ObjectMeta: metav1.ObjectMeta{Name: "sts2"}, Spec: appsv1.StatefulSetSpec{Replicas: pointer.Int32(2)}},
+					{ObjectMeta: metav1.ObjectMeta{Name: "sts2"}, Spec: appsv1.StatefulSetSpec{Replicas: ptr.To[int32](2)}},
 				},
 			},
 			want: []string{"sts2-0", "sts2-1"},
@@ -121,7 +121,7 @@ func TestHandleUpscaleAndSpecChanges(t *testing.T) {
 					Name:      "sset1",
 				},
 				Spec: appsv1.StatefulSetSpec{
-					Replicas: pointer.Int32(3),
+					Replicas: ptr.To[int32](3),
 					Template: corev1.PodTemplateSpec{
 						ObjectMeta: metav1.ObjectMeta{
 							Labels: map[string]string{
@@ -146,7 +146,7 @@ func TestHandleUpscaleAndSpecChanges(t *testing.T) {
 					Name:      "sset2",
 				},
 				Spec: appsv1.StatefulSetSpec{
-					Replicas: pointer.Int32(4),
+					Replicas: ptr.To[int32](4),
 				},
 			},
 			HeadlessService: corev1.Service{
@@ -169,11 +169,11 @@ func TestHandleUpscaleAndSpecChanges(t *testing.T) {
 	// StatefulSets should be created with their expected replicas
 	var sset1 appsv1.StatefulSet
 	require.NoError(t, k8sClient.Get(context.Background(), types.NamespacedName{Namespace: "ns", Name: "sset1"}, &sset1))
-	require.Equal(t, pointer.Int32(3), sset1.Spec.Replicas)
+	require.Equal(t, ptr.To[int32](3), sset1.Spec.Replicas)
 	comparison.RequireEqual(t, &res.ActualStatefulSets[0], &sset1)
 	var sset2 appsv1.StatefulSet
 	require.NoError(t, k8sClient.Get(context.Background(), types.NamespacedName{Namespace: "ns", Name: "sset2"}, &sset2))
-	require.Equal(t, pointer.Int32(4), sset2.Spec.Replicas)
+	require.Equal(t, ptr.To[int32](4), sset2.Spec.Replicas)
 	comparison.RequireEqual(t, &res.ActualStatefulSets[1], &sset2)
 	// headless services should be created for both
 	require.NoError(t, k8sClient.Get(context.Background(), types.NamespacedName{Namespace: "ns", Name: nodespec.HeadlessServiceName("sset1")}, &corev1.Service{}))
@@ -184,7 +184,7 @@ func TestHandleUpscaleAndSpecChanges(t *testing.T) {
 
 	// upscale data nodes
 	actualStatefulSets = sset.StatefulSetList{sset1, sset2}
-	expectedResources[1].StatefulSet.Spec.Replicas = pointer.Int32(10)
+	expectedResources[1].StatefulSet.Spec.Replicas = ptr.To[int32](10)
 	// re-fetch es to simulate actual reconciliation behaviour
 	require.NoError(t, k8sClient.Get(context.Background(), k8s.ExtractNamespacedName(&es.ObjectMeta), &es))
 	// update context with current version of Elasticsearch resource
@@ -192,7 +192,7 @@ func TestHandleUpscaleAndSpecChanges(t *testing.T) {
 	res, err = HandleUpscaleAndSpecChanges(ctx, actualStatefulSets, expectedResources)
 	require.NoError(t, err)
 	require.NoError(t, k8sClient.Get(context.Background(), types.NamespacedName{Namespace: "ns", Name: "sset2"}, &sset2))
-	require.Equal(t, pointer.Int32(10), sset2.Spec.Replicas)
+	require.Equal(t, ptr.To[int32](10), sset2.Spec.Replicas)
 	comparison.RequireEqual(t, &res.ActualStatefulSets[1], &sset2)
 	// expectations should have been set
 	require.NotEmpty(t, ctx.expectations.GetGenerations())
@@ -208,7 +208,7 @@ func TestHandleUpscaleAndSpecChanges(t *testing.T) {
 
 	// apply a spec change and a downscale from 10 to 2
 	actualStatefulSets = sset.StatefulSetList{sset1, sset2}
-	expectedResources[1].StatefulSet.Spec.Replicas = pointer.Int32(2)
+	expectedResources[1].StatefulSet.Spec.Replicas = ptr.To[int32](2)
 	expectedResources[1].StatefulSet.Spec.Template.Labels = map[string]string{"a": "c"}
 	res, err = HandleUpscaleAndSpecChanges(ctx, actualStatefulSets, expectedResources)
 	require.NoError(t, err)
@@ -218,7 +218,7 @@ func TestHandleUpscaleAndSpecChanges(t *testing.T) {
 	// spec should be updated
 	require.Equal(t, "c", sset2.Spec.Template.Labels["a"])
 	// but StatefulSet should not be downscaled
-	require.Equal(t, pointer.Int32(10), sset2.Spec.Replicas)
+	require.Equal(t, ptr.To[int32](10), sset2.Spec.Replicas)
 	comparison.RequireEqual(t, &res.ActualStatefulSets[1], &sset2)
 }
 
@@ -247,7 +247,7 @@ func TestHandleUpscaleAndSpecChanges_PVCResize(t *testing.T) {
 				Name:      "sset1",
 			},
 			Spec: appsv1.StatefulSetSpec{
-				Replicas: pointer.Int32(3),
+				Replicas: ptr.To[int32](3),
 				Template: corev1.PodTemplateSpec{
 					ObjectMeta: metav1.ObjectMeta{
 						Labels: map[string]string{
@@ -263,11 +263,11 @@ func TestHandleUpscaleAndSpecChanges_PVCResize(t *testing.T) {
 				Name:      "sset2",
 			},
 			Spec: appsv1.StatefulSetSpec{
-				Replicas: pointer.Int32(4),
+				Replicas: ptr.To[int32](4),
 				VolumeClaimTemplates: []corev1.PersistentVolumeClaim{
 					{ObjectMeta: metav1.ObjectMeta{Name: "elasticsearch-data"},
 						Spec: corev1.PersistentVolumeClaimSpec{
-							Resources: corev1.ResourceRequirements{
+							Resources: corev1.VolumeResourceRequirements{
 								Requests: corev1.ResourceList{
 									corev1.ResourceStorage: resource.MustParse("1Gi"),
 								},
@@ -339,62 +339,62 @@ func Test_adjustStatefulSetReplicas(t *testing.T) {
 		{
 			name: "new StatefulSet to create",
 			args: args{
-				state:              &upscaleState{isBootstrapped: true, allowMasterCreation: false, createsAllowed: pointer.Int32(3)},
+				state:              &upscaleState{isBootstrapped: true, allowMasterCreation: false, createsAllowed: ptr.To[int32](3)},
 				actualStatefulSets: sset.StatefulSetList{},
 				expected:           sset.TestSset{Name: "new-sset", Replicas: 3}.Build(),
 			},
 			want:             sset.TestSset{Name: "new-sset", Replicas: 3}.Build(),
-			wantUpscaleState: &upscaleState{recordedCreates: 3, isBootstrapped: true, allowMasterCreation: false, createsAllowed: pointer.Int32(3)},
+			wantUpscaleState: &upscaleState{recordedCreates: 3, isBootstrapped: true, allowMasterCreation: false, createsAllowed: ptr.To[int32](3)},
 		},
 		{
 			name: "same StatefulSet already exists",
 			args: args{
-				state:              &upscaleState{isBootstrapped: true, allowMasterCreation: false, createsAllowed: pointer.Int32(3)},
+				state:              &upscaleState{isBootstrapped: true, allowMasterCreation: false, createsAllowed: ptr.To[int32](3)},
 				actualStatefulSets: sset.StatefulSetList{sset.TestSset{Name: "sset", Replicas: 3}.Build()},
 				expected:           sset.TestSset{Name: "sset", Replicas: 3}.Build(),
 			},
 			want:             sset.TestSset{Name: "sset", Replicas: 3}.Build(),
-			wantUpscaleState: &upscaleState{recordedCreates: 0, isBootstrapped: true, allowMasterCreation: false, createsAllowed: pointer.Int32(3)},
+			wantUpscaleState: &upscaleState{recordedCreates: 0, isBootstrapped: true, allowMasterCreation: false, createsAllowed: ptr.To[int32](3)},
 		},
 		{
 			name: "downscale case",
 			args: args{
-				state:              &upscaleState{isBootstrapped: true, allowMasterCreation: false, createsAllowed: pointer.Int32(3)},
+				state:              &upscaleState{isBootstrapped: true, allowMasterCreation: false, createsAllowed: ptr.To[int32](3)},
 				actualStatefulSets: sset.StatefulSetList{sset.TestSset{Name: "sset", Replicas: 3}.Build()},
 				expected:           sset.TestSset{Name: "sset", Replicas: 1}.Build(),
 			},
 			want:             sset.TestSset{Name: "sset", Replicas: 3}.Build(),
-			wantUpscaleState: &upscaleState{recordedCreates: 0, isBootstrapped: true, allowMasterCreation: false, createsAllowed: pointer.Int32(3)},
+			wantUpscaleState: &upscaleState{recordedCreates: 0, isBootstrapped: true, allowMasterCreation: false, createsAllowed: ptr.To[int32](3)},
 		},
 		{
 			name: "upscale case: data nodes",
 			args: args{
-				state:              &upscaleState{isBootstrapped: true, allowMasterCreation: false, createsAllowed: pointer.Int32(3)},
+				state:              &upscaleState{isBootstrapped: true, allowMasterCreation: false, createsAllowed: ptr.To[int32](3)},
 				actualStatefulSets: sset.StatefulSetList{sset.TestSset{Name: "sset", Replicas: 3, Master: false, Data: true}.Build()},
 				expected:           sset.TestSset{Name: "sset", Replicas: 5, Master: false, Data: true}.Build(),
 			},
 			want:             sset.TestSset{Name: "sset", Replicas: 5, Master: false, Data: true}.Build(),
-			wantUpscaleState: &upscaleState{recordedCreates: 2, isBootstrapped: true, allowMasterCreation: false, createsAllowed: pointer.Int32(3)},
+			wantUpscaleState: &upscaleState{recordedCreates: 2, isBootstrapped: true, allowMasterCreation: false, createsAllowed: ptr.To[int32](3)},
 		},
 		{
 			name: "upscale case: master nodes - one by one",
 			args: args{
-				state:              &upscaleState{isBootstrapped: true, allowMasterCreation: true, createsAllowed: pointer.Int32(3)},
+				state:              &upscaleState{isBootstrapped: true, allowMasterCreation: true, createsAllowed: ptr.To[int32](3)},
 				actualStatefulSets: sset.StatefulSetList{sset.TestSset{Name: "sset", Replicas: 3, Master: true, Data: true}.Build()},
 				expected:           sset.TestSset{Name: "sset", Replicas: 5, Master: true, Data: true}.Build(),
 			},
 			want:             sset.TestSset{Name: "sset", Replicas: 4, Master: true, Data: true}.Build(),
-			wantUpscaleState: &upscaleState{recordedCreates: 1, isBootstrapped: true, allowMasterCreation: false, createsAllowed: pointer.Int32(3)},
+			wantUpscaleState: &upscaleState{recordedCreates: 1, isBootstrapped: true, allowMasterCreation: false, createsAllowed: ptr.To[int32](3)},
 		},
 		{
 			name: "upscale case: new additional master sset - one by one",
 			args: args{
-				state:              &upscaleState{isBootstrapped: true, allowMasterCreation: true, createsAllowed: pointer.Int32(3)},
+				state:              &upscaleState{isBootstrapped: true, allowMasterCreation: true, createsAllowed: ptr.To[int32](3)},
 				actualStatefulSets: sset.StatefulSetList{sset.TestSset{Name: "sset", Replicas: 3, Master: true, Data: true}.Build()},
 				expected:           sset.TestSset{Name: "sset-2", Replicas: 3, Master: true, Data: true}.Build(),
 			},
 			want:             sset.TestSset{Name: "sset-2", Replicas: 1, Master: true, Data: true}.Build(),
-			wantUpscaleState: &upscaleState{recordedCreates: 1, isBootstrapped: true, allowMasterCreation: false, createsAllowed: pointer.Int32(3)},
+			wantUpscaleState: &upscaleState{recordedCreates: 1, isBootstrapped: true, allowMasterCreation: false, createsAllowed: ptr.To[int32](3)},
 		},
 	}
 	for _, tt := range tests {

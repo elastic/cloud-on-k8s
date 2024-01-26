@@ -12,10 +12,10 @@ import (
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/utils/ptr"
 
 	esv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/elasticsearch/v1"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/label"
-	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/pointer"
 )
 
 func Test_newDownscaleState(t *testing.T) {
@@ -32,7 +32,7 @@ func Test_newDownscaleState(t *testing.T) {
 		{
 			name:       "no resources in the apiserver",
 			actualPods: nil,
-			want:       &downscaleState{masterRemovalInProgress: false, runningMasters: 0, removalsAllowed: pointer.Int32(0)},
+			want:       &downscaleState{masterRemovalInProgress: false, runningMasters: 0, removalsAllowed: ptr.To[int32](0)},
 		},
 		{
 			name: "3 masters running in the apiserver, 1 not running",
@@ -120,7 +120,7 @@ func Test_newDownscaleState(t *testing.T) {
 					},
 				},
 			},
-			want: &downscaleState{masterRemovalInProgress: false, runningMasters: 3, removalsAllowed: pointer.Int32(0)},
+			want: &downscaleState{masterRemovalInProgress: false, runningMasters: 3, removalsAllowed: ptr.To[int32](0)},
 		},
 	}
 	for _, tt := range tests {
@@ -152,15 +152,15 @@ func Test_calculateRemovalsAllowed(t *testing.T) {
 			name:           "scaling down, at least one node up",
 			nodesReady:     10,
 			desiredNodes:   3,
-			maxUnavailable: pointer.Int32(2),
-			want:           pointer.Int32(9),
+			maxUnavailable: ptr.To[int32](2),
+			want:           ptr.To[int32](9),
 		},
 		{
 			name:           "scaling up, can't remove anything",
 			nodesReady:     3,
 			desiredNodes:   5,
-			maxUnavailable: pointer.Int32(1),
-			want:           pointer.Int32(0),
+			maxUnavailable: ptr.To[int32](1),
+			want:           ptr.To[int32](0),
 		},
 	}
 	for _, tt := range tests {
@@ -183,40 +183,40 @@ func Test_checkDownscaleInvariants(t *testing.T) {
 	}{
 		{
 			name:             "should allow removing data node if maxUnavailable allows",
-			state:            &downscaleState{runningMasters: 1, masterRemovalInProgress: true, removalsAllowed: pointer.Int32(1)},
+			state:            &downscaleState{runningMasters: 1, masterRemovalInProgress: true, removalsAllowed: ptr.To[int32](1)},
 			statefulSet:      ssetData4Replicas,
 			wantCanDownscale: true,
 		},
 		{
 			name:             "should not allow removing data nodes of maxUnavailable disallows",
-			state:            &downscaleState{runningMasters: 1, masterRemovalInProgress: true, removalsAllowed: pointer.Int32(0)},
+			state:            &downscaleState{runningMasters: 1, masterRemovalInProgress: true, removalsAllowed: ptr.To[int32](0)},
 			statefulSet:      ssetData4Replicas,
 			wantCanDownscale: false,
 			wantReason:       RespectMaxUnavailableInvariant,
 		},
 		{
 			name:             "should allow removing one master if there is another one running",
-			state:            &downscaleState{runningMasters: 2, masterRemovalInProgress: false, removalsAllowed: pointer.Int32(1)},
+			state:            &downscaleState{runningMasters: 2, masterRemovalInProgress: false, removalsAllowed: ptr.To[int32](1)},
 			statefulSet:      ssetMaster3Replicas,
 			wantCanDownscale: true,
 		},
 		{
 			name:             "should not allow removing the last master",
-			state:            &downscaleState{runningMasters: 1, masterRemovalInProgress: false, removalsAllowed: pointer.Int32(1)},
+			state:            &downscaleState{runningMasters: 1, masterRemovalInProgress: false, removalsAllowed: ptr.To[int32](1)},
 			statefulSet:      ssetMaster3Replicas,
 			wantCanDownscale: false,
 			wantReason:       AtLeastOneRunningMasterInvariant,
 		},
 		{
 			name:             "should not allow removing a master if one is already being removed",
-			state:            &downscaleState{runningMasters: 2, masterRemovalInProgress: true, removalsAllowed: pointer.Int32(2)},
+			state:            &downscaleState{runningMasters: 2, masterRemovalInProgress: true, removalsAllowed: ptr.To[int32](2)},
 			statefulSet:      ssetMaster3Replicas,
 			wantCanDownscale: false,
 			wantReason:       OneMasterAtATimeInvariant,
 		},
 		{
 			name:             "should not allow removing a master if maxUnavailable disallows",
-			state:            &downscaleState{runningMasters: 2, masterRemovalInProgress: false, removalsAllowed: pointer.Int32(0)},
+			state:            &downscaleState{runningMasters: 2, masterRemovalInProgress: false, removalsAllowed: ptr.To[int32](0)},
 			statefulSet:      ssetMaster3Replicas,
 			wantCanDownscale: false,
 			wantReason:       RespectMaxUnavailableInvariant,
@@ -248,22 +248,22 @@ func Test_downscaleState_recordRemoval(t *testing.T) {
 			name:        "removing a data node should decrease nodes available for removal",
 			statefulSet: ssetData4Replicas,
 			removals:    1,
-			state:       &downscaleState{runningMasters: 2, masterRemovalInProgress: false, removalsAllowed: pointer.Int32(1)},
-			wantState:   &downscaleState{runningMasters: 2, masterRemovalInProgress: false, removalsAllowed: pointer.Int32(0)},
+			state:       &downscaleState{runningMasters: 2, masterRemovalInProgress: false, removalsAllowed: ptr.To[int32](1)},
+			wantState:   &downscaleState{runningMasters: 2, masterRemovalInProgress: false, removalsAllowed: ptr.To[int32](0)},
 		},
 		{
 			name:        "removing many data nodes should decrease nodes available for removal",
 			statefulSet: ssetData4Replicas,
 			removals:    3,
-			state:       &downscaleState{runningMasters: 1, masterRemovalInProgress: false, removalsAllowed: pointer.Int32(3)},
-			wantState:   &downscaleState{runningMasters: 1, masterRemovalInProgress: false, removalsAllowed: pointer.Int32(0)},
+			state:       &downscaleState{runningMasters: 1, masterRemovalInProgress: false, removalsAllowed: ptr.To[int32](3)},
+			wantState:   &downscaleState{runningMasters: 1, masterRemovalInProgress: false, removalsAllowed: ptr.To[int32](0)},
 		},
 		{
 			name:        "removing a master node should mutate the budget",
 			statefulSet: ssetMaster3Replicas,
 			removals:    1,
-			state:       &downscaleState{runningMasters: 2, masterRemovalInProgress: false, removalsAllowed: pointer.Int32(2)},
-			wantState:   &downscaleState{runningMasters: 1, masterRemovalInProgress: true, removalsAllowed: pointer.Int32(1)},
+			state:       &downscaleState{runningMasters: 2, masterRemovalInProgress: false, removalsAllowed: ptr.To[int32](2)},
+			wantState:   &downscaleState{runningMasters: 1, masterRemovalInProgress: true, removalsAllowed: ptr.To[int32](1)},
 		},
 	}
 	for _, tt := range tests {

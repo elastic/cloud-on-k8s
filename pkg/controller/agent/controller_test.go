@@ -15,6 +15,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/tools/record"
+	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
@@ -24,7 +25,6 @@ import (
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/hash"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/watches"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/k8s"
-	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/pointer"
 )
 
 func newReconcileAgent(objs ...client.Object) *ReconcileAgent {
@@ -138,7 +138,7 @@ func TestReconcileAgent_Reconcile(t *testing.T) {
 					Spec: agentv1alpha1.AgentSpec{
 						Version: "8.0.1",
 						Deployment: &agentv1alpha1.DeploymentSpec{
-							Replicas: pointer.Int32(1),
+							Replicas: ptr.To[int32](1),
 						},
 					},
 					Status: agentv1alpha1.AgentStatus{
@@ -191,7 +191,7 @@ func TestReconcileAgent_Reconcile(t *testing.T) {
 				Spec: agentv1alpha1.AgentSpec{
 					Version: "8.0.1",
 					Deployment: &agentv1alpha1.DeploymentSpec{
-						Replicas: pointer.Int32(1),
+						Replicas: ptr.To[int32](1),
 					},
 				},
 				Status: agentv1alpha1.AgentStatus{

@@ -256,7 +256,7 @@ func (nsb *nodeSetBuilder) build() esv1.NodeSet {
 					Name: volume.ElasticsearchDataVolumeName,
 				},
 				Spec: corev1.PersistentVolumeClaimSpec{
-					Resources: corev1.ResourceRequirements{
+					Resources: corev1.VolumeResourceRequirements{
 						Requests: corev1.ResourceList{
 							corev1.ResourceStorage: *nsb.storageRequest,
 						},

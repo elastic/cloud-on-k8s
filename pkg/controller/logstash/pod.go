@@ -14,6 +14,7 @@ import (
 	"k8s.io/apimachinery/pkg/api/resource"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/intstr"
+	"k8s.io/utils/ptr"
 
 	commonv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/common/v1"
 	logstashv1alpha1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/logstash/v1alpha1"
@@ -27,7 +28,6 @@ import (
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/logstash/stackmon"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/logstash/volume"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/maps"
-	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/pointer"
 )
 
 const (
@@ -53,7 +53,7 @@ var (
 	}
 
 	DefaultSecurityContext = corev1.PodSecurityContext{
-		FSGroup: pointer.Int64(defaultFsGroup),
+		FSGroup: ptr.To[int64](defaultFsGroup),
 	}
 )
 
