@@ -23,6 +23,7 @@ import (
 
 	esv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/elasticsearch/v1"
 	logstashv1alpha1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/logstash/v1alpha1"
+
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/comparison"
 	controllerscheme "github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/scheme"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/label"
@@ -223,7 +224,7 @@ func Test_handleVolumeExpansionElasticsearch(t *testing.T) {
 				wantUpdatedSset.Spec.VolumeClaimTemplates = tt.args.expectedSset.Spec.VolumeClaimTemplates
 
 				// test ssetsToRecreate along the way
-				toRecreate, err := ssetsToRecreate(&retrievedES)
+				toRecreate, err := ssetsToRecreate(&retrievedES, "elasticsearch.k8s.elastic.co/recreate-")
 				require.NoError(t, err)
 				require.Equal(t,
 					map[string]appsv1.StatefulSet{
@@ -389,7 +390,7 @@ func Test_handleVolumeExpansionLogstash(t *testing.T) {
 				wantUpdatedSset.Spec.VolumeClaimTemplates = tt.args.expectedSset.Spec.VolumeClaimTemplates
 
 				// test ssetsToRecreate along the way
-				toRecreate, err := ssetsToRecreate(&retrievedLS)
+				toRecreate, err := ssetsToRecreate(&retrievedLS, "logstash.k8s.elastic.co/recreate-")
 				require.NoError(t, err)
 				require.Equal(t,
 					map[string]appsv1.StatefulSet{
@@ -564,7 +565,8 @@ func Test_recreateStatefulSets(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			es := tt.args.es
 			k8sClient := k8s.NewFakeClient(append(tt.args.runtimeObjs, &es)...)
-			got, err := RecreateStatefulSets(context.Background(), k8sClient, &es)
+
+			got, err := RecreateStatefulSets(context.Background(), k8sClient, &es, "elasticsearch.k8s.elastic.co/recreate-")
 			require.NoError(t, err)
 			require.Equal(t, tt.wantRecreations, got)
 

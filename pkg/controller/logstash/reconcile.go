@@ -29,13 +29,19 @@ import (
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/tracing"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/volume"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/logstash/labels"
+	//lsvolume "github.com/elastic/cloud-on-k8s/v2/pkg/controller/logstash/volume"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/k8s"
 	ulog "github.com/elastic/cloud-on-k8s/v2/pkg/utils/log"
 )
 
+const (
+	// RecreateStatefulSetAnnotationPrefix is used to annotate the Logstash resource
+	// with StatefulSet to recreate. The StatefulSet name is appended to this name.
+	RecreateStatefulSetAnnotationPrefix = "logstash.k8s.elastic.co/recreate-"
+)
+
 func reconcileStatefulSet(params Params, podTemplate corev1.PodTemplateSpec) (*reconciler.Results, logstashv1alpha1.LogstashStatus) {
 	defer tracing.Span(&params.Context)()
-
 
 	results := reconciler.NewResult(params.Context)
 
@@ -56,11 +62,8 @@ func reconcileStatefulSet(params Params, podTemplate corev1.PodTemplateSpec) (*r
 		VolumeClaimTemplates: params.Logstash.Spec.VolumeClaimTemplates,
 	})
 
-	recreations := 0
+	recreations, err := recreateStatefulSets(params.Context, params.Client, params.Logstash)
 
-	sSetRecreations, err := volume.RecreateStatefulSets(params.Context, params.Client, &params.Logstash)
-
-	recreations += sSetRecreations
 	if err != nil {
 		if apierrors.IsConflict(err) {
 			ulog.FromContext(params.Context).V(1).Info("Conflict while recreating stateful set, requeueing", "message", err)
@@ -70,12 +73,12 @@ func reconcileStatefulSet(params Params, podTemplate corev1.PodTemplateSpec) (*r
 	}
 
 	if recreations > 0 {
-		// Some StatefulSets are in the process of being recreated to handle PVC expansion:
+		// Statefulset is in the process of being recreated to handle PVC expansion:
 		// it is safer to requeue until the re-creation is done.
 		// Otherwise, some operation could be performed with wrong assumptions:
 		// the sset doesn't exist (was just deleted), but the Pods do actually exist.
 		ulog.FromContext(params.Context).V(1).Info("StatefulSets recreation in progress, re-queueing after 30 seconds.", "namespace", params.Logstash.Namespace, "ls_name", params.Logstash.Name,
-			"recreations", recreations, "status", params.Status)
+			 "status", params.Status)
 		return results.WithResult(reconcile.Result{RequeueAfter: 30 * time.Second}), params.Status
 	}
 
@@ -150,3 +153,6 @@ func updateStatus(ctx context.Context, logstash logstashv1alpha1.Logstash, clien
 	return common.UpdateStatus(ctx, client, &logstash)
 }
 
+func recreateStatefulSets(ctx context.Context, k8sclient k8s.Client, ls logstashv1alpha1.Logstash) (int, error) {
+	return volume.RecreateStatefulSets(ctx, k8sclient, &ls, RecreateStatefulSetAnnotationPrefix)
+}

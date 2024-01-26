@@ -17,7 +17,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/keystore"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/reconciler"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/tracing"
-	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/volume"
+
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/certificates/transport"
 	esclient "github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/client"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/hints"
@@ -63,7 +63,7 @@ func (d *defaultDriver) reconcileNodeSpecs(
 	}
 
 	// recreate any StatefulSet that needs to account for PVC expansion
-	recreations, err := volume.RecreateStatefulSets(ctx, d.K8sClient(), &d.ES)
+	recreations, err := recreateStatefulSets(ctx, d.K8sClient(), d.ES)
 	if err != nil {
 		return results.WithError(fmt.Errorf("StatefulSet recreation: %w", err))
 	}

@@ -163,9 +163,9 @@ func needsRecreate(expectedSset appsv1.StatefulSet, actualSset appsv1.StatefulSe
 //  3. An annotation specifies StatefulSet Foo needs to be recreated. That StatefulSet does not exist: create it.
 //  4. An annotation specifies StatefulSet Foo needs to be recreated. That StatefulSet actually exists, but with
 //     a different UID: the re-creation is over, remove the annotation.
-func RecreateStatefulSets(ctx context.Context, k8sClient k8s.Client, obj client.Object) (int, error) {
+func RecreateStatefulSets(ctx context.Context, k8sClient k8s.Client, obj client.Object, annotationPrefix string) (int, error) {
 	log := ulog.FromContext(ctx)
-	recreateList, err := ssetsToRecreate(obj)
+	recreateList, err := ssetsToRecreate(obj, annotationPrefix)
 	if err != nil {
 		return 0, err
 	}
@@ -202,7 +202,7 @@ func RecreateStatefulSets(ctx context.Context, k8sClient k8s.Client, obj client.
 		case err != nil && apierrors.IsNotFound(err):
 			log.Info("Re-creating StatefulSet to account for resized PVCs",
 				"namespace", namespacedName.Namespace, "name", namespacedName.Name, "statefulset_name", toRecreate.Name)
-			if err := RecreateStatefulSet(ctx, k8sClient, toRecreate); err != nil {
+			if err := createStatefulSet(ctx, k8sClient, toRecreate); err != nil {
 				return recreations, err
 			}
 
@@ -229,30 +229,6 @@ func RecreateStatefulSets(ctx context.Context, k8sClient k8s.Client, obj client.
 	return recreations, nil
 }
 
-// ssetsToRecreate returns the list of StatefulSet that should be recreated, based on annotations
-// in the parent component resource.
-func ssetsToRecreate(obj client.Object) (map[string]appsv1.StatefulSet, error) {
-	accessor := meta.NewAccessor()
-	annotations, err := accessor.Annotations(obj)
-
-	if err != nil {
-		return nil, err
-	}
-
-	toRecreate := map[string]appsv1.StatefulSet{}
-	for key, value := range annotations {
-		if !strings.HasPrefix(key, getRecreateStatefulSetAnnotationPrefix(obj)) {
-			continue
-		}
-		var sset appsv1.StatefulSet
-		if err := json.Unmarshal([]byte(value), &sset); err != nil {
-			return nil, err
-		}
-		toRecreate[key] = sset
-	}
-	return toRecreate, nil
-}
-
 func deleteStatefulSet(ctx context.Context, k8sClient k8s.Client, sset appsv1.StatefulSet) error {
 	opts := client.DeleteOptions{}
 	// ensure we are not deleting the StatefulSet that was already recreated with a different UID
@@ -265,7 +241,7 @@ func deleteStatefulSet(ctx context.Context, k8sClient k8s.Client, sset appsv1.St
 	return k8sClient.Delete(ctx, &sset, &opts)
 }
 
-func RecreateStatefulSet(ctx context.Context, k8sClient k8s.Client, sset appsv1.StatefulSet) error {
+func createStatefulSet(ctx context.Context, k8sClient k8s.Client, sset appsv1.StatefulSet) error {
 	// don't keep metadata inherited from the old StatefulSet
 	newObjMeta := metav1.ObjectMeta{
 		Name:            sset.Name,
@@ -412,4 +388,29 @@ func deleteAnnotation(obj client.Object, annotation string) error {
 		return err
 	}
 	return nil
+}
+
+
+// ssetsToRecreate returns the list of StatefulSet that should be recreated, based on annotations
+// in the parent component resource.
+func ssetsToRecreate(obj client.Object, annotationPrefix string) (map[string]appsv1.StatefulSet, error) {
+	accessor := meta.NewAccessor()
+	annotations, err := accessor.Annotations(obj)
+
+	if err != nil {
+		return nil, err
+	}
+
+	toRecreate := map[string]appsv1.StatefulSet{}
+	for key, value := range annotations {
+		if !strings.HasPrefix(key, annotationPrefix) {
+			continue
+		}
+		var sset appsv1.StatefulSet
+		if err := json.Unmarshal([]byte(value), &sset); err != nil {
+			return nil, err
+		}
+		toRecreate[key] = sset
+	}
+	return toRecreate, nil
 }
