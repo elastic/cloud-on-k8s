@@ -8,7 +8,7 @@
 [float]
 === Breaking changes
 
-* The `resourceStatuses` field of the status subresource of the Stack Configuration Policy is no longer in use. Instead a new `details` field is populated which now also contains information about configured Kibana applications. This change could cause errors during an upgrade of the CRDs while your operator is still running an older version but 2.11.1 was released to mitigate this issue. {pull}7433[#7433]
+* The `resourceStatuses` field of the status subresource of the Stack Configuration Policy is no longer in use. Instead a new `details` field is populated which now also contains information about configured Kibana applications. This change could cause errors during an upgrade of the CRDs while your operator is still running an older version, however 2.11.1 has been released to mitigate this issue. {pull}7433[#7433]
 
 
 [[feature-2.11.0]]
