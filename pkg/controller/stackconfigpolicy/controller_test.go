@@ -111,6 +111,9 @@ func TestReconcileStackConfigPolicy_Reconcile(t *testing.T) {
 		Name:      "test-policy",
 	}
 	policyFixture := policyv1alpha1.StackConfigPolicy{
+		TypeMeta: metav1.TypeMeta{
+			Kind: "StackConfigPolicy",
+		},
 		ObjectMeta: metav1.ObjectMeta{
 			Namespace: "ns",
 			Name:      "test-policy",
