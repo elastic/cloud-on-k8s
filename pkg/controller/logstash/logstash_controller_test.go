@@ -10,6 +10,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"k8s.io/apimachinery/pkg/util/intstr"
 
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -410,6 +411,96 @@ func TestReconcileLogstash_Reconcile(t *testing.T) {
 				},
 				Status: logstashv1alpha1.LogstashStatus{
 					Version:            "8.12.0",
+					ExpectedNodes:      1,
+					AvailableNodes:     1,
+					ObservedGeneration: 2,
+					Selector:           "common.k8s.elastic.co/type=logstash,logstash.k8s.elastic.co/name=testLogstash",
+				},
+			},
+			wantErr: false,
+		},
+		{
+			name: "Logstash with UpdateStrategy creates StatefulSet with UpdateStrategy",
+			objs: []client.Object{
+				&logstashv1alpha1.Logstash{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:       "testLogstash",
+						Namespace:  "test",
+						Generation: 2,
+					},
+					Spec: logstashv1alpha1.LogstashSpec{
+						Version: "8.6.1",
+						Count:   1,
+						UpdateStrategy: appsv1.StatefulSetUpdateStrategy{
+							Type: appsv1.RollingUpdateStatefulSetStrategyType,
+							RollingUpdate: &appsv1.RollingUpdateStatefulSetStrategy{
+								MaxUnavailable: &intstr.IntOrString{
+									IntVal: 1,
+								},
+							},
+						},
+					},
+					Status: logstashv1alpha1.LogstashStatus{
+						ObservedGeneration: 1,
+					},
+				},
+				&appsv1.StatefulSet{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "testLogstash-ls",
+						Namespace: "test",
+						Labels:    addLabel(defaultLabels, hash.TemplateHashLabelName, "3145706383"),
+					},
+					Status: appsv1.StatefulSetStatus{
+						AvailableReplicas: 1,
+						Replicas:          1,
+						ReadyReplicas:     1,
+					},
+				},
+			},
+			request: reconcile.Request{
+				NamespacedName: types.NamespacedName{
+					Namespace: "test",
+					Name:      "testLogstash",
+				},
+			},
+			want: reconcile.Result{},
+			expectedObjects: []expectedObject{
+				{
+					t: &appsv1.StatefulSet{
+						Spec: appsv1.StatefulSetSpec{
+							UpdateStrategy: appsv1.StatefulSetUpdateStrategy{
+								Type: appsv1.RollingUpdateStatefulSetStrategyType,
+								RollingUpdate: &appsv1.RollingUpdateStatefulSetStrategy{
+									MaxUnavailable: &intstr.IntOrString{
+										IntVal: 1,
+									},
+								},
+							},
+						},
+					},
+					name: types.NamespacedName{Namespace: "test", Name: "testLogstash-ls"},
+				},
+			},
+
+			expected: logstashv1alpha1.Logstash{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:       "testLogstash",
+					Namespace:  "test",
+					Generation: 2,
+				},
+				Spec: logstashv1alpha1.LogstashSpec{
+					Version: "8.6.1",
+					Count:   1,
+					UpdateStrategy: appsv1.StatefulSetUpdateStrategy{
+						Type: appsv1.RollingUpdateStatefulSetStrategyType,
+						RollingUpdate: &appsv1.RollingUpdateStatefulSetStrategy{
+							MaxUnavailable: &intstr.IntOrString{
+								IntVal: 1,
+							},
+						},
+					},
+				},
+				Status: logstashv1alpha1.LogstashStatus{
 					ExpectedNodes:      1,
 					AvailableNodes:     1,
 					ObservedGeneration: 2,
