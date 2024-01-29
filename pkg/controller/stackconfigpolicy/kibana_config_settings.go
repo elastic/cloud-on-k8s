@@ -118,7 +118,7 @@ func canBeOwned(ctx context.Context, c k8s.Client, policy policyv1alpha1.StackCo
 		return currentOwner, true, nil
 	}
 	// or the owner is already the given policy
-	canBeOwned := currentOwner.Kind == policy.Kind && currentOwner.Namespace == policy.Namespace && currentOwner.Name == policy.Name
+	canBeOwned := currentOwner.Kind == policyv1alpha1.Kind && currentOwner.Namespace == policy.Namespace && currentOwner.Name == policy.Name
 	return currentOwner, canBeOwned, nil
 }
 
