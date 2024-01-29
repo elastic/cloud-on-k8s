@@ -429,7 +429,7 @@ func TestReconcileLogstash_Reconcile(t *testing.T) {
 						Generation: 2,
 					},
 					Spec: logstashv1alpha1.LogstashSpec{
-						Version: "8.6.1",
+						Version: "8.12.0",
 						Count:   1,
 						UpdateStrategy: appsv1.StatefulSetUpdateStrategy{
 							Type: appsv1.RollingUpdateStatefulSetStrategyType,
@@ -489,7 +489,7 @@ func TestReconcileLogstash_Reconcile(t *testing.T) {
 					Generation: 2,
 				},
 				Spec: logstashv1alpha1.LogstashSpec{
-					Version: "8.6.1",
+					Version: "8.12.0",
 					Count:   1,
 					UpdateStrategy: appsv1.StatefulSetUpdateStrategy{
 						Type: appsv1.RollingUpdateStatefulSetStrategyType,
