@@ -4,7 +4,7 @@
 [float]
 [id="{p}-2110-known-issues"]
 === Known issues
-- The `resourceStatuses` field of the status subresource of the Stack Configuration Policy was removed which could cause errors in the operator logs during an upgrade.
+- The `resourceStatuses` field of the status subresource of the Stack Configuration Policy was removed which could cause errors when running older versions of the operator with the new CRDs during upgrades.
 
 [float]
 [id="{p}-2110-new-and-notable"]
