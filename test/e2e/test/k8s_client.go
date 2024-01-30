@@ -356,7 +356,7 @@ func (k *K8sClient) CheckSecretsRemoved(secretRefs []types.NamespacedName) error
 }
 
 // CreateOrUpdateSecrets creates the given secrets, or updates them if they already exist.
-func (k K8sClient) CreateOrUpdateSecrets(secrets ...corev1.Secret) error {
+func (k *K8sClient) CreateOrUpdateSecrets(secrets ...corev1.Secret) error {
 	for i := range secrets {
 		if err := k.CreateOrUpdate(&secrets[i]); err != nil {
 			return err
@@ -374,7 +374,7 @@ func (k *K8sClient) DeleteSecrets(secrets ...corev1.Secret) error {
 	return nil
 }
 
-func (k K8sClient) CreateOrUpdate(objs ...k8sclient.Object) error {
+func (k *K8sClient) CreateOrUpdate(objs ...k8sclient.Object) error {
 	for _, obj := range objs {
 		// create a copy to ensure that the original object is not modified
 		obj := k8s.DeepCopyObject(obj)
@@ -520,7 +520,7 @@ func OnAllPods(pods []corev1.Pod, f func(corev1.Pod) error) error {
 }
 
 // GetFirstNodeExternalIP gets the external IP address of the first k8s node in the current k8s cluster.
-func (k K8sClient) GetFirstNodeExternalIP() (string, error) {
+func (k *K8sClient) GetFirstNodeExternalIP() (string, error) {
 	var nodes corev1.NodeList
 	if err := k.Client.List(context.Background(), &nodes); err != nil {
 		return "", err
