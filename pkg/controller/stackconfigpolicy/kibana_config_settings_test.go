@@ -68,7 +68,7 @@ func Test_newKibanaConfigSecret(t *testing.T) {
 						"asset.policy.k8s.elastic.co/on-delete": "delete",
 						"kibana.k8s.elastic.co/name":            "test-kb",
 						"common.k8s.elastic.co/type":            "kibana",
-						"eck.k8s.elastic.co/owner-kind":         "",
+						"eck.k8s.elastic.co/owner-kind":         "StackConfigPolicy",
 						"eck.k8s.elastic.co/owner-name":         "test-policy",
 						"eck.k8s.elastic.co/owner-namespace":    "test-policy-ns",
 					},
