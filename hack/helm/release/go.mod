@@ -6,11 +6,11 @@ toolchain go1.21.6
 
 require (
 	cloud.google.com/go/storage v1.37.0
-	github.com/elastic/cloud-on-k8s/v2 v2.11.0
+	github.com/elastic/cloud-on-k8s/v2 v2.11.1
 	github.com/google/go-cmp v0.6.0
 	github.com/spf13/cobra v1.8.0
 	github.com/spf13/viper v1.18.2
-	google.golang.org/api v0.158.0
+	google.golang.org/api v0.160.0
 	gopkg.in/yaml.v3 v3.0.1
 	helm.sh/helm/v3 v3.14.0
 )

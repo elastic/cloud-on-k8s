@@ -1,0 +1,10 @@
+[[release-highlights-2.11.1]]
+== 2.11.1 release highlights
+
+[float]
+[id="{p}-2111-new-and-notable"]
+=== Bug fix
+
+This release fixes an issue introduced in ECK 2.11.0 where the `resourceStatuses` field of the status subresource of the Stack Configuration Policy was removed.
+
+Also refer to <<{p}-2110-known-issues>> for more information.

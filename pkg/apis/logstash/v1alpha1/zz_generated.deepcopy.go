@@ -212,6 +212,7 @@ func (in *LogstashSpec) DeepCopyInto(out *LogstashSpec) {
 			(*in)[i].DeepCopyInto(&(*out)[i])
 		}
 	}
+	in.UpdateStrategy.DeepCopyInto(&out.UpdateStrategy)
 	if in.VolumeClaimTemplates != nil {
 		in, out := &in.VolumeClaimTemplates, &out.VolumeClaimTemplates
 		*out = make([]corev1.PersistentVolumeClaim, len(*in))
