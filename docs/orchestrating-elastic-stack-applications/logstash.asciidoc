@@ -444,10 +444,11 @@ spec:
 [discrete]
 == Updating the volume claim settings
 
-Changes, such as storage class or volume size, are currently forbidden in `spec.volumeClaimTemplates`.
-To make these changes, you have to fully delete the {ls} resource, delete and recreate or resize the volume, and create a new {ls} resource.
+If the storage class allows link:https://kubernetes.io/blog/2018/07/12/resizing-persistent-volumes-using-kubernetes/[volume expansion], you can increase the storage requests size in `spec.volumeClaimTemplates`. ECK will update the existing PersistentVolumeClaims accordingly, and recreate the StatefulSet automatically. If the volume driver supports `ExpandInUsePersistentVolumes`, the filesystem is resized online, without the need of restarting the Logstash process, or re-creating the Pods. If the volume driver does not support `ExpandInUsePersistentVolumes`, Pods must be manually deleted after the resize, to be recreated automatically with the expanded filesystem.
 
-Before deleting or resizing a persistent queue (PQ) volume, ensure that the queue is empty.
+Any other changes are forbidden in the volumeClaimTemplates, such as changing the storage class or decreasing the volume size. To make these changes, you have to fully delete the {ls} resource, delete and recreate or resize the volume, and create a new {ls} resource.
+
+Before deleting a persistent queue (PQ) volume, ensure that the queue is empty.
 When using the PQ, we recommend setting `queue.drain: true` on the {ls} Pods to ensure that the queue is drained when Pods are shutdown.
 Note that you should also increase the `terminationGracePeriodSeconds` to a large enough value to allow the queue to drain.
 
