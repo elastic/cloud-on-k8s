@@ -10,15 +10,18 @@ import (
 
 	"github.com/stretchr/testify/require"
 	admissionv1beta1 "k8s.io/api/admission/v1beta1"
+	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/utils/ptr"
 
 	commonv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/common/v1"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/apis/logstash/v1alpha1"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/test"
 )
 
-func TestWebhook(t *testing.T) {
+func TestWebhook_Create(t *testing.T) {
 	testCases := []test.ValidationWebhookTestCase{
 		{
 			Name:      "simple-stackmon-ref",
@@ -102,6 +105,47 @@ func TestWebhook(t *testing.T) {
 	test.RunValidationWebhookTests(t, gvk, validator, testCases...)
 }
 
+func TestWebhook_Update(t *testing.T) {
+	testCases := []test.ValidationWebhookTestCase{
+		{
+			Name:      "Update-storage-capacity",
+			Operation: admissionv1beta1.Update,
+			OldObject: func(t *testing.T, uid string) []byte {
+				t.Helper()
+				ls := mkLogstash(uid)
+				return serialize(t, ls)
+			},
+			Object: func(t *testing.T, uid string) []byte {
+				t.Helper()
+				ls := mkLogstash(uid)
+				ls.Spec.VolumeClaimTemplates[0].Spec.Resources.Requests[corev1.ResourceStorage] = resource.MustParse("2Gi")
+				return serialize(t, ls)
+			},
+			Check: test.ValidationWebhookSucceeded,
+		},
+		{
+			Name:      "Update-storage-not-capacity",
+			Operation: admissionv1beta1.Update,
+			OldObject: func(t *testing.T, uid string) []byte {
+				t.Helper()
+				ls := mkLogstash(uid)
+				return serialize(t, ls)
+			},
+			Object: func(t *testing.T, uid string) []byte {
+				t.Helper()
+				ls := mkLogstash(uid)
+				ls.Spec.VolumeClaimTemplates[0].Spec.StorageClassName = ptr.To[string]("different")
+				return serialize(t, ls)
+			},
+			Check: test.ValidationWebhookFailed(`Volume claim templates can only have storage requests modified`),
+		},
+	}
+
+	validator := &v1alpha1.Logstash{}
+	gvk := metav1.GroupVersionKind{Group: v1alpha1.GroupVersion.Group, Version: v1alpha1.GroupVersion.Version, Kind: v1alpha1.Kind}
+	test.RunValidationWebhookTests(t, gvk, validator, testCases...)
+}
+
 func mkLogstash(uid string) *v1alpha1.Logstash {
 	return &v1alpha1.Logstash{
 		ObjectMeta: metav1.ObjectMeta{
@@ -110,6 +154,19 @@ func mkLogstash(uid string) *v1alpha1.Logstash {
 		},
 		Spec: v1alpha1.LogstashSpec{
 			Version: "8.12.0",
+			VolumeClaimTemplates: []corev1.PersistentVolumeClaim{
+				{ObjectMeta: metav1.ObjectMeta{
+					Name: "test-pq",
+				},
+					Spec: corev1.PersistentVolumeClaimSpec{
+						Resources: corev1.VolumeResourceRequirements{
+							Requests: corev1.ResourceList{
+								corev1.ResourceStorage: resource.MustParse("1Gi"),
+							},
+						},
+					},
+				},
+			},
 		},
 	}
 }
