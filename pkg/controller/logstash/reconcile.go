@@ -23,6 +23,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/reconciler"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/tracing"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/logstash/labels"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/k8s"
 )
 
@@ -64,7 +65,7 @@ func reconcileStatefulSet(params Params, podTemplate corev1.PodTemplateSpec) (*r
 func calculateStatus(params *Params, sset appsv1.StatefulSet) (logstashv1alpha1.LogstashStatus, error) {
 	logstash := params.Logstash
 	status := params.Status
-	pods, err := k8s.PodsMatchingLabels(params.Client, logstash.Namespace, map[string]string{NameLabelName: logstash.Name})
+	pods, err := k8s.PodsMatchingLabels(params.Client, logstash.Namespace, map[string]string{labels.NameLabelName: logstash.Name})
 	if err != nil {
 		return status, err
 	}

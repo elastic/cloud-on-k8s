@@ -27,6 +27,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/comparison"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/hash"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/watches"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/logstash/labels"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/k8s"
 )
 
@@ -164,7 +165,7 @@ func TestReconcileLogstash_Reconcile(t *testing.T) {
 						Name:       "testLogstash-ls",
 						Namespace:  "test",
 						Generation: 2,
-						Labels:     map[string]string{NameLabelName: "testLogstash", VersionLabelName: "8.12.0"},
+						Labels:     map[string]string{labels.NameLabelName: "testLogstash", VersionLabelName: "8.12.0"},
 					},
 					Status: corev1.PodStatus{
 						Phase: corev1.PodRunning,
@@ -257,7 +258,7 @@ func TestReconcileLogstash_Reconcile(t *testing.T) {
 						Name:       "testLogstash-ls",
 						Namespace:  "test",
 						Generation: 2,
-						Labels:     map[string]string{NameLabelName: "testLogstash", VersionLabelName: "8.12.0"},
+						Labels:     map[string]string{labels.NameLabelName: "testLogstash", VersionLabelName: "8.12.0"},
 					},
 					Status: corev1.PodStatus{
 						Phase: corev1.PodRunning,
@@ -362,7 +363,7 @@ func TestReconcileLogstash_Reconcile(t *testing.T) {
 						Name:       "testLogstash-ls",
 						Namespace:  "test",
 						Generation: 2,
-						Labels:     map[string]string{NameLabelName: "testLogstash", VersionLabelName: "8.12.0"},
+						Labels:     map[string]string{labels.NameLabelName: "testLogstash", VersionLabelName: "8.12.0"},
 					},
 					Status: corev1.PodStatus{
 						Phase: corev1.PodRunning,

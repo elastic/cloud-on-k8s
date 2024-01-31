@@ -11,6 +11,7 @@ import (
 	logstashv1alpha1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/logstash/v1alpha1"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/defaults"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/logstash/labels"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/logstash/network"
 )
 
@@ -68,7 +69,7 @@ func newService(service logstashv1alpha1.LogstashService, logstash logstashv1alp
 	svc.ObjectMeta.Namespace = logstash.Namespace
 	svc.ObjectMeta.Name = logstashv1alpha1.UserServiceName(logstash.Name, service.Name)
 
-	labels := NewLabels(logstash)
+	labels := labels.NewLabels(logstash)
 
 	svc.Labels = labels
 
@@ -88,7 +89,7 @@ func newAPIService(logstash logstashv1alpha1.Logstash) *corev1.Service {
 	svc.ObjectMeta.Namespace = logstash.Namespace
 	svc.ObjectMeta.Name = logstashv1alpha1.APIServiceName(logstash.Name)
 
-	labels := NewLabels(logstash)
+	labels := labels.NewLabels(logstash)
 	ports := []corev1.ServicePort{
 		{
 			Name:     LogstashAPIServiceName,

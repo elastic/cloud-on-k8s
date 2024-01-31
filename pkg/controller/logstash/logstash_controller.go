@@ -28,6 +28,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/tracing"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/version"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/watches"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/logstash/labels"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/logstash/pipelines"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/k8s"
 	ulog "github.com/elastic/cloud-on-k8s/v2/pkg/utils/log"
@@ -77,7 +78,7 @@ func addWatches(mgr manager.Manager, c controller.Controller, r *ReconcileLogsta
 
 	// Watch Pods, to ensure `status.version` is correctly reconciled on any change.
 	// Watching StatefulSets only may lead to missing some events.
-	if err := watches.WatchPods(mgr, c, NameLabelName); err != nil {
+	if err := watches.WatchPods(mgr, c, labels.NameLabelName); err != nil {
 		return err
 	}
 

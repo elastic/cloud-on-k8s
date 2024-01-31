@@ -21,6 +21,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/tracing"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/watches"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/logstash/configs"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/logstash/labels"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/logstash/stackmon"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/logstash/volume"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/k8s"
@@ -91,7 +92,7 @@ func internalReconcile(params Params) (*reconciler.Results, logstashv1alpha1.Log
 		Owner:                 &params.Logstash,
 		TLSOptions:            apiSvcTLS,
 		Namer:                 logstashv1alpha1.Namer,
-		Labels:                NewLabels(params.Logstash),
+		Labels:                labels.NewLabels(params.Logstash),
 		Services:              []corev1.Service{apiSvc},
 		GlobalCA:              params.OperatorParams.GlobalCA,
 		CACertRotation:        params.OperatorParams.CACertRotation,
