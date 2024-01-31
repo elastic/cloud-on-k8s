@@ -12,6 +12,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/expectations"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/hash"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/reconciler"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/k8s"
@@ -63,7 +64,7 @@ func New(params Params) appsv1.StatefulSet {
 }
 
 // Reconcile creates or updates the expected StatefulSet.
-func Reconcile(ctx context.Context, c k8s.Client, expected appsv1.StatefulSet, owner client.Object) (appsv1.StatefulSet, error) {
+func Reconcile(ctx context.Context, c k8s.Client, expected appsv1.StatefulSet, owner client.Object, expectations *expectations.Expectations) (appsv1.StatefulSet, error) {
 	var reconciled appsv1.StatefulSet
 
 	err := reconciler.ReconcileResource(reconciler.Params{
@@ -86,6 +87,13 @@ func Reconcile(ctx context.Context, c k8s.Client, expected appsv1.StatefulSet, o
 			reconciled.Labels = maps.Merge(reconciled.Labels, expected.Labels)
 			reconciled.Annotations = maps.Merge(reconciled.Annotations, expected.Annotations)
 			reconciled.Spec = expected.Spec
+		},
+		PostUpdate: func() {
+			if expectations != nil {
+				// expect the reconciled StatefulSet to be there in the cache for next reconciliations,
+				// to prevent assumptions based on the wrong replica count
+				expectations.ExpectGeneration(reconciled)
+			}
 		},
 	})
 	return reconciled, err

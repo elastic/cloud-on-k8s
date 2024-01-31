@@ -15,3 +15,12 @@ func (logstash *Logstash) GetIdentityLabels() map[string]string {
 		"logstash.k8s.elastic.co/name": logstash.Name,
 	}
 }
+
+// GetPodIdentityLabels will return the common Elastic assigned labels for a Logstash Pod
+func (logstash *Logstash) GetPodIdentityLabels() map[string]string {
+	return map[string]string{
+		commonv1.TypeLabelName:                     "logstash",
+		"logstash.k8s.elastic.co/name":             logstash.Name,
+		"logstash.k8s.elastic.co/statefulset-name": Name(logstash.Name),
+	}
+}

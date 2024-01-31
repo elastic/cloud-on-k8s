@@ -22,6 +22,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/association"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/events"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/expectations"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/keystore"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/operator"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/reconciler"
@@ -57,6 +58,7 @@ func newReconciler(mgr manager.Manager, params operator.Parameters) *ReconcileLo
 		recorder:       mgr.GetEventRecorderFor(controllerName),
 		dynamicWatches: watches.NewDynamicWatches(),
 		Parameters:     params,
+		expectations:   expectations.NewClustersExpectations(client),
 	}
 }
 
@@ -114,7 +116,8 @@ type ReconcileLogstash struct {
 	dynamicWatches watches.DynamicWatches
 	operator.Parameters
 	// iteration is the number of times this controller has run its Reconcile method
-	iteration uint64
+	iteration    uint64
+	expectations *expectations.ClustersExpectation
 }
 
 // Reconcile reads that state of the cluster for a Logstash object and makes changes based on the state read
@@ -147,18 +150,17 @@ func (r *ReconcileLogstash) Reconcile(ctx context.Context, request reconcile.Req
 	}
 
 	results, status := r.doReconcile(ctx, *logstash)
+	logger := ulog.FromContext(ctx)
 
-	if err := updateStatus(ctx, *logstash, r.Client, status); err != nil {
+	err := updateStatus(ctx, *logstash, r.Client, status)
+	if err != nil {
 		if apierrors.IsConflict(err) {
-			return results.WithResult(reconcile.Result{Requeue: true}).Aggregate()
+			logger.V(1).Info("Conflict while updating status. Requeueing", "namespace", logstash.Namespace, "ls_name", logstash.Name)
+			return reconcile.Result{Requeue: true}, nil
 		}
-		results = results.WithError(err)
+		k8s.MaybeEmitErrorEvent(r.recorder, err, logstash, events.EventReconciliationError, "Reconciliation error: %v", err)
 	}
-
-	result, err := results.Aggregate()
-	k8s.MaybeEmitErrorEvent(r.recorder, err, logstash, events.EventReconciliationError, "Reconciliation error: %v", err)
-
-	return result, err
+	return results.WithError(err).Aggregate()
 }
 
 func (r *ReconcileLogstash) doReconcile(ctx context.Context, logstash logstashv1alpha1.Logstash) (*reconciler.Results, logstashv1alpha1.LogstashStatus) {
@@ -201,6 +203,7 @@ func (r *ReconcileLogstash) doReconcile(ctx context.Context, logstash logstashv1
 		Logstash:       logstash,
 		Status:         status,
 		OperatorParams: r.Parameters,
+		Expectations:   r.expectations.ForCluster(k8s.ExtractNamespacedName(&logstash)),
 	})
 }
 
@@ -217,6 +220,7 @@ func (r *ReconcileLogstash) validate(ctx context.Context, logstash logstashv1alp
 }
 
 func (r *ReconcileLogstash) onDelete(ctx context.Context, obj types.NamespacedName) error {
+	r.expectations.RemoveCluster(obj)
 	r.dynamicWatches.Secrets.RemoveHandlerForKey(keystore.SecureSettingsWatchName(obj))
 	r.dynamicWatches.Secrets.RemoveHandlerForKey(common.ConfigRefWatchName(obj))
 	r.dynamicWatches.Secrets.RemoveHandlerForKey(pipelines.RefWatchName(obj))

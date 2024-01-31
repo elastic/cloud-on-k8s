@@ -6,16 +6,19 @@ package logstash
 
 import (
 	"context"
+	"fmt"
 	"reflect"
-
-	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/logstash/sset"
+	"time"
 
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/kubernetes/scheme"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
+	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
 	"github.com/pkg/errors"
 
@@ -24,14 +27,27 @@ import (
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/reconciler"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/tracing"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/logstash/labels"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/logstash/sset"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/logstash/volume"
+
 	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/k8s"
+	ulog "github.com/elastic/cloud-on-k8s/v2/pkg/utils/log"
 )
 
 func reconcileStatefulSet(params Params, podTemplate corev1.PodTemplateSpec) (*reconciler.Results, logstashv1alpha1.LogstashStatus) {
 	defer tracing.Span(&params.Context)()
 	results := reconciler.NewResult(params.Context)
 
-	s := sset.New(sset.Params{
+	ok, _, err := params.expectationsSatisfied(params.Context)
+	if err != nil {
+		return results.WithError(err), params.Status
+	}
+
+	if !ok {
+		return results.WithResult(reconcile.Result{Requeue: true}), params.Status
+	}
+
+	expected := sset.New(sset.Params{
 		Name:                 logstashv1alpha1.Name(params.Logstash.Name),
 		Namespace:            params.Logstash.Namespace,
 		ServiceName:          logstashv1alpha1.APIServiceName(params.Logstash.Name),
@@ -43,11 +59,49 @@ func reconcileStatefulSet(params Params, podTemplate corev1.PodTemplateSpec) (*r
 		UpdateStrategy:       params.Logstash.Spec.UpdateStrategy,
 		VolumeClaimTemplates: params.Logstash.Spec.VolumeClaimTemplates,
 	})
-	if err := controllerutil.SetControllerReference(&params.Logstash, &s, scheme.Scheme); err != nil {
+
+	recreations, err := volume.RecreateStatefulSets(params.Context, params.Client, params.Logstash)
+
+	if err != nil {
+		if apierrors.IsConflict(err) {
+			ulog.FromContext(params.Context).V(1).Info("Conflict while recreating stateful set, requeueing", "message", err)
+			return results.WithResult(reconcile.Result{Requeue: true}), params.Status
+		}
+		return results.WithError(fmt.Errorf("StatefulSet recreation: %w", err)), params.Status
+	}
+
+	if recreations > 0 {
+		// Statefulset is in the process of being recreated to handle PVC expansion:
+		// it is safer to requeue until the re-creation is done.
+		// Otherwise, some operation could be performed with wrong assumptions:
+		// the sset doesn't exist (was just deleted), but the Pods do actually exist.
+		ulog.FromContext(params.Context).V(1).Info("StatefulSets recreation in progress, re-queueing after 30 seconds.", "namespace", params.Logstash.Namespace, "ls_name", params.Logstash.Name,
+			"status", params.Status)
+		return results.WithResult(reconcile.Result{RequeueAfter: 30 * time.Second}), params.Status
+	}
+
+	actualStatefulSet, err := retrieveActualStatefulSet(params.Client, params.Logstash)
+
+	notFound := apierrors.IsNotFound(err)
+	if err != nil && !notFound {
 		return results.WithError(err), params.Status
 	}
 
-	reconciled, err := sset.Reconcile(params.Context, params.Client, s, &params.Logstash)
+	if !notFound {
+		recreateSset, err := volume.HandleVolumeExpansion(params.Context, params.Client, params.Logstash, expected, actualStatefulSet, true)
+		if err != nil {
+			return results.WithError(err), params.Status
+		}
+		if recreateSset {
+			return results.WithResult(reconcile.Result{Requeue: true}), params.Status
+		}
+	}
+
+	if err := controllerutil.SetControllerReference(&params.Logstash, &expected, scheme.Scheme); err != nil {
+		return results.WithError(err), params.Status
+	}
+	reconciled, err := sset.Reconcile(params.Context, params.Client, expected, &params.Logstash, params.Expectations)
+
 	if err != nil {
 		return results.WithError(err), params.Status
 	}
@@ -90,4 +144,15 @@ func updateStatus(ctx context.Context, logstash logstashv1alpha1.Logstash, clien
 	}
 	logstash.Status = status
 	return common.UpdateStatus(ctx, client, &logstash)
+}
+
+// retrieveActualStatefulSet returns the StatefulSet for the given ls cluster.
+func retrieveActualStatefulSet(c k8s.Client, ls logstashv1alpha1.Logstash) (appsv1.StatefulSet, error) {
+	var sset appsv1.StatefulSet
+	err := c.Get(context.Background(), types.NamespacedName{Name: logstashv1alpha1.Name(ls.Name), Namespace: ls.Namespace}, &sset)
+	if err != nil {
+		return appsv1.StatefulSet{}, err
+	}
+
+	return sset, nil
 }
