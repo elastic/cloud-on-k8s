@@ -10,11 +10,12 @@ import (
 
 	esv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/elasticsearch/v1"
 	common "github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/settings"
+	sset "github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/statefulset"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/client"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/label"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/nodespec"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/settings"
-	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/sset"
+	essset "github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/sset"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/k8s"
 	ulog "github.com/elastic/cloud-on-k8s/v2/pkg/utils/log"
 )
@@ -51,7 +52,7 @@ func SetupMinimumMasterNodesConfig(
 			masters += int(sset.GetReplicas(resource.StatefulSet))
 		} else {
 			// Second situation: not a sset of masters, but we check if there are some of them waiting for a rolling upgrade
-			actualPods, err := sset.GetActualPodsForStatefulSet(c, k8s.ExtractNamespacedName(&resource.StatefulSet))
+			actualPods, err := essset.GetActualPodsForStatefulSet(c, k8s.ExtractNamespacedName(&resource.StatefulSet))
 			if err != nil {
 				return err
 			}
@@ -84,14 +85,14 @@ func UpdateMinimumMasterNodes(
 	c k8s.Client,
 	es esv1.Elasticsearch,
 	esClient client.Client,
-	actualStatefulSets sset.StatefulSetList,
+	actualStatefulSets essset.StatefulSetList,
 ) (bool, error) {
 	// Check if we have at least one Zen1 compatible pod or StatefulSet in flight.
 	if zen1compatible, err := AtLeastOneNodeCompatibleWithZen1(ctx, actualStatefulSets, c, es); !zen1compatible || err != nil {
 		return false, err
 	}
 
-	actualMasters, err := sset.GetActualMastersForCluster(c, es)
+	actualMasters, err := essset.GetActualMastersForCluster(c, es)
 	if err != nil {
 		return false, err
 	}

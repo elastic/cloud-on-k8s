@@ -47,7 +47,7 @@ func AtLeastOneNodeCompatibleWithZen1(
 	if zen1PodExists {
 		return true, nil
 	}
-	return sset.AtLeastOneESVersionMatch(ctx, statefulSets, versionCompatibleWithZen1), nil
+	return statefulSets.AtLeastOneESVersionMatch(ctx, versionCompatibleWithZen1), nil
 }
 
 func atLeasOnePodCompatibleWithZen1(pods []corev1.Pod) (bool, error) {

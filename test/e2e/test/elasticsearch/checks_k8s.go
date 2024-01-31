@@ -21,10 +21,11 @@ import (
 	esv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/elasticsearch/v1"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/certificates"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/hash"
+	sset "github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/statefulset"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/bootstrap"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/certificates/transport"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/label"
-	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/sset"
+	essset "github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/sset"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/k8s"
 	"github.com/elastic/cloud-on-k8s/v2/test/e2e/test"
 )
@@ -481,7 +482,7 @@ func checkExpectedPodsReady(b Builder, k *test.K8sClient) error {
 		}
 		// the exact expected list of Pods (no more, no less) should exist
 		expectedPodNames := sset.PodNames(statefulSet)
-		actualPods, err := sset.GetActualPodsForStatefulSet(k.Client, k8s.ExtractNamespacedName(&statefulSet))
+		actualPods, err := essset.GetActualPodsForStatefulSet(k.Client, k8s.ExtractNamespacedName(&statefulSet))
 		if err != nil {
 			return err
 		}
@@ -544,7 +545,7 @@ func AnnotatePodsWithBuilderHash(b Builder, k *test.K8sClient) []test.Step {
 			Test: test.Eventually(func() error {
 				es := b.Elasticsearch
 				for _, nodeSet := range b.Elasticsearch.Spec.NodeSets {
-					pods, err := sset.GetActualPodsForStatefulSet(k.Client, types.NamespacedName{
+					pods, err := essset.GetActualPodsForStatefulSet(k.Client, types.NamespacedName{
 						Namespace: es.Namespace,
 						Name:      esv1.StatefulSet(es.Name, nodeSet.Name),
 					})

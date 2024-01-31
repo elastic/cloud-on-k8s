@@ -14,10 +14,11 @@ import (
 	commonv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/common/v1"
 	esv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/elasticsearch/v1"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/keystore"
+	sset "github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/statefulset"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/version"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/label"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/settings"
-	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/sset"
+	essset "github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/sset"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/k8s"
 )
 
@@ -40,8 +41,8 @@ func (l ResourcesList) ForStatefulSet(name string) (Resources, error) {
 	return Resources{}, fmt.Errorf("no expected resources for StatefulSet %s", name)
 }
 
-func (l ResourcesList) StatefulSets() sset.StatefulSetList {
-	ssetList := make(sset.StatefulSetList, 0, len(l))
+func (l ResourcesList) StatefulSets() essset.StatefulSetList {
+	ssetList := make(essset.StatefulSetList, 0, len(l))
 	for _, resource := range l {
 		ssetList = append(ssetList, resource.StatefulSet)
 	}
@@ -57,7 +58,7 @@ func BuildExpectedResources(
 	client k8s.Client,
 	es esv1.Elasticsearch,
 	keystoreResources *keystore.Resources,
-	existingStatefulSets sset.StatefulSetList,
+	existingStatefulSets essset.StatefulSetList,
 	ipFamily corev1.IPFamily,
 	setDefaultSecurityContext bool,
 ) (ResourcesList, error) {

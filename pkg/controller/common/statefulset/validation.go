@@ -2,7 +2,7 @@
 // or more contributor license agreements. Licensed under the Elastic License 2.0;
 // you may not use this file except in compliance with the Elastic License 2.0.
 
-package sset
+package statefulset
 
 import (
 	"context"
@@ -28,7 +28,7 @@ type PodTemplateError struct {
 
 func (e *PodTemplateError) Error() string {
 	return fmt.Sprintf(
-		"Validation of PodTemplate for StatefulSet %s in Elasticsearch %s/%s failed for the following reasons: %v",
+		"Validation of PodTemplate for StatefulSet %s in %s/%s failed for the following reasons: %v",
 		e.StatefulSet.Name,
 		e.Parent.GetNamespace(),
 		e.Parent.GetName(),
@@ -36,11 +36,11 @@ func (e *PodTemplateError) Error() string {
 	)
 }
 
-// validatePodTemplate validates a Pod Template by issuing a dry-run API request.
+// ValidatePodTemplate validates a Pod Template by issuing a dry-run API request.
 // This check is performed as "best-effort" for the following reasons:
 // * It is only supported by the API server starting 1.13
 // * There might be some admission webhooks on the validation path that are not compatible with dry-run requests.
-func validatePodTemplate(
+func ValidatePodTemplate(
 	ctx context.Context,
 	c k8s.Client,
 	parent metav1.Object,

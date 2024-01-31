@@ -2,7 +2,7 @@
 // or more contributor license agreements. Licensed under the Elastic License 2.0;
 // you may not use this file except in compliance with the Elastic License 2.0.
 
-package sset
+package statefulset
 
 import (
 	"context"
@@ -19,7 +19,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/k8s"
 )
 
-func Test_validatePodTemplate(t *testing.T) {
+func Test_ValidatePodTemplate(t *testing.T) {
 	es := esv1.Elasticsearch{
 		ObjectMeta: metav1.ObjectMeta{
 			Namespace: "ns",
@@ -126,7 +126,7 @@ func Test_validatePodTemplate(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			err := validatePodTemplate(context.Background(), tt.args.c, tt.args.parent, tt.args.sset)
+			err := ValidatePodTemplate(context.Background(), tt.args.c, tt.args.parent, tt.args.sset)
 			if !reflect.DeepEqual(err, tt.wantErr) {
 				t.Errorf("validatePodTemplate() error = %v, wantErr %v", err, tt.wantErr)
 			}

@@ -92,12 +92,12 @@ func TestAtLeastOneESVersionMatch(t *testing.T) {
 	ssetv6.Spec.Template.Labels[label.VersionLabelName] = "6.8.0"
 
 	require.Equal(t, true,
-		AtLeastOneESVersionMatch(context.Background(), StatefulSetList{ssetv6, ssetv7}, func(v version.Version) bool {
+		StatefulSetList{ssetv6, ssetv7}.AtLeastOneESVersionMatch(context.Background(), func(v version.Version) bool {
 			return v.Major == 7
 		}),
 	)
 	require.Equal(t, false,
-		AtLeastOneESVersionMatch(context.Background(), StatefulSetList{ssetv6, ssetv6}, func(v version.Version) bool {
+		StatefulSetList{ssetv6, ssetv6}.AtLeastOneESVersionMatch(context.Background(), func(v version.Version) bool {
 			return v.Major == 7
 		}),
 	)
