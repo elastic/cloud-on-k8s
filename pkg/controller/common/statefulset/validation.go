@@ -88,6 +88,6 @@ func toPodTemplateError(ctx context.Context, parent metav1.Object, sset appsv1.S
 
 	// The Kubernetes API returns an error which is not related to the spec. of the Pod. In order to not block
 	// the reconciliation loop we skip the validation.
-	ulog.FromContext(ctx).Info("Pod validation skipped", "namespace", parent.GetNamespace(), "es_name", parent.GetName(), "error", statusErr)
+	ulog.FromContext(ctx).Info("Pod validation skipped", "namespace", parent.GetNamespace(), "name", parent.GetName(), "error", statusErr)
 	return nil
 }
