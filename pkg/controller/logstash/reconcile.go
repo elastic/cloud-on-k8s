@@ -79,6 +79,13 @@ func calculateStatus(params *Params, sset appsv1.StatefulSet) (logstashv1alpha1.
 	status.Version = common.LowestVersionFromPods(params.Context, status.Version, pods, VersionLabelName)
 	status.AvailableNodes = sset.Status.ReadyReplicas
 	status.ExpectedNodes = sset.Status.Replicas
+
+	health, err := CalculateHealth(logstash.GetAssociations(), status.AvailableNodes, status.ExpectedNodes)
+	if err != nil {
+		return status, err
+	}
+	status.Health = health
+
 	return status, nil
 }
 
