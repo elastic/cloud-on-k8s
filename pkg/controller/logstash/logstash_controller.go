@@ -31,6 +31,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/watches"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/logstash/labels"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/logstash/pipelines"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/logstash/validation"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/k8s"
 	ulog "github.com/elastic/cloud-on-k8s/v2/pkg/utils/log"
 )
@@ -211,7 +212,7 @@ func (r *ReconcileLogstash) validate(ctx context.Context, logstash logstashv1alp
 	defer tracing.Span(&ctx)()
 
 	// Run create validations only as update validations require old object which we don't have here.
-	if _, err := logstash.ValidateCreate(); err != nil {
+	if err := validation.ValidateLogstash(&logstash); err != nil {
 		ulog.FromContext(ctx).Error(err, "Validation failed")
 		k8s.MaybeEmitErrorEvent(r.recorder, err, &logstash, events.EventReasonValidation, err.Error())
 		return tracing.CaptureError(ctx, err)

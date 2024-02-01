@@ -2,9 +2,10 @@
 // or more contributor license agreements. Licensed under the Elastic License 2.0;
 // you may not use this file except in compliance with the Elastic License 2.0.
 
-package v1alpha1
+package validation
 
 import (
+	"context"
 	"fmt"
 
 	corev1 "k8s.io/api/core/v1"
@@ -13,15 +14,33 @@ import (
 	"k8s.io/apimachinery/pkg/util/validation/field"
 
 	commonv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/common/v1"
+	lsv1alpha1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/logstash/v1alpha1"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/version"
+	volumevalidations "github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/volume/validations"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/k8s"
 )
 
 const (
 	pvcImmutableMsg = "Volume claim templates can only have storage requests modified"
 )
 
-var (
-	defaultChecks = []func(*Logstash) field.ErrorList{
+type validation func(*lsv1alpha1.Logstash) field.ErrorList
+
+type updateValidation func(*lsv1alpha1.Logstash, *lsv1alpha1.Logstash) field.ErrorList
+
+// updateValidations are the validation funcs that only apply to updates
+func updateValidations(ctx context.Context, k8sClient k8s.Client, validateStorageClass bool) []updateValidation {
+	return []updateValidation{
+		checkNoDowngrade,
+		func(current *lsv1alpha1.Logstash, proposed *lsv1alpha1.Logstash) field.ErrorList {
+			return checkPVCchanges(ctx, current, proposed, k8sClient, validateStorageClass)
+		},
+	}
+}
+
+// validations are the validation funcs that apply to creates or updates
+func validations() []validation {
+	return []validation{
 		checkNoUnknownFields,
 		checkNameLength,
 		checkSupportedVersion,
@@ -30,33 +49,28 @@ var (
 		checkAssociations,
 		checkSinglePipelineSource,
 	}
+}
 
-	updateChecks = []func(old, curr *Logstash) field.ErrorList{
-		checkNoDowngrade,
-		checkPVCchanges,
-	}
-)
-
-func checkNoUnknownFields(l *Logstash) field.ErrorList {
+func checkNoUnknownFields(l *lsv1alpha1.Logstash) field.ErrorList {
 	return commonv1.NoUnknownFields(l, l.ObjectMeta)
 }
 
-func checkNameLength(l *Logstash) field.ErrorList {
+func checkNameLength(l *lsv1alpha1.Logstash) field.ErrorList {
 	return commonv1.CheckNameLength(l)
 }
 
-func checkSupportedVersion(l *Logstash) field.ErrorList {
+func checkSupportedVersion(l *lsv1alpha1.Logstash) field.ErrorList {
 	return commonv1.CheckSupportedStackVersion(l.Spec.Version, version.SupportedLogstashVersions)
 }
 
-func checkNoDowngrade(prev, curr *Logstash) field.ErrorList {
+func checkNoDowngrade(prev, curr *lsv1alpha1.Logstash) field.ErrorList {
 	if commonv1.IsConfiguredToAllowDowngrades(curr) {
 		return nil
 	}
 	return commonv1.CheckNoDowngrade(prev.Spec.Version, curr.Spec.Version)
 }
 
-func checkSingleConfigSource(l *Logstash) field.ErrorList {
+func checkSingleConfigSource(l *lsv1alpha1.Logstash) field.ErrorList {
 	if l.Spec.Config != nil && l.Spec.ConfigRef != nil {
 		msg := "Specify at most one of [`config`, `configRef`], not both"
 		return field.ErrorList{
@@ -68,7 +82,7 @@ func checkSingleConfigSource(l *Logstash) field.ErrorList {
 	return nil
 }
 
-func checkAssociations(l *Logstash) field.ErrorList {
+func checkAssociations(l *lsv1alpha1.Logstash) field.ErrorList {
 	monitoringPath := field.NewPath("spec").Child("monitoring")
 	err1 := commonv1.CheckAssociationRefs(monitoringPath.Child("metrics"), l.GetMonitoringMetricsRefs()...)
 	err2 := commonv1.CheckAssociationRefs(monitoringPath.Child("logs"), l.GetMonitoringLogsRefs()...)
@@ -76,7 +90,7 @@ func checkAssociations(l *Logstash) field.ErrorList {
 	return append(append(err1, err2...), err3...)
 }
 
-func checkSinglePipelineSource(a *Logstash) field.ErrorList {
+func checkSinglePipelineSource(a *lsv1alpha1.Logstash) field.ErrorList {
 	if a.Spec.Pipelines != nil && a.Spec.PipelinesRef != nil {
 		msg := "Specify at most one of [`pipelines`, `pipelinesRef`], not both"
 		return field.ErrorList{
@@ -88,7 +102,7 @@ func checkSinglePipelineSource(a *Logstash) field.ErrorList {
 	return nil
 }
 
-func checkESRefsNamed(l *Logstash) field.ErrorList {
+func checkESRefsNamed(l *lsv1alpha1.Logstash) field.ErrorList {
 	var errorList field.ErrorList
 	for i, esRef := range l.Spec.ElasticsearchRefs {
 		if esRef.ClusterName == "" {
@@ -104,7 +118,7 @@ func checkESRefsNamed(l *Logstash) field.ErrorList {
 }
 
 // checkPVCchanges ensures no PVCs are changed, as volume claim templates are immutable in StatefulSets.
-func checkPVCchanges(current, proposed *Logstash) field.ErrorList {
+func checkPVCchanges(ctx context.Context, current *lsv1alpha1.Logstash, proposed *lsv1alpha1.Logstash, k8sClient k8s.Client, validateStorageClass bool) field.ErrorList {
 	var errs field.ErrorList
 	if current == nil || proposed == nil {
 		return errs
@@ -116,6 +130,14 @@ func checkPVCchanges(current, proposed *Logstash) field.ErrorList {
 		claimsWithoutStorageReq(proposed.Spec.VolumeClaimTemplates),
 	) {
 		errs = append(errs, field.Invalid(field.NewPath("spec").Child("volumeClaimTemplates"), proposed.Spec.VolumeClaimTemplates, pvcImmutableMsg))
+	}
+
+	if err := volumevalidations.ValidateClaimsStorageUpdate(ctx, k8sClient, current.Spec.VolumeClaimTemplates, proposed.Spec.VolumeClaimTemplates, validateStorageClass); err != nil {
+		errs = append(errs, field.Invalid(
+			field.NewPath("spec").Child("volumeClaimTemplates"),
+			proposed.Spec.VolumeClaimTemplates,
+			err.Error(),
+		))
 	}
 
 	return errs
@@ -130,4 +152,14 @@ func claimsWithoutStorageReq(claims []corev1.PersistentVolumeClaim) []corev1.Per
 		result = append(result, patchedClaim)
 	}
 	return result
+}
+
+func check(ls *lsv1alpha1.Logstash, validations []validation) field.ErrorList {
+	var errs field.ErrorList
+	for _, val := range validations {
+		if err := val(ls); err != nil {
+			errs = append(errs, err...)
+		}
+	}
+	return errs
 }

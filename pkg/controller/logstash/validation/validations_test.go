@@ -2,14 +2,17 @@
 // or more contributor license agreements. Licensed under the Elastic License 2.0;
 // you may not use this file except in compliance with the Elastic License 2.0.
 
-package v1alpha1
+package validation
 
 import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+
 	"k8s.io/apimachinery/pkg/util/validation/field"
+
+	lsv1alpha1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/logstash/v1alpha1"
 
 	commonv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/common/v1"
 )
@@ -36,12 +39,12 @@ func TestCheckNameLength(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			ls := Logstash{
+			ls := lsv1alpha1.Logstash{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      tc.logstashName,
 					Namespace: "test",
 				},
-				Spec: LogstashSpec{},
+				Spec: lsv1alpha1.LogstashSpec{},
 			}
 
 			errList := checkNameLength(&ls)
@@ -52,8 +55,8 @@ func TestCheckNameLength(t *testing.T) {
 
 func TestCheckNoUnknownFields(t *testing.T) {
 	type args struct {
-		prev *Logstash
-		curr *Logstash
+		prev *lsv1alpha1.Logstash
+		curr *lsv1alpha1.Logstash
 	}
 	tests := []struct {
 		name string
@@ -63,26 +66,26 @@ func TestCheckNoUnknownFields(t *testing.T) {
 		{
 			name: "No downgrade",
 			args: args{
-				prev: &Logstash{Spec: LogstashSpec{Version: "7.17.0"}},
-				curr: &Logstash{Spec: LogstashSpec{Version: "8.6.1"}},
+				prev: &lsv1alpha1.Logstash{Spec: lsv1alpha1.LogstashSpec{Version: "7.17.0"}},
+				curr: &lsv1alpha1.Logstash{Spec: lsv1alpha1.LogstashSpec{Version: "8.6.1"}},
 			},
 			want: nil,
 		},
 		{
 			name: "Downgrade NOK",
 			args: args{
-				prev: &Logstash{Spec: LogstashSpec{Version: "8.6.1"}},
-				curr: &Logstash{Spec: LogstashSpec{Version: "8.5.0"}},
+				prev: &lsv1alpha1.Logstash{Spec: lsv1alpha1.LogstashSpec{Version: "8.6.1"}},
+				curr: &lsv1alpha1.Logstash{Spec: lsv1alpha1.LogstashSpec{Version: "8.5.0"}},
 			},
 			want: field.ErrorList{&field.Error{Type: field.ErrorTypeForbidden, Field: "spec.version", BadValue: "", Detail: "Version downgrades are not supported"}},
 		},
 		{
 			name: "Downgrade with override OK",
 			args: args{
-				prev: &Logstash{Spec: LogstashSpec{Version: "8.6.1"}},
-				curr: &Logstash{ObjectMeta: metav1.ObjectMeta{Annotations: map[string]string{
+				prev: &lsv1alpha1.Logstash{Spec: lsv1alpha1.LogstashSpec{Version: "8.6.1"}},
+				curr: &lsv1alpha1.Logstash{ObjectMeta: metav1.ObjectMeta{Annotations: map[string]string{
 					commonv1.DisableDowngradeValidationAnnotation: "true",
-				}}, Spec: LogstashSpec{Version: "8.5.0"}},
+				}}, Spec: lsv1alpha1.LogstashSpec{Version: "8.5.0"}},
 			},
 			want: nil,
 		},
@@ -97,13 +100,13 @@ func TestCheckNoUnknownFields(t *testing.T) {
 func Test_checkSingleConfigSource(t *testing.T) {
 	tests := []struct {
 		name     string
-		logstash Logstash
+		logstash lsv1alpha1.Logstash
 		wantErr  bool
 	}{
 		{
 			name: "configRef absent, config present",
-			logstash: Logstash{
-				Spec: LogstashSpec{
+			logstash: lsv1alpha1.Logstash{
+				Spec: lsv1alpha1.LogstashSpec{
 					Config: &commonv1.Config{},
 				},
 			},
@@ -111,8 +114,8 @@ func Test_checkSingleConfigSource(t *testing.T) {
 		},
 		{
 			name: "config absent, configRef present",
-			logstash: Logstash{
-				Spec: LogstashSpec{
+			logstash: lsv1alpha1.Logstash{
+				Spec: lsv1alpha1.LogstashSpec{
 					ConfigRef: &commonv1.ConfigSource{},
 				},
 			},
@@ -120,15 +123,15 @@ func Test_checkSingleConfigSource(t *testing.T) {
 		},
 		{
 			name: "neither present",
-			logstash: Logstash{
-				Spec: LogstashSpec{},
+			logstash: lsv1alpha1.Logstash{
+				Spec: lsv1alpha1.LogstashSpec{},
 			},
 			wantErr: false,
 		},
 		{
 			name: "both present",
-			logstash: Logstash{
-				Spec: LogstashSpec{
+			logstash: lsv1alpha1.Logstash{
+				Spec: lsv1alpha1.LogstashSpec{
 					Config:    &commonv1.Config{},
 					ConfigRef: &commonv1.ConfigSource{},
 				},
@@ -148,13 +151,13 @@ func Test_checkSingleConfigSource(t *testing.T) {
 func Test_checkSinglePipelineSource(t *testing.T) {
 	tests := []struct {
 		name     string
-		logstash Logstash
+		logstash lsv1alpha1.Logstash
 		wantErr  bool
 	}{
 		{
 			name: "pipelinesRef absent, pipelines present",
-			logstash: Logstash{
-				Spec: LogstashSpec{
+			logstash: lsv1alpha1.Logstash{
+				Spec: lsv1alpha1.LogstashSpec{
 					Pipelines: []commonv1.Config{},
 				},
 			},
@@ -162,8 +165,8 @@ func Test_checkSinglePipelineSource(t *testing.T) {
 		},
 		{
 			name: "pipelines absent, pipelinesRef present",
-			logstash: Logstash{
-				Spec: LogstashSpec{
+			logstash: lsv1alpha1.Logstash{
+				Spec: lsv1alpha1.LogstashSpec{
 					PipelinesRef: &commonv1.ConfigSource{},
 				},
 			},
@@ -171,15 +174,15 @@ func Test_checkSinglePipelineSource(t *testing.T) {
 		},
 		{
 			name: "neither present",
-			logstash: Logstash{
-				Spec: LogstashSpec{},
+			logstash: lsv1alpha1.Logstash{
+				Spec: lsv1alpha1.LogstashSpec{},
 			},
 			wantErr: false,
 		},
 		{
 			name: "both present",
-			logstash: Logstash{
-				Spec: LogstashSpec{
+			logstash: lsv1alpha1.Logstash{
+				Spec: lsv1alpha1.LogstashSpec{
 					Pipelines:    []commonv1.Config{},
 					PipelinesRef: &commonv1.ConfigSource{},
 				},
@@ -219,8 +222,8 @@ func Test_checkSupportedVersion(t *testing.T) {
 		},
 	} {
 		t.Run(tt.name, func(t *testing.T) {
-			a := Logstash{
-				Spec: LogstashSpec{
+			a := lsv1alpha1.Logstash{
+				Spec: lsv1alpha1.LogstashSpec{
 					Version: tt.version,
 				},
 			}
@@ -232,7 +235,7 @@ func Test_checkSupportedVersion(t *testing.T) {
 
 func Test_checkEsRefsAssociations(t *testing.T) {
 	type args struct {
-		b *Logstash
+		b *lsv1alpha1.Logstash
 	}
 	tests := []struct {
 		name    string
@@ -242,16 +245,16 @@ func Test_checkEsRefsAssociations(t *testing.T) {
 		{
 			name: "no ref: OK",
 			args: args{
-				b: &Logstash{},
+				b: &lsv1alpha1.Logstash{},
 			},
 			wantErr: false,
 		},
 		{
 			name: "mix secret named and named refs: OK",
 			args: args{
-				b: &Logstash{
-					Spec: LogstashSpec{
-						ElasticsearchRefs: []ElasticsearchCluster{
+				b: &lsv1alpha1.Logstash{
+					Spec: lsv1alpha1.LogstashSpec{
+						ElasticsearchRefs: []lsv1alpha1.ElasticsearchCluster{
 							{
 								ObjectSelector: commonv1.ObjectSelector{SecretName: "bla"},
 								ClusterName:    "test",
@@ -269,9 +272,9 @@ func Test_checkEsRefsAssociations(t *testing.T) {
 		{
 			name: "secret named ref with a name: NOK",
 			args: args{
-				b: &Logstash{
-					Spec: LogstashSpec{
-						ElasticsearchRefs: []ElasticsearchCluster{
+				b: &lsv1alpha1.Logstash{
+					Spec: lsv1alpha1.LogstashSpec{
+						ElasticsearchRefs: []lsv1alpha1.ElasticsearchCluster{
 							{
 								ObjectSelector: commonv1.ObjectSelector{SecretName: "bla", Name: "bla"},
 								ClusterName:    "test",
@@ -285,9 +288,9 @@ func Test_checkEsRefsAssociations(t *testing.T) {
 		{
 			name: "no name or secret name with namespace: NOK",
 			args: args{
-				b: &Logstash{
-					Spec: LogstashSpec{
-						ElasticsearchRefs: []ElasticsearchCluster{
+				b: &lsv1alpha1.Logstash{
+					Spec: lsv1alpha1.LogstashSpec{
+						ElasticsearchRefs: []lsv1alpha1.ElasticsearchCluster{
 							{
 								ObjectSelector: commonv1.ObjectSelector{Namespace: "blub"},
 								ClusterName:    "test",
@@ -301,9 +304,9 @@ func Test_checkEsRefsAssociations(t *testing.T) {
 		{
 			name: "no name or secret name with serviceName: NOK",
 			args: args{
-				b: &Logstash{
-					Spec: LogstashSpec{
-						ElasticsearchRefs: []ElasticsearchCluster{
+				b: &lsv1alpha1.Logstash{
+					Spec: lsv1alpha1.LogstashSpec{
+						ElasticsearchRefs: []lsv1alpha1.ElasticsearchCluster{
 							{
 								ObjectSelector: commonv1.ObjectSelector{ServiceName: "ble"},
 								ClusterName:    "test",
@@ -325,7 +328,7 @@ func Test_checkEsRefsAssociations(t *testing.T) {
 
 func Test_checkESRefsNamed(t *testing.T) {
 	type args struct {
-		b *Logstash
+		b *lsv1alpha1.Logstash
 	}
 	tests := []struct {
 		name    string
@@ -335,16 +338,16 @@ func Test_checkESRefsNamed(t *testing.T) {
 		{
 			name: "no ref: OK",
 			args: args{
-				b: &Logstash{},
+				b: &lsv1alpha1.Logstash{},
 			},
 			wantErr: false,
 		},
 		{
 			name: "one ref, missing clusterName: NOK",
 			args: args{
-				b: &Logstash{
-					Spec: LogstashSpec{
-						ElasticsearchRefs: []ElasticsearchCluster{
+				b: &lsv1alpha1.Logstash{
+					Spec: lsv1alpha1.LogstashSpec{
+						ElasticsearchRefs: []lsv1alpha1.ElasticsearchCluster{
 							{
 								ObjectSelector: commonv1.ObjectSelector{Name: "bla", Namespace: "blub"},
 							},
@@ -357,9 +360,9 @@ func Test_checkESRefsNamed(t *testing.T) {
 		{
 			name: "multiple refs, each with clusterName: OK",
 			args: args{
-				b: &Logstash{
-					Spec: LogstashSpec{
-						ElasticsearchRefs: []ElasticsearchCluster{
+				b: &lsv1alpha1.Logstash{
+					Spec: lsv1alpha1.LogstashSpec{
+						ElasticsearchRefs: []lsv1alpha1.ElasticsearchCluster{
 							{
 								ObjectSelector: commonv1.ObjectSelector{Name: "bla", Namespace: "blub"},
 								ClusterName:    "bla",
@@ -377,9 +380,9 @@ func Test_checkESRefsNamed(t *testing.T) {
 		{
 			name: "multiple refs, one missing clusterName: NOK",
 			args: args{
-				b: &Logstash{
-					Spec: LogstashSpec{
-						ElasticsearchRefs: []ElasticsearchCluster{
+				b: &lsv1alpha1.Logstash{
+					Spec: lsv1alpha1.LogstashSpec{
+						ElasticsearchRefs: []lsv1alpha1.ElasticsearchCluster{
 							{
 								ObjectSelector: commonv1.ObjectSelector{Name: "bla", Namespace: "blub"},
 								ClusterName:    "",
