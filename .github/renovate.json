@@ -3,6 +3,9 @@
     "config:base"
   ],
   "labels": [">renovate"],
+  "schedule": [
+    "after 1am on monday"
+  ],
   "packageRules": [
     {
       "packageNames": [
