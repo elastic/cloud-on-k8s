@@ -16,4 +16,4 @@ spec:
   {{- if and (not (hasKey .Values.spec "daemonSet")) (not (hasKey .Values.spec "deployment")) }}
   {{ fail "At least one of daemonSet or deployment is required for a functional Beat" }}
   {{- end }}
-  {{- toYaml .Values.spec | nindent 2 }}
+  {{- unset .Values.spec "type" | toYaml | nindent 2 }}
