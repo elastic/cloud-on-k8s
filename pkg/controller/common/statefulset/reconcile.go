@@ -105,3 +105,11 @@ func WithTemplateHash(d appsv1.StatefulSet) appsv1.StatefulSet {
 	dCopy.Labels = hash.SetTemplateHashLabel(dCopy.Labels, dCopy)
 	return dCopy
 }
+
+// NewPodTemplateValidator returns a function which can be used to validate the PodTemplateSpec in a StatefulSet
+func NewPodTemplateValidator(ctx context.Context, c k8s.Client, owner client.Object, expected appsv1.StatefulSet) func() error {
+	sset := expected.DeepCopy()
+	return func() error {
+		return validatePodTemplate(ctx, c, owner, *sset)
+	}
+}

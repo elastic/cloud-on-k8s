@@ -36,11 +36,11 @@ func (e *PodTemplateError) Error() string {
 	)
 }
 
-// ValidatePodTemplate validates a Pod Template by issuing a dry-run API request.
+// validatePodTemplate validates a Pod Template by issuing a dry-run API request.
 // This check is performed as "best-effort" for the following reasons:
 // * It is only supported by the API server starting 1.13
 // * There might be some admission webhooks on the validation path that are not compatible with dry-run requests.
-func ValidatePodTemplate(
+func validatePodTemplate(
 	ctx context.Context,
 	c k8s.Client,
 	parent metav1.Object,
@@ -88,6 +88,9 @@ func toPodTemplateError(ctx context.Context, parent metav1.Object, sset appsv1.S
 
 	// The Kubernetes API returns an error which is not related to the spec. of the Pod. In order to not block
 	// the reconciliation loop we skip the validation.
+	// TODO: Before moving to `common`, this would state `es_name` in place of `name`, indicating that this was an
+	//       Elasticsearch pod where validation is being skipped. It would be useful to include the `Kind` of the
+	//       parent in this log message.
 	ulog.FromContext(ctx).Info("Pod validation skipped", "namespace", parent.GetNamespace(), "name", parent.GetName(), "error", statusErr)
 	return nil
 }

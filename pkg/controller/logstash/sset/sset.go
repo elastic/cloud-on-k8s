@@ -10,11 +10,12 @@ import (
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"sigs.k8s.io/controller-runtime/pkg/client"
 
+	lsv1alpha1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/logstash/v1alpha1"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/expectations"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/hash"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/reconciler"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/statefulset"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/k8s"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/maps"
 )
@@ -64,13 +65,13 @@ func New(params Params) appsv1.StatefulSet {
 }
 
 // Reconcile creates or updates the expected StatefulSet.
-func Reconcile(ctx context.Context, c k8s.Client, expected appsv1.StatefulSet, owner client.Object, expectations *expectations.Expectations) (appsv1.StatefulSet, error) {
+func Reconcile(ctx context.Context, c k8s.Client, expected appsv1.StatefulSet, ls lsv1alpha1.Logstash, expectations *expectations.Expectations) (appsv1.StatefulSet, error) {
 	var reconciled appsv1.StatefulSet
-
+	podTemplateValidator := statefulset.NewPodTemplateValidator(ctx, c, &ls, expected)
 	err := reconciler.ReconcileResource(reconciler.Params{
 		Context:    ctx,
 		Client:     c,
-		Owner:      owner,
+		Owner:      &ls,
 		Expected:   &expected,
 		Reconciled: &reconciled,
 		NeedsUpdate: func() bool {
@@ -88,6 +89,8 @@ func Reconcile(ctx context.Context, c k8s.Client, expected appsv1.StatefulSet, o
 			reconciled.Annotations = maps.Merge(reconciled.Annotations, expected.Annotations)
 			reconciled.Spec = expected.Spec
 		},
+		PreCreate: podTemplateValidator,
+		PreUpdate: podTemplateValidator,
 		PostUpdate: func() {
 			if expectations != nil {
 				// expect the reconciled StatefulSet to be there in the cache for next reconciliations,

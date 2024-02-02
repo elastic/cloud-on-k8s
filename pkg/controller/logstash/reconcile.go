@@ -100,7 +100,7 @@ func reconcileStatefulSet(params Params, podTemplate corev1.PodTemplateSpec) (*r
 	if err := controllerutil.SetControllerReference(&params.Logstash, &expected, scheme.Scheme); err != nil {
 		return results.WithError(err), params.Status
 	}
-	reconciled, err := sset.Reconcile(params.Context, params.Client, expected, &params.Logstash, params.Expectations)
+	reconciled, err := sset.Reconcile(params.Context, params.Client, expected, params.Logstash, params.Expectations)
 
 	if err != nil {
 		return results.WithError(err), params.Status
