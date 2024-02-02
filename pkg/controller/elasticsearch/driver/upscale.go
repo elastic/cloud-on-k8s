@@ -17,7 +17,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/nodespec"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/reconcile"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/settings"
-	essset "github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/sset"
+	es_sset "github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/sset"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/version/zen1"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/version/zen2"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/k8s"
@@ -34,7 +34,7 @@ type upscaleCtx struct {
 }
 
 type UpscaleResults struct {
-	ActualStatefulSets essset.StatefulSetList
+	ActualStatefulSets es_sset.StatefulSetList
 	Requeue            bool
 }
 
@@ -50,7 +50,7 @@ type UpscaleResults struct {
 // - perform any pod upgrade (left for rolling upgrade phase)
 func HandleUpscaleAndSpecChanges(
 	ctx upscaleCtx,
-	actualStatefulSets essset.StatefulSetList,
+	actualStatefulSets es_sset.StatefulSetList,
 	expectedResources nodespec.ResourcesList,
 ) (UpscaleResults, error) {
 	results := UpscaleResults{}
@@ -84,7 +84,7 @@ func HandleUpscaleAndSpecChanges(
 				continue
 			}
 		}
-		reconciled, err := essset.ReconcileStatefulSet(ctx.parentCtx, ctx.k8sClient, ctx.es, res.StatefulSet, ctx.expectations)
+		reconciled, err := es_sset.ReconcileStatefulSet(ctx.parentCtx, ctx.k8sClient, ctx.es, res.StatefulSet, ctx.expectations)
 		if err != nil {
 			return results, fmt.Errorf("reconcile StatefulSet: %w", err)
 		}
@@ -96,7 +96,7 @@ func HandleUpscaleAndSpecChanges(
 }
 
 func podsToCreate(
-	actualStatefulSets, expectedStatefulSets essset.StatefulSetList,
+	actualStatefulSets, expectedStatefulSets es_sset.StatefulSetList,
 ) []string {
 	var pods []string
 	for _, expectedStatefulSet := range expectedStatefulSets {
@@ -112,7 +112,7 @@ func podsToCreate(
 
 func adjustResources(
 	ctx upscaleCtx,
-	actualStatefulSets essset.StatefulSetList,
+	actualStatefulSets es_sset.StatefulSetList,
 	expectedResources nodespec.ResourcesList,
 ) (nodespec.ResourcesList, error) {
 	upscaleState := newUpscaleState(ctx, actualStatefulSets, expectedResources)
@@ -145,7 +145,7 @@ func adjustZenConfig(ctx context.Context, k8sClient k8s.Client, es esv1.Elastics
 // what is allowed by the upscaleState, that may be mutated as a result.
 func adjustStatefulSetReplicas(
 	upscaleState *upscaleState,
-	actualStatefulSets essset.StatefulSetList,
+	actualStatefulSets es_sset.StatefulSetList,
 	expected appsv1.StatefulSet,
 ) (appsv1.StatefulSet, error) {
 	actual, alreadyExists := actualStatefulSets.GetByName(expected.Name)

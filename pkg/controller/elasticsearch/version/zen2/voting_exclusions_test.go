@@ -15,7 +15,7 @@ import (
 	esv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/elasticsearch/v1"
 	sset "github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/statefulset"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/client"
-	essset "github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/sset"
+	es_sset "github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/sset"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/k8s"
 )
 
@@ -38,11 +38,11 @@ func (f *fakeVotingConfigExclusionsESClient) AddVotingConfigExclusions(_ context
 
 func Test_ClearVotingConfigExclusions(t *testing.T) {
 	// dummy statefulset with 3 pods
-	statefulSet3rep := essset.TestSset{Name: "nodes", Version: "7.2.0", Replicas: 3, Master: true, Data: true}.Build()
+	statefulSet3rep := es_sset.TestSset{Name: "nodes", Version: "7.2.0", Replicas: 3, Master: true, Data: true}.Build()
 	es := esv1.Elasticsearch{ObjectMeta: metav1.ObjectMeta{Name: "es", Namespace: statefulSet3rep.Namespace}}
 	pods := make([]corev1.Pod, 0, *statefulSet3rep.Spec.Replicas)
 	for _, podName := range sset.PodNames(statefulSet3rep) {
-		pods = append(pods, essset.TestPod{
+		pods = append(pods, es_sset.TestPod{
 			Namespace:       statefulSet3rep.Namespace,
 			Name:            podName,
 			ClusterName:     es.Name,
@@ -52,12 +52,12 @@ func Test_ClearVotingConfigExclusions(t *testing.T) {
 		}.Build())
 	}
 	// simulate 2 pods out of the 3
-	statefulSet2rep := essset.TestSset{Name: "nodes", Version: "7.2.0", Replicas: 2, Master: true, Data: true}.Build()
+	statefulSet2rep := es_sset.TestSset{Name: "nodes", Version: "7.2.0", Replicas: 2, Master: true, Data: true}.Build()
 	tests := []struct {
 		name               string
 		c                  k8s.Client
 		es                 *esv1.Elasticsearch
-		actualStatefulSets essset.StatefulSetList
+		actualStatefulSets es_sset.StatefulSetList
 		wantCall           bool
 		wantRequeue        bool
 	}{
@@ -65,7 +65,7 @@ func Test_ClearVotingConfigExclusions(t *testing.T) {
 			name: "no v7 nodes",
 			c:    k8s.NewFakeClient(&es),
 			es:   &es,
-			actualStatefulSets: essset.StatefulSetList{
+			actualStatefulSets: es_sset.StatefulSetList{
 				createStatefulSetWithESVersion("6.8.0"),
 			},
 			wantCall:    false,
@@ -75,7 +75,7 @@ func Test_ClearVotingConfigExclusions(t *testing.T) {
 			name:               "3/3 nodes there, should clear",
 			c:                  k8s.NewFakeClient(&es, &statefulSet3rep, &pods[0], &pods[1], &pods[2]),
 			es:                 &es,
-			actualStatefulSets: essset.StatefulSetList{statefulSet3rep},
+			actualStatefulSets: es_sset.StatefulSetList{statefulSet3rep},
 			wantCall:           true,
 			wantRequeue:        false,
 		},
@@ -83,7 +83,7 @@ func Test_ClearVotingConfigExclusions(t *testing.T) {
 			name:               "2/3 nodes there: cannot clear, should requeue",
 			c:                  k8s.NewFakeClient(&es, &statefulSet3rep, &pods[0], &pods[1]),
 			es:                 &es,
-			actualStatefulSets: essset.StatefulSetList{statefulSet3rep},
+			actualStatefulSets: es_sset.StatefulSetList{statefulSet3rep},
 			wantCall:           false,
 			wantRequeue:        true,
 		},
@@ -91,7 +91,7 @@ func Test_ClearVotingConfigExclusions(t *testing.T) {
 			name:               "3/2 nodes there: cannot clear, should requeue",
 			es:                 &es,
 			c:                  k8s.NewFakeClient(&es, &statefulSet2rep, &pods[0], &pods[1], &pods[2]),
-			actualStatefulSets: essset.StatefulSetList{statefulSet2rep},
+			actualStatefulSets: es_sset.StatefulSetList{statefulSet2rep},
 			wantCall:           false,
 			wantRequeue:        true,
 		},
@@ -112,7 +112,7 @@ func Test_ClearVotingConfigExclusions(t *testing.T) {
 
 func TestAddToVotingConfigExclusions(t *testing.T) {
 	es := esv1.Elasticsearch{ObjectMeta: metav1.ObjectMeta{Name: "es", Namespace: "ns"}}
-	masterPod := essset.TestPod{
+	masterPod := es_sset.TestPod{
 		Namespace:   "ns",
 		Name:        "pod-name",
 		ClusterName: "es",
@@ -130,7 +130,7 @@ func TestAddToVotingConfigExclusions(t *testing.T) {
 		{
 			name: "some zen1 masters: do nothing",
 			es:   &es,
-			c: k8s.NewFakeClient(&es, essset.TestPod{
+			c: k8s.NewFakeClient(&es, es_sset.TestPod{
 				Namespace:   "ns",
 				Name:        "pod-name",
 				ClusterName: "es",

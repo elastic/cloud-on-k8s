@@ -20,7 +20,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/label"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/nodespec"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/reconcile"
-	essset "github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/sset"
+	es_sset "github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/sset"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/k8s"
 )
 
@@ -39,7 +39,7 @@ type upscaleState struct {
 
 func newUpscaleState(
 	ctx upscaleCtx,
-	actualStatefulSets essset.StatefulSetList,
+	actualStatefulSets es_sset.StatefulSetList,
 	expectedResources nodespec.ResourcesList,
 ) *upscaleState {
 	return &upscaleState{
@@ -65,7 +65,7 @@ func buildOnce(s *upscaleState) error {
 
 		if s.isBootstrapped {
 			// is there a master node creation in progress already?
-			masters, err := essset.GetActualMastersForCluster(s.ctx.k8sClient, s.ctx.es)
+			masters, err := es_sset.GetActualMastersForCluster(s.ctx.k8sClient, s.ctx.es)
 			if err != nil {
 				result = err
 				return

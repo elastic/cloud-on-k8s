@@ -16,7 +16,7 @@ import (
 	esv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/elasticsearch/v1"
 	sset "github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/statefulset"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/label"
-	essset "github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/sset"
+	es_sset "github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/sset"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/k8s"
 )
 
@@ -90,7 +90,7 @@ func TestIsCompatibleWithZen1(t *testing.T) {
 func TestAtLeastOneNodeCompatibleWithZen1(t *testing.T) {
 	tests := []struct {
 		name         string
-		statefulSets essset.StatefulSetList
+		statefulSets es_sset.StatefulSetList
 		client       k8s.Client
 		want         bool
 		wantErr      bool
@@ -103,25 +103,25 @@ func TestAtLeastOneNodeCompatibleWithZen1(t *testing.T) {
 		},
 		{
 			name:         "none compatible",
-			statefulSets: essset.StatefulSetList{createStatefulSetWithVersion("7.0.0"), createStatefulSetWithVersion("7.1.0")},
+			statefulSets: es_sset.StatefulSetList{createStatefulSetWithVersion("7.0.0"), createStatefulSetWithVersion("7.1.0")},
 			client:       k8s.NewFakeClient(),
 			want:         false,
 		},
 		{
 			name:         "one compatible",
-			statefulSets: essset.StatefulSetList{createStatefulSetWithVersion("6.8.0"), createStatefulSetWithVersion("7.1.0")},
+			statefulSets: es_sset.StatefulSetList{createStatefulSetWithVersion("6.8.0"), createStatefulSetWithVersion("7.1.0")},
 			client:       k8s.NewFakeClient(),
 			want:         true,
 		},
 		{
 			name:         "all compatible",
-			statefulSets: essset.StatefulSetList{createStatefulSetWithVersion("6.8.0"), createStatefulSetWithVersion("6.9.0")},
+			statefulSets: es_sset.StatefulSetList{createStatefulSetWithVersion("6.8.0"), createStatefulSetWithVersion("6.9.0")},
 			client:       k8s.NewFakeClient(),
 			want:         true,
 		},
 		{
 			name:         "Version in StatefulSet spec in 7.2.0 but there're still some 6.8.0 in flight",
-			statefulSets: essset.StatefulSetList{createStatefulSetWithVersion("7.2.0")},
+			statefulSets: es_sset.StatefulSetList{createStatefulSetWithVersion("7.2.0")},
 			client:       k8s.NewFakeClient(createMasterPodsWithVersion("foo", "6.8.0", 5)...),
 			want:         true,
 		},

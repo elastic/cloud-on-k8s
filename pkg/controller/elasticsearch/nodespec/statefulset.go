@@ -19,7 +19,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/label"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/network"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/settings"
-	essset "github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/sset"
+	es_sset "github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/sset"
 	esvolume "github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/volume"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/k8s"
 )
@@ -64,7 +64,7 @@ func BuildStatefulSet(
 	nodeSet esv1.NodeSet,
 	cfg settings.CanonicalConfig,
 	keystoreResources *keystore.Resources,
-	existingStatefulSets essset.StatefulSetList,
+	existingStatefulSets es_sset.StatefulSetList,
 	setDefaultSecurityContext bool,
 	policyConfig PolicyConfig,
 ) (appsv1.StatefulSet, error) {
