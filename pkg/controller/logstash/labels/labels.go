@@ -35,10 +35,5 @@ func NewLabels(logstash logstashv1alpha1.Logstash) map[string]string {
 
 // NewLabelSelectorForLogstash returns a labels.Selector that matches the labels as constructed by NewLabels
 func NewLabelSelectorForLogstash(ls logstashv1alpha1.Logstash) client.MatchingLabels {
-	return NewLabelSelectorForLogstashName(ls.Name)
-}
-
-// NewLabelSelectorForLogstash returns a labels.Selector that matches the labels as constructed by NewLabels
-func NewLabelSelectorForLogstashName(lsName string) client.MatchingLabels {
-	return client.MatchingLabels(map[string]string{commonv1.TypeLabelName: TypeLabelValue, NameLabelName: lsName})
+	return client.MatchingLabels(map[string]string{commonv1.TypeLabelName: TypeLabelValue, NameLabelName: ls.Name})
 }
