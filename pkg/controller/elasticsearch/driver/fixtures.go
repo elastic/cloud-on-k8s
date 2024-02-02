@@ -18,12 +18,13 @@ import (
 
 	esv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/elasticsearch/v1"
 	common "github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/settings"
+	sset "github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/statefulset"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/version"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/client"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/label"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/nodespec"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/settings"
-	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/sset"
+	es_sset "github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/sset"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/k8s"
 )
 
@@ -93,7 +94,7 @@ var noMutation = func(pod corev1.Pod) corev1.Pod {
 
 func removeMasterType(ssetName string) mutation {
 	return func(pod corev1.Pod) corev1.Pod {
-		podSsetname, _, _ := sset.StatefulSetName(pod.Name)
+		podSsetname, _, _ := es_sset.StatefulSetName(pod.Name)
 		if podSsetname == ssetName {
 			pod := pod.DeepCopy()
 			label.NodeTypesMasterLabelName.Set(false, pod.Labels)
@@ -105,7 +106,7 @@ func removeMasterType(ssetName string) mutation {
 
 func addMasterType(ssetName string) mutation {
 	return func(pod corev1.Pod) corev1.Pod {
-		podSsetname, _, _ := sset.StatefulSetName(pod.Name)
+		podSsetname, _, _ := es_sset.StatefulSetName(pod.Name)
 		if podSsetname == ssetName {
 			pod := pod.DeepCopy()
 			label.NodeTypesMasterLabelName.Set(true, pod.Labels)
@@ -142,11 +143,11 @@ func (u upgradeTestPods) toES(version string, maxUnavailable int, annotations ma
 }
 
 // Infer the list of statefulsets from the Pods used in the test
-func (u upgradeTestPods) toStatefulSetList() sset.StatefulSetList {
+func (u upgradeTestPods) toStatefulSetList() es_sset.StatefulSetList {
 	// Get all the statefulsets
 	statefulSets := make(map[string]int32)
 	for _, testPod := range u {
-		name, ordinal, err := sset.StatefulSetName(testPod.name)
+		name, ordinal, err := es_sset.StatefulSetName(testPod.name)
 		if err != nil {
 			panic(err)
 		}
@@ -158,7 +159,7 @@ func (u upgradeTestPods) toStatefulSetList() sset.StatefulSetList {
 			statefulSets[name] = ordinal
 		}
 	}
-	statefulSetList := make(sset.StatefulSetList, len(statefulSets))
+	statefulSetList := make(es_sset.StatefulSetList, len(statefulSets))
 	i := 0
 	for statefulSet, replica := range statefulSets {
 		statefulSetList[i] = sset.TestSset{Name: statefulSet, ClusterName: TestEsName, Namespace: TestEsNamespace, Replicas: replica + 1}.Build()
@@ -204,7 +205,7 @@ func (u upgradeTestPods) toResourcesList(t *testing.T) nodespec.ResourcesList {
 	t.Helper()
 	resourcesByStatefulSet := make(map[string]nodespec.Resources)
 	for _, p := range u {
-		statefulSetName, _, err := sset.StatefulSetName(p.name)
+		statefulSetName, _, err := es_sset.StatefulSetName(p.name)
 		require.NoError(t, err)
 		if _, exists := resourcesByStatefulSet[statefulSetName]; exists {
 			continue

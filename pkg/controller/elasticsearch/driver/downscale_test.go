@@ -44,7 +44,7 @@ var (
 			Namespace: "ns",
 		},
 	}
-	ssetMaster1Replica = es_sset.TestSset{
+	ssetMaster1Replica = sset.TestSset{
 		Name:      "ssetMaster1Replicas",
 		Namespace: "ns",
 		Version:   "7.2.0",
@@ -53,7 +53,7 @@ var (
 		Data:      false,
 	}.Build()
 	podsSsetMaster1Replica = []corev1.Pod{
-		es_sset.TestPod{
+		sset.TestPod{
 			Namespace:       ssetMaster3Replicas.Namespace,
 			Name:            sset.PodName(ssetMaster1Replica.Name, 0),
 			StatefulSetName: ssetMaster1Replica.Name,
@@ -64,7 +64,7 @@ var (
 		}.Build(),
 	}
 
-	ssetMaster3Replicas = es_sset.TestSset{
+	ssetMaster3Replicas = sset.TestSset{
 		Name:      "ssetMaster3Replicas",
 		Namespace: "ns",
 		Version:   "7.2.0",
@@ -73,7 +73,7 @@ var (
 		Data:      false,
 	}.Build()
 	podsSsetMaster3Replicas = []corev1.Pod{
-		es_sset.TestPod{
+		sset.TestPod{
 			Namespace:       ssetMaster3Replicas.Namespace,
 			Name:            sset.PodName(ssetMaster3Replicas.Name, 0),
 			StatefulSetName: ssetMaster3Replicas.Name,
@@ -82,7 +82,7 @@ var (
 			Master:          true,
 			Ready:           true,
 		}.Build(),
-		es_sset.TestPod{
+		sset.TestPod{
 			Namespace:       ssetMaster3Replicas.Namespace,
 			Name:            sset.PodName(ssetMaster3Replicas.Name, 1),
 			StatefulSetName: ssetMaster3Replicas.Name,
@@ -91,7 +91,7 @@ var (
 			Master:          true,
 			Ready:           true,
 		}.Build(),
-		es_sset.TestPod{
+		sset.TestPod{
 			Namespace:       ssetMaster3Replicas.Namespace,
 			Name:            sset.PodName(ssetMaster3Replicas.Name, 2),
 			StatefulSetName: ssetMaster3Replicas.Name,
@@ -101,7 +101,7 @@ var (
 			Ready:           true,
 		}.Build(),
 	}
-	ssetData4Replicas = es_sset.TestSset{
+	ssetData4Replicas = sset.TestSset{
 		Name:      "ssetData4Replicas",
 		Namespace: "ns",
 		Version:   "7.2.0",
@@ -110,7 +110,7 @@ var (
 		Data:      true,
 	}.Build()
 	podsSsetData4Replicas = []corev1.Pod{
-		es_sset.TestPod{
+		sset.TestPod{
 			Namespace:       ssetData4Replicas.Namespace,
 			Name:            sset.PodName(ssetData4Replicas.Name, 0),
 			StatefulSetName: ssetData4Replicas.Name,
@@ -119,7 +119,7 @@ var (
 			Data:            true,
 			Ready:           true,
 		}.Build(),
-		es_sset.TestPod{
+		sset.TestPod{
 			Namespace:       ssetData4Replicas.Namespace,
 			Name:            sset.PodName(ssetData4Replicas.Name, 1),
 			StatefulSetName: ssetData4Replicas.Name,
@@ -128,7 +128,7 @@ var (
 			Data:            true,
 			Ready:           true,
 		}.Build(),
-		es_sset.TestPod{
+		sset.TestPod{
 			Namespace:       ssetData4Replicas.Namespace,
 			Name:            sset.PodName(ssetData4Replicas.Name, 2),
 			StatefulSetName: ssetData4Replicas.Name,
@@ -137,7 +137,7 @@ var (
 			Data:            true,
 			Ready:           true,
 		}.Build(),
-		es_sset.TestPod{
+		sset.TestPod{
 			Namespace:       ssetData4Replicas.Namespace,
 			Name:            sset.PodName(ssetData4Replicas.Name, 3),
 			StatefulSetName: ssetData4Replicas.Name,
@@ -356,7 +356,7 @@ func TestHandleDownscale(t *testing.T) {
 
 	// simulate the existence of a third StatefulSet with data nodes
 	// that we want to remove
-	ssetToRemove := es_sset.TestSset{
+	ssetToRemove := sset.TestSset{
 		Name:      "ssetToRemove",
 		Namespace: "ns",
 		Version:   "7.2.0",
@@ -748,14 +748,14 @@ func Test_calculatePerformableDownscale(t *testing.T) {
 					})),
 				},
 				downscale: ssetDownscale{
-					statefulSet:     es_sset.TestSset{Name: "default"}.Build(),
+					statefulSet:     sset.TestSset{Name: "default"}.Build(),
 					initialReplicas: 3,
 					targetReplicas:  2,
 					finalReplicas:   2,
 				},
 			},
 			want: ssetDownscale{
-				statefulSet:     es_sset.TestSset{Name: "default"}.Build(),
+				statefulSet:     sset.TestSset{Name: "default"}.Build(),
 				initialReplicas: 3,
 				targetReplicas:  3,
 				finalReplicas:   2,
@@ -807,33 +807,33 @@ func Test_attemptDownscale(t *testing.T) {
 		{
 			name: "perform 3 -> 2 downscale",
 			downscale: ssetDownscale{
-				statefulSet:     es_sset.TestSset{Name: "default", Version: "7.1.0", Replicas: 3, Master: true, Data: true}.Build(),
+				statefulSet:     sset.TestSset{Name: "default", Version: "7.1.0", Replicas: 3, Master: true, Data: true}.Build(),
 				initialReplicas: 3,
 				targetReplicas:  2,
 			},
 			state: &downscaleState{runningMasters: 2, masterRemovalInProgress: false, removalsAllowed: ptr.To[int32](1)},
 			statefulSets: es_sset.StatefulSetList{
-				es_sset.TestSset{Name: "default", Version: "7.1.0", Replicas: 3, Master: true, Data: true}.Build(),
+				sset.TestSset{Name: "default", Version: "7.1.0", Replicas: 3, Master: true, Data: true}.Build(),
 			},
 			expectedStatefulSets: []appsv1.StatefulSet{
-				es_sset.TestSset{Name: "default", Version: "7.1.0", Replicas: 2, Master: true, Data: true}.Build(),
+				sset.TestSset{Name: "default", Version: "7.1.0", Replicas: 2, Master: true, Data: true}.Build(),
 			},
 			expectedDownscaledNodes: []esv1.DownscaledNode{{Name: "default-2", ShutdownStatus: "COMPLETE"}},
 		},
 		{
 			name: "try perform 3 -> 2 downscale, but stay at 3 due to maxUnavailable",
 			downscale: ssetDownscale{
-				statefulSet:     es_sset.TestSset{Name: "default", Version: "7.1.0", Replicas: 3, Master: true, Data: true}.Build(),
+				statefulSet:     sset.TestSset{Name: "default", Version: "7.1.0", Replicas: 3, Master: true, Data: true}.Build(),
 				initialReplicas: 3,
 				targetReplicas:  3,
 				finalReplicas:   2,
 			},
 			state: &downscaleState{runningMasters: 2, masterRemovalInProgress: false, removalsAllowed: ptr.To[int32](0)},
 			statefulSets: es_sset.StatefulSetList{
-				es_sset.TestSset{Name: "default", Version: "7.1.0", Replicas: 3, Master: true, Data: true}.Build(),
+				sset.TestSset{Name: "default", Version: "7.1.0", Replicas: 3, Master: true, Data: true}.Build(),
 			},
 			expectedStatefulSets: []appsv1.StatefulSet{
-				es_sset.TestSset{Name: "default", Version: "7.1.0", Replicas: 3, Master: true, Data: true}.Build(),
+				sset.TestSset{Name: "default", Version: "7.1.0", Replicas: 3, Master: true, Data: true}.Build(),
 			},
 			expectedDownscaledNodes: nil, // expectedDownscaledNodes is not updated
 		},
@@ -919,7 +919,7 @@ func Test_doDownscale_updateReplicasAndExpectations(t *testing.T) {
 }
 
 func Test_doDownscale_zen2VotingConfigExclusions(t *testing.T) {
-	ssetMasters := es_sset.TestSset{
+	ssetMasters := sset.TestSset{
 		Name:        "masters",
 		Namespace:   es.Namespace,
 		ClusterName: es.Name,
@@ -928,7 +928,7 @@ func Test_doDownscale_zen2VotingConfigExclusions(t *testing.T) {
 		Master:      true,
 		Data:        false,
 	}.Build()
-	ssetData := es_sset.TestSset{
+	ssetData := sset.TestSset{
 		Name:        "datas",
 		Namespace:   es.Namespace,
 		ClusterName: es.Name,
@@ -1003,9 +1003,9 @@ func Test_doDownscale_zen2VotingConfigExclusions(t *testing.T) {
 func Test_doDownscale_zen1MinimumMasterNodes(t *testing.T) {
 	controllerscheme.SetupScheme()
 	es := esv1.Elasticsearch{ObjectMeta: metav1.ObjectMeta{Namespace: ssetMaster3Replicas.Namespace, Name: "es"}}
-	ssetMasters := es_sset.TestSset{Name: "masters", Version: "6.8.0", Replicas: 3, Master: true, Data: false}.Build()
+	ssetMasters := sset.TestSset{Name: "masters", Version: "6.8.0", Replicas: 3, Master: true, Data: false}.Build()
 	masterPods := []corev1.Pod{
-		es_sset.TestPod{
+		sset.TestPod{
 			Namespace:       ssetMaster3Replicas.Namespace,
 			Name:            ssetMaster3Replicas.Name + "-0",
 			ClusterName:     es.Name,
@@ -1013,7 +1013,7 @@ func Test_doDownscale_zen1MinimumMasterNodes(t *testing.T) {
 			Version:         "6.8.0",
 			Master:          true,
 		}.Build(),
-		es_sset.TestPod{
+		sset.TestPod{
 			Namespace:       ssetMaster3Replicas.Namespace,
 			Name:            ssetMaster3Replicas.Name + "-1",
 			ClusterName:     es.Name,
@@ -1021,7 +1021,7 @@ func Test_doDownscale_zen1MinimumMasterNodes(t *testing.T) {
 			Version:         "6.8.0",
 			Master:          true,
 		}.Build(),
-		es_sset.TestPod{
+		sset.TestPod{
 			Namespace:       ssetMaster3Replicas.Namespace,
 			Name:            ssetMaster3Replicas.Name + "-2",
 			ClusterName:     es.Name,
@@ -1030,7 +1030,7 @@ func Test_doDownscale_zen1MinimumMasterNodes(t *testing.T) {
 			Master:          true,
 		}.Build(),
 	}
-	ssetData := es_sset.TestSset{Name: "datas", Version: "6.8.0", Replicas: 3, Master: false, Data: true}.Build()
+	ssetData := sset.TestSset{Name: "datas", Version: "6.8.0", Replicas: 3, Master: false, Data: true}.Build()
 	tests := []struct {
 		name               string
 		downscale          ssetDownscale
@@ -1101,7 +1101,7 @@ func Test_doDownscale_zen1MinimumMasterNodes(t *testing.T) {
 
 func Test_deleteStatefulSetResources(t *testing.T) {
 	es := esv1.Elasticsearch{ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: "cluster"}}
-	sset := es_sset.TestSset{Namespace: "ns", Name: "sset", ClusterName: es.Name}.Build()
+	sset := sset.TestSset{Namespace: "ns", Name: "sset", ClusterName: es.Name}.Build()
 	cfg := settings.ConfigSecret(es, sset.Name, []byte("fake config data"))
 	svc := nodespec.HeadlessService(&es, sset.Name)
 
@@ -1144,33 +1144,33 @@ func Test_deleteStatefulSets(t *testing.T) {
 			name:     "nothing to delete",
 			toDelete: nil,
 			objs: []client.Object{
-				es_sset.TestSset{Namespace: "ns", Name: "sset1", ClusterName: es.Name, ResourceVersion: "999"}.BuildPtr(),
-				es_sset.TestSset{Namespace: "ns", Name: "sset2", ClusterName: es.Name, ResourceVersion: "999"}.BuildPtr(),
+				sset.TestSset{Namespace: "ns", Name: "sset1", ClusterName: es.Name, ResourceVersion: "999"}.BuildPtr(),
+				sset.TestSset{Namespace: "ns", Name: "sset2", ClusterName: es.Name, ResourceVersion: "999"}.BuildPtr(),
 			},
 			wantRemaining: es_sset.StatefulSetList{
-				es_sset.TestSset{Namespace: "ns", Name: "sset1", ClusterName: es.Name, ResourceVersion: "999"}.Build(),
-				es_sset.TestSset{Namespace: "ns", Name: "sset2", ClusterName: es.Name, ResourceVersion: "999"}.Build(),
+				sset.TestSset{Namespace: "ns", Name: "sset1", ClusterName: es.Name, ResourceVersion: "999"}.Build(),
+				sset.TestSset{Namespace: "ns", Name: "sset2", ClusterName: es.Name, ResourceVersion: "999"}.Build(),
 			},
 		},
 		{
 			name: "two StatefulSets to delete",
 			toDelete: es_sset.StatefulSetList{
-				es_sset.TestSset{Namespace: "ns", Name: "sset1", ClusterName: es.Name}.Build(),
-				es_sset.TestSset{Namespace: "ns", Name: "sset3", ClusterName: es.Name}.Build(),
+				sset.TestSset{Namespace: "ns", Name: "sset1", ClusterName: es.Name}.Build(),
+				sset.TestSset{Namespace: "ns", Name: "sset3", ClusterName: es.Name}.Build(),
 			},
 			objs: []client.Object{
-				es_sset.TestSset{Namespace: "ns", Name: "sset1", ClusterName: es.Name, ResourceVersion: "999"}.BuildPtr(),
-				es_sset.TestSset{Namespace: "ns", Name: "sset2", ClusterName: es.Name, ResourceVersion: "999"}.BuildPtr(),
-				es_sset.TestSset{Namespace: "ns", Name: "sset3", ClusterName: es.Name, ResourceVersion: "999"}.BuildPtr(),
+				sset.TestSset{Namespace: "ns", Name: "sset1", ClusterName: es.Name, ResourceVersion: "999"}.BuildPtr(),
+				sset.TestSset{Namespace: "ns", Name: "sset2", ClusterName: es.Name, ResourceVersion: "999"}.BuildPtr(),
+				sset.TestSset{Namespace: "ns", Name: "sset3", ClusterName: es.Name, ResourceVersion: "999"}.BuildPtr(),
 			},
 			wantRemaining: es_sset.StatefulSetList{
-				es_sset.TestSset{Namespace: "ns", Name: "sset2", ClusterName: es.Name, ResourceVersion: "999"}.Build(),
+				sset.TestSset{Namespace: "ns", Name: "sset2", ClusterName: es.Name, ResourceVersion: "999"}.Build(),
 			},
 		},
 		{
 			name: "statefulSet already deleted",
 			toDelete: es_sset.StatefulSetList{
-				es_sset.TestSset{Namespace: "ns", Name: "sset1", ClusterName: es.Name}.Build(),
+				sset.TestSset{Namespace: "ns", Name: "sset1", ClusterName: es.Name}.Build(),
 			},
 			objs:          []client.Object{},
 			wantRemaining: nil,

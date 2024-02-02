@@ -15,6 +15,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	esv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/elasticsearch/v1"
+	sset "github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/statefulset"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/k8s"
 )
 
@@ -71,7 +72,7 @@ func TestGetActualPodsForStatefulSet(t *testing.T) {
 }
 
 func TestGetActualMastersForCluster(t *testing.T) {
-	masterPod := TestPod{
+	masterPod := sset.TestPod{
 		Namespace:       "ns0",
 		Name:            "pod0",
 		ClusterName:     "clus0",
@@ -101,7 +102,7 @@ func TestGetActualMastersForCluster(t *testing.T) {
 }
 
 func getSsetSample(name, namespace, clusterName string) appsv1.StatefulSet {
-	return TestSset{
+	return sset.TestSset{
 		Name:        name,
 		Namespace:   namespace,
 		ClusterName: clusterName,
@@ -114,7 +115,7 @@ func getSsetSample(name, namespace, clusterName string) appsv1.StatefulSet {
 }
 
 func getPodSample(name, namespace, ssetName, clusterName, revision string) *corev1.Pod {
-	return TestPod{
+	return sset.TestPod{
 		Namespace:       namespace,
 		Name:            name,
 		ClusterName:     clusterName,

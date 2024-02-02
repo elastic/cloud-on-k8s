@@ -38,11 +38,11 @@ func (f *fakeVotingConfigExclusionsESClient) AddVotingConfigExclusions(_ context
 
 func Test_ClearVotingConfigExclusions(t *testing.T) {
 	// dummy statefulset with 3 pods
-	statefulSet3rep := es_sset.TestSset{Name: "nodes", Version: "7.2.0", Replicas: 3, Master: true, Data: true}.Build()
+	statefulSet3rep := sset.TestSset{Name: "nodes", Version: "7.2.0", Replicas: 3, Master: true, Data: true}.Build()
 	es := esv1.Elasticsearch{ObjectMeta: metav1.ObjectMeta{Name: "es", Namespace: statefulSet3rep.Namespace}}
 	pods := make([]corev1.Pod, 0, *statefulSet3rep.Spec.Replicas)
 	for _, podName := range sset.PodNames(statefulSet3rep) {
-		pods = append(pods, es_sset.TestPod{
+		pods = append(pods, sset.TestPod{
 			Namespace:       statefulSet3rep.Namespace,
 			Name:            podName,
 			ClusterName:     es.Name,
@@ -52,7 +52,7 @@ func Test_ClearVotingConfigExclusions(t *testing.T) {
 		}.Build())
 	}
 	// simulate 2 pods out of the 3
-	statefulSet2rep := es_sset.TestSset{Name: "nodes", Version: "7.2.0", Replicas: 2, Master: true, Data: true}.Build()
+	statefulSet2rep := sset.TestSset{Name: "nodes", Version: "7.2.0", Replicas: 2, Master: true, Data: true}.Build()
 	tests := []struct {
 		name               string
 		c                  k8s.Client
@@ -112,7 +112,7 @@ func Test_ClearVotingConfigExclusions(t *testing.T) {
 
 func TestAddToVotingConfigExclusions(t *testing.T) {
 	es := esv1.Elasticsearch{ObjectMeta: metav1.ObjectMeta{Name: "es", Namespace: "ns"}}
-	masterPod := es_sset.TestPod{
+	masterPod := sset.TestPod{
 		Namespace:   "ns",
 		Name:        "pod-name",
 		ClusterName: "es",
@@ -130,7 +130,7 @@ func TestAddToVotingConfigExclusions(t *testing.T) {
 		{
 			name: "some zen1 masters: do nothing",
 			es:   &es,
-			c: k8s.NewFakeClient(&es, es_sset.TestPod{
+			c: k8s.NewFakeClient(&es, sset.TestPod{
 				Namespace:   "ns",
 				Name:        "pod-name",
 				ClusterName: "es",
