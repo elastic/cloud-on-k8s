@@ -53,7 +53,7 @@ func HandleVolumeExpansion(
 	}
 
 	// resize all PVCs that can be resized
-	err := ResizePVCs(ctx, k8sClient, owner, expectedSset, actualSset)
+	err := resizePVCs(ctx, k8sClient, owner, expectedSset, actualSset)
 	if err != nil {
 		return false, err
 	}
@@ -69,7 +69,7 @@ func HandleVolumeExpansion(
 // ResizePVCs updates the spec of all existing PVCs whose storage requests can be expanded,
 // according to their storage class and what's specified in the expected claim.
 // It returns an error if the requested storage size is incompatible with the PVC.
-func ResizePVCs(
+func resizePVCs(
 	ctx context.Context,
 	k8sClient k8s.Client,
 	owner client.Object,
@@ -239,7 +239,7 @@ func deleteStatefulSet(ctx context.Context, k8sClient k8s.Client, sset appsv1.St
 	// ensure Pods are not also deleted
 	orphanPolicy := metav1.DeletePropagationOrphan
 	opts.PropagationPolicy = &orphanPolicy
-	ulog.FromContext(ctx).V(1).Info("Deleting stateful set", "name", sset.Name)
+	ulog.FromContext(ctx).V(1).Info("Deleting stateful set", "statefulset_name", sset.Name, "namespace", sset.Namespace)
 
 	return k8sClient.Delete(ctx, &sset, &opts)
 }

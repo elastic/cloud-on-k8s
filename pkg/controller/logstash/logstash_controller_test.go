@@ -38,7 +38,6 @@ import (
 )
 
 var (
-	truePtr            = true
 	sampleStorageClass = storagev1.StorageClass{
 		ObjectMeta: metav1.ObjectMeta{Name: "fixed"},
 	}
@@ -47,7 +46,7 @@ var (
 	}
 	resizableStorageClass = storagev1.StorageClass{
 		ObjectMeta:           metav1.ObjectMeta{Name: "resizable"},
-		AllowVolumeExpansion: &truePtr,
+		AllowVolumeExpansion: ptr.To(true),
 	}
 )
 
@@ -694,7 +693,7 @@ func TestReconcileLogstash_Resize(t *testing.T) {
 				ss := appsv1.StatefulSet{}
 				require.Error(t, r.Client.Get(ctx, ssNamespacedName, &ss))
 
-				// Third pass of the reconciler should recreates the StatefulSet
+				// Third pass of the reconciler should recreate the StatefulSet
 				result, err = r.Reconcile(ctx, request)
 
 				require.NoError(t, err)
