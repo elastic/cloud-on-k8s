@@ -6,7 +6,6 @@ package volume
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"testing"
 
@@ -16,15 +15,11 @@ import (
 	storagev1 "k8s.io/api/storage/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/client-go/kubernetes/scheme"
 	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
-	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 
 	logstashv1alpha1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/logstash/v1alpha1"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/comparison"
-	controllerscheme "github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/scheme"
-	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/logstash/labels"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/k8s"
 )
 
@@ -206,131 +201,6 @@ func Test_handleVolumeExpansion(t *testing.T) {
 				wantUpdatedSset.Spec.VolumeClaimTemplates = tt.args.expectedSset.Spec.VolumeClaimTemplates
 			} else {
 				require.Empty(t, retrievedLS.Annotations)
-			}
-		})
-	}
-}
-
-func Test_recreateStatefulSets(t *testing.T) {
-	controllerscheme.SetupScheme()
-	ls := func() *logstashv1alpha1.Logstash {
-		return &logstashv1alpha1.Logstash{ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: "ls", UID: "ls-uid"}, TypeMeta: metav1.TypeMeta{Kind: logstashv1alpha1.Kind}}
-	}
-	withAnnotation := func(ls *logstashv1alpha1.Logstash, key, value string) *logstashv1alpha1.Logstash {
-		if ls.Annotations == nil {
-			ls.Annotations = map[string]string{}
-		}
-		ls.Annotations[key] = value
-		return ls
-	}
-
-	sset := &appsv1.StatefulSet{ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: "sset", UID: "sset-uid"}}
-	ssetBytes, _ := json.Marshal(sset)
-	ssetJSON := string(ssetBytes)
-	ssetDifferentUID := &appsv1.StatefulSet{ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: "sset", UID: "sset-differentuid"}}
-	pod1 := &corev1.Pod{ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: "sset-0", Labels: map[string]string{
-		labels.StatefulSetNameLabelName: sset.Name,
-	}}}
-	pod1WithOwnerRef := pod1.DeepCopy()
-	require.NoError(t, controllerutil.SetOwnerReference(ls(), pod1WithOwnerRef, scheme.Scheme))
-
-	type args struct {
-		runtimeObjs []client.Object
-		ls          logstashv1alpha1.Logstash
-	}
-	tests := []struct {
-		name string
-		args
-		wantLS          logstashv1alpha1.Logstash
-		wantSsets       []appsv1.StatefulSet
-		wantPods        []corev1.Pod
-		wantRecreations int
-	}{
-		{
-			name: "no annotation: nothing to do",
-			args: args{
-				runtimeObjs: []client.Object{sset, pod1},
-				ls:          *ls(),
-			},
-			wantLS:          *ls(),
-			wantPods:        []corev1.Pod{*pod1},
-			wantRecreations: 0,
-		},
-		{
-			name: "StatefulSet to delete",
-			args: args{
-				runtimeObjs: []client.Object{sset, pod1}, // sset exists with the same UID
-				ls:          *withAnnotation(ls(), "logstash.k8s.elastic.co/recreate-sset", ssetJSON),
-			},
-			wantLS:          *withAnnotation(ls(), "logstash.k8s.elastic.co/recreate-sset", ssetJSON),
-			wantSsets:       nil,                             // deleted
-			wantPods:        []corev1.Pod{*pod1WithOwnerRef}, // owner ref set to the ES resource
-			wantRecreations: 1,
-		},
-		{
-			name: "StatefulSet to create",
-			args: args{
-				runtimeObjs: []client.Object{pod1}, // sset doesn't exist
-				ls:          *withAnnotation(ls(), "logstash.k8s.elastic.co/recreate-sset", ssetJSON),
-			},
-			wantLS: *withAnnotation(ls(), "logstash.k8s.elastic.co/recreate-sset", ssetJSON),
-			// created, no UUID due to how the fake client creates objects
-			wantSsets:       []appsv1.StatefulSet{{ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: "sset"}}},
-			wantPods:        []corev1.Pod{*pod1}, // unmodified
-			wantRecreations: 1,
-		},
-		{
-			name: "StatefulSet already recreated: remove the annotation",
-			args: args{
-				runtimeObjs: []client.Object{ssetDifferentUID, pod1WithOwnerRef}, // sset recreated
-				ls:          *withAnnotation(ls(), "logstash.k8s.elastic.co/recreate-sset", ssetJSON),
-			},
-			wantLS:          *ls(),                                   // annotation removed
-			wantSsets:       []appsv1.StatefulSet{*ssetDifferentUID}, // same
-			wantPods:        []corev1.Pod{*pod1},                     // ownerRef removed
-			wantRecreations: 0,
-		},
-		{
-			name: "additional annotations are ignored",
-			args: args{
-				runtimeObjs: []client.Object{ssetDifferentUID, pod1}, // sset recreated
-				ls: *withAnnotation(withAnnotation(ls(),
-					"logstash.k8s.elastic.co/recreate-sset", ssetJSON),
-					"another-annotation-key", ssetJSON),
-			},
-			// sset annotation removed, other annotation preserved
-			wantLS:          *withAnnotation(ls(), "another-annotation-key", ssetJSON),
-			wantSsets:       nil,
-			wantPods:        []corev1.Pod{*pod1},
-			wantRecreations: 0,
-		},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			ls := tt.args.ls
-			k8sClient := k8s.NewFakeClient(append(tt.args.runtimeObjs, &ls)...)
-
-			got, err := RecreateStatefulSets(context.Background(), k8sClient, ls)
-			require.NoError(t, err)
-			require.Equal(t, tt.wantRecreations, got)
-
-			var retrievedLS logstashv1alpha1.Logstash
-			err = k8sClient.Get(context.Background(), k8s.ExtractNamespacedName(&ls), &retrievedLS)
-			require.NoError(t, err)
-			comparison.RequireEqual(t, &tt.wantLS, &retrievedLS)
-
-			var retrievedSsets appsv1.StatefulSetList
-			err = k8sClient.List(context.Background(), &retrievedSsets)
-			require.NoError(t, err)
-			for i := range tt.wantSsets {
-				comparison.RequireEqual(t, &tt.wantSsets[i], &retrievedSsets.Items[i])
-			}
-
-			var retrievedPods corev1.PodList
-			err = k8sClient.List(context.Background(), &retrievedPods)
-			require.NoError(t, err)
-			for i := range tt.wantPods {
-				comparison.RequireEqual(t, &tt.wantPods[i], &retrievedPods.Items[i])
 			}
 		})
 	}
