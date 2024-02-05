@@ -1,0 +1,40 @@
+---
+# Version of APM Server.
+#
+version: 8.13.0-SNAPSHOT
+
+# Labels that will be applied to APM Server.
+#
+labels: {}
+  # key: value
+
+# Annotations that will be applied to APM Server.
+#
+annotations: {}
+  # key: value
+
+# Count of APM Server replicas to create.
+#
+count: 1
+
+config:
+  name: elastic-apm
+  apm-server.jaeger.grpc.enabled: true
+  apm-server.jaeger.grpc.host: "0.0.0.0:14250"
+
+# Reference to ECK-managed Elasticsearch resource, ideally from {{ "elasticsearch.fullname" }}
+#
+elasticsearchRef:
+  name: eck-elasticsearch
+  # namespace: default
+http:
+  service:
+    spec:
+      ports:
+      - name: http
+        port: 8200
+        targetPort: 8200
+      - name: grpc
+        port: 14250
+        targetPort: 14250
+

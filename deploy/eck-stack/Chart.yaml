@@ -24,3 +24,6 @@ dependencies:
   - name: eck-logstash
     condition: eck-logstash.enabled
     version: "0.10.0-SNAPSHOT"
+  - name: eck-apm-server
+    condition: eck-apm-server.enabled
+    version: "0.10.0-SNAPSHOT"
