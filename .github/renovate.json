@@ -3,34 +3,13 @@
     "config:base"
   ],
   "labels": [">renovate"],
+  "schedule": [
+    "after 1am on monday"
+  ],
   "packageRules": [
     {
-      "packageNames": [
-        "k8s.io/apimachinery",
-        "k8s.io/client-go",
-        "k8s.io/api",
-        "k8s.io/cli-runtime",
-        "k8s.io/apiextensions-apiserver",
-        "k8s.io/kubectl"
-      ],
-      "updateTypes": [
-        "major",
-        "minor",
-        "digest"
-      ],
-      "enabled": false
-    },
-    {
-      "packageNames": [
-        "k8s.io/apimachinery",
-        "k8s.io/client-go",
-        "k8s.io/api",
-        "k8s.io/cli-runtime",
-        "k8s.io/apiextensions-apiserver",
-        "k8s.io/kubectl"
-      ],
-      "updateTypes": [
-        "patch"
+      "matchPackagePatterns": [
+        "k8s.io"
       ],
       "groupName": "k8s"
     },
@@ -48,8 +27,5 @@
       ],
       "enabled": false
     }
-  ],
-  "ignorePaths": [
-    "**/vendor/**"
   ]
 }
