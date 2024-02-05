@@ -9,4 +9,4 @@
 [float]
 === Bug fixes
 
-* Add `resourceStatuses` back into the status subresource section of the Stack Configuration Policy for backwards compatability {pull}7500[#7500]
+* Add `resourceStatuses` back into the status subresource section of the Stack Configuration Policy for backwards compatibility {pull}7500[#7500]
