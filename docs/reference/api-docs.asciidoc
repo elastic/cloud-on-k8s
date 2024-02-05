@@ -1989,6 +1989,7 @@ LogstashStatus defines the observed state of Logstash
 | *`version`* __string__ | Version of the stack resource currently running. During version upgrades, multiple versions may run in parallel: this value specifies the lowest version currently running.
 | *`expectedNodes`* __integer__ | 
 | *`availableNodes`* __integer__ | 
+| *`health`* __LogstashHealth__ | 
 | *`observedGeneration`* __integer__ | ObservedGeneration is the most recent generation observed for this Logstash instance. It corresponds to the metadata generation, which is updated on mutation by the API Server. If the generation observed in status diverges from the generation in metadata, the Logstash controller has not yet processed the changes contained in the Logstash specification.
 | *`selector`* __string__ | 
 |===

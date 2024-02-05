@@ -8963,6 +8963,10 @@ spec:
   scope: Namespaced
   versions:
   - additionalPrinterColumns:
+    - description: Health
+      jsonPath: .status.health
+      name: health
+      type: string
     - description: Available nodes
       jsonPath: .status.availableNodes
       name: available
@@ -10115,6 +10119,8 @@ spec:
               expectedNodes:
                 format: int32
                 type: integer
+              health:
+                type: string
               monitoringAssociationStatus:
                 additionalProperties:
                   description: AssociationStatus is the status of an association resource.
