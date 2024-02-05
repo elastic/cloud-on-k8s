@@ -14,9 +14,9 @@ import (
 
 	commonv1alpha1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/common/v1alpha1"
 	esv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/elasticsearch/v1"
+	sset "github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/statefulset"
 	esclient "github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/client"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/shutdown"
-	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/sset"
 )
 
 type StatusReporter struct {

@@ -15,9 +15,11 @@ import (
 	"k8s.io/utils/ptr"
 
 	esv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/elasticsearch/v1"
+	sset "github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/statefulset"
+
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/bootstrap"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/nodespec"
-	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/sset"
+	es_sset "github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/sset"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/k8s"
 )
 
@@ -231,7 +233,7 @@ func Test_newUpscaleState(t *testing.T) {
 	}
 	type args struct {
 		ctx      upscaleCtx
-		actual   sset.StatefulSetList
+		actual   es_sset.StatefulSetList
 		expected nodespec.ResourcesList
 	}
 	tests := []struct {
@@ -305,7 +307,7 @@ func Test_newUpscaleStateWithChangeBudget(t *testing.T) {
 	type test struct {
 		name     string
 		ctx      upscaleCtx
-		actual   sset.StatefulSetList
+		actual   es_sset.StatefulSetList
 		expected nodespec.ResourcesList
 		want     *upscaleState
 	}
@@ -319,7 +321,7 @@ func Test_newUpscaleStateWithChangeBudget(t *testing.T) {
 	}
 
 	getTest := func(args args) test {
-		var actualSsets sset.StatefulSetList
+		var actualSsets es_sset.StatefulSetList
 		for _, count := range args.actual {
 			actualSsets = append(actualSsets, sset.TestSset{Name: "sset", Replicas: int32(count), Master: false}.Build())
 		}

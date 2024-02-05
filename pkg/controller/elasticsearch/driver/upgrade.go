@@ -15,13 +15,14 @@ import (
 	esv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/elasticsearch/v1"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/expectations"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/reconciler"
+	sset "github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/statefulset"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/version"
 	esclient "github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/client"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/label"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/nodespec"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/reconcile"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/shutdown"
-	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/sset"
+	es_sset "github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/sset"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/k8s"
 	ulog "github.com/elastic/cloud-on-k8s/v2/pkg/utils/log"
 )
@@ -48,7 +49,7 @@ func (d *defaultDriver) handleUpgrades(
 	}
 
 	// Get the pods to upgrade
-	statefulSets, err := sset.RetrieveActualStatefulSets(d.Client, k8s.ExtractNamespacedName(&d.ES))
+	statefulSets, err := es_sset.RetrieveActualStatefulSets(d.Client, k8s.ExtractNamespacedName(&d.ES))
 	if err != nil {
 		return results.WithError(err)
 	}
@@ -128,7 +129,7 @@ type upgradeCtx struct {
 	client          k8s.Client
 	ES              esv1.Elasticsearch
 	resourcesList   nodespec.ResourcesList
-	statefulSets    sset.StatefulSetList
+	statefulSets    es_sset.StatefulSetList
 	esClient        esclient.Client
 	shardLister     esclient.ShardLister
 	nodeShutdown    *shutdown.NodeShutdown
@@ -144,7 +145,7 @@ type upgradeCtx struct {
 func newUpgrade(
 	ctx context.Context,
 	d *defaultDriver,
-	statefulSets sset.StatefulSetList,
+	statefulSets es_sset.StatefulSetList,
 	resourcesList nodespec.ResourcesList,
 	esClient esclient.Client,
 	esState ESState,
@@ -213,7 +214,7 @@ func isVersionUpgrade(es esv1.Elasticsearch) (bool, error) {
 
 func healthyPods(
 	client k8s.Client,
-	statefulSets sset.StatefulSetList,
+	statefulSets es_sset.StatefulSetList,
 	esState ESState,
 ) (map[string]corev1.Pod, error) {
 	healthyPods := make(map[string]corev1.Pod)
@@ -241,7 +242,7 @@ func healthyPods(
 // .status.updateRevision indicates that the Pod still needs to be deleted to be recreated with the new spec.
 func podsToUpgrade(
 	client k8s.Client,
-	statefulSets sset.StatefulSetList,
+	statefulSets es_sset.StatefulSetList,
 ) ([]corev1.Pod, error) {
 	var toUpgrade []corev1.Pod
 	for _, statefulSet := range statefulSets {
@@ -273,7 +274,7 @@ func podsToUpgrade(
 	return toUpgrade, nil
 }
 
-func terminatingPodNames(client k8s.Client, statefulSets sset.StatefulSetList) ([]string, error) {
+func terminatingPodNames(client k8s.Client, statefulSets es_sset.StatefulSetList) ([]string, error) {
 	pods, err := statefulSets.GetActualPods(client)
 	if err != nil {
 		return nil, err
@@ -328,7 +329,7 @@ func (d *defaultDriver) maybeCompleteNodeUpgrades(
 		return results.WithReconciliationState(defaultRequeue.WithReason(reason))
 	}
 
-	statefulSets, err := sset.RetrieveActualStatefulSets(d.Client, k8s.ExtractNamespacedName(&d.ES))
+	statefulSets, err := es_sset.RetrieveActualStatefulSets(d.Client, k8s.ExtractNamespacedName(&d.ES))
 	if err != nil {
 		return results.WithError(err)
 	}

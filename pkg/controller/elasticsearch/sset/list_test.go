@@ -16,6 +16,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 
+	sset "github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/statefulset"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/version"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/label"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/k8s"
@@ -48,15 +49,15 @@ func TestRetrieveActualStatefulSets(t *testing.T) {
 			name: "StatefulSet should be sorted by name",
 			args: args{
 				c: k8s.NewFakeClient(
-					TestSset{Name: "sset1", ResourceVersion: "999"}.BuildPtr(),
-					TestSset{Name: "sset3", ResourceVersion: "999"}.BuildPtr(),
-					TestSset{Name: "sset2", ResourceVersion: "999"}.BuildPtr(),
+					sset.TestSset{Name: "sset1", ResourceVersion: "999"}.BuildPtr(),
+					sset.TestSset{Name: "sset3", ResourceVersion: "999"}.BuildPtr(),
+					sset.TestSset{Name: "sset2", ResourceVersion: "999"}.BuildPtr(),
 				),
 			},
 			want: StatefulSetList{
-				TestSset{Name: "sset1", ResourceVersion: "999"}.Build(),
-				TestSset{Name: "sset2", ResourceVersion: "999"}.Build(),
-				TestSset{Name: "sset3", ResourceVersion: "999"}.Build(),
+				sset.TestSset{Name: "sset1", ResourceVersion: "999"}.Build(),
+				sset.TestSset{Name: "sset2", ResourceVersion: "999"}.Build(),
+				sset.TestSset{Name: "sset3", ResourceVersion: "999"}.Build(),
 			},
 		},
 	}
@@ -92,12 +93,12 @@ func TestAtLeastOneESVersionMatch(t *testing.T) {
 	ssetv6.Spec.Template.Labels[label.VersionLabelName] = "6.8.0"
 
 	require.Equal(t, true,
-		AtLeastOneESVersionMatch(context.Background(), StatefulSetList{ssetv6, ssetv7}, func(v version.Version) bool {
+		StatefulSetList{ssetv6, ssetv7}.AtLeastOneESVersionMatch(context.Background(), func(v version.Version) bool {
 			return v.Major == 7
 		}),
 	)
 	require.Equal(t, false,
-		AtLeastOneESVersionMatch(context.Background(), StatefulSetList{ssetv6, ssetv6}, func(v version.Version) bool {
+		StatefulSetList{ssetv6, ssetv6}.AtLeastOneESVersionMatch(context.Background(), func(v version.Version) bool {
 			return v.Major == 7
 		}),
 	)
@@ -155,48 +156,48 @@ func TestStatefulSetList_PodReconciliationDone(t *testing.T) {
 			name: "some pods, no sset",
 			l:    nil,
 			c: k8s.NewFakeClient(
-				TestPod{Namespace: "ns", Name: "sset-0", StatefulSetName: "sset", Revision: "current-rev"}.BuildPtr(),
+				sset.TestPod{Namespace: "ns", Name: "sset-0", StatefulSetName: "sset", Revision: "current-rev"}.BuildPtr(),
 			),
 			want: true,
 		},
 		{
 			name: "some statefulSets, no pod",
-			l:    StatefulSetList{TestSset{Name: "sset1", Replicas: 3}.Build()},
-			c:    k8s.NewFakeClient(TestSset{Name: "sset1", Replicas: 3}.BuildPtr()),
+			l:    StatefulSetList{sset.TestSset{Name: "sset1", Replicas: 3}.Build()},
+			c:    k8s.NewFakeClient(sset.TestSset{Name: "sset1", Replicas: 3}.BuildPtr()),
 			want: false,
 		},
 		{
 			name: "sset has its pods",
 			l: StatefulSetList{
-				TestSset{Name: "sset1", Namespace: "ns", Replicas: 2, Status: appsv1.StatefulSetStatus{CurrentRevision: "current-rev"}}.Build(),
+				sset.TestSset{Name: "sset1", Namespace: "ns", Replicas: 2, Status: appsv1.StatefulSetStatus{CurrentRevision: "current-rev"}}.Build(),
 			},
 			c: k8s.NewFakeClient(
-				TestPod{Namespace: "ns", Name: "sset1-0", StatefulSetName: "sset1", Revision: "current-rev"}.BuildPtr(),
-				TestPod{Namespace: "ns", Name: "sset1-1", StatefulSetName: "sset1", Revision: "current-rev"}.BuildPtr(),
-				TestPod{Namespace: "ns", Name: "sset2-0", StatefulSetName: "sset2", Revision: "current-rev"}.BuildPtr(),
-				TestPod{Namespace: "ns0", Name: "sset1-0", StatefulSetName: "sset1", Revision: "current-rev"}.BuildPtr(),
+				sset.TestPod{Namespace: "ns", Name: "sset1-0", StatefulSetName: "sset1", Revision: "current-rev"}.BuildPtr(),
+				sset.TestPod{Namespace: "ns", Name: "sset1-1", StatefulSetName: "sset1", Revision: "current-rev"}.BuildPtr(),
+				sset.TestPod{Namespace: "ns", Name: "sset2-0", StatefulSetName: "sset2", Revision: "current-rev"}.BuildPtr(),
+				sset.TestPod{Namespace: "ns0", Name: "sset1-0", StatefulSetName: "sset1", Revision: "current-rev"}.BuildPtr(),
 			),
 			want: true,
 		},
 		{
 			name: "sset is missing a pod",
 			l: StatefulSetList{
-				TestSset{Name: "sset1", Replicas: 2, Status: appsv1.StatefulSetStatus{CurrentRevision: "current-rev"}}.Build(),
+				sset.TestSset{Name: "sset1", Replicas: 2, Status: appsv1.StatefulSetStatus{CurrentRevision: "current-rev"}}.Build(),
 			},
 			c: k8s.NewFakeClient(
-				TestPod{Namespace: "ns", Name: "sset1-0", StatefulSetName: "sset1", Revision: "current-rev"}.BuildPtr(),
+				sset.TestPod{Namespace: "ns", Name: "sset1-0", StatefulSetName: "sset1", Revision: "current-rev"}.BuildPtr(),
 			),
 			want: false,
 		},
 		{
 			name: "sset has too many Pods",
 			l: StatefulSetList{
-				TestSset{Name: "sset1", Replicas: 2, Status: appsv1.StatefulSetStatus{CurrentRevision: "current-rev"}}.Build(),
+				sset.TestSset{Name: "sset1", Replicas: 2, Status: appsv1.StatefulSetStatus{CurrentRevision: "current-rev"}}.Build(),
 			},
 			c: k8s.NewFakeClient(
-				TestPod{Namespace: "ns", Name: "sset1-0", StatefulSetName: "sset1", Revision: "current-rev"}.BuildPtr(),
-				TestPod{Namespace: "ns", Name: "sset1-1", StatefulSetName: "sset1", Revision: "current-rev"}.BuildPtr(),
-				TestPod{Namespace: "ns", Name: "sset1-2", StatefulSetName: "sset1", Revision: "current-rev"}.BuildPtr(),
+				sset.TestPod{Namespace: "ns", Name: "sset1-0", StatefulSetName: "sset1", Revision: "current-rev"}.BuildPtr(),
+				sset.TestPod{Namespace: "ns", Name: "sset1-1", StatefulSetName: "sset1", Revision: "current-rev"}.BuildPtr(),
+				sset.TestPod{Namespace: "ns", Name: "sset1-2", StatefulSetName: "sset1", Revision: "current-rev"}.BuildPtr(),
 			),
 			want: false,
 		},
@@ -305,15 +306,15 @@ func TestStatefulSetList_WithStatefulSet(t *testing.T) {
 	}{
 		{
 			name:        "add a new StatefulSet",
-			l:           StatefulSetList{TestSset{Namespace: "ns", Name: "sset1"}.Build()},
-			statefulSet: TestSset{Namespace: "ns", Name: "sset2"}.Build(),
-			want:        StatefulSetList{TestSset{Namespace: "ns", Name: "sset1"}.Build(), TestSset{Namespace: "ns", Name: "sset2"}.Build()},
+			l:           StatefulSetList{sset.TestSset{Namespace: "ns", Name: "sset1"}.Build()},
+			statefulSet: sset.TestSset{Namespace: "ns", Name: "sset2"}.Build(),
+			want:        StatefulSetList{sset.TestSset{Namespace: "ns", Name: "sset1"}.Build(), sset.TestSset{Namespace: "ns", Name: "sset2"}.Build()},
 		},
 		{
 			name:        "replace an existing StatefulSet",
-			l:           StatefulSetList{TestSset{Namespace: "ns", Name: "sset1", Master: true}.Build()},
-			statefulSet: TestSset{Namespace: "ns", Name: "sset1", Master: false}.Build(),
-			want:        StatefulSetList{TestSset{Namespace: "ns", Name: "sset1", Master: false}.Build()},
+			l:           StatefulSetList{sset.TestSset{Namespace: "ns", Name: "sset1", Master: true}.Build()},
+			statefulSet: sset.TestSset{Namespace: "ns", Name: "sset1", Master: false}.Build(),
+			want:        StatefulSetList{sset.TestSset{Namespace: "ns", Name: "sset1", Master: false}.Build()},
 		},
 	}
 	for _, tt := range tests {

@@ -82,6 +82,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/kibana"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/license"
 	licensetrial "github.com/elastic/cloud-on-k8s/v2/pkg/controller/license/trial"
+	lsvalidation "github.com/elastic/cloud-on-k8s/v2/pkg/controller/logstash/validation"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/maps"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/remoteca"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/stackconfigpolicy"
@@ -1011,7 +1012,6 @@ func setupWebhook(
 		&kbv1.Kibana{},
 		&kbv1beta1.Kibana{},
 		&emsv1alpha1.ElasticMapsServer{},
-		&logstashv1alpha1.Logstash{},
 		&policyv1alpha1.StackConfigPolicy{},
 	}
 	for _, obj := range webhookObjects {
@@ -1027,9 +1027,10 @@ func setupWebhook(
 		}
 	}
 
-	// Elasticsearch and ElasticsearchAutoscaling validating webhooks are wired up differently, in order to access the k8s client
+	// Logstash, Elasticsearch and ElasticsearchAutoscaling validating webhooks are wired up differently, in order to access the k8s client
 	esvalidation.RegisterWebhook(mgr, params.ValidateStorageClass, exposedNodeLabels, checker, managedNamespaces)
 	esavalidation.RegisterWebhook(mgr, params.ValidateStorageClass, checker, managedNamespaces)
+	lsvalidation.RegisterWebhook(mgr, params.ValidateStorageClass, managedNamespaces)
 
 	// wait for the secret to be populated in the local filesystem before returning
 	interval := time.Second * 1

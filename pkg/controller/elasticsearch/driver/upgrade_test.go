@@ -19,12 +19,13 @@ import (
 	esv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/elasticsearch/v1"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/expectations"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/reconciler"
+	sset "github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/statefulset"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/version"
 	esclient "github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/client"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/hints"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/reconcile"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/shutdown"
-	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/sset"
+	es_sset "github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/sset"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/k8s"
 )
 
@@ -41,7 +42,7 @@ func podWithRevision(name, revision string) *corev1.Pod {
 func Test_podsToUpgrade(t *testing.T) {
 	type args struct {
 		pods         []client.Object
-		statefulSets sset.StatefulSetList
+		statefulSets es_sset.StatefulSetList
 	}
 	tests := []struct {
 		name    string
@@ -52,7 +53,7 @@ func Test_podsToUpgrade(t *testing.T) {
 		{
 			name: "all pods need to be upgraded",
 			args: args{
-				statefulSets: sset.StatefulSetList{
+				statefulSets: es_sset.StatefulSetList{
 					sset.TestSset{
 						Name: "masters", Namespace: TestEsNamespace, Replicas: 2, Master: true,
 						Status: appsv1.StatefulSetStatus{CurrentRevision: "rev-a", UpdateRevision: "rev-b", UpdatedReplicas: 0, Replicas: 2},
@@ -75,7 +76,7 @@ func Test_podsToUpgrade(t *testing.T) {
 		{
 			name: "only a sset needs to be upgraded",
 			args: args{
-				statefulSets: sset.StatefulSetList{
+				statefulSets: es_sset.StatefulSetList{
 					sset.TestSset{
 						Name: "masters", Namespace: TestEsNamespace, Replicas: 2, Master: true,
 						Status: appsv1.StatefulSetStatus{CurrentRevision: "rev-a", UpdateRevision: "rev-b", UpdatedReplicas: 0, Replicas: 2},
@@ -95,7 +96,7 @@ func Test_podsToUpgrade(t *testing.T) {
 		{
 			name: "no pods to upgrade if the StatefulSet UpdateRevision is empty",
 			args: args{
-				statefulSets: sset.StatefulSetList{
+				statefulSets: es_sset.StatefulSetList{
 					sset.TestSset{
 						Name: "masters", Namespace: TestEsNamespace, Replicas: 2, Master: true,
 						Status: appsv1.StatefulSetStatus{CurrentRevision: "rev-a", UpdateRevision: "", UpdatedReplicas: 0, Replicas: 2},
@@ -115,7 +116,7 @@ func Test_podsToUpgrade(t *testing.T) {
 		{
 			name: "only 1 node need to be upgraded",
 			args: args{
-				statefulSets: sset.StatefulSetList{
+				statefulSets: es_sset.StatefulSetList{
 					sset.TestSset{
 						Name: "masters", Namespace: TestEsNamespace, Replicas: 2, Master: true,
 						Status: appsv1.StatefulSetStatus{CurrentRevision: "rev-a", UpdateRevision: "rev-b", UpdatedReplicas: 1, Replicas: 2},
@@ -149,7 +150,7 @@ func Test_podsToUpgrade(t *testing.T) {
 func Test_healthyPods(t *testing.T) {
 	type args struct {
 		pods         upgradeTestPods
-		statefulSets sset.StatefulSetList
+		statefulSets es_sset.StatefulSetList
 	}
 	tests := []struct {
 		name    string
@@ -164,7 +165,7 @@ func Test_healthyPods(t *testing.T) {
 					newTestPod("masters-1").inStatefulset("masters").withRoles(esv1.MasterRole).isHealthy(true).needsUpgrade(true).isInCluster(true).withResourceVersion("999"),
 					newTestPod("masters-0").inStatefulset("masters").withRoles(esv1.MasterRole).isHealthy(true).needsUpgrade(true).isInCluster(true).withResourceVersion("999"),
 				),
-				statefulSets: sset.StatefulSetList{
+				statefulSets: es_sset.StatefulSetList{
 					sset.TestSset{
 						Name:      "masters",
 						Namespace: TestEsNamespace,
@@ -182,7 +183,7 @@ func Test_healthyPods(t *testing.T) {
 						isTerminating(true).withResourceVersion("999").withFinalizers([]string{"something"}),
 					newTestPod("masters-0").inStatefulset("masters").withRoles(esv1.MasterRole).isHealthy(true).needsUpgrade(true).isInCluster(true).withResourceVersion("999"),
 				),
-				statefulSets: sset.StatefulSetList{
+				statefulSets: es_sset.StatefulSetList{
 					sset.TestSset{
 						Name:      "masters",
 						Namespace: TestEsNamespace,

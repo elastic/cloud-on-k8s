@@ -2,7 +2,7 @@
 // or more contributor license agreements. Licensed under the Elastic License 2.0;
 // you may not use this file except in compliance with the Elastic License 2.0.
 
-package logstash
+package labels
 
 import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -20,6 +20,9 @@ const (
 
 	// NamespaceLabelName used to represent a Logstash in k8s resources
 	NamespaceLabelName = "logstash.k8s.elastic.co/namespace"
+
+	// StatefulSetNameLabelName used to store the name of the statefulset.
+	StatefulSetNameLabelName = "logstash.k8s.elastic.co/statefulset-name"
 )
 
 // NewLabels returns the set of common labels for an Elastic Logstash.

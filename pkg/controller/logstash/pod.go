@@ -81,7 +81,7 @@ func buildPodTemplate(params Params, configHash hash.Hash32) (corev1.PodTemplate
 		return corev1.PodTemplateSpec{}, err
 	}
 
-	labels := maps.Merge(params.Logstash.GetIdentityLabels(), map[string]string{
+	labels := maps.Merge(params.Logstash.GetPodIdentityLabels(), map[string]string{
 		VersionLabelName: spec.Version})
 
 	annotations := map[string]string{

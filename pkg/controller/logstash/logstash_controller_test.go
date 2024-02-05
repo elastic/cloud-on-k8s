@@ -9,15 +9,20 @@ import (
 	"reflect"
 	"testing"
 
+	"k8s.io/apimachinery/pkg/util/uuid"
+
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"k8s.io/apimachinery/pkg/util/intstr"
 
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
+	storagev1 "k8s.io/api/storage/v1"
+	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/tools/record"
-
+	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
@@ -25,16 +30,33 @@ import (
 	logstashv1alpha1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/logstash/v1alpha1"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/comparison"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/expectations"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/hash"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/watches"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/logstash/labels"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/k8s"
 )
 
+var (
+	sampleStorageClass = storagev1.StorageClass{
+		ObjectMeta: metav1.ObjectMeta{Name: "fixed"},
+	}
+	fixedStorageClass = storagev1.StorageClass{
+		ObjectMeta: metav1.ObjectMeta{Name: "fixed"},
+	}
+	resizableStorageClass = storagev1.StorageClass{
+		ObjectMeta:           metav1.ObjectMeta{Name: "resizable"},
+		AllowVolumeExpansion: ptr.To(true),
+	}
+)
+
 func newReconcileLogstash(objs ...client.Object) *ReconcileLogstash {
+	client := k8s.NewFakeClient(objs...)
 	r := &ReconcileLogstash{
-		Client:         k8s.NewFakeClient(objs...),
+		Client:         client,
 		recorder:       record.NewFakeRecorder(100),
 		dynamicWatches: watches.NewDynamicWatches(),
+		expectations:   expectations.NewClustersExpectations(client),
 	}
 	return r
 }
@@ -158,13 +180,31 @@ func TestReconcileLogstash_Reconcile(t *testing.T) {
 						Replicas:          1,
 						ReadyReplicas:     1,
 					},
+					Spec: appsv1.StatefulSetSpec{
+						VolumeClaimTemplates: []corev1.PersistentVolumeClaim{
+							{
+								ObjectMeta: metav1.ObjectMeta{
+									Name:      "logstash-data",
+									Namespace: "test",
+								},
+								Spec: corev1.PersistentVolumeClaimSpec{
+									StorageClassName: ptr.To[string](sampleStorageClass.Name),
+									Resources: corev1.VolumeResourceRequirements{
+										Requests: corev1.ResourceList{
+											corev1.ResourceStorage: resource.MustParse("1Gi"),
+										},
+									},
+								},
+							},
+						},
+					},
 				},
 				&corev1.Pod{
 					ObjectMeta: metav1.ObjectMeta{
 						Name:       "testLogstash-ls",
 						Namespace:  "test",
 						Generation: 2,
-						Labels:     map[string]string{NameLabelName: "testLogstash", VersionLabelName: "8.12.0"},
+						Labels:     map[string]string{labels.NameLabelName: "testLogstash", VersionLabelName: "8.12.0"},
 					},
 					Status: corev1.PodStatus{
 						Phase: corev1.PodRunning,
@@ -252,13 +292,31 @@ func TestReconcileLogstash_Reconcile(t *testing.T) {
 						Replicas:          1,
 						ReadyReplicas:     1,
 					},
+					Spec: appsv1.StatefulSetSpec{
+						VolumeClaimTemplates: []corev1.PersistentVolumeClaim{
+							{
+								ObjectMeta: metav1.ObjectMeta{
+									Name:      "logstash-data",
+									Namespace: "test",
+								},
+								Spec: corev1.PersistentVolumeClaimSpec{
+									StorageClassName: ptr.To[string](sampleStorageClass.Name),
+									Resources: corev1.VolumeResourceRequirements{
+										Requests: corev1.ResourceList{
+											corev1.ResourceStorage: resource.MustParse("1Gi"),
+										},
+									},
+								},
+							},
+						},
+					},
 				},
 				&corev1.Pod{
 					ObjectMeta: metav1.ObjectMeta{
 						Name:       "testLogstash-ls",
 						Namespace:  "test",
 						Generation: 2,
-						Labels:     map[string]string{NameLabelName: "testLogstash", VersionLabelName: "8.12.0"},
+						Labels:     map[string]string{labels.NameLabelName: "testLogstash", VersionLabelName: "8.12.0"},
 					},
 					Status: corev1.PodStatus{
 						Phase: corev1.PodRunning,
@@ -347,6 +405,11 @@ func TestReconcileLogstash_Reconcile(t *testing.T) {
 						ObservedGeneration: 1,
 					},
 				},
+				&storagev1.StorageClass{
+					ObjectMeta: metav1.ObjectMeta{
+						Name: "default-sc",
+					},
+				},
 				&appsv1.StatefulSet{
 					ObjectMeta: metav1.ObjectMeta{
 						Name:      "testLogstash-ls",
@@ -358,13 +421,31 @@ func TestReconcileLogstash_Reconcile(t *testing.T) {
 						Replicas:          1,
 						ReadyReplicas:     1,
 					},
+					Spec: appsv1.StatefulSetSpec{
+						VolumeClaimTemplates: []corev1.PersistentVolumeClaim{
+							{
+								ObjectMeta: metav1.ObjectMeta{
+									Name:      "logstash-data",
+									Namespace: "test",
+								},
+								Spec: corev1.PersistentVolumeClaimSpec{
+									StorageClassName: ptr.To[string](sampleStorageClass.Name),
+									Resources: corev1.VolumeResourceRequirements{
+										Requests: corev1.ResourceList{
+											corev1.ResourceStorage: resource.MustParse("1Gi"),
+										},
+									},
+								},
+							},
+						},
+					},
 				},
 				&corev1.Pod{
 					ObjectMeta: metav1.ObjectMeta{
 						Name:       "testLogstash-ls",
 						Namespace:  "test",
 						Generation: 2,
-						Labels:     map[string]string{NameLabelName: "testLogstash", VersionLabelName: "8.12.0"},
+						Labels:     map[string]string{labels.NameLabelName: "testLogstash", VersionLabelName: "8.12.0"},
 					},
 					Status: corev1.PodStatus{
 						Phase: corev1.PodRunning,
@@ -458,6 +539,24 @@ func TestReconcileLogstash_Reconcile(t *testing.T) {
 						Replicas:          1,
 						ReadyReplicas:     1,
 					},
+					Spec: appsv1.StatefulSetSpec{
+						VolumeClaimTemplates: []corev1.PersistentVolumeClaim{
+							{
+								ObjectMeta: metav1.ObjectMeta{
+									Name:      "logstash-data",
+									Namespace: "test",
+								},
+								Spec: corev1.PersistentVolumeClaimSpec{
+									StorageClassName: ptr.To[string](sampleStorageClass.Name),
+									Resources: corev1.VolumeResourceRequirements{
+										Requests: corev1.ResourceList{
+											corev1.ResourceStorage: resource.MustParse("1Gi"),
+										},
+									},
+								},
+							},
+						},
+					},
 				},
 			},
 			request: reconcile.Request{
@@ -535,6 +634,190 @@ func TestReconcileLogstash_Reconcile(t *testing.T) {
 			comparison.AssertEqual(t, &Logstash, &tt.expected)
 		})
 	}
+}
+
+func TestReconcileLogstash_Resize(t *testing.T) {
+	ctx := context.Background()
+	request := reconcile.Request{NamespacedName: types.NamespacedName{Namespace: "test", Name: "testLogstash"}}
+
+	tests := []struct {
+		name            string
+		extraVerify     func(r ReconcileLogstash, desiredCapacity string) (reconcile.Result, error)
+		initialCapacity string
+		desiredCapacity string
+		storageClass    storagev1.StorageClass
+		wantErr         bool
+	}{
+		{
+			name:            "Cannot increase storage with fixed storage class",
+			initialCapacity: "1Gi",
+			desiredCapacity: "3Gi",
+			storageClass:    fixedStorageClass,
+			wantErr:         true,
+		},
+		{
+			name:            "Cannot decrease storage with resizable storage class",
+			initialCapacity: "3Gi",
+			desiredCapacity: "1Gi",
+			storageClass:    resizableStorageClass,
+			wantErr:         true,
+		},
+		{
+			name:            "Nothing happens when keeping the storage the same with fixed storage class",
+			initialCapacity: "3Gi",
+			desiredCapacity: "3Gi",
+			storageClass:    fixedStorageClass,
+			wantErr:         false,
+		},
+		{
+			name:            "Nothing happens when keeping the storage the same with resizable storage class",
+			initialCapacity: "1Gi",
+			desiredCapacity: "1Gi",
+			storageClass:    resizableStorageClass,
+			wantErr:         false,
+		},
+		{
+			name:            "Can successfully resize the storage with resizable storage class",
+			initialCapacity: "1Gi",
+			desiredCapacity: "3Gi",
+			storageClass:    resizableStorageClass,
+			extraVerify: func(r ReconcileLogstash, desiredCapacity string) (reconcile.Result, error) {
+				// When performing an actual volume resize, the first pass of the reconciler adds annotations to
+				// Logstash with details of the StatefulSet to be replaced.
+				updatedls := logstashv1alpha1.Logstash{}
+				_ = r.Client.Get(ctx, request.NamespacedName, &updatedls)
+				require.Equal(t, 1, len(updatedls.Annotations))
+
+				// Second pass of the reconciler removes the StatefulSet, and requeues the request
+				result, err := r.Reconcile(ctx, request)
+				require.NoError(t, err)
+				require.NotZero(t, result.RequeueAfter)
+
+				ssNamespacedName := types.NamespacedName{Namespace: "test", Name: "testLogstash-ls"}
+				ss := appsv1.StatefulSet{}
+				require.Error(t, r.Client.Get(ctx, ssNamespacedName, &ss))
+
+				// Third pass of the reconciler should recreate the StatefulSet
+				result, err = r.Reconcile(ctx, request)
+
+				require.NoError(t, err)
+				require.NotZero(t, result.RequeueAfter)
+
+				ss = appsv1.StatefulSet{}
+				require.NoError(t, r.Client.Get(ctx, ssNamespacedName, &ss))
+				require.Equal(t, resource.MustParse("3Gi"), ss.Spec.VolumeClaimTemplates[0].Spec.Resources.Requests[corev1.ResourceStorage])
+
+				// The K8s fake client does not supply a UID in created objects, which breaks the logic
+				// in the state machine used to determine the end of the cycle, where the annotations can be deleted
+				// and the pod owner reset
+				ss.UID = uuid.NewUUID()
+				_ = r.Client.Update(ctx, &ss)
+
+				// Final pass of the reconciler  deletes the logstash annotations
+				result, err = r.Reconcile(ctx, request)
+				require.NoError(t, err)
+				require.Equal(t, reconcile.Result{Requeue: false}, result)
+
+				updatedls = logstashv1alpha1.Logstash{}
+				_ = r.Client.Get(ctx, request.NamespacedName, &updatedls)
+
+				// Verify that the annotations are gone
+				require.Equal(t, 0, len(updatedls.Annotations))
+				require.NoError(t, r.Client.Get(ctx, ssNamespacedName, &ss))
+
+				// Verify that the resize is successful
+				require.Equal(t, resource.MustParse(desiredCapacity), ss.Spec.VolumeClaimTemplates[0].Spec.Resources.Requests[corev1.ResourceStorage])
+				return result, err
+			},
+			wantErr: false,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			// Create the reconciler
+			reconciler := *setupFixtures(tt.initialCapacity, tt.storageClass)
+			_, err := reconciler.Reconcile(ctx, request)
+			require.NoError(t, err)
+
+			// Retrieve created logstash and update the storage size requirements
+			updatedLs := logstashv1alpha1.Logstash{}
+			_ = reconciler.Client.Get(ctx, request.NamespacedName, &updatedLs)
+			logstashResized := *updatedLs.DeepCopy()
+			logstashResized.Spec.VolumeClaimTemplates[0].Spec.Resources.Requests[corev1.ResourceStorage] = resource.MustParse(tt.desiredCapacity)
+			_ = reconciler.Client.Update(ctx, &logstashResized)
+
+			// Reconcile with updated storage size requirements
+			_, err = reconciler.Reconcile(ctx, request)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("Reconcile() error = %v, wantErr %v", err, tt.wantErr)
+				return
+			}
+
+			if tt.extraVerify != nil {
+				_, err = tt.extraVerify(reconciler, tt.desiredCapacity)
+				if (err != nil) != tt.wantErr {
+					t.Errorf("Reconcile() error = %v, wantErr %v", err, tt.wantErr)
+					return
+				}
+			}
+		})
+	}
+}
+
+func setupFixtures(initialCapacity string, storage storagev1.StorageClass) *ReconcileLogstash {
+	ls := createLogstash(initialCapacity, storage.Name)
+	pod := createPod()
+	return newReconcileLogstash(&ls, &pod, &storage)
+}
+
+func createPod() corev1.Pod {
+	pod := corev1.Pod{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:       "testLogstash-ls-0",
+			Namespace:  "test",
+			UID:        uuid.NewUUID(),
+			Generation: 1,
+			Labels: map[string]string{
+				"common.k8s.elastic.co/type":               "logstash",
+				"logstash.k8s.elastic.co/name":             "testLogstash",
+				"logstash.k8s.elastic.co/statefulset-name": "testLogstash-ls",
+				"logstash.k8s.elastic.co/version":          "8.12.0",
+			},
+		},
+		Status: corev1.PodStatus{
+			Phase: corev1.PodRunning,
+		},
+	}
+	return pod
+}
+
+func createLogstash(capacity string, storageClassName string) logstashv1alpha1.Logstash {
+	ls := logstashv1alpha1.Logstash{
+		ObjectMeta: metav1.ObjectMeta{
+			Namespace: "test",
+			Name:      "testLogstash",
+			UID:       uuid.NewUUID(),
+		},
+		Spec: logstashv1alpha1.LogstashSpec{
+			Version: "8.12.0",
+			Count:   1,
+			VolumeClaimTemplates: []corev1.PersistentVolumeClaim{
+				{ObjectMeta: metav1.ObjectMeta{
+					Name: "test-pq",
+				},
+					Spec: corev1.PersistentVolumeClaimSpec{
+						Resources: corev1.VolumeResourceRequirements{
+							Requests: corev1.ResourceList{
+								corev1.ResourceStorage: resource.MustParse(capacity),
+							},
+						},
+						StorageClassName: &storageClassName,
+					},
+				},
+			},
+		},
+	}
+	return ls
 }
 
 func addLabel(labels map[string]string, key, value string) map[string]string {
