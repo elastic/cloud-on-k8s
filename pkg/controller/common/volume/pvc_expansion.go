@@ -378,9 +378,11 @@ func ssetsToRecreate(owner client.Object, ownerKind string) (map[string]appsv1.S
 		return nil, err
 	}
 
+	annotationPrefix := getRecreateStatefulSetAnnotationPrefix(ownerKind)
+
 	toRecreate := map[string]appsv1.StatefulSet{}
 	for key, value := range annotations {
-		if !strings.HasPrefix(key, getRecreateStatefulSetAnnotationPrefix(ownerKind)) {
+		if !strings.HasPrefix(key, annotationPrefix) {
 			continue
 		}
 		var sset appsv1.StatefulSet
