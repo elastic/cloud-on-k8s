@@ -10,3 +10,7 @@
 {"name": "github.com/hudl/fargo", "licenceTextOverrideFile": "licences/github.com/hudl/fargo/LICENSE"}
 {"name": "github.com/lightstep/lightstep-tracer-common/golang/gogo", "licenceTextOverrideFile": "licences/github.com/lightstep/lightstep-tracer-common/golang/gogo/LICENSE"}
 {"name": "github.com/streadway/handy", "licenceTextOverrideFile": "licences/github.com/streadway/handy/LICENSE"}
+{"name": "github.com/go-errors/errors", "licenceTextOverrideFile": "licences/github.com/go-errors/errors/LICENSE.MIT"}
+{"name": "github.com/xeipuuv/gojsonpointer", "licenceTextOverrideFile": "licences/github.com/xeipuuv/gojsonpointer/LICENSE-APACHE-2.0.txt"}
+{"name": "github.com/xeipuuv/gojsonreference", "licenceTextOverrideFile": "licences/github.com/xeipuuv/gojsonreference/LICENSE-APACHE-2.0.txt"}
+{"name": "github.com/xeipuuv/gojsonschema", "licenceTextOverrideFile": "licences/github.com/xeipuuv/gojsonschema/LICENSE-APACHE-2.0.txt"}

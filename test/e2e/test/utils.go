@@ -15,6 +15,8 @@ import (
 
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/require"
+	"helm.sh/helm/v3/pkg/action"
+	"helm.sh/helm/v3/pkg/cli"
 	corev1 "k8s.io/api/core/v1"
 	api_errors "k8s.io/apimachinery/pkg/api/errors"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -240,8 +242,29 @@ func deleteTestResources(ctx context.Context) error {
 			return fmt.Errorf("while listing all secrets in namespace %s: %w", namespace, err)
 		}
 		for _, secret := range list.Items {
-			if err := clntset.CoreV1().Secrets(namespace).Delete(ctx, secret.GetName(), v1.DeleteOptions{}); err != nil {
-				return fmt.Errorf("while deleting secret %s in namespace %s: %w", secret.GetName(), namespace, err)
+
+			secretName := secret.GetName()
+			if strings.HasPrefix(secretName, "sh.helm.release") {
+				helmReleaseTokes := strings.Split(secretName, ".")
+				if len(helmReleaseTokes) == 6 {
+					settings := cli.New()
+					settings.SetNamespace(namespace)
+					actionConfig := &action.Configuration{}
+					if err := actionConfig.Init(settings.RESTClientGetter(), settings.Namespace(), "",
+						func(format string, v ...interface{}) {}); err != nil {
+						return err
+					}
+
+					uninstallAction := action.NewUninstall(actionConfig)
+					if _, err := uninstallAction.Run(helmReleaseTokes[4]); err != nil {
+						return err
+					}
+					continue
+				}
+			}
+
+			if err := clntset.CoreV1().Secrets(namespace).Delete(ctx, secretName, v1.DeleteOptions{}); err != nil {
+				return fmt.Errorf("while deleting secret %s in namespace %s: %w", secretName, namespace, err)
 			}
 		}
 
