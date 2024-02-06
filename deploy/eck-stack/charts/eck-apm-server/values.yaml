@@ -62,8 +62,8 @@ http: {}
 
 # Reference to ECK-managed Elasticsearch resource.
 #
-elasticsearchRef:
-  name: eck-elasticsearch
+elasticsearchRef: {}
+  # name: eck-elasticsearch
   # Optional namespace reference to Elasticsearch resource.
   # If not specified, then the namespace of the APM Server resource
   # will be assumed.
