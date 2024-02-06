@@ -37,11 +37,6 @@ eck-apm-server:
   #
   count: 1
 
-  config:
-    name: elastic-apm
-    apm-server.jaeger.grpc.enabled: true
-    apm-server.jaeger.grpc.host: "0.0.0.0:14250"
-
   # Reference to ECK-managed Elasticsearch resource.
   #
   elasticsearchRef:
@@ -55,6 +50,3 @@ eck-apm-server:
         - name: http
           port: 8200
           targetPort: 8200
-        - name: grpc
-          port: 14250
-          targetPort: 14250

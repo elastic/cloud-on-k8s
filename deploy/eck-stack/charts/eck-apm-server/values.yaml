@@ -55,17 +55,10 @@ http: {}
   #     labels:
   #       my-custom: label
   #   spec:
-  #     type: LoadBalancer
-  # tls:
-  #   selfSignedCertificate:
-  #     # To fully disable TLS for the HTTP layer of Elasticsearch, simply
-  #     # set the below field to 'true', removing all other fields.
-  #     disabled: false
-  #     subjectAltNames:
-  #       - ip: 1.2.3.4
-  #       - dns: hulk.example.com
-  #   certificate:
-  #     secretName: custom-ca
+  #     ports:
+  #     - name: http
+  #       port: 8200
+  #       targetPort: 8200
 
 # Reference to ECK-managed Elasticsearch resource.
 #

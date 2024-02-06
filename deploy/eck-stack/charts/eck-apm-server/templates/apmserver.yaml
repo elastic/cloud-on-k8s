@@ -11,7 +11,7 @@ metadata:
     {{- toYaml . | nindent 4 }}
     {{- end }}
 spec:
-  version: {{ required "A apm-server version is required" .Values.version }}
+  version: {{ required "An apm-server version is required" .Values.version }}
   count: {{ required "A pod count is required" .Values.count }}
   {{- with .Values.image }}
   image: {{ . }}
