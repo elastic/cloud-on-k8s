@@ -17,13 +17,14 @@ import (
 	esv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/elasticsearch/v1"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/events"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/reconciler"
+	sset "github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/statefulset"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/certificates/transport"
 	esclient "github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/client"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/label"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/nodespec"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/reconcile"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/settings"
-	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/sset"
+	es_sset "github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/sset"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/version/zen1"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/version/zen2"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/k8s"
@@ -33,14 +34,14 @@ import (
 // HandleDownscale attempts to downscale actual StatefulSets towards expected ones.
 func HandleDownscale(
 	downscaleCtx downscaleContext,
-	expectedStatefulSets sset.StatefulSetList,
-	actualStatefulSets sset.StatefulSetList,
+	expectedStatefulSets es_sset.StatefulSetList,
+	actualStatefulSets es_sset.StatefulSetList,
 ) *reconciler.Results {
 	results := &reconciler.Results{}
 
 	// Retrieve the current list of Pods for this cluster. This list is used to compute the nodes that should be eventually removed,
 	// and the ones that will be removed in this reconciliation attempt.
-	actualPods, err := sset.GetActualPodsForCluster(downscaleCtx.k8sClient, downscaleCtx.es)
+	actualPods, err := es_sset.GetActualPodsForCluster(downscaleCtx.k8sClient, downscaleCtx.es)
 	if err != nil {
 		return results.WithError(err)
 	}
@@ -95,17 +96,17 @@ func podsToDownscale(
 	ctx context.Context,
 	actualPods []corev1.Pod,
 	es esv1.Elasticsearch,
-	expectedStatefulSets sset.StatefulSetList,
-	actualStatefulSets sset.StatefulSetList,
+	expectedStatefulSets es_sset.StatefulSetList,
+	actualStatefulSets es_sset.StatefulSetList,
 	downscaleFilter downscaleFilter,
-) ([]ssetDownscale, sset.StatefulSetList) {
+) ([]ssetDownscale, es_sset.StatefulSetList) {
 	downscaleState := newDownscaleState(actualPods, es)
 	// compute the list of StatefulSet downscales and deletions to perform
 	return calculateDownscales(ctx, *downscaleState, expectedStatefulSets, actualStatefulSets, downscaleFilter)
 }
 
 // deleteStatefulSets deletes the given StatefulSets along with their associated resources.
-func deleteStatefulSets(ctx context.Context, toDelete sset.StatefulSetList, k8sClient k8s.Client, es esv1.Elasticsearch) error {
+func deleteStatefulSets(ctx context.Context, toDelete es_sset.StatefulSetList, k8sClient k8s.Client, es esv1.Elasticsearch) error {
 	for _, toDelete := range toDelete {
 		if err := deleteStatefulSetResources(ctx, k8sClient, es, toDelete); err != nil {
 			return err
@@ -116,7 +117,7 @@ func deleteStatefulSets(ctx context.Context, toDelete sset.StatefulSetList, k8sC
 
 // calculateDownscales compares expected and actual StatefulSets to return a list of StatefulSets
 // that can be downscaled (replica decrease) or deleted (no replicas).
-func calculateDownscales(ctx context.Context, state downscaleState, expectedStatefulSets sset.StatefulSetList, actualStatefulSets sset.StatefulSetList, downscaleFilter downscaleFilter) (downscales []ssetDownscale, deletions sset.StatefulSetList) {
+func calculateDownscales(ctx context.Context, state downscaleState, expectedStatefulSets es_sset.StatefulSetList, actualStatefulSets es_sset.StatefulSetList, downscaleFilter downscaleFilter) (downscales []ssetDownscale, deletions es_sset.StatefulSetList) {
 	expectedStatefulSetsNames := expectedStatefulSets.Names()
 	for _, actualSset := range actualStatefulSets {
 		actualReplicas := sset.GetReplicas(actualSset)
@@ -180,7 +181,7 @@ func downscaleBudgetFilter(ctx context.Context, state *downscaleState, actualSse
 func attemptDownscale(
 	ctx downscaleContext,
 	downscale ssetDownscale,
-	statefulSets sset.StatefulSetList,
+	statefulSets es_sset.StatefulSetList,
 ) (bool, error) {
 	// adjust the theoretical downscale to one we can safely perform
 	performable, err := calculatePerformableDownscale(ctx, downscale)
@@ -273,7 +274,7 @@ func calculatePerformableDownscale(
 }
 
 // doDownscale schedules nodes removal for the given downscale, and updates zen settings accordingly.
-func doDownscale(downscaleCtx downscaleContext, downscale ssetDownscale, actualStatefulSets sset.StatefulSetList) error {
+func doDownscale(downscaleCtx downscaleContext, downscale ssetDownscale, actualStatefulSets es_sset.StatefulSetList) error {
 	ssetLogger(downscaleCtx.parentCtx, downscale.statefulSet).Info(
 		"Scaling replicas down",
 		"from", downscale.initialReplicas,
@@ -313,7 +314,7 @@ func updateZenSettingsForDownscale(
 	esClient esclient.Client,
 	es esv1.Elasticsearch,
 	reconcileState *reconcile.State,
-	actualStatefulSets sset.StatefulSetList,
+	actualStatefulSets es_sset.StatefulSetList,
 	excludeNodes ...string,
 ) error {
 	// Maybe update zen1 minimum_master_nodes.
@@ -332,13 +333,13 @@ func maybeUpdateZen1ForDownscale(
 	esClient esclient.Client,
 	es esv1.Elasticsearch,
 	reconcileState *reconcile.State,
-	actualStatefulSets sset.StatefulSetList) error {
+	actualStatefulSets es_sset.StatefulSetList) error {
 	// Check if we have at least one Zen1 compatible pod or StatefulSet in flight.
 	if zen1compatible, err := zen1.AtLeastOneNodeCompatibleWithZen1(ctx, actualStatefulSets, c, es); !zen1compatible || err != nil {
 		return err
 	}
 
-	actualMasters, err := sset.GetActualMastersForCluster(c, es)
+	actualMasters, err := es_sset.GetActualMastersForCluster(c, es)
 	if err != nil {
 		return err
 	}

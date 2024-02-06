@@ -13,8 +13,9 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	esv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/elasticsearch/v1"
+	sset "github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/statefulset"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/client"
-	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/sset"
+	es_sset "github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/sset"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/k8s"
 )
 
@@ -56,7 +57,7 @@ func Test_ClearVotingConfigExclusions(t *testing.T) {
 		name               string
 		c                  k8s.Client
 		es                 *esv1.Elasticsearch
-		actualStatefulSets sset.StatefulSetList
+		actualStatefulSets es_sset.StatefulSetList
 		wantCall           bool
 		wantRequeue        bool
 	}{
@@ -64,7 +65,7 @@ func Test_ClearVotingConfigExclusions(t *testing.T) {
 			name: "no v7 nodes",
 			c:    k8s.NewFakeClient(&es),
 			es:   &es,
-			actualStatefulSets: sset.StatefulSetList{
+			actualStatefulSets: es_sset.StatefulSetList{
 				createStatefulSetWithESVersion("6.8.0"),
 			},
 			wantCall:    false,
@@ -74,7 +75,7 @@ func Test_ClearVotingConfigExclusions(t *testing.T) {
 			name:               "3/3 nodes there, should clear",
 			c:                  k8s.NewFakeClient(&es, &statefulSet3rep, &pods[0], &pods[1], &pods[2]),
 			es:                 &es,
-			actualStatefulSets: sset.StatefulSetList{statefulSet3rep},
+			actualStatefulSets: es_sset.StatefulSetList{statefulSet3rep},
 			wantCall:           true,
 			wantRequeue:        false,
 		},
@@ -82,7 +83,7 @@ func Test_ClearVotingConfigExclusions(t *testing.T) {
 			name:               "2/3 nodes there: cannot clear, should requeue",
 			c:                  k8s.NewFakeClient(&es, &statefulSet3rep, &pods[0], &pods[1]),
 			es:                 &es,
-			actualStatefulSets: sset.StatefulSetList{statefulSet3rep},
+			actualStatefulSets: es_sset.StatefulSetList{statefulSet3rep},
 			wantCall:           false,
 			wantRequeue:        true,
 		},
@@ -90,7 +91,7 @@ func Test_ClearVotingConfigExclusions(t *testing.T) {
 			name:               "3/2 nodes there: cannot clear, should requeue",
 			es:                 &es,
 			c:                  k8s.NewFakeClient(&es, &statefulSet2rep, &pods[0], &pods[1], &pods[2]),
-			actualStatefulSets: sset.StatefulSetList{statefulSet2rep},
+			actualStatefulSets: es_sset.StatefulSetList{statefulSet2rep},
 			wantCall:           false,
 			wantRequeue:        true,
 		},

@@ -16,6 +16,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/events"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/keystore"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/reconciler"
+	sset "github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/statefulset"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/tracing"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/certificates/transport"
 	esclient "github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/client"
@@ -23,7 +24,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/nodespec"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/pdb"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/reconcile"
-	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/sset"
+	es_sset "github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/sset"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/version/zen1"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/version/zen2"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/k8s"
@@ -76,7 +77,7 @@ func (d *defaultDriver) reconcileNodeSpecs(
 		return results.WithReconciliationState(defaultRequeue.WithReason("StatefulSets recreation in progress"))
 	}
 
-	actualStatefulSets, err := sset.RetrieveActualStatefulSets(d.Client, k8s.ExtractNamespacedName(&d.ES))
+	actualStatefulSets, err := es_sset.RetrieveActualStatefulSets(d.Client, k8s.ExtractNamespacedName(&d.ES))
 	if err != nil {
 		return results.WithError(err)
 	}
@@ -241,7 +242,7 @@ func (d *defaultDriver) reconcileNodeSpecs(
 	return results
 }
 
-func (d *defaultDriver) isNodeSpecsReconciled(ctx context.Context, actualStatefulSets sset.StatefulSetList, client k8s.Client, result *reconciler.Results) bool {
+func (d *defaultDriver) isNodeSpecsReconciled(ctx context.Context, actualStatefulSets es_sset.StatefulSetList, client k8s.Client, result *reconciler.Results) bool {
 	if isReconciled, _ := result.IsReconciled(); !isReconciled {
 		return false
 	}

@@ -22,13 +22,16 @@ import (
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/association"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/events"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/expectations"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/keystore"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/operator"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/reconciler"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/tracing"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/version"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/watches"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/logstash/labels"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/logstash/pipelines"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/logstash/validation"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/k8s"
 	ulog "github.com/elastic/cloud-on-k8s/v2/pkg/utils/log"
 )
@@ -56,6 +59,7 @@ func newReconciler(mgr manager.Manager, params operator.Parameters) *ReconcileLo
 		recorder:       mgr.GetEventRecorderFor(controllerName),
 		dynamicWatches: watches.NewDynamicWatches(),
 		Parameters:     params,
+		expectations:   expectations.NewClustersExpectations(client),
 	}
 }
 
@@ -77,7 +81,7 @@ func addWatches(mgr manager.Manager, c controller.Controller, r *ReconcileLogsta
 
 	// Watch Pods, to ensure `status.version` is correctly reconciled on any change.
 	// Watching StatefulSets only may lead to missing some events.
-	if err := watches.WatchPods(mgr, c, NameLabelName); err != nil {
+	if err := watches.WatchPods(mgr, c, labels.NameLabelName); err != nil {
 		return err
 	}
 
@@ -113,7 +117,8 @@ type ReconcileLogstash struct {
 	dynamicWatches watches.DynamicWatches
 	operator.Parameters
 	// iteration is the number of times this controller has run its Reconcile method
-	iteration uint64
+	iteration    uint64
+	expectations *expectations.ClustersExpectation
 }
 
 // Reconcile reads that state of the cluster for a Logstash object and makes changes based on the state read
@@ -146,18 +151,17 @@ func (r *ReconcileLogstash) Reconcile(ctx context.Context, request reconcile.Req
 	}
 
 	results, status := r.doReconcile(ctx, *logstash)
+	logger := ulog.FromContext(ctx)
 
-	if err := updateStatus(ctx, *logstash, r.Client, status); err != nil {
+	err := updateStatus(ctx, *logstash, r.Client, status)
+	if err != nil {
 		if apierrors.IsConflict(err) {
-			return results.WithResult(reconcile.Result{Requeue: true}).Aggregate()
+			logger.V(1).Info("Conflict while updating status. Requeueing", "namespace", logstash.Namespace, "ls_name", logstash.Name)
+			return reconcile.Result{Requeue: true}, nil
 		}
-		results = results.WithError(err)
+		k8s.MaybeEmitErrorEvent(r.recorder, err, logstash, events.EventReconciliationError, "Reconciliation error: %v", err)
 	}
-
-	result, err := results.Aggregate()
-	k8s.MaybeEmitErrorEvent(r.recorder, err, logstash, events.EventReconciliationError, "Reconciliation error: %v", err)
-
-	return result, err
+	return results.WithError(err).Aggregate()
 }
 
 func (r *ReconcileLogstash) doReconcile(ctx context.Context, logstash logstashv1alpha1.Logstash) (*reconciler.Results, logstashv1alpha1.LogstashStatus) {
@@ -200,6 +204,7 @@ func (r *ReconcileLogstash) doReconcile(ctx context.Context, logstash logstashv1
 		Logstash:       logstash,
 		Status:         status,
 		OperatorParams: r.Parameters,
+		Expectations:   r.expectations.ForCluster(k8s.ExtractNamespacedName(&logstash)),
 	})
 }
 
@@ -207,7 +212,7 @@ func (r *ReconcileLogstash) validate(ctx context.Context, logstash logstashv1alp
 	defer tracing.Span(&ctx)()
 
 	// Run create validations only as update validations require old object which we don't have here.
-	if _, err := logstash.ValidateCreate(); err != nil {
+	if err := validation.ValidateLogstash(&logstash); err != nil {
 		ulog.FromContext(ctx).Error(err, "Validation failed")
 		k8s.MaybeEmitErrorEvent(r.recorder, err, &logstash, events.EventReasonValidation, err.Error())
 		return tracing.CaptureError(ctx, err)
@@ -216,6 +221,7 @@ func (r *ReconcileLogstash) validate(ctx context.Context, logstash logstashv1alp
 }
 
 func (r *ReconcileLogstash) onDelete(ctx context.Context, obj types.NamespacedName) error {
+	r.expectations.RemoveCluster(obj)
 	r.dynamicWatches.Secrets.RemoveHandlerForKey(keystore.SecureSettingsWatchName(obj))
 	r.dynamicWatches.Secrets.RemoveHandlerForKey(common.ConfigRefWatchName(obj))
 	r.dynamicWatches.Secrets.RemoveHandlerForKey(pipelines.RefWatchName(obj))

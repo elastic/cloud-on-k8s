@@ -15,11 +15,26 @@ import (
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/hash"
 )
 
+type LogstashHealth string
+
 const (
 	LogstashContainerName = "logstash"
 	// Kind is inferred from the struct name using reflection in SchemeBuilder.Register()
 	// we duplicate it as a constant here for practical purposes.
 	Kind = "Logstash"
+
+	// LogstashRedHealth means that the health is neither yellow nor green.
+	LogstashRedHealth LogstashHealth = "red"
+
+	// LogstashYellowHealth means that:
+	// 1) at least one Pod is Ready, and
+	// 2) any associations are configured and established
+	LogstashYellowHealth LogstashHealth = "yellow"
+
+	// LogstashGreenHealth means that:
+	// 1) all Pods are Ready, and
+	// 2) any associations are configured and established
+	LogstashGreenHealth LogstashHealth = "green"
 )
 
 // LogstashSpec defines the desired state of Logstash
@@ -129,6 +144,9 @@ type LogstashStatus struct {
 	// +kubebuilder:validation:Optional
 	AvailableNodes int32 `json:"availableNodes,omitempty"`
 
+	// +kubebuilder:validation:Optional
+	Health LogstashHealth `json:"health,omitempty"`
+
 	// ObservedGeneration is the most recent generation observed for this Logstash instance.
 	// It corresponds to the metadata generation, which is updated on mutation by the API Server.
 	// If the generation observed in status diverges from the generation in metadata, the Logstash
@@ -150,6 +168,7 @@ type LogstashStatus struct {
 // +k8s:openapi-gen=true
 // +kubebuilder:resource:categories=elastic,shortName=ls
 // +kubebuilder:subresource:status
+// +kubebuilder:printcolumn:name="health",type="string",JSONPath=".status.health",description="Health"
 // +kubebuilder:printcolumn:name="available",type="integer",JSONPath=".status.availableNodes",description="Available nodes"
 // +kubebuilder:printcolumn:name="expected",type="integer",JSONPath=".status.expectedNodes",description="Expected nodes"
 // +kubebuilder:printcolumn:name="age",type="date",JSONPath=".metadata.creationTimestamp"

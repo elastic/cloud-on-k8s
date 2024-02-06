@@ -6,25 +6,32 @@ package logstash
 
 import (
 	"context"
+	"fmt"
 	"hash/fnv"
 
 	"github.com/go-logr/logr"
+	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/client-go/tools/record"
 
 	logstashv1alpha1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/logstash/v1alpha1"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/certificates"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/events"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/expectations"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/keystore"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/operator"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/reconciler"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/statefulset"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/tracing"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/watches"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/logstash/configs"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/logstash/labels"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/logstash/stackmon"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/logstash/volume"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/k8s"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/log"
+	ulog "github.com/elastic/cloud-on-k8s/v2/pkg/utils/log"
 )
 
 // Params are a set of parameters used during internal reconciliation of Logstash.
@@ -41,6 +48,10 @@ type Params struct {
 	OperatorParams    operator.Parameters
 	KeystoreResources *keystore.Resources
 	APIServerConfig   configs.APIServer // resolved API server config
+
+	// Expectations control some expectations set on resources in the cache, in order to
+	// avoid doing certain operations if the cache hasn't seen an up-to-date resource yet.
+	Expectations *expectations.Expectations
 }
 
 // K8sClient returns the Kubernetes client.
@@ -91,7 +102,7 @@ func internalReconcile(params Params) (*reconciler.Results, logstashv1alpha1.Log
 		Owner:                 &params.Logstash,
 		TLSOptions:            apiSvcTLS,
 		Namer:                 logstashv1alpha1.Namer,
-		Labels:                NewLabels(params.Logstash),
+		Labels:                labels.NewLabels(params.Logstash),
 		Services:              []corev1.Service{apiSvc},
 		GlobalCA:              params.OperatorParams.GlobalCA,
 		CACertRotation:        params.OperatorParams.CACertRotation,
@@ -136,4 +147,43 @@ func internalReconcile(params Params) (*reconciler.Results, logstashv1alpha1.Log
 		return results.WithError(err), params.Status
 	}
 	return reconcileStatefulSet(params, podTemplate)
+}
+
+// expectationsSatisfied checks that resources in our local cache match what we expect.
+// If not, it's safer to not move on with StatefulSets and Pods reconciliation.
+func (p *Params) expectationsSatisfied(ctx context.Context) (bool, string, error) {
+	log := ulog.FromContext(ctx)
+	// make sure the cache is up-to-date
+	expectationsOK, reason, err := p.Expectations.Satisfied()
+	if err != nil {
+		return false, "Cache is not up to date", err
+	}
+	if !expectationsOK {
+		log.V(1).Info("Cache expectations are not satisfied yet, re-queueing", "namespace", p.Logstash.Namespace, "ls_name", p.Logstash.Name, "reason", reason)
+		return false, reason, nil
+	}
+	actualStatefulSet, err := retrieveActualStatefulSet(p.Client, p.Logstash)
+	notFound := apierrors.IsNotFound(err)
+
+	if err != nil && !notFound {
+		return false, "Cannot retrieve actual stateful sets", err
+	}
+
+	if !notFound {
+		// make sure StatefulSet statuses have been reconciled by the StatefulSet controller
+		pendingStatefulSetReconciliation := isPendingReconciliation(actualStatefulSet)
+		if pendingStatefulSetReconciliation {
+			log.V(1).Info("StatefulSets observedGeneration is not reconciled yet, re-queueing", "namespace", p.Logstash.Namespace, "ls_name", p.Logstash.Name)
+			return false, fmt.Sprintf("observedGeneration is not reconciled yet for StatefulSet %s", actualStatefulSet.Name), nil
+		}
+	}
+	return podReconciliationDone(ctx, p.Client, actualStatefulSet)
+}
+
+func podReconciliationDone(ctx context.Context, c k8s.Client, sset appsv1.StatefulSet) (bool, string, error) {
+	return statefulset.PodReconciliationDone(ctx, c, sset, labels.StatefulSetNameLabelName)
+}
+
+func isPendingReconciliation(sset appsv1.StatefulSet) bool {
+	return sset.Generation != sset.Status.ObservedGeneration
 }

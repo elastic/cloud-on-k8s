@@ -26,11 +26,12 @@ import (
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/comparison"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/expectations"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/hash"
+	sset "github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/statefulset"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/bootstrap"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/label"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/nodespec"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/settings"
-	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/sset"
+	es_sset "github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/sset"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/k8s"
 )
 
@@ -42,8 +43,8 @@ func init() {
 
 func Test_podsToCreate(t *testing.T) {
 	type args struct {
-		actualStatefulSets   sset.StatefulSetList
-		expectedStatefulSets sset.StatefulSetList
+		actualStatefulSets   es_sset.StatefulSetList
+		expectedStatefulSets es_sset.StatefulSetList
 	}
 	tests := []struct {
 		name string
@@ -163,7 +164,7 @@ func TestHandleUpscaleAndSpecChanges(t *testing.T) {
 	expectedResources[1].StatefulSet.Labels = hash.SetTemplateHashLabel(expectedResources[1].StatefulSet.Labels, expectedResources[1].StatefulSet.Spec)
 
 	// when no StatefulSets already exists
-	actualStatefulSets := sset.StatefulSetList{}
+	actualStatefulSets := es_sset.StatefulSetList{}
 	res, err := HandleUpscaleAndSpecChanges(ctx, actualStatefulSets, expectedResources)
 	require.NoError(t, err)
 	// StatefulSets should be created with their expected replicas
@@ -183,7 +184,7 @@ func TestHandleUpscaleAndSpecChanges(t *testing.T) {
 	require.NoError(t, k8sClient.Get(context.Background(), types.NamespacedName{Namespace: "ns", Name: esv1.ConfigSecret("sset2")}, &corev1.Secret{}))
 
 	// upscale data nodes
-	actualStatefulSets = sset.StatefulSetList{sset1, sset2}
+	actualStatefulSets = es_sset.StatefulSetList{sset1, sset2}
 	expectedResources[1].StatefulSet.Spec.Replicas = ptr.To[int32](10)
 	// re-fetch es to simulate actual reconciliation behaviour
 	require.NoError(t, k8sClient.Get(context.Background(), k8s.ExtractNamespacedName(&es.ObjectMeta), &es))
@@ -198,7 +199,7 @@ func TestHandleUpscaleAndSpecChanges(t *testing.T) {
 	require.NotEmpty(t, ctx.expectations.GetGenerations())
 
 	// apply a spec change
-	actualStatefulSets = sset.StatefulSetList{sset1, sset2}
+	actualStatefulSets = es_sset.StatefulSetList{sset1, sset2}
 	expectedResources[1].StatefulSet.Spec.Template.Labels = map[string]string{"a": "b"}
 	res, err = HandleUpscaleAndSpecChanges(ctx, actualStatefulSets, expectedResources)
 	require.NoError(t, err)
@@ -207,7 +208,7 @@ func TestHandleUpscaleAndSpecChanges(t *testing.T) {
 	comparison.RequireEqual(t, &res.ActualStatefulSets[1], &sset2)
 
 	// apply a spec change and a downscale from 10 to 2
-	actualStatefulSets = sset.StatefulSetList{sset1, sset2}
+	actualStatefulSets = es_sset.StatefulSetList{sset1, sset2}
 	expectedResources[1].StatefulSet.Spec.Replicas = ptr.To[int32](2)
 	expectedResources[1].StatefulSet.Spec.Template.Labels = map[string]string{"a": "c"}
 	res, err = HandleUpscaleAndSpecChanges(ctx, actualStatefulSets, expectedResources)
@@ -327,7 +328,7 @@ func TestHandleUpscaleAndSpecChanges_PVCResize(t *testing.T) {
 func Test_adjustStatefulSetReplicas(t *testing.T) {
 	type args struct {
 		state              *upscaleState
-		actualStatefulSets sset.StatefulSetList
+		actualStatefulSets es_sset.StatefulSetList
 		expected           appsv1.StatefulSet
 	}
 	tests := []struct {
@@ -340,7 +341,7 @@ func Test_adjustStatefulSetReplicas(t *testing.T) {
 			name: "new StatefulSet to create",
 			args: args{
 				state:              &upscaleState{isBootstrapped: true, allowMasterCreation: false, createsAllowed: ptr.To[int32](3)},
-				actualStatefulSets: sset.StatefulSetList{},
+				actualStatefulSets: es_sset.StatefulSetList{},
 				expected:           sset.TestSset{Name: "new-sset", Replicas: 3}.Build(),
 			},
 			want:             sset.TestSset{Name: "new-sset", Replicas: 3}.Build(),
@@ -350,7 +351,7 @@ func Test_adjustStatefulSetReplicas(t *testing.T) {
 			name: "same StatefulSet already exists",
 			args: args{
 				state:              &upscaleState{isBootstrapped: true, allowMasterCreation: false, createsAllowed: ptr.To[int32](3)},
-				actualStatefulSets: sset.StatefulSetList{sset.TestSset{Name: "sset", Replicas: 3}.Build()},
+				actualStatefulSets: es_sset.StatefulSetList{sset.TestSset{Name: "sset", Replicas: 3}.Build()},
 				expected:           sset.TestSset{Name: "sset", Replicas: 3}.Build(),
 			},
 			want:             sset.TestSset{Name: "sset", Replicas: 3}.Build(),
@@ -360,7 +361,7 @@ func Test_adjustStatefulSetReplicas(t *testing.T) {
 			name: "downscale case",
 			args: args{
 				state:              &upscaleState{isBootstrapped: true, allowMasterCreation: false, createsAllowed: ptr.To[int32](3)},
-				actualStatefulSets: sset.StatefulSetList{sset.TestSset{Name: "sset", Replicas: 3}.Build()},
+				actualStatefulSets: es_sset.StatefulSetList{sset.TestSset{Name: "sset", Replicas: 3}.Build()},
 				expected:           sset.TestSset{Name: "sset", Replicas: 1}.Build(),
 			},
 			want:             sset.TestSset{Name: "sset", Replicas: 3}.Build(),
@@ -370,7 +371,7 @@ func Test_adjustStatefulSetReplicas(t *testing.T) {
 			name: "upscale case: data nodes",
 			args: args{
 				state:              &upscaleState{isBootstrapped: true, allowMasterCreation: false, createsAllowed: ptr.To[int32](3)},
-				actualStatefulSets: sset.StatefulSetList{sset.TestSset{Name: "sset", Replicas: 3, Master: false, Data: true}.Build()},
+				actualStatefulSets: es_sset.StatefulSetList{sset.TestSset{Name: "sset", Replicas: 3, Master: false, Data: true}.Build()},
 				expected:           sset.TestSset{Name: "sset", Replicas: 5, Master: false, Data: true}.Build(),
 			},
 			want:             sset.TestSset{Name: "sset", Replicas: 5, Master: false, Data: true}.Build(),
@@ -380,7 +381,7 @@ func Test_adjustStatefulSetReplicas(t *testing.T) {
 			name: "upscale case: master nodes - one by one",
 			args: args{
 				state:              &upscaleState{isBootstrapped: true, allowMasterCreation: true, createsAllowed: ptr.To[int32](3)},
-				actualStatefulSets: sset.StatefulSetList{sset.TestSset{Name: "sset", Replicas: 3, Master: true, Data: true}.Build()},
+				actualStatefulSets: es_sset.StatefulSetList{sset.TestSset{Name: "sset", Replicas: 3, Master: true, Data: true}.Build()},
 				expected:           sset.TestSset{Name: "sset", Replicas: 5, Master: true, Data: true}.Build(),
 			},
 			want:             sset.TestSset{Name: "sset", Replicas: 4, Master: true, Data: true}.Build(),
@@ -390,7 +391,7 @@ func Test_adjustStatefulSetReplicas(t *testing.T) {
 			name: "upscale case: new additional master sset - one by one",
 			args: args{
 				state:              &upscaleState{isBootstrapped: true, allowMasterCreation: true, createsAllowed: ptr.To[int32](3)},
-				actualStatefulSets: sset.StatefulSetList{sset.TestSset{Name: "sset", Replicas: 3, Master: true, Data: true}.Build()},
+				actualStatefulSets: es_sset.StatefulSetList{sset.TestSset{Name: "sset", Replicas: 3, Master: true, Data: true}.Build()},
 				expected:           sset.TestSset{Name: "sset-2", Replicas: 3, Master: true, Data: true}.Build(),
 			},
 			want:             sset.TestSset{Name: "sset-2", Replicas: 1, Master: true, Data: true}.Build(),
@@ -494,13 +495,13 @@ func Test_adjustZenConfig(t *testing.T) {
 func Test_adjustResources(t *testing.T) {
 	type args struct {
 		es                 esv1.Elasticsearch
-		actualStatefulSets sset.StatefulSetList
+		actualStatefulSets es_sset.StatefulSetList
 		expectedResources  nodespec.ResourcesList
 	}
 	tests := []struct {
 		name      string
 		args      args
-		wantSsets sset.StatefulSetList
+		wantSsets es_sset.StatefulSetList
 	}{
 		{
 			name: "initial cluster creation: add all masters from several nodeSets",
@@ -521,7 +522,7 @@ func Test_adjustResources(t *testing.T) {
 					},
 				},
 			},
-			wantSsets: sset.StatefulSetList{
+			wantSsets: es_sset.StatefulSetList{
 				sset.TestSset{Name: "masters1", Master: true, Replicas: 3, Namespace: "ns", ClusterName: "es", Version: "7.5.0"}.Build(),
 				sset.TestSset{Name: "masters2", Master: true, Replicas: 3, Namespace: "ns", ClusterName: "es", Version: "7.5.0"}.Build(),
 			},
@@ -545,7 +546,7 @@ func Test_adjustResources(t *testing.T) {
 					},
 				},
 			},
-			wantSsets: sset.StatefulSetList{
+			wantSsets: es_sset.StatefulSetList{
 				sset.TestSset{Name: "masters1", Master: true, Replicas: 1, Namespace: "ns", ClusterName: "es", Version: "7.5.0"}.Build(),
 				sset.TestSset{Name: "masters2", Master: true, Replicas: 0, Namespace: "ns", ClusterName: "es", Version: "7.5.0"}.Build(),
 			},

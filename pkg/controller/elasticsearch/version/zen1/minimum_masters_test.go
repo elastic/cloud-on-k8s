@@ -17,11 +17,12 @@ import (
 	esv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/elasticsearch/v1"
 	controllerscheme "github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/scheme"
 	settings2 "github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/settings"
+	sset "github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/statefulset"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/client"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/label"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/nodespec"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/settings"
-	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/sset"
+	es_sset "github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/sset"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/k8s"
 )
 
@@ -153,11 +154,11 @@ func TestUpdateMinimumMasterNodes(t *testing.T) {
 		c                  k8s.Client
 		es                 esv1.Elasticsearch
 		name               string
-		actualStatefulSets sset.StatefulSetList
+		actualStatefulSets es_sset.StatefulSetList
 	}{
 		{
 			name:               "no v6 nodes",
-			actualStatefulSets: sset.StatefulSetList{sset.TestSset{Name: "nodes", Namespace: ns, Version: "7.1.0", Replicas: 3, Master: true, Data: true}.Build()},
+			actualStatefulSets: es_sset.StatefulSetList{sset.TestSset{Name: "nodes", Namespace: ns, Version: "7.1.0", Replicas: 3, Master: true, Data: true}.Build()},
 			es:                 esv1.Elasticsearch{ObjectMeta: k8s.ToObjectMeta(nsn)},
 			wantCalled:         false,
 			c:                  k8s.NewFakeClient(createMasterPodsWithVersion("nodes", "7.1.0", 3)...),
@@ -165,7 +166,7 @@ func TestUpdateMinimumMasterNodes(t *testing.T) {
 		{
 			name:               "mmn should be updated",
 			c:                  k8s.NewFakeClient(&podsReady3[0], &podsReady3[1], &podsReady3[2]),
-			actualStatefulSets: sset.StatefulSetList{ssetSample},
+			actualStatefulSets: es_sset.StatefulSetList{ssetSample},
 			es:                 esv1.Elasticsearch{ObjectMeta: k8s.ToObjectMeta(nsn)},
 			wantCalled:         true,
 			wantCalledWith:     2,
@@ -173,7 +174,7 @@ func TestUpdateMinimumMasterNodes(t *testing.T) {
 		{
 			name:               "cannot update since not enough masters available",
 			c:                  k8s.NewFakeClient(&podsReady1[0], &podsReady1[1], &podsReady1[2]),
-			actualStatefulSets: sset.StatefulSetList{ssetSample},
+			actualStatefulSets: es_sset.StatefulSetList{ssetSample},
 			es:                 esv1.Elasticsearch{ObjectMeta: k8s.ToObjectMeta(nsn)},
 			wantCalled:         false,
 			wantRequeue:        true,

@@ -209,28 +209,6 @@ webhooks:
     service:
       name: webhook-service
       namespace: system
-      path: /validate-logstash-k8s-elastic-co-v1alpha1-logstash
-  failurePolicy: Ignore
-  matchPolicy: Exact
-  name: elastic-logstash-validation-v1alpha1.k8s.elastic.co
-  rules:
-  - apiGroups:
-    - logstash.k8s.elastic.co
-    apiVersions:
-    - v1alpha1
-    operations:
-    - CREATE
-    - UPDATE
-    resources:
-    - logstashes
-  sideEffects: None
-- admissionReviewVersions:
-  - v1
-  - v1beta1
-  clientConfig:
-    service:
-      name: webhook-service
-      namespace: system
       path: /validate-ems-k8s-elastic-co-v1alpha1-mapsservers
   failurePolicy: Ignore
   matchPolicy: Exact
@@ -311,4 +289,26 @@ webhooks:
     - UPDATE
     resources:
     - elasticsearchautoscalers
+  sideEffects: None
+- admissionReviewVersions:
+  - v1
+  - v1beta1
+  clientConfig:
+    service:
+      name: webhook-service
+      namespace: system
+      path: /validate-logstash-k8s-elastic-co-v1alpha1-logstash
+  failurePolicy: Ignore
+  matchPolicy: Exact
+  name: elastic-logstash-validation-v1alpha1.k8s.elastic.co
+  rules:
+  - apiGroups:
+    - logstash.k8s.elastic.co
+    apiVersions:
+    - v1alpha1
+    operations:
+    - CREATE
+    - UPDATE
+    resources:
+    - logstashes
   sideEffects: None

@@ -2,7 +2,7 @@
 // or more contributor license agreements. Licensed under the Elastic License 2.0;
 // you may not use this file except in compliance with the Elastic License 2.0.
 
-package sset
+package statefulset
 
 import (
 	"context"
@@ -28,7 +28,7 @@ type PodTemplateError struct {
 
 func (e *PodTemplateError) Error() string {
 	return fmt.Sprintf(
-		"Validation of PodTemplate for StatefulSet %s in Elasticsearch %s/%s failed for the following reasons: %v",
+		"Validation of PodTemplate for StatefulSet %s in %s/%s failed for the following reasons: %v",
 		e.StatefulSet.Name,
 		e.Parent.GetNamespace(),
 		e.Parent.GetName(),
@@ -88,6 +88,9 @@ func toPodTemplateError(ctx context.Context, parent metav1.Object, sset appsv1.S
 
 	// The Kubernetes API returns an error which is not related to the spec. of the Pod. In order to not block
 	// the reconciliation loop we skip the validation.
-	ulog.FromContext(ctx).Info("Pod validation skipped", "namespace", parent.GetNamespace(), "es_name", parent.GetName(), "error", statusErr)
+	// TODO: Before moving to `common`, this would state `es_name` in place of `name`, indicating that this was an
+	//       Elasticsearch pod where validation is being skipped. It would be useful to include the `Kind` of the
+	//       parent in this log message.
+	ulog.FromContext(ctx).Info("Pod validation skipped", "namespace", parent.GetNamespace(), "name", parent.GetName(), "error", statusErr)
 	return nil
 }

@@ -12,31 +12,12 @@ import (
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	esv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/elasticsearch/v1"
+	sset "github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/statefulset"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/k8s"
 )
-
-func TestPodName(t *testing.T) {
-	require.Equal(t, "sset-2", PodName("sset", 2))
-}
-
-func TestPodNames(t *testing.T) {
-	require.Equal(t,
-		[]string{"sset-0", "sset-1", "sset-2"},
-		PodNames(appsv1.StatefulSet{
-			ObjectMeta: metav1.ObjectMeta{
-				Namespace: "ns",
-				Name:      "sset",
-			},
-			Spec: appsv1.StatefulSetSpec{
-				Replicas: ptr.To[int32](3),
-			},
-		}),
-	)
-}
 
 func TestStatefulSetName(t *testing.T) {
 	type args struct {
@@ -91,7 +72,7 @@ func TestGetActualPodsForStatefulSet(t *testing.T) {
 }
 
 func TestGetActualMastersForCluster(t *testing.T) {
-	masterPod := TestPod{
+	masterPod := sset.TestPod{
 		Namespace:       "ns0",
 		Name:            "pod0",
 		ClusterName:     "clus0",
@@ -121,7 +102,7 @@ func TestGetActualMastersForCluster(t *testing.T) {
 }
 
 func getSsetSample(name, namespace, clusterName string) appsv1.StatefulSet {
-	return TestSset{
+	return sset.TestSset{
 		Name:        name,
 		Namespace:   namespace,
 		ClusterName: clusterName,
@@ -134,7 +115,7 @@ func getSsetSample(name, namespace, clusterName string) appsv1.StatefulSet {
 }
 
 func getPodSample(name, namespace, ssetName, clusterName, revision string) *corev1.Pod {
-	return TestPod{
+	return sset.TestPod{
 		Namespace:       namespace,
 		Name:            name,
 		ClusterName:     clusterName,

@@ -42,7 +42,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/volume"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/enterprisesearch"
 	kblabel "github.com/elastic/cloud-on-k8s/v2/pkg/controller/kibana/label"
-	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/logstash"
+	lslabels "github.com/elastic/cloud-on-k8s/v2/pkg/controller/logstash/labels"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/maps"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/k8s"
 )
@@ -450,8 +450,8 @@ func AgentPodListOptions(agentNamespace, agentName string) []k8sclient.ListOptio
 func LogstashPodListOptions(logstashNamespace, logstashName string) []k8sclient.ListOption {
 	ns := k8sclient.InNamespace(logstashNamespace)
 	matchLabels := k8sclient.MatchingLabels(map[string]string{
-		commonv1.TypeLabelName: logstash.TypeLabelValue,
-		logstash.NameLabelName: logstashName,
+		commonv1.TypeLabelName: lslabels.TypeLabelValue,
+		lslabels.NameLabelName: logstashName,
 	})
 	return []k8sclient.ListOption{ns, matchLabels}
 }
