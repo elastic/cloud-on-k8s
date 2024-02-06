@@ -3,6 +3,9 @@ templates:
   - templates/apmserver.yaml
 tests:
   - it: should render quickstart properly
+    set:
+      elasticsearchRef:
+        name: eck-elasticsearch
     release:
       name: quickstart
     asserts:
@@ -17,6 +20,8 @@ tests:
   - it: name override should work properly
     set:
       nameOverride: override
+      elasticsearchRef:
+        name: eck-elasticsearch
     release:
       name: quickstart
     asserts:
@@ -28,6 +33,8 @@ tests:
   - it: fullname override should work properly
     set:
       fullnameOverride: override
+      elasticsearchRef:
+        name: eck-elasticsearch
     release:
       name: quickstart
     asserts:
@@ -42,6 +49,8 @@ tests:
         test: label
       annotations:
         test: annotation
+      elasticsearchRef:
+        name: eck-elasticsearch
     release:
       name: quickstart
     asserts:
