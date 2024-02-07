@@ -28,16 +28,16 @@ testParams:
     stackVersion: 8.6.2
   - name: v270
     operatorVersion: 2.7.0
-    stackVersion: 8.7.0
+    stackVersion: 8.7.1
   - name: v280
     operatorVersion: 2.8.0
-    stackVersion: 8.8.0
+    stackVersion: 8.8.2
   - name: v290
     operatorVersion: 2.9.0
-    stackVersion: 8.9.0
+    stackVersion: 8.9.2
   - name: v2100
     operatorVersion: 2.10.0
-    stackVersion: 8.11.1
+    stackVersion: 8.11.4
   - name: v2110
     operatorVersion: 2.11.0
     stackVersion: 8.12.0
