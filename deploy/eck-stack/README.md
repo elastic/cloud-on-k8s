@@ -13,7 +13,7 @@ The following Elastic Stack resources are currently supported.
 - Fleet Server
 - Beats
 - Logstash
-- Elastic standalone APM Server
+- APM Server
 
 Additional resources will be supported in future releases of this Helm Chart.
 

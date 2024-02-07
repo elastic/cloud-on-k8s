@@ -94,3 +94,4 @@ podTemplate: {}
 
 # SecureSettings is a list of references to Kubernetes Secrets containing sensitive configuration options for APM Server.
 secureSettings: []
+# - secretName: my-secret-with-secure-settings

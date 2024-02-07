@@ -11,7 +11,7 @@ metadata:
     {{- toYaml . | nindent 4 }}
     {{- end }}
 spec:
-  version: {{ required "An apm-server version is required" .Values.version }}
+  version: {{ required "An APM Server version is required" .Values.version }}
   count: {{ required "A pod count is required" .Values.count }}
   {{- with .Values.image }}
   image: {{ . }}
@@ -32,7 +32,6 @@ spec:
     {{- toYaml . | nindent 4 }}
   {{- end }}
 
-  {{- if not .Values.elasticsearchRef }}{{ fail "A reference to an Elasticsearch instance is required" }}{{- end }}
   {{- with .Values.elasticsearchRef }}
   elasticsearchRef:
     {{- toYaml . | nindent 4 }}

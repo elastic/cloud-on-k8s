@@ -1,6 +1,6 @@
 apiVersion: v2
 name: eck-apm-server
-description: Elastic Standalone APM Server managed by the ECK operator
+description: Elastic APM Server managed by the ECK operator
 kubeVersion: ">= 1.21.0-0"
 type: application
 version: 0.10.0-SNAPSHOT

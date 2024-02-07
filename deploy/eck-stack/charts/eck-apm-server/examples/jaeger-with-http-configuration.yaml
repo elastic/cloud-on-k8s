@@ -16,7 +16,6 @@ config:
 #
 elasticsearchRef:
   name: eck-elasticsearch
-  # namespace: default
 http:
   service:
     spec:
