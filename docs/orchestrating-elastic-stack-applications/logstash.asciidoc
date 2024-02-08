@@ -330,7 +330,13 @@ spec:
             storage: 2Gi
 ----
 
-In particular, when enabling the persistent queue (PQ) feature, using dead letter queues (DLQ), or certain plugins that make heavy use of temporary storage, the default volume size will likely be insufficient for production workloads and you should increase the storage capacity, or consider creating separate volumes for these use cases.
+The default volume size will likely be insufficient for production workloads, espeically when you are using:
+
+* the persistent queue (PQ) feature
+* dead letter queues (DLQ), or 
+* {ls} plugins that make heavy use of temporary storage. 
+
+Increase the storage capacity, or consider creating separate volumes for these use cases.
 
 Separate storage can be added by including an additional `spec.volumeClaimTemplate` along with a corresponding `spec.podTemplate.spec.containers.volumeMount` for each requested volume.
 
