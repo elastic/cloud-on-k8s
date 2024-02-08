@@ -338,7 +338,7 @@ The default volume size will likely be insufficient for production workloads, es
 
 Increase the storage capacity, or consider creating separate volumes for these use cases.
 
-Separate storage can be added by including an additional `spec.volumeClaimTemplate` along with a corresponding `spec.podTemplate.spec.containers.volumeMount` for each requested volume.
+You can add separate storage by including an additional `spec.volumeClaimTemplate` along with a corresponding `spec.podTemplate.spec.containers.volumeMount` for each requested volume.
 
 This example shows how to setup separate storage for a PQ:
 
