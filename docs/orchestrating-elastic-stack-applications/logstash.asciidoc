@@ -301,7 +301,7 @@ WARNING: Volume support for Logstash is a breaking change to earlier versions of
 [discrete]
 == Specifying the volume claim settings
 
-By default, a PersistentVolume called `logstash-data` is created, that maps to `/usr/share/logstash/data` for persistent storage, typically used for storage from plugins. The `logstash-data` volume claim is, by default, a small (1Gi) volume, using the standard StorageClass of your Kubernetes cluster, but can be overridden by adding a `spec.volumeClaimTemplate` section named `logstash-data`.
+By default, a PersistentVolume called `logstash-data` is created, that maps to `/usr/share/logstash/data` for persistent storage, typically used for storage from plugins. The `logstash-data` volume claim is, by default, a 1.5Gi volume, using the standard StorageClass of your Kubernetes cluster, but can be overridden by adding a `spec.volumeClaimTemplate` section named `logstash-data`.
 
 For production workloads, you should define your own volume claim template with the desired storage capacity and (optionally) the Kubernetes link:https://kubernetes.io/docs/concepts/storage/storage-classes/[storage class] to associate with the persistent volume. To override this volume claim for `data` usages, the name of this volume claim must be `logstash-data`.
 
