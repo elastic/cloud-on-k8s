@@ -117,7 +117,7 @@ func (h *Kubectl) GetPods(namespace string, labelSelector string) ([]corev1.Pod,
 
 // LoadResources loads manifests from the given file path.
 func (h *Kubectl) LoadResources(filePath string) (*resource.Result, error) {
-	validator, err := h.factory.Validator(true)
+	validator, err := h.factory.Validator(metav1.FieldValidationStrict)
 	if err != nil {
 		return nil, fmt.Errorf("failed to obtain validator: %w", err)
 	}
