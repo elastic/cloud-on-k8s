@@ -106,6 +106,21 @@ spec:
 EOF
 ----
 
+Since stack version 8.0.0, along with specifying the `kibanaRef`, you also need to configure Kibana to include the APM integration. Add the following section to the Kibana specification:
+
+[source,yaml,subs="attributes,+macros"]
+----
+apiVersion: kibana.k8s.elastic.co/v1
+kind: Kibana
+metadata:
+  name: quickstart
+spec:
+  config:
+    xpack.fleet.packages:
+    - name: apm
+      version: latest
+----
+
 [id="{p}-apm-customize-configuration"]
 === Customize the APM Server configuration
 
