@@ -68,9 +68,10 @@ var (
 		"t": EnvVarTestsMatch,
 	}
 
-	fixed   string
-	mixed   string
-	envFile bool
+	fixed       string
+	mixed       string
+	testCommand string
+	envFile     bool
 
 	rootDir string
 )
@@ -78,6 +79,7 @@ var (
 func init() {
 	flag.StringVar(&fixed, "f", "", "Fixed variables (comma-separated list)")
 	flag.StringVar(&mixed, "m", "", "Mixed variables (comma-separated list of circumflex-separated list)")
+	flag.StringVar(&testCommand, "c", "e2e-run", "Test command")
 	flag.BoolVar(&envFile, "e", false, "Output in .env file format. Supports only one test.")
 	flag.Parse()
 
@@ -221,6 +223,7 @@ type TestsSuiteRun struct {
 	Dind             bool
 	Cleanup          bool
 	RemoteKubeconfig bool
+	TestCommand      string
 }
 
 func newTestsSuite(groupLabel string, fixed Env, mixedLen int, mixed Env) (TestsSuiteRun, error) {
@@ -250,6 +253,7 @@ func newTestsSuite(groupLabel string, fixed Env, mixedLen int, mixed Env) (Tests
 		Cleanup:          !slices.Contains(providersNoCleanup, provider),
 		RemoteKubeconfig: !slices.Contains(providersNoRemoteConfig, provider),
 		Env:              env,
+		TestCommand:      testCommand,
 	}
 
 	// merge fixed and mixed vars

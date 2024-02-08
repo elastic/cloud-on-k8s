@@ -72,9 +72,9 @@ steps:
       {{- end }}
 
       {{- if $test.Dind }}
-      - make -C .buildkite TARGET="{{ $deployerCommand }} e2e-run" ci
+      - make -C .buildkite TARGET="{{ $deployerCommand }} {{ $test.TestCommand }}" ci
       {{- else }}
-      - make {{ $deployerCommand }} e2e-run
+      - make {{ $deployerCommand }} {{ $test.TestCommand }}
       {{- end }}
 
     agents:
