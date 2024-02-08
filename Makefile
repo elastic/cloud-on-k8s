@@ -484,6 +484,10 @@ e2e-local: go-generate
 		--test-timeout=$(TEST_TIMEOUT) \
 		--test-env-tags=$(E2E_TEST_ENV_TAGS)
 
+run-upgrade-test-harness:
+	cd hack/upgrade-test-harness && \
+		go run main.go --from-release=v180 --to-release=upcoming
+
 ##########################
 ##  --   Helpers    --  ##
 ##########################

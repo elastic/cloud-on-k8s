@@ -91,7 +91,7 @@ steps:
   # step to run e2e-tests for PR are inlined for speed
 
   # for commits in all branches (PR, release) except main
-  - label: ":buildkite:"
+  - label: ":buildkite: run-upgrade-test-harness"
     if: |
         ( build.branch != "main" )
         && build.env("GITHUB_PR_TRIGGER_COMMENT") !~ /^buildkite test this -[fm]/
@@ -100,12 +100,10 @@ steps:
       set -euo pipefail
       .buildkite/scripts/build/set-images.sh
       cd .buildkite/e2e/pipeline-gen && go build -o pipeline-gen
-      cat <<DEF | ./pipeline-gen | buildkite-agent pipeline upload
-      - label: "kind/TestSmoke"
+      cat <<DEF | ./pipeline-gen -c run-upgrade-test-harness | buildkite-agent pipeline upload
+      - label: "kind/run-upgrade-test-harness"
         fixed:
           E2E_PROVIDER: kind
-          TESTS_MATCH: TestSmoke
-          E2E_TAGS: "e2e,mixed"
           MONITORING_SECRETS: ""
           E2E_SKIP_CLEANUP: true
       DEF
