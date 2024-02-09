@@ -518,7 +518,7 @@ spec:
   count: 5
   podTemplate:
     spec:
-      volumeClaimTemplates:
+      volumes:
       - name: logstash-data
         emptyDir: {}
 ----
