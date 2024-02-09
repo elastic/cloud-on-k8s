@@ -330,7 +330,7 @@ spec:
             storage: 2Gi
 ----
 
-The default volume size will likely be insufficient for production workloads, espeically when you are using:
+The default volume size will likely be insufficient for production workloads, especially when you are using:
 
 * the persistent queue (PQ) feature
 * dead letter queues (DLQ), or 
