@@ -191,7 +191,7 @@ func TestReconcileLogstash_Reconcile(t *testing.T) {
 									StorageClassName: ptr.To[string](sampleStorageClass.Name),
 									Resources: corev1.VolumeResourceRequirements{
 										Requests: corev1.ResourceList{
-											corev1.ResourceStorage: resource.MustParse("1Gi"),
+											corev1.ResourceStorage: resource.MustParse("1.5Gi"),
 										},
 									},
 								},
@@ -303,7 +303,7 @@ func TestReconcileLogstash_Reconcile(t *testing.T) {
 									StorageClassName: ptr.To[string](sampleStorageClass.Name),
 									Resources: corev1.VolumeResourceRequirements{
 										Requests: corev1.ResourceList{
-											corev1.ResourceStorage: resource.MustParse("1Gi"),
+											corev1.ResourceStorage: resource.MustParse("1.5Gi"),
 										},
 									},
 								},
@@ -432,7 +432,7 @@ func TestReconcileLogstash_Reconcile(t *testing.T) {
 									StorageClassName: ptr.To[string](sampleStorageClass.Name),
 									Resources: corev1.VolumeResourceRequirements{
 										Requests: corev1.ResourceList{
-											corev1.ResourceStorage: resource.MustParse("1Gi"),
+											corev1.ResourceStorage: resource.MustParse("1.5Gi"),
 										},
 									},
 								},
@@ -550,7 +550,7 @@ func TestReconcileLogstash_Reconcile(t *testing.T) {
 									StorageClassName: ptr.To[string](sampleStorageClass.Name),
 									Resources: corev1.VolumeResourceRequirements{
 										Requests: corev1.ResourceList{
-											corev1.ResourceStorage: resource.MustParse("1Gi"),
+											corev1.ResourceStorage: resource.MustParse("1.5Gi"),
 										},
 									},
 								},
@@ -650,7 +650,7 @@ func TestReconcileLogstash_Resize(t *testing.T) {
 	}{
 		{
 			name:            "Cannot increase storage with fixed storage class",
-			initialCapacity: "1Gi",
+			initialCapacity: "1.5Gi",
 			desiredCapacity: "3Gi",
 			storageClass:    fixedStorageClass,
 			wantErr:         true,
@@ -658,7 +658,7 @@ func TestReconcileLogstash_Resize(t *testing.T) {
 		{
 			name:            "Cannot decrease storage with resizable storage class",
 			initialCapacity: "3Gi",
-			desiredCapacity: "1Gi",
+			desiredCapacity: "1.5Gi",
 			storageClass:    resizableStorageClass,
 			wantErr:         true,
 		},
@@ -671,14 +671,14 @@ func TestReconcileLogstash_Resize(t *testing.T) {
 		},
 		{
 			name:            "Nothing happens when keeping the storage the same with resizable storage class",
-			initialCapacity: "1Gi",
-			desiredCapacity: "1Gi",
+			initialCapacity: "1.5Gi",
+			desiredCapacity: "1.5Gi",
 			storageClass:    resizableStorageClass,
 			wantErr:         false,
 		},
 		{
 			name:            "Can successfully resize the storage with resizable storage class",
-			initialCapacity: "1Gi",
+			initialCapacity: "1.5Gi",
 			desiredCapacity: "3Gi",
 			storageClass:    resizableStorageClass,
 			extraVerify: func(r ReconcileLogstash, desiredCapacity string) (reconcile.Result, error) {

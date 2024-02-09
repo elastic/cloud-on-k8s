@@ -21,10 +21,10 @@ var (
 		ContainerMountPath:     ConfigMountPath,
 	}
 
-	DefaultPersistentVolumeSize = resource.MustParse("1Gi")
+	DefaultPersistentVolumeSize = resource.MustParse("1.5Gi")
 
 	// DefaultDataVolumeClaim is the default data volume claim for Logstash pods.
-	// We default to a 1GB persistent volume, using the default storage class.
+	// We default to a 1.5Gi persistent volume, using the default storage class.
 	DefaultDataVolumeClaim = corev1.PersistentVolumeClaim{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: LogstashDataVolumeName,
