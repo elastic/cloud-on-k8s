@@ -13,6 +13,7 @@ The following Elastic Stack resources are currently supported.
 - Fleet Server
 - Beats
 - Logstash
+- APM Server
 
 Additional resources will be supported in future releases of this Helm Chart.
 
@@ -77,6 +78,7 @@ The following table lists the configurable parameters of the eck-stack chart and
 | `eck-agent.enabled` | If `true`, create an Elastic Agent resource (using the eck-agent Chart) | `false` |
 | `eck-fleet-server.enabled` | If `true`, create a Fleet Server resource (using the eck-fleet-server Chart) | `false` |
 | `eck-logstash.enabled` | If `true`, create a Logstash resource (using the eck-logstash Chart) | `false` |
+| `eck-apm-server.enabled` | If `true`, create a standalone Elastic APM Server resource (using the eck-apm-server Chart) | `false` |
 
 Specify each parameter using the `--set key=value[,key=value]` argument to `helm install`.
 

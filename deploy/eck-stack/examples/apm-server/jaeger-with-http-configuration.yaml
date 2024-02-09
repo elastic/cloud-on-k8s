@@ -1,0 +1,60 @@
+---
+eck-elasticsearch:
+  enabled: true
+
+  # Name of the Elasticsearch instance.
+  #
+  fullnameOverride: elasticsearch
+
+  nodeSets:
+  - name: default
+    count: 3
+    # Comment out when setting the vm.max_map_count via initContainer, as these are mutually exclusive.
+    # For production workloads, it is strongly recommended to increase the kernel setting vm.max_map_count to 262144
+    # and leave node.store.allow_mmap unset.
+    # ref: https://www.elastic.co/guide/en/cloud-on-k8s/master/k8s-virtual-memory.html
+    #
+    config:
+      node.store.allow_mmap: false
+
+eck-kibana:
+  enabled: true
+
+  # Name of the Kibana instance.
+  #
+  fullnameOverride: kibana
+
+  spec:
+    config:
+      xpack.fleet.packages:
+      - name: apm
+        version: latest
+
+eck-apm-server:
+  enabled: true
+
+  # Count of APM Server replicas to create.
+  #
+  count: 1
+
+  config:
+    name: elastic-apm
+    apm-server.jaeger.grpc.enabled: true
+    apm-server.jaeger.grpc.host: "0.0.0.0:14250"
+
+  # Reference to ECK-managed Elasticsearch resource.
+  #
+  elasticsearchRef:
+    name: elasticsearch
+  kibanaRef:
+    name: kibana
+  http:
+    service:
+      spec:
+        ports:
+        - name: http
+          port: 8200
+          targetPort: 8200
+        - name: grpc
+          port: 14250
+          targetPort: 14250

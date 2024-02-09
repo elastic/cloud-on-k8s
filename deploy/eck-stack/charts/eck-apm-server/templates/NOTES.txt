@@ -1,0 +1,6 @@
+
+1. Check APM Server status
+  $ kubectl get apmserver {{ include "apm-server.fullname" . }} -n {{ .Release.Namespace }}
+
+2. Check APM Server pod status
+  $ kubectl get pods --namespace={{ .Release.Namespace }} -l apm.k8s.elastic.co/name={{ include "apm-server.fullname" . }}

@@ -1,0 +1,97 @@
+---
+# Default values for eck-apm-server.
+# This is a YAML-formatted file.
+
+# Overridable names of the APM Server resource.
+# By default, this is the Release name set for the chart,
+# followed by 'eck-apm-server'.
+#
+# nameOverride will override the name of the Chart with the name set here,
+# so nameOverride: quickstart, would convert to '{{ Release.name }}-quickstart'
+#
+# nameOverride: "quickstart"
+#
+# fullnameOverride will override both the release name, and the chart name,
+# and will name the APM Server resource exactly as specified.
+#
+# fullnameOverride: "quickstart"
+
+# Version of APM Server.
+#
+version: 8.13.0-SNAPSHOT
+
+# APM Server Docker image to deploy
+#
+# image:
+
+# Used to check access from the current resource to a resource (for ex. a remote Elasticsearch cluster) in a different namespace.
+# Can only be used if ECK is enforcing RBAC on references.
+#
+# serviceAccountName: ""
+
+# Labels that will be applied to APM Server.
+#
+labels: {}
+
+# Annotations that will be applied to APM Server.
+#
+annotations: {}
+
+# Count of APM Server replicas to create.
+#
+count: 1
+
+# The APM Server configuration, the ECK equivalent to apm-server.yml
+# ref: https://www.elastic.co/guide/en/apm/server/current/configuring-howto-apm-server.html
+#
+config: {}
+
+# Settings to control how APM Server will be accessed.
+# ref: https://www.elastic.co/guide/en/cloud-on-k8s/current/k8s-accessing-elastic-services.html
+#
+http: {}
+  # service:
+  #   metadata:
+  #     labels:
+  #       my-custom: label
+  #   spec:
+  #     ports:
+  #     - name: http
+  #       port: 8200
+  #       targetPort: 8200
+
+# Reference to ECK-managed Elasticsearch resource.
+#
+elasticsearchRef: {}
+  # name: eck-elasticsearch
+  # Optional namespace reference to Elasticsearch resource.
+  # If not specified, then the namespace of the APM Server resource
+  # will be assumed.
+  #
+  # namespace: default
+
+# Optional reference to ECK-managed Kibana resource which allows ECK to
+# automatically configure the Kibana endpoint as described in 
+# https://www.elastic.co/guide/en/apm/server/current/setup-kibana-endpoint.html
+#
+# kibanaRef:
+#   name: eck-kibana
+#   # Optional namespace reference to Kibana resource.
+#   # If not specified, then the namespace of the APM Server resource
+#   # will be assumed.
+#   #
+#   # namespace: default
+
+# Set podTemplate to customize the pod used by APM Server
+# ref: https://www.elastic.co/guide/en/cloud-on-k8s/current/k8s-customize-pods.html
+#
+podTemplate: {}
+
+# Number of revisions to retain to allow rollback in the underlying Deployment.
+# If not set Kubernetes sets this to 10 by default.
+#
+# revisionHistoryLimit: 2
+
+# SecureSettings is a list of references to Kubernetes Secrets containing sensitive configuration options for APM Server.
+secureSettings: []
+# - secretName: my-secret-with-secure-settings

@@ -39,3 +39,8 @@ eck-beats:
 #
 eck-logstash:
   enabled: false
+
+# If enabled, will use the eck-apm-server chart and deploy a standalone APM Server resource.
+#
+eck-apm-server:
+  enabled: false
