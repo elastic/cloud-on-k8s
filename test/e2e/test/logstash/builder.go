@@ -153,17 +153,21 @@ func (b Builder) WithVolumeMounts(mounts ...corev1.VolumeMount) Builder {
 }
 
 func (b Builder) WithTestStorageClass() Builder {
+	hasDefaultVolumeClaim := false
 	for _, vc := range b.Logstash.Spec.VolumeClaimTemplates {
+		// a custom volume claim template is set patch it to use the test storage class
+		vc.Spec.StorageClassName = ptr.To(test.DefaultStorageClass)
 		if vc.Name == volume.LogstashDataVolumeName {
-			// a custom volume claim template is set we don't need to do anything
-			return b
+			hasDefaultVolumeClaim = true
 		}
 	}
 
-	// define the default volume claim with the e2e storage class
-	vc := volume.DefaultDataVolumeClaim.DeepCopy()
-	vc.Spec.StorageClassName = ptr.To[string](test.DefaultStorageClass)
-	b.Logstash.Spec.VolumeClaimTemplates = append(b.Logstash.Spec.VolumeClaimTemplates, *vc)
+	// define the default volume claim with the e2e storage class in case it is missing
+	if !hasDefaultVolumeClaim {
+		vc := volume.DefaultDataVolumeClaim.DeepCopy()
+		vc.Spec.StorageClassName = ptr.To[string](test.DefaultStorageClass)
+		b.Logstash.Spec.VolumeClaimTemplates = append(b.Logstash.Spec.VolumeClaimTemplates, *vc)
+	}
 	return b
 }
 
