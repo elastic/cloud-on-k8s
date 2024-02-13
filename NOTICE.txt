@@ -1700,11 +1700,11 @@ Exhibit B - "Incompatible With Secondary Licenses" Notice
 
 --------------------------------------------------------------------------------
 Module  : github.com/hashicorp/vault/api
-Version : v1.11.0
-Time    : 2024-01-24T18:08:41Z
+Version : v1.12.0
+Time    : 2024-02-08T01:28:54Z
 Licence : MPL-2.0
 
-Contents of probable licence file $GOMODCACHE/github.com/hashicorp/vault/api@v1.11.0/LICENSE:
+Contents of probable licence file $GOMODCACHE/github.com/hashicorp/vault/api@v1.12.0/LICENSE:
 
 Copyright (c) 2015 HashiCorp, Inc.
 
