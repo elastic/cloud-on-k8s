@@ -93,4 +93,38 @@ rules:
   - apiGroups: ["logstash.k8s.elastic.co"]
     resources: ["logstashes"]
     verbs: ["create", "delete", "deletecollection", "patch", "update"]
+{{- if and .Values.config.enableMetricsAuth (gt .Values.config.metricsPort 0) }}
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  labels:
+    {{- include "eck-operator.labels" . | nindent 4 }}
+  name: "{{ include "eck-operator.fullname" . }}-proxy-role"
+rules:
+- apiGroups:
+  - authentication.k8s.io
+  resources:
+  - tokenreviews
+  verbs:
+  - create
+- apiGroups:
+  - authorization.k8s.io
+  resources:
+  - subjectaccessreviews
+  verbs:
+  - create
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  labels:
+    {{- include "eck-operator.labels" . | nindent 4 }}
+  name: "{{ include "eck-operator.fullname" . }}-metrics-reader"
+rules:
+- nonResourceURLs:
+  - "/metrics"
+  verbs:
+  - get
+{{- end }}
 {{- end -}}

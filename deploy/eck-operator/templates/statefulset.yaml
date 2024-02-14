@@ -81,7 +81,7 @@ spec:
           {{- end }}
           {{- if or (gt $metricsPort 0) .Values.webhook.enabled }}
           ports:
-            {{- if (gt $metricsPort 0) }}
+            {{- if and (gt $metricsPort 0) (not .Values.config.enableMetricsAuth) }}
             - containerPort: {{ .Values.config.metricsPort }}
               name: metrics
               protocol: TCP
@@ -104,6 +104,31 @@ spec:
             {{- with .Values.volumeMounts }}
               {{- toYaml . | nindent 12 }}
             {{- end }}
+        {{- if (and .Values.config.enableMetricsAuth (gt $metricsPort 0)) }}
+        - name: kube-rbac-proxy
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+                - "ALL"
+          image: gcr.io/kubebuilder/kube-rbac-proxy:v0.13.0
+          args:
+          - "--secure-listen-address=0.0.0.0:{{ $metricsPort }}"
+          - "--upstream=http://127.0.0.1:{{ add $metricsPort 1 }}/"
+          - "--logtostderr=true"
+          - "--v=0"
+          ports:
+          - containerPort: {{ $metricsPort }}
+            protocol: TCP
+            name: metrics
+          resources:
+            limits:
+              cpu: 500m
+              memory: 128Mi
+            requests:
+              cpu: 5m
+              memory: 64Mi
+        {{- end }}
       volumes:
         - name: conf
           configMap:
