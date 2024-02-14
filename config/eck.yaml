@@ -1,5 +1,6 @@
 log-verbosity: 0
 metrics-port: 0
+enable-secure-metrics: false
 container-registry: docker.elastic.co
 max-concurrent-reconciles: 3
 ca-cert-validity: 8760h
