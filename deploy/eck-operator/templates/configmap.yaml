@@ -10,6 +10,7 @@ data:
   eck.yaml: |-
     log-verbosity: {{ int .Values.config.logVerbosity }}
     metrics-port: {{ int .Values.config.metricsPort }}
+    enable-secure-metrics: {{ .Values.config.enableSecureMetrics }}
     container-registry: {{ .Values.config.containerRegistry }}
     {{- with .Values.config.containerSuffix }}
     container-suffix: {{ . }}
