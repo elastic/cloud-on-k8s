@@ -154,9 +154,9 @@ func (b Builder) WithVolumeMounts(mounts ...corev1.VolumeMount) Builder {
 
 func (b Builder) WithTestStorageClass() Builder {
 	hasDefaultVolumeClaim := false
-	for _, vc := range b.Logstash.Spec.VolumeClaimTemplates {
+	for i, vc := range b.Logstash.Spec.VolumeClaimTemplates {
 		// a custom volume claim template is set patch it to use the test storage class
-		vc.Spec.StorageClassName = ptr.To(test.DefaultStorageClass)
+		b.Logstash.Spec.VolumeClaimTemplates[i].Spec.StorageClassName = ptr.To(test.DefaultStorageClass)
 		if vc.Name == volume.LogstashDataVolumeName {
 			hasDefaultVolumeClaim = true
 		}
