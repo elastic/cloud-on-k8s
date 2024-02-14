@@ -28,6 +28,11 @@ spec:
       {{- with .Values.podMonitor.podMetricsEndpointConfig }}
         {{- toYaml . | nindent 6 }}
       {{- end }}
+      {{- if .Values.config.enableSecureMetrics }}
+      scheme: https
+      tlsConfig:
+        insecureSkipVerify: true
+      {{- end }}
   namespaceSelector:
     matchNames:
       - {{ .Release.Namespace }}

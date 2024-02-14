@@ -37,6 +37,7 @@ ECK can be configured using either command line flags or environment variables.
 |manage-webhook-certs |true |Enables automatic webhook certificate management.
 |max-concurrent-reconciles |3 | Maximum number of concurrent reconciles per controller (Elasticsearch, Kibana, APM Server). Affects the ability of the operator to process changes concurrently.
 |metrics-port |0 |Prometheus metrics port. Set to 0 to disable the metrics endpoint.
+|enable-secure-metrics|false |Enables service of Prometheus metrics over HTTPS. (Requires `--metrics-port` to be set. Will be enabled by default in v2.14.0)
 |namespaces |"" |Namespaces in which this operator should manage resources. Accepts multiple comma-separated values. Defaults to all namespaces if empty or unspecified.
 |operator-namespace |"" |Namespace the operator runs in. Required.
 |password-hash-cache-size|5 x max-concurrent-reconciles|Sets the size of the password hash cache. Caching is disabled if explicitly set to 0 or any negative value.

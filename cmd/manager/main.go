@@ -288,6 +288,11 @@ func Command() *cobra.Command {
 		DefaultMetricPort,
 		"Port to use for exposing metrics in the Prometheus format (set 0 to disable)",
 	)
+	cmd.Flags().Bool(
+		operator.EnableSecureMetricsFlag,
+		false,
+		"Enables serving metrics over HTTPS (Will be enabled by default in v2.14.0)",
+	)
 	cmd.Flags().StringSlice(
 		operator.NamespacesFlag,
 		nil,
@@ -581,7 +586,8 @@ func startOperator(ctx context.Context) error {
 		log.Info("Exposing Prometheus metrics on /metrics", "port", metricsPort)
 	}
 	opts.Metrics = metricsserver.Options{
-		BindAddress: fmt.Sprintf(":%d", metricsPort), // 0 to disable
+		BindAddress:   fmt.Sprintf(":%d", metricsPort), // 0 to disable
+		SecureServing: viper.GetBool(operator.EnableSecureMetricsFlag),
 	}
 
 	webhookPort := viper.GetInt(operator.WebhookPortFlag)
