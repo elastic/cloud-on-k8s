@@ -1054,43 +1054,16 @@ spec:
 
 experimental[]
 
-When running {ls} with plugins outside of those included in the standard, distribution, you can install those plugins in one of two ways - either by using an `initContainer` to install plugins before the main container starts, or creating a custom Docker image that includes the installed plugins. Refer to <<{p}-bundles-plugins>> for a run down of which option might be most suitable for you.
-
-To add plugins, both of these options require the `bin/logstash-plugin` utility to be run to add the plugin(s) to the {ls} pod before it starts.
-
-=== Adding a plugin using an initContainer
-
-This example sets up an `initContainer` to install the `logstash-filter-tld` plugin:
-
-[source,yaml]
-----
-spec:
-  podTemplate:
-    spec:
-      initContainers:
-      - name: install-plugins
-        command: ["/bin/sh"]
-        args: ["-c", "bin/logstash-plugin install logstash-filter-tld"]
-----
-
-The init container inherits:
-
-* The image of the main container image, if one is not explicitly set.
-* The volume mounts from the main container unless a volume mount with the same name and mount path is present in the init container definition.
-* The Pod name and IP address environment variables.
+When running {ls} with plugins outside of those included in the standard {ls} distribution, you can install those plugins by creating a custom Docker image that includes the installed plugins, using the `bin/logstash-plugin install` utility to add further plugins to the image to enable them to be used by {ls} pods.
 
 
-=== Adding a plugin using a custom image
-
-This example installs the same plugin, but uses a custom image to install the plugin.
-
-First, create a Dockerfile based on the {ls} Docker image, running `bin/logstash-plugin install` to install the appropriate plugin(s):
+This sample Dockerfile installs the `logstash-filter-tld` and `logstash-filter-elastic_integration` plugins to the official {ls} Docker image:
 
 [subs="attributes,+macros,callouts"]
 ----
 FROM docker.elastic.co/logstash/logstash:{version}
 
-RUN bin/logstash-plugin install logstash-filter-tld
+RUN bin/logstash-plugin install logstash-filter-tld logstash-filter-elastic_integration
 ----
 
 Then after building and deploying the custom image (refer to <<{p}-custom-images>> for more details), include it in the {ls} manifest:
