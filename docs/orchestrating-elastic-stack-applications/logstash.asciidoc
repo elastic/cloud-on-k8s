@@ -1057,7 +1057,7 @@ experimental[]
 When running {ls} with plugins outside of those included in the standard {ls} distribution, you can install those plugins by creating a custom Docker image that includes the installed plugins, using the `bin/logstash-plugin install` utility to add further plugins to the image to enable them to be used by {ls} pods.
 
 
-This sample Dockerfile installs the `logstash-filter-tld` and `logstash-filter-elastic_integration` plugins to the official {ls} docker image:
+This sample Dockerfile installs the `logstash-filter-tld` and `logstash-filter-elastic_integration` plugins to the official {ls} Docker image:
 
 [subs="attributes,+macros,callouts"]
 ----
