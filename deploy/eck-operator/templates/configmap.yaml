@@ -1,3 +1,4 @@
+{{- $metricsPort := int .Values.config.metricsPort -}}
 ---
 apiVersion: v1
 kind: ConfigMap
@@ -9,7 +10,11 @@ metadata:
 data:
   eck.yaml: |-
     log-verbosity: {{ int .Values.config.logVerbosity }}
-    metrics-port: {{ int .Values.config.metricsPort }}
+    {{- if (and .Values.config.enableMetricsAuth (gt $metricsPort 0)) }}
+    metrics-port: {{ add $metricsPort 1 }}
+    {{- else }}
+    metrics-port: {{ $metricsPort }}
+    {{- end }}
     container-registry: {{ .Values.config.containerRegistry }}
     {{- with .Values.config.containerSuffix }}
     container-suffix: {{ . }}

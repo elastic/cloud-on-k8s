@@ -1,9 +1,14 @@
-{{- if and .Values.config.enableMetricsAuth (gt .Values.config.metricsPort 0) }}
+{{- $metricsPort := int .Values.config.metricsPort -}}
+{{- if and .Values.config.enableMetricsAuth (gt $metricsPort 0) }}
 apiVersion: v1
 kind: Service
 metadata:
   labels:
-    {{- include "eck-operator.labels" . | nindent 4 }}
+    app.kubernetes.io/name: {{ include "eck-operator.name" . }}-metrics-service
+    app.kubernetes.io/instance: {{ .Release.Name }}
+    app.kubernetes.io/version: {{ .Chart.AppVersion | quote }}
+    helm.sh/chart: {{ include "eck-operator.chart" . }}
+    app.kubernetes.io/managed-by: {{ .Release.Service }}
   name: "{{ include "eck-operator.fullname" . }}-metrics-service"
   namespace: {{ .Release.Namespace }}
 spec:
@@ -13,5 +18,5 @@ spec:
     protocol: TCP
     targetPort: metrics
   selector:
-    {{- "eck-operator.selectorLabels" . | nindent 4 }}
+    {{- include "eck-operator.selectorLabels" . | nindent 4 }}
 {{- end }}

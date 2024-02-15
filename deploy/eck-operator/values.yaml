@@ -162,7 +162,26 @@ config:
   # metricsPort defines the port to expose operator metrics. Set to 0 to disable metrics reporting.
   metricsPort: "0"
 
-  # enableMetricsAuth specifies whether to enable basic authentication for the metrics endpoint. (Will be enabled by default in v2.14.0)
+  # enableMetricsAuth specifies whether to enable RBAC authentication for the metrics endpoint. (Will be enabled by default in v2.14.0)
+  # * This option requires using a ServiceMonitor to scrape the metrics and as such is mutually exclusive with the podMonitor.enabled option.
+  # * This option also enable tls/HTTPs metrics by default.
+  #
+  # This option requires the following settings within Prometheus to function:
+  # 1. RBAC settings for the Prometheus instance to access the metrics endpoint.
+  #
+  # - nonResourceURLs:
+  #   - /metrics
+  #   - /metrics/cadvisor
+  #   verbs:
+  #   - get
+  #
+  # 2. If using the Prometheus Operator and your Prometheus instance are not in the same namespace as the operator you will need
+  #    the Prometheus Operator configured with the following Helm values:
+  #
+  #   prometheus:
+  #     prometheusSpec:
+  #       serviceMonitorNamespaceSelector: {}
+  #       serviceMonitorSelectorNilUsesHelmValues: false
   enableMetricsAuth: false
 
   # containerRegistry to use for pulling Elasticsearch and other application container images.

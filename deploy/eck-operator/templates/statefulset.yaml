@@ -111,12 +111,12 @@ spec:
             capabilities:
               drop:
                 - "ALL"
-          image: gcr.io/kubebuilder/kube-rbac-proxy:v0.13.0
+          image: gcr.io/kubebuilder/kube-rbac-proxy:v0.15.0
           args:
           - "--secure-listen-address=0.0.0.0:{{ $metricsPort }}"
           - "--upstream=http://127.0.0.1:{{ add $metricsPort 1 }}/"
           - "--logtostderr=true"
-          - "--v=0"
+          - "--v=10"
           ports:
           - containerPort: {{ $metricsPort }}
             protocol: TCP
