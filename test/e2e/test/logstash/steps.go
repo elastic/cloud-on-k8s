@@ -151,7 +151,8 @@ func (b Builder) DeletionTestSteps(k *test.K8sClient) test.StepList {
 			Name: "Cleanup any persistent volumes belonging to Logstash",
 			Test: test.Eventually(func() error {
 				if err := k.Client.DeleteAllOf(context.Background(), &corev1.PersistentVolumeClaim{},
-					client.MatchingLabels{lslabels.NameLabelName: b.Logstash.Name}); err != nil && !apierrors.IsNotFound(err) {
+					client.MatchingLabels{lslabels.NameLabelName: b.Logstash.Name},
+					client.InNamespace(b.Namespace())); err != nil && !apierrors.IsNotFound(err) {
 					return err
 				}
 				return nil
