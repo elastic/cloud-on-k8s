@@ -1,0 +1,25 @@
+{{- $metricsPort := int .Values.config.metricsPort -}}
+{{- if and .Values.config.enableMetricsAuth (gt $metricsPort 0) }}
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: {{ include "eck-operator.fullname" . }}
+  namespace: {{ ternary .Values.serviceMonitor.namespace .Release.Namespace (not (empty .Values.serviceMonitor.namespace)) }}
+  labels: {{- include "eck-operator.labels" . | nindent 4 }}
+spec:
+  namespaceSelector:
+    matchNames:
+      - {{ .Release.Namespace }}
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: {{ include "eck-operator.name" . }}-metrics-service
+      app.kubernetes.io/instance: {{ .Release.Name }}
+  endpoints:
+  - port: https
+    path: /metrics
+    scheme: https
+    interval: 30s
+    tlsConfig:
+      insecureSkipVerify: true
+    bearerTokenFile: /var/run/secrets/kubernetes.io/serviceaccount/token
+{{- end }}
