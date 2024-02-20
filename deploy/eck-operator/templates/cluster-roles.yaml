@@ -1,4 +1,7 @@
 {{- $metricsPort := int .Values.config.metricsPort -}}
+{{- if and (not .Values.createClusterScopedResources) (.Values.config.enableMetricsAuth) (gt $metricsPort 0) -}}
+{{ fail "createClusterScopedResources is required to enable metrics authentication" }}
+{{- end }}
 {{- if .Values.createClusterScopedResources -}}
 ---
 apiVersion: rbac.authorization.k8s.io/v1
