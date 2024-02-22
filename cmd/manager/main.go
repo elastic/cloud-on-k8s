@@ -286,7 +286,12 @@ func Command() *cobra.Command {
 	cmd.Flags().Int(
 		operator.MetricsPortFlag,
 		DefaultMetricPort,
-		"Port to use for exposing metrics in the Prometheus format (set 0 to disable)",
+		"(Deprecated) Port to use for exposing metrics in the Prometheus format. (set 0 to disable. Use --metrics-bind-address instead)",
+	)
+	cmd.Flags().String(
+		operator.MetricsBindAddressFlag,
+		"",
+		fmt.Sprintf("The address which the operator should listen on to serve metrics in the Prometheus format. Cannot be combined with %s. (set to empty to disable)", operator.MetricsPortFlag),
 	)
 	cmd.Flags().StringSlice(
 		operator.NamespacesFlag,

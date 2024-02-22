@@ -1,4 +1,3 @@
-{{- $metricsPort := int .Values.config.metricsPort -}}
 ---
 apiVersion: v1
 kind: ConfigMap
@@ -10,10 +9,19 @@ metadata:
 data:
   eck.yaml: |-
     log-verbosity: {{ int .Values.config.logVerbosity }}
-    {{- if (and .Values.config.enableMetricsAuth (gt $metricsPort 0)) }}
+    {{- if (and .Values.config.enableSecureMetrics (eq $metricsPort 0) (not (has .Values.metricsBindAddress))) }}
+    {{ fail "metricsPort or metricsBindAddress is required when enableSecureMetrics is true" }}
+    {{- end }}
+    {{- if (and .Values.config.enableSecureMetrics (gt $metricsPort 0) (or (eq .Values.metricsBindAddress "") (not (has .Values.metricsBindAddress)))) }}
     metrics-port: {{ add $metricsPort 1 }}
     {{- else }}
     metrics-port: {{ $metricsPort }}
+    {{- end }}
+    {{- if (and .Values.config.enableSecureMetrics (has .Values.metricsBindAddress)) }}
+    {{ $host := int .Values.metricsBindAddress | split ":" | first }}
+    metrics-bind-address: {{ $host }}:{{ add $metricsPort 1 }}
+    {{- else }}
+    metrics-bind-address: {{ .Values.metricsBindAddress }}
     {{- end }}
     container-registry: {{ .Values.config.containerRegistry }}
     {{- with .Values.config.containerSuffix }}

@@ -1,0 +1,103 @@
+:page_id: secure-metrics
+ifdef::env-github[]
+****
+link:https://www.elastic.co/guide/en/cloud-on-k8s/master/k8s-{page_id}.html[View this document on the Elastic website]
+****
+endif::[]
+
+[id="{p}-{page_id}"]
+= Securing the ECK Operator metrics endpoint
+
+== Using the ECK Operator Helm Chart
+
+If you install ECK through the Helm chart commands listed in <<{p}-install-helm>>, you can now set `enableSecureMetrics` and `metricsBindAddress` and both RBAC and TLS/HTTPs will be enabled for the metrics endpoint.
+
+== Using the ECK Operator manifests
+
+If you install ECK through using the manifests using the commands listed in <<{p}-deploy-eck>> some additional changes will be required to enable secure metrics.
+
+1. `ClusterRole` and `ClusterRoleBinding` for the ECK Operator.
+
+[source,yaml,subs="attributes"]
+----
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: elastic-operator-proxy-role
+rules:
+- apiGroups:
+  - authentication.k8s.io
+  resources:
+  - tokenreviews
+  verbs:
+  - create
+- apiGroups:
+  - authorization.k8s.io
+  resources:
+  - subjectaccessreviews
+  verbs:
+  - create
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: elastic-operator-proxy-rolebinding
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: elastic-operator-proxy-role
+subjects:
+- kind: ServiceAccount
+  name: elastic-operator
+  namespace: elastic-system
+----
+
+2. ServiceMonitor to allow scraping of the metrics endpoint by Prometheus.
+
+[source,yaml,subs="attributes"]
+----
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: elastic-operator
+  namespace: elastic-system
+spec:
+  namespaceSelector:
+    matchNames:
+      - elastic-system
+  selector:
+    matchLabels:
+      control-plane: elastic-operator
+  endpoints:
+  - port: https
+    path: /metrics
+    scheme: https
+    interval: 30s
+    tlsConfig:
+      insecureSkipVerify: true
+    bearerTokenFile: /var/run/secrets/kubernetes.io/serviceaccount/token
+----
+
+== Prometheus requirements
+
+This option requires the following settings within Prometheus to function:
+
+1. RBAC settings for the Prometheus instance to access the metrics endpoint.
+
+[source,yaml,subs="attributes"]
+----
+- nonResourceURLs:
+  - /metrics
+  verbs:
+  - get
+----
+
+NOTE: If using the Prometheus Operator and your Prometheus instance is not in the same namespace as the operator you will need the Prometheus Operator configured with the following Helm values:
+
+[source,yaml,subs="attributes"]
+----
+prometheus:
+  prometheusSpec:
+    serviceMonitorNamespaceSelector: {}
+    serviceMonitorSelectorNilUsesHelmValues: false
+----

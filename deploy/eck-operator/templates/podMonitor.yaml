@@ -1,6 +1,5 @@
-{{- $metricsPort := int .Values.config.metricsPort -}}
-{{- if and .Values.podMonitor.enabled .Values.config.enableMetricsAuth}}
-{{ fail "podMonitor.enabled and enableMetricsAuth are mutually exclusive" }}
+{{- if and .Values.podMonitor.enabled .Values.config.enableSecureMetrics}}
+{{ fail "podMonitor.enabled and enableSecureMetrics are mutually exclusive" }}
 {{- end }}
 {{- if and .Values.podMonitor.enabled (gt $metricsPort 0)}}
 apiVersion: monitoring.coreos.com/v1

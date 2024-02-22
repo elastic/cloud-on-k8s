@@ -115,6 +115,15 @@ elastic-webhook-server
 {{- end -}}
 
 {{/*
+Determine the metrics port
+*/}}
+{{- if and (has .Values.config.metricsBindAddress) (not (eq .Values.config.metricsBindAddress "")) }}
+{{ $metricsPort := int .Values.config.metricsBindAddress | split ":" | last }}
+{{- else if (gt .Values.config.metricsPort 0) }}
+{{ $metricsPort := int .Values.config.metricsPort }}
+{{- end }}
+
+{{/*
 RBAC permissions
 NOTE - any changes made to RBAC permissions below require
 updating docs/operating-eck/eck-permissions.asciidoc file.

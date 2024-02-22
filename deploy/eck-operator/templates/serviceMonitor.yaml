@@ -1,5 +1,4 @@
-{{- $metricsPort := int .Values.config.metricsPort -}}
-{{- if and .Values.config.enableMetricsAuth (gt $metricsPort 0) }}
+{{- if and .Values.config.enableSecureMetrics }}
 apiVersion: monitoring.coreos.com/v1
 kind: ServiceMonitor
 metadata:

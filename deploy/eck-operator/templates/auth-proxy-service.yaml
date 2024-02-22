@@ -1,5 +1,4 @@
-{{- $metricsPort := int .Values.config.metricsPort -}}
-{{- if and .Values.config.enableMetricsAuth (gt $metricsPort 0) }}
+{{- if .Values.config.enableSecureMetrics }}
 apiVersion: v1
 kind: Service
 metadata:
@@ -14,7 +13,7 @@ metadata:
 spec:
   ports:
   - name: https
-    port: {{ .Values.config.metricsPort }}
+    port: {{ $metricsPort }}
     protocol: TCP
     targetPort: metrics
   selector:

@@ -1,5 +1,4 @@
-{{- $metricsPort := int .Values.config.metricsPort -}}
-{{- if and (not .Values.createClusterScopedResources) (.Values.config.enableMetricsAuth) (gt $metricsPort 0) -}}
+{{- if and (not .Values.createClusterScopedResources) (.Values.config.enableSecureMetrics) -}}
 {{ fail "createClusterScopedResources is required to enable metrics authentication" }}
 {{- end }}
 {{- if .Values.createClusterScopedResources -}}
@@ -97,7 +96,7 @@ rules:
   - apiGroups: ["logstash.k8s.elastic.co"]
     resources: ["logstashes"]
     verbs: ["create", "delete", "deletecollection", "patch", "update"]
-{{- if and .Values.config.enableMetricsAuth (gt $metricsPort 0) }}
+{{- if and .Values.config.enableSecureMetrics }}
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
@@ -118,17 +117,5 @@ rules:
   - subjectaccessreviews
   verbs:
   - create
----
-apiVersion: rbac.authorization.k8s.io/v1
-kind: ClusterRole
-metadata:
-  labels:
-    {{- include "eck-operator.labels" . | nindent 4 }}
-  name: "{{ include "eck-operator.fullname" . }}-metrics-reader"
-rules:
-- nonResourceURLs:
-  - "/metrics"
-  verbs:
-  - get
 {{- end }}
 {{- end -}}
