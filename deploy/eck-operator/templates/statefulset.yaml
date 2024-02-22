@@ -115,7 +115,7 @@ spec:
           - "--secure-listen-address=0.0.0.0:{{ $metricsPort }}"
           - "--upstream=http://127.0.0.1:{{ add $metricsPort 1 }}/"
           - "--logtostderr=true"
-          - "--v=10"
+          - "--v=0"
           ports:
           - containerPort: {{ $metricsPort }}
             protocol: TCP

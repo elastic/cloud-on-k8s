@@ -16,10 +16,18 @@ If you install ECK through the Helm chart commands listed in <<{p}-install-helm>
 
 If you install ECK through using the manifests using the commands listed in <<{p}-deploy-eck>> some additional changes will be required to enable secure metrics.
 
-1. `ClusterRole` and `ClusterRoleBinding` for the ECK Operator.
+* Enable the metrics endpoint in the `ConfigMap`.
 
-[source,yaml,subs="attributes"]
+[source,sh]
 ----
+kubectl get cm elastic-operator -n elastic-system -o yaml | sed "s|metrics-port: 0|metrics-port: 8081|" | kubectl apply -f -
+----
+
+* Add `ClusterRole` and `ClusterRoleBinding` for the ECK Operator.
+
+[source,shell,subs="attributes,+macros"]
+----
+cat $$<<$$EOF | kubectl apply -f -
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
 metadata:
@@ -50,12 +58,73 @@ subjects:
 - kind: ServiceAccount
   name: elastic-operator
   namespace: elastic-system
+EOF
 ----
 
-2. ServiceMonitor to allow scraping of the metrics endpoint by Prometheus.
+* Add a `Service` to expose the metrics endpoint.
 
-[source,yaml,subs="attributes"]
+[source,shell,subs="attributes,+macros"]
 ----
+cat $$<<$$EOF | kubectl apply -f -
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    control-plane: elastic-operator
+    app.kubernetes.io/component: metrics
+  name: elastic-operator-metrics
+  namespace: elastic-system
+spec:
+  ports:
+  - name: https
+    port: 8080
+    protocol: TCP
+    targetPort: metrics
+  selector:
+    control-plane: elastic-operator
+EOF
+----
+
+* Patch the `StatefulSet`
+
+[source,shell,subs="attributes,+macros"]
+----
+kubectl patch sts -n elastic-system elastic-operator --patch-file=/dev/stdin <<-EOF
+spec:
+  template:
+    spec:
+      containers:
+        - name: kube-rbac-proxy
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+                - "ALL"
+          image: gcr.io/kubebuilder/kube-rbac-proxy:v0.15.0
+          args:
+          - "--secure-listen-address=0.0.0.0:8080"
+          - "--upstream=http://127.0.0.1:8081"
+          - "--logtostderr=true"
+          - "--v=0"
+          ports:
+          - containerPort: 8080
+            protocol: TCP
+            name: metrics
+          resources:
+            limits:
+              cpu: 500m
+              memory: 128Mi
+            requests:
+              cpu: 5m
+              memory: 64Mi
+EOF
+----
+
+* Add a `ServiceMonitor` to allow scraping of the metrics endpoint by Prometheus.
+
+[source,shell,subs="attributes,+macros"]
+----
+cat $$<<$$EOF | kubectl apply -f -
 apiVersion: monitoring.coreos.com/v1
 kind: ServiceMonitor
 metadata:
@@ -68,6 +137,7 @@ spec:
   selector:
     matchLabels:
       control-plane: elastic-operator
+      app.kubernetes.io/component: metrics
   endpoints:
   - port: https
     path: /metrics
@@ -76,16 +146,22 @@ spec:
     tlsConfig:
       insecureSkipVerify: true
     bearerTokenFile: /var/run/secrets/kubernetes.io/serviceaccount/token
+EOF
 ----
 
 == Prometheus requirements
 
 This option requires the following settings within Prometheus to function:
 
-1. RBAC settings for the Prometheus instance to access the metrics endpoint.
+1. RBAC settings for the Prometheus instance to access the metrics endpoint similar to the following:
 
 [source,yaml,subs="attributes"]
 ----
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: prometheus
+rules:
 - nonResourceURLs:
   - /metrics
   verbs:
