@@ -78,7 +78,13 @@ spec:
           resources:
             {{- toYaml . | nindent 12 }}
           {{- end }}
-          {{- if or (gt $metricsPort 0) .Values.webhook.enabled }}
+          {{- if or .Values.webhook.enabled (gt (int .Values.config.metricsPort) 0) (and (hasKey .Values.config "metricsBindAddress") (not (eq .Values.config.metricsBindAddress "")))}}
+          {{ $metricsPort := 0 }}
+          {{- if and (hasKey .Values.config "metricsBindAddress") (not (eq .Values.config.metricsBindAddress "")) }}
+          {{ $metricsPort = int (.Values.config.metricsBindAddress | splitList ":" | last) }}
+          {{- else if (gt (int .Values.config.metricsPort) 0) }}
+          {{ $metricsPort = int .Values.config.metricsPort }}
+          {{- end }}
           ports:
             {{- if and (gt $metricsPort 0) (not .Values.config.enableSecureMetrics) }}
             - containerPort: {{ .Values.config.metricsPort }}
@@ -104,6 +110,12 @@ spec:
               {{- toYaml . | nindent 12 }}
             {{- end }}
         {{- if (and .Values.config.enableSecureMetrics ) }}
+        {{ $metricsPort := 0 }}
+        {{- if and (hasKey .Values.config "metricsBindAddress") (not (eq .Values.config.metricsBindAddress "")) }}
+        {{ $metricsPort = int (.Values.config.metricsBindAddress | splitList ":" | last) }}
+        {{- else if (gt (int .Values.config.metricsPort) 0) }}
+        {{ $metricsPort = int .Values.config.metricsPort }}
+        {{- end }}
         - name: kube-rbac-proxy
           securityContext:
             allowPrivilegeEscalation: false

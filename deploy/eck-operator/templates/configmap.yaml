@@ -9,20 +9,22 @@ metadata:
 data:
   eck.yaml: |-
     log-verbosity: {{ int .Values.config.logVerbosity }}
-    {{- if (and .Values.config.enableSecureMetrics (eq $metricsPort 0) (not (has .Values.metricsBindAddress))) }}
+    {{- if (and .Values.config.enableSecureMetrics (eq (int .Values.config.metricsPort) 0) (not (hasKey .Values.config "metricsBindAddress"))) }}
     {{ fail "metricsPort or metricsBindAddress is required when enableSecureMetrics is true" }}
     {{- end }}
-    {{- if (and .Values.config.enableSecureMetrics (gt $metricsPort 0) (or (eq .Values.metricsBindAddress "") (not (has .Values.metricsBindAddress)))) }}
-    metrics-port: {{ add $metricsPort 1 }}
+    {{- if (and .Values.config.enableSecureMetrics (gt (int .Values.config.metricsPort) 0) (or (eq .Values.config.metricsBindAddress "") (not (hasKey .Values.config "metricsBindAddress")))) }}
+    metrics-port: {{ add (int .Values.config.metricsPort) 1 }}
     {{- else }}
-    metrics-port: {{ $metricsPort }}
+    metrics-port: {{ int (.Values.config.metricsBindAddress | splitList ":" | last) }}
     {{- end }}
-    {{- if (and .Values.config.enableSecureMetrics (has .Values.metricsBindAddress)) }}
-    {{ $host := int .Values.metricsBindAddress | split ":" | first }}
-    metrics-bind-address: {{ $host }}:{{ add $metricsPort 1 }}
+    {{- if (and .Values.config.enableSecureMetrics (hasKey .Values.config "metricsBindAddress") (not (eq .Values.config.metricsBindAddress ""))) }}
+    {{- if .Values.config.enableSecureMetrics }}
+    {{ $host := .Values.config.metricsBindAddress | splitList ":" | first }}
+    metrics-bind-address: {{ $host }}:{{ add (int (.Values.config.metricsBindAddress | splitList ":" | last)) 1 }}
     {{- else }}
-    metrics-bind-address: {{ .Values.metricsBindAddress }}
+    metrics-bind-address: {{ int .Values.config.metricsBindAddress | splitList ":" | last }}
     {{- end }}
+    {{- end }} 
     container-registry: {{ .Values.config.containerRegistry }}
     {{- with .Values.config.containerSuffix }}
     container-suffix: {{ . }}

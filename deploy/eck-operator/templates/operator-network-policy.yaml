@@ -39,7 +39,13 @@ spec:
           podSelector:
             matchLabels:
               common.k8s.elastic.co/type: "elasticsearch"
-{{- if or .Values.webhook.enabled (gt $metricsPort 0) }}
+{{- if or .Values.webhook.enabled (gt (int .Values.config.metricsPort ) 0) (and (hasKey .Values.config "metricsBindAddress") (not (eq .Values.config.metricsBindAddress "")))}}
+{{ $metricsPort := 0 }}
+{{- if and (hasKey .Values.config "metricsBindAddress") (not (eq .Values.config.metricsBindAddress "")) }}
+{{ $metricsPort = int .Values.config.metricsBindAddress | splitList ":" | last }}
+{{- else if (gt .Values.config.metricsPort 0) }}
+{{ $metricsPort = int .Values.config.metricsPort }}
+{{- end }}
   ingress:
 {{- if .Values.webhook.enabled }}
     - ports:
