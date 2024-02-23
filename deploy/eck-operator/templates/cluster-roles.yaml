@@ -1,5 +1,5 @@
 {{- if and (not .Values.createClusterScopedResources) (.Values.config.enableSecureMetrics) -}}
-{{ fail "createClusterScopedResources is required to enable metrics authentication" }}
+{{ fail "createClusterScopedResources is required to enable secure metrics" }}
 {{- end }}
 {{- if .Values.createClusterScopedResources -}}
 ---
