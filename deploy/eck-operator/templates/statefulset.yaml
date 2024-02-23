@@ -109,7 +109,7 @@ spec:
             {{- with .Values.volumeMounts }}
               {{- toYaml . | nindent 12 }}
             {{- end }}
-        {{- if (and .Values.config.enableSecureMetrics ) }}
+        {{- if .Values.config.enableSecureMetrics }}
         {{ $metricsPort := 0 }}
         {{- if and (hasKey .Values.config "metricsBindAddress") (not (eq .Values.config.metricsBindAddress "")) }}
         {{ $metricsPort = int (.Values.config.metricsBindAddress | splitList ":" | last) }}
