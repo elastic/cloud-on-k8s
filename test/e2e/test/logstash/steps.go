@@ -10,8 +10,10 @@ import (
 
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	logstashv1alpha1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/logstash/v1alpha1"
+	lslabels "github.com/elastic/cloud-on-k8s/v2/pkg/controller/logstash/labels"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/k8s"
 	"github.com/elastic/cloud-on-k8s/v2/test/e2e/cmd/run"
 	"github.com/elastic/cloud-on-k8s/v2/test/e2e/test"
@@ -143,6 +145,17 @@ func (b Builder) DeletionTestSteps(k *test.K8sClient) test.StepList {
 			Name: "Logstash pods should eventually be removed",
 			Test: test.Eventually(func() error {
 				return k.CheckPodCount(0, b.ListOptions()...)
+			}),
+		},
+		{
+			Name: "Cleanup any persistent volumes belonging to Logstash",
+			Test: test.Eventually(func() error {
+				if err := k.Client.DeleteAllOf(context.Background(), &corev1.PersistentVolumeClaim{},
+					client.MatchingLabels{lslabels.NameLabelName: b.Logstash.Name},
+					client.InNamespace(b.Namespace())); err != nil && !apierrors.IsNotFound(err) {
+					return err
+				}
+				return nil
 			}),
 		},
 	}
