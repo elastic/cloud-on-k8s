@@ -9,7 +9,7 @@ metadata:
 data:
   eck.yaml: |-
     log-verbosity: {{ int .Values.config.logVerbosity }}
-    {{- if (and .Values.config.enableSecureMetrics (eq (int .Values.config.metricsPort) 0) (not (hasKey .Values.config "metricsBindAddress"))) }}
+    {{- if (and .Values.config.enableSecureMetrics (eq (int .Values.config.metricsPort) 0) (or (eq .Values.config.metricsBindAddress "") (not (hasKey .Values.config "metricsBindAddress")))) }}
     {{ fail "metricsPort or metricsBindAddress is required when enableSecureMetrics is true" }}
     {{- end }}
     {{- if (and .Values.config.enableSecureMetrics (gt (int .Values.config.metricsPort) 0) (or (eq .Values.config.metricsBindAddress "") (not (hasKey .Values.config "metricsBindAddress")))) }}
