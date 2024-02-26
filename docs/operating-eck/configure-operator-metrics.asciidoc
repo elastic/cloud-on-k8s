@@ -1,4 +1,4 @@
-:page_id: secure-metrics
+:page_id: configure-operator-metrics
 ifdef::env-github[]
 ****
 link:https://www.elastic.co/guide/en/cloud-on-k8s/master/k8s-{page_id}.html[View this document on the Elastic website]
@@ -6,7 +6,39 @@ link:https://www.elastic.co/guide/en/cloud-on-k8s/master/k8s-{page_id}.html[View
 endif::[]
 
 [id="{p}-{page_id}"]
-= Securing the ECK Operator metrics endpoint
+= Configuring the ECK Operator metrics endpoint
+
+== Enabling the ECK Operator metrics endpoint
+
+The ECK Operator provides a metrics endpoint that can be used to monitor the operator's performance and health. By default, the metrics endpoint is not enabled. To enable the metrics endpoint simply adjust the `metricsPort` to a value greater than 0.
+
+== Using the ECK Operator Helm Chart
+
+If you install ECK through the Helm chart commands listed in <<{p}-install-helm>>, you can now set `metricsPort` to a value greater than 0 and the metrics endpoint will be enabled.
+
+== Using the ECK Operator manifests
+
+If you install ECK through using the manifests using the commands listed in <<{p}-deploy-eck>> some additional changes will be required to enable the metrics endpoint.
+
+* Enable the metrics endpoint in the `ConfigMap`.
+
+[source,sh]
+----
+kubectl get cm elastic-operator -n elastic-system -o yaml | sed "s|metrics-port: 0|metrics-port: 8081|" | kubectl apply -f -
+----
+
+* Restart the ECK Operator
+
+[source,sh]
+----
+kubectl delete pod -n elastic-system elastic-operator-0
+----
+
+== Securing the ECK Operator metrics endpoint
+
+NOTE: The ECK Operator metrics endpoint will be secured by default in future releases (which????)
+
+The ECK Operator provides a metrics endpoint that can be used to monitor the operator's performance and health. By default, the metrics endpoint is not enabled and is not secured. To enable the metrics endpoint follow the previous instructions. To enable TLS/HTTPs and RBAC on the metrics endpoint, you can set the `enableSecureMetrics` option to `true` in the ECK Operator configuration. When enabled, the metrics endpoint is secured with RBAC and TLS/HTTPs.
 
 == Using the ECK Operator Helm Chart
 
@@ -177,3 +209,7 @@ prometheus:
     serviceMonitorNamespaceSelector: {}
     serviceMonitorSelectorNilUsesHelmValues: false
 ----
+
+== Bringing your own TLS certificate to secure the metrics endpoint
+
+TODO: 

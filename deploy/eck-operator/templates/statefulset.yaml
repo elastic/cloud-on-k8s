@@ -118,6 +118,25 @@ spec:
           - "--upstream=http://127.0.0.1:{{ add $metricsPort 1 }}/"
           - "--logtostderr=true"
           - "--v=0"
+          {{- if .Values.config.secureMetricsTLSCertSecret }}
+          - "--tls-cert-file=/tls/cert/tls.crt"
+          {{- end }}
+          {{- if .Values.config.secureMetricsTLSPrivateKeySecret }}
+          - "--tls-private-key-file=/tls/key/tls.key"
+          {{- end }}
+          {{- if or .Values.config.secureMetricsTLSCertSecret .Values.config.secureMetricsTLSPrivateKeySecret }}
+          volumeMounts:
+          {{- if .Values.config.secureMetricsTLSCertSecret }}
+          - mountPath: "/tls/cert"
+            name: tls-certificate
+            readOnly: true
+          {{- end }}
+          {{- if .Values.config.secureMetricsTLSPrivateKeySecret }}
+          - mountPath: "/tls/key"
+            name: tls-secret-key
+            readOnly: true
+          {{- end }}
+          {{- end }}
           ports:
           - containerPort: {{ $metricsPort }}
             protocol: TCP
@@ -139,6 +158,18 @@ spec:
           secret:
             defaultMode: 420
             secretName: {{ include "eck-operator.webhookSecretName" . }}
+        {{- end }}
+        {{- if .Values.config.secureMetricsTLSCertSecret }}
+        - name: tls-certificate
+          secret:
+            defaultMode: 420
+            secretName: {{ .Values.config.secureMetricsTLSCertSecret }}
+        {{- end }}
+        {{- if .Values.config.secureMetricsTLSPrivateKeySecret }}
+        - name: tls-secret-key
+          secret:
+            defaultMode: 420
+            secretName: {{ .Values.config.secureMetricsTLSPrivateKeySecret }}
         {{- end }}
         {{- with .Values.volumes }}
           {{- toYaml . | nindent 8 }}

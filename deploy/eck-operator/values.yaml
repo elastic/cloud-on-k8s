@@ -184,6 +184,14 @@ config:
   #       serviceMonitorSelectorNilUsesHelmValues: false
   enableSecureMetrics: false
 
+  # secureMetricsTLSCertSecret is the name of the secret containing the custom TLS certificate for the secure metrics endpoint.
+  # Key must be named tls.crt.
+  secureMetricsTLSCertSecret: ""
+
+  # secureMetricsTLSPrivateKeySecret is the name of the secret containing the custom TLS private key for the secure metrics endpoint.
+  # Key must be named tls.key.
+  secureMetricsTLSPrivateKeySecret: ""
+
   # containerRegistry to use for pulling Elasticsearch and other application container images.
   containerRegistry: docker.elastic.co
 
