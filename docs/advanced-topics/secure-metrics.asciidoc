@@ -10,7 +10,7 @@ endif::[]
 
 == Using the ECK Operator Helm Chart
 
-If you install ECK through the Helm chart commands listed in <<{p}-install-helm>>, you can now set `enableSecureMetrics` and `metricsBindAddress` and both RBAC and TLS/HTTPs will be enabled for the metrics endpoint.
+If you install ECK through the Helm chart commands listed in <<{p}-install-helm>>, you can now set `enableSecureMetrics` and both RBAC and TLS/HTTPs will be enabled for the metrics endpoint.
 
 == Using the ECK Operator manifests
 
@@ -20,7 +20,7 @@ If you install ECK through using the manifests using the commands listed in <<{p
 
 [source,sh]
 ----
-kubectl get cm elastic-operator -n elastic-system -o yaml | sed "s|metrics-port: 0|metrics-port: 8081|" | kubectl apply -f -
+kubectl get cm elastic-operator -n elastic-system -o yaml | sed "s|metrics-port: 0|metrics-port: 8081|" | sed "s|metrics-host: 0.0.0.0|metrics-host: 127.0.0.1|" | kubectl apply -f -
 ----
 
 * Add `ClusterRole` and `ClusterRoleBinding` for the ECK Operator.

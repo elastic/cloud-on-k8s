@@ -9,22 +9,15 @@ metadata:
 data:
   eck.yaml: |-
     log-verbosity: {{ int .Values.config.logVerbosity }}
-    {{- if (and .Values.config.enableSecureMetrics (eq (int .Values.config.metricsPort) 0) (or (eq .Values.config.metricsBindAddress "") (not (hasKey .Values.config "metricsBindAddress")))) }}
-    {{ fail "metricsPort or metricsBindAddress is required when enableSecureMetrics is true" }}
+    {{- if and .Values.config.enableSecureMetrics (eq (int .Values.config.metricsPort) 0) }}
+    {{- fail "metricsPort must be greater than 0 when enableSecureMetrics is true" }}
     {{- end }}
-    {{- if (and .Values.config.enableSecureMetrics (gt (int .Values.config.metricsPort) 0) (or (eq .Values.config.metricsBindAddress "") (not (hasKey .Values.config "metricsBindAddress")))) }}
-    metrics-port: {{ add (int .Values.config.metricsPort) 1 }}
-    {{- else }}
-    metrics-port: {{ int (.Values.config.metricsBindAddress | splitList ":" | last) }}
-    {{- end }}
-    {{- if (and .Values.config.enableSecureMetrics (hasKey .Values.config "metricsBindAddress") (not (eq .Values.config.metricsBindAddress ""))) }}
+    {{- $metricsPort := int .Values.config.metricsPort }}
     {{- if .Values.config.enableSecureMetrics }}
-    {{ $host := .Values.config.metricsBindAddress | splitList ":" | first }}
-    metrics-bind-address: {{ $host }}:{{ add (int (.Values.config.metricsBindAddress | splitList ":" | last)) 1 }}
+    metrics-port: {{ add $metricsPort 1 }}
     {{- else }}
-    metrics-bind-address: {{ int .Values.config.metricsBindAddress | splitList ":" | last }}
+    metrics-port: {{ $metricsPort }}
     {{- end }}
-    {{- end }} 
     container-registry: {{ .Values.config.containerRegistry }}
     {{- with .Values.config.containerSuffix }}
     container-suffix: {{ . }}

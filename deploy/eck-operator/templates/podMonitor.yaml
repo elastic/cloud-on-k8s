@@ -1,7 +1,7 @@
 {{- if and .Values.podMonitor.enabled .Values.config.enableSecureMetrics}}
 {{ fail "podMonitor.enabled and enableSecureMetrics are mutually exclusive" }}
 {{- end }}
-{{- if and .Values.podMonitor.enabled (or (gt (int .Values.config.metricsPort) 0) (and (hasKey .Values.config "metricsBindAddress") (not (eq .Values.config.metricsBindAddress "")))) }}
+{{- if and .Values.podMonitor.enabled (gt (int .Values.config.metricsPort) 0) }}
 apiVersion: monitoring.coreos.com/v1
 kind: PodMonitor
 metadata:

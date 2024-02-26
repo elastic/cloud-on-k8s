@@ -1,10 +1,5 @@
 {{- if .Values.config.enableSecureMetrics }}
-{{ $metricsPort := 0 }}
-{{- if and (hasKey .Values.config "metricsBindAddress") (not (eq .Values.config.metricsBindAddress "")) }}
-{{ $metricsPort = int (.Values.config.metricsBindAddress | splitList ":" | last) }}
-{{- else if (gt (int .Values.config.metricsPort) 0) }}
-{{ $metricsPort = int .Values.config.metricsPort }}
-{{- end }}
+{{ $metricsPort := int .Values.config.metricsPort }}
 apiVersion: v1
 kind: Service
 metadata:

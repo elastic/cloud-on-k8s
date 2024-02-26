@@ -159,19 +159,7 @@ config:
   #  number greater than 0: Errors, warnings, information, and debug details.
   logVerbosity: "0"
 
-  # metricsBindAddress defines the address which the operator should listen on to serve metrics in the Prometheus format.
-  #
-  # *Note* If this option is combined with the enableSecureMetrics option then only the port is used, the bind address is ignored
-  #        as the operator will only listen on the localhost (127.0.0.1) interface and kube-rbac-proxy will intercept traffic
-  #        to the metrics port.
-  #
-  # Examples follow:
-  # - :8080 (equivalent to 0.0.0.0:8080)
-  # - 0.0.0.0:8080
-  # - localhost:8080
-  metricsBindAddress: ""
-
-  # (Deprecated; Will be removed in v2.14.0) metricsPort defines the port to expose operator metrics. Set to 0 to disable metrics reporting. Use `metricsBindAddress` instead.
+  # metricsPort defines the port to expose operator metrics. Set to 0 to disable metrics reporting. Use `metricsBindAddress` instead.
   metricsPort: "0"
 
   # enableSecureMetrics specifies whether to enable RBAC and TLS/HTTPs for the metrics endpoint. (Will be enabled by default in v2.14.0)
