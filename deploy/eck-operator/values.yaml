@@ -280,6 +280,15 @@ podMonitor:
   podMetricsEndpointConfig: {}
   # honorTimestamps: true
 
+# Prometheus ServiceMonitor configuration
+# Only used when config.enableSecureMetrics is true
+# Reference: https://github.com/prometheus-operator/prometheus-operator/blob/master/Documentation/api.md#servicemonitor
+serviceMonitor: {}
+
+  # namespace determines in which namespace the servicedMonitor will be deployed.
+  # If not set the servicedMonitor will be created in the namespace where the Helm release is installed into
+  # namespace: monitoring
+
 # Globals meant for internal use only
 global:
   # manifestGen specifies whether the chart is running under manifest generator.
