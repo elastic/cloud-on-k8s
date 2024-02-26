@@ -23,7 +23,7 @@ This section describes how to deploy, configure and access an APM Server with EC
 [id="{p}-apm-eck-managed-es"]
 == Use an Elasticsearch cluster managed by ECK
 
-Managing the APM Server a Kibana instance and Elasticsearch with ECK allows a smooth and secured integration between the stack components. The output configuration of the APM Server is setup automatically to establish a trust relationship with Elasticsearch. Specifying the Kibana reference allows ECK to automatically configure the Kibana endpoint as described in https://www.elastic.co/guide/en/apm/server/current/setup-kibana-endpoint.html
+Managing APM Server, Kibana and Elasticsearch with ECK allows a smooth and secured integration between the stack components. The output configuration of the APM Server is setup automatically to establish a trust relationship with Elasticsearch. Specifying the Kibana reference allows ECK to automatically configure the link:https://www.elastic.co/guide/en/apm/server/current/setup-kibana-endpoint.html[Kibana endpoint].
 
 . To deploy an APM Server and connect it to the Elasticsearch cluster and Kibana instance you created in the <<{p}-quickstart,quickstart>>, apply the following specification:
 +
@@ -47,7 +47,7 @@ EOF
 
 <1> A reference to a Kibana instance is only required for APM Server versions 8.0.0 and later.
 
-NOTE: If Kibana is referenced in the APM Server specification then the following configuration is required in the Kibana specification to install the APM ILM templates:
+NOTE: Starting with version 8.0.0 the following Kibana configuration is required to run APM Server
 
 [source,yaml,subs="attributes"]
 ----
@@ -122,7 +122,7 @@ spec:
 EOF
 ----
 
-You will also need to ensure that your Kibana instance has the following configuration:
+Starting with version 8.0.0 you will also need to ensure that your Kibana instance has the following configuration:
 
 [source,yaml,subs="attributes"]
 ----
