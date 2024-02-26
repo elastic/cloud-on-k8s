@@ -23,11 +23,11 @@ This section describes how to deploy, configure and access an APM Server with EC
 [id="{p}-apm-eck-managed-es"]
 == Use an Elasticsearch cluster managed by ECK
 
-Managing both APM Server and Elasticsearch by ECK allows a smooth and secured integration between the two. The output configuration of the APM Server is setup automatically to establish a trust relationship with Elasticsearch.
+Managing APM Server, Kibana and Elasticsearch with ECK allows a smooth and secured integration between the stack components. The output configuration of the APM Server is setup automatically to establish a trust relationship with Elasticsearch. Specifying the Kibana reference allows ECK to automatically configure the link:https://www.elastic.co/guide/en/apm/server/current/setup-kibana-endpoint.html[Kibana endpoint].
 
-. To deploy an APM Server and connect it to the cluster you created in the <<{p}-quickstart,quickstart>>, apply the following specification:
+. To deploy an APM Server and connect it to the Elasticsearch cluster and Kibana instance you created in the <<{p}-quickstart,quickstart>>, apply the following specification:
 +
-[source,yaml,subs="attributes,+macros"]
+[source,yaml,subs="attributes,callouts,+macros"]
 ----
 cat $$<<$$EOF | kubectl apply -f -
 apiVersion: apm.k8s.elastic.co/{eck_crd_version}
@@ -40,7 +40,23 @@ spec:
   count: 1
   elasticsearchRef:
     name: quickstart
+  kibanaRef: <1>
+    name: quickstart
 EOF
+----
+
+<1> A reference to a Kibana instance is only required for APM Server versions 8.0.0 and later.
+
+NOTE: Starting with version 8.0.0 the following Kibana configuration is required to run APM Server
+
+[source,yaml,subs="attributes"]
+----
+apiVersion: kibana.k8s.elastic.co/{eck_crd_version}
+kind: Kibana
+config:
+  xpack.fleet.packages:
+  - name: apm
+    version: latest
 ----
 
 By default `elasticsearchRef` targets all nodes in your Elasticsearch cluster. If you want to direct traffic to specific nodes of your cluster, refer to <<{p}-traffic-splitting>> for more information and examples.
@@ -104,6 +120,18 @@ spec:
   kibanaRef:
     name: quickstart
 EOF
+----
+
+Starting with version 8.0.0 you will also need to ensure that your Kibana instance has the following configuration:
+
+[source,yaml,subs="attributes"]
+----
+apiVersion: kibana.k8s.elastic.co/{eck_crd_version}
+kind: Kibana
+config:
+  xpack.fleet.packages:
+  - name: apm
+    version: latest
 ----
 
 [id="{p}-apm-customize-configuration"]
