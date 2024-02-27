@@ -1,5 +1,5 @@
 ---
-{{ $metricsPort := int (include "eck-operator.metrics.port" .)}}
+{{- $metricsPort := int (include "eck-operator.metrics.port" .)}}
 apiVersion: apps/v1
 kind: StatefulSet
 metadata:
