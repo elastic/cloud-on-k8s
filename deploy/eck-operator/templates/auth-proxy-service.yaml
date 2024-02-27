@@ -1,4 +1,4 @@
-{{- if .Values.config.metrics.secureMode.enable }}
+{{- if .Values.config.metrics.secureMode.enabled }}
 {{- $metricsPort := int (include "eck-operator.metrics.port" .)}}
 apiVersion: v1
 kind: Service

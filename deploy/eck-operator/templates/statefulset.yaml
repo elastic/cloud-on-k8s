@@ -81,7 +81,7 @@ spec:
           {{- end }}
           {{- if or .Values.webhook.enabled (gt $metricsPort 0) }}
           ports:
-            {{- if and (gt $metricsPort 0) (not .Values.config.metrics.secureMode.enable) }}
+            {{- if and (gt $metricsPort 0) (not .Values.config.metrics.secureMode.enabled) }}
             - containerPort: {{ $metricsPort }}
               name: metrics
               protocol: TCP
@@ -104,7 +104,7 @@ spec:
             {{- with .Values.volumeMounts }}
               {{- toYaml . | nindent 12 }}
             {{- end }}
-        {{- if .Values.config.metrics.secureMode.enable }}
+        {{- if .Values.config.metrics.secureMode.enabled }}
         - name: kube-rbac-proxy
           securityContext:
             allowPrivilegeEscalation: false

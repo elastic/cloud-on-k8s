@@ -1,9 +1,9 @@
-{{- if and .Values.config.metrics.secureMode.enable }}
+{{- if and .Values.config.metrics.secureMode.enabled }}
 apiVersion: monitoring.coreos.com/v1
 kind: ServiceMonitor
 metadata:
   name: {{ include "eck-operator.fullname" . }}
-  namespace: {{ ternary .Values.serviceMonitor.namespace .Release.Namespace (not (empty .Values.serviceMonitor.namespace)) }}
+  namespace: {{ ternary .Values.serviceMonitor.namespace .Release.Namespace (not (and (.Values.serviceMonitor) (empty .Values.serviceMonitor.namespace))) }}
   labels: {{- include "eck-operator.labels" . | nindent 4 }}
 spec:
   namespaceSelector:

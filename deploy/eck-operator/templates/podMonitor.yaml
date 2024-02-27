@@ -4,7 +4,7 @@ apiVersion: monitoring.coreos.com/v1
 kind: PodMonitor
 metadata:
   name: {{ include "eck-operator.fullname" . }}
-  namespace: {{ ternary .Values.podMonitor.namespace .Release.Namespace (not (empty .Values.podMonitor.namespace)) }}
+  namespace: {{ ternary .Values.podMonitor.namespace .Release.Namespace (not (and (.Values.podMonitor) (empty .Values.podMonitor.namespace))) }}
   labels: {{- include "eck-operator.labels" . | nindent 4 }}
   {{- with .Values.podMonitor.labels }}
     {{- toYaml . | nindent 4 }}

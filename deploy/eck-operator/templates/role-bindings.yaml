@@ -1,7 +1,7 @@
 {{- $operatorNSIsManaged := has .Release.Namespace .Values.managedNamespaces -}}
 {{- $fullName := include "eck-operator.fullname" . -}}
 {{- $svcAccount := include "eck-operator.serviceAccountName" . }}
-{{- $enableSecureMetrics := .Values.config.metrics.secureMode.enable -}}
+{{- $enableSecureMetrics := .Values.config.metrics.secureMode.enabled -}}
 
 {{- if not .Values.createClusterScopedResources }}
 {{- range .Values.managedNamespaces }}
