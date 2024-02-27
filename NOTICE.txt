@@ -3815,11 +3815,11 @@ THE SOFTWARE.
 
 --------------------------------------------------------------------------------
 Module  : golang.org/x/crypto
-Version : v0.19.0
-Time    : 2024-02-07T19:12:06Z
+Version : v0.20.0
+Time    : 2024-02-26T19:05:04Z
 Licence : BSD-3-Clause
 
-Contents of probable licence file $GOMODCACHE/golang.org/x/crypto@v0.19.0/LICENSE:
+Contents of probable licence file $GOMODCACHE/golang.org/x/crypto@v0.20.0/LICENSE:
 
 Copyright (c) 2009 The Go Authors. All rights reserved.
 
@@ -15666,11 +15666,11 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 --------------------------------------------------------------------------------
 Module  : golang.org/x/net
-Version : v0.20.0
-Time    : 2024-01-08T18:08:52Z
+Version : v0.21.0
+Time    : 2024-02-07T21:51:58Z
 Licence : BSD-3-Clause
 
-Contents of probable licence file $GOMODCACHE/golang.org/x/net@v0.20.0/LICENSE:
+Contents of probable licence file $GOMODCACHE/golang.org/x/net@v0.21.0/LICENSE:
 
 Copyright (c) 2009 The Go Authors. All rights reserved.
 
