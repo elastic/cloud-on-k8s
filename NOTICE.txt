@@ -3912,11 +3912,11 @@ limitations under the License.
 
 --------------------------------------------------------------------------------
 Module  : k8s.io/api
-Version : v0.29.1
-Time    : 2024-01-17T21:35:42Z
+Version : v0.29.2
+Time    : 2024-02-14T21:26:37Z
 Licence : Apache-2.0
 
-Contents of probable licence file $GOMODCACHE/k8s.io/api@v0.29.1/LICENSE:
+Contents of probable licence file $GOMODCACHE/k8s.io/api@v0.29.2/LICENSE:
 
 
                                  Apache License
@@ -4124,11 +4124,11 @@ Contents of probable licence file $GOMODCACHE/k8s.io/api@v0.29.1/LICENSE:
 
 --------------------------------------------------------------------------------
 Module  : k8s.io/apimachinery
-Version : v0.29.1
+Version : v0.29.2
 Time    : 2024-01-10T17:26:05Z
 Licence : Apache-2.0
 
-Contents of probable licence file $GOMODCACHE/k8s.io/apimachinery@v0.29.1/LICENSE:
+Contents of probable licence file $GOMODCACHE/k8s.io/apimachinery@v0.29.2/LICENSE:
 
 
                                  Apache License
@@ -4336,11 +4336,11 @@ Contents of probable licence file $GOMODCACHE/k8s.io/apimachinery@v0.29.1/LICENS
 
 --------------------------------------------------------------------------------
 Module  : k8s.io/client-go
-Version : v0.29.1
-Time    : 2024-01-17T21:48:32Z
+Version : v0.29.2
+Time    : 2024-02-14T21:33:05Z
 Licence : Apache-2.0
 
-Contents of probable licence file $GOMODCACHE/k8s.io/client-go@v0.29.1/LICENSE:
+Contents of probable licence file $GOMODCACHE/k8s.io/client-go@v0.29.2/LICENSE:
 
 
                                  Apache License
@@ -4961,11 +4961,11 @@ Contents of probable licence file $GOMODCACHE/k8s.io/utils@v0.0.0-20230726121419
 
 --------------------------------------------------------------------------------
 Module  : sigs.k8s.io/controller-runtime
-Version : v0.17.1
-Time    : 2024-02-08T11:10:15Z
+Version : v0.17.2
+Time    : 2024-02-15T14:31:16Z
 Licence : Apache-2.0
 
-Contents of probable licence file $GOMODCACHE/sigs.k8s.io/controller-runtime@v0.17.1/LICENSE:
+Contents of probable licence file $GOMODCACHE/sigs.k8s.io/controller-runtime@v0.17.2/LICENSE:
 
                                  Apache License
                            Version 2.0, January 2004
