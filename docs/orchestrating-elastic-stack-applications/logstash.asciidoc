@@ -64,10 +64,10 @@ spec:
         }
         output {
           elasticsearch {
-            hosts => [ "\${QS_ES_HOSTS}" ]
-            user => "\${QS_ES_USER}"
-            password => "\${QS_ES_PASSWORD}"
-            ssl_certificate_authorities => "\${QS_ES_SSL_CERTIFICATE_AUTHORITY}"
+            hosts => [ "${QS_ES_HOSTS}" ]
+            user => "${QS_ES_USER}"
+            password => "${QS_ES_PASSWORD}"
+            ssl_certificate_authorities => "${QS_ES_SSL_CERTIFICATE_AUTHORITY}"
           }
         }
   services:
