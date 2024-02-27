@@ -43,7 +43,7 @@ Add the following specification to create a minimal Logstash deployment that wil
 
 [source,yaml,subs="attributes,+macros,callouts"]
 ----
-cat $$<<$$EOF | kubectl apply -f -
+cat $$<<$$'EOF' | kubectl apply -f -
 apiVersion: logstash.k8s.elastic.co/v1alpha1
 kind: Logstash
 metadata:
