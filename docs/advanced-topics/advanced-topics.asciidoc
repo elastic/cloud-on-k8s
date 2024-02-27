@@ -18,7 +18,6 @@ endif::[]
 - <<{p}-webhook-namespace-selectors>>
 - <<{p}-stack-monitoring>>
 - <<{p}-fips>>
-- <<{p}-secure-metrics>>
 --
 
 include::openshift.asciidoc[leveloffset=+1]
@@ -30,4 +29,3 @@ include::network-policies.asciidoc[leveloffset=+1]
 include::webhook-namespace-selectors.asciidoc[leveloffset=+1]
 include::stack-monitoring.asciidoc[leveloffset=+1]
 include::fips.asciidoc[leveloffset=+1]
-include::secure-metrics.asciidoc[leveloffset=+1]
