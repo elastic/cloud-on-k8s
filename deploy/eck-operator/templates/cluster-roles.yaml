@@ -1,4 +1,4 @@
-{{- if and (not .Values.createClusterScopedResources) (.Values.config.enableSecureMetrics) -}}
+{{- if and (not .Values.createClusterScopedResources) (.Values.config.metrics.secureMode.enable) -}}
 {{ fail "createClusterScopedResources is required to enable secure metrics" }}
 {{- end }}
 {{- if .Values.createClusterScopedResources -}}
@@ -96,7 +96,7 @@ rules:
   - apiGroups: ["logstash.k8s.elastic.co"]
     resources: ["logstashes"]
     verbs: ["create", "delete", "deletecollection", "patch", "update"]
-{{- if and .Values.config.enableSecureMetrics }}
+{{- if and .Values.config.metrics.secureMode.enable }}
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole

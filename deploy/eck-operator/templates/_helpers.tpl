@@ -115,6 +115,19 @@ elastic-webhook-server
 {{- end -}}
 
 {{/*
+Determine the metrics port
+*/}}
+{{- define "eck-operator.metrics.port" -}}
+{{- if .Values.config.metrics.port -}}
+{{- .Values.config.metrics.port -}}
+{{- else if .Values.config.metricsPort -}}
+{{- .Values.config.metricsPort -}}
+{{- else -}}
+0
+{{- end -}}
+{{- end -}}
+
+{{/*
 RBAC permissions
 NOTE - any changes made to RBAC permissions below require
 updating docs/operating-eck/eck-permissions.asciidoc file.

@@ -8,12 +8,12 @@ metadata:
     {{- include "eck-operator.labels" . | nindent 4 }}
 data:
   eck.yaml: |-
+    {{ $metricsPort := int (include "eck-operator.metrics.port" .)}}
     log-verbosity: {{ int .Values.config.logVerbosity }}
-    {{- if and .Values.config.enableSecureMetrics (eq (int .Values.config.metricsPort) 0) }}
+    {{- if and .Values.config.metrics.secureMode.enable (eq $metricsPort 0) }}
     {{- fail "metricsPort must be greater than 0 when enableSecureMetrics is true" }}
     {{- end }}
-    {{- $metricsPort := int .Values.config.metricsPort }}
-    {{- if .Values.config.enableSecureMetrics }}
+    {{- if .Values.config.metrics.secureMode.enable }}
     metrics-port: {{ add $metricsPort 1 }}
     {{- else }}
     metrics-port: {{ $metricsPort }}
