@@ -35,7 +35,7 @@ require (
 	go.elastic.co/apm/module/apmzap/v2 v2.4.8
 	go.elastic.co/apm/v2 v2.4.8
 	go.uber.org/automaxprocs v1.5.3
-	go.uber.org/zap v1.26.0
+	go.uber.org/zap v1.27.0
 	golang.org/x/crypto v0.19.0
 	gopkg.in/yaml.v3 v3.0.1
 	k8s.io/api v0.29.2
