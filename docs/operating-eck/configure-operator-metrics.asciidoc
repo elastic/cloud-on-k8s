@@ -354,7 +354,3 @@ prometheus:
     serviceMonitorNamespaceSelector: {}
     serviceMonitorSelectorNilUsesHelmValues: false
 ----
-
-== Bringing your own TLS certificate to secure the metrics endpoint
-
-TODO: 
