@@ -91,7 +91,7 @@ func internalReconcile(params Params) (*reconciler.Results, logstashv1alpha1.Log
 
 	// ensure that the label used by expectations is set as it is not in place if the logstash
 	// resource was created with ECK < 2.12
-	if err := ensureStsNameLabelIsSetOnPods(params); err != nil {
+	if err := ensureSTSNameLabelIsSetOnPods(params); err != nil {
 		return results.WithError(err), params.Status
 	}
 
@@ -194,7 +194,7 @@ func isPendingReconciliation(sset appsv1.StatefulSet) bool {
 	return sset.Generation != sset.Status.ObservedGeneration
 }
 
-func ensureStsNameLabelIsSetOnPods(params Params) error {
+func ensureSTSNameLabelIsSetOnPods(params Params) error {
 	sts, err := retrieveActualStatefulSet(params.Client, params.Logstash)
 	if apierrors.IsNotFound(err) {
 		// maybe the sts doesn't exist yet or was deleted, let it be (re)created
