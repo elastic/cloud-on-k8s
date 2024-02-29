@@ -208,6 +208,9 @@ func ensureStsNameLabelIsSetOnPods(params Params) error {
 		return nil
 	}
 	// add the missing label and update the sts resource
+	if sts.Spec.Template.Labels == nil {
+		sts.Spec.Template.Labels = map[string]string{}
+	}
 	sts.Spec.Template.Labels[labels.StatefulSetNameLabelName] = params.Logstash.Name
 	return params.Client.Update(params.Context, &sts)
 }
