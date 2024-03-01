@@ -9,7 +9,7 @@ metadata:
     app.kubernetes.io/version: {{ .Chart.AppVersion | quote }}
     helm.sh/chart: {{ include "eck-operator.chart" . }}
     app.kubernetes.io/managed-by: {{ .Release.Service }}
-  name: "{{ include "eck-operator.fullname" . }}-metrics-service"
+  name: "{{ include "eck-operator.fullname" . }}-metrics"
   namespace: {{ .Release.Namespace }}
 spec:
   ports:

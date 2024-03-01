@@ -19,6 +19,13 @@ spec:
     scheme: https
     interval: 30s
     tlsConfig:
-      insecureSkipVerify: true
+      insecureSkipVerify: {{ .Values.config.metrics.secureMode.tls.insecureSkipVerify | default false }}
+      {{- if (not .Values.config.metrics.secureMode.tls.insecureSkipVerify) }}
+      {{- with .Values.config.metrics.secureMode.tls.caSecret }}
+      {{- $leading_path := trimSuffix "/" .Values.config.metrics.secureMode.tls.caMountDirectory }}
+      caFile: "{{ $leading_path }}/{{ . }}/ca.crt"
+      {{- end }}
+      serverName: "{{ include "eck-operator.fullname" . }}-metrics.{{ .Release.Namespace }}.svc"
+      {{- end }}
     bearerTokenFile: /var/run/secrets/kubernetes.io/serviceaccount/token
 {{- end }}

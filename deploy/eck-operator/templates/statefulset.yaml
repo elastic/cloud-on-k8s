@@ -117,24 +117,15 @@ spec:
           - "--upstream=http://127.0.0.1:{{ add $metricsPort 1 }}/"
           - "--logtostderr=true"
           - "--v=0"
-          {{- if .Values.config.metrics.secureMode.tlsCertSecret }}
-          - "--tls-cert-file=/tls/cert/tls.crt"
+          {{- if .Values.config.metrics.secureMode.tls.certificateSecret }}
+          - "--tls-cert-file=/tls/tls.crt"
+          - "--tls-private-key-file=/tls/tls.key"
           {{- end }}
-          {{- if .Values.config.metrics.secureMode.tlsPrivateKeySecret }}
-          - "--tls-private-key-file=/tls/key/tls.key"
-          {{- end }}
-          {{- if or .Values.config.metrics.secureMode.tlsCertSecret .Values.config.metrics.secureMode.tlsPrivateKeySecret }}
+          {{- if .Values.config.metrics.secureMode.tls.certificateSecret }}
           volumeMounts:
-          {{- if .Values.config.metrics.secureMode.tlsCertSecret }}
-          - mountPath: "/tls/cert"
+          - mountPath: "/tls"
             name: tls-certificate
             readOnly: true
-          {{- end }}
-          {{- if .Values.config.metrics.secureMode.tlsPrivateKeySecret }}
-          - mountPath: "/tls/key"
-            name: tls-secret-key
-            readOnly: true
-          {{- end }}
           {{- end }}
           ports:
           - containerPort: {{ $metricsPort }}
@@ -158,17 +149,11 @@ spec:
             defaultMode: 420
             secretName: {{ include "eck-operator.webhookSecretName" . }}
         {{- end }}
-        {{- if .Values.config.metrics.secureMode.tlsCertSecret }}
+        {{- if .Values.config.metrics.secureMode.tls.certificateSecret }}
         - name: tls-certificate
           secret:
             defaultMode: 420
-            secretName: {{ .Values.config.metrics.secureMode.tlsCertSecret  }}
-        {{- end }}
-        {{- if .Values.config.metrics.secureMode.tlsPrivateKeySecret  }}
-        - name: tls-secret-key
-          secret:
-            defaultMode: 420
-            secretName: {{ .Values.config.metrics.secureMode.tlsPrivateKeySecret }}
+            secretName: {{ .Values.config.metrics.secureMode.tls.certificateSecret  }}
         {{- end }}
         {{- with .Values.volumes }}
           {{- toYaml . | nindent 8 }}

@@ -1,5 +1,8 @@
 {{- $metricsPort := int (include "eck-operator.metrics.port" .)}}
 {{- if and .Values.podMonitor.enabled (gt $metricsPort 0) }}
+{{- if and .Values.podMonitor.enabled .Values.config.metrics.secureMode.enabled }}
+{{- fail "podMonitor and secureMode are mutually exclusive" }}
+{{- end }}
 apiVersion: monitoring.coreos.com/v1
 kind: PodMonitor
 metadata:

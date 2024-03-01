@@ -286,7 +286,7 @@ func Command() *cobra.Command {
 	cmd.Flags().Int(
 		operator.MetricsPortFlag,
 		DefaultMetricPort,
-		"(Deprecated) Port to use for exposing metrics in the Prometheus format. (set 0 to disable. Use --metrics-bind-address instead)",
+		"Port to use for exposing metrics in the Prometheus format. (set 0 to disable)",
 	)
 	cmd.Flags().String(
 		operator.MetricsHostFlag,

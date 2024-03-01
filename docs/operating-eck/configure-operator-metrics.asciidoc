@@ -10,7 +10,7 @@ endif::[]
 
 == Enabling the ECK Operator metrics endpoint
 
-The ECK Operator provides a metrics endpoint that can be used to monitor the operator's performance and health. By default, the metrics endpoint is not enabled. To enable the metrics endpoint, follow the instructions in the following sections depending on whether you installed ECK through the Helm chart or the manifests.
+The ECK Operator provides a metrics endpoint that can be used to monitor the operator's performance and health. By default, the metrics endpoint is not enabled. To enable the metrics endpoint, follow the instructions in the next sections depending on whether you installed ECK through the Helm chart or the manifests.
 
 === Using the ECK Operator Helm Chart
 
@@ -90,23 +90,32 @@ The ECK Operator provides a metrics endpoint that can be used to monitor the ope
 
 === Using the ECK Operator Helm Chart
 
-If you installed ECK through the Helm chart commands listed in <<{p}-install-helm>>, you can now set `config.metrics.secureMode.enable` to `true` and both RBAC and TLS/HTTPs will be enabled for the metrics endpoint.
+If you installed ECK through the Helm chart commands listed in <<{p}-install-helm>>, you can now set `config.metrics.secureMode.enabled` to `true` and both RBAC and TLS/HTTPs will be enabled for the metrics endpoint.
 
 ==== Using your own TLS certificate for the metrics endpoint when using the Helm Chart
 
-By default a self-signed certificate will be generated for use by the metrics endpoint. If you want to use your own TLS certificate for the metrics endpoint you can provide the `config.metrics.secureMode.tlsCertSecret` to the Helm chart. The `tlsCertSecret` should be the name of a Kubernetes `Secret` that contains the TLS certificate. The same secret can also contain an optional TLS key, and if so provide the same secret name to `config.metrics.secureMode.tlsPrivateKeySecret`. The following keys are supported within the secret:
+By default a self-signed certificate will be generated for use by the metrics endpoint. If you want to use your own TLS certificate for the metrics endpoint you can provide the `config.metrics.secureMode.tls.certificateSecret` to the Helm chart. The `certificateSecret` should be the name of an existing Kubernetes `Secret` that contains both the TLS certificate and the TLS private key. The following keys are supported within the secret:
 
 * `tls.crt` - The PEM-encoded TLS certificate
-* `tls.key` - (Optional) The PEM-encoded TLS private key
-
-Using your own TLS certificate will still enable `tlsConfig.insecureSkipVerify` within the `ServiceMonitor` to allow Prometheus to scrape the metrics endpoint. This setting may be revisited in the future.
+* `tls.key` - The PEM-encoded TLS private key
 
 The easiest way to create this secret is to use the `kubectl create secret tls` command. For example:
 
 [source,sh]
 ----
-kubectl create secret tls my-tls-secret -n elastic-system --cert=/Path/to/tls.crt --key=/Path/to/tls.key
+kubectl create secret tls eck-metrics-tls-certificate -n elastic-system --cert=/path/to/tls.crt --key=/path/to/tls.key
 ----
+
+Providing this secret is sufficient to use your own certificate if it is from a trusted Certificate Authority. If the certificate is not signed by a trusted CA you have 2 options:
+
+* Disable TLS verification.
+    * Set `config.metrics.secureMode.tls.insecureSkipVerify` to `true` to disable TLS validation.
+* Provide the Certificate Authority to Prometheus.
+    * Set `config.metrics.secureMode.tls.insecureSkipVerify` to `false` to enable TLS validation.
+    * Set `config.metrics.secureMode.tls.caSecret` to the name of an existing Kubernetes secret within the Prometheus namespace that contains the CA in PEM format.
+    * Set the `spec.secrets` field of the `Prometheus` custom resource such that the CA secret is mounted into the Prometheus pod at `config.metrics.secureMode.tls.caMountDirectory` (assuming you are using the Prometheus operator). See the link:{eck_github}/tree/{eck_release_branch}/deploy/eck-operator/values.yaml[ECK Helm Chart values file] for more information.
+
+See the <<{p}-prometheus-requirements,prometheus requirements section>> for more information on creating the CA secret.
 
 === Using the ECK Operator manifests
 
@@ -244,22 +253,21 @@ spec:
     bearerTokenFile: /var/run/secrets/kubernetes.io/serviceaccount/token
 EOF
 ----
+
 ==== Using your own TLS certificate for the metrics endpoint when using the manifests
 
 By default a self-signed certificate will be generated for use by the metrics endpoint. If you want to use your own TLS certificate for the metrics endpoint you will need to follow the previous instructions to enable secure metrics as well as the following steps:
 
-* Create a `Secret` containing the TLS certificate and optional key. The following keys are supported within the secret:
+* Create a `Secret` containing the TLS certificate and TLS private key. The following keys are supported within the secret:
 
   * `tls.crt` - The PEM-encoded TLS certificate
-  * `tls.key` - (Optional) The PEM-encoded TLS private key
-
-Using your own TLS certificate will still enable `tlsConfig.insecureSkipVerify` within the `ServiceMonitor` to allow Prometheus to scrape the metrics endpoint. This setting may be revisited in the future.
+  * `tls.key` - The PEM-encoded TLS private key
 
 The easiest way to create this secret is to use the `kubectl create secret tls` command. For example:
 
 [source,sh]
 ----
-kubectl create secret tls my-tls-secret -n elastic-system --cert=/Path/to/tls.crt --key=/Path/to/tls.key
+kubectl create secret tls my-tls-secret -n elastic-system --cert=/path/to/tls.crt --key=/path/to/tls.key
 ----
 
 * Patch the `StatefulSet` to include the `tls.crt` and `tls.key` as a volume and mount it into the `kube-rbac-proxy` container.
@@ -283,16 +291,11 @@ spec:
           - "--upstream=http://127.0.0.1:8081"
           - "--logtostderr=true"
           - "--v=0"
-          - "--tls-cert-file=/tls/cert/tls.crt"
-          # Optional
-          - "--tls-private-key-file=/tls/key/tls.key"
+          - "--tls-cert-file=/tls/tls.crt"
+          - "--tls-private-key-file=/tls/tls.key"
           volumeMounts:
-          - mountPath: "/tls/cert"
+          - mountPath: "/tls"
             name: tls-certificate
-            readOnly: true
-          # Optional
-          - mountPath: "/tls/key"
-            name: tls-secret-key
             readOnly: true
           ports:
           - containerPort: 8080
@@ -316,19 +319,39 @@ spec:
       - name: tls-certificate
         secret:
           defaultMode: 420
-          secretName: my-tls-secret
-      - name: tls-secret-key
-        secret:
-          defaultMode: 420
-          secretName: my-tls-secret
+          secretName: eck-metrics-tls-certificate
 EOF
 ----
 
+* Potentially patch the `ServiceMonitor`. This will only need to be done if you are adjusting the `insecureSkipVerify` field to `false`.
+
+[source,shell,subs="attributes,+macros,callouts"]
+----
+kubectl patch servicemonitor -n elastic-system elastic-operator --patch-file=/dev/stdin <<-EOF
+spec:
+  endpoints:
+  - port: https
+    path: /metrics
+    scheme: https
+    interval: 30s
+    tlsConfig:
+      insecureSkipVerify: false
+      caFile: /etc/prometheus/secrets/{secret-name}/ca.crt <1>
+      serverName: elastic-operator-metrics.elastic-system.svc
+    bearerTokenFile: /var/run/secrets/kubernetes.io/serviceaccount/token
+EOF
+----
+
+<1> See the <<{p}-prometheus-requirements,prometheus requirements section>> for more information on creating the CA secret.
+
+[id="{p}-prometheus-requirements"]
 == Prometheus requirements
 
-This option requires the following settings within Prometheus to function:
+The previous options requires the following settings within Prometheus to function properly:
 
-* RBAC settings for the Prometheus instance to access the metrics endpoint similar to the following:
+=== RBAC settings for scraping the metrics
+
+Configure the RBAC settings for the Prometheus instance to access the metrics endpoint similar to the following: (These typically will be set automatically when using the Prometheus operator)
 
 [source,yaml,subs="attributes"]
 ----
@@ -343,7 +366,9 @@ rules:
   - get
 ----
 
-* If using the Prometheus Operator and your Prometheus instance is not in the same namespace as the operator you will need the Prometheus Operator configured with the following Helm values:
+=== Optional Prometheus Operator Helm settings to allow reading PodMonitor and ServiceMonitor across namespaces
+
+* If using the Prometheus Operator and your Prometheus instance is not in the same namespace as the ECK operator you will need the Prometheus Operator configured with the following Helm values:
 
 [source,yaml,subs="attributes"]
 ----
@@ -354,3 +379,20 @@ prometheus:
     serviceMonitorNamespaceSelector: {}
     serviceMonitorSelectorNilUsesHelmValues: false
 ----
+
+=== Optional settings to allow full TLS verification when using a custom TLS certificate
+
+If you are using a custom TLS certificate and you need to set `insecureSkipVerify` to `false` you will need to do the following:
+
+* Create a Kubernetes secret within the Prometheus namespace that contains the Certificate Authority in PEM format.
+
+The easiest way to create the CA secret within the Prometheus namespace is to use the `kubectl create secret generic` command. For example:
+
+[source,sh]
+----
+kubectl create secret generic eck-metrics-tls-ca -n monitoring --from-file=ca.crt=/path/to/ca.pem
+----
+
+* Ensure that the CA secret is mounted within the Prometheus Pod.
+
+This will vary between Prometheus installations, but if using the Prometheus Operator you can set the `spec.secrets` field of the `Prometheus` custom resource to the name of the previously created Kubernetes Secret. See the link:{eck_github}/tree/{eck_release_branch}/deploy/eck-operator/values.yaml[ECK Helm Chart values file] for more information.
