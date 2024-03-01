@@ -89,6 +89,12 @@ func internalReconcile(params Params) (*reconciler.Results, logstashv1alpha1.Log
 	defer tracing.Span(&params.Context)()
 	results := reconciler.NewResult(params.Context)
 
+	// ensure that the label used by expectations is set as it is not in place if the logstash
+	// resource was created with ECK < 2.12
+	if err := ensureSTSNameLabelIsSetOnPods(params); err != nil {
+		return results.WithError(err), params.Status
+	}
+
 	_, apiSvc, err := reconcileServices(params)
 	if err != nil {
 		return results.WithError(err), params.Status
@@ -186,4 +192,25 @@ func podReconciliationDone(ctx context.Context, c k8s.Client, sset appsv1.Statef
 
 func isPendingReconciliation(sset appsv1.StatefulSet) bool {
 	return sset.Generation != sset.Status.ObservedGeneration
+}
+
+func ensureSTSNameLabelIsSetOnPods(params Params) error {
+	sts, err := retrieveActualStatefulSet(params.Client, params.Logstash)
+	if apierrors.IsNotFound(err) {
+		// maybe the sts doesn't exist yet or was deleted, let it be (re)created
+		return nil
+	}
+	if err != nil {
+		return err
+	}
+	if _, ok := sts.Spec.Template.Labels[labels.StatefulSetNameLabelName]; ok {
+		// label is already in place, great
+		return nil
+	}
+	// add the missing label and update the sts resource
+	if sts.Spec.Template.Labels == nil {
+		sts.Spec.Template.Labels = map[string]string{}
+	}
+	sts.Spec.Template.Labels[labels.StatefulSetNameLabelName] = params.Logstash.Name
+	return params.Client.Update(params.Context, &sts)
 }
