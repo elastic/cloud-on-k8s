@@ -22,9 +22,41 @@ If you installed ECK using the manifests using the commands listed in <<{p}-depl
 
 * Enable the metrics endpoint in the `ConfigMap`.
 
-[source,sh]
+[source,shell,subs="attributes,+macros"]
 ----
-kubectl get cm elastic-operator -n elastic-system -o yaml | sed "s|metrics-port: 0|metrics-port: 8080|" | kubectl apply -f -
+cat $$<<$$EOF | kubectl apply -f -
+kind: ConfigMap
+apiVersion: v1
+metadata:
+  name: elastic-operator
+  namespace: elastic-system
+data:
+  eck.yaml: |-
+    log-verbosity: 0
+    metrics-port: 8080
+    metrics-host: 0.0.0.0
+    container-registry: docker.elastic.co
+    max-concurrent-reconciles: 3
+    ca-cert-validity: 8760h
+    ca-cert-rotate-before: 24h
+    cert-validity: 8760h
+    cert-rotate-before: 24h
+    disable-config-watch: false
+    exposed-node-labels: [topology.kubernetes.io/.*,failure-domain.beta.kubernetes.io/.*]
+    set-default-security-context: auto-detect
+    kube-client-timeout: 60s
+    elasticsearch-client-timeout: 180s
+    disable-telemetry: false
+    distribution-channel: all-in-one
+    validate-storage-class: true
+    enable-webhook: true
+    webhook-name: elastic-webhook.k8s.elastic.co
+    webhook-port: 9443
+    operator-namespace: elastic-system
+    enable-leader-election: true
+    elasticsearch-observation-interval: 10s
+    ubi-only: false
+EOF
 ----
 
 * Patch the `StatefulSet` to expose the metrics port.
@@ -123,9 +155,41 @@ If you installed ECK through using the manifests using the commands listed in <<
 
 * Enable the metrics port in the `ConfigMap`, and set the metrics host to `127.0.0.1` to force communication through `kube-rbac-proxy`.
 
-[source,sh]
+[source,shell,subs="attributes,+macros"]
 ----
-kubectl get cm elastic-operator -n elastic-system -o yaml | sed "s|metrics-port: 0|metrics-port: 8081|" | sed "s|metrics-host: 0.0.0.0|metrics-host: 127.0.0.1|" | kubectl apply -f -
+cat $$<<$$EOF | kubectl apply -f -
+kind: ConfigMap
+apiVersion: v1
+metadata:
+  name: elastic-operator
+  namespace: elastic-system
+data:
+  eck.yaml: |-
+    log-verbosity: 0
+    metrics-port: 8081
+    metrics-host: 127.0.0.1
+    container-registry: docker.elastic.co
+    max-concurrent-reconciles: 3
+    ca-cert-validity: 8760h
+    ca-cert-rotate-before: 24h
+    cert-validity: 8760h
+    cert-rotate-before: 24h
+    disable-config-watch: false
+    exposed-node-labels: [topology.kubernetes.io/.*,failure-domain.beta.kubernetes.io/.*]
+    set-default-security-context: auto-detect
+    kube-client-timeout: 60s
+    elasticsearch-client-timeout: 180s
+    disable-telemetry: false
+    distribution-channel: all-in-one
+    validate-storage-class: true
+    enable-webhook: true
+    webhook-name: elastic-webhook.k8s.elastic.co
+    webhook-port: 9443
+    operator-namespace: elastic-system
+    enable-leader-election: true
+    elasticsearch-observation-interval: 10s
+    ubi-only: false
+EOF
 ----
 
 * Add an additional `ClusterRole` and `ClusterRoleBinding` for the ECK Operator.
