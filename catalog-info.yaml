@@ -11,7 +11,7 @@ metadata:
     buildkite.com/project-slug: elastic/cloud-on-k8s
 spec:
   type: service
-  owner: group:cloud-on-k8s
+  owner: group:cloud-k8s-operator
   system: control-plane
   lifecycle: production
 
