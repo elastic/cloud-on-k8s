@@ -8,9 +8,18 @@ endif::[]
 [id="{p}-{page_id}"]
 = Configure the metrics endpoint
 
+The ECK operator provides a metrics endpoint that can be used to monitor the operator's performance and health. By default, the metrics endpoint is not enabled and is not secured. The following sections describe how to enable it, secure it and the associated Prometheus requirements:
+
+* <<{p}-enabling-the-metrics-endpoint,Enabling the metrics endpoint>>
+* <<{p}-securing-the-metrics-endpoint,Securing the metrics endpoint>>
+* <<{p}-prometheus-requirements,Prometheus requirements>>
+
+NOTE: The ECK operator metrics endpoint will be secured by default beginning in version 2.14.0.
+
+[id="{p}-enabling-the-metrics-endpoint"]
 == Enabling the metrics endpoint
 
-The ECK operator provides a metrics endpoint that can be used to monitor the operator's performance and health. By default, the metrics endpoint is not enabled. To enable the metrics endpoint, follow the instructions in the next sections depending on whether you installed ECK through the Helm chart or the manifests.
+The metrics endpoint is not enabled by default. To enable the metrics endpoint, follow the instructions in the next sections depending on whether you installed ECK through the Helm chart or the manifests.
 
 === Using the operator Helm Chart
 
@@ -86,7 +95,7 @@ EOF
 kubectl delete pod -n elastic-system elastic-operator-0
 ----
 
-* Install the `PodMonitor` to allow scraping of the metrics endpoint by Prometheus.
+* If using the Prometheus Operator, install a `PodMonitor` to allow scraping of the metrics endpoint by Prometheus.
 
 [source,shell,subs="attributes,+macros"]
 ----
@@ -114,6 +123,7 @@ spec:
 EOF
 ----
 
+[id="{p}-securing-the-metrics-endpoint"]
 == Securing the metrics endpoint
 
 NOTE: The ECK operator metrics endpoint will be secured by default beginning in version 2.14.0.
