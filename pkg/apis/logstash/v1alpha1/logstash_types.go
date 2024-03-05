@@ -338,6 +338,10 @@ func (lses *LogstashESAssociation) SetAssociationConf(conf *commonv1.Association
 	}
 }
 
+func (lses *LogstashESAssociation) SupportsAuthAPIKey() bool {
+	return false
+}
+
 func (lses *LogstashESAssociation) AssociationID() string {
 	return fmt.Sprintf("%s-%s", lses.ElasticsearchCluster.ObjectSelector.Namespace, lses.ElasticsearchCluster.ObjectSelector.NameOrSecretName())
 }
@@ -389,6 +393,10 @@ func (lsmon *LogstashMonitoringAssociation) SetAssociationConf(assocConf *common
 	if assocConf != nil {
 		lsmon.MonitoringAssocConfs[lsmon.ref] = *assocConf
 	}
+}
+
+func (lsmon *LogstashMonitoringAssociation) SupportsAuthAPIKey() bool {
+	return false
 }
 
 func (lsmon *LogstashMonitoringAssociation) AssociationID() string {

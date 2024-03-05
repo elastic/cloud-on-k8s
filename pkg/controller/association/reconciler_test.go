@@ -70,9 +70,10 @@ var (
 				"kibanaassociation.k8s.elastic.co/namespace": associated.Namespace,
 			}
 		},
-		ReferencedResourceVersion: func(c k8s.Client, esRef commonv1.ObjectSelector) (string, error) {
+		ReferencedResourceVersion: func(c k8s.Client, association commonv1.Association) (string, error) {
+			esRef := association.AssociationRef()
 			if esRef.IsExternal() {
-				_, err := GetUnmanagedAssociationConnectionInfoFromSecret(c, esRef)
+				_, err := GetUnmanagedAssociationConnectionInfoFromSecret(c, association)
 				if err != nil {
 					return "", err
 				}
@@ -249,7 +250,7 @@ var (
 )
 
 func assocConf(authSecretName string, authSecretKey string, caCertProvided bool, caSecretName string, url string) string {
-	return fmt.Sprintf("{\"authSecretName\":\"%s\",\"authSecretKey\":\"%s\",\"isServiceAccount\":false,\"caCertProvided\":%t,\"caSecretName\":\"%s\",\"url\":\"%s\",\"version\":\"%s\"}",
+	return fmt.Sprintf("{\"authSecretName\":\"%s\",\"authSecretKey\":\"%s\",\"isApiKey\":false,\"isServiceAccount\":false,\"caCertProvided\":%t,\"caSecretName\":\"%s\",\"url\":\"%s\",\"version\":\"%s\"}",
 		authSecretName, authSecretKey, caCertProvided, caSecretName, url, stackVersion)
 }
 
@@ -541,7 +542,8 @@ func TestReconciler_Reconcile_noESAuth(t *testing.T) {
 			nsn := types.NamespacedName{Namespace: ent.Namespace, Name: serviceName}
 			return ServiceURL(c, nsn, ent.Spec.HTTP.Protocol())
 		},
-		ReferencedResourceVersion: func(c k8s.Client, entRef commonv1.ObjectSelector) (string, error) {
+		ReferencedResourceVersion: func(c k8s.Client, association commonv1.Association) (string, error) {
+			entRef := association.AssociationRef()
 			var ent entv1.EnterpriseSearch
 			err := c.Get(context.Background(), entRef.NamespacedName(), &ent)
 			if err != nil {
@@ -609,7 +611,7 @@ func TestReconciler_Reconcile_noESAuth(t *testing.T) {
 	err = r.Get(context.Background(), k8s.ExtractNamespacedName(&kb), &updatedKibana)
 	require.NoError(t, err)
 	// association conf should be set
-	require.Equal(t, "{\"authSecretName\":\"-\",\"authSecretKey\":\"\",\"isServiceAccount\":false,\"caCertProvided\":true,\"caSecretName\":\"kbname-kb-ent-ca\",\"url\":\"https://entname-ent-http.entns.svc:3002\",\"version\":\"\"}",
+	require.Equal(t, "{\"authSecretName\":\"-\",\"authSecretKey\":\"\",\"isApiKey\":false,\"isServiceAccount\":false,\"caCertProvided\":true,\"caSecretName\":\"kbname-kb-ent-ca\",\"url\":\"https://entname-ent-http.entns.svc:3002\",\"version\":\"\"}",
 		updatedKibana.Annotations[kb.EntAssociation().AssociationConfAnnotationName()])
 	// ent association status should be established
 	require.Equal(t, commonv1.AssociationEstablished, updatedKibana.Status.EnterpriseSearchAssociationStatus)
@@ -812,7 +814,8 @@ func TestReconciler_Reconcile_MultiRef(t *testing.T) {
 		AssociationType:       commonv1.ElasticsearchAssociationType,
 		AssociatedObjTemplate: func() commonv1.Associated { return &agentv1alpha1.Agent{} },
 		ReferencedObjTemplate: func() client.Object { return &esv1.Elasticsearch{} },
-		ReferencedResourceVersion: func(c k8s.Client, esRef commonv1.ObjectSelector) (string, error) {
+		ReferencedResourceVersion: func(c k8s.Client, association commonv1.Association) (string, error) {
+			esRef := association.AssociationRef()
 			var es esv1.Elasticsearch
 			if err := c.Get(context.Background(), esRef.NamespacedName(), &es); err != nil {
 				return "", err
@@ -1069,7 +1072,8 @@ func TestReconciler_Reconcile_Transitive_Associations(t *testing.T) {
 		AssociationType:       commonv1.FleetServerAssociationType,
 		AssociatedObjTemplate: func() commonv1.Associated { return &agentv1alpha1.Agent{} },
 		ReferencedObjTemplate: func() client.Object { return &agentv1alpha1.Agent{} },
-		ReferencedResourceVersion: func(c k8s.Client, fleetRef commonv1.ObjectSelector) (string, error) {
+		ReferencedResourceVersion: func(c k8s.Client, association commonv1.Association) (string, error) {
+			fleetRef := association.AssociationRef()
 			var fleetServer agentv1alpha1.Agent
 			err := c.Get(context.Background(), fleetRef.NamespacedName(), &fleetServer)
 			if err != nil {

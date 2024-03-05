@@ -549,6 +549,10 @@ func (ema *EsMonitoringAssociation) SetAssociationConf(assocConf *commonv1.Assoc
 	}
 }
 
+func (ema *EsMonitoringAssociation) SupportsAuthAPIKey() bool {
+	return false
+}
+
 func (ema *EsMonitoringAssociation) AssociationID() string {
 	return ema.ref.ToID()
 }

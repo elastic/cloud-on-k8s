@@ -122,8 +122,10 @@ func MetricBeat(ctx context.Context, client k8s.Client, beat *v1beta1.Beat, vers
 }
 
 func associatedESUUID(ctx context.Context, client k8s.Client, beat *v1beta1.Beat) (string, error) {
-	if beat.ElasticsearchRef().IsExternal() {
-		remoteES, err := association.GetUnmanagedAssociationConnectionInfoFromSecret(client, beat.ElasticsearchRef().WithDefaultNamespace(beat.Namespace))
+	esAssociation := beat.EsAssociation()
+	esRef := esAssociation.AssociationRef()
+	if esRef.IsExternal() {
+		remoteES, err := association.GetUnmanagedAssociationConnectionInfoFromSecret(client, esAssociation)
 		if err != nil {
 			return "", fmt.Errorf("while retrieving external ES connection info: %w", err)
 		}
@@ -134,7 +136,7 @@ func associatedESUUID(ctx context.Context, client k8s.Client, beat *v1beta1.Beat
 		return uuid, nil
 	}
 	var es esv1.Elasticsearch
-	if err := client.Get(ctx, beat.ElasticsearchRef().WithDefaultNamespace(beat.Namespace).NamespacedName(), &es); err != nil {
+	if err := client.Get(ctx, esRef.NamespacedName(), &es); err != nil {
 		return "", err
 	}
 	uuid, ok := es.Annotations[bootstrap.ClusterUUIDAnnotationName]

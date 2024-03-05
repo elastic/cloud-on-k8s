@@ -32,7 +32,7 @@ const (
 	// BeatAssociationLabelNamespace marks resources created for an association originating from Beat with the
 	// Beat namespace.
 	BeatAssociationLabelNamespace = "beatassociation.k8s.elastic.co/namespace"
-	// AgentAssociationLabelType marks resources created for an association originating from Beat
+	// BeatAssociationLabelType marks resources created for an association originating from Beat
 	// with the target resource type (e.g. "elasticsearch" or "kibana").
 	BeatAssociationLabelType = "beatassociation.k8s.elastic.co/type"
 )
