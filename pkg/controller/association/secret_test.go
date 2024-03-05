@@ -83,14 +83,14 @@ func TestGetUnmanagedAssociationConnexionInfoFromSecret(t *testing.T) {
 			},
 			wantErr: false,
 		}, {
-			name: "happy path with apikey",
+			name: "happy path with api-key",
 			args: args{
 				c: func() k8s.Client {
 					return k8s.NewFakeClient(&corev1.Secret{
 						ObjectMeta: metav1.ObjectMeta{Namespace: "a", Name: "b"},
 						Data: map[string][]byte{
-							"url":    []byte("https://es.io:9243"),
-							"apikey": []byte("elastic"),
+							"url":     []byte("https://es.io:9243"),
+							"api-key": []byte("elastic"),
 						},
 					})
 				},
