@@ -121,7 +121,7 @@ func buildOutputConfig(params Params) (*settings.CanonicalConfig, error) {
 		if credentials.APIKey != "" {
 			decodedAPIKey, err := base64.StdEncoding.DecodeString(credentials.APIKey)
 			if err != nil {
-				return settings.NewCanonicalConfig(), fmt.Errorf("error at decoding apikey from secret %s: %w", assocConf.AuthSecretName, err)
+				return settings.NewCanonicalConfig(), fmt.Errorf("error at decoding api-key from secret %s: %w", assocConf.AuthSecretName, err)
 			}
 			output["api_key"] = string(decodedAPIKey)
 		} else {
