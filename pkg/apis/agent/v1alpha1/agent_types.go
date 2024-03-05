@@ -399,6 +399,10 @@ func (aea *AgentESAssociation) AssociationConf() (*commonv1.AssociationConf, err
 	return commonv1.GetAndSetAssociationConfByRef(aea, aea.ref, aea.esAssocConfs)
 }
 
+func (aea *AgentESAssociation) SupportsAuthAPIKey() bool {
+	return true
+}
+
 func (aea *AgentESAssociation) SetAssociationConf(conf *commonv1.AssociationConf) {
 	if aea.esAssocConfs == nil {
 		aea.esAssocConfs = make(map[commonv1.ObjectSelector]commonv1.AssociationConf)
@@ -448,6 +452,10 @@ func (a *AgentKibanaAssociation) AssociationConfAnnotationName() string {
 	return commonv1.FormatNameWithID(commonv1.KibanaConfigAnnotationNameBase+"%s", a.AssociationID())
 }
 
+func (a *AgentKibanaAssociation) SupportsAuthAPIKey() bool {
+	return false
+}
+
 func (a *AgentKibanaAssociation) AssociationID() string {
 	return commonv1.SingletonAssociationID
 }
@@ -490,6 +498,10 @@ func (a *AgentFleetServerAssociation) AssociationRef() commonv1.ObjectSelector {
 
 func (a *AgentFleetServerAssociation) AssociationConfAnnotationName() string {
 	return commonv1.FormatNameWithID(commonv1.FleetServerConfigAnnotationNameBase+"%s", a.AssociationID())
+}
+
+func (a *AgentFleetServerAssociation) SupportsAuthAPIKey() bool {
+	return false
 }
 
 func (a *AgentFleetServerAssociation) AssociationID() string {

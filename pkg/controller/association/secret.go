@@ -29,23 +29,30 @@ import (
 )
 
 const (
-	// authPasswordUnmanagedSecretKey is the name of the key for the username when using a secret to reference an unmanaged resource
+	// authUsernameUnmanagedSecretKey is the name of the key for the username when using a secret to reference an unmanaged resource
 	authUsernameUnmanagedSecretKey = "username"
 	// authPasswordUnmanagedSecretKey is the name of the key for the password when using a secret to reference an unmanaged resource
 	authPasswordUnmanagedSecretKey = "password"
+	// authAPIKeyUnmanagedSecretKey is the name of the key for the apiKey when using a secret to reference an unmanaged resource
+	authAPIKeyUnmanagedSecretKey = "apikey"
+)
+
+const (
+	AuthTypeUnmanagedBasic = iota
+	AuthTypeUnmanagedAPIKey
 )
 
 // ExpectedConfigFromUnmanagedAssociation returns the association configuration to associate the external unmanaged resource referenced
 // in the given association.
 func (r *Reconciler) ExpectedConfigFromUnmanagedAssociation(association commonv1.Association) (commonv1.AssociationConf, error) {
 	assocRef := association.AssociationRef()
-	info, err := GetUnmanagedAssociationConnectionInfoFromSecret(r.Client, assocRef)
+	info, err := GetUnmanagedAssociationConnectionInfoFromSecret(r.Client, association)
 	if err != nil {
 		return commonv1.AssociationConf{}, err
 	}
 
 	var ver string
-	ver, err = r.ReferencedResourceVersion(r.Client, assocRef)
+	ver, err = r.ReferencedResourceVersion(r.Client, association)
 	if err != nil {
 		return commonv1.AssociationConf{}, err
 	}
@@ -56,9 +63,20 @@ func (r *Reconciler) ExpectedConfigFromUnmanagedAssociation(association commonv1
 		URL:     info.URL,
 		// points the auth secret to the custom secret
 		AuthSecretName: assocRef.SecretName,
-		AuthSecretKey:  authPasswordUnmanagedSecretKey,
 		CACertProvided: info.CaCert != "",
 	}
+
+	switch info.AuthType {
+	case AuthTypeUnmanagedAPIKey:
+		expectedAssocConf.IsAPIKey = true
+		expectedAssocConf.AuthSecretKey = authAPIKeyUnmanagedSecretKey
+	case AuthTypeUnmanagedBasic:
+		expectedAssocConf.IsAPIKey = false
+		expectedAssocConf.AuthSecretKey = authPasswordUnmanagedSecretKey
+	default:
+		return commonv1.AssociationConf{}, fmt.Errorf("unknown auth type %d", info.AuthType)
+	}
+
 	// points the ca secret to the custom secret if needed
 	if expectedAssocConf.CACertProvided {
 		expectedAssocConf.CASecretName = assocRef.SecretName
@@ -70,37 +88,61 @@ func (r *Reconciler) ExpectedConfigFromUnmanagedAssociation(association commonv1
 // UnmanagedAssociationConnectionInfo holds connection information stored in a custom Secret to reach over HTTP an Elastic resource not managed by ECK
 // referenced in an Association. The resource can thus be external to the local Kubernetes cluster.
 type UnmanagedAssociationConnectionInfo struct {
+	AuthType int
 	URL      string
 	Username string
 	Password string
+	APIKey   string
 	CaCert   string
 }
 
+type UnmanagedAssociation interface {
+	AssociationRef() commonv1.ObjectSelector
+	SupportsAuthAPIKey() bool
+}
+
 // GetUnmanagedAssociationConnectionInfoFromSecret returns the UnmanagedAssociationConnectionInfo corresponding to the Secret referenced in the ObjectSelector o.
-func GetUnmanagedAssociationConnectionInfoFromSecret(c k8s.Client, o commonv1.ObjectSelector) (*UnmanagedAssociationConnectionInfo, error) {
+func GetUnmanagedAssociationConnectionInfoFromSecret(c k8s.Client, association UnmanagedAssociation) (*UnmanagedAssociationConnectionInfo, error) {
 	var secretRef corev1.Secret
-	secretRefKey := o.NamespacedName()
+	assocRef := association.AssociationRef()
+	secretRefKey := assocRef.NamespacedName()
 	if err := c.Get(context.Background(), secretRefKey, &secretRef); err != nil {
 		return nil, err
 	}
-	url, ok := secretRef.Data["url"]
-	if !ok {
-		return nil, fmt.Errorf("url secret key doesn't exist in secret %s", o.SecretName)
-	}
-	username, ok := secretRef.Data[authUsernameUnmanagedSecretKey]
-	if !ok {
-		return nil, fmt.Errorf("username secret key doesn't exist in secret %s", o.SecretName)
-	}
-	password, ok := secretRef.Data[authPasswordUnmanagedSecretKey]
-	if !ok {
-		return nil, fmt.Errorf("password secret key doesn't exist in secret %s", o.SecretName)
-	}
 
-	ref := UnmanagedAssociationConnectionInfo{URL: string(url), Username: string(username), Password: string(password)}
+	ref := UnmanagedAssociationConnectionInfo{}
 	caCert, ok := secretRef.Data[certificates.CAFileName]
 	if ok {
 		ref.CaCert = string(caCert)
 	}
+
+	url, ok := secretRef.Data["url"]
+	if !ok {
+		return nil, fmt.Errorf("url secret key doesn't exist in secret %s", assocRef.SecretName)
+	}
+	ref.URL = string(url)
+
+	if association.SupportsAuthAPIKey() {
+		apiKey, ok := secretRef.Data[authAPIKeyUnmanagedSecretKey]
+		if ok {
+			ref.AuthType = AuthTypeUnmanagedAPIKey
+			ref.APIKey = string(apiKey)
+			return &ref, nil
+		}
+	}
+
+	username, ok := secretRef.Data[authUsernameUnmanagedSecretKey]
+	if !ok {
+		return nil, fmt.Errorf("username secret key doesn't exist in secret %s", assocRef.SecretName)
+	}
+	ref.Username = string(username)
+
+	password, ok := secretRef.Data[authPasswordUnmanagedSecretKey]
+	if !ok {
+		return nil, fmt.Errorf("password secret key doesn't exist in secret %s", assocRef.SecretName)
+	}
+	ref.Password = string(password)
+	ref.AuthType = AuthTypeUnmanagedBasic
 
 	return &ref, nil
 }
@@ -129,7 +171,15 @@ func (r UnmanagedAssociationConnectionInfo) Request(path string, jsonPath string
 	if err != nil {
 		return "", err
 	}
-	req.SetBasicAuth(r.Username, r.Password)
+
+	switch r.AuthType {
+	case AuthTypeUnmanagedBasic:
+		req.SetBasicAuth(r.Username, r.Password)
+	case AuthTypeUnmanagedAPIKey:
+		req.Header.Set("Authorization", "ApiKey "+r.APIKey)
+	default:
+		return "", fmt.Errorf("unsupported auth type %d", r.AuthType)
+	}
 
 	httpClient := &http.Client{
 		Timeout: client.DefaultESClientTimeout,

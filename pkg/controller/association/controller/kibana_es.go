@@ -71,9 +71,10 @@ func AddKibanaES(mgr manager.Manager, accessReviewer rbac.AccessReviewer, params
 
 // referencedElasticsearchStatusVersion returns the currently running version of Elasticsearch
 // reported in its status.
-func referencedElasticsearchStatusVersion(c k8s.Client, esRef commonv1.ObjectSelector) (string, error) {
+func referencedElasticsearchStatusVersion(c k8s.Client, esAssociation commonv1.Association) (string, error) {
+	esRef := esAssociation.AssociationRef()
 	if esRef.IsExternal() {
-		info, err := association.GetUnmanagedAssociationConnectionInfoFromSecret(c, esRef)
+		info, err := association.GetUnmanagedAssociationConnectionInfoFromSecret(c, esAssociation)
 		if err != nil {
 			return "", err
 		}
