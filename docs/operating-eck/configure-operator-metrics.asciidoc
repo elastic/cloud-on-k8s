@@ -6,17 +6,17 @@ link:https://www.elastic.co/guide/en/cloud-on-k8s/master/k8s-{page_id}.html[View
 endif::[]
 
 [id="{p}-{page_id}"]
-= Configuring the ECK Operator metrics endpoint
+= Configure the metrics endpoint
 
-== Enabling the ECK Operator metrics endpoint
+== Enabling the metrics endpoint
 
-The ECK Operator provides a metrics endpoint that can be used to monitor the operator's performance and health. By default, the metrics endpoint is not enabled. To enable the metrics endpoint, follow the instructions in the next sections depending on whether you installed ECK through the Helm chart or the manifests.
+The ECK operator provides a metrics endpoint that can be used to monitor the operator's performance and health. By default, the metrics endpoint is not enabled. To enable the metrics endpoint, follow the instructions in the next sections depending on whether you installed ECK through the Helm chart or the manifests.
 
-=== Using the ECK Operator Helm Chart
+=== Using the operator Helm Chart
 
 If you installed ECK through the Helm chart commands listed in <<{p}-install-helm>>, you can now set  `config.metrics.port` to a value greater than 0 in your values file and the metrics endpoint will be enabled.
 
-=== Using the ECK Operator manifests
+=== Using the operator manifests
 
 If you installed ECK using the manifests using the commands listed in <<{p}-deploy-eck>> some additional changes will be required to enable the metrics endpoint.
 
@@ -79,7 +79,7 @@ spec:
 EOF
 ----
 
-* Restart the ECK Operator.
+* Restart the ECK operator.
 
 [source,sh]
 ----
@@ -114,13 +114,13 @@ spec:
 EOF
 ----
 
-== Securing the ECK Operator metrics endpoint
+== Securing the metrics endpoint
 
-NOTE: The ECK Operator metrics endpoint will be secured by default beginning in version 2.14.0
+NOTE: The ECK operator metrics endpoint will be secured by default beginning in version 2.14.0
 
-The ECK Operator provides a metrics endpoint that can be used to monitor the operator's performance and health. By default, the metrics endpoint is not enabled and is not secured. To enable the metrics endpoint follow the previous instructions. To enable TLS/HTTPs and RBAC on the metrics endpoint, follow the instructions in the following sections depending on whether you installed ECK through the Helm chart or the manifests.
+The ECK operator provides a metrics endpoint that can be used to monitor the operator's performance and health. By default, the metrics endpoint is not enabled and is not secured. To enable the metrics endpoint follow the previous instructions. To enable TLS/HTTPs and RBAC on the metrics endpoint, follow the instructions in the following sections depending on whether you installed ECK through the Helm chart or the manifests.
 
-=== Using the ECK Operator Helm Chart
+=== Using the operator Helm Chart
 
 If you installed ECK through the Helm chart commands listed in <<{p}-install-helm>>, you can now set `config.metrics.secureMode.enabled` to `true` and both RBAC and TLS/HTTPs will be enabled for the metrics endpoint.
 
@@ -149,7 +149,7 @@ Providing this secret is sufficient to use your own certificate if it is from a 
 
 See the <<{p}-prometheus-requirements,prometheus requirements section>> for more information on creating the CA secret.
 
-=== Using the ECK Operator manifests
+=== Using the operator manifests
 
 If you installed ECK through using the manifests using the commands listed in <<{p}-deploy-eck>> some additional changes will be required to enable secure metrics.
 
@@ -192,7 +192,7 @@ data:
 EOF
 ----
 
-* Add an additional `ClusterRole` and `ClusterRoleBinding` for the ECK Operator.
+* Add an additional `ClusterRole` and `ClusterRoleBinding` for the ECK operator.
 
 [source,shell,subs="attributes,+macros"]
 ----
