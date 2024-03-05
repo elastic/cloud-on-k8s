@@ -322,8 +322,8 @@ podMonitor:
 # Reference: https://github.com/prometheus-operator/prometheus-operator/blob/master/Documentation/api.md#servicemonitor
 serviceMonitor: {}
 
-  # namespace determines in which namespace the servicedMonitor will be deployed.
-  # If not set the servicedMonitor will be created in the namespace where the Helm release is installed into
+  # namespace determines in which namespace the serviceMonitor will be deployed.
+  # If not set the serviceMonitor will be created in the namespace where the Helm release is installed into
   # namespace: monitoring
 
 # Globals meant for internal use only

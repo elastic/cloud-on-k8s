@@ -116,11 +116,11 @@ EOF
 
 == Securing the metrics endpoint
 
-NOTE: The ECK operator metrics endpoint will be secured by default beginning in version 2.14.0
+NOTE: The ECK operator metrics endpoint will be secured by default beginning in version 2.14.0.
 
-The ECK operator provides a metrics endpoint that can be used to monitor the operator's performance and health. By default, the metrics endpoint is not enabled and is not secured. To enable the metrics endpoint follow the previous instructions. To enable TLS/HTTPs and RBAC on the metrics endpoint, follow the instructions in the following sections depending on whether you installed ECK through the Helm chart or the manifests.
+The ECK operator provides a metrics endpoint that can be used to monitor the operator's performance and health. By default, the metrics endpoint is not enabled and is not secured. To enable the metrics endpoint follow the previous instructions. To enable RBAC and TLS on the metrics endpoint, follow the instructions in the following sections depending on whether you installed ECK through the Helm chart or the manifests.
 
-=== Using the operator Helm Chart
+=== Using the operator Helm chart
 
 If you installed ECK through the Helm chart commands listed in <<{p}-install-helm>>, you can now set `config.metrics.secureMode.enabled` to `true` and both RBAC and TLS/HTTPs will be enabled for the metrics endpoint.
 
@@ -141,11 +141,11 @@ kubectl create secret tls eck-metrics-tls-certificate -n elastic-system --cert=/
 Providing this secret is sufficient to use your own certificate if it is from a trusted Certificate Authority. If the certificate is not signed by a trusted CA you have 2 options:
 
 * Disable TLS verification.
-    * Set `config.metrics.secureMode.tls.insecureSkipVerify` to `true` to disable TLS validation.
+    ** Set `config.metrics.secureMode.tls.insecureSkipVerify` to `true` to disable TLS validation.
 * Provide the Certificate Authority to Prometheus.
-    * Set `config.metrics.secureMode.tls.insecureSkipVerify` to `false` to enable TLS validation.
-    * Set `config.metrics.secureMode.tls.caSecret` to the name of an existing Kubernetes secret within the Prometheus namespace that contains the CA in PEM format.
-    * Set the `spec.secrets` field of the `Prometheus` custom resource such that the CA secret is mounted into the Prometheus pod at `config.metrics.secureMode.tls.caMountDirectory` (assuming you are using the Prometheus operator). See the link:{eck_github}/tree/{eck_release_branch}/deploy/eck-operator/values.yaml[ECK Helm Chart values file] for more information.
+    ** Set `config.metrics.secureMode.tls.insecureSkipVerify` to `false` to enable TLS validation.
+    ** Set `config.metrics.secureMode.tls.caSecret` to the name of an existing Kubernetes secret within the Prometheus namespace that contains the CA in PEM format.
+    ** Set the `spec.secrets` field of the `Prometheus` custom resource such that the CA secret is mounted into the Prometheus pod at `config.metrics.secureMode.tls.caMountDirectory` (assuming you are using the Prometheus operator). See the link:{eck_github}/tree/{eck_release_branch}/deploy/eck-operator/values.yaml[ECK Helm Chart values file] for more information.
 
 See the <<{p}-prometheus-requirements,prometheus requirements section>> for more information on creating the CA secret.
 
