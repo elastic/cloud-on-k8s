@@ -3815,11 +3815,11 @@ THE SOFTWARE.
 
 --------------------------------------------------------------------------------
 Module  : golang.org/x/crypto
-Version : v0.20.0
-Time    : 2024-02-26T19:05:04Z
+Version : v0.21.0
+Time    : 2024-03-04T18:29:30Z
 Licence : BSD-3-Clause
 
-Contents of probable licence file $GOMODCACHE/golang.org/x/crypto@v0.20.0/LICENSE:
+Contents of probable licence file $GOMODCACHE/golang.org/x/crypto@v0.21.0/LICENSE:
 
 Copyright (c) 2009 The Go Authors. All rights reserved.
 
@@ -15777,11 +15777,11 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 --------------------------------------------------------------------------------
 Module  : golang.org/x/sys
-Version : v0.17.0
-Time    : 2024-02-01T17:02:20Z
+Version : v0.18.0
+Time    : 2024-02-16T13:31:09Z
 Licence : BSD-3-Clause
 
-Contents of probable licence file $GOMODCACHE/golang.org/x/sys@v0.17.0/LICENSE:
+Contents of probable licence file $GOMODCACHE/golang.org/x/sys@v0.18.0/LICENSE:
 
 Copyright (c) 2009 The Go Authors. All rights reserved.
 
@@ -15814,11 +15814,11 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 --------------------------------------------------------------------------------
 Module  : golang.org/x/term
-Version : v0.17.0
-Time    : 2024-02-07T18:19:16Z
+Version : v0.18.0
+Time    : 2024-03-04T17:33:41Z
 Licence : BSD-3-Clause
 
-Contents of probable licence file $GOMODCACHE/golang.org/x/term@v0.17.0/LICENSE:
+Contents of probable licence file $GOMODCACHE/golang.org/x/term@v0.18.0/LICENSE:
 
 Copyright (c) 2009 The Go Authors. All rights reserved.
 
