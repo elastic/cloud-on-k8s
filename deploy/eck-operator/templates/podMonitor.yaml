@@ -1,7 +1,10 @@
 {{- $metricsPort := int (include "eck-operator.metrics.port" .)}}
+{{- if and .Values.config.metrics.secureMode.enabled (eq $metricsPort 0) }}
+{{- fail "config.metrics.port must be greater than 0 when config.metrics.secureMode.enabled is true" }}
+{{- end }}
 {{- if and .Values.podMonitor.enabled (gt $metricsPort 0) }}
 {{- if and .Values.podMonitor.enabled .Values.config.metrics.secureMode.enabled }}
-{{- fail "podMonitor and secureMode are mutually exclusive" }}
+{{- fail "podMonitor and config.metrics.secureMode are mutually exclusive" }}
 {{- end }}
 apiVersion: monitoring.coreos.com/v1
 kind: PodMonitor

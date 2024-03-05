@@ -1,4 +1,4 @@
-{{- if and .Values.config.metrics.secureMode.enabled }}
+{{- if .Values.config.metrics.secureMode.enabled }}
 apiVersion: monitoring.coreos.com/v1
 kind: ServiceMonitor
 metadata:

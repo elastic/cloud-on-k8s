@@ -11,7 +11,7 @@ data:
     {{- $metricsPort := int (include "eck-operator.metrics.port" .)}}
     log-verbosity: {{ int .Values.config.logVerbosity }}
     {{- if and .Values.config.metrics.secureMode.enabled (eq $metricsPort 0) }}
-    {{- fail "metricsPort must be greater than 0 when enableSecureMetrics is true" }}
+    {{- fail "config.metrics.port must be greater than 0 when config.metrics.secureMode.enabled is true" }}
     {{- end }}
     {{- if .Values.config.metrics.secureMode.enabled }}
     metrics-port: {{ add $metricsPort 1 }}

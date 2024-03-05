@@ -291,7 +291,7 @@ config:
 podMonitor:
 
   # enabled determines whether a podMonitor should deployed to scrape the eck metrics.
-  # This requires the prometheus operator and the config.metricsPort not to be 0
+  # This requires the prometheus operator and the config.metrics.port not to be 0
   enabled: false
 
   # labels adds additional labels to the podMonitor
