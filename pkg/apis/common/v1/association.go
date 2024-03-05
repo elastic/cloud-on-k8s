@@ -175,7 +175,7 @@ type Association interface {
 	AssociationConf() (*AssociationConf, error)
 	SetAssociationConf(*AssociationConf)
 
-	// SupportsAuthAPIKey returns true if the Association supports authenticating with an api key
+	// SupportsAuthAPIKey returns true if the Association supports authenticating with an API key
 	SupportsAuthAPIKey() bool
 
 	// AssociationID uniquely identifies this Association among all Associations of the same type belonging to Associated()

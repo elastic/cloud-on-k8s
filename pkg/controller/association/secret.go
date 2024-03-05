@@ -33,8 +33,8 @@ const (
 	authUsernameUnmanagedSecretKey = "username"
 	// authPasswordUnmanagedSecretKey is the name of the key for the password when using a secret to reference an unmanaged resource
 	authPasswordUnmanagedSecretKey = "password"
-	// authAPIKeyUnmanagedSecretKey is the name of the key for the apiKey when using a secret to reference an unmanaged resource
-	authAPIKeyUnmanagedSecretKey = "apikey"
+	// authAPIKeyUnmanagedSecretKey is the name of the key for the API key when using a secret to reference an unmanaged resource
+	authAPIKeyUnmanagedSecretKey = "api-key"
 )
 
 const (

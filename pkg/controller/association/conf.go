@@ -85,7 +85,7 @@ func ElasticsearchAuthSettings(ctx context.Context, c k8s.Client, assoc commonv1
 		return Credentials{}, nil
 	}
 	if assocConf.IsAPIKey && !assoc.SupportsAuthAPIKey() {
-		return Credentials{}, errors.New("auth api key is not supported for this association type")
+		return Credentials{}, errors.New("API key-based authentication is not supported for this association type")
 	}
 
 	// get the auth secret
