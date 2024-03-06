@@ -1,14 +1,21 @@
-## @section Elasticsearch connection parameters
-## @param elasticsearch.host [default: ""] Elasticsearch host
-## @param elasticsearch.user [default: ""] Elasticsearch username
-## @param elasticsearch.pass [default: ""] Elasticsearch password
-## @param elasticsearch.apiKey [default: ""] Elasticsearch access key
-## You may specify an access key instead of username and password
-elasticsearch:
-  host: ""
-  user: ""
-  pass: ""
-  apiKey: ""
+## @section elasticsearchRef define outputs of elasticsearch type and connection parameters
+elasticsearchRefs:
+  ## the key is the outputName
+  ## @param elasticsearchRefs.outputNameΧ.namespace [optional]
+  ## @param elasticsearchRefs.outputNameΧ.name
+  ##        The name associating an Elastic resource not managed by the ECK operator.
+  ## @param elasticsearchRefs.outputNameΧ.secretName
+  ##        secretName is the name of an existing Kubernetes secret that contains connection information for associating
+  ##        an Elastic resource not managed by the eck-operator. The referenced secret must contain the following:
+  ##        - `url`: the URL to reach the Elastic resource.
+  ##        - `username`: the username of the user to be authenticated to the Elastic resource.
+  ##        - `password`: the password of the user to be authenticated to the Elastic resource.
+  ##        - `ca.crt`: the CA certificate in PEM format (optional).
+  ##        - `api-key`: the key to authenticate against the Elastic resource instead of a username and password
+  ##                     (supported only for `elasticsearchRefs` in AgentSpec).
+  ##        This field cannot be used in combination with the other fields name, namespace or serviceName.
+  default: {}
+
 
 ## @section Kubernetes integration parameters
 ## ref: https://www.elastic.co/guide/en/beats/metricbeat/8.11/metricbeat-module-kubernetes.html
@@ -21,6 +28,9 @@ kubernetes:
   ## @param kubernetes.version [default: 1.51.0] Kubernetes integration version
   ##
   version: 1.56.0
+  ## @param kubernetes.output [default: default] output name used for kubernetes integration
+  ##
+  output: default
   ## @param kubernetes.namespace [default: default] Kubernetes namespace
   ##
   namespace: default

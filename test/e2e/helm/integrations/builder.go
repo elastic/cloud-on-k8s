@@ -71,27 +71,7 @@ func (i chartBuilder) CheckStackTestSteps(k *test.K8sClient) test.StepList {
 		{
 			Name: "Eck Integrations Helm Chart should install",
 			Test: func(t *testing.T) {
-
-				esRef := commonv1.ObjectSelector{
-					Name:      i.elasticSearch.Name,
-					Namespace: i.elasticSearch.Namespace,
-				}
-
-				password, err := k.GetElasticPassword(esRef.NamespacedName())
-				require.NoError(t, err)
-
-				serviceName := esRef.Name + "-es-http"
-				svc, err := k.GetService(esRef.Namespace, serviceName)
-				require.NoError(t, err)
-
-				servicePort := svc.Spec.Ports[0]
-
-				i.values["elasticsearch"] = map[string]interface{}{
-					"host": fmt.Sprintf("http://%s:%d", svc.Spec.ClusterIP, servicePort.Port),
-					"user": "elastic",
-					"pass": password,
-				}
-
+				var err error
 				i.esClient, err = elasticsearch.NewElasticsearchClient(i.elasticSearch, k)
 				require.NoError(t, err)
 

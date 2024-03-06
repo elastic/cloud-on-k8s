@@ -1,5 +1,7 @@
+{{- if $.Values.eck_agent.enabled -}}
 {{- include "elasticagent.daemonset" $ -}}
 {{- if $.Values.eck_agent.daemonset.enabled }}
+{{- include "elasticagent.outputs" $ -}}
 ---
 apiVersion: agent.k8s.elastic.co/v1alpha1
 kind: Agent
@@ -16,6 +18,8 @@ spec:
   version: {{ required "An Elastic Agent version is required" .Values.eck_agent.version }}
   configRef:
     secretName: eck-agent-daemonset
+  elasticsearchRefs:
+    {{ toYaml .Values.elasticsearchRefs._internal | nindent 4 }}
   daemonSet:
     podTemplate:
       metadata:
@@ -151,4 +155,5 @@ spec:
           hostPath:
             path: /sys/kernel/security
         {{- end}}
+{{- end -}}
 {{- end -}}

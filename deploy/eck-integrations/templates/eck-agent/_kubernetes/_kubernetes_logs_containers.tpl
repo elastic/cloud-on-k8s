@@ -10,7 +10,7 @@ Config input for container logs
   type: filestream
   data_stream:
     namespace: {{ .Values.kubernetes.namespace }}
-  use_output: default
+  use_output: {{ .Values.kubernetes.output }}
   streams:
   - id: kubernetes-container-logs-${kubernetes.pod.name}-${kubernetes.container.id}
     data_stream:

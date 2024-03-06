@@ -1,5 +1,7 @@
+{{- if $.Values.eck_agent.enabled -}}
 {{- include "elasticagent.deployment" $ -}}
 {{- if $.Values.eck_agent.deployment.enabled }}
+{{- include "elasticagent.outputs" $ -}}
 ---
 apiVersion: agent.k8s.elastic.co/v1alpha1
 kind: Agent
@@ -16,6 +18,8 @@ spec:
   version: {{ required "An Elastic Agent version is required" .Values.eck_agent.version }}
   configRef:
     secretName: eck-agent-deployment
+  elasticsearchRefs:
+    {{ toYaml .Values.elasticsearchRefs._internal | nindent 4 }}
   deployment:
     podTemplate:
       metadata:
@@ -82,4 +86,5 @@ spec:
             value: "/etc/elastic-agent"
           - name: ELASTIC_NETINFO
             value: {{ .Values.eck_agent.netinfo | quote }}
+{{- end -}}
 {{- end -}}

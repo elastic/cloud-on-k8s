@@ -10,7 +10,7 @@ Config input for kube audit_logs_filestream
   type: filestream
   data_stream:
     namespace: {{.Values.kubernetes.namespace}}
-  use_output: default
+  use_output: {{ .Values.kubernetes.output }}
   streams:
   - id: filestream-kubernetes.audit_logs
     data_stream:

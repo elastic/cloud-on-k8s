@@ -11,7 +11,7 @@ Config input for kube apiserver
   type: kubernetes/metrics
   data_stream:
       namespace: {{ .Values.kubernetes.namespace }}
-  use_output: default
+  use_output: {{ .Values.kubernetes.output }}
   streams:
   - id: kubernetes/metrics-kubernetes.apiserver
     data_stream:

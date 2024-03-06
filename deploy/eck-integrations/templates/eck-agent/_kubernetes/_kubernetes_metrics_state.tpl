@@ -50,7 +50,7 @@ enabled: true
   type: kubernetes/metrics
   data_stream:
       namespace: {{ .Values.kubernetes.namespace }}
-  use_output: default
+  use_output: {{ .Values.kubernetes.output }}
   streams:
 {{- if default false .Values.kubernetes.containers.state.enabled }}
   - id: kubernetes/metrics-kubernetes.state_container

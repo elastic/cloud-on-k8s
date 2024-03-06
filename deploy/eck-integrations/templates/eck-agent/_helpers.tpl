@@ -50,28 +50,31 @@ app.kubernetes.io/name: {{ include "elasticagent.name" . }}
 app.kubernetes.io/instance: {{ .Release.Name }}
 {{- end }}
 
-{{- define "elasticagent.elasticOutput" -}}
-{{- $host := trim .Values.elasticsearch.host -}}
-{{- $_ := required "Specifying an elastic search host is required!" $host }}
-default:
-  type: elasticsearch
-  hosts:
-    - {{ $host | quote }}
-{{- $found := "" -}}
-{{- $user := trim .Values.elasticsearch.user -}}
-{{- $pass := trim .Values.elasticsearch.pass -}}
-{{- if and $user $pass -}}
-{{- $found = "true" }}
-  username: {{ $user | quote  }}
-  password: {{ $pass | quote  }}
+{{- define "elasticagent.outputs" -}}
+{{- if not .Values.elasticsearchRefs -}}
+{{- fail "no outputs defined" -}}
 {{- end -}}
-{{ $apiKey := trim .Values.elasticsearch.apiKey -}}
-{{- if and (empty $found) $apiKey -}}
-{{- $found = "true" }}
-  api_key: {{ .Values.elasticsearch.apiKey | quote  }}
+{{- if not (hasKey .Values.elasticsearchRefs "_internal") -}}
+{{- $outputs := list -}}
+{{- $emptyList := true -}}
+{{- range $outputName, $esRef := .Values.elasticsearchRefs -}}
+{{- $outputDict := deepCopy $esRef -}}
+{{- if and (not (hasKey $outputDict "secretName")) (not (hasKey $outputDict "name")) -}}
+{{- fail (printf "either a \"secretName\" or \"name\" has to be specified for output \"%s\"" $outputName) -}}
 {{- end -}}
-{{- $_ := required "Specifying either user,pass or api_key for elastic search is required!" $found -}}
-{{- end }}
+{{- $_ := set $outputDict "outputName" $outputName -}}
+{{- $outputs = append $outputs $outputDict -}}
+{{- $emptyList = false -}}
+{{- end -}}
+{{- if $emptyList -}}
+{{- fail "no outputs found" -}}
+{{- end -}}
+{{- $_ := set .Values.elasticsearchRefs "_internal" $outputs -}}
+{{- if and .Values.kubernetes.enabled (not (hasKey .Values.elasticsearchRefs .Values.kubernetes.output)) -}}
+{{- fail "kubernetes output not defined" -}}
+{{- end -}}
+{{- end -}}
+{{- end -}}
 
 {{- define "elasticagent.deployment" -}}
 {{- if not (hasKey $.Values.eck_agent "deployment") -}}

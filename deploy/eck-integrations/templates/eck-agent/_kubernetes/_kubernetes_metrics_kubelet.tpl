@@ -31,7 +31,7 @@ Config input for kubelet metrics
   type: kubernetes/metrics
   data_stream:
       namespace: {{ .Values.kubernetes.namespace }}
-  use_output: default
+  use_output: {{ .Values.kubernetes.output }}
   streams:
 {{- if default false .Values.kubernetes.containers.metrics.enabled }}
   - id: kubernetes/metrics-kubernetes.container

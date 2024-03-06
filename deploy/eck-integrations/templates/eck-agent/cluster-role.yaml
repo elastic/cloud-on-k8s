@@ -1,3 +1,4 @@
+{{- if $.Values.eck_agent.enabled -}}
 {{- include "elasticagent.daemonset" $ -}}
 {{- if $.Values.eck_agent.daemonset.enabled}}
 apiVersion: rbac.authorization.k8s.io/v1
@@ -265,4 +266,5 @@ rules:
       - list
       - watch
 
+{{- end -}}
 {{- end }}
