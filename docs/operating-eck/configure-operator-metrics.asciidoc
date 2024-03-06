@@ -21,7 +21,7 @@ NOTE: The ECK operator metrics endpoint will be secured by default beginning in 
 
 The metrics endpoint is not enabled by default. To enable the metrics endpoint, follow the instructions in the next sections depending on whether you installed ECK through the Helm chart or the manifests.
 
-=== Using the operator Helm Chart
+=== Using the operator Helm chart
 
 If you installed ECK through the Helm chart commands listed in <<{p}-install-helm>>, you can now set  `config.metrics.port` to a value greater than 0 in your values file and the metrics endpoint will be enabled.
 
@@ -95,7 +95,7 @@ EOF
 kubectl delete pod -n elastic-system elastic-operator-0
 ----
 
-* If using the Prometheus Operator, install a `PodMonitor` to allow scraping of the metrics endpoint by Prometheus.
+* If using the Prometheus operator, install a `PodMonitor` to allow scraping of the metrics endpoint by Prometheus.
 
 [source,shell,subs="attributes,+macros"]
 ----
@@ -134,7 +134,7 @@ The ECK operator provides a metrics endpoint that can be used to monitor the ope
 
 If you installed ECK through the Helm chart commands listed in <<{p}-install-helm>>, you can now set `config.metrics.secureMode.enabled` to `true` and both RBAC and TLS/HTTPs will be enabled for the metrics endpoint.
 
-==== Using your own TLS certificate for the metrics endpoint when using the Helm Chart
+==== Using your own TLS certificate for the metrics endpoint when using the Helm chart
 
 By default a self-signed certificate will be generated for use by the metrics endpoint. If you want to use your own TLS certificate for the metrics endpoint you can provide the `config.metrics.secureMode.tls.certificateSecret` to the Helm chart. The `certificateSecret` should be the name of an existing Kubernetes `Secret` that contains both the TLS certificate and the TLS private key. The following keys are supported within the secret:
 
@@ -155,7 +155,7 @@ Providing this secret is sufficient to use your own certificate if it is from a 
 * Provide the Certificate Authority to Prometheus.
     ** Set `config.metrics.secureMode.tls.insecureSkipVerify` to `false` to enable TLS validation.
     ** Set `config.metrics.secureMode.tls.caSecret` to the name of an existing Kubernetes secret within the Prometheus namespace that contains the CA in PEM format.
-    ** Set the `spec.secrets` field of the `Prometheus` custom resource such that the CA secret is mounted into the Prometheus pod at `config.metrics.secureMode.tls.caMountDirectory` (assuming you are using the Prometheus operator). See the link:{eck_github}/tree/{eck_release_branch}/deploy/eck-operator/values.yaml[ECK Helm Chart values file] for more information.
+    ** Set the `spec.secrets` field of the `Prometheus` custom resource such that the CA secret is mounted into the Prometheus pod at `config.metrics.secureMode.tls.caMountDirectory` (assuming you are using the Prometheus operator). See the link:{eck_github}/tree/{eck_release_branch}/deploy/eck-operator/values.yaml[ECK Helm chart values file] for more information.
 
 See the <<{p}-prometheus-requirements,prometheus requirements section>> for more information on creating the CA secret.
 
@@ -299,7 +299,7 @@ spec:
 EOF
 ----
 
-* Add a `ServiceMonitor` to allow scraping of the metrics endpoint by Prometheus.
+* If using the Prometheus operator, add a `ServiceMonitor` to allow scraping of the metrics endpoint by Prometheus.
 
 [source,shell,subs="attributes,+macros"]
 ----
@@ -440,9 +440,9 @@ rules:
   - get
 ----
 
-=== Optional Prometheus Operator Helm settings to allow reading PodMonitor and ServiceMonitor across namespaces
+=== Optional Prometheus operator Helm settings to allow reading PodMonitor and ServiceMonitor across namespaces
 
-* If using the Prometheus Operator and your Prometheus instance is not in the same namespace as the ECK operator you will need the Prometheus Operator configured with the following Helm values:
+* If using the Prometheus operator and your Prometheus instance is not in the same namespace as the ECK operator you will need the Prometheus operator configured with the following Helm values:
 
 [source,yaml,subs="attributes"]
 ----
@@ -469,4 +469,4 @@ kubectl create secret generic eck-metrics-tls-ca -n monitoring --from-file=ca.cr
 
 * Ensure that the CA secret is mounted within the Prometheus Pod.
 
-This will vary between Prometheus installations, but if using the Prometheus Operator you can set the `spec.secrets` field of the `Prometheus` custom resource to the name of the previously created Kubernetes Secret. See the link:{eck_github}/tree/{eck_release_branch}/deploy/eck-operator/values.yaml[ECK Helm Chart values file] for more information.
+This will vary between Prometheus installations, but if using the Prometheus operator you can set the `spec.secrets` field of the `Prometheus` custom resource to the name of the previously created Kubernetes Secret. See the link:{eck_github}/tree/{eck_release_branch}/deploy/eck-operator/values.yaml[ECK Helm chart values file] for more information.
