@@ -261,7 +261,7 @@ func (e *EKSDriver) Cleanup(prefix string, olderThan time.Duration) error {
 		return err
 	}
 
-	describeClusterCmd := `aws eks describe-cluster --name "{{.ClusterName}}" --region "{{.Region}}" | jq -r --arg d "{{.Date}}" 'map(select(.cluster.createdAt | . <= $d))|.[].cluster.name'`
+	describeClusterCmd := `aws eks describe-cluster --name "{{.ClusterName}}" --region "{{.Region}}" | jq -r --arg d "{{.Date}}" 'select(.cluster.createdAt | . <= $d) | .cluster.name'`
 
 	for _, cluster := range allClusters {
 		e.ctx["ClusterName"] = cluster
