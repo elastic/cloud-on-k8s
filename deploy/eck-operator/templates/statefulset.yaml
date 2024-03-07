@@ -1,5 +1,5 @@
-{{- $metricsPort := int .Values.config.metricsPort -}}
 ---
+{{- $metricsPort := int (include "eck-operator.metrics.port" .)}}
 apiVersion: apps/v1
 kind: StatefulSet
 metadata:
@@ -79,10 +79,10 @@ spec:
           resources:
             {{- toYaml . | nindent 12 }}
           {{- end }}
-          {{- if or (gt $metricsPort 0) .Values.webhook.enabled }}
+          {{- if or .Values.webhook.enabled (gt $metricsPort 0) }}
           ports:
-            {{- if (gt $metricsPort 0) }}
-            - containerPort: {{ .Values.config.metricsPort }}
+            {{- if and (gt $metricsPort 0) (not .Values.config.metrics.secureMode.enabled) }}
+            - containerPort: {{ $metricsPort }}
               name: metrics
               protocol: TCP
             {{- end }}
@@ -104,6 +104,41 @@ spec:
             {{- with .Values.volumeMounts }}
               {{- toYaml . | nindent 12 }}
             {{- end }}
+        {{- if .Values.config.metrics.secureMode.enabled }}
+        - name: kube-rbac-proxy
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+                - "ALL"
+          image: gcr.io/kubebuilder/kube-rbac-proxy:v0.15.0
+          args:
+          - "--secure-listen-address=0.0.0.0:{{ $metricsPort }}"
+          - "--upstream=http://127.0.0.1:{{ add $metricsPort 1 }}/"
+          - "--logtostderr=true"
+          - "--v=0"
+          {{- if .Values.config.metrics.secureMode.tls.certificateSecret }}
+          - "--tls-cert-file=/tls/tls.crt"
+          - "--tls-private-key-file=/tls/tls.key"
+          {{- end }}
+          {{- if .Values.config.metrics.secureMode.tls.certificateSecret }}
+          volumeMounts:
+          - mountPath: "/tls"
+            name: tls-certificate
+            readOnly: true
+          {{- end }}
+          ports:
+          - containerPort: {{ $metricsPort }}
+            protocol: TCP
+            name: metrics
+          resources:
+            limits:
+              cpu: 500m
+              memory: 128Mi
+            requests:
+              cpu: 5m
+              memory: 64Mi
+        {{- end }}
       volumes:
         - name: conf
           configMap:
@@ -113,6 +148,12 @@ spec:
           secret:
             defaultMode: 420
             secretName: {{ include "eck-operator.webhookSecretName" . }}
+        {{- end }}
+        {{- if .Values.config.metrics.secureMode.tls.certificateSecret }}
+        - name: tls-certificate
+          secret:
+            defaultMode: 420
+            secretName: {{ .Values.config.metrics.secureMode.tls.certificateSecret  }}
         {{- end }}
         {{- with .Values.volumes }}
           {{- toYaml . | nindent 8 }}

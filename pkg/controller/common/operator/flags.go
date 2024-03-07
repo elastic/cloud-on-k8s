@@ -33,6 +33,7 @@ const (
 	ManageWebhookCertsFlag               = "manage-webhook-certs"
 	MaxConcurrentReconcilesFlag          = "max-concurrent-reconciles"
 	MetricsPortFlag                      = "metrics-port"
+	MetricsHostFlag                      = "metrics-host"
 	NamespacesFlag                       = "namespaces"
 	OperatorNamespaceFlag                = "operator-namespace"
 	SetDefaultSecurityContextFlag        = "set-default-security-context"
