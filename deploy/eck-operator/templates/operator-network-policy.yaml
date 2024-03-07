@@ -1,6 +1,6 @@
 {{- if .Values.softMultiTenancy.enabled -}}
 {{- $kubeAPIServerIP := (required "kubeAPIServerIP is required" .Values.kubeAPIServerIP) -}}
-{{- $metricsPort := int .Values.config.metricsPort -}}
+{{- $metricsPort := int (include "eck-operator.metrics.port" .)}}
 ---
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy

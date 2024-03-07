@@ -1,0 +1,31 @@
+{{- if .Values.config.metrics.secureMode.enabled }}
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: {{ include "eck-operator.fullname" . }}
+  namespace: {{ ternary .Values.serviceMonitor.namespace .Release.Namespace (not (and (.Values.serviceMonitor) (empty .Values.serviceMonitor.namespace))) }}
+  labels: {{- include "eck-operator.labels" . | nindent 4 }}
+spec:
+  namespaceSelector:
+    matchNames:
+      - {{ .Release.Namespace }}
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: {{ include "eck-operator.name" . }}-metrics-service
+      app.kubernetes.io/instance: {{ .Release.Name }}
+  endpoints:
+  - port: https
+    path: /metrics
+    scheme: https
+    interval: 30s
+    tlsConfig:
+      insecureSkipVerify: {{ .Values.config.metrics.secureMode.tls.insecureSkipVerify | default false }}
+      {{- if (not .Values.config.metrics.secureMode.tls.insecureSkipVerify) }}
+      {{- with .Values.config.metrics.secureMode.tls.caSecret }}
+      {{- $leading_path := trimSuffix "/" .Values.config.metrics.secureMode.tls.caMountDirectory }}
+      caFile: "{{ $leading_path }}/{{ . }}/ca.crt"
+      {{- end }}
+      serverName: "{{ include "eck-operator.fullname" . }}-metrics.{{ .Release.Namespace }}.svc"
+      {{- end }}
+    bearerTokenFile: /var/run/secrets/kubernetes.io/serviceaccount/token
+{{- end }}
