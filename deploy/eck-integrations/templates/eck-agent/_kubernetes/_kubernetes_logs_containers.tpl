@@ -1,11 +1,16 @@
-{{- define "agent.kubernetes.config.container_logs.enabled" -}}
-enabled: {{ .Values.kubernetes.containers.logs.enabled }}
+{{- define "elasticagent.kubernetes.config.container_logs.init" -}}
+{{- if eq $.Values.kubernetes.containers.logs.enabled true -}}
+{{- $preset := $.Values.eck_agent.presets.perNode -}}
+{{- $inputVal := (include "elasticagent.kubernetes.config.container_logs.input" $ | fromYamlArray) -}}
+{{- include "elasticagent.preset.mutate.inputs" (list $ $preset $inputVal) -}}
+{{- include "elasticagent.preset.applyOnce" (list $ $preset "elasticagent.kubernetes.pernode.preset") -}}
+{{- end -}}
 {{- end -}}
 
 {{/*
 Config input for container logs
 */}}
-{{- define "agent.kubernetes.config.container_logs.input" -}}
+{{- define "elasticagent.kubernetes.config.container_logs.input" -}}
 - id: filestream-container-logs
   type: filestream
   data_stream:

@@ -1,24 +1,29 @@
-{{- define "agent.kubernetes.config.kube_controller.enabled" -}}
-enabled: {{ .Values.kubernetes.controller_manager.enabled }}
+{{- define "elasticagent.kubernetes.config.kube_controller.init" -}}
+{{- if eq $.Values.kubernetes.controller_manager.enabled true -}}
+{{- $preset := $.Values.eck_agent.presets.perNode -}}
+{{- $inputVal := (include "elasticagent.kubernetes.config.kube_controller.input" $ | fromYamlArray) -}}
+{{- include "elasticagent.preset.mutate.inputs" (list $ $preset $inputVal) -}}
+{{- include "elasticagent.preset.applyOnce" (list $ $preset "elasticagent.kubernetes.pernode.preset") -}}
+{{- end -}}
 {{- end -}}
 
 {{/*
 Config input for kube_controllermanage
 */}}
-{{- define "agent.kubernetes.config.kube_controller.input" -}}
-{{- $vars := (include "agent.kubernetes.config.kube_controller.default_vars" .) | fromYaml -}}
+{{- define "elasticagent.kubernetes.config.kube_controller.input" -}}
 - id: kubernetes/metrics-kube-controllermanager
   type: kubernetes/metrics
   data_stream:
     namespace: {{ .Values.kubernetes.namespace }}
   use_output: {{ .Values.kubernetes.output }}
   streams:
-    - id: kubernetes/metrics-kubernetes.controllermanager
-      data_stream:
-        type: metrics
-        dataset: kubernetes.controllermanager
-      metricsets:
-        - controllermanager
+  - id: kubernetes/metrics-kubernetes.controllermanager
+    data_stream:
+      type: metrics
+      dataset: kubernetes.controllermanager
+    metricsets:
+      - controllermanager
+{{- $vars := (include "elasticagent.kubernetes.config.kube_controller.default_vars" .) | fromYaml -}}
 {{- mergeOverwrite $vars .Values.kubernetes.controller_manager.vars | toYaml | nindent 4 }}
   meta:
     package:
@@ -30,7 +35,7 @@ Config input for kube_controllermanage
 {{/*
 Defaults for kube_controller input streams
 */}}
-{{- define "agent.kubernetes.config.kube_controller.default_vars" -}}
+{{- define "elasticagent.kubernetes.config.kube_controller.default_vars" -}}
 hosts:
  - "https://0.0.0.0:10257"
 period: "10s"

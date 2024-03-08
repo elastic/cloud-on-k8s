@@ -37,11 +37,10 @@ func TestDefaultKubernetes(t *testing.T) {
 		"eck_agent": map[string]interface{}{
 			"version": stackVersion,
 		},
-		"elasticsearchRefs": []any{
-			map[string]interface{}{
-				"name":       esBuilder.Name(),
-				"outputName": "default",
-				"namespace":  namespace,
+		"elasticsearchRefs": map[string]interface{}{
+			"default": map[string]interface{}{
+				"name":      esBuilder.Name(),
+				"namespace": namespace,
 			},
 		},
 	})

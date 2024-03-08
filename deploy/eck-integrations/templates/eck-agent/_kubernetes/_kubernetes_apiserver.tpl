@@ -1,17 +1,21 @@
-{{- define "agent.kubernetes.config.kube_apiserver.enabled" -}}
-enabled: {{ .Values.kubernetes.apiserver.enabled }}
+{{- define "elasticagent.kubernetes.config.kube_apiserver.init" -}}
+{{- if $.Values.kubernetes.apiserver.enabled}}
+{{- $preset := $.Values.eck_agent.presets.clusterWide -}}
+{{- $inputVal := (include "elasticagent.kubernetes.config.kube_apiserver.input" $ | fromYamlArray) -}}
+{{- include "elasticagent.preset.mutate.inputs" (list $ $preset $inputVal) -}}
+{{- include "elasticagent.preset.applyOnce" (list $ $preset "elasticagent.kubernetes.clusterwide.preset") -}}
+{{- end -}}
 {{- end -}}
 
 {{/*
 Config input for kube apiserver
 */}}
-{{- define "agent.kubernetes.config.kube_apiserver.input" -}}
-{{- $vars := (include "agent.kubernetes.config.kube_apiserver.default_vars" .) | fromYaml -}}
+{{- define "elasticagent.kubernetes.config.kube_apiserver.input" -}}
 - id: kubernetes/kubernetes/metrics-kube-apiserver
   type: kubernetes/metrics
   data_stream:
-      namespace: {{ .Values.kubernetes.namespace }}
-  use_output: {{ .Values.kubernetes.output }}
+      namespace: {{ $.Values.kubernetes.namespace }}
+  use_output: {{ $.Values.kubernetes.output }}
   streams:
   - id: kubernetes/metrics-kubernetes.apiserver
     data_stream:
@@ -19,7 +23,8 @@ Config input for kube apiserver
         dataset: kubernetes.apiserver
     metricsets:
         - apiserver
-{{- mergeOverwrite $vars .Values.kubernetes.apiserver.vars | toYaml | nindent 4 }}
+{{- $vars := (include "elasticagent.kubernetes.config.kube_apiserver.default_vars" .) | fromYaml -}}
+{{- mergeOverwrite $vars $.Values.kubernetes.apiserver.vars | toYaml | nindent 4 }}
   meta:
     package:
       name: kubernetes
@@ -30,7 +35,7 @@ Config input for kube apiserver
 {{/*
 Defaults for kube_apiserver input streams
 */}}
-{{- define "agent.kubernetes.config.kube_apiserver.default_vars" -}}
+{{- define "elasticagent.kubernetes.config.kube_apiserver.default_vars" -}}
 hosts:
 - 'https://${env.KUBERNETES_SERVICE_HOST}:${env.KUBERNETES_SERVICE_PORT}'
 period: "30s"

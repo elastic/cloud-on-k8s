@@ -242,7 +242,6 @@ func deleteTestResources(ctx context.Context) error {
 			return fmt.Errorf("while listing all secrets in namespace %s: %w", namespace, err)
 		}
 		for _, secret := range list.Items {
-
 			secretName := secret.GetName()
 			if strings.HasPrefix(secretName, "sh.helm.release") {
 				helmReleaseTokes := strings.Split(secretName, ".")

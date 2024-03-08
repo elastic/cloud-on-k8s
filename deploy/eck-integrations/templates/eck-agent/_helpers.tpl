@@ -37,9 +37,6 @@ Common labels
 helm.sh/chart: {{ include "elasticagent.chart" . }}
 {{ include "elasticagent.selectorLabels" . }}
 app.kubernetes.io/managed-by: {{ .Release.Service }}
-{{- if .Values.labels }}
-{{ toYaml .Values.labels }}
-{{- end }}
 {{- end }}
 
 {{/*
@@ -50,7 +47,7 @@ app.kubernetes.io/name: {{ include "elasticagent.name" . }}
 app.kubernetes.io/instance: {{ .Release.Name }}
 {{- end }}
 
-{{- define "elasticagent.outputs" -}}
+{{- define "elasticagent.outputs.init" -}}
 {{- if not .Values.elasticsearchRefs -}}
 {{- fail "no outputs defined" -}}
 {{- end -}}
@@ -76,63 +73,145 @@ app.kubernetes.io/instance: {{ .Release.Name }}
 {{- end -}}
 {{- end -}}
 
-{{- define "elasticagent.deployment" -}}
-{{- if not (hasKey $.Values.eck_agent "deployment") -}}
-{{- $_ := set .Values.eck_agent "deployment" dict -}}
-{{- $configsToCheck := (list) -}}
-{{- if .Values.kubernetes.enabled -}}
-{{- $configsToCheck = append $configsToCheck "agent.kubernetes.config.kube_state" -}}
-{{- $configsToCheck = append $configsToCheck "agent.kubernetes.config.kube_apiserver" -}}
+{{- define "elasticagent.preset.applyOnce" -}}
+{{- $ := index . 0 -}}
+{{- $preset := index . 1 -}}
+{{- $templateName := index . 2 -}}
+{{- if not (hasKey $preset "_appliedMutationTemplates") -}}
+{{- $_ := set $preset "_appliedMutationTemplates" dict }}
 {{- end -}}
-{{- $enabledConfigs := (list) -}}
-{{- range $configTmplName := $configsToCheck -}}
-{{- $tplName := print $configTmplName ".enabled" -}}
-{{- $inputConfig := (include $tplName $ | fromYaml) -}}
-{{- if $inputConfig.enabled -}}
-{{- $enabledConfigs = append $enabledConfigs $configTmplName }}
-{{- end -}}
-{{- end -}}
-{{- if empty $enabledConfigs -}}
-{{- $_ := set .Values.eck_agent.deployment "enabled" false -}}
-{{- $_ := set .Values.eck_agent.deployment "enabled_configs" list -}}
-{{- else -}}
-{{- $_ := set .Values.eck_agent.deployment "enabled" true -}}
-{{- $_ := set .Values.eck_agent.deployment "enabled_configs" $enabledConfigs -}}
-{{- end -}}
+{{- $appliedMutationTemplates := get $preset "_appliedMutationTemplates" -}}
+{{- if not (hasKey $appliedMutationTemplates $templateName) -}}
+{{- include $templateName $ -}}
+{{- $_ := set $appliedMutationTemplates $templateName dict}}
 {{- end -}}
 {{- end -}}
 
+{{- define "elasticagent.preset.mutate.inputs" -}}
+{{- $ := index . 0 -}}
+{{- $preset := index . 1 -}}
+{{- $inputVal := index . 2 -}}
+{{- $presetInputs := dig "_inputs" (list) $preset -}}
+{{- $presetInputs = uniq (concat $presetInputs $inputVal) -}}
+{{- $_ := set $preset "_inputs" $presetInputs -}}
+{{- end -}}
 
-{{- define "elasticagent.daemonset" -}}
-{{- if not (hasKey $.Values.eck_agent "daemonset") -}}
-{{- $_ := set .Values.eck_agent "daemonset" dict -}}
-{{- $configsToCheck := (list) -}}
-{{- if .Values.kubernetes.enabled -}}
-{{- $configsToCheck = append $configsToCheck "agent.kubernetes.config.hints" -}}
-{{- $configsToCheck = append $configsToCheck "agent.kubernetes.config.kube_controller" -}}
-{{- $configsToCheck = append $configsToCheck "agent.kubernetes.config.kube_scheduler" -}}
-{{- $configsToCheck = append $configsToCheck "agent.kubernetes.config.audit_logs" -}}
-{{- $configsToCheck = append $configsToCheck "agent.kubernetes.config.container_logs" -}}
-{{- $configsToCheck = append $configsToCheck "agent.kubernetes.config.kubelet" -}}
-{{- $configsToCheck = append $configsToCheck "agent.kubernetes.config.kube_proxy" -}}
+{{- define "elasticagent.preset.mutate.securityContext.capabilities.add" -}}
+{{- $ := index . 0 -}}
+{{- $preset := index . 1 -}}
+{{- $templateName := index . 2 -}}
+{{- if not (hasKey $preset "securityContext") -}}
+{{- $_ := set $preset "securityContext" dict }}
 {{- end -}}
-{{- if .Values.cloudDefend.enabled -}}
-{{- $configsToCheck = append $configsToCheck "agent.cloud_defend.config" -}}
+{{- $presetSecurityContext := get $preset "securityContext" }}
+{{- if not (hasKey $presetSecurityContext "capabilities") -}}
+{{- $_ := set $presetSecurityContext "capabilities" dict }}
 {{- end -}}
-{{- $enabledConfigs := (list) -}}
-{{- range $configTmplName := $configsToCheck -}}
-{{- $tplName := print $configTmplName ".enabled" -}}
-{{- $inputConfig := (include $tplName $ | fromYaml) -}}
-{{- if $inputConfig.enabled -}}
-{{- $enabledConfigs = append $enabledConfigs $configTmplName }}
+{{- $presetSecurityContextCapabilities := get $presetSecurityContext "capabilities" }}
+{{- if not (hasKey $presetSecurityContextCapabilities "add") -}}
+{{- $_ := set $presetSecurityContextCapabilities "add" list }}
 {{- end -}}
+{{- $presetSecurityContextCapabilitiesAdd := get $presetSecurityContextCapabilities "add" }}
+{{- $capabilitiesAddToAdd := dig "securityContext" "capabilities" "add" (list) (include $templateName $ | fromYaml) -}}
+{{- $presetSecurityContextCapabilitiesAdd = uniq (concat $presetSecurityContextCapabilitiesAdd $capabilitiesAddToAdd) -}}
+{{- $_ := set $presetSecurityContextCapabilities "add" $presetSecurityContextCapabilitiesAdd -}}
 {{- end -}}
-{{- if empty $enabledConfigs -}}
-{{- $_ := set .Values.eck_agent.daemonset "enabled" false -}}
-{{- $_ := set .Values.eck_agent.daemonset "enabled_configs" list -}}
-{{- else -}}
-{{- $_ := set .Values.eck_agent.daemonset "enabled" true -}}
-{{- $_ := set .Values.eck_agent.daemonset "enabled_configs" $enabledConfigs -}}
+
+{{- define "elasticagent.preset.mutate.providers.kubernetes.hints" -}}
+{{- $ := index . 0 -}}
+{{- $preset := index . 1 -}}
+{{- $templateName := index . 2 -}}
+{{- if not (hasKey $preset "providers") -}}
+{{- $_ := set $preset "providers" dict }}
+{{- end -}}
+{{- $presetProviders := get $preset "providers" }}
+{{- if not (hasKey $presetProviders "kubernetes") -}}
+{{- $_ := set $presetProviders "kubernetes" dict }}
+{{- end -}}
+{{- $presetProvidersKubernetes := get $presetProviders "kubernetes" }}
+{{- if not (hasKey $presetProvidersKubernetes "hints") -}}
+{{- $_ := set $presetProvidersKubernetes "hints" dict }}
+{{- end -}}
+{{- $presetProvidersKubernetesHints := get $presetProvidersKubernetes "hints" }}
+{{- $presetProvidersKubernetesHintsToAdd := dig "providers" "kubernetes" "hints" (dict) (include $templateName $ | fromYaml) -}}
+{{- $presetProvidersKubernetesHints = merge $presetProvidersKubernetesHintsToAdd $presetProvidersKubernetesHints -}}
+{{- $_ := set $presetProvidersKubernetes "hints" $presetProvidersKubernetesHints -}}
+{{- end -}}
+
+{{- define "elasticagent.preset.mutate.rules" -}}
+{{- $ := index . 0 -}}
+{{- $preset := index . 1 -}}
+{{- $templateName := index . 2 -}}
+{{- $presetRules := dig "rules" (list) $preset -}}
+{{- $rulesToAdd := get (include $templateName $ | fromYaml) "rules" -}}
+{{- $presetRules = uniq (concat $presetRules $rulesToAdd) -}}
+{{- $_ := set $preset "rules" $presetRules -}}
+{{- end -}}
+
+{{- define "elasticagent.preset.mutate.containers" -}}
+{{- $ := index . 0 -}}
+{{- $preset := index . 1 -}}
+{{- $templateName := index . 2 -}}
+{{- $presetContainers := dig "extraContainers" (list) $preset -}}
+{{- $containersToAdd := get (include $templateName $ | fromYaml) "extraContainers"}}
+{{- $presetContainers = uniq (concat $presetContainers $containersToAdd) -}}
+{{- $_ := set $preset "extraContainers" $presetContainers -}}
+{{- end -}}
+
+{{- define "elasticagent.preset.mutate.initcontainers" -}}
+{{- $ := index . 0 -}}
+{{- $preset := index . 1 -}}
+{{- $templateName := index . 2 -}}
+{{- $presetInitContainers := dig "initContainers" (list) $preset -}}
+{{- $initContainersToAdd := get (include $templateName $ | fromYaml) "initContainers"}}
+{{- $presetInitContainers = uniq (concat $presetInitContainers $initContainersToAdd) -}}
+{{- $_ := set $preset "initContainers" $presetInitContainers -}}
+{{- end -}}
+
+{{- define "elasticagent.preset.mutate.volumes" -}}
+{{- $ := index . 0 -}}
+{{- $preset := index . 1 -}}
+{{- $templateName := index . 2 -}}
+{{- $presetVolumes := dig "extraVolumes" (list) $preset -}}
+{{- $volumesToAdd := get (include $templateName $ | fromYaml) "extraVolumes"}}
+{{- $presetVolumes = uniq (concat $presetVolumes $volumesToAdd) -}}
+{{- $_ := set $preset "extraVolumes" $presetVolumes -}}
+{{- end -}}
+
+{{- define "elasticagent.preset.mutate.volumemounts" -}}
+{{- $ := index . 0 -}}
+{{- $preset := index . 1 -}}
+{{- $templateName := index . 2 -}}
+{{- $presetVolumeMounts := dig "extraVolumeMounts" (list) $preset -}}
+{{- $volumeMountsToAdd := get (include $templateName $ | fromYaml) "extraVolumeMounts"}}
+{{- $presetVolumeMounts = uniq (concat $presetVolumeMounts $volumeMountsToAdd) -}}
+{{- $_ := set $preset "extraVolumeMounts" $presetVolumeMounts -}}
+{{- end -}}
+
+{{- define "elasticagent.preset.init" -}}
+{{- if not (hasKey $.Values.eck_agent "initialised") -}}
+{{- include "elasticagent.outputs.init" $ -}}
+{{- include "elasticagent.kubernetes.init" $ -}}
+{{- include "elasticagent.clouddefend.init" $ -}}
+{{- range $customInputName, $customInputVal := $.Values.customIntegrations -}}
+{{- $customInputPresetName := ($customInputVal).preset -}}
+{{- $_ := required (printf "customInput \"%s\" is missing required preset field" $customInputName) $customInputPresetName }}
+{{- $presetVal := get $.Values.eck_agent.presets $customInputPresetName -}}
+{{- $_ := required (printf "preset with name \"%s\" of customInput \"%s\" not defined" $customInputPresetName $customInputName) $customInputVal }}
+{{- $customInputOuput := dig "use_output" (list) $customInputVal -}}
+{{- if empty $customInputOuput -}}
+{{- fail (printf "output not defined in custom integration \"%s\"" $customInputName)}}
+{{- end -}}
+{{- if not (hasKey $.Values.elasticsearchRefs $customInputOuput) -}}
+{{- fail (printf "output \"%s\" of custom integration \"%s\" is not defined" $customInputOuput $customInputName)}}
+{{- end -}}
+{{- include "elasticagent.preset.mutate.inputs" (list $ $presetVal (list $customInputVal)) -}}
+{{- end -}}
+{{- range $presetName, $presetVal := $.Values.eck_agent.presets -}}
+{{- $presetInputs := dig "_inputs" (list) $presetVal -}}
+{{- if empty $presetInputs -}}
+{{- $_ := unset $.Values.eck_agent.presets $presetName}}
+{{- end -}}
 {{- end -}}
 {{- end -}}
 {{- end -}}

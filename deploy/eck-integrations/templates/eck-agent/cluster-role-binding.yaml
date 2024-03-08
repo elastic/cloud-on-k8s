@@ -1,62 +1,28 @@
 {{- if $.Values.eck_agent.enabled -}}
-{{- include "elasticagent.daemonset" $ -}}
-{{- if $.Values.eck_agent.daemonset.enabled }}
+{{- include "elasticagent.preset.init" $ -}}
+{{- range $presetName, $presetVal := $.Values.eck_agent.presets -}}
+{{- $agentName := printf "agent-%s" (lower $presetName) -}}
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding
 metadata:
-  name: eck-agent
+  name: {{ $agentName }}
   labels:
     {{- include "elasticagent.labels" $ | nindent 4 }}
-    {{- with .labels }}
-    {{- toYaml . | nindent 4 }}
+    {{- with ($presetVal).labels -}}
+    {{ toYaml . | nindent 4 }}
     {{- end }}
-  {{- if or $.Values.eck_agent.annotations .eck_agent.annotations }}
+  {{- with ($presetVal).annotations }}
   annotations:
-    {{- with $.Values.eck_agent.annotations }}
     {{- toYaml . | nindent 4 }}
-    {{- end }}
-    {{- with .annotations }}
-    {{- toYaml . | nindent 4 }}
-    {{- end }}
   {{- end }}
 subjects:
   - kind: ServiceAccount
-    name: eck-agent
-    namespace: {{ .namespace | default $.Release.Namespace | quote }}
+    name: {{ $agentName }}
+    namespace: {{ $.Release.Namespace | quote }}
 roleRef:
   kind: ClusterRole
-  name: eck-agent
+  name: {{ $agentName }}
   apiGroup: rbac.authorization.k8s.io
-{{- end }}
-{{- include "elasticagent.deployment" $ -}}
-{{- if $.Values.eck_agent.deployment.enabled }}
 ---
-apiVersion: rbac.authorization.k8s.io/v1
-kind: ClusterRoleBinding
-metadata:
-  name: eck-agent-deployment
-  labels:
-    {{- include "elasticagent.labels" $ | nindent 4 }}
-    {{- with .labels }}
-    {{- toYaml . | nindent 4 }}
-    {{- end }}
-  {{- if or $.Values.eck_agent.annotations .eck_agent.annotations }}
-  annotations:
-    {{- with $.Values.eck_agent.annotations }}
-    {{- toYaml . | nindent 4 }}
-    {{- end }}
-    {{- with .annotations }}
-    {{- toYaml . | nindent 4 }}
-    {{- end }}
-  {{- end }}
-subjects:
-  - kind: ServiceAccount
-    name: eck-agent-deployment
-    namespace: {{ .namespace | default $.Release.Namespace | quote }}
-roleRef:
-  kind: ClusterRole
-  name: eck-agent-deployment
-  apiGroup: rbac.authorization.k8s.io
-
-{{- end -}}
-{{- end -}}
+{{- end }}
+{{- end }}

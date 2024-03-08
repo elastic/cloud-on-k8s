@@ -1,50 +1,62 @@
 {{/*
 Config input for kubelet metrics
 */}}
-{{- define "agent.kubernetes.config.kube_state.enabled" -}}
-{{- if eq ((.Values.kubernetes.state).enabled) false -}}
-enabled: false
-{{- $_ := set $.Values.kubernetes.containers.state "enabled" false -}}
-{{- $_ := set $.Values.kubernetes.containers.state "enabled" false -}}
-{{- $_ := set $.Values.kubernetes.cronjobs.state "enabled" false -}}
-{{- $_ := set $.Values.kubernetes.daemonsets.state "enabled" false -}}
-{{- $_ := set $.Values.kubernetes.deployments.state "enabled" false -}}
-{{- $_ := set $.Values.kubernetes.jobs.state "enabled" false -}}
-{{- $_ := set $.Values.kubernetes.nodes.state "enabled" false -}}
-{{- $_ := set $.Values.kubernetes.persistentvolumes.state "enabled" false -}}
-{{- $_ := set $.Values.kubernetes.persistentvolumeclaims.state "enabled" false -}}
-{{- $_ := set $.Values.kubernetes.pods.state "enabled" false -}}
-{{- $_ := set $.Values.kubernetes.replicasets.state "enabled" false -}}
-{{- $_ := set $.Values.kubernetes.resourcequotas.state "enabled" false -}}
-{{- $_ := set $.Values.kubernetes.services.state "enabled" false -}}
-{{- $_ := set $.Values.kubernetes.statefulsets.state "enabled" false -}}
-{{- $_ := set $.Values.kubernetes.storageclasses.state "enabled" false -}}
-{{- else -}}
-{{- $enabledInputs := (list) -}}
-{{- $enabledInputs = append $enabledInputs (default false .Values.kubernetes.containers.state.enabled) -}}
-{{- $enabledInputs = append $enabledInputs (default false .Values.kubernetes.cronjobs.state.enabled) -}}
-{{- $enabledInputs = append $enabledInputs (default false .Values.kubernetes.daemonsets.state.enabled) -}}
-{{- $enabledInputs = append $enabledInputs (default false .Values.kubernetes.deployments.state.enabled) -}}
-{{- $enabledInputs = append $enabledInputs (default false .Values.kubernetes.jobs.state.enabled) -}}
-{{- $enabledInputs = append $enabledInputs (default false .Values.kubernetes.nodes.state.enabled) -}}
-{{- $enabledInputs = append $enabledInputs (default false .Values.kubernetes.persistentvolumes.state.enabled) -}}
-{{- $enabledInputs = append $enabledInputs (default false .Values.kubernetes.persistentvolumeclaims.state.enabled) -}}
-{{- $enabledInputs = append $enabledInputs (default false .Values.kubernetes.pods.state.enabled) -}}
-{{- $enabledInputs = append $enabledInputs (default false .Values.kubernetes.replicasets.state.enabled) -}}
-{{- $enabledInputs = append $enabledInputs (default false .Values.kubernetes.resourcequotas.state.enabled) -}}
-{{- $enabledInputs = append $enabledInputs (default false .Values.kubernetes.services.state.enabled) -}}
-{{- $enabledInputs = append $enabledInputs (default false .Values.kubernetes.statefulsets.state.enabled) -}}
-{{- $enabledInputs = append $enabledInputs (default false .Values.kubernetes.storageclasses.state.enabled) -}}
-{{- if empty $enabledInputs }}
-enabled: false
-{{- else -}}
-enabled: true
+{{- define "elasticagent.kubernetes.config.kube_state.init" -}}
+{{- if eq ((.Values.kubernetes.state).enabled) true -}}
+{{- $disabled := true -}}
+{{- if and $disabled .Values.kubernetes.containers.state.enabled true -}}
+{{- $disabled = false -}}
+{{- end -}}
+{{- if and $disabled .Values.kubernetes.cronjobs.state.enabled true -}}
+{{- $disabled = false -}}
+{{- end -}}
+{{- if and $disabled .Values.kubernetes.daemonsets.state.enabled true -}}
+{{- $disabled = false -}}
+{{- end -}}
+{{- if and $disabled .Values.kubernetes.deployments.state.enabled true -}}
+{{- $disabled = false -}}
+{{- end -}}
+{{- if and $disabled .Values.kubernetes.jobs.state.enabled true -}}
+{{- $disabled = false -}}
+{{- end -}}
+{{- if and $disabled .Values.kubernetes.nodes.state.enabled true -}}
+{{- $disabled = false -}}
+{{- end -}}
+{{- if and $disabled .Values.kubernetes.persistentvolumes.state.enabled true -}}
+{{- $disabled = false -}}
+{{- end -}}
+{{- if and $disabled .Values.kubernetes.persistentvolumeclaims.state.enabled true -}}
+{{- $disabled = false -}}
+{{- end -}}
+{{- if and $disabled .Values.kubernetes.pods.state.enabled true -}}
+{{- $disabled = false -}}
+{{- end -}}
+{{- if and $disabled .Values.kubernetes.replicasets.state.enabled true -}}
+{{- $disabled = false -}}
+{{- end -}}
+{{- if and $disabled .Values.kubernetes.resourcequotas.state.enabled true -}}
+{{- $disabled = false -}}
+{{- end -}}
+{{- if and $disabled .Values.kubernetes.services.state.enabled true -}}
+{{- $disabled = false -}}
+{{- end -}}
+{{- if and $disabled .Values.kubernetes.statefulsets.state.enabled true -}}
+{{- $disabled = false -}}
+{{- end -}}
+{{- if and $disabled .Values.kubernetes.storageclasses.state.enabled true -}}
+{{- $disabled = false -}}
+{{- end -}}
+{{- if not $disabled -}}
+{{- $preset := $.Values.eck_agent.presets.clusterWide -}}
+{{- $inputVal := (include "elasticagent.kubernetes.config.kube_state.input" $ | fromYamlArray) -}}
+{{- include "elasticagent.preset.mutate.inputs" (list $ $preset $inputVal) -}}
+{{- include "elasticagent.preset.applyOnce" (list $ $preset "elasticagent.kubernetes.clusterwide.preset") -}}
 {{- end -}}
 {{- end -}}
 {{- end -}}
 
-{{- define "agent.kubernetes.config.kube_state.input" -}}
-{{- $vars := (include "agent.kubernetes.config.kube_state.default_vars" .) | fromYaml -}}
+{{- define "elasticagent.kubernetes.config.kube_state.input" -}}
+{{- $vars := (include "elasticagent.kubernetes.config.kube_state.default_vars" .) | fromYaml -}}
 {{- $vars = mergeOverwrite $vars .Values.kubernetes.state.vars -}}
 - id: kubernetes/metrics-kube-state-metrics
   type: kubernetes/metrics
@@ -188,7 +200,7 @@ enabled: true
 {{/*
 Defaults for kube_state input streams
 */}}
-{{- define "agent.kubernetes.config.kube_state.default_vars" -}}
+{{- define "elasticagent.kubernetes.config.kube_state.default_vars" -}}
 add_metadata: true
 hosts:
 - "localhost:8080"

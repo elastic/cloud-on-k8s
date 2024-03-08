@@ -1,0 +1,161 @@
+{{- define "elasticagent.kubernetes.pernode.preset" -}}
+{{- include "elasticagent.preset.mutate.rules" (list $ $.Values.eck_agent.presets.perNode "elasticagent.kubernetes.pernode.preset.rules") -}}
+{{- include "elasticagent.preset.mutate.volumemounts" (list $ $.Values.eck_agent.presets.perNode "elasticagent.kubernetes.pernode.preset.volumemounts") -}}
+{{- include "elasticagent.preset.mutate.volumes" (list $ $.Values.eck_agent.presets.perNode "elasticagent.kubernetes.pernode.preset.volumes") -}}
+{{- if eq $.Values.kubernetes.hints.enabled true -}}
+{{- include "elasticagent.preset.mutate.initcontainers" (list $ $.Values.eck_agent.presets.perNode "elasticagent.kubernetes.pernode.preset.initcontainers") -}}
+{{- include "elasticagent.preset.mutate.providers.kubernetes.hints" (list $ $.Values.eck_agent.presets.perNode "elasticagent.kubernetes.pernode.preset.providers.kubernetes.hints") -}}
+{{- end -}}
+{{- end -}}
+
+{{- define "elasticagent.kubernetes.pernode.preset.rules" -}}
+rules:
+- apiGroups: [""] # "" indicates the core API group
+  resources:
+  - namespaces
+  - pods
+  - persistentvolumes
+  - persistentvolumeclaims
+  - persistentvolumeclaims/status
+  - nodes
+  - nodes/metrics
+  - configmaps
+  - nodes/proxy
+  - nodes/stats
+  - services
+  - events
+  verbs:
+  - get
+  - watch
+  - list
+- apiGroups:
+  - storage.k8s.io
+  resources:
+  - storageclasses
+  verbs:
+  - get
+  - watch
+  - list
+- nonResourceURLs:
+  - /metrics
+  verbs:
+  - get
+  - watch
+  - list
+- apiGroups: ["coordination.k8s.io"]
+  resources:
+  - leases
+  verbs:
+  - get
+  - create
+  - update
+- nonResourceURLs:
+  - /healthz
+  - /healthz/*
+  - /livez
+  - /livez/*
+  - /metrics
+  - /metrics/slis
+  - /readyz
+  - /readyz/*
+  verbs:
+  - get
+- apiGroups: ["apps"]
+  resources:
+  - replicasets
+  - deployments
+  - daemonsets
+  - statefulsets
+  verbs:
+  - get
+  - list
+  - watch
+- apiGroups: ["batch"]
+  resources:
+  - jobs
+  - cronjobs
+  verbs:
+  - get
+  - list
+  - watch
+{{- end -}}
+
+{{- define "elasticagent.kubernetes.pernode.preset.volumemounts" -}}
+extraVolumeMounts:
+- name: proc
+  mountPath: /hostfs/proc
+  readOnly: true
+- name: cgroup
+  mountPath: /hostfs/sys/fs/cgroup
+  readOnly: true
+- name: varlibdockercontainers
+  mountPath: /var/lib/docker/containers
+  readOnly: true
+- name: varlog
+  mountPath: /var/log
+  readOnly: true
+- name: etc-full
+  mountPath: /hostfs/etc
+  readOnly: true
+- name: var-lib
+  mountPath: /hostfs/var/lib
+  readOnly: true
+- name: elastic-agent-state
+  mountPath: /usr/share/elastic-agent/state
+{{- if eq $.Values.kubernetes.hints.enabled true }}
+- name: external-inputs
+  mountPath: /etc/elastic-agent/inputs.d
+{{- end }}
+{{- end -}}
+
+{{- define "elasticagent.kubernetes.pernode.preset.volumes" -}}
+extraVolumes:
+- name: proc
+  hostPath:
+    path: /proc
+- name: cgroup
+  hostPath:
+    path: /sys/fs/cgroup
+- name: varlibdockercontainers
+  hostPath:
+    path: /var/lib/docker/containers
+- name: varlog
+  hostPath:
+    path: /var/log
+- name: etc-full
+  hostPath:
+    path: /etc
+- name: var-lib
+  hostPath:
+    path: /var/lib
+- name: elastic-agent-state
+  hostPath:
+    path: /var/lib/elastic-agent-managed/elastic-system/state
+    type: DirectoryOrCreate
+{{- if eq $.Values.kubernetes.hints.enabled true }}
+- name: external-inputs
+  emptyDir: {}
+{{- end }}
+{{- end -}}
+
+{{- define "elasticagent.kubernetes.pernode.preset.initcontainers" -}}
+initContainers:
+- name: k8s-templates-downloader
+  image: busybox:1.36
+  command: [ 'sh' ]
+  args:
+    - -c
+    - >-
+      mkdir -p /etc/elastic-agent/inputs.d &&
+      wget -O - https://github.com/elastic/elastic-agent/archive/8.11.tar.gz | tar xz -C /etc/elastic-agent/inputs.d --strip=5 "elastic-agent-8.11/deploy/kubernetes/elastic-agent-standalone/templates.d"
+  volumeMounts:
+    - name: external-inputs
+      mountPath: /etc/elastic-agent/inputs.d
+{{- end -}}
+
+{{- define "elasticagent.kubernetes.pernode.preset.providers.kubernetes.hints" -}}
+providers:
+  kubernetes:
+    hints:
+      enabled: true
+{{- end -}}

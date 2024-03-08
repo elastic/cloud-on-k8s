@@ -21597,11 +21597,11 @@ SOFTWARE.
 
 --------------------------------------------------------------------------------
 Module  : github.com/stretchr/objx
-Version : v0.5.0
-Time    : 2022-09-18T03:09:40Z
+Version : v0.5.2
+Time    : 2024-02-29T09:57:51Z
 Licence : MIT
 
-Contents of probable licence file $GOMODCACHE/github.com/stretchr/objx@v0.5.0/LICENSE:
+Contents of probable licence file $GOMODCACHE/github.com/stretchr/objx@v0.5.2/LICENSE:
 
 The MIT License
 

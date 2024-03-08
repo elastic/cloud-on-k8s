@@ -1,12 +1,17 @@
-{{- define "agent.kubernetes.config.kube_scheduler.enabled" -}}
-enabled: {{ .Values.kubernetes.scheduler.enabled }}
+{{- define "elasticagent.kubernetes.config.kube_scheduler.init" -}}
+{{- if eq $.Values.kubernetes.scheduler.enabled true -}}
+{{- $preset := $.Values.eck_agent.presets.perNode -}}
+{{- $inputVal := (include "elasticagent.kubernetes.config.kube_scheduler.input" $ | fromYamlArray) -}}
+{{- include "elasticagent.preset.mutate.inputs" (list $ $preset $inputVal) -}}
+{{- include "elasticagent.preset.applyOnce" (list $ $preset "elasticagent.kubernetes.pernode.preset") -}}
+{{- end -}}
 {{- end -}}
 
 {{/*
 Config input for kube_scheduler
 */}}
-{{- define "agent.kubernetes.config.kube_scheduler.input" -}}
-{{- $vars := (include "agent.kubernetes.config.kube_scheduler.default_vars" .) | fromYaml -}}
+{{- define "elasticagent.kubernetes.config.kube_scheduler.input" -}}
+{{- $vars := (include "elasticagent.kubernetes.config.kube_scheduler.default_vars" .) | fromYaml -}}
 - id: kubernetes/metrics-kube-scheduler
   type: kubernetes/metrics
   data_stream:
@@ -30,7 +35,7 @@ Config input for kube_scheduler
 {{/*
 Defaults for kube_scheduler input streams
 */}}
-{{- define "agent.kubernetes.config.kube_scheduler.default_vars" -}}
+{{- define "elasticagent.kubernetes.config.kube_scheduler.default_vars" -}}
 hosts:
  - "https://0.0.0.0:10259"
 period: "10s"

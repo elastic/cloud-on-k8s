@@ -96,13 +96,13 @@ func (i chartBuilder) CheckStackTestSteps(k *test.K8sClient) test.StepList {
 					HasWorkingDataStream(agTest.MetricsType, "kubernetes.system", "default"))
 				i.streamValidationFuncs = append(i.streamValidationFuncs, agTest.
 					HasWorkingDataStream(agTest.MetricsType, "kubernetes.state_container", "default"))
-				//i.streamValidationFuncs = append(i.streamValidationFuncs, agTest.
+				// i.streamValidationFuncs = append(i.streamValidationFuncs, agTest.
 				//	HasWorkingDataStream(agTest.MetricsType, "kubernetes.state_cronjob", "default"))
 				i.streamValidationFuncs = append(i.streamValidationFuncs, agTest.
 					HasWorkingDataStream(agTest.MetricsType, "kubernetes.state_daemonset", "default"))
 				i.streamValidationFuncs = append(i.streamValidationFuncs, agTest.
 					HasWorkingDataStream(agTest.MetricsType, "kubernetes.state_deployment", "default"))
-				//i.streamValidationFuncs = append(i.streamValidationFuncs, agTest.
+				// i.streamValidationFuncs = append(i.streamValidationFuncs, agTest.
 				//	HasWorkingDataStream(agTest.MetricsType, "kubernetes.state_job", "default"))
 				i.streamValidationFuncs = append(i.streamValidationFuncs, agTest.
 					HasWorkingDataStream(agTest.MetricsType, "kubernetes.state_node", "default"))
@@ -122,7 +122,7 @@ func (i chartBuilder) CheckStackTestSteps(k *test.K8sClient) test.StepList {
 					HasWorkingDataStream(agTest.MetricsType, "kubernetes.state_statefulset", "default"))
 				i.streamValidationFuncs = append(i.streamValidationFuncs, agTest.
 					HasWorkingDataStream(agTest.MetricsType, "kubernetes.state_storageclass", "default"))
-				//i.streamValidationFuncs = append(i.streamValidationFuncs, agTest.
+				// i.streamValidationFuncs = append(i.streamValidationFuncs, agTest.
 				//	HasWorkingDataStream(agTest.LogsType, "kubernetes.audit_logs", "default"))
 				i.streamValidationFuncs = append(i.streamValidationFuncs, agTest.
 					HasWorkingDataStream(agTest.LogsType, "kubernetes.container_logs", "default"))
@@ -134,7 +134,7 @@ func (i chartBuilder) CheckStackTestSteps(k *test.K8sClient) test.StepList {
 				var dep appsv1.Deployment
 				if err := k.Client.Get(context.Background(), types.NamespacedName{
 					Namespace: i.nameSpace,
-					Name:      "eck-agent-deployment-agent",
+					Name:      "agent-clusterwide-agent",
 				}, &dep); err != nil {
 					return err
 				}
@@ -152,7 +152,7 @@ func (i chartBuilder) CheckStackTestSteps(k *test.K8sClient) test.StepList {
 				var dep appsv1.DaemonSet
 				if err := k.Client.Get(context.Background(), types.NamespacedName{
 					Namespace: i.nameSpace,
-					Name:      "eck-agent-daemonset-agent",
+					Name:      "agent-pernode-agent",
 				}, &dep); err != nil {
 					return err
 				}

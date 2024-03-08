@@ -1,6 +1,5 @@
-{{- define "agent.kubernetes.config.kubelet.enabled" -}}
+{{- define "elasticagent.kubernetes.config.kubelet.init" -}}
 {{- if eq ((.Values.kubernetes.metrics).enabled) false -}}
-enabled: false
 {{- $_ := set $.Values.kubernetes.containers.metrics "enabled" false -}}
 {{- $_ := set $.Values.kubernetes.nodes.metrics "enabled" false -}}
 {{- $_ := set $.Values.kubernetes.pods.metrics "enabled" false -}}
@@ -8,15 +7,26 @@ enabled: false
 {{- $_ := set $.Values.kubernetes.system.metrics "enabled" false -}}
 {{- else -}}
 {{- $enabledInputs := (list) -}}
-{{- $enabledInputs = append $enabledInputs (default false .Values.kubernetes.containers.metrics.enabled) -}}
-{{- $enabledInputs = append $enabledInputs (default false .Values.kubernetes.nodes.metrics.enabled) -}}
-{{- $enabledInputs = append $enabledInputs (default false .Values.kubernetes.pods.metrics.enabled) -}}
-{{- $enabledInputs = append $enabledInputs (default false .Values.kubernetes.volumes.metrics.enabled) -}}
-{{- $enabledInputs = append $enabledInputs (default false .Values.kubernetes.system.metrics.enabled) -}}
-{{- if empty $enabledInputs }}
-enabled: false
-{{- else -}}
-enabled: true
+{{- if eq $.Values.kubernetes.containers.metrics.enabled true -}}
+{{- $enabledInputs = append $enabledInputs true -}}
+{{- end -}}
+{{- if eq $.Values.kubernetes.nodes.metrics.enabled true -}}
+{{- $enabledInputs = append $enabledInputs true -}}
+{{- end -}}
+{{- if eq $.Values.kubernetes.pods.metrics.enabled true -}}
+{{- $enabledInputs = append $enabledInputs true -}}
+{{- end -}}
+{{- if eq $.Values.kubernetes.volumes.metrics.enabled true -}}
+{{- $enabledInputs = append $enabledInputs true -}}
+{{- end -}}
+{{- if eq $.Values.kubernetes.system.metrics.enabled true -}}
+{{- $enabledInputs = append $enabledInputs true -}}
+{{- end -}}
+{{- if not (empty $enabledInputs) }}
+{{- $preset := $.Values.eck_agent.presets.perNode -}}
+{{- $inputVal := (include "elasticagent.kubernetes.config.kubelet.input" $ | fromYamlArray) -}}
+{{- include "elasticagent.preset.mutate.inputs" (list $ $preset $inputVal) -}}
+{{- include "elasticagent.preset.applyOnce" (list $ $preset "elasticagent.kubernetes.pernode.preset") -}}
 {{- end -}}
 {{- end -}}
 {{- end -}}
@@ -24,8 +34,8 @@ enabled: true
 {{/*
 Config input for kubelet metrics
 */}}
-{{- define "agent.kubernetes.config.kubelet.input" -}}
-{{- $vars := (include "agent.kubernetes.config.kubelet.default_vars" .) | fromYaml -}}
+{{- define "elasticagent.kubernetes.config.kubelet.input" -}}
+{{- $vars := (include "elasticagent.kubernetes.config.kubelet.default_vars" .) | fromYaml -}}
 {{- $vars = mergeOverwrite $vars .Values.kubernetes.metrics.vars -}}
 - id: kubernetes/metrics-kubelet
   type: kubernetes/metrics
@@ -87,7 +97,7 @@ Config input for kubelet metrics
 {{/*
 Defaults for kubelet input streams
 */}}
-{{- define "agent.kubernetes.config.kubelet.default_vars" -}}
+{{- define "elasticagent.kubernetes.config.kubelet.default_vars" -}}
 add_metadata: true
 hosts:
 - "https://${env.NODE_NAME}:10250"
