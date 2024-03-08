@@ -12,6 +12,7 @@ endif::[]
 - <<{p}-operator-config>>
 - <<{p}-eck-permissions>>
 - <<{p}-webhook>>
+- <<{p}-configure-operator-metrics>>
 - <<{p}-restrict-cross-namespace-associations>>
 - <<{p}-licensing>>
 - <<{p}-troubleshooting>>
@@ -24,6 +25,7 @@ endif::[]
 include::operator-config.asciidoc[leveloffset=+1]
 include::eck-permissions.asciidoc[leveloffset=+1]
 include::webhook.asciidoc[leveloffset=+1]
+include::configure-operator-metrics.asciidoc[leveloffset=+1]
 include::restrict-cross-namespace-associations.asciidoc[leveloffset=+1]
 include::licensing.asciidoc[leveloffset=+1]
 include::troubleshooting.asciidoc[leveloffset=+1]

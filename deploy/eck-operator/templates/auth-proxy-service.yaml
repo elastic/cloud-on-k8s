@@ -1,0 +1,22 @@
+{{- if .Values.config.metrics.secureMode.enabled }}
+{{- $metricsPort := int (include "eck-operator.metrics.port" .)}}
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    app.kubernetes.io/name: {{ include "eck-operator.name" . }}-metrics-service
+    app.kubernetes.io/instance: {{ .Release.Name }}
+    app.kubernetes.io/version: {{ .Chart.AppVersion | quote }}
+    helm.sh/chart: {{ include "eck-operator.chart" . }}
+    app.kubernetes.io/managed-by: {{ .Release.Service }}
+  name: "{{ include "eck-operator.fullname" . }}-metrics"
+  namespace: {{ .Release.Namespace }}
+spec:
+  ports:
+  - name: https
+    port: {{ $metricsPort }}
+    protocol: TCP
+    targetPort: metrics
+  selector:
+    {{- include "eck-operator.selectorLabels" . | nindent 4 }}
+{{- end }}

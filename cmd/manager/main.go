@@ -286,7 +286,12 @@ func Command() *cobra.Command {
 	cmd.Flags().Int(
 		operator.MetricsPortFlag,
 		DefaultMetricPort,
-		"Port to use for exposing metrics in the Prometheus format (set 0 to disable)",
+		"Port to use for exposing metrics in the Prometheus format. (set 0 to disable)",
+	)
+	cmd.Flags().String(
+		operator.MetricsHostFlag,
+		"0.0.0.0",
+		fmt.Sprintf("The host to which the operator should bind to serve metrics in the Prometheus format. Will be combined with %s.", operator.MetricsPortFlag),
 	)
 	cmd.Flags().StringSlice(
 		operator.NamespacesFlag,
@@ -577,11 +582,12 @@ func startOperator(ctx context.Context) error {
 
 	// only expose prometheus metrics if provided a non-zero port
 	metricsPort := viper.GetInt(operator.MetricsPortFlag)
+	metricsHost := viper.GetString(operator.MetricsHostFlag)
 	if metricsPort != 0 {
-		log.Info("Exposing Prometheus metrics on /metrics", "port", metricsPort)
+		log.Info("Exposing Prometheus metrics on /metrics", "bindAddress", fmt.Sprintf("%s:%d", metricsHost, metricsPort))
 	}
 	opts.Metrics = metricsserver.Options{
-		BindAddress: fmt.Sprintf(":%d", metricsPort), // 0 to disable
+		BindAddress: fmt.Sprintf("%s:%d", metricsHost, metricsPort), // 0 to disable
 	}
 
 	webhookPort := viper.GetInt(operator.WebhookPortFlag)
