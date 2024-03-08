@@ -90,7 +90,7 @@ This page lists the third-party dependencies used to build {n}.
 | link:https://github.com/fatih/color[$$github.com/fatih/color$$] | v1.16.0 | MIT
 | link:https://github.com/frankban/quicktest[$$github.com/frankban/quicktest$$] | v1.14.6 | MIT
 | link:https://github.com/fsnotify/fsnotify[$$github.com/fsnotify/fsnotify$$] | v1.7.0 | BSD-3-Clause
-| link:https://github.com/go-jose/go-jose[$$github.com/go-jose/go-jose/v3$$] | v3.0.1 | Apache-2.0
+| link:https://github.com/go-jose/go-jose[$$github.com/go-jose/go-jose/v3$$] | v3.0.3 | Apache-2.0
 | link:https://github.com/go-logr/zapr[$$github.com/go-logr/zapr$$] | v1.3.0 | Apache-2.0
 | link:https://github.com/go-openapi/jsonpointer[$$github.com/go-openapi/jsonpointer$$] | v0.19.6 | Apache-2.0
 | link:https://github.com/go-openapi/jsonreference[$$github.com/go-openapi/jsonreference$$] | v0.20.2 | Apache-2.0
