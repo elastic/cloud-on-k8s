@@ -229,7 +229,7 @@ endif
 endif
 
 # Deploy the operator against the current k8s cluster
-deploy: check-gke install-crds publish-operator-image apply-operator
+deploy: check-gke install-crds docker-push-operator apply-operator
 
 apply-operator:
 ifeq ($(strip $(MANAGED_NAMESPACES)),)
