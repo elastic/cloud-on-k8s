@@ -1,0 +1,90 @@
+customIntegrations:
+  redis/metrics:
+    id: redis-1-34dcd0db-8ec8-4991-94a8-23786daaf58f
+    preset: redis
+    name: redis-1
+    revision: 1
+    type: redis/metrics
+    use_output: default
+    meta:
+      package:
+        name: redis
+        version: 1.13.0
+    data_stream:
+      namespace: default
+    package_policy_id: 34dcd0db-8ec8-4991-94a8-23786daaf58f
+    streams:
+      - id: redis/metrics-redis.info-34dcd0db-8ec8-4991-94a8-23786daaf58f
+        data_stream:
+          dataset: redis.info
+          type: metrics
+        metricsets:
+          - info
+        hosts:
+          - 'redis.default.svc.cluster.local:6379'
+        idle_timeout: 20s
+        maxconn: 10
+        network: tcp
+        period: 10s
+      - id: redis/metrics-redis.key-34dcd0db-8ec8-4991-94a8-23786daaf58f
+        data_stream:
+          dataset: redis.key
+          type: metrics
+        metricsets:
+          - key
+        hosts:
+          - 'redis.default.svc.cluster.local:6379'
+        idle_timeout: 20s
+        key.patterns:
+          - limit: 20
+            pattern: '*'
+        maxconn: 10
+        network: tcp
+        period: 10s
+      - id: redis/metrics-redis.keyspace-34dcd0db-8ec8-4991-94a8-23786daaf58f
+        data_stream:
+          dataset: redis.keyspace
+          type: metrics
+        metricsets:
+          - keyspace
+        hosts:
+          - 'redis.default.svc.cluster.local:6379'
+        idle_timeout: 20s
+        maxconn: 10
+        network: tcp
+        period: 10s
+
+eck_agent:
+  presets:
+    redis:
+      mode: deployment
+      securityContext:
+        runAsUser: 0
+      rules:
+      # minimum cluster role ruleset required by agent
+      - apiGroups: [ "" ]
+        resources:
+          - nodes
+          - namespaces
+          - pods
+        verbs:
+          - get
+          - watch
+          - list
+      - apiGroups: [ "apps" ]
+        resources:
+          - replicasets
+        verbs:
+          - get
+          - list
+          - watch
+      - apiGroups: [ "batch" ]
+        resources:
+          - jobs
+        verbs:
+          - get
+          - list
+          - watch
+      providers:
+        kubernetes_leaderelection:
+          enabled: false

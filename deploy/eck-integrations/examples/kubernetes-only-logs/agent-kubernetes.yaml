@@ -1,0 +1,13 @@
+kubernetes:
+  enabled: true
+  hints:
+    enabled: false
+  state:
+    enabled: false
+  metrics:
+    enabled: false
+  apiserver:
+    enabled: false
+  containers:
+    logs:
+      enabled: true
