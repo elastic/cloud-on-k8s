@@ -40,7 +40,11 @@ spec:
       repository: elastic/cloud-on-k8s
       provider_settings:
         trigger_mode: "code"
-        build_pull_requests: true
+        build_pull_request_forks: false
+        build_pull_requests: true # requires filter_enabled and filter_condition settings as below when used with buildkite-pr-bot
+        filter_enabled: true
+        filter_condition: >-
+          build.pull_request.id == null || (build.creator.name == 'elasticmachine' && build.pull_request.id != null)
         build_branches: true
         build_tags: true
         publish_blocked_as_pending: true
