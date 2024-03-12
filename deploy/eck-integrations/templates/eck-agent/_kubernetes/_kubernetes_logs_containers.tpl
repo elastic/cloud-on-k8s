@@ -33,6 +33,7 @@ Config input for container logs
           fields:
             annotations.elastic_co/dataset: '${kubernetes.annotations.elastic.co/dataset|""}'
             annotations.elastic_co/namespace: '${kubernetes.annotations.elastic.co/namespace|""}'
+            annotations.elastic_co/preserve_original_event: '${kubernetes.annotations.elastic.co/preserve_original_event|""}'
       - drop_fields:
           fields:
             - kubernetes.annotations.elastic_co/dataset
@@ -47,8 +48,20 @@ Config input for container logs
             equals:
               kubernetes.annotations.elastic_co/namespace: ''
           ignore_missing: true
-  meta:
-    package:
-      name: kubernetes
-      version: {{ .Values.kubernetes.version }}
+      - drop_fields:
+          fields:
+            - kubernetes.annotations.elastic_co/preserve_original_event
+          when:
+            equals:
+              kubernetes.annotations.elastic_co/preserve_original_event: ''
+          ignore_missing: true
+      - add_tags:
+          tags:
+            - preserve_original_event
+          when:
+            and:
+              - has_fields:
+                  - kubernetes.annotations.elastic_co/preserve_original_event
+              - regexp:
+                  kubernetes.annotations.elastic_co/preserve_original_event: ^(?i)true$
 {{- end -}}

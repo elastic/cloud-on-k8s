@@ -12,7 +12,7 @@ Config input for kube_scheduler
 */}}
 {{- define "elasticagent.kubernetes.config.kube_scheduler.input" -}}
 {{- $vars := (include "elasticagent.kubernetes.config.kube_scheduler.default_vars" .) | fromYaml -}}
-- id: kubernetes/metrics-kube-scheduler
+- id: kubernetes/metrics-kubernetes.scheduler
   type: kubernetes/metrics
   data_stream:
     namespace: {{ .Values.kubernetes.namespace }}
@@ -25,10 +25,6 @@ Config input for kube_scheduler
       metricsets:
         - scheduler
 {{- mergeOverwrite $vars .Values.kubernetes.scheduler.vars | toYaml | nindent 4 }}
-  meta:
-    package:
-      name: kubernetes
-      version: {{ .Values.kubernetes.version }}
 {{- end -}}
 
 

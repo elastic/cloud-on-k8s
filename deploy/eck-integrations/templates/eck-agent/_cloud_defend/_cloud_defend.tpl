@@ -50,8 +50,4 @@
         type: logs
         dataset: cloud_defend.process
       process-config: null
-  meta:
-    package:
-      name: cloud_defend
-      version: {{.Values.cloudDefend.version}}
 {{- end -}}

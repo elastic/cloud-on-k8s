@@ -11,24 +11,20 @@
 Config input for kube apiserver
 */}}
 {{- define "elasticagent.kubernetes.config.kube_apiserver.input" -}}
-- id: kubernetes/kubernetes/metrics-kube-apiserver
+- id: kubernetes/metrics-kubernetes.apiserver
   type: kubernetes/metrics
   data_stream:
-      namespace: {{ $.Values.kubernetes.namespace }}
+    namespace: {{ $.Values.kubernetes.namespace }}
   use_output: {{ $.Values.kubernetes.output }}
   streams:
   - id: kubernetes/metrics-kubernetes.apiserver
     data_stream:
-        type: metrics
-        dataset: kubernetes.apiserver
+      type: metrics
+      dataset: kubernetes.apiserver
     metricsets:
-        - apiserver
+    - apiserver
 {{- $vars := (include "elasticagent.kubernetes.config.kube_apiserver.default_vars" .) | fromYaml -}}
 {{- mergeOverwrite $vars $.Values.kubernetes.apiserver.vars | toYaml | nindent 4 }}
-  meta:
-    package:
-      name: kubernetes
-      version: {{ .Values.kubernetes.version }}
 {{- end -}}
 
 

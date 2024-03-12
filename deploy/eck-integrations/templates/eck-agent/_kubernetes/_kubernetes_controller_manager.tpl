@@ -25,10 +25,6 @@ Config input for kube_controllermanage
       - controllermanager
 {{- $vars := (include "elasticagent.kubernetes.config.kube_controller.default_vars" .) | fromYaml -}}
 {{- mergeOverwrite $vars .Values.kubernetes.controller_manager.vars | toYaml | nindent 4 }}
-  meta:
-    package:
-      name: kubernetes
-      version: {{ .Values.kubernetes.version }}
 {{- end -}}
 
 

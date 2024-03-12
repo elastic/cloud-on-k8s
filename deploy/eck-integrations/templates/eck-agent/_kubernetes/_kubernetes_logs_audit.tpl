@@ -11,7 +11,7 @@
 Config input for kube audit_logs_filestream
 */}}
 {{- define "elasticagent.kubernetes.config.audit_logs.input" -}}
-- id: filestream-audit-logs
+- id: filestream-kubernetes.audit_logs
   type: filestream
   data_stream:
     namespace: {{.Values.kubernetes.namespace}}
@@ -61,8 +61,4 @@ Config input for kube audit_logs_filestream
                   throw "expected kubernetes.audit.annotations.authorization_k8s_io/decision === allow";
               }
             }
-  meta:
-    package:
-      name: kubernetes
-      version: {{ .Values.kubernetes.version }}
 {{- end -}}

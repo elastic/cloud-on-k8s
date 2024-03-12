@@ -29,9 +29,6 @@ kubernetes:
   ## Please note that you have to set this to true if you want kubernetes integration to be enabled
   ##
   enabled: false
-  ## @param kubernetes.version [default: 1.51.0] Kubernetes integration version
-  ##
-  version: 1.56.0
   ## @param kubernetes.output [default: default] output name used for kubernetes integration
   ##
   output: default
@@ -190,6 +187,13 @@ kubernetes:
     state:
       enabled: true
       vars: {}
+  ## @param kubernetes.replicasets.state [default: true] Enable Kubernetes namespaces kube-state metrics
+  ## ref: https://docs.elastic.co/integrations/kubernetes/kube-state-metrics#state_namespace
+  ##
+  namespaces:
+    state:
+      enabled: true
+      vars: {}
   ## @param kubernetes.volumes.metrics [default: true] Enable Kubernetes volumes kubelet metrics
   ## ref: https://docs.elastic.co/integrations/kubernetes/kubelet#volume
   ##
@@ -274,9 +278,6 @@ cloudDefend:
   ##Please note that you have to set this to true if you want kubernetes integration to be enabled
   ##
   enabled: false
-  ## @param cloudDefend.version [default: 1.2.0] cloud-defend integration version
-  ##
-  version: 1.2.3
   ## @param cloudDefend.output [default: default] output name used for cloudDefend integration
   ##
   output: default
