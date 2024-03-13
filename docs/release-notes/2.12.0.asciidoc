@@ -1,0 +1,68 @@
+:issue: https://github.com/elastic/cloud-on-k8s/issues/
+:pull: https://github.com/elastic/cloud-on-k8s/pull/
+
+[[release-notes-2.12.0]]
+== {n} version 2.12.0
+
+
+
+[[feature-2.12.0]]
+[float]
+=== New features
+
+* Add resize volume functionality to Logstash operator {pull}7519[#7519]
+
+[[enhancement-2.12.0]]
+[float]
+=== Enhancements
+
+* Remove noisy stack config policy log line {pull}7582[#7582] (issue: {issue}7529[#7529])
+* Increase the default PVC size for logstash {pull}7540[#7540] (issue: {issue}7538[#7538])
+* Add eck-apm-server Helm Chart {pull}7533[#7533] (issue: {issue}7489[#7489])
+* Add Health to Logstash Status {pull}7528[#7528] (issue: {issue}7527[#7527])
+* Add resourceStatuses back into stack config policy status for backwards compatibility {pull}7500[#7500]
+* Add support for updateStrategy in Logstash {pull}7466[#7466]
+* Add TLS and basic authentication integration to Logstash API server {pull}7408[#7408] (issue: {issue}6971[#6971])
+* Add support for securing the operator metrics endpoint with RBAC and TLS {pull}7567[#7567]
+* Remove Enterprise license restriction from ECK stack Helm charts {pull}7621[#7621]
+
+[[bug-2.12.0]]
+[float]
+=== Bug fixes
+
+* Fix having multiple `type` keys in eck-beats chart {pull}7523[#7523] (issue: {issue}7487[#7487])
+* Use eck-operator UBI image when ubiOnly=true. {pull}7486[#7486] (issue: {issue}7485[#7485])
+* Fix Logstash crashes with env {pull}7475[#7475] (issue: {issue}7450[#7450])
+
+[[docs-2.12.0]]
+[float]
+=== Documentation improvements
+
+* Fix Logstash quickstart docs using single-quote EOF to avoid expanding variables {pull}7580[#7580] (issue: {issue}7572[#7572])
+* Fix typo in managing-compute-resources documentation {pull}7563[#7563]
+* Update APM Server docs for use since 8.x requiring Kibana {pull}7559[#7559] (issue: {issue}7541[#7541])
+* Remove initContainer section in Logstash plugin docs {pull}7557[#7557]
+* Add caution concerning running differing versions of CRDs + operator {pull}7503[#7503]
+* Fix small typo in uninstall docs {pull}7436[#7436]
+
+[[nogroup-2.12.0]]
+[float]
+=== Misc
+
+* fix(deps): update module golang.org/x/crypto to v0.20.0 {pull}7578[#7578]
+* fix(deps): update module go.uber.org/zap to v1.27.0 {pull}7577[#7577]
+* fix(deps): update module github.com/prometheus/common to v0.48.0 {pull}7570[#7570]
+* fix(deps): update k8s to v0.29.2 and controller-runtime to v0.17.2 {pull}7568[#7568]
+* fix(deps): update module github.com/hashicorp/vault/api to v1.12.0 {pull}7550[#7550]
+* chore(deps): update docker.io/library/golang docker tag to v1.22.0 {pull}7549[#7549]
+* fix(deps): update module github.com/google/go-containerregistry to v0.19.0 {pull}7517[#7517]
+* fix(deps): update k8s to v0.29.1 {pull}7505[#7505]
+* chore(deps): update registry.access.redhat.com/ubi9/ubi-minimal docker tag to v9.3-1552 {pull}7501[#7501]
+* fix(deps): update module github.com/google/uuid to v1.6.0 {pull}7496[#7496]
+* fix(deps): update module k8s.io/klog/v2 to v2.120.1 {pull}7484[#7484]
+* fix(deps): update module go.elastic.co/apm/v2 to v2.4.8 {pull}7472[#7472]
+* fix(deps): update module sigs.k8s.io/controller-tools to v0.14.0 {pull}7461[#7461]
+* fix(deps): update module github.com/spf13/viper to v1.18.2 {pull}7458[#7458]
+* fix(deps): update module github.com/prometheus/client_golang to v1.18.0 {pull}7417[#7417]
+* fix(deps): update module github.com/go-logr/logr to v1.4.1 {pull}7409[#7409]
+
