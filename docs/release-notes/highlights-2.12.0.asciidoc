@@ -16,7 +16,7 @@ ECK 2.12.0 supports managing APM Server resources via Helm charts, similarly to 
 
 [float]
 [id="{p}-2120-logstash-improvements"]
-=== Logstash volume expansion, update strategy and securing APIs
+=== Logstash volume expansion, update strategy and secure monitoring APIs
 
 ECK 2.12.0 brings several improvements for Logstash: support for volume expansion, update strategy for the underlying StatefulSet
 and the ability to configure TLS and basic authentication to secure the Logstash monitoring APIs.
