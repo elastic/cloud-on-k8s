@@ -24,6 +24,7 @@
 * Add support for updateStrategy in Logstash {pull}7466[#7466]
 * Add TLS and basic authentication integration to Logstash API server {pull}7408[#7408] (issue: {issue}6971[#6971])
 * Add support for securing the operator metrics endpoint with RBAC and TLS {pull}7567[#7567]
+* Remove Enterprise license restriction from ECK stack Helm charts {pull}7621[#7621]
 
 [[bug-2.12.0]]
 [float]
