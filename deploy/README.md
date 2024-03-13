@@ -81,5 +81,4 @@ helm unittest -3 -f 'templates/tests/*.yaml' --with-subchart=false .
 
 ## Licensing
 
-The ECK Helm Charts are licensed under the [Elastic License 2.0](https://www.elastic.co/licensing/elastic-license) like the operator, but require different subscription levels.
-
+The ECK Helm Charts are licensed under the [Elastic License 2.0](https://www.elastic.co/licensing/elastic-license) like the operator. They can be used with a Basic license for free.
