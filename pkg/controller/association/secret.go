@@ -123,8 +123,7 @@ func GetUnmanagedAssociationConnectionInfoFromSecret(c k8s.Client, association U
 	ref.URL = string(url)
 
 	if association.SupportsAuthAPIKey() {
-		apiKey, ok := secretRef.Data[authAPIKeyUnmanagedSecretKey]
-		if ok {
+		if apiKey, ok := secretRef.Data[authAPIKeyUnmanagedSecretKey]; ok {
 			ref.AuthType = AuthTypeUnmanagedAPIKey
 			ref.APIKey = string(apiKey)
 			return &ref, nil

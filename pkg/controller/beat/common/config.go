@@ -6,6 +6,8 @@ package common
 
 import (
 	"context"
+	"encoding/base64"
+	"fmt"
 	"hash"
 	"path"
 
@@ -38,19 +40,28 @@ func buildOutputConfig(ctx context.Context, client k8s.Client, associated beatv1
 		return settings.NewCanonicalConfig(), err
 	}
 
-	esOutput := map[string]interface{}{
-		"output.elasticsearch": map[string]interface{}{
-			"hosts":    []string{esAssocConf.GetURL()},
-			"username": credentials.Username,
-			"password": credentials.Password,
-		},
+	output := map[string]interface{}{
+		"hosts": []string{esAssocConf.GetURL()},
+	}
+
+	if credentials.APIKey != "" {
+		decodedAPIKey, err := base64.StdEncoding.DecodeString(credentials.APIKey)
+		if err != nil {
+			return settings.NewCanonicalConfig(), fmt.Errorf("error at decoding apikey from secret %s: %w", esAssocConf.AuthSecretName, err)
+		}
+		output["api_key"] = string(decodedAPIKey)
+	} else {
+		output["username"] = credentials.Username
+		output["password"] = credentials.Password
 	}
 
 	if esAssocConf.GetCACertProvided() {
-		esOutput["output.elasticsearch.ssl.certificate_authorities"] = []string{path.Join(certificatesDir(&associated), CAFileName)}
+		output["ssl.certificate_authorities"] = []string{path.Join(certificatesDir(&associated), CAFileName)}
 	}
 
-	return settings.NewCanonicalConfigFrom(esOutput)
+	return settings.NewCanonicalConfigFrom(map[string]interface{}{
+		"output.elasticsearch": output,
+	})
 }
 
 // BuildKibanaConfig builds on optional Kibana configuration for dashboard setup and visualizations.

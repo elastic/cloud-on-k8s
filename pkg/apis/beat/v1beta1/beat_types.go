@@ -318,7 +318,7 @@ func (b *BeatESAssociation) SetAssociationConf(conf *commonv1.AssociationConf) {
 }
 
 func (b *BeatESAssociation) SupportsAuthAPIKey() bool {
-	return false
+	return true
 }
 
 func (b *BeatESAssociation) AssociationID() string {
