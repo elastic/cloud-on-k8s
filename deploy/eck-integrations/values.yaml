@@ -12,9 +12,13 @@ elasticsearchRefs:
   ##        - `password`: the password of the user to be authenticated to the Elastic resource.
   ##        - `ca.crt`: the CA certificate in PEM format (optional).
   ##        - `api-key`: the key to authenticate against the Elastic resource instead of a username and password
-  ##                     (supported only for `elasticsearchRefs` in AgentSpec).
-  ##        This field cannot be used in combination with the other fields name, namespace or serviceName.
-  default: {}
+  ##                     (supported only for `elasticsearchRefs` in AgentSpec). This field cannot be used in
+  ##                     combination with the other fields name, namespace or serviceName.
+  ## E.g.
+  ## default:
+  ##   secretName: es-ref-secret [for *non* eck-managed elasticsearch]
+  ##   name: es-ref-name [for eck-managed elasticsearch]
+  ##   namespace: es-ref-namespace [for eck-managed elasticsearch]
 
 ## @section customIntegrations define custom elastic integrations [ref https://www.elastic.co/guide/en/fleet/current/elastic-agent-inputs-list.html]
 customIntegrations:
@@ -382,13 +386,10 @@ eck_agent:
   ##    https://www.elastic.co/guide/en/fleet/current/providers.html
   ##    providers: {}
     clusterWide:
+      ## required by the built-in kubernetes integration
       mode: deployment
-      labels: {}
       annotations:
         eck.k8s.elastic.co/license: basic
-      affinity: {}
-      initContainers: []
-      extraContainers: []
       resources:
         limits:
           memory: 700Mi
@@ -399,13 +400,9 @@ eck_agent:
         runAsUser: 0
       nodeSelector:
         kubernetes.io/os: linux
-      tolerations: []
-      topologySpreadConstraints: []
       extraEnvs:
       - name: ELASTIC_NETINFO
         value: "false"
-      extraVolumes: []
-      extraVolumeMounts: []
       agent:
         monitoring:
           namespace: default
@@ -422,13 +419,10 @@ eck_agent:
           kubernetes_secrets:
             enabled: true
     perNode:
+      ## required by the built-in kubernetes and cloud-defend integrations
       mode: daemonset
-      labels: {}
       annotations:
         eck.k8s.elastic.co/license: basic
-      affinity: {}
-      initContainers: []
-      extraContainers: []
       resources:
         limits:
           memory: 700Mi
@@ -439,13 +433,9 @@ eck_agent:
         runAsUser: 0
       nodeSelector:
         kubernetes.io/os: linux
-      tolerations: []
-      topologySpreadConstraints: []
       extraEnvs:
         - name: ELASTIC_NETINFO
           value: "false"
-      extraVolumes: []
-      extraVolumeMounts: []
       agent:
         monitoring:
           namespace: default
