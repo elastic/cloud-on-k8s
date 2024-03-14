@@ -68,7 +68,10 @@ app.kubernetes.io/instance: {{ .Release.Name }}
 {{- end -}}
 {{- $_ := set .Values.elasticsearchRefs "_internal" $outputs -}}
 {{- if and .Values.kubernetes.enabled (not (hasKey .Values.elasticsearchRefs .Values.kubernetes.output)) -}}
-{{- fail "kubernetes output not defined" -}}
+{{- fail (printf "output \"%s\" of kubernetes integration is not defined" $.Values.kubernetes.output) -}}
+{{- end -}}
+{{- if and .Values.cloudDefend.enabled (not (hasKey .Values.elasticsearchRefs .Values.cloudDefend.output)) -}}
+{{- fail (printf "output \"%s\" of cloudDefend integration is not defined" $.Values.cloudDefend.output) -}}
 {{- end -}}
 {{- end -}}
 {{- end -}}
