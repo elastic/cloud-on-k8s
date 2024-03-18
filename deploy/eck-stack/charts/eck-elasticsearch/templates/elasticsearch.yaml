@@ -6,7 +6,7 @@ metadata:
   labels:
     {{- include "elasticsearch.labels" . | nindent 4 }}
   annotations:
-    eck.k8s.elastic.co/license: enterprise
+    eck.k8s.elastic.co/license: basic
     {{- with .Values.annotations }}
     {{- toYaml . | nindent 4 }}
     {{- end }}
