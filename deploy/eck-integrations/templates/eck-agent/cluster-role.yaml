@@ -1,0 +1,24 @@
+{{- if $.Values.eck_agent.enabled -}}
+{{- include "elasticagent.preset.init" $ -}}
+{{- range $presetName, $presetVal := $.Values.eck_agent.presets -}}
+{{- $agentName := printf "agent-%s" (lower $presetName) -}}
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: {{ $agentName }}
+  labels:
+    {{- include "elasticagent.labels" $ | nindent 4 }}
+    {{- with ($presetVal).labels -}}
+    {{ toYaml . | nindent 4 }}
+    {{- end }}
+  {{- with ($presetVal).annotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+rules:
+  {{- with ($presetVal).rules }}
+  {{- toYaml . | nindent 2 }}
+  {{- end }}
+---
+{{- end -}}
+{{- end }}

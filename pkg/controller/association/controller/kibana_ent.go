@@ -64,9 +64,10 @@ func getEntExternalURL(c k8s.Client, assoc commonv1.Association) (string, error)
 
 // referencedEntStatusVersion returns the currently running version of Enterprise Search
 // reported in its status.
-func referencedEntStatusVersion(c k8s.Client, entRef commonv1.ObjectSelector) (string, error) {
+func referencedEntStatusVersion(c k8s.Client, entAssociation commonv1.Association) (string, error) {
+	entRef := entAssociation.AssociationRef()
 	if entRef.IsExternal() {
-		info, err := association.GetUnmanagedAssociationConnectionInfoFromSecret(c, entRef)
+		info, err := association.GetUnmanagedAssociationConnectionInfoFromSecret(c, entAssociation)
 		if err != nil {
 			return "", err
 		}

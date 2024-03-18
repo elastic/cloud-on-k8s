@@ -1,0 +1,6 @@
+apiVersion: v2
+name: eck-integrations
+description: Elastic Stack integrations
+kubeVersion: ">= 1.21.0-0"
+type: application
+version: 0.0.1
