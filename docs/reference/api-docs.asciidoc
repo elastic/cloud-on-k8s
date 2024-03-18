@@ -56,7 +56,6 @@ Agent is the Schema for the Agents API.
 | *`metadata`* __link:https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.27/#objectmeta-v1-meta[$$ObjectMeta$$]__ | Refer to Kubernetes API documentation for fields of `metadata`.
 
 | *`spec`* __xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-v2-pkg-apis-agent-v1alpha1-agentspec[$$AgentSpec$$]__ | 
-| *`status`* __xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-v2-pkg-apis-agent-v1alpha1-agentstatus[$$AgentStatus$$]__ | 
 |===
 
 
@@ -230,7 +229,6 @@ ApmServer represents an APM Server resource in a Kubernetes cluster.
 | *`metadata`* __link:https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.27/#objectmeta-v1-meta[$$ObjectMeta$$]__ | Refer to Kubernetes API documentation for fields of `metadata`.
 
 | *`spec`* __xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-v2-pkg-apis-apm-v1-apmserverspec[$$ApmServerSpec$$]__ | 
-| *`status`* __xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-v2-pkg-apis-apm-v1-apmserverstatus[$$ApmServerStatus$$]__ | 
 |===
 
 
@@ -289,7 +287,6 @@ ApmServer represents an APM Server resource in a Kubernetes cluster.
 | *`metadata`* __link:https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.27/#objectmeta-v1-meta[$$ObjectMeta$$]__ | Refer to Kubernetes API documentation for fields of `metadata`.
 
 | *`spec`* __xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-v2-pkg-apis-apm-v1beta1-apmserverspec[$$ApmServerSpec$$]__ | 
-| *`status`* __xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-v2-pkg-apis-apm-v1beta1-apmserverstatus[$$ApmServerStatus$$]__ | 
 |===
 
 
@@ -343,7 +340,6 @@ ElasticsearchAutoscaler represents an ElasticsearchAutoscaler resource in a Kube
 | *`metadata`* __link:https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.27/#objectmeta-v1-meta[$$ObjectMeta$$]__ | Refer to Kubernetes API documentation for fields of `metadata`.
 
 | *`spec`* __xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-v2-pkg-apis-autoscaling-v1alpha1-elasticsearchautoscalerspec[$$ElasticsearchAutoscalerSpec$$]__ | 
-| *`status`* __xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-v2-pkg-apis-common-v1alpha1-elasticsearchautoscalerstatus[$$ElasticsearchAutoscalerStatus$$]__ | 
 |===
 
 
@@ -361,7 +357,6 @@ ElasticsearchAutoscalerSpec holds the specification of an Elasticsearch autoscal
 |===
 | Field | Description
 | *`elasticsearchRef`* __xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-v2-pkg-apis-autoscaling-v1alpha1-elasticsearchref[$$ElasticsearchRef$$]__ | 
-| *`policies`* __xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-v2-pkg-apis-common-v1alpha1-autoscalingpolicyspecs[$$AutoscalingPolicySpecs$$]__ | 
 | *`pollingPeriod`* __link:https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.27/#duration-v1-meta[$$Duration$$]__ | PollingPeriod is the period at which to synchronize with the Elasticsearch autoscaling API.
 |===
 
@@ -409,7 +404,6 @@ Beat is the Schema for the Beats API.
 | *`metadata`* __link:https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.27/#objectmeta-v1-meta[$$ObjectMeta$$]__ | Refer to Kubernetes API documentation for fields of `metadata`.
 
 | *`spec`* __xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-v2-pkg-apis-beat-v1beta1-beatspec[$$BeatSpec$$]__ | 
-| *`status`* __xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-v2-pkg-apis-beat-v1beta1-beatstatus[$$BeatStatus$$]__ | 
 |===
 
 
@@ -563,47 +557,6 @@ ConfigSource references configuration settings.
 |===
 
 
-[id="{anchor_prefix}-github-com-elastic-cloud-on-k8s-v2-pkg-apis-common-v1-deploymenthealth"]
-=== DeploymentHealth (string) 
-
-
-
-.Appears In:
-****
-- xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-v2-pkg-apis-apm-v1-apmserverstatus[$$ApmServerStatus$$]
-- xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-v2-pkg-apis-common-v1-deploymentstatus[$$DeploymentStatus$$]
-- xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-v2-pkg-apis-enterprisesearch-v1-enterprisesearchstatus[$$EnterpriseSearchStatus$$]
-- xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-v2-pkg-apis-enterprisesearch-v1beta1-enterprisesearchstatus[$$EnterpriseSearchStatus$$]
-- xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-v2-pkg-apis-kibana-v1-kibanastatus[$$KibanaStatus$$]
-- xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-v2-pkg-apis-maps-v1alpha1-mapsstatus[$$MapsStatus$$]
-****
-
-
-
-[id="{anchor_prefix}-github-com-elastic-cloud-on-k8s-v2-pkg-apis-common-v1-deploymentstatus"]
-=== DeploymentStatus 
-
-DeploymentStatus represents status information about a deployment.
-
-.Appears In:
-****
-- xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-v2-pkg-apis-apm-v1-apmserverstatus[$$ApmServerStatus$$]
-- xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-v2-pkg-apis-enterprisesearch-v1-enterprisesearchstatus[$$EnterpriseSearchStatus$$]
-- xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-v2-pkg-apis-enterprisesearch-v1beta1-enterprisesearchstatus[$$EnterpriseSearchStatus$$]
-- xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-v2-pkg-apis-kibana-v1-kibanastatus[$$KibanaStatus$$]
-- xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-v2-pkg-apis-maps-v1alpha1-mapsstatus[$$MapsStatus$$]
-****
-
-[cols="25a,75a", options="header"]
-|===
-| Field | Description
-| *`selector`* __string__ | Selector is the label selector used to find all pods.
-| *`count`* __integer__ | Count corresponds to Scale.Status.Replicas, which is the actual number of observed instances of the scaled object.
-| *`availableNodes`* __integer__ | AvailableNodes is the number of available replicas in the deployment.
-| *`version`* __string__ | Version of the stack resource currently running. During version upgrades, multiple versions may run
-in parallel: this value specifies the lowest version currently running.
-| *`health`* __xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-v2-pkg-apis-common-v1-deploymenthealth[$$DeploymentHealth$$]__ | Health of the deployment.
-|===
 
 
 [id="{anchor_prefix}-github-com-elastic-cloud-on-k8s-v2-pkg-apis-common-v1-httpconfig"]
@@ -974,7 +927,6 @@ ConditionType defines the condition of an Elasticsearch resource.
 
 .Appears In:
 ****
-- xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-v2-pkg-apis-common-v1alpha1-elasticsearchautoscalerstatus[$$ElasticsearchAutoscalerStatus$$]
 - xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-v2-pkg-apis-elasticsearch-v1-elasticsearchstatus[$$ElasticsearchStatus$$]
 ****
 
@@ -988,142 +940,17 @@ ConditionType defines the condition of an Elasticsearch resource.
 |===
 
 
-[id="{anchor_prefix}-github-com-elastic-cloud-on-k8s-v2-pkg-apis-common-v1alpha1-countrange"]
-=== CountRange 
-
-
-
-.Appears In:
-****
-- xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-v2-pkg-apis-common-v1alpha1-autoscalingresources[$$AutoscalingResources$$]
-****
-
-[cols="25a,75a", options="header"]
-|===
-| Field | Description
-| *`min`* __integer__ | Min represents the minimum number of nodes in a tier.
-| *`max`* __integer__ | Max represents the maximum number of nodes in a tier.
-|===
-
-
-[id="{anchor_prefix}-github-com-elastic-cloud-on-k8s-v2-pkg-apis-common-v1alpha1-decidersettings"]
-=== DeciderSettings (object) 
-
-DeciderSettings allow the user to tweak autoscaling deciders.
-The map data structure complies with the <key,value> format expected by Elasticsearch.
-
-.Appears In:
-****
-- xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-v2-pkg-apis-common-v1alpha1-autoscalingpolicy[$$AutoscalingPolicy$$]
-- xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-v2-pkg-apis-common-v1alpha1-autoscalingpolicyspec[$$AutoscalingPolicySpec$$]
-- xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-v2-pkg-apis-common-v1alpha1-namedautoscalingpolicy[$$NamedAutoscalingPolicy$$]
-****
-
-
-
-[id="{anchor_prefix}-github-com-elastic-cloud-on-k8s-v2-pkg-apis-common-v1alpha1-noderesources"]
-=== NodeResources 
-
-NodeResources holds the resources to be used by each node managed by an autoscaling policy.
-All the nodes managed by an autoscaling policy have the same resources, even if they are in different NodeSets.
-
-.Appears In:
-****
-- xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-v2-pkg-apis-common-v1alpha1-autoscalingpolicystatus[$$AutoscalingPolicyStatus$$]
-****
-
-[cols="25a,75a", options="header"]
-|===
-| Field | Description
-| *`limits`* __link:https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.27/#resourcelist-v1-core[$$ResourceList$$]__ | 
-| *`requests`* __link:https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.27/#resourcelist-v1-core[$$ResourceList$$]__ | 
-|===
 
 
 
 
-[id="{anchor_prefix}-github-com-elastic-cloud-on-k8s-v2-pkg-apis-common-v1alpha1-nodesetnodecount"]
-=== NodeSetNodeCount 
-
-NodeSetNodeCount models the number of nodes expected in a given NodeSet.
-
-.Appears In:
-****
-- xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-v2-pkg-apis-common-v1alpha1-nodesetnodecountlist[$$NodeSetNodeCountList$$]
-****
-
-[cols="25a,75a", options="header"]
-|===
-| Field | Description
-| *`name`* __string__ | Name of the Nodeset.
-| *`nodeCount`* __integer__ | NodeCount is the number of nodes, as computed by the autoscaler, expected in this NodeSet.
-|===
-
-
-[id="{anchor_prefix}-github-com-elastic-cloud-on-k8s-v2-pkg-apis-common-v1alpha1-nodesetnodecountlist"]
-=== NodeSetNodeCountList (xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-v2-pkg-apis-common-v1alpha1-nodesetnodecount[$$NodeSetNodeCount$$]) 
 
 
 
-.Appears In:
-****
-- xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-v2-pkg-apis-common-v1alpha1-autoscalingpolicystatus[$$AutoscalingPolicyStatus$$]
-****
-
-[cols="25a,75a", options="header"]
-|===
-| Field | Description
-| *`name`* __string__ | Name of the Nodeset.
-| *`nodeCount`* __integer__ | NodeCount is the number of nodes, as computed by the autoscaler, expected in this NodeSet.
-|===
-
-
-[id="{anchor_prefix}-github-com-elastic-cloud-on-k8s-v2-pkg-apis-common-v1alpha1-policystate"]
-=== PolicyState 
 
 
 
-.Appears In:
-****
-- xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-v2-pkg-apis-common-v1alpha1-autoscalingpolicystatus[$$AutoscalingPolicyStatus$$]
-****
 
-[cols="25a,75a", options="header"]
-|===
-| Field | Description
-| *`type`* __xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-v2-pkg-apis-common-v1alpha1-autoscalingeventtype[$$AutoscalingEventType$$]__ | 
-| *`messages`* __string array__ | 
-|===
-
-
-[id="{anchor_prefix}-github-com-elastic-cloud-on-k8s-v2-pkg-apis-common-v1alpha1-quantityrange"]
-=== QuantityRange 
-
-QuantityRange models a resource limit range for resources which can be expressed with resource.Quantity.
-
-.Appears In:
-****
-- xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-v2-pkg-apis-common-v1alpha1-autoscalingresources[$$AutoscalingResources$$]
-****
-
-[cols="25a,75a", options="header"]
-|===
-| Field | Description
-| *`min`* __xref:{anchor_prefix}-k8s-io-apimachinery-pkg-api-resource-quantity[$$Quantity$$]__ | Min represents the lower limit for the resources managed by the autoscaler.
-| *`max`* __xref:{anchor_prefix}-k8s-io-apimachinery-pkg-api-resource-quantity[$$Quantity$$]__ | Max represents the upper limit for the resources managed by the autoscaler.
-| *`requestsToLimitsRatio`* __xref:{anchor_prefix}-k8s-io-apimachinery-pkg-api-resource-quantity[$$Quantity$$]__ | RequestsToLimitsRatio allows to customize Kubernetes resource Limit based on the Request.
-|===
-
-
-[id="{anchor_prefix}-github-com-elastic-cloud-on-k8s-v2-pkg-apis-common-v1alpha1-resourcelistint64"]
-=== ResourceListInt64 (ResourceName]int64) 
-
-ResourceListInt64 is a set of (resource name, quantity) pairs.
-
-.Appears In:
-****
-- xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-v2-pkg-apis-common-v1alpha1-noderesourcesint64[$$NodeResourcesInt64$$]
-****
 
 
 
@@ -1544,7 +1371,6 @@ ElasticsearchStatus represents the observed state of Elasticsearch.
 in parallel: this value specifies the lowest version currently running.
 | *`health`* __xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-v2-pkg-apis-elasticsearch-v1-elasticsearchhealth[$$ElasticsearchHealth$$]__ | 
 | *`phase`* __xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-v2-pkg-apis-elasticsearch-v1-elasticsearchorchestrationphase[$$ElasticsearchOrchestrationPhase$$]__ | 
-| *`monitoringAssociationStatus`* __xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-v2-pkg-apis-common-v1-associationstatusmap[$$AssociationStatusMap$$]__ | 
 | *`conditions`* __xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-v2-pkg-apis-common-v1alpha1-conditions[$$Conditions$$]__ | Conditions holds the current service state of an Elasticsearch cluster.
 **This API is in technical preview and may be changed or removed in a future release.**
 | *`inProgressOperations`* __xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-v2-pkg-apis-elasticsearch-v1-inprogressoperations[$$InProgressOperations$$]__ | InProgressOperations represents changes being applied by the operator to the Elasticsearch cluster.
@@ -1637,7 +1463,6 @@ NodeSet is the specification for a group of Elasticsearch nodes sharing the same
 .Appears In:
 ****
 - xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-v2-pkg-apis-elasticsearch-v1-elasticsearchspec[$$ElasticsearchSpec$$]
-- xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-v2-pkg-apis-elasticsearch-v1-nodesetlist[$$NodeSetList$$]
 ****
 
 [cols="25a,75a", options="header"]
@@ -1944,7 +1769,6 @@ ElasticsearchStatus defines the observed state of Elasticsearch
 [cols="25a,75a", options="header"]
 |===
 | Field | Description
-| *`availableNodes`* __integer__ | 
 | *`health`* __xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-v2-pkg-apis-elasticsearch-v1beta1-elasticsearchhealth[$$ElasticsearchHealth$$]__ | 
 | *`phase`* __xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-v2-pkg-apis-elasticsearch-v1beta1-elasticsearchorchestrationphase[$$ElasticsearchOrchestrationPhase$$]__ | 
 |===
@@ -2020,7 +1844,6 @@ EnterpriseSearch is a Kubernetes CRD to represent Enterprise Search.
 | *`metadata`* __link:https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.27/#objectmeta-v1-meta[$$ObjectMeta$$]__ | Refer to Kubernetes API documentation for fields of `metadata`.
 
 | *`spec`* __xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-v2-pkg-apis-enterprisesearch-v1-enterprisesearchspec[$$EnterpriseSearchSpec$$]__ | 
-| *`status`* __xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-v2-pkg-apis-enterprisesearch-v1-enterprisesearchstatus[$$EnterpriseSearchStatus$$]__ | 
 |===
 
 
@@ -2079,7 +1902,6 @@ EnterpriseSearch is a Kubernetes CRD to represent Enterprise Search.
 | *`metadata`* __link:https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.27/#objectmeta-v1-meta[$$ObjectMeta$$]__ | Refer to Kubernetes API documentation for fields of `metadata`.
 
 | *`spec`* __xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-v2-pkg-apis-enterprisesearch-v1beta1-enterprisesearchspec[$$EnterpriseSearchSpec$$]__ | 
-| *`status`* __xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-v2-pkg-apis-enterprisesearch-v1beta1-enterprisesearchstatus[$$EnterpriseSearchStatus$$]__ | 
 |===
 
 
@@ -2137,7 +1959,6 @@ Kibana represents a Kibana resource in a Kubernetes cluster.
 | *`metadata`* __link:https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.27/#objectmeta-v1-meta[$$ObjectMeta$$]__ | Refer to Kubernetes API documentation for fields of `metadata`.
 
 | *`spec`* __xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-v2-pkg-apis-kibana-v1-kibanaspec[$$KibanaSpec$$]__ | 
-| *`status`* __xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-v2-pkg-apis-kibana-v1-kibanastatus[$$KibanaStatus$$]__ | 
 |===
 
 
@@ -2200,7 +2021,6 @@ Kibana represents a Kibana resource in a Kubernetes cluster.
 | *`metadata`* __link:https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.27/#objectmeta-v1-meta[$$ObjectMeta$$]__ | Refer to Kubernetes API documentation for fields of `metadata`.
 
 | *`spec`* __xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-v2-pkg-apis-kibana-v1beta1-kibanaspec[$$KibanaSpec$$]__ | 
-| *`status`* __xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-v2-pkg-apis-kibana-v1beta1-kibanastatus[$$KibanaStatus$$]__ | 
 |===
 
 
@@ -2375,8 +2195,6 @@ in parallel: this value specifies the lowest version currently running.
 It corresponds to the metadata generation, which is updated on mutation by the API Server.
 If the generation observed in status diverges from the generation in metadata, the Logstash
 controller has not yet processed the changes contained in the Logstash specification.
-| *`elasticsearchAssociationsStatus`* __xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-v2-pkg-apis-common-v1-associationstatusmap[$$AssociationStatusMap$$]__ | ElasticsearchAssociationStatus is the status of any auto-linking to Elasticsearch clusters.
-| *`monitoringAssociationStatus`* __xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-v2-pkg-apis-common-v1-associationstatusmap[$$AssociationStatusMap$$]__ | MonitoringAssociationStatus is the status of any auto-linking to monitoring Elasticsearch clusters.
 | *`selector`* __string__ | 
 |===
 
@@ -2411,7 +2229,6 @@ ElasticMapsServer represents an Elastic Map Server resource in a Kubernetes clus
 | *`metadata`* __link:https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.27/#objectmeta-v1-meta[$$ObjectMeta$$]__ | Refer to Kubernetes API documentation for fields of `metadata`.
 
 | *`spec`* __xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-v2-pkg-apis-maps-v1alpha1-mapsspec[$$MapsSpec$$]__ | 
-| *`status`* __xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-v2-pkg-apis-maps-v1alpha1-mapsstatus[$$MapsStatus$$]__ | 
 |===
 
 
@@ -2534,46 +2351,9 @@ Package v1alpha1 contains API schema definitions for managing StackConfigPolicy 
 |===
 
 
-[id="{anchor_prefix}-github-com-elastic-cloud-on-k8s-v2-pkg-apis-stackconfigpolicy-v1alpha1-policyphase"]
-=== PolicyPhase (string) 
 
 
 
-.Appears In:
-****
-- xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-v2-pkg-apis-stackconfigpolicy-v1alpha1-resourcepolicystatus[$$ResourcePolicyStatus$$]
-- xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-v2-pkg-apis-stackconfigpolicy-v1alpha1-stackconfigpolicystatus[$$StackConfigPolicyStatus$$]
-****
-
-
-
-[id="{anchor_prefix}-github-com-elastic-cloud-on-k8s-v2-pkg-apis-stackconfigpolicy-v1alpha1-policystatuserror"]
-=== PolicyStatusError 
-
-
-
-.Appears In:
-****
-- xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-v2-pkg-apis-stackconfigpolicy-v1alpha1-resourcepolicystatus[$$ResourcePolicyStatus$$]
-****
-
-[cols="25a,75a", options="header"]
-|===
-| Field | Description
-| *`version`* __integer__ | 
-| *`message`* __string__ | 
-|===
-
-
-[id="{anchor_prefix}-github-com-elastic-cloud-on-k8s-v2-pkg-apis-stackconfigpolicy-v1alpha1-resourcetype"]
-=== ResourceType (string) 
-
-
-
-.Appears In:
-****
-- xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-v2-pkg-apis-stackconfigpolicy-v1alpha1-stackconfigpolicystatus[$$StackConfigPolicyStatus$$]
-****
 
 
 
@@ -2610,7 +2390,6 @@ StackConfigPolicy represents a StackConfigPolicy resource in a Kubernetes cluste
 | *`metadata`* __link:https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.27/#objectmeta-v1-meta[$$ObjectMeta$$]__ | Refer to Kubernetes API documentation for fields of `metadata`.
 
 | *`spec`* __xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-v2-pkg-apis-stackconfigpolicy-v1alpha1-stackconfigpolicyspec[$$StackConfigPolicySpec$$]__ | 
-| *`status`* __xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-v2-pkg-apis-stackconfigpolicy-v1alpha1-stackconfigpolicystatus[$$StackConfigPolicyStatus$$]__ | 
 |===
 
 
