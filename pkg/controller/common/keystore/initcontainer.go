@@ -27,6 +27,8 @@ type InitContainerParameters struct {
 	KeystoreAddCommand string
 	// Keystore create command
 	KeystoreCreateCommand string
+	// ContainerCommand is the bash script to run in container
+	ContainerCommand string
 	// Resources for the init container
 	Resources corev1.ResourceRequirements
 	// SkipInitializedFlag when true do not use a flag to ensure the keystore is created only once. This should only be set
@@ -36,9 +38,9 @@ type InitContainerParameters struct {
 	SecurityContext *corev1.SecurityContext
 }
 
-// script is a small bash script to create an Elastic Stack keystore,
+// defaultScript is a small bash script to create an Elastic Stack keystore,
 // then add all entries from the secure settings secret volume into it.
-const script = `#!/usr/bin/env bash
+const defaultScript = `#!/usr/bin/env bash
 
 set -eux
 
@@ -71,7 +73,7 @@ touch {{ .KeystoreVolumePath }}/elastic-internal-init-keystore.ok
 echo "Keystore initialization successful."
 `
 
-var scriptTemplate = template.Must(template.New("").Parse(script))
+var defaultScriptTemplate = template.Must(template.New("").Parse(defaultScript))
 
 // initContainer returns an init container that executes a bash script
 // to load secure settings in a Keystore.
@@ -82,7 +84,7 @@ func initContainer(
 	privileged := false
 	tplBuffer := bytes.Buffer{}
 
-	if err := scriptTemplate.Execute(&tplBuffer, parameters); err != nil {
+	if err := getScriptTemplate(parameters.ContainerCommand).Execute(&tplBuffer, parameters); err != nil {
 		return corev1.Container{}, err
 	}
 
@@ -106,4 +108,12 @@ func initContainer(
 	}
 
 	return container, nil
+}
+
+func getScriptTemplate(script string) *template.Template {
+	if script == "" {
+		return defaultScriptTemplate
+	}
+
+	return template.Must(template.New("").Parse(script))
 }
