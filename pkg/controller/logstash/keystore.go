@@ -24,7 +24,7 @@ const (
 var (
 	// containerCommand runs in every pod creation to regenerate keystore.
 	// `logstash-keystore` allows for adding multiple keys in a single operation.
-	// All keys and values must be ASCII and non-empty. Values are input via stdin, delimited by \n.
+	// All keys and values must be ASCII and non-empty string. Values are input via stdin, delimited by \n.
 	containerCommand = `#!/usr/bin/env bash
 
 set -eu

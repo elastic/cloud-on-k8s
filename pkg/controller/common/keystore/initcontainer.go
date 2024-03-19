@@ -38,9 +38,9 @@ type InitContainerParameters struct {
 	SecurityContext *corev1.SecurityContext
 }
 
-// defaultScript is a small bash script to create an Elastic Stack keystore,
+// script is a small bash script to create an Elastic Stack keystore,
 // then add all entries from the secure settings secret volume into it.
-const defaultScript = `#!/usr/bin/env bash
+const script = `#!/usr/bin/env bash
 
 set -eux
 
@@ -73,7 +73,7 @@ touch {{ .KeystoreVolumePath }}/elastic-internal-init-keystore.ok
 echo "Keystore initialization successful."
 `
 
-var defaultScriptTemplate = template.Must(template.New("").Parse(defaultScript))
+var scriptTemplate = template.Must(template.New("").Parse(script))
 
 // initContainer returns an init container that executes a bash script
 // to load secure settings in a Keystore.
@@ -110,10 +110,10 @@ func initContainer(
 	return container, nil
 }
 
-func getScriptTemplate(script string) *template.Template {
-	if script == "" {
-		return defaultScriptTemplate
+func getScriptTemplate(customScript string) *template.Template {
+	if customScript == "" {
+		return scriptTemplate
 	}
 
-	return template.Must(template.New("").Parse(script))
+	return template.Must(template.New("").Parse(customScript))
 }
