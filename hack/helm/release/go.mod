@@ -12,7 +12,7 @@ require (
 	github.com/spf13/viper v1.18.2
 	google.golang.org/api v0.169.0
 	gopkg.in/yaml.v3 v3.0.1
-	helm.sh/helm/v3 v3.14.2
+	helm.sh/helm/v3 v3.14.3
 )
 
 replace github.com/elastic/cloud-on-k8s/v2 => ../../..
@@ -40,7 +40,7 @@ require (
 	github.com/cenkalti/backoff/v3 v3.0.0 // indirect
 	github.com/cespare/xxhash/v2 v2.2.0 // indirect
 	github.com/chai2010/gettext-go v1.0.2 // indirect
-	github.com/containerd/containerd v1.7.11 // indirect
+	github.com/containerd/containerd v1.7.12 // indirect
 	github.com/containerd/log v0.1.0 // indirect
 	github.com/cyphar/filepath-securejoin v0.2.4 // indirect
 	github.com/davecgh/go-spew v1.1.2-0.20180830191138-d8f796af33cc // indirect
@@ -68,7 +68,7 @@ require (
 	github.com/gobwas/glob v0.2.3 // indirect
 	github.com/gogo/protobuf v1.3.2 // indirect
 	github.com/golang/groupcache v0.0.0-20210331224755-41bb18bfe9da // indirect
-	github.com/golang/protobuf v1.5.3 // indirect
+	github.com/golang/protobuf v1.5.4 // indirect
 	github.com/google/btree v1.0.1 // indirect
 	github.com/google/gnostic-models v0.6.8 // indirect
 	github.com/google/gofuzz v1.2.0 // indirect
@@ -129,7 +129,7 @@ require (
 	github.com/prometheus/client_golang v1.19.0 // indirect
 	github.com/prometheus/client_model v0.6.0 // indirect
 	github.com/prometheus/common v0.50.0 // indirect
-	github.com/prometheus/procfs v0.12.0 // indirect
+	github.com/prometheus/procfs v0.13.0 // indirect
 	github.com/rubenv/sql-migrate v1.5.2 // indirect
 	github.com/russross/blackfriday/v2 v2.1.0 // indirect
 	github.com/ryanuber/go-glob v1.0.0 // indirect
@@ -172,12 +172,12 @@ require (
 	gopkg.in/inf.v0 v0.9.1 // indirect
 	gopkg.in/ini.v1 v1.67.0 // indirect
 	gopkg.in/yaml.v2 v2.4.0 // indirect
-	k8s.io/api v0.29.2 // indirect
+	k8s.io/api v0.29.3 // indirect
 	k8s.io/apiextensions-apiserver v0.29.0 // indirect
-	k8s.io/apimachinery v0.29.2 // indirect
+	k8s.io/apimachinery v0.29.3 // indirect
 	k8s.io/apiserver v0.29.0 // indirect
 	k8s.io/cli-runtime v0.29.0 // indirect
-	k8s.io/client-go v0.29.2 // indirect
+	k8s.io/client-go v0.29.3 // indirect
 	k8s.io/component-base v0.29.0 // indirect
 	k8s.io/klog/v2 v2.120.1 // indirect
 	k8s.io/kube-openapi v0.0.0-20231010175941-2dd684a91f00 // indirect
