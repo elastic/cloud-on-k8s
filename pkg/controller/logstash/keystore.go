@@ -67,7 +67,7 @@ echo "Keystore initialization successful."
 
 	initContainersParameters = keystore.InitContainerParameters{
 		KeystoreCreateCommand:         "echo 'y' | /usr/share/logstash/bin/logstash-keystore create",
-		KeystoreAddCommand:            `echo -e "$vals" | bin/logstash-keystore add "${keys[@]}"`,
+		KeystoreAddCommand:            `echo -e "$vals" | /usr/share/logstash/bin/logstash-keystore add "${keys[@]}"`,
 		CustomScript:                  containerCommand,
 		SecureSettingsVolumeMountPath: keystore.SecureSettingsVolumeMountPath,
 		KeystoreVolumePath:            volume.ConfigMountPath,
