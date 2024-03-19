@@ -134,11 +134,11 @@ OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
 --------------------------------------------------------------------------------
 Module  : github.com/elastic/go-ucfg
-Version : v0.8.7
-Time    : 2024-02-15T13:51:19Z
+Version : v0.8.8
+Time    : 2024-03-18T20:24:48Z
 Licence : Apache-2.0
 
-Contents of probable licence file $GOMODCACHE/github.com/elastic/go-ucfg@v0.8.7/LICENSE:
+Contents of probable licence file $GOMODCACHE/github.com/elastic/go-ucfg@v0.8.8/LICENSE:
 
                                  Apache License
                            Version 2.0, January 2004
@@ -1700,11 +1700,11 @@ Exhibit B - "Incompatible With Secondary Licenses" Notice
 
 --------------------------------------------------------------------------------
 Module  : github.com/hashicorp/vault/api
-Version : v1.12.0
-Time    : 2024-02-08T01:28:54Z
+Version : v1.12.2
+Time    : 2024-03-18T17:11:42Z
 Licence : MPL-2.0
 
-Contents of probable licence file $GOMODCACHE/github.com/hashicorp/vault/api@v1.12.0/LICENSE:
+Contents of probable licence file $GOMODCACHE/github.com/hashicorp/vault/api@v1.12.2/LICENSE:
 
 Copyright (c) 2015 HashiCorp, Inc.
 
