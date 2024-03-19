@@ -26,7 +26,7 @@ build_docs() {
     local REPO_ROOT="${SCRIPT_DIR}/../.."
     local DOCS_DIR="${SCRIPT_DIR}/../../docs"
     local REFDOCS_REPO="${REFDOCS_REPO:-github.com/elastic/crd-ref-docs}"
-    local REFDOCS_VER="${REFDOCS_VER:-v0.0.8}"
+    local REFDOCS_VER="${REFDOCS_VER:-v0.0.12}"
     local BIN_DIR=${SCRATCH_DIR}/bin
 
     (
