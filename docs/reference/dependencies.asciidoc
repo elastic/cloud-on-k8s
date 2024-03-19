@@ -23,7 +23,7 @@ This page lists the third-party dependencies used to build {n}.
 | link:https://github.com/Masterminds/sprig[$$github.com/Masterminds/sprig/v3$$] | v3.2.3 | MIT
 | link:https://github.com/blang/semver[$$github.com/blang/semver/v4$$] | v4.0.0 | MIT
 | link:https://github.com/davecgh/go-spew[$$github.com/davecgh/go-spew$$] | v1.1.2-0.20180830191138-d8f796af33cc | ISC
-| link:https://github.com/elastic/go-ucfg[$$github.com/elastic/go-ucfg$$] | v0.8.7 | Apache-2.0
+| link:https://github.com/elastic/go-ucfg[$$github.com/elastic/go-ucfg$$] | v0.8.8 | Apache-2.0
 | link:https://github.com/ghodss/yaml[$$github.com/ghodss/yaml$$] | v1.0.0 | MIT
 | link:https://github.com/go-logr/logr[$$github.com/go-logr/logr$$] | v1.4.1 | Apache-2.0
 | link:https://github.com/go-test/deep[$$github.com/go-test/deep$$] | v1.1.0 | MIT
