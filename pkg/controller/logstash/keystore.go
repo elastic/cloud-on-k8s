@@ -49,7 +49,7 @@ for filename in  {{ .SecureSettingsVolumeMountPath }}/*; do
 	key=$(basename "$filename")
 	keys+=("$key")
 	vals+=$(cat "$filename")
-    vals+="\n"
+	vals+="\n"
 done
 
 # remove the trailing '\n' from the end of the vals
