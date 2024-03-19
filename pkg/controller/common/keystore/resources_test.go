@@ -203,7 +203,7 @@ echo "Keystore initialization successful."
 			client: k8s.NewFakeClient(&testSecureSettingsSecret),
 			kb:     testKibanaWithSecureSettings,
 			initContainerParameters: InitContainerParameters{
-				ContainerCommand:    `echo "custom script"`,
+				CustomScript:        `echo "custom script"`,
 				Resources:           testResourceRequirements,
 				SkipInitializedFlag: false,
 			},

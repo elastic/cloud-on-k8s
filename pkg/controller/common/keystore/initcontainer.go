@@ -27,8 +27,8 @@ type InitContainerParameters struct {
 	KeystoreAddCommand string
 	// Keystore create command
 	KeystoreCreateCommand string
-	// ContainerCommand is the bash script to run in container
-	ContainerCommand string
+	// CustomScript is the bash script to overrides the default Keystore script
+	CustomScript string
 	// Resources for the init container
 	Resources corev1.ResourceRequirements
 	// SkipInitializedFlag when true do not use a flag to ensure the keystore is created only once. This should only be set
@@ -84,7 +84,7 @@ func initContainer(
 	privileged := false
 	tplBuffer := bytes.Buffer{}
 
-	if err := getScriptTemplate(parameters.ContainerCommand).Execute(&tplBuffer, parameters); err != nil {
+	if err := getScriptTemplate(parameters.CustomScript).Execute(&tplBuffer, parameters); err != nil {
 		return corev1.Container{}, err
 	}
 

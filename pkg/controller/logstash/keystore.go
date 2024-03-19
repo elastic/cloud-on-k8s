@@ -56,7 +56,7 @@ done
 vals=${vals%'\n'}
 
 # add multiple keys to keystore
-echo -e "$vals" | bin/logstash-keystore add "${keys[@]}"
+{{ .KeystoreAddCommand }}
 
 {{ if not .SkipInitializedFlag -}}
 touch {{ .KeystoreVolumePath }}/elastic-internal-init-keystore.ok
@@ -67,7 +67,8 @@ echo "Keystore initialization successful."
 
 	initContainersParameters = keystore.InitContainerParameters{
 		KeystoreCreateCommand:         "echo 'y' | /usr/share/logstash/bin/logstash-keystore create",
-		ContainerCommand:              containerCommand,
+		KeystoreAddCommand:            `echo -e "$vals" | bin/logstash-keystore add "${keys[@]}"`,
+		CustomScript:                  containerCommand,
 		SecureSettingsVolumeMountPath: keystore.SecureSettingsVolumeMountPath,
 		KeystoreVolumePath:            volume.ConfigMountPath,
 		Resources: corev1.ResourceRequirements{
