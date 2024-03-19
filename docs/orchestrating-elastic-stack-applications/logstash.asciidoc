@@ -20,6 +20,7 @@ This section describes how to configure and deploy Logstash with ECK.
 ** <<{p}-logstash-pipelines-es,Using Elasticsearch in Logstash Pipelines>>
 ** <<{p}-logstash-expose-services,Exposing Services>>
 * <<{p}-logstash-securing-api,Securing Logstash API>>
+* <<{p}-logstash-working-with-plugins,Working wuth plugins>>
 * <<{p}-logstash-configuration-examples,Configuration examples>>
 * <<{p}-logstash-update-strategy,Update Strategy>>
 * <<{p}-logstash-advanced-configuration,Advanced Configuration>>
@@ -837,6 +838,115 @@ spec:
           disabled: true
 ----
 
+[id="{p}-logstash-working-with-plugins"]
+== Working with plugins
+
+Logstash on ECK allows use of all the plugins that you can use with regular Logstash, but may require some additional setup, or impose some restrictions on how Logstash pods can be configured.
+
+[id="{p}-logstash-working-with-plugins-storage"]
+=== Working with Plugins (Storage)
+
+When working with plugins in Logstash configuration, there are certain considerations to take into account.
+
+Plugins may require access to storage, and the nature of that access depends on the plugin, and the configuration option. Some plugins may require read-only volume mounts, which maybe serviceable by mounted ConfigMaps or Secrets with others requiring writable volumes
+
+[id="{p}-logstash-working-with-plugins-read-storage"]
+=== Working with Plugins (Read-only storage)
+
+Often when configuring a logstash plugin to connect securely to a resource, the plugin configuration will include options for settings to configure the plugin with the necessary certificates, etc to communicate with the resource.
+
+These are typically found in configuration settings such as `ssl_certificate`, `ssl_certificate_authorities`, `ssl_key`, `ssl_keystore_path`, `ssl_truststore_path`, where the setting calls for a `path`, or an `array` of `path` objects.
+
+These settings expect to have a volume mounted with the appropriate content configured. Typically, these might be set using volume mounts configured with `ConfigMap`, `Secret` or a `Volume`
+
+Example
+
+===
+
+===
+
+Other uses for read-only storage might be to include static content for use within Logstash. Various plugins include these static content for a variety of reasons, often for look up purposes. For example, this may include custom `grok` pattern definitions, source files for a `ruby` filter, a `dictionary` for a translate filter. Look for configuration settings that call for a `path` or an `array` of `paths`.
+
+These settings expect to have a volume mounted with the appropriate content configured. Typically, these might be set using volume mounts configured with `ConfigMap`, `Secret` or a `Volume`. Note that `ConfigMap` and `Secret` have a maximum size of `1 MiB`. If your static content is larger than that,  you will likely need to mount a `Volume`, rather than a `ConfigMap` or `Secret`.
+
+Example
+
+===
+
+===
+
+A plugin may also require Jar files, or other configuration files to be added to the Logstash classpath, or specified in the configuration using a path.
+
+These again should be mounted as volumes, but these might be better configured using an `initContainer` or a new base image that downloads the content into that volume, or directly onto the classpath
+
+Example
+
+===
+
+===
+
+
+
+[id="{p}-logstash-working-with-plugins-write-storage"]
+=== Working with Plugins (Write storage)
+
+Some plugins require access to write storage to function correctly, and store state related to the plugin work, either as a `sincedb` to keep track of the work already completed by the Logstash instance, and to avoid data duplication, or to store temporary files for outputs.
+
+By default, Logstash supplies a small persisted `data` volume, which may be sufficient for storing temporary data, and can be mounted like
+
+Example
+
+===
+
+===
+
+Additional data volumes can be be supplied in the `volumeClaimTemplates` section of the CRD, or the `data` volume
+can be expanded (live volume expansion is supported where the underlying `StorageClass` supports Link to storage expansion)
+
+
+[id="{p}-logstash-working-with-plugins-scaling-concerns"]
+=== Working with Plugins (Scaling Concerns)
+
+The ability to scale {ls} is highly dependent on the use of plugins used in pipelines. Not all {ls} deployments can be scaled horizontally by increasing the number of {ls} Pods defined in the Logstash resource.
+Increasing the number of Pods can cause data loss/duplication, or Pods running idle because they are unable to be utilized.
+
+When determining if Logstash can be scaled, take note of the input (and to a lesser extent, the filter) plugins.
+
+
+Typically, pipelines where the input(s) are solely plugins that *receive* data from external sources should be able to be scaled when configured correctly. These are plugins, such as `logstash-input-beats`, `logstash-input-elastic_agent`, `logstash-input-http`, `logstash-input-tcp`, where Logstash acts as a "server". These can typically identified by a `host` configuration setting.
+Other input plugins may introduce a restriction into how Logstash can be scaled, but still enable a Logstash resource to be scaled beyond a single pod. These are plugins where Logstash *retrieves* data from external sources, but does not store any state locally, as work is tracked in the resource itself. These types of inputs 
+
+
+These risks are especially likely with plugins that:
+
+* Retrieve data from external sources.
+** Plugins that retrieve data from external sources, and require some level of coordination between nodes to split up work, are not good candidates for scaling horizontally, and would likely produce some data duplication. These are plugins such as the JDBC input plugin, which has no automatic way to split queries across Logstash instances, or the S3 input, which has no way to split which buckets to read across Logstash instances.
+** Plugins that retrieve data from external sources, where work is distributed externally to Logstash, but may impose their own limits. These are plugins like the Kafka input, or Azure event hubs, where the parallelism is limited by the number of partitions vs the number of consumers. In cases like this, extra Logstash Pods may be idle if the number of consumer threads multiplied by the number of Pods is greater than the number of partitions.
+* Plugins that require events to be received in order.
+** Certain plugins, such as the aggregate filter, expect events to be received in strict order to run without error or data loss. Any plugin that requires the number of pipeline workers to be `1` will also have issues when horizontal scaling is used.
+If the pipeline does not contain any such plugin, the number of Logstash instances can be increased by setting the `count` property in the Logstash resource:
+
+
+
+[source,yaml,subs="attributes,+macros,callouts"]
+----
+apiVersion: logstash.k8s.elastic.co/v1alpha1
+kind: Logstash
+metadata:
+  name: quickstart
+spec:
+  version: {version}
+  count: 3
+----
+
+
+
+[id="{p}-logstash-working-with-input-plugins"]
+=== Working with Input Plugins
+
+Input Plugins have the most impact on a Logstash on ECK architecture
+
+Input plugins
 
 [id="{p}-logstash-configuration-examples"]
 == Configuration examples
@@ -1162,86 +1272,7 @@ After you build and deploy the custom image, include it in the {ls} manifest.
 
 experimental[]
 
-The ability to scale {ls} is highly dependent on the pipeline configurations, and the plugins used in those pipelines. Not all {ls} deployments can be scaled horizontally by increasing the number of {ls} Pods defined in the Logstash resource.
-Increasing the number of Pods can cause data loss/duplication, or Pods running idle because they are unable to be utilized.
 
-These risks are especially likely with plugins that:
-
-* Retrieve data from external sources.
-** Plugins that retrieve data from external sources, and require some level of coordination between nodes to split up work, are not good candidates for scaling horizontally, and would likely produce some data duplication. These are plugins such as the JDBC input plugin, which has no automatic way to split queries across Logstash instances, or the S3 input, which has no way to split which buckets to read across Logstash instances.
-** Plugins that retrieve data from external sources, where work is distributed externally to Logstash, but may impose their own limits. These are plugins like the Kafka input, or Azure event hubs, where the parallelism is limited by the number of partitions vs the number of consumers. In cases like this, extra Logstash Pods may be idle if the number of consumer threads multiplied by the number of Pods is greater than the number of partitions.
-* Plugins that require events to be received in order.
-** Certain plugins, such as the aggregate filter, expect events to be received in strict order to run without error or data loss. Any plugin that requires the number of pipeline workers to be `1` will also have issues when horizontal scaling is used.
- If the pipeline does not contain any such plugin, the number of Logstash instances can be increased by setting the `count` property in the Logstash resource:
-
-[source,yaml,subs="attributes,+macros,callouts"]
-----
-apiVersion: logstash.k8s.elastic.co/v1alpha1
-kind: Logstash
-metadata:
-  name: quickstart
-spec:
-  version: {version}
-  count: 3
-----
-
-
-
-[id="{p}-logstash-technical-preview-limitations"]
-== Technical Preview limitations
-
-experimental[]
-
-Note that this release is a technical preview. It is still under active development and has additional limitations:
-
-[id="{p}-logstash-technical-preview-persistence"]
-=== Experimental support for persistence
-NOTE: Persistence (experimental) is a breaking change from version 2.8.0 of the ECK operator and requires re-creation of existing {ls} resources.
-
-The operator now includes support for persistence.
-It creates a small (`1Gi`) default `PersistentVolume` called `logstash-data` that maps to `/usr/share/logstash/data`, typically used for storage from plugins.
-The default volume can be overridden by adding a `spec.volumeClaimTemplate` section named `logstash-data` to add more storage, or to use a different `storageClass` from the default, for example.
-You can define additional `persistentVolumeClaims` in `spec.volumeClaimTemplate` for use with PQ, or DLQ, for example.
-
-The current implementation does not allow resizing of volumes, even if your chosen storage class would support it.
-To resize a volume, delete the {ls} resource, delete and recreate (or resize) the volume, and create a new {ls} resource.
 Note that volume claims will not be deleted when you delete the {ls} resource, and must be deleted manually.
 This behavior might change in future versions of the ECK operator.
-
-[id="{p}-logstash-technical-preview-elasticsearchref"]
-=== `ElasticsearchRef` implementation in plugins is in preview mode
-Adding Elasticsearch to plugin definitions requires the use of environment variables populated by the Logstash operator, which may change in future versions of the Logstash operator.
-
-[id="{p}-logstash-technical-preview-limted-plugins"]
-=== Limited support for plugins
-
-Not all {ls} plugins are supported for this technical preview. 
-Note that this is not an exhaustive list, and plugins outside of the https://www.elastic.co/support/matrix#logstash_plugins[Logstash plugin matrix] have not been considered for this list.
-
-**Supported plugins**
-
-These plugins have been tested and are supported:
-
-* logstash-input-beats
-* logstash-input-elastic_agent
-* logstash-input-kafka
-* logstash-input-tcp
-* logstash-input-http
-* logstash-input-udp
-
-Most filter and output plugins are supported, with some exceptions noted in the next section. 
-
-**Plugins not supported at technical preview**
-
-These plugins are not supported: 
-
-* logstash-filter-jdbc_static
-* logstash-filter-jdbc_streaming
-* logstash-filter-aggregate
-
-**Plugins that may require additional manual work** 
-
-Other {ls} filter and output plugins work, but require additional manual steps to mount volumes for certain configurations. 
-For example, logstash-output-s3 requires mounting a volume to store in-progress work to avoid data loss.
-
 
