@@ -22,11 +22,11 @@ import (
 )
 
 // NewConfigMapWithData constructs a new config map with the given data
-func NewConfigMapWithData(es types.NamespacedName, data map[string]string) corev1.ConfigMap {
+func NewConfigMapWithData(cm, es types.NamespacedName, data map[string]string) corev1.ConfigMap {
 	return corev1.ConfigMap{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      es.Name,
-			Namespace: es.Namespace,
+			Name:      cm.Name,
+			Namespace: cm.Namespace,
 			Labels:    label.NewLabels(es),
 		},
 		Data: data,
@@ -51,6 +51,7 @@ func ReconcileScriptsConfigMap(ctx context.Context, c k8s.Client, es esv1.Elasti
 
 	scriptsConfigMap := NewConfigMapWithData(
 		types.NamespacedName{Namespace: es.Namespace, Name: esv1.ScriptsConfigMap(es.Name)},
+		k8s.ExtractNamespacedName(&es),
 		map[string]string{
 			nodespec.ReadinessProbeScriptConfigKey: nodespec.ReadinessProbeScript,
 			nodespec.PreStopHookScriptConfigKey:    preStopScript,
