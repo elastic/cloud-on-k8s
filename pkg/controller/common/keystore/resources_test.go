@@ -51,6 +51,17 @@ var (
 			SecureSettings: []commonv1.SecretSource{testSecureSettingsSecretRef},
 		},
 	}
+
+	testResourceRequirements = corev1.ResourceRequirements{
+		Requests: map[corev1.ResourceName]resource.Quantity{
+			corev1.ResourceMemory: resource.MustParse("128Mi"),
+			corev1.ResourceCPU:    resource.MustParse("100m"),
+		},
+		Limits: map[corev1.ResourceName]resource.Quantity{
+			corev1.ResourceMemory: resource.MustParse("128Mi"),
+			corev1.ResourceCPU:    resource.MustParse("100m"),
+		},
+	}
 )
 
 func fakeFlagInitContainersParameters(skipInitializedFlag bool) InitContainerParameters {
@@ -59,6 +70,30 @@ func fakeFlagInitContainersParameters(skipInitializedFlag bool) InitContainerPar
 		KeystoreAddCommand:            `/keystore/bin/keystore add "$key" "$filename"`,
 		SecureSettingsVolumeMountPath: "/foo/secret",
 		KeystoreVolumePath:            "/bar/data",
+		Resources:                     testResourceRequirements,
+		SkipInitializedFlag:           skipInitializedFlag,
+	}
+}
+
+func wantContainer(wantScript string) *corev1.Container {
+	varFalse := false
+	return &corev1.Container{
+		Command: []string{
+			"/usr/bin/env",
+			"bash",
+			"-c",
+			wantScript,
+		},
+		VolumeMounts: []corev1.VolumeMount{
+			{
+				Name:      "elastic-internal-secure-settings",
+				ReadOnly:  true,
+				MountPath: "/mnt/elastic-internal/secure-settings",
+			},
+		},
+		SecurityContext: &corev1.SecurityContext{
+			Privileged: &varFalse,
+		},
 		Resources: corev1.ResourceRequirements{
 			Requests: map[corev1.ResourceName]resource.Quantity{
 				corev1.ResourceMemory: resource.MustParse("128Mi"),
@@ -69,12 +104,10 @@ func fakeFlagInitContainersParameters(skipInitializedFlag bool) InitContainerPar
 				corev1.ResourceCPU:    resource.MustParse("100m"),
 			},
 		},
-		SkipInitializedFlag: skipInitializedFlag,
 	}
 }
 
 func TestReconcileResources(t *testing.T) {
-	varFalse := false
 	tests := []struct {
 		name                    string
 		client                  k8s.Client
@@ -98,12 +131,7 @@ func TestReconcileResources(t *testing.T) {
 			client:                  k8s.NewFakeClient(&testSecureSettingsSecret),
 			kb:                      testKibanaWithSecureSettings,
 			initContainerParameters: fakeFlagInitContainersParameters(false),
-			wantContainers: &corev1.Container{
-				Command: []string{
-					"/usr/bin/env",
-					"bash",
-					"-c",
-					`#!/usr/bin/env bash
+			wantContainers: wantContainer(`#!/usr/bin/env bash
 
 set -eux
 
@@ -129,29 +157,7 @@ done
 
 touch /bar/data/elastic-internal-init-keystore.ok
 echo "Keystore initialization successful."
-`,
-				},
-				VolumeMounts: []corev1.VolumeMount{
-					{
-						Name:      "elastic-internal-secure-settings",
-						ReadOnly:  true,
-						MountPath: "/mnt/elastic-internal/secure-settings",
-					},
-				},
-				SecurityContext: &corev1.SecurityContext{
-					Privileged: &varFalse,
-				},
-				Resources: corev1.ResourceRequirements{
-					Requests: map[corev1.ResourceName]resource.Quantity{
-						corev1.ResourceMemory: resource.MustParse("128Mi"),
-						corev1.ResourceCPU:    resource.MustParse("100m"),
-					},
-					Limits: map[corev1.ResourceName]resource.Quantity{
-						corev1.ResourceMemory: resource.MustParse("128Mi"),
-						corev1.ResourceCPU:    resource.MustParse("100m"),
-					},
-				},
-			},
+`),
 			// since this will be created, it will be incremented
 			wantVersion: "1",
 			wantNil:     false,
@@ -161,12 +167,7 @@ echo "Keystore initialization successful."
 			client:                  k8s.NewFakeClient(&testSecureSettingsSecret),
 			initContainerParameters: fakeFlagInitContainersParameters(true),
 			kb:                      testKibanaWithSecureSettings,
-			wantContainers: &corev1.Container{
-				Command: []string{
-					"/usr/bin/env",
-					"bash",
-					"-c",
-					`#!/usr/bin/env bash
+			wantContainers: wantContainer(`#!/usr/bin/env bash
 
 set -eux
 
@@ -184,29 +185,7 @@ for filename in  /foo/secret/*; do
 done
 
 echo "Keystore initialization successful."
-`,
-				},
-				VolumeMounts: []corev1.VolumeMount{
-					{
-						Name:      "elastic-internal-secure-settings",
-						ReadOnly:  true,
-						MountPath: "/mnt/elastic-internal/secure-settings",
-					},
-				},
-				SecurityContext: &corev1.SecurityContext{
-					Privileged: &varFalse,
-				},
-				Resources: corev1.ResourceRequirements{
-					Requests: map[corev1.ResourceName]resource.Quantity{
-						corev1.ResourceMemory: resource.MustParse("128Mi"),
-						corev1.ResourceCPU:    resource.MustParse("100m"),
-					},
-					Limits: map[corev1.ResourceName]resource.Quantity{
-						corev1.ResourceMemory: resource.MustParse("128Mi"),
-						corev1.ResourceCPU:    resource.MustParse("100m"),
-					},
-				},
-			},
+`),
 			// since this will be created, it will be incremented
 			wantVersion: "1",
 			wantNil:     false,
@@ -218,6 +197,20 @@ echo "Keystore initialization successful."
 			wantContainers: nil,
 			wantVersion:    "",
 			wantNil:        true,
+		},
+		{
+			name:   "use custom script",
+			client: k8s.NewFakeClient(&testSecureSettingsSecret),
+			kb:     testKibanaWithSecureSettings,
+			initContainerParameters: InitContainerParameters{
+				CustomScript:        `echo "custom script"`,
+				Resources:           testResourceRequirements,
+				SkipInitializedFlag: false,
+			},
+			wantContainers: wantContainer(`echo "custom script"`),
+			// since this will be created, it will be incremented
+			wantVersion: "1",
+			wantNil:     false,
 		},
 	}
 	for _, tt := range tests {
