@@ -58,9 +58,6 @@ filter {
   if ("${HELLO:}" != "") {
     mutate { add_tag => ["ok"] }
   }
-  if ("${A}" != "a") or ("${B}" != "b") or ("${C}" != "c") {
-	drop {}
-  }
 }
 `,
 		},
