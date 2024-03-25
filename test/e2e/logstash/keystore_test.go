@@ -32,7 +32,6 @@ var (
 )
 
 // TestLogstashKeystoreWithoutPassword Logstash should resolve ${VAR} in pipelines.yml using keystore key value
-// When unexpected variable values occur, the event will be dropped, resulting in a test failure.
 func TestLogstashKeystoreWithoutPassword(t *testing.T) {
 	secretName := "ls-keystore-secure-settings"
 
@@ -55,8 +54,8 @@ func TestLogstashKeystoreWithoutPassword(t *testing.T) {
 			"config.string": `
 input { generator { count => 1 } } 
 filter {
-  if ("${HELLO:}" != "") {
-    mutate { add_tag => ["ok"] }
+  if ("${A:}" != "") and ("${B:}" != "") and ("${C:}" != "") {
+    mutate { add_tag => ["${A}", "${B}", "${C}"] }
   }
 }
 `,
