@@ -197,6 +197,15 @@ app.kubernetes.io/instance: {{ .Release.Name }}
 {{- include "elasticagent.preset.mutate.inputs" (list $ $presetVal (list $customInputVal)) -}}
 {{- end -}}
 {{- range $presetName, $presetVal := $.Values.eck_agent.presets -}}
+{{- $presetMode := dig "mode" ("") $presetVal -}}
+{{- if not $presetMode -}}
+{{- fail (printf "mode is missing from preset \"%s\"" $presetName)}}
+{{- else if eq $presetMode "deployment" -}}
+{{- else if eq $presetMode "statefulset" -}}
+{{- else if eq $presetMode "daemonset" -}}
+{{- else -}}
+{{- fail (printf "invalid mode \"%s\" in preset \"%s\", must be one of deployment, statefulset, daemonset" $presetMode $presetName)}}
+{{- end -}}
 {{- $presetInputs := dig "_inputs" (list) $presetVal -}}
 {{- if empty $presetInputs -}}
 {{- $_ := unset $.Values.eck_agent.presets $presetName}}
