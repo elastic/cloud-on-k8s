@@ -7,6 +7,9 @@
 {{- include "elasticagent.preset.mutate.initcontainers" (list $ $.Values.eck_agent.presets.perNode "elasticagent.kubernetes.pernode.preset.initcontainers") -}}
 {{- include "elasticagent.preset.mutate.providers.kubernetes.hints" (list $ $.Values.eck_agent.presets.perNode "elasticagent.kubernetes.pernode.preset.providers.kubernetes.hints") -}}
 {{- end -}}
+{{- if or (eq $.Values.kubernetes.scheduler.enabled true) (eq $.Values.kubernetes.controller_manager.enabled true) -}}
+{{- include "elasticagent.preset.mutate.tolerations" (list $ $.Values.eck_agent.presets.perNode "elasticagent.kubernetes.pernode.preset.tolerations") -}}
+{{- end -}}
 {{- end -}}
 
 {{- define "elasticagent.kubernetes.pernode.preset.rules" -}}
@@ -153,4 +156,12 @@ providers:
   kubernetes:
     hints:
       enabled: true
+{{- end -}}
+
+{{- define "elasticagent.kubernetes.pernode.preset.tolerations" -}}
+tolerations:
+  - key: node-role.kubernetes.io/control-plane
+    effect: NoSchedule
+  - key: node-role.kubernetes.io/master
+    effect: NoSchedule
 {{- end -}}

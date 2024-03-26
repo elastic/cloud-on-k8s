@@ -132,6 +132,18 @@ app.kubernetes.io/instance: {{ .Release.Name }}
 {{- $_ := set $preset "extraContainers" $presetContainers -}}
 {{- end -}}
 
+{{- define "elasticagent.preset.mutate.tolerations" -}}
+{{- $ := index . 0 -}}
+{{- $preset := index . 1 -}}
+{{- $templateName := index . 2 -}}
+{{- $tolerationsToAdd := dig "tolerations" (list) (include $templateName $ | fromYaml) }}
+{{- if $tolerationsToAdd -}}
+{{- $presetTolerations := dig "tolerations" (list) $preset -}}
+{{- $presetTolerations = uniq (concat $presetTolerations $tolerationsToAdd) -}}
+{{- $_ := set $preset "tolerations" $tolerationsToAdd -}}
+{{- end -}}
+{{- end -}}
+
 {{- define "elasticagent.preset.mutate.initcontainers" -}}
 {{- $ := index . 0 -}}
 {{- $preset := index . 1 -}}
