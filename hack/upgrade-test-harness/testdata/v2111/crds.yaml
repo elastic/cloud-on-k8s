@@ -7,7 +7,7 @@ metadata:
   labels:
     app.kubernetes.io/instance: 'elastic-operator'
     app.kubernetes.io/name: 'eck-operator-crds'
-    app.kubernetes.io/version: '2.11.0'
+    app.kubernetes.io/version: '2.11.1'
   name: agents.agent.k8s.elastic.co
 spec:
   group: agent.k8s.elastic.co
@@ -639,7 +639,7 @@ metadata:
   labels:
     app.kubernetes.io/instance: 'elastic-operator'
     app.kubernetes.io/name: 'eck-operator-crds'
-    app.kubernetes.io/version: '2.11.0'
+    app.kubernetes.io/version: '2.11.1'
   name: apmservers.apm.k8s.elastic.co
 spec:
   group: apm.k8s.elastic.co
@@ -1304,7 +1304,7 @@ metadata:
   labels:
     app.kubernetes.io/instance: 'elastic-operator'
     app.kubernetes.io/name: 'eck-operator-crds'
-    app.kubernetes.io/version: '2.11.0'
+    app.kubernetes.io/version: '2.11.1'
   name: beats.beat.k8s.elastic.co
 spec:
   group: beat.k8s.elastic.co
@@ -1611,7 +1611,7 @@ metadata:
   labels:
     app.kubernetes.io/instance: 'elastic-operator'
     app.kubernetes.io/name: 'eck-operator-crds'
-    app.kubernetes.io/version: '2.11.0'
+    app.kubernetes.io/version: '2.11.1'
   name: elasticmapsservers.maps.k8s.elastic.co
 spec:
   group: maps.k8s.elastic.co
@@ -1933,7 +1933,7 @@ metadata:
   labels:
     app.kubernetes.io/instance: 'elastic-operator'
     app.kubernetes.io/name: 'eck-operator-crds'
-    app.kubernetes.io/version: '2.11.0'
+    app.kubernetes.io/version: '2.11.1'
   name: elasticsearchautoscalers.autoscaling.k8s.elastic.co
 spec:
   group: autoscaling.k8s.elastic.co
@@ -2231,7 +2231,7 @@ metadata:
   labels:
     app.kubernetes.io/instance: 'elastic-operator'
     app.kubernetes.io/name: 'eck-operator-crds'
-    app.kubernetes.io/version: '2.11.0'
+    app.kubernetes.io/version: '2.11.1'
   name: elasticsearches.elasticsearch.k8s.elastic.co
 spec:
   group: elasticsearch.k8s.elastic.co
@@ -3758,7 +3758,7 @@ metadata:
   labels:
     app.kubernetes.io/instance: 'elastic-operator'
     app.kubernetes.io/name: 'eck-operator-crds'
-    app.kubernetes.io/version: '2.11.0'
+    app.kubernetes.io/version: '2.11.1'
   name: enterprisesearches.enterprisesearch.k8s.elastic.co
 spec:
   group: enterprisesearch.k8s.elastic.co
@@ -4367,7 +4367,7 @@ metadata:
   labels:
     app.kubernetes.io/instance: 'elastic-operator'
     app.kubernetes.io/name: 'eck-operator-crds'
-    app.kubernetes.io/version: '2.11.0'
+    app.kubernetes.io/version: '2.11.1'
   name: kibanas.kibana.k8s.elastic.co
 spec:
   group: kibana.k8s.elastic.co
@@ -5079,7 +5079,7 @@ metadata:
   labels:
     app.kubernetes.io/instance: 'elastic-operator'
     app.kubernetes.io/name: 'eck-operator-crds'
-    app.kubernetes.io/version: '2.11.0'
+    app.kubernetes.io/version: '2.11.1'
   name: logstashes.logstash.k8s.elastic.co
 spec:
   group: logstash.k8s.elastic.co
@@ -5728,7 +5728,7 @@ metadata:
   labels:
     app.kubernetes.io/instance: 'elastic-operator'
     app.kubernetes.io/name: 'eck-operator-crds'
-    app.kubernetes.io/version: '2.11.0'
+    app.kubernetes.io/version: '2.11.1'
   name: stackconfigpolicies.stackconfigpolicy.k8s.elastic.co
 spec:
   group: stackconfigpolicy.k8s.elastic.co
@@ -5997,8 +5997,31 @@ spec:
               resources:
                 description: Resources is the number of resources to be configured.
                 type: integer
-            required:
-            - details
+              resourcesStatuses:
+                additionalProperties:
+                  description: ResourcePolicyStatus models the status of the policy for one resource to be configured.
+                  properties:
+                    currentVersion:
+                      description: CurrentVersion denotes the current version of filesettings applied to the Elasticsearch cluster This field does not apply to Kibana resources
+                      format: int64
+                      type: integer
+                    error:
+                      properties:
+                        message:
+                          type: string
+                        version:
+                          format: int64
+                          type: integer
+                      type: object
+                    expectedVersion:
+                      description: ExpectedVersion denotes the expected version of filesettings that should be applied to the Elasticsearch cluster This field does not apply to Kibana resources
+                      format: int64
+                      type: integer
+                    phase:
+                      type: string
+                  type: object
+                description: 'ResourcesStatuses holds the status for each resource to be configured. Deprecated: Details is used to store the status of resources from ECK 2.11'
+                type: object
             type: object
         type: object
     served: true
