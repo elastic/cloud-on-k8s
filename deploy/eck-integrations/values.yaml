@@ -49,12 +49,14 @@ kubernetes:
   ## such as in containers, pods, etc. Setting this to true has no effect.
   ## ref: https://www.elastic.co/guide/en/beats/metricbeat/8.11/metricbeat-module-kubernetes.html#_state_and_event
   ## @param kubernetes.state.deployKSM [default: true] deploy kube-state-metrics
+  ## @param kubernetes.state.host [default: kube-state-metrics:8080] host to use for kube-state-metric when not deployed (deployKSM = false)
   ## @param kubernetes.state.vars [default: {}] kube-state-metrics stream variables. Please note that colliding
   ## vars also defined in respective state streams, such as in containers, pods, etc. will *not* be overridden.
   ##
   state:
     enabled: true
     deployKSM: true
+    host: "kube-state-metrics:8080"
     ## E.g.
     ## vars:
     ##  add_metadata: true
@@ -367,6 +369,7 @@ eck_agent:
   presets:
   ##  examplePreset:
   ##    mode: [deployment, statefulset, daemonset]
+  ##    replicaCount: 1
   ##    labels: {}
   ##    annotations: {}
   ##    affinity: {}
@@ -396,10 +399,14 @@ eck_agent:
         requests:
           cpu: 100m
           memory: 400Mi
-      securityContext:
-        runAsUser: 0
       nodeSelector:
         kubernetes.io/os: linux
+      extraVolumes:
+        - name: agent-data
+          emptyDir: {}
+      extraVolumeMounts:
+        - name: agent-data
+          mountPath: /usr/share/elastic-agent/state
       extraEnvs:
       - name: ELASTIC_NETINFO
         value: "false"
@@ -412,12 +419,10 @@ eck_agent:
           metrics: true
       providers:
         kubernetes_leaderelection:
-          enabled: false
+          enabled: true
         kubernetes:
           node: ${NODE_NAME}
-          scope: node
-          kubernetes_secrets:
-            enabled: true
+          scope: cluster
     perNode:
       ## required by the built-in kubernetes and cloud-defend integrations
       mode: daemonset
@@ -445,4 +450,41 @@ eck_agent:
           metrics: true
       providers:
         kubernetes_leaderelection:
+          enabled: false
+        kubernetes:
+          node: ${NODE_NAME}
+          scope: node
+    ksmSharded:
+      ## required by the built-in kubernetes integration
+      mode: statefulset
+      annotations:
+        eck.k8s.elastic.co/license: basic
+      resources:
+        limits:
+          memory: 700Mi
+        requests:
+          cpu: 100m
+          memory: 400Mi
+      extraVolumes:
+        - name: agent-data
+          emptyDir: {}
+      extraVolumeMounts:
+        - name: agent-data
+          mountPath: /usr/share/elastic-agent/state
+      nodeSelector:
+        kubernetes.io/os: linux
+      extraEnvs:
+        - name: ELASTIC_NETINFO
+          value: "false"
+      agent:
+        monitoring:
+          namespace: default
+          use_output: default
+          enabled: true
+          logs: true
+          metrics: true
+      providers:
+        kubernetes_leaderelection:
+          enabled: false
+        kubernetes:
           enabled: false

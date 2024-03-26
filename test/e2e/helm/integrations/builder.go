@@ -161,6 +161,20 @@ func (i chartBuilder) CheckStackTestSteps(k *test.K8sClient) test.StepList {
 			}),
 		},
 		{
+			Name: "Agent statefulset should be created",
+			Test: test.Eventually(func() error {
+				var dep appsv1.StatefulSet
+				if err := k.Client.Get(context.Background(), types.NamespacedName{
+					Namespace: i.nameSpace,
+					Name:      "agent-ksmsharded-agent",
+				}, &dep); err != nil {
+					return err
+				}
+
+				return nil
+			}),
+		},
+		{
 			Name: "Agents wait for all pods to be ready",
 			Test: test.Eventually(func() error {
 				ns := k8sclient.InNamespace(i.nameSpace)

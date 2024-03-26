@@ -1,7 +1,7 @@
 {{- if $.Values.eck_agent.enabled -}}
 {{- include "elasticagent.preset.init" $ -}}
 {{- range $presetName, $presetVal := $.Values.eck_agent.presets -}}
-{{- if eq ($presetVal).mode "deployment" -}}
+{{- if eq ($presetVal).mode "statefulset" -}}
 {{- $agentName := printf "agent-%s" (lower $presetName) -}}
 apiVersion: agent.k8s.elastic.co/v1alpha1
 kind: Agent
@@ -23,7 +23,7 @@ spec:
     secretName: {{ $agentName }}
   elasticsearchRefs:
     {{- $.Values.elasticsearchRefs._internal | toYaml | nindent 4 }}
-  deployment:
+  statefulSet:
     {{- with ($presetVal).replicaCount }}
     replicas: {{ . }}
     {{- end }}
@@ -51,6 +51,10 @@ spec:
         topologySpreadConstraints:
         {{- . | toYaml | nindent 8 }}
         {{- end }}
+        {{- with ($presetVal).extraVolumes }}
+        volumes:
+        {{- . | toYaml | nindent 8 }}
+        {{- end }}
         containers:
         {{- with ($presetVal).extraContainers }}
         {{- . | toYaml | nindent 8 }}
@@ -64,13 +68,9 @@ spec:
           resources:
             {{- . | toYaml | nindent 12 }}
           {{- end }}
-          {{- with ($presetVal).extraVolumes -}}
-          volumes:
-          {{ . | toYaml | nindent 10 }}
-          {{- end }}
-          {{- with ($presetVal).extraVolumeMounts -}}
+          {{- with ($presetVal).extraVolumeMounts }}
           volumeMounts:
-          {{ . | toYaml | nindent 10 }}
+          {{- . | toYaml | nindent 10 }}
           {{- end }}
           env:
           - name: NODE_NAME
