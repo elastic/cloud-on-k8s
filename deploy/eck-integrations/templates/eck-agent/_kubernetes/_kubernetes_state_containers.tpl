@@ -20,7 +20,7 @@
   streams:
   - id: kubernetes/metrics-kubernetes.state_container
     data_stream:
-      type: state
+      type: metrics
       dataset: kubernetes.state_container
     metricsets:
       - state_container
