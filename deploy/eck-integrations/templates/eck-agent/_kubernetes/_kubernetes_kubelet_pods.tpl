@@ -25,7 +25,7 @@
     metricsets:
       - pod
 {{- $defaults := (include "elasticagent.kubernetes.config.kubelet.pods.default_vars" . ) | fromYaml -}}
-{{- mergeOverwrite $defaults .Values.kubernetes.pods.metrics.vars | toYaml | nindent 4 -}}
+{{- mergeOverwrite $defaults .Values.kubernetes.pods.metrics.vars | toYaml | nindent 4 }}
 {{- end -}}
 
 {{- define "elasticagent.kubernetes.config.kubelet.pods.default_vars" -}}

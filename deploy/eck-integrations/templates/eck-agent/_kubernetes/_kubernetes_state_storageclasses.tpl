@@ -28,7 +28,7 @@
     metricsets:
       - state_storageclass
 {{- $defaults := (include "elasticagent.kubernetes.config.state.storageclasses.default_vars" $ ) | fromYaml -}}
-{{- mergeOverwrite $defaults .Values.kubernetes.storageclasses.state.vars | toYaml | nindent 4 -}}
+{{- mergeOverwrite $defaults .Values.kubernetes.storageclasses.state.vars | toYaml | nindent 4 }}
 {{- end -}}
 
 {{- define "elasticagent.kubernetes.config.state.storageclasses.default_vars" -}}

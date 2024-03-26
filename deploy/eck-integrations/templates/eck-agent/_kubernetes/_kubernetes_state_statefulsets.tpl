@@ -28,7 +28,7 @@
     metricsets:
       - state_statefulset
 {{- $defaults := (include "elasticagent.kubernetes.config.state.statefulsets.default_vars" $ ) | fromYaml -}}
-{{- mergeOverwrite $defaults .Values.kubernetes.statefulsets.state.vars | toYaml | nindent 4 -}}
+{{- mergeOverwrite $defaults .Values.kubernetes.statefulsets.state.vars | toYaml | nindent 4 }}
 {{- end -}}
 
 {{- define "elasticagent.kubernetes.config.state.statefulsets.default_vars" -}}

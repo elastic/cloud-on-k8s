@@ -28,7 +28,7 @@
     metricsets:
       - state_namespace
 {{- $defaults := (include "elasticagent.kubernetes.config.state.namespaces.default_vars" $ ) | fromYaml -}}
-{{- mergeOverwrite $defaults .Values.kubernetes.namespaces.state.vars | toYaml | nindent 4 -}}
+{{- mergeOverwrite $defaults .Values.kubernetes.namespaces.state.vars | toYaml | nindent 4 }}
 {{- end -}}
 
 {{- define "elasticagent.kubernetes.config.state.namespaces.default_vars" -}}

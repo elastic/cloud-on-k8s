@@ -29,7 +29,7 @@
     metricsets:
       - state_service
 {{- $defaults := (include "elasticagent.kubernetes.config.state.services.default_vars" $ ) | fromYaml -}}
-{{- mergeOverwrite $defaults .Values.kubernetes.services.state.vars | toYaml | nindent 4 -}}
+{{- mergeOverwrite $defaults .Values.kubernetes.services.state.vars | toYaml | nindent 4 }}
 {{- end -}}
 
 {{- define "elasticagent.kubernetes.config.state.services.default_vars" -}}

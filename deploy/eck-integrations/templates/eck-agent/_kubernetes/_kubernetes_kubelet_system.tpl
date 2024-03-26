@@ -25,7 +25,7 @@
     metricsets:
       - system
 {{- $defaults := (include "elasticagent.kubernetes.config.kubelet.system.default_vars" . ) | fromYaml -}}
-{{- mergeOverwrite $defaults .Values.kubernetes.system.metrics.vars | toYaml | nindent 4 -}}
+{{- mergeOverwrite $defaults .Values.kubernetes.system.metrics.vars | toYaml | nindent 4 }}
 {{- end -}}
 
 {{- define "elasticagent.kubernetes.config.kubelet.system.default_vars" -}}

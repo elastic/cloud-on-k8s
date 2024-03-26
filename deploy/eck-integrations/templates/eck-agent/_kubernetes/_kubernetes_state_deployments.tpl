@@ -28,7 +28,7 @@
     metricsets:
       - state_deployment
 {{- $defaults := (include "elasticagent.kubernetes.config.state.deployments.default_vars" $ ) | fromYaml -}}
-{{- mergeOverwrite $defaults .Values.kubernetes.deployments.state.vars | toYaml | nindent 4 -}}
+{{- mergeOverwrite $defaults .Values.kubernetes.deployments.state.vars | toYaml | nindent 4 }}
 {{- end -}}
 
 {{- define "elasticagent.kubernetes.config.state.deployments.default_vars" -}}

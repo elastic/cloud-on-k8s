@@ -28,7 +28,7 @@
     metricsets:
       - state_resourcequota
 {{- $defaults := (include "elasticagent.kubernetes.config.state.resourcequotas.default_vars" $ ) | fromYaml -}}
-{{- mergeOverwrite $defaults .Values.kubernetes.resourcequotas.state.vars | toYaml | nindent 4 -}}
+{{- mergeOverwrite $defaults .Values.kubernetes.resourcequotas.state.vars | toYaml | nindent 4 }}
 {{- end -}}
 
 {{- define "elasticagent.kubernetes.config.state.resourcequotas.default_vars" -}}
