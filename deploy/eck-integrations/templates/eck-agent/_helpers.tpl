@@ -47,35 +47,6 @@ app.kubernetes.io/name: {{ include "elasticagent.name" . }}
 app.kubernetes.io/instance: {{ .Release.Name }}
 {{- end }}
 
-{{- define "elasticagent.outputs.init" -}}
-{{- if not .Values.elasticsearchRefs -}}
-{{- fail "no outputs defined" -}}
-{{- end -}}
-{{- if not (hasKey .Values.elasticsearchRefs "_internal") -}}
-{{- $outputs := list -}}
-{{- $emptyList := true -}}
-{{- range $outputName, $esRef := .Values.elasticsearchRefs -}}
-{{- $outputDict := deepCopy $esRef -}}
-{{- if and (not (hasKey $outputDict "secretName")) (not (hasKey $outputDict "name")) -}}
-{{- fail (printf "either a \"secretName\" or \"name\" has to be specified for output \"%s\"" $outputName) -}}
-{{- end -}}
-{{- $_ := set $outputDict "outputName" $outputName -}}
-{{- $outputs = append $outputs $outputDict -}}
-{{- $emptyList = false -}}
-{{- end -}}
-{{- if $emptyList -}}
-{{- fail "no outputs found" -}}
-{{- end -}}
-{{- $_ := set .Values.elasticsearchRefs "_internal" $outputs -}}
-{{- if and .Values.kubernetes.enabled (not (hasKey .Values.elasticsearchRefs .Values.kubernetes.output)) -}}
-{{- fail (printf "output \"%s\" of kubernetes integration is not defined" $.Values.kubernetes.output) -}}
-{{- end -}}
-{{- if and .Values.cloudDefend.enabled (not (hasKey .Values.elasticsearchRefs .Values.cloudDefend.output)) -}}
-{{- fail (printf "output \"%s\" of cloudDefend integration is not defined" $.Values.cloudDefend.output) -}}
-{{- end -}}
-{{- end -}}
-{{- end -}}
-
 {{- define "elasticagent.preset.applyOnce" -}}
 {{- $ := index . 0 -}}
 {{- $preset := index . 1 -}}
@@ -191,9 +162,26 @@ app.kubernetes.io/instance: {{ .Release.Name }}
 {{- $_ := set $preset "extraVolumeMounts" $presetVolumeMounts -}}
 {{- end -}}
 
+{{- define "elasticagent.preset.mutate.elasticsearchrefs.byname" -}}
+{{- $ := index . 0 -}}
+{{- $preset := index . 1 -}}
+{{- $outputName := index . 2 -}}
+{{- if not (hasKey $.Values.elasticsearchRefs $outputName) -}}
+{{- fail (printf "output \"%s\" is not defined" $outputName) -}}
+{{- end -}}
+{{- $outputDict := get $.Values.elasticsearchRefs $outputName -}}
+{{- $outputDict = deepCopy $outputDict -}}
+{{- if and (not (hasKey $outputDict "secretName")) (not (hasKey $outputDict "name")) -}}
+{{- fail (printf "either a \"secretName\" or \"name\" has to be specified for output \"%s\"" $outputName) -}}
+{{- end -}}
+{{- $_ := set $outputDict "outputName" $outputName -}}
+{{- $presetElasticSearchRefs := dig "elasticSearchRefs" (list) $preset -}}
+{{- $presetElasticSearchRefs = uniq (concat $presetElasticSearchRefs (list $outputDict)) -}}
+{{- $_ := set $preset "elasticSearchRefs" $presetElasticSearchRefs -}}
+{{- end -}}
+
 {{- define "elasticagent.preset.init" -}}
 {{- if not (hasKey $.Values.eck_agent "initialised") -}}
-{{- include "elasticagent.outputs.init" $ -}}
 {{- include "elasticagent.kubernetes.init" $ -}}
 {{- include "elasticagent.clouddefend.init" $ -}}
 {{- range $customInputName, $customInputVal := $.Values.customIntegrations -}}
@@ -205,15 +193,18 @@ app.kubernetes.io/instance: {{ .Release.Name }}
 {{- if empty $customInputOuput -}}
 {{- fail (printf "output not defined in custom integration \"%s\"" $customInputName)}}
 {{- end -}}
-{{- if not (hasKey $.Values.elasticsearchRefs $customInputOuput) -}}
-{{- fail (printf "output \"%s\" of custom integration \"%s\" is not defined" $customInputOuput $customInputName)}}
-{{- end -}}
+{{- include "elasticagent.preset.mutate.elasticsearchrefs.byname" (list $ $presetVal $customInputOuput) -}}
 {{- include "elasticagent.preset.mutate.inputs" (list $ $presetVal (list $customInputVal)) -}}
 {{- end -}}
 {{- range $presetName, $presetVal := $.Values.eck_agent.presets -}}
 {{- $presetInputs := dig "_inputs" (list) $presetVal -}}
 {{- if empty $presetInputs -}}
 {{- $_ := unset $.Values.eck_agent.presets $presetName}}
+{{- else -}}
+{{- $monitoringOutput := dig "agent" "monitoring" "use_output" "" $presetVal -}}
+{{- if $monitoringOutput -}}
+{{- include "elasticagent.preset.mutate.elasticsearchrefs.byname" (list $ $presetVal $monitoringOutput) -}}
+{{- end -}}
 {{- end -}}
 {{- end -}}
 {{- end -}}

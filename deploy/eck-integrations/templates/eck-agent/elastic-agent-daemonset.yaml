@@ -21,8 +21,10 @@ spec:
   version: {{ required "An Elastic Agent version is required" $.Values.eck_agent.version }}
   configRef:
     secretName: {{ $agentName }}
+  {{- with ($presetVal).elasticSearchRefs }}
   elasticsearchRefs:
-    {{- $.Values.elasticsearchRefs._internal | toYaml | nindent 4 }}
+    {{- . | toYaml | nindent 4 }}
+  {{- end }}
   daemonSet:
     podTemplate:
       spec:

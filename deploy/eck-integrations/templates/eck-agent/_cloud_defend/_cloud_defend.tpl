@@ -1,5 +1,5 @@
 {{- define "elasticagent.clouddefend.init" -}}
-{{- if $.Values.cloudDefend.enabled}}
+{{- if eq $.Values.cloudDefend.enabled true -}}
 {{- $preset := $.Values.eck_agent.presets.perNode -}}
 {{- $inputVal := (include "elasticagent.clouddefend.config.input" $ | fromYamlArray) -}}
 {{- include "elasticagent.preset.mutate.inputs" (list $ $preset $inputVal) -}}

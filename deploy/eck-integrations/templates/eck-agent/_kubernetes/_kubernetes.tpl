@@ -1,8 +1,5 @@
 {{- define "elasticagent.kubernetes.init" -}}
 {{- if eq $.Values.kubernetes.enabled true -}}
-{{- if not (hasKey $.Values.elasticsearchRefs $.Values.kubernetes.output) -}}
-{{- fail (printf "output \"%s\" of kubernetes integration is not defined" $.Values.kubernetes.output)}}
-{{- end -}}
 {{- include "elasticagent.kubernetes.config.kube_apiserver.init" $ -}}
 {{- include "elasticagent.kubernetes.config.state.containers.init" $ -}}
 {{- include "elasticagent.kubernetes.config.state.cronjobs.init" $ -}}

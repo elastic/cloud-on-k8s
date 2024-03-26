@@ -2,6 +2,7 @@
 {{- include "elasticagent.preset.mutate.rules" (list $ $.Values.eck_agent.presets.perNode "elasticagent.kubernetes.pernode.preset.rules") -}}
 {{- include "elasticagent.preset.mutate.volumemounts" (list $ $.Values.eck_agent.presets.perNode "elasticagent.kubernetes.pernode.preset.volumemounts") -}}
 {{- include "elasticagent.preset.mutate.volumes" (list $ $.Values.eck_agent.presets.perNode "elasticagent.kubernetes.pernode.preset.volumes") -}}
+{{- include "elasticagent.preset.mutate.elasticsearchrefs.byname" (list $ $.Values.eck_agent.presets.perNode $.Values.kubernetes.output)}}
 {{- if eq $.Values.kubernetes.hints.enabled true -}}
 {{- include "elasticagent.preset.mutate.initcontainers" (list $ $.Values.eck_agent.presets.perNode "elasticagent.kubernetes.pernode.preset.initcontainers") -}}
 {{- include "elasticagent.preset.mutate.providers.kubernetes.hints" (list $ $.Values.eck_agent.presets.perNode "elasticagent.kubernetes.pernode.preset.providers.kubernetes.hints") -}}

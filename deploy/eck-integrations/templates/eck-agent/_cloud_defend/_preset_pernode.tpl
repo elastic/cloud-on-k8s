@@ -3,6 +3,7 @@
 {{- include "elasticagent.preset.mutate.volumemounts" (list $ $.Values.eck_agent.presets.perNode "agent.clouddefend.pernode.preset.volumemounts") -}}
 {{- include "elasticagent.preset.mutate.volumes" (list $ $.Values.eck_agent.presets.perNode "agent.clouddefend.pernode.preset.volumes") -}}
 {{- include "elasticagent.preset.mutate.securityContext.capabilities.add" (list $ $.Values.eck_agent.presets.perNode "agent.clouddefend.pernode.securityContext.capabilities.add") -}}
+{{- include "elasticagent.preset.mutate.elasticsearchrefs.byname" (list $ $.Values.eck_agent.presets.perNode $.Values.cloudDefend.output)}}
 {{- end -}}
 
 {{- define "agent.clouddefend.pernode.preset.rules" -}}
