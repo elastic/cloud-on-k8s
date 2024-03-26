@@ -101,11 +101,9 @@ extraVolumeMounts:
 - name: var-lib
   mountPath: /hostfs/var/lib
   readOnly: true
-- name: elastic-agent-state
-  mountPath: /usr/share/elastic-agent/state
 {{- if eq $.Values.kubernetes.hints.enabled true }}
 - name: external-inputs
-  mountPath: /etc/elastic-agent/inputs.d
+  mountPath: /usr/share/elastic-agent/state/inputs.d
 {{- end }}
 {{- end -}}
 
@@ -129,10 +127,6 @@ extraVolumes:
 - name: var-lib
   hostPath:
     path: /var/lib
-- name: elastic-agent-state
-  hostPath:
-    path: /var/lib/elastic-agent-managed/elastic-system/state
-    type: DirectoryOrCreate
 {{- if eq $.Values.kubernetes.hints.enabled true }}
 - name: external-inputs
   emptyDir: {}

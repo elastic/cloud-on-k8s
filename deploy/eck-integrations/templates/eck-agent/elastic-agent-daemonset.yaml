@@ -10,8 +10,8 @@ metadata:
   namespace: {{ $.Release.Namespace | quote }}
   labels:
     {{- include "elasticagent.labels" $ | nindent 4 }}
-    {{- with ($presetVal).labels -}}
-    {{ toYaml . | nindent 4 }}
+    {{- with ($presetVal).labels }}
+    {{- toYaml . | nindent 4 }}
     {{- end }}
   {{- with ($presetVal).annotations }}
   annotations:
@@ -38,17 +38,17 @@ spec:
         initContainers:
         {{- . | toYaml | nindent 8 }}
         {{- end }}
-        {{- with ($presetVal).affinity -}}
+        {{- with ($presetVal).affinity }}
         affinity:
-          {{ . | toYaml | nindent 10 }}
+          {{- . | toYaml | nindent 10 }}
         {{- end }}
-        {{- with ($presetVal).tolerations -}}
+        {{- with ($presetVal).tolerations }}
         tolerations:
-        {{ . | toYaml | nindent 8 }}
+        {{- . | toYaml | nindent 8 }}
         {{- end }}
-        {{- with ($presetVal).topologySpreadConstraints -}}
+        {{- with ($presetVal).topologySpreadConstraints }}
         topologySpreadConstraints:
-        {{ . | toYaml | nindent 8 }}
+        {{- . | toYaml | nindent 8 }}
         {{- end }}
         {{- with ($presetVal).extraVolumes }}
         volumes:
@@ -81,9 +81,9 @@ spec:
               fieldRef:
                 fieldPath: metadata.name
           - name: STATE_PATH
-            value: "/etc/elastic-agent"
-          {{- with ($presetVal).extraEnvs -}}
-          {{ . | toYaml | nindent 10 }}
+            value: "/usr/share/elastic-agent/state"
+          {{- with ($presetVal).extraEnvs }}
+          {{- . | toYaml | nindent 10 }}
           {{- end }}
 ---
 {{ end -}}

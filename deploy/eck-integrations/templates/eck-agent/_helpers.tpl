@@ -207,5 +207,6 @@ app.kubernetes.io/instance: {{ .Release.Name }}
 {{- end -}}
 {{- end -}}
 {{- end -}}
+{{- $_ := set $.Values.eck_agent "initialised" dict -}}
 {{- end -}}
 {{- end -}}
