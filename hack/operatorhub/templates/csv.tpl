@@ -10,6 +10,14 @@ metadata:
     description: Run Elasticsearch, Kibana, APM Server, Beats, Enterprise Search, Elastic Agent, Elastic Maps Server and Logstash on Kubernetes and OpenShift
     repository: https://github.com/elastic/cloud-on-k8s
     support: elastic.co
+    operators.openshift.io/valid-subscription: "Basic Elastic license"
+    features.operators.openshift.io/disconnected: "false"
+    features.operators.openshift.io/fips-compliant: "false"
+    features.operators.openshift.io/proxy-aware: "false"
+    features.operators.openshift.io/tls-profiles: "false"
+    features.operators.openshift.io/token-auth-aws: "false"
+    features.operators.openshift.io/token-auth-azure: "false"
+    features.operators.openshift.io/token-auth-gcp: "false"
     alm-examples: |-
       [
           {
