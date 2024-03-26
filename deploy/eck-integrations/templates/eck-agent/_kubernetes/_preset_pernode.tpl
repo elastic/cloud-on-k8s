@@ -147,7 +147,7 @@ initContainers:
     - -c
     - >-
       mkdir -p /etc/elastic-agent/inputs.d &&
-      wget -O - https://github.com/elastic/elastic-agent/archive/8.11.tar.gz | tar xz -C /etc/elastic-agent/inputs.d --strip=5 "elastic-agent-8.11/deploy/kubernetes/elastic-agent-standalone/templates.d"
+      wget -O - https://github.com/elastic/elastic-agent/archive/v{{$.Values.eck_agent.version}}.tar.gz | tar xz -C /etc/elastic-agent/inputs.d --strip=5 "elastic-agent-{{$.Values.eck_agent.version}}/deploy/kubernetes/elastic-agent-standalone/templates.d"
   volumeMounts:
     - name: external-inputs
       mountPath: /etc/elastic-agent/inputs.d
