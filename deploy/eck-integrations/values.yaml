@@ -287,6 +287,9 @@ cloudDefend:
   ## @param cloudDefend.output [default: default] output name used for cloudDefend integration
   ##
   output: default
+  ## @param cloudDefend.namespace [default: default] cloud-defend data_stream namespace
+  ##
+  namespace: default
   ## @param cloudDefend.process.selectors [default: {}] cloud-defend process selectors to match on operations and or conditions of interest
   ## @param cloudDefend.process.responses [default: {}] cloud-defend process responses for each selector
   ##

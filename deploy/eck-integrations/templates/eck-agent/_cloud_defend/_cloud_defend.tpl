@@ -14,7 +14,7 @@
   name: D4C
   type: cloud_defend/control
   data_stream:
-    namespace: {{ $.Values.kubernetes.namespace }}
+    namespace: {{ $.Values.cloudDefend.namespace }}
   use_output: {{ $.Values.cloudDefend.output }}
   {{/* package_policy_id field is validated and required for defend 4 containers */}}
   package_policy_id: 05c82775-6f4a-4531-9907-55f958e8d5e4
