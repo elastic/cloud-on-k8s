@@ -19,7 +19,6 @@ import (
 	esv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/elasticsearch/v1"
 	sset "github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/statefulset"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/tracing"
-	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/version"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/client"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/settings"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/k8s"
@@ -227,7 +226,7 @@ const (
 func (l ResourcesList) ToDesiredNodes(
 	ctx context.Context,
 	k8sClient k8s.Client,
-	version version.Version,
+	version string,
 ) (desiredNodes []client.DesiredNode, requeue bool, err error) {
 	span, ctx := apm.StartSpan(ctx, "compute_desired_nodes", tracing.SpanTypeApp)
 	defer span.End()
@@ -267,7 +266,7 @@ func (l ResourcesList) ToDesiredNodes(
 			})
 
 			node := client.DesiredNode{
-				NodeVersion:     emptyIfDeprecated(version, client.DeprecatedNodeVersionReqBodyParamMinVersion),
+				NodeVersion:     version,
 				ProcessorsRange: nodeResource.cpu,
 				Memory:          fmt.Sprintf("%db", nodeResource.memory),
 				Storage:         fmt.Sprintf("%db", nodeResource.storage),
@@ -278,15 +277,6 @@ func (l ResourcesList) ToDesiredNodes(
 	}
 
 	return desiredNodes, requeue, nil
-}
-
-// emptyIfDeprecated returns an empty string if the version is greater than equal to the deprecated version,
-// else the finalized version.
-func emptyIfDeprecated(version, deprecatedMinVersion version.Version) string {
-	if version.GTE(deprecatedMinVersion) {
-		return ""
-	}
-	return version.FinalizeVersion()
 }
 
 // visit recursively visits a map holding a tree structure and apply a function to nodes that hold a string.
