@@ -6,7 +6,7 @@
 === Known issues
 
 - When upgrading Elasticsearch to 8.13.0, the operator will be stalled in the upgrade process due to a reconciler error where the Elasticsearch client failed
-to request the desired nodes API.
+to request the desired nodes API. There is no workaround to resolve this issue. You must update the operator to the next patch release.
 
 [float]
 [id="{p}-2120-new-and-notable"]
