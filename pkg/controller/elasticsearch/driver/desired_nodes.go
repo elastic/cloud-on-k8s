@@ -37,7 +37,7 @@ func (d *defaultDriver) updateDesiredNodes(
 	if err != nil {
 		return results.WithError(err)
 	}
-	nodes, requeue, err := expectedResources.ToDesiredNodes(ctx, d.Client, esVersion)
+	nodes, requeue, err := expectedResources.ToDesiredNodes(ctx, d.Client, esVersion.FinalizeVersion())
 	switch {
 	case err == nil:
 		d.ReconcileState.ReportCondition(
