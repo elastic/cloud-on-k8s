@@ -5,8 +5,9 @@
 [id="{p}-2120-known-issues"]
 === Known issues
 
-- When upgrading Elasticsearch to 8.13.0, the operator will be stalled in the upgrade process due to a reconciler error where the Elasticsearch client failed
-to request the desired nodes API. There is no workaround to resolve this issue. You must update the operator to the next patch release.
+- During the upgrade of Elasticsearch to version 8.13.0, the operator may encounter a stall in the process due to a reconciler error,
+wherein the Elasticsearch client fails to request the desired nodes API. There is no workaround available to resolve this issue. 
+The only solution is to update the operator to the subsequent patch release.
 
 [float]
 [id="{p}-2120-new-and-notable"]
