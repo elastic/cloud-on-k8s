@@ -9,4 +9,4 @@
 [float]
 === Bug fixes
 
-* Move desired nodes version gate in the client {pull}7663[#7664]
+* Move desired nodes version gate in the client {pull}7663[#7663] (issue: {issue}7664[#7664])
