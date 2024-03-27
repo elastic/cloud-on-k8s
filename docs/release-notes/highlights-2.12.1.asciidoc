@@ -9,4 +9,4 @@ This is a patch release to address some issues found after the 2.12.0 release. C
 
 This release fixes an issue where the operator may encounter a stall during the upgrade of Elasticsearch to version 8.13.0.
 
-Also refer to <<{p}-2120-known-issues>> for more information.
+Also refer to <<{p}-2120-known-issue>> for more information.
