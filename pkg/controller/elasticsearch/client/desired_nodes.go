@@ -12,7 +12,6 @@ import (
 )
 
 var desiredNodesMinVersion = version.MinFor(8, 3, 0)
-var DeprecatedNodeVersionReqBodyParamMinVersion = version.MinFor(8, 13, 0)
 
 type DesiredNodesClient interface {
 	IsDesiredNodesSupported() bool
@@ -39,7 +38,7 @@ type DesiredNode struct {
 	ProcessorsRange ProcessorsRange        `json:"processors_range"`
 	Memory          string                 `json:"memory"`
 	Storage         string                 `json:"storage"`
-	NodeVersion     string                 `json:"node_version,omitempty"` // deprecated in 8.13+
+	NodeVersion     string                 `json:"node_version"`
 }
 
 type ProcessorsRange struct {
