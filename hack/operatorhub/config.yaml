@@ -1,5 +1,5 @@
-newVersion: 2.12.0
-prevVersion: 2.11.1
+newVersion: 2.12.1
+prevVersion: 2.12.0
 stackVersion: 8.13.0
 crds:
   - name: elasticsearches.elasticsearch.k8s.elastic.co
