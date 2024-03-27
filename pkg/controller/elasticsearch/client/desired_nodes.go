@@ -12,7 +12,7 @@ import (
 )
 
 var desiredNodesMinVersion = version.MinFor(8, 3, 0)
-var DeprecatedNodeVersionReqBodyParamMinVersion = version.MinFor(8, 13, 0)
+var deprecatedNodeVersionReqBodyParamMinVersion = version.MinFor(8, 13, 0)
 
 type DesiredNodesClient interface {
 	IsDesiredNodesSupported() bool
@@ -74,6 +74,12 @@ func (c *clientV8) GetLatestDesiredNodes(ctx context.Context) (LatestDesiredNode
 }
 
 func (c *clientV8) UpdateDesiredNodes(ctx context.Context, historyID string, version int64, desiredNodes DesiredNodes) error {
+	// remove deprecated field depending on the version
+	if c.version.GTE(deprecatedNodeVersionReqBodyParamMinVersion) {
+		for i := range desiredNodes.DesiredNodes {
+			desiredNodes.DesiredNodes[i].NodeVersion = ""
+		}
+	}
 	return c.put(
 		ctx,
 		fmt.Sprintf("/_internal/desired_nodes/%s/%d", historyID, version),
