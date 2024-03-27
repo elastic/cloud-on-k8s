@@ -21,6 +21,16 @@ rules:
     - get
     - watch
     - list
+- apiGroups:
+    - coordination.k8s.io
+  resources:
+    - leases
+  verbs:
+    - create
+    - update
+    - get
+    - list
+    - watch
 - apiGroups: [ "apps" ]
   resources:
     - replicasets
