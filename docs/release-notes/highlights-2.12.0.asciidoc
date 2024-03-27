@@ -2,6 +2,13 @@
 == 2.12.0 release highlights
 
 [float]
+[id="{p}-190-known-issues"]
+=== Known issues
+
+- When upgrading Elasticsearch to 8.13.0, the operator will be stalled in the upgrade process due to a reconciler error where the Elasticsearch client failed
+to request the desired nodes API.
+
+[float]
 [id="{p}-2120-new-and-notable"]
 === New and notable
 
