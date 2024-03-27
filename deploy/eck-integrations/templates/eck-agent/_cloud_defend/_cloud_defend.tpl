@@ -32,6 +32,13 @@
         file:
           {{- .Values.cloudDefend.file | toYaml | nindent 10 }}
         {{- end }}
+    - id: cloud_defend/control-cloud_defend.heartbeat
+      data_stream:
+        type: metrics
+        dataset: cloud_defend.heartbeat
+      metricsets:
+        - cloud_defend
+      period: 30m
     - id: cloud_defend/control-cloud_defend.file
       data_stream:
         type: logs
