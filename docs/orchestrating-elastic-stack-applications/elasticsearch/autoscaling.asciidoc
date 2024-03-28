@@ -31,6 +31,8 @@ Autoscaling policies can be defined in an `ElasticsearchAutoscaler` resource. Ea
 ** `cpu` and `memory` enforce minimum and maximum compute resources usage for the Elasticsearch container.
 ** `storage` enforces minimum and maximum storage request per PersistentVolumeClaim.
 
+If there is no recommendation from the Autoscaling API for a given resource, and if this resource is not set in the policy, then the resource is not managed by the operator and existing requirements in the NodeSets remain unchanged.
+
 [source,yaml]
 ----
 apiVersion: autoscaling.k8s.elastic.co/v1alpha1
