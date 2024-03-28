@@ -1,0 +1,12 @@
+[[release-highlights-2.12.1]]
+== 2.12.1 release highlights
+
+This is a patch release to address some issues found after the 2.12.0 release. Check <<release-highlights-2.12.0>> for the full highlights of the 2.12.x series.
+
+[float]
+[id="{p}-2121-new-and-notable"]
+=== Bug fix
+
+This release fixes an issue where the operator may encounter a stall during the upgrade of Elasticsearch to version 8.13.0.
+
+Also refer to <<{p}-2120-known-issue>> for more information.

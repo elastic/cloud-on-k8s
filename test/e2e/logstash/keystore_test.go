@@ -19,20 +19,6 @@ import (
 )
 
 var (
-	pipelineConfig = commonv1.Config{
-		Data: map[string]interface{}{
-			"pipeline.id": "main",
-			"config.string": `
-input { generator { count => 1 } } 
-filter {
-  if ("${HELLO:}" != "") {
-    mutate { add_tag => ["ok"] }
-  }
-}
-`,
-		},
-	}
-
 	request = logstash.Request{
 		Name: "pipeline [main]",
 		Path: "/_node/stats/pipelines/main",
@@ -46,6 +32,8 @@ filter {
 )
 
 // TestLogstashKeystoreWithoutPassword Logstash should resolve ${VAR} in pipelines.yml using keystore key value
+// Logstash keystore variable cannot do string comparison in conditional statement.
+// When variable is undefined in keystore, the pipeline fails, resulting in a test failure.
 func TestLogstashKeystoreWithoutPassword(t *testing.T) {
 	secretName := "ls-keystore-secure-settings"
 
@@ -56,6 +44,21 @@ func TestLogstashKeystoreWithoutPassword(t *testing.T) {
 		},
 		StringData: map[string]string{
 			"HELLO": "HALLO",
+			"A":     "a",
+			"B":     "b",
+			"C":     "c",
+		},
+	}
+
+	pipelineConfig := commonv1.Config{
+		Data: map[string]interface{}{
+			"pipeline.id": "main",
+			"config.string": `
+input { generator { count => 1 } } 
+filter {
+  mutate { add_tag => ["${A}", "${B}", "${C}"] }
+}
+`,
 		},
 	}
 
@@ -68,7 +71,7 @@ func TestLogstashKeystoreWithoutPassword(t *testing.T) {
 		})
 	})
 
-	b := logstash.NewBuilder("test-keystore-with-default-pw").
+	b := logstash.NewBuilder("test-keystore-without-pw").
 		WithNodeCount(1).
 		WithSecureSettings(commonv1.SecretSource{SecretName: secretName}).
 		WithPipelines([]commonv1.Config{pipelineConfig})
@@ -112,6 +115,20 @@ func TestLogstashKeystoreWithPassword(t *testing.T) {
 		},
 		StringData: map[string]string{
 			lsctrl.KeystorePassKey: "changed",
+		},
+	}
+
+	pipelineConfig := commonv1.Config{
+		Data: map[string]interface{}{
+			"pipeline.id": "main",
+			"config.string": `
+input { generator { count => 1 } } 
+filter {
+  if ("${HELLO:}" != "") {
+    mutate { add_tag => ["ok"] }
+  }
+}
+`,
 		},
 	}
 

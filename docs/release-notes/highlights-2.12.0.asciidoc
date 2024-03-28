@@ -1,0 +1,36 @@
+[[release-highlights-2.12.0]]
+== 2.12.0 release highlights
+
+[float]
+[id="{p}-2120-known-issue"]
+=== Known issue
+
+- During the upgrade of Elasticsearch to version 8.13.0, the operator may encounter a stall in the process due to a reconciler error,
+wherein the Elasticsearch client fails to request the desired nodes API. There is no workaround available to resolve this issue. 
+The only solution is to update the operator to the subsequent patch release.
+
+[float]
+[id="{p}-2120-new-and-notable"]
+=== New and notable
+
+New and notable changes in version 2.12.0 of {n}. Check <<release-notes-2.12.0>> for the full list of changes.
+
+[float]
+[id="{p}-2120-apm-server-helm-chart"]
+=== APM Server Helm chart
+
+ECK 2.12.0 supports managing APM Server resources via Helm charts, similarly to other components of the Elastic stack
+(see https://github.com/elastic/cloud-on-k8s/tree/main/deploy/eck-stack/charts/eck-apm-server/examples[examples]).
+
+[float]
+[id="{p}-2120-logstash-improvements"]
+=== Logstash volume expansion, update strategy and secure monitoring APIs
+
+ECK 2.12.0 brings several improvements for Logstash: support for volume expansion, update strategy for the underlying StatefulSet
+and the ability to configure TLS and basic authentication to secure the Logstash monitoring APIs.
+
+[float]
+[id="{p}-2120-eck-metrics-endpoint"]
+=== Secure operator metrics endpoint
+
+ECK 2.12.0 supports configuring of RBAC and TLS on the operator's Prometheus metrics endpoint.

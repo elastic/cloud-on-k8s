@@ -1,0 +1,12 @@
+:issue: https://github.com/elastic/cloud-on-k8s/issues/
+:pull: https://github.com/elastic/cloud-on-k8s/pull/
+
+[[release-notes-2.12.1]]
+== {n} version 2.12.1
+
+
+[[bug-2.12.1]]
+[float]
+=== Bug fixes
+
+* Move desired nodes version gate in the client {pull}7663[#7663] (issue: {issue}7664[#7664])

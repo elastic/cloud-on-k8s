@@ -51,7 +51,7 @@ func deleteOrphanedResources(
 		}
 
 		// Secret for the `associated` resource doesn't match any `association` - it's not needed anymore and should be deleted.
-		ulog.FromContext(ctx).Info("Deleting secret", "namespace", secret.Namespace, "secret_name", secret.Name, "associated_name", associated.Name)
+		ulog.FromContext(ctx).Info("Deleting secret", "secret_name", secret.Name, "associated_name", associated.Name)
 		if err := c.Delete(ctx, &secret, &client.DeleteOptions{Preconditions: &metav1.Preconditions{UID: &secret.UID}}); err != nil && !apierrors.IsNotFound(err) {
 			return err
 		}
