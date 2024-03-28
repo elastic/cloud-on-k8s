@@ -303,6 +303,10 @@ func (kbes *KibanaEsAssociation) SetAssociationConf(assocConf *commonv1.Associat
 	kbes.assocConf = assocConf
 }
 
+func (kbes *KibanaEsAssociation) SupportsAuthAPIKey() bool {
+	return false
+}
+
 func (kbes *KibanaEsAssociation) AssociationID() string {
 	return commonv1.SingletonAssociationID
 }
@@ -352,6 +356,10 @@ func (kbent *KibanaEntAssociation) AssociationConf() (*commonv1.AssociationConf,
 
 func (kbent *KibanaEntAssociation) SetAssociationConf(assocConf *commonv1.AssociationConf) {
 	kbent.entAssocConf = assocConf
+}
+
+func (kbent *KibanaEntAssociation) SupportsAuthAPIKey() bool {
+	return false
 }
 
 func (kbent *KibanaEntAssociation) AssociationID() string {
@@ -407,6 +415,10 @@ func (kbmon *KbMonitoringAssociation) SetAssociationConf(assocConf *commonv1.Ass
 	if assocConf != nil {
 		kbmon.monitoringAssocConfs[kbmon.ref] = *assocConf
 	}
+}
+
+func (kbmon *KbMonitoringAssociation) SupportsAuthAPIKey() bool {
+	return false
 }
 
 func (kbmon *KbMonitoringAssociation) AssociationID() string {

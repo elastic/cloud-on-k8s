@@ -257,6 +257,12 @@ func (b *Beat) GetAssociations() []commonv1.Association {
 	return associations
 }
 
+func (b *Beat) EsAssociation() *BeatESAssociation {
+	return &BeatESAssociation{
+		Beat: b,
+	}
+}
+
 func (b *Beat) ServiceAccountName() string {
 	return b.Spec.ServiceAccountName
 }
@@ -311,6 +317,10 @@ func (b *BeatESAssociation) SetAssociationConf(conf *commonv1.AssociationConf) {
 	b.esAssocConf = conf
 }
 
+func (b *BeatESAssociation) SupportsAuthAPIKey() bool {
+	return true
+}
+
 func (b *BeatESAssociation) AssociationID() string {
 	return commonv1.SingletonAssociationID
 }
@@ -349,6 +359,10 @@ func (b *BeatKibanaAssociation) AssociationRef() commonv1.ObjectSelector {
 
 func (b *BeatKibanaAssociation) AssociationConfAnnotationName() string {
 	return commonv1.FormatNameWithID(commonv1.KibanaConfigAnnotationNameBase+"%s", b.AssociationID())
+}
+
+func (b *BeatKibanaAssociation) SupportsAuthAPIKey() bool {
+	return false
 }
 
 func (b *BeatKibanaAssociation) AssociationID() string {
@@ -423,6 +437,10 @@ func (beatmon *BeatMonitoringAssociation) SetAssociationConf(assocConf *commonv1
 	if assocConf != nil {
 		beatmon.monitoringAssocConfs[beatmon.ref] = *assocConf
 	}
+}
+
+func (beatmon *BeatMonitoringAssociation) SupportsAuthAPIKey() bool {
+	return false
 }
 
 func (beatmon *BeatMonitoringAssociation) AssociationID() string {

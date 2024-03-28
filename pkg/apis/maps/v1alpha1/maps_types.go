@@ -145,6 +145,10 @@ func (m *ElasticMapsServer) GetAssociations() []commonv1.Association {
 	return associations
 }
 
+func (m *ElasticMapsServer) SupportsAuthAPIKey() bool {
+	return false
+}
+
 func (m *ElasticMapsServer) AssociationID() string {
 	return commonv1.SingletonAssociationID
 }

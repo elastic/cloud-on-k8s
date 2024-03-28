@@ -280,7 +280,7 @@ Check link:https://www.elastic.co/guide/en/beats/filebeat/current/keystore.html[
 [id="{p}-beat-set-beat-output"]
 === Set Beat output
 
-If the `elasticsearchRef` element is specified, ECK populates the output section of the Beat config. ECK creates a user with appropriate roles and permissions and uses its credentials. If required, it also mounts the CA certificate in all Beat Pods, and recreates Pods when this certificate changes.
+If the `elasticsearchRef` element is specified, ECK populates the output section of the Beat config. ECK creates a user with appropriate roles and permissions and uses its credentials. If required, it also mounts the CA certificate in all Beat Pods, and recreates Pods when this certificate changes. Moreover, `elasticsearchRef` element can refer to an ECK-managed Elasticsearch cluster by filling the `name`, `namespace`, `serviceName` fields accordingly, as well as to a Kubernetes secret that contains the connection information to an Elasticsearch cluster not managed by it. In the latter case, for authenticating against the Elasticsearch cluster the secret must contain the fields of `url` and either the `username` with `password` or the `api-key`.
 
 Output can be set to any value that is supported by a given Beat. To use it, remove the `elasticsearchRef` element from the specification and include an appropriate output configuration in the `config` or `configRef` elements.
 

@@ -175,6 +175,9 @@ type Association interface {
 	AssociationConf() (*AssociationConf, error)
 	SetAssociationConf(*AssociationConf)
 
+	// SupportsAuthAPIKey returns true if the Association supports authenticating with an API key
+	SupportsAuthAPIKey() bool
+
 	// AssociationID uniquely identifies this Association among all Associations of the same type belonging to Associated()
 	AssociationID() string
 }
@@ -201,6 +204,7 @@ func FormatNameWithID(template string, id string) string {
 type AssociationConf struct {
 	AuthSecretName   string `json:"authSecretName"`
 	AuthSecretKey    string `json:"authSecretKey"`
+	IsAPIKey         bool   `json:"isApiKey"`
 	IsServiceAccount bool   `json:"isServiceAccount"`
 	CACertProvided   bool   `json:"caCertProvided"`
 	CASecretName     string `json:"caSecretName"`
