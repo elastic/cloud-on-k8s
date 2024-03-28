@@ -66,15 +66,12 @@ func (r *Reconciler) ExpectedConfigFromUnmanagedAssociation(association commonv1
 		CACertProvided: info.CaCert != "",
 	}
 
-	switch info.AuthType {
-	case AuthTypeUnmanagedAPIKey:
+	if info.APIKey != "" {
 		expectedAssocConf.IsAPIKey = true
 		expectedAssocConf.AuthSecretKey = authAPIKeyUnmanagedSecretKey
-	case AuthTypeUnmanagedBasic:
+	} else {
 		expectedAssocConf.IsAPIKey = false
 		expectedAssocConf.AuthSecretKey = authPasswordUnmanagedSecretKey
-	default:
-		return commonv1.AssociationConf{}, fmt.Errorf("unknown auth type %d", info.AuthType)
 	}
 
 	// points the ca secret to the custom secret if needed
@@ -88,7 +85,6 @@ func (r *Reconciler) ExpectedConfigFromUnmanagedAssociation(association commonv1
 // UnmanagedAssociationConnectionInfo holds connection information stored in a custom Secret to reach over HTTP an Elastic resource not managed by ECK
 // referenced in an Association. The resource can thus be external to the local Kubernetes cluster.
 type UnmanagedAssociationConnectionInfo struct {
-	AuthType int
 	URL      string
 	Username string
 	Password string
@@ -124,7 +120,6 @@ func GetUnmanagedAssociationConnectionInfoFromSecret(c k8s.Client, association U
 
 	if association.SupportsAuthAPIKey() {
 		if apiKey, ok := secretRef.Data[authAPIKeyUnmanagedSecretKey]; ok {
-			ref.AuthType = AuthTypeUnmanagedAPIKey
 			ref.APIKey = string(apiKey)
 			return &ref, nil
 		}
@@ -141,7 +136,6 @@ func GetUnmanagedAssociationConnectionInfoFromSecret(c k8s.Client, association U
 		return nil, fmt.Errorf("password secret key doesn't exist in secret %s", assocRef.SecretName)
 	}
 	ref.Password = string(password)
-	ref.AuthType = AuthTypeUnmanagedBasic
 
 	return &ref, nil
 }
@@ -171,13 +165,10 @@ func (r UnmanagedAssociationConnectionInfo) Request(path string, jsonPath string
 		return "", err
 	}
 
-	switch r.AuthType {
-	case AuthTypeUnmanagedBasic:
-		req.SetBasicAuth(r.Username, r.Password)
-	case AuthTypeUnmanagedAPIKey:
+	if r.APIKey != "" {
 		req.Header.Set("Authorization", "ApiKey "+r.APIKey)
-	default:
-		return "", fmt.Errorf("unsupported auth type %d", r.AuthType)
+	} else {
+		req.SetBasicAuth(r.Username, r.Password)
 	}
 
 	httpClient := &http.Client{

@@ -42,7 +42,7 @@ func TestGetUnmanagedAssociationConnexionInfoFromSecret(t *testing.T) {
 			"password": []byte("elastic"),
 		},
 	}
-	refObjectFixture := UnmanagedAssociationConnectionInfo{AuthType: AuthTypeUnmanagedBasic, URL: "https://es.io:9243", Username: "elastic", Password: "elastic", CaCert: "", APIKey: ""}
+	refObjectFixture := UnmanagedAssociationConnectionInfo{URL: "https://es.io:9243", Username: "elastic", Password: "elastic", CaCert: "", APIKey: ""}
 
 	tests := []struct {
 		name        string
@@ -100,7 +100,7 @@ func TestGetUnmanagedAssociationConnexionInfoFromSecret(t *testing.T) {
 				supportsAuthAPIKey: true,
 			},
 			want: func() UnmanagedAssociationConnectionInfo {
-				return UnmanagedAssociationConnectionInfo{AuthType: AuthTypeUnmanagedAPIKey, URL: "https://es.io:9243", Username: "", Password: "", CaCert: "", APIKey: "elastic"}
+				return UnmanagedAssociationConnectionInfo{URL: "https://es.io:9243", Username: "", Password: "", CaCert: "", APIKey: "elastic"}
 			},
 			wantErr: false,
 		}, {
