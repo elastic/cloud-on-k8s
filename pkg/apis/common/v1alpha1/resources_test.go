@@ -57,34 +57,34 @@ func TestNodeResources_ToContainerResourcesWith(t *testing.T) {
 			},
 		},
 		{
-			name: "Remove a requirements if not present",
+			name: "Preserve original requirements if not present",
 			fields: fields{
 				Requests: map[corev1.ResourceName]resource.Quantity{
-					corev1.ResourceCPU:    resource.MustParse("2"),
+					// no recommendation for corev1.ResourceCPU
 					corev1.ResourceMemory: resource.MustParse("8Gi"),
 				},
 				Limits: map[corev1.ResourceName]resource.Quantity{
-					// corev1.ResourceCPU is not expected
+					// no recommendation for corev1.ResourceCPU
 					corev1.ResourceMemory: resource.MustParse("8Gi"),
 				},
 			},
 			args: args{into: corev1.ResourceRequirements{
 				Requests: map[corev1.ResourceName]resource.Quantity{
-					corev1.ResourceCPU:    resource.MustParse("1"),
+					corev1.ResourceCPU:    resource.MustParse("1"), // should be preserved in the result
 					corev1.ResourceMemory: resource.MustParse("4Gi"),
 				},
 				Limits: map[corev1.ResourceName]resource.Quantity{
-					corev1.ResourceCPU:    resource.MustParse("2"), // should be removed in the result
+					corev1.ResourceCPU:    resource.MustParse("2"), // should be preserved in the result
 					corev1.ResourceMemory: resource.MustParse("4Gi"),
 				},
 			}},
 			want: corev1.ResourceRequirements{
 				Requests: map[corev1.ResourceName]resource.Quantity{
-					corev1.ResourceCPU:    resource.MustParse("2"),
+					corev1.ResourceCPU:    resource.MustParse("1"),
 					corev1.ResourceMemory: resource.MustParse("8Gi"),
 				},
 				Limits: map[corev1.ResourceName]resource.Quantity{
-					// corev1.ResourceCPU is not expected
+					corev1.ResourceCPU:    resource.MustParse("2"),
 					corev1.ResourceMemory: resource.MustParse("8Gi"),
 				},
 			},
