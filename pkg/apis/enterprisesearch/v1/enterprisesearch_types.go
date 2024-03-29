@@ -135,6 +135,10 @@ func (ent *EnterpriseSearch) GetAssociations() []commonv1.Association {
 	return associations
 }
 
+func (ent *EnterpriseSearch) SupportsAuthAPIKey() bool {
+	return false
+}
+
 func (ent *EnterpriseSearch) AssociationID() string {
 	return commonv1.SingletonAssociationID
 }

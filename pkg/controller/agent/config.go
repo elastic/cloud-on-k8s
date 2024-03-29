@@ -7,6 +7,7 @@ package agent
 import (
 	"context"
 	"crypto/x509"
+	"encoding/base64"
 	"errors"
 	"fmt"
 	"hash"
@@ -113,10 +114,19 @@ func buildOutputConfig(params Params) (*settings.CanonicalConfig, error) {
 		}
 
 		output := map[string]interface{}{
-			"type":     "elasticsearch",
-			"username": credentials.Username,
-			"password": credentials.Password,
-			"hosts":    []string{assocConf.GetURL()},
+			"type":  "elasticsearch",
+			"hosts": []string{assocConf.GetURL()},
+		}
+
+		if credentials.APIKey != "" {
+			decodedAPIKey, err := base64.StdEncoding.DecodeString(credentials.APIKey)
+			if err != nil {
+				return settings.NewCanonicalConfig(), fmt.Errorf("error at decoding api-key from secret %s: %w", assocConf.AuthSecretName, err)
+			}
+			output["api_key"] = string(decodedAPIKey)
+		} else {
+			output["username"] = credentials.Username
+			output["password"] = credentials.Password
 		}
 		if assocConf.GetCACertProvided() {
 			output["ssl.certificate_authorities"] = []string{path.Join(certificatesDir(assoc), CAFileName)}

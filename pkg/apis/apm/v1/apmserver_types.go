@@ -246,6 +246,10 @@ func (aes *ApmEsAssociation) SetAssociationConf(assocConf *commonv1.AssociationC
 	aes.esAssocConf = assocConf
 }
 
+func (aes *ApmEsAssociation) SupportsAuthAPIKey() bool {
+	return false
+}
+
 func (aes *ApmEsAssociation) AssociationID() string {
 	return commonv1.SingletonAssociationID
 }
@@ -293,6 +297,10 @@ func (akb *ApmKibanaAssociation) AssociationConf() (*commonv1.AssociationConf, e
 
 func (akb *ApmKibanaAssociation) SetAssociationConf(assocConf *commonv1.AssociationConf) {
 	akb.kibanaAssocConf = assocConf
+}
+
+func (akb *ApmKibanaAssociation) SupportsAuthAPIKey() bool {
+	return false
 }
 
 func (akb *ApmKibanaAssociation) AssociationID() string {

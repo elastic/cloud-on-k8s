@@ -65,7 +65,7 @@ func IsConfiguredIfSet(ctx context.Context, association commonv1.Association, r 
 }
 
 type Credentials struct {
-	Username, Password, ServiceAccountToken string
+	Username, Password, ServiceAccountToken, APIKey string
 }
 
 func (c Credentials) HasServiceAccountToken() bool {
@@ -84,6 +84,9 @@ func ElasticsearchAuthSettings(ctx context.Context, c k8s.Client, assoc commonv1
 	if !assocConf.AuthIsConfigured() {
 		return Credentials{}, nil
 	}
+	if assocConf.IsAPIKey && !assoc.SupportsAuthAPIKey() {
+		return Credentials{}, errors.New("API key-based authentication is not supported for this association type")
+	}
 
 	// get the auth secret
 	secretObjKey := types.NamespacedName{Namespace: assoc.GetNamespace(), Name: assocConf.AuthSecretName}
@@ -99,6 +102,8 @@ func ElasticsearchAuthSettings(ctx context.Context, c k8s.Client, assoc commonv1
 
 	if assocConf.IsServiceAccount {
 		return Credentials{ServiceAccountToken: string(passwordBytes)}, nil
+	} else if assocConf.IsAPIKey {
+		return Credentials{APIKey: string(passwordBytes)}, nil
 	}
 
 	password := string(passwordBytes)
