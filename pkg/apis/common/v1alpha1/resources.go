@@ -88,7 +88,7 @@ func newNodeSetNodeCountList(nodeSetNames []string) NodeSetNodeCountList {
 
 // ToContainerResourcesWith builds new ResourceRequirements for Memory and CPU, overriding existing values from the provided
 // ResourceRequirements with the values from the NodeResources.
-// If a value in the NodeResources is not present then the value in the result is removed.
+// If there is no recommendations for a given resource, then its current value remains unchanged.
 // Values for extended resources (e.g. GPU), are left untouched.
 // This function has no side effect and does not modify the original ResourceRequirements.
 func (nr *NodeResources) ToContainerResourcesWith(sourceRequirements corev1.ResourceRequirements) corev1.ResourceRequirements {
@@ -101,8 +101,6 @@ func (nr *NodeResources) ToContainerResourcesWith(sourceRequirements corev1.Reso
 	for _, resourceName := range []corev1.ResourceName{corev1.ResourceCPU, corev1.ResourceMemory} {
 		if nr.HasRequest(resourceName) {
 			mergedResources.Requests[resourceName] = nr.GetRequest(resourceName)
-		} else {
-			delete(mergedResources.Requests, resourceName)
 		}
 	}
 
@@ -113,8 +111,6 @@ func (nr *NodeResources) ToContainerResourcesWith(sourceRequirements corev1.Reso
 	for _, resourceName := range []corev1.ResourceName{corev1.ResourceCPU, corev1.ResourceMemory} {
 		if nr.HasLimit(resourceName) {
 			mergedResources.Limits[resourceName] = nr.GetLimit(resourceName)
-		} else {
-			delete(mergedResources.Limits, resourceName)
 		}
 	}
 	return *mergedResources
