@@ -20,6 +20,15 @@ This section describes how to configure and deploy Logstash with ECK.
 ** <<{p}-logstash-pipelines-es,Using Elasticsearch in Logstash Pipelines>>
 ** <<{p}-logstash-expose-services,Exposing Services>>
 * <<{p}-logstash-securing-api,Securing Logstash API>>
+* <<{p}-logstash-working-with-plugins,Working with plugins>>
+** <<{p}-logstash-working-with-plugins-ro, Working with read-only assets>>
+** <<{p}-logstash-working-with-plugins-small-ro, Working with small read-only assets>>
+** <<{p}-logstash-working-with-plugins-large-ro, Working with Larger read-only assets>>
+** <<{p}-logstash-working-with-plugins-writable, Working with Writable Storage>>
+* <<{p}-logstash-working-with-plugins-scaling-concerns, Scaling Concerns>>
+* <<{p}-logstash-working-with-custom-plugins, Working with custom plugins>>
+* <<{p}-logstash-working-with-plugins-troubleshooting, Troubleshooting>>
+
 * <<{p}-logstash-configuration-examples,Configuration examples>>
 * <<{p}-logstash-update-strategy,Update Strategy>>
 * <<{p}-logstash-advanced-configuration,Advanced Configuration>>
@@ -837,6 +846,410 @@ spec:
           disabled: true
 ----
 
+[id="{p}-logstash-working-with-plugins"]
+== Working with plugins
+
+Running {ls} on ECK allows the use of the same Elastic-supported, open source or custom plugins to use in your  pipelines as any other version of {ls}, but there are some important items to note
+
+When designing these pipelines for your {ls} installation, plugins used within those pipelines have an impact on how you can configure your Kubernetes resources. This impact may include requirements to specify additional resources in your manifest, or restrictions on how you can scale out your {ls} installation.
+
+Additional resources may include static read-only assets, such as private keys, translate dictionaries or JDBC drivers, or they may require access to stable writable storage to store application state.
+
+Plugin usage can impose restrictions on how you can scale out your Logstash deployment, depending on how your plugins gather or enrich data.
+
+[id="{p}-logstash-working-with-plugins-ro"]
+=== Working with read-only assets
+
+Many plugins require or allow read-only assets to work correctly.
+
+These may be smaller assets, such as a private key that can fit in a ConfigMap or Secret. Or larger assets, such as JDBC drivers, that need to be stored in a PersistentVolume
+
+[id="{p}-logstash-working-with-plugins-small-ro"]
+=== Working with small read-only assets
+
+Many plugins require or allow small read-only assets to work correctly, which may or may not be sensitive.
+
+Configuration settings for these can be identified in your plugin documentation where the setting calls for a `path` or an `array` of `paths` to be added to the configuration.
+
+[NOTE]
+--
+Each instance of a `ConfigMap` or `Secret` have a maximum size of `1 MiB`. If your static content is larger than that, please follow the instructions at <<{p}-logstash-working-with-plugins-large-ro>>
+--
+
+
+[id="{p}-logstash-working-with-plugins-sensitive"]
+==== Sensitive assets, such as private keys
+
+Some plugins require access to private keys, or certificates to access an external resource, which will need to be made available to the {ls} resource in your manifest.
+
+These settings are typically identified by an `ssl_` prefix, such as `ssl_key`, `ssl_keystore_path`, `ssl_certificate`, etc.
+
+To successfully use these in your manifest, you will need to create a Secret representing the asset, a Volume in your `podTemplate.spec` containing that Secret, and mount that Volume with a VolumeMount in your `podTemplateSpec.container` section of your {ls} resource.
+
+First, create your secrets:
+
+eg
+
+[source,bash]
+----
+kubectl create secret generic logstash-crt --from-file=logstash.crt
+kubectl create secret generic logstash-key --from-file=logstash.key
+----
+
+Then, create your Logstash CRD:
+
+eg
+
+[source,yaml]
+----
+spec:
+  podTemplate:
+    spec:
+      volumes:
+        - name: logstash-ssl-crt
+          secret:
+            secretName: logstash-crt
+        - name: logstash-ssl-key
+          secret:
+            secretName: logstash-key
+      containers:
+        - name: logstash
+          volumeMounts:
+            - name: logstash-ssl-key
+              mountPath: "/usr/share/logstash/data/logstash.key"
+              readOnly: true
+            - name: logstash-ssl-crt
+              mountPath: "/usr/share/logstash/data/logstash.crt"
+              readOnly: true
+  pipelines:
+    - pipeline.id: main
+      config.string: |
+        input {
+          http {
+            port => 8443
+            ssl_certificate => "/usr/share/logstash/data/logstash.crt"
+            ssl_key => "/usr/share/logstash/data/logstash.key"
+          }
+        }
+----
+
+
+[id="{p}-logstash-working-with-plugins-small-static"]
+==== Small static assets
+
+Some plugins require or allow access to small static read-only files. These can be used for a variety of reasons - for example, adding custom `grok` patterns for `logstash-filter-grok` to use for lookup, source code for `logstash-filter-ruby`, a dictionary for `logstash-filter-translate` or the location of a SQL statement for `logstash-input-jdbc`. These files need to be made available to the {ls} resource in your manifest.
+
+These settings are typically identified by a setting asking for a `path` or an `array` of `paths` to be added to the configuration.
+
+To successfully use these in your manifest, you will need to create a ConfigMap or Secret representing the asset, a Volume in your `podTemplate.spec` containing that ConfigMap or Secret, and mount that Volume with a VolumeMount in your `podTemplateSpec.container` section of your {ls} resource.
+
+This example configures a ConfigMap from a ruby source file, and includes it in a `logstash-filter-ruby` plugin.
+
+[source,bash]
+----
+kubectl create configmap ruby --from-file=drop_some.rb
+----
+
+Then, create your Logstash CRD
+
+[source,yaml]
+----
+spec:
+  podTemplate:
+    spec:
+      volumes:
+        - name: ruby_drop
+          configMap:
+            name: ruby
+      containers:
+        - name: logstash
+          volumeMounts:
+            - name: ruby_drop
+              mountPath: "/usr/share/logstash/data/drop_percentage.rb"
+              readOnly: true
+  pipelines:
+    - pipeline.id: main
+      config.string: |
+        input {
+          beats {
+            port => 5044
+          }
+        }
+        filter {
+          ruby {
+            path => "/usr/share/logstash/data/drop_percentage.rb"
+            script_params => { "percentage" => 0.9 }
+          }
+        }
+----
+
+[id="{p}-logstash-working-with-plugins-large-ro"]
+==== Working with Larger read-only assets
+
+Some plugins require or allow access to larger static read-only files that are too large to fit in the `1MiB` limit imposed by ConfigMap and Secret. This may include JAR files needed to load drivers when using a JDBC or JMS plugin, or a large `logstash-filter-translate` dictionary.
+
+To add these files, you can
+
+* Create a PersistentVolume that points to the static content, and create a PersistentVolumeClaim to request storage to be used by the Logstash resource.
+* Use an `initContainer` to add the files before the main container starts - this may be appropriate when the static content is hosted remotely.
+* Add the static assets using a custom docker image.
+
+<<{p}-bundles-plugins>> has a run down of which option might be most suitable for you.
+
+===== Using an PersistentVolume
+
+
+===== Using an initContainer
+
+This example creates an `initContainer` to download a PostgreSQL JDBC driver JAR file, and place it in a volume mount accessible to the main `container`, and then use it in a JDBC input in the pipeline configuration.
+
+[source,yaml]
+----
+spec:
+  podTemplate:
+    spec:
+      initContainers:
+      - name: download-postgres
+        command: ["/bin/sh"]
+        args: ["-c", "curl -o /data/postgresql.jar -L https://jdbc.postgresql.org/download/postgresql-42.6.0.jar"]
+        volumeMounts:
+          - name: workdir
+            mountPath: /data
+      containers:
+        - name: logstash
+          volumeMounts:
+            - name: workdir
+              mountPath: /usr/share/logstash/jars <1>
+  pipelines:
+    - pipeline.id: main
+      config.string: |
+        input {
+          jdbc {
+             jdbc_driver_library => "/usr/share/logstash/jars/postgresql.jar"
+             jdbc_driver_class => "org.postgresql.Driver"
+             <2>
+          }
+        }
+----
+<1> Referring to the external file should match the `mountPath` of the `container`
+<2> Remainder of plugin configuration goes here
+
+===== Using a custom Docker image
+
+This example downloads the same `postgres` JDBC driver, and adds it to the {ls} classpath in the Docker image.
+
+First, create a Dockerfile based on the {ls} Docker image.
+Download the JDBC driver, and save it alongside the other JAR files in the {ls} classpath:
+
+From docker.elastic.co/logstash/logstash:{version}, run:
+[source,js]
+----
+curl -o /usr/share/logstash/logstash-core/lib/jars/postgresql.jar -L https://jdbc.postgresql.org/download/postgresql-42.6.0.jar <1>
+----
+<1> Placing the JAR file in the `/usr/share/logstash/logstash-core/lib/jars` folder adds it to the {ls} classpath.
+
+After you build and deploy the custom image, include it in the {ls} manifest.
+(Check out <<{p}-custom-images>> for more details.)
+
+[source,yaml]
+----
+  count: 1
+  version: {version} <1>
+  image: <CUSTOM_IMAGE>
+  pipelines:
+    - pipeline.id: main
+      config.string: |
+        input {
+          jdbc {
+              <2>
+             jdbc_driver_class => "org.postgresql.Driver"
+              <3>
+          }
+        }
+
+----
+<1> Providing the correct version is always required as ECK reasons about APIs and capabilities available to it based on the version field.
+<2> Note that when you place the JAR file on the {ls} classpath, you do not need to specify the `jdbc_driver_library` location in the plugin configuration.
+<3> Remainder of plugin configuration goes here
+
+[id="{p}-logstash-working-with-plugins-writable"]
+=== Working with Writable Storage
+
+Some {ls} plugins need access to writable storage. This could be for checkpointing to keep track of events already processed, a place to temporarily write events before sending a batch of events, or just to actually write events to disk in the case of `logstash-output-file`.
+
+{ls} on ECK by default supplies a small (`1.5Gib`) default persistent volume to each pod, called `logstash-data`, which is located at `/usr/logstash/data`, and is typically the default location for most plugin use cases. This volume is stable across restarts of {ls} pods, and suitable for many use cases
+
+[NOTE]
+----
+When working with writable storage, it is important that each plugin stores its data in its own dedicated location
+----
+
+[id="{p}-logstash-working-with-plugins-writable-checkpointing"]
+==== Checkpointing
+
+Some {ls} plugins need to write checkpoints to local storage, to keep track of events that have already been processed. Typically, plugins that retrieve data from external sources need to do this if the external source does not provide any mechanism to track state internally.
+
+These settings can be identified in your plugin documentation where the setting calls for a `path` to be added to the configuration, with a setting named something along the lines of `sincedb`, `sincedb_path`, `sequence_path`or `last_run_metadata_path`. Refer to specific plugin documentation for details.
+
+
+[source, yaml,subs="attributes,+macros,callouts"]
+----
+spec:
+  pipelines:
+    - pipeline.id: main
+      config.string: |
+        input {
+          jdbc {
+             jdbc_driver_library => "/usr/share/logstash/jars/postgresql.jar"
+             jdbc_driver_class => "org.postgresql.Driver"
+             last_metadata_path => "/usr/share/logstash/data/main/logstash_jdbc_last_run<1>
+          }
+        }
+----
+<1> Note that when using more than one plugin of the same type, each plugin should specify a unique location.
+
+
+Should the default `logstash-data` volume be insufficient for your needs, see the volume section for details on how to add additional volumes.
+
+
+[id="{p}-logstash-working-with-plugins-writable-temp"]
+==== Writable Staging or Temporary Data
+
+Some {ls} plugins write data to a staging directory or file before processing for input, or outputting to their final destination. Often these staging folders can be persisted across restarts, to avoid duplicating processing of data.
+
+These settings can be identified in your plugin documentation, by names such as `tmp_directory`, `temporary_directory`, `staging_directory`
+
+To keep data across pod restarts, you should set this value to point to the default `logstash-data` volume, or your own PersistentVolumeClaim
+
+[source, yaml,subs="attributes,+macros,callouts"]
+----
+spec:
+  pipelines:
+    - pipeline.id: main
+      config.string: |
+        output {
+          s3 {
+             id => 'main_s3_output`
+             temporary_directory => "/usr/share/logstash/data/main/main_s3_output<1>
+          }
+        }
+----
+<1> When using more than one plugin of the same type, each plugin should specify a unique location.
+
+
+
+[id="{p}-logstash-working-with-plugins-scaling-concerns"]
+=== Scaling Concerns
+
+The ability to scale {ls} is highly dependent on the use of plugins used in pipelines. Not all {ls} deployments can be scaled horizontally by increasing the number of {ls} Pods defined in the {ls} resource. Depending on the types of plugins use in a Logstash installation, increasing the number of pods my cause data duplication, data loss, incorrect data, or waste resources with pods unable to be utilized correctly.
+
+
+* {ls} installations that use aggregating filters need to be treated with particular care. They *must* specify `pipeline.workers=1` for any pipelines that use them, and the number of pods cannot be scaled above 1.
+** Aggregating filters include `logstash-filter-aggregate`, `logstash-filter-*`, and any `logstash-filter-ruby` implementations that perform aggregations.
+* {ls} installations that leverage input plugins that retrieve data from an external source, and maintain local checkpoint state, or would require some level of co-ordination between nodes to split up work can specify `pipeline.workers` freely, but should keep the pod count at 1 for each {ls} installation.
+** Plugins that retrieve data from external sources, and require some level of coordination between nodes to split up work, are not good candidates for scaling horizontally, and would likely produce some data duplication. These are plugins such as the JDBC input plugin, which has no automatic way to split queries across Logstash instances, or the S3 input, which has no way to split which buckets to read across Logstash instances.
+** These plugins include `logstash-input-s3`, `logstash-input-file` or `logstash-input-jdbc`, and can be recognized by inputs that include configuration settings such as  `sincedb`, `checkpoint` or `sql_last_run_metadata`
+* {ls} installations that leverage input plugins that retrieve data from an external source, but use that external source to store state can scale based on the parameters of that external source.
+** For example, a {ls} installation that uses a `logstash-input-kafka` plugin to retrieve data can scale the number of pods up to the number of partitions used, as a partition can have at most one consumer belonging to the same consumer group. Any pods created beyond that will be at best idle, as they will be unable to be scheduled to receive data.
+** These plugins include `logstash-input-kafka`, `logstash-input-azure_event_hubs` and `logstash-input-kinesis`
+* {ls} installations that only have inputs that push data to them should be able to scale freely and have load spread across them horizontally.
+** These plugins include `logstash-input-beats`, `logstash-input-elastic_agent`,  `logstash-input-tcp`, `logstash-input-http`
+
+[Note]
+----
+ The ability of a {ls} installation to scale horizontally is bound by it's most restrictive plugin(s). Even if all pipelines are using `logstash-input-beats`, which should enable full horizontal scaling, the introduction of a more restrictive input or filter plugin will force the restrictions for pod scaling associated with that plugin on the {ls} installation.
+----
+
+If the pipeline does not contain any such plugin, the number of Logstash instances can be increased by setting the `count` property in the Logstash resource:
+
+
+[source,yaml,subs="attributes,+macros,callouts"]
+----
+apiVersion: logstash.k8s.elastic.co/v1alpha1
+kind: Logstash
+metadata:
+  name: quickstart
+spec:
+  version: {version}
+  count: 3
+----
+
+[id="{p}-logstash-working-with-custom-plugins"]
+=== Working with custom plugins
+
+When running {ls} with plugins outside of those included in the standard {ls} distribution, you can install those plugins by creating a custom Docker image that includes the installed plugins, using the `bin/logstash-plugin install` utility to add further plugins to the image to enable them to be used by {ls} pods.
+
+
+This sample Dockerfile installs the `logstash-filter-tld` and `logstash-filter-elastic_integration` plugins to the official {ls} Docker image:
+
+[subs="attributes,+macros,callouts"]
+----
+FROM docker.elastic.co/logstash/logstash:{version}
+
+RUN bin/logstash-plugin install logstash-filter-tld logstash-filter-elastic_integration
+----
+
+Then after building and deploying the custom image (refer to <<{p}-custom-images>> for more details), include it in the {ls} manifest:
+
+[source,yaml]
+----
+spec:
+  count: 1
+  version: {version} <1>
+  image: <CUSTOM_IMAGE>
+----
+<1> Providing the correct version is always required as ECK reasons about APIs and capabilities available to it based on the version field.
+
+
+[id="{p}-logstash-working-with-plugins-Troubleshooting"]
+=== Troubleshooting and Special Notes
+
+Special consideration is required for certain plugins to work optimally
+
+[id="{p}-logstash-working-with-plugins-troubleshooting-ltol"]
+==== Logstash to Logstash
+
+When using `logstash-integration-logstash`, `keepalive=>false` should be added to the output plugin definition to ensure that load balancing works correctly, rather than keeping affinity to the same pod.
+
+[id="{p}-logstash-working-with-plugins-troubleshooting-elastic-integration"]
+==== Elastic Integration Filter
+
+* The Elastic Integration filter allows the use of `ElasticsearchRef` and environment variables
+
+[source, logstash]
+----
+  elastic_integration {
+            pipeline_name => "logstash-pipeline"
+            hosts => [ "${ECK_ES_HOSTS}" ]
+            username => "${ECK_ES_USER}"
+            password => "${ECK_ES_PASSWORD}"
+            ssl_certificate_authorities => "${ECK_ES_SSL_CERTIFICATE_AUTHORITY}"
+          }
+
+----
+
+* The Elastic Integration filter requires certain roles to be configured on the Elasticsearch cluster to enable {ls} to read ingest pipelines.
+
+Sample role definition
+
+[source, yaml,subs="attributes,+macros,callouts"]
+
+----
+kind: Secret
+apiVersion: v1
+metadata:
+  name: my-roles-secret
+stringData:
+  roles.yml: |-
+    eck_logstash_user_role:
+      cluster: [ "monitor", "manage_index_templates", "read_pipeline"]
+----
+
+[id="{p}-logstash-working-with-plugins-troubleshooting-beats"]
+==== Beats/Elastic Agent
+
+* To ensure that load is distributed appropriately set the `ttl` value on your beat/agent
+
 
 [id="{p}-logstash-configuration-examples"]
 == Configuration examples
@@ -1154,92 +1567,3 @@ After you build and deploy the custom image, include it in the {ls} manifest.
 <1> Providing the correct version is always required as ECK reasons about APIs and capabilities available to it based on the version field.
 <2> Note that when you place the JAR file on the {ls} classpath, you do not need to specify the `jdbc_driver_library` location in the plugin configuration.
 <3> Remainder of plugin configuration goes here
-
-[id="{p}-logstash-scaling-logstash"]
-== Scaling Logstash
-
-experimental[]
-
-The ability to scale {ls} is highly dependent on the pipeline configurations, and the plugins used in those pipelines. Not all {ls} deployments can be scaled horizontally by increasing the number of {ls} Pods defined in the Logstash resource.
-Increasing the number of Pods can cause data loss/duplication, or Pods running idle because they are unable to be utilized.
-
-These risks are especially likely with plugins that:
-
-* Retrieve data from external sources.
-** Plugins that retrieve data from external sources, and require some level of coordination between nodes to split up work, are not good candidates for scaling horizontally, and would likely produce some data duplication. These are plugins such as the JDBC input plugin, which has no automatic way to split queries across Logstash instances, or the S3 input, which has no way to split which buckets to read across Logstash instances.
-** Plugins that retrieve data from external sources, where work is distributed externally to Logstash, but may impose their own limits. These are plugins like the Kafka input, or Azure event hubs, where the parallelism is limited by the number of partitions vs the number of consumers. In cases like this, extra Logstash Pods may be idle if the number of consumer threads multiplied by the number of Pods is greater than the number of partitions.
-* Plugins that require events to be received in order.
-** Certain plugins, such as the aggregate filter, expect events to be received in strict order to run without error or data loss. Any plugin that requires the number of pipeline workers to be `1` will also have issues when horizontal scaling is used.
- If the pipeline does not contain any such plugin, the number of Logstash instances can be increased by setting the `count` property in the Logstash resource:
-
-[source,yaml,subs="attributes,+macros,callouts"]
-----
-apiVersion: logstash.k8s.elastic.co/v1alpha1
-kind: Logstash
-metadata:
-  name: quickstart
-spec:
-  version: {version}
-  count: 3
-----
-
-
-
-[id="{p}-logstash-technical-preview-limitations"]
-== Technical Preview limitations
-
-experimental[]
-
-Note that this release is a technical preview. It is still under active development and has additional limitations:
-
-[id="{p}-logstash-technical-preview-persistence"]
-=== Experimental support for persistence
-NOTE: Persistence (experimental) is a breaking change from version 2.8.0 of the ECK operator and requires re-creation of existing {ls} resources.
-
-The operator now includes support for persistence.
-It creates a small (`1Gi`) default `PersistentVolume` called `logstash-data` that maps to `/usr/share/logstash/data`, typically used for storage from plugins.
-The default volume can be overridden by adding a `spec.volumeClaimTemplate` section named `logstash-data` to add more storage, or to use a different `storageClass` from the default, for example.
-You can define additional `persistentVolumeClaims` in `spec.volumeClaimTemplate` for use with PQ, or DLQ, for example.
-
-The current implementation does not allow resizing of volumes, even if your chosen storage class would support it.
-To resize a volume, delete the {ls} resource, delete and recreate (or resize) the volume, and create a new {ls} resource.
-Note that volume claims will not be deleted when you delete the {ls} resource, and must be deleted manually.
-This behavior might change in future versions of the ECK operator.
-
-[id="{p}-logstash-technical-preview-elasticsearchref"]
-=== `ElasticsearchRef` implementation in plugins is in preview mode
-Adding Elasticsearch to plugin definitions requires the use of environment variables populated by the Logstash operator, which may change in future versions of the Logstash operator.
-
-[id="{p}-logstash-technical-preview-limted-plugins"]
-=== Limited support for plugins
-
-Not all {ls} plugins are supported for this technical preview. 
-Note that this is not an exhaustive list, and plugins outside of the https://www.elastic.co/support/matrix#logstash_plugins[Logstash plugin matrix] have not been considered for this list.
-
-**Supported plugins**
-
-These plugins have been tested and are supported:
-
-* logstash-input-beats
-* logstash-input-elastic_agent
-* logstash-input-kafka
-* logstash-input-tcp
-* logstash-input-http
-* logstash-input-udp
-
-Most filter and output plugins are supported, with some exceptions noted in the next section. 
-
-**Plugins not supported at technical preview**
-
-These plugins are not supported: 
-
-* logstash-filter-jdbc_static
-* logstash-filter-jdbc_streaming
-* logstash-filter-aggregate
-
-**Plugins that may require additional manual work** 
-
-Other {ls} filter and output plugins work, but require additional manual steps to mount volumes for certain configurations. 
-For example, logstash-output-s3 requires mounting a volume to store in-progress work to avoid data loss.
-
-
