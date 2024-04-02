@@ -185,6 +185,7 @@ func TestVersionUpgradeSingleToLatest8x(t *testing.T) {
 
 	test.SkipInvalidUpgrade(t, srcVersion, dstVersion)
 
+	// set CPU requests and memory limits, so the desired nodes API is used during an upgrade
 	resources := corev1.ResourceRequirements{
 		Requests: map[corev1.ResourceName]resource.Quantity{
 			corev1.ResourceCPU: resource.MustParse("1"),
