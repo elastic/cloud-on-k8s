@@ -9,6 +9,9 @@ package es
 import (
 	"testing"
 
+	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/resource"
+
 	esv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/elasticsearch/v1"
 	"github.com/elastic/cloud-on-k8s/v2/test/e2e/test"
 	"github.com/elastic/cloud-on-k8s/v2/test/e2e/test/elasticsearch"
@@ -182,13 +185,23 @@ func TestVersionUpgradeSingleToLatest8x(t *testing.T) {
 
 	test.SkipInvalidUpgrade(t, srcVersion, dstVersion)
 
+	// set CPU requests and memory limits, so the desired nodes API is used during an upgrade
+	resources := corev1.ResourceRequirements{
+		Requests: map[corev1.ResourceName]resource.Quantity{
+			corev1.ResourceCPU: resource.MustParse("1"),
+		},
+		Limits: map[corev1.ResourceName]resource.Quantity{
+			corev1.ResourceMemory: resource.MustParse("2Gi"),
+		},
+	}
+
 	initial := elasticsearch.NewBuilder("test-version-up-1-to-8x").
 		WithVersion(srcVersion).
-		WithESMasterDataNodes(1, elasticsearch.DefaultResources)
+		WithESMasterDataNodes(1, resources)
 
 	mutated := initial.WithNoESTopology().
 		WithVersion(dstVersion).
-		WithESMasterDataNodes(1, elasticsearch.DefaultResources)
+		WithESMasterDataNodes(1, resources)
 
 	RunESMutation(t, initial, mutated)
 }
