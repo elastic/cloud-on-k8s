@@ -5,8 +5,15 @@ kind: StatefulSet
 metadata:
   name: {{ include "eck-operator.fullname" . }}
   namespace: {{ .Release.Namespace }}
+  {{- with .Values.statefulsetAnnotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
   labels:
     {{- include "eck-operator.labels" . | nindent 4 }}
+    {{- with .Values.statefulsetLabels }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
 spec:
   selector:
     matchLabels:
