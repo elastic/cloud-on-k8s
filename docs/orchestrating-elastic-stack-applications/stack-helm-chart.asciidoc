@@ -81,7 +81,7 @@ The following section builds upon the previous sections, and allows installing a
 ----
 # Install an eck-managed Elasticsearch, Kibana, and standalone APM Server using custom values.
 helm install eck-stack-with-apm-server elastic/eck-stack \
-    --values https://raw.githubusercontent.com/elastic/cloud-on-k8s/{eck_release_branch}/deploy/eck-stack/examples/logstash/basic.yaml -n elastic-stack
+    --values https://raw.githubusercontent.com/elastic/cloud-on-k8s/{eck_release_branch}/deploy/eck-stack/examples/apm-server/basic.yaml -n elastic-stack
 ----
 
 [float]
