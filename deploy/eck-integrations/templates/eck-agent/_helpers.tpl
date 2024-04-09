@@ -196,6 +196,18 @@ app.kubernetes.io/instance: {{ .Release.Name }}
 {{- if not (hasKey $.Values.eck_agent "initialised") -}}
 {{- include "elasticagent.kubernetes.init" $ -}}
 {{- include "elasticagent.clouddefend.init" $ -}}
+{{- range $customInputName, $customInputVal := $.Values.customIntegrations -}}
+{{- $customInputPresetName := ($customInputVal).preset -}}
+{{- $_ := required (printf "customInput \"%s\" is missing required preset field" $customInputName) $customInputPresetName }}
+{{- $presetVal := get $.Values.eck_agent.presets $customInputPresetName -}}
+{{- $_ := required (printf "preset with name \"%s\" of customInput \"%s\" not defined" $customInputPresetName $customInputName) $customInputVal }}
+{{- $customInputOuput := dig "use_output" (list) $customInputVal -}}
+{{- if empty $customInputOuput -}}
+{{- fail (printf "output not defined in custom integration \"%s\"" $customInputName)}}
+{{- end -}}
+{{- include "elasticagent.preset.mutate.elasticsearchrefs.byname" (list $ $presetVal $customInputOuput) -}}
+{{- include "elasticagent.preset.mutate.inputs" (list $ $presetVal (list $customInputVal)) -}}
+{{- end -}}
 {{- range $presetName, $presetVal := $.Values.eck_agent.presets -}}
 {{- $presetMode := dig "mode" ("") $presetVal -}}
 {{- if not $presetMode -}}

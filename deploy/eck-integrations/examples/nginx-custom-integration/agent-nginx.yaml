@@ -1,0 +1,63 @@
+customIntegrations:
+  nginx/metrics:
+    id: nginx/metrics-nginx-69240207-6fcc-4d19-aee3-dbf716e3bb0f
+    preset: nginx
+    name: nginx-1
+    revision: 1
+    type: nginx/metrics
+    use_output: default
+    meta:
+      package:
+        name: nginx
+        version: 1.19.1
+    data_stream:
+      namespace: default
+    package_policy_id: 69240207-6fcc-4d19-aee3-dbf716e3bb0f
+    streams:
+      - id: nginx/metrics-nginx.stubstatus-69240207-6fcc-4d19-aee3-dbf716e3bb0f
+        data_stream:
+          dataset: nginx.stubstatus
+          type: metrics
+        metricsets:
+          - stubstatus
+        hosts:
+          - 'http://nginx.default.svc.cluster.local:80'
+        tags:
+          - nginx-stubstatus
+        period: 10s
+        server_status_path: /nginx_status
+
+eck_agent:
+  presets:
+    nginx:
+      mode: deployment
+      securityContext:
+        runAsUser: 0
+      rules:
+        # minimum cluster role ruleset required by agent
+        - apiGroups: [ "" ]
+          resources:
+            - nodes
+            - namespaces
+            - pods
+          verbs:
+            - get
+            - watch
+            - list
+        - apiGroups: [ "apps" ]
+          resources:
+            - replicasets
+          verbs:
+            - get
+            - list
+            - watch
+        - apiGroups: [ "batch" ]
+          resources:
+            - jobs
+          verbs:
+            - get
+            - list
+            - watch
+      providers:
+        kubernetes_leaderelection:
+          enabled: false

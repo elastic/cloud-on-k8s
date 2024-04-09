@@ -1,0 +1,4 @@
+kubernetes:
+  enabled: true
+  hints:
+    enabled: true

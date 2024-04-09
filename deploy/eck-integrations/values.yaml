@@ -20,6 +20,11 @@ elasticsearchRefs:
   ##   name: es-ref-name [for eck-managed elasticsearch]
   ##   namespace: es-ref-namespace [for eck-managed elasticsearch]
 
+## @section customIntegrations define custom elastic integrations [ref https://www.elastic.co/guide/en/fleet/current/elastic-agent-inputs-list.html]
+customIntegrations:
+  ## the key is the integration name
+  ## @param customIntegrations.integrationNameX
+
 ## @section Kubernetes integration parameters
 ## ref: https://www.elastic.co/guide/en/beats/metricbeat/8.11/metricbeat-module-kubernetes.html
 ##
