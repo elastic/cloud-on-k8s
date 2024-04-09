@@ -195,6 +195,7 @@ app.kubernetes.io/instance: {{ .Release.Name }}
 {{- define "elasticagent.preset.init" -}}
 {{- if not (hasKey $.Values.eck_agent "initialised") -}}
 {{- include "elasticagent.kubernetes.init" $ -}}
+{{- include "elasticagent.clouddefend.init" $ -}}
 {{- range $presetName, $presetVal := $.Values.eck_agent.presets -}}
 {{- $presetMode := dig "mode" ("") $presetVal -}}
 {{- if not $presetMode -}}
