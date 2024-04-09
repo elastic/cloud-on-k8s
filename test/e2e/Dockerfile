@@ -22,6 +22,7 @@ COPY pkg/ pkg/
 COPY cmd/ cmd/
 COPY config/ config/
 COPY test/ test/
+COPY deploy/ deploy/
 
 # non-root user to support restricted security policies
 RUN chown -R 1001 /go/src/github.com/elastic/cloud-on-k8s
