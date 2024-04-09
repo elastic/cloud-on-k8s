@@ -1,0 +1,3 @@
+elasticsearchRefs:
+  default:
+    secretName: es-ref-secret

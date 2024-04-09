@@ -1,0 +1,91 @@
+{{- if $.Values.eck_agent.enabled -}}
+{{- include "elasticagent.preset.init" $ -}}
+{{- range $presetName, $presetVal := $.Values.eck_agent.presets -}}
+{{- if eq ($presetVal).mode "daemonset" -}}
+{{- $agentName := printf "agent-%s" (lower $presetName) -}}
+apiVersion: agent.k8s.elastic.co/v1alpha1
+kind: Agent
+metadata:
+  name: {{ printf "agent-%s" (lower $presetName) }}
+  namespace: {{ $.Release.Namespace | quote }}
+  labels:
+    {{- include "elasticagent.labels" $ | nindent 4 }}
+    {{- with ($presetVal).labels }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
+  {{- with ($presetVal).annotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+spec:
+  version: {{ required "An Elastic Agent version is required" $.Values.eck_agent.version }}
+  configRef:
+    secretName: {{ $agentName }}
+  {{- with ($presetVal).elasticSearchRefs }}
+  elasticsearchRefs:
+    {{- . | toYaml | nindent 4 }}
+  {{- end }}
+  daemonSet:
+    podTemplate:
+      spec:
+        automountServiceAccountToken: true
+        {{- with ($presetVal).nodeSelector }}
+        nodeSelector:
+          {{- . | toYaml | nindent 10 }}
+        {{- end }}
+        serviceAccountName: {{ $agentName }}
+        {{- with ($presetVal).initContainers }}
+        initContainers:
+        {{- . | toYaml | nindent 8 }}
+        {{- end }}
+        {{- with ($presetVal).affinity }}
+        affinity:
+          {{- . | toYaml | nindent 10 }}
+        {{- end }}
+        {{- with ($presetVal).tolerations }}
+        tolerations:
+        {{- . | toYaml | nindent 8 }}
+        {{- end }}
+        {{- with ($presetVal).topologySpreadConstraints }}
+        topologySpreadConstraints:
+        {{- . | toYaml | nindent 8 }}
+        {{- end }}
+        {{- with ($presetVal).extraVolumes }}
+        volumes:
+        {{- . | toYaml | nindent 8 }}
+        {{- end }}
+        containers:
+        {{- with ($presetVal).extraContainers }}
+        {{- . | toYaml | nindent 8 }}
+        {{- end }}
+        - name: agent
+          {{- with ($presetVal).securityContext }}
+          securityContext:
+            {{- . | toYaml | nindent 12 }}
+          {{- end }}
+          {{- with ($presetVal).resources }}
+          resources:
+            {{- . | toYaml | nindent 12 }}
+          {{- end }}
+          {{- with ($presetVal).extraVolumeMounts }}
+          volumeMounts:
+          {{- . | toYaml | nindent 10 }}
+          {{- end }}
+          env:
+          - name: NODE_NAME
+            valueFrom:
+              fieldRef:
+                fieldPath: spec.nodeName
+          - name: POD_NAME
+            valueFrom:
+              fieldRef:
+                fieldPath: metadata.name
+          - name: STATE_PATH
+            value: "/usr/share/elastic-agent/state"
+          {{- with ($presetVal).extraEnvs }}
+          {{- . | toYaml | nindent 10 }}
+          {{- end }}
+---
+{{ end -}}
+{{- end -}}
+{{- end -}}

@@ -1,0 +1,19 @@
+kubernetes:
+  enabled: true
+  state:
+    enabled: false
+  metrics:
+    enabled: false
+  apiserver:
+    enabled: false
+  proxy:
+    enabled: false
+  scheduler:
+    enabled: false
+  controller_manager:
+    enabled: false
+  containers:
+    logs:
+      enabled: true
+  hints:
+    enabled: false
