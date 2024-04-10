@@ -12,6 +12,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
+	"k8s.io/utils/ptr"
 
 	kbv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/kibana/v1"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/comparison"
@@ -154,7 +155,7 @@ func Test_needsUpdate(t *testing.T) {
 	}
 }
 
-func Test_needsDelete(t *testing.T) {
+func Test_needsRecreate(t *testing.T) {
 	type args struct {
 		expected   corev1.Service
 		reconciled corev1.Service
@@ -246,6 +247,34 @@ func Test_needsDelete(t *testing.T) {
 			},
 			want: false,
 		},
+		{
+			name: "Needs recreate if LoadBalancerClass is changed",
+			args: args{
+				expected: corev1.Service{Spec: corev1.ServiceSpec{
+					Type:              corev1.ServiceTypeLoadBalancer,
+					LoadBalancerClass: ptr.To("my-customer/lb"),
+				}},
+				reconciled: corev1.Service{Spec: corev1.ServiceSpec{
+					Type:              corev1.ServiceTypeLoadBalancer,
+					LoadBalancerClass: ptr.To("something/else"),
+				}},
+			},
+			want: true,
+		},
+		{
+			name: "Removing the load balancer class is OK if target type is no longer LoadBalancer",
+			args: args{
+				expected: corev1.Service{Spec: corev1.ServiceSpec{
+					Type:              corev1.ServiceTypeClusterIP,
+					LoadBalancerClass: nil,
+				}},
+				reconciled: corev1.Service{Spec: corev1.ServiceSpec{
+					Type:              corev1.ServiceTypeLoadBalancer,
+					LoadBalancerClass: ptr.To("something/else"),
+				}},
+			},
+			want: false,
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -257,7 +286,7 @@ func Test_needsDelete(t *testing.T) {
 }
 
 func Test_applyServerSideValues(t *testing.T) {
-	ptr := func(policyType corev1.ServiceInternalTrafficPolicyType) *corev1.ServiceInternalTrafficPolicyType {
+	pointer := func(policyType corev1.ServiceInternalTrafficPolicyType) *corev1.ServiceInternalTrafficPolicyType {
 		return &policyType
 	}
 	type args struct {
@@ -525,25 +554,69 @@ func Test_applyServerSideValues(t *testing.T) {
 			args: args{
 				expected: corev1.Service{Spec: corev1.ServiceSpec{}},
 				reconciled: corev1.Service{Spec: corev1.ServiceSpec{
-					InternalTrafficPolicy: ptr(corev1.ServiceInternalTrafficPolicyCluster),
+					InternalTrafficPolicy: pointer(corev1.ServiceInternalTrafficPolicyCluster),
 				}},
 			},
 			want: corev1.Service{Spec: corev1.ServiceSpec{
-				InternalTrafficPolicy: ptr(corev1.ServiceInternalTrafficPolicyCluster),
+				InternalTrafficPolicy: pointer(corev1.ServiceInternalTrafficPolicyCluster),
 			}},
 		},
 		{
 			name: "Expected InternalTrafficPolicy is used if not empty",
 			args: args{
 				expected: corev1.Service{Spec: corev1.ServiceSpec{
-					InternalTrafficPolicy: ptr(corev1.ServiceInternalTrafficPolicyLocal),
+					InternalTrafficPolicy: pointer(corev1.ServiceInternalTrafficPolicyLocal),
 				}},
 				reconciled: corev1.Service{Spec: corev1.ServiceSpec{
-					InternalTrafficPolicy: ptr(corev1.ServiceInternalTrafficPolicyCluster),
+					InternalTrafficPolicy: pointer(corev1.ServiceInternalTrafficPolicyCluster),
 				}},
 			},
 			want: corev1.Service{Spec: corev1.ServiceSpec{
-				InternalTrafficPolicy: ptr(corev1.ServiceInternalTrafficPolicyLocal),
+				InternalTrafficPolicy: pointer(corev1.ServiceInternalTrafficPolicyLocal),
+			}},
+		},
+		{
+			name: "Reconciled LoadBalancerClass is used if the expected one is empty",
+			args: args{
+				expected: corev1.Service{Spec: corev1.ServiceSpec{}},
+				reconciled: corev1.Service{Spec: corev1.ServiceSpec{
+					Type:              corev1.ServiceTypeLoadBalancer,
+					LoadBalancerClass: ptr.To("service.k8s.aws/nlb"),
+				}},
+			},
+			want: corev1.Service{Spec: corev1.ServiceSpec{
+				Type:              corev1.ServiceTypeLoadBalancer,
+				LoadBalancerClass: ptr.To("service.k8s.aws/nlb"),
+			}},
+		},
+		{
+			name: "Expected LoadBalancerClass is used if not empty",
+			args: args{
+				expected: corev1.Service{Spec: corev1.ServiceSpec{
+					Type:              corev1.ServiceTypeLoadBalancer,
+					LoadBalancerClass: ptr.To("explicit.lb/class"),
+				}},
+				reconciled: corev1.Service{Spec: corev1.ServiceSpec{}},
+			},
+			want: corev1.Service{Spec: corev1.ServiceSpec{
+				Type:              corev1.ServiceTypeLoadBalancer,
+				LoadBalancerClass: ptr.To("explicit.lb/class"),
+			}},
+		},
+		{
+			name: "Expected LoadBalancerClass can be reset if Type is no longer LoadBalancer",
+			args: args{
+				expected: corev1.Service{Spec: corev1.ServiceSpec{
+					Type:              corev1.ServiceTypeClusterIP,
+					LoadBalancerClass: nil,
+				}},
+				reconciled: corev1.Service{Spec: corev1.ServiceSpec{
+					Type:              corev1.ServiceTypeLoadBalancer,
+					LoadBalancerClass: ptr.To("service.k8s.aws/nlb"),
+				}},
+			},
+			want: corev1.Service{Spec: corev1.ServiceSpec{
+				Type: corev1.ServiceTypeClusterIP,
 			}},
 		},
 	}
