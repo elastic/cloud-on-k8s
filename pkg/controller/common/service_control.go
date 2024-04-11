@@ -157,7 +157,6 @@ func applyServerSideValues(expected, reconciled *corev1.Service) {
 	if expected.Spec.AllocateLoadBalancerNodePorts == nil {
 		expected.Spec.AllocateLoadBalancerNodePorts = reconciled.Spec.AllocateLoadBalancerNodePorts
 	}
-
 }
 
 // hasNodePort returns for a given service type, if the service ports have a NodePort or not.
