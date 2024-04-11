@@ -72,7 +72,7 @@ func needsRecreate(expected, reconciled *corev1.Service) bool {
 	}
 
 	// LoadBalancerClass is immutable once set if target type is load balancer
-	if expected.Spec.Type == corev1.ServiceTypeLoadBalancer && expected.Spec.LoadBalancerClass != reconciled.Spec.LoadBalancerClass {
+	if expected.Spec.Type == corev1.ServiceTypeLoadBalancer && !reflect.DeepEqual(expected.Spec.LoadBalancerClass, reconciled.Spec.LoadBalancerClass) {
 		return true
 	}
 

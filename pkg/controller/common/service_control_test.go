@@ -248,6 +248,20 @@ func Test_needsRecreate(t *testing.T) {
 			want: false,
 		},
 		{
+			name: "No need to recreate if LoadBalancerClass has not changed",
+			args: args{
+				expected: corev1.Service{Spec: corev1.ServiceSpec{
+					Type:              corev1.ServiceTypeLoadBalancer,
+					LoadBalancerClass: ptr.To("my-customer/lb"),
+				}},
+				reconciled: corev1.Service{Spec: corev1.ServiceSpec{
+					Type:              corev1.ServiceTypeLoadBalancer,
+					LoadBalancerClass: ptr.To("my-customer/lb"),
+				}},
+			},
+			want: false,
+		},
+		{
 			name: "Needs recreate if LoadBalancerClass is changed",
 			args: args{
 				expected: corev1.Service{Spec: corev1.ServiceSpec{
