@@ -145,10 +145,19 @@ func applyServerSideValues(expected, reconciled *corev1.Service) {
 		expected.Spec.InternalTrafficPolicy = reconciled.Spec.InternalTrafficPolicy
 	}
 
+	if expected.Spec.ExternalTrafficPolicy == "" {
+		expected.Spec.ExternalTrafficPolicy = reconciled.Spec.ExternalTrafficPolicy
+	}
+
 	// LoadBalancerClass may be defaulted by the API server starting K8s v.1.24
 	if expected.Spec.Type == corev1.ServiceTypeLoadBalancer && expected.Spec.LoadBalancerClass == nil {
 		expected.Spec.LoadBalancerClass = reconciled.Spec.LoadBalancerClass
 	}
+
+	if expected.Spec.AllocateLoadBalancerNodePorts == nil {
+		expected.Spec.AllocateLoadBalancerNodePorts = reconciled.Spec.AllocateLoadBalancerNodePorts
+	}
+
 }
 
 // hasNodePort returns for a given service type, if the service ports have a NodePort or not.

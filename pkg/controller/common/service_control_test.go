@@ -564,29 +564,39 @@ func Test_applyServerSideValues(t *testing.T) {
 			}},
 		},
 		{
-			name: "Reconciled InternalTrafficPolicy is used if the expected one is empty",
+			name: "Reconciled InternalTrafficPolicy/ExternalTrafficPolicy/AllocateLoadBalancerPorts are used if the expected one is empty",
 			args: args{
 				expected: corev1.Service{Spec: corev1.ServiceSpec{}},
 				reconciled: corev1.Service{Spec: corev1.ServiceSpec{
-					InternalTrafficPolicy: pointer(corev1.ServiceInternalTrafficPolicyCluster),
+					InternalTrafficPolicy:         pointer(corev1.ServiceInternalTrafficPolicyCluster),
+					ExternalTrafficPolicy:         corev1.ServiceExternalTrafficPolicyCluster,
+					AllocateLoadBalancerNodePorts: ptr.To(true),
 				}},
 			},
 			want: corev1.Service{Spec: corev1.ServiceSpec{
-				InternalTrafficPolicy: pointer(corev1.ServiceInternalTrafficPolicyCluster),
+				InternalTrafficPolicy:         pointer(corev1.ServiceInternalTrafficPolicyCluster),
+				ExternalTrafficPolicy:         corev1.ServiceExternalTrafficPolicyCluster,
+				AllocateLoadBalancerNodePorts: ptr.To(true),
 			}},
 		},
 		{
-			name: "Expected InternalTrafficPolicy is used if not empty",
+			name: "Expected InternalTrafficPolicy/ExternalTrafficPolicy/AllocateLoadBalancerPorts are used if not empty",
 			args: args{
 				expected: corev1.Service{Spec: corev1.ServiceSpec{
-					InternalTrafficPolicy: pointer(corev1.ServiceInternalTrafficPolicyLocal),
+					InternalTrafficPolicy:         pointer(corev1.ServiceInternalTrafficPolicyLocal),
+					ExternalTrafficPolicy:         corev1.ServiceExternalTrafficPolicyLocal,
+					AllocateLoadBalancerNodePorts: ptr.To(false),
 				}},
 				reconciled: corev1.Service{Spec: corev1.ServiceSpec{
-					InternalTrafficPolicy: pointer(corev1.ServiceInternalTrafficPolicyCluster),
+					InternalTrafficPolicy:         pointer(corev1.ServiceInternalTrafficPolicyCluster),
+					ExternalTrafficPolicy:         corev1.ServiceExternalTrafficPolicyCluster,
+					AllocateLoadBalancerNodePorts: ptr.To(true),
 				}},
 			},
 			want: corev1.Service{Spec: corev1.ServiceSpec{
-				InternalTrafficPolicy: pointer(corev1.ServiceInternalTrafficPolicyLocal),
+				InternalTrafficPolicy:         pointer(corev1.ServiceInternalTrafficPolicyLocal),
+				ExternalTrafficPolicy:         corev1.ServiceExternalTrafficPolicyLocal,
+				AllocateLoadBalancerNodePorts: ptr.To(false),
 			}},
 		},
 		{
