@@ -81,6 +81,8 @@ spec:
     elasticsearch.hosts:
       - https://elasticsearch.example.com:9200
     elasticsearch.username: elastic
+  elasticsearchRef:
+    name: ""
   secureSettings:
     - secretName: kibana-elasticsearch-credentials
 ----
@@ -104,6 +106,8 @@ spec:
     elasticsearch.ssl.certificateAuthorities: /etc/certs/ca.crt
   secureSettings:
     - secretName: kibana-elasticsearch-credentials
+  elasticsearchRef:
+    name: ""
   podTemplate:
     spec:
       volumes:
