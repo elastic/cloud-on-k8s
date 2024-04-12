@@ -200,7 +200,7 @@ func init() {
 			Cluster: []string{"monitor", "manage_ilm", "manage_ml", "read_ilm", "cluster:admin/ingest/pipeline/get"},
 			Indices: []esclient.IndexRole{
 				{
-					Names:      []string{fmt.Sprintf("%s-*", beat)},
+					Names:      []string{fmt.Sprintf("%s-*", beat), "logs-*"},
 					Privileges: []string{"manage", "read", "create_doc", "view_index_metadata", "create_index"},
 				},
 			},
@@ -210,7 +210,7 @@ func init() {
 			Cluster: []string{"monitor", "manage_ilm", "manage_ml", "read_ilm", "cluster:admin/ingest/pipeline/get"},
 			Indices: []esclient.IndexRole{
 				{
-					Names:      []string{fmt.Sprintf("%s-*", beat)},
+					Names:      []string{fmt.Sprintf("%s-*", beat), "logs-*"},
 					Privileges: []string{"manage", "read", "create_doc", "view_index_metadata", "create_index"},
 				},
 			},
@@ -220,7 +220,7 @@ func init() {
 			Cluster: []string{"monitor", "manage_ilm", "manage_ml", "read_ilm", "manage_pipeline"},
 			Indices: []esclient.IndexRole{
 				{
-					Names:      []string{fmt.Sprintf("%s-*", beat)},
+					Names:      []string{fmt.Sprintf("%s-*", beat), "logs-*"},
 					Privileges: []string{"manage", "read", "index", "view_index_metadata", "create_index"},
 				},
 			},
@@ -230,7 +230,7 @@ func init() {
 			Cluster: []string{"manage_index_templates", "monitor", "manage_ilm", "manage_ml", "manage_pipeline"},
 			Indices: []esclient.IndexRole{
 				{
-					Names:      []string{fmt.Sprintf("%s-*", beat)},
+					Names:      []string{fmt.Sprintf("%s-*", beat), "logs-*"},
 					Privileges: []string{"manage", "read", "index", "create_index"},
 				},
 			},
@@ -240,7 +240,7 @@ func init() {
 			Cluster: []string{"monitor", "manage_ilm", "manage_ml"},
 			Indices: []esclient.IndexRole{
 				{
-					Names:      []string{fmt.Sprintf("%s-*", beat)},
+					Names:      []string{fmt.Sprintf("%s-*", beat), "logs-*"},
 					Privileges: []string{"manage", "read"},
 				},
 			},
@@ -250,7 +250,7 @@ func init() {
 			Cluster: []string{"monitor", "manage_ilm", "manage_ml"},
 			Indices: []esclient.IndexRole{
 				{
-					Names:      []string{fmt.Sprintf("%s-*", beat)},
+					Names:      []string{fmt.Sprintf("%s-*", beat), "logs-*"},
 					Privileges: []string{"manage", "read"},
 				},
 			},
@@ -260,7 +260,7 @@ func init() {
 			Cluster: []string{"manage_index_templates", "monitor", "manage_ilm", "manage_ml"},
 			Indices: []esclient.IndexRole{
 				{
-					Names:      []string{fmt.Sprintf("%s-*", beat)},
+					Names:      []string{fmt.Sprintf("%s-*", beat), "logs-*"},
 					Privileges: []string{"manage", "read"},
 				},
 			},
