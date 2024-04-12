@@ -1036,7 +1036,8 @@ First, create a Dockerfile based on the {ls} Docker image.
 Download the JDBC driver, and save it alongside the other JAR files in the {ls} classpath:
 
 From docker.elastic.co/logstash/logstash:{version}, run:
-[subs="attributes"]
+
+["source","shell",subs="attributes"]
 ----
 FROM docker.elastic.co/logstash/logstash:{version}
 RUN curl -o /usr/share/logstash/logstash-core/lib/jars/postgresql.jar -L https://jdbc.postgresql.org/download/postgresql-42.6.0.jar <1>
