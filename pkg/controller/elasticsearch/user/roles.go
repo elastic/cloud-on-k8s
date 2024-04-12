@@ -61,7 +61,7 @@ const (
 	V77 = "v77"
 
 	// Additional index permissions for Beats users
-	BeatsAdditionalPermissions = [string]{"logs-*"}
+	BeatsAdditionalPermissions = []string{"logs-*"}
 )
 
 var (
