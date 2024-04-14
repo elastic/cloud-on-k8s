@@ -1,0 +1,677 @@
+apiVersion: agent.k8s.elastic.co/v1alpha1
+kind: Agent
+metadata:
+  name: elastic-agent
+spec:
+  version: 8.13.0
+  elasticsearchRefs:
+    - name: elasticsearch
+  daemonSet:
+    podTemplate:
+      spec:
+        automountServiceAccountToken: true
+        serviceAccountName: elastic-agent
+        containers:
+          - name: agent
+            securityContext:
+              runAsUser: 0
+            resources:
+              requests:
+                cpu: "1"
+                memory: 2Gi
+            volumeMounts:
+              - name: proc
+                mountPath: /hostfs/proc
+                readOnly: true
+              - name: cgroup
+                mountPath: /hostfs/sys/fs/cgroup
+                readOnly: true
+              - name: varlibdockercontainers
+                mountPath: /var/lib/docker/containers
+                readOnly: true
+              - name: varlog
+                mountPath: /var/log
+                readOnly: true
+              - name: etc-full
+                mountPath: /hostfs/etc
+                readOnly: true
+              - name: var-lib
+                mountPath: /hostfs/var/lib
+                readOnly: true
+              - name: etc-mid
+                mountPath: /etc/machine-id
+                readOnly: true
+            env:
+              - name: NODE_NAME
+                valueFrom:
+                  fieldRef:
+                    fieldPath: spec.nodeName
+        volumes:
+          - name: proc
+            hostPath:
+              path: /proc
+          - name: cgroup
+            hostPath:
+              path: /sys/fs/cgroup
+          - name: varlibdockercontainers
+            hostPath:
+              path: /var/lib/docker/containers
+          - name: varlog
+            hostPath:
+              path: /var/log
+          - name: etc-full
+            hostPath:
+              path: /etc
+          - name: var-lib
+            hostPath:
+              path: /var/lib
+          - name: etc-mid
+            hostPath:
+              path: /etc/machine-id
+              type: File
+  config:
+    id: 12be54ba-8169-45ac-b417-6252eb613b19
+    revision: 2
+    output_permissions:
+      default:
+        _elastic_agent_monitoring:
+          indices:
+            - names:
+                - logs-elastic_agent.apm_server-default
+              privileges:
+                - auto_configure
+                - create_doc
+            - names:
+                - metrics-elastic_agent.apm_server-default
+              privileges:
+                - auto_configure
+                - create_doc
+            - names:
+                - logs-elastic_agent.auditbeat-default
+              privileges:
+                - auto_configure
+                - create_doc
+            - names:
+                - metrics-elastic_agent.auditbeat-default
+              privileges:
+                - auto_configure
+                - create_doc
+            - names:
+                - logs-elastic_agent.cloud_defend-default
+              privileges:
+                - auto_configure
+                - create_doc
+            - names:
+                - logs-elastic_agent.cloudbeat-default
+              privileges:
+                - auto_configure
+                - create_doc
+            - names:
+                - metrics-elastic_agent.cloudbeat-default
+              privileges:
+                - auto_configure
+                - create_doc
+            - names:
+                - logs-elastic_agent-default
+              privileges:
+                - auto_configure
+                - create_doc
+            - names:
+                - metrics-elastic_agent.elastic_agent-default
+              privileges:
+                - auto_configure
+                - create_doc
+            - names:
+                - metrics-elastic_agent.endpoint_security-default
+              privileges:
+                - auto_configure
+                - create_doc
+            - names:
+                - logs-elastic_agent.endpoint_security-default
+              privileges:
+                - auto_configure
+                - create_doc
+            - names:
+                - logs-elastic_agent.filebeat_input-default
+              privileges:
+                - auto_configure
+                - create_doc
+            - names:
+                - metrics-elastic_agent.filebeat_input-default
+              privileges:
+                - auto_configure
+                - create_doc
+            - names:
+                - logs-elastic_agent.filebeat-default
+              privileges:
+                - auto_configure
+                - create_doc
+            - names:
+                - metrics-elastic_agent.filebeat-default
+              privileges:
+                - auto_configure
+                - create_doc
+            - names:
+                - logs-elastic_agent.fleet_server-default
+              privileges:
+                - auto_configure
+                - create_doc
+            - names:
+                - metrics-elastic_agent.fleet_server-default
+              privileges:
+                - auto_configure
+                - create_doc
+            - names:
+                - logs-elastic_agent.heartbeat-default
+              privileges:
+                - auto_configure
+                - create_doc
+            - names:
+                - metrics-elastic_agent.heartbeat-default
+              privileges:
+                - auto_configure
+                - create_doc
+            - names:
+                - logs-elastic_agent.metricbeat-default
+              privileges:
+                - auto_configure
+                - create_doc
+            - names:
+                - metrics-elastic_agent.metricbeat-default
+              privileges:
+                - auto_configure
+                - create_doc
+            - names:
+                - logs-elastic_agent.osquerybeat-default
+              privileges:
+                - auto_configure
+                - create_doc
+            - names:
+                - metrics-elastic_agent.osquerybeat-default
+              privileges:
+                - auto_configure
+                - create_doc
+            - names:
+                - logs-elastic_agent.packetbeat-default
+              privileges:
+                - auto_configure
+                - create_doc
+            - names:
+                - metrics-elastic_agent.packetbeat-default
+              privileges:
+                - auto_configure
+                - create_doc
+            - names:
+                - logs-elastic_agent.pf_elastic_collector-default
+              privileges:
+                - auto_configure
+                - create_doc
+            - names:
+                - logs-elastic_agent.pf_elastic_symbolizer-default
+              privileges:
+                - auto_configure
+                - create_doc
+            - names:
+                - logs-elastic_agent.pf_host_agent-default
+              privileges:
+                - auto_configure
+                - create_doc
+        _elastic_agent_checks:
+          cluster:
+            - monitor
+        7a5e9da4-1d99-4372-b303-53de5703305c:
+          indices:
+            - names:
+                - logs-system.auth-default
+              privileges:
+                - auto_configure
+                - create_doc
+            - names:
+                - logs-system.syslog-default
+              privileges:
+                - auto_configure
+                - create_doc
+            - names:
+                - logs-system.application-default
+              privileges:
+                - auto_configure
+                - create_doc
+            - names:
+                - logs-system.security-default
+              privileges:
+                - auto_configure
+                - create_doc
+            - names:
+                - logs-system.system-default
+              privileges:
+                - auto_configure
+                - create_doc
+            - names:
+                - metrics-system.cpu-default
+              privileges:
+                - auto_configure
+                - create_doc
+            - names:
+                - metrics-system.diskio-default
+              privileges:
+                - auto_configure
+                - create_doc
+            - names:
+                - metrics-system.filesystem-default
+              privileges:
+                - auto_configure
+                - create_doc
+            - names:
+                - metrics-system.fsstat-default
+              privileges:
+                - auto_configure
+                - create_doc
+            - names:
+                - metrics-system.load-default
+              privileges:
+                - auto_configure
+                - create_doc
+            - names:
+                - metrics-system.memory-default
+              privileges:
+                - auto_configure
+                - create_doc
+            - names:
+                - metrics-system.network-default
+              privileges:
+                - auto_configure
+                - create_doc
+            - names:
+                - metrics-system.process-default
+              privileges:
+                - auto_configure
+                - create_doc
+            - names:
+                - metrics-system.process.summary-default
+              privileges:
+                - auto_configure
+                - create_doc
+            - names:
+                - metrics-system.socket_summary-default
+              privileges:
+                - auto_configure
+                - create_doc
+            - names:
+                - metrics-system.uptime-default
+              privileges:
+                - auto_configure
+                - create_doc
+        09fc2f39-65df-4230-b237-85f96ab4fdb6:
+          indices:
+            - names:
+                - logs-cloud_security_posture.findings-default
+              privileges:
+                - auto_configure
+                - create_doc
+    agent:
+      download:
+        sourceURI: 'https://artifacts.elastic.co/downloads/'
+      monitoring:
+        enabled: true
+        use_output: default
+        namespace: default
+        logs: true
+        metrics: true
+      features: { }
+      protection:
+        enabled: false
+    inputs:
+      - id: logfile-system-7a5e9da4-1d99-4372-b303-53de5703305c
+        name: system-2
+        revision: 1
+        type: logfile
+        use_output: default
+        meta:
+          package:
+            name: system
+            version: 1.54.0
+        data_stream:
+          namespace: default
+        package_policy_id: 7a5e9da4-1d99-4372-b303-53de5703305c
+        streams:
+          - id: logfile-system.auth-7a5e9da4-1d99-4372-b303-53de5703305c
+            data_stream:
+              dataset: system.auth
+              type: logs
+            ignore_older: 72h
+            paths:
+              - /var/log/auth.log*
+              - /var/log/secure*
+            exclude_files:
+              - \.gz$
+            multiline:
+              pattern: ^\s
+              match: after
+            tags:
+              - system-auth
+            processors:
+              - add_locale: null
+              - rename:
+                  fields:
+                    - from: message
+                      to: event.original
+                  ignore_missing: true
+                  fail_on_error: false
+              - syslog:
+                  field: event.original
+                  ignore_missing: true
+                  ignore_failure: true
+          - id: logfile-system.syslog-7a5e9da4-1d99-4372-b303-53de5703305c
+            data_stream:
+              dataset: system.syslog
+              type: logs
+            paths:
+              - /var/log/messages*
+              - /var/log/syslog*
+              - /var/log/system*
+            exclude_files:
+              - \.gz$
+            multiline:
+              pattern: ^\s
+              match: after
+            processors:
+              - add_locale: null
+            tags: null
+            ignore_older: 72h
+      - id: winlog-system-7a5e9da4-1d99-4372-b303-53de5703305c
+        name: system-2
+        revision: 1
+        type: winlog
+        use_output: default
+        meta:
+          package:
+            name: system
+            version: 1.54.0
+        data_stream:
+          namespace: default
+        package_policy_id: 7a5e9da4-1d99-4372-b303-53de5703305c
+        streams:
+          - id: winlog-system.application-7a5e9da4-1d99-4372-b303-53de5703305c
+            name: Application
+            data_stream:
+              dataset: system.application
+              type: logs
+            condition: '${host.platform} == ''windows'''
+            ignore_older: 72h
+          - id: winlog-system.security-7a5e9da4-1d99-4372-b303-53de5703305c
+            name: Security
+            data_stream:
+              dataset: system.security
+              type: logs
+            condition: '${host.platform} == ''windows'''
+            ignore_older: 72h
+          - id: winlog-system.system-7a5e9da4-1d99-4372-b303-53de5703305c
+            name: System
+            data_stream:
+              dataset: system.system
+              type: logs
+            condition: '${host.platform} == ''windows'''
+            ignore_older: 72h
+      - id: system/metrics-system-7a5e9da4-1d99-4372-b303-53de5703305c
+        name: system-2
+        revision: 1
+        type: system/metrics
+        use_output: default
+        meta:
+          package:
+            name: system
+            version: 1.54.0
+        data_stream:
+          namespace: default
+        package_policy_id: 7a5e9da4-1d99-4372-b303-53de5703305c
+        streams:
+          - id: system/metrics-system.cpu-7a5e9da4-1d99-4372-b303-53de5703305c
+            data_stream:
+              dataset: system.cpu
+              type: metrics
+            metricsets:
+              - cpu
+            cpu.metrics:
+              - percentages
+              - normalized_percentages
+            period: 10s
+          - id: system/metrics-system.diskio-7a5e9da4-1d99-4372-b303-53de5703305c
+            data_stream:
+              dataset: system.diskio
+              type: metrics
+            metricsets:
+              - diskio
+            diskio.include_devices: null
+            period: 10s
+          - id: system/metrics-system.filesystem-7a5e9da4-1d99-4372-b303-53de5703305c
+            data_stream:
+              dataset: system.filesystem
+              type: metrics
+            metricsets:
+              - filesystem
+            period: 1m
+            processors:
+              - drop_event.when.regexp:
+                  system.filesystem.mount_point: ^/(sys|cgroup|proc|dev|etc|host|lib|snap)($|/)
+          - id: system/metrics-system.fsstat-7a5e9da4-1d99-4372-b303-53de5703305c
+            data_stream:
+              dataset: system.fsstat
+              type: metrics
+            metricsets:
+              - fsstat
+            period: 1m
+            processors:
+              - drop_event.when.regexp:
+                  system.fsstat.mount_point: ^/(sys|cgroup|proc|dev|etc|host|lib|snap)($|/)
+          - id: system/metrics-system.load-7a5e9da4-1d99-4372-b303-53de5703305c
+            data_stream:
+              dataset: system.load
+              type: metrics
+            metricsets:
+              - load
+            condition: '${host.platform} != ''windows'''
+            period: 10s
+          - id: system/metrics-system.memory-7a5e9da4-1d99-4372-b303-53de5703305c
+            data_stream:
+              dataset: system.memory
+              type: metrics
+            metricsets:
+              - memory
+            period: 10s
+          - id: system/metrics-system.network-7a5e9da4-1d99-4372-b303-53de5703305c
+            data_stream:
+              dataset: system.network
+              type: metrics
+            metricsets:
+              - network
+            period: 10s
+            network.interfaces: null
+          - id: system/metrics-system.process-7a5e9da4-1d99-4372-b303-53de5703305c
+            data_stream:
+              dataset: system.process
+              type: metrics
+            metricsets:
+              - process
+            period: 10s
+            process.include_top_n.by_cpu: 5
+            process.include_top_n.by_memory: 5
+            process.cmdline.cache.enabled: true
+            process.cgroups.enabled: false
+            process.include_cpu_ticks: false
+            processes:
+              - .*
+          - id: >-
+              system/metrics-system.process.summary-7a5e9da4-1d99-4372-b303-53de5703305c
+            data_stream:
+              dataset: system.process.summary
+              type: metrics
+            metricsets:
+              - process_summary
+            period: 10s
+          - id: >-
+              system/metrics-system.socket_summary-7a5e9da4-1d99-4372-b303-53de5703305c
+            data_stream:
+              dataset: system.socket_summary
+              type: metrics
+            metricsets:
+              - socket_summary
+            period: 10s
+          - id: system/metrics-system.uptime-7a5e9da4-1d99-4372-b303-53de5703305c
+            data_stream:
+              dataset: system.uptime
+              type: metrics
+            metricsets:
+              - uptime
+            period: 10s
+      - id: cloudbeat/cis_k8s-kspm-09fc2f39-65df-4230-b237-85f96ab4fdb6
+        name: kspm-1
+        revision: 1
+        type: cloudbeat/cis_k8s
+        use_output: default
+        meta:
+          package:
+            name: cloud_security_posture
+            version: 1.8.1
+        data_stream:
+          namespace: default
+        package_policy_id: 09fc2f39-65df-4230-b237-85f96ab4fdb6
+        streams:
+          - id: >-
+              cloudbeat/cis_k8s-cloud_security_posture.findings-09fc2f39-65df-4230-b237-85f96ab4fdb6
+            data_stream:
+              dataset: cloud_security_posture.findings
+              type: logs
+            config:
+              v1:
+                type: kspm
+                deployment: self_managed
+                benchmark: cis_k8s
+              processors:
+                - add_cluster_id: null
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: elastic-agent
+  namespace: default
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  namespace: default
+  name: elastic-agent
+subjects:
+  - kind: ServiceAccount
+    name: elastic-agent
+    namespace: default
+roleRef:
+  kind: Role
+  name: elastic-agent
+  apiGroup: rbac.authorization.k8s.io
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: elastic-agent
+  labels:
+    k8s-app: elastic-agent
+rules:
+  - apiGroups: [""]
+    resources:
+      - nodes
+      - namespaces
+      - events
+      - pods
+      - services
+      - configmaps
+      - serviceaccounts
+      - persistentvolumes
+      - persistentvolumeclaims
+    verbs: ["get", "list", "watch"]
+  - apiGroups: ["extensions"]
+    resources:
+      - replicasets
+    verbs: ["get", "list", "watch"]
+  - apiGroups: ["apps"]
+    resources:
+      - statefulsets
+      - deployments
+      - replicasets
+      - daemonsets
+    verbs: ["get", "list", "watch"]
+  - apiGroups:
+      - ""
+    resources:
+      - nodes/stats
+    verbs:
+      - get
+  - apiGroups: [ "batch" ]
+    resources:
+      - jobs
+      - cronjobs
+    verbs: [ "get", "list", "watch" ]
+  - nonResourceURLs:
+      - "/metrics"
+    verbs:
+      - get
+  - apiGroups: ["rbac.authorization.k8s.io"]
+    resources:
+      - clusterrolebindings
+      - clusterroles
+      - rolebindings
+      - roles
+    verbs: ["get", "list", "watch"]
+  - apiGroups: ["policy"]
+    resources:
+      - podsecuritypolicies
+    verbs: ["get", "list", "watch"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: elastic-agent
+  namespace: default
+  labels:
+    k8s-app: elastic-agent
+rules:
+  - apiGroups:
+      - coordination.k8s.io
+    resources:
+      - leases
+    verbs: ["get", "create", "update"]
+---
+apiVersion: elasticsearch.k8s.elastic.co/v1
+kind: Elasticsearch
+metadata:
+  name: elasticsearch
+spec:
+  version: 8.13.0
+  nodeSets:
+    - name: default
+      count: 2
+      config:
+        node.store.allow_mmap: false
+---
+apiVersion: kibana.k8s.elastic.co/v1
+kind: Kibana
+metadata:
+  name: kibana
+spec:
+  version: 8.13.0
+  count: 1
+  elasticsearchRef:
+    name: elasticsearch
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: elastic-agent
+subjects:
+  - kind: ServiceAccount
+    name: elastic-agent
+    namespace: default
+roleRef:
+  kind: ClusterRole
+  name: elastic-agent
+  apiGroup: rbac.authorization.k8s.io
+---
