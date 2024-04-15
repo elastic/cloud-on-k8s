@@ -2914,11 +2914,11 @@ SOFTWARE.
 
 --------------------------------------------------------------------------------
 Module  : go.elastic.co/apm/module/apmelasticsearch/v2
-Version : v2.5.0
-Time    : 2024-03-12T18:37:50Z
+Version : v2.6.0
+Time    : 2024-04-11T12:45:42Z
 Licence : Apache-2.0
 
-Contents of probable licence file $GOMODCACHE/go.elastic.co/apm/module/apmelasticsearch/v2@v2.5.0/LICENSE:
+Contents of probable licence file $GOMODCACHE/go.elastic.co/apm/module/apmelasticsearch/v2@v2.6.0/LICENSE:
 
                                  Apache License
                            Version 2.0, January 2004
@@ -3125,11 +3125,11 @@ Contents of probable licence file $GOMODCACHE/go.elastic.co/apm/module/apmelasti
 
 --------------------------------------------------------------------------------
 Module  : go.elastic.co/apm/module/apmhttp/v2
-Version : v2.5.0
-Time    : 2024-03-12T18:37:50Z
+Version : v2.6.0
+Time    : 2024-04-11T12:45:42Z
 Licence : Apache-2.0
 
-Contents of probable licence file $GOMODCACHE/go.elastic.co/apm/module/apmhttp/v2@v2.5.0/LICENSE:
+Contents of probable licence file $GOMODCACHE/go.elastic.co/apm/module/apmhttp/v2@v2.6.0/LICENSE:
 
                                  Apache License
                            Version 2.0, January 2004
@@ -3336,11 +3336,11 @@ Contents of probable licence file $GOMODCACHE/go.elastic.co/apm/module/apmhttp/v
 
 --------------------------------------------------------------------------------
 Module  : go.elastic.co/apm/module/apmzap/v2
-Version : v2.5.0
-Time    : 2024-03-12T18:37:50Z
+Version : v2.6.0
+Time    : 2024-04-11T12:45:42Z
 Licence : Apache-2.0
 
-Contents of probable licence file $GOMODCACHE/go.elastic.co/apm/module/apmzap/v2@v2.5.0/LICENSE:
+Contents of probable licence file $GOMODCACHE/go.elastic.co/apm/module/apmzap/v2@v2.6.0/LICENSE:
 
                                  Apache License
                            Version 2.0, January 2004
@@ -3547,11 +3547,11 @@ Contents of probable licence file $GOMODCACHE/go.elastic.co/apm/module/apmzap/v2
 
 --------------------------------------------------------------------------------
 Module  : go.elastic.co/apm/v2
-Version : v2.5.0
-Time    : 2024-03-12T18:37:50Z
+Version : v2.6.0
+Time    : 2024-04-11T12:45:42Z
 Licence : Apache-2.0
 
-Contents of probable licence file $GOMODCACHE/go.elastic.co/apm/v2@v2.5.0/LICENSE:
+Contents of probable licence file $GOMODCACHE/go.elastic.co/apm/v2@v2.6.0/LICENSE:
 
                                  Apache License
                            Version 2.0, January 2004
