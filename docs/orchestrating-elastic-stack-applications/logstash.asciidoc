@@ -1013,6 +1013,15 @@ spec:
           volumeMounts:
             - name: workdir
               mountPath: /usr/share/logstash/jars <1>
+  volumeClaimTemplates:
+    - metadata:
+        name: workdir
+      spec:
+        accessModes:
+          - ReadWriteOnce
+        resources:
+          requests:
+            storage: 50Mi
   pipelines:
     - pipeline.id: main
       config.string: |
@@ -1235,7 +1244,7 @@ The Elastic_integration filter requires certain roles to be configured on the {e
 +
 [source, yaml,subs="attributes,+macros,callouts"]
 ----
-//Sample role definition
+# Sample role definition
 kind: Secret
 apiVersion: v1
 metadata:
