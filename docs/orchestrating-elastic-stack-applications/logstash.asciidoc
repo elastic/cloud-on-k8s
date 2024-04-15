@@ -521,6 +521,9 @@ spec:
 [id="{p}-logstash-pipelines-es"]
 === Using Elasticsearch in Logstash pipelines
 
+[id="{p}-logstash-esref"]
+==== `elasticsearchRefs` for establishing a secured connection
+
 The `spec.elasticsearchRefs` section provides a mechanism to help configure Logstash to establish a secured connection to one or more ECK managed Elasticsearch clusters. By default, each `elasticsearchRef` will target all nodes in its referenced Elasticsearch cluster. If you want to direct traffic to specific nodes of your Elasticsearch cluster, refer to <<{p}-traffic-splitting>> for more information and examples.
 
 When you use `elasticsearchRefs` in a Logstash pipeline, the Logstash operator creates the necessary resources from the associated Elasticsearch cluster, and provides environment variables to allow these resources to be accessed from the pipeline configuration. 
@@ -532,7 +535,7 @@ The environment variables have a fixed naming convention:
 * `NORMALIZED_CLUSTERNAME_ES_PASSWORD`
 * `NORMALIZED_CLUSTERNAME_ES_SSL_CERTIFICATE_AUTHORITY`
 
-where NORMALIZED_CLUSTERNAME is the value taken from the `clusterName` field of the `elasticsearchRef` property, capitalized, and `-` transformed to `_` - eg, prod-es, would becomed PROD_ES.
+where NORMALIZED_CLUSTERNAME is the value taken from the `clusterName` field of the `elasticsearchRef` property, capitalized, with `-` transformed to `_`. That is, `prod-es` would become `PROD_ES`.
 
 [NOTE]
 --
@@ -1220,14 +1223,39 @@ Examples of these plugins include {logstash-ref}/plugins-inputs-kafka.html[`logs
 
 Some plugins have additional requirements and guidelines for optimal performance in a {ls} ECK environment.
 
+* <<{p}-logstash-plugin-considerations-ls-integration>>
+* <<{p}-logstash-plugin-considerations-es-output>>
+* <<{p}-logstash-plugin-considerations-integration-filter>>
+* <<{p}-logstash-plugin-considerations-agent-beats>>
+
 TIP: Use these guidelines _in addition_ to the general guidelines provided in <<{p}-logstash-working-with-plugins-scaling>>.
 
-{logstash-ref}/plugins-integrations-logstash.html[Logstash integration plugin]::
-When your pipeline uses `logstash-integration-logstash`, add `keepalive=>false` to the {logstash-ref}/plugins-outputs-logstash.html[logstash-output] definition to ensure that load balancing works correctly rather than keeping affinity to the same pod.
+[id="{p}-logstash-plugin-considerations-ls-integration"]
+==== {ls} integration plugin 
 
-{logstash-ref}/plugins-filters-elastic_integration.html[Elastic_integration filter plugin]::
-The elastic_integration filter allows the use of `ElasticsearchRef` and environment variables.
-+
+When your pipeline uses the {logstash-ref}/plugins-integrations-logstash.html[`Logstash integration`] plugin, add `keepalive=>false` to the {logstash-ref}/plugins-outputs-logstash.html[logstash-output] definition to ensure that load balancing works correctly rather than keeping affinity to the same pod.
+
+[id="{p}-logstash-plugin-considerations-es-output"]
+==== Elasticsearch output plugin
+
+The {logstash-ref}/plugins-output-elasticsearch.html[`elasticsearch output`] plugin requires certain roles to be configured in order to enable {ls} to communicate with {es}.
+
+[source, logstash]
+----
+"cluster": ["monitor", "manage_ilm", "read_ilm", "manage_logstash_pipelines", "manage_index_templates", "cluster:admin/ingest/pipeline/get",],
+  "indices": [
+    {
+      "names": [ "logstash", "logstash-*", "ecs-logstash", "ecs-logstash-*", "logs-*", "metrics-*", "synthetics-*", "traces-*" ],
+      "privileges": ["manage", "write", "create_index", "read", "view_index_metadata"]
+    }
+----
+
+
+[id="{p}-logstash-plugin-considerations-integration-filter"]
+==== Elastic_integration filter plugin
+
+The {logstash-ref}/plugins-filters-elastic_integration.html[`elastic_integration filter`] plugin allows the use of <<k8s-logstash-esref,`ElasticsearchRef`>> and environment variables.
+
 [source, logstash]
 ----
   elastic_integration {
@@ -1239,9 +1267,9 @@ The elastic_integration filter allows the use of `ElasticsearchRef` and environm
           }
 
 ----
-+
+
 The Elastic_integration filter requires certain roles to be configured on the {es} cluster to enable {ls} to read ingest pipelines.
-+
+
 [source, yaml,subs="attributes,+macros,callouts"]
 ----
 # Sample role definition
@@ -1255,8 +1283,11 @@ stringData:
       cluster: [ "monitor", "manage_index_templates", "read_pipeline"]
 ----
 
-{logstash-ref}/plugins-inputs-elastic_agent.html[Elastic_agent input] and {logstash-ref}/plugins-inputs-beats.html[Beats input] plugins::
-Set the `ttl` value on Elastic Agent or Beat to ensure that load is distributed appropriately.
+[id="{p}-logstash-plugin-considerations-agent-beats"]
+==== Elastic_agent input and Beats input plugins
+
+When you use the {logstash-ref}/plugins-inputs-elastic_agent.html[Elastic_agent input] or the {logstash-ref}/plugins-inputs-beats.html[Beats input],
+set the {logstash-ref}/plugins-inputs-beats.html#_ttl[`ttl`] value on the input to ensure that load is distributed appropriately.
 
 [id="{p}-logstash-working-with-custom-plugins"]
 === Adding custom plugins
