@@ -543,13 +543,13 @@ where NORMALIZED_CLUSTERNAME is the value taken from the `clusterName` field of 
 * The {ls} ECK operator creates a user called `eck_logstash_user_role` when an `elasticsearchRef` is specified. This user has the following permissions:
 +
 ```
-  "cluster": ["monitor", "manage_ilm", "read_ilm", "manage_logstash_pipelines", "manage_index_templates", "cluster:admin/ingest/pipeline/get",],
+  "cluster": ["monitor", "manage_ilm", "read_ilm", "manage_logstash_pipelines", "manage_index_templates", "cluster:admin/ingest/pipeline/get",]
   "indices": [
     {
       "names": [ "logstash", "logstash-*", "ecs-logstash", "ecs-logstash-*", "logs-*", "metrics-*", "synthetics-*", "traces-*" ],
       "privileges": ["manage", "write", "create_index", "read", "view_index_metadata"]
     }
-
+]
 ```
 +
 You can <<{p}-users-and-roles,update user permissions>> to include more indices if the Elasticsearch plugin is expected to use indices other than the default. Check out <<{p}-logstash-configuration-custom-index, Logstash configuration with a custom index>> sample configuration that creates a user that writes to a custom index.
@@ -1238,16 +1238,26 @@ When your pipeline uses the {logstash-ref}/plugins-integrations-logstash.html[`L
 [id="{p}-logstash-plugin-considerations-es-output"]
 ==== Elasticsearch output plugin
 
-The {logstash-ref}/plugins-output-elasticsearch.html[`elasticsearch output`] plugin requires certain roles to be configured in order to enable {ls} to communicate with {es}.
+The {logstash-ref}/plugins-outputs-elasticsearch.html[`elasticsearch output`] plugin requires certain roles to be configured in order to enable {ls} to communicate with {es}.
+
+You can customize roles in {es}. Check out <<{p}-users-and-roles,creating custom roles>>
 
 [source, logstash]
 ----
-"cluster": ["monitor", "manage_ilm", "read_ilm", "manage_logstash_pipelines", "manage_index_templates", "cluster:admin/ingest/pipeline/get",],
-  "indices": [
-    {
-      "names": [ "logstash", "logstash-*", "ecs-logstash", "ecs-logstash-*", "logs-*", "metrics-*", "synthetics-*", "traces-*" ],
-      "privileges": ["manage", "write", "create_index", "read", "view_index_metadata"]
-    }
+kind: Secret
+apiVersion: v1
+metadata:
+  name: my-roles-secret
+stringData:
+  roles.yml: |-
+    eck_logstash_user_role:
+      "cluster": ["monitor", "manage_ilm", "read_ilm", "manage_logstash_pipelines", "manage_index_templates", "cluster:admin/ingest/pipeline/get"],
+      "indices": [
+        {
+          "names": [ "logstash", "logstash-*", "ecs-logstash", "ecs-logstash-*", "logs-*", "metrics-*", "synthetics-*", "traces-*" ],
+          "privileges": ["manage", "write", "create_index", "read", "view_index_metadata"]
+        }
+      ]
 ----
 
 
@@ -1287,7 +1297,7 @@ stringData:
 ==== Elastic_agent input and Beats input plugins
 
 When you use the {logstash-ref}/plugins-inputs-elastic_agent.html[Elastic_agent input] or the {logstash-ref}/plugins-inputs-beats.html[Beats input],
-set the {logstash-ref}/plugins-inputs-beats.html#_ttl[`ttl`] value on the input to ensure that load is distributed appropriately.
+set the {filebeat-ref}logstash-output.html#_ttl[`ttl`] value on the Agent or Beat to ensure that load is distributed appropriately.
 
 [id="{p}-logstash-working-with-custom-plugins"]
 === Adding custom plugins
