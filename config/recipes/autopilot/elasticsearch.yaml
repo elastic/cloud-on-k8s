@@ -41,7 +41,7 @@ kind: Elasticsearch
 metadata:
   name: elasticsearch
 spec:
-  version: 8.13.0
+  version: 8.13.2
   nodeSets:
   - name: default
     count: 1
