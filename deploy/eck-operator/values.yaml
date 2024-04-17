@@ -93,7 +93,7 @@ automountServiceAccountToken: true
 serviceAccount:
   # create specifies whether a service account should be created for the operator.
   create: true
-  # Specifies whether a service account should automount API-Credentials
+  # Specifies whether a service account should automount API credentials.
   automountServiceAccountToken: true
   # annotations to add to the service account
   annotations: {}
