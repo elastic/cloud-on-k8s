@@ -3826,6 +3826,10 @@ spec:
                 description: Auth contains user authentication and authorization security
                   settings for Elasticsearch.
                 properties:
+                  disableElasticUser:
+                    description: DisableElasticUser disables the default elastic user
+                      that is created by ECK.
+                    type: boolean
                   fileRealm:
                     description: FileRealm to propagate to the Elasticsearch cluster.
                     items:

@@ -221,6 +221,8 @@ type Auth struct {
 	Roles []RoleSource `json:"roles,omitempty"`
 	// FileRealm to propagate to the Elasticsearch cluster.
 	FileRealm []FileRealmSource `json:"fileRealm,omitempty"`
+	// DisableElasticUser disables the default elastic user that is created by ECK.
+	DisableElasticUser bool `json:"disableElasticUser,omitempty"`
 }
 
 // RoleSource references roles to create in the Elasticsearch cluster.

@@ -26,7 +26,6 @@ import (
 const (
 	// ElasticUserName is the public-facing user.
 	ElasticUserName = "elastic"
-
 	// ControllerUserName is the controller user to interact with ES.
 	ControllerUserName = "elastic-internal"
 	// MonitoringUserName is used for the Elasticsearch monitoring.
@@ -35,6 +34,8 @@ const (
 	PreStopUserName = "elastic-internal-pre-stop"
 	// ProbeUserName is used for the Elasticsearch readiness probe.
 	ProbeUserName = "elastic-internal-probe"
+	// DiagnosticsUserName is used for the ECK diagnostics.
+	DiagnosticsUserName = "elastic-internal-diagnostics"
 )
 
 // reconcileElasticUser reconciles a single secret holding the "elastic" user password.
@@ -89,6 +90,7 @@ func reconcileInternalUsers(
 			{Name: PreStopUserName, Roles: []string{ClusterManageRole}},
 			{Name: ProbeUserName, Roles: []string{ProbeUserRole}},
 			{Name: MonitoringUserName, Roles: []string{RemoteMonitoringCollectorBuiltinRole}},
+			{Name: DiagnosticsUserName, Roles: []string{DiagnosticsUserRole}},
 		},
 		esv1.InternalUsersSecret(es.Name),
 		true,

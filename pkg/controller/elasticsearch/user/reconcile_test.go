@@ -10,6 +10,7 @@ import (
 
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/tools/record"
@@ -84,12 +85,43 @@ func Test_ReconcileRolesFileRealmSecret(t *testing.T) {
 }
 
 func Test_aggregateFileRealm(t *testing.T) {
-	c := k8s.NewFakeClient(sampleUserProvidedFileRealmSecrets...)
-	fileRealm, controllerUser, err := aggregateFileRealm(context.Background(), c, sampleEsWithAuth, initDynamicWatches(), record.NewFakeRecorder(10), testPasswordHasher)
-	require.NoError(t, err)
-	require.NotEmpty(t, controllerUser.Password)
-	actualUsers := fileRealm.UserNames()
-	require.ElementsMatch(t, []string{"elastic", "elastic-internal", "elastic-internal-pre-stop", "elastic-internal-probe", "elastic-internal-monitoring", "user1", "user2", "user3"}, actualUsers)
+	sampleEsWithAuthAndElasticUserDisabled := sampleEsWithAuth.DeepCopy()
+	sampleEsWithAuthAndElasticUserDisabled.Spec.Auth.DisableElasticUser = true
+	tests := []struct {
+		name       string
+		es         esv1.Elasticsearch
+		expected   []string
+		assertions func(t *testing.T, c k8s.Client, es esv1.Elasticsearch)
+	}{
+		{
+			name:     "file realm users with elastic user enabled",
+			es:       sampleEsWithAuth,
+			expected: []string{"elastic", "elastic-internal", "elastic-internal-pre-stop", "elastic-internal-probe", "elastic-internal-diagnostics", "elastic-internal-monitoring", "user1", "user2", "user3"},
+		},
+		{
+			name:     "file realm users with elastic user disabled",
+			es:       *sampleEsWithAuthAndElasticUserDisabled,
+			expected: []string{"elastic-internal", "elastic-internal-pre-stop", "elastic-internal-probe", "elastic-internal-diagnostics", "elastic-internal-monitoring", "user1", "user2", "user3"},
+			assertions: func(t *testing.T, c k8s.Client, es esv1.Elasticsearch) {
+				var secret corev1.Secret
+				err := c.Get(context.Background(), types.NamespacedName{Namespace: es.Namespace, Name: esv1.ElasticUserSecret(es.Name)}, &secret)
+				require.True(t, apierrors.IsNotFound(err))
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			c := k8s.NewFakeClient(sampleUserProvidedFileRealmSecrets...)
+			fileRealm, controllerUser, err := aggregateFileRealm(context.Background(), c, tt.es, initDynamicWatches(), record.NewFakeRecorder(10), testPasswordHasher)
+			require.NoError(t, err)
+			require.NotEmpty(t, controllerUser.Password)
+			actualUsers := fileRealm.UserNames()
+			require.ElementsMatch(t, tt.expected, actualUsers)
+			if tt.assertions != nil {
+				tt.assertions(t, c, tt.es)
+			}
+		})
+	}
 }
 
 func Test_aggregateRoles(t *testing.T) {
