@@ -103,6 +103,7 @@ func Test_aggregateFileRealm(t *testing.T) {
 			es:       *sampleEsWithAuthAndElasticUserDisabled,
 			expected: []string{"elastic-internal", "elastic-internal-pre-stop", "elastic-internal-probe", "elastic-internal-diagnostics", "elastic-internal-monitoring", "user1", "user2", "user3"},
 			assertions: func(t *testing.T, c k8s.Client, es esv1.Elasticsearch) {
+				t.Helper()
 				var secret corev1.Secret
 				err := c.Get(context.Background(), types.NamespacedName{Namespace: es.Namespace, Name: esv1.ElasticUserSecret(es.Name)}, &secret)
 				require.True(t, apierrors.IsNotFound(err))
