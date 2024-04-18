@@ -1044,7 +1044,6 @@ This example downloads the same `postgres` JDBC driver, and adds it to the {ls} 
 First, create a Dockerfile based on the {ls} Docker image.
 Download the JDBC driver, and save it alongside the other JAR files in the {ls} classpath:
 
-From docker.elastic.co/logstash/logstash:{version}, run:
 
 ["source","shell",subs="attributes"]
 ----
@@ -1136,7 +1135,7 @@ spec:
       config.string: |
         output {
           s3 {
-             id => 'main_s3_output`
+             id => 'main_s3_output'
              temporary_directory => "/usr/share/logstash/data/main/main_s3_output<1>
           }
         }
