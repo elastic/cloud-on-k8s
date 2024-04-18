@@ -59,9 +59,6 @@ const (
 
 	// V77 indicates version 7.7
 	V77 = "v77"
-
-	// Additional index permissions for Beats users
-	BeatsAdditionalPermissions = []string{"logs-*"}
 )
 
 var (
