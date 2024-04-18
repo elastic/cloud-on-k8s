@@ -983,19 +983,18 @@ spec:
 Some plugins require or allow access to static read-only files that exceed the 1 MiB (mebibyte) limit imposed by ConfigMap and Secret.
 For example, you may need JAR files to load drivers when using a JDBC or JMS plugin, or a large {logstash-ref}/plugins-filters-translate.html[`logstash-filter-translate`] dictionary.
 
-Add these files using one or more of these options:
+You can add files using:
 
-* **PersistentVolume.** Add a volumeClaimTemplate and a volumeMount to your {ls} resource and upload data to that volume, either using an `initContainer`, or direct upload if your Kubernetes provider supports it. You can use the default `logstash-data` volumeClaimTemplate , or a custom one depending on your storage needs.
-* **Custom docker image.** Use a custom docker image that includes the static content that your Logstash pods will need.
+* **<<{p}-logstash-ic,PersistentVolume populated by an initContainer>>.** Add a volumeClaimTemplate and a volumeMount to your {ls} resource and upload data to that volume, either using an `initContainer`, or direct upload if your Kubernetes provider supports it. 
+  You can use the default `logstash-data` volumeClaimTemplate , or a custom one depending on your storage needs.
+* **<<{p}-logstash-custom-images,Custom Docker image>>.** Use a custom docker image that includes the static content that your Logstash pods will need.
 
 Check out <<{p}-bundles-plugins>> for more details on which option might be most suitable for you.
 
-
 [id="{p}-logstash-ic"]
-===== Adding files using an initContainer
+===== Add files using PersistentVolume populated by an initContainer
 
 This example creates a volumeClaimTemplate called `workdir`, with volumeMounts referring to this mounted to the main container and an initContainer. The initContainer initiates a  download of a PostgreSQL JDBC driver JAR file, and stored it the volumeMount, which is then used in the JDBC input in the pipeline configuration.
-
 
 [source,yaml]
 ----
@@ -1038,7 +1037,7 @@ spec:
 <2> Remainder of plugin configuration goes here
 
 [id="{p}-logstash-custom-images"]
-===== Adding files using a custom Docker image
+===== Add files using a custom Docker image
 
 This example downloads the same `postgres` JDBC driver, and adds it to the {ls} classpath in the Docker image.
 
