@@ -980,24 +980,22 @@ spec:
 [id="{p}-logstash-working-with-plugins-large-ro"]
 ==== Larger read-only assets (1 MiB+)
 
-Some plugins require or allow access to static read-only files that exceed the 1 MiB (mebibyte) limit imposed by ConfigMap and Secret. 
+Some plugins require or allow access to static read-only files that exceed the 1 MiB (mebibyte) limit imposed by ConfigMap and Secret.
 For example, you may need JAR files to load drivers when using a JDBC or JMS plugin, or a large {logstash-ref}/plugins-filters-translate.html[`logstash-filter-translate`] dictionary.
 
 Add these files using one or more of these options:
 
-* **PersistentVolume.** Create a PersistentVolume that points to the static content, and create a PersistentVolumeClaim to request storage to be used by the {ls} resource.
-* **initContainer.** Use an `initContainer` to add the files before the main container starts. This approach may be appropriate when the static content is hosted remotely.
-* **Custom docker image.** 
+* **PersistentVolume.** Add a volumeClaimTemplate and a volumeMount to your {ls} resource and upload data to that volume, either using an `initContainer`, or direct upload if your Kubernetes provider supports it. You can use the default `logstash-data` volumeClaimTemplate , or a custom one depending on your storage needs.
+* **Custom docker image.** Use a custom docker image that includes the static content that your Logstash pods will need.
 
 Check out <<{p}-bundles-plugins>> for more details on which option might be most suitable for you.
 
-[id="{p}-logstash-pv"]
-===== Adding files using a PersistentVolume
 
 [id="{p}-logstash-ic"]
 ===== Adding files using an initContainer
 
-This example creates an `initContainer` to download a PostgreSQL JDBC driver JAR file, places it in a volume mount accessible to the main `container`, and then uses it in a JDBC input in the pipeline configuration.
+This example creates a volumeClaimTemplate called `workdir`, with volumeMounts referring to this mounted to the main container and an initContainer. The initContainer initiates a  download of a PostgreSQL JDBC driver JAR file, and stored it the volumeMount, which is then used in the JDBC input in the pipeline configuration.
+
 
 [source,yaml]
 ----
