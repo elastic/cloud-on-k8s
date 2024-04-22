@@ -162,12 +162,14 @@ quickstart-es-http   ClusterIP   10.15.251.145   <none>        9200/TCP   34m
 
 . Get the credentials.
 +
-A default user named `elastic` is automatically created with the password stored in a Kubernetes secret:
+A default user named `elastic` is created by default with the password stored in a Kubernetes secret:
 +
 [source,sh]
 ----
 PASSWORD=$(kubectl get secret quickstart-es-elastic-user -o go-template='{{.data.elastic | base64decode}}')
 ----
+
+NOTE: The `elastic` user creation can be disabled if desired. Check <<{p}-users-and-roles>> for more information.
 
 . Request the Elasticsearch endpoint.
 +
