@@ -47,6 +47,9 @@ func reconcileElasticUser(
 	userProvidedFileRealm filerealm.Realm,
 	passwordHasher cryptutil.PasswordHasher,
 ) (users, error) {
+	if es.Spec.Auth.DisableElasticUser {
+		return nil, nil
+	}
 	secretName := esv1.ElasticUserSecret(es.Name)
 	// if user has set up the elastic user via the file realm do not create the operator managed secret to avoid confusion
 	if userProvidedFileRealm.PasswordHashForUser(ElasticUserName) != nil {

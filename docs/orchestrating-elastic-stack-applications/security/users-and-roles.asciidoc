@@ -27,7 +27,7 @@ To rotate this password, refer to: <<{p}-rotate-credentials>>.
 
 === Disabling the default `elastic` user
 
-If your prefer to manage all users via SSO, for example using <<{p}-saml-authentication>> or OpenID Connect, you can disable the default `elastic` user by setting the `auth.disableElasticUser` field in the Elasticsearch resource to `true`:
+If your prefer to manage all users via SSO, for example using <<{p}-saml-authentication>> or OpenID Connect, you can disable the default `elastic` superuser by setting the `auth.disableElasticUser` field in the Elasticsearch resource to `true`:
 
 [source,yaml,subs="attributes"]
 ----

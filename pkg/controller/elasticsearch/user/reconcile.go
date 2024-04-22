@@ -106,12 +106,9 @@ func aggregateFileRealm(
 	}
 
 	// reconcile predefined users
-	var elasticUser users
-	if !es.Spec.Auth.DisableElasticUser {
-		elasticUser, err = reconcileElasticUser(ctx, c, es, existingFileRealm, userProvidedFileRealm, passwordHasher)
-		if err != nil {
-			return filerealm.Realm{}, esclient.BasicAuth{}, err
-		}
+	elasticUser, err := reconcileElasticUser(ctx, c, es, existingFileRealm, userProvidedFileRealm, passwordHasher)
+	if err != nil {
+		return filerealm.Realm{}, esclient.BasicAuth{}, err
 	}
 	internalUsers, err := reconcileInternalUsers(ctx, c, es, existingFileRealm, passwordHasher)
 	if err != nil {
