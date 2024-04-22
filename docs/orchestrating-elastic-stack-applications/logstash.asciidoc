@@ -1135,7 +1135,7 @@ spec:
       config.string: |
         output {
           s3 {
-             id => 'main_s3_output'
+             id => "main_s3_output"
              temporary_directory => "/usr/share/logstash/data/main/main_s3_output<1>
           }
         }
