@@ -16100,11 +16100,11 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 --------------------------------------------------------------------------------
 Module  : golang.org/x/net
-Version : v0.22.0
-Time    : 2024-03-04T19:59:26Z
+Version : v0.23.0
+Time    : 2024-04-03T17:30:20Z
 Licence : BSD-3-Clause
 
-Contents of probable licence file $GOMODCACHE/golang.org/x/net@v0.22.0/LICENSE:
+Contents of probable licence file $GOMODCACHE/golang.org/x/net@v0.23.0/LICENSE:
 
 Copyright (c) 2009 The Go Authors. All rights reserved.
 
