@@ -1700,11 +1700,11 @@ Exhibit B - "Incompatible With Secondary Licenses" Notice
 
 --------------------------------------------------------------------------------
 Module  : github.com/hashicorp/vault/api
-Version : v1.12.2
-Time    : 2024-03-18T17:11:42Z
+Version : v1.13.0
+Time    : 2024-04-19T11:17:41Z
 Licence : MPL-2.0
 
-Contents of probable licence file $GOMODCACHE/github.com/hashicorp/vault/api@v1.12.2/LICENSE:
+Contents of probable licence file $GOMODCACHE/github.com/hashicorp/vault/api@v1.13.0/LICENSE:
 
 Copyright (c) 2015 HashiCorp, Inc.
 
@@ -7692,12 +7692,12 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 
 --------------------------------------------------------------------------------
-Module  : github.com/go-jose/go-jose/v3
-Version : v3.0.3
-Time    : 2024-03-07T21:35:47Z
+Module  : github.com/go-jose/go-jose/v4
+Version : v4.0.1
+Time    : 2024-03-07T19:46:13Z
 Licence : Apache-2.0
 
-Contents of probable licence file $GOMODCACHE/github.com/go-jose/go-jose/v3@v3.0.3/LICENSE:
+Contents of probable licence file $GOMODCACHE/github.com/go-jose/go-jose/v4@v4.0.1/LICENSE:
 
 
                                  Apache License
