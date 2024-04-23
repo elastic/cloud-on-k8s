@@ -71,6 +71,11 @@ func needsRecreate(expected, reconciled *corev1.Service) bool {
 		return true
 	}
 
+	// LoadBalancerClass is immutable once set if target type is load balancer
+	if expected.Spec.Type == corev1.ServiceTypeLoadBalancer && !reflect.DeepEqual(expected.Spec.LoadBalancerClass, reconciled.Spec.LoadBalancerClass) {
+		return true
+	}
+
 	return false
 }
 
@@ -138,6 +143,19 @@ func applyServerSideValues(expected, reconciled *corev1.Service) {
 	// InternalTrafficPolicy may be defaulted by the api server starting K8S v1.22
 	if expected.Spec.InternalTrafficPolicy == nil {
 		expected.Spec.InternalTrafficPolicy = reconciled.Spec.InternalTrafficPolicy
+	}
+
+	if expected.Spec.ExternalTrafficPolicy == "" {
+		expected.Spec.ExternalTrafficPolicy = reconciled.Spec.ExternalTrafficPolicy
+	}
+
+	// LoadBalancerClass may be defaulted by the API server starting K8s v.1.24
+	if expected.Spec.Type == corev1.ServiceTypeLoadBalancer && expected.Spec.LoadBalancerClass == nil {
+		expected.Spec.LoadBalancerClass = reconciled.Spec.LoadBalancerClass
+	}
+
+	if expected.Spec.AllocateLoadBalancerNodePorts == nil {
+		expected.Spec.AllocateLoadBalancerNodePorts = reconciled.Spec.AllocateLoadBalancerNodePorts
 	}
 }
 
