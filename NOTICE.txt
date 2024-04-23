@@ -2601,11 +2601,11 @@ Contents of probable licence file $GOMODCACHE/github.com/prometheus/common@v0.53
 
 --------------------------------------------------------------------------------
 Module  : github.com/sethvargo/go-password
-Version : v0.2.0
-Time    : 2020-07-05T15:15:25Z
+Version : v0.3.0
+Time    : 2024-04-18T16:00:23Z
 Licence : MIT
 
-Contents of probable licence file $GOMODCACHE/github.com/sethvargo/go-password@v0.2.0/LICENSE:
+Contents of probable licence file $GOMODCACHE/github.com/sethvargo/go-password@v0.3.0/LICENSE:
 
 Copyright 2017 Seth Vargo <seth@sethvargo.com>
 
