@@ -122,12 +122,12 @@ func aggregateFileRealm(
 	}
 
 	// merge all file realms together, the last one having precedence
-	fileRealmUsers := []filerealm.Realm{internalUsers.fileRealm(), associatedUsers.fileRealm(), userProvidedFileRealm}
-	if !es.Spec.Auth.DisableElasticUser {
-		// not using append here as order matters.
-		fileRealmUsers = []filerealm.Realm{internalUsers.fileRealm(), elasticUser.fileRealm(), associatedUsers.fileRealm(), userProvidedFileRealm}
-	}
-	fileRealm := filerealm.MergedFrom(fileRealmUsers...)
+	fileRealm := filerealm.MergedFrom(
+		internalUsers.fileRealm(),
+		elasticUser.fileRealm(),
+		associatedUsers.fileRealm(),
+		userProvidedFileRealm,
+	)
 
 	// grab the controller user credentials for later use
 	controllerCreds, err := internalUsers.credentialsFor(ControllerUserName)
