@@ -94,7 +94,7 @@ The following section builds upon the previous sections, and allows installing a
 ----
 # Install an eck-managed Elasticsearch, Kibana, and Enterprise Search Server using custom values.
 helm install eck-stack-with-enterprise-search elastic/eck-stack \
-    --values https://raw.githubusercontent.com/elastic/cloud-on-k8s/{eck_release_branch}/deploy/enterprise-search/examples/enterprise-search/basic.yaml -n elastic-stack
+    --values https://raw.githubusercontent.com/elastic/cloud-on-k8s/{eck_release_branch}/deploy/eck-stack/examples/enterprise-search/basic.yaml -n elastic-stack
 ----
 
 [float]
