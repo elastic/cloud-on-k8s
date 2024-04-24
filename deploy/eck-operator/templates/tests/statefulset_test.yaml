@@ -1,0 +1,22 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/helm-unittest/helm-unittest/main/schema/helm-testsuite.json
+suite: test operator statefulset
+templates:
+  - statefulset.yaml
+  - configmap.yaml
+tests:
+  - it: should have automount service account tokens set by default
+    asserts:
+      - template: statefulset.yaml
+        equal:
+          path: spec.template.spec.automountServiceAccountToken
+          value: true
+  - it: should disable automount service account tokens
+    set:
+      automountServiceAccountToken: false
+      serviceAccount:
+        automountServiceAccountToken: false
+    asserts:
+      - template: statefulset.yaml
+        equal:
+          path: spec.template.spec.automountServiceAccountToken
+          value: false

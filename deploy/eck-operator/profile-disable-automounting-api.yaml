@@ -1,0 +1,29 @@
+automountServiceAccountToken: false
+
+serviceAccount:
+  automountServiceAccountToken: false
+
+volumeMounts:
+- mountPath: /var/run/secrets/kubernetes.io/serviceaccount
+  name: serviceaccount-token
+  readOnly: true
+
+volumes:
+- name: serviceaccount-token
+  projected:
+    defaultMode: 0444
+    sources:
+    - serviceAccountToken:
+        expirationSeconds: 3607
+        path: token
+    - configMap:
+        name: kube-root-ca.crt
+        items:
+        - key: ca.crt
+          path: ca.crt
+    - downwardAPI:
+        items:
+        - path: namespace
+          fieldRef:
+            apiVersion: v1
+            fieldPath: metadata.namespace

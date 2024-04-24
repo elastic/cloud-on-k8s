@@ -87,9 +87,14 @@ volumes: []
 # createClusterScopedResources determines whether cluster-scoped resources (ClusterRoles, ClusterRoleBindings) should be created.
 createClusterScopedResources: true
 
+# Automount API credentials for the Service Account into the pod.
+automountServiceAccountToken: true
+
 serviceAccount:
   # create specifies whether a service account should be created for the operator.
   create: true
+  # Specifies whether a service account should automount API credentials.
+  automountServiceAccountToken: true
   # annotations to add to the service account
   annotations: {}
   # name of the service account to use. If not set and create is true, a name is generated using the fullname template.
@@ -188,6 +193,8 @@ config:
       #       serviceMonitorNamespaceSelector: {}
       #       serviceMonitorSelectorNilUsesHelmValues: false
       enabled: false
+      # additional volume mounts for the kube-rbac-proxy container.
+      volumeMounts: []
       tls:
         # certificateSecret is the name of the tls secret containing the custom TLS certificate and key for the secure metrics endpoint.
         #
