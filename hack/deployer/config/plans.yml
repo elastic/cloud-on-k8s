@@ -118,7 +118,7 @@ plans:
   machineType: c5d.2xlarge
   serviceAccount: false
   enforceSecurityPolicies: true
-  kubernetesVersion: 1.28
+  kubernetesVersion: 1.29
   diskSetup: kubectl apply -f hack/deployer/config/local-disks/ssd-provisioner.yaml
   eks:
     region: ap-northeast-3
@@ -131,7 +131,7 @@ plans:
   machineType: m6gd.2xlarge
   serviceAccount: false
   enforceSecurityPolicies: true
-  kubernetesVersion: 1.28
+  kubernetesVersion: 1.29
   diskSetup: kubectl apply -f hack/deployer/config/local-disks/ssd-provisioner.yaml
   eks:
     region: eu-west-1
@@ -143,25 +143,12 @@ plans:
   provider: eks
   machineType: c5d.2xlarge
   serviceAccount: false
-  kubernetesVersion: 1.28
+  kubernetesVersion: 1.29
   enforceSecurityPolicies: true
   eks:
     region: eu-west-2
     nodeCount: 3
     nodeAMI: auto
-- id: e2e-monitor
-  operation: create
-  clusterName: e2e-monitor
-  provider: gke
-  kubernetesVersion: 1.15
-  machineType: n1-standard-8
-  serviceAccount: false
-  enforceSecurityPolicies: false
-  gke:
-    region: europe-west2
-    localSsdCount: 1
-    nodeCountPerZone: 1
-    gcpScopes: https://www.googleapis.com/auth/devstorage.read_only,https://www.googleapis.com/auth/logging.write,https://www.googleapis.com/auth/monitoring,https://www.googleapis.com/auth/servicecontrol,https://www.googleapis.com/auth/service.management.readonly,https://www.googleapis.com/auth/trace.append
 - id: kind-dev
   operation: create
   clusterName: eck
