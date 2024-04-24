@@ -1,8 +1,8 @@
 module github.com/elastic/cloud-on-k8s/v2
 
-go 1.21
+go 1.22
 
-toolchain go1.21.6
+toolchain go1.22.2
 
 require (
 	dario.cat/mergo v1.0.0
@@ -25,7 +25,7 @@ require (
 	github.com/pmezard/go-difflib v1.0.1-0.20181226105442-5d4384ee4fb2
 	github.com/prometheus/client_golang v1.19.0
 	github.com/prometheus/common v0.53.0
-	github.com/sethvargo/go-password v0.2.0
+	github.com/sethvargo/go-password v0.3.0
 	github.com/spf13/cobra v1.8.0
 	github.com/spf13/pflag v1.0.5
 	github.com/spf13/viper v1.18.2
