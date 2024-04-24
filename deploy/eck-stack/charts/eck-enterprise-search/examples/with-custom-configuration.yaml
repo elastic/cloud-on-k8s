@@ -1,0 +1,19 @@
+config:
+  # define the exposed URL at which users will reach Enterprise Search
+  ent_search.external_url: https://my-custom-domain:3002
+  # define the exposed URL at which users will reach Kibana
+  kibana.host: https://kibana.my-custom-domain:5601
+  # configure app search document size limit
+  app_search.engine.document_size.limit: 100kb
+
+http:
+  service:
+    metadata:
+      labels:
+        my-custom: label
+  tls:
+    certificate:
+      secretName: my-cert
+
+elasticsearchRef:
+  name: eck-elasticsearch
