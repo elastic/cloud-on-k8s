@@ -31,6 +31,7 @@ spec:
     spec:
       terminationGracePeriodSeconds: 10
       serviceAccountName: {{ include "eck-operator.serviceAccountName" . }}
+      automountServiceAccountToken: {{ .Values.automountServiceAccountToken }}
       {{- with .Values.priorityClassName }}
       priorityClassName: {{ . }}
       {{- end }}
@@ -121,11 +122,16 @@ spec:
           - "--tls-cert-file=/tls/tls.crt"
           - "--tls-private-key-file=/tls/tls.key"
           {{- end }}
-          {{- if .Values.config.metrics.secureMode.tls.certificateSecret }}
+          {{- if or .Values.config.metrics.secureMode.tls.certificateSecret .Values.config.metrics.secureMode.volumeMounts }}
           volumeMounts:
-          - mountPath: "/tls"
-            name: tls-certificate
-            readOnly: true
+            {{- with .Values.config.metrics.secureMode.volumeMounts }}
+              {{- toYaml . | nindent 12 }}
+            {{- end }}
+            {{- if .Values.config.metrics.secureMode.tls.certificateSecret }}
+            - mountPath: "/tls"
+              name: tls-certificate
+              readOnly: true
+            {{- end }}
           {{- end }}
           ports:
           - containerPort: {{ $metricsPort }}
