@@ -889,7 +889,7 @@ kubectl create secret generic logstash-crt --from-file=logstash.crt
 kubectl create secret generic logstash-key --from-file=logstash.key
 ----
 
-Then, create your Logstash CRD.
+Then, create your Logstash resource.
 
 [source,yaml]
 ----
@@ -944,7 +944,7 @@ First, create the ConfigMap.
 kubectl create configmap ruby --from-file=drop_some.rb
 ----
 
-Then, create your Logstash CRD.
+Then, create your Logstash resource.
 
 [source,yaml]
 ----
@@ -1290,9 +1290,9 @@ stringData:
 ----
 
 [id="{p}-logstash-plugin-considerations-agent-beats"]
-==== Elastic_agent input and Beats input plugins
+==== Elastic Agent input and Beats input plugins
 
-When you use the {logstash-ref}/plugins-inputs-elastic_agent.html[Elastic_agent input] or the {logstash-ref}/plugins-inputs-beats.html[Beats input],
+When you use the {logstash-ref}/plugins-inputs-elastic_agent.html[Elastic Agent input] or the {logstash-ref}/plugins-inputs-beats.html[Beats input],
 set the {filebeat-ref}/logstash-output.html#_ttl[`ttl`] value on the Agent or Beat to ensure that load is distributed appropriately.
 
 [id="{p}-logstash-working-with-custom-plugins"]
