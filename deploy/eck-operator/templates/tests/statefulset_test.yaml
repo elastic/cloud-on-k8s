@@ -20,3 +20,25 @@ tests:
         equal:
           path: spec.template.spec.automountServiceAccountToken
           value: false
+  - it: should render custom labels, and annotations values properly
+    set:
+      statefulsetAnnotations:
+        key1: value1
+      statefulsetLabels:
+        key2: value2
+    asserts:
+      - template: statefulset.yaml
+        equal:
+          path: metadata.annotations
+          value:
+            key1: value1
+      - template: statefulset.yaml
+        equal:
+          path: metadata.labels
+          value:
+            app.kubernetes.io/instance: RELEASE-NAME
+            app.kubernetes.io/managed-by: Helm
+            app.kubernetes.io/name: elastic-operator
+            app.kubernetes.io/version: 2.13.0-SNAPSHOT
+            helm.sh/chart: eck-operator-2.13.0-SNAPSHOT
+            key2: value2
