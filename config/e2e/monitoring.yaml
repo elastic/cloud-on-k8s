@@ -5,7 +5,7 @@ metadata:
   name: e2e-agent
   namespace: {{ .E2ENamespace }}
 spec:
-  version: 8.13.0 # needs to less or equal to e2e-monitor version
+  version: 8.11.0 # needs to be less or equal to e2e-monitor version. Serverless reports 8.11.0 as its version.
   elasticsearchRefs:
     - secretName: eck-{{ .TestRun }}
   daemonSet:
@@ -188,7 +188,7 @@ spec:
       meta:
         package:
           name: system
-          version: 8.13.0
+          version: 8.13.2
       data_stream:
         namespace: default
       processors:

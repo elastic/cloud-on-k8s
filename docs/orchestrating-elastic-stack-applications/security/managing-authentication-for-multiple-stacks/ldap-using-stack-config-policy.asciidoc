@@ -87,27 +87,27 @@ spec:
   elasticsearch:
     secureSettings:
     - secretName: ldap-secret
-  securityRoleMappings:
-    ldap_role:
-      roles: [ "superuser" ]
-      rules:
-        all:
-          - field: { realm.name: "ldap1" }
-          - field: { dn: "cn=users,dc=example,dc=org" }
-      enabled: true
-  config:
-    xpack.security.authc.realms:
-      ldap:
-        ldap1:
-          order: 0
-          url: "ldap://openldap.default.svc.cluster.local:1389"
-          bind_dn: "cn=admin,dc=example,dc=org"
-          user_search:
-            base_dn: "dc=example,dc=org"
-            filter: "(cn={0})"
-          group_search:
-            base_dn: "dc=example,dc=org"
-          unmapped_groups_as_roles: false
+    securityRoleMappings:
+      ldap_role:
+        roles: [ "superuser" ]
+        rules:
+          all:
+            - field: { realm.name: "ldap1" }
+            - field: { dn: "cn=users,dc=example,dc=org" }
+        enabled: true
+    config:
+      xpack.security.authc.realms:
+        ldap:
+          ldap1:
+            order: 0
+            url: "ldap://openldap.default.svc.cluster.local:1389"
+            bind_dn: "cn=admin,dc=example,dc=org"
+            user_search:
+              base_dn: "dc=example,dc=org"
+              filter: "(cn={0})"
+            group_search:
+              base_dn: "dc=example,dc=org"
+            unmapped_groups_as_roles: false
 ----
 
 == To configure an LDAP realm with user DN templates:
@@ -146,25 +146,25 @@ spec:
     matchLabels:
       env: my-label
   elasticsearch:
-  securityRoleMappings:
-    ldap_role:
-      roles: [ "superuser" ]
-      rules:
-        all:
-          - field: { realm.name: "ldap1" }
-          - field: { dn: "*,ou=users,dc=example,dc=org" }
-      enabled: true
-  config:
-    xpack.security.authc.realms:
-      ldap:
-        ldap1:
-          order: 0
-          url: "ldaps://ldap.example.com:636"
-          user_dn_templates:
-            - "cn={0}, ou=users, dc=example, dc=org"
-          group_search:
-            base_dn: "dc=example,dc=org"
-          unmapped_groups_as_roles: false
+    securityRoleMappings:
+      ldap_role:
+        roles: [ "superuser" ]
+        rules:
+          all:
+            - field: { realm.name: "ldap1" }
+            - field: { dn: "*,ou=users,dc=example,dc=org" }
+        enabled: true
+    config:
+      xpack.security.authc.realms:
+        ldap:
+          ldap1:
+            order: 0
+            url: "ldaps://ldap.example.com:636"
+            user_dn_templates:
+              - "cn={0}, ou=users, dc=example, dc=org"
+            group_search:
+              base_dn: "dc=example,dc=org"
+            unmapped_groups_as_roles: false
 ----
 
 The `bind_dn` setting is not used in template mode. All LDAP operations run as the authenticating user. So there is no need of setting up any additional secrets to be stored in the keystore.
