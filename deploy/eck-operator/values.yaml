@@ -40,6 +40,12 @@ resources:
     cpu: 100m
     memory: 150Mi
 
+# statefulsetAnnotations define the annotations that should be added to the operator StatefulSet.
+statefulsetAnnotations: {}
+
+# statefulsetLabels define additional labels that should be added to the operator StatefulSet.
+statefulsetLabels: {}
+
 # podAnnotations define the annotations that should be added to the operator pod.
 podAnnotations: {}
 
