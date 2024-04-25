@@ -1,0 +1,96 @@
+---
+# Default values for eck-enterprise-search.
+# This is a YAML-formatted file.
+
+# Overridable names of the Enterprise Search resource.
+# By default, this is the Release name set for the chart,
+# followed by 'eck-enterprise-search'.
+#
+# nameOverride will override the name of the Chart with the name set here,
+# so nameOverride: quickstart, would convert to '{{ Release.name }}-quickstart'
+#
+# nameOverride: "quickstart"
+#
+# fullnameOverride will override both the release name, and the chart name,
+# and will name the Enterprise Search resource exactly as specified.
+#
+# fullnameOverride: "quickstart"
+
+# Version of Enterprise Search.
+#
+version: 8.14.0-SNAPSHOT
+
+# Enterprise Search Docker image to deploy
+#
+# image:
+
+# Used to check access from the current resource to a resource (for ex. a remote Elasticsearch cluster) in a different namespace.
+# Can only be used if ECK is enforcing RBAC on references.
+# ref: https://www.elastic.co/guide/en/cloud-on-k8s/current/k8s-restrict-cross-namespace-associations.html
+#
+# serviceAccountName: ""
+
+# Labels that will be applied to Enterprise Search.
+#
+labels: {}
+
+# Annotations that will be applied to Enterprise Search.
+#
+annotations: {}
+
+# Count of Enterprise Search replicas to create.
+#
+count: 1
+
+# The Enterprise Search configuration, the ECK equivalent to enterprise-search.yml
+# ref: https://www.elastic.co/guide/en/enterprise-search/current/configuration.html#configuration-configure
+# ref: https://www.elastic.co/guide/en/cloud-on-k8s/current/k8s-enterprise-search-configuration.html
+#
+# At a minimum, you must specify the external URL and Kibana host.
+#
+config: {}
+  # define the exposed URL at which users will reach Enterprise Search
+  # ent_search.external_url: https://my-custom-domain:3002
+  # define the exposed URL at which users will reach Kibana
+  # kibana.host: https://kibana.my-custom-domain:5601
+
+# Settings to control how Enterprise Search will be accessed.
+# ref: https://www.elastic.co/guide/en/cloud-on-k8s/current/k8s-accessing-elastic-services.html
+#
+http: {}
+  # tls:
+  #   certificate:
+  #     secretName: my-cert
+  # service:
+  #   metadata:
+  #     labels:
+  #       my-custom: label
+
+# Reference to ECK-managed Elasticsearch resource.
+#
+elasticsearchRef: {}
+  # name: eck-elasticsearch
+  # Optional namespace reference to Elasticsearch resource.
+  # If not specified, then the namespace of the Enterprise Search resource
+  # will be assumed.
+  #
+  # namespace: default
+
+# Set podTemplate to customize the pod used by Enterprise Search
+# ref: https://www.elastic.co/guide/en/cloud-on-k8s/current/k8s-customize-pods.html
+#
+podTemplate: {}
+
+# Number of revisions to retain to allow rollback in the underlying Deployment.
+# If not set Kubernetes sets this to 10 by default.
+#
+# revisionHistoryLimit: 2
+
+# If you would prefer your sensitive data to be stored in a Secret, you can specify the name of the Secret reference.
+# In addition, if you do not want to use the `elasticsearchRef` mechanism or if you want to connect to an Elasticsearch
+# cluster not managed by ECK, you can manually configure Enterprise Search to access any available Elasticsearch cluster:
+# ref: https://www.elastic.co/guide/en/cloud-on-k8s/current/k8s-enterprise-search-configuration.html#k8s-enterprise-search-secret-configuration
+# ref: https://www.elastic.co/guide/en/cloud-on-k8s/current/k8s-enterprise-search-configuration.html#k8s-enterprise-search-connect-non-eck-es
+#
+configRef: {}
+  # secretName: enterprise-search-config

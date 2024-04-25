@@ -1,0 +1,42 @@
+---
+eck-elasticsearch:
+  enabled: true
+
+  # Name of the Elasticsearch instance.
+  #
+  fullnameOverride: elasticsearch
+
+  nodeSets:
+  - name: default
+    count: 3
+    # Comment out when setting the vm.max_map_count via initContainer, as these are mutually exclusive.
+    # For production workloads, it is strongly recommended to increase the kernel setting vm.max_map_count to 262144
+    # and leave node.store.allow_mmap unset.
+    # ref: https://www.elastic.co/guide/en/cloud-on-k8s/master/k8s-virtual-memory.html
+    #
+    config:
+      node.store.allow_mmap: false
+
+eck-kibana:
+  enabled: true
+
+  # Name of the Kibana instance.
+  #
+  fullnameOverride: kibana
+
+  elasticsearchRef:
+    name: elasticsearch
+
+  spec:
+    enterpriseSearchRef:
+      name: enterprise-search
+
+eck-enterprise-search:
+  enabled: true
+
+  # Name of the Enterprise Search instance.
+  #
+  fullnameOverride: enterprise-search
+
+  elasticsearchRef:
+    name: elasticsearch

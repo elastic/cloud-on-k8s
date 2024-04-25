@@ -27,3 +27,6 @@ dependencies:
   - name: eck-apm-server
     condition: eck-apm-server.enabled
     version: "0.11.0-SNAPSHOT"
+  - name: eck-enterprise-search
+    condition: eck-enterprise-search.enabled
+    version: "0.11.0-SNAPSHOT"

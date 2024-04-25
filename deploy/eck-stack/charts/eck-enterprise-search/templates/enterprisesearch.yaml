@@ -1,0 +1,62 @@
+---
+apiVersion: enterprisesearch.k8s.elastic.co/v1
+kind: EnterpriseSearch
+metadata:
+  name: {{ include "eck-enterprise-search.fullname" . }}
+  labels:
+    {{- include "eck-enterprise-search.labels" . | nindent 4 }}
+    {{- with .Values.labels }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
+  annotations:
+    eck.k8s.elastic.co/license: basic
+    {{- with .Values.annotations }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
+spec:
+  version: {{ required "An Enterprise Search version is required" .Values.version }}
+  count: {{ required "A pod count is required" .Values.count }}
+
+  {{- /*
+    This is complicated, but seems required to catch both the situations where the key does not exist (commented out), and the key exists but is an empty map.
+  */ -}}
+  {{- if and (or (and (hasKey .Values "configRef") (eq 0 (len .Values.configRef))) (not (hasKey .Values "configRef"))) (or (and (hasKey .Values "elasticsearchRef") (eq 0 (len .Values.elasticsearchRef))) (not (hasKey .Values "elasticsearchRef"))) }}
+  {{ fail "At least one of configRef or elasticsearchRef is required" }}
+  {{- end }}
+
+  {{- with .Values.image }}
+  image: {{ . }}
+  {{- end }}
+
+  {{- with .Values.serviceAccountName }}
+  serviceAccountName: {{ . }}
+  {{- end }}
+
+  {{- with .Values.revisionHistoryLimit }}
+  revisionHistoryLimit: {{ . }}
+  {{- end }}
+
+  {{- with .Values.config }}
+  config:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+
+  {{- with .Values.http }}
+  http:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+
+  {{- with .Values.elasticsearchRef }}
+  elasticsearchRef:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+
+  {{- with .Values.podTemplate }}
+  podTemplate:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+
+  {{- with .Values.configRef }}
+  configRef:
+    {{- toYaml . | nindent 2 }}
+  {{- end }}

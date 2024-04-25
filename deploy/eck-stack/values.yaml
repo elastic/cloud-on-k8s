@@ -44,3 +44,8 @@ eck-logstash:
 #
 eck-apm-server:
   enabled: false
+
+# If enabled, will use the eck-enterprise-search chart and deploy a Enterprise Search resource.
+#
+eck-enterprise-search:
+  enabled: false
