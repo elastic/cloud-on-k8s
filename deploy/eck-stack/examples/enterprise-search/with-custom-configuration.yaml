@@ -34,7 +34,7 @@ eck-kibana:
 eck-enterprise-search:
   enabled: true
 
-  # Name of the Kibana instance.
+  # Name of the Enterprise Search instance.
   #
   fullnameOverride: enterprise-search
 

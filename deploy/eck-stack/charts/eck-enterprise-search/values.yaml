@@ -44,8 +44,15 @@ count: 1
 
 # The Enterprise Search configuration, the ECK equivalent to enterprise-search.yml
 # ref: https://www.elastic.co/guide/en/enterprise-search/current/configuration.html#configuration-configure
+# ref: https://www.elastic.co/guide/en/cloud-on-k8s/current/k8s-enterprise-search-configuration.html
+#
+# At a minimum, you must specify the external URL and Kibana host.
 #
 config: {}
+  # define the exposed URL at which users will reach Enterprise Search
+  # ent_search.external_url: https://my-custom-domain:3002
+  # define the exposed URL at which users will reach Kibana
+  # kibana.host: https://kibana.my-custom-domain:5601
 
 # Settings to control how Enterprise Search will be accessed.
 # ref: https://www.elastic.co/guide/en/cloud-on-k8s/current/k8s-accessing-elastic-services.html
@@ -86,4 +93,4 @@ podTemplate: {}
 # ref: https://www.elastic.co/guide/en/cloud-on-k8s/current/k8s-enterprise-search-configuration.html#k8s-enterprise-search-connect-non-eck-es
 #
 configRef: {}
-  # secretName: elasticsearch-credentials
+  # secretName: enterprise-search-config

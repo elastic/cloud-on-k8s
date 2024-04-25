@@ -103,3 +103,11 @@ tests:
       - equal:
           path: spec.http.tls.certificate.secretName
           value: my-cert
+  - it: not setting elasticsearchRef should fail
+    set:
+      volumeClaimDeletePolicy: invalid
+    release:
+      name: quickstart
+    asserts:
+      - failedTemplate:
+          errorMessage: At least one of configRef or elasticsearchRef is required

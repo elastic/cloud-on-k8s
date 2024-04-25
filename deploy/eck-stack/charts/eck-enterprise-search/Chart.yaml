@@ -6,5 +6,4 @@ type: application
 version: 0.11.0-SNAPSHOT
 sources:
   - https://github.com/elastic/cloud-on-k8s
-  - https://github.com/elastic/ent-search
 icon: https://github.com/elastic/ent-search/blob/main/public/app-search-favicon-196x196.png
