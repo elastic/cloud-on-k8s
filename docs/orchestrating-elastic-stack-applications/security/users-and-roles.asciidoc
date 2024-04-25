@@ -25,6 +25,25 @@ kubectl get secret quickstart-es-elastic-user -o go-template='{{.data.elastic | 
 
 To rotate this password, refer to: <<{p}-rotate-credentials>>.
 
+=== Disabling the default `elastic` user
+
+If your prefer to manage all users via SSO, for example using <<{p}-saml-authentication>> or OpenID Connect, you can disable the default `elastic` superuser by setting the `auth.disableElasticUser` field in the Elasticsearch resource to `true`:
+
+[source,yaml,subs="attributes"]
+----
+apiVersion: elasticsearch.k8s.elastic.co/{eck_crd_version}
+kind: Elasticsearch
+metadata:
+  name: elasticsearch-sample
+spec:
+  version: {version}
+  auth:
+    disableElasticUser: true
+  nodeSets:
+  - name: default
+    count: 1
+----
+
 == Creating custom users
 
 WARNING: Do not run the `elasticsearch-service-tokens` command inside an Elasticsearch Pod managed by the operator. This would overwrite the service account tokens used internally to authenticate the Elastic stack applications.

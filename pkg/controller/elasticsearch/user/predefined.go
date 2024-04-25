@@ -26,7 +26,6 @@ import (
 const (
 	// ElasticUserName is the public-facing user.
 	ElasticUserName = "elastic"
-
 	// ControllerUserName is the controller user to interact with ES.
 	ControllerUserName = "elastic-internal"
 	// MonitoringUserName is used for the Elasticsearch monitoring.
@@ -35,6 +34,8 @@ const (
 	PreStopUserName = "elastic-internal-pre-stop"
 	// ProbeUserName is used for the Elasticsearch readiness probe.
 	ProbeUserName = "elastic-internal-probe"
+	// DiagnosticsUserName is used for the ECK diagnostics.
+	DiagnosticsUserName = "elastic-internal-diagnostics"
 )
 
 // reconcileElasticUser reconciles a single secret holding the "elastic" user password.
@@ -46,6 +47,9 @@ func reconcileElasticUser(
 	userProvidedFileRealm filerealm.Realm,
 	passwordHasher cryptutil.PasswordHasher,
 ) (users, error) {
+	if es.Spec.Auth.DisableElasticUser {
+		return nil, nil
+	}
 	secretName := esv1.ElasticUserSecret(es.Name)
 	// if user has set up the elastic user via the file realm do not create the operator managed secret to avoid confusion
 	if userProvidedFileRealm.PasswordHashForUser(ElasticUserName) != nil {
@@ -89,6 +93,7 @@ func reconcileInternalUsers(
 			{Name: PreStopUserName, Roles: []string{ClusterManageRole}},
 			{Name: ProbeUserName, Roles: []string{ProbeUserRole}},
 			{Name: MonitoringUserName, Roles: []string{RemoteMonitoringCollectorBuiltinRole}},
+			{Name: DiagnosticsUserName, Roles: []string{DiagnosticsUserRole}},
 		},
 		esv1.InternalUsersSecret(es.Name),
 		true,

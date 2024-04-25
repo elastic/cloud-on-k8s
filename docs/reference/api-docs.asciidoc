@@ -1200,6 +1200,7 @@ Auth contains user authentication and authorization security settings for Elasti
 | Field | Description
 | *`roles`* __xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-v2-pkg-apis-elasticsearch-v1-rolesource[$$RoleSource$$] array__ | Roles to propagate to the Elasticsearch cluster.
 | *`fileRealm`* __xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-v2-pkg-apis-elasticsearch-v1-filerealmsource[$$FileRealmSource$$] array__ | FileRealm to propagate to the Elasticsearch cluster.
+| *`disableElasticUser`* __boolean__ | DisableElasticUser disables the default elastic user that is created by ECK.
 |===
 
 

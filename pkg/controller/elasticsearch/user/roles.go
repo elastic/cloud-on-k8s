@@ -8,6 +8,7 @@ import (
 	"fmt"
 
 	"gopkg.in/yaml.v3"
+	"k8s.io/utils/ptr"
 
 	beatv1beta1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/beat/v1beta1"
 	esclient "github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/client"
@@ -25,6 +26,8 @@ const (
 	ProbeUserRole = "elastic_internal_probe_user"
 	// RemoteMonitoringCollectorBuiltinRole is the name of the built-in remote_monitoring_collector role.
 	RemoteMonitoringCollectorBuiltinRole = "remote_monitoring_collector"
+	// DiagnosticsUserRole is the name of the built-in role for ECK diagnostics use.
+	DiagnosticsUserRole = "elastic_internal_diagnostics"
 
 	// ApmUserRoleV6 is the name of the role used by 6.8.x APMServer instances to connect to Elasticsearch.
 	ApmUserRoleV6 = "eck_apm_user_role_v6"
@@ -66,6 +69,46 @@ var (
 	PredefinedRoles = RolesFileContent{
 		ProbeUserRole:     esclient.Role{Cluster: []string{"monitor"}},
 		ClusterManageRole: esclient.Role{Cluster: []string{"manage"}},
+		DiagnosticsUserRole: esclient.Role{
+			Cluster: []string{"monitor", "monitor_snapshot", "manage", "read_ilm", "read_security"},
+			Indices: []esclient.IndexRole{
+				{
+					Names:                  []string{"*"},
+					Privileges:             []string{"monitor", "read", "view_index_metadata"},
+					AllowRestrictedIndices: ptr.To[bool](true),
+				},
+			},
+			Applications: []esclient.ApplicationRole{
+				{
+					Application: "kibana-.kibana",
+					Resources:   []string{"*"},
+					Privileges: []string{
+						"feature_ml.read",
+						"feature_siem.read",
+						"feature_siem.read_alerts",
+						"feature_siem.policy_management_read",
+						"feature_siem.endpoint_list_read",
+						"feature_siem.trusted_applications_read",
+						"feature_siem.event_filters_read",
+						"feature_siem.host_isolation_exceptions_read",
+						"feature_siem.blocklist_read",
+						"feature_siem.actions_log_management_read",
+						"feature_securitySolutionCases.read",
+						"feature_securitySolutionAssistant.read",
+						"feature_actions.read",
+						"feature_builtInAlerts.read",
+						"feature_fleet.all",
+						"feature_fleetv2.all",
+						"feature_osquery.read",
+						"feature_indexPatterns.read",
+						"feature_discover.read",
+						"feature_dashboard.read",
+						"feature_maps.read",
+						"feature_visualize.read",
+					},
+				},
+			},
+		},
 		ApmUserRoleV6: esclient.Role{
 			Cluster: []string{"monitor", "manage_index_templates"},
 			Indices: []esclient.IndexRole{

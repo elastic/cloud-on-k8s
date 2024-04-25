@@ -16,9 +16,6 @@ import (
 	"strings"
 	"time"
 
-	logstashv1alpha1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/logstash/v1alpha1"
-	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/logstash"
-
 	"github.com/go-logr/logr"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
@@ -55,6 +52,7 @@ import (
 	entv1beta1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/enterprisesearch/v1beta1"
 	kbv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/kibana/v1"
 	kbv1beta1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/kibana/v1beta1"
+	logstashv1alpha1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/logstash/v1alpha1"
 	emsv1alpha1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/maps/v1alpha1"
 	policyv1alpha1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/stackconfigpolicy/v1alpha1"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/agent"
@@ -82,6 +80,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/kibana"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/license"
 	licensetrial "github.com/elastic/cloud-on-k8s/v2/pkg/controller/license/trial"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/logstash"
 	lsvalidation "github.com/elastic/cloud-on-k8s/v2/pkg/controller/logstash/validation"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/maps"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/remoteca"
