@@ -351,7 +351,8 @@ func compareCgroupMemoryLimit(topologyElement esv1.NodeSet, nodeStats client.Nod
 	}
 
 	if len(nodeStats.OS.CGroup.Memory.LimitInBytes) == 0 {
-		// no cgroup info (e.g. on GKE 1.26+) consider it ok.
+		// Elasticsearch versions before 7.16 cannot parse cgroup v2 information and
+		// will have no information in this field. Considering it ok.
 		return nil
 	}
 
