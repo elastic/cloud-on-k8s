@@ -2,7 +2,7 @@
 // or more contributor license agreements. Licensed under the Elastic License 2.0;
 // you may not use this file except in compliance with the Elastic License 2.0.
 
-//go:build chart_integrations || e2e
+//go:build helm || e2e
 
 package integrations
 

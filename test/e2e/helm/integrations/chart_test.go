@@ -2,7 +2,7 @@
 // or more contributor license agreements. Licensed under the Elastic License 2.0;
 // you may not use this file except in compliance with the Elastic License 2.0.
 
-//go:build chart_integrations || e2e
+//go:build helm || e2e
 
 package integrations
 
@@ -16,7 +16,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/v2/test/e2e/test"
 )
 
-func TestDefaultKubernetes(t *testing.T) {
+func TestIntegrationsChartDefaultKubernetes(t *testing.T) {
 
 	namespace := test.Ctx().ManagedNamespace(0)
 	stackVersion := test.Ctx().ElasticStackVersion
