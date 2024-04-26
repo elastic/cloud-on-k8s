@@ -349,6 +349,12 @@ func compareCgroupMemoryLimit(topologyElement esv1.NodeSet, nodeStats client.Nod
 		// no expected memory, consider it's ok
 		return nil
 	}
+
+	if len(nodeStats.OS.CGroup.Memory.LimitInBytes) == 0 {
+		// no cgroup info (e.g. on GKE 1.26+) consider it ok.
+		return nil
+	}
+
 	// ES returns a string, parse it as an int64, base10
 	actualCgroupMemoryLimit, err := strconv.ParseInt(
 		nodeStats.OS.CGroup.Memory.LimitInBytes, 10, 64,
