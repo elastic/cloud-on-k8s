@@ -49,4 +49,6 @@ type Parameters struct {
 	ValidateStorageClass bool
 	// Tracer is a shared APM tracer instance or nil
 	Tracer *apm.Tracer
+	// EnableCRDDeletionWebhook enables the CRD deletion prevention webhook.
+	EnableCRDDeletionWebhook bool
 }

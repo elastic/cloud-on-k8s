@@ -377,3 +377,17 @@ RBAC permissions to read node labels
   - list
   - watch
 {{- end -}}
+
+{{/*
+RBAC permissions to read all CRDs
+*/}}
+{{- define "eck-operator.readCRDsRbacRule" -}}
+- apiGroups:
+  - "apiextensions.k8s.io"
+  resources:
+  - customresourcedefinitions
+  verbs:
+  - get
+  - list
+  - watch
+{{- end -}}

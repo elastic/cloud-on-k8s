@@ -445,6 +445,30 @@ webhooks:
         - UPDATE
       resources:
         - logstashes
+{{ if .Values.webhook.crdDeletionProtection.enabled }}
+- clientConfig:
+    {{- if and (not .Values.webhook.manageCerts) (not .Values.webhook.certManagerCert) }}
+    caBundle: {{ .Values.webhook.caBundle }}
+    {{- end }}
+    service:
+      name: {{ include "eck-operator.webhookServiceName" . }}
+      namespace: {{ .Release.Namespace }}
+      path: /validate-prevent-crd-deletion-k8s-elastic-co
+  failurePolicy: {{ .Values.webhook.failurePolicy }}
+  name: elastic-prevent-crd-deletion.k8s.elastic.co
+  matchPolicy: Exact
+  admissionReviewVersions: [v1]
+  sideEffects: None
+  rules:
+    - apiGroups:
+        - apiextensions.k8s.io
+      apiVersions:
+        - v1
+      operations:
+        - DELETE
+      resources:
+        - customresourcedefinitions
+{{- end }}
 ---
 apiVersion: v1
 kind: Service

@@ -62,6 +62,7 @@ data:
     enforce-rbac-on-refs: true
     {{- end }}
     enable-webhook: {{ .Values.webhook.enabled }}
+    enable-crd-deletion-webhook: {{ .Values.webhook.crdDeletionProtection.enabled }}
     {{- if .Values.webhook.enabled }}
     webhook-name: {{ include "eck-operator.webhookName" . }}
       {{- if not .Values.webhook.manageCerts }}
