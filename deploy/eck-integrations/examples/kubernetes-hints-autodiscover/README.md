@@ -3,12 +3,12 @@
 In this example we install the built-in `kubernetes` integration and enable the feature of hint-based autodiscover. With this feature, the kubernetes integration can monitor the creation of pods that bear specific annotations based on which the agent loads dynamically the respective integration. In the context of this example, we showcase hint-based autodiscover with `redis` integration.  
 
 ## Prerequisites:
-1. Installed eck-operator helm chart
+1. Installed eck-operator Helm chart
    ```console
    helm repo add elastic https://helm.elastic.co && helm repo update
    helm install elastic-operator elastic/eck-operator --create-namespace
    ```
-2. For **non** eck-managed ElasticSearch clusters you need a k8s secret that contains the connection details to it such as:
+2. For **non** eck-managed Elasticsearch clusters you need a k8s secret that contains the connection details to it such as:
     ```console
     kubectl create secret generic es-ref-secret \
         --from-literal=username=... \
@@ -17,16 +17,16 @@ In this example we install the built-in `kubernetes` integration and enable the 
     ```
     Note: specifying an `api-key`, instead of a `username` and `password`, is not supported at the moment but there is an already open PR to add support for it.
 
-3. `redis` integration Assets are installed through Kibana
+3. `redis` integration assets are installed through Kibana
 
 ## Run:
-1. For **non** eck-managed ElasticSearch clusters
+1. For **non** eck-managed Elasticsearch clusters
     ```console
     helm install eck-integrations ../../ \
          -f ./agent-kubernetes.yaml \
          --set elasticsearchRefs.default.secretName=es-ref-secret 
     ```
-    For eck-managed ElasticSearch clusters
+    For eck-managed Elasticsearch clusters
     ```console
     helm install eck-integrations ../../ \
          -f ./agent-kubernetes.yaml \
