@@ -300,7 +300,7 @@ func (e *esClusterChecks) compareTopology(es esv1.Elasticsearch, topoElem esv1.N
 		return err
 	}
 
-	if err = compareCgroupMemoryLimit(topoElem, nodeStats); err != nil {
+	if err = compareCgroupMemoryLimit(topoElem, nodeStats, node.Version); err != nil {
 		return err
 	}
 
@@ -338,7 +338,7 @@ func compareRoles(expected *esv1.Node, actualRoles []string) error {
 }
 
 // compareCgroupMemoryLimit compares the memory limit specified in a nodeSet with the limit set in the memory control group at the OS level
-func compareCgroupMemoryLimit(topologyElement esv1.NodeSet, nodeStats client.NodeStats) error {
+func compareCgroupMemoryLimit(topologyElement esv1.NodeSet, nodeStats client.NodeStats, nodeVersion string) error {
 	var memoryLimit *resource.Quantity
 	for _, c := range topologyElement.PodTemplate.Spec.Containers {
 		if c.Name == esv1.ElasticsearchContainerName {
@@ -350,7 +350,12 @@ func compareCgroupMemoryLimit(topologyElement esv1.NodeSet, nodeStats client.Nod
 		return nil
 	}
 
-	if len(nodeStats.OS.CGroup.Memory.LimitInBytes) == 0 {
+	v, err := version.Parse(nodeVersion)
+	if err != nil {
+		return fmt.Errorf("while parsing node version: %w", err)
+	}
+
+	if v.LT(version.MinFor(7, 16, 0)) {
 		// Elasticsearch versions before 7.16 cannot parse cgroup v2 information and
 		// will have no information in this field. Considering it ok.
 		return nil
@@ -361,7 +366,7 @@ func compareCgroupMemoryLimit(topologyElement esv1.NodeSet, nodeStats client.Nod
 		nodeStats.OS.CGroup.Memory.LimitInBytes, 10, 64,
 	)
 	if err != nil {
-		return err
+		return fmt.Errorf("while parsing cgroup memory limit: %w", err)
 	}
 	expectedCgroupMemoryLimit := memoryLimit.Value()
 	if expectedCgroupMemoryLimit != actualCgroupMemoryLimit {
