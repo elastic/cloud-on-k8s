@@ -366,7 +366,7 @@ cloudDefend:
     ##  exclude: []
     responses: []
 
-eck_agent:
+agent:
   enabled: true
   version: 8.12.2
   presets:

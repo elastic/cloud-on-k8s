@@ -1,6 +1,6 @@
 {{- define "elasticagent.kubernetes.config.kube_controller.init" -}}
 {{- if eq $.Values.kubernetes.controller_manager.enabled true -}}
-{{- $preset := $.Values.eck_agent.presets.perNode -}}
+{{- $preset := $.Values.agent.presets.perNode -}}
 {{- $inputVal := (include "elasticagent.kubernetes.config.kube_controller.input" $ | fromYamlArray) -}}
 {{- include "elasticagent.preset.mutate.inputs" (list $ $preset $inputVal) -}}
 {{- include "elasticagent.preset.applyOnce" (list $ $preset "elasticagent.kubernetes.pernode.preset") -}}

@@ -1,6 +1,6 @@
 {{- define "elasticagent.kubernetes.config.kube_apiserver.init" -}}
 {{- if $.Values.kubernetes.apiserver.enabled}}
-{{- $preset := $.Values.eck_agent.presets.clusterWide -}}
+{{- $preset := $.Values.agent.presets.clusterWide -}}
 {{- $inputVal := (include "elasticagent.kubernetes.config.kube_apiserver.input" $ | fromYamlArray) -}}
 {{- include "elasticagent.preset.mutate.inputs" (list $ $preset $inputVal) -}}
 {{- include "elasticagent.preset.applyOnce" (list $ $preset "elasticagent.kubernetes.clusterwide.preset") -}}

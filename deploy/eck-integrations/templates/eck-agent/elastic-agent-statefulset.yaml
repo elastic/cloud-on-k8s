@@ -1,6 +1,6 @@
-{{- if $.Values.eck_agent.enabled -}}
+{{- if $.Values.agent.enabled -}}
 {{- include "elasticagent.preset.init" $ -}}
-{{- range $presetName, $presetVal := $.Values.eck_agent.presets -}}
+{{- range $presetName, $presetVal := $.Values.agent.presets -}}
 {{- if eq ($presetVal).mode "statefulset" -}}
 {{- $agentName := printf "agent-%s" (lower $presetName) -}}
 apiVersion: agent.k8s.elastic.co/v1alpha1
@@ -18,7 +18,7 @@ metadata:
     {{- toYaml . | nindent 4 }}
   {{- end }}
 spec:
-  version: {{ required "An Elastic Agent version is required" $.Values.eck_agent.version }}
+  version: {{ required "An Elastic Agent version is required" $.Values.agent.version }}
   configRef:
     secretName: {{ $agentName }}
   {{- with ($presetVal).elasticSearchRefs }}

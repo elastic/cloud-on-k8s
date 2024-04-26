@@ -3,9 +3,9 @@
 {{- $_ := set $.Values.kubernetes.nodes.state "enabled" false -}}
 {{- else -}}
 {{- if eq $.Values.kubernetes.nodes.state.enabled true -}}
-{{- $preset := $.Values.eck_agent.presets.clusterWide -}}
+{{- $preset := $.Values.agent.presets.clusterWide -}}
 {{- if eq $.Values.kubernetes.state.deployKSM true -}}
-{{- $preset = $.Values.eck_agent.presets.ksmSharded -}}
+{{- $preset = $.Values.agent.presets.ksmSharded -}}
 {{- include "elasticagent.preset.applyOnce" (list $ $preset "elasticagent.kubernetes.ksmsharded.preset") -}}
 {{- end -}}
 {{- $inputVal := (include "elasticagent.kubernetes.config.state.nodes.input" $ | fromYamlArray) -}}

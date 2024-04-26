@@ -1,7 +1,7 @@
 {{- define "elasticagent.kubernetes.ksmsharded.preset" -}}
-{{- include "elasticagent.preset.mutate.rules" (list $ $.Values.eck_agent.presets.ksmSharded "elasticagent.kubernetes.ksmsharded.preset.rules") -}}
-{{- include "elasticagent.preset.mutate.containers" (list $ $.Values.eck_agent.presets.ksmSharded "elasticagent.kubernetes.ksmsharded.preset.containers") -}}
-{{- include "elasticagent.preset.mutate.elasticsearchrefs.byname" (list $ $.Values.eck_agent.presets.ksmSharded $.Values.kubernetes.output)}}
+{{- include "elasticagent.preset.mutate.rules" (list $ $.Values.agent.presets.ksmSharded "elasticagent.kubernetes.ksmsharded.preset.rules") -}}
+{{- include "elasticagent.preset.mutate.containers" (list $ $.Values.agent.presets.ksmSharded "elasticagent.kubernetes.ksmsharded.preset.containers") -}}
+{{- include "elasticagent.preset.mutate.elasticsearchrefs.byname" (list $ $.Values.agent.presets.ksmSharded $.Values.kubernetes.output)}}
 {{- end -}}
 
 {{- define "elasticagent.kubernetes.ksmsharded.preset.rules" -}}

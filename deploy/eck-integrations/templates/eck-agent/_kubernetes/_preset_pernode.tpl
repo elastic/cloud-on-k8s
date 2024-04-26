@@ -1,14 +1,14 @@
 {{- define "elasticagent.kubernetes.pernode.preset" -}}
-{{- include "elasticagent.preset.mutate.rules" (list $ $.Values.eck_agent.presets.perNode "elasticagent.kubernetes.pernode.preset.rules") -}}
-{{- include "elasticagent.preset.mutate.volumemounts" (list $ $.Values.eck_agent.presets.perNode "elasticagent.kubernetes.pernode.preset.volumemounts") -}}
-{{- include "elasticagent.preset.mutate.volumes" (list $ $.Values.eck_agent.presets.perNode "elasticagent.kubernetes.pernode.preset.volumes") -}}
-{{- include "elasticagent.preset.mutate.elasticsearchrefs.byname" (list $ $.Values.eck_agent.presets.perNode $.Values.kubernetes.output)}}
+{{- include "elasticagent.preset.mutate.rules" (list $ $.Values.agent.presets.perNode "elasticagent.kubernetes.pernode.preset.rules") -}}
+{{- include "elasticagent.preset.mutate.volumemounts" (list $ $.Values.agent.presets.perNode "elasticagent.kubernetes.pernode.preset.volumemounts") -}}
+{{- include "elasticagent.preset.mutate.volumes" (list $ $.Values.agent.presets.perNode "elasticagent.kubernetes.pernode.preset.volumes") -}}
+{{- include "elasticagent.preset.mutate.elasticsearchrefs.byname" (list $ $.Values.agent.presets.perNode $.Values.kubernetes.output)}}
 {{- if eq $.Values.kubernetes.hints.enabled true -}}
-{{- include "elasticagent.preset.mutate.initcontainers" (list $ $.Values.eck_agent.presets.perNode "elasticagent.kubernetes.pernode.preset.initcontainers") -}}
-{{- include "elasticagent.preset.mutate.providers.kubernetes.hints" (list $ $.Values.eck_agent.presets.perNode "elasticagent.kubernetes.pernode.preset.providers.kubernetes.hints") -}}
+{{- include "elasticagent.preset.mutate.initcontainers" (list $ $.Values.agent.presets.perNode "elasticagent.kubernetes.pernode.preset.initcontainers") -}}
+{{- include "elasticagent.preset.mutate.providers.kubernetes.hints" (list $ $.Values.agent.presets.perNode "elasticagent.kubernetes.pernode.preset.providers.kubernetes.hints") -}}
 {{- end -}}
 {{- if or (eq $.Values.kubernetes.scheduler.enabled true) (eq $.Values.kubernetes.controller_manager.enabled true) -}}
-{{- include "elasticagent.preset.mutate.tolerations" (list $ $.Values.eck_agent.presets.perNode "elasticagent.kubernetes.pernode.preset.tolerations") -}}
+{{- include "elasticagent.preset.mutate.tolerations" (list $ $.Values.agent.presets.perNode "elasticagent.kubernetes.pernode.preset.tolerations") -}}
 {{- end -}}
 {{- end -}}
 
@@ -145,7 +145,7 @@ initContainers:
     - -c
     - >-
       mkdir -p /etc/elastic-agent/inputs.d &&
-      wget -O - https://github.com/elastic/elastic-agent/archive/v{{$.Values.eck_agent.version}}.tar.gz | tar xz -C /etc/elastic-agent/inputs.d --strip=5 "elastic-agent-{{$.Values.eck_agent.version}}/deploy/kubernetes/elastic-agent-standalone/templates.d"
+      wget -O - https://github.com/elastic/elastic-agent/archive/v{{$.Values.agent.version}}.tar.gz | tar xz -C /etc/elastic-agent/inputs.d --strip=5 "elastic-agent-{{$.Values.agent.version}}/deploy/kubernetes/elastic-agent-standalone/templates.d"
   volumeMounts:
     - name: external-inputs
       mountPath: /etc/elastic-agent/inputs.d

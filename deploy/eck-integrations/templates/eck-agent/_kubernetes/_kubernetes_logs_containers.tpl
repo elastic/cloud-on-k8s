@@ -1,6 +1,6 @@
 {{- define "elasticagent.kubernetes.config.container_logs.init" -}}
 {{- if eq $.Values.kubernetes.containers.logs.enabled true -}}
-{{- $preset := $.Values.eck_agent.presets.perNode -}}
+{{- $preset := $.Values.agent.presets.perNode -}}
 {{- $inputVal := (include "elasticagent.kubernetes.config.container_logs.input" $ | fromYamlArray) -}}
 {{- include "elasticagent.preset.mutate.inputs" (list $ $preset $inputVal) -}}
 {{- include "elasticagent.preset.applyOnce" (list $ $preset "elasticagent.kubernetes.pernode.preset") -}}

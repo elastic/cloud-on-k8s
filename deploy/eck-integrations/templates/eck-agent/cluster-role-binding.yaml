@@ -1,6 +1,6 @@
-{{- if $.Values.eck_agent.enabled -}}
+{{- if $.Values.agent.enabled -}}
 {{- include "elasticagent.preset.init" $ -}}
-{{- range $presetName, $presetVal := $.Values.eck_agent.presets -}}
+{{- range $presetName, $presetVal := $.Values.agent.presets -}}
 {{- $agentName := printf "agent-%s" (lower $presetName) -}}
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding

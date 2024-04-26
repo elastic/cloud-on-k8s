@@ -1,6 +1,6 @@
 {{- define "elasticagent.kubernetes.config.kube_scheduler.init" -}}
 {{- if eq $.Values.kubernetes.scheduler.enabled true -}}
-{{- $preset := $.Values.eck_agent.presets.perNode -}}
+{{- $preset := $.Values.agent.presets.perNode -}}
 {{- $inputVal := (include "elasticagent.kubernetes.config.kube_scheduler.input" $ | fromYamlArray) -}}
 {{- include "elasticagent.preset.mutate.inputs" (list $ $preset $inputVal) -}}
 {{- include "elasticagent.preset.applyOnce" (list $ $preset "elasticagent.kubernetes.pernode.preset") -}}

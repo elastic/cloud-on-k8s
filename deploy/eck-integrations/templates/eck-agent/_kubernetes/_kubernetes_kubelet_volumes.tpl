@@ -3,7 +3,7 @@
 {{- $_ := set $.Values.kubernetes.volumes.metrics "enabled" false -}}
 {{- else -}}
 {{- if eq $.Values.kubernetes.volumes.metrics.enabled true -}}
-{{- $preset := $.Values.eck_agent.presets.perNode -}}
+{{- $preset := $.Values.agent.presets.perNode -}}
 {{- $inputVal := (include "elasticagent.kubernetes.config.kubelet.volumes.input" $ | fromYamlArray) -}}
 {{- include "elasticagent.preset.mutate.inputs" (list $ $preset $inputVal) -}}
 {{- include "elasticagent.preset.applyOnce" (list $ $preset "elasticagent.kubernetes.pernode.preset") -}}

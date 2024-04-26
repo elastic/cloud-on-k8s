@@ -27,7 +27,7 @@ customIntegrations:
         period: 10s
         server_status_path: /nginx_status
 
-eck_agent:
+agent:
   presets:
     nginx:
       mode: deployment

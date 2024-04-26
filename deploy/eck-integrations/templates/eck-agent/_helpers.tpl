@@ -193,13 +193,13 @@ app.kubernetes.io/instance: {{ .Release.Name }}
 {{- end -}}
 
 {{- define "elasticagent.preset.init" -}}
-{{- if not (hasKey $.Values.eck_agent "initialised") -}}
+{{- if not (hasKey $.Values.agent "initialised") -}}
 {{- include "elasticagent.kubernetes.init" $ -}}
 {{- include "elasticagent.clouddefend.init" $ -}}
 {{- range $customInputName, $customInputVal := $.Values.customIntegrations -}}
 {{- $customInputPresetName := ($customInputVal).preset -}}
 {{- $_ := required (printf "customInput \"%s\" is missing required preset field" $customInputName) $customInputPresetName }}
-{{- $presetVal := get $.Values.eck_agent.presets $customInputPresetName -}}
+{{- $presetVal := get $.Values.agent.presets $customInputPresetName -}}
 {{- $_ := required (printf "preset with name \"%s\" of customInput \"%s\" not defined" $customInputPresetName $customInputName) $customInputVal }}
 {{- $customInputOuput := dig "use_output" (list) $customInputVal -}}
 {{- if empty $customInputOuput -}}
@@ -208,7 +208,7 @@ app.kubernetes.io/instance: {{ .Release.Name }}
 {{- include "elasticagent.preset.mutate.elasticsearchrefs.byname" (list $ $presetVal $customInputOuput) -}}
 {{- include "elasticagent.preset.mutate.inputs" (list $ $presetVal (list $customInputVal)) -}}
 {{- end -}}
-{{- range $presetName, $presetVal := $.Values.eck_agent.presets -}}
+{{- range $presetName, $presetVal := $.Values.agent.presets -}}
 {{- $presetMode := dig "mode" ("") $presetVal -}}
 {{- if not $presetMode -}}
 {{- fail (printf "mode is missing from preset \"%s\"" $presetName)}}
@@ -220,7 +220,7 @@ app.kubernetes.io/instance: {{ .Release.Name }}
 {{- end -}}
 {{- $presetInputs := dig "_inputs" (list) $presetVal -}}
 {{- if empty $presetInputs -}}
-{{- $_ := unset $.Values.eck_agent.presets $presetName}}
+{{- $_ := unset $.Values.agent.presets $presetName}}
 {{- else -}}
 {{- $monitoringOutput := dig "agent" "monitoring" "use_output" "" $presetVal -}}
 {{- if $monitoringOutput -}}
@@ -228,6 +228,6 @@ app.kubernetes.io/instance: {{ .Release.Name }}
 {{- end -}}
 {{- end -}}
 {{- end -}}
-{{- $_ := set $.Values.eck_agent "initialised" dict -}}
+{{- $_ := set $.Values.agent "initialised" dict -}}
 {{- end -}}
 {{- end -}}

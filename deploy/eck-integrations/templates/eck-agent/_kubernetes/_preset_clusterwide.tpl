@@ -1,6 +1,6 @@
 {{- define "elasticagent.kubernetes.clusterwide.preset" -}}
-{{- include "elasticagent.preset.mutate.rules" (list $ $.Values.eck_agent.presets.clusterWide "elasticagent.kubernetes.clusterwide.preset.rules") -}}
-{{- include "elasticagent.preset.mutate.elasticsearchrefs.byname" (list $ $.Values.eck_agent.presets.clusterWide $.Values.kubernetes.output)}}
+{{- include "elasticagent.preset.mutate.rules" (list $ $.Values.agent.presets.clusterWide "elasticagent.kubernetes.clusterwide.preset.rules") -}}
+{{- include "elasticagent.preset.mutate.elasticsearchrefs.byname" (list $ $.Values.agent.presets.clusterWide $.Values.kubernetes.output)}}
 {{- end -}}
 
 {{- define "elasticagent.kubernetes.clusterwide.preset.rules" -}}

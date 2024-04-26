@@ -34,7 +34,7 @@ func TestDefaultKubernetes(t *testing.T) {
 		"cloudDefend": map[string]interface{}{
 			"enabled": false,
 		},
-		"eck_agent": map[string]interface{}{
+		"agent": map[string]interface{}{
 			"version": stackVersion,
 		},
 		"elasticsearchRefs": map[string]interface{}{
