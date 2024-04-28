@@ -305,7 +305,7 @@ func (e *esClusterChecks) compareTopology(es esv1.Elasticsearch, topoElem esv1.N
 		return err
 	}
 	if ok {
-		if err = compareCgroupMemoryLimit(topoElem, nodeStats, node.Version); err != nil {
+		if err = compareCgroupMemoryLimit(topoElem, nodeStats); err != nil {
 			return err
 		}
 
@@ -363,7 +363,7 @@ func canCompareCgroupLimits(nodeStats client.NodeStats, nodeVersion string) (boo
 }
 
 // compareCgroupMemoryLimit compares the memory limit specified in a nodeSet with the limit set in the memory control group at the OS level
-func compareCgroupMemoryLimit(topologyElement esv1.NodeSet, nodeStats client.NodeStats, nodeVersion string) error {
+func compareCgroupMemoryLimit(topologyElement esv1.NodeSet, nodeStats client.NodeStats) error {
 	var memoryLimit *resource.Quantity
 	for _, c := range topologyElement.PodTemplate.Spec.Containers {
 		if c.Name == esv1.ElasticsearchContainerName {
