@@ -59,6 +59,8 @@ spec:
           securityContext:
             allowPrivilegeEscalation: false
           env:
+            - name: GOCACHE
+              value: "/tmp/go-cache/"
             - name: E2E_JSON
               value: "{{ .Context.LogToFile }}"
             - name: E2E_TAGS
