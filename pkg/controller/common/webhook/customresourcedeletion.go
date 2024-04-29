@@ -90,11 +90,10 @@ func isElasticCRD(crd *extensionsv1.CustomResourceDefinition) bool {
 func (wh *crdDeletionWebhook) isInUse(crd *extensionsv1.CustomResourceDefinition) bool {
 	ul := &unstructured.UnstructuredList{}
 	ul.SetGroupVersionKind(schema.GroupVersionKind{
-		Group:   crd.GroupVersionKind().Group,
-		Kind:    crd.GroupVersionKind().Kind,
-		Version: crd.GroupVersionKind().Version,
+		Group: crd.Spec.Group,
+		Kind:  crd.Spec.Names.Kind,
 	})
-	whlog.Info("Checking if CRD is in use", "crd", crd.Name, "group", crd.GroupVersionKind().Group, "version", crd.GroupVersionKind().Version, "kind", crd.GroupVersionKind().Kind)
+	whlog.Info("Checking if CRD is in use", "crd", crd.Name, "group", crd.Spec.Group, "kind", crd.Spec.Names.Kind)
 	for _, ns := range wh.managedNamespace.AsSlice() {
 		err := wh.client.List(context.Background(), ul, client.InNamespace(ns))
 		if err != nil {
