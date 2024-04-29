@@ -240,12 +240,9 @@ func isOcpCluster(h *helper) bool {
 	return err == nil
 }
 
-// isAutopilotCluster will detect whether we are running within an autopilot cluster
-// by using the `remotenodes` resource, which only seems to exist on autopilot clusters
-// not standard GKE clusters.
+// isAutopilotCluster convenience function to check the provider value for the string gke-autopilot.
 func isAutopilotCluster(h *helper) bool {
-	_, _, err := h.kubectl("get", "remotenodes")
-	return err == nil
+	return strings.HasPrefix(h.provider, "gke-autopilot")
 }
 
 func (h *helper) initTestSecrets() error {
