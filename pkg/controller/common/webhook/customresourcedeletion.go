@@ -61,7 +61,7 @@ func (wh *crdDeletionWebhook) Handle(ctx context.Context, req admission.Request)
 		return admission.Errored(http.StatusBadRequest, err)
 	}
 
-	if isElasticCRD(crd.GroupVersionKind()) && wh.isInUse(crd) {
+	if isElasticCRD(crd) && wh.isInUse(crd) {
 		whlog.Info("CRD is in use, denying deletion", "crd", crd.Name)
 		return admission.Denied("deletion of Elastic CRDs is not allowed")
 	}
@@ -70,8 +70,8 @@ func (wh *crdDeletionWebhook) Handle(ctx context.Context, req admission.Request)
 	return admission.Allowed("")
 }
 
-func isElasticCRD(gvk schema.GroupVersionKind) bool {
-	whlog.Info("Checking if CRD is an Elastic CRD", "group", gvk.Group)
+func isElasticCRD(crd *extensionsv1.CustomResourceDefinition) bool {
+	whlog.Info("Checking if CRD is an Elastic CRD", "group", crd.Spec.Group)
 	return slices.Contains(
 		[]string{
 			"agent.k8s.elastic.co",
@@ -84,7 +84,7 @@ func isElasticCRD(gvk schema.GroupVersionKind) bool {
 			"logstash.k8s.elastic.co",
 			"maps.k8s.elastic.co",
 			"stackconfigpolicy.k8s.elastic.co",
-		}, gvk.Group)
+		}, crd.Spec.Group)
 }
 
 func (wh *crdDeletionWebhook) isInUse(crd *extensionsv1.CustomResourceDefinition) bool {
