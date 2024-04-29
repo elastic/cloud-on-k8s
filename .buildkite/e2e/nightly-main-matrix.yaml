@@ -30,10 +30,11 @@
     - DEPLOYER_KIND_NODE_IMAGE: kindest/node:v1.26.6@sha256:6e2d8b28a5b601defe327b98bd1c2d1930b49e5d8c512e1895099e4504007adb
     - DEPLOYER_KIND_NODE_IMAGE: kindest/node:v1.27.3@sha256:3966ac761ae0136263ffdb6cfd4db23ef8a83cba8a463690e98317add2c9ba72
     - DEPLOYER_KIND_NODE_IMAGE: kindest/node:v1.28.0@sha256:b7a4cad12c197af3ba43202d3efe03246b3f0793f162afb40a33c923952d5b31
+    - DEPLOYER_KIND_NODE_IMAGE: kindest/node:v1.29.0@sha256:54a50c9354f11ce0aa56a85d2cacb1b950f85eab3fe1caf988826d1f89bf37eb
     # The latest version of kind/k8s needs to be listed twice at the end of this list
     # as it's tested in both ipv4 and ipv6 mode.
-    - DEPLOYER_KIND_NODE_IMAGE: kindest/node:v1.29.0@sha256:54a50c9354f11ce0aa56a85d2cacb1b950f85eab3fe1caf988826d1f89bf37eb
-    - DEPLOYER_KIND_NODE_IMAGE: kindest/node:v1.29.0@sha256:54a50c9354f11ce0aa56a85d2cacb1b950f85eab3fe1caf988826d1f89bf37eb
+    - DEPLOYER_KIND_NODE_IMAGE: barkbay/node:v1.30.0-dirty@sha256:03aae54e5ce12a2ec3220d5329a58130f9328d9e5b995c8eb4eb0807569bffbe
+    - DEPLOYER_KIND_NODE_IMAGE: barkbay/node:v1.30.0-dirty@sha256:03aae54e5ce12a2ec3220d5329a58130f9328d9e5b995c8eb4eb0807569bffbe
       DEPLOYER_KIND_IP_FAMILY: ipv6
 
 - label: gke
