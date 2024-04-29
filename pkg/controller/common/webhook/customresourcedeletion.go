@@ -71,6 +71,7 @@ func (wh *crdDeletionWebhook) Handle(ctx context.Context, req admission.Request)
 }
 
 func isElasticCRD(gvk schema.GroupVersionKind) bool {
+	whlog.Info("Checking if CRD is an Elastic CRD", "group", gvk.Group)
 	return slices.Contains(
 		[]string{
 			"agent.k8s.elastic.co",
