@@ -88,6 +88,11 @@ func isElasticCRD(crd *extensionsv1.CustomResourceDefinition) bool {
 }
 
 func (wh *crdDeletionWebhook) isInUse(crd *extensionsv1.CustomResourceDefinition) bool {
+	managedNamespaces := wh.managedNamespace.AsSlice()
+	// If we are managing all namespaces, insert the empty namespace "" to the list of managed namespaces
+	if len(managedNamespaces) == 0 {
+		managedNamespaces = append(managedNamespaces, "")
+	}
 	ul := &unstructured.UnstructuredList{}
 	for _, version := range crd.Spec.Versions {
 		ul.SetGroupVersionKind(schema.GroupVersionKind{
@@ -95,8 +100,8 @@ func (wh *crdDeletionWebhook) isInUse(crd *extensionsv1.CustomResourceDefinition
 			Kind:    crd.Spec.Names.Kind,
 			Version: version.Name,
 		})
-		whlog.Info("Checking if CRD is in use", "crd", crd.Name, "group", crd.Spec.Group, "kind", crd.Spec.Names.Kind, "version", version.Name)
-		for _, ns := range wh.managedNamespace.AsSlice() {
+		for _, ns := range managedNamespaces {
+			whlog.Info("Checking if CRD is in use", "crd", crd.Name, "group", crd.Spec.Group, "kind", crd.Spec.Names.Kind, "version", version.Name, "namespace", ns)
 			err := wh.client.List(context.Background(), ul, client.InNamespace(ns))
 			if err != nil {
 				whlog.Error(err, "Failed to list resources", "namespace", ns)
