@@ -8,6 +8,7 @@ import (
 	"context"
 	"net/http"
 
+	admissionv1 "k8s.io/api/admission/v1"
 	extensionsv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime/schema"
@@ -17,7 +18,6 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/webhook"
 	"sigs.k8s.io/controller-runtime/pkg/webhook/admission"
 
-	lsv1alpha1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/logstash/v1alpha1"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/k8s"
 	ulog "github.com/elastic/cloud-on-k8s/v2/pkg/utils/log"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/set"
@@ -48,18 +48,13 @@ type crdDeletionWebhook struct {
 	managedNamespace set.StringSet
 }
 
-func (wh *crdDeletionWebhook) ValidateCreate(ls *lsv1alpha1.Logstash) error {
-	return nil
-}
-
-func (wh *crdDeletionWebhook) ValidateUpdate(ctx context.Context, prev *lsv1alpha1.Logstash, curr *lsv1alpha1.Logstash) error {
-	return nil
-}
-
 // Handle is called when any request is sent to the webhook, satisfying the admission.Handler interface.
 func (wh *crdDeletionWebhook) Handle(ctx context.Context, req admission.Request) admission.Response {
+	if req.Operation != admissionv1.Delete {
+		return admission.Allowed("")
+	}
 	crd := &extensionsv1.CustomResourceDefinition{}
-	err := wh.decoder.DecodeRaw(req.Object, crd)
+	err := wh.decoder.DecodeRaw(req.OldObject, crd)
 	if err != nil {
 		return admission.Errored(http.StatusBadRequest, err)
 	}
