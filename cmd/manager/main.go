@@ -1043,7 +1043,7 @@ func setupWebhook(
 	esavalidation.RegisterWebhook(mgr, params.ValidateStorageClass, checker, managedNamespaces)
 	lsvalidation.RegisterWebhook(mgr, params.ValidateStorageClass, managedNamespaces)
 	if params.EnableCRDDeletionWebhook {
-		commonwebhook.RegisterCRDDeletionWebhook(mgr, managedNamespaces)
+		commonwebhook.RegisterCRDDeletionWebhook(mgr)
 	} else {
 		log.Info("CRD deletion webhook disabled", "param", params.EnableCRDDeletionWebhook)
 	}
