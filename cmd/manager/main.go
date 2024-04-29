@@ -697,6 +697,7 @@ func startOperator(ctx context.Context) error {
 		SetDefaultSecurityContext: setDefaultSecurityContext,
 		ValidateStorageClass:      viper.GetBool(operator.ValidateStorageClassFlag),
 		Tracer:                    tracer,
+		EnableCRDDeletionWebhook:  viper.GetBool(operator.EnableCRDDeletionWebhookFlag),
 	}
 
 	if viper.GetBool(operator.EnableWebhookFlag) {
