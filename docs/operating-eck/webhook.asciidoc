@@ -170,6 +170,63 @@ helm install elastic-operator elastic/eck-operator -n elastic-system --create-na
 
 ====
 
+
+[float]
+[id="{p}-enabling-crd-prevention-webhook"]
+== Enabling the CRD deletion prevention webhook
+
+=== Manifest Installation
+
+If the ECK Operator was installed using the YAML manifests, then a new `ValidatingWebhookConfiguration` needs to be installed. Apply the following manifest to enable the CRD deletion prevention webhook:
+
+[source,yaml,subs="attributes,+macros"]
+----
+cat $$<<$$EOF | kubectl apply -f -
+apiVersion: admissionregistration.k8s.io/v1
+kind: ValidatingWebhookConfiguration
+metadata:
+  name: elastic-webhook-crd-delete-prevention.k8s.elastic.co
+  labels:
+    control-plane: elastic-operator
+webhooks:
+- clientConfig:
+    service:
+      name: elastic-webhook-server
+      namespace: elastic-system
+      path: /validate-prevent-crd-deletion-k8s-elastic-co
+  failurePolicy: Ignore
+  name: elastic-prevent-crd-deletion.k8s.elastic.co
+  matchPolicy: Exact
+  admissionReviewVersions: [v1]
+  sideEffects: None
+  rules:
+  - apiGroups:
+      - apiextensions.k8s.io
+    apiVersions:
+      - v1
+    operations:
+      - DELETE
+    resources:
+      - customresourcedefinitions
+EOF
+----
+
+In addition to the `ValidatingWebhookConfiguration` the existing `ClusterRole` needs to be patched to allow the operator to retrieve custom resource definitions:
+
+[source,sh]
+----
+kubectl patch clusterrole elastic-operator --type='json' -p='[{"op": "add", "path": "/rules/0", "value":{ "apiGroups": ["apiextensions.k8s.io"], "resources": ["customresourcedefinitions"], "verbs": ["get","list","watch"]}}]'
+----
+
+TODO: update the ECK configmap to enable the webhook, and restart the operator.
+
+=== If using Helm
+
+[source,sh]
+----
+helm install elastic-operator elastic/eck-operator -n elastic-system --create-namespace --set=webhook.crdDeletionProtection.enabled=true
+----
+
 [float]
 [id="{p}-disable-webhook"]
 == Disable the webhook
