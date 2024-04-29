@@ -29,7 +29,7 @@ const (
 	webhookPath = "/validate-prevent-crd-deletion-k8s-elastic-co"
 )
 
-var lslog = ulog.Log.WithName("crd-delete-validation")
+var whlog = ulog.Log.WithName("crd-delete-validation")
 
 // RegisterCRDDeletionWebhook will register the crd deletion prevention webhook.
 func RegisterCRDDeletionWebhook(mgr ctrl.Manager, managedNamespace []string) {
@@ -38,7 +38,7 @@ func RegisterCRDDeletionWebhook(mgr ctrl.Manager, managedNamespace []string) {
 		decoder:          admission.NewDecoder(mgr.GetScheme()),
 		managedNamespace: set.Make(managedNamespace...),
 	}
-	lslog.Info("Registering CRD deletion prevention validating webhook", "path", webhookPath)
+	whlog.Info("Registering CRD deletion prevention validating webhook", "path", webhookPath)
 	mgr.GetWebhookServer().Register(webhookPath, &webhook.Admission{Handler: wh})
 }
 
@@ -51,18 +51,22 @@ type crdDeletionWebhook struct {
 // Handle is called when any request is sent to the webhook, satisfying the admission.Handler interface.
 func (wh *crdDeletionWebhook) Handle(ctx context.Context, req admission.Request) admission.Response {
 	if req.Operation != admissionv1.Delete {
+		whlog.Info("Skipping webhook CRD request", "operation", req.Operation)
 		return admission.Allowed("")
 	}
 	crd := &extensionsv1.CustomResourceDefinition{}
 	err := wh.decoder.DecodeRaw(req.OldObject, crd)
 	if err != nil {
+		whlog.Error(err, "Failed to decode CRD during CRD deletion webhook")
 		return admission.Errored(http.StatusBadRequest, err)
 	}
 
 	if isElasticCRD(crd.GroupVersionKind()) && wh.isInUse(crd) {
+		whlog.Info("CRD is in use, denying deletion", "crd", crd.Name)
 		return admission.Denied("deletion of Elastic CRDs is not allowed")
 	}
 
+	whlog.Info("CRD is not in use, allowing deletion", "crd", crd.Name)
 	return admission.Allowed("")
 }
 
@@ -89,10 +93,11 @@ func (wh *crdDeletionWebhook) isInUse(crd *extensionsv1.CustomResourceDefinition
 		Kind:    crd.GroupVersionKind().Kind,
 		Version: crd.GroupVersionKind().Version,
 	})
+	whlog.Info("Checking if CRD is in use", "crd", crd.Name, "group", crd.GroupVersionKind().Group, "version", crd.GroupVersionKind().Version, "kind", crd.GroupVersionKind().Kind)
 	for _, ns := range wh.managedNamespace.AsSlice() {
 		err := wh.client.List(context.Background(), ul, client.InNamespace(ns))
 		if err != nil {
-			lslog.Error(err, "Failed to list resources", "namespace", ns)
+			whlog.Error(err, "Failed to list resources", "namespace", ns)
 			return true
 		}
 		if len(ul.Items) > 0 {
