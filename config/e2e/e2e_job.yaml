@@ -61,8 +61,6 @@ spec:
           env:
             - name: GOCACHE
               value: "/tmp/go-cache/"
-            - name: GOMODCACHE
-              value: "/tmp/go-mod-cache"
             - name: E2E_JSON
               value: "{{ .Context.LogToFile }}"
             - name: E2E_TAGS
