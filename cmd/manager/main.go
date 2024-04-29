@@ -1042,7 +1042,7 @@ func setupWebhook(
 	esavalidation.RegisterWebhook(mgr, params.ValidateStorageClass, checker, managedNamespaces)
 	lsvalidation.RegisterWebhook(mgr, params.ValidateStorageClass, managedNamespaces)
 	if params.EnableCRDDeletionWebhook {
-		commonwebhook.RegisterCRDDeletionWebhook(mgr)
+		commonwebhook.RegisterCRDDeletionWebhook(mgr, managedNamespaces)
 	}
 
 	// wait for the secret to be populated in the local filesystem before returning
