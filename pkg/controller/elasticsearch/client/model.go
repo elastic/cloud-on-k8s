@@ -111,16 +111,18 @@ type NodesStats struct {
 type NodeStats struct {
 	Name string `json:"name"`
 	OS   struct {
-		CGroup struct {
-			Memory struct {
-				LimitInBytes string `json:"limit_in_bytes"`
-			} `json:"memory"`
-			CPU struct {
-				CFSPeriodMicros int `json:"cfs_period_micros"`
-				CFSQuotaMicros  int `json:"cfs_quota_micros"`
-			} `json:"cpu"`
-		} `json:"cgroup"`
+		CGroup *CGroup `json:"cgroup"`
 	} `json:"os"`
+}
+
+type CGroup struct {
+	Memory struct {
+		LimitInBytes string `json:"limit_in_bytes"`
+	} `json:"memory"`
+	CPU struct {
+		CFSPeriodMicros int `json:"cfs_period_micros"`
+		CFSQuotaMicros  int `json:"cfs_quota_micros"`
+	} `json:"cpu"`
 }
 
 // ClusterStateNode represents an element in the `node` structure in
