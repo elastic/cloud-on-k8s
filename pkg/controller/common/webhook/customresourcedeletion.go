@@ -89,19 +89,22 @@ func isElasticCRD(crd *extensionsv1.CustomResourceDefinition) bool {
 
 func (wh *crdDeletionWebhook) isInUse(crd *extensionsv1.CustomResourceDefinition) bool {
 	ul := &unstructured.UnstructuredList{}
-	ul.SetGroupVersionKind(schema.GroupVersionKind{
-		Group: crd.Spec.Group,
-		Kind:  crd.Spec.Names.Kind,
-	})
-	whlog.Info("Checking if CRD is in use", "crd", crd.Name, "group", crd.Spec.Group, "kind", crd.Spec.Names.Kind)
-	for _, ns := range wh.managedNamespace.AsSlice() {
-		err := wh.client.List(context.Background(), ul, client.InNamespace(ns))
-		if err != nil {
-			whlog.Error(err, "Failed to list resources", "namespace", ns)
-			return true
-		}
-		if len(ul.Items) > 0 {
-			return true
+	for _, version := range crd.Spec.Versions {
+		ul.SetGroupVersionKind(schema.GroupVersionKind{
+			Group:   crd.Spec.Group,
+			Kind:    crd.Spec.Names.Kind,
+			Version: version.Name,
+		})
+		whlog.Info("Checking if CRD is in use", "crd", crd.Name, "group", crd.Spec.Group, "kind", crd.Spec.Names.Kind, "version", version.Name)
+		for _, ns := range wh.managedNamespace.AsSlice() {
+			err := wh.client.List(context.Background(), ul, client.InNamespace(ns))
+			if err != nil {
+				whlog.Error(err, "Failed to list resources", "namespace", ns)
+				return true
+			}
+			if len(ul.Items) > 0 {
+				return true
+			}
 		}
 	}
 	return false
