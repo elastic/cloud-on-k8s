@@ -253,13 +253,11 @@ helm install elastic-operator elastic/eck-operator -n elastic-system --create-na
 [id="{p}-disable-webhook"]
 == Disable the webhook
 
-To disable the webhook, set the <<{p}-operator-config, `enable-webhook`>> operator configuration flag to `false` and remove the `ValidatingWebhookConfiguration` named `elastic-webhook.k8s.elastic.co`, and potentially `elastic-webhook-crd-delete-prevention.k8s.elastic.co`:
+To disable the webhook, set the <<{p}-operator-config, `enable-webhook`>> operator configuration flag to `false` and remove the `ValidatingWebhookConfiguration` named `elastic-webhook.k8s.elastic.co`:
 
 [source,sh]
 ----
 kubectl delete validatingwebhookconfigurations.admissionregistration.k8s.io elastic-webhook.k8s.elastic.co
-# if installed using the previous section
-kubectl delete validatingwebhookconfigurations.admissionregistration.k8s.io elastic-webhook-crd-delete-prevention.k8s.elastic.co`
 ----
 
 [float]
