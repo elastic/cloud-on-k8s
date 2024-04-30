@@ -71,7 +71,7 @@ These permissions are needed by the Service Account that ECK operator runs as.
 |PodDisruptionBudget|policy|no|Ensuring update safety for Elasticsearch. Check link:https://www.elastic.co/guide/en/cloud-on-k8s/current/k8s-pod-disruption-budget.html[docs] to learn more.
 |StorageClass|storage.k8s.io|yes|Validating storage expansion support. Check link:https://www.elastic.co/guide/en/cloud-on-k8s/current/k8s-volume-claim-templates.html#k8s_updating_the_volume_claim_settings[docs] to learn more.
 |coreauthorization.k8s.io|SubjectAccessReview|yes|Controlling access between referenced resources. Check link:https://www.elastic.co/guide/en/cloud-on-k8s/current/k8s-restrict-cross-namespace-associations.html[docs] to learn more.
-|apiextensions.k8s.io|CustomResourceDefinition|yes|Preventing accidental CRD Deletion. Check link:https://www.elastic.co/guide/en/cloud-on-k8s/current/k8s-webhook.html#k8s_enabling_crd_prevention_webhook[docs] to learn more.
+|apiextensions.k8s.io|CustomResourceDefinition|yes|Preventing accidental CRD Deletion. Check link:https://www.elastic.co/guide/en/cloud-on-k8s/current/k8s-webhook.html#k8s_enabling_the_crd_prevention_webhook[docs] to learn more.
 |===
 
 And all permissions that the <<{p}-{page_id}-using>> chapter specifies.
