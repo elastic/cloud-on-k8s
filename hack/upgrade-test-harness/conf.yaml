@@ -42,5 +42,5 @@ testParams:
     operatorVersion: 2.12.1
     stackVersion: 8.13.2
   - name: upcoming
-    operatorVersion: 2.13.0-SNAPSHOT
-    stackVersion: 8.14.0-SNAPSHOT
+    operatorVersion: 2.14.0-SNAPSHOT
+    stackVersion: 8.15.0-SNAPSHOT
