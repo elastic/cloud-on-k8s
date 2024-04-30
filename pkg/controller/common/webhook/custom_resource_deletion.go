@@ -58,13 +58,11 @@ type crdDeletionWebhook struct {
 // Handle is called when any request is sent to the webhook, satisfying the admission.Handler interface.
 func (wh *crdDeletionWebhook) Handle(ctx context.Context, req admission.Request) admission.Response {
 	if req.Operation != admissionv1.Delete {
-		whlog.Info("Ignoring request", "operation", req.Operation)
 		return admission.Allowed("")
 	}
 	crd := &extensionsv1.CustomResourceDefinition{}
 	err := wh.decoder.DecodeRaw(req.OldObject, crd)
 	if err != nil {
-		whlog.Error(err, "while decoding request")
 		return admission.Errored(http.StatusBadRequest, err)
 	}
 
@@ -72,7 +70,6 @@ func (wh *crdDeletionWebhook) Handle(ctx context.Context, req admission.Request)
 		return admission.Denied("deletion of Elastic CRDs is not allowed while in use")
 	}
 
-	whlog.Info("CRD deletion allowed", "name", crd.Name)
 	return admission.Allowed("")
 }
 
@@ -100,17 +97,14 @@ func (wh *crdDeletionWebhook) isInUse(crd *extensionsv1.CustomResourceDefinition
 			Kind:    crd.Spec.Names.Kind,
 			Version: version.Name,
 		})
-		whlog.Info("Checking for resources", "group", crd.Spec.Group, "kind", crd.Spec.Names.Kind, "version", version.Name)
 		err := wh.client.List(context.Background(), ul, client.InNamespace(""))
 		if err != nil {
 			whlog.Error(err, "while listing resources")
 			return true
 		}
 		if len(ul.Items) > 0 {
-			whlog.Info("Found resources", "count", len(ul.Items))
 			return true
 		}
 	}
-	whlog.Info("No resources found, allowing deletion")
 	return false
 }
