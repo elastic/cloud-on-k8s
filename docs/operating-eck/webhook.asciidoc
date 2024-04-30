@@ -169,15 +169,17 @@ helm install elastic-operator elastic/eck-operator -n elastic-system --create-na
 ----
 
 ====
-
-
 [float]
 [id="{p}-enabling-crd-prevention-webhook"]
+
 == Enabling the CRD deletion prevention webhook
 
-=== Manifest Installation
+In addition to the previous validating webhooks, the ECK operator comes with a webhook to disallow the deletion of the Elastic custom resources, such as Elasticsearch, and Kibana, as when these are deleted the Elasticsearch and Kibana instances within the cluster are also deleted. This webhook is disabled by default but can be enabled using the instructions in the following sections, depending on the installation method. When enabled the operator will install a new `ValidatingWebhookConfiguration` that prevents the deletion of Elastic custom resources when any instances of the custom resources are present within the cluster.
 
-If the ECK Operator was installed using the YAML manifests, then a new `ValidatingWebhookConfiguration` needs to be installed. Apply the following manifest to enable the CRD deletion prevention webhook:
+[float]
+=== If ECK was installed using YAML manifests
+
+If the ECK Operator was installed using the <<{p}-install-yaml-manifests,YAML manifests installation method>>, then a new `ValidatingWebhookConfiguration` needs to be installed. Apply the following manifest to enable the CRD deletion prevention webhook:
 
 [source,yaml,subs="attributes,+macros"]
 ----
@@ -218,24 +220,73 @@ In addition to the `ValidatingWebhookConfiguration` the existing `ClusterRole` n
 kubectl patch clusterrole elastic-operator --type='json' -p='[{"op": "add", "path": "/rules/0", "value":{ "apiGroups": ["apiextensions.k8s.io"], "resources": ["customresourcedefinitions"], "verbs": ["get","list","watch"]}}]'
 ----
 
-TODO: update the ECK configmap to enable the webhook, and restart the operator.
+Also enable the CRD deletion prevention webhook in the `ConfigMap`.
 
-=== If using Helm
+[source,shell,subs="attributes,+macros"]
+----
+cat $$<<$$EOF | kubectl apply -f -
+kind: ConfigMap
+apiVersion: v1
+metadata:
+  name: elastic-operator
+  namespace: elastic-system
+data:
+  eck.yaml: |-
+    log-verbosity: 0
+    metrics-port: 0
+    container-registry: docker.elastic.co
+    max-concurrent-reconciles: 3
+    ca-cert-validity: 8760h
+    ca-cert-rotate-before: 24h
+    cert-validity: 8760h
+    cert-rotate-before: 24h
+    disable-config-watch: false
+    exposed-node-labels: [topology.kubernetes.io/.*,failure-domain.beta.kubernetes.io/.*]
+    set-default-security-context: auto-detect
+    kube-client-timeout: 60s
+    elasticsearch-client-timeout: 180s
+    disable-telemetry: false
+    distribution-channel: all-in-one
+    validate-storage-class: true
+    enable-webhook: true
+    enable-crd-deletion-webhook: true
+    webhook-name: elastic-webhook.k8s.elastic.co
+    webhook-port: 9443
+    operator-namespace: elastic-system
+    enable-leader-election: true
+    elasticsearch-observation-interval: 10s
+    ubi-only: false
+EOF
+----
+
+And finally, restart the ECK operator to apply the changes.
 
 [source,sh]
 ----
-helm install elastic-operator elastic/eck-operator -n elastic-system --create-namespace --set=webhook.crdDeletionProtection.enabled=true
+kubectl rollout restart statefulset -n elastic-system elastic-operator
+----
+
+[float]
+=== If ECK was installed using the Helm chart
+
+If the ECK Operator was installed using the <<{p}-install-helm,Helm chart installation method>>, then the `webhook.crdDeletionProtection.enabled` value needs to be set to `true` in the Helm chart values. Install/upgrade the operator using the following options:
+
+[source,sh]
+----
+helm install elastic-operator elastic/eck-operator -n elastic-system --create-namespace --set=webhook.enabled=true --set=webhook.crdDeletionProtection.enabled=true
 ----
 
 [float]
 [id="{p}-disable-webhook"]
 == Disable the webhook
 
-To disable the webhook, set the <<{p}-operator-config, `enable-webhook`>> operator configuration flag to `false` and remove the `ValidatingWebhookConfiguration` named `elastic-webhook.k8s.elastic.co`:
+To disable the webhook, set the <<{p}-operator-config, `enable-webhook`>> operator configuration flag to `false` and remove the `ValidatingWebhookConfiguration` named `elastic-webhook.k8s.elastic.co`, and potentially `elastic-webhook-crd-delete-prevention.k8s.elastic.co`:
 
 [source,sh]
 ----
 kubectl delete validatingwebhookconfigurations.admissionregistration.k8s.io elastic-webhook.k8s.elastic.co
+# if installed using the previous section
+kubectl delete validatingwebhookconfigurations.admissionregistration.k8s.io elastic-webhook-crd-delete-prevention.k8s.elastic.co`
 ----
 
 [float]
