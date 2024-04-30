@@ -247,7 +247,7 @@ func Command() *cobra.Command {
 	cmd.Flags().Bool(
 		operator.EnableCRDDeletionWebhookFlag,
 		false,
-		"Enables a validating webhook server to prevent Elastic CRD deletion in the operator process.",
+		"Enables a validating webhook server to prevent Elastic CRD deletion.",
 	)
 	cmd.Flags().StringSlice(
 		operator.ExposedNodeLabels,
@@ -1044,8 +1044,6 @@ func setupWebhook(
 	lsvalidation.RegisterWebhook(mgr, params.ValidateStorageClass, managedNamespaces)
 	if params.EnableCRDDeletionWebhook {
 		commonwebhook.RegisterCRDDeletionWebhook(mgr)
-	} else {
-		log.Info("CRD deletion webhook disabled", "param", params.EnableCRDDeletionWebhook)
 	}
 
 	// wait for the secret to be populated in the local filesystem before returning

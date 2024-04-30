@@ -142,7 +142,7 @@ webhook:
   # secret specifies the Kubernetes secret to be mounted into the path designated by the certsDir value to be used for webhook certificates.
   secret: ""
   crdDeletionProtection:
-    # enabled determines whether the operator should prevent deletion of Elastic CRDs.
+    # determines whether the operator should prevent deletion of Elastic CRDs.
     # This is a separate configuration because enabling this webhook requires additional RBAC permissions
     # to read all CRDs within the cluster.
     enabled: false
