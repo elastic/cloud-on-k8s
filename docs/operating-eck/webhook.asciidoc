@@ -174,7 +174,7 @@ helm install elastic-operator elastic/eck-operator -n elastic-system --create-na
 
 == Enabling the CRD deletion prevention webhook
 
-In addition to the previous validating webhooks, the ECK operator comes with a webhook to disallow the deletion of the Elastic custom resources, such as Elasticsearch, and Kibana, as when these are deleted the Elasticsearch and Kibana instances within the cluster are also deleted. This webhook is disabled by default but can be enabled using the instructions in the following sections, depending on the installation method. When enabled the operator will install a new `ValidatingWebhookConfiguration` that prevents the deletion of Elastic custom resources when any instances of the custom resources are present within the cluster.
+In addition to the previous validating webhooks, the ECK operator comes with a webhook to prevent the deletion of the Elastic custom resources, such as Elasticsearch, and Kibana, as when these are deleted the Elasticsearch and Kibana instances within the cluster are also deleted. This webhook is disabled by default but can be enabled using the instructions in the following sections, depending on the installation method. When enabled the operator will install a new webhook within the existing `ValidatingWebhookConfiguration` that prevents the deletion of Elastic custom resources when any instance of the custom resources are detected within the cluster.
 
 [float]
 === If ECK was installed using YAML manifests
