@@ -165,7 +165,7 @@ plans:
   clusterName: kind-ci
   clientVersion: 0.20.0
   provider: kind
-  kubernetesVersion: 1.30.0
+  kubernetesVersion: 1.28.0
   enforceSecurityPolicies: true
   kind:
     nodeCount: 3
