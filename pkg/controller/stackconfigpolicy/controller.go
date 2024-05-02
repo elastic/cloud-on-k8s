@@ -68,9 +68,9 @@ func Add(mgr manager.Manager, params operator.Parameters) error {
 }
 
 // newReconciler returns a new reconcile.Reconciler of StackConfigPolicy.
-func newReconciler(mgr manager.Manager, params operator.Parameters) *ReconcileStackConfigPolicy {
+func newReconciler(mgr manager.Manager, params operator.Parameters) *ReconcileStackConfigPolicy[client.Object] {
 	k8sClient := mgr.GetClient()
-	return &ReconcileStackConfigPolicy{
+	return &ReconcileStackConfigPolicy[client.Object]{
 		Client:           k8sClient,
 		esClientProvider: commonesclient.NewClient,
 		recorder:         mgr.GetEventRecorderFor(controllerName),
@@ -80,34 +80,34 @@ func newReconciler(mgr manager.Manager, params operator.Parameters) *ReconcileSt
 	}
 }
 
-func addWatches(mgr manager.Manager, c controller.Controller, r *ReconcileStackConfigPolicy) error {
+func addWatches(mgr manager.Manager, c controller.Controller, r *ReconcileStackConfigPolicy[client.Object]) error {
 	// watch for changes to StackConfigPolicy
-	if err := c.Watch(source.Kind(mgr.GetCache(), &policyv1alpha1.StackConfigPolicy{}), &handler.EnqueueRequestForObject{}); err != nil {
+	if err := c.Watch(source.Kind(mgr.GetCache(), &policyv1alpha1.StackConfigPolicy{}, &handler.TypedEnqueueRequestForObject[*policyv1alpha1.StackConfigPolicy]{})); err != nil {
 		return err
 	}
 
 	// watch for changes to Elasticsearch and reconcile all StackConfigPolicy
-	if err := c.Watch(source.Kind(mgr.GetCache(), &esv1.Elasticsearch{}), r.reconcileRequestForAllPolicies()); err != nil {
+	if err := c.Watch(source.Kind(mgr.GetCache(), &esv1.Elasticsearch{}, r.reconcileRequestForAllPolicies())); err != nil {
 		return err
 	}
 
 	// watch for changes to Kibana and reconcile all StackConfigPolicy
-	if err := c.Watch(source.Kind(mgr.GetCache(), &kibanav1.Kibana{}), r.reconcileRequestForAllPolicies()); err != nil {
+	if err := c.Watch(source.Kind(mgr.GetCache(), &kibanav1.Kibana{}, r.reconcileRequestForAllPolicies())); err != nil {
 		return err
 	}
 
 	// watch Secrets soft owned by StackConfigPolicy
-	if err := c.Watch(source.Kind(mgr.GetCache(), &corev1.Secret{}), reconcileRequestForSoftOwnerPolicy()); err != nil {
+	if err := c.Watch(source.Kind(mgr.GetCache(), &corev1.Secret{}, reconcileRequestForSoftOwnerPolicy[*corev1.Secret]())); err != nil {
 		return err
 	}
 
 	// watch dynamically refrenced secrets
-	return c.Watch(source.Kind(mgr.GetCache(), &corev1.Secret{}), r.dynamicWatches.Secrets)
+	return c.Watch(source.Kind(mgr.GetCache(), &corev1.Secret{}, r.dynamicWatches.Secrets))
 }
 
-func reconcileRequestForSoftOwnerPolicy() handler.EventHandler {
-	return handler.EnqueueRequestsFromMapFunc(func(ctx context.Context, object client.Object) []reconcile.Request {
-		softOwner, referenced := reconciler.SoftOwnerRefFromLabels(object.GetLabels())
+func reconcileRequestForSoftOwnerPolicy[T *corev1.Secret]() handler.TypedEventHandler[*corev1.Secret] {
+	return handler.TypedEnqueueRequestsFromMapFunc[*corev1.Secret](func(ctx context.Context, secret *corev1.Secret) []reconcile.Request {
+		softOwner, referenced := reconciler.SoftOwnerRefFromLabels(secret.GetLabels())
 		if !referenced || softOwner.Kind != policyv1alpha1.Kind {
 			return nil
 		}
@@ -118,8 +118,8 @@ func reconcileRequestForSoftOwnerPolicy() handler.EventHandler {
 }
 
 // requestsAllStackConfigPolicies returns the requests to reconcile all StackConfigPolicy resources.
-func (r *ReconcileStackConfigPolicy) reconcileRequestForAllPolicies() handler.EventHandler {
-	return handler.EnqueueRequestsFromMapFunc(func(ctx context.Context, es client.Object) []reconcile.Request {
+func (r *ReconcileStackConfigPolicy[T]) reconcileRequestForAllPolicies() handler.TypedEventHandler[T] {
+	return handler.TypedEnqueueRequestsFromMapFunc[T](func(ctx context.Context, es T) []reconcile.Request {
 		var stackConfigList policyv1alpha1.StackConfigPolicyList
 		err := r.Client.List(context.Background(), &stackConfigList)
 		if err != nil {
@@ -135,10 +135,10 @@ func (r *ReconcileStackConfigPolicy) reconcileRequestForAllPolicies() handler.Ev
 	})
 }
 
-var _ reconcile.Reconciler = &ReconcileStackConfigPolicy{}
+var _ reconcile.Reconciler = &ReconcileStackConfigPolicy[client.Object]{}
 
 // ReconcileStackConfigPolicy reconciles a StackConfigPolicy object
-type ReconcileStackConfigPolicy struct {
+type ReconcileStackConfigPolicy[T client.Object] struct {
 	k8s.Client
 	esClientProvider commonesclient.Provider
 	recorder         record.EventRecorder
@@ -151,7 +151,7 @@ type ReconcileStackConfigPolicy struct {
 
 // Reconcile reads that state of the cluster for a StackConfigPolicy object and makes changes based on the state read and what is
 // in the StackConfigPolicy.Spec.
-func (r *ReconcileStackConfigPolicy) Reconcile(ctx context.Context, request reconcile.Request) (reconcile.Result, error) {
+func (r *ReconcileStackConfigPolicy[T]) Reconcile(ctx context.Context, request reconcile.Request) (reconcile.Result, error) {
 	ctx = common.NewReconciliationContext(ctx, &r.iteration, r.params.Tracer, controllerName, "policy_name", request)
 	defer common.LogReconciliationRun(ulog.FromContext(ctx))()
 	defer tracing.EndContextTransaction(ctx)
@@ -203,7 +203,7 @@ type esMap map[types.NamespacedName]esv1.Elasticsearch
 // instances configured by a StackConfigPolicy.
 type kbMap map[types.NamespacedName]kibanav1.Kibana
 
-func (r *ReconcileStackConfigPolicy) doReconcile(ctx context.Context, policy policyv1alpha1.StackConfigPolicy) (*reconciler.Results, policyv1alpha1.StackConfigPolicyStatus) {
+func (r *ReconcileStackConfigPolicy[T]) doReconcile(ctx context.Context, policy policyv1alpha1.StackConfigPolicy) (*reconciler.Results, policyv1alpha1.StackConfigPolicyStatus) {
 	log := ulog.FromContext(ctx)
 	log.V(1).Info("Reconcile StackConfigPolicy")
 
@@ -247,7 +247,7 @@ func (r *ReconcileStackConfigPolicy) doReconcile(ctx context.Context, policy pol
 	return results, status
 }
 
-func (r *ReconcileStackConfigPolicy) reconcileElasticsearchResources(ctx context.Context, policy policyv1alpha1.StackConfigPolicy, status policyv1alpha1.StackConfigPolicyStatus) (*reconciler.Results, policyv1alpha1.StackConfigPolicyStatus) {
+func (r *ReconcileStackConfigPolicy[T]) reconcileElasticsearchResources(ctx context.Context, policy policyv1alpha1.StackConfigPolicy, status policyv1alpha1.StackConfigPolicyStatus) (*reconciler.Results, policyv1alpha1.StackConfigPolicyStatus) {
 	defer tracing.Span(&ctx)()
 	log := ulog.FromContext(ctx)
 	log.V(1).Info("Reconcile Elasticsearch resources")
@@ -392,7 +392,7 @@ func (r *ReconcileStackConfigPolicy) reconcileElasticsearchResources(ctx context
 	return results, status
 }
 
-func (r *ReconcileStackConfigPolicy) reconcileKibanaResources(ctx context.Context, policy policyv1alpha1.StackConfigPolicy, status policyv1alpha1.StackConfigPolicyStatus) (*reconciler.Results, policyv1alpha1.StackConfigPolicyStatus) {
+func (r *ReconcileStackConfigPolicy[T]) reconcileKibanaResources(ctx context.Context, policy policyv1alpha1.StackConfigPolicy, status policyv1alpha1.StackConfigPolicyStatus) (*reconciler.Results, policyv1alpha1.StackConfigPolicyStatus) {
 	defer tracing.Span(&ctx)()
 	log := ulog.FromContext(ctx)
 	log.V(1).Info("Reconcile Kibana Resources")
@@ -512,7 +512,7 @@ func cleanStackTrace(errors []string) string {
 	return strings.Join(errors, ". ")
 }
 
-func (r *ReconcileStackConfigPolicy) validate(ctx context.Context, policy *policyv1alpha1.StackConfigPolicy) error {
+func (r *ReconcileStackConfigPolicy[T]) validate(ctx context.Context, policy *policyv1alpha1.StackConfigPolicy) error {
 	span, vctx := apm.StartSpan(ctx, "validate", tracing.SpanTypeApp)
 	defer span.End()
 
@@ -525,7 +525,7 @@ func (r *ReconcileStackConfigPolicy) validate(ctx context.Context, policy *polic
 	return nil
 }
 
-func (r *ReconcileStackConfigPolicy) updateStatus(ctx context.Context, scp policyv1alpha1.StackConfigPolicy, status policyv1alpha1.StackConfigPolicyStatus) error {
+func (r *ReconcileStackConfigPolicy[T]) updateStatus(ctx context.Context, scp policyv1alpha1.StackConfigPolicy, status policyv1alpha1.StackConfigPolicyStatus) error {
 	span, _ := apm.StartSpan(ctx, "update_status", tracing.SpanTypeApp)
 	defer span.End()
 
@@ -543,7 +543,7 @@ func (r *ReconcileStackConfigPolicy) updateStatus(ctx context.Context, scp polic
 	return common.UpdateStatus(ctx, r.Client, &scp)
 }
 
-func (r *ReconcileStackConfigPolicy) onDelete(ctx context.Context, obj types.NamespacedName) error {
+func (r *ReconcileStackConfigPolicy[T]) onDelete(ctx context.Context, obj types.NamespacedName) error {
 	defer tracing.Span(&ctx)()
 	// Remove dynamic watches on secrets
 	r.dynamicWatches.Secrets.RemoveHandlerForKey(additionalSecretMountsWatcherName(obj))
@@ -707,7 +707,7 @@ func deleteOrphanSoftOwnedSecrets(
 }
 
 // getClusterStateFileSettings gets the file based settings currently configured in an Elasticsearch by calling the /_cluster/state API.
-func (r *ReconcileStackConfigPolicy) getClusterStateFileSettings(ctx context.Context, es esv1.Elasticsearch) (esclient.FileSettings, error) {
+func (r *ReconcileStackConfigPolicy[T]) getClusterStateFileSettings(ctx context.Context, es esv1.Elasticsearch) (esclient.FileSettings, error) {
 	span, _ := apm.StartSpan(ctx, "get_cluster_state", tracing.SpanTypeApp)
 	defer span.End()
 
@@ -724,7 +724,7 @@ func (r *ReconcileStackConfigPolicy) getClusterStateFileSettings(ctx context.Con
 	return clusterState.Metadata.ReservedState.FileSettings, nil
 }
 
-func (r *ReconcileStackConfigPolicy) addDynamicWatchesOnAdditionalSecretMounts(policy policyv1alpha1.StackConfigPolicy) error {
+func (r *ReconcileStackConfigPolicy[T]) addDynamicWatchesOnAdditionalSecretMounts(policy policyv1alpha1.StackConfigPolicy) error {
 	// Add watches if there are additional secrets to be mounted
 	watcher := types.NamespacedName{
 		Name:      policy.Name,

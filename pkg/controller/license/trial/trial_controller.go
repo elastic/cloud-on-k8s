@@ -16,7 +16,6 @@ import (
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/tools/record"
-	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
 	"sigs.k8s.io/controller-runtime/pkg/handler"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
@@ -234,25 +233,20 @@ func newReconciler(mgr manager.Manager, params operator.Parameters) *ReconcileTr
 
 func addWatches(mgr manager.Manager, c controller.Controller) error {
 	// Watch the trial status secret and the enterprise trial licenses as well
-	return c.Watch(source.Kind(mgr.GetCache(), &corev1.Secret{}),
-		handler.EnqueueRequestsFromMapFunc(func(ctx context.Context, obj client.Object) []reconcile.Request {
-			secret, ok := obj.(*corev1.Secret)
-			if !ok {
-				// no contextual logging available
-				ulog.Log.Error(fmt.Errorf("object of type %T in secret watch", obj), "dropping event due to type error")
-			}
+	return c.Watch(source.Kind(mgr.GetCache(), &corev1.Secret{},
+		handler.TypedEnqueueRequestsFromMapFunc[*corev1.Secret](func(ctx context.Context, secret *corev1.Secret) []reconcile.Request {
 			if licensing.IsEnterpriseTrial(*secret) {
 				return []reconcile.Request{
 					{
 						NamespacedName: types.NamespacedName{
-							Namespace: obj.GetNamespace(),
-							Name:      obj.GetName(),
+							Namespace: secret.GetNamespace(),
+							Name:      secret.GetName(),
 						},
 					},
 				}
 			}
 
-			if obj.GetName() != licensing.TrialStatusSecretKey {
+			if secret.GetName() != licensing.TrialStatusSecretKey {
 				return nil
 			}
 			return []reconcile.Request{
@@ -264,7 +258,7 @@ func addWatches(mgr manager.Manager, c controller.Controller) error {
 				},
 			}
 		}),
-	)
+	))
 }
 
 // Add creates a new Trial Controller and adds it to the Manager with default RBAC. The Manager will set fields on the Controller

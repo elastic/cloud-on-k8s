@@ -28,20 +28,20 @@ import (
 // AddWatches set watches on objects needed to manage the association between a local and a remote cluster.
 func addWatches(mgr manager.Manager, c controller.Controller, r *ReconcileRemoteCa) error {
 	// Watch for changes to RemoteCluster
-	if err := c.Watch(source.Kind(mgr.GetCache(), &esv1.Elasticsearch{}), &handler.EnqueueRequestForObject{}); err != nil {
+	if err := c.Watch(source.Kind(mgr.GetCache(), &esv1.Elasticsearch{}, &handler.TypedEnqueueRequestForObject[*esv1.Elasticsearch]{})); err != nil {
 		return err
 	}
 
 	// Watch Secrets that contain remote certificate authorities managed by this controller
 	if err := c.Watch(
-		source.Kind(mgr.GetCache(), &v1.Secret{}),
-		handler.EnqueueRequestsFromMapFunc(newRequestsFromMatchedLabels()),
-	); err != nil {
+		source.Kind(mgr.GetCache(), &v1.Secret{},
+			handler.TypedEnqueueRequestsFromMapFunc[*v1.Secret](newRequestsFromMatchedLabels[*v1.Secret]()),
+		)); err != nil {
 		return err
 	}
 
 	// Dynamically watches the certificate authorities involved in a cluster relationship
-	if err := c.Watch(source.Kind(mgr.GetCache(), &v1.Secret{}), r.watches.Secrets); err != nil {
+	if err := c.Watch(source.Kind(mgr.GetCache(), &v1.Secret{}, r.watches.Secrets)); err != nil {
 		return err
 	}
 
@@ -57,8 +57,8 @@ func addWatches(mgr manager.Manager, c controller.Controller, r *ReconcileRemote
 
 // newRequestsFromMatchedLabels creates a watch handler function that creates reconcile requests based on the
 // labels set on a Secret which contains the remote CA.
-func newRequestsFromMatchedLabels() handler.MapFunc {
-	return func(ctx context.Context, obj client.Object) []reconcile.Request {
+func newRequestsFromMatchedLabels[T client.Object]() handler.TypedMapFunc[T] {
+	return handler.TypedMapFunc[T](func(ctx context.Context, obj T) []reconcile.Request {
 		labels := obj.GetLabels()
 		if !maps.ContainsKeys(labels, RemoteClusterNameLabelName, RemoteClusterNamespaceLabelName, commonv1.TypeLabelName) {
 			return nil
@@ -72,7 +72,7 @@ func newRequestsFromMatchedLabels() handler.MapFunc {
 				Name:      labels[RemoteClusterNameLabelName]},
 			},
 		}
-	}
+	})
 }
 
 func watchName(local types.NamespacedName, remote types.NamespacedName) string {
