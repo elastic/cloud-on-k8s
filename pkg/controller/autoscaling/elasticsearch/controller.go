@@ -93,7 +93,7 @@ func NewReconciler(mgr manager.Manager, params operator.Parameters) *ReconcileEl
 	}
 	return &ReconcileElasticsearchAutoscaler[client.Object]{
 		baseReconcileAutoscaling: reconcileAutoscaling.withRecorder(mgr.GetEventRecorderFor(ControllerName)),
-		Watches:                  watches.NewDynamicWatches(),
+		Watches:                  watches.NewDynamicWatches[client.Object](),
 	}
 }
 
@@ -120,7 +120,7 @@ func (r *ReconcileElasticsearchAutoscaler[T]) Reconcile(ctx context.Context, req
 
 	// Ensure we watch the associated Elasticsearch
 	esNamespacedName := types.NamespacedName{Name: esa.Spec.ElasticsearchRef.Name, Namespace: request.Namespace}
-	if err := r.Watches.ReferencedResources.AddHandler(watches.NamedWatch[T]{
+	if err := r.Watches.ReferencedResources.AddHandler(watches.NamedWatch[client.Object]{
 		Name:    dynamicWatchName(request),
 		Watched: []types.NamespacedName{esNamespacedName},
 		Watcher: request.NamespacedName,

@@ -166,11 +166,11 @@ config:
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			params := Params{
+			params := Params[client.Object]{
 				Context:       context.Background(),
 				Client:        k8s.NewFakeClient(tt.args.runtimeObjs...),
 				EventRecorder: record.NewFakeRecorder(10),
-				Watches:       watches.NewDynamicWatches(),
+				Watches:       watches.NewDynamicWatches[client.Object](),
 				Logstash:      tt.args.logstash,
 			}
 
@@ -553,11 +553,11 @@ func Test_resolveAPIServerConfig(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			params := Params{
+			params := Params[client.Object]{
 				Context:       context.Background(),
 				Client:        k8s.NewFakeClient(tt.args.runtimeObjs...),
 				EventRecorder: record.NewFakeRecorder(10),
-				Watches:       watches.NewDynamicWatches(),
+				Watches:       watches.NewDynamicWatches[client.Object](),
 				Logstash:      tt.args.logstash,
 			}
 

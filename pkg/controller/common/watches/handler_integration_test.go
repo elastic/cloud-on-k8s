@@ -35,7 +35,7 @@ func TestMain(m *testing.M) {
 // The test just checks that everything fits together and reconciliations are correctly triggered
 // from the EventHandler. More detailed behaviour is tested in `handler_test.go`.
 func TestDynamicEnqueueRequest(t *testing.T) {
-	eventHandler := watches.NewDynamicEnqueueRequest()
+	eventHandler := watches.NewDynamicEnqueueRequest[*corev1.Secret]()
 	// create a controller that watches secrets and enqueues requests into a chan
 	requests := make(chan reconcile.Request)
 	addToManager := func(mgr manager.Manager, params operator.Parameters) error {
@@ -48,7 +48,7 @@ func TestDynamicEnqueueRequest(t *testing.T) {
 		})
 		ctrl, err := controller.New("test-reconciler", mgr, controller.Options{Reconciler: reconcileFunc})
 		require.NoError(t, err)
-		require.NoError(t, ctrl.Watch(source.Kind(mgr.GetCache(), &corev1.Secret{}), eventHandler))
+		require.NoError(t, ctrl.Watch(source.Kind(mgr.GetCache(), &corev1.Secret{}, eventHandler)))
 		return nil
 	}
 
@@ -72,7 +72,7 @@ func TestDynamicEnqueueRequest(t *testing.T) {
 	assert.NoError(t, c.Create(context.Background(), testObj))
 
 	// Add a named watch for the first object
-	assert.NoError(t, eventHandler.AddHandler(watches.NamedWatch{
+	assert.NoError(t, eventHandler.AddHandler(watches.NamedWatch[*corev1.Secret]{
 		Watched: []types.NamespacedName{watched},
 		Watcher: watching,
 		Name:    "test-watch-1",

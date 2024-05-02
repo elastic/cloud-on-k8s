@@ -59,7 +59,7 @@ var (
 // Add creates a new StackConfigPolicy Controller and adds it to the Manager with default RBAC. The Manager will set fields on the Controller
 // and Start it when the Manager is Started.
 func Add(mgr manager.Manager, params operator.Parameters) error {
-	r := newReconciler(mgr, params)
+	r := newReconciler[client.Object](mgr, params)
 	c, err := common.NewController(mgr, controllerName, r, params)
 	if err != nil {
 		return err
@@ -68,31 +68,31 @@ func Add(mgr manager.Manager, params operator.Parameters) error {
 }
 
 // newReconciler returns a new reconcile.Reconciler of StackConfigPolicy.
-func newReconciler(mgr manager.Manager, params operator.Parameters) *ReconcileStackConfigPolicy[client.Object] {
+func newReconciler[T client.Object](mgr manager.Manager, params operator.Parameters) *ReconcileStackConfigPolicy[T] {
 	k8sClient := mgr.GetClient()
-	return &ReconcileStackConfigPolicy[client.Object]{
+	return &ReconcileStackConfigPolicy[T]{
 		Client:           k8sClient,
 		esClientProvider: commonesclient.NewClient,
 		recorder:         mgr.GetEventRecorderFor(controllerName),
 		licenseChecker:   license.NewLicenseChecker(k8sClient, params.OperatorNamespace),
 		params:           params,
-		dynamicWatches:   watches.NewDynamicWatches(),
+		dynamicWatches:   watches.NewDynamicWatches[T](),
 	}
 }
 
-func addWatches(mgr manager.Manager, c controller.Controller, r *ReconcileStackConfigPolicy[client.Object]) error {
+func addWatches[T client.Object](mgr manager.Manager, c controller.Controller, r *ReconcileStackConfigPolicy[T]) error {
 	// watch for changes to StackConfigPolicy
 	if err := c.Watch(source.Kind(mgr.GetCache(), &policyv1alpha1.StackConfigPolicy{}, &handler.TypedEnqueueRequestForObject[*policyv1alpha1.StackConfigPolicy]{})); err != nil {
 		return err
 	}
 
 	// watch for changes to Elasticsearch and reconcile all StackConfigPolicy
-	if err := c.Watch(source.Kind(mgr.GetCache(), &esv1.Elasticsearch{}, r.reconcileRequestForAllPolicies())); err != nil {
+	if err := c.Watch(source.Kind(mgr.GetCache(), &esv1.Elasticsearch{}, reconcileRequestForAllPolicies[*esv1.Elasticsearch](r.Client))); err != nil {
 		return err
 	}
 
 	// watch for changes to Kibana and reconcile all StackConfigPolicy
-	if err := c.Watch(source.Kind(mgr.GetCache(), &kibanav1.Kibana{}, r.reconcileRequestForAllPolicies())); err != nil {
+	if err := c.Watch(source.Kind(mgr.GetCache(), &kibanav1.Kibana{}, reconcileRequestForAllPolicies[*kibanav1.Kibana](r.Client))); err != nil {
 		return err
 	}
 
@@ -118,10 +118,10 @@ func reconcileRequestForSoftOwnerPolicy[T *corev1.Secret]() handler.TypedEventHa
 }
 
 // requestsAllStackConfigPolicies returns the requests to reconcile all StackConfigPolicy resources.
-func (r *ReconcileStackConfigPolicy[T]) reconcileRequestForAllPolicies() handler.TypedEventHandler[T] {
+func reconcileRequestForAllPolicies[T client.Object](clnt client.Client) handler.TypedEventHandler[T] {
 	return handler.TypedEnqueueRequestsFromMapFunc[T](func(ctx context.Context, es T) []reconcile.Request {
 		var stackConfigList policyv1alpha1.StackConfigPolicyList
-		err := r.Client.List(context.Background(), &stackConfigList)
+		err := clnt.List(context.Background(), &stackConfigList)
 		if err != nil {
 			ulog.Log.Error(err, "Fail to list StackConfigurationList while watching Elasticsearch")
 			return nil
@@ -144,7 +144,7 @@ type ReconcileStackConfigPolicy[T client.Object] struct {
 	recorder         record.EventRecorder
 	licenseChecker   license.Checker
 	params           operator.Parameters
-	dynamicWatches   watches.DynamicWatches
+	dynamicWatches   watches.DynamicWatches[T]
 	// iteration is the number of times this controller has run its Reconcile method
 	iteration uint64
 }

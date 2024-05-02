@@ -18,6 +18,7 @@ import (
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/tools/record"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
 	"sigs.k8s.io/controller-runtime/pkg/handler"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
@@ -51,7 +52,7 @@ const (
 // Add creates a new MapsServer Controller and adds it to the Manager with default RBAC. The Manager will set fields on the Controller
 // and Start it when the Manager is Started.
 func Add(mgr manager.Manager, params operator.Parameters) error {
-	reconciler := newReconciler(mgr, params)
+	reconciler := newReconciler[client.Object](mgr, params)
 	c, err := common.NewController(mgr, controllerName, reconciler, params)
 	if err != nil {
 		return err
@@ -60,18 +61,18 @@ func Add(mgr manager.Manager, params operator.Parameters) error {
 }
 
 // newReconciler returns a new reconcile.Reconciler
-func newReconciler(mgr manager.Manager, params operator.Parameters) *ReconcileMapsServer {
+func newReconciler[T client.Object](mgr manager.Manager, params operator.Parameters) *ReconcileMapsServer[T] {
 	client := mgr.GetClient()
-	return &ReconcileMapsServer{
+	return &ReconcileMapsServer[T]{
 		Client:         client,
 		recorder:       mgr.GetEventRecorderFor(controllerName),
-		dynamicWatches: watches.NewDynamicWatches(),
+		dynamicWatches: watches.NewDynamicWatches[T](),
 		licenseChecker: license.NewLicenseChecker(client, params.OperatorNamespace),
 		Parameters:     params,
 	}
 }
 
-func addWatches(mgr manager.Manager, c controller.Controller, r *ReconcileMapsServer) error {
+func addWatches[T client.Object](mgr manager.Manager, c controller.Controller, r *ReconcileMapsServer[T]) error {
 	// Watch for changes to MapsServer
 	if err := c.Watch(source.Kind(mgr.GetCache(), &emsv1alpha1.ElasticMapsServer{}, &handler.TypedEnqueueRequestForObject[*emsv1alpha1.ElasticMapsServer]{})); err != nil {
 		return err
@@ -114,36 +115,36 @@ func addWatches(mgr manager.Manager, c controller.Controller, r *ReconcileMapsSe
 	return c.Watch(source.Kind(mgr.GetCache(), &corev1.Secret{}, r.dynamicWatches.Secrets))
 }
 
-var _ reconcile.Reconciler = &ReconcileMapsServer{}
+var _ reconcile.Reconciler = &ReconcileMapsServer[client.Object]{}
 
 // ReconcileMapsServer reconciles a MapsServer object
-type ReconcileMapsServer struct {
+type ReconcileMapsServer[T client.Object] struct {
 	k8s.Client
 	operator.Parameters
 	recorder       record.EventRecorder
-	dynamicWatches watches.DynamicWatches
+	dynamicWatches watches.DynamicWatches[T]
 	licenseChecker license.Checker
 	// iteration is the number of times this controller has run its Reconcile method
 	iteration uint64
 }
 
-func (r *ReconcileMapsServer) K8sClient() k8s.Client {
+func (r *ReconcileMapsServer[T]) K8sClient() k8s.Client {
 	return r.Client
 }
 
-func (r *ReconcileMapsServer) DynamicWatches() watches.DynamicWatches {
+func (r *ReconcileMapsServer[T]) DynamicWatches() watches.DynamicWatches[T] {
 	return r.dynamicWatches
 }
 
-func (r *ReconcileMapsServer) Recorder() record.EventRecorder {
+func (r *ReconcileMapsServer[T]) Recorder() record.EventRecorder {
 	return r.recorder
 }
 
-var _ driver.Interface = &ReconcileMapsServer{}
+var _ driver.Interface[client.Object] = &ReconcileMapsServer[client.Object]{}
 
 // Reconcile reads that state of the cluster for a MapsServer object and makes changes based on the state read and what is
 // in the MapsServer.Spec
-func (r *ReconcileMapsServer) Reconcile(ctx context.Context, request reconcile.Request) (reconcile.Result, error) {
+func (r *ReconcileMapsServer[T]) Reconcile(ctx context.Context, request reconcile.Request) (reconcile.Result, error) {
 	ctx = common.NewReconciliationContext(ctx, &r.iteration, r.Tracer, controllerName, "maps_name", request)
 	defer common.LogReconciliationRun(ulog.FromContext(ctx))()
 	defer tracing.EndContextTransaction(ctx)
@@ -182,7 +183,7 @@ func (r *ReconcileMapsServer) Reconcile(ctx context.Context, request reconcile.R
 	return results.Aggregate()
 }
 
-func (r *ReconcileMapsServer) doReconcile(ctx context.Context, ems emsv1alpha1.ElasticMapsServer) (*reconciler.Results, emsv1alpha1.MapsStatus) {
+func (r *ReconcileMapsServer[T]) doReconcile(ctx context.Context, ems emsv1alpha1.ElasticMapsServer) (*reconciler.Results, emsv1alpha1.MapsStatus) {
 	log := ulog.FromContext(ctx)
 	results := reconciler.NewResult(ctx)
 	status := newStatus(ems)
@@ -218,7 +219,7 @@ func (r *ReconcileMapsServer) doReconcile(ctx context.Context, ems emsv1alpha1.E
 		return results.WithError(err), status
 	}
 
-	_, results = certificates.Reconciler{
+	_, results = certificates.Reconciler[T]{
 		K8sClient:             r.K8sClient(),
 		DynamicWatches:        r.DynamicWatches(),
 		Owner:                 &ems,
@@ -281,7 +282,7 @@ func newStatus(ems emsv1alpha1.ElasticMapsServer) emsv1alpha1.MapsStatus {
 	return status
 }
 
-func (r *ReconcileMapsServer) validate(ctx context.Context, ems emsv1alpha1.ElasticMapsServer) error {
+func (r *ReconcileMapsServer[T]) validate(ctx context.Context, ems emsv1alpha1.ElasticMapsServer) error {
 	span, vctx := apm.StartSpan(ctx, "validate", tracing.SpanTypeApp)
 	defer span.End()
 
@@ -342,7 +343,7 @@ func buildConfigHash(c k8s.Client, ems emsv1alpha1.ElasticMapsServer, configSecr
 	return fmt.Sprint(configHash.Sum32()), nil
 }
 
-func (r *ReconcileMapsServer) reconcileDeployment(
+func (r *ReconcileMapsServer[T]) reconcileDeployment(
 	ctx context.Context,
 	ems emsv1alpha1.ElasticMapsServer,
 	configHash string,
@@ -358,7 +359,7 @@ func (r *ReconcileMapsServer) reconcileDeployment(
 	return deployment.Reconcile(ctx, r.K8sClient(), deploy, &ems)
 }
 
-func (r *ReconcileMapsServer) deploymentParams(ems emsv1alpha1.ElasticMapsServer, configHash string) (deployment.Params, error) {
+func (r *ReconcileMapsServer[T]) deploymentParams(ems emsv1alpha1.ElasticMapsServer, configHash string) (deployment.Params, error) {
 	podSpec, err := newPodSpec(ems, configHash)
 	if err != nil {
 		return deployment.Params{}, err
@@ -381,7 +382,7 @@ func (r *ReconcileMapsServer) deploymentParams(ems emsv1alpha1.ElasticMapsServer
 	}, nil
 }
 
-func (r *ReconcileMapsServer) getStatus(ctx context.Context, ems emsv1alpha1.ElasticMapsServer, deploy appsv1.Deployment) (emsv1alpha1.MapsStatus, error) {
+func (r *ReconcileMapsServer[T]) getStatus(ctx context.Context, ems emsv1alpha1.ElasticMapsServer, deploy appsv1.Deployment) (emsv1alpha1.MapsStatus, error) {
 	status := newStatus(ems)
 	pods, err := k8s.PodsMatchingLabels(r.K8sClient(), ems.Namespace, map[string]string{NameLabelName: ems.Name})
 	if err != nil {
@@ -397,7 +398,7 @@ func (r *ReconcileMapsServer) getStatus(ctx context.Context, ems emsv1alpha1.Ela
 	return status, nil
 }
 
-func (r *ReconcileMapsServer) updateStatus(ctx context.Context, ems emsv1alpha1.ElasticMapsServer, status emsv1alpha1.MapsStatus) error {
+func (r *ReconcileMapsServer[T]) updateStatus(ctx context.Context, ems emsv1alpha1.ElasticMapsServer, status emsv1alpha1.MapsStatus) error {
 	if reflect.DeepEqual(status, ems.Status) {
 		return nil // nothing to do
 	}
@@ -414,7 +415,7 @@ func (r *ReconcileMapsServer) updateStatus(ctx context.Context, ems emsv1alpha1.
 	return common.UpdateStatus(ctx, r.Client, &ems)
 }
 
-func (r *ReconcileMapsServer) onDelete(ctx context.Context, obj types.NamespacedName) error {
+func (r *ReconcileMapsServer[T]) onDelete(ctx context.Context, obj types.NamespacedName) error {
 	// Clean up watches set on custom http tls certificates
 	r.dynamicWatches.Secrets.RemoveHandlerForKey(certificates.CertificateWatchKey(EMSNamer, obj.Name))
 	// same for the configRef secret

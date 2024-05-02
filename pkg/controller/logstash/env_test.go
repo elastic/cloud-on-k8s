@@ -11,6 +11,7 @@ import (
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	commonv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/common/v1"
 	logstashv1alpha1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/logstash/v1alpha1"
@@ -32,7 +33,7 @@ func Test_getEnvVars(t *testing.T) {
 		},
 	}
 
-	params := Params{
+	params := Params[client.Object]{
 		Logstash: logstashv1alpha1.Logstash{
 			Spec: logstashv1alpha1.LogstashSpec{
 				ElasticsearchRefs: []logstashv1alpha1.ElasticsearchCluster{
@@ -49,13 +50,13 @@ func Test_getEnvVars(t *testing.T) {
 
 	for _, tt := range []struct {
 		name          string
-		params        Params
+		params        Params[client.Object]
 		setAssocConfs func(assocs []commonv1.Association)
 		wantEnvs      []corev1.EnvVar
 	}{
 		{
 			name: "no es ref",
-			params: Params{
+			params: Params[client.Object]{
 				Logstash: logstashv1alpha1.Logstash{
 					Spec: logstashv1alpha1.LogstashSpec{},
 				},

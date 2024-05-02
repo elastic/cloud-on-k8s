@@ -35,7 +35,7 @@ const (
 // Beats are configured to collect monitoring metrics and logs data of the associated Elasticsearch and send
 // them to the Elasticsearch referenced in the association.
 func AddEsMonitoring(mgr manager.Manager, accessReviewer rbac.AccessReviewer, params operator.Parameters) error {
-	return association.AddAssociationController(mgr, accessReviewer, params, esMonitoringAssociationInfo())
+	return association.AddAssociationController[client.Object](mgr, accessReviewer, params, esMonitoringAssociationInfo())
 }
 
 func esMonitoringAssociationInfo() association.AssociationInfo {

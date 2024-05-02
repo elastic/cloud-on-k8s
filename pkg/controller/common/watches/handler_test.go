@@ -17,6 +17,7 @@ import (
 	"k8s.io/client-go/kubernetes/scheme"
 	"k8s.io/client-go/restmapper"
 	"k8s.io/client-go/util/workqueue"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	"sigs.k8s.io/controller-runtime/pkg/event"
 	"sigs.k8s.io/controller-runtime/pkg/handler"
@@ -25,38 +26,38 @@ import (
 	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/k8s"
 )
 
-type fakeHandler struct {
+type fakeHandler[T client.Object] struct {
 	name    string
-	handler handler.EventHandler
+	handler handler.TypedEventHandler[T]
 }
 
-func (t fakeHandler) Key() string {
+func (t fakeHandler[T]) Key() string {
 	return t.name
 }
 
-func (t fakeHandler) EventHandler() handler.EventHandler {
+func (t fakeHandler[T]) EventHandler() handler.TypedEventHandler[T] {
 	return t.handler
 }
 
-var _ HandlerRegistration = &fakeHandler{}
+var _ HandlerRegistration[client.Object] = &fakeHandler[client.Object]{}
 
 func TestDynamicEnqueueRequest_AddHandler(t *testing.T) {
 	tests := []struct {
 		name               string
-		args               HandlerRegistration
+		args               HandlerRegistration[client.Object]
 		wantErr            bool
 		registeredHandlers int
 	}{
 		{
 			name:               "registers the given handler with no error",
-			args:               &fakeHandler{},
+			args:               &fakeHandler[client.Object]{},
 			wantErr:            false,
 			registeredHandlers: 1,
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			d := NewDynamicEnqueueRequest()
+			d := NewDynamicEnqueueRequest[client.Object]()
 			if err := d.AddHandler(tt.args); (err != nil) != tt.wantErr {
 				t.Errorf("DynamicEnqueueRequest.AddHandler() error = %v, wantErr %v", err, tt.wantErr)
 			}
@@ -68,30 +69,30 @@ func TestDynamicEnqueueRequest_AddHandler(t *testing.T) {
 func TestDynamicEnqueueRequest_RemoveHandler(t *testing.T) {
 	tests := []struct {
 		name               string
-		setup              func(handler *DynamicEnqueueRequest)
-		args               HandlerRegistration
+		setup              func(handler *DynamicEnqueueRequest[client.Object])
+		args               HandlerRegistration[client.Object]
 		registeredHandlers int
 	}{
 		{
 			name: "removal on empty handler is a NOOP",
-			args: &fakeHandler{},
+			args: &fakeHandler[client.Object]{},
 		},
 		{
 			name: "succeed on initialized handler",
-			args: &fakeHandler{},
-			setup: func(handler *DynamicEnqueueRequest) {
-				assert.NoError(t, handler.AddHandler(&fakeHandler{}))
+			args: &fakeHandler[client.Object]{},
+			setup: func(handler *DynamicEnqueueRequest[client.Object]) {
+				assert.NoError(t, handler.AddHandler(&fakeHandler[client.Object]{}))
 				assert.Equal(t, len(handler.registrations), 1)
 			},
 			registeredHandlers: 0,
 		},
 		{
 			name: "uses key to identify transformer",
-			args: &fakeHandler{
+			args: &fakeHandler[client.Object]{
 				name: "bar",
 			},
-			setup: func(handler *DynamicEnqueueRequest) {
-				assert.NoError(t, handler.AddHandler(&fakeHandler{
+			setup: func(handler *DynamicEnqueueRequest[client.Object]) {
+				assert.NoError(t, handler.AddHandler(&fakeHandler[client.Object]{
 					name: "foo",
 				}))
 				assert.Equal(t, len(handler.registrations), 1)
@@ -101,7 +102,7 @@ func TestDynamicEnqueueRequest_RemoveHandler(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			d := NewDynamicEnqueueRequest()
+			d := NewDynamicEnqueueRequest[client.Object]()
 			if tt.setup != nil {
 				tt.setup(d)
 			}
@@ -138,7 +139,7 @@ func TestDynamicEnqueueRequest_EventHandler(t *testing.T) {
 		Name:      "watcher",
 	}
 
-	d := NewDynamicEnqueueRequest()
+	d := NewDynamicEnqueueRequest[client.Object]()
 	// require.NoError(t, d.InjectMapper(getRESTMapper()))
 	q := workqueue.NewRateLimitingQueue(workqueue.DefaultControllerRateLimiter())
 
@@ -166,7 +167,7 @@ func TestDynamicEnqueueRequest_EventHandler(t *testing.T) {
 	assertEmptyQueue()
 
 	// Add a watch for the first object
-	require.NoError(t, d.AddHandler(NamedWatch{
+	require.NoError(t, d.AddHandler(NamedWatch[client.Object]{
 		Watched: []types.NamespacedName{nsn1},
 		Watcher: watching,
 		Name:    "test-watch-1",
@@ -206,7 +207,7 @@ func TestDynamicEnqueueRequest_EventHandler(t *testing.T) {
 	assertEmptyQueue()
 
 	// register a second watch for the second object
-	require.NoError(t, d.AddHandler(NamedWatch{
+	require.NoError(t, d.AddHandler(NamedWatch[client.Object]{
 		Watched: []types.NamespacedName{nsn2},
 		Watcher: watching,
 		Name:    "test-watch-2",
@@ -240,7 +241,7 @@ func TestDynamicEnqueueRequest_EventHandler(t *testing.T) {
 	assertReconcileReq(watching)
 
 	// let's combine both objects in a single watch
-	require.NoError(t, d.AddHandler(NamedWatch{
+	require.NoError(t, d.AddHandler(NamedWatch[client.Object]{
 		Name:    "test-watch-1",
 		Watched: []types.NamespacedName{nsn1, nsn2},
 		Watcher: watching,
@@ -261,7 +262,7 @@ func TestDynamicEnqueueRequest_EventHandler(t *testing.T) {
 	assertReconcileReq(watching)
 
 	// going back to watching object 1 only
-	require.NoError(t, d.AddHandler(NamedWatch{
+	require.NoError(t, d.AddHandler(NamedWatch[client.Object]{
 		Watched: []types.NamespacedName{nsn1},
 		Watcher: watching,
 		Name:    "test-watch-1",
@@ -269,7 +270,7 @@ func TestDynamicEnqueueRequest_EventHandler(t *testing.T) {
 	assertEmptyQueue()
 
 	// setup an owner watch where owner is testObject1
-	require.NoError(t, d.AddHandler(&OwnerWatch{
+	require.NoError(t, d.AddHandler(&OwnerWatch[client.Object]{
 		Scheme:       scheme.Scheme,
 		Mapper:       getRESTMapper(),
 		OwnerType:    testObject1,
@@ -299,7 +300,7 @@ func TestDynamicEnqueueRequest_EventHandler(t *testing.T) {
 	// it's possible to have both an owner watch and a named watch triggered
 	// for a single event
 	// add a named watch on object 2
-	require.NoError(t, d.AddHandler(NamedWatch{
+	require.NoError(t, d.AddHandler(NamedWatch[client.Object]{
 		Watched: []types.NamespacedName{nsn2},
 		Watcher: watching,
 		Name:    "test-watch-2",
@@ -341,7 +342,7 @@ func TestDynamicEnqueueRequest_OwnerWatch(t *testing.T) {
 	updated2 := testObject2
 	updated2.Labels = map[string]string{"updated": "2"}
 
-	d := NewDynamicEnqueueRequest()
+	d := NewDynamicEnqueueRequest[client.Object]()
 	q := workqueue.NewRateLimitingQueue(workqueue.DefaultControllerRateLimiter())
 
 	assertEmptyQueue := func() {
@@ -361,7 +362,7 @@ func TestDynamicEnqueueRequest_OwnerWatch(t *testing.T) {
 
 	assertEmptyQueue()
 	// setup an owner watch where owner is testObject1
-	require.NoError(t, d.AddHandler(&OwnerWatch{
+	require.NoError(t, d.AddHandler(&OwnerWatch[client.Object]{
 		OwnerType:    testObject1,
 		IsController: true,
 		Scheme:       scheme.Scheme,

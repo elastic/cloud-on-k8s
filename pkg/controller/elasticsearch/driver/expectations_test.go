@@ -11,6 +11,7 @@ import (
 	"github.com/stretchr/testify/require"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/utils/ptr"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	esv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/elasticsearch/v1"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/expectations"
@@ -19,16 +20,16 @@ import (
 )
 
 func Test_defaultDriver_expectationSatisfied(t *testing.T) {
-	client := k8s.NewFakeClient()
+	clnt := k8s.NewFakeClient()
 	es := esv1.Elasticsearch{
 		ObjectMeta: metav1.ObjectMeta{
 			Namespace: "ns",
 			Name:      "cluster",
 		},
 	}
-	d := &defaultDriver{DefaultDriverParameters{
-		Expectations: expectations.NewExpectations(client),
-		Client:       client,
+	d := &defaultDriver[client.Object]{DefaultDriverParameters[client.Object]{
+		Expectations: expectations.NewExpectations(clnt),
+		Client:       clnt,
 		ES:           es,
 	}}
 	ctx := context.Background()
@@ -45,21 +46,21 @@ func Test_defaultDriver_expectationSatisfied(t *testing.T) {
 	d.Expectations.ExpectGeneration(statefulSet)
 	// but not satisfied yet
 	statefulSet.Generation = 122
-	require.NoError(t, client.Create(context.Background(), &statefulSet))
+	require.NoError(t, clnt.Create(context.Background(), &statefulSet))
 	satisfied, reason, err = d.expectationsSatisfied(ctx)
 	require.NoError(t, err)
 	require.False(t, satisfied)
 	require.NotEqual(t, "", reason)
 	// satisfied now, but not from the StatefulSet controller point of view (status.observedGeneration)
 	statefulSet.Generation = 123
-	require.NoError(t, client.Update(context.Background(), &statefulSet))
+	require.NoError(t, clnt.Update(context.Background(), &statefulSet))
 	satisfied, reason, err = d.expectationsSatisfied(ctx)
 	require.NoError(t, err)
 	require.False(t, satisfied)
 	require.NotEqual(t, "", reason)
 	// satisfied now, with matching status.observedGeneration
 	statefulSet.Status.ObservedGeneration = 123
-	require.NoError(t, client.Status().Update(context.Background(), &statefulSet))
+	require.NoError(t, clnt.Status().Update(context.Background(), &statefulSet))
 	satisfied, reason, err = d.expectationsSatisfied(ctx)
 	require.NoError(t, err)
 	require.True(t, satisfied)
@@ -68,7 +69,7 @@ func Test_defaultDriver_expectationSatisfied(t *testing.T) {
 	// we expect some sset replicas to exist
 	// but corresponding pod does not exist yet
 	statefulSet.Spec.Replicas = ptr.To[int32](1)
-	require.NoError(t, client.Update(context.Background(), &statefulSet))
+	require.NoError(t, clnt.Update(context.Background(), &statefulSet))
 	// expectations should not be satisfied: we miss a pod
 	satisfied, reason, err = d.expectationsSatisfied(ctx)
 	require.NoError(t, err)
@@ -77,7 +78,7 @@ func Test_defaultDriver_expectationSatisfied(t *testing.T) {
 
 	// add the missing pod
 	pod := sset.TestPod{Namespace: es.Namespace, Name: "sset-0", StatefulSetName: statefulSet.Name}.Build()
-	require.NoError(t, client.Create(context.Background(), &pod))
+	require.NoError(t, clnt.Create(context.Background(), &pod))
 	// expectations should be satisfied
 	satisfied, reason, err = d.expectationsSatisfied(ctx)
 	require.NoError(t, err)

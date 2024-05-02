@@ -38,12 +38,12 @@ const (
 )
 
 // Params are a set of parameters used during internal reconciliation of Elastic Agents.
-type Params struct {
+type Params[T client.Object] struct {
 	Context context.Context
 
 	Client        k8s.Client
 	EventRecorder record.EventRecorder
-	Watches       watches.DynamicWatches[client.Object]
+	Watches       watches.DynamicWatches[T]
 
 	Agent  agentv1alpha1.Agent
 	Status agentv1alpha1.AgentStatus
@@ -52,22 +52,22 @@ type Params struct {
 }
 
 // K8sClient returns the Kubernetes client.
-func (p Params) K8sClient() k8s.Client {
+func (p Params[T]) K8sClient() k8s.Client {
 	return p.Client
 }
 
 // Recorder returns the Kubernetes event recorder.
-func (p Params) Recorder() record.EventRecorder {
+func (p Params[T]) Recorder() record.EventRecorder {
 	return p.EventRecorder
 }
 
 // DynamicWatches returns the set of stateful dynamic watches used during reconciliation.
-func (p Params) DynamicWatches() watches.DynamicWatches[client.Object] {
+func (p Params[T]) DynamicWatches() watches.DynamicWatches[T] {
 	return p.Watches
 }
 
 // GetPodTemplate returns the configured pod template for the associated Elastic Agent.
-func (p *Params) GetPodTemplate() corev1.PodTemplateSpec {
+func (p *Params[T]) GetPodTemplate() corev1.PodTemplateSpec {
 	switch {
 	case p.Agent.Spec.DaemonSet != nil:
 		return p.Agent.Spec.DaemonSet.PodTemplate
@@ -79,7 +79,7 @@ func (p *Params) GetPodTemplate() corev1.PodTemplateSpec {
 }
 
 // Logger returns the configured logger for use during reconciliation.
-func (p *Params) Logger() logr.Logger {
+func (p *Params[T]) Logger() logr.Logger {
 	return log.FromContext(p.Context)
 }
 
@@ -89,7 +89,7 @@ func newStatus(agent agentv1alpha1.Agent) agentv1alpha1.AgentStatus {
 	return status
 }
 
-func internalReconcile(params Params) (*reconciler.Results, agentv1alpha1.AgentStatus) {
+func internalReconcile[T client.Object](params Params[T]) (*reconciler.Results, agentv1alpha1.AgentStatus) {
 	defer tracing.Span(&params.Context)()
 	results := reconciler.NewResult(params.Context)
 
@@ -114,7 +114,7 @@ func internalReconcile(params Params) (*reconciler.Results, agentv1alpha1.AgentS
 	var fleetCerts *certificates.CertificatesSecret
 	if params.Agent.Spec.FleetServerEnabled && params.Agent.Spec.HTTP.TLS.Enabled() {
 		var caResults *reconciler.Results
-		fleetCerts, caResults = certificates.Reconciler{
+		fleetCerts, caResults = certificates.Reconciler[T]{
 			K8sClient:                   params.Client,
 			DynamicWatches:              params.Watches,
 			Owner:                       &params.Agent,
@@ -162,7 +162,7 @@ func internalReconcile(params Params) (*reconciler.Results, agentv1alpha1.AgentS
 	return reconcilePodVehicle(params, podTemplate)
 }
 
-func reconcileService(params Params) (*corev1.Service, error) {
+func reconcileService[T client.Object](params Params[T]) (*corev1.Service, error) {
 	svc := newService(params.Agent)
 
 	// setup Service only when Fleet Server is enabled

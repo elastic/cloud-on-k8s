@@ -7,6 +7,7 @@ package logstash
 import (
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	logstashv1alpha1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/logstash/v1alpha1"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/certificates"
@@ -65,7 +66,7 @@ echo "Logstash configuration successfully prepared."
 // This copies tls.crt, tls.key, ca.crt from Secret http-certs-internal, and creates symlinks
 // for openssl to create keystore. Logstash API server (puma jruby) only supports p12 and java keystore
 // This enables API server supports https
-func initConfigContainer(params Params) corev1.Container {
+func initConfigContainer[T client.Object](params Params[T]) corev1.Container {
 	ls := params.Logstash
 	privileged := false
 

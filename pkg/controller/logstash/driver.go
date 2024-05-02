@@ -14,6 +14,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/client-go/tools/record"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	logstashv1alpha1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/logstash/v1alpha1"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/certificates"
@@ -35,12 +36,12 @@ import (
 )
 
 // Params are a set of parameters used during internal reconciliation of Logstash.
-type Params struct {
+type Params[T client.Object] struct {
 	Context context.Context
 
 	Client        k8s.Client
 	EventRecorder record.EventRecorder
-	Watches       watches.DynamicWatches
+	Watches       watches.DynamicWatches[T]
 
 	Logstash logstashv1alpha1.Logstash
 	Status   logstashv1alpha1.LogstashStatus
@@ -55,27 +56,27 @@ type Params struct {
 }
 
 // K8sClient returns the Kubernetes client.
-func (p Params) K8sClient() k8s.Client {
+func (p Params[T]) K8sClient() k8s.Client {
 	return p.Client
 }
 
 // Recorder returns the Kubernetes event recorder.
-func (p Params) Recorder() record.EventRecorder {
+func (p Params[T]) Recorder() record.EventRecorder {
 	return p.EventRecorder
 }
 
 // DynamicWatches returns the set of stateful dynamic watches used during reconciliation.
-func (p Params) DynamicWatches() watches.DynamicWatches {
+func (p Params[T]) DynamicWatches() watches.DynamicWatches[T] {
 	return p.Watches
 }
 
 // GetPodTemplate returns the configured pod template for the associated Elastic Logstash.
-func (p *Params) GetPodTemplate() corev1.PodTemplateSpec {
+func (p *Params[T]) GetPodTemplate() corev1.PodTemplateSpec {
 	return p.Logstash.Spec.PodTemplate
 }
 
 // Logger returns the configured logger for use during reconciliation.
-func (p *Params) Logger() logr.Logger {
+func (p *Params[T]) Logger() logr.Logger {
 	return log.FromContext(p.Context)
 }
 
@@ -85,7 +86,7 @@ func newStatus(logstash logstashv1alpha1.Logstash) logstashv1alpha1.LogstashStat
 	return status
 }
 
-func internalReconcile(params Params) (*reconciler.Results, logstashv1alpha1.LogstashStatus) {
+func internalReconcile[T client.Object](params Params[T]) (*reconciler.Results, logstashv1alpha1.LogstashStatus) {
 	defer tracing.Span(&params.Context)()
 	results := reconciler.NewResult(params.Context)
 
@@ -102,7 +103,7 @@ func internalReconcile(params Params) (*reconciler.Results, logstashv1alpha1.Log
 
 	apiSvcTLS := params.Logstash.APIServerTLSOptions()
 
-	_, results = certificates.Reconciler{
+	_, results = certificates.Reconciler[T]{
 		K8sClient:             params.Client,
 		DynamicWatches:        params.Watches,
 		Owner:                 &params.Logstash,
@@ -157,7 +158,7 @@ func internalReconcile(params Params) (*reconciler.Results, logstashv1alpha1.Log
 
 // expectationsSatisfied checks that resources in our local cache match what we expect.
 // If not, it's safer to not move on with StatefulSets and Pods reconciliation.
-func (p *Params) expectationsSatisfied(ctx context.Context) (bool, string, error) {
+func (p *Params[T]) expectationsSatisfied(ctx context.Context) (bool, string, error) {
 	log := ulog.FromContext(ctx)
 	// make sure the cache is up-to-date
 	expectationsOK, reason, err := p.Expectations.Satisfied()
@@ -194,7 +195,7 @@ func isPendingReconciliation(sset appsv1.StatefulSet) bool {
 	return sset.Generation != sset.Status.ObservedGeneration
 }
 
-func ensureSTSNameLabelIsSetOnPods(params Params) error {
+func ensureSTSNameLabelIsSetOnPods[T client.Object](params Params[T]) error {
 	sts, err := retrieveActualStatefulSet(params.Client, params.Logstash)
 	if apierrors.IsNotFound(err) {
 		// maybe the sts doesn't exist yet or was deleted, let it be (re)created

@@ -33,7 +33,7 @@ const (
 )
 
 func AddLogstashES(mgr manager.Manager, accessReviewer rbac.AccessReviewer, params operator.Parameters) error {
-	return association.AddAssociationController(mgr, accessReviewer, params, association.AssociationInfo{
+	return association.AddAssociationController[client.Object](mgr, accessReviewer, params, association.AssociationInfo{
 		AssociationType:           commonv1.ElasticsearchAssociationType,
 		AssociatedObjTemplate:     func() commonv1.Associated { return &logstashv1alpha1.Logstash{} },
 		ReferencedObjTemplate:     func() client.Object { return &esv1.Elasticsearch{} },

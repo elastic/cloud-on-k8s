@@ -30,7 +30,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/pointer"
 )
 
-func reconcilePodVehicle(params Params, podTemplate corev1.PodTemplateSpec) (*reconciler.Results, agentv1alpha1.AgentStatus) {
+func reconcilePodVehicle[T client.Object](params Params[T], podTemplate corev1.PodTemplateSpec) (*reconciler.Results, agentv1alpha1.AgentStatus) {
 	defer tracing.Span(&params.Context)()
 	results := reconciler.NewResult(params.Context)
 
@@ -202,7 +202,7 @@ type ReconciliationParams struct {
 
 // calculateStatus will calculate a new status from the state of the pods within the k8s cluster
 // and will return any error encountered.
-func calculateStatus(params *Params, ready, desired int32) (agentv1alpha1.AgentStatus, error) {
+func calculateStatus[T client.Object](params *Params[T], ready, desired int32) (agentv1alpha1.AgentStatus, error) {
 	agent := params.Agent
 	status := params.Status
 

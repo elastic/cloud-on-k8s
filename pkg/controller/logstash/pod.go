@@ -15,6 +15,7 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/intstr"
 	"k8s.io/utils/ptr"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	commonv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/common/v1"
 	logstashv1alpha1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/logstash/v1alpha1"
@@ -57,7 +58,7 @@ var (
 	}
 )
 
-func buildPodTemplate(params Params, configHash hash.Hash32) (corev1.PodTemplateSpec, error) {
+func buildPodTemplate[T client.Object](params Params[T], configHash hash.Hash32) (corev1.PodTemplateSpec, error) {
 	defer tracing.Span(&params.Context)()
 	spec := &params.Logstash.Spec
 	builder := defaults.NewPodTemplateBuilder(params.GetPodTemplate(), logstashv1alpha1.LogstashContainerName)
@@ -131,7 +132,7 @@ func getDefaultContainerPorts() []corev1.ContainerPort {
 }
 
 // readinessProbe is the readiness probe for the Logstash container
-func readinessProbe(params Params) corev1.Probe {
+func readinessProbe[T client.Object](params Params[T]) corev1.Probe {
 	logstash := params.Logstash
 
 	var scheme = corev1.URISchemeHTTP
@@ -166,7 +167,7 @@ func readinessProbe(params Params) corev1.Probe {
 
 // getHTTPHeaders when api.auth.type is set, take api.auth.basic.username and api.auth.basic.password from logstash.yml
 // to build Authorization header
-func getHTTPHeaders(params Params) []corev1.HTTPHeader {
+func getHTTPHeaders[T client.Object](params Params[T]) []corev1.HTTPHeader {
 	if strings.ToLower(params.APIServerConfig.AuthType) != "basic" {
 		return nil
 	}
@@ -178,7 +179,7 @@ func getHTTPHeaders(params Params) []corev1.HTTPHeader {
 	return []corev1.HTTPHeader{authHeader}
 }
 
-func getEsAssociations(params Params) []commonv1.Association {
+func getEsAssociations[T client.Object](params Params[T]) []commonv1.Association {
 	var esAssociations []commonv1.Association
 
 	for _, assoc := range params.Logstash.GetAssociations() {
@@ -189,7 +190,7 @@ func getEsAssociations(params Params) []commonv1.Association {
 	return esAssociations
 }
 
-func writeEsAssocToConfigHash(params Params, esAssociations []commonv1.Association, configHash hash.Hash) error {
+func writeEsAssocToConfigHash[T client.Object](params Params[T], esAssociations []commonv1.Association, configHash hash.Hash) error {
 	if esAssociations == nil {
 		return nil
 	}
@@ -201,7 +202,7 @@ func writeEsAssocToConfigHash(params Params, esAssociations []commonv1.Associati
 	)
 }
 
-func getHTTPSInternalCertsSecret(params Params) (corev1.Secret, error) {
+func getHTTPSInternalCertsSecret[T client.Object](params Params[T]) (corev1.Secret, error) {
 	var httpCerts corev1.Secret
 
 	err := params.Client.Get(params.Context, types.NamespacedName{
@@ -217,7 +218,7 @@ func getHTTPSInternalCertsSecret(params Params) (corev1.Secret, error) {
 }
 
 // writeHTTPSCertsToConfigHash fetches the http-certs-internal secret and adds the content of tls.crt to checksum
-func writeHTTPSCertsToConfigHash(params Params, configHash hash.Hash) error {
+func writeHTTPSCertsToConfigHash[T client.Object](params Params[T], configHash hash.Hash) error {
 	if params.APIServerConfig.UseTLS() {
 		httpCerts, err := getHTTPSInternalCertsSecret(params)
 		if err != nil {

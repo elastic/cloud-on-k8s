@@ -35,7 +35,7 @@ func TestReconcileApmServer_doReconcile(t *testing.T) {
 	type fields struct {
 		resources      []client.Object
 		recorder       record.EventRecorder
-		dynamicWatches watches.DynamicWatches
+		dynamicWatches watches.DynamicWatches[client.Object]
 		Parameters     operator.Parameters
 	}
 	tests := []struct {
@@ -59,7 +59,7 @@ func TestReconcileApmServer_doReconcile(t *testing.T) {
 			fields: fields{
 				resources:      []client.Object{},
 				recorder:       record.NewFakeRecorder(100),
-				dynamicWatches: watches.NewDynamicWatches(),
+				dynamicWatches: watches.NewDynamicWatches[client.Object](),
 				Parameters: operator.Parameters{
 					CACertRotation: certificates.RotationParams{
 						Validity:     certificates.DefaultCertValidity,
@@ -83,7 +83,7 @@ func TestReconcileApmServer_doReconcile(t *testing.T) {
 			fields: fields{
 				resources:      []client.Object{},
 				recorder:       record.NewFakeRecorder(100),
-				dynamicWatches: watches.NewDynamicWatches(),
+				dynamicWatches: watches.NewDynamicWatches[client.Object](),
 				Parameters:     operator.Parameters{},
 			},
 			wantErr: true,
@@ -91,7 +91,7 @@ func TestReconcileApmServer_doReconcile(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			r := &ReconcileApmServer{
+			r := &ReconcileApmServer[client.Object]{
 				Client:         k8s.NewFakeClient(&tt.as),
 				recorder:       tt.fields.recorder,
 				dynamicWatches: tt.fields.dynamicWatches,
@@ -448,10 +448,10 @@ func TestReconcileApmServer_Reconcile(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			r := &ReconcileApmServer{
+			r := &ReconcileApmServer[client.Object]{
 				Client:         tt.fields.Client,
 				recorder:       record.NewFakeRecorder(100),
-				dynamicWatches: watches.NewDynamicWatches(),
+				dynamicWatches: watches.NewDynamicWatches[client.Object](),
 				Parameters:     operator.Parameters{},
 			}
 			got, err := r.Reconcile(context.Background(), tt.args.request)

@@ -21,25 +21,25 @@ import (
 	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/k8s"
 )
 
-type fakeDriver struct {
+type fakeDriver[T client.Object] struct {
 	client   k8s.Client
-	watches  watches.DynamicWatches
+	watches  watches.DynamicWatches[T]
 	recorder record.EventRecorder
 }
 
-func (f fakeDriver) K8sClient() k8s.Client {
+func (f fakeDriver[T]) K8sClient() k8s.Client {
 	return f.client
 }
 
-func (f fakeDriver) DynamicWatches() watches.DynamicWatches {
+func (f fakeDriver[T]) DynamicWatches() watches.DynamicWatches[T] {
 	return f.watches
 }
 
-func (f fakeDriver) Recorder() record.EventRecorder {
+func (f fakeDriver[T]) Recorder() record.EventRecorder {
 	return f.recorder
 }
 
-var _ driver.Interface = fakeDriver{}
+var _ driver.Interface[client.Object] = fakeDriver[client.Object]{}
 
 func TestParseConfigRef(t *testing.T) {
 	// any resource Kind would work here (eg. Beat, EnterpriseSearch, etc.)
@@ -159,11 +159,11 @@ func TestParseConfigRef(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			fakeRecorder := record.NewFakeRecorder(10)
-			w := watches.NewDynamicWatches()
+			w := watches.NewDynamicWatches[client.Object]()
 			for _, existingWatch := range tt.existingWatches {
-				require.NoError(t, w.Secrets.AddHandler(watches.NamedWatch{Name: existingWatch}))
+				require.NoError(t, w.Secrets.AddHandler(watches.NamedWatch[*corev1.Secret]{Name: existingWatch}))
 			}
-			d := fakeDriver{
+			d := fakeDriver[client.Object]{
 				client:   k8s.NewFakeClient(tt.runtimeObjs...),
 				watches:  w,
 				recorder: fakeRecorder,

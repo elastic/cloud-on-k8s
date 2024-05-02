@@ -273,8 +273,8 @@ func TestReconcile(t *testing.T) {
 				}
 			}
 
-			r := &ReconcileElasticsearchAutoscaler{
-				Watches: watches.NewDynamicWatches(),
+			r := &ReconcileElasticsearchAutoscaler[client.Object]{
+				Watches: watches.NewDynamicWatches[client.Object](),
 				baseReconcileAutoscaling: baseReconcileAutoscaling{
 					Client:           k8sClient,
 					esClientProvider: tt.fields.EsClient.newFakeElasticsearchClient,

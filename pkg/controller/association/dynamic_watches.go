@@ -58,7 +58,7 @@ func (r *Reconciler[T]) reconcileWatches(ctx context.Context, associated types.N
 
 	// we have 2 modes (exclusive) for the referenced resource: managed or not managed by ECK and referencedResourceWatchName is shared between both.
 	// either watch the referenced resource managed by ECK
-	if err := ReconcileWatch[T](associated, managedElasticRef, r.watches.ReferencedResources, referencedResourceWatchName(associated), func(association commonv1.Association) types.NamespacedName {
+	if err := ReconcileWatch[client.Object](associated, managedElasticRef, r.watches.ReferencedResources, referencedResourceWatchName(associated), func(association commonv1.Association) types.NamespacedName {
 		return association.AssociationRef().NamespacedName()
 	}); err != nil {
 		return err

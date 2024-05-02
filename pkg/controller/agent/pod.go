@@ -19,6 +19,7 @@ import (
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	agentv1alpha1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/agent/v1alpha1"
 	commonv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/common/v1"
@@ -122,7 +123,7 @@ var (
 	}
 )
 
-func buildPodTemplate(params Params, fleetCerts *certificates.CertificatesSecret, fleetToken EnrollmentAPIKey, configHash hash.Hash32) (corev1.PodTemplateSpec, error) {
+func buildPodTemplate[T client.Object](params Params[T], fleetCerts *certificates.CertificatesSecret, fleetToken EnrollmentAPIKey, configHash hash.Hash32) (corev1.PodTemplateSpec, error) {
 	defer tracing.Span(&params.Context)()
 	spec := &params.Agent.Spec
 	builder := defaults.NewPodTemplateBuilder(params.GetPodTemplate(), ContainerName)
@@ -194,7 +195,7 @@ func buildPodTemplate(params Params, fleetCerts *certificates.CertificatesSecret
 	return builder.PodTemplate, nil
 }
 
-func amendBuilderForFleetMode(params Params, fleetCerts *certificates.CertificatesSecret, fleetToken EnrollmentAPIKey, builder *defaults.PodTemplateBuilder, configHash hash.Hash) (*defaults.PodTemplateBuilder, error) {
+func amendBuilderForFleetMode[T client.Object](params Params[T], fleetCerts *certificates.CertificatesSecret, fleetToken EnrollmentAPIKey, builder *defaults.PodTemplateBuilder, configHash hash.Hash) (*defaults.PodTemplateBuilder, error) {
 	esAssociation, err := getRelatedEsAssoc(params)
 	if err != nil {
 		return nil, err
@@ -239,7 +240,7 @@ func amendBuilderForFleetMode(params Params, fleetCerts *certificates.Certificat
 	return builder, nil
 }
 
-func applyEnvVars(params Params, fleetToken EnrollmentAPIKey, certs *certificates.CertificatesSecret, builder *defaults.PodTemplateBuilder) (*defaults.PodTemplateBuilder, error) {
+func applyEnvVars[T client.Object](params Params[T], fleetToken EnrollmentAPIKey, certs *certificates.CertificatesSecret, builder *defaults.PodTemplateBuilder) (*defaults.PodTemplateBuilder, error) {
 	fleetModeEnvVars, err := getFleetModeEnvVars(params.Context, params.Agent, params.Client, fleetToken, certs)
 	if err != nil {
 		return nil, err
@@ -290,7 +291,7 @@ func applyEnvVars(params Params, fleetToken EnrollmentAPIKey, certs *certificate
 	return builder, nil
 }
 
-func getRelatedEsAssoc(params Params) (commonv1.Association, error) {
+func getRelatedEsAssoc[T client.Object](params Params[T]) (commonv1.Association, error) {
 	var esAssociation commonv1.Association
 	//nolint:nestif
 	if params.Agent.Spec.FleetServerEnabled {
@@ -390,7 +391,7 @@ func runningContainerAsRoot(podTemplate corev1.PodTemplateSpec) bool {
 	return false
 }
 
-func writeEsAssocToConfigHash(params Params, esAssociation commonv1.Association, configHash hash.Hash) error {
+func writeEsAssocToConfigHash[T client.Object](params Params[T], esAssociation commonv1.Association, configHash hash.Hash) error {
 	if esAssociation == nil || params.Agent.Spec.FleetServerEnabled {
 		return nil
 	}
@@ -449,7 +450,7 @@ fi
 `, caPath, ubiSharedCAPath, ubiUpdateCmd, debianSharedCAPath, debianUpdateCmd)
 }
 
-func createDataVolume(params Params) volume.VolumeLike {
+func createDataVolume[T client.Object](params Params[T]) volume.VolumeLike {
 	dataMountHostPath := fmt.Sprintf(DataMountHostPathTemplate, params.Agent.Namespace, params.Agent.Name)
 
 	return volume.NewHostVolume(
@@ -626,7 +627,7 @@ func secretSource(name, key string) *corev1.EnvVarSource {
 	}
 }
 
-func cleanupEnvVarsSecret(params Params) error {
+func cleanupEnvVarsSecret[T client.Object](params Params[T]) error {
 	var envVarsSecret corev1.Secret
 	if err := params.Client.Get(
 		params.Context,

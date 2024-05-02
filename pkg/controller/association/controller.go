@@ -20,18 +20,18 @@ import (
 )
 
 // AddAssociationController sets up and starts an association controller for the given associationInfo.
-func AddAssociationController(
+func AddAssociationController[T client.Object](
 	mgr manager.Manager,
 	accessReviewer rbac.AccessReviewer,
 	params operator.Parameters,
 	associationInfo AssociationInfo,
 ) error {
 	controllerName := associationInfo.AssociationName + "-association-controller"
-	r := &Reconciler[client.Object]{
+	r := &Reconciler[T]{
 		AssociationInfo: associationInfo,
 		Client:          mgr.GetClient(),
 		accessReviewer:  accessReviewer,
-		watches:         watches.NewDynamicWatches(),
+		watches:         watches.NewDynamicWatches[T](),
 		recorder:        mgr.GetEventRecorderFor(controllerName),
 		Parameters:      params,
 	}
@@ -42,7 +42,7 @@ func AddAssociationController(
 	return addWatches(mgr, c, r)
 }
 
-func addWatches(mgr manager.Manager, c controller.Controller, r *Reconciler[client.Object]) error {
+func addWatches[T client.Object](mgr manager.Manager, c controller.Controller, r *Reconciler[T]) error {
 	// Watch the associated resource (e.g. Kibana for a Kibana -> Elasticsearch association)
 	if err := c.Watch(source.Kind(mgr.GetCache(), r.AssociatedObjTemplate(), &handler.TypedEnqueueRequestForObject[commonv1.Associated]{})); err != nil {
 		return err

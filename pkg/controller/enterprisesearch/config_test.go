@@ -100,8 +100,8 @@ func Test_parseConfigRef(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			c := k8s.NewFakeClient(tt.secrets...)
-			w := watches.NewDynamicWatches()
-			driver := &ReconcileEnterpriseSearch{dynamicWatches: w, Client: c, recorder: record.NewFakeRecorder(10)}
+			w := watches.NewDynamicWatches[client.Object]()
+			driver := &ReconcileEnterpriseSearch[client.Object]{dynamicWatches: w, Client: c, recorder: record.NewFakeRecorder(10)}
 			got, err := parseConfigRef(driver, tt.ent)
 			if tt.wantErr {
 				require.Error(t, err)
@@ -569,10 +569,10 @@ func TestReconcileConfig(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			driver := &ReconcileEnterpriseSearch{
+			driver := &ReconcileEnterpriseSearch[client.Object]{
 				Client:         k8s.NewFakeClient(tt.runtimeObjs...),
 				recorder:       record.NewFakeRecorder(10),
-				dynamicWatches: watches.NewDynamicWatches(),
+				dynamicWatches: watches.NewDynamicWatches[client.Object](),
 			}
 
 			// secret metadata should be correct
@@ -751,10 +751,10 @@ secret_session_key: alreadysetsessionkey
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			driver := &ReconcileEnterpriseSearch{
+			driver := &ReconcileEnterpriseSearch[client.Object]{
 				Client:         k8s.NewFakeClient(tt.runtimeObjs...),
 				recorder:       record.NewFakeRecorder(10),
-				dynamicWatches: watches.NewDynamicWatches(),
+				dynamicWatches: watches.NewDynamicWatches[client.Object](),
 			}
 
 			got, err := ReconcileConfig(context.Background(), driver, tt.ent, corev1.IPv4Protocol)
@@ -885,10 +885,10 @@ func TestReconcileConfig_ReadinessProbe(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			driver := &ReconcileEnterpriseSearch{
+			driver := &ReconcileEnterpriseSearch[client.Object]{
 				Client:         k8s.NewFakeClient(tt.runtimeObjs...),
 				recorder:       record.NewFakeRecorder(10),
-				dynamicWatches: watches.NewDynamicWatches(),
+				dynamicWatches: watches.NewDynamicWatches[client.Object](),
 			}
 
 			got, err := ReconcileConfig(context.Background(), driver, tt.ent, tt.ipFamily)

@@ -9,6 +9,7 @@ import (
 
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/version"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/label"
@@ -105,8 +106,8 @@ func Test_lowestHighestSupportedVersions_VerifySupportsExistingPods(t *testing.T
 				Min: tt.fields.min,
 				Max: tt.fields.max,
 			}
-			d := defaultDriver{
-				DefaultDriverParameters{
+			d := defaultDriver[client.Object]{
+				DefaultDriverParameters[client.Object]{
 					SupportedVersions: lh,
 				},
 			}

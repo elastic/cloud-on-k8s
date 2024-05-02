@@ -25,11 +25,11 @@ import (
 	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/k8s"
 )
 
-func initDynamicWatches(watchNames ...string) watches.DynamicWatches {
+func initDynamicWatches(watchNames ...string) watches.DynamicWatches[client.Object] {
 	controllerscheme.SetupScheme()
-	w := watches.NewDynamicWatches()
+	w := watches.NewDynamicWatches[client.Object]()
 	for _, name := range watchNames {
-		_ = w.Secrets.AddHandler(watches.NamedWatch{
+		_ = w.Secrets.AddHandler(watches.NamedWatch[*corev1.Secret]{
 			Name: name,
 		})
 	}
@@ -89,7 +89,7 @@ func TestReconcileUserProvidedFileRealm(t *testing.T) {
 		es            esv1.Elasticsearch
 		secrets       []client.Object
 		existingRealm filerealm.Realm
-		watched       watches.DynamicWatches
+		watched       watches.DynamicWatches[client.Object]
 		wantWatched   []string
 		wantFileRealm filerealm.Realm
 		wantEvents    int
@@ -172,7 +172,7 @@ func TestReconcileUserProvidedRoles(t *testing.T) {
 		name        string
 		es          esv1.Elasticsearch
 		secrets     []client.Object
-		watched     watches.DynamicWatches
+		watched     watches.DynamicWatches[client.Object]
 		wantWatched []string
 		wantRoles   RolesFileContent
 		wantEvents  int

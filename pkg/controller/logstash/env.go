@@ -10,6 +10,7 @@ import (
 	"strings"
 
 	corev1 "k8s.io/api/core/v1"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	commonv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/common/v1"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/apis/logstash/v1alpha1"
@@ -18,7 +19,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/logstash/volume"
 )
 
-func buildEnv(params Params, esAssociations []commonv1.Association) ([]corev1.EnvVar, error) {
+func buildEnv[T client.Object](params Params[T], esAssociations []commonv1.Association) ([]corev1.EnvVar, error) {
 	var envs []corev1.EnvVar //nolint:prealloc
 	for _, assoc := range esAssociations {
 		assocConf, err := assoc.AssociationConf()

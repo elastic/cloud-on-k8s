@@ -12,6 +12,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/tools/record"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	commonv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/common/v1"
 	logstashv1alpha1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/logstash/v1alpha1"
@@ -99,11 +100,11 @@ func Test_buildPipeline(t *testing.T) {
 		},
 	} {
 		t.Run(tt.name, func(t *testing.T) {
-			params := Params{
+			params := Params[client.Object]{
 				Context:       context.Background(),
 				Client:        tt.client,
 				EventRecorder: &record.FakeRecorder{},
-				Watches:       watches.NewDynamicWatches(),
+				Watches:       watches.NewDynamicWatches[client.Object](),
 				Logstash: logstashv1alpha1.Logstash{
 					Spec: logstashv1alpha1.LogstashSpec{
 						Pipelines:    tt.pipelines,

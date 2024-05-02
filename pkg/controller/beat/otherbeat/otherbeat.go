@@ -17,8 +17,8 @@ type Driver[T client.Object] struct {
 	beatcommon.Driver
 }
 
-func NewDriver(params beatcommon.DriverParams[client.Object]) beatcommon.Driver {
-	return &Driver[client.Object]{DriverParams: params}
+func NewDriver[T client.Object](params beatcommon.DriverParams[T]) beatcommon.Driver {
+	return &Driver[T]{DriverParams: params}
 }
 
 func (d *Driver[T]) Reconcile() (*reconciler.Results, *beatv1beta1.BeatStatus) {

@@ -16,7 +16,7 @@ func NewDynamicWatches[T client.Object]() DynamicWatches[T] {
 		Secrets:             NewDynamicEnqueueRequest[*corev1.Secret](),
 		Services:            NewDynamicEnqueueRequest[*corev1.Service](),
 		Pods:                NewDynamicEnqueueRequest[*corev1.Pod](),
-		ReferencedResources: NewDynamicEnqueueRequest[T](),
+		ReferencedResources: NewDynamicEnqueueRequest[client.Object](),
 	}
 }
 
@@ -27,5 +27,5 @@ type DynamicWatches[T client.Object] struct {
 	Secrets             *DynamicEnqueueRequest[*corev1.Secret]
 	Services            *DynamicEnqueueRequest[*corev1.Service]
 	Pods                *DynamicEnqueueRequest[*corev1.Pod]
-	ReferencedResources *DynamicEnqueueRequest[T]
+	ReferencedResources *DynamicEnqueueRequest[client.Object]
 }

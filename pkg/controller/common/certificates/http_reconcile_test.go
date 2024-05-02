@@ -220,9 +220,9 @@ func TestReconcilePublicHTTPCerts(t *testing.T) {
 	for _, tt := range tests {
 		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
-			client := tt.client(t)
-			err := Reconciler{
-				K8sClient: client,
+			clnt := tt.client(t)
+			err := Reconciler[client.Object]{
+				K8sClient: clnt,
 				Owner:     owner,
 				Namer:     esv1.ESNamer,
 				Labels:    labels,
@@ -233,7 +233,7 @@ func TestReconcilePublicHTTPCerts(t *testing.T) {
 			}
 
 			var gotSecret corev1.Secret
-			err = client.Get(context.Background(), namespacedSecretName, &gotSecret)
+			err = clnt.Get(context.Background(), namespacedSecretName, &gotSecret)
 			require.NoError(t, err, "Failed to get secret")
 
 			wantSecret := tt.wantSecret(t)
@@ -443,9 +443,9 @@ func TestReconcileInternalHTTPCerts(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			w := watches.NewDynamicWatches()
+			w := watches.NewDynamicWatches[client.Object]()
 			c := k8s.NewFakeClient(tt.args.initialObjects...)
-			got, err := Reconciler{
+			got, err := Reconciler[client.Object]{
 				K8sClient:      c,
 				DynamicWatches: w,
 				Owner:          &tt.args.es,

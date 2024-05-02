@@ -19,6 +19,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/utils/ptr"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	agentv1alpha1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/agent/v1alpha1"
 	commonv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/common/v1"
@@ -58,13 +59,13 @@ func Test_amendBuilderForFleetMode(t *testing.T) {
 
 	for _, tt := range []struct {
 		name        string
-		params      Params
+		params      Params[client.Object]
 		fleetCerts  *certificates.CertificatesSecret
 		wantPodSpec corev1.PodSpec
 	}{
 		{
 			name: "running elastic agent, with fleet server, without es/kb association",
-			params: Params{
+			params: Params[client.Object]{
 				Agent: agentv1alpha1.Agent{
 					ObjectMeta: metav1.ObjectMeta{
 						Name:      "agent",
@@ -162,7 +163,7 @@ func Test_amendBuilderForFleetMode(t *testing.T) {
 		},
 		{
 			name: "running elastic agent, with fleet server, without es/kb association, with well known CA",
-			params: Params{
+			params: Params[client.Object]{
 				Agent: agentv1alpha1.Agent{
 					ObjectMeta: metav1.ObjectMeta{
 						Name:      "agent",
@@ -256,7 +257,7 @@ func Test_amendBuilderForFleetMode(t *testing.T) {
 		},
 		{
 			name: "running elastic agent, without running fleet server without kb association",
-			params: Params{
+			params: Params[client.Object]{
 				Agent: agentv1alpha1.Agent{
 					ObjectMeta: metav1.ObjectMeta{
 						Name: "agent",
@@ -292,7 +293,7 @@ func Test_amendBuilderForFleetMode(t *testing.T) {
 		},
 		{
 			name: "running elastic agent, with fleet server, without es/kb association and without TLS",
-			params: Params{
+			params: Params[client.Object]{
 				Agent: agentv1alpha1.Agent{
 					ObjectMeta: metav1.ObjectMeta{
 						Name:      "agent",
@@ -447,7 +448,7 @@ func Test_applyEnvVars(t *testing.T) {
 	f := false
 	for _, tt := range []struct {
 		name               string
-		params             Params
+		params             Params[client.Object]
 		fleetCerts         *certificates.CertificatesSecret
 		fleetToken         EnrollmentAPIKey
 		podTemplateBuilder *defaults.PodTemplateBuilder
@@ -456,7 +457,7 @@ func Test_applyEnvVars(t *testing.T) {
 	}{
 		{
 			name: "elastic agent, without fleet server, with fleet server ref, with kibana ref",
-			params: Params{
+			params: Params[client.Object]{
 				Context: context.Background(),
 				Agent:   agent,
 				Client:  k8s.NewFakeClient(),
@@ -483,7 +484,7 @@ func Test_applyEnvVars(t *testing.T) {
 		},
 		{
 			name: "elastic agent, without fleet server, with fleet server ref, with kibana ref, token override",
-			params: Params{
+			params: Params[client.Object]{
 				Context: context.Background(),
 				Agent:   agent,
 				Client:  k8s.NewFakeClient(),
@@ -504,7 +505,7 @@ func Test_applyEnvVars(t *testing.T) {
 		},
 		{
 			name: "elastic agent, with fleet server, with kibana ref",
-			params: Params{
+			params: Params[client.Object]{
 				Context: context.Background(),
 				Agent:   agent2,
 				Client: k8s.NewFakeClient(
@@ -566,7 +567,7 @@ func Test_applyEnvVars(t *testing.T) {
 		},
 		{
 			name: "elastic agent, with fleet server, with kibana ref with well-known CA",
-			params: Params{
+			params: Params[client.Object]{
 				Context: context.Background(),
 				Agent:   agent2,
 				Client: k8s.NewFakeClient(
@@ -650,13 +651,13 @@ func Test_getVolumesFromAssociations(t *testing.T) {
 	// Note: we use setAssocConfs to set the AssociationConfs which are normally set in the reconciliation loop.
 	for _, tt := range []struct {
 		name                   string
-		params                 Params
+		params                 Params[client.Object]
 		setAssocConfs          func(assocs []commonv1.Association)
 		wantAssociationsLength int
 	}{
 		{
 			name: "fleet mode enabled, kb ref, fleet ref",
-			params: Params{
+			params: Params[client.Object]{
 				Agent: agentv1alpha1.Agent{
 					Spec: agentv1alpha1.AgentSpec{
 						Mode:      agentv1alpha1.AgentFleetMode,
@@ -683,7 +684,7 @@ func Test_getVolumesFromAssociations(t *testing.T) {
 		},
 		{
 			name: "fleet mode enabled, kb no tls ref, fleet ref",
-			params: Params{
+			params: Params[client.Object]{
 				Agent: agentv1alpha1.Agent{
 					Spec: agentv1alpha1.AgentSpec{
 						Mode:           agentv1alpha1.AgentFleetMode,
@@ -716,12 +717,12 @@ func Test_getVolumesFromAssociations(t *testing.T) {
 func Test_getRelatedEsAssoc(t *testing.T) {
 	for _, tt := range []struct {
 		name    string
-		params  Params
+		params  Params[client.Object]
 		wantRef *commonv1.ObjectSelector
 	}{
 		{
 			name: "fleet server enabled, no es ref",
-			params: Params{
+			params: Params[client.Object]{
 				Agent: agentv1alpha1.Agent{
 					Spec: agentv1alpha1.AgentSpec{
 						FleetServerEnabled: true,
@@ -732,7 +733,7 @@ func Test_getRelatedEsAssoc(t *testing.T) {
 		},
 		{
 			name: "fleet server enabled, es ref",
-			params: Params{
+			params: Params[client.Object]{
 				Agent: agentv1alpha1.Agent{
 					Spec: agentv1alpha1.AgentSpec{
 						FleetServerEnabled: true,
@@ -748,7 +749,7 @@ func Test_getRelatedEsAssoc(t *testing.T) {
 		},
 		{
 			name: "fleet server disabled, no fs ref",
-			params: Params{
+			params: Params[client.Object]{
 				Agent: agentv1alpha1.Agent{
 					Spec: agentv1alpha1.AgentSpec{
 						FleetServerEnabled: false,
@@ -759,7 +760,7 @@ func Test_getRelatedEsAssoc(t *testing.T) {
 		},
 		{
 			name: "fleet server disabled, fs ref, no es ref",
-			params: Params{
+			params: Params[client.Object]{
 				Agent: agentv1alpha1.Agent{
 					Spec: agentv1alpha1.AgentSpec{
 						FleetServerEnabled: false,
@@ -777,7 +778,7 @@ func Test_getRelatedEsAssoc(t *testing.T) {
 		},
 		{
 			name: "fleet server disabled, fs ref, es ref",
-			params: Params{
+			params: Params[client.Object]{
 				Agent: agentv1alpha1.Agent{
 					Spec: agentv1alpha1.AgentSpec{
 						FleetServerEnabled: false,
@@ -1027,7 +1028,7 @@ func Test_writeEsAssocToConfigHash(t *testing.T) {
 
 	for _, tt := range []struct {
 		name           string
-		params         Params
+		params         Params[client.Object]
 		assoc          commonv1.Association
 		wantHashChange bool
 	}{
@@ -1037,7 +1038,7 @@ func Test_writeEsAssocToConfigHash(t *testing.T) {
 		},
 		{
 			name: "fleet server enabled",
-			params: Params{
+			params: Params[client.Object]{
 				Agent: agentv1alpha1.Agent{
 					Spec: agentv1alpha1.AgentSpec{
 						FleetServerEnabled: true,
@@ -1048,7 +1049,7 @@ func Test_writeEsAssocToConfigHash(t *testing.T) {
 		},
 		{
 			name: "fleet server disabled, expect hash to be changed",
-			params: Params{
+			params: Params[client.Object]{
 				Client: k8s.NewFakeClient(
 					&corev1.Secret{
 						ObjectMeta: metav1.ObjectMeta{

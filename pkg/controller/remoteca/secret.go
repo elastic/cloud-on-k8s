@@ -12,6 +12,7 @@ import (
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	esv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/elasticsearch/v1"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/certificates"
@@ -27,9 +28,9 @@ import (
 // a local and a remote cluster we must:
 // * Copy the CA of the local cluster to the remote one.
 // * Copy the CA of the remote cluster to the local one.
-func createOrUpdateCertificateAuthorities(
+func createOrUpdateCertificateAuthorities[T client.Object](
 	ctx context.Context,
-	r *ReconcileRemoteCa,
+	r *ReconcileRemoteCa[T],
 	local, remote *esv1.Elasticsearch,
 ) *reconciler.Results {
 	span, _ := apm.StartSpan(ctx, "create_or_update_remote_ca", tracing.SpanTypeApp)
@@ -77,9 +78,9 @@ func createOrUpdateCertificateAuthorities(
 }
 
 // copyCertificateAuthority creates a copy of the CA from a source cluster to a target cluster
-func copyCertificateAuthority(
+func copyCertificateAuthority[T client.Object](
 	ctx context.Context,
-	r *ReconcileRemoteCa,
+	r *ReconcileRemoteCa[T],
 	source, target *esv1.Elasticsearch,
 ) error {
 	sourceKey := k8s.ExtractNamespacedName(source)
@@ -108,9 +109,9 @@ func copyCertificateAuthority(
 // deleteCertificateAuthorities deletes all the Secrets needed to establish a trust relationship between two clusters.
 // This means that the CA of the local cluster is deleted from the remote one and reciprocally the CA from the
 // remote cluster must be deleted from the local one.
-func deleteCertificateAuthorities(
+func deleteCertificateAuthorities[T client.Object](
 	ctx context.Context,
-	r *ReconcileRemoteCa,
+	r *ReconcileRemoteCa[T],
 	local, remote types.NamespacedName,
 ) error {
 	span, ctx := apm.StartSpan(ctx, "delete_certificate_authorities", tracing.SpanTypeApp)

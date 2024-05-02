@@ -9,6 +9,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/require"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -198,10 +199,10 @@ func TestReconcileServices(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			client := k8s.NewFakeClient()
-			params := Params{
+			clnt := k8s.NewFakeClient()
+			params := Params[client.Object]{
 				Context:  context.Background(),
-				Client:   client,
+				Client:   clnt,
 				Logstash: tc.logstash,
 			}
 			haveSvc, haveAPISvc, err := reconcileServices(params)

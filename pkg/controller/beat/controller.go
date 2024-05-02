@@ -13,6 +13,7 @@ import (
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/tools/record"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
 	"sigs.k8s.io/controller-runtime/pkg/handler"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
@@ -47,7 +48,7 @@ const (
 // Add creates a new Beat Controller and adds it to the Manager with default RBAC. The Manager will set fields on the Controller
 // and Start it when the Manager is Started.
 func Add(mgr manager.Manager, params operator.Parameters) error {
-	r := newReconciler(mgr, params)
+	r := newReconciler[client.Object](mgr, params)
 	c, err := common.NewController(mgr, controllerName, r, params)
 	if err != nil {
 		return err
@@ -56,18 +57,18 @@ func Add(mgr manager.Manager, params operator.Parameters) error {
 }
 
 // newReconciler returns a new reconcile.Reconciler.
-func newReconciler(mgr manager.Manager, params operator.Parameters) *ReconcileBeat {
+func newReconciler[T client.Object](mgr manager.Manager, params operator.Parameters) *ReconcileBeat[T] {
 	client := mgr.GetClient()
-	return &ReconcileBeat{
+	return &ReconcileBeat[T]{
 		Client:         client,
 		recorder:       mgr.GetEventRecorderFor(controllerName),
-		dynamicWatches: watches.NewDynamicWatches(),
+		dynamicWatches: watches.NewDynamicWatches[T](),
 		Parameters:     params,
 	}
 }
 
 // addWatches adds watches for all resources this controller cares about
-func addWatches(mgr manager.Manager, c controller.Controller, r *ReconcileBeat) error {
+func addWatches(mgr manager.Manager, c controller.Controller, r *ReconcileBeat[client.Object]) error {
 	// Watch for changes to Beat
 	if err := c.Watch(source.Kind(mgr.GetCache(), &beatv1beta1.Beat{}, &handler.TypedEnqueueRequestForObject[*beatv1beta1.Beat]{})); err != nil {
 		return err
@@ -110,13 +111,13 @@ func addWatches(mgr manager.Manager, c controller.Controller, r *ReconcileBeat) 
 	return c.Watch(source.Kind(mgr.GetCache(), &corev1.Secret{}, r.dynamicWatches.Secrets))
 }
 
-var _ reconcile.Reconciler = &ReconcileBeat{}
+var _ reconcile.Reconciler = &ReconcileBeat[client.Object]{}
 
 // ReconcileBeat reconciles a Beat object.
-type ReconcileBeat struct {
+type ReconcileBeat[T client.Object] struct {
 	k8s.Client
 	recorder       record.EventRecorder
-	dynamicWatches watches.DynamicWatches
+	dynamicWatches watches.DynamicWatches[T]
 	operator.Parameters
 	// iteration is the number of times this controller has run its Reconcile method
 	iteration uint64
@@ -124,7 +125,7 @@ type ReconcileBeat struct {
 
 // Reconcile reads that state of the cluster for a Beat object and makes changes based on the state read
 // and what is in the Beat.Spec.
-func (r *ReconcileBeat) Reconcile(ctx context.Context, request reconcile.Request) (reconcile.Result, error) {
+func (r *ReconcileBeat[T]) Reconcile(ctx context.Context, request reconcile.Request) (reconcile.Result, error) {
 	ctx = common.NewReconciliationContext(ctx, &r.iteration, r.Tracer, controllerName, "beat_name", request)
 	defer common.LogReconciliationRun(ulog.FromContext(ctx))()
 	defer tracing.EndContextTransaction(ctx)
@@ -165,7 +166,7 @@ func (r *ReconcileBeat) Reconcile(ctx context.Context, request reconcile.Request
 	return res, err
 }
 
-func (r *ReconcileBeat) doReconcile(ctx context.Context, beat beatv1beta1.Beat) (*reconciler.Results, *beatv1beta1.BeatStatus) {
+func (r *ReconcileBeat[T]) doReconcile(ctx context.Context, beat beatv1beta1.Beat) (*reconciler.Results, *beatv1beta1.BeatStatus) {
 	results := reconciler.NewResult(ctx)
 	status := newStatus(beat)
 
@@ -186,7 +187,7 @@ func (r *ReconcileBeat) doReconcile(ctx context.Context, beat beatv1beta1.Beat) 
 	return results.WithResults(driverResults), updatedStatus
 }
 
-func (r *ReconcileBeat) validate(ctx context.Context, beat *beatv1beta1.Beat) error {
+func (r *ReconcileBeat[T]) validate(ctx context.Context, beat *beatv1beta1.Beat) error {
 	span, vctx := apm.StartSpan(ctx, "validate", tracing.SpanTypeApp)
 	defer span.End()
 
@@ -199,22 +200,22 @@ func (r *ReconcileBeat) validate(ctx context.Context, beat *beatv1beta1.Beat) er
 	return nil
 }
 
-func (r *ReconcileBeat) onDelete(ctx context.Context, obj types.NamespacedName) error {
+func (r *ReconcileBeat[T]) onDelete(ctx context.Context, obj types.NamespacedName) error {
 	r.dynamicWatches.Secrets.RemoveHandlerForKey(keystore.SecureSettingsWatchName(obj))
 	r.dynamicWatches.Secrets.RemoveHandlerForKey(common.ConfigRefWatchName(obj))
 	return reconciler.GarbageCollectSoftOwnedSecrets(ctx, r.Client, obj, beatv1beta1.Kind)
 }
 
-func newDriver(
+func newDriver[T client.Object](
 	ctx context.Context,
 	recorder record.EventRecorder,
-	client k8s.Client,
-	dynamicWatches watches.DynamicWatches,
+	clnt k8s.Client,
+	dynamicWatches watches.DynamicWatches[T],
 	beat beatv1beta1.Beat,
 	status beatv1beta1.BeatStatus,
 ) beatcommon.Driver {
-	dp := beatcommon.DriverParams{
-		Client:        client,
+	dp := beatcommon.DriverParams[T]{
+		Client:        clnt,
 		Context:       ctx,
 		Watches:       dynamicWatches,
 		EventRecorder: recorder,

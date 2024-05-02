@@ -23,7 +23,7 @@ const (
 	PipelineFileName = "pipelines.yml"
 )
 
-func reconcilePipeline(params Params) error {
+func reconcilePipeline[T client.Object](params Params[T]) error {
 	defer tracing.Span(&params.Context)()
 
 	cfgBytes, err := buildPipeline(params)
@@ -55,7 +55,7 @@ func reconcilePipeline(params Params) error {
 	return nil
 }
 
-func buildPipeline(params Params) ([]byte, error) {
+func buildPipeline[T client.Object](params Params[T]) ([]byte, error) {
 	userProvidedCfg, err := getUserPipeline(params)
 	if err != nil {
 		return nil, err
@@ -71,7 +71,7 @@ func buildPipeline(params Params) ([]byte, error) {
 
 // getUserPipeline extracts the pipeline either from the spec `pipeline` field or from the Secret referenced by spec
 // `pipelineRef` field.
-func getUserPipeline(params Params) (*pipelines.Config, error) {
+func getUserPipeline[T client.Object](params Params[T]) (*pipelines.Config, error) {
 	if params.Logstash.Spec.Pipelines != nil {
 		pipes := make([]map[string]interface{}, 0, len(params.Logstash.Spec.Pipelines))
 		for _, p := range params.Logstash.Spec.Pipelines {

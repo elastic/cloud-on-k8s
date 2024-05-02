@@ -542,7 +542,7 @@ func Test_defaultDriver_maybeCompleteNodeUpgrades(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			client := k8s.NewFakeClient(tt.runtimeObjects...)
+			clnt := k8s.NewFakeClient(tt.runtimeObjects...)
 			esClient := &fakeESClient{
 				version:                  version.MustParse(esVersion),
 				nodes:                    esclient.Nodes{Nodes: tt.nodesInCluster},
@@ -554,11 +554,11 @@ func Test_defaultDriver_maybeCompleteNodeUpgrades(t *testing.T) {
 			reconcileState, err := reconcile.NewState(tt.es)
 			require.NoError(t, err)
 
-			d := &defaultDriver{
-				DefaultDriverParameters: DefaultDriverParameters{
-					Client:         client,
+			d := &defaultDriver[client.Object]{
+				DefaultDriverParameters: DefaultDriverParameters[client.Object]{
+					Client:         clnt,
 					ES:             tt.es,
-					Expectations:   expectations.NewExpectations(client),
+					Expectations:   expectations.NewExpectations(clnt),
 					ReconcileState: reconcileState,
 				},
 			}

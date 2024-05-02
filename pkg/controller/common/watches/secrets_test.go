@@ -12,6 +12,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
 	esv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/elasticsearch/v1"
@@ -21,7 +22,7 @@ import (
 
 func Test_reconcileReqForSoftOwner(t *testing.T) {
 	kind := esv1.Kind
-	toRequestsFunc := reconcileReqForSoftOwner(kind)
+	toRequestsFunc := reconcileReqForSoftOwner[client.Object](kind)
 
 	tests := []struct {
 		name                  string

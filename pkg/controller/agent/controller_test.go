@@ -27,11 +27,11 @@ import (
 	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/k8s"
 )
 
-func newReconcileAgent(objs ...client.Object) *ReconcileAgent {
-	r := &ReconcileAgent{
+func newReconcileAgent[T client.Object](objs ...client.Object) *ReconcileAgent[T] {
+	r := &ReconcileAgent[T]{
 		Client:         k8s.NewFakeClient(objs...),
 		recorder:       record.NewFakeRecorder(100),
-		dynamicWatches: watches.NewDynamicWatches(),
+		dynamicWatches: watches.NewDynamicWatches[T](),
 	}
 	return r
 }
@@ -207,7 +207,7 @@ func TestReconcileAgent_Reconcile(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			r := newReconcileAgent(tt.objs...)
+			r := newReconcileAgent[client.Object](tt.objs...)
 			got, err := r.Reconcile(context.Background(), tt.request)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("ReconcileAgent.Reconcile() error = %v, wantErr %v", err, tt.wantErr)

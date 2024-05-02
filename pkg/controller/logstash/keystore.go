@@ -9,6 +9,7 @@ import (
 
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	logstashv1alpha1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/logstash/v1alpha1"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/keystore"
@@ -84,7 +85,7 @@ echo "Keystore initialization successful."
 	}
 )
 
-func reconcileKeystore(params Params, configHash hash.Hash) (*keystore.Resources, error) {
+func reconcileKeystore[T client.Object](params Params[T], configHash hash.Hash) (*keystore.Resources, error) {
 	if keystoreResources, err := keystore.ReconcileResources(
 		params.Context,
 		params,

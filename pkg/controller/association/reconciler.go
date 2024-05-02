@@ -548,7 +548,7 @@ func NewTestAssociationReconciler(assocInfo AssociationInfo, runtimeObjs ...clie
 		AssociationInfo: assocInfo,
 		Client:          k8s.NewFakeClient(runtimeObjs...),
 		accessReviewer:  rbac.NewPermissiveAccessReviewer(),
-		watches:         watches.NewDynamicWatches(),
+		watches:         watches.NewDynamicWatches[client.Object](),
 		recorder:        record.NewFakeRecorder(10),
 		Parameters: operator.Parameters{
 			OperatorInfo: about.OperatorInfo{

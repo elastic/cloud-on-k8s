@@ -13,6 +13,7 @@ import (
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	commonv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/common/v1"
 	esv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/elasticsearch/v1"
@@ -46,9 +47,9 @@ var (
 func TestReconcileCAAndHTTPCerts(t *testing.T) {
 	c := k8s.NewFakeClient()
 
-	r := Reconciler{
+	r := Reconciler[client.Object]{
 		K8sClient:             c,
-		DynamicWatches:        watches.NewDynamicWatches(),
+		DynamicWatches:        watches.NewDynamicWatches[client.Object](),
 		Owner:                 &obj,
 		TLSOptions:            commonv1.TLSOptions{},
 		Namer:                 esv1.ESNamer,

@@ -8,6 +8,7 @@ import (
 	"context"
 	"fmt"
 
+	corev1 "k8s.io/api/core/v1"
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -26,7 +27,7 @@ import (
 )
 
 // AddWatches set watches on objects needed to manage the association between a local and a remote cluster.
-func addWatches(mgr manager.Manager, c controller.Controller, r *ReconcileRemoteCa) error {
+func addWatches[T client.Object](mgr manager.Manager, c controller.Controller, r *ReconcileRemoteCa[T]) error {
 	// Watch for changes to RemoteCluster
 	if err := c.Watch(source.Kind(mgr.GetCache(), &esv1.Elasticsearch{}, &handler.TypedEnqueueRequestForObject[*esv1.Elasticsearch]{})); err != nil {
 		return err
@@ -46,7 +47,7 @@ func addWatches(mgr manager.Manager, c controller.Controller, r *ReconcileRemote
 	}
 
 	return r.watches.Secrets.AddHandlers(
-		&watches.OwnerWatch[client.Object]{
+		&watches.OwnerWatch[*corev1.Secret]{
 			Scheme:       mgr.GetScheme(),
 			Mapper:       mgr.GetRESTMapper(),
 			OwnerType:    &esv1.Elasticsearch{},
@@ -88,11 +89,11 @@ func watchName(local types.NamespacedName, remote types.NamespacedName) string {
 // addCertificatesAuthorityWatches sets some watches on all secrets containing the certificate of a CA involved in a association.
 // The local CA is watched to update the trusted certificates in the remote clusters.
 // The remote CAs are watched to update the trusted certificates of the local cluster.
-func addCertificatesAuthorityWatches(
-	reconcileClusterAssociation *ReconcileRemoteCa,
+func addCertificatesAuthorityWatches[T client.Object](
+	reconcileClusterAssociation *ReconcileRemoteCa[T],
 	local, remote types.NamespacedName) error {
 	// Watch the CA secret of Elasticsearch clusters which are involved in a association.
-	err := reconcileClusterAssociation.watches.Secrets.AddHandler(watches.NamedWatch[client.Object]{
+	err := reconcileClusterAssociation.watches.Secrets.AddHandler(watches.NamedWatch[*corev1.Secret]{
 		Name:    watchName(local, remote),
 		Watched: []types.NamespacedName{transport.PublicCertsSecretRef(remote)},
 		Watcher: types.NamespacedName{
