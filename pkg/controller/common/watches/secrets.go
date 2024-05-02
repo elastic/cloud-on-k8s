@@ -68,13 +68,12 @@ func WatchUserProvidedNamespacedSecrets(
 // WatchSoftOwnedSecrets triggers reconciliations on secrets referencing a soft owner.
 func WatchSoftOwnedSecrets(mgr manager.Manager, c controller.Controller, ownerKind string) error {
 	return c.Watch(
-		source.Kind(mgr.GetCache(), &corev1.Secret{}),
-		handler.EnqueueRequestsFromMapFunc(reconcileReqForSoftOwner(ownerKind)),
+		source.Kind(mgr.GetCache(), &corev1.Secret{}, handler.TypedEnqueueRequestsFromMapFunc[*corev1.Secret](reconcileReqForSoftOwner[*corev1.Secret](ownerKind))),
 	)
 }
 
-func reconcileReqForSoftOwner(kind string) handler.MapFunc {
-	return func(ctx context.Context, object client.Object) []reconcile.Request {
+func reconcileReqForSoftOwner[T client.Object](kind string) handler.TypedMapFunc[T] {
+	return handler.TypedMapFunc[T](func(ctx context.Context, object T) []reconcile.Request {
 		softOwner, referenced := reconciler.SoftOwnerRefFromLabels(object.GetLabels())
 		if !referenced {
 			return nil
@@ -85,5 +84,5 @@ func reconcileReqForSoftOwner(kind string) handler.MapFunc {
 		return []reconcile.Request{
 			{NamespacedName: types.NamespacedName{Namespace: softOwner.Namespace, Name: softOwner.Name}},
 		}
-	}
+	})
 }

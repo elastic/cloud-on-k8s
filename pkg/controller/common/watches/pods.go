@@ -18,16 +18,11 @@ import (
 )
 
 func Add(mgr manager.Manager, c controller.Controller, owner client.Object, objects ...client.Object) error {
-	if err := c.Watch(
-		source.Kind(mgr.GetCache(), owner), &handler.EnqueueRequestForObject{},
-	); err != nil {
+	if err := c.Watch(source.Kind(mgr.GetCache(), owner, &handler.TypedEnqueueRequestForObject[client.Object]{})); err != nil {
 		return err
 	}
 	for _, object := range objects {
-		if err := c.Watch(
-			source.Kind(mgr.GetCache(), object),
-			handler.EnqueueRequestForOwner(mgr.GetScheme(), mgr.GetRESTMapper(), owner, handler.OnlyControllerOwner()),
-		); err != nil {
+		if err := c.Watch(source.Kind(mgr.GetCache(), object, handler.TypedEnqueueRequestForOwner[client.Object](mgr.GetScheme(), mgr.GetRESTMapper(), owner, handler.OnlyControllerOwner()))); err != nil {
 			return err
 		}
 	}
@@ -37,15 +32,12 @@ func Add(mgr manager.Manager, c controller.Controller, owner client.Object, obje
 // WatchPods updates the given controller to enqueue reconciliation requests triggered by changes on Pods.
 // The resource to reconcile is identified by a label on the Pods.
 func WatchPods(mgr manager.Manager, c controller.Controller, objNameLabel string) error {
-	return c.Watch(
-		source.Kind(mgr.GetCache(), &corev1.Pod{}),
-		handler.EnqueueRequestsFromMapFunc(objToReconcileRequest(objNameLabel)),
-	)
+	return c.Watch(source.Kind(mgr.GetCache(), &corev1.Pod{}, handler.TypedEnqueueRequestsFromMapFunc[*corev1.Pod](objToReconcileRequest[*corev1.Pod](objNameLabel))))
 }
 
 // objToReconcileRequest returns a function to enqueue reconcile requests for the resource name set at objNameLabel.
-func objToReconcileRequest(objNameLabel string) handler.MapFunc {
-	return func(ctx context.Context, object client.Object) []reconcile.Request {
+func objToReconcileRequest[T client.Object](objNameLabel string) handler.TypedMapFunc[T] {
+	return handler.TypedMapFunc[T](func(ctx context.Context, object T) []reconcile.Request {
 		labels := object.GetLabels()
 		objectName, isSet := labels[objNameLabel]
 		if !isSet {
@@ -59,5 +51,5 @@ func objToReconcileRequest(objNameLabel string) handler.MapFunc {
 				},
 			},
 		}
-	}
+	})
 }

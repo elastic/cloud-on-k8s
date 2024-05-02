@@ -53,7 +53,7 @@ type Config struct {
 }
 
 type validatingWebhook struct {
-	decoder           *admission.Decoder
+	decoder           admission.Decoder
 	managedNamespaces set.StringSet
 	licenseChecker    license.Checker
 	validator         admission.Validator

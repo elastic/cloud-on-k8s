@@ -16,22 +16,21 @@ import (
 // WatchClusterHealthChange returns a Source fed with generic events targeting clusters
 // whose health has changed between 2 observations.
 // Aimed to be used for triggering a reconciliation.
-func WatchClusterHealthChange(m *Manager) *source.Channel {
-	evtChan := make(chan event.GenericEvent)
+func WatchClusterHealthChange(m *Manager) source.Source {
+	evtChan := make(chan event.TypedGenericEvent[*esv1.Elasticsearch])
 	m.AddObservationListener(healthChangeListener(evtChan))
-	return &source.Channel{
-		// Each event in Source will be consumed and turned into
-		// a reconciliation request.
-		Source: evtChan,
-		// DestBufferSize is kept at the default value (1024).
-		// This means we can enqueue a maximum of 1024 requests
-		// before blocking observers from moving on.
-	}
+	// Each event in Source will be consumed and turned into
+	// a reconciliation request.
+	//
+	// DestBufferSize is kept at the default value (1024).
+	// This means we can enqueue a maximum of 1024 requests
+	// before blocking observers from moving on.
+	return source.Channel(evtChan, nil)
 }
 
 // healthChangeListener returns an OnObservation listener that feeds a generic
 // event when a cluster's observed health has changed.
-func healthChangeListener(reconciliation chan event.GenericEvent) OnObservation {
+func healthChangeListener[T *esv1.Elasticsearch](reconciliation chan event.TypedGenericEvent[T]) OnObservation {
 	return func(cluster types.NamespacedName, previous, current esv1.ElasticsearchHealth) {
 		// no-op if health hasn't change
 		if previous == current {
@@ -39,7 +38,7 @@ func healthChangeListener(reconciliation chan event.GenericEvent) OnObservation 
 		}
 
 		// trigger a reconciliation event for that cluster
-		evt := event.GenericEvent{
+		evt := event.TypedGenericEvent[T]{
 			Object: &esv1.Elasticsearch{ObjectMeta: metav1.ObjectMeta{
 				Namespace: cluster.Namespace,
 				Name:      cluster.Name,
