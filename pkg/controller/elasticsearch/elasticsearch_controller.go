@@ -109,7 +109,7 @@ func addWatches(mgr manager.Manager, c controller.Controller, r *ReconcileElasti
 	}
 
 	// Watch owned and soft-owned secrets
-	if err := c.Watch(source.Kind(mgr.GetCache(), &corev1.Secret{}), r.dynamicWatches.Secrets); err != nil {
+	if err := c.Watch(source.Kind(mgr.GetCache(), &corev1.Secret{}, r.dynamicWatches.Secrets)); err != nil {
 		return err
 	}
 	if err := r.dynamicWatches.Secrets.AddHandler(&watches.OwnerWatch{
@@ -126,7 +126,7 @@ func addWatches(mgr manager.Manager, c controller.Controller, r *ReconcileElasti
 	}
 
 	// Trigger a reconciliation when observers report a cluster health change
-	return c.Watch(observer.WatchClusterHealthChange(r.esObservers), reconciler.GenericEventHandler())
+	return c.Watch(observer.WatchClusterHealthChange(r.esObservers))
 }
 
 var _ reconcile.Reconciler = &ReconcileElasticsearch{}

@@ -98,16 +98,16 @@ func newReconciler(mgr manager.Manager, params operator.Parameters) *ReconcileAp
 
 func addWatches(mgr manager.Manager, c controller.Controller, r *ReconcileApmServer) error {
 	// Watch for changes to ApmServer
-	err := c.Watch(source.Kind(mgr.GetCache(), &apmv1.ApmServer{}), &handler.EnqueueRequestForObject{})
+	err := c.Watch(source.Kind(mgr.GetCache(), &apmv1.ApmServer{}, &handler.TypedEnqueueRequestForObject[*apmv1.ApmServer]{}))
 	if err != nil {
 		return err
 	}
 
 	// Watch Deployments
-	if err := c.Watch(source.Kind(mgr.GetCache(), &appsv1.Deployment{}), handler.EnqueueRequestForOwner(
+	if err := c.Watch(source.Kind(mgr.GetCache(), &appsv1.Deployment{}, handler.TypedEnqueueRequestForOwner[*appsv1.Deployment](
 		mgr.GetScheme(), mgr.GetRESTMapper(),
 		&apmv1.ApmServer{}, handler.OnlyControllerOwner(),
-	)); err != nil {
+	))); err != nil {
 		return err
 	}
 
@@ -118,18 +118,18 @@ func addWatches(mgr manager.Manager, c controller.Controller, r *ReconcileApmSer
 	}
 
 	// Watch services
-	if err := c.Watch(source.Kind(mgr.GetCache(), &corev1.Service{}), handler.EnqueueRequestForOwner(
+	if err := c.Watch(source.Kind(mgr.GetCache(), &corev1.Service{}, handler.TypedEnqueueRequestForOwner[*corev1.Service](
 		mgr.GetScheme(), mgr.GetRESTMapper(),
 		&apmv1.ApmServer{}, handler.OnlyControllerOwner(),
-	)); err != nil {
+	))); err != nil {
 		return err
 	}
 
 	// Watch owned and soft-owned secrets
-	if err := c.Watch(source.Kind(mgr.GetCache(), &corev1.Secret{}), handler.EnqueueRequestForOwner(
+	if err := c.Watch(source.Kind(mgr.GetCache(), &corev1.Secret{}, handler.TypedEnqueueRequestForOwner[*corev1.Secret](
 		mgr.GetScheme(), mgr.GetRESTMapper(),
 		&apmv1.ApmServer{}, handler.OnlyControllerOwner(),
-	)); err != nil {
+	))); err != nil {
 		return err
 	}
 	if err := watches.WatchSoftOwnedSecrets(mgr, c, apmv1.Kind); err != nil {
@@ -137,7 +137,7 @@ func addWatches(mgr manager.Manager, c controller.Controller, r *ReconcileApmSer
 	}
 
 	// dynamically watch referenced secrets to connect to Elasticsearch
-	return c.Watch(source.Kind(mgr.GetCache(), &corev1.Secret{}), r.dynamicWatches.Secrets)
+	return c.Watch(source.Kind(mgr.GetCache(), &corev1.Secret{}, r.dynamicWatches.Secrets))
 }
 
 var _ reconcile.Reconciler = &ReconcileApmServer{}

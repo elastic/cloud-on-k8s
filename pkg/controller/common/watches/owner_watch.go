@@ -22,7 +22,7 @@ func (o *OwnerWatch) Key() string {
 	return o.OwnerType.GetObjectKind().GroupVersionKind().Kind + "-owner"
 }
 
-func (o *OwnerWatch) EventHandler() handler.EventHandler {
+func (o *OwnerWatch) EventHandler() handler.TypedEventHandler[client.Object] {
 	opts := []handler.OwnerOption{}
 	if o.IsController {
 		opts = []handler.OwnerOption{handler.OnlyControllerOwner()}

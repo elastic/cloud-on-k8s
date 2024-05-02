@@ -61,26 +61,25 @@ func newReconciler(mgr manager.Manager, params operator.Parameters) *ReconcileAg
 func addWatches(mgr manager.Manager, c controller.Controller, r *ReconcileAgent) error {
 	// Watch for changes to Agent
 	if err := c.Watch(
-		source.Kind(mgr.GetCache(), &agentv1alpha1.Agent{}),
-		&handler.EnqueueRequestForObject{}); err != nil {
+		source.Kind(mgr.GetCache(), &agentv1alpha1.Agent{}, &handler.TypedEnqueueRequestForObject[*agentv1alpha1.Agent]{})); err != nil {
 		return err
 	}
 
 	// Watch DaemonSets
 	if err := c.Watch(
-		source.Kind(mgr.GetCache(), &appsv1.DaemonSet{}),
-		handler.EnqueueRequestForOwner(mgr.GetScheme(), mgr.GetRESTMapper(),
-			&agentv1alpha1.Agent{}, handler.OnlyControllerOwner()),
-	); err != nil {
+		source.Kind(mgr.GetCache(), &appsv1.DaemonSet{},
+			handler.TypedEnqueueRequestForOwner[*appsv1.DaemonSet](mgr.GetScheme(), mgr.GetRESTMapper(),
+				&agentv1alpha1.Agent{}, handler.OnlyControllerOwner()),
+		)); err != nil {
 		return err
 	}
 
 	// Watch Deployments
 	if err := c.Watch(
-		source.Kind(mgr.GetCache(), &appsv1.Deployment{}),
-		handler.EnqueueRequestForOwner(mgr.GetScheme(), mgr.GetRESTMapper(),
-			&agentv1alpha1.Agent{}, handler.OnlyControllerOwner()),
-	); err != nil {
+		source.Kind(mgr.GetCache(), &appsv1.Deployment{},
+			handler.TypedEnqueueRequestForOwner[*appsv1.Deployment](mgr.GetScheme(), mgr.GetRESTMapper(),
+				&agentv1alpha1.Agent{}, handler.OnlyControllerOwner()),
+		)); err != nil {
 		return err
 	}
 
@@ -92,28 +91,28 @@ func addWatches(mgr manager.Manager, c controller.Controller, r *ReconcileAgent)
 
 	// Watch Secrets
 	if err := c.Watch(
-		source.Kind(mgr.GetCache(), &corev1.Secret{}),
-		handler.EnqueueRequestForOwner(mgr.GetScheme(), mgr.GetRESTMapper(),
-			&agentv1alpha1.Agent{}, handler.OnlyControllerOwner()),
-	); err != nil {
+		source.Kind(mgr.GetCache(), &corev1.Secret{},
+			handler.TypedEnqueueRequestForOwner[*corev1.Secret](mgr.GetScheme(), mgr.GetRESTMapper(),
+				&agentv1alpha1.Agent{}, handler.OnlyControllerOwner()),
+		)); err != nil {
 		return err
 	}
 
 	// Watch services - Agent in Fleet mode with Fleet Server enabled configures and exposes a Service
 	// for Elastic Agents to connect to.
 	if err := c.Watch(
-		source.Kind(mgr.GetCache(), &corev1.Service{}),
-		handler.EnqueueRequestForOwner(mgr.GetScheme(), mgr.GetRESTMapper(),
-			&agentv1alpha1.Agent{}, handler.OnlyControllerOwner()),
-	); err != nil {
+		source.Kind(mgr.GetCache(), &corev1.Service{},
+			handler.TypedEnqueueRequestForOwner[*corev1.Service](mgr.GetScheme(), mgr.GetRESTMapper(),
+				&agentv1alpha1.Agent{}, handler.OnlyControllerOwner()),
+		)); err != nil {
 		return err
 	}
 
 	// Watch dynamically referenced Secrets
 	return c.Watch(
-		source.Kind(mgr.GetCache(), &corev1.Secret{}),
-		r.dynamicWatches.Secrets,
-	)
+		source.Kind(mgr.GetCache(), &corev1.Secret{},
+			r.dynamicWatches.Secrets,
+		))
 }
 
 var _ reconcile.Reconciler = &ReconcileAgent{}

@@ -93,7 +93,7 @@ func (d *DynamicEnqueueRequest[T]) Registrations() []string {
 var _ handler.TypedEventHandler[client.Object] = &DynamicEnqueueRequest[client.Object]{}
 
 // Create is called in response to a create event - e.g. Pod Creation.
-func (d *DynamicEnqueueRequest[T]) Create(ctx context.Context, evt event.CreateEvent, q workqueue.RateLimitingInterface) {
+func (d *DynamicEnqueueRequest[T]) Create(ctx context.Context, evt event.TypedCreateEvent[client.Object], q workqueue.RateLimitingInterface) {
 	d.mutex.RLock()
 	defer d.mutex.RUnlock()
 	for _, v := range d.registrations {
@@ -102,7 +102,7 @@ func (d *DynamicEnqueueRequest[T]) Create(ctx context.Context, evt event.CreateE
 }
 
 // Update is called in response to an update event -  e.g. Pod Updated.
-func (d *DynamicEnqueueRequest[T]) Update(ctx context.Context, evt event.UpdateEvent, q workqueue.RateLimitingInterface) {
+func (d *DynamicEnqueueRequest[T]) Update(ctx context.Context, evt event.TypedUpdateEvent[client.Object], q workqueue.RateLimitingInterface) {
 	d.mutex.RLock()
 	defer d.mutex.RUnlock()
 	for _, v := range d.registrations {
@@ -111,7 +111,7 @@ func (d *DynamicEnqueueRequest[T]) Update(ctx context.Context, evt event.UpdateE
 }
 
 // Delete is called in response to a delete event - e.g. Pod Deleted.
-func (d *DynamicEnqueueRequest[T]) Delete(ctx context.Context, evt event.DeleteEvent, q workqueue.RateLimitingInterface) {
+func (d *DynamicEnqueueRequest[T]) Delete(ctx context.Context, evt event.TypedDeleteEvent[client.Object], q workqueue.RateLimitingInterface) {
 	d.mutex.RLock()
 	defer d.mutex.RUnlock()
 	for _, v := range d.registrations {
@@ -121,7 +121,7 @@ func (d *DynamicEnqueueRequest[T]) Delete(ctx context.Context, evt event.DeleteE
 
 // Generic is called in response to an event of an unknown type or a synthetic event triggered as a cron or
 // external trigger request - e.g. reconcile Autoscaling, or a Webhook.
-func (d *DynamicEnqueueRequest[T]) Generic(ctx context.Context, evt event.GenericEvent, q workqueue.RateLimitingInterface) {
+func (d *DynamicEnqueueRequest[T]) Generic(ctx context.Context, evt event.TypedGenericEvent[client.Object], q workqueue.RateLimitingInterface) {
 	d.mutex.RLock()
 	defer d.mutex.RUnlock()
 	for _, v := range d.registrations {

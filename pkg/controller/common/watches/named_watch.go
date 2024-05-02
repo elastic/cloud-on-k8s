@@ -10,6 +10,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/util/workqueue"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/event"
 	"sigs.k8s.io/controller-runtime/pkg/handler"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
@@ -55,7 +56,7 @@ func (w NamedWatch) Generic(_ context.Context, evt event.GenericEvent, q workque
 	}
 }
 
-func (w NamedWatch) EventHandler() handler.EventHandler {
+func (w NamedWatch) EventHandler() handler.TypedEventHandler[client.Object] {
 	return w
 }
 
