@@ -21,9 +21,9 @@ import (
 	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/k8s"
 )
 
-type Reconciler struct {
+type Reconciler[T client.Object] struct {
 	K8sClient      k8s.Client
-	DynamicWatches watches.DynamicWatches
+	DynamicWatches watches.DynamicWatches[T]
 
 	Owner client.Object // owner for the TLS certificates (for ex. Elasticsearch, Kibana)
 
@@ -51,7 +51,7 @@ type Reconciler struct {
 // - a Secret containing the HTTP certificates and key (for internal use by the object), returned by this function
 // - a Secret containing the public-facing HTTP certificates (same as the internal one, but without the key)
 // If TLS is disabled, self-signed certificates are still reconciled, for simplicity/consistency, but not used.
-func (r Reconciler) ReconcileCAAndHTTPCerts(ctx context.Context) (*CertificatesSecret, *reconciler.Results) {
+func (r Reconciler[T]) ReconcileCAAndHTTPCerts(ctx context.Context) (*CertificatesSecret, *reconciler.Results) {
 	span, ctx := apm.StartSpan(ctx, "reconcile_certs", tracing.SpanTypeApp)
 	defer span.End()
 
@@ -116,7 +116,7 @@ func (r Reconciler) ReconcileCAAndHTTPCerts(ctx context.Context) (*CertificatesS
 	return httpCertificates, results
 }
 
-func (r *Reconciler) removeCAAndHTTPCertsSecrets(ctx context.Context) error {
+func (r *Reconciler[T]) removeCAAndHTTPCertsSecrets(ctx context.Context) error {
 	owner := k8s.ExtractNamespacedName(r.Owner)
 	// remove public certs secret
 	if err := k8s.DeleteSecretIfExists(ctx, r.K8sClient,

@@ -8,7 +8,9 @@ import (
 	"context"
 	"fmt"
 
+	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/types"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	commonv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/common/v1"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/certificates"
@@ -50,26 +52,26 @@ func additionalSecretWatchName(associated types.NamespacedName) string {
 // * if there's an ES user to create, watch the user Secret in ES namespace
 // All watches for all given associations are set under the same watch name and replaced with each reconciliation.
 // The given associations are expected to be of the same type (e.g. Kibana -> Elasticsearch, not Kibana -> Enterprise Search).
-func (r *Reconciler) reconcileWatches(ctx context.Context, associated types.NamespacedName, associations []commonv1.Association) error {
+func (r *Reconciler[T]) reconcileWatches(ctx context.Context, associated types.NamespacedName, associations []commonv1.Association) error {
 	managedElasticRef := filterManagedElasticRef(associations)
 	unmanagedElasticRef := filterUnmanagedElasticRef(associations)
 
 	// we have 2 modes (exclusive) for the referenced resource: managed or not managed by ECK and referencedResourceWatchName is shared between both.
 	// either watch the referenced resource managed by ECK
-	if err := ReconcileWatch(associated, managedElasticRef, r.watches.ReferencedResources, referencedResourceWatchName(associated), func(association commonv1.Association) types.NamespacedName {
+	if err := ReconcileWatch[T](associated, managedElasticRef, r.watches.ReferencedResources, referencedResourceWatchName(associated), func(association commonv1.Association) types.NamespacedName {
 		return association.AssociationRef().NamespacedName()
 	}); err != nil {
 		return err
 	}
 	// or watch the custom user secret that describes how to connect to the referenced resource not managed by ECK
-	if err := ReconcileWatch(associated, unmanagedElasticRef, r.watches.Secrets, referencedResourceWatchName(associated), func(association commonv1.Association) types.NamespacedName {
+	if err := ReconcileWatch[*corev1.Secret](associated, unmanagedElasticRef, r.watches.Secrets, referencedResourceWatchName(associated), func(association commonv1.Association) types.NamespacedName {
 		return association.AssociationRef().NamespacedName()
 	}); err != nil {
 		return err
 	}
 
 	// watch the CA secret of the referenced resource in the referenced resource namespace
-	if err := ReconcileWatch(associated, managedElasticRef, r.watches.Secrets, referencedResourceCASecretWatchName(associated), func(association commonv1.Association) types.NamespacedName {
+	if err := ReconcileWatch[*corev1.Secret](associated, managedElasticRef, r.watches.Secrets, referencedResourceCASecretWatchName(associated), func(association commonv1.Association) types.NamespacedName {
 		ref := association.AssociationRef()
 		return types.NamespacedName{
 			Name:      certificates.PublicCertsSecretName(r.AssociationInfo.ReferencedResourceNamer, ref.NameOrSecretName()),
@@ -81,7 +83,7 @@ func (r *Reconciler) reconcileWatches(ctx context.Context, associated types.Name
 
 	// watch the custom services users may have setup to be able to react to updates on services that are not error related
 	// (error related updates are covered by re-queueing on unsuccessful reconciliation)
-	if err := ReconcileWatch(associated, filterWithServiceName(associations), r.watches.Services, serviceWatchName(associated), func(association commonv1.Association) types.NamespacedName {
+	if err := ReconcileWatch[*corev1.Service](associated, filterWithServiceName(associations), r.watches.Services, serviceWatchName(associated), func(association commonv1.Association) types.NamespacedName {
 		ref := association.AssociationRef()
 		return types.NamespacedName{
 			Name:      ref.ServiceName,
@@ -93,7 +95,7 @@ func (r *Reconciler) reconcileWatches(ctx context.Context, associated types.Name
 
 	// watch the Elasticsearch user secret in the Elasticsearch namespace, if needed
 	if r.ElasticsearchUserCreation != nil {
-		if err := ReconcileWatch(associated, managedElasticRef, r.watches.Secrets, esUserWatchName(associated), func(association commonv1.Association) types.NamespacedName {
+		if err := ReconcileWatch[*corev1.Secret](associated, managedElasticRef, r.watches.Secrets, esUserWatchName(associated), func(association commonv1.Association) types.NamespacedName {
 			return UserKey(association, association.AssociationRef().Namespace, r.ElasticsearchUserCreation.UserSecretSuffix)
 		}); err != nil {
 			return err
@@ -127,10 +129,10 @@ func (r *Reconciler) reconcileWatches(ctx context.Context, associated types.Name
 	return nil
 }
 
-func reconcileGenericWatch(
+func reconcileGenericWatch[T client.Object](
 	associated types.NamespacedName,
 	associations []commonv1.Association,
-	dynamicRequest *watches.DynamicEnqueueRequest,
+	dynamicRequest *watches.DynamicEnqueueRequest[T],
 	watchName string,
 	watchedFunc func() ([]types.NamespacedName, error),
 ) error {
@@ -144,7 +146,7 @@ func reconcileGenericWatch(
 	if err != nil {
 		return err
 	}
-	return dynamicRequest.AddHandler(watches.NamedWatch{
+	return dynamicRequest.AddHandler(watches.NamedWatch[T]{
 		Name:    watchName,
 		Watched: watched,
 		Watcher: associated,
@@ -153,10 +155,10 @@ func reconcileGenericWatch(
 
 // ReconcileWatch sets or removes `watchName` watch in `dynamicRequest` based on `associated` and `associations` and
 // `watchedFunc`. No watch is added if watchedFunc(association) refers to an empty namespaced name.
-func ReconcileWatch(
+func ReconcileWatch[T client.Object](
 	associated types.NamespacedName,
 	associations []commonv1.Association,
-	dynamicRequest *watches.DynamicEnqueueRequest,
+	dynamicRequest *watches.DynamicEnqueueRequest[T],
 	watchName string,
 	watchedFunc func(association commonv1.Association) types.NamespacedName,
 ) error {
@@ -175,11 +177,11 @@ func ReconcileWatch(
 }
 
 // RemoveWatch removes `watchName` watch from `dynamicRequest`.
-func RemoveWatch(dynamicRequest *watches.DynamicEnqueueRequest, watchName string) {
+func RemoveWatch[T client.Object](dynamicRequest *watches.DynamicEnqueueRequest[T], watchName string) {
 	dynamicRequest.RemoveHandlerForKey(watchName)
 }
 
-func (r *Reconciler) removeWatches(associated types.NamespacedName) {
+func (r *Reconciler[T]) removeWatches(associated types.NamespacedName) {
 	// - referenced resource
 	RemoveWatch(r.watches.ReferencedResources, referencedResourceWatchName(associated))
 	// - CA secret in referenced resource namespace

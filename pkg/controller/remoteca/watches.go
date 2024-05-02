@@ -46,7 +46,7 @@ func addWatches(mgr manager.Manager, c controller.Controller, r *ReconcileRemote
 	}
 
 	return r.watches.Secrets.AddHandlers(
-		&watches.OwnerWatch{
+		&watches.OwnerWatch[client.Object]{
 			Scheme:       mgr.GetScheme(),
 			Mapper:       mgr.GetRESTMapper(),
 			OwnerType:    &esv1.Elasticsearch{},
@@ -92,7 +92,7 @@ func addCertificatesAuthorityWatches(
 	reconcileClusterAssociation *ReconcileRemoteCa,
 	local, remote types.NamespacedName) error {
 	// Watch the CA secret of Elasticsearch clusters which are involved in a association.
-	err := reconcileClusterAssociation.watches.Secrets.AddHandler(watches.NamedWatch{
+	err := reconcileClusterAssociation.watches.Secrets.AddHandler(watches.NamedWatch[client.Object]{
 		Name:    watchName(local, remote),
 		Watched: []types.NamespacedName{transport.PublicCertsSecretRef(remote)},
 		Watcher: types.NamespacedName{

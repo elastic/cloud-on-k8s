@@ -11,7 +11,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/label"
 )
 
-func (d *defaultDriver) verifySupportsExistingPods(pods []corev1.Pod) error {
+func (d *defaultDriver[T]) verifySupportsExistingPods(pods []corev1.Pod) error {
 	for _, pod := range pods {
 		v, err := label.ExtractVersion(pod.Labels)
 		if err != nil {

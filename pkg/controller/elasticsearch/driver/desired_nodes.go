@@ -22,7 +22,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/nodespec"
 )
 
-func (d *defaultDriver) updateDesiredNodes(
+func (d *defaultDriver[T]) updateDesiredNodes(
 	ctx context.Context,
 	esClient esclient.Client,
 	esReachable bool,

@@ -43,7 +43,7 @@ func supportsNodeShutdown(v version.Version) bool {
 
 // maybeRemoveTransientSettings removes left-over transient settings if we are using node shutdown and have not removed
 // the settings previously that were used in the pre-node-shutdown orchestration approach.
-func (d *defaultDriver) maybeRemoveTransientSettings(ctx context.Context, c esclient.Client) error {
+func (d *defaultDriver[T]) maybeRemoveTransientSettings(ctx context.Context, c esclient.Client) error {
 	if supportsNodeShutdown(c.Version()) && !d.ReconcileState.OrchestrationHints().NoTransientSettings {
 		ulog.FromContext(ctx).V(1).Info("Removing transient settings", "es_name", d.ES.Name, "namespace", d.ES.Namespace)
 		if err := c.RemoveTransientAllocationSettings(ctx); err != nil {

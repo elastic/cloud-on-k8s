@@ -10,6 +10,7 @@ import (
 
 	"github.com/elastic/go-ucfg"
 	uyaml "github.com/elastic/go-ucfg/yaml"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/pkg/errors"
 	corev1 "k8s.io/api/core/v1"
@@ -31,8 +32,8 @@ func ConfigRefWatchName(resource types.NamespacedName) string {
 
 // ParseConfigRef retrieves the content of a secret referenced in `configRef`, sets up dynamic watches for that secret,
 // and parses the secret content into a CanonicalConfig.
-func ParseConfigRef(
-	driver driver.Interface,
+func ParseConfigRef[T client.Object](
+	driver driver.Interface[T],
 	resource runtime.Object, // eg. Beat, EnterpriseSearch
 	configRef *commonv1.ConfigSource,
 	secretKey string, // retrieve config data from that entry in the secret
@@ -46,8 +47,8 @@ func ParseConfigRef(
 
 // ParseConfigRefToConfig retrieves the content of a secret referenced in `configRef`, sets up dynamic watches for that secret,
 // and parses the secret content into ucfg.Config.
-func ParseConfigRefToConfig(
-	driver driver.Interface,
+func ParseConfigRefToConfig[T client.Object](
+	driver driver.Interface[T],
 	resource runtime.Object, // eg. Beat, EnterpriseSearch
 	configRef *commonv1.ConfigSource,
 	secretKey string, // retrieve config data from that entry in the secret

@@ -10,6 +10,7 @@ import (
 
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/types"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	v1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/elasticsearch/v1"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/certificates"
@@ -22,8 +23,8 @@ func AdditionalCAWatchKey(name types.NamespacedName) string {
 	return fmt.Sprintf("%s-transport-ca-trust", name)
 }
 
-func caWatchHandlerFor(name string, watched string, owner types.NamespacedName) watches.NamedWatch {
-	return watches.NamedWatch{
+func caWatchHandlerFor(name string, watched string, owner types.NamespacedName) watches.NamedWatch[*corev1.ConfigMap] {
+	return watches.NamedWatch[*corev1.ConfigMap]{
 		Name: name,
 		Watched: []types.NamespacedName{{
 			Namespace: owner.Namespace,
@@ -34,7 +35,7 @@ func caWatchHandlerFor(name string, watched string, owner types.NamespacedName) 
 }
 
 // ReconcileAdditionalCAs retrieves additional trust from an optional config map if configured and reconciles a watch for the config map.
-func ReconcileAdditionalCAs(ctx context.Context, client k8s.Client, elasticsearch v1.Elasticsearch, watches watches.DynamicWatches) ([]byte, error) {
+func ReconcileAdditionalCAs[T client.Object](ctx context.Context, client k8s.Client, elasticsearch v1.Elasticsearch, watches watches.DynamicWatches[T]) ([]byte, error) {
 	esName := k8s.ExtractNamespacedName(&elasticsearch)
 	watchKey := AdditionalCAWatchKey(esName)
 	additionalTrust := elasticsearch.Spec.Transport.TLS.CertificateAuthorities

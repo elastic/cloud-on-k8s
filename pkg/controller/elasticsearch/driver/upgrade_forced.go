@@ -18,7 +18,7 @@ import (
 	ulog "github.com/elastic/cloud-on-k8s/v2/pkg/utils/log"
 )
 
-func (d *defaultDriver) MaybeForceUpgrade(ctx context.Context, statefulSets sset.StatefulSetList) (bool, error) {
+func (d *defaultDriver[T]) MaybeForceUpgrade(ctx context.Context, statefulSets sset.StatefulSetList) (bool, error) {
 	// Get the pods to upgrade
 	podsToUpgrade, err := podsToUpgrade(d.Client, statefulSets)
 	if err != nil {
@@ -34,7 +34,7 @@ func (d *defaultDriver) MaybeForceUpgrade(ctx context.Context, statefulSets sset
 // maybeForceUpgradePods may attempt a forced upgrade of all podsToUpgrade if allowed to,
 // in order to unlock situations where the reconciliation may otherwise be stuck
 // (eg. no cluster formed, all nodes have a bad spec).
-func (d *defaultDriver) maybeForceUpgradePods(ctx context.Context, actualPods []corev1.Pod, podsToUpgrade []corev1.Pod) (attempted bool, err error) {
+func (d *defaultDriver[T]) maybeForceUpgradePods(ctx context.Context, actualPods []corev1.Pod, podsToUpgrade []corev1.Pod) (attempted bool, err error) {
 	log := ulog.FromContext(ctx)
 	actualBySset := podsByStatefulSetName(actualPods, log)
 	toUpgradeBySset := podsByStatefulSetName(podsToUpgrade, log)

@@ -14,6 +14,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/tools/record"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	esv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/elasticsearch/v1"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/reconciler"
@@ -37,11 +38,11 @@ import (
 // Roles are aggregated from:
 // - predefined roles (for the probe user)
 // - user-provided roles referenced in the Elasticsearch spec
-func ReconcileUsersAndRoles(
+func ReconcileUsersAndRoles[T client.Object](
 	ctx context.Context,
 	c k8s.Client,
 	es esv1.Elasticsearch,
-	watched watches.DynamicWatches,
+	watched watches.DynamicWatches[T],
 	recorder record.EventRecorder,
 	passwordHasher cryptutil.PasswordHasher,
 ) (esclient.BasicAuth, error) {
@@ -82,11 +83,11 @@ func getExistingFileRealm(c k8s.Client, es esv1.Elasticsearch) (filerealm.Realm,
 }
 
 // aggregateFileRealm builds a single file realm from multiple ones, and returns the controller user credentials.
-func aggregateFileRealm(
+func aggregateFileRealm[T client.Object](
 	ctx context.Context,
 	c k8s.Client,
 	es esv1.Elasticsearch,
-	watched watches.DynamicWatches,
+	watched watches.DynamicWatches[T],
 	recorder record.EventRecorder,
 	passwordHasher cryptutil.PasswordHasher,
 ) (filerealm.Realm, esclient.BasicAuth, error) {
@@ -137,11 +138,11 @@ func aggregateFileRealm(
 	return fileRealm, controllerCreds, nil
 }
 
-func aggregateRoles(
+func aggregateRoles[T client.Object](
 	ctx context.Context,
 	c k8s.Client,
 	es esv1.Elasticsearch,
-	watched watches.DynamicWatches,
+	watched watches.DynamicWatches[T],
 	recorder record.EventRecorder,
 ) (RolesFileContent, error) {
 	userProvided, err := reconcileUserProvidedRoles(ctx, c, es, watched, recorder)

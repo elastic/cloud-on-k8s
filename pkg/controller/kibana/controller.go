@@ -16,6 +16,7 @@ import (
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/tools/record"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
 	"sigs.k8s.io/controller-runtime/pkg/handler"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
@@ -45,25 +46,25 @@ const (
 // Add creates a new Kibana Controller and adds it to the Manager with default RBAC. The Manager will set fields on the Controller
 // and Start it when the Manager is Started.
 func Add(mgr manager.Manager, params operator.Parameters) error {
-	reconciler := newReconciler(mgr, params)
+	reconciler := newReconciler[client.Object](mgr, params)
 	c, err := common.NewController(mgr, controllerName, reconciler, params)
 	if err != nil {
 		return err
 	}
-	return addWatches(mgr, c, reconciler)
+	return addWatches[client.Object](mgr, c, reconciler)
 }
 
 // newReconciler returns a new reconcile.Reconciler
-func newReconciler(mgr manager.Manager, params operator.Parameters) *ReconcileKibana {
-	return &ReconcileKibana{
+func newReconciler[T client.Object](mgr manager.Manager, params operator.Parameters) *ReconcileKibana[T] {
+	return &ReconcileKibana[T]{
 		Client:         mgr.GetClient(),
 		recorder:       mgr.GetEventRecorderFor(controllerName),
-		dynamicWatches: watches.NewDynamicWatches(),
+		dynamicWatches: watches.NewDynamicWatches[T](),
 		params:         params,
 	}
 }
 
-func addWatches(mgr manager.Manager, c controller.Controller, r *ReconcileKibana) error {
+func addWatches[T client.Object](mgr manager.Manager, c controller.Controller, r *ReconcileKibana[T]) error {
 	// Watch for changes to Kibana
 	if err := c.Watch(source.Kind(mgr.GetCache(), &kbv1.Kibana{}, &handler.TypedEnqueueRequestForObject[*kbv1.Kibana]{})); err != nil {
 		return err
@@ -105,14 +106,14 @@ func addWatches(mgr manager.Manager, c controller.Controller, r *ReconcileKibana
 	return c.Watch(source.Kind(mgr.GetCache(), &corev1.Secret{}, r.dynamicWatches.Secrets))
 }
 
-var _ reconcile.Reconciler = &ReconcileKibana{}
+var _ reconcile.Reconciler = &ReconcileKibana[client.Object]{}
 
 // ReconcileKibana reconciles a Kibana object
-type ReconcileKibana struct {
+type ReconcileKibana[T client.Object] struct {
 	k8s.Client
 	recorder record.EventRecorder
 
-	dynamicWatches watches.DynamicWatches
+	dynamicWatches watches.DynamicWatches[T]
 
 	params operator.Parameters
 
@@ -122,7 +123,7 @@ type ReconcileKibana struct {
 
 // Reconcile reads that state of the cluster for a Kibana object and makes changes based on the state read and what is
 // in the Kibana.Spec
-func (r *ReconcileKibana) Reconcile(ctx context.Context, request reconcile.Request) (reconcile.Result, error) {
+func (r *ReconcileKibana[T]) Reconcile(ctx context.Context, request reconcile.Request) (reconcile.Result, error) {
 	ctx = common.NewReconciliationContext(ctx, &r.iteration, r.params.Tracer, controllerName, "kibana_name", request)
 	defer common.LogReconciliationRun(ulog.FromContext(ctx))()
 	defer tracing.EndContextTransaction(ctx)
@@ -160,7 +161,7 @@ func (r *ReconcileKibana) Reconcile(ctx context.Context, request reconcile.Reque
 	return r.doReconcile(ctx, request, &kb)
 }
 
-func (r *ReconcileKibana) doReconcile(ctx context.Context, request reconcile.Request, kb *kbv1.Kibana) (result reconcile.Result, err error) {
+func (r *ReconcileKibana[T]) doReconcile(ctx context.Context, request reconcile.Request, kb *kbv1.Kibana) (result reconcile.Result, err error) {
 	state := NewState(request, kb)
 	log := ulog.FromContext(ctx)
 	// defer the updating of status to ensure that the status is updated regardless of the outcome of the reconciliation.
@@ -186,7 +187,7 @@ func (r *ReconcileKibana) doReconcile(ctx context.Context, request reconcile.Req
 		return result, err
 	}
 
-	var driver *driver
+	var driver *driver[T]
 	driver, err = newDriver(r, r.dynamicWatches, r.recorder, kb, r.params.IPFamily)
 	if err != nil {
 		return reconcile.Result{}, tracing.CaptureError(ctx, err)
@@ -199,7 +200,7 @@ func (r *ReconcileKibana) doReconcile(ctx context.Context, request reconcile.Req
 	return result, err
 }
 
-func (r *ReconcileKibana) validate(ctx context.Context, kb *kbv1.Kibana) error {
+func (r *ReconcileKibana[T]) validate(ctx context.Context, kb *kbv1.Kibana) error {
 	span, vctx := apm.StartSpan(ctx, "validate", tracing.SpanTypeApp)
 	defer span.End()
 
@@ -212,7 +213,7 @@ func (r *ReconcileKibana) validate(ctx context.Context, kb *kbv1.Kibana) error {
 	return nil
 }
 
-func (r *ReconcileKibana) updateStatus(ctx context.Context, state State) error {
+func (r *ReconcileKibana[T]) updateStatus(ctx context.Context, state State) error {
 	span, _ := apm.StartSpan(ctx, "update_status", tracing.SpanTypeApp)
 	defer span.End()
 
@@ -232,7 +233,7 @@ func (r *ReconcileKibana) updateStatus(ctx context.Context, state State) error {
 	return common.UpdateStatus(ctx, r.Client, state.Kibana)
 }
 
-func (r *ReconcileKibana) onDelete(ctx context.Context, obj types.NamespacedName) error {
+func (r *ReconcileKibana[T]) onDelete(ctx context.Context, obj types.NamespacedName) error {
 	// Clean up watches set on secure settings
 	r.dynamicWatches.Secrets.RemoveHandlerForKey(keystore.SecureSettingsWatchName(obj))
 	// Clean up watches set on custom http tls certificates

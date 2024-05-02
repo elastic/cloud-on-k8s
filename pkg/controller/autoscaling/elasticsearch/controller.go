@@ -17,6 +17,7 @@ import (
 	"k8s.io/apimachinery/pkg/util/errors"
 	"k8s.io/client-go/tools/record"
 	"k8s.io/utils/ptr"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
@@ -75,13 +76,13 @@ func (r baseReconcileAutoscaling) withRecorder(recorder record.EventRecorder) ba
 
 // ReconcileElasticsearchAutoscaler reconciles autoscaling policies and Elasticsearch resources specifications based on
 // Elasticsearch autoscaling API response.
-type ReconcileElasticsearchAutoscaler struct {
+type ReconcileElasticsearchAutoscaler[T client.Object] struct {
 	baseReconcileAutoscaling
-	Watches watches.DynamicWatches
+	Watches watches.DynamicWatches[T]
 }
 
 // NewReconciler returns a new autoscaling reconcile.Reconciler
-func NewReconciler(mgr manager.Manager, params operator.Parameters) *ReconcileElasticsearchAutoscaler {
+func NewReconciler(mgr manager.Manager, params operator.Parameters) *ReconcileElasticsearchAutoscaler[client.Object] {
 	c := mgr.GetClient()
 	reconcileAutoscaling := baseReconcileAutoscaling{
 		Client:           c,
@@ -90,7 +91,7 @@ func NewReconciler(mgr manager.Manager, params operator.Parameters) *ReconcileEl
 		recorder:         mgr.GetEventRecorderFor(ControllerName),
 		licenseChecker:   license.NewLicenseChecker(c, params.OperatorNamespace),
 	}
-	return &ReconcileElasticsearchAutoscaler{
+	return &ReconcileElasticsearchAutoscaler[client.Object]{
 		baseReconcileAutoscaling: reconcileAutoscaling.withRecorder(mgr.GetEventRecorderFor(ControllerName)),
 		Watches:                  watches.NewDynamicWatches(),
 	}
@@ -100,7 +101,7 @@ func dynamicWatchName(request reconcile.Request) string {
 	return fmt.Sprintf("%s-%s-referenced-es-watch", request.Namespace, request.Name)
 }
 
-func (r *ReconcileElasticsearchAutoscaler) Reconcile(ctx context.Context, request reconcile.Request) (reconcile.Result, error) {
+func (r *ReconcileElasticsearchAutoscaler[T]) Reconcile(ctx context.Context, request reconcile.Request) (reconcile.Result, error) {
 	ctx = common.NewReconciliationContext(ctx, &r.iteration, r.Tracer, ControllerName, "esa_name", request)
 	defer common.LogReconciliationRun(logconf.FromContext(ctx))()
 	defer tracing.EndContextTransaction(ctx)
@@ -119,7 +120,7 @@ func (r *ReconcileElasticsearchAutoscaler) Reconcile(ctx context.Context, reques
 
 	// Ensure we watch the associated Elasticsearch
 	esNamespacedName := types.NamespacedName{Name: esa.Spec.ElasticsearchRef.Name, Namespace: request.Namespace}
-	if err := r.Watches.ReferencedResources.AddHandler(watches.NamedWatch{
+	if err := r.Watches.ReferencedResources.AddHandler(watches.NamedWatch[T]{
 		Name:    dynamicWatchName(request),
 		Watched: []types.NamespacedName{esNamespacedName},
 		Watcher: request.NamespacedName,
@@ -249,7 +250,7 @@ func (r *ReconcileElasticsearchAutoscaler) Reconcile(ctx context.Context, reques
 }
 
 // reportAsUnhealthy reports the autoscaler as inactive in the status.
-func (r *ReconcileElasticsearchAutoscaler) reportAsUnhealthy(
+func (r *ReconcileElasticsearchAutoscaler[T]) reportAsUnhealthy(
 	ctx context.Context,
 	log logr.Logger,
 	esa autoscalingv1alpha1.ElasticsearchAutoscaler,
@@ -291,7 +292,7 @@ func (r *ReconcileElasticsearchAutoscaler) reportAsUnhealthy(
 }
 
 // reportAsInactive reports the autoscaler as inactive in the status.
-func (r *ReconcileElasticsearchAutoscaler) reportAsInactive(
+func (r *ReconcileElasticsearchAutoscaler[T]) reportAsInactive(
 	ctx context.Context,
 	log logr.Logger,
 	esa autoscalingv1alpha1.ElasticsearchAutoscaler,
@@ -329,7 +330,7 @@ func (r *ReconcileElasticsearchAutoscaler) reportAsInactive(
 	return r.updateStatus(ctx, log, esa)
 }
 
-func (r *ReconcileElasticsearchAutoscaler) updateStatus(
+func (r *ReconcileElasticsearchAutoscaler[T]) updateStatus(
 	ctx context.Context,
 	log logr.Logger,
 	esa autoscalingv1alpha1.ElasticsearchAutoscaler,

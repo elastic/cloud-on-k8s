@@ -17,6 +17,7 @@ import (
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/tools/record"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
 	"sigs.k8s.io/controller-runtime/pkg/handler"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
@@ -47,7 +48,7 @@ const (
 // Add creates a new EnterpriseSearch Controller and adds it to the Manager with default RBAC.
 // The Manager will set fields on the Controller and Start it when the Manager is Started.
 func Add(mgr manager.Manager, params operator.Parameters) error {
-	reconciler := newReconciler(mgr, params)
+	reconciler := newReconciler[client.Object](mgr, params)
 	c, err := common.NewController(mgr, controllerName, reconciler, params)
 	if err != nil {
 		return err
@@ -56,17 +57,17 @@ func Add(mgr manager.Manager, params operator.Parameters) error {
 }
 
 // newReconciler returns a new reconcile.Reconciler
-func newReconciler(mgr manager.Manager, params operator.Parameters) *ReconcileEnterpriseSearch {
+func newReconciler[T client.Object](mgr manager.Manager, params operator.Parameters) *ReconcileEnterpriseSearch[T] {
 	client := mgr.GetClient()
-	return &ReconcileEnterpriseSearch{
+	return &ReconcileEnterpriseSearch[T]{
 		Client:         client,
 		recorder:       mgr.GetEventRecorderFor(controllerName),
-		dynamicWatches: watches.NewDynamicWatches(),
+		dynamicWatches: watches.NewDynamicWatches[T](),
 		Parameters:     params,
 	}
 }
 
-func addWatches(mgr manager.Manager, c controller.Controller, r *ReconcileEnterpriseSearch) error {
+func addWatches(mgr manager.Manager, c controller.Controller, r *ReconcileEnterpriseSearch[client.Object]) error {
 	// Watch for changes to EnterpriseSearch
 	err := c.Watch(source.Kind(mgr.GetCache(), &entv1.EnterpriseSearch{}, &handler.TypedEnqueueRequestForObject[*entv1.EnterpriseSearch]{}))
 	if err != nil {
@@ -110,35 +111,35 @@ func addWatches(mgr manager.Manager, c controller.Controller, r *ReconcileEnterp
 	return c.Watch(source.Kind(mgr.GetCache(), &corev1.Secret{}, r.dynamicWatches.Secrets))
 }
 
-var _ reconcile.Reconciler = &ReconcileEnterpriseSearch{}
+var _ reconcile.Reconciler = &ReconcileEnterpriseSearch[client.Object]{}
 
 // ReconcileEnterpriseSearch reconciles an ApmServer object
-type ReconcileEnterpriseSearch struct {
+type ReconcileEnterpriseSearch[T client.Object] struct {
 	k8s.Client
 	recorder       record.EventRecorder
-	dynamicWatches watches.DynamicWatches
+	dynamicWatches watches.DynamicWatches[T]
 	operator.Parameters
 	// iteration is the number of times this controller has run its Reconcile method
 	iteration uint64
 }
 
-func (r *ReconcileEnterpriseSearch) K8sClient() k8s.Client {
+func (r *ReconcileEnterpriseSearch[T]) K8sClient() k8s.Client {
 	return r.Client
 }
 
-func (r *ReconcileEnterpriseSearch) DynamicWatches() watches.DynamicWatches {
+func (r *ReconcileEnterpriseSearch[T]) DynamicWatches() watches.DynamicWatches[T] {
 	return r.dynamicWatches
 }
 
-func (r *ReconcileEnterpriseSearch) Recorder() record.EventRecorder {
+func (r *ReconcileEnterpriseSearch[T]) Recorder() record.EventRecorder {
 	return r.recorder
 }
 
-var _ driver.Interface = &ReconcileEnterpriseSearch{}
+var _ driver.Interface[client.Object] = &ReconcileEnterpriseSearch[client.Object]{}
 
 // Reconcile reads that state of the cluster for an EnterpriseSearch object and makes changes based on the state read
 // and what is in the EnterpriseSearch.Spec.
-func (r *ReconcileEnterpriseSearch) Reconcile(ctx context.Context, request reconcile.Request) (reconcile.Result, error) {
+func (r *ReconcileEnterpriseSearch[T]) Reconcile(ctx context.Context, request reconcile.Request) (reconcile.Result, error) {
 	ctx = common.NewReconciliationContext(ctx, &r.iteration, r.Tracer, controllerName, "ent_name", request)
 	defer common.LogReconciliationRun(ulog.FromContext(ctx))()
 	defer tracing.EndContextTransaction(ctx)
@@ -170,7 +171,7 @@ func (r *ReconcileEnterpriseSearch) Reconcile(ctx context.Context, request recon
 	return results.Aggregate()
 }
 
-func (r *ReconcileEnterpriseSearch) onDelete(ctx context.Context, obj types.NamespacedName) error {
+func (r *ReconcileEnterpriseSearch[T]) onDelete(ctx context.Context, obj types.NamespacedName) error {
 	// Clean up watches
 	r.dynamicWatches.Secrets.RemoveHandlerForKey(common.ConfigRefWatchName(obj))
 	// Clean up watches set on custom http tls certificates
@@ -178,7 +179,7 @@ func (r *ReconcileEnterpriseSearch) onDelete(ctx context.Context, obj types.Name
 	return reconciler.GarbageCollectSoftOwnedSecrets(ctx, r.Client, obj, entv1.Kind)
 }
 
-func (r *ReconcileEnterpriseSearch) doReconcile(ctx context.Context, ent entv1.EnterpriseSearch) (*reconciler.Results, entv1.EnterpriseSearchStatus) {
+func (r *ReconcileEnterpriseSearch[T]) doReconcile(ctx context.Context, ent entv1.EnterpriseSearch) (*reconciler.Results, entv1.EnterpriseSearchStatus) {
 	results := reconciler.NewResult(ctx)
 	status := newStatus(ent)
 
@@ -200,7 +201,7 @@ func (r *ReconcileEnterpriseSearch) doReconcile(ctx context.Context, ent entv1.E
 		return results.WithError(err), status
 	}
 
-	_, results = certificates.Reconciler{
+	_, results = certificates.Reconciler[T]{
 		K8sClient:             r.K8sClient(),
 		DynamicWatches:        r.DynamicWatches(),
 		Owner:                 &ent,
@@ -269,7 +270,7 @@ func newStatus(ent entv1.EnterpriseSearch) entv1.EnterpriseSearchStatus {
 	return status
 }
 
-func (r *ReconcileEnterpriseSearch) validate(ctx context.Context, ent *entv1.EnterpriseSearch) error {
+func (r *ReconcileEnterpriseSearch[T]) validate(ctx context.Context, ent *entv1.EnterpriseSearch) error {
 	span, vctx := apm.StartSpan(ctx, "validate", tracing.SpanTypeApp)
 	defer span.End()
 
@@ -282,7 +283,7 @@ func (r *ReconcileEnterpriseSearch) validate(ctx context.Context, ent *entv1.Ent
 	return nil
 }
 
-func (r *ReconcileEnterpriseSearch) generateStatus(ctx context.Context, ent entv1.EnterpriseSearch, deploy appsv1.Deployment, svcName string) (entv1.EnterpriseSearchStatus, error) {
+func (r *ReconcileEnterpriseSearch[T]) generateStatus(ctx context.Context, ent entv1.EnterpriseSearch, deploy appsv1.Deployment, svcName string) (entv1.EnterpriseSearchStatus, error) {
 	status := entv1.EnterpriseSearchStatus{
 		Association:        ent.Status.Association,
 		ExternalService:    svcName,
@@ -297,7 +298,7 @@ func (r *ReconcileEnterpriseSearch) generateStatus(ctx context.Context, ent entv
 	return status, err
 }
 
-func (r *ReconcileEnterpriseSearch) updateStatus(ctx context.Context, ent entv1.EnterpriseSearch, status entv1.EnterpriseSearchStatus) error {
+func (r *ReconcileEnterpriseSearch[T]) updateStatus(ctx context.Context, ent entv1.EnterpriseSearch, status entv1.EnterpriseSearchStatus) error {
 	if reflect.DeepEqual(status, ent.Status) {
 		return nil // nothing to do
 	}

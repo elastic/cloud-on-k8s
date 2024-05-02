@@ -11,6 +11,7 @@ import (
 
 	"go.elastic.co/apm/v2"
 	corev1 "k8s.io/api/core/v1"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	commonv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/common/v1"
 	esv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/elasticsearch/v1"
@@ -27,9 +28,9 @@ import (
 )
 
 // ReconcileHTTP reconciles the HTTP layer certificates of a cluster.
-func ReconcileHTTP(
+func ReconcileHTTP[T client.Object](
 	ctx context.Context,
-	driver driver.Interface,
+	driver driver.Interface[T],
 	es esv1.Elasticsearch,
 	services []corev1.Service,
 	globalCA *certificates.CA,
@@ -53,7 +54,7 @@ func ReconcileHTTP(
 
 	// reconcile HTTP CA and cert
 	var httpCerts *certificates.CertificatesSecret
-	httpCerts, results = certificates.Reconciler{
+	httpCerts, results = certificates.Reconciler[T]{
 		K8sClient:      driver.K8sClient(),
 		DynamicWatches: driver.DynamicWatches(),
 		Owner:          &es,
@@ -84,9 +85,9 @@ func ReconcileHTTP(
 }
 
 // ReconcileTransport reconciles the transport layer certificates of a cluster.
-func ReconcileTransport(
+func ReconcileTransport[T client.Object](
 	ctx context.Context,
-	driver driver.Interface,
+	driver driver.Interface[T],
 	es esv1.Elasticsearch,
 	globalCA *certificates.CA,
 	caRotation certificates.RotationParams,

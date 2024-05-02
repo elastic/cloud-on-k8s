@@ -11,6 +11,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	"k8s.io/utils/ptr"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	beatv1beta1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/beat/v1beta1"
 	commonv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/common/v1"
@@ -73,8 +74,8 @@ func initContainerParameters(typ string) keystore.InitContainerParameters {
 	}
 }
 
-func buildPodTemplate(
-	params DriverParams,
+func buildPodTemplate[T client.Object](
+	params DriverParams[T],
 	defaultImage container.Image,
 	configHash hash.Hash32,
 ) (corev1.PodTemplateSpec, error) {
@@ -256,7 +257,7 @@ func runningAsRoot(beat beatv1beta1.Beat) bool {
 	return false
 }
 
-func createDataVolume(dp DriverParams) volume.VolumeLike {
+func createDataVolume[T client.Object](dp DriverParams[T]) volume.VolumeLike {
 	dataMountPath := fmt.Sprintf(DataPathTemplate, dp.Beat.Spec.Type)
 	hostDataPath := fmt.Sprintf(DataMountPathTemplate, dp.Beat.Namespace, dp.Beat.Name, dp.Beat.Spec.Type)
 

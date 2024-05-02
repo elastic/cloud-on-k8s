@@ -5,20 +5,22 @@
 package otherbeat
 
 import (
+	"sigs.k8s.io/controller-runtime/pkg/client"
+
 	beatv1beta1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/beat/v1beta1"
 	beatcommon "github.com/elastic/cloud-on-k8s/v2/pkg/controller/beat/common"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/reconciler"
 )
 
-type Driver struct {
-	beatcommon.DriverParams
+type Driver[T client.Object] struct {
+	beatcommon.DriverParams[T]
 	beatcommon.Driver
 }
 
-func NewDriver(params beatcommon.DriverParams) beatcommon.Driver {
-	return &Driver{DriverParams: params}
+func NewDriver(params beatcommon.DriverParams[client.Object]) beatcommon.Driver {
+	return &Driver[client.Object]{DriverParams: params}
 }
 
-func (d *Driver) Reconcile() (*reconciler.Results, *beatv1beta1.BeatStatus) {
+func (d *Driver[T]) Reconcile() (*reconciler.Results, *beatv1beta1.BeatStatus) {
 	return beatcommon.Reconcile(d.DriverParams, nil, "")
 }
