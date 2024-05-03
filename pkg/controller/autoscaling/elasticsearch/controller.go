@@ -76,13 +76,13 @@ func (r baseReconcileAutoscaling) withRecorder(recorder record.EventRecorder) ba
 
 // ReconcileElasticsearchAutoscaler reconciles autoscaling policies and Elasticsearch resources specifications based on
 // Elasticsearch autoscaling API response.
-type ReconcileElasticsearchAutoscaler[T client.Object] struct {
+type ReconcileElasticsearchAutoscaler struct {
 	baseReconcileAutoscaling
-	Watches watches.DynamicWatches[T]
+	Watches watches.DynamicWatches
 }
 
 // NewReconciler returns a new autoscaling reconcile.Reconciler
-func NewReconciler(mgr manager.Manager, params operator.Parameters) *ReconcileElasticsearchAutoscaler[client.Object] {
+func NewReconciler(mgr manager.Manager, params operator.Parameters) *ReconcileElasticsearchAutoscaler {
 	c := mgr.GetClient()
 	reconcileAutoscaling := baseReconcileAutoscaling{
 		Client:           c,
@@ -91,7 +91,7 @@ func NewReconciler(mgr manager.Manager, params operator.Parameters) *ReconcileEl
 		recorder:         mgr.GetEventRecorderFor(ControllerName),
 		licenseChecker:   license.NewLicenseChecker(c, params.OperatorNamespace),
 	}
-	return &ReconcileElasticsearchAutoscaler[client.Object]{
+	return &ReconcileElasticsearchAutoscaler{
 		baseReconcileAutoscaling: reconcileAutoscaling.withRecorder(mgr.GetEventRecorderFor(ControllerName)),
 		Watches:                  watches.NewDynamicWatches[client.Object](),
 	}
@@ -101,7 +101,7 @@ func dynamicWatchName(request reconcile.Request) string {
 	return fmt.Sprintf("%s-%s-referenced-es-watch", request.Namespace, request.Name)
 }
 
-func (r *ReconcileElasticsearchAutoscaler[T]) Reconcile(ctx context.Context, request reconcile.Request) (reconcile.Result, error) {
+func (r *ReconcileElasticsearchAutoscaler) Reconcile(ctx context.Context, request reconcile.Request) (reconcile.Result, error) {
 	ctx = common.NewReconciliationContext(ctx, &r.iteration, r.Tracer, ControllerName, "esa_name", request)
 	defer common.LogReconciliationRun(logconf.FromContext(ctx))()
 	defer tracing.EndContextTransaction(ctx)
@@ -250,7 +250,7 @@ func (r *ReconcileElasticsearchAutoscaler[T]) Reconcile(ctx context.Context, req
 }
 
 // reportAsUnhealthy reports the autoscaler as inactive in the status.
-func (r *ReconcileElasticsearchAutoscaler[T]) reportAsUnhealthy(
+func (r *ReconcileElasticsearchAutoscaler) reportAsUnhealthy(
 	ctx context.Context,
 	log logr.Logger,
 	esa autoscalingv1alpha1.ElasticsearchAutoscaler,
@@ -292,7 +292,7 @@ func (r *ReconcileElasticsearchAutoscaler[T]) reportAsUnhealthy(
 }
 
 // reportAsInactive reports the autoscaler as inactive in the status.
-func (r *ReconcileElasticsearchAutoscaler[T]) reportAsInactive(
+func (r *ReconcileElasticsearchAutoscaler) reportAsInactive(
 	ctx context.Context,
 	log logr.Logger,
 	esa autoscalingv1alpha1.ElasticsearchAutoscaler,
@@ -330,7 +330,7 @@ func (r *ReconcileElasticsearchAutoscaler[T]) reportAsInactive(
 	return r.updateStatus(ctx, log, esa)
 }
 
-func (r *ReconcileElasticsearchAutoscaler[T]) updateStatus(
+func (r *ReconcileElasticsearchAutoscaler) updateStatus(
 	ctx context.Context,
 	log logr.Logger,
 	esa autoscalingv1alpha1.ElasticsearchAutoscaler,

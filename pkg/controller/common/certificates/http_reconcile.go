@@ -31,7 +31,7 @@ import (
 
 // ReconcilePublicHTTPCerts reconciles the Secret containing the HTTP Certificate currently in use, and the CA of
 // the certificate if available.
-func (r Reconciler[T]) ReconcilePublicHTTPCerts(ctx context.Context, internalCerts *CertificatesSecret) error {
+func (r Reconciler) ReconcilePublicHTTPCerts(ctx context.Context, internalCerts *CertificatesSecret) error {
 	nsn := PublicCertsSecretRef(r.Namer, k8s.ExtractNamespacedName(r.Owner))
 	expected := corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
@@ -54,7 +54,7 @@ func (r Reconciler[T]) ReconcilePublicHTTPCerts(ctx context.Context, internalCer
 }
 
 // ReconcileInternalHTTPCerts reconciles the internal resources for the HTTP certificate.
-func (r Reconciler[T]) ReconcileInternalHTTPCerts(ctx context.Context, ca *CA, customCertificates *CertificatesSecret) (*CertificatesSecret, error) {
+func (r Reconciler) ReconcileInternalHTTPCerts(ctx context.Context, ca *CA, customCertificates *CertificatesSecret) (*CertificatesSecret, error) {
 	log := ulog.FromContext(ctx)
 	ownerNSN := k8s.ExtractNamespacedName(r.Owner)
 
@@ -143,7 +143,7 @@ func (r Reconciler[T]) ReconcileInternalHTTPCerts(ctx context.Context, ca *CA, c
 // populateFromCustomCertificateContents populates the secret passed as a parameter from the contents of customCertificates. Returns two
 // booleans: whether a CA certificate has been provided through the custom certificate secret and secondly whether data in the resulting secret
 // has been updated.
-func (r Reconciler[T]) populateFromCustomCertificateContents(secret *corev1.Secret, customCertificates *CertificatesSecret, ca *CA) (bool, bool) {
+func (r Reconciler) populateFromCustomCertificateContents(secret *corev1.Secret, customCertificates *CertificatesSecret, ca *CA) (bool, bool) {
 	caCertProvided := true
 	expectedSecretData := make(map[string][]byte)
 	expectedSecretData[CertFileName] = customCertificates.CertPem()

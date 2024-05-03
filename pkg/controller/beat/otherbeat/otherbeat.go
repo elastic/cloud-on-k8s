@@ -13,12 +13,12 @@ import (
 )
 
 type Driver[T client.Object] struct {
-	beatcommon.DriverParams[T]
+	beatcommon.DriverParams
 	beatcommon.Driver
 }
 
-func NewDriver[T client.Object](params beatcommon.DriverParams[T]) beatcommon.Driver {
-	return &Driver[T]{DriverParams: params}
+func NewDriver(params beatcommon.DriverParams) beatcommon.Driver {
+	return &Driver[client.Object]{DriverParams: params}
 }
 
 func (d *Driver[T]) Reconcile() (*reconciler.Results, *beatv1beta1.BeatStatus) {

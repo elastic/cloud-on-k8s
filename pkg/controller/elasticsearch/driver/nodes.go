@@ -32,7 +32,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/optional"
 )
 
-func (d *defaultDriver[T]) reconcileNodeSpecs(
+func (d *defaultDriver) reconcileNodeSpecs(
 	ctx context.Context,
 	esReachable bool,
 	esClient esclient.Client,
@@ -242,7 +242,7 @@ func (d *defaultDriver[T]) reconcileNodeSpecs(
 	return results
 }
 
-func (d *defaultDriver[T]) isNodeSpecsReconciled(ctx context.Context, actualStatefulSets es_sset.StatefulSetList, client k8s.Client, result *reconciler.Results) bool {
+func (d *defaultDriver) isNodeSpecsReconciled(ctx context.Context, actualStatefulSets es_sset.StatefulSetList, client k8s.Client, result *reconciler.Results) bool {
 	if isReconciled, _ := result.IsReconciled(); !isReconciled {
 		return false
 	}

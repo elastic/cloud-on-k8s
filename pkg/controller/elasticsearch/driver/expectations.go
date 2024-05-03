@@ -20,7 +20,7 @@ import (
 // - calling ES orchestration settings (zen1/zen2/allocation excludes) with wrong assumptions
 // (eg. incorrect number of nodes or master-eligible nodes topology)
 // - create or delete more than one master node at once
-func (d *defaultDriver[T]) expectationsSatisfied(ctx context.Context) (bool, string, error) {
+func (d *defaultDriver) expectationsSatisfied(ctx context.Context) (bool, string, error) {
 	log := ulog.FromContext(ctx)
 	// make sure the cache is up-to-date
 	expectationsOK, reason, err := d.Expectations.Satisfied()

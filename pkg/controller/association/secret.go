@@ -44,7 +44,7 @@ const (
 
 // ExpectedConfigFromUnmanagedAssociation returns the association configuration to associate the external unmanaged resource referenced
 // in the given association.
-func (r *Reconciler[T]) ExpectedConfigFromUnmanagedAssociation(association commonv1.Association) (commonv1.AssociationConf, error) {
+func (r *Reconciler) ExpectedConfigFromUnmanagedAssociation(association commonv1.Association) (commonv1.AssociationConf, error) {
 	assocRef := association.AssociationRef()
 	info, err := GetUnmanagedAssociationConnectionInfoFromSecret(r.Client, association)
 	if err != nil {

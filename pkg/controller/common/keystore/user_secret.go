@@ -14,7 +14,6 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/tools/record"
-	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	commonv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/common/v1"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/driver"
@@ -38,9 +37,9 @@ const secureSettingsSecretSuffix = "secure-settings"
 // The user-provided secrets are watched to reconcile on any change.
 // The user secret resource version is returned along with the volume, so that
 // any change in the user secret leads to pod rotation.
-func secureSettingsVolume[T client.Object](
+func secureSettingsVolume(
 	ctx context.Context,
-	r driver.Interface[T],
+	r driver.Interface,
 	hasKeystore HasKeystore,
 	labels map[string]string,
 	namer name.Namer,

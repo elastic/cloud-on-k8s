@@ -12,7 +12,6 @@ import (
 
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/client-go/tools/record"
-	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	beatv1beta1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/beat/v1beta1"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/association"
@@ -34,30 +33,30 @@ type Driver interface {
 	Reconcile() (*reconciler.Results, *beatv1beta1.BeatStatus)
 }
 
-type DriverParams[T client.Object] struct {
+type DriverParams struct {
 	Context context.Context
 
 	Client        k8s.Client
 	EventRecorder record.EventRecorder
-	Watches       watches.DynamicWatches[T]
+	Watches       watches.DynamicWatches
 
 	Status *beatv1beta1.BeatStatus
 	Beat   beatv1beta1.Beat
 }
 
-func (dp DriverParams[T]) K8sClient() k8s.Client {
+func (dp DriverParams) K8sClient() k8s.Client {
 	return dp.Client
 }
 
-func (dp DriverParams[T]) Recorder() record.EventRecorder {
+func (dp DriverParams) Recorder() record.EventRecorder {
 	return dp.EventRecorder
 }
 
-func (dp DriverParams[T]) DynamicWatches() watches.DynamicWatches[T] {
+func (dp DriverParams) DynamicWatches() watches.DynamicWatches {
 	return dp.Watches
 }
 
-func (dp *DriverParams[T]) GetPodTemplate() corev1.PodTemplateSpec {
+func (dp *DriverParams) GetPodTemplate() corev1.PodTemplateSpec {
 	spec := dp.Beat.Spec
 	switch {
 	case spec.DaemonSet != nil:
@@ -69,10 +68,10 @@ func (dp *DriverParams[T]) GetPodTemplate() corev1.PodTemplateSpec {
 	return corev1.PodTemplateSpec{}
 }
 
-var _ driver.Interface[client.Object] = DriverParams[client.Object]{}
+var _ driver.Interface = DriverParams{}
 
-func Reconcile[T client.Object](
-	params DriverParams[T],
+func Reconcile(
+	params DriverParams,
 	managedConfig *settings.CanonicalConfig,
 	defaultImage container.Image,
 ) (*reconciler.Results, *beatv1beta1.BeatStatus) {

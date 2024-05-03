@@ -15,7 +15,6 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/client-go/tools/record"
 	"k8s.io/utils/ptr"
-	"sigs.k8s.io/controller-runtime/pkg/client"
 	controller "sigs.k8s.io/controller-runtime/pkg/reconcile"
 
 	esv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/elasticsearch/v1"
@@ -66,13 +65,13 @@ type Driver interface {
 }
 
 // NewDefaultDriver returns the default driver implementation.
-func NewDefaultDriver[T client.Object](parameters DefaultDriverParameters[T]) Driver {
-	return &defaultDriver[T]{DefaultDriverParameters: parameters}
+func NewDefaultDriver(parameters DefaultDriverParameters) Driver {
+	return &defaultDriver{DefaultDriverParameters: parameters}
 }
 
 // DefaultDriverParameters contain parameters for this driver.
 // Most of them are persisted across driver creations.
-type DefaultDriverParameters[T client.Object] struct {
+type DefaultDriverParameters struct {
 	// OperatorParameters contain global parameters about the operator.
 	OperatorParameters operator.Parameters
 
@@ -95,33 +94,33 @@ type DefaultDriverParameters[T client.Object] struct {
 	// Observers that observe es clusters state.
 	Observers *observer.Manager
 	// DynamicWatches are handles to currently registered dynamic watches.
-	DynamicWatches watches.DynamicWatches[T]
+	DynamicWatches watches.DynamicWatches
 	// Expectations control some expectations set on resources in the cache, in order to
 	// avoid doing certain operations if the cache hasn't seen an up-to-date resource yet.
 	Expectations *expectations.Expectations
 }
 
 // defaultDriver is the default Driver implementation
-type defaultDriver[T client.Object] struct {
-	DefaultDriverParameters[T]
+type defaultDriver struct {
+	DefaultDriverParameters
 }
 
-func (d *defaultDriver[T]) K8sClient() k8s.Client {
+func (d *defaultDriver) K8sClient() k8s.Client {
 	return d.Client
 }
 
-func (d *defaultDriver[T]) DynamicWatches() watches.DynamicWatches[T] {
+func (d *defaultDriver) DynamicWatches() watches.DynamicWatches {
 	return d.DefaultDriverParameters.DynamicWatches
 }
 
-func (d *defaultDriver[T]) Recorder() record.EventRecorder {
+func (d *defaultDriver) Recorder() record.EventRecorder {
 	return d.DefaultDriverParameters.Recorder
 }
 
-var _ commondriver.Interface[client.Object] = &defaultDriver[client.Object]{}
+var _ commondriver.Interface = &defaultDriver{}
 
 // Reconcile fulfills the Driver interface and reconciles the cluster resources.
-func (d *defaultDriver[T]) Reconcile(ctx context.Context) *reconciler.Results {
+func (d *defaultDriver) Reconcile(ctx context.Context) *reconciler.Results {
 	results := reconciler.NewResult(ctx)
 	log := ulog.FromContext(ctx)
 
@@ -377,7 +376,7 @@ func (d *defaultDriver[T]) Reconcile(ctx context.Context) *reconciler.Results {
 }
 
 // newElasticsearchClient creates a new Elasticsearch HTTP client for this cluster using the provided user
-func (d *defaultDriver[T]) newElasticsearchClient(
+func (d *defaultDriver) newElasticsearchClient(
 	ctx context.Context,
 	state *reconcile.ResourcesState,
 	user esclient.BasicAuth,
@@ -397,7 +396,7 @@ func (d *defaultDriver[T]) newElasticsearchClient(
 	)
 }
 
-func (d *defaultDriver[T]) elasticsearchClientProvider(
+func (d *defaultDriver) elasticsearchClientProvider(
 	ctx context.Context,
 	state *reconcile.ResourcesState,
 	user esclient.BasicAuth,
@@ -415,7 +414,7 @@ func (d *defaultDriver[T]) elasticsearchClientProvider(
 
 // maybeSetServiceAccountsOrchestrationHint attempts to update an orchestration hint to let the association controllers
 // know whether all the nodes in the cluster are ready to authenticate service accounts.
-func (d *defaultDriver[T]) maybeSetServiceAccountsOrchestrationHint(
+func (d *defaultDriver) maybeSetServiceAccountsOrchestrationHint(
 	ctx context.Context,
 	esReachable bool,
 	securityClient esclient.SecurityClient,

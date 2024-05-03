@@ -9,7 +9,6 @@ import (
 
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/types"
-	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
 	"sigs.k8s.io/controller-runtime/pkg/handler"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
@@ -24,9 +23,9 @@ import (
 // Only one watch per watcher is registered:
 // - if it already exists with different secrets, it is replaced to watch the new secrets.
 // - if there is no secret provided by the user, remove the watch.
-func WatchUserProvidedSecrets[T client.Object](
+func WatchUserProvidedSecrets(
 	watcher types.NamespacedName, // resource to which the watches are attached (e.g. an Elasticsearch object)
-	watched DynamicWatches[T], // existing dynamic watches
+	watched DynamicWatches, // existing dynamic watches
 	watchName string, // dynamic watch to register
 	secrets []string, // user-provided secrets to watch
 ) error {
@@ -41,9 +40,9 @@ func WatchUserProvidedSecrets[T client.Object](
 // Only one watch per watcher is registered:
 // - if it already exists with different secrets, it is replaced to watch the new secrets.
 // - if there is no secret provided by the user, remove the watch.
-func WatchUserProvidedNamespacedSecrets[T client.Object](
+func WatchUserProvidedNamespacedSecrets(
 	watcher types.NamespacedName, // resource to which the watches are attached (e.g. an Elasticsearch object)
-	watched DynamicWatches[T], // existing dynamic watches
+	watched DynamicWatches, // existing dynamic watches
 	watchName string, // dynamic watch to register
 	secrets []commonv1.NamespacedSecretSource, // secrets to watch
 ) error {
@@ -68,12 +67,12 @@ func WatchUserProvidedNamespacedSecrets[T client.Object](
 // WatchSoftOwnedSecrets triggers reconciliations on secrets referencing a soft owner.
 func WatchSoftOwnedSecrets(mgr manager.Manager, c controller.Controller, ownerKind string) error {
 	return c.Watch(
-		source.Kind(mgr.GetCache(), &corev1.Secret{}, handler.TypedEnqueueRequestsFromMapFunc[*corev1.Secret](reconcileReqForSoftOwner[*corev1.Secret](ownerKind))),
+		source.Kind(mgr.GetCache(), &corev1.Secret{}, handler.TypedEnqueueRequestsFromMapFunc[*corev1.Secret](reconcileReqForSoftOwner(ownerKind))),
 	)
 }
 
-func reconcileReqForSoftOwner[T client.Object](kind string) handler.TypedMapFunc[T] {
-	return handler.TypedMapFunc[T](func(ctx context.Context, object T) []reconcile.Request {
+func reconcileReqForSoftOwner(kind string) handler.TypedMapFunc[*corev1.Secret] {
+	return handler.TypedMapFunc[*corev1.Secret](func(ctx context.Context, object *corev1.Secret) []reconcile.Request {
 		softOwner, referenced := reconciler.SoftOwnerRefFromLabels(object.GetLabels())
 		if !referenced {
 			return nil

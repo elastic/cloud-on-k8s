@@ -14,7 +14,6 @@ import (
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
-	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	commonv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/common/v1"
 	entv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/enterprisesearch/v1"
@@ -59,7 +58,7 @@ func ReadinessProbeSecretVolume(ent entv1.EnterpriseSearch) volume.SecretVolume 
 // The secret contains 2 entries:
 // - the Enterprise Search configuration file
 // - a bash script used as readiness probe
-func ReconcileConfig[T client.Object](ctx context.Context, driver driver.Interface[T], ent entv1.EnterpriseSearch, ipFamily corev1.IPFamily) (corev1.Secret, error) {
+func ReconcileConfig(ctx context.Context, driver driver.Interface, ent entv1.EnterpriseSearch, ipFamily corev1.IPFamily) (corev1.Secret, error) {
 	cfg, err := newConfig(ctx, driver, ent, ipFamily)
 	if err != nil {
 		return corev1.Secret{}, err
@@ -148,7 +147,7 @@ func readinessProbeScript(ent entv1.EnterpriseSearch, config *settings.Canonical
 // - user-provided plaintext configuration
 // - user-provided secret configuration
 // In case of duplicate settings, the last one takes precedence.
-func newConfig[T client.Object](ctx context.Context, driver driver.Interface[T], ent entv1.EnterpriseSearch, ipFamily corev1.IPFamily) (*settings.CanonicalConfig, error) {
+func newConfig(ctx context.Context, driver driver.Interface, ent entv1.EnterpriseSearch, ipFamily corev1.IPFamily) (*settings.CanonicalConfig, error) {
 	reusedCfg, err := getOrCreateReusableSettings(ctx, driver.K8sClient(), ent)
 	if err != nil {
 		return nil, err
@@ -258,7 +257,7 @@ func getExistingConfig(ctx context.Context, client k8s.Client, ent entv1.Enterpr
 	return cfg, nil
 }
 
-func parseConfigRef[T client.Object](driver driver.Interface[T], ent entv1.EnterpriseSearch) (*settings.CanonicalConfig, error) {
+func parseConfigRef(driver driver.Interface, ent entv1.EnterpriseSearch) (*settings.CanonicalConfig, error) {
 	return common.ParseConfigRef(driver, &ent, ent.Spec.ConfigRef, ConfigFilename)
 }
 

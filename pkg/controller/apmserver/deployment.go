@@ -23,7 +23,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/k8s"
 )
 
-func (r *ReconcileApmServer[T]) reconcileApmServerDeployment(ctx context.Context, state State, as *apmv1.ApmServer, version version.Version) (State, error) {
+func (r *ReconcileApmServer) reconcileApmServerDeployment(ctx context.Context, state State, as *apmv1.ApmServer, version version.Version) (State, error) {
 	span, ctx := apm.StartSpan(ctx, "reconcile_deployment", tracing.SpanTypeApp)
 	defer span.End()
 
@@ -80,7 +80,7 @@ func (r *ReconcileApmServer[T]) reconcileApmServerDeployment(ctx context.Context
 	return state, nil
 }
 
-func (r *ReconcileApmServer[T]) deploymentParams(
+func (r *ReconcileApmServer) deploymentParams(
 	as *apmv1.ApmServer,
 	params PodSpecParams,
 ) (deployment.Params, error) {

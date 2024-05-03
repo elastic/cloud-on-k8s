@@ -12,7 +12,6 @@ import (
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/tools/record"
-	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
 	"sigs.k8s.io/controller-runtime/pkg/handler"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
@@ -39,7 +38,7 @@ const (
 // Add creates a new Agent Controller and adds it to the Manager with default RBAC. The Manager will set fields on the Controller
 // and Start it when the Manager is Started.
 func Add(mgr manager.Manager, params operator.Parameters) error {
-	r := newReconciler[client.Object](mgr, params)
+	r := newReconciler(mgr, params)
 	c, err := common.NewController(mgr, controllerName, r, params)
 	if err != nil {
 		return err
@@ -48,18 +47,18 @@ func Add(mgr manager.Manager, params operator.Parameters) error {
 }
 
 // newReconciler returns a new reconcile.Reconciler.
-func newReconciler[T client.Object](mgr manager.Manager, params operator.Parameters) *ReconcileAgent[T] {
+func newReconciler(mgr manager.Manager, params operator.Parameters) *ReconcileAgent {
 	client := mgr.GetClient()
-	return &ReconcileAgent[T]{
+	return &ReconcileAgent{
 		Client:         client,
 		recorder:       mgr.GetEventRecorderFor(controllerName),
-		dynamicWatches: watches.NewDynamicWatches[T](),
+		dynamicWatches: watches.NewDynamicWatches(),
 		Parameters:     params,
 	}
 }
 
 // addWatches adds watches for all resources this controller cares about
-func addWatches[T client.Object](mgr manager.Manager, c controller.Controller, r *ReconcileAgent[T]) error {
+func addWatches(mgr manager.Manager, c controller.Controller, r *ReconcileAgent) error {
 	// Watch for changes to Agent
 	if err := c.Watch(
 		source.Kind(mgr.GetCache(), &agentv1alpha1.Agent{}, &handler.TypedEnqueueRequestForObject[*agentv1alpha1.Agent]{})); err != nil {
@@ -116,13 +115,13 @@ func addWatches[T client.Object](mgr manager.Manager, c controller.Controller, r
 		))
 }
 
-var _ reconcile.Reconciler = &ReconcileAgent[client.Object]{}
+var _ reconcile.Reconciler = &ReconcileAgent{}
 
 // ReconcileAgent reconciles an Agent object
-type ReconcileAgent[T client.Object] struct {
+type ReconcileAgent struct {
 	k8s.Client
 	recorder       record.EventRecorder
-	dynamicWatches watches.DynamicWatches[T]
+	dynamicWatches watches.DynamicWatches
 	operator.Parameters
 	// iteration is the number of times this controller has run its Reconcile method
 	iteration uint64
@@ -130,7 +129,7 @@ type ReconcileAgent[T client.Object] struct {
 
 // Reconcile reads that state of the cluster for an Agent object and makes changes based on the state read
 // and what is in the Agent.Spec
-func (r *ReconcileAgent[T]) Reconcile(ctx context.Context, request reconcile.Request) (reconcile.Result, error) {
+func (r *ReconcileAgent) Reconcile(ctx context.Context, request reconcile.Request) (reconcile.Result, error) {
 	ctx = common.NewReconciliationContext(ctx, &r.iteration, r.Tracer, controllerName, "agent_name", request)
 	defer common.LogReconciliationRun(logconf.FromContext(ctx))()
 	defer tracing.EndContextTransaction(ctx)
@@ -168,7 +167,7 @@ func (r *ReconcileAgent[T]) Reconcile(ctx context.Context, request reconcile.Req
 	return result, err
 }
 
-func (r *ReconcileAgent[T]) doReconcile(ctx context.Context, agent agentv1alpha1.Agent) (*reconciler.Results, agentv1alpha1.AgentStatus) {
+func (r *ReconcileAgent) doReconcile(ctx context.Context, agent agentv1alpha1.Agent) (*reconciler.Results, agentv1alpha1.AgentStatus) {
 	defer tracing.Span(&ctx)()
 	results := reconciler.NewResult(ctx)
 	status := newStatus(agent)
@@ -187,7 +186,7 @@ func (r *ReconcileAgent[T]) doReconcile(ctx context.Context, agent agentv1alpha1
 		return results, status
 	}
 
-	return internalReconcile(Params[T]{
+	return internalReconcile(Params{
 		Context:        ctx,
 		Client:         r.Client,
 		EventRecorder:  r.recorder,
@@ -198,7 +197,7 @@ func (r *ReconcileAgent[T]) doReconcile(ctx context.Context, agent agentv1alpha1
 	})
 }
 
-func (r *ReconcileAgent[T]) validate(ctx context.Context, agent agentv1alpha1.Agent) error {
+func (r *ReconcileAgent) validate(ctx context.Context, agent agentv1alpha1.Agent) error {
 	defer tracing.Span(&ctx)()
 
 	// Run create validations only as update validations require old object which we don't have here.
@@ -210,7 +209,7 @@ func (r *ReconcileAgent[T]) validate(ctx context.Context, agent agentv1alpha1.Ag
 	return nil
 }
 
-func (r *ReconcileAgent[T]) onDelete(obj types.NamespacedName) {
+func (r *ReconcileAgent) onDelete(obj types.NamespacedName) {
 	r.dynamicWatches.Secrets.RemoveHandlerForKey(keystore.SecureSettingsWatchName(obj))
 	r.dynamicWatches.Secrets.RemoveHandlerForKey(common.ConfigRefWatchName(obj))
 }
