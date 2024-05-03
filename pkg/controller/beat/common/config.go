@@ -13,7 +13,6 @@ import (
 
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	beatv1beta1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/beat/v1beta1"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/association"
@@ -95,8 +94,8 @@ func BuildKibanaConfig(ctx context.Context, client k8s.Client, associated beatv1
 	return settings.NewCanonicalConfigFrom(kibanaCfg)
 }
 
-func buildBeatConfig[T client.Object](
-	params DriverParams[T],
+func buildBeatConfig(
+	params DriverParams,
 	managedConfig *settings.CanonicalConfig,
 ) ([]byte, error) {
 	cfg := settings.NewCanonicalConfig()
@@ -151,15 +150,15 @@ func buildBeatConfig[T client.Object](
 
 // getUserConfig extracts the config either from the spec `config` field or from the Secret referenced by spec
 // `configRef` field.
-func getUserConfig[T client.Object](params DriverParams[T]) (*settings.CanonicalConfig, error) {
+func getUserConfig(params DriverParams) (*settings.CanonicalConfig, error) {
 	if params.Beat.Spec.Config != nil {
 		return settings.NewCanonicalConfigFrom(params.Beat.Spec.Config.Data)
 	}
 	return common.ParseConfigRef(params, &params.Beat, params.Beat.Spec.ConfigRef, ConfigFileName)
 }
 
-func reconcileConfig[T client.Object](
-	params DriverParams[T],
+func reconcileConfig(
+	params DriverParams,
 	managedConfig *settings.CanonicalConfig,
 	configHash hash.Hash,
 ) error {

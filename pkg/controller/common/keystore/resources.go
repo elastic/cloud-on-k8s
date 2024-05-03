@@ -10,7 +10,6 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
-	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	commonv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/common/v1"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/driver"
@@ -52,9 +51,9 @@ func WatchedSecretNames(hasKeystore HasKeystore) []commonv1.NamespacedSecretSour
 // in order to create a Keystore from a Secret containing secure settings provided by
 // the user and referenced in the Elastic Stack application spec.
 // It reconciles the backing secret with the API server and sets up the necessary watches.
-func ReconcileResources[T client.Object](
+func ReconcileResources(
 	ctx context.Context,
-	r driver.Interface[T],
+	r driver.Interface,
 	hasKeystore HasKeystore,
 	namer name.Namer,
 	labels map[string]string,

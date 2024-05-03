@@ -13,11 +13,11 @@ import (
 )
 
 type Driver[T client.Object] struct {
-	beatcommon.DriverParams[T]
+	beatcommon.DriverParams
 	beatcommon.Driver
 }
 
-func NewDriver(params beatcommon.DriverParams[client.Object]) beatcommon.Driver {
+func NewDriver(params beatcommon.DriverParams) beatcommon.Driver {
 	return &Driver[client.Object]{DriverParams: params}
 }
 

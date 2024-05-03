@@ -52,13 +52,13 @@ func additionalSecretWatchName(associated types.NamespacedName) string {
 // * if there's an ES user to create, watch the user Secret in ES namespace
 // All watches for all given associations are set under the same watch name and replaced with each reconciliation.
 // The given associations are expected to be of the same type (e.g. Kibana -> Elasticsearch, not Kibana -> Enterprise Search).
-func (r *Reconciler[T]) reconcileWatches(ctx context.Context, associated types.NamespacedName, associations []commonv1.Association) error {
+func (r *Reconciler) reconcileWatches(ctx context.Context, associated types.NamespacedName, associations []commonv1.Association) error {
 	managedElasticRef := filterManagedElasticRef(associations)
 	unmanagedElasticRef := filterUnmanagedElasticRef(associations)
 
 	// we have 2 modes (exclusive) for the referenced resource: managed or not managed by ECK and referencedResourceWatchName is shared between both.
 	// either watch the referenced resource managed by ECK
-	if err := ReconcileWatch[T](associated, managedElasticRef, r.watches.ReferencedResources, referencedResourceWatchName(associated), func(association commonv1.Association) types.NamespacedName {
+	if err := ReconcileWatch[client.Object](associated, managedElasticRef, r.watches.ReferencedResources, referencedResourceWatchName(associated), func(association commonv1.Association) types.NamespacedName {
 		return association.AssociationRef().NamespacedName()
 	}); err != nil {
 		return err
@@ -181,7 +181,7 @@ func RemoveWatch[T client.Object](dynamicRequest *watches.DynamicEnqueueRequest[
 	dynamicRequest.RemoveHandlerForKey(watchName)
 }
 
-func (r *Reconciler[T]) removeWatches(associated types.NamespacedName) {
+func (r *Reconciler) removeWatches(associated types.NamespacedName) {
 	// - referenced resource
 	RemoveWatch(r.watches.ReferencedResources, referencedResourceWatchName(associated))
 	// - CA secret in referenced resource namespace

@@ -18,7 +18,6 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/tools/record"
-	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
 	"sigs.k8s.io/controller-runtime/pkg/handler"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
@@ -88,8 +87,8 @@ func Add(mgr manager.Manager, params operator.Parameters) error {
 }
 
 // newReconciler returns a new reconcile.Reconciler
-func newReconciler(mgr manager.Manager, params operator.Parameters) *ReconcileApmServer[client.Object] {
-	return &ReconcileApmServer[client.Object]{
+func newReconciler(mgr manager.Manager, params operator.Parameters) *ReconcileApmServer {
+	return &ReconcileApmServer{
 		Client:         mgr.GetClient(),
 		recorder:       mgr.GetEventRecorderFor(controllerName),
 		dynamicWatches: watches.NewDynamicWatches(),
@@ -97,7 +96,7 @@ func newReconciler(mgr manager.Manager, params operator.Parameters) *ReconcileAp
 	}
 }
 
-func addWatches(mgr manager.Manager, c controller.Controller, r *ReconcileApmServer[client.Object]) error {
+func addWatches(mgr manager.Manager, c controller.Controller, r *ReconcileApmServer) error {
 	// Watch for changes to ApmServer
 	err := c.Watch(source.Kind(mgr.GetCache(), &apmv1.ApmServer{}, &handler.TypedEnqueueRequestForObject[*apmv1.ApmServer]{}))
 	if err != nil {
@@ -141,39 +140,39 @@ func addWatches(mgr manager.Manager, c controller.Controller, r *ReconcileApmSer
 	return c.Watch(source.Kind(mgr.GetCache(), &corev1.Secret{}, r.dynamicWatches.Secrets))
 }
 
-var _ reconcile.Reconciler = &ReconcileApmServer[client.Object]{}
+var _ reconcile.Reconciler = &ReconcileApmServer{}
 
 // ReconcileApmServer reconciles an ApmServer object
-type ReconcileApmServer[T client.Object] struct {
+type ReconcileApmServer struct {
 	k8s.Client
 	recorder       record.EventRecorder
-	dynamicWatches watches.DynamicWatches[T]
+	dynamicWatches watches.DynamicWatches
 	operator.Parameters
 	// iteration is the number of times this controller has run its reconcile method
 	iteration uint64
 }
 
 // K8sClient returns the kubernetes client from the APM Server reconciler.
-func (r *ReconcileApmServer[T]) K8sClient() k8s.Client {
+func (r *ReconcileApmServer) K8sClient() k8s.Client {
 	return r.Client
 }
 
 // DynamicWatches returns the set of dynamic watches from the APM Server reconciler.
-func (r *ReconcileApmServer[T]) DynamicWatches() watches.DynamicWatches[T] {
+func (r *ReconcileApmServer) DynamicWatches() watches.DynamicWatches {
 	return r.dynamicWatches
 }
 
 // Recorder returns the Kubernetes recorder that is responsible for recording and reporting
 // events from the APM Server reconciler.
-func (r *ReconcileApmServer[T]) Recorder() record.EventRecorder {
+func (r *ReconcileApmServer) Recorder() record.EventRecorder {
 	return r.recorder
 }
 
-var _ driver.Interface[client.Object] = &ReconcileApmServer[client.Object]{}
+var _ driver.Interface = &ReconcileApmServer{}
 
 // Reconcile reads that state of the cluster for a ApmServer object and makes changes based on the state read
 // and what is in the ApmServer.Spec
-func (r *ReconcileApmServer[T]) Reconcile(ctx context.Context, request reconcile.Request) (reconcile.Result, error) {
+func (r *ReconcileApmServer) Reconcile(ctx context.Context, request reconcile.Request) (reconcile.Result, error) {
 	ctx = common.NewReconciliationContext(ctx, &r.iteration, r.Tracer, controllerName, "as_name", request)
 	defer common.LogReconciliationRun(ulog.FromContext(ctx))()
 	defer tracing.EndContextTransaction(ctx)
@@ -209,7 +208,7 @@ func (r *ReconcileApmServer[T]) Reconcile(ctx context.Context, request reconcile
 	return results.WithError(r.updateStatus(ctx, state)).Aggregate()
 }
 
-func (r *ReconcileApmServer[T]) doReconcile(ctx context.Context, as *apmv1.ApmServer) (*reconciler.Results, State) {
+func (r *ReconcileApmServer) doReconcile(ctx context.Context, as *apmv1.ApmServer) (*reconciler.Results, State) {
 	state := NewState(as)
 	results := reconciler.NewResult(ctx)
 
@@ -280,7 +279,7 @@ func (r *ReconcileApmServer[T]) doReconcile(ctx context.Context, as *apmv1.ApmSe
 	return results, state
 }
 
-func (r *ReconcileApmServer[T]) validate(ctx context.Context, as *apmv1.ApmServer) error {
+func (r *ReconcileApmServer) validate(ctx context.Context, as *apmv1.ApmServer) error {
 	span, vctx := apm.StartSpan(ctx, "validate", tracing.SpanTypeApp)
 	defer span.End()
 
@@ -293,7 +292,7 @@ func (r *ReconcileApmServer[T]) validate(ctx context.Context, as *apmv1.ApmServe
 	return nil
 }
 
-func (r *ReconcileApmServer[T]) onDelete(ctx context.Context, obj types.NamespacedName) error {
+func (r *ReconcileApmServer) onDelete(ctx context.Context, obj types.NamespacedName) error {
 	// Clean up watches set on secure settings
 	r.dynamicWatches.Secrets.RemoveHandlerForKey(keystore.SecureSettingsWatchName(obj))
 	// Clean up watches set on custom http tls certificates
@@ -329,7 +328,7 @@ func reconcileApmServerToken(ctx context.Context, c k8s.Client, as *apmv1.ApmSer
 	return reconciler.ReconcileSecretNoOwnerRef(ctx, c, expectedApmServerSecret, as)
 }
 
-func (r *ReconcileApmServer[T]) updateStatus(ctx context.Context, state State) error {
+func (r *ReconcileApmServer) updateStatus(ctx context.Context, state State) error {
 	span, _ := apm.StartSpan(ctx, "update_status", tracing.SpanTypeApp)
 	defer span.End()
 

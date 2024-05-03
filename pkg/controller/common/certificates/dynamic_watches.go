@@ -7,7 +7,6 @@ package certificates
 import (
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/types"
-	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	commonv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/common/v1"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/name"
@@ -21,8 +20,8 @@ func CertificateWatchKey(namer name.Namer, ownerName string) string {
 
 // ReconcileCustomCertWatch takes a SecretRef and either creates or removes a dynamic watch for watchKey depending on
 // whether secretRef empty or not.
-func ReconcileCustomCertWatch[T client.Object](
-	dynamicWatches watches.DynamicWatches[T],
+func ReconcileCustomCertWatch(
+	dynamicWatches watches.DynamicWatches,
 	watchKey string,
 	owner types.NamespacedName,
 	tlsSecret commonv1.SecretRef,

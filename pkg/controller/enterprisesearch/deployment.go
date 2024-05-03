@@ -16,7 +16,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/maps"
 )
 
-func (r *ReconcileEnterpriseSearch[T]) reconcileDeployment(
+func (r *ReconcileEnterpriseSearch) reconcileDeployment(
 	ctx context.Context,
 	ent entv1.EnterpriseSearch,
 	configHash string,
@@ -32,7 +32,7 @@ func (r *ReconcileEnterpriseSearch[T]) reconcileDeployment(
 	return deployment.Reconcile(ctx, r.K8sClient(), deploy, &ent)
 }
 
-func (r *ReconcileEnterpriseSearch[T]) deploymentParams(ent entv1.EnterpriseSearch, configHash string) (deployment.Params, error) {
+func (r *ReconcileEnterpriseSearch) deploymentParams(ent entv1.EnterpriseSearch, configHash string) (deployment.Params, error) {
 	podSpec, err := newPodSpec(ent, configHash)
 	if err != nil {
 		return deployment.Params{}, err

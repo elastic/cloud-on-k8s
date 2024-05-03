@@ -13,7 +13,6 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/client-go/tools/record"
-	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	agentv1alpha1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/agent/v1alpha1"
 	commonv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/common/v1"
@@ -43,7 +42,7 @@ type Params struct {
 
 	Client        k8s.Client
 	EventRecorder record.EventRecorder
-	Watches       watches.DynamicWatches[client.Object]
+	Watches       watches.DynamicWatches
 
 	Agent  agentv1alpha1.Agent
 	Status agentv1alpha1.AgentStatus
@@ -62,7 +61,7 @@ func (p Params) Recorder() record.EventRecorder {
 }
 
 // DynamicWatches returns the set of stateful dynamic watches used during reconciliation.
-func (p Params) DynamicWatches() watches.DynamicWatches[client.Object] {
+func (p Params) DynamicWatches() watches.DynamicWatches {
 	return p.Watches
 }
 

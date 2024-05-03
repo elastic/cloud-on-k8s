@@ -8,6 +8,7 @@ import (
 	"context"
 	"fmt"
 
+	corev1 "k8s.io/api/core/v1"
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -46,7 +47,7 @@ func addWatches(mgr manager.Manager, c controller.Controller, r *ReconcileRemote
 	}
 
 	return r.watches.Secrets.AddHandlers(
-		&watches.OwnerWatch[client.Object]{
+		&watches.OwnerWatch[*corev1.Secret]{
 			Scheme:       mgr.GetScheme(),
 			Mapper:       mgr.GetRESTMapper(),
 			OwnerType:    &esv1.Elasticsearch{},
@@ -92,7 +93,7 @@ func addCertificatesAuthorityWatches(
 	reconcileClusterAssociation *ReconcileRemoteCa,
 	local, remote types.NamespacedName) error {
 	// Watch the CA secret of Elasticsearch clusters which are involved in a association.
-	err := reconcileClusterAssociation.watches.Secrets.AddHandler(watches.NamedWatch[client.Object]{
+	err := reconcileClusterAssociation.watches.Secrets.AddHandler(watches.NamedWatch[*corev1.Secret]{
 		Name:    watchName(local, remote),
 		Watched: []types.NamespacedName{transport.PublicCertsSecretRef(remote)},
 		Watcher: types.NamespacedName{

@@ -130,19 +130,19 @@ func (a AssociationInfo) userLabelSelector(
 }
 
 // Reconciler reconciles a generic association for a specific AssociationInfo.
-type Reconciler[T client.Object] struct {
+type Reconciler struct {
 	AssociationInfo
 
 	k8s.Client
 	accessReviewer rbac.AccessReviewer
 	recorder       record.EventRecorder
-	watches        watches.DynamicWatches[T]
+	watches        watches.DynamicWatches
 	operator.Parameters
 	// iteration is the number of times this controller has run its Reconcile method
 	iteration uint64
 }
 
-func (r *Reconciler[T]) Reconcile(ctx context.Context, request reconcile.Request) (reconcile.Result, error) {
+func (r *Reconciler) Reconcile(ctx context.Context, request reconcile.Request) (reconcile.Result, error) {
 	nameField := fmt.Sprintf("%s_name", r.AssociatedShortName)
 	ctx = common.NewReconciliationContext(ctx, &r.iteration, r.Tracer, r.AssociationName, nameField, request)
 	defer common.LogReconciliationRun(ulog.FromContext(ctx))()
@@ -224,7 +224,7 @@ func (r *Reconciler[T]) Reconcile(ctx context.Context, request reconcile.Request
 		Aggregate()
 }
 
-func (r *Reconciler[T]) reconcileAssociation(ctx context.Context, association commonv1.Association) (commonv1.AssociationStatus, error) {
+func (r *Reconciler) reconcileAssociation(ctx context.Context, association commonv1.Association) (commonv1.AssociationStatus, error) {
 	assocRef := association.AssociationRef()
 	log := ulog.FromContext(ctx)
 
@@ -415,7 +415,7 @@ func (r *Reconciler[T]) reconcileAssociation(ctx context.Context, association co
 
 // getElasticsearch attempts to retrieve the referenced Elasticsearch resource. If not found, it removes
 // any existing association configuration on associated, and returns AssociationPending.
-func (r *Reconciler[T]) getElasticsearch(
+func (r *Reconciler) getElasticsearch(
 	ctx context.Context,
 	association commonv1.Association,
 	elasticsearchRef commonv1.ObjectSelector,
@@ -442,7 +442,7 @@ func (r *Reconciler[T]) getElasticsearch(
 }
 
 // Unbind removes the association resources.
-func (r *Reconciler[T]) Unbind(ctx context.Context, association commonv1.Association) error {
+func (r *Reconciler) Unbind(ctx context.Context, association commonv1.Association) error {
 	// Ensure that user in Elasticsearch is deleted to prevent illegitimate access
 	if err := k8s.DeleteSecretMatching(
 		ctx,
@@ -458,7 +458,7 @@ func (r *Reconciler[T]) Unbind(ctx context.Context, association commonv1.Associa
 }
 
 // updateAssocConf updates associated with the expected association conf.
-func (r *Reconciler[T]) updateAssocConf(
+func (r *Reconciler) updateAssocConf(
 	ctx context.Context,
 	expectedAssocConf *commonv1.AssociationConf,
 	association commonv1.Association,
@@ -486,7 +486,7 @@ func (r *Reconciler[T]) updateAssocConf(
 }
 
 // updateStatus updates the associated resource status.
-func (r *Reconciler[T]) updateStatus(ctx context.Context, associated commonv1.Associated, newStatus commonv1.AssociationStatusMap) error {
+func (r *Reconciler) updateStatus(ctx context.Context, associated commonv1.Associated, newStatus commonv1.AssociationStatusMap) error {
 	span, _ := apm.StartSpan(ctx, "update_association_status", tracing.SpanTypeApp)
 	defer span.End()
 
@@ -532,7 +532,7 @@ func resultFromStatuses(statusMap commonv1.AssociationStatusMap) reconcile.Resul
 	return reconcile.Result{} // we are done or there is not much we can do
 }
 
-func (r *Reconciler[T]) onDelete(ctx context.Context, associated types.NamespacedName) {
+func (r *Reconciler) onDelete(ctx context.Context, associated types.NamespacedName) {
 	// remove watches
 	r.removeWatches(associated)
 
@@ -543,8 +543,8 @@ func (r *Reconciler[T]) onDelete(ctx context.Context, associated types.Namespace
 }
 
 // NewTestAssociationReconciler creates a new AssociationReconciler given an AssociationInfo for testing.
-func NewTestAssociationReconciler(assocInfo AssociationInfo, runtimeObjs ...client.Object) Reconciler[client.Object] {
-	return Reconciler[client.Object]{
+func NewTestAssociationReconciler(assocInfo AssociationInfo, runtimeObjs ...client.Object) Reconciler {
+	return Reconciler{
 		AssociationInfo: assocInfo,
 		Client:          k8s.NewFakeClient(runtimeObjs...),
 		accessReviewer:  rbac.NewPermissiveAccessReviewer(),

@@ -29,7 +29,7 @@ func initDynamicWatches(watchNames ...string) watches.DynamicWatches {
 	controllerscheme.SetupScheme()
 	w := watches.NewDynamicWatches()
 	for _, name := range watchNames {
-		_ = w.Secrets.AddHandler(watches.NamedWatch{
+		_ = w.Secrets.AddHandler(watches.NamedWatch[*corev1.Secret]{
 			Name: name,
 		})
 	}

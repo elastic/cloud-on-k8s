@@ -15,7 +15,6 @@ import (
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/tools/record"
-	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	esv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/elasticsearch/v1"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/events"
@@ -42,12 +41,12 @@ func UserProvidedRolesWatchName(es types.NamespacedName) string { //nolint:reviv
 
 // reconcileUserProvidedFileRealm returns the aggregate file realm from the referenced sources in the es spec.
 // It also ensures referenced secrets are watched for future reconciliations to be triggered on any change.
-func reconcileUserProvidedFileRealm[T client.Object](
+func reconcileUserProvidedFileRealm(
 	ctx context.Context,
 	c k8s.Client,
 	es esv1.Elasticsearch,
 	existing filerealm.Realm,
-	watched watches.DynamicWatches[T],
+	watched watches.DynamicWatches,
 	recorder record.EventRecorder,
 	passwordHasher cryptutil.PasswordHasher,
 ) (filerealm.Realm, error) {
@@ -72,11 +71,11 @@ func reconcileUserProvidedFileRealm[T client.Object](
 
 // reconcileUserProvidedRoles returns aggregate roles from the referenced sources in the es spec.
 // It also ensures referenced secrets are watched for future reconciliations to be triggered on any change.
-func reconcileUserProvidedRoles[T client.Object](
+func reconcileUserProvidedRoles(
 	ctx context.Context,
 	c k8s.Client,
 	es esv1.Elasticsearch,
-	watched watches.DynamicWatches[T],
+	watched watches.DynamicWatches,
 	recorder record.EventRecorder,
 ) (RolesFileContent, error) {
 	esKey := k8s.ExtractNamespacedName(&es)

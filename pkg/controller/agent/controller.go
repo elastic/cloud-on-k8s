@@ -12,7 +12,6 @@ import (
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/tools/record"
-	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
 	"sigs.k8s.io/controller-runtime/pkg/handler"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
@@ -122,7 +121,7 @@ var _ reconcile.Reconciler = &ReconcileAgent{}
 type ReconcileAgent struct {
 	k8s.Client
 	recorder       record.EventRecorder
-	dynamicWatches watches.DynamicWatches[client.Object]
+	dynamicWatches watches.DynamicWatches
 	operator.Parameters
 	// iteration is the number of times this controller has run its Reconcile method
 	iteration uint64

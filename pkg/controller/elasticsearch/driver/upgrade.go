@@ -11,7 +11,6 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/types"
-	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	esv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/elasticsearch/v1"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/expectations"
@@ -28,7 +27,7 @@ import (
 	ulog "github.com/elastic/cloud-on-k8s/v2/pkg/utils/log"
 )
 
-func (d *defaultDriver[T]) handleUpgrades(
+func (d *defaultDriver) handleUpgrades(
 	ctx context.Context,
 	esClient esclient.Client,
 	esState ESState,
@@ -143,9 +142,9 @@ type upgradeCtx struct {
 	currentPods     []corev1.Pod
 }
 
-func newUpgrade[T client.Object](
+func newUpgrade(
 	ctx context.Context,
-	d *defaultDriver[T],
+	d *defaultDriver,
 	statefulSets es_sset.StatefulSetList,
 	resourcesList nodespec.ResourcesList,
 	esClient esclient.Client,
@@ -312,7 +311,7 @@ func doFlush(ctx context.Context, es esv1.Elasticsearch, esClient esclient.Clien
 	}
 }
 
-func (d *defaultDriver[T]) maybeCompleteNodeUpgrades(
+func (d *defaultDriver) maybeCompleteNodeUpgrades(
 	ctx context.Context,
 	esClient esclient.Client,
 	esState ESState,
@@ -384,7 +383,7 @@ func (d *defaultDriver[T]) maybeCompleteNodeUpgrades(
 	return results
 }
 
-func (d *defaultDriver[T]) maybeEnableShardsAllocation(
+func (d *defaultDriver) maybeEnableShardsAllocation(
 	ctx context.Context,
 	esClient esclient.Client,
 	esState ESState,

@@ -44,35 +44,35 @@ import (
 // minSupportedVersion is the minimum version of Kibana supported by ECK. Currently this is set to version 6.8.0.
 var minSupportedVersion = version.From(6, 8, 0)
 
-type driver[T client.Object] struct {
+type driver struct {
 	client         k8s.Client
-	dynamicWatches watches.DynamicWatches[T]
+	dynamicWatches watches.DynamicWatches
 	recorder       record.EventRecorder
 	version        version.Version
 	ipFamily       corev1.IPFamily
 }
 
-func (d *driver[T]) DynamicWatches() watches.DynamicWatches[T] {
+func (d *driver) DynamicWatches() watches.DynamicWatches {
 	return d.dynamicWatches
 }
 
-func (d *driver[T]) K8sClient() k8s.Client {
+func (d *driver) K8sClient() k8s.Client {
 	return d.client
 }
 
-func (d *driver[T]) Recorder() record.EventRecorder {
+func (d *driver) Recorder() record.EventRecorder {
 	return d.recorder
 }
 
-var _ driver2.Interface[client.Object] = &driver[client.Object]{}
+var _ driver2.Interface = &driver{}
 
-func newDriver[T client.Object](
+func newDriver(
 	client k8s.Client,
-	watches watches.DynamicWatches[T],
+	watches watches.DynamicWatches,
 	recorder record.EventRecorder,
 	kb *kbv1.Kibana,
 	ipFamily corev1.IPFamily,
-) (*driver[T], error) {
+) (*driver, error) {
 	ver, err := version.Parse(kb.Spec.Version)
 	if err != nil {
 		k8s.MaybeEmitErrorEvent(recorder, err, kb, events.EventReasonValidation, "Invalid version '%s': %v", kb.Spec.Version, err)
@@ -85,7 +85,7 @@ func newDriver[T client.Object](
 		return nil, err
 	}
 
-	return &driver[T]{
+	return &driver{
 		client:         client,
 		dynamicWatches: watches,
 		recorder:       recorder,
@@ -94,7 +94,7 @@ func newDriver[T client.Object](
 	}, nil
 }
 
-func (d *driver[T]) Reconcile(
+func (d *driver) Reconcile(
 	ctx context.Context,
 	state *State,
 	kb *kbv1.Kibana,
@@ -122,7 +122,7 @@ func (d *driver[T]) Reconcile(
 		return results.WithError(err)
 	}
 
-	_, results = certificates.Reconciler[T]{
+	_, results = certificates.Reconciler{
 		K8sClient:             d.K8sClient(),
 		DynamicWatches:        d.DynamicWatches(),
 		Owner:                 kb,
@@ -200,7 +200,7 @@ func (d *driver[T]) Reconcile(
 // getStrategyType decides which deployment strategy (RollingUpdate or Recreate) to use based on whether the version
 // upgrade is in progress. Kibana does not support a smooth rolling upgrade from one version to another:
 // running multiple versions simultaneously may lead to concurrency bugs and data corruption.
-func (d *driver[T]) getStrategyType(kb *kbv1.Kibana) (appsv1.DeploymentStrategyType, error) {
+func (d *driver) getStrategyType(kb *kbv1.Kibana) (appsv1.DeploymentStrategyType, error) {
 	var pods corev1.PodList
 	var labels client.MatchingLabels = map[string]string{kblabel.KibanaNameLabelName: kb.Name}
 	if err := d.client.List(context.Background(), &pods, client.InNamespace(kb.Namespace), labels); err != nil {
@@ -220,7 +220,7 @@ func (d *driver[T]) getStrategyType(kb *kbv1.Kibana) (appsv1.DeploymentStrategyT
 	return appsv1.RollingUpdateDeploymentStrategyType, nil
 }
 
-func (d *driver[T]) deploymentParams(ctx context.Context, kb *kbv1.Kibana, policyAnnotations map[string]string) (deployment.Params, error) {
+func (d *driver) deploymentParams(ctx context.Context, kb *kbv1.Kibana, policyAnnotations map[string]string) (deployment.Params, error) {
 	initContainersParameters, err := newInitContainersParameters(kb)
 	if err != nil {
 		return deployment.Params{}, err
@@ -308,7 +308,7 @@ func (d *driver[T]) deploymentParams(ctx context.Context, kb *kbv1.Kibana, polic
 	}, nil
 }
 
-func (d *driver[T]) buildVolumes(kb *kbv1.Kibana) ([]commonvolume.VolumeLike, error) {
+func (d *driver) buildVolumes(kb *kbv1.Kibana) ([]commonvolume.VolumeLike, error) {
 	volumes := []commonvolume.VolumeLike{DataVolume, ConfigSharedVolume, ConfigVolume(*kb)}
 
 	esAssocConf, err := kb.EsAssociation().AssociationConf()

@@ -16,7 +16,6 @@ import (
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/tools/record"
-	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
 	"sigs.k8s.io/controller-runtime/pkg/handler"
 	"sigs.k8s.io/controller-runtime/pkg/log"
@@ -56,7 +55,7 @@ const name = "elasticsearch-controller"
 // on the Controller and Start it when the Manager is Started.
 // this is also called by cmd/main.go
 func Add(mgr manager.Manager, params operator.Parameters) error {
-	reconciler := newReconciler[client.Object](mgr, params)
+	reconciler := newReconciler(mgr, params)
 	c, err := common.NewController(mgr, name, reconciler, params)
 	if err != nil {
 		return err
@@ -65,22 +64,22 @@ func Add(mgr manager.Manager, params operator.Parameters) error {
 }
 
 // newReconciler returns a new reconcile.Reconciler
-func newReconciler[T client.Object](mgr manager.Manager, params operator.Parameters) *ReconcileElasticsearch[T] {
+func newReconciler(mgr manager.Manager, params operator.Parameters) *ReconcileElasticsearch {
 	client := mgr.GetClient()
-	return &ReconcileElasticsearch[T]{
+	return &ReconcileElasticsearch{
 		Client:         client,
 		recorder:       mgr.GetEventRecorderFor(name),
 		licenseChecker: license.NewLicenseChecker(client, params.OperatorNamespace),
 		esObservers:    observer.NewManager(params.ElasticsearchObservationInterval, params.Tracer),
 
-		dynamicWatches: watches.NewDynamicWatches[T](),
+		dynamicWatches: watches.NewDynamicWatches(),
 		expectations:   expectations.NewClustersExpectations(client),
 
 		Parameters: params,
 	}
 }
 
-func addWatches(mgr manager.Manager, c controller.Controller, r *ReconcileElasticsearch[client.Object]) error {
+func addWatches(mgr manager.Manager, c controller.Controller, r *ReconcileElasticsearch) error {
 	// Watch for changes to Elasticsearch
 	if err := c.Watch(
 		source.Kind(mgr.GetCache(), &esv1.Elasticsearch{}, &handler.TypedEnqueueRequestForObject[*esv1.Elasticsearch]{})); err != nil {
@@ -130,10 +129,10 @@ func addWatches(mgr manager.Manager, c controller.Controller, r *ReconcileElasti
 	return c.Watch(observer.WatchClusterHealthChange(r.esObservers))
 }
 
-var _ reconcile.Reconciler = &ReconcileElasticsearch[client.Object]{}
+var _ reconcile.Reconciler = &ReconcileElasticsearch{}
 
 // ReconcileElasticsearch reconciles an Elasticsearch object
-type ReconcileElasticsearch[T client.Object] struct {
+type ReconcileElasticsearch struct {
 	k8s.Client
 	operator.Parameters
 	recorder       record.EventRecorder
@@ -141,7 +140,7 @@ type ReconcileElasticsearch[T client.Object] struct {
 
 	esObservers *observer.Manager
 
-	dynamicWatches watches.DynamicWatches[T]
+	dynamicWatches watches.DynamicWatches
 
 	// expectations help dealing with inconsistencies in our client cache,
 	// by marking resources updates as expected, and skipping some operations if the cache is not up-to-date.
@@ -153,7 +152,7 @@ type ReconcileElasticsearch[T client.Object] struct {
 
 // Reconcile reads the state of the cluster for an Elasticsearch object and makes changes based on the state read and
 // what is in the Elasticsearch.Spec
-func (r *ReconcileElasticsearch[T]) Reconcile(ctx context.Context, request reconcile.Request) (reconcile.Result, error) {
+func (r *ReconcileElasticsearch) Reconcile(ctx context.Context, request reconcile.Request) (reconcile.Result, error) {
 	ctx = common.NewReconciliationContext(ctx, &r.iteration, r.Tracer, name, "es_name", request)
 	defer common.LogReconciliationRun(ulog.FromContext(ctx))()
 	defer tracing.EndContextTransaction(ctx)
@@ -217,7 +216,7 @@ func (r *ReconcileElasticsearch[T]) Reconcile(ctx context.Context, request recon
 	return results.WithError(err).Aggregate()
 }
 
-func (r *ReconcileElasticsearch[T]) fetchElasticsearchWithAssociations(ctx context.Context, request reconcile.Request, es *esv1.Elasticsearch) (bool, error) {
+func (r *ReconcileElasticsearch) fetchElasticsearchWithAssociations(ctx context.Context, request reconcile.Request, es *esv1.Elasticsearch) (bool, error) {
 	span, ctx := apm.StartSpan(ctx, "fetch_elasticsearch", tracing.SpanTypeApp)
 	defer span.End()
 
@@ -237,7 +236,7 @@ func (r *ReconcileElasticsearch[T]) fetchElasticsearchWithAssociations(ctx conte
 	return false, nil
 }
 
-func (r *ReconcileElasticsearch[T]) internalReconcile(
+func (r *ReconcileElasticsearch) internalReconcile(
 	ctx context.Context,
 	es esv1.Elasticsearch,
 	reconcileState *esreconcile.State,
@@ -284,7 +283,7 @@ func (r *ReconcileElasticsearch[T]) internalReconcile(
 		return results.WithError(pkgerrors.Errorf("unsupported version: %s", ver))
 	}
 
-	return driver.NewDefaultDriver(driver.DefaultDriverParameters[T]{
+	return driver.NewDefaultDriver(driver.DefaultDriverParameters{
 		OperatorParameters: r.Parameters,
 		ES:                 es,
 		ReconcileState:     reconcileState,
@@ -299,7 +298,7 @@ func (r *ReconcileElasticsearch[T]) internalReconcile(
 	}).Reconcile(ctx)
 }
 
-func (r *ReconcileElasticsearch[T]) updateStatus(
+func (r *ReconcileElasticsearch) updateStatus(
 	ctx context.Context,
 	es esv1.Elasticsearch,
 	reconcileState *esreconcile.State,
@@ -327,7 +326,7 @@ func (r *ReconcileElasticsearch[T]) updateStatus(
 // annotateResource adds the orchestration hints annotation to the Elasticsearch resource. The purpose of this annotation
 // is to capture additional state about aspects of the operator's orchestration of Elasticsearch resources. Currently,
 // it captures whether transient settings are in use.  Future expansion is possible if deemed necessary.
-func (r *ReconcileElasticsearch[T]) annotateResource(
+func (r *ReconcileElasticsearch) annotateResource(
 	ctx context.Context,
 	es esv1.Elasticsearch,
 	reconcileState *esreconcile.State,
@@ -354,7 +353,7 @@ func (r *ReconcileElasticsearch[T]) annotateResource(
 }
 
 // onDelete garbage collect resources when an Elasticsearch cluster is deleted
-func (r *ReconcileElasticsearch[T]) onDelete(ctx context.Context, es types.NamespacedName) error {
+func (r *ReconcileElasticsearch) onDelete(ctx context.Context, es types.NamespacedName) error {
 	r.expectations.RemoveCluster(es)
 	r.esObservers.StopObserving(es)
 	r.dynamicWatches.Secrets.RemoveHandlerForKey(keystore.SecureSettingsWatchName(es))

@@ -6,7 +6,6 @@ package association
 
 import (
 	corev1 "k8s.io/api/core/v1"
-	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
 	"sigs.k8s.io/controller-runtime/pkg/handler"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
@@ -27,7 +26,7 @@ func AddAssociationController(
 	associationInfo AssociationInfo,
 ) error {
 	controllerName := associationInfo.AssociationName + "-association-controller"
-	r := &Reconciler[client.Object]{
+	r := &Reconciler{
 		AssociationInfo: associationInfo,
 		Client:          mgr.GetClient(),
 		accessReviewer:  accessReviewer,
@@ -42,7 +41,7 @@ func AddAssociationController(
 	return addWatches(mgr, c, r)
 }
 
-func addWatches(mgr manager.Manager, c controller.Controller, r *Reconciler[client.Object]) error {
+func addWatches(mgr manager.Manager, c controller.Controller, r *Reconciler) error {
 	// Watch the associated resource (e.g. Kibana for a Kibana -> Elasticsearch association)
 	if err := c.Watch(source.Kind(mgr.GetCache(), r.AssociatedObjTemplate(), &handler.TypedEnqueueRequestForObject[commonv1.Associated]{})); err != nil {
 		return err

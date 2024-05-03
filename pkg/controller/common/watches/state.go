@@ -10,22 +10,22 @@ import (
 )
 
 // NewDynamicWatches creates an initialized DynamicWatches container.
-func NewDynamicWatches[T client.Object]() DynamicWatches[T] {
-	return DynamicWatches[T]{
+func NewDynamicWatches() DynamicWatches {
+	return DynamicWatches{
 		ConfigMaps:          NewDynamicEnqueueRequest[*corev1.ConfigMap](),
 		Secrets:             NewDynamicEnqueueRequest[*corev1.Secret](),
 		Services:            NewDynamicEnqueueRequest[*corev1.Service](),
 		Pods:                NewDynamicEnqueueRequest[*corev1.Pod](),
-		ReferencedResources: NewDynamicEnqueueRequest[T](),
+		ReferencedResources: NewDynamicEnqueueRequest[client.Object](),
 	}
 }
 
 // DynamicWatches contains stateful dynamic watches. Intended as facility to pass around stateful dynamic watches and
 // give each of them an identity.
-type DynamicWatches[T client.Object] struct {
+type DynamicWatches struct {
 	ConfigMaps          *DynamicEnqueueRequest[*corev1.ConfigMap]
 	Secrets             *DynamicEnqueueRequest[*corev1.Secret]
 	Services            *DynamicEnqueueRequest[*corev1.Service]
 	Pods                *DynamicEnqueueRequest[*corev1.Pod]
-	ReferencedResources *DynamicEnqueueRequest[T]
+	ReferencedResources *DynamicEnqueueRequest[client.Object]
 }

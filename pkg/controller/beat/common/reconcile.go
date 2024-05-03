@@ -27,7 +27,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/pointer"
 )
 
-func reconcilePodVehicle[T client.Object](podTemplate corev1.PodTemplateSpec, params DriverParams[T]) (*reconciler.Results, *beatv1beta1.BeatStatus) {
+func reconcilePodVehicle(podTemplate corev1.PodTemplateSpec, params DriverParams) (*reconciler.Results, *beatv1beta1.BeatStatus) {
 	results := reconciler.NewResult(params.Context)
 	spec := params.Beat.Spec
 	name := Name(params.Beat.Name, spec.Type)
@@ -136,7 +136,7 @@ func reconcileDaemonSet(rp ReconciliationParams) (int32, int32, error) {
 
 // newStatus will calculate a new status from the state of the pods within the k8s cluster
 // and returns any error encountered.
-func newStatus[T client.Object](params DriverParams[T], ready, desired int32) (*beatv1beta1.BeatStatus, error) {
+func newStatus(params DriverParams, ready, desired int32) (*beatv1beta1.BeatStatus, error) {
 	beat := params.Beat
 	status := params.Status
 
