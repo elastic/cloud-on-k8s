@@ -66,7 +66,7 @@ type baseReconcileAutoscaling struct {
 	licenseChecker   license.Checker
 
 	// iteration is the number of times this controller has run its Reconcile method
-	iteration uint64 
+	iteration uint64 //nolint:structcheck
 }
 
 func (r baseReconcileAutoscaling) withRecorder(recorder record.EventRecorder) baseReconcileAutoscaling {
