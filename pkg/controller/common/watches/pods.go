@@ -17,18 +17,6 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/source"
 )
 
-func Add(mgr manager.Manager, c controller.Controller, owner client.Object, objects ...client.Object) error {
-	if err := c.Watch(source.Kind(mgr.GetCache(), owner, &handler.TypedEnqueueRequestForObject[client.Object]{})); err != nil {
-		return err
-	}
-	for _, object := range objects {
-		if err := c.Watch(source.Kind(mgr.GetCache(), object, handler.TypedEnqueueRequestForOwner[client.Object](mgr.GetScheme(), mgr.GetRESTMapper(), owner, handler.OnlyControllerOwner()))); err != nil {
-			return err
-		}
-	}
-	return nil
-}
-
 // WatchPods updates the given controller to enqueue reconciliation requests triggered by changes on Pods.
 // The resource to reconcile is identified by a label on the Pods.
 func WatchPods(mgr manager.Manager, c controller.Controller, objNameLabel string) error {
