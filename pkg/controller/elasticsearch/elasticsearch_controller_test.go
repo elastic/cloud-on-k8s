@@ -23,8 +23,8 @@ import (
 
 // newTestReconciler returns a ReconcileElasticsearch struct, allowing the internal k8s client to
 // contain certain runtime objects.
-func newTestReconciler(objects ...client.Object) *ReconcileElasticsearch[client.Object] {
-	r := &ReconcileElasticsearch[client.Object]{
+func newTestReconciler(objects ...client.Object) *ReconcileElasticsearch {
+	r := &ReconcileElasticsearch{
 		Client:   k8s.NewFakeClient(objects...),
 		recorder: record.NewFakeRecorder(100),
 	}

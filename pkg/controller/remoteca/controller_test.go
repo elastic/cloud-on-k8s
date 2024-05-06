@@ -417,8 +417,8 @@ func TestReconcileRemoteCa_Reconcile(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			w := watches.NewDynamicWatches[client.Object]()
-			r := &ReconcileRemoteCa[client.Object]{
+			w := watches.NewDynamicWatches()
+			r := &ReconcileRemoteCa{
 				Client:         k8s.NewFakeClient(tt.fields.clusters...),
 				accessReviewer: tt.fields.accessReviewer,
 				watches:        w,

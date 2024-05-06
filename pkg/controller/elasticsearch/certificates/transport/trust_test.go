@@ -12,7 +12,6 @@ import (
 	"github.com/stretchr/testify/assert"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	commonv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/common/v1"
 	v1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/elasticsearch/v1"
@@ -86,7 +85,7 @@ func TestMaybeRetrieveAdditionalCAs(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := ReconcileAdditionalCAs(context.Background(), tt.args.client, tt.args.elasticsearch, watches.NewDynamicWatches[client.Object]())
+			got, err := ReconcileAdditionalCAs(context.Background(), tt.args.client, tt.args.elasticsearch, watches.NewDynamicWatches())
 			if !tt.wantErr(t, err, fmt.Sprintf("ReconcileAdditionalCAs(%v, %v)", tt.args.client, tt.args.elasticsearch)) {
 				return
 			}

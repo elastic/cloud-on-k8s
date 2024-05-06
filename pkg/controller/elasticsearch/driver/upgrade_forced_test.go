@@ -10,7 +10,6 @@ import (
 
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
-	"sigs.k8s.io/controller-runtime/pkg/client"
 	crclient "sigs.k8s.io/controller-runtime/pkg/client"
 
 	esv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/elasticsearch/v1"
@@ -167,8 +166,8 @@ func Test_defaultDriver_maybeForceUpgradePods(t *testing.T) {
 				runtimeObjs = append(runtimeObjs, &tt.actualPods[i])
 			}
 			k8sClient := k8s.NewFakeClient(runtimeObjs...)
-			d := &defaultDriver[client.Object]{
-				DefaultDriverParameters: DefaultDriverParameters[client.Object]{
+			d := &defaultDriver{
+				DefaultDriverParameters: DefaultDriverParameters{
 					Client:         k8sClient,
 					Expectations:   expectations.NewExpectations(k8sClient),
 					ReconcileState: reconcile.MustNewState(esv1.Elasticsearch{}),

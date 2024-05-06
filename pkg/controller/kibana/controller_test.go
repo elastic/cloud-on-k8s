@@ -334,10 +334,10 @@ func TestReconcileKibana_Reconcile(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			r := &ReconcileKibana[client.Object]{
+			r := &ReconcileKibana{
 				Client:         tt.fields.Client,
 				recorder:       record.NewFakeRecorder(100),
-				dynamicWatches: watches.NewDynamicWatches[client.Object](),
+				dynamicWatches: watches.NewDynamicWatches(),
 				params:         operator.Parameters{},
 			}
 			got, err := r.Reconcile(context.Background(), tt.request)

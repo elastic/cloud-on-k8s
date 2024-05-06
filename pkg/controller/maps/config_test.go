@@ -150,10 +150,10 @@ ssl:
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			d := ReconcileMapsServer[client.Object]{
+			d := ReconcileMapsServer{
 				Client:         k8s.NewFakeClient(tt.args.runtimeObjs...),
 				recorder:       record.NewFakeRecorder(10),
-				dynamicWatches: watches.NewDynamicWatches[client.Object](),
+				dynamicWatches: watches.NewDynamicWatches(),
 			}
 
 			got, err := newConfig(context.Background(), &d, tt.args.ems, tt.args.ipFamily)

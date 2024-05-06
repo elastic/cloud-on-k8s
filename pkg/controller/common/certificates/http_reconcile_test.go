@@ -221,7 +221,7 @@ func TestReconcilePublicHTTPCerts(t *testing.T) {
 		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			clnt := tt.client(t)
-			err := Reconciler[client.Object]{
+			err := Reconciler{
 				K8sClient: clnt,
 				Owner:     owner,
 				Namer:     esv1.ESNamer,
@@ -443,9 +443,9 @@ func TestReconcileInternalHTTPCerts(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			w := watches.NewDynamicWatches[client.Object]()
+			w := watches.NewDynamicWatches()
 			c := k8s.NewFakeClient(tt.args.initialObjects...)
-			got, err := Reconciler[client.Object]{
+			got, err := Reconciler{
 				K8sClient:      c,
 				DynamicWatches: w,
 				Owner:          &tt.args.es,

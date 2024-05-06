@@ -7,7 +7,6 @@ package logstash
 import (
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	logstashv1alpha1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/logstash/v1alpha1"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common"
@@ -24,7 +23,7 @@ const (
 //
 // When a service is defined that matches the API service name, then that service is used to define
 // the service for the logstash API. If not, then a default service is created for the API service.
-func reconcileServices[T client.Object](params Params[T]) ([]corev1.Service, corev1.Service, error) {
+func reconcileServices(params Params) ([]corev1.Service, corev1.Service, error) {
 	var apiSvc corev1.Service
 	createdAPIService := false
 
@@ -53,7 +52,7 @@ func reconcileServices[T client.Object](params Params[T]) ([]corev1.Service, cor
 	return svcs, apiSvc, nil
 }
 
-func reconcileService[T client.Object](params Params[T], service *corev1.Service) error {
+func reconcileService(params Params, service *corev1.Service) error {
 	_, err := common.ReconcileService(params.Context, params.Client, service, &params.Logstash)
 	if err != nil {
 		return err

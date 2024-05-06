@@ -14,7 +14,6 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/tools/record"
-	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	commonv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/common/v1"
 	kbv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/kibana/v1"
@@ -38,8 +37,8 @@ func Test_secureSettingsVolume(t *testing.T) {
 		SecureSettingsVolumeName,
 		SecureSettingsVolumeMountPath,
 	)
-	createWatches := func(handlerName string) watches.DynamicWatches[client.Object] {
-		w := watches.NewDynamicWatches[client.Object]()
+	createWatches := func(handlerName string) watches.DynamicWatches {
+		w := watches.NewDynamicWatches()
 		if handlerName != "" {
 			require.NoError(t, w.Secrets.AddHandler(watches.NamedWatch[*corev1.Secret]{
 				Name: handlerName,
@@ -50,7 +49,7 @@ func Test_secureSettingsVolume(t *testing.T) {
 	tests := []struct {
 		name        string
 		c           k8s.Client
-		w           watches.DynamicWatches[client.Object]
+		w           watches.DynamicWatches
 		kb          kbv1.Kibana
 		wantVolume  *volume.SecretVolume
 		wantVersion string
@@ -98,7 +97,7 @@ func Test_secureSettingsVolume(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			testDriver := driver.TestDriver[client.Object]{
+			testDriver := driver.TestDriver{
 				Client:       tt.c,
 				Watches:      tt.w,
 				FakeRecorder: record.NewFakeRecorder(1000),

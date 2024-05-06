@@ -21,7 +21,6 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/utils/ptr"
 	"k8s.io/utils/strings/slices"
-	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	beatv1beta1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/beat/v1beta1"
 	commonv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/common/v1"
@@ -124,7 +123,7 @@ func Test_buildPodTemplate(t *testing.T) {
 		URL:            "https://testes-es-internal-http.ns.svc:9200",
 	})
 	type args struct {
-		params       DriverParams[client.Object]
+		params       DriverParams
 		initialHash  hash.Hash32
 		defaultImage container.Image
 	}
@@ -143,8 +142,8 @@ func Test_buildPodTemplate(t *testing.T) {
 			name: "deployment with monitoring enabled should have CA volume, and sidecars",
 			args: args{
 				initialHash: newHash("foobar"), // SHA224 for foobar is de76c3e567fca9d246f5f8d3b2e704a38c3c5e258988ab525f941db8
-				params: DriverParams[client.Object]{
-					Watches: watches.NewDynamicWatches[client.Object](),
+				params: DriverParams{
+					Watches: watches.NewDynamicWatches(),
 					Client:  clientWithMonitoringEnabled,
 					Beat:    beatWithMonitoring,
 				},
@@ -167,8 +166,8 @@ func Test_buildPodTemplate(t *testing.T) {
 			name: "daemonset user-provided init containers should inherit from the default main container image",
 			args: args{
 				initialHash: newHash("foobar"), // SHA224 for foobar is de76c3e567fca9d246f5f8d3b2e704a38c3c5e258988ab525f941db8
-				params: DriverParams[client.Object]{
-					Watches: watches.NewDynamicWatches[client.Object](),
+				params: DriverParams{
+					Watches: watches.NewDynamicWatches(),
 					Client:  k8s.NewFakeClient(),
 					Beat: beatv1beta1.Beat{
 						ObjectMeta: metav1.ObjectMeta{
@@ -213,8 +212,8 @@ func Test_buildPodTemplate(t *testing.T) {
 			name: "deployment user-provided init containers should with a keystore",
 			args: args{
 				initialHash: newHash("foobar"),
-				params: DriverParams[client.Object]{
-					Watches: watches.NewDynamicWatches[client.Object](),
+				params: DriverParams{
+					Watches: watches.NewDynamicWatches(),
 					Client: k8s.NewFakeClient(
 						// Secret maintained by the operator
 						&corev1.Secret{

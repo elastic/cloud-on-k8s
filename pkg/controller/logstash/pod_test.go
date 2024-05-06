@@ -13,7 +13,6 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
@@ -335,7 +334,7 @@ func TestNewPodTemplateSpec(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			params := Params[client.Object]{
+			params := Params{
 				Context:         context.Background(),
 				Client:          k8s.NewFakeClient(&testHTTPCertsInternalSecret),
 				Logstash:        tt.logstash,

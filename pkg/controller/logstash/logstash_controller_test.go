@@ -50,12 +50,12 @@ var (
 	}
 )
 
-func newReconcileLogstash(objs ...client.Object) *ReconcileLogstash[client.Object] {
+func newReconcileLogstash(objs ...client.Object) *ReconcileLogstash {
 	clnt := k8s.NewFakeClient(objs...)
-	r := &ReconcileLogstash[client.Object]{
+	r := &ReconcileLogstash{
 		Client:         clnt,
 		recorder:       record.NewFakeRecorder(100),
-		dynamicWatches: watches.NewDynamicWatches[client.Object](),
+		dynamicWatches: watches.NewDynamicWatches(),
 		expectations:   expectations.NewClustersExpectations(clnt),
 	}
 	return r
@@ -642,7 +642,7 @@ func TestReconcileLogstash_Resize(t *testing.T) {
 
 	tests := []struct {
 		name            string
-		extraVerify     func(r ReconcileLogstash[client.Object], desiredCapacity string) (reconcile.Result, error)
+		extraVerify     func(r ReconcileLogstash, desiredCapacity string) (reconcile.Result, error)
 		initialCapacity string
 		desiredCapacity string
 		storageClass    storagev1.StorageClass
@@ -681,7 +681,7 @@ func TestReconcileLogstash_Resize(t *testing.T) {
 			initialCapacity: "1.5Gi",
 			desiredCapacity: "3Gi",
 			storageClass:    resizableStorageClass,
-			extraVerify: func(r ReconcileLogstash[client.Object], desiredCapacity string) (reconcile.Result, error) {
+			extraVerify: func(r ReconcileLogstash, desiredCapacity string) (reconcile.Result, error) {
 				// When performing an actual volume resize, the first pass of the reconciler adds annotations to
 				// Logstash with details of the StatefulSet to be replaced.
 				updatedls := logstashv1alpha1.Logstash{}
@@ -764,7 +764,7 @@ func TestReconcileLogstash_Resize(t *testing.T) {
 	}
 }
 
-func setupFixtures(initialCapacity string, storage storagev1.StorageClass) *ReconcileLogstash[client.Object] {
+func setupFixtures(initialCapacity string, storage storagev1.StorageClass) *ReconcileLogstash {
 	ls := createLogstash(initialCapacity, storage.Name)
 	pod := createPod()
 	return newReconcileLogstash(&ls, &pod, &storage)

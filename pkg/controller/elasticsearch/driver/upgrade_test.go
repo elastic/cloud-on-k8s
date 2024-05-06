@@ -554,8 +554,8 @@ func Test_defaultDriver_maybeCompleteNodeUpgrades(t *testing.T) {
 			reconcileState, err := reconcile.NewState(tt.es)
 			require.NoError(t, err)
 
-			d := &defaultDriver[client.Object]{
-				DefaultDriverParameters: DefaultDriverParameters[client.Object]{
+			d := &defaultDriver{
+				DefaultDriverParameters: DefaultDriverParameters{
 					Client:         clnt,
 					ES:             tt.es,
 					Expectations:   expectations.NewExpectations(clnt),

@@ -64,7 +64,7 @@ func (c fakeEsClient) GetClusterState(_ context.Context) (esclient.ClusterState,
 	return clusterState, nil
 }
 
-func (r ReconcileStackConfigPolicy[T]) getSettings(t *testing.T, nsn types.NamespacedName) filesettings.Settings {
+func (r ReconcileStackConfigPolicy) getSettings(t *testing.T, nsn types.NamespacedName) filesettings.Settings {
 	t.Helper()
 	var secret corev1.Secret
 	err := r.Client.Get(context.Background(), nsn, &secret)
@@ -75,7 +75,7 @@ func (r ReconcileStackConfigPolicy[T]) getSettings(t *testing.T, nsn types.Names
 	return settings
 }
 
-func (r ReconcileStackConfigPolicy[T]) getPolicy(t *testing.T, nsn types.NamespacedName) policyv1alpha1.StackConfigPolicy {
+func (r ReconcileStackConfigPolicy) getPolicy(t *testing.T, nsn types.NamespacedName) policyv1alpha1.StackConfigPolicy {
 	t.Helper()
 	var policy policyv1alpha1.StackConfigPolicy
 	err := r.Client.Get(context.Background(), nsn, &policy)
@@ -263,8 +263,8 @@ func TestReconcileStackConfigPolicy_Reconcile(t *testing.T) {
 	tests := []struct {
 		name             string
 		args             args
-		pre              func(r ReconcileStackConfigPolicy[client.Object])
-		post             func(r ReconcileStackConfigPolicy[client.Object], recorder record.FakeRecorder)
+		pre              func(r ReconcileStackConfigPolicy)
+		post             func(r ReconcileStackConfigPolicy, recorder record.FakeRecorder)
 		wantRequeue      bool
 		wantRequeueAfter bool
 		wantErr          bool
@@ -292,12 +292,12 @@ func TestReconcileStackConfigPolicy_Reconcile(t *testing.T) {
 			args: args{
 				client: k8s.NewFakeClient(&esFixture, &secretFixture, secretMountsSecretFixture),
 			},
-			pre: func(r ReconcileStackConfigPolicy[client.Object]) {
+			pre: func(r ReconcileStackConfigPolicy) {
 				// before the reconciliation, settings are not empty
 				settings := r.getSettings(t, k8s.ExtractNamespacedName(&secretFixture))
 				assert.NotEmpty(t, settings.State.ClusterSettings.Data)
 			},
-			post: func(r ReconcileStackConfigPolicy[client.Object], recorder record.FakeRecorder) {
+			post: func(r ReconcileStackConfigPolicy, recorder record.FakeRecorder) {
 				// after the reconciliation, settings are empty
 				settings := r.getSettings(t, k8s.ExtractNamespacedName(&secretFixture))
 				assert.Empty(t, settings.State.ClusterSettings.Data)
@@ -311,12 +311,12 @@ func TestReconcileStackConfigPolicy_Reconcile(t *testing.T) {
 				licenseChecker:   &license.MockLicenseChecker{EnterpriseEnabled: true},
 				esClientProvider: fakeClientProvider(clusterStateFileSettingsFixture(42, nil), nil),
 			},
-			pre: func(r ReconcileStackConfigPolicy[client.Object]) {
+			pre: func(r ReconcileStackConfigPolicy) {
 				// before the reconciliation, settings are not empty
 				settings := r.getSettings(t, k8s.ExtractNamespacedName(orphanSecretFixture))
 				assert.NotEmpty(t, settings.State.ClusterSettings)
 			},
-			post: func(r ReconcileStackConfigPolicy[client.Object], recorder record.FakeRecorder) {
+			post: func(r ReconcileStackConfigPolicy, recorder record.FakeRecorder) {
 				// after the reconciliation, settings are empty
 				settings := r.getSettings(t, k8s.ExtractNamespacedName(orphanSecretFixture))
 				assert.Empty(t, settings.State.ClusterSettings.Data)
@@ -330,14 +330,14 @@ func TestReconcileStackConfigPolicy_Reconcile(t *testing.T) {
 				licenseChecker:   &license.MockLicenseChecker{EnterpriseEnabled: true},
 				esClientProvider: fakeClientProvider(clusterStateFileSettingsFixture(42, nil), nil),
 			},
-			pre: func(r ReconcileStackConfigPolicy[client.Object]) {
+			pre: func(r ReconcileStackConfigPolicy) {
 				// before the reconciliation, settings are not empty
 				settings := r.getSettings(t, k8s.ExtractNamespacedName(&secretFixture))
 				assert.NotEmpty(t, settings.State.ClusterSettings.Data)
 				settings = r.getSettings(t, k8s.ExtractNamespacedName(orphanSecretFixture))
 				assert.NotEmpty(t, settings.State.ClusterSettings)
 			},
-			post: func(r ReconcileStackConfigPolicy[client.Object], recorder record.FakeRecorder) {
+			post: func(r ReconcileStackConfigPolicy, recorder record.FakeRecorder) {
 				// after the reconciliation, settings are empty
 				settings := r.getSettings(t, k8s.ExtractNamespacedName(&secretFixture))
 				assert.Empty(t, settings.State.ClusterSettings.Data)
@@ -352,7 +352,7 @@ func TestReconcileStackConfigPolicy_Reconcile(t *testing.T) {
 				client:         k8s.NewFakeClient(&policyFixture),
 				licenseChecker: &license.MockLicenseChecker{EnterpriseEnabled: false},
 			},
-			post: func(r ReconcileStackConfigPolicy[client.Object], recorder record.FakeRecorder) {
+			post: func(r ReconcileStackConfigPolicy, recorder record.FakeRecorder) {
 				events := fetchEvents(&recorder)
 
 				assert.ElementsMatch(t, []string{"Warning ReconciliationError StackConfigPolicy is an enterprise feature. Enterprise features are disabled"}, events)
@@ -370,7 +370,7 @@ func TestReconcileStackConfigPolicy_Reconcile(t *testing.T) {
 				client:         k8s.NewFakeClient(&policyFixture, &kibanaFixture, MkKibanaConfigSecret("ns", "another-policy", "ns", "testvalue")),
 				licenseChecker: &license.MockLicenseChecker{EnterpriseEnabled: true},
 			},
-			post: func(r ReconcileStackConfigPolicy[client.Object], recorder record.FakeRecorder) {
+			post: func(r ReconcileStackConfigPolicy, recorder record.FakeRecorder) {
 				events := fetchEvents(&recorder)
 				assert.ElementsMatch(t, []string{"Warning Unexpected conflict: resource Kibana ns/test-kb already configured by StackConfigpolicy ns/another-policy"}, events)
 
@@ -389,7 +389,7 @@ func TestReconcileStackConfigPolicy_Reconcile(t *testing.T) {
 				client:         k8s.NewFakeClient(&policyFixture, &esFixture, conflictingSecretFixture),
 				licenseChecker: &license.MockLicenseChecker{EnterpriseEnabled: true},
 			},
-			post: func(r ReconcileStackConfigPolicy[client.Object], recorder record.FakeRecorder) {
+			post: func(r ReconcileStackConfigPolicy, recorder record.FakeRecorder) {
 				events := fetchEvents(&recorder)
 				assert.ElementsMatch(t, []string{"Warning Unexpected conflict: resource Elasticsearch ns/test-es already configured by StackConfigpolicy ns/another-policy"}, events)
 
@@ -408,7 +408,7 @@ func TestReconcileStackConfigPolicy_Reconcile(t *testing.T) {
 				client:         k8s.NewFakeClient(&policyFixture, &secretFixture, &oldVersionEsFixture, esPodFixture),
 				licenseChecker: &license.MockLicenseChecker{EnterpriseEnabled: true},
 			},
-			post: func(r ReconcileStackConfigPolicy[client.Object], recorder record.FakeRecorder) {
+			post: func(r ReconcileStackConfigPolicy, recorder record.FakeRecorder) {
 				events := fetchEvents(&recorder)
 				assert.ElementsMatch(t, []string{"Warning Unexpected invalid version to configure resource Elasticsearch ns/test-es: actual 8.0.0, expected >= 8.6.1"}, events)
 
@@ -428,7 +428,7 @@ func TestReconcileStackConfigPolicy_Reconcile(t *testing.T) {
 				licenseChecker:   &license.MockLicenseChecker{EnterpriseEnabled: true},
 				esClientProvider: fakeClientProvider(esclient.FileSettings{}, errors.New("elasticsearch client failed")),
 			},
-			post: func(r ReconcileStackConfigPolicy[client.Object], recorder record.FakeRecorder) {
+			post: func(r ReconcileStackConfigPolicy, recorder record.FakeRecorder) {
 				policy := r.getPolicy(t, k8s.ExtractNamespacedName(&policyFixture))
 				assert.Equal(t, 1, policy.Status.Resources)
 				assert.Equal(t, 0, policy.Status.Ready)
@@ -446,11 +446,11 @@ func TestReconcileStackConfigPolicy_Reconcile(t *testing.T) {
 				licenseChecker:   &license.MockLicenseChecker{EnterpriseEnabled: true},
 				esClientProvider: fakeClientProvider(clusterStateFileSettingsFixture(43, nil), nil),
 			},
-			pre: func(r ReconcileStackConfigPolicy[client.Object]) {
+			pre: func(r ReconcileStackConfigPolicy) {
 				settings := r.getSettings(t, k8s.ExtractNamespacedName(&secretFixture))
 				assert.Equal(t, "42mb", settings.State.ClusterSettings.Data["indices.recovery.max_bytes_per_sec"])
 			},
-			post: func(r ReconcileStackConfigPolicy[client.Object], recorder record.FakeRecorder) {
+			post: func(r ReconcileStackConfigPolicy, recorder record.FakeRecorder) {
 				settings := r.getSettings(t, k8s.ExtractNamespacedName(&secretFixture))
 				assert.Equal(t, "43mb", settings.State.ClusterSettings.Data["indices.recovery.max_bytes_per_sec"])
 
@@ -475,7 +475,7 @@ func TestReconcileStackConfigPolicy_Reconcile(t *testing.T) {
 				licenseChecker:   &license.MockLicenseChecker{EnterpriseEnabled: true},
 				esClientProvider: fakeClientProvider(clusterStateFileSettingsFixture(42, errors.New("invalid cluster settings")), nil),
 			},
-			post: func(r ReconcileStackConfigPolicy[client.Object], recorder record.FakeRecorder) {
+			post: func(r ReconcileStackConfigPolicy, recorder record.FakeRecorder) {
 				var policy policyv1alpha1.StackConfigPolicy
 				err := r.Client.Get(context.Background(), types.NamespacedName{
 					Namespace: "ns",
@@ -498,7 +498,7 @@ func TestReconcileStackConfigPolicy_Reconcile(t *testing.T) {
 				licenseChecker:   &license.MockLicenseChecker{EnterpriseEnabled: true},
 				esClientProvider: fakeClientProvider(clusterStateFileSettingsFixture(40, nil), nil),
 			},
-			post: func(r ReconcileStackConfigPolicy[client.Object], recorder record.FakeRecorder) {
+			post: func(r ReconcileStackConfigPolicy, recorder record.FakeRecorder) {
 				var policy policyv1alpha1.StackConfigPolicy
 				err := r.Client.Get(context.Background(), types.NamespacedName{
 					Namespace: "ns",
@@ -520,7 +520,7 @@ func TestReconcileStackConfigPolicy_Reconcile(t *testing.T) {
 				licenseChecker:   &license.MockLicenseChecker{EnterpriseEnabled: true},
 				esClientProvider: fakeClientProvider(clusterStateFileSettingsFixture(42, nil), nil),
 			},
-			post: func(r ReconcileStackConfigPolicy[client.Object], recorder record.FakeRecorder) {
+			post: func(r ReconcileStackConfigPolicy, recorder record.FakeRecorder) {
 				var policy policyv1alpha1.StackConfigPolicy
 				err := r.Client.Get(context.Background(), types.NamespacedName{
 					Namespace: "ns",
@@ -562,7 +562,7 @@ func TestReconcileStackConfigPolicy_Reconcile(t *testing.T) {
 				licenseChecker:   &license.MockLicenseChecker{EnterpriseEnabled: true},
 				esClientProvider: fakeClientProvider(clusterStateFileSettingsFixture(42, nil), nil),
 			},
-			pre: func(r ReconcileStackConfigPolicy[client.Object]) {
+			pre: func(r ReconcileStackConfigPolicy) {
 				// before the reconciliation, settings are not empty
 				settings := r.getSettings(t, k8s.ExtractNamespacedName(orphanSecretFixture))
 				assert.NotEmpty(t, settings.State.ClusterSettings)
@@ -580,7 +580,7 @@ func TestReconcileStackConfigPolicy_Reconcile(t *testing.T) {
 				}, &secretMountsSecret)
 				assert.NoError(t, err)
 			},
-			post: func(r ReconcileStackConfigPolicy[client.Object], recorder record.FakeRecorder) {
+			post: func(r ReconcileStackConfigPolicy, recorder record.FakeRecorder) {
 				// after the reconciliation, settings are empty
 				settings := r.getSettings(t, k8s.ExtractNamespacedName(orphanSecretFixture))
 				assert.Empty(t, settings.State.ClusterSettings.Data)
@@ -608,7 +608,7 @@ func TestReconcileStackConfigPolicy_Reconcile(t *testing.T) {
 				licenseChecker:   &license.MockLicenseChecker{EnterpriseEnabled: true},
 				esClientProvider: fakeClientProvider(clusterStateFileSettingsFixture(42, nil), nil),
 			},
-			pre: func(r ReconcileStackConfigPolicy[client.Object]) {
+			pre: func(r ReconcileStackConfigPolicy) {
 				// before the reconciliation, config exist
 				var configSecret corev1.Secret
 				err := r.Client.Get(context.Background(), types.NamespacedName{
@@ -617,7 +617,7 @@ func TestReconcileStackConfigPolicy_Reconcile(t *testing.T) {
 				}, &configSecret)
 				assert.NoError(t, err)
 			},
-			post: func(r ReconcileStackConfigPolicy[client.Object], recorder record.FakeRecorder) {
+			post: func(r ReconcileStackConfigPolicy, recorder record.FakeRecorder) {
 				// after the reconciliation, the config secrets do not exist
 				var kibanaConfigSecret corev1.Secret
 				err := r.Client.Get(context.Background(), types.NamespacedName{
@@ -635,7 +635,7 @@ func TestReconcileStackConfigPolicy_Reconcile(t *testing.T) {
 				licenseChecker:   &license.MockLicenseChecker{EnterpriseEnabled: true},
 				esClientProvider: fakeClientProvider(clusterStateFileSettingsFixture(42, nil), nil),
 			},
-			pre: func(r ReconcileStackConfigPolicy[client.Object]) {
+			pre: func(r ReconcileStackConfigPolicy) {
 				// before the reconciliation, config exist
 				var configSecret corev1.Secret
 				err := r.Client.Get(context.Background(), types.NamespacedName{
@@ -644,7 +644,7 @@ func TestReconcileStackConfigPolicy_Reconcile(t *testing.T) {
 				}, &configSecret)
 				assert.NoError(t, err)
 			},
-			post: func(r ReconcileStackConfigPolicy[client.Object], recorder record.FakeRecorder) {
+			post: func(r ReconcileStackConfigPolicy, recorder record.FakeRecorder) {
 				// after the reconciliation, the config secrets do not exist
 				var kibanaConfigSecret corev1.Secret
 				err := r.Client.Get(context.Background(), types.NamespacedName{
@@ -662,7 +662,7 @@ func TestReconcileStackConfigPolicy_Reconcile(t *testing.T) {
 				licenseChecker:   &license.MockLicenseChecker{EnterpriseEnabled: true},
 				esClientProvider: fakeClientProvider(esclient.FileSettings{}, errors.New("elasticsearch client failed")),
 			},
-			post: func(r ReconcileStackConfigPolicy[client.Object], recorder record.FakeRecorder) {
+			post: func(r ReconcileStackConfigPolicy, recorder record.FakeRecorder) {
 				policy := r.getPolicy(t, k8s.ExtractNamespacedName(&policyFixture))
 				assert.Equal(t, 2, policy.Status.Resources)
 				assert.Equal(t, 1, policy.Status.Ready)
@@ -681,7 +681,7 @@ func TestReconcileStackConfigPolicy_Reconcile(t *testing.T) {
 				licenseChecker:   &license.MockLicenseChecker{EnterpriseEnabled: true},
 				esClientProvider: fakeClientProvider(clusterStateFileSettingsFixture(42, nil), nil),
 			},
-			post: func(r ReconcileStackConfigPolicy[client.Object], recorder record.FakeRecorder) {
+			post: func(r ReconcileStackConfigPolicy, recorder record.FakeRecorder) {
 				policy := r.getPolicy(t, k8s.ExtractNamespacedName(&policyFixture))
 				assert.Equal(t, 2, policy.Status.Resources)
 				assert.Equal(t, 1, policy.Status.Ready)
@@ -698,12 +698,12 @@ func TestReconcileStackConfigPolicy_Reconcile(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			fakeRecorder := record.NewFakeRecorder(100)
-			reconciler := ReconcileStackConfigPolicy[client.Object]{
+			reconciler := ReconcileStackConfigPolicy{
 				Client:           tt.args.client,
 				esClientProvider: tt.args.esClientProvider,
 				recorder:         fakeRecorder,
 				licenseChecker:   tt.args.licenseChecker,
-				dynamicWatches:   watches.NewDynamicWatches[client.Object](),
+				dynamicWatches:   watches.NewDynamicWatches(),
 			}
 			if tt.pre != nil {
 				tt.pre(reconciler)

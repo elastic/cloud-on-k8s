@@ -536,8 +536,8 @@ func Test_defaultDriver_updateDesiredNodes(t *testing.T) {
 				k8sClient = k8s.NewFakeClient(existingResources...)
 			}
 
-			d := &defaultDriver[crclient.Object]{
-				DefaultDriverParameters: DefaultDriverParameters[crclient.Object]{
+			d := &defaultDriver{
+				DefaultDriverParameters: DefaultDriverParameters{
 					ReconcileState: reconcileState,
 					ES:             es,
 					Client:         k8sClient,

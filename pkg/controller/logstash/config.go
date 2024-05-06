@@ -13,7 +13,6 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
-	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	logstashv1alpha1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/logstash/v1alpha1"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common"
@@ -34,7 +33,7 @@ const (
 	APIKeystorePassEnv     = "API_KEYSTORE_PASS" // #nosec G101
 )
 
-func reconcileConfig[T client.Object](params Params[T], svcUseTLS bool, configHash hash.Hash) (*settings.CanonicalConfig, configs.APIServer, error) {
+func reconcileConfig(params Params, svcUseTLS bool, configHash hash.Hash) (*settings.CanonicalConfig, configs.APIServer, error) {
 	defer tracing.Span(&params.Context)()
 
 	cfg, err := buildConfig(params, svcUseTLS)
@@ -82,7 +81,7 @@ func reconcileConfig[T client.Object](params Params[T], svcUseTLS bool, configHa
 	return cfg, apiServerConfig, nil
 }
 
-func buildConfig[T client.Object](params Params[T], useTLS bool) (*settings.CanonicalConfig, error) {
+func buildConfig(params Params, useTLS bool) (*settings.CanonicalConfig, error) {
 	userProvidedCfg, err := getUserConfig(params)
 	if err != nil {
 		return nil, err
@@ -101,7 +100,7 @@ func buildConfig[T client.Object](params Params[T], useTLS bool) (*settings.Cano
 
 // getUserConfig extracts the config either from the spec `config` field or from the Secret referenced by spec
 // `configRef` field.
-func getUserConfig[T client.Object](params Params[T]) (*settings.CanonicalConfig, error) {
+func getUserConfig(params Params) (*settings.CanonicalConfig, error) {
 	if params.Logstash.Spec.Config != nil {
 		return settings.NewCanonicalConfigFrom(params.Logstash.Spec.Config.Data)
 	}
@@ -143,7 +142,7 @@ func checkTLSConfig(config configs.APIServer, useTLS bool) error {
 }
 
 // resolveAPIServerConfig gives ExpectedAPIServer with the resolved ${VAR} value
-func resolveAPIServerConfig[T client.Object](cfg *settings.CanonicalConfig, params Params[T]) (configs.APIServer, error) {
+func resolveAPIServerConfig(cfg *settings.CanonicalConfig, params Params) (configs.APIServer, error) {
 	config := baseAPIServer(cfg)
 
 	if unresolvedConfig := getUnresolvedVars(&config); len(unresolvedConfig) > 0 {
@@ -202,7 +201,7 @@ func getUnresolvedVars(config *configs.APIServer) map[string]*string {
 
 // getKeystoreEnvKeyValues gives a map that consolidate all key value pairs from user defined environment variables
 // and Keystore from SecureSettings. If the same key defined in both places, keystore takes the precedence.
-func getKeystoreEnvKeyValues[T client.Object](params Params[T]) (map[string]string, error) {
+func getKeystoreEnvKeyValues(params Params) (map[string]string, error) {
 	data := make(map[string]string)
 
 	// from ENV
@@ -228,7 +227,7 @@ func getKeystoreEnvKeyValues[T client.Object](params Params[T]) (map[string]stri
 	return data, nil
 }
 
-func getEnvKeyValues[T client.Object](params Params[T], c *corev1.Container, data map[string]string) error {
+func getEnvKeyValues(params Params, c *corev1.Container, data map[string]string) error {
 	for _, env := range c.Env {
 		data[env.Name] = env.Value
 	}

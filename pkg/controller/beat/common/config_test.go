@@ -13,7 +13,6 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/tools/record"
-	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	beatv1beta1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/beat/v1beta1"
 	commonv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/common/v1"
@@ -222,10 +221,10 @@ func Test_buildBeatConfig(t *testing.T) {
 		},
 	} {
 		t.Run(tt.name, func(t *testing.T) {
-			gotYaml, gotErr := buildBeatConfig(DriverParams[client.Object]{
+			gotYaml, gotErr := buildBeatConfig(DriverParams{
 				Client:        tt.client,
 				Context:       nil,
-				Watches:       watches.NewDynamicWatches[client.Object](),
+				Watches:       watches.NewDynamicWatches(),
 				EventRecorder: nil,
 				Beat:          tt.beat,
 			}, tt.managedConfig)
@@ -423,11 +422,11 @@ func Test_getUserConfig(t *testing.T) {
 		},
 	} {
 		t.Run(tt.name, func(t *testing.T) {
-			params := DriverParams[client.Object]{
+			params := DriverParams{
 				Context:       context.Background(),
 				Client:        tt.client,
 				EventRecorder: &record.FakeRecorder{},
-				Watches:       watches.NewDynamicWatches[client.Object](),
+				Watches:       watches.NewDynamicWatches(),
 				Beat: beatv1beta1.Beat{
 					Spec: beatv1beta1.BeatSpec{
 						Config:    tt.config,

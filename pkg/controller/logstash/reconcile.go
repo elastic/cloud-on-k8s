@@ -34,7 +34,7 @@ import (
 	ulog "github.com/elastic/cloud-on-k8s/v2/pkg/utils/log"
 )
 
-func reconcileStatefulSet[T client.Object](params Params[T], podTemplate corev1.PodTemplateSpec) (*reconciler.Results, logstashv1alpha1.LogstashStatus) {
+func reconcileStatefulSet(params Params, podTemplate corev1.PodTemplateSpec) (*reconciler.Results, logstashv1alpha1.LogstashStatus) {
 	defer tracing.Span(&params.Context)()
 	results := reconciler.NewResult(params.Context)
 
@@ -116,7 +116,7 @@ func reconcileStatefulSet[T client.Object](params Params[T], podTemplate corev1.
 
 // calculateStatus will calculate a new status from the state of the pods within the k8s cluster
 // and will return any error encountered.
-func calculateStatus[T client.Object](params *Params[T], sset appsv1.StatefulSet) (logstashv1alpha1.LogstashStatus, error) {
+func calculateStatus(params *Params, sset appsv1.StatefulSet) (logstashv1alpha1.LogstashStatus, error) {
 	logstash := params.Logstash
 	status := params.Status
 	pods, err := k8s.PodsMatchingLabels(params.Client, logstash.Namespace, map[string]string{labels.NameLabelName: logstash.Name})

@@ -37,7 +37,7 @@ func TestReconcileEnterpriseSearch_Reconcile_Unmanaged(t *testing.T) {
 		}},
 		Spec: entv1.EnterpriseSearchSpec{Version: "7.7.0"},
 	}
-	r := &ReconcileEnterpriseSearch[client.Object]{
+	r := &ReconcileEnterpriseSearch{
 		Client: k8s.NewFakeClient(&sample),
 	}
 	result, err := r.Reconcile(context.Background(), reconcile.Request{NamespacedName: types.NamespacedName{Name: "sample", Namespace: "ns"}})
@@ -47,9 +47,9 @@ func TestReconcileEnterpriseSearch_Reconcile_Unmanaged(t *testing.T) {
 
 func TestReconcileEnterpriseSearch_Reconcile_NotFound(t *testing.T) {
 	// resource not found, should clear watches
-	r := &ReconcileEnterpriseSearch[client.Object]{
+	r := &ReconcileEnterpriseSearch{
 		Client:         k8s.NewFakeClient(),
-		dynamicWatches: watches.NewDynamicWatches[client.Object](),
+		dynamicWatches: watches.NewDynamicWatches(),
 	}
 	// simulate existing watches
 	nsn := types.NamespacedName{Name: "sample", Namespace: "ns"}
@@ -76,9 +76,9 @@ func TestReconcileEnterpriseSearch_Reconcile_AssociationNotConfigured(t *testing
 		},
 	}
 	fakeRecorder := record.NewFakeRecorder(10)
-	r := &ReconcileEnterpriseSearch[client.Object]{
+	r := &ReconcileEnterpriseSearch{
 		Client:         k8s.NewFakeClient(&sample),
-		dynamicWatches: watches.NewDynamicWatches[client.Object](),
+		dynamicWatches: watches.NewDynamicWatches(),
 		recorder:       fakeRecorder,
 	}
 	res, err := r.Reconcile(context.Background(), reconcile.Request{NamespacedName: types.NamespacedName{Name: "sample", Namespace: "ns"}})
@@ -94,7 +94,7 @@ func TestReconcileEnterpriseSearch_Reconcile_InvalidResource(t *testing.T) {
 	// spec.Version missing from the spec
 	sample := entv1.EnterpriseSearch{ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: "sample"}}
 	fakeRecorder := record.NewFakeRecorder(10)
-	r := &ReconcileEnterpriseSearch[client.Object]{
+	r := &ReconcileEnterpriseSearch{
 		Client:   k8s.NewFakeClient(&sample),
 		recorder: fakeRecorder,
 	}
@@ -114,9 +114,9 @@ func TestReconcileEnterpriseSearch_Reconcile_Create_Update_Resources(t *testing.
 			Version: "7.7.0",
 			Count:   3,
 		}}
-	r := &ReconcileEnterpriseSearch[client.Object]{
+	r := &ReconcileEnterpriseSearch{
 		Client:         k8s.NewFakeClient(&sample),
-		dynamicWatches: watches.NewDynamicWatches[client.Object](),
+		dynamicWatches: watches.NewDynamicWatches(),
 		recorder:       record.NewFakeRecorder(10),
 		Parameters:     operator.Parameters{OperatorInfo: about.OperatorInfo{BuildInfo: about.BuildInfo{Version: "1.0.0"}}},
 	}
@@ -261,9 +261,9 @@ func TestReconcileEnterpriseSearch_doReconcile_AssociationDelaysVersionUpgrade(t
 	// persisted and instead set by the association controller in real condition
 	ent.SetAssociationConf(&assocConf)
 
-	r := &ReconcileEnterpriseSearch[client.Object]{
+	r := &ReconcileEnterpriseSearch{
 		Client:         k8s.NewFakeClient(&ent, &es, &esTLSCertsSecret, &esAuthSecret, &entSearchPod),
-		dynamicWatches: watches.NewDynamicWatches[client.Object](),
+		dynamicWatches: watches.NewDynamicWatches(),
 		recorder:       record.NewFakeRecorder(10),
 		Parameters:     operator.Parameters{OperatorInfo: about.OperatorInfo{BuildInfo: about.BuildInfo{Version: "1.0.0"}}},
 	}
@@ -524,7 +524,7 @@ func TestReconcileEnterpriseSearch_updateStatus(t *testing.T) {
 			ulog.ChangeVerbosity(1)
 			c := &fakeClientStatusCall{Client: k8s.NewFakeClient(&tt.ent)}
 			fakeRecorder := record.NewFakeRecorder(10)
-			r := &ReconcileEnterpriseSearch[client.Object]{
+			r := &ReconcileEnterpriseSearch{
 				Client:   c,
 				recorder: fakeRecorder,
 			}
