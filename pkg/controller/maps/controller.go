@@ -18,7 +18,6 @@ import (
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/tools/record"
-	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
 	"sigs.k8s.io/controller-runtime/pkg/handler"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
@@ -52,7 +51,7 @@ const (
 // Add creates a new MapsServer Controller and adds it to the Manager with default RBAC. The Manager will set fields on the Controller
 // and Start it when the Manager is Started.
 func Add(mgr manager.Manager, params operator.Parameters) error {
-	reconciler := newReconciler[client.Object](mgr, params)
+	reconciler := newReconciler(mgr, params)
 	c, err := common.NewController(mgr, controllerName, reconciler, params)
 	if err != nil {
 		return err
@@ -61,7 +60,7 @@ func Add(mgr manager.Manager, params operator.Parameters) error {
 }
 
 // newReconciler returns a new reconcile.Reconciler
-func newReconciler[T client.Object](mgr manager.Manager, params operator.Parameters) *ReconcileMapsServer {
+func newReconciler(mgr manager.Manager, params operator.Parameters) *ReconcileMapsServer {
 	client := mgr.GetClient()
 	return &ReconcileMapsServer{
 		Client:         client,

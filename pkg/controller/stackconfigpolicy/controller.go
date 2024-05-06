@@ -87,17 +87,17 @@ func addWatches(mgr manager.Manager, c controller.Controller, r *ReconcileStackC
 	}
 
 	// watch for changes to Elasticsearch and reconcile all StackConfigPolicy
-	if err := c.Watch(source.Kind(mgr.GetCache(), &esv1.Elasticsearch{}, reconcileRequestForAllPolicies[*esv1.Elasticsearch](r.Client))); err != nil {
+	if err := c.Watch(source.Kind[client.Object](mgr.GetCache(), &esv1.Elasticsearch{}, reconcileRequestForAllPolicies(r.Client))); err != nil {
 		return err
 	}
 
 	// watch for changes to Kibana and reconcile all StackConfigPolicy
-	if err := c.Watch(source.Kind(mgr.GetCache(), &kibanav1.Kibana{}, reconcileRequestForAllPolicies[*kibanav1.Kibana](r.Client))); err != nil {
+	if err := c.Watch(source.Kind[client.Object](mgr.GetCache(), &kibanav1.Kibana{}, reconcileRequestForAllPolicies(r.Client))); err != nil {
 		return err
 	}
 
 	// watch Secrets soft owned by StackConfigPolicy
-	if err := c.Watch(source.Kind(mgr.GetCache(), &corev1.Secret{}, reconcileRequestForSoftOwnerPolicy[*corev1.Secret]())); err != nil {
+	if err := c.Watch(source.Kind(mgr.GetCache(), &corev1.Secret{}, reconcileRequestForSoftOwnerPolicy())); err != nil {
 		return err
 	}
 
@@ -105,7 +105,7 @@ func addWatches(mgr manager.Manager, c controller.Controller, r *ReconcileStackC
 	return c.Watch(source.Kind(mgr.GetCache(), &corev1.Secret{}, r.dynamicWatches.Secrets))
 }
 
-func reconcileRequestForSoftOwnerPolicy[T *corev1.Secret]() handler.TypedEventHandler[*corev1.Secret] {
+func reconcileRequestForSoftOwnerPolicy() handler.TypedEventHandler[*corev1.Secret] {
 	return handler.TypedEnqueueRequestsFromMapFunc[*corev1.Secret](func(ctx context.Context, secret *corev1.Secret) []reconcile.Request {
 		softOwner, referenced := reconciler.SoftOwnerRefFromLabels(secret.GetLabels())
 		if !referenced || softOwner.Kind != policyv1alpha1.Kind {
@@ -118,10 +118,10 @@ func reconcileRequestForSoftOwnerPolicy[T *corev1.Secret]() handler.TypedEventHa
 }
 
 // requestsAllStackConfigPolicies returns the requests to reconcile all StackConfigPolicy resources.
-func reconcileRequestForAllPolicies[T client.Object](client k8s.Client) handler.TypedEventHandler[T] {
-	return handler.TypedEnqueueRequestsFromMapFunc[T](func(ctx context.Context, es T) []reconcile.Request {
+func reconcileRequestForAllPolicies(clnt k8s.Client) handler.TypedEventHandler[client.Object] {
+	return handler.TypedEnqueueRequestsFromMapFunc[client.Object](func(ctx context.Context, es client.Object) []reconcile.Request {
 		var stackConfigList policyv1alpha1.StackConfigPolicyList
-		err := client.List(context.Background(), &stackConfigList)
+		err := clnt.List(context.Background(), &stackConfigList)
 		if err != nil {
 			ulog.Log.Error(err, "Fail to list StackConfigurationList while watching Elasticsearch")
 			return nil

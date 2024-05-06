@@ -16,7 +16,6 @@ import (
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/tools/record"
-	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
 	"sigs.k8s.io/controller-runtime/pkg/handler"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
@@ -51,7 +50,7 @@ func Add(mgr manager.Manager, params operator.Parameters) error {
 	if err != nil {
 		return err
 	}
-	return addWatches[client.Object](mgr, c, reconciler)
+	return addWatches(mgr, c, reconciler)
 }
 
 // newReconciler returns a new reconcile.Reconciler
@@ -64,7 +63,7 @@ func newReconciler(mgr manager.Manager, params operator.Parameters) *ReconcileKi
 	}
 }
 
-func addWatches[T client.Object](mgr manager.Manager, c controller.Controller, r *ReconcileKibana) error {
+func addWatches(mgr manager.Manager, c controller.Controller, r *ReconcileKibana) error {
 	// Watch for changes to Kibana
 	if err := c.Watch(source.Kind(mgr.GetCache(), &kbv1.Kibana{}, &handler.TypedEnqueueRequestForObject[*kbv1.Kibana]{})); err != nil {
 		return err
