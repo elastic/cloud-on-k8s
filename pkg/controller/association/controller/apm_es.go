@@ -37,7 +37,7 @@ const (
 )
 
 func AddApmES(mgr manager.Manager, accessReviewer rbac.AccessReviewer, params operator.Parameters) error {
-	return association.AddAssociationController[client.Object](mgr, accessReviewer, params, association.AssociationInfo{
+	return association.AddAssociationController(mgr, accessReviewer, params, association.AssociationInfo{
 		AssociatedShortName:       "apm",
 		AssociatedObjTemplate:     func() commonv1.Associated { return &apmv1.ApmServer{} },
 		ReferencedObjTemplate:     func() client.Object { return &esv1.Elasticsearch{} },

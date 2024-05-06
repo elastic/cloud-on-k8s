@@ -46,7 +46,7 @@ var (
 
 // Add creates a new RemoteCa Controller and adds it to the manager with default RBAC.
 func Add(mgr manager.Manager, accessReviewer rbac.AccessReviewer, params operator.Parameters) error {
-	r := NewReconciler[client.Object](mgr, accessReviewer, params)
+	r := NewReconciler(mgr, accessReviewer, params)
 	c, err := common.NewController(mgr, name, r, params)
 	if err != nil {
 		return err
@@ -55,27 +55,27 @@ func Add(mgr manager.Manager, accessReviewer rbac.AccessReviewer, params operato
 }
 
 // NewReconciler returns a new reconcile.Reconciler
-func NewReconciler[T client.Object](mgr manager.Manager, accessReviewer rbac.AccessReviewer, params operator.Parameters) *ReconcileRemoteCa[T] {
+func NewReconciler(mgr manager.Manager, accessReviewer rbac.AccessReviewer, params operator.Parameters) *ReconcileRemoteCa {
 	c := mgr.GetClient()
-	return &ReconcileRemoteCa[T]{
+	return &ReconcileRemoteCa{
 		Client:         c,
 		accessReviewer: accessReviewer,
-		watches:        watches.NewDynamicWatches[T](),
+		watches:        watches.NewDynamicWatches(),
 		recorder:       mgr.GetEventRecorderFor(name),
 		licenseChecker: license.NewLicenseChecker(c, params.OperatorNamespace),
 		Parameters:     params,
 	}
 }
 
-var _ reconcile.Reconciler = &ReconcileRemoteCa[client.Object]{}
+var _ reconcile.Reconciler = &ReconcileRemoteCa{}
 
 // ReconcileRemoteCa reconciles remote CA Secrets.
-type ReconcileRemoteCa[T client.Object] struct {
+type ReconcileRemoteCa struct {
 	k8s.Client
 	operator.Parameters
 	accessReviewer rbac.AccessReviewer
 	recorder       record.EventRecorder
-	watches        watches.DynamicWatches[T]
+	watches        watches.DynamicWatches
 	licenseChecker license.Checker
 
 	// iteration is the number of times this controller has run its Reconcile method
@@ -84,7 +84,7 @@ type ReconcileRemoteCa[T client.Object] struct {
 
 // Reconcile reads that state of the cluster for the expected remote clusters in this Kubernetes cluster.
 // It copies the remote CA Secrets so they can be trusted by every peer Elasticsearch clusters.
-func (r *ReconcileRemoteCa[T]) Reconcile(ctx context.Context, request reconcile.Request) (reconcile.Result, error) {
+func (r *ReconcileRemoteCa) Reconcile(ctx context.Context, request reconcile.Request) (reconcile.Result, error) {
 	ctx = common.NewReconciliationContext(ctx, &r.iteration, r.Tracer, name, "es_name", request)
 	defer common.LogReconciliationRun(ulog.FromContext(ctx))()
 	defer tracing.EndContextTransaction(ctx)
@@ -108,7 +108,7 @@ func (r *ReconcileRemoteCa[T]) Reconcile(ctx context.Context, request reconcile.
 }
 
 // deleteAllRemoteCa deletes all associated remote certificate authorities
-func deleteAllRemoteCa[T client.Object](ctx context.Context, r *ReconcileRemoteCa[T], es types.NamespacedName) (reconcile.Result, error) {
+func deleteAllRemoteCa(ctx context.Context, r *ReconcileRemoteCa, es types.NamespacedName) (reconcile.Result, error) {
 	span, _ := apm.StartSpan(ctx, "delete_all_remote_ca", tracing.SpanTypeApp)
 	defer span.End()
 
@@ -125,9 +125,9 @@ func deleteAllRemoteCa[T client.Object](ctx context.Context, r *ReconcileRemoteC
 	return results.Aggregate()
 }
 
-func doReconcile[T client.Object](
+func doReconcile(
 	ctx context.Context,
-	r *ReconcileRemoteCa[T],
+	r *ReconcileRemoteCa,
 	localEs *esv1.Elasticsearch,
 ) (reconcile.Result, error) {
 	log := ulog.FromContext(ctx)

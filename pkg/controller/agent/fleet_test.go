@@ -18,7 +18,6 @@ import (
 	"github.com/stretchr/testify/require"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/tools/record"
-	runtime_client "sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/elastic/cloud-on-k8s/v2/pkg/apis/agent/v1alpha1"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/k8s"
@@ -244,7 +243,7 @@ func Test_reconcileEnrollmentToken(t *testing.T) {
 				client = *tt.args.client
 			}
 			fakeRecorder := record.NewFakeRecorder(10)
-			params := Params[runtime_client.Object]{
+			params := Params{
 				Context:       context.Background(),
 				Client:        client,
 				EventRecorder: fakeRecorder,

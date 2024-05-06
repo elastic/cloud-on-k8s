@@ -91,7 +91,7 @@ func newReconciler(mgr manager.Manager, params operator.Parameters) *ReconcileAp
 	return &ReconcileApmServer{
 		Client:         mgr.GetClient(),
 		recorder:       mgr.GetEventRecorderFor(controllerName),
-		dynamicWatches: watches.NewDynamicWatches[client.Object](),
+		dynamicWatches: watches.NewDynamicWatches(),
 		Parameters:     params,
 	}
 }
@@ -230,7 +230,7 @@ func (r *ReconcileApmServer) doReconcile(ctx context.Context, as *apmv1.ApmServe
 		return results.WithError(err), state
 	}
 
-	_, results = certificates.Reconciler[T]{
+	_, results = certificates.Reconciler{
 		K8sClient:             r.K8sClient(),
 		DynamicWatches:        r.DynamicWatches(),
 		Owner:                 as,

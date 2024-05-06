@@ -12,7 +12,6 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
-	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	commonv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/common/v1"
 	esv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/elasticsearch/v1"
@@ -163,7 +162,7 @@ func TestReconcileAssociation_reconcileCASecret(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			r := &Reconciler[client.Object]{
+			r := &Reconciler{
 				AssociationInfo: AssociationInfo{
 					Labels: func(associated types.NamespacedName) map[string]string {
 						return map[string]string{}
@@ -173,7 +172,7 @@ func TestReconcileAssociation_reconcileCASecret(t *testing.T) {
 					AssociationResourceNamespaceLabelName: "elasticsearch.k8s.elastic.co/cluster-namespace",
 				},
 				Client:     tt.client,
-				watches:    watches.DynamicWatches[client.Object]{},
+				watches:    watches.DynamicWatches{},
 				Parameters: operator.Parameters{},
 			}
 

@@ -58,7 +58,7 @@ func newReconciler[T client.Object](mgr manager.Manager, params operator.Paramet
 	return &ReconcileLogstash[T]{
 		Client:         client,
 		recorder:       mgr.GetEventRecorderFor(controllerName),
-		dynamicWatches: watches.NewDynamicWatches[T](),
+		dynamicWatches: watches.NewDynamicWatches(),
 		Parameters:     params,
 		expectations:   expectations.NewClustersExpectations(client),
 	}
@@ -115,7 +115,7 @@ var _ reconcile.Reconciler = &ReconcileLogstash[client.Object]{}
 type ReconcileLogstash[T client.Object] struct {
 	k8s.Client
 	recorder       record.EventRecorder
-	dynamicWatches watches.DynamicWatches[T]
+	dynamicWatches watches.DynamicWatches
 	operator.Parameters
 	// iteration is the number of times this controller has run its Reconcile method
 	iteration    uint64

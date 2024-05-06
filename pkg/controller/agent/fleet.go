@@ -20,7 +20,6 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/tools/record"
-	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
 	agentv1alpha1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/agent/v1alpha1"
@@ -234,7 +233,7 @@ func (f fleetAPI) setupFleet(ctx context.Context) error {
 	return f.request(ctx, http.MethodPost, "setup", nil, nil)
 }
 
-func maybeReconcileFleetEnrollment[T client.Object](params Params[T], result *reconciler.Results) EnrollmentAPIKey {
+func maybeReconcileFleetEnrollment(params Params, result *reconciler.Results) EnrollmentAPIKey {
 	if !params.Agent.Spec.KibanaRef.IsDefined() {
 		return EnrollmentAPIKey{}
 	}
@@ -278,7 +277,7 @@ func isKibanaReachable(ctx context.Context, client k8s.Client, kibanaNSN types.N
 	return true, nil
 }
 
-func reconcileEnrollmentToken[T client.Object](params Params[T], api fleetAPI) (EnrollmentAPIKey, error) {
+func reconcileEnrollmentToken(params Params, api fleetAPI) (EnrollmentAPIKey, error) {
 	defer api.client.CloseIdleConnections()
 	agent := params.Agent
 	ctx := params.Context

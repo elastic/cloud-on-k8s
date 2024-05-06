@@ -62,7 +62,7 @@ func newReconciler[T client.Object](mgr manager.Manager, params operator.Paramet
 	return &ReconcileBeat[T]{
 		Client:         client,
 		recorder:       mgr.GetEventRecorderFor(controllerName),
-		dynamicWatches: watches.NewDynamicWatches[T](),
+		dynamicWatches: watches.NewDynamicWatches(),
 		Parameters:     params,
 	}
 }
@@ -117,7 +117,7 @@ var _ reconcile.Reconciler = &ReconcileBeat[client.Object]{}
 type ReconcileBeat[T client.Object] struct {
 	k8s.Client
 	recorder       record.EventRecorder
-	dynamicWatches watches.DynamicWatches[T]
+	dynamicWatches watches.DynamicWatches
 	operator.Parameters
 	// iteration is the number of times this controller has run its Reconcile method
 	iteration uint64
@@ -206,15 +206,15 @@ func (r *ReconcileBeat[T]) onDelete(ctx context.Context, obj types.NamespacedNam
 	return reconciler.GarbageCollectSoftOwnedSecrets(ctx, r.Client, obj, beatv1beta1.Kind)
 }
 
-func newDriver[T client.Object](
+func newDriver(
 	ctx context.Context,
 	recorder record.EventRecorder,
 	clnt k8s.Client,
-	dynamicWatches watches.DynamicWatches[T],
+	dynamicWatches watches.DynamicWatches,
 	beat beatv1beta1.Beat,
 	status beatv1beta1.BeatStatus,
 ) beatcommon.Driver {
-	dp := beatcommon.DriverParams[T]{
+	dp := beatcommon.DriverParams{
 		Client:        clnt,
 		Context:       ctx,
 		Watches:       dynamicWatches,

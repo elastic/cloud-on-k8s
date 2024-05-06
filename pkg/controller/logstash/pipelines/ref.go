@@ -9,7 +9,6 @@ import (
 
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
-	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	commonv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/common/v1"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common"
@@ -23,8 +22,8 @@ func RefWatchName(resource types.NamespacedName) string {
 
 // ParsePipelinesRef retrieves the content of a secret referenced in `pipelinesRef`, sets up dynamic watches for that secret,
 // and parses the secret content into a PipelinesConfig.
-func ParsePipelinesRef[T client.Object](
-	driver driver.Interface[T],
+func ParsePipelinesRef(
+	driver driver.Interface,
 	resource runtime.Object,
 	pipelinesRef *commonv1.ConfigSource,
 	secretKey string, // retrieve config data from that entry in the secret

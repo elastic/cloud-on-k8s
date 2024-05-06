@@ -41,7 +41,7 @@ type Params[T client.Object] struct {
 
 	Client        k8s.Client
 	EventRecorder record.EventRecorder
-	Watches       watches.DynamicWatches[T]
+	Watches       watches.DynamicWatches
 
 	Logstash logstashv1alpha1.Logstash
 	Status   logstashv1alpha1.LogstashStatus
@@ -66,7 +66,7 @@ func (p Params[T]) Recorder() record.EventRecorder {
 }
 
 // DynamicWatches returns the set of stateful dynamic watches used during reconciliation.
-func (p Params[T]) DynamicWatches() watches.DynamicWatches[T] {
+func (p Params[T]) DynamicWatches() watches.DynamicWatches {
 	return p.Watches
 }
 
@@ -103,7 +103,7 @@ func internalReconcile[T client.Object](params Params[T]) (*reconciler.Results, 
 
 	apiSvcTLS := params.Logstash.APIServerTLSOptions()
 
-	_, results = certificates.Reconciler[T]{
+	_, results = certificates.Reconciler{
 		K8sClient:             params.Client,
 		DynamicWatches:        params.Watches,
 		Owner:                 &params.Logstash,

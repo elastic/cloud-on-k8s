@@ -11,7 +11,6 @@ import (
 
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	commonv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/common/v1"
 	emsv1alpha1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/maps/v1alpha1"
@@ -37,7 +36,7 @@ func configSecretVolume(ems emsv1alpha1.ElasticMapsServer) volume.SecretVolume {
 	return volume.NewSecretVolume(Config(ems.Name), "config", ConfigMountPath, ConfigFilename, 0444)
 }
 
-func reconcileConfig[T client.Object](ctx context.Context, driver driver.Interface[T], ems emsv1alpha1.ElasticMapsServer, ipFamily corev1.IPFamily) (corev1.Secret, error) {
+func reconcileConfig(ctx context.Context, driver driver.Interface, ems emsv1alpha1.ElasticMapsServer, ipFamily corev1.IPFamily) (corev1.Secret, error) {
 	cfg, err := newConfig(ctx, driver, ems, ipFamily)
 	if err != nil {
 		return corev1.Secret{}, err
@@ -63,7 +62,7 @@ func reconcileConfig[T client.Object](ctx context.Context, driver driver.Interfa
 	return reconciler.ReconcileSecret(ctx, driver.K8sClient(), expectedConfigSecret, &ems)
 }
 
-func newConfig[T client.Object](ctx context.Context, d driver.Interface[T], ems emsv1alpha1.ElasticMapsServer, ipFamily corev1.IPFamily) (*settings.CanonicalConfig, error) {
+func newConfig(ctx context.Context, d driver.Interface, ems emsv1alpha1.ElasticMapsServer, ipFamily corev1.IPFamily) (*settings.CanonicalConfig, error) {
 	cfg := settings.NewCanonicalConfig()
 
 	inlineUserCfg, err := inlineUserConfig(ems.Spec.Config)

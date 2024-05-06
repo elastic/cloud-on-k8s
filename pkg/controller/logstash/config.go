@@ -105,7 +105,7 @@ func getUserConfig[T client.Object](params Params[T]) (*settings.CanonicalConfig
 	if params.Logstash.Spec.Config != nil {
 		return settings.NewCanonicalConfigFrom(params.Logstash.Spec.Config.Data)
 	}
-	return common.ParseConfigRef[T](params, &params.Logstash, params.Logstash.Spec.ConfigRef, ConfigFileName)
+	return common.ParseConfigRef(params, &params.Logstash, params.Logstash.Spec.ConfigRef, ConfigFileName)
 }
 
 func defaultConfig() *settings.CanonicalConfig {

@@ -16,7 +16,6 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
-	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	agentv1alpha1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/agent/v1alpha1"
 	commonv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/common/v1"
@@ -36,7 +35,7 @@ type connectionSettings struct {
 	caCerts                   []*x509.Certificate
 }
 
-func reconcileConfig[T client.Object](params Params[T], configHash hash.Hash) *reconciler.Results {
+func reconcileConfig(params Params, configHash hash.Hash) *reconciler.Results {
 	defer tracing.Span(&params.Context)()
 	results := reconciler.NewResult(params.Context)
 
@@ -65,7 +64,7 @@ func reconcileConfig[T client.Object](params Params[T], configHash hash.Hash) *r
 	return results
 }
 
-func buildConfig[T client.Object](params Params[T]) ([]byte, error) {
+func buildConfig(params Params) ([]byte, error) {
 	cfg, err := buildOutputConfig(params)
 	if err != nil {
 		return nil, err
@@ -84,7 +83,7 @@ func buildConfig[T client.Object](params Params[T]) ([]byte, error) {
 	return cfg.Render()
 }
 
-func buildOutputConfig[T client.Object](params Params[T]) (*settings.CanonicalConfig, error) {
+func buildOutputConfig(params Params) (*settings.CanonicalConfig, error) {
 	if params.Agent.Spec.FleetModeEnabled() {
 		// in fleet mode outputs are owned by fleet
 		return settings.NewCanonicalConfig(), nil
@@ -150,7 +149,7 @@ func buildOutputConfig[T client.Object](params Params[T]) (*settings.CanonicalCo
 
 // getUserConfig extracts the config either from the spec `config` field or from the Secret referenced by spec
 // `configRef` field.
-func getUserConfig[T client.Object](params Params[T]) (*settings.CanonicalConfig, error) {
+func getUserConfig(params Params) (*settings.CanonicalConfig, error) {
 	if params.Agent.Spec.Config != nil {
 		return settings.NewCanonicalConfigFrom(params.Agent.Spec.Config.Data)
 	}

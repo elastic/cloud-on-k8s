@@ -260,12 +260,12 @@ func (a denyAllAccessReviewer) AccessAllowed(_ context.Context, _ string, _ stri
 	return false, nil
 }
 
-func testReconciler(runtimeObjs ...client.Object) Reconciler[client.Object] {
-	return Reconciler[client.Object]{
+func testReconciler(runtimeObjs ...client.Object) Reconciler {
+	return Reconciler{
 		AssociationInfo: kbAssociationInfo,
 		Client:          k8s.NewFakeClient(runtimeObjs...),
 		accessReviewer:  rbac.NewPermissiveAccessReviewer(),
-		watches:         watches.NewDynamicWatches[client.Object](),
+		watches:         watches.NewDynamicWatches(),
 		recorder:        record.NewFakeRecorder(10),
 		Parameters: operator.Parameters{
 			OperatorInfo: about.OperatorInfo{
@@ -568,7 +568,7 @@ func TestReconciler_Reconcile_noESAuth(t *testing.T) {
 		ElasticsearchUserCreation:             nil, // no dedicated ES user required for Kibana->Ent connection
 	}
 
-	r := Reconciler[client.Object]{
+	r := Reconciler{
 		AssociationInfo: kbEntAssocInfo,
 		Client: k8s.NewFakeClient(
 			&kb,
@@ -577,7 +577,7 @@ func TestReconciler_Reconcile_noESAuth(t *testing.T) {
 			&entHTTPService,
 		),
 		accessReviewer: rbac.NewPermissiveAccessReviewer(),
-		watches:        watches.NewDynamicWatches[client.Object](),
+		watches:        watches.NewDynamicWatches(),
 		recorder:       record.NewFakeRecorder(10),
 		Parameters: operator.Parameters{
 			OperatorInfo: about.OperatorInfo{
@@ -783,7 +783,7 @@ func TestReconciler_getElasticsearch(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			c := k8s.NewFakeClient(tt.runtimeObjects...)
-			r := &Reconciler[client.Object]{Client: c, recorder: record.NewFakeRecorder(10)}
+			r := &Reconciler{Client: c, recorder: record.NewFakeRecorder(10)}
 			es, status, err := r.getElasticsearch(context.Background(), tt.associated, tt.esRef)
 			require.NoError(t, err)
 			require.Equal(t, tt.wantStatus, status)
@@ -879,7 +879,7 @@ func TestReconciler_Reconcile_MultiRef(t *testing.T) {
 	}
 
 	// Set Agent, two ES resources and their public cert Secrets
-	r := Reconciler[client.Object]{
+	r := Reconciler{
 		AssociationInfo: agentAssociationInfo,
 		Client: k8s.NewFakeClient(
 			&agent,
@@ -919,7 +919,7 @@ func TestReconciler_Reconcile_MultiRef(t *testing.T) {
 			},
 		),
 		accessReviewer: rbac.NewPermissiveAccessReviewer(),
-		watches:        watches.NewDynamicWatches[client.Object](),
+		watches:        watches.NewDynamicWatches(),
 		recorder:       record.NewFakeRecorder(10),
 		Parameters: operator.Parameters{
 			OperatorInfo: about.OperatorInfo{
@@ -1218,7 +1218,7 @@ func TestReconciler_Reconcile_Transitive_Associations(t *testing.T) {
 	})
 
 	// Set Agent, Fleet Server Agent, ES resource and their associated secrets.
-	r := Reconciler[client.Object]{
+	r := Reconciler{
 		AssociationInfo: agentAssociationInfo,
 		Client: k8s.NewFakeClient(
 			&agent,
@@ -1283,7 +1283,7 @@ func TestReconciler_Reconcile_Transitive_Associations(t *testing.T) {
 			},
 		),
 		accessReviewer: rbac.NewPermissiveAccessReviewer(),
-		watches:        watches.NewDynamicWatches[client.Object](),
+		watches:        watches.NewDynamicWatches(),
 		recorder:       record.NewFakeRecorder(10),
 		Parameters: operator.Parameters{
 			OperatorInfo: about.OperatorInfo{
@@ -1385,7 +1385,7 @@ func checkAnnotations(t *testing.T, agent agentv1alpha1.Agent, expected bool, an
 	}
 }
 
-func checkWatches(t *testing.T, watches watches.DynamicWatches[client.Object], expected bool, userWatch bool) {
+func checkWatches(t *testing.T, watches watches.DynamicWatches, expected bool, userWatch bool) {
 	t.Helper()
 	if expected {
 		if userWatch {
