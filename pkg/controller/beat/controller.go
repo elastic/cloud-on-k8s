@@ -208,13 +208,13 @@ func (r *ReconcileBeat) onDelete(ctx context.Context, obj types.NamespacedName) 
 func newDriver(
 	ctx context.Context,
 	recorder record.EventRecorder,
-	clnt k8s.Client,
+	client k8s.Client,
 	dynamicWatches watches.DynamicWatches,
 	beat beatv1beta1.Beat,
 	status beatv1beta1.BeatStatus,
 ) beatcommon.Driver {
 	dp := beatcommon.DriverParams{
-		Client:        clnt,
+		Client:        client,
 		Context:       ctx,
 		Watches:       dynamicWatches,
 		EventRecorder: recorder,

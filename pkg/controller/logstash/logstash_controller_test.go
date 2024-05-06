@@ -51,12 +51,12 @@ var (
 )
 
 func newReconcileLogstash(objs ...client.Object) *ReconcileLogstash {
-	clnt := k8s.NewFakeClient(objs...)
+	client := k8s.NewFakeClient(objs...)
 	r := &ReconcileLogstash{
-		Client:         clnt,
+		Client:         client,
 		recorder:       record.NewFakeRecorder(100),
 		dynamicWatches: watches.NewDynamicWatches(),
-		expectations:   expectations.NewClustersExpectations(clnt),
+		expectations:   expectations.NewClustersExpectations(client),
 	}
 	return r
 }

@@ -369,10 +369,10 @@ func TestDriverDeploymentParams(t *testing.T) {
 			kb := tt.args.kb()
 			initialObjects := tt.args.initialObjects()
 
-			clnt := k8s.NewFakeClient(initialObjects...)
+			client := k8s.NewFakeClient(initialObjects...)
 			w := watches.NewDynamicWatches()
 
-			d, err := newDriver(clnt, w, record.NewFakeRecorder(100), kb, corev1.IPv4Protocol)
+			d, err := newDriver(client, w, record.NewFakeRecorder(100), kb, corev1.IPv4Protocol)
 			require.NoError(t, err)
 
 			got, err := d.deploymentParams(context.Background(), kb, tt.args.policyAnnotations)
@@ -415,10 +415,10 @@ func TestMinSupportedVersion(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			kb := kibanaFixture()
 			kb.Spec.Version = tc.version
-			clnt := k8s.NewFakeClient(defaultInitialObjects()...)
+			client := k8s.NewFakeClient(defaultInitialObjects()...)
 			w := watches.NewDynamicWatches()
 
-			_, err := newDriver(clnt, w, record.NewFakeRecorder(100), kb, corev1.IPv4Protocol)
+			_, err := newDriver(client, w, record.NewFakeRecorder(100), kb, corev1.IPv4Protocol)
 			if tc.wantErr {
 				require.Error(t, err)
 			} else {

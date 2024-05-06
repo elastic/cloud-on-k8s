@@ -220,9 +220,9 @@ func TestReconcilePublicHTTPCerts(t *testing.T) {
 	for _, tt := range tests {
 		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
-			clnt := tt.client(t)
+			client := tt.client(t)
 			err := Reconciler{
-				K8sClient: clnt,
+				K8sClient: client,
 				Owner:     owner,
 				Namer:     esv1.ESNamer,
 				Labels:    labels,
@@ -233,7 +233,7 @@ func TestReconcilePublicHTTPCerts(t *testing.T) {
 			}
 
 			var gotSecret corev1.Secret
-			err = clnt.Get(context.Background(), namespacedSecretName, &gotSecret)
+			err = client.Get(context.Background(), namespacedSecretName, &gotSecret)
 			require.NoError(t, err, "Failed to get secret")
 
 			wantSecret := tt.wantSecret(t)

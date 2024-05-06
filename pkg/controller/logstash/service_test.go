@@ -198,10 +198,10 @@ func TestReconcileServices(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			clnt := k8s.NewFakeClient()
+			client := k8s.NewFakeClient()
 			params := Params{
 				Context:  context.Background(),
-				Client:   clnt,
+				Client:   client,
 				Logstash: tc.logstash,
 			}
 			haveSvc, haveAPISvc, err := reconcileServices(params)

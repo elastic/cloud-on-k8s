@@ -30,7 +30,7 @@ func WatchClusterHealthChange(m *Manager) source.Source {
 
 // healthChangeListener returns an OnObservation listener that feeds a generic
 // event when a cluster's observed health has changed.
-func healthChangeListener[T *esv1.Elasticsearch](reconciliation chan event.TypedGenericEvent[T]) OnObservation {
+func healthChangeListener(reconciliation chan event.TypedGenericEvent[*esv1.Elasticsearch]) OnObservation {
 	return func(cluster types.NamespacedName, previous, current esv1.ElasticsearchHealth) {
 		// no-op if health hasn't change
 		if previous == current {
@@ -38,7 +38,7 @@ func healthChangeListener[T *esv1.Elasticsearch](reconciliation chan event.Typed
 		}
 
 		// trigger a reconciliation event for that cluster
-		evt := event.TypedGenericEvent[T]{
+		evt := event.TypedGenericEvent[*esv1.Elasticsearch]{
 			Object: &esv1.Elasticsearch{ObjectMeta: metav1.ObjectMeta{
 				Namespace: cluster.Namespace,
 				Name:      cluster.Name,
