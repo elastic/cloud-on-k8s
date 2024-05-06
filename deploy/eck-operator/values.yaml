@@ -140,7 +140,7 @@ webhook:
   # port is the port that the validating webhook binds to.
   port: 9443
   # secret specifies the Kubernetes secret to be mounted into the path designated by the certsDir value to be used for webhook certificates.
-  secret: ""
+  certsSecret: ""
 
 # hostNetwork allows a Pod to use the Node network namespace.
 # This is required to allow for communication with the kube API when using some alternate CNIs in conjunction with webhook enabled.
