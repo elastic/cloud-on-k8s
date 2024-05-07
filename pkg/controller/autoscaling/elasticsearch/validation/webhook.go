@@ -46,7 +46,7 @@ func RegisterWebhook(mgr ctrl.Manager, validateStorageClass bool, licenseChecker
 
 type validatingWebhook struct {
 	client               k8s.Client
-	decoder              *admission.Decoder
+	decoder              admission.Decoder
 	validateStorageClass bool
 	licenseChecker       license.Checker
 	managedNamespaces    set.StringSet
