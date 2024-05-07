@@ -27,7 +27,7 @@ RUN --mount=type=cache,mode=0755,target=/go/pkg/mod \
 
 # ---------------------------------------------
 # Copy the operator binary into a lighter image
-FROM registry.access.redhat.com/ubi9/ubi-minimal:9.3-1612
+FROM registry.access.redhat.com/ubi9/ubi-minimal:9.4-949.1714662671
 
 # Update the base image packages to the latest versions
 RUN microdnf update --setopt=tsflags=nodocs --assumeyes && microdnf clean all
