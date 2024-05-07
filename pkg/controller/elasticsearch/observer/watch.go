@@ -8,6 +8,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/event"
+	"sigs.k8s.io/controller-runtime/pkg/handler"
 	"sigs.k8s.io/controller-runtime/pkg/source"
 
 	esv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/elasticsearch/v1"
@@ -25,7 +26,7 @@ func WatchClusterHealthChange(m *Manager) source.Source {
 	// DestBufferSize is kept at the default value (1024).
 	// This means we can enqueue a maximum of 1024 requests
 	// before blocking observers from moving on.
-	return source.Channel(evtChan, nil)
+	return source.Channel(evtChan, &handler.TypedEnqueueRequestForObject[*esv1.Elasticsearch]{})
 }
 
 // healthChangeListener returns an OnObservation listener that feeds a generic
