@@ -8,7 +8,6 @@ import (
 	"context"
 	"fmt"
 
-	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
@@ -58,20 +57,20 @@ func (r *Reconciler) reconcileWatches(ctx context.Context, associated types.Name
 
 	// we have 2 modes (exclusive) for the referenced resource: managed or not managed by ECK and referencedResourceWatchName is shared between both.
 	// either watch the referenced resource managed by ECK
-	if err := ReconcileWatch[client.Object](associated, managedElasticRef, r.watches.ReferencedResources, referencedResourceWatchName(associated), func(association commonv1.Association) types.NamespacedName {
+	if err := ReconcileWatch(associated, managedElasticRef, r.watches.ReferencedResources, referencedResourceWatchName(associated), func(association commonv1.Association) types.NamespacedName {
 		return association.AssociationRef().NamespacedName()
 	}); err != nil {
 		return err
 	}
 	// or watch the custom user secret that describes how to connect to the referenced resource not managed by ECK
-	if err := ReconcileWatch[*corev1.Secret](associated, unmanagedElasticRef, r.watches.Secrets, referencedResourceWatchName(associated), func(association commonv1.Association) types.NamespacedName {
+	if err := ReconcileWatch(associated, unmanagedElasticRef, r.watches.Secrets, referencedResourceWatchName(associated), func(association commonv1.Association) types.NamespacedName {
 		return association.AssociationRef().NamespacedName()
 	}); err != nil {
 		return err
 	}
 
 	// watch the CA secret of the referenced resource in the referenced resource namespace
-	if err := ReconcileWatch[*corev1.Secret](associated, managedElasticRef, r.watches.Secrets, referencedResourceCASecretWatchName(associated), func(association commonv1.Association) types.NamespacedName {
+	if err := ReconcileWatch(associated, managedElasticRef, r.watches.Secrets, referencedResourceCASecretWatchName(associated), func(association commonv1.Association) types.NamespacedName {
 		ref := association.AssociationRef()
 		return types.NamespacedName{
 			Name:      certificates.PublicCertsSecretName(r.AssociationInfo.ReferencedResourceNamer, ref.NameOrSecretName()),
@@ -83,7 +82,7 @@ func (r *Reconciler) reconcileWatches(ctx context.Context, associated types.Name
 
 	// watch the custom services users may have setup to be able to react to updates on services that are not error related
 	// (error related updates are covered by re-queueing on unsuccessful reconciliation)
-	if err := ReconcileWatch[*corev1.Service](associated, filterWithServiceName(associations), r.watches.Services, serviceWatchName(associated), func(association commonv1.Association) types.NamespacedName {
+	if err := ReconcileWatch(associated, filterWithServiceName(associations), r.watches.Services, serviceWatchName(associated), func(association commonv1.Association) types.NamespacedName {
 		ref := association.AssociationRef()
 		return types.NamespacedName{
 			Name:      ref.ServiceName,
@@ -95,7 +94,7 @@ func (r *Reconciler) reconcileWatches(ctx context.Context, associated types.Name
 
 	// watch the Elasticsearch user secret in the Elasticsearch namespace, if needed
 	if r.ElasticsearchUserCreation != nil {
-		if err := ReconcileWatch[*corev1.Secret](associated, managedElasticRef, r.watches.Secrets, esUserWatchName(associated), func(association commonv1.Association) types.NamespacedName {
+		if err := ReconcileWatch(associated, managedElasticRef, r.watches.Secrets, esUserWatchName(associated), func(association commonv1.Association) types.NamespacedName {
 			return UserKey(association, association.AssociationRef().Namespace, r.ElasticsearchUserCreation.UserSecretSuffix)
 		}); err != nil {
 			return err

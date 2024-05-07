@@ -31,5 +31,5 @@ func Add(mgr manager.Manager, p operator.Parameters) error {
 	if err := controller.Watch(source.Kind(mgr.GetCache(), &v1alpha1.ElasticsearchAutoscaler{}, &handler.TypedEnqueueRequestForObject[*v1alpha1.ElasticsearchAutoscaler]{})); err != nil {
 		return err
 	}
-	return controller.Watch(source.Kind(mgr.GetCache(), (client.Object)(&esv1.Elasticsearch{}), reconciler.Watches.ReferencedResources))
+	return controller.Watch(source.Kind[client.Object](mgr.GetCache(), &esv1.Elasticsearch{}, reconciler.Watches.ReferencedResources))
 }
