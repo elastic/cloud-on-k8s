@@ -97,7 +97,11 @@ func reconcileInternalUsers(
 		return nil, fmt.Errorf("while parsing Elasticsearch version (%s): %w", es.Spec.Version, err)
 	}
 	if ver.LT(version.From(8, 5, 0)) {
-		users[4].Roles = []string{DiagnosticsUserRoleV7}
+		// Diagnostics user needs superuser role in 7.x.
+		users[4].Roles = []string{SuperUserBuiltinRole}
+		if ver.GTE(version.From(8, 0, 0)) {
+			users[4].Roles = []string{DiagnosticsUserRoleV80}
+		}
 	}
 	return reconcilePredefinedUsers(
 		ctx,

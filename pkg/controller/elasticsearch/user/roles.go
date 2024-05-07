@@ -27,8 +27,8 @@ const (
 	// RemoteMonitoringCollectorBuiltinRole is the name of the built-in remote_monitoring_collector role.
 	RemoteMonitoringCollectorBuiltinRole = "remote_monitoring_collector"
 
-	// DiagnosticsUserRoleV7 is the name of the built-in role for ECK diagnostics use from version 7.x to 8.4.
-	DiagnosticsUserRoleV7 = "elastic_internal_diagnostics_v7"
+	// DiagnosticsUserRoleV80 is the name of the built-in role for ECK diagnostics use from version 8.0 to 8.4.
+	DiagnosticsUserRoleV80 = "elastic_internal_diagnostics_v80"
 	// DiagnosticsUserRoleV85 is the name of the built-in role for ECK diagnostics use from version 8.5.
 	DiagnosticsUserRoleV85 = "elastic_internal_diagnostics_v85"
 
@@ -109,7 +109,7 @@ var (
 	PredefinedRoles = RolesFileContent{
 		ProbeUserRole:     esclient.Role{Cluster: []string{"monitor"}},
 		ClusterManageRole: esclient.Role{Cluster: []string{"manage"}},
-		DiagnosticsUserRoleV7: esclient.Role{
+		DiagnosticsUserRoleV80: esclient.Role{
 			Cluster:      []string{"monitor", "monitor_snapshot", "manage", "read_ilm", "manage_security"},
 			Indices:      diagnosticsRoleIndices,
 			Applications: diagnosticsAppsKibanaPrivileges,
