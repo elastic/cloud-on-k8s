@@ -168,7 +168,7 @@ func Test_reconcileElasticUser_conditionalCreation(t *testing.T) {
 }
 
 func Test_reconcileInternalUsers(t *testing.T) {
-	es := esv1.Elasticsearch{ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: "es"}}
+	es := esv1.Elasticsearch{ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: "es"}, Spec: esv1.ElasticsearchSpec{Version: "8.10.0"}}
 	tests := []struct {
 		name              string
 		existingSecrets   []client.Object

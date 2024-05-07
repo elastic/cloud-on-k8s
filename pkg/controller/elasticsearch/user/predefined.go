@@ -6,6 +6,7 @@ package user
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/pkg/errors"
 	corev1 "k8s.io/api/core/v1"
@@ -17,6 +18,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/labels"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/reconciler"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/version"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/label"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/user/filerealm"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/cryptutil"
@@ -83,18 +85,26 @@ func reconcileInternalUsers(
 	existingFileRealm filerealm.Realm,
 	passwordHasher cryptutil.PasswordHasher,
 ) (users, error) {
+	users := users{
+		{Name: ControllerUserName, Roles: []string{SuperUserBuiltinRole}},
+		{Name: PreStopUserName, Roles: []string{ClusterManageRole}},
+		{Name: ProbeUserName, Roles: []string{ProbeUserRole}},
+		{Name: MonitoringUserName, Roles: []string{RemoteMonitoringCollectorBuiltinRole}},
+		{Name: DiagnosticsUserName, Roles: []string{DiagnosticsUserRoleV85}},
+	}
+	ver, err := version.Parse(es.Spec.Version)
+	if err != nil {
+		return nil, fmt.Errorf("while parsing Elasticsearch version (%s): %w", es.Spec.Version, err)
+	}
+	if ver.LT(version.From(8, 5, 0)) {
+		users[4].Roles = []string{DiagnosticsUserRoleV7}
+	}
 	return reconcilePredefinedUsers(
 		ctx,
 		c,
 		es,
 		existingFileRealm,
-		users{
-			{Name: ControllerUserName, Roles: []string{SuperUserBuiltinRole}},
-			{Name: PreStopUserName, Roles: []string{ClusterManageRole}},
-			{Name: ProbeUserName, Roles: []string{ProbeUserRole}},
-			{Name: MonitoringUserName, Roles: []string{RemoteMonitoringCollectorBuiltinRole}},
-			{Name: DiagnosticsUserName, Roles: []string{DiagnosticsUserRole}},
-		},
+		users,
 		esv1.InternalUsersSecret(es.Name),
 		true,
 		passwordHasher,
