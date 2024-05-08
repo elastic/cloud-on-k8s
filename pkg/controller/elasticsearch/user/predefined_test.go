@@ -171,12 +171,15 @@ func Test_reconcileInternalUsers(t *testing.T) {
 	es := esv1.Elasticsearch{ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: "es"}, Spec: esv1.ElasticsearchSpec{Version: "8.10.0"}}
 	tests := []struct {
 		name              string
+		es                func() esv1.Elasticsearch
 		existingSecrets   []client.Object
 		existingFileRealm filerealm.Realm
 		assertions        func(t *testing.T, u users)
+		errorExpected     bool
 	}{
 		{
 			name:              "create new internal users if they do not exist yet",
+			es:                func() esv1.Elasticsearch { return es },
 			existingSecrets:   nil,
 			existingFileRealm: filerealm.New(),
 			assertions: func(t *testing.T, u users) {
@@ -188,6 +191,7 @@ func Test_reconcileInternalUsers(t *testing.T) {
 		},
 		{
 			name: "reuse the existing passwords and hashes",
+			es:   func() esv1.Elasticsearch { return es },
 			existingSecrets: []client.Object{
 				&corev1.Secret{
 					ObjectMeta: metav1.ObjectMeta{Namespace: es.Namespace, Name: esv1.InternalUsersSecret(es.Name)},
@@ -211,6 +215,7 @@ func Test_reconcileInternalUsers(t *testing.T) {
 		},
 		{
 			name: "reuse the password but generate a new hash if the existing one doesn't match",
+			es:   func() esv1.Elasticsearch { return es },
 			existingSecrets: []client.Object{
 				&corev1.Secret{
 					ObjectMeta: metav1.ObjectMeta{Namespace: es.Namespace, Name: esv1.InternalUsersSecret(es.Name)},
@@ -236,6 +241,7 @@ func Test_reconcileInternalUsers(t *testing.T) {
 		},
 		{
 			name: "reuse the password but generate a new hash if there is none in the file realm",
+			es:   func() esv1.Elasticsearch { return es },
 			existingSecrets: []client.Object{
 				&corev1.Secret{
 					ObjectMeta: metav1.ObjectMeta{Namespace: es.Namespace, Name: esv1.InternalUsersSecret(es.Name)},
@@ -258,12 +264,56 @@ func Test_reconcileInternalUsers(t *testing.T) {
 				require.NotEmpty(t, u[2].PasswordHash)
 			},
 		},
+		{
+			name: "ES 7.x - diagnostic user uses superuser role",
+			es: func() esv1.Elasticsearch {
+				es := es.DeepCopy()
+				es.Spec.Version = "7.10.0"
+				return *es
+			},
+			existingFileRealm: filerealm.New(),
+			assertions: func(t *testing.T, u users) {
+				t.Helper()
+				require.Len(t, u, 5)
+				require.Equal(t, []string{SuperUserBuiltinRole}, u[4].Roles)
+			},
+		},
+		{
+			name: "ES 8.4 - diagnostic user uses specific 'DiagnosticsUserRoleV80' role",
+			es: func() esv1.Elasticsearch {
+				es := es.DeepCopy()
+				es.Spec.Version = "8.4.0"
+				return *es
+			},
+			existingFileRealm: filerealm.New(),
+			assertions: func(t *testing.T, u users) {
+				t.Helper()
+				require.Len(t, u, 5)
+				require.Equal(t, []string{DiagnosticsUserRoleV80}, u[4].Roles)
+			},
+		},
+		{
+			name: "Invalid ES version returns error",
+			es: func() esv1.Elasticsearch {
+				es := es.DeepCopy()
+				es.Spec.Version = "invalid"
+				return *es
+			},
+			existingFileRealm: filerealm.New(),
+			assertions: func(t *testing.T, u users) {
+				t.Helper()
+			},
+			errorExpected: true,
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			c := k8s.NewFakeClient(tt.existingSecrets...)
-			got, err := reconcileInternalUsers(context.Background(), c, es, tt.existingFileRealm, testPasswordHasher)
-			require.NoError(t, err)
+			got, err := reconcileInternalUsers(context.Background(), c, tt.es(), tt.existingFileRealm, testPasswordHasher)
+			require.True(t, ((err != nil) == tt.errorExpected), "error expected: %v, got: %v", tt.errorExpected, err)
+			if tt.errorExpected {
+				return
+			}
 			// check returned users
 			require.Len(t, got, 5)
 			controllerUser := got[0]

@@ -97,10 +97,15 @@ func reconcileInternalUsers(
 		return nil, fmt.Errorf("while parsing Elasticsearch version (%s): %w", es.Spec.Version, err)
 	}
 	if ver.LT(version.From(8, 5, 0)) {
-		// Diagnostics user needs superuser role in 7.x.
-		users[4].Roles = []string{SuperUserBuiltinRole}
+		// Diagnostics user needs Superuser role in 7.x.
+		if err := setRolesForUser(DiagnosticsUserName, users, []string{SuperUserBuiltinRole}); err != nil {
+			return nil, err
+		}
+		// If 8.0.0 >= version < 8.5.0, the Diagnostics user needs the DiagnosticsUserRoleV80 role.
 		if ver.GTE(version.From(8, 0, 0)) {
-			users[4].Roles = []string{DiagnosticsUserRoleV80}
+			if err := setRolesForUser(DiagnosticsUserName, users, []string{DiagnosticsUserRoleV80}); err != nil {
+				return nil, err
+			}
 		}
 	}
 	return reconcilePredefinedUsers(
@@ -113,6 +118,18 @@ func reconcileInternalUsers(
 		true,
 		passwordHasher,
 	)
+}
+
+// setRolesForUser sets the roles for the given user given a slice of users.
+// It returns an error if the user is not found.
+func setRolesForUser(userName string, users []user, roles []string) error {
+	for i, user := range users {
+		if user.Name == userName {
+			users[i].Roles = roles
+			return nil
+		}
+	}
+	return fmt.Errorf("user %s not found", userName)
 }
 
 // reconcilePredefinedUsers reconciles a secret with the given name holding the given users.
