@@ -18,7 +18,7 @@ import (
 
 func Test_objToReconcileRequest(t *testing.T) {
 	labelName := "obj-name-label"
-	fn := objToReconcileRequest(labelName)
+	fn := objToReconcileRequest[client.Object](labelName)
 
 	tests := []struct {
 		name string

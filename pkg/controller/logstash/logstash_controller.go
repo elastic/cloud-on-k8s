@@ -66,16 +66,16 @@ func newReconciler(mgr manager.Manager, params operator.Parameters) *ReconcileLo
 // addWatches adds watches for all resources this controller cares about
 func addWatches(mgr manager.Manager, c controller.Controller, r *ReconcileLogstash) error {
 	// Watch for changes to Logstash
-	if err := c.Watch(source.Kind(mgr.GetCache(), &logstashv1alpha1.Logstash{}), &handler.EnqueueRequestForObject{}); err != nil {
+	if err := c.Watch(source.Kind(mgr.GetCache(), &logstashv1alpha1.Logstash{}, &handler.TypedEnqueueRequestForObject[*logstashv1alpha1.Logstash]{})); err != nil {
 		return err
 	}
 
 	// Watch StatefulSets
 	if err := c.Watch(
-		source.Kind(mgr.GetCache(), &appsv1.StatefulSet{}), handler.EnqueueRequestForOwner(
+		source.Kind(mgr.GetCache(), &appsv1.StatefulSet{}, handler.TypedEnqueueRequestForOwner[*appsv1.StatefulSet](
 			mgr.GetScheme(), mgr.GetRESTMapper(),
 			&logstashv1alpha1.Logstash{}, handler.OnlyControllerOwner(),
-		)); err != nil {
+		))); err != nil {
 		return err
 	}
 
@@ -86,18 +86,18 @@ func addWatches(mgr manager.Manager, c controller.Controller, r *ReconcileLogsta
 	}
 
 	// Watch services
-	if err := c.Watch(source.Kind(mgr.GetCache(), &corev1.Service{}), handler.EnqueueRequestForOwner(
+	if err := c.Watch(source.Kind(mgr.GetCache(), &corev1.Service{}, handler.TypedEnqueueRequestForOwner[*corev1.Service](
 		mgr.GetScheme(), mgr.GetRESTMapper(),
 		&logstashv1alpha1.Logstash{}, handler.OnlyControllerOwner(),
-	)); err != nil {
+	))); err != nil {
 		return err
 	}
 
 	// Watch owned and soft-owned secrets
-	if err := c.Watch(source.Kind(mgr.GetCache(), &corev1.Secret{}), handler.EnqueueRequestForOwner(
+	if err := c.Watch(source.Kind(mgr.GetCache(), &corev1.Secret{}, handler.TypedEnqueueRequestForOwner[*corev1.Secret](
 		mgr.GetScheme(), mgr.GetRESTMapper(),
 		&logstashv1alpha1.Logstash{}, handler.OnlyControllerOwner(),
-	)); err != nil {
+	))); err != nil {
 		return err
 	}
 	if err := watches.WatchSoftOwnedSecrets(mgr, c, logstashv1alpha1.Kind); err != nil {
@@ -105,7 +105,7 @@ func addWatches(mgr manager.Manager, c controller.Controller, r *ReconcileLogsta
 	}
 
 	// Watch dynamically referenced Secrets
-	return c.Watch(source.Kind(mgr.GetCache(), &corev1.Secret{}), r.dynamicWatches.Secrets)
+	return c.Watch(source.Kind(mgr.GetCache(), &corev1.Secret{}, r.dynamicWatches.Secrets))
 }
 
 var _ reconcile.Reconciler = &ReconcileLogstash{}

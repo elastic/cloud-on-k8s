@@ -5,6 +5,7 @@
 package autoscaling
 
 import (
+	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/handler"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 	"sigs.k8s.io/controller-runtime/pkg/source"
@@ -27,8 +28,8 @@ func Add(mgr manager.Manager, p operator.Parameters) error {
 	if err != nil {
 		return err
 	}
-	if err := controller.Watch(source.Kind(mgr.GetCache(), &v1alpha1.ElasticsearchAutoscaler{}), &handler.EnqueueRequestForObject{}); err != nil {
+	if err := controller.Watch(source.Kind(mgr.GetCache(), &v1alpha1.ElasticsearchAutoscaler{}, &handler.TypedEnqueueRequestForObject[*v1alpha1.ElasticsearchAutoscaler]{})); err != nil {
 		return err
 	}
-	return controller.Watch(source.Kind(mgr.GetCache(), &esv1.Elasticsearch{}), reconciler.Watches.ReferencedResources)
+	return controller.Watch(source.Kind[client.Object](mgr.GetCache(), &esv1.Elasticsearch{}, reconciler.Watches.ReferencedResources))
 }

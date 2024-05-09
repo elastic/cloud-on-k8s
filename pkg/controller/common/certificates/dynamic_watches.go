@@ -5,6 +5,7 @@
 package certificates
 
 import (
+	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/types"
 
 	commonv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/common/v1"
@@ -27,7 +28,7 @@ func ReconcileCustomCertWatch(
 ) error {
 	// watch the Secret specified in tlsSecret because if it changes we should reconcile the new
 	// user provided certificates.
-	httpCertificateWatch := watches.NamedWatch{
+	httpCertificateWatch := watches.NamedWatch[*corev1.Secret]{
 		Name: watchKey,
 		Watched: []types.NamespacedName{{
 			Namespace: owner.Namespace,

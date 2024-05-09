@@ -68,16 +68,16 @@ func newReconciler(mgr manager.Manager, params operator.Parameters) *ReconcileEn
 
 func addWatches(mgr manager.Manager, c controller.Controller, r *ReconcileEnterpriseSearch) error {
 	// Watch for changes to EnterpriseSearch
-	err := c.Watch(source.Kind(mgr.GetCache(), &entv1.EnterpriseSearch{}), &handler.EnqueueRequestForObject{})
+	err := c.Watch(source.Kind(mgr.GetCache(), &entv1.EnterpriseSearch{}, &handler.TypedEnqueueRequestForObject[*entv1.EnterpriseSearch]{}))
 	if err != nil {
 		return err
 	}
 
 	// Watch Deployments
-	if err := c.Watch(source.Kind(mgr.GetCache(), &appsv1.Deployment{}), handler.EnqueueRequestForOwner(
+	if err := c.Watch(source.Kind(mgr.GetCache(), &appsv1.Deployment{}, handler.TypedEnqueueRequestForOwner[*appsv1.Deployment](
 		mgr.GetScheme(), mgr.GetRESTMapper(),
 		&entv1.EnterpriseSearch{}, handler.OnlyControllerOwner(),
-	)); err != nil {
+	))); err != nil {
 		return err
 	}
 
@@ -88,18 +88,18 @@ func addWatches(mgr manager.Manager, c controller.Controller, r *ReconcileEnterp
 	}
 
 	// Watch services
-	if err := c.Watch(source.Kind(mgr.GetCache(), &corev1.Service{}), handler.EnqueueRequestForOwner(
+	if err := c.Watch(source.Kind(mgr.GetCache(), &corev1.Service{}, handler.TypedEnqueueRequestForOwner[*corev1.Service](
 		mgr.GetScheme(), mgr.GetRESTMapper(),
 		&entv1.EnterpriseSearch{}, handler.OnlyControllerOwner(),
-	)); err != nil {
+	))); err != nil {
 		return err
 	}
 
 	// Watch owned and soft-owned secrets
-	if err := c.Watch(source.Kind(mgr.GetCache(), &corev1.Secret{}), handler.EnqueueRequestForOwner(
+	if err := c.Watch(source.Kind(mgr.GetCache(), &corev1.Secret{}, handler.TypedEnqueueRequestForOwner[*corev1.Secret](
 		mgr.GetScheme(), mgr.GetRESTMapper(),
 		&entv1.EnterpriseSearch{}, handler.OnlyControllerOwner(),
-	)); err != nil {
+	))); err != nil {
 		return err
 	}
 	if err := watches.WatchSoftOwnedSecrets(mgr, c, entv1.Kind); err != nil {
@@ -107,7 +107,7 @@ func addWatches(mgr manager.Manager, c controller.Controller, r *ReconcileEnterp
 	}
 
 	// Dynamically watch referenced secrets to connect to Elasticsearch
-	return c.Watch(source.Kind(mgr.GetCache(), &corev1.Secret{}), r.dynamicWatches.Secrets)
+	return c.Watch(source.Kind(mgr.GetCache(), &corev1.Secret{}, r.dynamicWatches.Secrets))
 }
 
 var _ reconcile.Reconciler = &ReconcileEnterpriseSearch{}

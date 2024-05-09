@@ -82,32 +82,32 @@ func newReconciler(mgr manager.Manager, params operator.Parameters) *ReconcileSt
 
 func addWatches(mgr manager.Manager, c controller.Controller, r *ReconcileStackConfigPolicy) error {
 	// watch for changes to StackConfigPolicy
-	if err := c.Watch(source.Kind(mgr.GetCache(), &policyv1alpha1.StackConfigPolicy{}), &handler.EnqueueRequestForObject{}); err != nil {
+	if err := c.Watch(source.Kind(mgr.GetCache(), &policyv1alpha1.StackConfigPolicy{}, &handler.TypedEnqueueRequestForObject[*policyv1alpha1.StackConfigPolicy]{})); err != nil {
 		return err
 	}
 
 	// watch for changes to Elasticsearch and reconcile all StackConfigPolicy
-	if err := c.Watch(source.Kind(mgr.GetCache(), &esv1.Elasticsearch{}), r.reconcileRequestForAllPolicies()); err != nil {
+	if err := c.Watch(source.Kind[client.Object](mgr.GetCache(), &esv1.Elasticsearch{}, reconcileRequestForAllPolicies(r.Client))); err != nil {
 		return err
 	}
 
 	// watch for changes to Kibana and reconcile all StackConfigPolicy
-	if err := c.Watch(source.Kind(mgr.GetCache(), &kibanav1.Kibana{}), r.reconcileRequestForAllPolicies()); err != nil {
+	if err := c.Watch(source.Kind[client.Object](mgr.GetCache(), &kibanav1.Kibana{}, reconcileRequestForAllPolicies(r.Client))); err != nil {
 		return err
 	}
 
 	// watch Secrets soft owned by StackConfigPolicy
-	if err := c.Watch(source.Kind(mgr.GetCache(), &corev1.Secret{}), reconcileRequestForSoftOwnerPolicy()); err != nil {
+	if err := c.Watch(source.Kind(mgr.GetCache(), &corev1.Secret{}, reconcileRequestForSoftOwnerPolicy())); err != nil {
 		return err
 	}
 
 	// watch dynamically refrenced secrets
-	return c.Watch(source.Kind(mgr.GetCache(), &corev1.Secret{}), r.dynamicWatches.Secrets)
+	return c.Watch(source.Kind(mgr.GetCache(), &corev1.Secret{}, r.dynamicWatches.Secrets))
 }
 
-func reconcileRequestForSoftOwnerPolicy() handler.EventHandler {
-	return handler.EnqueueRequestsFromMapFunc(func(ctx context.Context, object client.Object) []reconcile.Request {
-		softOwner, referenced := reconciler.SoftOwnerRefFromLabels(object.GetLabels())
+func reconcileRequestForSoftOwnerPolicy() handler.TypedEventHandler[*corev1.Secret] {
+	return handler.TypedEnqueueRequestsFromMapFunc[*corev1.Secret](func(ctx context.Context, secret *corev1.Secret) []reconcile.Request {
+		softOwner, referenced := reconciler.SoftOwnerRefFromLabels(secret.GetLabels())
 		if !referenced || softOwner.Kind != policyv1alpha1.Kind {
 			return nil
 		}
@@ -118,10 +118,10 @@ func reconcileRequestForSoftOwnerPolicy() handler.EventHandler {
 }
 
 // requestsAllStackConfigPolicies returns the requests to reconcile all StackConfigPolicy resources.
-func (r *ReconcileStackConfigPolicy) reconcileRequestForAllPolicies() handler.EventHandler {
-	return handler.EnqueueRequestsFromMapFunc(func(ctx context.Context, es client.Object) []reconcile.Request {
+func reconcileRequestForAllPolicies(clnt k8s.Client) handler.TypedEventHandler[client.Object] {
+	return handler.TypedEnqueueRequestsFromMapFunc[client.Object](func(ctx context.Context, es client.Object) []reconcile.Request {
 		var stackConfigList policyv1alpha1.StackConfigPolicyList
-		err := r.Client.List(context.Background(), &stackConfigList)
+		err := clnt.List(context.Background(), &stackConfigList)
 		if err != nil {
 			ulog.Log.Error(err, "Fail to list StackConfigurationList while watching Elasticsearch")
 			return nil
