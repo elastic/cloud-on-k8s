@@ -12,6 +12,19 @@ New and notable changes in version 2.13.0 of {n}. Check <<release-notes-2.13.0>>
 === ECK Enterprise Search Helm chart
 
 ECK 2.13.0 supports managing Enterprise search resources via Helm charts, similarly to other components of the Elastic stack
-(see https://github.com/elastic/cloud-on-k8s/tree/main/deploy/eck-stack/charts/eck-apm-server/examples[examples]).
+(see https://github.com/elastic/cloud-on-k8s/tree/main/deploy/eck-stack/charts/eck-enterprise-search/examples[examples]).
 
+[float]
+[id="{p}-2130-operator-statefulset-labels-annotations"]
+=== Operator StatefulSet labels and annotations
+
+ECK 2.13.0 operator helm chart supports adding custom annotations and labels to the operator StatefulSet.
+
+
+[float]
+[id="{p}-2130-allow-disabling-elastic-user"]
+=== Allow disabling the elastic user
+
+A new option that allows a user to disable the elastic user from being created upon Elasticsearch creation was introduce in ECK 2.13.0. A use case for this would be when an organization/user would prefer to manage all users/roles via SSO (SAML/IDP/LDAP/etc)
+(see https://github.com/elastic/cloud-on-k8s/blob/main/docs/orchestrating-elastic-stack-applications/security/users-and-roles.asciidoc#disabling-the-default-elastic-user[documentation]).
 
