@@ -19,6 +19,7 @@ import (
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/apimachinery/pkg/util/intstr"
 
 	agentv1alpha1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/agent/v1alpha1"
 	commonv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/common/v1"
@@ -217,10 +218,41 @@ func amendBuilderForFleetMode(params Params, fleetCerts *certificates.Certificat
 	}
 
 	if params.Agent.Spec.FleetServerEnabled {
+		// // define a default liveness probe for Fleet Server, defaulting to TCP Socket.
+		livenessProbe := corev1.Probe{
+			// Adjusting these does not change the failing behavior.
+			// InitialDelaySeconds: 120,
+			// PeriodSeconds:       30,
+			// FailureThreshold:    10,
+			ProbeHandler: corev1.ProbeHandler{
+				TCPSocket: &corev1.TCPSocketAction{
+					Port: intstr.FromInt32(FleetServerPort),
+				},
+			},
+		}
+
+		// define a default readiness probe for Fleet Server, defaulting to HTTP.
+		readinessProbe := corev1.Probe{
+			// Adjusting these does not change the failing behavior.
+			// InitialDelaySeconds: 120,
+			// PeriodSeconds:       30,
+			// FailureThreshold:    10,
+			ProbeHandler: corev1.ProbeHandler{
+				HTTPGet: &corev1.HTTPGetAction{
+					Path:   "/api/status",
+					Port:   intstr.FromInt32(FleetServerPort),
+					Scheme: corev1.URISchemeHTTP,
+				},
+			},
+		}
+
 		builder = builder.WithPorts([]corev1.ContainerPort{{Name: params.Agent.Spec.HTTP.Protocol(), ContainerPort: FleetServerPort, Protocol: corev1.ProtocolTCP}})
 
 		// Only add certificate volumes if TLS is enabled.
 		if params.Agent.Spec.HTTP.TLS.Enabled() {
+			// update readiness probe to use HTTPS.
+			readinessProbe.ProbeHandler.HTTPGet.Scheme = corev1.URISchemeHTTPS
+
 			// ECK creates CA and a certificate for Fleet Server to use. This volume contains those.
 			builder = builder.WithVolumeLikes(
 				volume.NewSecretVolumeWithMountPath(
@@ -229,6 +261,8 @@ func amendBuilderForFleetMode(params Params, fleetCerts *certificates.Certificat
 					FleetCertsMountPath,
 				))
 		}
+
+		builder = builder.WithLivenessProbe(livenessProbe).WithReadinessProbe(readinessProbe)
 	}
 
 	builder = builder.

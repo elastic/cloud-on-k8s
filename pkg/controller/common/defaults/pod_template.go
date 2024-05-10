@@ -115,6 +115,12 @@ func (b *PodTemplateBuilder) WithDockerImage(customImage string, defaultImage st
 	return b
 }
 
+// WithLivenessProbe sets up the given liveness probe, unless already provided in the template.
+func (b *PodTemplateBuilder) WithLivenessProbe(livenessProbe corev1.Probe) *PodTemplateBuilder {
+	b.containerDefaulter.WithLivenessProbe(&livenessProbe)
+	return b
+}
+
 // WithReadinessProbe sets up the given readiness probe, unless already provided in the template.
 func (b *PodTemplateBuilder) WithReadinessProbe(readinessProbe corev1.Probe) *PodTemplateBuilder {
 	b.containerDefaulter.WithReadinessProbe(&readinessProbe)
