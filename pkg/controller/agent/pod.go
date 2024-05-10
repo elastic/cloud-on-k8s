@@ -90,13 +90,14 @@ const (
 )
 
 var (
+	// TODO: Decrease back to 350Mi once https://github.com/elastic/elastic-agent/issues/4730 is addressed
 	defaultResources = corev1.ResourceRequirements{
 		Limits: map[corev1.ResourceName]resource.Quantity{
-			corev1.ResourceMemory: resource.MustParse("350Mi"),
+			corev1.ResourceMemory: resource.MustParse("400Mi"),
 			corev1.ResourceCPU:    resource.MustParse("200m"),
 		},
 		Requests: map[corev1.ResourceName]resource.Quantity{
-			corev1.ResourceMemory: resource.MustParse("350Mi"),
+			corev1.ResourceMemory: resource.MustParse("400Mi"),
 			corev1.ResourceCPU:    resource.MustParse("200m"),
 		},
 	}
