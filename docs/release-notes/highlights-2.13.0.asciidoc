@@ -1,0 +1,17 @@
+[[release-highlights-2.13.0]]
+== 2.13.0 release highlights
+
+[float]
+[id="{p}-2130-new-and-notable"]
+=== New and notable
+
+New and notable changes in version 2.13.0 of {n}. Check <<release-notes-2.13.0>> for the full list of changes.
+
+[float]
+[id="{p}-2130-eck-enterprise-search-helm-chart"]
+=== ECK Enterprise Search Helm chart
+
+ECK 2.13.0 supports managing Enterprise search resources via Helm charts, similarly to other components of the Elastic stack
+(see https://github.com/elastic/cloud-on-k8s/tree/main/deploy/eck-stack/charts/eck-apm-server/examples[examples]).
+
+
