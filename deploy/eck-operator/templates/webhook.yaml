@@ -456,6 +456,9 @@ webhooks:
       path: /validate-prevent-crd-deletion-k8s-elastic-co
   failurePolicy: {{ .Values.webhook.failurePolicy }}
   name: elastic-prevent-crd-deletion.k8s.elastic.co
+  matchConditions:
+  - name: 'only-include-elastic-crds'
+    expression: '("elastic" in request.resource.names.categories)'
   matchPolicy: Exact
   admissionReviewVersions: [v1]
   sideEffects: None
