@@ -86,6 +86,33 @@ func Test_crdDeletionWebhook_Handle(t *testing.T) {
 			},
 			want: admission.Allowed(""),
 		},
+		{
+			name:   "Non-Elastic CRD deletion is allowed",
+			client: fake.NewClientBuilder().WithObjects().WithScheme(k8s.Scheme()).Build(),
+			req: admission.Request{
+				AdmissionRequest: admissionv1.AdmissionRequest{
+					Operation: admissionv1.Delete,
+					// 'OldObject' is populated with a Delete operation, not 'Object'.
+					OldObject: runtime.RawExtension{
+						Raw: asJSON(&extensionsv1.CustomResourceDefinition{
+							ObjectMeta: metav1.ObjectMeta{
+								Name: "clusterpolicies.kyverno.io",
+							},
+							Spec: extensionsv1.CustomResourceDefinitionSpec{
+								Group: "kyverno.io",
+								Names: extensionsv1.CustomResourceDefinitionNames{
+									Kind: "ClusterPolicy",
+								},
+								Versions: []extensionsv1.CustomResourceDefinitionVersion{
+									{Name: "v1"},
+								},
+							},
+						}),
+					},
+				},
+			},
+			want: admission.Allowed(""),
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
