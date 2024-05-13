@@ -6,6 +6,7 @@ package user
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/pkg/errors"
 	corev1 "k8s.io/api/core/v1"
@@ -17,6 +18,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/labels"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/reconciler"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/version"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/label"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/user/filerealm"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/cryptutil"
@@ -83,22 +85,51 @@ func reconcileInternalUsers(
 	existingFileRealm filerealm.Realm,
 	passwordHasher cryptutil.PasswordHasher,
 ) (users, error) {
+	users := users{
+		{Name: ControllerUserName, Roles: []string{SuperUserBuiltinRole}},
+		{Name: PreStopUserName, Roles: []string{ClusterManageRole}},
+		{Name: ProbeUserName, Roles: []string{ProbeUserRole}},
+		{Name: MonitoringUserName, Roles: []string{RemoteMonitoringCollectorBuiltinRole}},
+		{Name: DiagnosticsUserName, Roles: []string{DiagnosticsUserRoleV85}},
+	}
+	ver, err := version.Parse(es.Spec.Version)
+	if err != nil {
+		return nil, fmt.Errorf("while parsing Elasticsearch version (%s): %w", es.Spec.Version, err)
+	}
+	if ver.LT(version.From(8, 5, 0)) {
+		// Diagnostics user needs Superuser role in 7.x.
+		if err := setRolesForUser(DiagnosticsUserName, users, []string{SuperUserBuiltinRole}); err != nil {
+			return nil, err
+		}
+		// If 8.0.0 >= version < 8.5.0, the Diagnostics user needs the DiagnosticsUserRoleV80 role.
+		if ver.GTE(version.From(8, 0, 0)) {
+			if err := setRolesForUser(DiagnosticsUserName, users, []string{DiagnosticsUserRoleV80}); err != nil {
+				return nil, err
+			}
+		}
+	}
 	return reconcilePredefinedUsers(
 		ctx,
 		c,
 		es,
 		existingFileRealm,
-		users{
-			{Name: ControllerUserName, Roles: []string{SuperUserBuiltinRole}},
-			{Name: PreStopUserName, Roles: []string{ClusterManageRole}},
-			{Name: ProbeUserName, Roles: []string{ProbeUserRole}},
-			{Name: MonitoringUserName, Roles: []string{RemoteMonitoringCollectorBuiltinRole}},
-			{Name: DiagnosticsUserName, Roles: []string{DiagnosticsUserRole}},
-		},
+		users,
 		esv1.InternalUsersSecret(es.Name),
 		true,
 		passwordHasher,
 	)
+}
+
+// setRolesForUser sets the roles for the given user given a slice of users.
+// It returns an error if the user is not found.
+func setRolesForUser(userName string, users []user, roles []string) error {
+	for i, user := range users {
+		if user.Name == userName {
+			users[i].Roles = roles
+			return nil
+		}
+	}
+	return fmt.Errorf("user %s not found", userName)
 }
 
 // reconcilePredefinedUsers reconciles a secret with the given name holding the given users.
