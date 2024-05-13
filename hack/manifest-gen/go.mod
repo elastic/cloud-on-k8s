@@ -148,7 +148,7 @@ require (
 
 exclude (
 	github.com/Microsoft/hcsshim v0.12.3
-	github.com/buger/jsonparser v0.0.0-20180808090653-f4dd9f5a6b44
+	github.com/buger/jsonparser v1.1.1
 	github.com/containernetworking/cni v0.8.1
 	github.com/containernetworking/cni v0.8.1
 	k8s.io/kubernetes v1.13.0
