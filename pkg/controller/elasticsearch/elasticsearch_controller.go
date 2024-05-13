@@ -82,17 +82,13 @@ func newReconciler(mgr manager.Manager, params operator.Parameters) *ReconcileEl
 func addWatches(mgr manager.Manager, c controller.Controller, r *ReconcileElasticsearch) error {
 	// Watch for changes to Elasticsearch
 	if err := c.Watch(
-		source.Kind(mgr.GetCache(), &esv1.Elasticsearch{}), &handler.EnqueueRequestForObject{},
-	); err != nil {
+		source.Kind(mgr.GetCache(), &esv1.Elasticsearch{}, &handler.TypedEnqueueRequestForObject[*esv1.Elasticsearch]{})); err != nil {
 		return err
 	}
 
 	// Watch StatefulSets
 	if err := c.Watch(
-		source.Kind(mgr.GetCache(), &appsv1.StatefulSet{}), handler.EnqueueRequestForOwner(
-			mgr.GetScheme(), mgr.GetRESTMapper(),
-			&esv1.Elasticsearch{}, handler.OnlyControllerOwner(),
-		)); err != nil {
+		source.Kind(mgr.GetCache(), &appsv1.StatefulSet{}, handler.TypedEnqueueRequestForOwner[*appsv1.StatefulSet](mgr.GetScheme(), mgr.GetRESTMapper(), &esv1.Elasticsearch{}, handler.OnlyControllerOwner()))); err != nil {
 		return err
 	}
 
@@ -102,23 +98,21 @@ func addWatches(mgr manager.Manager, c controller.Controller, r *ReconcileElasti
 	}
 
 	// Watch services
-	if err := c.Watch(source.Kind(mgr.GetCache(), &corev1.Service{}), handler.EnqueueRequestForOwner(
-		mgr.GetScheme(), mgr.GetRESTMapper(),
-		&esv1.Elasticsearch{}, handler.OnlyControllerOwner(),
-	)); err != nil {
+	if err := c.Watch(
+		source.Kind(mgr.GetCache(), &corev1.Service{}, handler.TypedEnqueueRequestForOwner[*corev1.Service](mgr.GetScheme(), mgr.GetRESTMapper(), &esv1.Elasticsearch{}, handler.OnlyControllerOwner()))); err != nil {
 		return err
 	}
 
 	// Watch config maps for dynamic watches (currently used for additional CAs trust)
-	if err := c.Watch(source.Kind(mgr.GetCache(), &corev1.ConfigMap{}), r.dynamicWatches.ConfigMaps); err != nil {
+	if err := c.Watch(source.Kind(mgr.GetCache(), &corev1.ConfigMap{}, r.dynamicWatches.ConfigMaps)); err != nil {
 		return err
 	}
 
 	// Watch owned and soft-owned secrets
-	if err := c.Watch(source.Kind(mgr.GetCache(), &corev1.Secret{}), r.dynamicWatches.Secrets); err != nil {
+	if err := c.Watch(source.Kind(mgr.GetCache(), &corev1.Secret{}, r.dynamicWatches.Secrets)); err != nil {
 		return err
 	}
-	if err := r.dynamicWatches.Secrets.AddHandler(&watches.OwnerWatch{
+	if err := r.dynamicWatches.Secrets.AddHandler(&watches.OwnerWatch[*corev1.Secret]{
 		IsController: true,
 		OwnerType:    &esv1.Elasticsearch{},
 		Scheme:       mgr.GetScheme(),
@@ -132,7 +126,7 @@ func addWatches(mgr manager.Manager, c controller.Controller, r *ReconcileElasti
 	}
 
 	// Trigger a reconciliation when observers report a cluster health change
-	return c.Watch(observer.WatchClusterHealthChange(r.esObservers), reconciler.GenericEventHandler())
+	return c.Watch(observer.WatchClusterHealthChange(r.esObservers))
 }
 
 var _ reconcile.Reconciler = &ReconcileElasticsearch{}

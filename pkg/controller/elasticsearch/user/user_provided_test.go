@@ -29,7 +29,7 @@ func initDynamicWatches(watchNames ...string) watches.DynamicWatches {
 	controllerscheme.SetupScheme()
 	w := watches.NewDynamicWatches()
 	for _, name := range watchNames {
-		_ = w.Secrets.AddHandler(watches.NamedWatch{
+		_ = w.Secrets.AddHandler(watches.NamedWatch[*corev1.Secret]{
 			Name: name,
 		})
 	}
@@ -38,16 +38,19 @@ func initDynamicWatches(watchNames ...string) watches.DynamicWatches {
 
 var sampleEsWithAuth = esv1.Elasticsearch{
 	ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: "es"},
-	Spec: esv1.ElasticsearchSpec{Auth: esv1.Auth{
-		FileRealm: []esv1.FileRealmSource{
-			{SecretRef: v1.SecretRef{SecretName: "filerealm-secret-1"}},
-			{SecretRef: v1.SecretRef{SecretName: "filerealm-secret-2"}},
+	Spec: esv1.ElasticsearchSpec{
+		Auth: esv1.Auth{
+			FileRealm: []esv1.FileRealmSource{
+				{SecretRef: v1.SecretRef{SecretName: "filerealm-secret-1"}},
+				{SecretRef: v1.SecretRef{SecretName: "filerealm-secret-2"}},
+			},
+			Roles: []esv1.RoleSource{
+				{SecretRef: v1.SecretRef{SecretName: "roles-secret-1"}},
+				{SecretRef: v1.SecretRef{SecretName: "roles-secret-2"}},
+			},
 		},
-		Roles: []esv1.RoleSource{
-			{SecretRef: v1.SecretRef{SecretName: "roles-secret-1"}},
-			{SecretRef: v1.SecretRef{SecretName: "roles-secret-2"}},
-		},
-	}},
+		Version: "8.10.0",
+	},
 }
 var sampleUserProvidedFileRealmSecrets = []client.Object{
 	&corev1.Secret{

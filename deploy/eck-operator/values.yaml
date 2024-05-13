@@ -140,7 +140,7 @@ webhook:
   # port is the port that the validating webhook binds to.
   port: 9443
   # secret specifies the Kubernetes secret to be mounted into the path designated by the certsDir value to be used for webhook certificates.
-  secret: ""
+  certsSecret: ""
   crdDeletionProtection:
     # determines whether the operator should prevent deletion of Elastic CRDs.
     # This is a separate configuration because enabling this webhook requires additional RBAC permissions

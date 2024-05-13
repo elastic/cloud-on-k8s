@@ -8,9 +8,9 @@ import (
 	"context"
 	"fmt"
 
+	corev1 "k8s.io/api/core/v1"
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/types"
-	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
 	"sigs.k8s.io/controller-runtime/pkg/handler"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
@@ -28,25 +28,25 @@ import (
 // AddWatches set watches on objects needed to manage the association between a local and a remote cluster.
 func addWatches(mgr manager.Manager, c controller.Controller, r *ReconcileRemoteCa) error {
 	// Watch for changes to RemoteCluster
-	if err := c.Watch(source.Kind(mgr.GetCache(), &esv1.Elasticsearch{}), &handler.EnqueueRequestForObject{}); err != nil {
+	if err := c.Watch(source.Kind(mgr.GetCache(), &esv1.Elasticsearch{}, &handler.TypedEnqueueRequestForObject[*esv1.Elasticsearch]{})); err != nil {
 		return err
 	}
 
 	// Watch Secrets that contain remote certificate authorities managed by this controller
 	if err := c.Watch(
-		source.Kind(mgr.GetCache(), &v1.Secret{}),
-		handler.EnqueueRequestsFromMapFunc(newRequestsFromMatchedLabels()),
-	); err != nil {
+		source.Kind(mgr.GetCache(), &v1.Secret{},
+			handler.TypedEnqueueRequestsFromMapFunc[*v1.Secret](newRequestsFromMatchedLabels()),
+		)); err != nil {
 		return err
 	}
 
 	// Dynamically watches the certificate authorities involved in a cluster relationship
-	if err := c.Watch(source.Kind(mgr.GetCache(), &v1.Secret{}), r.watches.Secrets); err != nil {
+	if err := c.Watch(source.Kind(mgr.GetCache(), &v1.Secret{}, r.watches.Secrets)); err != nil {
 		return err
 	}
 
 	return r.watches.Secrets.AddHandlers(
-		&watches.OwnerWatch{
+		&watches.OwnerWatch[*corev1.Secret]{
 			Scheme:       mgr.GetScheme(),
 			Mapper:       mgr.GetRESTMapper(),
 			OwnerType:    &esv1.Elasticsearch{},
@@ -57,8 +57,8 @@ func addWatches(mgr manager.Manager, c controller.Controller, r *ReconcileRemote
 
 // newRequestsFromMatchedLabels creates a watch handler function that creates reconcile requests based on the
 // labels set on a Secret which contains the remote CA.
-func newRequestsFromMatchedLabels() handler.MapFunc {
-	return func(ctx context.Context, obj client.Object) []reconcile.Request {
+func newRequestsFromMatchedLabels() handler.TypedMapFunc[*v1.Secret] {
+	return handler.TypedMapFunc[*v1.Secret](func(ctx context.Context, obj *v1.Secret) []reconcile.Request {
 		labels := obj.GetLabels()
 		if !maps.ContainsKeys(labels, RemoteClusterNameLabelName, RemoteClusterNamespaceLabelName, commonv1.TypeLabelName) {
 			return nil
@@ -72,7 +72,7 @@ func newRequestsFromMatchedLabels() handler.MapFunc {
 				Name:      labels[RemoteClusterNameLabelName]},
 			},
 		}
-	}
+	})
 }
 
 func watchName(local types.NamespacedName, remote types.NamespacedName) string {
@@ -92,7 +92,7 @@ func addCertificatesAuthorityWatches(
 	reconcileClusterAssociation *ReconcileRemoteCa,
 	local, remote types.NamespacedName) error {
 	// Watch the CA secret of Elasticsearch clusters which are involved in a association.
-	err := reconcileClusterAssociation.watches.Secrets.AddHandler(watches.NamedWatch{
+	err := reconcileClusterAssociation.watches.Secrets.AddHandler(watches.NamedWatch[*corev1.Secret]{
 		Name:    watchName(local, remote),
 		Watched: []types.NamespacedName{transport.PublicCertsSecretRef(remote)},
 		Watcher: types.NamespacedName{

@@ -10,14 +10,12 @@ import (
 	"errors"
 	"time"
 
-	pkgerrors "github.com/pkg/errors"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	utilerrors "k8s.io/apimachinery/pkg/util/errors"
 	"k8s.io/client-go/tools/record"
-	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
 	"sigs.k8s.io/controller-runtime/pkg/handler"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
@@ -112,20 +110,12 @@ func addWatches(mgr manager.Manager, c controller.Controller, k8sClient k8s.Clie
 	log := ulog.Log // no context available for contextual logging
 	// Watch for changes to Elasticsearch clusters.
 	if err := c.Watch(
-		source.Kind(mgr.GetCache(), &esv1.Elasticsearch{}), &handler.EnqueueRequestForObject{},
-	); err != nil {
+		source.Kind(mgr.GetCache(), &esv1.Elasticsearch{}, &handler.TypedEnqueueRequestForObject[*esv1.Elasticsearch]{})); err != nil {
 		return err
 	}
 
-	if err := c.Watch(source.Kind(mgr.GetCache(), &corev1.Secret{}),
-		handler.EnqueueRequestsFromMapFunc(func(ctx context.Context, object client.Object) []reconcile.Request {
-			secret, ok := object.(*corev1.Secret)
-			if !ok {
-				log.Error(
-					pkgerrors.Errorf("unexpected object type %T in watch handler, expected Secret", object),
-					"dropping watch event due to error in handler")
-				return nil
-			}
+	if err := c.Watch(source.Kind(mgr.GetCache(), &corev1.Secret{},
+		handler.TypedEnqueueRequestsFromMapFunc[*corev1.Secret](func(ctx context.Context, secret *corev1.Secret) []reconcile.Request {
 			if !license.IsOperatorLicense(*secret) {
 				return nil
 			}
@@ -140,7 +130,7 @@ func addWatches(mgr manager.Manager, c controller.Controller, k8sClient k8s.Clie
 			}
 			return rs
 		}),
-	); err != nil {
+	)); err != nil {
 		return err
 	}
 	return nil

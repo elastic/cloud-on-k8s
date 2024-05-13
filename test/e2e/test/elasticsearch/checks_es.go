@@ -300,12 +300,18 @@ func (e *esClusterChecks) compareTopology(es esv1.Elasticsearch, topoElem esv1.N
 		return err
 	}
 
-	if err = compareCgroupMemoryLimit(topoElem, nodeStats); err != nil {
+	ok, err := canCompareCgroupLimits(nodeStats, node.Version)
+	if err != nil {
 		return err
 	}
+	if ok {
+		if err = compareCgroupMemoryLimit(topoElem, nodeStats); err != nil {
+			return err
+		}
 
-	if err = compareCgroupCPULimit(topoElem, nodeStats); err != nil {
-		return err
+		if err = compareCgroupCPULimit(topoElem, nodeStats); err != nil {
+			return err
+		}
 	}
 
 	// get pods to check ressources requirements
@@ -337,6 +343,25 @@ func compareRoles(expected *esv1.Node, actualRoles []string) error {
 	return nil
 }
 
+func canCompareCgroupLimits(nodeStats client.NodeStats, nodeVersion string) (bool, error) {
+	if nodeStats.OS.CGroup != nil {
+		return true, nil
+	}
+
+	v, err := version.Parse(nodeVersion)
+	if err != nil {
+		return false, fmt.Errorf("while parsing node version: %w", err)
+	}
+
+	if v.LT(version.MinFor(7, 16, 0)) {
+		// Elasticsearch versions before 7.16 cannot parse cgroup v2 information and
+		// will have no information in this field. Considering it ok.
+		return false, nil
+	}
+	// nok: cgroup is nil but we are on a version that should correctly be able to parse the cgroup data
+	return false, fmt.Errorf("Unexpected: no cgroup information in node stats response")
+}
+
 // compareCgroupMemoryLimit compares the memory limit specified in a nodeSet with the limit set in the memory control group at the OS level
 func compareCgroupMemoryLimit(topologyElement esv1.NodeSet, nodeStats client.NodeStats) error {
 	var memoryLimit *resource.Quantity
@@ -349,12 +374,13 @@ func compareCgroupMemoryLimit(topologyElement esv1.NodeSet, nodeStats client.Nod
 		// no expected memory, consider it's ok
 		return nil
 	}
+
 	// ES returns a string, parse it as an int64, base10
 	actualCgroupMemoryLimit, err := strconv.ParseInt(
 		nodeStats.OS.CGroup.Memory.LimitInBytes, 10, 64,
 	)
 	if err != nil {
-		return err
+		return fmt.Errorf("while parsing cgroup memory limit: %w", err)
 	}
 	expectedCgroupMemoryLimit := memoryLimit.Value()
 	if expectedCgroupMemoryLimit != actualCgroupMemoryLimit {

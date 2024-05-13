@@ -9,6 +9,7 @@ import (
 	"fmt"
 
 	"k8s.io/apimachinery/pkg/types"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	commonv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/common/v1"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/certificates"
@@ -127,10 +128,10 @@ func (r *Reconciler) reconcileWatches(ctx context.Context, associated types.Name
 	return nil
 }
 
-func reconcileGenericWatch(
+func reconcileGenericWatch[T client.Object](
 	associated types.NamespacedName,
 	associations []commonv1.Association,
-	dynamicRequest *watches.DynamicEnqueueRequest,
+	dynamicRequest *watches.DynamicEnqueueRequest[T],
 	watchName string,
 	watchedFunc func() ([]types.NamespacedName, error),
 ) error {
@@ -144,7 +145,7 @@ func reconcileGenericWatch(
 	if err != nil {
 		return err
 	}
-	return dynamicRequest.AddHandler(watches.NamedWatch{
+	return dynamicRequest.AddHandler(watches.NamedWatch[T]{
 		Name:    watchName,
 		Watched: watched,
 		Watcher: associated,
@@ -153,10 +154,10 @@ func reconcileGenericWatch(
 
 // ReconcileWatch sets or removes `watchName` watch in `dynamicRequest` based on `associated` and `associations` and
 // `watchedFunc`. No watch is added if watchedFunc(association) refers to an empty namespaced name.
-func ReconcileWatch(
+func ReconcileWatch[T client.Object](
 	associated types.NamespacedName,
 	associations []commonv1.Association,
-	dynamicRequest *watches.DynamicEnqueueRequest,
+	dynamicRequest *watches.DynamicEnqueueRequest[T],
 	watchName string,
 	watchedFunc func(association commonv1.Association) types.NamespacedName,
 ) error {
@@ -175,7 +176,7 @@ func ReconcileWatch(
 }
 
 // RemoveWatch removes `watchName` watch from `dynamicRequest`.
-func RemoveWatch(dynamicRequest *watches.DynamicEnqueueRequest, watchName string) {
+func RemoveWatch[T client.Object](dynamicRequest *watches.DynamicEnqueueRequest[T], watchName string) {
 	dynamicRequest.RemoveHandlerForKey(watchName)
 }
 

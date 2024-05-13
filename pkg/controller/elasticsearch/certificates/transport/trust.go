@@ -22,8 +22,8 @@ func AdditionalCAWatchKey(name types.NamespacedName) string {
 	return fmt.Sprintf("%s-transport-ca-trust", name)
 }
 
-func caWatchHandlerFor(name string, watched string, owner types.NamespacedName) watches.NamedWatch {
-	return watches.NamedWatch{
+func caWatchHandlerFor(name string, watched string, owner types.NamespacedName) watches.NamedWatch[*corev1.ConfigMap] {
+	return watches.NamedWatch[*corev1.ConfigMap]{
 		Name: name,
 		Watched: []types.NamespacedName{{
 			Namespace: owner.Namespace,

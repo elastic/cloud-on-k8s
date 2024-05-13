@@ -145,12 +145,3 @@ require (
 	sigs.k8s.io/structured-merge-diff/v4 v4.4.1 // indirect
 	sigs.k8s.io/yaml v1.4.0 // indirect
 )
-
-exclude (
-	github.com/Microsoft/hcsshim v0.9.1
-	github.com/buger/jsonparser v0.0.0-20180808090653-f4dd9f5a6b44
-	github.com/containernetworking/cni v0.7.1
-	github.com/containernetworking/cni v0.8.0
-	k8s.io/kubernetes v1.13.0
-	sigs.k8s.io/kustomize/api v0.10.1 // incompatible with recent kustomize/kyaml which removed GvknString()
-)

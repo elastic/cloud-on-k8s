@@ -69,23 +69,23 @@ func newReconciler(mgr manager.Manager, params operator.Parameters) *ReconcileBe
 // addWatches adds watches for all resources this controller cares about
 func addWatches(mgr manager.Manager, c controller.Controller, r *ReconcileBeat) error {
 	// Watch for changes to Beat
-	if err := c.Watch(source.Kind(mgr.GetCache(), &beatv1beta1.Beat{}), &handler.EnqueueRequestForObject{}); err != nil {
+	if err := c.Watch(source.Kind(mgr.GetCache(), &beatv1beta1.Beat{}, &handler.TypedEnqueueRequestForObject[*beatv1beta1.Beat]{})); err != nil {
 		return err
 	}
 
 	// Watch DaemonSets
-	if err := c.Watch(source.Kind(mgr.GetCache(), &appsv1.DaemonSet{}), handler.EnqueueRequestForOwner(
+	if err := c.Watch(source.Kind(mgr.GetCache(), &appsv1.DaemonSet{}, handler.TypedEnqueueRequestForOwner[*appsv1.DaemonSet](
 		mgr.GetScheme(), mgr.GetRESTMapper(),
 		&beatv1beta1.Beat{}, handler.OnlyControllerOwner(),
-	)); err != nil {
+	))); err != nil {
 		return err
 	}
 
 	// Watch Deployments
-	if err := c.Watch(source.Kind(mgr.GetCache(), &appsv1.Deployment{}), handler.EnqueueRequestForOwner(
+	if err := c.Watch(source.Kind(mgr.GetCache(), &appsv1.Deployment{}, handler.TypedEnqueueRequestForOwner[*appsv1.Deployment](
 		mgr.GetScheme(), mgr.GetRESTMapper(),
 		&beatv1beta1.Beat{}, handler.OnlyControllerOwner(),
-	)); err != nil {
+	))); err != nil {
 		return err
 	}
 
@@ -96,10 +96,10 @@ func addWatches(mgr manager.Manager, c controller.Controller, r *ReconcileBeat) 
 	}
 
 	// Watch owned and soft-owned Secrets
-	if err := c.Watch(source.Kind(mgr.GetCache(), &corev1.Secret{}), handler.EnqueueRequestForOwner(
+	if err := c.Watch(source.Kind(mgr.GetCache(), &corev1.Secret{}, handler.TypedEnqueueRequestForOwner[*corev1.Secret](
 		mgr.GetScheme(), mgr.GetRESTMapper(),
 		&beatv1beta1.Beat{}, handler.OnlyControllerOwner(),
-	)); err != nil {
+	))); err != nil {
 		return err
 	}
 	if err := watches.WatchSoftOwnedSecrets(mgr, c, beatv1beta1.Kind); err != nil {
@@ -107,7 +107,7 @@ func addWatches(mgr manager.Manager, c controller.Controller, r *ReconcileBeat) 
 	}
 
 	// Watch dynamically referenced Secrets
-	return c.Watch(source.Kind(mgr.GetCache(), &corev1.Secret{}), r.dynamicWatches.Secrets)
+	return c.Watch(source.Kind(mgr.GetCache(), &corev1.Secret{}, r.dynamicWatches.Secrets))
 }
 
 var _ reconcile.Reconciler = &ReconcileBeat{}

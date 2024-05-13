@@ -17,6 +17,7 @@ import (
 	"k8s.io/apimachinery/pkg/util/errors"
 	"k8s.io/client-go/tools/record"
 	"k8s.io/utils/ptr"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
@@ -119,7 +120,7 @@ func (r *ReconcileElasticsearchAutoscaler) Reconcile(ctx context.Context, reques
 
 	// Ensure we watch the associated Elasticsearch
 	esNamespacedName := types.NamespacedName{Name: esa.Spec.ElasticsearchRef.Name, Namespace: request.Namespace}
-	if err := r.Watches.ReferencedResources.AddHandler(watches.NamedWatch{
+	if err := r.Watches.ReferencedResources.AddHandler(watches.NamedWatch[client.Object]{
 		Name:    dynamicWatchName(request),
 		Watched: []types.NamespacedName{esNamespacedName},
 		Watcher: request.NamespacedName,

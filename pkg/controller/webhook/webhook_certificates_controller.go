@@ -14,6 +14,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/kubernetes"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
@@ -112,11 +113,11 @@ func Add(mgr manager.Manager, webhookParams Params, clientset kubernetes.Interfa
 		Name:      webhookParams.SecretName,
 	}
 
-	if err := c.Watch(source.Kind(mgr.GetCache(), &corev1.Secret{}), &watches.NamedWatch{
+	if err := c.Watch(source.Kind(mgr.GetCache(), &corev1.Secret{}, &watches.NamedWatch[*corev1.Secret]{
 		Name:    "webhook-server-cert",
 		Watched: []types.NamespacedName{secret},
 		Watcher: secret,
-	}); err != nil {
+	})); err != nil {
 		return err
 	}
 
@@ -124,9 +125,9 @@ func Add(mgr manager.Manager, webhookParams Params, clientset kubernetes.Interfa
 		Name: webhookParams.Name,
 	}
 
-	return c.Watch(source.Kind(mgr.GetCache(), webhook.getType()), &watches.NamedWatch{
+	return c.Watch(source.Kind(mgr.GetCache(), webhook.getType(), &watches.NamedWatch[client.Object]{
 		Name:    "validatingwebhookconfiguration",
 		Watched: []types.NamespacedName{webhookConfiguration},
 		Watcher: webhookConfiguration,
-	})
+	}))
 }

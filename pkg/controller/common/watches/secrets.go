@@ -9,7 +9,6 @@ import (
 
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/types"
-	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
 	"sigs.k8s.io/controller-runtime/pkg/handler"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
@@ -58,7 +57,7 @@ func WatchUserProvidedNamespacedSecrets(
 			Name:      s.SecretName,
 		})
 	}
-	return watched.Secrets.AddHandler(NamedWatch{
+	return watched.Secrets.AddHandler(NamedWatch[*corev1.Secret]{
 		Name:    watchName,
 		Watched: userSecretNsns,
 		Watcher: watcher,
@@ -68,13 +67,12 @@ func WatchUserProvidedNamespacedSecrets(
 // WatchSoftOwnedSecrets triggers reconciliations on secrets referencing a soft owner.
 func WatchSoftOwnedSecrets(mgr manager.Manager, c controller.Controller, ownerKind string) error {
 	return c.Watch(
-		source.Kind(mgr.GetCache(), &corev1.Secret{}),
-		handler.EnqueueRequestsFromMapFunc(reconcileReqForSoftOwner(ownerKind)),
+		source.Kind(mgr.GetCache(), &corev1.Secret{}, handler.TypedEnqueueRequestsFromMapFunc[*corev1.Secret](reconcileReqForSoftOwner(ownerKind))),
 	)
 }
 
-func reconcileReqForSoftOwner(kind string) handler.MapFunc {
-	return func(ctx context.Context, object client.Object) []reconcile.Request {
+func reconcileReqForSoftOwner(kind string) handler.TypedMapFunc[*corev1.Secret] {
+	return handler.TypedMapFunc[*corev1.Secret](func(ctx context.Context, object *corev1.Secret) []reconcile.Request {
 		softOwner, referenced := reconciler.SoftOwnerRefFromLabels(object.GetLabels())
 		if !referenced {
 			return nil
@@ -85,5 +83,5 @@ func reconcileReqForSoftOwner(kind string) handler.MapFunc {
 		return []reconcile.Request{
 			{NamespacedName: types.NamespacedName{Namespace: softOwner.Namespace, Name: softOwner.Name}},
 		}
-	}
+	})
 }

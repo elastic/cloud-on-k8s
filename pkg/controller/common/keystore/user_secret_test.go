@@ -40,7 +40,7 @@ func Test_secureSettingsVolume(t *testing.T) {
 	createWatches := func(handlerName string) watches.DynamicWatches {
 		w := watches.NewDynamicWatches()
 		if handlerName != "" {
-			require.NoError(t, w.Secrets.AddHandler(watches.NamedWatch{
+			require.NoError(t, w.Secrets.AddHandler(watches.NamedWatch[*corev1.Secret]{
 				Name: handlerName,
 			}))
 		}
