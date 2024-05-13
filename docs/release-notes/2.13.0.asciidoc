@@ -18,7 +18,7 @@
 === Enhancements
 
 * Allow disabling of elastic user. {pull}7723[#7723] (issue: {issue}7719[#7719])
-* fix(eck-operator): make automountServiceAccountToken configurable {pull}7690[#7690]
+* Make automountServiceAccountToken configurable on operator Pods via Helm {pull}7690[#7690]
 * Fix Logstash keystore performance {pull}7642[#7642] (issue: {issue}7027[#7027])
 * Support api_key authentication for agent-elasticsearch association {pull}7598[#7598]
 
@@ -27,7 +27,7 @@
 === Bug fixes
 
 * Increase default memory for agent {pull}7789[#7789]
-* Fix webhook certname in helm template {pull}7775[#7775] (issue: {issue}7771[#7771])
+* Fix webhook certname in Helm template {pull}7775[#7775] (issue: {issue}7771[#7771])
 * Support loadBalancerClass in service reconciliation {pull}7706[#7706] (issue: {issue}7691[#7691])
 * [Autoscaling] Do not delete existing resources {pull}7678[#7678]
 * Fix namespace logged twice {pull}7640[#7640]
