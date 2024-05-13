@@ -52,7 +52,7 @@ func RegisterCRDDeletionWebhook(mgr ctrl.Manager) {
 
 type crdDeletionWebhook struct {
 	client  k8s.Client
-	decoder *admission.Decoder
+	decoder admission.Decoder
 }
 
 // Handle is called when any request is sent to the webhook, satisfying the admission.Handler interface.
