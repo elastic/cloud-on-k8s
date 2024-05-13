@@ -183,7 +183,7 @@ If the ECK Operator was installed using the <<{p}-install-yaml-manifests,YAML ma
 
 [source,sh]
 ----
-kubectl patch ValidatingWebhookConfiguration elastic-webhook.k8s.elastic.co --type='json' -p='[{"op": "add", "path": "/webhooks/0", "value":{"clientConfig":{"service":{"name":"elastic-webhook-server","namespace":"elastic-system","path":"/validate-prevent-crd-deletion-k8s-elastic-co"}},"failurePolicy":"Ignore","name":"elastic-prevent-crd-deletion.k8s.elastic.co","matchPolicy":"Exact","admissionReviewVersions":["v1"],"sideEffects":"None","rules":[{"apiGroups":["apiextensions.k8s.io"],"apiVersions":["v1"],"operations":["DELETE"],"resources":["customresourcedefinitions"]}]}}]'
+kubectl patch ValidatingWebhookConfiguration elastic-webhook.k8s.elastic.co --type='json' -p='[{"op":"add","path":"/webhooks/0","value":{"clientConfig":{"service":{"name":"elastic-webhook-server","namespace":"elastic-system","path":"/validate-prevent-crd-deletion-k8s-elastic-co"}},"failurePolicy":"Ignore","name":"elastic-prevent-crd-deletion.k8s.elastic.co","matchConditions":[{"name":"only-include-elastic-crds"},{"expression":"(\"elastic\" in request.resource.names.categories)"}],"matchPolicy":"Exact","admissionReviewVersions":["v1"],"sideEffects":"None","rules":[{"apiGroups":["apiextensions.k8s.io"],"apiVersions":["v1"],"operations":["DELETE"],"resources":["customresourcedefinitions"]}]}}]'
 ----
 
 In addition to the `ValidatingWebhookConfiguration` patch, the existing `ClusterRole` needs to be patched to allow the operator to retrieve custom resource definitions:
