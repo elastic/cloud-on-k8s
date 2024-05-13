@@ -144,12 +144,6 @@ require (
 	sigs.k8s.io/yaml v1.4.0 // indirect
 )
 
-// pulled by github.com/google/go-containerregistry
-exclude (
-	github.com/containerd/containerd v1.6.0
-	github.com/opencontainers/image-spec v1.0.3-0.20220114050600-8b9d41f48198
-)
-
 // both of these dependencies are used by vegeta, but the version they use is older and did not include a licence. we require the licence and so pin both of these
 replace (
 	github.com/dgryski/go-gk => github.com/dgryski/go-gk v0.0.0-20200319235926-a69029f61654
