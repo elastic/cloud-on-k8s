@@ -146,7 +146,7 @@ require (
 
 // pulled by github.com/google/go-containerregistry
 exclude (
-	github.com/containerd/containerd v1.6.0
+	github.com/containerd/containerd v1.7.16
 	github.com/opencontainers/image-spec v1.0.3-0.20220114050600-8b9d41f48198
 )
 
