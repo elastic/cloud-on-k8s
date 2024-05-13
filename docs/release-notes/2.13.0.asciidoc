@@ -11,7 +11,6 @@
 === New features
 
 * ECK Enterprise Search Helm Chart. {pull}7744[#7744]
-* feat(helm/operator): statefulset labels and annotations {pull}7688[#7688]
 
 [[enhancement-2.13.0]]
 [float]
@@ -19,6 +18,7 @@
 
 * Allow disabling of elastic user. {pull}7723[#7723] (issue: {issue}7719[#7719])
 * Make automountServiceAccountToken configurable on operator Pods via Helm {pull}7690[#7690]
+* Support setting labels and annotations on operator statefulset via Helm {pull}7688[#7688]
 * Fix Logstash keystore performance {pull}7642[#7642] (issue: {issue}7027[#7027])
 * Support api_key authentication for agent-elasticsearch association {pull}7598[#7598]
 

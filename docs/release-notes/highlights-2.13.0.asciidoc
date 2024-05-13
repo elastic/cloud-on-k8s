@@ -15,13 +15,6 @@ ECK 2.13.0 supports managing Enterprise search resources via Helm charts, simila
 (see https://github.com/elastic/cloud-on-k8s/tree/main/deploy/eck-stack/charts/eck-enterprise-search/examples[examples]).
 
 [float]
-[id="{p}-2130-operator-statefulset-labels-annotations"]
-=== Operator StatefulSet labels and annotations
-
-ECK 2.13.0 operator helm chart supports adding custom annotations and labels to the operator StatefulSet.
-
-
-[float]
 [id="{p}-2130-allow-disabling-elastic-user"]
 === Allow disabling the elastic user
 
