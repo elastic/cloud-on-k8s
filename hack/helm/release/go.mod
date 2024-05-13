@@ -2,8 +2,6 @@ module github.com/elastic/cloud-on-k8s/hack/helm/release
 
 go 1.22.0
 
-toolchain go1.22.3
-
 require (
 	cloud.google.com/go/storage v1.40.0
 	github.com/elastic/cloud-on-k8s/v2 v2.12.1
