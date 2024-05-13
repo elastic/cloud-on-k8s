@@ -222,7 +222,7 @@ data:
     distribution-channel: all-in-one
     validate-storage-class: true
     enable-webhook: true
-    enable-crd-deletion-webhook: true
+    enable-crd-protection-webhook: true
     webhook-name: elastic-webhook.k8s.elastic.co
     webhook-port: 9443
     operator-namespace: elastic-system

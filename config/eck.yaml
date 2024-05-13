@@ -15,7 +15,7 @@ disable-telemetry: false
 distribution-channel: image
 validate-storage-class: true
 enable-webhook: false
-enable-crd-deletion-webhook: false
+enable-crd-protection-webhook: false
 operator-namespace: elastic-system
 enable-leader-election: true
 elasticsearch-observation-interval: 10s

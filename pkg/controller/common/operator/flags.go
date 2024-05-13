@@ -24,7 +24,7 @@ const (
 	EnableLeaderElection                 = "enable-leader-election"
 	EnableTracingFlag                    = "enable-tracing"
 	EnableWebhookFlag                    = "enable-webhook"
-	EnableCRDDeletionWebhookFlag         = "enable-crd-deletion-webhook"
+	EnableCRDDeletionWebhookFlag         = "enable-crd-protection-webhook"
 	EnforceRBACOnRefsFlag                = "enforce-rbac-on-refs"
 	ExposedNodeLabels                    = "exposed-node-labels"
 	PasswordHashCacheSize                = "password-hash-cache-size"

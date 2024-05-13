@@ -300,6 +300,9 @@ webhooks:
   failurePolicy: Ignore
   matchPolicy: Exact
   name: elastic-prevent-crd-deletion.k8s.elastic.co
+  matchConditions:
+  - name: 'only-include-elastic-crds'
+    expression: '("elastic" in request.resource.names.categories)'
   rules:
   - apiGroups:
     - apiextensions.k8s.io
