@@ -203,7 +203,7 @@ func ensureSTSNameLabelIsSetOnPods(params Params) error {
 	if err != nil {
 		return err
 	}
-	if _, ok := sts.Spec.Template.Labels[labels.StatefulSetNameLabelName]; ok {
+	if val, ok := sts.Spec.Template.Labels[labels.StatefulSetNameLabelName]; ok && (val == logstashv1alpha1.Name(params.Logstash.Name)) {
 		// label is already in place, great
 		return nil
 	}
@@ -211,6 +211,6 @@ func ensureSTSNameLabelIsSetOnPods(params Params) error {
 	if sts.Spec.Template.Labels == nil {
 		sts.Spec.Template.Labels = map[string]string{}
 	}
-	sts.Spec.Template.Labels[labels.StatefulSetNameLabelName] = params.Logstash.Name
+	sts.Spec.Template.Labels[labels.StatefulSetNameLabelName] = logstashv1alpha1.Name(params.Logstash.Name)
 	return params.Client.Update(params.Context, &sts)
 }
