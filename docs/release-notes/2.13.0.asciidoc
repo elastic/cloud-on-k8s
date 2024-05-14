@@ -27,6 +27,7 @@
 === Bug fixes
 
 * Increase default memory for agent {pull}7789[#7789]
+* Correct statefulset name label for Logstash pods {pull}7788[#7788] (issue: {issue}7742[#7742])
 * Fix webhook certname in Helm template {pull}7775[#7775] (issue: {issue}7771[#7771])
 * Support loadBalancerClass in service reconciliation {pull}7706[#7706] (issue: {issue}7691[#7691])
 * [Autoscaling] Do not delete existing resources {pull}7678[#7678]
@@ -38,6 +39,7 @@
 === Documentation improvements
 
 * Update indentation of ldap example {pull}7725[#7725]
+* Add Logstash Plugins on ECK documentation and remove technical preview tags {pull}7702[#7702]
 * Update saml-authentication.asciidoc {pull}7680[#7680]
 * Update stack version in recipes {pull}7651[#7651]
 
