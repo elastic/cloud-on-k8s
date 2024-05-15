@@ -148,11 +148,11 @@ func Test_amendBuilderForFleetMode(t *testing.T) {
 
 				ps.Containers[0].Resources = corev1.ResourceRequirements{
 					Limits: map[corev1.ResourceName]resource.Quantity{
-						corev1.ResourceMemory: resource.MustParse("1Gi"),
+						corev1.ResourceMemory: resource.MustParse("2Gi"),
 						corev1.ResourceCPU:    resource.MustParse("200m"),
 					},
 					Requests: map[corev1.ResourceName]resource.Quantity{
-						corev1.ResourceMemory: resource.MustParse("1Gi"),
+						corev1.ResourceMemory: resource.MustParse("2Gi"),
 						corev1.ResourceCPU:    resource.MustParse("200m"),
 					},
 				}
@@ -242,11 +242,11 @@ func Test_amendBuilderForFleetMode(t *testing.T) {
 
 				ps.Containers[0].Resources = corev1.ResourceRequirements{
 					Limits: map[corev1.ResourceName]resource.Quantity{
-						corev1.ResourceMemory: resource.MustParse("1Gi"),
+						corev1.ResourceMemory: resource.MustParse("2Gi"),
 						corev1.ResourceCPU:    resource.MustParse("200m"),
 					},
 					Requests: map[corev1.ResourceName]resource.Quantity{
-						corev1.ResourceMemory: resource.MustParse("1Gi"),
+						corev1.ResourceMemory: resource.MustParse("2Gi"),
 						corev1.ResourceCPU:    resource.MustParse("200m"),
 					},
 				}
@@ -278,11 +278,11 @@ func Test_amendBuilderForFleetMode(t *testing.T) {
 
 				ps.Containers[0].Resources = corev1.ResourceRequirements{
 					Limits: map[corev1.ResourceName]resource.Quantity{
-						corev1.ResourceMemory: resource.MustParse("1Gi"),
+						corev1.ResourceMemory: resource.MustParse("2Gi"),
 						corev1.ResourceCPU:    resource.MustParse("200m"),
 					},
 					Requests: map[corev1.ResourceName]resource.Quantity{
-						corev1.ResourceMemory: resource.MustParse("1Gi"),
+						corev1.ResourceMemory: resource.MustParse("2Gi"),
 						corev1.ResourceCPU:    resource.MustParse("200m"),
 					},
 				}
@@ -367,11 +367,11 @@ func Test_amendBuilderForFleetMode(t *testing.T) {
 
 				ps.Containers[0].Resources = corev1.ResourceRequirements{
 					Limits: map[corev1.ResourceName]resource.Quantity{
-						corev1.ResourceMemory: resource.MustParse("1Gi"),
+						corev1.ResourceMemory: resource.MustParse("2Gi"),
 						corev1.ResourceCPU:    resource.MustParse("200m"),
 					},
 					Requests: map[corev1.ResourceName]resource.Quantity{
-						corev1.ResourceMemory: resource.MustParse("1Gi"),
+						corev1.ResourceMemory: resource.MustParse("2Gi"),
 						corev1.ResourceCPU:    resource.MustParse("200m"),
 					},
 				}
