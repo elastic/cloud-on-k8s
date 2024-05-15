@@ -6,5 +6,7 @@ commonLabels:
   app.kubernetes.io/managed-by: '{{ .Release.Service }}'
   app.kubernetes.io/name: '{{ include "eck-operator-crds.name" . }}'
   app.kubernetes.io/instance: '{{ .Release.Name }}'
+commonAnnotations:
+  helm.sh/resource-policy: keep
 resources:
   - all-crds.yaml
