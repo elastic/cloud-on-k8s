@@ -23,7 +23,7 @@ ECK 2.13.0 introduces a new option that allows a user to disable the elastic use
 
 [float]
 [id="{p}-2130-eck-logstash-ga"]
-=== ECK logstash General Availability
+=== Logstash on ECK generally available
 
-ECK 2.13.0 moves the Logstash component to General Availability. Logstash is now considered production-ready.
+With ECK 2.13.0 the support for Logstash is no longer a technical preview. Logstash managed by ECK is now considered production-ready.
 
