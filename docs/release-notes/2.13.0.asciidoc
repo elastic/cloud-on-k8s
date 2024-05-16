@@ -16,6 +16,7 @@
 [float]
 === Enhancements
 
+* Add Helm annotation to CRDs to prevent accidental deletion. {pull}7811[#7811] (issue: {issue}5117[#5117])
 * Allow disabling of elastic user. {pull}7723[#7723] (issue: {issue}7719[#7719])
 * Make automountServiceAccountToken configurable on operator Pods via Helm {pull}7690[#7690]
 * Support setting labels and annotations on operator statefulset via Helm {pull}7688[#7688]
