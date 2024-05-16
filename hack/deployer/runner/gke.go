@@ -228,7 +228,6 @@ func (d *GKEDriver) copyBuiltInStorageClasses() error {
 		if err := apply(string(storageClassYaml)); err != nil {
 			return err
 		}
-
 	}
 	return nil
 }
