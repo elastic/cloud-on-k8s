@@ -236,7 +236,7 @@ func (d *GKEDriver) copyBuiltInStorageClasses() error {
 func apply(yaml string) error {
 	return exec.NewCommand(fmt.Sprintf(`cat <<EOF | kubectl apply -f -
 %s
-EOF`, string(yaml))).Run()
+EOF`, yaml)).Run()
 }
 
 func copyWithPrefixAndLabels(sc storagev1.StorageClass, labels string) storagev1.StorageClass {
