@@ -36,7 +36,7 @@ var (
 	// Since Kibana is stateless and the keystore is created on pod start, an EmptyDir is fine here.
 	DataVolume = volume.NewEmptyDirVolume(DataVolumeName, DataVolumeMountPath)
 
-	DefaultMemoryLimits = resource.MustParse("1Gi")
+	DefaultMemoryLimits = resource.MustParse("1.2Gi")
 	DefaultResources    = corev1.ResourceRequirements{
 		Requests: map[corev1.ResourceName]resource.Quantity{
 			corev1.ResourceMemory: DefaultMemoryLimits,
