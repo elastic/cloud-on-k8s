@@ -1145,6 +1145,8 @@ spec:
 [id="{p}-logstash-working-with-plugins-scaling"]
 === Scaling {ls} on ECK
 
+IMPORTANT: The use of autoscalers, such as the HorizontalPodAutoscaler or the VerticalPodAutoscaler, with {ls} on ECK is not yet supported.
+
 {ls} scalability is highly dependent on the plugins in your pipelines. 
 Some plugins can restrict how you can scale out your Logstash deployment, based on the way that the plugins gather or enrich data.
 
@@ -1169,7 +1171,6 @@ spec:
 ----
 
 .Horizontal scaling for {ls} plugins
-
 ****
 * Not all {ls} deployments can be scaled horizontally by increasing the number of {ls} Pods defined in the {ls} resource. 
 Depending on the types of plugins in a {ls} installation, increasing the number of pods may cause data duplication, data loss, incorrect data, or may waste resources with pods unable to be utilized correctly.
