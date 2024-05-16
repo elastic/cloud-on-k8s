@@ -130,9 +130,9 @@ func TestGet(t *testing.T) {
 		require.NoError(t, err)
 
 		want := LicensingInfo{
-			TotalManagedMemoryGiB:   150.00,
-			TotalManagedMemoryBytes: 161061273600,
-			EnterpriseResourceUnits: 3,
+			TotalManagedMemoryGiB:   120.00,
+			TotalManagedMemoryBytes: 128849018900,
+			EnterpriseResourceUnits: 2,
 			EckLicenseLevel:         "basic",
 		}
 
@@ -244,8 +244,8 @@ func Test_Start(t *testing.T) {
 		return cm.Data["timestamp"] != "" &&
 			cm.Data["eck_license_level"] == defaultOperatorLicenseLevel &&
 			cm.Data["enterprise_resource_units"] == "2" &&
-			cm.Data["total_managed_memory"] == "84.00GiB" &&
-			cm.Data["total_managed_memory_bytes"] == "90194313216"
+			cm.Data["total_managed_memory"] == "83.40GiB" &&
+			cm.Data["total_managed_memory_bytes"] == "89550068122"
 	}, waitFor, tick)
 
 	// increase the Elasticsearch nodes count
@@ -266,8 +266,8 @@ func Test_Start(t *testing.T) {
 		return cm.Data["timestamp"] != "" &&
 			cm.Data["eck_license_level"] == defaultOperatorLicenseLevel &&
 			cm.Data["enterprise_resource_units"] == "3" &&
-			cm.Data["total_managed_memory"] == "164.00GiB" &&
-			cm.Data["total_managed_memory_bytes"] == "176093659136"
+			cm.Data["total_managed_memory"] == "163.40GiB" &&
+			cm.Data["total_managed_memory_bytes"] == "175449414042"
 	}, waitFor, tick)
 
 	startTrial(t, k8sClient)
@@ -285,8 +285,8 @@ func Test_Start(t *testing.T) {
 		return cm.Data["timestamp"] != "" &&
 			cm.Data["eck_license_level"] == string(commonlicense.LicenseTypeEnterpriseTrial) &&
 			cm.Data["enterprise_resource_units"] == "3" &&
-			cm.Data["total_managed_memory"] == "164.00GiB" &&
-			cm.Data["total_managed_memory_bytes"] == "176093659136"
+			cm.Data["total_managed_memory"] == "163.40GiB" &&
+			cm.Data["total_managed_memory_bytes"] == "175449414042"
 	}, waitFor, tick)
 }
 
