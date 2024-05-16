@@ -31,6 +31,9 @@ spec:
     {{- end }}
     podTemplate:
       spec:
+        {{- with ($presetVal).hostPID }}
+        hostPID: {{ . }}
+        {{- end }}
         automountServiceAccountToken: true
         {{- with ($presetVal).nodeSelector }}
         nodeSelector:
