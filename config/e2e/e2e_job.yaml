@@ -23,6 +23,7 @@ spec:
     metadata:
       annotations:
         co.elastic.logs/json.keys_under_root: "true"
+        cluster-autoscaler.kubernetes.io/safe-to-evict: "false"
       labels:
         test-run: {{ .Context.TestRun }}
         stream-logs: "true"
