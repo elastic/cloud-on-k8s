@@ -1,0 +1,52 @@
+---
+apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata:
+  name: disallow-gke-storageclasses
+  annotations:
+    policies.kyverno.io/title: Disallow built-in GKE StorageClasses
+    policies.kyverno.io/category: Other, Multi-Tenancy
+    policies.kyverno.io/severity: medium
+    policies.kyverno.io/subject: PersistentVolumeClaim, StatefulSet
+    policies.kyverno.io/description: >-
+      PersistentVolumeClaims (PVCs) and StatefulSets may optionally define a StorageClass
+      to dynamically provision storage. They must not use any of the built-in GKE storage classes
+      or otherwise they might escape our volume garbage collection in CI
+spec:
+  validationFailureAction: enforce
+  background: true
+  rules:
+  - name: pvc-storageclass
+    match:
+      any:
+      - resources:
+          kinds:
+          - PersistentVolumeClaim
+    validate:
+      message: "PersistentVolumeClaims must not use built-in GKE storage classes."
+      deny:
+        conditions:
+          any:
+          - key: "{{request.object.spec.storageClassName}}"
+            operator: AnyIn
+            value: 
+            - premium-rwo
+            - standard 
+            - standard-rwo
+  - name: ss-storageclass
+    match:
+      any:
+      - resources:
+          kinds:
+          - StatefulSet
+    validate:
+      message: "StatefulSets must not define built-in GKE storage classes."
+      deny:
+        conditions:
+          any:
+          - key: "{{request.object.spec.volumeClaimTemplates[].spec.storageClassName || ''}}"
+            operator: AnyIn
+            value:
+            - premium-rwo
+            - standard 
+            - standard-rwo

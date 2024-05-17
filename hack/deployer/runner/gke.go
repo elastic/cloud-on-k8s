@@ -12,8 +12,6 @@ import (
 
 	"github.com/ghodss/yaml"
 	storagev1 "k8s.io/api/storage/v1"
-	"k8s.io/apimachinery/pkg/util/wait"
-	"k8s.io/client-go/util/retry"
 
 	"github.com/elastic/cloud-on-k8s/v2/hack/deployer/exec"
 	"github.com/elastic/cloud-on-k8s/v2/hack/deployer/runner/kyverno"
@@ -21,6 +19,7 @@ import (
 )
 
 const (
+	storageClassPrefix              = "e2e-"
 	GKEDriverID                     = "gke"
 	GKEVaultPath                    = "ci-gcp-k8s-operator"
 	GKEServiceAccountVaultFieldName = "service-account"
@@ -148,7 +147,7 @@ func (d *GKEDriver) Execute() error {
 			return err
 		}
 
-		if err := d.setupLabelsForGCEProvider(); err != nil {
+		if err := d.copyBuiltInStorageClasses(); err != nil {
 			return err
 		}
 
@@ -160,6 +159,10 @@ func (d *GKEDriver) Execute() error {
 		}
 		if d.plan.EnforceSecurityPolicies {
 			if err := kyverno.Install(); err != nil {
+				return err
+			}
+			// apply extra policies to prevent use of unlabeled storage classes which might escape garbage collection in CI
+			if err := apply(kyverno.GKEPolicies); err != nil {
 				return err
 			}
 		}
@@ -174,9 +177,9 @@ const (
 	GoogleComputeEngineStorageProvider = "pd.csi.storage.gke.io"
 )
 
-// setupLabelsForGCEProvider adds the "labels" parameter in the GCE storage classes.
+// copyBuiltInStorageClasses adds the "labels" parameter to copies of the built-in  GCE storage classes.
 // These labels are automatically applied to GCE Persistent Disks provisioned using these storage classes.
-func (d *GKEDriver) setupLabelsForGCEProvider() error {
+func (d *GKEDriver) copyBuiltInStorageClasses() error {
 	storageClassesYaml, err := exec.NewCommand("kubectl get sc -o yaml").WithoutStreaming().Output()
 	if err != nil {
 		return err
@@ -185,6 +188,12 @@ func (d *GKEDriver) setupLabelsForGCEProvider() error {
 	if err := yaml.Unmarshal([]byte(storageClassesYaml), &storageClasses); err != nil {
 		return err
 	}
+
+	existingClassNames := make(map[string]struct{})
+	for _, sc := range storageClasses.Items {
+		existingClassNames[sc.Name] = struct{}{}
+	}
+
 	labels, err := d.resourcesLabels()
 	if err != nil {
 		return err
@@ -193,36 +202,58 @@ func (d *GKEDriver) setupLabelsForGCEProvider() error {
 		if storageClass.Provisioner != GoogleComputeEngineStorageProvider {
 			continue
 		}
-		// This is a GCE storage class patch it
+		// this function might be called repeatedly
+		if strings.HasPrefix(storageClass.Name, storageClassPrefix) {
+			continue
+		}
 
-		// start by removing the label that makes the storage class managed by the addon manager to prevent it from being recreated before us
-		err := exec.NewCommand(fmt.Sprintf(`kubectl label sc %s "addonmanager.kubernetes.io/mode"-`, storageClass.Name)).WithoutStreaming().Run()
+		// This is a GCE storage class copy it
+		copied := copyWithPrefixAndLabels(storageClass, labels)
+		storageClassYaml, err := yaml.Marshal(copied)
 		if err != nil {
 			return err
 		}
 
-		if storageClass.Parameters == nil {
-			storageClass.Parameters = make(map[string]string)
-		}
-		storageClass.Parameters["labels"] = labels
-		storageClassYaml, err := yaml.Marshal(storageClass)
-		if err != nil {
-			return err
+		if _, exists := existingClassNames[copied.Name]; exists {
+			// do not try to update existing classes
+			continue
 		}
 
-		if err := retry.OnError(
-			wait.Backoff{Duration: 10 * time.Millisecond, Steps: 5},
-			func(err error) bool { return true },
-			func() error {
-				return exec.NewCommand(fmt.Sprintf(`cat <<EOF | kubectl replace --force -f -
-%s
-EOF`, string(storageClassYaml))).Run()
-			},
-		); err != nil {
+		// start by removing the default storage class marker so that our copy can take over that role
+		if err := exec.NewCommand(fmt.Sprintf(`kubectl annotate sc %s storageclass.kubernetes.io/is-default-class=false --overwrite=true`, storageClass.Name)).
+			WithoutStreaming().
+			Run(); err != nil {
+			return fmt.Errorf("while updating default storage class label: %w", err)
+		}
+		// kubectl apply the copied storage class
+		if err := apply(string(storageClassYaml)); err != nil {
 			return err
 		}
 	}
 	return nil
+}
+
+func apply(yaml string) error {
+	return exec.NewCommand(fmt.Sprintf(`cat <<EOF | kubectl apply -f -
+%s
+EOF`, yaml)).Run()
+}
+
+func copyWithPrefixAndLabels(sc storagev1.StorageClass, labels string) storagev1.StorageClass {
+	copied := sc
+	// create a new object
+	copied.UID = ""
+	copied.ResourceVersion = ""
+	// remove the addonmanager label from GKE
+	delete(copied.Labels, "addonmanager.kubernetes.io/mode")
+	// add a prefix to distinguish them from the originals
+	copied.Name = storageClassPrefix + sc.Name
+	// add the labels for cost attribution and garbage collection
+	if copied.Parameters == nil {
+		copied.Parameters = make(map[string]string)
+	}
+	copied.Parameters["labels"] = labels
+	return copied
 }
 
 func (d *GKEDriver) resourcesLabels() (string, error) {

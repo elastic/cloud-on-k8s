@@ -21,6 +21,9 @@ var installerManifest string
 //go:embed install/policies.yaml
 var policiesManifest string
 
+//go:embed install/gke-policies.yaml
+var GKEPolicies string
+
 const (
 	waitForKyvernoDeployment = `wait deployment kyverno -n kyverno --for condition=Available=True --timeout=15m`
 )
