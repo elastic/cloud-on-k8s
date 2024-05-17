@@ -21,7 +21,7 @@ var installerManifest string
 //go:embed install/policies.yaml
 var policiesManifest string
 
-//go:embed install/disallow-gke-storageclasses.yaml
+//go:embed install/gke-policies.yaml
 var GKEPolicies string
 
 const (
