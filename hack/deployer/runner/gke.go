@@ -19,6 +19,7 @@ import (
 )
 
 const (
+	storageClassPrefix              = "e2e-"
 	GKEDriverID                     = "gke"
 	GKEVaultPath                    = "ci-gcp-k8s-operator"
 	GKEServiceAccountVaultFieldName = "service-account"
@@ -202,7 +203,7 @@ func (d *GKEDriver) copyBuiltInStorageClasses() error {
 			continue
 		}
 		// this function might be called repeatedly
-		if strings.HasPrefix(storageClass.Name, "e2e") {
+		if strings.HasPrefix(storageClass.Name, storageClassPrefix) {
 			continue
 		}
 
@@ -245,10 +246,9 @@ func copyWithPrefixAndLabels(sc storagev1.StorageClass, labels string) storagev1
 	copied.ResourceVersion = ""
 	// remove the addonmanager label from GKE
 	delete(copied.Labels, "addonmanager.kubernetes.io/mode")
-	//
-	if !strings.HasPrefix(sc.Name, "e2e") {
-		copied.Name = "e2e-" + sc.Name
-	}
+	// add a prefix to distinguish them from the originals
+	copied.Name = storageClassPrefix + sc.Name
+	// add the labels for cost attribution and garbage collection
 	if copied.Parameters == nil {
 		copied.Parameters = make(map[string]string)
 	}
