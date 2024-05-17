@@ -303,7 +303,7 @@ If `resources` is not defined in the specification of an object, then the operat
 |Elasticsearch |2Gi |2Gi
 |Kibana |1Gi |1Gi
 |Beat   |300Mi |300Mi
-|Elastic Agent |350Mi |350Mi
+|Elastic Agent |400Mi |400Mi
 |Elastic Maps Server |200Mi |200Mi
 |Enterprise Search |4Gi |4Gi
 |Logstash |2Gi |2Gi
