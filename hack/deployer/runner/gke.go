@@ -219,7 +219,7 @@ func (d *GKEDriver) copyBuiltInStorageClasses() error {
 			continue
 		}
 
-		// start by removing the default storage class label so that our copy can take over that role
+		// start by removing the default storage class marker so that our copy can take over that role
 		if err := exec.NewCommand(fmt.Sprintf(`kubectl annotate sc %s storageclass.kubernetes.io/is-default-class=false --overwrite=true`, storageClass.Name)).
 			WithoutStreaming().
 			Run(); err != nil {
