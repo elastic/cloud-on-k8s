@@ -39,6 +39,7 @@
 [float]
 === Documentation improvements
 
+* Add note that autoscalers are not yet supported by Logstash on ECK {pull}7821[#7821] (issue: {issue}7820[#7820])
 * Update indentation of ldap example {pull}7725[#7725]
 * Add Logstash Plugins on ECK documentation and remove technical preview tags {pull}7702[#7702]
 * Update saml-authentication.asciidoc {pull}7680[#7680]
