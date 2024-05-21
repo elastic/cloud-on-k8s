@@ -368,7 +368,7 @@ cloudDefend:
 
 agent:
   enabled: true
-  version: 8.12.2
+  version: 8.13.2
   presets:
   ##  examplePreset:
   ##    mode: [deployment, statefulset, daemonset]

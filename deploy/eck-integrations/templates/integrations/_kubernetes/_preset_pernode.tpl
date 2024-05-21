@@ -140,6 +140,14 @@ extraVolumes:
 initContainers:
 - name: k8s-templates-downloader
   image: busybox:1.36
+  securityContext:
+    allowPrivilegeEscalation: false
+    privileged: false
+    runAsUser: 1000
+    runAsGroup: 1000
+    capabilities:
+      drop:
+        - ALL
   command: [ 'sh' ]
   args:
     - -c
