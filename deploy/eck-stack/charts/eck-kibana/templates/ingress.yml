@@ -8,7 +8,7 @@ metadata:
   {{- with .Values.ingress.annotations }}
   annotations:
     {{- toYaml . | nindent 4 }}
-    {{- end }}
+  {{- end }}
 spec:
   {{- with .Values.ingress.ingressClassName }}
   ingressClassName: {{ . }}
