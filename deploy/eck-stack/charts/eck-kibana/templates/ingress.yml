@@ -1,0 +1,61 @@
+{{- if and .Values.ingress.enabled}}
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: {{ include "kibana.fullname" . }}-ingress
+  labels:
+    {{- include "kibana.labels" . | nindent 4 }}
+  {{- with .Values.ingress.annotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
+spec:
+  {{- with .Values.ingress.ingressClassName }}
+  ingressClassName: {{ . }}
+  {{- end }}
+  rules:
+    - host: {{ .Values.ingress.hostname }}
+      http:
+        paths:
+          {{- with .Values.ingress.extraPaths }}
+            {{- tpl (toYaml .) $ | nindent 10 }}
+          {{- end }}
+          - path: {{ .Values.ingress.path }}
+            pathType: {{ $.Values.ingress.pathType }}
+            backend:
+              service:
+                name: {{ include "kibana.fullname" . }}-kb-http
+                port:
+                  number: {{ $.Values.ingress.pathType }}
+    {{- range .Values.ingress.extraHosts }}
+    - host: {{ .name | quote }}
+      http:
+        paths:
+          - path: {{ default $.Values.ingress.path .path }}
+            pathType: {{ default $.Values.ingress.pathType .pathType }}
+            backend:
+              service:
+                name: {{ include "kibana.fullname" . }}-kb-http
+                port:
+                  number: {{ $.Values.ingress.pathType }}
+    {{- end }}
+    {{- with .Values.ingress.extraRules }}
+      {{- tpl (toYaml .) $ | nindent 4 }}
+    {{- end }}
+  {{- if or .Values.ingress.tls .Values.ingress.extraTls }}
+  tls:
+    {{- if .Values.ingress.tls }}
+    - hosts:
+      - {{ .Values.ingress.hostname }}
+      {{- range .Values.ingress.extraHosts }}
+        {{- if .name }}
+      -  {{ .name }}
+        {{- end }}
+      {{- end }}
+      secretName: {{ include "kibana.fullname" . }}-kb-http-tls
+    {{- end }}
+    {{- with .Values.ingress.extraTls }}
+      {{- toYaml . | nindent 4 }}
+    {{- end }}
+  {{- end }}
+{{- end }}

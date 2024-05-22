@@ -42,3 +42,69 @@ spec:
     # will be assumed.
     #
     # namespace: default
+
+ingress:
+  enabled: false
+  labels: {}
+  annotations: 
+    # nginx.ingress.kubernetes.io/backend-protocol: "https"
+    # nginx.ingress.kubernetes.io/force-ssl-redirect: "true"
+    # nginx.ingress.kubernetes.io/ssl-passthrough: "true"
+    # cert-manager.io/cluster-issuer: my-issuer
+
+  # -- Defines which ingress controller will implement the resource
+  # -- uses class set as default by default
+  ingressClassName: ""
+
+  # -- Kibana hostname
+  hostname: "kibana.cluster.local"
+
+  service.port: 5601
+
+  # -- The path to Kibana
+  path: /
+
+  # -- Ingress path type. One of `Exact`, `Prefix` or `ImplementationSpecific`
+  pathType: Prefix
+
+  # -- Enable TLS configuration for the hostname defined at `server.ingress.hostname`
+  tls: false
+
+  # -- The list of additional hostnames to be covered by ingress record
+  # @default -- `[]` (See [values.yaml])
+  extraHosts: []
+    # - name: kibana.example.com
+    #   path: /
+
+  # -- Additional ingress paths
+  # @default -- `[]` (See [values.yaml])
+  ## Note: Supports use of custom Helm templates
+  extraPaths: []
+    # - path: /*
+    #   pathType: Prefix
+    #   backend:
+    #     service:
+    #       name: ssl-redirect
+    #       port:
+    #         name: use-annotation
+
+  # -- Additional ingress rules
+  # @default -- `[]` (See [values.yaml])
+  ## Note: Supports use of custom Helm templates
+  extraRules: []
+    # - http:
+    #     paths:
+    #     - path: /
+    #       pathType: Prefix
+    #       backend:
+    #         service:
+    #           name: ''
+    #           port:
+    #             name: ''
+
+  # -- Additional TLS configuration
+  # @default -- `[]` (See [values.yaml])
+  extraTls: []
+    # - hosts:
+    #   - kibana.example.com
+    #   secretName: your-certificate-name
