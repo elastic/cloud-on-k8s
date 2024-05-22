@@ -8,6 +8,7 @@ import (
 	"fmt"
 
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/rand"
@@ -69,7 +70,7 @@ func newBuilder(name, randSuffix string) Builder {
 		Name:      name,
 		Namespace: test.Ctx().ManagedNamespace(0),
 	}
-	return Builder{
+	b := Builder{
 		Kibana: kbv1.Kibana{
 			ObjectMeta: meta,
 			Spec: kbv1.KibanaSpec{
@@ -85,6 +86,20 @@ func newBuilder(name, randSuffix string) Builder {
 		WithSuffix(randSuffix).
 		WithLabel(run.TestNameLabel, name).
 		WithPodLabel(run.TestNameLabel, name)
+
+	// bump Kibana memory in 8.1.x as we see abnormal memory usage, probably due to the
+	// move to cgroups v2 (https://github.com/kubernetes/kubernetes/issues/118916)
+	ver := version.MustParse(test.Ctx().ElasticStackVersion)
+	if ver.GTE(version.MinFor(8, 1, 0)) && ver.LT(version.MinFor(8, 2, 0)) {
+		b = b.WithResources(corev1.ResourceRequirements{
+			Requests: map[corev1.ResourceName]resource.Quantity{
+				corev1.ResourceMemory: resource.MustParse("1500Mi"),
+			},
+			Limits: map[corev1.ResourceName]resource.Quantity{
+				corev1.ResourceMemory: resource.MustParse("1500Mi"),
+			}})
+	}
+	return b
 }
 
 func (b Builder) WithImage(image string) Builder {
