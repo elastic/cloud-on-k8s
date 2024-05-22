@@ -1,0 +1,30 @@
+[[release-highlights-2.13.0]]
+== 2.13.0 release highlights
+
+[float]
+[id="{p}-2130-new-and-notable"]
+=== New and notable
+
+New and notable changes in version 2.13.0 of {n}. Check <<release-notes-2.13.0>> for the full list of changes.
+
+[float]
+[id="{p}-2130-eck-enterprise-search-helm-chart"]
+=== ECK Enterprise Search Helm chart
+
+ECK 2.13.0 supports managing Enterprise search resources via Helm charts, similarly to other components of the Elastic stack
+(see https://github.com/elastic/cloud-on-k8s/tree/main/deploy/eck-stack/charts/eck-enterprise-search/examples[examples]).
+
+[float]
+[id="{p}-2130-allow-disabling-elastic-user"]
+=== Allow disabling the elastic user
+
+ECK 2.13.0 introduces a new option that allows a user to disable the elastic user from being created upon Elasticsearch creation. A use case for this would be when an organization/user would prefer to manage all users/roles via SSO (SAML/IDP/LDAP/etc)
+(see https://github.com/elastic/cloud-on-k8s/blob/main/docs/orchestrating-elastic-stack-applications/security/users-and-roles.asciidoc#disabling-the-default-elastic-user[documentation]).
+
+[float]
+[id="{p}-2130-eck-logstash-ga"]
+=== Logstash on ECK generally available
+
+With ECK 2.13.0, support for Logstash is moving out of technical preview and is now generally available (GA). 
+Logstash managed by ECK is now considered production-ready.
+

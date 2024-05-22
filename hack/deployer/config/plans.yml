@@ -27,7 +27,6 @@ plans:
     autopilot: true
     region: us-central1
     gcpScopes: https://www.googleapis.com/auth/devstorage.read_only,https://www.googleapis.com/auth/logging.write,https://www.googleapis.com/auth/monitoring,https://www.googleapis.com/auth/servicecontrol,https://www.googleapis.com/auth/service.management.readonly,https://www.googleapis.com/auth/trace.append
--
 - id: gke-dev
   operation: create
   clusterName: dev
@@ -118,7 +117,7 @@ plans:
   machineType: c5d.2xlarge
   serviceAccount: false
   enforceSecurityPolicies: true
-  kubernetesVersion: 1.25
+  kubernetesVersion: 1.29
   diskSetup: kubectl apply -f hack/deployer/config/local-disks/ssd-provisioner.yaml
   eks:
     region: ap-northeast-3
@@ -131,7 +130,7 @@ plans:
   machineType: m6gd.2xlarge
   serviceAccount: false
   enforceSecurityPolicies: true
-  kubernetesVersion: 1.25
+  kubernetesVersion: 1.29
   diskSetup: kubectl apply -f hack/deployer/config/local-disks/ssd-provisioner.yaml
   eks:
     region: eu-west-1
@@ -143,7 +142,7 @@ plans:
   provider: eks
   machineType: c5d.2xlarge
   serviceAccount: false
-  kubernetesVersion: 1.25
+  kubernetesVersion: 1.29
   enforceSecurityPolicies: true
   eks:
     region: eu-west-2
@@ -152,24 +151,24 @@ plans:
 - id: kind-dev
   operation: create
   clusterName: eck
-  clientVersion: 0.20.0
+  clientVersion: 0.23.0
   provider: kind
-  kubernetesVersion: 1.28.0
+  kubernetesVersion: 1.30.0
   enforceSecurityPolicies: true
   kind:
     nodeCount: 3
-    nodeImage: kindest/node:v1.28.0@sha256:b7a4cad12c197af3ba43202d3efe03246b3f0793f162afb40a33c923952d5b31
+    nodeImage: kindest/node:v1.30.0@sha256:047357ac0cfea04663786a612ba1eaba9702bef25227a794b52890dd8bcd692e
     ipFamily: ipv4
 - id: kind-ci
   operation: create
   clusterName: kind-ci
-  clientVersion: 0.20.0
+  clientVersion: 0.23.0
   provider: kind
-  kubernetesVersion: 1.28.0
+  kubernetesVersion: 1.30.0
   enforceSecurityPolicies: true
   kind:
     nodeCount: 3
-    nodeImage: kindest/node:v1.28.0@sha256:b7a4cad12c197af3ba43202d3efe03246b3f0793f162afb40a33c923952d5b31
+    nodeImage: kindest/node:v1.30.0@sha256:047357ac0cfea04663786a612ba1eaba9702bef25227a794b52890dd8bcd692e
     ipFamily: ipv4
 - id: tanzu-ci
   operation: create

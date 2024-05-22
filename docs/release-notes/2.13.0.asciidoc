@@ -1,0 +1,71 @@
+:issue: https://github.com/elastic/cloud-on-k8s/issues/
+:pull: https://github.com/elastic/cloud-on-k8s/pull/
+
+[[release-notes-2.13.0]]
+== {n} version 2.13.0
+
+
+
+[[feature-2.13.0]]
+[float]
+=== New features
+
+* ECK Enterprise Search Helm Chart. {pull}7744[#7744]
+
+[[enhancement-2.13.0]]
+[float]
+=== Enhancements
+
+* Add Helm annotation to CRDs to prevent accidental deletion. {pull}7811[#7811] (issue: {issue}5117[#5117])
+* Allow disabling of elastic user. {pull}7723[#7723] (issue: {issue}7719[#7719])
+* Make automountServiceAccountToken configurable on operator Pods via Helm {pull}7690[#7690]
+* Support setting labels and annotations on operator statefulset via Helm {pull}7688[#7688]
+* Fix Logstash keystore performance {pull}7642[#7642] (issue: {issue}7027[#7027])
+* Support api_key authentication for agent-elasticsearch association {pull}7598[#7598]
+
+[[bug-2.13.0]]
+[float]
+=== Bug fixes
+
+* Increase default memory for agent {pull}7789[#7789]
+* Correct StatefulSet name label for Logstash pods {pull}7788[#7788] (issue: {issue}7742[#7742])
+* Fix webhook certname in Helm template {pull}7775[#7775] (issue: {issue}7771[#7771])
+* Support loadBalancerClass in service reconciliation {pull}7706[#7706] (issue: {issue}7691[#7691])
+* [Autoscaling] Do not delete existing resources {pull}7678[#7678]
+* Fix namespace logged twice {pull}7640[#7640]
+* Fix cluster name label of es scripts config map {pull}7630[#7630]
+
+[[docs-2.13.0]]
+[float]
+=== Documentation improvements
+
+* Add note that autoscalers are not yet supported by Logstash on ECK {pull}7821[#7821] (issue: {issue}7820[#7820])
+* Update indentation of ldap example {pull}7725[#7725]
+* Add Logstash Plugins on ECK documentation and remove technical preview tags {pull}7702[#7702]
+* Update saml-authentication.asciidoc {pull}7680[#7680]
+* Update stack version in recipes {pull}7651[#7651]
+
+[[nogroup-2.13.0]]
+[float]
+=== Misc
+
+* fix(deps): update module github.com/sethvargo/go-password to v0.3.0 {pull}7736[#7736]
+* fix(deps): update module github.com/prometheus/common to v0.53.0 {pull}7735[#7735]
+* fix(deps): update module github.com/hashicorp/vault/api to v1.13.0 {pull}7734[#7734]
+* Bump golang.org/x/net from 0.22.0 to 0.23.0 {pull}7729[#7729]
+* fix(deps): update module go.elastic.co/apm to v2.6.0 {pull}7714[#7714]
+* fix(deps): update module sigs.k8s.io/controller-runtime to v0.17.3 {pull}7705[#7705]
+* fix(deps): update module golang.org/x/crypto to v0.22.0 {pull}7696[#7696]
+* Update buildkite agent image (golang 1.22.2) {pull}7694[#7694]
+* Update docker.io/library/golang docker tag to v1.22.2 {pull}7693[#7693]
+* Bump github.com/docker/docker from 24.0.7+incompatible to 24.0.9+incompatible {pull}7645[#7645]
+* fix(deps): update module github.com/elastic/go-ucfg to v0.8.8 {pull}7641[#7641]
+* fix(deps): update module google.golang.org/api to v0.170.0 {pull}7639[#7639]
+* fix(deps): update module helm.sh/helm/v3 to v3.14.3 {pull}7634[#7634]
+* fix(deps): update module github.com/google/go-containerregistry to v0.19.1 {pull}7632[#7632]
+* fix(deps): update k8s to v0.29.3 {pull}7631[#7631]
+* chore(deps): update registry.access.redhat.com/ubi9/ubi-minimal docker tag to v9.3-1612 {pull}7609[#7609]
+* chore(deps): update docker.io/library/golang docker tag to v1.22.1 {pull}7608[#7608]
+* Bump github.com/go-jose/go-jose/v3 from 3.0.1 to 3.0.3 {pull}7602[#7602]
+* fix(deps): update module github.com/stretchr/testify to v1.9.0 {pull}7593[#7593]
+* fix(deps): update module github.com/prometheus/client_golang to v1.19.0 {pull}7591[#7591]
