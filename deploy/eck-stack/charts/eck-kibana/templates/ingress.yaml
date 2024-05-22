@@ -5,10 +5,11 @@ metadata:
   name: {{ include "kibana.fullname" . }}-ingress
   labels:
     {{- include "kibana.labels" . | nindent 4 }}
-  {{- with .Values.ingress.annotations }}
   annotations:
+    eck.k8s.elastic.co/license: basic
+    {{- with .Values.ingress.annotations }}
     {{- toYaml . | nindent 4 }}
-  {{- end }}
+    {{- end }}
 spec:
   {{- with .Values.ingress.ingressClassName }}
   ingressClassName: {{ . }}
