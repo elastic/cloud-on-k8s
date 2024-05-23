@@ -1,0 +1,37 @@
+{{- if $.Values.agent.enabled -}}
+{{- include "elasticagent.preset.init" $ -}}
+{{- range $presetName, $presetVal := $.Values.agent.presets -}}
+{{- if eq ($presetVal).mode "deployment" -}}
+{{- $agentName := printf "agent-%s" (lower $presetName) -}}
+apiVersion: agent.k8s.elastic.co/v1alpha1
+kind: Agent
+metadata:
+  name: {{ $agentName }}
+  namespace: {{ $.Release.Namespace | quote }}
+  labels:
+    {{- include "elasticagent.labels" $ | nindent 4 }}
+    {{- with ($presetVal).labels }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
+  {{- with ($presetVal).annotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+spec:
+  version: {{ required "An Elastic Agent version is required" $.Values.agent.version }}
+  configRef:
+    secretName: {{ $agentName }}
+  {{- with ($presetVal).elasticSearchRefs }}
+  elasticsearchRefs:
+    {{- . | toYaml | nindent 4 }}
+  {{- end }}
+  deployment:
+    {{- with ($presetVal).replicaCount }}
+    replicas: {{ . }}
+    {{- end }}
+    podTemplate:
+{{ include "elasticagent.eck.podTemplate" (list $ $presetVal $agentName) }}
+---
+{{ end -}}
+{{- end -}}
+{{- end -}}
