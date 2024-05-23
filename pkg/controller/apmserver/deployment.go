@@ -110,7 +110,7 @@ func buildConfigHash(c k8s.Client, as *apmv1.ApmServer, params PodSpecParams) (s
 
 	// - in the APMServer keystore
 	if params.keystoreResources != nil {
-		_, _ = configHash.Write([]byte(params.keystoreResources.Version))
+		_, _ = configHash.Write([]byte(params.keystoreResources.Hash))
 	}
 
 	// - in the APMServer TLS certificates
