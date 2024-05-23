@@ -18,6 +18,7 @@ import (
 	commonv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/common/v1"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/driver"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/events"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/hash"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/name"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/reconciler"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/volume"
@@ -65,31 +66,30 @@ func secureSettingsVolume(
 		return nil, "", err
 	}
 
-	secrets, err := retrieveUserSecrets(ctx, r.K8sClient(), r.Recorder(), hasKeystore, secretSources)
+	userSecrets, err := retrieveUserSecrets(ctx, r.K8sClient(), r.Recorder(), hasKeystore, secretSources)
 	if err != nil {
 		return nil, "", err
 	}
 
-	secret, err := reconcileSecureSettings(ctx, r.K8sClient(), hasKeystore, secrets, namer, labels)
+	secureSettingsSecret, err := reconcileSecureSettings(ctx, r.K8sClient(), hasKeystore, userSecrets, namer, labels)
 	if err != nil {
 		return nil, "", err
 	}
-	if secret == nil {
+	if secureSettingsSecret == nil {
 		return nil, "", nil
 	}
 
 	// build a volume from that secret
 	secureSettingsVolume := volume.NewSecretVolumeWithMountPath(
-		secret.Name,
+		secureSettingsSecret.Name,
 		SecureSettingsVolumeName,
 		SecureSettingsVolumeMountPath,
 	)
 
-	// resource version will be included in pod labels,
-	// to recreate pods on any secret change.
-	resourceVersion := secret.GetResourceVersion()
+	// secret data hash will be included in pod labels to recreate pods on any secret change
+	secureSettingsSecretHash := hash.HashObject(secureSettingsSecret.Data)
 
-	return &secureSettingsVolume, resourceVersion, nil
+	return &secureSettingsVolume, secureSettingsSecretHash, nil
 }
 
 func reconcileSecureSettings(
