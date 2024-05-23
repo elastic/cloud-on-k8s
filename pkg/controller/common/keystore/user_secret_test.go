@@ -52,7 +52,7 @@ func Test_secureSettingsVolume(t *testing.T) {
 		w           watches.DynamicWatches
 		kb          kbv1.Kibana
 		wantVolume  *volume.SecretVolume
-		wantVersion string
+		wantHash    string
 		wantWatches []string
 		wantEvent   string
 	}{
@@ -62,7 +62,7 @@ func Test_secureSettingsVolume(t *testing.T) {
 			w:           createWatches(""),
 			kb:          testKibana,
 			wantVolume:  nil,
-			wantVersion: "",
+			wantHash:    "",
 			wantWatches: []string{},
 		},
 		{
@@ -72,7 +72,7 @@ func Test_secureSettingsVolume(t *testing.T) {
 			kb:         testKibanaWithSecureSettings,
 			wantVolume: &expectedSecretVolume,
 			// since this is being created the RV will increment
-			wantVersion: "1",
+			wantHash:    "896069204",
 			wantWatches: []string{SecureSettingsWatchName(k8s.ExtractNamespacedName(&testKibanaWithSecureSettings))},
 		},
 		{
@@ -81,7 +81,7 @@ func Test_secureSettingsVolume(t *testing.T) {
 			w:           createWatches(SecureSettingsWatchName(k8s.ExtractNamespacedName(&testKibanaWithSecureSettings))),
 			kb:          testKibanaWithSecureSettings,
 			wantVolume:  nil,
-			wantVersion: "",
+			wantHash:    "",
 			wantWatches: []string{SecureSettingsWatchName(k8s.ExtractNamespacedName(&testKibanaWithSecureSettings))},
 			wantEvent:   "Warning Unexpected Secure settings secret not found: namespace/secure-settings-secret",
 		},
@@ -91,7 +91,7 @@ func Test_secureSettingsVolume(t *testing.T) {
 			w:           createWatches(SecureSettingsWatchName(k8s.ExtractNamespacedName(&testKibanaWithSecureSettings))),
 			kb:          testKibana,
 			wantVolume:  nil,
-			wantVersion: "",
+			wantHash:    "",
 			wantWatches: []string{},
 		},
 	}
@@ -102,10 +102,10 @@ func Test_secureSettingsVolume(t *testing.T) {
 				Watches:      tt.w,
 				FakeRecorder: record.NewFakeRecorder(1000),
 			}
-			vol, version, err := secureSettingsVolume(context.Background(), testDriver, &tt.kb, nil, kbNamer)
+			vol, hash, err := secureSettingsVolume(context.Background(), testDriver, &tt.kb, nil, kbNamer)
 			require.NoError(t, err)
 			assert.Equal(t, tt.wantVolume, vol)
-			assert.Equal(t, tt.wantVersion, version)
+			assert.Equal(t, tt.wantHash, hash)
 
 			require.Equal(t, tt.wantWatches, tt.w.Secrets.Registrations())
 
