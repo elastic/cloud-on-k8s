@@ -311,9 +311,7 @@ func TestBuildPodTemplateSpec(t *testing.T) {
 
 			// render as JSON for easier diff debugging
 			gotJSON, err := json.MarshalIndent(&actual, " ", " ")
-			if err != nil {
-				panic(err)
-			}
+			require.NoError(t, err)
 			snaps.MatchJSON(t, gotJSON)
 		})
 	}
