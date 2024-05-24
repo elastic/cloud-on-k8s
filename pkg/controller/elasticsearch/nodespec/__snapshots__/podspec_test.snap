@@ -1084,26 +1084,6 @@
         "fieldPath": "metadata.namespace"
        }
       }
-     },
-     {
-      "name": "PROBE_PASSWORD_PATH",
-      "value": "/mnt/elastic-internal/pod-mounted-users/elastic-internal-probe"
-     },
-     {
-      "name": "PROBE_USERNAME",
-      "value": "elastic-internal-probe"
-     },
-     {
-      "name": "READINESS_PROBE_PROTOCOL",
-      "value": "https"
-     },
-     {
-      "name": "HEADLESS_SERVICE_NAME",
-      "value": "name-es-nodeset-1"
-     },
-     {
-      "name": "NSS_SDB_USE_CACHE",
-      "value": "no"
      }
     ],
     "image": "docker.elastic.co/elasticsearch/elasticsearch:8.13.2",
@@ -1285,26 +1265,6 @@
      {
       "name": "my-env",
       "value": "my-value"
-     },
-     {
-      "name": "PROBE_PASSWORD_PATH",
-      "value": "/mnt/elastic-internal/pod-mounted-users/elastic-internal-probe"
-     },
-     {
-      "name": "PROBE_USERNAME",
-      "value": "elastic-internal-probe"
-     },
-     {
-      "name": "READINESS_PROBE_PROTOCOL",
-      "value": "https"
-     },
-     {
-      "name": "HEADLESS_SERVICE_NAME",
-      "value": "name-es-nodeset-1"
-     },
-     {
-      "name": "NSS_SDB_USE_CACHE",
-      "value": "no"
      }
     ],
     "image": "docker.elastic.co/elasticsearch/elasticsearch:8.13.2",
@@ -1450,26 +1410,6 @@
      {
       "name": "my-env",
       "value": "my-value"
-     },
-     {
-      "name": "PROBE_PASSWORD_PATH",
-      "value": "/mnt/elastic-internal/pod-mounted-users/elastic-internal-probe"
-     },
-     {
-      "name": "PROBE_USERNAME",
-      "value": "elastic-internal-probe"
-     },
-     {
-      "name": "READINESS_PROBE_PROTOCOL",
-      "value": "https"
-     },
-     {
-      "name": "HEADLESS_SERVICE_NAME",
-      "value": "name-es-nodeset-1"
-     },
-     {
-      "name": "NSS_SDB_USE_CACHE",
-      "value": "no"
      }
     ],
     "image": "docker.elastic.co/elasticsearch/elasticsearch:8.13.2",
@@ -1608,26 +1548,6 @@
      {
       "name": "my-env",
       "value": "my-value"
-     },
-     {
-      "name": "PROBE_PASSWORD_PATH",
-      "value": "/mnt/elastic-internal/pod-mounted-users/elastic-internal-probe"
-     },
-     {
-      "name": "PROBE_USERNAME",
-      "value": "elastic-internal-probe"
-     },
-     {
-      "name": "READINESS_PROBE_PROTOCOL",
-      "value": "https"
-     },
-     {
-      "name": "HEADLESS_SERVICE_NAME",
-      "value": "name-es-nodeset-1"
-     },
-     {
-      "name": "NSS_SDB_USE_CACHE",
-      "value": "no"
      }
     ],
     "image": "docker.elastic.co/elasticsearch/elasticsearch:8.13.2",
