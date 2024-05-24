@@ -127,7 +127,7 @@ func BuildPodTemplateSpec(
 		WithResources(DefaultResources).
 		WithTerminationGracePeriod(DefaultTerminationGracePeriodSeconds).
 		WithPorts(defaultContainerPorts).
-		WithReadinessProbe(*NewReadinessProbe()).
+		WithReadinessProbe(*NewReadinessProbe(v)).
 		WithAffinity(DefaultAffinity(es.Name)).
 		WithEnv(DefaultEnvVars(es.Spec.HTTP, headlessServiceName)...).
 		WithVolumes(volumes...).

@@ -362,7 +362,7 @@ func TestBuildPodTemplateSpec(t *testing.T) {
 						DefaultEnvVars(sampleES.Spec.HTTP, HeadlessServiceName(esv1.StatefulSet(sampleES.Name, nodeSet.Name)))...),
 					Resources:      DefaultResources,
 					VolumeMounts:   volumeMounts,
-					ReadinessProbe: NewReadinessProbe(),
+					ReadinessProbe: NewReadinessProbe(ver),
 					Lifecycle: &corev1.Lifecycle{
 						PreStop: NewPreStopHook(),
 					},
