@@ -1084,6 +1084,10 @@
         "fieldPath": "metadata.namespace"
        }
       }
+     },
+     {
+      "name": "HEADLESS_SERVICE_NAME",
+      "value": "name-es-nodeset-1"
      }
     ],
     "image": "docker.elastic.co/elasticsearch/elasticsearch:8.13.2",
@@ -1265,6 +1269,10 @@
      {
       "name": "my-env",
       "value": "my-value"
+     },
+     {
+      "name": "HEADLESS_SERVICE_NAME",
+      "value": "name-es-nodeset-1"
      }
     ],
     "image": "docker.elastic.co/elasticsearch/elasticsearch:8.13.2",
@@ -1410,6 +1418,10 @@
      {
       "name": "my-env",
       "value": "my-value"
+     },
+     {
+      "name": "HEADLESS_SERVICE_NAME",
+      "value": "name-es-nodeset-1"
      }
     ],
     "image": "docker.elastic.co/elasticsearch/elasticsearch:8.13.2",
@@ -1548,6 +1560,10 @@
      {
       "name": "my-env",
       "value": "my-value"
+     },
+     {
+      "name": "HEADLESS_SERVICE_NAME",
+      "value": "name-es-nodeset-1"
      }
     ],
     "image": "docker.elastic.co/elasticsearch/elasticsearch:8.13.2",

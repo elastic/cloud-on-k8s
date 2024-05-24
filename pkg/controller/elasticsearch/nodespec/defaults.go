@@ -45,7 +45,10 @@ var (
 
 // DefaultEnvVars are environment variables injected into Elasticsearch pods.
 func DefaultEnvVars(v version.Version, httpCfg commonv1.HTTPConfig, headlessServiceName string) []corev1.EnvVar {
-	var vars []corev1.EnvVar
+	vars := []corev1.EnvVar{
+		// needed in elasticsearch.yml
+		{Name: settings.HeadlessServiceName, Value: headlessServiceName},
+	}
 	if v.LT(esv1.MinReadinessPortVersion) {
 		vars = []corev1.EnvVar{
 			{Name: settings.EnvProbePasswordPath, Value: path.Join(esvolume.PodMountedUsersSecretMountPath, user.ProbeUserName)},
