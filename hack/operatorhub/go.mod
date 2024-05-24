@@ -2,8 +2,6 @@ module github.com/elastic/cloud-on-k8s/v2/hack/operatorhub
 
 go 1.22.0
 
-toolchain go1.22.3
-
 require (
 	github.com/Masterminds/sprig/v3 v3.2.3
 	github.com/ghodss/yaml v1.0.0
