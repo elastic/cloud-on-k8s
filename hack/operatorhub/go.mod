@@ -2,8 +2,6 @@ module github.com/elastic/cloud-on-k8s/v2/hack/operatorhub
 
 go 1.22.0
 
-toolchain go1.22.3
-
 require (
 	github.com/Masterminds/sprig/v3 v3.2.3
 	github.com/ghodss/yaml v1.0.0
@@ -25,7 +23,6 @@ require (
 	github.com/cyphar/filepath-securejoin v0.2.4 // indirect
 	github.com/docker/cli v24.0.0+incompatible // indirect
 	github.com/docker/docker v24.0.9+incompatible // indirect
-	github.com/go-jose/go-jose/v3 v3.0.3 // indirect
 	github.com/go-jose/go-jose/v4 v4.0.1 // indirect
 	github.com/pjbgf/sha1cd v0.3.0 // indirect
 	github.com/sagikazarmark/locafero v0.4.0 // indirect
