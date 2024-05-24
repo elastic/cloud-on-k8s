@@ -132,7 +132,7 @@ func buildPodTemplate(
 	}
 
 	if keystoreResources != nil {
-		_, _ = configHash.Write([]byte(keystoreResources.Version))
+		_, _ = configHash.Write([]byte(keystoreResources.Hash))
 		volumes = append(volumes, keystoreResources.Volume)
 		initContainers = append(initContainers, keystoreResources.InitContainer)
 	}

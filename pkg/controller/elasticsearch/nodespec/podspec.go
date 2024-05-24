@@ -218,7 +218,7 @@ func buildAnnotations(
 
 	if keystoreResources != nil {
 		// resource version of the secure settings secret to rotate the pod on secure settings change
-		_, _ = configHash.Write([]byte(keystoreResources.Version))
+		_, _ = configHash.Write([]byte(keystoreResources.Hash))
 	}
 
 	// set the annotation in place

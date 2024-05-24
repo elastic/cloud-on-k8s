@@ -22,8 +22,8 @@ type Resources struct {
 	Volume corev1.Volume
 	// init container used to create the keystore
 	InitContainer corev1.Container
-	// version of the secret provided by the user
-	Version string
+	// hash of the secret data provided by the user
+	Hash string
 }
 
 // HasKeystore interface represents an Elastic Stack application that offers a keystore which in ECK
@@ -60,7 +60,7 @@ func ReconcileResources(
 	initContainerParams InitContainerParameters,
 ) (*Resources, error) {
 	// setup a volume from the user-provided secure settings secret
-	secretVolume, version, err := secureSettingsVolume(ctx, r, hasKeystore, labels, namer)
+	secretVolume, hash, err := secureSettingsVolume(ctx, r, hasKeystore, labels, namer)
 	if err != nil {
 		return nil, err
 	}
@@ -78,6 +78,6 @@ func ReconcileResources(
 	return &Resources{
 		Volume:        secretVolume.Volume(),
 		InitContainer: initContainer,
-		Version:       version,
+		Hash:          hash,
 	}, nil
 }

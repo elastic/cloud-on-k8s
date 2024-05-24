@@ -95,7 +95,7 @@ func reconcileKeystore(params Params, configHash hash.Hash) (*keystore.Resources
 	); err != nil {
 		return nil, err
 	} else if keystoreResources != nil {
-		_, _ = configHash.Write([]byte(keystoreResources.Version))
+		_, _ = configHash.Write([]byte(keystoreResources.Hash))
 		// set keystore password in init container
 		if env := getKeystorePass(params.Logstash); env != nil {
 			keystoreResources.InitContainer.Env = append(keystoreResources.InitContainer.Env, *env)
