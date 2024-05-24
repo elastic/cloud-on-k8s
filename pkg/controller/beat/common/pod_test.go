@@ -271,7 +271,7 @@ func Test_buildPodTemplate(t *testing.T) {
 				},
 				annotations: map[string]string{
 					// The sum below should reflect the version of the Secret which contain the secure settings.
-					"beat.k8s.elastic.co/config-hash": "4263282862",
+					"beat.k8s.elastic.co/config-hash": "900468277",
 				},
 			},
 		},

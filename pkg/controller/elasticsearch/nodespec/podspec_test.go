@@ -438,7 +438,7 @@ func Test_buildAnnotations(t *testing.T) {
 			name: "With keystore and scripts content",
 			args: args{
 				keystoreResources: &keystore.Resources{
-					Version: "42",
+					Hash: "42",
 				},
 				scriptsContent: "scripts content",
 			},
@@ -450,7 +450,7 @@ func Test_buildAnnotations(t *testing.T) {
 			name: "With another keystore version",
 			args: args{
 				keystoreResources: &keystore.Resources{
-					Version: "43",
+					Hash: "43",
 				},
 				scriptsContent: "scripts content",
 			},
@@ -462,7 +462,7 @@ func Test_buildAnnotations(t *testing.T) {
 			name: "With another script version",
 			args: args{
 				keystoreResources: &keystore.Resources{
-					Version: "42",
+					Hash: "42",
 				},
 				scriptsContent: "another scripts content",
 			},

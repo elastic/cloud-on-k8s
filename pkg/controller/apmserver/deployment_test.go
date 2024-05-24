@@ -434,7 +434,7 @@ func TestReconcileApmServer_deploymentParams(t *testing.T) {
 							Name: "keystore-volume",
 						},
 						InitContainer: corev1.Container{},
-						Version:       "1",
+						Hash:          "1",
 					}
 					return params
 				}(),

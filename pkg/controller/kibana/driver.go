@@ -252,7 +252,7 @@ func (d *driver) deploymentParams(ctx context.Context, kb *kbv1.Kibana, policyAn
 	// This is done because Kibana does not support updating those without restarting the process.
 	configHash := fnv.New32a()
 	if keystoreResources != nil {
-		_, _ = configHash.Write([]byte(keystoreResources.Version))
+		_, _ = configHash.Write([]byte(keystoreResources.Hash))
 	}
 
 	// we need to deref the secret here to include it in the checksum otherwise Kibana will not be rolled on contents changes
