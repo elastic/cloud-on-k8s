@@ -135,7 +135,7 @@ func NewInternalService(es esv1.Elasticsearch) *corev1.Service {
 				},
 			},
 			Selector:                 label.NewLabels(k8s.ExtractNamespacedName(&es)),
-			PublishNotReadyAddresses: false,
+			PublishNotReadyAddresses: true,
 		},
 	}
 }
