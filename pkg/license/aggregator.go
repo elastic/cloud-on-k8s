@@ -19,11 +19,13 @@ import (
 	esv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/elasticsearch/v1"
 	entv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/enterprisesearch/v1"
 	kbv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/kibana/v1"
+	lsv1alpha1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/logstash/v1alpha1"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/apmserver"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/nodespec"
 	essettings "github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/settings"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/enterprisesearch"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/kibana"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/logstash"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/k8s"
 	ulog "github.com/elastic/cloud-on-k8s/v2/pkg/utils/log"
 )
@@ -44,6 +46,7 @@ func (a Aggregator) AggregateMemory(ctx context.Context) (resource.Quantity, err
 		a.aggregateKibanaMemory,
 		a.aggregateApmServerMemory,
 		a.aggregateEnterpriseSearchMemory,
+		a.aggregateLogstashMemory,
 	} {
 		memory, err := f(ctx)
 		if err != nil {
@@ -133,6 +136,33 @@ func (a Aggregator) aggregateKibanaMemory(ctx context.Context) (resource.Quantit
 		total.Add(multiply(mem, kb.Spec.Count))
 		ulog.FromContext(ctx).V(1).Info("Collecting", "namespace", kb.Namespace, "kibana_name", kb.Name,
 			"memory", mem.String(), "count", kb.Spec.Count)
+	}
+
+	return total, nil
+}
+
+func (a Aggregator) aggregateLogstashMemory(ctx context.Context) (resource.Quantity, error) {
+	var lsList lsv1alpha1.LogstashList
+	err := a.client.List(context.Background(), &lsList)
+	if err != nil {
+		return resource.Quantity{}, errors.Wrap(err, "failed to aggregate Logstash memory")
+	}
+
+	var total resource.Quantity
+	for _, ls := range lsList.Items {
+		mem, err := containerMemLimits(
+			ls.Spec.PodTemplate.Spec.Containers,
+			lsv1alpha1.LogstashContainerName,
+			logstash.EnvJavaOpts, memFromJavaOpts,
+			logstash.DefaultMemoryLimit,
+		)
+		if err != nil {
+			return resource.Quantity{}, errors.Wrap(err, "failed to aggregate Logstash memory")
+		}
+
+		total.Add(multiply(mem, ls.Spec.Count))
+		ulog.FromContext(ctx).V(1).Info("Collecting", "namespace", ls.Namespace, "logstash_name", ls.Name,
+			"memory", mem.String(), "count", ls.Spec.Count)
 	}
 
 	return total, nil
