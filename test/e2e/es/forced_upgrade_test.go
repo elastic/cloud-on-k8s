@@ -98,7 +98,7 @@ func TestForceUpgradePendingPodsInOneStatefulSet(t *testing.T) {
 			{
 				Name: "Wait for the ES service to have endpoints and become technically reachable",
 				Test: test.Eventually(func() error {
-					endpoints, err := k.GetEndpoints(initial.Elasticsearch.Namespace, esv1.HTTPService(initial.Elasticsearch.Name))
+					endpoints, err := k.GetEndpoints(initial.Elasticsearch.Namespace, esv1.InternalHTTPService(initial.Elasticsearch.Name))
 					if err != nil {
 						return err
 					}
