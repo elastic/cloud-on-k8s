@@ -24,6 +24,7 @@ import (
 	esv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/elasticsearch/v1"
 	entv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/enterprisesearch/v1"
 	kbv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/kibana/v1"
+	lsv1alpha1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/logstash/v1alpha1"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/k8s"
 )
 
@@ -141,7 +142,7 @@ func TestAggregator(t *testing.T) {
 
 	val, err := aggregator.AggregateMemory(context.Background())
 	require.NoError(t, err)
-	require.Equal(t, 325.9073486328125, inGiB(val))
+	require.Equal(t, 329.9073486328125, inGiB(val))
 }
 
 func readObjects(t *testing.T, filePath string) []client.Object {
@@ -152,6 +153,7 @@ func readObjects(t *testing.T, filePath string) []client.Object {
 	scheme.AddKnownTypes(kbv1.GroupVersion, &kbv1.Kibana{}, &kbv1.KibanaList{})
 	scheme.AddKnownTypes(apmv1.GroupVersion, &apmv1.ApmServer{}, &apmv1.ApmServerList{})
 	scheme.AddKnownTypes(entv1.GroupVersion, &entv1.EnterpriseSearch{}, &entv1.EnterpriseSearchList{})
+	scheme.AddKnownTypes(lsv1alpha1.GroupVersion, &lsv1alpha1.Logstash{}, &lsv1alpha1.LogstashList{})
 	decoder := serializer.NewCodecFactory(scheme).UniversalDeserializer()
 
 	f, err := os.Open(filePath)
