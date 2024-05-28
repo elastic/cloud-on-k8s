@@ -86,6 +86,16 @@ func TerminatingPods(pods []corev1.Pod) []corev1.Pod {
 	return terminating
 }
 
+func RunningPods(pods []corev1.Pod) []corev1.Pod {
+	var running []corev1.Pod //nolint:prealloc
+	for _, p := range pods {
+		if p.DeletionTimestamp.IsZero() && p.Status.Phase == corev1.PodRunning {
+			running = append(running, p)
+		}
+	}
+	return running
+}
+
 // PodsByName returns a map of pod names to pods
 func PodsByName(pods []corev1.Pod) map[string]corev1.Pod {
 	podMap := make(map[string]corev1.Pod, len(pods))

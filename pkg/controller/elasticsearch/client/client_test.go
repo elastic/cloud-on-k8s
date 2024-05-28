@@ -237,7 +237,7 @@ func TestClient_request(t *testing.T) {
 				assert.Equal(t, "cloud", req.Header.Get("x-elastic-product-origin"))
 			}),
 		},
-		Endpoint: "http://example.com",
+		URLProvider: NewStaticURLProvider("http://example.com"),
 	}
 	requests := []func() (string, error){
 		func() (string, error) {
@@ -361,7 +361,7 @@ func TestGetInfo(t *testing.T) {
 }
 
 func TestClient_Equal(t *testing.T) {
-	dummyEndpoint := "es-url"
+	dummyEndpoint := NewStaticURLProvider("es-url")
 	dummyUser := BasicAuth{Name: "user", Password: "password"}
 	dummyNamespaceName := types.NamespacedName{
 		Namespace: "ns",
@@ -398,7 +398,7 @@ func TestClient_Equal(t *testing.T) {
 		{
 			name: "different endpoint",
 			c1:   NewElasticsearchClient(nil, dummyNamespaceName, dummyEndpoint, dummyUser, v6, dummyCACerts, timeout, false),
-			c2:   NewElasticsearchClient(nil, dummyNamespaceName, "another-endpoint", dummyUser, v6, dummyCACerts, timeout, false),
+			c2:   NewElasticsearchClient(nil, dummyNamespaceName, NewStaticURLProvider("another-endpoint"), dummyUser, v6, dummyCACerts, timeout, false),
 			want: false,
 		},
 		{
@@ -836,11 +836,12 @@ func Test_HasProperties(t *testing.T) {
 	defaultVersion := version.MustParse("8.6.1")
 	defaultUser := BasicAuth{Name: "foo", Password: "bar"}
 	defaultURL := "https://foo.bar"
+	defaultURLProvider := NewStaticURLProvider(defaultURL)
 	defaultCaCerts := []*x509.Certificate{{Raw: []byte("foo")}}
 	defaultEsClient := NewElasticsearchClient(
 		nil,
 		types.NamespacedName{Namespace: "ns", Name: "es"},
-		defaultURL,
+		defaultURLProvider,
 		defaultUser,
 		defaultVersion,
 		defaultCaCerts,

@@ -16,6 +16,7 @@ import (
 
 	esv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/elasticsearch/v1"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/defaults"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/client"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/label"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/network"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/k8s"
@@ -181,6 +182,50 @@ func getServiceByName(c k8s.Client, es esv1.Elasticsearch, serviceName string) (
 	return svc, nil
 }
 
+type urlProvider struct {
+	readyPods   []corev1.Pod
+	runningPods []corev1.Pod
+	svcURL      string
+}
+
+// PodURL implements client.URLProvider.
+func (u *urlProvider) PodURL() string {
+	var url string
+	if len(u.readyPods) > 0 {
+		url = randomESPodURL(u.readyPods)
+	} else if len(u.runningPods) > 0 {
+		url = randomESPodURL(u.runningPods)
+	}
+	if len(url) == 0 {
+		url = u.ServiceURL()
+	}
+	return url
+}
+
+// ServiceURL implements client.URLProvider.
+func (u *urlProvider) ServiceURL() string {
+	return u.svcURL
+}
+
+func ElasticsearchURLProvider(es esv1.Elasticsearch, pods []corev1.Pod) client.URLProvider {
+	var readyPods []corev1.Pod
+	for _, p := range pods {
+		if k8s.IsPodReady(p) {
+			readyPods = append(readyPods, p)
+		}
+	}
+	return &urlProvider{
+		readyPods:   readyPods,
+		runningPods: pods,
+		svcURL:      InternalServiceURL(es),
+	}
+}
+
+func randomESPodURL(pods []corev1.Pod) string {
+	randomPod := pods[rand.Intn(len(pods))] //nolint:gosec
+	return ElasticsearchPodURL(randomPod)
+}
+
 // ElasticsearchURL calculates the base url for Elasticsearch, taking into account the currently running pods.
 // If there is an HTTP scheme mismatch between spec and pods we switch to requesting individual pods directly
 // otherwise this delegates to ExternalServiceURL.
@@ -195,8 +240,7 @@ func ElasticsearchURL(es esv1.Elasticsearch, pods []corev1.Pod) string {
 	}
 	if schemeChange {
 		// switch to sending requests directly to a random pod instead of going through the service
-		randomPod := pods[rand.Intn(len(pods))] //nolint:gosec
-		if podURL := ElasticsearchPodURL(randomPod); podURL != "" {
+		if podURL := randomESPodURL(pods); podURL != "" {
 			return podURL
 		}
 	}

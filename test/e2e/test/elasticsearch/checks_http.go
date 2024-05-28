@@ -46,7 +46,7 @@ func CheckHTTPConnectivityWithCA(es esv1.Elasticsearch, k *test.K8sClient, caCer
 		esClient := client.NewElasticsearchClient(
 			dialer,
 			k8s.ExtractNamespacedName(&es),
-			url,
+			client.NewStaticURLProvider(url),
 			user,
 			v,
 			caCert,

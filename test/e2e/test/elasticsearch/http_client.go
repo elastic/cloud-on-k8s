@@ -72,7 +72,7 @@ func NewElasticsearchClientWithUser(es esv1.Elasticsearch, k *test.K8sClient, us
 	if err != nil {
 		return nil, err
 	}
-	inClusterURL := services.ElasticsearchURL(es, reconcile.AvailableElasticsearchNodes(pods))
+	inClusterURLs := services.ElasticsearchURLProvider(es, reconcile.AvailableElasticsearchNodes(pods))
 	var dialer net.Dialer
 	if test.Ctx().AutoPortForwarding {
 		dialer = portforward.NewForwardingDialer()
@@ -84,7 +84,7 @@ func NewElasticsearchClientWithUser(es esv1.Elasticsearch, k *test.K8sClient, us
 	esClient := client.NewElasticsearchClient(
 		dialer,
 		k8s.ExtractNamespacedName(&es),
-		inClusterURL,
+		inClusterURLs,
 		user,
 		v,
 		caCert,
