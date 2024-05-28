@@ -38,16 +38,20 @@ const (
 
 	// VersionLabelName is a label used to track the version of a Logstash Pod.
 	VersionLabelName = "logstash.k8s.elastic.co/version"
+
+	// EnvJavaOpts is the documented environment variable to set JVM options for Logstash.
+	EnvJavaOpts = "LS_JAVA_OPTS"
 )
 
 var (
-	DefaultResources = corev1.ResourceRequirements{
+	DefaultMemoryLimit = resource.MustParse("2Gi")
+	DefaultResources   = corev1.ResourceRequirements{
 		Limits: map[corev1.ResourceName]resource.Quantity{
-			corev1.ResourceMemory: resource.MustParse("2Gi"),
+			corev1.ResourceMemory: DefaultMemoryLimit,
 			corev1.ResourceCPU:    resource.MustParse("2000m"),
 		},
 		Requests: map[corev1.ResourceName]resource.Quantity{
-			corev1.ResourceMemory: resource.MustParse("2Gi"),
+			corev1.ResourceMemory: DefaultMemoryLimit,
 			corev1.ResourceCPU:    resource.MustParse("1000m"),
 		},
 	}
