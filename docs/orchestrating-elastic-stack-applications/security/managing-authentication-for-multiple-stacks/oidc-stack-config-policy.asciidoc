@@ -107,7 +107,7 @@ spec:
       env: my-label
   elasticsearch:
     secureSettings:
-    - secretName: oidc-secret
+    - secretName: oidc-client-secret
     securityRoleMappings:
       oidc_kibana:
         roles: [ "superuser" ]
