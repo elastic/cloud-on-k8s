@@ -243,7 +243,6 @@ func TestNewInternalService(t *testing.T) {
 				svc.Spec.Type = corev1.ServiceTypeClusterIP
 				svc.Spec.Ports[0].Name = "https"
 				svc.Name = "elasticsearch-test-es-internal-http"
-				svc.Spec.PublishNotReadyAddresses = true
 				return svc
 			},
 		},
