@@ -435,10 +435,24 @@ func TestNewElasticsearchURLProvider(t *testing.T) {
 		{
 			name: "list pods from cache",
 			args: args{
-				es:     mkElasticsearch(commonv1.HTTPConfig{}),
-				client: k8s.NewFakeClient(ptr.To(mkPod("sset-0", true, true))),
+				es: mkElasticsearch(commonv1.HTTPConfig{}),
+				client: k8s.NewFakeClient(
+					ptr.To(mkPod("sset-0", true, true)),
+					ptr.To(mkPod("sset-1", true, false)),
+					&corev1.Pod{
+						ObjectMeta: metav1.ObjectMeta{
+							Namespace: "test",
+							Name:      "unrelated-0",
+							Labels: map[string]string{
+								label.HTTPSchemeLabelName:      "http",
+								label.StatefulSetNameLabelName: "unrelated",
+								label.ClusterNameLabelName:     "unrelated",
+							},
+						},
+					},
+				),
 			},
-			wantPodNames: []string{"sset-0"},
+			wantPodNames: []string{"sset-0", "sset-1"},
 		},
 	}
 	for _, tt := range tests {

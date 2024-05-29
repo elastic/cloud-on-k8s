@@ -199,16 +199,14 @@ func (u *urlProvider) PodURL() string {
 			running = append(running, p)
 		}
 	}
-	var url string
-	if len(ready) > 0 {
-		url = randomESPodURL(ready)
-	} else if len(running) > 0 {
-		url = randomESPodURL(running)
+	switch {
+	case len(ready) > 0:
+		return randomESPodURL(ready)
+	case len(running) > 0:
+		return randomESPodURL(running)
+	default:
+		return u.ServiceURL()
 	}
-	if len(url) == 0 {
-		url = u.ServiceURL()
-	}
-	return url
 }
 
 // ServiceURL implements client.URLProvider.
