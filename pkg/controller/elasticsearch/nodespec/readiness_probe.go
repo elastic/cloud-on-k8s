@@ -30,7 +30,7 @@ nc -z -v -w5 127.0.0.1 8080
 func NewReadinessProbe(v version.Version) *corev1.Probe {
 	scriptKey := ReadinessPortProbeScriptConfigKey
 	if v.LE(esv1.MinReadinessPortVersion) {
-		scriptKey = ReadinessProbeScriptConfigKey
+		scriptKey = LegacyReadinessProbeScriptConfigKey
 	}
 
 	return &corev1.Probe{
@@ -47,8 +47,8 @@ func NewReadinessProbe(v version.Version) *corev1.Probe {
 	}
 }
 
-const ReadinessProbeScriptConfigKey = "readiness-probe-script.sh"
-const ReadinessProbeScript = `#!/usr/bin/env bash
+const LegacyReadinessProbeScriptConfigKey = "readiness-probe-script.sh"
+const LegacyReadinessProbeScript = `#!/usr/bin/env bash
 
 # fail should be called as a last resort to help the user to understand why the probe failed
 function fail {

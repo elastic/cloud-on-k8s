@@ -540,7 +540,7 @@ func Test_getScriptsConfigMapContent(t *testing.T) {
 		Data: map[string]string{
 			PreStopHookScriptConfigKey:             "value1#",
 			initcontainer.PrepareFsScriptConfigKey: "value2#",
-			ReadinessProbeScriptConfigKey:          "value3#",
+			LegacyReadinessProbeScriptConfigKey:    "value3#",
 			initcontainer.SuspendScriptConfigKey:   "value4#",
 			initcontainer.SuspendedHostsFile:       "value5#",
 		},
