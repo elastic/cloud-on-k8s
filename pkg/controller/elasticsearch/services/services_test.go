@@ -64,107 +64,6 @@ func TestExternalServiceURL(t *testing.T) {
 	}
 }
 
-func TestElasticsearchURL(t *testing.T) {
-	type args struct {
-		es   esv1.Elasticsearch
-		pods []corev1.Pod
-	}
-	tests := []struct {
-		name string
-		args args
-		want string
-	}{
-		{
-			name: "default: external service url",
-			args: args{
-				es: esv1.Elasticsearch{
-					ObjectMeta: metav1.ObjectMeta{
-						Name:      "my-cluster",
-						Namespace: "my-ns",
-					},
-				},
-				pods: []corev1.Pod{
-					{
-						ObjectMeta: metav1.ObjectMeta{
-							Labels: map[string]string{
-								label.HTTPSchemeLabelName: "https",
-							},
-						},
-					},
-				},
-			},
-			want: "https://my-cluster-es-internal-http.my-ns.svc:9200",
-		},
-		{
-			name: "scheme change in progress: random pod address",
-			args: args{
-				es: esv1.Elasticsearch{
-					ObjectMeta: metav1.ObjectMeta{
-						Name:      "my-cluster",
-						Namespace: "my-ns",
-					},
-				},
-				pods: []corev1.Pod{
-					{
-						ObjectMeta: metav1.ObjectMeta{
-							Namespace: "my-ns",
-							Name:      "my-sset-0",
-							Labels: map[string]string{
-								label.HTTPSchemeLabelName:      "http",
-								label.StatefulSetNameLabelName: "my-sset",
-							},
-						},
-					},
-				},
-			},
-			want: "http://my-sset-0.my-sset.my-ns:9200",
-		},
-		{
-			name: "unexpected: missing pod labels: fallback to service",
-			args: args{
-				es: esv1.Elasticsearch{
-					ObjectMeta: metav1.ObjectMeta{
-						Name:      "my-cluster",
-						Namespace: "my-ns",
-					},
-				},
-				pods: []corev1.Pod{
-					{},
-				},
-			},
-			want: "https://my-cluster-es-internal-http.my-ns.svc:9200",
-		},
-		{
-			name: "unexpected: partially missing pod labels: fallback to service",
-			args: args{
-				es: esv1.Elasticsearch{
-					ObjectMeta: metav1.ObjectMeta{
-						Name:      "my-cluster",
-						Namespace: "my-ns",
-					},
-				},
-				pods: []corev1.Pod{
-					{
-						ObjectMeta: metav1.ObjectMeta{
-							Labels: map[string]string{
-								label.HTTPSchemeLabelName: "http",
-							},
-						},
-					},
-				},
-			},
-			want: "https://my-cluster-es-internal-http.my-ns.svc:9200",
-		},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			if got := ElasticsearchURL(tt.args.es, tt.args.pods); got != tt.want {
-				t.Errorf("ElasticsearchURL() = %v, want %v", got, tt.want)
-			}
-		})
-	}
-}
-
 func TestNewExternalService(t *testing.T) {
 	testCases := []struct {
 		name     string
@@ -412,6 +311,7 @@ func Test_urlProvider_PodURL(t *testing.T) {
 						mkPod("sset-0", true, true),
 						mkPod("sset-1", true, false),
 						mkPod("sset-2", true, true),
+						mkPod("sset-3", false, false),
 					}
 				},
 			},
@@ -424,7 +324,9 @@ func Test_urlProvider_PodURL(t *testing.T) {
 					return []corev1.Pod{
 						//     name   running ready
 						mkPod("sset-0", true, false),
-						mkPod("sset-1", true, false)}
+						mkPod("sset-1", true, false),
+						mkPod("sset-2", false, false),
+					}
 				},
 			},
 			want: []string{"http://sset-0.sset.test:9200", "http://sset-1.sset.test:9200"},

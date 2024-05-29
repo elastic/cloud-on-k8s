@@ -240,27 +240,6 @@ func randomESPodURL(pods []corev1.Pod) string {
 	return ElasticsearchPodURL(randomPod)
 }
 
-// ElasticsearchURL calculates the base url for Elasticsearch, taking into account the currently running pods.
-// If there is an HTTP scheme mismatch between spec and pods we switch to requesting individual pods directly
-// otherwise this delegates to ExternalServiceURL.
-func ElasticsearchURL(es esv1.Elasticsearch, pods []corev1.Pod) string {
-	var schemeChange bool
-	for _, p := range pods {
-		scheme, exists := p.Labels[label.HTTPSchemeLabelName]
-		if exists && scheme != es.Spec.HTTP.Protocol() {
-			// scheme in existing pods does not match scheme in spec, user toggled HTTP(S)
-			schemeChange = true
-		}
-	}
-	if schemeChange {
-		// switch to sending requests directly to a random pod instead of going through the service
-		if podURL := randomESPodURL(pods); podURL != "" {
-			return podURL
-		}
-	}
-	return InternalServiceURL(es)
-}
-
 // ElasticsearchPodURL calculates the URL for the given Pod based on the Pods metadata.
 func ElasticsearchPodURL(pod corev1.Pod) string {
 	scheme, hasSchemeLabel := pod.Labels[label.HTTPSchemeLabelName]
