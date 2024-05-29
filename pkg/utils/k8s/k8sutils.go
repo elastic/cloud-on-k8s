@@ -91,7 +91,7 @@ func TerminatingPods(pods []corev1.Pod) []corev1.Pod {
 }
 
 func RunningPods(pods []corev1.Pod) []corev1.Pod {
-	var running []corev1.Pod //nolint:prealloc
+	var running []corev1.Pod
 	for _, p := range pods {
 		if p.DeletionTimestamp.IsZero() && p.Status.Phase == corev1.PodRunning {
 			running = append(running, p)

@@ -9,13 +9,6 @@ import (
 	"errors"
 	"testing"
 
-	commonv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/common/v1"
-	esv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/elasticsearch/v1"
-	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/label"
-	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/network"
-	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/compare"
-	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/k8s"
-	ulog "github.com/elastic/cloud-on-k8s/v2/pkg/utils/log"
 	"github.com/go-logr/logr"
 	"github.com/go-test/deep"
 	"github.com/stretchr/testify/assert"
@@ -23,6 +16,14 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/utils/ptr"
+
+	commonv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/common/v1"
+	esv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/elasticsearch/v1"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/label"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/network"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/compare"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/k8s"
+	ulog "github.com/elastic/cloud-on-k8s/v2/pkg/utils/log"
 )
 
 func TestExternalServiceURL(t *testing.T) {
@@ -495,7 +496,7 @@ func (l *errorLogSink) Info(level int, msg string, keysAndValues ...any) {
 
 // Init implements logr.LogSink.
 func (l *errorLogSink) Init(info logr.RuntimeInfo) {
-	//noop
+	// noop
 }
 
 // WithName implements logr.LogSink.
