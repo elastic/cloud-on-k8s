@@ -127,3 +127,5 @@ elastic_licensing_enterprise_resource_units_total{license_level="basic"} 6
 # TYPE elastic_licensing_memory_gigabytes_total gauge
 elastic_licensing_memory_gigabytes_total{license_level="basic"} 357.01915648
 ----
+
+NOTE: Logstash resources managed by ECK will be counted towards ERU usage for informational purposes. Billable consumption depends on license terms on a per customer basis (See link:https://www.elastic.co/agreements/global/self-managed[Self Managed Subscription Agreement])
