@@ -20,6 +20,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/label"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/network"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/k8s"
+	ulog "github.com/elastic/cloud-on-k8s/v2/pkg/utils/log"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/stringsutil"
 )
 
@@ -183,18 +184,26 @@ func getServiceByName(c k8s.Client, es esv1.Elasticsearch, serviceName string) (
 }
 
 type urlProvider struct {
-	readyPods   []corev1.Pod
-	runningPods []corev1.Pod
-	svcURL      string
+	pods   func() []corev1.Pod
+	svcURL string
 }
 
 // PodURL implements client.URLProvider.
 func (u *urlProvider) PodURL() string {
+	var ready, running []corev1.Pod
+	for _, p := range u.pods() {
+		if k8s.IsPodReady(p) {
+			ready = append(ready, p)
+		}
+		if k8s.IsPodRunning(p) {
+			running = append(running, p)
+		}
+	}
 	var url string
-	if len(u.readyPods) > 0 {
-		url = randomESPodURL(u.readyPods)
-	} else if len(u.runningPods) > 0 {
-		url = randomESPodURL(u.runningPods)
+	if len(ready) > 0 {
+		url = randomESPodURL(ready)
+	} else if len(running) > 0 {
+		url = randomESPodURL(running)
 	}
 	if len(url) == 0 {
 		url = u.ServiceURL()
@@ -207,17 +216,22 @@ func (u *urlProvider) ServiceURL() string {
 	return u.svcURL
 }
 
-func ElasticsearchURLProvider(es esv1.Elasticsearch, pods []corev1.Pod) client.URLProvider {
-	var readyPods []corev1.Pod
-	for _, p := range pods {
-		if k8s.IsPodReady(p) {
-			readyPods = append(readyPods, p)
-		}
-	}
+// HasEndpoints implements client.URLProvider.
+func (u *urlProvider) HasEndpoints() bool {
+	return len(k8s.RunningPods(u.pods())) > 0
+}
+
+func NewElasticsearchURLProvider(ctx context.Context, es esv1.Elasticsearch, client k8s.Client) client.URLProvider {
 	return &urlProvider{
-		readyPods:   readyPods,
-		runningPods: pods,
-		svcURL:      InternalServiceURL(es),
+		pods: func() []corev1.Pod {
+			log := ulog.FromContext(ctx)
+			pods, err := k8s.PodsMatchingLabels(client, es.Namespace, label.NewLabelSelectorForElasticsearch(es))
+			if err != nil {
+				log.Error(err, "while fetching pods from cache in URL provider")
+			}
+			return pods
+		},
+		svcURL: InternalServiceURL(es),
 	}
 }
 

@@ -163,6 +163,10 @@ var loggerCtxKey = ctxKey{}
 // Returns a context containing the newly created logger.
 func InitInContext(ctx context.Context, loggerName string, keysAndValues ...interface{}) context.Context {
 	logger := NewFromContext(ctx).WithName(loggerName).WithValues(keysAndValues...)
+	return AddToContext(ctx, logger)
+}
+
+func AddToContext(ctx context.Context, logger logr.Logger) context.Context {
 	return context.WithValue(ctx, loggerCtxKey, logger)
 }
 

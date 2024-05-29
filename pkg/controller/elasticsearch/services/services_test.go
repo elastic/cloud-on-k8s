@@ -5,19 +5,24 @@
 package services
 
 import (
+	"context"
+	"errors"
 	"testing"
-
-	"github.com/go-test/deep"
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
-	corev1 "k8s.io/api/core/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	commonv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/common/v1"
 	esv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/elasticsearch/v1"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/label"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/network"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/compare"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/k8s"
+	ulog "github.com/elastic/cloud-on-k8s/v2/pkg/utils/log"
+	"github.com/go-logr/logr"
+	"github.com/go-test/deep"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/utils/ptr"
 )
 
 func TestExternalServiceURL(t *testing.T) {
@@ -373,6 +378,182 @@ func TestNewTransportService(t *testing.T) {
 			want := tt.want()
 			got := NewTransportService(es)
 			require.Nil(t, deep.Equal(*got, want))
+		})
+	}
+}
+
+func Test_urlProvider_PodURL(t *testing.T) {
+	type fields struct {
+		pods   func() []corev1.Pod
+		svcURL string
+	}
+	tests := []struct {
+		name   string
+		fields fields
+		want   []string
+	}{
+		{
+			name: "no pods or error fetching pods: fall back to svc url",
+			fields: fields{
+				pods: func() []corev1.Pod {
+					return nil
+				},
+				svcURL: "svc.url",
+			},
+			want: []string{"svc.url"},
+		},
+		{
+			name: "ready and running pods: prefer ready",
+			fields: fields{
+				pods: func() []corev1.Pod {
+					return []corev1.Pod{
+						//     name   running ready
+						mkPod("sset-0", true, true),
+						mkPod("sset-1", true, false),
+						mkPod("sset-2", true, true),
+					}
+				},
+			},
+			want: []string{"http://sset-0.sset.test:9200", "http://sset-2.sset.test:9200"},
+		},
+		{
+			name: "only running pods: allow running ",
+			fields: fields{
+				pods: func() []corev1.Pod {
+					return []corev1.Pod{
+						//     name   running ready
+						mkPod("sset-0", true, false),
+						mkPod("sset-1", true, false)}
+				},
+			},
+			want: []string{"http://sset-0.sset.test:9200", "http://sset-1.sset.test:9200"},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			u := &urlProvider{
+				pods:   tt.fields.pods,
+				svcURL: tt.fields.svcURL,
+			}
+			require.Contains(t, tt.want, u.PodURL(), "must contain one of expected url")
+		})
+	}
+}
+
+func mkPod(name string, running bool, ready bool) corev1.Pod {
+	phase := corev1.PodPending
+	if running {
+		phase = corev1.PodRunning
+	}
+	var conditions []corev1.PodCondition
+	if ready {
+		conditions = append(conditions,
+			corev1.PodCondition{
+				Type:   corev1.PodReady,
+				Status: corev1.ConditionTrue,
+			}, corev1.PodCondition{
+				Type:   corev1.ContainersReady,
+				Status: corev1.ConditionTrue,
+			},
+		)
+	}
+	return corev1.Pod{
+		ObjectMeta: metav1.ObjectMeta{
+			Namespace: "test",
+			Name:      name,
+			Labels: map[string]string{
+				label.HTTPSchemeLabelName:      "http",
+				label.StatefulSetNameLabelName: "sset",
+				label.ClusterNameLabelName:     "elasticsearch-test",
+			},
+		},
+		Status: corev1.PodStatus{
+			Phase:      phase,
+			Conditions: conditions,
+		},
+	}
+}
+
+type errorLogSink struct {
+	errorLogs []string
+}
+
+// Enabled implements logr.LogSink.
+func (l *errorLogSink) Enabled(level int) bool {
+	return true
+}
+
+// Error implements logr.LogSink.
+func (l *errorLogSink) Error(err error, msg string, keysAndValues ...any) {
+	l.errorLogs = append(l.errorLogs, msg)
+}
+
+// Info implements logr.LogSink.
+func (l *errorLogSink) Info(level int, msg string, keysAndValues ...any) {
+	// ignore
+}
+
+// Init implements logr.LogSink.
+func (l *errorLogSink) Init(info logr.RuntimeInfo) {
+	//noop
+}
+
+// WithName implements logr.LogSink.
+func (l *errorLogSink) WithName(name string) logr.LogSink {
+	return l
+}
+
+// WithValues implements logr.LogSink.
+func (l *errorLogSink) WithValues(keysAndValues ...any) logr.LogSink {
+	return l
+}
+
+var _ logr.LogSink = &errorLogSink{}
+
+func TestNewElasticsearchURLProvider(t *testing.T) {
+	type args struct {
+		es     esv1.Elasticsearch
+		client k8s.Client
+	}
+	tests := []struct {
+		name         string
+		args         args
+		wantPodNames []string
+		wantErr      string
+	}{
+		{
+			name: "cache failures are swallowed but logged",
+			args: args{
+				es:     mkElasticsearch(commonv1.HTTPConfig{}),
+				client: k8s.NewFailingClient(errors.New("boom")),
+			},
+			wantErr: "while fetching pods from cache in URL provider",
+		},
+		{
+			name: "list pods from cache",
+			args: args{
+				es:     mkElasticsearch(commonv1.HTTPConfig{}),
+				client: k8s.NewFakeClient(ptr.To(mkPod("sset-0", true, true))),
+			},
+			wantPodNames: []string{"sset-0"},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			sink := errorLogSink{}
+			ctx := ulog.AddToContext(context.Background(), logr.New(&sink))
+			provider := NewElasticsearchURLProvider(ctx, tt.args.es, tt.args.client)
+
+			providerImpl, ok := provider.(*urlProvider)
+			require.True(t, ok, "must be the urlProvider impl")
+
+			got := k8s.PodNames(providerImpl.pods())
+			require.ElementsMatch(t, got, tt.wantPodNames)
+			if len(tt.wantErr) > 0 {
+				require.Contains(t, sink.errorLogs, tt.wantErr)
+			} else {
+				require.Empty(t, sink.errorLogs, "did not expect any error logs")
+			}
 		})
 	}
 }

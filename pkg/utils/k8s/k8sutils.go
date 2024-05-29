@@ -74,6 +74,10 @@ func IsPodReady(pod corev1.Pod) bool {
 	return conditionsTrue == 2
 }
 
+func IsPodRunning(pod corev1.Pod) bool {
+	return pod.DeletionTimestamp.IsZero() && pod.Status.Phase == corev1.PodRunning
+}
+
 // TerminatingPods filters pods for Pods that are in the process of (graceful) termination.
 func TerminatingPods(pods []corev1.Pod) []corev1.Pod {
 	var terminating []corev1.Pod //nolint:prealloc

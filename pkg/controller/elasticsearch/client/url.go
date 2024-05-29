@@ -5,6 +5,8 @@ type URLProvider interface {
 	PodURL() string
 	// ServiceURL is the url for the Kubernetes service related to the Pod URLs provided.
 	ServiceURL() string
+
+	HasEndpoints() bool
 }
 
 func NewStaticURLProvider(url string) URLProvider {
@@ -25,6 +27,10 @@ func (s *staticURLProvider) PodURL() string {
 // ServiceURL implements URLProvider.
 func (s *staticURLProvider) ServiceURL() string {
 	return s.url
+}
+
+func (s *staticURLProvider) HasEndpoints() bool {
+	return true
 }
 
 var _ URLProvider = &staticURLProvider{}

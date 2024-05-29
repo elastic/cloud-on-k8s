@@ -16,7 +16,6 @@ import (
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/tracing"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/version"
 	esclient "github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/client"
-	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/label"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/services"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/user"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/dev"
@@ -69,15 +68,10 @@ func NewClient(
 		return nil, err
 	}
 
-	// Get all running pods from the cache
-	allPods, err := k8s.PodsMatchingLabels(c, es.Namespace, label.NewLabelSelectorForElasticsearch(es))
-	if err != nil {
-		return nil, err
-	}
 	return esclient.NewElasticsearchClient(
 		dialer,
 		k8s.ExtractNamespacedName(&es),
-		services.ElasticsearchURLProvider(es, k8s.RunningPods(allPods)),
+		services.NewElasticsearchURLProvider(ctx, es, c),
 		esclient.BasicAuth{
 			Name:     user.ControllerUserName,
 			Password: string(password),
