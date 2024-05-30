@@ -32,5 +32,5 @@ Logstash managed by ECK is now considered production-ready.
 [id="{p}-2130-eck-logstash-licensing"]
 === Logstash licensing on ECK
 
-ECK's resource https://www.elastic.co/guide/en/cloud-on-k8s/current/k8s-licensing.html#k8s-get-usage-data[management accounting] has been modified to include Logstash resources managed by ECK, this is provided for informational purposes. Billable consumption depends on license terms on a per customer basis (See https://www.elastic.co/agreements/global/self-managed[Self Managed Subscription Agreement]).
+ECK's resource https://www.elastic.co/guide/en/cloud-on-k8s/current/k8s-licensing.html#k8s-get-usage-data[management accounting] has been modified to include Logstash resources managed by ECK, which is provided for informational purposes. Billable consumption depends on license terms on a per customer basis (See https://www.elastic.co/agreements/global/self-managed[Self Managed Subscription Agreement]).
 
