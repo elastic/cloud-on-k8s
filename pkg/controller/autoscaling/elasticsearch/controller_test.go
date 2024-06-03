@@ -33,7 +33,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/operator"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/watches"
 	esclient "github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/client"
-	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/services"
+	eslabel "github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/label"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/k8s"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/net"
 )
@@ -48,23 +48,20 @@ var (
 		return events
 	}
 
-	fakeService = &corev1.Service{
+	// fakePod is one running pod for online tests == ES considered reachable
+	fakePod = &corev1.Pod{
 		ObjectMeta: metav1.ObjectMeta{
 			Namespace: "testns",
-			Name:      services.InternalServiceName("testes"),
+			Name:      "testes-es-master",
+			Labels: map[string]string{
+				eslabel.HTTPSchemeLabelName:      "http",
+				eslabel.StatefulSetNameLabelName: "sset",
+				eslabel.ClusterNameLabelName:     "testes",
+			},
 		},
-	}
-	fakeEndpoints = &corev1.Endpoints{
-		ObjectMeta: metav1.ObjectMeta{
-			Namespace: "testns",
-			Name:      services.InternalServiceName("testes"),
+		Status: corev1.PodStatus{
+			Phase: corev1.PodRunning,
 		},
-		Subsets: []corev1.EndpointSubset{{
-			Addresses: []corev1.EndpointAddress{{
-				IP: "10.0.0.2",
-			}},
-			Ports: []corev1.EndpointPort{},
-		}},
 	}
 )
 
@@ -267,7 +264,7 @@ func TestReconcile(t *testing.T) {
 					t.Fatalf("yaml.Unmarshal error = %v, wantErr %v", err, tt.wantErr)
 				}
 				if tt.args.isOnline {
-					k8sClient = k8s.NewFakeClient(es.DeepCopy(), esa.DeepCopy(), fakeService, fakeEndpoints)
+					k8sClient = k8s.NewFakeClient(es.DeepCopy(), esa.DeepCopy(), fakePod)
 				} else {
 					k8sClient = k8s.NewFakeClient(es.DeepCopy(), esa.DeepCopy())
 				}
