@@ -403,7 +403,7 @@ func TestNewElasticsearchURLProvider(t *testing.T) {
 		wantErr      bool
 	}{
 		{
-			name: "cache failures are swallowed but logged",
+			name: "cache failures are returned to the caller",
 			args: args{
 				es:     mkElasticsearch(commonv1.HTTPConfig{}),
 				client: k8s.NewFailingClient(errors.New("boom")),

@@ -103,8 +103,7 @@ func TestForceUpgradePendingPodsInOneStatefulSet(t *testing.T) {
 					if err != nil {
 						return err
 					}
-					running := k8s.RunningPods(pods)
-					if len(running) == 0 {
+					if len(k8s.RunningPods(pods)) == 0 {
 						return errors.New("Elasticsearch does not have any running Pods")
 					}
 					return nil

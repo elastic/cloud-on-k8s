@@ -227,6 +227,8 @@ func (u *urlProvider) HasEndpoints() bool {
 	return err == nil && len(k8s.RunningPods(pods)) > 0
 }
 
+// NewElasticsearchURLProvider returns a client.URLProvider that dynamically tries to find Pod URLs among the
+// currently running Pods. Preferring ready Pods over running ones.
 func NewElasticsearchURLProvider(es esv1.Elasticsearch, client k8s.Client) client.URLProvider {
 	return &urlProvider{
 		pods: func() ([]corev1.Pod, error) {

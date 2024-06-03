@@ -74,6 +74,7 @@ func IsPodReady(pod corev1.Pod) bool {
 	return conditionsTrue == 2
 }
 
+// IsPodRunning returns true if the Pod is in phase running and not terminating.
 func IsPodRunning(pod corev1.Pod) bool {
 	return pod.DeletionTimestamp.IsZero() && pod.Status.Phase == corev1.PodRunning
 }
@@ -90,6 +91,7 @@ func TerminatingPods(pods []corev1.Pod) []corev1.Pod {
 	return terminating
 }
 
+// RunningPods filters pods for Pods are in running (and not terminating).
 func RunningPods(pods []corev1.Pod) []corev1.Pod {
 	var running []corev1.Pod
 	for _, p := range pods {
