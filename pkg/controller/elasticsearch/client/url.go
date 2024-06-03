@@ -5,14 +5,16 @@
 package client
 
 type URLProvider interface {
-	// PodURL is a url for a random pod (falls back to ServiceURL).
-	PodURL() string
-	// ServiceURL is the url for the Kubernetes service related to the Pod URLs provided.
-	ServiceURL() string
-
+	// URL return a URL to route traffic to (can fall back to a k8s service URL).
+	URL() (string, error)
+	// Equals returns true if the other URLProvider is equal to the one in the receiver.
+	Equals(other URLProvider) bool
+	// HasEndpoints return true if the provider has currently any endpoints/URLs to return.
+	// Makes sense for implementations that do not return a static URL.
 	HasEndpoints() bool
 }
 
+// NewStaticURLProvider is a static implementation of the URL provider interface for testing purposes.
 func NewStaticURLProvider(url string) URLProvider {
 	return &staticURLProvider{
 		url: url,
@@ -23,14 +25,18 @@ type staticURLProvider struct {
 	url string
 }
 
-// PodURL implements URLProvider.
-func (s *staticURLProvider) PodURL() string {
-	return s.url
+// URL implements URLProvider.
+func (s *staticURLProvider) URL() (string, error) {
+	return s.url, nil
 }
 
-// ServiceURL implements URLProvider.
-func (s *staticURLProvider) ServiceURL() string {
-	return s.url
+// Equals implements URLProvider.
+func (s *staticURLProvider) Equals(other URLProvider) bool {
+	otherStatic, ok := other.(*staticURLProvider)
+	if !ok {
+		return false
+	}
+	return s.url == otherStatic.url
 }
 
 func (s *staticURLProvider) HasEndpoints() bool {

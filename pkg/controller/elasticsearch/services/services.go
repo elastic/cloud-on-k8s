@@ -20,7 +20,6 @@ import (
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/label"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/network"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/k8s"
-	ulog "github.com/elastic/cloud-on-k8s/v2/pkg/utils/log"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/stringsutil"
 )
 
@@ -184,14 +183,18 @@ func getServiceByName(c k8s.Client, es esv1.Elasticsearch, serviceName string) (
 }
 
 type urlProvider struct {
-	pods   func() []corev1.Pod
+	pods   func() ([]corev1.Pod, error)
 	svcURL string
 }
 
-// PodURL implements client.URLProvider.
-func (u *urlProvider) PodURL() string {
+// URL implements client.URLProvider.
+func (u *urlProvider) URL() (string, error) {
 	var ready, running []corev1.Pod
-	for _, p := range u.pods() {
+	pods, err := u.pods()
+	if err != nil {
+		return "", err
+	}
+	for _, p := range pods {
 		if k8s.IsPodReady(p) {
 			ready = append(ready, p)
 		}
@@ -201,33 +204,33 @@ func (u *urlProvider) PodURL() string {
 	}
 	switch {
 	case len(ready) > 0:
-		return randomESPodURL(ready)
+		return randomESPodURL(ready), nil
 	case len(running) > 0:
-		return randomESPodURL(running)
+		return randomESPodURL(running), nil
 	default:
-		return u.ServiceURL()
+		return u.svcURL, nil
 	}
 }
 
-// ServiceURL implements client.URLProvider.
-func (u *urlProvider) ServiceURL() string {
-	return u.svcURL
+// Equals implements client.URLProvider.
+func (u *urlProvider) Equals(other client.URLProvider) bool {
+	otherImpl, ok := other.(*urlProvider)
+	if !ok {
+		return false
+	}
+	return u.svcURL == otherImpl.svcURL
 }
 
 // HasEndpoints implements client.URLProvider.
 func (u *urlProvider) HasEndpoints() bool {
-	return len(k8s.RunningPods(u.pods())) > 0
+	pods, err := u.pods()
+	return err == nil && len(k8s.RunningPods(pods)) > 0
 }
 
-func NewElasticsearchURLProvider(ctx context.Context, es esv1.Elasticsearch, client k8s.Client) client.URLProvider {
+func NewElasticsearchURLProvider(es esv1.Elasticsearch, client k8s.Client) client.URLProvider {
 	return &urlProvider{
-		pods: func() []corev1.Pod {
-			log := ulog.FromContext(ctx)
-			pods, err := k8s.PodsMatchingLabels(client, es.Namespace, label.NewLabelSelectorForElasticsearch(es))
-			if err != nil {
-				log.Error(err, "while fetching pods from cache in URL provider")
-			}
-			return pods
+		pods: func() ([]corev1.Pod, error) {
+			return k8s.PodsMatchingLabels(client, es.Namespace, label.NewLabelSelectorForElasticsearch(es))
 		},
 		svcURL: InternalServiceURL(es),
 	}

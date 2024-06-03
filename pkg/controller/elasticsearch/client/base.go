@@ -58,7 +58,7 @@ func (c *baseClient) equal(c2 *baseClient) bool {
 		}
 	}
 	// compare endpoint svc url and user creds. Service URL acts purely as an identifier here.
-	return c.URLProvider.ServiceURL() == c2.URLProvider.ServiceURL() &&
+	return c.URLProvider.Equals(c2.URLProvider) &&
 		c.User == c2.User
 }
 
@@ -128,7 +128,11 @@ func (c *baseClient) request(
 		body = bytes.NewBuffer(outData)
 	}
 
-	request, err := http.NewRequest(method, stringsutil.Concat(c.URLProvider.PodURL(), pathWithQuery), body) //nolint:noctx
+	url, err := c.URLProvider.URL()
+	if err != nil {
+		return err
+	}
+	request, err := http.NewRequest(method, stringsutil.Concat(url, pathWithQuery), body) //nolint:noctx
 	if err != nil {
 		return err
 	}
@@ -188,7 +192,7 @@ func versioned(b *baseClient, v version.Version) Client {
 	}
 }
 
-func (c *baseClient) HasProperties(version version.Version, user BasicAuth, url string, caCerts []*x509.Certificate) bool {
+func (c *baseClient) HasProperties(version version.Version, user BasicAuth, url URLProvider, caCerts []*x509.Certificate) bool {
 	if len(c.caCerts) != len(caCerts) {
 		return false
 	}
@@ -197,5 +201,5 @@ func (c *baseClient) HasProperties(version version.Version, user BasicAuth, url 
 			return false
 		}
 	}
-	return c.version.Equals(version) && c.User == user && c.URLProvider.ServiceURL() == url
+	return c.version.Equals(version) && c.User == user && c.URLProvider.Equals(url)
 }

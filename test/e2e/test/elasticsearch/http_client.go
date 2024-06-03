@@ -77,7 +77,7 @@ func NewElasticsearchClientWithUser(es esv1.Elasticsearch, k *test.K8sClient, us
 	esClient := client.NewElasticsearchClient(
 		dialer,
 		k8s.ExtractNamespacedName(&es),
-		services.NewElasticsearchURLProvider(context.Background(), es, k.Client),
+		services.NewElasticsearchURLProvider(es, k.Client),
 		user,
 		v,
 		caCert,

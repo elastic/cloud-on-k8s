@@ -5,25 +5,22 @@
 package services
 
 import (
-	"context"
 	"errors"
 	"testing"
 
-	"github.com/go-logr/logr"
+	commonv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/common/v1"
+	esv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/elasticsearch/v1"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/client"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/label"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/network"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/compare"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/k8s"
 	"github.com/go-test/deep"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/utils/ptr"
-
-	commonv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/common/v1"
-	esv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/elasticsearch/v1"
-	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/label"
-	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/network"
-	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/compare"
-	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/k8s"
-	ulog "github.com/elastic/cloud-on-k8s/v2/pkg/utils/log"
 )
 
 func TestExternalServiceURL(t *testing.T) {
@@ -284,19 +281,29 @@ func TestNewTransportService(t *testing.T) {
 
 func Test_urlProvider_PodURL(t *testing.T) {
 	type fields struct {
-		pods   func() []corev1.Pod
+		pods   func() ([]corev1.Pod, error)
 		svcURL string
 	}
 	tests := []struct {
-		name   string
-		fields fields
-		want   []string
+		name    string
+		fields  fields
+		want    []string
+		wantErr bool
 	}{
+		{
+			name: "fetch failure",
+			fields: fields{
+				pods: func() ([]corev1.Pod, error) {
+					return nil, errors.New("failed to fetch pods")
+				},
+			},
+			wantErr: true,
+		},
 		{
 			name: "no pods or error fetching pods: fall back to svc url",
 			fields: fields{
-				pods: func() []corev1.Pod {
-					return nil
+				pods: func() ([]corev1.Pod, error) {
+					return nil, nil
 				},
 				svcURL: "svc.url",
 			},
@@ -305,14 +312,14 @@ func Test_urlProvider_PodURL(t *testing.T) {
 		{
 			name: "ready and running pods: prefer ready",
 			fields: fields{
-				pods: func() []corev1.Pod {
+				pods: func() ([]corev1.Pod, error) {
 					return []corev1.Pod{
 						//     name   running ready
 						mkPod("sset-0", true, true),
 						mkPod("sset-1", true, false),
 						mkPod("sset-2", true, true),
 						mkPod("sset-3", false, false),
-					}
+					}, nil
 				},
 			},
 			want: []string{"http://sset-0.sset.test:9200", "http://sset-2.sset.test:9200"},
@@ -320,13 +327,13 @@ func Test_urlProvider_PodURL(t *testing.T) {
 		{
 			name: "only running pods: allow running ",
 			fields: fields{
-				pods: func() []corev1.Pod {
+				pods: func() ([]corev1.Pod, error) {
 					return []corev1.Pod{
 						//     name   running ready
 						mkPod("sset-0", true, false),
 						mkPod("sset-1", true, false),
 						mkPod("sset-2", false, false),
-					}
+					}, nil
 				},
 			},
 			want: []string{"http://sset-0.sset.test:9200", "http://sset-1.sset.test:9200"},
@@ -338,7 +345,13 @@ func Test_urlProvider_PodURL(t *testing.T) {
 				pods:   tt.fields.pods,
 				svcURL: tt.fields.svcURL,
 			}
-			require.Contains(t, tt.want, u.PodURL(), "must contain one of expected url")
+			url, err := u.URL()
+			if (err != nil) != tt.wantErr {
+				t.Errorf("urlProvider.URL() error = %v, wantErr %v", err, tt.wantErr)
+			}
+			if err == nil {
+				require.Contains(t, tt.want, url, "must contain one of expected url")
+			}
 		})
 	}
 }
@@ -377,42 +390,6 @@ func mkPod(name string, running bool, ready bool) corev1.Pod {
 	}
 }
 
-type errorLogSink struct {
-	errorLogs []string
-}
-
-// Enabled implements logr.LogSink.
-func (l *errorLogSink) Enabled(level int) bool {
-	return true
-}
-
-// Error implements logr.LogSink.
-func (l *errorLogSink) Error(err error, msg string, keysAndValues ...any) {
-	l.errorLogs = append(l.errorLogs, msg)
-}
-
-// Info implements logr.LogSink.
-func (l *errorLogSink) Info(level int, msg string, keysAndValues ...any) {
-	// ignore
-}
-
-// Init implements logr.LogSink.
-func (l *errorLogSink) Init(info logr.RuntimeInfo) {
-	// noop
-}
-
-// WithName implements logr.LogSink.
-func (l *errorLogSink) WithName(name string) logr.LogSink {
-	return l
-}
-
-// WithValues implements logr.LogSink.
-func (l *errorLogSink) WithValues(keysAndValues ...any) logr.LogSink {
-	return l
-}
-
-var _ logr.LogSink = &errorLogSink{}
-
 func TestNewElasticsearchURLProvider(t *testing.T) {
 	type args struct {
 		es     esv1.Elasticsearch
@@ -422,7 +399,7 @@ func TestNewElasticsearchURLProvider(t *testing.T) {
 		name         string
 		args         args
 		wantPodNames []string
-		wantErr      string
+		wantErr      bool
 	}{
 		{
 			name: "cache failures are swallowed but logged",
@@ -430,7 +407,7 @@ func TestNewElasticsearchURLProvider(t *testing.T) {
 				es:     mkElasticsearch(commonv1.HTTPConfig{}),
 				client: k8s.NewFailingClient(errors.New("boom")),
 			},
-			wantErr: "while fetching pods from cache in URL provider",
+			wantErr: true,
 		},
 		{
 			name: "list pods from cache",
@@ -457,19 +434,79 @@ func TestNewElasticsearchURLProvider(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			sink := errorLogSink{}
-			ctx := ulog.AddToContext(context.Background(), logr.New(&sink))
-			provider := NewElasticsearchURLProvider(ctx, tt.args.es, tt.args.client)
+			provider := NewElasticsearchURLProvider(tt.args.es, tt.args.client)
 
 			providerImpl, ok := provider.(*urlProvider)
 			require.True(t, ok, "must be the urlProvider impl")
 
-			got := k8s.PodNames(providerImpl.pods())
-			require.ElementsMatch(t, got, tt.wantPodNames)
-			if len(tt.wantErr) > 0 {
-				require.Contains(t, sink.errorLogs, tt.wantErr)
-			} else {
-				require.Empty(t, sink.errorLogs, "did not expect any error logs")
+			got, err := providerImpl.pods()
+			if (err != nil) != tt.wantErr {
+				t.Errorf("NewElasticsearchURLProvider.URL() error = %v, wantErr %v", err, tt.wantErr)
+				return
+			}
+			require.ElementsMatch(t, k8s.PodNames(got), tt.wantPodNames)
+		})
+	}
+}
+
+func Test_urlProvider_Equals(t *testing.T) {
+	type fields struct {
+		svcURL string
+	}
+	type args struct {
+		other client.URLProvider
+	}
+	tests := []struct {
+		name   string
+		fields fields
+		args   args
+		want   bool
+	}{
+		{
+			name: "svc url is used as the identity",
+			fields: fields{
+				svcURL: "http://elastic.co",
+			},
+			args: args{
+				other: &urlProvider{
+					svcURL: "http://elastic.co",
+				},
+			},
+			want: true,
+		},
+		{
+			name: "different impl with same URL is not equal",
+			fields: fields{
+				svcURL: "http://k8s.io",
+			},
+			args: args{
+				other: client.NewStaticURLProvider("http://k8s.io"),
+			},
+			want: false,
+		},
+		{
+			name: "different URLs are not equal",
+			fields: fields{
+				svcURL: "http://a.com",
+			},
+			args: args{
+				other: &urlProvider{
+					svcURL: "http://b.com",
+				},
+			},
+			want: false,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			u := &urlProvider{
+				pods: func() ([]corev1.Pod, error) {
+					return nil, nil
+				},
+				svcURL: tt.fields.svcURL,
+			}
+			if got := u.Equals(tt.args.other); got != tt.want {
+				t.Errorf("urlProvider.Equals() = %v, want %v", got, tt.want)
 			}
 		})
 	}

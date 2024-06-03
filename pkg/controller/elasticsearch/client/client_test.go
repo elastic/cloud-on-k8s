@@ -835,8 +835,7 @@ func TestGetClusterHealthWaitForAllEvents(t *testing.T) {
 func Test_HasProperties(t *testing.T) {
 	defaultVersion := version.MustParse("8.6.1")
 	defaultUser := BasicAuth{Name: "foo", Password: "bar"}
-	defaultURL := "https://foo.bar"
-	defaultURLProvider := NewStaticURLProvider(defaultURL)
+	defaultURLProvider := NewStaticURLProvider("https://foo.bar")
 	defaultCaCerts := []*x509.Certificate{{Raw: []byte("foo")}}
 	defaultEsClient := NewElasticsearchClient(
 		nil,
@@ -853,7 +852,7 @@ func Test_HasProperties(t *testing.T) {
 		esClient Client
 		version  version.Version
 		user     BasicAuth
-		url      string
+		url      URLProvider
 		caCerts  []*x509.Certificate
 		want     bool
 	}{
@@ -862,7 +861,7 @@ func Test_HasProperties(t *testing.T) {
 			esClient: defaultEsClient,
 			version:  version.MustParse("8.6.0"),
 			user:     defaultUser,
-			url:      defaultURL,
+			url:      defaultURLProvider,
 			caCerts:  defaultCaCerts,
 			want:     false,
 		},
@@ -871,7 +870,7 @@ func Test_HasProperties(t *testing.T) {
 			esClient: defaultEsClient,
 			version:  defaultVersion,
 			user:     BasicAuth{Name: "foo", Password: "changed"},
-			url:      defaultURL,
+			url:      defaultURLProvider,
 			caCerts:  defaultCaCerts,
 			want:     false,
 		},
@@ -880,7 +879,7 @@ func Test_HasProperties(t *testing.T) {
 			esClient: defaultEsClient,
 			version:  defaultVersion,
 			user:     defaultUser,
-			url:      "https://foo.com",
+			url:      NewStaticURLProvider("https://foo.com"),
 			caCerts:  defaultCaCerts,
 			want:     false,
 		},
@@ -889,7 +888,7 @@ func Test_HasProperties(t *testing.T) {
 			esClient: defaultEsClient,
 			version:  defaultVersion,
 			user:     defaultUser,
-			url:      defaultURL,
+			url:      defaultURLProvider,
 			caCerts:  []*x509.Certificate{{Raw: []byte("bar")}},
 			want:     false,
 		},
@@ -898,7 +897,7 @@ func Test_HasProperties(t *testing.T) {
 			esClient: defaultEsClient,
 			version:  defaultVersion,
 			user:     defaultUser,
-			url:      defaultURL,
+			url:      defaultURLProvider,
 			caCerts:  defaultCaCerts,
 			want:     true,
 		},

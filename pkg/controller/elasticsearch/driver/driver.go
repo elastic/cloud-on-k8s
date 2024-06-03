@@ -184,7 +184,7 @@ func (d *defaultDriver) Reconcile(ctx context.Context) *reconciler.Results {
 		minVersion = &d.Version
 	}
 
-	urlProvider := services.NewElasticsearchURLProvider(ctx, d.ES, d.Client)
+	urlProvider := services.NewElasticsearchURLProvider(d.ES, d.Client)
 	hasEndpoints := urlProvider.HasEndpoints()
 
 	observedState := d.Observers.ObservedStateResolver(
@@ -401,7 +401,7 @@ func (d *defaultDriver) elasticsearchClientProvider(
 	caCerts []*x509.Certificate,
 ) func(existingEsClient esclient.Client) esclient.Client {
 	return func(existingEsClient esclient.Client) esclient.Client {
-		if existingEsClient != nil && existingEsClient.HasProperties(v, user, urlProvider.ServiceURL(), caCerts) {
+		if existingEsClient != nil && existingEsClient.HasProperties(v, user, urlProvider, caCerts) {
 			return existingEsClient
 		}
 		return d.newElasticsearchClient(ctx, urlProvider, user, v, caCerts)
