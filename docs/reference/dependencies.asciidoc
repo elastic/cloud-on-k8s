@@ -51,6 +51,7 @@ This page lists the third-party dependencies used to build {n}.
 | link:https://go.uber.org/automaxprocs[$$go.uber.org/automaxprocs$$] | v1.5.3 | MIT
 | link:https://go.uber.org/zap[$$go.uber.org/zap$$] | v1.27.0 | MIT
 | link:https://golang.org/x/crypto[$$golang.org/x/crypto$$] | v0.23.0 | BSD-3-Clause
+| link:https://golang.org/x/exp[$$golang.org/x/exp$$] | v0.0.0-20240506185415-9bf2ced13842 | BSD-3-Clause
 | link:https://gopkg.in/yaml.v3[$$gopkg.in/yaml.v3$$] | v3.0.1 | MIT
 | link:https://github.com/kubernetes/api[$$k8s.io/api$$] | v0.30.1 | Apache-2.0
 | link:https://github.com/kubernetes/apimachinery[$$k8s.io/apimachinery$$] | v0.30.1 | Apache-2.0
@@ -161,7 +162,6 @@ This page lists the third-party dependencies used to build {n}.
 | link:https://go.elastic.co/fastjson[$$go.elastic.co/fastjson$$] | v1.3.0 | MIT
 | link:https://go.uber.org/goleak[$$go.uber.org/goleak$$] | v1.3.0 | MIT
 | link:https://go.uber.org/multierr[$$go.uber.org/multierr$$] | v1.11.0 | MIT
-| link:https://golang.org/x/exp[$$golang.org/x/exp$$] | v0.0.0-20240506185415-9bf2ced13842 | BSD-3-Clause
 | link:https://golang.org/x/mod[$$golang.org/x/mod$$] | v0.17.0 | BSD-3-Clause
 | link:https://golang.org/x/net[$$golang.org/x/net$$] | v0.25.0 | BSD-3-Clause
 | link:https://golang.org/x/oauth2[$$golang.org/x/oauth2$$] | v0.20.0 | BSD-3-Clause
