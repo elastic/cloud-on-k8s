@@ -209,7 +209,7 @@ func (k *KindDriver) cmd(args ...string) *exec.Command {
 		"Args":            args,
 	}
 
-	// on mac, the docker socket is located in $HOME
+	// on macOS, the docker socket is located in $HOME
 	dockerSocket := "/var/run/docker.sock"
 	if runtime.GOOS == "darwin" {
 		dockerSocket = "$HOME/.docker/run/docker.sock"
