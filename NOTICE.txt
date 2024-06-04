@@ -2853,11 +2853,11 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 --------------------------------------------------------------------------------
 Module  : github.com/spf13/viper
-Version : v1.18.2
-Time    : 2023-12-18T18:22:25Z
+Version : v1.19.0
+Time    : 2024-06-01T12:57:38Z
 Licence : MIT
 
-Contents of probable licence file $GOMODCACHE/github.com/spf13/viper@v1.18.2/LICENSE:
+Contents of probable licence file $GOMODCACHE/github.com/spf13/viper@v1.19.0/LICENSE:
 
 The MIT License (MIT)
 
@@ -13181,11 +13181,11 @@ SOFTWARE.
 
 --------------------------------------------------------------------------------
 Module  : github.com/klauspost/compress
-Version : v1.17.0
-Time    : 2023-09-18T10:42:23Z
+Version : v1.17.2
+Time    : 2023-10-22T15:44:49Z
 Licence : Apache-2.0
 
-Contents of probable licence file $GOMODCACHE/github.com/klauspost/compress@v1.17.0/LICENSE:
+Contents of probable licence file $GOMODCACHE/github.com/klauspost/compress@v1.17.2/LICENSE:
 
 Copyright (c) 2012 The Go Authors. All rights reserved.
 Copyright (c) 2019 Klaus Post. All rights reserved.
@@ -14982,11 +14982,11 @@ Contents of probable licence file $GOMODCACHE/github.com/opencontainers/image-sp
 
 --------------------------------------------------------------------------------
 Module  : github.com/pelletier/go-toml/v2
-Version : v2.1.0
-Time    : 2023-08-29T12:46:34Z
+Version : v2.2.2
+Time    : 2024-04-29T10:02:54Z
 Licence : MIT
 
-Contents of probable licence file $GOMODCACHE/github.com/pelletier/go-toml/v2@v2.1.0/LICENSE:
+Contents of probable licence file $GOMODCACHE/github.com/pelletier/go-toml/v2@v2.2.2/LICENSE:
 
 The MIT License (MIT)
 
