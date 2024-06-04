@@ -87,10 +87,10 @@ func newBuilder(name, randSuffix string) Builder {
 		WithLabel(run.TestNameLabel, name).
 		WithPodLabel(run.TestNameLabel, name)
 
-	// bump Kibana memory in 8.1.x as we see abnormal memory usage, probably due to the
+	// bump Kibana memory in 8.0.x/8.1.x as we see abnormal memory usage, probably due to the
 	// move to cgroups v2 (https://github.com/kubernetes/kubernetes/issues/118916)
 	ver := version.MustParse(test.Ctx().ElasticStackVersion)
-	if ver.GTE(version.MinFor(8, 1, 0)) && ver.LT(version.MinFor(8, 2, 0)) {
+	if ver.GTE(version.MinFor(8, 0, 0)) && ver.LT(version.MinFor(8, 2, 0)) {
 		b = b.WithResources(corev1.ResourceRequirements{
 			Requests: map[corev1.ResourceName]resource.Quantity{
 				corev1.ResourceMemory: resource.MustParse("1500Mi"),

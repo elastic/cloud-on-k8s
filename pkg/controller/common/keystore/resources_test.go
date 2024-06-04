@@ -115,7 +115,7 @@ func TestReconcileResources(t *testing.T) {
 		initContainerParameters InitContainerParameters
 		wantNil                 bool
 		wantContainers          *corev1.Container
-		wantVersion             string
+		wantHash                string
 	}{
 		{
 			name:                    "no secure settings specified: no resources",
@@ -123,7 +123,7 @@ func TestReconcileResources(t *testing.T) {
 			kb:                      testKibana,
 			initContainerParameters: fakeFlagInitContainersParameters(false),
 			wantContainers:          nil,
-			wantVersion:             "",
+			wantHash:                "",
 			wantNil:                 true,
 		},
 		{
@@ -159,8 +159,8 @@ touch /bar/data/elastic-internal-init-keystore.ok
 echo "Keystore initialization successful."
 `),
 			// since this will be created, it will be incremented
-			wantVersion: "1",
-			wantNil:     false,
+			wantHash: "896069204",
+			wantNil:  false,
 		},
 		{
 			name:                    "Skip create keystore flag",
@@ -187,15 +187,15 @@ done
 echo "Keystore initialization successful."
 `),
 			// since this will be created, it will be incremented
-			wantVersion: "1",
-			wantNil:     false,
+			wantHash: "896069204",
+			wantNil:  false,
 		},
 		{
 			name:           "secure settings specified but secret not there: no resources",
 			client:         k8s.NewFakeClient(),
 			kb:             testKibanaWithSecureSettings,
 			wantContainers: nil,
-			wantVersion:    "",
+			wantHash:       "",
 			wantNil:        true,
 		},
 		{
@@ -209,8 +209,8 @@ echo "Keystore initialization successful."
 			},
 			wantContainers: wantContainer(`echo "custom script"`),
 			// since this will be created, it will be incremented
-			wantVersion: "1",
-			wantNil:     false,
+			wantHash: "896069204",
+			wantNil:  false,
 		},
 	}
 	for _, tt := range tests {
@@ -231,7 +231,7 @@ echo "Keystore initialization successful."
 				assert.Equal(t, resources.InitContainer.VolumeMounts, tt.wantContainers.VolumeMounts)
 				assert.Equal(t, resources.InitContainer.SecurityContext, tt.wantContainers.SecurityContext)
 				assert.Equal(t, resources.InitContainer.Resources, tt.wantContainers.Resources)
-				assert.Equal(t, resources.Version, tt.wantVersion)
+				assert.Equal(t, resources.Hash, tt.wantHash)
 			}
 		})
 	}

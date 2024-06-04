@@ -10,6 +10,7 @@ import (
 	"log"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strconv"
 	"strings"
 	"text/template"
@@ -207,12 +208,18 @@ func (k *KindDriver) cmd(args ...string) *exec.Command {
 		"ClusterName":     k.plan.ClusterName,
 		"Args":            args,
 	}
+
+	// on macOS, the docker socket is located in $HOME
+	dockerSocket := "/var/run/docker.sock"
+	if runtime.GOOS == "darwin" {
+		dockerSocket = "$HOME/.docker/run/docker.sock"
+	}
 	// We need the docker socket so that kind can bootstrap
 	// --userns=host to support Docker daemon host configured to run containers only in user namespaces
 	cmd := exec.NewCommand(`docker run --rm \
 		--userns=host \
 		-v {{.SharedVolume}}:/home \
-		-v /var/run/docker.sock:/var/run/docker.sock \
+		-v /var/run/docker.sock:` + dockerSocket + ` \
 		-e HOME=/home \
 		-e PATH=/ \
 		{{.KindClientImage}} \

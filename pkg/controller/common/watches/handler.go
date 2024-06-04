@@ -8,6 +8,8 @@ import (
 	"context"
 	"sync"
 
+	"golang.org/x/exp/maps"
+
 	"k8s.io/client-go/util/workqueue"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/event"
@@ -60,7 +62,7 @@ func (d *DynamicEnqueueRequest[T]) AddHandler(handler HandlerRegistration[T]) er
 
 	_, exists := d.registrations[handler.Key()]
 	if !exists {
-		log.V(1).Info("Adding new handler registration", "key", handler.Key(), "current_registrations", d.registrations)
+		log.V(1).Info("Adding new handler registration", "key", handler.Key(), "current_registrations_keys", maps.Keys(d.registrations))
 	}
 	d.registrations[handler.Key()] = handler
 	return nil

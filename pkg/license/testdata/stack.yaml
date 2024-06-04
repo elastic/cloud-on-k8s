@@ -144,3 +144,23 @@ spec:
           env:
             - name: JAVA_OPTS
               value: -Xms7500m -Xmx7500m
+---
+apiVersion: logstash.k8s.elastic.co/v1alpha1
+kind: Logstash
+metadata:
+  name: logstash-sample
+spec:
+  count: 1
+  podTemplate:
+    spec:
+      containers:
+        - name: logstash
+          resources:
+            requests:
+              cpu: 3
+              memory: 1Gi
+            limits:
+              memory: 4Gi
+          env:
+            - name: LS_JAVA_OPTS
+              value: -Xms3g -Xmx3g
