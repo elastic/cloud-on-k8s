@@ -32,7 +32,6 @@ func NewClient(
 	es esv1.Elasticsearch,
 ) (esclient.Client, error) {
 	defer tracing.Span(&ctx)()
-	url := services.ExternalServiceURL(es)
 	v, err := version.Parse(es.Spec.Version)
 	if err != nil {
 		return nil, err
@@ -68,10 +67,11 @@ func NewClient(
 	if err != nil {
 		return nil, err
 	}
+
 	return esclient.NewElasticsearchClient(
 		dialer,
 		k8s.ExtractNamespacedName(&es),
-		url,
+		services.NewElasticsearchURLProvider(es, c),
 		esclient.BasicAuth{
 			Name:     user.ControllerUserName,
 			Password: string(password),

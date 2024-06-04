@@ -184,22 +184,20 @@ func (d *defaultDriver) Reconcile(ctx context.Context) *reconciler.Results {
 		minVersion = &d.Version
 	}
 
-	isServiceReady, err := services.IsServiceReady(d.Client, *internalService)
-	if err != nil {
-		return results.WithError(err)
-	}
+	urlProvider := services.NewElasticsearchURLProvider(d.ES, d.Client)
+	hasEndpoints := urlProvider.HasEndpoints()
 
 	observedState := d.Observers.ObservedStateResolver(
 		ctx,
 		d.ES,
 		d.elasticsearchClientProvider(
 			ctx,
-			resourcesState,
+			urlProvider,
 			controllerUser,
 			*minVersion,
 			trustedHTTPCertificates,
 		),
-		isServiceReady,
+		hasEndpoints,
 	)
 
 	// Always update the Elasticsearch state bits with the latest observed state.
@@ -235,7 +233,7 @@ func (d *defaultDriver) Reconcile(ctx context.Context) *reconciler.Results {
 	// TODO: support user-supplied certificate (non-ca)
 	esClient := d.newElasticsearchClient(
 		ctx,
-		resourcesState,
+		urlProvider,
 		controllerUser,
 		*minVersion,
 		trustedHTTPCertificates,
@@ -244,12 +242,12 @@ func (d *defaultDriver) Reconcile(ctx context.Context) *reconciler.Results {
 
 	// use unknown health as a proxy for a cluster not responding to requests
 	hasKnownHealthState := observedState() != esv1.ElasticsearchUnknownHealth
-	esReachable := isServiceReady && hasKnownHealthState
+	esReachable := hasEndpoints && hasKnownHealthState
 	// report condition in Pod status
 	if esReachable {
-		d.ReconcileState.ReportCondition(esv1.ElasticsearchIsReachable, corev1.ConditionTrue, esReachableConditionMessage(internalService, isServiceReady, hasKnownHealthState))
+		d.ReconcileState.ReportCondition(esv1.ElasticsearchIsReachable, corev1.ConditionTrue, esReachableConditionMessage(internalService, hasEndpoints, hasKnownHealthState))
 	} else {
-		d.ReconcileState.ReportCondition(esv1.ElasticsearchIsReachable, corev1.ConditionFalse, esReachableConditionMessage(internalService, isServiceReady, hasKnownHealthState))
+		d.ReconcileState.ReportCondition(esv1.ElasticsearchIsReachable, corev1.ConditionFalse, esReachableConditionMessage(internalService, hasEndpoints, hasKnownHealthState))
 	}
 
 	var currentLicense esclient.License
@@ -282,7 +280,7 @@ func (d *defaultDriver) Reconcile(ctx context.Context) *reconciler.Results {
 
 	// reconcile the Elasticsearch license (even if we assume the cluster might not respond to requests to cover the case of
 	// expired licenses where all health API responses are 403)
-	if isServiceReady {
+	if hasEndpoints {
 		err = license.Reconcile(ctx, d.Client, d.ES, esClient, currentLicense)
 		if err != nil {
 			msg := "Could not reconcile cluster license, re-queuing"
@@ -378,16 +376,15 @@ func (d *defaultDriver) Reconcile(ctx context.Context) *reconciler.Results {
 // newElasticsearchClient creates a new Elasticsearch HTTP client for this cluster using the provided user
 func (d *defaultDriver) newElasticsearchClient(
 	ctx context.Context,
-	state *reconcile.ResourcesState,
+	urlProvider esclient.URLProvider,
 	user esclient.BasicAuth,
 	v version.Version,
 	caCerts []*x509.Certificate,
 ) esclient.Client {
-	url := services.ElasticsearchURL(d.ES, state.CurrentPodsByPhase[corev1.PodRunning])
 	return esclient.NewElasticsearchClient(
 		d.OperatorParameters.Dialer,
 		k8s.ExtractNamespacedName(&d.ES),
-		url,
+		urlProvider,
 		user,
 		v,
 		caCerts,
@@ -398,17 +395,16 @@ func (d *defaultDriver) newElasticsearchClient(
 
 func (d *defaultDriver) elasticsearchClientProvider(
 	ctx context.Context,
-	state *reconcile.ResourcesState,
+	urlProvider esclient.URLProvider,
 	user esclient.BasicAuth,
 	v version.Version,
 	caCerts []*x509.Certificate,
 ) func(existingEsClient esclient.Client) esclient.Client {
 	return func(existingEsClient esclient.Client) esclient.Client {
-		url := services.ElasticsearchURL(d.ES, state.CurrentPodsByPhase[corev1.PodRunning])
-		if existingEsClient != nil && existingEsClient.HasProperties(v, user, url, caCerts) {
+		if existingEsClient != nil && existingEsClient.HasProperties(v, user, urlProvider, caCerts) {
 			return existingEsClient
 		}
-		return d.newElasticsearchClient(ctx, state, user, v, caCerts)
+		return d.newElasticsearchClient(ctx, urlProvider, user, v, caCerts)
 	}
 }
 

@@ -4,6 +4,12 @@
 
 package v1
 
+import "github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/version"
+
+// as of 8.2.0 a simplified unauthenticated readiness port is available which takes cluster membership into account
+// see https://www.elastic.co/guide/en/elasticsearch/reference/current/advanced-configuration.html#readiness-tcp-port
+var MinReadinessPortVersion = version.MinFor(8, 2, 0)
+
 const (
 	ClusterName = "cluster.name"
 
@@ -13,6 +19,8 @@ const (
 	DiscoveryZenHostsProvider = "discovery.zen.hosts_provider" // ES < 7.X
 	DiscoverySeedProviders    = "discovery.seed_providers"     // ES >= 7.X
 	DiscoverySeedHosts        = "discovery.seed_hosts"         // ES >= 7.X
+
+	ReadinessPort = "readiness.port" // ES >= 8.2.0
 
 	NetworkHost        = "network.host"
 	NetworkPublishHost = "network.publish_host"

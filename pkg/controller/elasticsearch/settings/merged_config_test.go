@@ -182,6 +182,24 @@ func TestNewMergedESConfig(t *testing.T) {
 			},
 		},
 		{
+			name:     "prior to 8.2.0 we should not enable the readiness.port",
+			version:  "8.1.0",
+			ipFamily: corev1.IPv4Protocol,
+			cfgData:  map[string]interface{}{},
+			assert: func(cfg CanonicalConfig) {
+				require.Equal(t, 0, len(cfg.HasKeys([]string{esv1.ReadinessPort})))
+			},
+		},
+		{
+			name:     "starting 8.2.0 we should enable the readiness.port",
+			version:  "8.2.0",
+			ipFamily: corev1.IPv4Protocol,
+			cfgData:  map[string]interface{}{},
+			assert: func(cfg CanonicalConfig) {
+				require.Equal(t, 1, len(cfg.HasKeys([]string{esv1.ReadinessPort})))
+			},
+		},
+		{
 			name:     "user-provided Elasticsearch config overrides should have precedence over ECK config",
 			version:  "7.6.0",
 			ipFamily: corev1.IPv4Protocol,

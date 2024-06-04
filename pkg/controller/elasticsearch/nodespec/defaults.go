@@ -12,7 +12,9 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	commonv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/common/v1"
+	esv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/elasticsearch/v1"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/defaults"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/version"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/label"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/settings"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/user"
@@ -42,9 +44,13 @@ var (
 )
 
 // DefaultEnvVars are environment variables injected into Elasticsearch pods.
-func DefaultEnvVars(httpCfg commonv1.HTTPConfig, headlessServiceName string) []corev1.EnvVar {
-	return defaults.ExtendPodDownwardEnvVars(
-		[]corev1.EnvVar{
+func DefaultEnvVars(v version.Version, httpCfg commonv1.HTTPConfig, headlessServiceName string) []corev1.EnvVar {
+	vars := []corev1.EnvVar{
+		// needed in elasticsearch.yml
+		{Name: settings.HeadlessServiceName, Value: headlessServiceName},
+	}
+	if v.LT(esv1.MinReadinessPortVersion) {
+		vars = []corev1.EnvVar{
 			{Name: settings.EnvProbePasswordPath, Value: path.Join(esvolume.PodMountedUsersSecretMountPath, user.ProbeUserName)},
 			{Name: settings.EnvProbeUsername, Value: user.ProbeUserName},
 			{Name: settings.EnvReadinessProbeProtocol, Value: httpCfg.Protocol()},
@@ -62,8 +68,9 @@ func DefaultEnvVars(httpCfg commonv1.HTTPConfig, headlessServiceName string) []c
 			//   https://github.com/elastic/cloud-on-k8s/issues/1635
 			//   https://issuetracker.google.com/issues/140577001
 			{Name: "NSS_SDB_USE_CACHE", Value: "no"},
-		}...,
-	)
+		}
+	}
+	return defaults.ExtendPodDownwardEnvVars(vars...)
 }
 
 // DefaultAffinity returns the default affinity for pods in a cluster.

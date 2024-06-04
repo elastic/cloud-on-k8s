@@ -9,12 +9,30 @@ import (
 
 	corev1 "k8s.io/api/core/v1"
 
+	esv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/elasticsearch/v1"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/http"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/version"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/label"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/volume"
 )
 
-func NewReadinessProbe() *corev1.Probe {
+// as of 8.2.0 a simplified unauthenticated readiness port is available which takes cluster membership into account
+// see https://www.elastic.co/guide/en/elasticsearch/reference/current/advanced-configuration.html#readiness-tcp-port
+
+const (
+	ReadinessPortProbeScriptConfigKey = "readiness-port-script.sh"
+	// ReadinessPortProbeScript is the simplified readiness check for ES >= 8.2.0 which supports a dedicated TCP check
+	ReadinessPortProbeScript = `#!/usr/bin/env bash
+nc -z -v -w5 127.0.0.1 8080
+`
+)
+
+func NewReadinessProbe(v version.Version) *corev1.Probe {
+	scriptKey := ReadinessPortProbeScriptConfigKey
+	if v.LE(esv1.MinReadinessPortVersion) {
+		scriptKey = LegacyReadinessProbeScriptConfigKey
+	}
+
 	return &corev1.Probe{
 		FailureThreshold:    3,
 		InitialDelaySeconds: 10,
@@ -23,14 +41,14 @@ func NewReadinessProbe() *corev1.Probe {
 		TimeoutSeconds:      5,
 		ProbeHandler: corev1.ProbeHandler{
 			Exec: &corev1.ExecAction{
-				Command: []string{"bash", "-c", path.Join(volume.ScriptsVolumeMountPath, ReadinessProbeScriptConfigKey)},
+				Command: []string{"bash", "-c", path.Join(volume.ScriptsVolumeMountPath, scriptKey)},
 			},
 		},
 	}
 }
 
-const ReadinessProbeScriptConfigKey = "readiness-probe-script.sh"
-const ReadinessProbeScript = `#!/usr/bin/env bash
+const LegacyReadinessProbeScriptConfigKey = "readiness-probe-script.sh"
+const LegacyReadinessProbeScript = `#!/usr/bin/env bash
 
 # fail should be called as a last resort to help the user to understand why the probe failed
 function fail {

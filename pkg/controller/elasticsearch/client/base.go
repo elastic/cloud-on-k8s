@@ -22,13 +22,13 @@ import (
 )
 
 type baseClient struct {
-	User     BasicAuth
-	HTTP     *http.Client
-	Endpoint string
-	es       types.NamespacedName
-	caCerts  []*x509.Certificate
-	version  version.Version
-	debug    bool
+	User        BasicAuth
+	HTTP        *http.Client
+	URLProvider URLProvider
+	es          types.NamespacedName
+	caCerts     []*x509.Certificate
+	version     version.Version
+	debug       bool
 }
 
 // Close idle connections in the underlying http client.
@@ -57,8 +57,8 @@ func (c *baseClient) equal(c2 *baseClient) bool {
 			return false
 		}
 	}
-	// compare endpoint and user creds
-	return c.Endpoint == c2.Endpoint &&
+	// compare endpoint svc url and user creds. Service URL acts purely as an identifier here.
+	return c.URLProvider.Equals(c2.URLProvider) &&
 		c.User == c2.User
 }
 
@@ -128,7 +128,11 @@ func (c *baseClient) request(
 		body = bytes.NewBuffer(outData)
 	}
 
-	request, err := http.NewRequest(method, stringsutil.Concat(c.Endpoint, pathWithQuery), body) //nolint:noctx
+	url, err := c.URLProvider.URL()
+	if err != nil {
+		return err
+	}
+	request, err := http.NewRequest(method, stringsutil.Concat(url, pathWithQuery), body) //nolint:noctx
 	if err != nil {
 		return err
 	}
@@ -188,11 +192,7 @@ func versioned(b *baseClient, v version.Version) Client {
 	}
 }
 
-func (c *baseClient) URL() string {
-	return c.Endpoint
-}
-
-func (c *baseClient) HasProperties(version version.Version, user BasicAuth, url string, caCerts []*x509.Certificate) bool {
+func (c *baseClient) HasProperties(version version.Version, user BasicAuth, url URLProvider, caCerts []*x509.Certificate) bool {
 	if len(c.caCerts) != len(caCerts) {
 		return false
 	}
@@ -201,5 +201,5 @@ func (c *baseClient) HasProperties(version version.Version, user BasicAuth, url 
 			return false
 		}
 	}
-	return c.version.Equals(version) && c.User == user && c.Endpoint == url
+	return c.version.Equals(version) && c.User == user && c.URLProvider.Equals(url)
 }

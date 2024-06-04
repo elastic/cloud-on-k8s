@@ -12,6 +12,7 @@ import (
 	"testing"
 
 	esv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/elasticsearch/v1"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/k8s"
 
 	corev1 "k8s.io/api/core/v1"
 
@@ -96,14 +97,14 @@ func TestForceUpgradePendingPodsInOneStatefulSet(t *testing.T) {
 				}),
 			},
 			{
-				Name: "Wait for the ES service to have endpoints and become technically reachable",
+				Name: "Wait for at least one ES pod to become technically reachable",
 				Test: test.Eventually(func() error {
-					endpoints, err := k.GetEndpoints(initial.Elasticsearch.Namespace, esv1.HTTPService(initial.Elasticsearch.Name))
+					pods, err := k.GetPods(test.ESPodListOptions(initial.Elasticsearch.Namespace, initial.Elasticsearch.Name)...)
 					if err != nil {
 						return err
 					}
-					if len(endpoints.Subsets) == 0 || len(endpoints.Subsets[0].Addresses) == 0 {
-						return errors.New("elasticsearch HTTP service does not have endpoint")
+					if len(k8s.RunningPods(pods)) == 0 {
+						return errors.New("Elasticsearch does not have any running Pods")
 					}
 					return nil
 				}),

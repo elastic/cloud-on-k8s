@@ -216,7 +216,11 @@ func (c *clientV6) GetClusterState(_ context.Context) (ClusterState, error) {
 }
 
 func (c *clientV6) Request(ctx context.Context, r *http.Request) (*http.Response, error) {
-	newURL, err := url.Parse(stringsutil.Concat(c.Endpoint, r.URL.String()))
+	baseURL, err := c.URLProvider.URL()
+	if err != nil {
+		return nil, err
+	}
+	newURL, err := url.Parse(stringsutil.Concat(baseURL, r.URL.String()))
 	if err != nil {
 		return nil, err
 	}

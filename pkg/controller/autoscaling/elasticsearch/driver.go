@@ -14,7 +14,6 @@ import (
 
 	"github.com/go-logr/logr"
 	"go.elastic.co/apm/v2"
-	apierrors "k8s.io/apimachinery/pkg/api/errors"
 
 	"github.com/elastic/cloud-on-k8s/v2/pkg/apis/common/v1alpha1"
 	esv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/elasticsearch/v1"
@@ -34,17 +33,9 @@ func (r *baseReconcileAutoscaling) reconcileInternal(
 ) (*esv1.Elasticsearch, error) {
 	defer tracing.Span(&ctx)()
 	log := logconf.FromContext(ctx)
-	if esReachable, err := r.isElasticsearchReachable(ctx, es); !esReachable || err != nil {
+	if !r.isElasticsearchReachable(ctx, es) {
 		// Elasticsearch is not reachable, or we got an error while checking Elasticsearch availability, follow up with an offline reconciliation.
-		if err != nil {
-			log.V(1).Info(
-				"error while checking if Elasticsearch is available, attempting offline reconciliation",
-				"error.message", err.Error(),
-			)
-			statusBuilder.SetOnline(false, fmt.Sprintf("Error while checking if Elasticsearch is available: %s", err.Error()))
-		} else {
-			statusBuilder.SetOnline(false, "Elasticsearch is not available")
-		}
+		statusBuilder.SetOnline(false, "Elasticsearch is not available")
 		return r.doOfflineReconciliation(ctx, es, statusBuilder, autoscaledNodeSets, autoscalingResource)
 	}
 	statusBuilder.SetOnline(true, "Elasticsearch is available")
@@ -98,20 +89,9 @@ func newStatusBuilder(log logr.Logger, autoscalingPolicies v1alpha1.AutoscalingP
 }
 
 // Check if the Service is available.
-func (r *baseReconcileAutoscaling) isElasticsearchReachable(ctx context.Context, es esv1.Elasticsearch) (bool, error) {
+func (r *baseReconcileAutoscaling) isElasticsearchReachable(ctx context.Context, es esv1.Elasticsearch) bool {
 	defer tracing.Span(&ctx)()
-	internalService, err := services.GetInternalService(r.Client, es)
-	if apierrors.IsNotFound(err) {
-		return false, nil
-	}
-	if err != nil {
-		return false, tracing.CaptureError(ctx, err)
-	}
-	esReachable, err := services.IsServiceReady(r.Client, internalService)
-	if err != nil {
-		return false, tracing.CaptureError(ctx, err)
-	}
-	return esReachable, nil
+	return services.NewElasticsearchURLProvider(es, r.Client).HasEndpoints()
 }
 
 // attemptOnlineReconciliation attempts an online autoscaling reconciliation with a call to the Elasticsearch autoscaling API.

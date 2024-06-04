@@ -12,9 +12,7 @@ import (
 	esv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/elasticsearch/v1"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/version"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/client"
-	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/reconcile"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/services"
-	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/sset"
 	esuser "github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/user"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/dev/portforward"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/k8s"
@@ -68,11 +66,6 @@ func NewElasticsearchClientWithUser(es esv1.Elasticsearch, k *test.K8sClient, us
 	if err != nil {
 		return nil, err
 	}
-	pods, err := sset.GetActualPodsForCluster(k.Client, es)
-	if err != nil {
-		return nil, err
-	}
-	inClusterURL := services.ElasticsearchURL(es, reconcile.AvailableElasticsearchNodes(pods))
 	var dialer net.Dialer
 	if test.Ctx().AutoPortForwarding {
 		dialer = portforward.NewForwardingDialer()
@@ -84,7 +77,7 @@ func NewElasticsearchClientWithUser(es esv1.Elasticsearch, k *test.K8sClient, us
 	esClient := client.NewElasticsearchClient(
 		dialer,
 		k8s.ExtractNamespacedName(&es),
-		inClusterURL,
+		services.NewElasticsearchURLProvider(es, k.Client),
 		user,
 		v,
 		caCert,

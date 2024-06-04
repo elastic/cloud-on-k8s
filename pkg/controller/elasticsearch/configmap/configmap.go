@@ -53,11 +53,12 @@ func ReconcileScriptsConfigMap(ctx context.Context, c k8s.Client, es esv1.Elasti
 		types.NamespacedName{Namespace: es.Namespace, Name: esv1.ScriptsConfigMap(es.Name)},
 		k8s.ExtractNamespacedName(&es),
 		map[string]string{
-			nodespec.ReadinessProbeScriptConfigKey: nodespec.ReadinessProbeScript,
-			nodespec.PreStopHookScriptConfigKey:    preStopScript,
-			initcontainer.PrepareFsScriptConfigKey: fsScript,
-			initcontainer.SuspendScriptConfigKey:   initcontainer.SuspendScript,
-			initcontainer.SuspendedHostsFile:       initcontainer.RenderSuspendConfiguration(es),
+			nodespec.LegacyReadinessProbeScriptConfigKey: nodespec.LegacyReadinessProbeScript,
+			nodespec.ReadinessPortProbeScriptConfigKey:   nodespec.ReadinessPortProbeScript,
+			nodespec.PreStopHookScriptConfigKey:          preStopScript,
+			initcontainer.PrepareFsScriptConfigKey:       fsScript,
+			initcontainer.SuspendScriptConfigKey:         initcontainer.SuspendScript,
+			initcontainer.SuspendedHostsFile:             initcontainer.RenderSuspendConfiguration(es),
 		},
 	)
 

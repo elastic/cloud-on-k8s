@@ -127,10 +127,8 @@ type Client interface {
 	// Version returns the Elasticsearch version this client is constructed for which should equal the minimal version
 	// in the cluster.
 	Version() version.Version
-	// URL returns the Elasticsearch URL configured for this client
-	URL() string
 	// HasProperties checks whether this client has the indicated properties.
-	HasProperties(version version.Version, user BasicAuth, url string, caCerts []*x509.Certificate) bool
+	HasProperties(version version.Version, user BasicAuth, url URLProvider, caCerts []*x509.Certificate) bool
 }
 
 // Timeout returns the Elasticsearch client timeout value for the given Elasticsearch resource.
@@ -148,7 +146,7 @@ func formatAsSeconds(d time.Duration) string {
 func NewElasticsearchClient(
 	dialer net.Dialer,
 	es types.NamespacedName,
-	esURL string,
+	esURL URLProvider,
 	esUser BasicAuth,
 	v version.Version,
 	caCerts []*x509.Certificate,
@@ -158,12 +156,12 @@ func NewElasticsearchClient(
 	client := commonhttp.Client(dialer, caCerts, timeout)
 	client.Transport = apmelasticsearch.WrapRoundTripper(client.Transport)
 	base := &baseClient{
-		Endpoint: esURL,
-		User:     esUser,
-		caCerts:  caCerts,
-		HTTP:     client,
-		es:       es,
-		debug:    debug,
+		URLProvider: esURL,
+		User:        esUser,
+		caCerts:     caCerts,
+		HTTP:        client,
+		es:          es,
+		debug:       debug,
 	}
 	return versioned(base, v)
 }

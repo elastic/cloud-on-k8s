@@ -83,6 +83,10 @@ func baseConfig(clusterName string, ver version.Version, ipFamily corev1.IPFamil
 		cfg[esv1.DiscoverySeedHosts] = []string{}
 	}
 
+	if ver.GTE(esv1.MinReadinessPortVersion) {
+		cfg[esv1.ReadinessPort] = "8080"
+	}
+
 	return &CanonicalConfig{common.MustCanonicalConfig(cfg)}
 }
 

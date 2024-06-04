@@ -16,6 +16,7 @@ import (
 
 	esv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/elasticsearch/v1"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/defaults"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/client"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/label"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/network"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/k8s"
@@ -181,26 +182,65 @@ func getServiceByName(c k8s.Client, es esv1.Elasticsearch, serviceName string) (
 	return svc, nil
 }
 
-// ElasticsearchURL calculates the base url for Elasticsearch, taking into account the currently running pods.
-// If there is an HTTP scheme mismatch between spec and pods we switch to requesting individual pods directly
-// otherwise this delegates to ExternalServiceURL.
-func ElasticsearchURL(es esv1.Elasticsearch, pods []corev1.Pod) string {
-	var schemeChange bool
+type urlProvider struct {
+	pods   func() ([]corev1.Pod, error)
+	svcURL string
+}
+
+// URL implements client.URLProvider.
+func (u *urlProvider) URL() (string, error) {
+	var ready, running []corev1.Pod
+	pods, err := u.pods()
+	if err != nil {
+		return "", err
+	}
 	for _, p := range pods {
-		scheme, exists := p.Labels[label.HTTPSchemeLabelName]
-		if exists && scheme != es.Spec.HTTP.Protocol() {
-			// scheme in existing pods does not match scheme in spec, user toggled HTTP(S)
-			schemeChange = true
+		if k8s.IsPodReady(p) {
+			ready = append(ready, p)
+		}
+		if k8s.IsPodRunning(p) {
+			running = append(running, p)
 		}
 	}
-	if schemeChange {
-		// switch to sending requests directly to a random pod instead of going through the service
-		randomPod := pods[rand.Intn(len(pods))] //nolint:gosec
-		if podURL := ElasticsearchPodURL(randomPod); podURL != "" {
-			return podURL
-		}
+	switch {
+	case len(ready) > 0:
+		return randomESPodURL(ready), nil
+	case len(running) > 0:
+		return randomESPodURL(running), nil
+	default:
+		return u.svcURL, nil
 	}
-	return InternalServiceURL(es)
+}
+
+// Equals implements client.URLProvider.
+func (u *urlProvider) Equals(other client.URLProvider) bool {
+	otherImpl, ok := other.(*urlProvider)
+	if !ok {
+		return false
+	}
+	return u.svcURL == otherImpl.svcURL
+}
+
+// HasEndpoints implements client.URLProvider.
+func (u *urlProvider) HasEndpoints() bool {
+	pods, err := u.pods()
+	return err == nil && len(k8s.RunningPods(pods)) > 0
+}
+
+// NewElasticsearchURLProvider returns a client.URLProvider that dynamically tries to find Pod URLs among the
+// currently running Pods. Preferring ready Pods over running ones.
+func NewElasticsearchURLProvider(es esv1.Elasticsearch, client k8s.Client) client.URLProvider {
+	return &urlProvider{
+		pods: func() ([]corev1.Pod, error) {
+			return k8s.PodsMatchingLabels(client, es.Namespace, label.NewLabelSelectorForElasticsearch(es))
+		},
+		svcURL: InternalServiceURL(es),
+	}
+}
+
+func randomESPodURL(pods []corev1.Pod) string {
+	randomPod := pods[rand.Intn(len(pods))] //nolint:gosec
+	return ElasticsearchPodURL(randomPod)
 }
 
 // ElasticsearchPodURL calculates the URL for the given Pod based on the Pods metadata.

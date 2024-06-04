@@ -237,7 +237,7 @@ func TestClient_request(t *testing.T) {
 				assert.Equal(t, "cloud", req.Header.Get("x-elastic-product-origin"))
 			}),
 		},
-		Endpoint: "http://example.com",
+		URLProvider: NewStaticURLProvider("http://example.com"),
 	}
 	requests := []func() (string, error){
 		func() (string, error) {
@@ -361,7 +361,7 @@ func TestGetInfo(t *testing.T) {
 }
 
 func TestClient_Equal(t *testing.T) {
-	dummyEndpoint := "es-url"
+	dummyEndpoint := NewStaticURLProvider("es-url")
 	dummyUser := BasicAuth{Name: "user", Password: "password"}
 	dummyNamespaceName := types.NamespacedName{
 		Namespace: "ns",
@@ -398,7 +398,7 @@ func TestClient_Equal(t *testing.T) {
 		{
 			name: "different endpoint",
 			c1:   NewElasticsearchClient(nil, dummyNamespaceName, dummyEndpoint, dummyUser, v6, dummyCACerts, timeout, false),
-			c2:   NewElasticsearchClient(nil, dummyNamespaceName, "another-endpoint", dummyUser, v6, dummyCACerts, timeout, false),
+			c2:   NewElasticsearchClient(nil, dummyNamespaceName, NewStaticURLProvider("another-endpoint"), dummyUser, v6, dummyCACerts, timeout, false),
 			want: false,
 		},
 		{
@@ -835,12 +835,12 @@ func TestGetClusterHealthWaitForAllEvents(t *testing.T) {
 func Test_HasProperties(t *testing.T) {
 	defaultVersion := version.MustParse("8.6.1")
 	defaultUser := BasicAuth{Name: "foo", Password: "bar"}
-	defaultURL := "https://foo.bar"
+	defaultURLProvider := NewStaticURLProvider("https://foo.bar")
 	defaultCaCerts := []*x509.Certificate{{Raw: []byte("foo")}}
 	defaultEsClient := NewElasticsearchClient(
 		nil,
 		types.NamespacedName{Namespace: "ns", Name: "es"},
-		defaultURL,
+		defaultURLProvider,
 		defaultUser,
 		defaultVersion,
 		defaultCaCerts,
@@ -852,7 +852,7 @@ func Test_HasProperties(t *testing.T) {
 		esClient Client
 		version  version.Version
 		user     BasicAuth
-		url      string
+		url      URLProvider
 		caCerts  []*x509.Certificate
 		want     bool
 	}{
@@ -861,7 +861,7 @@ func Test_HasProperties(t *testing.T) {
 			esClient: defaultEsClient,
 			version:  version.MustParse("8.6.0"),
 			user:     defaultUser,
-			url:      defaultURL,
+			url:      defaultURLProvider,
 			caCerts:  defaultCaCerts,
 			want:     false,
 		},
@@ -870,7 +870,7 @@ func Test_HasProperties(t *testing.T) {
 			esClient: defaultEsClient,
 			version:  defaultVersion,
 			user:     BasicAuth{Name: "foo", Password: "changed"},
-			url:      defaultURL,
+			url:      defaultURLProvider,
 			caCerts:  defaultCaCerts,
 			want:     false,
 		},
@@ -879,7 +879,7 @@ func Test_HasProperties(t *testing.T) {
 			esClient: defaultEsClient,
 			version:  defaultVersion,
 			user:     defaultUser,
-			url:      "https://foo.com",
+			url:      NewStaticURLProvider("https://foo.com"),
 			caCerts:  defaultCaCerts,
 			want:     false,
 		},
@@ -888,7 +888,7 @@ func Test_HasProperties(t *testing.T) {
 			esClient: defaultEsClient,
 			version:  defaultVersion,
 			user:     defaultUser,
-			url:      defaultURL,
+			url:      defaultURLProvider,
 			caCerts:  []*x509.Certificate{{Raw: []byte("bar")}},
 			want:     false,
 		},
@@ -897,7 +897,7 @@ func Test_HasProperties(t *testing.T) {
 			esClient: defaultEsClient,
 			version:  defaultVersion,
 			user:     defaultUser,
-			url:      defaultURL,
+			url:      defaultURLProvider,
 			caCerts:  defaultCaCerts,
 			want:     true,
 		},
