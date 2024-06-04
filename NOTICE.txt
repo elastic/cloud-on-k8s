@@ -405,11 +405,11 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 --------------------------------------------------------------------------------
 Module  : github.com/go-logr/logr
-Version : v1.4.1
-Time    : 2023-12-21T15:57:58Z
+Version : v1.4.2
+Time    : 2024-05-20T10:45:40Z
 Licence : Apache-2.0
 
-Contents of probable licence file $GOMODCACHE/github.com/go-logr/logr@v1.4.1/LICENSE:
+Contents of probable licence file $GOMODCACHE/github.com/go-logr/logr@v1.4.2/LICENSE:
 
                                  Apache License
                            Version 2.0, January 2004
@@ -3851,6 +3851,43 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 
 --------------------------------------------------------------------------------
+Module  : golang.org/x/exp
+Version : v0.0.0-20240506185415-9bf2ced13842
+Time    : 2024-05-06T18:54:15Z
+Licence : BSD-3-Clause
+
+Contents of probable licence file $GOMODCACHE/golang.org/x/exp@v0.0.0-20240506185415-9bf2ced13842/LICENSE:
+
+Copyright (c) 2009 The Go Authors. All rights reserved.
+
+Redistribution and use in source and binary forms, with or without
+modification, are permitted provided that the following conditions are
+met:
+
+   * Redistributions of source code must retain the above copyright
+notice, this list of conditions and the following disclaimer.
+   * Redistributions in binary form must reproduce the above
+copyright notice, this list of conditions and the following disclaimer
+in the documentation and/or other materials provided with the
+distribution.
+   * Neither the name of Google Inc. nor the names of its
+contributors may be used to endorse or promote products derived from
+this software without specific prior written permission.
+
+THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
+"AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
+LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
+A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT
+OWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
+SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT
+LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
+DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
+THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+(INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+
+--------------------------------------------------------------------------------
 Module  : gopkg.in/yaml.v3
 Version : v3.0.1
 Time    : 2022-05-27T08:35:30Z
@@ -4961,11 +4998,11 @@ Contents of probable licence file $GOMODCACHE/k8s.io/utils@v0.0.0-20240502163921
 
 --------------------------------------------------------------------------------
 Module  : sigs.k8s.io/controller-runtime
-Version : v0.18.2
-Time    : 2024-05-06T20:30:58Z
+Version : v0.18.3
+Time    : 2024-05-24T13:39:11Z
 Licence : Apache-2.0
 
-Contents of probable licence file $GOMODCACHE/sigs.k8s.io/controller-runtime@v0.18.2/LICENSE:
+Contents of probable licence file $GOMODCACHE/sigs.k8s.io/controller-runtime@v0.18.3/LICENSE:
 
                                  Apache License
                            Version 2.0, January 2004
@@ -16054,43 +16091,6 @@ THE SOFTWARE.
 
 
 --------------------------------------------------------------------------------
-Module  : golang.org/x/exp
-Version : v0.0.0-20240506185415-9bf2ced13842
-Time    : 2024-05-06T18:54:15Z
-Licence : BSD-3-Clause
-
-Contents of probable licence file $GOMODCACHE/golang.org/x/exp@v0.0.0-20240506185415-9bf2ced13842/LICENSE:
-
-Copyright (c) 2009 The Go Authors. All rights reserved.
-
-Redistribution and use in source and binary forms, with or without
-modification, are permitted provided that the following conditions are
-met:
-
-   * Redistributions of source code must retain the above copyright
-notice, this list of conditions and the following disclaimer.
-   * Redistributions in binary form must reproduce the above
-copyright notice, this list of conditions and the following disclaimer
-in the documentation and/or other materials provided with the
-distribution.
-   * Neither the name of Google Inc. nor the names of its
-contributors may be used to endorse or promote products derived from
-this software without specific prior written permission.
-
-THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
-"AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
-LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
-A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT
-OWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
-SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT
-LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
-DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
-THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
-(INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
-OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-
-
---------------------------------------------------------------------------------
 Module  : golang.org/x/mod
 Version : v0.17.0
 Time    : 2024-03-15T15:59:16Z
@@ -17289,11 +17289,11 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 --------------------------------------------------------------------------------
 Module  : k8s.io/apiextensions-apiserver
-Version : v0.30.0
-Time    : 2024-04-17T22:05:27Z
+Version : v0.30.1
+Time    : 2024-05-15T09:59:19Z
 Licence : Apache-2.0
 
-Contents of probable licence file $GOMODCACHE/k8s.io/apiextensions-apiserver@v0.30.0/LICENSE:
+Contents of probable licence file $GOMODCACHE/k8s.io/apiextensions-apiserver@v0.30.1/LICENSE:
 
 
                                  Apache License
