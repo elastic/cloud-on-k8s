@@ -1700,11 +1700,11 @@ Exhibit B - "Incompatible With Secondary Licenses" Notice
 
 --------------------------------------------------------------------------------
 Module  : github.com/hashicorp/vault/api
-Version : v1.13.0
-Time    : 2024-04-19T11:17:41Z
+Version : v1.14.0
+Time    : 2024-05-22T23:38:42Z
 Licence : MPL-2.0
 
-Contents of probable licence file $GOMODCACHE/github.com/hashicorp/vault/api@v1.13.0/LICENSE:
+Contents of probable licence file $GOMODCACHE/github.com/hashicorp/vault/api@v1.14.0/LICENSE:
 
 Copyright (c) 2015 HashiCorp, Inc.
 
@@ -10537,11 +10537,11 @@ Exhibit B - "Incompatible With Secondary Licenses" Notice
 
 --------------------------------------------------------------------------------
 Module  : github.com/hashicorp/go-hclog
-Version : v1.5.0
-Time    : 2023-03-20T20:29:19Z
+Version : v1.6.3
+Time    : 2024-04-01T20:03:54Z
 Licence : MIT
 
-Contents of probable licence file $GOMODCACHE/github.com/hashicorp/go-hclog@v1.5.0/LICENSE:
+Contents of probable licence file $GOMODCACHE/github.com/hashicorp/go-hclog@v1.6.3/LICENSE:
 
 Copyright (c) 2017 HashiCorp, Inc.
 
@@ -10566,11 +10566,13 @@ SOFTWARE.
 
 --------------------------------------------------------------------------------
 Module  : github.com/hashicorp/go-retryablehttp
-Version : v0.6.6
-Time    : 2020-04-13T23:36:32Z
+Version : v0.7.6
+Time    : 2024-05-09T17:05:16Z
 Licence : MPL-2.0
 
-Contents of probable licence file $GOMODCACHE/github.com/hashicorp/go-retryablehttp@v0.6.6/LICENSE:
+Contents of probable licence file $GOMODCACHE/github.com/hashicorp/go-retryablehttp@v0.7.6/LICENSE:
+
+Copyright (c) 2015 HashiCorp, Inc.
 
 Mozilla Public License, version 2.0
 
