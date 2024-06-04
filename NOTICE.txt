@@ -4998,11 +4998,11 @@ Contents of probable licence file $GOMODCACHE/k8s.io/utils@v0.0.0-20240502163921
 
 --------------------------------------------------------------------------------
 Module  : sigs.k8s.io/controller-runtime
-Version : v0.18.2
-Time    : 2024-05-06T20:30:58Z
+Version : v0.18.3
+Time    : 2024-05-24T13:39:11Z
 Licence : Apache-2.0
 
-Contents of probable licence file $GOMODCACHE/sigs.k8s.io/controller-runtime@v0.18.2/LICENSE:
+Contents of probable licence file $GOMODCACHE/sigs.k8s.io/controller-runtime@v0.18.3/LICENSE:
 
                                  Apache License
                            Version 2.0, January 2004
@@ -17289,11 +17289,11 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 --------------------------------------------------------------------------------
 Module  : k8s.io/apiextensions-apiserver
-Version : v0.30.0
-Time    : 2024-04-17T22:05:27Z
+Version : v0.30.1
+Time    : 2024-05-15T09:59:19Z
 Licence : Apache-2.0
 
-Contents of probable licence file $GOMODCACHE/k8s.io/apiextensions-apiserver@v0.30.0/LICENSE:
+Contents of probable licence file $GOMODCACHE/k8s.io/apiextensions-apiserver@v0.30.1/LICENSE:
 
 
                                  Apache License
