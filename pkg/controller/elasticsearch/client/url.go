@@ -5,11 +5,11 @@
 package client
 
 type URLProvider interface {
-	// URL return a URL to route traffic to (can fall back to a k8s service URL).
+	// URL returns a URL to route traffic to (can fall back to a k8s service URL).
 	URL() (string, error)
 	// Equals returns true if the other URLProvider is equal to the one in the receiver.
 	Equals(other URLProvider) bool
-	// HasEndpoints return true if the provider has currently any endpoints/URLs to return.
+	// HasEndpoints returns true if the provider has currently any endpoints/URLs to return.
 	// Makes sense for implementations that do not return a static URL.
 	HasEndpoints() bool
 }

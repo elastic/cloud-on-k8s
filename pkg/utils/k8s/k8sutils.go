@@ -91,7 +91,7 @@ func TerminatingPods(pods []corev1.Pod) []corev1.Pod {
 	return terminating
 }
 
-// RunningPods filters pods for Pods are in running (and not terminating).
+// RunningPods filters pods for Pods that are running (and not terminating).
 func RunningPods(pods []corev1.Pod) []corev1.Pod {
 	var running []corev1.Pod
 	for _, p := range pods {
