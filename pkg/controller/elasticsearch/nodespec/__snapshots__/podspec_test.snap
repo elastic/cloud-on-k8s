@@ -978,7 +978,7 @@
 }
 ---
 
-[TestBuildPodTemplateSpec/v8.13.2 - 1]
+[TestBuildPodTemplateSpec/v8.14.0 - 1]
 {
  "metadata": {
   "annotations": {
@@ -1004,7 +1004,7 @@
    "elasticsearch.k8s.elastic.co/node-transform": "false",
    "elasticsearch.k8s.elastic.co/node-voting_only": "false",
    "elasticsearch.k8s.elastic.co/statefulset-name": "name-es-nodeset-1",
-   "elasticsearch.k8s.elastic.co/version": "8.13.2",
+   "elasticsearch.k8s.elastic.co/version": "8.14.0",
    "pod-template-label-name": "pod-template-label-value"
   }
  },
@@ -1090,7 +1090,7 @@
       "value": "name-es-nodeset-1"
      }
     ],
-    "image": "docker.elastic.co/elasticsearch/elasticsearch:8.13.2",
+    "image": "docker.elastic.co/elasticsearch/elasticsearch:8.14.0",
     "lifecycle": {
      "preStop": {
       "exec": {
@@ -1275,7 +1275,7 @@
       "value": "name-es-nodeset-1"
      }
     ],
-    "image": "docker.elastic.co/elasticsearch/elasticsearch:8.13.2",
+    "image": "docker.elastic.co/elasticsearch/elasticsearch:8.14.0",
     "imagePullPolicy": "IfNotPresent",
     "name": "elastic-internal-init-filesystem",
     "resources": {
@@ -1424,7 +1424,7 @@
       "value": "name-es-nodeset-1"
      }
     ],
-    "image": "docker.elastic.co/elasticsearch/elasticsearch:8.13.2",
+    "image": "docker.elastic.co/elasticsearch/elasticsearch:8.14.0",
     "imagePullPolicy": "IfNotPresent",
     "name": "elastic-internal-suspend",
     "resources": {
@@ -1566,7 +1566,7 @@
       "value": "name-es-nodeset-1"
      }
     ],
-    "image": "docker.elastic.co/elasticsearch/elasticsearch:8.13.2",
+    "image": "docker.elastic.co/elasticsearch/elasticsearch:8.14.0",
     "name": "additional-init-container",
     "resources": {
      "limits": {

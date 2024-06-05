@@ -276,10 +276,10 @@ func TestBuildPodTemplateSpec(t *testing.T) {
 			wantErr: false,
 		},
 		{
-			name: "v8.13.2",
+			name: "v8.14.0",
 			args: args{
 				client: k8s.NewFakeClient(scriptsConfigMap),
-				es:     newEsSampleBuilder().withVersion("8.13.2").build(),
+				es:     newEsSampleBuilder().withVersion("8.14.0").build(),
 			},
 			wantErr: false,
 		},
@@ -287,7 +287,7 @@ func TestBuildPodTemplateSpec(t *testing.T) {
 			name: "failing client",
 			args: args{
 				client: k8s.NewFailingClient(errors.New("should fail")),
-				es:     newEsSampleBuilder().withVersion("8.13.2").build(),
+				es:     newEsSampleBuilder().withVersion("8.14.0").build(),
 			},
 			wantErr: true,
 		},
