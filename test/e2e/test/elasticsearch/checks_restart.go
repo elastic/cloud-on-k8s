@@ -51,7 +51,7 @@ func newNodeShutdownWatcher(es esv1.Elasticsearch) test.Watcher {
 				}
 			}
 			if len(restarts) > maxConcurrentRestarts {
-				observedErrors = append(observedErrors, fmt.Errorf("expected less than %d, got %d, restarts: %v", maxConcurrentRestarts, len(restarts), restarts))
+				observedErrors = append(observedErrors, fmt.Errorf("expected at most %d, got %d, restarts: %v", maxConcurrentRestarts, len(restarts), restarts))
 			}
 		},
 		func(k *test.K8sClient, t *testing.T) { //nolint:thelper
