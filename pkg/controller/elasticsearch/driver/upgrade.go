@@ -71,7 +71,9 @@ func (d *defaultDriver) handleUpgrades(
 	nodeShutdown := shutdown.NewNodeShutdown(esClient, nodeNameToID, esclient.Restart, d.ES.ResourceVersion, logger)
 
 	// Maybe re-enable shards allocation and delete shutdowns if upgraded nodes are back into the cluster.
-	results.WithResults(d.maybeCompleteNodeUpgrades(ctx, esClient, esState, nodeShutdown))
+	if results.WithResults(d.maybeCompleteNodeUpgrades(ctx, esClient, esState, nodeShutdown)).HasError() {
+		return results
+	}
 
 	// Get the list of pods currently existing in the StatefulSetList
 	currentPods, err := statefulSets.GetActualPods(d.Client)
