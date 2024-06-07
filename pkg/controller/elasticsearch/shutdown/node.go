@@ -37,6 +37,7 @@ func NewNodeShutdown(c esclient.Client, podToNodeID map[string]string, typ escli
 		typ:         typ,
 		podToNodeID: podToNodeID,
 		reason:      reason,
+		shutdowns:   make(map[string]esclient.NodeShutdown),
 		log:         l,
 	}
 }
