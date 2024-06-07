@@ -144,11 +144,12 @@ type Shards []Shard
 
 // Shard partially models Elasticsearch cluster shard.
 type Shard struct {
-	Index    string     `json:"index"`
-	Shard    string     `json:"shard"`
-	State    ShardState `json:"state"`
-	NodeName string     `json:"node"`
-	Type     ShardType  `json:"prirep"`
+	Index            string     `json:"index"`
+	Shard            string     `json:"shard"`
+	State            ShardState `json:"state"`
+	NodeName         string     `json:"node"`
+	Type             ShardType  `json:"prirep"`
+	UnassignedReason string     `json:"unassigned.reason"`
 }
 
 type RoutingTable struct {

@@ -40,7 +40,7 @@ func (c *clientV6) ExcludeFromShardAllocation(ctx context.Context, nodes string)
 
 func (c *clientV6) GetShards(ctx context.Context) (Shards, error) {
 	var shards Shards
-	if err := c.get(ctx, "/_cat/shards?format=json", &shards); err != nil {
+	if err := c.get(ctx, "/_cat/shards?h=index,shard,prirep,state,node,unassigned.reason&format=json", &shards); err != nil {
 		return shards, err
 	}
 	return shards, nil

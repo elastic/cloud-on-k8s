@@ -72,6 +72,17 @@ func TestNodeMayHaveShard(t *testing.T) {
 			},
 			want: true,
 		},
+		{
+			name: "Some shards have no node assigned by REPLICA_ADDED",
+			args: args{
+				podName: "A",
+				shardLister: NewFakeShardLister([]client.Shard{
+					{Index: "index-1", Shard: "0", NodeName: "", UnassignedReason: "REPLICA_ADDED"},
+					{Index: "index-1", Shard: "0", NodeName: "C"},
+				}),
+			},
+			want: false,
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

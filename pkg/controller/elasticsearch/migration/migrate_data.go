@@ -74,8 +74,8 @@ func nodeMayHaveShard(ctx context.Context, es esv1.Elasticsearch, shardLister es
 		if shard.NodeName == podName {
 			return true, nil
 		}
-		// shard node undefined (likely unassigned)
-		if shard.NodeName == "" {
+		// shard node undefined (likely unassigned by restarting the node)
+		if shard.NodeName == "" && shard.UnassignedReason != "REPLICA_ADDED" {
 			ulog.FromContext(ctx).Info("Found orphan shard, preventing data migration",
 				"namespace", es.Namespace, "es_name", es.Name,
 				"index", shard.Index, "shard", shard.Shard, "shard_state", shard.State)
