@@ -240,7 +240,7 @@ func deleteTestResources(ctx context.Context) error {
 			return fmt.Errorf("while listing all secrets in namespace %s: %w", namespace, err)
 		}
 		for _, secret := range list.Items {
-			if err := clntset.CoreV1().Secrets(namespace).Delete(ctx, secret.GetName(), v1.DeleteOptions{}); err != nil {
+			if err := clntset.CoreV1().Secrets(namespace).Delete(ctx, secret.GetName(), v1.DeleteOptions{}); err != nil && !api_errors.IsNotFound(err) {
 				return fmt.Errorf("while deleting secret %s in namespace %s: %w", secret.GetName(), namespace, err)
 			}
 		}
@@ -250,7 +250,7 @@ func deleteTestResources(ctx context.Context) error {
 			return fmt.Errorf("while listing all pods in namespace %s: %w", namespace, err)
 		}
 		for _, pod := range pods.Items {
-			if err := clntset.CoreV1().Pods(namespace).Delete(ctx, pod.GetName(), v1.DeleteOptions{}); err != nil {
+			if err := clntset.CoreV1().Pods(namespace).Delete(ctx, pod.GetName(), v1.DeleteOptions{}); err != nil && !api_errors.IsNotFound(err) {
 				return fmt.Errorf("while deleting pod %s in namespace %s: %w", pod.GetName(), namespace, err)
 			}
 		}
