@@ -10,9 +10,11 @@ import (
 
 	ghodssyaml "github.com/ghodss/yaml"
 	"github.com/stretchr/testify/require"
+
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	rbacv1 "k8s.io/api/rbac/v1"
+	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/rand"
 	"k8s.io/utils/ptr"
@@ -50,6 +52,23 @@ type Builder struct {
 
 	// Suffix is the suffix that is added to e2e test resources
 	Suffix string
+}
+
+func (b Builder) WithResources(resources corev1.ResourceRequirements) Builder {
+	containerIdx := getContainerIndex(agent.ContainerName, b.PodTemplate.Spec.Containers)
+	if containerIdx < 0 {
+		b.PodTemplate.Spec.Containers = append(
+			b.PodTemplate.Spec.Containers,
+			corev1.Container{
+				Name:      agent.ContainerName,
+				Resources: resources,
+			},
+		)
+		return b
+	}
+
+	b.PodTemplate.Spec.Containers[containerIdx].Resources = resources
+	return b
 }
 
 func (b Builder) SkipTest() bool {
@@ -100,7 +119,7 @@ func NewBuilder(name string) Builder {
 		Labels:    map[string]string{run.TestNameLabel: name},
 	}
 
-	return Builder{
+	builder := Builder{
 		Agent: agentv1alpha1.Agent{
 			ObjectMeta: meta,
 			Spec: agentv1alpha1.AgentSpec{
@@ -112,6 +131,27 @@ func NewBuilder(name string) Builder {
 		WithSuffix(suffix).
 		WithLabel(run.TestNameLabel, name).
 		WithDaemonSet()
+
+	if test.Ctx().OcpCluster {
+		// Agent requires more resources on OpenShift clusters. One hypothesis is that
+		// there are more resources deployed on OpenShift than on other K8s clusters
+		// used for E2E tests.
+		// Relates to https://github.com/elastic/cloud-on-k8s/pull/7789
+		// Should be reverted once https://github.com/elastic/elastic-agent/issues/4730 is addressed
+		builder = builder.WithResources(
+			corev1.ResourceRequirements{
+				Limits: map[corev1.ResourceName]resource.Quantity{
+					corev1.ResourceMemory: resource.MustParse("512Mi"),
+					corev1.ResourceCPU:    resource.MustParse("200m"),
+				},
+				Requests: map[corev1.ResourceName]resource.Quantity{
+					corev1.ResourceMemory: resource.MustParse("512Mi"),
+					corev1.ResourceCPU:    resource.MustParse("200m"),
+				},
+			},
+		)
+	}
+	return builder
 }
 
 type ValidationFunc func(client.Client) error
