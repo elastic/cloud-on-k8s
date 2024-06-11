@@ -90,6 +90,12 @@ spec:
             target: ''
             fields:
               cluster.name: {{ .ClusterName }}
+              pipeline: {{ .Pipeline }}
+              build_number: {{ .BuildNumber }}
+              provider: {{ .Provider }}
+              kubernetes_version: {{ .KubernetesMajorMinor }}
+              stack_version: {{ .ElasticStackVersion }}
+              e2e_test_id: {{ .Pipeline }}-{{ .BuildNumber }}-{{ .Provider }}-{{ .ClusterName }}-{{ .KubernetesMajorMinor }}-{{ .ElasticStackVersion }}
         - add_fields:
             target: kubernetes
             fields:
