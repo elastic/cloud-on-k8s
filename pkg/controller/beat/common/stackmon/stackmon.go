@@ -121,6 +121,10 @@ func MetricBeat(ctx context.Context, client k8s.Client, beat *v1beta1.Beat, vers
 	return sidecar, nil
 }
 
+type clusterUUIDResponse struct {
+	ClusterUUID string `json:"cluster_uuid"`
+}
+
 func associatedESUUID(ctx context.Context, client k8s.Client, beat *v1beta1.Beat) (string, error) {
 	esAssociation := beat.EsAssociation()
 	esRef := esAssociation.AssociationRef()
@@ -129,11 +133,11 @@ func associatedESUUID(ctx context.Context, client k8s.Client, beat *v1beta1.Beat
 		if err != nil {
 			return "", fmt.Errorf("while retrieving external ES connection info: %w", err)
 		}
-		uuid, err := remoteES.Request("/", "{.cluster_uuid}")
-		if err != nil {
+		clusterUUIDResponse := &clusterUUIDResponse{}
+		if err := remoteES.Request("/", clusterUUIDResponse); err != nil {
 			return "", fmt.Errorf("while retrieving remote cluster UUID %w", err)
 		}
-		return uuid, nil
+		return clusterUUIDResponse.ClusterUUID, nil
 	}
 	var es esv1.Elasticsearch
 	if err := client.Get(ctx, esRef.NamespacedName(), &es); err != nil {

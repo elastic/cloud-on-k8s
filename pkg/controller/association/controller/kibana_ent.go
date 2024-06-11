@@ -6,6 +6,7 @@ package controller
 
 import (
 	"context"
+	ver "github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/version"
 
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -62,26 +63,42 @@ func getEntExternalURL(c k8s.Client, assoc commonv1.Association) (string, error)
 	return association.ServiceURL(c, nsn, ent.Spec.HTTP.Protocol())
 }
 
+type entVersionResponse struct {
+	Number string `json:"number"`
+}
+
+func (entVersionResponse) IsServerless() bool {
+	return false
+}
+
+func (evr entVersionResponse) GetVersion() (string, error) {
+	if _, err := ver.Parse(evr.Number); err != nil {
+		return "", err
+	}
+	return evr.Number, nil
+}
+
 // referencedEntStatusVersion returns the currently running version of Enterprise Search
 // reported in its status.
-func referencedEntStatusVersion(c k8s.Client, entAssociation commonv1.Association) (string, error) {
+func referencedEntStatusVersion(c k8s.Client, entAssociation commonv1.Association) (string, bool, error) {
 	entRef := entAssociation.AssociationRef()
 	if entRef.IsExternal() {
 		info, err := association.GetUnmanagedAssociationConnectionInfoFromSecret(c, entAssociation)
 		if err != nil {
-			return "", err
+			return "", false, err
 		}
-		ver, err := info.Version("/api/ent/v1/internal/version", "{ .number }")
+		entVersionResponse := &entVersionResponse{}
+		ver, isServerless, err := info.Version("/api/ent/v1/internal/version", entVersionResponse)
 		if err != nil {
-			return "", err
+			return "", false, err
 		}
-		return ver, nil
+		return ver, isServerless, nil
 	}
 
 	var ent entv1.EnterpriseSearch
 	err := c.Get(context.Background(), entRef.NamespacedName(), &ent)
 	if err != nil {
-		return "", err
+		return "", false, err
 	}
-	return ent.Status.Version, nil
+	return ent.Status.Version, false, nil
 }

@@ -5,7 +5,6 @@
 package association
 
 import (
-	"bytes"
 	"context"
 	"crypto/tls"
 	"crypto/x509"
@@ -17,13 +16,11 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
-	"k8s.io/client-go/util/jsonpath"
 
 	commonv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/common/v1"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/certificates"
 	commonhash "github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/hash"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/reconciler"
-	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/version"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/client"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/k8s"
 )
@@ -51,16 +48,16 @@ func (r *Reconciler) ExpectedConfigFromUnmanagedAssociation(association commonv1
 		return commonv1.AssociationConf{}, err
 	}
 
-	var ver string
-	ver, err = r.ReferencedResourceVersion(r.Client, association)
+	ver, isServerless, err := r.ReferencedResourceVersion(r.Client, association)
 	if err != nil {
 		return commonv1.AssociationConf{}, err
 	}
 
 	// set url, version
 	expectedAssocConf := commonv1.AssociationConf{
-		Version: ver,
-		URL:     info.URL,
+		Version:    ver,
+		Serverless: isServerless,
+		URL:        info.URL,
 		// points the auth secret to the custom secret
 		AuthSecretName: assocRef.SecretName,
 		CACertProvided: info.CaCert != "",
@@ -142,27 +139,29 @@ func GetUnmanagedAssociationConnectionInfoFromSecret(c k8s.Client, association U
 
 // Version performs an HTTP GET request to the unmanaged Elastic resource at the given path and returns a string extracted
 // from the returned result using the given json path and validates it is a valid semver version.
-func (r UnmanagedAssociationConnectionInfo) Version(path string, jsonPath string) (string, error) {
-	ver, err := r.Request(path, jsonPath)
+func (r UnmanagedAssociationConnectionInfo) Version(path string, versionPattern VersionPattern) (string, bool, error) {
+	if err := r.Request(path, versionPattern); err != nil {
+		return "", false, err
+	}
+	ver, err := versionPattern.GetVersion()
 	if err != nil {
-		return "", err
+		return "", false, err
 	}
+	return ver, versionPattern.IsServerless(), nil
+}
 
-	// validate the version
-	if _, err := version.Parse(ver); err != nil {
-		return "", err
-	}
-
-	return ver, nil
+type VersionPattern interface {
+	IsServerless() bool
+	GetVersion() (string, error)
 }
 
 // Request performs an HTTP GET request to the unmanaged Elastic resource at the given path and returns a string extracted
 // from the returned result using the given json path.
-func (r UnmanagedAssociationConnectionInfo) Request(path string, jsonPath string) (string, error) {
+func (r UnmanagedAssociationConnectionInfo) Request(path string, out interface{}) error {
 	url := r.URL + path
 	req, err := http.NewRequest("GET", url, nil) //nolint:noctx
 	if err != nil {
-		return "", err
+		return err
 	}
 
 	if r.APIKey != "" {
@@ -178,7 +177,7 @@ func (r UnmanagedAssociationConnectionInfo) Request(path string, jsonPath string
 	if r.CaCert != "" {
 		caCerts, err := certificates.ParsePEMCerts([]byte(r.CaCert))
 		if err != nil {
-			return "", err
+			return err
 		}
 		certPool := x509.NewCertPool()
 		for _, c := range caCerts {
@@ -189,28 +188,17 @@ func (r UnmanagedAssociationConnectionInfo) Request(path string, jsonPath string
 
 	resp, err := httpClient.Do(req)
 	if err != nil {
-		return "", err
+		return err
 	}
 	defer resp.Body.Close()
 	if resp.StatusCode != 200 {
-		return "", fmt.Errorf("error requesting %q, statusCode = %d", url, resp.StatusCode)
+		return fmt.Errorf("error requesting %q, statusCode = %d", url, resp.StatusCode)
 	}
 
-	var obj interface{}
-	if err = json.NewDecoder(resp.Body).Decode(&obj); err != nil {
-		return "", err
+	if err = json.NewDecoder(resp.Body).Decode(out); err != nil {
+		return err
 	}
-
-	// extract the version using the json path
-	j := jsonpath.New(jsonPath)
-	if err := j.Parse(jsonPath); err != nil {
-		return "", err
-	}
-	buf := new(bytes.Buffer)
-	if err := j.Execute(buf, obj); err != nil {
-		return "", err
-	}
-	return buf.String(), nil
+	return nil
 }
 
 // filterUnmanagedElasticRef returns those associations that reference using a Kubernetes secret an Elastic resource not managed by ECK.

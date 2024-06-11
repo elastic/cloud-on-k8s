@@ -6,6 +6,7 @@ package controller
 
 import (
 	"context"
+	ver "github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/version"
 
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/types"
@@ -71,28 +72,46 @@ func getKibanaExternalURL(c k8s.Client, assoc commonv1.Association) (string, err
 	return association.ServiceURL(c, nsn, kb.Spec.HTTP.Protocol())
 }
 
+type kibanaVersionResponse struct {
+	Version struct {
+		Number string `json:"number"`
+	} `json:"version"`
+}
+
+func (kibanaVersionResponse) IsServerless() bool {
+	return false
+}
+
+func (kvr kibanaVersionResponse) GetVersion() (string, error) {
+	if _, err := ver.Parse(kvr.Version.Number); err != nil {
+		return "", err
+	}
+	return kvr.Version.Number, nil
+}
+
 // referencedKibanaStatusVersion returns the currently running version of Kibana
 // reported in its status.
-func referencedKibanaStatusVersion(c k8s.Client, kbAssociation commonv1.Association) (string, error) {
+func referencedKibanaStatusVersion(c k8s.Client, kbAssociation commonv1.Association) (string, bool, error) {
 	kbRef := kbAssociation.AssociationRef()
 	if kbRef.IsExternal() {
+		kbVersionResponse := &kibanaVersionResponse{}
 		info, err := association.GetUnmanagedAssociationConnectionInfoFromSecret(c, kbAssociation)
 		if err != nil {
-			return "", err
+			return "", false, err
 		}
-		ver, err := info.Version("/api/status", "{ .version.number }")
+		ver, isServerless, err := info.Version("/api/status", kbVersionResponse)
 		if err != nil {
-			return "", err
+			return "", false, err
 		}
-		return ver, nil
+		return ver, isServerless, nil
 	}
 
 	var kb kbv1.Kibana
 	err := c.Get(context.Background(), kbRef.NamespacedName(), &kb)
 	if err != nil {
-		return "", err
+		return "", false, err
 	}
-	return kb.Status.Version, nil
+	return kb.Status.Version, false, nil
 }
 
 // getElasticsearchFromKibana returns the Elasticsearch reference in which the user must be created for this association.
