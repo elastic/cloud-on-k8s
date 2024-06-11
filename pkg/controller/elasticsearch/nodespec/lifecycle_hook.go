@@ -169,7 +169,7 @@ fi
 
 ES_URL={{.ServiceURL}}
 
-log "retrieving nodes"
+log "retrieving node "
 if ! retry 10 request -X GET "${ES_URL}/_cat/nodes?full_id=true&h=id,name" "${BASIC_AUTH}"
 then
   # this is a api error
@@ -194,8 +194,8 @@ then
 fi
 
 if grep -q -v '"nodes":\[\]' "$resp_body"; then
-	log "shutdown managed by ECK operator"
-	delayed_exit
+  log "shutdown managed by ECK operator"
+  delayed_exit
 fi
 
 log "initiating node shutdown"
