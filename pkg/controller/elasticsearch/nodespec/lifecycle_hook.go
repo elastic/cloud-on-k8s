@@ -173,7 +173,7 @@ log "retrieving node "
 if ! retry 10 request -X GET "${ES_URL}/_cat/nodes?full_id=true&h=id,name" "${BASIC_AUTH}"
 then
   # this is a api error
-	error_exit "failed to retrieve nodes"
+  error_exit "failed to retrieve nodes"
 fi
 
 # This can probably be easyer without cut and cat the error with if []; then
