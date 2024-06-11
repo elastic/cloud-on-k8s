@@ -170,7 +170,7 @@ fi
 ES_URL={{.ServiceURL}}
 
 log "retrieving node ID"
-if ! retry 10 request -X GET "${ES_URL}/_cat/nodes?full_id=true&h=id,name" "${BASIC_AUTH}"
+if ! retry 7 request -X GET "${ES_URL}/_cat/nodes?full_id=true&h=id,name" "${BASIC_AUTH}"
 then
   error_exit "failed to retrieve nodes"
 fi
@@ -192,7 +192,7 @@ if grep -q -v '"nodes":\[\]' "$resp_body"; then
 fi
 
 log "initiating node shutdown"
-if retry 10 request -X PUT "${ES_URL}/_nodes/${NODE_ID}/shutdown" "${BASIC_AUTH}" -H 'Content-Type: application/json' -d"
+if retry 7 request -X PUT "${ES_URL}/_nodes/${NODE_ID}/shutdown" "${BASIC_AUTH}" -H 'Content-Type: application/json' -d"
 {
   \"type\": \"${shutdown_type}\",
   \"reason\": \"pre-stop hook\"
