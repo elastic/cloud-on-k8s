@@ -27,12 +27,13 @@ func NewPreStopHook() *v1.LifecycleHandler {
 const PreStopHookScriptConfigKey = "pre-stop-hook-script.sh"
 
 var preStopHookScriptTemplate = template.Must(template.New("pre-stop").Parse(`#!/usr/bin/env bash
+# shellcheck disable=SC1083  # remove errors from golang templating
 
 set -uo pipefail
 
-# This script will wait for up to $PRE_STOP_ADDITIONAL_WAIT_SECONDS before allowing termination of the Pod 
+# This script will wait for up to $PRE_STOP_ADDITIONAL_WAIT_SECONDS before allowing termination of the Pod
 # This slows down the process shutdown and allows to make changes to the pool gracefully, without blackholing traffic when DNS
-# still contains the IP that is already inactive. 
+# still contains the IP that is already inactive.
 # As this runs in parallel to grace period after which process is SIGKILLed,
 # it should be set to allow enough time for the process to gracefully terminate.
 # It allows kube-proxy to refresh its rules and remove the terminating Pod IP.
@@ -122,11 +123,11 @@ function delayed_exit() {
   elapsed=$(duration "$script_start")
   local remaining=$((PRE_STOP_ADDITIONAL_WAIT_SECONDS - elapsed))
   if (( remaining < 0 )); then
-    exit ${1-0}
+    exit "${1-0}"
   fi
   log "delaying termination for $remaining seconds"
   sleep $remaining
-  exit ${1-0}
+  exit "${1-0}"
 }
 
 function supports_node_shutdown() {
@@ -153,7 +154,7 @@ fi
 
 # if ES version does not support node shutdown exit early
 if ! supports_node_shutdown "$version"; then
-  delayed_exit 
+  delayed_exit
 fi
 
 # setup basic auth if credentials are available
@@ -168,40 +169,54 @@ fi
 
 ES_URL={{.ServiceURL}}
 
-log "retrieving node ID"
-retry 10 request -X GET "$ES_URL/_cat/nodes?full_id=true&h=id,name" $BASIC_AUTH
-if [ "$?" -ne 0 ]; then
-	error_exit "failed to retrieve node ID"
+log "retrieving nodes"
+if ! retry 10 request -X GET "${ES_URL}/_cat/nodes?full_id=true&h=id,name" "${BASIC_AUTH}"
+then
+  # this is a api error
+	error_exit "failed to retrieve nodes"
 fi
 
+# This can probably be easyer without cut and cat the error with if []; then
 NODE_ID=$(grep "$POD_NAME" "$resp_body" | cut -f 1 -d ' ')
+# check if the pod is known to te cluster
+if [[ -z "${NODE_ID}" ]]; then
+  # this is a node id not found error
+  # should retry 'retrieving node ID' a few times
+  # else the node will be removed and shutdown is tried again with the same result.
+  # and have to check if the node is not removed from the cluster before this point is hit.
+  error_exit "failed to retrieve node ID"
+fi
 
 # check if there is an ongoing shutdown request
-request -X GET $ES_URL/_nodes/"$NODE_ID"/shutdown $BASIC_AUTH
+if request -X GET "${ES_URL}/_nodes/${NODE_ID}/shutdown" "${BASIC_AUTH}"
+then
+  error_exit "failed to retrieve shutdown status"
+fi
+
 if grep -q -v '"nodes":\[\]' "$resp_body"; then
 	log "shutdown managed by ECK operator"
-	delayed_exit      
+	delayed_exit
 fi
 
 log "initiating node shutdown"
-retry 10 request -X PUT $ES_URL/_nodes/"$NODE_ID"/shutdown $BASIC_AUTH -H 'Content-Type: application/json' -d"
+if retry 10 request -X PUT "${ES_URL}/_nodes/${NODE_ID}/shutdown" "${BASIC_AUTH}" -H 'Content-Type: application/json' -d"
 {
-  \"type\": \"$shutdown_type\",
+  \"type\": \"${shutdown_type}\",
   \"reason\": \"pre-stop hook\"
-}
-"
-if [ "$?" -ne 0 ]; then
-   error_exit "failed to call node shutdown API"
+}"
+then
+  error_exit "failed to call node shutdown API"
 fi
 
 while :
-do 
-   log "waiting for node shutdown to complete"
-   request -X GET $ES_URL/_nodes/"$NODE_ID"/shutdown $BASIC_AUTH
-   if [ "$?" -eq 0 ] && grep -q -v 'IN_PROGRESS\|STALLED' "$resp_body"; then
-      break
-   fi
-   sleep 10 
+do
+  log "waiting for node shutdown to complete"
+  if request -X GET "${ES_URL}/_nodes/${NODE_ID}/shutdown" "${BASIC_AUTH}" &&
+    grep -q -v 'IN_PROGRESS\|STALLED' "$resp_body"
+  then
+    break
+  fi
+  sleep 10
 done
 
 delayed_exit
