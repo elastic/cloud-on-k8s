@@ -77,7 +77,7 @@ function request() {
     if [ "$exit" -eq 6 ]; then ((global_dns_error_cnt++)); fi
     # make sure we have a non-zero exit code in the presence of errors
     if [ "$exit" -eq 0 ]; then exit=1; fi
-    log  "$status" "$3" #by convention the third arg contains the URL
+    log "$status" "$3" #by convention the third arg contains the URL
     return $exit
   fi
   global_dns_error_cnt=0
