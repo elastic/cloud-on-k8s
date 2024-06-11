@@ -2,6 +2,11 @@
 == 2.13.0 release highlights
 
 [float]
+[id="{p}-2130-known-issues"]
+=== Known issues
+Upgrading Elasticsearch to version `8.14.0` from any version prior to `8.4.0` leads to Elasticsearch Pods not reaching a ready state. To avoid the issue, first upgrade to any version between `8.4.0` and up to and including `8.13.2` and then upgrade to `8.14.0`.
+
+[float]
 [id="{p}-2130-new-and-notable"]
 === New and notable
 
