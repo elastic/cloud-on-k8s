@@ -169,21 +169,14 @@ fi
 
 ES_URL={{.ServiceURL}}
 
-log "retrieving node "
+log "retrieving node ID"
 if ! retry 10 request -X GET "${ES_URL}/_cat/nodes?full_id=true&h=id,name" "${BASIC_AUTH}"
 then
-  # this is a api error
   error_exit "failed to retrieve nodes"
 fi
 
-# This can probably be easyer without cut and cat the error with if []; then
-NODE_ID=$(grep "$POD_NAME" "$resp_body" | cut -f 1 -d ' ')
-# check if the pod is known to te cluster
-if [[ -z "${NODE_ID}" ]]; then
-  # this is a node id not found error
-  # should retry 'retrieving node ID' a few times
-  # else the node will be removed and shutdown is tried again with the same result.
-  # and have to check if the node is not removed from the cluster before this point is hit.
+# check if the pod is present
+if ! NODE_ID=$(grep -oP "\K\w+(?= ${POD_NAME})" "$resp_body")
   error_exit "failed to retrieve node ID"
 fi
 
