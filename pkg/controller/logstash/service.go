@@ -13,6 +13,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/defaults"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/logstash/labels"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/logstash/network"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/maps"
 )
 
 const (
@@ -70,8 +71,7 @@ func newService(service logstashv1alpha1.LogstashService, logstash logstashv1alp
 	svc.ObjectMeta.Name = logstashv1alpha1.UserServiceName(logstash.Name, service.Name)
 
 	labels := labels.NewLabels(logstash)
-
-	svc.Labels = labels
+	svc.Labels = maps.MergePreservingExistingKeys(svc.Labels, labels)
 
 	if svc.Spec.Selector == nil {
 		svc.Spec.Selector = labels

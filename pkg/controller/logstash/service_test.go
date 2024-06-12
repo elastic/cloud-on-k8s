@@ -9,6 +9,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/require"
+	"k8s.io/utils/ptr"
 
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -20,7 +21,6 @@ import (
 )
 
 func TestReconcileServices(t *testing.T) {
-	trueVal := true
 	testCases := []struct {
 		name     string
 		logstash logstashv1alpha1.Logstash
@@ -47,8 +47,8 @@ func TestReconcileServices(t *testing.T) {
 							APIVersion:         "logstash.k8s.elastic.co/v1alpha1",
 							Kind:               "Logstash",
 							Name:               "logstash",
-							Controller:         &trueVal,
-							BlockOwnerDeletion: &trueVal,
+							Controller:         ptr.To(true),
+							BlockOwnerDeletion: ptr.To(true),
 						},
 					},
 				},
@@ -97,8 +97,8 @@ func TestReconcileServices(t *testing.T) {
 							APIVersion:         "logstash.k8s.elastic.co/v1alpha1",
 							Kind:               "Logstash",
 							Name:               "logstash",
-							Controller:         &trueVal,
-							BlockOwnerDeletion: &trueVal,
+							Controller:         ptr.To(true),
+							BlockOwnerDeletion: ptr.To(true),
 						},
 					},
 				},
@@ -148,8 +148,8 @@ func TestReconcileServices(t *testing.T) {
 								APIVersion:         "logstash.k8s.elastic.co/v1alpha1",
 								Kind:               "Logstash",
 								Name:               "logstash",
-								Controller:         &trueVal,
-								BlockOwnerDeletion: &trueVal,
+								Controller:         ptr.To(true),
+								BlockOwnerDeletion: ptr.To(true),
 							},
 						},
 					},
@@ -163,21 +163,49 @@ func TestReconcileServices(t *testing.T) {
 						},
 					},
 				},
+				DefaultAPIService(),
+			},
+		},
+		{
+			name: "Preserve user defined labels",
+			logstash: logstashv1alpha1.Logstash{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "logstash",
+					Namespace: "test",
+				},
+				Spec: logstashv1alpha1.LogstashSpec{
+					Services: []logstashv1alpha1.LogstashService{{
+						Name: "test",
+						Service: commonv1.ServiceTemplate{
+							ObjectMeta: metav1.ObjectMeta{
+								Labels: map[string]string{"some.label": "abc"},
+							},
+							Spec: corev1.ServiceSpec{
+								Ports: []corev1.ServicePort{
+									{Protocol: "TCP", Port: 9200},
+								},
+							},
+						},
+					}},
+				},
+			},
+			wantSvc: []corev1.Service{
 				{
 					ObjectMeta: metav1.ObjectMeta{
-						Name:      "logstash-ls-api",
+						Name:      "logstash-ls-test",
 						Namespace: "test",
 						Labels: map[string]string{
 							"common.k8s.elastic.co/type":   "logstash",
 							"logstash.k8s.elastic.co/name": "logstash",
+							"some.label":                   "abc",
 						},
 						OwnerReferences: []metav1.OwnerReference{
 							{
 								APIVersion:         "logstash.k8s.elastic.co/v1alpha1",
 								Kind:               "Logstash",
 								Name:               "logstash",
-								Controller:         &trueVal,
-								BlockOwnerDeletion: &trueVal,
+								Controller:         ptr.To(true),
+								BlockOwnerDeletion: ptr.To(true),
 							},
 						},
 					},
@@ -186,12 +214,13 @@ func TestReconcileServices(t *testing.T) {
 							"common.k8s.elastic.co/type":   "logstash",
 							"logstash.k8s.elastic.co/name": "logstash",
 						},
-						ClusterIP: "None",
+						ClusterIP: "",
 						Ports: []corev1.ServicePort{
-							{Name: "api", Protocol: "TCP", Port: 9600},
+							{Protocol: "TCP", Port: 9200},
 						},
 					},
 				},
+				DefaultAPIService(),
 			},
 		},
 	}
@@ -216,5 +245,37 @@ func TestReconcileServices(t *testing.T) {
 				}
 			}
 		})
+	}
+}
+
+func DefaultAPIService() corev1.Service {
+	return corev1.Service{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "logstash-ls-api",
+			Namespace: "test",
+			Labels: map[string]string{
+				"common.k8s.elastic.co/type":   "logstash",
+				"logstash.k8s.elastic.co/name": "logstash",
+			},
+			OwnerReferences: []metav1.OwnerReference{
+				{
+					APIVersion:         "logstash.k8s.elastic.co/v1alpha1",
+					Kind:               "Logstash",
+					Name:               "logstash",
+					Controller:         ptr.To(true),
+					BlockOwnerDeletion: ptr.To(true),
+				},
+			},
+		},
+		Spec: corev1.ServiceSpec{
+			Selector: map[string]string{
+				"common.k8s.elastic.co/type":   "logstash",
+				"logstash.k8s.elastic.co/name": "logstash",
+			},
+			ClusterIP: "None",
+			Ports: []corev1.ServicePort{
+				{Name: "api", Protocol: "TCP", Port: 9600},
+			},
+		},
 	}
 }
