@@ -52,7 +52,7 @@ shutdown_type=${PRE_STOP_SHUTDOWN_TYPE:=restart}
 # capture response bodies in a temp file for better error messages and to extract necessary information for subsequent requests
 resp_body=$(mktemp)
 # shellcheck disable=SC2064
-# trap "rm -f $resp_body" EXIT
+trap "rm -f $resp_body" EXIT
 
 script_start=$(date +%s)
 
@@ -71,12 +71,8 @@ global_dns_error_cnt=0
 
 function request() {
   local status exit
-  echo "$*" >> /tmp/curl.log
   status=$(curl -k -sS -o "${resp_body}" -w "%{http_code}" "$@")
   exit=$?
-  echo "status: ${exit}"
-  curl -k -sS "$@" >> /tmp/curl.log
-  echo "" >> /tmp/curl.log
   if [ "$exit" -ne 0 ] || [ "$status" -lt 200 ] || [ "$status" -gt 299 ]; then
     # track curl DNS errors separately
     if [ "$exit" -eq 6 ]; then ((global_dns_error_cnt++)); fi
@@ -174,7 +170,7 @@ fi
 
 ES_URL={{.ServiceURL}}
 
-log "retrieving nodes"
+log "retrieving node ID"
 if ! retry 7 request -X GET "${ES_URL}/_cat/nodes?full_id=true&h=id,name" "${BASIC_AUTH[@]}"
 then
   error_exit "failed to retrieve nodes"
@@ -184,26 +180,19 @@ if [ ! -s "${resp_body}" ]; then
   error_exit "response is empty"
 fi
 
-log "retrieving node id"
-log "resp_body: ${resp_body}"
 NODE_ID="$(grep -oP "\K\w+(?= ${POD_NAME})" "${resp_body}")"
 return_code=$?
 if [ "${return_code}" -gt 0 ] && [[ -z "${NODE_ID}" ]]
 then
   log "failed to retrieve node id ($return_code)"
   error_exit "failed to retrieve node id"
-else
-  log "NODE_ID: ${NODE_ID}"
-  log "success to retrieve node id"
 fi
 
-log "retrieving shutdown request"
 if ! request -X GET "${ES_URL}/_nodes/${NODE_ID}/shutdown" "${BASIC_AUTH[@]}"
 then
   error_exit "failed to retrieve shutdown status"
 fi
 
-log "check shutdown response"
 if grep -q -v '"nodes":\[\]' "$resp_body"; then
   log "shutdown managed by ECK operator"
   delayed_exit
