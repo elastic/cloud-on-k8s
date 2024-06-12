@@ -263,7 +263,7 @@ func DefaultAPIService() corev1.Service {
 					APIVersion:         "logstash.k8s.elastic.co/v1alpha1",
 					Kind:               "Logstash",
 					Name:               "logstash",
-					Controller:         &trueVal,
+					Controller:         ptr.To(true),
 					BlockOwnerDeletion: &trueVal,
 				},
 			},
