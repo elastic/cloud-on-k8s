@@ -27,7 +27,7 @@ func NewPreStopHook() *v1.LifecycleHandler {
 const PreStopHookScriptConfigKey = "pre-stop-hook-script.sh"
 
 var preStopHookScriptTemplate = template.Must(template.New("pre-stop").Parse(`#!/usr/bin/env bash
-# shellcheck disable=SC1083  # remove errors from golang templating
+# shellcheck disable=SC1083
 
 set -uo pipefail
 
