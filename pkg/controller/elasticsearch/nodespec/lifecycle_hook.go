@@ -29,8 +29,7 @@ const PreStopHookScriptConfigKey = "pre-stop-hook-script.sh"
 var preStopHookScriptTemplate = template.Must(template.New("pre-stop").Parse(`#!/usr/bin/env bash
 # shellcheck disable=SC1083  # remove errors from golang templating
 
-#set -uo pipefail
-set -o pipefail
+set -uo pipefail
 
 # This script will wait for up to $PRE_STOP_ADDITIONAL_WAIT_SECONDS before allowing termination of the Pod
 # This slows down the process shutdown and allows to make changes to the pool gracefully, without blackholing traffic when DNS
