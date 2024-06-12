@@ -9,6 +9,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/require"
+	"k8s.io/utils/ptr"
 
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -20,7 +21,6 @@ import (
 )
 
 func TestReconcileServices(t *testing.T) {
-	trueVal := true
 	testCases := []struct {
 		name     string
 		logstash logstashv1alpha1.Logstash
@@ -47,8 +47,8 @@ func TestReconcileServices(t *testing.T) {
 							APIVersion:         "logstash.k8s.elastic.co/v1alpha1",
 							Kind:               "Logstash",
 							Name:               "logstash",
-							Controller:         &trueVal,
-							BlockOwnerDeletion: &trueVal,
+							Controller:         ptr.To(true),
+							BlockOwnerDeletion: ptr.To(true),
 						},
 					},
 				},
@@ -97,8 +97,8 @@ func TestReconcileServices(t *testing.T) {
 							APIVersion:         "logstash.k8s.elastic.co/v1alpha1",
 							Kind:               "Logstash",
 							Name:               "logstash",
-							Controller:         &trueVal,
-							BlockOwnerDeletion: &trueVal,
+							Controller:         ptr.To(true),
+							BlockOwnerDeletion: ptr.To(true),
 						},
 					},
 				},
@@ -148,8 +148,8 @@ func TestReconcileServices(t *testing.T) {
 								APIVersion:         "logstash.k8s.elastic.co/v1alpha1",
 								Kind:               "Logstash",
 								Name:               "logstash",
-								Controller:         &trueVal,
-								BlockOwnerDeletion: &trueVal,
+								Controller:         ptr.To(true),
+								BlockOwnerDeletion: ptr.To(true),
 							},
 						},
 					},
@@ -204,8 +204,8 @@ func TestReconcileServices(t *testing.T) {
 								APIVersion:         "logstash.k8s.elastic.co/v1alpha1",
 								Kind:               "Logstash",
 								Name:               "logstash",
-								Controller:         &trueVal,
-								BlockOwnerDeletion: &trueVal,
+								Controller:         ptr.To(true),
+								BlockOwnerDeletion: ptr.To(true),
 							},
 						},
 					},
@@ -249,7 +249,6 @@ func TestReconcileServices(t *testing.T) {
 }
 
 func DefaultAPIService() corev1.Service {
-	trueVal := true
 	return corev1.Service{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "logstash-ls-api",
@@ -264,7 +263,7 @@ func DefaultAPIService() corev1.Service {
 					Kind:               "Logstash",
 					Name:               "logstash",
 					Controller:         ptr.To(true),
-					BlockOwnerDeletion: &trueVal,
+					BlockOwnerDeletion: ptr.To(true),
 				},
 			},
 		},
