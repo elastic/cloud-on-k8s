@@ -6,7 +6,6 @@ package controller
 
 import (
 	"context"
-	ver "github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/version"
 
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/types"
@@ -18,6 +17,7 @@ import (
 	kbv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/kibana/v1"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/association"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/operator"
+	ver "github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/version"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/user"
 	kblabel "github.com/elastic/cloud-on-k8s/v2/pkg/controller/kibana/label"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/k8s"
