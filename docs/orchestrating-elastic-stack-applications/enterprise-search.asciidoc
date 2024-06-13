@@ -309,7 +309,7 @@ spec:
           medium: Memory
 ----
 
-<1> Adds a security context to define and access control settings for the `enterprise-search` container.
+<1> Adds a security context to define permissions and access control settings for the `enterprise-search` container.
 <2> Sets the user to random UID `1000` to run the container as a non-root user.
 <3> Adds volume mounts for `search-tmp`, `tmp`, `filebeat-data`, and `war-files` to the `enterprise-search` container.
 <4> Adds the variable `JAVA_OPTS` to pass options and configurations to the Java Virtual Machine (JVM).
