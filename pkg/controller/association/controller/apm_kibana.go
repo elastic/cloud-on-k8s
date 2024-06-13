@@ -80,7 +80,7 @@ type kibanaVersionResponse struct {
 }
 
 func (kvr kibanaVersionResponse) IsServerless() bool {
-	return kvr.Version.BuildFlavor == "serverless"
+	return kvr.Version.BuildFlavor == serverlessBuildFlavor
 }
 
 func (kvr kibanaVersionResponse) GetVersion() (string, error) {

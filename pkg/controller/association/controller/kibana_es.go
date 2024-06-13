@@ -35,6 +35,9 @@ const (
 
 	// KibanaSystemUserBuiltinRole is the name of the built-in role for the Kibana system user.
 	KibanaSystemUserBuiltinRole = "kibana_system"
+
+	// serverlessBuildFlavor is the string returned in the version.build_flavor field when running on serverless.
+	serverlessBuildFlavor = "serverless"
 )
 
 func AddKibanaES(mgr manager.Manager, accessReviewer rbac.AccessReviewer, params operator.Parameters) error {
@@ -78,7 +81,7 @@ type elasticsearchVersionResponse struct {
 }
 
 func (evr elasticsearchVersionResponse) IsServerless() bool {
-	return evr.Version.BuildFlavor == "serverless"
+	return evr.Version.BuildFlavor == serverlessBuildFlavor
 }
 
 func (evr elasticsearchVersionResponse) GetVersion() (string, error) {
