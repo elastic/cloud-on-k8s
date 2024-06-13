@@ -141,16 +141,31 @@ func NewBuilder(name string) Builder {
 		builder = builder.WithResources(
 			corev1.ResourceRequirements{
 				Limits: map[corev1.ResourceName]resource.Quantity{
-					corev1.ResourceMemory: resource.MustParse("512Mi"),
+					corev1.ResourceMemory: resource.MustParse("1Gi"),
 					corev1.ResourceCPU:    resource.MustParse("200m"),
 				},
 				Requests: map[corev1.ResourceName]resource.Quantity{
-					corev1.ResourceMemory: resource.MustParse("512Mi"),
+					corev1.ResourceMemory: resource.MustParse("1Gi"),
 					corev1.ResourceCPU:    resource.MustParse("200m"),
 				},
 			},
 		)
+		return builder
 	}
+
+	// Adjust Agent requirement to deal with https://github.com/elastic/elastic-agent/issues/4730
+	builder = builder.WithResources(
+		corev1.ResourceRequirements{
+			Limits: map[corev1.ResourceName]resource.Quantity{
+				corev1.ResourceMemory: resource.MustParse("512Mi"),
+				corev1.ResourceCPU:    resource.MustParse("200m"),
+			},
+			Requests: map[corev1.ResourceName]resource.Quantity{
+				corev1.ResourceMemory: resource.MustParse("512Mi"),
+				corev1.ResourceCPU:    resource.MustParse("200m"),
+			},
+		},
+	)
 	return builder
 }
 
