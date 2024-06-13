@@ -74,12 +74,13 @@ func getKibanaExternalURL(c k8s.Client, assoc commonv1.Association) (string, err
 
 type kibanaVersionResponse struct {
 	Version struct {
-		Number string `json:"number"`
+		Number      string `json:"number"`
+		BuildFlavor string `json:"build_flavor"`
 	} `json:"version"`
 }
 
-func (kibanaVersionResponse) IsServerless() bool {
-	return false
+func (kvr kibanaVersionResponse) IsServerless() bool {
+	return kvr.Version.BuildFlavor == "serverless"
 }
 
 func (kvr kibanaVersionResponse) GetVersion() (string, error) {
