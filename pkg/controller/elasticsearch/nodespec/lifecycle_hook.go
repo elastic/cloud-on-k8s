@@ -160,7 +160,7 @@ fi
 # setup basic auth if credentials are available
 if [ -f "{{.PreStopUserPasswordPath}}" ]; then
   PROBE_PASSWORD=$(<{{.PreStopUserPasswordPath}})
-  BASIC_AUTH="-u {{.PreStopUserName}}:${PROBE_PASSWORD}"
+  BASIC_AUTH=("-u" "{{.PreStopUserName}}:${PROBE_PASSWORD}")
 else
   # typically the case on upgrades from versions that did not have this script yet and the necessary volume mounts are missing
   log "no API credentials available, will not attempt node shutdown orchestration from pre-stop hook"
