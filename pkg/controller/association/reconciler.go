@@ -77,7 +77,8 @@ type AssociationInfo struct { //nolint:revive
 	// base is used to recognize annotations eligible for removal when association is removed.
 	AssociationConfAnnotationNameBase string
 	// ReferencedResourceVersion returns the currently running version of the referenced resource.
-	// It may return an empty string if the version is unknown.
+	// It may return an empty string if the version is unknown. A boolean is also returned, set to true if the referenced
+	// resource is a serverless project running in https://cloud.elastic.co/
 	ReferencedResourceVersion func(c k8s.Client, association commonv1.Association) (string, bool, error)
 	// AssociationResourceNameLabelName is a label used on resources needed for an association. It identifies the name
 	// of the associated resource (eg. user secret allowing to connect Beat to Kibana will have this label pointing to the
