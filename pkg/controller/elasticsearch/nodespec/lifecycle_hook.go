@@ -27,7 +27,6 @@ func NewPreStopHook() *v1.LifecycleHandler {
 const PreStopHookScriptConfigKey = "pre-stop-hook-script.sh"
 
 var preStopHookScriptTemplate = template.Must(template.New("pre-stop").Parse(`#!/usr/bin/env bash
-# shellcheck disable=SC1083
 
 set -uo pipefail
 
@@ -120,19 +119,19 @@ function error_exit() {
 
 function delayed_exit() {
   local elapsed
-  elapsed=$(duration "$script_start")
+  elapsed=$(duration "${script_start}")
   local remaining=$((PRE_STOP_ADDITIONAL_WAIT_SECONDS - elapsed))
   if (( remaining < 0 )); then
     exit "$1"
   fi
-  log "delaying termination for $remaining seconds"
+  log "delaying termination for ${remaining} seconds"
   sleep $remaining
   exit "$1"
 }
 
 function supports_node_shutdown() {
   local version="$1"
-  version=${version#[vV]}
+  version="${version#[vV]}"
   major="${version%%\.*}"
   minor="${version#*.}"
   minor="${minor%.*}"
@@ -147,7 +146,7 @@ function supports_node_shutdown() {
 version=""
 if [[ -f "{{.LabelsFile}}" ]]; then
   # get Elasticsearch version from the downward API
-  version=$(grep "{{.VersionLabelName}}" {{.LabelsFile}} | cut -d '=' -f 2)
+  version=$(grep "{{.VersionLabelName}}" "{{.LabelsFile}}" | cut -d '=' -f 2)
   # remove quotes
   version=$(echo "${version}" | tr -d '"')
 fi
@@ -159,7 +158,7 @@ fi
 
 # setup basic auth if credentials are available
 if [ -f "{{.PreStopUserPasswordPath}}" ]; then
-  PROBE_PASSWORD=$(<{{.PreStopUserPasswordPath}})
+  PROBE_PASSWORD=$(<"{{.PreStopUserPasswordPath}}")
   BASIC_AUTH=("-u" "{{.PreStopUserName}}:${PROBE_PASSWORD}")
 else
   # typically the case on upgrades from versions that did not have this script yet and the necessary volume mounts are missing
@@ -167,7 +166,7 @@ else
   delayed_exit
 fi
 
-ES_URL={{.ServiceURL}}
+ES_URL="{{.ServiceURL}}"
 
 log "retrieving node ID"
 if ! retry 8 request -X GET "${ES_URL}/_cat/nodes?full_id=true&h=id,name" "${BASIC_AUTH[@]}"
