@@ -178,12 +178,9 @@ if [ ! -s "${resp_body}" ]; then
   error_exit "response is empty"
 fi
 
-NODE_ID="$(grep -oP "\K\w+(?= ${POD_NAME})" "${resp_body}")"
-return_code=$?
-if [ "${return_code}" -gt 0 ] && [[ -z "${NODE_ID}" ]]
+if ! NODE_ID="$(grep -oP "\K\w+(?= ${POD_NAME})" "${resp_body}")"
 then
-  log "failed to retrieve node id ($return_code)"
-  error_exit "failed to retrieve node id"
+  error_exit "failed to extract node id"
 fi
 
 if ! request -X GET "${ES_URL}/_nodes/${NODE_ID}/shutdown" "${BASIC_AUTH[@]}"
