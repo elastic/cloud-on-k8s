@@ -113,7 +113,7 @@ function log() {
 }
 
 function error_exit() {
-  log "$@"
+  log "$*"
   delayed_exit 1
 }
 
@@ -122,15 +122,15 @@ function delayed_exit() {
   elapsed=$(duration "${script_start}")
   local remaining=$((PRE_STOP_ADDITIONAL_WAIT_SECONDS - elapsed))
   if (( remaining < 0 )); then
-    exit "$1"
+    exit $1
   fi
   log "delaying termination for ${remaining} seconds"
   sleep $remaining
-  exit "$1"
+  exit $1
 }
 
 function supports_node_shutdown() {
-  local version="$1"
+  local version=$1
   version="${version#[vV]}"
   major="${version%%\.*}"
   minor="${version#*.}"
