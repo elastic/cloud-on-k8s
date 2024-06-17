@@ -3,7 +3,7 @@ module github.com/elastic/cloud-on-k8s/hack/helm/release
 go 1.22.0
 
 require (
-	cloud.google.com/go/storage v1.41.0
+	cloud.google.com/go/storage v1.42.0
 	github.com/elastic/cloud-on-k8s/v2 v2.12.1
 	github.com/google/go-cmp v0.6.0
 	github.com/spf13/cobra v1.8.0
@@ -163,7 +163,7 @@ require (
 	golang.org/x/text v0.16.0 // indirect
 	golang.org/x/time v0.5.0 // indirect
 	google.golang.org/genproto v0.0.0-20240604185151-ef581f913117 // indirect
-	google.golang.org/genproto/googleapis/api v0.0.0-20240528184218-531527333157 // indirect
+	google.golang.org/genproto/googleapis/api v0.0.0-20240604185151-ef581f913117 // indirect
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20240528184218-531527333157 // indirect
 	google.golang.org/grpc v1.64.0 // indirect
 	google.golang.org/protobuf v1.34.1 // indirect
