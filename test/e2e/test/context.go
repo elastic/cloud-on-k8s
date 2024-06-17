@@ -114,6 +114,7 @@ type Context struct {
 	Local                 bool              `json:"local"`
 	IgnoreWebhookFailures bool              `json:"ignore_webhook_failures"`
 	OcpCluster            bool              `json:"ocp_cluster"`
+	AksCluster            bool              `json:"aks_cluster"`
 	Pipeline              string            `json:"pipeline"`
 	BuildNumber           string            `json:"build_number"`
 	Provider              string            `json:"provider"`
