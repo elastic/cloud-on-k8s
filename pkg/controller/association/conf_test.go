@@ -443,6 +443,22 @@ func TestAllowVersion(t *testing.T) {
 		}
 		return apm
 	}
+
+	agent := &agentv1alpha1.Agent{
+		Spec: agentv1alpha1.AgentSpec{
+			ElasticsearchRefs: []agentv1alpha1.Output{
+				{
+					ObjectSelector: commonv1.ObjectSelector{
+						SecretName: "my-secret",
+					},
+				},
+			},
+		},
+	}
+	for _, assoc := range agent.GetAssociations() {
+		assoc.SetAssociationConf(&commonv1.AssociationConf{Version: "8.9.0", Serverless: true})
+	}
+
 	type args struct {
 		resourceVersion version.Version
 		associated      commonv1.Associated
@@ -453,6 +469,14 @@ func TestAllowVersion(t *testing.T) {
 		want      bool
 		wantEvent bool
 	}{
+		{
+			name: "serverless: allow",
+			args: args{
+				resourceVersion: version.MustParse("8.14.0"),
+				associated:      agent.DeepCopy(),
+			},
+			want: true,
+		},
 		{
 			name: "no association specified: allow",
 			args: args{

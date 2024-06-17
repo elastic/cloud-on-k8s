@@ -16,6 +16,7 @@ import (
 	kbv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/kibana/v1"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/association"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/operator"
+	ver "github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/version"
 	eslabel "github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/label"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/k8s"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/rbac"
@@ -34,6 +35,9 @@ const (
 
 	// KibanaSystemUserBuiltinRole is the name of the built-in role for the Kibana system user.
 	KibanaSystemUserBuiltinRole = "kibana_system"
+
+	// serverlessBuildFlavor is the string returned in the version.build_flavor field when running on serverless.
+	serverlessBuildFlavor = "serverless"
 )
 
 func AddKibanaES(mgr manager.Manager, accessReviewer rbac.AccessReviewer, params operator.Parameters) error {
@@ -69,26 +73,45 @@ func AddKibanaES(mgr manager.Manager, accessReviewer rbac.AccessReviewer, params
 	})
 }
 
+type elasticsearchVersionResponse struct {
+	Version struct {
+		Number      string `json:"number"`
+		BuildFlavor string `json:"build_flavor"`
+	} `json:"version"`
+}
+
+func (evr elasticsearchVersionResponse) IsServerless() bool {
+	return evr.Version.BuildFlavor == serverlessBuildFlavor
+}
+
+func (evr elasticsearchVersionResponse) GetVersion() (string, error) {
+	if _, err := ver.Parse(evr.Version.Number); err != nil {
+		return "", err
+	}
+	return evr.Version.Number, nil
+}
+
 // referencedElasticsearchStatusVersion returns the currently running version of Elasticsearch
 // reported in its status.
-func referencedElasticsearchStatusVersion(c k8s.Client, esAssociation commonv1.Association) (string, error) {
+func referencedElasticsearchStatusVersion(c k8s.Client, esAssociation commonv1.Association) (string, bool, error) {
 	esRef := esAssociation.AssociationRef()
 	if esRef.IsExternal() {
 		info, err := association.GetUnmanagedAssociationConnectionInfoFromSecret(c, esAssociation)
 		if err != nil {
-			return "", err
+			return "", false, err
 		}
-		ver, err := info.Version("/", "{ .version.number }")
+		esVersionResponse := &elasticsearchVersionResponse{}
+		ver, isServerless, err := info.Version("/", esVersionResponse)
 		if err != nil {
-			return "", err
+			return "", false, err
 		}
-		return ver, nil
+		return ver, isServerless, nil
 	}
 
 	var es esv1.Elasticsearch
 	err := c.Get(context.Background(), esRef.NamespacedName(), &es)
 	if err != nil {
-		return "", err
+		return "", false, err
 	}
-	return es.Status.Version, nil
+	return es.Status.Version, false, nil
 }
