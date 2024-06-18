@@ -215,6 +215,8 @@ type AssociationConf struct {
 	// Version of the referenced resource. If a version upgrade is in progress,
 	// matches the lowest running version. May be empty if unknown.
 	Version string `json:"version"`
+	// Serverless is true when the referenced resource is a serverless project.
+	Serverless bool `json:"serverless,omitempty"`
 }
 
 // IsConfigured returns true if all the fields are set.
@@ -292,13 +294,6 @@ func (ac *AssociationConf) GetURL() string {
 		return ""
 	}
 	return ac.URL
-}
-
-func (ac *AssociationConf) GetVersion() string {
-	if ac == nil {
-		return ""
-	}
-	return ac.Version
 }
 
 func ElasticsearchConfigAnnotationName(o ObjectSelector) string {

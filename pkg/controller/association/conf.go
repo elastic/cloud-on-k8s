@@ -147,6 +147,9 @@ func AllowVersion(resourceVersion version.Version, associated commonv1.Associate
 			// unknown version (happens with an unmanaged FleetServer < 8.x), move on
 			return true, nil
 		}
+		if assocConf.Serverless {
+			return true, nil
+		}
 		refVer, err := version.Parse(assocConf.Version)
 		if err != nil {
 			logger.Error(err, "Invalid version found in association configuration", "association_version", assocConf.Version)
