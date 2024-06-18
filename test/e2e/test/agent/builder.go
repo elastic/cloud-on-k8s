@@ -132,8 +132,8 @@ func NewBuilder(name string) Builder {
 		WithLabel(run.TestNameLabel, name).
 		WithDaemonSet()
 
-	if test.Ctx().OcpCluster {
-		// Agent requires more resources on OpenShift clusters. One hypothesis is that
+	if test.Ctx().OcpCluster || test.Ctx().AksCluster || test.Ctx().TanzuCluster {
+		// Agent requires more resources on OpenShift, AKS and Tanzu clusters. One hypothesis is that
 		// there are more resources deployed on OpenShift than on other K8s clusters
 		// used for E2E tests.
 		// Relates to https://github.com/elastic/cloud-on-k8s/pull/7789
