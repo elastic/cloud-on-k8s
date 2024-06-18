@@ -11,8 +11,6 @@ import (
 	"strings"
 	"testing"
 
-	corev1 "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/api/resource"
 	"k8s.io/apimachinery/pkg/util/rand"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
@@ -246,20 +244,7 @@ func runAgentRecipe(
 			agentBuilder = customize(agentBuilder)
 		}
 
-		// Adjust Agent requirement to deal with https://github.com/elastic/elastic-agent/issues/4730
-		agentBuilder = agentBuilder.WithResources(
-			corev1.ResourceRequirements{
-				Limits: map[corev1.ResourceName]resource.Quantity{
-					corev1.ResourceMemory: resource.MustParse("512Mi"),
-					corev1.ResourceCPU:    resource.MustParse("200m"),
-				},
-				Requests: map[corev1.ResourceName]resource.Quantity{
-					corev1.ResourceMemory: resource.MustParse("512Mi"),
-					corev1.ResourceCPU:    resource.MustParse("200m"),
-				},
-			},
-		)
-
+		agentBuilder = agentBuilder.MoreResourcesForIssue4730()
 		return agentBuilder
 	}
 
