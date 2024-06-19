@@ -207,7 +207,7 @@ ECK merges the content of `config` and `configRef` into a single internal Secret
 [id="{p}-enterprise-search-custom-pod-template"]
 === Customize the Pod template
 
-You can override the Enterprise Search Pods specification through the `podTemplate` element.
+You can override the Enterprise Search Pod's specification through the `podTemplate` element.
 
 This example overrides the default 4Gi deployment to use 8Gi instead, and makes the deployment highly-available with 3 Pods:
 
@@ -236,6 +236,85 @@ spec:
         - name: JAVA_OPTS
           value: -Xms7500m -Xmx7500m
 ----
+
+[id="{p}-enterprise-search-custom-pod-template-security-context"]
+==== Customize the Pod template security context
+
+The Enterprise Search Pod's security context can be customized through the `podTemplate` element.
+However, if `readOnlyRootFilesystem` is set to `true` without additional configuration, the Pod will fail to start.
+This happens because Enterprise Search (a Ruby service) requires write access to certain directories within `/usr/share/enterprise-search`, which include WAR files and configurations.
+
+To work around this, use an init container to copy the necessary WAR files to a temporary writable location, before starting the Enterprise Search container with mounted writable volumes.
+Having the temporary directories (`/tmp`) in-memory also ensures Ruby has a temporary directory to work with during startup.
+
+This example demonstrates the workaround:
+
+[source,yaml,subs="attributes,callouts"]
+----
+apiVersion: enterprisesearch.k8s.elastic.co/v1
+kind: EnterpriseSearch
+metadata:
+  name: testing
+spec:
+  version: {version}
+  image: docker.elastic.co/enterprise-search/enterprise-search:{version}
+  count: 1
+  elasticsearchRef:
+    name: testing
+  podTemplate:
+    spec:
+      containers:
+        - name: enterprise-search
+          image: docker.elastic.co/enterprise-search/enterprise-search:{version}
+          securityContext: <1>
+            readOnlyRootFilesystem: true
+            runAsNonRoot: true
+            allowPrivilegeEscalation: false
+            runAsUser: 1000 <2>
+          volumeMounts: <3>
+          - name: search-tmp
+            mountPath: /usr/share/enterprise-search/tmp
+          - name: tmp
+            mountPath: /tmp
+          - name: filebeat-data
+            mountPath: /usr/share/enterprise-search/filebeat/data
+          - name: war-files
+            mountPath: /usr/share/enterprise-search/lib/war
+          resources:
+            requests:
+              cpu: 3
+              memory: 8Gi
+            limits:
+              memory: 8Gi
+          env: <4>
+          - name: JAVA_OPTS
+            value: -Xms7500m -Xmx7500m
+      initContainers: <5>
+      - name: init-war-dir
+        image: docker.elastic.co/enterprise-search/enterprise-search:{version}
+        command: ['sh', '-c', 'cp --verbose -r /usr/share/enterprise-search/lib/war/. /usr/share/enterprise-search-war-tmp']
+        volumeMounts:
+        - name: war-files
+          mountPath: /usr/share/enterprise-search-war-tmp
+      volumes: <6>
+      - name: war-files
+        emptyDir: {}
+      - name: filebeat-data
+        emptyDir: {}
+      - name: search-tmp
+        emptyDir:
+          medium: Memory
+      - name: tmp
+        emptyDir:
+          medium: Memory
+----
+
+<1> Adds a security context to define permissions and access control settings for the `enterprise-search` container.
+<2> Sets the user to random UID `1000` to run the container as a non-root user.
+<3> Adds volume mounts for `search-tmp`, `tmp`, `filebeat-data`, and `war-files` to the `enterprise-search` container.
+<4> Adds the variable `JAVA_OPTS` to pass options and configurations to the Java Virtual Machine (JVM).
+<5> Adds an init container to copy WAR files to a temporary location.
+<6> Adds volumes for WAR files and adds volumes with in-memory storage for `search-tmp` and `tmp`.
 
 [id="{p}-enterprise-search-expose"]
 === Expose Enterprise Search
