@@ -35,7 +35,8 @@ labels: {}
 
 # Annotations that will be applied to Logstash.
 #
-annotations: {}
+annotations:
+  eck.k8s.elastic.co/license: basic
 
 # Number of revisions to retain to allow rollback in the underlying StatefulSets.
 # By default, if not set, Kubernetes sets 10.

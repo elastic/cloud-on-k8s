@@ -26,7 +26,8 @@ labels: {}
 
 # Annotations that will be applied to Kibana.
 #
-annotations: {}
+annotations:
+  eck.k8s.elastic.co/license: basic
 
 spec:
   # Count of Kibana replicas to create.

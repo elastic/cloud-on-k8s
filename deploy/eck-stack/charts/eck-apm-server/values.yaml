@@ -35,7 +35,8 @@ labels: {}
 
 # Annotations that will be applied to APM Server.
 #
-annotations: {}
+annotations:
+  eck.k8s.elastic.co/license: basic
 
 # Count of APM Server replicas to create.
 #
