@@ -153,8 +153,30 @@ func NewBuilder(name string) Builder {
 		return builder
 	}
 
-	// Adjust Agent requirement to deal with https://github.com/elastic/elastic-agent/issues/4730
-	builder = builder.WithResources(
+	builder = builder.MoreResourcesForIssue4730()
+	return builder
+}
+
+// MoreResourcesForIssue4730 adjusts Agent resource requirements to deal with https://github.com/elastic/elastic-agent/issues/4730.
+func (b Builder) MoreResourcesForIssue4730() Builder {
+	if test.Ctx().OcpCluster || test.Ctx().AksCluster || test.Ctx().TanzuCluster {
+		// Agent requires even more resources on OpenShift, AKS and Tanzu clusters. One hypothesis is that
+		// there are more resources deployed on these clusters than on other K8s clusters used for E2E tests.
+		return b.WithResources(
+			corev1.ResourceRequirements{
+				Limits: map[corev1.ResourceName]resource.Quantity{
+					corev1.ResourceMemory: resource.MustParse("1Gi"),
+					corev1.ResourceCPU:    resource.MustParse("200m"),
+				},
+				Requests: map[corev1.ResourceName]resource.Quantity{
+					corev1.ResourceMemory: resource.MustParse("1Gi"),
+					corev1.ResourceCPU:    resource.MustParse("200m"),
+				},
+			},
+		)
+	}
+	// also increase memory a bit for other k8s distributions
+	return b.WithResources(
 		corev1.ResourceRequirements{
 			Limits: map[corev1.ResourceName]resource.Quantity{
 				corev1.ResourceMemory: resource.MustParse("512Mi"),
@@ -166,7 +188,6 @@ func NewBuilder(name string) Builder {
 			},
 		},
 	)
-	return builder
 }
 
 type ValidationFunc func(client.Client) error
