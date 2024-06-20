@@ -9,7 +9,7 @@ require (
 	github.com/google/go-containerregistry v0.19.2
 	github.com/hashicorp/vault/api v1.14.0
 	github.com/otiai10/copy v1.14.0
-	github.com/spf13/cobra v1.8.0
+	github.com/spf13/cobra v1.8.1
 	github.com/spf13/viper v1.19.0
 	k8s.io/api v0.30.2
 	k8s.io/apiextensions-apiserver v0.30.2
