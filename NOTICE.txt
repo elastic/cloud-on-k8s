@@ -647,11 +647,11 @@ Contents of probable licence file $GOMODCACHE/github.com/go-logr/logr@v1.4.2/LIC
 
 --------------------------------------------------------------------------------
 Module  : github.com/go-test/deep
-Version : v1.1.0
-Time    : 2022-12-09T14:50:39Z
+Version : v1.1.1
+Time    : 2024-06-23T16:27:23Z
 Licence : MIT
 
-Contents of probable licence file $GOMODCACHE/github.com/go-test/deep@v1.1.0/LICENSE:
+Contents of probable licence file $GOMODCACHE/github.com/go-test/deep@v1.1.1/LICENSE:
 
 MIT License
 
