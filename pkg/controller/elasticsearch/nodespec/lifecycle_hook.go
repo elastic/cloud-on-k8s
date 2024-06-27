@@ -122,7 +122,7 @@ function delayed_exit() {
   elapsed=$(duration "${script_start}")
   local remaining=$((PRE_STOP_ADDITIONAL_WAIT_SECONDS - elapsed))
   if (( remaining < 0 )); then
-    exit "$1"
+    exit "${1-0}"
   fi
   log "delaying termination for ${remaining} seconds"
   sleep $remaining
