@@ -126,7 +126,7 @@ function delayed_exit() {
   fi
   log "delaying termination for ${remaining} seconds"
   sleep $remaining
-  exit "$1"
+  exit "${1-0}"
 }
 
 function supports_node_shutdown() {
