@@ -179,6 +179,7 @@ then
   error_exit "failed to extract node id"
 fi
 
+# check if there is an ongoing shutdown request
 if ! request -X GET "${ES_URL}/_nodes/${NODE_ID}/shutdown" "${BASIC_AUTH[@]}"
 then
   error_exit "failed to retrieve shutdown status"
