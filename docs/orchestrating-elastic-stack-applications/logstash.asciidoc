@@ -146,7 +146,7 @@ spec:
 <1> Customize Logstash configuration using `logstash.yml` settings here
 
 
-Alternatively, you can provide the configuration through a Secret specified in the `spec.configRef` section. The Secret must have an `logstash.yml` entry with these settings:
+Alternatively, you can provide the configuration through a Secret specified in the `spec.configRef` section. The Secret must have a `logstash.yml` entry with your settings:
 [source,yaml,subs="attributes,+macros"]
 ----
 apiVersion: logstash.k8s.elastic.co/v1alpha1
@@ -208,7 +208,7 @@ spec:
         }
 ----
 
-Alternatively, you can provide the pipeline configuration through a Secret specified in the `spec.pipelinesRef` element. The Secret must have a `logstash.yml` entry with this configuration:
+Alternatively, you can provide the pipelines configuration through a Secret specified in the `spec.pipelinesRef` field. The Secret must have a `pipelines.yml` entry with your configuration:
 [source,yaml,subs="attributes,+macros"]
 ----
 apiVersion: logstash.k8s.elastic.co/v1alpha1
