@@ -16,6 +16,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/agent"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/association"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/operator"
+	ver "github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/version"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/k8s"
 	ulog "github.com/elastic/cloud-on-k8s/v2/pkg/utils/log"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/rbac"
@@ -106,30 +107,48 @@ func getFleetServerExternalURL(c k8s.Client, assoc commonv1.Association) (string
 	return association.ServiceURL(c, nsn, fleetServer.Spec.HTTP.Protocol())
 }
 
+type fleetVersionResponse struct {
+	Version struct {
+		Number string `json:"number"`
+	} `json:"version"`
+}
+
+func (fvr fleetVersionResponse) IsServerless() bool {
+	return false
+}
+
+func (fvr fleetVersionResponse) GetVersion() (string, error) {
+	if _, err := ver.Parse(fvr.Version.Number); err != nil {
+		return "", err
+	}
+	return fvr.Version.Number, nil
+}
+
 // referencedFleetServerStatusVersion returns the currently running version of Agent
 // reported in its status.
-func referencedFleetServerStatusVersion(c k8s.Client, fsAssociation commonv1.Association) (string, error) {
+func referencedFleetServerStatusVersion(c k8s.Client, fsAssociation commonv1.Association) (string, bool, error) {
 	fsRef := fsAssociation.AssociationRef()
 	if fsRef.IsExternal() {
 		info, err := association.GetUnmanagedAssociationConnectionInfoFromSecret(c, fsAssociation)
 		if err != nil {
-			return "", err
+			return "", false, err
 		}
-		ver, err := info.Version("/api/status", "{ .version.number }")
+		fleetVersionResponse := &fleetVersionResponse{}
+		ver, isServerless, err := info.Version("/api/status", fleetVersionResponse)
 		if err != nil {
 			// version is in the status API from version 8.0
 			if err.Error() == "version is not found" {
-				return association.UnknownVersion, nil
+				return association.UnknownVersion, false, nil
 			}
-			return "", err
+			return "", false, err
 		}
-		return ver, nil
+		return ver, isServerless, nil
 	}
 
 	var fleetServer agentv1alpha1.Agent
 	err := c.Get(context.Background(), fsRef.NamespacedName(), &fleetServer)
 	if err != nil {
-		return "", err
+		return "", false, err
 	}
-	return fleetServer.Status.Version, nil
+	return fleetServer.Status.Version, false, nil
 }

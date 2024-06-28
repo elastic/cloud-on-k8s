@@ -77,8 +77,9 @@ type AssociationInfo struct { //nolint:revive
 	// base is used to recognize annotations eligible for removal when association is removed.
 	AssociationConfAnnotationNameBase string
 	// ReferencedResourceVersion returns the currently running version of the referenced resource.
-	// It may return an empty string if the version is unknown.
-	ReferencedResourceVersion func(c k8s.Client, association commonv1.Association) (string, error)
+	// It may return an empty string if the version is unknown. A boolean is also returned, set to true if the referenced
+	// resource is a serverless project running in https://cloud.elastic.co/
+	ReferencedResourceVersion func(c k8s.Client, association commonv1.Association) (string, bool, error)
 	// AssociationResourceNameLabelName is a label used on resources needed for an association. It identifies the name
 	// of the associated resource (eg. user secret allowing to connect Beat to Kibana will have this label pointing to the
 	// Beat resource).
@@ -291,7 +292,7 @@ func (r *Reconciler) reconcileAssociation(ctx context.Context, association commo
 
 	// propagate the currently running version of the referenced resource (example: Elasticsearch version).
 	// The Kibana controller (for example) can then delay a Kibana version upgrade if Elasticsearch is not upgraded yet.
-	ver, err := r.ReferencedResourceVersion(r.Client, association)
+	ver, isServerless, err := r.ReferencedResourceVersion(r.Client, association)
 	if err != nil {
 		return commonv1.AssociationPending, err
 	}
@@ -302,6 +303,7 @@ func (r *Reconciler) reconcileAssociation(ctx context.Context, association commo
 		CASecretName:   caSecret.Name,
 		URL:            url,
 		Version:        ver,
+		Serverless:     isServerless,
 	}
 
 	if secretsHash != nil {

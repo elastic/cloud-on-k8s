@@ -70,23 +70,23 @@ var (
 				"kibanaassociation.k8s.elastic.co/namespace": associated.Namespace,
 			}
 		},
-		ReferencedResourceVersion: func(c k8s.Client, association commonv1.Association) (string, error) {
+		ReferencedResourceVersion: func(c k8s.Client, association commonv1.Association) (string, bool, error) {
 			esRef := association.AssociationRef()
 			if esRef.IsExternal() {
 				_, err := GetUnmanagedAssociationConnectionInfoFromSecret(c, association)
 				if err != nil {
-					return "", err
+					return "", false, err
 				}
 				// Bypass: ver, err := ref.Version("/", "{ .version.number }") and just return the version
-				return stackVersion, nil
+				return stackVersion, false, nil
 			}
 
 			var es esv1.Elasticsearch
 			err := c.Get(context.Background(), esRef.NamespacedName(), &es)
 			if err != nil {
-				return "", err
+				return "", false, err
 			}
-			return es.Status.Version, nil
+			return es.Status.Version, false, nil
 		},
 		AssociationType:                       "elasticsearch",
 		AssociationConfAnnotationNameBase:     "association.k8s.elastic.co/es-conf",
@@ -542,14 +542,14 @@ func TestReconciler_Reconcile_noESAuth(t *testing.T) {
 			nsn := types.NamespacedName{Namespace: ent.Namespace, Name: serviceName}
 			return ServiceURL(c, nsn, ent.Spec.HTTP.Protocol())
 		},
-		ReferencedResourceVersion: func(c k8s.Client, association commonv1.Association) (string, error) {
+		ReferencedResourceVersion: func(c k8s.Client, association commonv1.Association) (string, bool, error) {
 			entRef := association.AssociationRef()
 			var ent entv1.EnterpriseSearch
 			err := c.Get(context.Background(), entRef.NamespacedName(), &ent)
 			if err != nil {
-				return "", err
+				return "", false, err
 			}
-			return ent.Status.Version, nil
+			return ent.Status.Version, false, nil
 		},
 		ReferencedResourceNamer: entv1.Namer,
 		AssociationName:         "kb-ent",
@@ -814,13 +814,13 @@ func TestReconciler_Reconcile_MultiRef(t *testing.T) {
 		AssociationType:       commonv1.ElasticsearchAssociationType,
 		AssociatedObjTemplate: func() commonv1.Associated { return &agentv1alpha1.Agent{} },
 		ReferencedObjTemplate: func() client.Object { return &esv1.Elasticsearch{} },
-		ReferencedResourceVersion: func(c k8s.Client, association commonv1.Association) (string, error) {
+		ReferencedResourceVersion: func(c k8s.Client, association commonv1.Association) (string, bool, error) {
 			esRef := association.AssociationRef()
 			var es esv1.Elasticsearch
 			if err := c.Get(context.Background(), esRef.NamespacedName(), &es); err != nil {
-				return "", err
+				return "", false, err
 			}
-			return es.Status.Version, nil
+			return es.Status.Version, false, nil
 		},
 		ExternalServiceURL: func(c k8s.Client, association commonv1.Association) (string, error) {
 			esRef := association.AssociationRef()
@@ -1072,14 +1072,14 @@ func TestReconciler_Reconcile_Transitive_Associations(t *testing.T) {
 		AssociationType:       commonv1.FleetServerAssociationType,
 		AssociatedObjTemplate: func() commonv1.Associated { return &agentv1alpha1.Agent{} },
 		ReferencedObjTemplate: func() client.Object { return &agentv1alpha1.Agent{} },
-		ReferencedResourceVersion: func(c k8s.Client, association commonv1.Association) (string, error) {
+		ReferencedResourceVersion: func(c k8s.Client, association commonv1.Association) (string, bool, error) {
 			fleetRef := association.AssociationRef()
 			var fleetServer agentv1alpha1.Agent
 			err := c.Get(context.Background(), fleetRef.NamespacedName(), &fleetServer)
 			if err != nil {
-				return "", err
+				return "", false, err
 			}
-			return fleetServer.Status.Version, nil
+			return fleetServer.Status.Version, false, nil
 		},
 		ExternalServiceURL: func(c k8s.Client, assoc commonv1.Association) (string, error) {
 			fleetServerRef := assoc.AssociationRef()
