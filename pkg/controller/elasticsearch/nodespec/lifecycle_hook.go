@@ -174,7 +174,7 @@ then
   error_exit "failed to retrieve nodes"
 fi
 
-if ! NODE_ID="$(grep -oP ".*?(?=\ ${POD_NAME})" "${resp_body}")"
+if ! NODE_ID="$(grep "${POD_NAME}" "${resp_body}" | cut -f 1 -d ' ')"
 then
   error_exit "failed to extract node id"
 fi
