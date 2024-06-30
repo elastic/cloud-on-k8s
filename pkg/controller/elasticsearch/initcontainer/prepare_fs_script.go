@@ -87,6 +87,11 @@ var scriptTemplate = template.Must(template.New("").Parse(
 		echo $((end-start))
 	}
 
+	function end() {
+		echo "Init script successful"
+	    echo "Script duration: $(duration $script_start) sec."
+	}
+
 	######################
 	#        START       #
 	######################
@@ -146,6 +151,12 @@ var scriptTemplate = template.Must(template.New("").Parse(
 	#  Wait for certs    #
 	######################
 
+	if [ -f {{ .InitContainerTransportCertificatesSecretVolumeMountPath }}/transport.certs.disabled ]; then
+		echo "Skipping transport certificate check because of .spec.transport.tls.selfSignedCerts.disabled"
+		end
+		exit 0
+	fi
+
 	INIT_CONTAINER_LOCAL_KEY_PATH={{ .InitContainerTransportCertificatesSecretVolumeMountPath }}/${POD_NAME}.tls.key
 
 	# wait for the transport certificates to show up
@@ -190,7 +201,5 @@ var scriptTemplate = template.Must(template.New("").Parse(
 	######################
 	#         End        #
 	######################
-
-	echo "Init script successful"
-	echo "Script duration: $(duration $script_start) sec."
+	end
 `))
