@@ -140,15 +140,16 @@ var scriptTemplate = template.Must(template.New("").Parse(
 	######################
 
 	INIT_CONTAINER_LOCAL_KEY_PATH={{ .InitContainerTransportCertificatesSecretVolumeMountPath }}/${POD_NAME}.tls.key
+	DISABLED_CERT_MARKER={{ .InitContainerTransportCertificatesSecretVolumeMountPath }}/transport.certs.disabled
 	# wait for the transport certificates to show up
-	echo "waiting for the transport certificates (${INIT_CONTAINER_LOCAL_KEY_PATH})"
+	echo "waiting for the transport certificates (${INIT_CONTAINER_LOCAL_KEY_PATH}) or ${DISABLED_CERT_MARKER}"
 	wait_start=$(date +%s)
-	while [ ! -f ${INIT_CONTAINER_LOCAL_KEY_PATH} ] || [ -f {{ .InitContainerTransportCertificatesSecretVolumeMountPath }}/transport.certs.disabled ]
+	while [ ! -f ${INIT_CONTAINER_LOCAL_KEY_PATH} ] && [ ! -f ${DISABLED_CERT_MARKER} ]
 	do
 		sleep 0.2
 	done
 	echo "wait duration: $(duration wait_start) sec."
-	if [ -f {{ .InitContainerTransportCertificatesSecretVolumeMountPath }}/transport.certs.disabled ]; then
+	if [ -f ${DISABLED_CERT_MARKER} ]; then
 		echo "Skipped transport certificate check because of .spec.transport.tls.selfSignedCerts.disabled"
 	fi
 
