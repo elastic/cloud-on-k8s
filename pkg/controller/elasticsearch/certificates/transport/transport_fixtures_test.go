@@ -144,7 +144,8 @@ func init() {
 // -- Elasticsearch builder
 
 type esBuilder struct {
-	nodeSets []esv1.NodeSet
+	nodeSets               []esv1.NodeSet
+	transportCertsDisabled bool
 }
 
 func newEsBuilder() *esBuilder {
@@ -159,9 +160,15 @@ func (eb *esBuilder) addNodeSet(name string, count int) *esBuilder {
 	return eb
 }
 
+func (eb *esBuilder) disableTransportCerts() *esBuilder {
+	eb.transportCertsDisabled = true
+	return eb
+}
+
 func (eb *esBuilder) build() *esv1.Elasticsearch {
 	es := testES.DeepCopy()
 	es.Spec.NodeSets = eb.nodeSets
+	es.Spec.Transport.TLS.SelfSignedCertificates = &esv1.SelfSignedTransportCertificates{Disabled: eb.transportCertsDisabled}
 	return es
 }
 

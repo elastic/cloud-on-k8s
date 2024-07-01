@@ -142,7 +142,7 @@ var scriptTemplate = template.Must(template.New("").Parse(
 	INIT_CONTAINER_LOCAL_KEY_PATH={{ .InitContainerTransportCertificatesSecretVolumeMountPath }}/${POD_NAME}.tls.key
 	DISABLED_CERT_MARKER={{ .InitContainerTransportCertificatesSecretVolumeMountPath }}/transport.certs.disabled
 	# wait for the transport certificates to show up
-	echo "waiting for the transport certificates (${INIT_CONTAINER_LOCAL_KEY_PATH}) or ${DISABLED_CERT_MARKER}"
+	echo "waiting for the transport certificates (${INIT_CONTAINER_LOCAL_KEY_PATH} or ${DISABLED_CERT_MARKER})"
 	wait_start=$(date +%s)
 	while [ ! -f ${INIT_CONTAINER_LOCAL_KEY_PATH} ] && [ ! -f ${DISABLED_CERT_MARKER} ]
 	do

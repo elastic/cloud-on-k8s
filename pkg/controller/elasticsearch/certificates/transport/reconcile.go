@@ -55,9 +55,7 @@ func ReconcileTransportCertificatesSecrets(
 	}
 
 	for ssetName := range ssets {
-		if err := reconcileNodeSetTransportCertificatesSecrets(ctx, c, ca, additionalCAs, es, ssetName, rotationParams); err != nil {
-			results.WithError(err)
-		}
+		results.WithResults(reconcileNodeSetTransportCertificatesSecrets(ctx, c, ca, additionalCAs, es, ssetName, rotationParams))
 	}
 	return results
 }
@@ -91,24 +89,25 @@ func reconcileNodeSetTransportCertificatesSecrets(
 	es esv1.Elasticsearch,
 	ssetName string,
 	rotationParams certificates.RotationParams,
-) error {
+) *reconciler.Results {
+	results := &reconciler.Results{}
 	// List all the existing Pods in the nodeSet
 	var pods corev1.PodList
 	matchLabels := label.NewLabelSelectorForStatefulSetName(es.Name, ssetName)
 	ns := client.InNamespace(es.Namespace)
 	if err := c.List(ctx, &pods, matchLabels, ns); err != nil {
-		return errors.WithStack(err)
+		return results.WithError(errors.WithStack(err))
 	}
 
 	secret, err := ensureTransportCertificatesSecretExists(ctx, c, es, ssetName)
 	if err != nil {
-		return err
+		return results.WithError(err)
 	}
 	// defensive copy of the current secret so we can check whether we need to update later on
 	currentTransportCertificatesSecret := secret.DeepCopy()
 	if es.Spec.Transport.TLS.SelfSignedEnabled() {
-		if err := reconcilePodTransportCertificates(ctx, es, ca, secret, pods, rotationParams); err != nil {
-			return err
+		if results.WithResults(reconcilePodTransportCertificates(ctx, es, ca, secret, pods, rotationParams)); results.HasError() {
+			return results
 		}
 		delete(secret.Data, disabledMarker)
 	} else {
@@ -126,14 +125,14 @@ func reconcileNodeSetTransportCertificatesSecrets(
 
 	if !reflect.DeepEqual(secret, currentTransportCertificatesSecret) {
 		if err := c.Update(ctx, secret); err != nil {
-			return err
+			return results.WithError(err)
 		}
 		for _, pod := range pods.Items {
 			annotation.MarkPodAsUpdated(ctx, c, pod)
 		}
 	}
 
-	return nil
+	return results
 }
 
 func reconcilePodTransportCertificates(
@@ -143,7 +142,7 @@ func reconcilePodTransportCertificates(
 	secret *corev1.Secret,
 	pods corev1.PodList,
 	rotationParams certificates.RotationParams,
-) error {
+) *reconciler.Results {
 	results := &reconciler.Results{}
 	log := ulog.FromContext(ctx)
 	for _, pod := range pods.Items {
@@ -155,14 +154,13 @@ func reconcilePodTransportCertificates(
 		if err := ensureTransportCertificatesSecretContentsForPod(
 			ctx, es, secret, pod, ca, rotationParams,
 		); err != nil {
-			return err
+			return results.WithError(err)
 		}
 		certCommonName := buildCertificateCommonName(pod, es)
 		cert := extractTransportCert(ctx, *secret, pod, certCommonName)
 		if cert == nil {
-			return errors.New("no certificate found for pod")
+			return results.WithError(errors.New("no certificate found for pod"))
 		}
-		// TODO this result is lost !!!
 		// handle cert expiry via requeue
 		results.WithResult(reconcile.Result{
 			RequeueAfter: certificates.ShouldRotateIn(time.Now(), cert.NotAfter, rotationParams.RotateBefore),
@@ -193,7 +191,7 @@ func reconcilePodTransportCertificates(
 			delete(secret.Data, keyToRemove)
 		}
 	}
-	return nil
+	return results
 }
 
 // ensureTransportCertificatesSecretExists ensures the existence and labels of the Secret that at a later point
