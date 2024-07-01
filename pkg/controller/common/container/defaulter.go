@@ -89,6 +89,13 @@ func (d Defaulter) WithImage(image string) Defaulter {
 	return d
 }
 
+func (d Defaulter) WithLivenessProbe(livenessProbe *corev1.Probe) Defaulter {
+	if d.base.LivenessProbe == nil {
+		d.base.LivenessProbe = livenessProbe
+	}
+	return d
+}
+
 func (d Defaulter) WithReadinessProbe(readinessProbe *corev1.Probe) Defaulter {
 	if d.base.ReadinessProbe == nil {
 		d.base.ReadinessProbe = readinessProbe
