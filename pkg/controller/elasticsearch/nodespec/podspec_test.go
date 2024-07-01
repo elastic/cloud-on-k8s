@@ -334,7 +334,7 @@ func Test_buildAnnotations(t *testing.T) {
 		{
 			name: "Sample Elasticsearch resource",
 			expectedAnnotations: map[string]string{
-				"elasticsearch.k8s.elastic.co/config-hash": "533641620",
+				"elasticsearch.k8s.elastic.co/config-hash": "3089472956",
 			},
 		},
 		{
@@ -347,7 +347,7 @@ func Test_buildAnnotations(t *testing.T) {
 				},
 			},
 			expectedAnnotations: map[string]string{
-				"elasticsearch.k8s.elastic.co/config-hash": "3131886472",
+				"elasticsearch.k8s.elastic.co/config-hash": "1067885408",
 			},
 		},
 		{
@@ -356,7 +356,7 @@ func Test_buildAnnotations(t *testing.T) {
 				esAnnotations: map[string]string{"eck.k8s.elastic.co/downward-node-labels": "topology.kubernetes.io/zone"},
 			},
 			expectedAnnotations: map[string]string{
-				"elasticsearch.k8s.elastic.co/config-hash": "757126536",
+				"elasticsearch.k8s.elastic.co/config-hash": "3370858576",
 			},
 		},
 		{
@@ -365,7 +365,7 @@ func Test_buildAnnotations(t *testing.T) {
 				esAnnotations: map[string]string{"eck.k8s.elastic.co/downward-node-labels": "topology.kubernetes.io/zone,topology.kubernetes.io/region"},
 			},
 			expectedAnnotations: map[string]string{
-				"elasticsearch.k8s.elastic.co/config-hash": "3605766330",
+				"elasticsearch.k8s.elastic.co/config-hash": "909392898",
 			},
 		},
 		{
@@ -377,7 +377,7 @@ func Test_buildAnnotations(t *testing.T) {
 				scriptsContent: "scripts content",
 			},
 			expectedAnnotations: map[string]string{
-				"elasticsearch.k8s.elastic.co/config-hash": "99942575",
+				"elasticsearch.k8s.elastic.co/config-hash": "4033676039",
 			},
 		},
 		{
@@ -389,7 +389,7 @@ func Test_buildAnnotations(t *testing.T) {
 				scriptsContent: "scripts content",
 			},
 			expectedAnnotations: map[string]string{
-				"elasticsearch.k8s.elastic.co/config-hash": "83164956",
+				"elasticsearch.k8s.elastic.co/config-hash": "4016898420",
 			},
 		},
 		{
@@ -401,7 +401,7 @@ func Test_buildAnnotations(t *testing.T) {
 				scriptsContent: "another scripts content",
 			},
 			expectedAnnotations: map[string]string{
-				"elasticsearch.k8s.elastic.co/config-hash": "1050348692",
+				"elasticsearch.k8s.elastic.co/config-hash": "3413674748",
 			},
 		},
 		{

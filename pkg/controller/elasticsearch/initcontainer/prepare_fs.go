@@ -142,17 +142,7 @@ func RenderPrepareFsScript(expectedAnnotations []string) (string, error) {
 			esvolume.ElasticsearchLogsMountPath,
 		},
 		InitContainerTransportCertificatesSecretVolumeMountPath: initContainerTransportCertificatesVolumeMountPath,
-		InitContainerNodeTransportCertificatesKeyPath: path.Join(
-			EsConfigSharedVolume.InitContainerMountPath,
-			esvolume.NodeTransportCertificatePathSegment,
-			esvolume.NodeTransportCertificateKeyFile,
-		),
-		InitContainerNodeTransportCertificatesCertPath: path.Join(
-			EsConfigSharedVolume.InitContainerMountPath,
-			esvolume.NodeTransportCertificatePathSegment,
-			esvolume.NodeTransportCertificateCertFile,
-		),
-		TransportCertificatesSecretVolumeMountPath: esvolume.TransportCertificatesSecretVolumeMountPath,
+		TransportCertificatesSecretVolumeMountPath:              esvolume.TransportCertificatesSecretVolumeMountPath,
 	}
 	if len(expectedAnnotations) > 0 {
 		expectedAnnotationsAsString := strings.Join(expectedAnnotations, " ")

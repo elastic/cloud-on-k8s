@@ -92,7 +92,6 @@ func reconcileNodeSetTransportCertificatesSecrets(
 	ssetName string,
 	rotationParams certificates.RotationParams,
 ) error {
-
 	// List all the existing Pods in the nodeSet
 	var pods corev1.PodList
 	matchLabels := label.NewLabelSelectorForStatefulSetName(es.Name, ssetName)
@@ -107,12 +106,14 @@ func reconcileNodeSetTransportCertificatesSecrets(
 	}
 	// defensive copy of the current secret so we can check whether we need to update later on
 	currentTransportCertificatesSecret := secret.DeepCopy()
-	if es.Spec.Transport.TLS.Enabled() {
+	if es.Spec.Transport.TLS.SelfSignedEnabled() {
 		if err := reconcilePodTransportCertificates(ctx, es, ca, secret, pods, rotationParams); err != nil {
 			return err
 		}
 		delete(secret.Data, disabledMarker)
 	} else {
+		// add a marker but leave all the old certs that might exist in the secret in place to ease the transition
+		// to the disabled state.
 		secret.Data[disabledMarker] = []byte("true") // contents is irrelevant
 	}
 
