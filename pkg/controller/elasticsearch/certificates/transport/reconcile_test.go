@@ -197,13 +197,16 @@ func TestReconcileTransportCertificatesSecrets(t *testing.T) {
 				ca: testRSACA,
 				es: newEsBuilder().addNodeSet("sset1", 2).disableTransportCerts().build(),
 				initialObjects: []client.Object{
+					// one pod pending update to add the marker annotation
 					newPodBuilder().forEs(testEsName).inNodeSet("sset1").withIndex(0).withIP("1.1.1.2").build(),
-					newPodBuilder().forEs(testEsName).inNodeSet("sset1").withIndex(1).withIP("1.1.1.2").build(),
-					// we simulate a state where one pod has been provisioned with transport certs
-					newtransportCertsSecretBuilder(testEsName, "sset1").forPodIndices(0).build(),
+					// one pod rotated with the marker annotation
+					newPodBuilder().forEs(testEsName).inNodeSet("sset1").withIndex(1).withIP("1.1.1.2").withAnnotations(map[string]string{
+						esv1.TransportCertDisabledAnnotationName: "true",
+					}).build(),
+					newtransportCertsSecretBuilder(testEsName, "sset1").forPodIndices(0, 1).build(),
 				},
 			},
-			wantRequeue: false,
+			wantRequeue: true, // one pod does not have the annotation yet so requeue is expected
 			wantErr:     false,
 			assertSecrets: func(t *testing.T, secrets corev1.SecretList) {
 				t.Helper()

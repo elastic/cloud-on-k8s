@@ -91,6 +91,7 @@ func reconcileNodeSetTransportCertificatesSecrets(
 	rotationParams certificates.RotationParams,
 ) *reconciler.Results {
 	results := &reconciler.Results{}
+	log := ulog.FromContext(ctx)
 	// List all the existing Pods in the nodeSet
 	var pods corev1.PodList
 	matchLabels := label.NewLabelSelectorForStatefulSetName(es.Name, ssetName)
@@ -105,49 +106,15 @@ func reconcileNodeSetTransportCertificatesSecrets(
 	}
 	// defensive copy of the current secret so we can check whether we need to update later on
 	currentTransportCertificatesSecret := secret.DeepCopy()
-	if es.Spec.Transport.TLS.SelfSignedEnabled() {
-		if results.WithResults(reconcilePodTransportCertificates(ctx, es, ca, secret, pods, rotationParams)); results.HasError() {
-			return results
-		}
-		delete(secret.Data, disabledMarker)
-	} else {
-		// add a marker but leave all the old certs that might exist in the secret in place to ease the transition
-		// to the disabled state.
-		secret.Data[disabledMarker] = []byte("true") // contents is irrelevant
-	}
-
-	caBytes := bytes.Join([][]byte{certificates.EncodePEMCert(ca.Cert.Raw), additionalCAs}, nil)
-
-	// compare with current trusted CA certs.
-	if !bytes.Equal(caBytes, secret.Data[certificates.CAFileName]) {
-		secret.Data[certificates.CAFileName] = caBytes
-	}
-
-	if !reflect.DeepEqual(secret, currentTransportCertificatesSecret) {
-		if err := c.Update(ctx, secret); err != nil {
-			return results.WithError(err)
-		}
-		for _, pod := range pods.Items {
-			annotation.MarkPodAsUpdated(ctx, c, pod)
-		}
-	}
-
-	return results
-}
-
-func reconcilePodTransportCertificates(
-	ctx context.Context,
-	es esv1.Elasticsearch,
-	ca *certificates.CA,
-	secret *corev1.Secret,
-	pods corev1.PodList,
-	rotationParams certificates.RotationParams,
-) *reconciler.Results {
-	results := &reconciler.Results{}
-	log := ulog.FromContext(ctx)
 	for _, pod := range pods.Items {
 		if pod.Status.PodIP == "" {
 			log.Info("Skipping pod because it has no IP yet", "namespace", pod.Namespace, "pod_name", pod.Name)
+			continue
+		}
+
+		if _, disabled := pod.Annotations[esv1.TransportCertDisabledAnnotationName]; disabled {
+			delete(secret.Data, PodCertFileName(pod.Name))
+			delete(secret.Data, PodKeyFileName(pod.Name))
 			continue
 		}
 
@@ -191,6 +158,31 @@ func reconcilePodTransportCertificates(
 			delete(secret.Data, keyToRemove)
 		}
 	}
+
+	if es.Spec.Transport.TLS.SelfSignedEnabled() {
+		delete(secret.Data, disabledMarker)
+	} else {
+		// add a marker but leave all the old certs that might exist in the secret in place to ease the transition
+		// to the disabled state.
+		secret.Data[disabledMarker] = []byte("true") // contents is irrelevant
+	}
+
+	caBytes := bytes.Join([][]byte{certificates.EncodePEMCert(ca.Cert.Raw), additionalCAs}, nil)
+
+	// compare with current trusted CA certs.
+	if !bytes.Equal(caBytes, secret.Data[certificates.CAFileName]) {
+		secret.Data[certificates.CAFileName] = caBytes
+	}
+
+	if !reflect.DeepEqual(secret, currentTransportCertificatesSecret) {
+		if err := c.Update(ctx, secret); err != nil {
+			return results.WithError(err)
+		}
+		for _, pod := range pods.Items {
+			annotation.MarkPodAsUpdated(ctx, c, pod)
+		}
+	}
+
 	return results
 }
 

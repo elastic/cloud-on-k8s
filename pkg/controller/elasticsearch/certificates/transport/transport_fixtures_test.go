@@ -213,10 +213,11 @@ func (tcb *transportCertsSecretBuilder) build() *corev1.Secret {
 // -- Pod builder
 
 type podBuilder struct {
-	es      string
-	ip      string
-	nodeSet string
-	index   int
+	es          string
+	ip          string
+	nodeSet     string
+	index       int
+	annotations map[string]string
 }
 
 func newPodBuilder() *podBuilder {
@@ -243,6 +244,11 @@ func (pb *podBuilder) withIP(ip string) *podBuilder {
 	return pb
 }
 
+func (pb *podBuilder) withAnnotations(a map[string]string) *podBuilder {
+	pb.annotations = a
+	return pb
+}
+
 func (pb *podBuilder) build() *corev1.Pod {
 	pod := &corev1.Pod{
 		ObjectMeta: metav1.ObjectMeta{
@@ -252,7 +258,8 @@ func (pb *podBuilder) build() *corev1.Pod {
 				label.StatefulSetNameLabelName: esv1.StatefulSet(pb.es, pb.nodeSet),
 				label.ClusterNameLabelName:     pb.es,
 			},
-			UID: uuid.NewUUID(),
+			Annotations: pb.annotations,
+			UID:         uuid.NewUUID(),
 		},
 	}
 	if len(pb.ip) > 0 {
