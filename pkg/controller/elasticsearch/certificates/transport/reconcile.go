@@ -167,12 +167,7 @@ func reconcileNodeSetTransportCertificatesSecrets(
 		secret.Data[disabledMarker] = []byte("true") // contents is irrelevant
 	}
 
-	caBytes := bytes.Join([][]byte{certificates.EncodePEMCert(ca.Cert.Raw), additionalCAs}, nil)
-
-	// compare with current trusted CA certs.
-	if !bytes.Equal(caBytes, secret.Data[certificates.CAFileName]) {
-		secret.Data[certificates.CAFileName] = caBytes
-	}
+	mayBeUpdateCAFile(secret, ca, additionalCAs)
 
 	if !reflect.DeepEqual(secret, currentTransportCertificatesSecret) {
 		if err := c.Update(ctx, secret); err != nil {
@@ -184,6 +179,33 @@ func reconcileNodeSetTransportCertificatesSecrets(
 	}
 
 	return results
+}
+
+func mayBeUpdateCAFile(secret *corev1.Secret, ca *certificates.CA, additionalCAs []byte) {
+	var cas [][]byte
+
+	// if the secret contains only the marker file (and maybe an old CA) transport certs are disabled
+	// and no pod uses them anymore => we don't need the CA
+	_, transportCertsDisabled := secret.Data[disabledMarker]
+	secretContainsMarkerAndCAFile := len(secret.Data) <= 2 && transportCertsDisabled
+
+	if !secretContainsMarkerAndCAFile {
+		cas = append(cas, certificates.EncodePEMCert(ca.Cert.Raw))
+	}
+
+	cas = append(cas, additionalCAs)
+	caBytes := bytes.Join(cas, nil)
+
+	if len(caBytes) == 0 {
+		// no CAs delete and return
+		delete(secret.Data, certificates.CAFileName)
+		return
+	}
+
+	// compare with current trusted CA certs.
+	if !bytes.Equal(caBytes, secret.Data[certificates.CAFileName]) {
+		secret.Data[certificates.CAFileName] = caBytes
+	}
 }
 
 // ensureTransportCertificatesSecretExists ensures the existence and labels of the Secret that at a later point

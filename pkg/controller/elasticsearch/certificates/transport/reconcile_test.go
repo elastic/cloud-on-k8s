@@ -9,6 +9,12 @@ import (
 	"context"
 	"testing"
 
+	esv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/elasticsearch/v1"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/certificates"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/comparison"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/label"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/k8s"
+
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
@@ -16,12 +22,6 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
-
-	esv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/elasticsearch/v1"
-	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/certificates"
-	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/comparison"
-	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/label"
-	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/k8s"
 )
 
 func TestReconcileTransportCertificatesSecrets(t *testing.T) {
@@ -461,6 +461,98 @@ func Test_ensureTransportCertificateSecretExists(t *testing.T) {
 				return
 			}
 			tt.want(t, got)
+		})
+	}
+}
+
+func Test_mayBeUpdateCAFile(t *testing.T) {
+	type args struct {
+		secret        *corev1.Secret
+		ca            *certificates.CA
+		additionalCAs []byte
+	}
+	tests := []struct {
+		name          string
+		args          args
+		assertSecrets func(t *testing.T, secret map[string][]byte)
+	}{
+		{
+			name: "default settings",
+			args: args{
+				secret:        &corev1.Secret{Data: map[string][]byte{}},
+				ca:            testRSACA,
+				additionalCAs: nil,
+			},
+			assertSecrets: func(t *testing.T, secret map[string][]byte) {
+				t.Helper()
+				assert.Contains(t, secret, "ca.crt")
+				assert.Equal(t, secret["ca.crt"], testRSACABytes)
+			},
+		},
+		{
+			name: "default settings with additional CA",
+			args: args{
+				secret:        &corev1.Secret{Data: map[string][]byte{}},
+				ca:            testRSACA,
+				additionalCAs: extraCA,
+			},
+			assertSecrets: func(t *testing.T, secret map[string][]byte) {
+				t.Helper()
+				assert.Contains(t, secret, "ca.crt")
+				assert.Equal(t, len(secret["ca.crt"]), len(testRSACABytes)+len(extraCA))
+			},
+		},
+		{
+			name: "disabled transport certs with some pods still using them",
+			args: args{
+				secret: &corev1.Secret{Data: map[string][]byte{
+					disabledMarker:     []byte("true"),
+					"some-pod.tls.crt": []byte("cert"),
+					"some-pod.tls.key": []byte("key"),
+				}},
+				ca:            testRSACA,
+				additionalCAs: nil,
+			},
+			assertSecrets: func(t *testing.T, secret map[string][]byte) {
+				t.Helper()
+				assert.Contains(t, secret, "ca.crt")
+				assert.Equal(t, len(secret["ca.crt"]), len(testRSACABytes))
+			},
+		},
+		{
+			name: "disabled transport certs with no pods still using them",
+			args: args{
+				secret: &corev1.Secret{Data: map[string][]byte{
+					disabledMarker: []byte("true"),
+				}},
+				ca:            testRSACA,
+				additionalCAs: nil,
+			},
+			assertSecrets: func(t *testing.T, secret map[string][]byte) {
+				t.Helper()
+				assert.NotContains(t, secret, "ca.crt")
+			},
+		},
+		{
+			name: "disabled transport certs with additional CA",
+			args: args{
+				secret: &corev1.Secret{Data: map[string][]byte{
+					disabledMarker: []byte("true"),
+				}},
+				ca:            testRSACA,
+				additionalCAs: extraCA,
+			},
+			assertSecrets: func(t *testing.T, secret map[string][]byte) {
+				t.Helper()
+				assert.Contains(t, secret, "ca.crt")
+				assert.Equal(t, secret["ca.crt"], extraCA)
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			mayBeUpdateCAFile(tt.args.secret, tt.args.ca, tt.args.additionalCAs)
+			tt.assertSecrets(t, tt.args.secret.Data)
 		})
 	}
 }
