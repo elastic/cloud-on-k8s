@@ -130,7 +130,7 @@ function delayed_exit() {
 }
 
 function supports_node_shutdown() {
-  local version=$1
+  local version="$1"
   version="${version#[vV]}"
   major="${version%%\.*}"
   minor="${version#*.}"
