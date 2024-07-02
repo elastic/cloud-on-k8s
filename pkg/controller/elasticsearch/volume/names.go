@@ -9,10 +9,7 @@ const (
 	PodMountedUsersSecretMountPath = "/mnt/elastic-internal/pod-mounted-users" //nolint:gosec
 	ProbeUserVolumeName            = "elastic-internal-probe-user"
 
-	ConfigVolumeMountPath               = "/usr/share/elasticsearch/config"
-	NodeTransportCertificatePathSegment = "node-transport-cert"
-	NodeTransportCertificateKeyFile     = "transport.tls.key"
-	NodeTransportCertificateCertFile    = "transport.tls.crt"
+	ConfigVolumeMountPath = "/usr/share/elasticsearch/config"
 
 	TransportCertificatesSecretVolumeName      = "elastic-internal-transport-certificates"
 	TransportCertificatesSecretVolumeMountPath = "/usr/share/elasticsearch/config/transport-certs" //nolint:gosec

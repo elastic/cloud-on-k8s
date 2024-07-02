@@ -35,6 +35,7 @@ type esSampleBuilder struct {
 	userConfig              map[string]interface{}
 	esAdditionalAnnotations map[string]string
 	keystoreResources       *keystore.Resources
+	transportCertsDisabled  bool
 	version                 string
 }
 
@@ -53,6 +54,7 @@ func (esb *esSampleBuilder) build() esv1.Elasticsearch {
 	if esb.version != "" {
 		es.Spec.Version = esb.version
 	}
+	es.Spec.Transport.TLS.SelfSignedCertificates = &esv1.SelfSignedTransportCertificates{Disabled: esb.transportCertsDisabled}
 	return *es
 }
 
@@ -73,6 +75,11 @@ func (esb *esSampleBuilder) addEsAnnotations(esAnnotations map[string]string) *e
 
 func (esb *esSampleBuilder) withKeystoreResources(keystoreResources *keystore.Resources) *esSampleBuilder {
 	esb.keystoreResources = keystoreResources
+	return esb
+}
+
+func (esb *esSampleBuilder) withTransportCertsDisabled(disabled bool) *esSampleBuilder {
+	esb.transportCertsDisabled = disabled
 	return esb
 }
 
@@ -319,11 +326,12 @@ func TestBuildPodTemplateSpec(t *testing.T) {
 
 func Test_buildAnnotations(t *testing.T) {
 	type args struct {
-		cfg               map[string]interface{}
-		esAnnotations     map[string]string
-		keystoreResources *keystore.Resources
-		scriptsContent    string
-		policyAnnotations map[string]string
+		cfg                    map[string]interface{}
+		esAnnotations          map[string]string
+		keystoreResources      *keystore.Resources
+		scriptsContent         string
+		policyAnnotations      map[string]string
+		transportCertsDisabled bool
 	}
 	tests := []struct {
 		name                string
@@ -334,7 +342,7 @@ func Test_buildAnnotations(t *testing.T) {
 		{
 			name: "Sample Elasticsearch resource",
 			expectedAnnotations: map[string]string{
-				"elasticsearch.k8s.elastic.co/config-hash": "533641620",
+				"elasticsearch.k8s.elastic.co/config-hash": "3089472956",
 			},
 		},
 		{
@@ -347,7 +355,7 @@ func Test_buildAnnotations(t *testing.T) {
 				},
 			},
 			expectedAnnotations: map[string]string{
-				"elasticsearch.k8s.elastic.co/config-hash": "3131886472",
+				"elasticsearch.k8s.elastic.co/config-hash": "1067885408",
 			},
 		},
 		{
@@ -356,7 +364,7 @@ func Test_buildAnnotations(t *testing.T) {
 				esAnnotations: map[string]string{"eck.k8s.elastic.co/downward-node-labels": "topology.kubernetes.io/zone"},
 			},
 			expectedAnnotations: map[string]string{
-				"elasticsearch.k8s.elastic.co/config-hash": "757126536",
+				"elasticsearch.k8s.elastic.co/config-hash": "3370858576",
 			},
 		},
 		{
@@ -365,7 +373,7 @@ func Test_buildAnnotations(t *testing.T) {
 				esAnnotations: map[string]string{"eck.k8s.elastic.co/downward-node-labels": "topology.kubernetes.io/zone,topology.kubernetes.io/region"},
 			},
 			expectedAnnotations: map[string]string{
-				"elasticsearch.k8s.elastic.co/config-hash": "3605766330",
+				"elasticsearch.k8s.elastic.co/config-hash": "909392898",
 			},
 		},
 		{
@@ -377,7 +385,7 @@ func Test_buildAnnotations(t *testing.T) {
 				scriptsContent: "scripts content",
 			},
 			expectedAnnotations: map[string]string{
-				"elasticsearch.k8s.elastic.co/config-hash": "99942575",
+				"elasticsearch.k8s.elastic.co/config-hash": "4033676039",
 			},
 		},
 		{
@@ -389,7 +397,7 @@ func Test_buildAnnotations(t *testing.T) {
 				scriptsContent: "scripts content",
 			},
 			expectedAnnotations: map[string]string{
-				"elasticsearch.k8s.elastic.co/config-hash": "83164956",
+				"elasticsearch.k8s.elastic.co/config-hash": "4016898420",
 			},
 		},
 		{
@@ -401,7 +409,7 @@ func Test_buildAnnotations(t *testing.T) {
 				scriptsContent: "another scripts content",
 			},
 			expectedAnnotations: map[string]string{
-				"elasticsearch.k8s.elastic.co/config-hash": "1050348692",
+				"elasticsearch.k8s.elastic.co/config-hash": "3413674748",
 			},
 		},
 		{
@@ -415,10 +423,25 @@ func Test_buildAnnotations(t *testing.T) {
 				commonannotation.ElasticsearchConfigAndSecretMountsHashAnnotation: "testhash",
 			},
 		},
+		{
+			name: "with transport certs disabled",
+			args: args{
+				transportCertsDisabled: true,
+			},
+			expectedAnnotations: map[string]string{
+				"elasticsearch.k8s.elastic.co/self-signed-transport-cert-disabled": "true",
+			},
+			wantErr: false,
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			es := newEsSampleBuilder().withKeystoreResources(tt.args.keystoreResources).withUserConfig(tt.args.cfg).addEsAnnotations(tt.args.esAnnotations).build()
+			es := newEsSampleBuilder().
+				withKeystoreResources(tt.args.keystoreResources).
+				withUserConfig(tt.args.cfg).
+				addEsAnnotations(tt.args.esAnnotations).
+				withTransportCertsDisabled(tt.args.transportCertsDisabled).
+				build()
 			ver, err := version.Parse(sampleES.Spec.Version)
 			require.NoError(t, err)
 			cfg, err := settings.NewMergedESConfig(es.Name, ver, corev1.IPv4Protocol, es.Spec.HTTP, *es.Spec.NodeSets[0].Config, nil)

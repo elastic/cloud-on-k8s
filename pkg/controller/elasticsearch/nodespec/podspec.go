@@ -221,6 +221,10 @@ func buildAnnotations(
 		_, _ = configHash.Write([]byte(keystoreResources.Hash))
 	}
 
+	if !es.Spec.Transport.TLS.SelfSignedEnabled() {
+		annotations[esv1.TransportCertDisabledAnnotationName] = "true"
+	}
+
 	// set the annotation in place
 	annotations[configHashAnnotationName] = fmt.Sprint(configHash.Sum32())
 

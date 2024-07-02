@@ -4,7 +4,7 @@
  "metadata": {
   "annotations": {
    "co.elastic.logs/module": "elasticsearch",
-   "elasticsearch.k8s.elastic.co/config-hash": "267866193",
+   "elasticsearch.k8s.elastic.co/config-hash": "3646914737",
    "pod-template-annotation-name": "pod-template-annotation-value",
    "policy.k8s.elastic.co/elasticsearch-config-mounts-hash": "2095567618"
   },
@@ -983,7 +983,7 @@
  "metadata": {
   "annotations": {
    "co.elastic.logs/module": "elasticsearch",
-   "elasticsearch.k8s.elastic.co/config-hash": "1794839471",
+   "elasticsearch.k8s.elastic.co/config-hash": "2170302367",
    "pod-template-annotation-name": "pod-template-annotation-value"
   },
   "creationTimestamp": null,
