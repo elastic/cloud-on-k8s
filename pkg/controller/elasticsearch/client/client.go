@@ -50,9 +50,9 @@ type ApplicationRole struct {
 
 // Role represents an Elasticsearch role.
 type Role struct {
-	Cluster      []string            `json:"cluster,omitempty"`
-	Indices      []IndexRole         `json:"indices,omitempty"`
-	Applications []ApplicationRole   `json:"applications,omitempty"`
+	Cluster      []string             `json:"cluster,omitempty"`
+	Indices      []IndexRole          `json:"indices,omitempty"`
+	Applications []ApplicationRole    `json:"applications,omitempty"`
 	Metadata     map[string]interface `json:"metadata,omitempty"`
 }
 
