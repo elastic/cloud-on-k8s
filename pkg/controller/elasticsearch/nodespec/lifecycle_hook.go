@@ -83,6 +83,9 @@ function request() {
   return 0
 }
 
+# number of retries to try not to last more than default terminateGracePeriodSeconds (0 + 1 + 2 + 4 + 8 + 16 + 32 + 64 < 180s)
+retries_count=8
+
 function retry() {
   local retries=$1
   shift
@@ -169,7 +172,7 @@ fi
 ES_URL="{{.ServiceURL}}"
 
 log "retrieving node ID"
-if ! retry 8 request -X GET "${ES_URL}/_cat/nodes?full_id=true&h=id,name" "${BASIC_AUTH[@]}"
+if ! retry "$retries_count" request -X GET "${ES_URL}/_cat/nodes?full_id=true&h=id,name" "${BASIC_AUTH[@]}"
 then
   error_exit "failed to retrieve nodes"
 fi
@@ -191,7 +194,7 @@ if grep -q -v '"nodes":\[\]' "$resp_body"; then
 fi
 
 log "initiating node shutdown"
-if ! retry 8 request -X PUT "${ES_URL}/_nodes/${NODE_ID}/shutdown" "${BASIC_AUTH[@]}" -H 'Content-Type: application/json' -d"
+if ! retry "$retries_count" request -X PUT "${ES_URL}/_nodes/${NODE_ID}/shutdown" "${BASIC_AUTH[@]}" -H 'Content-Type: application/json' -d"
 {
   \"type\": \"${shutdown_type}\",
   \"reason\": \"pre-stop hook\"
