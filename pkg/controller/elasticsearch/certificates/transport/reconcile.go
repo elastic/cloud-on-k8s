@@ -16,7 +16,6 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
-	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
 	esv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/elasticsearch/v1"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/annotation"
@@ -129,9 +128,11 @@ func reconcileNodeSetTransportCertificatesSecrets(
 			return results.WithError(errors.New("no certificate found for pod"))
 		}
 		// handle cert expiry via requeue
-		results.WithResult(reconcile.Result{
-			RequeueAfter: certificates.ShouldRotateIn(time.Now(), cert.NotAfter, rotationParams.RotateBefore),
-		})
+		results.WithReconciliationState(
+			reconciler.
+				RequeueAfter(certificates.ShouldRotateIn(time.Now(), cert.NotAfter, rotationParams.RotateBefore)).
+				ReconciliationComplete(),
+		)
 	}
 
 	// remove certificates and keys for deleted pods
