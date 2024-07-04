@@ -2421,11 +2421,11 @@ Contents of probable licence file $GOMODCACHE/github.com/prometheus/client_golan
 
 --------------------------------------------------------------------------------
 Module  : github.com/prometheus/common
-Version : v0.54.0
-Time    : 2024-06-03T12:11:00Z
+Version : v0.55.0
+Time    : 2024-06-26T13:34:48Z
 Licence : Apache-2.0
 
-Contents of probable licence file $GOMODCACHE/github.com/prometheus/common@v0.54.0/LICENSE:
+Contents of probable licence file $GOMODCACHE/github.com/prometheus/common@v0.55.0/LICENSE:
 
                                  Apache License
                            Version 2.0, January 2004
@@ -15559,11 +15559,11 @@ Contents of probable licence file $GOMODCACHE/github.com/prometheus/client_model
 
 --------------------------------------------------------------------------------
 Module  : github.com/prometheus/procfs
-Version : v0.14.0
-Time    : 2024-04-17T20:21:59Z
+Version : v0.15.1
+Time    : 2024-05-31T12:52:07Z
 Licence : Apache-2.0
 
-Contents of probable licence file $GOMODCACHE/github.com/prometheus/procfs@v0.14.0/LICENSE:
+Contents of probable licence file $GOMODCACHE/github.com/prometheus/procfs@v0.15.1/LICENSE:
 
                                  Apache License
                            Version 2.0, January 2004
@@ -16555,11 +16555,11 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 --------------------------------------------------------------------------------
 Module  : golang.org/x/net
-Version : v0.25.0
-Time    : 2024-05-06T16:24:48Z
+Version : v0.26.0
+Time    : 2024-06-04T17:07:48Z
 Licence : BSD-3-Clause
 
-Contents of probable licence file $GOMODCACHE/golang.org/x/net@v0.25.0/LICENSE:
+Contents of probable licence file $GOMODCACHE/golang.org/x/net@v0.26.0/LICENSE:
 
 Copyright (c) 2009 The Go Authors. All rights reserved.
 
@@ -16592,11 +16592,11 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 --------------------------------------------------------------------------------
 Module  : golang.org/x/oauth2
-Version : v0.20.0
-Time    : 2024-04-22T16:03:30Z
+Version : v0.21.0
+Time    : 2024-05-10T21:31:51Z
 Licence : BSD-3-Clause
 
-Contents of probable licence file $GOMODCACHE/golang.org/x/oauth2@v0.20.0/LICENSE:
+Contents of probable licence file $GOMODCACHE/golang.org/x/oauth2@v0.21.0/LICENSE:
 
 Copyright (c) 2009 The Go Authors. All rights reserved.
 
@@ -17063,11 +17063,11 @@ Contents of probable licence file $GOMODCACHE/gomodules.xyz/jsonpatch/v2@v2.4.0/
 
 --------------------------------------------------------------------------------
 Module  : google.golang.org/protobuf
-Version : v1.34.1
-Time    : 2024-05-06T12:17:40Z
+Version : v1.34.2
+Time    : 2024-06-11T07:18:36Z
 Licence : BSD-3-Clause
 
-Contents of probable licence file $GOMODCACHE/google.golang.org/protobuf@v1.34.1/LICENSE:
+Contents of probable licence file $GOMODCACHE/google.golang.org/protobuf@v1.34.2/LICENSE:
 
 Copyright (c) 2018 The Go Authors. All rights reserved.
 
