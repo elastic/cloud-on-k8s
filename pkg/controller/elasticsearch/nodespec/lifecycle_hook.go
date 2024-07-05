@@ -30,9 +30,9 @@ var preStopHookScriptTemplate = template.Must(template.New("pre-stop").Parse(`#!
 
 set -uo pipefail
 
-# This script will wait for up to $PRE_STOP_ADDITIONAL_WAIT_SECONDS before allowing termination of the Pod 
+# This script will wait for up to $PRE_STOP_ADDITIONAL_WAIT_SECONDS before allowing termination of the Pod
 # This slows down the process shutdown and allows to make changes to the pool gracefully, without blackholing traffic when DNS
-# still contains the IP that is already inactive. 
+# still contains the IP that is already inactive.
 # As this runs in parallel to grace period after which process is SIGKILLed,
 # it should be set to allow enough time for the process to gracefully terminate.
 # It allows kube-proxy to refresh its rules and remove the terminating Pod IP.
@@ -69,19 +69,22 @@ global_dns_error_cnt=0
 
 function request() {
   local status exit
-  status=$(curl -k -sS -o "$resp_body" -w "%{http_code}" "$@")
+  status=$(curl -k -sS -o "${resp_body}" -w "%{http_code}" "$@")
   exit=$?
   if [ "$exit" -ne 0 ] || [ "$status" -lt 200 ] || [ "$status" -gt 299 ]; then
     # track curl DNS errors separately
     if [ "$exit" -eq 6 ]; then ((global_dns_error_cnt++)); fi
     # make sure we have a non-zero exit code in the presence of errors
     if [ "$exit" -eq 0 ]; then exit=1; fi
-    log  "$status" "$3" #by convention the third arg contains the URL
+    log "$status" "$3" #by convention the third arg contains the URL
     return $exit
   fi
   global_dns_error_cnt=0
   return 0
 }
+
+# number of retries to try not to last more than default terminateGracePeriodSeconds (0 + 1 + 2 + 4 + 8 + 16 + 32 + 64 < 180s)
+retries_count=8
 
 function retry() {
   local retries=$1
@@ -113,25 +116,25 @@ function log() {
 }
 
 function error_exit() {
-  log "$@"
+  log "$*"
   delayed_exit 1
 }
 
 function delayed_exit() {
   local elapsed
-  elapsed=$(duration "$script_start")
+  elapsed=$(duration "${script_start}")
   local remaining=$((PRE_STOP_ADDITIONAL_WAIT_SECONDS - elapsed))
   if (( remaining < 0 )); then
-    exit ${1-0}
+    exit "${1-0}"
   fi
-  log "delaying termination for $remaining seconds"
+  log "delaying termination for ${remaining} seconds"
   sleep $remaining
-  exit ${1-0}
+  exit "${1-0}"
 }
 
 function supports_node_shutdown() {
   local version="$1"
-  version=${version#[vV]}
+  version="${version#[vV]}"
   major="${version%%\.*}"
   minor="${version#*.}"
   minor="${minor%.*}"
@@ -146,62 +149,69 @@ function supports_node_shutdown() {
 version=""
 if [[ -f "{{.LabelsFile}}" ]]; then
   # get Elasticsearch version from the downward API
-  version=$(grep "{{.VersionLabelName}}" {{.LabelsFile}} | cut -d '=' -f 2)
+  version=$(grep "{{.VersionLabelName}}" "{{.LabelsFile}}" | cut -d '=' -f 2)
   # remove quotes
   version=$(echo "${version}" | tr -d '"')
 fi
 
 # if ES version does not support node shutdown exit early
 if ! supports_node_shutdown "$version"; then
-  delayed_exit 
+  delayed_exit
 fi
 
 # setup basic auth if credentials are available
 if [ -f "{{.PreStopUserPasswordPath}}" ]; then
-  PROBE_PASSWORD=$(<{{.PreStopUserPasswordPath}})
-  BASIC_AUTH="-u {{.PreStopUserName}}:${PROBE_PASSWORD}"
+  PROBE_PASSWORD=$(<"{{.PreStopUserPasswordPath}}")
+  BASIC_AUTH=("-u" "{{.PreStopUserName}}:${PROBE_PASSWORD}")
 else
   # typically the case on upgrades from versions that did not have this script yet and the necessary volume mounts are missing
   log "no API credentials available, will not attempt node shutdown orchestration from pre-stop hook"
   delayed_exit
 fi
 
-ES_URL={{.ServiceURL}}
+ES_URL="{{.ServiceURL}}"
 
 log "retrieving node ID"
-retry 10 request -X GET "$ES_URL/_cat/nodes?full_id=true&h=id,name" $BASIC_AUTH
-if [ "$?" -ne 0 ]; then
-	error_exit "failed to retrieve node ID"
+if ! retry "$retries_count" request -X GET "${ES_URL}/_cat/nodes?full_id=true&h=id,name" "${BASIC_AUTH[@]}"
+then
+  error_exit "failed to retrieve nodes"
 fi
 
-NODE_ID=$(grep "$POD_NAME" "$resp_body" | cut -f 1 -d ' ')
+if ! NODE_ID="$(grep "${POD_NAME}" "${resp_body}" | cut -f 1 -d ' ')"
+then
+  error_exit "failed to extract node id"
+fi
 
 # check if there is an ongoing shutdown request
-request -X GET $ES_URL/_nodes/"$NODE_ID"/shutdown $BASIC_AUTH
+if ! request -X GET "${ES_URL}/_nodes/${NODE_ID}/shutdown" "${BASIC_AUTH[@]}"
+then
+  error_exit "failed to retrieve shutdown status"
+fi
+
 if grep -q -v '"nodes":\[\]' "$resp_body"; then
-	log "shutdown managed by ECK operator"
-	delayed_exit      
+  log "shutdown managed by ECK operator"
+  delayed_exit
 fi
 
 log "initiating node shutdown"
-retry 10 request -X PUT $ES_URL/_nodes/"$NODE_ID"/shutdown $BASIC_AUTH -H 'Content-Type: application/json' -d"
+if ! retry "$retries_count" request -X PUT "${ES_URL}/_nodes/${NODE_ID}/shutdown" "${BASIC_AUTH[@]}" -H 'Content-Type: application/json' -d"
 {
-  \"type\": \"$shutdown_type\",
+  \"type\": \"${shutdown_type}\",
   \"reason\": \"pre-stop hook\"
-}
-"
-if [ "$?" -ne 0 ]; then
-   error_exit "failed to call node shutdown API"
+}"
+then
+  error_exit "failed to call node shutdown API"
 fi
 
 while :
-do 
-   log "waiting for node shutdown to complete"
-   request -X GET $ES_URL/_nodes/"$NODE_ID"/shutdown $BASIC_AUTH
-   if [ "$?" -eq 0 ] && grep -q -v 'IN_PROGRESS\|STALLED' "$resp_body"; then
-      break
-   fi
-   sleep 10 
+do
+  log "waiting for node shutdown to complete"
+  if request -X GET "${ES_URL}/_nodes/${NODE_ID}/shutdown" "${BASIC_AUTH[@]}" &&
+    grep -q -v 'IN_PROGRESS\|STALLED' "$resp_body"
+  then
+    break
+  fi
+  sleep 10
 done
 
 delayed_exit
