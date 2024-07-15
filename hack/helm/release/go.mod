@@ -10,7 +10,7 @@ require (
 	github.com/spf13/viper v1.19.0
 	google.golang.org/api v0.187.0
 	gopkg.in/yaml.v3 v3.0.1
-	helm.sh/helm/v3 v3.15.2
+	helm.sh/helm/v3 v3.15.3
 )
 
 replace github.com/elastic/cloud-on-k8s/v2 => ../../..
