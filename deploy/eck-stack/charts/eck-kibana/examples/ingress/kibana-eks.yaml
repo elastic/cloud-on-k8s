@@ -1,0 +1,44 @@
+# The following is an example of a Kibana resource that is configured to use an Ingress resource in an EKS cluster.
+#
+
+# Name of the Kibana instance.
+#
+fullnameOverride: kibana
+
+spec:
+  # Reference to ECK-managed Elasticsearch instance, ideally from {{ "elasticsearch.fullname" }}
+  #
+  elasticsearchRef:
+    name: elasticsearch
+  config:
+    server:
+      publicBaseUrl: "https://kibana.company.dev"
+
+ingress:
+  enabled: true
+  className: alb
+  annotations:
+    alb.ingress.kubernetes.io/scheme: "internet-facing"
+    alb.ingress.kubernetes.io/listen-ports: '[{"HTTPS":443}]'
+    alb.ingress.kubernetes.io/backend-protocol: "HTTPS"
+    alb.ingress.kubernetes.io/target-type: "ip"
+    # To use an ALB with ECK, you must provide a valid ACM certificate ARN or use certificate discovery:
+    # ref: https://kubernetes-sigs.github.io/aws-load-balancer-controller/v2.8/guide/ingress/cert_discovery/
+    #
+    alb.ingress.kubernetes.io/certificate-arn: "arn:aws:acm:us-east-1:444732909647:certificate/fcfb528d-3cfd-471e-8847-253a78e99c61"
+  labels:
+    my: label
+  pathType: Prefix
+  hosts:
+  - host: "*.ce-aws.dev.cld.elstc.co"
+  path: "/"
+nodeSets:
+- name: default
+  count: 3
+  # Comment out when setting the vm.max_map_count via initContainer, as these are mutually exclusive.
+  # For production workloads, it is strongly recommended to increase the kernel setting vm.max_map_count to 262144
+  # and leave node.store.allow_mmap unset.
+  # ref: https://www.elastic.co/guide/en/cloud-on-k8s/master/k8s-virtual-memory.html
+  #
+  config:
+    node.store.allow_mmap: false
