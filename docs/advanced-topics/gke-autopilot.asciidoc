@@ -22,7 +22,7 @@ This page shows how to run ECK on GKE Autopilot.
 [id="{p}-autopilot-setting-virtual-memory"]
 == Ensuring virtual memory kernel settings
 
-If you are intending to run production workloads on GKE Autopilot then `vm.max_map_count` should be set. The recommended way to set this kernel setting on the Autopilot hosts is with a `Daemonset` as described in the <<{p}-virtual-memory>> section. You must be running at least version 1.25 when on the `regular` channel or using the `rapid` channel, which currently runs version 1.26.
+If you are intending to run production workloads on GKE Autopilot then `vm.max_map_count` should be set. The recommended way to set this kernel setting on the Autopilot hosts is with a `Daemonset` as described in the <<{p}-virtual-memory>> section. You must be running at least version 1.25 when on the `regular` channel or using the `rapid` channel, which currently runs version 1.27.
 
 CAUTION: Only use the provided `Daemonset` exactly as specified or it could be rejected by the Autopilot control plane.
 
