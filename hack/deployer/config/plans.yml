@@ -3,7 +3,7 @@ plans:
   operation: create
   clusterName: ci
   provider: gke
-  kubernetesVersion: 1.26
+  kubernetesVersion: 1.27
   machineType: n1-standard-8
   serviceAccount: true
   enforceSecurityPolicies: true
@@ -18,7 +18,7 @@ plans:
   operation: create
   clusterName: ci-autopilot
   provider: gke
-  kubernetesVersion: 1.26
+  kubernetesVersion: 1.27
   serviceAccount: true
   enforceSecurityPolicies: true
   # this is disabled in autopilot: container provisioner is privileged; not allowed in Autopilot
@@ -31,7 +31,7 @@ plans:
   operation: create
   clusterName: dev
   provider: gke
-  kubernetesVersion: 1.26
+  kubernetesVersion: 1.27
   machineType: n1-standard-8
   serviceAccount: false
   enforceSecurityPolicies: true
@@ -58,7 +58,7 @@ plans:
   operation: create
   clusterName: dev-autopilot
   provider: gke
-  kubernetesVersion: 1.26
+  kubernetesVersion: 1.27
   serviceAccount: false
   enforceSecurityPolicies: true
   gke:
@@ -93,7 +93,7 @@ plans:
 - id: ocp-ci
   operation: create
   clusterName: ci
-  clientVersion: 4.15.10
+  clientVersion: 4.16.1
   provider: ocp
   machineType: n1-standard-8
   serviceAccount: true
@@ -103,7 +103,7 @@ plans:
 - id: ocp-dev
   operation: create
   clusterName: dev
-  clientVersion: 4.15.10
+  clientVersion: 4.16.1
   provider: ocp
   machineType: n1-standard-8
   serviceAccount: true
