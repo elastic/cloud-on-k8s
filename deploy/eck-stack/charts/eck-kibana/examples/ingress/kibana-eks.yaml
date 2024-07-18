@@ -25,7 +25,7 @@ ingress:
     # To use an ALB with ECK, you must provide a valid ACM certificate ARN or use certificate discovery:
     # ref: https://kubernetes-sigs.github.io/aws-load-balancer-controller/v2.8/guide/ingress/cert_discovery/
     #
-    alb.ingress.kubernetes.io/certificate-arn: "arn:aws:acm:us-east-1:444732909647:certificate/fcfb528d-3cfd-471e-8847-253a78e99c61"
+    # alb.ingress.kubernetes.io/certificate-arn: "arn:aws:acm:us-east-1:00000000000:certificate/b65be571-8220-4f2e-8cb1-94194535d877"
   labels:
     my: label
   pathType: Prefix
