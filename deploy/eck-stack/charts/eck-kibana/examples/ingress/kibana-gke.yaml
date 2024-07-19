@@ -27,7 +27,7 @@ ingress:
   enabled: true
   pathType: Prefix
   hosts:
-  - host: "*.company.dev"
+  - host: "kibana.company.dev"
     path: "/"
   tls:
     enabled: true

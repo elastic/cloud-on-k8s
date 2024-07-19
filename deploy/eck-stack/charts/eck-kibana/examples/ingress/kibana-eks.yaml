@@ -35,7 +35,7 @@ ingress:
     my: label
   pathType: Prefix
   hosts:
-  - host: "*.company.dev"
+  - host: "kibana.company.dev"
   path: "/"
 nodeSets:
 - name: default

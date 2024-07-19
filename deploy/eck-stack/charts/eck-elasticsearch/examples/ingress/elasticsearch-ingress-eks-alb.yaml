@@ -23,7 +23,7 @@ ingress:
     my: label
   pathType: Prefix
   hosts:
-  - host: "*.company.dev"
+  - host: "elasticsearch.company.dev"
   path: "/"
 nodeSets:
 - name: default

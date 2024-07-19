@@ -76,7 +76,7 @@ tests:
       - contains:
           path: spec.rules
           content: 
-            host: "*.company.dev"
+            host: "elasticsearch.company.dev"
             http:
               paths:
                 - backend:
