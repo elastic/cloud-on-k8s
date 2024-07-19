@@ -29,4 +29,5 @@ ingress:
   hosts:
   - host: "*.company.dev"
     path: "/"
-  tls: true
+  tls:
+    enabled: true
