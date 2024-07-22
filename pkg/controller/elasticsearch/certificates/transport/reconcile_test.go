@@ -7,10 +7,10 @@ package transport
 import (
 	"bytes"
 	"context"
-	"reflect"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -20,7 +20,6 @@ import (
 	esv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/elasticsearch/v1"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/certificates"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/comparison"
-	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/reconciler"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/label"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/k8s"
 )
@@ -36,7 +35,8 @@ func TestReconcileTransportCertificatesSecrets(t *testing.T) {
 	tests := []struct {
 		name          string
 		args          args
-		want          *reconciler.Results
+		wantRequeue   bool
+		wantErr       bool
 		assertSecrets func(t *testing.T, secrets corev1.SecretList)
 	}{
 		{
@@ -59,7 +59,8 @@ func TestReconcileTransportCertificatesSecrets(t *testing.T) {
 					newPodBuilder().forEs(testEsName).inNodeSet("sset3").withIndex(3).withIP("1.1.3.5").build(),
 				},
 			},
-			want: &reconciler.Results{},
+			wantRequeue: true,
+			wantErr:     false,
 			assertSecrets: func(t *testing.T, secrets corev1.SecretList) {
 				t.Helper()
 				// Check that there is 1 Secret per StatefulSet
@@ -116,7 +117,8 @@ func TestReconcileTransportCertificatesSecrets(t *testing.T) {
 					newPodBuilder().forEs(testEsName).inNodeSet("sset3").withIndex(1).withIP("1.1.3.3").build(),
 				},
 			},
-			want: &reconciler.Results{},
+			wantRequeue: true,
+			wantErr:     false,
 			assertSecrets: func(t *testing.T, secrets corev1.SecretList) {
 				t.Helper()
 				// Check that there is 1 Secret per StatefulSet
@@ -157,7 +159,8 @@ func TestReconcileTransportCertificatesSecrets(t *testing.T) {
 					newtransportCertsSecretBuilder(testEsName, "sset2").forPodIndices(0, 1, 2).build(), // Pod 2 does not exist
 				},
 			},
-			want: &reconciler.Results{},
+			wantRequeue: true,
+			wantErr:     false,
 			assertSecrets: func(t *testing.T, secrets corev1.SecretList) {
 				t.Helper()
 				// Check that there is 1 Secret per StatefulSet
@@ -188,13 +191,49 @@ func TestReconcileTransportCertificatesSecrets(t *testing.T) {
 				assert.NotContains(t, transportCerts2.Data, "test-es-name-es-sset2-2.tls.key")
 			},
 		},
+		{
+			name: "can disable certificate reconciliation",
+			args: args{
+				ca: testRSACA,
+				es: newEsBuilder().addNodeSet("sset1", 2).disableTransportCerts().build(),
+				initialObjects: []client.Object{
+					// one pod pending update to add the marker annotation
+					newPodBuilder().forEs(testEsName).inNodeSet("sset1").withIndex(0).withIP("1.1.1.2").build(),
+					// one pod rotated with the marker annotation
+					newPodBuilder().forEs(testEsName).inNodeSet("sset1").withIndex(1).withIP("1.1.1.2").withAnnotations(map[string]string{
+						esv1.TransportCertDisabledAnnotationName: "true",
+					}).build(),
+					newtransportCertsSecretBuilder(testEsName, "sset1").forPodIndices(0, 1).build(),
+				},
+			},
+			wantRequeue: true, // one pod does not have the annotation yet so requeue is expected
+			wantErr:     false,
+			assertSecrets: func(t *testing.T, secrets corev1.SecretList) {
+				t.Helper()
+				// Check that there is 1 Secret per StatefulSet
+				assert.Equal(t, 1, len(secrets.Items))
+
+				transportCerts1 := getSecret(secrets, "test-es-name-es-sset1-es-transport-certs")
+				assert.NotNil(t, transportCerts1)
+				// Transport certs CA is still there
+				assert.Contains(t, transportCerts1.Data, "ca.crt")
+				// disabled marker is there
+				assert.Contains(t, transportCerts1.Data, "transport.certs.disabled")
+				// Transport certs for Pod 1 should still be there to keep the cluster running
+				assert.Contains(t, transportCerts1.Data, "test-es-name-es-sset1-0.tls.crt")
+				assert.Contains(t, transportCerts1.Data, "test-es-name-es-sset1-0.tls.key")
+				// Transport certs for Pod 2 should not have been generated
+				assert.NotContains(t, transportCerts1.Data, "test-es-name-es-sset1-1.tls.crt")
+				assert.NotContains(t, transportCerts1.Data, "test-es-name-es-sset1-1.tls.key")
+			},
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			k8sClient := k8s.NewFakeClient(tt.args.initialObjects...)
-			if got := ReconcileTransportCertificatesSecrets(context.Background(), k8sClient, tt.args.ca, tt.args.extraCA, *tt.args.es, tt.args.rotationParams); !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("ReconcileTransportCertificatesSecrets() = %v, want %v", got, tt.want)
-			}
+			got := ReconcileTransportCertificatesSecrets(context.Background(), k8sClient, tt.args.ca, tt.args.extraCA, *tt.args.es, tt.args.rotationParams)
+			require.Equal(t, tt.wantRequeue, got.HasRequeue(), "expected requeue")
+			require.Equal(t, tt.wantErr, got.HasError(), "expected err")
 			// Check Secrets
 			var secrets corev1.SecretList
 			matchLabels := label.NewLabelSelectorForElasticsearch(*tt.args.es)
@@ -422,6 +461,98 @@ func Test_ensureTransportCertificateSecretExists(t *testing.T) {
 				return
 			}
 			tt.want(t, got)
+		})
+	}
+}
+
+func Test_mayBeUpdateCAFile(t *testing.T) {
+	type args struct {
+		secret        *corev1.Secret
+		ca            *certificates.CA
+		additionalCAs []byte
+	}
+	tests := []struct {
+		name          string
+		args          args
+		assertSecrets func(t *testing.T, secret map[string][]byte)
+	}{
+		{
+			name: "default settings",
+			args: args{
+				secret:        &corev1.Secret{Data: map[string][]byte{}},
+				ca:            testRSACA,
+				additionalCAs: nil,
+			},
+			assertSecrets: func(t *testing.T, secret map[string][]byte) {
+				t.Helper()
+				assert.Contains(t, secret, "ca.crt")
+				assert.Equal(t, secret["ca.crt"], testRSACABytes)
+			},
+		},
+		{
+			name: "default settings with additional CA",
+			args: args{
+				secret:        &corev1.Secret{Data: map[string][]byte{}},
+				ca:            testRSACA,
+				additionalCAs: extraCA,
+			},
+			assertSecrets: func(t *testing.T, secret map[string][]byte) {
+				t.Helper()
+				assert.Contains(t, secret, "ca.crt")
+				assert.Equal(t, len(secret["ca.crt"]), len(testRSACABytes)+len(extraCA))
+			},
+		},
+		{
+			name: "disabled transport certs with some pods still using them",
+			args: args{
+				secret: &corev1.Secret{Data: map[string][]byte{
+					disabledMarker:     []byte("true"),
+					"some-pod.tls.crt": []byte("cert"),
+					"some-pod.tls.key": []byte("key"),
+				}},
+				ca:            testRSACA,
+				additionalCAs: nil,
+			},
+			assertSecrets: func(t *testing.T, secret map[string][]byte) {
+				t.Helper()
+				assert.Contains(t, secret, "ca.crt")
+				assert.Equal(t, len(secret["ca.crt"]), len(testRSACABytes))
+			},
+		},
+		{
+			name: "disabled transport certs with no pods still using them",
+			args: args{
+				secret: &corev1.Secret{Data: map[string][]byte{
+					disabledMarker: []byte("true"),
+				}},
+				ca:            testRSACA,
+				additionalCAs: nil,
+			},
+			assertSecrets: func(t *testing.T, secret map[string][]byte) {
+				t.Helper()
+				assert.NotContains(t, secret, "ca.crt")
+			},
+		},
+		{
+			name: "disabled transport certs with additional CA",
+			args: args{
+				secret: &corev1.Secret{Data: map[string][]byte{
+					disabledMarker: []byte("true"),
+				}},
+				ca:            testRSACA,
+				additionalCAs: extraCA,
+			},
+			assertSecrets: func(t *testing.T, secret map[string][]byte) {
+				t.Helper()
+				assert.Contains(t, secret, "ca.crt")
+				assert.Equal(t, secret["ca.crt"], extraCA)
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			mayBeUpdateCAFile(tt.args.secret, tt.args.ca, tt.args.additionalCAs)
+			tt.assertSecrets(t, tt.args.secret.Data)
 		})
 	}
 }
