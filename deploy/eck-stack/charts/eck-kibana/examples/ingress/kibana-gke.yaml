@@ -1,0 +1,33 @@
+# The following is an example of a Kibana resource that is configured to use an Ingress resource in a GKE cluster.
+#
+
+# Name of the Kibana instance.
+#
+fullnameOverride: kibana
+
+spec:
+  # Reference to ECK-managed Elasticsearch instance, ideally from {{ "elasticsearch.fullname" }}
+  #
+  elasticsearchRef:
+    name: elasticsearch
+  config:
+    server:
+      publicBaseUrl: "https://kibana.company.dev"
+  http:
+    service:
+      metadata:
+        annotations:
+          # This is required for `ClusterIP` services (which are the default ECK service type) to be used with Ingress in GKE clusters.
+          cloud.google.com/neg: '{"ingress": true}'
+          # This is required to enable the GKE Ingress Controller to use HTTPS as the backend protocol.
+          cloud.google.com/app-protocols: '{"https":"HTTPS"}'
+          # cloud.google.com/backend-config: '{"default": "kibana"}'
+
+ingress:
+  enabled: true
+  pathType: Prefix
+  hosts:
+  - host: "kibana.company.dev"
+    path: "/"
+  tls:
+    enabled: true

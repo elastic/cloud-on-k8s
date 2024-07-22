@@ -119,3 +119,14 @@ helm install es-quickstart elastic/eck-stack -n elastic-stack --create-namespace
 ----
 helm install es-quickstart elastic/eck-elasticsearch -n elastic-stack --create-namespace
 ----
+
+[float]
+[id="{p}-eck-stack-ingress"]
+=== Adding Ingress to the Elastic stack using the Helm Charts
+
+Both Elasticsearch and Kibana support Ingress, which can be enabled using the following options:
+
+[source,sh]
+----
+helm install es-quickstart elastic/eck-elasticsearch -n elastic-stack --create-namespace --set=ingress.enabled=true --set=ingress.hosts[0].host=elasticsearch.example.com --set=ingress.hosts[0].path="/"
+----

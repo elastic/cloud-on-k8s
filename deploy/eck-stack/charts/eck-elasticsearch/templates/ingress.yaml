@@ -1,0 +1,48 @@
+{{- if .Values.ingress.enabled -}}
+{{- $pathType := .Values.ingress.pathType | default "Prefix" -}}
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: {{ include "elasticsearch.fullname" . }}
+  labels:
+    {{- include "elasticsearch.labels" . | nindent 4 }}
+    {{- with .Values.ingress.labels }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
+  {{- if .Values.ingress.annotations }}
+  annotations:
+    {{- with .Values.ingress.annotations }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
+  {{- end }}
+spec:
+  {{- if .Values.ingress.className }}
+  ingressClassName: {{ .Values.ingress.className | quote }}
+  {{- end }}
+  {{- if .Values.ingress.tls.enabled }}
+  tls:
+  - hosts:
+  {{- range .Values.ingress.hosts }}
+    - {{ .host | quote }}
+  {{- end }}
+  {{- if .Values.ingress.tls.secretName }}
+    secretName: {{ .Values.ingress.tls.secretName }}
+  {{- else }}
+    secretName: {{ include "elasticsearch.fullname" . }}-es-http-certs-internal
+  {{- end }}
+  {{- end }}
+  rules:
+  {{- range .Values.ingress.hosts }}
+  {{- $hostPath := .path | default "/" }}
+  - host: {{ .host | quote }}
+    http:
+      paths:
+      - path: {{ $hostPath }}
+        pathType: {{ $pathType }}
+        backend:
+          service:
+            name: {{ include "elasticsearch.fullname" $ }}-es-http
+            port:
+              number: 9200
+  {{- end }}
+{{ end }}

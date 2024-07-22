@@ -1,0 +1,27 @@
+---
+# The following is an example of an Elasticsearch resource that is configured to deploy a
+# network load balancer (NLB) in an EKS cluster. To provision an NLB "ingress" for the
+# Elasticsearch cluster, you are required to set annotations on the service,
+# and not an Ingress resource.
+ingress:
+  enabled: false
+http:
+  service:
+    metadata:
+      annotations:
+        service.beta.kubernetes.io/aws-load-balancer-type: external
+        service.beta.kubernetes.io/aws-load-balancer-nlb-target-type: ip
+        service.beta.kubernetes.io/aws-load-balancer-scheme: internet-facing
+        service.beta.kubernetes.io/aws-load-balancer-backend-protocol: ssl
+    spec:
+      type: LoadBalancer
+nodeSets:
+- name: default
+  count: 3
+  # Comment out when setting the vm.max_map_count via initContainer, as these are mutually exclusive.
+  # For production workloads, it is strongly recommended to increase the kernel setting vm.max_map_count to 262144
+  # and leave node.store.allow_mmap unset.
+  # ref: https://www.elastic.co/guide/en/cloud-on-k8s/master/k8s-virtual-memory.html
+  #
+  config:
+    node.store.allow_mmap: false

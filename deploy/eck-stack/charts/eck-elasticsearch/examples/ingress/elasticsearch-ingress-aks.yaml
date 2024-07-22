@@ -1,0 +1,26 @@
+---
+# The following is an example of an Elasticsearch resource that is configured to use an Ingress resource in an AKS cluster.
+#
+ingress:
+  enabled: true
+  className: webapprouting.kubernetes.azure.com
+  annotations:
+    # This is required for AKS Loadbalancing to understand that it's communicating with
+    # an HTTPS backend.
+    nginx.ingress.kubernetes.io/backend-protocol: "HTTPS"
+  labels:
+    my: label
+  pathType: Prefix
+  hosts:
+  - host: "elasticsearch.company.dev"
+  path: "/"
+nodeSets:
+- name: default
+  count: 3
+  # Comment out when setting the vm.max_map_count via initContainer, as these are mutually exclusive.
+  # For production workloads, it is strongly recommended to increase the kernel setting vm.max_map_count to 262144
+  # and leave node.store.allow_mmap unset.
+  # ref: https://www.elastic.co/guide/en/cloud-on-k8s/master/k8s-virtual-memory.html
+  #
+  config:
+    node.store.allow_mmap: false

@@ -1,0 +1,40 @@
+# The following is an example of an Elasticsearch resource that is configured to use an Ingress resource in a GKE cluster.
+# Additional examples of exposing Elasticsearch with Ingress resources can be found in the following location:
+# https://github.com/elastic/cloud-on-k8s/tree/main/deploy/eck-stack/charts/eck-elasticsearch/examples/ingress
+#
+eck-elasticsearch:
+  enabled: true
+
+  ingress:
+    enabled: true
+    annotations:
+      my: annotation
+    labels:
+      my: label
+    pathType: Prefix
+    hosts:
+    - host: "elasticsearch.company.dev"
+      path: "/"
+  http:
+    service:
+      metadata:
+        annotations:
+          # This is required for `ClusterIP` services (which are the default ECK service type) to be used with Ingress in GKE clusters.
+          cloud.google.com/neg: '{"ingress": true}'
+          # This is required to enable the GKE Ingress Controller to use HTTPS as the backend protocol.
+          cloud.google.com/app-protocols: '{"https":"HTTPS"}'
+  nodeSets:
+  - name: default
+    count: 3
+    # Comment out when setting the vm.max_map_count via initContainer, as these are mutually exclusive.
+    # For production workloads, it is strongly recommended to increase the kernel setting vm.max_map_count to 262144
+    # and leave node.store.allow_mmap unset.
+    # ref: https://www.elastic.co/guide/en/cloud-on-k8s/master/k8s-virtual-memory.html
+    #
+    config:
+      node.store.allow_mmap: false
+      # Enable anonymous access to allow GCLB health probes to succeed
+      xpack.security.authc:
+        anonymous:
+          username: anon
+          roles: monitoring_user

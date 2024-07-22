@@ -1,0 +1,29 @@
+# The following is an example of a Kibana resource that is configured to use an Ingress resource in an AKS cluster.
+#
+
+# Name of the Kibana instance.
+#
+fullnameOverride: kibana
+
+spec:
+  # Reference to ECK-managed Elasticsearch instance, ideally from {{ "elasticsearch.fullname" }}
+  #
+  elasticsearchRef:
+    name: elasticsearch
+  config:
+    server:
+      publicBaseUrl: "https://kibana.company.dev"
+
+ingress:
+  enabled: true
+  className: webapprouting.kubernetes.azure.com
+  annotations:
+    # This is required for AKS Loadbalancing to understand that it's communicating with
+    # an HTTPS backend.
+    nginx.ingress.kubernetes.io/backend-protocol: "HTTPS"
+  labels:
+    my: label
+  pathType: Prefix
+  hosts:
+  - host: "kibana.company.dev"
+  path: "/"
