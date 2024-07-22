@@ -39,8 +39,8 @@ tests:
             app.kubernetes.io/instance: RELEASE-NAME
             app.kubernetes.io/managed-by: Helm
             app.kubernetes.io/name: elastic-operator
-            app.kubernetes.io/version: 2.14.0-SNAPSHOT
-            helm.sh/chart: eck-operator-2.14.0-SNAPSHOT
+            app.kubernetes.io/version: 2.15.0-SNAPSHOT
+            helm.sh/chart: eck-operator-2.15.0-SNAPSHOT
             key2: value2
   - it: should use the specified webhook secret name
     set:
