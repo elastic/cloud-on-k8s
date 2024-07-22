@@ -1,7 +1,7 @@
 # The following example should only be used in Agent "standalone" mode,
 # and should not be used when Agent is used with Fleet Server.
 #
-version: 8.15.0-SNAPSHOT
+version: 8.16.0-SNAPSHOT
 spec:
   elasticsearchRefs:
   - name: eck-elasticsearch
@@ -33,7 +33,7 @@ spec:
       meta:
         package:
           name: system
-          version: 8.15.0-SNAPSHOT
+          version: 8.16.0-SNAPSHOT
       data_stream:
         namespace: default
       streams:

@@ -18,7 +18,7 @@ tests:
           value: quickstart-eck-agent
       - equal:
           path: spec.version
-          value: 8.15.0-SNAPSHOT
+          value: 8.16.0-SNAPSHOT
   - it: should render agent in custom fleet example properly
     values:
       - ../../examples/agent/fleet-agents.yaml
@@ -32,7 +32,7 @@ tests:
           value: quickstart-eck-agent
       - equal:
           path: spec.version
-          value: 8.15.0-SNAPSHOT
+          value: 8.16.0-SNAPSHOT
       - equal:
           path: spec.kibanaRef.name
           value: kibana
@@ -75,7 +75,7 @@ tests:
           value: quickstart-eck-fleet-server
       - equal:
           path: spec.version
-          value: 8.15.0-SNAPSHOT
+          value: 8.16.0-SNAPSHOT
   - it: should render fleet server in custom fleet example properly
     values:
       - ../../examples/agent/fleet-agents.yaml
@@ -89,7 +89,7 @@ tests:
           value: fleet-server
       - equal:
           path: spec.version
-          value: 8.15.0-SNAPSHOT
+          value: 8.16.0-SNAPSHOT
       - equal:
           path: spec.kibanaRef.name
           value: kibana

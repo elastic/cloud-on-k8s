@@ -17,7 +17,7 @@ tests:
           value: quickstart-eck-beats
       - equal:
           path: spec.version
-          value: 8.15.0-SNAPSHOT
+          value: 8.16.0-SNAPSHOT
       - equal:
           path: spec.type
           value: filebeat

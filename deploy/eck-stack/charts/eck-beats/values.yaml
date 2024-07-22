@@ -18,7 +18,7 @@
 
 # Version of Elastic Beats.
 #
-version: 8.15.0-SNAPSHOT
+version: 8.16.0-SNAPSHOT
 
 # Labels that will be applied to Elastic Beats.
 #
