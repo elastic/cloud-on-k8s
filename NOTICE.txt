@@ -405,11 +405,11 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 --------------------------------------------------------------------------------
 Module  : github.com/gkampitakis/go-snaps
-Version : v0.5.4
-Time    : 2024-04-23T16:04:50Z
+Version : v0.5.5
+Time    : 2024-07-19T19:47:57Z
 Licence : MIT
 
-Contents of probable licence file $GOMODCACHE/github.com/gkampitakis/go-snaps@v0.5.4/LICENSE:
+Contents of probable licence file $GOMODCACHE/github.com/gkampitakis/go-snaps@v0.5.5/LICENSE:
 
 MIT License
 
