@@ -123,7 +123,7 @@ spec:
 
 The following manifest is only provided to illustrate how these certificates can be configured in principle, using the trust-manager Bundle resource and cert-manager provisioned certificates:
 
-[source,yaml]
+[source,yaml,subs="attributes,callouts"]
 ----
 apiVersion: trust.cert-manager.io/v1alpha1
 kind: Bundle
@@ -158,9 +158,17 @@ spec:
 apiVersion: cert-manager.io/v1
 kind: ClusterIssuer
 metadata:
+  name: selfsigned-issuer
+spec:
+  selfSigned: {} <1>
+---
+apiVersion: cert-manager.io/v1
+kind: ClusterIssuer
+metadata:
   name: ca-cluster-issuer
 spec:
   ca:
     secretName: root-ca-secret
 ...
 ----
+<1> This example, which is meant for illustration purposes only, uses a self-signed issuer as for the root CA and second issuer for the Elasticsearch cluster transport certificates as the cert-manager CSI driver does not support self-signed CAs.
