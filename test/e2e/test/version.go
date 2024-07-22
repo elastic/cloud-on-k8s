@@ -18,8 +18,7 @@ const (
 	// LatestReleasedVersion7x is the latest released version for 7.x
 	LatestReleasedVersion7x = "7.17.21"
 	// LatestReleasedVersion8x is the latest release version for 8.x
-	// TODO: update to latest 8.14.x when released with a fix to https://github.com/elastic/cloud-on-k8s/issues/7878
-	LatestReleasedVersion8x = "8.13.2"
+	LatestReleasedVersion8x = "8.14.3"
 )
 
 // SkipInvalidUpgrade skips a test that would do an invalid upgrade.
