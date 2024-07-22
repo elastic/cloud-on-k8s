@@ -46,7 +46,7 @@ spec:
             idp.entity_id: https://sso.example.com/
             idp.metadata.path: /usr/share/elasticsearch/config/saml/idp-saml-metadata.xml
             order: 2
-            sp.acs: https://kibana.example.com/api/security/callback/saml
+            sp.acs: https://kibana.example.com/api/security/saml/callback
             sp.entity_id: https://kibana.example.com/
             sp.logout: https://kibana.example.com/logout
 ----
