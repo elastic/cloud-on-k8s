@@ -54,7 +54,7 @@ func TestVersionUpgradeToLatest7x(t *testing.T) {
 	}
 
 	// perform a Kibana version upgrade and assert that:
-	// - there was a time were no Kibana pods were ready (when all old version pods were terminated,
+	// - there was a time when no Kibana pods were ready (when all old version pods were terminated,
 	//   but before new version pods were started), and
 	// - at all times all pods had the same Kibana version.
 	test.RunMutationsWhileWatching(
