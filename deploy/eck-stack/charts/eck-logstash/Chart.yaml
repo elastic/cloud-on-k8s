@@ -3,7 +3,7 @@ name: eck-logstash
 description: Logstash managed by the ECK operator
 kubeVersion: ">= 1.21.0-0"
 type: application
-version: 0.12.0-SNAPSHOT
+version: 0.13.0-SNAPSHOT
 sources:
   - https://github.com/elastic/cloud-on-k8s
   - https://github.com/elastic/logstash

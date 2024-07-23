@@ -49,7 +49,7 @@ tests:
             app.kubernetes.io/managed-by: Helm
             app.kubernetes.io/name: eck-fleet-server
             clusterRoleBinding: label
-            helm.sh/chart: eck-fleet-server-0.12.0-SNAPSHOT
+            helm.sh/chart: eck-fleet-server-0.13.0-SNAPSHOT
             test: label
       - equal:
           path: metadata.annotations

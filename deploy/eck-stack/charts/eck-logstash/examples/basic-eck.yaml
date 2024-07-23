@@ -1,6 +1,6 @@
 ---
 # values corresponding to config/recipes/logstash/logstash-eck.yaml
-version: 8.15.0-SNAPSHOT
+version: 8.16.0-SNAPSHOT
 
 elasticsearchRefs:
   - clusterName: eck

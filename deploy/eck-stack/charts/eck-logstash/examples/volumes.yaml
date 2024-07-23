@@ -1,6 +1,6 @@
 ---
 # values corresponding to config/recipes/logstash/logstash-volumes.yaml
-version: 8.15.0-SNAPSHOT
+version: 8.16.0-SNAPSHOT
 
 config:
   log.level: info

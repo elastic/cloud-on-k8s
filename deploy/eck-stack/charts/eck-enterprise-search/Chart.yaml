@@ -3,7 +3,7 @@ name: eck-enterprise-search
 description: Elastic Enterprise Search managed by the ECK operator
 kubeVersion: ">= 1.21.0-0"
 type: application
-version: 0.12.0-SNAPSHOT
+version: 0.13.0-SNAPSHOT
 sources:
   - https://github.com/elastic/cloud-on-k8s
 icon: https://github.com/elastic/ent-search/blob/main/public/app-search-favicon-196x196.png
