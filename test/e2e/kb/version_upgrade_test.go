@@ -30,7 +30,7 @@ func TestVersionUpgradeToLatest7x(t *testing.T) {
 
 	name := "test-version-upgrade-to-7x"
 	esBuilder := elasticsearch.NewBuilder(name).
-		WithESMasterDataNodes(1, elasticsearch.DefaultResources).
+		WithESMasterDataNodes(minClusterSizeFromKibanaVersion(t, dstVersion), elasticsearch.DefaultResources).
 		WithVersion(dstVersion)
 
 	srcNodeCount := 3
@@ -54,7 +54,7 @@ func TestVersionUpgradeToLatest7x(t *testing.T) {
 	}
 
 	// perform a Kibana version upgrade and assert that:
-	// - there was a time were no Kibana pods were ready (when all old version pods were termintated,
+	// - there was a time when no Kibana pods were ready (when all old version pods were terminated,
 	//   but before new version pods were started), and
 	// - at all times all pods had the same Kibana version.
 	test.RunMutationsWhileWatching(
@@ -65,6 +65,23 @@ func TestVersionUpgradeToLatest7x(t *testing.T) {
 	)
 }
 
+var (
+	noAutomaticIndexCreationKibanaVersion = version.MustParse("7.17.23")
+)
+
+// minClusterSizeFromKibanaVersion is a workaround for https://github.com/elastic/kibana/pull/158182
+func minClusterSizeFromKibanaVersion(t *testing.T, to string) int {
+	t.Helper()
+	dstVer, err := version.Parse(to)
+	if err != nil {
+		t.Fatalf("Failed to parse version '%s': %s", to, err)
+	}
+	if dstVer.LT(noAutomaticIndexCreationKibanaVersion) {
+		return 2
+	}
+	return 1
+}
+
 func TestVersionUpgradeAndRespecToLatest7x(t *testing.T) {
 	srcVersion := test.Ctx().ElasticStackVersion
 	dstVersion := test.LatestReleasedVersion7x
@@ -73,7 +90,7 @@ func TestVersionUpgradeAndRespecToLatest7x(t *testing.T) {
 
 	name := "test-upgrade-and-respec-to-7x"
 	esBuilder := elasticsearch.NewBuilder(name).
-		WithESMasterDataNodes(1, elasticsearch.DefaultResources).
+		WithESMasterDataNodes(minClusterSizeFromKibanaVersion(t, dstVersion), elasticsearch.DefaultResources).
 		WithVersion(dstVersion)
 
 	srcNodeCount := 3
