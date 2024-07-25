@@ -53,7 +53,10 @@ count: 1
 config: {}
 
 configRef: {}
-#  secretRef:
+
+# Reference a pipeline configuration in a Secret.
+# ref: https://www.elastic.co/guide/en/cloud-on-k8s/current/k8s-logstash-configuration.html#k8s-logstash-pipelines
+#pipelinesRef:
 #    secretName: ''
 
 # Set podTemplate to customize the pod used by Logstash
