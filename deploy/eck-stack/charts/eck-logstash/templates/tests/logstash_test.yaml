@@ -160,9 +160,8 @@ tests:
   - it: should render pipelinesRef properly
     set:
       pipelinesRef:
-        secretRef:
-          secretName: pipelineLogstashSecretName
+        secretName: pipelineLogstashSecretName
     asserts:
       - equal:
-          path: spec.pipelinesRef.secretRef.secretName
+          path: spec.pipelinesRef.secretName
           value: pipelineLogstashSecretName
