@@ -171,4 +171,6 @@ spec:
     secretName: root-ca-secret
 ...
 ----
-<1> This example, which is meant for illustration purposes only, uses a self-signed issuer as for the root CA and second issuer for the Elasticsearch cluster transport certificates as the cert-manager CSI driver does not support self-signed CAs.
+<1> This example uses a self-signed issuer for the root CA and a second issuer for the Elasticsearch cluster transport certificates as the cert-manager CSI driver does not support self-signed CAs.
+
+When transitioning from a configuration that uses externally provisioned certificates back to ECK-managed self-signed transport certificates it is important to ensure that the externally provisioned CA remains configured as a trusted CA through the `.spec.transport.tls.certificateAuthorities` attribute until all nodes in the cluster have been updated to use the ECK-managed certificates. When transitioning from ECK-managed certificates to externally provisioned ones, ECK ensures automatically that the ECK CA remains configured until the transition has been completed.
