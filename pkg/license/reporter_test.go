@@ -300,7 +300,6 @@ func Test_Start(t *testing.T) {
 			cm.Data["kibana_memory_bytes"] == "2147483648" &&
 			cm.Data["apm_memory"] == "1.00GiB" && // 2 * 512Mi
 			cm.Data["apm_memory_bytes"] == "1073741824"
-
 	}, waitFor, tick, "40*ES, 2*KB, 2 *APM")
 
 	// increase the Elasticsearch nodes count
