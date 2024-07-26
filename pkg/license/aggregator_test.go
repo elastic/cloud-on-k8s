@@ -142,7 +142,16 @@ func TestAggregator(t *testing.T) {
 
 	val, err := aggregator.AggregateMemory(context.Background())
 	require.NoError(t, err)
-	require.Equal(t, 329.9073486328125, inGiB(val))
+	for k, v := range map[string]float64{
+		elasticsearchKey: 294.0,
+		kibanaKey:        5.9073486328125,
+		apmKey:           2.0,
+		entSearchKey:     24.0,
+		logstashKey:      4.0,
+	} {
+		require.Equal(t, v, val.appUsage[k].InGiB(), k)
+	}
+	require.Equal(t, 329.9073486328125, val.totalMemory.InGiB(), "total")
 }
 
 func readObjects(t *testing.T, filePath string) []client.Object {

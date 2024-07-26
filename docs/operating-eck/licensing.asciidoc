@@ -105,13 +105,23 @@ The operator periodically writes the total amount of Elastic resources under man
 ----
 > kubectl -n elastic-system get configmap elastic-licensing -o json | jq .data
 {
+  "apm_memory": "0.50GiB",
+  "apm_memory_bytes": "536870912",
+  "eck_license_expiry_date": "2025-01-01T00:59:59+01:00",
   "eck_license_level": "enterprise",
-  "eck_license_expiry_date": "2022-01-01T00:59:59+01:00",
+  "elasticsearch_memory": "18.00GiB",
+  "elasticsearch_memory_bytes": "19327352832",
   "enterprise_resource_units": "1",
-  "max_enterprise_resource_units": "10",
-  "timestamp": "2020-01-03T23:38:20Z",
-  "total_managed_memory": "64GiB",
-  "total_managed_memory_bytes": "68719476736"
+  "enterprise_search_memory": "4.00GiB",
+  "enterprise_search_memory_bytes": "4294967296",
+  "kibana_memory": "1.00GiB",
+  "kibana_memory_bytes": "1073741824",
+  "logstash_memory": "2.00GiB",
+  "logstash_memory_bytes": "2147483648",
+  "max_enterprise_resource_units": "250",
+  "timestamp": "2024-07-26T12:40:42+02:00",
+  "total_managed_memory": "25.50GiB",
+  "total_managed_memory_bytes": "27380416512"
 }
 ----
 
@@ -120,12 +130,30 @@ If the operator metrics endpoint is enabled with the `--metrics-port` flag (chec
 [source,shell]
 ----
 > curl "$ECK_METRICS_ENDPOINT" | grep elastic_licensing
+# HELP elastic_licensing_enterprise_resource_units_max Maximum number of enterprise resource units available
+# TYPE elastic_licensing_enterprise_resource_units_max gauge
+elastic_licensing_enterprise_resource_units_max{license_level="enterprise"} 250
 # HELP elastic_licensing_enterprise_resource_units_total Total enterprise resource units used
 # TYPE elastic_licensing_enterprise_resource_units_total gauge
-elastic_licensing_enterprise_resource_units_total{license_level="basic"} 6
-# HELP elastic_licensing_memory_gigabytes_total Total memory used in GB
-# TYPE elastic_licensing_memory_gigabytes_total gauge
-elastic_licensing_memory_gigabytes_total{license_level="basic"} 357.01915648
+elastic_licensing_enterprise_resource_units_total{license_level="enterprise"} 1
+# HELP elastic_licensing_memory_gibibytes_apm Memory used by APM server in GiB
+# TYPE elastic_licensing_memory_gibibytes_apm gauge
+elastic_licensing_memory_gibibytes_apm{license_level="enterprise"} 0.5
+# HELP elastic_licensing_memory_gibibytes_elasticsearch Memory used by Elasticsearch in GiB
+# TYPE elastic_licensing_memory_gibibytes_elasticsearch gauge
+elastic_licensing_memory_gibibytes_elasticsearch{license_level="enterprise"} 18
+# HELP elastic_licensing_memory_gibibytes_enterprise_search Memory used by Enterprise Search in GiB
+# TYPE elastic_licensing_memory_gibibytes_enterprise_search gauge
+elastic_licensing_memory_gibibytes_enterprise_search{license_level="enterprise"} 4
+# HELP elastic_licensing_memory_gibibytes_kibana Memory used by Kibana in GiB
+# TYPE elastic_licensing_memory_gibibytes_kibana gauge
+elastic_licensing_memory_gibibytes_kibana{license_level="enterprise"} 1
+# HELP elastic_licensing_memory_gibibytes_logstash Memory used by Logstash in GiB
+# TYPE elastic_licensing_memory_gibibytes_logstash gauge
+elastic_licensing_memory_gibibytes_logstash{license_level="enterprise"} 2
+# HELP elastic_licensing_memory_gibibytes_total Total memory used in GiB
+# TYPE elastic_licensing_memory_gibibytes_total gauge
+elastic_licensing_memory_gibibytes_total{license_level="enterprise"} 25.5
 ----
 
 NOTE: Logstash resources managed by ECK will be counted towards ERU usage for informational purposes. Billable consumption depends on license terms on a per customer basis (See link:https://www.elastic.co/agreements/global/self-managed[Self Managed Subscription Agreement])
