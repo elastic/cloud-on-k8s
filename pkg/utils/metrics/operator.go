@@ -77,7 +77,7 @@ var (
 		Help:      "Memory used by APM server in GiB",
 	}, []string{LicenseLevelLabel}))
 
-	// LicensingEntSearchMemoryGauge reports the Enterprise search memory usage for licensing purposes.
+	// LicensingEntSearchMemoryGauge reports the Enterprise Search memory usage for licensing purposes.
 	LicensingEntSearchMemoryGauge = registerGauge(prometheus.NewGaugeVec(prometheus.GaugeOpts{
 		Namespace: namespace,
 		Subsystem: licensingSubsystem,

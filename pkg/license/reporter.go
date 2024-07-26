@@ -77,10 +77,10 @@ func (r ResourceReporter) Report(ctx context.Context) error {
 func (r ResourceReporter) Get(ctx context.Context) (LicensingInfo, error) {
 	span, _ := apm.StartSpan(ctx, "get_license_info", tracing.SpanTypeApp)
 	defer span.End()
-	totalMemory, err := r.aggregator.aggregateMemory(ctx)
+	usage, err := r.aggregator.aggregateMemory(ctx)
 	if err != nil {
 		return LicensingInfo{}, err
 	}
 
-	return r.licensingResolver.ToInfo(ctx, totalMemory)
+	return r.licensingResolver.ToInfo(ctx, usage)
 }

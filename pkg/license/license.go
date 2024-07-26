@@ -73,11 +73,10 @@ type memoryUsage struct {
 }
 
 func newMemoryUsage() memoryUsage {
-	usage := memoryUsage{
+	return memoryUsage{
 		appUsage:    map[string]managedMemory{},
 		totalMemory: managedMemory{label: totalKey},
 	}
-	return usage
 }
 
 func (mu *memoryUsage) add(memory managedMemory) {
@@ -125,7 +124,7 @@ func (li LicensingInfo) ReportAsMetrics() {
 	metrics.LicensingESMemoryGauge.With(labels).Set(li.appUsage[elasticsearchKey].inGiB())
 	metrics.LicensingKBMemoryGauge.With(labels).Set(li.appUsage[kibanaKey].inGiB())
 	metrics.LicensingAPMMemoryGauge.With(labels).Set(li.appUsage[apmKey].inGiB())
-	metrics.LicensingEntSearchMemoryGauge.With(labels).Set((li.appUsage[entSearchKey].inGiB()))
+	metrics.LicensingEntSearchMemoryGauge.With(labels).Set(li.appUsage[entSearchKey].inGiB())
 	metrics.LicensingLogstashMemoryGauge.With(labels).Set(li.appUsage[logstashKey].inGiB())
 	metrics.LicensingTotalERUGauge.With(labels).Set(float64(li.EnterpriseResourceUnits))
 
