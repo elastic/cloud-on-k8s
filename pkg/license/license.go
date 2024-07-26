@@ -48,13 +48,13 @@ const (
 
 type managedMemory struct {
 	resource.Quantity
-	source string
+	label string
 }
 
 func newManagedMemory(binarySI int64, source string) managedMemory {
 	return managedMemory{
 		Quantity: *resource.NewQuantity(binarySI, resource.BinarySI),
-		source:   source,
+		label:    source,
 	}
 }
 
@@ -63,8 +63,8 @@ func (mm managedMemory) InGiB() float64 {
 }
 
 func (mm managedMemory) toMap(m map[string]string) {
-	m[mm.source+"_memory"] = fmt.Sprintf("%0.2fGiB", inGiB(mm.Quantity))
-	m[mm.source+"_memory_bytes"] = fmt.Sprintf("%d", mm.Quantity.Value())
+	m[mm.label+"_memory"] = fmt.Sprintf("%0.2fGiB", inGiB(mm.Quantity))
+	m[mm.label+"_memory_bytes"] = fmt.Sprintf("%d", mm.Quantity.Value())
 }
 
 type memoryUsage struct {
@@ -75,17 +75,17 @@ type memoryUsage struct {
 func newMemoryUsage(values ...managedMemory) memoryUsage {
 	usage := memoryUsage{
 		appUsage:    map[string]managedMemory{},
-		totalMemory: managedMemory{source: totalKey},
+		totalMemory: managedMemory{label: totalKey},
 	}
 	for _, v := range values {
-		usage.appUsage[v.source] = v
+		usage.appUsage[v.label] = v
 		usage.totalMemory.Add(v.Quantity)
 	}
 	return usage
 }
 
 func (mu *memoryUsage) Add(memory managedMemory) {
-	mu.appUsage[memory.source] = memory
+	mu.appUsage[memory.label] = memory
 	mu.totalMemory.Add(memory.Quantity)
 }
 

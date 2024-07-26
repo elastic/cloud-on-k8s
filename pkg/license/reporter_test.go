@@ -49,7 +49,7 @@ func TestGet(t *testing.T) {
 					entSearchKey:     newManagedMemory(0, entSearchKey),
 					logstashKey:      newManagedMemory(0, logstashKey),
 				},
-				totalMemory: managedMemory{Quantity: resource.MustParse("20Gi"), source: totalKey},
+				totalMemory: managedMemory{Quantity: resource.MustParse("20Gi"), label: totalKey},
 			},
 			EnterpriseResourceUnits: 1,
 			EckLicenseLevel:         "basic",
