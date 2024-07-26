@@ -37,16 +37,60 @@ const (
 	Type = "elastic-usage"
 	// GiB represents the number of bytes for 1 GiB
 	GiB = 1024 * 1024 * 1024
+
+	elasticsearchKey = "elasticsearch"
+	kibanaKey        = "kibana"
+	apmKey           = "apm"
+	entSearchKey     = "enterprise_search"
+	logstashKey      = "logstash"
+	totalKey         = "total_managed"
 )
+
+type managedMemory struct {
+	resource.Quantity
+	label string
+}
+
+func newManagedMemory(binarySI int64, label string) managedMemory {
+	return managedMemory{
+		Quantity: *resource.NewQuantity(binarySI, resource.BinarySI),
+		label:    label,
+	}
+}
+
+func (mm managedMemory) inGiB() float64 {
+	return inGiB(mm.Quantity)
+}
+
+func (mm managedMemory) intoMap(m map[string]string) {
+	m[mm.label+"_memory"] = fmt.Sprintf("%0.2fGiB", inGiB(mm.Quantity))
+	m[mm.label+"_memory_bytes"] = fmt.Sprintf("%d", mm.Quantity.Value())
+}
+
+type memoryUsage struct {
+	appUsage    map[string]managedMemory
+	totalMemory managedMemory
+}
+
+func newMemoryUsage() memoryUsage {
+	return memoryUsage{
+		appUsage:    map[string]managedMemory{},
+		totalMemory: managedMemory{label: totalKey},
+	}
+}
+
+func (mu *memoryUsage) add(memory managedMemory) {
+	mu.appUsage[memory.label] = memory
+	mu.totalMemory.Add(memory.Quantity)
+}
 
 // LicensingInfo represents information about the operator license including the total memory of all Elastic managed
 // components
 type LicensingInfo struct {
+	memoryUsage
 	Timestamp                  string
 	EckLicenseLevel            string
 	EckLicenseExpiryDate       *time.Time
-	TotalManagedMemoryGiB      float64
-	TotalManagedMemoryBytes    int64
 	MaxEnterpriseResourceUnits int64
 	EnterpriseResourceUnits    int64
 }
@@ -54,12 +98,14 @@ type LicensingInfo struct {
 // toMap transforms a LicensingInfo to a map of string, in order to fill in the data of a config map
 func (li LicensingInfo) toMap() map[string]string {
 	m := map[string]string{
-		"timestamp":                  li.Timestamp,
-		"eck_license_level":          li.EckLicenseLevel,
-		"total_managed_memory":       fmt.Sprintf("%0.2fGiB", li.TotalManagedMemoryGiB),
-		"total_managed_memory_bytes": fmt.Sprintf("%d", li.TotalManagedMemoryBytes),
-		"enterprise_resource_units":  strconv.FormatInt(li.EnterpriseResourceUnits, 10),
+		"timestamp":                 li.Timestamp,
+		"eck_license_level":         li.EckLicenseLevel,
+		"enterprise_resource_units": strconv.FormatInt(li.EnterpriseResourceUnits, 10),
 	}
+	for _, v := range li.appUsage {
+		v.intoMap(m)
+	}
+	li.totalMemory.intoMap(m)
 
 	if li.MaxEnterpriseResourceUnits > 0 {
 		m["max_enterprise_resource_units"] = strconv.FormatInt(li.MaxEnterpriseResourceUnits, 10)
@@ -74,7 +120,12 @@ func (li LicensingInfo) toMap() map[string]string {
 
 func (li LicensingInfo) ReportAsMetrics() {
 	labels := prometheus.Labels{metrics.LicenseLevelLabel: li.EckLicenseLevel}
-	metrics.LicensingTotalMemoryGauge.With(labels).Set(li.TotalManagedMemoryGiB)
+	metrics.LicensingTotalMemoryGauge.With(labels).Set(li.totalMemory.inGiB())
+	metrics.LicensingESMemoryGauge.With(labels).Set(li.appUsage[elasticsearchKey].inGiB())
+	metrics.LicensingKBMemoryGauge.With(labels).Set(li.appUsage[kibanaKey].inGiB())
+	metrics.LicensingAPMMemoryGauge.With(labels).Set(li.appUsage[apmKey].inGiB())
+	metrics.LicensingEntSearchMemoryGauge.With(labels).Set(li.appUsage[entSearchKey].inGiB())
+	metrics.LicensingLogstashMemoryGauge.With(labels).Set(li.appUsage[logstashKey].inGiB())
 	metrics.LicensingTotalERUGauge.With(labels).Set(float64(li.EnterpriseResourceUnits))
 
 	if li.MaxEnterpriseResourceUnits > 0 {
@@ -89,19 +140,18 @@ type LicensingResolver struct {
 }
 
 // ToInfo returns licensing information given the total memory of all Elastic managed components
-func (r LicensingResolver) ToInfo(ctx context.Context, totalMemory resource.Quantity) (LicensingInfo, error) {
+func (r LicensingResolver) ToInfo(ctx context.Context, memoryUsage memoryUsage) (LicensingInfo, error) {
 	operatorLicense, err := r.getOperatorLicense(ctx)
 	if err != nil {
 		return LicensingInfo{}, err
 	}
 
 	licensingInfo := LicensingInfo{
+		memoryUsage:             memoryUsage,
 		Timestamp:               time.Now().Format(time.RFC3339),
 		EckLicenseLevel:         r.getOperatorLicenseLevel(operatorLicense),
 		EckLicenseExpiryDate:    r.getOperatorLicenseExpiry(operatorLicense),
-		TotalManagedMemoryGiB:   inGiB(totalMemory),
-		TotalManagedMemoryBytes: totalMemory.Value(),
-		EnterpriseResourceUnits: inEnterpriseResourceUnits(totalMemory),
+		EnterpriseResourceUnits: inEnterpriseResourceUnits(memoryUsage.totalMemory.Quantity),
 	}
 
 	// include the max ERUs only for a non trial/basic license

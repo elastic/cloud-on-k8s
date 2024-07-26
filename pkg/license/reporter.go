@@ -21,7 +21,7 @@ const ResourceReporterFrequency = 2 * time.Minute
 // ResourceReporter aggregates resources of all Elastic components managed by the operator
 // and reports them in a config map in the form of licensing information
 type ResourceReporter struct {
-	aggregator        Aggregator
+	aggregator        aggregator
 	licensingResolver LicensingResolver
 	tracer            *apm.Tracer
 }
@@ -29,7 +29,7 @@ type ResourceReporter struct {
 // NewResourceReporter returns a new ResourceReporter
 func NewResourceReporter(c client.Client, operatorNs string, tracer *apm.Tracer) ResourceReporter {
 	return ResourceReporter{
-		aggregator: Aggregator{
+		aggregator: aggregator{
 			client: c,
 		},
 		licensingResolver: LicensingResolver{
@@ -77,10 +77,10 @@ func (r ResourceReporter) Report(ctx context.Context) error {
 func (r ResourceReporter) Get(ctx context.Context) (LicensingInfo, error) {
 	span, _ := apm.StartSpan(ctx, "get_license_info", tracing.SpanTypeApp)
 	defer span.End()
-	totalMemory, err := r.aggregator.AggregateMemory(ctx)
+	usage, err := r.aggregator.aggregateMemory(ctx)
 	if err != nil {
 		return LicensingInfo{}, err
 	}
 
-	return r.licensingResolver.ToInfo(ctx, totalMemory)
+	return r.licensingResolver.ToInfo(ctx, usage)
 }
