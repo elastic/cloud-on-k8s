@@ -52,6 +52,46 @@ var (
 		Name:      "memory_gibibytes_total",
 		Help:      "Total memory used in GiB",
 	}, []string{LicenseLevelLabel}))
+
+	// LicensingESMemoryGauge reports the Elasticsearch memory usage for licensing purposes.
+	LicensingESMemoryGauge = registerGauge(prometheus.NewGaugeVec(prometheus.GaugeOpts{
+		Namespace: namespace,
+		Subsystem: licensingSubsystem,
+		Name:      "memory_gibibytes_elasticsearch",
+		Help:      "Memory used by Elasticsearch in GiB",
+	}, []string{LicenseLevelLabel}))
+
+	// LicensingKBMemoryGauge reports the Kibana memory usage for licensing purposes.
+	LicensingKBMemoryGauge = registerGauge(prometheus.NewGaugeVec(prometheus.GaugeOpts{
+		Namespace: namespace,
+		Subsystem: licensingSubsystem,
+		Name:      "memory_gibibytes_kibana",
+		Help:      "Memory used by Kibana in GiB",
+	}, []string{LicenseLevelLabel}))
+
+	// LicensingAPMMemoryGauge reports the APM server memory usage for licensing purposes.
+	LicensingAPMMemoryGauge = registerGauge(prometheus.NewGaugeVec(prometheus.GaugeOpts{
+		Namespace: namespace,
+		Subsystem: licensingSubsystem,
+		Name:      "memory_gibibytes_apm",
+		Help:      "Memory used by APM server in GiB",
+	}, []string{LicenseLevelLabel}))
+
+	// LicensingEntSearchMemoryGauge reports the Enterprise Search memory usage for licensing purposes.
+	LicensingEntSearchMemoryGauge = registerGauge(prometheus.NewGaugeVec(prometheus.GaugeOpts{
+		Namespace: namespace,
+		Subsystem: licensingSubsystem,
+		Name:      "memory_gibibytes_enterprise_search",
+		Help:      "Memory used by Enterprise Search in GiB",
+	}, []string{LicenseLevelLabel}))
+
+	// LicensingLogstashMemoryGauge reports the Logstash memory usage for licensing purposes.
+	LicensingLogstashMemoryGauge = registerGauge(prometheus.NewGaugeVec(prometheus.GaugeOpts{
+		Namespace: namespace,
+		Subsystem: licensingSubsystem,
+		Name:      "memory_gibibytes_logstash",
+		Help:      "Memory used by Logstash in GiB",
+	}, []string{LicenseLevelLabel}))
 )
 
 func registerGauge(gauge *prometheus.GaugeVec) *prometheus.GaugeVec {

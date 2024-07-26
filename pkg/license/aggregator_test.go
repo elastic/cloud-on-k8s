@@ -138,11 +138,20 @@ func TestMemFromNodeOpts(t *testing.T) {
 func TestAggregator(t *testing.T) {
 	objects := readObjects(t, "testdata/stack.yaml")
 	client := k8s.NewFakeClient(objects...)
-	aggregator := Aggregator{client: client}
+	aggregator := aggregator{client: client}
 
-	val, err := aggregator.AggregateMemory(context.Background())
+	val, err := aggregator.aggregateMemory(context.Background())
 	require.NoError(t, err)
-	require.Equal(t, 329.9073486328125, inGiB(val))
+	for k, v := range map[string]float64{
+		elasticsearchKey: 294.0,
+		kibanaKey:        5.9073486328125,
+		apmKey:           2.0,
+		entSearchKey:     24.0,
+		logstashKey:      4.0,
+	} {
+		require.Equal(t, v, val.appUsage[k].inGiB(), k)
+	}
+	require.Equal(t, 329.9073486328125, val.totalMemory.inGiB(), "total")
 }
 
 func readObjects(t *testing.T, filePath string) []client.Object {
