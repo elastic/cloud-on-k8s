@@ -41,8 +41,16 @@ func TestGet(t *testing.T) {
 		require.NoError(t, err)
 
 		want := LicensingInfo{
-			TotalManagedMemoryGiB:   20.00,
-			TotalManagedMemoryBytes: 21474836480,
+			memoryUsage: memoryUsage{
+				appUsage: map[string]managedMemory{
+					elasticsearchKey: newManagedMemory(21474836480, elasticsearchKey),
+					kibanaKey:        newManagedMemory(0, kibanaKey),
+					apmKey:           newManagedMemory(0, apmKey),
+					entSearchKey:     newManagedMemory(0, entSearchKey),
+					logstashKey:      newManagedMemory(0, logstashKey),
+				},
+				totalMemory: managedMemory{Quantity: resource.MustParse("20Gi"), label: totalKey},
+			},
 			EnterpriseResourceUnits: 1,
 			EckLicenseLevel:         "basic",
 		}
@@ -76,8 +84,16 @@ func TestGet(t *testing.T) {
 		require.NoError(t, err)
 
 		want := LicensingInfo{
-			TotalManagedMemoryGiB:   320.00,
-			TotalManagedMemoryBytes: 343597383680,
+			memoryUsage: memoryUsage{
+				appUsage: map[string]managedMemory{
+					elasticsearchKey: newManagedMemory(343597383680, elasticsearchKey),
+					kibanaKey:        newManagedMemory(0, kibanaKey),
+					apmKey:           newManagedMemory(0, apmKey),
+					entSearchKey:     newManagedMemory(0, entSearchKey),
+					logstashKey:      newManagedMemory(0, logstashKey),
+				},
+				totalMemory: newManagedMemory(343597383680, totalKey),
+			},
 			EnterpriseResourceUnits: 5,
 			EckLicenseLevel:         "basic",
 		}
@@ -110,8 +126,16 @@ func TestGet(t *testing.T) {
 		require.NoError(t, err)
 
 		want := LicensingInfo{
-			TotalManagedMemoryGiB:   208.00,
-			TotalManagedMemoryBytes: 223338299392,
+			memoryUsage: memoryUsage{
+				appUsage: map[string]managedMemory{
+					elasticsearchKey: newManagedMemory(223338299392, elasticsearchKey),
+					kibanaKey:        newManagedMemory(0, kibanaKey),
+					apmKey:           newManagedMemory(0, apmKey),
+					entSearchKey:     newManagedMemory(0, entSearchKey),
+					logstashKey:      newManagedMemory(0, logstashKey),
+				},
+				totalMemory: newManagedMemory(223338299392, totalKey),
+			},
 			EnterpriseResourceUnits: 4,
 			EckLicenseLevel:         "basic",
 		}
@@ -130,8 +154,16 @@ func TestGet(t *testing.T) {
 		require.NoError(t, err)
 
 		want := LicensingInfo{
-			TotalManagedMemoryGiB:   100.00,
-			TotalManagedMemoryBytes: 107374182400,
+			memoryUsage: memoryUsage{
+				appUsage: map[string]managedMemory{
+					elasticsearchKey: newManagedMemory(0, elasticsearchKey),
+					kibanaKey:        newManagedMemory(107374182400, kibanaKey),
+					apmKey:           newManagedMemory(0, apmKey),
+					entSearchKey:     newManagedMemory(0, entSearchKey),
+					logstashKey:      newManagedMemory(0, logstashKey),
+				},
+				totalMemory: newManagedMemory(107374182400, totalKey),
+			},
 			EnterpriseResourceUnits: 2,
 			EckLicenseLevel:         "basic",
 		}
@@ -163,8 +195,16 @@ func TestGet(t *testing.T) {
 		have, err := NewResourceReporter(k8s.NewFakeClient(&kb), operatorNs, nil).Get(context.Background())
 		require.NoError(t, err)
 		want := LicensingInfo{
-			TotalManagedMemoryGiB:   200.00,
-			TotalManagedMemoryBytes: 214748364800,
+			memoryUsage: memoryUsage{
+				appUsage: map[string]managedMemory{
+					elasticsearchKey: newManagedMemory(0, elasticsearchKey),
+					kibanaKey:        newManagedMemory(214748364800, kibanaKey),
+					apmKey:           newManagedMemory(0, apmKey),
+					entSearchKey:     newManagedMemory(0, entSearchKey),
+					logstashKey:      newManagedMemory(0, logstashKey),
+				},
+				totalMemory: newManagedMemory(214748364800, totalKey),
+			},
 			EnterpriseResourceUnits: 4,
 			EckLicenseLevel:         "basic",
 		}
@@ -193,8 +233,16 @@ func TestGet(t *testing.T) {
 		have, err := NewResourceReporter(k8s.NewFakeClient(&kb), operatorNs, nil).Get(context.Background())
 		require.NoError(t, err)
 		want := LicensingInfo{
-			TotalManagedMemoryGiB:   190.73,
-			TotalManagedMemoryBytes: 204800000000,
+			memoryUsage: memoryUsage{
+				appUsage: map[string]managedMemory{
+					elasticsearchKey: newManagedMemory(0, elasticsearchKey),
+					kibanaKey:        newManagedMemory(204800000000, kibanaKey),
+					apmKey:           newManagedMemory(0, apmKey),
+					entSearchKey:     newManagedMemory(0, entSearchKey),
+					logstashKey:      newManagedMemory(0, logstashKey),
+				},
+				totalMemory: newManagedMemory(204800000000, totalKey),
+			},
 			EnterpriseResourceUnits: 3,
 			EckLicenseLevel:         "basic",
 		}
@@ -245,8 +293,14 @@ func Test_Start(t *testing.T) {
 			cm.Data["eck_license_level"] == defaultOperatorLicenseLevel &&
 			cm.Data["enterprise_resource_units"] == "2" &&
 			cm.Data["total_managed_memory"] == "83.00GiB" &&
-			cm.Data["total_managed_memory_bytes"] == "89120571392"
-	}, waitFor, tick)
+			cm.Data["total_managed_memory_bytes"] == "89120571392" &&
+			cm.Data["elasticsearch_memory"] == "80.00GiB" && // 40 * 2Gi
+			cm.Data["elasticsearch_memory_bytes"] == "85899345920" &&
+			cm.Data["kibana_memory"] == "2.00GiB" && // 2 * 1Gi
+			cm.Data["kibana_memory_bytes"] == "2147483648" &&
+			cm.Data["apm_memory"] == "1.00GiB" && // 2 * 512Mi
+			cm.Data["apm_memory_bytes"] == "1073741824"
+	}, waitFor, tick, "40*ES, 2*KB, 2 *APM")
 
 	// increase the Elasticsearch nodes count
 	es.Spec.NodeSets[0].Count = 80
@@ -268,7 +322,7 @@ func Test_Start(t *testing.T) {
 			cm.Data["enterprise_resource_units"] == "3" &&
 			cm.Data["total_managed_memory"] == "163.00GiB" &&
 			cm.Data["total_managed_memory_bytes"] == "175019917312"
-	}, waitFor, tick)
+	}, waitFor, tick, "80*ES, 2*KB, 2*APM")
 
 	startTrial(t, k8sClient)
 	// check that the license level has been updated
@@ -287,7 +341,7 @@ func Test_Start(t *testing.T) {
 			cm.Data["enterprise_resource_units"] == "3" &&
 			cm.Data["total_managed_memory"] == "163.00GiB" &&
 			cm.Data["total_managed_memory_bytes"] == "175019917312"
-	}, waitFor, tick)
+	}, waitFor, tick, "trial license")
 }
 
 func startTrial(t *testing.T, k8sClient client.Client) {
