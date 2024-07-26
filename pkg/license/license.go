@@ -62,7 +62,7 @@ func (mm managedMemory) inGiB() float64 {
 	return inGiB(mm.Quantity)
 }
 
-func (mm managedMemory) toMap(m map[string]string) {
+func (mm managedMemory) intoMap(m map[string]string) {
 	m[mm.label+"_memory"] = fmt.Sprintf("%0.2fGiB", inGiB(mm.Quantity))
 	m[mm.label+"_memory_bytes"] = fmt.Sprintf("%d", mm.Quantity.Value())
 }
@@ -80,7 +80,7 @@ func newMemoryUsage() memoryUsage {
 	return usage
 }
 
-func (mu *memoryUsage) Add(memory managedMemory) {
+func (mu *memoryUsage) add(memory managedMemory) {
 	mu.appUsage[memory.label] = memory
 	mu.totalMemory.Add(memory.Quantity)
 }
@@ -104,9 +104,9 @@ func (li LicensingInfo) toMap() map[string]string {
 		"enterprise_resource_units": strconv.FormatInt(li.EnterpriseResourceUnits, 10),
 	}
 	for _, v := range li.appUsage {
-		v.toMap(m)
+		v.intoMap(m)
 	}
-	li.totalMemory.toMap(m)
+	li.totalMemory.intoMap(m)
 
 	if li.MaxEnterpriseResourceUnits > 0 {
 		m["max_enterprise_resource_units"] = strconv.FormatInt(li.MaxEnterpriseResourceUnits, 10)

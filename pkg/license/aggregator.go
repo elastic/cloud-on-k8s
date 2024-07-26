@@ -52,7 +52,7 @@ func (a aggregator) aggregateMemory(ctx context.Context) (memoryUsage, error) {
 		if err != nil {
 			return memoryUsage{}, err
 		}
-		usage.Add(memory)
+		usage.add(memory)
 	}
 
 	return usage, nil
