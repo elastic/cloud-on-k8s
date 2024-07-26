@@ -138,9 +138,9 @@ func TestMemFromNodeOpts(t *testing.T) {
 func TestAggregator(t *testing.T) {
 	objects := readObjects(t, "testdata/stack.yaml")
 	client := k8s.NewFakeClient(objects...)
-	aggregator := Aggregator{client: client}
+	aggregator := aggregator{client: client}
 
-	val, err := aggregator.AggregateMemory(context.Background())
+	val, err := aggregator.aggregateMemory(context.Background())
 	require.NoError(t, err)
 	for k, v := range map[string]float64{
 		elasticsearchKey: 294.0,

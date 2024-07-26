@@ -30,15 +30,15 @@ import (
 	ulog "github.com/elastic/cloud-on-k8s/v2/pkg/utils/log"
 )
 
-// Aggregator aggregates the total of resources of all Elastic managed components
-type Aggregator struct {
+// aggregator aggregates the total of resources of all Elastic managed components
+type aggregator struct {
 	client k8s.Client
 }
 
 type aggregate func(ctx context.Context) (managedMemory, error)
 
-// AggregateMemory aggregates the total memory of all Elastic managed components
-func (a Aggregator) AggregateMemory(ctx context.Context) (memoryUsage, error) {
+// aggregateMemory aggregates the total memory of all Elastic managed components
+func (a aggregator) aggregateMemory(ctx context.Context) (memoryUsage, error) {
 	usage := newMemoryUsage()
 
 	for _, f := range []aggregate{
@@ -58,7 +58,7 @@ func (a Aggregator) AggregateMemory(ctx context.Context) (memoryUsage, error) {
 	return usage, nil
 }
 
-func (a Aggregator) aggregateElasticsearchMemory(ctx context.Context) (managedMemory, error) {
+func (a aggregator) aggregateElasticsearchMemory(ctx context.Context) (managedMemory, error) {
 	var esList esv1.ElasticsearchList
 	err := a.client.List(context.Background(), &esList)
 	if err != nil {
@@ -87,7 +87,7 @@ func (a Aggregator) aggregateElasticsearchMemory(ctx context.Context) (managedMe
 	return managedMemory{total, elasticsearchKey}, nil
 }
 
-func (a Aggregator) aggregateEnterpriseSearchMemory(ctx context.Context) (managedMemory, error) {
+func (a aggregator) aggregateEnterpriseSearchMemory(ctx context.Context) (managedMemory, error) {
 	var entList entv1.EnterpriseSearchList
 	err := a.client.List(context.Background(), &entList)
 	if err != nil {
@@ -114,7 +114,7 @@ func (a Aggregator) aggregateEnterpriseSearchMemory(ctx context.Context) (manage
 	return managedMemory{total, entSearchKey}, nil
 }
 
-func (a Aggregator) aggregateKibanaMemory(ctx context.Context) (managedMemory, error) {
+func (a aggregator) aggregateKibanaMemory(ctx context.Context) (managedMemory, error) {
 	var kbList kbv1.KibanaList
 	err := a.client.List(context.Background(), &kbList)
 	if err != nil {
@@ -141,7 +141,7 @@ func (a Aggregator) aggregateKibanaMemory(ctx context.Context) (managedMemory, e
 	return managedMemory{total, kibanaKey}, nil
 }
 
-func (a Aggregator) aggregateLogstashMemory(ctx context.Context) (managedMemory, error) {
+func (a aggregator) aggregateLogstashMemory(ctx context.Context) (managedMemory, error) {
 	var lsList lsv1alpha1.LogstashList
 	err := a.client.List(context.Background(), &lsList)
 	if err != nil {
@@ -168,7 +168,7 @@ func (a Aggregator) aggregateLogstashMemory(ctx context.Context) (managedMemory,
 	return managedMemory{total, logstashKey}, nil
 }
 
-func (a Aggregator) aggregateApmServerMemory(ctx context.Context) (managedMemory, error) {
+func (a aggregator) aggregateApmServerMemory(ctx context.Context) (managedMemory, error) {
 	var asList apmv1.ApmServerList
 	err := a.client.List(context.Background(), &asList)
 	if err != nil {

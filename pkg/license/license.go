@@ -59,7 +59,7 @@ func newManagedMemory(binarySI int64, label string) managedMemory {
 }
 
 func (mm managedMemory) inGiB() float64 {
-	return inGiB(resource.Quantity(mm.Quantity))
+	return inGiB(mm.Quantity)
 }
 
 func (mm managedMemory) toMap(m map[string]string) {
@@ -72,14 +72,10 @@ type memoryUsage struct {
 	totalMemory managedMemory
 }
 
-func newMemoryUsage(values ...managedMemory) memoryUsage {
+func newMemoryUsage() memoryUsage {
 	usage := memoryUsage{
 		appUsage:    map[string]managedMemory{},
 		totalMemory: managedMemory{label: totalKey},
-	}
-	for _, v := range values {
-		usage.appUsage[v.label] = v
-		usage.totalMemory.Add(v.Quantity)
 	}
 	return usage
 }
