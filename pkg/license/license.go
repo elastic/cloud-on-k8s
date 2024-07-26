@@ -51,14 +51,14 @@ type managedMemory struct {
 	label string
 }
 
-func newManagedMemory(binarySI int64, source string) managedMemory {
+func newManagedMemory(binarySI int64, label string) managedMemory {
 	return managedMemory{
 		Quantity: *resource.NewQuantity(binarySI, resource.BinarySI),
-		label:    source,
+		label:    label,
 	}
 }
 
-func (mm managedMemory) InGiB() float64 {
+func (mm managedMemory) inGiB() float64 {
 	return inGiB(resource.Quantity(mm.Quantity))
 }
 
@@ -125,12 +125,12 @@ func (li LicensingInfo) toMap() map[string]string {
 
 func (li LicensingInfo) ReportAsMetrics() {
 	labels := prometheus.Labels{metrics.LicenseLevelLabel: li.EckLicenseLevel}
-	metrics.LicensingTotalMemoryGauge.With(labels).Set(li.totalMemory.InGiB())
-	metrics.LicensingESMemoryGauge.With(labels).Set(li.appUsage[elasticsearchKey].InGiB())
-	metrics.LicensingKBMemoryGauge.With(labels).Set(li.appUsage[kibanaKey].InGiB())
-	metrics.LicensingAPMMemoryGauge.With(labels).Set(li.appUsage[apmKey].InGiB())
-	metrics.LicensingEntSearchMemoryGauge.With(labels).Set((li.appUsage[entSearchKey].InGiB()))
-	metrics.LicensingLogstashMemoryGauge.With(labels).Set(li.appUsage[logstashKey].InGiB())
+	metrics.LicensingTotalMemoryGauge.With(labels).Set(li.totalMemory.inGiB())
+	metrics.LicensingESMemoryGauge.With(labels).Set(li.appUsage[elasticsearchKey].inGiB())
+	metrics.LicensingKBMemoryGauge.With(labels).Set(li.appUsage[kibanaKey].inGiB())
+	metrics.LicensingAPMMemoryGauge.With(labels).Set(li.appUsage[apmKey].inGiB())
+	metrics.LicensingEntSearchMemoryGauge.With(labels).Set((li.appUsage[entSearchKey].inGiB()))
+	metrics.LicensingLogstashMemoryGauge.With(labels).Set(li.appUsage[logstashKey].inGiB())
 	metrics.LicensingTotalERUGauge.With(labels).Set(float64(li.EnterpriseResourceUnits))
 
 	if li.MaxEnterpriseResourceUnits > 0 {

@@ -149,9 +149,9 @@ func TestAggregator(t *testing.T) {
 		entSearchKey:     24.0,
 		logstashKey:      4.0,
 	} {
-		require.Equal(t, v, val.appUsage[k].InGiB(), k)
+		require.Equal(t, v, val.appUsage[k].inGiB(), k)
 	}
-	require.Equal(t, 329.9073486328125, val.totalMemory.InGiB(), "total")
+	require.Equal(t, 329.9073486328125, val.totalMemory.inGiB(), "total")
 }
 
 func readObjects(t *testing.T, filePath string) []client.Object {
