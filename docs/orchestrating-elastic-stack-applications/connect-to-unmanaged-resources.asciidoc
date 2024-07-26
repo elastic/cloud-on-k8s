@@ -14,7 +14,7 @@ Fields like `elasticsearchRef` or `kibanaRef` are useful to automatically establ
 apiVersion: v1
 kind: Secret
 metadata:
-  name: external-es-ref3
+  name: external-es-ref
 stringData:
   url: https://sample.gcp.elastic-cloud.com
   username: "elastic"
@@ -31,7 +31,7 @@ spec:
     secretName: external-es-ref
 ----
 
-In the case Agent you can also specify several named references:
+In the case of Elastic Agent you can also specify several named references:
 
 [source,yaml,subs="attributes"]
 ----
