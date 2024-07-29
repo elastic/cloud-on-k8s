@@ -138,7 +138,7 @@ spec:
             memory: 1Gi
             cpu: 1
 ---
-apiVersion: v1
+apiVersion: route.openshift.io/v1
 kind: Route
 metadata:
   name: kibana-sample
@@ -200,7 +200,7 @@ spec:
     spec:
       serviceAccountName: apm-server
 ---
-apiVersion: v1
+apiVersion: route.openshift.io/v1
 kind: Route
 metadata:
   name: apm-server-sample
