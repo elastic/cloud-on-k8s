@@ -27,6 +27,7 @@ endif::[]
 - <<{p}-stateless-autoscaling>>
 - <<{p}-stack-config-policy>>
 - <<{p}-upgrading-stack>>
+- <<{p}-connect-to-unmanaged-resources>>
 
 --
 
@@ -48,4 +49,4 @@ include::managing-compute-resources.asciidoc[leveloffset=+1]
 include::autoscaling.asciidoc[leveloffset=+1]
 include::stack-config-policy.asciidoc[leveloffset=+1]
 include::upgrading-stack.asciidoc[leveloffset=+1]
-
+include::connect-to-unmanaged-resources.asciidoc[leveloffset=+1]

@@ -61,6 +61,12 @@ The Kibana configuration file is automatically setup by ECK to establish a secur
 
 You can also configure Kibana to connect to an Elasticsearch cluster that is managed by a different installation of ECK, or runs outside the Kubernetes cluster. In this case, you need the IP address or URL of the Elasticsearch cluster and a valid username and password pair to access the cluster.
 
+=== Using a Secret
+
+Refer to <<{p}-connect-to-unmanaged-resources>> to automatically configure Kibana using connection settings from a `Secret`.
+
+=== Using secure settings
+
 Use the <<{p}-kibana-secure-settings,secure settings>> mechanism to securely store the credentials of the external Elasticsearch cluster:
 
 [source,shell]
