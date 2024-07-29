@@ -1,0 +1,27 @@
+[[release-highlights-2.14.0]]
+== 2.14.0 release highlights
+
+[float]
+[id="{p}-2140-new-and-notable"]
+=== New and notable
+
+New and notable changes in version 2.14.0 of {n}. Check <<release-notes-2.14.0>> for the full list of changes.
+
+[float]
+[id="{p}-2140-custom-transport-certificate-management"]
+=== Custom transport certificate management
+
+Starting with ECK 2.14.0 it becomes possible to fully delegate the transport certificate management for Elasticsearch to a third party component. When used in conjunction with the cert-manager operator and its CSI driver it also improves the scalability of node sets. Refer to the <<{p}-transport-third-party-tools>> for a complete example.
+
+[float]
+[id="{p}-2140-advanced-readiness-probe"]
+=== Advanced readiness probe
+
+The Elasticsearch containers are now configured to use the link:https://www.elastic.co/guide/en/elasticsearch/reference/current/advanced-configuration.html#readiness-tcp-port[Elasticsearch TCP readiness port]. This change also improves cluster upgrade stability by fixing a bug in the upgrade process.
+
+[float]
+[id="{p}-2140-connect-resources-to-serverless"]
+=== Connect ECK managed applications to a Serverless Project
+
+The ECK operator can now detect when a remote service is deployed in link:https://www.elastic.co/elasticsearch/serverless[Elastic Cloud Serverless]. This allows the use of the <<{p}-connect-to-unmanaged-resources>> feature to connect a ECK managed resource to your serverless project.
+
