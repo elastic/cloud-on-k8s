@@ -333,7 +333,13 @@ The `elasticsearchRef` element allows ECK to automatically configure Enterprise 
 
 [id="{p}-enterprise-search-connect-non-eck-es"]
 === Connect to an external Elasticsearch cluster
-If you do not want to use the `elasticsearchRef` mechanism or if you want to connect to an Elasticsearch cluster not managed by ECK, you can manually configure Enterprise Search to access any available Elasticsearch cluster:
+
+==== Automatically
+
+Refer to <<{p}-connect-to-unmanaged-resources>> to automatically configure Enterprise Search using connection settings from a `Secret`.
+
+==== Manually
+If you do not want to use the `elasticsearchRef` mechanism you can manually configure Enterprise Search to access any available Elasticsearch cluster:
 
 [source,yaml,subs="attributes,+macros"]
 ----
