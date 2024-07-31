@@ -356,9 +356,9 @@ kind: Elasticsearch
 metadata:
   name: az-workload-identity-sample
 spec:
-  version: {version} 
+  version: 8.16.0
   secureSettings:
-  - secretName: keystore
+  - secretName: keystore <1>
   nodeSets:
   - name: default
     count: 1
@@ -367,19 +367,20 @@ spec:
         labels:
           azure.workload.identity/use: "true" 
       spec:
-        serviceAccountName: workload-identity-sa <1>
+        serviceAccountName: workload-identity-sa <2>
         containers:
         - name: elasticsearch
           env:
-          - name: AZURE_FEDERATED_TOKEN_FILE <2>
+          - name: AZURE_FEDERATED_TOKEN_FILE <3>
             value: /usr/share/elasticsearch/config/azure/tokens/azure-identity-token
           volumeMounts:
           - name: azure-identity-token
-            mountPath: /usr/share/elasticsearch/config/azure/tokens <2>
+            mountPath: /usr/share/elasticsearch/config/azure/tokens <3>
 ----
 +
-<1> This is the service account created earlier in the steps from the https://learn.microsoft.com/en-us/azure/aks/workload-identity-deploy-cluster#create-a-kubernetes-service-account[Azure Workload Identity] tutorial.
-<2> The corresponding volume is injected by the https://azure.github.io/azure-workload-identity/docs/installation/mutating-admission-webhook.html[Azure Workload Identity Mutating Admission Webhook]. For Elasticsearch to be able to access the token, the mount needs to be in a sub-directory of the Elasticsearch config directory. The corresponding environment variable needs to be adjusted as well.
+<1> Specify the Kubernetes secret created in the previous step to configure the Azure storage account name as a secure setting.
+<2> This is the service account created earlier in the steps from the https://learn.microsoft.com/en-us/azure/aks/workload-identity-deploy-cluster#create-a-kubernetes-service-account[Azure Workload Identity] tutorial.
+<3> The corresponding volume is injected by the https://azure.github.io/azure-workload-identity/docs/installation/mutating-admission-webhook.html[Azure Workload Identity Mutating Admission Webhook]. For Elasticsearch to be able to access the token, the mount needs to be in a sub-directory of the Elasticsearch config directory. The corresponding environment variable needs to be adjusted as well.
 +
 . Create a snapshot repository of type `azure` through the Elasticsearch API, or through <<{p}-stack-config-policy>>.
 +
