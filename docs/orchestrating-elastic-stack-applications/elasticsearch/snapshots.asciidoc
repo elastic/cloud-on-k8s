@@ -18,6 +18,8 @@ NOTE: Support for S3, GCS and Azure repositories is bundled in Elasticsearch by 
 
 For more information on Elasticsearch snapshots, check https://www.elastic.co/guide/en/elasticsearch/reference/current/snapshot-restore.html[Snapshot and Restore] in the Elasticsearch documentation.
 
+== Configuration examples
+
 What follows is a non-exhaustive list of configuration examples. The first example might be worth reading even if you are targeting a Cloud provider other than GCP as it covers adding snapshot repository credentials to the Elasticsearch keystore and illustrates the basic workflow of setting up a snapshot repository:
 
 * <<{p}-basic-snapshot-gcs>>
@@ -31,9 +33,6 @@ The following examples cover approaches that use Cloud-provider specific means t
 The final example illustrates how to configure secure and trusted communication when you
 
 * <<{p}-s3-compatible>>
-
-
-== Configuration examples
 
 [id="{p}-basic-snapshot-gcs"]
 === Basic snapshot repository setup using GCS as an example
