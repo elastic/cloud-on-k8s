@@ -290,7 +290,7 @@ PUT /_snapshot/my_s3_repository
 
 Starting with version 8.16 Elasticsearch supports Azure Workload identity which allows the use of Azure blob storage for Elasticsearch snapshots without exposing Azure credentials directly to Elasticsearch. 
 
-Follow the https://learn.microsoft.com/en-us/azure/aks/workload-identity-deploy-cluster[Azure documentation] for setting up workload identity for the first steps:  
+Follow the https://learn.microsoft.com/en-us/azure/aks/workload-identity-deploy-cluster[Azure documentation] for setting up workload identity for the first five steps:
 
 . https://learn.microsoft.com/en-us/azure/aks/workload-identity-deploy-cluster#create-a-resource-group[Create a resource group], if it does not exist yet.
 . https://learn.microsoft.com/en-us/azure/aks/workload-identity-deploy-cluster#create-an-aks-cluster[Create] or https://learn.microsoft.com/en-us/azure/aks/workload-identity-deploy-cluster#update-an-existing-aks-cluster[update] your AKS cluster to enable workload identity.
