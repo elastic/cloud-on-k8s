@@ -305,8 +305,8 @@ NOTE: The following steps diverge from the tutorial in the Azure documentation. 
 ----
 az storage account create \
       --name esstorage \
-      --resource-group ${RESOURCE_GROUP} \
-      --location ${LOCATION} \
+      --resource-group "${RESOURCE_GROUP}" \
+      --location "${LOCATION}" \
       --encryption-services blob \
       --sku Standard_ZRS <1>
 ----
@@ -318,7 +318,7 @@ az storage account create \
 [source,sh]
 ----
 az storage container create \
-   --account-name $STORAGE_ACCOUNT_NAME \
+   --account-name "${STORAGE_ACCOUNT_NAME}" \
    --name es-snapshots --auth-mode login
 ----
 +
@@ -329,17 +329,16 @@ az storage container create \
 IDENTITY_PRINCIPAL_ID=$(az identity show \
     --name "${USER_ASSIGNED_IDENTITY_NAME}" \
     --resource-group "${RESOURCE_GROUP}" \
-    --query principalId \
-    --output tsv)
+    --query principalId --o tsv)
 
 STORAGE_SCOPE=$(az storage account show \
-  --resource-group $RESOURCE_GROUP \
-  --name $STORAGE_ACCOUNT_NAME --query id -o tsv | sed 's#/##') <1>
+  --resource-group "${RESOURCE_GROUP}" \
+  --name "${STORAGE_ACCOUNT_NAME}" --query id -o tsv | sed 's#/##') <1>
 
 az role assignment create \
-  --assignee-object-id $IDENTITY_PRINCIPAL_ID \
+  --assignee-object-id "${IDENTITY_PRINCIPAL_ID}" \
   --role "Storage Blob Data Contributor" \
-  --scope $STORAGE_SCOPE
+  --scope "${STORAGE_SCOPE}"
 ----
 +
 <1> The storage account ID needs to be specified as the scope for the role assignment without the leading slash returned by the `az storage account show` command.
