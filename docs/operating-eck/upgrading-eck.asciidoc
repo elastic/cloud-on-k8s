@@ -99,7 +99,7 @@ This will update the ECK installation to the latest binary and update the CRDs a
 
 Upgrading the operator results in a one-time update to existing managed resources in the cluster. This potentially triggers a rolling restart of pods by Kubernetes to apply those changes. The following list contains the ECK operator versions that would cause a rolling restart after they have been installed.
 
- 1.6, 1.9, 2.0, 2.1, 2.2, 2.4, 2.5, 2.6, 2.7, 2.8
+ 1.6, 1.9, 2.0, 2.1, 2.2, 2.4, 2.5, 2.6, 2.7, 2.8, 2.14
 
 NOTE: Stepping over one of these versions, for example, upgrading ECK from 2.6 to 2.9, still triggers a rolling restart.
 
