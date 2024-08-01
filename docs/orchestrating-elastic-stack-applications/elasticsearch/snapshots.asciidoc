@@ -304,11 +304,11 @@ NOTE: The following steps diverge from the tutorial in the Azure documentation. 
 [source,sh,subs="attributes,callouts"]
 ----
 az storage account create \
-      --name es-storage \
+      --name esstorage \
       --resource-group ${RESOURCE_GROUP} \
       --location ${LOCATION} \
-      --sku Standard_ZRS \ <1>
-      --encryption-services blob
+      --encryption-services blob \
+      --sku Standard_ZRS <1>
 ----
 +
 <1> This can be any of the supported storage account types `Standard_LRS`, `Standard_ZRS`, `Standard_GRS`, `Standard_RAGRS` but not `Premium_LRS` see https://www.elastic.co/guide/en/elasticsearch/reference/current/repository-azure.html[the Elasticsearch documentation] for details.
@@ -326,12 +326,18 @@ az storage container create \
 +
 [source,sh,subs="callouts"]
 ----
+IDENTITY_PRINCIPAL_ID=$(az identity show \
+    --name "${USER_ASSIGNED_IDENTITY_NAME}" \
+    --resource-group "${RESOURCE_GROUP}" \
+    --query principalId \
+    --output tsv)
+
 STORAGE_SCOPE=$(az storage account show \
   --resource-group $RESOURCE_GROUP \
   --name $STORAGE_ACCOUNT_NAME --query id -o tsv | sed 's#/##') <1>
 
 az role assignment create \
-  --assignee-object-id $USER_ASSIGNED_IDENTITY_OBJECT_ID \
+  --assignee-object-id $IDENTITY_PRINCIPAL_ID \
   --role "Storage Blob Data Contributor" \
   --scope $STORAGE_SCOPE
 ----
