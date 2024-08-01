@@ -1,0 +1,66 @@
+:issue: https://github.com/elastic/cloud-on-k8s/issues/
+:pull: https://github.com/elastic/cloud-on-k8s/pull/
+
+[[release-notes-2.14.0]]
+== {n} version 2.14.0
+
+
+
+[[feature-2.14.0]]
+[float]
+=== New features
+
+* Ingress support for Elasticsearch and Kibana Helm Charts {pull}7941[#7941]
+* Add option to disable self-signed transport certs {pull}7925[#7925] (issue: {issue}6954[#6954])
+
+[[enhancement-2.14.0]]
+[float]
+=== Enhancements
+
+* Use Elasticsearch readiness port {pull}7847[#7847] (issue: {issue}7841[#7841]) _Note that this change is also referenced in the bug section as it fixes a bug in the previous implementation of the readiness probe._
+* Handle Serverless version in association versions check {pull}7896[#7896]
+* Use hash for secure settings secret updates {pull}7843[#7843] (issue: {issue}7842[#7842])
+* Report memory usage by application {pull}7966[#7966] (issue: {issue}7866[#7866])
+
+[[bug-2.14.0]]
+[float]
+=== Bug fixes
+
+* Fix Discrepancy between Logstash Helm Chart and docs for pipelinesRef {pull}7958[#7958] (issue: {issue}7957[#7957])
+* Fix Logstash service to preserve user defined labels {pull}7895[#7895] (issue: {issue}7855[#7855])
+* Handle empty NODE_ID in Elasticsearch PreStop hook {pull}7892[#7892]
+* Elasticsearch controller: fix panic and dropped error result during node shutdown {pull}7875[#7875]
+* Do not log registrations to prevent mapping explosion {pull}7869[#7869] (issue: {issue}7748[#7748])
+* Use Elasticsearch readiness port {pull}7847[#7847] (issue: {issue}7841[#7841])
+
+[[docs-2.14.0]]
+[float]
+=== Documentation improvements
+
+* Document how to connect to unmanaged resources {pull}7965[#7965] (issue: {issue}6449[#6449])
+* Fix typo on SAML Authentication docs page {pull}7950[#7950]
+* [OpenShift] Route apiVersion must be route.openshift.io/v1 {pull}7834[#7834]
+
+[[nogroup-2.14.0]]
+[float]
+=== Misc
+
+* update docker.io/library/golang docker tag to v1.22.5 {pull}7930[#7930]
+* update github.com/gkampitakis/go-snaps to v0.5.5 {pull}7947[#7947]
+* update github.com/go-logr/logr to v1.4.2 {pull}7850[#7850]
+* update github.com/go-test/deep to v1.1.1 {pull}7916[#7916]
+* update github.com/google/go-containerregistry to v0.20.1 {pull}7934[#7934]
+* update github.com/hashicorp/go-retryablehttp from 0.7.6 to 0.7.7 {pull}7920[#7920]
+* update github.com/hashicorp/vault/api to v1.14.0 {pull}7852[#7852]
+* update github.com/prometheus/client_golang to v1.19.1 {pull}7796[#7796]
+* update github.com/prometheus/common to v0.55.0 {pull}7923[#7923]
+* update github.com/sethvargo/go-password to v0.3.1 {pull}7922[#7922]
+* update github.com/spf13/cobra to v1.8.1 {pull}7903[#7903]
+* update github.com/spf13/viper to v1.19.0 {pull}7864[#7864]
+* update golang.org/x/crypto to v0.25.0 {pull}7932[#7932]
+* update k8s to v0.30.3 {pull}7946[#7946]
+* update module k8s.io/klog/v2 to v2.130.1 {pull}7917[#7917]
+* update registry.access.redhat.com/ubi9/ubi-minimal docker tag to v9.4-1134 {pull}7900[#7900]
+* update sigs.k8s.io/controller-runtime to v0.18.4 {pull}7882[#7882]
+* update sigs.k8s.io/controller-tools to v0.15.0 and k8s to v0.30.0  {pull}7807[#7807]
+
