@@ -43,7 +43,7 @@ testParams:
     stackVersion: 8.13.2
   - name: v2130
     operatorVersion: 2.13.0
-    stackVersion: 8.14.0
+    stackVersion: 8.14.3
   - name: v2140
     operatorVersion: 2.14.0
     stackVersion: 8.15.0
