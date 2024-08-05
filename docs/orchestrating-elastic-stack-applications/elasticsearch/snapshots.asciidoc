@@ -18,22 +18,21 @@ NOTE: Support for S3, GCS and Azure repositories is bundled in Elasticsearch by 
 
 For more information on Elasticsearch snapshots, check https://www.elastic.co/guide/en/elasticsearch/reference/current/snapshot-restore.html[Snapshot and Restore] in the Elasticsearch documentation.
 
+== Configuration examples
+
 What follows is a non-exhaustive list of configuration examples. The first example might be worth reading even if you are targeting a Cloud provider other than GCP as it covers adding snapshot repository credentials to the Elasticsearch keystore and illustrates the basic workflow of setting up a snapshot repository:
 
 * <<{p}-basic-snapshot-gcs>>
 
 The following examples cover approaches that use Cloud-provider specific means to leverage Kubernetes service accounts to avoid having to configure snapshot repository credentials in Elasticsearch:
 
-* <<{p}-basic-snapshot-azure>>
 * <<{p}-gke-workload-identiy>>
 * <<{p}-iam-service-accounts>>
+* <<{p}-azure-workload-identity>>
 
 The final example illustrates how to configure secure and trusted communication when you
 
 * <<{p}-s3-compatible>>
-
-
-== Configuration examples
 
 [id="{p}-basic-snapshot-gcs"]
 === Basic snapshot repository setup using GCS as an example
@@ -285,6 +284,121 @@ PUT /_snapshot/my_s3_repository
 }
 ----
 
+[id="{p}-azure-workload-identity"]
+=== Use Azure Workload Identity
+
+Starting with version 8.16 Elasticsearch supports Azure Workload identity which allows the use of Azure blob storage for Elasticsearch snapshots without exposing Azure credentials directly to Elasticsearch. 
+
+Follow the https://learn.microsoft.com/en-us/azure/aks/workload-identity-deploy-cluster[Azure documentation] for setting up workload identity for the first five steps:
+
+. https://learn.microsoft.com/en-us/azure/aks/workload-identity-deploy-cluster#create-a-resource-group[Create a resource group], if it does not exist yet.
+. https://learn.microsoft.com/en-us/azure/aks/workload-identity-deploy-cluster#create-an-aks-cluster[Create] or https://learn.microsoft.com/en-us/azure/aks/workload-identity-deploy-cluster#update-an-existing-aks-cluster[update] your AKS cluster to enable workload identity.
+. https://learn.microsoft.com/en-us/azure/aks/workload-identity-deploy-cluster#retrieve-the-oidc-issuer-url[Retrieve the OIDC issuer URL].
+. https://learn.microsoft.com/en-us/azure/aks/workload-identity-deploy-cluster#create-a-managed-identity[Create a managed identity] and https://learn.microsoft.com/en-us/azure/aks/workload-identity-deploy-cluster#create-a-kubernetes-service-account[link it to a Kubernetes service account].
+. https://learn.microsoft.com/en-us/azure/aks/workload-identity-deploy-cluster#create-the-federated-identity-credential[Create the federated identity credential].
++
+NOTE: The following steps diverge from the tutorial in the Azure documentation. However, variables initialised as part of the Azure tutorial are still assumed to be present.
++
+. Create an Azure storage account, if it does not exist yet.
++
+[source,sh,subs="attributes,callouts"]
+----
+az storage account create \
+      --name esstorage \
+      --resource-group "${RESOURCE_GROUP}" \
+      --location "${LOCATION}" \
+      --encryption-services blob \
+      --sku Standard_ZRS <1>
+----
++
+<1> This can be any of the supported storage account types `Standard_LRS`, `Standard_ZRS`, `Standard_GRS`, `Standard_RAGRS` but not `Premium_LRS` see https://www.elastic.co/guide/en/elasticsearch/reference/current/repository-azure.html[the Elasticsearch documentation] for details.
++
+. Create a container in the storage account, for this example `es-snapshots`.
++
+[source,sh]
+----
+az storage container create \
+   --account-name "${STORAGE_ACCOUNT_NAME}" \
+   --name es-snapshots --auth-mode login
+----
++
+. Create a role assignment between the managed identity and the storage account.
++
+[source,sh,subs="callouts"]
+----
+IDENTITY_PRINCIPAL_ID=$(az identity show \
+    --name "${USER_ASSIGNED_IDENTITY_NAME}" \
+    --resource-group "${RESOURCE_GROUP}" \
+    --query principalId --o tsv)
+
+STORAGE_SCOPE=$(az storage account show \
+  --resource-group "${RESOURCE_GROUP}" \
+  --name "${STORAGE_ACCOUNT_NAME}" --query id -o tsv | sed 's#/##') <1>
+
+az role assignment create \
+  --assignee-object-id "${IDENTITY_PRINCIPAL_ID}" \
+  --role "Storage Blob Data Contributor" \
+  --scope "${STORAGE_SCOPE}"
+----
++
+<1> The storage account ID needs to be specified as the scope for the role assignment without the leading slash returned by the `az storage account show` command.
++
+. Create a Kubernetes secret, called `keystore` in this example, with the storage account name. This is necessary to be able to specify the account name as a secure setting in Elasticsearch in the next step.
++
+[source,sh]
+----
+kubectl create secret generic keystore \
+  --from-literal=azure.client.default.account=${STORAGE_ACCOUNT_NAME}
+----
++
+. Create an Elasticsearch cluster that uses the Kubernetes service account created earlier.
++
+[source,yaml,subs="attributes,callouts"]
+----
+apiVersion: elasticsearch.k8s.elastic.co/v1
+kind: Elasticsearch
+metadata:
+  name: az-workload-identity-sample
+spec:
+  version: 8.16.0
+  secureSettings:
+  - secretName: keystore <1>
+  nodeSets:
+  - name: default
+    count: 1
+    podTemplate:
+      metadata:
+        labels:
+          azure.workload.identity/use: "true" 
+      spec:
+        serviceAccountName: workload-identity-sa <2>
+        containers:
+        - name: elasticsearch
+          env:
+          - name: AZURE_FEDERATED_TOKEN_FILE <3>
+            value: /usr/share/elasticsearch/config/azure/tokens/azure-identity-token
+          volumeMounts:
+          - name: azure-identity-token
+            mountPath: /usr/share/elasticsearch/config/azure/tokens <3>
+----
++
+<1> Specify the Kubernetes secret created in the previous step to configure the Azure storage account name as a secure setting.
+<2> This is the service account created earlier in the steps from the https://learn.microsoft.com/en-us/azure/aks/workload-identity-deploy-cluster#create-a-kubernetes-service-account[Azure Workload Identity] tutorial.
+<3> The corresponding volume is injected by the https://azure.github.io/azure-workload-identity/docs/installation/mutating-admission-webhook.html[Azure Workload Identity Mutating Admission Webhook]. For Elasticsearch to be able to access the token, the mount needs to be in a sub-directory of the Elasticsearch config directory. The corresponding environment variable needs to be adjusted as well.
++
+. Create a snapshot repository of type `azure` through the Elasticsearch API, or through <<{p}-stack-config-policy>>.
++
+[source,sh,subs="attributes,callouts"]
+----
+POST _snapshot/my_azure_repository
+{
+  "type": "azure",
+  "settings": {
+    "container": "es-snapshots"
+  }
+}
+----
+
 [id="{p}-s3-compatible"]
 === Use S3-compatible services
 
@@ -441,19 +555,4 @@ Assuming you stored this in a file called `elasticsearch.yaml` you can in both c
 kubectl apply -f elasticsearch.yaml
 ----
 
-[id="{p}-basic-snapshot-azure"]
-=== Basic snapshot repository setup for Azure
-
-This is identical to <<{p}-basic-snapshot-gcs>> except for configuring storage account credentials through the Elasticsearch keystore.
-
-. Follow the Microsoft documentation to link:https://docs.microsoft.com/en-us/azure/storage/common/storage-account-create[set up an Azure storage account] with an access key, and then link:https://docs.microsoft.com/en-us/azure/storage/blobs/storage-quickstart-blobs-portal[create a container].
-
-. Create two files for your Azure storage account credentials: `azure.client.secondary.account` and `azure.client.secondary.key` containing the associated values.
-
-. Next, follow the same steps as in <<{p}-secure-settings>> to create a Kubernetes secret from these files, reference it in the `secureSettings` section of the Elasticsearch resource and apply the modifications.
-+
-[source,sh]
-----
-kubectl create secret generic az-storage-credentials --from-file=azure.client.default.account --from-file=azure.client.default.key -n <namespace>
-----
 
