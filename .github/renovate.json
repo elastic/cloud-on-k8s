@@ -1,8 +1,10 @@
 {
   "extends": [
-    "config:base"
+    "config:recommended"
   ],
-  "labels": [">renovate"],
+  "labels": [
+    ">renovate"
+  ],
   "schedule": [
     "after 1am on monday"
   ],
@@ -14,7 +16,7 @@
       "groupName": "k8s"
     },
     {
-      "packageNames": [
+      "matchPackageNames": [
         "k8s.io/utils",
         "golang.org/x/crypto",
         "golang.org/x/net",
@@ -22,7 +24,7 @@
         "golang.org/x/oauth2",
         "github.com/elastic/cloud-on-k8s/v2"
       ],
-      "updateTypes": [
+      "matchUpdateTypes": [
         "digest"
       ],
       "enabled": false
