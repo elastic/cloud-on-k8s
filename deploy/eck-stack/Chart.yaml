@@ -15,6 +15,14 @@ dependencies:
   - name: eck-agent
     condition: eck-agent.enabled
     version: "0.13.0-SNAPSHOT"
+    alias: eck-agent-apm-server
+  - name: eck-agent
+    condition: eck-agent.enabled
+    version: "0.13.0-SNAPSHOT"
+    alias: eck-agent-private-location
+  - name: eck-agent
+    condition: eck-agent.enabled
+    version: "0.13.0-SNAPSHOT"
   - name: eck-fleet-server
     condition: eck-fleet-server.enabled
     version: "0.13.0-SNAPSHOT"
