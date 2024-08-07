@@ -26,6 +26,16 @@
         "digest"
       ],
       "enabled": false
+    },
+    {
+      "description": "The definition in the design document for a Docker image a) isn't a valid Docker image, and b) shouldn't be kept up-to-date even if so, as design docs should be a point-in-time reference",
+      "matchPackageNames": [
+        "docker.elastic.co/k8s-operators"
+      ],
+      "matchFileNames": [
+        "docs/design/0005-configurable-operator.md"
+      ],
+      "enabled": false
     }
   ]
 }
