@@ -174,20 +174,23 @@ spec:
       {{- if .Values.hostNetwork }}
       hostNetwork: true
       dnsPolicy: ClusterFirstWithHostNet
-      {{- else if .Values.dns.policy }}
-      dnsPolicy: {{ .Values.dns.policy }}
+      {{- else if .Values.dnsPolicy }}
+      dnsPolicy: {{ .Values.dnsPolicy }}
       {{- end }}
-      {{- if .Values.dns }}
+      {{- if .Values.dnsConfig }}
       dnsConfig:
         nameservers:
-        {{- range $ns := .Values.dns.nameservers }}
+        {{- range $ns := .Values.dnsConfig.nameservers }}
           - {{ $ns | quote }}
+        {{- end }}
         searches:
-        {{- range $searches := .Values.dns.searches }}
+        {{- range $searches := .Values.dnsConfig.searches }}
           - {{ $searches | quote }}
+        {{- end }}
         options:
-        {{- range $options := .Values.dns.options }}
+        {{- range $options := .Values.dnsConfig.options }}
           - {{ $options | quote }}
+        {{- end }}
       {{- end }}
       {{- with .Values.nodeSelector }}
       nodeSelector:
