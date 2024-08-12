@@ -179,18 +179,7 @@ spec:
       {{- end }}
       {{- if and (.Values.dnsConfig) (.Values.dnsPolicy) }}
       dnsConfig:
-        nameservers:
-        {{- range $ns := .Values.dnsConfig.nameservers }}
-          - {{ $ns | quote }}
-        {{- end }}
-        searches:
-        {{- range $searches := .Values.dnsConfig.searches }}
-          - {{ $searches | quote }}
-        {{- end }}
-        options:
-        {{- range $options := .Values.dnsConfig.options }}
-          - {{ $options | quote }}
-        {{- end }}
+        {{- .Values.dnsConfig | toYaml | nindent 8 }}
       {{- end }}
       {{- with .Values.nodeSelector }}
       nodeSelector:

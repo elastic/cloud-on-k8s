@@ -155,6 +155,14 @@ hostNetwork: false
 dnsPolicy: ""
 
 # dnsConfig defines the DNS configuration for the operator pod.
+# dnsConfig:
+#  nameservers:
+#    - 169.254.20.10
+#  searches:
+#    - svc.cluster.local
+#   options:
+#     - name: ndots
+#       value: "2"
 dnsConfig: {}
 
 softMultiTenancy:
