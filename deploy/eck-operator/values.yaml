@@ -46,15 +46,6 @@ statefulsetAnnotations: {}
 # statefulsetLabels define additional labels that should be added to the operator StatefulSet.
 statefulsetLabels: {}
 
-# dnsPolicy defines the DNS policy for the operator pod.
-dnsPolicy: None
-
-# dnsConfig defines the DNS configuration for the operator pod.
-dnsConfig:
-  nameservers: []
-  options: []
-  searches: []
-
 # podAnnotations define the annotations that should be added to the operator pod.
 podAnnotations: {}
 
@@ -155,6 +146,16 @@ webhook:
 # This is required to allow for communication with the kube API when using some alternate CNIs in conjunction with webhook enabled.
 # CAUTION: Proceed at your own risk. This setting has security concerns such as allowing malicious users to access workloads running on the host.
 hostNetwork: false
+#
+# dnsPolicy defines the DNS policy for the operator pod. Available options are:
+# - ClusterFirst: Any DNS query that does not match the configured cluster domain suffix, is forwarded to an upstream nameserver by the DNS server
+# - ClusterFirstWithHostNet: For Pods running with hostNetwork, you should explicitly set its DNS policy to "ClusterFirstWithHostNet". Otherwise, Pods running with hostNetwork and "ClusterFirst" will fallback to the behavior of the "Default" policy.
+# - Default: The Pod inherits the name resolution configuration from the node that the Pods run on
+# - None: It allows a Pod to ignore DNS settings from the Kubernetes environment. All DNS settings are supposed to be provided using the dnsConfig field in the Pod Spec.
+dnsPolicy: ""
+
+# dnsConfig defines the DNS configuration for the operator pod.
+dnsConfig: {}
 
 softMultiTenancy:
   # enabled determines whether the operator is installed with soft multi-tenancy extensions.

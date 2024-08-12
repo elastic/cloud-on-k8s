@@ -174,10 +174,10 @@ spec:
       {{- if .Values.hostNetwork }}
       hostNetwork: true
       dnsPolicy: ClusterFirstWithHostNet
-      {{- else if .Values.dnsPolicy }}
+      {{- else if and (.Values.dnsPolicy) (.Values.dnsConfig) }}
       dnsPolicy: {{ .Values.dnsPolicy }}
       {{- end }}
-      {{- if .Values.dnsConfig }}
+      {{- if and (.Values.dnsConfig) (.Values.dnsPolicy) }}
       dnsConfig:
         nameservers:
         {{- range $ns := .Values.dnsConfig.nameservers }}
