@@ -6719,11 +6719,11 @@ Apache License
 
 --------------------------------------------------------------------------------
 Module  : github.com/docker/docker
-Version : v26.1.4+incompatible
-Time    : 2024-06-05T10:33:21Z
+Version : v26.1.5+incompatible
+Time    : 2024-07-23T19:36:28Z
 Licence : Apache-2.0
 
-Contents of probable licence file $GOMODCACHE/github.com/docker/docker@v26.1.4+incompatible/LICENSE:
+Contents of probable licence file $GOMODCACHE/github.com/docker/docker@v26.1.5+incompatible/LICENSE:
 
 
                                  Apache License
