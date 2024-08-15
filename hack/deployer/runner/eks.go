@@ -183,7 +183,7 @@ func (e *EKSDriver) GetCredentials() error {
 }
 
 func (e *EKSDriver) clusterExists() (bool, error) {
-	log.Printf("Checking if cluster exists, name: %s, region: %s...", e.plan.ClusterName, e.plan.Eks.Region)
+	log.Printf("Checking if cluster exists ...")
 	notFound, err := e.newCmd("eksctl get cluster --name {{.ClusterName}} --region {{.Region}}").WithoutStreaming().OutputContainsAny("No cluster found")
 	if notFound {
 		return false, nil

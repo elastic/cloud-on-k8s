@@ -42,8 +42,6 @@ func GetPlan(plans []Plan, config RunConfig, clientBuildDefDir string) (Plan, er
 		return Plan{}, err
 	}
 
-	fmt.Printf("plan: %+v\n", plan.Eks)
-	fmt.Printf("override: %+v\n", config.Overrides)
 	plan, err = merge(plan, config.Overrides)
 	if err != nil {
 		return Plan{}, err
