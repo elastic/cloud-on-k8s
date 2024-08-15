@@ -27,15 +27,14 @@ type Plan struct {
 	MachineType       string `yaml:"machineType"`
 	// Abbreviations not all-caps to allow merging with mergo in  `merge` as mergo does not understand struct tags and
 	// we use lowercase in the YAML
-	Gke                     *GKESettings   `yaml:"gke,omitempty"`
-	Aks                     *AKSSettings   `yaml:"aks,omitempty"`
-	Ocp                     *OCPSettings   `yaml:"ocp,omitempty"`
-	Eks                     *EKSSettings   `yaml:"eks,omitempty"`
-	Kind                    *KindSettings  `yaml:"kind,omitempty"`
-	Tanzu                   *TanzuSettings `yaml:"tanzu,omitempty"`
-	ServiceAccount          bool           `yaml:"serviceAccount"`
-	EnforceSecurityPolicies bool           `yaml:"enforceSecurityPolicies"`
-	DiskSetup               string         `yaml:"diskSetup"`
+	Gke                     *GKESettings  `yaml:"gke,omitempty"`
+	Aks                     *AKSSettings  `yaml:"aks,omitempty"`
+	Ocp                     *OCPSettings  `yaml:"ocp,omitempty"`
+	Eks                     *EKSSettings  `yaml:"eks,omitempty"`
+	Kind                    *KindSettings `yaml:"kind,omitempty"`
+	ServiceAccount          bool          `yaml:"serviceAccount"`
+	EnforceSecurityPolicies bool          `yaml:"enforceSecurityPolicies"`
+	DiskSetup               string        `yaml:"diskSetup"`
 }
 
 // GKESettings encapsulates settings specific to GKE
@@ -85,13 +84,6 @@ type KindSettings struct {
 	NodeCount int    `yaml:"nodeCount"`
 	NodeImage string `yaml:"nodeImage"`
 	IPFamily  string `yaml:"ipFamily"`
-}
-
-type TanzuSettings struct {
-	AKSSettings    `yaml:",inline"`
-	InstallerImage string `yaml:"installerImage"`
-	WorkDir        string `yaml:"workDir"`
-	SSHPubKey      string `yaml:"sshPubKey"`
 }
 
 // RunConfig encapsulates Id used to choose a plan and a map of overrides to apply to the plan, expected to map to a file

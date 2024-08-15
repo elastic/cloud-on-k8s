@@ -181,7 +181,6 @@ func (h *helper) initTestContext() error {
 		IgnoreWebhookFailures: h.ignoreWebhookFailures,
 		OcpCluster:            isOcpCluster(h),
 		AksCluster:            isAKSCluster(h),
-		TanzuCluster:          isTanzuCluster(h),
 		DeployChaosJob:        h.deployChaosJob,
 		TestEnvTags:           h.testEnvTags,
 		E2ETags:               h.e2eTags,
@@ -244,10 +243,6 @@ func isOcpCluster(h *helper) bool {
 
 func isAKSCluster(h *helper) bool {
 	return strings.HasPrefix(h.provider, "aks")
-}
-
-func isTanzuCluster(h *helper) bool {
-	return strings.HasPrefix(h.provider, "tanzu")
 }
 
 // isAutopilotCluster convenience function to check the provider value for the string gke-autopilot.

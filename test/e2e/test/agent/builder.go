@@ -132,8 +132,8 @@ func NewBuilder(name string) Builder {
 		WithLabel(run.TestNameLabel, name).
 		WithDaemonSet()
 
-	if test.Ctx().OcpCluster || test.Ctx().AksCluster || test.Ctx().TanzuCluster {
-		// Agent requires more resources on OpenShift, AKS and Tanzu clusters. One hypothesis is that
+	if test.Ctx().OcpCluster || test.Ctx().AksCluster {
+		// Agent requires more resources on OpenShift, and AKS clusters. One hypothesis is that
 		// there are more resources deployed on OpenShift than on other K8s clusters
 		// used for E2E tests.
 		// Relates to https://github.com/elastic/cloud-on-k8s/pull/7789
@@ -159,8 +159,8 @@ func NewBuilder(name string) Builder {
 
 // MoreResourcesForIssue4730 adjusts Agent resource requirements to deal with https://github.com/elastic/elastic-agent/issues/4730.
 func (b Builder) MoreResourcesForIssue4730() Builder {
-	if test.Ctx().OcpCluster || test.Ctx().AksCluster || test.Ctx().TanzuCluster {
-		// Agent requires even more resources on OpenShift, AKS and Tanzu clusters. One hypothesis is that
+	if test.Ctx().OcpCluster || test.Ctx().AksCluster {
+		// Agent requires even more resources on OpenShift, and AKS clusters. One hypothesis is that
 		// there are more resources deployed on these clusters than on other K8s clusters used for E2E tests.
 		return b.WithResources(
 			corev1.ResourceRequirements{
