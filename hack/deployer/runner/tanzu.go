@@ -349,7 +349,7 @@ func (t *TanzuDriver) loginToAzure() error {
 func (t *TanzuDriver) loginToContainerRegistry() error {
 	log.Println("Logging in to container registry")
 	// the Azure CLI image we use does not have a Docker client installed thus we extract a token here ...
-	jsonResp, err := azure.Cmd("acr", "login", "--name", t.acrName, "--expose-token").
+	jsonResp, err := azure.Cmd("acr", "login", "--name", t.acrName, "--expose-token", "--only-show-errors").
 		StdoutOnly().WithoutStreaming().Output()
 	if err != nil {
 		return err
@@ -373,13 +373,13 @@ func (t *TanzuDriver) loginToContainerRegistry() error {
 
 func (t *TanzuDriver) installAzureStoragePreview() error {
 	log.Println("Installing Azure storage-preview extension")
-	return azure.Cmd("extension add --name storage-preview -y").Run()
+	return azure.Cmd("extension add --name storage-preview -y --only-show-errors").Run()
 }
 
 // ensureResourceGroup checks for the existence of an Azure resource group (which we name unless overridden after the
 // cluster we want to deploy)
 func (t *TanzuDriver) ensureResourceGroup() (bool, error) {
-	exists, err := azure.Cmd("group", "exists", "--name", t.plan.Tanzu.ResourceGroup).
+	exists, err := azure.Cmd("group", "exists", "--name", t.plan.Tanzu.ResourceGroup, "--ony-show-errors").
 		WithoutStreaming().OutputContainsAny("true")
 	if err != nil || exists {
 		return false, err
@@ -390,19 +390,20 @@ func (t *TanzuDriver) ensureResourceGroup() (bool, error) {
 		"-l", t.plan.Tanzu.Location,
 		"--name", t.plan.Tanzu.ResourceGroup,
 		"--tags", strings.Join(toList(elasticTags), " "),
+		"--only-show-errors",
 	).WithoutStreaming().Run()
 	return true, err
 }
 
 func (t *TanzuDriver) deleteResourceGroup() error {
 	log.Printf("Deleting Azure resource group %s\n", t.plan.Tanzu.ResourceGroup)
-	return azure.Cmd("group", "delete", "--name", t.plan.Tanzu.ResourceGroup, "-y").
+	return azure.Cmd("group", "delete", "--name", t.plan.Tanzu.ResourceGroup, "-y", "--only-show-errors").
 		Run()
 }
 
 func (t *TanzuDriver) storageContainerExists() (bool, error) {
 	return azure.ExistsCmd(azure.Cmd("storage", "container", "exists",
-		"--account-name", t.azureStorageAccount, "--name", t.plan.ClusterName, "--auth", "login"))
+		"--account-name", t.azureStorageAccount, "--name", t.plan.ClusterName, "--auth", "login", "--only-show-errors"))
 }
 
 func (t *TanzuDriver) ensureStorageContainer() error {
@@ -416,14 +417,14 @@ func (t *TanzuDriver) ensureStorageContainer() error {
 	}
 	log.Println("Creating new storage container to persist installer state")
 	return azure.Cmd("storage", "container", "create",
-		"--account-name", t.azureStorageAccount, "--name", t.plan.ClusterName, "--auth", "login").
+		"--account-name", t.azureStorageAccount, "--name", t.plan.ClusterName, "--auth", "login", "--only-show-errors").
 		WithoutStreaming().Run()
 }
 
 func (t TanzuDriver) deleteStorageContainer() error {
 	log.Println("Deleting Azure storage container")
 	return azure.Cmd("storage", "container", "delete",
-		"--account-name", t.azureStorageAccount, "--name", t.plan.ClusterName, "--auth", "login").
+		"--account-name", t.azureStorageAccount, "--name", t.plan.ClusterName, "--auth", "login", "--only-show-errors").
 		WithoutStreaming().Run()
 }
 
@@ -431,7 +432,7 @@ func (t *TanzuDriver) persistInstallerState() error {
 	log.Println("Persisting installer state to Azure storage container")
 	return azure.Cmd("storage", "azcopy", "blob", "upload", "--recursive",
 		"-c", t.plan.ClusterName, "--account-name", t.azureStorageAccount,
-		"-s", fmt.Sprintf("'%s/*'", t.installerStateDirBasename)).
+		"-s", fmt.Sprintf("'%s/*'", t.installerStateDirBasename), "--only-show-errors").
 		WithoutStreaming().Run()
 }
 
@@ -439,7 +440,7 @@ func (t *TanzuDriver) restoreInstallerState() error {
 	log.Println("Restoring installer state from storage container if any")
 	return azure.Cmd("storage", "azcopy", "blob", "download", "--recursive",
 		"-c", t.plan.ClusterName, "--account-name", t.azureStorageAccount,
-		"-s", "'*'", "-d", t.installerStateDirBasename).
+		"-s", "'*'", "-d", t.installerStateDirBasename, "--only-show-errors").
 		WithoutStreaming().Run()
 }
 
@@ -458,6 +459,7 @@ func (t *TanzuDriver) Cleanup(prefix string, olderThan time.Duration) error {
 	resourceGroups, err := azure.Cmd("group", "list",
 		"--query", fmt.Sprintf("[?location=='%s']", t.plan.Tanzu.Location),
 		"--query", fmt.Sprintf(`"[?contains(name,'%s-tanzu')]"`, prefix),
+		"--only-show-errors",
 		"| jq -r '.[].name'").OutputList()
 	if err != nil {
 		return err
@@ -471,12 +473,15 @@ func (t *TanzuDriver) Cleanup(prefix string, olderThan time.Duration) error {
 			"-g", rg,
 			`--resource-type "Microsoft.Compute/virtualMachines"`,
 			"--query", fmt.Sprintf(`"[?tags.project == '%s']"`, ProjectTag),
+			"--only-show-errors",
 			"| jq -r --arg d", sinceDate.Format(time.RFC3339),
 			fmt.Sprintf(`'map(select((.createdTime | . <= $d) and (.name|test("%s-tanzu"))))|.[].name'`, prefix),
 			fmt.Sprintf("| grep -o '%s-tanzu-[a-z]*-[0-9]*' | sort | uniq", prefix)).OutputList()
 		if err != nil {
 			return fmt.Errorf("while running az resource list command: %w", err)
 		}
+
+		fmt.Printf("Attempting to delete clusters %v\n", clustersToDelete)
 
 		for _, cluster := range clustersToDelete {
 			t.plan.ClusterName = cluster
