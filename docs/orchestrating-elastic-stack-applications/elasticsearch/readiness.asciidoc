@@ -8,6 +8,8 @@ endif::[]
 [id="{p}-{page_id}"]
 = Readiness probe
 
+== Elasticsearch versions before 8.2.0
+
 By default, the readiness probe checks that the Pod responds to HTTP requests within a timeout of three seconds. This is acceptable in most cases. However, when the cluster is under heavy load, you might need to increase the timeout. This allows the Pod to stay in a `Ready` state and be part of the Elasticsearch service even if it is responding slowly. To adjust the timeout, set the `READINESS_PROBE_TIMEOUT` environment variable in the Pod template and update the readiness probe configuration with the new timeout. 
 
 This example describes how to increase the API call timeout to ten seconds and the overall check time to twelve seconds:
@@ -42,3 +44,7 @@ spec:
 ----
 
 Note that this requires restarting the Pods.
+
+== Elasticsearch versions 8.2.0 and later
+
+We do not recommend overriding the default readiness probe on Elasticsearch 8.2.0 and later. ECK configures a socket based readiness probe using the Elasticsearch link:https://www.elastic.co/guide/en/elasticsearch/reference/current/advanced-configuration.html#readiness-tcp-port[readiness port feature] which is not influenced by the load on the Elasticsearch cluster.
