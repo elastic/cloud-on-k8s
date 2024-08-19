@@ -10,6 +10,7 @@ import (
 
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
 	commonv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/common/v1"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/certificates"
@@ -128,16 +129,16 @@ func (r *Reconciler) reconcileWatches(ctx context.Context, associated types.Name
 	return nil
 }
 
-func reconcileGenericWatch[T client.Object](
+func reconcileGenericWatch[T client.Object, R reconcile.Request](
 	associated types.NamespacedName,
 	associations []commonv1.Association,
-	dynamicRequest *watches.DynamicEnqueueRequest[T],
+	dynamicRequest *watches.DynamicEnqueueRequest[T, reconcile.Request],
 	watchName string,
 	watchedFunc func() ([]types.NamespacedName, error),
 ) error {
 	if len(associations) == 0 {
 		// clean up if there are none
-		RemoveWatch(dynamicRequest, watchName)
+		RemoveWatch[T](dynamicRequest, watchName)
 		return nil
 	}
 
@@ -145,7 +146,7 @@ func reconcileGenericWatch[T client.Object](
 	if err != nil {
 		return err
 	}
-	return dynamicRequest.AddHandler(watches.NamedWatch[T]{
+	return dynamicRequest.AddHandler(watches.NamedWatch[T, R]{
 		Name:    watchName,
 		Watched: watched,
 		Watcher: associated,
@@ -154,10 +155,10 @@ func reconcileGenericWatch[T client.Object](
 
 // ReconcileWatch sets or removes `watchName` watch in `dynamicRequest` based on `associated` and `associations` and
 // `watchedFunc`. No watch is added if watchedFunc(association) refers to an empty namespaced name.
-func ReconcileWatch[T client.Object](
+func ReconcileWatch[T client.Object, R reconcile.Request](
 	associated types.NamespacedName,
 	associations []commonv1.Association,
-	dynamicRequest *watches.DynamicEnqueueRequest[T],
+	dynamicRequest *watches.DynamicEnqueueRequest[T, reconcile.Request],
 	watchName string,
 	watchedFunc func(association commonv1.Association) types.NamespacedName,
 ) error {
@@ -176,7 +177,7 @@ func ReconcileWatch[T client.Object](
 }
 
 // RemoveWatch removes `watchName` watch from `dynamicRequest`.
-func RemoveWatch[T client.Object](dynamicRequest *watches.DynamicEnqueueRequest[T], watchName string) {
+func RemoveWatch[T client.Object, R comparable](dynamicRequest *watches.DynamicEnqueueRequest[T, R], watchName string) {
 	dynamicRequest.RemoveHandlerForKey(watchName)
 }
 

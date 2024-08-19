@@ -113,7 +113,7 @@ func Add(mgr manager.Manager, webhookParams Params, clientset kubernetes.Interfa
 		Name:      webhookParams.SecretName,
 	}
 
-	if err := c.Watch(source.Kind(mgr.GetCache(), &corev1.Secret{}, &watches.NamedWatch[*corev1.Secret]{
+	if err := c.Watch(source.Kind(mgr.GetCache(), &corev1.Secret{}, &watches.NamedWatch[*corev1.Secret, reconcile.Request]{
 		Name:    "webhook-server-cert",
 		Watched: []types.NamespacedName{secret},
 		Watcher: secret,
@@ -125,7 +125,7 @@ func Add(mgr manager.Manager, webhookParams Params, clientset kubernetes.Interfa
 		Name: webhookParams.Name,
 	}
 
-	return c.Watch(source.Kind(mgr.GetCache(), webhook.getType(), &watches.NamedWatch[client.Object]{
+	return c.Watch(source.Kind(mgr.GetCache(), webhook.getType(), &watches.NamedWatch[client.Object, reconcile.Request]{
 		Name:    "validatingwebhookconfiguration",
 		Watched: []types.NamespacedName{webhookConfiguration},
 		Watcher: webhookConfiguration,

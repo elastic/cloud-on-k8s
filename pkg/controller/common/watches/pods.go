@@ -24,8 +24,8 @@ func WatchPods(mgr manager.Manager, c controller.Controller, objNameLabel string
 }
 
 // objToReconcileRequest returns a function to enqueue reconcile requests for the resource name set at objNameLabel.
-func objToReconcileRequest[T client.Object](objNameLabel string) handler.TypedMapFunc[T] {
-	return handler.TypedMapFunc[T](func(ctx context.Context, object T) []reconcile.Request {
+func objToReconcileRequest[T client.Object](objNameLabel string) handler.TypedMapFunc[T, reconcile.Request] {
+	return handler.TypedMapFunc[T, reconcile.Request](func(ctx context.Context, object T) []reconcile.Request {
 		labels := object.GetLabels()
 		objectName, isSet := labels[objNameLabel]
 		if !isSet {

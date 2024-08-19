@@ -18,7 +18,7 @@ import (
 
 // NamedWatch is an event handler that allows watching a specific resource identified by
 // Watched. Events will be handled by Watcher.
-type NamedWatch[T client.Object] struct {
+type NamedWatch[T client.Object, R comparable] struct {
 	// Name identifies this watch for easier removal and deduplication.
 	Name string
 	// Watched are the resources being watched.
@@ -27,15 +27,15 @@ type NamedWatch[T client.Object] struct {
 	Watcher types.NamespacedName
 }
 
-var _ handler.EventHandler = &NamedWatch[client.Object]{}
+var _ handler.EventHandler = &NamedWatch[client.Object, reconcile.Request]{}
 
-func (w NamedWatch[T]) Create(_ context.Context, evt event.TypedCreateEvent[T], q workqueue.RateLimitingInterface) {
+func (w NamedWatch[T, R]) Create(_ context.Context, evt event.TypedCreateEvent[T], q workqueue.TypedRateLimitingInterface[reconcile.Request]) {
 	for _, req := range w.toReconcileRequest(evt.Object) {
 		q.Add(req)
 	}
 }
 
-func (w NamedWatch[T]) Update(_ context.Context, evt event.TypedUpdateEvent[T], q workqueue.RateLimitingInterface) {
+func (w NamedWatch[T, R]) Update(_ context.Context, evt event.TypedUpdateEvent[T], q workqueue.TypedRateLimitingInterface[reconcile.Request]) {
 	for _, req := range w.toReconcileRequest(evt.ObjectOld) {
 		q.Add(req)
 	}
@@ -44,29 +44,29 @@ func (w NamedWatch[T]) Update(_ context.Context, evt event.TypedUpdateEvent[T], 
 	}
 }
 
-func (w NamedWatch[T]) Delete(_ context.Context, evt event.TypedDeleteEvent[T], q workqueue.RateLimitingInterface) {
+func (w NamedWatch[T, R]) Delete(_ context.Context, evt event.TypedDeleteEvent[T], q workqueue.TypedRateLimitingInterface[reconcile.Request]) {
 	for _, req := range w.toReconcileRequest(evt.Object) {
 		q.Add(req)
 	}
 }
 
-func (w NamedWatch[T]) Generic(_ context.Context, evt event.TypedGenericEvent[T], q workqueue.RateLimitingInterface) {
+func (w NamedWatch[T, R]) Generic(_ context.Context, evt event.TypedGenericEvent[T], q workqueue.TypedRateLimitingInterface[reconcile.Request]) {
 	for _, req := range w.toReconcileRequest(evt.Object) {
 		q.Add(req)
 	}
 }
 
-func (w NamedWatch[T]) EventHandler() handler.TypedEventHandler[T] {
+func (w NamedWatch[T, R]) EventHandler() handler.TypedEventHandler[T, reconcile.Request] {
 	return w
 }
 
 // Key identifies this transformer.
-func (w NamedWatch[T]) Key() string {
+func (w NamedWatch[T, R]) Key() string {
 	return w.Name
 }
 
 // EventHandler transforms the event for object to one or many reconcile.Request if relevant.
-func (w NamedWatch[T]) toReconcileRequest(object metav1.Object) []reconcile.Request {
+func (w NamedWatch[T, R]) toReconcileRequest(object metav1.Object) []reconcile.Request {
 	for _, watched := range w.Watched {
 		if object.GetName() == watched.Name && object.GetNamespace() == watched.Namespace {
 			return []reconcile.Request{
@@ -79,4 +79,4 @@ func (w NamedWatch[T]) toReconcileRequest(object metav1.Object) []reconcile.Requ
 	return nil
 }
 
-var _ HandlerRegistration[client.Object] = &NamedWatch[client.Object]{}
+var _ HandlerRegistration[client.Object, reconcile.Request] = &NamedWatch[client.Object, reconcile.Request]{}

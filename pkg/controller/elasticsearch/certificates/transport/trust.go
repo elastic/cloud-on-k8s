@@ -10,6 +10,7 @@ import (
 
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/types"
+	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
 	v1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/elasticsearch/v1"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/certificates"
@@ -22,8 +23,8 @@ func AdditionalCAWatchKey(name types.NamespacedName) string {
 	return fmt.Sprintf("%s-transport-ca-trust", name)
 }
 
-func caWatchHandlerFor(name string, watched string, owner types.NamespacedName) watches.NamedWatch[*corev1.ConfigMap] {
-	return watches.NamedWatch[*corev1.ConfigMap]{
+func caWatchHandlerFor(name string, watched string, owner types.NamespacedName) watches.NamedWatch[*corev1.ConfigMap, reconcile.Request] {
+	return watches.NamedWatch[*corev1.ConfigMap, reconcile.Request]{
 		Name: name,
 		Watched: []types.NamespacedName{{
 			Namespace: owner.Namespace,
