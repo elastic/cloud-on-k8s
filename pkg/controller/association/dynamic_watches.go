@@ -132,7 +132,7 @@ func (r *Reconciler) reconcileWatches(ctx context.Context, associated types.Name
 func reconcileGenericWatch[T client.Object, R reconcile.Request](
 	associated types.NamespacedName,
 	associations []commonv1.Association,
-	dynamicRequest *watches.DynamicEnqueueRequest[T, reconcile.Request],
+	dynamicRequest *watches.DynamicEnqueueRequest[T],
 	watchName string,
 	watchedFunc func() ([]types.NamespacedName, error),
 ) error {
@@ -158,7 +158,7 @@ func reconcileGenericWatch[T client.Object, R reconcile.Request](
 func ReconcileWatch[T client.Object, R reconcile.Request](
 	associated types.NamespacedName,
 	associations []commonv1.Association,
-	dynamicRequest *watches.DynamicEnqueueRequest[T, reconcile.Request],
+	dynamicRequest *watches.DynamicEnqueueRequest[T],
 	watchName string,
 	watchedFunc func(association commonv1.Association) types.NamespacedName,
 ) error {
@@ -177,7 +177,7 @@ func ReconcileWatch[T client.Object, R reconcile.Request](
 }
 
 // RemoveWatch removes `watchName` watch from `dynamicRequest`.
-func RemoveWatch[T client.Object, R comparable](dynamicRequest *watches.DynamicEnqueueRequest[T, R], watchName string) {
+func RemoveWatch[T client.Object](dynamicRequest *watches.DynamicEnqueueRequest[T], watchName string) {
 	dynamicRequest.RemoveHandlerForKey(watchName)
 }
 
