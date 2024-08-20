@@ -13,7 +13,6 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/tools/record"
 	"sigs.k8s.io/controller-runtime/pkg/client"
-	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
 	commonv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/common/v1"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/driver"
@@ -162,7 +161,7 @@ func TestParseConfigRef(t *testing.T) {
 			fakeRecorder := record.NewFakeRecorder(10)
 			w := watches.NewDynamicWatches()
 			for _, existingWatch := range tt.existingWatches {
-				require.NoError(t, w.Secrets.AddHandler(watches.NamedWatch[*corev1.Secret, reconcile.Request]{Name: existingWatch}))
+				require.NoError(t, w.Secrets.AddHandler(watches.NamedWatch[*corev1.Secret]{Name: existingWatch}))
 			}
 			d := fakeDriver{
 				client:   k8s.NewFakeClient(tt.runtimeObjs...),

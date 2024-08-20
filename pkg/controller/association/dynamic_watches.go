@@ -10,7 +10,6 @@ import (
 
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
-	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
 	commonv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/common/v1"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/certificates"
@@ -129,7 +128,7 @@ func (r *Reconciler) reconcileWatches(ctx context.Context, associated types.Name
 	return nil
 }
 
-func reconcileGenericWatch[T client.Object, R reconcile.Request](
+func reconcileGenericWatch[T client.Object](
 	associated types.NamespacedName,
 	associations []commonv1.Association,
 	dynamicRequest *watches.DynamicEnqueueRequest[T],
@@ -146,7 +145,7 @@ func reconcileGenericWatch[T client.Object, R reconcile.Request](
 	if err != nil {
 		return err
 	}
-	return dynamicRequest.AddHandler(watches.NamedWatch[T, R]{
+	return dynamicRequest.AddHandler(watches.NamedWatch[T]{
 		Name:    watchName,
 		Watched: watched,
 		Watcher: associated,
@@ -155,7 +154,7 @@ func reconcileGenericWatch[T client.Object, R reconcile.Request](
 
 // ReconcileWatch sets or removes `watchName` watch in `dynamicRequest` based on `associated` and `associations` and
 // `watchedFunc`. No watch is added if watchedFunc(association) refers to an empty namespaced name.
-func ReconcileWatch[T client.Object, R reconcile.Request](
+func ReconcileWatch[T client.Object](
 	associated types.NamespacedName,
 	associations []commonv1.Association,
 	dynamicRequest *watches.DynamicEnqueueRequest[T],

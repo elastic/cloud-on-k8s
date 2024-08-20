@@ -92,7 +92,7 @@ func addCertificatesAuthorityWatches(
 	reconcileClusterAssociation *ReconcileRemoteCa,
 	local, remote types.NamespacedName) error {
 	// Watch the CA secret of Elasticsearch clusters which are involved in a association.
-	err := reconcileClusterAssociation.watches.Secrets.AddHandler(watches.NamedWatch[*corev1.Secret, reconcile.Request]{
+	err := reconcileClusterAssociation.watches.Secrets.AddHandler(watches.NamedWatch[*corev1.Secret]{
 		Name:    watchName(local, remote),
 		Watched: []types.NamespacedName{transport.PublicCertsSecretRef(remote)},
 		Watcher: types.NamespacedName{

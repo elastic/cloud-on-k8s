@@ -14,7 +14,6 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/tools/record"
-	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
 	commonv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/common/v1"
 	kbv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/kibana/v1"
@@ -41,7 +40,7 @@ func Test_secureSettingsVolume(t *testing.T) {
 	createWatches := func(handlerName string) watches.DynamicWatches {
 		w := watches.NewDynamicWatches()
 		if handlerName != "" {
-			require.NoError(t, w.Secrets.AddHandler(watches.NamedWatch[*corev1.Secret, reconcile.Request]{
+			require.NoError(t, w.Secrets.AddHandler(watches.NamedWatch[*corev1.Secret]{
 				Name: handlerName,
 			}))
 		}

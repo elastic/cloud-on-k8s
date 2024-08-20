@@ -16,7 +16,6 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/tools/record"
 	"sigs.k8s.io/controller-runtime/pkg/client"
-	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
 	v1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/common/v1"
 	esv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/elasticsearch/v1"
@@ -30,7 +29,7 @@ func initDynamicWatches(watchNames ...string) watches.DynamicWatches {
 	controllerscheme.SetupScheme()
 	w := watches.NewDynamicWatches()
 	for _, name := range watchNames {
-		_ = w.Secrets.AddHandler(watches.NamedWatch[*corev1.Secret, reconcile.Request]{
+		_ = w.Secrets.AddHandler(watches.NamedWatch[*corev1.Secret]{
 			Name: name,
 		})
 	}

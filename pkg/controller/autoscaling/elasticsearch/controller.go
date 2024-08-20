@@ -120,7 +120,7 @@ func (r *ReconcileElasticsearchAutoscaler) Reconcile(ctx context.Context, reques
 
 	// Ensure we watch the associated Elasticsearch
 	esNamespacedName := types.NamespacedName{Name: esa.Spec.ElasticsearchRef.Name, Namespace: request.Namespace}
-	if err := r.Watches.ReferencedResources.AddHandler(watches.NamedWatch[client.Object, reconcile.Request]{
+	if err := r.Watches.ReferencedResources.AddHandler(watches.NamedWatch[client.Object]{
 		Name:    dynamicWatchName(request),
 		Watched: []types.NamespacedName{esNamespacedName},
 		Watcher: request.NamespacedName,

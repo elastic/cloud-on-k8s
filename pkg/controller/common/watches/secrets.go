@@ -57,7 +57,7 @@ func WatchUserProvidedNamespacedSecrets(
 			Name:      s.SecretName,
 		})
 	}
-	return watched.Secrets.AddHandler(NamedWatch[*corev1.Secret, reconcile.Request]{
+	return watched.Secrets.AddHandler(NamedWatch[*corev1.Secret]{
 		Name:    watchName,
 		Watched: userSecretNsns,
 		Watcher: watcher,
