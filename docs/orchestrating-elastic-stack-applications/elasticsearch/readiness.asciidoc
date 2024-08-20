@@ -30,7 +30,7 @@ spec:
                 command:
                 - bash
                 - -c
-                - /mnt/elastic-internal/scripts/readiness-probe-script.sh
+                - /mnt/elastic-internal/scripts/readiness-port-script.sh
               failureThreshold: 3
               initialDelaySeconds: 10
               periodSeconds: 12
