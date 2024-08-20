@@ -137,7 +137,7 @@ func reconcileGenericWatch[T client.Object](
 ) error {
 	if len(associations) == 0 {
 		// clean up if there are none
-		RemoveWatch[T](dynamicRequest, watchName)
+		RemoveWatch(dynamicRequest, watchName)
 		return nil
 	}
 
