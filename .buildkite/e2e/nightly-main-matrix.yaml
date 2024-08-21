@@ -56,7 +56,3 @@
 - label: aks
   fixed:
     E2E_PROVIDER: aks
-
-- label: tanzu
-  fixed:
-    E2E_PROVIDER: tanzu

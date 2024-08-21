@@ -4,6 +4,11 @@
 [[release-notes-2.14.0]]
 == {n} version 2.14.0
 
+[[known-issue-short-2.14.0]]
+[float]
+=== Known issue
+Users who have defined a <<{p}-readiness,custom readiness probe>> for Elasticsearch 8.2.0 or later will have to either remove the custom readiness probe before upgrading to 2.14 or if that is not possible have adjust the readiness probe script as documented <<known-issue-2.14.0,here>> after the upgrade.
+
 
 
 [[feature-2.14.0]]
