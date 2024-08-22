@@ -20,7 +20,11 @@ type Monitoring struct {
 type MetricsMonitoring struct {
 	// ElasticsearchRefs is a reference to a list of monitoring Elasticsearch clusters running in the same Kubernetes cluster.
 	// Due to existing limitations, only a single Elasticsearch cluster is currently supported.
-	// +kubebuilder:validation:Required
+	//
+	// This is not optional but was treated as such in previous version of kubernetes-sigs/controller-tools as we also specify
+	// `omitempty` here. See https://github.com/elastic/cloud-on-k8s/pull/8020 and https://github.com/kubernetes-sigs/controller-tools/issues/943
+	// for more details.
+	// +kubebuilder:validation:Optional
 	ElasticsearchRefs []ObjectSelector `json:"elasticsearchRefs,omitempty"`
 }
 
@@ -29,6 +33,10 @@ type MetricsMonitoring struct {
 type LogsMonitoring struct {
 	// ElasticsearchRefs is a reference to a list of monitoring Elasticsearch clusters running in the same Kubernetes cluster.
 	// Due to existing limitations, only a single Elasticsearch cluster is currently supported.
-	// +kubebuilder:validation:Required
+	//
+	// This is not optional but was treated as such in previous version of kubernetes-sigs/controller-tools as we also specify
+	// `omitempty` here. See https://github.com/elastic/cloud-on-k8s/pull/8020 and https://github.com/kubernetes-sigs/controller-tools/issues/943
+	// for more details.
+	// +kubebuilder:validation:Optional
 	ElasticsearchRefs []ObjectSelector `json:"elasticsearchRefs,omitempty"`
 }
