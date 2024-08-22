@@ -643,8 +643,7 @@ associated resources.
 | Field | Description
 | *`elasticsearchRefs`* __xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-v2-pkg-apis-common-v1-objectselector[$$ObjectSelector$$] array__ | ElasticsearchRefs is a reference to a list of monitoring Elasticsearch clusters running in the same Kubernetes cluster.
 Due to existing limitations, only a single Elasticsearch cluster is currently supported.
-
-
+---
 This is not optional but was treated as such in previous version of kubernetes-sigs/controller-tools as we also specify
 `omitempty` here. See https://github.com/elastic/cloud-on-k8s/pull/8020 and https://github.com/kubernetes-sigs/controller-tools/issues/943
 for more details.
@@ -667,8 +666,7 @@ associated resources.
 | Field | Description
 | *`elasticsearchRefs`* __xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-v2-pkg-apis-common-v1-objectselector[$$ObjectSelector$$] array__ | ElasticsearchRefs is a reference to a list of monitoring Elasticsearch clusters running in the same Kubernetes cluster.
 Due to existing limitations, only a single Elasticsearch cluster is currently supported.
-
-
+---
 This is not optional but was treated as such in previous version of kubernetes-sigs/controller-tools as we also specify
 `omitempty` here. See https://github.com/elastic/cloud-on-k8s/pull/8020 and https://github.com/kubernetes-sigs/controller-tools/issues/943
 for more details.
