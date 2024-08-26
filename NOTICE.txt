@@ -746,11 +746,11 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 --------------------------------------------------------------------------------
 Module  : github.com/google/go-containerregistry
-Version : v0.20.1
-Time    : 2024-07-17T01:32:55Z
+Version : v0.20.2
+Time    : 2024-08-06T16:18:38Z
 Licence : Apache-2.0
 
-Contents of probable licence file $GOMODCACHE/github.com/google/go-containerregistry@v0.20.1/LICENSE:
+Contents of probable licence file $GOMODCACHE/github.com/google/go-containerregistry@v0.20.2/LICENSE:
 
 
                                  Apache License
@@ -6306,11 +6306,11 @@ Apache License
 
 --------------------------------------------------------------------------------
 Module  : github.com/docker/cli
-Version : v24.0.0+incompatible
-Time    : 2023-05-12T14:10:05Z
+Version : v27.1.1+incompatible
+Time    : 2024-07-19T17:35:01Z
 Licence : Apache-2.0
 
-Contents of probable licence file $GOMODCACHE/github.com/docker/cli@v24.0.0+incompatible/LICENSE:
+Contents of probable licence file $GOMODCACHE/github.com/docker/cli@v27.1.1+incompatible/LICENSE:
 
 
                                  Apache License
