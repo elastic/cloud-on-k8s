@@ -10,11 +10,11 @@ Third party libraries used by the Elastic Cloud on Kubernetes project
 
 --------------------------------------------------------------------------------
 Module  : dario.cat/mergo
-Version : v1.0.0
-Time    : 2023-06-20T06:39:01Z
+Version : v1.0.1
+Time    : 2024-08-17T20:16:10Z
 Licence : BSD-3-Clause
 
-Contents of probable licence file $GOMODCACHE/dario.cat/mergo@v1.0.0/LICENSE:
+Contents of probable licence file $GOMODCACHE/dario.cat/mergo@v1.0.1/LICENSE:
 
 Copyright (c) 2013 Dario Castañé. All rights reserved.
 Copyright (c) 2012 The Go Authors. All rights reserved.
