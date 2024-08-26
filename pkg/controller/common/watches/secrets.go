@@ -71,8 +71,8 @@ func WatchSoftOwnedSecrets(mgr manager.Manager, c controller.Controller, ownerKi
 	)
 }
 
-func reconcileReqForSoftOwner(kind string) handler.TypedMapFunc[*corev1.Secret] {
-	return handler.TypedMapFunc[*corev1.Secret](func(ctx context.Context, object *corev1.Secret) []reconcile.Request {
+func reconcileReqForSoftOwner(kind string) handler.TypedMapFunc[*corev1.Secret, reconcile.Request] {
+	return handler.TypedMapFunc[*corev1.Secret, reconcile.Request](func(ctx context.Context, object *corev1.Secret) []reconcile.Request {
 		softOwner, referenced := reconciler.SoftOwnerRefFromLabels(object.GetLabels())
 		if !referenced {
 			return nil

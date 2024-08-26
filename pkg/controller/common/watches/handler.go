@@ -14,6 +14,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/event"
 	"sigs.k8s.io/controller-runtime/pkg/handler"
+	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
 	ulog "github.com/elastic/cloud-on-k8s/v2/pkg/utils/log"
 )
@@ -28,7 +29,7 @@ type HandlerRegistration[T client.Object] interface {
 	// Key identifies the transformer
 	Key() string
 	// EventHandler handles CRUD events and turns them into reconcile.Request if relevant.
-	EventHandler() handler.TypedEventHandler[T]
+	EventHandler() handler.TypedEventHandler[T, reconcile.Request]
 }
 
 // NewDynamicEnqueueRequest creates a new DynamicEnqueueRequest
@@ -92,10 +93,10 @@ func (d *DynamicEnqueueRequest[T]) Registrations() []string {
 }
 
 // DynamicEnqueueRequest implements TypedEventHandler
-var _ handler.TypedEventHandler[client.Object] = &DynamicEnqueueRequest[client.Object]{}
+var _ handler.TypedEventHandler[client.Object, reconcile.Request] = &DynamicEnqueueRequest[client.Object]{}
 
 // Create is called in response to a create event - e.g. Pod Creation.
-func (d *DynamicEnqueueRequest[T]) Create(ctx context.Context, evt event.TypedCreateEvent[T], q workqueue.RateLimitingInterface) {
+func (d *DynamicEnqueueRequest[T]) Create(ctx context.Context, evt event.TypedCreateEvent[T], q workqueue.TypedRateLimitingInterface[reconcile.Request]) {
 	d.mutex.RLock()
 	defer d.mutex.RUnlock()
 	for _, v := range d.registrations {
@@ -104,7 +105,7 @@ func (d *DynamicEnqueueRequest[T]) Create(ctx context.Context, evt event.TypedCr
 }
 
 // Update is called in response to an update event -  e.g. Pod Updated.
-func (d *DynamicEnqueueRequest[T]) Update(ctx context.Context, evt event.TypedUpdateEvent[T], q workqueue.RateLimitingInterface) {
+func (d *DynamicEnqueueRequest[T]) Update(ctx context.Context, evt event.TypedUpdateEvent[T], q workqueue.TypedRateLimitingInterface[reconcile.Request]) {
 	d.mutex.RLock()
 	defer d.mutex.RUnlock()
 	for _, v := range d.registrations {
@@ -113,7 +114,7 @@ func (d *DynamicEnqueueRequest[T]) Update(ctx context.Context, evt event.TypedUp
 }
 
 // Delete is called in response to a delete event - e.g. Pod Deleted.
-func (d *DynamicEnqueueRequest[T]) Delete(ctx context.Context, evt event.TypedDeleteEvent[T], q workqueue.RateLimitingInterface) {
+func (d *DynamicEnqueueRequest[T]) Delete(ctx context.Context, evt event.TypedDeleteEvent[T], q workqueue.TypedRateLimitingInterface[reconcile.Request]) {
 	d.mutex.RLock()
 	defer d.mutex.RUnlock()
 	for _, v := range d.registrations {
@@ -123,7 +124,7 @@ func (d *DynamicEnqueueRequest[T]) Delete(ctx context.Context, evt event.TypedDe
 
 // Generic is called in response to an event of an unknown type or a synthetic event triggered as a cron or
 // external trigger request - e.g. reconcile Autoscaling, or a Webhook.
-func (d *DynamicEnqueueRequest[T]) Generic(ctx context.Context, evt event.TypedGenericEvent[T], q workqueue.RateLimitingInterface) {
+func (d *DynamicEnqueueRequest[T]) Generic(ctx context.Context, evt event.TypedGenericEvent[T], q workqueue.TypedRateLimitingInterface[reconcile.Request]) {
 	d.mutex.RLock()
 	defer d.mutex.RUnlock()
 	for _, v := range d.registrations {
