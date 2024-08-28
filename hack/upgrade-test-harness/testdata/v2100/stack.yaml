@@ -4,7 +4,7 @@ kind: Elasticsearch
 metadata:
   name: es
 spec:
-  version: 8.11.1
+  version: 8.11.4
   nodeSets:
   - name: default
     count: 3
@@ -23,7 +23,7 @@ kind: Kibana
 metadata:
   name: kb
 spec:
-  version: 8.11.1
+  version: 8.11.4
   count: 1
   elasticsearchRef:
     name: es
@@ -33,7 +33,7 @@ kind: ApmServer
 metadata:
   name: apm
 spec:
-  version: 8.11.1
+  version: 8.11.4
   count: 1
   elasticsearchRef:
     name: es
@@ -43,7 +43,7 @@ kind: EnterpriseSearch
 metadata:
   name: ent
 spec:
-  version: 8.11.1
+  version: 8.11.4
   count: 1
   elasticsearchRef:
     name: es
@@ -56,7 +56,7 @@ metadata:
   name: heartbeat
 spec:
   type: heartbeat
-  version: 8.11.1
+  version: 8.11.4
   elasticsearchRef:
     name: es
   config:
@@ -73,27 +73,3 @@ spec:
       spec:
         securityContext:
           runAsUser: 0
----
-apiVersion: logstash.k8s.elastic.co/v1alpha1
-kind: Logstash
-metadata:
-  name: ls
-spec:
-  count: 1
-  version: 8.11.1
-  elasticsearchRefs:
-    - clusterName: production
-      name: es
-  pipelines:
-    - pipeline.id: main
-      config.string: |
-        input { exec { command => 'uptime' interval => 10 } } 
-        output { 
-          elasticsearch {
-            hosts => [ "${PRODUCTION_ES_HOSTS}" ]
-            ssl => true
-            cacert => "${PRODUCTION_ES_SSL_CERTIFICATE_AUTHORITY}"
-            user => "${PRODUCTION_ES_USER}"
-            password => "${PRODUCTION_ES_PASSWORD}"
-          } 
-        }

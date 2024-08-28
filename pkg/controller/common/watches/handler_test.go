@@ -28,14 +28,14 @@ import (
 
 type fakeHandler[T client.Object] struct {
 	name    string
-	handler handler.TypedEventHandler[T]
+	handler handler.TypedEventHandler[T, reconcile.Request]
 }
 
 func (t fakeHandler[T]) Key() string {
 	return t.name
 }
 
-func (t fakeHandler[T]) EventHandler() handler.TypedEventHandler[T] {
+func (t fakeHandler[T]) EventHandler() handler.TypedEventHandler[T, reconcile.Request] {
 	return t.handler
 }
 
@@ -140,8 +140,7 @@ func TestDynamicEnqueueRequest_EventHandler(t *testing.T) {
 	}
 
 	d := NewDynamicEnqueueRequest[*corev1.Secret]()
-	// require.NoError(t, d.InjectMapper(getRESTMapper()))
-	q := workqueue.NewRateLimitingQueue(workqueue.DefaultControllerRateLimiter())
+	q := workqueue.NewTypedRateLimitingQueue(workqueue.DefaultTypedControllerRateLimiter[reconcile.Request]())
 
 	assertEmptyQueue := func() {
 		require.Equal(t, 0, q.Len())
@@ -150,9 +149,7 @@ func TestDynamicEnqueueRequest_EventHandler(t *testing.T) {
 		item, shutdown := q.Get()
 		defer q.Done(item)
 		require.False(t, shutdown)
-		req, ok := item.(reconcile.Request)
-		require.True(t, ok)
-		return req
+		return item
 	}
 	assertReconcileReq := func(nsn types.NamespacedName) {
 		require.Equal(t, getReconcileReqFromQueue().NamespacedName, nsn)
@@ -343,7 +340,7 @@ func TestDynamicEnqueueRequest_OwnerWatch(t *testing.T) {
 	updated2.Labels = map[string]string{"updated": "2"}
 
 	d := NewDynamicEnqueueRequest[*corev1.Secret]()
-	q := workqueue.NewRateLimitingQueue(workqueue.DefaultControllerRateLimiter())
+	q := workqueue.NewTypedRateLimitingQueue(workqueue.DefaultTypedControllerRateLimiter[reconcile.Request]())
 
 	assertEmptyQueue := func() {
 		require.Equal(t, 0, q.Len())
@@ -352,9 +349,7 @@ func TestDynamicEnqueueRequest_OwnerWatch(t *testing.T) {
 		item, shutdown := q.Get()
 		defer q.Done(item)
 		require.False(t, shutdown)
-		req, ok := item.(reconcile.Request)
-		require.True(t, ok)
-		return req
+		return item
 	}
 	assertReconcileReq := func(nsn types.NamespacedName) {
 		require.Equal(t, getReconcileReqFromQueue().NamespacedName, nsn)

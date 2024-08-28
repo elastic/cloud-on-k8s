@@ -4,7 +4,7 @@ kind: Elasticsearch
 metadata:
   name: es
 spec:
-  version: 8.12.0-SNAPSHOT
+  version: 8.16.0-SNAPSHOT
   nodeSets:
   - name: default
     count: 3
@@ -23,7 +23,7 @@ kind: Kibana
 metadata:
   name: kb
 spec:
-  version: 8.12.0-SNAPSHOT
+  version: 8.16.0-SNAPSHOT
   count: 1
   elasticsearchRef:
     name: es
@@ -33,7 +33,7 @@ kind: ApmServer
 metadata:
   name: apm
 spec:
-  version: 8.12.0-SNAPSHOT
+  version: 8.16.0-SNAPSHOT
   count: 1
   elasticsearchRef:
     name: es
@@ -43,7 +43,7 @@ kind: EnterpriseSearch
 metadata:
   name: ent
 spec:
-  version: 8.12.0-SNAPSHOT
+  version: 8.16.0-SNAPSHOT
   count: 1
   elasticsearchRef:
     name: es
@@ -56,7 +56,7 @@ metadata:
   name: heartbeat
 spec:
   type: heartbeat
-  version: 8.12.0-SNAPSHOT
+  version: 8.16.0-SNAPSHOT
   elasticsearchRef:
     name: es
   config:
@@ -80,7 +80,7 @@ metadata:
   name: ls
 spec:
   count: 1
-  version: 8.12.0-SNAPSHOT
+  version: 8.16.0-SNAPSHOT
   elasticsearchRefs:
     - clusterName: production
       name: es

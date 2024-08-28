@@ -170,22 +170,3 @@ plans:
     nodeCount: 3
     nodeImage: kindest/node:v1.30.0@sha256:047357ac0cfea04663786a612ba1eaba9702bef25227a794b52890dd8bcd692e
     ipFamily: ipv4
-- id: tanzu-ci
-  operation: create
-  clusterName: tkg-ci
-  provider: tanzu
-  machineType: Standard_D8s_v3
-  diskSetup: kubectl apply -k hack/deployer/config/local-disks
-  tanzu:
-    location: eastus
-    nodeCount: 3
-    installerImage: cloudonk8s.azurecr.io/tanzu-ci:1.5.4
-- id: tanzu-dev
-  operation: create
-  clusterName: tkg-dev
-  provider: tanzu
-  machineType: Standard_D8s_v3
-  tanzu:
-    location: westeurope
-    nodeCount: 3
-    installerImage: cloudonk8s.azurecr.io/tanzu-ci:1.5.4

@@ -117,7 +117,7 @@ func (h *Kubectl) GetPods(namespace string, labelSelector string) ([]corev1.Pod,
 
 // LoadResources loads manifests from the given file path.
 func (h *Kubectl) LoadResources(filePath string) (*resource.Result, error) {
-	validator, err := h.factory.Validator(true)
+	validator, err := h.factory.Validator(metav1.FieldValidationStrict)
 	if err != nil {
 		return nil, fmt.Errorf("failed to obtain validator: %w", err)
 	}
@@ -230,6 +230,10 @@ func (h *Kubectl) ReplaceOrCreate(resources resource.Visitor) error {
 			return err
 		}
 
+		// Create a copy of the object read from the manifest. This is required because info.Get() has the side effect
+		// of replacing the content of info.Object with what is *already* deployed, leading to a no-op operation if the
+		// object must be replaced later using the Replace() function.
+		object := info.Object.DeepCopyObject()
 		// if the object does not exist, create it.
 		if err := info.Get(); err != nil {
 			if !errors.IsNotFound(err) {
@@ -244,11 +248,13 @@ func (h *Kubectl) ReplaceOrCreate(resources resource.Visitor) error {
 		}
 		obj, err := resource.NewHelper(info.Client, info.Mapping).
 			WithFieldManager("kubectl-replace").
-			Replace(info.Namespace, info.Name, true, info.Object)
+			Replace(info.Namespace, info.Name, true, object)
 		if err != nil {
 			return cmdutil.AddSourceToErr("replacing", info.Source, err)
 		}
-		info.Refresh(obj, true)
+		if err := info.Refresh(obj, true); err != nil {
+			return err
+		}
 		return nil
 	})
 }

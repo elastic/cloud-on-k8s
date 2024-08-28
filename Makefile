@@ -350,9 +350,6 @@ switch-eks:
 switch-kind:
 	@ echo "kind" > hack/deployer/config/provider
 
-switch-tanzu:
-	@ echo "tanzu" > hack/deployer/config/provider
-
 #################################
 ##  --    Docker images    --  ##
 #################################
@@ -421,7 +418,7 @@ drivah-build-e2e:
 
 # -- run
 
-E2E_STACK_VERSION          ?= 8.14.0
+E2E_STACK_VERSION          ?= 8.15.0
 # regexp to filter tests to run
 export TESTS_MATCH         ?= "^Test"
 export E2E_JSON            ?= false
