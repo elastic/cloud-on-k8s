@@ -29,13 +29,13 @@ type NamedWatch[T client.Object] struct {
 
 var _ handler.EventHandler = &NamedWatch[client.Object]{}
 
-func (w NamedWatch[T]) Create(_ context.Context, evt event.TypedCreateEvent[T], q workqueue.RateLimitingInterface) {
+func (w NamedWatch[T]) Create(_ context.Context, evt event.TypedCreateEvent[T], q workqueue.TypedRateLimitingInterface[reconcile.Request]) {
 	for _, req := range w.toReconcileRequest(evt.Object) {
 		q.Add(req)
 	}
 }
 
-func (w NamedWatch[T]) Update(_ context.Context, evt event.TypedUpdateEvent[T], q workqueue.RateLimitingInterface) {
+func (w NamedWatch[T]) Update(_ context.Context, evt event.TypedUpdateEvent[T], q workqueue.TypedRateLimitingInterface[reconcile.Request]) {
 	for _, req := range w.toReconcileRequest(evt.ObjectOld) {
 		q.Add(req)
 	}
@@ -44,19 +44,19 @@ func (w NamedWatch[T]) Update(_ context.Context, evt event.TypedUpdateEvent[T], 
 	}
 }
 
-func (w NamedWatch[T]) Delete(_ context.Context, evt event.TypedDeleteEvent[T], q workqueue.RateLimitingInterface) {
+func (w NamedWatch[T]) Delete(_ context.Context, evt event.TypedDeleteEvent[T], q workqueue.TypedRateLimitingInterface[reconcile.Request]) {
 	for _, req := range w.toReconcileRequest(evt.Object) {
 		q.Add(req)
 	}
 }
 
-func (w NamedWatch[T]) Generic(_ context.Context, evt event.TypedGenericEvent[T], q workqueue.RateLimitingInterface) {
+func (w NamedWatch[T]) Generic(_ context.Context, evt event.TypedGenericEvent[T], q workqueue.TypedRateLimitingInterface[reconcile.Request]) {
 	for _, req := range w.toReconcileRequest(evt.Object) {
 		q.Add(req)
 	}
 }
 
-func (w NamedWatch[T]) EventHandler() handler.TypedEventHandler[T] {
+func (w NamedWatch[T]) EventHandler() handler.TypedEventHandler[T, reconcile.Request] {
 	return w
 }
 

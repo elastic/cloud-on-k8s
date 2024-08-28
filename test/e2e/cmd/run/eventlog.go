@@ -32,7 +32,7 @@ type eventLogEntry struct {
 
 type eventLogger struct {
 	eventInformer         cache.SharedIndexInformer
-	eventQueue            workqueue.RateLimitingInterface
+	eventQueue            workqueue.TypedRateLimitingInterface[string]
 	interestingNamespaces map[string]struct{}
 	logFilePath           string
 }
@@ -41,7 +41,7 @@ func newEventLogger(client *kubernetes.Clientset, testCtx test.Context, logFileP
 	eventWatch := cache.NewListWatchFromClient(client.CoreV1().RESTClient(), "events", metav1.NamespaceAll, fields.Everything())
 	el := &eventLogger{
 		eventInformer:         cache.NewSharedIndexInformer(eventWatch, &corev1.Event{}, kubePollInterval, cache.Indexers{}),
-		eventQueue:            workqueue.NewNamedRateLimitingQueue(workqueue.DefaultControllerRateLimiter(), "eck_e2e_events"),
+		eventQueue:            workqueue.NewTypedRateLimitingQueueWithConfig[string](workqueue.DefaultTypedControllerRateLimiter[string](), workqueue.TypedRateLimitingQueueConfig[string]{Name: "eck_e2e_events"}),
 		interestingNamespaces: make(map[string]struct{}),
 		logFilePath:           logFilePath,
 	}
@@ -106,7 +106,7 @@ func (el *eventLogger) runEventProcessor() {
 			return
 		}
 
-		evtObj, exists, err := el.eventInformer.GetIndexer().GetByKey(key.(string)) //nolint:forcetypeassert
+		evtObj, exists, err := el.eventInformer.GetIndexer().GetByKey(key)
 		if err != nil {
 			log.Error(err, "Failed to get event", "key", key)
 			return
