@@ -83,6 +83,15 @@ func addWatches(mgr manager.Manager, c controller.Controller, r *ReconcileAgent)
 		return err
 	}
 
+	// Watch StatefulSets
+	if err := c.Watch(
+		source.Kind(mgr.GetCache(), &appsv1.StatefulSet{},
+			handler.TypedEnqueueRequestForOwner[*appsv1.StatefulSet](mgr.GetScheme(), mgr.GetRESTMapper(),
+				&agentv1alpha1.Agent{}, handler.OnlyControllerOwner()),
+		)); err != nil {
+		return err
+	}
+
 	// Watch Pods, to ensure `status.version` is correctly reconciled on any change.
 	// Watching Deployments or DaemonSets only may lead to missing some events.
 	if err := watches.WatchPods(mgr, c, NameLabelName); err != nil {
