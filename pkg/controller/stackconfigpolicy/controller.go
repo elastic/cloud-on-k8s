@@ -105,7 +105,7 @@ func addWatches(mgr manager.Manager, c controller.Controller, r *ReconcileStackC
 	return c.Watch(source.Kind(mgr.GetCache(), &corev1.Secret{}, r.dynamicWatches.Secrets))
 }
 
-func reconcileRequestForSoftOwnerPolicy() handler.TypedEventHandler[*corev1.Secret] {
+func reconcileRequestForSoftOwnerPolicy() handler.TypedEventHandler[*corev1.Secret, reconcile.Request] {
 	return handler.TypedEnqueueRequestsFromMapFunc[*corev1.Secret](func(ctx context.Context, secret *corev1.Secret) []reconcile.Request {
 		softOwner, referenced := reconciler.SoftOwnerRefFromLabels(secret.GetLabels())
 		if !referenced || softOwner.Kind != policyv1alpha1.Kind {
@@ -118,7 +118,7 @@ func reconcileRequestForSoftOwnerPolicy() handler.TypedEventHandler[*corev1.Secr
 }
 
 // requestsAllStackConfigPolicies returns the requests to reconcile all StackConfigPolicy resources.
-func reconcileRequestForAllPolicies(clnt k8s.Client) handler.TypedEventHandler[client.Object] {
+func reconcileRequestForAllPolicies(clnt k8s.Client) handler.TypedEventHandler[client.Object, reconcile.Request] {
 	return handler.TypedEnqueueRequestsFromMapFunc[client.Object](func(ctx context.Context, es client.Object) []reconcile.Request {
 		var stackConfigList policyv1alpha1.StackConfigPolicyList
 		err := clnt.List(context.Background(), &stackConfigList)

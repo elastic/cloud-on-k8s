@@ -9,6 +9,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/handler"
+	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 )
 
 type OwnerWatch[T client.Object] struct {
@@ -22,7 +23,7 @@ func (o *OwnerWatch[T]) Key() string {
 	return o.OwnerType.GetObjectKind().GroupVersionKind().Kind + "-owner"
 }
 
-func (o *OwnerWatch[T]) EventHandler() handler.TypedEventHandler[T] {
+func (o *OwnerWatch[T]) EventHandler() handler.TypedEventHandler[T, reconcile.Request] {
 	opts := []handler.OwnerOption{}
 	if o.IsController {
 		opts = []handler.OwnerOption{handler.OnlyControllerOwner()}
