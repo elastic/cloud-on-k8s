@@ -19,7 +19,8 @@ eck-elasticsearch:
     hosts:
     - host: "kibana.company.dev"
       path: "/"
-    tls: true
+    tls:
+      enabled: true
 
   http:
     service:
@@ -78,4 +79,5 @@ eck-kibana:
     hosts:
     - host: "kibana.company.dev"
       path: "/"
-    tls: true
+    tls:
+      enabled: true
