@@ -8,6 +8,8 @@ endif::[]
 [id="{p}-{page_id}"]
 = Create automated snapshots
 
+NOTE: Snapshots are important to ensure that your Elasticsearch indices can be recovered in the event of an accidental deletion, or to migrate data across deployments.
+
 To set up automated snapshots for Elasticsearch on Kubernetes you have to:
 
 . Register the snapshot repository with the Elasticsearch API.
