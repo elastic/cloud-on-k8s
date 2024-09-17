@@ -16,7 +16,6 @@ metricbeat.modules:
       {{- if isVersionGTE "8.7.0" }}
       - ingest_pipeline
       {{- end }}
-      - pending_tasks
 
     period: 10s
     xpack.enabled: true
