@@ -29,12 +29,12 @@ spec:
                       - index
                       - index_recovery
                       - index_summary
+                      - ingest_pipeline
                       - ml_job
                       - node
                       - node_stats
-                      - shard
-                      - ingest_pipeline
                       - pending_tasks
+                      - shard
                     period: 10s
                     hosts: "https://${data.host}:${data.ports.https}"
                     username: ${MONITORED_ES_USERNAME}
