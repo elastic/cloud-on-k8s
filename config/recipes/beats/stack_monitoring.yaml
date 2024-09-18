@@ -29,8 +29,11 @@ spec:
                       - index
                       - index_recovery
                       - index_summary
+                      - ingest_pipeline
                       - ml_job
+                      - node
                       - node_stats
+                      - pending_tasks
                       - shard
                     period: 10s
                     hosts: "https://${data.host}:${data.ports.https}"

@@ -8,6 +8,7 @@ import (
 	"context"
 	"testing"
 
+	"github.com/blang/semver/v4"
 	"github.com/stretchr/testify/assert"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -131,6 +132,7 @@ func TestBuildMetricbeatBaseConfig(t *testing.T) {
 		certsSecret *corev1.Secret
 		hasCA       bool
 		baseConfig  string
+		version     semver.Version
 	}{
 		{
 			name:  "with TLS and a CA",
@@ -148,7 +150,9 @@ func TestBuildMetricbeatBaseConfig(t *testing.T) {
 				password: 1234567890
 				ssl.enabled: true
 				ssl.verification_mode: "certificate"
+				ingest_pipeline: "enabled"
 				ssl.certificate_authorities: ["/mnt/elastic-internal/xx-monitoring/namespace/name/certs/ca.crt"]`,
+			version: semver.MustParse("8.7.0"),
 		},
 		{
 			name:  "with TLS and no CA",
@@ -164,7 +168,9 @@ func TestBuildMetricbeatBaseConfig(t *testing.T) {
 				username: elastic-internal-monitoring
 				password: 1234567890
 				ssl.enabled: true
-				ssl.verification_mode: "certificate"`,
+				ssl.verification_mode: "certificate"
+				ingest_pipeline: "enabled"`,
+			version: semver.MustParse("8.7.0"),
 		},
 		{
 			name:  "without TLS",
@@ -174,7 +180,20 @@ func TestBuildMetricbeatBaseConfig(t *testing.T) {
 				username: elastic-internal-monitoring
 				password: 1234567890
 				ssl.enabled: false
+				ssl.verification_mode: "certificate"
+				ingest_pipeline: "enabled"`,
+			version: semver.MustParse("8.7.0"),
+		},
+		{
+			name:  "with version less than 8.7.0",
+			isTLS: false,
+			baseConfig: `
+				hosts: ["scheme://localhost:1234"]
+				username: elastic-internal-monitoring
+				password: 1234567890
+				ssl.enabled: false
 				ssl.verification_mode: "certificate"`,
+			version: semver.MustParse("8.6.0"),
 		},
 	}
 	baseConfigTemplate := `
@@ -183,6 +202,9 @@ func TestBuildMetricbeatBaseConfig(t *testing.T) {
 				password: {{ .Password }}
 				ssl.enabled: {{ .IsSSL }}
 				ssl.verification_mode: "certificate"
+				{{- if isVersionGTE "8.7.0" }}
+				ingest_pipeline: "enabled"
+				{{- end }}
 				{{- if .HasCA }}
 				ssl.certificate_authorities: ["{{ .CAPath }}"]
 				{{- end }}`
@@ -210,6 +232,7 @@ func TestBuildMetricbeatBaseConfig(t *testing.T) {
 				"1234567890",
 				tc.isTLS,
 				baseConfigTemplate,
+				tc.version,
 			)
 			assert.NoError(t, err)
 			assert.Equal(t, tc.baseConfig, baseConfig)

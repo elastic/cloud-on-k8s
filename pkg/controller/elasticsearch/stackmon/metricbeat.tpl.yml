@@ -8,10 +8,15 @@ metricbeat.modules:
       - index
       - index_recovery
       - index_summary
+      {{- if isVersionGTE "8.7.0" }}
+      - ingest_pipeline
+      {{- end }}
       - ml_job
+      - node
       - node_stats
       - pending_tasks
       - shard
+
     period: 10s
     xpack.enabled: true
     hosts: ["{{ .URL }}"]
