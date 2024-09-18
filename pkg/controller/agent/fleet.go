@@ -33,6 +33,7 @@ import (
 	ulog "github.com/elastic/cloud-on-k8s/v2/pkg/utils/log"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/net"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/stringsutil"
+	"github.com/elastic/go-ucfg"
 )
 
 const FleetTokenAnnotation = "fleet.eck.k8s.elastic.co/token" //nolint:gosec
@@ -75,12 +76,13 @@ type Policy struct {
 }
 
 type fleetAPI struct {
-	client        *http.Client
-	endpoint      string
-	username      string
-	password      string
-	kibanaVersion string
-	log           logr.Logger
+	client         *http.Client
+	endpoint       string
+	username       string
+	password       string
+	kibanaVersion  string
+	log            logr.Logger
+	kibanaBasePath string
 }
 
 func newFleetAPI(dialer net.Dialer, settings connectionSettings, logger logr.Logger) fleetAPI {
@@ -90,11 +92,12 @@ func newFleetAPI(dialer net.Dialer, settings connectionSettings, logger logr.Log
 			apmhttp.WithClientRequestName(tracing.RequestName),
 			apmhttp.WithClientSpanType("external.kibana"),
 		),
-		kibanaVersion: settings.version,
-		endpoint:      settings.host,
-		username:      settings.credentials.Username,
-		password:      settings.credentials.Password,
-		log:           logger,
+		kibanaVersion:  settings.version,
+		endpoint:       settings.host,
+		username:       settings.credentials.Username,
+		password:       settings.credentials.Password,
+		log:            logger,
+		kibanaBasePath: settings.kibanaBasePath,
 	}
 }
 
@@ -112,7 +115,7 @@ func (f fleetAPI) request(
 		body = bytes.NewBuffer(outData)
 	}
 
-	request, err := http.NewRequestWithContext(ctx, method, stringsutil.Concat(f.endpoint, "/api/fleet/", pathWithQuery), body)
+	request, err := http.NewRequestWithContext(ctx, method, stringsutil.Concat(f.endpoint, f.kibanaBasePath, "/api/fleet/", pathWithQuery), body)
 	if err != nil {
 		return err
 	}
@@ -254,6 +257,15 @@ func maybeReconcileFleetEnrollment(params Params, result *reconciler.Results) En
 		return EnrollmentAPIKey{}
 	}
 
+	kibanaBasePath, err := getKibanaBasePath(params.Context, params.Client, params.Agent.Spec.KibanaRef.WithDefaultNamespace(params.Agent.Namespace).NamespacedName())
+	if err != nil {
+		result.WithError(err)
+		return EnrollmentAPIKey{}
+	}
+
+	// set Kibana base path for Fleet API
+	kbConnectionSettings.kibanaBasePath = kibanaBasePath
+
 	token, err := reconcileEnrollmentToken(
 		params,
 		newFleetAPI(
@@ -263,6 +275,30 @@ func maybeReconcileFleetEnrollment(params Params, result *reconciler.Results) En
 	)
 	result.WithError(err)
 	return token
+}
+
+func getKibanaBasePath(ctx context.Context, client k8s.Client, kibanaNSN types.NamespacedName) (string, error) {
+	var kb v1.Kibana
+	err := client.Get(ctx, kibanaNSN, &kb)
+	if err != nil {
+		return "", err
+	}
+
+	kibanaRawConfig := kb.Spec.Config
+	if kibanaRawConfig != nil {
+		kbucfgConfig, err := ucfg.NewFrom(kibanaRawConfig.Data)
+		if err != nil {
+			return "", err
+		}
+		if kbucfgConfig.HasField("server") {
+			serverConfig, err := kbucfgConfig.Child("server", -1)
+			if err != nil {
+				return "", err
+			}
+			return serverConfig.String("basePath", -1)
+		}
+	}
+	return "", nil
 }
 
 func isKibanaReachable(ctx context.Context, client k8s.Client, kibanaNSN types.NamespacedName) (bool, error) {
