@@ -13,6 +13,7 @@ import (
 	"path/filepath"
 	"text/template"
 
+	"github.com/blang/semver/v4"
 	"github.com/pkg/errors"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -173,6 +174,7 @@ type inputConfigData struct {
 	IsSSL    bool
 	HasCA    bool
 	CAPath   string
+	Version  semver.Version
 }
 
 // buildMetricbeatBaseConfig builds the base configuration for Metricbeat with the Elasticsearch or Kibana modules used
@@ -187,6 +189,7 @@ func buildMetricbeatBaseConfig(
 	password string,
 	isTLS bool,
 	configTemplate string,
+	version semver.Version,
 ) (string, volume.VolumeLike, error) {
 	hasCA := false
 	if isTLS {
@@ -200,9 +203,10 @@ func buildMetricbeatBaseConfig(
 	configData := inputConfigData{
 		Username: username,
 		Password: password,
-		URL:      url,   // Metricbeat in the sidecar connects to the monitored resource using `localhost`
-		IsSSL:    isTLS, // enable SSL configuration based on whether the monitored resource has TLS enabled
-		HasCA:    hasCA, // the CA is optional to support custom certificate issued by a well-known CA, so without provided CA to configure
+		URL:      url,     // Metricbeat in the sidecar connects to the monitored resource using `localhost`
+		IsSSL:    isTLS,   // enable SSL configuration based on whether the monitored resource has TLS enabled
+		HasCA:    hasCA,   // the CA is optional to support custom certificate issued by a well-known CA, so without provided CA to configure
+		Version:  version, // Version of the monitored resource
 	}
 
 	var caVolume volume.VolumeLike
@@ -216,9 +220,18 @@ func buildMetricbeatBaseConfig(
 		configData.CAPath = filepath.Join(caVolume.VolumeMount().MountPath, certificates.CAFileName)
 	}
 
+	templateFuncMap := template.FuncMap{
+		"isVersionGTE": func(minAllowedVersion string) (bool, error) {
+			minAllowedSemver, err := semver.Parse(minAllowedVersion)
+			if err != nil {
+				return false, err
+			}
+			return version.GTE(minAllowedSemver), nil
+		},
+	}
 	// render the config template with the config data
 	var metricbeatConfig bytes.Buffer
-	err := template.Must(template.New("").Parse(configTemplate)).Execute(&metricbeatConfig, configData)
+	err := template.Must(template.New("").Funcs(templateFuncMap).Parse(configTemplate)).Execute(&metricbeatConfig, configData)
 	if err != nil {
 		return "", nil, err
 	}
