@@ -292,20 +292,21 @@ func getKibanaBasePath(ctx context.Context, client k8s.Client, kibanaNSN types.N
 		return "", err
 	}
 
-	if kb.Spec.Config != nil {
-		kbucfgConfig, err := ucfg.NewFrom(kb.Spec.Config.Data)
-		if err != nil {
-			return "", err
-		}
-
-		kbCfg := kibanaConfig{}
-		err = kbucfgConfig.Unpack(&kbCfg)
-		if err != nil {
-			return "", err
-		}
-		return kbCfg.Server.BasePath, nil
+	if kb.Spec.Config == nil {
+		return "", nil
 	}
-	return "", nil
+
+	kbucfgConfig, err := ucfg.NewFrom(kb.Spec.Config.Data)
+	if err != nil {
+		return "", err
+	}
+
+	kbCfg := kibanaConfig{}
+	err = kbucfgConfig.Unpack(&kbCfg)
+	if err != nil {
+		return "", err
+	}
+	return kbCfg.Server.BasePath, nil
 }
 
 func isKibanaReachable(ctx context.Context, client k8s.Client, kibanaNSN types.NamespacedName) (bool, error) {
