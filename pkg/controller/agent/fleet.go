@@ -22,6 +22,8 @@ import (
 	"k8s.io/client-go/tools/record"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
+	"github.com/elastic/go-ucfg"
+
 	agentv1alpha1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/agent/v1alpha1"
 	commonv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/common/v1"
 	v1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/kibana/v1"
@@ -33,7 +35,6 @@ import (
 	ulog "github.com/elastic/cloud-on-k8s/v2/pkg/utils/log"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/net"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/stringsutil"
-	"github.com/elastic/go-ucfg"
 )
 
 const FleetTokenAnnotation = "fleet.eck.k8s.elastic.co/token" //nolint:gosec
@@ -83,6 +84,13 @@ type fleetAPI struct {
 	kibanaVersion  string
 	log            logr.Logger
 	kibanaBasePath string
+}
+
+// kibanaConfig is used to get the base path from the Kibana configuration.
+type kibanaConfig struct {
+	Server struct {
+		BasePath string `config:"basePath"`
+	}
 }
 
 func newFleetAPI(dialer net.Dialer, settings connectionSettings, logger logr.Logger) fleetAPI {
@@ -284,19 +292,18 @@ func getKibanaBasePath(ctx context.Context, client k8s.Client, kibanaNSN types.N
 		return "", err
 	}
 
-	kibanaRawConfig := kb.Spec.Config
-	if kibanaRawConfig != nil {
-		kbucfgConfig, err := ucfg.NewFrom(kibanaRawConfig.Data)
+	if kb.Spec.Config != nil {
+		kbucfgConfig, err := ucfg.NewFrom(kb.Spec.Config.Data)
 		if err != nil {
 			return "", err
 		}
-		if kbucfgConfig.HasField("server") {
-			serverConfig, err := kbucfgConfig.Child("server", -1)
-			if err != nil {
-				return "", err
-			}
-			return serverConfig.String("basePath", -1)
+
+		kbCfg := kibanaConfig{}
+		err = kbucfgConfig.Unpack(&kbCfg)
+		if err != nil {
+			return "", err
 		}
+		return kbCfg.Server.BasePath, nil
 	}
 	return "", nil
 }
