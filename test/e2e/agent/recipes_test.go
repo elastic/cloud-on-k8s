@@ -172,7 +172,7 @@ func TestFleetKubernetesNonRootIntegrationRecipe(t *testing.T) {
 }
 
 func TestFleetCustomLogsIntegrationRecipe(t *testing.T) {
-	v := version.MustParse(test.Ctx().ElasticStackVersion)
+	// v := version.MustParse(test.Ctx().ElasticStackVersion)
 
 	// if v.GT(version.MinFor(8, 8, 0)) {
 	// 	t.Skip("Disabled since 8.8.0, refer to https://github.com/elastic/cloud-on-k8s/issues/5105")
