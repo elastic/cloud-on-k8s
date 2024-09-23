@@ -16,6 +16,7 @@ import (
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/tools/record"
@@ -299,16 +300,23 @@ func Test_getKibanaBasePath(t *testing.T) {
 		{
 			name: "No Kibana basepath",
 			args: args{
-				client: k8s.NewFakeClient(getKibana("")),
+				client: k8s.NewFakeClient(getKibana(""), getKibanaConfigSecret("")),
 			},
 			want: "",
 		},
 		{
 			name: "with Kibana basepath configured",
 			args: args{
-				client: k8s.NewFakeClient(getKibana("/monitoring/kibana")),
+				client: k8s.NewFakeClient(getKibana("/monitoring/kibana"), getKibanaConfigSecret("/monitoring/kibana")),
 			},
 			want: "/monitoring/kibana",
+		},
+		{
+			name: "with Kibana basepath configured in spec not yet applied in secret",
+			args: args{
+				client: k8s.NewFakeClient(getKibana("/monitoring/kibana"), getKibanaConfigSecret("")),
+			},
+			want: "",
 		},
 		{
 			name: "with Kibana config nil",
@@ -316,6 +324,11 @@ func Test_getKibanaBasePath(t *testing.T) {
 				client: k8s.NewFakeClient(&v1.Kibana{
 					ObjectMeta: metav1.ObjectMeta{
 						Name:      "test-kibana",
+						Namespace: "ns",
+					},
+				}, &corev1.Secret{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "test-kibana-kb-config",
 						Namespace: "ns",
 					},
 				}),
@@ -418,4 +431,29 @@ func getKibana(basePath string) client.Object {
 	}
 
 	return kb
+}
+
+func getKibanaConfigSecret(basePath string) client.Object {
+	defaultConfig := []byte(`
+test:
+  testConfig: testValue
+`)
+
+	if basePath != "" {
+		defaultConfig = []byte(fmt.Sprintf(`
+test:
+  testConfig: testValue
+server:
+  basePath: "%s"
+`, basePath))
+	}
+	return &corev1.Secret{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "test-kibana-kb-config",
+			Namespace: "ns",
+		},
+		Data: map[string][]byte{
+			"kibana.yml": defaultConfig,
+		},
+	}
 }

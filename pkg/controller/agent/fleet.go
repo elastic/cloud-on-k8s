@@ -17,12 +17,11 @@ import (
 	"github.com/go-logr/logr"
 	"github.com/pkg/errors"
 	"go.elastic.co/apm/module/apmhttp/v2"
+	"gopkg.in/yaml.v3"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/tools/record"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
-
-	"github.com/elastic/go-ucfg"
 
 	agentv1alpha1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/agent/v1alpha1"
 	commonv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/common/v1"
@@ -31,6 +30,7 @@ import (
 	commonhttp "github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/http"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/reconciler"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/tracing"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/kibana"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/k8s"
 	ulog "github.com/elastic/cloud-on-k8s/v2/pkg/utils/log"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/net"
@@ -89,7 +89,7 @@ type fleetAPI struct {
 // kibanaConfig is used to get the base path from the Kibana configuration.
 type kibanaConfig struct {
 	Server struct {
-		BasePath string `config:"basePath"`
+		BasePath string `yaml:"basePath"`
 	}
 }
 
@@ -296,16 +296,20 @@ func getKibanaBasePath(ctx context.Context, client k8s.Client, kibanaNSN types.N
 		return "", nil
 	}
 
-	kbucfgConfig, err := ucfg.NewFrom(kb.Spec.Config.Data)
+	// Get Kibana Config secret
+	kbSecretName := kibana.SecretName(kb)
+	var kbConfigsecret corev1.Secret
+	err = client.Get(ctx, types.NamespacedName{Namespace: kb.Namespace, Name: kbSecretName}, &kbConfigsecret)
 	if err != nil {
 		return "", err
 	}
 
 	kbCfg := kibanaConfig{}
-	err = kbucfgConfig.Unpack(&kbCfg)
+	err = yaml.Unmarshal(kbConfigsecret.Data[kibana.SettingsFilename], &kbCfg)
 	if err != nil {
 		return "", err
 	}
+
 	return kbCfg.Server.BasePath, nil
 }
 
