@@ -296,7 +296,7 @@ func getKibanaBasePath(ctx context.Context, client k8s.Client, kibanaNSN types.N
 		return "", nil
 	}
 
-	// Get Kibana Config secret
+	// Get Kibana config secret to extract the basepath. We are not using the Kibana CRD here for the basepath to optimize for the case where the desired and current state may differ, so we're choosing the current state to minimize any transient errors.
 	kbSecretName := kibana.SecretName(kb)
 	var kbConfigsecret corev1.Secret
 	err = client.Get(ctx, types.NamespacedName{Namespace: kb.Namespace, Name: kbSecretName}, &kbConfigsecret)
