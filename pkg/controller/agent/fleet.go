@@ -287,9 +287,8 @@ func maybeReconcileFleetEnrollment(params Params, result *reconciler.Results) En
 
 func getKibanaBasePath(ctx context.Context, client k8s.Client, kibanaNSN types.NamespacedName) (string, error) {
 	var kb v1.Kibana
-	err := client.Get(ctx, kibanaNSN, &kb)
-	if err != nil {
-		return "", err
+	if err := client.Get(ctx, kibanaNSN, &kb); err != nil {
+		return "", fmt.Errorf("failed to get Kibana base path, error getting Kiana CR: %w", err)
 	}
 
 	if kb.Spec.Config == nil {
@@ -299,15 +298,13 @@ func getKibanaBasePath(ctx context.Context, client k8s.Client, kibanaNSN types.N
 	// Get Kibana config secret to extract the basepath. We are not using the Kibana CRD here for the basepath to optimize for the case where the desired and current state may differ, so we're choosing the current state to minimize any transient errors.
 	kbSecretName := kibana.SecretName(kb)
 	var kbConfigsecret corev1.Secret
-	err = client.Get(ctx, types.NamespacedName{Namespace: kb.Namespace, Name: kbSecretName}, &kbConfigsecret)
-	if err != nil {
-		return "", err
+	if err := client.Get(ctx, types.NamespacedName{Namespace: kb.Namespace, Name: kbSecretName}, &kbConfigsecret); err != nil {
+		return "", fmt.Errorf("failed to get Kibana base path, error getting Kibana config secret: %w", err)
 	}
 
 	kbCfg := kibanaConfig{}
-	err = yaml.Unmarshal(kbConfigsecret.Data[kibana.SettingsFilename], &kbCfg)
-	if err != nil {
-		return "", err
+	if err := yaml.Unmarshal(kbConfigsecret.Data[kibana.SettingsFilename], &kbCfg); err != nil {
+		return "", fmt.Errorf("failed to get Kibana base path, unable to unmarshal Kibana config: %w", err)
 	}
 
 	return kbCfg.Server.BasePath, nil
