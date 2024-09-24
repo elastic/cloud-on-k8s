@@ -3980,11 +3980,11 @@ limitations under the License.
 
 --------------------------------------------------------------------------------
 Module  : k8s.io/api
-Version : v0.31.0
-Time    : 2024-08-13T14:12:38Z
+Version : v0.31.1
+Time    : 2024-09-12T03:41:20Z
 Licence : Apache-2.0
 
-Contents of probable licence file $GOMODCACHE/k8s.io/api@v0.31.0/LICENSE:
+Contents of probable licence file $GOMODCACHE/k8s.io/api@v0.31.1/LICENSE:
 
 
                                  Apache License
@@ -4192,11 +4192,11 @@ Contents of probable licence file $GOMODCACHE/k8s.io/api@v0.31.0/LICENSE:
 
 --------------------------------------------------------------------------------
 Module  : k8s.io/apimachinery
-Version : v0.31.0
+Version : v0.31.1
 Time    : 2024-07-19T19:04:41Z
 Licence : Apache-2.0
 
-Contents of probable licence file $GOMODCACHE/k8s.io/apimachinery@v0.31.0/LICENSE:
+Contents of probable licence file $GOMODCACHE/k8s.io/apimachinery@v0.31.1/LICENSE:
 
 
                                  Apache License
@@ -4404,11 +4404,11 @@ Contents of probable licence file $GOMODCACHE/k8s.io/apimachinery@v0.31.0/LICENS
 
 --------------------------------------------------------------------------------
 Module  : k8s.io/client-go
-Version : v0.31.0
-Time    : 2024-08-13T14:19:25Z
+Version : v0.31.1
+Time    : 2024-09-12T03:58:37Z
 Licence : Apache-2.0
 
-Contents of probable licence file $GOMODCACHE/k8s.io/client-go@v0.31.0/LICENSE:
+Contents of probable licence file $GOMODCACHE/k8s.io/client-go@v0.31.1/LICENSE:
 
 
                                  Apache License
@@ -5240,11 +5240,11 @@ Contents of probable licence file $GOMODCACHE/sigs.k8s.io/controller-runtime@v0.
 
 --------------------------------------------------------------------------------
 Module  : sigs.k8s.io/controller-tools
-Version : v0.16.1
-Time    : 2024-08-14T17:35:17Z
+Version : v0.16.3
+Time    : 2024-09-12T08:45:12Z
 Licence : Apache-2.0
 
-Contents of probable licence file $GOMODCACHE/sigs.k8s.io/controller-tools@v0.16.1/LICENSE:
+Contents of probable licence file $GOMODCACHE/sigs.k8s.io/controller-tools@v0.16.3/LICENSE:
 
                                  Apache License
                            Version 2.0, January 2004
@@ -15728,11 +15728,11 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 --------------------------------------------------------------------------------
 Module  : github.com/onsi/gomega
-Version : v1.34.1
-Time    : 2024-07-29T18:29:33Z
+Version : v1.34.2
+Time    : 2024-08-28T15:18:15Z
 Licence : MIT
 
-Contents of probable licence file $GOMODCACHE/github.com/onsi/gomega@v1.34.1/LICENSE:
+Contents of probable licence file $GOMODCACHE/github.com/onsi/gomega@v1.34.2/LICENSE:
 
 Copyright (c) 2013-2014 Onsi Fakhouri
 
