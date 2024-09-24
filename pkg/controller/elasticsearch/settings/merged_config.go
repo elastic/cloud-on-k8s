@@ -34,15 +34,16 @@ func NewMergedESConfig(
 	httpConfig commonv1.HTTPConfig,
 	userConfig commonv1.Config,
 	esConfigFromStackConfigPolicy *common.CanonicalConfig,
+	remoteClusterServerEnabled, remoteClusterClientEnabled bool,
 ) (CanonicalConfig, error) {
 	userCfg, err := common.NewCanonicalConfigFrom(userConfig.Data)
 	if err != nil {
 		return CanonicalConfig{}, err
 	}
 
-	config := baseConfig(clusterName, ver, ipFamily).CanonicalConfig
+	config := baseConfig(clusterName, ver, ipFamily, remoteClusterServerEnabled).CanonicalConfig
 	err = config.MergeWith(
-		xpackConfig(ver, httpConfig).CanonicalConfig,
+		xpackConfig(ver, httpConfig, remoteClusterServerEnabled, remoteClusterClientEnabled).CanonicalConfig,
 		userCfg,
 		esConfigFromStackConfigPolicy,
 	)
@@ -53,7 +54,7 @@ func NewMergedESConfig(
 }
 
 // baseConfig returns the base ES configuration to apply for the given cluster
-func baseConfig(clusterName string, ver version.Version, ipFamily corev1.IPFamily) *CanonicalConfig {
+func baseConfig(clusterName string, ver version.Version, ipFamily corev1.IPFamily, remoteClusterServerEnabled bool) *CanonicalConfig {
 	cfg := map[string]interface{}{
 		// derive node name dynamically from the pod name, injected as env var
 		esv1.NodeName:    "${" + EnvPodName + "}",
@@ -70,6 +71,10 @@ func baseConfig(clusterName string, ver version.Version, ipFamily corev1.IPFamil
 
 		esv1.PathData: volume.ElasticsearchDataMountPath,
 		esv1.PathLogs: volume.ElasticsearchLogsMountPath,
+	}
+
+	if remoteClusterServerEnabled {
+		cfg[esv1.RemoteClusterEnabled] = "true"
 	}
 
 	// seed hosts setting name changed starting ES 7.X
@@ -91,7 +96,7 @@ func baseConfig(clusterName string, ver version.Version, ipFamily corev1.IPFamil
 }
 
 // xpackConfig returns the configuration bit related to XPack settings
-func xpackConfig(ver version.Version, httpCfg commonv1.HTTPConfig) *CanonicalConfig {
+func xpackConfig(ver version.Version, httpCfg commonv1.HTTPConfig, remoteClusterServerEnabled, remoteClusterClientEnabled bool) *CanonicalConfig {
 	// enable x-pack security, including TLS
 	cfg := map[string]interface{}{
 		// x-pack security general settings
@@ -119,6 +124,26 @@ func xpackConfig(ver version.Version, httpCfg commonv1.HTTPConfig) *CanonicalCon
 			path.Join(volume.RemoteCertificateAuthoritiesSecretVolumeMountPath, certificates.CAFileName),
 		},
 		esv1.XPackSecurityHttpSslCertificateAuthorities: path.Join(volume.HTTPCertificatesSecretVolumeMountPath, certificates.CAFileName),
+	}
+
+	if remoteClusterServerEnabled {
+		cfg[esv1.XPackSecurityRemoteClusterServerSslKey] = path.Join(
+			volume.TransportCertificatesSecretVolumeMountPath,
+			"${POD_NAME}."+certificates.KeyFileName,
+		)
+		cfg[esv1.XPackSecurityRemoteClusterServerSslCertificate] = path.Join(
+			volume.TransportCertificatesSecretVolumeMountPath,
+			"${POD_NAME}."+certificates.CertFileName,
+		)
+		cfg[esv1.XPackSecurityRemoteClusterServerSslCertificateAuthorities] = []string{
+			path.Join(volume.TransportCertificatesSecretVolumeMountPath, certificates.CAFileName),
+			path.Join(volume.RemoteCertificateAuthoritiesSecretVolumeMountPath, certificates.CAFileName),
+		}
+	}
+
+	if remoteClusterClientEnabled {
+		cfg[esv1.XPackSecurityRemoteClusterClientSslKey] = true
+		cfg[esv1.XPackSecurityRemoteClusterClientSslCertificateAuthorities] = path.Join(volume.RemoteCertificateAuthoritiesSecretVolumeMountPath, certificates.CAFileName)
 	}
 
 	// always enable the built-in file and native internal realms for user auth, ordered as first

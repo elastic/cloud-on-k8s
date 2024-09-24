@@ -104,6 +104,15 @@ func buildGeneralNames(
 		{IPAddress: netutil.IPToRFCForm(netutil.LoopbackFor(netutil.ToIPFamily(podIP.String())))},
 	}
 
+	if cluster.Spec.RemoteClusterServer.Enabled {
+		// Remote cluster server is enabled. Ensure that the remote cluster service name is included in the transport certificates
+		// since these are the ones also used in the context of remote clusters access using API keys.
+		generalNames = append(
+			generalNames,
+			certificates.GeneralName{DNSName: fmt.Sprintf("%s.%s.svc", esv1.RemoteClusterService(cluster.Name), cluster.Namespace)},
+		)
+	}
+
 	for _, san := range cluster.Spec.Transport.TLS.SubjectAlternativeNames {
 		if san.DNS != "" {
 			generalNames = append(generalNames, certificates.GeneralName{DNSName: san.DNS})

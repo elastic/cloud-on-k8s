@@ -2,7 +2,7 @@
 // or more contributor license agreements. Licensed under the Elastic License 2.0;
 // you may not use this file except in compliance with the Elastic License 2.0.
 
-package remoteca
+package remotecluster
 
 import (
 	"context"
@@ -29,7 +29,7 @@ import (
 // * Copy the CA of the remote cluster to the local one.
 func createOrUpdateCertificateAuthorities(
 	ctx context.Context,
-	r *ReconcileRemoteCa,
+	r *ReconcileRemoteClusters,
 	local, remote *esv1.Elasticsearch,
 ) *reconciler.Results {
 	span, _ := apm.StartSpan(ctx, "create_or_update_remote_ca", tracing.SpanTypeApp)
@@ -79,7 +79,7 @@ func createOrUpdateCertificateAuthorities(
 // copyCertificateAuthority creates a copy of the CA from a source cluster to a target cluster
 func copyCertificateAuthority(
 	ctx context.Context,
-	r *ReconcileRemoteCa,
+	r *ReconcileRemoteClusters,
 	source, target *esv1.Elasticsearch,
 ) error {
 	sourceKey := k8s.ExtractNamespacedName(source)
@@ -110,7 +110,7 @@ func copyCertificateAuthority(
 // remote cluster must be deleted from the local one.
 func deleteCertificateAuthorities(
 	ctx context.Context,
-	r *ReconcileRemoteCa,
+	r *ReconcileRemoteClusters,
 	local, remote types.NamespacedName,
 ) error {
 	span, ctx := apm.StartSpan(ctx, "delete_certificate_authorities", tracing.SpanTypeApp)

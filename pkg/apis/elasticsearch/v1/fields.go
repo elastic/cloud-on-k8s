@@ -26,6 +26,8 @@ const (
 	NetworkPublishHost = "network.publish_host"
 	HTTPPublishHost    = "http.publish_host"
 
+	RemoteClusterEnabled = "remote_cluster_server.enabled"
+
 	NodeName = "node.name"
 
 	PathData = "path.data"
@@ -53,6 +55,13 @@ const (
 	XPackSecurityTransportSslEnabled                = "xpack.security.transport.ssl.enabled"
 	XPackSecurityTransportSslKey                    = "xpack.security.transport.ssl.key"
 	XPackSecurityTransportSslVerificationMode       = "xpack.security.transport.ssl.verification_mode"
+
+	XPackSecurityRemoteClusterServerSslKey                    = "xpack.security.remote_cluster_server.ssl.key"
+	XPackSecurityRemoteClusterServerSslCertificate            = "xpack.security.remote_cluster_server.ssl.certificate"
+	XPackSecurityRemoteClusterServerSslCertificateAuthorities = "xpack.security.remote_cluster_server.ssl.certificate_authorities"
+
+	XPackSecurityRemoteClusterClientSslKey                    = "xpack.security.remote_cluster_client.ssl.enabled"
+	XPackSecurityRemoteClusterClientSslCertificateAuthorities = "xpack.security.remote_cluster_client.ssl.certificate_authorities"
 
 	XPackLicenseUploadTypes = "xpack.license.upload.types" // supported >= 7.6.0 used as of 7.8.1
 )
