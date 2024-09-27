@@ -8,6 +8,8 @@ endif::[]
 [id="{p}-{page_id}"]
 = OIDC using Elastic stack configuration policy
 
+CAUTION: {role_mappings_warning}
+
 NOTE: This requires a valid Enterprise license or Enterprise trial license. Check <<{p}-licensing,the license documentation>> for more details about managing licenses.
 
 TIP: Make sure you check the complete link:https://www.elastic.co/guide/en/elasticsearch/reference/current/oidc-guide.html[guide to setting up OpenID Connect with Elasticsearch].
