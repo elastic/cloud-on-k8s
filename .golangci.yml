@@ -78,7 +78,7 @@ linters:
     - cyclop
     - depguard
     - dupl
-    - exhaustivestruct
+    - err113
     - forbidigo
     - funlen
     - gci
@@ -88,18 +88,13 @@ linters:
     - gocyclo
     - godot
     - godox
-    - goerr113
     - gofmt
     - gofumpt
-    - golint
     - gomnd
     - gomodguard
-    - interfacer
-    - maligned
     - nlreturn
     - paralleltest
     - rowserrcheck
-    - scopelint
     - sqlclosecheck
     - stylecheck
     - testpackage
@@ -114,7 +109,6 @@ linters:
     - errcheck
     - errorlint
     - exhaustive
-    - exportloopref
     - forcetypeassert
     - gocritic
     - goheader
