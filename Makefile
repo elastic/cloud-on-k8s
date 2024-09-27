@@ -3,7 +3,7 @@
 # you may not use this file except in compliance with the Elastic License 2.0.
 
 #################################
-##  --      Variables      --  ##
+##  --      Variables!     --  ##
 #################################
 
 # Read env files, ignores if they doesn't exist
