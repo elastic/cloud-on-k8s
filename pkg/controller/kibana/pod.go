@@ -6,6 +6,7 @@ package kibana
 
 import (
 	"context"
+	"fmt"
 
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
@@ -23,6 +24,7 @@ import (
 	kblabel "github.com/elastic/cloud-on-k8s/v2/pkg/controller/kibana/label"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/kibana/network"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/kibana/stackmon"
+	"github.com/elastic/go-ucfg"
 )
 
 const (
@@ -52,8 +54,15 @@ var (
 	}
 )
 
+// kibanaConfig is used to get the base path from the Kibana configuration.
+type kibanaConfig struct {
+	Server struct {
+		BasePath string `config:"basePath"`
+	}
+}
+
 // readinessProbe is the readiness probe for the Kibana container
-func readinessProbe(useTLS bool) corev1.Probe {
+func readinessProbe(useTLS bool, basePath string) corev1.Probe {
 	scheme := corev1.URISchemeHTTP
 	if useTLS {
 		scheme = corev1.URISchemeHTTPS
@@ -67,7 +76,7 @@ func readinessProbe(useTLS bool) corev1.Probe {
 		ProbeHandler: corev1.ProbeHandler{
 			HTTPGet: &corev1.HTTPGetAction{
 				Port:   intstr.FromInt(network.HTTPPort),
-				Path:   "/login",
+				Path:   fmt.Sprintf("%s/login", basePath),
 				Scheme: scheme,
 			},
 		},
@@ -84,12 +93,16 @@ func NewPodTemplateSpec(ctx context.Context, client k8sclient.Client, kb kbv1.Ki
 		return corev1.PodTemplateSpec{}, err // error unlikely and should have been caught during validation
 	}
 
+	kibanaBasePath, err := getKibanaBasePath(kb)
+	if err != nil {
+		return corev1.PodTemplateSpec{}, fmt.Errorf("failed to get kibana base path error:%w", err)
+	}
 	builder := defaults.NewPodTemplateBuilder(kb.Spec.PodTemplate, kbv1.KibanaContainerName).
 		WithResources(DefaultResources).
 		WithLabels(labels).
 		WithAnnotations(DefaultAnnotations).
 		WithDockerImage(kb.Spec.Image, container.ImageRepository(container.KibanaImage, v)).
-		WithReadinessProbe(readinessProbe(kb.Spec.HTTP.TLS.Enabled())).
+		WithReadinessProbe(readinessProbe(kb.Spec.HTTP.TLS.Enabled(), kibanaBasePath)).
 		WithPorts(ports).
 		WithInitContainers(initConfigContainer(kb))
 
@@ -115,6 +128,48 @@ func GetKibanaContainer(podSpec corev1.PodSpec) *corev1.Container {
 	return pod.ContainerByName(podSpec, kbv1.KibanaContainerName)
 }
 
+func GetKibanaBasePathFromSpecEnv(podSpec corev1.PodSpec) string {
+	kbContainer := GetKibanaContainer(podSpec)
+	if kbContainer == nil {
+		return ""
+	}
+	for _, envVar := range kbContainer.Env {
+		if envVar.Name == "SERVER_BASEPATH" {
+			return envVar.Value
+		}
+	}
+	return ""
+}
+
 func getDefaultContainerPorts(kb kbv1.Kibana) []corev1.ContainerPort {
 	return []corev1.ContainerPort{{Name: kb.Spec.HTTP.Protocol(), ContainerPort: int32(network.HTTPPort), Protocol: corev1.ProtocolTCP}}
+}
+
+func getKibanaBasePath(kb kbv1.Kibana) (string, error) {
+
+	if kb.Spec.Config != nil {
+		kbucfgConfig, err := ucfg.NewFrom(kb.Spec.Config.Data)
+		if err != nil {
+			return "", err
+		}
+
+		kbCfg := kibanaConfig{}
+		err = kbucfgConfig.Unpack(&kbCfg)
+		if err != nil {
+			return "", err
+		}
+
+		if kbCfg.Server.BasePath != "" {
+			// We give preference to base path set in the spec
+			return kbCfg.Server.BasePath, nil
+		}
+
+		// Check for a flattened structure
+		if kbucfgConfig.HasField("server.basePath") {
+			return kbucfgConfig.String("server.basePath", -1)
+		}
+	}
+
+	// Check for basePath being set as an env var
+	return GetKibanaBasePathFromSpecEnv(kb.Spec.PodTemplate.Spec), nil
 }

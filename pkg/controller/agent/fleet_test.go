@@ -16,15 +16,10 @@ import (
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/tools/record"
-	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/elastic/cloud-on-k8s/v2/pkg/apis/agent/v1alpha1"
-	commonv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/common/v1"
-	v1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/kibana/v1"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/k8s"
 	ulog "github.com/elastic/cloud-on-k8s/v2/pkg/utils/log"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/test"
@@ -71,26 +66,7 @@ func Test_reconcileEnrollmentToken(t *testing.T) {
 				},
 				api: mockFleetResponses(map[request]response{
 					{"GET", "/api/fleet/enrollment_api_keys/some-token-id"}: {code: 200, body: enrollmentKeySample},
-				}, ""),
-			},
-			want:       asObject(enrollmentKeySample),
-			wantEvents: nil, // PolicyID is provided.
-			wantErr:    false,
-		},
-		{
-			name: "Agent annotated and fixed policy with a kibana base path set",
-			args: args{
-				agent: v1alpha1.Agent{
-					ObjectMeta: metav1.ObjectMeta{Annotations: map[string]string{
-						FleetTokenAnnotation: "some-token-id",
-					}},
-					Spec: v1alpha1.AgentSpec{
-						PolicyID: "a-policy-id",
-					},
-				},
-				api: mockFleetResponses(map[request]response{
-					{"GET", "/monitoring/kibana/api/fleet/enrollment_api_keys/some-token-id"}: {code: 200, body: enrollmentKeySample},
-				}, "/monitoring/kibana"),
+				}),
 			},
 			want:       asObject(enrollmentKeySample),
 			wantEvents: nil, // PolicyID is provided.
@@ -116,7 +92,7 @@ func Test_reconcileEnrollmentToken(t *testing.T) {
 					{"GET", "/api/fleet/enrollment_api_keys"}: {code: 200, body: emptyList},
 					// new token because existing key not valid for policy
 					{"POST", "/api/fleet/enrollment_api_keys"}: {code: 200, body: enrollmentKeySample},
-				}, ""),
+				}),
 			},
 			want:       asObject(enrollmentKeySample),
 			wantEvents: []string{"Warning Validation spec.PolicyID is empty, spec.PolicyID will become mandatory in a future release"},
@@ -139,7 +115,7 @@ func Test_reconcileEnrollmentToken(t *testing.T) {
 				api: mockFleetResponses(map[request]response{
 					{"GET", "/api/fleet/enrollment_api_keys/invalid-token-id"}: {code: 404},
 					{"GET", "/api/fleet/enrollment_api_keys"}:                  {code: 200, body: enrollmentKeyListSample},
-				}, ""),
+				}),
 			},
 			want:       asObject(enrollmentKeySample),
 			wantEvents: nil, // PolicyID is provided.
@@ -162,7 +138,7 @@ func Test_reconcileEnrollmentToken(t *testing.T) {
 					{"GET", "/api/fleet/enrollment_api_keys/invalid-token-id"}: {code: 200, body: inactiveEnrollmentKeySample},
 					{"GET", "/api/fleet/enrollment_api_keys"}:                  {code: 200, body: emptyList},
 					{"POST", "/api/fleet/enrollment_api_keys"}:                 {code: 200, body: enrollmentKeySample},
-				}, ""),
+				}),
 			},
 			want:       asObject(enrollmentKeySample),
 			wantEvents: []string{"Warning Validation spec.PolicyID is empty, spec.PolicyID will become mandatory in a future release"},
@@ -182,7 +158,7 @@ func Test_reconcileEnrollmentToken(t *testing.T) {
 					{"GET", "/api/fleet/agent_policies"}:       {code: 200, body: agentPoliciesSample},
 					{"GET", "/api/fleet/enrollment_api_keys"}:  {code: 200, body: emptyList},
 					{"POST", "/api/fleet/enrollment_api_keys"}: {code: 200, body: enrollmentKeySample},
-				}, ""),
+				}),
 			},
 			want:       asObject(enrollmentKeySample),
 			wantEvents: []string{"Warning Validation spec.PolicyID is empty, spec.PolicyID will become mandatory in a future release"},
@@ -201,7 +177,7 @@ func Test_reconcileEnrollmentToken(t *testing.T) {
 					{"POST", "/api/fleet/setup"}:              {code: 200},
 					{"GET", "/api/fleet/agent_policies"}:      {code: 200, body: agentPoliciesSample},
 					{"GET", "/api/fleet/enrollment_api_keys"}: {code: 500}, // could also be a timeout etc
-				}, ""),
+				}),
 			},
 			want:       EnrollmentAPIKey{},
 			wantEvents: []string{"Warning Validation spec.PolicyID is empty, spec.PolicyID will become mandatory in a future release"},
@@ -225,7 +201,7 @@ func Test_reconcileEnrollmentToken(t *testing.T) {
 					{"GET", "/api/fleet/agent_policies"}: {code: 200, body: agentPoliciesSample},
 					// check annotated api key, should be valid
 					{"GET", "/api/fleet/enrollment_api_keys/some-token-id"}: {code: 200, body: fleetServerKeySample},
-				}, ""),
+				}),
 			},
 			want:       asObject(fleetServerKeySample),
 			wantEvents: []string{"Warning Validation spec.PolicyID is empty, spec.PolicyID will become mandatory in a future release"},
@@ -253,7 +229,7 @@ func Test_reconcileEnrollmentToken(t *testing.T) {
 					// no token to reuse create a new one
 					{"GET", "/api/fleet/enrollment_api_keys"}:  {code: 200, body: emptyList},
 					{"POST", "/api/fleet/enrollment_api_keys"}: {code: 200, body: fleetServerKeySample},
-				}, ""),
+				}),
 			},
 			want:       EnrollmentAPIKey{},
 			wantEvents: []string{"Warning Validation spec.PolicyID is empty, spec.PolicyID will become mandatory in a future release"},
@@ -284,66 +260,6 @@ func Test_reconcileEnrollmentToken(t *testing.T) {
 			}
 			gotEvents := test.ReadAtMostEvents(t, len(tt.wantEvents), fakeRecorder)
 			assert.Equal(t, tt.wantEvents, gotEvents)
-		})
-	}
-}
-
-func Test_getKibanaBasePath(t *testing.T) {
-	type args struct {
-		client k8s.Client
-	}
-	tests := []struct {
-		name string
-		args args
-		want string
-	}{
-		{
-			name: "No Kibana basepath",
-			args: args{
-				client: k8s.NewFakeClient(getKibana(""), getKibanaConfigSecret("")),
-			},
-			want: "",
-		},
-		{
-			name: "with Kibana basepath configured",
-			args: args{
-				client: k8s.NewFakeClient(getKibana("/monitoring/kibana"), getKibanaConfigSecret("/monitoring/kibana")),
-			},
-			want: "/monitoring/kibana",
-		},
-		{
-			name: "with Kibana basepath configured in spec not yet applied in secret",
-			args: args{
-				client: k8s.NewFakeClient(getKibana("/monitoring/kibana"), getKibanaConfigSecret("")),
-			},
-			want: "",
-		},
-		{
-			name: "with Kibana config nil",
-			args: args{
-				client: k8s.NewFakeClient(&v1.Kibana{
-					ObjectMeta: metav1.ObjectMeta{
-						Name:      "test-kibana",
-						Namespace: "ns",
-					},
-				}, &corev1.Secret{
-					ObjectMeta: metav1.ObjectMeta{
-						Name:      "test-kibana-kb-config",
-						Namespace: "ns",
-					},
-				}),
-			},
-			want: "",
-		},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			got, err := getKibanaBasePath(context.Background(), tt.args.client, types.NamespacedName{
-				Name:      "test-kibana",
-				Namespace: "ns",
-			})
-			require.NoError(t, err)
-			assert.Equal(t, tt.want, got)
 		})
 	}
 }
@@ -380,7 +296,7 @@ func (m *mockFleetAPI) missingRequests() []request {
 	return missing
 }
 
-func mockFleetResponses(rs map[request]response, kibanaBasePath string) *mockFleetAPI {
+func mockFleetResponses(rs map[request]response) *mockFleetAPI {
 	callLog := map[request]int{}
 	fn := func(req *http.Request) *http.Response {
 		r := request{method: req.Method, path: req.URL.Path}
@@ -400,60 +316,9 @@ func mockFleetResponses(rs map[request]response, kibanaBasePath string) *mockFle
 			client: &http.Client{
 				Transport: RoundTripFunc(fn),
 			},
-			log:            ulog.Log,
-			kibanaBasePath: kibanaBasePath,
+			log: ulog.Log,
 		},
 		callLog:  callLog,
 		requests: rs,
-	}
-}
-
-func getKibana(basePath string) client.Object {
-	kb := &v1.Kibana{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      "test-kibana",
-			Namespace: "ns",
-		},
-		Spec: v1.KibanaSpec{
-			Config: &commonv1.Config{
-				Data: map[string]interface{}{
-					"test": map[string]interface{}{
-						"testConfig": "testValue",
-					},
-				},
-			},
-		},
-	}
-	if basePath != "" {
-		kb.Spec.Config.Data["server"] = map[string]interface{}{
-			"basePath": basePath,
-		}
-	}
-
-	return kb
-}
-
-func getKibanaConfigSecret(basePath string) client.Object {
-	defaultConfig := []byte(`
-test:
-  testConfig: testValue
-`)
-
-	if basePath != "" {
-		defaultConfig = []byte(fmt.Sprintf(`
-test:
-  testConfig: testValue
-server:
-  basePath: "%s"
-`, basePath))
-	}
-	return &corev1.Secret{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      "test-kibana-kb-config",
-			Namespace: "ns",
-		},
-		Data: map[string][]byte{
-			"kibana.yml": defaultConfig,
-		},
 	}
 }

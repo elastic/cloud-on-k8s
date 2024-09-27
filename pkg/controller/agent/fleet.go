@@ -17,9 +17,7 @@ import (
 	"github.com/go-logr/logr"
 	"github.com/pkg/errors"
 	"go.elastic.co/apm/module/apmhttp/v2"
-	"gopkg.in/yaml.v3"
 	corev1 "k8s.io/api/core/v1"
-	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/tools/record"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
@@ -31,7 +29,6 @@ import (
 	commonhttp "github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/http"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/reconciler"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/tracing"
-	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/kibana"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/k8s"
 	ulog "github.com/elastic/cloud-on-k8s/v2/pkg/utils/log"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/net"
@@ -78,20 +75,12 @@ type Policy struct {
 }
 
 type fleetAPI struct {
-	client         *http.Client
-	endpoint       string
-	username       string
-	password       string
-	kibanaVersion  string
-	log            logr.Logger
-	kibanaBasePath string
-}
-
-// kibanaConfig is used to get the base path from the Kibana configuration.
-type kibanaConfig struct {
-	Server struct {
-		BasePath string `yaml:"basePath"`
-	}
+	client        *http.Client
+	endpoint      string
+	username      string
+	password      string
+	kibanaVersion string
+	log           logr.Logger
 }
 
 func newFleetAPI(dialer net.Dialer, settings connectionSettings, logger logr.Logger) fleetAPI {
@@ -101,12 +90,11 @@ func newFleetAPI(dialer net.Dialer, settings connectionSettings, logger logr.Log
 			apmhttp.WithClientRequestName(tracing.RequestName),
 			apmhttp.WithClientSpanType("external.kibana"),
 		),
-		kibanaVersion:  settings.version,
-		endpoint:       settings.host,
-		username:       settings.credentials.Username,
-		password:       settings.credentials.Password,
-		log:            logger,
-		kibanaBasePath: settings.kibanaBasePath,
+		kibanaVersion: settings.version,
+		endpoint:      settings.host,
+		username:      settings.credentials.Username,
+		password:      settings.credentials.Password,
+		log:           logger,
 	}
 }
 
@@ -124,7 +112,7 @@ func (f fleetAPI) request(
 		body = bytes.NewBuffer(outData)
 	}
 
-	request, err := http.NewRequestWithContext(ctx, method, stringsutil.Concat(f.endpoint, f.kibanaBasePath, "/api/fleet/", pathWithQuery), body)
+	request, err := http.NewRequestWithContext(ctx, method, stringsutil.Concat(f.endpoint, "/api/fleet/", pathWithQuery), body)
 	if err != nil {
 		return err
 	}
@@ -266,19 +254,6 @@ func maybeReconcileFleetEnrollment(params Params, result *reconciler.Results) En
 		return EnrollmentAPIKey{}
 	}
 
-	kibanaBasePath, err := getKibanaBasePath(params.Context, params.Client, params.Agent.Spec.KibanaRef.WithDefaultNamespace(params.Agent.Namespace).NamespacedName())
-	if err != nil {
-		if apierrors.IsNotFound(err) {
-			result.WithResult(reconcile.Result{Requeue: true})
-		} else {
-			result.WithError(err)
-		}
-		return EnrollmentAPIKey{}
-	}
-
-	// set Kibana base path for Fleet API
-	kbConnectionSettings.kibanaBasePath = kibanaBasePath
-
 	token, err := reconcileEnrollmentToken(
 		params,
 		newFleetAPI(
@@ -288,31 +263,6 @@ func maybeReconcileFleetEnrollment(params Params, result *reconciler.Results) En
 	)
 	result.WithError(err)
 	return token
-}
-
-func getKibanaBasePath(ctx context.Context, client k8s.Client, kibanaNSN types.NamespacedName) (string, error) {
-	var kb v1.Kibana
-	if err := client.Get(ctx, kibanaNSN, &kb); err != nil {
-		return "", fmt.Errorf("failed to get Kibana base path, error getting Kiana CR: %w", err)
-	}
-
-	if kb.Spec.Config == nil {
-		return "", nil
-	}
-
-	// Get Kibana config secret to extract the basepath. We are not using the Kibana CRD here for the basepath to optimize for the case where the desired and current state may differ, so we're choosing the current state to minimize any transient errors.
-	kbSecretName := kibana.SecretName(kb)
-	var kbConfigsecret corev1.Secret
-	if err := client.Get(ctx, types.NamespacedName{Namespace: kb.Namespace, Name: kbSecretName}, &kbConfigsecret); err != nil {
-		return "", fmt.Errorf("failed to get Kibana base path, error getting Kibana config secret: %w", err)
-	}
-
-	kbCfg := kibanaConfig{}
-	if err := yaml.Unmarshal(kbConfigsecret.Data[kibana.SettingsFilename], &kbCfg); err != nil {
-		return "", fmt.Errorf("failed to get Kibana base path, unable to unmarshal Kibana config: %w", err)
-	}
-
-	return kbCfg.Server.BasePath, nil
 }
 
 func isKibanaReachable(ctx context.Context, client k8s.Client, kibanaNSN types.NamespacedName) (bool, error) {

@@ -6,7 +6,11 @@ package controller
 
 import (
 	"context"
+	"fmt"
 
+	"gopkg.in/yaml.v2"
+	appsv1 "k8s.io/api/apps/v1"
+	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -19,10 +23,18 @@ import (
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/operator"
 	ver "github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/version"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/user"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/kibana"
 	kblabel "github.com/elastic/cloud-on-k8s/v2/pkg/controller/kibana/label"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/k8s"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/rbac"
 )
+
+// kibanaConfig is used to get the base path from the Kibana configuration.
+type kibanaConfig struct {
+	Server struct {
+		BasePath string `yaml:"basePath"`
+	}
+}
 
 func AddApmKibana(mgr manager.Manager, accessReviewer rbac.AccessReviewer, params operator.Parameters) error {
 	return association.AddAssociationController(mgr, accessReviewer, params, association.AssociationInfo{
@@ -69,7 +81,54 @@ func getKibanaExternalURL(c k8s.Client, assoc commonv1.Association) (string, err
 		serviceName = kbv1.HTTPService(kb.Name)
 	}
 	nsn := types.NamespacedName{Namespace: kb.Namespace, Name: serviceName}
-	return association.ServiceURL(c, nsn, kb.Spec.HTTP.Protocol())
+
+	// Get Kibana base path if configured
+	basePath, err := getKibanaBasePath(c, kb)
+	if err != nil {
+		return "", err
+	}
+	return association.ServiceURL(c, nsn, kb.Spec.HTTP.Protocol(), basePath)
+}
+
+func getKibanaBasePath(client k8s.Client, kb kbv1.Kibana) (string, error) {
+	if kb.Spec.Config == nil {
+		return "", nil
+	}
+
+	// Get Kibana config secret to extract the basepath.
+	// We are not using the Kibana CRD here for the basepath to optimize for the case where the desired and current state may differ, so we're choosing the current state to minimize any transient errors.
+	kbSecretName := kibana.SecretName(kb)
+	var kbConfigsecret corev1.Secret
+	if err := client.Get(context.Background(), types.NamespacedName{Namespace: kb.Namespace, Name: kbSecretName}, &kbConfigsecret); err != nil {
+		return "", fmt.Errorf("failed to get Kibana base path, error getting Kibana config secret: %w", err)
+	}
+
+	kbCfg := kibanaConfig{}
+	if err := yaml.Unmarshal(kbConfigsecret.Data[kibana.SettingsFilename], &kbCfg); err != nil {
+		return "", fmt.Errorf("failed to get Kibana base path, unable to unmarshal Kibana config: %w", err)
+	}
+
+	if kbCfg.Server.BasePath != "" {
+		return kbCfg.Server.BasePath, nil
+	}
+
+	// If the base path is not set in the config, try to get it from the environment.
+	kbBasePath, err := getKibanaBasePathFromEnv(client, kb)
+	if err != nil {
+		return "", fmt.Errorf("failed to get Kibana base path from environment: %w", err)
+	}
+
+	return kbBasePath, nil
+}
+
+func getKibanaBasePathFromEnv(client k8s.Client, kb kbv1.Kibana) (string, error) {
+	// Get Kibana deployment to extract the basepath from the environment.
+	kbDeployment := appsv1.Deployment{}
+	if err := client.Get(context.Background(), types.NamespacedName{Namespace: kb.Namespace, Name: kbv1.KBNamer.Suffix(kb.Name)}, &kbDeployment); err != nil {
+		return "", err
+	}
+
+	return kibana.GetKibanaBasePathFromSpecEnv(kbDeployment.Spec.Template.Spec), nil
 }
 
 type kibanaVersionResponse struct {
