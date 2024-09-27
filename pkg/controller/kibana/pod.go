@@ -147,7 +147,6 @@ func getDefaultContainerPorts(kb kbv1.Kibana) []corev1.ContainerPort {
 }
 
 func getKibanaBasePath(kb kbv1.Kibana) (string, error) {
-
 	if kbBasePath := GetKibanaBasePathFromSpecEnv(kb.Spec.PodTemplate.Spec); kbBasePath != "" {
 		return kbBasePath, nil
 	}

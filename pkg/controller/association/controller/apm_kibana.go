@@ -91,7 +91,6 @@ func getKibanaExternalURL(c k8s.Client, assoc commonv1.Association) (string, err
 }
 
 func getKibanaBasePath(client k8s.Client, kb kbv1.Kibana) (string, error) {
-
 	// base path set as ENV variable takes precedence over the one set in the Kibana config secret
 	kbBasePath, err := getKibanaBasePathFromEnv(client, kb)
 	if err != nil {
