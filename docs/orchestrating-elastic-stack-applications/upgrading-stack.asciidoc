@@ -7,6 +7,8 @@ endif::[]
 [id="{p}-{page_id}"]
 = Upgrade the Elastic Stack version
 
+CAUTION: {role_mappings_warning}
+
 The operator can safely perform upgrades to newer versions of the various Elastic Stack resources.
 
 Follow the instructions in the link:https://www.elastic.co/guide/en/elastic-stack/current/upgrading-elastic-stack.html[Elasticsearch documentation]. Make sure that your cluster is compatible with the target version, take backups, and follow the specific upgrade instructions for each resource type. When you are ready, modify the `version` field in the resource spec to the desired stack version and the operator will start the upgrade process automatically.
