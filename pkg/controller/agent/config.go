@@ -30,9 +30,9 @@ import (
 )
 
 type connectionSettings struct {
-	host, caFileName, version, kibanaBasePath string
-	credentials                               association.Credentials
-	caCerts                                   []*x509.Certificate
+	host, caFileName, version string
+	credentials               association.Credentials
+	caCerts                   []*x509.Certificate
 }
 
 func reconcileConfig(params Params, configHash hash.Hash) *reconciler.Results {
