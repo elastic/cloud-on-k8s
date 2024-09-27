@@ -10,7 +10,7 @@ steps:
       - make build
       - buildkite-agent artifact upload bin/releaser
     agents:
-      image: docker.elastic.co/ci-agent-images/cloud-k8s-operator/buildkite-agent:6588acfd
+      image: docker.elastic.co/ci-agent-images/cloud-k8s-operator/buildkite-agent:16a56a1d
       memory: "2G"
 
   - label: "operator dev helm chart"
@@ -29,7 +29,7 @@ steps:
       - chmod u+x /usr/local/bin/releaser
       - releaser --env=dev --charts-dir=deploy/eck-operator
     agents:
-      image: docker.elastic.co/ci-agent-images/cloud-k8s-operator/buildkite-agent:6588acfd
+      image: docker.elastic.co/ci-agent-images/cloud-k8s-operator/buildkite-agent:16a56a1d
       memory: "2G"
 
   - wait
@@ -50,7 +50,7 @@ steps:
       - chmod u+x /usr/local/bin/releaser
       - releaser --env=dev --charts-dir=deploy/eck-stack
     agents:
-      image: docker.elastic.co/ci-agent-images/cloud-k8s-operator/buildkite-agent:6588acfd
+      image: docker.elastic.co/ci-agent-images/cloud-k8s-operator/buildkite-agent:16a56a1d
       memory: "2G"
 
   - wait
@@ -68,7 +68,7 @@ steps:
       - chmod u+x /usr/local/bin/releaser
       - releaser --env=prod --charts-dir=deploy/eck-operator
     agents:
-      image: docker.elastic.co/ci-agent-images/cloud-k8s-operator/buildkite-agent:6588acfd
+      image: docker.elastic.co/ci-agent-images/cloud-k8s-operator/buildkite-agent:16a56a1d
       memory: "2G"
 
   - wait
@@ -86,5 +86,5 @@ steps:
       - chmod u+x /usr/local/bin/releaser
       - releaser --env=prod --charts-dir=deploy/eck-stack
     agents:
-      image: docker.elastic.co/ci-agent-images/cloud-k8s-operator/buildkite-agent:6588acfd
+      image: docker.elastic.co/ci-agent-images/cloud-k8s-operator/buildkite-agent:16a56a1d
       memory: "2G"
