@@ -52,12 +52,12 @@ func Test_getKibanaBasePath(t *testing.T) {
 			want: "/monitoring",
 		},
 		{
-			name: "Base path set in secret preferred over env var",
+			name: "Base path set in env var preferred over secret",
 			args: args{
 				kb:     getKibana("/test"),
 				client: k8s.NewFakeClient(getKibanaConfigSecret("/test"), getKibanaDeployment("/monitoring")),
 			},
-			want: "/test",
+			want: "/monitoring",
 		},
 	}
 	for _, tt := range tests {

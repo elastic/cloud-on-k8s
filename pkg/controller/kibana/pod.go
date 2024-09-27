@@ -147,29 +147,34 @@ func getDefaultContainerPorts(kb kbv1.Kibana) []corev1.ContainerPort {
 }
 
 func getKibanaBasePath(kb kbv1.Kibana) (string, error) {
-	if kb.Spec.Config != nil {
-		kbucfgConfig, err := ucfg.NewFrom(kb.Spec.Config.Data)
-		if err != nil {
-			return "", err
-		}
 
-		kbCfg := kibanaConfig{}
-		err = kbucfgConfig.Unpack(&kbCfg)
-		if err != nil {
-			return "", err
-		}
-
-		if kbCfg.Server.BasePath != "" {
-			// We give preference to base path set in the spec
-			return kbCfg.Server.BasePath, nil
-		}
-
-		// Check for a flattened structure
-		if kbucfgConfig.HasField("server.basePath") {
-			return kbucfgConfig.String("server.basePath", -1)
-		}
+	if kbBasePath := GetKibanaBasePathFromSpecEnv(kb.Spec.PodTemplate.Spec); kbBasePath != "" {
+		return kbBasePath, nil
 	}
 
-	// Check for basePath being set as an env var
-	return GetKibanaBasePathFromSpecEnv(kb.Spec.PodTemplate.Spec), nil
+	if kb.Spec.Config == nil {
+		return "", nil
+	}
+	kbucfgConfig, err := ucfg.NewFrom(kb.Spec.Config.Data)
+	if err != nil {
+		return "", err
+	}
+
+	kbCfg := kibanaConfig{}
+	err = kbucfgConfig.Unpack(&kbCfg)
+	if err != nil {
+		return "", err
+	}
+
+	if kbCfg.Server.BasePath != "" {
+		// We give preference to base path set in the spec
+		return kbCfg.Server.BasePath, nil
+	}
+
+	// Check for a flattened structure
+	if kbucfgConfig.HasField("server.basePath") {
+		return kbucfgConfig.String("server.basePath", -1)
+	}
+
+	return "", nil
 }

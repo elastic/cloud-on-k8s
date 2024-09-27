@@ -280,7 +280,7 @@ func TestNewPodTemplateSpec(t *testing.T) {
 			},
 		},
 		{
-			name: "with user-provided basePath in spec pod template and spec config, spec config should take precedence",
+			name: "with user-provided basePath in spec pod template and spec config, env var in pod template should take precedence",
 			kb: kbv1.Kibana{Spec: kbv1.KibanaSpec{
 				Config: &commonv1.Config{
 					Data: map[string]interface{}{
@@ -308,7 +308,7 @@ func TestNewPodTemplateSpec(t *testing.T) {
 			}},
 			assertions: func(pod corev1.PodTemplateSpec) {
 				kbContainer := GetKibanaContainer(pod.Spec)
-				assert.Equal(t, kbContainer.ReadinessProbe.ProbeHandler.HTTPGet.Path, "/monitoring/kibana/spec/login")
+				assert.Equal(t, kbContainer.ReadinessProbe.ProbeHandler.HTTPGet.Path, "/monitoring/kibana/login")
 			},
 		},
 	}

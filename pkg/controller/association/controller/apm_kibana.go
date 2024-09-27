@@ -91,6 +91,17 @@ func getKibanaExternalURL(c k8s.Client, assoc commonv1.Association) (string, err
 }
 
 func getKibanaBasePath(client k8s.Client, kb kbv1.Kibana) (string, error) {
+
+	// base path set as ENV variable takes precedence over the one set in the Kibana config secret
+	kbBasePath, err := getKibanaBasePathFromEnv(client, kb)
+	if err != nil {
+		return "", fmt.Errorf("failed to get Kibana base path from environment: %w", err)
+	}
+
+	if kbBasePath != "" {
+		return kbBasePath, nil
+	}
+
 	if kb.Spec.Config == nil {
 		return "", nil
 	}
@@ -112,20 +123,14 @@ func getKibanaBasePath(client k8s.Client, kb kbv1.Kibana) (string, error) {
 		return kbCfg.Server.BasePath, nil
 	}
 
-	// If the base path is not set in the config, try to get it from the environment.
-	kbBasePath, err := getKibanaBasePathFromEnv(client, kb)
-	if err != nil {
-		return "", fmt.Errorf("failed to get Kibana base path from environment: %w", err)
-	}
-
-	return kbBasePath, nil
+	return "", nil
 }
 
 func getKibanaBasePathFromEnv(client k8s.Client, kb kbv1.Kibana) (string, error) {
 	// Get Kibana deployment to extract the basepath from the environment.
 	kbDeployment := appsv1.Deployment{}
 	if err := client.Get(context.Background(), types.NamespacedName{Namespace: kb.Namespace, Name: kbv1.KBNamer.Suffix(kb.Name)}, &kbDeployment); err != nil {
-		return "", err
+		return "", fmt.Errorf("failed to get kibana deployment, error: %w", err)
 	}
 
 	return kibana.GetKibanaBasePathFromSpecEnv(kbDeployment.Spec.Template.Spec), nil
