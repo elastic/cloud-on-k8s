@@ -13,6 +13,8 @@ import (
 	"k8s.io/apimachinery/pkg/util/intstr"
 	k8sclient "sigs.k8s.io/controller-runtime/pkg/client"
 
+	"github.com/elastic/go-ucfg"
+
 	kbv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/kibana/v1"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/annotation"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/container"
@@ -24,7 +26,6 @@ import (
 	kblabel "github.com/elastic/cloud-on-k8s/v2/pkg/controller/kibana/label"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/kibana/network"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/kibana/stackmon"
-	"github.com/elastic/go-ucfg"
 )
 
 const (
@@ -146,7 +147,6 @@ func getDefaultContainerPorts(kb kbv1.Kibana) []corev1.ContainerPort {
 }
 
 func getKibanaBasePath(kb kbv1.Kibana) (string, error) {
-
 	if kb.Spec.Config != nil {
 		kbucfgConfig, err := ucfg.NewFrom(kb.Spec.Config.Data)
 		if err != nil {
