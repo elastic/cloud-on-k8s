@@ -15,10 +15,18 @@ linters-settings:
     # put imports beginning with prefix after 3rd-party packages;
     local-prefixes: github.com/elastic/cloud-on-k8s
 
+  gosec:
+    excludes:
+      - G115 # potential integer overflow when converting between integer types
+
   nolintlint:
     allow-leading-space: false
     allow-unused: false
     require-specific: true
+
+  predeclared:
+    # comma-separated list of predeclared identifiers to not report on.
+    ignore: "min,max"
 
   revive:
     ## Default rules from https://github.com/mgechev/revive/blob/75a8e403f52c9634546fbfe5ec5429560ca74494/defaults.toml
