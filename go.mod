@@ -12,7 +12,7 @@ require (
 	github.com/gkampitakis/go-snaps v0.5.7
 	github.com/go-logr/logr v1.4.2
 	github.com/go-test/deep v1.1.1
-	github.com/gobuffalo/flect v1.0.2
+	github.com/gobuffalo/flect v1.0.3
 	github.com/google/go-cmp v0.6.0
 	github.com/google/go-containerregistry v0.20.2
 	github.com/google/uuid v1.6.0
