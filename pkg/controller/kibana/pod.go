@@ -29,8 +29,10 @@ import (
 )
 
 const (
-	DataVolumeName      = "kibana-data"
-	DataVolumeMountPath = "/usr/share/kibana/data"
+	DataVolumeName               = "kibana-data"
+	DataVolumeMountPath          = "/usr/share/kibana/data"
+	KibanaBasePathENVName        = "SERVER_BASEPATH"
+	KibanaRewriteBasePathENVName = "SERVER_REWRITEBASEPATH"
 )
 
 var (
@@ -58,7 +60,8 @@ var (
 // kibanaConfig is used to get the base path from the Kibana configuration.
 type kibanaConfig struct {
 	Server struct {
-		BasePath string `config:"basePath"`
+		RewriteBasePath bool   `config:"rewriteBasePath"`
+		BasePath        string `config:"basePath"`
 	}
 }
 
@@ -94,7 +97,7 @@ func NewPodTemplateSpec(ctx context.Context, client k8sclient.Client, kb kbv1.Ki
 		return corev1.PodTemplateSpec{}, err // error unlikely and should have been caught during validation
 	}
 
-	kibanaBasePath, err := getKibanaBasePath(kb)
+	kibanaBasePath, err := GetKibanaBasePath(kb)
 	if err != nil {
 		return corev1.PodTemplateSpec{}, fmt.Errorf("failed to get kibana base path error:%w", err)
 	}
@@ -134,11 +137,21 @@ func GetKibanaBasePathFromSpecEnv(podSpec corev1.PodSpec) string {
 	if kbContainer == nil {
 		return ""
 	}
+
+	envMap := make(map[string]string)
 	for _, envVar := range kbContainer.Env {
-		if envVar.Name == "SERVER_BASEPATH" {
-			return envVar.Value
+		if envVar.Name == KibanaBasePathENVName || envVar.Name == KibanaRewriteBasePathENVName {
+			envMap[envVar.Name] = envVar.Value
 		}
 	}
+
+	// If SERVER_REWRITEBASEPATH is set to true, we should use the value of SERVER_BASEPATH
+	if rewriteBasePath, ok := envMap[KibanaRewriteBasePathENVName]; ok {
+		if rewriteBasePath == "true" {
+			return envMap[KibanaBasePathENVName]
+		}
+	}
+
 	return ""
 }
 
@@ -146,7 +159,7 @@ func getDefaultContainerPorts(kb kbv1.Kibana) []corev1.ContainerPort {
 	return []corev1.ContainerPort{{Name: kb.Spec.HTTP.Protocol(), ContainerPort: int32(network.HTTPPort), Protocol: corev1.ProtocolTCP}}
 }
 
-func getKibanaBasePath(kb kbv1.Kibana) (string, error) {
+func GetKibanaBasePath(kb kbv1.Kibana) (string, error) {
 	if kbBasePath := GetKibanaBasePathFromSpecEnv(kb.Spec.PodTemplate.Spec); kbBasePath != "" {
 		return kbBasePath, nil
 	}
@@ -154,25 +167,20 @@ func getKibanaBasePath(kb kbv1.Kibana) (string, error) {
 	if kb.Spec.Config == nil {
 		return "", nil
 	}
-	kbucfgConfig, err := ucfg.NewFrom(kb.Spec.Config.Data)
+
+	options := []ucfg.Option{ucfg.PathSep("."), ucfg.AppendValues}
+	kbucfgConfig, err := ucfg.NewFrom(kb.Spec.Config.Data, options...)
 	if err != nil {
 		return "", err
 	}
 
 	kbCfg := kibanaConfig{}
-	err = kbucfgConfig.Unpack(&kbCfg)
-	if err != nil {
+	if err := kbucfgConfig.Unpack(&kbCfg); err != nil {
 		return "", err
 	}
 
-	if kbCfg.Server.BasePath != "" {
-		// We give preference to base path set in the spec
+	if kbCfg.Server.RewriteBasePath {
 		return kbCfg.Server.BasePath, nil
-	}
-
-	// Check for a flattened structure
-	if kbucfgConfig.HasField("server.basePath") {
-		return kbucfgConfig.String("server.basePath", -1)
 	}
 
 	return "", nil

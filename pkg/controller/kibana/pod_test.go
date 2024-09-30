@@ -228,7 +228,8 @@ func TestNewPodTemplateSpec(t *testing.T) {
 				Config: &commonv1.Config{
 					Data: map[string]interface{}{
 						"server": map[string]interface{}{
-							"basePath": "/monitoring/kibana",
+							"basePath":        "/monitoring/kibana",
+							"rewriteBasePath": true,
 						},
 					},
 				},
@@ -244,7 +245,8 @@ func TestNewPodTemplateSpec(t *testing.T) {
 			kb: kbv1.Kibana{Spec: kbv1.KibanaSpec{
 				Config: &commonv1.Config{
 					Data: map[string]interface{}{
-						"server.basePath": "/monitoring/kibana",
+						"server.basePath":        "/monitoring/kibana",
+						"server.rewriteBasePath": true,
 					},
 				},
 				Version: "8.12.0",
@@ -267,6 +269,10 @@ func TestNewPodTemplateSpec(t *testing.T) {
 										Name:  "SERVER_BASEPATH",
 										Value: "/monitoring/kibana",
 									},
+									{
+										Name:  "SERVER_REWRITEBASEPATH",
+										Value: "true",
+									},
 								},
 							},
 						},
@@ -280,12 +286,55 @@ func TestNewPodTemplateSpec(t *testing.T) {
 			},
 		},
 		{
+			name: "with user-provided basePath in spec config but rewriteBasePath not set",
+			kb: kbv1.Kibana{Spec: kbv1.KibanaSpec{
+				Config: &commonv1.Config{
+					Data: map[string]interface{}{
+						"server": map[string]interface{}{
+							"basePath": "/monitoring/kibana",
+						},
+					},
+				},
+				Version: "8.12.0",
+			}},
+			assertions: func(pod corev1.PodTemplateSpec) {
+				kbContainer := GetKibanaContainer(pod.Spec)
+				assert.Equal(t, kbContainer.ReadinessProbe.ProbeHandler.HTTPGet.Path, "/login")
+			},
+		},
+		{
+			name: "with user-provided basePath in spec pod template but rewriteBasePath not set",
+			kb: kbv1.Kibana{Spec: kbv1.KibanaSpec{
+				PodTemplate: corev1.PodTemplateSpec{
+					Spec: corev1.PodSpec{
+						Containers: []corev1.Container{
+							{
+								Name: kbv1.KibanaContainerName,
+								Env: []corev1.EnvVar{
+									{
+										Name:  "SERVER_BASEPATH",
+										Value: "/monitoring/kibana",
+									},
+								},
+							},
+						},
+					},
+				},
+				Version: "8.12.0",
+			}},
+			assertions: func(pod corev1.PodTemplateSpec) {
+				kbContainer := GetKibanaContainer(pod.Spec)
+				assert.Equal(t, kbContainer.ReadinessProbe.ProbeHandler.HTTPGet.Path, "/login")
+			},
+		},
+		{
 			name: "with user-provided basePath in spec pod template and spec config, env var in pod template should take precedence",
 			kb: kbv1.Kibana{Spec: kbv1.KibanaSpec{
 				Config: &commonv1.Config{
 					Data: map[string]interface{}{
 						"server": map[string]interface{}{
-							"basePath": "/monitoring/kibana/spec",
+							"basePath":        "/monitoring/kibana/spec",
+							"rewriteBasePath": true,
 						},
 					},
 				},
@@ -298,6 +347,10 @@ func TestNewPodTemplateSpec(t *testing.T) {
 									{
 										Name:  "SERVER_BASEPATH",
 										Value: "/monitoring/kibana",
+									},
+									{
+										Name:  "SERVER_REWRITEBASEPATH",
+										Value: "true",
 									},
 								},
 							},
