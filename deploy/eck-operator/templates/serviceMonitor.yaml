@@ -21,8 +21,8 @@ spec:
     tlsConfig:
       insecureSkipVerify: {{ .Values.config.metrics.secureMode.tls.insecureSkipVerify | default false }}
       {{- if (not .Values.config.metrics.secureMode.tls.insecureSkipVerify) }}
-      {{- with .Values.config.metrics.secureMode.tls.caSecret }}
       {{- $leading_path := trimSuffix "/" .Values.config.metrics.secureMode.tls.caMountDirectory }}
+      {{- with .Values.config.metrics.secureMode.tls.caSecret }}
       caFile: "{{ $leading_path }}/{{ . }}/ca.crt"
       {{- end }}
       serverName: "{{ include "eck-operator.fullname" . }}-metrics.{{ .Release.Namespace }}.svc"
