@@ -315,8 +315,8 @@ go.elastic.co/apm/module/apmhttp/v2 v2.6.0 h1:s8UeNFQmVBCNd4eoz7KDD9rEFhQC0HeUFX
 go.elastic.co/apm/module/apmhttp/v2 v2.6.0/go.mod h1:D0GLppLuI0Ddwvtl595GUxRgn6Z8L5KaDFVMv2H3GK0=
 go.elastic.co/apm/module/apmzap/v2 v2.6.0 h1:R/iVORzGu3F9uM43iEVHD0nwiRo59O0bIXdayKsgayQ=
 go.elastic.co/apm/module/apmzap/v2 v2.6.0/go.mod h1:B3i/8xRkqLgi6zNuV+Bp7Pt4cutaOObvrVSa7wUTAPw=
-go.elastic.co/apm/v2 v2.6.0 h1:VieBMLQFtXua2YxpYxaSdYGnmmxhLT46gosI5yErJgY=
-go.elastic.co/apm/v2 v2.6.0/go.mod h1:33rOXgtHwbgZcDgi6I/GtCSMZQqgxkHC0IQT3gudKvo=
+go.elastic.co/apm/v2 v2.6.2 h1:VBplAxgbOgTv+Giw/FS91xJpHYw/q8fz/XKPvqC+7/o=
+go.elastic.co/apm/v2 v2.6.2/go.mod h1:33rOXgtHwbgZcDgi6I/GtCSMZQqgxkHC0IQT3gudKvo=
 go.elastic.co/fastjson v1.3.0 h1:hJO3OsYIhiqiT4Fgu0ZxAECnKASbwgiS+LMW5oCopKs=
 go.elastic.co/fastjson v1.3.0/go.mod h1:K9vDh7O0ODsVKV2B5e2XYLY277QZaCbB3tS1SnARvko=
 go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp v0.53.0 h1:4K4tsIXefpVJtvA/8srF4V4y0akAoPHkIslgAkjixJA=
