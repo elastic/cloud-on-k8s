@@ -123,7 +123,7 @@ func ValidateAutoscalingPolicies(
 		}
 
 		// Validate the set of roles managed by this autoscaling policy.
-		if autoscalingSpec.Roles == nil || len(autoscalingSpec.Roles) == 0 {
+		if len(autoscalingSpec.Roles) == 0 {
 			errs = append(errs, field.Required(autoscalingSpecPath(i, "roles"), "roles field is mandatory and must not be empty"))
 		} else {
 			if containsStringSlice(rolesSet, autoscalingSpec.Roles) {
