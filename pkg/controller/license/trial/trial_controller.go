@@ -94,16 +94,16 @@ func (r *ReconcileTrials) Reconcile(ctx context.Context, request reconcile.Reque
 	switch {
 	case !trialLicensePopulated && r.trialState.IsTrialStarted():
 		// user wants to start a trial for the second time
-		err = r.invalidOperation(ctx, secret, trialOnlyOnceMsg)
+		return reconcile.Result{}, r.invalidOperation(ctx, secret, trialOnlyOnceMsg)
 	case !trialLicensePopulated && !r.trialState.IsTrialStarted():
 		// user wants to init a trial for the first time
-		err = r.initTrialLicense(ctx, secret, license)
+		return reconcile.Result{}, r.initTrialLicense(ctx, secret, license)
 	case trialLicensePopulated && !validLicense(licenseStatus):
 		// existing license is invalid (expired or tampered with)
-		err = r.invalidOperation(ctx, secret, userFriendlyMsgs[licenseStatus])
+		return reconcile.Result{}, r.invalidOperation(ctx, secret, userFriendlyMsgs[licenseStatus])
 	case trialLicensePopulated && validLicense(licenseStatus) && !r.trialState.IsTrialStarted():
 		// valid license, let's consider the trial started and complete the activation
-		err = r.completeTrialActivation(ctx, request.NamespacedName)
+		return reconcile.Result{}, r.completeTrialActivation(ctx, request.NamespacedName)
 	case trialLicensePopulated && validLicense(licenseStatus) && r.trialState.IsTrialStarted():
 		// all good nothing to do
 	}
