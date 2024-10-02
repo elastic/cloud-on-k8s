@@ -166,6 +166,8 @@ func getDefaultContainerPorts(kb kbv1.Kibana) []corev1.ContainerPort {
 }
 
 func GetKibanaBasePath(kb kbv1.Kibana) (string, error) {
+	// We only support the case where both base path and rewrite base path are set in the ENV or the config
+	// We will not support the case where base path is set in the ENV and rewrite base path is set in the config or vice versa
 	kbBasePath, err := GetKibanaBasePathFromSpecEnv(kb.Spec.PodTemplate.Spec)
 	if err != nil {
 		return "", err
