@@ -85,8 +85,8 @@ func TestAPMKibanaAssociation(t *testing.T) {
 	test.Sequence(nil, test.EmptySteps, esBuilder, kbBuilder, apmBuilder).RunSequential(t)
 }
 
-// TestAPMKibanaAssociationBasePathConfiguredInConfig tests associating an APM Server with Kibana with a custom basePath configured.
-func TestAPMKibanaAssociationBasePathConfiguredInConfig(t *testing.T) {
+// TestAPMKibanaAssociationWithBasePath tests associating an APM Server with Kibana with a custom basePath configured.
+func TestAPMKibanaAssociationWithBasePath(t *testing.T) {
 	stackVersion := version.MustParse(test.Ctx().ElasticStackVersion)
 	if !stackVersion.GTE(apmv1.ApmAgentConfigurationMinVersion) {
 		t.SkipNow()
@@ -122,53 +122,21 @@ func TestAPMKibanaAssociationBasePathConfiguredInConfig(t *testing.T) {
 			"setup.template.settings.index.number_of_replicas": 0, // avoid ES yellow state on a 1 node ES cluster
 		})
 
-	test.Sequence(nil, test.EmptySteps, esBuilder, kbBuilder, apmBuilder).RunSequential(t)
-}
+	// test.Sequence(nil, test.EmptySteps, esBuilder, kbBuilder, apmBuilder).RunSequential(t)
 
-// TestAPMKibanaAssociationBasePathConfiguredInENV tests associating an APM Server with Kibana with a custom basePath configured as an ENV.
-func TestAPMKibanaAssociationBasePathConfiguredInENV(t *testing.T) {
-	stackVersion := version.MustParse(test.Ctx().ElasticStackVersion)
-	if !stackVersion.GTE(apmv1.ApmAgentConfigurationMinVersion) {
-		t.SkipNow()
-	}
+	kbWithEnv := kbBuilder.DeepCopy().WithEnv([]corev1.EnvVar{
+		{
+			Name:  "SERVER_BASEPATH",
+			Value: "/monitoring/kibana",
+		},
+		{
+			Name:  "SERVER_REWRITEBASEPATH",
+			Value: "true",
+		},
+	}).WithConfig(nil).WithMutatedFrom(&kbBuilder)
 
-	ns := test.Ctx().ManagedNamespace(0)
-	name := "test-apm-kb-assoc"
-
-	esBuilder := elasticsearch.NewBuilder(name).
-		WithNamespace(ns).
-		WithESMasterDataNodes(2, elasticsearch.DefaultResources). // TODO: revert when https://github.com/elastic/cloud-on-k8s/issues/7418 is resolved.
-		WithRestrictedSecurityContext()
-
-	kbBuilder := kibana.NewBuilder(name).
-		WithNamespace(ns).
-		WithElasticsearchRef(esBuilder.Ref()).
-		WithNodeCount(1).
-		WithRestrictedSecurityContext().
-		WithAPMIntegration().
-		WithENV([]corev1.EnvVar{
-			{
-				Name:  "SERVER_BASEPATH",
-				Value: "/monitoring/kibana",
-			},
-			{
-				Name:  "SERVER_REWRITEBASEPATH",
-				Value: "TRUE",
-			},
-		})
-
-	apmBuilder := apmserver.NewBuilder(name).
-		WithNamespace(ns).
-		WithElasticsearchRef(esBuilder.Ref()).
-		WithKibanaRef(kbBuilder.Ref()).
-		WithNodeCount(1).
-		WithRestrictedSecurityContext().
-		WithConfig(map[string]interface{}{
-			"apm-server.ilm.enabled":                           false,
-			"setup.template.settings.index.number_of_replicas": 0, // avoid ES yellow state on a 1 node ES cluster
-		})
-
-	test.Sequence(nil, test.EmptySteps, esBuilder, kbBuilder, apmBuilder).RunSequential(t)
+	// We first test with the base path set in Spec.Config and then we test with basePath set in the env vars.
+	test.RunMutations(t, []test.Builder{esBuilder, kbBuilder, apmBuilder}, []test.Builder{kbWithEnv})
 }
 
 func TestAPMAssociationWithNonExistentES(t *testing.T) {
