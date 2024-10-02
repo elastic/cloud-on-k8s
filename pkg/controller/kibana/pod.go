@@ -22,6 +22,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/defaults"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/keystore"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/pod"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/settings"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/version"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/volume"
 	kblabel "github.com/elastic/cloud-on-k8s/v2/pkg/controller/kibana/label"
@@ -141,19 +142,19 @@ func GetKibanaBasePathFromSpecEnv(podSpec corev1.PodSpec) (string, error) {
 
 	envMap := make(map[string]string)
 	for _, envVar := range kbContainer.Env {
-		if envVar.Name == KibanaBasePathENVName || envVar.Name == KibanaRewriteBasePathENVName {
+		if envVar.Name == KibanaBasePathEnvName || envVar.Name == KibanaRewriteBasePathEnvName {
 			envMap[envVar.Name] = envVar.Value
 		}
 	}
 
 	// If SERVER_REWRITEBASEPATH is set to true, we should use the value of SERVER_BASEPATH
-	if rewriteBasePath, ok := envMap[KibanaRewriteBasePathENVName]; ok {
+	if rewriteBasePath, ok := envMap[KibanaRewriteBasePathEnvName]; ok {
 		rewriteBasePathBool, err := strconv.ParseBool(rewriteBasePath)
 		if err != nil {
 			return "", fmt.Errorf("failed to parse SERVER_REWRITEBASEPATH value %s: %w", rewriteBasePath, err)
 		}
 		if rewriteBasePathBool {
-			return envMap[KibanaBasePathENVName], nil
+			return envMap[KibanaBasePathEnvName], nil
 		}
 	}
 
