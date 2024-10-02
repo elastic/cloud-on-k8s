@@ -253,7 +253,7 @@ func (b Builder) WithMonitoring(metricsESRef commonv1.ObjectSelector, logsESRef 
 	return b
 }
 
-func (b Builder) WithENV(envVar []corev1.EnvVar) Builder {
+func (b Builder) WithEnv(envVar []corev1.EnvVar) Builder {
 	if len(b.Kibana.Spec.PodTemplate.Spec.Containers) == 0 {
 		b.Kibana.Spec.PodTemplate.Spec.Containers = []corev1.Container{
 			{Name: kbv1.KibanaContainerName},

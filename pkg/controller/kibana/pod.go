@@ -32,8 +32,8 @@ import (
 const (
 	DataVolumeName               = "kibana-data"
 	DataVolumeMountPath          = "/usr/share/kibana/data"
-	KibanaBasePathENVName        = "SERVER_BASEPATH"
-	KibanaRewriteBasePathENVName = "SERVER_REWRITEBASEPATH"
+	KibanaBasePathEnvName        = "SERVER_BASEPATH"
+	KibanaRewriteBasePathEnvName = "SERVER_REWRITEBASEPATH"
 )
 
 var (
@@ -178,8 +178,7 @@ func GetKibanaBasePath(kb kbv1.Kibana) (string, error) {
 		return "", nil
 	}
 
-	options := []ucfg.Option{ucfg.PathSep("."), ucfg.AppendValues}
-	kbucfgConfig, err := ucfg.NewFrom(kb.Spec.Config.Data, options...)
+	kbucfgConfig, err := ucfg.NewFrom(kb.Spec.Config.Data, settings.Options...)
 	if err != nil {
 		return "", err
 	}
