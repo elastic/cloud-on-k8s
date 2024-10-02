@@ -7,6 +7,7 @@ package kibana
 import (
 	"context"
 	"fmt"
+	"strconv"
 
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
@@ -132,10 +133,10 @@ func GetKibanaContainer(podSpec corev1.PodSpec) *corev1.Container {
 	return pod.ContainerByName(podSpec, kbv1.KibanaContainerName)
 }
 
-func GetKibanaBasePathFromSpecEnv(podSpec corev1.PodSpec) string {
+func GetKibanaBasePathFromSpecEnv(podSpec corev1.PodSpec) (string, error) {
 	kbContainer := GetKibanaContainer(podSpec)
 	if kbContainer == nil {
-		return ""
+		return "", nil
 	}
 
 	envMap := make(map[string]string)
@@ -147,12 +148,16 @@ func GetKibanaBasePathFromSpecEnv(podSpec corev1.PodSpec) string {
 
 	// If SERVER_REWRITEBASEPATH is set to true, we should use the value of SERVER_BASEPATH
 	if rewriteBasePath, ok := envMap[KibanaRewriteBasePathENVName]; ok {
-		if rewriteBasePath == "true" {
-			return envMap[KibanaBasePathENVName]
+		rewriteBasePathBool, err := strconv.ParseBool(rewriteBasePath)
+		if err != nil {
+			return "", fmt.Errorf("failed to parse SERVER_REWRITEBASEPATH value %s: %w", rewriteBasePath, err)
+		}
+		if rewriteBasePathBool {
+			return envMap[KibanaBasePathENVName], nil
 		}
 	}
 
-	return ""
+	return "", nil
 }
 
 func getDefaultContainerPorts(kb kbv1.Kibana) []corev1.ContainerPort {
@@ -160,7 +165,12 @@ func getDefaultContainerPorts(kb kbv1.Kibana) []corev1.ContainerPort {
 }
 
 func GetKibanaBasePath(kb kbv1.Kibana) (string, error) {
-	if kbBasePath := GetKibanaBasePathFromSpecEnv(kb.Spec.PodTemplate.Spec); kbBasePath != "" {
+	kbBasePath, err := GetKibanaBasePathFromSpecEnv(kb.Spec.PodTemplate.Spec)
+	if err != nil {
+		return "", err
+	}
+
+	if kbBasePath != "" {
 		return kbBasePath, nil
 	}
 

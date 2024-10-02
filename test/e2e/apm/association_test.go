@@ -153,7 +153,7 @@ func TestAPMKibanaAssociationBasePathConfiguredInENV(t *testing.T) {
 			},
 			{
 				Name:  "SERVER_REWRITEBASEPATH",
-				Value: "true",
+				Value: "TRUE",
 			},
 		})
 
