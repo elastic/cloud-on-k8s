@@ -16,7 +16,7 @@ import (
 )
 
 // ServiceURL calculates the URL for the service identified by serviceNSN using protocol.
-func ServiceURL(c k8s.Client, serviceNSN types.NamespacedName, protocol string) (string, error) {
+func ServiceURL(c k8s.Client, serviceNSN types.NamespacedName, protocol string, basePath string) (string, error) {
 	var svc corev1.Service
 	if err := c.Get(context.Background(), serviceNSN, &svc); err != nil {
 		return "", fmt.Errorf("while fetching referenced service: %w", err)
@@ -26,7 +26,7 @@ func ServiceURL(c k8s.Client, serviceNSN types.NamespacedName, protocol string) 
 		return "", err
 	}
 
-	return fmt.Sprintf("%s://%s.%s.svc:%d", protocol, svc.Name, svc.Namespace, port), nil
+	return fmt.Sprintf("%s://%s.%s.svc:%d%s", protocol, svc.Name, svc.Namespace, port, basePath), nil
 }
 
 // findPortFor returns the port with the name matching protocol.
