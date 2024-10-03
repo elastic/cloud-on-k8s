@@ -73,6 +73,7 @@ steps:
           DOCKER_REGISTRY_VAULT_PATH: secret/ci/elastic-cloud-on-k8s/docker-registry-elastic
           PRE_BUILD_SCRIPT: ".buildkite/scripts/build/pre-build-operator.sh"
           DRIVAH_BUILD_PATH: "build"
+          DRIVAH_AMD_AGENT_MEMORY: "5G"
           RECURSIVE: true
 
   - group: build e2e-tests
