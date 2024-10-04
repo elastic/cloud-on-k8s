@@ -70,7 +70,7 @@ func TestStackConfigPolicy(t *testing.T) {
 	configuredObjectsEndpoints := []string{
 		"/_snapshot/repo_test",
 		"/_slm/policy/slm_test",
-		//"/_security/role_mapping/role_test", uncomment once https://github.com/elastic/elasticsearch/issues/91939 is resolved
+		"/_security/role_mapping/role_test",
 		"/_ingest/pipeline/pipeline_test",
 		"/_ilm/policy/ilm_test",
 		"/_index_template/template_test",
