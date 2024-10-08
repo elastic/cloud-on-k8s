@@ -157,11 +157,19 @@ tests:
       - equal:
           path: spec.configRef.secretRef.secretName
           value: configLogstashSecretName
-  - it: should render pipelinesRef properly
+  - it: should render pipelinesRef properly without pipelines field
     set:
       pipelinesRef:
         secretName: pipelineLogstashSecretName
     asserts:
       - equal:
-          path: spec.pipelinesRef.secretName
-          value: pipelineLogstashSecretName
+          path: spec
+          value:
+            version: 8.16.0-SNAPSHOT
+            count: 1
+            pipelinesRef:
+              secretName: pipelineLogstashSecretName
+            volumeClaimTemplates: []
+            elasticsearchRefs: []
+            services: []
+            secureSettings: []

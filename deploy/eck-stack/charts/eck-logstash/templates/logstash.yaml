@@ -44,7 +44,9 @@ spec:
     {{- toYaml . | nindent 4 }}
   {{- end }}
 
+  {{- if not (.Values.pipelinesRef)  }}
   pipelines: {{ toYaml .Values.pipelines | nindent 4 }}
+  {{- end }}
   volumeClaimTemplates: {{ toYaml .Values.volumeClaimTemplates | nindent 4 }}
   elasticsearchRefs: {{ toYaml .Values.elasticsearchRefs | nindent 4 }}
   services: {{ toYaml .Values.services | nindent 4 }}
