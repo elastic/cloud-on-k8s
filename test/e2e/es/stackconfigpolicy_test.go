@@ -67,15 +67,30 @@ func TestStackConfigPolicy(t *testing.T) {
 	assert.NoError(t, err)
 
 	// list of endpoints to check the existence or not of the settings defined in the esConfigSpec
-	configuredObjectsEndpoints := []string{
-		"/_snapshot/repo_test",
-		"/_slm/policy/slm_test",
-		"/_security/role_mapping/role_test",
-		"/_ingest/pipeline/pipeline_test",
-		"/_ilm/policy/ilm_test",
-		"/_index_template/template_test",
-		"/_component_template/runtime_component_template_test",
-		"/_component_template/component_template_test",
+	configuredObjectsEndpoints := map[string]statusCode{
+		"/_snapshot/repo_test":  {ok, notFound},
+		"/_slm/policy/slm_test": {ok, notFound},
+		"/_security/role_mapping/role_test": {
+			onCreation: func() int {
+				// due to a bug in 8.15.x, role mappings are not found via the API
+				if stackVersion.GTE(version.MinFor(8, 15, 0)) && stackVersion.LT(version.MinFor(8, 16, 0)) {
+					return notFound()
+				}
+				return ok()
+			},
+			onDeletion: func() int {
+				// prior to 8.15.x, role mappings are not deleted when scp is deleted
+				if stackVersion.LT(version.MinFor(8, 15, 0)) {
+					return ok()
+				}
+				return notFound()
+			},
+		},
+		"/_ingest/pipeline/pipeline_test":                      {ok, notFound},
+		"/_ilm/policy/ilm_test":                                {ok, notFound},
+		"/_index_template/template_test":                       {ok, notFound},
+		"/_component_template/runtime_component_template_test": {ok, notFound},
+		"/_component_template/component_template_test":         {ok, notFound},
 	}
 
 	esConfigSpec.SecureSettings = []commonv1.SecretSource{
@@ -240,8 +255,8 @@ func TestStackConfigPolicy(t *testing.T) {
 					esClient, err := elasticsearch.NewElasticsearchClient(es.Elasticsearch, k)
 					assert.NoError(t, err)
 
-					for _, ep := range configuredObjectsEndpoints {
-						if err := checkAPIStatusCode(esClient, ep, 200); err != nil {
+					for ep, statusCodes := range configuredObjectsEndpoints {
+						if err := checkAPIStatusCode(esClient, ep, statusCodes.onCreation()); err != nil {
 							return err
 						}
 					}
@@ -265,8 +280,8 @@ func TestStackConfigPolicy(t *testing.T) {
 					esClient, err := elasticsearch.NewElasticsearchClient(es.Elasticsearch, k)
 					assert.NoError(t, err)
 
-					for _, ep := range configuredObjectsEndpoints {
-						if err := checkAPIStatusCode(esClient, ep, 404); err != nil {
+					for ep, statusCode := range configuredObjectsEndpoints {
+						if err := checkAPIStatusCode(esClient, ep, statusCode.onDeletion()); err != nil {
 							return err
 						}
 					}
@@ -292,6 +307,14 @@ func TestStackConfigPolicy(t *testing.T) {
 
 	test.Sequence(nil, steps, esWithlicense).RunSequential(t)
 }
+
+type statusCode struct {
+	onCreation func() int
+	onDeletion func() int
+}
+
+func ok() int       { return 200 }
+func notFound() int { return 404 }
 
 func checkAPIStatusCode(esClient client.Client, url string, expectedStatusCode int) error {
 	var items map[string]interface{}
