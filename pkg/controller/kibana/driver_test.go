@@ -11,7 +11,6 @@ import (
 	"testing"
 
 	"github.com/go-test/deep"
-	"github.com/google/go-cmp/cmp"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	appsv1 "k8s.io/api/apps/v1"
@@ -383,7 +382,7 @@ func TestDriverDeploymentParams(t *testing.T) {
 			}
 
 			if diff := deep.Equal(got, tt.want); diff != nil {
-				t.Error(cmp.Diff(got, tt.want))
+				t.Error(diff)
 			}
 		})
 	}
