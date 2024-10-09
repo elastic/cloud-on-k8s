@@ -23,7 +23,13 @@ const (
 	ReadinessPortProbeScriptConfigKey = "readiness-port-script.sh"
 	// ReadinessPortProbeScript is the simplified readiness check for ES >= 8.2.0 which supports a dedicated TCP check
 	ReadinessPortProbeScript = `#!/usr/bin/env bash
-nc -z -v -w5 127.0.0.1 8080
+nc -z -v -w5 127.0.0.1 8080 >/dev/null 2>&1
+probe_exit_code=$?
+
+if [ $probe_exit_code -ne 0 ]; then
+    echo "Elasticsearch is not ready yet. Check the server logs."
+    exit $probe_exit_code
+fi
 `
 )
 
