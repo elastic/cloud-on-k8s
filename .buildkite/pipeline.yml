@@ -136,24 +136,24 @@ steps:
 
   # ----------
 
-  - group: cve checks
-    steps:
-      - label: ":buildkite: cve-checks"
-        command: |
-          echo `buildkite-agent meta-data get operator-image`
-          export CONTAINER=$$(buildkite-agent meta-data get operator-image)
-          cat <<- YAML | buildkite-agent pipeline upload
-          steps:
-            - label: "Trigger cve-slo-status pipeline for $$CONTAINER"
-              trigger: cve-slo-status
-              build:
-                env:
-                  CONTAINER: "$$CONTAINER"
-              soft_fail: true
-          YAML
-        agents:
-          image: docker.elastic.co/ci-agent-images/cloud-k8s-operator/buildkite-agent:02c746a1
-          memory: "2G"
+  - label: ":buildkite: cve-checks"
+    depends_on:
+      - "operator-image-build"
+    command: |
+      echo `buildkite-agent meta-data get operator-image`
+      export CONTAINER=$$(buildkite-agent meta-data get operator-image)
+      cat <<- YAML | buildkite-agent pipeline upload
+      steps:
+        - label: "Trigger cve-slo-status pipeline for $$CONTAINER"
+          trigger: cve-slo-status
+          build:
+            env:
+              CONTAINER: "$$CONTAINER"
+          soft_fail: true
+      YAML
+    agents:
+      image: docker.elastic.co/ci-agent-images/cloud-k8s-operator/buildkite-agent:e808dbe5
+      memory: "2G"
 
   - label: ":buildkite:"
     depends_on:
