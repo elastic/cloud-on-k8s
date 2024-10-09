@@ -18,6 +18,8 @@ Before you deploy and run ECK, take some time to look at the basic and advanced 
 
 **Advanced settings**
 
+NOTE: Snapshots are essential for recovering Elasticsearch indices in case of accidental deletion or for migrating data between clusters.
+
 - <<{p}-virtual-memory>>
 - <<{p}-reserved-settings>>
 - <<{p}-es-secure-settings>>
