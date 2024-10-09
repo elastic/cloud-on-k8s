@@ -85,6 +85,60 @@ func TestAPMKibanaAssociation(t *testing.T) {
 	test.Sequence(nil, test.EmptySteps, esBuilder, kbBuilder, apmBuilder).RunSequential(t)
 }
 
+// TestAPMKibanaAssociationWithBasePath tests associating an APM Server with Kibana with a custom basePath configured.
+func TestAPMKibanaAssociationWithBasePath(t *testing.T) {
+	stackVersion := version.MustParse(test.Ctx().ElasticStackVersion)
+	if !stackVersion.GTE(apmv1.ApmAgentConfigurationMinVersion) {
+		t.SkipNow()
+	}
+
+	ns := test.Ctx().ManagedNamespace(0)
+	name := "test-apm-kb-assoc"
+
+	esBuilder := elasticsearch.NewBuilder(name).
+		WithNamespace(ns).
+		WithESMasterDataNodes(2, elasticsearch.DefaultResources). // TODO: revert when https://github.com/elastic/cloud-on-k8s/issues/7418 is resolved.
+		WithRestrictedSecurityContext()
+
+	kbBuilder := kibana.NewBuilder(name).
+		WithNamespace(ns).
+		WithElasticsearchRef(esBuilder.Ref()).
+		WithNodeCount(1).
+		WithRestrictedSecurityContext().
+		WithAPMIntegration().
+		WithConfig(map[string]interface{}{
+			"server.basePath":        "/monitoring/kibana",
+			"server.rewriteBasePath": true,
+		})
+
+	apmBuilder := apmserver.NewBuilder(name).
+		WithNamespace(ns).
+		WithElasticsearchRef(esBuilder.Ref()).
+		WithKibanaRef(kbBuilder.Ref()).
+		WithNodeCount(1).
+		WithRestrictedSecurityContext().
+		WithConfig(map[string]interface{}{
+			"apm-server.ilm.enabled":                           false,
+			"setup.template.settings.index.number_of_replicas": 0, // avoid ES yellow state on a 1 node ES cluster
+		})
+
+	// test.Sequence(nil, test.EmptySteps, esBuilder, kbBuilder, apmBuilder).RunSequential(t)
+
+	kbWithEnv := kbBuilder.DeepCopy().WithEnv([]corev1.EnvVar{
+		{
+			Name:  "SERVER_BASEPATH",
+			Value: "/monitoring/kibana",
+		},
+		{
+			Name:  "SERVER_REWRITEBASEPATH",
+			Value: "true",
+		},
+	}).WithConfig(nil).WithMutatedFrom(&kbBuilder)
+
+	// We first test with the base path set in Spec.Config and then we test with basePath set in the env vars.
+	test.RunMutations(t, []test.Builder{esBuilder, kbBuilder, apmBuilder}, []test.Builder{kbWithEnv})
+}
+
 func TestAPMAssociationWithNonExistentES(t *testing.T) {
 	name := "test-apm-assoc-non-existent-es"
 	apmBuilder := apmserver.NewBuilder(name).

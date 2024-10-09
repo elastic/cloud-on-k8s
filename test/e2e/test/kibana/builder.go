@@ -253,6 +253,21 @@ func (b Builder) WithMonitoring(metricsESRef commonv1.ObjectSelector, logsESRef 
 	return b
 }
 
+func (b Builder) WithEnv(envVar []corev1.EnvVar) Builder {
+	if len(b.Kibana.Spec.PodTemplate.Spec.Containers) == 0 {
+		b.Kibana.Spec.PodTemplate.Spec.Containers = []corev1.Container{
+			{Name: kbv1.KibanaContainerName},
+		}
+	}
+	for i, c := range b.Kibana.Spec.PodTemplate.Spec.Containers {
+		if c.Name == kbv1.KibanaContainerName {
+			c.Env = append(c.Env, envVar...)
+			b.Kibana.Spec.PodTemplate.Spec.Containers[i] = c
+		}
+	}
+	return b
+}
+
 func (b Builder) GetMetricsIndexPattern() string {
 	v := version.MustParse(test.Ctx().ElasticStackVersion)
 	if v.GTE(version.MinFor(8, 3, 0)) {

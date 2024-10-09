@@ -60,7 +60,7 @@ var (
 				serviceName = services.ExternalServiceName(es.Name)
 			}
 			nsn := types.NamespacedName{Name: serviceName, Namespace: es.Namespace}
-			return ServiceURL(c, nsn, es.Spec.HTTP.Protocol())
+			return ServiceURL(c, nsn, es.Spec.HTTP.Protocol(), "")
 		},
 		AssociationName:     "kb-es",
 		AssociatedShortName: "kb",
@@ -540,7 +540,7 @@ func TestReconciler_Reconcile_noESAuth(t *testing.T) {
 				serviceName = "entname-ent-http"
 			}
 			nsn := types.NamespacedName{Namespace: ent.Namespace, Name: serviceName}
-			return ServiceURL(c, nsn, ent.Spec.HTTP.Protocol())
+			return ServiceURL(c, nsn, ent.Spec.HTTP.Protocol(), "")
 		},
 		ReferencedResourceVersion: func(c k8s.Client, association commonv1.Association) (string, bool, error) {
 			entRef := association.AssociationRef()
@@ -1095,7 +1095,7 @@ func TestReconciler_Reconcile_Transitive_Associations(t *testing.T) {
 				serviceName = agentNamer.Suffix(fleetServer.Name, "http")
 			}
 			nsn := types.NamespacedName{Namespace: fleetServer.Namespace, Name: serviceName}
-			url, err := ServiceURL(c, nsn, fleetServer.Spec.HTTP.Protocol())
+			url, err := ServiceURL(c, nsn, fleetServer.Spec.HTTP.Protocol(), "")
 			if err != nil {
 				return "", err
 			}

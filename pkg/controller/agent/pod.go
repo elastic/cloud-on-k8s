@@ -528,6 +528,7 @@ func getFleetSetupFleetEnvVars(client k8s.Client, fleetToken EnrollmentAPIKey, f
 				client,
 				types.NamespacedName{Namespace: agent.Namespace, Name: HTTPServiceName(agent.Name)},
 				agent.Spec.HTTP.Protocol(),
+				"",
 			)
 			if err != nil {
 				return nil, err

@@ -19,6 +19,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/operator"
 	ver "github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/version"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/user"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/kibana"
 	kblabel "github.com/elastic/cloud-on-k8s/v2/pkg/controller/kibana/label"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/k8s"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/rbac"
@@ -69,7 +70,14 @@ func getKibanaExternalURL(c k8s.Client, assoc commonv1.Association) (string, err
 		serviceName = kbv1.HTTPService(kb.Name)
 	}
 	nsn := types.NamespacedName{Namespace: kb.Namespace, Name: serviceName}
-	return association.ServiceURL(c, nsn, kb.Spec.HTTP.Protocol())
+
+	// Get Kibana base path if configured
+	basePath, err := kibana.GetKibanaBasePath(kb)
+	if err != nil {
+		return "", err
+	}
+
+	return association.ServiceURL(c, nsn, kb.Spec.HTTP.Protocol(), basePath)
 }
 
 type kibanaVersionResponse struct {

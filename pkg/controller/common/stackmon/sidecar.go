@@ -33,6 +33,11 @@ func NewMetricBeatSidecar(
 	password string,
 	isTLS bool,
 ) (BeatSidecar, error) {
+	v, err := version.Parse(imageVersion)
+	if err != nil {
+		return BeatSidecar{}, err // error unlikely and should have been caught during validation
+	}
+
 	baseConfig, sourceCaVolume, err := buildMetricbeatBaseConfig(
 		client,
 		associationType,
@@ -43,15 +48,12 @@ func NewMetricBeatSidecar(
 		password,
 		isTLS,
 		baseConfigTemplate,
+		v,
 	)
 	if err != nil {
 		return BeatSidecar{}, err
 	}
 
-	v, err := version.Parse(imageVersion)
-	if err != nil {
-		return BeatSidecar{}, err // error unlikely and should have been caught during validation
-	}
 	image := container.ImageRepository(container.MetricbeatImage, v)
 
 	// EmptyDir volume so that MetricBeat does not write in the container image, which allows ReadOnlyRootFilesystem: true
