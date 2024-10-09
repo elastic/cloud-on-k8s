@@ -155,7 +155,7 @@ func (b Builder) SkipTest() bool {
 	ver := version.MustParse(b.EMS.Spec.Version)
 	// ARM is only supported as of 8.16.0
 	if test.Ctx().HasTag(test.ArchARMTag) && ver.LT(container.MinMapsVersionOnARM) {
-		return false
+		return true
 	}
 	return version.SupportedMapsVersions.WithinRange(ver) != nil
 }
