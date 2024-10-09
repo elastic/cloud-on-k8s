@@ -11,6 +11,8 @@ import (
 	"strings"
 	"time"
 
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+
 	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/types"
 
@@ -162,20 +164,13 @@ func (d *defaultDriver) Reconcile(ctx context.Context) *reconciler.Results {
 		}
 	} else {
 		// Ensure that remote cluster Service does not exist.
-		remoteClusterService := &corev1.Service{}
-		remoteClusterServiceName := types.NamespacedName{
-			Name:      services.RemoteClusterServiceName(d.ES.Name),
-			Namespace: d.ES.Namespace,
+		remoteClusterService := &corev1.Service{
+			ObjectMeta: metav1.ObjectMeta{
+				Namespace: d.ES.Namespace,
+				Name:      services.RemoteClusterServiceName(d.ES.Name),
+			},
 		}
-		if err := d.Client.Get(ctx, remoteClusterServiceName, remoteClusterService); err != nil {
-			if !k8serrors.IsNotFound(err) {
-				results.WithError(err)
-			}
-		} else {
-			// Remote cluster Service has been found but is not expected.
-			log.Info("Deleting remote cluster Service")
-			results.WithError(d.Client.Delete(ctx, remoteClusterService))
-		}
+		results.WithError(k8s.DeleteResourceIfExists(ctx, d.Client, remoteClusterService))
 	}
 
 	resourcesState, err := reconcile.NewResourcesStateFromAPI(d.Client, d.ES)

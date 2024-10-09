@@ -8,6 +8,7 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/go-logr/logr"
 	"k8s.io/apimachinery/pkg/util/sets"
 
 	esv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/elasticsearch/v1"
@@ -67,46 +68,13 @@ func reconcileAPIKeys(
 		activeAPIKey := activeAPIKeys.GetActiveKeyWithName(apiKeyName)
 		expectedHash := hash.HashObject(remoteCluster.APIKey)
 		if activeAPIKey == nil {
-			// Active API key not found, let's create a new one.
-			log.Info("Creating API key", "alias", remoteCluster.Name, "key", apiKeyName)
-			apiKey, err := esClient.CreateCrossClusterAPIKey(ctx, esclient.CrossClusterAPIKeyCreateRequest{
-				Name: apiKeyName,
-				CrossClusterAPIKeyUpdateRequest: esclient.CrossClusterAPIKeyUpdateRequest{
-					RemoteClusterAPIKey: *remoteCluster.APIKey,
-					Metadata:            newMetadataFor(clientES, expectedHash),
-				},
-			})
-			if err != nil {
+			if err := createAPIKey(ctx, log, remoteCluster, apiKeyName, esClient, clientES, expectedHash, clientClusterAPIKeyStore, reconciledES); err != nil {
 				return err
 			}
-			clientClusterAPIKeyStore.Update(reconciledES.Name, reconciledES.Namespace, remoteCluster.Name, apiKey.ID, apiKey.Encoded)
-		}
-		// If an API key already exists ensure that the access field is the expected one using the hash
-		if activeAPIKey != nil {
-			// Ensure that the API key is in the keystore
-			if clientClusterAPIKeyStore.KeyIDFor(remoteCluster.Name) != activeAPIKey.ID {
-				// We have a problem here, the API Key ID in Elasticsearch does not match the API Key recorded in the Secret.
-				// Invalidate the API Key in ES and requeue
-				log.Info("Invalidating API key as it does not match the one in keystore", "alias", remoteCluster.Name, "key", apiKeyName)
-				if err := esClient.InvalidateCrossClusterAPIKey(ctx, activeAPIKey.Name); err != nil {
-					return err
-				}
-				return fmt.Errorf(
-					"cluster key id for alias %s %s (%s), does not match the one stored in the keystore of %s/%s",
-					remoteCluster.Name, activeAPIKey.Name, activeAPIKey.ID, clientES.Namespace, clientES.Name,
-				)
-			}
-			currentHash := activeAPIKey.Metadata["elasticsearch.k8s.elastic.co/config-hash"]
-			if currentHash != expectedHash {
-				log.Info("Updating API key", "alias", remoteCluster.Name)
-				// Update the Key
-				_, err := esClient.UpdateCrossClusterAPIKey(ctx, activeAPIKey.ID, esclient.CrossClusterAPIKeyUpdateRequest{
-					RemoteClusterAPIKey: *remoteCluster.APIKey,
-					Metadata:            newMetadataFor(clientES, expectedHash),
-				})
-				if err != nil {
-					return err
-				}
+		} else {
+			// If an API key already exists ensure that the access field is the expected one using the hash
+			if err := maybeUpdateAPIKey(ctx, log, esClient, clientClusterAPIKeyStore, remoteCluster, activeAPIKey, apiKeyName, clientES, expectedHash); err != nil {
+				return err
 			}
 		}
 	}
@@ -139,6 +107,72 @@ func reconcileAPIKeys(
 	// Save the generated keys in the keystore.
 	if err := clientClusterAPIKeyStore.Save(ctx, c, clientES); err != nil {
 		return err
+	}
+	return nil
+}
+
+func createAPIKey(
+	ctx context.Context,
+	log logr.Logger,
+	remoteCluster esv1.RemoteCluster,
+	apiKeyName string,
+	esClient esclient.Client,
+	clientES *esv1.Elasticsearch,
+	expectedHash string,
+	clientClusterAPIKeyStore *APIKeyStore,
+	reconciledES *esv1.Elasticsearch,
+) error {
+	// Active API key not found, let's create a new one.
+	log.Info("Creating API key", "alias", remoteCluster.Name, "key", apiKeyName)
+	apiKey, err := esClient.CreateCrossClusterAPIKey(ctx, esclient.CrossClusterAPIKeyCreateRequest{
+		Name: apiKeyName,
+		CrossClusterAPIKeyUpdateRequest: esclient.CrossClusterAPIKeyUpdateRequest{
+			RemoteClusterAPIKey: *remoteCluster.APIKey,
+			Metadata:            newMetadataFor(clientES, expectedHash),
+		},
+	})
+	if err != nil {
+		return err
+	}
+	clientClusterAPIKeyStore.Update(reconciledES.Name, reconciledES.Namespace, remoteCluster.Name, apiKey.ID, apiKey.Encoded)
+	return nil
+}
+
+func maybeUpdateAPIKey(
+	ctx context.Context,
+	log logr.Logger,
+	esClient esclient.Client,
+	clientClusterAPIKeyStore *APIKeyStore,
+	remoteCluster esv1.RemoteCluster,
+	activeAPIKey *esclient.CrossClusterAPIKey,
+	apiKeyName string,
+	clientES *esv1.Elasticsearch,
+	expectedHash string,
+) error {
+	// Ensure that the API key is in the keystore
+	if clientClusterAPIKeyStore.KeyIDFor(remoteCluster.Name) != activeAPIKey.ID {
+		// We have a problem here, the API Key ID in Elasticsearch does not match the API Key recorded in the Secret.
+		// Invalidate the API Key in ES and requeue
+		log.Info("Invalidating API key as it does not match the one in keystore", "alias", remoteCluster.Name, "key", apiKeyName)
+		if err := esClient.InvalidateCrossClusterAPIKey(ctx, activeAPIKey.Name); err != nil {
+			return err
+		}
+		return fmt.Errorf(
+			"cluster key id for alias %s %s (%s), does not match the one stored in the keystore of %s/%s",
+			remoteCluster.Name, activeAPIKey.Name, activeAPIKey.ID, clientES.Namespace, clientES.Name,
+		)
+	}
+	currentHash := activeAPIKey.Metadata["elasticsearch.k8s.elastic.co/config-hash"]
+	if currentHash != expectedHash {
+		log.Info("Updating API key", "alias", remoteCluster.Name)
+		// Update the Key
+		_, err := esClient.UpdateCrossClusterAPIKey(ctx, activeAPIKey.ID, esclient.CrossClusterAPIKeyUpdateRequest{
+			RemoteClusterAPIKey: *remoteCluster.APIKey,
+			Metadata:            newMetadataFor(clientES, expectedHash),
+		})
+		if err != nil {
+			return err
+		}
 	}
 	return nil
 }
