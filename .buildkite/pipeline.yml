@@ -76,25 +76,6 @@ steps:
           DRIVAH_AMD_AGENT_MEMORY: "5G"
           RECURSIVE: true
 
-  - group: cve checks
-    steps:
-      - label: ":buildkite: cve-checks"
-        command: |
-          set -euo pipefail
-          .buildkite/scripts/build/set-images.sh
-          cat <<- YAML | buildkite-agent pipeline upload
-          steps:
-            - label: "Trigger cve-slo-status pipeline for $IMAGE_NAME:$IMAGE_TAG"
-              trigger: cve-slo-status
-              build:
-                env:
-                  CONTAINER: "$IMAGE_NAME:$IMAGE_TAG"
-              soft_fail: true
-          YAML
-        agents:
-          image: docker.elastic.co/ci-agent-images/cloud-k8s-operator/buildkite-agent:02c746a1
-          memory: "2G"
-
   - group: build e2e-tests
     key: "e2e-tests-image-build"
     steps:
@@ -154,6 +135,25 @@ steps:
       memory: "2G"
 
   # ----------
+
+  - group: cve checks
+    steps:
+      - label: ":buildkite: cve-checks"
+        command: |
+          echo `buildkite-agent meta-data get operator-image`
+          export CONTAINER=$$(buildkite-agent meta-data get operator-image)
+          cat <<- YAML | buildkite-agent pipeline upload
+          steps:
+            - label: "Trigger cve-slo-status pipeline for $$CONTAINER"
+              trigger: cve-slo-status
+              build:
+                env:
+                  CONTAINER: "$$CONTAINER"
+              soft_fail: true
+          YAML
+        agents:
+          image: docker.elastic.co/ci-agent-images/cloud-k8s-operator/buildkite-agent:02c746a1
+          memory: "2G"
 
   - label: ":buildkite:"
     depends_on:
