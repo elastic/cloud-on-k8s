@@ -173,3 +173,21 @@ tests:
             elasticsearchRefs: []
             services: []
             secureSettings: []
+  - it: setting config and configRef together should fail
+    set:
+      configRef:
+        secretName: configLogstashSecretName
+      config:
+        test: config
+    asserts:
+      - failedTemplate:
+          errorMessage: config and configRef are mutually exclusive!
+  - it: setting pipelines and pipelinesRef together should fail
+    set:
+      pipelinesRef:
+        secretName: pipelineLogstashSecretName
+      pipelines:
+        - pipeline.id: main
+    asserts:
+      - failedTemplate:
+          errorMessage: pipelines and pipelinesRef are mutually exclusive!
