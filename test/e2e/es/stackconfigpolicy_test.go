@@ -73,7 +73,7 @@ func TestStackConfigPolicy(t *testing.T) {
 		"/_security/role_mapping/role_test": {
 			onCreation: func() int {
 				// due to a bug in 8.15.x, role mappings are not found via the API
-				if stackVersion.GTE(version.MinFor(8, 15, 0)) && stackVersion.LT(version.MinFor(8, 16, 0)) {
+				if stackVersion.GTE(version.MinFor(8, 15, 0)) && stackVersion.LT(version.MinFor(8, 15, 3)) {
 					return notFound()
 				}
 				return ok()
