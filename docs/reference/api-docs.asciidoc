@@ -1332,6 +1332,8 @@ ElasticsearchSpec holds the specification of an Elasticsearch cluster.
 | Field | Description
 | *`version`* __string__ | Version of Elasticsearch.
 | *`image`* __string__ | Image is the Elasticsearch Docker image to deploy.
+| *`remoteClusterServer`* __xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-v2-pkg-apis-elasticsearch-v1-remoteclusterserver[$$RemoteClusterServer$$]__ | RemoteClusterServer specifies if the remote cluster server must be enabled.
+This must be enabled if this cluster is a remote cluster which is expected to be accessed using Cross-Cluster API key APIs.
 | *`http`* __xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-v2-pkg-apis-common-v1-httpconfig[$$HTTPConfig$$]__ | HTTP holds HTTP layer settings for Elasticsearch.
 | *`transport`* __xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-v2-pkg-apis-elasticsearch-v1-transportconfig[$$TransportConfig$$]__ | Transport holds transport layer settings for Elasticsearch.
 | *`nodeSets`* __xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-v2-pkg-apis-elasticsearch-v1-nodeset[$$NodeSet$$] array__ | NodeSets allow specifying groups of Elasticsearch nodes sharing the same configuration and Pod templates.
@@ -1381,6 +1383,24 @@ in parallel: this value specifies the lowest version currently running.
 It corresponds to the metadata generation, which is updated on mutation by the API Server.
 If the generation observed in status diverges from the generation in metadata, the Elasticsearch
 controller has not yet processed the changes contained in the Elasticsearch specification.
+|===
+
+
+[id="{anchor_prefix}-github-com-elastic-cloud-on-k8s-v2-pkg-apis-elasticsearch-v1-fieldsecurity"]
+=== FieldSecurity 
+
+
+
+.Appears In:
+****
+- xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-v2-pkg-apis-elasticsearch-v1-search[$$Search$$]
+****
+
+[cols="25a,75a", options="header"]
+|===
+| Field | Description
+| *`grant`* __string array__ | 
+| *`except`* __string array__ | 
 |===
 
 
@@ -1497,6 +1517,76 @@ RemoteCluster declares a remote Elasticsearch cluster connection.
 | *`name`* __string__ | Name is the name of the remote cluster as it is set in the Elasticsearch settings.
 The name is expected to be unique for each remote clusters.
 | *`elasticsearchRef`* __xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-v2-pkg-apis-common-v1-localobjectselector[$$LocalObjectSelector$$]__ | ElasticsearchRef is a reference to an Elasticsearch cluster running within the same k8s cluster.
+| *`apiKey`* __xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-v2-pkg-apis-elasticsearch-v1-remoteclusterapikey[$$RemoteClusterAPIKey$$]__ | APIKey can be used to enable remote cluster using Cross-Cluster API key API: https://www.elastic.co/guide/en/elasticsearch/reference/current/security-api-create-cross-cluster-api-key.html
+|===
+
+
+[id="{anchor_prefix}-github-com-elastic-cloud-on-k8s-v2-pkg-apis-elasticsearch-v1-remoteclusterapikey"]
+=== RemoteClusterAPIKey 
+
+RemoteClusterAPIKey defines a remote cluster API Key.
+
+.Appears In:
+****
+- xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-v2-pkg-apis-elasticsearch-v1-remotecluster[$$RemoteCluster$$]
+****
+
+[cols="25a,75a", options="header"]
+|===
+| Field | Description
+| *`access`* __xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-v2-pkg-apis-elasticsearch-v1-remoteclusteraccess[$$RemoteClusterAccess$$]__ | Access is the name of the API Key. It is automatically generated if not set or empty.
+|===
+
+
+[id="{anchor_prefix}-github-com-elastic-cloud-on-k8s-v2-pkg-apis-elasticsearch-v1-remoteclusteraccess"]
+=== RemoteClusterAccess 
+
+
+
+.Appears In:
+****
+- xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-v2-pkg-apis-elasticsearch-v1-remoteclusterapikey[$$RemoteClusterAPIKey$$]
+****
+
+[cols="25a,75a", options="header"]
+|===
+| Field | Description
+| *`search`* __xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-v2-pkg-apis-elasticsearch-v1-search[$$Search$$]__ | 
+| *`replication`* __xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-v2-pkg-apis-elasticsearch-v1-replication[$$Replication$$]__ | 
+|===
+
+
+[id="{anchor_prefix}-github-com-elastic-cloud-on-k8s-v2-pkg-apis-elasticsearch-v1-remoteclusterserver"]
+=== RemoteClusterServer 
+
+
+
+.Appears In:
+****
+- xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-v2-pkg-apis-elasticsearch-v1-elasticsearchspec[$$ElasticsearchSpec$$]
+****
+
+[cols="25a,75a", options="header"]
+|===
+| Field | Description
+| *`enabled`* __boolean__ | 
+|===
+
+
+[id="{anchor_prefix}-github-com-elastic-cloud-on-k8s-v2-pkg-apis-elasticsearch-v1-replication"]
+=== Replication 
+
+
+
+.Appears In:
+****
+- xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-v2-pkg-apis-elasticsearch-v1-remoteclusteraccess[$$RemoteClusterAccess$$]
+****
+
+[cols="25a,75a", options="header"]
+|===
+| Field | Description
+| *`names`* __string array__ | 
 |===
 
 
@@ -1514,6 +1604,24 @@ RoleSource references roles to create in the Elasticsearch cluster.
 |===
 | Field | Description
 | *`secretName`* __string__ | SecretName is the name of the secret.
+|===
+
+
+[id="{anchor_prefix}-github-com-elastic-cloud-on-k8s-v2-pkg-apis-elasticsearch-v1-search"]
+=== Search 
+
+
+
+.Appears In:
+****
+- xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-v2-pkg-apis-elasticsearch-v1-remoteclusteraccess[$$RemoteClusterAccess$$]
+****
+
+[cols="25a,75a", options="header"]
+|===
+| Field | Description
+| *`names`* __string array__ | 
+| *`field_security`* __xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-v2-pkg-apis-elasticsearch-v1-fieldsecurity[$$FieldSecurity$$]__ | 
 |===
 
 

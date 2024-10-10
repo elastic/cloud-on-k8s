@@ -22,6 +22,22 @@ type clientV6 struct {
 	baseClient
 }
 
+func (c *clientV6) InvalidateCrossClusterAPIKey(context.Context, string) error {
+	return errNotSupportedInEs6x
+}
+
+func (c *clientV6) CreateCrossClusterAPIKey(_ context.Context, _ CrossClusterAPIKeyCreateRequest) (CrossClusterAPIKeyCreateResponse, error) {
+	return CrossClusterAPIKeyCreateResponse{}, errNotSupportedInEs6x
+}
+
+func (c *clientV6) UpdateCrossClusterAPIKey(_ context.Context, _ string, _ CrossClusterAPIKeyUpdateRequest) (CrossClusterAPIKeyUpdateResponse, error) {
+	return CrossClusterAPIKeyUpdateResponse{}, errNotSupportedInEs6x
+}
+
+func (c *clientV6) GetCrossClusterAPIKeys(_ context.Context, _ string) (CrossClusterAPIKeyList, error) {
+	return CrossClusterAPIKeyList{}, errNotSupportedInEs6x
+}
+
 func (c *clientV6) Version() version.Version {
 	return c.version
 }

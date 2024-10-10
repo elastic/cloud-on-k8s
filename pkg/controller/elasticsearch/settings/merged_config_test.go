@@ -42,13 +42,81 @@ func TestNewMergedESConfig(t *testing.T) {
 	})
 
 	tests := []struct {
-		name          string
-		version       string
-		ipFamily      corev1.IPFamily
-		cfgData       map[string]interface{}
-		policyCfgData *common.CanonicalConfig
-		assert        func(cfg CanonicalConfig)
+		name                       string
+		version                    string
+		ipFamily                   corev1.IPFamily
+		remoteClusterServerEnabled bool
+		remoteClusterClientEnabled bool
+		cfgData                    map[string]interface{}
+		policyCfgData              *common.CanonicalConfig
+		assert                     func(cfg CanonicalConfig)
 	}{
+		{
+			name:     "No remote cluster client or server by default",
+			version:  "8.15.0",
+			ipFamily: corev1.IPv4Protocol,
+			cfgData:  map[string]interface{}{},
+			assert: func(cfg CanonicalConfig) {
+				// Remote cluster client configuration.
+				require.Equal(t, 0, len(cfg.HasKeys([]string{"xpack.security.remote_cluster_client.ssl.enabled"})))
+				require.Equal(t, 0, len(cfg.HasKeys([]string{"xpack.security.remote_cluster_client.ssl.enabled"})))
+				// Remote cluster server configuration.
+				require.Equal(t, 0, len(cfg.HasKeys([]string{"xpack.security.remote_cluster_server.ssl.key"})))
+				require.Equal(t, 0, len(cfg.HasKeys([]string{"xpack.security.remote_cluster_server.ssl.certificate"})))
+				require.Equal(t, 0, len(cfg.HasKeys([]string{"xpack.security.remote_cluster_server.ssl.certificate_authorities"})))
+			},
+		},
+		{
+			name:                       "Remote cluster client is enabled",
+			version:                    "8.15.0",
+			ipFamily:                   corev1.IPv4Protocol,
+			remoteClusterClientEnabled: true,
+			cfgData:                    map[string]interface{}{},
+			assert: func(cfg CanonicalConfig) {
+				// Remote cluster client configuration.
+				require.Equal(t, 1, len(cfg.HasKeys([]string{"xpack.security.remote_cluster_client.ssl.enabled"})))
+				require.Equal(t, 1, len(cfg.HasKeys([]string{"xpack.security.remote_cluster_client.ssl.enabled"})))
+				// Remote cluster server configuration.
+				require.Equal(t, 0, len(cfg.HasKeys([]string{"xpack.security.remote_cluster_server.ssl.key"})))
+				require.Equal(t, 0, len(cfg.HasKeys([]string{"xpack.security.remote_cluster_server.ssl.certificate"})))
+				require.Equal(t, 0, len(cfg.HasKeys([]string{"xpack.security.remote_cluster_server.ssl.certificate_authorities"})))
+			},
+		},
+		{
+			name:                       "Remote cluster server is enabled",
+			version:                    "8.15.0",
+			ipFamily:                   corev1.IPv4Protocol,
+			remoteClusterServerEnabled: true,
+			cfgData:                    map[string]interface{}{},
+			assert: func(cfg CanonicalConfig) {
+				// Remote cluster client configuration.
+				require.Equal(t, 0, len(cfg.HasKeys([]string{"xpack.security.remote_cluster_client.ssl.enabled"})))
+				require.Equal(t, 0, len(cfg.HasKeys([]string{"xpack.security.remote_cluster_client.ssl.enabled"})))
+				// Remote cluster server configuration.
+				require.Equal(t, 1, len(cfg.HasKeys([]string{"remote_cluster_server.enabled"})))
+				require.Equal(t, 1, len(cfg.HasKeys([]string{"remote_cluster.publish_host"})))
+				require.Equal(t, 1, len(cfg.HasKeys([]string{"remote_cluster.host"})))
+				// Remote cluster server TLS configuration.
+				require.Equal(t, 1, len(cfg.HasKeys([]string{"xpack.security.remote_cluster_server.ssl.key"})))
+				require.Equal(t, 1, len(cfg.HasKeys([]string{"xpack.security.remote_cluster_server.ssl.certificate"})))
+				require.Equal(t, 1, len(cfg.HasKeys([]string{"xpack.security.remote_cluster_server.ssl.certificate_authorities"})))
+			},
+		},
+		{
+			name:     "in 6.x, empty config should have the default file and native realm settings configured",
+			version:  "6.8.0",
+			ipFamily: corev1.IPv4Protocol,
+			cfgData:  map[string]interface{}{},
+			assert: func(cfg CanonicalConfig) {
+				require.Equal(t, 0, len(cfg.HasKeys([]string{nodeML})))
+				require.Equal(t, 1, len(cfg.HasKeys([]string{esv1.XPackSecurityAuthcRealmsFile1Type})))
+				require.Equal(t, 1, len(cfg.HasKeys([]string{esv1.XPackSecurityAuthcRealmsFile1Order})))
+				require.Equal(t, 1, len(cfg.HasKeys([]string{esv1.XPackSecurityAuthcRealmsNative1Type})))
+				require.Equal(t, 1, len(cfg.HasKeys([]string{esv1.XPackSecurityAuthcRealmsNative1Order})))
+				require.Equal(t, 1, len(cfg.HasKeys([]string{esv1.ShardAwarenessAttributes})))
+				require.Equal(t, 1, len(cfg.HasKeys([]string{nodeAttrNodeName})))
+			},
+		},
 		{
 			name:     "in 6.x, empty config should have the default file and native realm settings configured",
 			version:  "6.8.0",
@@ -259,7 +327,7 @@ func TestNewMergedESConfig(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			ver, err := version.Parse(tt.version)
 			require.NoError(t, err)
-			cfg, err := NewMergedESConfig("clusterName", ver, tt.ipFamily, commonv1.HTTPConfig{}, commonv1.Config{Data: tt.cfgData}, tt.policyCfgData)
+			cfg, err := NewMergedESConfig("clusterName", ver, tt.ipFamily, commonv1.HTTPConfig{}, commonv1.Config{Data: tt.cfgData}, tt.policyCfgData, tt.remoteClusterServerEnabled, tt.remoteClusterClientEnabled)
 			require.NoError(t, err)
 			tt.assert(cfg)
 		})

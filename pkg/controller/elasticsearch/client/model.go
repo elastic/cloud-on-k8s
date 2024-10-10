@@ -378,26 +378,6 @@ type StartBasicResponse struct {
 	ErrorMessage    string `json:"error_message"`
 }
 
-// RemoteClustersSettings is used to build a request to update remote clusters.
-type RemoteClustersSettings struct {
-	PersistentSettings *SettingsGroup `json:"persistent,omitempty"`
-}
-
-// SettingsGroup is a group of persistent settings.
-type SettingsGroup struct {
-	Cluster RemoteClusters `json:"cluster,omitempty"`
-}
-
-// RemoteClusters models the configuration of the remote clusters.
-type RemoteClusters struct {
-	RemoteClusters map[string]RemoteCluster `json:"remote,omitempty"`
-}
-
-// RemoteCluster is the set of seeds to use in a remote cluster setting.
-type RemoteCluster struct {
-	Seeds []string `json:"seeds"`
-}
-
 // Hit represents a single search hit.
 type Hit struct {
 	Index  string                 `json:"_index"`

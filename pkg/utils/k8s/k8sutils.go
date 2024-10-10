@@ -226,6 +226,25 @@ func DeleteSecretIfExists(ctx context.Context, c Client, key types.NamespacedNam
 	return err
 }
 
+// DeleteResourceIfExists deletes the provided resource if exists.
+func DeleteResourceIfExists(ctx context.Context, c Client, obj client.Object) error {
+	key := types.NamespacedName{
+		Namespace: obj.GetNamespace(),
+		Name:      obj.GetName(),
+	}
+	if err := c.Get(ctx, key, obj); err != nil {
+		if apierrors.IsNotFound(err) {
+			// Resource does not exist.
+			return nil
+		}
+		return err
+	}
+	if err := c.Delete(ctx, obj); err != nil && !apierrors.IsNotFound(err) {
+		return err
+	}
+	return nil
+}
+
 // PodsMatchingLabels returns Pods from the given namespace matching the given labels.
 func PodsMatchingLabels(c Client, namespace string, labels map[string]string) ([]corev1.Pod, error) {
 	var pods corev1.PodList
