@@ -110,7 +110,9 @@ func NewPodTemplateSpec(ctx context.Context, client k8sclient.Client, kb kbv1.Ki
 		WithDockerImage(kb.Spec.Image, container.ImageRepository(container.KibanaImage, v)).
 		WithReadinessProbe(readinessProbe(kb.Spec.HTTP.TLS.Enabled(), kibanaBasePath)).
 		WithPorts(ports).
-		WithInitContainers(initConfigContainer(kb))
+		WithInitContainers(initConfigContainer(kb)).
+		WithContainersSecurityContext(defaultSecurityContext).
+		WithPodSecurityContext(defaultPodSecurityContext)
 
 	for _, volume := range volumes {
 		builder.WithVolumes(volume.Volume()).WithVolumeMounts(volume.VolumeMount())
