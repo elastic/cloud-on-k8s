@@ -122,8 +122,7 @@ func ReconcileResource(params Params) error {
 	}
 
 	if params.NeedsRecreate != nil && params.NeedsRecreate() {
-		log.Info("Resource cannot be updated, hence will be deleted and then recreated")
-		log.Info("Deleting resource")
+		log.Info("Deleting resource as it cannot be updated, it will be recreated")
 		reconciledMeta, err := meta.Accessor(params.Reconciled)
 		if err != nil {
 			return err
