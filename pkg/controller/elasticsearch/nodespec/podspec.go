@@ -27,7 +27,6 @@ import (
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/label"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/network"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/securitycontext"
-	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/services"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/settings"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/stackmon"
 	esvolume "github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/volume"
@@ -134,13 +133,6 @@ func BuildPodTemplateSpec(
 		// set a default security context for both the Containers and the InitContainers
 		WithContainersSecurityContext(securitycontext.For(ver, enableReadOnlyRootFilesystem)).
 		WithPreStopHook(*NewPreStopHook())
-
-	if es.Spec.RemoteClusterServer.Enabled {
-		builder = builder.WithEnv(corev1.EnvVar{
-			Name:  settings.EnvRemoteClusterService,
-			Value: services.RemoteClusterServiceName(es.Name),
-		})
-	}
 
 	builder, err = stackmon.WithMonitoring(ctx, client, builder, es)
 	if err != nil {

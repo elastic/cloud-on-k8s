@@ -28,7 +28,7 @@ const (
 
 	RemoteClusterEnabled     = "remote_cluster_server.enabled"
 	RemoteClusterPublishHost = "remote_cluster.publish_host"
-	RemoteClusterBindHost    = "remote_cluster.bind_host"
+	RemoteClusterHost        = "remote_cluster.host"
 
 	NodeName = "node.name"
 

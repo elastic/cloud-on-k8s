@@ -24,6 +24,8 @@ import (
 
 const (
 	globalServiceSuffix = ".svc"
+
+	RemoteClusterServicePortName = "rcs"
 )
 
 // TransportServiceName returns the name for the transport service associated to this cluster
@@ -153,25 +155,28 @@ func NewInternalService(es esv1.Elasticsearch) *corev1.Service {
 
 // NewRemoteClusterService returns the service associated to the remote cluster service for the given cluster.
 func NewRemoteClusterService(es esv1.Elasticsearch) *corev1.Service {
-	return &corev1.Service{
+	svc := &corev1.Service{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      RemoteClusterServiceName(es.Name),
 			Namespace: es.Namespace,
 			Labels:    label.NewLabels(k8s.ExtractNamespacedName(&es)),
 		},
 		Spec: corev1.ServiceSpec{
-			Type: corev1.ServiceTypeClusterIP,
-			Ports: []corev1.ServicePort{
-				{
-					Name:     "rcs",
-					Protocol: corev1.ProtocolTCP,
-					Port:     network.RemoteClusterPort,
-				},
-			},
+			Type:                     corev1.ServiceTypeClusterIP,
 			Selector:                 label.NewLabels(k8s.ExtractNamespacedName(&es)),
-			PublishNotReadyAddresses: false,
+			PublishNotReadyAddresses: true,
+			ClusterIP:                "None",
 		},
 	}
+	labels := label.NewLabels(k8s.ExtractNamespacedName(&es))
+	ports := []corev1.ServicePort{
+		{
+			Name:     RemoteClusterServicePortName,
+			Protocol: corev1.ProtocolTCP,
+			Port:     network.RemoteClusterPort,
+		},
+	}
+	return defaults.SetServiceDefaults(svc, labels, labels, ports)
 }
 
 type urlProvider struct {

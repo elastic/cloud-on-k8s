@@ -109,7 +109,10 @@ func buildGeneralNames(
 		// since these are the ones also used in the context of remote clusters access using API keys.
 		generalNames = append(
 			generalNames,
+			// Remote cluster headless service
 			certificates.GeneralName{DNSName: fmt.Sprintf("%s.%s.svc", esv1.RemoteClusterService(cluster.Name), cluster.Namespace)},
+			// Individual remote_cluster.publish_host is set to <pod name>.<statefulset headless service>.<namespace>.svc
+			certificates.GeneralName{DNSName: fmt.Sprintf("%s.%s.%s.svc", pod.Name, svcName, cluster.Namespace)},
 		)
 	}
 

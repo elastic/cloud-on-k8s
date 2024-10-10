@@ -95,7 +95,7 @@ func TestNewMergedESConfig(t *testing.T) {
 				// Remote cluster server configuration.
 				require.Equal(t, 1, len(cfg.HasKeys([]string{"remote_cluster_server.enabled"})))
 				require.Equal(t, 1, len(cfg.HasKeys([]string{"remote_cluster.publish_host"})))
-				require.Equal(t, 1, len(cfg.HasKeys([]string{"remote_cluster.bind_host"})))
+				require.Equal(t, 1, len(cfg.HasKeys([]string{"remote_cluster.host"})))
 				// Remote cluster server TLS configuration.
 				require.Equal(t, 1, len(cfg.HasKeys([]string{"xpack.security.remote_cluster_server.ssl.key"})))
 				require.Equal(t, 1, len(cfg.HasKeys([]string{"xpack.security.remote_cluster_server.ssl.certificate"})))
