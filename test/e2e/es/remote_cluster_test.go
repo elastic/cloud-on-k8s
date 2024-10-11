@@ -176,6 +176,7 @@ func TestRemoteClusterWithAPIKeys(t *testing.T) {
 	}
 
 	followerIndex := "data-integrity-check-follower"
+	remoteIndexName := fmt.Sprintf("%s:%s", es1Builder.Name(), elasticsearch.DataIntegrityIndex)
 	stepsFn := func(k *test.K8sClient) test.StepList {
 		return test.StepList{
 			// Init license test context
@@ -194,8 +195,7 @@ func TestRemoteClusterWithAPIKeys(t *testing.T) {
 			test.Step{
 				Name: "Add some data to the first cluster",
 				Test: func(t *testing.T) {
-					// Always enable soft deletes on test index. This is required to create follower indices but disabled by default on 6.x
-					require.NoError(t, elasticsearch.NewDataIntegrityCheck(k, es1Builder).WithSoftDeletesEnabled(true).Init())
+					require.NoError(t, elasticsearch.NewDataIntegrityCheck(k, es1Builder).Init())
 				},
 			},
 			test.Step{
@@ -203,7 +203,13 @@ func TestRemoteClusterWithAPIKeys(t *testing.T) {
 				Test: test.Eventually(checkRemoteClusterSeed(k, es2Builder, es1Builder, 9443)),
 			},
 			test.Step{
-				Name: "Create a follower index on the second cluster",
+				Name: fmt.Sprintf("Check we can read remote index %s from the client cluster", remoteIndexName),
+				Test: test.Eventually(func() error {
+					return elasticsearch.NewDataIntegrityCheck(k, es2Builder).ForIndex(remoteIndexName).Verify()
+				}),
+			},
+			test.Step{
+				Name: "Create a follower index in the client cluster",
 				Test: func(t *testing.T) {
 					esClient, err := elasticsearch.NewElasticsearchClient(es2Builder.Elasticsearch, k)
 					require.NoError(t, err)
@@ -220,7 +226,7 @@ func TestRemoteClusterWithAPIKeys(t *testing.T) {
 				},
 			},
 			test.Step{
-				Name: "Check data in the second cluster",
+				Name: "Check data in the following index in the client cluster",
 				Test: test.Eventually(func() error {
 					return elasticsearch.NewDataIntegrityCheck(k, es2Builder).ForIndex(followerIndex).Verify()
 				}),

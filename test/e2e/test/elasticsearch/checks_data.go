@@ -155,6 +155,10 @@ func (dc *DataIntegrityCheck) Verify() error {
 	if err != nil {
 		return err
 	}
+	// Check if we have remote cluster failures.
+	if remoteClusterFailures := results.Cluster.Failures(); len(remoteClusterFailures) > 0 {
+		return fmt.Errorf("remote cluster failure: %s", remoteClusterFailures)
+	}
 	// the overall count should be the same
 	if len(results.Hits.Hits) != dc.docCount {
 		return fmt.Errorf("expected %d got %d, data loss", dc.docCount, len(results.Hits.Hits))

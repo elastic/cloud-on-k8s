@@ -395,10 +395,44 @@ type Hits struct {
 
 // SearchResults are the results returned from a _search.
 type SearchResults struct {
-	Took   int
-	Hits   Hits                       `json:"hits"`
-	Shards json.RawMessage            // model when needed
-	Aggs   map[string]json.RawMessage // model when needed
+	Took    int
+	Hits    Hits                       `json:"hits"`
+	Cluster *Cluster                   `json:"_clusters,omitempty"`
+	Shards  json.RawMessage            // model when needed
+	Aggs    map[string]json.RawMessage // model when needed
+}
+
+// Cluster models the Elasticsearch response for searches that involve remote clusters.
+// It can be used to provide more details about a failure.
+type Cluster struct {
+	Details map[string]ClusterDetail `json:"details"`
+}
+
+func (c *Cluster) Failures() string {
+	if c == nil {
+		return ""
+	}
+	failures := make([]string, 0, len(c.Details))
+	for name, detail := range c.Details {
+		for _, failure := range detail.Failures {
+			failures = append(failures, fmt.Sprintf("%s: %+v", name, failure))
+		}
+	}
+	if len(failures) == 0 {
+		return ""
+	}
+	return strings.Join(failures, ",")
+}
+
+type ClusterDetail struct {
+	Status   string `json:"status"`
+	Failures []struct {
+		Shard  int `json:"shard"`
+		Reason struct {
+			Type   string `json:"type"`
+			Reason string `json:"reason"`
+		} `json:"reason"`
+	} `json:"failures"`
 }
 
 // ShutdownType is the set of different shutdown operation types supported by Elasticsearch.
