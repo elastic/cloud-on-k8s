@@ -43,6 +43,10 @@ type APIKeyStore struct {
 	aliases map[string]AliasValue
 	// keys maps the ID of an API Key (not its name), to the encoded cross-cluster API key.
 	keys map[string]string
+	// resourceVersion is the ResourceVersion as observed when the Secret has been loaded.
+	resourceVersion string
+	// uid is the UID of the Secret as observed when the Secret has been loaded.
+	uid types.UID
 }
 
 type AliasValue struct {
@@ -102,8 +106,10 @@ func LoadAPIKeyStore(ctx context.Context, c k8s.Client, owner *esv1.Elasticsearc
 		keys[strings[1]] = string(encodedAPIKey)
 	}
 	return &APIKeyStore{
-		aliases: aliases,
-		keys:    keys,
+		aliases:         aliases,
+		keys:            keys,
+		resourceVersion: keyStoreSecret.ResourceVersion,
+		uid:             keyStoreSecret.UID,
 	}, nil
 }
 
@@ -152,19 +158,26 @@ func (aks *APIKeyStore) Save(ctx context.Context, c k8s.Client, owner *esv1.Elas
 		Namespace: owner.Namespace,
 	}
 	if aks.IsEmpty() {
-		// Check if the Secret does exist.
-		currentSecret := corev1.Secret{}
-		if err := c.Get(ctx, secretName, &currentSecret); err != nil {
+		// Check if the Secret still exist.
+		if err := c.Get(ctx, secretName, &corev1.Secret{}); err != nil {
 			if errors.IsNotFound(err) {
 				// Secret does not exist.
 				return nil
 			}
 			return err
 		}
-		// Delete the Secret we just detected above.
+		// Delete the Secret used to load the current state.
+		deleteOptions := make([]client.DeleteOption, 0, 2)
+		if aks.uid != "" {
+			deleteOptions = append(deleteOptions, &client.DeleteOptions{Preconditions: &metav1.Preconditions{UID: &aks.uid}})
+		}
+		if aks.resourceVersion != "" {
+			deleteOptions = append(deleteOptions, &client.DeleteOptions{Preconditions: &metav1.Preconditions{ResourceVersion: &aks.resourceVersion}})
+		}
+
 		if err := c.Delete(ctx,
 			&corev1.Secret{ObjectMeta: metav1.ObjectMeta{Name: secretName.Name, Namespace: secretName.Namespace}},
-			&client.DeleteOptions{Preconditions: &metav1.Preconditions{UID: &currentSecret.UID}},
+			deleteOptions...,
 		); err != nil {
 			return err
 		}
