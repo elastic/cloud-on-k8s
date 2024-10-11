@@ -8,6 +8,8 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/remotecluster/keystore"
+
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/label"
 
 	corev1 "k8s.io/api/core/v1"
@@ -97,7 +99,7 @@ func newRequestsFromMatchedLabels() handler.TypedMapFunc[*v1.Secret, reconcile.R
 		}
 
 		if maps.ContainsKeys(labels, label.ClusterNameLabelName, commonv1.TypeLabelName) {
-			if labels[commonv1.TypeLabelName] != remoteClusterAPIKeysType {
+			if labels[commonv1.TypeLabelName] != keystore.RemoteClusterAPIKeysType {
 				return nil
 			}
 			// Remote cluster API keys Secret event.

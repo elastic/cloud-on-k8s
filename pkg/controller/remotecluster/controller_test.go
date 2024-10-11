@@ -10,6 +10,8 @@ import (
 	"slices"
 	"testing"
 
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/remotecluster/keystore"
+
 	"github.com/google/go-cmp/cmp"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/uuid"
@@ -902,6 +904,7 @@ func TestRemoteCluster_Reconcile(t *testing.T) {
 				esClientProvider: func(_ context.Context, _ k8s.Client, _ net.Dialer, _ esv1.Elasticsearch) (esclient.Client, error) {
 					return fakeESClient, nil
 				},
+				keystoreProvider: keystore.NewProvider(k8sClient),
 			}
 			fakeCtx := context.Background()
 			got, err := r.Reconcile(fakeCtx, tt.args.request)

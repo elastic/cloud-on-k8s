@@ -39,12 +39,12 @@ func createOrUpdateCertificateAuthorities(
 	localClusterKey := k8s.ExtractNamespacedName(local)
 	remoteClusterKey := k8s.ExtractNamespacedName(remote)
 
-	// Add watches on the CA secret of the local cluster.
+	// AddKey watches on the CA secret of the local cluster.
 	if err := addCertificatesAuthorityWatches(r, localClusterKey, remoteClusterKey); err != nil {
 		return results.WithError(err)
 	}
 
-	// Add watches on the CA secret of the remote cluster.
+	// AddKey watches on the CA secret of the remote cluster.
 	if err := addCertificatesAuthorityWatches(r, remoteClusterKey, localClusterKey); err != nil {
 		return results.WithError(err)
 	}

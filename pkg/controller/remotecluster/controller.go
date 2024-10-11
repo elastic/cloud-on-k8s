@@ -9,15 +9,11 @@ import (
 	"fmt"
 	"time"
 
-	"k8s.io/apimachinery/pkg/util/sets"
-
-	commonesclient "github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/esclient"
-	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/services"
-
 	"go.elastic.co/apm/v2"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/apimachinery/pkg/util/sets"
 	"k8s.io/client-go/tools/record"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
@@ -27,6 +23,7 @@ import (
 	esv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/elasticsearch/v1"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/association"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common"
+	commonesclient "github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/esclient"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/license"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/operator"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/reconciler"
@@ -35,6 +32,8 @@ import (
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/certificates/remoteca"
 	esclient "github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/client"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/label"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/services"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/remotecluster/keystore"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/k8s"
 	ulog "github.com/elastic/cloud-on-k8s/v2/pkg/utils/log"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/rbac"
@@ -66,6 +65,7 @@ func NewReconciler(mgr manager.Manager, accessReviewer rbac.AccessReviewer, para
 	return &ReconcileRemoteClusters{
 		Client:           c,
 		accessReviewer:   accessReviewer,
+		keystoreProvider: keystore.NewProvider(c),
 		watches:          watches.NewDynamicWatches(),
 		recorder:         mgr.GetEventRecorderFor(name),
 		licenseChecker:   license.NewLicenseChecker(c, params.OperatorNamespace),
@@ -85,6 +85,7 @@ type ReconcileRemoteClusters struct {
 	watches          watches.DynamicWatches
 	licenseChecker   license.Checker
 	esClientProvider commonesclient.Provider
+	keystoreProvider *keystore.Provider
 
 	// iteration is the number of times this controller has run its Reconcile method
 	iteration uint64
@@ -102,6 +103,7 @@ func (r *ReconcileRemoteClusters) Reconcile(ctx context.Context, request reconci
 	err := r.Get(ctx, request.NamespacedName, &es)
 	if err != nil {
 		if errors.IsNotFound(err) {
+			r.keystoreProvider.ForgetCluster(request.NamespacedName)
 			return deleteAllRemoteCa(ctx, r, request.NamespacedName)
 		}
 		return reconcile.Result{}, err
@@ -211,7 +213,7 @@ func doReconcile(
 			if errors.IsNotFound(err) {
 				// Remote cluster does not exist, invalidate API keys for that client cluster.
 				apiKeyReconciledRemoteClusters.Insert(remoteEsKey)
-				results.WithError(reconcileAPIKeys(ctx, r.Client, activeAPIKeys, localEs, remoteEs, nil, esClient))
+				results.WithError(reconcileAPIKeys(ctx, r.Client, activeAPIKeys, localEs, remoteEs, nil, esClient, r.keystoreProvider))
 				continue
 			}
 			return reconcile.Result{}, err
@@ -232,7 +234,7 @@ func doReconcile(
 			delete(expectedRemoteClusters, remoteEsKey)
 			// Invalidate API keys for that client cluster.
 			apiKeyReconciledRemoteClusters.Insert(remoteEsKey)
-			results.WithError(reconcileAPIKeys(ctx, r.Client, activeAPIKeys, localEs, remoteEs, nil, esClient))
+			results.WithError(reconcileAPIKeys(ctx, r.Client, activeAPIKeys, localEs, remoteEs, nil, esClient, r.keystoreProvider))
 			continue
 		}
 		delete(associatedRemoteCAs, remoteEsKey)
@@ -265,7 +267,7 @@ func doReconcile(
 		}
 		// Reconcile the API Keys.
 		apiKeyReconciledRemoteClusters.Insert(remoteEsKey)
-		results.WithError(reconcileAPIKeys(ctx, r.Client, activeAPIKeys, localEs, remoteEs, remoteClusters, esClient))
+		results.WithError(reconcileAPIKeys(ctx, r.Client, activeAPIKeys, localEs, remoteEs, remoteClusters, esClient, r.keystoreProvider))
 	}
 
 	if localClusterSupportClusterAPIKeys.IsTrue() {
@@ -291,11 +293,12 @@ func doReconcile(
 		// Delete unexpected keys in the local keystore.
 		// *********************************************
 		expectedAliases := expectedAliases(localEs, expectedRemoteClusters)
-		apiKeyStore, err := LoadAPIKeyStore(ctx, r.Client, localEs)
+		apiKeyStore, err := r.keystoreProvider.ForCluster(ctx, log, localEs)
 		if err != nil {
 			return results.WithError(err).Aggregate()
 		}
-		for alias := range apiKeyStore.aliases {
+
+		for alias := range apiKeyStore.GetAliases() {
 			if expectedAliases.Has(alias) {
 				// Expected alias
 				continue
@@ -356,7 +359,7 @@ func getExpectedRemoteClusters(
 	defer span.End()
 	expectedRemoteClusters := make(map[types.NamespacedName][]esv1.RemoteCluster)
 
-	// Add remote clusters declared in the Spec
+	// AddKey remote clusters declared in the Spec
 	for _, remoteCluster := range associatedEs.Spec.RemoteClusters {
 		if !remoteCluster.ElasticsearchRef.IsDefined() {
 			continue
