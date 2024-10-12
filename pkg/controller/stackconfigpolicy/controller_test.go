@@ -182,7 +182,7 @@ func TestReconcileStackConfigPolicy_Reconcile(t *testing.T) {
 				commonlabels.StackConfigPolicyOnDeleteLabelName: commonlabels.OrphanSecretResetOnPolicyDelete,
 			},
 		},
-		Data: map[string][]byte{"settings.json": []byte(`{"metadata":{"version":"42","compatibility":"8.4.0"},"state":{"cluster_settings":{"indices.recovery.max_bytes_per_sec":"42mb"},"snapshot_repositories":{},"slm":{},"role_mappings":{},"autoscaling":{},"ilm":{},"ingest_pipelines":{},"index_templates":{"component_templates":{},"composable_index_templates":{}}}}`)},
+		Data: map[string][]byte{"settings.json": []byte(`{"metadata":{"version":"42","compatibility":"8.4.0"},"state":{"cluster_settings":{"indices.recovery.max_bytes_per_sec":"42mb"}}}`)},
 	}
 	secretHash, err := getSettingsHash(secretFixture)
 	assert.NoError(t, err)
@@ -300,7 +300,7 @@ func TestReconcileStackConfigPolicy_Reconcile(t *testing.T) {
 			post: func(r ReconcileStackConfigPolicy, recorder record.FakeRecorder) {
 				// after the reconciliation, settings are empty
 				settings := r.getSettings(t, k8s.ExtractNamespacedName(&secretFixture))
-				assert.Empty(t, settings.State.ClusterSettings.Data)
+				assert.Nil(t, settings.State.ClusterSettings)
 			},
 			wantErr: false,
 		},
@@ -319,7 +319,7 @@ func TestReconcileStackConfigPolicy_Reconcile(t *testing.T) {
 			post: func(r ReconcileStackConfigPolicy, recorder record.FakeRecorder) {
 				// after the reconciliation, settings are empty
 				settings := r.getSettings(t, k8s.ExtractNamespacedName(orphanSecretFixture))
-				assert.Empty(t, settings.State.ClusterSettings.Data)
+				assert.Nil(t, settings.State.ClusterSettings)
 			},
 			wantErr: false,
 		},
@@ -340,9 +340,9 @@ func TestReconcileStackConfigPolicy_Reconcile(t *testing.T) {
 			post: func(r ReconcileStackConfigPolicy, recorder record.FakeRecorder) {
 				// after the reconciliation, settings are empty
 				settings := r.getSettings(t, k8s.ExtractNamespacedName(&secretFixture))
-				assert.Empty(t, settings.State.ClusterSettings.Data)
+				assert.Nil(t, settings.State.ClusterSettings)
 				settings = r.getSettings(t, k8s.ExtractNamespacedName(orphanSecretFixture))
-				assert.Empty(t, settings.State.ClusterSettings.Data)
+				assert.Nil(t, settings.State.ClusterSettings)
 			},
 			wantErr: false,
 		},
@@ -583,7 +583,7 @@ func TestReconcileStackConfigPolicy_Reconcile(t *testing.T) {
 			post: func(r ReconcileStackConfigPolicy, recorder record.FakeRecorder) {
 				// after the reconciliation, settings are empty
 				settings := r.getSettings(t, k8s.ExtractNamespacedName(orphanSecretFixture))
-				assert.Empty(t, settings.State.ClusterSettings.Data)
+				assert.Nil(t, settings.State.ClusterSettings)
 
 				var esConfigSecret, secretMountsSecretInEsNamespace corev1.Secret
 				// after the reconciliation, the config and secret mount secrets do not exist

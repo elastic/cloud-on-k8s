@@ -51,6 +51,20 @@ type IndexTemplates struct {
 	ComposableIndexTemplates *commonv1.Config `json:"composable_index_templates,omitempty"`
 }
 
+func (st *SettingsState) SetComponentTemplates(t *commonv1.Config) {
+	if st.IndexTemplates == nil {
+		st.IndexTemplates = &IndexTemplates{}
+	}
+	st.IndexTemplates.ComponentTemplates = t
+}
+
+func (st *SettingsState) SetComposableIndexTemplates(t *commonv1.Config) {
+	if st.IndexTemplates == nil {
+		st.IndexTemplates = &IndexTemplates{}
+	}
+	st.IndexTemplates.ComposableIndexTemplates = t
+}
+
 // hash returns the hash of the Settings, considering only the State without the Metadata.
 func (s *Settings) hash() string {
 	return hash.HashObject(s.State)
@@ -66,18 +80,7 @@ func NewEmptySettings(version int64) Settings {
 
 // newEmptySettingsState returns an empty new Settings state.
 func newEmptySettingsState() SettingsState {
-	return SettingsState{
-		ClusterSettings:        &commonv1.Config{Data: map[string]interface{}{}},
-		SnapshotRepositories:   &commonv1.Config{Data: map[string]interface{}{}},
-		SLM:                    &commonv1.Config{Data: map[string]interface{}{}},
-		RoleMappings:           &commonv1.Config{Data: map[string]interface{}{}},
-		IndexLifecyclePolicies: &commonv1.Config{Data: map[string]interface{}{}},
-		IngestPipelines:        &commonv1.Config{Data: map[string]interface{}{}},
-		IndexTemplates: &IndexTemplates{
-			ComponentTemplates:       &commonv1.Config{Data: map[string]interface{}{}},
-			ComposableIndexTemplates: &commonv1.Config{Data: map[string]interface{}{}},
-		},
-	}
+	return SettingsState{}
 }
 
 // updateState updates the Settings state from a StackConfigPolicy for a given Elasticsearch.
@@ -116,10 +119,10 @@ func (s *Settings) updateState(es types.NamespacedName, policy policyv1alpha1.St
 		state.IngestPipelines = p.Spec.Elasticsearch.IngestPipelines
 	}
 	if p.Spec.Elasticsearch.IndexTemplates.ComposableIndexTemplates != nil {
-		state.IndexTemplates.ComposableIndexTemplates = p.Spec.Elasticsearch.IndexTemplates.ComposableIndexTemplates
+		state.SetComposableIndexTemplates(p.Spec.Elasticsearch.IndexTemplates.ComposableIndexTemplates)
 	}
 	if p.Spec.Elasticsearch.IndexTemplates.ComponentTemplates != nil {
-		state.IndexTemplates.ComponentTemplates = p.Spec.Elasticsearch.IndexTemplates.ComponentTemplates
+		state.SetComponentTemplates(p.Spec.Elasticsearch.IndexTemplates.ComponentTemplates)
 	}
 	s.State = state
 	return nil

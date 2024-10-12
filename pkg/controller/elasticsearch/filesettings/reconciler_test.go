@@ -253,9 +253,9 @@ func Test_ReconcileEmptyFileSettingsSecret(t *testing.T) {
 	err = json.Unmarshal(secret.Data[SettingsSecretKey], &settings)
 	assert.NoError(t, err)
 	// check that the Secret is empty
-	assert.Empty(t, settings.State.ClusterSettings.Data)
-	assert.Empty(t, settings.State.SnapshotRepositories.Data)
-	assert.Empty(t, settings.State.SLM.Data)
+	assert.Nil(t, settings.State.ClusterSettings)
+	assert.Nil(t, settings.State.SnapshotRepositories)
+	assert.Nil(t, settings.State.SLM)
 
 	// reconcile again with create only: secret is not reconciled
 	err = ReconcileEmptyFileSettingsSecret(context.Background(), fakeClient, es, true)

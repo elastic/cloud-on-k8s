@@ -41,7 +41,7 @@ func Test_NewSettingsSecret(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, "esNs", secret.Namespace)
 	assert.Equal(t, "esName-es-file-settings", secret.Name)
-	assert.Equal(t, 0, len(parseSettings(t, secret).State.ClusterSettings.Data))
+	assert.Nil(t, parseSettings(t, secret).State.ClusterSettings)
 	assert.Equal(t, expectedVersion, reconciledVersion)
 
 	// policy

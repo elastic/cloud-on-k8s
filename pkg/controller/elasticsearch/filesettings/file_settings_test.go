@@ -170,7 +170,6 @@ func Test_updateState(t *testing.T) {
 				}},
 			}}}},
 			want: SettingsState{
-				ClusterSettings: &commonv1.Config{Data: map[string]any{}},
 				SnapshotRepositories: &commonv1.Config{Data: map[string]any{
 					"repo-gcs": map[string]any{
 						"type": "gcs",
@@ -194,14 +193,6 @@ func Test_updateState(t *testing.T) {
 						},
 					},
 				}},
-				SLM:                    &commonv1.Config{Data: map[string]any{}},
-				RoleMappings:           &commonv1.Config{Data: map[string]any{}},
-				IndexLifecyclePolicies: &commonv1.Config{Data: map[string]any{}},
-				IngestPipelines:        &commonv1.Config{Data: map[string]any{}},
-				IndexTemplates: &IndexTemplates{
-					ComponentTemplates:       &commonv1.Config{Data: map[string]any{}},
-					ComposableIndexTemplates: &commonv1.Config{Data: map[string]any{}},
-				},
 			},
 		},
 		{
@@ -232,7 +223,6 @@ func Test_updateState(t *testing.T) {
 				}},
 			}}}},
 			want: SettingsState{
-				ClusterSettings: &commonv1.Config{Data: map[string]any{}},
 				SnapshotRepositories: &commonv1.Config{Data: map[string]any{
 					"repo-gcs": map[string]any{
 						"type": "gcs",
@@ -256,14 +246,6 @@ func Test_updateState(t *testing.T) {
 						},
 					},
 				}},
-				SLM:                    &commonv1.Config{Data: map[string]any{}},
-				RoleMappings:           &commonv1.Config{Data: map[string]any{}},
-				IndexLifecyclePolicies: &commonv1.Config{Data: map[string]any{}},
-				IngestPipelines:        &commonv1.Config{Data: map[string]any{}},
-				IndexTemplates: &IndexTemplates{
-					ComponentTemplates:       &commonv1.Config{Data: map[string]any{}},
-					ComposableIndexTemplates: &commonv1.Config{Data: map[string]any{}},
-				},
 			},
 		},
 		{
@@ -285,7 +267,6 @@ func Test_updateState(t *testing.T) {
 				}},
 			}}}},
 			want: SettingsState{
-				ClusterSettings: &commonv1.Config{Data: map[string]any{}},
 				SnapshotRepositories: &commonv1.Config{Data: map[string]any{
 					"repo-fs": map[string]any{
 						"type": "fs",
@@ -300,14 +281,6 @@ func Test_updateState(t *testing.T) {
 						},
 					},
 				}},
-				SLM:                    &commonv1.Config{Data: map[string]any{}},
-				RoleMappings:           &commonv1.Config{Data: map[string]any{}},
-				IndexLifecyclePolicies: &commonv1.Config{Data: map[string]any{}},
-				IngestPipelines:        &commonv1.Config{Data: map[string]any{}},
-				IndexTemplates: &IndexTemplates{
-					ComponentTemplates:       &commonv1.Config{Data: map[string]any{}},
-					ComposableIndexTemplates: &commonv1.Config{Data: map[string]any{}},
-				},
 			},
 		},
 		{
@@ -330,7 +303,6 @@ func Test_updateState(t *testing.T) {
 				}},
 			}}}},
 			want: SettingsState{
-				ClusterSettings: &commonv1.Config{Data: map[string]any{}},
 				SnapshotRepositories: &commonv1.Config{Data: map[string]any{
 					"repo-url": map[string]any{
 						"type": "url",
@@ -346,14 +318,6 @@ func Test_updateState(t *testing.T) {
 						},
 					},
 				}},
-				SLM:                    &commonv1.Config{Data: map[string]any{}},
-				RoleMappings:           &commonv1.Config{Data: map[string]any{}},
-				IndexLifecyclePolicies: &commonv1.Config{Data: map[string]any{}},
-				IngestPipelines:        &commonv1.Config{Data: map[string]any{}},
-				IndexTemplates: &IndexTemplates{
-					ComponentTemplates:       &commonv1.Config{Data: map[string]any{}},
-					ComposableIndexTemplates: &commonv1.Config{Data: map[string]any{}},
-				},
 			},
 		},
 		{
@@ -408,7 +372,6 @@ func Test_updateState(t *testing.T) {
 			name: "other settings: no mutation",
 			args: args{policy: policyv1alpha1.StackConfigPolicy{Spec: policyv1alpha1.StackConfigPolicySpec{Elasticsearch: policyv1alpha1.ElasticsearchConfigPolicySpec{
 				ClusterSettings:           clusterSettings,
-				SnapshotRepositories:      &commonv1.Config{Data: map[string]any{}},
 				SnapshotLifecyclePolicies: snapshotLifecyclePolicies,
 				SecurityRoleMappings:      roleMappings,
 				IndexLifecyclePolicies:    indexLifecyclePolicies,
@@ -420,7 +383,6 @@ func Test_updateState(t *testing.T) {
 			}}}},
 			want: SettingsState{
 				ClusterSettings:        clusterSettings,
-				SnapshotRepositories:   &commonv1.Config{Data: map[string]any{}},
 				SLM:                    snapshotLifecyclePolicies,
 				RoleMappings:           roleMappings,
 				IndexLifecyclePolicies: indexLifecyclePolicies,
