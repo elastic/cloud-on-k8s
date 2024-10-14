@@ -110,7 +110,7 @@ generate-manifests: controller-gen
 	# -- generate  webhook manifest
 	@ $(CONTROLLER_GEN) webhook object:headerFile=./hack/boilerplate.go.txt paths=./pkg/...
 	# -- generate  crd bases manifests
-	@ $(CONTROLLER_GEN) crd:crdVersions=v1,generateEmbeddedObjectMeta=true paths="./pkg/apis/..." output:crd:artifacts:config=config/crds/v1/bases
+	@ $(CONTROLLER_GEN) crd:crdVersions=v1,generateEmbeddedObjectMeta=true paths="./pkg/apis/..." output:crd:artifacts:config=config/crds/v1/resources
 	# -- kustomize crd manifests
 	@ kubectl kustomize config/crds/v1/patches > $(ALL_V1_CRDS)
 	# -- generate  crds manifest
