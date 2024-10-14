@@ -250,7 +250,7 @@ func TestStackConfigPolicy(t *testing.T) {
 					}
 					// starting 8.15.x, role mappings are stored in the cluster state
 					if stackVersion.GTE(version.MinFor(8, 15, 0)) {
-						if err := checkAPIResponse(esClient, "_cluster/state/metadata?filter_path=metadata.role_mappings", 200, metadataUUID); err != nil {
+						if err := checkAPIResponse(esClient, "/_cluster/state/metadata?filter_path=metadata.role_mappings", 200, metadataUUID); err != nil {
 							return err
 						}
 					}
@@ -308,7 +308,7 @@ func TestStackConfigPolicy(t *testing.T) {
 						if err := checkAPIStatusCode(esClient, "/_security/role_mapping/role_test", 404); err != nil {
 							return err
 						}
-						if err := checkAPIResponse(esClient, "_cluster/state/metadata?filter_path=metadata.role_mappings", 200, "{}"); err != nil {
+						if err := checkAPIResponse(esClient, "/_cluster/state/metadata?filter_path=metadata.role_mappings", 200, "{}"); err != nil {
 							return err
 						}
 					}
