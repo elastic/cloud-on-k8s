@@ -146,6 +146,24 @@ webhook:
 # This is required to allow for communication with the kube API when using some alternate CNIs in conjunction with webhook enabled.
 # CAUTION: Proceed at your own risk. This setting has security concerns such as allowing malicious users to access workloads running on the host.
 hostNetwork: false
+#
+# dnsPolicy defines the DNS policy for the operator pod. Available options are:
+# - ClusterFirst: Any DNS query that does not match the configured cluster domain suffix, is forwarded to an upstream nameserver by the DNS server
+# - ClusterFirstWithHostNet: For Pods running with hostNetwork, you should explicitly set its DNS policy to "ClusterFirstWithHostNet". Otherwise, Pods running with hostNetwork and "ClusterFirst" will fallback to the behavior of the "Default" policy.
+# - Default: The Pod inherits the name resolution configuration from the node that the Pods run on
+# - None: It allows a Pod to ignore DNS settings from the Kubernetes environment. All DNS settings are supposed to be provided using the dnsConfig field in the Pod Spec.
+dnsPolicy: ""
+
+# dnsConfig defines the DNS configuration for the operator pod.
+# dnsConfig:
+#  nameservers:
+#    - 169.254.20.10
+#  searches:
+#    - svc.cluster.local
+#   options:
+#     - name: ndots
+#       value: "2"
+dnsConfig: {}
 
 softMultiTenancy:
   # enabled determines whether the operator is installed with soft multi-tenancy extensions.
@@ -266,7 +284,8 @@ config:
   disableConfigWatch: false
 
   # exposedNodeLabels is an array of regular expressions of node labels which are allowed to be copied as annotations on Elasticsearch Pods.
-  exposedNodeLabels: [ "topology.kubernetes.io/.*", "failure-domain.beta.kubernetes.io/.*" ]
+  exposedNodeLabels:
+    ["topology.kubernetes.io/.*", "failure-domain.beta.kubernetes.io/.*"]
 
   # ipFamily specifies the IP family to use. Possible values: IPv4, IPv6 and "" (auto-detect)
   ipFamily: ""
@@ -302,7 +321,6 @@ config:
 # Prometheus PodMonitor configuration
 # Reference: https://github.com/prometheus-operator/prometheus-operator/blob/master/Documentation/api.md#podmonitor
 podMonitor:
-
   # enabled determines whether a podMonitor should deployed to scrape the eck metrics.
   # This requires the prometheus operator and the config.metrics.port not to be 0
   enabled: false
@@ -333,7 +351,8 @@ podMonitor:
 # Prometheus ServiceMonitor configuration
 # Only used when config.enableSecureMetrics is true
 # Reference: https://github.com/prometheus-operator/prometheus-operator/blob/master/Documentation/api.md#servicemonitor
-serviceMonitor: {}
+serviceMonitor:
+  {}
 
   # namespace determines in which namespace the serviceMonitor will be deployed.
   # If not set the serviceMonitor will be created in the namespace where the Helm release is installed into
