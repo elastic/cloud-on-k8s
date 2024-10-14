@@ -67,6 +67,8 @@ const (
 	LogstashImage         Image = "logstash/logstash"
 )
 
+var MinMapsVersionOnARM = version.MinFor(8, 16, 0)
+
 // ImageRepository returns the full container image name by concatenating the current container registry and the image path with the given version.
 // A UBI suffix (-ubi8 or -ubi suffix depending on the version) is appended to the image name for the maps image,
 // or any image if the operator is configured with --ubi-only.
@@ -81,7 +83,7 @@ func ImageRepository(img Image, ver version.Version) string {
 	suffix := ""
 	useUBISuffix := containerSuffix == UBISuffix
 	// use an UBI suffix for maps server image or any image in UBI mode
-	if useUBISuffix || img == MapsImage {
+	if useUBISuffix || isOlderMapsServerImg(img, ver) {
 		suffix = getUBISuffix(ver)
 	}
 	// use the global container suffix in non-UBI mode
@@ -90,6 +92,13 @@ func ImageRepository(img Image, ver version.Version) string {
 	}
 
 	return fmt.Sprintf("%s/%s%s:%s", containerRegistry, image, suffix, ver)
+}
+
+// isOderMapsServerImg returns true if the given image is a Maps server image and
+// older than 8.16.0 as of which release the Maps server images are multi-arch similar to
+// other stack images and come in non-UBI variants as well.
+func isOlderMapsServerImg(img Image, ver version.Version) bool {
+	return img == MapsImage && ver.LT(MinMapsVersionOnARM)
 }
 
 // getUBISuffix returns the UBI suffix to use depending on the given version.

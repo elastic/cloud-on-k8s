@@ -141,6 +141,19 @@ func TestImageRepository(t *testing.T) {
 			suffix:  "-obi1",
 			want:    testRegistry + "/elastic-maps-service/elastic-maps-server-ubi8-obi1:8.11.0",
 		},
+		{
+			name:    "Maps 8 image post 8.16 wolfi-based",
+			image:   MapsImage,
+			version: "8.16.0",
+			want:    testRegistry + "/elastic-maps-service/elastic-maps-server:8.16.0",
+		},
+		{
+			name:    "Maps 8 image post 8.16 ubi requested",
+			image:   MapsImage,
+			version: "8.16.0",
+			suffix:  "-ubi",
+			want:    testRegistry + "/elastic-maps-service/elastic-maps-server-ubi:8.16.0",
+		},
 	}
 
 	for _, tc := range testCases {
