@@ -16,6 +16,7 @@ import (
 	"net/http"
 	"path/filepath"
 	"reflect"
+	"strings"
 	"testing"
 
 	"github.com/ghodss/yaml"
@@ -67,30 +68,14 @@ func TestStackConfigPolicy(t *testing.T) {
 	assert.NoError(t, err)
 
 	// list of endpoints to check the existence or not of the settings defined in the esConfigSpec
-	configuredObjectsEndpoints := map[string]statusCode{
-		"/_snapshot/repo_test":  {ok, notFound},
-		"/_slm/policy/slm_test": {ok, notFound},
-		"/_security/role_mapping/role_test": {
-			onCreation: func() int {
-				// due to a bug in 8.15.x, role mappings are not found via the API
-				if stackVersion.GTE(version.MinFor(8, 15, 0)) && stackVersion.LT(version.MinFor(8, 15, 3)) {
-					return notFound()
-				}
-				return ok()
-			},
-			onDeletion: func() int {
-				// prior to 8.15.x, role mappings are not deleted when scp is deleted
-				if stackVersion.LT(version.MinFor(8, 15, 0)) {
-					return ok()
-				}
-				return notFound()
-			},
-		},
-		"/_ingest/pipeline/pipeline_test":                      {ok, notFound},
-		"/_ilm/policy/ilm_test":                                {ok, notFound},
-		"/_index_template/template_test":                       {ok, notFound},
-		"/_component_template/runtime_component_template_test": {ok, notFound},
-		"/_component_template/component_template_test":         {ok, notFound},
+	configuredObjectsEndpoints := []string{
+		"/_snapshot/repo_test",
+		"/_slm/policy/slm_test",
+		"/_ingest/pipeline/pipeline_test",
+		"/_ilm/policy/ilm_test",
+		"/_index_template/template_test",
+		"/_component_template/runtime_component_template_test",
+		"/_component_template/component_template_test",
 	}
 
 	esConfigSpec.SecureSettings = []commonv1.SecretSource{
@@ -186,7 +171,7 @@ func TestStackConfigPolicy(t *testing.T) {
 					assert.NoError(t, err)
 
 					var settings ClusterSettings
-					_, err = request(esClient, http.MethodGet, "/_cluster/settings", nil, &settings)
+					_, _, err = request(esClient, http.MethodGet, "/_cluster/settings", nil, &settings)
 					if err != nil {
 						return err
 					}
@@ -204,7 +189,7 @@ func TestStackConfigPolicy(t *testing.T) {
 					assert.NoError(t, err)
 
 					var apiResponse ClusterInfoResponse
-					if _, err = request(esClient, http.MethodGet, "/", nil, &apiResponse); err != nil {
+					if _, _, err = request(esClient, http.MethodGet, "/", nil, &apiResponse); err != nil {
 						return err
 					}
 
@@ -220,7 +205,7 @@ func TestStackConfigPolicy(t *testing.T) {
 
 					repoName := "repo_test"
 					var repos SnapshotRepositories
-					_, err = request(esClient, http.MethodGet, filepath.Join("/_snapshot", repoName), nil, &repos)
+					_, _, err = request(esClient, http.MethodGet, filepath.Join("/_snapshot", repoName), nil, &repos)
 					if err != nil {
 						return err
 					}
@@ -250,13 +235,37 @@ func TestStackConfigPolicy(t *testing.T) {
 				}),
 			},
 			test.Step{
+				Name: "Role mappings should be set",
+				Test: test.Eventually(func() error {
+					esClient, err := elasticsearch.NewElasticsearchClient(es.Elasticsearch, k)
+					assert.NoError(t, err)
+
+					metadataUUID := "b9a59ba9-6b92-4be2-bb8d-02bb270cb3a7" // from test/e2e/es/fixtures/stackconfigpolicy_esConfig.yaml
+
+					// except in 8.15.x due to a bug, role mappings are exposed via the API
+					if stackVersion.LT(version.MinFor(8, 15, 0)) && stackVersion.GTE(version.MinFor(8, 16, 0)) {
+						if err := checkAPIResponse(esClient, "/_security/role_mapping/role_test", 200, metadataUUID); err != nil {
+							return err
+						}
+					}
+					// starting 8.15.x, role mappings are stored in the cluster state
+					if stackVersion.GTE(version.MinFor(8, 15, 0)) {
+						if err := checkAPIResponse(esClient, "_cluster/state/metadata?filter_path=metadata.role_mappings", 200, metadataUUID); err != nil {
+							return err
+						}
+					}
+
+					return nil
+				}),
+			},
+			test.Step{
 				Name: "Other settings should be set",
 				Test: test.Eventually(func() error {
 					esClient, err := elasticsearch.NewElasticsearchClient(es.Elasticsearch, k)
 					assert.NoError(t, err)
 
-					for ep, statusCodes := range configuredObjectsEndpoints {
-						if err := checkAPIStatusCode(esClient, ep, statusCodes.onCreation()); err != nil {
+					for _, ep := range configuredObjectsEndpoints {
+						if err := checkAPIStatusCode(esClient, ep, 200); err != nil {
 							return err
 						}
 					}
@@ -280,11 +289,30 @@ func TestStackConfigPolicy(t *testing.T) {
 					esClient, err := elasticsearch.NewElasticsearchClient(es.Elasticsearch, k)
 					assert.NoError(t, err)
 
-					for ep, statusCode := range configuredObjectsEndpoints {
-						if err := checkAPIStatusCode(esClient, ep, statusCode.onDeletion()); err != nil {
+					for _, ep := range configuredObjectsEndpoints {
+						if err := checkAPIStatusCode(esClient, ep, 404); err != nil {
 							return err
 						}
 					}
+					return nil
+				}),
+			},
+			test.Step{
+				Name: "Role mappings should be reset",
+				Test: test.Eventually(func() error {
+					esClient, err := elasticsearch.NewElasticsearchClient(es.Elasticsearch, k)
+					assert.NoError(t, err)
+
+					// starting 8.15.x, role mappings are correctly removed
+					if stackVersion.GTE(version.MinFor(8, 15, 0)) {
+						if err := checkAPIStatusCode(esClient, "/_security/role_mapping/role_test", 404); err != nil {
+							return err
+						}
+						if err := checkAPIResponse(esClient, "_cluster/state/metadata?filter_path=metadata.role_mappings", 200, "{}"); err != nil {
+							return err
+						}
+					}
+
 					return nil
 				}),
 			},
@@ -308,20 +336,23 @@ func TestStackConfigPolicy(t *testing.T) {
 	test.Sequence(nil, steps, esWithlicense).RunSequential(t)
 }
 
-type statusCode struct {
-	onCreation func() int
-	onDeletion func() int
-}
-
-func ok() int       { return 200 }
-func notFound() int { return 404 }
-
 func checkAPIStatusCode(esClient client.Client, url string, expectedStatusCode int) error {
 	var items map[string]interface{}
-	actualStatusCode, _ := request(esClient, http.MethodGet, url, nil, &items)
-	fmt.Println("request", url, "->", actualStatusCode)
+	_, actualStatusCode, _ := request(esClient, http.MethodGet, url, nil, &items)
 	if expectedStatusCode != actualStatusCode {
 		return fmt.Errorf("calling %s should return %d, got %d", url, expectedStatusCode, actualStatusCode)
+	}
+	return nil
+}
+
+func checkAPIResponse(esClient client.Client, url string, expectedStatusCode int, expectedResponse string) error {
+	var items map[string]interface{}
+	response, actualStatusCode, _ := request(esClient, http.MethodGet, url, nil, &items)
+	if expectedStatusCode != actualStatusCode {
+		return fmt.Errorf("calling %s should return %d, got %d", url, expectedStatusCode, actualStatusCode)
+	}
+	if strings.Contains(expectedResponse, string(response)) {
+		return fmt.Errorf("calling %s should return [%s], got [%s]", url, expectedResponse, string(response))
 	}
 	return nil
 }
@@ -353,27 +384,27 @@ type SnapshotRepositorySettings struct {
 }
 
 // request is a utility function to call a specific Elasticsearch API not implemented in the Elasticsearch client.
-func request(esClient client.Client, method string, url string, body io.Reader, response interface{}) (int, error) {
+func request(esClient client.Client, method string, url string, body io.Reader, response interface{}) ([]byte, int, error) {
 	req, err := http.NewRequest(method, url, body) //nolint:noctx
 	statusCode := 0
 	if err != nil {
-		return statusCode, err
+		return nil, statusCode, err
 	}
 	resp, err := esClient.Request(context.Background(), req)
 	if resp != nil {
 		statusCode = resp.StatusCode
 	}
 	if err != nil {
-		return statusCode, err
+		return nil, statusCode, err
 	}
 	defer resp.Body.Close()
 	resultBytes, err := io.ReadAll(resp.Body)
 	if err != nil {
-		return statusCode, err
+		return nil, statusCode, err
 	}
 	err = json.Unmarshal(resultBytes, &response)
 	if err != nil {
-		return statusCode, err
+		return resultBytes, statusCode, err
 	}
-	return statusCode, nil
+	return resultBytes, statusCode, nil
 }
