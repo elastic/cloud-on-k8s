@@ -192,10 +192,7 @@ func (b Builder) CheckStackTestSteps(k *test.K8sClient) test.StepList {
 				MatchFunc: map[string]func(string) bool{
 					// only red is considered as not working in health API
 					"status": func(status string) bool {
-						if status != "red" {
-							return true
-						}
-						return false
+						return status != "red"
 					},
 				},
 			}),
