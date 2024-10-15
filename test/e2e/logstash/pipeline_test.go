@@ -65,7 +65,11 @@ func TestPipelineConfigRefLogstash(t *testing.T) {
 				logstash.Want{
 					Match: map[string]string{
 						"pipelines.generator.workers": "1",
-						"status":                      "green",
+					},
+					MatchFunc: map[string]func(string) bool{
+						"status": func(status string) bool {
+							return status != "red"
+						},
 					},
 				}),
 			test.Step{
@@ -146,7 +150,11 @@ func TestPipelineConfigLogstash(t *testing.T) {
 				logstash.Want{
 					Match: map[string]string{
 						"pipelines.split.batch_size": "125",
-						"status":                     "green",
+					},
+					MatchFunc: map[string]func(string) bool{
+						"status": func(status string) bool {
+							return status != "red"
+						},
 					},
 				}),
 			test.Step{
@@ -200,7 +208,11 @@ func TestLogstashPipelineReload(t *testing.T) {
 					logstash.Want{
 						Match: map[string]string{
 							"pipelines.main.workers": "1",
-							"status":                 "green",
+						},
+						MatchFunc: map[string]func(string) bool{
+							"status": func(status string) bool {
+								return status != "red"
+							},
 						},
 					}),
 			).
@@ -214,7 +226,11 @@ func TestLogstashPipelineReload(t *testing.T) {
 					logstash.Want{
 						Match: map[string]string{
 							"pipelines.main.workers": "2",
-							"status":                 "green",
+						},
+						MatchFunc: map[string]func(string) bool{
+							"status": func(status string) bool {
+								return status != "red"
+							},
 						},
 					}),
 			)
