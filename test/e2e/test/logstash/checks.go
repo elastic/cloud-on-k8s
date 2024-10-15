@@ -176,7 +176,12 @@ func (b Builder) CheckStackTestSteps(k *test.K8sClient) test.StepList {
 				Password: password,
 			},
 			Want{
-				Match: map[string]string{"status": "green"},
+				MatchFunc: map[string]func(string) bool{
+					// only red is considered as failure in health API
+					"status": func(status string) bool {
+						return status != "red"
+					},
+				},
 			}),
 		b.CheckMetricsRequest(k,
 			Request{
@@ -190,7 +195,7 @@ func (b Builder) CheckStackTestSteps(k *test.K8sClient) test.StepList {
 					"pipelines.main.batch_size": "125",
 				},
 				MatchFunc: map[string]func(string) bool{
-					// only red is considered as not working in health API
+					// only red is considered as failure in health API
 					"status": func(status string) bool {
 						return status != "red"
 					},
