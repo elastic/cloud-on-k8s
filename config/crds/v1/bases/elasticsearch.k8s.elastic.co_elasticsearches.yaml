@@ -9297,6 +9297,8 @@ spec:
                               type: object
                             search:
                               properties:
+                                allow_restricted_indices:
+                                  type: boolean
                                 field_security:
                                   properties:
                                     except:

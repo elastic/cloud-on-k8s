@@ -1624,6 +1624,7 @@ RoleSource references roles to create in the Elasticsearch cluster.
 | *`names`* __string array__ | 
 | *`field_security`* __xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-v2-pkg-apis-elasticsearch-v1-fieldsecurity[$$FieldSecurity$$]__ | 
 | *`query`* __xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-v2-pkg-apis-common-v1-config[$$Config$$]__ | 
+| *`allow_restricted_indices`* __boolean__ | 
 |===
 
 

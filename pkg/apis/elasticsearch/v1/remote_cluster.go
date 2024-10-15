@@ -81,8 +81,12 @@ type Search struct {
 	// +kubebuilder:validation:Optional
 	FieldSecurity *FieldSecurity `json:"field_security,omitempty"`
 
+	// +kubebuilder:validation:Optional
 	// +kubebuilder:pruning:PreserveUnknownFields
 	Query *commonv1.Config `json:"query,omitempty"`
+
+	// +kubebuilder:validation:Optional
+	AllowRestrictedIndices bool `json:"allow_restricted_indices,omitempty"`
 }
 
 type FieldSecurity struct {
