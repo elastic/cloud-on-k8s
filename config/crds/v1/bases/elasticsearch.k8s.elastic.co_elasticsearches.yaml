@@ -9315,6 +9315,9 @@ spec:
                                   items:
                                     type: string
                                   type: array
+                                query:
+                                  type: object
+                                  x-kubernetes-preserve-unknown-fields: true
                               required:
                               - names
                               type: object

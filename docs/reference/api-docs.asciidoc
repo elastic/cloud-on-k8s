@@ -514,6 +514,7 @@ Config represents untyped YAML configuration.
 - xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-v2-pkg-apis-logstash-v1alpha1-logstashspec[$$LogstashSpec$$]
 - xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-v2-pkg-apis-maps-v1alpha1-mapsspec[$$MapsSpec$$]
 - xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-v2-pkg-apis-elasticsearch-v1-nodeset[$$NodeSet$$]
+- xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-v2-pkg-apis-elasticsearch-v1-search[$$Search$$]
 ****
 
 
@@ -1541,7 +1542,7 @@ RemoteClusterAPIKey defines a remote cluster API Key.
 [id="{anchor_prefix}-github-com-elastic-cloud-on-k8s-v2-pkg-apis-elasticsearch-v1-remoteclusteraccess"]
 === RemoteClusterAccess 
 
-
+RemoteClusterAccess models the API key specification as documented in https://www.elastic.co/guide/en/elasticsearch/reference/current/security-api-create-cross-cluster-api-key.html
 
 .Appears In:
 ****
@@ -1622,6 +1623,7 @@ RoleSource references roles to create in the Elasticsearch cluster.
 | Field | Description
 | *`names`* __string array__ | 
 | *`field_security`* __xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-v2-pkg-apis-elasticsearch-v1-fieldsecurity[$$FieldSecurity$$]__ | 
+| *`query`* __xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-v2-pkg-apis-common-v1-config[$$Config$$]__ | 
 |===
 
 

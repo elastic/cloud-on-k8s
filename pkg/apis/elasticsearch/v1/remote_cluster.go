@@ -5,6 +5,7 @@
 package v1
 
 import (
+	commonv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/common/v1"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/version"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/optional"
 )
@@ -65,6 +66,7 @@ type RemoteClusterAPIKey struct {
 	Access RemoteClusterAccess `json:"access,omitempty"`
 }
 
+// RemoteClusterAccess models the API key specification as documented in https://www.elastic.co/guide/en/elasticsearch/reference/current/security-api-create-cross-cluster-api-key.html
 type RemoteClusterAccess struct {
 	// +kubebuilder:validation:Optional
 	Search *Search `json:"search,omitempty"`
@@ -78,6 +80,9 @@ type Search struct {
 
 	// +kubebuilder:validation:Optional
 	FieldSecurity *FieldSecurity `json:"field_security,omitempty"`
+
+	// +kubebuilder:pruning:PreserveUnknownFields
+	Query *commonv1.Config `json:"query,omitempty"`
 }
 
 type FieldSecurity struct {
