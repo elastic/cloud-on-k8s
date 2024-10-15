@@ -188,7 +188,15 @@ func (b Builder) CheckStackTestSteps(k *test.K8sClient) test.StepList {
 			Want{
 				Match: map[string]string{
 					"pipelines.main.batch_size": "125",
-					"status":                    "green",
+				},
+				MatchFunc: map[string]func(string) bool{
+					// only red is considered as not working in health API
+					"status": func(status string) bool {
+						if status != "red" {
+							return true
+						}
+						return false
+					},
 				},
 			}),
 	}
