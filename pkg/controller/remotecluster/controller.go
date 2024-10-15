@@ -172,12 +172,12 @@ func doReconcile(
 		activeAPIKeys esclient.CrossClusterAPIKeyList
 		esClient      esclient.Client
 	)
-	localClusterSupportClusterAPIKeys, err := localEs.SupportRemoteClusterAPIKeys()
+	localClusterSupportsClusterAPIKeys, err := localEs.SupportsRemoteClusterAPIKeys()
 	if err != nil {
 		return reconcile.Result{}, err
 	}
 	results := &reconciler.Results{}
-	if localClusterSupportClusterAPIKeys.IsTrue() {
+	if localClusterSupportsClusterAPIKeys.IsTrue() {
 		// Check if the ES API is available. We need it to create, update and invalidate
 		// API keys in this cluster.
 		if !services.NewElasticsearchURLProvider(*localEs, r.Client).HasEndpoints() {
@@ -244,23 +244,23 @@ func doReconcile(
 		}
 
 		// RCS2, first check that both the reconciled and the client clusters are compatible.
-		clientClusterSupportClusterAPIKeys, err := remoteEs.SupportRemoteClusterAPIKeys()
+		clientClusterSupportsClusterAPIKeys, err := remoteEs.SupportsRemoteClusterAPIKeys()
 		if err != nil {
 			results.WithError(err)
 			continue
 		}
 
-		if !clientClusterSupportClusterAPIKeys.IsSet() {
+		if !clientClusterSupportsClusterAPIKeys.IsSet() {
 			log.Info("Client cluster version is not available in status yet, skipping API keys reconciliation")
 			continue
 		}
 
-		if !localClusterSupportClusterAPIKeys.IsSet() {
+		if !localClusterSupportsClusterAPIKeys.IsSet() {
 			log.Info("Cluster version is not available in status yet, skipping API keys reconciliation")
 			continue
 		}
 
-		if clientClusterSupportClusterAPIKeys.IsFalse() && localClusterSupportClusterAPIKeys.IsTrue() {
+		if clientClusterSupportsClusterAPIKeys.IsFalse() && localClusterSupportsClusterAPIKeys.IsTrue() {
 			err := fmt.Errorf("client cluster %s/%s is running version %s which does not support remote cluster keys", remoteEs.Namespace, remoteEs.Name, remoteEs.Spec.Version)
 			log.Error(err, "cannot configure remote cluster settings")
 			continue
@@ -270,7 +270,7 @@ func doReconcile(
 		results.WithError(reconcileAPIKeys(ctx, r.Client, activeAPIKeys, localEs, remoteEs, remoteClusters, esClient, r.keystoreProvider))
 	}
 
-	if localClusterSupportClusterAPIKeys.IsTrue() {
+	if localClusterSupportsClusterAPIKeys.IsTrue() {
 		// **************************************************************
 		// Delete orphaned API keys from clusters which have been deleted
 		// **************************************************************

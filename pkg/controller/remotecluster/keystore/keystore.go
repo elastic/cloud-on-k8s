@@ -86,10 +86,7 @@ func loadAPIKeyStore(ctx context.Context, log logr.Logger, c k8s.Client, owner *
 	keyStoreSecret := &corev1.Secret{}
 	if err := c.Get(ctx, secretName, keyStoreSecret); err != nil {
 		if errors.IsNotFound(err) {
-			ulog.FromContext(ctx).V(1).Info("No APIKeyStore Secret found",
-				"namespace", owner.Namespace,
-				"es_name", owner.Name,
-			)
+			ulog.FromContext(ctx).V(1).Info("No APIKeyStore Secret found")
 			// Return an empty store
 			emptyKeystore := &APIKeyStore{log: log, pendingChanges: pendingChanges}
 			return emptyKeystore.withPendingChanges(), nil
@@ -111,8 +108,6 @@ func loadAPIKeyStore(ctx context.Context, log logr.Logger, c k8s.Client, owner *
 		if len(strings) != 2 {
 			ulog.FromContext(ctx).V(1).Info(
 				fmt.Sprintf("Unknown remote cluster credential setting: %s", settingName),
-				"namespace", owner.Namespace,
-				"es_name", owner.Name,
 			)
 			continue
 		}

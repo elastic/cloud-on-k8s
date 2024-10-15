@@ -13,8 +13,8 @@ var (
 	RemoteClusterAPIKeysMinVersion = version.MinFor(8, 10, 0)
 )
 
-// SupportRemoteClusterAPIKeys returns true if this cluster supports connecting to a remote cluster using API keys.
-func (es *Elasticsearch) SupportRemoteClusterAPIKeys() (*optional.Bool, error) {
+// SupportsRemoteClusterAPIKeys returns true if this cluster supports connecting to a remote cluster using API keys.
+func (es *Elasticsearch) SupportsRemoteClusterAPIKeys() (*optional.Bool, error) {
 	if es == nil {
 		return nil, nil
 	}

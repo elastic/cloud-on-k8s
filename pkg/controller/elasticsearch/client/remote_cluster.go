@@ -25,9 +25,9 @@ type RemoteClusterClient interface {
 	UpdateCrossClusterAPIKey(context.Context, string, CrossClusterAPIKeyUpdateRequest) (CrossClusterAPIKeyUpdateResponse, error)
 	// InvalidateCrossClusterAPIKey invalidates a cluster API Key by its name.
 	InvalidateCrossClusterAPIKey(context.Context, string) error
-	// GetCrossClusterAPIKeys attempts to retrieve Cross Cluster API Keys.
+	// GetCrossClusterAPIKeys attempts to retrieve active Cross Cluster API Keys.
 	// The provided string is used as the "name" parameter in the HTTP query.
-	// Only active API Keys are included in the response.
+	// Relies on the active_only parameter to only include active API Keys in the response.
 	GetCrossClusterAPIKeys(context.Context, string) (CrossClusterAPIKeyList, error)
 }
 
