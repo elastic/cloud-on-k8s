@@ -132,7 +132,7 @@ func TestRemoteCluster_Reconcile(t *testing.T) {
 					// Clusters
 					newClusterBuilder("ns1", "es1", "8.15.0").build(),
 					newClusterBuilder("ns1", "es2", "8.15.0").
-						// es2 -> es1
+						// ns1/es2 -> ns1/es1
 						withAPIKey("ns1", "es1", &esv1.RemoteClusterAPIKey{}).
 						build(),
 					[]client.Object{
@@ -161,7 +161,8 @@ func TestRemoteCluster_Reconcile(t *testing.T) {
 				getCrossClusterAPIKeys: []string{"eck-*"},
 				crossClusterAPIKeyCreateRequests: []esclient.CrossClusterAPIKeyCreateRequest{
 					{
-						Name: "eck-ns1-es2-generated-ns1-es1-0-with-api-key",
+						// ns1/es1 is expected to create an API key for ns1/es2
+						Name: "eck-ns1-es2-generated-alias-from-ns1-es2-to-ns1-es1-with-api-key",
 						CrossClusterAPIKeyUpdateRequest: esclient.CrossClusterAPIKeyUpdateRequest{
 							Metadata: map[string]interface{}{
 								"elasticsearch.k8s.elastic.co/config-hash": "1384987056",
@@ -179,7 +180,7 @@ func TestRemoteCluster_Reconcile(t *testing.T) {
 					// Keystore for es2 must be updated.
 					ObjectMeta: metav1.ObjectMeta{
 						Annotations: map[string]string{
-							"elasticsearch.k8s.elastic.co/remote-cluster-api-keys": `{"generated-ns1-es1-0-with-api-key":{"namespace":"ns1","name":"es1","id":"eck-ns1-es2-generated-ns1-es1-0-with-api-key-1"}}`,
+							"elasticsearch.k8s.elastic.co/remote-cluster-api-keys": `{"generated-alias-from-ns1-es2-to-ns1-es1-with-api-key":{"namespace":"ns1","name":"es1","id":"generated-id-from-fake-es-client-eck-ns1-es2-generated-alias-from-ns1-es2-to-ns1-es1-with-api-key"}}`,
 						},
 						Labels: map[string]string{
 							"common.k8s.elastic.co/type":                "remote-cluster-api-keys",
@@ -190,7 +191,7 @@ func TestRemoteCluster_Reconcile(t *testing.T) {
 						Name:      "es2-es-remote-api-keys",
 					},
 					Data: map[string][]byte{
-						"cluster.remote.generated-ns1-es1-0-with-api-key.credentials": []byte("encoded-key-for-eck-ns1-es2-generated-ns1-es1-0-with-api-key-1"),
+						"cluster.remote.generated-alias-from-ns1-es2-to-ns1-es1-with-api-key.credentials": []byte("generated-encoded-key-from-fake-es-client-for-eck-ns1-es2-generated-alias-from-ns1-es2-to-ns1-es1-with-api-key"),
 					},
 				},
 			},
@@ -254,7 +255,7 @@ func TestRemoteCluster_Reconcile(t *testing.T) {
 						&corev1.Secret{
 							ObjectMeta: metav1.ObjectMeta{
 								Annotations: map[string]string{
-									"elasticsearch.k8s.elastic.co/remote-cluster-api-keys": `{"generated-ns1-es1-0-with-api-key":{"namespace":"ns1","name":"es1","id":"apikey-from-es4-to-es1"}}`,
+									"elasticsearch.k8s.elastic.co/remote-cluster-api-keys": `{"generated-alias-from-ns4-es4-to-ns1-es1-with-api-key":{"namespace":"ns1","name":"es1","id":"generated-id-from-fake-es-client-eck-ns4-es4-generated-alias-from-ns4-es4-to-ns1-es1-with-api-key"}}`,
 								},
 								Labels: map[string]string{
 									"common.k8s.elastic.co/type":                "remote-cluster-api-keys",
@@ -266,14 +267,14 @@ func TestRemoteCluster_Reconcile(t *testing.T) {
 								UID:       uuid.NewUUID(),
 							},
 							Data: map[string][]byte{
-								"cluster.remote.generated-ns1-es1-0-with-api-key.credentials": []byte("encoded-key-for-existing-api-key"),
+								"cluster.remote.generated-alias-from-ns4-es4-to-ns1-es1-with-api-key.credentials": []byte("encoded-key-for-existing-api-key"),
 							},
 						},
 						// Assume that ns1/es1 keystore already exists, unexpected keys should be removed.
 						&corev1.Secret{
 							ObjectMeta: metav1.ObjectMeta{
 								Annotations: map[string]string{
-									"elasticsearch.k8s.elastic.co/remote-cluster-api-keys": `{"generated-ns2-es2-0-with-api-key":{"namespace":"ns2","name":"es2","id":"apikey-to-es2"},"generated-ns4-es4-0-with-api-key":{"namespace":"ns2","name":"es2","id":"apikey-to-es4"},"api-key-to-non-existent-alias":{"namespace":"nsx","name":"esx","id":"apikey-to-esx"}}`,
+									"elasticsearch.k8s.elastic.co/remote-cluster-api-keys": `{"generated-alias-from-ns1-es1-to-ns2-es2-with-api-key":{"namespace":"ns2","name":"es2","id":"apikey-to-es2"},"generated-alias-from-ns1-es1-to-ns3-es3-with-api-key":{"namespace":"ns3","name":"es3","id":"apikey-to-es3"},"api-key-to-non-existent-alias":{"namespace":"nsx","name":"esx","id":"apikey-to-esx"}}`,
 								},
 								Labels: map[string]string{
 									"common.k8s.elastic.co/type":                "remote-cluster-api-keys",
@@ -285,8 +286,8 @@ func TestRemoteCluster_Reconcile(t *testing.T) {
 								UID:       uuid.NewUUID(),
 							},
 							Data: map[string][]byte{
-								"cluster.remote.generated-ns2-es2-0-with-api-key.credentials": []byte("encoded-key-for-existing-api-key"),
-								"cluster.remote.generated-ns4-es4-0-with-api-key.credentials": []byte("encoded-key-for-existing-api-key"),
+								"cluster.remote.generated-alias-from-ns1-es1-to-ns2-es2-with-api-key.credentials": []byte("encoded-key-for-existing-api-key"),
+								"cluster.remote.generated-alias-from-ns1-es1-to-ns3-es3-with-api-key.credentials": []byte("encoded-key-for-existing-api-key"),
 								// The key below should be removed
 								"cluster.remote.api-key-to-non-existent-alias.credentials": []byte("encoded-key-for-api-for-non-existent-cluster"),
 							},
@@ -315,8 +316,8 @@ func TestRemoteCluster_Reconcile(t *testing.T) {
 					// API key for es4 already exists but with a wrong hash we should expect an update.
 					APIKeys: []esclient.CrossClusterAPIKey{
 						{
-							ID:   "apikey-from-es4-to-es1",
-							Name: "eck-ns4-es4-generated-ns1-es1-0-with-api-key",
+							ID:   "generated-id-from-fake-es-client-eck-ns4-es4-generated-alias-from-ns4-es4-to-ns1-es1-with-api-key",
+							Name: "eck-ns4-es4-generated-alias-from-ns4-es4-to-ns1-es1-with-api-key",
 							Metadata: map[string]interface{}{
 								"elasticsearch.k8s.elastic.co/config-hash": "unexpected-hash",
 								"elasticsearch.k8s.elastic.co/managed-by":  "eck",
@@ -356,7 +357,7 @@ func TestRemoteCluster_Reconcile(t *testing.T) {
 				getCrossClusterAPIKeys:       []string{"eck-*"},
 				invalidateCrossClusterAPIKey: []string{"eck-ns4-es4-to-ns1-es1-0-old-alias", "eck-ns5-es5-generated-ns1-es1-0-with-api-key"},
 				updateCrossClusterAPIKey: map[string]esclient.CrossClusterAPIKeyUpdateRequest{
-					"apikey-from-es4-to-es1": {
+					"generated-id-from-fake-es-client-eck-ns4-es4-generated-alias-from-ns4-es4-to-ns1-es1-with-api-key": {
 						RemoteClusterAPIKey: esv1.RemoteClusterAPIKey{},
 						Metadata: map[string]any{
 							"elasticsearch.k8s.elastic.co/config-hash": "1384987056",
@@ -370,7 +371,7 @@ func TestRemoteCluster_Reconcile(t *testing.T) {
 				// We expect 2 keys to be created for ns1/es1
 				crossClusterAPIKeyCreateRequests: []esclient.CrossClusterAPIKeyCreateRequest{
 					{
-						Name: "eck-ns2-es2-generated-ns1-es1-0-with-api-key",
+						Name: "eck-ns2-es2-generated-alias-from-ns2-es2-to-ns1-es1-with-api-key",
 						CrossClusterAPIKeyUpdateRequest: esclient.CrossClusterAPIKeyUpdateRequest{
 							Metadata: map[string]interface{}{
 								"elasticsearch.k8s.elastic.co/config-hash": "1384987056",
@@ -382,7 +383,7 @@ func TestRemoteCluster_Reconcile(t *testing.T) {
 						},
 					},
 					{
-						Name: "eck-ns3-es3-generated-ns1-es1-0-with-api-key",
+						Name: "eck-ns3-es3-generated-alias-from-ns3-es3-to-ns1-es1-with-api-key",
 						CrossClusterAPIKeyUpdateRequest: esclient.CrossClusterAPIKeyUpdateRequest{
 							Metadata: map[string]interface{}{
 								"elasticsearch.k8s.elastic.co/config-hash": "1384987056",
@@ -400,7 +401,7 @@ func TestRemoteCluster_Reconcile(t *testing.T) {
 				{
 					ObjectMeta: metav1.ObjectMeta{
 						Annotations: map[string]string{
-							"elasticsearch.k8s.elastic.co/remote-cluster-api-keys": `{"generated-ns2-es2-0-with-api-key":{"namespace":"ns2","name":"es2","id":"apikey-to-es2"}}`,
+							"elasticsearch.k8s.elastic.co/remote-cluster-api-keys": `{"generated-alias-from-ns1-es1-to-ns2-es2-with-api-key":{"namespace":"ns2","name":"es2","id":"apikey-to-es2"},"generated-alias-from-ns1-es1-to-ns3-es3-with-api-key":{"namespace":"ns3","name":"es3","id":"apikey-to-es3"}}`,
 						},
 						Labels: map[string]string{
 							"common.k8s.elastic.co/type":                "remote-cluster-api-keys",
@@ -411,14 +412,15 @@ func TestRemoteCluster_Reconcile(t *testing.T) {
 						Name:      "es1-es-remote-api-keys",
 					},
 					Data: map[string][]byte{
-						"cluster.remote.generated-ns2-es2-0-with-api-key.credentials": []byte("encoded-key-for-existing-api-key"),
+						"cluster.remote.generated-alias-from-ns1-es1-to-ns2-es2-with-api-key.credentials": []byte("encoded-key-for-existing-api-key"),
+						"cluster.remote.generated-alias-from-ns1-es1-to-ns3-es3-with-api-key.credentials": []byte("encoded-key-for-existing-api-key"),
 					},
 				},
 				{
 					// Keystore for es2 must be updated.
 					ObjectMeta: metav1.ObjectMeta{
 						Annotations: map[string]string{
-							"elasticsearch.k8s.elastic.co/remote-cluster-api-keys": `{"existing-api-key-to-esx":{"namespace":"foo","name":"bar","id":"apikey-to-esx"},"generated-ns1-es1-0-with-api-key":{"namespace":"ns1","name":"es1","id":"eck-ns2-es2-generated-ns1-es1-0-with-api-key-1"}}`,
+							"elasticsearch.k8s.elastic.co/remote-cluster-api-keys": `{"existing-api-key-to-esx":{"namespace":"foo","name":"bar","id":"apikey-to-esx"},"generated-alias-from-ns2-es2-to-ns1-es1-with-api-key":{"namespace":"ns1","name":"es1","id":"generated-id-from-fake-es-client-eck-ns2-es2-generated-alias-from-ns2-es2-to-ns1-es1-with-api-key"}}`,
 						},
 						Labels: map[string]string{
 							"common.k8s.elastic.co/type":                "remote-cluster-api-keys",
@@ -429,15 +431,15 @@ func TestRemoteCluster_Reconcile(t *testing.T) {
 						Name:      "es2-es-remote-api-keys",
 					},
 					Data: map[string][]byte{
-						"cluster.remote.existing-api-key-to-esx.credentials":          []byte("encoded-key-for-existing-api-key"),
-						"cluster.remote.generated-ns1-es1-0-with-api-key.credentials": []byte("encoded-key-for-eck-ns2-es2-generated-ns1-es1-0-with-api-key-1"),
+						"cluster.remote.existing-api-key-to-esx.credentials":                              []byte("encoded-key-for-existing-api-key"),
+						"cluster.remote.generated-alias-from-ns2-es2-to-ns1-es1-with-api-key.credentials": []byte("generated-encoded-key-from-fake-es-client-for-eck-ns2-es2-generated-alias-from-ns2-es2-to-ns1-es1-with-api-key"),
 					},
 				},
 				{
 					// Keystore for es3 must be created.
 					ObjectMeta: metav1.ObjectMeta{
 						Annotations: map[string]string{
-							"elasticsearch.k8s.elastic.co/remote-cluster-api-keys": `{"generated-ns1-es1-0-with-api-key":{"namespace":"ns1","name":"es1","id":"eck-ns3-es3-generated-ns1-es1-0-with-api-key-2"}}`,
+							"elasticsearch.k8s.elastic.co/remote-cluster-api-keys": `{"generated-alias-from-ns3-es3-to-ns1-es1-with-api-key":{"namespace":"ns1","name":"es1","id":"generated-id-from-fake-es-client-eck-ns3-es3-generated-alias-from-ns3-es3-to-ns1-es1-with-api-key"}}`,
 						},
 						Labels: map[string]string{
 							"common.k8s.elastic.co/type":                "remote-cluster-api-keys",
@@ -448,13 +450,13 @@ func TestRemoteCluster_Reconcile(t *testing.T) {
 						Name:      "es3-es-remote-api-keys",
 					},
 					Data: map[string][]byte{
-						"cluster.remote.generated-ns1-es1-0-with-api-key.credentials": []byte("encoded-key-for-eck-ns3-es3-generated-ns1-es1-0-with-api-key-2"),
+						"cluster.remote.generated-alias-from-ns3-es3-to-ns1-es1-with-api-key.credentials": []byte("generated-encoded-key-from-fake-es-client-for-eck-ns3-es3-generated-alias-from-ns3-es3-to-ns1-es1-with-api-key"),
 					},
 				},
 				{
 					ObjectMeta: metav1.ObjectMeta{
 						Annotations: map[string]string{
-							"elasticsearch.k8s.elastic.co/remote-cluster-api-keys": `{"generated-ns1-es1-0-with-api-key":{"namespace":"ns1","name":"es1","id":"apikey-from-es4-to-es1"}}`,
+							"elasticsearch.k8s.elastic.co/remote-cluster-api-keys": `{"generated-alias-from-ns4-es4-to-ns1-es1-with-api-key":{"namespace":"ns1","name":"es1","id":"generated-id-from-fake-es-client-eck-ns4-es4-generated-alias-from-ns4-es4-to-ns1-es1-with-api-key"}}`,
 						},
 						Labels: map[string]string{
 							"common.k8s.elastic.co/type":                "remote-cluster-api-keys",
@@ -465,7 +467,7 @@ func TestRemoteCluster_Reconcile(t *testing.T) {
 						Name:      "es4-es-remote-api-keys",
 					},
 					Data: map[string][]byte{
-						"cluster.remote.generated-ns1-es1-0-with-api-key.credentials": []byte("encoded-key-for-existing-api-key"),
+						"cluster.remote.generated-alias-from-ns4-es4-to-ns1-es1-with-api-key.credentials": []byte("encoded-key-for-existing-api-key"),
 					},
 				},
 			},
@@ -548,7 +550,7 @@ func TestRemoteCluster_Reconcile(t *testing.T) {
 						&corev1.Secret{
 							ObjectMeta: metav1.ObjectMeta{
 								Annotations: map[string]string{
-									"elasticsearch.k8s.elastic.co/remote-cluster-api-keys": `{"generated-ns2-es2-0-with-api-key":{"namespace":"ns2","name":"es2","id":"apikey-to-es2"},"generated-ns4-es4-0-with-api-key":{"namespace":"ns2","name":"es2","id":"apikey-to-es4"},"api-key-to-non-existent-alias":{"namespace":"nsx","name":"esx","id":"apikey-to-esx"}}`,
+									"elasticsearch.k8s.elastic.co/remote-cluster-api-keys": `{"generated-alias-from-ns1-es1-to-ns2-es2-with-api-key":{"namespace":"ns2","name":"es2","id":"apikey-to-es2"},"generated-alias-from-ns1-es1-to-ns3-es3-with-api-key":{"namespace":"ns3","name":"es3","id":"apikey-to-es3"},"api-key-to-non-existent-alias":{"namespace":"nsx","name":"esx","id":"apikey-to-esx"}}`,
 								},
 								Labels: map[string]string{
 									"common.k8s.elastic.co/type":                "remote-cluster-api-keys",
@@ -560,8 +562,8 @@ func TestRemoteCluster_Reconcile(t *testing.T) {
 								UID:       uuid.NewUUID(),
 							},
 							Data: map[string][]byte{
-								"cluster.remote.generated-ns2-es2-0-with-api-key.credentials": []byte("encoded-key-for-existing-api-key"),
-								"cluster.remote.generated-ns4-es4-0-with-api-key.credentials": []byte("encoded-key-for-existing-api-key"),
+								"cluster.remote.generated-alias-from-ns1-es1-to-ns2-es2-with-api-key.credentials": []byte("encoded-key-for-existing-api-key"),
+								"cluster.remote.generated-alias-from-ns1-es1-to-ns3-es3-with-api-key.credentials": []byte("encoded-key-for-existing-api-key"),
 								// The key below should be removed
 								"cluster.remote.api-key-to-non-existent-alias.credentials": []byte("encoded-key-for-api-for-non-existent-cluster"),
 							},

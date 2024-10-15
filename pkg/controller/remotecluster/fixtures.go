@@ -42,10 +42,9 @@ type fakeESClient struct {
 func (f *fakeESClient) CreateCrossClusterAPIKey(ctx context.Context, crossClusterAPIKeyCreateRequest esclient.CrossClusterAPIKeyCreateRequest) (esclient.CrossClusterAPIKeyCreateResponse, error) {
 	f.crossClusterAPIKeyCreateRequests = append(f.crossClusterAPIKeyCreateRequests, crossClusterAPIKeyCreateRequest)
 	return esclient.CrossClusterAPIKeyCreateResponse{
-		ID:      fmt.Sprintf("%s-%d", crossClusterAPIKeyCreateRequest.Name, len(f.crossClusterAPIKeyCreateRequests)),
+		ID:      fmt.Sprintf("generated-id-from-fake-es-client-%s", crossClusterAPIKeyCreateRequest.Name),
 		Name:    crossClusterAPIKeyCreateRequest.Name,
-		APIKey:  fmt.Sprintf("api-key-for-%s-%d", crossClusterAPIKeyCreateRequest.Name, len(f.crossClusterAPIKeyCreateRequests)),
-		Encoded: fmt.Sprintf("encoded-key-for-%s-%d", crossClusterAPIKeyCreateRequest.Name, len(f.crossClusterAPIKeyCreateRequests)),
+		Encoded: fmt.Sprintf("generated-encoded-key-from-fake-es-client-for-%s", crossClusterAPIKeyCreateRequest.Name),
 	}, nil
 }
 
@@ -85,7 +84,7 @@ func newClusterBuilder(namespace, name, version string) *clusterBuilder {
 func (cb *clusterBuilder) withRemoteCluster(namespace, name string) *clusterBuilder {
 	cb.remoteClusters = append(cb.remoteClusters,
 		esv1.RemoteCluster{
-			Name: fmt.Sprintf("generated-%s-%s-%d", namespace, name, len(cb.remoteClusters)),
+			Name: fmt.Sprintf("alias-from-%s-%s-to-%s-%s", cb.namespace, cb.name, namespace, name),
 			ElasticsearchRef: commonv1.LocalObjectSelector{
 				Name:      name,
 				Namespace: namespace,
@@ -97,7 +96,7 @@ func (cb *clusterBuilder) withRemoteCluster(namespace, name string) *clusterBuil
 func (cb *clusterBuilder) withAPIKey(namespace, name string, apiKey *esv1.RemoteClusterAPIKey) *clusterBuilder {
 	cb.remoteClusters = append(cb.remoteClusters,
 		esv1.RemoteCluster{
-			Name: fmt.Sprintf("generated-%s-%s-%d-with-api-key", namespace, name, len(cb.remoteClusters)),
+			Name: fmt.Sprintf("generated-alias-from-%s-%s-to-%s-%s-with-api-key", cb.namespace, cb.name, namespace, name),
 			ElasticsearchRef: commonv1.LocalObjectSelector{
 				Name:      name,
 				Namespace: namespace,
