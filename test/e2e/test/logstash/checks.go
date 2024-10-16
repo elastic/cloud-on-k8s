@@ -177,10 +177,7 @@ func (b Builder) CheckStackTestSteps(k *test.K8sClient) test.StepList {
 			},
 			Want{
 				MatchFunc: map[string]func(string) bool{
-					// only red is considered as failure in health API
-					"status": func(status string) bool {
-						return status != "red"
-					},
+					"status": isGreenOrYellow,
 				},
 			}),
 		b.CheckMetricsRequest(k,
@@ -195,10 +192,7 @@ func (b Builder) CheckStackTestSteps(k *test.K8sClient) test.StepList {
 					"pipelines.main.batch_size": "125",
 				},
 				MatchFunc: map[string]func(string) bool{
-					// only red is considered as failure in health API
-					"status": func(status string) bool {
-						return status != "red"
-					},
+					"status": isGreenOrYellow,
 				},
 			}),
 	}
@@ -314,4 +308,9 @@ func CheckServicesEndpoints(b Builder, k *test.K8sClient) test.Step {
 			return nil
 		}),
 	}
+}
+
+// isGreenOrYellow returns true if the status is either green or yellow, red is considered as failure in health API.
+func isGreenOrYellow(status string) bool {
+	return status == "green" || status == "yellow"
 }
