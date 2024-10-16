@@ -273,7 +273,7 @@ Examples:
 
 You have to perform two manual steps in order to correctly reconfigure operator role mappings because due to a bug the role mappings were duplicated.
 
-### 1. Force reload the StackConfigPolicy configuration
+. Force reload the StackConfigPolicy configuration
 
 Force reload the StackConfigPolicy configuration containing the role mappings definition, by adding metadata to any of the mappings:
 
@@ -301,7 +301,7 @@ GET /_cluster/state/metadata?filter_path=metadata.role_mappings.role_mappings
 {"metadata":{"role_mappings":{"role_mappings":[{"enabled":true,"roles":["superuser"],"rules":{"all":[{"field":{"realm.name":"oidc1"}},{"field":{"username":"*"}}]},"metadata":{"force_reload":"dummy"}}]}}}
 ----
 
-### 2. Remove duplicated role mappings exposed via the API
+. Remove duplicated role mappings exposed via the API
 
 Start by listing all the role mappings defined in your StackConfigPolicy:
 
