@@ -44,12 +44,15 @@ func secureSettingsVolume(
 	hasKeystore HasKeystore,
 	labels map[string]string,
 	namer name.Namer,
+	additionalSources ...commonv1.NamespacedSecretSource,
 ) (*volume.SecretVolume, string, error) {
 	// setup (or remove) watches for the user-provided secret to reconcile on any change
 	watcher := k8s.ExtractNamespacedName(hasKeystore)
 
 	// user-provided Secrets referenced in the resource
 	secretSources := WatchedSecretNames(hasKeystore)
+	// Additional sources, introduced to load remote cluster keys.
+	secretSources = append(secretSources, additionalSources...)
 	// user-provided Secrets referenced in a StackConfigPolicy that configures the resource
 	policySecretSources, err := stackconfigpolicy.GetSecureSettingsSecretSourcesForResources(ctx, r.K8sClient(), hasKeystore, hasKeystore.GetObjectKind().GroupVersionKind().Kind)
 	if err != nil {

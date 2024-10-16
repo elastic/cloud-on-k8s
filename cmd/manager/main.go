@@ -83,7 +83,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/logstash"
 	lsvalidation "github.com/elastic/cloud-on-k8s/v2/pkg/controller/logstash/validation"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/maps"
-	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/remoteca"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/remotecluster"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/stackconfigpolicy"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/webhook"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/dev"
@@ -899,7 +899,7 @@ func registerControllers(mgr manager.Manager, params operator.Parameters, access
 		name         string
 		registerFunc func(manager.Manager, rbac.AccessReviewer, operator.Parameters) error
 	}{
-		{name: "RemoteCA", registerFunc: remoteca.Add},
+		{name: "RemoteCA", registerFunc: remotecluster.Add},
 		{name: "APM-ES", registerFunc: associationctl.AddApmES},
 		{name: "APM-KB", registerFunc: associationctl.AddApmKibana},
 		{name: "KB-ES", registerFunc: associationctl.AddKibanaES},

@@ -9,4 +9,6 @@ const (
 	HTTPPort = 9200
 	// TransportPort used by Elasticsearch for the Transport protocol in node to node communication
 	TransportPort = 9300
+	// RemoteClusterPort used by Elasticsearch for the remote cluster protocol.
+	RemoteClusterPort = 9443
 )

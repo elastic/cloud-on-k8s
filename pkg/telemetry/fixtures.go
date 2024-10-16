@@ -21,7 +21,8 @@ type ElasticsearchTemplateData struct {
 	StackMonitoringLogsCount    int32
 	StackMonitoringMetricsCount int32
 	PodCount                    int32
-
+	RemoteClustersCount         int32
+	RemoteClustersAPIKeysCount  int32
 	*NodeLabelsTemplateData
 }
 
@@ -79,6 +80,8 @@ const expectedTelemetryTemplate = `eck:
 {{- end }}
       helm_resource_count: 0
       pod_count: {{ .ElasticsearchTemplateData.PodCount }}
+      remote_clusters_api_keys_count: {{ .ElasticsearchTemplateData.RemoteClustersAPIKeysCount }}
+      remote_clusters_count: {{ .ElasticsearchTemplateData.RemoteClustersCount }}
       resource_count: {{ .ElasticsearchTemplateData.ResourceCount }}
       stack_monitoring_logs_count: {{ .ElasticsearchTemplateData.StackMonitoringLogsCount }}
       stack_monitoring_metrics_count: {{ .ElasticsearchTemplateData.StackMonitoringMetricsCount }}
