@@ -3,19 +3,19 @@ apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
   annotations:
-    controller-gen.kubebuilder.io/version: v0.16.3
-  name: apmservers.apm.k8s.elastic.co
+    controller-gen.kubebuilder.io/version: v0.16.4
+  name: kibanas.kibana.k8s.elastic.co
 spec:
-  group: apm.k8s.elastic.co
+  group: kibana.k8s.elastic.co
   names:
     categories:
     - elastic
-    kind: ApmServer
-    listKind: ApmServerList
-    plural: apmservers
+    kind: Kibana
+    listKind: KibanaList
+    plural: kibanas
     shortNames:
-    - apm
-    singular: apmserver
+    - kb
+    singular: kibana
   scope: Namespaced
   versions:
   - additionalPrinterColumns:
@@ -26,7 +26,7 @@ spec:
       jsonPath: .status.availableNodes
       name: nodes
       type: integer
-    - description: APM version
+    - description: Kibana version
       jsonPath: .status.version
       name: version
       type: string
@@ -36,7 +36,7 @@ spec:
     name: v1
     schema:
       openAPIV3Schema:
-        description: ApmServer represents an APM Server resource in a Kubernetes cluster.
+        description: Kibana represents a Kibana resource in a Kubernetes cluster.
         properties:
           apiVersion:
             description: |-
@@ -56,19 +56,50 @@ spec:
           metadata:
             type: object
           spec:
-            description: ApmServerSpec holds the specification of an APM Server.
+            description: KibanaSpec holds the specification of a Kibana instance.
             properties:
               config:
-                description: 'Config holds the APM Server configuration. See: https://www.elastic.co/guide/en/apm/server/current/configuring-howto-apm-server.html'
+                description: 'Config holds the Kibana configuration. See: https://www.elastic.co/guide/en/kibana/current/settings.html'
                 type: object
                 x-kubernetes-preserve-unknown-fields: true
               count:
-                description: Count of APM Server instances to deploy.
+                description: Count of Kibana instances to deploy.
                 format: int32
                 type: integer
               elasticsearchRef:
-                description: ElasticsearchRef is a reference to the output Elasticsearch
-                  cluster running in the same Kubernetes cluster.
+                description: ElasticsearchRef is a reference to an Elasticsearch cluster
+                  running in the same Kubernetes cluster.
+                properties:
+                  name:
+                    description: Name of an existing Kubernetes object corresponding
+                      to an Elastic resource managed by ECK.
+                    type: string
+                  namespace:
+                    description: Namespace of the Kubernetes object. If empty, defaults
+                      to the current namespace.
+                    type: string
+                  secretName:
+                    description: |-
+                      SecretName is the name of an existing Kubernetes secret that contains connection information for associating an
+                      Elastic resource not managed by the operator. The referenced secret must contain the following:
+                      - `url`: the URL to reach the Elastic resource
+                      - `username`: the username of the user to be authenticated to the Elastic resource
+                      - `password`: the password of the user to be authenticated to the Elastic resource
+                      - `ca.crt`: the CA certificate in PEM format (optional)
+                      - `api-key`: the key to authenticate against the Elastic resource instead of a username and password (supported only for `elasticsearchRefs` in AgentSpec and in BeatSpec)
+                      This field cannot be used in combination with the other fields name, namespace or serviceName.
+                    type: string
+                  serviceName:
+                    description: |-
+                      ServiceName is the name of an existing Kubernetes service which is used to make requests to the referenced
+                      object. It has to be in the same namespace as the referenced resource. If left empty, the default HTTP service of
+                      the referenced resource is used.
+                    type: string
+                type: object
+              enterpriseSearchRef:
+                description: |-
+                  EnterpriseSearchRef is a reference to an EnterpriseSearch running in the same Kubernetes cluster.
+                  Kibana provides the default Enterprise Search UI starting version 7.14.
                 properties:
                   name:
                     description: Name of an existing Kubernetes object corresponding
@@ -97,8 +128,7 @@ spec:
                     type: string
                 type: object
               http:
-                description: HTTP holds the HTTP layer configuration for the APM Server
-                  resource.
+                description: HTTP holds the HTTP layer configuration for Kibana.
                 properties:
                   service:
                     description: Service defines the template for the associated Kubernetes
@@ -514,43 +544,101 @@ spec:
                     type: object
                 type: object
               image:
-                description: Image is the APM Server Docker image to deploy.
+                description: Image is the Kibana Docker image to deploy.
                 type: string
-              kibanaRef:
+              monitoring:
                 description: |-
-                  KibanaRef is a reference to a Kibana instance running in the same Kubernetes cluster.
-                  It allows APM agent central configuration management in Kibana.
+                  Monitoring enables you to collect and ship log and monitoring data of this Kibana.
+                  See https://www.elastic.co/guide/en/kibana/current/xpack-monitoring.html.
+                  Metricbeat and Filebeat are deployed in the same Pod as sidecars and each one sends data to one or two different
+                  Elasticsearch monitoring clusters running in the same Kubernetes cluster.
                 properties:
-                  name:
-                    description: Name of an existing Kubernetes object corresponding
-                      to an Elastic resource managed by ECK.
-                    type: string
-                  namespace:
-                    description: Namespace of the Kubernetes object. If empty, defaults
-                      to the current namespace.
-                    type: string
-                  secretName:
-                    description: |-
-                      SecretName is the name of an existing Kubernetes secret that contains connection information for associating an
-                      Elastic resource not managed by the operator. The referenced secret must contain the following:
-                      - `url`: the URL to reach the Elastic resource
-                      - `username`: the username of the user to be authenticated to the Elastic resource
-                      - `password`: the password of the user to be authenticated to the Elastic resource
-                      - `ca.crt`: the CA certificate in PEM format (optional)
-                      - `api-key`: the key to authenticate against the Elastic resource instead of a username and password (supported only for `elasticsearchRefs` in AgentSpec and in BeatSpec)
-                      This field cannot be used in combination with the other fields name, namespace or serviceName.
-                    type: string
-                  serviceName:
-                    description: |-
-                      ServiceName is the name of an existing Kubernetes service which is used to make requests to the referenced
-                      object. It has to be in the same namespace as the referenced resource. If left empty, the default HTTP service of
-                      the referenced resource is used.
-                    type: string
+                  logs:
+                    description: Logs holds references to Elasticsearch clusters which
+                      receive log data from an associated resource.
+                    properties:
+                      elasticsearchRefs:
+                        description: |-
+                          ElasticsearchRefs is a reference to a list of monitoring Elasticsearch clusters running in the same Kubernetes cluster.
+                          Due to existing limitations, only a single Elasticsearch cluster is currently supported.
+                        items:
+                          description: |-
+                            ObjectSelector defines a reference to a Kubernetes object which can be an Elastic resource managed by the operator
+                            or a Secret describing an external Elastic resource not managed by the operator.
+                          properties:
+                            name:
+                              description: Name of an existing Kubernetes object corresponding
+                                to an Elastic resource managed by ECK.
+                              type: string
+                            namespace:
+                              description: Namespace of the Kubernetes object. If
+                                empty, defaults to the current namespace.
+                              type: string
+                            secretName:
+                              description: |-
+                                SecretName is the name of an existing Kubernetes secret that contains connection information for associating an
+                                Elastic resource not managed by the operator. The referenced secret must contain the following:
+                                - `url`: the URL to reach the Elastic resource
+                                - `username`: the username of the user to be authenticated to the Elastic resource
+                                - `password`: the password of the user to be authenticated to the Elastic resource
+                                - `ca.crt`: the CA certificate in PEM format (optional)
+                                - `api-key`: the key to authenticate against the Elastic resource instead of a username and password (supported only for `elasticsearchRefs` in AgentSpec and in BeatSpec)
+                                This field cannot be used in combination with the other fields name, namespace or serviceName.
+                              type: string
+                            serviceName:
+                              description: |-
+                                ServiceName is the name of an existing Kubernetes service which is used to make requests to the referenced
+                                object. It has to be in the same namespace as the referenced resource. If left empty, the default HTTP service of
+                                the referenced resource is used.
+                              type: string
+                          type: object
+                        type: array
+                    type: object
+                  metrics:
+                    description: Metrics holds references to Elasticsearch clusters
+                      which receive monitoring data from this resource.
+                    properties:
+                      elasticsearchRefs:
+                        description: |-
+                          ElasticsearchRefs is a reference to a list of monitoring Elasticsearch clusters running in the same Kubernetes cluster.
+                          Due to existing limitations, only a single Elasticsearch cluster is currently supported.
+                        items:
+                          description: |-
+                            ObjectSelector defines a reference to a Kubernetes object which can be an Elastic resource managed by the operator
+                            or a Secret describing an external Elastic resource not managed by the operator.
+                          properties:
+                            name:
+                              description: Name of an existing Kubernetes object corresponding
+                                to an Elastic resource managed by ECK.
+                              type: string
+                            namespace:
+                              description: Namespace of the Kubernetes object. If
+                                empty, defaults to the current namespace.
+                              type: string
+                            secretName:
+                              description: |-
+                                SecretName is the name of an existing Kubernetes secret that contains connection information for associating an
+                                Elastic resource not managed by the operator. The referenced secret must contain the following:
+                                - `url`: the URL to reach the Elastic resource
+                                - `username`: the username of the user to be authenticated to the Elastic resource
+                                - `password`: the password of the user to be authenticated to the Elastic resource
+                                - `ca.crt`: the CA certificate in PEM format (optional)
+                                - `api-key`: the key to authenticate against the Elastic resource instead of a username and password (supported only for `elasticsearchRefs` in AgentSpec and in BeatSpec)
+                                This field cannot be used in combination with the other fields name, namespace or serviceName.
+                              type: string
+                            serviceName:
+                              description: |-
+                                ServiceName is the name of an existing Kubernetes service which is used to make requests to the referenced
+                                object. It has to be in the same namespace as the referenced resource. If left empty, the default HTTP service of
+                                the referenced resource is used.
+                              type: string
+                          type: object
+                        type: array
+                    type: object
                 type: object
               podTemplate:
                 description: PodTemplate provides customisation options (labels, annotations,
-                  affinity rules, resource requests, and so on) for the APM Server
-                  pods.
+                  affinity rules, resource requests, and so on) for the Kibana pods
                 properties:
                   metadata:
                     description: |-
@@ -8487,7 +8575,7 @@ spec:
                 type: integer
               secureSettings:
                 description: SecureSettings is a list of references to Kubernetes
-                  secrets containing sensitive configuration options for APM Server.
+                  secrets containing sensitive configuration options for Kibana.
                 items:
                   description: SecretSource defines a data source based on a Kubernetes
                     Secret.
@@ -8526,14 +8614,19 @@ spec:
                   Can only be used if ECK is enforcing RBAC on references.
                 type: string
               version:
-                description: Version of the APM Server.
+                description: Version of Kibana.
                 type: string
             required:
             - version
             type: object
           status:
-            description: ApmServerStatus defines the observed state of ApmServer
+            description: KibanaStatus defines the observed state of Kibana
             properties:
+              associationStatus:
+                description: |-
+                  AssociationStatus is the status of any auto-linking to Elasticsearch clusters.
+                  This field is deprecated and will be removed in a future release. Use ElasticsearchAssociationStatus instead.
+                type: string
               availableNodes:
                 description: AvailableNodes is the number of available replicas in
                   the deployment.
@@ -8548,31 +8641,30 @@ spec:
                 description: ElasticsearchAssociationStatus is the status of any auto-linking
                   to Elasticsearch clusters.
                 type: string
+              enterpriseSearchAssociationStatus:
+                description: EnterpriseSearchAssociationStatus is the status of any
+                  auto-linking to Enterprise Search.
+                type: string
               health:
                 description: Health of the deployment.
                 type: string
-              kibanaAssociationStatus:
-                description: KibanaAssociationStatus is the status of any auto-linking
-                  to Kibana.
-                type: string
+              monitoringAssociationStatus:
+                additionalProperties:
+                  description: AssociationStatus is the status of an association resource.
+                  type: string
+                description: MonitoringAssociationStatus is the status of any auto-linking
+                  to monitoring Elasticsearch clusters.
+                type: object
               observedGeneration:
                 description: |-
-                  ObservedGeneration represents the .metadata.generation that the status is based upon.
+                  ObservedGeneration is the most recent generation observed for this Kibana instance.
                   It corresponds to the metadata generation, which is updated on mutation by the API Server.
-                  If the generation observed in status diverges from the generation in metadata, the APM Server
-                  controller has not yet processed the changes contained in the APM Server specification.
+                  If the generation observed in status diverges from the generation in metadata, the Kibana
+                  controller has not yet processed the changes contained in the Kibana specification.
                 format: int64
                 type: integer
-              secretTokenSecret:
-                description: SecretTokenSecretName is the name of the Secret that
-                  contains the secret token
-                type: string
               selector:
                 description: Selector is the label selector used to find all pods.
-                type: string
-              service:
-                description: ExternalService is the name of the service the agents
-                  should connect to.
                 type: string
               version:
                 description: |-
@@ -8597,7 +8689,7 @@ spec:
       jsonPath: .status.availableNodes
       name: nodes
       type: integer
-    - description: APM version
+    - description: Kibana version
       jsonPath: .spec.version
       name: version
       type: string
@@ -8607,7 +8699,7 @@ spec:
     name: v1beta1
     schema:
       openAPIV3Schema:
-        description: ApmServer represents an APM Server resource in a Kubernetes cluster.
+        description: Kibana represents a Kibana resource in a Kubernetes cluster.
         properties:
           apiVersion:
             description: |-
@@ -8627,19 +8719,19 @@ spec:
           metadata:
             type: object
           spec:
-            description: ApmServerSpec holds the specification of an APM Server.
+            description: KibanaSpec holds the specification of a Kibana instance.
             properties:
               config:
-                description: 'Config holds the APM Server configuration. See: https://www.elastic.co/guide/en/apm/server/current/configuring-howto-apm-server.html'
+                description: 'Config holds the Kibana configuration. See: https://www.elastic.co/guide/en/kibana/current/settings.html'
                 type: object
                 x-kubernetes-preserve-unknown-fields: true
               count:
-                description: Count of APM Server instances to deploy.
+                description: Count of Kibana instances to deploy.
                 format: int32
                 type: integer
               elasticsearchRef:
-                description: ElasticsearchRef is a reference to the output Elasticsearch
-                  cluster running in the same Kubernetes cluster.
+                description: ElasticsearchRef is a reference to an Elasticsearch cluster
+                  running in the same Kubernetes cluster.
                 properties:
                   name:
                     description: Name of the Kubernetes object.
@@ -8652,8 +8744,7 @@ spec:
                 - name
                 type: object
               http:
-                description: HTTP holds the HTTP layer configuration for the APM Server
-                  resource.
+                description: HTTP holds the HTTP layer configuration for Kibana.
                 properties:
                   service:
                     description: Service defines the template for the associated Kubernetes
@@ -9069,12 +9160,11 @@ spec:
                     type: object
                 type: object
               image:
-                description: Image is the APM Server Docker image to deploy.
+                description: Image is the Kibana Docker image to deploy.
                 type: string
               podTemplate:
                 description: PodTemplate provides customisation options (labels, annotations,
-                  affinity rules, resource requests, and so on) for the APM Server
-                  pods.
+                  affinity rules, resource requests, and so on) for the Kibana pods
                 properties:
                   metadata:
                     description: |-
@@ -17006,7 +17096,7 @@ spec:
                 x-kubernetes-preserve-unknown-fields: true
               secureSettings:
                 description: SecureSettings is a list of references to Kubernetes
-                  secrets containing sensitive configuration options for APM Server.
+                  secrets containing sensitive configuration options for Kibana.
                 items:
                   description: SecretSource defines a data source based on a Kubernetes
                     Secret.
@@ -17040,30 +17130,20 @@ spec:
                   type: object
                 type: array
               version:
-                description: Version of the APM Server.
+                description: Version of Kibana.
                 type: string
             type: object
           status:
-            description: ApmServerStatus defines the observed state of ApmServer
+            description: KibanaStatus defines the observed state of Kibana
             properties:
               associationStatus:
-                description: Association is the status of any auto-linking to Elasticsearch
-                  clusters.
+                description: AssociationStatus is the status of an association resource.
                 type: string
               availableNodes:
                 format: int32
                 type: integer
               health:
-                description: ApmServerHealth expresses the status of the Apm Server
-                  instances.
-                type: string
-              secretTokenSecret:
-                description: SecretTokenSecretName is the name of the Secret that
-                  contains the secret token
-                type: string
-              service:
-                description: ExternalService is the name of the service the agents
-                  should connect to.
+                description: KibanaHealth expresses the status of the Kibana instances.
                 type: string
             type: object
         type: object
