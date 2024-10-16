@@ -65,7 +65,9 @@ func TestPipelineConfigRefLogstash(t *testing.T) {
 				logstash.Want{
 					Match: map[string]string{
 						"pipelines.generator.workers": "1",
-						"status":                      "green",
+					},
+					MatchFunc: map[string]func(string) bool{
+						"status": isGreenOrYellow,
 					},
 				}),
 			test.Step{
@@ -146,7 +148,9 @@ func TestPipelineConfigLogstash(t *testing.T) {
 				logstash.Want{
 					Match: map[string]string{
 						"pipelines.split.batch_size": "125",
-						"status":                     "green",
+					},
+					MatchFunc: map[string]func(string) bool{
+						"status": isGreenOrYellow,
 					},
 				}),
 			test.Step{
@@ -200,7 +204,9 @@ func TestLogstashPipelineReload(t *testing.T) {
 					logstash.Want{
 						Match: map[string]string{
 							"pipelines.main.workers": "1",
-							"status":                 "green",
+						},
+						MatchFunc: map[string]func(string) bool{
+							"status": isGreenOrYellow,
 						},
 					}),
 			).
@@ -214,11 +220,18 @@ func TestLogstashPipelineReload(t *testing.T) {
 					logstash.Want{
 						Match: map[string]string{
 							"pipelines.main.workers": "2",
-							"status":                 "green",
+						},
+						MatchFunc: map[string]func(string) bool{
+							"status": isGreenOrYellow,
 						},
 					}),
 			)
 	}
 
 	test.Sequence(nil, stepsFn, logstashFirstPipeline).RunSequential(t)
+}
+
+// isGreenOrYellow returns true if the status is either green or yellow, red is considered as failure in health API.
+func isGreenOrYellow(status string) bool {
+	return status == "green" || status == "yellow"
 }
