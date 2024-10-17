@@ -262,9 +262,9 @@ The reason for this validation is that ECK will not allow downgrades as this is 
 These two upgrading scenarios, however, are exceptions because Elasticsearch never started up successfully. If you annotate the Elasticsearch resource with `eck.k8s.elastic.co/disable-downgrade-validation=true` ECK allows you to go back to the old version at your own risk. If you also attempted an upgrade of other related Elastic Stack applications at the same time you can use the same annotation to go back. Remove the annotation afterwards to prevent accidental downgrades and reduced availability.
 
 [id="{p}-{page_id}-815-reconfigure-role-mappings"]
-== Manual steps to do after upgrading to 8.15.3 from 8.14.x or 8.15.x to reconfigure operator role mappings
+== Reconfigure stack config policy based role mappings after an upgrade to 8.15.3 from 8.14.x or 8.15.x
 
-You have operator role mappings defined in a StackConfigPolicy, and you upgraded from 8.14.x or 8.15.x, to 8.15.3.
+You have role mappings defined in a StackConfigPolicy, and you upgraded from 8.14.x or 8.15.x, to 8.15.3.
 
 Examples:
 
