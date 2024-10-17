@@ -272,7 +272,7 @@ Examples:
 - 8.14.2 -> 8.15.3
 - 8.15.2 -> 8.15.3
 
-You have to perform two manual steps in order to correctly reconfigure operator role mappings because due to a bug the role mappings were duplicated.
+You have to perform two manual steps in order to correctly reconfigure role mappings because due to a bug the role mappings were duplicated.
 
 . Force reload the StackConfigPolicy configuration
 
