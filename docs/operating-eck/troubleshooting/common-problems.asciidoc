@@ -280,8 +280,6 @@ Force reload the StackConfigPolicy configuration containing the role mappings de
 
 [source,yaml]
 ----
-# edit: vi scp-manifest.yaml
-
 apiVersion: stackconfigpolicy.k8s.elastic.co/v1alpha1
 kind: StackConfigPolicy
 spec:
@@ -290,8 +288,6 @@ spec:
       <roleName>:
         metadata:
           force_reload: anything # add a dummy metadata to force reload the config
-
-# submit: kubectl apply -f scp-manifest.yaml
 ----
 
 Check that the role mapping is now in the cluster state:
