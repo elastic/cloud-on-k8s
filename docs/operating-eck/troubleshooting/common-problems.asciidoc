@@ -260,3 +260,66 @@ If you accidentally upgrade one of your Elasticsearch clusters to a version that
 The reason for this validation is that ECK will not allow downgrades as this is not supported by Elasticsearch and once the data directory of Elasticsearch has been upgraded there is no way back to the old version without a link:https://www.elastic.co/guide/en/elasticsearch/reference/current/setup-upgrade.html[snapshot restore].
 
 These two upgrading scenarios, however, are exceptions because Elasticsearch never started up successfully. If you annotate the Elasticsearch resource with `eck.k8s.elastic.co/disable-downgrade-validation=true` ECK allows you to go back to the old version at your own risk. If you also attempted an upgrade of other related Elastic Stack applications at the same time you can use the same annotation to go back. Remove the annotation afterwards to prevent accidental downgrades and reduced availability.
+
+[id="{p}-{page_id}-815-reconfigure-role-mappings"]
+== Reconfigure stack config policy based role mappings after an upgrade to 8.15.3 from 8.14.x or 8.15.x
+
+You have role mappings defined in a StackConfigPolicy, and you upgraded from 8.14.x or 8.15.x, to 8.15.3.
+
+Examples:
+
+- 8.14.2 -> 8.15.2 -> 8.15.3
+- 8.14.2 -> 8.15.3
+- 8.15.2 -> 8.15.3
+
+You have to perform two manual steps in order to correctly reconfigure role mappings because due to a bug the role mappings were duplicated.
+
+. Force reload the StackConfigPolicy configuration
+
+Force reload the StackConfigPolicy configuration containing the role mappings definition, by adding metadata to any of the mappings:
+
+[source,yaml]
+----
+apiVersion: stackconfigpolicy.k8s.elastic.co/v1alpha1
+kind: StackConfigPolicy
+spec:
+  elasticsearch:
+    securityRoleMappings:
+      <roleName>:
+        metadata:
+          force_reload: anything # add a dummy metadata to force reload the config
+----
+
+Check that the role mapping is now in the cluster state:
+
+[source,sh]
+----
+GET /_cluster/state/metadata?filter_path=metadata.role_mappings.role_mappings
+{"metadata":{"role_mappings":{"role_mappings":[{"enabled":true,"roles":["superuser"],"rules":{"all":[{"field":{"realm.name":"oidc1"}},{"field":{"username":"*"}}]},"metadata":{"force_reload":"dummy"}}]}}}
+----
+
+. Remove duplicated role mappings exposed via the API
+
+Start by listing all the role mappings defined in your StackConfigPolicy:
+
+[source,sh]
+----
+kubectl get scp <scpName> -o json | jq '.spec.elasticsearch.securityRoleMappings | to_entries[].key' -r
+<roleName>
+----
+
+Delete each role:
+
+[source,sh]
+----
+DELETE /_security/role_mapping/<roleName>
+{"found": true}
+----
+
+Check that the role mapping was deleted:
+
+[source,sh]
+----
+GET /_security/role_mapping/<roleName>
+{}
+----
