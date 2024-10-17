@@ -351,7 +351,7 @@ func checkAPIResponse(esClient client.Client, url string, expectedStatusCode int
 	if expectedStatusCode != actualStatusCode {
 		return fmt.Errorf("calling %s should return %d, got %d", url, expectedStatusCode, actualStatusCode)
 	}
-	if strings.Contains(expectedResponse, string(response)) {
+	if strings.Contains(string(response), expectedResponse) {
 		return fmt.Errorf("calling %s should return [%s], got [%s]", url, expectedResponse, string(response))
 	}
 	return nil
