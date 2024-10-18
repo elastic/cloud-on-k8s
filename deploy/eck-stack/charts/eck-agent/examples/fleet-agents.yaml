@@ -1,7 +1,7 @@
 # The following example should only be used in conjunction with the 'eck-fleet-server' Helm Chart,
 # and shows how the Agents can be deployed as a daemonset, and controlled by Fleet Server.
 #
-version: 8.16.0-SNAPSHOT
+version: 8.17.0-SNAPSHOT
 
 spec:
   # This must match the name of an Agent policy.

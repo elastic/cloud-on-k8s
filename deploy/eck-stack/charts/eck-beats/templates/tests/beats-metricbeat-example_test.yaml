@@ -233,7 +233,7 @@ tests:
             app.kubernetes.io/managed-by: Helm
             app.kubernetes.io/name: eck-beats
             serviceAccount: label
-            helm.sh/chart: eck-beats-0.13.0-SNAPSHOT
+            helm.sh/chart: eck-beats-0.14.0-SNAPSHOT
             test: label
       - equal:
           path: metadata.annotations

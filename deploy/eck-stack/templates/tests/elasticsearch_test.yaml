@@ -4,7 +4,7 @@ templates:
 tests:
   - it: should render quickstart properly
     set:
-      eck-elasticsearch.version: 8.16.0-SNAPSHOT
+      eck-elasticsearch.version: 8.17.0-SNAPSHOT
       eck-kibana.enabled: false
     release:
       name: quickstart
@@ -16,7 +16,7 @@ tests:
           value: elasticsearch
       - equal:
           path: spec.version
-          value: 8.16.0-SNAPSHOT
+          value: 8.17.0-SNAPSHOT
   - it: name override should work properly
     set:
       eck-elasticsearch.nameOverride: override
