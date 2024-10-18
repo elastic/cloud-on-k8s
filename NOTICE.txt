@@ -48,11 +48,11 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 --------------------------------------------------------------------------------
 Module  : github.com/Masterminds/sprig/v3
-Version : v3.2.3
-Time    : 2022-11-29T18:52:29Z
+Version : v3.3.0
+Time    : 2024-08-29T20:12:44Z
 Licence : MIT
 
-Contents of probable licence file $GOMODCACHE/github.com/!masterminds/sprig/v3@v3.2.3/LICENSE.txt:
+Contents of probable licence file $GOMODCACHE/github.com/!masterminds/sprig/v3@v3.3.0/LICENSE.txt:
 
 Copyright (C) 2013-2020 Masterminds
 
@@ -5669,11 +5669,11 @@ Contents of probable licence file $GOMODCACHE/github.com/!masterminds/goutils@v1
 
 --------------------------------------------------------------------------------
 Module  : github.com/Masterminds/semver/v3
-Version : v3.2.0
-Time    : 2022-11-28T21:00:30Z
+Version : v3.3.0
+Time    : 2024-08-27T21:33:28Z
 Licence : MIT
 
-Contents of probable licence file $GOMODCACHE/github.com/!masterminds/semver/v3@v3.2.0/LICENSE.txt:
+Contents of probable licence file $GOMODCACHE/github.com/!masterminds/semver/v3@v3.3.0/LICENSE.txt:
 
 Copyright (C) 2014-2019, Matt Butcher and Matt Farina
 
@@ -13352,11 +13352,11 @@ Exhibit B - “Incompatible With Secondary Licenses” Notice
 
 --------------------------------------------------------------------------------
 Module  : github.com/huandu/xstrings
-Version : v1.3.3
-Time    : 2022-10-23T03:22:03Z
+Version : v1.5.0
+Time    : 2024-06-06T08:07:36Z
 Licence : MIT
 
-Contents of probable licence file $GOMODCACHE/github.com/huandu/xstrings@v1.3.3/LICENSE:
+Contents of probable licence file $GOMODCACHE/github.com/huandu/xstrings@v1.5.0/LICENSE:
 
 The MIT License (MIT)
 
@@ -14588,11 +14588,11 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
 
 --------------------------------------------------------------------------------
 Module  : github.com/mitchellh/copystructure
-Version : v1.0.0
-Time    : 2018-08-24T00:35:38Z
+Version : v1.2.0
+Time    : 2021-05-05T17:08:07Z
 Licence : MIT
 
-Contents of probable licence file $GOMODCACHE/github.com/mitchellh/copystructure@v1.0.0/LICENSE:
+Contents of probable licence file $GOMODCACHE/github.com/mitchellh/copystructure@v1.2.0/LICENSE:
 
 The MIT License (MIT)
 
@@ -14681,11 +14681,11 @@ THE SOFTWARE.
 
 --------------------------------------------------------------------------------
 Module  : github.com/mitchellh/reflectwalk
-Version : v1.0.0
-Time    : 2018-08-24T00:34:33Z
+Version : v1.0.2
+Time    : 2021-05-03T23:34:11Z
 Licence : MIT
 
-Contents of probable licence file $GOMODCACHE/github.com/mitchellh/reflectwalk@v1.0.0/LICENSE:
+Contents of probable licence file $GOMODCACHE/github.com/mitchellh/reflectwalk@v1.0.2/LICENSE:
 
 The MIT License (MIT)
 
@@ -16780,11 +16780,11 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 --------------------------------------------------------------------------------
 Module  : github.com/shopspring/decimal
-Version : v1.2.0
-Time    : 2020-04-28T21:23:09Z
+Version : v1.4.0
+Time    : 2024-04-12T14:15:38Z
 Licence : MIT
 
-Contents of probable licence file $GOMODCACHE/github.com/shopspring/decimal@v1.2.0/LICENSE:
+Contents of probable licence file $GOMODCACHE/github.com/shopspring/decimal@v1.4.0/LICENSE:
 
 The MIT License (MIT)
 
@@ -17081,11 +17081,11 @@ Contents of probable licence file $GOMODCACHE/github.com/spf13/afero@v1.11.0/LIC
 
 --------------------------------------------------------------------------------
 Module  : github.com/spf13/cast
-Version : v1.6.0
-Time    : 2023-11-28T09:52:19Z
+Version : v1.7.0
+Time    : 2024-08-06T19:08:19Z
 Licence : MIT
 
-Contents of probable licence file $GOMODCACHE/github.com/spf13/cast@v1.6.0/LICENSE:
+Contents of probable licence file $GOMODCACHE/github.com/spf13/cast@v1.7.0/LICENSE:
 
 The MIT License (MIT)
 
