@@ -19,7 +19,7 @@ tests:
           value: quickstart-eck-beats
       - equal:
           path: spec.version
-          value: 8.16.0-SNAPSHOT
+          value: 8.17.0-SNAPSHOT
   - it: should render custom metricbeat example properly
     values:
       - ../../examples/beats/metricbeat_hosts.yaml
@@ -33,7 +33,7 @@ tests:
           value: quickstart-eck-beats
       - equal:
           path: spec.version
-          value: 8.16.0-SNAPSHOT
+          value: 8.17.0-SNAPSHOT
       - equal:
           path: spec.kibanaRef.name
           value: quickstart
