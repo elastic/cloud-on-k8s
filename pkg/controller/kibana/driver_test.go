@@ -496,9 +496,7 @@ func expectedDeploymentParams() deployment.Params {
 					ImagePullPolicy: corev1.PullIfNotPresent,
 					Image:           "my-image",
 					Command:         []string{"/usr/bin/env", "bash", "-c", InitConfigScript},
-					SecurityContext: &corev1.SecurityContext{
-						Privileged: &falseVal,
-					},
+					SecurityContext: &defaultSecurityContext,
 					Env: []corev1.EnvVar{
 						{Name: settings.EnvPodIP, Value: "", ValueFrom: &corev1.EnvVarSource{
 							FieldRef: &corev1.ObjectFieldSelector{APIVersion: "v1", FieldPath: "status.podIP"},
@@ -591,9 +589,11 @@ func expectedDeploymentParams() deployment.Params {
 							},
 						},
 					},
-					Resources: DefaultResources,
+					Resources:       DefaultResources,
+					SecurityContext: &defaultSecurityContext,
 				}},
 				AutomountServiceAccountToken: &falseVal,
+				SecurityContext:              &defaultPodSecurityContext,
 			},
 		},
 	}
