@@ -3,7 +3,7 @@ module github.com/elastic/cloud-on-k8s/hack/helm/release
 go 1.22.0
 
 require (
-	cloud.google.com/go/storage v1.44.0
+	cloud.google.com/go/storage v1.45.0
 	github.com/elastic/cloud-on-k8s/v2 v2.14.0
 	github.com/google/go-cmp v0.6.0
 	github.com/spf13/cobra v1.8.1
