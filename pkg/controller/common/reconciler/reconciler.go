@@ -72,14 +72,11 @@ func ReconcileResource(params Params) error {
 	if err != nil {
 		return err
 	}
-	log := ulog.FromContext(params.Context)
-	namespace := params.Expected.GetNamespace()
-	name := params.Expected.GetName()
+
 	gvk, err := apiutil.GVKForObject(params.Expected, scheme.Scheme)
 	if err != nil {
 		return err
 	}
-	kind := gvk.Kind
 
 	if params.Owner != nil {
 		if err := controllerutil.SetControllerReference(params.Owner, params.Expected, scheme.Scheme); err != nil {
@@ -87,8 +84,13 @@ func ReconcileResource(params Params) error {
 		}
 	}
 
+	kind := gvk.Kind
+	namespace := params.Expected.GetNamespace()
+	name := params.Expected.GetName()
+	log := ulog.FromContext(params.Context).WithValues("kind", kind, "namespace", namespace, "name", name)
+
 	create := func() error {
-		log.Info("Creating resource", "kind", kind, "namespace", namespace, "name", name)
+		log.Info("Creating resource")
 		if params.PreCreate != nil {
 			if err := params.PreCreate(); err != nil {
 				return err
@@ -106,6 +108,7 @@ func ReconcileResource(params Params) error {
 		if err != nil {
 			return err
 		}
+		log.Info("Created resource successfully")
 		return nil
 	}
 
@@ -119,8 +122,7 @@ func ReconcileResource(params Params) error {
 	}
 
 	if params.NeedsRecreate != nil && params.NeedsRecreate() {
-		log.Info("Resource cannot be updated, hence will be deleted and then recreated", "kind", kind, "namespace", namespace, "name", name)
-		log.Info("Deleting resource", "kind", kind, "namespace", namespace, "name", name)
+		log.Info("Deleting resource as it cannot be updated, it will be recreated")
 		reconciledMeta, err := meta.Accessor(params.Reconciled)
 		if err != nil {
 			return err
@@ -138,13 +140,14 @@ func ReconcileResource(params Params) error {
 		if err != nil && !apierrors.IsNotFound(err) {
 			return fmt.Errorf("failed to delete %s %s/%s: %w", kind, namespace, name, err)
 		}
+		log.Info("Deleted resource successfully")
 		return create()
 	}
 
 	//nolint:nestif
 	// Update if needed
 	if params.NeedsUpdate() {
-		log.Info("Updating resource", "kind", kind, "namespace", namespace, "name", name)
+		log.Info("Updating resource")
 		if params.PreUpdate != nil {
 			if err := params.PreUpdate(); err != nil {
 				return err
@@ -179,6 +182,7 @@ func ReconcileResource(params Params) error {
 		if params.PostUpdate != nil {
 			params.PostUpdate()
 		}
+		log.Info("Updated resource successfully")
 	}
 	return nil
 }

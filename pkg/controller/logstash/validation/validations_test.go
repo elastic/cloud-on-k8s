@@ -212,7 +212,7 @@ func Test_checkSupportedVersion(t *testing.T) {
 		},
 		{
 			name:    "above max supported",
-			version: "9.0.0",
+			version: "42.0.0",
 			wantErr: true,
 		},
 		{
