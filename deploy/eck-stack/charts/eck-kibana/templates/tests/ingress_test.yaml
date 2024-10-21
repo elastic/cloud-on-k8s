@@ -56,7 +56,7 @@ tests:
             app.kubernetes.io/instance: quickstart
             app.kubernetes.io/managed-by: Helm
             app.kubernetes.io/name: eck-kibana
-            helm.sh/chart: eck-kibana-0.13.0-SNAPSHOT
+            helm.sh/chart: eck-kibana-0.14.0-SNAPSHOT
             test: label
       - equal:
           path: metadata.annotations
