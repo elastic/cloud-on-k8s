@@ -133,7 +133,7 @@ func (aks *APIKeyStore) withPendingChanges() *APIKeyStore {
 		if pendingChange.key.IsEmpty() {
 			if aks.KeyIDFor(pendingChange.alias) == "" {
 				aks.log.Info(fmt.Sprintf("Change for alias %s observed, key has been deleted in API keystore", pendingChange.alias))
-				aks.pendingChanges.ForgetDeleteAlias(pendingChange.alias)
+				aks.pendingChanges.ForgetChangeFor(pendingChange.alias)
 				continue
 			}
 			// We are still expecting this deletion
@@ -145,7 +145,7 @@ func (aks *APIKeyStore) withPendingChanges() *APIKeyStore {
 		if keyIDInSecret := aks.KeyIDFor(pendingChange.alias); keyIDInSecret == pendingChange.key.keyID {
 			aks.log.Info(fmt.Sprintf("Change for alias %s observed, key %s saved in API keystore", pendingChange.alias, keyIDInSecret))
 			// Forget this change
-			aks.pendingChanges.ForgetAddKey(pendingChange.alias)
+			aks.pendingChanges.ForgetChangeFor(pendingChange.alias)
 			continue
 		}
 		// Change is not reflected in the Secret yet.

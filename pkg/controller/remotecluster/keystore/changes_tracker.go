@@ -43,8 +43,8 @@ func (pc *pendingChanges) AddKey(remoteClusterName, remoteClusterNamespace, alia
 	}
 }
 
-// ForgetAddKey must be called once we know that the key added with AddKey is stored in the underlying Secret.
-func (pc *pendingChanges) ForgetAddKey(alias string) {
+// ForgetChangeFor must be called once we know that the key added with AddKey or removed with DeleteAlias is reflected in the underlying Secret.
+func (pc *pendingChanges) ForgetChangeFor(alias string) {
 	if pc == nil {
 		return
 	}
@@ -64,16 +64,6 @@ func (pc *pendingChanges) DeleteAlias(alias string) {
 		alias: alias,
 		key:   key{}, // an empty key means that this alias must be deleted
 	}
-}
-
-// ForgetDeleteAlias must be called once the deletion registered with DeleteAlias has been observed in the underlying Secret.
-func (pc *pendingChanges) ForgetDeleteAlias(alias string) {
-	if pc == nil {
-		return
-	}
-	pc.mu.Lock()
-	defer pc.mu.Unlock()
-	delete(pc.changes, alias)
 }
 
 // Get returns all the pending changes.
