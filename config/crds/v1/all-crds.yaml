@@ -4810,8 +4810,8 @@ spec:
                     connection.
                   properties:
                     apiKey:
-                      description: 'APIKey can be used to enable remote cluster using
-                        Cross-Cluster API key API: https://www.elastic.co/guide/en/elasticsearch/reference/current/security-api-create-cross-cluster-api-key.html'
+                      description: 'APIKey can be used to enable remote cluster access
+                        using Cross-Cluster API keys: https://www.elastic.co/guide/en/elasticsearch/reference/current/security-api-create-cross-cluster-api-key.html'
                       properties:
                         access:
                           description: Access is the name of the API Key. It is automatically

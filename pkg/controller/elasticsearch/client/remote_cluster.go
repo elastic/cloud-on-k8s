@@ -67,30 +67,6 @@ func (cl *CrossClusterAPIKeyList) Len() int {
 	return len(cl.APIKeys)
 }
 
-// GetElasticsearchName returns the name of the client cluster for which this key has been created.
-func (c *CrossClusterAPIKey) GetElasticsearchName() (types.NamespacedName, error) {
-	if c == nil {
-		return types.NamespacedName{}, nil
-	}
-	esNameInMetadata, ok := c.Metadata["elasticsearch.k8s.elastic.co/name"]
-	if !ok {
-		return types.NamespacedName{}, fmt.Errorf("missing metadata in cross cluster API key: elasticsearch.k8s.elastic.co/name")
-	}
-	esNamespaceInMetadata, ok := c.Metadata["elasticsearch.k8s.elastic.co/namespace"]
-	if !ok {
-		return types.NamespacedName{}, fmt.Errorf("missing metadata in cross cluster API key: elasticsearch.k8s.elastic.co/namespace")
-	}
-
-	namespacedName := types.NamespacedName{}
-	if esName, ok := esNameInMetadata.(string); ok {
-		namespacedName.Name = esName
-	}
-	if esNamespace, ok := esNamespaceInMetadata.(string); ok {
-		namespacedName.Namespace = esNamespace
-	}
-	return namespacedName, nil
-}
-
 // GetActiveKeyWithName returns the first active key that matches the provided name or pattern.
 func (cl *CrossClusterAPIKeyList) GetActiveKeyWithName(name string) *CrossClusterAPIKey {
 	if cl == nil || cl.Len() == 0 {
@@ -140,6 +116,30 @@ type CrossClusterAPIKey struct {
 	ID       string                 `json:"id,omitempty"`
 	Name     string                 `json:"name,omitempty"`
 	Metadata map[string]interface{} `json:"metadata,omitempty"`
+}
+
+// GetElasticsearchName returns the name of the client cluster for which this key has been created.
+func (c *CrossClusterAPIKey) GetElasticsearchName() (types.NamespacedName, error) {
+	if c == nil {
+		return types.NamespacedName{}, nil
+	}
+	esNameInMetadata, ok := c.Metadata["elasticsearch.k8s.elastic.co/name"]
+	if !ok {
+		return types.NamespacedName{}, fmt.Errorf("missing metadata in cross cluster API key: elasticsearch.k8s.elastic.co/name")
+	}
+	esNamespaceInMetadata, ok := c.Metadata["elasticsearch.k8s.elastic.co/namespace"]
+	if !ok {
+		return types.NamespacedName{}, fmt.Errorf("missing metadata in cross cluster API key: elasticsearch.k8s.elastic.co/namespace")
+	}
+
+	namespacedName := types.NamespacedName{}
+	if esName, ok := esNameInMetadata.(string); ok {
+		namespacedName.Name = esName
+	}
+	if esNamespace, ok := esNamespaceInMetadata.(string); ok {
+		namespacedName.Namespace = esNamespace
+	}
+	return namespacedName, nil
 }
 
 // RemoteClustersSettings is used to build a request to update remote clusters.
