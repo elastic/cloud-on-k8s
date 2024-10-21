@@ -8,14 +8,14 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/remotecluster/keystore"
-
 	"github.com/go-logr/logr"
 	"k8s.io/apimachinery/pkg/util/sets"
 
 	esv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/elasticsearch/v1"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/hash"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/reconciler"
 	esclient "github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/client"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/remotecluster/keystore"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/k8s"
 	ulog "github.com/elastic/cloud-on-k8s/v2/pkg/utils/log"
 )
@@ -31,19 +31,19 @@ func reconcileAPIKeys(
 	remoteClusterRefs []esv1.RemoteCluster, // the expected API keys for that client cluster
 	esClient esclient.Client, // ES client for the reconciled cluster which is going to act as the server
 	keystoreProvider *keystore.Provider,
-) error {
+) *reconciler.Results {
 	log := ulog.FromContext(ctx).WithValues(
 		"remote_server_namespace", remoteServerES.Namespace,
 		"remote_server_name", remoteServerES.Name,
 		"remote_client_namespace", remoteClientES.Namespace,
 		"remote_client_name", remoteClientES.Name,
 	)
-
+	results := &reconciler.Results{}
 	// clientClusterAPIKeyStore is used to reconcile encoded API keys in the client cluster, to inject new API keys
 	// or to delete the ones which are no longer needed.
 	clientClusterAPIKeyStore, err := keystoreProvider.ForCluster(ctx, log, remoteClientES)
 	if err != nil {
-		return err
+		return results.WithError(err)
 	}
 
 	// Maintain a list of the expected API keys for that specific client cluster, to detect the ones which are no longer expected in the reconciled cluster.
@@ -61,7 +61,7 @@ func reconcileAPIKeys(
 				// It may happen when the user switched back from API keys to the legacy remote cluster.
 				log.Info("Invalidating API key as remote cluster is not configured to use it", "alias", remoteClusterRef.Name)
 				if err := esClient.InvalidateCrossClusterAPIKey(ctx, apiKeyName); err != nil {
-					return err
+					return results.WithError(err)
 				}
 			}
 			continue
@@ -72,12 +72,12 @@ func reconcileAPIKeys(
 		expectedHash := hash.HashObject(remoteClusterRef.APIKey)
 		if activeAPIKey == nil {
 			if err := createAPIKey(ctx, log, remoteClusterRef, apiKeyName, esClient, remoteClientES, expectedHash, clientClusterAPIKeyStore, remoteServerES); err != nil {
-				return err
+				return results.WithError(err)
 			}
 		} else {
 			// If an API key already exists ensure that the access field is the expected one using the hash
 			if err := maybeUpdateAPIKey(ctx, log, esClient, clientClusterAPIKeyStore, remoteClusterRef, activeAPIKey, apiKeyName, remoteClientES, expectedHash); err != nil {
-				return err
+				return results.WithError(err)
 			}
 		}
 	}
@@ -85,7 +85,7 @@ func reconcileAPIKeys(
 	// Get all the active API keys which have been created for that client cluster.
 	activeAPIKeysForClientCluster, err := activeAPIKeys.ForCluster(remoteClientES.Namespace, remoteClientES.Name)
 	if err != nil {
-		return err
+		return results.WithError(err)
 	}
 	// Invalidate all the keys related to that local cluster which are not expected.
 	for keyName := range activeAPIKeysForClientCluster.KeyNames() {
@@ -93,7 +93,7 @@ func reconcileAPIKeys(
 			// Unexpected key, let's invalidate it.
 			log.Info("Invalidating unexpected API key", "key", keyName)
 			if err := esClient.InvalidateCrossClusterAPIKey(ctx, keyName); err != nil {
-				return err
+				return results.WithError(err)
 			}
 		}
 	}

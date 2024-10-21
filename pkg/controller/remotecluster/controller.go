@@ -213,7 +213,7 @@ func doReconcile(
 			if errors.IsNotFound(err) {
 				// Remote cluster does not exist, invalidate API keys for that client cluster.
 				apiKeyReconciledRemoteClients.Insert(remoteClientKey)
-				results.WithError(reconcileAPIKeys(ctx, r.Client, activeAPIKeys, remoteServer, remoteClient, nil, esClient, r.keystoreProvider))
+				results.WithResults(reconcileAPIKeys(ctx, r.Client, activeAPIKeys, remoteServer, remoteClient, nil, esClient, r.keystoreProvider))
 				continue
 			}
 			return reconcile.Result{}, err
@@ -234,7 +234,7 @@ func doReconcile(
 			delete(expectedRemoteClients, remoteClientKey)
 			// Invalidate API keys for that client cluster.
 			apiKeyReconciledRemoteClients.Insert(remoteClientKey)
-			results.WithError(reconcileAPIKeys(ctx, r.Client, activeAPIKeys, remoteServer, remoteClient, nil, esClient, r.keystoreProvider))
+			results.WithResults(reconcileAPIKeys(ctx, r.Client, activeAPIKeys, remoteServer, remoteClient, nil, esClient, r.keystoreProvider))
 			continue
 		}
 		delete(associatedRemoteCAs, remoteClientKey)
@@ -267,7 +267,7 @@ func doReconcile(
 		}
 		// Reconcile the API Keys.
 		apiKeyReconciledRemoteClients.Insert(remoteClientKey)
-		results.WithError(reconcileAPIKeys(ctx, r.Client, activeAPIKeys, remoteServer, remoteClient, remoteClusterRefs, esClient, r.keystoreProvider))
+		results.WithResults(reconcileAPIKeys(ctx, r.Client, activeAPIKeys, remoteServer, remoteClient, remoteClusterRefs, esClient, r.keystoreProvider))
 	}
 
 	if remoteServerSupportsClusterAPIKeys.IsTrue() {
@@ -307,7 +307,7 @@ func doReconcile(
 			log.Info(fmt.Sprintf("Removing unexpected remote API key %s", alias))
 			apiKeyStore.Delete(alias)
 		}
-		results.WithError(apiKeyStore.Save(ctx, r.Client, remoteServer))
+		results.WithResults(apiKeyStore.Save(ctx, r.Client, remoteServer))
 	}
 
 	// Delete existing but not expected remote CA

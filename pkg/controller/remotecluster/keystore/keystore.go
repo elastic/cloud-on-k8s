@@ -13,6 +13,7 @@ import (
 	"github.com/go-logr/logr"
 
 	"k8s.io/apimachinery/pkg/util/sets"
+	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
 	commonv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/common/v1"
 
@@ -214,7 +215,7 @@ const (
 )
 
 // Save sync the in memory content of the API keystore into the Secret.
-func (aks *APIKeyStore) Save(ctx context.Context, c k8s.Client, owner *esv1.Elasticsearch) error {
+func (aks *APIKeyStore) Save(ctx context.Context, c k8s.Client, owner *esv1.Elasticsearch) *reconciler.Results {
 	secretName := types.NamespacedName{
 		Name:      esv1.RemoteAPIKeysSecretName(owner.Name),
 		Namespace: owner.Namespace,
@@ -223,9 +224,10 @@ func (aks *APIKeyStore) Save(ctx context.Context, c k8s.Client, owner *esv1.Elas
 		return aks.deleteSecret(ctx, c, secretName)
 	}
 
+	results := &reconciler.Results{}
 	aliases, err := json.Marshal(aks.aliases)
 	if err != nil {
-		return err
+		return results.WithError(err)
 	}
 	data := make(map[string][]byte, len(aks.encodedKeys))
 	for k, v := range aks.encodedKeys {
@@ -245,12 +247,15 @@ func (aks *APIKeyStore) Save(ctx context.Context, c k8s.Client, owner *esv1.Elas
 		Data: data,
 	}
 	if _, err := reconciler.ReconcileSecret(ctx, c, expected, owner); err != nil {
-		return err
+		if errors.IsConflict(err) {
+			return results.WithResult(reconcile.Result{Requeue: true})
+		}
+		return results.WithError(err)
 	}
 	return nil
 }
 
-func (aks *APIKeyStore) deleteSecret(ctx context.Context, c k8s.Client, secretName types.NamespacedName) error {
+func (aks *APIKeyStore) deleteSecret(ctx context.Context, c k8s.Client, secretName types.NamespacedName) *reconciler.Results {
 	// Delete the Secret used to load the current state.
 	deleteOptions := make([]client.DeleteOption, 0, 2)
 	if aks.uid != "" {
@@ -259,6 +264,7 @@ func (aks *APIKeyStore) deleteSecret(ctx context.Context, c k8s.Client, secretNa
 	if aks.resourceVersion != "" {
 		deleteOptions = append(deleteOptions, &client.DeleteOptions{Preconditions: &metav1.Preconditions{ResourceVersion: &aks.resourceVersion}})
 	}
+	results := &reconciler.Results{}
 	if err := c.Delete(ctx,
 		&corev1.Secret{ObjectMeta: metav1.ObjectMeta{Name: secretName.Name, Namespace: secretName.Namespace}},
 		deleteOptions...,
@@ -266,7 +272,10 @@ func (aks *APIKeyStore) deleteSecret(ctx context.Context, c k8s.Client, secretNa
 		if errors.IsNotFound(err) {
 			return nil
 		}
-		return err
+		if errors.IsConflict(err) {
+			return results.WithResult(reconcile.Result{Requeue: true})
+		}
+		return results.WithError(err)
 	}
 	return nil
 }
