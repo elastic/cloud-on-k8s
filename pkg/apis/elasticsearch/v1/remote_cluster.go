@@ -35,8 +35,8 @@ func (es *Elasticsearch) HasRemoteClusterAPIKey() bool {
 	if es == nil {
 		return false
 	}
-	for _, remoteCLuster := range es.Spec.RemoteClusters {
-		if remoteCLuster.APIKey != nil {
+	for _, remoteCluster := range es.Spec.RemoteClusters {
+		if remoteCluster.APIKey != nil {
 			return true
 		}
 	}

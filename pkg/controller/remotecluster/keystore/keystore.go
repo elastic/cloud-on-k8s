@@ -212,7 +212,7 @@ const (
 	credentialsKeyFormat = "cluster.remote.%s.credentials"
 )
 
-// Save sync the in memory content of the API keystore into the Secret.
+// Save synchronizes the in memory content of the API keystore into the Secret.
 func (aks *APIKeyStore) Save(ctx context.Context, c k8s.Client, owner *esv1.Elasticsearch) *reconciler.Results {
 	secretName := types.NamespacedName{
 		Name:      esv1.RemoteAPIKeysSecretName(owner.Name),

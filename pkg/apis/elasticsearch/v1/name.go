@@ -41,7 +41,7 @@ const (
 	// remoteCaNameSuffix is a suffix for the secret that contains the concatenation of all the remote CAs
 	remoteCaNameSuffix = "remote-ca"
 
-	// remoteCredentialsNameSuffix is a suffix for the secret that contains the API keys for the remote clusters.
+	// remoteAPIKeysNameSuffix is a suffix for the secret that contains the API keys for the remote clusters.
 	remoteAPIKeysNameSuffix = "remote-api-keys"
 
 	controllerRevisionHashLen = 10
