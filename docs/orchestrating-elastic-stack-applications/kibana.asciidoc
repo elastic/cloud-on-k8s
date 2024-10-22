@@ -214,7 +214,7 @@ For example, for a Kibana named `my-kibana`, you can run the following command t
 
 [source,shell,subs="attributes"]
 ----
-kubectl get secret my-kibana-kb-config -o json | jq -r '.data["kibana.yml"] | @base64d' | yq .xpack.security.encryptionKey
+kubectl get secret my-kibana-kb-config -o json | jq -r '.data["kibana.yml"] | @base64d' | grep encryptionKey
 ----
 ====
 
