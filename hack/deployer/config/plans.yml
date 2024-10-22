@@ -151,22 +151,22 @@ plans:
 - id: kind-dev
   operation: create
   clusterName: eck
-  clientVersion: 0.23.0
+  clientVersion: 0.24.0
   provider: kind
-  kubernetesVersion: 1.30.0
+  kubernetesVersion: 1.31.1
   enforceSecurityPolicies: true
   kind:
     nodeCount: 3
-    nodeImage: kindest/node:v1.30.0@sha256:047357ac0cfea04663786a612ba1eaba9702bef25227a794b52890dd8bcd692e
+    nodeImage: kindest/node:v1.31.1@sha256:cd224d8da58d50907d1dd41d476587643dad2ffd9f6a4d96caf530fb3b9a5956
     ipFamily: ipv4
 - id: kind-ci
   operation: create
   clusterName: kind-ci
-  clientVersion: 0.23.0
+  clientVersion: 0.24.0
   provider: kind
-  kubernetesVersion: 1.30.0
+  kubernetesVersion: 1.31.1
   enforceSecurityPolicies: true
   kind:
     nodeCount: 3
-    nodeImage: kindest/node:v1.30.0@sha256:047357ac0cfea04663786a612ba1eaba9702bef25227a794b52890dd8bcd692e
+    nodeImage: kindest/node:v1.31.1@sha256:cd224d8da58d50907d1dd41d476587643dad2ffd9f6a4d96caf530fb3b9a5956
     ipFamily: ipv4
