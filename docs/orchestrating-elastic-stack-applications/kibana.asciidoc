@@ -206,6 +206,18 @@ To deploy more than one instance of Kibana, all the instances must share a same 
 * `xpack.reporting.encryptionKey`
 * `xpack.encryptedSavedObjects.encryptionKey`
 
+[TIP]
+====
+If you need to access these encryption keys, you can find them using the `kubectl get secrets` command. The secret is named after the corresponding Kibana instance.
+
+For example, for a Kibana named `my-kibana`, you can run the following command to retrieve the `xpack.security.encryptionKey` key:
+
+[source,shell,subs="attributes"]
+----
+kubectl get secret my-kibana-kb-config -o json | jq -r '.data["kibana.yml"] | @base64d' | yq .xpack.security.encryptionKey
+----
+====
+
 You can provide your own encryption keys using a secure setting, as described in <<{p}-kibana-secure-settings,Secure settings>>.
 
 NOTE: While most reconfigurations of your Kibana instances are carried out in rolling upgrade fashion, all version upgrades will cause Kibana downtime. This happens because you can only run a single version of Kibana at any given time. For more information, check link:https://www.elastic.co/guide/en/kibana/current/upgrade.html[Upgrade Kibana].
