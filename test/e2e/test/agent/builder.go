@@ -75,6 +75,11 @@ func (b Builder) SkipTest() bool {
 	ver := version.MustParse(b.Agent.Spec.Version)
 	supportedVersions := version.SupportedAgentVersions
 
+	// deactivation while waiting for image to be available, https://github.com/elastic/cloud-on-k8s/issues/8146
+	if ver.GTE(version.MinFor(8, 17, 0)) {
+		return true
+	}
+
 	if b.Agent.Spec.FleetModeEnabled() {
 		supportedVersions = version.SupportedFleetModeAgentVersions
 
