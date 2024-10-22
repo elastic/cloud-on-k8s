@@ -149,7 +149,7 @@ Due to relying on Kubernetes primitives such as StatefulSets, the ECK orchestrat
 ** Single-node clusters
 ** Clusters containing indices with no replicas
 
-If an {es} node holds the only copy of a shard, this shard becomes unavailable while the node is upgraded. link:{ref}/high-availability.html[Highly available] clusters are recommended, including having more than one node per link:{ref}/data-tiers.html[data tier] and at least one replica per index.
+If an {es} node holds the only copy of a shard, this shard becomes unavailable while the node is upgraded. link:{ref}/high-availability-cluster-design.html[Highly available] clusters are recommended, including having more than one node per link:{ref}/data-tiers.html[data tier] and at least one replica per index.
 
 * Elasticsearch Pods may stay `Pending` during a rolling upgrade if the Kubernetes scheduler cannot re-schedule them back. This is especially important when using local PersistentVolumes. If the Kubernetes node bound to a local PersistentVolume does not have enough capacity to host an upgraded Pod which was temporarily removed, that Pod will stay `Pending`.
 
