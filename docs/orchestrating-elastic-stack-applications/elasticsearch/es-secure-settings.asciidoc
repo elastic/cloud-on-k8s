@@ -32,8 +32,20 @@ kind: Secret
 metadata:
   name: one-secure-settings-secret
 type: Opaque
-data:
-  gcs.client.default.credentials_file: RWxhc3RpYyBDbG91ZCBvbiBLOHMgKEVDSykK
+stringData:
+  gcs.client.default.credentials_file: |
+    {
+      "type": "service_account",
+      "project_id": "your-project-id",
+      "private_key_id": "...",
+      "private_key": "-----BEGIN PRIVATE KEY-----\n...\n-----END PRIVATE KEY-----\n",
+      "client_email": "service-account-for-your-repository@your-project-id.iam.gserviceaccount.com",
+      "client_id": "...",
+      "auth_uri": "https://accounts.google.com/o/oauth2/auth",
+      "token_uri": "https://accounts.google.com/o/oauth2/token",
+      "auth_provider_x509_cert_url": "https://www.googleapis.com/oauth2/v1/certs",
+      "client_x509_cert_url": "https://www.googleapis.com/robot/v1/metadata/x509/your-bucket@your-project-id.iam.gserviceaccount.com"
+    }
 ----
 
 TIP: Note that by default https://kubernetes.io/docs/concepts/configuration/secret/[Kubernetes secrets] are expecting the value to be base64 encoded unless under a `stringData` field. In the previous example,  `RWxhc3RpYyBDbG91ZCBvbiBLOHMgKEVDSykK` base64 decodes to `Elastic Cloud on K8s (ECK)`.
@@ -69,10 +81,46 @@ kind: Secret
 metadata:
   name: gcs-secure-settings
 type: Opaque
-data:
-  gcs.client.default.credentials_file: RWxhc3RpYyBDbG91ZCBvbiBLOHMgKEVDSykK
-  gcs_client_1: RWxhc3RpYyBDbG91ZCBvbiBLOHMgKEVDSykgLSBHQ1MgY2xpZW50IDEK
-  gcs_client_2: RWxhc3RpYyBDbG91ZCBvbiBLOHMgKEVDSykgLSBHQ1MgY2xpZW50IDIK
+stringData:
+  gcs.client.default.credentials_file: |
+    {
+      "type": "service_account",
+      "project_id": "project-id-to-be-used-for-default-client",
+      "private_key_id": "private key ID for default-client",
+      "private_key": "-----BEGIN PRIVATE KEY-----\n...\n-----END PRIVATE KEY-----\n",
+      "client_email": "service-account-for-your-repository@your-project-id.iam.gserviceaccount.com",
+      "client_id": "client ID for the default client",
+      "auth_uri": "https://accounts.google.com/o/oauth2/auth",
+      "token_uri": "https://accounts.google.com/o/oauth2/token",
+      "auth_provider_x509_cert_url": "https://www.googleapis.com/oauth2/v1/certs",
+      "client_x509_cert_url": "https://www.googleapis.com/robot/v1/metadata/x509/your-bucket@your-project-id.iam.gserviceaccount.com"
+    }
+  gcs_client_1: |
+    {
+      "type": "service_account",
+      "project_id": "project-id-to-be-used-for-gcs_client_1",
+      "private_key_id": "private key ID for gcs_client_1",
+      "private_key": "-----BEGIN PRIVATE KEY-----\n...\n-----END PRIVATE KEY-----\n",
+      "client_email": "service-account-for-your-repository@your-project-id.iam.gserviceaccount.com",
+      "client_id": "client ID for the gcs_client_1 client",
+      "auth_uri": "https://accounts.google.com/o/oauth2/auth",
+      "token_uri": "https://accounts.google.com/o/oauth2/token",
+      "auth_provider_x509_cert_url": "https://www.googleapis.com/oauth2/v1/certs",
+      "client_x509_cert_url": "https://www.googleapis.com/robot/v1/metadata/x509/your-bucket@your-project-id.iam.gserviceaccount.com"
+    }
+  gcs_client_2: |
+    {
+      "type": "service_account",
+      "project_id": "project-id-to-be-used-for-gcs_client_2",
+      "private_key_id": "private key ID for gcs_client_2",
+      "private_key": "-----BEGIN PRIVATE KEY-----\n...\n-----END PRIVATE KEY-----\n",
+      "client_email": "service-account-for-your-repository@your-project-id.iam.gserviceaccount.com",
+      "client_id": "client ID for the gcs_client_2 client",
+      "auth_uri": "https://accounts.google.com/o/oauth2/auth",
+      "token_uri": "https://accounts.google.com/o/oauth2/token",
+      "auth_provider_x509_cert_url": "https://www.googleapis.com/oauth2/v1/certs",
+      "client_x509_cert_url": "https://www.googleapis.com/robot/v1/metadata/x509/your-bucket@your-project-id.iam.gserviceaccount.com"
+    }
 ----
 
 
