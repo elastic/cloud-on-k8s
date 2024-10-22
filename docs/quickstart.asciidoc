@@ -18,6 +18,8 @@ Eager to get started? This quickstart guide shows you how to:
 * <<{p}-deploy-kibana,Deploy a {kib} instance>>
 * <<{p}-update-deployment,Update your deployment>>
 
+--
+
 Afterwards, you can find further sample resources link:{eck_github}/tree/{eck_release_branch}/config/samples[in the project repository] or by checking out <<{p}-recipes,our recipes>>.
 
 [id="{p}-deploy-eck"]
@@ -82,7 +84,7 @@ NAME                 READY   STATUS    RESTARTS   AGE
 elastic-operator-0   1/1     Running   0          1m
 ----
 
-This completes the quickstart of the ECK operator. We recommend continuing to <<{p}-deploy-elasticsearch,Deploying an {es} cluster>>; but for more configuration options as needed, navigate to <<operating-eck,Operating ECK>>.
+This completes the quickstart of the ECK operator. We recommend continuing to <<{p}-deploy-elasticsearch,Deploying an {es} cluster>>; but for more configuration options as needed, navigate to <<{p}-operating-eck,Operating ECK>>.
 
 [id="{p}-deploy-elasticsearch"]
 == Deploy an {es} cluster
@@ -221,7 +223,7 @@ kubectl port-forward service/quickstart-es-http 9200
 curl -u "elastic:$PASSWORD" -k "https://localhost:9200"
 ----
 
-This completes the quickstart of deploying an {es} cluster. We recommend continuing to <<{p}-deploy-kibana,Deploy a {kib} instance>> but for more configuration options as needed, navigate to <<elasticsearch-specification,Running {es} on ECK>>.
+This completes the quickstart of deploying an {es} cluster. We recommend continuing to <<{p}-deploy-kibana,Deploy a {kib} instance>> but for more configuration options as needed, navigate to <<{p}-elasticsearch-specification,Running {es} on ECK>>.
 
 [id="{p}-deploy-kibana"]
 == Deploy a {kib} instance
@@ -295,7 +297,7 @@ For a full description of each `CustomResourceDefinition` (CRD), refer to the <<
 kubectl describe crd kibana
 ----
 
-This completes the quickstart of deploying an {kib} instance on top of <<{p}-deploy-eck,the ECK operator>> and <<{p}-deploy-elasticsearch,deployed {es} cluster>>. We recommend continuing to <<{p}-upgrade-deployment,upgrading your deployment>>. For more {kib} configuration options, see <<kibana,Running {kib} on ECK>>.
+This completes the quickstart of deploying an {kib} instance on top of <<{p}-deploy-eck,the ECK operator>> and <<{p}-deploy-elasticsearch,deployed {es} cluster>>. We recommend continuing to <<{p}-update-deployment,updating your deployment>>. For more {kib} configuration options, see <<kibana,Running {kib} on ECK>>.
 
 [id="{p}-update-deployment"]
 == Update your deployment
@@ -323,4 +325,4 @@ EOF
 
 ECK will automatically schedule the requested update. Changes can be monitored via the <<{p}-deploy-eck,ECK operator logs>>, link:https://kubernetes.io/docs/reference/kubernetes-api/cluster-resources/event-v1/[`events`], and applicable product's link:https://kubernetes.io/docs/reference/kubectl/generated/kubectl_logs/[pod `logs`]. These will either report successful application of changes or provide context for further troubleshooting. Kindly note, Kubernetes restricts some changes, for example see <<{p}-volume-claim-templates-update,Updating Volume Claims>>.
 
-This completes our quickstart guide for deploying an {es} cluster and {kib} instance via our ECK operator. We recommend continuing to <<orchestrating-elastic-stack-applications,Orchestrating Elastic Stack applications>> for more configuration options.
+This completes our quickstart guide for deploying an {es} cluster and {kib} instance via our ECK operator. We recommend continuing to <<{p}-orchestrating-elastic-stack-applications,Orchestrating Elastic Stack applications>> for more configuration options

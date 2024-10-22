@@ -132,7 +132,7 @@ The resource definitions in ECK share the same philosophy when you want to:
 * <<{p}-kibana-configuration,Customize the product configuration>>
 * <<{p}-kibana-http-configuration,Manage HTTP settings>>
 * <<{p}-kibana-secure-settings,Use secure settings>>
-<<{p}-kibana-plugins,Install {kib} plugins>>
+* <<{p}-kibana-plugins,Install {kib} plugins>>
 
 [id="{p}-kibana-pod-configuration"]
 === Pod configuration
@@ -177,7 +177,7 @@ Check <<{p}-compute-resources-kibana-and-apm>> for more information.
 === {kib} configuration
 You can add your own {kib} settings to the `spec.config` section.
 
-The following example demonstrates how to set the link:{kibana-ref}/settings.html[`elasticsearch.requestHeadersWhitelist`] configuration option.
+The following example demonstrates how to set the link:{kibana-ref}/settings.html#elasticsearch-requestHeadersWhitelist[`elasticsearch.requestHeadersWhitelist`] configuration option.
 
 [source,yaml,subs="attributes"]
 ----
