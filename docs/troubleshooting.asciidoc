@@ -5,12 +5,12 @@ link:https://www.elastic.co/guide/en/cloud-on-k8s/master/k8s-{page_id}.html[View
 ****
 endif::[]
 [id="{p}-{page_id}"]
-= Troubleshoot ECK
+= Troubleshooting ECK
 
 - <<{p}-common-problems>>
 - <<{p}-troubleshooting-methods>>
 
-include::../help.asciidoc[]
+include::./help.asciidoc[]
 
 include::troubleshooting/common-problems.asciidoc[leveloffset=+1]
 include::troubleshooting/troubleshooting-methods.asciidoc[leveloffset=+1]
