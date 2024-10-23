@@ -18,9 +18,9 @@ Eager to get started? This quickstart guide shows you how to:
 * <<{p}-deploy-kibana,Deploy a {kib} instance>>
 * <<{p}-update-deployment,Update your deployment>>
 
---
-
 Afterwards, you can find further sample resources link:{eck_github}/tree/{eck_release_branch}/config/samples[in the project repository] or by checking out <<{p}-recipes,our recipes>>.
+
+--
 
 [id="{p}-deploy-eck"]
 == Deploy ECK in your Kubernetes cluster
