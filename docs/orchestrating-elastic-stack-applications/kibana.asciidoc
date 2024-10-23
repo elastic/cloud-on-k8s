@@ -208,7 +208,7 @@ To deploy more than one instance of Kibana, all the instances must share a same 
 
 [TIP]
 ====
-If you need to access these encryption keys, you can find them using the `kubectl get secrets` command. The secret is named after the corresponding Kibana instance.
+If you need to access these encryption keys, you can find them using the `kubectl get secrets` command. For example, when link:{kibana-ref}/xpack-security-secure-saved-objects.html#encryption-key-rotation[rotating encryption keys] extract the current value of `xpack.encryptedSavedObjects.encryptionKey` in order to set it as a historical encryption value under `xpack.encryptedSavedObjects.keyRotation.decryptionOnlyKeys`.
 
 The secret is named after the corresponding Kibana instance. For example, for a Kibana named `my-kibana`, you can run the following command to retrieve the `xpack.security.encryptionKey` key:
 
