@@ -35,6 +35,28 @@ func (c *clientV8) GetClusterState(ctx context.Context) (ClusterState, error) {
 	return response, err
 }
 
+func (c *clientV8) CreateCrossClusterAPIKey(ctx context.Context, request CrossClusterAPIKeyCreateRequest) (CrossClusterAPIKeyCreateResponse, error) {
+	var response CrossClusterAPIKeyCreateResponse
+	err := c.post(ctx, "/_security/cross_cluster/api_key", request, &response)
+	return response, err
+}
+
+func (c *clientV8) UpdateCrossClusterAPIKey(ctx context.Context, apiKeyID string, request CrossClusterAPIKeyUpdateRequest) (CrossClusterAPIKeyUpdateResponse, error) {
+	var response CrossClusterAPIKeyUpdateResponse
+	err := c.put(ctx, fmt.Sprintf("/_security/cross_cluster/api_key/%s", apiKeyID), request, &response)
+	return response, err
+}
+
+func (c *clientV8) GetCrossClusterAPIKeys(ctx context.Context, name string) (CrossClusterAPIKeyList, error) {
+	var response CrossClusterAPIKeyList
+	err := c.get(ctx, fmt.Sprintf("/_security/api_key?active_only=true&name=%s", name), &response)
+	return response, err
+}
+
+func (c *clientV8) InvalidateCrossClusterAPIKey(ctx context.Context, name string) error {
+	return c.deleteWithObjects(ctx, "/_security/api_key", CrossClusterAPIKeyInvalidateRequest{Name: name}, nil)
+}
+
 // Equal returns true if c2 can be considered the same as c
 func (c *clientV8) Equal(c2 Client) bool {
 	other, ok := c2.(*clientV8)

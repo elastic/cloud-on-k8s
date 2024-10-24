@@ -23,6 +23,7 @@ const (
 	policyEsConfigSecretSuffix                   = "policy-config" //nolint:gosec
 	httpServiceSuffix                            = "http"
 	internalHTTPServiceSuffix                    = "internal-http"
+	remoteClusterServiceSuffix                   = "remote-cluster"
 	transportServiceSuffix                       = "transport"
 	elasticUserSecretSuffix                      = "elastic-user"
 	internalUsersSecretSuffix                    = "internal-users"
@@ -39,6 +40,9 @@ const (
 
 	// remoteCaNameSuffix is a suffix for the secret that contains the concatenation of all the remote CAs
 	remoteCaNameSuffix = "remote-ca"
+
+	// remoteAPIKeysNameSuffix is a suffix for the secret that contains the API keys for the remote clusters.
+	remoteAPIKeysNameSuffix = "remote-api-keys"
 
 	controllerRevisionHashLen = 10
 )
@@ -60,6 +64,7 @@ var (
 		scriptsConfigMapSuffix,
 		statefulSetTransportCertificatesSecretSuffix,
 		remoteCaNameSuffix,
+		remoteAPIKeysNameSuffix,
 	}
 )
 
@@ -136,6 +141,10 @@ func InternalHTTPService(esName string) string {
 	return ESNamer.Suffix(esName, internalHTTPServiceSuffix)
 }
 
+func RemoteClusterService(esName string) string {
+	return ESNamer.Suffix(esName, remoteClusterServiceSuffix)
+}
+
 func HTTPService(esName string) string {
 	return ESNamer.Suffix(esName, httpServiceSuffix)
 }
@@ -171,6 +180,10 @@ func DefaultPodDisruptionBudget(esName string) string {
 
 func RemoteCaSecretName(esName string) string {
 	return ESNamer.Suffix(esName, remoteCaNameSuffix)
+}
+
+func RemoteAPIKeysSecretName(esName string) string {
+	return ESNamer.Suffix(esName, remoteAPIKeysNameSuffix)
 }
 
 func FileSettingsSecretName(esName string) string {

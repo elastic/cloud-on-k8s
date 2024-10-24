@@ -81,7 +81,7 @@ func BuildExpectedResources(
 		if nodeSpec.Config != nil {
 			userCfg = *nodeSpec.Config
 		}
-		cfg, err := settings.NewMergedESConfig(es.Name, ver, ipFamily, es.Spec.HTTP, userCfg, policyConfig.ElasticsearchConfig)
+		cfg, err := settings.NewMergedESConfig(es.Name, ver, ipFamily, es.Spec.HTTP, userCfg, policyConfig.ElasticsearchConfig, es.Spec.RemoteClusterServer.Enabled, es.HasRemoteClusterAPIKey())
 		if err != nil {
 			return nil, err
 		}

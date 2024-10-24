@@ -378,26 +378,6 @@ type StartBasicResponse struct {
 	ErrorMessage    string `json:"error_message"`
 }
 
-// RemoteClustersSettings is used to build a request to update remote clusters.
-type RemoteClustersSettings struct {
-	PersistentSettings *SettingsGroup `json:"persistent,omitempty"`
-}
-
-// SettingsGroup is a group of persistent settings.
-type SettingsGroup struct {
-	Cluster RemoteClusters `json:"cluster,omitempty"`
-}
-
-// RemoteClusters models the configuration of the remote clusters.
-type RemoteClusters struct {
-	RemoteClusters map[string]RemoteCluster `json:"remote,omitempty"`
-}
-
-// RemoteCluster is the set of seeds to use in a remote cluster setting.
-type RemoteCluster struct {
-	Seeds []string `json:"seeds"`
-}
-
 // Hit represents a single search hit.
 type Hit struct {
 	Index  string                 `json:"_index"`
@@ -415,10 +395,44 @@ type Hits struct {
 
 // SearchResults are the results returned from a _search.
 type SearchResults struct {
-	Took   int
-	Hits   Hits                       `json:"hits"`
-	Shards json.RawMessage            // model when needed
-	Aggs   map[string]json.RawMessage // model when needed
+	Took    int
+	Hits    Hits                       `json:"hits"`
+	Cluster *Cluster                   `json:"_clusters,omitempty"`
+	Shards  json.RawMessage            // model when needed
+	Aggs    map[string]json.RawMessage // model when needed
+}
+
+// Cluster models the Elasticsearch response for searches that involve remote clusters.
+// It can be used to provide more details about a failure.
+type Cluster struct {
+	Details map[string]ClusterDetail `json:"details"`
+}
+
+func (c *Cluster) Failures() string {
+	if c == nil {
+		return ""
+	}
+	failures := make([]string, 0, len(c.Details))
+	for name, detail := range c.Details {
+		for _, failure := range detail.Failures {
+			failures = append(failures, fmt.Sprintf("%s: %+v", name, failure))
+		}
+	}
+	if len(failures) == 0 {
+		return ""
+	}
+	return strings.Join(failures, ",")
+}
+
+type ClusterDetail struct {
+	Status   string `json:"status"`
+	Failures []struct {
+		Shard  int `json:"shard"`
+		Reason struct {
+			Type   string `json:"type"`
+			Reason string `json:"reason"`
+		} `json:"reason"`
+	} `json:"failures"`
 }
 
 // ShutdownType is the set of different shutdown operation types supported by Elasticsearch.
