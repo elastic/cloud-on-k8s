@@ -19,6 +19,7 @@ const (
     - name: Fleet Server on ECK policy
       id: eck-fleet-server
       namespace: default
+      is_managed: true
       monitoring_enabled:
       - logs
       - metrics
@@ -32,6 +33,7 @@ const (
     - name: Elastic Agent on ECK policy
       id: eck-agent
       namespace: default
+      is_managed: true
       monitoring_enabled:
       - logs
       - metrics
