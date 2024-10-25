@@ -116,9 +116,9 @@ func NewPodTemplateSpec(ctx context.Context, client k8sclient.Client, kb kbv1.Ki
 		builder.WithVolumes(volume.Volume()).WithVolumeMounts(volume.VolumeMount())
 	}
 
-	// Kibana 7.6.0 and above support running with a read-only root filesystem,
+	// Kibana 7.5.0 and above support running with a read-only root filesystem,
 	// but require a temporary volume to be mounted at /tmp for some reporting features.
-	if v.GTE(version.From(7, 6, 0)) {
+	if v.GTE(version.From(7, 5, 0)) {
 		tmpVolume := volume.NewEmptyDirVolume("temp-volume", "/tmp")
 		builder.WithPodSecurityContext(defaultPodSecurityContext).
 			WithContainersSecurityContext(defaultSecurityContext).
