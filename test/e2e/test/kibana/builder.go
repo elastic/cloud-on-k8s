@@ -240,10 +240,15 @@ func (b Builder) WithAPMIntegration() Builder {
 }
 
 func (b Builder) WithConfig(config map[string]interface{}) Builder {
-	b.Kibana.Spec.Config = &commonv1.Config{
-		Data: config,
+	if b.Kibana.Spec.Config == nil || b.Kibana.Spec.Config.Data == nil {
+		b.Kibana.Spec.Config = &commonv1.Config{
+			Data: config,
+		}
+	} else {
+		for k, v := range config {
+			b.Kibana.Spec.Config.Data[k] = v
+		}
 	}
-
 	return b
 }
 
