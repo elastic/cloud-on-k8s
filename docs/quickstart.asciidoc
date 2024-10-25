@@ -297,7 +297,7 @@ For a full description of each `CustomResourceDefinition` (CRD), refer to the <<
 kubectl describe crd kibana
 ----
 
-This completes the quickstart of deploying an {kib} instance on top of <<{p}-deploy-eck,the ECK operator>> and <<{p}-deploy-elasticsearch,deployed {es} cluster>>. We recommend continuing to <<{p}-update-deployment,updating your deployment>>. For more {kib} configuration options, see <<kibana,Running {kib} on ECK>>.
+This completes the quickstart of deploying an {kib} instance on top of <<{p}-deploy-eck,the ECK operator>> and <<{p}-deploy-elasticsearch,deployed {es} cluster>>. We recommend continuing to <<{p}-update-deployment,updating your deployment>>. For more {kib} configuration options, see <<{p}-kibana, Running {kib} on ECK>>.
 
 [id="{p}-update-deployment"]
 == Update your deployment
