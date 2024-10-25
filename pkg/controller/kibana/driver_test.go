@@ -364,18 +364,18 @@ func TestDriverDeploymentParams(t *testing.T) {
 			wantErr: false,
 		},
 		{
-			name: "7.5+ contains security contexts",
+			name: "7.10+ contains security contexts",
 			args: args{
 				kb: func() *kbv1.Kibana {
 					kb := kibanaFixture()
-					kb.Spec.Version = "7.5.0"
+					kb.Spec.Version = "7.10.0"
 					return kb
 				},
 				initialObjects: defaultInitialObjects,
 			},
 			want: func() deployment.Params {
 				p := expectedDeploymentParams()
-				p.PodTemplateSpec.Labels["kibana.k8s.elastic.co/version"] = "7.5.0"
+				p.PodTemplateSpec.Labels["kibana.k8s.elastic.co/version"] = "7.10.0"
 				return p
 			}(),
 			wantErr: false,
