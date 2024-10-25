@@ -46,6 +46,9 @@ var (
 func DefaultEnvVars(v version.Version, httpCfg commonv1.HTTPConfig, headlessServiceName string) []corev1.EnvVar {
 	vars := []corev1.EnvVar{
 		// needed in elasticsearch.yml
+		// We do not recommend overriding the default readiness probe on Elasticsearch 8.2.0 and later.
+		// ECK configures a socket based readiness probe using the Elasticsearch which is not influenced by the load on the Elasticsearch cluster.
+		// These settings are added only for backwards compatibility and will be removed in a future release.
 		{Name: settings.HeadlessServiceName, Value: headlessServiceName},
 		{Name: settings.EnvProbePasswordPath, Value: path.Join(esvolume.PodMountedUsersSecretMountPath, user.ProbeUserName)},
 		{Name: settings.EnvProbeUsername, Value: user.ProbeUserName},
