@@ -3,6 +3,7 @@ steps:
   - label: 🧪 trigger pipeline unified-release-copy-elastic-images-to-aws-ecr
     trigger: unified-release-copy-elastic-images-to-aws-ecr
     build:
+      branch: publish_eck_images_to_aws_ecr
       env:
         IMAGES_NAMES: "eck/eck-operator,eck/eck-operator-fips,eck/eck-operator-ubi,eck/eck-operator-ubi-fips"
         IMAGES_TAG: "2.14.0"
