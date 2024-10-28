@@ -214,7 +214,7 @@ The secret is named after the corresponding Kibana instance. For example, for a 
 
 [source,shell,subs="attributes"]
 ----
-kubectl get secret my-kibana-kb-config -o jsonpath '{ .data.kibana\.yml }' | base64 --decode | grep -B 1 encryptionKey
+kubectl get secret c14-kb-config -o jsonpath='{ .data.kibana\.yml }' | base64 --decode | grep -A1 encryptedSavedObjects
 ----
 ====
 
