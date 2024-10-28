@@ -1,4 +1,4 @@
-If you are an existing Elastic customer with an active support contract, you can create a case in the link:https://support.elastic.co/[Elastic Support Portal]. Kindly attach an <<{p}-take-eck-dump,ECK diagnostic>> when opening your case.
+If you are an existing Elastic customer with an active support contract, you can create a case in the link:https://support.elastic.co/[Elastic Support Portal]. Kindly attach an <<{p}-run-eck-diagnostics,ECK diagnostic>> when opening your case.
 
 Alternatively, or if you do not have a support contract, and if you are unable to find a solution to your problem with the information provided in these documents, ask for help:
 
