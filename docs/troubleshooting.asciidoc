@@ -9,9 +9,10 @@ endif::[]
 
 - <<{p}-common-problems>>
 - <<{p}-troubleshooting-methods>>
+- <<{p}-run-eck-diagnostics>>
 
 include::./help.asciidoc[]
 
 include::troubleshooting/common-problems.asciidoc[leveloffset=+1]
 include::troubleshooting/troubleshooting-methods.asciidoc[leveloffset=+1]
-include::troubleshooting/take-eck-dump.asciidoc[leveloffset=+1]
+include::troubleshooting/run-eck-diagnostics.asciidoc[leveloffset=+1]
