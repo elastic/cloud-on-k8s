@@ -276,6 +276,18 @@ func Test_needsRecreate(t *testing.T) {
 			want: true,
 		},
 		{
+			name: "Needs recreate to go from LoadBalancer type to ClusterIP",
+			args: args{
+				expected: corev1.Service{Spec: corev1.ServiceSpec{
+					Type: corev1.ServiceTypeClusterIP,
+				}},
+				reconciled: corev1.Service{Spec: corev1.ServiceSpec{
+					Type: corev1.ServiceTypeLoadBalancer,
+				}},
+			},
+			want: true,
+		},
+		{
 			name: "Removing the load balancer class is OK if target type is no longer LoadBalancer",
 			args: args{
 				expected: corev1.Service{Spec: corev1.ServiceSpec{
