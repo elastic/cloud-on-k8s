@@ -69,6 +69,10 @@ func TestNewExternalService(t *testing.T) {
 		wantSvc  func() corev1.Service
 	}{
 		{
+			name:    "default clusterIP service",
+			wantSvc: mkHTTPService,
+		},
+		{
 			name: "no TLS",
 			httpConf: commonv1.HTTPConfig{
 				TLS: commonv1.TLSOptions{
@@ -171,9 +175,10 @@ func mkHTTPService() corev1.Service {
 			},
 		},
 		Spec: corev1.ServiceSpec{
+			Type: corev1.ServiceTypeClusterIP,
 			Ports: []corev1.ServicePort{
 				{
-					Name:     "http",
+					Name:     "https",
 					Protocol: corev1.ProtocolTCP,
 					Port:     network.HTTPPort,
 				},
