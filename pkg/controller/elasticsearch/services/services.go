@@ -112,6 +112,11 @@ func NewExternalService(es esv1.Elasticsearch) *corev1.Service {
 		},
 	}
 
+	// defaults to ClusterIP if not set
+	if es.Spec.HTTP.Service.Spec.Type == "" {
+		svc.Spec.Type = corev1.ServiceTypeClusterIP
+	}
+
 	return defaults.SetServiceDefaults(&svc, labels, labels, ports)
 }
 
