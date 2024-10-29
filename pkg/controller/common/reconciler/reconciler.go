@@ -88,16 +88,19 @@ func ReconcileResource(params Params) error {
 	namespace := params.Expected.GetNamespace()
 	name := params.Expected.GetName()
 	log := ulog.FromContext(params.Context).WithValues("kind", kind, "namespace", namespace, "name", name)
+	deleted := false
 
 	create := func() error {
-		// check if not being deleted
-		err = params.Client.Get(params.Context, types.NamespacedName{Name: name, Namespace: namespace}, params.Reconciled)
-		if err != nil && !apierrors.IsNotFound(err) {
-			return err
-		}
-		if !params.Reconciled.GetDeletionTimestamp().IsZero() {
-			log.Info("Waiting for resource to be created because the old one is being deleted")
-			return nil
+		if deleted {
+			// check if not being deleted
+			err = params.Client.Get(params.Context, types.NamespacedName{Name: name, Namespace: namespace}, params.Reconciled)
+			if err != nil && !apierrors.IsNotFound(err) {
+				return err
+			}
+			if !params.Reconciled.GetDeletionTimestamp().IsZero() {
+				log.Info("Waiting for resource to be created because the old one is being deleted")
+				return nil
+			}
 		}
 
 		log.Info("Creating resource")
@@ -157,6 +160,7 @@ func ReconcileResource(params Params) error {
 			return fmt.Errorf("failed to delete %s %s/%s: %w", kind, namespace, name, err)
 		}
 		log.Info("Deleted resource successfully")
+		deleted = true
 		return create()
 	}
 
