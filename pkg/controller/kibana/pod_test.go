@@ -194,7 +194,7 @@ func TestNewPodTemplateSpec(t *testing.T) {
 			},
 		},
 		{
-			name: "with user-provided volumes and 8.x should have volume mounts including /tmp volume and security contexts",
+			name: "with user-provided volumes and 8.x should have volume mounts including /tmp and plugins volumes and security contexts",
 			kb: kbv1.Kibana{Spec: kbv1.KibanaSpec{
 				PodTemplate: corev1.PodTemplateSpec{
 					Spec: corev1.PodSpec{
@@ -219,9 +219,9 @@ func TestNewPodTemplateSpec(t *testing.T) {
 			}},
 			assertions: func(pod corev1.PodTemplateSpec) {
 				assert.Len(t, pod.Spec.InitContainers, 1)
-				assert.Len(t, pod.Spec.InitContainers[0].VolumeMounts, 4)
-				assert.Len(t, pod.Spec.Volumes, 2)
-				assert.Len(t, GetKibanaContainer(pod.Spec).VolumeMounts, 2)
+				assert.Len(t, pod.Spec.InitContainers[0].VolumeMounts, 5)
+				assert.Len(t, pod.Spec.Volumes, 3)
+				assert.Len(t, GetKibanaContainer(pod.Spec).VolumeMounts, 3)
 				assert.Equal(t, pod.Spec.SecurityContext, &defaultPodSecurityContext)
 				assert.Equal(t, GetKibanaContainer(pod.Spec).SecurityContext, &defaultSecurityContext)
 			},

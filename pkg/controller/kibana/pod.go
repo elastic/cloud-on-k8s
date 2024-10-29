@@ -33,6 +33,8 @@ import (
 const (
 	DataVolumeName               = "kibana-data"
 	DataVolumeMountPath          = "/usr/share/kibana/data"
+	PluginsVolumeName            = "kibana-data"
+	PluginsVolumeMountPath       = "/usr/share/kibana/plugins"
 	KibanaBasePathEnvName        = "SERVER_BASEPATH"
 	KibanaRewriteBasePathEnvName = "SERVER_REWRITEBASEPATH"
 )
@@ -42,6 +44,10 @@ var (
 	// Kibana running in the main container.
 	// Since Kibana is stateless and the keystore is created on pod start, an EmptyDir is fine here.
 	DataVolume = volume.NewEmptyDirVolume(DataVolumeName, DataVolumeMountPath)
+
+	// PluginsVolume is used to persist plugins after installation via an init container when
+	// the Kibana pod has readOnlyRootFilesystem set to true.
+	PluginsVolume = volume.NewEmptyDirVolume(PluginsVolumeName, PluginsVolumeMountPath)
 
 	DefaultMemoryLimits = resource.MustParse("1Gi")
 	DefaultResources    = corev1.ResourceRequirements{
@@ -117,7 +123,8 @@ func NewPodTemplateSpec(ctx context.Context, client k8sclient.Client, kb kbv1.Ki
 	}
 
 	// Kibana 7.5.0 and above support running with a read-only root filesystem,
-	// but require a temporary volume to be mounted at /tmp for some reporting features.
+	// but require a temporary volume to be mounted at /tmp for some reporting features
+	// and a plugin volume mounted at /usr/share/kibana/plugins.
 	// Limiting to 7.10.0 here as there was a bug in previous versions causing rebuilding
 	// of browser bundles to happen on plugin install, which would attempt a write to the
 	// root filesystem on restart.
@@ -125,7 +132,8 @@ func NewPodTemplateSpec(ctx context.Context, client k8sclient.Client, kb kbv1.Ki
 		tmpVolume := volume.NewEmptyDirVolume("temp-volume", "/tmp")
 		builder.WithPodSecurityContext(defaultPodSecurityContext).
 			WithContainersSecurityContext(defaultSecurityContext).
-			WithVolumes(tmpVolume.Volume()).WithVolumeMounts(tmpVolume.VolumeMount())
+			WithVolumes(tmpVolume.Volume()).WithVolumeMounts(tmpVolume.VolumeMount()).
+			WithVolumes(PluginsVolume.Volume()).WithVolumeMounts(PluginsVolume.VolumeMount())
 	}
 
 	if keystore != nil {
