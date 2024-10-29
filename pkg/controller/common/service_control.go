@@ -88,11 +88,6 @@ func needsUpdate(expected *corev1.Service, reconciled *corev1.Service) bool {
 
 // applyServerSideValues applies any default that may have been set from the reconciled version.
 func applyServerSideValues(expected, reconciled *corev1.Service) {
-	// shortcut if the service type has changed
-	if expected.Spec.Type != reconciled.Spec.Type {
-		return
-	}
-
 	// Type may be defaulted by the api server
 	if expected.Spec.Type == "" {
 		expected.Spec.Type = reconciled.Spec.Type
