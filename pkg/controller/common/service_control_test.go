@@ -317,14 +317,12 @@ func Test_applyServerSideValues(t *testing.T) {
 			args: args{
 				expected: corev1.Service{Spec: corev1.ServiceSpec{}},
 				reconciled: corev1.Service{Spec: corev1.ServiceSpec{
-					Type:            corev1.ServiceTypeClusterIP,
 					ClusterIP:       "1.2.3.4",
 					ClusterIPs:      []string{"1.2.3.4"},
 					SessionAffinity: corev1.ServiceAffinityClientIP,
 				}},
 			},
 			want: corev1.Service{Spec: corev1.ServiceSpec{
-				Type:            corev1.ServiceTypeClusterIP,
 				ClusterIP:       "1.2.3.4",
 				ClusterIPs:      []string{"1.2.3.4"},
 				SessionAffinity: corev1.ServiceAffinityClientIP,
@@ -335,14 +333,12 @@ func Test_applyServerSideValues(t *testing.T) {
 			args: args{
 				expected: corev1.Service{Spec: corev1.ServiceSpec{}},
 				reconciled: corev1.Service{Spec: corev1.ServiceSpec{
-					Type:            corev1.ServiceTypeClusterIP,
 					ClusterIP:       "None",
 					ClusterIPs:      []string{"None"},
 					SessionAffinity: corev1.ServiceAffinityClientIP,
 				}},
 			},
 			want: corev1.Service{Spec: corev1.ServiceSpec{
-				Type:            corev1.ServiceTypeClusterIP,
 				ClusterIP:       "None",
 				ClusterIPs:      []string{"None"},
 				SessionAffinity: corev1.ServiceAffinityClientIP,
@@ -531,14 +527,12 @@ func Test_applyServerSideValues(t *testing.T) {
 			args: args{
 				expected: corev1.Service{Spec: corev1.ServiceSpec{}},
 				reconciled: corev1.Service{Spec: corev1.ServiceSpec{
-					Type:            corev1.ServiceTypeClusterIP,
 					ClusterIP:       "1.2.3.4",
 					SessionAffinity: corev1.ServiceAffinityClientIP,
 					IPFamilies:      []corev1.IPFamily{corev1.IPv6Protocol},
 				}},
 			},
 			want: corev1.Service{Spec: corev1.ServiceSpec{
-				Type:            corev1.ServiceTypeClusterIP,
 				ClusterIP:       "1.2.3.4",
 				SessionAffinity: corev1.ServiceAffinityClientIP,
 				IPFamilies:      []corev1.IPFamily{corev1.IPv6Protocol},
@@ -551,13 +545,11 @@ func Test_applyServerSideValues(t *testing.T) {
 					IPFamilies: []corev1.IPFamily{corev1.IPv6Protocol},
 				}},
 				reconciled: corev1.Service{Spec: corev1.ServiceSpec{
-					Type:            corev1.ServiceTypeClusterIP,
 					ClusterIP:       "1.2.3.4",
 					SessionAffinity: corev1.ServiceAffinityClientIP,
 				}},
 			},
 			want: corev1.Service{Spec: corev1.ServiceSpec{
-				Type:            corev1.ServiceTypeClusterIP,
 				ClusterIP:       "1.2.3.4",
 				SessionAffinity: corev1.ServiceAffinityClientIP,
 				IPFamilies:      []corev1.IPFamily{corev1.IPv6Protocol},
@@ -602,7 +594,9 @@ func Test_applyServerSideValues(t *testing.T) {
 		{
 			name: "Reconciled LoadBalancerClass is used if the expected one is empty",
 			args: args{
-				expected: corev1.Service{Spec: corev1.ServiceSpec{}},
+				expected: corev1.Service{Spec: corev1.ServiceSpec{
+					Type: corev1.ServiceTypeLoadBalancer,
+				}},
 				reconciled: corev1.Service{Spec: corev1.ServiceSpec{
 					Type:              corev1.ServiceTypeLoadBalancer,
 					LoadBalancerClass: ptr.To("service.k8s.aws/nlb"),
