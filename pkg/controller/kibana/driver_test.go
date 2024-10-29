@@ -641,7 +641,7 @@ func expectedDeploymentWithPolicyAnnotations(policyAnnotations map[string]string
 	return deploymentParams
 }
 
-func pre750(params deployment.Params) deployment.Params {
+func pre710(params deployment.Params) deployment.Params {
 	params.PodTemplateSpec.Spec.Containers[0].SecurityContext = nil
 	params.PodTemplateSpec.Spec.InitContainers[0].SecurityContext = nil
 	params.PodTemplateSpec.Spec.SecurityContext = nil
