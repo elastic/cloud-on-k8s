@@ -90,6 +90,16 @@ func ReconcileResource(params Params) error {
 	log := ulog.FromContext(params.Context).WithValues("kind", kind, "namespace", namespace, "name", name)
 
 	create := func() error {
+		// check if not being deleted
+		err = params.Client.Get(params.Context, types.NamespacedName{Name: name, Namespace: namespace}, params.Reconciled)
+		if err != nil && !apierrors.IsNotFound(err) {
+			return err
+		}
+		if !params.Reconciled.GetDeletionTimestamp().IsZero() {
+			log.Info("Waiting for resource to be created because the old one is being deleted")
+			return nil
+		}
+
 		log.Info("Creating resource")
 		if params.PreCreate != nil {
 			if err := params.PreCreate(); err != nil {
@@ -119,6 +129,12 @@ func ReconcileResource(params Params) error {
 	} else if err != nil {
 		log.Error(err, fmt.Sprintf("Generic GET for %s %s/%s failed with error", kind, namespace, name))
 		return fmt.Errorf("failed to get %s %s/%s: %w", kind, namespace, name, err)
+	}
+
+	// shortcut if being deleted
+	if !params.Reconciled.GetDeletionTimestamp().IsZero() {
+		log.Info("Skip reconciliation because the resource is being deleted")
+		return nil
 	}
 
 	if params.NeedsRecreate != nil && params.NeedsRecreate() {
