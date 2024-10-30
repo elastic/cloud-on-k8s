@@ -142,7 +142,7 @@ func (d *defaultDriver) Reconcile(ctx context.Context) *reconciler.Results {
 	externalService, err := common.ReconcileService(ctx, d.Client, services.NewExternalService(d.ES), &d.ES)
 	if err != nil {
 		if apierrors.IsAlreadyExists(err) {
-			return results.WithReconciliationState(defaultRequeue.WithReason("Could not reconcile external service"))
+			return results.WithReconciliationState(defaultRequeue.WithReason(fmt.Sprintf("Pending %s service recreation", services.ExternalServiceName(d.ES.Name))))
 		}
 		return results.WithError(err)
 	}
