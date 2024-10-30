@@ -223,7 +223,7 @@ func TestDriverDeploymentParams(t *testing.T) {
 				kb:             kibanaFixture,
 				initialObjects: defaultInitialObjects,
 			},
-			want:    pre750(expectedDeploymentParams()),
+			want:    pre710(expectedDeploymentParams()),
 			wantErr: false,
 		},
 		{
@@ -233,7 +233,7 @@ func TestDriverDeploymentParams(t *testing.T) {
 				initialObjects:    defaultInitialObjects,
 				policyAnnotations: map[string]string{"policy.k8s.elastic.co/kibana-config-hash": "2123345"},
 			},
-			want:    pre750(expectedDeploymentWithPolicyAnnotations(map[string]string{"policy.k8s.elastic.co/kibana-config-hash": "2123345"})),
+			want:    pre710(expectedDeploymentWithPolicyAnnotations(map[string]string{"policy.k8s.elastic.co/kibana-config-hash": "2123345"})),
 			wantErr: false,
 		},
 		{
@@ -249,7 +249,7 @@ func TestDriverDeploymentParams(t *testing.T) {
 				initialObjects: defaultInitialObjects,
 			},
 			want: func() deployment.Params {
-				params := pre750(expectedDeploymentParams())
+				params := pre710(expectedDeploymentParams())
 				params.PodTemplateSpec.Spec.Volumes = params.PodTemplateSpec.Spec.Volumes[1:]
 				params.PodTemplateSpec.Spec.InitContainers[0].VolumeMounts = params.PodTemplateSpec.Spec.InitContainers[0].VolumeMounts[1:]
 				params.PodTemplateSpec.Spec.Containers[0].VolumeMounts = params.PodTemplateSpec.Spec.Containers[0].VolumeMounts[1:]
@@ -266,7 +266,7 @@ func TestDriverDeploymentParams(t *testing.T) {
 				initialObjects: defaultInitialObjects,
 			},
 			want: func() deployment.Params {
-				p := pre750(expectedDeploymentParams())
+				p := pre710(expectedDeploymentParams())
 				p.PodTemplateSpec.Labels["mylabel"] = "value"
 				for i, c := range p.PodTemplateSpec.Spec.Containers {
 					if c.Name == kbv1.KibanaContainerName {
@@ -323,7 +323,7 @@ func TestDriverDeploymentParams(t *testing.T) {
 				},
 			},
 			want: func() deployment.Params {
-				p := pre750(expectedDeploymentParams())
+				p := pre710(expectedDeploymentParams())
 				p.PodTemplateSpec.Annotations["kibana.k8s.elastic.co/config-hash"] = "2368465874"
 				return p
 			}(),
@@ -340,7 +340,7 @@ func TestDriverDeploymentParams(t *testing.T) {
 				initialObjects: defaultInitialObjects,
 			},
 			want: func() deployment.Params {
-				p := pre750(expectedDeploymentParams())
+				p := pre710(expectedDeploymentParams())
 				p.PodTemplateSpec.Labels["kibana.k8s.elastic.co/version"] = "6.8.0"
 				return p
 			}(),
@@ -357,7 +357,7 @@ func TestDriverDeploymentParams(t *testing.T) {
 				initialObjects: defaultInitialObjects,
 			},
 			want: func() deployment.Params {
-				p := pre750(expectedDeploymentParams())
+				p := pre710(expectedDeploymentParams())
 				p.PodTemplateSpec.Labels["kibana.k8s.elastic.co/version"] = "6.8.0"
 				return p
 			}(),
