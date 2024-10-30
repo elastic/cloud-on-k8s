@@ -184,12 +184,10 @@ func TestRemoteClusterWithAPIKeys(t *testing.T) {
 			es2LicenseTestContext.Init(),
 			// Check that the first cluster is using a Platinum license
 			es1LicenseTestContext.CheckElasticsearchLicense(
-				client.ElasticsearchLicenseTypePlatinum,
 				client.ElasticsearchLicenseTypeEnterprise,
 			),
 			// Check that the second cluster is using a Platinum license
 			es1LicenseTestContext.CheckElasticsearchLicense(
-				client.ElasticsearchLicenseTypePlatinum,
 				client.ElasticsearchLicenseTypeEnterprise,
 			),
 			test.Step{
