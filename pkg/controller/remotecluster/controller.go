@@ -211,7 +211,7 @@ func doReconcile(
 		remoteClient := &esv1.Elasticsearch{}
 		if err := r.Client.Get(ctx, remoteClientKey, remoteClient); err != nil {
 			if errors.IsNotFound(err) {
-				// Remote cluster does not exist, invalidate API keys for that client cluster.
+				// Remote client cluster does not exist, invalidate API keys for that client cluster.
 				apiKeyReconciledRemoteClients.Insert(remoteClientKey)
 				results.WithResults(reconcileAPIKeys(ctx, r.Client, activeAPIKeys, remoteServer, remoteClient, nil, esClient, r.keystoreProvider))
 				continue
