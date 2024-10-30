@@ -108,7 +108,7 @@ tests:
             app.kubernetes.io/instance: quickstart
             app.kubernetes.io/managed-by: Helm
             app.kubernetes.io/name: eck-elasticsearch
-            helm.sh/chart: eck-elasticsearch-0.13.0-SNAPSHOT
+            helm.sh/chart: eck-elasticsearch-0.14.0-SNAPSHOT
             test: label
       - equal:
           path: metadata.annotations
@@ -207,11 +207,11 @@ tests:
           value: my.regis.try/es:8
   - it: should render image properly
     set:
-      image: my.registry.com/elastic/elasticsearch:8.16.0-SNAPSHOT
+      image: my.registry.com/elastic/elasticsearch:8.17.0-SNAPSHOT
     asserts:
       - equal:
           path: spec.image
-          value: my.registry.com/elastic/elasticsearch:8.16.0-SNAPSHOT
+          value: my.registry.com/elastic/elasticsearch:8.17.0-SNAPSHOT
   - it: should render no podDisruptionBudget by default
     set:
     asserts:

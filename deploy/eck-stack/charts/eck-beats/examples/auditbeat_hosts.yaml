@@ -1,5 +1,5 @@
 name: auditbeat
-version: 8.16.0-SNAPSHOT
+version: 8.17.0-SNAPSHOT
 spec:
   type: auditbeat
   elasticsearchRef:

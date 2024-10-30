@@ -17,14 +17,15 @@ Most common issues can be identified and resolved by following these instruction
 - <<{p}-exclude-resource,Exclude a resource from reconciliation>>
 - <<{p}-get-k8s-events,Get Kubernetes events>>
 - <<{p}-exec-into-containers,Exec into containers>>
+- <<{p}-resize-pv>>
 - <<{p}-suspend-elasticsearch>>
 - <<{p}-capture-jvm-heap-dumps>>
 
 If you are still unable to find a solution to your problem, ask for help:
 
-include::../../help.asciidoc[]
+include::./../help.asciidoc[]
 
-
+[float]
 [id="{p}-get-resources"]
 == View the list of resources
 
@@ -55,6 +56,7 @@ elasticsearch-sample-es-http   ClusterIP   10.19.248.93    <none>        9200/TC
 kibana-sample-kb-http          ClusterIP   10.19.246.116   <none>        5601/TCP   3d
 ----
 
+[float]
 [id="{p}-describe-failing-resources"]
 == Describe failing resources
 
@@ -101,6 +103,7 @@ Events:
 
 If you get an error with unbound persistent volume claims (PVCs), it means there is not currently a persistent volume that can satisfy the claim. If you are using automatically provisioned storage (for example Amazon EBS provisioner), sometimes the storage provider can take a few minutes to provision a volume, so this may resolve itself in a few minutes. You can also check the status by running `kubectl describe persistentvolumeclaims` to monitor events of the PVCs.
 
+[float]
 [id="{p}-eck-debug-logs"]
 == Enable ECK debug logs
 
@@ -124,6 +127,7 @@ change the `args` array as follows:
 
 Once your change is saved, the operator is automatically restarted by the StatefulSet controller to apply the new settings.
 
+[float]
 [id="{p}-view-logs"]
 == View logs
 
@@ -172,7 +176,7 @@ Logs with `ERROR` level indicate something is not going as expected.
 Due to link:https://github.com/eBay/Kubernetes/blob/master/docs/devel/api-conventions.md#concurrency-control-and-consistency[optimistic locking],
 you can get errors reporting a conflict while updating a resource. You can ignore them, as the update goes through at the next reconciliation attempt, which will happen almost immediately.
 
-
+[float]
 [id="{p}-resource-level-config"]
 == Configure Elasticsearch timeouts
 
@@ -188,7 +192,7 @@ To set the Elasticsearch client timeout to 60 seconds for a cluster named `quick
 kubectl annotate elasticsearch quickstart eck.k8s.elastic.co/es-client-timeout=60s
 ----
 
-
+[float]
 [id="{p}-exclude-resource"]
 == Exclude resources from reconciliation
 
@@ -212,6 +216,7 @@ Or in one line:
 kubectl annotate elasticsearch quickstart --overwrite eck.k8s.elastic.co/managed=false
 ----
 
+[float]
 [id="{p}-get-k8s-events"]
 == Get Kubernetes events
 
@@ -246,7 +251,7 @@ LAST SEEN   FIRST SEEN   COUNT     NAME                                    KIND 
 You can set filters for Kibana and APM Server too.
 Note that the default TTL for events in Kubernetes is 1h, so unless your cluster settings have been modified you will not get events older than 1h.
 
-
+[float]
 [id="{p}-resize-pv"]
 == Resizing persistent volumes
 
@@ -307,6 +312,7 @@ spec:
 
 and ECK will automatically create a new StatefulSet and begin migrating data into it.
 
+[float]
 [id="{p}-exec-into-containers"]
 == Exec into containers
 
@@ -319,6 +325,7 @@ kubectl exec -ti elasticsearch-sample-es-p45nrjch29 bash
 
 This can also be done for Kibana and APM Server.
 
+[float]
 [id="{p}-suspend-elasticsearch"]
 == Suspend Elasticsearch
 
@@ -348,7 +355,7 @@ Once you are done with troubleshooting the node, you can resume normal operation
 kubectl annotate es quickstart eck.k8s.elastic.co/suspend-
 ----
 
-
+[float]
 [id="{p}-capture-jvm-heap-dumps"]
 == Capture JVM heap dumps
 
