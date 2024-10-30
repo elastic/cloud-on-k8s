@@ -13,6 +13,7 @@ import (
 
 	"github.com/pkg/errors"
 	corev1 "k8s.io/api/core/v1"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/client-go/tools/record"
 	"k8s.io/utils/ptr"
 	controller "sigs.k8s.io/controller-runtime/pkg/reconcile"
@@ -140,6 +141,9 @@ func (d *defaultDriver) Reconcile(ctx context.Context) *reconciler.Results {
 
 	externalService, err := common.ReconcileService(ctx, d.Client, services.NewExternalService(d.ES), &d.ES)
 	if err != nil {
+		if apierrors.IsAlreadyExists(err) {
+			return results.WithReconciliationState(defaultRequeue.WithReason("Could not reconcile external service"))
+		}
 		return results.WithError(err)
 	}
 

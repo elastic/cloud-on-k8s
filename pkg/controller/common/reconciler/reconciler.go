@@ -88,21 +88,8 @@ func ReconcileResource(params Params) error {
 	namespace := params.Expected.GetNamespace()
 	name := params.Expected.GetName()
 	log := ulog.FromContext(params.Context).WithValues("kind", kind, "namespace", namespace, "name", name)
-	deleted := false
 
 	create := func() error {
-		if deleted {
-			// check if not being deleted
-			err = params.Client.Get(params.Context, types.NamespacedName{Name: name, Namespace: namespace}, params.Reconciled)
-			if err != nil && !apierrors.IsNotFound(err) {
-				return err
-			}
-			if !params.Reconciled.GetDeletionTimestamp().IsZero() {
-				log.Info("Waiting for resource to be created because the old one is being deleted")
-				return nil
-			}
-		}
-
 		log.Info("Creating resource")
 		if params.PreCreate != nil {
 			if err := params.PreCreate(); err != nil {
@@ -134,12 +121,6 @@ func ReconcileResource(params Params) error {
 		return fmt.Errorf("failed to get %s %s/%s: %w", kind, namespace, name, err)
 	}
 
-	// shortcut if being deleted
-	if !params.Reconciled.GetDeletionTimestamp().IsZero() {
-		log.Info("Skip reconciliation because the resource is being deleted")
-		return nil
-	}
-
 	if params.NeedsRecreate != nil && params.NeedsRecreate() {
 		log.Info("Deleting resource as it cannot be updated, it will be recreated")
 		reconciledMeta, err := meta.Accessor(params.Reconciled)
@@ -160,7 +141,6 @@ func ReconcileResource(params Params) error {
 			return fmt.Errorf("failed to delete %s %s/%s: %w", kind, namespace, name, err)
 		}
 		log.Info("Deleted resource successfully")
-		deleted = true
 		return create()
 	}
 
