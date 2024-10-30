@@ -1333,8 +1333,8 @@ ElasticsearchSpec holds the specification of an Elasticsearch cluster.
 | Field | Description
 | *`version`* __string__ | Version of Elasticsearch.
 | *`image`* __string__ | Image is the Elasticsearch Docker image to deploy.
-| *`remoteClusterServer`* __xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-v2-pkg-apis-elasticsearch-v1-remoteclusterserver[$$RemoteClusterServer$$]__ | RemoteClusterServer specifies if the remote cluster server must be enabled.
-This must be enabled if this cluster is a remote cluster which is expected to be accessed using Cross-Cluster API key APIs.
+| *`remoteClusterServer`* __xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-v2-pkg-apis-elasticsearch-v1-remoteclusterserver[$$RemoteClusterServer$$]__ | RemoteClusterServer specifies if the remote cluster server should be enabled.
+This must be enabled if this cluster is a remote cluster which is expected to be accessed using API key authentication.
 | *`http`* __xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-v2-pkg-apis-common-v1-httpconfig[$$HTTPConfig$$]__ | HTTP holds HTTP layer settings for Elasticsearch.
 | *`transport`* __xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-v2-pkg-apis-elasticsearch-v1-transportconfig[$$TransportConfig$$]__ | Transport holds transport layer settings for Elasticsearch.
 | *`nodeSets`* __xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-v2-pkg-apis-elasticsearch-v1-nodeset[$$NodeSet$$] array__ | NodeSets allow specifying groups of Elasticsearch nodes sharing the same configuration and Pod templates.

@@ -4838,8 +4838,8 @@ spec:
                 type: object
               remoteClusterServer:
                 description: |-
-                  RemoteClusterServer specifies if the remote cluster server must be enabled.
-                  This must be enabled if this cluster is a remote cluster which is expected to be accessed using Cross-Cluster API key APIs.
+                  RemoteClusterServer specifies if the remote cluster server should be enabled.
+                  This must be enabled if this cluster is a remote cluster which is expected to be accessed using API key authentication.
                 properties:
                   enabled:
                     type: boolean
