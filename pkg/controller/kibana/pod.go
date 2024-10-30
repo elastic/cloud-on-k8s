@@ -33,7 +33,7 @@ import (
 const (
 	DataVolumeName               = "kibana-data"
 	DataVolumeMountPath          = "/usr/share/kibana/data"
-	PluginsVolumeName            = "kibana-data"
+	PluginsVolumeName            = "kibana-plugins"
 	PluginsVolumeMountPath       = "/usr/share/kibana/plugins"
 	KibanaBasePathEnvName        = "SERVER_BASEPATH"
 	KibanaRewriteBasePathEnvName = "SERVER_REWRITEBASEPATH"
