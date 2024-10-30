@@ -637,6 +637,37 @@ func Test_applyServerSideValues(t *testing.T) {
 				Type: corev1.ServiceTypeClusterIP,
 			}},
 		},
+		{
+			name: "Do not apply server side values if Type changed to the default ClusterIP from another type",
+			args: args{
+				expected: corev1.Service{Spec: corev1.ServiceSpec{
+					Type: corev1.ServiceTypeClusterIP,
+				}},
+				reconciled: corev1.Service{Spec: corev1.ServiceSpec{
+					Type:                  corev1.ServiceTypeNodePort,
+					ExternalTrafficPolicy: corev1.ServiceExternalTrafficPolicyCluster,
+				}},
+			},
+			want: corev1.Service{Spec: corev1.ServiceSpec{
+				Type: corev1.ServiceTypeClusterIP,
+			}},
+		},
+		{
+			name: "Apply server side values if Type changed from the default ClusterIP to another type",
+			args: args{
+				expected: corev1.Service{Spec: corev1.ServiceSpec{
+					Type: corev1.ServiceTypeNodePort,
+				}},
+				reconciled: corev1.Service{Spec: corev1.ServiceSpec{
+					Type:      corev1.ServiceTypeNodePort,
+					ClusterIP: "1.2.3.4",
+				}},
+			},
+			want: corev1.Service{Spec: corev1.ServiceSpec{
+				Type:      corev1.ServiceTypeNodePort,
+				ClusterIP: "1.2.3.4",
+			}},
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
