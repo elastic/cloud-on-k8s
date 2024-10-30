@@ -82,8 +82,8 @@ type ElasticsearchSpec struct {
 	// Image is the Elasticsearch Docker image to deploy.
 	Image string `json:"image,omitempty"`
 
-	// RemoteClusterServer specifies if the remote cluster server must be enabled.
-	// This must be enabled if this cluster is a remote cluster which is expected to be accessed using Cross-Cluster API key APIs.
+	// RemoteClusterServer specifies if the remote cluster server should be enabled.
+	// This must be enabled if this cluster is a remote cluster which is expected to be accessed using API key authentication.
 	// +kubebuilder:validation:Optional
 	RemoteClusterServer RemoteClusterServer `json:"remoteClusterServer,omitempty"`
 
