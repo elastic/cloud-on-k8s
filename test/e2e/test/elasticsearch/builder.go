@@ -159,6 +159,22 @@ func (b Builder) WithRemoteCluster(remoteEs Builder) Builder {
 	return b
 }
 
+func (b Builder) WithRemoteClusterAPIKey(remoteEs Builder, apiKey *esv1.RemoteClusterAPIKey) Builder {
+	b.Elasticsearch.Spec.RemoteClusters =
+		append(b.Elasticsearch.Spec.RemoteClusters,
+			esv1.RemoteCluster{
+				Name:             remoteEs.Ref().Name,
+				ElasticsearchRef: remoteEs.LocalRef(),
+				APIKey:           apiKey,
+			})
+	return b
+}
+
+func (b Builder) WithRemoteClusterServer() Builder {
+	b.Elasticsearch.Spec.RemoteClusterServer.Enabled = true
+	return b
+}
+
 func (b Builder) WithNamespace(namespace string) Builder {
 	b.Elasticsearch.ObjectMeta.Namespace = namespace
 	return b

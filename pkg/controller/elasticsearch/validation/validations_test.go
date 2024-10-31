@@ -203,6 +203,104 @@ func Test_supportedVersion(t *testing.T) {
 	}
 }
 
+func Test_supportsRemoteClusterUsingAPIKey(t *testing.T) {
+	tests := []struct {
+		name         string
+		es           esv1.Elasticsearch
+		expectErrors bool
+	}{
+		{
+			name: "no remote cluster settings that relies on API keys",
+			es: esv1.Elasticsearch{
+				ObjectMeta: metav1.ObjectMeta{
+					Namespace: "default",
+					Name:      "foo",
+				},
+				Spec: esv1.ElasticsearchSpec{Version: "7.0.0"},
+			},
+			expectErrors: false,
+		},
+		{
+			name: "some remote cluster API keys before required version",
+			es: esv1.Elasticsearch{
+				ObjectMeta: metav1.ObjectMeta{Namespace: "default", Name: "foo"},
+				Spec: esv1.ElasticsearchSpec{
+					Version: "8.9.99",
+					RemoteClusters: []esv1.RemoteCluster{
+						{
+							Name:   "bar",
+							APIKey: &esv1.RemoteClusterAPIKey{},
+						},
+					},
+				},
+			},
+			expectErrors: true,
+		},
+		{
+			name: "some remote cluster API keys with min required version",
+			es: esv1.Elasticsearch{
+				ObjectMeta: metav1.ObjectMeta{Namespace: "default", Name: "foo"},
+				Spec: esv1.ElasticsearchSpec{
+					Version: "8.10.0",
+					RemoteClusters: []esv1.RemoteCluster{
+						{
+							Name:   "bar",
+							APIKey: &esv1.RemoteClusterAPIKey{},
+						},
+					},
+				},
+			},
+			expectErrors: false,
+		},
+		{
+			name: "remote cluster without API keys before required version",
+			es: esv1.Elasticsearch{
+				ObjectMeta: metav1.ObjectMeta{Namespace: "default", Name: "foo"},
+				Spec: esv1.ElasticsearchSpec{
+					Version: "8.9.99",
+					RemoteClusters: []esv1.RemoteCluster{
+						{
+							Name: "bar",
+						},
+					},
+				},
+			},
+			expectErrors: false,
+		},
+		{
+			name: "remote cluster server enabled with min required version",
+			es: esv1.Elasticsearch{
+				ObjectMeta: metav1.ObjectMeta{Namespace: "default", Name: "foo"},
+				Spec: esv1.ElasticsearchSpec{
+					Version:             "8.10.0",
+					RemoteClusterServer: esv1.RemoteClusterServer{Enabled: true},
+				},
+			},
+			expectErrors: false,
+		},
+		{
+			name: "remote cluster server enabled before min required version",
+			es: esv1.Elasticsearch{
+				ObjectMeta: metav1.ObjectMeta{Namespace: "default", Name: "foo"},
+				Spec: esv1.ElasticsearchSpec{
+					Version:             "8.9.99",
+					RemoteClusterServer: esv1.RemoteClusterServer{Enabled: true},
+				},
+			},
+			expectErrors: true,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			actual := supportsRemoteClusterUsingAPIKey(tt.es)
+			actualErrors := len(actual) > 0
+			if tt.expectErrors != actualErrors {
+				t.Errorf("failed supportsRemoteClusterUsingAPIKey(). Name: %v, actual %v, wanted: %v, value: %v", tt.name, actual, tt.expectErrors, tt.es.Spec.Version)
+			}
+		})
+	}
+}
+
 func Test_validName(t *testing.T) {
 	tests := []struct {
 		name         string

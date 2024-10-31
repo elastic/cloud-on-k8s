@@ -2,11 +2,15 @@
 // or more contributor license agreements. Licensed under the Elastic License 2.0;
 // you may not use this file except in compliance with the Elastic License 2.0.
 
-package remoteca
+package remotecluster
 
 import (
 	"context"
 	"fmt"
+
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/remotecluster/keystore"
+
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/label"
 
 	corev1 "k8s.io/api/core/v1"
 	v1 "k8s.io/api/core/v1"
@@ -26,13 +30,34 @@ import (
 )
 
 // AddWatches set watches on objects needed to manage the association between a local and a remote cluster.
-func addWatches(mgr manager.Manager, c controller.Controller, r *ReconcileRemoteCa) error {
+func addWatches(mgr manager.Manager, c controller.Controller, r *ReconcileRemoteClusters) error {
 	// Watch for changes to RemoteCluster
 	if err := c.Watch(source.Kind(mgr.GetCache(), &esv1.Elasticsearch{}, &handler.TypedEnqueueRequestForObject[*esv1.Elasticsearch]{})); err != nil {
 		return err
 	}
 
-	// Watch Secrets that contain remote certificate authorities managed by this controller
+	// Emit changes to remote clusters to update API keys.
+	if err := c.Watch(
+		source.Kind(
+			mgr.GetCache(),
+			&esv1.Elasticsearch{},
+			handler.TypedEnqueueRequestsFromMapFunc[*esv1.Elasticsearch, reconcile.Request](
+				func(ctx context.Context, elasticsearch *esv1.Elasticsearch) []reconcile.Request {
+					requests := make([]reconcile.Request, 0, len(elasticsearch.Spec.RemoteClusters))
+					for _, remoteCluster := range elasticsearch.Spec.RemoteClusters {
+						requests = append(requests, reconcile.Request{NamespacedName: remoteCluster.ElasticsearchRef.WithDefaultNamespace(elasticsearch.Namespace).NamespacedName()})
+					}
+					return requests
+				},
+			),
+		),
+	); err != nil {
+		return err
+	}
+
+	// Watch Secrets that contain:
+	//  * Remote certificate authorities managed by this controller.
+	//  * API keys
 	if err := c.Watch(
 		source.Kind(mgr.GetCache(), &v1.Secret{},
 			handler.TypedEnqueueRequestsFromMapFunc[*v1.Secret, reconcile.Request](newRequestsFromMatchedLabels()),
@@ -58,21 +83,36 @@ func addWatches(mgr manager.Manager, c controller.Controller, r *ReconcileRemote
 // newRequestsFromMatchedLabels creates a watch handler function that creates reconcile requests based on the
 // labels set on a Secret which contains the remote CA.
 func newRequestsFromMatchedLabels() handler.TypedMapFunc[*v1.Secret, reconcile.Request] {
-	return handler.TypedMapFunc[*v1.Secret, reconcile.Request](func(ctx context.Context, obj *v1.Secret) []reconcile.Request {
+	return func(ctx context.Context, obj *v1.Secret) []reconcile.Request {
 		labels := obj.GetLabels()
-		if !maps.ContainsKeys(labels, RemoteClusterNameLabelName, RemoteClusterNamespaceLabelName, commonv1.TypeLabelName) {
-			return nil
+		if maps.ContainsKeys(labels, RemoteClusterNameLabelName, RemoteClusterNamespaceLabelName, commonv1.TypeLabelName) {
+			// Remote cluster CA
+			if labels[commonv1.TypeLabelName] != remoteca.TypeLabelValue {
+				return nil
+			}
+			return []reconcile.Request{
+				{NamespacedName: types.NamespacedName{
+					Namespace: labels[RemoteClusterNamespaceLabelName],
+					Name:      labels[RemoteClusterNameLabelName]},
+				},
+			}
 		}
-		if labels[commonv1.TypeLabelName] != remoteca.TypeLabelValue {
-			return nil
+
+		if maps.ContainsKeys(labels, label.ClusterNameLabelName, commonv1.TypeLabelName) {
+			if labels[commonv1.TypeLabelName] != keystore.RemoteClusterAPIKeysType {
+				return nil
+			}
+			// Remote cluster API keys Secret event.
+			return []reconcile.Request{
+				{NamespacedName: types.NamespacedName{
+					Namespace: obj.Namespace,
+					Name:      labels[label.ClusterNameLabelName]},
+				},
+			}
 		}
-		return []reconcile.Request{
-			{NamespacedName: types.NamespacedName{
-				Namespace: labels[RemoteClusterNamespaceLabelName],
-				Name:      labels[RemoteClusterNameLabelName]},
-			},
-		}
-	})
+
+		return nil
+	}
 }
 
 func watchName(local types.NamespacedName, remote types.NamespacedName) string {
@@ -89,7 +129,7 @@ func watchName(local types.NamespacedName, remote types.NamespacedName) string {
 // The local CA is watched to update the trusted certificates in the remote clusters.
 // The remote CAs are watched to update the trusted certificates of the local cluster.
 func addCertificatesAuthorityWatches(
-	reconcileClusterAssociation *ReconcileRemoteCa,
+	reconcileClusterAssociation *ReconcileRemoteClusters,
 	local, remote types.NamespacedName) error {
 	// Watch the CA secret of Elasticsearch clusters which are involved in a association.
 	err := reconcileClusterAssociation.watches.Secrets.AddHandler(watches.NamedWatch[*corev1.Secret]{

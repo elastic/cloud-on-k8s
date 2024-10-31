@@ -232,6 +232,8 @@ func esStats(k8sClient k8s.Client, managedNamespaces []string) (string, interfac
 		AutoscaledResourceCount     int32                    `json:"autoscaled_resource_count"`
 		StackMonitoringLogsCount    int32                    `json:"stack_monitoring_logs_count"`
 		StackMonitoringMetricsCount int32                    `json:"stack_monitoring_metrics_count"`
+		RemoteClustersCount         int32                    `json:"remote_clusters_count"`
+		RemoteClustersAPIKeysCount  int32                    `json:"remote_clusters_api_keys_count"`
 		DownwardNodeLabels          *downwardNodeLabelsStats `json:"downward_node_labels,omitempty"`
 	}{}
 	distinctNodeLabels := set.Make()
@@ -246,6 +248,10 @@ func esStats(k8sClient k8s.Client, managedNamespaces []string) (string, interfac
 			es := es
 			stats.ResourceCount++
 			stats.PodCount += es.Status.AvailableNodes
+
+			rcWithoutAPIKeys, rcWithAPIKeys := es.RemoteClustersCount()
+			stats.RemoteClustersCount += rcWithoutAPIKeys
+			stats.RemoteClustersAPIKeysCount += rcWithAPIKeys
 
 			if isManagedByHelm(es.Labels) {
 				stats.HelmManagedResourceCount++

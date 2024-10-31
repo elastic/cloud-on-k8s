@@ -18,6 +18,7 @@ import (
 	sset "github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/statefulset"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/label"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/network"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/services"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/settings"
 	es_sset "github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/sset"
 	esvolume "github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/volume"
@@ -33,6 +34,22 @@ func HeadlessServiceName(ssetName string) string {
 // HeadlessService returns a headless service for the given StatefulSet
 func HeadlessService(es *esv1.Elasticsearch, ssetName string) corev1.Service {
 	nsn := k8s.ExtractNamespacedName(es)
+	ports := []corev1.ServicePort{
+		{
+			Name:     es.Spec.HTTP.Protocol(),
+			Protocol: corev1.ProtocolTCP,
+			Port:     network.HTTPPort,
+		},
+	}
+	if es.Spec.RemoteClusterServer.Enabled {
+		ports = append(ports,
+			corev1.ServicePort{
+				Name:     services.RemoteClusterServicePortName,
+				Protocol: corev1.ProtocolTCP,
+				Port:     network.RemoteClusterPort,
+			},
+		)
+	}
 
 	return corev1.Service{
 		ObjectMeta: metav1.ObjectMeta{
@@ -44,13 +61,7 @@ func HeadlessService(es *esv1.Elasticsearch, ssetName string) corev1.Service {
 			Type:      corev1.ServiceTypeClusterIP,
 			ClusterIP: corev1.ClusterIPNone,
 			Selector:  label.NewStatefulSetLabels(nsn, ssetName),
-			Ports: []corev1.ServicePort{
-				{
-					Name:     es.Spec.HTTP.Protocol(),
-					Protocol: corev1.ProtocolTCP,
-					Port:     network.HTTPPort,
-				},
-			},
+			Ports:     ports,
 			// allow nodes to discover themselves via DNS while they are booting up ie. are not ready yet
 			PublishNotReadyAddresses: true,
 		},
