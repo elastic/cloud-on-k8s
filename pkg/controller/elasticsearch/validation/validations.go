@@ -73,6 +73,7 @@ func validations(ctx context.Context, checker license.Checker, exposedNodeLabels
 		validPVCNaming,
 		validMonitoring,
 		validAssociations,
+		supportsRemoteClusterUsingAPIKey,
 		func(proposed esv1.Elasticsearch) field.ErrorList {
 			return validLicenseLevel(ctx, proposed, checker)
 		},
@@ -132,6 +133,37 @@ func supportedVersion(es esv1.Elasticsearch) field.ErrorList {
 		}
 	}
 	return field.ErrorList{field.Invalid(field.NewPath("spec").Child("version"), es.Spec.Version, unsupportedVersionMsg)}
+}
+
+func supportsRemoteClusterUsingAPIKey(es esv1.Elasticsearch) field.ErrorList {
+	ver, err := version.Parse(es.Spec.Version)
+	if err != nil {
+		return field.ErrorList{field.Invalid(field.NewPath("spec").Child("version"), es.Spec.Version, parseVersionErrMsg)}
+	}
+	var errs field.ErrorList
+	if es.Spec.RemoteClusterServer.Enabled && ver.LE(esv1.RemoteClusterAPIKeysMinVersion) {
+		errs = append(errs, field.Invalid(
+			field.NewPath("spec").Child("remoteClusterServer"),
+			es.Spec.Version,
+			fmt.Sprintf(
+				"minimum required version for remote cluster server is %s but desired version is %s",
+				esv1.RemoteClusterAPIKeysMinVersion,
+				es.Spec.Version,
+			),
+		))
+	}
+	if es.HasRemoteClusterAPIKey() && ver.LE(esv1.RemoteClusterAPIKeysMinVersion) {
+		errs = append(errs, field.Invalid(
+			field.NewPath("spec").Child("remoteClusters").Child("*").Key("apiKey"),
+			es.Spec.Version,
+			fmt.Sprintf(
+				"minimum required version for remote cluster using API keys is %s but desired version is %s",
+				esv1.RemoteClusterAPIKeysMinVersion,
+				es.Spec.Version,
+			),
+		))
+	}
+	return errs
 }
 
 // hasCorrectNodeRoles checks whether Elasticsearch node roles are correctly configured.

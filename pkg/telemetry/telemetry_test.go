@@ -471,6 +471,8 @@ func TestNewReporter(t *testing.T) {
       autoscaled_resource_count: 2
       helm_resource_count: 1
       pod_count: 10
+      remote_clusters_api_keys_count: 0
+      remote_clusters_count: 0
       resource_count: 4
       stack_monitoring_logs_count: 1
       stack_monitoring_metrics_count: 1
@@ -597,6 +599,8 @@ func TestReporter_report(t *testing.T) {
 					PodCount:                    9,
 					ResourceCount:               3,
 					StackMonitoringMetricsCount: 2,
+					RemoteClustersCount:         0,
+					RemoteClustersAPIKeysCount:  0,
 				},
 			},
 		},
@@ -631,9 +635,11 @@ func TestReporter_report(t *testing.T) {
 			},
 			wantData: TemplateData{
 				ElasticsearchTemplateData{
-					PodCount:                 10,
-					ResourceCount:            2,
-					StackMonitoringLogsCount: 1,
+					PodCount:                   10,
+					ResourceCount:              2,
+					StackMonitoringLogsCount:   1,
+					RemoteClustersCount:        0,
+					RemoteClustersAPIKeysCount: 0,
 				},
 			},
 		}, {
@@ -665,8 +671,10 @@ func TestReporter_report(t *testing.T) {
 			},
 			wantData: TemplateData{
 				ElasticsearchTemplateData{
-					PodCount:      4,
-					ResourceCount: 2,
+					PodCount:                   4,
+					ResourceCount:              2,
+					RemoteClustersCount:        0,
+					RemoteClustersAPIKeysCount: 0,
 					NodeLabelsTemplateData: &NodeLabelsTemplateData{
 						ResourceWithNodeLabelsCount: 1,
 						DistinctNodeLabelsCount:     1,
@@ -705,12 +713,75 @@ func TestReporter_report(t *testing.T) {
 			},
 			wantData: TemplateData{
 				ElasticsearchTemplateData{
-					PodCount:      4,
-					ResourceCount: 2,
+					PodCount:                   4,
+					ResourceCount:              2,
+					RemoteClustersCount:        0,
+					RemoteClustersAPIKeysCount: 0,
 					NodeLabelsTemplateData: &NodeLabelsTemplateData{
 						ResourceWithNodeLabelsCount: 2,
 						DistinctNodeLabelsCount:     3, // ns/label1,ns/label2 and ns/label3
 					},
+				},
+			},
+		},
+		{
+			name: "With remote clusters",
+			fields: fields{
+				objects: []client.Object{
+					&esv1.Elasticsearch{
+						ObjectMeta: metav1.ObjectMeta{
+							Namespace: testNS,
+							Name:      "es1",
+						},
+						Spec: esv1.ElasticsearchSpec{
+							RemoteClusters: []esv1.RemoteCluster{
+								{
+									Name:   "rc1",
+									APIKey: nil,
+								},
+								{
+									Name:   "rc2",
+									APIKey: &esv1.RemoteClusterAPIKey{},
+								},
+							},
+						},
+						Status: esv1.ElasticsearchStatus{
+							AvailableNodes: 2,
+						},
+					},
+					&esv1.Elasticsearch{
+						ObjectMeta: metav1.ObjectMeta{
+							Namespace: testNS,
+							Name:      "es2",
+						},
+						Spec: esv1.ElasticsearchSpec{
+							RemoteClusters: []esv1.RemoteCluster{
+								{
+									Name:   "rc1",
+									APIKey: nil,
+								},
+								{
+									Name:   "rc2",
+									APIKey: &esv1.RemoteClusterAPIKey{},
+								},
+								{
+									Name:   "rc3",
+									APIKey: &esv1.RemoteClusterAPIKey{},
+								},
+							},
+						},
+						Status: esv1.ElasticsearchStatus{
+							AvailableNodes: 8,
+						},
+					},
+				},
+			},
+			wantData: TemplateData{
+				ElasticsearchTemplateData{
+					PodCount:                   10,
+					ResourceCount:              2,
+					RemoteClustersCount:        1 + 1,
+					RemoteClustersAPIKeysCount: 1 + 2,
 				},
 			},
 		},

@@ -12,12 +12,16 @@ import (
 	"time"
 
 	"github.com/pkg/errors"
+
 	corev1 "k8s.io/api/core/v1"
-	apierrors "k8s.io/apimachinery/pkg/api/errors"
+	k8serrors "k8s.io/apimachinery/pkg/api/errors"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/tools/record"
 	"k8s.io/utils/ptr"
 	controller "sigs.k8s.io/controller-runtime/pkg/reconcile"
 
+	commonv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/common/v1"
 	esv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/elasticsearch/v1"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/association"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common"
@@ -141,7 +145,7 @@ func (d *defaultDriver) Reconcile(ctx context.Context) *reconciler.Results {
 
 	externalService, err := common.ReconcileService(ctx, d.Client, services.NewExternalService(d.ES), &d.ES)
 	if err != nil {
-		if apierrors.IsAlreadyExists(err) {
+		if k8serrors.IsAlreadyExists(err) {
 			return results.WithReconciliationState(defaultRequeue.WithReason(fmt.Sprintf("Pending %s service recreation", services.ExternalServiceName(d.ES.Name))))
 		}
 		return results.WithError(err)
@@ -151,6 +155,23 @@ func (d *defaultDriver) Reconcile(ctx context.Context) *reconciler.Results {
 	internalService, err = common.ReconcileService(ctx, d.Client, services.NewInternalService(d.ES), &d.ES)
 	if err != nil {
 		return results.WithError(err)
+	}
+
+	// Remote Cluster Server (RCS2) Kubernetes Service reconciliation.
+	if d.ES.Spec.RemoteClusterServer.Enabled {
+		// Remote Cluster Server is enabled, ensure that the related Kubernetes Service does exist.
+		if _, err := common.ReconcileService(ctx, d.Client, services.NewRemoteClusterService(d.ES), &d.ES); err != nil {
+			results.WithError(err)
+		}
+	} else {
+		// Ensure that remote cluster Service does not exist.
+		remoteClusterService := &corev1.Service{
+			ObjectMeta: metav1.ObjectMeta{
+				Namespace: d.ES.Namespace,
+				Name:      services.RemoteClusterServiceName(d.ES.Name),
+			},
+		}
+		results.WithError(k8s.DeleteResourceIfExists(ctx, d.Client, remoteClusterService))
 	}
 
 	resourcesState, err := reconcile.NewResourcesStateFromAPI(d.Client, d.ES)
@@ -329,7 +350,12 @@ func (d *defaultDriver) Reconcile(ctx context.Context) *reconciler.Results {
 	keystoreSecurityContext := securitycontext.For(d.Version, true)
 	keystoreParams.SecurityContext = &keystoreSecurityContext
 
-	// setup a keystore with secure settings in an init container, if specified by the user
+	// Set up a keystore with secure settings in an init container, if specified by the user.
+	// We are also using the keystore internally for the remote cluster API keys.
+	remoteClusterAPIKeys, err := apiKeyStoreSecretSource(ctx, &d.ES, d.Client)
+	if err != nil {
+		return results.WithError(err)
+	}
 	keystoreResources, err := keystore.ReconcileResources(
 		ctx,
 		d,
@@ -337,6 +363,7 @@ func (d *defaultDriver) Reconcile(ctx context.Context) *reconciler.Results {
 		esv1.ESNamer,
 		label.NewLabels(k8s.ExtractNamespacedName(&d.ES)),
 		keystoreParams,
+		remoteClusterAPIKeys...,
 	)
 	if err != nil {
 		return results.WithError(err)
@@ -375,6 +402,27 @@ func (d *defaultDriver) Reconcile(ctx context.Context) *reconciler.Results {
 
 	// reconcile StatefulSets and nodes configuration
 	return results.WithResults(d.reconcileNodeSpecs(ctx, esReachable, esClient, d.ReconcileState, *resourcesState, keystoreResources))
+}
+
+// apiKeyStoreSecretSource returns the Secret that holds the remote API keys, and which should be used as a secure settings source.
+func apiKeyStoreSecretSource(ctx context.Context, es *esv1.Elasticsearch, c k8s.Client) ([]commonv1.NamespacedSecretSource, error) {
+	// Check if Secret exists
+	secretName := types.NamespacedName{
+		Name:      esv1.RemoteAPIKeysSecretName(es.Name),
+		Namespace: es.Namespace,
+	}
+	if err := c.Get(ctx, secretName, &corev1.Secret{}); err != nil {
+		if k8serrors.IsNotFound(err) {
+			return nil, nil
+		}
+		return nil, err
+	}
+	return []commonv1.NamespacedSecretSource{
+		{
+			Namespace:  es.Namespace,
+			SecretName: secretName.Name,
+		},
+	}, nil
 }
 
 // newElasticsearchClient creates a new Elasticsearch HTTP client for this cluster using the provided user

@@ -82,6 +82,11 @@ type ElasticsearchSpec struct {
 	// Image is the Elasticsearch Docker image to deploy.
 	Image string `json:"image,omitempty"`
 
+	// RemoteClusterServer specifies if the remote cluster server should be enabled.
+	// This must be enabled if this cluster is a remote cluster which is expected to be accessed using API key authentication.
+	// +kubebuilder:validation:Optional
+	RemoteClusterServer RemoteClusterServer `json:"remoteClusterServer,omitempty"`
+
 	// HTTP holds HTTP layer settings for Elasticsearch.
 	// +kubebuilder:validation:Optional
 	HTTP commonv1.HTTPConfig `json:"http,omitempty"`
@@ -137,6 +142,11 @@ type ElasticsearchSpec struct {
 
 	// RevisionHistoryLimit is the number of revisions to retain to allow rollback in the underlying StatefulSets.
 	RevisionHistoryLimit *int32 `json:"revisionHistoryLimit,omitempty"`
+}
+
+type RemoteClusterServer struct {
+	// +kubebuilder:validation:Optional
+	Enabled bool `json:"enabled,omitempty"`
 }
 
 // VolumeClaimDeletePolicy describes the delete policy for handling PersistentVolumeClaims that hold Elasticsearch data.
@@ -205,6 +215,10 @@ type RemoteCluster struct {
 
 	// ElasticsearchRef is a reference to an Elasticsearch cluster running within the same k8s cluster.
 	ElasticsearchRef commonv1.LocalObjectSelector `json:"elasticsearchRef,omitempty"`
+
+	// APIKey can be used to enable remote cluster access using Cross-Cluster API keys: https://www.elastic.co/guide/en/elasticsearch/reference/current/security-api-create-cross-cluster-api-key.html
+	// +kubebuilder:validation:Optional
+	APIKey *RemoteClusterAPIKey `json:"apiKey,omitempty"`
 
 	// TODO: Allow the user to specify some options (transport.compress, transport.ping_schedule)
 
