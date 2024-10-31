@@ -35,6 +35,8 @@ const (
 	DataVolumeMountPath          = "/usr/share/kibana/data"
 	PluginsVolumeName            = "kibana-plugins"
 	PluginsVolumeMountPath       = "/usr/share/kibana/plugins"
+	TempVolumeName               = "temp-volume"
+	TempVolumeMountPath          = "/tmp"
 	KibanaBasePathEnvName        = "SERVER_BASEPATH"
 	KibanaRewriteBasePathEnvName = "SERVER_REWRITEBASEPATH"
 )
@@ -45,9 +47,13 @@ var (
 	// Since Kibana is stateless and the keystore is created on pod start, an EmptyDir is fine here.
 	DataVolume = volume.NewEmptyDirVolume(DataVolumeName, DataVolumeMountPath)
 
-	// PluginsVolume is used to persist plugins after installation via an init container when
+	// PluginsVolume can be used to persist plugins after installation via an init container when
 	// the Kibana pod has readOnlyRootFilesystem set to true.
 	PluginsVolume = volume.NewEmptyDirVolume(PluginsVolumeName, PluginsVolumeMountPath)
+
+	// TempVolume can be used for some reporting features when the Kibana pod has
+	// readOnlyRootFilesystem set to true.
+	TempVolume = volume.NewEmptyDirVolume(TempVolumeName, TempVolumeMountPath)
 
 	DefaultMemoryLimits = resource.MustParse("1Gi")
 	DefaultResources    = corev1.ResourceRequirements{
@@ -129,10 +135,9 @@ func NewPodTemplateSpec(ctx context.Context, client k8sclient.Client, kb kbv1.Ki
 	// of browser bundles to happen on plugin install, which would attempt a write to the
 	// root filesystem on restart.
 	if v.GTE(version.From(7, 10, 0)) {
-		tmpVolume := volume.NewEmptyDirVolume("temp-volume", "/tmp")
 		builder.WithPodSecurityContext(defaultPodSecurityContext).
 			WithContainersSecurityContext(defaultSecurityContext).
-			WithVolumes(tmpVolume.Volume()).WithVolumeMounts(tmpVolume.VolumeMount()).
+			WithVolumes(TempVolume.Volume()).WithVolumeMounts(TempVolume.VolumeMount()).
 			WithVolumes(PluginsVolume.Volume()).WithVolumeMounts(PluginsVolume.VolumeMount())
 	}
 
