@@ -115,6 +115,10 @@ func NewExternalService(es esv1.Elasticsearch) *corev1.Service {
 	svc.ObjectMeta.Namespace = es.Namespace
 	svc.ObjectMeta.Name = ExternalServiceName(es.Name)
 
+	// defaults to ClusterIP if not set
+	if svc.Spec.Type == "" {
+		svc.Spec.Type = corev1.ServiceTypeClusterIP
+	}
 	labels := label.NewLabels(nsn)
 	ports := []corev1.ServicePort{
 		{
