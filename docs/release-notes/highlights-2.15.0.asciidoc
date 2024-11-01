@@ -7,8 +7,6 @@
 
 New and notable changes in version 2.15.0 of {n}. Check <<release-notes-2.15.0>> for the full list of changes.
 
-Ideas: support for new k8s, gke version, dependency fixes , wolfi images
-
 [float]
 [id="{p}-2150-wolfi-images"]
 === Wolfi images
