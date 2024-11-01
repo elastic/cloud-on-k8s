@@ -1,0 +1,29 @@
+[[release-highlights-2.15.0]]
+== 2.15.0 release highlights
+
+[[known-issue-2.15.0]]
+[float]
+=== Known issue
+
+
+
+[float]
+[id="{p}-2150-new-and-notable"]
+=== New and notable
+
+New and notable changes in version 2.15.0 of {n}. Check <<release-notes-2.15.0>> for the full list of changes.
+
+Ideas: support for new k8s, gke version, dependency fixes , wolfi images
+
+[float]
+[id="{p}-2150-wolfi-images"]
+=== Wolfi images
+
+ECK has transitioned to using https://github.com/wolfi-dev[Wolfi images], an open-source project aimed at delivering a secure, minimal base image for containerized applications. By adopting Wolfi, ECK strengthens its security posture, significantly lowering the potential for CVEs (Common Vulnerabilities and Exposures) and reducing the overall attack surface. This shift aligns with best practices for container security, providing a more robust foundation for running workloads reliably and securely.
+
+[float]
+[id="{p}-2150-latest-k8s-support"]
+=== Support for Kubernetes 1.31
+
+ECK now supports Kubernetes 1.31, bringing improved scalability, security, and performance. This update ensures ECK stays compatible with the latest Kubernetes features for managing Elasticsearch and Kibana.
+
