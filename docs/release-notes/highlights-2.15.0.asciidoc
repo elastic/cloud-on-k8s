@@ -1,12 +1,6 @@
 [[release-highlights-2.15.0]]
 == 2.15.0 release highlights
 
-[[known-issue-2.15.0]]
-[float]
-=== Known issue
-
-
-
 [float]
 [id="{p}-2150-new-and-notable"]
 === New and notable
