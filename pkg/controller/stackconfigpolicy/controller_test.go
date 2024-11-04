@@ -64,6 +64,8 @@ func (c fakeEsClient) GetClusterState(_ context.Context) (esclient.ClusterState,
 	return clusterState, nil
 }
 
+func (c fakeEsClient) Close() {}
+
 func (r ReconcileStackConfigPolicy) getSettings(t *testing.T, nsn types.NamespacedName) filesettings.Settings {
 	t.Helper()
 	var secret corev1.Secret
