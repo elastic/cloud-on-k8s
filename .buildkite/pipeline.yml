@@ -162,7 +162,7 @@ steps:
 
       # scan the -ubi operator image on merge to main
       - label: ":buildkite: cve-checks"
-        if: build.branch == "main"
+        if: build.branch == "main" && build.source != "schedule"
         depends_on:
           - "operator-image-build"
         command: |
