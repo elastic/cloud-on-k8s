@@ -433,3 +433,6 @@ func (f *fakeEsClient) GetAutoscalingCapacity(_ context.Context) (esclient.Autos
 func (f *fakeEsClient) UpdateMLNodesSettings(_ context.Context, _ int32, _ string) error {
 	return nil
 }
+
+func (f *fakeEsClient) Close() {
+}
