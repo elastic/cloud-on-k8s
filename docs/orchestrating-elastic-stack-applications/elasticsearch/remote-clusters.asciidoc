@@ -17,9 +17,15 @@ When using remote cluster connections with ECK, the setup process depends on whe
 
 NOTE: The remote clusters feature requires a valid Enterprise license or Enterprise trial license. Check <<{p}-licensing,the license documentation>> for more details about managing licenses.
 
+=== Security Models
+
 To create a remote cluster connection to another Elasticsearch cluster deployed within the same Kubernetes cluster, specify the `remoteClusters` attribute in your Elasticsearch spec.
 
-The following example describes how to configure `cluster-two` as a remote cluster in `cluster-one`.
+ECK supports two different security models: the API key based security model, and the certificate security model. These 2 security models are described in the link:https://www.elastic.co/guide/en/elasticsearch/reference/current/remote-clusters.html#remote-clusters-security-models[Remote clusters] section of the {es} documentation.
+
+=== Using the certificate security model
+
+The following example describes how to configure `cluster-two` as a remote cluster in `cluster-one` using the certificate security model:
 
 [source,yaml,subs="+attributes"]
 ----
@@ -42,6 +48,62 @@ spec:
 
 <1> The namespace declaration can be omitted if both clusters reside in the same namespace.
 
+=== Using the API key security model
+
+To enable the API key security model you must first enable the remote cluster server on the remote {es} cluster:
+
+[source,yaml,subs="+attributes"]
+----
+apiVersion: elasticsearch.k8s.elastic.co/v1
+kind: Elasticsearch
+metadata:
+  name: cluster-two
+  namespace: ns-two
+spec:
+  version: {version}
+  remoteClusterServer:
+    enabled: true
+  nodeSets:
+    - name: default
+      count: 3
+----
+
+NOTE: Enabling the remote cluster server triggers a restart of the {es} cluster.
+
+Once the remote cluster server is enabled and started on the remote cluster you can configure the Elasticsearch reference on the local cluster to include the desired permissions for cross-cluster search and cross-cluster replication.
+
+Permissions have to be included under the `apiKey` field. The API model of the Elasticsearch resource is compatible with the link:https://www.elastic.co/guide/en/elasticsearch/reference/current/security-api-create-cross-cluster-api-key.html#security-api-create-cross-cluster-api-key-request-body[{es} API key API] model. Fine grained permissions can be therefore set in both `search` and `replication` fields:
+
+[source,yaml,subs="+attributes"]
+----
+apiVersion: elasticsearch.k8s.elastic.co/{eck_crd_version}
+kind: Elasticsearch
+metadata:
+  name: cluster-one
+  namespace: ns-one
+spec:
+  nodeSets:
+  - count: 3
+    name: default
+  remoteClusters:
+  - name: cluster-two
+    elasticsearchRef:
+      name: cluster-two
+      namespace: ns-two
+      apiKey:
+        access:
+          search:
+            names:
+              - kibana_sample_data_ecommerce  <1>
+          replication:
+            names:
+              - kibana_sample_data_ecommerce  <1>
+  version: {version}
+----
+
+<1> This requires the sample data available at https://kibana_url/app/home#/tutorial_directory/sampleData
+
+You can find a complete example in the link:{eck_github}/tree/{eck_release_branch}/config/recipes/remoteclusters[recipes directory].
 
 [id="{p}-remote-clusters-connect-external"]
 == Connect from an Elasticsearch cluster running outside the Kubernetes cluster
