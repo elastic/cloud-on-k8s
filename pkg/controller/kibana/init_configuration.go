@@ -38,16 +38,11 @@ echo "Kibana configuration successfully prepared."
 // The script creates symbolic links from the generated configuration files in /mnt/elastic-internal/kibana-config/ to
 // an empty directory later mounted in /use/share/kibana/config
 func initConfigContainer(kb kbv1.Kibana) corev1.Container {
-	privileged := false
-
 	return corev1.Container{
 		// Image will be inherited from pod template defaults
 		ImagePullPolicy: corev1.PullIfNotPresent,
 		Name:            InitConfigContainerName,
-		SecurityContext: &corev1.SecurityContext{
-			Privileged: &privileged,
-		},
-		Command: []string{"/usr/bin/env", "bash", "-c", InitConfigScript},
+		Command:         []string{"/usr/bin/env", "bash", "-c", InitConfigScript},
 		VolumeMounts: []corev1.VolumeMount{
 			ConfigSharedVolume.InitContainerVolumeMount(),
 			ConfigVolume(kb).VolumeMount(),
