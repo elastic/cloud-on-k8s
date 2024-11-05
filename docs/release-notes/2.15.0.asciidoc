@@ -11,18 +11,17 @@
 [float]
 === Enhancements
 
-* Clarify high availability recommendations in Elasticsearch orchestration docs {pull}8151[#8151]
 * Log when k8s resources are created/updated/deleted successfully {pull}8094[#8094]
 * More meaningful error in readiness script {pull}8091[#8091] (issue: {issue}8088[#8088])
 * Update Maps Images to multi-arch {pull}8085[#8085] (issue: {issue}8034[#8034])
 * Add missing metricsets {pull}8048[#8048] (issue: {issue}7277[#7277])
-* Do not parse the version twice {pull}8005[#8005]
 * Move to Wolfi-based images {pull}7977[#7977]
 
 [[bug-2.15.0]]
 [float]
 === Bug fixes
 
+* Ensure esclient is closed after each reconcile. {pull}8175[#8175] (issue: {issue}8174[#8174])
 * Fix resetting service type to default when not specified {pull}8165[#8165] (issue: {issue}8161[#8161])
 * Fix logstash templating issue {pull}8087[#8087] (issue: {issue}8000[#8000])
 * Move '$leading_path' variable definition in eck-operator {pull}8075[#8075]
@@ -35,6 +34,7 @@
 [float]
 === Documentation improvements
 
+* Clarify high availability recommendations in Elasticsearch orchestration docs {pull}8151[#8151]
 * Add note on how to access generated Kibana encryptionKeys {pull}8150[#8150] (issue: {issue}8129[#8129])
 * Move Troubleshooting section to top level of ToC {pull}8145[#8145] (issue: {issue}8131[#8131])
 * Document manual steps for reconfiguring role mappings after upgrading to ECK 8.15.3 {pull}8112[#8112]
