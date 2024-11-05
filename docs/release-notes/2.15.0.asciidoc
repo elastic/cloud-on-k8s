@@ -14,7 +14,7 @@
 * Log when k8s resources are created/updated/deleted successfully {pull}8094[#8094]
 * More meaningful error in readiness script {pull}8091[#8091] (issue: {issue}8088[#8088])
 * Update Maps Images to multi-arch {pull}8085[#8085] (issue: {issue}8034[#8034])
-* Add missing metricsets {pull}8048[#8048] (issue: {issue}7277[#7277])
+* Add more metrics collected by stack monitoring {pull}8048[#8048] (issue: {issue}7277[#7277])
 * Move to Wolfi-based images {pull}7977[#7977]
 
 [[bug-2.15.0]]
