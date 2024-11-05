@@ -160,9 +160,9 @@ steps:
           image: docker.elastic.co/ci-agent-images/cloud-k8s-operator/buildkite-agent:e808dbe5
           memory: "2G"
 
-      # scan the -ubi operator image on merge to main
+      # scan the -ubi operator image on nightly builds
       - label: ":buildkite: cve-checks"
-        if: build.branch == "main" && build.source != "schedule"
+        if: build.branch == "main" && build.source == "schedule"
         depends_on:
           - "operator-image-build"
         command: |
