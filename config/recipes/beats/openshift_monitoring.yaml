@@ -107,7 +107,7 @@ spec:
           - -e
           - -c
           - /etc/beat.yml
-          - -system.hostfs=/hostfs
+          - --system.hostfs=/hostfs
           name: metricbeat
           securityContext:
             runAsUser: 0

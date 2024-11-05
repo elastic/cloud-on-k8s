@@ -109,7 +109,7 @@ func Test_buildPodTemplate(t *testing.T) {
 									RunAsUser: ptr.To[int64](0),
 								},
 								// The "-e" in these arguments should be removed
-								Args: []string{"-e", "-c", "/etc/beat.yml", "-system.hostfs=/hostfs"},
+								Args: []string{"-e", "-c", "/etc/beat.yml", "--system.hostfs=/hostfs"},
 							},
 						},
 					},
