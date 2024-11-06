@@ -23,10 +23,10 @@
 
 * Ensure esclient is closed after each reconcile. {pull}8175[#8175] (issue: {issue}8174[#8174])
 * Fix resetting service type to default when not specified {pull}8165[#8165] (issue: {issue}8161[#8161])
-* Fix logstash templating issue {pull}8087[#8087] (issue: {issue}8000[#8000])
+* Fix logstash templating issue in Helm chart {pull}8087[#8087] (issue: {issue}8000[#8000])
 * Move '$leading_path' variable definition in eck-operator {pull}8075[#8075]
 * Handle Kibana basepath updates for fleet {pull}8053[#8053] (issue: {issue}7909[#7909])
-* Fix eck-stack kibana examples {pull}8041[#8041]
+* Fix eck-stack kibana examples in Helm chart {pull}8041[#8041]
 * Add watcher for statefulsets in agent controller {pull}8011[#8011]
 * Add old readiness probe related ENVs  {pull}8009[#8009] (issue: {issue}8006[#8006])
 
