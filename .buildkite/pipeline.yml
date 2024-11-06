@@ -158,7 +158,7 @@ steps:
           YAML
         agents:
           image: docker.elastic.co/ci-agent-images/cloud-k8s-operator/buildkite-agent:e808dbe5
-          memory: "2G"
+          memory: "128Mi"
 
       # scan the -ubi operator image on nightly builds
       - label: ":buildkite: cve-checks"
@@ -178,7 +178,7 @@ steps:
           YAML
         agents:
           image: docker.elastic.co/ci-agent-images/cloud-k8s-operator/buildkite-agent:e808dbe5
-          memory: "2G"
+          memory: "128Mi"
 
   - label: ":buildkite:"
     depends_on:
