@@ -6,9 +6,8 @@ tests:
     release:
       name: quickstart
     set:
-      spec:
-        type: "filebeat"
-        deployment: {}
+      type: "filebeat"
+      deployment: {}
     asserts:
       - isKind:
           of: Beat

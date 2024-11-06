@@ -12,4 +12,34 @@ metadata:
     {{- end }}
 spec:
   version: {{ required "A Kibana version is required" .Values.version }}
-  {{- toYaml .Values.spec | nindent 2 }}
+  {{- with .Values.image }}
+  image: {{ . }}
+  {{- end }}
+  {{- with .Values.count }}
+  count: {{ . }}
+  {{- end }}
+  elasticsearchRef: {{ required "An elasticsearchRef is required" .Values.elasticsearchRef }}
+  {{- with .Values.enterpriseSearchRef }}
+  enterpriseSearchRef: {{ . }}
+  {{- end }}
+  {{- with .Values.config }}
+  config: {{ . }}
+  {{- end }}
+  {{- with .Values.http }}
+  http: {{ . }}
+  {{- end }}
+  {{- with .Values.podTemplate }}
+  podTemplate: {{ . }}
+  {{- end }}
+  {{- with .Values.revisionHistoryLimit }}
+  revisionHistoryLimit: {{ . }}
+  {{- end }}
+  {{- with .Values.secureSettings }}
+  secureSettings: {{ . }}
+  {{- end }}
+  {{- with .Values.serviceAccountName }}
+  serviceAccountName: {{ . }}
+  {{- end }}
+  {{- with .Values.monitoring }}
+  monitoring: {{ . }}
+  {{- end }}

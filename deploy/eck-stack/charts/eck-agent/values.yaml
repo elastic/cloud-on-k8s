@@ -20,6 +20,10 @@
 #
 version: 8.17.0-SNAPSHOT
 
+# Elastic Agent Docker image to deploy
+#
+# image:
+
 # Labels that will be applied to Elastic Agent.
 #
 labels: {}
@@ -28,74 +32,107 @@ labels: {}
 #
 annotations: {}
 
-spec:
-  # policyID determines into which Agent Policy this Agent will be enrolled.
-  # policyID: eck-agent
+# policyID determines into which Agent Policy this Agent will be enrolled.
+# policyID: eck-agent
 
-  # Referenced resources are below and depending on the setup, at least one is required for a functional Agent.
-  # ref: https://www.elastic.co/guide/en/cloud-on-k8s/current/k8s-elastic-agent-fleet-configuration.html#k8s-elastic-agent-fleet-configuration-setting-referenced-resources
+# Referenced resources are below and depending on the setup, at least one is required for a functional Agent.
+# ref: https://www.elastic.co/guide/en/cloud-on-k8s/current/k8s-elastic-agent-fleet-configuration.html#k8s-elastic-agent-fleet-configuration-setting-referenced-resources
+#
+# Reference to ECK-managed Kibana instance.
+#
+# kibanaRef:
+#   name: quickstart
+  # Optional namespace reference to Kibana instance.
+  # If not specified, then the namespace of the Agent instance
+  # will be assumed.
   #
-  # Reference to ECK-managed Kibana instance.
-  #
-  # kibanaRef:
-  #   name: quickstart
-    # Optional namespace reference to Kibana instance.
-    # If not specified, then the namespace of the Agent instance
-    # will be assumed.
-    #
-    # namespace: default
+  # namespace: default
 
-  # Reference to ECK-managed Elasticsearch instance.
+# Reference to a list of Elasticsearch clusters
+#
+elasticsearchRefs:
+- name: eck-elasticsearch
+  # Optional namespace reference to Elasticsearch instance.
+  # If not specified, then the namespace of the Agent instance
+  # will be assumed.
   #
-  elasticsearchRefs:
-  - name: eck-elasticsearch
-    # Optional namespace reference to Elasticsearch instance.
-    # If not specified, then the namespace of the Agent instance
-    # will be assumed.
-    #
-    # namespace: default
-  
-  # Reference to ECK-managed Fleet Server instance.
-  #
-  # fleetServerRef:
-  #   name: eck-fleet-server
-    # Optional namespace reference to Fleet Server instance.
-    # If not specified, then the namespace of the Agent instance
-    # will be assumed.
-    #
-    # namespace: default
+  # namespace: default
 
-  # DaemonSet, StatefulSet, or Deployment specification for Agent.
-  # At least one is required of [daemonSet, deployment, statefulSet].
-  # No default is currently set, refer to https://github.com/elastic/cloud-on-k8s/issues/7429.
-  # ref: https://www.elastic.co/guide/en/cloud-on-k8s/current/k8s-elastic-agent-fleet-configuration.html#k8s-elastic-agent-fleet-configuration-chose-the-deployment-model
+# Reference to ECK-managed Fleet Server instance.
+#
+# fleetServerRef:
+#   name: eck-fleet-server
+  # Optional namespace reference to Fleet Server instance.
+  # If not specified, then the namespace of the Agent instance
+  # will be assumed.
   #
-  # deployment:
-  #   podTemplate:
-  #     spec:
-  #       containers:
-  #       - name: agent
-  #         securityContext:
-  #           runAsUser: 0
-  # daemonSet:
-  #   podTemplate:
-  #     spec:
-  #       containers:
-  #       - name: agent
-  #         securityContext:
-  #           runAsUser: 0
-  # statefulSet:
-  #   podTemplate:
-  #     spec:
-  #       containers:
-  #       - name: agent
-  #         securityContext:
-  #           runAsUser: 0
+  # namespace: default
 
-  # Configuration of Agent, specifically used in Agent standalone mode.
-  # ref: https://www.elastic.co/guide/en/cloud-on-k8s/current/k8s-elastic-agent.html
-  #
-  config: null
+# DaemonSet, StatefulSet, or Deployment specification for Agent.
+# At least one is required of [daemonSet, deployment, statefulSet].
+# No default is currently set, refer to https://github.com/elastic/cloud-on-k8s/issues/7429.
+# ref: https://www.elastic.co/guide/en/cloud-on-k8s/current/k8s-elastic-agent-fleet-configuration.html#k8s-elastic-agent-fleet-configuration-chose-the-deployment-model
+#
+# deployment:
+#   podTemplate:
+#     spec:
+#       containers:
+#       - name: agent
+#         securityContext:
+#           runAsUser: 0
+# daemonSet:
+#   podTemplate:
+#     spec:
+#       containers:
+#       - name: agent
+#         securityContext:
+#           runAsUser: 0
+# statefulSet:
+#   podTemplate:
+#     spec:
+#       containers:
+#       - name: agent
+#         securityContext:
+#           runAsUser: 0
+
+# Configuration of Agent, specifically used in Agent standalone mode.
+# ref: https://www.elastic.co/guide/en/cloud-on-k8s/current/k8s-elastic-agent.html
+# At most one of [Config, ConfigRef] can be specified.
+#
+config: {}
+
+# reference to an existing Kubernetes Secret holding the Agent configuration.
+# Agent settings must be specified as yaml, under a single "agent.yml" entry.
+# At most one of [Config, ConfigRef] can be specified.
+#
+# configRef:
+#   secretName: agent-config
+
+# the HTTP layer configuration for the Agent in Fleet mode with Fleet Server enabled.
+#
+# http:
+
+# Number of revisions to retain to allow rollback in the underlying Deployment/DaemonSet/StatefulSets.
+# By default, if not set, Kubernetes sets 10.
+#
+# revisionHistoryLimit: 2
+
+# Control Elastic Agent Secure Settings.
+# List of references to Kubernetes Secrets containing sensitive configuration options for the Agent.
+# Secrets data can be then referenced in the Agent config using the Secret’s keys
+# or as specified in Entries field of each SecureSetting.
+#
+secureSettings: []
+
+# the source of configuration for the Agent. The configuration can be specified
+# locally through config or configRef (standalone mode), or come from Fleet
+# during runtime (fleet mode). Defaults to standalone mode.
+#
+# mode: standalone
+
+# Whether this Agent will launch Fleet Server. Don’t set unless mode is set to fleet.
+#
+# fleetServerEnabled:
 
 # ServiceAccount to be used by Elastic Agent. Some Elastic Agent features, such as the Kubernetes integration,
 # require that Agent Pods interact with Kubernetes APIs. This functionality requires specific permissions
@@ -153,7 +190,7 @@ clusterRole:
   - apiGroups: ["extensions"]
     resources:
       - replicasets
-    verbs: 
+    verbs:
     - "get"
     - "list"
     - "watch"

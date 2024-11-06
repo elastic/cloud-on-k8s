@@ -12,7 +12,55 @@ metadata:
     {{- end }}
 spec:
   version: {{ required "An Elastic Agent version is required" .Values.version }}
-  {{- if and (not (hasKey .Values.spec "daemonSet")) (not (hasKey .Values.spec "deployment")) (not (hasKey .Values.spec "statefulSet")) }}
+  elasticsearchRefs: {{ required "An elasticsearchRefs is required" .Values.elasticsearchRefs }}
+  {{- with .Values.image }}
+  image: {{ . }}
+  {{- end }}
+  {{- if and (hasKey .Values "config") (hasKey .Values "configRef") }}
+  {{ fail "At most one of config or configRef can be specified" }}
+  {{- end }}
+  {{- with .Values.config }}
+  config: {{ . }}
+  {{- end }}
+  {{- with .Values.configRef }}
+  configRef: {{ . }}
+  {{- end }}
+  {{- with .Values.secureSettings }}
+  secureSettings: {{ . }}
+  {{- end }}
+  {{- with .Values.serviceAccount }}
+  serviceAccountName: {{ .name }}
+  {{- end }}
+  {{- if and (not (hasKey .Values "daemonSet")) (not (hasKey .Values "deployment")) (not (hasKey .Values "statefulSet")) }}
   {{ fail "At least one of daemonSet or deployment or statefulSet is required" }}
   {{- end }}
-  {{- toYaml .Values.spec | nindent 2 }}
+  {{- with .Values.daemonSet }}
+  daemonSet: {{ . }}
+  {{- end }}
+  {{- with .Values.deployment }}
+  deployment: {{ . }}
+  {{- end }}
+  {{- with .Values.statefulSet }}
+  statefulSet: {{ . }}
+  {{- end }}
+  {{- with .Values.revisionHistoryLimit }}
+  revisionHistoryLimit: {{ . }}
+  {{- end }}
+  {{- with .Values.http }}
+  http: {{ . }}
+  {{- end }}
+  {{- with .Values.mode }}
+  mode: {{ . }}
+  {{- end }}
+  {{- with .Values.fleetServerEnabled }}
+  fleetServerEnabled: {{ . }}
+  {{- end }}
+  {{- with .Values.policyID }}
+  policyID: {{ . }}
+  {{- end }}
+  {{- with .Values.kibanaRef }}
+  kibanaRef: {{ . }}
+  {{- end }}
+  {{- with .Values.fleetServerRef }}
+  fleetServerRef: {{ . }}
+  {{- end }}

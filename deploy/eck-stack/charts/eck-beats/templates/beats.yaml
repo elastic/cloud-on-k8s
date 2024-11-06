@@ -12,8 +12,44 @@ metadata:
     {{- end }}
 spec:
   version: {{ required "A Beat version is required" .Values.version }}
-  {{- if and (not (hasKey .Values.spec "daemonSet")) (not (hasKey .Values.spec "deployment")) }}
+  {{- with .Values.image }}
+  image: {{ . }}
+  {{- end }}
+  type: {{ required "An Beat type is required" .Values.type }}
+  {{- if not .Values.type }}{{ fail "A Beat type is required" }}{{- end }}
+  {{- with .Values.elasticsearchRef }}
+  elasticsearchRef: {{ . }}
+  {{- end }}
+  {{- with .Values.kibanaRef }}
+  kibanaRef: {{ . }}
+  {{- end }}
+  {{- if and (hasKey .Values "config") (hasKey .Values "configRef") }}
+  {{ fail "At most one of config or configRef can be specified" }}
+  {{- end }}
+  {{- with .Values.config }}
+  config: {{ . }}
+  {{- end }}
+  {{- with .Values.configRef }}
+  configRef: {{ . }}
+  {{- end }}
+  {{- with .Values.secureSettings }}
+  secureSettings: {{ . }}
+  {{- end }}
+  {{- with .Values.serviceAccount }}
+  serviceAccountName: {{ .name }}
+  {{- end }}
+  {{- if and (not (hasKey .Values "daemonSet")) (not (hasKey .Values "deployment")) }}
   {{ fail "At least one of daemonSet or deployment is required for a functional Beat" }}
   {{- end }}
-  {{- if not .Values.spec.type }}{{ fail "A Beat type is required" }}{{- end }}
-  {{- toYaml .Values.spec | nindent 2 }}
+  {{- with .Values.daemonSet }}
+  daemonSet: {{ . }}
+  {{- end }}
+  {{- with .Values.deployment }}
+  deployment: {{ . }}
+  {{- end }}
+  {{- with .Values.monitoring }}
+  monitoring: {{ . }}
+  {{- end }}
+  {{- with .Values.revisionHistoryLimit }}
+  revisionHistoryLimit: {{ . }}
+  {{- end }}
