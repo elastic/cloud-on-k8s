@@ -13,7 +13,7 @@
 
 * Log when k8s resources are created/updated/deleted successfully {pull}8094[#8094]
 * More meaningful error in readiness script {pull}8091[#8091] (issue: {issue}8088[#8088])
-* Update Maps Images to multi-arch {pull}8085[#8085] (issue: {issue}8034[#8034])
+* Update Elastic Maps Server images to multi-arch {pull}8085[#8085] (issue: {issue}8034[#8034])
 * Add more metrics collected by stack monitoring {pull}8048[#8048] (issue: {issue}7277[#7277])
 * Move to Wolfi-based images {pull}7977[#7977]
 
@@ -21,13 +21,13 @@
 [float]
 === Bug fixes
 
-* Ensure esclient is closed after each reconcile. {pull}8175[#8175] (issue: {issue}8174[#8174])
+* Ensure Elasticsearch client is closed after each reconciliation {pull}8175[#8175] (issue: {issue}8174[#8174])
 * Fix resetting service type to default when not specified {pull}8165[#8165] (issue: {issue}8161[#8161])
-* Fix logstash templating issue in Helm chart {pull}8087[#8087] (issue: {issue}8000[#8000])
-* Move '$leading_path' variable definition in eck-operator {pull}8075[#8075]
-* Handle Kibana basepath updates for fleet {pull}8053[#8053] (issue: {issue}7909[#7909])
-* Fix eck-stack kibana examples in Helm chart {pull}8041[#8041]
-* Add watcher for statefulsets in agent controller {pull}8011[#8011]
+* Fix Logstash templating issue in Helm chart {pull}8087[#8087] (issue: {issue}8000[#8000])
+* Move '$leading_path' variable definition in eck-operator Helm chart {pull}8075[#8075]
+* Support Kibana basepath in associations {pull}8053[#8053] (issue: {issue}7909[#7909])
+* Fix eck-stack Kibana examples in Helm chart {pull}8041[#8041]
+* Add watcher for StatefulSets in Elastic Agent controller {pull}8011[#8011]
 * Add old readiness probe related ENVs  {pull}8009[#8009] (issue: {issue}8006[#8006])
 
 [[docs-2.15.0]]
