@@ -35,12 +35,12 @@ main() {
     BK_TOKEN=${BK_TOKEN:-$(local_buildkite_token)}
     COMMIT=${COMMIT:-$(current_commit)}
     BRANCH=${BRANCH:-$(current_branch)}
-    TEST="${TEST:-$@}"
+    TEST_ARGS="${TEST_ARGS:-$@}"
 
-    [[ "$BK_TOKEN" == "" ]] && echo "Error: BK_TOKEN is required"  && help 1
-    [[ "$COMMIT"   == "" ]] && echo "Error: COMMIT is required"    && help 1
-    [[ "$BRANCH"   == "" ]] && echo "Error: BRANCH is required"    && help 1
-    [[ "$TEST"     == "" ]] && echo "Error: TEST_ARGS is required" && help 1
+    [[ "$BK_TOKEN"  == "" ]] && echo "Error: BK_TOKEN is required"  && help 1
+    [[ "$COMMIT"    == "" ]] && echo "Error: COMMIT is required"    && help 1
+    [[ "$BRANCH"    == "" ]] && echo "Error: BRANCH is required"    && help 1
+    [[ "$TEST_ARGS" == "" ]] && echo "Error: TEST_ARGS is required" && help 1
 
     pipeline=cloud-on-k8s-operator
 
@@ -50,10 +50,10 @@ main() {
     {
         "commit": "'"$COMMIT"'",
         "branch": "'"$BRANCH"'",
-        "message": "🧪 branch '"$BRANCH"' > test '"$TEST"'",
+        "message": "🧪 branch '"$BRANCH"' > test '"$TEST_ARGS"'",
         "env": {
-            "GITHUB_PR_TRIGGER_COMMENT": "buildkite test this '"$TEST"'",
-            "GITHUB_PR_COMMENT_VAR_ARGS": "'"$TEST"'"
+            "GITHUB_PR_TRIGGER_COMMENT": "buildkite test this '"$TEST_ARGS"'",
+            "GITHUB_PR_COMMENT_VAR_ARGS": "'"$TEST_ARGS"'"
         }
     }'
 }
