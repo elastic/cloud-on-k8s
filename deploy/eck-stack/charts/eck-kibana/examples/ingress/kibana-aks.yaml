@@ -5,14 +5,13 @@
 #
 fullnameOverride: kibana
 
-spec:
-  # Reference to ECK-managed Elasticsearch instance, ideally from {{ "elasticsearch.fullname" }}
-  #
-  elasticsearchRef:
-    name: elasticsearch
-  config:
-    server:
-      publicBaseUrl: "https://kibana.company.dev"
+# Reference to ECK-managed Elasticsearch instance, ideally from {{ "elasticsearch.fullname" }}
+#
+elasticsearchRef:
+  name: elasticsearch
+config:
+  server:
+    publicBaseUrl: "https://kibana.company.dev"
 
 ingress:
   enabled: true

@@ -20,6 +20,10 @@
 #
 version: 8.17.0-SNAPSHOT
 
+# Kibana Docker image to deploy
+#
+# image:
+
 # Labels that will be applied to Kibana.
 #
 labels: {}
@@ -28,25 +32,69 @@ labels: {}
 #
 annotations: {}
 
-spec:
-  # Count of Kibana replicas to create.
-  #
-  count: 1
+# Count of Kibana replicas to create.
+#
+count: 1
 
-  # Reference to ECK-managed Elasticsearch resource.
+# Reference to ECK-managed Elasticsearch resource.
+#
+elasticsearchRef: {}
+  # name: eck-elasticsearch
+  # Optional namespace reference to Elasticsearch resource.
+  # If not specified, then the namespace of the Kibana resource
+  # will be assumed.
   #
-  elasticsearchRef:
-    name: eck-elasticsearch
-    # Optional namespace reference to Elasticsearch resource.
-    # If not specified, then the namespace of the Kibana resource
-    # will be assumed.
-    #
-    # namespace: default
+  # namespace: default
+
+# Reference to an EnterpriseSearch running in the same Kubernetes cluster
+#
+# enterpriseSearchRef:
+
+# the Kibana configuration
+#
+config: null
+
+# the HTTP layer configuration for Kibana.
+#
+# http:
+
+# PodTemplate provides customisation options (labels, annotations, affinity rules,
+# resource requests, and so on) for the Kibana pods
+#
+# podTemplate:
+
+# Number of revisions to retain to allow rollback in the underlying deployment.
+# By default, if not set, Kubernetes sets 10.
+#
+# revisionHistoryLimit: 2
+
+# Control Kibana Secure Settings.
+# ref: https://www.elastic.co/guide/en/cloud-on-k8s/current/k8s-kibana-secure-settings.html
+#
+secureSettings: []
+
+# Used to check access from the current resource to a resource (for ex. Elasticsearch) in a different namespace.
+# Can only be used if ECK is enforcing RBAC on references.
+#
+# serviceAccountName: ""
+
+# Settings for configuring stack monitoring.
+# ref: https://www.elastic.co/guide/en/cloud-on-k8s/current/k8s-stack-monitoring.html
+#
+monitoring: {}
+  # metrics:
+  #   elasticsearchRefs:
+  #   - name: monitoring
+  #     namespace: observability
+  # logs:
+  #   elasticsearchRefs:
+  #   - name: monitoring
+  #     namespace: observability
 
 # Settings for controlling Kibana ingress. Enabling ingress will expose your Kibana instance
 # to the public internet, and as such is disabled by default.
 #
-# *NOTE* when configuring Kibana Ingress, ensure that `spec.config.server.publicBaseUrl` setting for
+# *NOTE* when configuring Kibana Ingress, ensure that `config.server.publicBaseUrl` setting for
 # Kibana is also set, as it is required when exposing Kibana behind a load balancer/ingress.
 # Also of note are `server.basePath`, and `server.rewriteBasePath` settings in the Kibana configuration.
 #
@@ -62,7 +110,7 @@ ingress:
   enabled: false
 
   # Annotations that will be applied to the Ingress resource. Note that some ingress controllers are controlled via annotations.
-  # 
+  #
   # Nginx Annotations: https://kubernetes.github.io/ingress-nginx/user-guide/nginx-configuration/annotations/
   #
   # Common annotations:
