@@ -127,57 +127,71 @@ clusterRoleBinding:
 clusterRole:
   name: elastic-agent
   rules:
-  - apiGroups: [""]
-    resources:
-    - pods
-    - nodes
-    - namespaces
-    - events
-    - services
-    - configmaps
-    verbs:
-    - get
-    - watch
-    - list
-  - apiGroups: ["coordination.k8s.io"]
-    resources:
-    - leases
-    verbs:
-    - get
-    - create
-    - update
-  - nonResourceURLs:
-    - "/metrics"
-    verbs:
-    - get
-  - apiGroups: ["extensions"]
-    resources:
-      - replicasets
-    verbs: 
-    - "get"
-    - "list"
-    - "watch"
-  - apiGroups:
-    - "apps"
-    resources:
-    - statefulsets
-    - deployments
+ - apiGroups: [""]
+  resources:
+  - pods
+  - nodes
+  - namespaces
+  - events
+  - services
+  - configmaps
+  verbs:
+  - get
+  - watch
+  - list
+- apiGroups: ["coordination.k8s.io"]
+  resources:
+  - leases
+  verbs:
+  - get
+  - create
+  - update
+- nonResourceURLs:
+  - "/metrics"
+  verbs:
+  - get
+- apiGroups: ["extensions"]
+  resources:
     - replicasets
-    verbs:
-    - "get"
-    - "list"
-    - "watch"
-  - apiGroups:
-    - ""
-    resources:
-    - nodes/stats
-    verbs:
-    - get
-  - apiGroups:
-    - "batch"
-    resources:
-    - jobs
-    verbs:
-    - "get"
-    - "list"
-    - "watch"
+  verbs: 
+  - "get"
+  - "list"
+  - "watch"
+- apiGroups:
+  - "apps"
+  resources:
+  - statefulsets
+  - deployments
+  - replicasets
+  - daemonsets
+  verbs:
+  - "get"
+  - "list"
+  - "watch"
+- apiGroups:
+  - ""
+  resources:
+  - nodes/stats
+  verbs:
+  - get
+- nonResourceURLs:
+  - "/metrics"
+  verbs:
+  - get
+- apiGroups:
+  - "batch"
+  resources:
+  - jobs
+  - cronjobs
+  verbs:
+  - "get"
+  - "list"
+  - "watch"
+- apiGroups:  
+  - "storage.k8s.io" 
+  resources:
+  - storageclasses
+  verbs:  
+  - "get"
+  - "list"
+  - "watch" 
