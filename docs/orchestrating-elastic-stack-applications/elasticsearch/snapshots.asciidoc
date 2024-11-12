@@ -474,7 +474,7 @@ spec:
         volumes:
         - name: custom-truststore
           secret:
-            secretName: additional-certs
+            secretName: custom-truststore
         containers:
         - name: elasticsearch
           volumeMounts:
