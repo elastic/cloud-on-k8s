@@ -45,7 +45,7 @@ spec:
 
 NOTE: Enabling the remote cluster server triggers a restart of the {es} cluster.
 
-Once the remote cluster server is enabled and started on the remote cluster you can configure the Elasticsearch reference on the local cluster to include the desired permissions for cross-cluster search and cross-cluster replication.
+Once the remote cluster server is enabled and started on the remote cluster you can configure the Elasticsearch reference on the local cluster to include the desired permissions for cross-cluster search, and cross-cluster replication.
 
 Permissions have to be included under the `apiKey` field. The API model of the Elasticsearch resource is compatible with the link:https://www.elastic.co/guide/en/elasticsearch/reference/current/security-api-create-cross-cluster-api-key.html#security-api-create-cross-cluster-api-key-request-body[{es} API key API] model. Fine grained permissions can be therefore set in both `search` and `replication` fields:
 
@@ -76,7 +76,7 @@ spec:
   version: {version}
 ----
 
-<1> This requires the sample data available at https://kibana_url/app/home#/tutorial_directory/sampleData
+<1> This requires the sample data: https://www.elastic.co/guide/en/kibana/current/get-started.html#gs-get-data-into-kibana
 
 You can find a complete example in the link:{eck_github}/tree/{eck_release_branch}/config/recipes/remoteclusters[recipes directory].
 
