@@ -17,36 +17,11 @@ When using remote cluster connections with ECK, the setup process depends on whe
 
 NOTE: The remote clusters feature requires a valid Enterprise license or Enterprise trial license. Check <<{p}-licensing,the license documentation>> for more details about managing licenses.
 
-=== Security Models
-
 To create a remote cluster connection to another Elasticsearch cluster deployed within the same Kubernetes cluster, specify the `remoteClusters` attribute in your Elasticsearch spec.
 
+=== Security Models
+
 ECK supports two different security models: the API key based security model, and the certificate security model. These 2 security models are described in the link:https://www.elastic.co/guide/en/elasticsearch/reference/current/remote-clusters.html#remote-clusters-security-models[Remote clusters] section of the {es} documentation.
-
-=== Using the certificate security model
-
-The following example describes how to configure `cluster-two` as a remote cluster in `cluster-one` using the certificate security model:
-
-[source,yaml,subs="+attributes"]
-----
-apiVersion: elasticsearch.k8s.elastic.co/{eck_crd_version}
-kind: Elasticsearch
-metadata:
-  name: cluster-one
-  namespace: ns-one
-spec:
-  nodeSets:
-  - count: 3
-    name: default
-  remoteClusters:
-  - name: cluster-two
-    elasticsearchRef:
-      name: cluster-two
-      namespace: ns-two <1>
-  version: {version}
-----
-
-<1> The namespace declaration can be omitted if both clusters reside in the same namespace.
 
 === Using the API key security model
 
@@ -104,6 +79,31 @@ spec:
 <1> This requires the sample data available at https://kibana_url/app/home#/tutorial_directory/sampleData
 
 You can find a complete example in the link:{eck_github}/tree/{eck_release_branch}/config/recipes/remoteclusters[recipes directory].
+
+=== Using the certificate security model
+
+The following example describes how to configure `cluster-two` as a remote cluster in `cluster-one` using the certificate security model:
+
+[source,yaml,subs="+attributes"]
+----
+apiVersion: elasticsearch.k8s.elastic.co/{eck_crd_version}
+kind: Elasticsearch
+metadata:
+  name: cluster-one
+  namespace: ns-one
+spec:
+  nodeSets:
+  - count: 3
+    name: default
+  remoteClusters:
+  - name: cluster-two
+    elasticsearchRef:
+      name: cluster-two
+      namespace: ns-two <1>
+  version: {version}
+----
+
+<1> The namespace declaration can be omitted if both clusters reside in the same namespace.
 
 [id="{p}-remote-clusters-connect-external"]
 == Connect from an Elasticsearch cluster running outside the Kubernetes cluster
