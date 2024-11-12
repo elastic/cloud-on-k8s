@@ -1,4 +1,4 @@
-# This sample sets up an Elasticsearch cluster and an Enterprise Search instance preconfigured for that cluster
+# This sample sets up an Elasticsearch cluster, a Kibana server and an Enterprise Search instance preconfigured for that cluster
 apiVersion: elasticsearch.k8s.elastic.co/v1
 kind: Elasticsearch
 metadata:
