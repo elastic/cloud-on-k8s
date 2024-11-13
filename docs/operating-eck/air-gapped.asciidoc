@@ -73,6 +73,6 @@ For example, if your private registry is `my.registry` and all Elastic images ar
 [id="{p}-eck-diag-air-gapped"]
 == ECK Diagnostics in air-gapped environments
 
-The <<{p}-run-eck-diagnostics,eck-diagnostics tool>> optionally runs diagnostics for Elastic Stack applications in a separate container that is deployed into the Kubernetes cluster.
+The <<{p}-take-eck-dump,eck-diagnostics tool>> optionally runs diagnostics for Elastic Stack applications in a separate container that is deployed into the Kubernetes cluster.
 
 In air-gapped environments with no access to the `docker.elastic.co` registry, you should copy the latest support-diagnostics container image to your internal image registry and then run the tool with the additional flag `--diagnostic-image <custom-support-diagnostics-image-name>`. To find out which support diagnostics container image matches your version of eck-diagnostics run the tool once without arguments and it will print the default image in use.
