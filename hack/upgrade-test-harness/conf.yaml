@@ -1,7 +1,7 @@
 testParams:
   - name: v191
     operatorVersion: 1.9.1
-    stackVersion: 7.17.8
+    stackVersion: 7.17.25
   - name: v200
     operatorVersion: 2.0.0
     stackVersion: 8.0.1
@@ -40,13 +40,13 @@ testParams:
     stackVersion: 8.12.2
   - name: v2121
     operatorVersion: 2.12.1
-    stackVersion: 8.13.2
+    stackVersion: 8.13.4
   - name: v2130
     operatorVersion: 2.13.0
     stackVersion: 8.14.3
   - name: v2140
     operatorVersion: 2.14.0
-    stackVersion: 8.15.0
+    stackVersion: 8.15.4
   - name: v2150
     operatorVersion: 2.15.0
     stackVersion: 8.16.0
