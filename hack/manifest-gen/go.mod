@@ -2,8 +2,6 @@ module github.com/elastic/cloud-on-k8s/v2/hack/manifest-gen
 
 go 1.22.7
 
-toolchain go1.23.2
-
 require (
 	github.com/spf13/cobra v1.8.1
 	helm.sh/helm/v3 v3.16.2
