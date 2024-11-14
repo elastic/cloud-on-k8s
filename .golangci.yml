@@ -64,6 +64,7 @@ linters-settings:
         disabled: false
       - name: redefines-builtin-id
         disabled: false
+        exclude: ["min", "max"]
       - name: superfluous-else
         disabled: false
       - name: time-naming
