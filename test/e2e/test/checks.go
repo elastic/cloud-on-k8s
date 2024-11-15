@@ -41,10 +41,10 @@ func (e ExpectedSecret) MatchesActualSecret(k *K8sClient, namespace string) erro
 	}
 
 	// have the expected keys
-	min := len(e.Keys)
-	max := min + len(e.OptionalKeys)
-	if len(s.Data) < min || max < len(s.Data) {
-		return fmt.Errorf("expected between %d and %d keys in %s, got %d", min, max, e.Name, len(s.Data))
+	minExpectedKeys := len(e.Keys)
+	maxExpectedKeys := minExpectedKeys + len(e.OptionalKeys)
+	if len(s.Data) < minExpectedKeys || maxExpectedKeys < len(s.Data) {
+		return fmt.Errorf("expected between %d and %d keys in %s, got %d", minExpectedKeys, maxExpectedKeys, e.Name, len(s.Data))
 	}
 	for _, k := range e.Keys {
 		if _, exists := s.Data[k]; !exists {

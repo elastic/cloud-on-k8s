@@ -73,9 +73,9 @@ func getResourceValue(
 	totalRequired *client.AutoscalingCapacity, // tier required capacity as returned by the Elasticsearch API, considered as optional
 	quantityRange v1alpha1.QuantityRange, // as expressed by the user
 ) resource.Quantity {
-	max := quantityRange.Max.Value()
+	maxCapacity := quantityRange.Max.Value()
 	// Surface the situation where a resource is exhausted.
-	if nodeRequired.Value() > max {
+	if nodeRequired.Value() > maxCapacity {
 		// Elasticsearch requested more capacity per node than allowed by the user
 		err := fmt.Errorf("%s required per node is greater than the maximum one", resourceType)
 		log.Error(
@@ -83,14 +83,14 @@ func getResourceValue(
 			"scope", "node",
 			"policy", autoscalingSpec.Name,
 			"required_"+resourceType, nodeRequired,
-			"max_allowed_"+resourceType, max,
+			"max_allowed_"+resourceType, maxCapacity,
 		)
 		// Also update the autoscaling status accordingly
 		statusBuilder.
 			ForPolicy(autoscalingSpec.Name).
 			RecordEvent(
 				v1alpha1.VerticalScalingLimitReached,
-				fmt.Sprintf("%s required per node, %d, is greater than the maximum allowed: %d", resourceType, nodeRequired.Value(), max),
+				fmt.Sprintf("%s required per node, %d, is greater than the maximum allowed: %d", resourceType, nodeRequired.Value(), maxCapacity),
 			)
 	}
 
@@ -118,8 +118,8 @@ func getResourceValue(
 
 	// Resource has been rounded up or scaled up to meet the tier requirements. We need to check that those operations
 	// do not result in a resource quantity which is greater than the max. limit set by the user.
-	if nodeResource > max {
-		nodeResource = max
+	if nodeResource > maxCapacity {
+		nodeResource = maxCapacity
 	}
 
 	return v1alpha1.ResourceToQuantity(nodeResource)
@@ -192,11 +192,11 @@ func maxResource(a, b resource.Quantity) resource.Quantity {
 }
 
 func max64(x int64, others ...int64) int64 {
-	max := x
+	maximum := x
 	for _, other := range others {
-		if other > max {
-			max = other
+		if other > maximum {
+			maximum = other
 		}
 	}
-	return max
+	return maximum
 }
