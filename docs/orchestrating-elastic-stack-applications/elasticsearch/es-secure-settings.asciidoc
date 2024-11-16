@@ -48,7 +48,7 @@ stringData:
     }
 ----
 
-TIP: Note that by default https://kubernetes.io/docs/concepts/configuration/secret/[Kubernetes secrets] are expecting the value to be base64 encoded unless under a `stringData` field. In the previous example,  `RWxhc3RpYyBDbG91ZCBvbiBLOHMgKEVDSykK` base64 decodes to `Elastic Cloud on K8s (ECK)`.
+TIP: Note that by default https://kubernetes.io/docs/concepts/configuration/secret/[Kubernetes secrets] are expecting the value to be base64 encoded unless under a `stringData` field.
 
 == Projection of secret keys to specific paths
 You can export a subset of secret keys and also project keys to specific paths using the `entries`, `key` and `path` fields:
