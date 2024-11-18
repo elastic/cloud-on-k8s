@@ -12,6 +12,10 @@ metadata:
     {{- end }}
 spec:
   version: {{ required "A Kibana version is required" .Values.version }}
+  {{- /* 
+    The following templates with 'or' are to allow both .spec.field and .field to be set for backwards 
+    compatibility purposes. See https://github.com/elastic/cloud-on-k8s/pull/8192 for details.
+  */ -}}
   {{- with or ((.Values.spec).image) (.Values.image) }}
   image: {{ . }}
   {{- end }}
