@@ -524,49 +524,49 @@ func NewAutoscalingSpecBuilder(name string) *AutoscalingSpecBuilder {
 	return &AutoscalingSpecBuilder{name: name}
 }
 
-func (asb *AutoscalingSpecBuilder) WithNodeCounts(min, max int) *AutoscalingSpecBuilder {
-	asb.nodeCountMin = int32(min)
-	asb.nodeCountMax = int32(max)
+func (asb *AutoscalingSpecBuilder) WithNodeCounts(minCount, maxCount int) *AutoscalingSpecBuilder {
+	asb.nodeCountMin = int32(minCount)
+	asb.nodeCountMax = int32(maxCount)
 	return asb
 }
 
-func (asb *AutoscalingSpecBuilder) WithMemory(min, max string) *AutoscalingSpecBuilder {
+func (asb *AutoscalingSpecBuilder) WithMemory(minMem, maxMem string) *AutoscalingSpecBuilder {
 	asb.memory = &v1alpha1.QuantityRange{
-		Min: resource.MustParse(min),
-		Max: resource.MustParse(max),
+		Min: resource.MustParse(minMem),
+		Max: resource.MustParse(maxMem),
 	}
 	return asb
 }
 
-func (asb *AutoscalingSpecBuilder) WithMemoryAndRatio(min, max string, ratio resource.Quantity) *AutoscalingSpecBuilder {
+func (asb *AutoscalingSpecBuilder) WithMemoryAndRatio(minMem, maxMem string, ratio resource.Quantity) *AutoscalingSpecBuilder {
 	asb.memory = &v1alpha1.QuantityRange{
-		Min:                   resource.MustParse(min),
-		Max:                   resource.MustParse(max),
+		Min:                   resource.MustParse(minMem),
+		Max:                   resource.MustParse(maxMem),
 		RequestsToLimitsRatio: &ratio,
 	}
 	return asb
 }
 
-func (asb *AutoscalingSpecBuilder) WithStorage(min, max string) *AutoscalingSpecBuilder {
+func (asb *AutoscalingSpecBuilder) WithStorage(minStorage, maxStorage string) *AutoscalingSpecBuilder {
 	asb.storage = &v1alpha1.QuantityRange{
-		Min: resource.MustParse(min),
-		Max: resource.MustParse(max),
+		Min: resource.MustParse(minStorage),
+		Max: resource.MustParse(maxStorage),
 	}
 	return asb
 }
 
-func (asb *AutoscalingSpecBuilder) WithCPU(min, max string) *AutoscalingSpecBuilder {
+func (asb *AutoscalingSpecBuilder) WithCPU(minCPU, maxCPU string) *AutoscalingSpecBuilder {
 	asb.cpu = &v1alpha1.QuantityRange{
-		Min: resource.MustParse(min),
-		Max: resource.MustParse(max),
+		Min: resource.MustParse(minCPU),
+		Max: resource.MustParse(maxCPU),
 	}
 	return asb
 }
 
-func (asb *AutoscalingSpecBuilder) WithCPUAndRatio(min, max string, ratio resource.Quantity) *AutoscalingSpecBuilder {
+func (asb *AutoscalingSpecBuilder) WithCPUAndRatio(minCPU, maxCPU string, ratio resource.Quantity) *AutoscalingSpecBuilder {
 	asb.cpu = &v1alpha1.QuantityRange{
-		Min:                   resource.MustParse(min),
-		Max:                   resource.MustParse(max),
+		Min:                   resource.MustParse(minCPU),
+		Max:                   resource.MustParse(maxCPU),
 		RequestsToLimitsRatio: &ratio,
 	}
 	return asb

@@ -1,5 +1,5 @@
 # Build the operator binary
-FROM docker.elastic.co/wolfi/go:1.23.2@sha256:b1f616bb7d0ab68184389e25c702e9a53118ac7c62588511ee6ed9e095f0a847 as builder
+FROM docker.elastic.co/wolfi/go:1.23.3@sha256:1c3103d33ae94f5d3b7514a40ac4a804d2b3b8cab6190293abc2d262267410a3 as builder
 
 ARG VERSION
 ARG SHA1
@@ -27,7 +27,7 @@ RUN --mount=type=cache,mode=0755,target=/go/pkg/mod \
 
 # ---------------------------------------------
 # Copy the operator binary into a lighter image
-FROM docker.elastic.co/wolfi/static:latest@sha256:1c785f2145250a80d2d71d2b026276f3358ef3543448500c72206d37ec4ece37
+FROM docker.elastic.co/wolfi/static:latest@sha256:561b669256bd2b5a8afed34614e8cb1b98e4e2f66d42ac7a8d80d317d8c8688a
 
 ARG VERSION
 
