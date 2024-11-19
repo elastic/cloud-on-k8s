@@ -143,6 +143,7 @@ spec:
 | Ingress (incoming) a|
 
 * TCP port {es_http_port} from the operator and other pods in the namespace.
+* TCP port {es_transport_port} from other {es} nodes in the namespace (transport port).
 
 |===
 
