@@ -3980,11 +3980,11 @@ limitations under the License.
 
 --------------------------------------------------------------------------------
 Module  : k8s.io/api
-Version : v0.31.1
-Time    : 2024-09-12T03:41:20Z
+Version : v0.31.2
+Time    : 2024-10-23T13:57:11Z
 Licence : Apache-2.0
 
-Contents of probable licence file $GOMODCACHE/k8s.io/api@v0.31.1/LICENSE:
+Contents of probable licence file $GOMODCACHE/k8s.io/api@v0.31.2/LICENSE:
 
 
                                  Apache License
@@ -4192,11 +4192,11 @@ Contents of probable licence file $GOMODCACHE/k8s.io/api@v0.31.1/LICENSE:
 
 --------------------------------------------------------------------------------
 Module  : k8s.io/apimachinery
-Version : v0.31.1
+Version : v0.31.2
 Time    : 2024-07-19T19:04:41Z
 Licence : Apache-2.0
 
-Contents of probable licence file $GOMODCACHE/k8s.io/apimachinery@v0.31.1/LICENSE:
+Contents of probable licence file $GOMODCACHE/k8s.io/apimachinery@v0.31.2/LICENSE:
 
 
                                  Apache License
@@ -4404,11 +4404,11 @@ Contents of probable licence file $GOMODCACHE/k8s.io/apimachinery@v0.31.1/LICENS
 
 --------------------------------------------------------------------------------
 Module  : k8s.io/client-go
-Version : v0.31.1
-Time    : 2024-09-12T03:58:37Z
+Version : v0.31.2
+Time    : 2024-10-23T14:04:49Z
 Licence : Apache-2.0
 
-Contents of probable licence file $GOMODCACHE/k8s.io/client-go@v0.31.1/LICENSE:
+Contents of probable licence file $GOMODCACHE/k8s.io/client-go@v0.31.2/LICENSE:
 
 
                                  Apache License
@@ -5029,11 +5029,11 @@ Contents of probable licence file $GOMODCACHE/k8s.io/utils@v0.0.0-20240711033017
 
 --------------------------------------------------------------------------------
 Module  : sigs.k8s.io/controller-runtime
-Version : v0.19.0
-Time    : 2024-08-13T18:30:42Z
+Version : v0.19.1
+Time    : 2024-10-19T15:25:04Z
 Licence : Apache-2.0
 
-Contents of probable licence file $GOMODCACHE/sigs.k8s.io/controller-runtime@v0.19.0/LICENSE:
+Contents of probable licence file $GOMODCACHE/sigs.k8s.io/controller-runtime@v0.19.1/LICENSE:
 
                                  Apache License
                            Version 2.0, January 2004
@@ -5240,11 +5240,11 @@ Contents of probable licence file $GOMODCACHE/sigs.k8s.io/controller-runtime@v0.
 
 --------------------------------------------------------------------------------
 Module  : sigs.k8s.io/controller-tools
-Version : v0.16.4
-Time    : 2024-10-07T07:20:06Z
+Version : v0.16.5
+Time    : 2024-10-28T07:04:54Z
 Licence : Apache-2.0
 
-Contents of probable licence file $GOMODCACHE/sigs.k8s.io/controller-tools@v0.16.4/LICENSE:
+Contents of probable licence file $GOMODCACHE/sigs.k8s.io/controller-tools@v0.16.5/LICENSE:
 
                                  Apache License
                            Version 2.0, January 2004
@@ -7877,11 +7877,11 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 --------------------------------------------------------------------------------
 Module  : github.com/fatih/color
-Version : v1.17.0
-Time    : 2024-04-08T12:08:58Z
+Version : v1.18.0
+Time    : 2024-10-03T07:06:28Z
 Licence : MIT
 
-Contents of probable licence file $GOMODCACHE/github.com/fatih/color@v1.17.0/LICENSE.md:
+Contents of probable licence file $GOMODCACHE/github.com/fatih/color@v1.18.0/LICENSE.md:
 
 The MIT License (MIT)
 
@@ -19502,11 +19502,11 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 --------------------------------------------------------------------------------
 Module  : k8s.io/apiextensions-apiserver
-Version : v0.31.1
-Time    : 2024-09-12T04:57:46Z
+Version : v0.31.2
+Time    : 2024-10-23T14:43:01Z
 Licence : Apache-2.0
 
-Contents of probable licence file $GOMODCACHE/k8s.io/apiextensions-apiserver@v0.31.1/LICENSE:
+Contents of probable licence file $GOMODCACHE/k8s.io/apiextensions-apiserver@v0.31.2/LICENSE:
 
 
                                  Apache License
