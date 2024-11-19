@@ -39,7 +39,7 @@ Things to consider before you start:
 
 To deploy the ECK operator:
 
-. Install link:https://kubernetes.io/docs/concepts/extend-kubernetes/api-extension/custom-resources/[custom resource definitions] via link:https://kubernetes.io/docs/reference/kubectl/generated/kubectl_create/[`create`]:
+. Install link:https://kubernetes.io/docs/concepts/extend-kubernetes/api-extension/custom-resources/[custom resource definitions] with link:https://kubernetes.io/docs/reference/kubectl/generated/kubectl_create/[`create`]:
 +
 [source,sh,subs="attributes"]
 ----
@@ -116,7 +116,7 @@ NOTE: If your Kubernetes cluster does not have any Kubernetes nodes with at leas
 
 NOTE: The cluster that you deployed in this quickstart guide only allocates a persistent volume of 1GiB for storage using the default link:https://kubernetes.io/docs/concepts/storage/storage-classes/[storage class] defined for the Kubernetes cluster. You will most likely want to have more control over this for production workloads. Refer to <<{p}-volume-claim-templates>> for more information.
 
-For a full description of each `CustomResourceDefinition` (CRD), refer to the <<{p}-api-reference>> or view the CRD files in the link:{eck_github}/tree/{eck_release_branch}/config/crds[project repository]. You can also retrieve information about a CRD from the cluster. For example, describe the {es} CRD specification via link:https://kubernetes.io/docs/reference/kubectl/generated/kubectl_describe/[`describe`]:
+For a full description of each `CustomResourceDefinition` (CRD), refer to the <<{p}-api-reference>> or view the CRD files in the link:{eck_github}/tree/{eck_release_branch}/config/crds[project repository]. You can also retrieve information about a CRD from the cluster. For example, describe the {es} CRD specification with link:https://kubernetes.io/docs/reference/kubectl/generated/kubectl_describe/[`describe`]:
 
 [source,sh]
 ----
@@ -127,7 +127,7 @@ kubectl describe crd elasticsearch
 [id="{p}-elasticsearch-monitor-cluster-health"]
 === Monitor cluster health and creation progress
 
-Get an overview of the current {es} clusters in the Kubernetes cluster via link:https://kubernetes.io/docs/reference/kubectl/generated/kubectl_get/[`get`], including health, version and number of nodes:
+Get an overview of the current {es} clusters in the Kubernetes cluster with link:https://kubernetes.io/docs/reference/kubectl/generated/kubectl_get/[`get`], including health, version and number of nodes:
 
 [source,sh]
 ----
@@ -142,7 +142,7 @@ NAME          HEALTH    NODES     VERSION   PHASE         AGE
 quickstart              1         {version}               1s
 ----
 
-While the {es} pod is in the process of being started it will report `Pending` as seen via link:https://kubernetes.io/docs/reference/kubectl/generated/kubectl_get/[`get`]:
+While the {es} pod is in the process of being started it will report `Pending` as checked with link:https://kubernetes.io/docs/reference/kubectl/generated/kubectl_get/[`get`]:
 
 [source,sh]
 ----
@@ -175,7 +175,7 @@ quickstart    green     1         {version}     Ready         1m
 [float]
 === Request {es} access
 
-A `ClusterIP` Service is automatically created for your cluster as seen via link:https://kubernetes.io/docs/reference/kubectl/generated/kubectl_get/[`get`]:
+A `ClusterIP` Service is automatically created for your cluster as checked with link:https://kubernetes.io/docs/reference/kubectl/generated/kubectl_get/[`get`]:
 
 [source,sh]
 ----
@@ -201,7 +201,7 @@ By default, a user named `elastic` is created with the password stored inside a 
 PASSWORD=$(kubectl get secret quickstart-es-elastic-user -o go-template='{{.data.elastic | base64decode}}')
 ----
 
-. Request the link:{ref}/rest-api-root.html[{es} root API]. You can do so from inside the Kubernetes cluster or from your local workstation. For demonstration purposes, certificate verification is disabled using the `-k` curl flag; however, this is not recommended outside of testing purposes. See <<{p}-setting-up-your-own-certificate>> for more information.
+. Request the link:{ref}/rest-api-root.html[{es} root API]. You can do so from inside the Kubernetes cluster or from your local workstation. For demonstration purposes, certificate verification is disabled using the `-k` curl flag; however, this is not recommended outside of testing purposes. Refer to <<{p}-setting-up-your-own-certificate>> for more information.
 * From inside the Kubernetes cluster:
 +
 [source,sh]
@@ -249,7 +249,7 @@ EOF
 
 . Monitor {kib} health and creation progress.
 +
-Similar to {es}, you can retrieve details about {kib} instances via link:https://kubernetes.io/docs/reference/kubectl/generated/kubectl_get/[`get`]:
+Similar to {es}, you can retrieve details about {kib} instances with link:https://kubernetes.io/docs/reference/kubectl/generated/kubectl_get/[`get`]:
 +
 [source,sh]
 ----
@@ -290,21 +290,21 @@ Login as the `elastic` user. The password can be obtained with the following com
 kubectl get secret quickstart-es-elastic-user -o=jsonpath='{.data.elastic}' | base64 --decode; echo
 ----
 
-For a full description of each `CustomResourceDefinition` (CRD), refer to the <<{p}-api-reference>> or view the CRD files in the link:{eck_github}/tree/{eck_release_branch}/config/crds[project repository]. You can also retrieve information about a CRD from the instance. For example, describe the {kib} CRD specification via link:https://kubernetes.io/docs/reference/kubectl/generated/kubectl_describe/[`describe`]:
+For a full description of each `CustomResourceDefinition` (CRD), refer to the <<{p}-api-reference>> or view the CRD files in the link:{eck_github}/tree/{eck_release_branch}/config/crds[project repository]. You can also retrieve information about a CRD from the instance. For example, describe the {kib} CRD specification with link:https://kubernetes.io/docs/reference/kubectl/generated/kubectl_describe/[`describe`]:
 
 [source,sh]
 ----
 kubectl describe crd kibana
 ----
 
-This completes the quickstart of deploying an {kib} instance on top of <<{p}-deploy-eck,the ECK operator>> and <<{p}-deploy-elasticsearch,deployed {es} cluster>>. We recommend continuing to <<{p}-update-deployment,updating your deployment>>. For more {kib} configuration options, see <<{p}-kibana, Running {kib} on ECK>>.
+This completes the quickstart of deploying an {kib} instance on top of <<{p}-deploy-eck,the ECK operator>> and <<{p}-deploy-elasticsearch,deployed {es} cluster>>. We recommend continuing to <<{p}-update-deployment,updating your deployment>>. For more {kib} configuration options, refer to <<{p}-kibana, Running {kib} on ECK>>.
 
 [id="{p}-update-deployment"]
 == Update your deployment
 
 You can add and modify most elements of the original Kubernetes cluster specification provided that they translate to valid transformations of the underlying Kubernetes resources (for example <<{p}-volume-claim-templates, existing volume claims cannot be downsized>>). The ECK operator will attempt to apply your changes with minimal disruption to the existing cluster. You should ensure that the Kubernetes cluster has sufficient resources to accommodate the changes (extra storage space, sufficient memory and CPU resources to temporarily spin up new pods, and so on).
 
-For example, you can grow the cluster to three {es} nodes from the <<{p}-deploy-elasticsearch,deployed {es} cluster>> example by updating the `count` via link:https://kubernetes.io/docs/reference/kubectl/generated/kubectl_apply/[`apply`]:
+For example, you can grow the cluster to three {es} nodes from the <<{p}-deploy-elasticsearch,deployed {es} cluster>> example by updating the `count` with link:https://kubernetes.io/docs/reference/kubectl/generated/kubectl_apply/[`apply`]:
 
 [source,yaml,subs="attributes,+macros"]
 ----
@@ -323,6 +323,6 @@ spec:
 EOF
 ----
 
-ECK will automatically schedule the requested update. Changes can be monitored via the <<{p}-deploy-eck,ECK operator logs>>, link:https://kubernetes.io/docs/reference/kubernetes-api/cluster-resources/event-v1/[`events`], and applicable product's link:https://kubernetes.io/docs/reference/kubectl/generated/kubectl_logs/[pod `logs`]. These will either report successful application of changes or provide context for further troubleshooting. Kindly note, Kubernetes restricts some changes, for example see <<{p}-volume-claim-templates-update,Updating Volume Claims>>.
+ECK will automatically schedule the requested update. Changes can be monitored with the <<{p}-deploy-eck,ECK operator logs>>, link:https://kubernetes.io/docs/reference/kubernetes-api/cluster-resources/event-v1/[`events`], and applicable product's link:https://kubernetes.io/docs/reference/kubectl/generated/kubectl_logs/[pod `logs`]. These will either report successful application of changes or provide context for further troubleshooting. Kindly note, Kubernetes restricts some changes, for example refer to <<{p}-volume-claim-templates-update,Updating Volume Claims>>.
 
-This completes our quickstart guide for deploying an {es} cluster and {kib} instance via our ECK operator. We recommend continuing to <<{p}-orchestrating-elastic-stack-applications,Orchestrating Elastic Stack applications>> for more configuration options
+This completes our quickstart guide for deploying an {es} cluster and {kib} instance with our ECK operator. We recommend continuing to <<{p}-orchestrating-elastic-stack-applications,Orchestrating Elastic Stack applications>> for more configuration options
