@@ -9,9 +9,11 @@ endif::[]
 = Stack Monitoring
 
 You can enable link:https://www.elastic.co/guide/en/elasticsearch/reference/current/monitor-elasticsearch-cluster.html[Stack Monitoring]
-on Elasticsearch, Kibana, Beats and Logstash to collect and ship their metrics and logs to a dedicated monitoring cluster.
+on Elasticsearch, Kibana, Beats and Logstash to collect and ship their metrics and logs to a monitoring cluster. Although self-monitoring is possible, it is advised to use a link:https://www.elastic.co/guide/en/elasticsearch/reference/current/monitoring-overview.html[separate monitoring cluster]. 
 
 To enable Stack Monitoring, simply reference the monitoring Elasticsearch cluster in the `spec.monitoring` section of their specification.
+
+The following example shows how Elastic Stack components can be configured to send their monitoring data to a separate Elasticsearch cluster in the same Kubernetes cluster.
 
 [source,yaml,subs="attributes,callouts"]
 ----
@@ -25,12 +27,12 @@ spec:
   monitoring:
     metrics:
       elasticsearchRefs:
-      - name: monitoring
-        namespace: observability <1>
+      - name: monitoring <1>
+        namespace: observability <2>
     logs:
       elasticsearchRefs:
-      - name: monitoring
-        namespace: observability <1>
+      - name: monitoring <1>
+        namespace: observability <2>
   nodeSets:
   - name: default
     count: 1
@@ -46,16 +48,16 @@ spec:
   version: {version}
   elasticsearchRef:
     name: monitored-sample
-    namespace: production <1>
+    namespace: production
   monitoring:
     metrics:
       elasticsearchRefs:
       - name: monitoring
-        namespace: observability <1>
+        namespace: observability <2>
     logs:
       elasticsearchRefs:
       - name: monitoring
-        namespace: observability <1>
+        namespace: observability <2>
   count: 1
 ---
 apiVersion: beat.k8s.elastic.co/v1beta1
@@ -69,11 +71,11 @@ spec:
     metrics:
       elasticsearchRefs:
       - name: monitoring
-        namespace: observability <1>
+        namespace: observability <2>
     logs:
       elasticsearchRefs:
       - name: monitoring
-        namespace: observability <1>
+        namespace: observability <2>
 ---
 apiVersion: logstash.k8s.elastic.co/v1alpha1
 kind: Logstash
@@ -85,28 +87,20 @@ spec:
     metrics:
       elasticsearchRefs:
       - name: monitoring
-        namespace: observability <1>
+        namespace: observability <2>
     logs:
       elasticsearchRefs:
       - name: monitoring
-        namespace: observability <1>
+        namespace: observability <2>
 ----
 
-<1> The use of `namespace` is optional if the monitoring Elasticsearch cluster and the monitored Elastic Stack resource are running in the same namespace.
+<1> The same monitoring cluster is used for metrics and logs, but separate clusters could be used.
 
-NOTE: You can configure an Elasticsearch cluster to monitor itself.
-
-NOTE: If Stack Monitoring is configured for a Beat, but the corresponding Elasticsearch cluster is not monitored, the Kibana Stack Monitoring page will not show the Beats data.
+<2> The use of `namespace` is optional if the monitoring Elasticsearch cluster and the monitored Elastic Stack resource are running in the same namespace.
 
 NOTE: If Logs Stack Monitoring is configured for a Beat, and custom container arguments (`podTemplate.spec.containers[].args`) include `-e`, which enables logging to stderr and disables log file output, this argument will be removed from the Pod to allow the Filebeat sidecar to consume the Beat's log files.
 
-NOTE: Stack Monitoring for Logstash on ECK is only available for Logstash versions 8.7.0 and later.
-
-IMPORTANT: The monitoring cluster must be managed by ECK in the same Kubernetes cluster as the monitored one.
-
-You can send metrics and logs to two different Elasticsearch monitoring clusters.
-
-You can also enable Stack Monitoring on Elasticsearch only or on Kibana only. In the latter case, Kibana will not be available on the Stack Monitoring Kibana page (check link:https://www.elastic.co/guide/en/kibana/current/monitoring-data.html#monitoring-data[View monitoring data in Kibana]).
+You can also enable Stack Monitoring on a single Stack component only. In case Elasticsearch is not monitored, other Stack components will not be available on the Stack Monitoring Kibana page (check link:https://www.elastic.co/guide/en/kibana/current/monitoring-data.html#monitoring-data[View monitoring data in Kibana]).
 
 == Connect to an external monitoring Elasticsearch cluster
 
