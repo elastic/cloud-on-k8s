@@ -32,6 +32,15 @@ labels: {}
 #
 annotations: {}
 
+# ** Deprecation Notice **
+# The previous versions of this Helm Chart simply used the `spec` field here
+# and allowed the user to specify any fields below spec that were templated directly
+# into the final Kibana manifest. This is no long the preferred way to specify these
+# fields and each field that is supported underneath `spec` is now directly specified
+# in this values file. Currently both patterns are supported for backwards compatibility
+# but we plan to remove the `spec` field in the future.
+# spec: {}
+
 # Count of Kibana replicas to create.
 #
 count: 1
@@ -50,11 +59,12 @@ elasticsearchRef: {}
 #
 # enterpriseSearchRef:
 
-# the Kibana configuration
+# The Kibana configuration (kibana.yml)
+# ref: https://www.elastic.co/guide/en/kibana/current/settings.html
 #
 config: null
 
-# the HTTP layer configuration for Kibana.
+# The HTTP layer configuration for Kibana.
 #
 # http:
 
