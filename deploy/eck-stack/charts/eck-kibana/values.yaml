@@ -22,7 +22,7 @@ version: 8.17.0-SNAPSHOT
 
 # Kibana Docker image to deploy
 #
-# image:
+# image: docker.elastic.co/kibana/kibana:8.17.0-SNAPSHOT
 
 # Labels that will be applied to Kibana.
 #
