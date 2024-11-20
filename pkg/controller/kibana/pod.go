@@ -33,6 +33,10 @@ import (
 const (
 	DataVolumeName               = "kibana-data"
 	DataVolumeMountPath          = "/usr/share/kibana/data"
+	PluginsVolumeName            = "kibana-plugins"
+	PluginsVolumeMountPath       = "/usr/share/kibana/plugins"
+	TempVolumeName               = "temp-volume"
+	TempVolumeMountPath          = "/tmp"
 	KibanaBasePathEnvName        = "SERVER_BASEPATH"
 	KibanaRewriteBasePathEnvName = "SERVER_REWRITEBASEPATH"
 )
@@ -42,6 +46,14 @@ var (
 	// Kibana running in the main container.
 	// Since Kibana is stateless and the keystore is created on pod start, an EmptyDir is fine here.
 	DataVolume = volume.NewEmptyDirVolume(DataVolumeName, DataVolumeMountPath)
+
+	// PluginsVolume can be used to persist plugins after installation via an init container when
+	// the Kibana pod has readOnlyRootFilesystem set to true.
+	PluginsVolume = volume.NewEmptyDirVolume(PluginsVolumeName, PluginsVolumeMountPath)
+
+	// TempVolume can be used for some reporting features when the Kibana pod has
+	// readOnlyRootFilesystem set to true.
+	TempVolume = volume.NewEmptyDirVolume(TempVolumeName, TempVolumeMountPath)
 
 	DefaultMemoryLimits = resource.MustParse("1Gi")
 	DefaultResources    = corev1.ResourceRequirements{
@@ -114,6 +126,19 @@ func NewPodTemplateSpec(ctx context.Context, client k8sclient.Client, kb kbv1.Ki
 
 	for _, volume := range volumes {
 		builder.WithVolumes(volume.Volume()).WithVolumeMounts(volume.VolumeMount())
+	}
+
+	// Kibana 7.5.0 and above support running with a read-only root filesystem,
+	// but require a temporary volume to be mounted at /tmp for some reporting features
+	// and a plugin volume mounted at /usr/share/kibana/plugins.
+	// Limiting to 7.10.0 here as there was a bug in previous versions causing rebuilding
+	// of browser bundles to happen on plugin install, which would attempt a write to the
+	// root filesystem on restart.
+	if v.GTE(version.From(7, 10, 0)) {
+		builder.WithPodSecurityContext(defaultPodSecurityContext).
+			WithContainersSecurityContext(defaultSecurityContext).
+			WithVolumes(TempVolume.Volume()).WithVolumeMounts(TempVolume.VolumeMount()).
+			WithVolumes(PluginsVolume.Volume()).WithVolumeMounts(PluginsVolume.VolumeMount())
 	}
 
 	if keystore != nil {

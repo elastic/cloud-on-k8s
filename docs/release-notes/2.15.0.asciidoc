@@ -1,0 +1,63 @@
+:issue: https://github.com/elastic/cloud-on-k8s/issues/
+:pull: https://github.com/elastic/cloud-on-k8s/pull/
+
+[[release-notes-2.15.0]]
+== {n} version 2.15.0
+
+
+
+
+[[enhancement-2.15.0]]
+[float]
+=== Enhancements
+
+* Log when k8s resources are created/updated/deleted successfully {pull}8094[#8094]
+* More meaningful error in readiness script {pull}8091[#8091] (issue: {issue}8088[#8088])
+* Update Elastic Maps Server images to multi-arch {pull}8085[#8085] (issue: {issue}8034[#8034])
+* Add more metrics collected by stack monitoring {pull}8048[#8048] (issue: {issue}7277[#7277])
+* Move to Wolfi-based images {pull}7977[#7977]
+
+[[bug-2.15.0]]
+[float]
+=== Bug fixes
+
+* Ensure Elasticsearch client is closed after each reconciliation {pull}8175[#8175] (issue: {issue}8174[#8174])
+* Fix resetting service type to default when not specified {pull}8165[#8165] (issue: {issue}8161[#8161])
+* Fix Logstash templating issue in Helm chart {pull}8087[#8087] (issue: {issue}8000[#8000])
+* Move '$leading_path' variable definition in eck-operator Helm chart {pull}8075[#8075]
+* Support Kibana basepath in associations {pull}8053[#8053] (issue: {issue}7909[#7909])
+* Fix eck-stack Kibana examples in Helm chart {pull}8041[#8041]
+* Add watcher for StatefulSets in Elastic Agent controller {pull}8011[#8011]
+* Add old readiness probe related ENVs  {pull}8009[#8009] (issue: {issue}8006[#8006])
+
+[[docs-2.15.0]]
+[float]
+=== Documentation improvements
+
+* Clarify high availability recommendations in Elasticsearch orchestration docs {pull}8151[#8151]
+* Add note on how to access generated Kibana encryptionKeys {pull}8150[#8150] (issue: {issue}8129[#8129])
+* Move Troubleshooting section to top level of ToC {pull}8145[#8145] (issue: {issue}8131[#8131])
+* Document manual steps for reconfiguring role mappings after upgrading to ECK 8.15.3 {pull}8112[#8112]
+* Fix broken link to StatefulSet update strategies in documentation {pull}8084[#8084]
+* Emphasize the importance of having snapshot {pull}8051[#8051]
+
+[[nogroup-2.15.0]]
+[float]
+=== Misc
+
+* Bump github.com/docker/docker from 26.1.4+incompatible to 26.1.5+incompatible {pull}7996[#7996]
+* chore(deps): update registry.access.redhat.com/ubi9/ubi-minimal docker tag to v9.4-1227.1726694542 {pull}8055[#8055]
+* chore(deps): update wolfi/go to v1.23.2 and wolfi/static {pull}8083[#8083]
+* fix(deps): update k8s controller libraries to v0.31.1 {pull}8056[#8056]
+* fix(deps): update k8s controller tools {pull}8101[#8101]
+* fix(deps): update module cloud.google.com/go/storage to v1.44.0 {pull}8103[#8103]
+* fix(deps): update module dario.cat/mergo to v1.0.1 {pull}8013[#8013]
+* fix(deps): update module github.com/gkampitakis/go-snaps to v0.5.7 {pull}7986[#7986]
+* fix(deps): update module github.com/gobuffalo/flect to v1.0.3 {pull}8071[#8071]
+* fix(deps): update module github.com/google/go-containerregistry to v0.20.2 {pull}7998[#7998]
+* fix(deps): update module github.com/hashicorp/vault/api to v1.15.0 {pull}8104[#8104]
+* fix(deps): update module github.com/masterminds/sprig/v3 to v3.3.0 {pull}8105[#8105]
+* fix(deps): update module github.com/prometheus/client_golang to v1.20.4 {pull}8045[#8045]
+* fix(deps): update module github.com/prometheus/common to v0.60.0 {pull}8106[#8106]
+* fix(deps): update module go.elastic.co/apm/v2 to v2.6.2 {pull}8036[#8036]
+* fix(deps): update module go.uber.org/automaxprocs to v1.6.0 {pull}8107[#8107]

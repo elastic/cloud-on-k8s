@@ -129,7 +129,7 @@ eck-beats:
             - -e
             - -c
             - /etc/beat.yml
-            - -system.hostfs=/hostfs
+            - --system.hostfs=/hostfs
             name: metricbeat
             volumeMounts:
             - mountPath: /hostfs/sys/fs/cgroup

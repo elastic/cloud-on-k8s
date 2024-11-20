@@ -2,7 +2,7 @@ apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
   annotations:
-    controller-gen.kubebuilder.io/version: v0.16.4
+    controller-gen.kubebuilder.io/version: v0.16.5
     helm.sh/resource-policy: keep
   labels:
     app.kubernetes.io/instance: '{{ .Release.Name }}'
@@ -1134,7 +1134,7 @@ apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
   annotations:
-    controller-gen.kubebuilder.io/version: v0.16.4
+    controller-gen.kubebuilder.io/version: v0.16.5
     helm.sh/resource-policy: keep
   labels:
     app.kubernetes.io/instance: '{{ .Release.Name }}'
@@ -2368,7 +2368,7 @@ apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
   annotations:
-    controller-gen.kubebuilder.io/version: v0.16.4
+    controller-gen.kubebuilder.io/version: v0.16.5
     helm.sh/resource-policy: keep
   labels:
     app.kubernetes.io/instance: '{{ .Release.Name }}'
@@ -2849,7 +2849,7 @@ apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
   annotations:
-    controller-gen.kubebuilder.io/version: v0.16.4
+    controller-gen.kubebuilder.io/version: v0.16.5
     helm.sh/resource-policy: keep
   labels:
     app.kubernetes.io/instance: '{{ .Release.Name }}'
@@ -3453,7 +3453,7 @@ apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
   annotations:
-    controller-gen.kubebuilder.io/version: v0.16.4
+    controller-gen.kubebuilder.io/version: v0.16.5
     helm.sh/resource-policy: keep
   labels:
     app.kubernetes.io/instance: '{{ .Release.Name }}'
@@ -3811,7 +3811,7 @@ apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
   annotations:
-    controller-gen.kubebuilder.io/version: v0.16.4
+    controller-gen.kubebuilder.io/version: v0.16.5
     helm.sh/resource-policy: keep
   labels:
     app.kubernetes.io/instance: '{{ .Release.Name }}'
@@ -4836,6 +4836,14 @@ spec:
                         type: string
                     type: object
                 type: object
+              remoteClusterServer:
+                description: |-
+                  RemoteClusterServer specifies if the remote cluster server should be enabled.
+                  This must be enabled if this cluster is a remote cluster which is expected to be accessed using API key authentication.
+                properties:
+                  enabled:
+                    type: boolean
+                type: object
               remoteClusters:
                 description: RemoteClusters enables you to establish uni-directional
                   connections to a remote Elasticsearch cluster.
@@ -4843,6 +4851,55 @@ spec:
                   description: RemoteCluster declares a remote Elasticsearch cluster
                     connection.
                   properties:
+                    apiKey:
+                      description: 'APIKey can be used to enable remote cluster access
+                        using Cross-Cluster API keys: https://www.elastic.co/guide/en/elasticsearch/reference/current/security-api-create-cross-cluster-api-key.html'
+                      properties:
+                        access:
+                          description: Access is the name of the API Key. It is automatically
+                            generated if not set or empty.
+                          properties:
+                            replication:
+                              properties:
+                                names:
+                                  items:
+                                    type: string
+                                  type: array
+                              required:
+                              - names
+                              type: object
+                            search:
+                              properties:
+                                allow_restricted_indices:
+                                  type: boolean
+                                field_security:
+                                  properties:
+                                    except:
+                                      items:
+                                        type: string
+                                      type: array
+                                    grant:
+                                      items:
+                                        type: string
+                                      type: array
+                                  required:
+                                  - except
+                                  - grant
+                                  type: object
+                                names:
+                                  items:
+                                    type: string
+                                  type: array
+                                query:
+                                  type: object
+                                  x-kubernetes-preserve-unknown-fields: true
+                              required:
+                              - names
+                              type: object
+                          type: object
+                      required:
+                      - access
+                      type: object
                     elasticsearchRef:
                       description: ElasticsearchRef is a reference to an Elasticsearch
                         cluster running within the same k8s cluster.
@@ -6554,7 +6611,7 @@ apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
   annotations:
-    controller-gen.kubebuilder.io/version: v0.16.4
+    controller-gen.kubebuilder.io/version: v0.16.5
     helm.sh/resource-policy: keep
   labels:
     app.kubernetes.io/instance: '{{ .Release.Name }}'
@@ -7722,7 +7779,7 @@ apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
   annotations:
-    controller-gen.kubebuilder.io/version: v0.16.4
+    controller-gen.kubebuilder.io/version: v0.16.5
     helm.sh/resource-policy: keep
   labels:
     app.kubernetes.io/instance: '{{ .Release.Name }}'
@@ -9036,7 +9093,7 @@ apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
   annotations:
-    controller-gen.kubebuilder.io/version: v0.16.4
+    controller-gen.kubebuilder.io/version: v0.16.5
     helm.sh/resource-policy: keep
   labels:
     app.kubernetes.io/instance: '{{ .Release.Name }}'
@@ -10282,7 +10339,7 @@ apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
   annotations:
-    controller-gen.kubebuilder.io/version: v0.16.4
+    controller-gen.kubebuilder.io/version: v0.16.5
     helm.sh/resource-policy: keep
   labels:
     app.kubernetes.io/instance: '{{ .Release.Name }}'

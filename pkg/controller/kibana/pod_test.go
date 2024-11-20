@@ -140,7 +140,7 @@ func TestNewPodTemplateSpec(t *testing.T) {
 			},
 		},
 		{
-			name:     "with user-provided labels",
+			name:     "with user-provided labels, and 7.4.x shouldn't have security contexts set",
 			keystore: nil,
 			kb: kbv1.Kibana{
 				ObjectMeta: metav1.ObjectMeta{
@@ -165,6 +165,8 @@ func TestNewPodTemplateSpec(t *testing.T) {
 				labels["label2"] = "value2"
 				labels[kblabel.KibanaNameLabelName] = "overridden-kibana-name"
 				assert.Equal(t, labels, pod.Labels)
+				assert.Nil(t, pod.Spec.SecurityContext)
+				assert.Nil(t, GetKibanaContainer(pod.Spec).SecurityContext)
 			},
 		},
 		{
@@ -192,7 +194,7 @@ func TestNewPodTemplateSpec(t *testing.T) {
 			},
 		},
 		{
-			name: "with user-provided volumes and volume mounts",
+			name: "with user-provided volumes and 8.x should have volume mounts including /tmp and plugins volumes and security contexts",
 			kb: kbv1.Kibana{Spec: kbv1.KibanaSpec{
 				PodTemplate: corev1.PodTemplateSpec{
 					Spec: corev1.PodSpec{
@@ -217,9 +219,11 @@ func TestNewPodTemplateSpec(t *testing.T) {
 			}},
 			assertions: func(pod corev1.PodTemplateSpec) {
 				assert.Len(t, pod.Spec.InitContainers, 1)
-				assert.Len(t, pod.Spec.InitContainers[0].VolumeMounts, 3)
-				assert.Len(t, pod.Spec.Volumes, 1)
-				assert.Len(t, GetKibanaContainer(pod.Spec).VolumeMounts, 1)
+				assert.Len(t, pod.Spec.InitContainers[0].VolumeMounts, 5)
+				assert.Len(t, pod.Spec.Volumes, 3)
+				assert.Len(t, GetKibanaContainer(pod.Spec).VolumeMounts, 3)
+				assert.Equal(t, pod.Spec.SecurityContext, &defaultPodSecurityContext)
+				assert.Equal(t, GetKibanaContainer(pod.Spec).SecurityContext, &defaultSecurityContext)
 			},
 		},
 		{

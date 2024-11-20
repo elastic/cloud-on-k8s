@@ -29,9 +29,9 @@ func (m *cpu) ManagedResource() corev1.ResourceName {
 }
 
 func (m *cpu) NodeResourceQuantity() resource.Quantity {
-	max := m.autoscalingSpec.CPURange.Max.MilliValue()
+	maxCPU := m.autoscalingSpec.CPURange.Max.MilliValue()
 	// Surface the situation where CPU is exhausted.
-	if m.requiredNodeCPUCapacity.MilliValue() > max {
+	if m.requiredNodeCPUCapacity.MilliValue() > maxCPU {
 		// Elasticsearch requested more CPU per node than allowed by the user
 		err := fmt.Errorf("CPU required per node is greater than the maximum allowed")
 		m.log.Error(
@@ -71,8 +71,8 @@ func (m *cpu) NodeResourceQuantity() resource.Quantity {
 
 	// Resource has been rounded up or scaled up to meet the tier requirements. We need to check that those operations
 	// do not result in a resource quantity which is greater than the max. limit set by the user.
-	if nodeResource > max {
-		nodeResource = max
+	if nodeResource > maxCPU {
+		nodeResource = maxCPU
 	}
 	quantity := resource.NewMilliQuantity(nodeResource, resource.DecimalSI)
 	return *quantity

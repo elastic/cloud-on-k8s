@@ -115,6 +115,11 @@ func updateSettingsInternal(
 		remoteClustersToUpdate = append(remoteClustersToUpdate, name)
 		// Declare remote cluster in ES
 		seedHosts := []string{services.ExternalTransportServiceHost(remoteCluster.ElasticsearchRef.NamespacedName())}
+		if remoteCluster.APIKey != nil {
+			// User specified an API key. It means that the remote cluster is expected to be accessed using the remote
+			// cluster Service instead of relying on the transport layer.
+			seedHosts = []string{services.RemoteClusterServerServiceHost(remoteCluster.ElasticsearchRef.NamespacedName())}
+		}
 		remoteClustersToApply[name] = esclient.RemoteCluster{Seeds: seedHosts}
 		// Ensure this cluster is tracked in the annotation
 		remoteClustersInAnnotation[name] = struct{}{}

@@ -60,10 +60,10 @@ func (mmv MinMaxVersion) WithinRange(v Version) error {
 	return nil
 }
 
-func (mmv MinMaxVersion) WithMin(min Version) MinMaxVersion {
-	if min.GT(mmv.Min) {
+func (mmv MinMaxVersion) WithMin(minVersion Version) MinMaxVersion {
+	if minVersion.GT(mmv.Min) {
 		return MinMaxVersion{
-			Min: min,
+			Min: minVersion,
 			Max: mmv.Max,
 		}
 	}
@@ -100,36 +100,36 @@ func WithoutPre(v Version) Version {
 
 // MinInPods returns the lowest version parsed from labels in the given Pods.
 func MinInPods(pods []corev1.Pod, labelName string) (*Version, error) {
-	var min *Version
+	var minVersion *Version
 	for _, p := range pods {
 		v, err := FromLabels(p.Labels, labelName)
 		if err != nil {
 			return nil, err
 		}
 
-		if min == nil || v.LT(*min) {
-			min = &v
+		if minVersion == nil || v.LT(*minVersion) {
+			minVersion = &v
 		}
 	}
 
-	return min, nil
+	return minVersion, nil
 }
 
 // MinInStatefulSets returns the lowest version parsed from labels in the given StatefulSets template.
 func MinInStatefulSets(ssets []appsv1.StatefulSet, labelName string) (*Version, error) {
-	var min *Version
+	var minVersion *Version
 	for _, s := range ssets {
 		v, err := FromLabels(s.Spec.Template.Labels, labelName)
 		if err != nil {
 			return nil, err
 		}
 
-		if min == nil || v.LT(*min) {
-			min = &v
+		if minVersion == nil || v.LT(*minVersion) {
+			minVersion = &v
 		}
 	}
 
-	return min, nil
+	return minVersion, nil
 }
 
 func FromLabels(labels map[string]string, labelName string) (Version, error) {

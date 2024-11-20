@@ -140,7 +140,7 @@ processors:
     - -e
     - -c
     - /etc/beat.yml
-    - -system.hostfs=/hostfs
+    - --system.hostfs=/hostfs
     name: metricbeat
     env:
     - name: NODE_NAME

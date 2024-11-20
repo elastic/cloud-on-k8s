@@ -5,18 +5,18 @@ link:https://www.elastic.co/guide/en/cloud-on-k8s/master/k8s-{page_id}.html[View
 ****
 endif::[]
 [id="{p}-{page_id}"]
-= Run Kibana on ECK
+= Run {kib} on ECK
 
-The <<{p}-deploy-kibana,quickstart>> is a good starting point to quickly setup a Kibana instance with ECK.
-The following sections describe how to customize a Kibana deployment to suit your requirements.
+The <<{p}-deploy-kibana,quickstart>> is a good starting point to quickly setup a {kib} instance with ECK.
+The following sections describe how to customize a {kib} deployment to suit your requirements.
 
-* <<{p}-kibana-es,Connect to an Elasticsearch cluster>>
-** <<{p}-kibana-eck-managed-es,Connect to an Elasticsearch cluster managed by ECK>>
-** <<{p}-kibana-external-es,Connect to an Elasticsearch cluster not managed by ECK>>
+* <<{p}-kibana-es,Connect to an {es} cluster>>
+** <<{p}-kibana-eck-managed-es,Connect to an {es} cluster managed by ECK>>
+** <<{p}-kibana-external-es,Connect to an {es} cluster not managed by ECK>>
 * <<{p}-kibana-advanced-configuration,Advanced configuration>>
 ** <<{p}-kibana-pod-configuration,Pod Configuration>>
-** <<{p}-kibana-configuration,Kibana Configuration>>
-** <<{p}-kibana-scaling,Scaling out a Kibana deployment>>
+** <<{p}-kibana-configuration,{kib} Configuration>>
+** <<{p}-kibana-scaling,Scaling out a {kib} deployment>>
 * <<{p}-kibana-secure-settings,Secure settings>>
 * <<{p}-kibana-http-configuration,HTTP Configuration>>
 ** <<{p}-kibana-http-publish,Load balancer settings and TLS SANs>>
@@ -25,15 +25,15 @@ The following sections describe how to customize a Kibana deployment to suit you
 ** <<{p}-kibana-plugins>>
 
 [id="{p}-kibana-es"]
-== Connect to an Elasticsearch cluster
+== Connect to an {es} cluster
 
-You can connect an Elasticsearch cluster that is either managed by ECK or not managed by ECK. 
+You can connect an {es} cluster that is either managed by ECK or not managed by ECK. 
 
 
 [id="{p}-kibana-eck-managed-es"]
-=== Elasticsearch is managed by ECK
+=== {es} is managed by ECK
 
-It is quite straightforward to connect a Kibana instance to an Elasticsearch cluster managed by ECK:
+It is quite straightforward to connect a {kib} instance to an {es} cluster managed by ECK:
 
 [source,yaml,subs="attributes"]
 ----
@@ -49,25 +49,22 @@ spec:
     namespace: default
 ----
 
-The use of `namespace` is optional if the Elasticsearch cluster is running in the same namespace as Kibana. An additional `serviceName` attribute can be specified to target a custom Kubernetes service.
-Refer to <<{p}-traffic-splitting>> for more information.
+The use of `namespace` is optional if the {es} cluster is running in the same namespace as {kib}. An additional `serviceName` attribute can be specified to target a custom Kubernetes service. Refer to <<{p}-traffic-splitting>> for more information. The {kib} configuration file is automatically setup by ECK to establish a secure connection to {es}.
 
-NOTE: Any Kibana can reference (and thus access) any Elasticsearch instance as long as they are both in namespaces that are watched by the same ECK instance. ECK will copy the required Secret from Elasticsearch to Kibana namespace. Kibana cannot automatically connect to Elasticsearch (through `elasticsearchRef`) in a namespace managed by a different ECK instance. For more information, check <<{p}-restrict-cross-namespace-associations,Restrict cross-namespace resource associations>>.
-
-The Kibana configuration file is automatically setup by ECK to establish a secure connection to Elasticsearch.
+NOTE: Any {kib} can reference (and thus access) any {es} instance as long as they are both in namespaces that are watched by the same ECK instance. ECK will copy the required Secret from {es} to {kib} namespace. {kib} cannot automatically connect to {es} (through `elasticsearchRef`) in a namespace managed by a different ECK instance. For more information, check <<{p}-restrict-cross-namespace-associations,Restrict cross-namespace resource associations>>.
 
 [id="{p}-kibana-external-es"]
-=== Elasticsearch is not managed by ECK
+=== {es} is not managed by ECK
 
-You can also configure Kibana to connect to an Elasticsearch cluster that is managed by a different installation of ECK, or runs outside the Kubernetes cluster. In this case, you need the IP address or URL of the Elasticsearch cluster and a valid username and password pair to access the cluster.
+You can also configure {kib} to connect to an {es} cluster that is managed by a different installation of ECK, or runs outside the Kubernetes cluster. In this case, you need the IP address or URL of the {es} cluster and a valid username and password pair to access the cluster.
 
 === Using a Secret
 
-Refer to <<{p}-connect-to-unmanaged-resources>> to automatically configure Kibana using connection settings from a `Secret`.
+Refer to <<{p}-connect-to-unmanaged-resources>> to automatically configure {kib} using connection settings from a link:https://kubernetes.io/docs/concepts/configuration/secret/[`Secret`].
 
 === Using secure settings
 
-Use the <<{p}-kibana-secure-settings,secure settings>> mechanism to securely store the credentials of the external Elasticsearch cluster:
+For example, use the <<{p}-kibana-secure-settings,secure settings>> mechanism to securely store the default `elastic` user's `$PASSWORD` credential of the external {es} cluster as set under <<{p}-deploy-elasticsearch,Deploy an {es} cluster>>:
 
 [source,shell]
 ----
@@ -92,7 +89,7 @@ spec:
 ----
 
 
-If the external Elasticsearch cluster is using a self-signed certificate, create a Kubernetes Secret containing the CA certificate and mount it to the Kibana container as follows:
+If the external {es} cluster is using a self-signed certificate, create a link:https://kubernetes.io/docs/concepts/configuration/secret/[`Secret`] containing the CA certificate and mount it to the {kib} container as follows:
 
 [source,yaml,subs="attributes"]
 ----
@@ -131,16 +128,17 @@ spec:
 If you already looked at the <<{p}-elasticsearch-specification,Elasticsearch on ECK>> documentation, some of these concepts might sound familiar to you.
 The resource definitions in ECK share the same philosophy when you want to:
 
-* Customize the Pod configuration
-* Customize the product configuration
-* Manage HTTP settings
-* Use secure settings
+* <<{p}-kibana-pod-configuration,Customize the Pod configuration>>
+* <<{p}-kibana-configuration,Customize the product configuration>>
+* <<{p}-kibana-http-configuration,Manage HTTP settings>>
+* <<{p}-kibana-secure-settings,Use secure settings>>
+* <<{p}-kibana-plugins,Install {kib} plugins>>
 
 [id="{p}-kibana-pod-configuration"]
 === Pod configuration
-You can <<{p}-customize-pods,customize the Kibana Pod>> using a Pod template.
+You can <<{p}-customize-pods,customize the {kib} Pod>> using a link:https://kubernetes.io/docs/concepts/workloads/pods/#pod-templates[Pod Template].
 
-The following example demonstrates how to create a Kibana deployment with custom node affinity, increased heap size, and resource limits.
+The following example demonstrates how to create a {kib} deployment with custom node affinity, increased heap size, and resource limits.
 
 [source,yaml,subs="attributes"]
 ----
@@ -171,15 +169,15 @@ spec:
         type: frontend
 ----
 
-The name of the container in the Pod template must be `kibana`.
+The name of the container in the link:https://kubernetes.io/docs/concepts/workloads/pods/#pod-templates[Pod Template] must be `kibana`.
 
 Check <<{p}-compute-resources-kibana-and-apm>> for more information.
 
 [id="{p}-kibana-configuration"]
-=== Kibana configuration
-You can add your own Kibana settings to the `spec.config` section.
+=== {kib} configuration
+You can add your own {kib} settings to the `spec.config` section.
 
-The following example demonstrates how to set the `elasticsearch.requestHeadersWhitelist` configuration option.
+The following example demonstrates how to set the link:{kibana-ref}/settings.html#elasticsearch-requestHeadersWhitelist[`elasticsearch.requestHeadersWhitelist`] configuration option.
 
 [source,yaml,subs="attributes"]
 ----
@@ -198,13 +196,13 @@ spec:
 ----
 
 [id="{p}-kibana-scaling"]
-=== Scale out a Kibana deployment
+=== Scale out a {kib} deployment
 
-To deploy more than one instance of Kibana, all the instances must share a same set of encryption keys. The following keys are automatically generated by the operator:
+To deploy more than one instance of {kib}, the instances must share a matching set of encryption keys. The following keys are automatically generated by the operator:
 
-* `xpack.security.encryptionKey`
-* `xpack.reporting.encryptionKey`
-* `xpack.encryptedSavedObjects.encryptionKey`
+* link:{kibana-ref}/security-settings-kb.html#xpack-security-encryptionKey[`xpack.security.encryptionKey`]
+* link:{kibana-ref}/reporting-settings-kb.html#encryption-keys[`xpack.reporting.encryptionKey`]
+* link:{kibana-ref}/xpack-security-secure-saved-objects.html[`xpack.encryptedSavedObjects.encryptionKey`]
 
 [TIP]
 ====
@@ -220,14 +218,14 @@ kubectl get secret my-kibana-kb-config -o jsonpath='{ .data.kibana\.yml }' | bas
 
 You can provide your own encryption keys using a secure setting, as described in <<{p}-kibana-secure-settings,Secure settings>>.
 
-NOTE: While most reconfigurations of your Kibana instances are carried out in rolling upgrade fashion, all version upgrades will cause Kibana downtime. This happens because you can only run a single version of Kibana at any given time. For more information, check link:https://www.elastic.co/guide/en/kibana/current/upgrade.html[Upgrade Kibana].
+NOTE: While most reconfigurations of your {kib} instances are carried out in rolling upgrade fashion, all version upgrades will cause {kib} downtime. This happens because you can only run a single version of {kib} at any given time. For more information, check link:https://www.elastic.co/guide/en/kibana/current/upgrade.html[Upgrade {kib}].
 
 [id="{p}-kibana-secure-settings"]
 == Secure settings
 
-<<{p}-es-secure-settings,Similar to Elasticsearch>>, you can use Kubernetes secrets to manage secure settings for Kibana.
+<<{p}-es-secure-settings,Similar to {es}>>, you can use Kubernetes secrets to manage secure settings for {kib}.
 
-For example, you can define a custom encryption key for Kibana as follows:
+For example, you can define a custom encryption key for {kib} as follows:
 
 . Create a secret containing the desired setting:
 +
@@ -260,8 +258,8 @@ spec:
 [id="{p}-kibana-http-publish"]
 === Load balancer settings and TLS SANs
 
-By default a `ClusterIP` link:https://kubernetes.io/docs/concepts/services-networking/service/[service] is created and associated with the Kibana deployment.
-If you want to expose Kibana externally with a link:https://kubernetes.io/docs/concepts/services-networking/service/#loadbalancer[load balancer], it is recommended to include a custom DNS name or IP in the self-generated certificate.
+By default a `ClusterIP` link:https://kubernetes.io/docs/concepts/services-networking/service/[Service] is created and associated with the {kib} deployment.
+If you want to expose {kib} externally with a link:https://kubernetes.io/docs/concepts/services-networking/service/#loadbalancer[load balancer], it is recommended to include a custom DNS name or IP in the self-generated certificate.
 
 [source,yaml,subs="attributes"]
 ----
@@ -288,12 +286,12 @@ spec:
 [id="{p}-kibana-http-custom-tls"]
 === Provide your own certificate
 
-If you want to use your own certificate, the required configuration is identical to Elasticsearch. Check <<{p}-custom-http-certificate>>.
+If you want to use your own certificate, the required configuration is identical to {es}. Check <<{p}-custom-http-certificate>>.
 
 [id="{p}-kibana-http-disable-tls"]
 === Disable TLS
 
-You can disable the generation of the self-signed certificate and hence disable TLS.
+You can disable the generation of the self-signed certificate and hence link:{kibana-ref}/using-kibana-with-security.html[disable TLS]. This is not recommended outside of testing clusters.
 
 [source,yaml,subs="attributes"]
 ----
@@ -313,9 +311,9 @@ spec:
 ----
 
 [id="{p}-kibana-plugins"]
-== Install Kibana plugins
+== Install {kib} plugins
 
-You can override the Kibana container image to use your own image with the plugins already installed, as described in the <<{p}-custom-images,Create custom images>>. You should run an `optimize` step as part of the build, otherwise it needs to run at startup which requires additional time and resources. 
+You can override the {kib} container image to use your own image with the plugins already installed, as described in the <<{p}-custom-images,Create custom images>>. You should run an `optimize` step as part of the build, otherwise it needs to run at startup which requires additional time and resources. 
 
 This is a Dockerfile example:
 

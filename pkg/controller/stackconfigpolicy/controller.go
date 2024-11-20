@@ -715,6 +715,7 @@ func (r *ReconcileStackConfigPolicy) getClusterStateFileSettings(ctx context.Con
 	if err != nil {
 		return esclient.FileSettings{}, err
 	}
+	defer esClient.Close()
 
 	clusterState, err := esClient.GetClusterState(ctx)
 	if err != nil {

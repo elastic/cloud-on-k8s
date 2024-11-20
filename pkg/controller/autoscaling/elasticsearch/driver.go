@@ -114,6 +114,7 @@ func (r *baseReconcileAutoscaling) attemptOnlineReconciliation(
 	if err != nil {
 		return nil, err
 	}
+	defer esClient.Close()
 
 	// Update Machine Learning settings
 	mlNodes, maxMemory := esv1.GetMLNodesSettings(autoscalingSpec)

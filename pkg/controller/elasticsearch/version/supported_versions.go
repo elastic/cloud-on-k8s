@@ -11,8 +11,8 @@ func SupportedVersions(v version.Version) *version.MinMaxVersion {
 	return supportedVersionsWithMinimum(v, version.GlobalMinStackVersion)
 }
 
-func supportedVersionsWithMinimum(v version.Version, min version.Version) *version.MinMaxVersion {
-	if min.GT(v) {
+func supportedVersionsWithMinimum(v version.Version, minVersion version.Version) *version.MinMaxVersion {
+	if minVersion.GT(v) {
 		return nil
 	}
 	return technicallySupportedVersions(v)

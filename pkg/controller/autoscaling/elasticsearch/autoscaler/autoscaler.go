@@ -134,7 +134,7 @@ func (ctx *Context) scaleHorizontally(
 	var nodeCount int32
 	for _, recommender := range ctx.Recommenders {
 		if recommender.HasResourceRecommendation() {
-			nodeCount = max(nodeCount, recommender.NodeCount(nodeCapacity))
+			nodeCount = max32(nodeCount, recommender.NodeCount(nodeCapacity))
 		}
 	}
 
@@ -151,7 +151,7 @@ func (ctx *Context) scaleHorizontally(
 	return nodeSetsResources
 }
 
-func max(a, b int32) int32 {
+func max32(a, b int32) int32 {
 	if a > b {
 		return a
 	}
