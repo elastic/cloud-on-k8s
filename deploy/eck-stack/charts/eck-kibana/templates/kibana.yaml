@@ -56,5 +56,6 @@ spec:
   serviceAccountName: {{ . }}
   {{- end }}
   {{- with or ((.Values.spec).monitoring) (.Values.monitoring) }}
-  monitoring: {{ . }}
+  monitoring:
+    {{- toYaml . | nindent 4 }}
   {{- end }}

@@ -231,3 +231,62 @@ tests:
           path: spec.secureSettings
           value:
             - secretName: oidc-secret
+  - it: values.spec.monitoring should render properly
+    set:
+      spec:
+        elasticsearchRef:
+          name: eck-elasticsearch
+        monitoring:
+          logs:
+            elasticsearchRefs:
+              - name: monitoring
+                namespace: observability
+          metrics:
+            elasticsearchRefs:
+              - name: monitoring
+                namespace: observability
+    release:
+      name: quickstart
+    asserts:
+      - isKind:
+          of: Kibana
+      - equal:
+          path: spec.monitoring
+          value:
+            logs:
+              elasticsearchRefs:
+                - name: monitoring
+                  namespace: observability
+            metrics:
+              elasticsearchRefs:
+                - name: monitoring
+                  namespace: observability
+  - it: values.monitoring should render properly
+    set:
+      elasticsearchRef:
+        name: eck-elasticsearch
+      monitoring:
+        logs:
+          elasticsearchRefs:
+            - name: monitoring
+              namespace: observability
+        metrics:
+          elasticsearchRefs:
+            - name: monitoring
+              namespace: observability
+    release:
+      name: quickstart
+    asserts:
+      - isKind:
+          of: Kibana
+      - equal:
+          path: spec.monitoring
+          value:
+            logs:
+              elasticsearchRefs:
+                - name: monitoring
+                  namespace: observability
+            metrics:
+              elasticsearchRefs:
+                - name: monitoring
+                  namespace: observability
