@@ -19,7 +19,7 @@ spec:
   {{- with or ((.Values.spec).image) (.Values.image) }}
   image: {{ . }}
   {{- end }}
-  {{- with .Values.count }}
+  {{- with or ((.Values.spec).count) (.Values.count) }}
   count: {{ . }}
   {{- end }}
   {{- $esRef := or ((.Values.spec).elasticsearchRef) (.Values.elasticsearchRef) }}
