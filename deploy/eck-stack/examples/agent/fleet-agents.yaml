@@ -80,42 +80,37 @@ eck-kibana:
 eck-agent:
   enabled: true
   
-  spec:
-    # Agent policy to be used.
-    policyID: eck-agent
-    # Reference to ECK-managed Kibana instance.
-    #
-    kibanaRef:
-      name: kibana
-
-    elasticsearchRefs: []
-
-    # Reference to ECK-managed Fleet instance.
-    #
-    fleetServerRef:
-      name: fleet-server
-    
-    mode: fleet
-
-    daemonSet:
-      podTemplate:
-        spec:
-          serviceAccountName: elastic-agent
-          hostNetwork: true
-          dnsPolicy: ClusterFirstWithHostNet
-          automountServiceAccountToken: true
-          securityContext:
-            runAsUser: 0
+  # Agent policy to be used.
+  policyID: eck-agent
+  # Reference to ECK-managed Kibana instance.
+  #
+  kibanaRef:
+    name: kibana
+  elasticsearchRefs: []
+  # Reference to ECK-managed Fleet instance.
+  #
+  fleetServerRef:
+    name: fleet-server
+  
+  mode: fleet
+  daemonSet:
+    podTemplate:
+      spec:
+        serviceAccountName: elastic-agent
+        hostNetwork: true
+        dnsPolicy: ClusterFirstWithHostNet
+        automountServiceAccountToken: true
+        securityContext:
+          runAsUser: 0
   
 eck-fleet-server:
   enabled: true
 
   fullnameOverride: "fleet-server"
 
-  spec:
-    # Agent policy to be used.
-    policyID: eck-fleet-server
-    kibanaRef:
-      name: kibana
-    elasticsearchRefs:
-    - name: elasticsearch
+  # Agent policy to be used.
+  policyID: eck-fleet-server
+  kibanaRef:
+    name: kibana
+  elasticsearchRefs:
+  - name: elasticsearch
