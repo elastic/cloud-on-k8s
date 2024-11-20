@@ -2,7 +2,7 @@ suite: test kibana
 templates:
   - templates/kibana.yaml
 tests:
-  - it: should render quickstart properly
+  - it: should render quickstart properly, with default count of 1
     set:
       spec.elasticsearchRef.name: eck-elasticsearch
     release:
@@ -16,6 +16,9 @@ tests:
       - equal:
           path: spec.version
           value: 8.17.0-SNAPSHOT
+      - equal:
+          path: spec.count
+          value: 1
   - it: name override should work properly
     set:
       nameOverride: override
