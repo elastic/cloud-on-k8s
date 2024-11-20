@@ -199,7 +199,7 @@ tests:
             - secretName: eck-agent-secret
             revisionHistoryLimit: 4
             serviceAccountName: elastic-agent
-  - it: not setting elasticsearchRef should fail
+  - it: not setting version should fail
     set:
       version: ""
     asserts:
