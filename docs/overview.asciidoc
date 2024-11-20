@@ -20,6 +20,7 @@ With Elastic Cloud on Kubernetes you can streamline critical operations, such as
 . Setting up hot-warm-cold architectures with availability zone awareness
 --
 
+[id="{p}-supported"]
 == Supported versions
 
 include::supported-versions.asciidoc[]
