@@ -157,7 +157,7 @@ steps:
               soft_fail: true
           YAML
         agents:
-          image: docker.elastic.co/ci-agent-images/cloud-k8s-operator/buildkite-agent:e808dbe5
+          image: docker.elastic.co/ci-agent-images/cloud-k8s-operator/buildkite-agent:f5c5fd8b
           memory: "256Mi"
 
       # scan the -ubi operator image on nightly builds
@@ -177,7 +177,7 @@ steps:
               soft_fail: true
           YAML
         agents:
-          image: docker.elastic.co/ci-agent-images/cloud-k8s-operator/buildkite-agent:e808dbe5
+          image: docker.elastic.co/ci-agent-images/cloud-k8s-operator/buildkite-agent:f5c5fd8b
           memory: "256Mi"
 
   - label: ":buildkite:"
