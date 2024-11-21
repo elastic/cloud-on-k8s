@@ -275,12 +275,11 @@ These two upgrading scenarios, however, are exceptions because Elasticsearch nev
 You have role mappings defined in a StackConfigPolicy, and you upgraded from 8.14.x or 8.15.x, to 8.15.3.
 
 Examples:
-
 - 8.14.2 -> 8.15.2 -> 8.15.3
 - 8.14.2 -> 8.15.3
 - 8.15.2 -> 8.15.3
 
-You have to perform two manual steps in order to correctly reconfigure role mappings because due to a bug the role mappings were duplicated.
+The best option is to update to 8.16.0, to fix the problem automatically. If this is not possible and you are stuck on 8.15.3, you have to perform two manual steps in order to correctly reconfigure role mappings because due to a bug the role mappings were duplicated.
 
 . Force reload the StackConfigPolicy configuration
 
