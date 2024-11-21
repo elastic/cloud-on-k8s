@@ -18,7 +18,9 @@ spec:
   {{- if and (not $daemonSet) (not $deployment) (not $statefulSet) }}
   {{ fail "At least one of daemonSet, deployment or statefulSet is required" }}
   {{- end }}
-  count: {{ or ((.Values.spec).count) (.Values.count) | int | default 1 -}}
+  {{- with or ((.Values.spec).count) (.Values.count) }}
+  count: {{ . }}
+  {{- end }}
   {{- if $daemonSet }}
   {{- $ds := or ((.Values.spec).daemonSet) (.Values.daemonSet) }}
   daemonSet:
