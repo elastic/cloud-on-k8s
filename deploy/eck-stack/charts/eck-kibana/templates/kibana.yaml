@@ -19,7 +19,9 @@ spec:
   {{- with or ((.Values.spec).image) (.Values.image) }}
   image: {{ . }}
   {{- end }}
-  count: {{ or ((.Values.spec).count) (.Values.count) | int | default 1 }}
+  {{- with or ((.Values.spec).count) (.Values.count) }}
+  count: {{ . }}
+  {{- end }}
   {{- $esRef := or ((.Values.spec).elasticsearchRef) (.Values.elasticsearchRef) }}
   {{- if not ($esRef).name }}
   {{ fail "An elasticsearchRef is required" }}
