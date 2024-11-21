@@ -28,63 +28,101 @@ labels: {}
 #
 annotations: {}
 
-spec:
-  # Type of Elastic Beats. Standard types of Beat are [filebeat,metricbeat,heartbeat,auditbeat,packetbeat,journalbeat].
-  # ref: https://www.elastic.co/guide/en/cloud-on-k8s/current/k8s-beat-configuration.html#k8s-beat-deploy-elastic-beat
-  #
-  # Note: This is required to be set, or the release install will fail.
-  #
-  type: ""
+# ** Deprecation Notice **
+# The previous versions of this Helm Chart simply used the `spec` field here
+# and allowed the user to specify any fields below spec that were templated directly
+# into the final Kibana manifest. This is no long the preferred way to specify these
+# fields and each field that is supported underneath `spec` is now directly specified
+# in this values file. Currently both patterns are supported for backwards compatibility
+# but we plan to remove the `spec` field in the future.
+# spec: {}
 
-  # Referenced resources are below and depending on the setup, at least elasticsearchRef is required for a functional Beat.
-  # ref: https://www.elastic.co/guide/en/cloud-on-k8s/current/k8s-beat-configuration.html#k8s-beat-connect-es
-  #
-  # Reference to ECK-managed Kibana instance.
-  #
-  # kibanaRef:
-  #   name: quickstart
-    # Optional namespace reference to Kibana instance.
-    # If not specified, then the namespace of the Beats instance
-    # will be assumed.
-    #
-    # namespace: default
+# Type of Elastic Beats. Standard types of Beat are [filebeat,metricbeat,heartbeat,auditbeat,packetbeat,journalbeat].
+# ref: https://www.elastic.co/guide/en/cloud-on-k8s/current/k8s-beat-configuration.html#k8s-beat-deploy-elastic-beat
+#
+# Note: This is required to be set, or the release install will fail.
+#
+type: ""
 
-  # Reference to ECK-managed Elasticsearch instance.
-  # *Note* If Beat's output is intended to go to Elasticsearch and not something like Logstash,
-  # this elasticsearchRef must be updated to the name of the Elasticsearch instance.
-  #
-  elasticsearchRef: {}
-    # name: elasticsearch
-    # Optional namespace reference to Elasticsearch instance.
-    # If not specified, then the namespace of the Beats instance
-    # will be assumed.
-    #
-    # namespace: default
+# Beats image to deploy.
+#
+# image: docker.elastic.co/beats/metricbeat:8.17.0-SNAPSHOT
 
-  # Daemonset, or Deployment specification for the type of Beat specified.
-  # At least one is required of [daemonSet, deployment].
-  # No default is currently set, refer to https://github.com/elastic/cloud-on-k8s/issues/7429.
-  # ref: https://www.elastic.co/guide/en/cloud-on-k8s/current/k8s-beat-configuration.html#k8s-beat-chose-the-deployment-model
-  #
-  # deployment:
-  #   podTemplate:
-  #     spec:
-  #       containers:
-  #       - name: agent
-  #         securityContext:
-  #           runAsUser: 0
-  # daemonSet:
-  #   podTemplate:
-  #     spec:
-  #       containers:
-  #       - name: agent
-  #         securityContext:
-  #           runAsUser: 0
+# Count of Elastic beats replicas to create.
+#
+count: 1
 
-  # Configuration of Beat, which is dependent on the `type` of Beat specified.
-  # ref: https://www.elastic.co/guide/en/cloud-on-k8s/current/k8s-beat-configuration.html#k8s-beat-deploy-elastic-beat
+# Referenced resources are below and depending on the setup, at least elasticsearchRef is required for a functional Beat.
+# ref: https://www.elastic.co/guide/en/cloud-on-k8s/current/k8s-beat-configuration.html#k8s-beat-connect-es
+#
+# Reference to ECK-managed Kibana instance.
+#
+# kibanaRef:
+#   name: quickstart
+  # Optional namespace reference to Kibana instance.
+  # If not specified, then the namespace of the Beats instance
+  # will be assumed.
   #
-  config: {}
+  # namespace: default
+
+# Reference to ECK-managed Elasticsearch instance.
+# *Note* If Beat's output is intended to go to Elasticsearch and not something like Logstash,
+# this elasticsearchRef must be updated to the name of the Elasticsearch instance.
+#
+elasticsearchRef: {}
+  # name: elasticsearch
+  # Optional namespace reference to Elasticsearch instance.
+  # If not specified, then the namespace of the Beats instance
+  # will be assumed.
+  #
+  # namespace: default
+
+# Daemonset, or Deployment specification for the type of Beat specified.
+# At least one is required of [daemonSet, deployment].
+# No default is currently set, refer to https://github.com/elastic/cloud-on-k8s/issues/7429.
+# ref: https://www.elastic.co/guide/en/cloud-on-k8s/current/k8s-beat-configuration.html#k8s-beat-chose-the-deployment-model
+#
+# deployment:
+#   podTemplate:
+#     spec:
+#       containers:
+#       - name: agent
+#         securityContext:
+#           runAsUser: 0
+# daemonSet:
+#   podTemplate:
+#     spec:
+#       containers:
+#       - name: agent
+#         securityContext:
+#           runAsUser: 0
+
+# Configuration of Beat, which is dependent on the `type` of Beat specified.
+# NOTE: The `config` and `configRef` fields are mutually exclusive. Only one of them should be defined at a time,
+# as using both may cause conflicts.
+#
+# ref: https://www.elastic.co/guide/en/cloud-on-k8s/current/k8s-beat-configuration.html#k8s-beat-custom-configuration
+#
+config: {}
+
+# Reference a configuration in a Secret.
+# ref: https://www.elastic.co/guide/en/cloud-on-k8s/current/k8s-beat-configuration.html#k8s-beat-custom-configuration
+#
+# configRef:
+#   secretName: ""
+
+# The HTTP layer configuration for the Beats Service.
+#
+# http:
+
+# SecureSettings is a list of references to Kubernetes Secrets containing sensitive configuration options for Elastic Beats.
+secureSettings: []
+# - secretName: my-secret-with-secure-settings
+
+# Number of revisions to retain to allow rollback in the underlying Deployment.
+# If not set Kubernetes sets this to 10 by default.
+#
+# revisionHistoryLimit: 2
 
 # ServiceAccount to be used by Elastic Beats. Some Beats features (such as autodiscover or Kubernetes module metricsets)
 # require that Beat Pods interact with Kubernetes APIs. This functionality requires specific permissions
