@@ -142,7 +142,7 @@ steps:
 
       # scan the operator image for CVEs on merge to main or nightly builds
       - label: ":buildkite: cve-checks"
-        #if: build.branch == "main"
+        if: build.branch == "main"
         depends_on:
           - "operator-image-build"
         command: |
