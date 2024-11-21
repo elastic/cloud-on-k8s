@@ -1,4 +1,4 @@
-# This sample sets up an Elasticsearch cluster and an Enterprise Search instance preconfigured for that cluster
+# This sample sets up an Elasticsearch cluster, a Kibana server and an Enterprise Search instance preconfigured for that cluster
 apiVersion: elasticsearch.k8s.elastic.co/v1
 kind: Elasticsearch
 metadata:
@@ -12,6 +12,18 @@ spec:
         # This setting could have performance implications for production clusters.
         # See: https://www.elastic.co/guide/en/cloud-on-k8s/current/k8s-virtual-memory.html
         node.store.allow_mmap: false
+---
+apiVersion: kibana.k8s.elastic.co/v1
+kind: Kibana
+metadata:
+  name: kibana-sample
+spec:
+  version: 8.16.0
+  count: 1
+  elasticsearchRef:
+    name: elasticsearch-sample
+  enterpriseSearchRef:
+    name: ent-sample
 ---
 apiVersion: enterprisesearch.k8s.elastic.co/v1
 kind: EnterpriseSearch
