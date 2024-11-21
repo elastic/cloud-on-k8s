@@ -38,6 +38,15 @@ tests:
           service:
             spec:
               type: ClusterIP
+        monitoring:
+          metrics:
+            elasticsearchRefs:
+            - name: monitoring
+              namespace: observability
+          logs:
+            elasticsearchRefs:
+            - name: monitoring
+              namespace: observability
         secureSettings:
         - secretName: eck-beat-secret
         revisionHistoryLimit: 4
@@ -74,6 +83,15 @@ tests:
               service:
                 spec:
                   type: ClusterIP
+            monitoring:
+              metrics:
+                elasticsearchRefs:
+                - name: monitoring
+                  namespace: observability
+              logs:
+                elasticsearchRefs:
+                - name: monitoring
+                  namespace: observability
             secureSettings:
             - secretName: eck-beat-secret
             revisionHistoryLimit: 4
@@ -95,6 +113,15 @@ tests:
         service:
           spec:
             type: ClusterIP
+      monitoring:
+        metrics:
+          elasticsearchRefs:
+          - name: monitoring
+            namespace: observability
+        logs:
+          elasticsearchRefs:
+          - name: monitoring
+            namespace: observability
       secureSettings:
       - secretName: eck-beat-secret
       revisionHistoryLimit: 4
@@ -131,6 +158,15 @@ tests:
               service:
                 spec:
                   type: ClusterIP
+            monitoring:
+              metrics:
+                elasticsearchRefs:
+                - name: monitoring
+                  namespace: observability
+              logs:
+                elasticsearchRefs:
+                - name: monitoring
+                  namespace: observability
             secureSettings:
             - secretName: eck-beat-secret
             revisionHistoryLimit: 4

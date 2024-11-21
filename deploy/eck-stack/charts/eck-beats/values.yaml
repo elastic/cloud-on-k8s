@@ -115,6 +115,19 @@ config: {}
 #
 # http:
 
+# Settings for configuring stack monitoring.
+# ref: https://www.elastic.co/guide/en/cloud-on-k8s/current/k8s-stack-monitoring.html
+#
+# monitoring: {}
+  # metrics:
+  #   elasticsearchRefs:
+  #   - name: monitoring
+  #     namespace: observability
+  # logs:
+  #   elasticsearchRefs:
+  #   - name: monitoring
+  #     namespace: observability
+
 # SecureSettings is a list of references to Kubernetes Secrets containing sensitive configuration options for Elastic Beats.
 secureSettings: []
 # - secretName: my-secret-with-secure-settings

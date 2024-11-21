@@ -62,6 +62,10 @@ spec:
   http:
     {{- toYaml . | nindent 4 }}
   {{- end }}
+  {{- with or ((.Values.spec).monitoring) (.Values.monitoring) }}
+  monitoring:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
   {{- with or ((.Values.spec).secureSettings) (.Values.secureSettings) }}
   secureSettings:
     {{- toYaml . | nindent 4 }}
