@@ -18,9 +18,6 @@ spec:
   {{- if and (not $daemonSet) (not $deployment) (not $statefulSet) }}
   {{ fail "At least one of daemonSet, deployment or statefulSet is required" }}
   {{- end }}
-  {{- with or ((.Values.spec).count) (.Values.count) }}
-  count: {{ . }}
-  {{- end }}
   {{- if $daemonSet }}
   {{- $ds := or ((.Values.spec).daemonSet) (.Values.daemonSet) }}
   daemonSet:
@@ -34,7 +31,7 @@ spec:
     {{- $deploy | default dict | toYaml | nindent 4 }}
   {{- end }}
   {{- if $statefulSet }}
-  {{- $sts := or ((.Values.spec).deployment) (.Values.deployment) }}
+  {{- $sts := or ((.Values.spec).statefulSet) (.Values.statefulSet) }}
   statefulSet:
     {{- /* This is required to render the empty statefulSet ( {} ) properly */}}
     {{- $sts | default dict | toYaml | nindent 4 }}
@@ -42,11 +39,9 @@ spec:
   {{- with or ((.Values.spec).image) (.Values.image) }}
   image: {{ . }}
   {{- end }}
-  {{- if or ((.Values.spec).elasticsearchRefs) (.Values.elasticsearchRefs) }}
-  elasticsearchRefs:
   {{- with or ((.Values.spec).elasticsearchRefs) (.Values.elasticsearchRefs) }}
+  elasticsearchRefs:
     {{- toYaml . | nindent 4 }}
-  {{- end }}
   {{- end }}
   {{- with or ((.Values.spec).kibanaRef) (.Values.kibanaRef) }}
   kibanaRef:
