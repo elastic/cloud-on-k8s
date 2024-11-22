@@ -21,3 +21,154 @@ tests:
       - equal:
           path: spec.type
           value: filebeat
+  - it: should render properly when using spec fields
+    set:
+      spec:
+        daemonSet: {}
+        elasticsearchRef:
+          name: eck-elasticsearch
+          namespace: default
+        kibanaRef:
+          name: eck-kibana
+          namespace: default
+        config:
+          name: "filebeat"
+        type: filebeat
+        http:
+          service:
+            spec:
+              type: ClusterIP
+        monitoring:
+          metrics:
+            elasticsearchRefs:
+            - name: monitoring
+              namespace: observability
+          logs:
+            elasticsearchRefs:
+            - name: monitoring
+              namespace: observability
+        secureSettings:
+        - secretName: eck-beat-secret
+        revisionHistoryLimit: 4
+        serviceAccount:
+          name: elastic-beat
+    release:
+      name: quickstart
+    asserts:
+      - isKind:
+          of: Beat
+      - equal:
+          path: metadata.labels
+          value:
+            app.kubernetes.io/instance: quickstart
+            app.kubernetes.io/managed-by: Helm
+            app.kubernetes.io/name: eck-beats
+            helm.sh/chart: eck-beats-0.14.0-SNAPSHOT
+      - equal:
+          path: spec
+          value:
+            count: 1
+            version: 8.17.0-SNAPSHOT
+            daemonSet: {}
+            elasticsearchRef:
+              name: eck-elasticsearch
+              namespace: default
+            kibanaRef:
+              name: eck-kibana
+              namespace: default
+            config:
+              name: "filebeat"
+            type: filebeat
+            http:
+              service:
+                spec:
+                  type: ClusterIP
+            monitoring:
+              metrics:
+                elasticsearchRefs:
+                - name: monitoring
+                  namespace: observability
+              logs:
+                elasticsearchRefs:
+                - name: monitoring
+                  namespace: observability
+            secureSettings:
+            - secretName: eck-beat-secret
+            revisionHistoryLimit: 4
+            serviceAccoun:
+              name: elastic-beat
+  - it: should render properly when not using spec fields
+    set:
+      daemonSet: {}
+      elasticsearchRef:
+        name: eck-elasticsearch
+        namespace: default
+      kibanaRef:
+        name: eck-kibana
+        namespace: default
+      config:
+        name: "filebeat"
+      type: filebeat
+      http:
+        service:
+          spec:
+            type: ClusterIP
+      monitoring:
+        metrics:
+          elasticsearchRefs:
+          - name: monitoring
+            namespace: observability
+        logs:
+          elasticsearchRefs:
+          - name: monitoring
+            namespace: observability
+      secureSettings:
+      - secretName: eck-beat-secret
+      revisionHistoryLimit: 4
+      serviceAccount:
+        name: elastic-beat
+    release:
+      name: quickstart
+    asserts:
+      - isKind:
+          of: Beat
+      - equal:
+          path: metadata.labels
+          value:
+            app.kubernetes.io/instance: quickstart
+            app.kubernetes.io/managed-by: Helm
+            app.kubernetes.io/name: eck-beats
+            helm.sh/chart: eck-beats-0.14.0-SNAPSHOT
+      - equal:
+          path: spec
+          value:
+            count: 1
+            version: 8.17.0-SNAPSHOT
+            daemonSet: {}
+            elasticsearchRef:
+              name: eck-elasticsearch
+              namespace: default
+            kibanaRef:
+              name: eck-kibana
+              namespace: default
+            config:
+              name: "filebeat"
+            type: filebeat
+            http:
+              service:
+                spec:
+                  type: ClusterIP
+            monitoring:
+              metrics:
+                elasticsearchRefs:
+                - name: monitoring
+                  namespace: observability
+              logs:
+                elasticsearchRefs:
+                - name: monitoring
+                  namespace: observability
+            secureSettings:
+            - secretName: eck-beat-secret
+            revisionHistoryLimit: 4
+            serviceAccoun:
+              name: elastic-beat
