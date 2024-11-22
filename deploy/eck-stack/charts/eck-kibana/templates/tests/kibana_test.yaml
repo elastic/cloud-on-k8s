@@ -2,7 +2,9 @@ suite: test kibana
 templates:
   - templates/kibana.yaml
 tests:
-  - it: should render quickstart properly
+  - it: should render quickstart properly, with default count of 1
+    set:
+      spec.elasticsearchRef.name: eck-elasticsearch
     release:
       name: quickstart
     asserts:
@@ -14,9 +16,13 @@ tests:
       - equal:
           path: spec.version
           value: 8.17.0-SNAPSHOT
+      - equal:
+          path: spec.count
+          value: 1
   - it: name override should work properly
     set:
       nameOverride: override
+      spec.elasticsearchRef.name: eck-elasticsearch
     release:
       name: quickstart
     asserts:
@@ -28,6 +34,7 @@ tests:
   - it: fullname override should work properly
     set:
       fullnameOverride: override
+      spec.elasticsearchRef.name: eck-elasticsearch
     release:
       name: quickstart
     asserts:
@@ -38,6 +45,7 @@ tests:
           value: override
   - it: should render custom labels, and annotations values properly
     set:
+      spec.elasticsearchRef.name: eck-elasticsearch
       labels:
         test: label
       annotations:
@@ -62,6 +70,7 @@ tests:
             test: annotation
   - it: should render http service properly
     set:
+      spec.elasticsearchRef.name: eck-elasticsearch
       spec.elasticsearchRef.namespace: default
     values:
       - ../../examples/http-configuration.yaml
@@ -88,3 +97,199 @@ tests:
       - equal:
           path: spec.http.service.spec.type
           value: LoadBalancer
+  - it: values.spec.image should work properly
+    set:
+      spec:
+        elasticsearchRef:
+          name: eck-elasticsearch
+        image: quay.io/elastic/kibana:8.17.0-SNAPSHOT
+    release:
+      name: quickstart
+    asserts:
+      - isKind:
+          of: Kibana
+      - equal:
+          path: spec.image
+          value: quay.io/elastic/kibana:8.17.0-SNAPSHOT
+  - it: values.image should work properly
+    set:
+      spec:
+        elasticsearchRef:
+          name: eck-elasticsearch
+      image: quay.io/elastic/kibana:8.17.0-SNAPSHOT
+    release:
+      name: quickstart
+    asserts:
+      - isKind:
+          of: Kibana
+      - equal:
+          path: spec.image
+          value: quay.io/elastic/kibana:8.17.0-SNAPSHOT
+  - it: not setting elasticsearchRef should fail
+    asserts:
+      - failedTemplate:
+          errorMessage: "An elasticsearchRef is required"
+  - it: values.spec.config should render properly
+    set:
+      spec:
+        elasticsearchRef:
+          name: eck-elasticsearch
+        config:
+          server.name: "kibana"
+          xpack.security.enabled: true
+    release:
+      name: quickstart
+    asserts:
+      - isKind:
+          of: Kibana
+      - equal:
+          path: spec.config
+          value:
+            server.name: "kibana"
+            xpack.security.enabled: true
+  - it: values.config should render properly
+    set:
+      elasticsearchRef:
+        name: eck-elasticsearch
+      config:
+        server.name: "kibana"
+        xpack.security.enabled: true
+    release:
+      name: quickstart
+    asserts:
+      - isKind:
+          of: Kibana
+      - equal:
+          path: spec.config
+          value:
+            server.name: "kibana"
+            xpack.security.enabled: true
+  - it: values.spec.podTemplate should render properly
+    set:
+      spec:
+        elasticsearchRef:
+          name: eck-elasticsearch
+        podTemplate:
+          metadata:
+            labels:
+              app: kibana
+    release:
+      name: quickstart
+    asserts:
+      - isKind:
+          of: Kibana
+      - equal:
+          path: spec.podTemplate
+          value:
+            metadata:
+              labels:
+                app: kibana
+  - it: values.podTemplate should render properly
+    set:
+      elasticsearchRef:
+        name: eck-elasticsearch
+      podTemplate:
+        metadata:
+          labels:
+            app: kibana
+    release:
+      name: quickstart
+    asserts:
+      - isKind:
+          of: Kibana
+      - equal:
+          path: spec.podTemplate
+          value:
+            metadata:
+              labels:
+                app: kibana
+  - it: values.spec.secureSettings should render properly
+    set:
+      spec:
+        elasticsearchRef:
+          name: eck-elasticsearch
+        secureSettings:
+          - secretName: oidc-secret
+    release:
+      name: quickstart
+    asserts:
+      - isKind:
+          of: Kibana
+      - equal:
+          path: spec.secureSettings
+          value:
+            - secretName: oidc-secret
+  - it: values.secureSettings should render properly
+    set:
+      elasticsearchRef:
+        name: eck-elasticsearch
+      secureSettings:
+        - secretName: oidc-secret
+    release:
+      name: quickstart
+    asserts:
+      - isKind:
+          of: Kibana
+      - equal:
+          path: spec.secureSettings
+          value:
+            - secretName: oidc-secret
+  - it: values.spec.monitoring should render properly
+    set:
+      spec:
+        elasticsearchRef:
+          name: eck-elasticsearch
+        monitoring:
+          logs:
+            elasticsearchRefs:
+              - name: monitoring
+                namespace: observability
+          metrics:
+            elasticsearchRefs:
+              - name: monitoring
+                namespace: observability
+    release:
+      name: quickstart
+    asserts:
+      - isKind:
+          of: Kibana
+      - equal:
+          path: spec.monitoring
+          value:
+            logs:
+              elasticsearchRefs:
+                - name: monitoring
+                  namespace: observability
+            metrics:
+              elasticsearchRefs:
+                - name: monitoring
+                  namespace: observability
+  - it: values.monitoring should render properly
+    set:
+      elasticsearchRef:
+        name: eck-elasticsearch
+      monitoring:
+        logs:
+          elasticsearchRefs:
+            - name: monitoring
+              namespace: observability
+        metrics:
+          elasticsearchRefs:
+            - name: monitoring
+              namespace: observability
+    release:
+      name: quickstart
+    asserts:
+      - isKind:
+          of: Kibana
+      - equal:
+          path: spec.monitoring
+          value:
+            logs:
+              elasticsearchRefs:
+                - name: monitoring
+                  namespace: observability
+            metrics:
+              elasticsearchRefs:
+                - name: monitoring
+                  namespace: observability
