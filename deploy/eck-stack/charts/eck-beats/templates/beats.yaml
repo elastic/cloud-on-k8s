@@ -74,6 +74,6 @@ spec:
   revisionHistoryLimit: {{ . }}
   {{- end }}
   {{- with or ((.Values.spec).serviceAccount) (.Values.serviceAccount) }}
-  serviceAccoun:
+  serviceAccount:
     {{- toYaml . | nindent 4 }}
   {{- end }}

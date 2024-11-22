@@ -95,7 +95,7 @@ tests:
             secureSettings:
             - secretName: eck-beat-secret
             revisionHistoryLimit: 4
-            serviceAccoun:
+            serviceAccount:
               name: elastic-beat
   - it: should render properly when not using spec fields
     set:
@@ -170,5 +170,5 @@ tests:
             secureSettings:
             - secretName: eck-beat-secret
             revisionHistoryLimit: 4
-            serviceAccoun:
+            serviceAccount:
               name: elastic-beat
