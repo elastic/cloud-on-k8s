@@ -35,7 +35,7 @@ annotations: {}
 # ** Deprecation Notice **
 # The previous versions of this Helm Chart simply used the `spec` field here
 # and allowed the user to specify any fields below `spec` that were templated directly
-# into the final Kibana manifest. This is no long the preferred way to specify these
+# into the final Kibana manifest. This is no longer the preferred way to specify these
 # fields and each field that is supported underneath `spec` is now directly specified
 # in this values file. Currently both patterns are supported for backwards compatibility
 # but we plan to remove the `spec` field in the future.
