@@ -82,15 +82,13 @@ elasticsearchRef: {}
 #   podTemplate:
 #     spec:
 #       containers:
-#       - name: metricbeat
-#         securityContext:
+#       - securityContext:
 #           runAsUser: 0
 # daemonSet:
 #   podTemplate:
 #     spec:
 #       containers:
-#       - name: metricbeat
-#         securityContext:
+#       - securityContext:
 #           runAsUser: 0
 
 # Configuration of Beat, which is dependent on the `type` of Beat specified.
