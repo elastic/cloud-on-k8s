@@ -67,7 +67,6 @@ tests:
       - equal:
           path: spec
           value:
-            count: 1
             version: 8.17.0-SNAPSHOT
             daemonSet: {}
             elasticsearchRef:
@@ -142,7 +141,6 @@ tests:
       - equal:
           path: spec
           value:
-            count: 1
             version: 8.17.0-SNAPSHOT
             daemonSet: {}
             elasticsearchRef:
