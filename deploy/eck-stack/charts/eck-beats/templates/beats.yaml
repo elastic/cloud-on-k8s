@@ -19,9 +19,6 @@ spec:
   {{- end }}
   {{- if not (or ((.Values.spec).type) (.Values.type)) }}{{ fail "A Beat type is required" }}{{- end }}
   type: {{ or ((.Values.spec).type) (.Values.type) }}
-  {{- with or ((.Values.spec).count) (.Values.count) }}
-  count: {{ . }}
-  {{- end }}
   {{- if $daemonSet }}
   {{- $ds := or ((.Values.spec).daemonSet) (.Values.daemonSet) }}
   daemonSet:

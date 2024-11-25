@@ -31,7 +31,7 @@ annotations: {}
 # ** Deprecation Notice **
 # The previous versions of this Helm Chart simply used the `spec` field here
 # and allowed the user to specify any fields below spec that were templated directly
-# into the final Kibana manifest. This is no long the preferred way to specify these
+# into the final Beats manifest. This is no longer the preferred way to specify these
 # fields and each field that is supported underneath `spec` is now directly specified
 # in this values file. Currently both patterns are supported for backwards compatibility
 # but we plan to remove the `spec` field in the future.
@@ -47,10 +47,6 @@ type: ""
 # Beats image to deploy.
 #
 # image: docker.elastic.co/beats/metricbeat:8.17.0-SNAPSHOT
-
-# Count of Elastic beats replicas to create.
-#
-count: 1
 
 # Referenced resources are below and depending on the setup, at least elasticsearchRef is required for a functional Beat.
 # ref: https://www.elastic.co/guide/en/cloud-on-k8s/current/k8s-beat-configuration.html#k8s-beat-connect-es
@@ -86,14 +82,14 @@ elasticsearchRef: {}
 #   podTemplate:
 #     spec:
 #       containers:
-#       - name: agent
+#       - name: metricbeat
 #         securityContext:
 #           runAsUser: 0
 # daemonSet:
 #   podTemplate:
 #     spec:
 #       containers:
-#       - name: agent
+#       - name: metricbeat
 #         securityContext:
 #           runAsUser: 0
 
