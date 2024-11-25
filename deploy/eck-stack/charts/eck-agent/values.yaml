@@ -41,10 +41,6 @@ annotations: {}
 # but we plan to remove the `spec` field in the future.
 # spec: {}
 
-# Count of Elastic Agent replicas to create.
-#
-count: 1
-
 # Referenced resources are below and depending on the setup, at least one is required for a functional Agent.
 # ref: https://www.elastic.co/guide/en/cloud-on-k8s/current/k8s-elastic-agent-fleet-configuration.html#k8s-elastic-agent-fleet-configuration-setting-referenced-resources
 #
