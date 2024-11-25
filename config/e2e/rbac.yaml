@@ -38,6 +38,7 @@ rules:
       - list
       - delete
       - create
+      - watch
 ---
 kind: ClusterRoleBinding
 apiVersion: rbac.authorization.k8s.io/v1
@@ -184,6 +185,7 @@ rules:
     - "batch"
     resources:
     - jobs
+    - cronjobs
     verbs:
     - "get"
     - "list"

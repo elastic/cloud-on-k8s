@@ -215,6 +215,7 @@ clusterRole:
     - statefulsets
     - deployments
     - replicasets
+    - daemonsets
     verbs:
     - "get"
     - "list"
@@ -225,10 +226,23 @@ clusterRole:
     - nodes/stats
     verbs:
     - get
+  - nonResourceURLs:
+    - "/metrics"
+    verbs:
+    - get
   - apiGroups:
     - "batch"
     resources:
     - jobs
+    - cronjobs
+    verbs:
+    - "get"
+    - "list"
+    - "watch"
+  - apiGroups:
+    - "storage.k8s.io"
+    resources:
+    - storageclasses
     verbs:
     - "get"
     - "list"

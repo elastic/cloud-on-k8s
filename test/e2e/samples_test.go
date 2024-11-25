@@ -72,6 +72,7 @@ func createBuilders(t *testing.T, decoder *helper.YAMLDecoder, sampleFile, testN
 			return b.WithNamespace(namespace).
 				WithSuffix(suffix).
 				WithElasticsearchRef(tweakServiceRef(b.Kibana.Spec.ElasticsearchRef, suffix)).
+				WithEnterpriseSearchRef(tweakServiceRef(b.Kibana.Spec.EnterpriseSearchRef, suffix)).
 				WithRestrictedSecurityContext().
 				WithLabel(run.TestNameLabel, fullTestName).
 				WithPodLabel(run.TestNameLabel, fullTestName)
