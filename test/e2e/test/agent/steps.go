@@ -236,16 +236,20 @@ func (b Builder) CheckStackTestSteps(k *test.K8sClient) test.StepList {
 }
 
 func (b Builder) UpgradeTestSteps(k *test.K8sClient) test.StepList {
-	//nolint:thelper
 	return test.StepList{
 		{
 			Name: "Applying the Agent mutation should succeed",
-			Test: func(t *testing.T) {
+			Test: test.Eventually(func() error {
 				var agent agentv1alpha1.Agent
-				require.NoError(t, k.Client.Get(context.Background(), k8s.ExtractNamespacedName(&b.Agent), &agent))
+				if err := k.Client.Get(context.Background(), k8s.ExtractNamespacedName(&b.Agent), &agent); err != nil {
+					return err
+				}
 				agent.Spec = b.Agent.Spec
-				require.NoError(t, k.Client.Update(context.Background(), &agent))
-			},
+				if err := k.Client.Update(context.Background(), &agent); err != nil {
+					return err
+				}
+				return nil
+			}),
 		}}
 }
 
