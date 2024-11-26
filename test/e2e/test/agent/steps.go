@@ -236,7 +236,6 @@ func (b Builder) CheckStackTestSteps(k *test.K8sClient) test.StepList {
 }
 
 func (b Builder) UpgradeTestSteps(k *test.K8sClient) test.StepList {
-	//nolint:thelper
 	return test.StepList{
 		{
 			Name: "Applying the Agent mutation should succeed",
