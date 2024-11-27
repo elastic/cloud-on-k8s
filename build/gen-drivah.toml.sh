@@ -32,10 +32,17 @@ generate_drivah_config() {
     local tag=$2
     local go_tags=$3
     local license_pubkey=$4
+
+    # add 'stable' tag without sha1 for snapshots
+    if [[ "$tag" =~ "SNAPSHOT" ]]; then
+        stable_tag="${tag/-$SHA1/}"
+        additional_tags=",\"${stable_tag}-${ARCH}\""
+    fi
+
 cat <<END
 [container.image]
 names = ["${name}"]
-tags = ["${tag}-${ARCH}"]
+tags = ["${tag}-${ARCH}"${additional_tags:-}]
 build_context = "../../"
 
 [container.image.build_args]
