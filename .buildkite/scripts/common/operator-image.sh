@@ -6,7 +6,7 @@
 
 # Functions to set environment variables to build the operator.
 
-source "$ROOT/.buildkite/scripts/common/lib.sh"
+source "${ROOT:-.}/.buildkite/scripts/common/lib.sh"
 
 # Sets operator image variables in the environment depending on the given trigger.
 operator::set_image_vars() {
@@ -59,4 +59,16 @@ operator::set_build_flavors_var() {
         esac
     fi
     export BUILD_FLAVORS
+}
+
+operator::get-image() {
+    buildkite-agent meta-data get operator-image
+}
+
+operator::get-image-stable-tag() {
+    operator::get-image | sed "s/-SNAPSHOT-[0-9a-f]*/-SNAPSHOT/"
+}
+
+operator::get-ubi-image-stable-tag() {
+    buildkite-agent meta-data get operator-image | sed -e "s/operator:/operator-ubi:/"
 }

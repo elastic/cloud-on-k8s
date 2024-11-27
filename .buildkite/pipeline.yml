@@ -146,8 +146,8 @@ steps:
         depends_on:
           - "operator-image-build"
         command: |
-          # retrieve the operator image by removing the sha1 to get the stable tag for snapshots
-          export CONTAINER=$$(buildkite-agent meta-data get operator-image | sed "s/-SNAPSHOT-[0-9a-f]*/-SNAPSHOT/")
+          source .buildkite/scripts/common/operator-image.sh
+          export CONTAINER=$$(operator::get-image-stable-tag)
           cat <<- YAML | buildkite-agent pipeline upload
           steps:
             - label: "Trigger cve-slo-status pipeline for $$CONTAINER"
@@ -167,8 +167,8 @@ steps:
         depends_on:
           - "operator-image-build"
         command: |
-          # retrieve the operator image by adding '-ubi' and by removing the sha1 to get the stable tag for snapshots
-          export CONTAINER=$$(buildkite-agent meta-data get operator-image | sed -e "s/operator:/operator-ubi:/" -e "s/-SNAPSHOT-[0-9a-f]*/-SNAPSHOT/")
+          source .buildkite/scripts/common/operator-image.sh
+          export CONTAINER=$$(operator::get-ubi-image-stable-tag)
           cat <<- YAML | buildkite-agent pipeline upload
           steps:
             - label: "Trigger cve-slo-status pipeline for $$CONTAINER"
