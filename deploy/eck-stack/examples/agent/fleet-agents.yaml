@@ -108,9 +108,10 @@ eck-fleet-server:
 
   fullnameOverride: "fleet-server"
 
-  # Agent policy to be used.
-  policyID: eck-fleet-server
-  kibanaRef:
-    name: kibana
-  elasticsearchRefs:
-  - name: elasticsearch
+  spec:
+    # Agent policy to be used.
+    policyID: eck-fleet-server
+    kibanaRef:
+      name: kibana
+    elasticsearchRefs:
+    - name: elasticsearch

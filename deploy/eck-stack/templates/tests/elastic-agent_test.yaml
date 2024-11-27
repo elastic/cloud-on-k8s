@@ -34,6 +34,9 @@ tests:
           path: spec.version
           value: 8.17.0-SNAPSHOT
       - equal:
+          path: spec.elasticsearchRefs
+          value: null
+      - equal:
           path: spec.kibanaRef.name
           value: kibana
       - equal:
