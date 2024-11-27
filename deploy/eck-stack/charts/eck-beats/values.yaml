@@ -81,15 +81,13 @@ elasticsearchRef: {}
 # deployment:
 #   podTemplate:
 #     spec:
-#       containers:
-#       - securityContext:
-#           runAsUser: 0
+#       securityContext:
+#         runAsUser: 0
 # daemonSet:
 #   podTemplate:
 #     spec:
-#       containers:
-#       - securityContext:
-#           runAsUser: 0
+#       securityContext:
+#         runAsUser: 0
 
 # Configuration of Beat, which is dependent on the `type` of Beat specified.
 # NOTE: The `config` and `configRef` fields are mutually exclusive. Only one of them should be defined at a time,
