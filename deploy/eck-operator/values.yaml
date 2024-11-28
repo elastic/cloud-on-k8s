@@ -24,7 +24,7 @@ image:
   pullPolicy: IfNotPresent
   # tag is the container image tag. If not defined, defaults to chart appVersion.
   tag: null
-  # fips specifies whether the operator will use a FIPS compliant container images to deploy Elastic Stack applications as well as for its own StatefulSet image.
+  # fips specifies whether the operator will use a FIPS compliant container images for its own StatefulSet image.
   # This setting does not apply to Elastic Stack applications images.
   # Can be combined with config.ubiOnly.
   fips: false
