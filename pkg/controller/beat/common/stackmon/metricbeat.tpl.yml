@@ -8,6 +8,10 @@ metricbeat.modules:
   xpack.enabled: true
 http.enabled: false
 monitoring.enabled: false
-monitoring.cluster_uuid: "{{ .ClusterUUID }}"
+# if no associated Elasticsearch cluster UUID known or determinable,
+# monitored application will be treated as stand-alone without cluster_uuid.
+{{ with .ClusterUUID -}}
+monitoring.cluster_uuid: "{{ . }}"
+{{- end}}
 
 # Elasticsearch output configuration is generated and added here

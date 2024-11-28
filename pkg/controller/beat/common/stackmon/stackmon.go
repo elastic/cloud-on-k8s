@@ -128,6 +128,10 @@ type clusterUUIDResponse struct {
 func associatedESUUID(ctx context.Context, client k8s.Client, beat *v1beta1.Beat) (string, error) {
 	esAssociation := beat.EsAssociation()
 	esRef := esAssociation.AssociationRef()
+	if !esRef.IsDefined() {
+		// no association or indirect association e.g. via output configuration
+		return "", nil
+	}
 	if esRef.IsExternal() {
 		remoteES, err := association.GetUnmanagedAssociationConnectionInfoFromSecret(client, esAssociation)
 		if err != nil {
