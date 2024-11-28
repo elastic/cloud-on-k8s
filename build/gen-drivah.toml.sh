@@ -36,7 +36,7 @@ generate_drivah_config() {
     # add 'stable' tag without sha1 for snapshots
     if [[ "$tag" =~ "SNAPSHOT" ]]; then
         stable_tag="${tag/-$SHA1/}"
-        additional_tags=",\"${stable_tag}-${ARCH}\""
+        additional_tags="\"${stable_tag}-${ARCH}\",\"next-SNAPSHOT-${ARCH}\",\"latest-${ARCH}\""
     fi
 
 cat <<END
