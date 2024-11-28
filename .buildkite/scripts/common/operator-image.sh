@@ -34,8 +34,12 @@ operator::set_image_vars() {
             IMAGE_NAME="docker.elastic.co/eck-dev/eck-operator"
             IMAGE_TAG="dev-$sha1"
         ;;
+        merge-xyz)
+            IMAGE_NAME="docker.elastic.co/eck-snapshots/eck-operator"
+            IMAGE_TAG="$version-$sha1"
+        ;;
         *)
-            IMAGE_NAME="docker.elastic.co/eck-ci/eck-operator-br"
+            IMAGE_NAME="docker.elastic.co/eck-ci/eck-operator"
             IMAGE_TAG="$version-$sha1"
         ;;
     esac
