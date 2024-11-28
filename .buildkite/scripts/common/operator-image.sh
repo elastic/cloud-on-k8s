@@ -50,9 +50,9 @@ operator::set_build_flavors_var() {
     if [[ "${BUILD_FLAVORS:-}" == "" ]]; then
         case $trigger in
             tag-*)           BUILD_FLAVORS="eck,eck-dev,eck-fips,eck-ubi,eck-ubi-fips" ;;
-            merge-main)      BUILD_FLAVORS="eck,eck-dev" ;;
             nightly-main)    BUILD_FLAVORS="eck,eck-dev,eck-fips,eck-ubi,eck-ubi-fips" ;;
             merge-xyz)       BUILD_FLAVORS="eck,eck-dev,eck-fips,eck-ubi,eck-ubi-fips" ;;
+            merge-main)      BUILD_FLAVORS="eck,eck-dev" ;;
             *-test-snapshot) BUILD_FLAVORS="eck,eck-dev" ;;
             pr-*)            BUILD_FLAVORS="eck" ;;
             dev)             BUILD_FLAVORS="dev" ;;
