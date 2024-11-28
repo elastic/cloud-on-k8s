@@ -51,9 +51,10 @@ operator::set_build_flavors_var() {
         case $trigger in
             tag-*)           BUILD_FLAVORS="eck,eck-dev,eck-fips,eck-ubi,eck-ubi-fips" ;;
             merge-main)      BUILD_FLAVORS="eck,eck-dev" ;;
-            nightly-main)    BUILD_FLAVORS="eck,eck-dev,eck-ubi" ;;
+            nightly-main)    BUILD_FLAVORS="eck,eck-dev,eck-fips,eck-ubi,eck-ubi-fips" ;;
+            merge-xyz)       BUILD_FLAVORS="eck,eck-dev,eck-fips,eck-ubi,eck-ubi-fips" ;;
             *-test-snapshot) BUILD_FLAVORS="eck,eck-dev" ;;
-            pr-*|merge-xyz)  BUILD_FLAVORS="eck" ;;
+            pr-*)            BUILD_FLAVORS="eck" ;;
             dev)             BUILD_FLAVORS="dev" ;;
             *)               echo "error: trigger '$trigger' not supported"; exit ;;
         esac
