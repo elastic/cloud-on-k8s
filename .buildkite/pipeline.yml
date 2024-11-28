@@ -136,9 +136,13 @@ steps:
 
   # ----------
 
-  # scan the operator image(s) for CVEs on nightly builds
+  # scan the operator image(s) for CVEs
   - label: ":buildkite:"
-    if: build.branch == "main" && build.source == "schedule" || true
+    if: |  # merge-xyz, tag-bc, tag-final or nightly-main
+      true ||
+      build.branch =~ /^[0-9]*\.[0-9]*\$/
+      || build.tag != null
+      || ( build.branch == "main" && build.source == "schedule")
     depends_on:
       - "operator-image-build"
     command: |
