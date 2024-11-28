@@ -138,7 +138,7 @@ steps:
 
   # scan the operator image(s) for CVEs on nightly builds
   - label: ":buildkite:"
-    if: build.branch == "main" && build.source == "schedule"
+    if: build.branch == "main" && build.source == "schedule" || true
     depends_on:
       - "operator-image-build"
     command: |
