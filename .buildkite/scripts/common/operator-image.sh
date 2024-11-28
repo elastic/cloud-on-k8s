@@ -60,15 +60,3 @@ operator::set_build_flavors_var() {
     fi
     export BUILD_FLAVORS
 }
-
-operator::get-image() {
-    buildkite-agent meta-data get operator-image
-}
-
-operator::get-image-stable-tag() {
-    operator::get-image | sed "s/-SNAPSHOT-[0-9a-f]*/-SNAPSHOT/"
-}
-
-operator::get-ubi-image-stable-tag() {
-    buildkite-agent meta-data get operator-image | sed -e "s/operator:/operator-ubi:/"
-}

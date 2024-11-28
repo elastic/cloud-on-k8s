@@ -145,7 +145,7 @@ steps:
       list-images() {
         .buildkite/scripts/build/pre-build-operator.sh | \
           grep -v dev$$ | grep build: | sed "s/.*build: //" | \
-          sed "s/:.*/:latest/"
+          sed "s/:.*/:next-SNAPSHOT/"
       }
       (
         cat <<- YAML
