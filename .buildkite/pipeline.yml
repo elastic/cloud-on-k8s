@@ -146,11 +146,7 @@ steps:
     depends_on:
       - "operator-image-build"
     command: |
-      list-images() {
-        .buildkite/scripts/build/pre-build-operator.sh | \
-          grep -v dev$$ | grep build: | sed "s/.*build: //" | \
-          sed "s/:.*/:next-SNAPSHOT/"
-      }
+      list-images() { .buildkite/scripts/build/pre-build-operator.sh | grep -v '#'; }
       (
         cat <<- YAML
       steps:

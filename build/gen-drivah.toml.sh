@@ -27,6 +27,15 @@ SNAPSHOT=true
 GO_TAGS=${GO_TAGS-release}
 LICENSE_PUBKEY=license.key
 
+latest_tag() {
+    local tag=$1
+    if [[ "$tag" =~ "SNAPSHOT" ]]; then
+        echo "next-SNAPSHOT"
+    else
+        echo "latest"
+    fi
+}
+
 generate_drivah_config() {
     local name=$1
     local tag=$2
@@ -35,10 +44,12 @@ generate_drivah_config() {
 
     # add 'stable' tag without sha1 for snapshots
     if [[ "$tag" =~ "SNAPSHOT" ]]; then
-        stable_tag="${tag/-$SHA1/}"
-        additional_tags=",\"${stable_tag}-${ARCH}\",\"next-SNAPSHOT-${ARCH}\""
+        snapshot_stable_tag="${tag/-$SHA1/}"
+        latest_tag="$(latest_tag $tag)"
+        additional_tags=",\"${snapshot_stable_tag}-${ARCH}\",\"${latest_tag}-${ARCH}\""
     else
-        additional_tags=",\"latest-${ARCH}\""
+        latest_tag="$(latest_tag $tag)"
+        additional_tags=",\"${latest_tag}-${ARCH}\""
     fi
 
 cat <<END
@@ -98,6 +109,11 @@ main() {
         if [[ "$flavor" =~ -fips ]]; then
                 name="$name-fips"
                 go_tags="$go_tags,goexperiment.boringcrypto"
+        fi
+
+        # log the image name with a stable tag (except the 'dev' flavor) to indicate the image to use for cve scan
+        if [[ ! "$flavor" =~ -dev ]]; then
+            echo "$name:$(latest_tag $tag)"
         fi
 
         # fetch public license key
