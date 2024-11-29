@@ -112,6 +112,30 @@ output:
             verification_mode: certificate
         username: es-user
 `
+	standaloneBeatYML := `http:
+    enabled: false
+metricbeat:
+    modules:
+        - hosts:
+            - http+unix:///var/shared/metricbeat-test-beat.sock
+          metricsets:
+            - stats
+            - state
+          module: beat
+          period: 10s
+          xpack:
+            enabled: true
+monitoring:
+    enabled: false
+output:
+    elasticsearch:
+        hosts:
+            - es-metrics-monitoring-url
+        password: es-password
+        ssl:
+            verification_mode: certificate
+        username: es-user
+`
 	beatSidecarFixture := func(beatYml string) stackmon.BeatSidecar {
 		return stackmon.BeatSidecar{
 			Container: containerFixture,
@@ -249,6 +273,23 @@ output:
 				version: "8.2.3",
 			},
 			want:    beatSidecarFixture(fmt.Sprintf(beatYml, "abcd1234", "es-metrics-monitoring-url")),
+			wantErr: false,
+		},
+		{
+			name: "beat with stack monitoring enabled and no elasticsearchRef returns configured sidecar",
+			args: args{
+				client: k8s.NewFakeClient(&beatFixture, &esFixture, &monitoringEsFixture, &corev1.Secret{
+					ObjectMeta: metav1.ObjectMeta{Name: "es-secret-name", Namespace: "test"},
+					Data:       map[string][]byte{"es-user": []byte("es-password")},
+				}),
+				beat: func() *v1beta1.Beat {
+					beat := beatFixture.DeepCopy()
+					beat.Spec.ElasticsearchRef = commonv1.ObjectSelector{}
+					return beat
+				},
+				version: "8.2.3",
+			},
+			want:    beatSidecarFixture(standaloneBeatYML),
 			wantErr: false,
 		},
 		{
