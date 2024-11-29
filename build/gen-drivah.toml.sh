@@ -45,10 +45,10 @@ generate_drivah_config() {
     # add 'stable' tag without sha1 for snapshots
     if [[ "$tag" =~ "SNAPSHOT" ]]; then
         snapshot_stable_tag="${tag/-$SHA1/}"
-        latest_tag="$(latest_tag $tag)"
+        latest_tag="$(latest_tag "$tag")"
         additional_tags=",\"${snapshot_stable_tag}-${ARCH}\",\"${latest_tag}-${ARCH}\""
     else
-        latest_tag="$(latest_tag $tag)"
+        latest_tag="$(latest_tag "$tag")"
         additional_tags=",\"${latest_tag}-${ARCH}\""
     fi
 
@@ -113,7 +113,7 @@ main() {
 
         # log the image name with a stable tag (except the 'dev' flavor) to indicate the image to use for cve scan
         if [[ ! "$flavor" =~ -dev ]]; then
-            echo "$name:$(latest_tag $tag)"
+            echo "$name:$(latest_tag "$tag")"
         fi
 
         # fetch public license key
