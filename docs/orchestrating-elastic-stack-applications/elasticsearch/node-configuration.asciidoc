@@ -23,7 +23,6 @@ spec:
       # node.master: true
       node.roles: ["master"]
       xpack.ml.enabled: true
-      node.remote_cluster_client: false
   - name: data
     count: 10
     config:
@@ -34,7 +33,6 @@ spec:
       # node.ml: true
       # node.transform: true
       node.roles: ["data", "ingest", "ml", "transform"]
-      node.remote_cluster_client: false
 ----
 
 For more information on Elasticsearch settings, check https://www.elastic.co/guide/en/elasticsearch/reference/current/settings.html[Configuring Elasticsearch].

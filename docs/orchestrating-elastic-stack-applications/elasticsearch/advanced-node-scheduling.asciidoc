@@ -40,7 +40,6 @@ spec:
     count: 3
     config:
       node.roles: ["master"]
-      node.remote_cluster_client: false
   # 3 ingest-data nodes
   - name: ingest-data
     count: 3
