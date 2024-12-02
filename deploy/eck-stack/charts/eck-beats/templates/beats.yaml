@@ -70,7 +70,6 @@ spec:
   {{- with or ((.Values.spec).revisionHistoryLimit) (.Values.revisionHistoryLimit) }}
   revisionHistoryLimit: {{ . }}
   {{- end }}
-  {{- with or ((.Values.spec).serviceAccount) (.Values.serviceAccount) }}
-  serviceAccount:
-    {{- toYaml . | nindent 4 }}
+  {{- with or ((.Values.spec).serviceAccountName) (.Values.serviceAccountName) }}
+  serviceAccountName: {{ . }}
   {{- end }}
