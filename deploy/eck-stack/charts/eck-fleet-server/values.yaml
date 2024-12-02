@@ -69,6 +69,132 @@ spec:
         securityContext:
           runAsUser: 0
 
+# Elastic Agent image to deploy.
+#
+# image: docker.elastic.co/beats/elastic-agent:8.17.0-SNAPSHOT
+
+# ** Deprecation Notice **
+# The previous versions of this Helm Chart simply used the `spec` field here
+# and allowed the user to specify any fields below `spec` that were templated directly
+# into the final Kibana manifest. This is no longer the preferred way to specify these
+# fields and each field that is supported underneath `spec` is now directly specified
+# in this values file. Currently both patterns are supported for backwards compatibility
+# but we plan to remove the `spec` field in the future.
+# spec: {}
+
+# Referenced resources are below and depending on the setup, at least one is required for a functional Agent.
+# ref: https://www.elastic.co/guide/en/cloud-on-k8s/current/k8s-elastic-agent-fleet-configuration.html#k8s-elastic-agent-fleet-configuration-setting-referenced-resources
+#
+# Reference to ECK-managed Kibana instance.
+#
+# kibanaRef:
+#   name: quickstart
+  # Optional namespace reference to Kibana instance.
+  # If not specified, then the namespace of the Agent instance
+  # will be assumed.
+  #
+  # namespace: default
+
+# Reference to ECK-managed Elasticsearch instance.
+#
+elasticsearchRefs:
+- name: eck-elasticsearch
+  # Optional namespace reference to Elasticsearch instance.
+  # If not specified, then the namespace of the Agent instance
+  # will be assumed.
+  #
+  # namespace: default
+
+# Reference to ECK-managed Fleet Server instance.
+#
+# fleetServerRef:
+#   name: eck-fleet-server
+  # Optional namespace reference to Fleet Server instance.
+  # If not specified, then the namespace of the Agent instance
+  # will be assumed.
+  #
+  # namespace: default
+
+# The Elastic Agent configuration, the ECK equivalent to agent.yml
+# NOTE: The `config` and `configRef` fields are mutually exclusive. Only one of them should be defined at a time,
+# as using both may cause conflicts.
+#
+# Configuration of Agent, specifically used in Agent standalone mode.
+# ref: https://www.elastic.co/guide/en/cloud-on-k8s/current/k8s-elastic-agent-configuration.html
+#
+config: null
+
+# Reference a configuration in a Secret.
+# ref: https://www.elastic.co/guide/en/cloud-on-k8s/current/k8s-elastic-agent-configuration.html
+#
+# configRef:
+#   secretName: ""
+
+# The mode of Agent to use. Only set to "fleet" when Fleet Server is enabled.
+# ref: https://www.elastic.co/guide/en/cloud-on-k8s/current/k8s-elastic-agent-fleet-configuration.html#k8s-elastic-agent-fleet-configuration-fleet-mode-and-fleet-server
+#
+# mode: "fleet"
+
+# fleetServerEnabled determines whether the Agent will be run as the Fleet Server.
+#
+# NOTE: Both `mode: fleet` and `fleetServerEnabled: true` need to be set for Fleet Server to be enabled.
+# ref: https://www.elastic.co/guide/en/cloud-on-k8s/current/k8s-elastic-agent-fleet-configuration.html#k8s-elastic-agent-fleet-configuration-fleet-mode-and-fleet-server
+#
+fleetServerEnabled: false
+
+# The HTTP layer configuration for the Fleet Server Service.
+# ref: https://www.elastic.co/guide/en/cloud-on-k8s/current/k8s-elastic-agent-fleet-configuration.html#k8s-elastic-agent-fleet-configuration-customize-fleet-server-service
+#
+# http:
+
+# policyID determines into which Agent Policy this Agent will be enrolled.
+# policyID: eck-agent
+  
+# DaemonSet, StatefulSet, or Deployment specification for Agent.
+# At least one is required of [daemonSet, deployment, statefulSet].
+# No default is currently set, refer to https://github.com/elastic/cloud-on-k8s/issues/7429.
+# ref: https://www.elastic.co/guide/en/cloud-on-k8s/current/k8s-elastic-agent-fleet-configuration.html#k8s-elastic-agent-fleet-configuration-chose-the-deployment-model
+#
+# deployment:
+#   podTemplate:
+#     spec:
+#       containers:
+#       - name: agent
+#         securityContext:
+#           runAsUser: 0
+# daemonSet:
+#   podTemplate:
+#     spec:
+#       containers:
+#       - name: agent
+#         securityContext:
+#           runAsUser: 0
+# statefulSet:
+#   podTemplate:
+#     spec:
+#       containers:
+#       - name: agent
+#         securityContext:
+#           runAsUser: 0
+
+# SecureSettings is a list of references to Kubernetes Secrets containing sensitive configuration options for Elastic Agent.
+secureSettings: []
+# - secretName: my-secret-with-secure-settings
+
+# Number of revisions to retain to allow rollback in the underlying Deployment.
+# If not set Kubernetes sets this to 10 by default.
+#
+# revisionHistoryLimit: 2
+
+# ServiceAccount to be used by Elastic Agent. Some Elastic Agent features, such as the Kubernetes integration,
+# require that Agent Pods interact with Kubernetes APIs. This functionality requires specific permissions
+# ref: https://www.elastic.co/guide/en/cloud-on-k8s/current/k8s-elastic-agent-fleet-configuration.html#k8s-elastic-agent-fleet-configuration-role-based-access-control
+#
+serviceAccount:
+  name: elastic-agent
+  # { .Release.Namespace } is used here by default, but can be specified.
+  # namespace: optional-namespace
+
 # ServiceAccount to be used by Elastic Fleet Server. Some Fleet Server features (such as autodiscover or Kubernetes module metricsets)
 # require that Fleet Server Pods interact with Kubernetes APIs. This functionality requires specific permissions
 # ref: https://www.elastic.co/guide/en/cloud-on-k8s/current/k8s-elastic-agent-fleet-configuration.html#k8s-elastic-agent-fleet-configuration-role-based-access-control
