@@ -537,3 +537,25 @@ type FileSettingsErrors struct {
 	ErrorKind string   `json:"error_kind"`
 	Errors    []string `json:"errors"`
 }
+
+type IndexSettingsResponse struct {
+	Indices map[string]struct {
+		Shard    int `json:"shard"`
+		Settings struct {
+			Index IndexSettings `json:"index"`
+		} `json:"settings"`
+	}
+}
+
+type IndexSettings struct {
+	Mapping IndexMappingSettings `json:"mapping"`
+}
+
+type IndexMappingSettings struct {
+	TotalFields IndexMappingTotalFieldsSettings `json:"total_fields"`
+}
+
+type IndexMappingTotalFieldsSettings struct {
+	Limit                    int  `json:"limit"`
+	IgnoreDynamicBeyondLimit bool `json:"ignore_dynamic_beyond_limit"`
+}

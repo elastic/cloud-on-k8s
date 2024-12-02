@@ -15,6 +15,7 @@ import (
 
 	beatv1beta1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/beat/v1beta1"
 	esv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/elasticsearch/v1"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/client"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/k8s"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/pointer"
 	"github.com/elastic/cloud-on-k8s/v2/test/e2e/cmd/run"
@@ -163,6 +164,41 @@ func (b Builder) CheckStackTestSteps(k *test.K8sClient) test.StepList {
 			}),
 		},
 		test.Step{
+			Name: "Beat index field limit should be set",
+			Test: test.Eventually(func() error {
+				var beat beatv1beta1.Beat
+				if err := k.Client.Get(context.Background(), k8s.ExtractNamespacedName(&b.Beat), &beat); err != nil {
+					return fmt.Errorf("while retrieving beat: %w", err)
+				}
+				if b.indexFieldLimits != nil {
+					var es esv1.Elasticsearch
+					esNsName := b.Beat.ElasticsearchRef().WithDefaultNamespace(b.Beat.Namespace).NamespacedName()
+					if err := k.Client.Get(context.Background(), esNsName, &es); err != nil {
+						return fmt.Errorf("while retrieving elasticsearch: %w", err)
+					}
+					esClient, err := elasticsearch.NewElasticsearchClient(es, k)
+					if err != nil {
+						return fmt.Errorf("while creating elasticsearch client: %w", err)
+					}
+					for index, limit := range b.indexFieldLimits {
+						response, err := esClient.GetIndexSettings(context.Background(), index)
+						if err != nil {
+							return fmt.Errorf("while retrieving index settings: %w", err)
+						}
+						if !indexLimitSet(response, limit) {
+							err := esClient.SetIndexSettings(context.Background(), index, map[string]interface{}{
+								"index.mapping.total_fields.limit": limit,
+							})
+							if err != nil {
+								return fmt.Errorf("while setting index settings: %w", err)
+							}
+						}
+					}
+				}
+				return nil
+			}),
+		},
+		test.Step{
 			Name: "ES data should pass validations",
 			Test: test.Eventually(func() error {
 				esNsName := b.Beat.ElasticsearchRef().WithDefaultNamespace(b.Beat.Namespace).NamespacedName()
@@ -187,6 +223,15 @@ func (b Builder) CheckStackTestSteps(k *test.K8sClient) test.StepList {
 		},
 		checks.BeatsMonitoredStep(&b, k),
 	}
+}
+
+func indexLimitSet(response client.IndexSettingsResponse, limit int) bool {
+	for _, index := range response.Indices {
+		if index.Settings.Index.Mapping.TotalFields.Limit == limit {
+			return true
+		}
+	}
+	return false
 }
 
 func (b Builder) UpgradeTestSteps(k *test.K8sClient) test.StepList {

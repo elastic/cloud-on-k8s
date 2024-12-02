@@ -253,4 +253,14 @@ func (c *clientV6) Equal(c2 Client) bool {
 	return c.baseClient.equal(&other.baseClient)
 }
 
+func (c *clientV6) GetIndexSettings(ctx context.Context, index string) (IndexSettingsResponse, error) {
+	var response IndexSettingsResponse
+	err := c.get(ctx, "/"+index+"/_settings", &response)
+	return response, err
+}
+
+func (c *clientV6) SetIndexSettings(ctx context.Context, index string, settings map[string]interface{}) error {
+	return c.put(ctx, "/"+index+"/_settings", settings, nil)
+}
+
 var _ Client = &clientV6{}

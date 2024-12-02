@@ -99,14 +99,6 @@ func TestMetricbeatHostsRecipe(t *testing.T) {
 }
 
 func TestMetricbeatStackMonitoringRecipe(t *testing.T) {
-	v := version.MustParse(test.Ctx().ElasticStackVersion)
-
-	// https://github.com/elastic/cloud-on-k8s/issues/8250
-	// Update when the referenced issue is resolved.
-	if v.GE(version.MinFor(8, 16, 0)) {
-		t.SkipNow()
-	}
-
 	name := "fb-autodiscover"
 	pod, loggedString := loggingTestPod(name)
 	customize := func(builder beat.Builder) beat.Builder {
@@ -160,7 +152,8 @@ func TestMetricbeatStackMonitoringRecipe(t *testing.T) {
 				// filebeat validations
 				beat.HasEventFromPod(pod.Name),
 				beat.HasMessageContaining(loggedString),
-			)...)
+			)...).
+			WithCustomIndexFieldLimit("*metricbeat*", 12500)
 	}
 
 	runBeatRecipe(t, "stack_monitoring.yaml", customize, pod)
