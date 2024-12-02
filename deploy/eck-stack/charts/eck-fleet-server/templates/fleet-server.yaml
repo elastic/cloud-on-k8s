@@ -14,8 +14,8 @@ spec:
   version: {{ required "A Fleet Server version is required" (or ((.Values.spec).version) (.Values.version)) }}
   mode: fleet
   fleetServerEnabled: true
-  {{- if (hasKey .Values.spec "mode") }}
-  {{- fail "spec.mode cannot be changed" }}
+  {{- if (or (hasKey (.Values.spec) "mode") (hasKey .Values "mode")) }}
+  {{- fail "mode cannot be changed" }}
   {{- end }}
   {{- if (or (hasKey (.Values.spec) "fleetServerEnabled") (hasKey .Values "fleetServerEnabled"))}}
   {{- fail "fleetServerEnabled cannot be changed" }}
@@ -49,12 +49,11 @@ spec:
   kibanaRef:
     {{- toYaml . | nindent 4 }}
   {{- end }}
+  {{- with or ((.Values.spec).policyID) (.Values.policyID) }}
+  policyID: {{ . }}
+  {{- end }}
   {{- with or ((.Values.spec).http) (.Values.http) }}
   http:
-    {{- toYaml . | nindent 4 }}
-  {{- end }}
-  {{- with or ((.Values.spec).secureSettings) (.Values.secureSettings) }}
-  secureSettings:
     {{- toYaml . | nindent 4 }}
   {{- end }}
   {{- with or ((.Values.spec).revisionHistoryLimit) (.Values.revisionHistoryLimit) }}
