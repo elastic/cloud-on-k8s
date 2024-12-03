@@ -113,7 +113,7 @@ main() {
 
         # log the image name with a stable tag (except the 'dev' flavor) to indicate the image to use for cve scan
         if [[ ! "$flavor" =~ -dev ]]; then
-            echo "$name:$(latest_tag "$tag")"
+            echo "$name:$(latest_tag "$tag")" >> images-to-scan.txt
         fi
 
         # fetch public license key
@@ -130,6 +130,10 @@ main() {
         cp -f "$container_file_path" "$HERE/$flavor/Dockerfile"
 
     done
+
+    if [[ "${CI:-}" == true ]]; then
+        buildkite-agent meta-data set images-to-scan "$(cat images-to-scan.txt)"
+    fi
 }
 
 main

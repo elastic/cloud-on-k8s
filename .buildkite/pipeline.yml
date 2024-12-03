@@ -146,7 +146,7 @@ steps:
     depends_on:
       - "operator-image-build"
     command: |
-      list-images() { .buildkite/scripts/build/pre-build-operator.sh | grep -v '#'; }
+      list-images() { buildkite-agent meta-data get images-to-scan; }
       (
         cat <<- YAML
       steps:
