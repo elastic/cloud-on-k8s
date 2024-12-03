@@ -152,8 +152,7 @@ func TestMetricbeatStackMonitoringRecipe(t *testing.T) {
 				// filebeat validations
 				beat.HasEventFromPod(pod.Name),
 				beat.HasMessageContaining(loggedString),
-			)...).
-			WithCustomIndexFieldLimit("*metricbeat*", 12500)
+			)...)
 	}
 
 	runBeatRecipe(t, "stack_monitoring.yaml", customize, pod)

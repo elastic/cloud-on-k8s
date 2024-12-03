@@ -61,6 +61,11 @@ spec:
     processors:
     - add_cloud_metadata: {}
     logging.json: true
+    # See https://github.com/elastic/beats/pull/41640
+    # Since 8.15 the default index template for metricbeat exceeds the default
+    # index mapping total fields limit.
+    setup.template.settings:
+      index.mapping.total_fields.limit: 12500
   deployment:
     podTemplate:
       spec:

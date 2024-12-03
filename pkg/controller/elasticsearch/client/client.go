@@ -127,10 +127,6 @@ type Client interface {
 	Version() version.Version
 	// HasProperties checks whether this client has the indicated properties.
 	HasProperties(version version.Version, user BasicAuth, url URLProvider, caCerts []*x509.Certificate) bool
-	// GetIndexSettings returns the index settings for the given index.
-	GetIndexSettings(ctx context.Context, index string) (IndexSettingsResponse, error)
-	// SetIndexSettings sets the index settings for the given index.
-	SetIndexSettings(ctx context.Context, index string, settings map[string]interface{}) error
 }
 
 // Timeout returns the Elasticsearch client timeout value for the given Elasticsearch resource.

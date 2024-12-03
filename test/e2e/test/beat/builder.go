@@ -46,8 +46,6 @@ type Builder struct {
 	Suffix string
 
 	MutatedFrom *Builder
-
-	indexFieldLimits map[string]int
 }
 
 func (b Builder) SkipTest() bool {
@@ -348,12 +346,4 @@ func (b Builder) GetLogsCluster() *types.NamespacedName {
 	}
 	metricsCluster := b.Beat.Spec.Monitoring.Logs.ElasticsearchRefs[0].NamespacedName()
 	return &metricsCluster
-}
-
-func (b Builder) WithCustomIndexFieldLimit(index string, limit int) Builder {
-	if b.indexFieldLimits == nil {
-		b.indexFieldLimits = make(map[string]int)
-	}
-	b.indexFieldLimits[index] = limit
-	return b
 }
