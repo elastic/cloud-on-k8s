@@ -58,3 +58,162 @@ tests:
           value:
             eck.k8s.elastic.co/license: basic
             test: annotation
+  - it: should render properly when using spec fields
+    set:
+      spec:
+        daemonSet: {}
+        elasticsearchRefs:
+        - name: eck-elasticsearch
+          namespace: default
+        kibanaRef:
+          name: eck-kibana
+          namespace: default
+        fleetServerRef:
+          name: eck-fleet-server
+          namespace: default
+        config:
+          agent:
+            monitoring:
+              enabled: true
+        mode: fleet
+        fleetServerEnabled: true
+        http:
+          service:
+            spec:
+              type: ClusterIP
+        policyID: eck-agent
+        secureSettings:
+        - secretName: eck-agent-secret
+        revisionHistoryLimit: 4
+        serviceAccount:
+          name: elastic-agent
+    release:
+      name: quickstart
+    asserts:
+      - isKind:
+          of: Agent
+      - equal:
+          path: metadata.labels
+          value:
+            app.kubernetes.io/instance: quickstart
+            app.kubernetes.io/managed-by: Helm
+            app.kubernetes.io/name: eck-agent
+            helm.sh/chart: eck-agent-0.14.0-SNAPSHOT
+      - equal:
+          path: spec
+          value:
+            version: 8.17.0-SNAPSHOT
+            daemonSet: {}
+            elasticsearchRefs:
+            - name: eck-elasticsearch
+              namespace: default
+            kibanaRef:
+              name: eck-kibana
+              namespace: default
+            fleetServerRef:
+              name: eck-fleet-server
+              namespace: default
+            config:
+              agent:
+                monitoring:
+                  enabled: true
+            mode: fleet
+            fleetServerEnabled: true
+            http:
+              service:
+                spec:
+                  type: ClusterIP
+            policyID: eck-agent
+            secureSettings:
+            - secretName: eck-agent-secret
+            revisionHistoryLimit: 4
+            serviceAccountName: elastic-agent
+  - it: should render properly when not using spec fields
+    set:
+      daemonSet: {}
+      elasticsearchRefs:
+      - name: eck-elasticsearch
+        namespace: default
+      kibanaRef:
+        name: eck-kibana
+        namespace: default
+      fleetServerRef:
+        name: eck-fleet-server
+        namespace: default
+      config:
+        agent:
+          monitoring:
+            enabled: true
+      mode: fleet
+      fleetServerEnabled: true
+      http:
+        service:
+          spec:
+            type: ClusterIP
+      policyID: eck-agent
+      secureSettings:
+      - secretName: eck-agent-secret
+      revisionHistoryLimit: 4
+      serviceAccount:
+        name: elastic-agent
+    release:
+      name: quickstart
+    asserts:
+      - isKind:
+          of: Agent
+      - equal:
+          path: metadata.labels
+          value:
+            app.kubernetes.io/instance: quickstart
+            app.kubernetes.io/managed-by: Helm
+            app.kubernetes.io/name: eck-agent
+            helm.sh/chart: eck-agent-0.14.0-SNAPSHOT
+      - equal:
+          path: spec
+          value:
+            version: 8.17.0-SNAPSHOT
+            daemonSet: {}
+            elasticsearchRefs:
+            - name: eck-elasticsearch
+              namespace: default
+            kibanaRef:
+              name: eck-kibana
+              namespace: default
+            fleetServerRef:
+              name: eck-fleet-server
+              namespace: default
+            config:
+              agent:
+                monitoring:
+                  enabled: true
+            mode: fleet
+            fleetServerEnabled: true
+            http:
+              service:
+                spec:
+                  type: ClusterIP
+            policyID: eck-agent
+            secureSettings:
+            - secretName: eck-agent-secret
+            revisionHistoryLimit: 4
+            serviceAccountName: elastic-agent
+  - it: not setting version should fail
+    set:
+      version: ""
+    asserts:
+      - failedTemplate:
+          errorMessage: "An Elastic Agent version is required"
+  - it: not setting any daemonset, deployment or statefulset should fail
+    asserts:
+      - failedTemplate:
+          errorMessage: "At least one of daemonSet, deployment or statefulSet is required"
+  - it: setting both config and configRef should fail
+    set:
+      deployment: {}
+      config:
+        something: here
+      configRef:
+        secretName: "elastic-agent"
+    asserts:
+      - failedTemplate:
+          errorMessage: "Only one of config and configRef can be specified"
