@@ -1,0 +1,19 @@
+version: 8.17.0-SNAPSHOT
+deployment:
+  replicas: 1
+  podTemplate:
+    spec:
+      serviceAccountName: fleet-server
+      automountServiceAccountToken: true
+elasticsearchRefs:
+- name: eck-elasticsearch
+  namespace: default
+kibanaRef:
+  name: eck-kibana
+  namespace: default
+http:
+  service:
+    spec:
+      type: ClusterIP
+serviceAccount:
+  name: elastic-fleet-server
