@@ -21,16 +21,16 @@ spec:
   {{- fail "fleetServerEnabled cannot be changed" }}
   {{- end }}
 
-  {{- $daemonSet := (or (hasKey (.Values.spec) "daemonSet") (hasKey .Values "daemonSet")) }}
+  {{- $statefulSet := (or (hasKey (.Values.spec) "statefulSet") (hasKey .Values "statefulSet")) }}
   {{- $deployment := (or (hasKey (.Values.spec) "deployment") (hasKey .Values "deployment")) }}
-  {{- if and (not $daemonSet) (not $deployment) }}
-  {{ fail "At least one of daemonSet or deployment is required" }}
+  {{- if and (not $statefulSet) (not $deployment) }}
+  {{ fail "At least one of statefulSet or deployment is required" }}
   {{- end }}
-  {{- if $daemonSet }}
-  {{- $ds := or ((.Values.spec).daemonSet) (.Values.daemonSet) }}
-  daemonSet:
-    {{- /* This is required to render the empty daemonset ( {} ) properly */}}
-    {{- $ds | default dict | toYaml | nindent 4 }}
+  {{- if $statefulSet }}
+  {{- $ss := or ((.Values.spec).statefulSet) (.Values.statefulSet) }}
+  statefulSet:
+    {{- /* This is required to render the empty statefulSet ( {} ) properly */}}
+    {{- $ss | default dict | toYaml | nindent 4 }}
   {{- end }}
   {{- if $deployment }}
   {{- $deploy := or ((.Values.spec).deployment) (.Values.deployment) }}

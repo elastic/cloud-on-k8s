@@ -62,7 +62,7 @@ tests:
   - it: should render properly when using spec fields
     set:
       spec:
-        daemonSet: {}
+        deployment: {}
         elasticsearchRefs:
         - name: eck-elasticsearch
           namespace: default
@@ -95,7 +95,7 @@ tests:
             mode: fleet
             policyID: eck-fleet-server
             version: 8.17.0-SNAPSHOT
-            daemonSet: {}
+            deployment: {}
             elasticsearchRefs:
             - name: eck-elasticsearch
               namespace: default
@@ -110,7 +110,7 @@ tests:
             serviceAccountName: elastic-fleet-server
   - it: should render properly when not using spec fields
     set:
-      daemonSet: {}
+      deployment: {}
       elasticsearchRefs:
       - name: eck-elasticsearch
         namespace: default
@@ -143,7 +143,7 @@ tests:
             mode: fleet
             policyID: eck-fleet-server
             version: 8.17.0-SNAPSHOT
-            daemonSet: {}
+            deployment: {}
             elasticsearchRefs:
             - name: eck-elasticsearch
               namespace: default
@@ -162,7 +162,7 @@ tests:
     asserts:
       - failedTemplate:
           errorMessage: "A Fleet Server version is required"
-  - it: not setting a daemonset or deployment should fail
+  - it: not setting a statefulset or deployment should fail
     asserts:
       - failedTemplate:
-          errorMessage: "At least one of daemonSet or deployment is required"
+          errorMessage: "At least one of statefulSet or deployment is required"

@@ -74,25 +74,23 @@ policyID: eck-fleet-server
 #
 # http:
 
-# DaemonSet or Deployment specification for Fleet Server.
-# At least one is required of [daemonSet, deployment].
+# Deployment or StatefulSet specification for Fleet Server.
+# At least one is required of [deployment, statefulSet].
 # No default is currently set, refer to https://github.com/elastic/cloud-on-k8s/issues/7429.
 # ref: https://www.elastic.co/guide/en/cloud-on-k8s/current/k8s-elastic-agent-fleet-configuration.html#k8s-elastic-agent-fleet-configuration-chose-the-deployment-model
 #
 # deployment:
+#   replicas: 1
 #   podTemplate:
 #     spec:
-#       containers:
-#       - name: agent
-#         securityContext:
-#           runAsUser: 0
-# daemonSet:
+#       serviceAccountName: fleet-server
+#       automountServiceAccountToken: true
+#
+# statefulSet:
 #   podTemplate:
 #     spec:
-#       containers:
-#       - name: agent
-#         securityContext:
-#           runAsUser: 0
+#       serviceAccountName: fleet-server
+#       automountServiceAccountToken: true
 
 # Number of revisions to retain to allow rollback in the underlying Deployment.
 # If not set Kubernetes sets this to 10 by default.
