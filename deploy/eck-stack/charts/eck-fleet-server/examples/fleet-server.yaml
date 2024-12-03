@@ -14,4 +14,4 @@ http:
     spec:
       type: ClusterIP
 serviceAccount:
-  name: elastic-fleet-server
+  name: fleet-server
