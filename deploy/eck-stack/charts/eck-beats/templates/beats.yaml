@@ -70,6 +70,6 @@ spec:
   {{- with or ((.Values.spec).revisionHistoryLimit) (.Values.revisionHistoryLimit) }}
   revisionHistoryLimit: {{ . }}
   {{- end }}
-  {{- with or ((.Values.spec).serviceAccountName) (.Values.serviceAccountName) }}
+  {{- with or (((.Values.spec).serviceAccount).name) ((.Values.serviceAccount).name) }}
   serviceAccountName: {{ . }}
   {{- end }}
