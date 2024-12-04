@@ -107,10 +107,16 @@ eck-fleet-server:
 
   fullnameOverride: "fleet-server"
 
-  spec:
-    # Agent policy to be used.
-    policyID: eck-fleet-server
-    kibanaRef:
-      name: kibana
-    elasticsearchRefs:
-    - name: elasticsearch
+  deployment:
+    replicas: 1
+    podTemplate:
+      spec:
+        serviceAccountName: fleet-server
+        automountServiceAccountToken: true
+
+  # Agent policy to be used.
+  policyID: eck-fleet-server
+  kibanaRef:
+    name: kibana
+  elasticsearchRefs:
+  - name: elasticsearch
