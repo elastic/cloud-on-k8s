@@ -16,10 +16,19 @@ operator::set_image_vars() {
     sha1=$(common::sha1)
 
     case "$trigger" in
-        tag-*)
+        tag-final)
             : "$BUILDKITE_TAG" # required
             IMAGE_NAME="docker.elastic.co/eck/eck-operator"
             IMAGE_TAG="${BUILDKITE_TAG#v}" # remove v prefix
+        ;;
+        tag-bc)
+            : "$BUILDKITE_TAG" # required
+            IMAGE_NAME="docker.elastic.co/eck-snapshots/eck-operator"
+            IMAGE_TAG="${BUILDKITE_TAG#v}" # remove v prefix
+        ;;
+        merge-xyz)
+            IMAGE_NAME="docker.elastic.co/eck-snapshots/eck-operator"
+            IMAGE_TAG="$version-$sha1"
         ;;
         *-main)
             IMAGE_NAME="docker.elastic.co/eck-snapshots/eck-operator"
@@ -27,16 +36,12 @@ operator::set_image_vars() {
         ;;
         pr-*)
             : "$BUILDKITE_PULL_REQUEST" # required
-            IMAGE_NAME="docker.elastic.co/eck-ci/eck-operator-pr"
-            IMAGE_TAG="$BUILDKITE_PULL_REQUEST-$sha1"
+            IMAGE_NAME="docker.elastic.co/eck-ci/eck-operator"
+            IMAGE_TAG="pr-$BUILDKITE_PULL_REQUEST-$sha1"
         ;;
         dev)
             IMAGE_NAME="docker.elastic.co/eck-dev/eck-operator"
             IMAGE_TAG="dev-$sha1"
-        ;;
-        merge-xyz)
-            IMAGE_NAME="docker.elastic.co/eck-snapshots/eck-operator"
-            IMAGE_TAG="$version-$sha1"
         ;;
         *)
             IMAGE_NAME="docker.elastic.co/eck-ci/eck-operator"

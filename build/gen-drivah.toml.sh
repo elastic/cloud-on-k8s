@@ -27,13 +27,12 @@ SNAPSHOT=true
 GO_TAGS=${GO_TAGS-release}
 LICENSE_PUBKEY=license.key
 
-latest_tag() {
-    local tag=$1
-    if [[ "$tag" =~ "SNAPSHOT" ]]; then
-        echo "next-SNAPSHOT"
-    else
-        echo "latest"
-    fi
+latest_stable_tag() {
+    case "${TRIGGER:-}" in
+        merge-xyz) echo next-release-latest ;;
+        tag-bc)    echo bc-latest ;;
+        *)         echo latest ;;
+    esac
 }
 
 generate_drivah_config() {
@@ -45,11 +44,9 @@ generate_drivah_config() {
     # add 'stable' tag without sha1 for snapshots
     if [[ "$tag" =~ "SNAPSHOT" ]]; then
         snapshot_stable_tag="${tag/-$SHA1/}"
-        latest_tag="$(latest_tag "$tag")"
-        additional_tags=",\"${snapshot_stable_tag}-${ARCH}\",\"${latest_tag}-${ARCH}\""
+        additional_tags=",\"${snapshot_stable_tag}-${ARCH}\",\"$(latest_stable_tag)-${ARCH}\""
     else
-        latest_tag="$(latest_tag "$tag")"
-        additional_tags=",\"${latest_tag}-${ARCH}\""
+        additional_tags=",\"$(latest_stable_tag)-${ARCH}\""
     fi
 
 cat <<END
@@ -68,7 +65,7 @@ END
 }
 
 main() {
-    echo "# -- gen-drivah-config BUILD_FLAVORS=$BUILD_FLAVORS"
+    echo "# -- gen-drivah-config BUILD_FLAVORS=$BUILD_FLAVORS TRIGGER=$TRIGGER"
 
     # disable SNAPSHOT for tags
     tag_pattern="^[0-9]+\.[0-9]+\.[0-9]+"
@@ -78,6 +75,9 @@ main() {
 
     # delete only dirs
     find "$HERE" -maxdepth 1 -mindepth 1 -type d -exec rm -rf '{}' \;
+
+    # initialize file to share list of images for CVE scan
+    > images-to-scan.txt
 
     IFS=","; for flavor in $BUILD_FLAVORS; do
 
@@ -111,9 +111,9 @@ main() {
                 go_tags="$go_tags,goexperiment.boringcrypto"
         fi
 
-        # log the image name with a stable tag (except the 'dev' flavor) to indicate the image to use for cve scan
+        # write the image name with the latest stable tag (except the 'dev' flavor) for CVE scan
         if [[ ! "$flavor" =~ -dev ]]; then
-            echo "$name:$(latest_tag "$tag")" >> images-to-scan.txt
+            echo "$name:$(latest_stable_tag)" >> images-to-scan.txt
         fi
 
         # fetch public license key
