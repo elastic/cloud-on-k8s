@@ -98,11 +98,11 @@ tests:
             app.kubernetes.io/instance: quickstart
             app.kubernetes.io/managed-by: Helm
             app.kubernetes.io/name: eck-agent
-            helm.sh/chart: eck-agent-0.14.0-SNAPSHOT
+            helm.sh/chart: eck-agent-0.14.0
       - equal:
           path: spec
           value:
-            version: 8.17.0-SNAPSHOT
+            version: 8.17.0
             daemonSet: {}
             elasticsearchRefs:
             - name: eck-elasticsearch
@@ -167,11 +167,11 @@ tests:
             app.kubernetes.io/instance: quickstart
             app.kubernetes.io/managed-by: Helm
             app.kubernetes.io/name: eck-agent
-            helm.sh/chart: eck-agent-0.14.0-SNAPSHOT
+            helm.sh/chart: eck-agent-0.14.0
       - equal:
           path: spec
           value:
-            version: 8.17.0-SNAPSHOT
+            version: 8.17.0
             daemonSet: {}
             elasticsearchRefs:
             - name: eck-elasticsearch
