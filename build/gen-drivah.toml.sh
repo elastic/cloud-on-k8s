@@ -77,7 +77,7 @@ main() {
     find "$HERE" -maxdepth 1 -mindepth 1 -type d -exec rm -rf '{}' \;
 
     # initialize file to share list of images for CVE scan
-    > images-to-scan.txt
+    true > images-to-scan.txt
 
     IFS=","; for flavor in $BUILD_FLAVORS; do
 
