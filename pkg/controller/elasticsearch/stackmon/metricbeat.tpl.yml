@@ -35,4 +35,9 @@ processors:
   - add_cloud_metadata: {}
   - add_host_metadata: {}
 
+{{- if gt .TotalFieldsLimit 0 }}
+setup.template.settings:
+  index.mapping.total_fields.limit: {{ .TotalFieldsLimit }}
+{{- end }}
+
 # Elasticsearch output configuration is generated

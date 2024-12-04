@@ -168,13 +168,14 @@ func mergeConfig(rawConfig string, config map[string]interface{}) ([]byte, error
 // inputConfigData holds data to configure the Metricbeat Elasticsearch and Kibana modules used
 // to collect metrics for Stack Monitoring
 type inputConfigData struct {
-	URL      string
-	Username string
-	Password string
-	IsSSL    bool
-	HasCA    bool
-	CAPath   string
-	Version  semver.Version
+	URL              string
+	Username         string
+	Password         string
+	IsSSL            bool
+	HasCA            bool
+	CAPath           string
+	Version          semver.Version
+	TotalFieldsLimit int
 }
 
 // buildMetricbeatBaseConfig builds the base configuration for Metricbeat with the Elasticsearch or Kibana modules used
@@ -207,6 +208,13 @@ func buildMetricbeatBaseConfig(
 		IsSSL:    isTLS,   // enable SSL configuration based on whether the monitored resource has TLS enabled
 		HasCA:    hasCA,   // the CA is optional to support custom certificate issued by a well-known CA, so without provided CA to configure
 		Version:  version, // Version of the monitored resource
+	}
+
+	// See https://github.com/elastic/cloud-on-k8s/pull/8284
+	// The default index template for metricbeat exceeds the default
+	// index mapping total fields limit.
+	if version.GTE(semver.MustParse("8.15.0")) {
+		configData.TotalFieldsLimit = 12500
 	}
 
 	var caVolume volume.VolumeLike
