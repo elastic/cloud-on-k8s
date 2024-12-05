@@ -42,10 +42,11 @@ tests:
             mode: fleet
             fleetServerEnabled: true
             policyID: eck-fleet-server
-            serviceAccountName: fleet-server
             deployment:
               replicas: 1
               podTemplate:
                 spec:
                   serviceAccountName: fleet-server
                   automountServiceAccountToken: true
+                  securityContext:
+                    runAsUser: 0
