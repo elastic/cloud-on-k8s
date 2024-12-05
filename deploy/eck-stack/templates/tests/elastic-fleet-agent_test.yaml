@@ -6,7 +6,9 @@ tests:
   - it: should render quickstart properly
     set:
       eck-agent.enabled: true
-      eck-fleet-server.enabled: true
+      eck-fleet-server:
+        enabled: true
+        deployment: {}
     release:
       name: quickstart
     asserts:
@@ -17,7 +19,7 @@ tests:
           value: quickstart-eck-fleet-server
       - equal:
           path: spec.version
-          value: 8.17.0-SNAPSHOT
+          value: 8.18.0-SNAPSHOT
   - it: should render fleet server in custom fleet example properly
     values:
       - ../../examples/agent/fleet-agents.yaml
@@ -32,7 +34,7 @@ tests:
       - equal:
           path: spec
           value: 
-            version: 8.17.0-SNAPSHOT
+            version: 8.18.0-SNAPSHOT
             kibanaRef:
               name: kibana
             elasticsearchRefs:
@@ -40,11 +42,10 @@ tests:
             mode: fleet
             fleetServerEnabled: true
             policyID: eck-fleet-server
+            serviceAccountName: fleet-server
             deployment:
               replicas: 1
               podTemplate:
                 spec:
                   serviceAccountName: fleet-server
                   automountServiceAccountToken: true
-                  securityContext:
-                    runAsUser: 0
