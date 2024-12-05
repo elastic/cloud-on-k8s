@@ -87,14 +87,14 @@ tests:
             app.kubernetes.io/instance: quickstart
             app.kubernetes.io/managed-by: Helm
             app.kubernetes.io/name: eck-fleet-server
-            helm.sh/chart: eck-fleet-server-0.14.0-SNAPSHOT
+            helm.sh/chart: eck-fleet-server-0.15.0-SNAPSHOT
       - equal:
           path: spec
           value:
             fleetServerEnabled: true
             mode: fleet
             policyID: eck-fleet-server
-            version: 8.17.0-SNAPSHOT
+            version: 8.18.0-SNAPSHOT
             deployment: {}
             elasticsearchRefs:
             - name: eck-elasticsearch
@@ -135,14 +135,14 @@ tests:
             app.kubernetes.io/instance: quickstart
             app.kubernetes.io/managed-by: Helm
             app.kubernetes.io/name: eck-fleet-server
-            helm.sh/chart: eck-fleet-server-0.14.0-SNAPSHOT
+            helm.sh/chart: eck-fleet-server-0.15.0-SNAPSHOT
       - equal:
           path: spec
           value:
             fleetServerEnabled: true
             mode: fleet
             policyID: eck-fleet-server
-            version: 8.17.0-SNAPSHOT
+            version: 8.18.0-SNAPSHOT
             deployment: {}
             elasticsearchRefs:
             - name: eck-elasticsearch
