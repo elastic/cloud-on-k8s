@@ -11,7 +11,9 @@ New and notable changes in version 2.16.0.
 [id="{p}-2160-remote-clusters-using-api-keys"]
 === Remote clusters support using API keys
 
-Starting with ECK 2.16.0 it's now possible to connect to remote clusters using API key authentication. Refer to the <<{p}-remote-clusters>> section for more information. 
+ECK 2.16.0 includes a technical preview for connecting to remote clusters using API key authentication.
+
+Refer to the <<{p}-remote-clusters>> section for more information. 
 
 [float]
 [id="{p}-2160-hardened-kb-security-context"]
