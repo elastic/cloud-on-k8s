@@ -39,7 +39,6 @@ tests:
               - name: elasticsearch
             mode: fleet
             fleetServerEnabled: true
-            serviceAccountName: fleet-server
             policyID: eck-fleet-server
             deployment:
               replicas: 1

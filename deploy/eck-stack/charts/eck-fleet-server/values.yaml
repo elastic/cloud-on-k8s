@@ -79,14 +79,12 @@ policyID: eck-fleet-server
 # No default is currently set, refer to https://github.com/elastic/cloud-on-k8s/issues/7429.
 # ref: https://www.elastic.co/guide/en/cloud-on-k8s/current/k8s-elastic-agent-fleet-configuration.html#k8s-elastic-agent-fleet-configuration-chose-the-deployment-model
 #
-deployment:
-  replicas: 1
-  podTemplate:
-    spec:
-      serviceAccountName: fleet-server
-      automountServiceAccountToken: true
-      securityContext:
-        runAsUser: 0
+# deployment:
+#   replicas: 1
+#   podTemplate:
+#     spec:
+#       serviceAccountName: fleet-server
+#       automountServiceAccountToken: true
 #
 # statefulSet:
 #   podTemplate:
