@@ -113,6 +113,8 @@ eck-fleet-server:
       spec:
         serviceAccountName: fleet-server
         automountServiceAccountToken: true
+        securityContext:
+          runAsUser: 0
 
   # Agent policy to be used.
   policyID: eck-fleet-server

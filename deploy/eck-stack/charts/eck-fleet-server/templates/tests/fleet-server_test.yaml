@@ -34,6 +34,8 @@ tests:
               spec:
                 serviceAccountName: fleet-server
                 automountServiceAccountToken: true
+                securityContext:
+                  runAsUser: 0
   - it: should render custom labels and annotations properly.
     set:
       labels:
@@ -95,7 +97,14 @@ tests:
             mode: fleet
             policyID: eck-fleet-server
             version: 8.17.0-SNAPSHOT
-            deployment: {}
+            deployment:
+              replicas: 1
+              podTemplate:
+                spec:
+                  serviceAccountName: fleet-server
+                  automountServiceAccountToken: true
+                  securityContext:
+                    runAsUser: 0
             elasticsearchRefs:
             - name: eck-elasticsearch
               namespace: default
@@ -143,7 +152,14 @@ tests:
             mode: fleet
             policyID: eck-fleet-server
             version: 8.17.0-SNAPSHOT
-            deployment: {}
+            deployment:
+              replicas: 1
+              podTemplate:
+                spec:
+                  serviceAccountName: fleet-server
+                  automountServiceAccountToken: true
+                  securityContext:
+                    runAsUser: 0
             elasticsearchRefs:
             - name: eck-elasticsearch
               namespace: default
@@ -163,6 +179,8 @@ tests:
       - failedTemplate:
           errorMessage: "A Fleet Server version is required"
   - it: not setting a statefulset or deployment should fail
+    set:
+      deployment: null
     asserts:
       - failedTemplate:
           errorMessage: "At least one of statefulSet or deployment is required"
