@@ -1,0 +1,61 @@
+:issue: https://github.com/elastic/cloud-on-k8s/issues/
+:pull: https://github.com/elastic/cloud-on-k8s/pull/
+
+[[release-notes-2.16.0]]
+== {n} version 2.16.0
+
+
+
+[[feature-2.16.0]]
+[float]
+=== New features
+
+* Support remote clusters using API keys {pull}8089[#8089] (issues: {issue}7818[#7818], {issue}8167[#8167])
+
+[[enhancement-2.16.0]]
+[float]
+=== Enhancements
+
+* Remove additional spec references in Helm eck-stack chart. {pull}8286[#8286]
+* Make helm charts consistent with how fields in spec are handled. (fleet-server only) {pull}8285[#8285]
+* (Doc+) overview and support help {pull}8130[#8130]
+* (Doc+) quickstart+KB {pull}8128[#8128]
+* Kibana: Set default hardened security context {pull}8086[#8086] (issue: {issue}7787[#7787])
+
+[[bug-2.16.0]]
+[float]
+=== Bug fixes
+
+* Allow Beats stack monitoring w/o elasticseachRef {pull}8273[#8273] (issue: {issue}8194[#8194])
+* [Helm] Add a setting to deploy FIPS compliant ECK image {pull}8272[#8272] (issue: {issue}8204[#8204])
+* Add recommened roles for Elastic Agent on Kubernetes {pull}8188[#8188] (issue: {issue}8168[#8168])
+
+[[docs-2.16.0]]
+[float]
+=== Documentation improvements
+
+* [DOC] Remove node.remote_cluster_client from examples (#8274) {pull}8277[#8277]
+* [DOC] Remove node.remote_cluster_client from examples {pull}8274[#8274]
+* Update the guidance for the stack config policy/role mapping issue {pull}8247[#8247]
+* Update stack monitoring Documentation Page {pull}8198[#8198]
+* Document remote clusters using API keys {pull}8181[#8181] (issue: {issue}8167[#8167])
+* Add Kibana to the Enterprise search sample {pull}8166[#8166] (issue: {issue}5090[#5090])
+* [docs] Add explanation line for es ingress 9300 port {pull}8164[#8164] (issue: {issue}7833[#7833])
+* Clarify high availability recommendations in Elasticsearch orchestration docs {pull}8151[#8151]
+* [docs] Add note on how to access generated Kibana encryptionKeys {pull}8150[#8150] (issue: {issue}8129[#8129])
+* [Docs] Move Troubleshooting section to top level of ToC {pull}8145[#8145] (issue: {issue}8131[#8131])
+* [DOC] Add is_managed: true to Agent policies {pull}8125[#8125] (issue: {issue}7290[#7290])
+* (Doc+) secure settings link K8 docs and note base64 encoded {pull}8113[#8113]
+
+[[nogroup-2.16.0]]
+[float]
+=== Misc
+
+* fix(deps): update module golang.org/x/crypto to v0.29.0 {pull}8240[#8240]
+* chore(deps): update registry.access.redhat.com/ubi9/ubi-minimal docker tag to v9.5-1731604394 {pull}8237[#8237]
+* chore(deps): update go to v1.23.3 {pull}8190[#8190]
+* fix(deps): update module github.com/prometheus/common to v0.60.1 {pull}8178[#8178]
+* fix(deps): update k8s {pull}8163[#8163]
+* chore(deps): update wolfi (versioned) {pull}8162[#8162]
+* fix(deps): update module github.com/prometheus/client_golang to v1.20.5 {pull}8133[#8133]
+
