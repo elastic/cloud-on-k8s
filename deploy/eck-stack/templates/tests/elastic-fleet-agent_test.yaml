@@ -6,7 +6,9 @@ tests:
   - it: should render quickstart properly
     set:
       eck-agent.enabled: true
-      eck-fleet-server.enabled: true
+      eck-fleet-server:
+        enabled: true
+        deployment: {}
     release:
       name: quickstart
     asserts:
