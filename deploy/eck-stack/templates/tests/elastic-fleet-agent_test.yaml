@@ -6,7 +6,9 @@ tests:
   - it: should render quickstart properly
     set:
       eck-agent.enabled: true
-      eck-fleet-server.enabled: true
+      eck-fleet-server:
+        enabled: true
+        deployment: {}
     release:
       name: quickstart
     asserts:
@@ -40,11 +42,10 @@ tests:
             mode: fleet
             fleetServerEnabled: true
             policyID: eck-fleet-server
+            serviceAccountName: fleet-server
             deployment:
               replicas: 1
               podTemplate:
                 spec:
                   serviceAccountName: fleet-server
                   automountServiceAccountToken: true
-                  securityContext:
-                    runAsUser: 0
