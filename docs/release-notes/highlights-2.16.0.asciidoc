@@ -36,6 +36,7 @@ securityContext:
 [id="{p}-2160-breaking-changes"]
 === eck-fleet-server Helm chart breaking changes
 
-The `eck-fleet-server` Helm chart has had the default values updated to remove the setting of the deployment model to be `deployment`. Refer to https://github.com/elastic/cloud-on-k8s/issues/7429 for details.
+The `eck-fleet-server` Helm chart has had the default values updated to remove the setting of the deployment model to be `deployment`.
+This was required because of an upstream Helm bug when using parent/child charts. Refer to https://github.com/elastic/cloud-on-k8s/issues/7429 for details.
 
 Check <<release-notes-2.16.0>> for the full list of changes.
