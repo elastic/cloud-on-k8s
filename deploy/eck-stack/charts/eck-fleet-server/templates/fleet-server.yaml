@@ -11,13 +11,54 @@ metadata:
     {{- toYaml . | nindent 4 }}
     {{- end }}
 spec:
-  version: {{ required "A Fleet Server version is required" .Values.version }}
+  version: {{ required "A Fleet Server version is required" (or ((.Values.spec).version) (.Values.version)) }}
   mode: fleet
   fleetServerEnabled: true
-  {{- if (hasKey .Values.spec "mode") }}
-  {{- fail "spec.mode cannot be changed" }}
+  {{- if (or (hasKey (.Values.spec) "mode") (hasKey .Values "mode")) }}
+  {{- fail "mode cannot be changed" }}
   {{- end }}
-  {{- if (hasKey .Values.spec "fleetServerEnabled") }}
-  {{- fail "spec.fleetServerEnabled cannot be changed" }}
+  {{- if (or (hasKey (.Values.spec) "fleetServerEnabled") (hasKey .Values "fleetServerEnabled"))}}
+  {{- fail "fleetServerEnabled cannot be changed" }}
   {{- end }}
-  {{- toYaml .Values.spec | nindent 2 }}
+
+  {{- $statefulSet := (or (hasKey (.Values.spec) "statefulSet") (hasKey .Values "statefulSet")) }}
+  {{- $deployment := (or (hasKey (.Values.spec) "deployment") (hasKey .Values "deployment")) }}
+  {{- if and (not $statefulSet) (not $deployment) }}
+  {{ fail "At least one of statefulSet or deployment is required" }}
+  {{- end }}
+  {{- if $statefulSet }}
+  {{- $ss := or ((.Values.spec).statefulSet) (.Values.statefulSet) }}
+  statefulSet:
+    {{- /* This is required to render the empty statefulSet ( {} ) properly */}}
+    {{- $ss | default dict | toYaml | nindent 4 }}
+  {{- end }}
+  {{- if $deployment }}
+  {{- $deploy := or ((.Values.spec).deployment) (.Values.deployment) }}
+  deployment:
+    {{- /* This is required to render the empty deployment ( {} ) properly */}}
+    {{- $deploy | default dict | toYaml | nindent 4 }}
+  {{- end }}
+  {{- with or ((.Values.spec).image) (.Values.image) }}
+  image: {{ . }}
+  {{- end }}
+  {{- with or ((.Values.spec).elasticsearchRefs) (.Values.elasticsearchRefs) }}
+  elasticsearchRefs:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+  {{- with or ((.Values.spec).kibanaRef) (.Values.kibanaRef) }}
+  kibanaRef:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+  {{- with or ((.Values.spec).policyID) (.Values.policyID) }}
+  policyID: {{ . }}
+  {{- end }}
+  {{- with or ((.Values.spec).http) (.Values.http) }}
+  http:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+  {{- with or ((.Values.spec).revisionHistoryLimit) (.Values.revisionHistoryLimit) }}
+  revisionHistoryLimit: {{ . }}
+  {{- end }}
+  {{- with or (((.Values.spec).serviceAccount).name) ((.Values.serviceAccount).name) }}
+  serviceAccountName: {{ . }}
+  {{- end }}
