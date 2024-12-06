@@ -33,7 +33,7 @@ tests:
           value: fleet-server
       - equal:
           path: spec
-          value: 
+          value:
             version: 8.17.0
             kibanaRef:
               name: kibana
@@ -48,5 +48,4 @@ tests:
                 spec:
                   serviceAccountName: fleet-server
                   automountServiceAccountToken: true
-                  securityContext:
-                    runAsUser: 0
+            serviceAccountName: fleet-server

@@ -3,6 +3,15 @@ templates:
   - templates/fleet-server.yaml
 tests:
   - it: should render default fleet server properly
+    set:
+      deployment:
+        replicas: 1
+        podTemplate:
+          spec:
+            serviceAccountName: fleet-server
+            automountServiceAccountToken: true
+      kibanaRef:
+        name: eck-kibana
     release:
       name: quickstart
     asserts:
@@ -18,23 +27,20 @@ tests:
           path: spec.kibanaRef.name
           value: eck-kibana
       - equal:
-          path: spec.deployment.replicas
-          value: 1
-      - equal:
-          path: spec.deployment.podTemplate.spec.serviceAccountName
-          value: fleet-server
-      - equal:
-          path: spec.deployment.podTemplate.spec.automountServiceAccountToken
-          value: true
-      - equal:
-          path: spec.deployment.podTemplate.spec.securityContext.runAsUser
-          value: 0
+          path: spec.deployment
+          value:
+            replicas: 1
+            podTemplate:
+              spec:
+                serviceAccountName: fleet-server
+                automountServiceAccountToken: true
   - it: should render custom labels and annotations properly.
     set:
       labels:
         test: label
       annotations:
         test: annotation
+      deployment: {}
     release:
       name: quickstart
     asserts:
@@ -53,3 +59,110 @@ tests:
           value:
             eck.k8s.elastic.co/license: basic
             test: annotation
+  - it: should render properly when using spec fields
+    set:
+      spec:
+        deployment: {}
+        elasticsearchRefs:
+        - name: eck-elasticsearch
+          namespace: default
+        kibanaRef:
+          name: eck-kibana
+          namespace: default
+        http:
+          service:
+            spec:
+              type: ClusterIP
+        revisionHistoryLimit: 4
+        serviceAccount:
+          name: elastic-fleet-server
+    release:
+      name: quickstart
+    asserts:
+      - isKind:
+          of: Agent
+      - equal:
+          path: metadata.labels
+          value:
+            app.kubernetes.io/instance: quickstart
+            app.kubernetes.io/managed-by: Helm
+            app.kubernetes.io/name: eck-fleet-server
+            helm.sh/chart: eck-fleet-server-0.14.0
+      - equal:
+          path: spec
+          value:
+            fleetServerEnabled: true
+            mode: fleet
+            policyID: eck-fleet-server
+            version: 8.17.0
+            deployment: {}
+            elasticsearchRefs:
+            - name: eck-elasticsearch
+              namespace: default
+            kibanaRef:
+              name: eck-kibana
+              namespace: default
+            http:
+              service:
+                spec:
+                  type: ClusterIP
+            revisionHistoryLimit: 4
+            serviceAccountName: elastic-fleet-server
+  - it: should render properly when not using spec fields
+    set:
+      deployment: {}
+      elasticsearchRefs:
+      - name: eck-elasticsearch
+        namespace: default
+      kibanaRef:
+        name: eck-kibana
+        namespace: default
+      http:
+        service:
+          spec:
+            type: ClusterIP
+      revisionHistoryLimit: 4
+      serviceAccount:
+        name: elastic-fleet-server
+    release:
+      name: quickstart
+    asserts:
+      - isKind:
+          of: Agent
+      - equal:
+          path: metadata.labels
+          value:
+            app.kubernetes.io/instance: quickstart
+            app.kubernetes.io/managed-by: Helm
+            app.kubernetes.io/name: eck-fleet-server
+            helm.sh/chart: eck-fleet-server-0.14.0
+      - equal:
+          path: spec
+          value:
+            fleetServerEnabled: true
+            mode: fleet
+            policyID: eck-fleet-server
+            version: 8.17.0
+            deployment: {}
+            elasticsearchRefs:
+            - name: eck-elasticsearch
+              namespace: default
+            kibanaRef:
+              name: eck-kibana
+              namespace: default
+            http:
+              service:
+                spec:
+                  type: ClusterIP
+            revisionHistoryLimit: 4
+            serviceAccountName: elastic-fleet-server
+  - it: not setting version should fail
+    set:
+      version: ""
+    asserts:
+      - failedTemplate:
+          errorMessage: "A Fleet Server version is required"
+  - it: not setting a statefulset or deployment should fail
+    asserts:
+      - failedTemplate:
+          errorMessage: "At least one of statefulSet or deployment is required"
