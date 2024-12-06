@@ -16,10 +16,10 @@
 [float]
 === Enhancements
 
-* Make helm charts consistent with how fields in spec are handled in eck-fleet-server. {pull}8285[#8285]
-* Make helm charts consistent with how fields in spec are handled in eck-beats. {pull}8248[#8248]
-* Make helm charts consistent with how fields in spec are handled in eck-agent. {pull}8246[#8246]
-* Make helm charts consistent with how fields in spec are handled in eck-kibana. {pull}8192[#8192]
+* Make Helm chart consistent in respect to handling of 'spec'. (eck-fleet-server) {pull}8285[#8285]
+* Make Helm chart consistent in respect to handling of 'spec'. (eck-beats) {pull}8248[#8248]
+* Make Helm chart consistent in respect to handling of 'spec'. (eck-agent) {pull}8246[#8246]
+* Make Helm chart consistent in respect to handling of 'spec'. (eck-kibana) {pull}8192[#8192]
 * Set default hardened security context for Kibana. {pull}8086[#8086] (issue: {issue}7787[#7787])
 * Add a setting in the Helm chart to deploy FIPS compliant ECK image. {pull}8272[#8272] (issue: {issue}8204[#8204])
 
