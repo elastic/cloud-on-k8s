@@ -35,7 +35,7 @@ const (
 	MetricsPortFlag                      = "metrics-port"
 	MetricsHostFlag                      = "metrics-host"
 	MetricsSecureFlag                    = "metrics-secure"
-	MetricsCertDir                       = "metrics-cert-dir"
+	MetricsCertDirFlag                   = "metrics-cert-dir"
 	NamespacesFlag                       = "namespaces"
 	OperatorNamespaceFlag                = "operator-namespace"
 	SetDefaultSecurityContextFlag        = "set-default-security-context"
