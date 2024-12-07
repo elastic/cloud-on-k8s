@@ -601,6 +601,7 @@ func startOperator(ctx context.Context) error {
 	}
 	if viper.GetBool(operator.MetricsSecureFlag) {
 		opts.Metrics.FilterProvider = filters.WithAuthenticationAndAuthorization
+		opts.Metrics.SecureServing = true
 	}
 
 	metricsCertDir := viper.GetString(operator.MetricsCertDirFlag)

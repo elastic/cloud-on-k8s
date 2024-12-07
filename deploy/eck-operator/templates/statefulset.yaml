@@ -89,7 +89,7 @@ spec:
           {{- end }}
           {{- if or .Values.webhook.enabled (gt $metricsPort 0) }}
           ports:
-            {{- if and (gt $metricsPort 0) (not .Values.config.metrics.secureMode.enabled) }}
+            {{- if (gt $metricsPort 0) }}
             - containerPort: {{ $metricsPort }}
               name: metrics
               protocol: TCP
