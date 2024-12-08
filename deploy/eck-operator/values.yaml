@@ -183,7 +183,7 @@ config:
     # secureMode contains the options for enabling and configuring RBAC and TLS/HTTPs for the metrics endpoint.
     secureMode:
       # secureMode.enabled specifies whether to enable RBAC and TLS/HTTPs for the metrics endpoint.
-      # * This option requires using a ServiceMonitor to scrape the metrics and as such is mutually exclusive with the podMonitor.enabled option.
+      # * This option makes most sense when using a ServiceMonitor to scrape the metrics and is therefore mutually exclusive with the podMonitor.enabled option.
       # * This option also requires using cluster scoped resources (ClusterRole, ClusterRoleBinding) to
       #   grant access to the /metrics endpoint. (createClusterScopedResources: true is required)
       #
@@ -322,7 +322,7 @@ serviceMonitor:
   # namespace: monitoring
   # caSecret is the name of the secret containing the custom CA certificate used to generate the custom TLS certificate for the secure metrics endpoint.
   #
-  # * This *must* be the name of the secret containing the CA certificate used to sign the custom TLS certificate.
+  # * This *must* be the name of the secret containing the CA certificate used to sign the custom TLS certificate for the metrics endpoint.
   # * This secret *must* be in the same namespace as the Prometheus instance that will scrape the metrics.
   # * If using the Prometheus operator this secret must be within the `spec.secrets` field of the `Prometheus` custom resource such that it is mounted into the Prometheus pod at `caMountDirectory`, which defaults to /etc/prometheus/secrets/{secret-name}.
   # * This is an optional setting and is only required if you are using a custom TLS certificate.
