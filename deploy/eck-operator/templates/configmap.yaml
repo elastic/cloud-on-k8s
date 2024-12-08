@@ -13,11 +13,8 @@ data:
     {{- if and .Values.config.metrics.secureMode.enabled (eq $metricsPort 0) }}
     {{- fail "config.metrics.port must be greater than 0 when config.metrics.secureMode.enabled is true" }}
     {{- end }}
-    {{- if .Values.config.metrics.secureMode.enabled }}
-    metrics-port: {{ add $metricsPort 1 }}
-    {{- else }}
     metrics-port: {{ $metricsPort }}
-    {{- end }}
+    metrics-secure: {{ .Values.config.metrics.secureMode.enabled }}
     container-registry: {{ .Values.config.containerRegistry }}
     {{- with .Values.config.containerSuffix }}
     container-suffix: {{ . }}
