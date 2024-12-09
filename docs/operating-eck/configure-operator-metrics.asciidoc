@@ -14,7 +14,7 @@ The ECK operator provides a metrics endpoint that can be used to monitor the ope
 * <<{p}-securing-the-metrics-endpoint,Securing the metrics endpoint>>
 * <<{p}-prometheus-requirements,Prometheus requirements>>
 
-NOTE: The ECK operator metrics endpoint will be secured by default beginning in version 2.14.0.
+NOTE: The ECK operator metrics endpoint will be secured by default beginning in version 3.0.0.
 
 [id="{p}-enabling-the-metrics-endpoint"]
 == Enabling the metrics endpoint
@@ -88,12 +88,7 @@ spec:
 EOF
 ----
 
-Restart the ECK operator.
-
-[source,sh]
-----
-kubectl delete pod -n elastic-system elastic-operator-0
-----
+The ECK operator will be recreated after applying the patch.
 
 If using the Prometheus operator, install a `PodMonitor` to allow scraping of the metrics endpoint by Prometheus.
 
@@ -209,7 +204,7 @@ cat $$<<$$EOF | kubectl apply -f -
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
 metadata:
-  name: elastic-operator-proxy-role
+  name: elastic-operator-metrics-auth-role
 rules:
 - apiGroups:
   - authentication.k8s.io
@@ -227,11 +222,11 @@ rules:
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding
 metadata:
-  name: elastic-operator-proxy-rolebinding
+  name: elastic-operator-metrics-auth-rolebinding
 roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: ClusterRole
-  name: elastic-operator-proxy-role
+  name: elastic-operator-metrics-auth-role
 subjects:
 - kind: ServiceAccount
   name: elastic-operator
