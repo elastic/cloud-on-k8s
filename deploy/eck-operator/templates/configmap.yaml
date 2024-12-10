@@ -15,9 +15,6 @@ data:
     {{- end }}
     metrics-port: {{ $metricsPort }}
     metrics-secure: {{ .Values.config.metrics.secureMode.enabled }}
-    {{- if .Values.config.metrics.secureMode.tls.certificateSecret }}
-    metrics-cert-dir: "/tmp/k8s-metrics-server/metrics-certs"
-    {{- end }}
     container-registry: {{ .Values.config.containerRegistry }}
     {{- with .Values.config.containerSuffix }}
     container-suffix: {{ . }}
