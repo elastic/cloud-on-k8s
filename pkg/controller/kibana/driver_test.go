@@ -392,7 +392,7 @@ func TestDriverDeploymentParams(t *testing.T) {
 			d, err := newDriver(client, w, record.NewFakeRecorder(100), kb, corev1.IPv4Protocol)
 			require.NoError(t, err)
 
-			got, err := d.deploymentParams(context.Background(), kb, tt.args.policyAnnotations)
+			got, err := d.deploymentParams(context.Background(), kb, tt.args.policyAnnotations, "")
 			if tt.wantErr {
 				require.Error(t, err)
 				return
