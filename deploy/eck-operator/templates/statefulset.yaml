@@ -110,7 +110,7 @@ spec:
               readOnly: true
             {{- end }}
             {{- if .Values.config.metrics.secureMode.tls.certificateSecret }}
-            - mountPath: "/tmp/k8s-metrics-server/metrics-certs"
+            - mountPath: "/tmp/k8s-metrics-server/serving-certs"
               name: tls-certificate
               readOnly: true
             {{- end }} 
