@@ -1,4 +1,4 @@
-{{- if .Values.config.metrics.secureMode.enabled }}
+{{- if and .Values.config.metrics.secureMode.enabled .Values.serviceMonitor.enabled }}
 apiVersion: monitoring.coreos.com/v1
 kind: ServiceMonitor
 metadata:
@@ -19,10 +19,13 @@ spec:
     scheme: https
     interval: 30s
     tlsConfig:
-      insecureSkipVerify: {{ .Values.config.metrics.secureMode.tls.insecureSkipVerify | default false }}
-      {{- if (not .Values.config.metrics.secureMode.tls.insecureSkipVerify) }}
-      {{- $leading_path := trimSuffix "/" .Values.config.metrics.secureMode.tls.caMountDirectory }}
-      {{- with .Values.config.metrics.secureMode.tls.caSecret }}
+      {{- $insecureSkipVerify := (ternary .Values.config.metrics.secureMode.tls.insecureSkipVerify .Values.serviceMonitor.insecureSkipVerify (hasKey .Values.config.metrics.secureMode.tls "insecureSkipVerify")) }}
+      insecureSkipVerify: {{ $insecureSkipVerify }}
+      {{- if (not $insecureSkipVerify) }}
+      {{- $caMountDirectory := or (.Values.config.metrics.secureMode.tls.caMountDirectory) (.Values.serviceMonitor.caMountDirectory) -}}
+      {{- $leading_path := trimSuffix "/" $caMountDirectory }}
+      {{- $caSecret := or (.Values.config.metrics.secureMode.tls.caSecret) (.Values.serviceMonitor.caSecret) -}}
+      {{- with $caSecret }}
       caFile: "{{ $leading_path }}/{{ . }}/ca.crt"
       {{- end }}
       serverName: "{{ include "eck-operator.fullname" . }}-metrics.{{ .Release.Namespace }}.svc"
