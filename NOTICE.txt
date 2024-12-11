@@ -2106,11 +2106,11 @@ Exhibit B - "Incompatible With Secondary Licenses" Notice
 
 --------------------------------------------------------------------------------
 Module  : github.com/magiconair/properties
-Version : v1.8.7
-Time    : 2022-12-08T14:25:49Z
+Version : v1.8.9
+Time    : 2024-12-07T18:36:23Z
 Licence : BSD-2-Clause
 
-Contents of probable licence file $GOMODCACHE/github.com/magiconair/properties@v1.8.7/LICENSE.md:
+Contents of probable licence file $GOMODCACHE/github.com/magiconair/properties@v1.8.9/LICENSE.md:
 
 Copyright (c) 2013-2020, Frank Schroeder
 
