@@ -103,7 +103,7 @@ kind: ClusterRole
 metadata:
   labels:
     {{- include "eck-operator.labels" . | nindent 4 }}
-  name: "{{ include "eck-operator.fullname" . }}-proxy-role"
+  name: "{{ include "eck-operator.fullname" . }}-metrics-auth-role"
 rules:
 - apiGroups:
   - authentication.k8s.io

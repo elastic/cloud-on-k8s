@@ -37,6 +37,7 @@ import (
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 	"sigs.k8s.io/controller-runtime/pkg/manager/signals"
+	"sigs.k8s.io/controller-runtime/pkg/metrics/filters"
 	metricsserver "sigs.k8s.io/controller-runtime/pkg/metrics/server"
 	crwebhook "sigs.k8s.io/controller-runtime/pkg/webhook"
 	"sigs.k8s.io/controller-runtime/pkg/webhook/admission"
@@ -291,6 +292,17 @@ func Command() *cobra.Command {
 		operator.MetricsHostFlag,
 		"0.0.0.0",
 		fmt.Sprintf("The host to which the operator should bind to serve metrics in the Prometheus format. Will be combined with %s.", operator.MetricsPortFlag),
+	)
+	cmd.Flags().Bool(
+		operator.MetricsSecureFlag,
+		false,
+		fmt.Sprintf("Enables TLS for the metrics server. Only effective combined with %s", operator.MetricsPortFlag),
+	)
+	cmd.Flags().String(
+		operator.MetricsCertDirFlag,
+		// this is controller-runtime's own default, copied here for making the default explicit when using `--help`
+		filepath.Join(os.TempDir(), "k8s-metrics-server", "serving-certs"),
+		fmt.Sprintf("Location of TLS certs for the metrics server. Directory needs to contain tls.key and tls.crt. If empty self-signed certificates are used. Only effective when combined with %s and %s", operator.MetricsPortFlag, operator.MetricsSecureFlag),
 	)
 	cmd.Flags().StringSlice(
 		operator.NamespacesFlag,
@@ -587,6 +599,14 @@ func startOperator(ctx context.Context) error {
 	}
 	opts.Metrics = metricsserver.Options{
 		BindAddress: fmt.Sprintf("%s:%d", metricsHost, metricsPort), // 0 to disable
+	}
+	if viper.GetBool(operator.MetricsSecureFlag) {
+		opts.Metrics.FilterProvider = filters.WithAuthenticationAndAuthorization
+		opts.Metrics.SecureServing = true
+	}
+
+	if metricsCertDir := viper.GetString(operator.MetricsCertDirFlag); len(metricsCertDir) > 0 {
+		opts.Metrics.CertDir = metricsCertDir
 	}
 
 	webhookPort := viper.GetInt(operator.WebhookPortFlag)
