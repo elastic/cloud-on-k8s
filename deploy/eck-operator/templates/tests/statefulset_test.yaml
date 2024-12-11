@@ -64,3 +64,46 @@ tests:
         equal:
           path: spec.template.spec.containers[0].env[2].value
           value: my-webhook-server-cert
+  - it: should set dnsPolicy to ClusterFirstWithHostNet when hostNetwork is enabled
+    set:
+      hostNetwork: true
+    asserts:
+      - template: statefulset.yaml
+        equal:
+          path: spec.template.spec.hostNetwork
+          value: true
+      - template: statefulset.yaml
+        equal:
+          path: spec.template.spec.dnsPolicy
+          value: "ClusterFirstWithHostNet"
+  - it: should render dnsPolicy properly when hostNetwork is enabled
+    set:
+      hostNetwork: true
+      dnsPolicy: ClusterFirst
+    asserts:
+      - template: statefulset.yaml
+        equal:
+          path: spec.template.spec.hostNetwork
+          value: true
+      - template: statefulset.yaml
+        equal:
+          path: spec.template.spec.dnsPolicy
+          value: "ClusterFirst"
+  - it: should render dnsPolicy and dnsConfig properly
+    set:
+      dnsPolicy: ClusterFirst
+      dnsConfig:
+        nameservers: "1.2.3.4"
+    asserts:
+      - template: statefulset.yaml
+        equal:
+          path: spec.template.spec.hostNetwork
+          value: null
+      - template: statefulset.yaml
+        equal:
+          path: spec.template.spec.dnsPolicy
+          value: "ClusterFirst"
+      - template: statefulset.yaml
+        equal:
+          path: spec.template.spec.dnsConfig.nameservers
+          value: "1.2.3.4"
