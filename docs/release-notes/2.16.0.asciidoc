@@ -46,7 +46,7 @@
 * Add note on how to access generated Kibana encryption keys. {pull}8150[#8150] (issue: {issue}8129[#8129])
 * Move Troubleshooting section to top level of table of contents. {pull}8145[#8145] (issue: {issue}8131[#8131])
 * Add is_managed: true to Agent policies. {pull}8125[#8125] (issue: {issue}7290[#7290])
-* Adds a secure settings link to K8s docs and note the need to be base64 encoded. {pull}8113[#8113]   * 
+* Adds a secure settings link to K8s docs and note the need to be base64 encoded. {pull}8113[#8113]
 
 [[nogroup-2.16.0]]
 [float]
