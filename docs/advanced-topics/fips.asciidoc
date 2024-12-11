@@ -18,13 +18,13 @@ For the ECK operator, adherence to FIPS 140-2 is ensured by:
 
 === FIPS compliant installation using Helm
 
-Modify the `image.repository` Helm chart value to append `-fips` to install a FIPS compliant version of the ECK Operator. Refer to <<{p}-install-helm>> for full Helm installation instructions.
+Set `image.fips=true` to install a FIPS-enabled version of the ECK Operator. Refer to <<{p}-install-helm>> for full Helm installation instructions.
 
 [source,sh]
 ----
 helm install elastic-operator elastic/eck-operator \
   -n elastic-system --create-namespace \
-  --set=image.repository=docker.elastic.co/eck/eck-operator-fips
+  --set=image.fips=true
 ----
 
 === FIPS compliant installation using manifests

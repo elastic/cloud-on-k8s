@@ -36,7 +36,10 @@ ECK can be configured using either command line flags or environment variables.
 |log-verbosity |0 |Verbosity level of logs. `-2`=Error, `-1`=Warn, `0`=Info, `0` and above=Debug.
 |manage-webhook-certs |true |Enables automatic webhook certificate management.
 |max-concurrent-reconciles |3 | Maximum number of concurrent reconciles per controller (Elasticsearch, Kibana, APM Server). Affects the ability of the operator to process changes concurrently.
+|metrics-cert-dir|"{TempDir}/k8s-metrics-server/serving-certs"|Location of TLS certs for the metrics server. Directory needs to contain tls.key and tls.crt. If empty self-signed certificates are used. Only effective when combined with metrics-port and metrics-secure.
+|metrics-host|0.0.0.0|The host to which the operator should bind to serve metrics in the Prometheus format. Will be combined with metrics-port.
 |metrics-port |0 |Prometheus metrics port. Set to 0 to disable the metrics endpoint.
+|metrics-secure |false |Enables TLS for the metrics server. Only effective combined with metrics-port.
 |namespaces |"" |Namespaces in which this operator should manage resources. Accepts multiple comma-separated values. Defaults to all namespaces if empty or unspecified.
 |operator-namespace |"" |Namespace the operator runs in. Required.
 |password-hash-cache-size|5 x max-concurrent-reconciles|Sets the size of the password hash cache. Caching is disabled if explicitly set to 0 or any negative value.

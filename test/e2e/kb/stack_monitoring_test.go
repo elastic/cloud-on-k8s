@@ -44,3 +44,35 @@ func TestKBStackMonitoring(t *testing.T) {
 
 	test.Sequence(nil, steps, metrics, logs, assocEs, monitored).RunSequential(t)
 }
+
+// TestKBStackMonitoringWithBasePath tests if Kibana when configured with a basePath can be monitored by the
+// stack monitoring feature in ECK. Almost identical to the previous test but we need a fresh monitoring cluster
+// for the document assertions to work.
+func TestKBStackMonitoringWithBasePath(t *testing.T) {
+	// only execute this test on supported version
+	err := validations.IsSupportedVersion(test.Ctx().ElasticStackVersion, validations.MinStackVersion)
+	if err != nil {
+		t.SkipNow()
+	}
+
+	// create 1 monitored and 2 monitoring clusters to collect separately monitor and logs
+	monitor := elasticsearch.NewBuilder("test-kb-monitor").
+		WithESMasterDataNodes(2, elasticsearch.DefaultResources)
+	assocEs := elasticsearch.NewBuilder("test-kb-mon-b").
+		WithESMasterDataNodes(1, elasticsearch.DefaultResources)
+	monitored := kibana.NewBuilder("test-kb-mon-b").
+		WithElasticsearchRef(assocEs.Ref()).
+		WithNodeCount(1).
+		WithConfig(map[string]interface{}{
+			"server.basePath":        "/monitoring/kibana",
+			"server.rewriteBasePath": true,
+		}).
+		WithMonitoring(monitor.Ref(), monitor.Ref())
+
+	// checks that the sidecar beats have sent data in the monitoring clusters
+	steps := func(k *test.K8sClient) test.StepList {
+		return checks.MonitoredSteps(&monitored, k)
+	}
+
+	test.Sequence(nil, steps, monitor, assocEs, monitored).RunSequential(t)
+}

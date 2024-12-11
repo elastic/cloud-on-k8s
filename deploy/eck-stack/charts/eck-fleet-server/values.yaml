@@ -18,7 +18,7 @@
 
 # Version of Elastic Fleet Server.
 #
-version: 8.16.0-SNAPSHOT
+version: 8.18.0-SNAPSHOT
 
 # Labels that will be applied to Elastic Fleet Server.
 #
@@ -28,46 +28,74 @@ labels: {}
 #
 annotations: {}
 
-spec:
-  # policyID determines into which Agent Policy this Fleet Server will be enrolled.
-  policyID: eck-fleet-server
+# Elastic Fleet Server Agent image to deploy.
+#
+# image: docker.elastic.co/beats/elastic-agent:8.18.0-SNAPSHOT
 
-  # Referenced resources are below and both elasticsearchRefs and kibanaRef are required for a functional Fleet Server.
-  # ref: https://www.elastic.co/guide/en/cloud-on-k8s/current/k8s-beat-configuration.html#k8s-beat-connect-es
-  #
-  # Reference to ECK-managed Kibana resource.
-  #
-  kibanaRef:
-    name: eck-kibana
-    # Optional namespace reference to Kibana resource.
-    # If not specified, then the namespace of the Fleet Server resource
-    # will be assumed.
-    #
-    # namespace: default
+# ** Deprecation Notice **
+# The previous versions of this Helm Chart simply used the `spec` field here
+# and allowed the user to specify any fields below `spec` that were templated directly
+# into the final Agent/Fleet Server manifest. This is no longer the preferred way to specify these
+# fields and each field that is supported underneath `spec` is now directly specified
+# in this values file. Currently both patterns are supported for backwards compatibility
+# but we plan to remove the `spec` field in the future.
+# spec: {}
 
-  # References to ECK-managed Elasticsearch resource.
-  # This is required for fleet server.
+# Referenced resources are below and both elasticsearchRefs and kibanaRef are required for a functional Fleet Server.
+# ref: https://www.elastic.co/guide/en/cloud-on-k8s/current/k8s-elastic-agent-fleet-configuration.html#k8s-elastic-agent-fleet-configuration-setting-referenced-resources
+#
+# Reference to ECK-managed Kibana instance.
+# This is required for Fleet Server.
+#
+# kibanaRef:
+#   name: quickstart
+  # Optional namespace reference to Kibana instance.
+  # If not specified, then the namespace of the Fleet Server resource
+  # will be assumed.
   #
-  elasticsearchRefs:
-  - name: eck-elasticsearch
-    # Optional namespace reference to Elasticsearch resource.
-    # If not specified, then the namespace of the Fleet Server resource
-    # will be assumed.
-    #
-    # namespace: default
-  
-  # Daemonset, or Deployment specification for the type of Fleet Server specified.
-  # At least one is required of [daemonSet, deployment].
-  # ref: https://www.elastic.co/guide/en/cloud-on-k8s/current/k8s-beat-configuration.html#k8s-beat-chose-the-deployment-model
+  # namespace: default
+
+# Reference to ECK-managed Elasticsearch instance.
+# This is required for Fleet Server.
+#
+elasticsearchRefs: []
+# - name: eck-elasticsearch
+  # Optional namespace reference to Elasticsearch instance.
+  # If not specified, then the namespace of the Fleet Server resource
+  # will be assumed.
   #
-  deployment:
-    replicas: 1
-    podTemplate:
-      spec:
-        serviceAccountName: fleet-server
-        automountServiceAccountToken: true
-        securityContext:
-          runAsUser: 0
+  # namespace: default
+
+# policyID determines into which Agent Policy this Fleet Server will be enrolled.
+policyID: eck-fleet-server
+
+# The HTTP layer configuration for the Fleet Server Service.
+# ref: https://www.elastic.co/guide/en/cloud-on-k8s/current/k8s-elastic-agent-fleet-configuration.html#k8s-elastic-agent-fleet-configuration-customize-fleet-server-service
+#
+# http:
+
+# Deployment or StatefulSet specification for Fleet Server.
+# At least one is required of [deployment, statefulSet].
+# No default is currently set, refer to https://github.com/elastic/cloud-on-k8s/issues/7429.
+# ref: https://www.elastic.co/guide/en/cloud-on-k8s/current/k8s-elastic-agent-fleet-configuration.html#k8s-elastic-agent-fleet-configuration-chose-the-deployment-model
+#
+# deployment:
+#   replicas: 1
+#   podTemplate:
+#     spec:
+#       serviceAccountName: fleet-server
+#       automountServiceAccountToken: true
+#
+# statefulSet:
+#   podTemplate:
+#     spec:
+#       serviceAccountName: fleet-server
+#       automountServiceAccountToken: true
+
+# Number of revisions to retain to allow rollback in the underlying Deployment.
+# If not set Kubernetes sets this to 10 by default.
+#
+# revisionHistoryLimit: 2
 
 # ServiceAccount to be used by Elastic Fleet Server. Some Fleet Server features (such as autodiscover or Kubernetes module metricsets)
 # require that Fleet Server Pods interact with Kubernetes APIs. This functionality requires specific permissions

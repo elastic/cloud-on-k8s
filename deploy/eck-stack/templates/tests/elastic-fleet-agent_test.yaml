@@ -1,0 +1,51 @@
+---
+suite: test fleet-agent
+templates:
+  - charts/eck-fleet-server/templates/fleet-server.yaml
+tests:
+  - it: should render quickstart properly
+    set:
+      eck-agent.enabled: true
+      eck-fleet-server:
+        enabled: true
+        deployment: {}
+    release:
+      name: quickstart
+    asserts:
+      - isKind:
+          of: Agent
+      - equal:
+          path: metadata.name
+          value: quickstart-eck-fleet-server
+      - equal:
+          path: spec.version
+          value: 8.18.0-SNAPSHOT
+  - it: should render fleet server in custom fleet example properly
+    values:
+      - ../../examples/agent/fleet-agents.yaml
+    release:
+      name: quickstart
+    asserts:
+      - isKind:
+          of: Agent
+      - equal:
+          path: metadata.name
+          value: fleet-server
+      - equal:
+          path: spec
+          value: 
+            version: 8.18.0-SNAPSHOT
+            kibanaRef:
+              name: kibana
+            elasticsearchRefs:
+              - name: elasticsearch
+            mode: fleet
+            fleetServerEnabled: true
+            policyID: eck-fleet-server
+            serviceAccountName: fleet-server
+            deployment:
+              replicas: 1
+              podTemplate:
+                spec:
+                  serviceAccountName: fleet-server
+                  automountServiceAccountToken: true

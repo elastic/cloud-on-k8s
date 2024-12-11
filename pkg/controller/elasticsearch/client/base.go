@@ -94,7 +94,7 @@ func (c *baseClient) get(ctx context.Context, pathWithQuery string, out interfac
 	return c.request(ctx, http.MethodGet, pathWithQuery, nil, out, nil)
 }
 
-func (c *baseClient) put(ctx context.Context, pathWithQuery string, in, out interface{}) error { //nolint:unparam
+func (c *baseClient) put(ctx context.Context, pathWithQuery string, in, out interface{}) error {
 	return c.request(ctx, http.MethodPut, pathWithQuery, in, out, nil)
 }
 
@@ -104,6 +104,10 @@ func (c *baseClient) post(ctx context.Context, pathWithQuery string, in, out int
 
 func (c *baseClient) delete(ctx context.Context, pathWithQuery string) error {
 	return c.request(ctx, http.MethodDelete, pathWithQuery, nil, nil, nil)
+}
+
+func (c *baseClient) deleteWithObjects(ctx context.Context, pathWithQuery string, in, out interface{}) error {
+	return c.request(ctx, http.MethodDelete, pathWithQuery, in, out, nil)
 }
 
 // request performs a new http request
@@ -183,7 +187,7 @@ func versioned(b *baseClient, v version.Version) Client {
 		return &clientV7{
 			clientV6: v6,
 		}
-	case 8:
+	case 8, 9:
 		return &clientV8{
 			clientV7: clientV7{clientV6: v6},
 		}

@@ -83,6 +83,7 @@ tests:
           - statefulsets
           - deployments
           - replicasets
+          - daemonsets
       - equal:
           path: rules[4].verbs
           value:
@@ -101,14 +102,15 @@ tests:
           value:
           - get
       - equal:
-          path: rules[6].apiGroups[0]
+          path: rules[7].apiGroups[0]
           value: batch
       - equal:
-          path: rules[6].resources
+          path: rules[7].resources
           value:
           - jobs
+          - cronjobs
       - equal:
-          path: rules[6].verbs
+          path: rules[7].verbs
           value:
           - get
           - list
@@ -136,7 +138,7 @@ tests:
             app.kubernetes.io/managed-by: Helm
             app.kubernetes.io/name: eck-agent
             clusterRole: label
-            helm.sh/chart: eck-agent-0.13.0-SNAPSHOT
+            helm.sh/chart: eck-agent-0.15.0-SNAPSHOT
             test: label
       - equal:
           path: metadata.annotations

@@ -18,7 +18,7 @@
 
 # Version of Logstash.
 #
-version: 8.16.0-SNAPSHOT
+version: 8.18.0-SNAPSHOT
 
 # Logstash Docker image to deploy
 #
@@ -48,16 +48,18 @@ annotations: {}
 count: 1
 
 # The logstash configuration, the ECK equivalent to logstash.yml
+#
+# NOTE: The `config` and `configRef` fields are mutually exclusive. Only one of them should be defined at a time,
+# as using both may cause conflicts.
 # ref: https://www.elastic.co/guide/en/cloud-on-k8s/current/k8s-logstash-configuration.html#k8s-logstash-configuring-logstash
 #
 config: {}
 
-configRef: {}
-
-# Reference a pipeline configuration in a Secret.
-# ref: https://www.elastic.co/guide/en/cloud-on-k8s/current/k8s-logstash-configuration.html#k8s-logstash-pipelines
-#pipelinesRef:
-#    secretName: ''
+# Reference a configuration in a Secret.
+# ref: https://www.elastic.co/guide/en/cloud-on-k8s/current/k8s-logstash-configuration.html#k8s-logstash-configuring-logstash
+#
+# configRef:
+#   secretName: ''
 
 # Set podTemplate to customize the pod used by Logstash
 # ref: https://www.elastic.co/guide/en/cloud-on-k8s/current/k8s-customize-pods.html
@@ -78,14 +80,18 @@ monitoring: {}
   #     namespace: observability
 
 # The Logstash pipelines, the ECK equivalent to pipelines.yml
+#
+# NOTE: The `pipelines` and `pipelinesRef` fields are mutually exclusive. Only one of them should be defined at a time,
+# as using both may cause conflicts.
 # ref: https://www.elastic.co/guide/en/cloud-on-k8s/current/k8s-logstash-configuration.html#k8s-logstash-pipelines
 #
 pipelines: []
 
-pipelinesRef: {}
-#  secretRef:
-#    secretName: ''
-
+# Reference a pipelines configuration in a Secret.
+# ref: https://www.elastic.co/guide/en/cloud-on-k8s/current/k8s-logstash-configuration.html#k8s-logstash-pipelines
+#
+# pipelinesRef:
+#   secretName: ''
 
 # volumeClaimTemplates
 # ref: https://www.elastic.co/guide/en/cloud-on-k8s/current/k8s-logstash-configuration.html#k8s-volume-claim-settings

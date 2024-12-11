@@ -81,7 +81,7 @@ func getElasticsearchExternalURL(c k8s.Client, assoc commonv1.Association) (stri
 		serviceName = services.ExternalServiceName(es.Name)
 	}
 	nsn := types.NamespacedName{Name: serviceName, Namespace: es.Namespace}
-	return association.ServiceURL(c, nsn, es.Spec.HTTP.Protocol())
+	return association.ServiceURL(c, nsn, es.Spec.HTTP.Protocol(), "")
 }
 
 // getAPMElasticsearchRoles returns for a given version of the APM Server the set of required roles.

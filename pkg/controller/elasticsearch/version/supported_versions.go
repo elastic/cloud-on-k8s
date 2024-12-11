@@ -11,8 +11,8 @@ func SupportedVersions(v version.Version) *version.MinMaxVersion {
 	return supportedVersionsWithMinimum(v, version.GlobalMinStackVersion)
 }
 
-func supportedVersionsWithMinimum(v version.Version, min version.Version) *version.MinMaxVersion {
-	if min.GT(v) {
+func supportedVersionsWithMinimum(v version.Version, minVersion version.Version) *version.MinMaxVersion {
+	if minVersion.GT(v) {
 		return nil
 	}
 	return technicallySupportedVersions(v)
@@ -39,6 +39,12 @@ func technicallySupportedVersions(v version.Version) *version.MinMaxVersion {
 			// 7.17.0 is the lowest version that offers a direct upgrade path to 8.0
 			Min: version.MinFor(7, 17, 0), // allow snapshot builds here for testing
 			Max: version.MustParse("8.99.99"),
+		}
+	case 9:
+		return &version.MinMaxVersion{
+			// 8.16.0 is the lowest version that offers a direct upgrade path to 9.0
+			Min: version.MinFor(8, 16, 0), // allow snapshot builds here for testing
+			Max: version.MustParse("9.99.99"),
 		}
 	default:
 		return nil

@@ -6,7 +6,7 @@ metadata:
   name: metricbeat
 spec:
   type: metricbeat
-  version: 8.15.0
+  version: 8.16.0
   elasticsearchRef:
     name: elasticsearch-monitoring
   config:
@@ -29,8 +29,11 @@ spec:
                       - index
                       - index_recovery
                       - index_summary
+                      - ingest_pipeline
                       - ml_job
+                      - node
                       - node_stats
+                      - pending_tasks
                       - shard
                     period: 10s
                     hosts: "https://${data.host}:${data.ports.https}"
@@ -58,6 +61,11 @@ spec:
     processors:
     - add_cloud_metadata: {}
     logging.json: true
+    # See https://github.com/elastic/beats/pull/41640
+    # Since 8.15 the default index template for metricbeat exceeds the default
+    # index mapping total fields limit.
+    setup.template.settings:
+      index.mapping.total_fields.limit: 12500
   deployment:
     podTemplate:
       spec:
@@ -132,7 +140,7 @@ metadata:
   name: filebeat
 spec:
   type: filebeat
-  version: 8.15.0
+  version: 8.16.0
   elasticsearchRef:
     name: elasticsearch-monitoring
   kibanaRef:
@@ -244,7 +252,7 @@ kind: Elasticsearch
 metadata:
   name: elasticsearch
 spec:
-  version: 8.15.0
+  version: 8.16.0
   nodeSets:
   - name: default
     count: 3
@@ -260,7 +268,7 @@ kind: Kibana
 metadata:
   name: kibana
 spec:
-  version: 8.15.0
+  version: 8.16.0
   count: 1
   elasticsearchRef:
     name: elasticsearch
@@ -277,7 +285,7 @@ kind: Elasticsearch
 metadata:
   name: elasticsearch-monitoring
 spec:
-  version: 8.15.0
+  version: 8.16.0
   nodeSets:
   - name: default
     count: 3
@@ -289,7 +297,7 @@ kind: Kibana
 metadata:
   name: kibana-monitoring
 spec:
-  version: 8.15.0
+  version: 8.16.0
   count: 1
   elasticsearchRef:
     name: elasticsearch-monitoring

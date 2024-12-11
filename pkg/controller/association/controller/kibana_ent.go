@@ -60,7 +60,7 @@ func getEntExternalURL(c k8s.Client, assoc commonv1.Association) (string, error)
 		serviceName = entctl.HTTPServiceName(ent.Name)
 	}
 	nsn := types.NamespacedName{Namespace: ent.Namespace, Name: serviceName}
-	return association.ServiceURL(c, nsn, ent.Spec.HTTP.Protocol())
+	return association.ServiceURL(c, nsn, ent.Spec.HTTP.Protocol(), "")
 }
 
 type entVersionResponse struct {

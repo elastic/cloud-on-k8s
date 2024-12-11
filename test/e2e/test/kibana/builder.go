@@ -240,16 +240,36 @@ func (b Builder) WithAPMIntegration() Builder {
 }
 
 func (b Builder) WithConfig(config map[string]interface{}) Builder {
-	b.Kibana.Spec.Config = &commonv1.Config{
-		Data: config,
+	if b.Kibana.Spec.Config == nil || b.Kibana.Spec.Config.Data == nil {
+		b.Kibana.Spec.Config = &commonv1.Config{
+			Data: config,
+		}
+	} else {
+		for k, v := range config {
+			b.Kibana.Spec.Config.Data[k] = v
+		}
 	}
-
 	return b
 }
 
 func (b Builder) WithMonitoring(metricsESRef commonv1.ObjectSelector, logsESRef commonv1.ObjectSelector) Builder {
 	b.Kibana.Spec.Monitoring.Metrics.ElasticsearchRefs = []commonv1.ObjectSelector{metricsESRef}
 	b.Kibana.Spec.Monitoring.Logs.ElasticsearchRefs = []commonv1.ObjectSelector{logsESRef}
+	return b
+}
+
+func (b Builder) WithEnv(envVar []corev1.EnvVar) Builder {
+	if len(b.Kibana.Spec.PodTemplate.Spec.Containers) == 0 {
+		b.Kibana.Spec.PodTemplate.Spec.Containers = []corev1.Container{
+			{Name: kbv1.KibanaContainerName},
+		}
+	}
+	for i, c := range b.Kibana.Spec.PodTemplate.Spec.Containers {
+		if c.Name == kbv1.KibanaContainerName {
+			c.Env = append(c.Env, envVar...)
+			b.Kibana.Spec.PodTemplate.Spec.Containers[i] = c
+		}
+	}
 	return b
 }
 

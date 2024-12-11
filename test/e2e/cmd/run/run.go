@@ -181,7 +181,6 @@ func (h *helper) initTestContext() error {
 		IgnoreWebhookFailures: h.ignoreWebhookFailures,
 		OcpCluster:            isOcpCluster(h),
 		AksCluster:            isAKSCluster(h),
-		TanzuCluster:          isTanzuCluster(h),
 		DeployChaosJob:        h.deployChaosJob,
 		TestEnvTags:           h.testEnvTags,
 		E2ETags:               h.e2eTags,
@@ -246,10 +245,6 @@ func isAKSCluster(h *helper) bool {
 	return strings.HasPrefix(h.provider, "aks")
 }
 
-func isTanzuCluster(h *helper) bool {
-	return strings.HasPrefix(h.provider, "tanzu")
-}
-
 // isAutopilotCluster convenience function to check the provider value for the string gke-autopilot.
 func isAutopilotCluster(h *helper) bool {
 	return strings.HasPrefix(h.provider, "gke-autopilot")
@@ -301,6 +296,7 @@ func (h *helper) initTestSecrets() error {
 			MonitoringURL  string `json:"monitoring_url"`
 			MonitoringUser string `json:"monitoring_user"`
 			MonitoringPass string `json:"monitoring_pass"`
+			APIKey         string `json:"api_key"`
 			APMApiKey      string `json:"apm_api_key"`
 			APMServerURL   string `json:"apm_server_url"`
 		}{}
@@ -313,6 +309,7 @@ func (h *helper) initTestSecrets() error {
 		h.testSecrets["url"] = monitoringSecrets.MonitoringURL
 		h.testSecrets["username"] = monitoringSecrets.MonitoringUser
 		h.testSecrets["password"] = monitoringSecrets.MonitoringPass
+		h.testSecrets["api-key"] = monitoringSecrets.APIKey
 
 		h.operatorSecrets = map[string]string{}
 		h.operatorSecrets["apm_api_key"] = monitoringSecrets.APMApiKey

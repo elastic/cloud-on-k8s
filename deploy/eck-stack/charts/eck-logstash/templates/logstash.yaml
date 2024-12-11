@@ -23,16 +23,15 @@ spec:
   revisionHistoryLimit: {{ . }}
   {{- end }}
 
+  {{- if and .Values.config .Values.configRef }}
+  {{- fail "config and configRef are mutually exclusive!" }}
+  {{- end }}
   {{- with .Values.config }}
   config:
     {{- toYaml . | nindent 4 }}
   {{- end }}
   {{- with .Values.configRef }}
   configRef:
-    {{- toYaml . | nindent 4 }}
-  {{- end }}
-  {{- with .Values.pipelinesRef }}
-  pipelinesRef:
     {{- toYaml . | nindent 4 }}
   {{- end }}
   {{- with .Values.podTemplate }}
@@ -43,8 +42,16 @@ spec:
   monitoring:
     {{- toYaml . | nindent 4 }}
   {{- end }}
-
+  {{- if and .Values.pipelines .Values.pipelinesRef }}
+  {{- fail "pipelines and pipelinesRef are mutually exclusive!" }}
+  {{- end }}
+  {{- with .Values.pipelinesRef }}
+  pipelinesRef:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+  {{- if .Values.pipelines  }}
   pipelines: {{ toYaml .Values.pipelines | nindent 4 }}
+  {{- end }}
   volumeClaimTemplates: {{ toYaml .Values.volumeClaimTemplates | nindent 4 }}
   elasticsearchRefs: {{ toYaml .Values.elasticsearchRefs | nindent 4 }}
   services: {{ toYaml .Values.services | nindent 4 }}

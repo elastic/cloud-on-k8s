@@ -19,6 +19,7 @@ func TestServiceURL(t *testing.T) {
 		c          k8s.Client
 		serviceNSN types.NamespacedName
 		protocol   string
+		basePath   string
 	}
 	svcName := types.NamespacedName{Namespace: "a", Name: "b"}
 	svcFixture := &corev1.Service{
@@ -65,10 +66,21 @@ func TestServiceURL(t *testing.T) {
 			want:    "",
 			wantErr: true,
 		},
+		{
+			name: "happy path with base path",
+			args: args{
+				c:          k8s.NewFakeClient(svcFixture),
+				serviceNSN: svcName,
+				protocol:   "https",
+				basePath:   "/monitoring/kibana",
+			},
+			want:    "https://b.a.svc:9200/monitoring/kibana",
+			wantErr: false,
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := ServiceURL(tt.args.c, tt.args.serviceNSN, tt.args.protocol)
+			got, err := ServiceURL(tt.args.c, tt.args.serviceNSN, tt.args.protocol, tt.args.basePath)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("ServiceURL() error = %v, wantErr %v", err, tt.wantErr)
 				return

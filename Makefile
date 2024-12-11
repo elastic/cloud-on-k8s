@@ -110,7 +110,7 @@ generate-manifests: controller-gen
 	# -- generate  webhook manifest
 	@ $(CONTROLLER_GEN) webhook object:headerFile=./hack/boilerplate.go.txt paths=./pkg/...
 	# -- generate  crd bases manifests
-	@ $(CONTROLLER_GEN) crd:crdVersions=v1,generateEmbeddedObjectMeta=true paths="./pkg/apis/..." output:crd:artifacts:config=config/crds/v1/bases
+	@ $(CONTROLLER_GEN) crd:crdVersions=v1,generateEmbeddedObjectMeta=true paths="./pkg/apis/..." output:crd:artifacts:config=config/crds/v1/resources
 	# -- kustomize crd manifests
 	@ kubectl kustomize config/crds/v1/patches > $(ALL_V1_CRDS)
 	# -- generate  crds manifest
@@ -350,9 +350,6 @@ switch-eks:
 switch-kind:
 	@ echo "kind" > hack/deployer/config/provider
 
-switch-tanzu:
-	@ echo "tanzu" > hack/deployer/config/provider
-
 #################################
 ##  --    Docker images    --  ##
 #################################
@@ -421,7 +418,7 @@ drivah-build-e2e:
 
 # -- run
 
-E2E_STACK_VERSION          ?= 8.15.0
+E2E_STACK_VERSION          ?= 8.16.0
 # regexp to filter tests to run
 export TESTS_MATCH         ?= "^Test"
 export E2E_JSON            ?= false

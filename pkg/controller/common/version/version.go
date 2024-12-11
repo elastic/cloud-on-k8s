@@ -23,17 +23,17 @@ var GlobalMinStackVersion Version
 
 // supported Stack versions. See https://www.elastic.co/support/matrix#matrix_compatibility
 var (
-	SupportedAPMServerVersions        = MinMaxVersion{Min: From(6, 2, 0), Max: From(8, 99, 99)}
-	SupportedEnterpriseSearchVersions = MinMaxVersion{Min: From(7, 7, 0), Max: From(8, 99, 99)}
-	SupportedKibanaVersions           = MinMaxVersion{Min: From(6, 8, 0), Max: From(8, 99, 99)}
-	SupportedBeatVersions             = MinMaxVersion{Min: From(7, 0, 0), Max: From(8, 99, 99)}
+	SupportedAPMServerVersions        = MinMaxVersion{Min: From(6, 2, 0), Max: From(9, 99, 99)}
+	SupportedEnterpriseSearchVersions = MinMaxVersion{Min: From(7, 7, 0), Max: From(9, 99, 99)}
+	SupportedKibanaVersions           = MinMaxVersion{Min: From(6, 8, 0), Max: From(9, 99, 99)}
+	SupportedBeatVersions             = MinMaxVersion{Min: From(7, 0, 0), Max: From(9, 99, 99)}
 	// Elastic Agent was introduced in 7.8.0, but as "experimental release" with no migration path forward, hence
 	// picking higher version as minimal supported.
-	SupportedAgentVersions = MinMaxVersion{Min: From(7, 10, 0), Max: From(8, 99, 99)}
+	SupportedAgentVersions = MinMaxVersion{Min: From(7, 10, 0), Max: From(9, 99, 99)}
 	// Due to bugfixes present in 7.14 that ECK depends on, this is the lowest version we support in Fleet mode.
-	SupportedFleetModeAgentVersions = MinMaxVersion{Min: MustParse("7.14.0-SNAPSHOT"), Max: From(8, 99, 99)}
-	SupportedMapsVersions           = MinMaxVersion{Min: From(7, 11, 0), Max: From(8, 99, 99)}
-	SupportedLogstashVersions       = MinMaxVersion{Min: From(8, 12, 0), Max: From(8, 99, 99)}
+	SupportedFleetModeAgentVersions = MinMaxVersion{Min: MustParse("7.14.0-SNAPSHOT"), Max: From(9, 99, 99)}
+	SupportedMapsVersions           = MinMaxVersion{Min: From(7, 11, 0), Max: From(9, 99, 99)}
+	SupportedLogstashVersions       = MinMaxVersion{Min: From(8, 12, 0), Max: From(9, 99, 99)}
 
 	// minPreReleaseVersion is the lowest prerelease identifier as numeric prerelease takes precedence before
 	// alphanumeric ones and it can't have leading zeros.
@@ -60,10 +60,10 @@ func (mmv MinMaxVersion) WithinRange(v Version) error {
 	return nil
 }
 
-func (mmv MinMaxVersion) WithMin(min Version) MinMaxVersion {
-	if min.GT(mmv.Min) {
+func (mmv MinMaxVersion) WithMin(minVersion Version) MinMaxVersion {
+	if minVersion.GT(mmv.Min) {
 		return MinMaxVersion{
-			Min: min,
+			Min: minVersion,
 			Max: mmv.Max,
 		}
 	}
@@ -100,36 +100,36 @@ func WithoutPre(v Version) Version {
 
 // MinInPods returns the lowest version parsed from labels in the given Pods.
 func MinInPods(pods []corev1.Pod, labelName string) (*Version, error) {
-	var min *Version
+	var minVersion *Version
 	for _, p := range pods {
 		v, err := FromLabels(p.Labels, labelName)
 		if err != nil {
 			return nil, err
 		}
 
-		if min == nil || v.LT(*min) {
-			min = &v
+		if minVersion == nil || v.LT(*minVersion) {
+			minVersion = &v
 		}
 	}
 
-	return min, nil
+	return minVersion, nil
 }
 
 // MinInStatefulSets returns the lowest version parsed from labels in the given StatefulSets template.
 func MinInStatefulSets(ssets []appsv1.StatefulSet, labelName string) (*Version, error) {
-	var min *Version
+	var minVersion *Version
 	for _, s := range ssets {
 		v, err := FromLabels(s.Spec.Template.Labels, labelName)
 		if err != nil {
 			return nil, err
 		}
 
-		if min == nil || v.LT(*min) {
-			min = &v
+		if minVersion == nil || v.LT(*minVersion) {
+			minVersion = &v
 		}
 	}
 
-	return min, nil
+	return minVersion, nil
 }
 
 func FromLabels(labels map[string]string, labelName string) (Version, error) {

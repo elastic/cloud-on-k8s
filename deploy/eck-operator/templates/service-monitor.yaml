@@ -1,0 +1,34 @@
+{{- if and .Values.config.metrics.secureMode.enabled .Values.serviceMonitor.enabled }}
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: {{ include "eck-operator.fullname" . }}
+  namespace: {{ ternary .Values.serviceMonitor.namespace .Release.Namespace (not (and (.Values.serviceMonitor) (empty .Values.serviceMonitor.namespace))) }}
+  labels: {{- include "eck-operator.labels" . | nindent 4 }}
+spec:
+  namespaceSelector:
+    matchNames:
+      - {{ .Release.Namespace }}
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: {{ include "eck-operator.name" . }}-metrics-service
+      app.kubernetes.io/instance: {{ .Release.Name }}
+  endpoints:
+  - port: https
+    path: /metrics
+    scheme: https
+    interval: 30s
+    tlsConfig:
+      {{- $insecureSkipVerify := (ternary .Values.config.metrics.secureMode.tls.insecureSkipVerify .Values.serviceMonitor.insecureSkipVerify (hasKey .Values.config.metrics.secureMode.tls "insecureSkipVerify")) }}
+      insecureSkipVerify: {{ $insecureSkipVerify }}
+      {{- if (not $insecureSkipVerify) }}
+      {{- $caMountDirectory := or (.Values.config.metrics.secureMode.tls.caMountDirectory) (.Values.serviceMonitor.caMountDirectory) -}}
+      {{- $leading_path := trimSuffix "/" $caMountDirectory }}
+      {{- $caSecret := or (.Values.config.metrics.secureMode.tls.caSecret) (.Values.serviceMonitor.caSecret) -}}
+      {{- with $caSecret }}
+      caFile: "{{ $leading_path }}/{{ . }}/ca.crt"
+      {{- end }}
+      serverName: "{{ include "eck-operator.fullname" . }}-metrics.{{ .Release.Namespace }}.svc"
+      {{- end }}
+    bearerTokenFile: /var/run/secrets/kubernetes.io/serviceaccount/token
+{{- end }}

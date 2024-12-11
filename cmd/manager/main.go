@@ -37,6 +37,7 @@ import (
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 	"sigs.k8s.io/controller-runtime/pkg/manager/signals"
+	"sigs.k8s.io/controller-runtime/pkg/metrics/filters"
 	metricsserver "sigs.k8s.io/controller-runtime/pkg/metrics/server"
 	crwebhook "sigs.k8s.io/controller-runtime/pkg/webhook"
 	"sigs.k8s.io/controller-runtime/pkg/webhook/admission"
@@ -83,7 +84,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/logstash"
 	lsvalidation "github.com/elastic/cloud-on-k8s/v2/pkg/controller/logstash/validation"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/maps"
-	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/remoteca"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/remotecluster"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/stackconfigpolicy"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/webhook"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/dev"
@@ -292,6 +293,17 @@ func Command() *cobra.Command {
 		"0.0.0.0",
 		fmt.Sprintf("The host to which the operator should bind to serve metrics in the Prometheus format. Will be combined with %s.", operator.MetricsPortFlag),
 	)
+	cmd.Flags().Bool(
+		operator.MetricsSecureFlag,
+		false,
+		fmt.Sprintf("Enables TLS for the metrics server. Only effective combined with %s", operator.MetricsPortFlag),
+	)
+	cmd.Flags().String(
+		operator.MetricsCertDirFlag,
+		// this is controller-runtime's own default, copied here for making the default explicit when using `--help`
+		filepath.Join(os.TempDir(), "k8s-metrics-server", "serving-certs"),
+		fmt.Sprintf("Location of TLS certs for the metrics server. Directory needs to contain tls.key and tls.crt. If empty self-signed certificates are used. Only effective when combined with %s and %s", operator.MetricsPortFlag, operator.MetricsSecureFlag),
+	)
 	cmd.Flags().StringSlice(
 		operator.NamespacesFlag,
 		nil,
@@ -463,7 +475,7 @@ func startOperator(ctx context.Context) error {
 				}
 			}()
 
-			if err := pprofServer.ListenAndServe(); !errors.Is(http.ErrServerClosed, err) {
+			if err := pprofServer.ListenAndServe(); !errors.Is(err, http.ErrServerClosed) {
 				log.Error(err, "Failed to start debug HTTP server")
 				panic(err)
 			}
@@ -587,6 +599,14 @@ func startOperator(ctx context.Context) error {
 	}
 	opts.Metrics = metricsserver.Options{
 		BindAddress: fmt.Sprintf("%s:%d", metricsHost, metricsPort), // 0 to disable
+	}
+	if viper.GetBool(operator.MetricsSecureFlag) {
+		opts.Metrics.FilterProvider = filters.WithAuthenticationAndAuthorization
+		opts.Metrics.SecureServing = true
+	}
+
+	if metricsCertDir := viper.GetString(operator.MetricsCertDirFlag); len(metricsCertDir) > 0 {
+		opts.Metrics.CertDir = metricsCertDir
 	}
 
 	webhookPort := viper.GetInt(operator.WebhookPortFlag)
@@ -899,7 +919,7 @@ func registerControllers(mgr manager.Manager, params operator.Parameters, access
 		name         string
 		registerFunc func(manager.Manager, rbac.AccessReviewer, operator.Parameters) error
 	}{
-		{name: "RemoteCA", registerFunc: remoteca.Add},
+		{name: "RemoteCA", registerFunc: remotecluster.Add},
 		{name: "APM-ES", registerFunc: associationctl.AddApmES},
 		{name: "APM-KB", registerFunc: associationctl.AddApmKibana},
 		{name: "KB-ES", registerFunc: associationctl.AddKibanaES},

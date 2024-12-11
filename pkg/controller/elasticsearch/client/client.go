@@ -63,6 +63,7 @@ type Client interface {
 	DesiredNodesClient
 	ShardLister
 	LicenseClient
+	RemoteClusterClient
 	SecurityClient
 	// Close idle connections in the underlying http client.
 	Close()
@@ -101,10 +102,6 @@ type Client interface {
 	GetNodesStats(ctx context.Context) (NodesStats, error)
 	// ClusterBootstrappedForZen2 returns true if the cluster is relying on zen2 orchestration.
 	ClusterBootstrappedForZen2(ctx context.Context) (bool, error)
-	// UpdateRemoteClusterSettings updates the remote clusters of a cluster.
-	UpdateRemoteClusterSettings(ctx context.Context, settings RemoteClustersSettings) error
-	// GetRemoteClusterSettings retrieves the remote clusters of a cluster.
-	GetRemoteClusterSettings(ctx context.Context) (RemoteClustersSettings, error)
 	// AddVotingConfigExclusions sets the transient and persistent setting of the same name in cluster settings.
 	// Introduced in: Elasticsearch 7.0.0
 	AddVotingConfigExclusions(ctx context.Context, nodeNames []string) error

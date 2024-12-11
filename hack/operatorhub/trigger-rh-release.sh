@@ -16,7 +16,7 @@ set -eu
 : "$DRY_RUN"
 
 # extract branch from the tag
-branch=$(sed -r "s|v([0-9]\.[0-9])\..*|\1|" <<< "$ECK_VERSION")
+branch=$(sed -r "s|v([0-9]*\.[0-9]*)\..*|\1|" <<< "$ECK_VERSION")
 
 curl "https://api.buildkite.com/v2/organizations/elastic/pipelines/cloud-on-k8s-operator-redhat-release/builds" -XPOST \
     -H "Authorization: Bearer $BK_TOKEN" -d '

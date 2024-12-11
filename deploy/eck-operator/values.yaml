@@ -24,6 +24,10 @@ image:
   pullPolicy: IfNotPresent
   # tag is the container image tag. If not defined, defaults to chart appVersion.
   tag: null
+  # fips specifies whether the operator will use a FIPS compliant container image for its own StatefulSet image.
+  # This setting does not apply to Elastic Stack applications images.
+  # Can be combined with config.ubiOnly.
+  fips: false
 
 # priorityClassName defines the PriorityClass to be used by the operator pods.
 priorityClassName: ""
@@ -197,29 +201,12 @@ config:
     port: "0"
     # secureMode contains the options for enabling and configuring RBAC and TLS/HTTPs for the metrics endpoint.
     secureMode:
-      # secureMode.enabled specifies whether to enable RBAC and TLS/HTTPs for the metrics endpoint. (Will be enabled by default in v2.14.0)
-      # * This option requires using a ServiceMonitor to scrape the metrics and as such is mutually exclusive with the podMonitor.enabled option.
+      # secureMode.enabled specifies whether to enable RBAC and TLS/HTTPs for the metrics endpoint.
+      # * This option makes most sense when using a ServiceMonitor to scrape the metrics and is therefore mutually exclusive with the podMonitor.enabled option.
       # * This option also requires using cluster scoped resources (ClusterRole, ClusterRoleBinding) to
       #   grant access to the /metrics endpoint. (createClusterScopedResources: true is required)
       #
-      # This option requires the following settings within Prometheus to function:
-      # 1. RBAC settings for the Prometheus instance to access the metrics endpoint.
-      #
-      # - nonResourceURLs:
-      #   - /metrics
-      #   verbs:
-      #   - get
-      #
-      # 2. If using the Prometheus Operator and your Prometheus instance is not in the same namespace as the operator you will need
-      #    the Prometheus Operator configured with the following Helm values:
-      #
-      #   prometheus:
-      #     prometheusSpec:
-      #       serviceMonitorNamespaceSelector: {}
-      #       serviceMonitorSelectorNilUsesHelmValues: false
       enabled: false
-      # additional volume mounts for the kube-rbac-proxy container.
-      volumeMounts: []
       tls:
         # certificateSecret is the name of the tls secret containing the custom TLS certificate and key for the secure metrics endpoint.
         #
@@ -231,27 +218,6 @@ config:
         # example: kubectl create secret tls eck-metrics-tls-certificate -n elastic-system \
         #            --cert=/path/to/tls.crt --key=/path/to/tls.key
         certificateSecret: ""
-        # caSecret is the name of the secret containing the custom CA certificate used to generate the custom TLS certificate for the secure metrics endpoint.
-        #
-        # * This *must* be the name of the secret containing the CA certificate used to sign the custom TLS certificate.
-        # * This secret *must* be in the same namespace as the Prometheus instance that will scrape the metrics.
-        # * If using the Prometheus operator this secret must be within the `spec.secrets` field of the `Prometheus` custom resource such that it is mounted into the Prometheus pod at `caMountDirectory`, which defaults to /etc/prometheus/secrets/{secret-name}.
-        # * This is an optional setting and is only required if you are using a custom TLS certificate.
-        # * Key must be named ca.crt.
-        #
-        # example: kubectl create secret generic eck-metrics-tls-ca -n monitoring \
-        #            --from-file=ca.crt=/path/to/ca.pem
-        caSecret: ""
-        # caMountDirectory is the directory at which the CA certificate is mounted within the Prometheus pod.
-        #
-        # * You should only need to adjust this if you are *not* using the Prometheus operator.
-        caMountDirectory: "/etc/prometheus/secrets/"
-        # insecureSkipVerify specifies whether to skip verification of the TLS certificate for the secure metrics endpoint.
-        #
-        # * If this setting is set to false, then the following settings are required:
-        #   - certificateSecret
-        #   - caSecret
-        insecureSkipVerify: true
 
   # containerRegistry to use for pulling Elasticsearch and other application container images.
   containerRegistry: docker.elastic.co
@@ -353,11 +319,48 @@ podMonitor:
 # Only used when config.enableSecureMetrics is true
 # Reference: https://github.com/prometheus-operator/prometheus-operator/blob/master/Documentation/api.md#servicemonitor
 serviceMonitor:
-  {}
-
+  # This option requires the following settings within Prometheus to function:
+  # 1. RBAC settings for the Prometheus instance to access the metrics endpoint.
+  #
+  # - nonResourceURLs:
+  #   - /metrics
+  #   verbs:
+  #   - get
+  #
+  # 2. If using the Prometheus Operator and your Prometheus instance is not in the same namespace as the operator you will need
+  #    the Prometheus Operator configured with the following Helm values:
+  #
+  #   prometheus:
+  #     prometheusSpec:
+  #       serviceMonitorNamespaceSelector: {}
+  #       serviceMonitorSelectorNilUsesHelmValues: false
+  #
+  # allows to disable the serviceMonitor, enabled by default for backwards compatibility
+  enabled: true
   # namespace determines in which namespace the serviceMonitor will be deployed.
   # If not set the serviceMonitor will be created in the namespace where the Helm release is installed into
   # namespace: monitoring
+  # caSecret is the name of the secret containing the custom CA certificate used to generate the custom TLS certificate for the secure metrics endpoint.
+  #
+  # * This *must* be the name of the secret containing the CA certificate used to sign the custom TLS certificate for the metrics endpoint.
+  # * This secret *must* be in the same namespace as the Prometheus instance that will scrape the metrics.
+  # * If using the Prometheus operator this secret must be within the `spec.secrets` field of the `Prometheus` custom resource such that it is mounted into the Prometheus pod at `caMountDirectory`, which defaults to /etc/prometheus/secrets/{secret-name}.
+  # * This is an optional setting and is only required if you are using a custom TLS certificate.
+  # * Key must be named ca.crt.
+  #
+  # example: kubectl create secret generic eck-metrics-tls-ca -n monitoring \
+  #            --from-file=ca.crt=/path/to/ca.pem
+  caSecret: ""
+  # caMountDirectory is the directory at which the CA certificate is mounted within the Prometheus pod.
+  #
+  # * You should only need to adjust this if you are *not* using the Prometheus operator.
+  caMountDirectory: "/etc/prometheus/secrets/"
+  # insecureSkipVerify specifies whether to skip verification of the TLS certificate for the secure metrics endpoint.
+  #
+  # * If this setting is set to false, then the following settings are required:
+  #   - certificateSecret
+  #   - caSecret
+  insecureSkipVerify: true
 
 # Globals meant for internal use only
 global:

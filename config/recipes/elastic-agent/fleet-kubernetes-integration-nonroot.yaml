@@ -71,7 +71,7 @@ kind: Kibana
 metadata:
   name: kibana
 spec:
-  version: 8.15.0
+  version: 8.16.0
   count: 1
   elasticsearchRef:
     name: elasticsearch
@@ -98,6 +98,7 @@ spec:
     - name: Fleet Server on ECK policy
       id: eck-fleet-server
       namespace: default
+      is_managed: true
       monitoring_enabled:
       - logs
       - metrics
@@ -110,6 +111,7 @@ spec:
     - name: Elastic Agent on ECK policy
       id: eck-agent
       namespace: default
+      is_managed: true
       monitoring_enabled:
       - logs
       - metrics
@@ -127,7 +129,7 @@ kind: Elasticsearch
 metadata:
   name: elasticsearch
 spec:
-  version: 8.15.0
+  version: 8.16.0
   nodeSets:
   - name: default
     count: 3
@@ -139,7 +141,7 @@ kind: Agent
 metadata:
   name: fleet-server
 spec:
-  version: 8.15.0
+  version: 8.16.0
   kibanaRef:
     name: kibana
   elasticsearchRefs:
@@ -159,7 +161,7 @@ kind: Agent
 metadata: 
   name: elastic-agent
 spec:
-  version: 8.15.0
+  version: 8.16.0
   kibanaRef:
     name: kibana
   fleetServerRef: 
@@ -269,6 +271,7 @@ rules:
   - statefulsets
   - deployments
   - replicasets
+  - daemonsets
   verbs:
   - "get"
   - "list"
@@ -279,10 +282,23 @@ rules:
   - nodes/stats
   verbs:
   - get
+- nonResourceURLs:
+  - "/metrics"
+  verbs:
+  - get
 - apiGroups:
   - "batch"
   resources:
   - jobs
+  - cronjobs
+  verbs:
+  - "get"
+  - "list"
+  - "watch"
+- apiGroups:
+  - "storage.k8s.io"
+  resources:
+  - storageclasses
   verbs:
   - "get"
   - "list"

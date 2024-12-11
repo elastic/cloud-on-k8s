@@ -69,6 +69,10 @@ func TestNewExternalService(t *testing.T) {
 		wantSvc  func() corev1.Service
 	}{
 		{
+			name:    "default clusterIP service",
+			wantSvc: mkHTTPSService,
+		},
+		{
 			name: "no TLS",
 			httpConf: commonv1.HTTPConfig{
 				TLS: commonv1.TLSOptions{
@@ -92,11 +96,7 @@ func TestNewExternalService(t *testing.T) {
 					},
 				},
 			},
-			wantSvc: func() corev1.Service {
-				svc := mkHTTPService()
-				svc.Spec.Ports[0].Name = "https"
-				return svc
-			},
+			wantSvc: mkHTTPSService,
 		},
 		{
 			name: "user-provided certificate",
@@ -107,11 +107,7 @@ func TestNewExternalService(t *testing.T) {
 					},
 				},
 			},
-			wantSvc: func() corev1.Service {
-				svc := mkHTTPService()
-				svc.Spec.Ports[0].Name = "https"
-				return svc
-			},
+			wantSvc: mkHTTPSService,
 		},
 	}
 
@@ -171,6 +167,7 @@ func mkHTTPService() corev1.Service {
 			},
 		},
 		Spec: corev1.ServiceSpec{
+			Type: corev1.ServiceTypeClusterIP,
 			Ports: []corev1.ServicePort{
 				{
 					Name:     "http",
@@ -184,6 +181,12 @@ func mkHTTPService() corev1.Service {
 			},
 		},
 	}
+}
+
+func mkHTTPSService() corev1.Service {
+	svc := mkHTTPService()
+	svc.Spec.Ports[0].Name = "https"
+	return svc
 }
 
 func mkTransportService() corev1.Service {

@@ -12,7 +12,6 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	commonv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/common/v1"
-	esv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/elasticsearch/v1"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/defaults"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/version"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/label"
@@ -47,28 +46,26 @@ var (
 func DefaultEnvVars(v version.Version, httpCfg commonv1.HTTPConfig, headlessServiceName string) []corev1.EnvVar {
 	vars := []corev1.EnvVar{
 		// needed in elasticsearch.yml
+		// We do not recommend overriding the default readiness probe on Elasticsearch 8.2.0 and later.
+		// ECK configures a socket based readiness probe using the Elasticsearch which is not influenced by the load on the Elasticsearch cluster.
+		// These settings are added only for backwards compatibility and will be removed in a future release.
 		{Name: settings.HeadlessServiceName, Value: headlessServiceName},
-	}
-	if v.LT(esv1.MinReadinessPortVersion) {
-		vars = []corev1.EnvVar{
-			{Name: settings.EnvProbePasswordPath, Value: path.Join(esvolume.PodMountedUsersSecretMountPath, user.ProbeUserName)},
-			{Name: settings.EnvProbeUsername, Value: user.ProbeUserName},
-			{Name: settings.EnvReadinessProbeProtocol, Value: httpCfg.Protocol()},
-			{Name: settings.HeadlessServiceName, Value: headlessServiceName},
+		{Name: settings.EnvProbePasswordPath, Value: path.Join(esvolume.PodMountedUsersSecretMountPath, user.ProbeUserName)},
+		{Name: settings.EnvProbeUsername, Value: user.ProbeUserName},
+		{Name: settings.EnvReadinessProbeProtocol, Value: httpCfg.Protocol()},
 
-			// Disable curl/libnss use of sqlite caching to avoid triggering an issue in linux/kubernetes
-			// where the kernel's dentry cache grows by 5mb every time curl is invoked. This cache usage
-			// is charged against the pod which created it. In our case, the elasticsearch nodes trigger
-			// this problem with the readinessProbe invoking curl.
-			//
-			// In production testing, no negative impact on curl's behavior is observed from this setting.
-			// This setting is primarily targeted at curl invocation in the readinessProbe.
-			// References:
-			//   https://github.com/elastic/cloud-on-k8s/issues/1581#issuecomment-525527334
-			//   https://github.com/elastic/cloud-on-k8s/issues/1635
-			//   https://issuetracker.google.com/issues/140577001
-			{Name: "NSS_SDB_USE_CACHE", Value: "no"},
-		}
+		// Disable curl/libnss use of sqlite caching to avoid triggering an issue in linux/kubernetes
+		// where the kernel's dentry cache grows by 5mb every time curl is invoked. This cache usage
+		// is charged against the pod which created it. In our case, the elasticsearch nodes trigger
+		// this problem with the readinessProbe invoking curl.
+		//
+		// In production testing, no negative impact on curl's behavior is observed from this setting.
+		// This setting is primarily targeted at curl invocation in the readinessProbe.
+		// References:
+		//   https://github.com/elastic/cloud-on-k8s/issues/1581#issuecomment-525527334
+		//   https://github.com/elastic/cloud-on-k8s/issues/1635
+		//   https://issuetracker.google.com/issues/140577001
+		{Name: "NSS_SDB_USE_CACHE", Value: "no"},
 	}
 	return defaults.ExtendPodDownwardEnvVars(vars...)
 }

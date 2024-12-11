@@ -51,7 +51,7 @@ spec:
         {{- toYaml . | nindent 8 }}
       {{- end }}
       containers:
-        - image: "{{ .Values.image.repository }}{{- if .Values.config.ubiOnly -}}-ubi{{- end -}}:{{ default .Chart.AppVersion .Values.image.tag }}"
+        - image: "{{ .Values.image.repository }}{{- if .Values.config.ubiOnly -}}-ubi{{- end -}}{{- if .Values.image.fips -}}-fips{{- end -}}:{{ default .Chart.AppVersion .Values.image.tag }}"
           imagePullPolicy: {{ .Values.image.pullPolicy }}
           name: manager
           args:
@@ -89,7 +89,7 @@ spec:
           {{- end }}
           {{- if or .Values.webhook.enabled (gt $metricsPort 0) }}
           ports:
-            {{- if and (gt $metricsPort 0) (not .Values.config.metrics.secureMode.enabled) }}
+            {{- if (gt $metricsPort 0) }}
             - containerPort: {{ $metricsPort }}
               name: metrics
               protocol: TCP
@@ -109,49 +109,14 @@ spec:
               name: cert
               readOnly: true
             {{- end }}
+            {{- if .Values.config.metrics.secureMode.tls.certificateSecret }}
+            - mountPath: "/tmp/k8s-metrics-server/serving-certs"
+              name: tls-certificate
+              readOnly: true
+            {{- end }} 
             {{- with .Values.volumeMounts }}
               {{- toYaml . | nindent 12 }}
             {{- end }}
-        {{- if .Values.config.metrics.secureMode.enabled }}
-        - name: kube-rbac-proxy
-          securityContext:
-            allowPrivilegeEscalation: false
-            capabilities:
-              drop:
-                - "ALL"
-          image: gcr.io/kubebuilder/kube-rbac-proxy:v0.15.0
-          args:
-          - "--secure-listen-address=0.0.0.0:{{ $metricsPort }}"
-          - "--upstream=http://127.0.0.1:{{ add $metricsPort 1 }}/"
-          - "--logtostderr=true"
-          - "--v=0"
-          {{- if .Values.config.metrics.secureMode.tls.certificateSecret }}
-          - "--tls-cert-file=/tls/tls.crt"
-          - "--tls-private-key-file=/tls/tls.key"
-          {{- end }}
-          {{- if or .Values.config.metrics.secureMode.tls.certificateSecret .Values.config.metrics.secureMode.volumeMounts }}
-          volumeMounts:
-            {{- with .Values.config.metrics.secureMode.volumeMounts }}
-              {{- toYaml . | nindent 12 }}
-            {{- end }}
-            {{- if .Values.config.metrics.secureMode.tls.certificateSecret }}
-            - mountPath: "/tls"
-              name: tls-certificate
-              readOnly: true
-            {{- end }}
-          {{- end }}
-          ports:
-          - containerPort: {{ $metricsPort }}
-            protocol: TCP
-            name: metrics
-          resources:
-            limits:
-              cpu: 500m
-              memory: 128Mi
-            requests:
-              cpu: 5m
-              memory: 64Mi
-        {{- end }}
       volumes:
         - name: conf
           configMap:

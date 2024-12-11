@@ -1,6 +1,24 @@
 [[release-highlights-2.14.0]]
 == 2.14.0 release highlights
 
+[[known-issue-2.14.0]]
+[float]
+=== Known issue
+Users who have defined a <<{p}-readiness,custom readiness probe>> for Elasticsearch 8.2.0 or later will have to either remove the custom readiness probe before upgrading to 2.14 or if that is not possible have adjust the readiness probe script as follows after the upgrade:
+[source,yaml]
+----
+podTemplate:
+  spec:
+    containers:
+    - name: elasticsearch
+      readinessProbe:
+         exec:
+           command:
+           - bash
+           - -c
+           - /mnt/elastic-internal/scripts/readiness-port-script.sh
+----
+
 [float]
 [id="{p}-2140-new-and-notable"]
 === New and notable

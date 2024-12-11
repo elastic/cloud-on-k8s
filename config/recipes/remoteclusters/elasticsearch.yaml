@@ -1,0 +1,81 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: ns1
+---
+apiVersion: elasticsearch.k8s.elastic.co/v1
+kind: Elasticsearch
+metadata:
+  name: cluster1
+  namespace: ns1
+spec:
+  version: 8.16.0
+  remoteClusters:
+    - name: to-ns2-cluster2
+      elasticsearchRef:
+        name: cluster2
+        namespace: ns2
+      apiKey:
+        access:
+          search:
+            names:
+              ## This requires the sample data available at https://kibana_url/app/home#/tutorial_directory/sampleData
+              - kibana_sample_data_ecommerce
+  nodeSets:
+    - name: default
+      config:
+        node.store.allow_mmap: false
+      count: 3
+---
+apiVersion: kibana.k8s.elastic.co/v1
+kind: Kibana
+metadata:
+  name: kibana
+  namespace: ns1
+spec:
+#  http:
+#    service:
+#      spec:
+#        # expose this cluster Service with a LoadBalancer
+#        type: LoadBalancer
+  version: 8.16.0
+  count: 1
+  elasticsearchRef:
+    name: "cluster1"
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: ns2
+---
+apiVersion: elasticsearch.k8s.elastic.co/v1
+kind: Elasticsearch
+metadata:
+  name: cluster2
+  namespace: ns2
+spec:
+  version: 8.16.0
+  ## Required for this cluster to be accessed using remote cluster API keys.
+  remoteClusterServer:
+    enabled: true
+  nodeSets:
+    - name: default
+      config:
+        node.store.allow_mmap: false
+      count: 3
+---
+apiVersion: kibana.k8s.elastic.co/v1
+kind: Kibana
+metadata:
+  name: kibana
+  namespace: ns2
+spec:
+#  http:
+#    service:
+#      spec:
+#        # expose this cluster Service with a LoadBalancer
+#        type: LoadBalancer
+  version: 8.16.0
+  count: 1
+  elasticsearchRef:
+    name: "cluster2"

@@ -20,6 +20,7 @@ With Elastic Cloud on Kubernetes you can streamline critical operations, such as
 . Setting up hot-warm-cold architectures with availability zone awareness
 --
 
+[id="{p}-supported"]
 == Supported versions
 
 include::supported-versions.asciidoc[]
@@ -28,6 +29,8 @@ include::supported-versions.asciidoc[]
 
 - link:https://www.elastic.co/elasticsearch-kubernetes[Orchestrate Elasticsearch on Kubernetes]
 - link:https://www.elastic.co/blog/introducing-elastic-cloud-on-kubernetes-the-elasticsearch-operator-and-beyond?elektra=products&storm=sub1[ECK post on the Elastic Blog]
+- link:https://www.youtube.com/watch?v=PIJmlYBIFXM[Getting Started With Elastic Cloud on Kubernetes (ECK)]
+- link:https://www.youtube.com/watch?v=Wf6E3vkvEFM[Running the Elastic Stack on Kubernetes with ECK]
 
 [float]
 [id="{p}-ask-for-help"]

@@ -9,20 +9,16 @@ endif::[]
 
 [partintro]
 --
-With Elastic Cloud on Kubernetes (ECK) you can extend the basic Kubernetes orchestration capabilities to easily deploy, secure, upgrade your Elasticsearch cluster, and much more.
+With Elastic Cloud on Kubernetes (ECK) you can extend the basic Kubernetes orchestration capabilities to easily deploy, secure, upgrade your {es} cluster, and much more.
 
-Eager to get started? This quick guide shows you how to:
+Eager to get started? This quickstart guide shows you how to:
 
 * <<{p}-deploy-eck,Deploy ECK in your Kubernetes cluster>>
-* <<{p}-deploy-elasticsearch,Deploy an Elasticsearch cluster>>
-* <<{p}-deploy-kibana,Deploy a Kibana instance>>
-* <<{p}-upgrade-deployment,Upgrade your deployment>>
-* <<{p}-persistent-storage,Use persistent storage>>
-* <<{p}-check-samples,Check out the samples>>
+* <<{p}-deploy-elasticsearch,Deploy an {es} cluster>>
+* <<{p}-deploy-kibana,Deploy a {kib} instance>>
+* <<{p}-update-deployment,Update your deployment>>
 
-**Supported versions**
-
-include::supported-versions.asciidoc[]
+Afterwards, you can find further sample resources link:{eck_github}/tree/{eck_release_branch}/config/samples[in the project repository] or by checking out <<{p}-recipes,our recipes>>.
 
 --
 
@@ -31,7 +27,7 @@ include::supported-versions.asciidoc[]
 
 Things to consider before you start:
 
-* For this quickstart guide, your Kubernetes cluster is assumed to be already up and running. Before you proceed with the ECK installation, make sure you check the link:k8s-quickstart.html[supported versions].
+* For this quickstart guide, your Kubernetes cluster is assumed to be already up and running. Before you proceed with the ECK installation, make sure you check the <<{p}-supported,supported versions>>.
 
 * If you are using GKE, make sure your user has `cluster-admin` permissions. For more information, check link:https://cloud.google.com/kubernetes-engine/docs/how-to/role-based-access-control#iam-rolebinding-bootstrap[Prerequisites for using Kubernetes RBAC on GKE].
 
@@ -39,16 +35,18 @@ Things to consider before you start:
 
 * Refer to <<{p}-installing-eck>> for more information on installation options.
 
-IMPORTANT: Check the <<{p}-upgrading-eck,upgrade notes>> if you are attempting to upgrade an existing ECK deployment.
+* Check the <<{p}-upgrading-eck,upgrade notes>> if you are attempting to upgrade an existing ECK deployment.
 
-. Install link:https://kubernetes.io/docs/concepts/extend-kubernetes/api-extension/custom-resources/[custom resource definitions]:
+To deploy the ECK operator:
+
+. Install link:https://kubernetes.io/docs/concepts/extend-kubernetes/api-extension/custom-resources/[custom resource definitions] with link:https://kubernetes.io/docs/reference/kubectl/generated/kubectl_create/[`create`]:
 +
 [source,sh,subs="attributes"]
 ----
 kubectl create -f https://download.elastic.co/downloads/eck/{eck_version}/crds.yaml
 ----
 +
-The following Elastic resources have been created:
+This will output similar to the following upon Elastic resources' creation:
 +
 [source,sh]
 ----
@@ -62,7 +60,7 @@ customresourcedefinition.apiextensions.k8s.io/kibanas.kibana.k8s.elastic.co crea
 customresourcedefinition.apiextensions.k8s.io/logstashes.logstash.k8s.elastic.co created
 ----
 
-. Install the operator with its RBAC rules:
+. Install the operator with its RBAC rules with link:https://kubernetes.io/docs/reference/kubectl/generated/kubectl_apply/[`apply`]:
 +
 [source,sh,subs="attributes"]
 ----
@@ -70,19 +68,28 @@ kubectl apply -f https://download.elastic.co/downloads/eck/{eck_version}/operato
 ----
 NOTE: The ECK operator runs by default in the `elastic-system` namespace. It is recommended that you choose a dedicated namespace for your workloads, rather than using the `elastic-system` or the `default` namespace.
 
-. Monitor the operator logs:
+. Monitor the operator's setup from its logs through link:https://kubernetes.io/docs/reference/kubectl/generated/kubectl_logs/[`logs`]:
 +
 [source,sh]
 ----
 kubectl -n elastic-system logs -f statefulset.apps/elastic-operator
 ----
 
+. Once ready, the operator will report as `Running` as shown with link:https://kubernetes.io/docs/reference/kubectl/generated/kubectl_get/[`get`], replacing default `elastic-system` with applicable installation namespace as needed:
+*
+[source,sh]
+----
+$ kubectl get -n elastic-system pods
+NAME                 READY   STATUS    RESTARTS   AGE
+elastic-operator-0   1/1     Running   0          1m
+----
+
+This completes the quickstart of the ECK operator. We recommend continuing to <<{p}-deploy-elasticsearch,Deploying an {es} cluster>>; but for more configuration options as needed, navigate to <<{p}-operating-eck,Operating ECK>>.
+
 [id="{p}-deploy-elasticsearch"]
-== Deploy an Elasticsearch cluster
+== Deploy an {es} cluster
 
-Apply a simple link:{ref}/getting-started.html[Elasticsearch] cluster specification, with one Elasticsearch node:
-
-NOTE: If your Kubernetes cluster does not have any Kubernetes nodes with at least 2GiB of free memory, the pod will be stuck in `Pending` state. Check <<{p}-managing-compute-resources>> for more information about resource requirements and how to configure them.
+To deploy a simple link:{ref}/getting-started.html[{es]}] cluster specification, with one {es} node:
 
 [source,yaml,subs="attributes,+macros"]
 ----
@@ -101,20 +108,63 @@ spec:
 EOF
 ----
 
-The operator automatically creates and manages Kubernetes resources to achieve the desired state of the Elasticsearch cluster. It may take up to a few minutes until all the resources are created and the cluster is ready for use.
+The operator automatically creates and manages Kubernetes resources to achieve the desired state of the {es} cluster. It may take up to a few minutes until all the resources are created and the cluster is ready for use.
 
 CAUTION: Setting `node.store.allow_mmap: false` has performance implications and should be tuned for production workloads as described in the <<{p}-virtual-memory>> section.
+
+NOTE: If your Kubernetes cluster does not have any Kubernetes nodes with at least 2GiB of free memory, the pod will be stuck in `Pending` state. Check <<{p}-managing-compute-resources>> for more information about resource requirements and how to configure them.
+
+NOTE: The cluster that you deployed in this quickstart guide only allocates a persistent volume of 1GiB for storage using the default link:https://kubernetes.io/docs/concepts/storage/storage-classes/[storage class] defined for the Kubernetes cluster. You will most likely want to have more control over this for production workloads. Refer to <<{p}-volume-claim-templates>> for more information.
+
+For a full description of each `CustomResourceDefinition` (CRD), refer to the <<{p}-api-reference>> or view the CRD files in the link:{eck_github}/tree/{eck_release_branch}/config/crds[project repository]. You can also retrieve information about a CRD from the cluster. For example, describe the {es} CRD specification with link:https://kubernetes.io/docs/reference/kubectl/generated/kubectl_describe/[`describe`]:
+
+[source,sh]
+----
+kubectl describe crd elasticsearch
+----
 
 [float]
 [id="{p}-elasticsearch-monitor-cluster-health"]
 === Monitor cluster health and creation progress
 
-Get an overview of the current Elasticsearch clusters in the Kubernetes cluster, including health, version and number of nodes:
+Get an overview of the current {es} clusters in the Kubernetes cluster with link:https://kubernetes.io/docs/reference/kubectl/generated/kubectl_get/[`get`], including health, version and number of nodes:
 
 [source,sh]
 ----
 kubectl get elasticsearch
 ----
+
+When you first create the Kubernetes cluster, there is no `HEALTH` status and the `PHASE` is empty. After the pod and service start-up, the `PHASE` turns into `Ready`, and `HEALTH` becomes `green`. The `HEALTH` status comes from {es}'s link:{ref}/cluster-health.html[cluster health API].
+
+[source,sh,subs="attributes"]
+----
+NAME          HEALTH    NODES     VERSION   PHASE         AGE
+quickstart              1         {version}               1s
+----
+
+While the {es} pod is in the process of being started it will report `Pending` as checked with link:https://kubernetes.io/docs/reference/kubectl/generated/kubectl_get/[`get`]:
+
+[source,sh]
+----
+kubectl get pods --selector='elasticsearch.k8s.elastic.co/cluster-name=quickstart'
+----
+
+Which will output similar to:
+
+[source,sh]
+----
+NAME                      READY   STATUS    RESTARTS   AGE
+quickstart-es-default-0   0/1     Pending   0          9s
+----
+
+During and after start-up, up that pod's link:https://kubernetes.io/docs/reference/kubectl/generated/kubectl_logs/[`logs`] can be accessed:
+
+[source,sh]
+----
+kubectl logs -f quickstart-es-default-0
+----
+
+Once the pod has finished coming up, our original link:https://kubernetes.io/docs/reference/kubectl/generated/kubectl_get/[`get`] request will now report:
 
 [source,sh,subs="attributes"]
 ----
@@ -122,37 +172,17 @@ NAME          HEALTH    NODES     VERSION   PHASE         AGE
 quickstart    green     1         {version}     Ready         1m
 ----
 
-When you create the cluster, there is no `HEALTH` status and the `PHASE` is empty. After a while, the `PHASE` turns into `Ready`, and `HEALTH` becomes `green`. The `HEALTH` status comes from link:{ref}/cluster-health.html[Elasticsearch's cluster health API].
-
-One Pod is in the process of being started:
-
-[source,sh]
-----
-kubectl get pods --selector='elasticsearch.k8s.elastic.co/cluster-name=quickstart'
-----
-
-[source,sh]
-----
-NAME                      READY   STATUS    RESTARTS   AGE
-quickstart-es-default-0   1/1     Running   0          79s
-----
-
-Access the logs for that Pod:
-
-[source,sh]
-----
-kubectl logs -f quickstart-es-default-0
-----
-
 [float]
-=== Request Elasticsearch access
+=== Request {es} access
 
-A ClusterIP Service is automatically created for your cluster:
+A `ClusterIP` Service is automatically created for your cluster as checked with link:https://kubernetes.io/docs/reference/kubectl/generated/kubectl_get/[`get`]:
 
 [source,sh]
 ----
 kubectl get service quickstart-es-http
 ----
+
+Which will output similar to:
 
 [source,sh]
 ----
@@ -160,59 +190,47 @@ NAME                 TYPE        CLUSTER-IP      EXTERNAL-IP   PORT(S)    AGE
 quickstart-es-http   ClusterIP   10.15.251.145   <none>        9200/TCP   34m
 ----
 
+In order to make requests to the link:{ref}/rest-apis.html[{es} API]:
+
 . Get the credentials.
 +
-A default user named `elastic` is created by default with the password stored in a Kubernetes secret:
+By default, a user named `elastic` is created with the password stored inside a link:https://kubernetes.io/docs/concepts/configuration/secret/[Kubernetes secret]. This default user can be disabled if desired, refer to <<{p}-users-and-roles>> for more information.
 +
 [source,sh]
 ----
 PASSWORD=$(kubectl get secret quickstart-es-elastic-user -o go-template='{{.data.elastic | base64decode}}')
 ----
 
-NOTE: The `elastic` user creation can be disabled if desired. Check <<{p}-users-and-roles>> for more information.
-
-. Request the Elasticsearch endpoint.
-+
-From inside the Kubernetes cluster:
+. Request the link:{ref}/rest-api-root.html[{es} root API]. You can do so from inside the Kubernetes cluster or from your local workstation. For demonstration purposes, certificate verification is disabled using the `-k` curl flag; however, this is not recommended outside of testing purposes. Refer to <<{p}-setting-up-your-own-certificate>> for more information.
+* From inside the Kubernetes cluster:
 +
 [source,sh]
 ----
 curl -u "elastic:$PASSWORD" -k "https://quickstart-es-http:9200"
 ----
-+
-From your local workstation, use the following command in a separate terminal:
+* From your local workstation:
+.. Use the following command in a separate terminal:
 +
 [source,sh]
 ----
 kubectl port-forward service/quickstart-es-http 9200
 ----
 +
-Then request `localhost`:
+.. Request `localhost`:
 +
 [source,sh]
 ----
 curl -u "elastic:$PASSWORD" -k "https://localhost:9200"
 ----
 
-NOTE: Disabling certificate verification using the `-k` flag is not recommended and should be used for testing purposes only. Check <<{p}-setting-up-your-own-certificate>>.
-
-[source,json]
-----
-{
-  "name" : "quickstart-es-default-0",
-  "cluster_name" : "quickstart",
-  "cluster_uuid" : "XqWg0xIiRmmEBg4NMhnYPg",
-  "version" : {...},
-  "tagline" : "You Know, for Search"
-}
-----
+This completes the quickstart of deploying an {es} cluster. We recommend continuing to <<{p}-deploy-kibana,Deploy a {kib} instance>> but for more configuration options as needed, navigate to <<{p}-elasticsearch-specification,Running {es} on ECK>>.
 
 [id="{p}-deploy-kibana"]
-== Deploy a Kibana instance
+== Deploy a {kib} instance
 
-To deploy your link:{kibana-ref}/introduction.html#introduction[Kibana] instance go through the following steps.
+To deploy a simple link:{kibana-ref}/introduction.html#introduction[{kib}] specification, with one {kib} instance:
 
-. Specify a Kibana instance and associate it with your Elasticsearch cluster:
+. Specify a {kib} instance and associate it with your {es} `quickstart` cluster created previously under <<{p}-deploy-elasticsearch,Deploying an {es} cluster>>:
 +
 [source,yaml,subs="attributes,+macros"]
 ----
@@ -229,9 +247,9 @@ spec:
 EOF
 ----
 
-. Monitor Kibana health and creation progress.
+. Monitor {kib} health and creation progress.
 +
-Similar to Elasticsearch, you can retrieve details about Kibana instances:
+Similar to {es}, you can retrieve details about {kib} instances with link:https://kubernetes.io/docs/reference/kubectl/generated/kubectl_get/[`get`]:
 +
 [source,sh]
 ----
@@ -244,17 +262,19 @@ And the associated Pods:
 ----
 kubectl get pod --selector='kibana.k8s.elastic.co/name=quickstart'
 ----
++ 
+{kib} will be status `available` once link:https://kubernetes.io/docs/reference/kubectl/generated/kubectl_get/[`get`] reports `green`. If it experiences issues starting up, use link:https://kubernetes.io/docs/reference/kubectl/generated/kubectl_logs/[`logs`] against the pod in order to link:{kibana-ref}/access.html#not-ready[Troubleshoot {kib} start-up].
 
-. Access Kibana.
+. Access {kib}.
 +
-A `ClusterIP` Service is automatically created for Kibana:
+A `ClusterIP` Service is automatically created for {kib}:
 +
 [source,sh]
 ----
 kubectl get service quickstart-kb-http
 ----
 +
-Use `kubectl port-forward` to access Kibana from your local workstation:
+Use `kubectl port-forward` to access {kib} from your local workstation:
 +
 [source,sh]
 ----
@@ -270,12 +290,21 @@ Login as the `elastic` user. The password can be obtained with the following com
 kubectl get secret quickstart-es-elastic-user -o=jsonpath='{.data.elastic}' | base64 --decode; echo
 ----
 
-[id="{p}-upgrade-deployment"]
-== Upgrade your deployment
+For a full description of each `CustomResourceDefinition` (CRD), refer to the <<{p}-api-reference>> or view the CRD files in the link:{eck_github}/tree/{eck_release_branch}/config/crds[project repository]. You can also retrieve information about a CRD from the instance. For example, describe the {kib} CRD specification with link:https://kubernetes.io/docs/reference/kubectl/generated/kubectl_describe/[`describe`]:
 
-You can add and modify most elements of the original cluster specification provided that they translate to valid transformations of the underlying Kubernetes resources (for example <<{p}-volume-claim-templates, existing volume claims cannot be downsized>>). The operator will attempt to apply your changes with minimal disruption to the existing cluster. You should ensure that the Kubernetes cluster has sufficient resources to accommodate the changes (extra storage space, sufficient memory and CPU resources to temporarily spin up new pods, and so on).
+[source,sh]
+----
+kubectl describe crd kibana
+----
 
-For example, you can grow the cluster to three Elasticsearch nodes:
+This completes the quickstart of deploying an {kib} instance on top of <<{p}-deploy-eck,the ECK operator>> and <<{p}-deploy-elasticsearch,deployed {es} cluster>>. We recommend continuing to <<{p}-update-deployment,updating your deployment>>. For more {kib} configuration options, refer to <<{p}-kibana, Running {kib} on ECK>>.
+
+[id="{p}-update-deployment"]
+== Update your deployment
+
+You can add and modify most elements of the original Kubernetes cluster specification provided that they translate to valid transformations of the underlying Kubernetes resources (for example <<{p}-volume-claim-templates, existing volume claims cannot be downsized>>). The ECK operator will attempt to apply your changes with minimal disruption to the existing cluster. You should ensure that the Kubernetes cluster has sufficient resources to accommodate the changes (extra storage space, sufficient memory and CPU resources to temporarily spin up new pods, and so on).
+
+For example, you can grow the cluster to three {es} nodes from the <<{p}-deploy-elasticsearch,deployed {es} cluster>> example by updating the `count` with link:https://kubernetes.io/docs/reference/kubectl/generated/kubectl_apply/[`apply`]:
 
 [source,yaml,subs="attributes,+macros"]
 ----
@@ -294,21 +323,6 @@ spec:
 EOF
 ----
 
-[id="{p}-persistent-storage"]
-== Use persistent storage
+ECK will automatically schedule the requested update. Changes can be monitored with the <<{p}-deploy-eck,ECK operator logs>>, link:https://kubernetes.io/docs/reference/kubernetes-api/cluster-resources/event-v1/[`events`], and applicable product's link:https://kubernetes.io/docs/reference/kubectl/generated/kubectl_logs/[pod `logs`]. These will either report successful application of changes or provide context for further troubleshooting. Kindly note, Kubernetes restricts some changes, for example refer to <<{p}-volume-claim-templates-update,Updating Volume Claims>>.
 
-The cluster that you deployed in this quickstart guide only allocates a persistent volume of 1GiB for storage using the default link:https://kubernetes.io/docs/concepts/storage/storage-classes/[storage class] defined for the Kubernetes cluster. You will most likely want to have more control over this for production workloads. Refer to <<{p}-volume-claim-templates>> for more information.
-
-
-[id="{p}-check-samples"]
-== Check out the samples
-
-You can find a set of sample resources link:{eck_github}/tree/{eck_release_branch}/config/samples[in the project repository].
-
-For a full description of each `CustomResourceDefinition` (CRD), refer to the <<{p}-api-reference>> or view the CRD files in the link:{eck_github}/tree/{eck_release_branch}/config/crds[project repository].
-You can also retrieve information about a CRD from the cluster. For example, describe the Elasticsearch CRD specification with:
-
-[source,sh]
-----
-kubectl describe crd elasticsearch
-----
+This completes our quickstart guide for deploying an {es} cluster and {kib} instance with our ECK operator. We recommend continuing to <<{p}-orchestrating-elastic-stack-applications,Orchestrating Elastic Stack applications>> for more configuration options
