@@ -99,6 +99,7 @@ func MetricBeat(ctx context.Context, client k8s.Client, beat *v1beta1.Beat, vers
 		GetStackMonitoringSocketURL(beat),
 		"",
 		"",
+		"",
 		false,
 	)
 	if err != nil {
