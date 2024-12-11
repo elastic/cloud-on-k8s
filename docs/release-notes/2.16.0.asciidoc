@@ -22,6 +22,7 @@
 * Make Helm chart consistent in respect to handling of 'spec'. (eck-kibana) {pull}8192[#8192]
 * Set default hardened security context for Kibana. {pull}8086[#8086] (issue: {issue}7787[#7787])
 * Add a setting in the Helm chart to deploy FIPS compliant ECK image. {pull}8272[#8272] (issue: {issue}8204[#8204])
+* Remove kube-rbac-proxy and adjust default approach to securing the metrics endpoint. {pull}8302[#8302] (issue: {issue}8279[#8279])
 
 [[bug-2.16.0]]
 [float]
@@ -29,6 +30,7 @@
 
 * Allow Beats stack monitoring without elasticseachRef. {pull}8273[#8273] (issue: {issue}8194[#8194])
 * Add recommened roles for Elastic Agent on Kubernetes. {pull}8188[#8188] (issue: {issue}8168[#8168])
+* Set 'basePath' in Metricbeat when using stack monitoring {pull}8311[#8311] (issue: {issue}8310[#8310])
 
 [[docs-2.16.0]]
 [float]
