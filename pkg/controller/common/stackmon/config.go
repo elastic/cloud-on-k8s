@@ -168,6 +168,7 @@ func mergeConfig(rawConfig string, config map[string]interface{}) ([]byte, error
 // inputConfigData holds data to configure the Metricbeat Elasticsearch and Kibana modules used
 // to collect metrics for Stack Monitoring
 type inputConfigData struct {
+	BasePath         string
 	URL              string
 	Username         string
 	Password         string
@@ -186,6 +187,7 @@ func buildMetricbeatBaseConfig(
 	nsn types.NamespacedName,
 	namer name.Namer,
 	url string,
+	basePath string,
 	username string,
 	password string,
 	isTLS bool,
@@ -204,10 +206,11 @@ func buildMetricbeatBaseConfig(
 	configData := inputConfigData{
 		Username: username,
 		Password: password,
-		URL:      url,     // Metricbeat in the sidecar connects to the monitored resource using `localhost`
-		IsSSL:    isTLS,   // enable SSL configuration based on whether the monitored resource has TLS enabled
-		HasCA:    hasCA,   // the CA is optional to support custom certificate issued by a well-known CA, so without provided CA to configure
-		Version:  version, // Version of the monitored resource
+		URL:      url,      // Metricbeat in the sidecar connects to the monitored resource using `localhost`
+		BasePath: basePath, // for the Metricbeat Kibana module
+		IsSSL:    isTLS,    // enable SSL configuration based on whether the monitored resource has TLS enabled
+		HasCA:    hasCA,    // the CA is optional to support custom certificate issued by a well-known CA, so without provided CA to configure
+		Version:  version,  // Version of the monitored resource
 	}
 
 	// See https://github.com/elastic/cloud-on-k8s/pull/8284

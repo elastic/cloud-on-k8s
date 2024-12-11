@@ -132,6 +132,7 @@ func TestBuildMetricbeatBaseConfig(t *testing.T) {
 		certsSecret *corev1.Secret
 		hasCA       bool
 		baseConfig  string
+		basePath    string
 		version     semver.Version
 	}{
 		{
@@ -195,9 +196,26 @@ func TestBuildMetricbeatBaseConfig(t *testing.T) {
 				ssl.verification_mode: "certificate"`,
 			version: semver.MustParse("8.6.0"),
 		},
+		{
+			name:     "with basepath",
+			isTLS:    false,
+			basePath: "/kibana",
+			baseConfig: `
+				hosts: ["scheme://localhost:1234"]
+				basepath: /kibana
+				username: elastic-internal-monitoring
+				password: 1234567890
+				ssl.enabled: false
+				ssl.verification_mode: "certificate"
+				ingest_pipeline: "enabled"`,
+			version: semver.MustParse("8.7.0"),
+		},
 	}
 	baseConfigTemplate := `
 				hosts: ["{{ .URL }}"]
+				{{- with .BasePath }}
+				basepath: {{ . }}
+				{{- end }}
 				username: {{ .Username }}
 				password: {{ .Password }}
 				ssl.enabled: {{ .IsSSL }}
@@ -228,6 +246,7 @@ func TestBuildMetricbeatBaseConfig(t *testing.T) {
 				types.NamespacedName{Namespace: "namespace", Name: "name"},
 				name.NewNamer("es"),
 				sampleURL,
+				tc.basePath,
 				"elastic-internal-monitoring",
 				"1234567890",
 				tc.isTLS,

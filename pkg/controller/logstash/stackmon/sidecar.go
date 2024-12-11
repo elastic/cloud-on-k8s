@@ -44,6 +44,7 @@ func Metricbeat(ctx context.Context, client k8s.Client, logstash logstashv1alpha
 		metricbeatConfigTemplate,
 		logstashv1alpha1.Namer,
 		fmt.Sprintf("%s://localhost:%d", protocol, network.HTTPPort),
+		"",
 		apiServer.Username,
 		apiServer.Password,
 		useTLS,
