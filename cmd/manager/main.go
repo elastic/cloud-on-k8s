@@ -300,7 +300,8 @@ func Command() *cobra.Command {
 	)
 	cmd.Flags().String(
 		operator.MetricsCertDirFlag,
-		"",
+		// this is controller-runtime's own default, copied here for making the default explicit when using `--help`
+		filepath.Join(os.TempDir(), "k8s-metrics-server", "serving-certs"),
 		fmt.Sprintf("Location of TLS certs for the metrics server. Directory needs to contain tls.key and tls.crt. If empty self-signed certificates are used. Only effective when combined with %s and %s", operator.MetricsPortFlag, operator.MetricsSecureFlag),
 	)
 	cmd.Flags().StringSlice(
@@ -604,8 +605,7 @@ func startOperator(ctx context.Context) error {
 		opts.Metrics.SecureServing = true
 	}
 
-	metricsCertDir := viper.GetString(operator.MetricsCertDirFlag)
-	if len(metricsCertDir) > 0 {
+	if metricsCertDir := viper.GetString(operator.MetricsCertDirFlag); len(metricsCertDir) > 0 {
 		opts.Metrics.CertDir = metricsCertDir
 	}
 
