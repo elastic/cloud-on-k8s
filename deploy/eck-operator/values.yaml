@@ -251,8 +251,7 @@ config:
   disableConfigWatch: false
 
   # exposedNodeLabels is an array of regular expressions of node labels which are allowed to be copied as annotations on Elasticsearch Pods.
-  exposedNodeLabels:
-    ["topology.kubernetes.io/.*", "failure-domain.beta.kubernetes.io/.*"]
+  exposedNodeLabels: [ "topology.kubernetes.io/.*", "failure-domain.beta.kubernetes.io/.*" ]
 
   # ipFamily specifies the IP family to use. Possible values: IPv4, IPv6 and "" (auto-detect)
   ipFamily: ""
@@ -288,6 +287,7 @@ config:
 # Prometheus PodMonitor configuration
 # Reference: https://github.com/prometheus-operator/prometheus-operator/blob/master/Documentation/api.md#podmonitor
 podMonitor:
+
   # enabled determines whether a podMonitor should deployed to scrape the eck metrics.
   # This requires the prometheus operator and the config.metrics.port not to be 0
   enabled: false
