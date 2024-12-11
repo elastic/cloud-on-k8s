@@ -113,7 +113,7 @@ func TestKibanaAssociationWithNonExistentES(t *testing.T) {
 func TestKibanaAssociationWhenReferencedESDisappears(t *testing.T) {
 	name := "test-kb-del-referenced-es"
 	esBuilder := elasticsearch.NewBuilder(name).
-		WithESMasterDataNodes(1, elasticsearch.DefaultResources)
+		WithESMasterDataNodes(2, elasticsearch.DefaultResources)
 	kbBuilder := kibana.NewBuilder(name).
 		WithElasticsearchRef(esBuilder.Ref()).
 		WithNodeCount(1)
