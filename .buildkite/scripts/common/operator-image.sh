@@ -6,7 +6,7 @@
 
 # Functions to set environment variables to build the operator.
 
-source "$ROOT/.buildkite/scripts/common/lib.sh"
+source "${ROOT:-.}/.buildkite/scripts/common/lib.sh"
 
 # Sets operator image variables in the environment depending on the given trigger.
 operator::set_image_vars() {
@@ -16,10 +16,19 @@ operator::set_image_vars() {
     sha1=$(common::sha1)
 
     case "$trigger" in
-        tag-*)
+        tag-final)
             : "$BUILDKITE_TAG" # required
             IMAGE_NAME="docker.elastic.co/eck/eck-operator"
             IMAGE_TAG="${BUILDKITE_TAG#v}" # remove v prefix
+        ;;
+        tag-bc)
+            : "$BUILDKITE_TAG" # required
+            IMAGE_NAME="docker.elastic.co/eck-snapshots/eck-operator"
+            IMAGE_TAG="${BUILDKITE_TAG#v}" # remove v prefix
+        ;;
+        merge-xyz)
+            IMAGE_NAME="docker.elastic.co/eck-snapshots/eck-operator"
+            IMAGE_TAG="$version-$sha1"
         ;;
         *-main)
             IMAGE_NAME="docker.elastic.co/eck-snapshots/eck-operator"
@@ -27,15 +36,15 @@ operator::set_image_vars() {
         ;;
         pr-*)
             : "$BUILDKITE_PULL_REQUEST" # required
-            IMAGE_NAME="docker.elastic.co/eck-ci/eck-operator-pr"
-            IMAGE_TAG="$BUILDKITE_PULL_REQUEST-$sha1"
+            IMAGE_NAME="docker.elastic.co/eck-ci/eck-operator"
+            IMAGE_TAG="pr-$BUILDKITE_PULL_REQUEST-$sha1"
         ;;
         dev)
             IMAGE_NAME="docker.elastic.co/eck-dev/eck-operator"
             IMAGE_TAG="dev-$sha1"
         ;;
         *)
-            IMAGE_NAME="docker.elastic.co/eck-ci/eck-operator-br"
+            IMAGE_NAME="docker.elastic.co/eck-ci/eck-operator"
             IMAGE_TAG="$version-$sha1"
         ;;
     esac
@@ -50,10 +59,11 @@ operator::set_build_flavors_var() {
     if [[ "${BUILD_FLAVORS:-}" == "" ]]; then
         case $trigger in
             tag-*)           BUILD_FLAVORS="eck,eck-dev,eck-fips,eck-ubi,eck-ubi-fips" ;;
+            nightly-main)    BUILD_FLAVORS="eck,eck-dev,eck-fips,eck-ubi,eck-ubi-fips" ;;
+            merge-xyz)       BUILD_FLAVORS="eck,eck-dev,eck-fips,eck-ubi,eck-ubi-fips" ;;
             merge-main)      BUILD_FLAVORS="eck,eck-dev" ;;
-            nightly-main)    BUILD_FLAVORS="eck,eck-dev,eck-ubi" ;;
             *-test-snapshot) BUILD_FLAVORS="eck,eck-dev" ;;
-            pr-*|merge-xyz)  BUILD_FLAVORS="eck" ;;
+            pr-*)            BUILD_FLAVORS="eck" ;;
             dev)             BUILD_FLAVORS="dev" ;;
             *)               echo "error: trigger '$trigger' not supported"; exit ;;
         esac
