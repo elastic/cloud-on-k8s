@@ -54,6 +54,7 @@
 [float]
 === Misc
 
+* Enterprise Search transition to Elasticsearch {pull}8323[#8323] (issue: {issue}8308[#8308])
 * fix(deps): update module golang.org/x/crypto to v0.29.0 {pull}8240[#8240]
 * chore(deps): update registry.access.redhat.com/ubi9/ubi-minimal docker tag to v9.5-1731604394 {pull}8237[#8237]
 * chore(deps): update go to v1.23.3 {pull}8190[#8190]
@@ -61,4 +62,3 @@
 * fix(deps): update k8s versions {pull}8163[#8163]
 * chore(deps): update wolfi (versioned) {pull}8162[#8162]
 * fix(deps): update module github.com/prometheus/client_golang to v1.20.5 {pull}8133[#8133]
-
