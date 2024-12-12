@@ -6,6 +6,7 @@ package stackmon
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"strconv"
 	"testing"
@@ -175,22 +176,25 @@ func TestWithMonitoring(t *testing.T) {
 			assert.NoError(t, err)
 
 			assert.Equal(t, tc.containersLength, len(builder.PodTemplate.Spec.Containers))
+			println(tc.name)
 			for _, v := range builder.PodTemplate.Spec.Volumes {
-				fmt.Println(v)
+				y, _ := json.Marshal(v)
+				fmt.Println(string(y))
 			}
-			assert.Equal(t, tc.podVolumesLength, len(builder.PodTemplate.Spec.Volumes))
+			println("------------------------")
+			assert.Equal(t, tc.podVolumesLength, len(builder.PodTemplate.Spec.Volumes), "pod volumes")
 
 			if monitoring.IsMetricsDefined(&ls) {
 				for _, c := range builder.PodTemplate.Spec.Containers {
 					if c.Name == "metricbeat" {
-						assert.Equal(t, tc.metricsVolumeMountsLength, len(c.VolumeMounts))
+						assert.Equal(t, tc.metricsVolumeMountsLength, len(c.VolumeMounts), "metrics volume mounts")
 					}
 				}
 			}
 			if monitoring.IsLogsDefined(&ls) {
 				for _, c := range builder.PodTemplate.Spec.Containers {
 					if c.Name == "filebeat" {
-						assert.Equal(t, tc.logVolumeMountsLength, len(c.VolumeMounts))
+						assert.Equal(t, tc.logVolumeMountsLength, len(c.VolumeMounts), "logs volume mounts")
 					}
 				}
 			}

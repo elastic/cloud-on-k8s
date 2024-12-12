@@ -11,12 +11,14 @@ import (
 
 	corev1 "k8s.io/api/core/v1"
 
+	"github.com/blang/semver/v4"
 	commonv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/common/v1"
 	esv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/elasticsearch/v1"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/defaults"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/stackmon"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/stackmon/monitoring"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/version"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/volume"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/network"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/securitycontext"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/user"
@@ -35,19 +37,40 @@ func Metricbeat(ctx context.Context, client k8s.Client, es esv1.Elasticsearch) (
 	if err != nil {
 		return stackmon.BeatSidecar{}, err
 	}
+
+	v, err := version.Parse(es.Spec.Version)
+	if err != nil {
+		return stackmon.BeatSidecar{}, err
+	}
+
+	input := struct {
+		URL      string
+		Username string
+		Password string
+		IsSSL    bool
+		CAVolume volume.VolumeLike
+		Version  semver.Version
+	}{
+		URL:      fmt.Sprintf("%s://localhost:%d", es.Spec.HTTP.Protocol(), network.HTTPPort),
+		Username: username,
+		Password: password,
+		IsSSL:    es.Spec.HTTP.TLS.Enabled(),
+		CAVolume: stackmon.CAVolume(k8s.ExtractNamespacedName(&es), esv1.ESNamer, commonv1.KbMonitoringAssociationType /*???*/),
+		Version:  v,
+	}
+
+	cfg, err := stackmon.RenderTemplate(v, metricbeatConfigTemplate, input)
+	if err != nil {
+		return stackmon.BeatSidecar{}, err
+	}
+
 	metricbeat, err := stackmon.NewMetricBeatSidecar(
 		ctx,
 		client,
-		commonv1.KbMonitoringAssociationType,
 		&es,
 		es.Spec.Version,
-		metricbeatConfigTemplate,
-		esv1.ESNamer,
-		fmt.Sprintf("%s://localhost:%d", es.Spec.HTTP.Protocol(), network.HTTPPort),
-		"",
-		username,
-		password,
-		es.Spec.HTTP.TLS.Enabled(),
+		input.CAVolume,
+		cfg,
 	)
 	if err != nil {
 		return stackmon.BeatSidecar{}, err

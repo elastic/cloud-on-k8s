@@ -16,6 +16,8 @@ import (
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/defaults"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/stackmon"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/stackmon/monitoring"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/version"
+	commonvol "github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/volume"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/logstash/configs"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/logstash/network"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/logstash/volume"
@@ -35,19 +37,37 @@ func Metricbeat(ctx context.Context, client k8s.Client, logstash logstashv1alpha
 		protocol = "https"
 	}
 
+	v, err := version.Parse(logstash.Spec.Version)
+	if err != nil {
+		return stackmon.BeatSidecar{}, err
+	}
+
+	input := struct {
+		URL      string
+		Username string
+		Password string
+		IsSSL    bool
+		CAVolume commonvol.VolumeLike
+	}{
+		URL:      fmt.Sprintf("%s://localhost:%d", protocol, network.HTTPPort),
+		Username: apiServer.Username,
+		Password: apiServer.Password,
+		IsSSL:    useTLS,
+		CAVolume: stackmon.CAVolume(k8s.ExtractNamespacedName(&logstash), logstashv1alpha1.Namer, commonv1.LogstashMonitoringAssociationType),
+	}
+
+	cfg, err := stackmon.RenderTemplate(v, metricbeatConfigTemplate, input)
+	if err != nil {
+		return stackmon.BeatSidecar{}, err
+	}
+
 	metricbeat, err := stackmon.NewMetricBeatSidecar(
 		ctx,
 		client,
-		commonv1.LogstashMonitoringAssociationType,
 		&logstash,
 		logstash.Spec.Version,
-		metricbeatConfigTemplate,
-		logstashv1alpha1.Namer,
-		fmt.Sprintf("%s://localhost:%d", protocol, network.HTTPPort),
-		"",
-		apiServer.Username,
-		apiServer.Password,
-		useTLS,
+		input.CAVolume,
+		cfg,
 	)
 	if err != nil {
 		return stackmon.BeatSidecar{}, err

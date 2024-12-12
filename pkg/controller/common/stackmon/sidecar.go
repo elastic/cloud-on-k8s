@@ -6,11 +6,14 @@ package stackmon
 
 import (
 	"context"
+	"fmt"
 	"hash"
 
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/types"
 
 	commonv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/common/v1"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/certificates"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/container"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/defaults"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/name"
@@ -23,44 +26,21 @@ import (
 func NewMetricBeatSidecar(
 	ctx context.Context,
 	client k8s.Client,
-	associationType commonv1.AssociationType,
 	resource monitoring.HasMonitoring,
 	imageVersion string,
-	baseConfigTemplate string,
-	namer name.Namer,
-	url string,
-	basePath string,
-	username string,
-	password string,
-	isTLS bool,
+	caVolume volume.VolumeLike,
+	baseConfig string,
 ) (BeatSidecar, error) {
 	v, err := version.Parse(imageVersion)
 	if err != nil {
 		return BeatSidecar{}, err // error unlikely and should have been caught during validation
 	}
 
-	baseConfig, sourceCaVolume, err := buildMetricbeatBaseConfig(
-		client,
-		associationType,
-		k8s.ExtractNamespacedName(resource),
-		namer,
-		url,
-		basePath,
-		username,
-		password,
-		isTLS,
-		baseConfigTemplate,
-		v,
-	)
-	if err != nil {
-		return BeatSidecar{}, err
-	}
-
 	image := container.ImageRepository(container.MetricbeatImage, v)
 
 	// EmptyDir volume so that MetricBeat does not write in the container image, which allows ReadOnlyRootFilesystem: true
 	emptyDir := volume.NewEmptyDirVolume("metricbeat-data", "/usr/share/metricbeat/data")
-	return NewBeatSidecar(ctx, client, "metricbeat", image, resource, monitoring.GetMetricsAssociation(resource), baseConfig, sourceCaVolume, emptyDir)
+	return NewBeatSidecar(ctx, client, "metricbeat", image, resource, monitoring.GetMetricsAssociation(resource), baseConfig, caVolume, emptyDir)
 }
 
 func NewFileBeatSidecar(ctx context.Context, client k8s.Client, resource monitoring.HasMonitoring, imageVersion string, baseConfig string, additionalVolume volume.VolumeLike) (BeatSidecar, error) {
@@ -124,4 +104,12 @@ func NewBeatSidecar(ctx context.Context, client k8s.Client, beatName string, ima
 		ConfigSecret: config.secret,
 		Volumes:      podVolumes,
 	}, nil
+}
+
+func CAVolume(nsn types.NamespacedName, namer name.Namer, associationType commonv1.AssociationType) volume.VolumeLike {
+	return volume.NewSecretVolumeWithMountPath(
+		certificates.PublicCertsSecretName(namer, nsn.Name),
+		fmt.Sprintf("%s-local-ca", string(associationType)),
+		fmt.Sprintf("/mnt/elastic-internal/%s/%s/%s/certs", string(associationType), nsn.Namespace, nsn.Name),
+	)
 }

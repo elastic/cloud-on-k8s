@@ -17,12 +17,10 @@ import (
 	"github.com/pkg/errors"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/types"
 
 	commonv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/common/v1"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/association"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/certificates"
-	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/name"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/settings"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/stackmon/monitoring"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/volume"
@@ -179,59 +177,20 @@ type inputConfigData struct {
 	TotalFieldsLimit int
 }
 
-// buildMetricbeatBaseConfig builds the base configuration for Metricbeat with the Elasticsearch or Kibana modules used
-// to collect metrics for Stack Monitoring
-func buildMetricbeatBaseConfig(
-	client k8s.Client,
-	associationType commonv1.AssociationType,
-	nsn types.NamespacedName,
-	namer name.Namer,
-	url string,
-	basePath string,
-	username string,
-	password string,
-	isTLS bool,
-	configTemplate string,
+func RenderTemplate(v semver.Version, configTemplate string, params any) (string, error) {
+	// render the config template with the config data
+	var beatConfig bytes.Buffer
+	err := template.Must(template.New("").Funcs(TemplateFuncs(v)).Parse(configTemplate)).Execute(&beatConfig, params)
+	if err != nil {
+		return "", err
+	}
+	return beatConfig.String(), nil
+}
+
+func TemplateFuncs(
 	version semver.Version,
-) (string, volume.VolumeLike, error) {
-	hasCA := false
-	if isTLS {
-		var err error
-		hasCA, err = certificates.PublicCertsHasCACert(client, namer, nsn.Namespace, nsn.Name)
-		if err != nil {
-			return "", nil, err
-		}
-	}
-
-	configData := inputConfigData{
-		Username: username,
-		Password: password,
-		URL:      url,      // Metricbeat in the sidecar connects to the monitored resource using `localhost`
-		BasePath: basePath, // for the Metricbeat Kibana module
-		IsSSL:    isTLS,    // enable SSL configuration based on whether the monitored resource has TLS enabled
-		HasCA:    hasCA,    // the CA is optional to support custom certificate issued by a well-known CA, so without provided CA to configure
-		Version:  version,  // Version of the monitored resource
-	}
-
-	// See https://github.com/elastic/cloud-on-k8s/pull/8284
-	// The default index template for metricbeat exceeds the default
-	// index mapping total fields limit.
-	if version.GTE(semver.MustParse("8.15.0")) {
-		configData.TotalFieldsLimit = 12500
-	}
-
-	var caVolume volume.VolumeLike
-	if configData.HasCA {
-		caVolume = volume.NewSecretVolumeWithMountPath(
-			certificates.PublicCertsSecretName(namer, nsn.Name),
-			fmt.Sprintf("%s-local-ca", string(associationType)),
-			fmt.Sprintf("/mnt/elastic-internal/%s/%s/%s/certs", string(associationType), nsn.Namespace, nsn.Name),
-		)
-
-		configData.CAPath = filepath.Join(caVolume.VolumeMount().MountPath, certificates.CAFileName)
-	}
-
-	templateFuncMap := template.FuncMap{
+) template.FuncMap {
+	return template.FuncMap{
 		"isVersionGTE": func(minAllowedVersion string) (bool, error) {
 			minAllowedSemver, err := semver.Parse(minAllowedVersion)
 			if err != nil {
@@ -239,13 +198,11 @@ func buildMetricbeatBaseConfig(
 			}
 			return version.GTE(minAllowedSemver), nil
 		},
+		"CAPath": func(caVolume volume.VolumeLike) string {
+			if caVolume == nil {
+				return ""
+			}
+			return filepath.Join(caVolume.VolumeMount().MountPath, certificates.CAFileName)
+		},
 	}
-	// render the config template with the config data
-	var metricbeatConfig bytes.Buffer
-	err := template.Must(template.New("").Funcs(templateFuncMap).Parse(configTemplate)).Execute(&metricbeatConfig, configData)
-	if err != nil {
-		return "", nil, err
-	}
-
-	return metricbeatConfig.String(), caVolume, nil
 }

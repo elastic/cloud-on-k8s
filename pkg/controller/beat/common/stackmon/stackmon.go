@@ -15,10 +15,8 @@ import (
 	corev1 "k8s.io/api/core/v1"
 
 	"github.com/elastic/cloud-on-k8s/v2/pkg/apis/beat/v1beta1"
-	commonv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/common/v1"
 	esv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/elasticsearch/v1"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/association"
-	common_name "github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/name"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/stackmon"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/stackmon/monitoring"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/bootstrap"
@@ -91,16 +89,10 @@ func MetricBeat(ctx context.Context, client k8s.Client, beat *v1beta1.Beat, vers
 	sidecar, err := stackmon.NewMetricBeatSidecar(
 		ctx,
 		client,
-		commonv1.BeatMonitoringAssociationType,
 		beat,
 		version,
+		nil,
 		byteBuffer.String(),
-		common_name.NewNamer("beat"),
-		GetStackMonitoringSocketURL(beat),
-		"",
-		"",
-		"",
-		false,
 	)
 	if err != nil {
 		return stackmon.BeatSidecar{}, err

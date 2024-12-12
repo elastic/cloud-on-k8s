@@ -19,6 +19,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/stackmon"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/stackmon/monitoring"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/stackmon/validations"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/version"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/volume"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/user"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/kibana/network"
@@ -60,19 +61,40 @@ func Metricbeat(ctx context.Context, client k8s.Client, kb kbv1.Kibana, basePath
 		}
 	}
 
+	v, err := version.Parse(kb.Spec.Version)
+	if err != nil {
+		return stackmon.BeatSidecar{}, err // error unlikely and should have been caught during validation
+	}
+	type inputConfigData struct {
+		BasePath string
+		URL      string
+		Username string
+		Password string
+		IsSSL    bool
+		CAVolume volume.VolumeLike
+	}
+
+	configData := inputConfigData{
+		Username: username,
+		Password: password,
+		URL:      fmt.Sprintf("%s://localhost:%d", kb.Spec.HTTP.Protocol(), network.HTTPPort), // Metricbeat in the sidecar connects to the monitored resource using `localhost`
+		BasePath: basePath,
+		IsSSL:    kb.Spec.HTTP.TLS.Enabled(), // enable SSL configuration based on whether the monitored resource has TLS enabled
+		CAVolume: stackmon.CAVolume(k8s.ExtractNamespacedName(&kb), kbv1.KBNamer, commonv1.KbMonitoringAssociationType),
+	}
+
+	cfg, err := stackmon.RenderTemplate(v, metricbeatConfigTemplate, configData)
+	if err != nil {
+		return stackmon.BeatSidecar{}, err
+	}
+
 	metricbeat, err := stackmon.NewMetricBeatSidecar(
 		ctx,
 		client,
-		commonv1.KbMonitoringAssociationType,
 		&kb,
 		kb.Spec.Version,
-		metricbeatConfigTemplate,
-		kbv1.KBNamer,
-		fmt.Sprintf("%s://localhost:%d", kb.Spec.HTTP.Protocol(), network.HTTPPort),
-		basePath,
-		username,
-		password,
-		kb.Spec.HTTP.TLS.Enabled(),
+		configData.CAVolume,
+		cfg,
 	)
 	if err != nil {
 		return stackmon.BeatSidecar{}, err
