@@ -163,20 +163,6 @@ func mergeConfig(rawConfig string, config map[string]interface{}) ([]byte, error
 	return cfgBytes, nil
 }
 
-// inputConfigData holds data to configure the Metricbeat Elasticsearch and Kibana modules used
-// to collect metrics for Stack Monitoring
-type inputConfigData struct {
-	BasePath         string
-	URL              string
-	Username         string
-	Password         string
-	IsSSL            bool
-	HasCA            bool
-	CAPath           string
-	Version          semver.Version
-	TotalFieldsLimit int
-}
-
 func RenderTemplate(v semver.Version, configTemplate string, params any) (string, error) {
 	// render the config template with the config data
 	var beatConfig bytes.Buffer

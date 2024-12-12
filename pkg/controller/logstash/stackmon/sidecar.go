@@ -42,6 +42,11 @@ func Metricbeat(ctx context.Context, client k8s.Client, logstash logstashv1alpha
 		return stackmon.BeatSidecar{}, err
 	}
 
+	caVol, err := stackmon.CAVolume(client, k8s.ExtractNamespacedName(&logstash), logstashv1alpha1.Namer, commonv1.LogstashMonitoringAssociationType, useTLS)
+	if err != nil {
+		return stackmon.BeatSidecar{}, err
+	}
+
 	input := struct {
 		URL      string
 		Username string
@@ -53,7 +58,7 @@ func Metricbeat(ctx context.Context, client k8s.Client, logstash logstashv1alpha
 		Username: apiServer.Username,
 		Password: apiServer.Password,
 		IsSSL:    useTLS,
-		CAVolume: stackmon.CAVolume(k8s.ExtractNamespacedName(&logstash), logstashv1alpha1.Namer, commonv1.LogstashMonitoringAssociationType),
+		CAVolume: caVol,
 	}
 
 	cfg, err := stackmon.RenderTemplate(v, metricbeatConfigTemplate, input)
@@ -61,14 +66,7 @@ func Metricbeat(ctx context.Context, client k8s.Client, logstash logstashv1alpha
 		return stackmon.BeatSidecar{}, err
 	}
 
-	metricbeat, err := stackmon.NewMetricBeatSidecar(
-		ctx,
-		client,
-		&logstash,
-		logstash.Spec.Version,
-		input.CAVolume,
-		cfg,
-	)
+	metricbeat, err := stackmon.NewMetricBeatSidecar(ctx, client, &logstash, v, caVol, cfg)
 	if err != nil {
 		return stackmon.BeatSidecar{}, err
 	}

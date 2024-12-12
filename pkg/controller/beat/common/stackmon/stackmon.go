@@ -5,12 +5,10 @@
 package stackmon
 
 import (
-	"bytes"
 	"context"
 	_ "embed" // for the beats config files
 	"errors"
 	"fmt"
-	"text/template"
 
 	corev1 "k8s.io/api/core/v1"
 
@@ -19,6 +17,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/association"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/stackmon"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/stackmon/monitoring"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/version"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/bootstrap"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/k8s"
 )
@@ -58,7 +57,7 @@ func Filebeat(ctx context.Context, client k8s.Client, resource monitoring.HasMon
 	return sidecar, nil
 }
 
-func MetricBeat(ctx context.Context, client k8s.Client, beat *v1beta1.Beat, version string) (stackmon.BeatSidecar, error) {
+func MetricBeat(ctx context.Context, client k8s.Client, beat *v1beta1.Beat) (stackmon.BeatSidecar, error) {
 	if err := beat.ElasticsearchRef().IsValid(); err != nil {
 		return stackmon.BeatSidecar{}, err
 	}
@@ -68,11 +67,6 @@ func MetricBeat(ctx context.Context, client k8s.Client, beat *v1beta1.Beat, vers
 		return stackmon.BeatSidecar{}, err
 	}
 
-	beatTemplate, err := template.New("beat_stack_monitoring").Parse(metricbeatConfigTemplate)
-	if err != nil {
-		return stackmon.BeatSidecar{}, fmt.Errorf("while parsing template for beats stack monitoring configuration: %w", err)
-	}
-	var byteBuffer bytes.Buffer
 	data := struct {
 		ClusterUUID string
 		URL         string
@@ -82,18 +76,16 @@ func MetricBeat(ctx context.Context, client k8s.Client, beat *v1beta1.Beat, vers
 		// Beat module http options require "http+" to be appended to unix sockets.
 		URL: fmt.Sprintf("http+%s", GetStackMonitoringSocketURL(beat)),
 	}
-	if err := beatTemplate.Execute(&byteBuffer, data); err != nil {
-		return stackmon.BeatSidecar{}, fmt.Errorf("while templating beats stack monitoring configuration: %w", err)
+	v, err := version.Parse(beat.Spec.Version)
+	if err != nil {
+		return stackmon.BeatSidecar{}, err
+	}
+	cfg, err := stackmon.RenderTemplate(v, metricbeatConfigTemplate, data)
+	if err != nil {
+		return stackmon.BeatSidecar{}, err
 	}
 
-	sidecar, err := stackmon.NewMetricBeatSidecar(
-		ctx,
-		client,
-		beat,
-		version,
-		nil,
-		byteBuffer.String(),
-	)
+	sidecar, err := stackmon.NewMetricBeatSidecar(ctx, client, beat, v, nil, cfg)
 	if err != nil {
 		return stackmon.BeatSidecar{}, err
 	}

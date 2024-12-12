@@ -65,6 +65,10 @@ func Metricbeat(ctx context.Context, client k8s.Client, kb kbv1.Kibana, basePath
 	if err != nil {
 		return stackmon.BeatSidecar{}, err // error unlikely and should have been caught during validation
 	}
+	caVol, err := stackmon.CAVolume(client, k8s.ExtractNamespacedName(&kb), kbv1.KBNamer, commonv1.KbMonitoringAssociationType, kb.Spec.HTTP.TLS.Enabled())
+	if err != nil {
+		return stackmon.BeatSidecar{}, err
+	}
 	type inputConfigData struct {
 		BasePath string
 		URL      string
@@ -80,7 +84,7 @@ func Metricbeat(ctx context.Context, client k8s.Client, kb kbv1.Kibana, basePath
 		URL:      fmt.Sprintf("%s://localhost:%d", kb.Spec.HTTP.Protocol(), network.HTTPPort), // Metricbeat in the sidecar connects to the monitored resource using `localhost`
 		BasePath: basePath,
 		IsSSL:    kb.Spec.HTTP.TLS.Enabled(), // enable SSL configuration based on whether the monitored resource has TLS enabled
-		CAVolume: stackmon.CAVolume(k8s.ExtractNamespacedName(&kb), kbv1.KBNamer, commonv1.KbMonitoringAssociationType),
+		CAVolume: caVol,
 	}
 
 	cfg, err := stackmon.RenderTemplate(v, metricbeatConfigTemplate, configData)
@@ -88,14 +92,7 @@ func Metricbeat(ctx context.Context, client k8s.Client, kb kbv1.Kibana, basePath
 		return stackmon.BeatSidecar{}, err
 	}
 
-	metricbeat, err := stackmon.NewMetricBeatSidecar(
-		ctx,
-		client,
-		&kb,
-		kb.Spec.Version,
-		configData.CAVolume,
-		cfg,
-	)
+	metricbeat, err := stackmon.NewMetricBeatSidecar(ctx, client, &kb, v, caVol, cfg)
 	if err != nil {
 		return stackmon.BeatSidecar{}, err
 	}

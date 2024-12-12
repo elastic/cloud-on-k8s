@@ -12,6 +12,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/types"
 
+	"github.com/blang/semver/v4"
 	commonv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/common/v1"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/certificates"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/container"
@@ -27,17 +28,11 @@ func NewMetricBeatSidecar(
 	ctx context.Context,
 	client k8s.Client,
 	resource monitoring.HasMonitoring,
-	imageVersion string,
+	imageVersion semver.Version,
 	caVolume volume.VolumeLike,
 	baseConfig string,
 ) (BeatSidecar, error) {
-	v, err := version.Parse(imageVersion)
-	if err != nil {
-		return BeatSidecar{}, err // error unlikely and should have been caught during validation
-	}
-
-	image := container.ImageRepository(container.MetricbeatImage, v)
-
+	image := container.ImageRepository(container.MetricbeatImage, imageVersion)
 	// EmptyDir volume so that MetricBeat does not write in the container image, which allows ReadOnlyRootFilesystem: true
 	emptyDir := volume.NewEmptyDirVolume("metricbeat-data", "/usr/share/metricbeat/data")
 	return NewBeatSidecar(ctx, client, "metricbeat", image, resource, monitoring.GetMetricsAssociation(resource), baseConfig, caVolume, emptyDir)
@@ -106,10 +101,23 @@ func NewBeatSidecar(ctx context.Context, client k8s.Client, beatName string, ima
 	}, nil
 }
 
-func CAVolume(nsn types.NamespacedName, namer name.Namer, associationType commonv1.AssociationType) volume.VolumeLike {
+func CAVolume(
+	c k8s.Client,
+	nsn types.NamespacedName,
+	namer name.Namer,
+	associationType commonv1.AssociationType,
+	useTLS bool,
+) (volume.VolumeLike, error) {
+	if !useTLS {
+		return nil, nil
+	}
+	hasCA, err := certificates.PublicCertsHasCACert(c, namer, nsn.Namespace, nsn.Name)
+	if !hasCA || err != nil {
+		return nil, err
+	}
 	return volume.NewSecretVolumeWithMountPath(
 		certificates.PublicCertsSecretName(namer, nsn.Name),
 		fmt.Sprintf("%s-local-ca", string(associationType)),
 		fmt.Sprintf("/mnt/elastic-internal/%s/%s/%s/certs", string(associationType), nsn.Namespace, nsn.Name),
-	)
+	), nil
 }

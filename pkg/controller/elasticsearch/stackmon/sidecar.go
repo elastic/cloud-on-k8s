@@ -43,6 +43,11 @@ func Metricbeat(ctx context.Context, client k8s.Client, es esv1.Elasticsearch) (
 		return stackmon.BeatSidecar{}, err
 	}
 
+	caVolume, err := stackmon.CAVolume(client, k8s.ExtractNamespacedName(&es), esv1.ESNamer, commonv1.KbMonitoringAssociationType /*???*/, es.Spec.HTTP.TLS.Enabled())
+	if err != nil {
+		return stackmon.BeatSidecar{}, err
+	}
+
 	input := struct {
 		URL      string
 		Username string
@@ -55,7 +60,7 @@ func Metricbeat(ctx context.Context, client k8s.Client, es esv1.Elasticsearch) (
 		Username: username,
 		Password: password,
 		IsSSL:    es.Spec.HTTP.TLS.Enabled(),
-		CAVolume: stackmon.CAVolume(k8s.ExtractNamespacedName(&es), esv1.ESNamer, commonv1.KbMonitoringAssociationType /*???*/),
+		CAVolume: caVolume,
 		Version:  v,
 	}
 
@@ -64,14 +69,7 @@ func Metricbeat(ctx context.Context, client k8s.Client, es esv1.Elasticsearch) (
 		return stackmon.BeatSidecar{}, err
 	}
 
-	metricbeat, err := stackmon.NewMetricBeatSidecar(
-		ctx,
-		client,
-		&es,
-		es.Spec.Version,
-		input.CAVolume,
-		cfg,
-	)
+	metricbeat, err := stackmon.NewMetricBeatSidecar(ctx, client, &es, v, caVolume, cfg)
 	if err != nil {
 		return stackmon.BeatSidecar{}, err
 	}
