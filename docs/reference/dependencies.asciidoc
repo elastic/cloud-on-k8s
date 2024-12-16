@@ -51,7 +51,7 @@ This page lists the third-party dependencies used to build {n}.
 | link:https://go.elastic.co/apm/v2[$$go.elastic.co/apm/v2$$] | v2.6.2 | Apache-2.0
 | link:https://go.uber.org/automaxprocs[$$go.uber.org/automaxprocs$$] | v1.6.0 | MIT
 | link:https://go.uber.org/zap[$$go.uber.org/zap$$] | v1.27.0 | MIT
-| link:https://golang.org/x/crypto[$$golang.org/x/crypto$$] | v0.30.0 | BSD-3-Clause
+| link:https://golang.org/x/crypto[$$golang.org/x/crypto$$] | v0.31.0 | BSD-3-Clause
 | link:https://golang.org/x/exp[$$golang.org/x/exp$$] | v0.0.0-20240808152545-0cdaa3abc0fa | BSD-3-Clause
 | link:https://gopkg.in/yaml.v3[$$gopkg.in/yaml.v3$$] | v3.0.1 | MIT
 | link:https://github.com/kubernetes/api[$$k8s.io/api$$] | v0.31.3 | Apache-2.0

@@ -3846,11 +3846,11 @@ THE SOFTWARE.
 
 --------------------------------------------------------------------------------
 Module  : golang.org/x/crypto
-Version : v0.30.0
-Time    : 2024-12-04T19:36:17Z
+Version : v0.31.0
+Time    : 2024-12-11T17:50:49Z
 Licence : BSD-3-Clause
 
-Contents of probable licence file $GOMODCACHE/golang.org/x/crypto@v0.30.0/LICENSE:
+Contents of probable licence file $GOMODCACHE/golang.org/x/crypto@v0.31.0/LICENSE:
 
 Copyright 2009 The Go Authors.
 
