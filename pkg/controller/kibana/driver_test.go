@@ -198,9 +198,10 @@ func Test_getStrategyType(t *testing.T) {
 
 func TestDriverDeploymentParams(t *testing.T) {
 	type args struct {
-		kb                func() *kbv1.Kibana
-		initialObjects    func() []client.Object
-		policyAnnotations map[string]string
+		kb                            func() *kbv1.Kibana
+		initialObjects                func() []client.Object
+		policyAnnotations             map[string]string
+		setDefaultSecurityContextFlag bool
 	}
 
 	tests := []struct {
@@ -372,7 +373,8 @@ func TestDriverDeploymentParams(t *testing.T) {
 					kb.Spec.Version = "7.10.0"
 					return kb
 				},
-				initialObjects: defaultInitialObjects,
+				initialObjects:                defaultInitialObjects,
+				setDefaultSecurityContextFlag: true,
 			},
 			want: func() deployment.Params {
 				p := expectedDeploymentParams()
@@ -380,6 +382,24 @@ func TestDriverDeploymentParams(t *testing.T) {
 				p.PodTemplateSpec.Spec.SecurityContext = &corev1.PodSecurityContext{
 					FSGroup: ptr.To[int64](1000),
 				}
+				return p
+			}(),
+			wantErr: false,
+		},
+		{
+			name: "7.10+ does not contain default security context when flag is not set",
+			args: args{
+				kb: func() *kbv1.Kibana {
+					kb := kibanaFixture()
+					kb.Spec.Version = "7.10.0"
+					return kb
+				},
+				initialObjects:                defaultInitialObjects,
+				setDefaultSecurityContextFlag: false,
+			},
+			want: func() deployment.Params {
+				p := pre710(expectedDeploymentParams())
+				p.PodTemplateSpec.Labels["kibana.k8s.elastic.co/version"] = "7.10.0"
 				return p
 			}(),
 			wantErr: false,
@@ -396,7 +416,7 @@ func TestDriverDeploymentParams(t *testing.T) {
 			d, err := newDriver(client, w, record.NewFakeRecorder(100), kb, corev1.IPv4Protocol)
 			require.NoError(t, err)
 
-			got, err := d.deploymentParams(context.Background(), kb, tt.args.policyAnnotations, "", true)
+			got, err := d.deploymentParams(context.Background(), kb, tt.args.policyAnnotations, "", tt.args.setDefaultSecurityContextFlag)
 			if tt.wantErr {
 				require.Error(t, err)
 				return
