@@ -19,7 +19,7 @@ var (
 		},
 		Privileged:             ptr.To(bool(false)),
 		ReadOnlyRootFilesystem: ptr.To(bool(true)),
-		RunAsUser:              ptr.To(int64(defaultFSGroup)),
+		RunAsUser:              ptr.To(int64(defaultFSUser)),
 		RunAsGroup:             ptr.To(int64(defaultFSGroup)),
 	}
 	defaultPodSecurityContext = corev1.PodSecurityContext{

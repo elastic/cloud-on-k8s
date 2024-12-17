@@ -40,6 +40,7 @@ const (
 	KibanaBasePathEnvName        = "SERVER_BASEPATH"
 	KibanaRewriteBasePathEnvName = "SERVER_REWRITEBASEPATH"
 	defaultFSGroup               = 1000
+	defaultFSUser                = 1000
 )
 
 var (
