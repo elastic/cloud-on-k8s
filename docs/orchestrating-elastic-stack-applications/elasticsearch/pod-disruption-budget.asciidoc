@@ -10,9 +10,9 @@ endif::[]
 
 A link:https://kubernetes.io/docs/tasks/run-application/configure-pdb/[Pod Disruption Budget] (PDB) allows you to limit the disruption to your application when its pods need to be rescheduled for some reason such as upgrades or routine maintenance work on the Kubernetes nodes.
 
-ECK manages a default PDB per Elasticsearch resource. It allows one Elasticsearch Pod to be taken down, as long as the cluster has a `green` health. Single-node clusters are not considered highly available and can always be disrupted.
+ECK manages a default PDB per {es} resource. It allows one {es} Pod to be taken down, as long as the cluster has a `green` health. Single-node clusters are not considered highly available and can always be disrupted.
 
-In the Elasticsearch specification, you can change the default behaviour as follows:
+In the {es} specification, you can change the default behaviour as follows:
 
 [source,yaml,subs="attributes"]
 ----
@@ -35,18 +35,58 @@ spec:
 
 NOTE: link:https://kubernetes.io/docs/tasks/run-application/configure-pdb/#arbitrary-controllers-and-selectors[`maxUnavailable`] cannot be used with an arbitrary label selector, therefore `minAvailable` is used in this example.
 
-You can also explicitly disable the default PDB:
+[id="{p}-pdb-per-nodeset"]
+== Pod disruption budget per nodeset
 
-[source,yaml,subs="attributes"]
+You can specify a PDB per nodeset or node role.
+
+[source,yaml,subs="attributes,callouts"]
 ----
 apiVersion: elasticsearch.k8s.elastic.co/{eck_crd_version}
 kind: Elasticsearch
 metadata:
   name: quickstart
 spec:
+  podDisruptionBudget: {} <1>
   version: {version}
   nodeSets:
-  - name: default
-    count: 3
-  podDisruptionBudget: {}
+    - name: master
+      count: 3
+      config:
+        node.roles: "master"
+        node.store.allow_mmap: false
+    - name: hot
+      count: 2
+      config:
+        node.roles: ["data_hot", "data_content", "ingest"]
+        node.store.allow_mmap: false
+---
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: master-nodes-pdb
+spec:
+  minAvailable: 2 <2>
+  selector:
+    matchLabels:
+      elasticsearch.k8s.elastic.co/cluster-name: quickstart <3>
+      elasticsearch.k8s.elastic.co/node-master: "true" <4>
+---
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: hot-nodes-pdb
+spec:
+  minAvailable: 1 <5>
+  selector:
+    matchLabels:
+      elasticsearch.k8s.elastic.co/cluster-name: quickstart <3>
+      elasticsearch.k8s.elastic.co/statefulset-name: quickstart-es-hot <6>
 ----
+
+<1> Disable the default {es} pod disruption budget.
+<2> Specify pod disruption budget to have 2 master nodes available.
+<3> The pods should be in the "quickstart" cluster.
+<4> Pod disruption budget applies on all master nodes.
+<5> Specify pod disruption budget to have 1 hot node available.
+<6> Pod disruption budget applies on nodes of the same nodeset.
