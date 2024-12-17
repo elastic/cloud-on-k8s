@@ -62,3 +62,4 @@
 * fix(deps): update k8s versions {pull}8163[#8163]
 * chore(deps): update wolfi (versioned) {pull}8162[#8162]
 * fix(deps): update module github.com/prometheus/client_golang to v1.20.5 {pull}8133[#8133]
+* fix(deps): Bump golang.org/x/crypto from 0.29.0 to 0.31.0 {pull}8341[#8341]
