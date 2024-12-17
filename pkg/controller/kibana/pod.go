@@ -138,8 +138,7 @@ func NewPodTemplateSpec(
 	// of browser bundles to happen on plugin install, which would attempt a write to the
 	// root filesystem on restart.
 	if v.GTE(version.From(7, 10, 0)) {
-		builder.WithPodSecurityContext(defaultPodSecurityContext).
-			WithContainersSecurityContext(defaultSecurityContext).
+		builder.WithContainersSecurityContext(defaultSecurityContext).
 			WithVolumes(TempVolume.Volume()).WithVolumeMounts(TempVolume.VolumeMount()).
 			WithVolumes(PluginsVolume.Volume()).WithVolumeMounts(PluginsVolume.VolumeMount())
 	}

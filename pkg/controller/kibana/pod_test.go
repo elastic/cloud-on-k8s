@@ -222,7 +222,6 @@ func TestNewPodTemplateSpec(t *testing.T) {
 				assert.Len(t, pod.Spec.InitContainers[0].VolumeMounts, 5)
 				assert.Len(t, pod.Spec.Volumes, 3)
 				assert.Len(t, GetKibanaContainer(pod.Spec).VolumeMounts, 3)
-				assert.Equal(t, pod.Spec.SecurityContext, &defaultPodSecurityContext)
 				assert.Equal(t, GetKibanaContainer(pod.Spec).SecurityContext, &defaultSecurityContext)
 			},
 		},

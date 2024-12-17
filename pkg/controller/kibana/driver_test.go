@@ -642,7 +642,6 @@ func expectedDeploymentParams() deployment.Params {
 					SecurityContext: &defaultSecurityContext,
 				}},
 				AutomountServiceAccountToken: &falseVal,
-				SecurityContext:              &defaultPodSecurityContext,
 			},
 		},
 	}
