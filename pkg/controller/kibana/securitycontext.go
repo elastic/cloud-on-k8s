@@ -20,4 +20,7 @@ var (
 		Privileged:             ptr.To(bool(false)),
 		ReadOnlyRootFilesystem: ptr.To(bool(true)),
 	}
+	defaultPodSecurityContext = corev1.PodSecurityContext{
+		FSGroup: ptr.To(int64(1000)),
+	}
 )

@@ -12,7 +12,6 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	"k8s.io/apimachinery/pkg/util/intstr"
-	"k8s.io/utils/ptr"
 	k8sclient "sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/elastic/go-ucfg"
@@ -142,9 +141,7 @@ func NewPodTemplateSpec(
 	// root filesystem on restart.
 	if v.GTE(version.From(7, 10, 0)) && setDefaultSecurityContext {
 		builder.WithContainersSecurityContext(defaultSecurityContext).
-			WithPodSecurityContext(corev1.PodSecurityContext{
-				FSGroup: ptr.To[int64](defaultFSGroup),
-			}).
+			WithPodSecurityContext(defaultPodSecurityContext).
 			WithVolumes(TempVolume.Volume()).WithVolumeMounts(TempVolume.VolumeMount()).
 			WithVolumes(PluginsVolume.Volume()).WithVolumeMounts(PluginsVolume.VolumeMount())
 	}
