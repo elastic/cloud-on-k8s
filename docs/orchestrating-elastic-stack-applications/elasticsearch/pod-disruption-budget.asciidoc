@@ -88,5 +88,5 @@ spec:
 <2> Specify pod disruption budget to have 2 master nodes available.
 <3> The pods should be in the "quickstart" cluster.
 <4> Pod disruption budget applies on all master nodes.
-<5> Specify pod disruption budget to have 1 hot nodes available.
+<5> Specify pod disruption budget to have 1 hot node available.
 <6> Pod disruption budget applies on nodes of the same nodeset.
