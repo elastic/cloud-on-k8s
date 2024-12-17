@@ -372,7 +372,7 @@ func TestNewPodTemplateSpec(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			bp, err := GetKibanaBasePath(tt.kb)
 			require.NoError(t, err)
-			got, err := NewPodTemplateSpec(context.Background(), k8s.NewFakeClient(), tt.kb, tt.keystore, []commonvolume.VolumeLike{}, bp)
+			got, err := NewPodTemplateSpec(context.Background(), k8s.NewFakeClient(), tt.kb, tt.keystore, []commonvolume.VolumeLike{}, bp, true)
 			assert.NoError(t, err)
 			tt.assertions(got)
 		})

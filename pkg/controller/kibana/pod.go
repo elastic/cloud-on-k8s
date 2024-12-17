@@ -12,6 +12,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	"k8s.io/apimachinery/pkg/util/intstr"
+	"k8s.io/utils/ptr"
 	k8sclient "sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/elastic/go-ucfg"
@@ -39,6 +40,7 @@ const (
 	TempVolumeMountPath          = "/tmp"
 	KibanaBasePathEnvName        = "SERVER_BASEPATH"
 	KibanaRewriteBasePathEnvName = "SERVER_REWRITEBASEPATH"
+	defaultFSGroup               = 1000
 )
 
 var (
@@ -108,6 +110,7 @@ func NewPodTemplateSpec(
 	keystore *keystore.Resources,
 	volumes []volume.VolumeLike,
 	basePath string,
+	setDefaultSecurityContext bool,
 ) (corev1.PodTemplateSpec, error) {
 	labels := kb.GetIdentityLabels()
 	labels[kblabel.KibanaVersionLabelName] = kb.Spec.Version
@@ -137,8 +140,11 @@ func NewPodTemplateSpec(
 	// Limiting to 7.10.0 here as there was a bug in previous versions causing rebuilding
 	// of browser bundles to happen on plugin install, which would attempt a write to the
 	// root filesystem on restart.
-	if v.GTE(version.From(7, 10, 0)) {
+	if v.GTE(version.From(7, 10, 0)) && setDefaultSecurityContext {
 		builder.WithContainersSecurityContext(defaultSecurityContext).
+			WithPodSecurityContext(corev1.PodSecurityContext{
+				FSGroup: ptr.To[int64](defaultFSGroup),
+			}).
 			WithVolumes(TempVolume.Volume()).WithVolumeMounts(TempVolume.VolumeMount()).
 			WithVolumes(PluginsVolume.Volume()).WithVolumeMounts(PluginsVolume.VolumeMount())
 	}

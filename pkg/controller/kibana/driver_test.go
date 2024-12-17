@@ -19,6 +19,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
 	"k8s.io/client-go/tools/record"
+	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	commonv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/common/v1"
@@ -376,6 +377,9 @@ func TestDriverDeploymentParams(t *testing.T) {
 			want: func() deployment.Params {
 				p := expectedDeploymentParams()
 				p.PodTemplateSpec.Labels["kibana.k8s.elastic.co/version"] = "7.10.0"
+				p.PodTemplateSpec.Spec.SecurityContext = &corev1.PodSecurityContext{
+					FSGroup: ptr.To[int64](1000),
+				}
 				return p
 			}(),
 			wantErr: false,
@@ -392,7 +396,7 @@ func TestDriverDeploymentParams(t *testing.T) {
 			d, err := newDriver(client, w, record.NewFakeRecorder(100), kb, corev1.IPv4Protocol)
 			require.NoError(t, err)
 
-			got, err := d.deploymentParams(context.Background(), kb, tt.args.policyAnnotations, "")
+			got, err := d.deploymentParams(context.Background(), kb, tt.args.policyAnnotations, "", true)
 			if tt.wantErr {
 				require.Error(t, err)
 				return
