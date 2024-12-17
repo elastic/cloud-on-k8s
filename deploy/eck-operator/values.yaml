@@ -151,12 +151,9 @@ webhook:
 # If hostNetwork is enabled, dnsPolicy defaults to ClusterFirstWithHostNet unless explicitly set.
 # CAUTION: Proceed at your own risk. This setting has security concerns such as allowing malicious users to access workloads running on the host.
 hostNetwork: false
-#
-# dnsPolicy defines the DNS policy for the operator pod. Available options are:
-# - ClusterFirst: Any DNS query that does not match the configured cluster domain suffix, is forwarded to an upstream nameserver by the DNS server
-# - ClusterFirstWithHostNet: For Pods running with hostNetwork, you should explicitly set its DNS policy to "ClusterFirstWithHostNet". Otherwise, Pods running with hostNetwork and "ClusterFirst" will fallback to the behavior of the "Default" policy.
-# - Default: The Pod inherits the name resolution configuration from the node that the Pods run on
-# - None: It allows a Pod to ignore DNS settings from the Kubernetes environment. All DNS settings are supposed to be provided using the dnsConfig field in the Pod Spec.
+
+# dnsPolicy defines the DNS policy for the operator pod.
+# Check https://kubernetes.io/docs/concepts/services-networking/dns-pod-service/#pod-s-dns-policy for more details.
 dnsPolicy: ""
 
 # dnsConfig defines the DNS configuration for the operator pod.
