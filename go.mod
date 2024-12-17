@@ -2,8 +2,6 @@ module github.com/elastic/cloud-on-k8s/v2
 
 go 1.23.0
 
-toolchain go1.23.4
-
 require (
 	dario.cat/mergo v1.0.1
 	github.com/Masterminds/sprig/v3 v3.3.0

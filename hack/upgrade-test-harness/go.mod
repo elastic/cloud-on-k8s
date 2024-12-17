@@ -2,8 +2,6 @@ module github.com/elastic/cloud-on-k8s/v2/hack/upgrade-test-harness
 
 go 1.23.0
 
-toolchain go1.23.4
-
 require (
 	github.com/blang/semver/v4 v4.0.0
 	github.com/ghodss/yaml v1.0.0
