@@ -636,7 +636,7 @@ spec:
                               not set, the implementation will apply its default routing strategy. If set
                               to "PreferClose", implementations should prioritize endpoints that are
                               topologically close (e.g., same zone).
-                              This is an alpha field and requires enabling ServiceTrafficDistribution feature.
+                              This is a beta field and requires enabling ServiceTrafficDistribution feature.
                             type: string
                           type:
                             description: |-
@@ -1586,7 +1586,7 @@ spec:
                               not set, the implementation will apply its default routing strategy. If set
                               to "PreferClose", implementations should prioritize endpoints that are
                               topologically close (e.g., same zone).
-                              This is an alpha field and requires enabling ServiceTrafficDistribution feature.
+                              This is a beta field and requires enabling ServiceTrafficDistribution feature.
                             type: string
                           type:
                             description: |-
@@ -2214,7 +2214,7 @@ spec:
                               not set, the implementation will apply its default routing strategy. If set
                               to "PreferClose", implementations should prioritize endpoints that are
                               topologically close (e.g., same zone).
-                              This is an alpha field and requires enabling ServiceTrafficDistribution feature.
+                              This is a beta field and requires enabling ServiceTrafficDistribution feature.
                             type: string
                           type:
                             description: |-
@@ -3313,7 +3313,7 @@ spec:
                               not set, the implementation will apply its default routing strategy. If set
                               to "PreferClose", implementations should prioritize endpoints that are
                               topologically close (e.g., same zone).
-                              This is an alpha field and requires enabling ServiceTrafficDistribution feature.
+                              This is a beta field and requires enabling ServiceTrafficDistribution feature.
                             type: string
                           type:
                             description: |-
@@ -4260,7 +4260,7 @@ spec:
                               not set, the implementation will apply its default routing strategy. If set
                               to "PreferClose", implementations should prioritize endpoints that are
                               topologically close (e.g., same zone).
-                              This is an alpha field and requires enabling ServiceTrafficDistribution feature.
+                              This is a beta field and requires enabling ServiceTrafficDistribution feature.
                             type: string
                           type:
                             description: |-
@@ -5325,7 +5325,7 @@ spec:
                               not set, the implementation will apply its default routing strategy. If set
                               to "PreferClose", implementations should prioritize endpoints that are
                               topologically close (e.g., same zone).
-                              This is an alpha field and requires enabling ServiceTrafficDistribution feature.
+                              This is a beta field and requires enabling ServiceTrafficDistribution feature.
                             type: string
                           type:
                             description: |-
@@ -6029,7 +6029,7 @@ spec:
                               not set, the implementation will apply its default routing strategy. If set
                               to "PreferClose", implementations should prioritize endpoints that are
                               topologically close (e.g., same zone).
-                              This is an alpha field and requires enabling ServiceTrafficDistribution feature.
+                              This is a beta field and requires enabling ServiceTrafficDistribution feature.
                             type: string
                           type:
                             description: |-
@@ -7074,7 +7074,7 @@ spec:
                               not set, the implementation will apply its default routing strategy. If set
                               to "PreferClose", implementations should prioritize endpoints that are
                               topologically close (e.g., same zone).
-                              This is an alpha field and requires enabling ServiceTrafficDistribution feature.
+                              This is a beta field and requires enabling ServiceTrafficDistribution feature.
                             type: string
                           type:
                             description: |-
@@ -7653,7 +7653,7 @@ spec:
                               not set, the implementation will apply its default routing strategy. If set
                               to "PreferClose", implementations should prioritize endpoints that are
                               topologically close (e.g., same zone).
-                              This is an alpha field and requires enabling ServiceTrafficDistribution feature.
+                              This is a beta field and requires enabling ServiceTrafficDistribution feature.
                             type: string
                           type:
                             description: |-
@@ -8261,7 +8261,7 @@ spec:
                               not set, the implementation will apply its default routing strategy. If set
                               to "PreferClose", implementations should prioritize endpoints that are
                               topologically close (e.g., same zone).
-                              This is an alpha field and requires enabling ServiceTrafficDistribution feature.
+                              This is a beta field and requires enabling ServiceTrafficDistribution feature.
                             type: string
                           type:
                             description: |-
@@ -8950,7 +8950,7 @@ spec:
                               not set, the implementation will apply its default routing strategy. If set
                               to "PreferClose", implementations should prioritize endpoints that are
                               topologically close (e.g., same zone).
-                              This is an alpha field and requires enabling ServiceTrafficDistribution feature.
+                              This is a beta field and requires enabling ServiceTrafficDistribution feature.
                             type: string
                           type:
                             description: |-
@@ -9739,7 +9739,7 @@ spec:
                                 not set, the implementation will apply its default routing strategy. If set
                                 to "PreferClose", implementations should prioritize endpoints that are
                                 topologically close (e.g., same zone).
-                                This is an alpha field and requires enabling ServiceTrafficDistribution feature.
+                                This is a beta field and requires enabling ServiceTrafficDistribution feature.
                               type: string
                             type:
                               description: |-
@@ -10218,18 +10218,15 @@ spec:
                                   persistent volume is being resized.
                                 type: string
                               status:
+                                description: |-
+                                  Status is the status of the condition.
+                                  Can be True, False, Unknown.
+                                  More info: https://kubernetes.io/docs/reference/kubernetes-api/config-and-storage-resources/persistent-volume-claim-v1/#:~:text=state%20of%20pvc-,conditions.status,-(string)%2C%20required
                                 type: string
                               type:
                                 description: |-
-                                  PersistentVolumeClaimConditionType defines the condition of PV claim.
-                                  Valid values are:
-                                    - "Resizing", "FileSystemResizePending"
-
-                                  If RecoverVolumeExpansionFailure feature gate is enabled, then following additional values can be expected:
-                                    - "ControllerResizeError", "NodeResizeError"
-
-                                  If VolumeAttributesClass feature gate is enabled, then following additional values can be expected:
-                                    - "ModifyVolumeError", "ModifyingVolume"
+                                  Type is the type of the condition.
+                                  More info: https://kubernetes.io/docs/reference/kubernetes-api/config-and-storage-resources/persistent-volume-claim-v1/#:~:text=set%20to%20%27ResizeStarted%27.-,PersistentVolumeClaimCondition,-contains%20details%20about
                                 type: string
                             required:
                             - status
