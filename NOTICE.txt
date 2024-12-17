@@ -3846,11 +3846,11 @@ THE SOFTWARE.
 
 --------------------------------------------------------------------------------
 Module  : golang.org/x/crypto
-Version : v0.29.0
-Time    : 2024-11-07T22:54:53Z
+Version : v0.31.0
+Time    : 2024-12-11T17:50:49Z
 Licence : BSD-3-Clause
 
-Contents of probable licence file $GOMODCACHE/golang.org/x/crypto@v0.29.0/LICENSE:
+Contents of probable licence file $GOMODCACHE/golang.org/x/crypto@v0.31.0/LICENSE:
 
 Copyright 2009 The Go Authors.
 
@@ -19604,11 +19604,11 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 --------------------------------------------------------------------------------
 Module  : golang.org/x/sync
-Version : v0.9.0
-Time    : 2024-11-01T00:46:18Z
+Version : v0.10.0
+Time    : 2024-11-13T01:18:28Z
 Licence : BSD-3-Clause
 
-Contents of probable licence file $GOMODCACHE/golang.org/x/sync@v0.9.0/LICENSE:
+Contents of probable licence file $GOMODCACHE/golang.org/x/sync@v0.10.0/LICENSE:
 
 Copyright 2009 The Go Authors.
 
@@ -19641,11 +19641,11 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 --------------------------------------------------------------------------------
 Module  : golang.org/x/sys
-Version : v0.27.0
-Time    : 2024-11-05T15:28:52Z
+Version : v0.28.0
+Time    : 2024-12-03T18:44:20Z
 Licence : BSD-3-Clause
 
-Contents of probable licence file $GOMODCACHE/golang.org/x/sys@v0.27.0/LICENSE:
+Contents of probable licence file $GOMODCACHE/golang.org/x/sys@v0.28.0/LICENSE:
 
 Copyright 2009 The Go Authors.
 
@@ -19678,11 +19678,11 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 --------------------------------------------------------------------------------
 Module  : golang.org/x/term
-Version : v0.26.0
-Time    : 2024-11-07T21:27:26Z
+Version : v0.27.0
+Time    : 2024-12-04T16:04:05Z
 Licence : BSD-3-Clause
 
-Contents of probable licence file $GOMODCACHE/golang.org/x/term@v0.26.0/LICENSE:
+Contents of probable licence file $GOMODCACHE/golang.org/x/term@v0.27.0/LICENSE:
 
 Copyright 2009 The Go Authors.
 
@@ -19715,11 +19715,11 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 --------------------------------------------------------------------------------
 Module  : golang.org/x/text
-Version : v0.20.0
-Time    : 2024-11-07T21:27:58Z
+Version : v0.21.0
+Time    : 2024-12-04T16:04:30Z
 Licence : BSD-3-Clause
 
-Contents of probable licence file $GOMODCACHE/golang.org/x/text@v0.20.0/LICENSE:
+Contents of probable licence file $GOMODCACHE/golang.org/x/text@v0.21.0/LICENSE:
 
 Copyright 2009 The Go Authors.
 
