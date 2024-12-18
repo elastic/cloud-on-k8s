@@ -11,16 +11,20 @@ import (
 	"strconv"
 	"testing"
 
-	"github.com/stretchr/testify/assert"
-	corev1 "k8s.io/api/core/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-
 	commonv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/common/v1"
 	logstashv1alpha1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/logstash/v1alpha1"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/defaults"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/stackmon"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/stackmon/monitoring"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/version"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/volume"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/logstash/configs"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/k8s"
+	"github.com/gkampitakis/go-snaps/snaps"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 func TestWithMonitoring(t *testing.T) {
@@ -209,5 +213,82 @@ func GetAPIServerWithSSLEnabled(enabled bool) configs.APIServer {
 		AuthType:         "basic",
 		Username:         "logstash",
 		Password:         "whatever",
+	}
+}
+
+func TestMetricbeatConfig(t *testing.T) {
+	volumeFixture := volume.NewSecretVolumeWithMountPath(
+		"secret-name",
+		"ls-ca",
+		"/mount",
+	)
+	type args struct {
+		URL      string
+		Username string
+		Password string
+		IsSSL    bool
+		CAVolume volume.VolumeLike
+	}
+	tests := []struct {
+		name string
+		args args
+	}{
+		{
+			name: "default",
+			args: args{
+				URL:      "https://localhost:9200",
+				Username: "elastic",
+				Password: "password",
+				IsSSL:    true,
+				CAVolume: volumeFixture,
+			},
+		},
+		{
+			name: "no password",
+			args: args{
+				URL:      "https://localhost:9200",
+				Username: "elastic",
+				Password: "",
+				IsSSL:    true,
+				CAVolume: volumeFixture,
+			},
+		},
+		{
+			name: "no user + password",
+			args: args{
+				URL:      "https://localhost:9200",
+				Username: "",
+				Password: "",
+				IsSSL:    true,
+				CAVolume: volumeFixture,
+			},
+		},
+		{
+			name: "no TLS",
+			args: args{
+				URL:      "https://localhost:9200",
+				Username: "elastic",
+				Password: "password",
+				IsSSL:    false,
+				CAVolume: volumeFixture,
+			},
+		},
+		{
+			name: "no CA",
+			args: args{
+				URL:      "https://localhost:9200",
+				Username: "elastic",
+				Password: "password",
+				IsSSL:    true,
+				CAVolume: nil,
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			cfg, err := stackmon.RenderTemplate(version.From(8, 16, 0), metricbeatConfigTemplate, tt.args)
+			require.NoError(t, err)
+			snaps.MatchSnapshot(t, cfg)
+		})
 	}
 }
