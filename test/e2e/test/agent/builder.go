@@ -396,6 +396,28 @@ func bind(b Builder, clusterRoleName string) Builder {
 
 	b.AdditionalObjects = append(b.AdditionalObjects, crb)
 
+	if test.Ctx().OcpCluster {
+		// Allow Agent Pods to use the custom privileged SCC defined in config/e2e/scc.yaml
+		sccRoleBinding := &rbacv1.ClusterRoleBinding{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: fmt.Sprintf("%s-%s-binding", "use-scc-eck-e2e", b.Agent.Name),
+			},
+			Subjects: []rbacv1.Subject{
+				{
+					Kind:      "ServiceAccount",
+					Name:      saName,
+					Namespace: b.Agent.Namespace,
+				},
+			},
+			RoleRef: rbacv1.RoleRef{
+				APIGroup: rbacv1.GroupName,
+				Kind:     "ClusterRole",
+				Name:     "use-scc-eck-e2e",
+			},
+		}
+		b.AdditionalObjects = append(b.AdditionalObjects, sccRoleBinding)
+	}
+
 	return b
 }
 
