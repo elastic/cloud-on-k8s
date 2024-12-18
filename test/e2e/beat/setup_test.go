@@ -46,6 +46,7 @@ func TestBeatKibanaRefWithTLSDisabled(t *testing.T) {
 	fbBuilder := beat.NewBuilder(name).
 		WithType(filebeat.Type).
 		WithRoles(beat.AutodiscoverClusterRoleName).
+		WithOpenShiftRoles(test.UseSCCRole).
 		WithElasticsearchRef(esBuilder.Ref()).
 		WithKibanaRef(kbBuilder.Ref())
 
@@ -74,6 +75,7 @@ func TestBeatKibanaRef(t *testing.T) {
 	fbBuilder := beat.NewBuilder(name).
 		WithType(filebeat.Type).
 		WithRoles(beat.AutodiscoverClusterRoleName).
+		WithOpenShiftRoles(test.UseSCCRole).
 		WithElasticsearchRef(esBuilder.Ref()).
 		WithKibanaRef(kbBuilder.Ref())
 
@@ -82,6 +84,7 @@ func TestBeatKibanaRef(t *testing.T) {
 	mbBuilder := beat.NewBuilder(name).
 		WithType(metricbeat.Type).
 		WithRoles(beat.AutodiscoverClusterRoleName).
+		WithOpenShiftRoles(test.UseSCCRole).
 		WithElasticsearchRef(esBuilder.Ref()).
 		WithKibanaRef(kbBuilder.Ref()).
 		WithRoles(beat.MetricbeatClusterRoleName)
@@ -90,6 +93,7 @@ func TestBeatKibanaRef(t *testing.T) {
 
 	hbBuilder := beat.NewBuilder(name).
 		WithType(heartbeat.Type).
+		WithOpenShiftRoles(test.UseSCCRole).
 		WithDeployment().
 		WithElasticsearchRef(esBuilder.Ref())
 

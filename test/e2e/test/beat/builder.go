@@ -217,6 +217,13 @@ func (b Builder) WithPodTemplateServiceAccount(name string) Builder {
 	return b
 }
 
+func (b Builder) WithOpenShiftRoles(clusterRoleNames ...string) Builder {
+	if !test.Ctx().OcpCluster {
+		return b
+	}
+	return b.WithRoles(clusterRoleNames...)
+}
+
 func (b Builder) WithRoles(clusterRoleNames ...string) Builder {
 	for _, clusterRoleName := range clusterRoleNames {
 		b = bind(b, clusterRoleName)
@@ -259,28 +266,6 @@ func bind(b Builder, clusterRoleName string) Builder {
 	}
 
 	b.AdditionalObjects = append(b.AdditionalObjects, crb)
-
-	if test.Ctx().OcpCluster {
-		// Allow Beat Pods to use the custom privileged SCC defined in config/e2e/scc.yaml
-		sccRoleBinding := &rbacv1.ClusterRoleBinding{
-			ObjectMeta: metav1.ObjectMeta{
-				Name: fmt.Sprintf("%s-%s-binding", "use-scc-eck-e2e", b.Beat.Name),
-			},
-			Subjects: []rbacv1.Subject{
-				{
-					Kind:      "ServiceAccount",
-					Name:      saName,
-					Namespace: b.Beat.Namespace,
-				},
-			},
-			RoleRef: rbacv1.RoleRef{
-				APIGroup: rbacv1.GroupName,
-				Kind:     "ClusterRole",
-				Name:     "use-scc-eck-e2e",
-			},
-		}
-		b.AdditionalObjects = append(b.AdditionalObjects, sccRoleBinding)
-	}
 
 	return b
 }
