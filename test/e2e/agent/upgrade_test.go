@@ -32,6 +32,7 @@ func TestAgentVersionUpgradeToLatest8x(t *testing.T) {
 
 	fleetServerBuilder := agent.NewBuilder(name + "-fs").
 		WithRoles(agent.AgentFleetModeRoleName).
+		WithOpenShiftRoles(test.UseSCCRole).
 		WithVersion(srcVersion).
 		WithDeployment().
 		WithFleetMode().
@@ -44,6 +45,7 @@ func TestAgentVersionUpgradeToLatest8x(t *testing.T) {
 
 	agentBuilder := agent.NewBuilder(name + "-ea").
 		WithRoles(agent.AgentFleetModeRoleName).
+		WithOpenShiftRoles(test.UseSCCRole).
 		WithVersion(srcVersion).
 		WithFleetMode().
 		WithKibanaRef(kbBuilder.Ref()).

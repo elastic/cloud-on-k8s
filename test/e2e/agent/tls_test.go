@@ -49,6 +49,7 @@ func TestFleetAgentWithoutTLS(t *testing.T) {
 
 	fleetServerBuilder := agent.NewBuilder(name + "-fs").
 		WithRoles(agent.AgentFleetModeRoleName).
+		WithOpenShiftRoles(test.UseSCCRole).
 		WithVersion(v.String()).
 		WithDeployment().
 		WithFleetMode().
@@ -62,6 +63,7 @@ func TestFleetAgentWithoutTLS(t *testing.T) {
 
 	agentBuilder := agent.NewBuilder(name + "-ea").
 		WithRoles(agent.AgentFleetModeRoleName).
+		WithOpenShiftRoles(test.UseSCCRole).
 		WithVersion(v.String()).
 		WithFleetMode().
 		WithKibanaRef(kbBuilder.Ref()).
