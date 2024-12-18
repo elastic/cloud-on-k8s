@@ -153,7 +153,6 @@ func TestWithMonitoring(t *testing.T) {
 			actual, err := json.MarshalIndent(builder.PodTemplate, " ", "")
 			assert.NoError(t, err)
 			snaps.MatchJSON(t, actual)
-
 		})
 	}
 }
