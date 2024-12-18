@@ -6,23 +6,23 @@ package stackmon
 
 import (
 	"context"
-	"fmt"
+	"encoding/json"
 	"testing"
-
-	"github.com/stretchr/testify/assert"
-	corev1 "k8s.io/api/core/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	commonv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/common/v1"
 	kbv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/kibana/v1"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/defaults"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/stackmon/monitoring"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/k8s"
+	"github.com/gkampitakis/go-snaps/snaps"
+	"github.com/stretchr/testify/assert"
+	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-func TestWithMonitoring(t *testing.T) {
-	esRef := commonv1.ObjectSelector{Name: "sample", Namespace: "aerospace"}
-	sampleKb := kbv1.Kibana{
+var (
+	esRef    = commonv1.ObjectSelector{Name: "sample", Namespace: "aerospace"}
+	sampleKb = kbv1.Kibana{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "sample",
 			Namespace: "aerospace",
@@ -32,38 +32,47 @@ func TestWithMonitoring(t *testing.T) {
 			ElasticsearchRef: esRef,
 		},
 	}
-	monitoringEsRef := []commonv1.ObjectSelector{{Name: "monitoring", Namespace: "observability"}}
-	logsEsRef := []commonv1.ObjectSelector{{Name: "logs", Namespace: "observability"}}
-
-	fakeElasticUserSecret := corev1.Secret{
+	kbFixtureWithMetricsMonitoring = func(kb kbv1.Kibana, esRef []commonv1.ObjectSelector, conf commonv1.AssociationConf) kbv1.Kibana {
+		kb.Spec.Monitoring.Metrics.ElasticsearchRefs = esRef
+		monitoring.GetMetricsAssociation(&kb)[0].SetAssociationConf(&conf)
+		return kb
+	}
+	kbFixtureWithLogsMonitoring = func(kb kbv1.Kibana, esRef []commonv1.ObjectSelector, conf commonv1.AssociationConf) kbv1.Kibana {
+		kb.Spec.Monitoring.Logs.ElasticsearchRefs = esRef
+		monitoring.GetLogsAssociation(&kb)[0].SetAssociationConf(&conf)
+		return kb
+	}
+	monitoringEsRef       = []commonv1.ObjectSelector{{Name: "monitoring", Namespace: "observability"}}
+	logsEsRef             = []commonv1.ObjectSelector{{Name: "logs", Namespace: "observability"}}
+	fakeElasticUserSecret = corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{Name: "sample-es-internal-users", Namespace: "aerospace"},
 		Data:       map[string][]byte{"elastic-internal-monitoring": []byte("1234567890")},
 	}
-	fakeMetricsBeatUserSecret := corev1.Secret{
+	fakeMetricsBeatUserSecret = corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{Name: "sample-observability-monitoring-beat-es-mon-user", Namespace: "aerospace"},
 		Data:       map[string][]byte{"aerospace-sample-observability-monitoring-beat-es-mon-user": []byte("1234567890")},
 	}
-	fakeLogsBeatUserSecret := corev1.Secret{
+	fakeLogsBeatUserSecret = corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{Name: "sample-observability-logs-beat-es-mon-user", Namespace: "aerospace"},
 		Data:       map[string][]byte{"aerospace-sample-observability-logs-beat-es-mon-user": []byte("1234567890")},
 	}
-	fakeEsHTTPCertSecret := corev1.Secret{
+	fakeEsHTTPCertSecret = corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{Name: "sample-es-http-certs-public", Namespace: "aerospace"},
 		Data: map[string][]byte{
 			"tls.crt": []byte("7H1515N074r341C3r71F1C473"),
 			"ca.crt":  []byte("7H1515N074r341C3r71F1C473"),
 		},
 	}
-	fakeKbHTTPCertSecret := corev1.Secret{
+	fakeKbHTTPCertSecret = corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{Name: "sample-kb-http-certs-public", Namespace: "aerospace"},
 		Data: map[string][]byte{
 			"tls.crt": []byte("7H1515N074r341C3r71F1C473"),
 			"ca.crt":  []byte("7H1515N074r341C3r71F1C473"),
 		},
 	}
-	fakeClient := k8s.NewFakeClient(&fakeElasticUserSecret, &fakeMetricsBeatUserSecret, &fakeLogsBeatUserSecret, &fakeEsHTTPCertSecret, &fakeKbHTTPCertSecret)
+	fakeClient = k8s.NewFakeClient(&fakeElasticUserSecret, &fakeMetricsBeatUserSecret, &fakeLogsBeatUserSecret, &fakeEsHTTPCertSecret, &fakeKbHTTPCertSecret)
 
-	monitoringAssocConf := commonv1.AssociationConf{
+	monitoringAssocConf = commonv1.AssociationConf{
 		AuthSecretName: "sample-observability-monitoring-beat-es-mon-user",
 		AuthSecretKey:  "aerospace-sample-observability-monitoring-beat-es-mon-user",
 		CACertProvided: true,
@@ -71,7 +80,7 @@ func TestWithMonitoring(t *testing.T) {
 		URL:            "https://monitoring-es-http.observability.svc:9200",
 		Version:        "7.14.0",
 	}
-	logsAssocConf := commonv1.AssociationConf{
+	logsAssocConf = commonv1.AssociationConf{
 		AuthSecretName: "sample-observability-logs-beat-es-mon-user",
 		AuthSecretKey:  "aerospace-sample-observability-logs-beat-es-mon-user",
 		CACertProvided: true,
@@ -79,69 +88,57 @@ func TestWithMonitoring(t *testing.T) {
 		URL:            "https://logs-es-http.observability.svc:9200",
 		Version:        "7.14.0",
 	}
+)
+
+func TestWithMonitoring(t *testing.T) {
 
 	tests := []struct {
-		name                   string
-		kb                     func() kbv1.Kibana
-		containersLength       int
-		podVolumesLength       int
-		beatVolumeMountsLength int
+		name string
+		kb   func() kbv1.Kibana
 	}{
 		{
 			name: "without monitoring",
 			kb: func() kbv1.Kibana {
 				return sampleKb
 			},
-			containersLength: 1,
 		},
 		{
 			name: "with metrics monitoring",
 			kb: func() kbv1.Kibana {
-				sampleKb.Spec.Monitoring.Metrics.ElasticsearchRefs = monitoringEsRef
-				monitoring.GetMetricsAssociation(&sampleKb)[0].SetAssociationConf(&monitoringAssocConf)
-				return sampleKb
+				return kbFixtureWithMetricsMonitoring(sampleKb, monitoringEsRef, monitoringAssocConf)
 			},
-			containersLength:       2,
-			podVolumesLength:       4,
-			beatVolumeMountsLength: 4,
 		},
 		{
 			name: "with logs monitoring",
 			kb: func() kbv1.Kibana {
-				sampleKb.Spec.Monitoring.Metrics.ElasticsearchRefs = nil
-				sampleKb.Spec.Monitoring.Logs.ElasticsearchRefs = monitoringEsRef
-				monitoring.GetLogsAssociation(&sampleKb)[0].SetAssociationConf(&monitoringAssocConf)
-				return sampleKb
+				return kbFixtureWithLogsMonitoring(sampleKb, monitoringEsRef, monitoringAssocConf)
 			},
-			containersLength:       2,
-			podVolumesLength:       4,
-			beatVolumeMountsLength: 4,
 		},
 		{
 			name: "with metrics and logs monitoring",
 			kb: func() kbv1.Kibana {
-				sampleKb.Spec.Monitoring.Metrics.ElasticsearchRefs = monitoringEsRef
-				monitoring.GetMetricsAssociation(&sampleKb)[0].SetAssociationConf(&monitoringAssocConf)
-				sampleKb.Spec.Monitoring.Logs.ElasticsearchRefs = monitoringEsRef
-				monitoring.GetLogsAssociation(&sampleKb)[0].SetAssociationConf(&logsAssocConf)
-				return sampleKb
+				return kbFixtureWithLogsMonitoring(
+					kbFixtureWithMetricsMonitoring(
+						sampleKb,
+						monitoringEsRef,
+						monitoringAssocConf),
+					monitoringEsRef,
+					logsAssocConf,
+				)
 			},
-			containersLength:       3,
-			podVolumesLength:       7,
-			beatVolumeMountsLength: 4,
 		},
 		{
 			name: "with metrics and logs monitoring with different es ref",
 			kb: func() kbv1.Kibana {
-				sampleKb.Spec.Monitoring.Metrics.ElasticsearchRefs = monitoringEsRef
-				monitoring.GetMetricsAssociation(&sampleKb)[0].SetAssociationConf(&monitoringAssocConf)
-				sampleKb.Spec.Monitoring.Logs.ElasticsearchRefs = logsEsRef
-				monitoring.GetLogsAssociation(&sampleKb)[0].SetAssociationConf(&logsAssocConf)
-				return sampleKb
+				return kbFixtureWithLogsMonitoring(
+					kbFixtureWithMetricsMonitoring(
+						sampleKb,
+						monitoringEsRef,
+						monitoringAssocConf),
+					logsEsRef,
+					logsAssocConf,
+				)
 			},
-			containersLength:       3,
-			podVolumesLength:       8,
-			beatVolumeMountsLength: 4,
 		},
 	}
 
@@ -152,26 +149,86 @@ func TestWithMonitoring(t *testing.T) {
 			_, err := WithMonitoring(context.Background(), fakeClient, builder, kb, "")
 			assert.NoError(t, err)
 
-			assert.Equal(t, tc.containersLength, len(builder.PodTemplate.Spec.Containers))
-			for _, v := range builder.PodTemplate.Spec.Volumes {
-				fmt.Println(v)
-			}
-			assert.Equal(t, tc.podVolumesLength, len(builder.PodTemplate.Spec.Volumes))
+			actual, err := json.MarshalIndent(builder.PodTemplate, " ", "")
+			assert.NoError(t, err)
+			snaps.MatchJSON(t, actual)
 
-			if monitoring.IsMetricsDefined(&kb) {
-				for _, c := range builder.PodTemplate.Spec.Containers {
-					if c.Name == "metricbeat" {
-						assert.Equal(t, tc.beatVolumeMountsLength, len(c.VolumeMounts))
+		})
+	}
+}
+
+func TestMetricbeatConfig(t *testing.T) {
+	type args struct {
+		client   k8s.Client
+		kb       kbv1.Kibana
+		basePath string
+	}
+	tests := []struct {
+		name    string
+		args    args
+		wantErr bool
+	}{
+		{
+			name: "no monitoring",
+			args: args{
+				client: k8s.NewFakeClient(),
+				kb:     sampleKb,
+			},
+			wantErr: true,
+		},
+		{
+			name: "with metrics monitoring",
+			args: args{
+				client: fakeClient,
+				kb:     kbFixtureWithMetricsMonitoring(sampleKb, monitoringEsRef, monitoringAssocConf),
+			},
+			wantErr: false,
+		},
+		{
+			name: "with monitoring no CA",
+			args: args{
+				client: k8s.NewFakeClient(&fakeElasticUserSecret, &fakeMetricsBeatUserSecret, &fakeLogsBeatUserSecret, &fakeEsHTTPCertSecret, &corev1.Secret{
+					ObjectMeta: metav1.ObjectMeta{Name: "sample-kb-http-certs-public", Namespace: "aerospace"},
+					Data: map[string][]byte{
+						"tls.crt": []byte("7H1515N074r341C3r71F1C473"),
+					},
+				}),
+				kb: kbFixtureWithMetricsMonitoring(sampleKb, monitoringEsRef, monitoringAssocConf),
+			},
+			wantErr: false,
+		},
+		{
+			name: "with metrics monitoring no TLS",
+			args: args{
+				client: fakeClient,
+				kb: func() kbv1.Kibana {
+					kb := kbFixtureWithMetricsMonitoring(sampleKb, monitoringEsRef, monitoringAssocConf)
+					kb.Spec.HTTP.TLS = commonv1.TLSOptions{
+						SelfSignedCertificate: &commonv1.SelfSignedCertificate{Disabled: true},
 					}
-				}
+					return kb
+				}(),
+			},
+			wantErr: false,
+		},
+		{
+			name: "with metrics monitoring and basePath",
+			args: args{
+				client:   fakeClient,
+				kb:       kbFixtureWithMetricsMonitoring(sampleKb, monitoringEsRef, monitoringAssocConf),
+				basePath: "/prefix",
+			},
+			wantErr: false,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, err := Metricbeat(context.Background(), tt.args.client, tt.args.kb, tt.args.basePath)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("Metricbeat() error = %v, wantErr %v", err, tt.wantErr)
+				return
 			}
-			if monitoring.IsLogsDefined(&kb) {
-				for _, c := range builder.PodTemplate.Spec.Containers {
-					if c.Name == "filebeat" {
-						assert.Equal(t, tc.beatVolumeMountsLength, len(c.VolumeMounts))
-					}
-				}
-			}
+			snaps.MatchSnapshot(t, string(got.ConfigSecret.Data["metricbeat.yml"]))
 		})
 	}
 }
