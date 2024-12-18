@@ -11,8 +11,6 @@ import (
 
 	corev1 "k8s.io/api/core/v1"
 
-	"github.com/blang/semver/v4"
-
 	commonv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/common/v1"
 	esv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/elasticsearch/v1"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/defaults"
@@ -55,14 +53,12 @@ func Metricbeat(ctx context.Context, client k8s.Client, es esv1.Elasticsearch) (
 		Password string
 		IsSSL    bool
 		CAVolume volume.VolumeLike
-		Version  semver.Version
 	}{
 		URL:      fmt.Sprintf("%s://localhost:%d", es.Spec.HTTP.Protocol(), network.HTTPPort),
 		Username: username,
 		Password: password,
 		IsSSL:    es.Spec.HTTP.TLS.Enabled(),
 		CAVolume: caVolume,
-		Version:  v,
 	}
 
 	cfg, err := stackmon.RenderTemplate(v, metricbeatConfigTemplate, input)
