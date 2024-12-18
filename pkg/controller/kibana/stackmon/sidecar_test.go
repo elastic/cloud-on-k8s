@@ -9,15 +9,16 @@ import (
 	"encoding/json"
 	"testing"
 
+	"github.com/gkampitakis/go-snaps/snaps"
+	"github.com/stretchr/testify/assert"
+	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+
 	commonv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/common/v1"
 	kbv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/kibana/v1"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/defaults"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/stackmon/monitoring"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/k8s"
-	"github.com/gkampitakis/go-snaps/snaps"
-	"github.com/stretchr/testify/assert"
-	corev1 "k8s.io/api/core/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 var (
@@ -91,7 +92,6 @@ var (
 )
 
 func TestWithMonitoring(t *testing.T) {
-
 	tests := []struct {
 		name string
 		kb   func() kbv1.Kibana
@@ -152,7 +152,6 @@ func TestWithMonitoring(t *testing.T) {
 			actual, err := json.MarshalIndent(builder.PodTemplate, " ", "")
 			assert.NoError(t, err)
 			snaps.MatchJSON(t, actual)
-
 		})
 	}
 }

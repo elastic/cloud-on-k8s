@@ -141,3 +141,739 @@ processors:
 # Elasticsearch output configuration is generated
 
 ---
+
+[TestWithMonitoring/without_monitoring - 1]
+{
+ "metadata": {
+  "creationTimestamp": null
+ },
+ "spec": {
+  "automountServiceAccountToken": false,
+  "containers": [
+   {
+    "name": "logstash",
+    "resources": {}
+   }
+  ]
+ }
+}
+---
+
+[TestWithMonitoring/with_metrics_monitoring - 1]
+{
+ "metadata": {
+  "annotations": {
+   "logstash.k8s.elastic.co/monitoring-config-hash": "625208580"
+  },
+  "creationTimestamp": null
+ },
+ "spec": {
+  "automountServiceAccountToken": false,
+  "containers": [
+   {
+    "name": "logstash",
+    "resources": {}
+   },
+   {
+    "args": [
+     "-c",
+     "/etc/metricbeat-config/metricbeat.yml",
+     "-e"
+    ],
+    "env": [
+     {
+      "name": "POD_IP",
+      "valueFrom": {
+       "fieldRef": {
+        "apiVersion": "v1",
+        "fieldPath": "status.podIP"
+       }
+      }
+     },
+     {
+      "name": "POD_NAME",
+      "valueFrom": {
+       "fieldRef": {
+        "apiVersion": "v1",
+        "fieldPath": "metadata.name"
+       }
+      }
+     },
+     {
+      "name": "NODE_NAME",
+      "valueFrom": {
+       "fieldRef": {
+        "apiVersion": "v1",
+        "fieldPath": "spec.nodeName"
+       }
+      }
+     },
+     {
+      "name": "NAMESPACE",
+      "valueFrom": {
+       "fieldRef": {
+        "apiVersion": "v1",
+        "fieldPath": "metadata.namespace"
+       }
+      }
+     }
+    ],
+    "image": "docker.elastic.co/beats/metricbeat:8.6.0",
+    "name": "metricbeat",
+    "resources": {},
+    "volumeMounts": [
+     {
+      "mountPath": "/etc/metricbeat-config",
+      "name": "sample-metricbeat-config",
+      "readOnly": true
+     },
+     {
+      "mountPath": "/mnt/elastic-internal/ls-monitoring-association/observability/monitoring/certs",
+      "name": "ls-monitoring-03f555-ca",
+      "readOnly": true
+     },
+     {
+      "mountPath": "/usr/share/metricbeat/data",
+      "name": "metricbeat-data"
+     }
+    ]
+   }
+  ],
+  "volumes": [
+   {
+    "name": "ls-monitoring-03f555-ca",
+    "secret": {
+     "optional": false,
+     "secretName": "sample-es-monitoring-observability-monitoring-ca"
+    }
+   },
+   {
+    "emptyDir": {},
+    "name": "metricbeat-data"
+   },
+   {
+    "name": "sample-metricbeat-config",
+    "secret": {
+     "optional": false,
+     "secretName": "sample-ls-monitoring-metricbeat-config"
+    }
+   }
+  ]
+ }
+}
+---
+
+[TestWithMonitoring/with_TLS_metrics_monitoring - 1]
+{
+ "metadata": {
+  "annotations": {
+   "logstash.k8s.elastic.co/monitoring-config-hash": "2320787694"
+  },
+  "creationTimestamp": null
+ },
+ "spec": {
+  "automountServiceAccountToken": false,
+  "containers": [
+   {
+    "name": "logstash",
+    "resources": {}
+   },
+   {
+    "args": [
+     "-c",
+     "/etc/metricbeat-config/metricbeat.yml",
+     "-e"
+    ],
+    "env": [
+     {
+      "name": "POD_IP",
+      "valueFrom": {
+       "fieldRef": {
+        "apiVersion": "v1",
+        "fieldPath": "status.podIP"
+       }
+      }
+     },
+     {
+      "name": "POD_NAME",
+      "valueFrom": {
+       "fieldRef": {
+        "apiVersion": "v1",
+        "fieldPath": "metadata.name"
+       }
+      }
+     },
+     {
+      "name": "NODE_NAME",
+      "valueFrom": {
+       "fieldRef": {
+        "apiVersion": "v1",
+        "fieldPath": "spec.nodeName"
+       }
+      }
+     },
+     {
+      "name": "NAMESPACE",
+      "valueFrom": {
+       "fieldRef": {
+        "apiVersion": "v1",
+        "fieldPath": "metadata.namespace"
+       }
+      }
+     }
+    ],
+    "image": "docker.elastic.co/beats/metricbeat:8.6.0",
+    "name": "metricbeat",
+    "resources": {},
+    "volumeMounts": [
+     {
+      "mountPath": "/etc/metricbeat-config",
+      "name": "sample-metricbeat-config",
+      "readOnly": true
+     },
+     {
+      "mountPath": "/mnt/elastic-internal/ls-monitoring-association/observability/monitoring/certs",
+      "name": "ls-monitoring-03f555-ca",
+      "readOnly": true
+     },
+     {
+      "mountPath": "/mnt/elastic-internal/ls-monitoring/aerospace/sample/certs",
+      "name": "ls-monitoring-local-ca",
+      "readOnly": true
+     },
+     {
+      "mountPath": "/usr/share/metricbeat/data",
+      "name": "metricbeat-data"
+     }
+    ]
+   }
+  ],
+  "volumes": [
+   {
+    "name": "ls-monitoring-03f555-ca",
+    "secret": {
+     "optional": false,
+     "secretName": "sample-es-monitoring-observability-monitoring-ca"
+    }
+   },
+   {
+    "name": "ls-monitoring-local-ca",
+    "secret": {
+     "optional": false,
+     "secretName": "sample-ls-http-certs-public"
+    }
+   },
+   {
+    "emptyDir": {},
+    "name": "metricbeat-data"
+   },
+   {
+    "name": "sample-metricbeat-config",
+    "secret": {
+     "optional": false,
+     "secretName": "sample-ls-monitoring-metricbeat-config"
+    }
+   }
+  ]
+ }
+}
+---
+
+[TestWithMonitoring/with_logs_monitoring - 1]
+{
+ "metadata": {
+  "annotations": {
+   "logstash.k8s.elastic.co/monitoring-config-hash": "983125293"
+  },
+  "creationTimestamp": null
+ },
+ "spec": {
+  "automountServiceAccountToken": false,
+  "containers": [
+   {
+    "env": [
+     {
+      "name": "LOG_STYLE",
+      "value": "file"
+     }
+    ],
+    "name": "logstash",
+    "resources": {}
+   },
+   {
+    "args": [
+     "-c",
+     "/etc/filebeat-config/filebeat.yml",
+     "-e"
+    ],
+    "env": [
+     {
+      "name": "POD_IP",
+      "valueFrom": {
+       "fieldRef": {
+        "apiVersion": "v1",
+        "fieldPath": "status.podIP"
+       }
+      }
+     },
+     {
+      "name": "POD_NAME",
+      "valueFrom": {
+       "fieldRef": {
+        "apiVersion": "v1",
+        "fieldPath": "metadata.name"
+       }
+      }
+     },
+     {
+      "name": "NODE_NAME",
+      "valueFrom": {
+       "fieldRef": {
+        "apiVersion": "v1",
+        "fieldPath": "spec.nodeName"
+       }
+      }
+     },
+     {
+      "name": "NAMESPACE",
+      "valueFrom": {
+       "fieldRef": {
+        "apiVersion": "v1",
+        "fieldPath": "metadata.namespace"
+       }
+      }
+     }
+    ],
+    "image": "docker.elastic.co/beats/filebeat:8.6.0",
+    "name": "filebeat",
+    "resources": {},
+    "volumeMounts": [
+     {
+      "mountPath": "/etc/filebeat-config",
+      "name": "sample-filebeat-config",
+      "readOnly": true
+     },
+     {
+      "mountPath": "/mnt/elastic-internal/ls-monitoring-association/observability/monitoring/certs",
+      "name": "ls-monitoring-03f555-ca",
+      "readOnly": true
+     },
+     {
+      "mountPath": "/usr/share/filebeat/data",
+      "name": "filebeat-data"
+     },
+     {
+      "mountPath": "/usr/share/logstash/logs",
+      "name": "logstash-logs"
+     }
+    ]
+   }
+  ],
+  "volumes": [
+   {
+    "emptyDir": {},
+    "name": "filebeat-data"
+   },
+   {
+    "name": "ls-monitoring-03f555-ca",
+    "secret": {
+     "optional": false,
+     "secretName": "sample-es-monitoring-observability-monitoring-ca"
+    }
+   },
+   {
+    "name": "sample-filebeat-config",
+    "secret": {
+     "optional": false,
+     "secretName": "sample-ls-monitoring-filebeat-config"
+    }
+   }
+  ]
+ }
+}
+---
+
+[TestWithMonitoring/with_metrics_and_logs_monitoring - 1]
+{
+ "metadata": {
+  "annotations": {
+   "logstash.k8s.elastic.co/monitoring-config-hash": "808554888"
+  },
+  "creationTimestamp": null
+ },
+ "spec": {
+  "automountServiceAccountToken": false,
+  "containers": [
+   {
+    "env": [
+     {
+      "name": "LOG_STYLE",
+      "value": "file"
+     }
+    ],
+    "name": "logstash",
+    "resources": {}
+   },
+   {
+    "args": [
+     "-c",
+     "/etc/metricbeat-config/metricbeat.yml",
+     "-e"
+    ],
+    "env": [
+     {
+      "name": "POD_IP",
+      "valueFrom": {
+       "fieldRef": {
+        "apiVersion": "v1",
+        "fieldPath": "status.podIP"
+       }
+      }
+     },
+     {
+      "name": "POD_NAME",
+      "valueFrom": {
+       "fieldRef": {
+        "apiVersion": "v1",
+        "fieldPath": "metadata.name"
+       }
+      }
+     },
+     {
+      "name": "NODE_NAME",
+      "valueFrom": {
+       "fieldRef": {
+        "apiVersion": "v1",
+        "fieldPath": "spec.nodeName"
+       }
+      }
+     },
+     {
+      "name": "NAMESPACE",
+      "valueFrom": {
+       "fieldRef": {
+        "apiVersion": "v1",
+        "fieldPath": "metadata.namespace"
+       }
+      }
+     }
+    ],
+    "image": "docker.elastic.co/beats/metricbeat:8.6.0",
+    "name": "metricbeat",
+    "resources": {},
+    "volumeMounts": [
+     {
+      "mountPath": "/etc/metricbeat-config",
+      "name": "sample-metricbeat-config",
+      "readOnly": true
+     },
+     {
+      "mountPath": "/mnt/elastic-internal/ls-monitoring-association/observability/monitoring/certs",
+      "name": "ls-monitoring-03f555-ca",
+      "readOnly": true
+     },
+     {
+      "mountPath": "/usr/share/metricbeat/data",
+      "name": "metricbeat-data"
+     }
+    ]
+   },
+   {
+    "args": [
+     "-c",
+     "/etc/filebeat-config/filebeat.yml",
+     "-e"
+    ],
+    "env": [
+     {
+      "name": "POD_IP",
+      "valueFrom": {
+       "fieldRef": {
+        "apiVersion": "v1",
+        "fieldPath": "status.podIP"
+       }
+      }
+     },
+     {
+      "name": "POD_NAME",
+      "valueFrom": {
+       "fieldRef": {
+        "apiVersion": "v1",
+        "fieldPath": "metadata.name"
+       }
+      }
+     },
+     {
+      "name": "NODE_NAME",
+      "valueFrom": {
+       "fieldRef": {
+        "apiVersion": "v1",
+        "fieldPath": "spec.nodeName"
+       }
+      }
+     },
+     {
+      "name": "NAMESPACE",
+      "valueFrom": {
+       "fieldRef": {
+        "apiVersion": "v1",
+        "fieldPath": "metadata.namespace"
+       }
+      }
+     }
+    ],
+    "image": "docker.elastic.co/beats/filebeat:8.6.0",
+    "name": "filebeat",
+    "resources": {},
+    "volumeMounts": [
+     {
+      "mountPath": "/etc/filebeat-config",
+      "name": "sample-filebeat-config",
+      "readOnly": true
+     },
+     {
+      "mountPath": "/mnt/elastic-internal/ls-monitoring-association/observability/monitoring/certs",
+      "name": "ls-monitoring-03f555-ca",
+      "readOnly": true
+     },
+     {
+      "mountPath": "/usr/share/filebeat/data",
+      "name": "filebeat-data"
+     },
+     {
+      "mountPath": "/usr/share/logstash/logs",
+      "name": "logstash-logs"
+     }
+    ]
+   }
+  ],
+  "volumes": [
+   {
+    "emptyDir": {},
+    "name": "filebeat-data"
+   },
+   {
+    "name": "ls-monitoring-03f555-ca",
+    "secret": {
+     "optional": false,
+     "secretName": "sample-es-logs-observability-monitoring-ca"
+    }
+   },
+   {
+    "emptyDir": {},
+    "name": "metricbeat-data"
+   },
+   {
+    "name": "sample-filebeat-config",
+    "secret": {
+     "optional": false,
+     "secretName": "sample-ls-monitoring-filebeat-config"
+    }
+   },
+   {
+    "name": "sample-metricbeat-config",
+    "secret": {
+     "optional": false,
+     "secretName": "sample-ls-monitoring-metricbeat-config"
+    }
+   }
+  ]
+ }
+}
+---
+
+[TestWithMonitoring/with_metrics_and_logs_monitoring_with_different_es_ref - 1]
+{
+ "metadata": {
+  "annotations": {
+   "logstash.k8s.elastic.co/monitoring-config-hash": "2399876695"
+  },
+  "creationTimestamp": null
+ },
+ "spec": {
+  "automountServiceAccountToken": false,
+  "containers": [
+   {
+    "env": [
+     {
+      "name": "LOG_STYLE",
+      "value": "file"
+     }
+    ],
+    "name": "logstash",
+    "resources": {}
+   },
+   {
+    "args": [
+     "-c",
+     "/etc/metricbeat-config/metricbeat.yml",
+     "-e"
+    ],
+    "env": [
+     {
+      "name": "POD_IP",
+      "valueFrom": {
+       "fieldRef": {
+        "apiVersion": "v1",
+        "fieldPath": "status.podIP"
+       }
+      }
+     },
+     {
+      "name": "POD_NAME",
+      "valueFrom": {
+       "fieldRef": {
+        "apiVersion": "v1",
+        "fieldPath": "metadata.name"
+       }
+      }
+     },
+     {
+      "name": "NODE_NAME",
+      "valueFrom": {
+       "fieldRef": {
+        "apiVersion": "v1",
+        "fieldPath": "spec.nodeName"
+       }
+      }
+     },
+     {
+      "name": "NAMESPACE",
+      "valueFrom": {
+       "fieldRef": {
+        "apiVersion": "v1",
+        "fieldPath": "metadata.namespace"
+       }
+      }
+     }
+    ],
+    "image": "docker.elastic.co/beats/metricbeat:8.6.0",
+    "name": "metricbeat",
+    "resources": {},
+    "volumeMounts": [
+     {
+      "mountPath": "/etc/metricbeat-config",
+      "name": "sample-metricbeat-config",
+      "readOnly": true
+     },
+     {
+      "mountPath": "/mnt/elastic-internal/ls-monitoring-association/observability/monitoring/certs",
+      "name": "ls-monitoring-03f555-ca",
+      "readOnly": true
+     },
+     {
+      "mountPath": "/usr/share/metricbeat/data",
+      "name": "metricbeat-data"
+     }
+    ]
+   },
+   {
+    "args": [
+     "-c",
+     "/etc/filebeat-config/filebeat.yml",
+     "-e"
+    ],
+    "env": [
+     {
+      "name": "POD_IP",
+      "valueFrom": {
+       "fieldRef": {
+        "apiVersion": "v1",
+        "fieldPath": "status.podIP"
+       }
+      }
+     },
+     {
+      "name": "POD_NAME",
+      "valueFrom": {
+       "fieldRef": {
+        "apiVersion": "v1",
+        "fieldPath": "metadata.name"
+       }
+      }
+     },
+     {
+      "name": "NODE_NAME",
+      "valueFrom": {
+       "fieldRef": {
+        "apiVersion": "v1",
+        "fieldPath": "spec.nodeName"
+       }
+      }
+     },
+     {
+      "name": "NAMESPACE",
+      "valueFrom": {
+       "fieldRef": {
+        "apiVersion": "v1",
+        "fieldPath": "metadata.namespace"
+       }
+      }
+     }
+    ],
+    "image": "docker.elastic.co/beats/filebeat:8.6.0",
+    "name": "filebeat",
+    "resources": {},
+    "volumeMounts": [
+     {
+      "mountPath": "/etc/filebeat-config",
+      "name": "sample-filebeat-config",
+      "readOnly": true
+     },
+     {
+      "mountPath": "/mnt/elastic-internal/ls-monitoring-association/observability/logs/certs",
+      "name": "ls-monitoring-584a4d-ca",
+      "readOnly": true
+     },
+     {
+      "mountPath": "/usr/share/filebeat/data",
+      "name": "filebeat-data"
+     },
+     {
+      "mountPath": "/usr/share/logstash/logs",
+      "name": "logstash-logs"
+     }
+    ]
+   }
+  ],
+  "volumes": [
+   {
+    "emptyDir": {},
+    "name": "filebeat-data"
+   },
+   {
+    "name": "ls-monitoring-03f555-ca",
+    "secret": {
+     "optional": false,
+     "secretName": "sample-es-monitoring-observability-monitoring-ca"
+    }
+   },
+   {
+    "name": "ls-monitoring-584a4d-ca",
+    "secret": {
+     "optional": false,
+     "secretName": "sample-es-logs-observability-monitoring-ca"
+    }
+   },
+   {
+    "emptyDir": {},
+    "name": "metricbeat-data"
+   },
+   {
+    "name": "sample-filebeat-config",
+    "secret": {
+     "optional": false,
+     "secretName": "sample-ls-monitoring-filebeat-config"
+    }
+   },
+   {
+    "name": "sample-metricbeat-config",
+    "secret": {
+     "optional": false,
+     "secretName": "sample-ls-monitoring-metricbeat-config"
+    }
+   }
+  ]
+ }
+}
+---
