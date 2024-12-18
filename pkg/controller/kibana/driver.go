@@ -165,7 +165,12 @@ func (d *driver) Reconcile(
 		return results.WithError(err)
 	}
 
-	err = stackmon.ReconcileConfigSecrets(ctx, d.client, *kb)
+	basePath, err := GetKibanaBasePath(*kb)
+	if err != nil {
+		return results.WithError(err)
+	}
+
+	err = stackmon.ReconcileConfigSecrets(ctx, d.client, *kb, basePath)
 	if err != nil {
 		return results.WithError(err)
 	}
@@ -173,7 +178,7 @@ func (d *driver) Reconcile(
 	span, _ := apm.StartSpan(ctx, "reconcile_deployment", tracing.SpanTypeApp)
 	defer span.End()
 
-	deploymentParams, err := d.deploymentParams(ctx, kb, kibanaPolicyCfg.PodAnnotations)
+	deploymentParams, err := d.deploymentParams(ctx, kb, kibanaPolicyCfg.PodAnnotations, basePath, params.SetDefaultSecurityContext)
 	if err != nil {
 		return results.WithError(err)
 	}
@@ -220,7 +225,7 @@ func (d *driver) getStrategyType(kb *kbv1.Kibana) (appsv1.DeploymentStrategyType
 	return appsv1.RollingUpdateDeploymentStrategyType, nil
 }
 
-func (d *driver) deploymentParams(ctx context.Context, kb *kbv1.Kibana, policyAnnotations map[string]string) (deployment.Params, error) {
+func (d *driver) deploymentParams(ctx context.Context, kb *kbv1.Kibana, policyAnnotations map[string]string, basePath string, setDefaultSecurityContext bool) (deployment.Params, error) {
 	initContainersParameters, err := newInitContainersParameters(kb)
 	if err != nil {
 		return deployment.Params{}, err
@@ -242,7 +247,7 @@ func (d *driver) deploymentParams(ctx context.Context, kb *kbv1.Kibana, policyAn
 	if err != nil {
 		return deployment.Params{}, err
 	}
-	kibanaPodSpec, err := NewPodTemplateSpec(ctx, d.client, *kb, keystoreResources, volumes)
+	kibanaPodSpec, err := NewPodTemplateSpec(ctx, d.client, *kb, keystoreResources, volumes, basePath, setDefaultSecurityContext)
 	if err != nil {
 		return deployment.Params{}, err
 	}

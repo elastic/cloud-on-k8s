@@ -39,6 +39,8 @@ const (
 	TempVolumeMountPath          = "/tmp"
 	KibanaBasePathEnvName        = "SERVER_BASEPATH"
 	KibanaRewriteBasePathEnvName = "SERVER_REWRITEBASEPATH"
+	defaultFSGroup               = 1000
+	defaultFSUser                = 1000
 )
 
 var (
@@ -71,8 +73,8 @@ var (
 	}
 )
 
-// kibanaConfig is used to get the base path from the Kibana configuration.
-type kibanaConfig struct {
+// basePathConfig is used to get the base path from the Kibana configuration.
+type basePathConfig struct {
 	Server struct {
 		RewriteBasePath bool   `config:"rewriteBasePath"`
 		BasePath        string `config:"basePath"`
@@ -101,7 +103,15 @@ func readinessProbe(useTLS bool, basePath string) corev1.Probe {
 	}
 }
 
-func NewPodTemplateSpec(ctx context.Context, client k8sclient.Client, kb kbv1.Kibana, keystore *keystore.Resources, volumes []volume.VolumeLike) (corev1.PodTemplateSpec, error) {
+func NewPodTemplateSpec(
+	ctx context.Context,
+	client k8sclient.Client,
+	kb kbv1.Kibana,
+	keystore *keystore.Resources,
+	volumes []volume.VolumeLike,
+	basePath string,
+	setDefaultSecurityContext bool,
+) (corev1.PodTemplateSpec, error) {
 	labels := kb.GetIdentityLabels()
 	labels[kblabel.KibanaVersionLabelName] = kb.Spec.Version
 
@@ -111,16 +121,12 @@ func NewPodTemplateSpec(ctx context.Context, client k8sclient.Client, kb kbv1.Ki
 		return corev1.PodTemplateSpec{}, err // error unlikely and should have been caught during validation
 	}
 
-	kibanaBasePath, err := GetKibanaBasePath(kb)
-	if err != nil {
-		return corev1.PodTemplateSpec{}, fmt.Errorf("failed to get kibana base path error:%w", err)
-	}
 	builder := defaults.NewPodTemplateBuilder(kb.Spec.PodTemplate, kbv1.KibanaContainerName).
 		WithResources(DefaultResources).
 		WithLabels(labels).
 		WithAnnotations(DefaultAnnotations).
 		WithDockerImage(kb.Spec.Image, container.ImageRepository(container.KibanaImage, v)).
-		WithReadinessProbe(readinessProbe(kb.Spec.HTTP.TLS.Enabled(), kibanaBasePath)).
+		WithReadinessProbe(readinessProbe(kb.Spec.HTTP.TLS.Enabled(), basePath)).
 		WithPorts(ports).
 		WithInitContainers(initConfigContainer(kb))
 
@@ -134,9 +140,9 @@ func NewPodTemplateSpec(ctx context.Context, client k8sclient.Client, kb kbv1.Ki
 	// Limiting to 7.10.0 here as there was a bug in previous versions causing rebuilding
 	// of browser bundles to happen on plugin install, which would attempt a write to the
 	// root filesystem on restart.
-	if v.GTE(version.From(7, 10, 0)) {
-		builder.WithPodSecurityContext(defaultPodSecurityContext).
-			WithContainersSecurityContext(defaultSecurityContext).
+	if v.GTE(version.From(7, 10, 0)) && setDefaultSecurityContext {
+		builder.WithContainersSecurityContext(defaultSecurityContext).
+			WithPodSecurityContext(defaultPodSecurityContext).
 			WithVolumes(TempVolume.Volume()).WithVolumeMounts(TempVolume.VolumeMount()).
 			WithVolumes(PluginsVolume.Volume()).WithVolumeMounts(PluginsVolume.VolumeMount())
 	}
@@ -146,7 +152,7 @@ func NewPodTemplateSpec(ctx context.Context, client k8sclient.Client, kb kbv1.Ki
 			WithInitContainers(keystore.InitContainer)
 	}
 
-	builder, err = stackmon.WithMonitoring(ctx, client, builder, kb)
+	builder, err = stackmon.WithMonitoring(ctx, client, builder, kb, basePath)
 	if err != nil {
 		return corev1.PodTemplateSpec{}, err
 	}
@@ -211,7 +217,7 @@ func GetKibanaBasePath(kb kbv1.Kibana) (string, error) {
 		return "", err
 	}
 
-	kbCfg := kibanaConfig{}
+	kbCfg := basePathConfig{}
 	if err := kbucfgConfig.Unpack(&kbCfg); err != nil {
 		return "", err
 	}

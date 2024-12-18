@@ -179,11 +179,11 @@ func (b Builder) MoreResourcesForIssue4730() Builder {
 	return b.WithResources(
 		corev1.ResourceRequirements{
 			Limits: map[corev1.ResourceName]resource.Quantity{
-				corev1.ResourceMemory: resource.MustParse("640Mi"),
+				corev1.ResourceMemory: resource.MustParse("756Mi"),
 				corev1.ResourceCPU:    resource.MustParse("200m"),
 			},
 			Requests: map[corev1.ResourceName]resource.Quantity{
-				corev1.ResourceMemory: resource.MustParse("640Mi"),
+				corev1.ResourceMemory: resource.MustParse("756Mi"),
 				corev1.ResourceCPU:    resource.MustParse("200m"),
 			},
 		},

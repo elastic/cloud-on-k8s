@@ -19,6 +19,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
 	"k8s.io/client-go/tools/record"
+	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	commonv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/common/v1"
@@ -197,9 +198,10 @@ func Test_getStrategyType(t *testing.T) {
 
 func TestDriverDeploymentParams(t *testing.T) {
 	type args struct {
-		kb                func() *kbv1.Kibana
-		initialObjects    func() []client.Object
-		policyAnnotations map[string]string
+		kb                            func() *kbv1.Kibana
+		initialObjects                func() []client.Object
+		policyAnnotations             map[string]string
+		setDefaultSecurityContextFlag bool
 	}
 
 	tests := []struct {
@@ -371,10 +373,32 @@ func TestDriverDeploymentParams(t *testing.T) {
 					kb.Spec.Version = "7.10.0"
 					return kb
 				},
-				initialObjects: defaultInitialObjects,
+				initialObjects:                defaultInitialObjects,
+				setDefaultSecurityContextFlag: true,
 			},
 			want: func() deployment.Params {
 				p := expectedDeploymentParams()
+				p.PodTemplateSpec.Labels["kibana.k8s.elastic.co/version"] = "7.10.0"
+				p.PodTemplateSpec.Spec.SecurityContext = &corev1.PodSecurityContext{
+					FSGroup: ptr.To[int64](1000),
+				}
+				return p
+			}(),
+			wantErr: false,
+		},
+		{
+			name: "7.10+ does not contain default security context when flag is not set",
+			args: args{
+				kb: func() *kbv1.Kibana {
+					kb := kibanaFixture()
+					kb.Spec.Version = "7.10.0"
+					return kb
+				},
+				initialObjects:                defaultInitialObjects,
+				setDefaultSecurityContextFlag: false,
+			},
+			want: func() deployment.Params {
+				p := pre710(expectedDeploymentParams())
 				p.PodTemplateSpec.Labels["kibana.k8s.elastic.co/version"] = "7.10.0"
 				return p
 			}(),
@@ -392,7 +416,7 @@ func TestDriverDeploymentParams(t *testing.T) {
 			d, err := newDriver(client, w, record.NewFakeRecorder(100), kb, corev1.IPv4Protocol)
 			require.NoError(t, err)
 
-			got, err := d.deploymentParams(context.Background(), kb, tt.args.policyAnnotations)
+			got, err := d.deploymentParams(context.Background(), kb, tt.args.policyAnnotations, "", tt.args.setDefaultSecurityContextFlag)
 			if tt.wantErr {
 				require.Error(t, err)
 				return
@@ -642,7 +666,6 @@ func expectedDeploymentParams() deployment.Params {
 					SecurityContext: &defaultSecurityContext,
 				}},
 				AutomountServiceAccountToken: &falseVal,
-				SecurityContext:              &defaultPodSecurityContext,
 			},
 		},
 	}

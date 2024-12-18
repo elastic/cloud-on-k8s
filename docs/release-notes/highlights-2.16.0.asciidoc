@@ -1,0 +1,42 @@
+[[release-highlights-2.16.0]]
+== 2.16.0 release highlights
+
+[float]
+[id="{p}-2160-new-and-notable"]
+=== New and notable
+
+New and notable changes in version 2.16.0.
+
+[float]
+[id="{p}-2160-remote-clusters-using-api-keys"]
+=== Remote clusters support using API keys
+
+ECK 2.16.0 includes a technical preview for connecting to remote clusters using API key authentication.
+
+Refer to the <<{p}-remote-clusters>> section for more information. 
+
+[float]
+[id="{p}-2160-hardened-kb-security-context"]
+=== Hardened Security Context for Kibana container
+
+The default `SecurityContext` of the Kibana containers has been hardened, it includes the following specification by default in version 7.10.0 and above when `set-default-security-context` is either `true` or `auto-detect`:
+
+[source,yaml]
+----
+securityContext:
+  allowPrivilegeEscalation: false
+  capabilities:
+    drop:
+    - ALL
+  privileged: false
+  readOnlyRootFilesystem: true
+----
+
+[float]
+[id="{p}-2160-breaking-changes"]
+=== eck-fleet-server Helm chart breaking changes
+
+The `eck-fleet-server` Helm chart has had the default values updated to remove the setting of the deployment model to be `deployment`.
+This was required because of an upstream Helm bug when using parent/child charts. Refer to https://github.com/elastic/cloud-on-k8s/issues/7429 for details.
+
+Check <<release-notes-2.16.0>> for the full list of changes.

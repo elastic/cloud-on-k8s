@@ -44,6 +44,7 @@ func Metricbeat(ctx context.Context, client k8s.Client, es esv1.Elasticsearch) (
 		metricbeatConfigTemplate,
 		esv1.ESNamer,
 		fmt.Sprintf("%s://localhost:%d", es.Spec.HTTP.Protocol(), network.HTTPPort),
+		"",
 		username,
 		password,
 		es.Spec.HTTP.TLS.Enabled(),
