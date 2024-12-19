@@ -5,11 +5,15 @@
 package http
 
 import (
+	"bytes"
 	"crypto/tls"
 	"crypto/x509"
+	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/cryptutil"
@@ -83,10 +87,32 @@ func MaybeAPIError(resp *http.Response) *APIError {
 		if resp.Request != nil {
 			url = resp.Request.URL.Redacted()
 		}
-		return &APIError{
+		apiError := &APIError{
 			StatusCode: resp.StatusCode,
-			msg:        fmt.Sprintf("failed to request %s, status is %d)", url, resp.StatusCode),
+			msg:        fmt.Sprintf("failed to request %s, status is %d", url, resp.StatusCode),
 		}
+		// If the response is not JSON, we cannot extract a message from it. Prefix check as Content-Type may contain charset.
+		if !strings.HasPrefix(resp.Header.Get("Content-Type"), "application/json") {
+			return apiError
+		}
+		body, err := io.ReadAll(resp.Body)
+		if err != nil {
+			// We were not able to read the body, return the API error with the status.
+			return apiError
+		}
+		// Reset the response body to the original unread state. It allows a caller to read again the body if necessary,
+		// for example in the case of a 408.
+		resp.Body = io.NopCloser(bytes.NewBuffer(body))
+		// speculative assumption that the body has a field called message (e.g. the case for Kibana)
+		errMsg := struct {
+			Message string `json:"message"`
+		}{}
+		if err := json.Unmarshal(body, &errMsg); err != nil {
+			return apiError
+		}
+		apiError.msg = fmt.Sprintf("%s, %s", apiError.msg, errMsg.Message)
+		return apiError
+
 	}
 	return nil
 }
