@@ -27,17 +27,17 @@ metricbeat.modules:
     # but does not perform any hostname verification. This is used when SSL is enabled with or without CA, to support self-signed certificate
     # with a custom CA or custom certificates with or without a CA that most likely are not issued for `localhost`.
     ssl.verification_mode: "certificate"
-    {{- if .HasCA }}
-    ssl.certificate_authorities: ["{{ .CAPath }}"]
+    {{- with .CAVolume }}
+    ssl.certificate_authorities: ["{{ CAPath . }}"]
     {{- end }}
 
 processors:
   - add_cloud_metadata: {}
   - add_host_metadata: {}
 
-{{- if gt .TotalFieldsLimit 0 }}
+{{- if isVersionGTE "8.15.0" }}
 setup.template.settings:
-  index.mapping.total_fields.limit: {{ .TotalFieldsLimit }}
+  index.mapping.total_fields.limit: 12500
 {{- end }}
 
 # Elasticsearch output configuration is generated
