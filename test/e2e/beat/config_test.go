@@ -38,6 +38,7 @@ func TestFilebeatDefaultConfig(t *testing.T) {
 
 	fbBuilder := beat.NewBuilder(name).
 		WithRoles(beat.AutodiscoverClusterRoleName).
+		WithOpenShiftRoles(test.UseSCCRole).
 		WithType(filebeat.Type).
 		WithElasticsearchRef(esBuilder.Ref()).
 		WithESValidations(
@@ -81,6 +82,7 @@ func TestMetricbeatDefaultConfig(t *testing.T) {
 			mbBuilder := beat.NewBuilder(name).
 				WithType(metricbeat.Type).
 				WithRoles(beat.MetricbeatClusterRoleName, beat.AutodiscoverClusterRoleName).
+				WithOpenShiftRoles(test.UseSCCRole).
 				WithElasticsearchRef(esBuilder.Ref()).
 				WithESValidations(
 					beat.HasEventFromBeat(metricbeat.Type),
@@ -149,6 +151,7 @@ func TestBeatSecureSettings(t *testing.T) {
 	fbBuilder := beat.NewBuilder(name).
 		WithType(filebeat.Type).
 		WithRoles(beat.AutodiscoverClusterRoleName).
+		WithOpenShiftRoles(test.UseSCCRole).
 		WithElasticsearchRef(esBuilder.Ref()).
 		WithSecureSettings(secretName).
 		WithObjects(secret).
@@ -221,6 +224,7 @@ processors:
 	fbBuilder := beat.NewBuilder(name).
 		WithType(filebeat.Type).
 		WithRoles(beat.AutodiscoverClusterRoleName).
+		WithOpenShiftRoles(test.UseSCCRole).
 		WithElasticsearchRef(esBuilder.Ref()).
 		WithConfigRef(secretName).
 		WithObjects(secret).
@@ -254,6 +258,7 @@ func TestAuditbeatConfig(t *testing.T) {
 		WithType(auditbeat.Type).
 		WithKibanaRef(kbBuilder.Ref()).
 		WithRoles(beat.AutodiscoverClusterRoleName).
+		WithOpenShiftRoles(test.UseSCCRole).
 		WithElasticsearchRef(esBuilder.Ref()).
 		WithESValidations(
 			beat.HasEventFromBeat(auditbeat.Type),
@@ -280,6 +285,7 @@ func TestPacketbeatConfig(t *testing.T) {
 		WithType(packetbeat.Type).
 		WithKibanaRef(kbBuilder.Ref()).
 		WithRoles(beat.AutodiscoverClusterRoleName).
+		WithOpenShiftRoles(test.UseSCCRole).
 		WithElasticsearchRef(esBuilder.Ref()).
 		WithESValidations(
 			beat.HasEventFromBeat(packetbeat.Type),
@@ -311,6 +317,7 @@ func TestJournalbeatConfig(t *testing.T) {
 	jbBuilder := beat.NewBuilder(name).
 		WithType(journalbeat.Type).
 		WithRoles(beat.AutodiscoverClusterRoleName).
+		WithOpenShiftRoles(test.UseSCCRole).
 		WithElasticsearchRef(esBuilder.Ref()).
 		WithESValidations(
 			beat.HasEventFromBeat(journalbeat.Type),

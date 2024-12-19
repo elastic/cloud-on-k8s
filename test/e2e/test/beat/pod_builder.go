@@ -46,30 +46,35 @@ func newPodBuilder(name, suffix string) PodBuilder {
 	// inject random string into the logs to allow validating whether they end up in ES easily
 	loggedString := fmt.Sprintf("_%s_", rand.String(6))
 
-	uid1001 := int64(1001)
-	return PodBuilder{
-		Pod: corev1.Pod{
-			ObjectMeta: meta,
-			Spec: corev1.PodSpec{
-				AutomountServiceAccountToken: ptr.To[bool](false),
-				Containers: []corev1.Container{
-					{
-						Name:  "ubuntu",
-						Image: "busybox",
-						Command: []string{
-							"sh",
-							"-c",
-							fmt.Sprintf("while [ true ]; do echo \"$(date) - %s\"; sleep 5; done", loggedString),
-						},
+	pod := corev1.Pod{
+		ObjectMeta: meta,
+		Spec: corev1.PodSpec{
+			AutomountServiceAccountToken: ptr.To[bool](false),
+			Containers: []corev1.Container{
+				{
+					Name:  "ubuntu",
+					Image: "busybox",
+					Command: []string{
+						"sh",
+						"-c",
+						fmt.Sprintf("while [ true ]; do echo \"$(date) - %s\"; sleep 5; done", loggedString),
 					},
 				},
-				TerminationGracePeriodSeconds: ptr.To[int64](0),
-				SecurityContext: &corev1.PodSecurityContext{
-					// Security policies forbid root user on secured clusters
-					RunAsUser: &uid1001,
-				},
 			},
+			TerminationGracePeriodSeconds: ptr.To[int64](0),
 		},
+	}
+
+	if !test.Ctx().OcpCluster {
+		uid1001 := int64(1001)
+		pod.Spec.SecurityContext = &corev1.PodSecurityContext{
+			// Security policies forbid root user on secured clusters
+			RunAsUser: &uid1001,
+		}
+	}
+
+	return PodBuilder{
+		Pod:    pod,
 		Logged: loggedString,
 	}.
 		WithSuffix(suffix).

@@ -141,6 +141,7 @@ func TestFleetMode(t *testing.T) {
 		fleetServerBuilder := agent.NewBuilder(name + "-fs").
 			WithNamespace(agentNS).
 			WithRoles(agent.AgentFleetModeRoleName).
+			WithOpenShiftRoles(test.UseSCCRole).
 			WithDeployment().
 			WithFleetMode().
 			WithFleetServer().
@@ -152,6 +153,7 @@ func TestFleetMode(t *testing.T) {
 
 		agentBuilder := agent.NewBuilder(name + "-ea").
 			WithRoles(agent.AgentFleetModeRoleName).
+			WithOpenShiftRoles(test.UseSCCRole).
 			WithFleetMode().
 			WithKibanaRef(kbBuilder.Ref()).
 			WithFleetServerRef(fleetServerBuilder.Ref())
@@ -167,6 +169,7 @@ func TestFleetMode(t *testing.T) {
 		fleetServerBuilder := agent.NewBuilder(name + "-fs").
 			WithNamespace(fleetNS).
 			WithRoles(agent.AgentFleetModeRoleName).
+			WithOpenShiftRoles(test.UseSCCRole).
 			WithDeployment().
 			WithFleetMode().
 			WithFleetServer().
@@ -178,6 +181,7 @@ func TestFleetMode(t *testing.T) {
 
 		agentBuilder := agent.NewBuilder(name + "-ea").
 			WithRoles(agent.AgentFleetModeRoleName).
+			WithOpenShiftRoles(test.UseSCCRole).
 			WithFleetMode().
 			WithKibanaRef(kbBuilder.Ref()).
 			WithFleetServerRef(fleetServerBuilder.Ref())
