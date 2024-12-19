@@ -42,7 +42,7 @@ func Metricbeat(ctx context.Context, client k8s.Client, es esv1.Elasticsearch) (
 		return stackmon.BeatSidecar{}, err
 	}
 
-	caVolume, err := stackmon.CAVolume(client, k8s.ExtractNamespacedName(&es), esv1.ESNamer, commonv1.KbMonitoringAssociationType /*???*/, es.Spec.HTTP.TLS.Enabled())
+	caVolume, err := stackmon.CAVolume(client, k8s.ExtractNamespacedName(&es), esv1.ESNamer, commonv1.EsMonitoringAssociationType, es.Spec.HTTP.TLS.Enabled())
 	if err != nil {
 		return stackmon.BeatSidecar{}, err
 	}

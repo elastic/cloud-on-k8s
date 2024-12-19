@@ -6,6 +6,7 @@ package stackmon
 
 import (
 	"context"
+	"encoding/json"
 	"testing"
 
 	"github.com/blang/semver/v4"
@@ -74,19 +75,14 @@ func TestWithMonitoring(t *testing.T) {
 	}
 
 	tests := []struct {
-		name                   string
-		es                     func() esv1.Elasticsearch
-		containersLength       int
-		esEnvVarsLength        int
-		podVolumesLength       int
-		beatVolumeMountsLength int
+		name string
+		es   func() esv1.Elasticsearch
 	}{
 		{
 			name: "without monitoring",
 			es: func() esv1.Elasticsearch {
 				return sampleEs
 			},
-			containersLength: 1,
 		},
 		{
 			name: "with metrics monitoring",
@@ -95,10 +91,6 @@ func TestWithMonitoring(t *testing.T) {
 				monitoring.GetMetricsAssociation(&sampleEs)[0].SetAssociationConf(&monitoringAssocConf)
 				return sampleEs
 			},
-			containersLength:       2,
-			esEnvVarsLength:        0,
-			podVolumesLength:       4,
-			beatVolumeMountsLength: 4,
 		},
 		{
 			name: "with logs monitoring",
@@ -108,10 +100,6 @@ func TestWithMonitoring(t *testing.T) {
 				monitoring.GetLogsAssociation(&sampleEs)[0].SetAssociationConf(&monitoringAssocConf)
 				return sampleEs
 			},
-			containersLength:       2,
-			esEnvVarsLength:        1,
-			podVolumesLength:       3,
-			beatVolumeMountsLength: 4,
 		},
 		{
 			name: "with metrics and logs monitoring",
@@ -122,10 +110,6 @@ func TestWithMonitoring(t *testing.T) {
 				monitoring.GetLogsAssociation(&sampleEs)[0].SetAssociationConf(&logsAssocConf)
 				return sampleEs
 			},
-			containersLength:       3,
-			esEnvVarsLength:        1,
-			podVolumesLength:       6,
-			beatVolumeMountsLength: 4,
 		},
 		{
 			name: "with metrics and logs monitoring with different es ref",
@@ -136,10 +120,6 @@ func TestWithMonitoring(t *testing.T) {
 				monitoring.GetLogsAssociation(&sampleEs)[0].SetAssociationConf(&logsAssocConf)
 				return sampleEs
 			},
-			containersLength:       3,
-			esEnvVarsLength:        1,
-			podVolumesLength:       7,
-			beatVolumeMountsLength: 4,
 		},
 	}
 
@@ -150,26 +130,9 @@ func TestWithMonitoring(t *testing.T) {
 			_, err := WithMonitoring(context.Background(), fakeClient, builder, es)
 			assert.NoError(t, err)
 
-			assert.Equal(t, tc.containersLength, len(builder.PodTemplate.Spec.Containers))
-			assert.Equal(t, tc.esEnvVarsLength, len(builder.PodTemplate.Spec.Containers[0].Env))
-			assert.Equal(t, tc.podVolumesLength, len(builder.PodTemplate.Spec.Volumes))
-
-			if monitoring.IsMetricsDefined(&es) {
-				for _, c := range builder.PodTemplate.Spec.Containers {
-					if c.Name == "metricbeat" {
-						assert.Equal(t, tc.beatVolumeMountsLength, len(c.VolumeMounts))
-						assertSecurityContext(t, c.SecurityContext)
-					}
-				}
-			}
-			if monitoring.IsLogsDefined(&es) {
-				for _, c := range builder.PodTemplate.Spec.Containers {
-					if c.Name == "filebeat" {
-						assert.Equal(t, tc.beatVolumeMountsLength, len(c.VolumeMounts))
-						assertSecurityContext(t, c.SecurityContext)
-					}
-				}
-			}
+			actual, err := json.MarshalIndent(builder.PodTemplate, " ", "")
+			assert.NoError(t, err)
+			snaps.MatchJSON(t, actual)
 		})
 	}
 }
