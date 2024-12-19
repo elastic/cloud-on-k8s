@@ -69,7 +69,7 @@ These permissions are needed by the Service Account that ECK operator runs as.
 |Deployment|apps|no|Deploying Kibana, APM Server, EnterpriseSearch, Maps, Beats or Elastic Agent.
 |DaemonSet|apps|no|Deploying Beats or Elastic Agent.
 |PodDisruptionBudget|policy|no|Ensuring update safety for Elasticsearch. Check link:https://www.elastic.co/guide/en/cloud-on-k8s/current/k8s-pod-disruption-budget.html[docs] to learn more.
-|StorageClass|storage.k8s.io|yes|Validating storage expansion support. Check link:https://www.elastic.co/guide/en/cloud-on-k8s/{eck_version}/k8s-volume-claim-templates.html#k8s_updating_the_volume_claim_settings[docs] to learn more.
+|StorageClass|storage.k8s.io|yes|Validating storage expansion support. Check link:https://www.elastic.co/guide/en/cloud-on-k8s/{eck_release_branch}/k8s-volume-claim-templates.html#k8s_updating_the_volume_claim_settings[docs] to learn more.
 |coreauthorization.k8s.io|SubjectAccessReview|yes|Controlling access between referenced resources. Check link:https://www.elastic.co/guide/en/cloud-on-k8s/current/k8s-restrict-cross-namespace-associations.html[docs] to learn more.
 |===
 
