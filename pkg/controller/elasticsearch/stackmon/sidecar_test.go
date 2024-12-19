@@ -137,23 +137,6 @@ func TestWithMonitoring(t *testing.T) {
 	}
 }
 
-func assertSecurityContext(t *testing.T, securityContext *corev1.SecurityContext) {
-	t.Helper()
-	require.NotNil(t, securityContext)
-	require.NotNil(t, securityContext.Privileged)
-	require.False(t, *securityContext.Privileged)
-	require.NotNil(t, securityContext.Capabilities)
-	droppedCapabilities := securityContext.Capabilities.Drop
-	hasDropAllCapability := false
-	for _, capability := range droppedCapabilities {
-		if capability == "ALL" {
-			hasDropAllCapability = true
-			break
-		}
-	}
-	require.True(t, hasDropAllCapability, "ALL capability not found in securityContext.Capabilities.Drop")
-}
-
 func TestMetricbeatConfig(t *testing.T) {
 	volumeFixture := volume.NewSecretVolumeWithMountPath(
 		"secret-name",
