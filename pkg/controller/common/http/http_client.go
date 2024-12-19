@@ -82,39 +82,40 @@ type APIError struct {
 
 // MaybeAPIError creates an APIError from a http.Response if the status code is not 2xx.
 func MaybeAPIError(resp *http.Response) *APIError {
-	if resp.StatusCode < 200 || resp.StatusCode > 299 {
-		url := "unknown url"
-		if resp.Request != nil {
-			url = resp.Request.URL.Redacted()
-		}
-		apiError := &APIError{
-			StatusCode: resp.StatusCode,
-			msg:        fmt.Sprintf("failed to request %s, status is %d", url, resp.StatusCode),
-		}
-		// If the response is not JSON, we cannot extract a message from it. Prefix check as Content-Type may contain charset.
-		if !strings.HasPrefix(resp.Header.Get("Content-Type"), "application/json") {
-			return apiError
-		}
-		body, err := io.ReadAll(resp.Body)
-		if err != nil {
-			// We were not able to read the body, return the API error with the status.
-			return apiError
-		}
-		// Reset the response body to the original unread state. It allows a caller to read again the body if necessary,
-		// for example in the case of a 408.
-		resp.Body = io.NopCloser(bytes.NewBuffer(body))
-		// speculative assumption that the body has a field called message (e.g. the case for Kibana)
-		errMsg := struct {
-			Message string `json:"message"`
-		}{}
-		if err := json.Unmarshal(body, &errMsg); err != nil {
-			return apiError
-		}
-		apiError.msg = fmt.Sprintf("%s, %s", apiError.msg, errMsg.Message)
-		return apiError
-
+	if resp.StatusCode >= 200 && resp.StatusCode <= 299 {
+		return nil
 	}
-	return nil
+	url := "unknown url"
+	if resp.Request != nil {
+		url = resp.Request.URL.Redacted()
+	}
+	apiError := &APIError{
+		StatusCode: resp.StatusCode,
+		msg:        fmt.Sprintf("failed to request %s, status is %d", url, resp.StatusCode),
+	}
+	// If the response is not JSON, we cannot extract a message from it. Prefix check as Content-Type may contain charset.
+	if !strings.HasPrefix(resp.Header.Get("Content-Type"), "application/json") {
+		return apiError
+	}
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		// We were not able to read the body, return the API error with the status.
+		return apiError
+	}
+	// Reset the response body to the original unread state. It allows a caller to read again the body if necessary,
+	// for example in the case of a 408.
+	resp.Body = io.NopCloser(bytes.NewBuffer(body))
+	// speculative assumption that the body has a field called message (e.g. the case for Kibana)
+	errMsg := struct {
+		Message string `json:"message"`
+	}{}
+	if err := json.Unmarshal(body, &errMsg); err != nil {
+		return apiError
+	}
+	if errMsg.Message != "" {
+		apiError.msg = fmt.Sprintf("%s, %s", apiError.msg, errMsg.Message)
+	}
+	return apiError
 }
 
 func (e *APIError) Error() string {
