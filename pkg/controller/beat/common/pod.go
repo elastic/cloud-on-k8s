@@ -164,7 +164,7 @@ func buildPodTemplate(
 	}
 
 	if monitoring.IsMetricsDefined(&params.Beat) {
-		sideCar, err := beat_stackmon.MetricBeat(params.Context, params.Client, &params.Beat, params.Beat.Spec.Version)
+		sideCar, err := beat_stackmon.MetricBeat(params.Context, params.Client, &params.Beat)
 		if err != nil {
 			return podTemplate, err
 		}
