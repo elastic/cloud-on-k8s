@@ -130,7 +130,7 @@ var scriptTemplate = template.Must(template.New("").Parse(
 	if [[ $EUID -eq 0 ]]; then
 		{{range .ChownToElasticsearch}}
 			echo "chowning {{.}} to elasticsearch:elasticsearch"
-			chown -v elasticsearch:elasticsearch {{.}}
+			chown -vR elasticsearch:elasticsearch {{.}}
 		{{end}}
 	fi
 	echo "chown duration: $(duration $chown_start) sec."
