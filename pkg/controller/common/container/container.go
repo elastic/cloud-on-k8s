@@ -88,8 +88,7 @@ func ImageRepository(img Image, ver version.Version) string {
 	}
 	// on 9.x ubi is the default and there's no -ubi image
 	if useUBISuffix && ver.Major == 9 {
-		switch img {
-		case APMServerImage:
+		if img == APMServerImage {
 			suffix = ""
 		}
 	}
