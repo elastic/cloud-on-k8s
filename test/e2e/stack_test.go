@@ -60,12 +60,13 @@ func initialBuildersToUpgrade(t *testing.T, initialVersion string) ([]test.Build
 	ent := enterprisesearch.NewBuilder("ent").
 		WithNodeCount(1).
 		WithVersion(initialVersion). // pre 8.x doesn't require any config, but we change the version after calling
-		WithoutConfig().             // NewBuilder which relies on the version from test.Ctx(), so removing config here
+		WithoutConfig(). // NewBuilder which relies on the version from test.Ctx(), so removing config here
 		WithElasticsearchRef(esRef).
 		WithRestrictedSecurityContext()
 	fb := beat.NewBuilder("fb").
 		WithType(filebeat.Type).
 		WithRoles(beat.AutodiscoverClusterRoleName).
+		WithOpenShiftRoles(test.UseSCCRole).
 		WithVersion(initialVersion).
 		WithElasticsearchRef(esRef).
 		WithKibanaRef(kbRef)
@@ -97,8 +98,8 @@ func TestVersionUpgradeOrdering(t *testing.T) {
 }
 
 func TestVersionUpgradeOrderingWithLogstash(t *testing.T) {
-	initialVersion := "8.6.0"
-	initialBuilders, updatedBuilders, stackVersions := initialBuildersToUpgrade(t, "8.6.0")
+	initialVersion := "8.12.0"
+	initialBuilders, updatedBuilders, stackVersions := initialBuildersToUpgrade(t, initialVersion)
 
 	ls := logstash.NewBuilder("ls").WithVersion(initialVersion).
 		WithElasticsearchRefs(
