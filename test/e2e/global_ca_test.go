@@ -63,6 +63,7 @@ func TestGlobalCA(t *testing.T) {
 		WithOpenShiftRoles(test.UseSCCRole)
 	agent = elasticagent.ApplyYamls(t, agent, e2e_agent.E2EAgentSystemIntegrationConfig, e2e_agent.E2EAgentSystemIntegrationPodTemplate)
 	ls := logstash.NewBuilder(name).
+		WithRestrictedSecurityContext().
 		WithNodeCount(1).
 		WithElasticsearchRefs(
 			logstashv1alpha1.ElasticsearchCluster{
