@@ -51,6 +51,7 @@ func newBuilder(name, randSuffix string) Builder {
 			},
 		},
 	}.
+		WithRestrictedSecurityContext().
 		WithSuffix(randSuffix).
 		WithLabel(run.TestNameLabel, name).
 		WithPodLabel(run.TestNameLabel, name).
