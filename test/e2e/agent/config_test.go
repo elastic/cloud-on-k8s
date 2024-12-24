@@ -105,6 +105,7 @@ func TestMultipleOutputConfig(t *testing.T) {
 			agent.ToOutput(esBuilder1.Ref(), "default"),
 			agent.ToOutput(esBuilder2.Ref(), "monitoring"),
 		).
+		WithOpenShiftRoles(test.UseSCCRole).
 		WithESValidation(agent.HasWorkingDataStream(agent.LogsType, "elastic_agent", "default"), "monitoring").
 		WithESValidation(agent.HasWorkingDataStream(agent.LogsType, "elastic_agent.filebeat", "default"), "monitoring").
 		WithESValidation(agent.HasWorkingDataStream(agent.LogsType, "elastic_agent.metricbeat", "default"), "monitoring").
