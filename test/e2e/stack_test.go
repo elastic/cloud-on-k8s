@@ -102,6 +102,7 @@ func TestVersionUpgradeOrderingWithLogstash(t *testing.T) {
 	initialBuilders, updatedBuilders, stackVersions := initialBuildersToUpgrade(t, initialVersion)
 
 	ls := logstash.NewBuilder("ls").WithVersion(initialVersion).
+		WithRestrictedSecurityContext().
 		WithElasticsearchRefs(
 			// associate logstash to the es ref stored in the stackVersions
 			logstashv1alpha1.ElasticsearchCluster{
