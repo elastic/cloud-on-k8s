@@ -59,7 +59,8 @@ func TestGlobalCA(t *testing.T) {
 	testPod := beat.NewPodBuilder(name)
 	agent := elasticagent.NewBuilder(name).
 		WithElasticsearchRefs(elasticagent.ToOutput(es.Ref(), "default")).
-		WithDefaultESValidation(elasticagent.HasWorkingDataStream(elasticagent.LogsType, "elastic_agent", "default"))
+		WithDefaultESValidation(elasticagent.HasWorkingDataStream(elasticagent.LogsType, "elastic_agent", "default")).
+		WithOpenShiftRoles(test.UseSCCRole)
 	agent = elasticagent.ApplyYamls(t, agent, e2e_agent.E2EAgentSystemIntegrationConfig, e2e_agent.E2EAgentSystemIntegrationPodTemplate)
 	ls := logstash.NewBuilder(name).
 		WithNodeCount(1).
