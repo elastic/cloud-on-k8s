@@ -19,6 +19,7 @@ import (
 func TestSingleLogstash(t *testing.T) {
 	name := "test-single-logstash"
 	logstashBuilder := logstash.NewBuilder(name).
+		WithOpenShiftRoles(test.UseSCCRole).
 		WithNodeCount(1)
 	test.Sequence(nil, test.EmptySteps, logstashBuilder).RunSequential(t)
 }

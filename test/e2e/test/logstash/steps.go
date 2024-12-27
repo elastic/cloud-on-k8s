@@ -53,9 +53,11 @@ func (b Builder) InitTestSteps(k *test.K8sClient) test.StepList {
 		{
 			Name: "Remove Logstash if it already exists",
 			Test: test.Eventually(func() error {
-				err := k.Client.Delete(context.Background(), &b.Logstash)
-				if err != nil && !apierrors.IsNotFound(err) {
-					return err
+				for _, obj := range b.RuntimeObjects() {
+					err := k.Client.Delete(context.Background(), obj)
+					if err != nil && !apierrors.IsNotFound(err) {
+						return err
+					}
 				}
 				// wait for pods to disappear
 				return k.CheckPodCount(0, test.LogstashPodListOptions(b.Logstash.Namespace, b.Logstash.Name)...)
@@ -69,7 +71,12 @@ func (b Builder) CreationTestSteps(k *test.K8sClient) test.StepList {
 		{
 			Name: "Submitting the Logstash resource should succeed",
 			Test: test.Eventually(func() error {
-				return k.CreateOrUpdate(&b.Logstash)
+				for _, obj := range b.RuntimeObjects() {
+					if err := k.CreateOrUpdate(obj); err != nil {
+						return err
+					}
+				}
+				return nil
 			}),
 		},
 		{
@@ -123,9 +130,11 @@ func (b Builder) DeletionTestSteps(k *test.K8sClient) test.StepList {
 		{
 			Name: "Deleting Logstash should return no error",
 			Test: test.Eventually(func() error {
-				err := k.Client.Delete(context.Background(), &b.Logstash)
-				if err != nil && !apierrors.IsNotFound(err) {
-					return err
+				for _, obj := range b.RuntimeObjects() {
+					err := k.Client.Delete(context.Background(), obj)
+					if err != nil && !apierrors.IsNotFound(err) {
+						return err
+					}
 				}
 				return nil
 			}),

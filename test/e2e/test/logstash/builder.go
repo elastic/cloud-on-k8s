@@ -5,7 +5,10 @@
 package logstash
 
 import (
+	"fmt"
+
 	corev1 "k8s.io/api/core/v1"
+	rbacv1 "k8s.io/api/rbac/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/rand"
@@ -27,6 +30,7 @@ type Builder struct {
 	MutatedFrom       *Builder
 	GlobalCA          bool
 	ExpectedAPIServer *configs.APIServer
+	AdditionalObjects []client.Object
 }
 
 func NewBuilder(name string) Builder {
@@ -271,6 +275,110 @@ func (b Builder) SkipTest() bool {
 func (b Builder) WithGlobalCA(v bool) Builder {
 	b.GlobalCA = v
 	return b
+}
+
+func (b Builder) WithOpenShiftRoles(clusterRoleNames ...string) Builder {
+	if !test.Ctx().OcpCluster {
+		return b
+	}
+	return b.WithRoles(clusterRoleNames...)
+}
+
+func (b Builder) WithRoles(clusterRoleNames ...string) Builder {
+	resultBuilder := b
+	for _, clusterRoleName := range clusterRoleNames {
+		resultBuilder = bind(resultBuilder, clusterRoleName)
+	}
+
+	return resultBuilder
+}
+
+func bind(b Builder, clusterRoleName string) Builder {
+	saName := b.Logstash.Spec.PodTemplate.Spec.ServiceAccountName
+
+	if saName == "" {
+		saName = fmt.Sprintf("%s-sa", b.Logstash.Name)
+		b = b.WithPodTemplateServiceAccount(saName)
+		sa := &corev1.ServiceAccount{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      saName,
+				Namespace: b.Logstash.Namespace,
+			},
+		}
+
+		b.AdditionalObjects = append(b.AdditionalObjects, sa)
+	}
+
+	crb := &rbacv1.ClusterRoleBinding{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: fmt.Sprintf("%s-%s-%s-binding", clusterRoleName, b.Logstash.Namespace, b.Logstash.Name),
+		},
+		Subjects: []rbacv1.Subject{
+			{
+				Kind:      "ServiceAccount",
+				Name:      saName,
+				Namespace: b.Logstash.Namespace,
+			},
+		},
+		RoleRef: rbacv1.RoleRef{
+			APIGroup: rbacv1.GroupName,
+			Kind:     "ClusterRole",
+			Name:     clusterRoleName,
+		},
+	}
+	b.AdditionalObjects = append(b.AdditionalObjects, crb)
+
+	return b
+}
+
+func (b Builder) RuntimeObjects() []client.Object {
+	// OpenShift does not only require running as root, the privileged field must also be
+	// set to true in order to write in a hostPath volume.
+	if test.Ctx().OcpCluster {
+		podSecurityContext := b.Logstash.Spec.PodTemplate.Spec.SecurityContext
+		if podSecurityContext != nil && podSecurityContext.RunAsUser != nil {
+			if *podSecurityContext.RunAsUser == 0 {
+				// Only update the container's SecurityContext if the Pod runs as root.
+				b = b.WithContainerSecurityContext(corev1.SecurityContext{
+					Privileged: ptr.To[bool](true),
+					RunAsUser:  ptr.To[int64](0),
+				})
+			}
+		}
+	}
+	return append(b.AdditionalObjects, &b.Logstash)
+}
+
+func (b Builder) WithPodTemplateServiceAccount(name string) Builder {
+	b.Logstash.Spec.PodTemplate.Spec.ServiceAccountName = name
+
+	return b
+}
+
+func (b Builder) WithContainerSecurityContext(securityContext corev1.SecurityContext) Builder {
+	containerIdx := getContainerIndex(logstashv1alpha1.LogstashContainerName, b.Logstash.Spec.PodTemplate.Spec.Containers)
+	if containerIdx < 0 {
+		b.Logstash.Spec.PodTemplate.Spec.Containers = append(
+			b.Logstash.Spec.PodTemplate.Spec.Containers,
+			corev1.Container{
+				Name:            logstashv1alpha1.LogstashContainerName,
+				SecurityContext: &securityContext,
+			},
+		)
+		return b
+	}
+
+	b.Logstash.Spec.PodTemplate.Spec.Containers[containerIdx].SecurityContext = &securityContext
+	return b
+}
+
+func getContainerIndex(name string, containers []corev1.Container) int {
+	for i := range containers {
+		if containers[i].Name == name {
+			return i
+		}
+	}
+	return -1
 }
 
 func (b Builder) DeepCopy() *Builder {
