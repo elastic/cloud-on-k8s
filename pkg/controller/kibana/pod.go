@@ -35,6 +35,8 @@ const (
 	DataVolumeMountPath          = "/usr/share/kibana/data"
 	PluginsVolumeName            = "kibana-plugins"
 	PluginsVolumeMountPath       = "/usr/share/kibana/plugins"
+	LogsVolumeName               = "kibana-logs"
+	LogsVolumeMountPath          = "/usr/share/kibana/logs"
 	TempVolumeName               = "temp-volume"
 	TempVolumeMountPath          = "/tmp"
 	KibanaBasePathEnvName        = "SERVER_BASEPATH"
@@ -52,6 +54,10 @@ var (
 	// PluginsVolume can be used to persist plugins after installation via an init container when
 	// the Kibana pod has readOnlyRootFilesystem set to true.
 	PluginsVolume = volume.NewEmptyDirVolume(PluginsVolumeName, PluginsVolumeMountPath)
+
+	// LogsVolume can be used to persist logs even when
+	// the Kibana pod has readOnlyRootFilesystem set to true.
+	LogsVolume = volume.NewEmptyDirVolume(LogsVolumeName, LogsVolumeMountPath)
 
 	// TempVolume can be used for some reporting features when the Kibana pod has
 	// readOnlyRootFilesystem set to true.
@@ -143,8 +149,9 @@ func NewPodTemplateSpec(
 	if v.GTE(version.From(7, 10, 0)) && setDefaultSecurityContext {
 		builder.WithContainersSecurityContext(defaultSecurityContext).
 			WithPodSecurityContext(defaultPodSecurityContext).
-			WithVolumes(TempVolume.Volume()).WithVolumeMounts(TempVolume.VolumeMount()).
-			WithVolumes(PluginsVolume.Volume()).WithVolumeMounts(PluginsVolume.VolumeMount())
+			WithVolumes(LogsVolume.Volume()).WithVolumeMounts(LogsVolume.VolumeMount()).
+			WithVolumes(PluginsVolume.Volume()).WithVolumeMounts(PluginsVolume.VolumeMount()).
+			WithVolumes(TempVolume.Volume()).WithVolumeMounts(TempVolume.VolumeMount())
 	}
 
 	if keystore != nil {
