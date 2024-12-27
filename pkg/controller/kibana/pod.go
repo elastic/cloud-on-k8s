@@ -55,7 +55,7 @@ var (
 	// the Kibana pod has readOnlyRootFilesystem set to true.
 	PluginsVolume = volume.NewEmptyDirVolume(PluginsVolumeName, PluginsVolumeMountPath)
 
-	// LogsVolume can be used to persist logs after installation when
+	// LogsVolume can be used to persist logs even when
 	// the Kibana pod has readOnlyRootFilesystem set to true.
 	LogsVolume = volume.NewEmptyDirVolume(LogsVolumeName, LogsVolumeMountPath)
 
