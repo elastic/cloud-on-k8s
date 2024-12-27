@@ -353,7 +353,7 @@ func Command() *cobra.Command {
 	cmd.Flags().String(
 		operator.SetDefaultSecurityContextFlag,
 		"auto-detect",
-		"Enables setting the default security context with fsGroup=1000 for Elasticsearch 8.0+ Pods and Kibana 7.10+ Pods. Possible values: true, false, auto-detect",
+		"Enables setting the default security context with fsGroup=1000 for Elasticsearch 8.0+ Pods. Ignored pre-8.0. Possible values: true, false, auto-detect",
 	)
 
 	// hide development mode flags from the usage message

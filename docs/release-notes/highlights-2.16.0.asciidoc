@@ -19,7 +19,7 @@ Refer to the <<{p}-remote-clusters>> section for more information.
 [id="{p}-2160-hardened-kb-security-context"]
 === Hardened Security Context for Kibana container
 
-The default `SecurityContext` of the Kibana containers has been hardened, it includes the following specification by default in version 7.10.0 and above when `set-default-security-context` is either `true` or `auto-detect`:
+The default `SecurityContext` of the Kibana containers has been hardened, it includes the following specification by default in version 7.10.0 and above:
 
 [source,yaml]
 ----

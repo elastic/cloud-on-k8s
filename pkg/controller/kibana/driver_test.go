@@ -19,7 +19,6 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
 	"k8s.io/client-go/tools/record"
-	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	commonv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/common/v1"
@@ -198,10 +197,9 @@ func Test_getStrategyType(t *testing.T) {
 
 func TestDriverDeploymentParams(t *testing.T) {
 	type args struct {
-		kb                            func() *kbv1.Kibana
-		initialObjects                func() []client.Object
-		policyAnnotations             map[string]string
-		setDefaultSecurityContextFlag bool
+		kb                func() *kbv1.Kibana
+		initialObjects    func() []client.Object
+		policyAnnotations map[string]string
 	}
 
 	tests := []struct {
@@ -225,7 +223,7 @@ func TestDriverDeploymentParams(t *testing.T) {
 				kb:             kibanaFixture,
 				initialObjects: defaultInitialObjects,
 			},
-			want:    pre710(expectedDeploymentParams()),
+			want:    expectedDeploymentParams(),
 			wantErr: false,
 		},
 		{
@@ -235,7 +233,7 @@ func TestDriverDeploymentParams(t *testing.T) {
 				initialObjects:    defaultInitialObjects,
 				policyAnnotations: map[string]string{"policy.k8s.elastic.co/kibana-config-hash": "2123345"},
 			},
-			want:    pre710(expectedDeploymentWithPolicyAnnotations(map[string]string{"policy.k8s.elastic.co/kibana-config-hash": "2123345"})),
+			want:    expectedDeploymentWithPolicyAnnotations(map[string]string{"policy.k8s.elastic.co/kibana-config-hash": "2123345"}),
 			wantErr: false,
 		},
 		{
@@ -251,7 +249,7 @@ func TestDriverDeploymentParams(t *testing.T) {
 				initialObjects: defaultInitialObjects,
 			},
 			want: func() deployment.Params {
-				params := pre710(expectedDeploymentParams())
+				params := expectedDeploymentParams()
 				params.PodTemplateSpec.Spec.Volumes = params.PodTemplateSpec.Spec.Volumes[1:]
 				params.PodTemplateSpec.Spec.InitContainers[0].VolumeMounts = params.PodTemplateSpec.Spec.InitContainers[0].VolumeMounts[1:]
 				params.PodTemplateSpec.Spec.Containers[0].VolumeMounts = params.PodTemplateSpec.Spec.Containers[0].VolumeMounts[1:]
@@ -268,7 +266,7 @@ func TestDriverDeploymentParams(t *testing.T) {
 				initialObjects: defaultInitialObjects,
 			},
 			want: func() deployment.Params {
-				p := pre710(expectedDeploymentParams())
+				p := expectedDeploymentParams()
 				p.PodTemplateSpec.Labels["mylabel"] = "value"
 				for i, c := range p.PodTemplateSpec.Spec.Containers {
 					if c.Name == kbv1.KibanaContainerName {
@@ -325,7 +323,7 @@ func TestDriverDeploymentParams(t *testing.T) {
 				},
 			},
 			want: func() deployment.Params {
-				p := pre710(expectedDeploymentParams())
+				p := expectedDeploymentParams()
 				p.PodTemplateSpec.Annotations["kibana.k8s.elastic.co/config-hash"] = "2368465874"
 				return p
 			}(),
@@ -342,7 +340,7 @@ func TestDriverDeploymentParams(t *testing.T) {
 				initialObjects: defaultInitialObjects,
 			},
 			want: func() deployment.Params {
-				p := pre710(expectedDeploymentParams())
+				p := expectedDeploymentParams()
 				p.PodTemplateSpec.Labels["kibana.k8s.elastic.co/version"] = "6.8.0"
 				return p
 			}(),
@@ -359,47 +357,8 @@ func TestDriverDeploymentParams(t *testing.T) {
 				initialObjects: defaultInitialObjects,
 			},
 			want: func() deployment.Params {
-				p := pre710(expectedDeploymentParams())
-				p.PodTemplateSpec.Labels["kibana.k8s.elastic.co/version"] = "6.8.0"
-				return p
-			}(),
-			wantErr: false,
-		},
-		{
-			name: "7.10+ contains security contexts",
-			args: args{
-				kb: func() *kbv1.Kibana {
-					kb := kibanaFixture()
-					kb.Spec.Version = "7.10.0"
-					return kb
-				},
-				initialObjects:                defaultInitialObjects,
-				setDefaultSecurityContextFlag: true,
-			},
-			want: func() deployment.Params {
 				p := expectedDeploymentParams()
-				p.PodTemplateSpec.Labels["kibana.k8s.elastic.co/version"] = "7.10.0"
-				p.PodTemplateSpec.Spec.SecurityContext = &corev1.PodSecurityContext{
-					FSGroup: ptr.To[int64](1000),
-				}
-				return p
-			}(),
-			wantErr: false,
-		},
-		{
-			name: "7.10+ does not contain default security context when flag is not set",
-			args: args{
-				kb: func() *kbv1.Kibana {
-					kb := kibanaFixture()
-					kb.Spec.Version = "7.10.0"
-					return kb
-				},
-				initialObjects:                defaultInitialObjects,
-				setDefaultSecurityContextFlag: false,
-			},
-			want: func() deployment.Params {
-				p := pre710(expectedDeploymentParams())
-				p.PodTemplateSpec.Labels["kibana.k8s.elastic.co/version"] = "7.10.0"
+				p.PodTemplateSpec.Labels["kibana.k8s.elastic.co/version"] = "6.8.0"
 				return p
 			}(),
 			wantErr: false,
@@ -416,7 +375,7 @@ func TestDriverDeploymentParams(t *testing.T) {
 			d, err := newDriver(client, w, record.NewFakeRecorder(100), kb, corev1.IPv4Protocol)
 			require.NoError(t, err)
 
-			got, err := d.deploymentParams(context.Background(), kb, tt.args.policyAnnotations, "", tt.args.setDefaultSecurityContextFlag)
+			got, err := d.deploymentParams(context.Background(), kb, tt.args.policyAnnotations, "")
 			if tt.wantErr {
 				require.Error(t, err)
 				return
@@ -531,25 +490,15 @@ func expectedDeploymentParams() deployment.Params {
 							EmptyDir: &corev1.EmptyDirVolumeSource{},
 						},
 					},
-					{
-						Name: "kibana-plugins",
-						VolumeSource: corev1.VolumeSource{
-							EmptyDir: &corev1.EmptyDirVolumeSource{},
-						},
-					},
-					{
-						Name: "temp-volume",
-						VolumeSource: corev1.VolumeSource{
-							EmptyDir: &corev1.EmptyDirVolumeSource{},
-						},
-					},
 				},
 				InitContainers: []corev1.Container{{
 					Name:            "elastic-internal-init-config",
 					ImagePullPolicy: corev1.PullIfNotPresent,
 					Image:           "my-image",
 					Command:         []string{"/usr/bin/env", "bash", "-c", InitConfigScript},
-					SecurityContext: &defaultSecurityContext,
+					SecurityContext: &corev1.SecurityContext{
+						Privileged: &falseVal,
+					},
 					Env: []corev1.EnvVar{
 						{Name: settings.EnvPodIP, Value: "", ValueFrom: &corev1.EnvVarSource{
 							FieldRef: &corev1.ObjectFieldSelector{APIVersion: "v1", FieldPath: "status.podIP"},
@@ -585,16 +534,6 @@ func expectedDeploymentParams() deployment.Params {
 							Name:      DataVolumeName,
 							ReadOnly:  falseVal,
 							MountPath: DataVolumeMountPath,
-						},
-						{
-							Name:      "kibana-plugins",
-							ReadOnly:  falseVal,
-							MountPath: "/usr/share/kibana/plugins",
-						},
-						{
-							Name:      "temp-volume",
-							ReadOnly:  falseVal,
-							MountPath: "/tmp",
 						},
 					},
 					Resources: corev1.ResourceRequirements{
@@ -632,16 +571,6 @@ func expectedDeploymentParams() deployment.Params {
 							ReadOnly:  falseVal,
 							MountPath: DataVolumeMountPath,
 						},
-						{
-							Name:      "kibana-plugins",
-							ReadOnly:  falseVal,
-							MountPath: "/usr/share/kibana/plugins",
-						},
-						{
-							Name:      "temp-volume",
-							ReadOnly:  falseVal,
-							MountPath: "/tmp",
-						},
 					},
 					Image: "my-image",
 					Name:  kbv1.KibanaContainerName,
@@ -662,8 +591,7 @@ func expectedDeploymentParams() deployment.Params {
 							},
 						},
 					},
-					Resources:       DefaultResources,
-					SecurityContext: &defaultSecurityContext,
+					Resources: DefaultResources,
 				}},
 				AutomountServiceAccountToken: &falseVal,
 			},
@@ -678,16 +606,6 @@ func expectedDeploymentWithPolicyAnnotations(policyAnnotations map[string]string
 		deploymentParams.PodTemplateSpec.Annotations[k] = v
 	}
 	return deploymentParams
-}
-
-func pre710(params deployment.Params) deployment.Params {
-	params.PodTemplateSpec.Spec.Containers[0].SecurityContext = nil
-	params.PodTemplateSpec.Spec.InitContainers[0].SecurityContext = nil
-	params.PodTemplateSpec.Spec.SecurityContext = nil
-	params.PodTemplateSpec.Spec.Volumes = params.PodTemplateSpec.Spec.Volumes[:5]
-	params.PodTemplateSpec.Spec.InitContainers[0].VolumeMounts = params.PodTemplateSpec.Spec.InitContainers[0].VolumeMounts[:5]
-	params.PodTemplateSpec.Spec.Containers[0].VolumeMounts = params.PodTemplateSpec.Spec.Containers[0].VolumeMounts[:5]
-	return params
 }
 
 func kibanaFixture() *kbv1.Kibana {
