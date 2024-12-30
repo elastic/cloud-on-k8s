@@ -169,7 +169,7 @@ filter {
 					},
 				},
 			},
-		})
+		}).WithRestrictedSecurityContext()
 
 	steps := test.StepsFunc(func(k *test.K8sClient) test.StepList {
 		return test.StepList{

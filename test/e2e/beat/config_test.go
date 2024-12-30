@@ -117,6 +117,7 @@ func TestHeartbeatConfig(t *testing.T) {
 		WithType(heartbeat.Type).
 		WithDeployment().
 		WithElasticsearchRef(esBuilder.Ref()).
+		WithOpenShiftRoles(test.UseSCCRole).
 		WithESValidations(
 			beat.HasEventFromBeat(heartbeat.Type),
 			beat.HasEvent("monitor.status:up"))

@@ -34,6 +34,7 @@ func TestSystemIntegrationConfig(t *testing.T) {
 
 	agentBuilder := agent.NewBuilder(name).
 		WithElasticsearchRefs(agent.ToOutput(esBuilder.Ref(), "default")).
+		WithOpenShiftRoles(test.UseSCCRole).
 		WithDefaultESValidation(agent.HasWorkingDataStream(agent.LogsType, "elastic_agent", "default")).
 		WithDefaultESValidation(agent.HasWorkingDataStream(agent.LogsType, "elastic_agent.filebeat", "default")).
 		WithDefaultESValidation(agent.HasWorkingDataStream(agent.LogsType, "elastic_agent.metricbeat", "default")).
@@ -73,6 +74,7 @@ func TestAgentConfigRef(t *testing.T) {
 		WithConfigRef(secretName).
 		WithObjects(secret).
 		WithElasticsearchRefs(agent.ToOutput(esBuilder.Ref(), "default")).
+		WithOpenShiftRoles(test.UseSCCRole).
 		WithDefaultESValidation(agent.HasWorkingDataStream(agent.LogsType, "elastic_agent", "default")).
 		WithDefaultESValidation(agent.HasWorkingDataStream(agent.LogsType, "elastic_agent.filebeat", "default")).
 		WithDefaultESValidation(agent.HasWorkingDataStream(agent.LogsType, "elastic_agent.metricbeat", "default")).
@@ -105,6 +107,7 @@ func TestMultipleOutputConfig(t *testing.T) {
 			agent.ToOutput(esBuilder1.Ref(), "default"),
 			agent.ToOutput(esBuilder2.Ref(), "monitoring"),
 		).
+		WithOpenShiftRoles(test.UseSCCRole).
 		WithESValidation(agent.HasWorkingDataStream(agent.LogsType, "elastic_agent", "default"), "monitoring").
 		WithESValidation(agent.HasWorkingDataStream(agent.LogsType, "elastic_agent.filebeat", "default"), "monitoring").
 		WithESValidation(agent.HasWorkingDataStream(agent.LogsType, "elastic_agent.metricbeat", "default"), "monitoring").
