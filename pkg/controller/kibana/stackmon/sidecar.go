@@ -69,22 +69,21 @@ func Metricbeat(ctx context.Context, client k8s.Client, kb kbv1.Kibana, basePath
 	if err != nil {
 		return stackmon.BeatSidecar{}, err
 	}
+
 	type inputConfigData struct {
+		stackmon.TemplateParams
 		BasePath string
-		URL      string
-		Username string
-		Password string
-		IsSSL    bool
-		CAVolume volume.VolumeLike
 	}
 
 	configData := inputConfigData{
-		Username: username,
-		Password: password,
-		URL:      fmt.Sprintf("%s://localhost:%d", kb.Spec.HTTP.Protocol(), network.HTTPPort), // Metricbeat in the sidecar connects to the monitored resource using `localhost`
+		TemplateParams: stackmon.TemplateParams{
+			Username: username,
+			Password: password,
+			URL:      fmt.Sprintf("%s://localhost:%d", kb.Spec.HTTP.Protocol(), network.HTTPPort), // Metricbeat in the sidecar connects to the monitored resource using `localhost`
+			IsSSL:    kb.Spec.HTTP.TLS.Enabled(),                                                  // enable SSL configuration based on whether the monitored resource has TLS enabled
+			CAVolume: caVol,
+		},
 		BasePath: basePath,
-		IsSSL:    kb.Spec.HTTP.TLS.Enabled(), // enable SSL configuration based on whether the monitored resource has TLS enabled
-		CAVolume: caVol,
 	}
 
 	cfg, err := stackmon.RenderTemplate(v, metricbeatConfigTemplate, configData)

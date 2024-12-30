@@ -17,7 +17,6 @@ import (
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/stackmon"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/stackmon/monitoring"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/version"
-	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/volume"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/network"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/securitycontext"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/user"
@@ -47,13 +46,7 @@ func Metricbeat(ctx context.Context, client k8s.Client, es esv1.Elasticsearch) (
 		return stackmon.BeatSidecar{}, err
 	}
 
-	input := struct {
-		URL      string
-		Username string
-		Password string
-		IsSSL    bool
-		CAVolume volume.VolumeLike
-	}{
+	input := stackmon.TemplateParams{
 		URL:      fmt.Sprintf("%s://localhost:%d", es.Spec.HTTP.Protocol(), network.HTTPPort),
 		Username: username,
 		Password: password,

@@ -102,6 +102,8 @@ func NewBeatSidecar(ctx context.Context, client k8s.Client, beatName string, ima
 	}, nil
 }
 
+// CAVolume returns a volume containing the CA certificate for the monitored resource if TLS is enabled.
+// If TLS is not enabled or no (self-signed) CA is in use, it returns nil.
 func CAVolume(
 	c k8s.Client,
 	nsn types.NamespacedName,
@@ -121,4 +123,14 @@ func CAVolume(
 		fmt.Sprintf("%s-local-ca", string(associationType)),
 		fmt.Sprintf("/mnt/elastic-internal/%s/%s/%s/certs", string(associationType), nsn.Namespace, nsn.Name),
 	), nil
+}
+
+// TemplateParams are commonly used parameters to render a Beats configuration template.
+// Stack monitoring implementations can choose to implement their own template parameters if needed.
+type TemplateParams struct {
+	URL      string
+	Username string
+	Password string
+	IsSSL    bool
+	CAVolume volume.VolumeLike
 }
