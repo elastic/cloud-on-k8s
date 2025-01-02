@@ -25,6 +25,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/settings"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/version"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/volume"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/kibana/initcontainer"
 	kblabel "github.com/elastic/cloud-on-k8s/v2/pkg/controller/kibana/label"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/kibana/network"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/kibana/stackmon"
@@ -142,16 +143,23 @@ func NewPodTemplateSpec(
 
 	// Kibana 7.5.0 and above support running with a read-only root filesystem,
 	// but require a temporary volume to be mounted at /tmp for some reporting features
-	// and a plugin volume mounted at /usr/share/kibana/plugins.
+	// and a plugin volume mounted at /usr/share/kibana/plugins. Also needed is an
+	// init container to copy any existing plugins in /usr/share/kibana/plugins to the
+	// temporary volume.
 	// Limiting to 7.10.0 here as there was a bug in previous versions causing rebuilding
 	// of browser bundles to happen on plugin install, which would attempt a write to the
 	// root filesystem on restart.
 	if v.GTE(version.From(7, 10, 0)) && setDefaultSecurityContext {
+		initContainer, err := initcontainer.NewPreparePluginsInitContainer()
+		if err != nil {
+			return corev1.PodTemplateSpec{}, err
+		}
 		builder.WithContainersSecurityContext(defaultSecurityContext).
 			WithPodSecurityContext(defaultPodSecurityContext).
 			WithVolumes(LogsVolume.Volume()).WithVolumeMounts(LogsVolume.VolumeMount()).
 			WithVolumes(PluginsVolume.Volume()).WithVolumeMounts(PluginsVolume.VolumeMount()).
-			WithVolumes(TempVolume.Volume()).WithVolumeMounts(TempVolume.VolumeMount())
+			WithVolumes(TempVolume.Volume()).WithVolumeMounts(TempVolume.VolumeMount()).
+			WithInitContainers(initContainer)
 	}
 
 	if keystore != nil {
