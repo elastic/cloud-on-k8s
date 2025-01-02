@@ -40,7 +40,7 @@ var pluginsFsScriptTemplate = template.Must(template.New("").Parse(
 		# Use "yes" and "-f" as we want the init container to be idempotent and not to fail when executed more than once.
 		yes | cp -avf {{.ContainerPluginsMountPath}}/* {{.InitContainerPluginsMountPath}}/ 
 	fi
-	{{end}}	echo "Files copy duration: $(duration $mv_start) sec."
+	echo "Files copy duration: $(duration $mv_start) sec."
 `))
 
 // RenderScriptTemplate renders pluginsFsScriptTemplate using the given TemplateParams

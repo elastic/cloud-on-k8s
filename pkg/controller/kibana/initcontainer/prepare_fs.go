@@ -21,7 +21,10 @@ const (
 var (
 	// PluginsSharedVolume contains the Kibana plugins/ directory
 	PluginsSharedVolume = volume.SharedVolume{
-		VolumeName:             "elastic-internal-kibana-plugins-local",
+		// This volume name is the same as the primary container's volume name
+		// so that the init container does not mount the plugins emptydir volume
+		// on top of /usr/share/kibana/plugins.
+		VolumeName:             "kibana-plugins",
 		InitContainerMountPath: "/mnt/elastic-internal/kibana-plugins-local",
 		ContainerMountPath:     "/usr/share/kibana/plugins",
 	}
@@ -60,7 +63,7 @@ func NewPreparePluginsInitContainer() (corev1.Container, error) {
 	return container, nil
 }
 
-func RenderPrepareFsScript(expectedAnnotations []string) (string, error) {
+func RenderPrepareFsScript() (string, error) {
 	templateParams := TemplateParams{
 		ContainerPluginsMountPath:     PluginsSharedVolume.ContainerMountPath,
 		InitContainerPluginsMountPath: PluginsSharedVolume.InitContainerMountPath,

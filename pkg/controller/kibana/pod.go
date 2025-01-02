@@ -154,11 +154,13 @@ func NewPodTemplateSpec(
 		if err != nil {
 			return corev1.PodTemplateSpec{}, err
 		}
+		scriptsConfigMapVolume := initcontainer.NewScriptsConfigMapVolume(kb.Name)
 		builder.WithContainersSecurityContext(defaultSecurityContext).
 			WithPodSecurityContext(defaultPodSecurityContext).
 			WithVolumes(LogsVolume.Volume()).WithVolumeMounts(LogsVolume.VolumeMount()).
 			WithVolumes(PluginsVolume.Volume()).WithVolumeMounts(PluginsVolume.VolumeMount()).
 			WithVolumes(TempVolume.Volume()).WithVolumeMounts(TempVolume.VolumeMount()).
+			WithVolumes(scriptsConfigMapVolume.Volume()).WithVolumeMounts(scriptsConfigMapVolume.VolumeMount()).
 			WithInitContainers(initContainer)
 	}
 

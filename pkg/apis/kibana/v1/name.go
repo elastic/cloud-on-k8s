@@ -8,7 +8,10 @@ import (
 	common_name "github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/name"
 )
 
-const httpServiceSuffix = "http"
+const (
+	httpServiceSuffix      = "http"
+	scriptsConfigMapSuffix = "scripts"
+)
 
 // KBNamer is a KBNamer that is configured with the defaults for resources related to a Kibana resource.
 var KBNamer = common_name.NewNamer("kb")
@@ -19,4 +22,8 @@ func HTTPService(kbName string) string {
 
 func Deployment(kbName string) string {
 	return KBNamer.Suffix(kbName)
+}
+
+func ScriptsConfigMap(kbName string) string {
+	return KBNamer.Suffix(kbName, scriptsConfigMapSuffix)
 }

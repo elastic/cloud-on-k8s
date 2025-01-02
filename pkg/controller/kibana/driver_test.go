@@ -550,76 +550,148 @@ func expectedDeploymentParams() deployment.Params {
 						},
 					},
 				},
-				InitContainers: []corev1.Container{{
-					Name:            "elastic-internal-init-config",
-					ImagePullPolicy: corev1.PullIfNotPresent,
-					Image:           "my-image",
-					Command:         []string{"/usr/bin/env", "bash", "-c", InitConfigScript},
-					SecurityContext: &defaultSecurityContext,
-					Env: []corev1.EnvVar{
-						{Name: settings.EnvPodIP, Value: "", ValueFrom: &corev1.EnvVarSource{
-							FieldRef: &corev1.ObjectFieldSelector{APIVersion: "v1", FieldPath: "status.podIP"},
-						}},
-						{Name: settings.EnvPodName, Value: "", ValueFrom: &corev1.EnvVarSource{
-							FieldRef: &corev1.ObjectFieldSelector{APIVersion: "v1", FieldPath: "metadata.name"},
-						}},
-						{Name: settings.EnvNodeName, Value: "", ValueFrom: &corev1.EnvVarSource{
-							FieldRef: &corev1.ObjectFieldSelector{APIVersion: "v1", FieldPath: "spec.nodeName"},
-						}},
-						{Name: settings.EnvNamespace, Value: "", ValueFrom: &corev1.EnvVarSource{
-							FieldRef: &corev1.ObjectFieldSelector{APIVersion: "v1", FieldPath: "metadata.namespace"},
-						}},
+				InitContainers: []corev1.Container{
+					{
+						Name:            "elastic-internal-init-filesystem",
+						ImagePullPolicy: corev1.PullIfNotPresent,
+						Image:           "my-image",
+						Command:         []string{"/usr/bin/env", "bash", "-c", "/mnt/elastic-internal/scripts/prepare-fs.sh"},
+						SecurityContext: &defaultSecurityContext,
+						Env: []corev1.EnvVar{
+							{Name: settings.EnvPodIP, Value: "", ValueFrom: &corev1.EnvVarSource{
+								FieldRef: &corev1.ObjectFieldSelector{APIVersion: "v1", FieldPath: "status.podIP"},
+							}},
+							{Name: settings.EnvPodName, Value: "", ValueFrom: &corev1.EnvVarSource{
+								FieldRef: &corev1.ObjectFieldSelector{APIVersion: "v1", FieldPath: "metadata.name"},
+							}},
+							{Name: settings.EnvNodeName, Value: "", ValueFrom: &corev1.EnvVarSource{
+								FieldRef: &corev1.ObjectFieldSelector{APIVersion: "v1", FieldPath: "spec.nodeName"},
+							}},
+							{Name: settings.EnvNamespace, Value: "", ValueFrom: &corev1.EnvVarSource{
+								FieldRef: &corev1.ObjectFieldSelector{APIVersion: "v1", FieldPath: "metadata.namespace"},
+							}},
+						},
+						VolumeMounts: []corev1.VolumeMount{
+							{
+								Name:      certificates.HTTPCertificatesSecretVolumeName,
+								ReadOnly:  true,
+								MountPath: certificates.HTTPCertificatesSecretVolumeMountPath,
+							},
+							{
+								Name:      "elastic-internal-kibana-config",
+								ReadOnly:  true,
+								MountPath: "/mnt/elastic-internal/kibana-config-local",
+							},
+							ConfigSharedVolume.InitContainerVolumeMount(),
+							{
+								Name:      "elasticsearch-certs",
+								ReadOnly:  true,
+								MountPath: "/usr/share/kibana/config/elasticsearch-certs",
+							},
+							{
+								Name:      DataVolumeName,
+								ReadOnly:  falseVal,
+								MountPath: DataVolumeMountPath,
+							},
+							{
+								Name:      "kibana-logs",
+								ReadOnly:  falseVal,
+								MountPath: "/usr/share/kibana/logs",
+							},
+							{
+								Name:      "kibana-plugins",
+								ReadOnly:  falseVal,
+								MountPath: "/mnt/elastic-internal/kibana-plugins-local",
+							},
+							{
+								Name:      "temp-volume",
+								ReadOnly:  falseVal,
+								MountPath: "/tmp",
+							},
+						},
+						Resources: corev1.ResourceRequirements{
+							Requests: map[corev1.ResourceName]resource.Quantity{
+								corev1.ResourceMemory: resource.MustParse("50Mi"),
+								corev1.ResourceCPU:    resource.MustParse("0.1"),
+							},
+							Limits: map[corev1.ResourceName]resource.Quantity{
+								// Memory limit should be at least 12582912 when running with CRI-O
+								corev1.ResourceMemory: resource.MustParse("50Mi"),
+								corev1.ResourceCPU:    resource.MustParse("0.1"),
+							},
+						},
 					},
-					VolumeMounts: []corev1.VolumeMount{
-						{
-							Name:      certificates.HTTPCertificatesSecretVolumeName,
-							ReadOnly:  true,
-							MountPath: certificates.HTTPCertificatesSecretVolumeMountPath,
+					{
+						Name:            "elastic-internal-init-config",
+						ImagePullPolicy: corev1.PullIfNotPresent,
+						Image:           "my-image",
+						Command:         []string{"/usr/bin/env", "bash", "-c", InitConfigScript},
+						SecurityContext: &defaultSecurityContext,
+						Env: []corev1.EnvVar{
+							{Name: settings.EnvPodIP, Value: "", ValueFrom: &corev1.EnvVarSource{
+								FieldRef: &corev1.ObjectFieldSelector{APIVersion: "v1", FieldPath: "status.podIP"},
+							}},
+							{Name: settings.EnvPodName, Value: "", ValueFrom: &corev1.EnvVarSource{
+								FieldRef: &corev1.ObjectFieldSelector{APIVersion: "v1", FieldPath: "metadata.name"},
+							}},
+							{Name: settings.EnvNodeName, Value: "", ValueFrom: &corev1.EnvVarSource{
+								FieldRef: &corev1.ObjectFieldSelector{APIVersion: "v1", FieldPath: "spec.nodeName"},
+							}},
+							{Name: settings.EnvNamespace, Value: "", ValueFrom: &corev1.EnvVarSource{
+								FieldRef: &corev1.ObjectFieldSelector{APIVersion: "v1", FieldPath: "metadata.namespace"},
+							}},
 						},
-						{
-							Name:      "elastic-internal-kibana-config",
-							ReadOnly:  true,
-							MountPath: InternalConfigVolumeMountPath,
+						VolumeMounts: []corev1.VolumeMount{
+							{
+								Name:      certificates.HTTPCertificatesSecretVolumeName,
+								ReadOnly:  true,
+								MountPath: certificates.HTTPCertificatesSecretVolumeMountPath,
+							},
+							{
+								Name:      "elastic-internal-kibana-config",
+								ReadOnly:  true,
+								MountPath: InternalConfigVolumeMountPath,
+							},
+							ConfigSharedVolume.InitContainerVolumeMount(),
+							{
+								Name:      "elasticsearch-certs",
+								ReadOnly:  true,
+								MountPath: "/usr/share/kibana/config/elasticsearch-certs",
+							},
+							{
+								Name:      DataVolumeName,
+								ReadOnly:  falseVal,
+								MountPath: DataVolumeMountPath,
+							},
+							{
+								Name:      "kibana-logs",
+								ReadOnly:  falseVal,
+								MountPath: "/usr/share/kibana/logs",
+							},
+							{
+								Name:      "kibana-plugins",
+								ReadOnly:  falseVal,
+								MountPath: "/mnt/elastic-internal/kibana-plugins-local",
+							},
+							{
+								Name:      "temp-volume",
+								ReadOnly:  falseVal,
+								MountPath: "/tmp",
+							},
 						},
-						ConfigSharedVolume.InitContainerVolumeMount(),
-						{
-							Name:      "elasticsearch-certs",
-							ReadOnly:  true,
-							MountPath: "/usr/share/kibana/config/elasticsearch-certs",
-						},
-						{
-							Name:      DataVolumeName,
-							ReadOnly:  falseVal,
-							MountPath: DataVolumeMountPath,
-						},
-						{
-							Name:      "kibana-logs",
-							ReadOnly:  falseVal,
-							MountPath: "/usr/share/kibana/logs",
-						},
-						{
-							Name:      "kibana-plugins",
-							ReadOnly:  falseVal,
-							MountPath: "/usr/share/kibana/plugins",
-						},
-						{
-							Name:      "temp-volume",
-							ReadOnly:  falseVal,
-							MountPath: "/tmp",
+						Resources: corev1.ResourceRequirements{
+							Requests: map[corev1.ResourceName]resource.Quantity{
+								corev1.ResourceMemory: resource.MustParse("50Mi"),
+								corev1.ResourceCPU:    resource.MustParse("0.1"),
+							},
+							Limits: map[corev1.ResourceName]resource.Quantity{
+								// Memory limit should be at least 12582912 when running with CRI-O
+								corev1.ResourceMemory: resource.MustParse("50Mi"),
+								corev1.ResourceCPU:    resource.MustParse("0.1"),
+							},
 						},
 					},
-					Resources: corev1.ResourceRequirements{
-						Requests: map[corev1.ResourceName]resource.Quantity{
-							corev1.ResourceMemory: resource.MustParse("50Mi"),
-							corev1.ResourceCPU:    resource.MustParse("0.1"),
-						},
-						Limits: map[corev1.ResourceName]resource.Quantity{
-							// Memory limit should be at least 12582912 when running with CRI-O
-							corev1.ResourceMemory: resource.MustParse("50Mi"),
-							corev1.ResourceCPU:    resource.MustParse("0.1"),
-						},
-					},
-				}},
+				},
 				Containers: []corev1.Container{{
 					VolumeMounts: []corev1.VolumeMount{
 						{
