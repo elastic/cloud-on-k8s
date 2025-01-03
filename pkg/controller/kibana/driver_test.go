@@ -34,10 +34,6 @@ import (
 	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/k8s"
 )
 
-var customResourceLimits = corev1.ResourceRequirements{
-	Limits: corev1.ResourceList{corev1.ResourceMemory: resource.MustParse("2Gi")},
-}
-
 func Test_getStrategyType(t *testing.T) {
 	// creates `count` of pods belonging to `kbName` Kibana and to `rs-kbName-version` ReplicaSet
 	getPods := func(kbName string, podCount int, version string) []client.Object {
@@ -790,15 +786,6 @@ func expectedDeploymentParams() deployment.Params {
 	}
 }
 
-func expectedDeploymentWithPolicyAnnotations(policyAnnotations map[string]string) deployment.Params {
-	deploymentParams := expectedDeploymentParams()
-
-	for k, v := range policyAnnotations {
-		deploymentParams.PodTemplateSpec.Annotations[k] = v
-	}
-	return deploymentParams
-}
-
 func pre710(params deployment.Params) deployment.Params {
 	params.PodTemplateSpec.Spec.Containers[0].SecurityContext = nil
 	// remove the init filsystem init container
@@ -833,27 +820,6 @@ func kibanaFixture() *kbv1.Kibana {
 		CASecretName:   "es-ca-secret",
 		URL:            "https://localhost:9200",
 	})
-
-	return kbFixture
-}
-
-func kibanaFixtureWithPodTemplate() *kbv1.Kibana {
-	kbFixture := kibanaFixture()
-	kbFixture.Spec.PodTemplate = corev1.PodTemplateSpec{
-		ObjectMeta: metav1.ObjectMeta{
-			Labels: map[string]string{
-				"mylabel": "value",
-			},
-		},
-		Spec: corev1.PodSpec{
-			Containers: []corev1.Container{
-				{
-					Name:      kbv1.KibanaContainerName,
-					Resources: customResourceLimits,
-				},
-			},
-		},
-	}
 
 	return kbFixture
 }
