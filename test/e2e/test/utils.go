@@ -189,7 +189,7 @@ func SkipUntilResolution(t *testing.T, knownIssueNumber int) {
 	t.Skipf("Skip until we understand why it is failing, see https://github.com/elastic/cloud-on-k8s/issues/%d", knownIssueNumber)
 }
 
-// This simulates "kubectl delete elastic" in the e2e namespace.
+// deleteTestResources simulates "kubectl delete elastic" in the e2e namespace.
 func deleteTestResources(ctx context.Context) error {
 	cfg, err := config.GetConfig()
 	if err != nil {
@@ -214,8 +214,11 @@ func deleteTestResources(ctx context.Context) error {
 		}
 	}
 
+	dynamicClient, err := dynamic.NewForConfig(cfg)
+	if err != nil {
+		return fmt.Errorf("while creating dynamic client to delete resources: %v", err)
+	}
 	for _, namespace := range Ctx().Operator.ManagedNamespaces {
-		dynamicClient := dynamic.New(clntset.RESTClient())
 		for gv, resources := range groupVersionToResourceListMap {
 			gvSlice := strings.Split(gv, "/")
 			if len(gvSlice) != 2 {
