@@ -26,6 +26,13 @@ type TemplateParams struct {
 var pluginsFsScriptTemplate = template.Must(template.New("").Parse(
 	`#!/usr/bin/env bash
 
+	# compute time in seconds since the given start time
+	function duration() {
+		local start=$1
+		end=$(date +%s)
+		echo $((end-start))
+	}
+
 	#######################
 	# Plugins persistence #
 	#######################
