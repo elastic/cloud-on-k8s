@@ -33,6 +33,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/version"
 	commonvolume "github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/volume"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/watches"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/kibana/initcontainer"
 	kblabel "github.com/elastic/cloud-on-k8s/v2/pkg/controller/kibana/label"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/kibana/network"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/kibana/stackmon"
@@ -171,6 +172,11 @@ func (d *driver) Reconcile(
 	}
 
 	err = stackmon.ReconcileConfigSecrets(ctx, d.client, *kb, basePath)
+	if err != nil {
+		return results.WithError(err)
+	}
+
+	err = initcontainer.ReconcileScriptsConfigMap(ctx, d.client, *kb)
 	if err != nil {
 		return results.WithError(err)
 	}
