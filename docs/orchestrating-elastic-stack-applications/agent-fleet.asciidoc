@@ -6,9 +6,9 @@ link:https://www.elastic.co/guide/en/cloud-on-k8s/master/k8s-{page_id}.html[View
 ****
 endif::[]
 [id="{p}-{page_id}"]
-= Run Fleet-managed Elastic Agent on ECK
+= Run {fleet}-managed {agent} on ECK
 
-This section describes how to configure and deploy Elastic Agent in link:https://www.elastic.co/guide/en/fleet/current/elastic-agent-installation.html[Fleet-managed] mode with ECK. Check the link:k8s-elastic-agent.html[Standalone section] if you want to run Elastic Agent in the link:https://www.elastic.co/guide/en/fleet/current/install-standalone-elastic-agent.html[standalone mode].
+This section describes how to configure and deploy {agent} in link:{fleet-guide}/elastic-agent-installation.html[{fleet}-managed] mode with ECK. Check the link:k8s-elastic-agent.html[Standalone section] if you want to run {agent} in the link:{fleet-guide}/install-standalone-elastic-agent.html[standalone mode].
 
 * <<{p}-elastic-agent-fleet-quickstart,Quickstart>>
 * <<{p}-elastic-agent-fleet-configuration,Configuration>>
@@ -18,7 +18,7 @@ This section describes how to configure and deploy Elastic Agent in link:https:/
 [id="{p}-elastic-agent-fleet-quickstart"]
 == Quickstart
 
-. To deploy Fleet Server, Elastic Agents, Elasticsearch, and Kibana, apply the following specification:
+. To deploy {fleet-server}, {agents}, {es}, and {kib}, apply the following specification:
 +
 [source,yaml,subs="attributes,callouts,+macros"]
 ----
@@ -186,13 +186,13 @@ roleRef:
 EOF
 ----
 +
-<1> The root user is required to persist state in a hostPath volume and to trust the Elasticsearch CA in Fleet mode. See <<{p}_storing_local_state_in_host_path_volume>> for options to not run the Agent container as root.
+<1> The root user is required to persist state in a hostPath volume and to trust the {es} CA in {fleet} mode. See <<{p}_storing_local_state_in_host_path_volume>> for options to not run the Agent container as root.
 +
 Check <<{p}-elastic-agent-fleet-configuration-examples>> for more ready-to-use manifests.
 
-ECK automatically configures secure connections between all components. Fleet will be set up, and all agents are enrolled in the default policy.
+ECK automatically configures secure connections between all components. {fleet} will be set up, and all agents are enrolled in the default policy.
 
-. Monitor the status of Fleet Server and Elastic Agent.
+. Monitor the status of {fleet-server} and {agent}.
 
 +
 [source,sh]
@@ -208,7 +208,7 @@ fleet-server-quickstart    green    1           1          {version}    19s
 
 ----
 
-. List all the Pods belonging to a given Elastic Agent specification.
+. List all the Pods belonging to a given {agent} specification.
 +
 [source,sh]
 ----
@@ -230,18 +230,18 @@ elastic-agent-quickstart-agent-zqp55   1/1     Running   0          54s
 kubectl logs -f elastic-agent-quickstart-agent-xbcxr
 ----
 
-. Configure the policy used by Elastic Agents. Check link:https://www.elastic.co/guide/en/fleet/current/agent-policy.html[Elastic Agent policies] for more details.
+. Configure the policy used by {agents}. Check link:{fleet-guide}/agent-policy.html[{agent} policies] for more details.
 
 [id="{p}-elastic-agent-fleet-configuration"]
 == Configuration
 
-Fleet-managed Elastic Agents must connect to Fleet Server to receive their configurations. You can deploy Fleet Server instances using ECKs Agent CRD with the appropriate configuration, as shown in <<{p}-elastic-agent-fleet-configuration-fleet-mode-and-fleet-server,Fleet mode and Fleet Server>>.
+{fleet}-managed {agents} must connect to {fleet-server} to receive their configurations. You can deploy {fleet-server} instances using ECKs Agent CRD with the appropriate configuration, as shown in <<{p}-elastic-agent-fleet-configuration-fleet-mode-and-fleet-server,Fleet mode and Fleet Server>>.
 
-To know more about Fleet architecture and related components, check the Fleet link:https://www.elastic.co/guide/en/fleet/current/fleet-server.html[documentation].
+To know more about {fleet} architecture and related components, check the {fleet} link:{fleet-guide}/fleet-server.html[documentation].
 
 [id="{p}-elastic-agent-fleet-configuration-fleet-mode-and-fleet-server"]
-=== Fleet mode and Fleet Server
-To run both Fleet Server and Elastic Agent in Fleet-managed mode, set the `mode` configuration element to `fleet`.
+=== {fleet} mode and {fleet-server}
+To run both {fleet-server} and {agent} in {fleet}-managed mode, set the `mode` configuration element to `fleet`.
 
 [source,yaml,subs="attributes,+macros"]
 ----
@@ -253,7 +253,7 @@ spec:
   mode: fleet
 ----
 
-To run Fleet Server, set the `fleetServerEnabled` configuration element to `true`, as shown in this example: 
+To run {fleet-server}, set the `fleetServerEnabled` configuration element to `true`, as shown in this example: 
 
 [source,yaml,subs="attributes,+macros"]
 ----
@@ -268,9 +268,9 @@ spec:
 You can leave the default value `false` for any other case.
 
 [id="{p}-elastic-agent-fleet-configuration-required-kibana-configuration"]
-=== Configure Kibana
+=== Configure {kib}
 
-To have Fleet running properly, the following settings must be correctly set in the Kibana configuration:
+To have {fleet} running properly, the following settings must be correctly set in the {kib} configuration:
 
 [source,yaml,subs="attributes,+macros"]
 ----
@@ -319,18 +319,18 @@ spec:
               name: system
 ----
 
-*  `xpack.fleet.agents.elasticsearch.hosts` must point to the Elasticsearch cluster where Elastic Agents should send data. For ECK-managed Elasticsearch clusters ECK creates a Service accessible through `https://ES_RESOURCE_NAME-es-http.ES_RESOURCE_NAMESPACE.svc:9200` URL, where `ES_RESOURCE_NAME` is the name of Elasticsearch resource and `ES_RESOURCE_NAMESPACE` is the namespace it was deployed within. See <<{p}_storing_local_state_in_host_path_volume>> for details on adjusting this field when running agent as non-root as it becomes required.
+*  `xpack.fleet.agents.elasticsearch.hosts` must point to the {es} cluster where {agents} should send data. For ECK-managed {es} clusters ECK creates a Service accessible through `https://ES_RESOURCE_NAME-es-http.ES_RESOURCE_NAMESPACE.svc:9200` URL, where `ES_RESOURCE_NAME` is the name of {es} resource and `ES_RESOURCE_NAMESPACE` is the namespace it was deployed within. See <<{p}_storing_local_state_in_host_path_volume>> for details on adjusting this field when running agent as non-root as it becomes required.
 
-*  `xpack.fleet.agents.fleet_server.hosts` must point to Fleet Server that Elastic Agents should connect to. For ECK-managed Fleet Server instances, ECK creates a Service accessible through `https://FS_RESOURCE_NAME-agent-http.FS_RESOURCE_NAMESPACE.svc:8220` URL, where `FS_RESOURCE_NAME` is the name of Elastic Agent resource with Fleet Server enabled and `FS_RESOURCE_NAMESPACE` is the namespace it was deployed in.
+*  `xpack.fleet.agents.fleet_server.hosts` must point to {fleet-server} that {agents} should connect to. For ECK-managed {fleet-server} instances, ECK creates a Service accessible through `https://FS_RESOURCE_NAME-agent-http.FS_RESOURCE_NAMESPACE.svc:8220` URL, where `FS_RESOURCE_NAME` is the name of {agent} resource with {fleet-server} enabled and `FS_RESOURCE_NAMESPACE` is the namespace it was deployed in.
 
-*  `xpack.fleet.packages` are required packages to enable Fleet Server and Elastic Agents to enroll. 
+*  `xpack.fleet.packages` are required packages to enable {fleet-server} and {agents} to enroll. 
 
-*  `xpack.fleet.agentPolicies` policies are needed for Fleet Server and Elastic Agents to enroll to, check https://www.elastic.co/guide/en/fleet/current/agent-policy.html for more information.
+*  `xpack.fleet.agentPolicies` policies are needed for {fleet-server} and {agents} to enroll to, check {fleet-guide}/agent-policy.html for more information.
 
 [id="{p}-elastic-agent-fleet-configuration-setting-referenced-resources"]
 === Set referenced resources
 
-Both Fleet Server and Elastic Agent in Fleet mode can be automatically set up with Fleet by ECK. The ECK operator can set up Fleet in Kibana (which otherwise requires manual steps) and enroll Fleet Server in the default Fleet Server policy. Elastic Agent can be automatically enrolled in the default Elastic Agent policy. To allow ECK to set this up, provide a reference to a ECK-managed Kibana through the `kibanaRef` configuration element.
+Both {fleet-server} and {agent} in {fleet} mode can be automatically set up with {fleet} by ECK. The ECK operator can set up {fleet} in {kib} (which otherwise requires manual steps) and enroll {fleet-server} in the default {fleet-server} policy. {agent} can be automatically enrolled in the default {agent} policy. To allow ECK to set this up, provide a reference to a ECK-managed {kib} through the `kibanaRef` configuration element.
 
 [source,yaml,subs="attributes,+macros"]
 ----
@@ -343,7 +343,7 @@ spec:
     name: kibana
 ----
 
-ECK can also facilitate the connection between Elastic Agents and a ECK-managed Fleet Server. To allow ECK to set this up, provide a reference to Fleet Server through the `fleetServerRef` configuration element.
+ECK can also facilitate the connection between {agents} and a ECK-managed {fleet-server}. To allow ECK to set this up, provide a reference to {fleet-server} through the `fleetServerRef` configuration element.
 
 [source,yaml,subs="attributes,+macros"]
 ----
@@ -357,9 +357,9 @@ spec:
 ----
 
 
-Set the `elasticsearchRefs` element in your Fleet Server to point to the Elasticsearch cluster that will manage Fleet. Leave `elasticsearchRefs` empty or unset it for any Elastic Agent running in Fleet mode as the Elasticsearch cluster to target will come from Kibana's `xpack.fleet.agents.elasticsearch.hosts` configuration element.
+Set the `elasticsearchRefs` element in your {fleet-server} to point to the {es} cluster that will manage {fleet}. Leave `elasticsearchRefs` empty or unset it for any {agent} running in {fleet} mode as the {es} cluster to target will come from {kib}'s `xpack.fleet.agents.elasticsearch.hosts` configuration element.
 
-NOTE: Currently, Elastic Agent in Fleet mode supports only a single output, so only a single Elasticsearch cluster can be referenced.
+NOTE: Currently, {agent} in {fleet} mode supports only a single output, so only a single {es} cluster can be referenced.
 
 [source,yaml,subs="attributes,+macros"]
 ----
@@ -372,22 +372,22 @@ spec:
   - name: elasticsearch-sample
 ----
 
-By default, every reference targets all instances in your Elasticsearch, Kibana and Fleet Server deployments, respectively. If you want to direct traffic to specific instances, refer to <<{p}-traffic-splitting>> for more information and examples.
+By default, every reference targets all instances in your {es}, {kib} and {fleet-server} deployments, respectively. If you want to direct traffic to specific instances, refer to <<{p}-traffic-splitting>> for more information and examples.
 
 [id="{p}-elastic-agent-fleet-configuration-custom-configuration"]
-=== Customize Elastic Agent configuration
+=== Customize {agent} configuration
 
-In contrast to Elastic Agents in standalone mode, the configuration is managed through Fleet, and it cannot be defined through `config` or `configRef` elements.
+In contrast to {agents} in standalone mode, the configuration is managed through {fleet}, and it cannot be defined through `config` or `configRef` elements.
 
 [id="{p}-elastic-agent-fleet-configuration-upgrade-specification"]
-=== Upgrade the Elastic Agent specification
+=== Upgrade the {agent} specification
 
-You can upgrade the Elastic Agent version or change settings by editing the YAML specification file. ECK applies the changes by performing a rolling restart of the Agent's Pods. Depending on the settings that you used, ECK will set up Fleet in Kibana, enrolls the agent in Fleet, or restarts Elastic Agent on certificate rollover.
+You can upgrade the {agent} version or change settings by editing the YAML specification file. ECK applies the changes by performing a rolling restart of the Agent's Pods. Depending on the settings that you used, ECK will set up {fleet} in {kib}, enrolls the agent in {fleet}, or restarts {agent} on certificate rollover.
 
 [id="{p}-elastic-agent-fleet-configuration-chose-the-deployment-model"]
 === Choose the deployment model
 
-Depending on the use case, Elastic Agent may need to be deployed as a link:https://kubernetes.io/docs/concepts/workloads/controllers/deployment/[Deployment], a link:https://kubernetes.io/docs/concepts/workloads/controllers/daemonset/[DaemonSet], or a link:https://kubernetes.io/docs/concepts/workloads/controllers/statefulSet/[StatefulSet]. To choose how to deploy your Elastic Agents, provide a `podTemplate` element under the `deployment` or the `daemonSet` element in the specification. If you choose the `deployment` option, you can additionally specify the link:https://kubernetes.io/docs/concepts/workloads/controllers/deployment/#strategy[strategy] used to replace old Pods with new ones.
+Depending on the use case, {agent} may need to be deployed as a link:https://kubernetes.io/docs/concepts/workloads/controllers/deployment/[Deployment], a link:https://kubernetes.io/docs/concepts/workloads/controllers/daemonset/[DaemonSet], or a link:https://kubernetes.io/docs/concepts/workloads/controllers/statefulSet/[StatefulSet]. To choose how to deploy your {agents}, provide a `podTemplate` element under the `deployment` or the `daemonSet` element in the specification. If you choose the `deployment` option, you can additionally specify the link:https://kubernetes.io/docs/concepts/workloads/controllers/deployment/#strategy[strategy] used to replace old Pods with new ones.
 
 Similarly, you can set the link:https://kubernetes.io/docs/tasks/manage-daemon/update-daemon-set/[update strategy] when deploying as a DaemonSet. This allows you to control the rollout speed for new configuration by modifying the `maxUnavailable` setting:
 
@@ -407,12 +407,12 @@ spec:
 ...
 ----
 
-Refer to <<{p}-compute-resources-beats-agent>> for more information on how to use the Pod template to adjust the resources given to Elastic Agent.
+Refer to <<{p}-compute-resources-beats-agent>> for more information on how to use the Pod template to adjust the resources given to {agent}.
 
 [id="{p}-elastic-agent-fleet-configuration-role-based-access-control"]
-=== Role Based Access Control for Elastic Agent
+=== Role Based Access Control for {agent}
 
-Some Elastic Agent features, such as the link:https://epr.elastic.co/package/kubernetes/0.2.8/[Kubernetes integration], require that Agent Pods interact with Kubernetes APIs. This functionality requires specific permissions. Standard Kubernetes link:https://kubernetes.io/docs/reference/access-authn-authz/rbac/[RBAC] rules apply. For example, to allow API interactions:
+Some {agent} features, such as the link:https://epr.elastic.co/package/kubernetes/0.2.8/[{k8s} integration], require that Agent Pods interact with {k8s} APIs. This functionality requires specific permissions. Standard {k8s} link:https://kubernetes.io/docs/reference/access-authn-authz/rbac/[RBAC] rules apply. For example, to allow API interactions:
 
 [source,yaml,subs="attributes,+macros"]
 ----
@@ -477,19 +477,19 @@ roleRef:
 ----
 
 [id="{p}-elastic-agent-fleet-configuration-deploying-in-secured-clusters"]
-=== Deploy Elastic Agent in secured clusters
+=== Deploy {agent} in secured clusters
 
-To deploy Elastic Agent in clusters with the Pod Security Policy admission controller enabled, or in <<{p}-openshift-agent,OpenShift>> clusters, you might need to grant additional permissions to the Service Account used by the Elastic Agent Pods. Those Service Accounts must be bound to a Role or ClusterRole that has `use` permission for the required Pod Security Policy or Security Context Constraints. Different Elastic Agent integrations might require different settings set in their PSP/link:{p}-openshift-agent.html[SCC].
+To deploy {agent} in clusters with the Pod Security Policy admission controller enabled, or in <<{p}-openshift-agent,OpenShift>> clusters, you might need to grant additional permissions to the Service Account used by the {agent} Pods. Those Service Accounts must be bound to a Role or ClusterRole that has `use` permission for the required Pod Security Policy or Security Context Constraints. Different {agent} {integrations} might require different settings set in their PSP/link:{p}-openshift-agent.html[SCC].
 
 [id="{p}-elastic-agent-fleet-configuration-customize-fleet-server-service"]
-=== Customize Fleet Server Service
+=== Customize {fleet-server} Service
 
-By default, ECK creates a Service for Fleet Server that Elastic Agents can connect through. You can customize it using the `http` configuration element. Check more information on how to link:k8s-services.html[make changes] to the Service and link:k8s-tls-certificates.html[customize] the TLS configuration.
+By default, ECK creates a Service for {fleet-server} that {agents} can connect through. You can customize it using the `http` configuration element. Check more information on how to link:k8s-services.html[make changes] to the Service and link:k8s-tls-certificates.html[customize] the TLS configuration.
 
 [id="{p}-elastic-agent-control-fleet-policy-selection"]
-=== Control Fleet policy selection
+=== Control {fleet} policy selection
 
-ECK uses the default policy to enroll Elastic Agents in Fleet and the default Fleet Server policy to enroll Fleet Server. A different policy can be chosen by using the `policyID` attribute in the Elastic Agent resource:
+ECK uses the default policy to enroll {agents} in {fleet} and the default {fleet-server} policy to enroll {fleet-server}. A different policy can be chosen by using the `policyID` attribute in the {agent} resource:
 [source,yaml]
 ----
 
@@ -502,21 +502,21 @@ spec:
 ...
 ----
 
-Please note that the environment variables related to policy selection mentioned in the Elastic Agent link:https://www.elastic.co/guide/en/fleet/current/agent-environment-variables.html[docs] like `FLEET_SERVER_POLICY_ID` will be managed by the ECK operator.
+Please note that the environment variables related to policy selection mentioned in the {agent} link:{fleet-guide}/agent-environment-variables.html[docs] like `FLEET_SERVER_POLICY_ID` will be managed by the ECK operator.
 
 
 [id="{p}-elastic-agent-running-as-a-non-root-user"]
 // tag::configuration-example-elastic-agent-running-as-a-non-root-user[]
 === Running as a non-root user
 
-In order to run Elastic Agent as a non-root user you must choose how you want to persist data to the Agent's volume.
+In order to run {agent} as a non-root user you must choose how you want to persist data to the Agent's volume.
 
-1. Run Elastic Agent with an `emptyDir` volume. This has the downside of not persisting data between restarts of the Elastic Agent which can duplicate work done by the previous running Agent.
-2. Run Elastic Agent with a `hostPath` volume in addition to a `DaemonSet` running as `root` that sets up permissions for the `agent` user.
+1. Run {agent} with an `emptyDir` volume. This has the downside of not persisting data between restarts of the {agent} which can duplicate work done by the previous running Agent.
+2. Run {agent} with a `hostPath` volume in addition to a `DaemonSet` running as `root` that sets up permissions for the `agent` user.
 
-In addition to these decisions, if you are running Elastic Agent in Fleet mode as a non-root user, you must configure `certificate_authorities.ssl` in each `xpack.fleet.outputs` to trust the CA of the Elasticsearch Cluster.
+In addition to these decisions, if you are running {agent} in {fleet} mode as a non-root user, you must configure `certificate_authorities.ssl` in each `xpack.fleet.outputs` to trust the CA of the {es} Cluster.
 
-To run Elastic Agent with an `emptyDir` volume.
+To run {agent} with an `emptyDir` volume.
 
 [source,yaml]
 ----
@@ -537,7 +537,7 @@ spec:
 ----
 <1> Gid 1000 is the default group at which the Agent container runs. Adjust as necessary if `runAsGroup` has been modified.
 
-To run Elastic Agent with a `hostPath` volume and a `DaemonSet` to maintain permissions.
+To run {agent} with a `hostPath` volume and a `DaemonSet` to maintain permissions.
 
 [source,yaml]
 ----
@@ -628,7 +628,7 @@ spec:
 <2> UBI is only required when needing the `chcon` binary when running in an SELinux-enabled/OpenShift environment. If that is not required then the following smaller image can be used instead: `docker.io/bash:5.2.15`
 <3> Privileged is only required when running in an SElinux-enabled/OpenShift environment.
 
-When running Agent in fleet mode as a non-root user Kibana must be configured in order to properly accept the CA of the Elasticsearch cluster.
+When running Agent in fleet mode as a non-root user {kib} must be configured in order to properly accept the CA of the {es} cluster.
 
 [source,yaml]
 ----
@@ -653,34 +653,34 @@ spec:
 ----
 
 <1> This entry must not exist when running agent in fleet mode as a non-root user.
-<2> Note that the correct URL for Elasticsearch is `https://ELASTICSEARCH_NAME-es-http.YOUR-NAMESPACE.svc:9200`
-<3> Note that the correct path for Elasticsearch `certificate_authorities` is `/mnt/elastic-internal/elasticsearch-association/YOUR-NAMESPACE/ELASTICSEARCH-NAME/certs/ca.crt`
+<2> Note that the correct URL for {es} is `https://ELASTICSEARCH_NAME-es-http.YOUR-NAMESPACE.svc:9200`
+<3> Note that the correct path for {es} `certificate_authorities` is `/mnt/elastic-internal/elasticsearch-association/YOUR-NAMESPACE/ELASTICSEARCH-NAME/certs/ca.crt`
 
 // end::configuration-example-elastic-agent-running-as-a-non-root-user[]
 
 [id="{p}-elastic-agent-fleet-configuration-examples"]
 == Configuration Examples
 
-This section contains manifests that illustrate common use cases, and can be your starting point in exploring Elastic Agent deployed with ECK. These manifests are self-contained and work out-of-the-box on any non-secured Kubernetes cluster. They all contain a three-node Elasticsearch cluster, a single Kibana instance and a single Fleet Server instance.
+This section contains manifests that illustrate common use cases, and can be your starting point in exploring {agent} deployed with ECK. These manifests are self-contained and work out-of-the-box on any non-secured {k8s} cluster. They all contain a three-node {es} cluster, a single {kib} instance and a single {fleet-server} instance.
 
 CAUTION: The examples in this section are for illustration purposes only and should not be considered to be production-ready. Some of these examples use the `node.store.allow_mmap: false` setting which has performance implications and should be tuned for production workloads, as described in <<{p}-virtual-memory>>.
 
 
-=== System and Kubernetes integrations
+=== System and {k8s} {integrations}
 
 [source,sh,subs="attributes"]
 ----
 kubectl apply -f {agent_recipes}/fleet-kubernetes-integration.yaml
 ----
-Deploys Elastic Agent as a DaemonSet in Fleet mode with System and Kubernetes integrations enabled. System integration collects syslog logs, auth logs and system metrics (for CPU, I/O, filesystem, memory, network, process and others). Kubernetes integrations collects API server, Container, Event, Node, Pod, Volume and system metrics.
+Deploys {agent} as a DaemonSet in {fleet} mode with System and {k8s} {integrations} enabled. System integration collects syslog logs, auth logs and system metrics (for CPU, I/O, filesystem, memory, network, process and others). {k8s} {integrations} collects API server, Container, Event, Node, Pod, Volume and system metrics.
 
-=== System and Kubernetes integrations running as non-root
+=== System and {k8s} {integrations} running as non-root
 
 [source,sh,subs="attributes"]
 ----
 kubectl apply -f {agent_recipes}/fleet-kubernetes-integration-nonroot.yaml
 ----
-The provided example is functionally identical to the previous section but runs the Elastic Agent processes (both the Elastic Agent running as the Fleet server and the Elastic Agent connected to Fleet) as a non-root user by utilizing a DaemonSet to ensure directory and file permissions.
+The provided example is functionally identical to the previous section but runs the {agent} processes (both the {agent} running as the {fleet} server and the {agent} connected to {fleet}) as a non-root user by utilizing a DaemonSet to ensure directory and file permissions.
 
 NOTE: The DaemonSet itself must run as root to set up permissions and ECK >= 2.10.0 is required.
 
@@ -691,7 +691,7 @@ NOTE: The DaemonSet itself must run as root to set up permissions and ECK >= 2.1
 kubectl apply -f {agent_recipes}/fleet-custom-logs-integration.yaml
 ----
 
-Deploys Elastic Agent as a DaemonSet in Fleet mode with Custom Logs integration enabled. Collects logs from all Pods in the `default` namespace using autodiscover feature.
+Deploys {agent} as a DaemonSet in {fleet} mode with Custom Logs integration enabled. Collects logs from all Pods in the `default` namespace using autodiscover feature.
 
 
 === APM integration
@@ -701,36 +701,45 @@ Deploys Elastic Agent as a DaemonSet in Fleet mode with Custom Logs integration 
 kubectl apply -f {agent_recipes}/fleet-apm-integration.yaml
 ----
 
-Deploys single instance Elastic Agent Deployment in Fleet mode with APM integration enabled.
+Deploys single instance {agent} Deployment in {fleet} mode with APM integration enabled.
+
+=== Synthetic monitoring
+
+[source,sh,subs="attributes"]
+----
+kubectl apply -f {agent_recipes}/synthetic-monitoring.yaml
+----
+
+Deploys an {fleet}-enrolled {agent} that can be used as for link:{observability-guide}/monitor-uptime-synthetics.html[Synthetic monitoring]. This {agent} uses the `elastic-agent-complete` image. The agent policy still needs to be link:{observability-guide}/synthetics-private-location.html#synthetics-private-location-add[registered as private location] in {kib}.
 
 [id="{p}-elastic-agent-fleet-known-limitations"]
 == Known limitations
 
 === Running as root (ECK < 2.10.0 and Agent < 7.14.0)
-Until version 7.14.0 and ECK version 2.10.0, Elastic Agent and Fleet Server were required to run as root.
+Until version 7.14.0 and ECK version 2.10.0, {agent} and {fleet-server} were required to run as root.
 
-As of Elastic Stack version 7.14.0 and ECK version 2.10.0 it is also possible to run Elastic Agent and Fleet as a non-root user. See <<{p}_storing_local_state_in_host_path_volume>> for instructions.
+As of {stack} version 7.14.0 and ECK version 2.10.0 it is also possible to run {agent} and {fleet} as a non-root user. See <<{p}_storing_local_state_in_host_path_volume>> for instructions.
 
-=== Elastic Agent running in the same namespace as the Elastic stack.
-Until ECK version 2.11.0, Elastic Agent and Fleet Server were required to run within the same Namespace as Elasticsearch.
+=== {agent} running in the same namespace as the {stack}.
+Until ECK version 2.11.0, {agent} and {fleet-server} were required to run within the same Namespace as {es}.
 
-As of ECK version 2.11.0, Elastic Agent, Fleet Server and Elasticsearch can all be deployed in different Namespaces.
+As of ECK version 2.11.0, {agent}, {fleet-server} and {es} can all be deployed in different Namespaces.
 
-=== Running Endpoint Security integration
-Running Endpoint Security link:https://www.elastic.co/guide/en/security/current/install-endpoint.html[integration] is not yet supported in containerized environments, like Kubernetes. This is not an ECK limitation, but the limitation of the integration itself. Note that you can use ECK to deploy Elasticsearch, Kibana and Fleet Server, and add Endpoint Security integration to your policies if Elastic Agents running those policies are deployed in non-containerized environments.
+=== Running {endpoint-sec} integration
+Running {endpoint-sec} link:{security-guide}/install-endpoint.html[integration] is not yet supported in containerized environments, like {k8s}. This is not an ECK limitation, but the limitation of the integration itself. Note that you can use ECK to deploy {es}, {kib} and {fleet-server}, and add {endpoint-sec} integration to your policies if {agents} running those policies are deployed in non-containerized environments.
 
-=== Fleet Server initialization fails on minikube when CNI is disabled
-When deployed with ECK, the Fleet Server Pod makes an HTTP call to itself during Fleet initialization using its Service. Since a link:https://github.com/kubernetes/minikube/issues/1568[Pod cannot reach itself through its Service on minikube] when CNI is disabled, the call hangs until the connection times out and the Pod enters a crash loop.
+=== {fleet-server} initialization fails on minikube when CNI is disabled
+When deployed with ECK, the {fleet-server} Pod makes an HTTP call to itself during {fleet} initialization using its Service. Since a link:https://github.com/kubernetes/minikube/issues/1568[Pod cannot reach itself through its Service on minikube] when CNI is disabled, the call hangs until the connection times out and the Pod enters a crash loop.
 
 Solution: enable CNI when starting minikube: `minikube start --cni=true`.
 
 // tag::elastic-agent-fleet-known-limitations-local-state[]
 
 === Storing local state in host path volume
-Elastic Agent managed by ECK stores local state in a host path volume by default. This ensures that integrations run by the agent can continue their work without duplicating work that has already been done after the Pod has been recreated for example because of a Pod configuration change. Multiple replicas of an agent, for example Fleet Servers, can not be deployed on the same underlying Kubernetes node as they would try to use the same host path. There are 2 options for managing this feature:
+{agent} managed by ECK stores local state in a host path volume by default. This ensures that {integrations} run by the agent can continue their work without duplicating work that has already been done after the Pod has been recreated for example because of a Pod configuration change. Multiple replicas of an agent, for example {fleet} Servers, can not be deployed on the same underlying {k8s} node as they would try to use the same host path. There are 2 options for managing this feature:
 
 1. If local state storage in `hostPath` volumes is not desired this can be turned off by configuring an `emptyDir` volume instead.
-2. If local state storage is still desired but running the Agent container as root is not allowed, then you can run a `DaemonSet` that adjusts the permissions for the Agent local state on each Node prior to running Elastic Agent. Note that this `DaemonSet` must be `runAsUser: 0` and possibly `privileged: true`. Also note the Kibana changes required to trust the Elasticsearch CA when running in fleet mode.
+2. If local state storage is still desired but running the Agent container as root is not allowed, then you can run a `DaemonSet` that adjusts the permissions for the Agent local state on each Node prior to running {agent}. Note that this `DaemonSet` must be `runAsUser: 0` and possibly `privileged: true`. Also note the {kib} changes required to trust the {es} CA when running in fleet mode.
 
 Full configuration examples exist in  <<{p}-elastic-agent-running-as-a-non-root-user>>.
 

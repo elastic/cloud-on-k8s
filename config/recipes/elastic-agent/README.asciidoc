@@ -42,3 +42,7 @@ Deploys Elastic Agent as a DaemonSet in Fleet mode with Custom Logs integration 
 ===== APM integration - `fleet-apm-integration.yaml`
 
 Deploys single instance Elastic Agent Deployment in Fleet mode with APM integration enabled.
+
+===== Synthetic monitoring - `synthetic-monitoring.yaml`
+
+Deploys an Fleet-enrolled Elastic Agent that can be used as for link:https://www.elastic.co/guide/en/observability/current/monitor-uptime-synthetics.html[Synthetic monitoring]. This Elastic Agent uses the `elastic-agent-complete` image. The agent policy still needs to be link:https://www.elastic.co/guide/en/observability/current/synthetics-private-location.html#synthetics-private-location-add[registered as private location] in Kibana.
