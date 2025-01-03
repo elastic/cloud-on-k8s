@@ -77,7 +77,9 @@ spec:
       - name: Synthetics Server
         id: synthetics-server
         namespace: default
-
+        is_managed: true
+        unenroll_timeout: 900
+        package_policies: []
       - name: Fleet Server on ECK policy
         id: eck-fleet-server
         namespace: default
