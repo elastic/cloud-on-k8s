@@ -5,35 +5,40 @@
 package settings
 
 const (
-	DataVolumeName               = "kibana-data"
-	DataVolumeMountPath          = "/usr/share/kibana/data"
-	PluginsVolumeName            = "kibana-plugins"
-	PluginsVolumeMountPath       = "/usr/share/kibana/plugins"
-	LogsVolumeName               = "kibana-logs"
-	LogsVolumeMountPath          = "/usr/share/kibana/logs"
-	TempVolumeName               = "temp-volume"
-	TempVolumeMountPath          = "/tmp"
-	KibanaBasePathEnvName        = "SERVER_BASEPATH"
-	KibanaRewriteBasePathEnvName = "SERVER_REWRITEBASEPATH"
-	ScriptsVolumeMountPath       = "/mnt/elastic-internal/scripts"
-	ScriptsVolumeName            = "kibana-scripts"
-	// PrepareFilesystemContainerName is the name of the container that prepares the filesystem
-	// PrepareFilesystemContainerName = "elastic-internal-init-filesystem"
-	// KibanaPluginsVolumeName is the name of the volume that holds the Kibana plugins
-	KibanaPluginsVolumeName = "kibana-plugins"
-	// KibanaPluginsInternalMountPath is the path where the Kibana plugins are mounted in the init container
-	KibanaPluginsInternalMountPath = "/mnt/elastic-internal/kibana-plugins-local"
-	// KibanaPluginsMountPath is the path where the Kibana plugins are mounted in the Kibana container
-	// KibanaPluginsMountPath = "/usr/share/kibana/plugins"
-
+	// DataVolumeName is the name of the volume that holds the Kibana data
+	DataVolumeName = "kibana-data"
+	//
+	DataVolumeMountPath = "/usr/share/kibana/data"
+	// PluginsVolumeName is the name of the volume that holds the Kibana plugins
+	PluginsVolumeName = "kibana-plugins"
+	// PluginsVolumeMountPath is the path where the Kibana plugins are mounted in the Kibana container
+	PluginsVolumeMountPath = "/usr/share/kibana/plugins"
+	// PluginsVolumeInternalMountPath is the path where the Kibana plugins are mounted in the init container
+	PluginsVolumeInternalMountPath = "/mnt/elastic-internal/kibana-plugins-local"
+	// LogsVolumeName is the name of the volume that holds the Kibana logs
+	LogsVolumeName = "kibana-logs"
+	// LogsVolumeMountPath is the path where the Kibana logs are mounted in the Kibana container
+	LogsVolumeMountPath = "/usr/share/kibana/logs"
+	// TempVolumeName is the name of the volume that holds the temporary files
+	TempVolumeName = "temp-volume"
+	// TempVolumeMountPath is the path where the temporary files are mounted in the Kibana container
+	TempVolumeMountPath    = "/tmp"
+	BasePathEnvName        = "SERVER_BASEPATH"
+	RewriteBasePathEnvName = "SERVER_REWRITEBASEPATH"
+	// ScriptsVolumeName is the name of the volume that holds the Kibana scripts for the init container
+	ScriptsVolumeName = "kibana-scripts"
+	// ScriptsVolumeMountPath is the path where the Kibana scripts are mounted in the init container
+	ScriptsVolumeMountPath = "/mnt/elastic-internal/scripts"
 	// InitConfigContainerName is the name of the container that initializes the configuration
 	InitContainerName = "elastic-internal-init"
 	// ConfigVolumeName is the name of the volume that holds the Kibana configuration
-	ConfigVolumeName                   = "elastic-internal-kibana-config-local"
-	ConfigVolumeMountPath              = "/usr/share/kibana/config"
+	ConfigVolumeName = "elastic-internal-kibana-config-local"
+	// ConfigVolumeMountPath is the path where the Kibana configuration is mounted in the Kibana container
+	ConfigVolumeMountPath = "/usr/share/kibana/config"
+	// InitContainerConfigVolumeMountPath is the path where the Kibana configuration is mounted in the init container
 	InitContainerConfigVolumeMountPath = "/mnt/elastic-internal/kibana-config-local"
-
 	// InternalConfigVolumeName is a volume which contains the generated configuration.
-	InternalConfigVolumeName      = "elastic-internal-kibana-config"
+	InternalConfigVolumeName = "elastic-internal-kibana-config"
+	// InternalConfigVolumeMountPath is the path where the generated configuration is mounted in the Kibanainit  container
 	InternalConfigVolumeMountPath = "/mnt/elastic-internal/kibana-config"
 )

@@ -183,19 +183,19 @@ func GetKibanaBasePathFromSpecEnv(podSpec corev1.PodSpec) (string, error) {
 
 	envMap := make(map[string]string)
 	for _, envVar := range kbContainer.Env {
-		if envVar.Name == kbsettings.KibanaBasePathEnvName || envVar.Name == kbsettings.KibanaRewriteBasePathEnvName {
+		if envVar.Name == kbsettings.BasePathEnvName || envVar.Name == kbsettings.RewriteBasePathEnvName {
 			envMap[envVar.Name] = envVar.Value
 		}
 	}
 
 	// If SERVER_REWRITEBASEPATH is set to true, we should use the value of SERVER_BASEPATH
-	if rewriteBasePath, ok := envMap[kbsettings.KibanaRewriteBasePathEnvName]; ok {
+	if rewriteBasePath, ok := envMap[kbsettings.RewriteBasePathEnvName]; ok {
 		rewriteBasePathBool, err := strconv.ParseBool(rewriteBasePath)
 		if err != nil {
 			return "", fmt.Errorf("failed to parse SERVER_REWRITEBASEPATH value %s: %w", rewriteBasePath, err)
 		}
 		if rewriteBasePathBool {
-			return envMap[kbsettings.KibanaBasePathEnvName], nil
+			return envMap[kbsettings.BasePathEnvName], nil
 		}
 	}
 

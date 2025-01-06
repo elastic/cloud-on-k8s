@@ -33,8 +33,8 @@ var (
 		// This volume name is the same as the primary container's volume name
 		// so that the init container does not mount the plugins emptydir volume
 		// on top of /usr/share/kibana/plugins.
-		VolumeName:             settings.KibanaPluginsVolumeName,
-		InitContainerMountPath: settings.KibanaPluginsInternalMountPath,
+		VolumeName:             settings.PluginsVolumeName,
+		InitContainerMountPath: settings.PluginsVolumeInternalMountPath,
 		ContainerMountPath:     settings.PluginsVolumeMountPath,
 	}
 
