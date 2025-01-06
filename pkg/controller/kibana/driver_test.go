@@ -8,6 +8,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"path"
 	"testing"
 
 	"github.com/go-test/deep"
@@ -28,8 +29,10 @@ import (
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/deployment"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/watches"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/settings"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/kibana/initcontainer"
 	kblabel "github.com/elastic/cloud-on-k8s/v2/pkg/controller/kibana/label"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/kibana/network"
+	kbsettings "github.com/elastic/cloud-on-k8s/v2/pkg/controller/kibana/settings"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/compare"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/k8s"
 )
@@ -507,7 +510,7 @@ func expectedDeploymentParams() deployment.Params {
 						},
 					},
 					{
-						Name: ConfigSharedVolume.VolumeName,
+						Name: initcontainer.ConfigSharedVolume.VolumeName,
 						VolumeSource: corev1.VolumeSource{
 							EmptyDir: &corev1.EmptyDirVolumeSource{},
 						},
@@ -522,7 +525,7 @@ func expectedDeploymentParams() deployment.Params {
 						},
 					},
 					{
-						Name: DataVolumeName,
+						Name: kbsettings.DataVolumeName,
 						VolumeSource: corev1.VolumeSource{
 							EmptyDir: &corev1.EmptyDirVolumeSource{},
 						},
@@ -601,9 +604,9 @@ func expectedDeploymentParams() deployment.Params {
 								MountPath: "/usr/share/kibana/config/elasticsearch-certs",
 							},
 							{
-								Name:      DataVolumeName,
+								Name:      kbsettings.DataVolumeName,
 								ReadOnly:  falseVal,
-								MountPath: DataVolumeMountPath,
+								MountPath: kbsettings.DataVolumeMountPath,
 							},
 							{
 								Name:      "kibana-logs",
@@ -642,7 +645,7 @@ func expectedDeploymentParams() deployment.Params {
 						Name:            "elastic-internal-init-config",
 						ImagePullPolicy: corev1.PullIfNotPresent,
 						Image:           "my-image",
-						Command:         []string{"/usr/bin/env", "bash", "-c", InitConfigScript},
+						Command:         []string{"/usr/bin/env", "bash", "-c", path.Join(kbsettings.ScriptsVolumeMountPath, initcontainer.KibanaInitScriptConfigKey)},
 						SecurityContext: &defaultSecurityContext,
 						Env: []corev1.EnvVar{
 							{Name: settings.EnvPodIP, Value: "", ValueFrom: &corev1.EnvVarSource{
@@ -667,18 +670,18 @@ func expectedDeploymentParams() deployment.Params {
 							{
 								Name:      "elastic-internal-kibana-config",
 								ReadOnly:  true,
-								MountPath: InternalConfigVolumeMountPath,
+								MountPath: kbsettings.InternalConfigVolumeMountPath,
 							},
-							ConfigSharedVolume.InitContainerVolumeMount(),
+							initcontainer.ConfigSharedVolume.InitContainerVolumeMount(),
 							{
 								Name:      "elasticsearch-certs",
 								ReadOnly:  true,
 								MountPath: "/usr/share/kibana/config/elasticsearch-certs",
 							},
 							{
-								Name:      DataVolumeName,
+								Name:      kbsettings.DataVolumeName,
 								ReadOnly:  falseVal,
-								MountPath: DataVolumeMountPath,
+								MountPath: kbsettings.DataVolumeMountPath,
 							},
 							{
 								Name:      "kibana-logs",
@@ -724,18 +727,18 @@ func expectedDeploymentParams() deployment.Params {
 						{
 							Name:      "elastic-internal-kibana-config",
 							ReadOnly:  true,
-							MountPath: InternalConfigVolumeMountPath,
+							MountPath: kbsettings.InternalConfigVolumeMountPath,
 						},
-						ConfigSharedVolume.VolumeMount(),
+						initcontainer.ConfigSharedVolume.VolumeMount(),
 						{
 							Name:      "elasticsearch-certs",
 							ReadOnly:  true,
 							MountPath: "/usr/share/kibana/config/elasticsearch-certs",
 						},
 						{
-							Name:      DataVolumeName,
+							Name:      kbsettings.DataVolumeName,
 							ReadOnly:  falseVal,
-							MountPath: DataVolumeMountPath,
+							MountPath: kbsettings.DataVolumeMountPath,
 						},
 						{
 							Name:      "kibana-logs",

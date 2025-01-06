@@ -7,6 +7,8 @@ package initcontainer
 import (
 	"bytes"
 	"html/template"
+
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/kibana/settings"
 )
 
 const (
@@ -30,7 +32,7 @@ var initFsScriptTemplate = template.Must(template.New("").Parse(
 	`#!/usr/bin/env bash
 	set -eux
 
-	init_config_initialized_flag=` + InitContainerConfigVolumeMountPath + `/elastic-internal-init-config.ok
+	init_config_initialized_flag=` + settings.InitContainerConfigVolumeMountPath + `/elastic-internal-init-config.ok
 
 	if [[ -f "${init_config_initialized_flag}" ]]; then
 		echo "Kibana configuration already initialized."
@@ -39,7 +41,7 @@ var initFsScriptTemplate = template.Must(template.New("").Parse(
 
 	echo "Setup Kibana configuration"
 
-	ln -sf ` + InternalConfigVolumeMountPath + `/* ` + InitContainerConfigVolumeMountPath + `/
+	ln -sf ` + settings.InternalConfigVolumeMountPath + `/* ` + settings.InitContainerConfigVolumeMountPath + `/
 
 	touch "${init_config_initialized_flag}"
 	echo "Kibana configuration successfully prepared."

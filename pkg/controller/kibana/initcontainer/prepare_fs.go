@@ -13,11 +13,7 @@ import (
 	kbv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/kibana/v1"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/defaults"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/volume"
-	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/kibana/secret"
-)
-
-const (
-	ScriptsVolumeMountPath = "/mnt/elastic-internal/scripts"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/kibana/settings"
 )
 
 var (
@@ -27,9 +23,9 @@ var (
 	// This is needed in order to have in a same directory both the generated configuration and the keystore file  which
 	// is created in /usr/share/kibana/config since Kibana 7.9
 	ConfigSharedVolume = volume.SharedVolume{
-		VolumeName:             ConfigVolumeName,
-		InitContainerMountPath: InitContainerConfigVolumeMountPath,
-		ContainerMountPath:     ConfigVolumeMountPath,
+		VolumeName:             settings.ConfigVolumeName,
+		InitContainerMountPath: settings.InitContainerConfigVolumeMountPath,
+		ContainerMountPath:     settings.ConfigVolumeMountPath,
 	}
 
 	// PluginsSharedVolume contains the Kibana plugins/ directory
@@ -37,9 +33,9 @@ var (
 		// This volume name is the same as the primary container's volume name
 		// so that the init container does not mount the plugins emptydir volume
 		// on top of /usr/share/kibana/plugins.
-		VolumeName:             KibanaPluginsVolumeName,
-		InitContainerMountPath: KibanaPluginsInternalMountPath,
-		ContainerMountPath:     KibanaPluginsMountPath,
+		VolumeName:             settings.KibanaPluginsVolumeName,
+		InitContainerMountPath: settings.KibanaPluginsInternalMountPath,
+		ContainerMountPath:     settings.PluginsVolumeMountPath,
 	}
 
 	PluginVolumes = volume.SharedVolumeArray{
@@ -65,9 +61,9 @@ var (
 // ConfigVolume returns a SecretVolume to hold the Kibana config of the given Kibana resource.
 func ConfigVolume(kb kbv1.Kibana) volume.SecretVolume {
 	return volume.NewSecretVolumeWithMountPath(
-		secret.ConfigSecretName(kb),
-		InternalConfigVolumeName,
-		InternalConfigVolumeMountPath,
+		kbv1.ConfigSecret(kb),
+		settings.InternalConfigVolumeName,
+		settings.InternalConfigVolumeMountPath,
 	)
 }
 
@@ -75,9 +71,9 @@ func ConfigVolume(kb kbv1.Kibana) volume.SecretVolume {
 func NewInitContainer(kb kbv1.Kibana, includePlugins bool) (corev1.Container, error) {
 	container := corev1.Container{
 		ImagePullPolicy: corev1.PullIfNotPresent,
-		Name:            InitContainerName,
+		Name:            settings.InitContainerName,
 		Env:             defaults.PodDownwardEnvVars(),
-		Command:         []string{"bash", "-c", path.Join(ScriptsVolumeMountPath, KibanaInitScriptConfigKey)},
+		Command:         []string{"/usr/bin/env", "bash", "-c", path.Join(settings.ScriptsVolumeMountPath, KibanaInitScriptConfigKey)},
 		VolumeMounts: []corev1.VolumeMount{
 			ConfigSharedVolume.InitContainerVolumeMount(),
 			ConfigVolume(kb).VolumeMount(),

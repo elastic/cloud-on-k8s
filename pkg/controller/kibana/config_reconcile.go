@@ -19,44 +19,13 @@ import (
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/reconciler"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/tracing"
 	kblabel "github.com/elastic/cloud-on-k8s/v2/pkg/controller/kibana/label"
-	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/kibana/secret"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/k8s"
 )
 
 // Constants to use for the config files in a Kibana pod.
 const (
-	ConfigVolumeName                   = "elastic-internal-kibana-config-local"
-	ConfigVolumeMountPath              = "/usr/share/kibana/config"
-	InitContainerConfigVolumeMountPath = "/mnt/elastic-internal/kibana-config-local"
-
-	// InternalConfigVolumeName is a volume which contains the generated configuration.
-	InternalConfigVolumeName      = "elastic-internal-kibana-config"
-	InternalConfigVolumeMountPath = "/mnt/elastic-internal/kibana-config"
-
 	TelemetryFilename = "telemetry.yml"
 )
-
-// var (
-// ConfigSharedVolume contains the Kibana config/ directory, it's an empty volume where the required configuration
-// is initialized by the elastic-internal-init-config init container. Its content is then shared by the init container
-// that creates the keystore and the main Kibana container.
-// This is needed in order to have in a same directory both the generated configuration and the keystore file  which
-// is created in /usr/share/kibana/config since Kibana 7.9
-// 	ConfigSharedVolume = volume.SharedVolume{
-// 		VolumeName:             ConfigVolumeName,
-// 		InitContainerMountPath: InitContainerConfigVolumeMountPath,
-// 		ContainerMountPath:     ConfigVolumeMountPath,
-// 	}
-// )
-
-// ConfigVolume returns a SecretVolume to hold the Kibana config of the given Kibana resource.
-// func ConfigVolume(kb kbv1.Kibana) volume.SecretVolume {
-// 	return volume.NewSecretVolumeWithMountPath(
-// 		SecretName(kb),
-// 		InternalConfigVolumeName,
-// 		InternalConfigVolumeMountPath,
-// 	)
-// }
 
 // ReconcileConfigSecret reconciles the expected Kibana config secret for the given Kibana resource.
 // This managed secret is mounted into each pod of the Kibana deployment.
@@ -90,7 +59,7 @@ func ReconcileConfigSecret(
 	expected := corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
 			Namespace: kb.Namespace,
-			Name:      secret.ConfigSecretName(kb),
+			Name:      kbv1.ConfigSecret(kb),
 			Labels: labels.AddCredentialsLabel(map[string]string{
 				kblabel.KibanaNameLabelName: kb.Name,
 			}),
@@ -106,7 +75,7 @@ func ReconcileConfigSecret(
 // if the Secret or usage key doesn't exist yet.
 func getTelemetryYamlBytes(client k8s.Client, kb kbv1.Kibana) ([]byte, error) {
 	var sec corev1.Secret
-	if err := client.Get(context.Background(), types.NamespacedName{Namespace: kb.Namespace, Name: secret.ConfigSecretName(kb)}, &sec); err != nil {
+	if err := client.Get(context.Background(), types.NamespacedName{Namespace: kb.Namespace, Name: kbv1.ConfigSecret(kb)}, &sec); err != nil {
 		if apierrors.IsNotFound(err) {
 			// this secret is just about to be created, we don't know usage yet
 			return nil, nil

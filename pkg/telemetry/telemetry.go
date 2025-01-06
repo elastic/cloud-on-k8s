@@ -31,6 +31,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/stackmon/monitoring"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/tracing"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/kibana"
+	kbsettings "github.com/elastic/cloud-on-k8s/v2/pkg/controller/kibana/settings"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/license"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/k8s"
 	ulog "github.com/elastic/cloud-on-k8s/v2/pkg/utils/log"
@@ -178,7 +179,7 @@ func (r *Reporter) reconcileKibanaSecret(ctx context.Context, kb kbv1.Kibana, te
 	log := ulog.FromContext(ctx)
 
 	var secret corev1.Secret
-	nsName := types.NamespacedName{Namespace: kb.Namespace, Name: kibana.SecretName(kb)}
+	nsName := types.NamespacedName{Namespace: kb.Namespace, Name: kbsettings.ConfigSecretName(kb)}
 	if err := r.client.Get(ctx, nsName, &secret); err != nil {
 		log.Error(err, "failed to get Kibana secret")
 		return

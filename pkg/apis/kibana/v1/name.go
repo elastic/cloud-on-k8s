@@ -11,6 +11,7 @@ import (
 const (
 	httpServiceSuffix      = "http"
 	scriptsConfigMapSuffix = "scripts"
+	configSecretSuffix     = "config"
 )
 
 // KBNamer is a KBNamer that is configured with the defaults for resources related to a Kibana resource.
@@ -26,4 +27,8 @@ func Deployment(kbName string) string {
 
 func ScriptsConfigMap(kbName string) string {
 	return KBNamer.Suffix(kbName, scriptsConfigMapSuffix)
+}
+
+func ConfigSecret(kb Kibana) string {
+	return KBNamer.Suffix(kb.Name, configSecretSuffix)
 }
