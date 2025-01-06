@@ -214,6 +214,7 @@ func deleteTestResources(ctx context.Context) error {
 		}
 	}
 
+	// Dynamic client must be built from the configuration, not by reusing the existing REST client using clntset.RESTClient()
 	dynamicClient, err := dynamic.NewForConfig(cfg)
 	if err != nil {
 		return fmt.Errorf("while creating dynamic client to delete resources: %v", err)
