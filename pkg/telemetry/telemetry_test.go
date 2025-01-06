@@ -27,7 +27,6 @@ import (
 	logstashv1alpha1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/logstash/v1alpha1"
 	mapsv1alpha1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/maps/v1alpha1"
 	policyv1alpha1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/stackconfigpolicy/v1alpha1"
-	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/kibana/settings"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/k8s"
 )
 
@@ -137,7 +136,7 @@ func createKbAndSecret(name, namespace string, count int32) (kbv1.Kibana, corev1
 	}
 	return kb, corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      settings.ConfigSecretName(kb),
+			Name:      kbv1.ConfigSecret(kb),
 			Namespace: namespace,
 		},
 	}

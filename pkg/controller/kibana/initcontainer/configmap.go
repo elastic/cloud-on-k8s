@@ -19,19 +19,15 @@ import (
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/version"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/volume"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/kibana/label"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/kibana/settings"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/k8s"
-)
-
-const (
-	scriptsVolumeMountPath = "/mnt/elastic-internal/scripts"
-	scriptsVolumeName      = "kibana-scripts"
 )
 
 func NewScriptsConfigMapVolume(kbName string) volume.ConfigMapVolume {
 	return volume.NewConfigMapVolumeWithMode(
 		kbv1.ScriptsConfigMap(kbName),
-		scriptsVolumeName,
-		scriptsVolumeMountPath,
+		settings.ScriptsVolumeName,
+		settings.ScriptsVolumeMountPath,
 		0755)
 }
 

@@ -16,6 +16,7 @@ const (
 	KibanaBasePathEnvName        = "SERVER_BASEPATH"
 	KibanaRewriteBasePathEnvName = "SERVER_REWRITEBASEPATH"
 	ScriptsVolumeMountPath       = "/mnt/elastic-internal/scripts"
+	ScriptsVolumeName            = "kibana-scripts"
 	// PrepareFilesystemContainerName is the name of the container that prepares the filesystem
 	// PrepareFilesystemContainerName = "elastic-internal-init-filesystem"
 	// KibanaPluginsVolumeName is the name of the volume that holds the Kibana plugins

@@ -74,8 +74,8 @@ func ReconcileConfigSecret(
 // getUsage returns usage map object and its YAML bytes from this Kibana configuration Secret or nil
 // if the Secret or usage key doesn't exist yet.
 func getTelemetryYamlBytes(client k8s.Client, kb kbv1.Kibana) ([]byte, error) {
-	var sec corev1.Secret
-	if err := client.Get(context.Background(), types.NamespacedName{Namespace: kb.Namespace, Name: kbv1.ConfigSecret(kb)}, &sec); err != nil {
+	var secret corev1.Secret
+	if err := client.Get(context.Background(), types.NamespacedName{Namespace: kb.Namespace, Name: kbv1.ConfigSecret(kb)}, &secret); err != nil {
 		if apierrors.IsNotFound(err) {
 			// this secret is just about to be created, we don't know usage yet
 			return nil, nil
@@ -84,7 +84,7 @@ func getTelemetryYamlBytes(client k8s.Client, kb kbv1.Kibana) ([]byte, error) {
 		return nil, fmt.Errorf("unexpected error while getting usage secret: %w", err)
 	}
 
-	telemetryBytes, ok := sec.Data[TelemetryFilename]
+	telemetryBytes, ok := secret.Data[TelemetryFilename]
 	if !ok || telemetryBytes == nil {
 		// secret is there, but telemetry not populated yet
 		return nil, nil
