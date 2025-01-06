@@ -26,6 +26,7 @@ import (
 // HardenedSecurityContextSupportedVersion is the version in which a hardened security context is supported.
 var HardenedSecurityContextSupportedVersion = version.From(7, 9, 0)
 
+// NewScriptsConfigMapVolume creates a new volume for the ConfigMap ap containing scripts used by the Kibana init container.
 func NewScriptsConfigMapVolume(kbName string) volume.ConfigMapVolume {
 	return volume.NewConfigMapVolumeWithMode(
 		kbv1.ScriptsConfigMap(kbName),
@@ -34,7 +35,7 @@ func NewScriptsConfigMapVolume(kbName string) volume.ConfigMapVolume {
 		0755)
 }
 
-// newConfigMapWithData constructs a new config map with the given data
+// newConfigMapWithData constructs a new ConfigMap with the given data
 func newConfigMapWithData(cm, kb types.NamespacedName, data map[string]string) corev1.ConfigMap {
 	return corev1.ConfigMap{
 		ObjectMeta: metav1.ObjectMeta{
@@ -46,7 +47,7 @@ func newConfigMapWithData(cm, kb types.NamespacedName, data map[string]string) c
 	}
 }
 
-// init containers and readiness probe.
+// ReconcileScriptsConfigMap reconciles the ConfigMap containing scripts used by the Kibana init container.
 func ReconcileScriptsConfigMap(ctx context.Context, c k8s.Client, kb kbv1.Kibana, setDefaultSecurityContext bool) error {
 	span, ctx := apm.StartSpan(ctx, "reconcile_scripts", tracing.SpanTypeApp)
 	defer span.End()
@@ -73,7 +74,7 @@ func ReconcileScriptsConfigMap(ctx context.Context, c k8s.Client, kb kbv1.Kibana
 	return reconcileConfigMap(ctx, c, kb, scriptsConfigMap)
 }
 
-// reconcileConfigMap checks for an existing config map and updates it or creates one if it does not exist.
+// reconcileConfigMap checks for an existing ConfigMap and updates it or creates one if it does not exist.
 func reconcileConfigMap(
 	ctx context.Context,
 	c k8s.Client,

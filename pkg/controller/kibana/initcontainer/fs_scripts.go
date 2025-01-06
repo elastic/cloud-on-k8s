@@ -15,7 +15,7 @@ const (
 	KibanaInitScriptConfigKey = "init.sh"
 )
 
-// templateParams are the parameters manipulated in the pluginsFsScriptTemplate
+// templateParams are the parameters used in the initFSScriptTemplate template.
 type templateParams struct {
 	// ContainerPluginsMountPath is the mount path for plugins
 	// within the Kibana container.
@@ -31,20 +31,6 @@ type templateParams struct {
 var initFsScriptTemplate = template.Must(template.New("").Parse(
 	`#!/usr/bin/env bash
 	set -eux
-
-	init_config_initialized_flag=` + settings.InitContainerConfigVolumeMountPath + `/elastic-internal-init-config.ok
-
-	if [[ -f "${init_config_initialized_flag}" ]]; then
-		echo "Kibana configuration already initialized."
-		exit 0
-	fi
-
-	echo "Setup Kibana configuration"
-
-	ln -sf ` + settings.InternalConfigVolumeMountPath + `/* ` + settings.InitContainerConfigVolumeMountPath + `/
-
-	touch "${init_config_initialized_flag}"
-	echo "Kibana configuration successfully prepared."
 
 	{{ if .IncludePlugins }}
 
@@ -72,6 +58,20 @@ var initFsScriptTemplate = template.Must(template.New("").Parse(
 	echo "Files copy duration: $(duration $mv_start) sec."
 
 	{{ end }}
+
+	init_config_initialized_flag=` + settings.InitContainerConfigVolumeMountPath + `/elastic-internal-init-config.ok
+
+	if [[ -f "${init_config_initialized_flag}" ]]; then
+		echo "Kibana configuration already initialized."
+		exit 0
+	fi
+
+	echo "Setup Kibana configuration"
+
+	ln -sf ` + settings.InternalConfigVolumeMountPath + `/* ` + settings.InitContainerConfigVolumeMountPath + `/
+
+	touch "${init_config_initialized_flag}"
+	echo "Kibana configuration successfully prepared."
 `))
 
 // RenderScriptTemplate renders initFsScriptTemplate using the given TemplateParams
