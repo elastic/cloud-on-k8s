@@ -89,7 +89,7 @@ func NewInitContainer(kb kbv1.Kibana, includePlugins bool) (corev1.Container, er
 }
 
 func RenderInitScript(includePlugins bool) (string, error) {
-	templateParams := TemplateParams{
+	templateParams := templateParams{
 		ContainerPluginsMountPath:     PluginsSharedVolume.ContainerMountPath,
 		InitContainerPluginsMountPath: PluginsSharedVolume.InitContainerMountPath,
 		IncludePlugins:                includePlugins,

@@ -139,7 +139,8 @@ func NewPodTemplateSpec(
 	// Limiting to 7.10.0 here as there was a bug in previous versions causing rebuilding
 	// of browser bundles to happen on plugin install, which would attempt a write to the
 	// root filesystem on restart.
-	if v.GTE(version.From(7, 10, 0)) && setDefaultSecurityContext {
+	var canEnableSecurityContext = v.GTE(initcontainer.HardenedSecurityContextSupportedVersion) && setDefaultSecurityContext
+	if canEnableSecurityContext {
 		scriptsConfigMapVolume := initcontainer.NewScriptsConfigMapVolume(kb.Name)
 		builder.WithContainersSecurityContext(defaultSecurityContext).
 			WithPodSecurityContext(defaultPodSecurityContext).
@@ -149,7 +150,7 @@ func NewPodTemplateSpec(
 			WithVolumes(scriptsConfigMapVolume.Volume()).WithVolumeMounts(scriptsConfigMapVolume.VolumeMount())
 	}
 
-	initContainer, err := initcontainer.NewInitContainer(kb, v.GTE(version.From(7, 10, 0)) && setDefaultSecurityContext)
+	initContainer, err := initcontainer.NewInitContainer(kb, canEnableSecurityContext)
 	if err != nil {
 		return corev1.PodTemplateSpec{}, err
 	}

@@ -15,8 +15,8 @@ const (
 	KibanaInitScriptConfigKey = "init.sh"
 )
 
-// TemplateParams are the parameters manipulated in the pluginsFsScriptTemplate
-type TemplateParams struct {
+// templateParams are the parameters manipulated in the pluginsFsScriptTemplate
+type templateParams struct {
 	// ContainerPluginsMountPath is the mount path for plugins
 	// within the Kibana container.
 	ContainerPluginsMountPath string
@@ -75,7 +75,7 @@ var initFsScriptTemplate = template.Must(template.New("").Parse(
 `))
 
 // RenderScriptTemplate renders initFsScriptTemplate using the given TemplateParams
-func RenderScriptTemplate(params TemplateParams) (string, error) {
+func RenderScriptTemplate(params templateParams) (string, error) {
 	tplBuffer := bytes.Buffer{}
 	if err := initFsScriptTemplate.Execute(&tplBuffer, params); err != nil {
 		return "", err

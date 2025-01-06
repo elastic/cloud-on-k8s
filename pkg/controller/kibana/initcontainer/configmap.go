@@ -23,6 +23,9 @@ import (
 	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/k8s"
 )
 
+// HardenedSecurityContextSupportedVersion is the version in which a hardened security context is supported.
+var HardenedSecurityContextSupportedVersion = version.From(7, 9, 0)
+
 func NewScriptsConfigMapVolume(kbName string) volume.ConfigMapVolume {
 	return volume.NewConfigMapVolumeWithMode(
 		kbv1.ScriptsConfigMap(kbName),
@@ -31,8 +34,8 @@ func NewScriptsConfigMapVolume(kbName string) volume.ConfigMapVolume {
 		0755)
 }
 
-// NewConfigMapWithData constructs a new config map with the given data
-func NewConfigMapWithData(cm, kb types.NamespacedName, data map[string]string) corev1.ConfigMap {
+// newConfigMapWithData constructs a new config map with the given data
+func newConfigMapWithData(cm, kb types.NamespacedName, data map[string]string) corev1.ConfigMap {
 	return corev1.ConfigMap{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      cm.Name,
@@ -53,13 +56,13 @@ func ReconcileScriptsConfigMap(ctx context.Context, c k8s.Client, kb kbv1.Kibana
 		return err // error unlikely and should have been caught during validation
 	}
 
-	// The plugins logic should only be included in KB >= 7.10.0 and when the default security context is set.
-	initScript, err := RenderInitScript(v.GTE(version.From(7, 10, 0)) && setDefaultSecurityContext)
+	// The plugins logic should only be included in KB >= 7.10.0 and when the default hardened security context is set.
+	initScript, err := RenderInitScript(v.GTE(HardenedSecurityContextSupportedVersion) && setDefaultSecurityContext)
 	if err != nil {
 		return err
 	}
 
-	scriptsConfigMap := NewConfigMapWithData(
+	scriptsConfigMap := newConfigMapWithData(
 		types.NamespacedName{Namespace: kb.Namespace, Name: kbv1.ScriptsConfigMap(kb.Name)},
 		k8s.ExtractNamespacedName(&kb),
 		map[string]string{
@@ -67,11 +70,11 @@ func ReconcileScriptsConfigMap(ctx context.Context, c k8s.Client, kb kbv1.Kibana
 		},
 	)
 
-	return ReconcileConfigMap(ctx, c, kb, scriptsConfigMap)
+	return reconcileConfigMap(ctx, c, kb, scriptsConfigMap)
 }
 
-// ReconcileConfigMap checks for an existing config map and updates it or creates one if it does not exist.
-func ReconcileConfigMap(
+// reconcileConfigMap checks for an existing config map and updates it or creates one if it does not exist.
+func reconcileConfigMap(
 	ctx context.Context,
 	c k8s.Client,
 	kb kbv1.Kibana,
