@@ -2,7 +2,7 @@
 // or more contributor license agreements. Licensed under the Elastic License 2.0;
 // you may not use this file except in compliance with the Elastic License 2.0.
 
-package kibana
+package initcontainer
 
 import (
 	corev1 "k8s.io/api/core/v1"
@@ -16,8 +16,8 @@ import (
 // keystoreInConfigDirVersion is the version in which the keystore is no longer stored in the data directory but in the config one.
 var keystoreInConfigDirVersion = version.From(7, 9, 0)
 
-// newInitContainersParameters is used to generate the init container that will load the secure settings into a keystore
-func newInitContainersParameters(kb *kbv1.Kibana) (keystore.InitContainerParameters, error) {
+// NewInitContainersParameters is used to generate the init container that will load the secure settings into a keystore
+func NewInitContainersParameters(kb *kbv1.Kibana) (keystore.InitContainerParameters, error) {
 	parameters := keystore.InitContainerParameters{
 		KeystoreCreateCommand:         "/usr/share/kibana/bin/kibana-keystore create",
 		KeystoreAddCommand:            `/usr/share/kibana/bin/kibana-keystore add "$key" --stdin < "$filename"`,

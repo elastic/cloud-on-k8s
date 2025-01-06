@@ -10,7 +10,7 @@ import (
 )
 
 const (
-	PrepareFsScriptConfigKey = "prepare-fs.sh"
+	KibanaInitScriptConfigKey = "init.sh"
 )
 
 // TemplateParams are the parameters manipulated in the pluginsFsScriptTemplate
@@ -21,10 +21,30 @@ type TemplateParams struct {
 	// InitContainerPluginsMountPath is the mount path for plugins
 	// within the init container.
 	InitContainerPluginsMountPath string
+	// IncludePlugins indicates whether the script should include
+	// the plugins persistence logic.
+	IncludePlugins bool
 }
 
-var pluginsFsScriptTemplate = template.Must(template.New("").Parse(
+var initFsScriptTemplate = template.Must(template.New("").Parse(
 	`#!/usr/bin/env bash
+	set -eux
+
+	init_config_initialized_flag=` + InitContainerConfigVolumeMountPath + `/elastic-internal-init-config.ok
+
+	if [[ -f "${init_config_initialized_flag}" ]]; then
+		echo "Kibana configuration already initialized."
+		exit 0
+	fi
+
+	echo "Setup Kibana configuration"
+
+	ln -sf ` + InternalConfigVolumeMountPath + `/* ` + InitContainerConfigVolumeMountPath + `/
+
+	touch "${init_config_initialized_flag}"
+	echo "Kibana configuration successfully prepared."
+
+	{{ if .IncludePlugins }}
 
 	# compute time in seconds since the given start time
 	function duration() {
@@ -48,12 +68,14 @@ var pluginsFsScriptTemplate = template.Must(template.New("").Parse(
 		yes | cp -avf {{.ContainerPluginsMountPath}}/* {{.InitContainerPluginsMountPath}}/ 
 	fi
 	echo "Files copy duration: $(duration $mv_start) sec."
+
+	{{ end }}
 `))
 
-// RenderScriptTemplate renders pluginsFsScriptTemplate using the given TemplateParams
+// RenderScriptTemplate renders initFsScriptTemplate using the given TemplateParams
 func RenderScriptTemplate(params TemplateParams) (string, error) {
 	tplBuffer := bytes.Buffer{}
-	if err := pluginsFsScriptTemplate.Execute(&tplBuffer, params); err != nil {
+	if err := initFsScriptTemplate.Execute(&tplBuffer, params); err != nil {
 		return "", err
 	}
 	return tplBuffer.String(), nil

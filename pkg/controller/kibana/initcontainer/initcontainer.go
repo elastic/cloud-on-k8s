@@ -6,5 +6,22 @@ package initcontainer
 
 const (
 	// PrepareFilesystemContainerName is the name of the container that prepares the filesystem
-	PrepareFilesystemContainerName = "elastic-internal-init-filesystem"
+	// PrepareFilesystemContainerName = "elastic-internal-init-filesystem"
+	// KibanaPluginsVolumeName is the name of the volume that holds the Kibana plugins
+	KibanaPluginsVolumeName = "kibana-plugins"
+	// KibanaPluginsInternalMountPath is the path where the Kibana plugins are mounted in the init container
+	KibanaPluginsInternalMountPath = "/mnt/elastic-internal/kibana-plugins-local"
+	// KibanaPluginsMountPath is the path where the Kibana plugins are mounted in the Kibana container
+	// KibanaPluginsMountPath = "/usr/share/kibana/plugins"
+
+	// InitConfigContainerName is the name of the container that initializes the configuration
+	InitContainerName = "elastic-internal-init"
+	// ConfigVolumeName is the name of the volume that holds the Kibana configuration
+	ConfigVolumeName                   = "elastic-internal-kibana-config-local"
+	ConfigVolumeMountPath              = "/usr/share/kibana/config"
+	InitContainerConfigVolumeMountPath = "/mnt/elastic-internal/kibana-config-local"
+
+	// InternalConfigVolumeName is a volume which contains the generated configuration.
+	InternalConfigVolumeName      = "elastic-internal-kibana-config"
+	InternalConfigVolumeMountPath = "/mnt/elastic-internal/kibana-config"
 )

@@ -16,6 +16,7 @@ import (
 	kbv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/kibana/v1"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/reconciler"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/tracing"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/version"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/volume"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/kibana/label"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/k8s"
@@ -47,11 +48,17 @@ func NewConfigMapWithData(cm, kb types.NamespacedName, data map[string]string) c
 }
 
 // init containers and readiness probe.
-func ReconcileScriptsConfigMap(ctx context.Context, c k8s.Client, kb kbv1.Kibana) error {
+func ReconcileScriptsConfigMap(ctx context.Context, c k8s.Client, kb kbv1.Kibana, setDefaultSecurityContext bool) error {
 	span, ctx := apm.StartSpan(ctx, "reconcile_scripts", tracing.SpanTypeApp)
 	defer span.End()
 
-	fsScript, err := RenderPrepareFsScript()
+	v, err := version.Parse(kb.Spec.Version)
+	if err != nil {
+		return err // error unlikely and should have been caught during validation
+	}
+
+	// The plugins logic should only be included in KB >= 7.10.0 and when the default security context is set.
+	initScript, err := RenderInitScript(v.GTE(version.From(7, 10, 0)) && setDefaultSecurityContext)
 	if err != nil {
 		return err
 	}
@@ -60,7 +67,7 @@ func ReconcileScriptsConfigMap(ctx context.Context, c k8s.Client, kb kbv1.Kibana
 		types.NamespacedName{Namespace: kb.Namespace, Name: kbv1.ScriptsConfigMap(kb.Name)},
 		k8s.ExtractNamespacedName(&kb),
 		map[string]string{
-			PrepareFsScriptConfigKey: fsScript,
+			KibanaInitScriptConfigKey: initScript,
 		},
 	)
 

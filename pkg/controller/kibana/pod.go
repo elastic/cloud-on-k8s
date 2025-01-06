@@ -134,8 +134,7 @@ func NewPodTemplateSpec(
 		WithAnnotations(DefaultAnnotations).
 		WithDockerImage(kb.Spec.Image, container.ImageRepository(container.KibanaImage, v)).
 		WithReadinessProbe(readinessProbe(kb.Spec.HTTP.TLS.Enabled(), basePath)).
-		WithPorts(ports).
-		WithInitContainers(initConfigContainer(kb))
+		WithPorts(ports)
 
 	for _, volume := range volumes {
 		builder.WithVolumes(volume.Volume()).WithVolumeMounts(volume.VolumeMount())
@@ -150,19 +149,22 @@ func NewPodTemplateSpec(
 	// of browser bundles to happen on plugin install, which would attempt a write to the
 	// root filesystem on restart.
 	if v.GTE(version.From(7, 10, 0)) && setDefaultSecurityContext {
-		initContainer, err := initcontainer.NewPreparePluginsInitContainer()
-		if err != nil {
-			return corev1.PodTemplateSpec{}, err
-		}
+
 		scriptsConfigMapVolume := initcontainer.NewScriptsConfigMapVolume(kb.Name)
 		builder.WithContainersSecurityContext(defaultSecurityContext).
 			WithPodSecurityContext(defaultPodSecurityContext).
 			WithVolumes(LogsVolume.Volume()).WithVolumeMounts(LogsVolume.VolumeMount()).
 			WithVolumes(PluginsVolume.Volume()).WithVolumeMounts(PluginsVolume.VolumeMount()).
 			WithVolumes(TempVolume.Volume()).WithVolumeMounts(TempVolume.VolumeMount()).
-			WithVolumes(scriptsConfigMapVolume.Volume()).WithVolumeMounts(scriptsConfigMapVolume.VolumeMount()).
-			WithInitContainers(initContainer)
+			WithVolumes(scriptsConfigMapVolume.Volume()).WithVolumeMounts(scriptsConfigMapVolume.VolumeMount())
 	}
+
+	initContainer, err := initcontainer.NewInitContainer(kb, v.GTE(version.From(7, 10, 0)) && setDefaultSecurityContext)
+	if err != nil {
+		return corev1.PodTemplateSpec{}, err
+	}
+
+	builder.WithInitContainers(initContainer)
 
 	if keystore != nil {
 		builder.WithVolumes(keystore.Volume).

@@ -10,8 +10,10 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 
+	kbv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/kibana/v1"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/defaults"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/volume"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/kibana/secret"
 )
 
 const (
@@ -19,14 +21,25 @@ const (
 )
 
 var (
+	// ConfigSharedVolume contains the Kibana config/ directory, it's an empty volume where the required configuration
+	// is initialized by the elastic-internal-init-config init container. Its content is then shared by the init container
+	// that creates the keystore and the main Kibana container.
+	// This is needed in order to have in a same directory both the generated configuration and the keystore file  which
+	// is created in /usr/share/kibana/config since Kibana 7.9
+	ConfigSharedVolume = volume.SharedVolume{
+		VolumeName:             ConfigVolumeName,
+		InitContainerMountPath: InitContainerConfigVolumeMountPath,
+		ContainerMountPath:     ConfigVolumeMountPath,
+	}
+
 	// PluginsSharedVolume contains the Kibana plugins/ directory
 	PluginsSharedVolume = volume.SharedVolume{
 		// This volume name is the same as the primary container's volume name
 		// so that the init container does not mount the plugins emptydir volume
 		// on top of /usr/share/kibana/plugins.
-		VolumeName:             "kibana-plugins",
-		InitContainerMountPath: "/mnt/elastic-internal/kibana-plugins-local",
-		ContainerMountPath:     "/usr/share/kibana/plugins",
+		VolumeName:             KibanaPluginsVolumeName,
+		InitContainerMountPath: KibanaPluginsInternalMountPath,
+		ContainerMountPath:     KibanaPluginsMountPath,
 	}
 
 	PluginVolumes = volume.SharedVolumeArray{
@@ -49,24 +62,41 @@ var (
 	}
 )
 
-// NewPreparePluginsInitContainer creates an init container to handle kibana plugins persistence.
-func NewPreparePluginsInitContainer() (corev1.Container, error) {
+// ConfigVolume returns a SecretVolume to hold the Kibana config of the given Kibana resource.
+func ConfigVolume(kb kbv1.Kibana) volume.SecretVolume {
+	return volume.NewSecretVolumeWithMountPath(
+		secret.ConfigSecretName(kb),
+		InternalConfigVolumeName,
+		InternalConfigVolumeMountPath,
+	)
+}
+
+// NewInitContainer creates an init container to handle kibana configuration and plugins persistence.
+func NewInitContainer(kb kbv1.Kibana, includePlugins bool) (corev1.Container, error) {
 	container := corev1.Container{
 		ImagePullPolicy: corev1.PullIfNotPresent,
-		Name:            PrepareFilesystemContainerName,
+		Name:            InitContainerName,
 		Env:             defaults.PodDownwardEnvVars(),
-		Command:         []string{"bash", "-c", path.Join(ScriptsVolumeMountPath, PrepareFsScriptConfigKey)},
-		VolumeMounts:    PluginVolumes.InitContainerVolumeMounts(),
-		Resources:       defaultResources,
+		Command:         []string{"bash", "-c", path.Join(ScriptsVolumeMountPath, KibanaInitScriptConfigKey)},
+		VolumeMounts: []corev1.VolumeMount{
+			ConfigSharedVolume.InitContainerVolumeMount(),
+			ConfigVolume(kb).VolumeMount(),
+		},
+		Resources: defaultResources,
+	}
+
+	if includePlugins {
+		container.VolumeMounts = append(container.VolumeMounts, PluginsSharedVolume.InitContainerVolumeMount())
 	}
 
 	return container, nil
 }
 
-func RenderPrepareFsScript() (string, error) {
+func RenderInitScript(includePlugins bool) (string, error) {
 	templateParams := TemplateParams{
 		ContainerPluginsMountPath:     PluginsSharedVolume.ContainerMountPath,
 		InitContainerPluginsMountPath: PluginsSharedVolume.InitContainerMountPath,
+		IncludePlugins:                includePlugins,
 	}
 	return RenderScriptTemplate(templateParams)
 }
