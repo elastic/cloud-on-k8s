@@ -150,7 +150,7 @@ func NewPodTemplateSpec(
 			WithVolumes(scriptsConfigMapVolume.Volume()).WithVolumeMounts(scriptsConfigMapVolume.VolumeMount())
 	}
 
-	initContainer, err := initcontainer.NewInitContainer(kb, canEnableSecurityContext)
+	initContainer, err := initcontainer.NewInitContainer(kb, setDefaultSecurityContext)
 	if err != nil {
 		return corev1.PodTemplateSpec{}, err
 	}
