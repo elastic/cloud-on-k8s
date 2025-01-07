@@ -30,48 +30,48 @@ type templateParams struct {
 
 var initFsScriptTemplate = template.Must(template.New("").Parse(
 	`#!/usr/bin/env bash
-	set -eux
+set -eux
 
-	{{ if .IncludePlugins }}
+{{ if .IncludePlugins }}
 
-	# compute time in seconds since the given start time
-	function duration() {
-		local start=$1
-		end=$(date +%s)
-		echo $((end-start))
-	}
+# compute time in seconds since the given start time
+function duration() {
+	local start=$1
+	end=$(date +%s)
+	echo $((end-start))
+}
 
-	#######################
-	# Plugins persistence #
-	#######################
+#######################
+# Plugins persistence #
+#######################
 
-	# Persist the content of plugins/ to a volume, so installed
-	# plugins files can to be used by the Kibana container.
-	mv_start=$(date +%s)
-	if [[ -z "$(ls -A {{.ContainerPluginsMountPath}})" ]]; then
-		echo "Empty dir {{.ContainerPluginsMountPath}}"
-	else
-		echo "Copying {{.ContainerPluginsMountPath}}/* to {{.InitContainerPluginsMountPath}}/"
-		# Use "yes" and "-f" as we want the init container to be idempotent and not to fail when executed more than once.
-		yes | cp -avf {{.ContainerPluginsMountPath}}/* {{.InitContainerPluginsMountPath}}/ 
-	fi
-	echo "Files copy duration: $(duration $mv_start) sec."
+# Persist the content of plugins/ to a volume, so installed
+# plugins files can to be used by the Kibana container.
+mv_start=$(date +%s)
+if [[ -z "$(ls -A {{.ContainerPluginsMountPath}})" ]]; then
+	echo "Empty dir {{.ContainerPluginsMountPath}}"
+else
+	echo "Copying {{.ContainerPluginsMountPath}}/* to {{.InitContainerPluginsMountPath}}/"
+	# Use "yes" and "-f" as we want the init container to be idempotent and not to fail when executed more than once.
+	yes | cp -avf {{.ContainerPluginsMountPath}}/* {{.InitContainerPluginsMountPath}}/
+fi
+echo "Files copy duration: $(duration $mv_start) sec."
 
-	{{ end }}
+{{ end }}
 
-	init_config_initialized_flag=` + settings.InitContainerConfigVolumeMountPath + `/elastic-internal-init-config.ok
+init_config_initialized_flag=` + settings.InitContainerConfigVolumeMountPath + `/elastic-internal-init-config.ok
 
-	if [[ -f "${init_config_initialized_flag}" ]]; then
-		echo "Kibana configuration already initialized."
-		exit 0
-	fi
+if [[ -f "${init_config_initialized_flag}" ]]; then
+	echo "Kibana configuration already initialized."
+	exit 0
+fi
 
-	echo "Setup Kibana configuration"
+echo "Setup Kibana configuration"
 
-	ln -sf ` + settings.InternalConfigVolumeMountPath + `/* ` + settings.InitContainerConfigVolumeMountPath + `/
+ln -sf ` + settings.InternalConfigVolumeMountPath + `/* ` + settings.InitContainerConfigVolumeMountPath + `/
 
-	touch "${init_config_initialized_flag}"
-	echo "Kibana configuration successfully prepared."
+touch "${init_config_initialized_flag}"
+echo "Kibana configuration successfully prepared."
 `))
 
 // RenderScriptTemplate renders initFsScriptTemplate using the given TemplateParams
