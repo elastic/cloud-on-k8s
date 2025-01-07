@@ -1,4 +1,4 @@
-Copyright 2018-2024 Elasticsearch BV
+Copyright 2018-2025 Elasticsearch BV
 
 This product includes software developed by The Apache Software
 Foundation (http://www.apache.org/).
@@ -19291,11 +19291,11 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 --------------------------------------------------------------------------------
 Module  : golang.org/x/net
-Version : v0.32.0
-Time    : 2024-12-04T21:36:24Z
+Version : v0.33.0
+Time    : 2024-12-18T19:34:41Z
 Licence : BSD-3-Clause
 
-Contents of probable licence file $GOMODCACHE/golang.org/x/net@v0.32.0/LICENSE:
+Contents of probable licence file $GOMODCACHE/golang.org/x/net@v0.33.0/LICENSE:
 
 Copyright 2009 The Go Authors.
 

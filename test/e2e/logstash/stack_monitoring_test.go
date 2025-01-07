@@ -116,7 +116,8 @@ func TestLogstashResolvingDollarVariableInStackMonitoring(t *testing.T) {
 			"api.auth.basic.username":   "${API_USERNAME}",
 			"api.auth.basic.password":   "${API_PASSWORD}",
 		}).
-		WithExpectedAPIServer(configs.APIServer{Username: username, Password: password})
+		WithExpectedAPIServer(configs.APIServer{Username: username, Password: password}).
+		WithRestrictedSecurityContext()
 
 	// checks that the sidecar beats have sent data in the monitoring clusters
 	// check config secret has correct API_KEYSTORE_PASS value

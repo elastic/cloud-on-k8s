@@ -41,7 +41,7 @@ func TestLogstashWithEnv(t *testing.T) {
 					},
 				},
 			},
-		})
+		}).WithRestrictedSecurityContext()
 	test.Sequence(nil, test.EmptySteps, logstashBuilder).RunSequential(t)
 }
 
