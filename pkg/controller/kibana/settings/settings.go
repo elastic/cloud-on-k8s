@@ -39,6 +39,6 @@ const (
 	InitContainerConfigVolumeMountPath = "/mnt/elastic-internal/kibana-config-local"
 	// InternalConfigVolumeName is a volume which contains the generated configuration.
 	InternalConfigVolumeName = "elastic-internal-kibana-config"
-	// InternalConfigVolumeMountPath is the path where the generated configuration is mounted in the Kibanainit  container
+	// InternalConfigVolumeMountPath is the path where the generated configuration is mounted in the Kibana init  container
 	InternalConfigVolumeMountPath = "/mnt/elastic-internal/kibana-config"
 )

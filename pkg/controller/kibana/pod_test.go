@@ -134,7 +134,7 @@ func TestNewPodTemplateSpec(t *testing.T) {
 			}},
 			keystore: nil,
 			assertions: func(pod corev1.PodTemplateSpec) {
-				assert.Len(t, pod.Spec.InitContainers, 3)
+				assert.Len(t, pod.Spec.InitContainers, 2)
 				assert.Equal(t, pod.Spec.Containers[0].Image, pod.Spec.InitContainers[0].Image)
 				assert.Equal(t, pod.Spec.Containers[0].Image, pod.Spec.InitContainers[1].Image)
 			},
@@ -218,8 +218,8 @@ func TestNewPodTemplateSpec(t *testing.T) {
 				Version: "8.12.0",
 			}},
 			assertions: func(pod corev1.PodTemplateSpec) {
-				assert.Len(t, pod.Spec.InitContainers, 2)
-				assert.Len(t, pod.Spec.InitContainers[0].VolumeMounts, 5)
+				assert.Len(t, pod.Spec.InitContainers, 1)
+				assert.Len(t, pod.Spec.InitContainers[0].VolumeMounts, 7)
 				assert.Len(t, pod.Spec.Volumes, 5)
 				assert.Len(t, GetKibanaContainer(pod.Spec).VolumeMounts, 5)
 				assert.Equal(t, GetKibanaContainer(pod.Spec).SecurityContext, &defaultSecurityContext)
