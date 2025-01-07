@@ -36,6 +36,10 @@ import (
 	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/k8s"
 )
 
+var customResourceLimits = corev1.ResourceRequirements{
+	Limits: corev1.ResourceList{corev1.ResourceMemory: resource.MustParse("2Gi")},
+}
+
 func Test_getStrategyType(t *testing.T) {
 	// creates `count` of pods belonging to `kbName` Kibana and to `rs-kbName-version` ReplicaSet
 	getPods := func(kbName string, podCount int, version string) []client.Object {
@@ -208,161 +212,161 @@ func TestDriverDeploymentParams(t *testing.T) {
 		want    deployment.Params
 		wantErr bool
 	}{
-		// {
-		// 	name: "without remote objects",
-		// 	args: args{
-		// 		kb:             kibanaFixture,
-		// 		initialObjects: func() []client.Object { return nil },
-		// 	},
-		// 	want:    deployment.Params{},
-		// 	wantErr: true,
-		// },
-		// {
-		// 	name: "with required remote objects",
-		// 	args: args{
-		// 		kb:             kibanaFixture,
-		// 		initialObjects: defaultInitialObjects,
-		// 	},
-		// 	want:    pre710(expectedDeploymentParams()),
-		// 	wantErr: false,
-		// },
-		// {
-		// 	name: "with policy annotations",
-		// 	args: args{
-		// 		kb:                kibanaFixture,
-		// 		initialObjects:    defaultInitialObjects,
-		// 		policyAnnotations: map[string]string{"policy.k8s.elastic.co/kibana-config-hash": "2123345"},
-		// 	},
-		// 	want:    pre710(expectedDeploymentWithPolicyAnnotations(map[string]string{"policy.k8s.elastic.co/kibana-config-hash": "2123345"})),
-		// 	wantErr: false,
-		// },
-		// {
-		// 	name: "with TLS disabled",
-		// 	args: args{
-		// 		kb: func() *kbv1.Kibana {
-		// 			kb := kibanaFixture()
-		// 			kb.Spec.HTTP.TLS.SelfSignedCertificate = &commonv1.SelfSignedCertificate{
-		// 				Disabled: true,
-		// 			}
-		// 			return kb
-		// 		},
-		// 		initialObjects: defaultInitialObjects,
-		// 	},
-		// 	want: func() deployment.Params {
-		// 		params := pre710(expectedDeploymentParams())
-		// 		params.PodTemplateSpec.Spec.Volumes = params.PodTemplateSpec.Spec.Volumes[1:]
-		// 		params.PodTemplateSpec.Spec.InitContainers[0].VolumeMounts = params.PodTemplateSpec.Spec.InitContainers[0].VolumeMounts[1:]
-		// 		params.PodTemplateSpec.Spec.Containers[0].VolumeMounts = params.PodTemplateSpec.Spec.Containers[0].VolumeMounts[1:]
-		// 		params.PodTemplateSpec.Spec.Containers[0].ReadinessProbe.ProbeHandler.HTTPGet.Scheme = corev1.URISchemeHTTP
-		// 		params.PodTemplateSpec.Spec.Containers[0].Ports[0].Name = "http"
-		// 		return params
-		// 	}(),
-		// 	wantErr: false,
-		// },
-		// {
-		// 	name: "with podTemplate specified",
-		// 	args: args{
-		// 		kb:             kibanaFixtureWithPodTemplate,
-		// 		initialObjects: defaultInitialObjects,
-		// 	},
-		// 	want: func() deployment.Params {
-		// 		p := pre710(expectedDeploymentParams())
-		// 		p.PodTemplateSpec.Labels["mylabel"] = "value"
-		// 		for i, c := range p.PodTemplateSpec.Spec.Containers {
-		// 			if c.Name == kbv1.KibanaContainerName {
-		// 				p.PodTemplateSpec.Spec.Containers[i].Resources = customResourceLimits
-		// 			}
-		// 		}
-		// 		return p
-		// 	}(),
-		// 	wantErr: false,
-		// },
-		// {
-		// 	name: "Checksum takes secret contents into account",
-		// 	args: args{
-		// 		kb: kibanaFixture,
-		// 		initialObjects: func() []client.Object {
-		// 			return []client.Object{
-		// 				&corev1.Secret{
-		// 					ObjectMeta: metav1.ObjectMeta{
-		// 						Name:      "es-ca-secret",
-		// 						Namespace: "default",
-		// 					},
-		// 					Data: map[string][]byte{
-		// 						certificates.CAFileName: nil,
-		// 					},
-		// 				},
-		// 				&corev1.Secret{
-		// 					ObjectMeta: metav1.ObjectMeta{
-		// 						Name:      "test-auth",
-		// 						Namespace: "default",
-		// 					},
-		// 					Data: map[string][]byte{
-		// 						"kibana-user": []byte("some-secret"),
-		// 					},
-		// 				},
-		// 				&corev1.Secret{
-		// 					ObjectMeta: metav1.ObjectMeta{
-		// 						Name:      "test-kb-config",
-		// 						Namespace: "default",
-		// 					},
-		// 					Data: map[string][]byte{
-		// 						"kibana.yml": []byte("server.name: test"),
-		// 					},
-		// 				},
-		// 				&corev1.Secret{
-		// 					ObjectMeta: metav1.ObjectMeta{
-		// 						Name:      "test-kb-http-certs-internal",
-		// 						Namespace: "default",
-		// 					},
-		// 					Data: map[string][]byte{
-		// 						"tls.crt": []byte("this is also relevant"),
-		// 					},
-		// 				},
-		// 			}
-		// 		},
-		// 	},
-		// 	want: func() deployment.Params {
-		// 		p := pre710(expectedDeploymentParams())
-		// 		p.PodTemplateSpec.Annotations["kibana.k8s.elastic.co/config-hash"] = "2368465874"
-		// 		return p
-		// 	}(),
-		// 	wantErr: false,
-		// },
-		// {
-		// 	name: "6.8.x is supported",
-		// 	args: args{
-		// 		kb: func() *kbv1.Kibana {
-		// 			kb := kibanaFixture()
-		// 			kb.Spec.Version = "6.8.0"
-		// 			return kb
-		// 		},
-		// 		initialObjects: defaultInitialObjects,
-		// 	},
-		// 	want: func() deployment.Params {
-		// 		p := pre710(expectedDeploymentParams())
-		// 		p.PodTemplateSpec.Labels["kibana.k8s.elastic.co/version"] = "6.8.0"
-		// 		return p
-		// 	}(),
-		// 	wantErr: false,
-		// },
-		// {
-		// 	name: "6.8 docker container already defaults elasticsearch.hosts",
-		// 	args: args{
-		// 		kb: func() *kbv1.Kibana {
-		// 			kb := kibanaFixture()
-		// 			kb.Spec.Version = "6.8.0"
-		// 			return kb
-		// 		},
-		// 		initialObjects: defaultInitialObjects,
-		// 	},
-		// 	want: func() deployment.Params {
-		// 		p := pre710(expectedDeploymentParams())
-		// 		p.PodTemplateSpec.Labels["kibana.k8s.elastic.co/version"] = "6.8.0"
-		// 		return p
-		// 	}(),
-		// 	wantErr: false,
-		// },
+		{
+			name: "without remote objects",
+			args: args{
+				kb:             kibanaFixture,
+				initialObjects: func() []client.Object { return nil },
+			},
+			want:    deployment.Params{},
+			wantErr: true,
+		},
+		{
+			name: "with required remote objects",
+			args: args{
+				kb:             kibanaFixture,
+				initialObjects: defaultInitialObjects,
+			},
+			want:    pre710(expectedDeploymentParams()),
+			wantErr: false,
+		},
+		{
+			name: "with policy annotations",
+			args: args{
+				kb:                kibanaFixture,
+				initialObjects:    defaultInitialObjects,
+				policyAnnotations: map[string]string{"policy.k8s.elastic.co/kibana-config-hash": "2123345"},
+			},
+			want:    pre710(expectedDeploymentWithPolicyAnnotations(map[string]string{"policy.k8s.elastic.co/kibana-config-hash": "2123345"})),
+			wantErr: false,
+		},
+		{
+			name: "with TLS disabled",
+			args: args{
+				kb: func() *kbv1.Kibana {
+					kb := kibanaFixture()
+					kb.Spec.HTTP.TLS.SelfSignedCertificate = &commonv1.SelfSignedCertificate{
+						Disabled: true,
+					}
+					return kb
+				},
+				initialObjects: defaultInitialObjects,
+			},
+			want: func() deployment.Params {
+				params := pre710(expectedDeploymentParams())
+				params.PodTemplateSpec.Spec.Volumes = params.PodTemplateSpec.Spec.Volumes[1:]
+				params.PodTemplateSpec.Spec.InitContainers[0].VolumeMounts = params.PodTemplateSpec.Spec.InitContainers[0].VolumeMounts[1:]
+				params.PodTemplateSpec.Spec.Containers[0].VolumeMounts = params.PodTemplateSpec.Spec.Containers[0].VolumeMounts[1:]
+				params.PodTemplateSpec.Spec.Containers[0].ReadinessProbe.ProbeHandler.HTTPGet.Scheme = corev1.URISchemeHTTP
+				params.PodTemplateSpec.Spec.Containers[0].Ports[0].Name = "http"
+				return params
+			}(),
+			wantErr: false,
+		},
+		{
+			name: "with podTemplate specified",
+			args: args{
+				kb:             kibanaFixtureWithPodTemplate,
+				initialObjects: defaultInitialObjects,
+			},
+			want: func() deployment.Params {
+				p := pre710(expectedDeploymentParams())
+				p.PodTemplateSpec.Labels["mylabel"] = "value"
+				for i, c := range p.PodTemplateSpec.Spec.Containers {
+					if c.Name == kbv1.KibanaContainerName {
+						p.PodTemplateSpec.Spec.Containers[i].Resources = customResourceLimits
+					}
+				}
+				return p
+			}(),
+			wantErr: false,
+		},
+		{
+			name: "Checksum takes secret contents into account",
+			args: args{
+				kb: kibanaFixture,
+				initialObjects: func() []client.Object {
+					return []client.Object{
+						&corev1.Secret{
+							ObjectMeta: metav1.ObjectMeta{
+								Name:      "es-ca-secret",
+								Namespace: "default",
+							},
+							Data: map[string][]byte{
+								certificates.CAFileName: nil,
+							},
+						},
+						&corev1.Secret{
+							ObjectMeta: metav1.ObjectMeta{
+								Name:      "test-auth",
+								Namespace: "default",
+							},
+							Data: map[string][]byte{
+								"kibana-user": []byte("some-secret"),
+							},
+						},
+						&corev1.Secret{
+							ObjectMeta: metav1.ObjectMeta{
+								Name:      "test-kb-config",
+								Namespace: "default",
+							},
+							Data: map[string][]byte{
+								"kibana.yml": []byte("server.name: test"),
+							},
+						},
+						&corev1.Secret{
+							ObjectMeta: metav1.ObjectMeta{
+								Name:      "test-kb-http-certs-internal",
+								Namespace: "default",
+							},
+							Data: map[string][]byte{
+								"tls.crt": []byte("this is also relevant"),
+							},
+						},
+					}
+				},
+			},
+			want: func() deployment.Params {
+				p := pre710(expectedDeploymentParams())
+				p.PodTemplateSpec.Annotations["kibana.k8s.elastic.co/config-hash"] = "2368465874"
+				return p
+			}(),
+			wantErr: false,
+		},
+		{
+			name: "6.8.x is supported",
+			args: args{
+				kb: func() *kbv1.Kibana {
+					kb := kibanaFixture()
+					kb.Spec.Version = "6.8.0"
+					return kb
+				},
+				initialObjects: defaultInitialObjects,
+			},
+			want: func() deployment.Params {
+				p := pre710(expectedDeploymentParams())
+				p.PodTemplateSpec.Labels["kibana.k8s.elastic.co/version"] = "6.8.0"
+				return p
+			}(),
+			wantErr: false,
+		},
+		{
+			name: "6.8 docker container already defaults elasticsearch.hosts",
+			args: args{
+				kb: func() *kbv1.Kibana {
+					kb := kibanaFixture()
+					kb.Spec.Version = "6.8.0"
+					return kb
+				},
+				initialObjects: defaultInitialObjects,
+			},
+			want: func() deployment.Params {
+				p := pre710(expectedDeploymentParams())
+				p.PodTemplateSpec.Labels["kibana.k8s.elastic.co/version"] = "6.8.0"
+				return p
+			}(),
+			wantErr: false,
+		},
 		{
 			name: "7.10+ contains security contexts",
 			args: args{
@@ -713,6 +717,15 @@ func expectedDeploymentParams() deployment.Params {
 	}
 }
 
+func expectedDeploymentWithPolicyAnnotations(policyAnnotations map[string]string) deployment.Params {
+	deploymentParams := expectedDeploymentParams()
+
+	for k, v := range policyAnnotations {
+		deploymentParams.PodTemplateSpec.Annotations[k] = v
+	}
+	return deploymentParams
+}
+
 func pre710(params deployment.Params) deployment.Params {
 	params.PodTemplateSpec.Spec.Containers[0].SecurityContext = nil
 	params.PodTemplateSpec.Spec.InitContainers[0].SecurityContext = nil
@@ -745,6 +758,27 @@ func kibanaFixture() *kbv1.Kibana {
 		CASecretName:   "es-ca-secret",
 		URL:            "https://localhost:9200",
 	})
+
+	return kbFixture
+}
+
+func kibanaFixtureWithPodTemplate() *kbv1.Kibana {
+	kbFixture := kibanaFixture()
+	kbFixture.Spec.PodTemplate = corev1.PodTemplateSpec{
+		ObjectMeta: metav1.ObjectMeta{
+			Labels: map[string]string{
+				"mylabel": "value",
+			},
+		},
+		Spec: corev1.PodSpec{
+			Containers: []corev1.Container{
+				{
+					Name:      kbv1.KibanaContainerName,
+					Resources: customResourceLimits,
+				},
+			},
+		},
+	}
 
 	return kbFixture
 }
