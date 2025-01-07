@@ -1,0 +1,79 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/helm-unittest/helm-unittest/main/schema/helm-testsuite.json
+suite: test operator service monitor
+templates:
+  - service-monitor.yaml
+tests:
+  - it: default service monitor 
+    set:
+      config:
+        metrics:
+          secureMode:
+            enabled: true
+    asserts:
+      - template: service-monitor.yaml
+        equal:
+          path: spec
+          value:
+            endpoints:
+            - bearerTokenFile: /var/run/secrets/kubernetes.io/serviceaccount/token
+              interval: 30s
+              path: /metrics
+              port: https
+              scheme: https
+              tlsConfig:
+                insecureSkipVerify: true
+            namespaceSelector:
+              matchNames:
+              - NAMESPACE
+            selector:
+              matchLabels:
+                app.kubernetes.io/instance: RELEASE-NAME
+                app.kubernetes.io/name: elastic-operator-metrics-service 
+  - it: legacy values 
+    set:
+      config:
+        metrics:
+          secureMode:
+            enabled: true
+            tls:
+              insecureSkipVerify: false
+              caSecret: metrics-ca
+              caMountDirectory: /etc/custom-ca/
+    asserts:
+      - template: service-monitor.yaml
+        equal:
+          path: spec.endpoints[0].tlsConfig
+          value:
+            caFile: /etc/custom-ca/metrics-ca/ca.crt
+            insecureSkipVerify: false
+            serverName: elastic-operator-metrics.NAMESPACE.svc
+  - it: serviceMonitor values 
+    set:
+      config:
+        metrics:
+          secureMode: 
+            enabled: true
+      serviceMonitor:
+        insecureSkipVerify: false
+        caSecret: metrics-ca
+        caMountDirectory: /etc/custom-ca/
+    asserts:
+      - template: service-monitor.yaml
+        equal:
+          path: spec.endpoints[0].tlsConfig
+          value:
+            caFile: /etc/custom-ca/metrics-ca/ca.crt
+            insecureSkipVerify: false
+            serverName: elastic-operator-metrics.NAMESPACE.svc
+  - it: secure mode without service monitor 
+    set:
+      serviceMonitor:
+        enabled: false
+      config:
+        metrics:
+          secureMode: 
+            enabled: true
+    asserts:
+      - template: service-monitor.yaml
+        hasDocuments:
+          count: 0

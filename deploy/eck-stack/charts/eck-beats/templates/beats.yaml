@@ -11,9 +11,65 @@ metadata:
     {{- toYaml . | nindent 4 }}
     {{- end }}
 spec:
-  version: {{ required "A Beat version is required" .Values.version }}
-  {{- if and (not (hasKey .Values.spec "daemonSet")) (not (hasKey .Values.spec "deployment")) }}
+  version: {{ required "A Beat version is required" (or ((.Values.spec).version) (.Values.version)) }}
+  {{- $daemonSet := (or (hasKey (.Values.spec) "daemonSet") (hasKey .Values "daemonSet")) }}
+  {{- $deployment := (or (hasKey (.Values.spec) "deployment") (hasKey .Values "deployment")) }}
+  {{- if and (not $daemonSet) (not $deployment) }}
   {{ fail "At least one of daemonSet or deployment is required for a functional Beat" }}
   {{- end }}
-  {{- if not .Values.spec.type }}{{ fail "A Beat type is required" }}{{- end }}
-  {{- toYaml .Values.spec | nindent 2 }}
+  {{- if not (or ((.Values.spec).type) (.Values.type)) }}{{ fail "A Beat type is required" }}{{- end }}
+  type: {{ or ((.Values.spec).type) (.Values.type) }}
+  {{- if $daemonSet }}
+  {{- $ds := or ((.Values.spec).daemonSet) (.Values.daemonSet) }}
+  daemonSet:
+    {{- /* This is required to render the empty daemonset ( {} ) properly */}}
+    {{- $ds | default dict | toYaml | nindent 4 }}
+  {{- end }}
+  {{- if $deployment }}
+  {{- $deploy := or ((.Values.spec).deployment) (.Values.deployment) }}
+  deployment:
+    {{- /* This is required to render the empty deployment ( {} ) properly */}}
+    {{- $deploy | default dict | toYaml | nindent 4 }}
+  {{- end }}
+  {{- with or ((.Values.spec).image) (.Values.image) }}
+  image: {{ . }}
+  {{- end }}
+  {{- with or ((.Values.spec).elasticsearchRef) (.Values.elasticsearchRef) }}
+  elasticsearchRef:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+  {{- with or ((.Values.spec).kibanaRef) (.Values.kibanaRef) }}
+  kibanaRef:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+  {{- $config := or ((.Values.spec).config) (.Values.config) }}
+  {{- $configRef := or ((.Values.spec).configRef) (.Values.configRef) }}
+  {{- if and $config $configRef }}
+  {{ fail "Only one of config and configRef can be specified" }}
+  {{- end }}
+  {{- with $config }}
+  config:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+  {{- with $configRef }}
+  configRef:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+  {{- with or ((.Values.spec).http) (.Values.http) }}
+  http:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+  {{- with or ((.Values.spec).monitoring) (.Values.monitoring) }}
+  monitoring:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+  {{- with or ((.Values.spec).secureSettings) (.Values.secureSettings) }}
+  secureSettings:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+  {{- with or ((.Values.spec).revisionHistoryLimit) (.Values.revisionHistoryLimit) }}
+  revisionHistoryLimit: {{ . }}
+  {{- end }}
+  {{- with or (((.Values.spec).serviceAccount).name) ((.Values.serviceAccount).name) }}
+  serviceAccountName: {{ . }}
+  {{- end }}

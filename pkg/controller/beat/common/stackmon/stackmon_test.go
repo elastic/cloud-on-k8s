@@ -112,6 +112,30 @@ output:
             verification_mode: certificate
         username: es-user
 `
+	standaloneBeatYML := `http:
+    enabled: false
+metricbeat:
+    modules:
+        - hosts:
+            - http+unix:///var/shared/metricbeat-test-beat.sock
+          metricsets:
+            - stats
+            - state
+          module: beat
+          period: 10s
+          xpack:
+            enabled: true
+monitoring:
+    enabled: false
+output:
+    elasticsearch:
+        hosts:
+            - es-metrics-monitoring-url
+        password: es-password
+        ssl:
+            verification_mode: certificate
+        username: es-user
+`
 	beatSidecarFixture := func(beatYml string) stackmon.BeatSidecar {
 		return stackmon.BeatSidecar{
 			Container: containerFixture,
@@ -226,9 +250,8 @@ output:
 	}
 
 	type args struct {
-		client  k8s.Client
-		beat    func() *v1beta1.Beat
-		version string
+		client k8s.Client
+		beat   func() *v1beta1.Beat
 	}
 	tests := []struct {
 		name    string
@@ -246,9 +269,24 @@ output:
 				beat: func() *v1beta1.Beat {
 					return &beatFixture
 				},
-				version: "8.2.3",
 			},
 			want:    beatSidecarFixture(fmt.Sprintf(beatYml, "abcd1234", "es-metrics-monitoring-url")),
+			wantErr: false,
+		},
+		{
+			name: "beat with stack monitoring enabled and no elasticsearchRef returns configured sidecar",
+			args: args{
+				client: k8s.NewFakeClient(&beatFixture, &esFixture, &monitoringEsFixture, &corev1.Secret{
+					ObjectMeta: metav1.ObjectMeta{Name: "es-secret-name", Namespace: "test"},
+					Data:       map[string][]byte{"es-user": []byte("es-password")},
+				}),
+				beat: func() *v1beta1.Beat {
+					beat := beatFixture.DeepCopy()
+					beat.Spec.ElasticsearchRef = commonv1.ObjectSelector{}
+					return beat
+				},
+			},
+			want:    beatSidecarFixture(standaloneBeatYML),
 			wantErr: false,
 		},
 		{
@@ -276,7 +314,6 @@ output:
 					}
 					return beat
 				},
-				version: "8.2.3",
 			},
 			want:    beatSidecarFixture(fmt.Sprintf(beatYml, "QGq3wcU7Sd6bC31wh37eKQ", esAPIFixture.URL)),
 			wantErr: false,
@@ -290,7 +327,6 @@ output:
 					beat.Spec.Config.Data = map[string]interface{}{"http.port": "invalid"}
 					return beat
 				},
-				version: "8.2.3",
 			},
 			want:    stackmon.BeatSidecar{},
 			wantErr: true,
@@ -298,7 +334,7 @@ output:
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := MetricBeat(context.Background(), tt.args.client, tt.args.beat(), tt.args.version)
+			got, err := MetricBeat(context.Background(), tt.args.client, tt.args.beat())
 			if (err != nil) != tt.wantErr {
 				t.Errorf("MetricBeat() error = %v, wantErr %v", err, tt.wantErr)
 				return

@@ -42,7 +42,7 @@ type Parameters struct {
 	// MaxConcurrentReconciles controls the number of goroutines per controller.
 	MaxConcurrentReconciles int
 	// SetDefaultSecurityContext enables setting the default security context
-	// with fsGroup=1000 for Elasticsearch 8.0+ Pods. Ignored pre-8.0
+	// with fsGroup=1000 for Elasticsearch 8.0+ Pods, and Kibana 7.10+ Pods.
 	SetDefaultSecurityContext bool
 	// ValidateStorageClass specifies whether the operator should retrieve storage classes to verify volume expansion support.
 	// Can be disabled if cluster-wide storage class RBAC access is not available.

@@ -66,7 +66,7 @@ func TestIsReconcilable(t *testing.T) {
 					},
 				},
 				AssocConfs: map[commonv1.ObjectSelector]commonv1.AssociationConf{
-					commonv1.ObjectSelector{Name: "m1", Namespace: "b"}: {URL: "https://es.xyz", AuthSecretName: "-"},
+					{Name: "m1", Namespace: "b"}: {URL: "https://es.xyz", AuthSecretName: "-"},
 				},
 			},
 			want: true,
@@ -82,7 +82,7 @@ func TestIsReconcilable(t *testing.T) {
 					},
 				},
 				AssocConfs: map[commonv1.ObjectSelector]commonv1.AssociationConf{
-					commonv1.ObjectSelector{Name: "m1", Namespace: "b"}: {URL: "https://es.xyz", AuthSecretName: "-"},
+					{Name: "m1", Namespace: "b"}: {URL: "https://es.xyz", AuthSecretName: "-"},
 				},
 			},
 			want: true,
@@ -101,7 +101,7 @@ func TestIsReconcilable(t *testing.T) {
 					},
 				},
 				AssocConfs: map[commonv1.ObjectSelector]commonv1.AssociationConf{
-					commonv1.ObjectSelector{Name: "m1", Namespace: "b"}: {URL: "https://es.xyz", AuthSecretName: "-"},
+					{Name: "m1", Namespace: "b"}: {URL: "https://es.xyz", AuthSecretName: "-"},
 				},
 			},
 			want: false,
@@ -120,7 +120,7 @@ func TestIsReconcilable(t *testing.T) {
 					},
 				},
 				AssocConfs: map[commonv1.ObjectSelector]commonv1.AssociationConf{
-					commonv1.ObjectSelector{Name: "m1", Namespace: "b"}: {URL: "https://es.xyz", AuthSecretName: "-"},
+					{Name: "m1", Namespace: "b"}: {URL: "https://es.xyz", AuthSecretName: "-"},
 				},
 			},
 			want: false,
@@ -139,7 +139,7 @@ func TestIsReconcilable(t *testing.T) {
 					},
 				},
 				AssocConfs: map[commonv1.ObjectSelector]commonv1.AssociationConf{
-					commonv1.ObjectSelector{Name: "m1", Namespace: "b"}: {URL: "https://m1.xyz", AuthSecretName: "-"},
+					{Name: "m1", Namespace: "b"}: {URL: "https://m1.xyz", AuthSecretName: "-"},
 				},
 			},
 			want: true,

@@ -85,11 +85,11 @@ kind: ClusterRoleBinding
 metadata:
   labels:
     {{- include "eck-operator.labels" $ | nindent 4 }}
-  name: "{{ include "eck-operator.fullname" . }}-proxy-rolebinding"
+  name: "{{ include "eck-operator.fullname" . }}-metrics-auth-rolebinding"
 roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: ClusterRole
-  name: "{{ include "eck-operator.fullname" . }}-proxy-role"
+  name: "{{ include "eck-operator.fullname" . }}-metrics-auth-role"
 subjects:
 - kind: ServiceAccount
   name: {{ $svcAccount }}

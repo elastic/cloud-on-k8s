@@ -18,11 +18,11 @@
 
 # Version of Kibana.
 #
-version: 8.17.0-SNAPSHOT
+version: 8.18.0-SNAPSHOT
 
 # Kibana Docker image to deploy
 #
-# image: docker.elastic.co/kibana/kibana:8.17.0-SNAPSHOT
+# image: docker.elastic.co/kibana/kibana:8.18.0-SNAPSHOT
 
 # Labels that will be applied to Kibana.
 #

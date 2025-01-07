@@ -19,6 +19,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/stackmon"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/stackmon/monitoring"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/stackmon/validations"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/version"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/volume"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/user"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/kibana/network"
@@ -33,7 +34,7 @@ const (
 	kibanaLogsMountPath  = "/usr/share/kibana/logs"
 )
 
-func Metricbeat(ctx context.Context, client k8s.Client, kb kbv1.Kibana) (stackmon.BeatSidecar, error) {
+func Metricbeat(ctx context.Context, client k8s.Client, kb kbv1.Kibana, basePath string) (stackmon.BeatSidecar, error) {
 	if !kb.Spec.ElasticsearchRef.IsDefined() {
 		// should never happen because of the pre-creation validation
 		return stackmon.BeatSidecar{}, errors.New(validations.InvalidKibanaElasticsearchRefForStackMonitoringMsg)
@@ -60,19 +61,37 @@ func Metricbeat(ctx context.Context, client k8s.Client, kb kbv1.Kibana) (stackmo
 		}
 	}
 
-	metricbeat, err := stackmon.NewMetricBeatSidecar(
-		ctx,
-		client,
-		commonv1.KbMonitoringAssociationType,
-		&kb,
-		kb.Spec.Version,
-		metricbeatConfigTemplate,
-		kbv1.KBNamer,
-		fmt.Sprintf("%s://localhost:%d", kb.Spec.HTTP.Protocol(), network.HTTPPort),
-		username,
-		password,
-		kb.Spec.HTTP.TLS.Enabled(),
-	)
+	v, err := version.Parse(kb.Spec.Version)
+	if err != nil {
+		return stackmon.BeatSidecar{}, err // error unlikely and should have been caught during validation
+	}
+	caVol, err := stackmon.CAVolume(client, k8s.ExtractNamespacedName(&kb), kbv1.KBNamer, commonv1.KbMonitoringAssociationType, kb.Spec.HTTP.TLS.Enabled())
+	if err != nil {
+		return stackmon.BeatSidecar{}, err
+	}
+
+	type inputConfigData struct {
+		stackmon.TemplateParams
+		BasePath string
+	}
+
+	configData := inputConfigData{
+		TemplateParams: stackmon.TemplateParams{
+			Username: username,
+			Password: password,
+			URL:      fmt.Sprintf("%s://localhost:%d", kb.Spec.HTTP.Protocol(), network.HTTPPort), // Metricbeat in the sidecar connects to the monitored resource using `localhost`
+			IsSSL:    kb.Spec.HTTP.TLS.Enabled(),                                                  // enable SSL configuration based on whether the monitored resource has TLS enabled
+			CAVolume: caVol,
+		},
+		BasePath: basePath,
+	}
+
+	cfg, err := stackmon.RenderTemplate(v, metricbeatConfigTemplate, configData)
+	if err != nil {
+		return stackmon.BeatSidecar{}, err
+	}
+
+	metricbeat, err := stackmon.NewMetricBeatSidecar(ctx, client, &kb, v, caVol, cfg)
 	if err != nil {
 		return stackmon.BeatSidecar{}, err
 	}
@@ -85,7 +104,7 @@ func Filebeat(ctx context.Context, client k8s.Client, kb kbv1.Kibana) (stackmon.
 
 // WithMonitoring updates the Kibana Pod template builder to deploy Metricbeat and Filebeat in sidecar containers
 // in the Kibana pod and injects the volumes for the beat configurations and the ES CA certificates.
-func WithMonitoring(ctx context.Context, client k8s.Client, builder *defaults.PodTemplateBuilder, kb kbv1.Kibana) (*defaults.PodTemplateBuilder, error) {
+func WithMonitoring(ctx context.Context, client k8s.Client, builder *defaults.PodTemplateBuilder, kb kbv1.Kibana, basePath string) (*defaults.PodTemplateBuilder, error) {
 	isMonitoringReconcilable, err := monitoring.IsReconcilable(&kb)
 	if err != nil {
 		return nil, err
@@ -98,7 +117,7 @@ func WithMonitoring(ctx context.Context, client k8s.Client, builder *defaults.Po
 	volumes := make([]corev1.Volume, 0)
 
 	if monitoring.IsMetricsDefined(&kb) {
-		b, err := Metricbeat(ctx, client, kb)
+		b, err := Metricbeat(ctx, client, kb, basePath)
 		if err != nil {
 			return nil, err
 		}

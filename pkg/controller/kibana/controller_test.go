@@ -143,7 +143,7 @@ func TestReconcileKibana_Reconcile(t *testing.T) {
 			},
 			want:     reconcile.Result{},
 			wantErr:  true,
-			errorMsg: `Kibana.kibana.k8s.elastic.co "superlongkibananamecausesvalidationissues" is invalid: metadata.name: Too long: must have at most 36 bytes`,
+			errorMsg: `Kibana.kibana.k8s.elastic.co "superlongkibananamecausesvalidationissues" is invalid: metadata.name: Too long: may not be more than 36 bytes`,
 			validate: func(t *testing.T, f fields) {
 				var kibana kibanav1.Kibana
 				err := f.Client.Get(context.Background(), types.NamespacedName{Namespace: "test", Name: "superlongkibananamecausesvalidationissues"}, &kibana)
@@ -176,7 +176,7 @@ func TestReconcileKibana_Reconcile(t *testing.T) {
 			},
 			want:     reconcile.Result{},
 			wantErr:  true,
-			errorMsg: `while updating status: internal error: Kibana.kibana.k8s.elastic.co "superlongkibananamecausesvalidationissues" is invalid: metadata.name: Too long: must have at most 36 bytes`,
+			errorMsg: `while updating status: internal error: Kibana.kibana.k8s.elastic.co "superlongkibananamecausesvalidationissues" is invalid: metadata.name: Too long: may not be more than 36 bytes`,
 			validate: func(t *testing.T, f fields) {
 				var kibana kibanav1.Kibana
 				err := f.Client.Get(context.Background(), types.NamespacedName{Namespace: "test", Name: "superlongkibananamecausesvalidationissues"}, &kibana)

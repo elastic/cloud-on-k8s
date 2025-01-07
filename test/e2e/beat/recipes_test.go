@@ -71,6 +71,7 @@ func TestFilebeatAutodiscoverByMetadataRecipe(t *testing.T) {
 	customize := func(builder beat.Builder) beat.Builder {
 		return builder.
 			WithRoles(beat.AutodiscoverClusterRoleName).
+			WithOpenShiftRoles(test.UseSCCRole).
 			WithESValidations(
 				beat.HasEventFromPod(podLabel.Name),
 				beat.HasMessageContaining(goodLog),
@@ -99,14 +100,6 @@ func TestMetricbeatHostsRecipe(t *testing.T) {
 }
 
 func TestMetricbeatStackMonitoringRecipe(t *testing.T) {
-	v := version.MustParse(test.Ctx().ElasticStackVersion)
-
-	// https://github.com/elastic/cloud-on-k8s/issues/8250
-	// Update when the referenced issue is resolved.
-	if v.GE(version.MinFor(8, 16, 0)) {
-		t.SkipNow()
-	}
-
 	name := "fb-autodiscover"
 	pod, loggedString := loggingTestPod(name)
 	customize := func(builder beat.Builder) beat.Builder {

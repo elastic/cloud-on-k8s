@@ -217,6 +217,13 @@ func (b Builder) WithPodTemplateServiceAccount(name string) Builder {
 	return b
 }
 
+func (b Builder) WithOpenShiftRoles(clusterRoleNames ...string) Builder {
+	if !test.Ctx().OcpCluster {
+		return b
+	}
+	return b.WithRoles(clusterRoleNames...)
+}
+
 func (b Builder) WithRoles(clusterRoleNames ...string) Builder {
 	for _, clusterRoleName := range clusterRoleNames {
 		b = bind(b, clusterRoleName)
