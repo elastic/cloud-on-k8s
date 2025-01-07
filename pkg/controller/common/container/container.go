@@ -87,7 +87,7 @@ func ImageRepository(img Image, ver version.Version) string {
 		suffix = getUBISuffix(ver)
 	}
 	// on 9.x ubi is the default and there's no -ubi image
-	if useUBISuffix && ver.Major == 9 {
+	if useUBISuffix && ver.Major >= 9 {
 		if img == APMServerImage {
 			suffix = ""
 		}
