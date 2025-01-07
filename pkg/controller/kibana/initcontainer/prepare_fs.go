@@ -94,11 +94,15 @@ func NewInitContainer(kb kbv1.Kibana, setDefaultSecurityContext bool) (corev1.Co
 	return container, nil
 }
 
-func RenderInitScript(includePlugins bool) (string, error) {
+func RenderInitScript(kb kbv1.Kibana, setDefaultSecurityContext bool) (string, error) {
+	v, err := version.Parse(kb.Spec.Version)
+	if err != nil {
+		return "", err // error unlikely and should have been caught during validation
+	}
 	templateParams := templateParams{
 		ContainerPluginsMountPath:     PluginsSharedVolume.ContainerMountPath,
 		InitContainerPluginsMountPath: PluginsSharedVolume.InitContainerMountPath,
-		IncludePlugins:                includePlugins,
+		IncludePlugins:                v.GTE(HardenedSecurityContextSupportedVersion) && setDefaultSecurityContext,
 	}
 	return RenderScriptTemplate(templateParams)
 }

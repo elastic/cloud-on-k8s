@@ -52,13 +52,7 @@ func ReconcileScriptsConfigMap(ctx context.Context, c k8s.Client, kb kbv1.Kibana
 	span, ctx := apm.StartSpan(ctx, "reconcile_scripts", tracing.SpanTypeApp)
 	defer span.End()
 
-	v, err := version.Parse(kb.Spec.Version)
-	if err != nil {
-		return err // error unlikely and should have been caught during validation
-	}
-
-	// The plugins logic should only be included in KB >= 7.10.0 and when the default hardened security context is set.
-	initScript, err := RenderInitScript(v.GTE(HardenedSecurityContextSupportedVersion) && setDefaultSecurityContext)
+	initScript, err := RenderInitScript(kb, setDefaultSecurityContext)
 	if err != nil {
 		return err
 	}
