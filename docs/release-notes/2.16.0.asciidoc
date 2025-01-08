@@ -22,6 +22,7 @@
 * Make Helm chart consistent in respect to handling of 'spec'. (eck-kibana) {pull}8192[#8192]
 * Set default hardened security context for Kibana. {pull}8086[#8086] (issue: {issue}7787[#7787])
 * Add a setting in the Helm chart to deploy FIPS compliant ECK image. {pull}8272[#8272] (issue: {issue}8204[#8204])
+* Remove kube-rbac-proxy and adjust default approach to securing the metrics endpoint. {pull}8302[#8302] (issue: {issue}8279[#8279])
 
 [[bug-2.16.0]]
 [float]
@@ -29,6 +30,7 @@
 
 * Allow Beats stack monitoring without elasticseachRef. {pull}8273[#8273] (issue: {issue}8194[#8194])
 * Add recommened roles for Elastic Agent on Kubernetes. {pull}8188[#8188] (issue: {issue}8168[#8168])
+* Set 'basePath' in Metricbeat when using stack monitoring {pull}8311[#8311] (issue: {issue}8310[#8310])
 
 [[docs-2.16.0]]
 [float]
@@ -46,12 +48,13 @@
 * Add note on how to access generated Kibana encryption keys. {pull}8150[#8150] (issue: {issue}8129[#8129])
 * Move Troubleshooting section to top level of table of contents. {pull}8145[#8145] (issue: {issue}8131[#8131])
 * Add is_managed: true to Agent policies. {pull}8125[#8125] (issue: {issue}7290[#7290])
-* Adds a secure settings link to K8s docs and note the need to be base64 encoded. {pull}8113[#8113]   * 
+* Adds a secure settings link to K8s docs and note the need to be base64 encoded. {pull}8113[#8113]
 
 [[nogroup-2.16.0]]
 [float]
 === Misc
 
+* Enterprise Search transition to Elasticsearch {pull}8323[#8323] (issue: {issue}8308[#8308])
 * fix(deps): update module golang.org/x/crypto to v0.29.0 {pull}8240[#8240]
 * chore(deps): update registry.access.redhat.com/ubi9/ubi-minimal docker tag to v9.5-1731604394 {pull}8237[#8237]
 * chore(deps): update go to v1.23.3 {pull}8190[#8190]
@@ -59,4 +62,4 @@
 * fix(deps): update k8s versions {pull}8163[#8163]
 * chore(deps): update wolfi (versioned) {pull}8162[#8162]
 * fix(deps): update module github.com/prometheus/client_golang to v1.20.5 {pull}8133[#8133]
-
+* fix(deps): Bump golang.org/x/crypto from 0.29.0 to 0.31.0 {pull}8341[#8341]

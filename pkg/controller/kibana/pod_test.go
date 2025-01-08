@@ -219,10 +219,9 @@ func TestNewPodTemplateSpec(t *testing.T) {
 			}},
 			assertions: func(pod corev1.PodTemplateSpec) {
 				assert.Len(t, pod.Spec.InitContainers, 1)
-				assert.Len(t, pod.Spec.InitContainers[0].VolumeMounts, 5)
-				assert.Len(t, pod.Spec.Volumes, 3)
-				assert.Len(t, GetKibanaContainer(pod.Spec).VolumeMounts, 3)
-				assert.Equal(t, pod.Spec.SecurityContext, &defaultPodSecurityContext)
+				assert.Len(t, pod.Spec.InitContainers[0].VolumeMounts, 6)
+				assert.Len(t, pod.Spec.Volumes, 4)
+				assert.Len(t, GetKibanaContainer(pod.Spec).VolumeMounts, 4)
 				assert.Equal(t, GetKibanaContainer(pod.Spec).SecurityContext, &defaultSecurityContext)
 			},
 		},
@@ -373,7 +372,7 @@ func TestNewPodTemplateSpec(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			bp, err := GetKibanaBasePath(tt.kb)
 			require.NoError(t, err)
-			got, err := NewPodTemplateSpec(context.Background(), k8s.NewFakeClient(), tt.kb, tt.keystore, []commonvolume.VolumeLike{}, bp)
+			got, err := NewPodTemplateSpec(context.Background(), k8s.NewFakeClient(), tt.kb, tt.keystore, []commonvolume.VolumeLike{}, bp, true)
 			assert.NoError(t, err)
 			tt.assertions(got)
 		})

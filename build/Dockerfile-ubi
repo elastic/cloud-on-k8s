@@ -1,5 +1,5 @@
 # Build the operator binary
-FROM docker.elastic.co/wolfi/go:1.23.3-r1@sha256:afb2ab25109c68f4f508ea84b3ace72d793816ba983453d8792de3d4eef6b1f5 as builder
+FROM docker.elastic.co/wolfi/go:1.23.4@sha256:ce2112805a32a37095adbfe672e30089c2d394a42df7f982823d8934ace2da66 as builder
 
 ARG VERSION
 ARG SHA1
@@ -27,7 +27,7 @@ RUN --mount=type=cache,mode=0755,target=/go/pkg/mod \
 
 # ---------------------------------------------
 # Copy the operator binary into a lighter image
-FROM registry.access.redhat.com/ubi9/ubi-minimal:9.5-1731604394
+FROM registry.access.redhat.com/ubi9/ubi-minimal:9.5-1734497536
 
 # Update the base image packages to the latest versions
 RUN microdnf update --setopt=tsflags=nodocs --assumeyes && microdnf clean all

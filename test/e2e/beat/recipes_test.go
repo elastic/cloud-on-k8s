@@ -71,6 +71,7 @@ func TestFilebeatAutodiscoverByMetadataRecipe(t *testing.T) {
 	customize := func(builder beat.Builder) beat.Builder {
 		return builder.
 			WithRoles(beat.AutodiscoverClusterRoleName).
+			WithOpenShiftRoles(test.UseSCCRole).
 			WithESValidations(
 				beat.HasEventFromPod(podLabel.Name),
 				beat.HasMessageContaining(goodLog),

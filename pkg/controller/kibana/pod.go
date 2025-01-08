@@ -35,10 +35,14 @@ const (
 	DataVolumeMountPath          = "/usr/share/kibana/data"
 	PluginsVolumeName            = "kibana-plugins"
 	PluginsVolumeMountPath       = "/usr/share/kibana/plugins"
+	LogsVolumeName               = "kibana-logs"
+	LogsVolumeMountPath          = "/usr/share/kibana/logs"
 	TempVolumeName               = "temp-volume"
 	TempVolumeMountPath          = "/tmp"
 	KibanaBasePathEnvName        = "SERVER_BASEPATH"
 	KibanaRewriteBasePathEnvName = "SERVER_REWRITEBASEPATH"
+	defaultFSGroup               = 1000
+	defaultFSUser                = 1000
 )
 
 var (
@@ -50,6 +54,10 @@ var (
 	// PluginsVolume can be used to persist plugins after installation via an init container when
 	// the Kibana pod has readOnlyRootFilesystem set to true.
 	PluginsVolume = volume.NewEmptyDirVolume(PluginsVolumeName, PluginsVolumeMountPath)
+
+	// LogsVolume can be used to persist logs even when
+	// the Kibana pod has readOnlyRootFilesystem set to true.
+	LogsVolume = volume.NewEmptyDirVolume(LogsVolumeName, LogsVolumeMountPath)
 
 	// TempVolume can be used for some reporting features when the Kibana pod has
 	// readOnlyRootFilesystem set to true.
@@ -108,6 +116,7 @@ func NewPodTemplateSpec(
 	keystore *keystore.Resources,
 	volumes []volume.VolumeLike,
 	basePath string,
+	setDefaultSecurityContext bool,
 ) (corev1.PodTemplateSpec, error) {
 	labels := kb.GetIdentityLabels()
 	labels[kblabel.KibanaVersionLabelName] = kb.Spec.Version
@@ -137,11 +146,12 @@ func NewPodTemplateSpec(
 	// Limiting to 7.10.0 here as there was a bug in previous versions causing rebuilding
 	// of browser bundles to happen on plugin install, which would attempt a write to the
 	// root filesystem on restart.
-	if v.GTE(version.From(7, 10, 0)) {
-		builder.WithPodSecurityContext(defaultPodSecurityContext).
-			WithContainersSecurityContext(defaultSecurityContext).
-			WithVolumes(TempVolume.Volume()).WithVolumeMounts(TempVolume.VolumeMount()).
-			WithVolumes(PluginsVolume.Volume()).WithVolumeMounts(PluginsVolume.VolumeMount())
+	if v.GTE(version.From(7, 10, 0)) && setDefaultSecurityContext {
+		builder.WithContainersSecurityContext(defaultSecurityContext).
+			WithPodSecurityContext(defaultPodSecurityContext).
+			WithVolumes(LogsVolume.Volume()).WithVolumeMounts(LogsVolume.VolumeMount()).
+			WithVolumes(PluginsVolume.Volume()).WithVolumeMounts(PluginsVolume.VolumeMount()).
+			WithVolumes(TempVolume.Volume()).WithVolumeMounts(TempVolume.VolumeMount())
 	}
 
 	if keystore != nil {

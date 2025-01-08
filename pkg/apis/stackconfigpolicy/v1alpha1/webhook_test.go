@@ -84,7 +84,7 @@ func TestWebhook(t *testing.T) {
 				return serialize(t, m)
 			},
 			Check: test.ValidationWebhookFailed(
-				`metadata.name: Too long: must have at most 36 bytes`,
+				`metadata.name: Too long: may not be more than 36 bytes`,
 			),
 		},
 		{
