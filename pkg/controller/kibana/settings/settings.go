@@ -22,8 +22,10 @@ const (
 	// TempVolumeName is the name of the volume that holds the temporary files
 	TempVolumeName = "temp-volume"
 	// TempVolumeMountPath is the path where the temporary files are mounted in the Kibana container
-	TempVolumeMountPath    = "/tmp"
-	BasePathEnvName        = "SERVER_BASEPATH"
+	TempVolumeMountPath = "/tmp"
+	// BasePathEnvName is the environment variable name that allows ibe to specify a path to mount Kibana at if you are running behind a proxy
+	BasePathEnvName = "SERVER_BASEPATH"
+	// RewriteBasePathEnvName is the environment variable name that specifies whether Kibana should rewrite requests that are prefixed with server.basePath
 	RewriteBasePathEnvName = "SERVER_REWRITEBASEPATH"
 	// ScriptsVolumeName is the name of the volume that holds the Kibana scripts for the init container
 	ScriptsVolumeName = "kibana-scripts"
@@ -39,6 +41,6 @@ const (
 	InitContainerConfigVolumeMountPath = "/mnt/elastic-internal/kibana-config-local"
 	// InternalConfigVolumeName is a volume which contains the generated configuration.
 	InternalConfigVolumeName = "elastic-internal-kibana-config"
-	// InternalConfigVolumeMountPath is the path where the generated configuration is mounted in the Kibana init  container
+	// InternalConfigVolumeMountPath is the path where the generated configuration is mounted in the Kibana init container
 	InternalConfigVolumeMountPath = "/mnt/elastic-internal/kibana-config"
 )
