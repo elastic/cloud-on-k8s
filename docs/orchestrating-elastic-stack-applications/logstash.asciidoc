@@ -391,7 +391,7 @@ spec:
           readOnly: false
   volumeClaimTemplates:
     - metadata:
-      name: dlq <1>
+        name: dlq <1>
       spec:
         accessModes:
         - ReadWriteOnce

@@ -27,15 +27,32 @@ SNAPSHOT=true
 GO_TAGS=${GO_TAGS-release}
 LICENSE_PUBKEY=license.key
 
+latest_stable_tag() {
+    case "${TRIGGER:-}" in
+        merge-xyz) echo next-release-latest ;;
+        tag-bc)    echo bc-latest ;;
+        *)         echo latest ;;
+    esac
+}
+
 generate_drivah_config() {
     local name=$1
     local tag=$2
     local go_tags=$3
     local license_pubkey=$4
+
+    # add 'stable' tag without sha1 for snapshots
+    if [[ "$tag" =~ "SNAPSHOT" ]]; then
+        snapshot_stable_tag="${tag/-$SHA1/}"
+        additional_tags=",\"${snapshot_stable_tag}-${ARCH}\",\"$(latest_stable_tag)-${ARCH}\""
+    else
+        additional_tags=",\"$(latest_stable_tag)-${ARCH}\""
+    fi
+
 cat <<END
 [container.image]
 names = ["${name}"]
-tags = ["${tag}-${ARCH}"]
+tags = ["${tag}-${ARCH}"${additional_tags:-}]
 build_context = "../../"
 
 [container.image.build_args]
@@ -48,7 +65,7 @@ END
 }
 
 main() {
-    echo "# -- gen-drivah-config BUILD_FLAVORS=$BUILD_FLAVORS"
+    echo "# -- gen-drivah-config BUILD_FLAVORS=$BUILD_FLAVORS TRIGGER=$TRIGGER"
 
     # disable SNAPSHOT for tags
     tag_pattern="^[0-9]+\.[0-9]+\.[0-9]+"
@@ -58,6 +75,9 @@ main() {
 
     # delete only dirs
     find "$HERE" -maxdepth 1 -mindepth 1 -type d -exec rm -rf '{}' \;
+
+    # initialize file to share list of images for CVE scan
+    true > images-to-scan.txt
 
     IFS=","; for flavor in $BUILD_FLAVORS; do
 
@@ -91,6 +111,11 @@ main() {
                 go_tags="$go_tags,goexperiment.boringcrypto"
         fi
 
+        # write the image name with the latest stable tag (except the 'dev' flavor) for CVE scan
+        if [[ ! "$flavor" =~ -dev ]]; then
+            echo "$name:$(latest_stable_tag)" >> images-to-scan.txt
+        fi
+
         # fetch public license key
         if [[ ! -f "$HERE/$license_pubkey" ]]; then
             prefix="${BUILD_LICENSE_PUBKEY:+$BUILD_LICENSE_PUBKEY-}" # add "-" suffix
@@ -105,6 +130,10 @@ main() {
         cp -f "$container_file_path" "$HERE/$flavor/Dockerfile"
 
     done
+
+    if [[ "${CI:-}" == true ]]; then
+        buildkite-agent meta-data set images-to-scan "$(cat images-to-scan.txt)"
+    fi
 }
 
 main

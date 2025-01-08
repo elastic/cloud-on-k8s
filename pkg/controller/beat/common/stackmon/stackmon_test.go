@@ -250,9 +250,8 @@ output:
 	}
 
 	type args struct {
-		client  k8s.Client
-		beat    func() *v1beta1.Beat
-		version string
+		client k8s.Client
+		beat   func() *v1beta1.Beat
 	}
 	tests := []struct {
 		name    string
@@ -270,7 +269,6 @@ output:
 				beat: func() *v1beta1.Beat {
 					return &beatFixture
 				},
-				version: "8.2.3",
 			},
 			want:    beatSidecarFixture(fmt.Sprintf(beatYml, "abcd1234", "es-metrics-monitoring-url")),
 			wantErr: false,
@@ -287,7 +285,6 @@ output:
 					beat.Spec.ElasticsearchRef = commonv1.ObjectSelector{}
 					return beat
 				},
-				version: "8.2.3",
 			},
 			want:    beatSidecarFixture(standaloneBeatYML),
 			wantErr: false,
@@ -317,7 +314,6 @@ output:
 					}
 					return beat
 				},
-				version: "8.2.3",
 			},
 			want:    beatSidecarFixture(fmt.Sprintf(beatYml, "QGq3wcU7Sd6bC31wh37eKQ", esAPIFixture.URL)),
 			wantErr: false,
@@ -331,7 +327,6 @@ output:
 					beat.Spec.Config.Data = map[string]interface{}{"http.port": "invalid"}
 					return beat
 				},
-				version: "8.2.3",
 			},
 			want:    stackmon.BeatSidecar{},
 			wantErr: true,
@@ -339,7 +334,7 @@ output:
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := MetricBeat(context.Background(), tt.args.client, tt.args.beat(), tt.args.version)
+			got, err := MetricBeat(context.Background(), tt.args.client, tt.args.beat())
 			if (err != nil) != tt.wantErr {
 				t.Errorf("MetricBeat() error = %v, wantErr %v", err, tt.wantErr)
 				return

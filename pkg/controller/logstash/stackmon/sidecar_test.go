@@ -6,18 +6,23 @@ package stackmon
 
 import (
 	"context"
-	"fmt"
+	"encoding/json"
 	"strconv"
 	"testing"
 
+	"github.com/gkampitakis/go-snaps/snaps"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	commonv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/common/v1"
 	logstashv1alpha1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/logstash/v1alpha1"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/defaults"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/stackmon"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/stackmon/monitoring"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/version"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/volume"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/logstash/configs"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/k8s"
 )
@@ -77,21 +82,15 @@ func TestWithMonitoring(t *testing.T) {
 	}
 
 	tests := []struct {
-		name                      string
-		ls                        func() logstashv1alpha1.Logstash
-		apiServerConfig           configs.APIServer
-		containersLength          int
-		esEnvVarsLength           int
-		podVolumesLength          int
-		metricsVolumeMountsLength int
-		logVolumeMountsLength     int
+		name            string
+		ls              func() logstashv1alpha1.Logstash
+		apiServerConfig configs.APIServer
 	}{
 		{
 			name: "without monitoring",
 			ls: func() logstashv1alpha1.Logstash {
 				return sampleLs
 			},
-			containersLength: 1,
 		},
 		{
 			name: "with metrics monitoring",
@@ -100,11 +99,7 @@ func TestWithMonitoring(t *testing.T) {
 				monitoring.GetMetricsAssociation(&sampleLs)[0].SetAssociationConf(&monitoringAssocConf)
 				return sampleLs
 			},
-			apiServerConfig:           GetAPIServerWithSSLEnabled(false),
-			containersLength:          2,
-			esEnvVarsLength:           0,
-			podVolumesLength:          3,
-			metricsVolumeMountsLength: 3,
+			apiServerConfig: GetAPIServerWithSSLEnabled(false),
 		},
 		{
 			name: "with TLS metrics monitoring",
@@ -113,11 +108,7 @@ func TestWithMonitoring(t *testing.T) {
 				monitoring.GetMetricsAssociation(&sampleLs)[0].SetAssociationConf(&monitoringAssocConf)
 				return sampleLs
 			},
-			apiServerConfig:           GetAPIServerWithSSLEnabled(true),
-			containersLength:          2,
-			esEnvVarsLength:           0,
-			podVolumesLength:          4,
-			metricsVolumeMountsLength: 4,
+			apiServerConfig: GetAPIServerWithSSLEnabled(true),
 		},
 		{
 			name: "with logs monitoring",
@@ -127,11 +118,7 @@ func TestWithMonitoring(t *testing.T) {
 				monitoring.GetLogsAssociation(&sampleLs)[0].SetAssociationConf(&monitoringAssocConf)
 				return sampleLs
 			},
-			apiServerConfig:       GetAPIServerWithSSLEnabled(false),
-			containersLength:      2,
-			esEnvVarsLength:       1,
-			podVolumesLength:      3,
-			logVolumeMountsLength: 4,
+			apiServerConfig: GetAPIServerWithSSLEnabled(false),
 		},
 		{
 			name: "with metrics and logs monitoring",
@@ -142,12 +129,7 @@ func TestWithMonitoring(t *testing.T) {
 				monitoring.GetLogsAssociation(&sampleLs)[0].SetAssociationConf(&logsAssocConf)
 				return sampleLs
 			},
-			apiServerConfig:           GetAPIServerWithSSLEnabled(false),
-			containersLength:          3,
-			esEnvVarsLength:           1,
-			podVolumesLength:          5,
-			metricsVolumeMountsLength: 3,
-			logVolumeMountsLength:     4,
+			apiServerConfig: GetAPIServerWithSSLEnabled(false),
 		},
 		{
 			name: "with metrics and logs monitoring with different es ref",
@@ -158,12 +140,7 @@ func TestWithMonitoring(t *testing.T) {
 				monitoring.GetLogsAssociation(&sampleLs)[0].SetAssociationConf(&logsAssocConf)
 				return sampleLs
 			},
-			apiServerConfig:           GetAPIServerWithSSLEnabled(false),
-			containersLength:          3,
-			esEnvVarsLength:           1,
-			podVolumesLength:          6,
-			metricsVolumeMountsLength: 3,
-			logVolumeMountsLength:     4,
+			apiServerConfig: GetAPIServerWithSSLEnabled(false),
 		},
 	}
 
@@ -173,27 +150,9 @@ func TestWithMonitoring(t *testing.T) {
 			builder := defaults.NewPodTemplateBuilder(corev1.PodTemplateSpec{}, logstashv1alpha1.LogstashContainerName)
 			_, err := WithMonitoring(context.Background(), fakeClient, builder, ls, tc.apiServerConfig)
 			assert.NoError(t, err)
-
-			assert.Equal(t, tc.containersLength, len(builder.PodTemplate.Spec.Containers))
-			for _, v := range builder.PodTemplate.Spec.Volumes {
-				fmt.Println(v)
-			}
-			assert.Equal(t, tc.podVolumesLength, len(builder.PodTemplate.Spec.Volumes))
-
-			if monitoring.IsMetricsDefined(&ls) {
-				for _, c := range builder.PodTemplate.Spec.Containers {
-					if c.Name == "metricbeat" {
-						assert.Equal(t, tc.metricsVolumeMountsLength, len(c.VolumeMounts))
-					}
-				}
-			}
-			if monitoring.IsLogsDefined(&ls) {
-				for _, c := range builder.PodTemplate.Spec.Containers {
-					if c.Name == "filebeat" {
-						assert.Equal(t, tc.logVolumeMountsLength, len(c.VolumeMounts))
-					}
-				}
-			}
+			actual, err := json.MarshalIndent(builder.PodTemplate, " ", "")
+			assert.NoError(t, err)
+			snaps.MatchJSON(t, actual)
 		})
 	}
 }
@@ -205,5 +164,82 @@ func GetAPIServerWithSSLEnabled(enabled bool) configs.APIServer {
 		AuthType:         "basic",
 		Username:         "logstash",
 		Password:         "whatever",
+	}
+}
+
+func TestMetricbeatConfig(t *testing.T) {
+	volumeFixture := volume.NewSecretVolumeWithMountPath(
+		"secret-name",
+		"ls-ca",
+		"/mount",
+	)
+	type args struct {
+		URL      string
+		Username string
+		Password string
+		IsSSL    bool
+		CAVolume volume.VolumeLike
+	}
+	tests := []struct {
+		name string
+		args args
+	}{
+		{
+			name: "default",
+			args: args{
+				URL:      "https://localhost:9200",
+				Username: "elastic",
+				Password: "password",
+				IsSSL:    true,
+				CAVolume: volumeFixture,
+			},
+		},
+		{
+			name: "no password",
+			args: args{
+				URL:      "https://localhost:9200",
+				Username: "elastic",
+				Password: "",
+				IsSSL:    true,
+				CAVolume: volumeFixture,
+			},
+		},
+		{
+			name: "no user + password",
+			args: args{
+				URL:      "https://localhost:9200",
+				Username: "",
+				Password: "",
+				IsSSL:    true,
+				CAVolume: volumeFixture,
+			},
+		},
+		{
+			name: "no TLS",
+			args: args{
+				URL:      "https://localhost:9200",
+				Username: "elastic",
+				Password: "password",
+				IsSSL:    false,
+				CAVolume: volumeFixture,
+			},
+		},
+		{
+			name: "no CA",
+			args: args{
+				URL:      "https://localhost:9200",
+				Username: "elastic",
+				Password: "password",
+				IsSSL:    true,
+				CAVolume: nil,
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			cfg, err := stackmon.RenderTemplate(version.From(8, 16, 0), metricbeatConfigTemplate, tt.args)
+			require.NoError(t, err)
+			snaps.MatchSnapshot(t, cfg)
+		})
 	}
 }
