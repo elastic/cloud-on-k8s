@@ -405,11 +405,11 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 --------------------------------------------------------------------------------
 Module  : github.com/gkampitakis/go-snaps
-Version : v0.5.7
-Time    : 2024-08-03T07:33:21Z
+Version : v0.5.8
+Time    : 2024-12-26T16:47:19Z
 Licence : MIT
 
-Contents of probable licence file $GOMODCACHE/github.com/gkampitakis/go-snaps@v0.5.7/LICENSE:
+Contents of probable licence file $GOMODCACHE/github.com/gkampitakis/go-snaps@v0.5.8/LICENSE:
 
 MIT License
 
@@ -8100,11 +8100,11 @@ SOFTWARE.
 
 --------------------------------------------------------------------------------
 Module  : github.com/gkampitakis/ciinfo
-Version : v0.3.0
-Time    : 2023-10-30T18:42:40Z
+Version : v0.3.1
+Time    : 2024-11-23T15:55:52Z
 Licence : MIT
 
-Contents of probable licence file $GOMODCACHE/github.com/gkampitakis/ciinfo@v0.3.0/LICENSE:
+Contents of probable licence file $GOMODCACHE/github.com/gkampitakis/ciinfo@v0.3.1/LICENSE:
 
 MIT License
 
@@ -9456,6 +9456,37 @@ AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
 LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
+
+
+--------------------------------------------------------------------------------
+Module  : github.com/goccy/go-yaml
+Version : v1.15.13
+Time    : 2024-12-21T12:50:58Z
+Licence : MIT
+
+Contents of probable licence file $GOMODCACHE/github.com/goccy/go-yaml@v1.15.13/LICENSE:
+
+MIT License
+
+Copyright (c) 2019 Masaaki Goshima
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
 
 
 --------------------------------------------------------------------------------
@@ -16755,11 +16786,11 @@ Contents of probable licence file $GOMODCACHE/github.com/prometheus/procfs@v0.15
 
 --------------------------------------------------------------------------------
 Module  : github.com/rogpeppe/go-internal
-Version : v1.12.0
-Time    : 2023-12-13T11:29:26Z
+Version : v1.13.1
+Time    : 2024-09-23T11:44:11Z
 Licence : BSD-3-Clause
 
-Contents of probable licence file $GOMODCACHE/github.com/rogpeppe/go-internal@v1.12.0/LICENSE:
+Contents of probable licence file $GOMODCACHE/github.com/rogpeppe/go-internal@v1.13.1/LICENSE:
 
 Copyright (c) 2018 The Go Authors. All rights reserved.
 
@@ -17282,11 +17313,11 @@ THE SOFTWARE.
 
 --------------------------------------------------------------------------------
 Module  : github.com/tidwall/gjson
-Version : v1.17.0
-Time    : 2023-09-22T17:13:56Z
+Version : v1.18.0
+Time    : 2024-10-02T03:45:20Z
 Licence : MIT
 
-Contents of probable licence file $GOMODCACHE/github.com/tidwall/gjson@v1.17.0/LICENSE:
+Contents of probable licence file $GOMODCACHE/github.com/tidwall/gjson@v1.18.0/LICENSE:
 
 The MIT License (MIT)
 
