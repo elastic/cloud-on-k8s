@@ -26,7 +26,7 @@ import (
 // HardenedSecurityContextSupportedVersion is the version in which a hardened security context is supported.
 var HardenedSecurityContextSupportedVersion = version.From(7, 9, 0)
 
-// NewScriptsConfigMapVolume creates a new volume for the ConfigMap ap containing scripts used by the Kibana init container.
+// NewScriptsConfigMapVolume creates a new volume for the ConfigMap containing scripts used by the Kibana init container.
 func NewScriptsConfigMapVolume(kbName string) volume.ConfigMapVolume {
 	return volume.NewConfigMapVolumeWithMode(
 		kbv1.ScriptsConfigMap(kbName),
@@ -35,7 +35,7 @@ func NewScriptsConfigMapVolume(kbName string) volume.ConfigMapVolume {
 		0755)
 }
 
-// newConfigMapWithData constructs a new ConfigMap with the given data
+// newConfigMapWithData constructs a new ConfigMap with the given data.
 func newConfigMapWithData(cm, kb types.NamespacedName, data map[string]string) corev1.ConfigMap {
 	return corev1.ConfigMap{
 		ObjectMeta: metav1.ObjectMeta{
