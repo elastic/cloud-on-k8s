@@ -25,10 +25,12 @@ func Deployment(kbName string) string {
 	return KBNamer.Suffix(kbName)
 }
 
+// ScriptsConfigMap returns the name of the ConfigMap containing scripts for the given Kibana resource.
 func ScriptsConfigMap(kbName string) string {
 	return KBNamer.Suffix(kbName, scriptsConfigMapSuffix)
 }
 
+// ConfigSecret returns the name of the Secret containing the Kibana configuration for the given Kibana resource.
 func ConfigSecret(kb Kibana) string {
 	return KBNamer.Suffix(kb.Name, configSecretSuffix)
 }

@@ -7,7 +7,7 @@ package settings
 const (
 	// DataVolumeName is the name of the volume that holds the Kibana data
 	DataVolumeName = "kibana-data"
-	//
+	// DataVolumeMountPath is the path where the Kibana data is mounted in the Kibana container
 	DataVolumeMountPath = "/usr/share/kibana/data"
 	// PluginsVolumeName is the name of the volume that holds the Kibana plugins
 	PluginsVolumeName = "kibana-plugins"
