@@ -45,16 +45,21 @@ function duration() {
 # Plugins persistence #
 #######################
 
+init_plugins_copied_flag={{.InitContainerPluginsMountPath}}/elastic-internal-init-plugins.ok
+
 # Persist the content of plugins/ to a volume, so installed
 # plugins files can to be used by the Kibana container.
 mv_start=$(date +%s)
-if [[ -z "$(ls -A {{.ContainerPluginsMountPath}})" ]]; then
-	echo "Empty dir {{.ContainerPluginsMountPath}}"
-else
-	echo "Copying {{.ContainerPluginsMountPath}}/* to {{.InitContainerPluginsMountPath}}/"
-	# Use "yes" and "-f" as we want the init container to be idempotent and not to fail when executed more than once.
-	yes | cp -avf {{.ContainerPluginsMountPath}}/* {{.InitContainerPluginsMountPath}}/
+if [[ ! -f "${init_plugins_copied_flag}" ]]; then
+	if [[ -z "$(ls -A {{.ContainerPluginsMountPath}})" ]]; then
+		echo "Empty dir {{.ContainerPluginsMountPath}}"
+	else
+		echo "Copying {{.ContainerPluginsMountPath}}/* to {{.InitContainerPluginsMountPath}}/"
+		# Use "yes" and "-f" as we want the init container to be idempotent and not to fail when executed more than once.
+		yes | cp -avf {{.ContainerPluginsMountPath}}/* {{.InitContainerPluginsMountPath}}/
+	fi
 fi
+touch "${init_plugins_copied_flag}"
 echo "Files copy duration: $(duration $mv_start) sec."
 
 {{ end }}
