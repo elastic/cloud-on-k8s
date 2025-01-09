@@ -84,7 +84,9 @@ func reconcileConfigMap(
 			Expected:   &expected,
 			Reconciled: reconciled,
 			NeedsUpdate: func() bool {
-				return !reflect.DeepEqual(expected.Data, reconciled.Data)
+				return !reflect.DeepEqual(expected.Data, reconciled.Data) ||
+					!reflect.DeepEqual(expected.Labels, reconciled.Labels) ||
+					!reflect.DeepEqual(expected.Annotations, reconciled.Annotations)
 			},
 			UpdateReconciled: func() {
 				reconciled.Data = expected.Data
