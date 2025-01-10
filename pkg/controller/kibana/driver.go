@@ -161,8 +161,7 @@ func (d *driver) Reconcile(
 		return results.WithError(err)
 	}
 
-	err = ReconcileConfigSecret(ctx, d.client, *kb, kbSettings)
-	if err != nil {
+	if err = ReconcileConfigSecret(ctx, d.client, *kb, kbSettings); err != nil {
 		return results.WithError(err)
 	}
 
@@ -171,13 +170,11 @@ func (d *driver) Reconcile(
 		return results.WithError(err)
 	}
 
-	err = stackmon.ReconcileConfigSecrets(ctx, d.client, *kb, basePath)
-	if err != nil {
+	if err = stackmon.ReconcileConfigSecrets(ctx, d.client, *kb, basePath); err != nil {
 		return results.WithError(err)
 	}
 
-	err = initcontainer.ReconcileScriptsConfigMap(ctx, d.client, *kb, params.SetDefaultSecurityContext)
-	if err != nil {
+	if err = initcontainer.ReconcileScriptsConfigMap(ctx, d.client, *kb, params.SetDefaultSecurityContext); err != nil {
 		return results.WithError(err)
 	}
 
