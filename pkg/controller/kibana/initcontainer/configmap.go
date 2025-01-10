@@ -21,6 +21,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/kibana/label"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/kibana/settings"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/k8s"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/maps"
 )
 
 // HardenedSecurityContextSupportedVersion is the version in which a hardened security context is supported.
@@ -85,8 +86,8 @@ func reconcileConfigMap(
 			Reconciled: reconciled,
 			NeedsUpdate: func() bool {
 				return !reflect.DeepEqual(expected.Data, reconciled.Data) ||
-					!reflect.DeepEqual(expected.Labels, reconciled.Labels) ||
-					!reflect.DeepEqual(expected.Annotations, reconciled.Annotations)
+					!maps.IsSubset(expected.Labels, reconciled.Labels) ||
+					!maps.IsSubset(expected.Annotations, reconciled.Annotations)
 			},
 			UpdateReconciled: func() {
 				reconciled.Data = expected.Data
