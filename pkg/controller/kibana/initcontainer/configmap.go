@@ -52,7 +52,7 @@ func ReconcileScriptsConfigMap(ctx context.Context, c k8s.Client, kb kbv1.Kibana
 	span, ctx := apm.StartSpan(ctx, "reconcile_scripts", tracing.SpanTypeApp)
 	defer span.End()
 
-	initScript, err := RenderInitScript(kb, setDefaultSecurityContext)
+	initScript, err := renderInitScript(kb, setDefaultSecurityContext)
 	if err != nil {
 		return err
 	}

@@ -79,8 +79,8 @@ touch "${init_config_initialized_flag}"
 echo "Kibana configuration successfully prepared."
 `))
 
-// RenderScriptTemplate renders initFsScriptTemplate using the given TemplateParams
-func RenderScriptTemplate(params templateParams) (string, error) {
+// renderScriptTemplate renders initFsScriptTemplate using the given TemplateParams
+func renderScriptTemplate(params templateParams) (string, error) {
 	tplBuffer := bytes.Buffer{}
 	if err := initFsScriptTemplate.Execute(&tplBuffer, params); err != nil {
 		return "", err

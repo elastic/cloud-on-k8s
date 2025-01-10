@@ -94,8 +94,8 @@ func NewInitContainer(kb kbv1.Kibana, setDefaultSecurityContext bool) (corev1.Co
 	return container, nil
 }
 
-// RenderInitScript renders the init script that will be run by the init container.
-func RenderInitScript(kb kbv1.Kibana, setDefaultSecurityContext bool) (string, error) {
+// renderInitScript renders the init script that will be run by the init container.
+func renderInitScript(kb kbv1.Kibana, setDefaultSecurityContext bool) (string, error) {
 	v, err := version.Parse(kb.Spec.Version)
 	if err != nil {
 		return "", err // error unlikely and should have been caught during validation
@@ -105,5 +105,5 @@ func RenderInitScript(kb kbv1.Kibana, setDefaultSecurityContext bool) (string, e
 		InitContainerPluginsMountPath: PluginsSharedVolume.InitContainerMountPath,
 		IncludePlugins:                v.GTE(HardenedSecurityContextSupportedVersion) && setDefaultSecurityContext,
 	}
-	return RenderScriptTemplate(templateParams)
+	return renderScriptTemplate(templateParams)
 }
