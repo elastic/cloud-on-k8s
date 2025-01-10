@@ -46,12 +46,12 @@ func TestNamers(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			switch f := tt.namer.(type) {
 			case func(string) string:
-				arg := tt.arg.(string)
+				arg := tt.arg.(string) //nolint:forcetypeassert
 				if got := f(arg); got != tt.want {
 					t.Errorf("%s = %v, want %v", tt.name, got, tt.want)
 				}
 			case func(Kibana) string:
-				arg := tt.arg.(Kibana)
+				arg := tt.arg.(Kibana) //nolint:forcetypeassert
 				if got := f(arg); got != tt.want {
 					t.Errorf("%s = %v, want %v", tt.name, got, tt.want)
 				}

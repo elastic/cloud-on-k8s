@@ -86,7 +86,7 @@ func NewInitContainer(kb kbv1.Kibana, setDefaultSecurityContext bool) (corev1.Co
 }
 
 // renderInitScript renders the init script that will be run by the init container.
-func renderInitScript(kb kbv1.Kibana, setDefaultSecurityContext bool) (string, error) {
+func renderInitScript(setDefaultSecurityContext bool) (string, error) {
 	templateParams := templateParams{
 		ContainerPluginsMountPath:     PluginsSharedVolume.ContainerMountPath,
 		InitContainerPluginsMountPath: PluginsSharedVolume.InitContainerMountPath,
