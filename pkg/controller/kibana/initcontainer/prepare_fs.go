@@ -74,7 +74,6 @@ func NewInitContainer(kb kbv1.Kibana, setDefaultSecurityContext bool) (corev1.Co
 	if err != nil {
 		return corev1.Container{}, err // error unlikely and should have been caught during validation
 	}
-	enablePluginsMounts := v.GTE(HardenedSecurityContextSupportedVersion) && setDefaultSecurityContext
 	container := corev1.Container{
 		ImagePullPolicy: corev1.PullIfNotPresent,
 		Name:            settings.InitContainerName,
@@ -87,7 +86,7 @@ func NewInitContainer(kb kbv1.Kibana, setDefaultSecurityContext bool) (corev1.Co
 		Resources: defaultResources,
 	}
 
-	if enablePluginsMounts {
+	if v.GTE(HardenedSecurityContextSupportedVersion) && setDefaultSecurityContext {
 		container.VolumeMounts = append(container.VolumeMounts, PluginsSharedVolume.InitContainerVolumeMount())
 	}
 
