@@ -119,12 +119,14 @@ func NewPodTemplateSpec(
 		return corev1.PodTemplateSpec{}, err // error unlikely and should have been caught during validation
 	}
 
+	scriptsConfigMapVolume := initcontainer.NewScriptsConfigMapVolume(kb.Name)
 	builder := defaults.NewPodTemplateBuilder(kb.Spec.PodTemplate, kbv1.KibanaContainerName).
 		WithResources(DefaultResources).
 		WithLabels(labels).
 		WithAnnotations(DefaultAnnotations).
 		WithDockerImage(kb.Spec.Image, container.ImageRepository(container.KibanaImage, v)).
 		WithReadinessProbe(readinessProbe(kb.Spec.HTTP.TLS.Enabled(), basePath)).
+		WithVolumes(scriptsConfigMapVolume.Volume()).WithVolumeMounts(scriptsConfigMapVolume.VolumeMount()).
 		WithPorts(ports)
 
 	for _, volume := range volumes {
@@ -141,13 +143,11 @@ func NewPodTemplateSpec(
 	// root filesystem on restart.
 	var canEnableSecurityContext = v.GTE(initcontainer.HardenedSecurityContextSupportedVersion) && setDefaultSecurityContext
 	if canEnableSecurityContext {
-		scriptsConfigMapVolume := initcontainer.NewScriptsConfigMapVolume(kb.Name)
 		builder.WithContainersSecurityContext(defaultSecurityContext).
 			WithPodSecurityContext(defaultPodSecurityContext).
 			WithVolumes(LogsVolume.Volume()).WithVolumeMounts(LogsVolume.VolumeMount()).
 			WithVolumes(PluginsVolume.Volume()).WithVolumeMounts(PluginsVolume.VolumeMount()).
-			WithVolumes(TempVolume.Volume()).WithVolumeMounts(TempVolume.VolumeMount()).
-			WithVolumes(scriptsConfigMapVolume.Volume()).WithVolumeMounts(scriptsConfigMapVolume.VolumeMount())
+			WithVolumes(TempVolume.Volume()).WithVolumeMounts(TempVolume.VolumeMount())
 	}
 
 	initContainer, err := initcontainer.NewInitContainer(kb, setDefaultSecurityContext)
