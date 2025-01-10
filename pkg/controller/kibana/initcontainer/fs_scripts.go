@@ -6,7 +6,7 @@ package initcontainer
 
 import (
 	"bytes"
-	"html/template"
+	"text/template"
 
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/kibana/settings"
 )
