@@ -91,6 +91,8 @@ func reconcileConfigMap(
 			},
 			UpdateReconciled: func() {
 				reconciled.Data = expected.Data
+				reconciled.Labels = maps.Merge(reconciled.Labels, expected.Labels)
+				reconciled.Annotations = maps.Merge(reconciled.Annotations, expected.Annotations)
 			},
 		},
 	)
