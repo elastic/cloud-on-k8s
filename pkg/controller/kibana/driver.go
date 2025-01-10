@@ -174,7 +174,7 @@ func (d *driver) Reconcile(
 		return results.WithError(err)
 	}
 
-	if err = initcontainer.ReconcileScriptsConfigMap(ctx, d.client, *kb, params.SetDefaultSecurityContext); err != nil {
+	if err = initcontainer.ReconcileScriptsConfigMap(ctx, d.client, *kb); err != nil {
 		return results.WithError(err)
 	}
 

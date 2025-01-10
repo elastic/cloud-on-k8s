@@ -37,11 +37,11 @@ func NewScriptsConfigMapVolume(kbName string) volume.ConfigMapVolume {
 }
 
 // ReconcileScriptsConfigMap reconciles the ConfigMap containing scripts used by the Kibana elastic-internal-init container.
-func ReconcileScriptsConfigMap(ctx context.Context, c k8s.Client, kb kbv1.Kibana, setDefaultSecurityContext bool) error {
+func ReconcileScriptsConfigMap(ctx context.Context, c k8s.Client, kb kbv1.Kibana) error {
 	span, ctx := apm.StartSpan(ctx, "reconcile_scripts", tracing.SpanTypeApp)
 	defer span.End()
 
-	initScript, err := renderInitScript(setDefaultSecurityContext)
+	initScript, err := renderInitScript()
 	if err != nil {
 		return err
 	}
