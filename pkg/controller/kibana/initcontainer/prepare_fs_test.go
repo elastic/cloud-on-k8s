@@ -39,7 +39,7 @@ func TestNewInitContainer(t *testing.T) {
 		wantErr bool
 	}{
 		{
-			name: "newer Kibana without default security context does not include plugins volume",
+			name: "newer Kibana without default security context includes plugins volume",
 			args: args{
 				kb:                        defaultKibana,
 				setDefaultSecurityContext: false,
@@ -53,12 +53,15 @@ func TestNewInitContainer(t *testing.T) {
 					{
 						Name:      "elastic-internal-kibana-config-local",
 						MountPath: "/mnt/elastic-internal/kibana-config-local",
-						ReadOnly:  false,
 					},
 					{
 						Name:      "elastic-internal-kibana-config",
 						MountPath: "/mnt/elastic-internal/kibana-config",
 						ReadOnly:  true,
+					},
+					{
+						Name:      "kibana-plugins",
+						MountPath: "/mnt/elastic-internal/kibana-plugins-local",
 					},
 				},
 				Resources: defaultResources,
@@ -98,7 +101,7 @@ func TestNewInitContainer(t *testing.T) {
 			wantErr: false,
 		},
 		{
-			name: "older Kibana without default security context does not include plugins volume",
+			name: "older Kibana without default security context includes plugins volume",
 			args: args{
 				kb:                        olderKibana,
 				setDefaultSecurityContext: false,
@@ -118,6 +121,10 @@ func TestNewInitContainer(t *testing.T) {
 						Name:      "elastic-internal-kibana-config",
 						MountPath: "/mnt/elastic-internal/kibana-config",
 						ReadOnly:  true,
+					},
+					{
+						Name:      "kibana-plugins",
+						MountPath: "/mnt/elastic-internal/kibana-plugins-local",
 					},
 				},
 				Resources: defaultResources,
@@ -145,6 +152,10 @@ func TestNewInitContainer(t *testing.T) {
 						Name:      "elastic-internal-kibana-config",
 						MountPath: "/mnt/elastic-internal/kibana-config",
 						ReadOnly:  true,
+					},
+					{
+						Name:      "kibana-plugins",
+						MountPath: "/mnt/elastic-internal/kibana-plugins-local",
 					},
 				},
 				Resources: defaultResources,

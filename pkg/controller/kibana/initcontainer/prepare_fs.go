@@ -12,7 +12,6 @@ import (
 
 	kbv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/kibana/v1"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/defaults"
-	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/version"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/volume"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/kibana/settings"
 )
@@ -70,10 +69,6 @@ func ConfigVolume(kb kbv1.Kibana) volume.SecretVolume {
 
 // NewInitContainer creates an init container to handle kibana configuration and plugins persistence.
 func NewInitContainer(kb kbv1.Kibana, setDefaultSecurityContext bool) (corev1.Container, error) {
-	v, err := version.Parse(kb.Spec.Version)
-	if err != nil {
-		return corev1.Container{}, err // error unlikely and should have been caught during validation
-	}
 	container := corev1.Container{
 		ImagePullPolicy: corev1.PullIfNotPresent,
 		Name:            settings.InitContainerName,
@@ -82,12 +77,9 @@ func NewInitContainer(kb kbv1.Kibana, setDefaultSecurityContext bool) (corev1.Co
 		VolumeMounts: []corev1.VolumeMount{
 			ConfigSharedVolume.InitContainerVolumeMount(),
 			ConfigVolume(kb).VolumeMount(),
+			PluginsSharedVolume.InitContainerVolumeMount(),
 		},
 		Resources: defaultResources,
-	}
-
-	if v.GTE(HardenedSecurityContextSupportedVersion) && setDefaultSecurityContext {
-		container.VolumeMounts = append(container.VolumeMounts, PluginsSharedVolume.InitContainerVolumeMount())
 	}
 
 	return container, nil
@@ -95,14 +87,9 @@ func NewInitContainer(kb kbv1.Kibana, setDefaultSecurityContext bool) (corev1.Co
 
 // renderInitScript renders the init script that will be run by the init container.
 func renderInitScript(kb kbv1.Kibana, setDefaultSecurityContext bool) (string, error) {
-	v, err := version.Parse(kb.Spec.Version)
-	if err != nil {
-		return "", err // error unlikely and should have been caught during validation
-	}
 	templateParams := templateParams{
 		ContainerPluginsMountPath:     PluginsSharedVolume.ContainerMountPath,
 		InitContainerPluginsMountPath: PluginsSharedVolume.InitContainerMountPath,
-		IncludePlugins:                v.GTE(HardenedSecurityContextSupportedVersion) && setDefaultSecurityContext,
 	}
 	return renderScriptTemplate(templateParams)
 }

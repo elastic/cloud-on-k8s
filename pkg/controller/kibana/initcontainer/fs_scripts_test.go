@@ -21,44 +21,13 @@ func TestRenderScriptTemplate(t *testing.T) {
 		wantErr bool
 	}{
 		{
-			name: "template renders without plugin section",
-			args: args{params: templateParams{
-				ContainerPluginsMountPath:     "/usr/share/kibana/plugins",
-				InitContainerPluginsMountPath: "/mnt/elastic-internal/kibana-plugins-local",
-				IncludePlugins:                false,
-			}},
-			want: `#!/usr/bin/env bash
-set -eux
-
-
-
-init_config_initialized_flag=/mnt/elastic-internal/kibana-config-local/elastic-internal-init-config.ok
-
-if [[ -f "${init_config_initialized_flag}" ]]; then
-	echo "Kibana configuration already initialized."
-	exit 0
-fi
-
-echo "Setup Kibana configuration"
-
-ln -sf /mnt/elastic-internal/kibana-config/* /mnt/elastic-internal/kibana-config-local/
-
-touch "${init_config_initialized_flag}"
-echo "Kibana configuration successfully prepared."
-`,
-			wantErr: false,
-		},
-		{
 			name: "template renders with plugin section",
 			args: args{params: templateParams{
 				ContainerPluginsMountPath:     "/usr/share/kibana/plugins",
 				InitContainerPluginsMountPath: "/mnt/elastic-internal/kibana-plugins-local",
-				IncludePlugins:                true,
 			}},
 			want: `#!/usr/bin/env bash
 set -eux
-
-
 
 # compute time in seconds since the given start time
 function duration() {
@@ -71,19 +40,22 @@ function duration() {
 # Plugins persistence #
 #######################
 
+init_plugins_copied_flag=/mnt/elastic-internal/kibana-plugins-local/elastic-internal-init-plugins.ok
+
 # Persist the content of plugins/ to a volume, so installed
 # plugins files can to be used by the Kibana container.
 mv_start=$(date +%s)
-if [[ -z "$(ls -A /usr/share/kibana/plugins)" ]]; then
-	echo "Empty dir /usr/share/kibana/plugins"
-else
-	echo "Copying /usr/share/kibana/plugins/* to /mnt/elastic-internal/kibana-plugins-local/"
-	# Use "yes" and "-f" as we want the init container to be idempotent and not to fail when executed more than once.
-	yes | cp -avf /usr/share/kibana/plugins/* /mnt/elastic-internal/kibana-plugins-local/
+if [[ ! -f "${init_plugins_copied_flag}" ]]; then
+	if [[ -z "$(ls -A /usr/share/kibana/plugins)" ]]; then
+		echo "Empty dir /usr/share/kibana/plugins"
+	else
+		echo "Copying /usr/share/kibana/plugins/* to /mnt/elastic-internal/kibana-plugins-local/"
+		# Use "yes" and "-f" as we want the init container to be idempotent and not to fail when executed more than once.
+		yes | cp -avf /usr/share/kibana/plugins/* /mnt/elastic-internal/kibana-plugins-local/
+	fi
 fi
+touch "${init_plugins_copied_flag}"
 echo "Files copy duration: $(duration $mv_start) sec."
-
-
 
 init_config_initialized_flag=/mnt/elastic-internal/kibana-config-local/elastic-internal-init-config.ok
 

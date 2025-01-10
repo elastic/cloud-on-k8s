@@ -23,16 +23,11 @@ type templateParams struct {
 	// InitContainerPluginsMountPath is the mount path for plugins
 	// within the init container.
 	InitContainerPluginsMountPath string
-	// IncludePlugins indicates whether the script should include
-	// the plugins persistence logic.
-	IncludePlugins bool
 }
 
 var initFsScriptTemplate = template.Must(template.New("").Parse(
 	`#!/usr/bin/env bash
 set -eux
-
-{{ if .IncludePlugins }}
 
 # compute time in seconds since the given start time
 function duration() {
@@ -61,8 +56,6 @@ if [[ ! -f "${init_plugins_copied_flag}" ]]; then
 fi
 touch "${init_plugins_copied_flag}"
 echo "Files copy duration: $(duration $mv_start) sec."
-
-{{ end }}
 
 init_config_initialized_flag=` + settings.InitContainerConfigVolumeMountPath + `/elastic-internal-init-config.ok
 

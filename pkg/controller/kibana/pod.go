@@ -127,6 +127,7 @@ func NewPodTemplateSpec(
 		WithDockerImage(kb.Spec.Image, container.ImageRepository(container.KibanaImage, v)).
 		WithReadinessProbe(readinessProbe(kb.Spec.HTTP.TLS.Enabled(), basePath)).
 		WithVolumes(scriptsConfigMapVolume.Volume()).WithVolumeMounts(scriptsConfigMapVolume.VolumeMount()).
+		WithVolumes(PluginsVolume.Volume()).WithVolumeMounts(PluginsVolume.VolumeMount()).
 		WithPorts(ports)
 
 	for _, volume := range volumes {
@@ -146,7 +147,6 @@ func NewPodTemplateSpec(
 		builder.WithContainersSecurityContext(defaultSecurityContext).
 			WithPodSecurityContext(defaultPodSecurityContext).
 			WithVolumes(LogsVolume.Volume()).WithVolumeMounts(LogsVolume.VolumeMount()).
-			WithVolumes(PluginsVolume.Volume()).WithVolumeMounts(PluginsVolume.VolumeMount()).
 			WithVolumes(TempVolume.Volume()).WithVolumeMounts(TempVolume.VolumeMount())
 	}
 

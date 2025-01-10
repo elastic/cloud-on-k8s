@@ -730,9 +730,9 @@ func pre710(params deployment.Params) deployment.Params {
 	params.PodTemplateSpec.Spec.Containers[0].SecurityContext = nil
 	params.PodTemplateSpec.Spec.InitContainers[0].SecurityContext = nil
 	params.PodTemplateSpec.Spec.SecurityContext = nil
-	params.PodTemplateSpec.Spec.Volumes = params.PodTemplateSpec.Spec.Volumes[:5]
-	params.PodTemplateSpec.Spec.InitContainers[0].VolumeMounts = params.PodTemplateSpec.Spec.InitContainers[0].VolumeMounts[:5]
-	params.PodTemplateSpec.Spec.Containers[0].VolumeMounts = params.PodTemplateSpec.Spec.Containers[0].VolumeMounts[:5]
+	params.PodTemplateSpec.Spec.Volumes = append(params.PodTemplateSpec.Spec.Volumes[:5], params.PodTemplateSpec.Spec.Volumes[6], params.PodTemplateSpec.Spec.Volumes[7])
+	params.PodTemplateSpec.Spec.InitContainers[0].VolumeMounts = append(params.PodTemplateSpec.Spec.InitContainers[0].VolumeMounts[:5], params.PodTemplateSpec.Spec.InitContainers[0].VolumeMounts[6], params.PodTemplateSpec.Spec.InitContainers[0].VolumeMounts[7])
+	params.PodTemplateSpec.Spec.Containers[0].VolumeMounts = append(params.PodTemplateSpec.Spec.Containers[0].VolumeMounts[:5], params.PodTemplateSpec.Spec.Containers[0].VolumeMounts[6], params.PodTemplateSpec.Spec.Containers[0].VolumeMounts[7])
 	return params
 }
 
