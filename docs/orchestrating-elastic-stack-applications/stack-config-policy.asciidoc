@@ -26,7 +26,7 @@ Starting from ECK `2.6.1` and Elasticsearch `8.6.1`, Elastic Stack configuration
 - <<{p}-es-secure-settings,Elasticsearch Secure Settings>> added:[ECK 2.11.0]
 - <<{p}-{page_id}-specifics-secret-mounts,Secret Mounts>> added:[ECK 2.11.0]
 
-Additionally with ECK `2.11.0` it is posssible to configure Kibana as well using Elastic Stack configuration policies, the following settings can be configured for Kibana:
+Additionally with ECK `2.11.0` it is possible to configure Kibana as well using Elastic Stack configuration policies, the following settings can be configured for Kibana:
 
 - link:https://www.elastic.co/guide/en/kibana/current/settings.html[Kibana Configuration] (configuration settings for Kibana that will go into `kibana.yml`)
 - <<{p}-kibana-secure-settings,Kibana Secure Settings>>
@@ -320,7 +320,7 @@ In order to avoid a conflict between multiple Elasticsearch clusters writing the
 ECK `2.11.0` introduces `spec.elasticsearch.secretMounts` as a new field.
 This field allows users to specify a user created secret and a mountPath to indicate where this secret should be mounted in the Elasticsearch Pods that are managed by the Elastic Stack configuration policy.
 This field can be used to add additional secrets to the Elasticsearch Pods that may be needed for example for sensitive files required to configure Elasticsearch security realms.
-The secret should be created by the user is the same namespace as the Elastic Stack configuration policy.
+The secret should be created by the user in the same namespace as the Elastic Stack configuration policy.
 The operator reads this secret and copies it over to the namespace of Elasticsearch so that it can be mounted by the Elasticsearch Pods.
 Example of configuring secret mounts in the Elastic Stack configuration policy:
 

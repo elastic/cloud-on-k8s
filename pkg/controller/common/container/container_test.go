@@ -29,6 +29,20 @@ func TestImageRepository(t *testing.T) {
 			want:    testRegistry + "/apm/apm-server:7.5.2",
 		},
 		{
+			name:    "APM server UBI image before 9.x",
+			image:   APMServerImage,
+			version: "8.99.99",
+			suffix:  "-ubi",
+			want:    testRegistry + "/apm/apm-server-ubi:8.99.99",
+		},
+		{
+			name:    "APM server UBI image since 9.x",
+			image:   APMServerImage,
+			version: "9.0.0",
+			suffix:  "-ubi",
+			want:    testRegistry + "/apm/apm-server:9.0.0",
+		},
+		{
 			name:    "Kibana image",
 			image:   KibanaImage,
 			version: "7.5.2",

@@ -21,6 +21,7 @@ main() {
     operator::set_image_vars "$TRIGGER"
     operator::set_build_flavors_var "$TRIGGER"
 
+    export TRIGGER
     "$ROOT/build/gen-drivah.toml.sh"
 }
 
