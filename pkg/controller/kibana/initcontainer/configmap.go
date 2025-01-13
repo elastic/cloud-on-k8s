@@ -19,7 +19,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/version"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/volume"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/kibana/label"
-	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/kibana/settings"
+	kbvolume "github.com/elastic/cloud-on-k8s/v2/pkg/controller/kibana/volume"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/k8s"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/maps"
 )
@@ -31,8 +31,8 @@ var HardenedSecurityContextSupportedVersion = version.From(7, 9, 0)
 func NewScriptsConfigMapVolume(kbName string) volume.ConfigMapVolume {
 	return volume.NewConfigMapVolumeWithMode(
 		kbv1.ScriptsConfigMap(kbName),
-		settings.ScriptsVolumeName,
-		settings.ScriptsVolumeMountPath,
+		kbvolume.ScriptsVolumeName,
+		kbvolume.ScriptsVolumeMountPath,
 		0755)
 }
 

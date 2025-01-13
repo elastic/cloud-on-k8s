@@ -59,7 +59,7 @@ func ReconcileConfigSecret(
 	expected := corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
 			Namespace: kb.Namespace,
-			Name:      kbv1.ConfigSecret(kb),
+			Name:      kbv1.ConfigSecret(kb.Name),
 			Labels: labels.AddCredentialsLabel(map[string]string{
 				kblabel.KibanaNameLabelName: kb.Name,
 			}),
@@ -75,7 +75,7 @@ func ReconcileConfigSecret(
 // if the Secret or usage key doesn't exist yet.
 func getTelemetryYamlBytes(client k8s.Client, kb kbv1.Kibana) ([]byte, error) {
 	var secret corev1.Secret
-	if err := client.Get(context.Background(), types.NamespacedName{Namespace: kb.Namespace, Name: kbv1.ConfigSecret(kb)}, &secret); err != nil {
+	if err := client.Get(context.Background(), types.NamespacedName{Namespace: kb.Namespace, Name: kbv1.ConfigSecret(kb.Name)}, &secret); err != nil {
 		if apierrors.IsNotFound(err) {
 			// this secret is just about to be created, we don't know usage yet
 			return nil, nil

@@ -8,7 +8,7 @@ import (
 	"bytes"
 	"text/template"
 
-	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/kibana/settings"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/kibana/volume"
 )
 
 const (
@@ -57,7 +57,7 @@ fi
 touch "${init_plugins_copied_flag}"
 echo "Files copy duration: $(duration $mv_start) sec."
 
-init_config_initialized_flag=` + settings.InitContainerConfigVolumeMountPath + `/elastic-internal-init-config.ok
+init_config_initialized_flag=` + volume.InitContainerConfigVolumeMountPath + `/elastic-internal-init-config.ok
 
 if [[ -f "${init_config_initialized_flag}" ]]; then
 	echo "Kibana configuration already initialized."
@@ -66,7 +66,7 @@ fi
 
 echo "Setup Kibana configuration"
 
-ln -sf ` + settings.InternalConfigVolumeMountPath + `/* ` + settings.InitContainerConfigVolumeMountPath + `/
+ln -sf ` + volume.InternalConfigVolumeMountPath + `/* ` + volume.InitContainerConfigVolumeMountPath + `/
 
 touch "${init_config_initialized_flag}"
 echo "Kibana configuration successfully prepared."

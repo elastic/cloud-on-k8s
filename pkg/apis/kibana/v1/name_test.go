@@ -6,15 +6,13 @@ package v1
 
 import (
 	"testing"
-
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 func TestNamers(t *testing.T) {
 	tests := []struct {
 		name  string
-		namer any
-		arg   any
+		namer func(string) string
+		arg   string
 		want  string
 	}{
 		{
@@ -38,23 +36,14 @@ func TestNamers(t *testing.T) {
 		{
 			name:  "test ConfigSecret namer",
 			namer: ConfigSecret,
-			arg:   Kibana{ObjectMeta: metav1.ObjectMeta{Name: "sample"}},
+			arg:   "sample",
 			want:  "sample-kb-config",
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			switch f := tt.namer.(type) {
-			case func(string) string:
-				arg := tt.arg.(string) //nolint:forcetypeassert
-				if got := f(arg); got != tt.want {
-					t.Errorf("%s = %v, want %v", tt.name, got, tt.want)
-				}
-			case func(Kibana) string:
-				arg := tt.arg.(Kibana) //nolint:forcetypeassert
-				if got := f(arg); got != tt.want {
-					t.Errorf("%s = %v, want %v", tt.name, got, tt.want)
-				}
+			if got := tt.namer(tt.arg); got != tt.want {
+				t.Errorf("%s = %v, want %v", tt.name, got, tt.want)
 			}
 		})
 	}

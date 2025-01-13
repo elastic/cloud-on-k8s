@@ -31,6 +31,6 @@ func ScriptsConfigMap(kbName string) string {
 }
 
 // ConfigSecret returns the name of the Secret containing the Kibana configuration for the given Kibana resource.
-func ConfigSecret(kb Kibana) string {
-	return KBNamer.Suffix(kb.Name, configSecretSuffix)
+func ConfigSecret(kbName string) string {
+	return KBNamer.Suffix(kbName, configSecretSuffix)
 }

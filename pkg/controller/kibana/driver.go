@@ -285,7 +285,7 @@ func (d *driver) deploymentParams(ctx context.Context, kb *kbv1.Kibana, policyAn
 
 	// get config secret to add its content to the config checksum
 	configSecret := corev1.Secret{}
-	err = d.client.Get(ctx, types.NamespacedName{Name: kbv1.ConfigSecret(*kb), Namespace: kb.Namespace}, &configSecret)
+	err = d.client.Get(ctx, types.NamespacedName{Name: kbv1.ConfigSecret(kb.Name), Namespace: kb.Namespace}, &configSecret)
 	if err != nil {
 		return deployment.Params{}, err
 	}

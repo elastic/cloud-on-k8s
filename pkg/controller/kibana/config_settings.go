@@ -199,7 +199,7 @@ type reusableSettings struct {
 func getExistingConfig(ctx context.Context, client k8s.Client, kb kbv1.Kibana) (*settings.CanonicalConfig, error) {
 	log := ulog.FromContext(ctx)
 	var secret corev1.Secret
-	err := client.Get(context.Background(), types.NamespacedName{Name: kbv1.ConfigSecret(kb), Namespace: kb.Namespace}, &secret)
+	err := client.Get(context.Background(), types.NamespacedName{Name: kbv1.ConfigSecret(kb.Name), Namespace: kb.Namespace}, &secret)
 	if err != nil && apierrors.IsNotFound(err) {
 		log.V(1).Info("Kibana config secret does not exist", "namespace", kb.Namespace, "kibana_name", kb.Name)
 		return nil, nil

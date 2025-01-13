@@ -136,7 +136,7 @@ func createKbAndSecret(name, namespace string, count int32) (kbv1.Kibana, corev1
 	}
 	return kb, corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      kbv1.ConfigSecret(kb),
+			Name:      kbv1.ConfigSecret(kb.Name),
 			Namespace: namespace,
 		},
 	}

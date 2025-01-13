@@ -28,32 +28,36 @@ import (
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/kibana/initcontainer"
 	kblabel "github.com/elastic/cloud-on-k8s/v2/pkg/controller/kibana/label"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/kibana/network"
-	kbsettings "github.com/elastic/cloud-on-k8s/v2/pkg/controller/kibana/settings"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/kibana/stackmon"
+	kbvolume "github.com/elastic/cloud-on-k8s/v2/pkg/controller/kibana/volume"
 )
 
 const (
 	defaultFSGroup = 1000
 	defaultFSUser  = 1000
+	// basePathEnvName is the environment variable name that allows ibe to specify a path to mount Kibana at if you are running behind a proxy
+	basePathEnvName = "SERVER_BASEPATH"
+	// rewriteBasePathEnvName is the environment variable name that specifies whether Kibana should rewrite requests that are prefixed with server.basePath
+	rewriteBasePathEnvName = "SERVER_REWRITEBASEPATH"
 )
 
 var (
 	// DataVolume is used to propagate the keystore file from the init container to
 	// Kibana running in the main container.
 	// Since Kibana is stateless and the keystore is created on pod start, an EmptyDir is fine here.
-	DataVolume = volume.NewEmptyDirVolume(kbsettings.DataVolumeName, kbsettings.DataVolumeMountPath)
+	DataVolume = volume.NewEmptyDirVolume(kbvolume.DataVolumeName, kbvolume.DataVolumeMountPath)
 
 	// PluginsVolume can be used to persist plugins after installation via an init container when
 	// the Kibana pod has readOnlyRootFilesystem set to true.
-	PluginsVolume = volume.NewEmptyDirVolume(kbsettings.PluginsVolumeName, kbsettings.PluginsVolumeMountPath)
+	PluginsVolume = volume.NewEmptyDirVolume(kbvolume.PluginsVolumeName, kbvolume.PluginsVolumeMountPath)
 
 	// LogsVolume can be used to persist logs even when
 	// the Kibana pod has readOnlyRootFilesystem set to true.
-	LogsVolume = volume.NewEmptyDirVolume(kbsettings.LogsVolumeName, kbsettings.LogsVolumeMountPath)
+	LogsVolume = volume.NewEmptyDirVolume(kbvolume.LogsVolumeName, kbvolume.LogsVolumeMountPath)
 
 	// TempVolume can be used for some reporting features when the Kibana pod has
 	// readOnlyRootFilesystem set to true.
-	TempVolume = volume.NewEmptyDirVolume(kbsettings.TempVolumeName, kbsettings.TempVolumeMountPath)
+	TempVolume = volume.NewEmptyDirVolume(kbvolume.TempVolumeName, kbvolume.TempVolumeMountPath)
 
 	DefaultMemoryLimits = resource.MustParse("1Gi")
 	DefaultResources    = corev1.ResourceRequirements{
@@ -183,19 +187,19 @@ func GetKibanaBasePathFromSpecEnv(podSpec corev1.PodSpec) (string, error) {
 
 	envMap := make(map[string]string)
 	for _, envVar := range kbContainer.Env {
-		if envVar.Name == kbsettings.BasePathEnvName || envVar.Name == kbsettings.RewriteBasePathEnvName {
+		if envVar.Name == basePathEnvName || envVar.Name == rewriteBasePathEnvName {
 			envMap[envVar.Name] = envVar.Value
 		}
 	}
 
 	// If SERVER_REWRITEBASEPATH is set to true, we should use the value of SERVER_BASEPATH
-	if rewriteBasePath, ok := envMap[kbsettings.RewriteBasePathEnvName]; ok {
+	if rewriteBasePath, ok := envMap[rewriteBasePathEnvName]; ok {
 		rewriteBasePathBool, err := strconv.ParseBool(rewriteBasePath)
 		if err != nil {
 			return "", fmt.Errorf("failed to parse SERVER_REWRITEBASEPATH value %s: %w", rewriteBasePath, err)
 		}
 		if rewriteBasePathBool {
-			return envMap[kbsettings.BasePathEnvName], nil
+			return envMap[basePathEnvName], nil
 		}
 	}
 

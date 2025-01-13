@@ -2,7 +2,7 @@
 // or more contributor license agreements. Licensed under the Elastic License 2.0;
 // you may not use this file except in compliance with the Elastic License 2.0.
 
-package settings
+package volume
 
 const (
 	// DataVolumeName is the name of the volume that holds the Kibana data
@@ -23,10 +23,10 @@ const (
 	TempVolumeName = "temp-volume"
 	// TempVolumeMountPath is the path where the temporary files are mounted in the Kibana container
 	TempVolumeMountPath = "/tmp"
-	// BasePathEnvName is the environment variable name that allows ibe to specify a path to mount Kibana at if you are running behind a proxy
-	BasePathEnvName = "SERVER_BASEPATH"
-	// RewriteBasePathEnvName is the environment variable name that specifies whether Kibana should rewrite requests that are prefixed with server.basePath
-	RewriteBasePathEnvName = "SERVER_REWRITEBASEPATH"
+	// // BasePathEnvName is the environment variable name that allows ibe to specify a path to mount Kibana at if you are running behind a proxy
+	// BasePathEnvName = "SERVER_BASEPATH"
+	// // RewriteBasePathEnvName is the environment variable name that specifies whether Kibana should rewrite requests that are prefixed with server.basePath
+	// RewriteBasePathEnvName = "SERVER_REWRITEBASEPATH"
 	// ScriptsVolumeName is the name of the volume that holds the Kibana scripts for the init container
 	ScriptsVolumeName = "kibana-scripts"
 	// ScriptsVolumeMountPath is the path where the Kibana scripts are mounted in the init container
