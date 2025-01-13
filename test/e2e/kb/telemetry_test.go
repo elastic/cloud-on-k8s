@@ -42,7 +42,7 @@ func TestTelemetry(t *testing.T) {
 					var secret corev1.Secret
 					err := k.Client.Get(context.Background(), types.NamespacedName{
 						Namespace: kbBuilder.Kibana.Namespace,
-						Name:      kbv1.ConfigSecret(kbBuilder.Kibana),
+						Name:      kbv1.ConfigSecret(kbBuilder.Kibana.Name),
 					}, &secret)
 					if err != nil {
 						return err
