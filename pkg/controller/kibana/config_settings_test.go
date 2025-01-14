@@ -104,7 +104,7 @@ func Test_reuseOrGenerateSecrets(t *testing.T) {
 			args: args{
 				c: k8s.NewFakeClient(
 					&corev1.Secret{
-						ObjectMeta: metav1.ObjectMeta{Namespace: defaultKb.Namespace, Name: SecretName(defaultKb)},
+						ObjectMeta: metav1.ObjectMeta{Namespace: defaultKb.Namespace, Name: kbv1.ConfigSecret(defaultKb.Name)},
 						Data: map[string][]byte{
 							SettingsFilename: defaultConfig,
 						},
@@ -127,7 +127,7 @@ func Test_reuseOrGenerateSecrets(t *testing.T) {
 			args: args{
 				c: k8s.NewFakeClient(
 					&corev1.Secret{
-						ObjectMeta: metav1.ObjectMeta{Namespace: defaultKb.Namespace, Name: SecretName(defaultKb)},
+						ObjectMeta: metav1.ObjectMeta{Namespace: defaultKb.Namespace, Name: kbv1.ConfigSecret(defaultKb.Name)},
 						Data: map[string][]byte{
 							SettingsFilename: esAssociationConfig,
 						},
@@ -151,7 +151,7 @@ func Test_reuseOrGenerateSecrets(t *testing.T) {
 			args: args{
 				c: k8s.NewFakeClient(
 					&corev1.Secret{
-						ObjectMeta: metav1.ObjectMeta{Namespace: defaultKb.Namespace, Name: SecretName(defaultKb)},
+						ObjectMeta: metav1.ObjectMeta{Namespace: defaultKb.Namespace, Name: kbv1.ConfigSecret(defaultKb.Name)},
 						Data: map[string][]byte{
 							SettingsFilename: esAssociationConfig,
 						},
@@ -186,7 +186,7 @@ func TestNewConfigSettings(t *testing.T) {
 	defaultKb := mkKibana()
 	existingSecret := &corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      SecretName(defaultKb),
+			Name:      kbv1.ConfigSecret(defaultKb.Name),
 			Namespace: defaultKb.Namespace,
 		},
 		Data: map[string][]byte{
@@ -519,7 +519,7 @@ func TestNewConfigSettings(t *testing.T) {
 			args: args{
 				client: k8s.NewFakeClient(&corev1.Secret{
 					ObjectMeta: metav1.ObjectMeta{
-						Name:      SecretName(defaultKb),
+						Name:      kbv1.ConfigSecret(defaultKb.Name),
 						Namespace: defaultKb.Namespace,
 					},
 					Data: map[string][]byte{
@@ -544,7 +544,7 @@ func TestNewConfigSettings(t *testing.T) {
 			args: args{
 				client: k8s.NewFakeClient(&corev1.Secret{
 					ObjectMeta: metav1.ObjectMeta{
-						Name:      SecretName(defaultKb),
+						Name:      kbv1.ConfigSecret(defaultKb.Name),
 						Namespace: defaultKb.Namespace,
 					},
 					Data: map[string][]byte{
@@ -607,7 +607,7 @@ func TestNewConfigSettingsExistingEncryptionKey(t *testing.T) {
 	savedObjsKey := "savedObjsKey"
 	existingSecret := &corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      SecretName(kb),
+			Name:      kbv1.ConfigSecret(kb.Name),
 			Namespace: kb.Namespace,
 		},
 		Data: map[string][]byte{
@@ -686,7 +686,7 @@ func Test_getExistingConfig(t *testing.T) {
 	}
 	testValidSecret := corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      SecretName(testKb),
+			Name:      kbv1.ConfigSecret(testKb.Name),
 			Namespace: testKb.Namespace,
 		},
 		Data: map[string][]byte{
@@ -695,7 +695,7 @@ func Test_getExistingConfig(t *testing.T) {
 	}
 	testNoYaml := corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      SecretName(testKb),
+			Name:      kbv1.ConfigSecret(testKb.Name),
 			Namespace: testKb.Namespace,
 		},
 		Data: map[string][]byte{
@@ -704,7 +704,7 @@ func Test_getExistingConfig(t *testing.T) {
 	}
 	testInvalidYaml := corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      SecretName(testKb),
+			Name:      kbv1.ConfigSecret(testKb.Name),
 			Namespace: testKb.Namespace,
 		},
 		Data: map[string][]byte{

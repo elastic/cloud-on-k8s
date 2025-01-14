@@ -101,6 +101,14 @@ func addWatches(mgr manager.Manager, c controller.Controller, r *ReconcileKibana
 		return err
 	}
 
+	// Watch configmaps
+	if err := c.Watch(source.Kind(mgr.GetCache(), &corev1.ConfigMap{}, handler.TypedEnqueueRequestForOwner[*corev1.ConfigMap](
+		mgr.GetScheme(), mgr.GetRESTMapper(),
+		&kbv1.Kibana{}, handler.OnlyControllerOwner(),
+	))); err != nil {
+		return err
+	}
+
 	// dynamically watch referenced secrets to connect to Elasticsearch
 	return c.Watch(source.Kind(mgr.GetCache(), &corev1.Secret{}, r.dynamicWatches.Secrets))
 }
