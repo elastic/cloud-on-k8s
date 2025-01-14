@@ -44,10 +44,10 @@ func TestNewPodTemplateSpec(t *testing.T) {
 				assert.Equal(t, false, *pod.Spec.AutomountServiceAccountToken)
 				assert.Len(t, pod.Spec.Containers, 1)
 				assert.Len(t, pod.Spec.InitContainers, 1)
-				assert.Len(t, pod.Spec.Volumes, 0)
+				assert.Len(t, pod.Spec.Volumes, 2)
 				kibanaContainer := GetKibanaContainer(pod.Spec)
 				require.NotNil(t, kibanaContainer)
-				assert.Equal(t, 0, len(kibanaContainer.VolumeMounts))
+				assert.Equal(t, 2, len(kibanaContainer.VolumeMounts))
 				assert.Equal(t, container.ImageRepository(container.KibanaImage, version.MustParse("7.1.0")), kibanaContainer.Image)
 				assert.NotNil(t, kibanaContainer.ReadinessProbe)
 				assert.NotEmpty(t, kibanaContainer.Ports)
@@ -66,7 +66,7 @@ func TestNewPodTemplateSpec(t *testing.T) {
 			},
 			assertions: func(pod corev1.PodTemplateSpec) {
 				assert.Len(t, pod.Spec.InitContainers, 2)
-				assert.Len(t, pod.Spec.Volumes, 1)
+				assert.Len(t, pod.Spec.Volumes, 3)
 			},
 		},
 		{
@@ -219,9 +219,9 @@ func TestNewPodTemplateSpec(t *testing.T) {
 			}},
 			assertions: func(pod corev1.PodTemplateSpec) {
 				assert.Len(t, pod.Spec.InitContainers, 1)
-				assert.Len(t, pod.Spec.InitContainers[0].VolumeMounts, 6)
-				assert.Len(t, pod.Spec.Volumes, 4)
-				assert.Len(t, GetKibanaContainer(pod.Spec).VolumeMounts, 4)
+				assert.Len(t, pod.Spec.InitContainers[0].VolumeMounts, 7)
+				assert.Len(t, pod.Spec.Volumes, 5)
+				assert.Len(t, GetKibanaContainer(pod.Spec).VolumeMounts, 5)
 				assert.Equal(t, GetKibanaContainer(pod.Spec).SecurityContext, &defaultSecurityContext)
 			},
 		},

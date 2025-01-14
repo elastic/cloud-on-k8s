@@ -28,8 +28,10 @@ import (
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/deployment"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/watches"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/settings"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/kibana/initcontainer"
 	kblabel "github.com/elastic/cloud-on-k8s/v2/pkg/controller/kibana/label"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/kibana/network"
+	kbvolume "github.com/elastic/cloud-on-k8s/v2/pkg/controller/kibana/volume"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/compare"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/k8s"
 )
@@ -511,7 +513,7 @@ func expectedDeploymentParams() deployment.Params {
 						},
 					},
 					{
-						Name: ConfigSharedVolume.VolumeName,
+						Name: initcontainer.ConfigSharedVolume.VolumeName,
 						VolumeSource: corev1.VolumeSource{
 							EmptyDir: &corev1.EmptyDirVolumeSource{},
 						},
@@ -526,7 +528,7 @@ func expectedDeploymentParams() deployment.Params {
 						},
 					},
 					{
-						Name: DataVolumeName,
+						Name: kbvolume.DataVolumeName,
 						VolumeSource: corev1.VolumeSource{
 							EmptyDir: &corev1.EmptyDirVolumeSource{},
 						},
@@ -544,82 +546,105 @@ func expectedDeploymentParams() deployment.Params {
 						},
 					},
 					{
+						Name: "kibana-scripts",
+						VolumeSource: corev1.VolumeSource{
+							ConfigMap: &corev1.ConfigMapVolumeSource{
+								LocalObjectReference: corev1.LocalObjectReference{
+									Name: "test-kb-scripts",
+								},
+								DefaultMode: ptr.To(int32(0755)),
+								Optional:    ptr.To(false),
+							},
+						},
+					},
+					{
 						Name: "temp-volume",
 						VolumeSource: corev1.VolumeSource{
 							EmptyDir: &corev1.EmptyDirVolumeSource{},
 						},
 					},
 				},
-				InitContainers: []corev1.Container{{
-					Name:            "elastic-internal-init-config",
-					ImagePullPolicy: corev1.PullIfNotPresent,
-					Image:           "my-image",
-					Command:         []string{"/usr/bin/env", "bash", "-c", InitConfigScript},
-					SecurityContext: &defaultSecurityContext,
-					Env: []corev1.EnvVar{
-						{Name: settings.EnvPodIP, Value: "", ValueFrom: &corev1.EnvVarSource{
-							FieldRef: &corev1.ObjectFieldSelector{APIVersion: "v1", FieldPath: "status.podIP"},
-						}},
-						{Name: settings.EnvPodName, Value: "", ValueFrom: &corev1.EnvVarSource{
-							FieldRef: &corev1.ObjectFieldSelector{APIVersion: "v1", FieldPath: "metadata.name"},
-						}},
-						{Name: settings.EnvNodeName, Value: "", ValueFrom: &corev1.EnvVarSource{
-							FieldRef: &corev1.ObjectFieldSelector{APIVersion: "v1", FieldPath: "spec.nodeName"},
-						}},
-						{Name: settings.EnvNamespace, Value: "", ValueFrom: &corev1.EnvVarSource{
-							FieldRef: &corev1.ObjectFieldSelector{APIVersion: "v1", FieldPath: "metadata.namespace"},
-						}},
+				InitContainers: []corev1.Container{
+					{
+						Name:            "elastic-internal-init",
+						ImagePullPolicy: corev1.PullIfNotPresent,
+						Image:           "my-image",
+						Command:         []string{"/usr/bin/env", "bash", "-c", "/mnt/elastic-internal/scripts/init.sh"},
+						SecurityContext: nil,
+						Env: []corev1.EnvVar{
+							{Name: settings.EnvPodIP, Value: "", ValueFrom: &corev1.EnvVarSource{
+								FieldRef: &corev1.ObjectFieldSelector{APIVersion: "v1", FieldPath: "status.podIP"},
+							}},
+							{Name: settings.EnvPodName, Value: "", ValueFrom: &corev1.EnvVarSource{
+								FieldRef: &corev1.ObjectFieldSelector{APIVersion: "v1", FieldPath: "metadata.name"},
+							}},
+							{Name: settings.EnvNodeName, Value: "", ValueFrom: &corev1.EnvVarSource{
+								FieldRef: &corev1.ObjectFieldSelector{APIVersion: "v1", FieldPath: "spec.nodeName"},
+							}},
+							{Name: settings.EnvNamespace, Value: "", ValueFrom: &corev1.EnvVarSource{
+								FieldRef: &corev1.ObjectFieldSelector{APIVersion: "v1", FieldPath: "metadata.namespace"},
+							}},
+						},
+						VolumeMounts: []corev1.VolumeMount{
+							{
+								Name:      certificates.HTTPCertificatesSecretVolumeName,
+								ReadOnly:  true,
+								MountPath: certificates.HTTPCertificatesSecretVolumeMountPath,
+							},
+							{
+								Name:      "elastic-internal-kibana-config",
+								ReadOnly:  true,
+								MountPath: "/mnt/elastic-internal/kibana-config",
+							},
+							{
+								Name:      "elastic-internal-kibana-config-local",
+								ReadOnly:  false,
+								MountPath: "/mnt/elastic-internal/kibana-config-local",
+							},
+							{
+								Name:      "elasticsearch-certs",
+								ReadOnly:  true,
+								MountPath: "/usr/share/kibana/config/elasticsearch-certs",
+							},
+							{
+								Name:      kbvolume.DataVolumeName,
+								ReadOnly:  falseVal,
+								MountPath: kbvolume.DataVolumeMountPath,
+							},
+							{
+								Name:      "kibana-logs",
+								ReadOnly:  falseVal,
+								MountPath: "/usr/share/kibana/logs",
+							},
+							{
+								Name:      "kibana-plugins",
+								ReadOnly:  falseVal,
+								MountPath: "/mnt/elastic-internal/kibana-plugins-local",
+							},
+							{
+								Name:      "kibana-scripts",
+								ReadOnly:  true,
+								MountPath: "/mnt/elastic-internal/scripts",
+							},
+							{
+								Name:      "temp-volume",
+								ReadOnly:  falseVal,
+								MountPath: "/tmp",
+							},
+						},
+						Resources: corev1.ResourceRequirements{
+							Requests: map[corev1.ResourceName]resource.Quantity{
+								corev1.ResourceMemory: resource.MustParse("50Mi"),
+								corev1.ResourceCPU:    resource.MustParse("0.1"),
+							},
+							Limits: map[corev1.ResourceName]resource.Quantity{
+								// Memory limit should be at least 12582912 when running with CRI-O
+								corev1.ResourceMemory: resource.MustParse("50Mi"),
+								corev1.ResourceCPU:    resource.MustParse("0.1"),
+							},
+						},
 					},
-					VolumeMounts: []corev1.VolumeMount{
-						{
-							Name:      certificates.HTTPCertificatesSecretVolumeName,
-							ReadOnly:  true,
-							MountPath: certificates.HTTPCertificatesSecretVolumeMountPath,
-						},
-						{
-							Name:      "elastic-internal-kibana-config",
-							ReadOnly:  true,
-							MountPath: InternalConfigVolumeMountPath,
-						},
-						ConfigSharedVolume.InitContainerVolumeMount(),
-						{
-							Name:      "elasticsearch-certs",
-							ReadOnly:  true,
-							MountPath: "/usr/share/kibana/config/elasticsearch-certs",
-						},
-						{
-							Name:      DataVolumeName,
-							ReadOnly:  falseVal,
-							MountPath: DataVolumeMountPath,
-						},
-						{
-							Name:      "kibana-logs",
-							ReadOnly:  falseVal,
-							MountPath: "/usr/share/kibana/logs",
-						},
-						{
-							Name:      "kibana-plugins",
-							ReadOnly:  falseVal,
-							MountPath: "/usr/share/kibana/plugins",
-						},
-						{
-							Name:      "temp-volume",
-							ReadOnly:  falseVal,
-							MountPath: "/tmp",
-						},
-					},
-					Resources: corev1.ResourceRequirements{
-						Requests: map[corev1.ResourceName]resource.Quantity{
-							corev1.ResourceMemory: resource.MustParse("50Mi"),
-							corev1.ResourceCPU:    resource.MustParse("0.1"),
-						},
-						Limits: map[corev1.ResourceName]resource.Quantity{
-							// Memory limit should be at least 12582912 when running with CRI-O
-							corev1.ResourceMemory: resource.MustParse("50Mi"),
-							corev1.ResourceCPU:    resource.MustParse("0.1"),
-						},
-					},
-				}},
+				},
 				Containers: []corev1.Container{{
 					VolumeMounts: []corev1.VolumeMount{
 						{
@@ -630,18 +655,18 @@ func expectedDeploymentParams() deployment.Params {
 						{
 							Name:      "elastic-internal-kibana-config",
 							ReadOnly:  true,
-							MountPath: InternalConfigVolumeMountPath,
+							MountPath: kbvolume.InternalConfigVolumeMountPath,
 						},
-						ConfigSharedVolume.VolumeMount(),
+						initcontainer.ConfigSharedVolume.VolumeMount(),
 						{
 							Name:      "elasticsearch-certs",
 							ReadOnly:  true,
 							MountPath: "/usr/share/kibana/config/elasticsearch-certs",
 						},
 						{
-							Name:      DataVolumeName,
+							Name:      kbvolume.DataVolumeName,
 							ReadOnly:  falseVal,
-							MountPath: DataVolumeMountPath,
+							MountPath: kbvolume.DataVolumeMountPath,
 						},
 						{
 							Name:      "kibana-logs",
@@ -652,6 +677,11 @@ func expectedDeploymentParams() deployment.Params {
 							Name:      "kibana-plugins",
 							ReadOnly:  falseVal,
 							MountPath: "/usr/share/kibana/plugins",
+						},
+						{
+							Name:      "kibana-scripts",
+							ReadOnly:  true,
+							MountPath: "/mnt/elastic-internal/scripts",
 						},
 						{
 							Name:      "temp-volume",
@@ -700,9 +730,9 @@ func pre710(params deployment.Params) deployment.Params {
 	params.PodTemplateSpec.Spec.Containers[0].SecurityContext = nil
 	params.PodTemplateSpec.Spec.InitContainers[0].SecurityContext = nil
 	params.PodTemplateSpec.Spec.SecurityContext = nil
-	params.PodTemplateSpec.Spec.Volumes = params.PodTemplateSpec.Spec.Volumes[:5]
-	params.PodTemplateSpec.Spec.InitContainers[0].VolumeMounts = params.PodTemplateSpec.Spec.InitContainers[0].VolumeMounts[:5]
-	params.PodTemplateSpec.Spec.Containers[0].VolumeMounts = params.PodTemplateSpec.Spec.Containers[0].VolumeMounts[:5]
+	params.PodTemplateSpec.Spec.Volumes = append(params.PodTemplateSpec.Spec.Volumes[:5], params.PodTemplateSpec.Spec.Volumes[6], params.PodTemplateSpec.Spec.Volumes[7])
+	params.PodTemplateSpec.Spec.InitContainers[0].VolumeMounts = append(params.PodTemplateSpec.Spec.InitContainers[0].VolumeMounts[:5], params.PodTemplateSpec.Spec.InitContainers[0].VolumeMounts[6], params.PodTemplateSpec.Spec.InitContainers[0].VolumeMounts[7])
+	params.PodTemplateSpec.Spec.Containers[0].VolumeMounts = append(params.PodTemplateSpec.Spec.Containers[0].VolumeMounts[:5], params.PodTemplateSpec.Spec.Containers[0].VolumeMounts[6], params.PodTemplateSpec.Spec.Containers[0].VolumeMounts[7])
 	return params
 }
 

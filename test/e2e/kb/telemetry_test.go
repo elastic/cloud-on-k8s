@@ -16,7 +16,7 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
-	kibana2 "github.com/elastic/cloud-on-k8s/v2/pkg/controller/kibana"
+	kbv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/kibana/v1"
 	"github.com/elastic/cloud-on-k8s/v2/test/e2e/test"
 	"github.com/elastic/cloud-on-k8s/v2/test/e2e/test/elasticsearch"
 	"github.com/elastic/cloud-on-k8s/v2/test/e2e/test/kibana"
@@ -42,7 +42,7 @@ func TestTelemetry(t *testing.T) {
 					var secret corev1.Secret
 					err := k.Client.Get(context.Background(), types.NamespacedName{
 						Namespace: kbBuilder.Kibana.Namespace,
-						Name:      kibana2.SecretName(kbBuilder.Kibana),
+						Name:      kbv1.ConfigSecret(kbBuilder.Kibana.Name),
 					}, &secret)
 					if err != nil {
 						return err
