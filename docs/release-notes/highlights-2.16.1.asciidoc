@@ -7,6 +7,6 @@
 
 This release fixes an issue introduced in ECK 2.16.0 where enabling a Kibana hardened security context as well as enabling Kibana audit logs would cause Kibana to go into a `CrashLoopBackoff` state with the error `read-only file system, open '/usr/share/kibana/logs/audit.log'`.
 
-This release also fixes an additional issue in ECK 2.16.0 where enabling a Kibana hardened security context and utilizes Kibana plugins would cause the plugins to fail to load.
+This release also fixes an additional issue in ECK 2.16.0 where enabling a Kibana hardened security context and utilizing Kibana plugins would cause the plugins to fail to load.
 
 Also refer to <<{p}-2160-known-issues>> for more information.
