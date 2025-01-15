@@ -8,38 +8,38 @@ tests:
     set:
       config.ubiOnly: true
       image.fips: true
-      image.tag: "2.16.0"
+      image.tag: "2.16.1"
     asserts:
       - template: statefulset.yaml
         equal:
           path: spec.template.spec.containers[0].image
-          value: "docker.elastic.co/eck/eck-operator-ubi-fips:2.16.0"
+          value: "docker.elastic.co/eck/eck-operator-ubi-fips:2.16.1"
   - it: ECK image, no fips, no ubi
     set:
-      image.tag: "2.16.0"
+      image.tag: "2.16.1"
     asserts:
       - template: statefulset.yaml
         equal:
           path: spec.template.spec.containers[0].image
-          value: "docker.elastic.co/eck/eck-operator:2.16.0"
+          value: "docker.elastic.co/eck/eck-operator:2.16.1"
   - it: ECK image, fips, no ubi
     set:
       image.fips: true
-      image.tag: "2.16.0"
+      image.tag: "2.16.1"
     asserts:
       - template: statefulset.yaml
         equal:
           path: spec.template.spec.containers[0].image
-          value: "docker.elastic.co/eck/eck-operator-fips:2.16.0"
+          value: "docker.elastic.co/eck/eck-operator-fips:2.16.1"
   - it: ECK image, no fips, ubi
     set:
       config.ubiOnly: true
-      image.tag: "2.16.0"
+      image.tag: "2.16.1"
     asserts:
       - template: statefulset.yaml
         equal:
           path: spec.template.spec.containers[0].image
-          value: "docker.elastic.co/eck/eck-operator-ubi:2.16.0"
+          value: "docker.elastic.co/eck/eck-operator-ubi:2.16.1"
   - it: should have automount service account tokens set by default
     asserts:
       - template: statefulset.yaml
@@ -75,8 +75,8 @@ tests:
             app.kubernetes.io/instance: RELEASE-NAME
             app.kubernetes.io/managed-by: Helm
             app.kubernetes.io/name: elastic-operator
-            app.kubernetes.io/version: 2.16.0
-            helm.sh/chart: eck-operator-2.16.0
+            app.kubernetes.io/version: 2.16.1
+            helm.sh/chart: eck-operator-2.16.1
             key2: value2
   - it: should use the specified webhook secret name
     set:
