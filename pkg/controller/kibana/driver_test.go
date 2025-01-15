@@ -532,6 +532,12 @@ func expectedDeploymentParams() deployment.Params {
 						},
 					},
 					{
+						Name: "kibana-logs",
+						VolumeSource: corev1.VolumeSource{
+							EmptyDir: &corev1.EmptyDirVolumeSource{},
+						},
+					},
+					{
 						Name: "kibana-plugins",
 						VolumeSource: corev1.VolumeSource{
 							EmptyDir: &corev1.EmptyDirVolumeSource{},
@@ -587,6 +593,11 @@ func expectedDeploymentParams() deployment.Params {
 							MountPath: DataVolumeMountPath,
 						},
 						{
+							Name:      "kibana-logs",
+							ReadOnly:  falseVal,
+							MountPath: "/usr/share/kibana/logs",
+						},
+						{
 							Name:      "kibana-plugins",
 							ReadOnly:  falseVal,
 							MountPath: "/usr/share/kibana/plugins",
@@ -631,6 +642,11 @@ func expectedDeploymentParams() deployment.Params {
 							Name:      DataVolumeName,
 							ReadOnly:  falseVal,
 							MountPath: DataVolumeMountPath,
+						},
+						{
+							Name:      "kibana-logs",
+							ReadOnly:  falseVal,
+							MountPath: "/usr/share/kibana/logs",
 						},
 						{
 							Name:      "kibana-plugins",
