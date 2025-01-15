@@ -32,6 +32,8 @@ securityContext:
   readOnlyRootFilesystem: true
 ----
 
+Also note that this change will cause the Kibana pod(s) to be restarted as this change is applied during the upgrade.
+
 [float]
 [id="{p}-2160-breaking-changes"]
 === eck-fleet-server Helm chart breaking changes
