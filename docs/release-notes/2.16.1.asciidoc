@@ -17,3 +17,9 @@
 === Security updates
 
 * Updated golang.org/x/net to mitigate CVE-2024-45338 {pull}8372[#8372]
+
+[[docs-2.16.1]]
+[float]
+=== Documentation improvements
+
+* Update Kubernetes supported versions to 1.27-1.32 {pull}8403[#8403]
