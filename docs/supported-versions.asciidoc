@@ -1,6 +1,6 @@
 ECK is compatible with:
 
-* Kubernetes 1.28-1.32
+* Kubernetes 1.27-1.32
 * OpenShift 4.12-4.17
 * Google Kubernetes Engine (GKE), Azure Kubernetes Service (AKS), and Amazon Elastic Kubernetes Service (EKS)
 * Helm: 3.2.0+
