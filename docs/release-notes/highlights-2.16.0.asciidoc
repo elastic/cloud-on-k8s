@@ -5,8 +5,8 @@
 [id="{p}-2160-known-issues"]
 === Known issues
 
-- Enabling a Kibana hardened security context as well as enabling Kibana audit logs will cause Kibana to go into a `CrashLoopBackoff` state with the error `read-only file system, open '/usr/share/kibana/logs/audit.log'`.
-- Enabling a Kibana hardened security context as well as utilizing Kibana plugins would cause the plugins to fail to load.
+- Enabling a Kibana hardened security context (only supported in Kibana 7.10+) as well as enabling Kibana audit logs will cause Kibana to go into a `CrashLoopBackoff` state with the error `read-only file system, open '/usr/share/kibana/logs/audit.log'`.
+- Enabling a Kibana hardened security context (only supported in Kibana 7.10+) as well as utilizing Kibana plugins would cause the plugins to fail to load.
 
 [float]
 [id="{p}-2160-new-and-notable"]
