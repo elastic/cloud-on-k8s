@@ -1,5 +1,5 @@
 newVersion: 2.17.0-SNAPSHOT
-prevVersion: 2.16.0
+prevVersion: 2.16.1
 stackVersion: 8.18.0-SNAPSHOT
 crds:
   - name: elasticsearches.elasticsearch.k8s.elastic.co
