@@ -3,7 +3,7 @@ name: eck-stack
 description: Elastic Stack managed by the ECK Operator
 kubeVersion: ">= 1.21.0-0"
 type: application
-version: 0.14.0
+version: 0.14.1
 
 dependencies:
   - name: eck-elasticsearch
