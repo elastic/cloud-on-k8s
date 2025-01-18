@@ -8,25 +8,25 @@ version: 0.14.1
 dependencies:
   - name: eck-elasticsearch
     condition: eck-elasticsearch.enabled
-    version: "0.14.0"
+    version: "0.14.1"
   - name: eck-kibana
     condition: eck-kibana.enabled
-    version: "0.14.0"
+    version: "0.14.1"
   - name: eck-agent
     condition: eck-agent.enabled
-    version: "0.14.0"
+    version: "0.14.1"
   - name: eck-fleet-server
     condition: eck-fleet-server.enabled
-    version: "0.14.0"
+    version: "0.14.1"
   - name: eck-beats
     condition: eck-beats.enabled
-    version: "0.14.0"
+    version: "0.14.1"
   - name: eck-logstash
     condition: eck-logstash.enabled
-    version: "0.14.0"
+    version: "0.14.1"
   - name: eck-apm-server
     condition: eck-apm-server.enabled
-    version: "0.14.0"
+    version: "0.14.1"
   - name: eck-enterprise-search
     condition: eck-enterprise-search.enabled
-    version: "0.14.0"
+    version: "0.14.1"
