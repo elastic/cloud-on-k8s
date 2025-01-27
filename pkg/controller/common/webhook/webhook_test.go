@@ -7,7 +7,6 @@ package webhook
 import (
 	"context"
 	"encoding/json"
-	"reflect"
 	"testing"
 
 	admissionv1 "k8s.io/api/admission/v1"
@@ -19,6 +18,7 @@ import (
 	eckadmission "github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/webhook/admission"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/k8s"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/set"
+	"github.com/go-test/deep"
 )
 
 func asJSON(obj interface{}) []byte {
@@ -153,7 +153,30 @@ func Test_validatingWebhook_Handle(t *testing.T) {
 					},
 				},
 			},
-			want: admission.Denied(`Agent.agent.k8s.elastic.co "testAgent" is invalid: spec.version: Invalid value: "0.10.0": Unsupported version: version 0.10.0 is lower than the lowest supported version of 7.10.0`),
+			want: admission.Response{
+				AdmissionResponse: admissionv1.AdmissionResponse{
+					Allowed: false,
+					Result: &metav1.Status{
+						Status:  metav1.StatusFailure,
+						Message: `Agent.agent.k8s.elastic.co "testAgent" is invalid: spec.version: Invalid value: "0.10.0": Unsupported version: version 0.10.0 is lower than the lowest supported version of 7.10.0`,
+						Reason:  "Invalid",
+						Details: &metav1.StatusDetails{
+							Name:  "testAgent",
+							Group: "agent.k8s.elastic.co",
+							Kind:  "Agent",
+							Causes: []metav1.StatusCause{
+								{
+									Type:    "FieldValueInvalid",
+									Message: `Invalid value: "0.10.0": Unsupported version: version 0.10.0 is lower than the lowest supported version of 7.10.0`,
+									Field:   "spec.version",
+								},
+							},
+							RetryAfterSeconds: 0,
+						},
+						Code: 422,
+					},
+				},
+			},
 		},
 		{
 			name: "delete agent is always allowed",
@@ -300,7 +323,30 @@ func Test_validatingWebhook_Handle(t *testing.T) {
 					},
 				},
 			},
-			want: admission.Denied(`Agent.agent.k8s.elastic.co "testAgent" is invalid: spec.version: Forbidden: Version downgrades are not supported`),
+			want: admission.Response{
+				AdmissionResponse: admissionv1.AdmissionResponse{
+					Allowed: false,
+					Result: &metav1.Status{
+						Status:  metav1.StatusFailure,
+						Message: `Agent.agent.k8s.elastic.co "testAgent" is invalid: spec.version: Forbidden: Version downgrades are not supported`,
+						Reason:  "Invalid",
+						Details: &metav1.StatusDetails{
+							Name:  "testAgent",
+							Group: "agent.k8s.elastic.co",
+							Kind:  "Agent",
+							Causes: []metav1.StatusCause{
+								{
+									Type:    "FieldValueForbidden",
+									Message: `Forbidden: Version downgrades are not supported`,
+									Field:   "spec.version",
+								},
+							},
+							RetryAfterSeconds: 0,
+						},
+						Code: 422,
+					},
+				},
+			},
 		},
 	}
 	for _, tt := range tests {
@@ -312,8 +358,9 @@ func Test_validatingWebhook_Handle(t *testing.T) {
 				managedNamespaces: tt.fields.managedNamespaces,
 				validator:         tt.fields.validator,
 			}
-			if got := v.Handle(ctx, tt.req); !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("validatingWebhook.Handle() = %v, want %v", got, tt.want)
+			got := v.Handle(ctx, tt.req)
+			if diff := deep.Equal(got, tt.want); diff != nil {
+				t.Error(diff)
 			}
 		})
 	}

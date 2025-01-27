@@ -6,10 +6,12 @@ package webhook
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"net/http"
 
 	admissionv1 "k8s.io/api/admission/v1"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	ctrl "sigs.k8s.io/controller-runtime"
@@ -106,9 +108,6 @@ func (v *validatingWebhook) Handle(ctx context.Context, req admission.Request) a
 
 	if req.Operation == admissionv1.Create {
 		_, err = obj.ValidateCreate()
-		if err != nil {
-			return admission.Denied(err.Error()).WithWarnings(warnings...)
-		}
 	}
 
 	if req.Operation == admissionv1.Update {
@@ -119,17 +118,29 @@ func (v *validatingWebhook) Handle(ctx context.Context, req admission.Request) a
 			return admission.Errored(http.StatusBadRequest, err).WithWarnings(warnings...)
 		}
 		_, err = obj.ValidateUpdate(oldObj)
-		if err != nil {
-			return admission.Denied(err.Error()).WithWarnings(warnings...)
-		}
 	}
 
 	if req.Operation == admissionv1.Delete {
 		_, err = obj.ValidateDelete()
-		if err != nil {
-			return admission.Denied(err.Error())
+	}
+	if err != nil {
+		var apiStatus apierrors.APIStatus
+		if errors.As(err, &apiStatus) {
+			return validationResponseFromStatus(false, apiStatus.Status()).WithWarnings(warnings...)
 		}
+		return admission.Denied(err.Error()).WithWarnings(warnings...)
 	}
 
 	return admission.Allowed("").WithWarnings(warnings...)
+}
+
+// validationResponseFromStatus returns a response for admitting a request with provided Status object.
+func validationResponseFromStatus(allowed bool, status metav1.Status) admission.Response {
+	resp := admission.Response{
+		AdmissionResponse: admissionv1.AdmissionResponse{
+			Allowed: allowed,
+			Result:  &status,
+		},
+	}
+	return resp
 }
