@@ -11,11 +11,13 @@ import (
 
 	admissionv1 "k8s.io/api/admission/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/webhook"
 	"sigs.k8s.io/controller-runtime/pkg/webhook/admission"
 
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/license"
+	eckadmission "github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/webhook/admission"
 	ulog "github.com/elastic/cloud-on-k8s/v2/pkg/utils/log"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/set"
 )
@@ -24,23 +26,38 @@ import (
 // that allow retrieval of namespace and name to ignore any objects
 // that are outside of the operator's managed namespaces.
 type validatableObject interface {
-	admission.Validator
+	eckadmission.Validator
 	metav1.Object
 }
 
 // SetupValidatingWebhookWithConfig will register a set of validation functions
 // at a given path, with a given controller manager, ensuring that the objects
 // are within the namespaces that the operator manages.
-func SetupValidatingWebhookWithConfig(config *Config) error {
+func SetupValidatingWebhookWithConfig(config *Config) {
 	config.Manager.GetWebhookServer().Register(
 		config.WebhookPath,
-		&webhook.Admission{
-			Handler: &validatingWebhook{
-				decoder:           admission.NewDecoder(config.Manager.GetScheme()),
-				validator:         config.Validator,
-				licenseChecker:    config.LicenseChecker,
-				managedNamespaces: set.Make(config.ManagedNamespace...)}})
-	return nil
+		ValidatingWebhookFor(
+			config.Manager.GetScheme(),
+			config.Validator,
+			config.LicenseChecker,
+			set.Make(config.ManagedNamespace...)),
+	)
+}
+
+func ValidatingWebhookFor(
+	scheme *runtime.Scheme,
+	validator eckadmission.Validator,
+	licenseChecker license.Checker,
+	managedNamespaces set.StringSet,
+) *webhook.Admission {
+	return &webhook.Admission{
+		Handler: &validatingWebhook{
+			decoder:           admission.NewDecoder(scheme),
+			validator:         validator,
+			licenseChecker:    licenseChecker,
+			managedNamespaces: managedNamespaces,
+		},
+	}
 }
 
 // Config is the configuration for setting up a webhook
@@ -49,14 +66,14 @@ type Config struct {
 	WebhookPath      string
 	ManagedNamespace []string
 	LicenseChecker   license.Checker
-	Validator        admission.Validator
+	Validator        eckadmission.Validator
 }
 
 type validatingWebhook struct {
 	decoder           admission.Decoder
 	managedNamespaces set.StringSet
 	licenseChecker    license.Checker
-	validator         admission.Validator
+	validator         eckadmission.Validator
 }
 
 // Handle satisfies the admission.Handler interface

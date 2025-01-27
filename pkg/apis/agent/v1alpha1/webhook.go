@@ -12,9 +12,8 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/util/validation/field"
-	"sigs.k8s.io/controller-runtime/pkg/webhook"
-	"sigs.k8s.io/controller-runtime/pkg/webhook/admission"
 
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/webhook/admission"
 	ulog "github.com/elastic/cloud-on-k8s/v2/pkg/utils/log"
 )
 
@@ -32,7 +31,7 @@ var (
 
 // +kubebuilder:webhook:path=/validate-agent-k8s-elastic-co-v1alpha1-agent,mutating=false,failurePolicy=ignore,groups=agent.k8s.elastic.co,resources=agents,verbs=create;update,versions=v1alpha1,name=elastic-agent-validation-v1alpha1.k8s.elastic.co,sideEffects=None,admissionReviewVersions=v1;v1beta1,matchPolicy=Exact
 
-var _ webhook.Validator = &Agent{}
+var _ admission.Validator = &Agent{}
 
 func (a *Agent) GetWarnings() []string {
 	if a == nil {

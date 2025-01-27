@@ -16,6 +16,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/webhook/admission"
 
 	agentv1alpha1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/agent/v1alpha1"
+	eckadmission "github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/webhook/admission"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/k8s"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/set"
 )
@@ -31,7 +32,7 @@ func asJSON(obj interface{}) []byte {
 func Test_validatingWebhook_Handle(t *testing.T) {
 	type fields struct {
 		managedNamespaces set.StringSet
-		validator         admission.Validator
+		validator         eckadmission.Validator
 	}
 	tests := []struct {
 		name   string

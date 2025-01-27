@@ -11,9 +11,8 @@ import (
 	runtime "k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/util/validation/field"
-	"sigs.k8s.io/controller-runtime/pkg/webhook"
-	"sigs.k8s.io/controller-runtime/pkg/webhook/admission"
 
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/webhook/admission"
 	ulog "github.com/elastic/cloud-on-k8s/v2/pkg/utils/log"
 )
 
@@ -26,7 +25,7 @@ const (
 
 var eslog = ulog.Log.WithName("es-validation")
 
-var _ webhook.Validator = &Elasticsearch{}
+var _ admission.Validator = &Elasticsearch{}
 
 // ValidateCreate is called by the validating webhook to validate the create operation.
 // Satisfies the webhook.Validator interface.
