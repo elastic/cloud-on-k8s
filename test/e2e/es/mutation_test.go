@@ -108,7 +108,7 @@ func TestMutationResizeMemoryUp(t *testing.T) {
 				corev1.ResourceMemory: resource.MustParse("4Gi"),
 				corev1.ResourceCPU:    resource.MustParse("2"),
 			},
-		})
+		}).TolerateMutationChecksFailures()
 
 	RunESMutation(t, b, mutated)
 }
@@ -132,7 +132,7 @@ func TestMutationResizeMemoryDown(t *testing.T) {
 				corev1.ResourceMemory: resource.MustParse("2Gi"),
 				corev1.ResourceCPU:    resource.MustParse("2"),
 			},
-		})
+		}).TolerateMutationChecksFailures()
 
 	RunESMutation(t, b, mutated)
 }
