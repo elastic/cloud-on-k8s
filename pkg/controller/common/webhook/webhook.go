@@ -100,14 +100,14 @@ func (v *validatingWebhook) Handle(ctx context.Context, req admission.Request) a
 		return admission.Allowed("")
 	}
 
-	warnings := MaybeGetWarnings(obj)
+	var warnings []string
 
 	if err := v.commonValidations(ctx, req, obj); err != nil {
 		return admission.Denied(err.Error()).WithWarnings(warnings...)
 	}
 
 	if req.Operation == admissionv1.Create {
-		_, err = obj.ValidateCreate()
+		warnings, err = obj.ValidateCreate()
 	}
 
 	if req.Operation == admissionv1.Update {
@@ -117,11 +117,11 @@ func (v *validatingWebhook) Handle(ctx context.Context, req admission.Request) a
 			whlog.Error(err, "decoding old object from webhook request into type (%T)", oldObj)
 			return admission.Errored(http.StatusBadRequest, err).WithWarnings(warnings...)
 		}
-		_, err = obj.ValidateUpdate(oldObj)
+		warnings, err = obj.ValidateUpdate(oldObj)
 	}
 
 	if req.Operation == admissionv1.Delete {
-		_, err = obj.ValidateDelete()
+		warnings, err = obj.ValidateDelete()
 	}
 	if err != nil {
 		var apiStatus apierrors.APIStatus

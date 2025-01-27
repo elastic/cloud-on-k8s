@@ -33,7 +33,7 @@ var (
 
 var _ admission.Validator = &Agent{}
 
-func (a *Agent) GetWarnings() []string {
+func (a *Agent) warnings() []string {
 	if a == nil {
 		return nil
 	}
@@ -75,6 +75,7 @@ func (a *Agent) WebhookPath() string {
 }
 
 func (a *Agent) validate(old *Agent) (admission.Warnings, error) {
+	warnings := a.warnings()
 	var errors field.ErrorList
 	if old != nil {
 		for _, uc := range updateChecks {
@@ -84,7 +85,7 @@ func (a *Agent) validate(old *Agent) (admission.Warnings, error) {
 		}
 
 		if len(errors) > 0 {
-			return nil, apierrors.NewInvalid(groupKind, a.Name, errors)
+			return warnings, apierrors.NewInvalid(groupKind, a.Name, errors)
 		}
 	}
 
@@ -95,7 +96,7 @@ func (a *Agent) validate(old *Agent) (admission.Warnings, error) {
 	}
 
 	if len(errors) > 0 {
-		return nil, apierrors.NewInvalid(groupKind, a.Name, errors)
+		return warnings, apierrors.NewInvalid(groupKind, a.Name, errors)
 	}
-	return nil, nil
+	return warnings, nil
 }
