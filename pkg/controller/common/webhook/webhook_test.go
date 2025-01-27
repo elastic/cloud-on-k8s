@@ -14,11 +14,12 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"sigs.k8s.io/controller-runtime/pkg/webhook/admission"
 
+	"github.com/go-test/deep"
+
 	agentv1alpha1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/agent/v1alpha1"
 	eckadmission "github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/webhook/admission"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/k8s"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/set"
-	"github.com/go-test/deep"
 )
 
 func asJSON(obj interface{}) []byte {
