@@ -108,7 +108,11 @@ func TestMutationResizeMemoryUp(t *testing.T) {
 				corev1.ResourceMemory: resource.MustParse("4Gi"),
 				corev1.ResourceCPU:    resource.MustParse("2"),
 			},
-		}).TolerateMutationChecksFailures()
+		}).
+		// Tolerate mutation check failures as the upgrade can briefly turn the cluster RED
+		// if a node shuts down before a newly created replica completes its initialization.
+		// See https://github.com/elastic/cloud-on-k8s/issues/8267.
+		TolerateMutationChecksFailures()
 
 	RunESMutation(t, b, mutated)
 }
@@ -132,7 +136,11 @@ func TestMutationResizeMemoryDown(t *testing.T) {
 				corev1.ResourceMemory: resource.MustParse("2Gi"),
 				corev1.ResourceCPU:    resource.MustParse("2"),
 			},
-		}).TolerateMutationChecksFailures()
+		}).
+		// Tolerate mutation check failures as the upgrade can briefly turn the cluster RED
+		// if a node shuts down before a newly created replica completes its initialization.
+		// See https://github.com/elastic/cloud-on-k8s/issues/8267.
+		TolerateMutationChecksFailures()
 
 	RunESMutation(t, b, mutated)
 }
