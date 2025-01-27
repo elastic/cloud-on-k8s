@@ -53,6 +53,9 @@ testParams:
   - name: v2160
     operatorVersion: 2.16.0
     stackVersion: 8.17.0
+  - name: v2161
+    operatorVersion: 2.16.1
+    stackVersion: 8.17.0
   - name: upcoming
     operatorVersion: 2.17.0-SNAPSHOT
     stackVersion: 8.18.0-SNAPSHOT
