@@ -131,7 +131,7 @@ func TestNewPodSpec(t *testing.T) {
 							},
 							ReadinessProbe: &probe,
 							Ports:          []corev1.ContainerPort{{Name: "https", ContainerPort: int32(HTTPPort), Protocol: corev1.ProtocolTCP}},
-							Command:        command,
+							Args:           args,
 							VolumeMounts: []corev1.VolumeMount{
 								configSecretVol.VolumeMount(), configVolume.VolumeMount(), httpCertsSecretVol.VolumeMount(),
 							},

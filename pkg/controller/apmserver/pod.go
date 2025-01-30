@@ -67,10 +67,8 @@ func readinessProbe(tls bool) corev1.Probe {
 	}
 }
 
-var command = []string{
-	"apm-server",
-	"run",
-	"-e", // log to stderr
+var args = []string{
+	// -e flag is implicit in containerised versions of APM server as they start the binary with the --environment=container flag.
 	"-c", "config/config-secret/apm-server.yml",
 }
 
@@ -143,7 +141,7 @@ func newPodSpec(c k8s.Client, as *apmv1.ApmServer, p PodSpecParams) (corev1.PodT
 		WithDockerImage(p.CustomImageName, container.ImageRepository(container.APMServerImage, v)).
 		WithReadinessProbe(readinessProbe(as.Spec.HTTP.TLS.Enabled())).
 		WithPorts(ports).
-		WithCommand(command).
+		WithArgs(args...).
 		WithEnv(env...).
 		WithVolumes(volumes...).
 		WithVolumeMounts(volumeMounts...).

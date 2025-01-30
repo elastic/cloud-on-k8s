@@ -154,10 +154,7 @@ func expectedDeploymentParams() testParams {
 						},
 						Name:  apmv1.ApmServerContainerName,
 						Image: "docker.elastic.co/apm/apm-server:1.0.0",
-						Command: []string{
-							"apm-server",
-							"run",
-							"-e",
+						Args: []string{
 							"-c",
 							"config/config-secret/apm-server.yml",
 						},
