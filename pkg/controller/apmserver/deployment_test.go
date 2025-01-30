@@ -110,6 +110,12 @@ func expectedDeploymentParams() testParams {
 				Spec: corev1.PodSpec{
 					Volumes: []corev1.Volume{
 						{
+							Name: "apmserver-data",
+							VolumeSource: corev1.VolumeSource{
+								EmptyDir: &corev1.EmptyDirVolumeSource{},
+							},
+						},
+						{
 							Name: "config",
 							VolumeSource: corev1.VolumeSource{
 								Secret: &corev1.SecretVolumeSource{
@@ -136,6 +142,11 @@ func expectedDeploymentParams() testParams {
 					},
 					Containers: []corev1.Container{{
 						VolumeMounts: []corev1.VolumeMount{
+							{
+								Name:      "apmserver-data",
+								ReadOnly:  false,
+								MountPath: "/usr/share/apm-server/data",
+							},
 							{
 								Name:      "config",
 								ReadOnly:  true,
@@ -288,7 +299,7 @@ func TestReconcileApmServer_deploymentParams(t *testing.T) {
 			},
 			want: expectedDeploymentParams().
 				withConfigHash("4033121041").
-				withVolume(3, corev1.Volume{
+				withVolume(4, corev1.Volume{
 					Name: "elasticsearch-certs",
 					VolumeSource: corev1.VolumeSource{
 						Secret: &corev1.SecretVolumeSource{
@@ -297,7 +308,7 @@ func TestReconcileApmServer_deploymentParams(t *testing.T) {
 						},
 					},
 				}).
-				withVolumeMount(3, corev1.VolumeMount{
+				withVolumeMount(4, corev1.VolumeMount{
 					Name:      "elasticsearch-certs",
 					MountPath: "/usr/share/apm-server/config/elasticsearch-certs",
 					ReadOnly:  true,
@@ -343,7 +354,7 @@ func TestReconcileApmServer_deploymentParams(t *testing.T) {
 			},
 			want: expectedDeploymentParams().
 				withConfigHash("3109678476").
-				withVolume(3, corev1.Volume{
+				withVolume(4, corev1.Volume{
 					Name: "elasticsearch-certs",
 					VolumeSource: corev1.VolumeSource{
 						Secret: &corev1.SecretVolumeSource{
@@ -352,7 +363,7 @@ func TestReconcileApmServer_deploymentParams(t *testing.T) {
 						},
 					},
 				}).
-				withVolume(4, corev1.Volume{
+				withVolume(5, corev1.Volume{
 					Name: "kibana-certs",
 					VolumeSource: corev1.VolumeSource{
 						Secret: &corev1.SecretVolumeSource{
@@ -361,12 +372,12 @@ func TestReconcileApmServer_deploymentParams(t *testing.T) {
 						},
 					},
 				}).
-				withVolumeMount(3, corev1.VolumeMount{
+				withVolumeMount(4, corev1.VolumeMount{
 					Name:      "elasticsearch-certs",
 					MountPath: "/usr/share/apm-server/config/elasticsearch-certs",
 					ReadOnly:  true,
 				}).
-				withVolumeMount(4, corev1.VolumeMount{
+				withVolumeMount(5, corev1.VolumeMount{
 					Name:      "kibana-certs",
 					MountPath: "/usr/share/apm-server/config/kibana-certs",
 					ReadOnly:  true,
@@ -445,18 +456,8 @@ func TestReconcileApmServer_deploymentParams(t *testing.T) {
 			},
 			want: expectedDeploymentParams().
 				withConfigHash("873244444").
-				withVolume(0, corev1.Volume{
-					Name: "apmserver-data",
-					VolumeSource: corev1.VolumeSource{
-						EmptyDir: &corev1.EmptyDirVolumeSource{},
-					},
-				}).
 				withVolume(4, corev1.Volume{
 					Name: "keystore-volume",
-				}).
-				withVolumeMount(0, corev1.VolumeMount{
-					Name:      "apmserver-data",
-					MountPath: DataVolumePath,
 				}).
 				withInitContainer(),
 			wantErr: false,

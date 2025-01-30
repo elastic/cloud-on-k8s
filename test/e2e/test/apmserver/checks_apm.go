@@ -308,6 +308,7 @@ func getIndexNames(apm apmv1.ApmServer) (string, string, error) {
 		metricIndex = fmt.Sprintf("apm-%s-metric-2017.05.30", apm.EffectiveVersion())
 		errorIndex = fmt.Sprintf("apm-%s-error-2018.08.09", apm.EffectiveVersion())
 	case 8:
+	case 9:
 		// these are datastreams and not indices, but can be searched/counted in the same way
 		metricIndex = "metrics-apm.app.1234_service_12a3-default"
 		errorIndex = "logs-apm.error-default"
