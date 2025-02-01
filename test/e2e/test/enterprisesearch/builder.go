@@ -47,7 +47,7 @@ func (b Builder) DeepCopy() *Builder {
 
 var _ test.Builder = Builder{}
 
-// SkipTest returns true if the version is not  in supported range, or if the version is incompatible with Openshift.
+// SkipTest returns true if the version is not in the supported range, or if the version is incompatible with Openshift.
 func (b Builder) SkipTest() bool {
 	v := version.MustParse(b.EnterpriseSearch.Spec.Version)
 	return version.SupportedEnterpriseSearchVersions.WithinRange(v) != nil ||
