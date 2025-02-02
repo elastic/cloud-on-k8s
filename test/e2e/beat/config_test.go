@@ -172,7 +172,10 @@ filebeat:
         default_config:
           paths:
           - /var/log/containers/*${data.kubernetes.container.id}.log
-          type: container
+          type: filestream
+		  parsers:
+		  - container:
+            stream: stdout
         enabled: true
       node: ${NODE_NAME}
       type: kubernetes
