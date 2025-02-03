@@ -173,8 +173,8 @@ filebeat:
           paths:
           - /var/log/containers/*${data.kubernetes.container.id}.log
           type: filestream
-		  parsers:
-		  - container:
+          parsers:
+          - container:
             stream: stdout
         enabled: true
       node: ${NODE_NAME}
