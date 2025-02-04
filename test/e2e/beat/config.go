@@ -15,9 +15,16 @@ var (
       hints:
         enabled: true
         default_config:
-          type: container
+          type: filestream
           paths:
           - /var/log/containers/*${data.kubernetes.container.id}.log
+        parsers:
+        - container: ~
+        prospector:
+          scanner:
+            fingerprint.enabled: true
+            symlinks: true
+        file_identity.fingerprint: ~
 processors:
 - add_cloud_metadata: {}
 - add_host_metadata: {}
