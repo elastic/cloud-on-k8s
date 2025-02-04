@@ -212,7 +212,8 @@ filebeat:
           paths:
           - /var/log/containers/*${data.kubernetes.container.id}.log
           type: filestream
-		  parsers:
+          id: kubernetes-container-logs-${data.kubernetes.pod.name}-${data.kubernetes.container.id}
+          parsers:
           - container: ~
           prospector:
             scanner:

@@ -16,6 +16,7 @@ var (
         enabled: true
         default_config:
           type: filestream
+          id: kubernetes-container-logs-${data.kubernetes.pod.name}-${data.kubernetes.container.id}
           paths:
           - /var/log/containers/*${data.kubernetes.container.id}.log
         parsers:
