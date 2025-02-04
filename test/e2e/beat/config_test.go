@@ -172,7 +172,15 @@ filebeat:
         default_config:
           paths:
           - /var/log/containers/*${data.kubernetes.container.id}.log
-          type: container
+          type: filestream
+          id: kubernetes-container-logs-${data.kubernetes.pod.name}-${data.kubernetes.container.id}
+          parsers:
+          - container: ~
+          prospector:
+            scanner:
+              fingerprint.enabled: true
+              symlinks: true
+          file_identity.fingerprint: ~
         enabled: true
       node: ${NODE_NAME}
       type: kubernetes
