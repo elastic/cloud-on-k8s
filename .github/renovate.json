@@ -10,10 +10,10 @@
   ],
   "packageRules": [
     {
-      "matchPackagePatterns": [
-        "k8s.io"
-      ],
-      "groupName": "k8s"
+      "groupName": "k8s",
+      "matchPackageNames": [
+        "/k8s.io/"
+      ]
     },
     {
       "matchPackageNames": [
