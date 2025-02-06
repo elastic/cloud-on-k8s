@@ -18,11 +18,27 @@ spec:
       - condition.equals.kubernetes.namespace: log-namespace
         config:
         - paths: ["/var/log/containers/*${data.kubernetes.container.id}.log"]
-          type: container
+          id: kubernetes-container-logs-${data.kubernetes.pod.name}-${data.kubernetes.container.id}
+          type: filestream
+          parsers:
+          - container: ~
+          prospector:
+            scanner:
+              fingerprint.enabled: true
+              symlinks: true
+          file_identity.fingerprint: ~
       - condition.equals.kubernetes.labels.log-label: "true"
         config:
         - paths: ["/var/log/containers/*${data.kubernetes.container.id}.log"]
-          type: container
+          id: kubernetes-container-logs-${data.kubernetes.pod.name}-${data.kubernetes.container.id}
+          type: filestream
+          parsers:
+          - container: ~
+          prospector:
+            scanner:
+              fingerprint.enabled: true
+              symlinks: true
+          file_identity.fingerprint: ~
     processors:
     - add_cloud_metadata: {}
     - add_host_metadata: {}

@@ -11,9 +11,16 @@ spec:
     name: kibana
   config:
     filebeat.inputs:
-    - type: container
+    - type: filestream
       paths:
       - /var/log/containers/*.log
+      parsers:
+        - container: ~
+      prospector:
+        scanner:
+          fingerprint.enabled: true
+          symlinks: true
+      file_identity.fingerprint: ~
     processors:
     - add_host_metadata: {}
     - add_cloud_metadata: {}

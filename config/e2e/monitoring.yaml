@@ -332,7 +332,7 @@ spec:
           - uptime
         period: 10s
     - name: container-log
-      type: container
+      type: container #TODO migrate to file stream?
       use_output: default
       meta:
         package:
