@@ -35,7 +35,7 @@ input { exec { command => 'uptime' interval => 10 } }
 output { 
   elasticsearch {
 	hosts => [ "${PRODUCTION_ES_HOSTS}" ]
-	ssl => true
+	ssl_enabled => true
 	cacert => "${PRODUCTION_ES_SSL_CERTIFICATE_AUTHORITY}"
 	user => "${PRODUCTION_ES_USER}"
 	password => "${PRODUCTION_ES_PASSWORD}"
