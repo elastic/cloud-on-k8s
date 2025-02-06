@@ -24,7 +24,7 @@ Supported versions:
 *  Beats: 7.0+, 8+
 *  Elastic Agent: 7.10+ (standalone), 7.14+, 8+ (Fleet)
 *  Elastic Maps Server: 7.11+, 8+
-*  Logstash 8.7+
+*  Logstash 8.12+
 
 Check the [Quickstart](https://www.elastic.co/guide/en/cloud-on-k8s/current/k8s-quickstart.html) to deploy your first cluster with ECK.
 
