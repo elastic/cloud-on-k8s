@@ -44,7 +44,7 @@ spec:
           elasticsearch {
             hosts => [ "${TEST_ES_HOSTS}" ]
             ssl => true
-            cacert => "${TEST_ES_SSL_CERTIFICATE_AUTHORITY}"
+            ssl_certificate_authorities => "${TEST_ES_SSL_CERTIFICATE_AUTHORITY}"
             user => "${TEST_ES_USER}"
             password => "${TEST_ES_PASSWORD}"
           }
