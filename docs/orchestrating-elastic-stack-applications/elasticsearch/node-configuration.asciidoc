@@ -36,3 +36,15 @@ spec:
 ----
 
 For more information on Elasticsearch settings, check https://www.elastic.co/guide/en/elasticsearch/reference/current/settings.html[Configuring Elasticsearch].
+
+WARNING: ECK parses Elasticsearch configuration and normalizes it to YAML. Consequently, some Elasticsearch configuration schema are impossible to express with ECK and, therefore, must be set using https://www.elastic.co/guide/en/elasticsearch/reference/current/settings.html#cluster-setting-types[dynamic cluster settings]. E.g.:
+  ```
+spec:
+  nodeSets:
+  - name: data
+    # ...
+    config:
+      cluster.max_shards_per_node: 1000
+      cluster.max_shards_per_node.frozen: 1000 # <= This won't work because cluster.max_shards_per_node is defined as a scalar value on the previous line
+    # ...
+  ```
