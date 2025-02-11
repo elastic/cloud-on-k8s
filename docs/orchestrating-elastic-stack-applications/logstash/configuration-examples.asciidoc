@@ -1,0 +1,93 @@
+:parent_page_id: logstash-specification
+:logstash_recipes: https://raw.githubusercontent.com/elastic/cloud-on-k8s/{eck_release_branch}/config/recipes/logstash
+ifdef::env-github[]
+****
+link:https://www.elastic.co/guide/en/cloud-on-k8s/master/k8s-{page_id}.html[View this document on the Elastic website]
+****
+endif::[]
+
+[id="{p}-logstash-configuration-examples"]
+= Configuration examples
+
+This section contains manifests that illustrate common use cases, and can be your starting point in exploring {ls} deployed with ECK. These manifests are self-contained and work out-of-the-box on any non-secured {k8s} cluster. They all contain a three-node {es} cluster and a single {kib} instance.
+
+CAUTION: The examples in this section are for illustration purposes only. They should not be considered production-ready. 
+Some of these examples use the `node.store.allow_mmap: false` setting on {es} which has performance implications and should be tuned for production workloads, as described in <<{p}-virtual-memory>>.
+
+
+[id="{p}-logstash-configuration-single-pipeline-crd"]
+== Single pipeline defined in CRD
+
+[source,sh,subs="attributes"]
+----
+kubectl apply -f {logstash_recipes}/logstash-eck.yaml
+----
+
+Deploys {ls} with a single pipeline defined in the CRD
+
+[id="{p}-logstash-configuration-single-pipeline-secret"]
+== Single Pipeline defined in Secret
+
+[source,sh,subs="attributes"]
+----
+kubectl apply -f {logstash_recipes}/logstash-pipeline-as-secret.yaml
+----
+
+Deploys {ls} with a single pipeline defined in a secret, referenced by a `pipelineRef`
+
+[id="{p}-logstash-configuration-pipeline-volume"]
+== Pipeline configuration in mounted volume
+
+[source,sh,subs="attributes"]
+----
+kubectl apply -f {logstash_recipes}/logstash-pipeline-as-volume.yaml
+----
+
+Deploys {ls} with a single pipeline defined in a secret, mounted as a volume, and referenced by
+`path.config`
+
+[id="{p}-logstash-configuration-custom-index"]
+== Writing to a custom {es} index
+
+[source,sh,subs="attributes"]
+----
+kubectl apply -f {logstash_recipes}/logstash-es-role.yaml
+----
+
+Deploys {ls} and {es}, and creates an updated version of the `eck_logstash_user_role` to write to a user specified index.
+
+[id="{p}-logstash-configuration-pq-dlq"]
+== Creating persistent volumes for PQ and DLQ
+
+[source,sh,subs="attributes"]
+----
+kubectl apply -f {logstash_recipes}/logstash-volumes.yaml
+----
+
+Deploys {ls}, {beats} and {es}. {ls} is configured with two pipelines:
+
+* a main pipeline for reading from the {beats} instance, which will send to the DLQ if it is unable to write to {es}
+* a second pipeline, that will read from the DLQ.
+In addition, persistent queues are set up.
+This example shows how to configure persistent volumes outside of the default `logstash-data` persistent volume.
+
+
+[id="{p}-logstash-configuration-stack-monitoring"]
+== {es} and {kib} Stack Monitoring
+
+[source,sh,subs="attributes"]
+----
+kubectl apply -f {logstash_recipes}/logstash-monitored.yaml
+----
+
+Deploys an {es} and {kib} monitoring cluster, and a {ls} that will send its monitoring information to this cluster. You can view the stack monitoring information in the monitoring cluster's {kib}
+
+[id="{p}-logstash-configuration-multiple-pipelines"]
+== Multiple pipelines/multiple {es} clusters
+
+[source,sh,subs="attributes"]
+----
+kubectl apply -f {logstash_recipes}/logstash-multi.yaml
+----
+
+Deploys {es} in prod and qa configurations, running in separate namespaces. {ls} is configured with a multiple pipeline->pipeline configuration, with a source pipeline routing to `prod` and `qa` pipelines.

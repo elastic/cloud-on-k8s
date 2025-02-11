@@ -1,0 +1,41 @@
+:page_id: logstash
+ifdef::env-github[]
+****
+link:https://www.elastic.co/guide/en/cloud-on-k8s/master/k8s-{page_id}.html[View this document on the Elastic website]
+****
+endif::[]
+[id="{p}-{page_id}"]
+= Run {ls} on ECK
+
+NOTE: Running {ls} on ECK is compatible only with {ls} 8.7+.
+
+This section describes how to configure and deploy {ls} with ECK.
+
+* <<{p}-logstash-quickstart>>
+* <<{p}-logstash-configuration>>
+** <<{p}-logstash-configuring-logstash>>
+** <<{p}-logstash-pipelines>>
+** <<{p}-logstash-volumes>>
+** <<{p}-logstash-pipelines-es>>
+** <<{p}-logstash-expose-services>>
+* <<{p}-logstash-securing-api>>
+* <<{p}-logstash-plugins>>
+** <<{p}-plugin-resources>>
+** <<{p}-logstash-working-with-plugins-scaling>>
+** <<{p}-logstash-working-with-plugin-considerations>>
+** <<{p}-logstash-working-with-custom-plugins>>
+* <<{p}-logstash-configuration-examples>>
+* <<{p}-logstash-update-strategy>>
+* <<{p}-logstash-advanced-configuration>>
+** <<{p}-logstash-jvm-options>>
+** <<{p}-logstash-keystore>>
+* <<{p}-central-pipeline-management>>
+
+include::logstash/quickstart.asciidoc[leveloffset=+1]
+include::logstash/configuration.asciidoc[leveloffset=+1]
+include::logstash/securing.asciidoc[leveloffset=+1]
+include::logstash/plugins.asciidoc[leveloffset=+1]
+include::logstash/configuration-examples.asciidoc[leveloffset=+1]
+include::logstash/update-strategy.asciidoc[leveloffset=+1]
+include::logstash/advanced-configuration.asciidoc[leveloffset=+1]
+include::logstash/central-pipeline-management.asciidoc[leveloffset=+1]

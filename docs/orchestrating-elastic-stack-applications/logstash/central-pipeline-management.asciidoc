@@ -1,0 +1,64 @@
+:parent_page_id: logstash-specification
+ifdef::env-github[]
+****
+link:https://www.elastic.co/guide/en/cloud-on-k8s/master/k8s-{page_id}.html[View this document on the Elastic website]
+****
+endif::[]
+
+[id="{p}-central-pipeline-management"]
+= Centralized Pipeline Management
+
+The following Configuration is an example on how to enable link:{logstash-ref}/logstash-centralized-pipeline-management.html[Centralized Pipeline Management] when deploying {ls}, {es} and {kib} on ECK.
+
+[source,yaml,subs="attributes,+macros,callouts"]
+----
+apiVersion: elasticsearch.k8s.elastic.co/v1
+kind: Elasticsearch
+metadata:
+  name: elasticsearch-sample
+spec:
+  version: {version}
+  nodeSets:
+    - name: default
+      count: 3 
+      config:
+        xpack.license.self_generated.type: trial <1>
+---
+apiVersion: logstash.k8s.elastic.co/v1alpha1
+kind: Logstash
+metadata:
+  name: logstash-sample
+spec:
+  count: 1
+  version: {version}
+  elasticsearchRefs:
+    - clusterName: production
+      name: elasticsearch-sample <2>
+  config:
+    xpack.management.enabled: true <3>
+    xpack.management.elasticsearch.hosts: "${PRODUCTION_ES_HOSTS}" <4>
+    xpack.management.elasticsearch.username: "${PRODUCTION_ES_USER}"
+    xpack.management.elasticsearch.password: "${PRODUCTION_ES_PASSWORD}"
+    xpack.management.elasticsearch.ssl.certificate_authority: "${PRODUCTION_ES_SSL_CERTIFICATE_AUTHORITY}"
+    xpack.management.pipeline.id: ["*somekeys*"] <5>
+---
+apiVersion: kibana.k8s.elastic.co/v1
+kind: Kibana
+metadata:
+  name: kibana-sample
+spec:
+  version: {version}
+  elasticsearchRef:
+    name: elasticsearch-sample
+  count: 1
+----
+
+<1> Centralized Pipeline Management is a Licensed feature, so a license is required. Here we enable the trial license
+
+<2> Create a reference to the {es} cluster to manage the {ls-pipelines}
+
+<3> Enable Centralized Pipeline Management on {ls}
+
+<4> Use the hosts of the {es} referenced in the `elasticsearchRefs`
+
+<5> Pipeline ids that are managed from {es}
