@@ -43,7 +43,7 @@ spec:
         output {
           elasticsearch {
             hosts => [ "${TEST_ES_HOSTS}" ]
-            ssl => true
+            ssl_enabled => true
             ssl_certificate_authorities => "${TEST_ES_SSL_CERTIFICATE_AUTHORITY}"
             user => "${TEST_ES_USER}"
             password => "${TEST_ES_PASSWORD}"
