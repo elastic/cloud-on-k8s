@@ -83,7 +83,7 @@ steps:
       image: "family/core-ubuntu-2004"
       {{- if eq $test.Provider "kind" }}
       machineType: "{{ $.KindAgentsMachineType }}"
-      diskSizeGb: "150G"
+      diskSizeGb: 150
       {{- end }}
       {{- else }}
       image: docker.elastic.co/ci-agent-images/cloud-k8s-operator/buildkite-agent:620addfa
