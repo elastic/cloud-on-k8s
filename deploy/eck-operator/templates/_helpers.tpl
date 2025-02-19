@@ -50,7 +50,7 @@ Selector labels
 {{- define "eck-operator.selectorLabels" -}}
 {{- if .Values.global.manifestGen }}
 control-plane: elastic-operator
-{{- else }}
+{{- else -}}
 app.kubernetes.io/name: {{ include "eck-operator.name" . }}
 app.kubernetes.io/instance: {{ .Release.Name }}
 {{- end }}
