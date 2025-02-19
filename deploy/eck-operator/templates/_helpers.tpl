@@ -48,7 +48,7 @@ app.kubernetes.io/managed-by: {{ .Release.Service }}
 Selector labels
 */}}
 {{- define "eck-operator.selectorLabels" -}}
-{{- if .Values.global.manifestGen }}
+{{- if .Values.global.manifestGen -}}
 control-plane: elastic-operator
 {{- else -}}
 app.kubernetes.io/name: {{ include "eck-operator.name" . }}
