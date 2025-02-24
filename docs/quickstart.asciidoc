@@ -89,7 +89,7 @@ This completes the quickstart of the ECK operator. We recommend continuing to <<
 [id="{p}-deploy-elasticsearch"]
 == Deploy an {es} cluster
 
-To deploy a simple link:{ref}/getting-started.html[{es]}] cluster specification, with one {es} node:
+To deploy a simple link:{ref}/getting-started.html[{es}] cluster specification, with one {es} node:
 
 [source,yaml,subs="attributes,+macros"]
 ----
