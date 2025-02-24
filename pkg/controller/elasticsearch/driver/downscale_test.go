@@ -1173,7 +1173,7 @@ func Test_deleteStatefulSets(t *testing.T) {
 				sset.TestSset{Namespace: "ns", Name: "sset1", ClusterName: es.Name}.Build(),
 			},
 			objs:          []client.Object{},
-			wantRemaining: nil,
+			wantRemaining: es_sset.StatefulSetList{},
 			wantErr:       apierrors.IsNotFound,
 		},
 	}
