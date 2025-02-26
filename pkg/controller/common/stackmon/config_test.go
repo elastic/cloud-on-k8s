@@ -103,11 +103,15 @@ param2: value2
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			fakeClient := k8s.NewFakeClient(tt.args.initObjects...)
+			hasMonitoring, ok := tt.args.associated.(monitoring.HasMonitoring)
+			if !ok {
+				t.Fatalf("associated is expected to implement monitoring.HasMonitoring")
+			}
 			got, err := newBeatConfig(
 				context.Background(),
 				fakeClient,
 				tt.args.beatName,
-				tt.args.associated.(monitoring.HasMonitoring),
+				hasMonitoring,
 				tt.args.associated.GetAssociations(),
 				tt.args.baseConfig,
 			)
