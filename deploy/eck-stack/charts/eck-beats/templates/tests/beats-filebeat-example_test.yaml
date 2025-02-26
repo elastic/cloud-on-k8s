@@ -18,7 +18,7 @@ tests:
           value: eck-kibana
       - equal:
           path: spec.config.[filebeat.inputs][0].type
-          value: container
+          value: filestream
       - equal:
           path: spec.config.[filebeat.inputs][0].paths
           value:

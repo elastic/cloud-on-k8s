@@ -4,16 +4,23 @@ metadata:
   name: filebeat
 spec:
   type: filebeat
-  version: 8.16.0
+  version: 8.17.0
   elasticsearchRef:
     name: elasticsearch
   kibanaRef:
     name: kibana
   config:
     filebeat.inputs:
-    - type: container
+    - type: filestream
       paths:
       - /var/log/containers/*.log
+      parsers:
+        - container: ~
+      prospector:
+        scanner:
+          fingerprint.enabled: true
+          symlinks: true
+      file_identity.fingerprint: ~
     processors:
     - add_host_metadata: {}
     - add_cloud_metadata: {}
@@ -53,7 +60,7 @@ kind: Elasticsearch
 metadata:
   name: elasticsearch
 spec:
-  version: 8.16.0
+  version: 8.17.0
   nodeSets:
   - name: default
     count: 3
@@ -65,7 +72,7 @@ kind: Kibana
 metadata:
   name: kibana
 spec:
-  version: 8.16.0
+  version: 8.17.0
   count: 1
   elasticsearchRef:
     name: elasticsearch

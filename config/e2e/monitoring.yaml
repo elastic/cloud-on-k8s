@@ -5,7 +5,7 @@ metadata:
   name: e2e-agent
   namespace: {{ .E2ENamespace }}
 spec:
-  version: 8.16.0
+  version: 8.17.0
   elasticsearchRefs:
     - secretName: eck-{{ .TestRun }}
   daemonSet:
@@ -221,7 +221,7 @@ spec:
       meta:
         package:
           name: system
-          version: 8.16.0
+          version: 8.17.0
       data_stream:
         namespace: default
       processors:
@@ -332,7 +332,7 @@ spec:
           - uptime
         period: 10s
     - name: container-log
-      type: container
+      type: container #TODO migrate to file stream?
       use_output: default
       meta:
         package:

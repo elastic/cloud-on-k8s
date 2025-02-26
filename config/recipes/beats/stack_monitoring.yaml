@@ -6,7 +6,7 @@ metadata:
   name: metricbeat
 spec:
   type: metricbeat
-  version: 8.16.0
+  version: 8.17.0
   elasticsearchRef:
     name: elasticsearch-monitoring
   config:
@@ -140,7 +140,7 @@ metadata:
   name: filebeat
 spec:
   type: filebeat
-  version: 8.16.0
+  version: 8.17.0
   elasticsearchRef:
     name: elasticsearch-monitoring
   kibanaRef:
@@ -154,9 +154,17 @@ spec:
           hints:
             enabled: true
             default_config:
-              type: container
+              type: filestream
+              id: kubernetes-container-logs-${data.kubernetes.pod.name}-${data.kubernetes.container.id}
               paths:
               - /var/log/containers/*${data.kubernetes.container.id}.log
+              parsers:
+              - container: ~
+              prospector:
+                scanner:
+                  fingerprint.enabled: true
+                  symlinks: true
+              file_identity.fingerprint: ~
     processors:
     - add_cloud_metadata: {}
     - add_host_metadata: {}
@@ -252,7 +260,7 @@ kind: Elasticsearch
 metadata:
   name: elasticsearch
 spec:
-  version: 8.16.0
+  version: 8.17.0
   nodeSets:
   - name: default
     count: 3
@@ -268,7 +276,7 @@ kind: Kibana
 metadata:
   name: kibana
 spec:
-  version: 8.16.0
+  version: 8.17.0
   count: 1
   elasticsearchRef:
     name: elasticsearch
@@ -285,7 +293,7 @@ kind: Elasticsearch
 metadata:
   name: elasticsearch-monitoring
 spec:
-  version: 8.16.0
+  version: 8.17.0
   nodeSets:
   - name: default
     count: 3
@@ -297,7 +305,7 @@ kind: Kibana
 metadata:
   name: kibana-monitoring
 spec:
-  version: 8.16.0
+  version: 8.17.0
   count: 1
   elasticsearchRef:
     name: elasticsearch-monitoring

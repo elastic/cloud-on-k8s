@@ -7,7 +7,6 @@ package apmserver
 import (
 	"fmt"
 	"path/filepath"
-	"strings"
 
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
@@ -67,14 +66,23 @@ func readinessProbe(tls bool) corev1.Probe {
 	}
 }
 
-var command = []string{
-	"apm-server",
-	"run",
-	"-e", // log to stderr
+var args = []string{
+	// -e flag is implicit in containerised versions of APM server as they start the binary with the --environment=container flag.
 	"-c", "config/config-secret/apm-server.yml",
 }
 
-var configVolume = volume.NewEmptyDirVolume("config-volume", ConfigVolumePath)
+const (
+	dataVolumeName   = "apmserver-data"
+	configVolumeName = "config-volume"
+)
+
+var (
+	configVolume = volume.NewEmptyDirVolume(configVolumeName, ConfigVolumePath)
+	// dataVolume is used to propagatee the keystore to the APM server from the keystore init container
+	// and to hold metadata written by APM server (at least since 9.0) to avoid writing into the containers filesystem.
+	// Given that APM server is stateless we should be OK with an emptyDir volume.
+	dataVolume = volume.NewEmptyDirVolume(dataVolumeName, DataVolumePath)
+)
 
 type PodSpecParams struct {
 	Version         string
@@ -117,17 +125,12 @@ func newPodSpec(c k8s.Client, as *apmv1.ApmServer, p PodSpecParams) (corev1.PodT
 
 	ports := getDefaultContainerPorts(*as)
 
-	volumes := []corev1.Volume{configVolume.Volume(), configSecretVolume.Volume()}
-	volumeMounts := []corev1.VolumeMount{configVolume.VolumeMount(), configSecretVolume.VolumeMount()}
+	volumes := []corev1.Volume{configVolume.Volume(), configSecretVolume.Volume(), dataVolume.Volume()}
+	volumeMounts := []corev1.VolumeMount{configVolume.VolumeMount(), configSecretVolume.VolumeMount(), dataVolume.VolumeMount()}
 	var initContainers []corev1.Container
 
 	if p.keystoreResources != nil {
-		dataVolume := keystore.DataVolume(
-			strings.ToLower(as.Kind),
-			DataVolumePath,
-		)
-		volumes = append(volumes, p.keystoreResources.Volume, dataVolume.Volume())
-		volumeMounts = append(volumeMounts, dataVolume.VolumeMount())
+		volumes = append(volumes, p.keystoreResources.Volume)
 		initContainers = append(initContainers, p.keystoreResources.InitContainer)
 	}
 
@@ -143,7 +146,7 @@ func newPodSpec(c k8s.Client, as *apmv1.ApmServer, p PodSpecParams) (corev1.PodT
 		WithDockerImage(p.CustomImageName, container.ImageRepository(container.APMServerImage, v)).
 		WithReadinessProbe(readinessProbe(as.Spec.HTTP.TLS.Enabled())).
 		WithPorts(ports).
-		WithCommand(command).
+		WithArgs(args...).
 		WithEnv(env...).
 		WithVolumes(volumes...).
 		WithVolumeMounts(volumeMounts...).

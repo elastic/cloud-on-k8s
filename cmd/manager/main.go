@@ -40,7 +40,6 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/metrics/filters"
 	metricsserver "sigs.k8s.io/controller-runtime/pkg/metrics/server"
 	crwebhook "sigs.k8s.io/controller-runtime/pkg/webhook"
-	"sigs.k8s.io/controller-runtime/pkg/webhook/admission"
 
 	"github.com/elastic/cloud-on-k8s/v2/pkg/about"
 	agentv1alpha1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/agent/v1alpha1"
@@ -73,6 +72,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/tracing/apmclientgo"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/version"
 	commonwebhook "github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/webhook"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/webhook/admission"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch"
 	esclient "github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/client"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/settings"
@@ -1040,16 +1040,13 @@ func setupWebhook(
 		&policyv1alpha1.StackConfigPolicy{},
 	}
 	for _, obj := range webhookObjects {
-		if err := commonwebhook.SetupValidatingWebhookWithConfig(&commonwebhook.Config{
+		commonwebhook.SetupValidatingWebhookWithConfig(&commonwebhook.Config{
 			Manager:          mgr,
 			WebhookPath:      obj.WebhookPath(),
 			ManagedNamespace: managedNamespaces,
 			Validator:        obj,
 			LicenseChecker:   checker,
-		}); err != nil {
-			gvk := obj.GetObjectKind().GroupVersionKind()
-			log.Error(err, "Failed to setup webhook", "group", gvk.Group, "version", gvk.Version, "kind", gvk.Kind)
-		}
+		})
 	}
 
 	// Logstash, Elasticsearch and ElasticsearchAutoscaling validating webhooks are wired up differently, in order to access the k8s client

@@ -89,7 +89,7 @@ func TestNewPodSpec(t *testing.T) {
 				},
 				Spec: corev1.PodSpec{
 					Volumes: []corev1.Volume{
-						configSecretVol.Volume(), configVolume.Volume(), httpCertsSecretVol.Volume(),
+						dataVolume.Volume(), configSecretVol.Volume(), configVolume.Volume(), httpCertsSecretVol.Volume(),
 					},
 					AutomountServiceAccountToken: &varFalse,
 					Containers: []corev1.Container{
@@ -131,9 +131,9 @@ func TestNewPodSpec(t *testing.T) {
 							},
 							ReadinessProbe: &probe,
 							Ports:          []corev1.ContainerPort{{Name: "https", ContainerPort: int32(HTTPPort), Protocol: corev1.ProtocolTCP}},
-							Command:        command,
+							Args:           args,
 							VolumeMounts: []corev1.VolumeMount{
-								configSecretVol.VolumeMount(), configVolume.VolumeMount(), httpCertsSecretVol.VolumeMount(),
+								dataVolume.VolumeMount(), configSecretVol.VolumeMount(), configVolume.VolumeMount(), httpCertsSecretVol.VolumeMount(),
 							},
 							Resources: DefaultResources,
 						},

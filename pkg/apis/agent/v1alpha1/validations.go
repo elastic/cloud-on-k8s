@@ -18,7 +18,6 @@ import (
 
 var (
 	defaultChecks = []func(*Agent) field.ErrorList{
-		checkPolicyID,
 		checkNoUnknownFields,
 		checkNameLength,
 		checkSupportedVersion,
@@ -60,20 +59,6 @@ func checkSupportedVersion(a *Agent) field.ErrorList {
 	}
 
 	return commonv1.CheckSupportedStackVersion(a.Spec.Version, version.SupportedAgentVersions)
-}
-
-func checkPolicyID(a *Agent) field.ErrorList {
-	v, err := commonv1.ParseVersion(a.Spec.Version)
-	if err != nil {
-		return err
-	}
-	if v.GTE(MandatoryPolicyIDVersion) && len(a.Spec.PolicyID) == 0 {
-		msg := "Agent policyID is mandatory"
-		return field.ErrorList{
-			field.Required(field.NewPath("spec").Child("policyID"), msg),
-		}
-	}
-	return nil
 }
 
 func checkAtMostOneDeploymentOption(a *Agent) field.ErrorList {
