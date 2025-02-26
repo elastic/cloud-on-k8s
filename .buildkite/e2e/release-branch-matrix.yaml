@@ -56,7 +56,7 @@
   fixed:
     E2E_PROVIDER: ocp
   mixed:
-    - DEPLOYER_CLIENT_VERSION: "4.17.0"
+    - DEPLOYER_CLIENT_VERSION: "4.18.1"
 
 - label: eks-arm
   fixed:
