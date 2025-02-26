@@ -7526,11 +7526,11 @@ DEALINGS IN THE SOFTWARE.
 
 --------------------------------------------------------------------------------
 Module  : github.com/go-jose/go-jose/v4
-Version : v4.0.1
-Time    : 2024-03-07T19:46:13Z
+Version : v4.0.5
+Time    : 2025-02-24T20:06:34Z
 Licence : Apache-2.0
 
-Contents of probable licence file $GOMODCACHE/github.com/go-jose/go-jose/v4@v4.0.1/LICENSE:
+Contents of probable licence file $GOMODCACHE/github.com/go-jose/go-jose/v4@v4.0.5/LICENSE:
 
 
                                  Apache License
