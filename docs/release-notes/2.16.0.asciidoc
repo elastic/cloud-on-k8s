@@ -4,7 +4,11 @@
 [[release-notes-2.16.0]]
 == {n} version 2.16.0
 
+[[breaking-2.16.0]]
+[float]
+=== Breaking changes
 
+* The initContainer for Kibana was renamed from `elastic-internal-init-config` to `elastic-internal-init` which could cause issues when a customer has overridden the `podtemplate.spec.initContainers` with custom values. The recommendation is to link:https://www.elastic.co/guide/en/cloud-on-k8s/current/k8s-troubleshooting-methods.html#k8s-exclude-resource[exclude the Kibana resource from reconciliation] temporarily during upgrade of ECK and adjust the Kibana manifest to match the new initContainer name after the ECK upgrade is complete. After the ECK upgrade is complete remove the managed annotation from the Kibana manifest. {issue}8426[#8426]
 
 [[feature-2.16.0]]
 [float]
