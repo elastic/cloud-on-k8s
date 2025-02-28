@@ -40,7 +40,7 @@ Package v1alpha1 contains API Schema definitions for the agent v1alpha1 API grou
 
 
 
-### Agent 
+### Agent  [#agent]
 
 Agent is the Schema for the Agents API.
 
@@ -54,7 +54,7 @@ Agent is the Schema for the Agents API.
 | *`spec`* __[AgentSpec](#agentspec)__ |  |
 
 
-### AgentMode (string) 
+### AgentMode (string)  [#agentmode]
 
 
 
@@ -65,7 +65,7 @@ Agent is the Schema for the Agents API.
 
 
 
-### AgentSpec 
+### AgentSpec  [#agentspec]
 
 AgentSpec defines the desired state of the Agent
 
@@ -95,7 +95,7 @@ AgentSpec defines the desired state of the Agent
 | *`fleetServerRef`* __[ObjectSelector](#objectselector)__ | FleetServerRef is a reference to Fleet Server that this Agent should connect to to obtain it's configuration.<br>Don't set unless `mode` is set to `fleet`. |
 
 
-### DaemonSetSpec 
+### DaemonSetSpec  [#daemonsetspec]
 
 
 
@@ -110,7 +110,7 @@ AgentSpec defines the desired state of the Agent
 | *`updateStrategy`* __[DaemonSetUpdateStrategy](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.32/#daemonsetupdatestrategy-v1-apps)__ |  |
 
 
-### DeploymentSpec 
+### DeploymentSpec  [#deploymentspec]
 
 
 
@@ -126,7 +126,7 @@ AgentSpec defines the desired state of the Agent
 | *`strategy`* __[DeploymentStrategy](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.32/#deploymentstrategy-v1-apps)__ |  |
 
 
-### Output 
+### Output  [#output]
 
 
 
@@ -141,7 +141,7 @@ AgentSpec defines the desired state of the Agent
 | *`outputName`* __string__ |  |
 
 
-### StatefulSetSpec 
+### StatefulSetSpec  [#statefulsetspec]
 
 
 
@@ -170,7 +170,7 @@ Package v1 contains API schema definitions for managing APM Server resources.
 
 
 
-### ApmServer 
+### ApmServer  [#apmserver]
 
 ApmServer represents an APM Server resource in a Kubernetes cluster.
 
@@ -184,7 +184,7 @@ ApmServer represents an APM Server resource in a Kubernetes cluster.
 | *`spec`* __[ApmServerSpec](#apmserverspec)__ |  |
 
 
-### ApmServerSpec 
+### ApmServerSpec  [#apmserverspec]
 
 ApmServerSpec holds the specification of an APM Server.
 
@@ -219,7 +219,7 @@ Package v1beta1 contains API schema definitions for managing APM Server resource
 
 
 
-### ApmServer 
+### ApmServer  [#apmserver]
 
 ApmServer represents an APM Server resource in a Kubernetes cluster.
 
@@ -233,7 +233,7 @@ ApmServer represents an APM Server resource in a Kubernetes cluster.
 | *`spec`* __[ApmServerSpec](#apmserverspec)__ |  |
 
 
-### ApmServerSpec 
+### ApmServerSpec  [#apmserverspec]
 
 ApmServerSpec holds the specification of an APM Server.
 
@@ -265,7 +265,7 @@ Package v1alpha1 contains API schema definitions for managing ElasticsearchAutos
 
 
 
-### ElasticsearchAutoscaler 
+### ElasticsearchAutoscaler  [#elasticsearchautoscaler]
 
 ElasticsearchAutoscaler represents an ElasticsearchAutoscaler resource in a Kubernetes cluster.
 
@@ -279,7 +279,7 @@ ElasticsearchAutoscaler represents an ElasticsearchAutoscaler resource in a Kube
 | *`spec`* __[ElasticsearchAutoscalerSpec](#elasticsearchautoscalerspec)__ |  |
 
 
-### ElasticsearchAutoscalerSpec 
+### ElasticsearchAutoscalerSpec  [#elasticsearchautoscalerspec]
 
 ElasticsearchAutoscalerSpec holds the specification of an Elasticsearch autoscaler resource.
 
@@ -294,7 +294,7 @@ ElasticsearchAutoscalerSpec holds the specification of an Elasticsearch autoscal
 | *`pollingPeriod`* __[Duration](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.32/#duration-v1-meta)__ | PollingPeriod is the period at which to synchronize with the Elasticsearch autoscaling API. |
 
 
-### ElasticsearchRef 
+### ElasticsearchRef  [#elasticsearchref]
 
 ElasticsearchRef is a reference to an Elasticsearch cluster that exists in the same namespace.
 
@@ -319,7 +319,7 @@ Package v1beta1 contains API Schema definitions for the beat v1beta1 API group
 
 
 
-### Beat 
+### Beat  [#beat]
 
 Beat is the Schema for the Beats API.
 
@@ -333,7 +333,7 @@ Beat is the Schema for the Beats API.
 | *`spec`* __[BeatSpec](#beatspec)__ |  |
 
 
-### BeatSpec 
+### BeatSpec  [#beatspec]
 
 BeatSpec defines the desired state of a Beat.
 
@@ -359,7 +359,7 @@ BeatSpec defines the desired state of a Beat.
 | *`revisionHistoryLimit`* __integer__ | RevisionHistoryLimit is the number of revisions to retain to allow rollback in the underlying DaemonSet or Deployment. |
 
 
-### DaemonSetSpec 
+### DaemonSetSpec  [#daemonsetspec]
 
 
 
@@ -374,7 +374,7 @@ BeatSpec defines the desired state of a Beat.
 | *`updateStrategy`* __[DaemonSetUpdateStrategy](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.32/#daemonsetupdatestrategy-v1-apps)__ |  |
 
 
-### DeploymentSpec 
+### DeploymentSpec  [#deploymentspec]
 
 
 
@@ -400,7 +400,7 @@ Package v1 contains API schema definitions for common types used by all resource
 
 
 
-### Config 
+### Config  [#config]
 
 Config represents untyped YAML configuration.
 
@@ -423,7 +423,7 @@ Config represents untyped YAML configuration.
 
 
 
-### ConfigMapRef 
+### ConfigMapRef  [#configmapref]
 
 ConfigMapRef is a reference to a config map that exists in the same namespace as the referring resource.
 
@@ -437,7 +437,7 @@ ConfigMapRef is a reference to a config map that exists in the same namespace as
 | *`configMapName`* __string__ |  |
 
 
-### ConfigSource 
+### ConfigSource  [#configsource]
 
 ConfigSource references configuration settings.
 
@@ -458,7 +458,7 @@ ConfigSource references configuration settings.
 
 
 
-### HTTPConfig 
+### HTTPConfig  [#httpconfig]
 
 HTTPConfig holds the HTTP layer configuration for resources.
 
@@ -483,7 +483,7 @@ HTTPConfig holds the HTTP layer configuration for resources.
 
 
 
-### KeyToPath 
+### KeyToPath  [#keytopath]
 
 KeyToPath defines how to map a key in a Secret object to a filesystem path.
 
@@ -498,7 +498,7 @@ KeyToPath defines how to map a key in a Secret object to a filesystem path.
 | *`path`* __string__ | Path is the relative file path to map the key to.<br>Path must not be an absolute file path and must not contain any ".." components. |
 
 
-### LocalObjectSelector 
+### LocalObjectSelector  [#localobjectselector]
 
 LocalObjectSelector defines a reference to a Kubernetes object corresponding to an Elastic resource managed by the operator
 
@@ -514,7 +514,7 @@ LocalObjectSelector defines a reference to a Kubernetes object corresponding to 
 | *`serviceName`* __string__ | ServiceName is the name of an existing Kubernetes service which is used to make requests to the referenced<br>object. It has to be in the same namespace as the referenced resource. If left empty, the default HTTP service of<br>the referenced resource is used. |
 
 
-### LogsMonitoring 
+### LogsMonitoring  [#logsmonitoring]
 
 LogsMonitoring holds a list of Elasticsearch clusters which receive logs data from
 associated resources.
@@ -529,7 +529,7 @@ associated resources.
 | *`elasticsearchRefs`* __[ObjectSelector](#objectselector) array__ | ElasticsearchRefs is a reference to a list of monitoring Elasticsearch clusters running in the same Kubernetes cluster.<br>Due to existing limitations, only a single Elasticsearch cluster is currently supported. |
 
 
-### MetricsMonitoring 
+### MetricsMonitoring  [#metricsmonitoring]
 
 MetricsMonitoring holds a list of Elasticsearch clusters which receive monitoring data from
 associated resources.
@@ -544,7 +544,7 @@ associated resources.
 | *`elasticsearchRefs`* __[ObjectSelector](#objectselector) array__ | ElasticsearchRefs is a reference to a list of monitoring Elasticsearch clusters running in the same Kubernetes cluster.<br>Due to existing limitations, only a single Elasticsearch cluster is currently supported. |
 
 
-### Monitoring 
+### Monitoring  [#monitoring]
 
 Monitoring holds references to both the metrics, and logs Elasticsearch clusters for
 configuring stack monitoring.
@@ -563,7 +563,7 @@ configuring stack monitoring.
 | *`logs`* __[LogsMonitoring](#logsmonitoring)__ | Logs holds references to Elasticsearch clusters which receive log data from an associated resource. |
 
 
-### ObjectSelector 
+### ObjectSelector  [#objectselector]
 
 ObjectSelector defines a reference to a Kubernetes object which can be an Elastic resource managed by the operator
 or a Secret describing an external Elastic resource not managed by the operator.
@@ -591,7 +591,7 @@ or a Secret describing an external Elastic resource not managed by the operator.
 | *`secretName`* __string__ | SecretName is the name of an existing Kubernetes secret that contains connection information for associating an<br>Elastic resource not managed by the operator. The referenced secret must contain the following:<br>- `url`: the URL to reach the Elastic resource<br>- `username`: the username of the user to be authenticated to the Elastic resource<br>- `password`: the password of the user to be authenticated to the Elastic resource<br>- `ca.crt`: the CA certificate in PEM format (optional)<br>- `api-key`: the key to authenticate against the Elastic resource instead of a username and password (supported only for `elasticsearchRefs` in AgentSpec and in BeatSpec)<br>This field cannot be used in combination with the other fields name, namespace or serviceName. |
 
 
-### PodDisruptionBudgetTemplate 
+### PodDisruptionBudgetTemplate  [#poddisruptionbudgettemplate]
 
 PodDisruptionBudgetTemplate defines the template for creating a PodDisruptionBudget.
 
@@ -606,7 +606,7 @@ PodDisruptionBudgetTemplate defines the template for creating a PodDisruptionBud
 | *`spec`* __[PodDisruptionBudgetSpec](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.32/#poddisruptionbudgetspec-v1-policy)__ | Spec is the specification of the PDB. |
 
 
-### SecretRef 
+### SecretRef  [#secretref]
 
 SecretRef is a reference to a secret that exists in the same namespace.
 
@@ -624,7 +624,7 @@ SecretRef is a reference to a secret that exists in the same namespace.
 | *`secretName`* __string__ | SecretName is the name of the secret. |
 
 
-### SecretSource 
+### SecretSource  [#secretsource]
 
 SecretSource defines a data source based on a Kubernetes Secret.
 
@@ -647,7 +647,7 @@ SecretSource defines a data source based on a Kubernetes Secret.
 | *`entries`* __[KeyToPath](#keytopath) array__ | Entries define how to project each key-value pair in the secret to filesystem paths.<br>If not defined, all keys will be projected to similarly named paths in the filesystem.<br>If defined, only the specified keys will be projected to the corresponding paths. |
 
 
-### SelfSignedCertificate 
+### SelfSignedCertificate  [#selfsignedcertificate]
 
 SelfSignedCertificate holds configuration for the self-signed certificate generated by the operator.
 
@@ -664,7 +664,7 @@ SelfSignedCertificate holds configuration for the self-signed certificate genera
 
 
 
-### ServiceTemplate 
+### ServiceTemplate  [#servicetemplate]
 
 ServiceTemplate defines the template for a Kubernetes Service.
 
@@ -681,7 +681,7 @@ ServiceTemplate defines the template for a Kubernetes Service.
 | *`spec`* __[ServiceSpec](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.32/#servicespec-v1-core)__ | Spec is the specification of the service. |
 
 
-### SubjectAlternativeName 
+### SubjectAlternativeName  [#subjectalternativename]
 
 SubjectAlternativeName represents a SAN entry in a x509 certificate.
 
@@ -697,7 +697,7 @@ SubjectAlternativeName represents a SAN entry in a x509 certificate.
 | *`ip`* __string__ | IP is the IP address of the subject. |
 
 
-### TLSOptions 
+### TLSOptions  [#tlsoptions]
 
 TLSOptions holds TLS configuration options.
 
@@ -721,7 +721,7 @@ Package v1alpha1 contains API schema definitions for common types used by all re
 
 
 
-### Condition 
+### Condition  [#condition]
 
 Condition represents Elasticsearch resource's condition.
 **This API is in technical preview and may be changed or removed in a future release.**
@@ -739,7 +739,7 @@ Condition represents Elasticsearch resource's condition.
 | *`message`* __string__ |  |
 
 
-### ConditionType (string) 
+### ConditionType (string)  [#conditiontype]
 
 ConditionType defines the condition of an Elasticsearch resource.
 
@@ -750,7 +750,7 @@ ConditionType defines the condition of an Elasticsearch resource.
 
 
 
-### Conditions ([Condition](#condition)) 
+### Conditions ([Condition](#condition))  [#conditions]
 
 
 
@@ -791,7 +791,7 @@ Package v1beta1 contains API schema definitions for common types used by all res
 
 
 
-### Config 
+### Config  [#config]
 
 Config represents untyped YAML configuration.
 
@@ -804,7 +804,7 @@ Config represents untyped YAML configuration.
 
 
 
-### HTTPConfig 
+### HTTPConfig  [#httpconfig]
 
 HTTPConfig holds the HTTP layer configuration for resources.
 
@@ -821,7 +821,7 @@ HTTPConfig holds the HTTP layer configuration for resources.
 | *`tls`* __[TLSOptions](#tlsoptions)__ | TLS defines options for configuring TLS for HTTP. |
 
 
-### KeyToPath 
+### KeyToPath  [#keytopath]
 
 KeyToPath defines how to map a key in a Secret object to a filesystem path.
 
@@ -836,7 +836,7 @@ KeyToPath defines how to map a key in a Secret object to a filesystem path.
 | *`path`* __string__ | Path is the relative file path to map the key to.<br>Path must not be an absolute file path and must not contain any ".." components. |
 
 
-### ObjectSelector 
+### ObjectSelector  [#objectselector]
 
 ObjectSelector defines a reference to a Kubernetes object.
 
@@ -852,7 +852,7 @@ ObjectSelector defines a reference to a Kubernetes object.
 | *`namespace`* __string__ | Namespace of the Kubernetes object. If empty, defaults to the current namespace. |
 
 
-### PodDisruptionBudgetTemplate 
+### PodDisruptionBudgetTemplate  [#poddisruptionbudgettemplate]
 
 PodDisruptionBudgetTemplate defines the template for creating a PodDisruptionBudget.
 
@@ -867,7 +867,7 @@ PodDisruptionBudgetTemplate defines the template for creating a PodDisruptionBud
 | *`spec`* __[PodDisruptionBudgetSpec](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.32/#poddisruptionbudgetspec-v1beta1-policy)__ | Spec is the specification of the PDB. |
 
 
-### SecretRef 
+### SecretRef  [#secretref]
 
 SecretRef is a reference to a secret that exists in the same namespace.
 
@@ -881,7 +881,7 @@ SecretRef is a reference to a secret that exists in the same namespace.
 | *`secretName`* __string__ | SecretName is the name of the secret. |
 
 
-### SecretSource 
+### SecretSource  [#secretsource]
 
 SecretSource defines a data source based on a Kubernetes Secret.
 
@@ -898,7 +898,7 @@ SecretSource defines a data source based on a Kubernetes Secret.
 | *`entries`* __[KeyToPath](#keytopath) array__ | Entries define how to project each key-value pair in the secret to filesystem paths.<br>If not defined, all keys will be projected to similarly named paths in the filesystem.<br>If defined, only the specified keys will be projected to the corresponding paths. |
 
 
-### SelfSignedCertificate 
+### SelfSignedCertificate  [#selfsignedcertificate]
 
 SelfSignedCertificate holds configuration for the self-signed certificate generated by the operator.
 
@@ -913,7 +913,7 @@ SelfSignedCertificate holds configuration for the self-signed certificate genera
 | *`disabled`* __boolean__ | Disabled indicates that the provisioning of the self-signed certifcate should be disabled. |
 
 
-### ServiceTemplate 
+### ServiceTemplate  [#servicetemplate]
 
 ServiceTemplate defines the template for a Kubernetes Service.
 
@@ -928,7 +928,7 @@ ServiceTemplate defines the template for a Kubernetes Service.
 | *`spec`* __[ServiceSpec](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.32/#servicespec-v1-core)__ | Spec is the specification of the service. |
 
 
-### SubjectAlternativeName 
+### SubjectAlternativeName  [#subjectalternativename]
 
 SubjectAlternativeName represents a SAN entry in a x509 certificate.
 
@@ -943,7 +943,7 @@ SubjectAlternativeName represents a SAN entry in a x509 certificate.
 | *`ip`* __string__ | IP is the IP address of the subject. |
 
 
-### TLSOptions 
+### TLSOptions  [#tlsoptions]
 
 TLSOptions holds TLS configuration options.
 
@@ -969,7 +969,7 @@ Package v1 contains API schema definitions for managing Elasticsearch resources.
 
 
 
-### Auth 
+### Auth  [#auth]
 
 Auth contains user authentication and authorization security settings for Elasticsearch.
 
@@ -987,7 +987,7 @@ Auth contains user authentication and authorization security settings for Elasti
 
 
 
-### ChangeBudget 
+### ChangeBudget  [#changebudget]
 
 ChangeBudget defines the constraints to consider when applying changes to the Elasticsearch cluster.
 
@@ -1004,7 +1004,7 @@ ChangeBudget defines the constraints to consider when applying changes to the El
 
 
 
-### DownscaleOperation 
+### DownscaleOperation  [#downscaleoperation]
 
 DownscaleOperation provides details about in progress downscale operations.
 **This API is in technical preview and may be changed or removed in a future release.**
@@ -1021,7 +1021,7 @@ DownscaleOperation provides details about in progress downscale operations.
 | *`stalled`* __boolean__ | Stalled represents a state where no progress can be made.<br>It is only available for clusters managed with the Elasticsearch shutdown API. |
 
 
-### DownscaledNode 
+### DownscaledNode  [#downscalednode]
 
 DownscaledNode provides an overview of in progress changes applied by the operator to remove Elasticsearch nodes from the cluster.
 **This API is in technical preview and may be changed or removed in a future release.**
@@ -1038,7 +1038,7 @@ DownscaledNode provides an overview of in progress changes applied by the operat
 | *`explanation`* __string__ | Explanation provides details about an in progress node shutdown. It is only available for clusters managed with the<br>Elasticsearch shutdown API. |
 
 
-### Elasticsearch 
+### Elasticsearch  [#elasticsearch]
 
 Elasticsearch represents an Elasticsearch resource in a Kubernetes cluster.
 
@@ -1053,7 +1053,7 @@ Elasticsearch represents an Elasticsearch resource in a Kubernetes cluster.
 | *`status`* __[ElasticsearchStatus](#elasticsearchstatus)__ |  |
 
 
-### ElasticsearchHealth (string) 
+### ElasticsearchHealth (string)  [#elasticsearchhealth]
 
 ElasticsearchHealth is the health of the cluster as returned by the health API.
 
@@ -1064,7 +1064,7 @@ ElasticsearchHealth is the health of the cluster as returned by the health API.
 
 
 
-### ElasticsearchOrchestrationPhase (string) 
+### ElasticsearchOrchestrationPhase (string)  [#elasticsearchorchestrationphase]
 
 ElasticsearchOrchestrationPhase is the phase Elasticsearch is in from the controller point of view.
 
@@ -1075,7 +1075,7 @@ ElasticsearchOrchestrationPhase is the phase Elasticsearch is in from the contro
 
 
 
-### ElasticsearchSpec 
+### ElasticsearchSpec  [#elasticsearchspec]
 
 ElasticsearchSpec holds the specification of an Elasticsearch cluster.
 
@@ -1103,7 +1103,7 @@ ElasticsearchSpec holds the specification of an Elasticsearch cluster.
 | *`revisionHistoryLimit`* __integer__ | RevisionHistoryLimit is the number of revisions to retain to allow rollback in the underlying StatefulSets. |
 
 
-### ElasticsearchStatus 
+### ElasticsearchStatus  [#elasticsearchstatus]
 
 ElasticsearchStatus represents the observed state of Elasticsearch.
 
@@ -1123,7 +1123,7 @@ ElasticsearchStatus represents the observed state of Elasticsearch.
 | *`observedGeneration`* __integer__ | ObservedGeneration is the most recent generation observed for this Elasticsearch cluster.<br>It corresponds to the metadata generation, which is updated on mutation by the API Server.<br>If the generation observed in status diverges from the generation in metadata, the Elasticsearch<br>controller has not yet processed the changes contained in the Elasticsearch specification. |
 
 
-### FieldSecurity 
+### FieldSecurity  [#fieldsecurity]
 
 
 
@@ -1138,7 +1138,7 @@ ElasticsearchStatus represents the observed state of Elasticsearch.
 | *`except`* __string array__ |  |
 
 
-### FileRealmSource 
+### FileRealmSource  [#filerealmsource]
 
 FileRealmSource references users to create in the Elasticsearch cluster.
 
@@ -1152,7 +1152,7 @@ FileRealmSource references users to create in the Elasticsearch cluster.
 | *`secretName`* __string__ | SecretName is the name of the secret. |
 
 
-### InProgressOperations 
+### InProgressOperations  [#inprogressoperations]
 
 InProgressOperations provides details about in progress changes applied by the operator on the Elasticsearch cluster.
 **This API is in technical preview and may be changed or removed in a future release.**
@@ -1169,7 +1169,7 @@ InProgressOperations provides details about in progress changes applied by the o
 | *`upscale`* __[UpscaleOperation](#upscaleoperation)__ |  |
 
 
-### NewNode 
+### NewNode  [#newnode]
 
 
 
@@ -1185,7 +1185,7 @@ InProgressOperations provides details about in progress changes applied by the o
 | *`message`* __string__ | Optional message to explain why a node may not be immediately added. |
 
 
-### NewNodeStatus (string) 
+### NewNodeStatus (string)  [#newnodestatus]
 
 NewNodeStatus provides details about the status of nodes which are expected to be created and added to the Elasticsearch cluster.
 **This API is in technical preview and may be changed or removed in a future release.**
@@ -1201,7 +1201,7 @@ NewNodeStatus provides details about the status of nodes which are expected to b
 
 
 
-### NodeSet 
+### NodeSet  [#nodeset]
 
 NodeSet is the specification for a group of Elasticsearch nodes sharing the same configuration and a Pod template.
 
@@ -1219,7 +1219,7 @@ NodeSet is the specification for a group of Elasticsearch nodes sharing the same
 | *`volumeClaimTemplates`* __[PersistentVolumeClaim](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.32/#persistentvolumeclaim-v1-core) array__ | VolumeClaimTemplates is a list of persistent volume claims to be used by each Pod in this NodeSet.<br>Every claim in this list must have a matching volumeMount in one of the containers defined in the PodTemplate.<br>Items defined here take precedence over any default claims added by the operator with the same name. |
 
 
-### RemoteCluster 
+### RemoteCluster  [#remotecluster]
 
 RemoteCluster declares a remote Elasticsearch cluster connection.
 
@@ -1235,7 +1235,7 @@ RemoteCluster declares a remote Elasticsearch cluster connection.
 | *`apiKey`* __[RemoteClusterAPIKey](#remoteclusterapikey)__ | APIKey can be used to enable remote cluster access using Cross-Cluster API keys: https://www.elastic.co/guide/en/elasticsearch/reference/current/security-api-create-cross-cluster-api-key.html |
 
 
-### RemoteClusterAPIKey 
+### RemoteClusterAPIKey  [#remoteclusterapikey]
 
 RemoteClusterAPIKey defines a remote cluster API Key.
 
@@ -1249,7 +1249,7 @@ RemoteClusterAPIKey defines a remote cluster API Key.
 | *`access`* __[RemoteClusterAccess](#remoteclusteraccess)__ | Access is the name of the API Key. It is automatically generated if not set or empty. |
 
 
-### RemoteClusterAccess 
+### RemoteClusterAccess  [#remoteclusteraccess]
 
 RemoteClusterAccess models the API key specification as documented in https://www.elastic.co/guide/en/elasticsearch/reference/current/security-api-create-cross-cluster-api-key.html
 
@@ -1264,7 +1264,7 @@ RemoteClusterAccess models the API key specification as documented in https://ww
 | *`replication`* __[Replication](#replication)__ |  |
 
 
-### RemoteClusterServer 
+### RemoteClusterServer  [#remoteclusterserver]
 
 
 
@@ -1278,7 +1278,7 @@ RemoteClusterAccess models the API key specification as documented in https://ww
 | *`enabled`* __boolean__ |  |
 
 
-### Replication 
+### Replication  [#replication]
 
 
 
@@ -1292,7 +1292,7 @@ RemoteClusterAccess models the API key specification as documented in https://ww
 | *`names`* __string array__ |  |
 
 
-### RoleSource 
+### RoleSource  [#rolesource]
 
 RoleSource references roles to create in the Elasticsearch cluster.
 
@@ -1306,7 +1306,7 @@ RoleSource references roles to create in the Elasticsearch cluster.
 | *`secretName`* __string__ | SecretName is the name of the secret. |
 
 
-### Search 
+### Search  [#search]
 
 
 
@@ -1323,7 +1323,7 @@ RoleSource references roles to create in the Elasticsearch cluster.
 | *`allow_restricted_indices`* __boolean__ |  |
 
 
-### SelfSignedTransportCertificates 
+### SelfSignedTransportCertificates  [#selfsignedtransportcertificates]
 
 SelfSignedTransportCertificates holds configuration for the self-signed certificates generated by the operator.
 
@@ -1337,7 +1337,7 @@ SelfSignedTransportCertificates holds configuration for the self-signed certific
 | *`disabled`* __boolean__ | Disabled indicates that provisioning of the self-signed certificates should be disabled. |
 
 
-### TransportConfig 
+### TransportConfig  [#transportconfig]
 
 TransportConfig holds the transport layer settings for Elasticsearch.
 
@@ -1352,7 +1352,7 @@ TransportConfig holds the transport layer settings for Elasticsearch.
 | *`tls`* __[TransportTLSOptions](#transporttlsoptions)__ | TLS defines options for configuring TLS on the transport layer. |
 
 
-### TransportTLSOptions 
+### TransportTLSOptions  [#transporttlsoptions]
 
 
 
@@ -1370,7 +1370,7 @@ TransportConfig holds the transport layer settings for Elasticsearch.
 | *`selfSignedCertificates`* __[SelfSignedTransportCertificates](#selfsignedtransportcertificates)__ | SelfSignedCertificates allows configuring the self-signed certificate generated by the operator. |
 
 
-### UpdateStrategy 
+### UpdateStrategy  [#updatestrategy]
 
 UpdateStrategy specifies how updates to the cluster should be performed.
 
@@ -1384,7 +1384,7 @@ UpdateStrategy specifies how updates to the cluster should be performed.
 | *`changeBudget`* __[ChangeBudget](#changebudget)__ | ChangeBudget defines the constraints to consider when applying changes to the Elasticsearch cluster. |
 
 
-### UpgradeOperation 
+### UpgradeOperation  [#upgradeoperation]
 
 UpgradeOperation provides an overview of the pending or in progress changes applied by the operator to update the Elasticsearch nodes in the cluster.
 **This API is in technical preview and may be changed or removed in a future release.**
@@ -1400,7 +1400,7 @@ UpgradeOperation provides an overview of the pending or in progress changes appl
 | *`nodes`* __[UpgradedNode](#upgradednode) array__ | Nodes that must be restarted for upgrade. |
 
 
-### UpgradedNode 
+### UpgradedNode  [#upgradednode]
 
 UpgradedNode provides details about the status of nodes which are expected to be updated.
 **This API is in technical preview and may be changed or removed in a future release.**
@@ -1418,7 +1418,7 @@ UpgradedNode provides details about the status of nodes which are expected to be
 | *`predicate`* __string__ | Predicate is the name of the predicate currently preventing this node from being deleted for an upgrade. |
 
 
-### UpscaleOperation 
+### UpscaleOperation  [#upscaleoperation]
 
 UpscaleOperation provides an overview of in progress changes applied by the operator to add Elasticsearch nodes to the cluster.
 **This API is in technical preview and may be changed or removed in a future release.**
@@ -1434,7 +1434,7 @@ UpscaleOperation provides an overview of in progress changes applied by the oper
 | *`nodes`* __[NewNode](#newnode) array__ | Nodes expected to be added by the operator. |
 
 
-### VolumeClaimDeletePolicy (string) 
+### VolumeClaimDeletePolicy (string)  [#volumeclaimdeletepolicy]
 
 VolumeClaimDeletePolicy describes the delete policy for handling PersistentVolumeClaims that hold Elasticsearch data.
 Inspired by https://github.com/kubernetes/enhancements/pull/2440
@@ -1457,7 +1457,7 @@ Package v1beta1 contains API schema definitions for managing Elasticsearch resou
 
 
 
-### ChangeBudget 
+### ChangeBudget  [#changebudget]
 
 ChangeBudget defines the constraints to consider when applying changes to the Elasticsearch cluster.
 
@@ -1474,7 +1474,7 @@ ChangeBudget defines the constraints to consider when applying changes to the El
 
 
 
-### Elasticsearch 
+### Elasticsearch  [#elasticsearch]
 
 Elasticsearch represents an Elasticsearch resource in a Kubernetes cluster.
 
@@ -1489,7 +1489,7 @@ Elasticsearch represents an Elasticsearch resource in a Kubernetes cluster.
 | *`status`* __[ElasticsearchStatus](#elasticsearchstatus)__ |  |
 
 
-### ElasticsearchHealth (string) 
+### ElasticsearchHealth (string)  [#elasticsearchhealth]
 
 ElasticsearchHealth is the health of the cluster as returned by the health API.
 
@@ -1500,7 +1500,7 @@ ElasticsearchHealth is the health of the cluster as returned by the health API.
 
 
 
-### ElasticsearchOrchestrationPhase (string) 
+### ElasticsearchOrchestrationPhase (string)  [#elasticsearchorchestrationphase]
 
 ElasticsearchOrchestrationPhase is the phase Elasticsearch is in from the controller point of view.
 
@@ -1511,7 +1511,7 @@ ElasticsearchOrchestrationPhase is the phase Elasticsearch is in from the contro
 
 
 
-### ElasticsearchSpec 
+### ElasticsearchSpec  [#elasticsearchspec]
 
 ElasticsearchSpec holds the specification of an Elasticsearch cluster.
 
@@ -1531,7 +1531,7 @@ ElasticsearchSpec holds the specification of an Elasticsearch cluster.
 | *`secureSettings`* __[SecretSource](#secretsource) array__ | SecureSettings is a list of references to Kubernetes secrets containing sensitive configuration options for Elasticsearch. |
 
 
-### ElasticsearchStatus 
+### ElasticsearchStatus  [#elasticsearchstatus]
 
 ElasticsearchStatus defines the observed state of Elasticsearch
 
@@ -1548,7 +1548,7 @@ ElasticsearchStatus defines the observed state of Elasticsearch
 
 
 
-### NodeSet 
+### NodeSet  [#nodeset]
 
 NodeSet is the specification for a group of Elasticsearch nodes sharing the same configuration and a Pod template.
 
@@ -1566,7 +1566,7 @@ NodeSet is the specification for a group of Elasticsearch nodes sharing the same
 | *`volumeClaimTemplates`* __[PersistentVolumeClaim](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.32/#persistentvolumeclaim-v1-core) array__ | VolumeClaimTemplates is a list of persistent volume claims to be used by each Pod in this NodeSet.<br>Every claim in this list must have a matching volumeMount in one of the containers defined in the PodTemplate.<br>Items defined here take precedence over any default claims added by the operator with the same name. |
 
 
-### UpdateStrategy 
+### UpdateStrategy  [#updatestrategy]
 
 UpdateStrategy specifies how updates to the cluster should be performed.
 
@@ -1593,7 +1593,7 @@ Package v1beta1 contains API schema definitions for managing Enterprise Search r
 
 
 
-### EnterpriseSearch 
+### EnterpriseSearch  [#enterprisesearch]
 
 EnterpriseSearch is a Kubernetes CRD to represent Enterprise Search.
 
@@ -1607,7 +1607,7 @@ EnterpriseSearch is a Kubernetes CRD to represent Enterprise Search.
 | *`spec`* __[EnterpriseSearchSpec](#enterprisesearchspec)__ |  |
 
 
-### EnterpriseSearchSpec 
+### EnterpriseSearchSpec  [#enterprisesearchspec]
 
 EnterpriseSearchSpec holds the specification of an Enterprise Search resource.
 
@@ -1641,7 +1641,7 @@ Package v1beta1 contains API schema definitions for managing Enterprise Search r
 
 
 
-### EnterpriseSearch 
+### EnterpriseSearch  [#enterprisesearch]
 
 EnterpriseSearch is a Kubernetes CRD to represent Enterprise Search.
 
@@ -1655,7 +1655,7 @@ EnterpriseSearch is a Kubernetes CRD to represent Enterprise Search.
 | *`spec`* __[EnterpriseSearchSpec](#enterprisesearchspec)__ |  |
 
 
-### EnterpriseSearchSpec 
+### EnterpriseSearchSpec  [#enterprisesearchspec]
 
 EnterpriseSearchSpec holds the specification of an Enterprise Search resource.
 
@@ -1688,7 +1688,7 @@ Package v1 contains API schema definitions for managing Kibana resources.
 
 
 
-### Kibana 
+### Kibana  [#kibana]
 
 Kibana represents a Kibana resource in a Kubernetes cluster.
 
@@ -1702,7 +1702,7 @@ Kibana represents a Kibana resource in a Kubernetes cluster.
 | *`spec`* __[KibanaSpec](#kibanaspec)__ |  |
 
 
-### KibanaSpec 
+### KibanaSpec  [#kibanaspec]
 
 KibanaSpec holds the specification of a Kibana instance.
 
@@ -1738,7 +1738,7 @@ Package v1beta1 contains API schema definitions for managing Kibana resources.
 
 
 
-### Kibana 
+### Kibana  [#kibana]
 
 Kibana represents a Kibana resource in a Kubernetes cluster.
 
@@ -1752,7 +1752,7 @@ Kibana represents a Kibana resource in a Kubernetes cluster.
 | *`spec`* __[KibanaSpec](#kibanaspec)__ |  |
 
 
-### KibanaSpec 
+### KibanaSpec  [#kibanaspec]
 
 KibanaSpec holds the specification of a Kibana instance.
 
@@ -1784,7 +1784,7 @@ Package v1alpha1 contains API Schema definitions for the logstash v1alpha1 API g
 
 
 
-### ElasticsearchCluster 
+### ElasticsearchCluster  [#elasticsearchcluster]
 
 ElasticsearchCluster is a named reference to an Elasticsearch cluster which can be used in a Logstash pipeline.
 
@@ -1799,7 +1799,7 @@ ElasticsearchCluster is a named reference to an Elasticsearch cluster which can 
 | *`clusterName`* __string__ | ClusterName is an alias for the cluster to be used to refer to the Elasticsearch cluster in Logstash<br>configuration files, and will be used to identify "named clusters" in Logstash |
 
 
-### Logstash 
+### Logstash  [#logstash]
 
 Logstash is the Schema for the logstashes API
 
@@ -1814,7 +1814,7 @@ Logstash is the Schema for the logstashes API
 | *`status`* __[LogstashStatus](#logstashstatus)__ |  |
 
 
-### LogstashHealth (string) 
+### LogstashHealth (string)  [#logstashhealth]
 
 
 
@@ -1825,7 +1825,7 @@ Logstash is the Schema for the logstashes API
 
 
 
-### LogstashService 
+### LogstashService  [#logstashservice]
 
 
 
@@ -1841,7 +1841,7 @@ Logstash is the Schema for the logstashes API
 | *`tls`* __[TLSOptions](#tlsoptions)__ | TLS defines options for configuring TLS for HTTP. |
 
 
-### LogstashSpec 
+### LogstashSpec  [#logstashspec]
 
 LogstashSpec defines the desired state of Logstash
 
@@ -1870,7 +1870,7 @@ LogstashSpec defines the desired state of Logstash
 | *`volumeClaimTemplates`* __[PersistentVolumeClaim](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.32/#persistentvolumeclaim-v1-core) array__ | VolumeClaimTemplates is a list of persistent volume claims to be used by each Pod.<br>Every claim in this list must have a matching volumeMount in one of the containers defined in the PodTemplate.<br>Items defined here take precedence over any default claims added by the operator with the same name. |
 
 
-### LogstashStatus 
+### LogstashStatus  [#logstashstatus]
 
 LogstashStatus defines the observed state of Logstash
 
@@ -1901,7 +1901,7 @@ Package v1alpha1 contains API schema definitions for managing Elastic Maps Serve
 
 
 
-### ElasticMapsServer 
+### ElasticMapsServer  [#elasticmapsserver]
 
 ElasticMapsServer represents an Elastic Map Server resource in a Kubernetes cluster.
 
@@ -1918,7 +1918,7 @@ ElasticMapsServer represents an Elastic Map Server resource in a Kubernetes clus
 | *`spec`* __[MapsSpec](#mapsspec)__ |  |
 
 
-### ElasticMapsServerList 
+### ElasticMapsServerList  [#elasticmapsserverlist]
 
 ElasticMapsServerList contains a list of ElasticMapsServer
 
@@ -1932,7 +1932,7 @@ ElasticMapsServerList contains a list of ElasticMapsServer
 | *`items`* __[ElasticMapsServer](#elasticmapsserver) array__ |  |
 
 
-### MapsSpec 
+### MapsSpec  [#mapsspec]
 
 MapsSpec holds the specification of an Elastic Maps Server instance.
 
@@ -1966,7 +1966,7 @@ Package v1alpha1 contains API schema definitions for managing StackConfigPolicy 
 
 
 
-### ElasticsearchConfigPolicySpec 
+### ElasticsearchConfigPolicySpec  [#elasticsearchconfigpolicyspec]
 
 
 
@@ -1989,7 +1989,7 @@ Package v1alpha1 contains API schema definitions for managing StackConfigPolicy 
 | *`secureSettings`* __[SecretSource](#secretsource) array__ | SecureSettings are additional Secrets that contain data to be configured to Elasticsearch's keystore. |
 
 
-### IndexTemplates 
+### IndexTemplates  [#indextemplates]
 
 
 
@@ -2004,7 +2004,7 @@ Package v1alpha1 contains API schema definitions for managing StackConfigPolicy 
 | *`composableIndexTemplates`* __[Config](#config)__ | ComposableIndexTemplates holds the Index Templates settings (/_index_template) |
 
 
-### KibanaConfigPolicySpec 
+### KibanaConfigPolicySpec  [#kibanaconfigpolicyspec]
 
 
 
@@ -2025,7 +2025,7 @@ Package v1alpha1 contains API schema definitions for managing StackConfigPolicy 
 
 
 
-### SecretMount 
+### SecretMount  [#secretmount]
 
 SecretMount contains information about additional secrets to be mounted to the elasticsearch pods
 
@@ -2040,7 +2040,7 @@ SecretMount contains information about additional secrets to be mounted to the e
 | *`mountPath`* __string__ | MountPath denotes the path to which the secret should be mounted to inside the elasticsearch pod |
 
 
-### StackConfigPolicy 
+### StackConfigPolicy  [#stackconfigpolicy]
 
 StackConfigPolicy represents a StackConfigPolicy resource in a Kubernetes cluster.
 
@@ -2054,7 +2054,7 @@ StackConfigPolicy represents a StackConfigPolicy resource in a Kubernetes cluste
 | *`spec`* __[StackConfigPolicySpec](#stackconfigpolicyspec)__ |  |
 
 
-### StackConfigPolicySpec 
+### StackConfigPolicySpec  [#stackconfigpolicyspec]
 
 
 
