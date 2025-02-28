@@ -10,4 +10,4 @@ applies_to:
 
 This section contains reference information for {{eck}}, including:
 
-* [API Reference](./k8s-api-reference.md)
+* [API Reference](./api-docs.md)
