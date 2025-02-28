@@ -1,7 +1,8 @@
 {{- define "gvDetails" -}}
 {{- $gv := . -}}
 
-## {{ $gv.GroupVersionString }}
+% TODO add function to crd-ref-docs return anchor used in links docs-v3 does not seem to produce valid markdown anchors
+## {{ $gv.GroupVersionString }} [#{{ markdownGroupVersionID $gv | replace "-" "" }}]
 
 {{ $gv.Doc }}
 

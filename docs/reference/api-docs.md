@@ -6,7 +6,7 @@ applies_to:
   deployment:
     eck: all
 ---
-<!-- Generated documentation. Please do not edit. -->
+% Generated documentation. Please do not edit.
 
 # {{eck}} API Reference [k8s-api-reference]
 
@@ -30,7 +30,8 @@ applies_to:
 * [stackconfigpolicy.k8s.elastic.co/v1alpha1](#stackconfigpolicyk8selasticcov1alpha1)
 
 
-## agent.k8s.elastic.co/v1alpha1
+% TODO add function to crd-ref-docs return anchor used in links docs-v3 does not seem to produce valid markdown anchors
+## agent.k8s.elastic.co/v1alpha1 [#agentk8selasticcov1alpha1]
 
 Package v1alpha1 contains API Schema definitions for the agent v1alpha1 API group
 
@@ -159,7 +160,8 @@ AgentSpec defines the desired state of the Agent
 
 
 
-## apm.k8s.elastic.co/v1
+% TODO add function to crd-ref-docs return anchor used in links docs-v3 does not seem to produce valid markdown anchors
+## apm.k8s.elastic.co/v1 [#apmk8selasticcov1]
 
 Package v1 contains API schema definitions for managing APM Server resources.
 
@@ -207,7 +209,8 @@ ApmServerSpec holds the specification of an APM Server.
 
 
 
-## apm.k8s.elastic.co/v1beta1
+% TODO add function to crd-ref-docs return anchor used in links docs-v3 does not seem to produce valid markdown anchors
+## apm.k8s.elastic.co/v1beta1 [#apmk8selasticcov1beta1]
 
 Package v1beta1 contains API schema definitions for managing APM Server resources.
 
@@ -252,7 +255,8 @@ ApmServerSpec holds the specification of an APM Server.
 
 
 
-## autoscaling.k8s.elastic.co/v1alpha1
+% TODO add function to crd-ref-docs return anchor used in links docs-v3 does not seem to produce valid markdown anchors
+## autoscaling.k8s.elastic.co/v1alpha1 [#autoscalingk8selasticcov1alpha1]
 
 Package v1alpha1 contains API schema definitions for managing ElasticsearchAutoscaler resources.
 
@@ -305,7 +309,8 @@ ElasticsearchRef is a reference to an Elasticsearch cluster that exists in the s
 
 
 
-## beat.k8s.elastic.co/v1beta1
+% TODO add function to crd-ref-docs return anchor used in links docs-v3 does not seem to produce valid markdown anchors
+## beat.k8s.elastic.co/v1beta1 [#beatk8selasticcov1beta1]
 
 Package v1beta1 contains API Schema definitions for the beat v1beta1 API group
 
@@ -386,7 +391,8 @@ BeatSpec defines the desired state of a Beat.
 
 
 
-## common.k8s.elastic.co/v1
+% TODO add function to crd-ref-docs return anchor used in links docs-v3 does not seem to produce valid markdown anchors
+## common.k8s.elastic.co/v1 [#commonk8selasticcov1]
 
 Package v1 contains API schema definitions for common types used by all resources.
 
@@ -708,7 +714,8 @@ TLSOptions holds TLS configuration options.
 
 
 
-## common.k8s.elastic.co/v1alpha1
+% TODO add function to crd-ref-docs return anchor used in links docs-v3 does not seem to produce valid markdown anchors
+## common.k8s.elastic.co/v1alpha1 [#commonk8selasticcov1alpha1]
 
 Package v1alpha1 contains API schema definitions for common types used by all resources.
 
@@ -775,7 +782,8 @@ ConditionType defines the condition of an Elasticsearch resource.
 
 
 
-## common.k8s.elastic.co/v1beta1
+% TODO add function to crd-ref-docs return anchor used in links docs-v3 does not seem to produce valid markdown anchors
+## common.k8s.elastic.co/v1beta1 [#commonk8selasticcov1beta1]
 
 Package v1beta1 contains API schema definitions for common types used by all resources.
 
@@ -951,7 +959,8 @@ TLSOptions holds TLS configuration options.
 
 
 
-## elasticsearch.k8s.elastic.co/v1
+% TODO add function to crd-ref-docs return anchor used in links docs-v3 does not seem to produce valid markdown anchors
+## elasticsearch.k8s.elastic.co/v1 [#elasticsearchk8selasticcov1]
 
 Package v1 contains API schema definitions for managing Elasticsearch resources.
 
@@ -1438,7 +1447,8 @@ Inspired by https://github.com/kubernetes/enhancements/pull/2440
 
 
 
-## elasticsearch.k8s.elastic.co/v1beta1
+% TODO add function to crd-ref-docs return anchor used in links docs-v3 does not seem to produce valid markdown anchors
+## elasticsearch.k8s.elastic.co/v1beta1 [#elasticsearchk8selasticcov1beta1]
 
 Package v1beta1 contains API schema definitions for managing Elasticsearch resources.
 
@@ -1573,7 +1583,8 @@ UpdateStrategy specifies how updates to the cluster should be performed.
 
 
 
-## enterprisesearch.k8s.elastic.co/v1
+% TODO add function to crd-ref-docs return anchor used in links docs-v3 does not seem to produce valid markdown anchors
+## enterprisesearch.k8s.elastic.co/v1 [#enterprisesearchk8selasticcov1]
 
 Package v1beta1 contains API schema definitions for managing Enterprise Search resources.
 
@@ -1620,7 +1631,8 @@ EnterpriseSearchSpec holds the specification of an Enterprise Search resource.
 
 
 
-## enterprisesearch.k8s.elastic.co/v1beta1
+% TODO add function to crd-ref-docs return anchor used in links docs-v3 does not seem to produce valid markdown anchors
+## enterprisesearch.k8s.elastic.co/v1beta1 [#enterprisesearchk8selasticcov1beta1]
 
 Package v1beta1 contains API schema definitions for managing Enterprise Search resources.
 
@@ -1666,7 +1678,8 @@ EnterpriseSearchSpec holds the specification of an Enterprise Search resource.
 
 
 
-## kibana.k8s.elastic.co/v1
+% TODO add function to crd-ref-docs return anchor used in links docs-v3 does not seem to produce valid markdown anchors
+## kibana.k8s.elastic.co/v1 [#kibanak8selasticcov1]
 
 Package v1 contains API schema definitions for managing Kibana resources.
 
@@ -1715,7 +1728,8 @@ KibanaSpec holds the specification of a Kibana instance.
 
 
 
-## kibana.k8s.elastic.co/v1beta1
+% TODO add function to crd-ref-docs return anchor used in links docs-v3 does not seem to produce valid markdown anchors
+## kibana.k8s.elastic.co/v1beta1 [#kibanak8selasticcov1beta1]
 
 Package v1beta1 contains API schema definitions for managing Kibana resources.
 
@@ -1760,7 +1774,8 @@ KibanaSpec holds the specification of a Kibana instance.
 
 
 
-## logstash.k8s.elastic.co/v1alpha1
+% TODO add function to crd-ref-docs return anchor used in links docs-v3 does not seem to produce valid markdown anchors
+## logstash.k8s.elastic.co/v1alpha1 [#logstashk8selasticcov1alpha1]
 
 Package v1alpha1 contains API Schema definitions for the logstash v1alpha1 API group
 
@@ -1875,7 +1890,8 @@ LogstashStatus defines the observed state of Logstash
 
 
 
-## maps.k8s.elastic.co/v1alpha1
+% TODO add function to crd-ref-docs return anchor used in links docs-v3 does not seem to produce valid markdown anchors
+## maps.k8s.elastic.co/v1alpha1 [#mapsk8selasticcov1alpha1]
 
 Package v1alpha1 contains API schema definitions for managing Elastic Maps Server resources.
 
@@ -1940,7 +1956,8 @@ MapsSpec holds the specification of an Elastic Maps Server instance.
 
 
 
-## stackconfigpolicy.k8s.elastic.co/v1alpha1
+% TODO add function to crd-ref-docs return anchor used in links docs-v3 does not seem to produce valid markdown anchors
+## stackconfigpolicy.k8s.elastic.co/v1alpha1 [#stackconfigpolicyk8selasticcov1alpha1]
 
 Package v1alpha1 contains API schema definitions for managing StackConfigPolicy resources.
 

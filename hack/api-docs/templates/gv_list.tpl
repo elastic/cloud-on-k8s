@@ -8,7 +8,7 @@ applies_to:
   deployment:
     eck: all
 ---
-<!-- Generated documentation. Please do not edit. -->
+% Generated documentation. Please do not edit.
 
 # {{`{{eck}}`}} API Reference [k8s-api-reference]
 
