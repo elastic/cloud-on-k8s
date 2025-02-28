@@ -26,7 +26,7 @@ The following table lists and describes all the available configuration flags fo
 | `disable-telemetry` | `false` | Disable periodically updating ECK telemetry data for Kibana to consume. |
 | `elasticsearch-client-timeout` | `180s` | Default timeout for requests made by the Elasticsearch client. |
 | `enable-leader-election` | `true` | Enable leader election. Must be set to true if using multiple replicas of the operator |
-| `enable-tracing` | `false` | Enable APM tracing in the operator process. Use environment variables to configure APM server URL, credentials, and so on. Check [Apm Go Agent reference](apm-agent-go://docs/reference/configuration.md) for details. |
+| `enable-tracing` | `false` | Enable APM tracing in the operator process. Use environment variables to configure APM server URL, credentials, and so on. Check [Apm Go Agent reference](apm-agent-go://reference/configuration.md) for details. |
 | `enable-webhook` | `false` | Enables a validating webhook server in the operator process. |
 | `enforce-rbac-on-refs` | `false` | Enables restrictions on cross-namespace resource association through RBAC. |
 | `exposed-node-labels` | `""` | List of Kubernetes node labels which are allowed to be copied as annotations on the Elasticsearch Pods. Check [Topology spread constraints and availability zone awareness](docs-content://deploy-manage/deploy/cloud-on-k8s/advanced-elasticsearch-node-scheduling.md#k8s-availability-zone-awareness) for more details. |
