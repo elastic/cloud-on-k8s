@@ -1,22 +1,20 @@
 {{- define "gvList" -}}
 {{- $groupVersions := . -}}
+---
+mapped_pages:
+  - https://www.elastic.co/guide/en/cloud-on-k8s/current/k8s-api-reference.html
+navigation_title: API reference
+applies_to:
+  deployment:
+    eck: all
+---
+<!-- Generated documentation. Please do not edit. -->
 
-// Generated documentation. Please do not edit.
-:page_id: api-reference
-:anchor_prefix: k8s-api
+# {{`{{eck}}`}} API Reference [k8s-api-reference]
 
-ifdef::env-github[]
-****
-link:https://www.elastic.co/guide/en/cloud-on-k8s/master/k8s-{page_id}.html[View this document on the Elastic website]
-****
-endif::[]
-
-[id="{p}-{page_id}"]
-= API Reference
-
-.Packages
+## Packages
 {{- range $groupVersions }}
-- {{ asciidocRenderGVLink . }}
+* {{ markdownRenderGVLink . }}
 {{- end }}
 
 {{ range $groupVersions }}
