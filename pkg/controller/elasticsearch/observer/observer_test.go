@@ -26,7 +26,7 @@ import (
 )
 
 func fakeEsClient200(user client.BasicAuth) client.Client {
-	return client.NewMockClientWithUser(version.MustParse("6.8.0"),
+	return client.NewMockClientWithUser(version.MustParse("7.1.0"),
 		user,
 		func(req *http.Request) *http.Response {
 			return &http.Response{
@@ -115,7 +115,7 @@ func TestObserver_Stop(t *testing.T) {
 }
 
 func fakeEsClient(healthRespErr bool) client.Client {
-	return client.NewMockClient(version.MustParse("6.8.0"), func(req *http.Request) *http.Response {
+	return client.NewMockClient(version.MustParse("7.1.0"), func(req *http.Request) *http.Response {
 		statusCode := 200
 		var respBody io.ReadCloser
 

@@ -334,40 +334,6 @@ func TestDriverDeploymentParams(t *testing.T) {
 			wantErr: false,
 		},
 		{
-			name: "6.8.x is supported",
-			args: args{
-				kb: func() *kbv1.Kibana {
-					kb := kibanaFixture()
-					kb.Spec.Version = "6.8.0"
-					return kb
-				},
-				initialObjects: defaultInitialObjects,
-			},
-			want: func() deployment.Params {
-				p := pre710(expectedDeploymentParams())
-				p.PodTemplateSpec.Labels["kibana.k8s.elastic.co/version"] = "6.8.0"
-				return p
-			}(),
-			wantErr: false,
-		},
-		{
-			name: "6.8 docker container already defaults elasticsearch.hosts",
-			args: args{
-				kb: func() *kbv1.Kibana {
-					kb := kibanaFixture()
-					kb.Spec.Version = "6.8.0"
-					return kb
-				},
-				initialObjects: defaultInitialObjects,
-			},
-			want: func() deployment.Params {
-				p := pre710(expectedDeploymentParams())
-				p.PodTemplateSpec.Labels["kibana.k8s.elastic.co/version"] = "6.8.0"
-				return p
-			}(),
-			wantErr: false,
-		},
-		{
 			name: "7.10+ contains security contexts",
 			args: args{
 				kb: func() *kbv1.Kibana {
@@ -443,9 +409,9 @@ func TestMinSupportedVersion(t *testing.T) {
 			wantErr: true,
 		},
 		{
-			name:    "6.8.0 should be supported",
+			name:    "6.8.0 should be unsupported",
 			version: "6.8.0",
-			wantErr: false,
+			wantErr: true,
 		},
 		{
 			name:    "7.6.0 should be supported",
@@ -485,7 +451,7 @@ func expectedDeploymentParams() deployment.Params {
 				Labels: map[string]string{
 					"common.k8s.elastic.co/type":    "kibana",
 					"kibana.k8s.elastic.co/name":    "test",
-					"kibana.k8s.elastic.co/version": "7.0.0",
+					"kibana.k8s.elastic.co/version": "7.1.0",
 				},
 				Annotations: map[string]string{
 					"co.elastic.logs/module":            "kibana",
@@ -743,7 +709,7 @@ func kibanaFixture() *kbv1.Kibana {
 			Namespace: "default",
 		},
 		Spec: kbv1.KibanaSpec{
-			Version: "7.0.0",
+			Version: "7.1.0",
 			Image:   "my-image",
 			Count:   1,
 			ElasticsearchRef: commonv1.ObjectSelector{

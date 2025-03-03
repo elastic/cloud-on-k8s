@@ -198,8 +198,8 @@ func Test_supportedVersion(t *testing.T) {
 		},
 		{
 			name:         "supported OK",
-			es:           es("6.8.0"),
-			expectErrors: false,
+			es:           es("7.1.0"),
+			expectErrors: true,
 		},
 	}
 	for _, tt := range tests {
