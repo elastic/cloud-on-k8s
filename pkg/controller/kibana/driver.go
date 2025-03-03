@@ -42,8 +42,8 @@ import (
 	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/maps"
 )
 
-// minSupportedVersion is the minimum version of Kibana supported by ECK. Currently this is set to version 7.1.0.
-var minSupportedVersion = version.From(7, 1, 0)
+// minSupportedVersion is the minimum version of Kibana supported by ECK. Currently this is set to version 7.17.0.
+var minSupportedVersion = version.From(7, 17, 0)
 
 type driver struct {
 	client         k8s.Client

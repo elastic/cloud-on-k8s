@@ -86,7 +86,7 @@ func Test_getStrategyType(t *testing.T) {
 	}{
 		{
 			name:            "Pods not created yet",
-			expectedVersion: "7.4.0",
+			expectedVersion: "7.17.0",
 			expectedKbName:  "test",
 			initialObjects:  []client.Object{},
 			clientError:     false,
@@ -95,76 +95,76 @@ func Test_getStrategyType(t *testing.T) {
 		},
 		{
 			name:            "Versions match",
-			expectedVersion: "7.4.0",
+			expectedVersion: "7.17.0",
 			expectedKbName:  "test",
-			initialObjects:  getPods("test", 3, "7.4.0"),
+			initialObjects:  getPods("test", 3, "7.17.0"),
 			clientError:     false,
 			wantErr:         false,
 			wantStrategy:    appsv1.RollingUpdateDeploymentStrategyType,
 		},
 		{
 			name:            "Versions match - multiple kibana deployments",
-			expectedVersion: "7.5.0",
+			expectedVersion: "8.5.0",
 			expectedKbName:  "test2",
-			initialObjects:  append(getPods("test", 3, "7.4.0"), getPods("test2", 3, "7.5.0")...),
+			initialObjects:  append(getPods("test", 3, "8.4.0"), getPods("test2", 3, "8.5.0")...),
 			clientError:     false,
 			wantErr:         false,
 			wantStrategy:    appsv1.RollingUpdateDeploymentStrategyType,
 		},
 		{
 			name:            "Version mismatch - single kibana deployment",
-			expectedVersion: "7.5.0",
+			expectedVersion: "8.5.0",
 			expectedKbName:  "test",
-			initialObjects:  getPods("test", 3, "7.4.0"),
+			initialObjects:  getPods("test", 3, "8.4.0"),
 			clientError:     false,
 			wantErr:         false,
 			wantStrategy:    appsv1.RecreateDeploymentStrategyType,
 		},
 		{
 			name:            "Version mismatch - pods partially behind",
-			expectedVersion: "7.5.0",
+			expectedVersion: "8.5.0",
 			expectedKbName:  "test",
-			initialObjects:  append(getPods("test", 2, "7.5.0"), getPods("test", 1, "7.4.0")...),
+			initialObjects:  append(getPods("test", 2, "8.5.0"), getPods("test", 1, "8.4.0")...),
 			clientError:     false,
 			wantErr:         false,
 			wantStrategy:    appsv1.RecreateDeploymentStrategyType,
 		},
 		{
 			name:            "Version mismatch - multiple kibana deployments",
-			expectedVersion: "7.5.0",
+			expectedVersion: "8.5.0",
 			expectedKbName:  "test2",
-			initialObjects:  append(getPods("test", 3, "7.5.0"), getPods("test2", 3, "7.4.0")...),
+			initialObjects:  append(getPods("test", 3, "8.5.0"), getPods("test2", 3, "8.4.0")...),
 			clientError:     false,
 			wantErr:         false,
 			wantStrategy:    appsv1.RecreateDeploymentStrategyType,
 		},
 		{
 			name:            "Version mismatch - multiple versions in flight",
-			expectedVersion: "7.5.0",
+			expectedVersion: "8.5.0",
 			expectedKbName:  "test",
 			initialObjects: append(
-				getPods("test", 1, "7.5.0"),
+				getPods("test", 1, "8.5.0"),
 				append(
-					getPods("test", 1, "7.4.0"),
-					getPods("test", 1, "7.3.0")...)...),
+					getPods("test", 1, "8.4.0"),
+					getPods("test", 1, "8.3.0")...)...),
 			clientError:  false,
 			wantErr:      false,
 			wantStrategy: appsv1.RecreateDeploymentStrategyType,
 		},
 		{
 			name:            "Version label missing (operator upgrade case), should assume spec changed",
-			expectedVersion: "7.5.0",
+			expectedVersion: "8.5.0",
 			expectedKbName:  "test",
-			initialObjects:  clearVersionLabels(getPods("test", 3, "7.5.0")),
+			initialObjects:  clearVersionLabels(getPods("test", 3, "8.5.0")),
 			clientError:     false,
 			wantErr:         false,
 			wantStrategy:    appsv1.RecreateDeploymentStrategyType,
 		},
 		{
 			name:            "Client error",
-			expectedVersion: "7.4.0",
+			expectedVersion: "8.4.0",
 			expectedKbName:  "test",
-			initialObjects:  getPods("test", 2, "7.4.0"),
+			initialObjects:  getPods("test", 2, "8.4.0"),
 			clientError:     true,
 			wantErr:         true,
 			wantStrategy:    "",
@@ -338,7 +338,7 @@ func TestDriverDeploymentParams(t *testing.T) {
 			args: args{
 				kb: func() *kbv1.Kibana {
 					kb := kibanaFixture()
-					kb.Spec.Version = "7.10.0"
+					kb.Spec.Version = "7.17.0"
 					return kb
 				},
 				initialObjects:                defaultInitialObjects,
@@ -346,7 +346,7 @@ func TestDriverDeploymentParams(t *testing.T) {
 			},
 			want: func() deployment.Params {
 				p := expectedDeploymentParams()
-				p.PodTemplateSpec.Labels["kibana.k8s.elastic.co/version"] = "7.10.0"
+				p.PodTemplateSpec.Labels["kibana.k8s.elastic.co/version"] = "7.17.0"
 				p.PodTemplateSpec.Spec.SecurityContext = &corev1.PodSecurityContext{
 					FSGroup: ptr.To[int64](1000),
 				}
@@ -359,7 +359,7 @@ func TestDriverDeploymentParams(t *testing.T) {
 			args: args{
 				kb: func() *kbv1.Kibana {
 					kb := kibanaFixture()
-					kb.Spec.Version = "7.10.0"
+					kb.Spec.Version = "7.17.0"
 					return kb
 				},
 				initialObjects:                defaultInitialObjects,
@@ -367,7 +367,7 @@ func TestDriverDeploymentParams(t *testing.T) {
 			},
 			want: func() deployment.Params {
 				p := pre710(expectedDeploymentParams())
-				p.PodTemplateSpec.Labels["kibana.k8s.elastic.co/version"] = "7.10.0"
+				p.PodTemplateSpec.Labels["kibana.k8s.elastic.co/version"] = "7.17.0"
 				return p
 			}(),
 			wantErr: false,
@@ -414,8 +414,13 @@ func TestMinSupportedVersion(t *testing.T) {
 			wantErr: true,
 		},
 		{
-			name:    "7.6.0 should be supported",
+			name:    "7.6.0 should be unsupported",
 			version: "7.6.0",
+			wantErr: true,
+		},
+		{
+			name:    "7.17.0 should be supported",
+			version: "7.17.0",
 			wantErr: false,
 		},
 	}
@@ -451,7 +456,7 @@ func expectedDeploymentParams() deployment.Params {
 				Labels: map[string]string{
 					"common.k8s.elastic.co/type":    "kibana",
 					"kibana.k8s.elastic.co/name":    "test",
-					"kibana.k8s.elastic.co/version": "7.1.0",
+					"kibana.k8s.elastic.co/version": "7.17.0",
 				},
 				Annotations: map[string]string{
 					"co.elastic.logs/module":            "kibana",
@@ -709,7 +714,7 @@ func kibanaFixture() *kbv1.Kibana {
 			Namespace: "default",
 		},
 		Spec: kbv1.KibanaSpec{
-			Version: "7.1.0",
+			Version: "7.17.0",
 			Image:   "my-image",
 			Count:   1,
 			ElasticsearchRef: commonv1.ObjectSelector{
