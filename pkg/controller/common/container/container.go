@@ -63,6 +63,7 @@ const (
 	JournalbeatImage      Image = "beats/journalbeat"
 	PacketbeatImage       Image = "beats/packetbeat"
 	AgentImage            Image = "beats/elastic-agent"
+	AgentImageSince9      Image = "elastic-agent/elastic-agent"
 	MapsImage             Image = "elastic-maps-service/elastic-maps-server"
 	LogstashImage         Image = "logstash/logstash"
 )
@@ -88,7 +89,14 @@ func ImageRepository(img Image, ver version.Version) string {
 	}
 	// Starting with 9.x ubi is the default for APM server, there's no -ubi image.
 	if useUBISuffix && ver.Major >= 9 {
-		if img == APMServerImage {
+		switch img {
+		case APMServerImage,
+			AgentImageSince9,
+			FilebeatImage,
+			MetricbeatImage,
+			HeartbeatImage,
+			AuditbeatImage,
+			PacketbeatImage:
 			suffix = ""
 		}
 	}
