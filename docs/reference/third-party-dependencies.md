@@ -90,7 +90,7 @@ This page lists the third-party dependencies used to build {{eck}}.
 | [https://github.com/fxamacker/cbor]($$github.com/fxamacker/cbor/v2$$) | v2.7.0 | MIT |
 | [https://github.com/gkampitakis/ciinfo]($$github.com/gkampitakis/ciinfo$$) | v0.3.1 | MIT |
 | [https://github.com/gkampitakis/go-diff]($$github.com/gkampitakis/go-diff$$) | v1.3.2 | MIT |
-| [https://github.com/go-jose/go-jose]($$github.com/go-jose/go-jose/v4$$) | v4.0.1 | Apache-2.0 |
+| [https://github.com/go-jose/go-jose]($$github.com/go-jose/go-jose/v4$$) | v4.0.5 | Apache-2.0 |
 | [https://github.com/go-logr/stdr]($$github.com/go-logr/stdr$$) | v1.2.2 | Apache-2.0 |
 | [https://github.com/go-logr/zapr]($$github.com/go-logr/zapr$$) | v1.3.0 | Apache-2.0 |
 | [https://github.com/go-openapi/jsonpointer]($$github.com/go-openapi/jsonpointer$$) | v0.21.0 | Apache-2.0 |
