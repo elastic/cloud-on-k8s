@@ -290,7 +290,7 @@ spec:
 
     * Google Kubernetes Engine (GKE), Azure Kubernetes Service (AKS), and Amazon Elastic Kubernetes Service (EKS)
 
-    * Elasticsearch, Kibana, APM Server: {{ if .UbiOnly }}7.10+{{ else }}7.1+, 7.1+{{ end }}, 8+
+    * Elasticsearch, Kibana, APM Server: {{ if .UbiOnly }}7.17+{{ else }}7.17+, 7.17+{{ end }}, 8+
 
     * Enterprise Search: {{ if .UbiOnly }}7.10+{{ else }}7.7+{{ end }}, 8+
 
