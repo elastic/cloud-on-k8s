@@ -49,6 +49,8 @@ type Params struct {
 	PostUpdate func()
 }
 
+const resourceVersion = "resourceVersion"
+
 func (p Params) CheckNilValues() error {
 	if p.Reconciled == nil {
 		return errors.New("Reconciled must not be nil")
@@ -88,7 +90,6 @@ func ReconcileResource(params Params) error {
 	namespace := params.Expected.GetNamespace()
 	name := params.Expected.GetName()
 	log := ulog.FromContext(params.Context).WithValues("kind", kind, "namespace", namespace, "name", name)
-
 	create := func() error {
 		log.Info("Creating resource")
 		if params.PreCreate != nil {
@@ -108,7 +109,7 @@ func ReconcileResource(params Params) error {
 		if err != nil {
 			return err
 		}
-		log.Info("Created resource successfully")
+		log.Info("Created resource successfully", resourceVersion, params.Reconciled.GetResourceVersion())
 		return nil
 	}
 
@@ -182,7 +183,7 @@ func ReconcileResource(params Params) error {
 		if params.PostUpdate != nil {
 			params.PostUpdate()
 		}
-		log.Info("Updated resource successfully")
+		log.Info("Updated resource successfully", resourceVersion, params.Reconciled.GetResourceVersion())
 	}
 	return nil
 }
