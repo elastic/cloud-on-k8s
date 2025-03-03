@@ -105,13 +105,13 @@ func TestWebhook(t *testing.T) {
 			OldObject: func(t *testing.T, uid string) []byte {
 				t.Helper()
 				k := mkKibana(uid)
-				k.Spec.Version = "7.5.1"
+				k.Spec.Version = "8.5.1"
 				return serialize(t, k)
 			},
 			Object: func(t *testing.T, uid string) []byte {
 				t.Helper()
 				k := mkKibana(uid)
-				k.Spec.Version = "7.6.1"
+				k.Spec.Version = "8.6.1"
 				return serialize(t, k)
 			},
 			Check: test.ValidationWebhookSucceeded,
@@ -122,13 +122,13 @@ func TestWebhook(t *testing.T) {
 			OldObject: func(t *testing.T, uid string) []byte {
 				t.Helper()
 				k := mkKibana(uid)
-				k.Spec.Version = "7.6.1"
+				k.Spec.Version = "8.6.1"
 				return serialize(t, k)
 			},
 			Object: func(t *testing.T, uid string) []byte {
 				t.Helper()
 				k := mkKibana(uid)
-				k.Spec.Version = "7.5.1"
+				k.Spec.Version = "8.5.1"
 				return serialize(t, k)
 			},
 			Check: test.ValidationWebhookFailed(
@@ -141,13 +141,13 @@ func TestWebhook(t *testing.T) {
 			OldObject: func(t *testing.T, uid string) []byte {
 				t.Helper()
 				k := mkKibana(uid)
-				k.Spec.Version = "7.6.1"
+				k.Spec.Version = "8.6.1"
 				return serialize(t, k)
 			},
 			Object: func(t *testing.T, uid string) []byte {
 				t.Helper()
 				k := mkKibana(uid)
-				k.Spec.Version = "7.5.1"
+				k.Spec.Version = "8.5.1"
 				k.Annotations = map[string]string{
 					commonv1.DisableDowngradeValidationAnnotation: "true",
 				}
@@ -244,7 +244,7 @@ func TestWebhook(t *testing.T) {
 			Object: func(t *testing.T, uid string) []byte {
 				t.Helper()
 				ent := mkKibana(uid)
-				ent.Spec.Version = "7.14.0"
+				ent.Spec.Version = "7.17.0"
 				ent.Spec.Monitoring = commonv1.Monitoring{Metrics: commonv1.MetricsMonitoring{ElasticsearchRefs: []commonv1.ObjectSelector{{Name: "esmonname", Namespace: "esmonns"}}}}
 				ent.Spec.ElasticsearchRef = commonv1.ObjectSelector{Name: "esname", Namespace: "esns"}
 				return serialize(t, ent)
@@ -257,7 +257,7 @@ func TestWebhook(t *testing.T) {
 			Object: func(t *testing.T, uid string) []byte {
 				t.Helper()
 				ent := mkKibana(uid)
-				ent.Spec.Version = "7.14.0"
+				ent.Spec.Version = "7.17.0"
 				ent.Spec.Monitoring = commonv1.Monitoring{
 					Metrics: commonv1.MetricsMonitoring{ElasticsearchRefs: []commonv1.ObjectSelector{{SecretName: "es1monname"}}},
 					Logs:    commonv1.LogsMonitoring{ElasticsearchRefs: []commonv1.ObjectSelector{{SecretName: "es2monname"}}},
@@ -288,7 +288,7 @@ func TestWebhook(t *testing.T) {
 			Object: func(t *testing.T, uid string) []byte {
 				t.Helper()
 				ent := mkKibana(uid)
-				ent.Spec.Version = "7.14.0"
+				ent.Spec.Version = "7.17.0"
 				ent.Spec.Monitoring = commonv1.Monitoring{
 					Metrics: commonv1.MetricsMonitoring{ElasticsearchRefs: []commonv1.ObjectSelector{{SecretName: "es1monname", Name: "xx"}}},
 					Logs:    commonv1.LogsMonitoring{ElasticsearchRefs: []commonv1.ObjectSelector{{SecretName: "es2monname"}}},
@@ -306,7 +306,7 @@ func TestWebhook(t *testing.T) {
 			Object: func(t *testing.T, uid string) []byte {
 				t.Helper()
 				ent := mkKibana(uid)
-				ent.Spec.Version = "7.14.0"
+				ent.Spec.Version = "7.17.0"
 				ent.Spec.Monitoring = commonv1.Monitoring{
 					Metrics: commonv1.MetricsMonitoring{ElasticsearchRefs: []commonv1.ObjectSelector{{SecretName: "es1monname"}}},
 					Logs:    commonv1.LogsMonitoring{ElasticsearchRefs: []commonv1.ObjectSelector{{SecretName: "es2monname", ServiceName: "xx"}}},
@@ -332,7 +332,7 @@ func mkKibana(uid string) *kbv1.Kibana {
 			UID:  types.UID(uid),
 		},
 		Spec: kbv1.KibanaSpec{
-			Version: "7.6.1",
+			Version: "7.17.0",
 		},
 	}
 }

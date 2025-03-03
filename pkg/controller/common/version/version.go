@@ -25,7 +25,7 @@ var GlobalMinStackVersion Version
 var (
 	SupportedAPMServerVersions        = MinMaxVersion{Min: From(6, 2, 0), Max: From(9, 99, 99)}
 	SupportedEnterpriseSearchVersions = MinMaxVersion{Min: From(7, 7, 0), Max: From(8, 99, 99)}
-	SupportedKibanaVersions           = MinMaxVersion{Min: From(6, 8, 0), Max: From(9, 99, 99)}
+	SupportedKibanaVersions           = MinMaxVersion{Min: From(7, 17, 0), Max: From(9, 99, 99)}
 	SupportedBeatVersions             = MinMaxVersion{Min: From(7, 0, 0), Max: From(9, 99, 99)}
 	// Elastic Agent was introduced in 7.8.0, but as "experimental release" with no migration path forward, hence
 	// picking higher version as minimal supported.
