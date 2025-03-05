@@ -414,13 +414,8 @@ func TestMinSupportedVersion(t *testing.T) {
 			wantErr: true,
 		},
 		{
-			name:    "7.6.0 should be unsupported",
+			name:    "7.6.0 should be supported",
 			version: "7.6.0",
-			wantErr: true,
-		},
-		{
-			name:    "7.17.0 should be supported",
-			version: "7.17.0",
 			wantErr: false,
 		},
 	}
