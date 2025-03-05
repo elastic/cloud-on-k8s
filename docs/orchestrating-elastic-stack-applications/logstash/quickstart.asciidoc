@@ -1,0 +1,88 @@
+:parent_page_id: logstash-specification
+ifdef::env-github[]
+****
+link:https://www.elastic.co/guide/en/cloud-on-k8s/master/k8s-{page_id}.html[View this document on the Elastic website]
+****
+endif::[]
+
+[id="{p}-logstash-quickstart"]
+= Quickstart
+
+Add the following specification to create a minimal {ls} deployment that will listen to a {beats} agent or {agent} configured to send to {ls} on port 5044, create the service and write the output to an {es} cluster named `quickstart`, created in the link:k8s-quickstart.html[{es} quickstart].
+
+[source,yaml,subs="attributes,+macros,callouts"]
+----
+cat $$<<$$'EOF' | kubectl apply -f -
+apiVersion: logstash.k8s.elastic.co/v1alpha1
+kind: Logstash
+metadata:
+  name: quickstart
+spec:
+  count: 1
+  elasticsearchRefs:
+    - name: quickstart
+      clusterName: qs
+  version: {version}
+  pipelines:
+    - pipeline.id: main
+      config.string: |
+        input {
+          beats {
+            port => 5044
+          }
+        }
+        output {
+          elasticsearch {
+            hosts => [ "${QS_ES_HOSTS}" ]
+            user => "${QS_ES_USER}"
+            password => "${QS_ES_PASSWORD}"
+            ssl_certificate_authorities => "${QS_ES_SSL_CERTIFICATE_AUTHORITY}"
+          }
+        }
+  services:
+    - name: beats
+      service:
+        spec:
+          type: NodePort
+          ports:
+            - port: 5044
+              name: "filebeat"
+              protocol: TCP
+              targetPort: 5044
+EOF
+----
+
+Check <<{p}-logstash-configuration-examples>> for more ready-to-use manifests.
+
+. Check the status of {ls}
++
+[source,sh]
+----
+kubectl get logstash
+----
++
+[source,sh,subs="attributes"]
+----
+NAME              AVAILABLE   EXPECTED   AGE   VERSION
+quickstart        3           3          4s    {version}
+----
+
+. List all the Pods that belong to a given {ls} specification.
++
+[source,sh]
+----
+kubectl get pods --selector='logstash.k8s.elastic.co/name=quickstart'
+----
++
+[source,sh]
+----
+NAME              READY   STATUS    RESTARTS   AGE
+quickstart-ls-0   1/1     Running   0          91s
+----
+
+. Access logs for a {ls} Pod.
+
+[source,sh]
+----
+kubectl logs -f quickstart-ls-0
+----
