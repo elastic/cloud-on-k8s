@@ -13,3 +13,4 @@ This section contains reference information for {{eck}}, including:
 * [API Reference](./api-docs.md)
 * [ECK operator configuration flags](./eck-configuration-flags.md)
 * [Third-party dependencies](./third-party-dependencies.md)
+* [Orchestration upgrade predicates](./upgrade-predicates.md)

@@ -504,4 +504,4 @@ check-predicates: PREDICATE_PATTERN = [a-z]*_[A-Za-z_]*
 check-predicates:
 	@ diff \
 		<(grep "name:" "$(CODE)" | grep -o "$(PREDICATE_PATTERN)" ) \
-		<(grep '\*\* [a-z]' "$(DOC)" | grep -o "$(PREDICATE_PATTERN)" )
+		<(grep '^    \* [a-z]' "$(DOC)" | grep -o "$(PREDICATE_PATTERN)" )
