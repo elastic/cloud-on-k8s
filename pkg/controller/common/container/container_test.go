@@ -70,6 +70,14 @@ func TestImageRepository(t *testing.T) {
 			want:       testRegistry + "/elastic/elasticsearch-obi1:42.0.0",
 		},
 		{
+			name:       "Elasticsearch 9 image in ubi mode",
+			image:      ElasticsearchImage,
+			version:    "9.0.0",
+			repository: "elastic",
+			suffix:     "-ubi",
+			want:       testRegistry + "/elastic/elasticsearch:9.0.0",
+		},
+		{
 			name:       "Elasticsearch 8 image in ubi mode",
 			image:      ElasticsearchImage,
 			version:    "8.12.0",

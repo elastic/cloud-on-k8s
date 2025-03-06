@@ -86,11 +86,9 @@ func ImageRepository(img Image, ver version.Version) string {
 	if useUBISuffix || isOlderMapsServerImg(img, ver) {
 		suffix = getUBISuffix(ver)
 	}
-	// Starting with 9.x ubi is the default for APM server, there's no -ubi image.
+	// Starting with 9.x ubi is the default for all stack images
 	if useUBISuffix && ver.Major >= 9 {
-		if img == APMServerImage {
-			suffix = ""
-		}
+		suffix = ""
 	}
 	// use the global container suffix in non-UBI mode
 	if !useUBISuffix {
