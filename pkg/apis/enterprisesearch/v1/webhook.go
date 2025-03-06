@@ -123,7 +123,7 @@ func checkSupportedVersion(ent *EnterpriseSearch) field.ErrorList {
 }
 
 func checkIfVersionDeprecated(ent *EnterpriseSearch) (string, field.ErrorList) {
-	return commonv1.CheckDeprecatedStackVersion(ent.Spec.Version, version.DeprecatedVersions)
+	return commonv1.CheckDeprecatedStackVersion(ent.Spec.Version)
 }
 
 func checkNoDowngrade(prev, curr *EnterpriseSearch) field.ErrorList {

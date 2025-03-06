@@ -77,14 +77,14 @@ func CheckSupportedStackVersion(ver string, supported version.MinMaxVersion) fie
 }
 
 // CheckDeprecatedStackVersion checks that the given version is not deprecated.
-func CheckDeprecatedStackVersion(ver string, deprecatedVersion version.MinMaxVersion) (string, field.ErrorList) {
+func CheckDeprecatedStackVersion(ver string) (string, field.ErrorList) {
 	v, err := ParseVersion(ver)
 	if err != nil {
 		return "", err
 	}
 
-	if v.Major >= deprecatedVersion.Min.Major && v.Major <= deprecatedVersion.Max.Major && v.Minor >= deprecatedVersion.Min.Minor && v.Minor <= deprecatedVersion.Max.Minor {
-		return fmt.Sprintf("Version %s is EOL and will be removed in a future release of the ECK operator", ver), nil
+	if v.GTE(version.DeprecatedVersions.Min) && v.LT(version.DeprecatedVersions.Max) {
+		return fmt.Sprintf("Version %s is EOL and support for it will be removed in a future release of the ECK operator", ver), nil
 	}
 
 	return "", nil

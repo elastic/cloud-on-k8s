@@ -161,7 +161,7 @@ func Test_validatingWebhook_Handle(t *testing.T) {
 					}},
 				},
 			},
-			want: admission.Allowed("Version 7.9.0 is EOL and will be removed in a future release of the ECK operator"),
+			want: admission.Allowed("Version 7.9.0 is EOL and support for it will be removed in a future release of the ECK operator"),
 		},
 	}
 	for _, tt := range tests {

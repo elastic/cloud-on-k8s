@@ -24,7 +24,7 @@ var GlobalMinStackVersion Version
 // supported Stack versions. See https://www.elastic.co/support/matrix#matrix_compatibility
 var (
 	DeprecatedVersions = MinMaxVersion{Min: From(7, 0, 0), Max: From(7, 16, 0)}
-	// Some of the versions below might be EOL but we do not want to block users from usign ECK with those versions
+	// Some of the versions below might be EOL but we do not want to block users from using ECK with those versions yet.
 	// We will add a warning when users try to create a resource with an EOL version.
 	SupportedAPMServerVersions        = MinMaxVersion{Min: From(7, 0, 0), Max: From(9, 99, 99)}
 	SupportedEnterpriseSearchVersions = MinMaxVersion{Min: From(7, 7, 0), Max: From(8, 99, 99)}

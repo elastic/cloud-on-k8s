@@ -121,7 +121,7 @@ func checkSupportedVersion(k *Kibana) field.ErrorList {
 }
 
 func checkIfVersionDeprecated(k *Kibana) (string, field.ErrorList) {
-	return commonv1.CheckDeprecatedStackVersion(k.Spec.Version, version.DeprecatedVersions)
+	return commonv1.CheckDeprecatedStackVersion(k.Spec.Version)
 }
 
 func checkNoDowngrade(prev, curr *Kibana) field.ErrorList {

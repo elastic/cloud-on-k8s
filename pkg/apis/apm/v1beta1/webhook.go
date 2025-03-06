@@ -122,7 +122,7 @@ func checkSupportedVersion(as *ApmServer) field.ErrorList {
 }
 
 func checkIfVersionDeprecated(as *ApmServer) (string, field.ErrorList) {
-	return commonv1.CheckDeprecatedStackVersion(as.Spec.Version, version.DeprecatedVersions)
+	return commonv1.CheckDeprecatedStackVersion(as.Spec.Version)
 }
 
 func checkNoDowngrade(prev, curr *ApmServer) field.ErrorList {

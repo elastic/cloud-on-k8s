@@ -108,8 +108,8 @@ func TestWebhook(t *testing.T) {
 				ent.Spec.Version = "7.10.0"
 				return serialize(t, ent)
 			},
-			Check: test.ValidationWebhookSuceededWithWarnings(
-				`Version 7.10.0 is EOL and will be removed in a future release of the ECK operator`,
+			Check: test.ValidationWebhookSucceededWithWarnings(
+				`Version 7.10.0 is EOL and support for it will be removed in a future release of the ECK operator`,
 			),
 		},
 		{

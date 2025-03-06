@@ -177,7 +177,7 @@ func Test_checkIfVersionDeprecated(t *testing.T) {
 		{
 			name:    "deprecated",
 			version: "7.4.0",
-			want:    "Version 7.4.0 is EOL and will be removed in a future release of the ECK operator",
+			want:    "Version 7.4.0 is EOL and support for it will be removed in a future release of the ECK operator",
 		},
 	}
 

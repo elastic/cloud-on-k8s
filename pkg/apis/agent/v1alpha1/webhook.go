@@ -77,6 +77,16 @@ func (a *Agent) WebhookPath() string {
 func (a *Agent) validate(old *Agent) (admission.Warnings, error) {
 	warnings := a.warnings()
 	var errors field.ErrorList
+
+	// depreciation check
+	depreciationWarnings, depreciationErrors := checkIfVersionDeprecated(a)
+	if depreciationErrors != nil {
+		errors = append(errors, depreciationErrors...)
+	}
+	if depreciationWarnings != "" {
+		warnings = append(warnings, depreciationWarnings)
+	}
+
 	if old != nil {
 		for _, uc := range updateChecks {
 			if err := uc(old, a); err != nil {
@@ -93,15 +103,6 @@ func (a *Agent) validate(old *Agent) (admission.Warnings, error) {
 		if err := dc(a); err != nil {
 			errors = append(errors, err...)
 		}
-	}
-
-	// depreciation check
-	depreciationWarnings, depreciationErrors := checkIfVersionDeprecated(a)
-	if depreciationErrors != nil {
-		errors = append(errors, depreciationErrors...)
-	}
-	if depreciationWarnings != "" {
-		warnings = append(warnings, depreciationWarnings)
 	}
 
 	if len(errors) > 0 {

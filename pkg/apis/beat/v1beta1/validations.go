@@ -48,7 +48,7 @@ func checkSupportedVersion(b *Beat) field.ErrorList {
 }
 
 func checkIfVersionDeprecated(b *Beat) (string, field.ErrorList) {
-	return commonv1.CheckDeprecatedStackVersion(b.Spec.Version, version.DeprecatedVersions)
+	return commonv1.CheckDeprecatedStackVersion(b.Spec.Version)
 }
 
 func checkAtMostOneDeploymentOption(b *Beat) field.ErrorList {

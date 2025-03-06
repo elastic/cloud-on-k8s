@@ -103,7 +103,7 @@ func checkSupportedVersion(ems *ElasticMapsServer) field.ErrorList {
 }
 
 func checkIfVersionDeprecated(ems *ElasticMapsServer) (string, field.ErrorList) {
-	return commonv1.CheckDeprecatedStackVersion(ems.Spec.Version, version.DeprecatedVersions)
+	return commonv1.CheckDeprecatedStackVersion(ems.Spec.Version)
 }
 
 func checkAssociation(ems *ElasticMapsServer) field.ErrorList {

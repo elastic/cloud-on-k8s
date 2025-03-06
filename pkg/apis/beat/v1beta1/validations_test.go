@@ -375,7 +375,7 @@ func Test_checkIfVersionDeprecated(t *testing.T) {
 					Version: "7.10.0",
 				},
 			},
-			want: "Version 7.10.0 is EOL and will be removed in a future release of the ECK operator",
+			want: "Version 7.10.0 is EOL and support for it will be removed in a future release of the ECK operator",
 		},
 	}
 	for _, tt := range tests {

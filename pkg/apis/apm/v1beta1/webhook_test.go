@@ -144,8 +144,8 @@ func TestWebhook(t *testing.T) {
 				apm.Spec.Version = "7.4.0"
 				return serialize(t, apm)
 			},
-			Check: test.ValidationWebhookSuceededWithWarnings(
-				`Version 7.4.0 is EOL and will be removed in a future release of the ECK operator`,
+			Check: test.ValidationWebhookSucceededWithWarnings(
+				`Version 7.4.0 is EOL and support for it will be removed in a future release of the ECK operator`,
 			),
 		},
 		{

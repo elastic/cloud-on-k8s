@@ -74,7 +74,7 @@ func ValidationWebhookFailed(causeRegexes ...string) func(*testing.T, *admission
 	}
 }
 
-func ValidationWebhookSuceededWithWarnings(warningsRegexes ...string) func(*testing.T, *admissionv1beta1.AdmissionResponse) {
+func ValidationWebhookSucceededWithWarnings(warningsRegexes ...string) func(*testing.T, *admissionv1beta1.AdmissionResponse) {
 	return func(t *testing.T, response *admissionv1beta1.AdmissionResponse) {
 		t.Helper()
 		require.True(t, response.Allowed, "Request denied: %s", response.Result.Reason)
@@ -89,7 +89,7 @@ func ValidationWebhookSuceededWithWarnings(warningsRegexes ...string) func(*test
 					break
 				}
 			}
-			require.True(t, found, "[%s] is not present in cause list", wr)
+			require.True(t, found, "[%s] is not present in warning list", wr)
 		}
 	}
 }
