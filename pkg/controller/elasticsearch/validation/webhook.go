@@ -78,7 +78,6 @@ func (wh *validatingWebhook) validateUpdate(ctx context.Context, prev esv1.Elast
 // Handle is called when any request is sent to the webhook, satisfying the admission.Handler interface.
 func (wh *validatingWebhook) Handle(ctx context.Context, req admission.Request) admission.Response {
 	es := &esv1.Elasticsearch{}
-	warnings := ""
 	err := wh.decoder.DecodeRaw(req.Object, es)
 	if err != nil {
 		return admission.Errored(http.StatusBadRequest, err)
@@ -92,7 +91,7 @@ func (wh *validatingWebhook) Handle(ctx context.Context, req admission.Request) 
 	}
 
 	if req.Operation == admissionv1.Create {
-		warnings, err = wh.validateCreate(ctx, *es)
+		warnings, err := wh.validateCreate(ctx, *es)
 		if err != nil {
 			return admission.Denied(err.Error())
 		}
@@ -111,7 +110,7 @@ func (wh *validatingWebhook) Handle(ctx context.Context, req admission.Request) 
 			return admission.Errored(http.StatusBadRequest, err)
 		}
 
-		warnings, err = wh.validateUpdate(ctx, *oldObj, *es)
+		warnings, err := wh.validateUpdate(ctx, *oldObj, *es)
 		if err != nil {
 			return admission.Denied(err.Error())
 		}
