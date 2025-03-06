@@ -57,9 +57,13 @@ func validateClientAuthentication(config *common.CanonicalConfig, index int) fie
 }
 
 func CheckForWarnings(es esv1.Elasticsearch) error {
-	warnings := check(es, warnings)
-	if len(warnings) > 0 {
-		return warnings.ToAggregate()
+	warnings, errors := check(es, warnings)
+	if warnings != "" {
+		warningError := field.ErrorList{field.Invalid(field.NewPath("spec").Child("version"), es.Spec.Version, warnings)}
+		errors = append(errors, warningError...)
+	}
+	if len(errors) > 0 {
+		return errors.ToAggregate()
 	}
 	return nil
 }

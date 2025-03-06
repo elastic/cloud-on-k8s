@@ -76,6 +76,20 @@ func CheckSupportedStackVersion(ver string, supported version.MinMaxVersion) fie
 	return nil
 }
 
+// CheckDeprecatedStackVersion checks that the given version is not deprecated.
+func CheckDeprecatedStackVersion(ver string, deprecatedVersion version.MinMaxVersion) (string, field.ErrorList) {
+	v, err := ParseVersion(ver)
+	if err != nil {
+		return "", err
+	}
+
+	if v.Major >= deprecatedVersion.Min.Major && v.Major <= deprecatedVersion.Max.Major && v.Minor >= deprecatedVersion.Min.Minor && v.Minor <= deprecatedVersion.Max.Minor {
+		return fmt.Sprintf("Version %s is EOL and will be removed in a future release of the ECK operator", ver), nil
+	}
+
+	return "", nil
+}
+
 // CheckNoDowngrade checks current and previous versions to ensure no downgrades are happening.
 func CheckNoDowngrade(prev, curr string) field.ErrorList {
 	prevVer, err := ParseVersion(prev)

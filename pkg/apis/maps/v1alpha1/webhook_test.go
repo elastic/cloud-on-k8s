@@ -74,6 +74,19 @@ func TestWebhook(t *testing.T) {
 			),
 		},
 		{
+			Name:      "deprecated-version",
+			Operation: admissionv1beta1.Create,
+			Object: func(t *testing.T, uid string) []byte {
+				t.Helper()
+				m := mkMaps(uid)
+				m.Spec.Version = "7.14.0"
+				return serialize(t, m)
+			},
+			Check: test.ValidationWebhookSuceededWithWarnings(
+				`Version 7.14.0 is EOL and will be removed in a future release of the ECK operator`,
+			),
+		},
+		{
 			Name:      "unsupported-version-lower",
 			Operation: admissionv1beta1.Create,
 			Object: func(t *testing.T, uid string) []byte {
@@ -105,7 +118,7 @@ func TestWebhook(t *testing.T) {
 			Object: func(t *testing.T, uid string) []byte {
 				t.Helper()
 				m := mkMaps(uid)
-				m.Spec.Version = "7.12.0"
+				m.Spec.Version = "8.12.0"
 				m.Spec.ElasticsearchRef = commonv1.ObjectSelector{Name: "esname", Namespace: "esns", ServiceName: "essvc"}
 				return serialize(t, m)
 			},
@@ -117,7 +130,7 @@ func TestWebhook(t *testing.T) {
 			Object: func(t *testing.T, uid string) []byte {
 				t.Helper()
 				m := mkMaps(uid)
-				m.Spec.Version = "7.12.0"
+				m.Spec.Version = "8.12.0"
 				m.Spec.ElasticsearchRef = commonv1.ObjectSelector{SecretName: "esname"}
 				return serialize(t, m)
 			},
@@ -129,7 +142,7 @@ func TestWebhook(t *testing.T) {
 			Object: func(t *testing.T, uid string) []byte {
 				t.Helper()
 				m := mkMaps(uid)
-				m.Spec.Version = "7.12.0"
+				m.Spec.Version = "8.12.0"
 				m.Spec.ElasticsearchRef = commonv1.ObjectSelector{SecretName: "esname", Name: "esname"}
 				return serialize(t, m)
 			},
@@ -143,7 +156,7 @@ func TestWebhook(t *testing.T) {
 			Object: func(t *testing.T, uid string) []byte {
 				t.Helper()
 				m := mkMaps(uid)
-				m.Spec.Version = "7.12.0"
+				m.Spec.Version = "8.12.0"
 				m.Spec.ElasticsearchRef = commonv1.ObjectSelector{SecretName: "esname", Namespace: "esname"}
 				return serialize(t, m)
 			},
@@ -165,7 +178,7 @@ func mkMaps(uid string) *emsv1alpha1.ElasticMapsServer {
 			UID:  types.UID(uid),
 		},
 		Spec: emsv1alpha1.MapsSpec{
-			Version: "7.12.0",
+			Version: "7.17.0",
 		},
 	}
 }

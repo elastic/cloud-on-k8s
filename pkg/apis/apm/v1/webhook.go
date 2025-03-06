@@ -81,6 +81,7 @@ func (as *ApmServer) WebhookPath() string {
 
 func (as *ApmServer) validate(old *ApmServer) (admission.Warnings, error) {
 	var errors field.ErrorList
+	var warnings admission.Warnings
 	if old != nil {
 		for _, uc := range updateChecks {
 			if err := uc(old, as); err != nil {
@@ -99,10 +100,19 @@ func (as *ApmServer) validate(old *ApmServer) (admission.Warnings, error) {
 		}
 	}
 
-	if len(errors) > 0 {
-		return nil, apierrors.NewInvalid(groupKind, as.Name, errors)
+	// depreciation check
+	depreciationWarnings, depreciationErrors := checkIfVersionDeprecated(as)
+	if depreciationErrors != nil {
+		errors = append(errors, depreciationErrors...)
 	}
-	return nil, nil
+	if depreciationWarnings != "" {
+		warnings = append(warnings, depreciationWarnings)
+	}
+
+	if len(errors) > 0 {
+		return warnings, apierrors.NewInvalid(groupKind, as.Name, errors)
+	}
+	return warnings, nil
 }
 
 func checkNoUnknownFields(as *ApmServer) field.ErrorList {
@@ -115,6 +125,10 @@ func checkNameLength(as *ApmServer) field.ErrorList {
 
 func checkSupportedVersion(as *ApmServer) field.ErrorList {
 	return commonv1.CheckSupportedStackVersion(as.Spec.Version, version.SupportedAPMServerVersions)
+}
+
+func checkIfVersionDeprecated(as *ApmServer) (string, field.ErrorList) {
+	return commonv1.CheckDeprecatedStackVersion(as.Spec.Version, version.DeprecatedVersions)
 }
 
 func checkNoDowngrade(prev, curr *ApmServer) field.ErrorList {

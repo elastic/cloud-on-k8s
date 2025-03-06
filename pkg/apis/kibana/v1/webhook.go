@@ -79,6 +79,7 @@ func (k *Kibana) WebhookPath() string {
 
 func (k *Kibana) validate(old *Kibana) (admission.Warnings, error) {
 	var errors field.ErrorList
+	var warnings admission.Warnings
 	if old != nil {
 		for _, uc := range updateChecks {
 			if err := uc(old, k); err != nil {
@@ -97,10 +98,18 @@ func (k *Kibana) validate(old *Kibana) (admission.Warnings, error) {
 		}
 	}
 
-	if len(errors) > 0 {
-		return nil, apierrors.NewInvalid(groupKind, k.Name, errors)
+	deprecatedWarnings, deprecatedErrors := checkIfVersionDeprecated(k)
+	if len(deprecatedErrors) > 0 {
+		errors = append(errors, deprecatedErrors...)
 	}
-	return nil, nil
+	if len(deprecatedWarnings) > 0 {
+		warnings = append(warnings, deprecatedWarnings)
+	}
+
+	if len(errors) > 0 {
+		return warnings, apierrors.NewInvalid(groupKind, k.Name, errors)
+	}
+	return warnings, nil
 }
 
 func checkNoUnknownFields(k *Kibana) field.ErrorList {
@@ -113,6 +122,10 @@ func checkNameLength(k *Kibana) field.ErrorList {
 
 func checkSupportedVersion(k *Kibana) field.ErrorList {
 	return commonv1.CheckSupportedStackVersion(k.Spec.Version, version.SupportedKibanaVersions)
+}
+
+func checkIfVersionDeprecated(k *Kibana) (string, field.ErrorList) {
+	return commonv1.CheckDeprecatedStackVersion(k.Spec.Version, version.DeprecatedVersions)
 }
 
 func checkNoDowngrade(prev, curr *Kibana) field.ErrorList {

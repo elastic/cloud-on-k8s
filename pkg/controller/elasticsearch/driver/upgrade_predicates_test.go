@@ -168,25 +168,6 @@ func TestUpgradePodsDeletion_WithNodeTypeMutations(t *testing.T) {
 			wantShardsAllocationDisabled: true,
 		},
 		{
-			name: "Risky mutation with 6.x nodes",
-			fields: fields{
-				esVersion: "6.8.0",
-				upgradeTestPods: newUpgradeTestPods(
-					newTestPod("masterdata-0").withVersion("6.8.0").withRoles(esv1.MasterRole, esv1.DataRole).isHealthy(true).needsUpgrade(false).isInCluster(true),
-					newTestPod("other-master-0").withVersion("6.8.0").withRoles(esv1.MasterRole, esv1.DataRole).isHealthy(true).needsUpgrade(true).isInCluster(true),
-				),
-				maxUnavailable: 1,
-				health:         client.Health{Status: esv1.ElasticsearchGreenHealth},
-				mutation:       removeMasterType("other-master"),
-			},
-			deleted:                      []string{"other-master-0"},
-			minimumMasterNodesCalled:     true,
-			minimumMasterNodesCalledWith: 1,
-			recordedEvents:               1,
-			wantErr:                      false,
-			wantShardsAllocationDisabled: true,
-		},
-		{
 			// Same test as above but the remaining master is unhealthy, nothing should be done
 			name: "Risky mutation with an unhealthy master",
 			fields: fields{

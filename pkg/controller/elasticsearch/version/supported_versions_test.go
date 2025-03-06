@@ -24,20 +24,6 @@ func TestSupportedVersions(t *testing.T) {
 		unsupported []version.Version
 	}{
 		{
-			name: "6.x",
-			args: args{
-				v: version.MustParse("6.8.0"),
-			},
-			supported: []version.Version{
-				version.MustParse("6.8.0"),
-				version.MustParse("6.99.99"),
-			},
-			unsupported: []version.Version{
-				version.MustParse("6.5.0"),
-				version.MustParse("7.0.0"),
-			},
-		},
-		{
 			name: "7.x",
 			args: args{
 				v: version.MustParse("7.1.0"),
