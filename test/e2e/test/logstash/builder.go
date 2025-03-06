@@ -188,6 +188,10 @@ func (b Builder) WithLogsMonitoring(logsESRef ...commonv1.ObjectSelector) Builde
 }
 
 func (b Builder) GetMetricsIndexPattern() string {
+	v := version.MustParse(test.Ctx().ElasticStackVersion)
+	if v.GTE(version.MinFor(9, 0, 0)) {
+		return ".monitoring-logstash-9-mb"
+	}
 	return ".monitoring-logstash-8-mb"
 }
 

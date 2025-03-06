@@ -275,6 +275,9 @@ func (b Builder) WithEnv(envVar []corev1.EnvVar) Builder {
 
 func (b Builder) GetMetricsIndexPattern() string {
 	v := version.MustParse(test.Ctx().ElasticStackVersion)
+	if v.GTE(version.MinFor(9, 0, 0)) {
+		return ".monitoring-kibana-9-mb"
+	}
 	if v.GTE(version.MinFor(8, 3, 0)) {
 		return ".monitoring-kibana-8-mb"
 	}
