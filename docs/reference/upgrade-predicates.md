@@ -7,7 +7,7 @@ applies_to:
 
 # ECK upgrade predicates
 
-The rules (otherwise known as predicates) that the ECK operator follows during an {es} upgrade can be selectively disabled for certain scenarios where the ECK operator will not proceed with an {{es}} cluster upgrade because it deems it to be "unsafe".
+The rules (otherwise known as predicates) that the ECK operator follows during an {{es}} upgrade can be selectively disabled for certain scenarios where the ECK operator will not proceed with an {{es}} cluster upgrade because it deems it to be "unsafe".
 
 ::::{warning}
 * Selectively disabling the predicates is extremely risky, and carry a high chance of either data loss, or causing a cluster to become completely unavailable. Use them only if you are sure that you are not causing permanent damage to an {{es}} cluster.
