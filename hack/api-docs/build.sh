@@ -37,9 +37,9 @@ build_docs() {
         echo "Generating API reference documentation"
         "${BIN_DIR}"/crd-ref-docs --source-path="${REPO_ROOT}"/pkg/apis \
             --config="${SCRIPT_DIR}"/config.yaml \
-            --renderer=asciidoctor \
+            --renderer=markdown \
             --templates-dir="${SCRIPT_DIR}"/templates \
-            --output-path="${DOCS_DIR}"/reference/api-docs.asciidoc
+            --output-path="${DOCS_DIR}"/reference/api-docs.md
     )
 }
 
