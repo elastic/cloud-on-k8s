@@ -5,6 +5,8 @@ applies_to:
     eck: all
 ---
 
+# ECK rolling upgrade predicates
+
 ## Advanced control during rolling upgrades [k8s-advanced-upgrade-control]
 
 (work in progress - reference content)
