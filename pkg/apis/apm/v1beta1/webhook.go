@@ -76,23 +76,6 @@ func (as *ApmServer) WebhookPath() string {
 func (as *ApmServer) validate(old *ApmServer) (admission.Warnings, error) {
 	var errors field.ErrorList
 	var warnings admission.Warnings
-	if old != nil {
-		for _, uc := range updateChecks {
-			if err := uc(old, as); err != nil {
-				errors = append(errors, err...)
-			}
-		}
-
-		if len(errors) > 0 {
-			return nil, apierrors.NewInvalid(groupKind, as.Name, errors)
-		}
-	}
-
-	for _, dc := range defaultChecks {
-		if err := dc(as); err != nil {
-			errors = append(errors, err...)
-		}
-	}
 
 	// depreciation check
 	depreciationWarnings, depreciationErrors := checkIfVersionDeprecated(as)
@@ -101,6 +84,24 @@ func (as *ApmServer) validate(old *ApmServer) (admission.Warnings, error) {
 	}
 	if depreciationWarnings != "" {
 		warnings = append(warnings, depreciationWarnings)
+	}
+
+	if old != nil {
+		for _, uc := range updateChecks {
+			if err := uc(old, as); err != nil {
+				errors = append(errors, err...)
+			}
+		}
+
+		if len(errors) > 0 {
+			return warnings, apierrors.NewInvalid(groupKind, as.Name, errors)
+		}
+	}
+
+	for _, dc := range defaultChecks {
+		if err := dc(as); err != nil {
+			errors = append(errors, err...)
+		}
 	}
 
 	if len(errors) > 0 {

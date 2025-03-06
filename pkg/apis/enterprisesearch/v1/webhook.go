@@ -77,23 +77,6 @@ func (ent *EnterpriseSearch) WebhookPath() string {
 func (ent *EnterpriseSearch) validate(old *EnterpriseSearch) (admission.Warnings, error) {
 	var errors field.ErrorList
 	var warnings admission.Warnings
-	if old != nil {
-		for _, uc := range updateChecks {
-			if err := uc(old, ent); err != nil {
-				errors = append(errors, err...)
-			}
-		}
-
-		if len(errors) > 0 {
-			return nil, apierrors.NewInvalid(groupKind, ent.Name, errors)
-		}
-	}
-
-	for _, dc := range defaultChecks {
-		if err := dc(ent); err != nil {
-			errors = append(errors, err...)
-		}
-	}
 
 	// check if the version is deprecated
 	deprecationWarnings, deprecationErrors := checkIfVersionDeprecated(ent)
@@ -102,6 +85,24 @@ func (ent *EnterpriseSearch) validate(old *EnterpriseSearch) (admission.Warnings
 	}
 	if deprecationWarnings != "" {
 		warnings = append(warnings, deprecationWarnings)
+	}
+
+	if old != nil {
+		for _, uc := range updateChecks {
+			if err := uc(old, ent); err != nil {
+				errors = append(errors, err...)
+			}
+		}
+
+		if len(errors) > 0 {
+			return warnings, apierrors.NewInvalid(groupKind, ent.Name, errors)
+		}
+	}
+
+	for _, dc := range defaultChecks {
+		if err := dc(ent); err != nil {
+			errors = append(errors, err...)
+		}
 	}
 
 	if len(errors) > 0 {
