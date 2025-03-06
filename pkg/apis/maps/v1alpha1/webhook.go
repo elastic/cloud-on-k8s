@@ -65,6 +65,7 @@ func (m *ElasticMapsServer) WebhookPath() string {
 
 func (m *ElasticMapsServer) validate() (admission.Warnings, error) {
 	var errors field.ErrorList
+	var warnings admission.Warnings
 
 	for _, dc := range defaultChecks {
 		if err := dc(m); err != nil {
@@ -72,11 +73,21 @@ func (m *ElasticMapsServer) validate() (admission.Warnings, error) {
 		}
 	}
 
+	// check for deprecated version
+	deprecationWarnings, deprecationErrors := checkIfVersionDeprecated(m)
+	if deprecationErrors != nil {
+		errors = append(errors, deprecationErrors...)
+	}
+
+	if deprecationWarnings != "" {
+		warnings = append(warnings, deprecationWarnings)
+	}
+
 	if len(errors) > 0 {
 		validationLog.V(1).Info("failed validation", "errors", errors)
-		return nil, apierrors.NewInvalid(groupKind, m.Name, errors)
+		return warnings, apierrors.NewInvalid(groupKind, m.Name, errors)
 	}
-	return nil, nil
+	return warnings, nil
 }
 
 func checkNoUnknownFields(ems *ElasticMapsServer) field.ErrorList {
@@ -89,6 +100,10 @@ func checkNameLength(ems *ElasticMapsServer) field.ErrorList {
 
 func checkSupportedVersion(ems *ElasticMapsServer) field.ErrorList {
 	return commonv1.CheckSupportedStackVersion(ems.Spec.Version, version.SupportedMapsVersions)
+}
+
+func checkIfVersionDeprecated(ems *ElasticMapsServer) (string, field.ErrorList) {
+	return commonv1.CheckDeprecatedStackVersion(ems.Spec.Version, version.DeprecatedVersions)
 }
 
 func checkAssociation(ems *ElasticMapsServer) field.ErrorList {

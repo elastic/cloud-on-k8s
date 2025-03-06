@@ -54,7 +54,7 @@ func Test_validatingWebhook_Handle(t *testing.T) {
 					Object: runtime.RawExtension{
 						Raw: asJSON(&esv1.Elasticsearch{
 							ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: "name"},
-							Spec:       esv1.ElasticsearchSpec{Version: "7.9.0", NodeSets: []esv1.NodeSet{{Name: "set1", Count: 3}}},
+							Spec:       esv1.ElasticsearchSpec{Version: "8.9.0", NodeSets: []esv1.NodeSet{{Name: "set1", Count: 3}}},
 						}),
 					}},
 				},
@@ -72,7 +72,7 @@ func Test_validatingWebhook_Handle(t *testing.T) {
 					Object: runtime.RawExtension{
 						Raw: asJSON(&esv1.Elasticsearch{
 							ObjectMeta: metav1.ObjectMeta{Namespace: "unmanaged", Name: "name"},
-							Spec:       esv1.ElasticsearchSpec{Version: "7.9.0", NodeSets: []esv1.NodeSet{{Name: "set1", Count: 3}}},
+							Spec:       esv1.ElasticsearchSpec{Version: "8.9.0", NodeSets: []esv1.NodeSet{{Name: "set1", Count: 3}}},
 						}),
 					}},
 				},
@@ -108,13 +108,13 @@ func Test_validatingWebhook_Handle(t *testing.T) {
 					OldObject: runtime.RawExtension{
 						Raw: asJSON(&esv1.Elasticsearch{
 							ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: "name"},
-							Spec:       esv1.ElasticsearchSpec{Version: "7.9.0", NodeSets: []esv1.NodeSet{{Name: "set1", Count: 3}}},
+							Spec:       esv1.ElasticsearchSpec{Version: "8.9.0", NodeSets: []esv1.NodeSet{{Name: "set1", Count: 3}}},
 						}),
 					},
 					Object: runtime.RawExtension{
 						Raw: asJSON(&esv1.Elasticsearch{
 							ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: "name"},
-							Spec:       esv1.ElasticsearchSpec{Version: "7.9.0", NodeSets: []esv1.NodeSet{{Name: "set1", Count: 4}}},
+							Spec:       esv1.ElasticsearchSpec{Version: "8.9.0", NodeSets: []esv1.NodeSet{{Name: "set1", Count: 4}}},
 						}),
 					},
 				}},
@@ -132,18 +132,36 @@ func Test_validatingWebhook_Handle(t *testing.T) {
 					OldObject: runtime.RawExtension{
 						Raw: asJSON(&esv1.Elasticsearch{
 							ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: "name"},
-							Spec:       esv1.ElasticsearchSpec{Version: "7.9.1", NodeSets: []esv1.NodeSet{{Name: "set1", Count: 3}}},
+							Spec:       esv1.ElasticsearchSpec{Version: "8.9.1", NodeSets: []esv1.NodeSet{{Name: "set1", Count: 3}}},
 						}),
 					},
 					Object: runtime.RawExtension{
 						Raw: asJSON(&esv1.Elasticsearch{
 							ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: "name"},
-							Spec:       esv1.ElasticsearchSpec{Version: "7.9.0", NodeSets: []esv1.NodeSet{{Name: "set1", Count: 3}}},
+							Spec:       esv1.ElasticsearchSpec{Version: "8.9.0", NodeSets: []esv1.NodeSet{{Name: "set1", Count: 3}}},
 						}),
 					},
 				}},
 			},
 			want: admission.Denied(noDowngradesMsg),
+		},
+		{
+			name: "accept valid creation with warnings due to deprecated version",
+			fields: fields{
+				client: k8s.NewFakeClient(),
+			},
+			args: args{
+				req: admission.Request{AdmissionRequest: admissionv1.AdmissionRequest{
+					Operation: admissionv1.Create,
+					Object: runtime.RawExtension{
+						Raw: asJSON(&esv1.Elasticsearch{
+							ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: "name"},
+							Spec:       esv1.ElasticsearchSpec{Version: "7.9.0", NodeSets: []esv1.NodeSet{{Name: "set1", Count: 3}}},
+						}),
+					}},
+				},
+			},
+			want: admission.Allowed("Version 7.9.0 is EOL and will be removed in a future release of the ECK operator"),
 		},
 	}
 	for _, tt := range tests {

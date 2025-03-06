@@ -95,6 +95,15 @@ func (a *Agent) validate(old *Agent) (admission.Warnings, error) {
 		}
 	}
 
+	// depreciation check
+	depreciationWarnings, depreciationErrors := checkIfVersionDeprecated(a)
+	if depreciationErrors != nil {
+		errors = append(errors, depreciationErrors...)
+	}
+	if depreciationWarnings != "" {
+		warnings = append(warnings, depreciationWarnings)
+	}
+
 	if len(errors) > 0 {
 		return warnings, apierrors.NewInvalid(groupKind, a.Name, errors)
 	}

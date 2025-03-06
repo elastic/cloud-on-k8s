@@ -74,6 +74,26 @@ func ValidationWebhookFailed(causeRegexes ...string) func(*testing.T, *admission
 	}
 }
 
+func ValidationWebhookSuceededWithWarnings(warningsRegexes ...string) func(*testing.T, *admissionv1beta1.AdmissionResponse) {
+	return func(t *testing.T, response *admissionv1beta1.AdmissionResponse) {
+		t.Helper()
+		require.True(t, response.Allowed, "Request denied: %s", response.Result.Reason)
+		for _, wr := range warningsRegexes {
+			found := false
+			t.Logf("Checking for existence of: %s", wr)
+			for _, warning := range response.Warnings {
+				match, err := regexp.MatchString(wr, warning)
+				require.NoError(t, err, "Match '%s' returned error: %v", wr, err)
+				if match {
+					found = true
+					break
+				}
+			}
+			require.True(t, found, "[%s] is not present in cause list", wr)
+		}
+	}
+}
+
 // RunValidationWebhookTests runs a series of ValidationWebhookTestCases
 //
 //nolint:thelper
