@@ -74,6 +74,19 @@ func TestWebhook(t *testing.T) {
 			),
 		},
 		{
+			Name:      "deprecated-version",
+			Operation: admissionv1beta1.Create,
+			Object: func(t *testing.T, uid string) []byte {
+				t.Helper()
+				k := mkKibana(uid)
+				k.Spec.Version = "7.10.0"
+				return serialize(t, k)
+			},
+			Check: test.ValidationWebhookSuceededWithWarnings(
+				`Version 7.10.0 is EOL and will be removed in a future release of the ECK operator`,
+			),
+		},
+		{
 			Name:      "unsupported-version-lower",
 			Operation: admissionv1beta1.Create,
 			Object: func(t *testing.T, uid string) []byte {
