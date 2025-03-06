@@ -5,18 +5,15 @@ applies_to:
     eck: all
 ---
 
-# ECK rolling upgrade predicates
+# ECK upgrade predicates
 
-## Advanced control during rolling upgrades [k8s-advanced-upgrade-control]
-
-(work in progress - reference content)
-
-The rules (otherwise known as predicates) that the ECK operator follows during an Elasticsearch upgrade can be selectively disabled for certain scenarios where the ECK operator will not proceed with an Elasticsearch cluster upgrade because it deems it to be "unsafe".
+The rules (otherwise known as predicates) that the ECK operator follows during an {es} upgrade can be selectively disabled for certain scenarios where the ECK operator will not proceed with an {{es}} cluster upgrade because it deems it to be "unsafe".
 
 ::::{warning}
-Selectively disabling the predicates listed in this section are extremely risky, and carry a high chance of either data loss, or causing a cluster to become completely unavailable. Use them only if you are sure that you are not causing permanent damage to an Elasticsearch cluster. These predicates might change in the future. We will be adding, removing, and renaming these over time, so be careful in adding these to any automation.  Also, make sure you remove them after use. `kublectl annotate elasticsearch.elasticsearch.k8s.elastic.co/elasticsearch-sample eck.k8s.elastic.co/disable-upgrade-predicates-`
+* Selectively disabling the predicates is extremely risky, and carry a high chance of either data loss, or causing a cluster to become completely unavailable. Use them only if you are sure that you are not causing permanent damage to an {{es}} cluster.
+* These predicates might change in the future. We will be adding, removing, and renaming these over time, so be careful in adding these to any automation.
+* Also, make sure you remove them after use by running `kublectl annotate elasticsearch.elasticsearch.k8s.elastic.co/elasticsearch-sample eck.k8s.elastic.co/disable-upgrade-predicates-`
 ::::
-
 
 * The following named predicates control the upgrade process
 
@@ -34,7 +31,7 @@ Selectively disabling the predicates listed in this section are extremely risky,
 
     * only_restart_healthy_node_if_green_or_yellow
 
-        Only restart healthy Elasticsearch nodes if the health of the cluster is either green or yellow, never red.
+        Only restart healthy {{es}} nodes if the health of the cluster is either green or yellow, never red.
 
     * if_yellow_only_restart_upgrading_nodes_with_unassigned_replicas
 
@@ -61,11 +58,11 @@ Selectively disabling the predicates listed in this section are extremely risky,
         Do not delete all nodes that share the same node roles at once. This ensures that there is always availability for each configured tier of nodes during a rolling upgrade.
 
 
-Any of these predicates can be disabled by adding an annotation with the key of `eck.k8s.elastic.co/disable-upgrade-predicates` to the Elasticsearch metadata, specifically naming the predicate that is needing to be disabled.  Also, all predicates can be disabled by replacing the name of any predicatae with "*".
+Any of these predicates can be disabled by adding an annotation with the key of `eck.k8s.elastic.co/disable-upgrade-predicates` to the {{es}} metadata, specifically naming the predicate that is needing to be disabled.  Also, all predicates can be disabled by replacing the name of any predicate with "*".
 
-* Example use case
+## Example use case
 
-Assume a given Elasticsearch cluster is a "red" state because of an un-allocatable shard setting that was applied to the cluster:
+Assume a given {{es}} cluster is a "red" state because of an un-allocatable shard setting that was applied to the cluster:
 
 ```json
 {

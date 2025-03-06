@@ -497,7 +497,7 @@ check-local-changes:
 		|| ( echo -e "\nError: dirty local changes"; git status --porcelain; git --no-pager diff; exit 1 )
 
 # Check if the predicate names in upgrade_predicates.go, are equal to the predicate names
-# defined in the user documentation in orchestration.asciidoc.
+# defined in the user documentation in upgrade-predicates.md.
 check-predicates: CODE = pkg/controller/elasticsearch/driver/upgrade_predicates.go
 check-predicates: DOC = docs/reference/upgrade-predicates.md
 check-predicates: PREDICATE_PATTERN = [a-z]*_[A-Za-z_]*
