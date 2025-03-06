@@ -1,24 +1,5 @@
 toc:
   - file: index.md
-  - file: k8s-api-reference.md
-    children:
-      - file: k8s-api-agent-k8s-elastic-co-v1alpha1.md
-      - file: k8s-api-apm-k8s-elastic-co-v1.md
-      - file: k8s-api-apm-k8s-elastic-co-v1beta1.md
-      - file: k8s-api-autoscaling-k8s-elastic-co-v1alpha1.md
-      - file: k8s-api-beat-k8s-elastic-co-v1beta1.md
-      - file: k8s-api-common-k8s-elastic-co-v1.md
-      - file: k8s-api-common-k8s-elastic-co-v1alpha1.md
-      - file: k8s-api-common-k8s-elastic-co-v1beta1.md
-      - file: k8s-api-elasticsearch-k8s-elastic-co-v1.md
-      - file: k8s-api-elasticsearch-k8s-elastic-co-v1beta1.md
-      - file: k8s-api-enterprisesearch-k8s-elastic-co-v1.md
-      - file: k8s-api-enterprisesearch-k8s-elastic-co-v1beta1.md
-      - file: k8s-api-kibana-k8s-elastic-co-v1.md
-      - file: k8s-api-kibana-k8s-elastic-co-v1beta1.md
-      - file: k8s-api-logstash-k8s-elastic-co-v1alpha1.md
-      - file: k8s-api-maps-k8s-elastic-co-v1alpha1.md
-      - file: k8s-api-stackconfigpolicy-k8s-elastic-co-v1alpha1.md
   - file: eck-configuration-flags.md
   - file: third-party-dependencies.md
-
+  - file: api-docs.md

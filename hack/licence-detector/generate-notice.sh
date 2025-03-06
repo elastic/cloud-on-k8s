@@ -24,8 +24,8 @@ generate_notice() {
         cd "$PROJECT_DIR"
         go mod download
         go list -m -json all | "${TEMP_DIR}"/go-licence-detector \
-            -depsTemplate="${SCRIPT_DIR}"/templates/dependencies.asciidoc.tmpl \
-            -depsOut="${PROJECT_DIR}"/docs/reference/dependencies.asciidoc \
+            -depsTemplate="${SCRIPT_DIR}"/templates/dependencies.md.tmpl \
+            -depsOut="${PROJECT_DIR}"/docs/reference/third-party-dependencies.md \
             -noticeTemplate="${SCRIPT_DIR}"/templates/NOTICE.txt.tmpl \
             -noticeOut="${PROJECT_DIR}"/NOTICE.txt \
             -overrides="${SCRIPT_DIR}"/overrides/overrides.json \
