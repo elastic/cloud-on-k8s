@@ -322,7 +322,7 @@ func Command() *cobra.Command {
 	cmd.Flags().Bool(
 		operator.UBIOnlyFlag,
 		false,
-		fmt.Sprintf("Use only UBI container images to deploy Elastic Stack applications. UBI images are only available from 7.10.0 onward. Cannot be combined with %s", operator.ContainerSuffixFlag),
+		fmt.Sprintf("Use only UBI container images to deploy Elastic Stack applications. UBI images are only available from 7.10.0 onward. Ignored from 9.x as default images are based on UBI. Cannot be combined with %s", operator.ContainerSuffixFlag),
 	)
 	cmd.Flags().Bool(
 		operator.ValidateStorageClassFlag,
