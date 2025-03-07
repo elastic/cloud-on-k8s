@@ -198,7 +198,7 @@ func Test_supportedVersion(t *testing.T) {
 		},
 		{
 			name:         "supported OK",
-			es:           es("6.8.0"),
+			es:           es("7.0.0"),
 			expectErrors: false,
 		},
 	}
@@ -605,7 +605,7 @@ func Test_validUpgradePath(t *testing.T) {
 		{
 			name:         "in range accepted",
 			current:      es("6.8.0"),
-			proposed:     es("7.1.0"),
+			proposed:     es("7.17.0"),
 			expectErrors: false,
 		},
 	}

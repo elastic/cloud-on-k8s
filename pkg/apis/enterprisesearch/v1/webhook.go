@@ -76,6 +76,17 @@ func (ent *EnterpriseSearch) WebhookPath() string {
 
 func (ent *EnterpriseSearch) validate(old *EnterpriseSearch) (admission.Warnings, error) {
 	var errors field.ErrorList
+	var warnings admission.Warnings
+
+	// check if the version is deprecated
+	deprecationWarnings, deprecationErrors := checkIfVersionDeprecated(ent)
+	if deprecationErrors != nil {
+		errors = append(errors, deprecationErrors...)
+	}
+	if deprecationWarnings != "" {
+		warnings = append(warnings, deprecationWarnings)
+	}
+
 	if old != nil {
 		for _, uc := range updateChecks {
 			if err := uc(old, ent); err != nil {
@@ -84,7 +95,7 @@ func (ent *EnterpriseSearch) validate(old *EnterpriseSearch) (admission.Warnings
 		}
 
 		if len(errors) > 0 {
-			return nil, apierrors.NewInvalid(groupKind, ent.Name, errors)
+			return warnings, apierrors.NewInvalid(groupKind, ent.Name, errors)
 		}
 	}
 
@@ -95,9 +106,9 @@ func (ent *EnterpriseSearch) validate(old *EnterpriseSearch) (admission.Warnings
 	}
 
 	if len(errors) > 0 {
-		return nil, apierrors.NewInvalid(groupKind, ent.Name, errors)
+		return warnings, apierrors.NewInvalid(groupKind, ent.Name, errors)
 	}
-	return nil, nil
+	return warnings, nil
 }
 
 func checkNoUnknownFields(ent *EnterpriseSearch) field.ErrorList {
@@ -110,6 +121,10 @@ func checkNameLength(ent *EnterpriseSearch) field.ErrorList {
 
 func checkSupportedVersion(ent *EnterpriseSearch) field.ErrorList {
 	return commonv1.CheckSupportedStackVersion(ent.Spec.Version, version.SupportedEnterpriseSearchVersions)
+}
+
+func checkIfVersionDeprecated(ent *EnterpriseSearch) (string, field.ErrorList) {
+	return commonv1.CheckDeprecatedStackVersion(ent.Spec.Version)
 }
 
 func checkNoDowngrade(prev, curr *EnterpriseSearch) field.ErrorList {
