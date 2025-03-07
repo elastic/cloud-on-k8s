@@ -1,5 +1,5 @@
 ---
-navigation_title: ECK upgrade predicates
+navigation_title: Elasticsearch upgrade predicates
 applies_to:
   deployment:
     eck: all
