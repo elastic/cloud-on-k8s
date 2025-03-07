@@ -1,6 +1,6 @@
 {{- define "depRow" -}}
 {{- range $i, $dep := . }}
-| [{{ $dep.URL }}]($${{ $dep.Name }}$$) | {{ $dep.Version }} | {{ $dep.LicenceType }} |
+| [{{ $dep.Name }}]({{ $dep.URL }}) | {{ $dep.Version }} | {{ $dep.LicenceType }} |
 {{- end }}
 {{- end -}}
 ---
@@ -11,7 +11,7 @@ applies_to:
   deployment:
     eck: all
 ---
-<!--- Generated documentation. Please do not edit. --->
+% Generated documentation. Please do not edit.
 
 # Third-party dependencies for Elastic Cloud on Kubernetes[k8s-dependencies]
 
