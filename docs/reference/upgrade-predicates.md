@@ -5,7 +5,7 @@ applies_to:
     eck: all
 ---
 
-# ECK upgrade predicates
+# Elasticsearch upgrade predicates
 
 The rules (otherwise known as predicates) that the ECK operator follows during an {{es}} upgrade can be selectively disabled for certain scenarios where the ECK operator will not proceed with an {{es}} cluster upgrade because it deems it to be "unsafe".
 
