@@ -38,7 +38,7 @@ This page lists the third-party dependencies used to build {{eck}}.
 | [github.com/prometheus/client_golang](https://github.com/prometheus/client_golang) | v1.21.1 | Apache-2.0 |
 | [github.com/prometheus/common](https://github.com/prometheus/common) | v0.62.0 | Apache-2.0 |
 | [github.com/sethvargo/go-password](https://github.com/sethvargo/go-password) | v0.3.1 | MIT |
-| [github.com/spf13/cobra](https://github.com/spf13/cobra) | v1.8.1 | Apache-2.0 |
+| [github.com/spf13/cobra](https://github.com/spf13/cobra) | v1.9.1 | Apache-2.0 |
 | [github.com/spf13/pflag](https://github.com/spf13/pflag) | v1.0.6 | BSD-3-Clause |
 | [github.com/spf13/viper](https://github.com/spf13/viper) | v1.19.0 | MIT |
 | [github.com/stretchr/testify](https://github.com/stretchr/testify) | v1.10.0 | MIT |
