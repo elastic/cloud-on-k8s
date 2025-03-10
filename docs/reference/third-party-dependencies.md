@@ -31,7 +31,7 @@ This page lists the third-party dependencies used to build {{eck}}.
 | [github.com/google/uuid](https://github.com/google/uuid) | v1.6.0 | BSD-3-Clause |
 | [github.com/hashicorp/go-multierror](https://github.com/hashicorp/go-multierror) | v1.1.1 | MPL-2.0 |
 | [github.com/hashicorp/golang-lru/v2](https://github.com/hashicorp/golang-lru) | v2.0.7 | MPL-2.0 |
-| [github.com/hashicorp/vault/api](https://github.com/hashicorp/vault) | v1.15.0 | MPL-2.0 |
+| [github.com/hashicorp/vault/api](https://github.com/hashicorp/vault) | v1.16.0 | MPL-2.0 |
 | [github.com/magiconair/properties](https://github.com/magiconair/properties) | v1.8.9 | BSD-2-Clause |
 | [github.com/pkg/errors](https://github.com/pkg/errors) | v0.9.1 | BSD-2-Clause |
 | [github.com/pmezard/go-difflib](https://github.com/pmezard/go-difflib) | v1.0.1-0.20181226105442-5d4384ee4fb2 | BSD-3-Clause |
