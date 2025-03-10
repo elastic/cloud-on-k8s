@@ -7,7 +7,7 @@ require (
 	github.com/ghodss/yaml v1.0.0
 	github.com/go-git/go-git/v5 v5.13.0
 	github.com/google/go-containerregistry v0.20.3
-	github.com/hashicorp/vault/api v1.15.0
+	github.com/hashicorp/vault/api v1.16.0
 	github.com/otiai10/copy v1.14.1
 	github.com/spf13/cobra v1.8.1
 	github.com/spf13/viper v1.19.0
