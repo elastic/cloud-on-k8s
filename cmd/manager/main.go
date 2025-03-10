@@ -572,7 +572,12 @@ func startOperator(ctx context.Context) error {
 	}
 
 	// configure the manager cache based on the number of managed namespaces
-	managedNamespaces := viper.GetStringSlice(operator.NamespacesFlag)
+	var managedNamespaces []string
+	// do not use viper.GetStringSlice here as it suffers from https://github.com/spf13/viper/issues/380
+	if err := viper.UnmarshalKey(operator.NamespacesFlag, &managedNamespaces); err != nil {
+		log.Error(err, "Failed to parse managed namespaces flag")
+		return err
+	}
 	switch {
 	case len(managedNamespaces) == 0:
 		log.Info("Operator configured to manage all namespaces")
