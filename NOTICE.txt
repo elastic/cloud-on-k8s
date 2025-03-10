@@ -405,11 +405,11 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 --------------------------------------------------------------------------------
 Module  : github.com/gkampitakis/go-snaps
-Version : v0.5.8
-Time    : 2024-12-26T16:47:19Z
+Version : v0.5.10
+Time    : 2025-02-08T08:44:26Z
 Licence : MIT
 
-Contents of probable licence file $GOMODCACHE/github.com/gkampitakis/go-snaps@v0.5.8/LICENSE:
+Contents of probable licence file $GOMODCACHE/github.com/gkampitakis/go-snaps@v0.5.10/LICENSE:
 
 MIT License
 
@@ -709,11 +709,11 @@ SOFTWARE.
 
 --------------------------------------------------------------------------------
 Module  : github.com/google/go-cmp
-Version : v0.6.0
-Time    : 2023-08-31T17:32:40Z
+Version : v0.7.0
+Time    : 2025-01-14T18:15:44Z
 Licence : BSD-3-Clause
 
-Contents of probable licence file $GOMODCACHE/github.com/google/go-cmp@v0.6.0/LICENSE:
+Contents of probable licence file $GOMODCACHE/github.com/google/go-cmp@v0.7.0/LICENSE:
 
 Copyright (c) 2017 The Go Authors. All rights reserved.
 
