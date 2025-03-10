@@ -181,7 +181,7 @@ func buildPodTemplate(params Params, fleetCerts *certificates.CertificatesSecret
 	builder = builder.
 		WithLabels(agentLabels).
 		WithAnnotations(annotations).
-		WithDockerImage(spec.Image, container.ImageRepository(container.AgentImage, v)).
+		WithDockerImage(spec.Image, container.ImageRepository(container.AgentImageFor(v), v)).
 		WithAutomountServiceAccountToken().
 		WithVolumeLikes(vols...).
 		WithEnv(
