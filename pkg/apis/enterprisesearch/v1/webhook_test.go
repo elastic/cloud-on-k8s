@@ -87,6 +87,19 @@ func TestWebhook(t *testing.T) {
 			),
 		},
 		{
+			Name:      "deprecated-version",
+			Operation: admissionv1beta1.Create,
+			Object: func(t *testing.T, uid string) []byte {
+				t.Helper()
+				ent := mkEnterpriseSearch(uid)
+				ent.Spec.Version = "7.10.0"
+				return serialize(t, ent)
+			},
+			Check: test.ValidationWebhookSucceededWithWarnings(
+				`Version 7.10.0 is EOL and support for it will be removed in a future release of the ECK operator`,
+			),
+		},
+		{
 			Name:      "unsupported-version-higher",
 			Operation: admissionv1beta1.Create,
 			Object: func(t *testing.T, uid string) []byte {
@@ -105,13 +118,13 @@ func TestWebhook(t *testing.T) {
 			OldObject: func(t *testing.T, uid string) []byte {
 				t.Helper()
 				ent := mkEnterpriseSearch(uid)
-				ent.Spec.Version = "7.7.0"
+				ent.Spec.Version = "8.7.0"
 				return serialize(t, ent)
 			},
 			Object: func(t *testing.T, uid string) []byte {
 				t.Helper()
 				ent := mkEnterpriseSearch(uid)
-				ent.Spec.Version = "7.7.1"
+				ent.Spec.Version = "8.7.1"
 				return serialize(t, ent)
 			},
 			Check: test.ValidationWebhookSucceeded,
@@ -122,13 +135,13 @@ func TestWebhook(t *testing.T) {
 			OldObject: func(t *testing.T, uid string) []byte {
 				t.Helper()
 				ent := mkEnterpriseSearch(uid)
-				ent.Spec.Version = "7.7.1"
+				ent.Spec.Version = "8.7.1"
 				return serialize(t, ent)
 			},
 			Object: func(t *testing.T, uid string) []byte {
 				t.Helper()
 				ent := mkEnterpriseSearch(uid)
-				ent.Spec.Version = "7.7.0"
+				ent.Spec.Version = "8.7.0"
 				return serialize(t, ent)
 			},
 			Check: test.ValidationWebhookFailed(
@@ -141,13 +154,13 @@ func TestWebhook(t *testing.T) {
 			OldObject: func(t *testing.T, uid string) []byte {
 				t.Helper()
 				ent := mkEnterpriseSearch(uid)
-				ent.Spec.Version = "7.7.1"
+				ent.Spec.Version = "8.7.1"
 				return serialize(t, ent)
 			},
 			Object: func(t *testing.T, uid string) []byte {
 				t.Helper()
 				ent := mkEnterpriseSearch(uid)
-				ent.Spec.Version = "7.7.0"
+				ent.Spec.Version = "8.7.0"
 				ent.Annotations = map[string]string{
 					commonv1.DisableDowngradeValidationAnnotation: "true",
 				}
@@ -230,7 +243,7 @@ func mkEnterpriseSearch(uid string) *entv1.EnterpriseSearch {
 			UID:  types.UID(uid),
 		},
 		Spec: entv1.EnterpriseSearchSpec{
-			Version: "7.7.0",
+			Version: "7.17.0",
 		},
 	}
 }

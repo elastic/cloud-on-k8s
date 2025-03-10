@@ -60,7 +60,7 @@ func Test_validatingWebhook_Handle(t *testing.T) {
 								},
 							},
 							Spec: agentv1alpha1.AgentSpec{
-								Version:    "7.10.0",
+								Version:    "8.10.0",
 								Deployment: &agentv1alpha1.DeploymentSpec{},
 								PolicyID:   "a-policy",
 							},
@@ -89,7 +89,7 @@ func Test_validatingWebhook_Handle(t *testing.T) {
 								},
 							},
 							Spec: agentv1alpha1.AgentSpec{
-								Version:    "7.10.0",
+								Version:    "8.10.0",
 								Deployment: &agentv1alpha1.DeploymentSpec{},
 							},
 						}),
@@ -117,7 +117,7 @@ func Test_validatingWebhook_Handle(t *testing.T) {
 								},
 							},
 							Spec: agentv1alpha1.AgentSpec{
-								Version:    "7.14.0",
+								Version:    "8.14.0",
 								Deployment: &agentv1alpha1.DeploymentSpec{},
 								Mode:       agentv1alpha1.AgentFleetMode,
 							},
@@ -198,7 +198,7 @@ func Test_validatingWebhook_Handle(t *testing.T) {
 								},
 							},
 							Spec: agentv1alpha1.AgentSpec{
-								Version:    "7.10.0",
+								Version:    "8.10.0",
 								Deployment: &agentv1alpha1.DeploymentSpec{},
 								PolicyID:   "a-policy",
 							},
@@ -227,7 +227,7 @@ func Test_validatingWebhook_Handle(t *testing.T) {
 								},
 							},
 							Spec: agentv1alpha1.AgentSpec{
-								Version:    "7.10.0",
+								Version:    "8.10.0",
 								Deployment: &agentv1alpha1.DeploymentSpec{},
 							},
 						}),
@@ -255,7 +255,7 @@ func Test_validatingWebhook_Handle(t *testing.T) {
 								},
 							},
 							Spec: agentv1alpha1.AgentSpec{
-								Version:    "7.10.0",
+								Version:    "8.10.0",
 								Deployment: &agentv1alpha1.DeploymentSpec{},
 								PolicyID:   "a-policy",
 							},
@@ -271,7 +271,7 @@ func Test_validatingWebhook_Handle(t *testing.T) {
 								},
 							},
 							Spec: agentv1alpha1.AgentSpec{
-								Version:    "7.10.0",
+								Version:    "8.10.0",
 								Deployment: &agentv1alpha1.DeploymentSpec{},
 								PolicyID:   "a-policy",
 							},
@@ -300,7 +300,7 @@ func Test_validatingWebhook_Handle(t *testing.T) {
 								},
 							},
 							Spec: agentv1alpha1.AgentSpec{
-								Version:    "7.10.1",
+								Version:    "8.10.1",
 								Deployment: &agentv1alpha1.DeploymentSpec{},
 								PolicyID:   "a-policy",
 							},
@@ -316,7 +316,7 @@ func Test_validatingWebhook_Handle(t *testing.T) {
 								},
 							},
 							Spec: agentv1alpha1.AgentSpec{
-								Version:    "7.10.0",
+								Version:    "8.10.0",
 								Deployment: &agentv1alpha1.DeploymentSpec{},
 								PolicyID:   "a-policy",
 							},

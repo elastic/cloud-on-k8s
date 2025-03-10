@@ -98,14 +98,20 @@ func validNodeLabels(proposed esv1.Elasticsearch, exposedNodeLabels NodeLabels) 
 	return errs
 }
 
-func check(es esv1.Elasticsearch, validations []validation) field.ErrorList {
+func check(es esv1.Elasticsearch, validations []validation) (string, field.ErrorList) {
 	var errs field.ErrorList
 	for _, val := range validations {
 		if err := val(es); err != nil {
 			errs = append(errs, err...)
 		}
 	}
-	return errs
+
+	// check if Elasticsearch version is deprecated
+	warnings, deprecatedErrors := commonv1.CheckDeprecatedStackVersion(es.Spec.Version)
+	if len(deprecatedErrors) > 0 {
+		errs = append(errs, deprecatedErrors...)
+	}
+	return warnings, errs
 }
 
 // noUnknownFields checks whether the last applied config annotation contains json with unknown fields.

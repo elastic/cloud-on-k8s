@@ -61,6 +61,10 @@ func checkSupportedVersion(a *Agent) field.ErrorList {
 	return commonv1.CheckSupportedStackVersion(a.Spec.Version, version.SupportedAgentVersions)
 }
 
+func checkIfVersionDeprecated(a *Agent) (string, field.ErrorList) {
+	return commonv1.CheckDeprecatedStackVersion(a.Spec.Version)
+}
+
 func checkAtMostOneDeploymentOption(a *Agent) field.ErrorList {
 	var enabledSpecsNames []string
 
