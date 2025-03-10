@@ -74,6 +74,19 @@ func TestWebhook(t *testing.T) {
 			),
 		},
 		{
+			Name:      "deprecated-version",
+			Operation: admissionv1beta1.Create,
+			Object: func(t *testing.T, uid string) []byte {
+				t.Helper()
+				k := mkKibana(uid)
+				k.Spec.Version = "7.10.0"
+				return serialize(t, k)
+			},
+			Check: test.ValidationWebhookSucceededWithWarnings(
+				`Version 7.10.0 is EOL and support for it will be removed in a future release of the ECK operator`,
+			),
+		},
+		{
 			Name:      "unsupported-version-lower",
 			Operation: admissionv1beta1.Create,
 			Object: func(t *testing.T, uid string) []byte {
@@ -105,13 +118,13 @@ func TestWebhook(t *testing.T) {
 			OldObject: func(t *testing.T, uid string) []byte {
 				t.Helper()
 				k := mkKibana(uid)
-				k.Spec.Version = "7.5.1"
+				k.Spec.Version = "8.5.1"
 				return serialize(t, k)
 			},
 			Object: func(t *testing.T, uid string) []byte {
 				t.Helper()
 				k := mkKibana(uid)
-				k.Spec.Version = "7.6.1"
+				k.Spec.Version = "8.6.1"
 				return serialize(t, k)
 			},
 			Check: test.ValidationWebhookSucceeded,
@@ -122,13 +135,13 @@ func TestWebhook(t *testing.T) {
 			OldObject: func(t *testing.T, uid string) []byte {
 				t.Helper()
 				k := mkKibana(uid)
-				k.Spec.Version = "7.6.1"
+				k.Spec.Version = "8.6.1"
 				return serialize(t, k)
 			},
 			Object: func(t *testing.T, uid string) []byte {
 				t.Helper()
 				k := mkKibana(uid)
-				k.Spec.Version = "7.5.1"
+				k.Spec.Version = "8.5.1"
 				return serialize(t, k)
 			},
 			Check: test.ValidationWebhookFailed(
@@ -141,13 +154,13 @@ func TestWebhook(t *testing.T) {
 			OldObject: func(t *testing.T, uid string) []byte {
 				t.Helper()
 				k := mkKibana(uid)
-				k.Spec.Version = "7.6.1"
+				k.Spec.Version = "8.6.1"
 				return serialize(t, k)
 			},
 			Object: func(t *testing.T, uid string) []byte {
 				t.Helper()
 				k := mkKibana(uid)
-				k.Spec.Version = "7.5.1"
+				k.Spec.Version = "8.5.1"
 				k.Annotations = map[string]string{
 					commonv1.DisableDowngradeValidationAnnotation: "true",
 				}
@@ -169,7 +182,7 @@ func mkKibana(uid string) *kbv1beta1.Kibana {
 			UID:  types.UID(uid),
 		},
 		Spec: kbv1beta1.KibanaSpec{
-			Version: "7.6.1",
+			Version: "7.17.0",
 		},
 	}
 }

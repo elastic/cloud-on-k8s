@@ -9,7 +9,7 @@
 
 set -euo pipefail
 
-ROOT="$(cd "$(dirname "$0")"; pwd)/../../.."
+ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")"; pwd)/../../.."
 
 source "$ROOT/.buildkite/scripts/common/trigger.sh"
 source "$ROOT/.buildkite/scripts/common/operator-image.sh"

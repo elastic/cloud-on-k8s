@@ -1,0 +1,32 @@
+{{- define "depRow" -}}
+{{- range $i, $dep := . }}
+| [{{ $dep.Name }}]({{ $dep.URL }}) | {{ $dep.Version }} | {{ $dep.LicenceType }} |
+{{- end }}
+{{- end -}}
+---
+mapped_pages:
+  - https://www.elastic.co/guide/en/cloud-on-k8s/current/k8s-dependencies.html
+navigation_title: Third-party dependencies 
+applies_to:
+  deployment:
+    eck: all
+---
+% Generated documentation. Please do not edit.
+
+# Third-party dependencies for Elastic Cloud on Kubernetes[k8s-dependencies]
+
+This page lists the third-party dependencies used to build {{`{{eck}}`}}.
+
+## Direct dependencies [k8s-dependencies-direct]
+
+| Name | Version | Licence |
+| --- | --- | --- |
+{{- template "depRow" .Direct  }}
+
+{{ if .Indirect }}
+##  Indirect dependencies [k8s-dependencies-indirect]
+
+| Name | Version | Licence |
+| --- | --- | --- |
+{{- template "depRow" .Indirect  }}
+{{ end }}

@@ -286,19 +286,19 @@ spec:
 
     * Kubernetes 1.28-1.32
 
-    * OpenShift 4.12-4.17
+    * OpenShift 4.13-4.18
 
     * Google Kubernetes Engine (GKE), Azure Kubernetes Service (AKS), and Amazon Elastic Kubernetes Service (EKS)
 
-    * Elasticsearch, Kibana, APM Server: {{ if .UbiOnly }}7.10+{{ else }}6.8+, 7.1+{{ end }}, 8+
+    * Elasticsearch, Kibana, APM Server: 7.17+, 8+
 
-    * Enterprise Search: {{ if .UbiOnly }}7.10+{{ else }}7.7+{{ end }}, 8+
+    * Enterprise Search: 7.17+, 8+
 
-    * Beats: {{ if .UbiOnly }}7.10+{{ else }}7.0+{{ end }}, 8+
+    * Beats: 7.17+, 8+
 
-    * Elastic Agent: 7.10+, 8+
+    * Elastic Agent: 7.17+, 8+
 
-    * Elastic Maps Server: 7.11+, 8+
+    * Elastic Maps Server: 7.17+, 8+
 
     * Logstash 8.12+
 

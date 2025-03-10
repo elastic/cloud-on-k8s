@@ -47,6 +47,10 @@ func checkSupportedVersion(b *Beat) field.ErrorList {
 	return commonv1.CheckSupportedStackVersion(b.Spec.Version, version.SupportedBeatVersions)
 }
 
+func checkIfVersionDeprecated(b *Beat) (string, field.ErrorList) {
+	return commonv1.CheckDeprecatedStackVersion(b.Spec.Version)
+}
+
 func checkAtMostOneDeploymentOption(b *Beat) field.ErrorList {
 	if b.Spec.DaemonSet != nil && b.Spec.Deployment != nil {
 		msg := "Specify either daemonSet or deployment, not both"

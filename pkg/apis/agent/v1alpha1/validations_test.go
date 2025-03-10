@@ -163,6 +163,33 @@ func Test_checkAtMostOneDeploymentOption(t *testing.T) {
 	}
 }
 
+func Test_checkIfVersionDeprecated(t *testing.T) {
+	tests := []struct {
+		name    string
+		version string
+		want    string
+	}{
+		{
+			name:    "not deprecated",
+			version: "7.17.0",
+			want:    "",
+		},
+		{
+			name:    "deprecated",
+			version: "7.4.0",
+			want:    "Version 7.4.0 is EOL and support for it will be removed in a future release of the ECK operator",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, err := checkIfVersionDeprecated(&Agent{Spec: AgentSpec{Version: tt.version}})
+			assert.Nil(t, err)
+			assert.Equal(t, tt.want, got)
+		})
+	}
+}
+
 func Test_checkSpec(t *testing.T) {
 	tests := []struct {
 		name    string

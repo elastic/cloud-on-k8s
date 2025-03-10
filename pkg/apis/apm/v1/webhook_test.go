@@ -122,7 +122,9 @@ func TestWebhook(t *testing.T) {
 				apm.Spec.Version = "7.4.0"
 				return serialize(t, apm)
 			},
-			Check: test.ValidationWebhookSucceeded,
+			Check: test.ValidationWebhookSucceededWithWarnings(
+				`Version 7.4.0 is EOL and support for it will be removed in a future release of the ECK operator`,
+			),
 		},
 		{
 			Name:      "update-valid",
@@ -130,13 +132,13 @@ func TestWebhook(t *testing.T) {
 			OldObject: func(t *testing.T, uid string) []byte {
 				t.Helper()
 				apm := mkApmServer(uid)
-				apm.Spec.Version = "7.5.1"
+				apm.Spec.Version = "8.5.1"
 				return serialize(t, apm)
 			},
 			Object: func(t *testing.T, uid string) []byte {
 				t.Helper()
 				apm := mkApmServer(uid)
-				apm.Spec.Version = "7.6.1"
+				apm.Spec.Version = "8.6.1"
 				return serialize(t, apm)
 			},
 			Check: test.ValidationWebhookSucceeded,
@@ -147,13 +149,13 @@ func TestWebhook(t *testing.T) {
 			OldObject: func(t *testing.T, uid string) []byte {
 				t.Helper()
 				apm := mkApmServer(uid)
-				apm.Spec.Version = "7.6.1"
+				apm.Spec.Version = "8.6.1"
 				return serialize(t, apm)
 			},
 			Object: func(t *testing.T, uid string) []byte {
 				t.Helper()
 				apm := mkApmServer(uid)
-				apm.Spec.Version = "7.5.1"
+				apm.Spec.Version = "8.5.1"
 				return serialize(t, apm)
 			},
 			Check: test.ValidationWebhookFailed(
@@ -166,13 +168,13 @@ func TestWebhook(t *testing.T) {
 			OldObject: func(t *testing.T, uid string) []byte {
 				t.Helper()
 				apm := mkApmServer(uid)
-				apm.Spec.Version = "7.6.1"
+				apm.Spec.Version = "8.6.1"
 				return serialize(t, apm)
 			},
 			Object: func(t *testing.T, uid string) []byte {
 				t.Helper()
 				apm := mkApmServer(uid)
-				apm.Spec.Version = "7.5.1"
+				apm.Spec.Version = "8.5.1"
 				apm.Annotations = map[string]string{
 					commonv1.DisableDowngradeValidationAnnotation: "true",
 				}
@@ -244,7 +246,7 @@ func mkApmServer(uid string) *apmv1.ApmServer {
 			UID:  types.UID(uid),
 		},
 		Spec: apmv1.ApmServerSpec{
-			Version: "7.6.1",
+			Version: "7.17.0",
 		},
 	}
 }

@@ -22,7 +22,7 @@ import (
 type CanonicalConfig ucfg.Config
 
 // Options are config options for the YAML file. Currently contains only support for dotted keys.
-var Options = []ucfg.Option{ucfg.PathSep("."), ucfg.AppendValues}
+var Options = []ucfg.Option{ucfg.PathSep("."), ucfg.AppendValues, ucfg.EscapePath()}
 
 // NewCanonicalConfig creates a new empty config.
 func NewCanonicalConfig() *CanonicalConfig {
