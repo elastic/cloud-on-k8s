@@ -12,18 +12,14 @@ NOTE: These manifests were tested with ECK 1.0.1, Istio 1.5.0, and Kubernetes 1.
 
 == Prerequisites
 
-- Install Istio with the Secret Discovery Service (SDS) enabled
+- Install Istio with ingress gateway enabled (default profile) and for demonstration purposes we enable proxy logging
 +
 [source,sh]
 ----
-istioctl manifest generate \
-  --set values.global.mtls.enabled=true \
-  --set values.global.sds.enabled=true \
-  --set values.kiali.enabled=true \
-  --set values.global.proxy.accessLogFile="/dev/stdout" \
-  --set values.gateways.istio-egressgateway.enabled=false \
-  --set values.gateways.istio-ingressgateway.sds.enabled=true | kubectl apply -f -
+istioctl install --set meshConfig.accessLogFile=/dev/stdout
 ----
+
+
 - Install ECK with the Istio sidecar. See: https://www.elastic.co/guide/en/cloud-on-k8s/current/k8s-service-mesh-istio.html
 - Enforce mTLS
 +
@@ -118,7 +114,7 @@ Send a request to Elasticsearch
 ----
 curl -k \
 	--resolve "elasticsearch.ekmnt:$SECURE_INGRESS_PORT:$INGRESS_HOST" \
-	-u "elastic:$ELASTICSEARCH_PASSWORD" \
+	-u "elastic:$ELASTIC_PASSWORD" \
 	"https://elasticsearch.ekmnt:$SECURE_INGRESS_PORT/_cat/health?v"
 ----
 

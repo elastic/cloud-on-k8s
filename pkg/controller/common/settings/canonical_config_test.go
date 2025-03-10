@@ -13,16 +13,19 @@ import (
 
 func TestCanonicalConfig_Render(t *testing.T) {
 	config := MustCanonicalConfig(map[string]interface{}{
-		"aaa":        "aa  a",
-		"bbb":        "b  bb",
-		"aab":        "a a a",
-		"key":        map[string]interface{}{"emptyarray": []string{}},
-		"withquotes": "aa\"bb\"aa",
-		"zz":         "zzz  z z z",
+		"[escaped.key]": map[string]interface{}{"[another.escaped.key]": "value"},
+		"aaa":           "aa  a",
+		"bbb":           "b  bb",
+		"aab":           "a a a",
+		"key":           map[string]interface{}{"emptyarray": []string{}},
+		"withquotes":    "aa\"bb\"aa",
+		"zz":            "zzz  z z z",
 	})
 	output, err := config.Render()
 	require.NoError(t, err)
-	expected := []byte(`aaa: aa  a
+	expected := []byte(`'[escaped.key]':
+    '[another.escaped.key]': value
+aaa: aa  a
 aab: a a a
 bbb: b  bb
 key:
