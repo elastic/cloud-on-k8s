@@ -22,11 +22,11 @@ This page lists the third-party dependencies used to build {{eck}}.
 | [github.com/davecgh/go-spew](https://github.com/davecgh/go-spew) | v1.1.2-0.20180830191138-d8f796af33cc | ISC |
 | [github.com/elastic/go-ucfg](https://github.com/elastic/go-ucfg) | v0.8.9-0.20250307075119-2a22403faaea | Apache-2.0 |
 | [github.com/ghodss/yaml](https://github.com/ghodss/yaml) | v1.0.0 | MIT |
-| [github.com/gkampitakis/go-snaps](https://github.com/gkampitakis/go-snaps) | v0.5.8 | MIT |
+| [github.com/gkampitakis/go-snaps](https://github.com/gkampitakis/go-snaps) | v0.5.10 | MIT |
 | [github.com/go-logr/logr](https://github.com/go-logr/logr) | v1.4.2 | Apache-2.0 |
 | [github.com/go-test/deep](https://github.com/go-test/deep) | v1.1.1 | MIT |
 | [github.com/gobuffalo/flect](https://github.com/gobuffalo/flect) | v1.0.3 | MIT |
-| [github.com/google/go-cmp](https://github.com/google/go-cmp) | v0.6.0 | BSD-3-Clause |
+| [github.com/google/go-cmp](https://github.com/google/go-cmp) | v0.7.0 | BSD-3-Clause |
 | [github.com/google/go-containerregistry](https://github.com/google/go-containerregistry) | v0.20.3 | Apache-2.0 |
 | [github.com/google/uuid](https://github.com/google/uuid) | v1.6.0 | BSD-3-Clause |
 | [github.com/hashicorp/go-multierror](https://github.com/hashicorp/go-multierror) | v1.1.1 | MPL-2.0 |
