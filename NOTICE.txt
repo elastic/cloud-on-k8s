@@ -2210,11 +2210,11 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 --------------------------------------------------------------------------------
 Module  : github.com/prometheus/client_golang
-Version : v1.20.5
-Time    : 2024-10-15T09:44:04Z
+Version : v1.21.1
+Time    : 2025-03-04T14:06:12Z
 Licence : Apache-2.0
 
-Contents of probable licence file $GOMODCACHE/github.com/prometheus/client_golang@v1.20.5/LICENSE:
+Contents of probable licence file $GOMODCACHE/github.com/prometheus/client_golang@v1.21.1/LICENSE:
 
                                  Apache License
                            Version 2.0, January 2004
@@ -2421,11 +2421,11 @@ Contents of probable licence file $GOMODCACHE/github.com/prometheus/client_golan
 
 --------------------------------------------------------------------------------
 Module  : github.com/prometheus/common
-Version : v0.61.0
-Time    : 2024-12-04T23:03:19Z
+Version : v0.62.0
+Time    : 2025-01-16T15:26:11Z
 Licence : Apache-2.0
 
-Contents of probable licence file $GOMODCACHE/github.com/prometheus/common@v0.61.0/LICENSE:
+Contents of probable licence file $GOMODCACHE/github.com/prometheus/common@v0.62.0/LICENSE:
 
                                  Apache License
                            Version 2.0, January 2004
