@@ -709,11 +709,11 @@ SOFTWARE.
 
 --------------------------------------------------------------------------------
 Module  : github.com/google/go-cmp
-Version : v0.6.0
-Time    : 2023-08-31T17:32:40Z
+Version : v0.7.0
+Time    : 2025-01-14T18:15:44Z
 Licence : BSD-3-Clause
 
-Contents of probable licence file $GOMODCACHE/github.com/google/go-cmp@v0.6.0/LICENSE:
+Contents of probable licence file $GOMODCACHE/github.com/google/go-cmp@v0.7.0/LICENSE:
 
 Copyright (c) 2017 The Go Authors. All rights reserved.
 
