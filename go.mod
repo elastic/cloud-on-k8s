@@ -9,7 +9,7 @@ require (
 	github.com/davecgh/go-spew v1.1.2-0.20180830191138-d8f796af33cc
 	github.com/elastic/go-ucfg v0.8.9-0.20250307075119-2a22403faaea
 	github.com/ghodss/yaml v1.0.0
-	github.com/gkampitakis/go-snaps v0.5.10
+	github.com/gkampitakis/go-snaps v0.5.11
 	github.com/go-logr/logr v1.4.2
 	github.com/go-test/deep v1.1.1
 	github.com/gobuffalo/flect v1.0.3
