@@ -62,12 +62,20 @@ const (
 	AuditbeatImage        Image = "beats/auditbeat"
 	JournalbeatImage      Image = "beats/journalbeat"
 	PacketbeatImage       Image = "beats/packetbeat"
-	AgentImage            Image = "beats/elastic-agent"
+	AgentImagePre9        Image = "beats/elastic-agent"
+	AgentImage            Image = "elastic-agent/elastic-agent"
 	MapsImage             Image = "elastic-maps-service/elastic-maps-server"
 	LogstashImage         Image = "logstash/logstash"
 )
 
 var MinMapsVersionOnARM = version.MinFor(8, 16, 0)
+
+func AgentImageFor(version version.Version) Image {
+	if version.Major < 9 {
+		return AgentImagePre9
+	}
+	return AgentImage
+}
 
 // ImageRepository returns the full container image name by concatenating the current container registry and the image path with the given version.
 // A UBI suffix (-ubi8 or -ubi suffix depending on the version) is appended to the image name for the maps image,
