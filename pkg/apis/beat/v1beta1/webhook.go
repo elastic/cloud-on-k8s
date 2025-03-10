@@ -63,6 +63,17 @@ func (b *Beat) WebhookPath() string {
 
 func (b *Beat) validate(old *Beat) (admission.Warnings, error) {
 	var errors field.ErrorList
+	var warnings admission.Warnings
+
+	// deprecation check
+	deprecationWarning, deprecationError := checkIfVersionDeprecated(b)
+	if deprecationError != nil {
+		errors = append(errors, deprecationError...)
+	}
+	if deprecationWarning != "" {
+		warnings = append(warnings, deprecationWarning)
+	}
+
 	if old != nil {
 		for _, uc := range updateChecks {
 			if err := uc(old, b); err != nil {
@@ -71,7 +82,7 @@ func (b *Beat) validate(old *Beat) (admission.Warnings, error) {
 		}
 
 		if len(errors) > 0 {
-			return nil, apierrors.NewInvalid(groupKind, b.Name, errors)
+			return warnings, apierrors.NewInvalid(groupKind, b.Name, errors)
 		}
 	}
 
@@ -82,7 +93,7 @@ func (b *Beat) validate(old *Beat) (admission.Warnings, error) {
 	}
 
 	if len(errors) > 0 {
-		return nil, apierrors.NewInvalid(groupKind, b.Name, errors)
+		return warnings, apierrors.NewInvalid(groupKind, b.Name, errors)
 	}
-	return nil, nil
+	return warnings, nil
 }

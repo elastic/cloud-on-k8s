@@ -21,8 +21,6 @@ import (
 func TestNewMergedESConfig(t *testing.T) {
 	nodeML := "node.ml"
 	xPackSecurityAuthcRealmsActiveDirectoryAD1Order := "xpack.security.authc.realms.active_directory.ad1.order"
-	xPackSecurityAuthcRealmsAD1Type := "xpack.security.authc.realms.ad1.type"
-	xPackSecurityAuthcRealmsAD1Order := "xpack.security.authc.realms.ad1.order"
 
 	// elasticsearchCfg captures some of the fields we want to validate in these tests
 	type elasticsearchCfg struct {
@@ -103,74 +101,6 @@ func TestNewMergedESConfig(t *testing.T) {
 			},
 		},
 		{
-			name:     "in 6.x, empty config should have the default file and native realm settings configured",
-			version:  "6.8.0",
-			ipFamily: corev1.IPv4Protocol,
-			cfgData:  map[string]interface{}{},
-			assert: func(cfg CanonicalConfig) {
-				require.Equal(t, 0, len(cfg.HasKeys([]string{nodeML})))
-				require.Equal(t, 1, len(cfg.HasKeys([]string{esv1.XPackSecurityAuthcRealmsFile1Type})))
-				require.Equal(t, 1, len(cfg.HasKeys([]string{esv1.XPackSecurityAuthcRealmsFile1Order})))
-				require.Equal(t, 1, len(cfg.HasKeys([]string{esv1.XPackSecurityAuthcRealmsNative1Type})))
-				require.Equal(t, 1, len(cfg.HasKeys([]string{esv1.XPackSecurityAuthcRealmsNative1Order})))
-				require.Equal(t, 1, len(cfg.HasKeys([]string{esv1.ShardAwarenessAttributes})))
-				require.Equal(t, 1, len(cfg.HasKeys([]string{nodeAttrNodeName})))
-			},
-		},
-		{
-			name:     "in 6.x, empty config should have the default file and native realm settings configured",
-			version:  "6.8.0",
-			ipFamily: corev1.IPv4Protocol,
-			cfgData:  map[string]interface{}{},
-			assert: func(cfg CanonicalConfig) {
-				require.Equal(t, 0, len(cfg.HasKeys([]string{nodeML})))
-				require.Equal(t, 1, len(cfg.HasKeys([]string{esv1.XPackSecurityAuthcRealmsFile1Type})))
-				require.Equal(t, 1, len(cfg.HasKeys([]string{esv1.XPackSecurityAuthcRealmsFile1Order})))
-				require.Equal(t, 1, len(cfg.HasKeys([]string{esv1.XPackSecurityAuthcRealmsNative1Type})))
-				require.Equal(t, 1, len(cfg.HasKeys([]string{esv1.XPackSecurityAuthcRealmsNative1Order})))
-				require.Equal(t, 1, len(cfg.HasKeys([]string{esv1.ShardAwarenessAttributes})))
-				require.Equal(t, 1, len(cfg.HasKeys([]string{nodeAttrNodeName})))
-			},
-		},
-		{
-			name:     "in 6.x, sample config should have the default file realm settings configured",
-			version:  "6.8.0",
-			ipFamily: corev1.IPv4Protocol,
-			cfgData: map[string]interface{}{
-				nodeML: true,
-			},
-			assert: func(cfg CanonicalConfig) {
-				require.Equal(t, 1, len(cfg.HasKeys([]string{nodeML})))
-				require.Equal(t, 1, len(cfg.HasKeys([]string{esv1.XPackSecurityAuthcRealmsFile1Type})))
-				require.Equal(t, 1, len(cfg.HasKeys([]string{esv1.XPackSecurityAuthcRealmsFile1Order})))
-				require.Equal(t, 1, len(cfg.HasKeys([]string{esv1.XPackSecurityAuthcRealmsNative1Type})))
-				require.Equal(t, 1, len(cfg.HasKeys([]string{esv1.XPackSecurityAuthcRealmsNative1Order})))
-				require.Equal(t, 1, len(cfg.HasKeys([]string{esv1.ShardAwarenessAttributes})))
-				require.Equal(t, 1, len(cfg.HasKeys([]string{nodeAttrNodeName})))
-			},
-		},
-		{
-			name:     "in 6.x, active_directory realm settings should be merged with the default file and native realm settings",
-			version:  "6.8.0",
-			ipFamily: corev1.IPv4Protocol,
-			cfgData: map[string]interface{}{
-				nodeML:                           true,
-				xPackSecurityAuthcRealmsAD1Type:  "active_directory",
-				xPackSecurityAuthcRealmsAD1Order: 0,
-			},
-			assert: func(cfg CanonicalConfig) {
-				require.Equal(t, 1, len(cfg.HasKeys([]string{nodeML})))
-				require.Equal(t, 1, len(cfg.HasKeys([]string{esv1.XPackSecurityAuthcRealmsFile1Type})))
-				require.Equal(t, 1, len(cfg.HasKeys([]string{esv1.XPackSecurityAuthcRealmsFile1Order})))
-				require.Equal(t, 1, len(cfg.HasKeys([]string{esv1.XPackSecurityAuthcRealmsNative1Type})))
-				require.Equal(t, 1, len(cfg.HasKeys([]string{esv1.XPackSecurityAuthcRealmsNative1Order})))
-				require.Equal(t, 1, len(cfg.HasKeys([]string{xPackSecurityAuthcRealmsAD1Type})))
-				require.Equal(t, 1, len(cfg.HasKeys([]string{xPackSecurityAuthcRealmsAD1Order})))
-				require.Equal(t, 1, len(cfg.HasKeys([]string{esv1.ShardAwarenessAttributes})))
-				require.Equal(t, 1, len(cfg.HasKeys([]string{nodeAttrNodeName})))
-			},
-		},
-		{
 			name:     "in 7.x, empty config should have the default file and native realm settings configured",
 			version:  "7.3.0",
 			ipFamily: corev1.IPv4Protocol,
@@ -209,16 +139,6 @@ func TestNewMergedESConfig(t *testing.T) {
 				require.Equal(t, 1, len(cfg.HasKeys([]string{esv1.XPackSecurityAuthcRealmsFileFile1Order})))
 				require.Equal(t, 1, len(cfg.HasKeys([]string{esv1.XPackSecurityAuthcRealmsNativeNative1Order})))
 				require.Equal(t, 1, len(cfg.HasKeys([]string{xPackSecurityAuthcRealmsActiveDirectoryAD1Order})))
-			},
-		},
-		{
-			name:     "in 6.x, seed hosts setting should be discovery.zen.hosts_provider",
-			version:  "6.8.0",
-			ipFamily: corev1.IPv4Protocol,
-			cfgData:  map[string]interface{}{},
-			assert: func(cfg CanonicalConfig) {
-				require.Equal(t, 1, len(cfg.HasKeys([]string{esv1.DiscoveryZenHostsProvider})))
-				require.Equal(t, 0, len(cfg.HasKeys([]string{esv1.DiscoverySeedProviders})))
 			},
 		},
 		{

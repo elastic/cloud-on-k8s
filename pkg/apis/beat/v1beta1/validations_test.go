@@ -352,3 +352,36 @@ func Test_checkMonitoring(t *testing.T) {
 		})
 	}
 }
+
+func Test_checkIfVersionDeprecated(t *testing.T) {
+	tests := []struct {
+		name string
+		beat *Beat
+		want string
+	}{
+		{
+			name: "not deprecated",
+			beat: &Beat{
+				Spec: BeatSpec{
+					Version: "8.2.3",
+				},
+			},
+			want: "",
+		},
+		{
+			name: "deprecated",
+			beat: &Beat{
+				Spec: BeatSpec{
+					Version: "7.10.0",
+				},
+			},
+			want: "Version 7.10.0 is EOL and support for it will be removed in a future release of the ECK operator",
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			warnings, _ := checkIfVersionDeprecated(tt.beat)
+			assert.Equal(t, tt.want, warnings)
+		})
+	}
+}

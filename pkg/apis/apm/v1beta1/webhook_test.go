@@ -105,13 +105,13 @@ func TestWebhook(t *testing.T) {
 			OldObject: func(t *testing.T, uid string) []byte {
 				t.Helper()
 				apm := mkApmServer(uid)
-				apm.Spec.Version = "7.5.1"
+				apm.Spec.Version = "8.5.1"
 				return serialize(t, apm)
 			},
 			Object: func(t *testing.T, uid string) []byte {
 				t.Helper()
 				apm := mkApmServer(uid)
-				apm.Spec.Version = "7.6.1"
+				apm.Spec.Version = "8.6.1"
 				return serialize(t, apm)
 			},
 			Check: test.ValidationWebhookSucceeded,
@@ -122,17 +122,30 @@ func TestWebhook(t *testing.T) {
 			OldObject: func(t *testing.T, uid string) []byte {
 				t.Helper()
 				apm := mkApmServer(uid)
-				apm.Spec.Version = "7.6.1"
+				apm.Spec.Version = "8.6.1"
 				return serialize(t, apm)
 			},
 			Object: func(t *testing.T, uid string) []byte {
 				t.Helper()
 				apm := mkApmServer(uid)
-				apm.Spec.Version = "7.5.1"
+				apm.Spec.Version = "8.5.1"
 				return serialize(t, apm)
 			},
 			Check: test.ValidationWebhookFailed(
 				`spec.version: Forbidden: Version downgrades are not supported`,
+			),
+		},
+		{
+			Name:      "deprecated version",
+			Operation: admissionv1beta1.Create,
+			Object: func(t *testing.T, uid string) []byte {
+				t.Helper()
+				apm := mkApmServer(uid)
+				apm.Spec.Version = "7.4.0"
+				return serialize(t, apm)
+			},
+			Check: test.ValidationWebhookSucceededWithWarnings(
+				`Version 7.4.0 is EOL and support for it will be removed in a future release of the ECK operator`,
 			),
 		},
 		{
@@ -141,13 +154,13 @@ func TestWebhook(t *testing.T) {
 			OldObject: func(t *testing.T, uid string) []byte {
 				t.Helper()
 				apm := mkApmServer(uid)
-				apm.Spec.Version = "7.6.1"
+				apm.Spec.Version = "8.6.1"
 				return serialize(t, apm)
 			},
 			Object: func(t *testing.T, uid string) []byte {
 				t.Helper()
 				apm := mkApmServer(uid)
-				apm.Spec.Version = "7.5.1"
+				apm.Spec.Version = "8.5.1"
 				apm.Annotations = map[string]string{
 					commonv1.DisableDowngradeValidationAnnotation: "true",
 				}
@@ -169,7 +182,7 @@ func mkApmServer(uid string) *apmv1beta1.ApmServer {
 			UID:  types.UID(uid),
 		},
 		Spec: apmv1beta1.ApmServerSpec{
-			Version: "7.6.1",
+			Version: "7.17.1",
 		},
 	}
 }
