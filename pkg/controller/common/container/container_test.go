@@ -197,3 +197,36 @@ func TestImageRepository(t *testing.T) {
 		})
 	}
 }
+
+func TestAgentImageFor(t *testing.T) {
+	type args struct {
+		version version.Version
+	}
+	tests := []struct {
+		name string
+		args args
+		want Image
+	}{
+		{
+			name: "New default elastic-agent/elastic-agent ",
+			args: args{
+				version: version.MustParse("9.5.0"),
+			},
+			want: "elastic-agent/elastic-agent",
+		},
+		{
+			name: "Legacy image in beats namespace priot to 9.0",
+			args: args{
+				version: version.MustParse("8.0.0"),
+			},
+			want: "beats/elastic-agent",
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := AgentImageFor(tt.args.version); got != tt.want {
+				t.Errorf("AgentImageFor() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
