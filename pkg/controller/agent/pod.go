@@ -178,10 +178,17 @@ func buildPodTemplate(params Params, fleetCerts *certificates.CertificatesSecret
 		ConfigHashAnnotationName: fmt.Sprint(configHash.Sum32()),
 	}
 
+	var agentImage string
+	if v.Major >= 9 {
+		agentImage = container.ImageRepository(container.AgentImageSince9, v)
+	} else {
+		agentImage = container.ImageRepository(container.AgentImage, v)
+	}
+
 	builder = builder.
 		WithLabels(agentLabels).
 		WithAnnotations(annotations).
-		WithDockerImage(spec.Image, container.ImageRepository(container.AgentImage, v)).
+		WithDockerImage(spec.Image, agentImage).
 		WithAutomountServiceAccountToken().
 		WithVolumeLikes(vols...).
 		WithEnv(

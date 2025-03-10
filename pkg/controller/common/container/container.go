@@ -63,6 +63,7 @@ const (
 	JournalbeatImage      Image = "beats/journalbeat"
 	PacketbeatImage       Image = "beats/packetbeat"
 	AgentImage            Image = "beats/elastic-agent"
+	AgentImageSince9      Image = "elastic-agent/elastic-agent"
 	MapsImage             Image = "elastic-maps-service/elastic-maps-server"
 	LogstashImage         Image = "logstash/logstash"
 )
