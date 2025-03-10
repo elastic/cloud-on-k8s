@@ -2662,11 +2662,11 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 --------------------------------------------------------------------------------
 Module  : github.com/spf13/cobra
-Version : v1.8.1
-Time    : 2024-06-01T10:31:11Z
+Version : v1.9.1
+Time    : 2025-02-16T23:42:04Z
 Licence : Apache-2.0
 
-Contents of probable licence file $GOMODCACHE/github.com/spf13/cobra@v1.8.1/LICENSE.txt:
+Contents of probable licence file $GOMODCACHE/github.com/spf13/cobra@v1.9.1/LICENSE.txt:
 
                                 Apache License
                            Version 2.0, January 2004
@@ -2846,11 +2846,11 @@ Contents of probable licence file $GOMODCACHE/github.com/spf13/cobra@v1.8.1/LICE
 
 --------------------------------------------------------------------------------
 Module  : github.com/spf13/pflag
-Version : v1.0.5
-Time    : 2019-09-18T19:59:20Z
+Version : v1.0.6
+Time    : 2025-01-09T00:37:54Z
 Licence : BSD-3-Clause
 
-Contents of probable licence file $GOMODCACHE/github.com/spf13/pflag@v1.0.5/LICENSE:
+Contents of probable licence file $GOMODCACHE/github.com/spf13/pflag@v1.0.6/LICENSE:
 
 Copyright (c) 2012 Alex Ogier. All rights reserved.
 Copyright (c) 2012 The Go Authors. All rights reserved.
