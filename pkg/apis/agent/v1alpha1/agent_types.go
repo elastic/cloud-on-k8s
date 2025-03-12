@@ -25,7 +25,7 @@ const (
 )
 
 var (
-	MandatoryPolicyIDVersion = version.MustParse("9.0.0-SNAPSHOT")
+	MandatoryPolicyIDVersion = version.MustParse("9.1.0-SNAPSHOT")
 )
 
 // AgentSpec defines the desired state of the Agent

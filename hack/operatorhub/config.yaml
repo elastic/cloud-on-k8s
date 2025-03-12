@@ -1,6 +1,6 @@
-newVersion: 2.17.0-SNAPSHOT
-prevVersion: 2.16.1
-stackVersion: 8.18.0-SNAPSHOT
+newVersion: 3.1.0-SNAPSHOT
+prevVersion: 3.0.0
+stackVersion: 9.1.0-SNAPSHOT
 crds:
   - name: elasticsearches.elasticsearch.k8s.elastic.co
     displayName: Elasticsearch Cluster
@@ -41,7 +41,7 @@ packages:
   - outputPath: certified-operators
     packageName: elasticsearch-eck-operator-certified
     distributionChannel: certified-operators
-    minSupportedOpenshiftVersion: v4.12
+    minSupportedOpenshiftVersion: v4.14
     operatorRepo: registry.connect.redhat.com/elastic/eck-operator
     ubiOnly: true
     ## digestPinning should only be set to true for certified operator.
