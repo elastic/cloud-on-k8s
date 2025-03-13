@@ -35,7 +35,7 @@ steps:
       {{- end }}
       {{- else }}
       image: docker.elastic.co/ci-agent-images/cloud-k8s-operator/buildkite-agent:18bfe327
-      memory: "4G"
+      memory: "5G"
       {{- end }}
 
   {{- end }}
