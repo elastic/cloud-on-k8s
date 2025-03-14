@@ -30,6 +30,21 @@ processors:
 - add_cloud_metadata: {}
 - add_host_metadata: {}
 `
+	E2EFilebeatConfigPRE810 = `filebeat:
+  autodiscover:
+    providers:
+    - type: kubernetes
+      node: ${NODE_NAME}
+      hints:
+        enabled: true
+        default_config:
+          type: container
+          paths:
+          - /var/log/containers/*${data.kubernetes.container.id}.log
+processors:
+- add_cloud_metadata: {}
+- add_host_metadata: {}
+`
 
 	E2EFilebeatPodTemplate = `spec:
   automountServiceAccountToken: true # some older Beat versions are depending on this settings presence in k8s context
