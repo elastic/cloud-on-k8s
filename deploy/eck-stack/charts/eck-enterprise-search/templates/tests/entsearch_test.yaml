@@ -16,7 +16,7 @@ tests:
           value: quickstart-eck-enterprise-search
       - equal:
           path: spec.version
-          value: 9.1.0-SNAPSHOT
+          value: 8.19.0-SNAPSHOT
   - it: name override should work properly
     set:
       nameOverride: override
@@ -84,7 +84,7 @@ tests:
           value: quickstart-eck-enterprise-search
       - equal:
           path: spec.version
-          value: 9.1.0-SNAPSHOT
+          value: 8.19.0-SNAPSHOT
       - equal:
           path: spec.count
           value: 1
