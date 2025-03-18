@@ -49,7 +49,7 @@ type Params struct {
 	PostUpdate func()
 }
 
-const resourceVersion = "resourceVersion"
+const resourceVersionKey = "resourceVersion"
 
 func (p Params) CheckNilValues() error {
 	if p.Reconciled == nil {
@@ -109,7 +109,7 @@ func ReconcileResource(params Params) error {
 		if err != nil {
 			return err
 		}
-		log.Info("Created resource successfully", resourceVersion, params.Reconciled.GetResourceVersion())
+		log.Info("Created resource successfully", resourceVersionKey, params.Reconciled.GetResourceVersion())
 		return nil
 	}
 
@@ -183,7 +183,7 @@ func ReconcileResource(params Params) error {
 		if params.PostUpdate != nil {
 			params.PostUpdate()
 		}
-		log.Info("Updated resource successfully", resourceVersion, params.Reconciled.GetResourceVersion())
+		log.Info("Updated resource successfully", resourceVersionKey, params.Reconciled.GetResourceVersion())
 	}
 	return nil
 }
