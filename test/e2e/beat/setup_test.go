@@ -55,7 +55,7 @@ func TestBeatKibanaRefWithTLSDisabled(t *testing.T) {
 
 	stackVersion := version.MustParse(test.Ctx().ElasticStackVersion)
 	// Versions older than 8.10 do not have support for fingerprint file identity type
-	if stackVersion.LT(version.MinFor(8, 10, 0)) && stackVersion.GTE(version.MinFor(8, 0, 0)) {
+	if !supportsFingerprintIdentity(version) {
 		fileBeatConfig = E2EFilebeatConfigPRE810
 	}
 
@@ -92,7 +92,7 @@ func TestBeatKibanaRef(t *testing.T) {
 
 	stackVersion := version.MustParse(test.Ctx().ElasticStackVersion)
 	// Versions older than 8.10 do not have support for fingerprint file identity type
-	if stackVersion.LT(version.MinFor(8, 10, 0)) && stackVersion.GTE(version.MinFor(8, 0, 0)) {
+	if !supportsFingerprintIdentity(version) {
 		fileBeatConfig = E2EFilebeatConfigPRE810
 	}
 

@@ -403,7 +403,7 @@ spec:
 
 // Stack versions 8.0.X to 8.9.X do not support fingerprint identity type
 // Versions 7.17.X and 8.10.X and above support fingerprint identity type
-func supportsFingerprintIdentiy(stackVersion version.Version) bool {
+func supportsFingerprintIdentity(stackVersion version.Version) bool {
 	if stackVersion.LT(version.MinFor(8, 10, 0)) && stackVersion.GTE(version.MinFor(8, 0, 0)) {
 		return false
 	}
