@@ -51,7 +51,7 @@ func TestFilebeatDefaultConfig(t *testing.T) {
 	stackVersion := version.MustParse(test.Ctx().ElasticStackVersion)
 	// Stack versions 8.0.X to 8.9.X do not support fingerprint identity type
 	// Versions 7.17.X and 8.10.X and above support fingerprint identity type
-	if !supportsFingerprintIdentity(stackVersion) {
+	if !SupportsFingerprintIdentity(stackVersion) {
 		fileBeatConfig = E2EFilebeatConfigPRE810
 	}
 	fbBuilder = beat.ApplyYamls(t, fbBuilder, fileBeatConfig, E2EFilebeatPodTemplate)
@@ -200,7 +200,7 @@ processors:
 	stackVersion := version.MustParse(test.Ctx().ElasticStackVersion)
 	// Stack versions 8.0.X to 8.9.X do not support fingerprint identity type
 	// Versions 7.17.X and 8.10.X and above support fingerprint identity type
-	if !supportsFingerprintIdentity(stackVersion) {
+	if !SupportsFingerprintIdentity(stackVersion) {
 		config = `
 name: ${AGENT_NAME_VAR}
 filebeat:
@@ -262,7 +262,7 @@ processors:
 	stackVersion := version.MustParse(test.Ctx().ElasticStackVersion)
 	// Stack versions 8.0.X to 8.9.X do not support fingerprint identity type
 	// Versions 7.17.X and 8.10.X and above support fingerprint identity type
-	if !supportsFingerprintIdentity(stackVersion) {
+	if !SupportsFingerprintIdentity(stackVersion) {
 		config = fmt.Sprintf(`
 name: %s
 filebeat:

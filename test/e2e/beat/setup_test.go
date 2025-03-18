@@ -56,7 +56,7 @@ func TestBeatKibanaRefWithTLSDisabled(t *testing.T) {
 	stackVersion := version.MustParse(test.Ctx().ElasticStackVersion)
 	// Stack versions 8.0.X to 8.9.X do not support fingerprint identity type
 	// Versions 7.17.X and 8.10.X and above support fingerprint identity type
-	if !supportsFingerprintIdentity(version) {
+	if !SupportsFingerprintIdentity(stackVersion) {
 		fileBeatConfig = E2EFilebeatConfigPRE810
 	}
 
@@ -94,7 +94,7 @@ func TestBeatKibanaRef(t *testing.T) {
 	stackVersion := version.MustParse(test.Ctx().ElasticStackVersion)
 	// Stack versions 8.0.X to 8.9.X do not support fingerprint identity type
 	// Versions 7.17.X and 8.10.X and above support fingerprint identity type
-	if !supportsFingerprintIdentity(version) {
+	if !SupportsFingerprintIdentity(stackVersion) {
 		fileBeatConfig = E2EFilebeatConfigPRE810
 	}
 

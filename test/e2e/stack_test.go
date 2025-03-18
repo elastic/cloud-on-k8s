@@ -73,7 +73,7 @@ func initialBuildersToUpgrade(t *testing.T, initialVersion string) ([]test.Build
 
 	stackVersion := version.MustParse(initialVersion)
 	beatsConfig := beattests.E2EFilebeatConfig
-	if !supportsFingerprintIdentity(version) {
+	if !beattests.SupportsFingerprintIdentity(stackVersion) {
 		beatsConfig = beattests.E2EFilebeatConfigPRE810
 	}
 	fb = beat.ApplyYamls(t, fb, beatsConfig, beattests.E2EFilebeatPodTemplate)
