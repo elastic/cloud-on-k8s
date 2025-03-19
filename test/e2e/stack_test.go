@@ -60,7 +60,7 @@ func initialBuildersToUpgrade(t *testing.T, initialVersion string) ([]test.Build
 	ent := enterprisesearch.NewBuilder("ent").
 		WithNodeCount(1).
 		WithVersion(initialVersion). // pre 8.x doesn't require any config, but we change the version after calling
-		WithoutConfig(). // NewBuilder which relies on the version from test.Ctx(), so removing config here
+		WithoutConfig().             // NewBuilder which relies on the version from test.Ctx(), so removing config here
 		WithElasticsearchRef(esRef).
 		WithRestrictedSecurityContext()
 	fb := beat.NewBuilder("fb").
@@ -70,7 +70,13 @@ func initialBuildersToUpgrade(t *testing.T, initialVersion string) ([]test.Build
 		WithVersion(initialVersion).
 		WithElasticsearchRef(esRef).
 		WithKibanaRef(kbRef)
-	fb = beat.ApplyYamls(t, fb, beattests.E2EFilebeatConfig, beattests.E2EFilebeatPodTemplate)
+
+	stackVersion := version.MustParse(initialVersion)
+	beatsConfig := beattests.E2EFilebeatConfig
+	if !beattests.SupportsFingerprintIdentity(stackVersion) {
+		beatsConfig = beattests.E2EFilebeatConfigPRE810
+	}
+	fb = beat.ApplyYamls(t, fb, beatsConfig, beattests.E2EFilebeatPodTemplate)
 
 	esUpdated := es.WithVersion(test.LatestReleasedVersion8x)
 	kbUpdated := kb.WithVersion(test.LatestReleasedVersion8x)

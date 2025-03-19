@@ -46,7 +46,15 @@ func TestFilebeatDefaultConfig(t *testing.T) {
 			beat.HasEventFromPod(testPodBuilder.Pod.Name),
 			beat.HasMessageContaining(testPodBuilder.Logged))
 
-	fbBuilder = beat.ApplyYamls(t, fbBuilder, E2EFilebeatConfig, E2EFilebeatPodTemplate)
+	fileBeatConfig := E2EFilebeatConfig
+
+	stackVersion := version.MustParse(test.Ctx().ElasticStackVersion)
+	// Stack versions 8.0.X to 8.9.X do not support fingerprint identity type
+	// Versions 7.17.X and 8.10.X and above support fingerprint identity type
+	if !SupportsFingerprintIdentity(stackVersion) {
+		fileBeatConfig = E2EFilebeatConfigPRE810
+	}
+	fbBuilder = beat.ApplyYamls(t, fbBuilder, fileBeatConfig, E2EFilebeatPodTemplate)
 
 	test.Sequence(nil, test.EmptySteps, esBuilder, fbBuilder, testPodBuilder).RunSequential(t)
 }
@@ -189,6 +197,29 @@ processors:
 - add_host_metadata: {}
 `
 
+	stackVersion := version.MustParse(test.Ctx().ElasticStackVersion)
+	// Stack versions 8.0.X to 8.9.X do not support fingerprint identity type
+	// Versions 7.17.X and 8.10.X and above support fingerprint identity type
+	if !SupportsFingerprintIdentity(stackVersion) {
+		config = `
+name: ${AGENT_NAME_VAR}
+filebeat:
+  autodiscover:
+    providers:
+    - hints:
+        default_config:
+          paths:
+          - /var/log/containers/*${data.kubernetes.container.id}.log
+          type: container
+        enabled: true
+      node: ${NODE_NAME}
+      type: kubernetes
+processors:
+- add_cloud_metadata: {}
+- add_host_metadata: {}
+`
+	}
+
 	fbBuilder = beat.ApplyYamls(t, fbBuilder, config, E2EFilebeatPodTemplate)
 
 	test.Sequence(nil, test.EmptySteps, esBuilder, fbBuilder, testPodBuilder).RunSequential(t)
@@ -227,6 +258,29 @@ processors:
 - add_cloud_metadata: {}
 - add_host_metadata: {}
 `, agentName)
+
+	stackVersion := version.MustParse(test.Ctx().ElasticStackVersion)
+	// Stack versions 8.0.X to 8.9.X do not support fingerprint identity type
+	// Versions 7.17.X and 8.10.X and above support fingerprint identity type
+	if !SupportsFingerprintIdentity(stackVersion) {
+		config = fmt.Sprintf(`
+name: %s
+filebeat:
+  autodiscover:
+    providers:
+    - hints:
+        default_config:
+          paths:
+          - /var/log/containers/*${data.kubernetes.container.id}.log
+          type: container
+        enabled: true
+      host: ${NODE_NAME}
+      type: kubernetes
+processors:
+- add_cloud_metadata: {}
+- add_host_metadata: {}
+`, agentName)
+	}
 
 	secret := &corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{

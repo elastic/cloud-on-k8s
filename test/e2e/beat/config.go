@@ -6,6 +6,10 @@
 
 package beat
 
+import (
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/version"
+)
+
 var (
 	E2EFilebeatConfig = `filebeat:
   autodiscover:
@@ -26,6 +30,21 @@ var (
               fingerprint.enabled: true
               symlinks: true
           file_identity.fingerprint: ~
+processors:
+- add_cloud_metadata: {}
+- add_host_metadata: {}
+`
+	E2EFilebeatConfigPRE810 = `filebeat:
+  autodiscover:
+    providers:
+    - type: kubernetes
+      node: ${NODE_NAME}
+      hints:
+        enabled: true
+        default_config:
+          type: container
+          paths:
+          - /var/log/containers/*${data.kubernetes.container.id}.log
 processors:
 - add_cloud_metadata: {}
 - add_host_metadata: {}
@@ -381,3 +400,12 @@ spec:
     name: machine-id
 `
 )
+
+// Stack versions 8.0.X to 8.9.X do not support fingerprint identity type
+// Versions 7.17.X and 8.10.X and above support fingerprint identity type
+func SupportsFingerprintIdentity(stackVersion version.Version) bool {
+	if stackVersion.LT(version.MinFor(8, 10, 0)) && stackVersion.GTE(version.MinFor(8, 0, 0)) {
+		return false
+	}
+	return true
+}
