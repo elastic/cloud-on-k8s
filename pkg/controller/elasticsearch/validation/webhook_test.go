@@ -146,6 +146,54 @@ func Test_validatingWebhook_Handle(t *testing.T) {
 			want: admission.Denied(noDowngradesMsg),
 		},
 		{
+			name: "reject invalid update (from 8.9,0 to 9.0.0))",
+			fields: fields{
+				client: k8s.NewFakeClient(),
+			},
+			args: args{
+				req: admission.Request{AdmissionRequest: admissionv1.AdmissionRequest{
+					Operation: admissionv1.Update,
+					OldObject: runtime.RawExtension{
+						Raw: asJSON(&esv1.Elasticsearch{
+							ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: "name"},
+							Spec:       esv1.ElasticsearchSpec{Version: "8.9.1", NodeSets: []esv1.NodeSet{{Name: "set1", Count: 3}}},
+						}),
+					},
+					Object: runtime.RawExtension{
+						Raw: asJSON(&esv1.Elasticsearch{
+							ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: "name"},
+							Spec:       esv1.ElasticsearchSpec{Version: "9.0.0", NodeSets: []esv1.NodeSet{{Name: "set1", Count: 3}}},
+						}),
+					},
+				}},
+			},
+			want: admission.Denied(unsupportedUpgradeMsg),
+		},
+		{
+			name: "accept valid update (from 8.18,0 to 9.0.0))",
+			fields: fields{
+				client: k8s.NewFakeClient(),
+			},
+			args: args{
+				req: admission.Request{AdmissionRequest: admissionv1.AdmissionRequest{
+					Operation: admissionv1.Update,
+					OldObject: runtime.RawExtension{
+						Raw: asJSON(&esv1.Elasticsearch{
+							ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: "name"},
+							Spec:       esv1.ElasticsearchSpec{Version: "8.18.0", NodeSets: []esv1.NodeSet{{Name: "set1", Count: 3}}},
+						}),
+					},
+					Object: runtime.RawExtension{
+						Raw: asJSON(&esv1.Elasticsearch{
+							ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: "name"},
+							Spec:       esv1.ElasticsearchSpec{Version: "9.0.0", NodeSets: []esv1.NodeSet{{Name: "set1", Count: 3}}},
+						}),
+					},
+				}},
+			},
+			want: admission.Allowed(""),
+		},
+		{
 			name: "accept valid creation with warnings due to deprecated version",
 			fields: fields{
 				client: k8s.NewFakeClient(),
