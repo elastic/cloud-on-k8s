@@ -19,5 +19,37 @@ Review the changes, fixes, and more in each release of Elastic Cloud on Kubernet
 ## 3.0.0 [elastic-cloud-kubernetes-300-release-notes]
 
 ### Features and enhancements [elastic-cloud-kubernetes-300-features-enhancements]
-
+- Config: Allow escaping dots in keys via `[unsplit.key]` syntax [#8512](https://github.com/elastic/cloud-on-k8s/pull/8512) (issue: [#8499](https://github.com/elastic/cloud-on-k8s/issues/8499))
+- Enable copying of ECK images to Amazon ECR [#8427](https://github.com/elastic/cloud-on-k8s/pull/8427)
+- Support new agent image path as of 9.0 [#8518](https://github.com/elastic/cloud-on-k8s/pull/8518)
+- Remove ubi suffix for 9.x images [#8509](https://github.com/elastic/cloud-on-k8s/pull/8509)
+- Remove support for 6.x stack version [#8507](https://github.com/elastic/cloud-on-k8s/pull/8507)
+- Log resourceVersion on Create and Update [#8503](https://github.com/elastic/cloud-on-k8s/pull/8503)
+- Remove policyID validation [#8449](https://github.com/elastic/cloud-on-k8s/pull/8449) (issue: [#8446](https://github.com/elastic/cloud-on-k8s/issues/8446))
+- Refactor APM server for 9.0.0 [#8448](https://github.com/elastic/cloud-on-k8s/pull/8448) (issue: [#8447](https://github.com/elastic/cloud-on-k8s/issues/8447))
+- **feat(apm-server):** Use default image for UBI [#8374](https://github.com/elastic/cloud-on-k8s/pull/8374)
+- Small UX improvement during Fleet setup [#8350](https://github.com/elastic/cloud-on-k8s/pull/8350)
 ### Fixes [elastic-cloud-kubernetes-300-fixes]
+- Correctly parse managed namespaces when specified as an environment variable [#8513](https://github.com/elastic/cloud-on-k8s/pull/8513) (issue: [#7542](https://github.com/elastic/cloud-on-k8s/issues/7542))
+
+### Documentation improvements [elastic-cloud-kubernetes-300-documentation-improvements]
+- Fix unresolved attribute in ECK Quickstart [#8432](https://github.com/elastic/cloud-on-k8s/pull/8432)
+- Add synthetic monitoring example [#8385](https://github.com/elastic/cloud-on-k8s/pull/8385) (issue: [#6294](https://github.com/elastic/cloud-on-k8s/issues/6294))
+- Update heap dump command to use the most recent Java process [#8294](https://github.com/elastic/cloud-on-k8s/pull/8294)
+- Document the need for an ingest node for Enterprise Search analytics [#8271](https://github.com/elastic/cloud-on-k8s/pull/8271)
+
+### Miscellaneous
+- Update `golang.org/x/net` package to `0.37.0` [#8521](https://github.com/elastic/cloud-on-k8s/pull/8521)
+- Update Docker tag `docker.elastic.co/wolfi/go` to `v1.24` [#8453](https://github.com/elastic/cloud-on-k8s/pull/8453)
+- Update module `go.elastic.co/apm/v2/*` to `v2.6.3` [#8440](https://github.com/elastic/cloud-on-k8s/pull/8440)
+- Update Wolfi to `v1.23.5-r1` [#8434](https://github.com/elastic/cloud-on-k8s/pull/8434)
+- Update Kubernetes dependencies [#8400](https://github.com/elastic/cloud-on-k8s/pull/8400)
+- Update Docker tag `registry.access.redhat.com/ubi9/ubi-minimal` to `v9.5-1736404155` [#8399](https://github.com/elastic/cloud-on-k8s/pull/8399)
+- Update module `github.com/gkampitakis/go-snaps` to `v0.5.8` [#8393](https://github.com/elastic/cloud-on-k8s/pull/8393)
+- Update `golang.org/x/net` to `v0.33.0` [#8372](https://github.com/elastic/cloud-on-k8s/pull/8372)
+- Bump `golang.org/x/crypto` from `0.29.0` to `0.31.0` [#8334](https://github.com/elastic/cloud-on-k8s/pull/8334)
+- Update module `github.com/prometheus/common` to `v0.61.0` [#8333](https://github.com/elastic/cloud-on-k8s/pull/8333)
+- Update Kubernetes dependencies to `v0.32.0` and controller-runtime to `v0.19.3` [#8330](https://github.com/elastic/cloud-on-k8s/pull/8330)
+- Update module `github.com/magiconair/properties` to `v1.8.9` [#8307](https://github.com/elastic/cloud-on-k8s/pull/8307)
+- Update Docker tag `docker.elastic.co/wolfi/go` to `v1.23.4` [#8306](https://github.com/elastic/cloud-on-k8s/pull/8306)
+- Update module `github.com/stretchr/testify` to `v1.10.0` [#8282](https://github.com/elastic/cloud-on-k8s/pull/8282)
