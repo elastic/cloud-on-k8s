@@ -29,6 +29,7 @@ Review the changes, fixes, and more in each release of Elastic Cloud on Kubernet
 - Refactor APM server for 9.0.0 [#8448](https://github.com/elastic/cloud-on-k8s/pull/8448) (issue: [#8447](https://github.com/elastic/cloud-on-k8s/issues/8447))
 - **feat(apm-server):** Use default image for UBI [#8374](https://github.com/elastic/cloud-on-k8s/pull/8374)
 - Small UX improvement during Fleet setup [#8350](https://github.com/elastic/cloud-on-k8s/pull/8350)
+
 ### Fixes [elastic-cloud-kubernetes-300-fixes]
 - Correctly parse managed namespaces when specified as an environment variable [#8513](https://github.com/elastic/cloud-on-k8s/pull/8513) (issue: [#7542](https://github.com/elastic/cloud-on-k8s/issues/7542))
 
