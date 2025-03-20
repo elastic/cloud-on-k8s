@@ -146,7 +146,7 @@ func Test_validatingWebhook_Handle(t *testing.T) {
 			want: admission.Denied(noDowngradesMsg),
 		},
 		{
-			name: "reject invalid update (from 8.9,0 to 9.0.0))",
+			name: "reject invalid update (from 8.9.0 to 9.0.0))",
 			fields: fields{
 				client: k8s.NewFakeClient(),
 			},
@@ -170,7 +170,7 @@ func Test_validatingWebhook_Handle(t *testing.T) {
 			want: admission.Denied(unsupportedUpgradeMsg),
 		},
 		{
-			name: "accept valid update (from 8.18,0 to 9.0.0))",
+			name: "accept valid update (from 8.18.0 to 9.0.0))",
 			fields: fields{
 				client: k8s.NewFakeClient(),
 			},
