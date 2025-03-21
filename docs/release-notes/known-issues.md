@@ -16,3 +16,5 @@ Known issues are significant defects or limitations that may impact your impleme
 % Workaround description.
 
 :::
+
+## 3.0.0 [elastic-cloud-kubernetes-300-known-issues]
