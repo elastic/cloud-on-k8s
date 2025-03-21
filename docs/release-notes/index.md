@@ -11,14 +11,12 @@ Review the changes, fixes, and more in each release of Elastic Cloud on Kubernet
 % Release notes includes only features, enhancements, and fixes. Add breaking changes, deprecations, and known issues to the applicable release notes sections. 
 
 % ## version.next [elastic-cloud-lubernetes-versionext-release-notes]
-% **Release date:** Month day, year
 
 % ### Features and enhancements [elastic-cloud-kubernetes-versionext-features-enhancements]
 
 % ### Fixes [elastic-cloud-kubernetes-versionext-fixes]
 
 ## 3.0.0 [elastic-cloud-kubernetes-300-release-notes]
-**Release date:** March 25, 2025
 
 ### Features and enhancements [elastic-cloud-kubernetes-300-features-enhancements]
 
