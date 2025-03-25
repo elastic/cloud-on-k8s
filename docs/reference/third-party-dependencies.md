@@ -42,21 +42,21 @@ This page lists the third-party dependencies used to build {{eck}}.
 | [github.com/spf13/pflag](https://github.com/spf13/pflag) | v1.0.6 | BSD-3-Clause |
 | [github.com/spf13/viper](https://github.com/spf13/viper) | v1.19.0 | MIT |
 | [github.com/stretchr/testify](https://github.com/stretchr/testify) | v1.10.0 | MIT |
-| [go.elastic.co/apm/module/apmelasticsearch/v2](https://go.elastic.co/apm/module/apmelasticsearch/v2) | v2.6.3 | Apache-2.0 |
-| [go.elastic.co/apm/module/apmhttp/v2](https://go.elastic.co/apm/module/apmhttp/v2) | v2.6.3 | Apache-2.0 |
-| [go.elastic.co/apm/module/apmzap/v2](https://go.elastic.co/apm/module/apmzap/v2) | v2.6.3 | Apache-2.0 |
-| [go.elastic.co/apm/v2](https://go.elastic.co/apm/v2) | v2.6.3 | Apache-2.0 |
+| [go.elastic.co/apm/module/apmelasticsearch/v2](https://go.elastic.co/apm/module/apmelasticsearch/v2) | v2.7.0 | Apache-2.0 |
+| [go.elastic.co/apm/module/apmhttp/v2](https://go.elastic.co/apm/module/apmhttp/v2) | v2.7.0 | Apache-2.0 |
+| [go.elastic.co/apm/module/apmzap/v2](https://go.elastic.co/apm/module/apmzap/v2) | v2.7.0 | Apache-2.0 |
+| [go.elastic.co/apm/v2](https://go.elastic.co/apm/v2) | v2.7.0 | Apache-2.0 |
 | [go.uber.org/automaxprocs](https://go.uber.org/automaxprocs) | v1.6.0 | MIT |
 | [go.uber.org/zap](https://go.uber.org/zap) | v1.27.0 | MIT |
 | [golang.org/x/crypto](https://golang.org/x/crypto) | v0.36.0 | BSD-3-Clause |
 | [golang.org/x/exp](https://golang.org/x/exp) | v0.0.0-20240808152545-0cdaa3abc0fa | BSD-3-Clause |
 | [gopkg.in/yaml.v3](https://gopkg.in/yaml.v3) | v3.0.1 | MIT |
-| [k8s.io/api](https://github.com/kubernetes/api) | v0.32.2 | Apache-2.0 |
-| [k8s.io/apimachinery](https://github.com/kubernetes/apimachinery) | v0.32.2 | Apache-2.0 |
-| [k8s.io/client-go](https://github.com/kubernetes/client-go) | v0.32.2 | Apache-2.0 |
+| [k8s.io/api](https://github.com/kubernetes/api) | v0.32.3 | Apache-2.0 |
+| [k8s.io/apimachinery](https://github.com/kubernetes/apimachinery) | v0.32.3 | Apache-2.0 |
+| [k8s.io/client-go](https://github.com/kubernetes/client-go) | v0.32.3 | Apache-2.0 |
 | [k8s.io/klog/v2](https://github.com/kubernetes/klog) | v2.130.1 | Apache-2.0 |
 | [k8s.io/utils](https://github.com/kubernetes/utils) | v0.0.0-20241104100929-3ea5e8cea738 | Apache-2.0 |
-| [sigs.k8s.io/controller-runtime](https://sigs.k8s.io/controller-runtime) | v0.20.3 | Apache-2.0 |
+| [sigs.k8s.io/controller-runtime](https://sigs.k8s.io/controller-runtime) | v0.20.4 | Apache-2.0 |
 | [sigs.k8s.io/controller-tools](https://sigs.k8s.io/controller-tools) | v0.17.2 | Apache-2.0 |
 
 
@@ -78,7 +78,7 @@ This page lists the third-party dependencies used to build {{eck}}.
 | [github.com/docker/cli](https://github.com/docker/cli) | v27.5.0+incompatible | Apache-2.0 |
 | [github.com/docker/distribution](https://github.com/docker/distribution) | v2.8.3+incompatible | Apache-2.0 |
 | [github.com/docker/docker-credential-helpers](https://github.com/docker/docker-credential-helpers) | v0.8.2 | MIT |
-| [github.com/elastic/go-sysinfo](https://github.com/elastic/go-sysinfo) | v1.15.1 | Apache-2.0 |
+| [github.com/elastic/go-sysinfo](https://github.com/elastic/go-sysinfo) | v1.15.2 | Apache-2.0 |
 | [github.com/elastic/go-windows](https://github.com/elastic/go-windows) | v1.0.2 | Apache-2.0 |
 | [github.com/emicklei/go-restful/v3](https://github.com/emicklei/go-restful) | v3.12.1 | MIT |
 | [github.com/evanphx/json-patch](https://github.com/evanphx/json-patch) | v5.6.0+incompatible | BSD-3-Clause |
@@ -146,7 +146,7 @@ This page lists the third-party dependencies used to build {{eck}}.
 | [github.com/pelletier/go-toml/v2](https://github.com/pelletier/go-toml) | v2.2.2 | MIT |
 | [github.com/prashantv/gostub](https://github.com/prashantv/gostub) | v1.1.0 | MIT |
 | [github.com/prometheus/client_model](https://github.com/prometheus/client_model) | v0.6.1 | Apache-2.0 |
-| [github.com/prometheus/procfs](https://github.com/prometheus/procfs) | v0.15.1 | Apache-2.0 |
+| [github.com/prometheus/procfs](https://github.com/prometheus/procfs) | v0.16.0 | Apache-2.0 |
 | [github.com/rogpeppe/go-internal](https://github.com/rogpeppe/go-internal) | v1.13.1 | BSD-3-Clause |
 | [github.com/ryanuber/go-glob](https://github.com/ryanuber/go-glob) | v1.0.0 | MIT |
 | [github.com/sagikazarmark/locafero](https://github.com/sagikazarmark/locafero) | v0.4.0 | MIT |
