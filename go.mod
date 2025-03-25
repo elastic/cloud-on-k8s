@@ -29,9 +29,9 @@ require (
 	github.com/spf13/pflag v1.0.6
 	github.com/spf13/viper v1.19.0
 	github.com/stretchr/testify v1.10.0
-	go.elastic.co/apm/module/apmelasticsearch/v2 v2.6.3
-	go.elastic.co/apm/module/apmhttp/v2 v2.6.3
-	go.elastic.co/apm/module/apmzap/v2 v2.6.3
+	go.elastic.co/apm/module/apmelasticsearch/v2 v2.7.0
+	go.elastic.co/apm/module/apmhttp/v2 v2.7.0
+	go.elastic.co/apm/module/apmzap/v2 v2.7.0
 	go.elastic.co/apm/v2 v2.7.0
 	go.uber.org/automaxprocs v1.6.0
 	go.uber.org/zap v1.27.0
@@ -61,7 +61,7 @@ require (
 	github.com/docker/cli v27.5.0+incompatible // indirect
 	github.com/docker/distribution v2.8.3+incompatible // indirect
 	github.com/docker/docker-credential-helpers v0.8.2 // indirect
-	github.com/elastic/go-sysinfo v1.15.1 // indirect
+	github.com/elastic/go-sysinfo v1.15.2 // indirect
 	github.com/elastic/go-windows v1.0.2 // indirect
 	github.com/emicklei/go-restful/v3 v3.12.1 // indirect
 	github.com/evanphx/json-patch v5.6.0+incompatible // indirect
@@ -119,7 +119,7 @@ require (
 	github.com/opencontainers/image-spec v1.1.0 // indirect
 	github.com/pelletier/go-toml/v2 v2.2.2 // indirect
 	github.com/prometheus/client_model v0.6.1 // indirect
-	github.com/prometheus/procfs v0.15.1 // indirect
+	github.com/prometheus/procfs v0.16.0 // indirect
 	github.com/rogpeppe/go-internal v1.13.1 // indirect
 	github.com/ryanuber/go-glob v1.0.0 // indirect
 	github.com/sagikazarmark/locafero v0.4.0 // indirect
