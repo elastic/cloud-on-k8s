@@ -18,6 +18,9 @@ Review the changes, fixes, and more in each release of Elastic Cloud on Kubernet
 
 ## 3.0.0 [elastic-cloud-kubernetes-300-release-notes]
 
+### Release Highlights
+- ECK 3.0.0 adds support for Elastic stack version 9.0.0. Elastic stack version 9.0.0 is not supported on ECK operators running versions lower than 3.0.0
+
 ### Features and enhancements [elastic-cloud-kubernetes-300-features-enhancements]
 - Config: Allow escaping dots in keys via `[unsplit.key]` syntax [#8512](https://github.com/elastic/cloud-on-k8s/pull/8512) (issue: [#8499](https://github.com/elastic/cloud-on-k8s/issues/8499))
 - Enable copying of ECK images to Amazon ECR [#8427](https://github.com/elastic/cloud-on-k8s/pull/8427)
