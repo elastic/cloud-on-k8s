@@ -18,3 +18,10 @@ This section includes recipes that provide configuration examples for some commo
 * link:https://github.com/elastic/cloud-on-k8s/tree/main/config/recipes/autopilot[Deploy Elasticsearch, Kibana, Elastic Fleet Server and Elastic Agent within GKE Autopilot]
 
 WARNING: Compared to other configuration examples that are consistently tested, like <<{p}-elastic-agent-fleet-configuration-examples,fleet-managed Elastic Agent on ECK>>, <<{p}-elastic-agent-configuration-examples,standalone Elastic Agent on ECK>>, or <<{p}-beat-configuration-examples,Beats on ECK>>, the recipes in this section are not regularly tested by our automation system, and therefore should not be considered to be production-ready. 
+
+[NOTE]
+================================
+**Support Scope for Ingress Controllers**
+link:https://kubernetes.io/docs/concepts/services-networking/ingress/[Ingress] is a standard Kubernetes concept. While ECK-managed workloads can be publicly exposed using ingress resources, and we provide link:https://github.com/elastic/cloud-on-k8s/tree/main/config/recipes/[example configurations], setting up an Ingress controller requires in-house Kubernetes expertise.
+If ingress configuration is challenging or unsupported in your environment, consider using standard LoadBalancer services as a simpler alternative.
+================================
