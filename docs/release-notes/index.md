@@ -19,7 +19,7 @@ Review the changes, fixes, and more in each release of Elastic Cloud on Kubernet
 ## 3.0.0 [elastic-cloud-kubernetes-300-release-notes]
 
 ### Release Highlights
-- ECK 3.0.0 adds support for Elastic stack version 9.0.0. Elastic stack version 9.0.0 is not supported on ECK operators running versions lower than 3.0.0
+- ECK 3.0.0 adds support for Elastic stack version 9.0.0. Elastic stack version 9.0.0 is not supported on ECK operators running versions earlier than 3.0.0.
 
 ### Features and enhancements [elastic-cloud-kubernetes-300-features-enhancements]
 - Config: Allow escaping dots in keys via `[unsplit.key]` syntax [#8512](https://github.com/elastic/cloud-on-k8s/pull/8512) (issue: [#8499](https://github.com/elastic/cloud-on-k8s/issues/8499))
@@ -30,7 +30,7 @@ Review the changes, fixes, and more in each release of Elastic Cloud on Kubernet
 - Log resourceVersion on Create and Update [#8503](https://github.com/elastic/cloud-on-k8s/pull/8503)
 - Remove policyID validation [#8449](https://github.com/elastic/cloud-on-k8s/pull/8449) (issue: [#8446](https://github.com/elastic/cloud-on-k8s/issues/8446))
 - Refactor APM server for 9.0.0 [#8448](https://github.com/elastic/cloud-on-k8s/pull/8448) (issue: [#8447](https://github.com/elastic/cloud-on-k8s/issues/8447))
-- Small UX improvement during Fleet setup [#8350](https://github.com/elastic/cloud-on-k8s/pull/8350)
+- Improve error messages and events during Fleet setup [#8350](https://github.com/elastic/cloud-on-k8s/pull/8350)
 - Validate updates to 9.0 go through 8.18 [#8559](https://github.com/elastic/cloud-on-k8s/pull/8559) (issue: [#8557](https://github.com/elastic/cloud-on-k8s/issues/8557))
 
 ### Fixes [elastic-cloud-kubernetes-300-fixes]
@@ -49,7 +49,6 @@ Review the changes, fixes, and more in each release of Elastic Cloud on Kubernet
 - fix(deps): update module `go.elastic.co/apm/v2/*` to `v2.6.3` [#8440](https://github.com/elastic/cloud-on-k8s/pull/8440)
 - chore(deps): update Wolfi to `v1.23.5-r1` [#8434](https://github.com/elastic/cloud-on-k8s/pull/8434)
 - fix(deps): update k8s [#8400](https://github.com/elastic/cloud-on-k8s/pull/8400)
-- chore(deps): update `registry.access.redhat.com/ubi9/ubi-minimal` docker tag to `v9.5-1736404155` [#8399](https://github.com/elastic/cloud-on-k8s/pull/8399)
 - fix(deps): update module `github.com/gkampitakis/go-snaps` to `v0.5.8` [#8393](https://github.com/elastic/cloud-on-k8s/pull/8393)
 - Update `golang.org/x/net` to `v0.33.0` [#8372](https://github.com/elastic/cloud-on-k8s/pull/8372)
 - Bump `golang.org/x/crypto` from `0.29.0` to `0.31.0` [#8334](https://github.com/elastic/cloud-on-k8s/pull/8334)
