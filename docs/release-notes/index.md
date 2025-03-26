@@ -1,5 +1,5 @@
 ---
-navigation_title: "Elastic Cloud on Kubernetes"
+navigation_title: "Release Notes"
 mapped_pages:
   - https://www.elastic.co/guide/en/cloud-on-k8s/current/release-highlights.html
   - https://www.elastic.co/guide/en/cloud-on-k8s/current/eck-release-notes.html
@@ -19,14 +19,14 @@ Review the changes, fixes, and more in each release of Elastic Cloud on Kubernet
 ## 3.0.0 [elastic-cloud-kubernetes-300-release-notes]
 
 ### Release Highlights
-- ECK 3.0.0 adds support for Elastic stack version 9.0.0. Elastic stack version 9.0.0 is not supported on ECK operators running versions earlier than 3.0.0.
+- ECK 3.0.0 adds support for Elastic Stack version 9.0.0. Elastic Stack version 9.0.0 is not supported on ECK operators running versions earlier than 3.0.0.
 
 ### Features and enhancements [elastic-cloud-kubernetes-300-features-enhancements]
 - Config: Allow escaping dots in keys via `[unsplit.key]` syntax [#8512](https://github.com/elastic/cloud-on-k8s/pull/8512) (issue: [#8499](https://github.com/elastic/cloud-on-k8s/issues/8499))
-- Enable copying of ECK images to Amazon ECR [#8427](https://github.com/elastic/cloud-on-k8s/pull/8427)
+- Enable copying of ECK images to Amazon ECR to make it easier for users to find our own ECK operator in the AWS marketplace [#8427](https://github.com/elastic/cloud-on-k8s/pull/8427)
 - Support new agent image path as of 9.0 [#8518](https://github.com/elastic/cloud-on-k8s/pull/8518)
 - Remove ubi suffix for 9.x images [#8509](https://github.com/elastic/cloud-on-k8s/pull/8509)
-- Remove support for 6.x stack version [#8507](https://github.com/elastic/cloud-on-k8s/pull/8507)
+- Remove support for 6.x Stack version [#8507](https://github.com/elastic/cloud-on-k8s/pull/8507)
 - Log resourceVersion on Create and Update [#8503](https://github.com/elastic/cloud-on-k8s/pull/8503)
 - Remove policyID validation [#8449](https://github.com/elastic/cloud-on-k8s/pull/8449) (issue: [#8446](https://github.com/elastic/cloud-on-k8s/issues/8446))
 - Refactor APM server for 9.0.0 [#8448](https://github.com/elastic/cloud-on-k8s/pull/8448) (issue: [#8447](https://github.com/elastic/cloud-on-k8s/issues/8447))
@@ -50,7 +50,6 @@ Review the changes, fixes, and more in each release of Elastic Cloud on Kubernet
 - chore(deps): update Wolfi to `v1.23.5-r1` [#8434](https://github.com/elastic/cloud-on-k8s/pull/8434)
 - fix(deps): update k8s [#8400](https://github.com/elastic/cloud-on-k8s/pull/8400)
 - fix(deps): update module `github.com/gkampitakis/go-snaps` to `v0.5.8` [#8393](https://github.com/elastic/cloud-on-k8s/pull/8393)
-- Update `golang.org/x/net` to `v0.33.0` [#8372](https://github.com/elastic/cloud-on-k8s/pull/8372)
 - Bump `golang.org/x/crypto` from `0.29.0` to `0.31.0` [#8334](https://github.com/elastic/cloud-on-k8s/pull/8334)
 - fix(deps): update module `github.com/prometheus/common` to `v0.61.0` [#8333](https://github.com/elastic/cloud-on-k8s/pull/8333)
 - fix(deps): update Kubernetes dependencies to `v0.32.0` and controller-runtime to `v0.19.3` [#8330](https://github.com/elastic/cloud-on-k8s/pull/8330)

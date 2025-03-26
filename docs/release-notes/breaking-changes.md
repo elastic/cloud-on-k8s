@@ -19,6 +19,8 @@ Breaking changes can impact your Elastic applications, potentially disrupting no
 ::::{dropdown} Enterprise Search no longer available since version 9.0.0
 The standalone Enterprise search, App Search and Workplace Search products remain available in maintenance mode and are no longer recommended for new search experiences. We recommend transitioning to our actively developed Elastic Stack tools to build new semantic and AI powered search experiences. There will be no standalone Enterprise Search 9.x image to update to.
 For more information, check [Migrating to 9.x from Enterprise Search 8.x versions](https://www.elastic.co/guide/en/enterprise-search/8.18/upgrading-to-9-x.html).
+
 **Impact**<br> The upgrade to version 9.0.0 is not possible for standalone Enterprise search resources.
+
 **Action**<br> Migrate away from Enterprise Search following [this guide](https://www.elastic.co/guide/en/enterprise-search/8.18/upgrading-to-9-x.html). Only once the standalone Enterprise Search resources have been deleted attempt the upgrade of the Elastic Stack to version 9.0.0.
 ::::

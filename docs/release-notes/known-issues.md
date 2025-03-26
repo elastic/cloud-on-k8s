@@ -18,3 +18,5 @@ Known issues are significant defects or limitations that may impact your impleme
 :::
 
 ## 3.0.0 [elastic-cloud-kubernetes-300-known-issues]
+
+There are currently no known issues for ECK 3.0
