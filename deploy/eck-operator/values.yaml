@@ -157,11 +157,12 @@ hostNetwork: false
 dnsPolicy: ""
 
 # dnsConfig defines the DNS configuration for the operator pod.
+# Check https://kubernetes.io/docs/concepts/services-networking/dns-pod-service/#pod-dns-config for more details.
 # dnsConfig:
-#  nameservers:
-#    - 169.254.20.10
-#  searches:
-#    - svc.cluster.local
+#   nameservers:
+#     - 169.254.20.10
+#   searches:
+#     - svc.cluster.local
 #   options:
 #     - name: ndots
 #       value: "2"
