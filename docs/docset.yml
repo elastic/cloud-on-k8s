@@ -1,0 +1,13 @@
+project: 'Elastic Cloud on Kubernetes'
+exclude:
+  - design/**/*.md
+cross_links:
+  - apm-agent-go
+  - docs-content
+  - kibana
+toc:
+  - toc: reference
+  - toc: release-notes
+subs:
+  eck:   "Elastic Cloud on Kubernetes"
+  es:   "Elasticsearch"

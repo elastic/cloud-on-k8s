@@ -11,9 +11,8 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/util/validation/field"
-	"sigs.k8s.io/controller-runtime/pkg/webhook"
-	"sigs.k8s.io/controller-runtime/pkg/webhook/admission"
 
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/webhook/admission"
 	ulog "github.com/elastic/cloud-on-k8s/v2/pkg/utils/log"
 )
 
@@ -29,7 +28,7 @@ var (
 
 // +kubebuilder:webhook:path=/validate-beat-k8s-elastic-co-v1beta1-beat,mutating=false,failurePolicy=ignore,groups=beat.k8s.elastic.co,resources=beats,verbs=create;update,versions=v1beta1,name=elastic-beat-validation-v1beta1.k8s.elastic.co,sideEffects=None,admissionReviewVersions=v1;v1beta1,matchPolicy=Exact
 
-var _ webhook.Validator = &Beat{}
+var _ admission.Validator = &Beat{}
 
 // ValidateCreate is called by the validating webhook to validate the create operation.
 // Satisfies the webhook.Validator interface.
@@ -64,6 +63,17 @@ func (b *Beat) WebhookPath() string {
 
 func (b *Beat) validate(old *Beat) (admission.Warnings, error) {
 	var errors field.ErrorList
+	var warnings admission.Warnings
+
+	// deprecation check
+	deprecationWarning, deprecationError := checkIfVersionDeprecated(b)
+	if deprecationError != nil {
+		errors = append(errors, deprecationError...)
+	}
+	if deprecationWarning != "" {
+		warnings = append(warnings, deprecationWarning)
+	}
+
 	if old != nil {
 		for _, uc := range updateChecks {
 			if err := uc(old, b); err != nil {
@@ -72,7 +82,7 @@ func (b *Beat) validate(old *Beat) (admission.Warnings, error) {
 		}
 
 		if len(errors) > 0 {
-			return nil, apierrors.NewInvalid(groupKind, b.Name, errors)
+			return warnings, apierrors.NewInvalid(groupKind, b.Name, errors)
 		}
 	}
 
@@ -83,7 +93,7 @@ func (b *Beat) validate(old *Beat) (admission.Warnings, error) {
 	}
 
 	if len(errors) > 0 {
-		return nil, apierrors.NewInvalid(groupKind, b.Name, errors)
+		return warnings, apierrors.NewInvalid(groupKind, b.Name, errors)
 	}
-	return nil, nil
+	return warnings, nil
 }

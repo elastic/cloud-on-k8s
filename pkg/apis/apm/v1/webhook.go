@@ -12,11 +12,10 @@ import (
 	runtime "k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/util/validation/field"
-	"sigs.k8s.io/controller-runtime/pkg/webhook"
-	"sigs.k8s.io/controller-runtime/pkg/webhook/admission"
 
 	commonv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/common/v1"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/version"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/webhook/admission"
 	ulog "github.com/elastic/cloud-on-k8s/v2/pkg/utils/log"
 )
 
@@ -47,7 +46,7 @@ var (
 
 // +kubebuilder:webhook:path=/validate-apm-k8s-elastic-co-v1-apmserver,mutating=false,failurePolicy=ignore,groups=apm.k8s.elastic.co,resources=apmservers,verbs=create;update,versions=v1,name=elastic-apm-validation-v1.k8s.elastic.co,sideEffects=None,admissionReviewVersions=v1;v1beta1,matchPolicy=Exact
 
-var _ webhook.Validator = &ApmServer{}
+var _ admission.Validator = &ApmServer{}
 
 // ValidateCreate is called by the validating webhook to validate the create operation.
 // Satisfies the webhook.Validator interface.
@@ -82,6 +81,17 @@ func (as *ApmServer) WebhookPath() string {
 
 func (as *ApmServer) validate(old *ApmServer) (admission.Warnings, error) {
 	var errors field.ErrorList
+	var warnings admission.Warnings
+
+	// depreciation check
+	depreciationWarnings, depreciationErrors := checkIfVersionDeprecated(as)
+	if depreciationErrors != nil {
+		errors = append(errors, depreciationErrors...)
+	}
+	if depreciationWarnings != "" {
+		warnings = append(warnings, depreciationWarnings)
+	}
+
 	if old != nil {
 		for _, uc := range updateChecks {
 			if err := uc(old, as); err != nil {
@@ -90,7 +100,7 @@ func (as *ApmServer) validate(old *ApmServer) (admission.Warnings, error) {
 		}
 
 		if len(errors) > 0 {
-			return nil, apierrors.NewInvalid(groupKind, as.Name, errors)
+			return warnings, apierrors.NewInvalid(groupKind, as.Name, errors)
 		}
 	}
 
@@ -101,9 +111,9 @@ func (as *ApmServer) validate(old *ApmServer) (admission.Warnings, error) {
 	}
 
 	if len(errors) > 0 {
-		return nil, apierrors.NewInvalid(groupKind, as.Name, errors)
+		return warnings, apierrors.NewInvalid(groupKind, as.Name, errors)
 	}
-	return nil, nil
+	return warnings, nil
 }
 
 func checkNoUnknownFields(as *ApmServer) field.ErrorList {
@@ -116,6 +126,10 @@ func checkNameLength(as *ApmServer) field.ErrorList {
 
 func checkSupportedVersion(as *ApmServer) field.ErrorList {
 	return commonv1.CheckSupportedStackVersion(as.Spec.Version, version.SupportedAPMServerVersions)
+}
+
+func checkIfVersionDeprecated(as *ApmServer) (string, field.ErrorList) {
+	return commonv1.CheckDeprecatedStackVersion(as.Spec.Version)
 }
 
 func checkNoDowngrade(prev, curr *ApmServer) field.ErrorList {

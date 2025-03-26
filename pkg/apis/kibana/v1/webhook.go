@@ -11,13 +11,12 @@ import (
 	runtime "k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/util/validation/field"
-	"sigs.k8s.io/controller-runtime/pkg/webhook"
-	"sigs.k8s.io/controller-runtime/pkg/webhook/admission"
 
 	commonv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/common/v1"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/stackmon/monitoring"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/stackmon/validations"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/version"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/webhook/admission"
 	ulog "github.com/elastic/cloud-on-k8s/v2/pkg/utils/log"
 )
 
@@ -45,7 +44,7 @@ var (
 
 // +kubebuilder:webhook:path=/validate-kibana-k8s-elastic-co-v1-kibana,mutating=false,failurePolicy=ignore,groups=kibana.k8s.elastic.co,resources=kibanas,verbs=create;update,versions=v1,name=elastic-kb-validation-v1.k8s.elastic.co,sideEffects=None,admissionReviewVersions=v1;v1beta1,matchPolicy=Exact
 
-var _ webhook.Validator = &Kibana{}
+var _ admission.Validator = &Kibana{}
 
 // ValidateCreate is called by the validating webhook to validate the create operation.
 // Satisfies the webhook.Validator interface.
@@ -80,6 +79,16 @@ func (k *Kibana) WebhookPath() string {
 
 func (k *Kibana) validate(old *Kibana) (admission.Warnings, error) {
 	var errors field.ErrorList
+	var warnings admission.Warnings
+
+	deprecatedWarnings, deprecatedErrors := checkIfVersionDeprecated(k)
+	if len(deprecatedErrors) > 0 {
+		errors = append(errors, deprecatedErrors...)
+	}
+	if len(deprecatedWarnings) > 0 {
+		warnings = append(warnings, deprecatedWarnings)
+	}
+
 	if old != nil {
 		for _, uc := range updateChecks {
 			if err := uc(old, k); err != nil {
@@ -88,7 +97,7 @@ func (k *Kibana) validate(old *Kibana) (admission.Warnings, error) {
 		}
 
 		if len(errors) > 0 {
-			return nil, apierrors.NewInvalid(groupKind, k.Name, errors)
+			return warnings, apierrors.NewInvalid(groupKind, k.Name, errors)
 		}
 	}
 
@@ -99,9 +108,9 @@ func (k *Kibana) validate(old *Kibana) (admission.Warnings, error) {
 	}
 
 	if len(errors) > 0 {
-		return nil, apierrors.NewInvalid(groupKind, k.Name, errors)
+		return warnings, apierrors.NewInvalid(groupKind, k.Name, errors)
 	}
-	return nil, nil
+	return warnings, nil
 }
 
 func checkNoUnknownFields(k *Kibana) field.ErrorList {
@@ -114,6 +123,10 @@ func checkNameLength(k *Kibana) field.ErrorList {
 
 func checkSupportedVersion(k *Kibana) field.ErrorList {
 	return commonv1.CheckSupportedStackVersion(k.Spec.Version, version.SupportedKibanaVersions)
+}
+
+func checkIfVersionDeprecated(k *Kibana) (string, field.ErrorList) {
+	return commonv1.CheckDeprecatedStackVersion(k.Spec.Version)
 }
 
 func checkNoDowngrade(prev, curr *Kibana) field.ErrorList {

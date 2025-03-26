@@ -16,6 +16,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/beat/filebeat"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/beat/heartbeat"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/beat/metricbeat"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/version"
 	"github.com/elastic/cloud-on-k8s/v2/test/e2e/test"
 	"github.com/elastic/cloud-on-k8s/v2/test/e2e/test/beat"
 	"github.com/elastic/cloud-on-k8s/v2/test/e2e/test/elasticsearch"
@@ -50,7 +51,16 @@ func TestBeatKibanaRefWithTLSDisabled(t *testing.T) {
 		WithElasticsearchRef(esBuilder.Ref()).
 		WithKibanaRef(kbBuilder.Ref())
 
-	fbBuilder = beat.ApplyYamls(t, fbBuilder, E2EFilebeatConfig, E2EFilebeatPodTemplate)
+	fileBeatConfig := E2EFilebeatConfig
+
+	stackVersion := version.MustParse(test.Ctx().ElasticStackVersion)
+	// Stack versions 8.0.X to 8.9.X do not support fingerprint identity type
+	// Versions 7.17.X and 8.10.X and above support fingerprint identity type
+	if !SupportsFingerprintIdentity(stackVersion) {
+		fileBeatConfig = E2EFilebeatConfigPRE810
+	}
+
+	fbBuilder = beat.ApplyYamls(t, fbBuilder, fileBeatConfig, E2EFilebeatPodTemplate)
 
 	dashboardCheck := getDashboardCheck(
 		esBuilder,
@@ -79,7 +89,16 @@ func TestBeatKibanaRef(t *testing.T) {
 		WithElasticsearchRef(esBuilder.Ref()).
 		WithKibanaRef(kbBuilder.Ref())
 
-	fbBuilder = beat.ApplyYamls(t, fbBuilder, E2EFilebeatConfig, E2EFilebeatPodTemplate)
+	fileBeatConfig := E2EFilebeatConfig
+
+	stackVersion := version.MustParse(test.Ctx().ElasticStackVersion)
+	// Stack versions 8.0.X to 8.9.X do not support fingerprint identity type
+	// Versions 7.17.X and 8.10.X and above support fingerprint identity type
+	if !SupportsFingerprintIdentity(stackVersion) {
+		fileBeatConfig = E2EFilebeatConfigPRE810
+	}
+
+	fbBuilder = beat.ApplyYamls(t, fbBuilder, fileBeatConfig, E2EFilebeatPodTemplate)
 
 	mbBuilder := beat.NewBuilder(name).
 		WithType(metricbeat.Type).

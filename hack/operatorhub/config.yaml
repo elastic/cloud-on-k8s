@@ -1,6 +1,6 @@
-newVersion: 2.17.0-SNAPSHOT
-prevVersion: 2.16.0
-stackVersion: 8.18.0-SNAPSHOT
+newVersion: 3.1.0-SNAPSHOT
+prevVersion: 3.0.0
+stackVersion: 9.1.0-SNAPSHOT
 crds:
   - name: elasticsearches.elasticsearch.k8s.elastic.co
     displayName: Elasticsearch Cluster
@@ -41,6 +41,8 @@ packages:
   - outputPath: certified-operators
     packageName: elasticsearch-eck-operator-certified
     distributionChannel: certified-operators
+    # The minimum supported OpenShift version for ECK is 4.14 but we don't want to create unnecessary friction for users
+    # by excluding ECK from the 4.12 Operatorhub catalog as long as 4.12 is still within Red Hat extended maintenance.
     minSupportedOpenshiftVersion: v4.12
     operatorRepo: registry.connect.redhat.com/elastic/eck-operator
     ubiOnly: true

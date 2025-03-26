@@ -1,5 +1,5 @@
 run:
-  timeout: 360s
+  timeout: 420s
 
 linters-settings:
   exhaustive:

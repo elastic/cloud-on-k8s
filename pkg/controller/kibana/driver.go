@@ -33,6 +33,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/version"
 	commonvolume "github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/volume"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/watches"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/kibana/initcontainer"
 	kblabel "github.com/elastic/cloud-on-k8s/v2/pkg/controller/kibana/label"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/kibana/network"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/kibana/stackmon"
@@ -41,8 +42,8 @@ import (
 	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/maps"
 )
 
-// minSupportedVersion is the minimum version of Kibana supported by ECK. Currently this is set to version 6.8.0.
-var minSupportedVersion = version.From(6, 8, 0)
+// minSupportedVersion is the minimum version of Kibana supported by ECK. Currently this is set to version 7.0.0.
+var minSupportedVersion = version.From(7, 0, 0)
 
 type driver struct {
 	client         k8s.Client
@@ -160,8 +161,7 @@ func (d *driver) Reconcile(
 		return results.WithError(err)
 	}
 
-	err = ReconcileConfigSecret(ctx, d.client, *kb, kbSettings)
-	if err != nil {
+	if err = ReconcileConfigSecret(ctx, d.client, *kb, kbSettings); err != nil {
 		return results.WithError(err)
 	}
 
@@ -170,8 +170,11 @@ func (d *driver) Reconcile(
 		return results.WithError(err)
 	}
 
-	err = stackmon.ReconcileConfigSecrets(ctx, d.client, *kb, basePath)
-	if err != nil {
+	if err = stackmon.ReconcileConfigSecrets(ctx, d.client, *kb, basePath); err != nil {
+		return results.WithError(err)
+	}
+
+	if err = initcontainer.ReconcileScriptsConfigMap(ctx, d.client, *kb); err != nil {
 		return results.WithError(err)
 	}
 
@@ -226,7 +229,7 @@ func (d *driver) getStrategyType(kb *kbv1.Kibana) (appsv1.DeploymentStrategyType
 }
 
 func (d *driver) deploymentParams(ctx context.Context, kb *kbv1.Kibana, policyAnnotations map[string]string, basePath string, setDefaultSecurityContext bool) (deployment.Params, error) {
-	initContainersParameters, err := newInitContainersParameters(kb)
+	initContainersParameters, err := initcontainer.NewInitContainersParameters(kb)
 	if err != nil {
 		return deployment.Params{}, err
 	}
@@ -282,7 +285,7 @@ func (d *driver) deploymentParams(ctx context.Context, kb *kbv1.Kibana, policyAn
 
 	// get config secret to add its content to the config checksum
 	configSecret := corev1.Secret{}
-	err = d.client.Get(ctx, types.NamespacedName{Name: SecretName(*kb), Namespace: kb.Namespace}, &configSecret)
+	err = d.client.Get(ctx, types.NamespacedName{Name: kbv1.ConfigSecret(kb.Name), Namespace: kb.Namespace}, &configSecret)
 	if err != nil {
 		return deployment.Params{}, err
 	}
@@ -314,7 +317,7 @@ func (d *driver) deploymentParams(ctx context.Context, kb *kbv1.Kibana, policyAn
 }
 
 func (d *driver) buildVolumes(kb *kbv1.Kibana) ([]commonvolume.VolumeLike, error) {
-	volumes := []commonvolume.VolumeLike{DataVolume, ConfigSharedVolume, ConfigVolume(*kb)}
+	volumes := []commonvolume.VolumeLike{DataVolume, initcontainer.ConfigSharedVolume, initcontainer.ConfigVolume(*kb)}
 
 	esAssocConf, err := kb.EsAssociation().AssociationConf()
 	if err != nil {

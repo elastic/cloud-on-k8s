@@ -4,7 +4,7 @@ kind: Elasticsearch
 metadata:
   name: monitoring
 spec:
-  version: 8.16.0
+  version: 8.17.0
   nodeSets:
     - name: default
       count: 3
@@ -17,7 +17,7 @@ metadata:
   name: logstash-sample
 spec:
   count: 1
-  version: 8.16.0
+  version: 8.17.0
   config:
     log.level: info
     api.http.host: "0.0.0.0"
@@ -43,8 +43,8 @@ spec:
         output {
           elasticsearch {
             hosts => [ "${TEST_ES_HOSTS}" ]
-            ssl => true
-            cacert => "${TEST_ES_SSL_CERTIFICATE_AUTHORITY}"
+            ssl_enabled => true
+            ssl_certificate_authorities => "${TEST_ES_SSL_CERTIFICATE_AUTHORITY}"
             user => "${TEST_ES_USER}"
             password => "${TEST_ES_PASSWORD}"
           }
@@ -55,7 +55,7 @@ kind: Kibana
 metadata:
   name: kibana-sample
 spec:
-  version: 8.16.0
+  version: 8.17.0
   elasticsearchRef:
     name: monitoring
   count: 1

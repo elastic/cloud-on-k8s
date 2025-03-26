@@ -9,11 +9,10 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/util/validation/field"
-	"sigs.k8s.io/controller-runtime/pkg/webhook"
-	"sigs.k8s.io/controller-runtime/pkg/webhook/admission"
 
 	commonv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/common/v1"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/version"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/webhook/admission"
 	ulog "github.com/elastic/cloud-on-k8s/v2/pkg/utils/log"
 )
 
@@ -36,7 +35,7 @@ var (
 
 // +kubebuilder:webhook:path=/validate-ems-k8s-elastic-co-v1alpha1-mapsservers,mutating=false,failurePolicy=ignore,groups=maps.k8s.elastic.co,resources=mapsservers,verbs=create;update,versions=v1alpha1,name=elastic-ems-validation-v1alpha1.k8s.elastic.co,sideEffects=None,admissionReviewVersions=v1;v1beta1,matchPolicy=Exact
 
-var _ webhook.Validator = &ElasticMapsServer{}
+var _ admission.Validator = &ElasticMapsServer{}
 
 // ValidateCreate is called by the validating webhook to validate the create operation.
 // Satisfies the webhook.Validator interface.
@@ -66,6 +65,7 @@ func (m *ElasticMapsServer) WebhookPath() string {
 
 func (m *ElasticMapsServer) validate() (admission.Warnings, error) {
 	var errors field.ErrorList
+	var warnings admission.Warnings
 
 	for _, dc := range defaultChecks {
 		if err := dc(m); err != nil {
@@ -73,11 +73,21 @@ func (m *ElasticMapsServer) validate() (admission.Warnings, error) {
 		}
 	}
 
+	// check for deprecated version
+	deprecationWarnings, deprecationErrors := checkIfVersionDeprecated(m)
+	if deprecationErrors != nil {
+		errors = append(errors, deprecationErrors...)
+	}
+
+	if deprecationWarnings != "" {
+		warnings = append(warnings, deprecationWarnings)
+	}
+
 	if len(errors) > 0 {
 		validationLog.V(1).Info("failed validation", "errors", errors)
-		return nil, apierrors.NewInvalid(groupKind, m.Name, errors)
+		return warnings, apierrors.NewInvalid(groupKind, m.Name, errors)
 	}
-	return nil, nil
+	return warnings, nil
 }
 
 func checkNoUnknownFields(ems *ElasticMapsServer) field.ErrorList {
@@ -90,6 +100,10 @@ func checkNameLength(ems *ElasticMapsServer) field.ErrorList {
 
 func checkSupportedVersion(ems *ElasticMapsServer) field.ErrorList {
 	return commonv1.CheckSupportedStackVersion(ems.Spec.Version, version.SupportedMapsVersions)
+}
+
+func checkIfVersionDeprecated(ems *ElasticMapsServer) (string, field.ErrorList) {
+	return commonv1.CheckDeprecatedStackVersion(ems.Spec.Version)
 }
 
 func checkAssociation(ems *ElasticMapsServer) field.ErrorList {

@@ -66,66 +66,6 @@ func Test_checkSupportedVersion(t *testing.T) {
 	}
 }
 
-func Test_checkPolicyID(t *testing.T) {
-	expectedError := field.ErrorList{
-		&field.Error{
-			Type:     field.ErrorTypeRequired,
-			Field:    "spec.policyID",
-			BadValue: "",
-			Detail:   "Agent policyID is mandatory",
-		}}
-	tests := []struct {
-		name    string
-		beat    Agent
-		wantErr field.ErrorList
-	}{
-		{
-			name: "no policyID required for 8.x",
-			beat: Agent{
-				Spec: AgentSpec{
-					Version: "8.5.99",
-				},
-			},
-			wantErr: nil,
-		},
-		{
-			name: "policyID required for 9.x",
-			beat: Agent{
-				Spec: AgentSpec{
-					Version: "9.0.0",
-				},
-			},
-			wantErr: expectedError,
-		},
-		{
-			name: "policyID required for 9.0.0-SNAPSHOT",
-			beat: Agent{
-				Spec: AgentSpec{
-					Version: "9.0.0-SNAPSHOT",
-				},
-			},
-			wantErr: expectedError,
-		},
-		{
-			name: "policyID set for 9.x",
-			beat: Agent{
-				Spec: AgentSpec{
-					Version:  "9.0.0",
-					PolicyID: "foo",
-				},
-			},
-			wantErr: nil,
-		},
-	}
-
-	for _, tc := range tests {
-		t.Run(tc.name, func(t *testing.T) {
-			got := checkPolicyID(&tc.beat)
-			assert.Equal(t, tc.wantErr, got)
-		})
-	}
-}
-
 func Test_checkAtMostOneDeploymentOption(t *testing.T) {
 	type args struct {
 		a *Agent
@@ -219,6 +159,33 @@ func Test_checkAtMostOneDeploymentOption(t *testing.T) {
 			if got := checkAtMostOneDeploymentOption(tt.args.a); !reflect.DeepEqual(got, tt.want) {
 				t.Errorf("checkAtMostOneDeploymentOption() = \n%v, \nwant \n%v", got, tt.want)
 			}
+		})
+	}
+}
+
+func Test_checkIfVersionDeprecated(t *testing.T) {
+	tests := []struct {
+		name    string
+		version string
+		want    string
+	}{
+		{
+			name:    "not deprecated",
+			version: "7.17.0",
+			want:    "",
+		},
+		{
+			name:    "deprecated",
+			version: "7.4.0",
+			want:    "Version 7.4.0 is EOL and support for it will be removed in a future release of the ECK operator",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, err := checkIfVersionDeprecated(&Agent{Spec: AgentSpec{Version: tt.version}})
+			assert.Nil(t, err)
+			assert.Equal(t, tt.want, got)
 		})
 	}
 }

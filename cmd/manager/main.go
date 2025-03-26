@@ -40,7 +40,6 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/metrics/filters"
 	metricsserver "sigs.k8s.io/controller-runtime/pkg/metrics/server"
 	crwebhook "sigs.k8s.io/controller-runtime/pkg/webhook"
-	"sigs.k8s.io/controller-runtime/pkg/webhook/admission"
 
 	"github.com/elastic/cloud-on-k8s/v2/pkg/about"
 	agentv1alpha1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/agent/v1alpha1"
@@ -73,6 +72,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/tracing/apmclientgo"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/version"
 	commonwebhook "github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/webhook"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/webhook/admission"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch"
 	esclient "github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/client"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/settings"
@@ -322,7 +322,7 @@ func Command() *cobra.Command {
 	cmd.Flags().Bool(
 		operator.UBIOnlyFlag,
 		false,
-		fmt.Sprintf("Use only UBI container images to deploy Elastic Stack applications. UBI images are only available from 7.10.0 onward. Cannot be combined with %s", operator.ContainerSuffixFlag),
+		fmt.Sprintf("Use only UBI container images to deploy Elastic Stack applications. UBI images are only available from 7.10.0 onward. Ignored from 9.x as default images are based on UBI. Cannot be combined with %s", operator.ContainerSuffixFlag),
 	)
 	cmd.Flags().Bool(
 		operator.ValidateStorageClassFlag,
@@ -572,7 +572,12 @@ func startOperator(ctx context.Context) error {
 	}
 
 	// configure the manager cache based on the number of managed namespaces
-	managedNamespaces := viper.GetStringSlice(operator.NamespacesFlag)
+	var managedNamespaces []string
+	// do not use viper.GetStringSlice here as it suffers from https://github.com/spf13/viper/issues/380
+	if err := viper.UnmarshalKey(operator.NamespacesFlag, &managedNamespaces); err != nil {
+		log.Error(err, "Failed to parse managed namespaces flag")
+		return err
+	}
 	switch {
 	case len(managedNamespaces) == 0:
 		log.Info("Operator configured to manage all namespaces")
@@ -1040,16 +1045,13 @@ func setupWebhook(
 		&policyv1alpha1.StackConfigPolicy{},
 	}
 	for _, obj := range webhookObjects {
-		if err := commonwebhook.SetupValidatingWebhookWithConfig(&commonwebhook.Config{
+		commonwebhook.SetupValidatingWebhookWithConfig(&commonwebhook.Config{
 			Manager:          mgr,
 			WebhookPath:      obj.WebhookPath(),
 			ManagedNamespace: managedNamespaces,
 			Validator:        obj,
 			LicenseChecker:   checker,
-		}); err != nil {
-			gvk := obj.GetObjectKind().GroupVersionKind()
-			log.Error(err, "Failed to setup webhook", "group", gvk.Group, "version", gvk.Version, "kind", gvk.Kind)
-		}
+		})
 	}
 
 	// Logstash, Elasticsearch and ElasticsearchAutoscaling validating webhooks are wired up differently, in order to access the k8s client

@@ -161,7 +161,11 @@ func (e *EKSDriver) ensureWorkDir() error {
 	if e.ctx["WorkDir"] != "" {
 		return nil
 	}
-	dir, err := os.MkdirTemp("", e.ctx["ClusterName"].(string))
+	clusterName, ok := e.ctx["ClusterName"].(string)
+	if !ok {
+		return fmt.Errorf("expected ClusterName to be of type string, got type %T", e.ctx["ClusterName"])
+	}
+	dir, err := os.MkdirTemp("", clusterName)
 	if err != nil {
 		return err
 	}

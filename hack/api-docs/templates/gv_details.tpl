@@ -1,14 +1,15 @@
 {{- define "gvDetails" -}}
 {{- $gv := . -}}
-[id="{{ asciidocGroupVersionID $gv | asciidocRenderAnchorID }}"]
-== {{ $gv.GroupVersionString }}
+
+% TODO add function to crd-ref-docs return anchor used in links docs-v3 does not seem to produce valid markdown anchors
+## {{ $gv.GroupVersionString }} [#{{ markdownGroupVersionID $gv | replace "-" "" }}]
 
 {{ $gv.Doc }}
 
 {{- if $gv.Kinds  }}
-.Resource Types
+### Resource Types
 {{- range $gv.SortedKinds }}
-- {{ $gv.TypeForKind . | asciidocRenderTypeLink }}
+- {{ $gv.TypeForKind . | markdownRenderTypeLink }}
 {{- end }}
 {{ end }}
 

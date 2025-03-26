@@ -12,9 +12,8 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/util/validation/field"
-	"sigs.k8s.io/controller-runtime/pkg/webhook"
-	"sigs.k8s.io/controller-runtime/pkg/webhook/admission"
 
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/webhook/admission"
 	ulog "github.com/elastic/cloud-on-k8s/v2/pkg/utils/log"
 )
 
@@ -32,9 +31,9 @@ var (
 
 // +kubebuilder:webhook:path=/validate-agent-k8s-elastic-co-v1alpha1-agent,mutating=false,failurePolicy=ignore,groups=agent.k8s.elastic.co,resources=agents,verbs=create;update,versions=v1alpha1,name=elastic-agent-validation-v1alpha1.k8s.elastic.co,sideEffects=None,admissionReviewVersions=v1;v1beta1,matchPolicy=Exact
 
-var _ webhook.Validator = &Agent{}
+var _ admission.Validator = &Agent{}
 
-func (a *Agent) GetWarnings() []string {
+func (a *Agent) warnings() []string {
 	if a == nil {
 		return nil
 	}
@@ -76,7 +75,18 @@ func (a *Agent) WebhookPath() string {
 }
 
 func (a *Agent) validate(old *Agent) (admission.Warnings, error) {
+	warnings := a.warnings()
 	var errors field.ErrorList
+
+	// depreciation check
+	depreciationWarnings, depreciationErrors := checkIfVersionDeprecated(a)
+	if depreciationErrors != nil {
+		errors = append(errors, depreciationErrors...)
+	}
+	if depreciationWarnings != "" {
+		warnings = append(warnings, depreciationWarnings)
+	}
+
 	if old != nil {
 		for _, uc := range updateChecks {
 			if err := uc(old, a); err != nil {
@@ -85,7 +95,7 @@ func (a *Agent) validate(old *Agent) (admission.Warnings, error) {
 		}
 
 		if len(errors) > 0 {
-			return nil, apierrors.NewInvalid(groupKind, a.Name, errors)
+			return warnings, apierrors.NewInvalid(groupKind, a.Name, errors)
 		}
 	}
 
@@ -96,7 +106,7 @@ func (a *Agent) validate(old *Agent) (admission.Warnings, error) {
 	}
 
 	if len(errors) > 0 {
-		return nil, apierrors.NewInvalid(groupKind, a.Name, errors)
+		return warnings, apierrors.NewInvalid(groupKind, a.Name, errors)
 	}
-	return nil, nil
+	return warnings, nil
 }

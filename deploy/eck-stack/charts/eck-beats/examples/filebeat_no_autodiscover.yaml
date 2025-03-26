@@ -1,5 +1,5 @@
 name: filebeat
-version: 8.18.0-SNAPSHOT
+version: 9.1.0-SNAPSHOT
 type: filebeat
 elasticsearchRef:
   name: eck-elasticsearch
@@ -7,9 +7,16 @@ kibanaRef:
   name: eck-kibana
 config:
   filebeat.inputs:
-  - type: container
+  - type: filestream
     paths:
     - /var/log/containers/*.log
+    parsers:
+    - container: ~
+    prospector:
+      scanner:
+        fingerprint.enabled: true
+        symlinks: true
+    file_identity.fingerprint: ~
   processors:
   - add_host_metadata: {}
   - add_cloud_metadata: {}

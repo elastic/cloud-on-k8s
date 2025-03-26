@@ -7,7 +7,6 @@ package webhook
 import (
 	"context"
 	"encoding/json"
-	"reflect"
 	"testing"
 
 	admissionv1 "k8s.io/api/admission/v1"
@@ -15,7 +14,10 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"sigs.k8s.io/controller-runtime/pkg/webhook/admission"
 
+	"github.com/go-test/deep"
+
 	agentv1alpha1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/agent/v1alpha1"
+	eckadmission "github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/webhook/admission"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/k8s"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/set"
 )
@@ -31,7 +33,7 @@ func asJSON(obj interface{}) []byte {
 func Test_validatingWebhook_Handle(t *testing.T) {
 	type fields struct {
 		managedNamespaces set.StringSet
-		validator         admission.Validator
+		validator         eckadmission.Validator
 	}
 	tests := []struct {
 		name   string
@@ -58,7 +60,7 @@ func Test_validatingWebhook_Handle(t *testing.T) {
 								},
 							},
 							Spec: agentv1alpha1.AgentSpec{
-								Version:    "7.10.0",
+								Version:    "8.10.0",
 								Deployment: &agentv1alpha1.DeploymentSpec{},
 								PolicyID:   "a-policy",
 							},
@@ -87,7 +89,7 @@ func Test_validatingWebhook_Handle(t *testing.T) {
 								},
 							},
 							Spec: agentv1alpha1.AgentSpec{
-								Version:    "7.10.0",
+								Version:    "8.10.0",
 								Deployment: &agentv1alpha1.DeploymentSpec{},
 							},
 						}),
@@ -115,7 +117,7 @@ func Test_validatingWebhook_Handle(t *testing.T) {
 								},
 							},
 							Spec: agentv1alpha1.AgentSpec{
-								Version:    "7.14.0",
+								Version:    "8.14.0",
 								Deployment: &agentv1alpha1.DeploymentSpec{},
 								Mode:       agentv1alpha1.AgentFleetMode,
 							},
@@ -152,7 +154,30 @@ func Test_validatingWebhook_Handle(t *testing.T) {
 					},
 				},
 			},
-			want: admission.Denied(`Agent.agent.k8s.elastic.co "testAgent" is invalid: spec.version: Invalid value: "0.10.0": Unsupported version: version 0.10.0 is lower than the lowest supported version of 7.10.0`),
+			want: admission.Response{
+				AdmissionResponse: admissionv1.AdmissionResponse{
+					Allowed: false,
+					Result: &metav1.Status{
+						Status:  metav1.StatusFailure,
+						Message: `Agent.agent.k8s.elastic.co "testAgent" is invalid: spec.version: Invalid value: "0.10.0": Unsupported version: version 0.10.0 is lower than the lowest supported version of 7.10.0`,
+						Reason:  "Invalid",
+						Details: &metav1.StatusDetails{
+							Name:  "testAgent",
+							Group: "agent.k8s.elastic.co",
+							Kind:  "Agent",
+							Causes: []metav1.StatusCause{
+								{
+									Type:    "FieldValueInvalid",
+									Message: `Invalid value: "0.10.0": Unsupported version: version 0.10.0 is lower than the lowest supported version of 7.10.0`,
+									Field:   "spec.version",
+								},
+							},
+							RetryAfterSeconds: 0,
+						},
+						Code: 422,
+					},
+				},
+			},
 		},
 		{
 			name: "delete agent is always allowed",
@@ -173,7 +198,7 @@ func Test_validatingWebhook_Handle(t *testing.T) {
 								},
 							},
 							Spec: agentv1alpha1.AgentSpec{
-								Version:    "7.10.0",
+								Version:    "8.10.0",
 								Deployment: &agentv1alpha1.DeploymentSpec{},
 								PolicyID:   "a-policy",
 							},
@@ -202,7 +227,7 @@ func Test_validatingWebhook_Handle(t *testing.T) {
 								},
 							},
 							Spec: agentv1alpha1.AgentSpec{
-								Version:    "7.10.0",
+								Version:    "8.10.0",
 								Deployment: &agentv1alpha1.DeploymentSpec{},
 							},
 						}),
@@ -230,7 +255,7 @@ func Test_validatingWebhook_Handle(t *testing.T) {
 								},
 							},
 							Spec: agentv1alpha1.AgentSpec{
-								Version:    "7.10.0",
+								Version:    "8.10.0",
 								Deployment: &agentv1alpha1.DeploymentSpec{},
 								PolicyID:   "a-policy",
 							},
@@ -246,7 +271,7 @@ func Test_validatingWebhook_Handle(t *testing.T) {
 								},
 							},
 							Spec: agentv1alpha1.AgentSpec{
-								Version:    "7.10.0",
+								Version:    "8.10.0",
 								Deployment: &agentv1alpha1.DeploymentSpec{},
 								PolicyID:   "a-policy",
 							},
@@ -275,7 +300,7 @@ func Test_validatingWebhook_Handle(t *testing.T) {
 								},
 							},
 							Spec: agentv1alpha1.AgentSpec{
-								Version:    "7.10.1",
+								Version:    "8.10.1",
 								Deployment: &agentv1alpha1.DeploymentSpec{},
 								PolicyID:   "a-policy",
 							},
@@ -291,7 +316,7 @@ func Test_validatingWebhook_Handle(t *testing.T) {
 								},
 							},
 							Spec: agentv1alpha1.AgentSpec{
-								Version:    "7.10.0",
+								Version:    "8.10.0",
 								Deployment: &agentv1alpha1.DeploymentSpec{},
 								PolicyID:   "a-policy",
 							},
@@ -299,7 +324,30 @@ func Test_validatingWebhook_Handle(t *testing.T) {
 					},
 				},
 			},
-			want: admission.Denied(`Agent.agent.k8s.elastic.co "testAgent" is invalid: spec.version: Forbidden: Version downgrades are not supported`),
+			want: admission.Response{
+				AdmissionResponse: admissionv1.AdmissionResponse{
+					Allowed: false,
+					Result: &metav1.Status{
+						Status:  metav1.StatusFailure,
+						Message: `Agent.agent.k8s.elastic.co "testAgent" is invalid: spec.version: Forbidden: Version downgrades are not supported`,
+						Reason:  "Invalid",
+						Details: &metav1.StatusDetails{
+							Name:  "testAgent",
+							Group: "agent.k8s.elastic.co",
+							Kind:  "Agent",
+							Causes: []metav1.StatusCause{
+								{
+									Type:    "FieldValueForbidden",
+									Message: `Forbidden: Version downgrades are not supported`,
+									Field:   "spec.version",
+								},
+							},
+							RetryAfterSeconds: 0,
+						},
+						Code: 422,
+					},
+				},
+			},
 		},
 	}
 	for _, tt := range tests {
@@ -311,8 +359,9 @@ func Test_validatingWebhook_Handle(t *testing.T) {
 				managedNamespaces: tt.fields.managedNamespaces,
 				validator:         tt.fields.validator,
 			}
-			if got := v.Handle(ctx, tt.req); !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("validatingWebhook.Handle() = %v, want %v", got, tt.want)
+			got := v.Handle(ctx, tt.req)
+			if diff := deep.Equal(got, tt.want); diff != nil {
+				t.Error(diff)
 			}
 		})
 	}

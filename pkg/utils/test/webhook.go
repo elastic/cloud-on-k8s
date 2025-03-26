@@ -23,9 +23,11 @@ import (
 	"k8s.io/apimachinery/pkg/runtime/serializer"
 	"k8s.io/apimachinery/pkg/types"
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
-	"sigs.k8s.io/controller-runtime/pkg/webhook/admission"
 
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/license"
 	controllerscheme "github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/scheme"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/webhook"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/webhook/admission"
 )
 
 // ValidationWebhookTestCase represents a test case for testing a validation webhook
@@ -72,6 +74,26 @@ func ValidationWebhookFailed(causeRegexes ...string) func(*testing.T, *admission
 	}
 }
 
+func ValidationWebhookSucceededWithWarnings(warningsRegexes ...string) func(*testing.T, *admissionv1beta1.AdmissionResponse) {
+	return func(t *testing.T, response *admissionv1beta1.AdmissionResponse) {
+		t.Helper()
+		require.True(t, response.Allowed, "Request denied: %s", response.Result.Reason)
+		for _, wr := range warningsRegexes {
+			found := false
+			t.Logf("Checking for existence of: %s", wr)
+			for _, warning := range response.Warnings {
+				match, err := regexp.MatchString(wr, warning)
+				require.NoError(t, err, "Match '%s' returned error: %v", wr, err)
+				if match {
+					found = true
+					break
+				}
+			}
+			require.True(t, found, "[%s] is not present in warning list", wr)
+		}
+	}
+}
+
 // RunValidationWebhookTests runs a series of ValidationWebhookTestCases
 //
 //nolint:thelper
@@ -79,7 +101,7 @@ func RunValidationWebhookTests(t *testing.T, gvk metav1.GroupVersionKind, valida
 	controllerscheme.SetupScheme()
 	decoder := serializer.NewCodecFactory(clientgoscheme.Scheme).UniversalDeserializer()
 
-	webhook := admission.ValidatingWebhookFor(clientgoscheme.Scheme, validator)
+	webhook := webhook.ValidatingWebhookFor(clientgoscheme.Scheme, validator, license.MockLicenseChecker{}, nil)
 
 	server := httptest.NewServer(webhook)
 	defer server.Close()

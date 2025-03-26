@@ -70,6 +70,14 @@ func TestImageRepository(t *testing.T) {
 			want:       testRegistry + "/elastic/elasticsearch-obi1:42.0.0",
 		},
 		{
+			name:       "Elasticsearch 9 image in ubi mode",
+			image:      ElasticsearchImage,
+			version:    "9.0.0",
+			repository: "elastic",
+			suffix:     "-ubi",
+			want:       testRegistry + "/elastic/elasticsearch:9.0.0",
+		},
+		{
 			name:       "Elasticsearch 8 image in ubi mode",
 			image:      ElasticsearchImage,
 			version:    "8.12.0",
@@ -186,6 +194,39 @@ func TestImageRepository(t *testing.T) {
 
 			have := ImageRepository(tc.image, version.MustParse(tc.version))
 			assert.Equal(t, tc.want, have)
+		})
+	}
+}
+
+func TestAgentImageFor(t *testing.T) {
+	type args struct {
+		version version.Version
+	}
+	tests := []struct {
+		name string
+		args args
+		want Image
+	}{
+		{
+			name: "New default elastic-agent/elastic-agent ",
+			args: args{
+				version: version.MustParse("9.5.0"),
+			},
+			want: "elastic-agent/elastic-agent",
+		},
+		{
+			name: "Legacy image in beats namespace priot to 9.0",
+			args: args{
+				version: version.MustParse("8.0.0"),
+			},
+			want: "beats/elastic-agent",
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := AgentImageFor(tt.args.version); got != tt.want {
+				t.Errorf("AgentImageFor() = %v, want %v", got, tt.want)
+			}
 		})
 	}
 }

@@ -324,9 +324,16 @@ type ConfigSource struct {
 	// stringData:
 	//   beat.yml: |-
 	//     filebeat.inputs:
-	//     - type: container
+	//     - type: filestream
 	//       paths:
 	//       - /var/log/containers/*.log
+	//       parsers:
+	//         - container: ~
+	//       prospector:
+	//         scanner:
+	//           fingerprint.enabled: true
+	//           symlinks: true
+	//       file_identity.fingerprint: ~
 	//       processors:
 	//       - add_kubernetes_metadata:
 	//           node: ${NODE_NAME}

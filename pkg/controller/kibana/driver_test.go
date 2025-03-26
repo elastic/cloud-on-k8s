@@ -28,8 +28,10 @@ import (
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/deployment"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/watches"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/settings"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/kibana/initcontainer"
 	kblabel "github.com/elastic/cloud-on-k8s/v2/pkg/controller/kibana/label"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/kibana/network"
+	kbvolume "github.com/elastic/cloud-on-k8s/v2/pkg/controller/kibana/volume"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/compare"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/k8s"
 )
@@ -84,7 +86,7 @@ func Test_getStrategyType(t *testing.T) {
 	}{
 		{
 			name:            "Pods not created yet",
-			expectedVersion: "7.4.0",
+			expectedVersion: "7.17.0",
 			expectedKbName:  "test",
 			initialObjects:  []client.Object{},
 			clientError:     false,
@@ -93,76 +95,76 @@ func Test_getStrategyType(t *testing.T) {
 		},
 		{
 			name:            "Versions match",
-			expectedVersion: "7.4.0",
+			expectedVersion: "7.17.0",
 			expectedKbName:  "test",
-			initialObjects:  getPods("test", 3, "7.4.0"),
+			initialObjects:  getPods("test", 3, "7.17.0"),
 			clientError:     false,
 			wantErr:         false,
 			wantStrategy:    appsv1.RollingUpdateDeploymentStrategyType,
 		},
 		{
 			name:            "Versions match - multiple kibana deployments",
-			expectedVersion: "7.5.0",
+			expectedVersion: "8.5.0",
 			expectedKbName:  "test2",
-			initialObjects:  append(getPods("test", 3, "7.4.0"), getPods("test2", 3, "7.5.0")...),
+			initialObjects:  append(getPods("test", 3, "8.4.0"), getPods("test2", 3, "8.5.0")...),
 			clientError:     false,
 			wantErr:         false,
 			wantStrategy:    appsv1.RollingUpdateDeploymentStrategyType,
 		},
 		{
 			name:            "Version mismatch - single kibana deployment",
-			expectedVersion: "7.5.0",
+			expectedVersion: "8.5.0",
 			expectedKbName:  "test",
-			initialObjects:  getPods("test", 3, "7.4.0"),
+			initialObjects:  getPods("test", 3, "8.4.0"),
 			clientError:     false,
 			wantErr:         false,
 			wantStrategy:    appsv1.RecreateDeploymentStrategyType,
 		},
 		{
 			name:            "Version mismatch - pods partially behind",
-			expectedVersion: "7.5.0",
+			expectedVersion: "8.5.0",
 			expectedKbName:  "test",
-			initialObjects:  append(getPods("test", 2, "7.5.0"), getPods("test", 1, "7.4.0")...),
+			initialObjects:  append(getPods("test", 2, "8.5.0"), getPods("test", 1, "8.4.0")...),
 			clientError:     false,
 			wantErr:         false,
 			wantStrategy:    appsv1.RecreateDeploymentStrategyType,
 		},
 		{
 			name:            "Version mismatch - multiple kibana deployments",
-			expectedVersion: "7.5.0",
+			expectedVersion: "8.5.0",
 			expectedKbName:  "test2",
-			initialObjects:  append(getPods("test", 3, "7.5.0"), getPods("test2", 3, "7.4.0")...),
+			initialObjects:  append(getPods("test", 3, "8.5.0"), getPods("test2", 3, "8.4.0")...),
 			clientError:     false,
 			wantErr:         false,
 			wantStrategy:    appsv1.RecreateDeploymentStrategyType,
 		},
 		{
 			name:            "Version mismatch - multiple versions in flight",
-			expectedVersion: "7.5.0",
+			expectedVersion: "8.5.0",
 			expectedKbName:  "test",
 			initialObjects: append(
-				getPods("test", 1, "7.5.0"),
+				getPods("test", 1, "8.5.0"),
 				append(
-					getPods("test", 1, "7.4.0"),
-					getPods("test", 1, "7.3.0")...)...),
+					getPods("test", 1, "8.4.0"),
+					getPods("test", 1, "8.3.0")...)...),
 			clientError:  false,
 			wantErr:      false,
 			wantStrategy: appsv1.RecreateDeploymentStrategyType,
 		},
 		{
 			name:            "Version label missing (operator upgrade case), should assume spec changed",
-			expectedVersion: "7.5.0",
+			expectedVersion: "8.5.0",
 			expectedKbName:  "test",
-			initialObjects:  clearVersionLabels(getPods("test", 3, "7.5.0")),
+			initialObjects:  clearVersionLabels(getPods("test", 3, "8.5.0")),
 			clientError:     false,
 			wantErr:         false,
 			wantStrategy:    appsv1.RecreateDeploymentStrategyType,
 		},
 		{
 			name:            "Client error",
-			expectedVersion: "7.4.0",
+			expectedVersion: "8.4.0",
 			expectedKbName:  "test",
-			initialObjects:  getPods("test", 2, "7.4.0"),
+			initialObjects:  getPods("test", 2, "8.4.0"),
 			clientError:     true,
 			wantErr:         true,
 			wantStrategy:    "",
@@ -332,45 +334,11 @@ func TestDriverDeploymentParams(t *testing.T) {
 			wantErr: false,
 		},
 		{
-			name: "6.8.x is supported",
-			args: args{
-				kb: func() *kbv1.Kibana {
-					kb := kibanaFixture()
-					kb.Spec.Version = "6.8.0"
-					return kb
-				},
-				initialObjects: defaultInitialObjects,
-			},
-			want: func() deployment.Params {
-				p := pre710(expectedDeploymentParams())
-				p.PodTemplateSpec.Labels["kibana.k8s.elastic.co/version"] = "6.8.0"
-				return p
-			}(),
-			wantErr: false,
-		},
-		{
-			name: "6.8 docker container already defaults elasticsearch.hosts",
-			args: args{
-				kb: func() *kbv1.Kibana {
-					kb := kibanaFixture()
-					kb.Spec.Version = "6.8.0"
-					return kb
-				},
-				initialObjects: defaultInitialObjects,
-			},
-			want: func() deployment.Params {
-				p := pre710(expectedDeploymentParams())
-				p.PodTemplateSpec.Labels["kibana.k8s.elastic.co/version"] = "6.8.0"
-				return p
-			}(),
-			wantErr: false,
-		},
-		{
 			name: "7.10+ contains security contexts",
 			args: args{
 				kb: func() *kbv1.Kibana {
 					kb := kibanaFixture()
-					kb.Spec.Version = "7.10.0"
+					kb.Spec.Version = "7.17.0"
 					return kb
 				},
 				initialObjects:                defaultInitialObjects,
@@ -378,7 +346,7 @@ func TestDriverDeploymentParams(t *testing.T) {
 			},
 			want: func() deployment.Params {
 				p := expectedDeploymentParams()
-				p.PodTemplateSpec.Labels["kibana.k8s.elastic.co/version"] = "7.10.0"
+				p.PodTemplateSpec.Labels["kibana.k8s.elastic.co/version"] = "7.17.0"
 				p.PodTemplateSpec.Spec.SecurityContext = &corev1.PodSecurityContext{
 					FSGroup: ptr.To[int64](1000),
 				}
@@ -391,7 +359,7 @@ func TestDriverDeploymentParams(t *testing.T) {
 			args: args{
 				kb: func() *kbv1.Kibana {
 					kb := kibanaFixture()
-					kb.Spec.Version = "7.10.0"
+					kb.Spec.Version = "7.17.0"
 					return kb
 				},
 				initialObjects:                defaultInitialObjects,
@@ -399,7 +367,7 @@ func TestDriverDeploymentParams(t *testing.T) {
 			},
 			want: func() deployment.Params {
 				p := pre710(expectedDeploymentParams())
-				p.PodTemplateSpec.Labels["kibana.k8s.elastic.co/version"] = "7.10.0"
+				p.PodTemplateSpec.Labels["kibana.k8s.elastic.co/version"] = "7.17.0"
 				return p
 			}(),
 			wantErr: false,
@@ -441,9 +409,9 @@ func TestMinSupportedVersion(t *testing.T) {
 			wantErr: true,
 		},
 		{
-			name:    "6.8.0 should be supported",
+			name:    "6.8.0 should be unsupported",
 			version: "6.8.0",
-			wantErr: false,
+			wantErr: true,
 		},
 		{
 			name:    "7.6.0 should be supported",
@@ -483,7 +451,7 @@ func expectedDeploymentParams() deployment.Params {
 				Labels: map[string]string{
 					"common.k8s.elastic.co/type":    "kibana",
 					"kibana.k8s.elastic.co/name":    "test",
-					"kibana.k8s.elastic.co/version": "7.0.0",
+					"kibana.k8s.elastic.co/version": "7.17.0",
 				},
 				Annotations: map[string]string{
 					"co.elastic.logs/module":            "kibana",
@@ -511,7 +479,7 @@ func expectedDeploymentParams() deployment.Params {
 						},
 					},
 					{
-						Name: ConfigSharedVolume.VolumeName,
+						Name: initcontainer.ConfigSharedVolume.VolumeName,
 						VolumeSource: corev1.VolumeSource{
 							EmptyDir: &corev1.EmptyDirVolumeSource{},
 						},
@@ -526,7 +494,7 @@ func expectedDeploymentParams() deployment.Params {
 						},
 					},
 					{
-						Name: DataVolumeName,
+						Name: kbvolume.DataVolumeName,
 						VolumeSource: corev1.VolumeSource{
 							EmptyDir: &corev1.EmptyDirVolumeSource{},
 						},
@@ -544,82 +512,105 @@ func expectedDeploymentParams() deployment.Params {
 						},
 					},
 					{
+						Name: "kibana-scripts",
+						VolumeSource: corev1.VolumeSource{
+							ConfigMap: &corev1.ConfigMapVolumeSource{
+								LocalObjectReference: corev1.LocalObjectReference{
+									Name: "test-kb-scripts",
+								},
+								DefaultMode: ptr.To(int32(0755)),
+								Optional:    ptr.To(false),
+							},
+						},
+					},
+					{
 						Name: "temp-volume",
 						VolumeSource: corev1.VolumeSource{
 							EmptyDir: &corev1.EmptyDirVolumeSource{},
 						},
 					},
 				},
-				InitContainers: []corev1.Container{{
-					Name:            "elastic-internal-init-config",
-					ImagePullPolicy: corev1.PullIfNotPresent,
-					Image:           "my-image",
-					Command:         []string{"/usr/bin/env", "bash", "-c", InitConfigScript},
-					SecurityContext: &defaultSecurityContext,
-					Env: []corev1.EnvVar{
-						{Name: settings.EnvPodIP, Value: "", ValueFrom: &corev1.EnvVarSource{
-							FieldRef: &corev1.ObjectFieldSelector{APIVersion: "v1", FieldPath: "status.podIP"},
-						}},
-						{Name: settings.EnvPodName, Value: "", ValueFrom: &corev1.EnvVarSource{
-							FieldRef: &corev1.ObjectFieldSelector{APIVersion: "v1", FieldPath: "metadata.name"},
-						}},
-						{Name: settings.EnvNodeName, Value: "", ValueFrom: &corev1.EnvVarSource{
-							FieldRef: &corev1.ObjectFieldSelector{APIVersion: "v1", FieldPath: "spec.nodeName"},
-						}},
-						{Name: settings.EnvNamespace, Value: "", ValueFrom: &corev1.EnvVarSource{
-							FieldRef: &corev1.ObjectFieldSelector{APIVersion: "v1", FieldPath: "metadata.namespace"},
-						}},
+				InitContainers: []corev1.Container{
+					{
+						Name:            "elastic-internal-init",
+						ImagePullPolicy: corev1.PullIfNotPresent,
+						Image:           "my-image",
+						Command:         []string{"/usr/bin/env", "bash", "-c", "/mnt/elastic-internal/scripts/init.sh"},
+						SecurityContext: nil,
+						Env: []corev1.EnvVar{
+							{Name: settings.EnvPodIP, Value: "", ValueFrom: &corev1.EnvVarSource{
+								FieldRef: &corev1.ObjectFieldSelector{APIVersion: "v1", FieldPath: "status.podIP"},
+							}},
+							{Name: settings.EnvPodName, Value: "", ValueFrom: &corev1.EnvVarSource{
+								FieldRef: &corev1.ObjectFieldSelector{APIVersion: "v1", FieldPath: "metadata.name"},
+							}},
+							{Name: settings.EnvNodeName, Value: "", ValueFrom: &corev1.EnvVarSource{
+								FieldRef: &corev1.ObjectFieldSelector{APIVersion: "v1", FieldPath: "spec.nodeName"},
+							}},
+							{Name: settings.EnvNamespace, Value: "", ValueFrom: &corev1.EnvVarSource{
+								FieldRef: &corev1.ObjectFieldSelector{APIVersion: "v1", FieldPath: "metadata.namespace"},
+							}},
+						},
+						VolumeMounts: []corev1.VolumeMount{
+							{
+								Name:      certificates.HTTPCertificatesSecretVolumeName,
+								ReadOnly:  true,
+								MountPath: certificates.HTTPCertificatesSecretVolumeMountPath,
+							},
+							{
+								Name:      "elastic-internal-kibana-config",
+								ReadOnly:  true,
+								MountPath: "/mnt/elastic-internal/kibana-config",
+							},
+							{
+								Name:      "elastic-internal-kibana-config-local",
+								ReadOnly:  false,
+								MountPath: "/mnt/elastic-internal/kibana-config-local",
+							},
+							{
+								Name:      "elasticsearch-certs",
+								ReadOnly:  true,
+								MountPath: "/usr/share/kibana/config/elasticsearch-certs",
+							},
+							{
+								Name:      kbvolume.DataVolumeName,
+								ReadOnly:  falseVal,
+								MountPath: kbvolume.DataVolumeMountPath,
+							},
+							{
+								Name:      "kibana-logs",
+								ReadOnly:  falseVal,
+								MountPath: "/usr/share/kibana/logs",
+							},
+							{
+								Name:      "kibana-plugins",
+								ReadOnly:  falseVal,
+								MountPath: "/mnt/elastic-internal/kibana-plugins-local",
+							},
+							{
+								Name:      "kibana-scripts",
+								ReadOnly:  true,
+								MountPath: "/mnt/elastic-internal/scripts",
+							},
+							{
+								Name:      "temp-volume",
+								ReadOnly:  falseVal,
+								MountPath: "/tmp",
+							},
+						},
+						Resources: corev1.ResourceRequirements{
+							Requests: map[corev1.ResourceName]resource.Quantity{
+								corev1.ResourceMemory: resource.MustParse("50Mi"),
+								corev1.ResourceCPU:    resource.MustParse("0.1"),
+							},
+							Limits: map[corev1.ResourceName]resource.Quantity{
+								// Memory limit should be at least 12582912 when running with CRI-O
+								corev1.ResourceMemory: resource.MustParse("50Mi"),
+								corev1.ResourceCPU:    resource.MustParse("0.1"),
+							},
+						},
 					},
-					VolumeMounts: []corev1.VolumeMount{
-						{
-							Name:      certificates.HTTPCertificatesSecretVolumeName,
-							ReadOnly:  true,
-							MountPath: certificates.HTTPCertificatesSecretVolumeMountPath,
-						},
-						{
-							Name:      "elastic-internal-kibana-config",
-							ReadOnly:  true,
-							MountPath: InternalConfigVolumeMountPath,
-						},
-						ConfigSharedVolume.InitContainerVolumeMount(),
-						{
-							Name:      "elasticsearch-certs",
-							ReadOnly:  true,
-							MountPath: "/usr/share/kibana/config/elasticsearch-certs",
-						},
-						{
-							Name:      DataVolumeName,
-							ReadOnly:  falseVal,
-							MountPath: DataVolumeMountPath,
-						},
-						{
-							Name:      "kibana-logs",
-							ReadOnly:  falseVal,
-							MountPath: "/usr/share/kibana/logs",
-						},
-						{
-							Name:      "kibana-plugins",
-							ReadOnly:  falseVal,
-							MountPath: "/usr/share/kibana/plugins",
-						},
-						{
-							Name:      "temp-volume",
-							ReadOnly:  falseVal,
-							MountPath: "/tmp",
-						},
-					},
-					Resources: corev1.ResourceRequirements{
-						Requests: map[corev1.ResourceName]resource.Quantity{
-							corev1.ResourceMemory: resource.MustParse("50Mi"),
-							corev1.ResourceCPU:    resource.MustParse("0.1"),
-						},
-						Limits: map[corev1.ResourceName]resource.Quantity{
-							// Memory limit should be at least 12582912 when running with CRI-O
-							corev1.ResourceMemory: resource.MustParse("50Mi"),
-							corev1.ResourceCPU:    resource.MustParse("0.1"),
-						},
-					},
-				}},
+				},
 				Containers: []corev1.Container{{
 					VolumeMounts: []corev1.VolumeMount{
 						{
@@ -630,18 +621,18 @@ func expectedDeploymentParams() deployment.Params {
 						{
 							Name:      "elastic-internal-kibana-config",
 							ReadOnly:  true,
-							MountPath: InternalConfigVolumeMountPath,
+							MountPath: kbvolume.InternalConfigVolumeMountPath,
 						},
-						ConfigSharedVolume.VolumeMount(),
+						initcontainer.ConfigSharedVolume.VolumeMount(),
 						{
 							Name:      "elasticsearch-certs",
 							ReadOnly:  true,
 							MountPath: "/usr/share/kibana/config/elasticsearch-certs",
 						},
 						{
-							Name:      DataVolumeName,
+							Name:      kbvolume.DataVolumeName,
 							ReadOnly:  falseVal,
-							MountPath: DataVolumeMountPath,
+							MountPath: kbvolume.DataVolumeMountPath,
 						},
 						{
 							Name:      "kibana-logs",
@@ -652,6 +643,11 @@ func expectedDeploymentParams() deployment.Params {
 							Name:      "kibana-plugins",
 							ReadOnly:  falseVal,
 							MountPath: "/usr/share/kibana/plugins",
+						},
+						{
+							Name:      "kibana-scripts",
+							ReadOnly:  true,
+							MountPath: "/mnt/elastic-internal/scripts",
 						},
 						{
 							Name:      "temp-volume",
@@ -700,9 +696,9 @@ func pre710(params deployment.Params) deployment.Params {
 	params.PodTemplateSpec.Spec.Containers[0].SecurityContext = nil
 	params.PodTemplateSpec.Spec.InitContainers[0].SecurityContext = nil
 	params.PodTemplateSpec.Spec.SecurityContext = nil
-	params.PodTemplateSpec.Spec.Volumes = params.PodTemplateSpec.Spec.Volumes[:5]
-	params.PodTemplateSpec.Spec.InitContainers[0].VolumeMounts = params.PodTemplateSpec.Spec.InitContainers[0].VolumeMounts[:5]
-	params.PodTemplateSpec.Spec.Containers[0].VolumeMounts = params.PodTemplateSpec.Spec.Containers[0].VolumeMounts[:5]
+	params.PodTemplateSpec.Spec.Volumes = append(params.PodTemplateSpec.Spec.Volumes[:5], params.PodTemplateSpec.Spec.Volumes[6], params.PodTemplateSpec.Spec.Volumes[7])
+	params.PodTemplateSpec.Spec.InitContainers[0].VolumeMounts = append(params.PodTemplateSpec.Spec.InitContainers[0].VolumeMounts[:5], params.PodTemplateSpec.Spec.InitContainers[0].VolumeMounts[6], params.PodTemplateSpec.Spec.InitContainers[0].VolumeMounts[7])
+	params.PodTemplateSpec.Spec.Containers[0].VolumeMounts = append(params.PodTemplateSpec.Spec.Containers[0].VolumeMounts[:5], params.PodTemplateSpec.Spec.Containers[0].VolumeMounts[6], params.PodTemplateSpec.Spec.Containers[0].VolumeMounts[7])
 	return params
 }
 
@@ -713,7 +709,7 @@ func kibanaFixture() *kbv1.Kibana {
 			Namespace: "default",
 		},
 		Spec: kbv1.KibanaSpec{
-			Version: "7.0.0",
+			Version: "7.17.0",
 			Image:   "my-image",
 			Count:   1,
 			ElasticsearchRef: commonv1.ObjectSelector{
