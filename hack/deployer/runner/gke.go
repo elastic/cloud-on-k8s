@@ -307,7 +307,7 @@ func (d *GKEDriver) create() error {
 	if !d.plan.Gke.Autopilot {
 		createGKEClusterCommand = `gcloud beta container --quiet --project {{.GCloudProject}} clusters create {{.ClusterName}} ` +
 			`--labels "` + labels + `" --region {{.Region}} --no-enable-basic-auth --cluster-version {{.KubernetesVersion}} ` +
-			`--machine-type {{.MachineType}} --disk-type pd-ssd --disk-size 40 ` +
+			`--machine-type {{.MachineType}} --disk-type pd-ssd --disk-size 50 ` +
 			`--local-ssd-count {{.LocalSsdCount}} --scopes {{.GcpScopes}} --num-nodes {{.NodeCountPerZone}} ` +
 			`--addons HorizontalPodAutoscaling,HttpLoadBalancing ` +
 			`--no-enable-autoupgrade --no-enable-autorepair --enable-ip-alias --metadata disable-legacy-endpoints=true ` +
