@@ -148,8 +148,25 @@ webhook:
 
 # hostNetwork allows a Pod to use the Node network namespace.
 # This is required to allow for communication with the kube API when using some alternate CNIs in conjunction with webhook enabled.
+# If hostNetwork is enabled, dnsPolicy defaults to ClusterFirstWithHostNet unless explicitly set.
 # CAUTION: Proceed at your own risk. This setting has security concerns such as allowing malicious users to access workloads running on the host.
 hostNetwork: false
+
+# dnsPolicy defines the DNS policy for the operator pod.
+# Check https://kubernetes.io/docs/concepts/services-networking/dns-pod-service/#pod-s-dns-policy for more details.
+dnsPolicy: ""
+
+# dnsConfig defines the DNS configuration for the operator pod.
+# Check https://kubernetes.io/docs/concepts/services-networking/dns-pod-service/#pod-dns-config for more details.
+# dnsConfig:
+#   nameservers:
+#     - 169.254.20.10
+#   searches:
+#     - svc.cluster.local
+#   options:
+#     - name: ndots
+#       value: "2"
+dnsConfig: {}
 
 softMultiTenancy:
   # enabled determines whether the operator is installed with soft multi-tenancy extensions.
