@@ -36,7 +36,7 @@ This page lists the third-party dependencies used to build {{eck}}.
 | [github.com/pkg/errors](https://github.com/pkg/errors) | v0.9.1 | BSD-2-Clause |
 | [github.com/pmezard/go-difflib](https://github.com/pmezard/go-difflib) | v1.0.1-0.20181226105442-5d4384ee4fb2 | BSD-3-Clause |
 | [github.com/prometheus/client_golang](https://github.com/prometheus/client_golang) | v1.21.1 | Apache-2.0 |
-| [github.com/prometheus/common](https://github.com/prometheus/common) | v0.62.0 | Apache-2.0 |
+| [github.com/prometheus/common](https://github.com/prometheus/common) | v0.63.0 | Apache-2.0 |
 | [github.com/sethvargo/go-password](https://github.com/sethvargo/go-password) | v0.3.1 | MIT |
 | [github.com/spf13/cobra](https://github.com/spf13/cobra) | v1.9.1 | Apache-2.0 |
 | [github.com/spf13/pflag](https://github.com/spf13/pflag) | v1.0.6 | BSD-3-Clause |
@@ -189,7 +189,7 @@ This page lists the third-party dependencies used to build {{eck}}.
 | [google.golang.org/genproto/googleapis/api](https://google.golang.org/genproto/googleapis/api) | v0.0.0-20240826202546-f6391c0de4c7 | Apache-2.0 |
 | [google.golang.org/genproto/googleapis/rpc](https://google.golang.org/genproto/googleapis/rpc) | v0.0.0-20240826202546-f6391c0de4c7 | Apache-2.0 |
 | [google.golang.org/grpc](https://google.golang.org/grpc) | v1.65.0 | Apache-2.0 |
-| [google.golang.org/protobuf](https://google.golang.org/protobuf) | v1.36.3 | BSD-3-Clause |
+| [google.golang.org/protobuf](https://google.golang.org/protobuf) | v1.36.5 | BSD-3-Clause |
 | [gopkg.in/check.v1](https://gopkg.in/check.v1) | v1.0.0-20201130134442-10cb98267c6c | BSD-2-Clause |
 | [gopkg.in/evanphx/json-patch.v4](https://gopkg.in/evanphx/json-patch.v4) | v4.12.0 | BSD-3-Clause |
 | [gopkg.in/inf.v0](https://gopkg.in/inf.v0) | v0.9.1 | BSD-3-Clause |
