@@ -162,12 +162,7 @@ func expectedPDB(es esv1.Elasticsearch, statefulSets sset.StatefulSetList) (*pol
 // buildPDBSpec returns a PDBSpec computed from the current StatefulSets,
 // considering the cluster health and topology.
 func buildPDBSpec(es esv1.Elasticsearch, statefulSets sset.StatefulSetList) policyv1.PodDisruptionBudgetSpec {
-	// compute MinAvailable based on the maximum number of Pods we're supposed to have
-	nodeCount := statefulSets.ExpectedNodeCount()
-	// maybe allow some Pods to be disrupted
-	minAvailable := nodeCount - allowedDisruptions(es, statefulSets)
-
-	minAvailableIntStr := intstr.IntOrString{Type: intstr.Int, IntVal: minAvailable}
+	maxUnavailableIntStr := intstr.IntOrString{Type: intstr.Int, IntVal: allowedDisruptions(es, statefulSets)}
 
 	return policyv1.PodDisruptionBudgetSpec{
 		// match all pods for this cluster
@@ -176,10 +171,8 @@ func buildPDBSpec(es esv1.Elasticsearch, statefulSets sset.StatefulSetList) poli
 				label.ClusterNameLabelName: es.Name,
 			},
 		},
-		MinAvailable: &minAvailableIntStr,
-		// MaxUnavailable can only be used if the selector matches a builtin controller selector
-		// (eg. Deployments, StatefulSets, etc.). We cannot use it with our own cluster-name selector.
-		MaxUnavailable: nil,
+		MaxUnavailable: &maxUnavailableIntStr,
+		MinAvailable:   nil,
 	}
 }
 
