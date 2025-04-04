@@ -1,5 +1,5 @@
 ---
-navigation_title: "Elastic Cloud on Kubernetes"
+navigation_title: "Breaking changes"
 ---
 
 # Elastic Cloud on Kubernetes breaking changes [elastic-cloud-kubernetes-breaking-changes]

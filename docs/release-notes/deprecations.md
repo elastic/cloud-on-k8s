@@ -1,5 +1,5 @@
 ---
-navigation_title: "Elastic Cloud on Kubernetes"
+navigation_title: "Deprecations"
 ---
 
 # Elastic Cloud on Kubernetes deprecations [elastic-cloud-kubernetes-deprecations]

@@ -1,5 +1,5 @@
 ---
-navigation_title: "Elastic Cloud on Kubernetes"
+navigation_title: "Known issues"
 ---
 
 # Elastic Cloud on Kubernetes known issues
