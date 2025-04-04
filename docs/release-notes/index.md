@@ -47,7 +47,7 @@ Review the changes, fixes, and more in each release of Elastic Cloud on Kubernet
 
 ### Miscellaneous
 - chore(deps): update Docker tag `registry.access.redhat.com/ubi9/ubi-minimal` to `v9.5-1741850109` [#8544](https://github.com/elastic/cloud-on-k8s/pull/8544)
-- Update `golang.org/x/net` package to `0.37.0` [#8521](https://github.com/elastic/cloud-on-k8s/pull/8521)
+- fix(deps): update module `golang.org/x/net` to `v0.38.0` [#8591](https://github.com/elastic/cloud-on-k8s/pull/8591)
 - chore(deps): update Docker tag `docker.elastic.co/wolfi/go` to `v1.24` [#8453](https://github.com/elastic/cloud-on-k8s/pull/8453)
 - fix(deps): update module `go.elastic.co/apm/v2/*` to `v2.6.3` [#8440](https://github.com/elastic/cloud-on-k8s/pull/8440)
 - chore(deps): update Wolfi to `v1.23.5-r1` [#8434](https://github.com/elastic/cloud-on-k8s/pull/8434)
