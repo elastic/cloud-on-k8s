@@ -177,7 +177,7 @@ This page lists the third-party dependencies used to build {{eck}}.
 | [go.uber.org/goleak](https://go.uber.org/goleak) | v1.3.0 | MIT |
 | [go.uber.org/multierr](https://go.uber.org/multierr) | v1.11.0 | MIT |
 | [golang.org/x/mod](https://golang.org/x/mod) | v0.23.0 | BSD-3-Clause |
-| [golang.org/x/net](https://golang.org/x/net) | v0.37.0 | BSD-3-Clause |
+| [golang.org/x/net](https://golang.org/x/net) | v0.38.0 | BSD-3-Clause |
 | [golang.org/x/oauth2](https://golang.org/x/oauth2) | v0.25.0 | BSD-3-Clause |
 | [golang.org/x/sync](https://golang.org/x/sync) | v0.12.0 | BSD-3-Clause |
 | [golang.org/x/sys](https://golang.org/x/sys) | v0.31.0 | BSD-3-Clause |
