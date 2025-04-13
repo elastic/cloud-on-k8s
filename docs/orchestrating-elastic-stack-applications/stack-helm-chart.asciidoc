@@ -23,6 +23,11 @@ NOTE: The minimum supported version of Helm is 3.2.0.
 
 Similar to the <<{p}-deploy-elasticsearch,quickstart>>, the following section describes how to setup an Elasticsearch cluster with a simple Kibana instance managed by ECK, and how to customize a deployment using the eck-stack Helm chart's values.
 
+[source,sh,subs="attributes"]
+----
+kubectl create -f https://download.elastic.co/downloads/eck/{eck_version}/crds.yaml
+----
+
 [source,sh]
 ----
 # Install an eck-managed Elasticsearch and Kibana using the default values, which deploys the quickstart examples.
