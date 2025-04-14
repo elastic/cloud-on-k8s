@@ -1,5 +1,5 @@
 ---
-navigation_title: "Release Notes"
+navigation_title: "Elastic Cloud on Kubernetes"
 mapped_pages:
   - https://www.elastic.co/guide/en/cloud-on-k8s/current/release-highlights.html
   - https://www.elastic.co/guide/en/cloud-on-k8s/current/eck-release-notes.html
