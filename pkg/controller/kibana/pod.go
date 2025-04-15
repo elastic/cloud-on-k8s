@@ -166,7 +166,7 @@ func NewPodTemplateSpec(
 			WithInitContainers(keystore.InitContainer)
 	}
 
-	builder, err = stackmon.WithMonitoring(ctx, client, builder, kb, basePath)
+	builder, err = stackmon.WithMonitoring(ctx, client, builder, kb, basePath, canEnableSecurityContext)
 	if err != nil {
 		return corev1.PodTemplateSpec{}, err
 	}
