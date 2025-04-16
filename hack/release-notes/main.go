@@ -18,42 +18,35 @@ const (
 	noGroup  = "nogroup"
 	repoName = "elastic/cloud-on-k8s"
 
-	releaseNotesTemplate = `:issue: https://github.com/{{.Repo}}/issues/
-:pull: https://github.com/{{.Repo}}/pull/
+	releaseNotesTemplate = `## Release Notes for {{.Version}} 
 
-[[release-notes-{{.Version}}]]
-== {n} version {{.Version}}
 {{range $group := .GroupOrder -}}
 {{with (index $.Groups $group)}}
-[[{{- id $group -}}-{{$.Version}}]]
-[float]
-=== {{index $.GroupLabels $group}}
+# {{index $.GroupLabels $group}}
 {{range .}}
-* {{.Title}} {pull}{{.Number}}[#{{.Number}}]{{with .Issues -}}
-{{$length := len .}} (issue{{if gt $length 1}}s{{end}}: {{range $idx, $el := .}}{{if $idx}}, {{end}}{issue}{{$el}}[#{{$el}}]{{end}})
+- {{.Title}} ([#{{.Number}}](https://github.com/{{$.Repo}}/pull/{{.Number}})){{with .Issues -}}
+{{$length := len .}} (issue{{if gt $length 1}}s{{end}}: {{range $idx, $el := .}}{{if $idx}}, {{end}}[#{{$el}}](https://github.com/{{$.Repo}}/issues/{{$el}}){{end}})
 {{- end}}
 {{- end}}
 {{- end}}
-{{end}}
-`
+{{end}}`
 )
 
 var (
 	groupLabels = map[string]string{
 		">breaking":    "Breaking changes",
 		">deprecation": "Deprecations",
-		">feature":     "New features",
-		">enhancement": "Enhancements",
-		">bug":         "Bug fixes",
+		">feature":     "Features and enhancements",
+		">enhancement": "Features and enhancements",
+		">bug":         "Fixes",
 		">docs":        "Documentation improvements",
-		noGroup:        "Misc",
+		noGroup:        "Miscellaneous",
 	}
 
 	groupOrder = []string{
 		">breaking",
 		">deprecation",
-		">feature",
-		">enhancement",
+		">feature", // This will include both >feature and >enhancement
 		">bug",
 		">docs",
 		noGroup,
@@ -101,9 +94,22 @@ func groupPullRequests(prs []github.PullRequest) map[string][]github.PullRequest
 PR_LOOP:
 	for _, pr := range prs {
 		for _, lbl := range groupOrder {
+			// Consolidate >enhancement into >feature
+			if lbl == ">enhancement" {
+				continue // Skip >enhancement in groupOrder to avoid duplicate processing
+			}
+
 			if _, ok := pr.Labels[lbl]; ok {
 				groups[lbl] = append(groups[lbl], pr)
 				continue PR_LOOP
+			}
+
+			// Special handling for >enhancement - treat as >feature
+			if lbl == ">feature" {
+				if _, ok := pr.Labels[">enhancement"]; ok {
+					groups[lbl] = append(groups[lbl], pr)
+					continue PR_LOOP
+				}
 			}
 		}
 
