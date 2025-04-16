@@ -11,11 +11,11 @@ import (
 	"strconv"
 	"testing"
 
-	commonv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/common/v1"
-	logstashv1alpha1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/logstash/v1alpha1"
-	"github.com/elastic/cloud-on-k8s/v2/test/e2e/test"
-	"github.com/elastic/cloud-on-k8s/v2/test/e2e/test/elasticsearch"
-	"github.com/elastic/cloud-on-k8s/v2/test/e2e/test/logstash"
+	commonv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/common/v1"
+	logstashv1alpha1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/logstash/v1alpha1"
+	"github.com/elastic/cloud-on-k8s/v3/test/e2e/test"
+	"github.com/elastic/cloud-on-k8s/v3/test/e2e/test/elasticsearch"
+	"github.com/elastic/cloud-on-k8s/v3/test/e2e/test/logstash"
 )
 
 // TestLogstashEsOutput Logstash ingest events to Elasticsearch. Metrics should have `events.out` > 0.

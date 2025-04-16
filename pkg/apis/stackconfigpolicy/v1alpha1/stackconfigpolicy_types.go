@@ -10,9 +10,9 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 
-	commonv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/common/v1"
-	eslabel "github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/label"
-	kblabel "github.com/elastic/cloud-on-k8s/v2/pkg/controller/kibana/label"
+	commonv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/common/v1"
+	eslabel "github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/label"
+	kblabel "github.com/elastic/cloud-on-k8s/v3/pkg/controller/kibana/label"
 )
 
 const (

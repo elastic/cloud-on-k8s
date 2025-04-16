@@ -20,10 +20,10 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 
-	sset "github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/statefulset"
-	volumevalidations "github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/volume/validations"
-	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/k8s"
-	ulog "github.com/elastic/cloud-on-k8s/v2/pkg/utils/log"
+	sset "github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/statefulset"
+	volumevalidations "github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/volume/validations"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/k8s"
+	ulog "github.com/elastic/cloud-on-k8s/v3/pkg/utils/log"
 )
 
 // handleVolumeExpansion works around the immutability of VolumeClaimTemplates in StatefulSets by:

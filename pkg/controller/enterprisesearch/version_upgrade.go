@@ -22,17 +22,17 @@ import (
 	"k8s.io/client-go/tools/record"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
-	entv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/enterprisesearch/v1"
-	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/association"
-	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/certificates"
-	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/events"
-	commonhttp "github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/http"
-	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/tracing"
-	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/version"
-	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/k8s"
-	ulog "github.com/elastic/cloud-on-k8s/v2/pkg/utils/log"
-	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/net"
-	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/stringsutil"
+	entv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/enterprisesearch/v1"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/association"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/certificates"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/events"
+	commonhttp "github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/http"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/tracing"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/version"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/k8s"
+	ulog "github.com/elastic/cloud-on-k8s/v3/pkg/utils/log"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/net"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/stringsutil"
 )
 
 const (

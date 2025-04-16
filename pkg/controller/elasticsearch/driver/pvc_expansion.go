@@ -9,9 +9,9 @@ import (
 
 	appsv1 "k8s.io/api/apps/v1"
 
-	esv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/elasticsearch/v1"
-	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/volume"
-	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/k8s"
+	esv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/elasticsearch/v1"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/volume"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/k8s"
 )
 
 func recreateStatefulSets(ctx context.Context, k8sclient k8s.Client, es esv1.Elasticsearch) (int, error) {

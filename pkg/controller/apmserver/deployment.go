@@ -14,13 +14,13 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/types"
 
-	apmv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/apm/v1"
-	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/certificates"
-	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/deployment"
-	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/keystore"
-	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/tracing"
-	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/version"
-	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/k8s"
+	apmv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/apm/v1"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/certificates"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/deployment"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/keystore"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/tracing"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/version"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/k8s"
 )
 
 func (r *ReconcileApmServer) reconcileApmServerDeployment(ctx context.Context, state State, as *apmv1.ApmServer, version version.Version) (State, error) {

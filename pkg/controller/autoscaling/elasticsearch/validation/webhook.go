@@ -16,11 +16,11 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/webhook"
 	"sigs.k8s.io/controller-runtime/pkg/webhook/admission"
 
-	"github.com/elastic/cloud-on-k8s/v2/pkg/apis/autoscaling/v1alpha1"
-	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/license"
-	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/k8s"
-	ulog "github.com/elastic/cloud-on-k8s/v2/pkg/utils/log"
-	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/set"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/apis/autoscaling/v1alpha1"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/license"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/k8s"
+	ulog "github.com/elastic/cloud-on-k8s/v3/pkg/utils/log"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/set"
 )
 
 // +kubebuilder:webhook:path=/validate-autoscaling-k8s-elastic-co-v1alpha1-elasticsearchautoscaler,mutating=false,failurePolicy=ignore,groups=autoscaling.k8s.elastic.co,resources=elasticsearchautoscalers,verbs=create;update,versions=v1alpha1,name=elastic-esa-validation-v1alpha1.k8s.elastic.co,sideEffects=None,admissionReviewVersions=v1;v1beta1,matchPolicy=Exact

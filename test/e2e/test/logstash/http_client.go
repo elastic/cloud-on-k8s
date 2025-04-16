@@ -12,10 +12,10 @@ import (
 	"net/http"
 	"net/url"
 
-	"github.com/elastic/cloud-on-k8s/v2/pkg/apis/logstash/v1alpha1"
-	ls "github.com/elastic/cloud-on-k8s/v2/pkg/controller/logstash"
-	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/logstash/network"
-	"github.com/elastic/cloud-on-k8s/v2/test/e2e/test"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/apis/logstash/v1alpha1"
+	ls "github.com/elastic/cloud-on-k8s/v3/pkg/controller/logstash"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/logstash/network"
+	"github.com/elastic/cloud-on-k8s/v3/test/e2e/test"
 )
 
 func NewLogstashClient(ls v1alpha1.Logstash, k *test.K8sClient) (*http.Client, error) {

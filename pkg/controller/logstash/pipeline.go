@@ -10,13 +10,13 @@ import (
 
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
-	logstashv1alpha1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/logstash/v1alpha1"
-	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/annotation"
-	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/labels"
-	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/reconciler"
-	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/tracing"
-	lslabels "github.com/elastic/cloud-on-k8s/v2/pkg/controller/logstash/labels"
-	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/logstash/pipelines"
+	logstashv1alpha1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/logstash/v1alpha1"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/annotation"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/labels"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/reconciler"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/tracing"
+	lslabels "github.com/elastic/cloud-on-k8s/v3/pkg/controller/logstash/labels"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/logstash/pipelines"
 )
 
 const (

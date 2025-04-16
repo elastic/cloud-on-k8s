@@ -8,7 +8,7 @@ import (
 	"reflect"
 	"testing"
 
-	sset "github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/statefulset"
+	sset "github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/statefulset"
 )
 
 func TestResourcesList_MasterNodesNames(t *testing.T) {

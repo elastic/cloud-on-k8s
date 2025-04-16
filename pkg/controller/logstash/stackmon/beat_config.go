@@ -8,11 +8,11 @@ import (
 	"context"
 	_ "embed" // for the beats config files
 
-	logstashv1alpha1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/logstash/v1alpha1"
-	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/reconciler"
-	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/stackmon/monitoring"
-	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/logstash/configs"
-	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/k8s"
+	logstashv1alpha1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/logstash/v1alpha1"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/reconciler"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/stackmon/monitoring"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/logstash/configs"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/k8s"
 )
 
 var (

@@ -13,7 +13,7 @@ import (
 	"io"
 	"net/http"
 
-	ulog "github.com/elastic/cloud-on-k8s/v2/pkg/utils/log"
+	ulog "github.com/elastic/cloud-on-k8s/v3/pkg/utils/log"
 )
 
 // APIError is a non 2xx response from the Elasticsearch API
