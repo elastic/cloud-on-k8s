@@ -10,9 +10,9 @@ import (
 	"strings"
 	"time"
 
-	"github.com/elastic/cloud-on-k8s/v2/hack/deployer/exec"
-	"github.com/elastic/cloud-on-k8s/v2/hack/deployer/runner/azure"
-	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/vault"
+	"github.com/elastic/cloud-on-k8s/v3/hack/deployer/exec"
+	"github.com/elastic/cloud-on-k8s/v3/hack/deployer/runner/azure"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/vault"
 )
 
 func init() {

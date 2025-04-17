@@ -14,10 +14,10 @@ import (
 	"github.com/spf13/pflag"
 	"github.com/spf13/viper"
 
-	"github.com/elastic/cloud-on-k8s/v2/hack/operatorhub/cmd/bundle"
-	"github.com/elastic/cloud-on-k8s/v2/hack/operatorhub/cmd/container"
-	"github.com/elastic/cloud-on-k8s/v2/hack/operatorhub/cmd/flags"
-	"github.com/elastic/cloud-on-k8s/v2/hack/operatorhub/cmd/manifests"
+	"github.com/elastic/cloud-on-k8s/v3/hack/operatorhub/cmd/bundle"
+	"github.com/elastic/cloud-on-k8s/v3/hack/operatorhub/cmd/container"
+	"github.com/elastic/cloud-on-k8s/v3/hack/operatorhub/cmd/flags"
+	"github.com/elastic/cloud-on-k8s/v3/hack/operatorhub/cmd/manifests"
 )
 
 // Cmd represents the root command for Red Hat/operatorhub release operations

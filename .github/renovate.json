@@ -22,7 +22,7 @@
         "golang.org/x/net",
         "golang.org/x/exp",
         "golang.org/x/oauth2",
-        "github.com/elastic/cloud-on-k8s/v2"
+        "github.com/elastic/cloud-on-k8s/v3"
       ],
       "matchUpdateTypes": [
         "digest"

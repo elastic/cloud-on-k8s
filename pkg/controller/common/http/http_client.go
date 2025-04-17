@@ -16,8 +16,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/cryptutil"
-	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/net"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/cryptutil"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/net"
 )
 
 // Client returns an http.Client configured for targeting a service managed by ECK.

@@ -24,10 +24,10 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
 
-	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/license"
-	controllerscheme "github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/scheme"
-	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/webhook"
-	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/webhook/admission"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/license"
+	controllerscheme "github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/scheme"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/webhook"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/webhook/admission"
 )
 
 // ValidationWebhookTestCase represents a test case for testing a validation webhook

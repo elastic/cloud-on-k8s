@@ -10,11 +10,11 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 
-	logstashv1alpha1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/logstash/v1alpha1"
-	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/keystore"
-	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/pod"
-	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/logstash/labels"
-	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/logstash/volume"
+	logstashv1alpha1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/logstash/v1alpha1"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/keystore"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/pod"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/logstash/labels"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/logstash/volume"
 )
 
 const (
