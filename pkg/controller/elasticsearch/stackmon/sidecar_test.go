@@ -75,14 +75,16 @@ func TestWithMonitoring(t *testing.T) {
 	}
 
 	tests := []struct {
-		name string
-		es   func() esv1.Elasticsearch
+		name                   string
+		es                     func() esv1.Elasticsearch
+		readOnlyRootFilesystem bool
 	}{
 		{
 			name: "without monitoring",
 			es: func() esv1.Elasticsearch {
 				return sampleEs
 			},
+			readOnlyRootFilesystem: false,
 		},
 		{
 			name: "with metrics monitoring",
@@ -91,6 +93,7 @@ func TestWithMonitoring(t *testing.T) {
 				monitoring.GetMetricsAssociation(&sampleEs)[0].SetAssociationConf(&monitoringAssocConf)
 				return sampleEs
 			},
+			readOnlyRootFilesystem: false,
 		},
 		{
 			name: "with logs monitoring",
@@ -100,6 +103,7 @@ func TestWithMonitoring(t *testing.T) {
 				monitoring.GetLogsAssociation(&sampleEs)[0].SetAssociationConf(&monitoringAssocConf)
 				return sampleEs
 			},
+			readOnlyRootFilesystem: false,
 		},
 		{
 			name: "with metrics and logs monitoring",
@@ -110,6 +114,7 @@ func TestWithMonitoring(t *testing.T) {
 				monitoring.GetLogsAssociation(&sampleEs)[0].SetAssociationConf(&logsAssocConf)
 				return sampleEs
 			},
+			readOnlyRootFilesystem: false,
 		},
 		{
 			name: "with metrics and logs monitoring with different es ref",
@@ -120,6 +125,18 @@ func TestWithMonitoring(t *testing.T) {
 				monitoring.GetLogsAssociation(&sampleEs)[0].SetAssociationConf(&logsAssocConf)
 				return sampleEs
 			},
+			readOnlyRootFilesystem: false,
+		},
+		{
+			name: "with metrics and logs monitoring and read only root filesystem",
+			es: func() esv1.Elasticsearch {
+				sampleEs.Spec.Monitoring.Metrics.ElasticsearchRefs = monitoringEsRef
+				monitoring.GetMetricsAssociation(&sampleEs)[0].SetAssociationConf(&monitoringAssocConf)
+				sampleEs.Spec.Monitoring.Logs.ElasticsearchRefs = monitoringEsRef
+				monitoring.GetLogsAssociation(&sampleEs)[0].SetAssociationConf(&logsAssocConf)
+				return sampleEs
+			},
+			readOnlyRootFilesystem: true,
 		},
 	}
 
@@ -127,7 +144,7 @@ func TestWithMonitoring(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			es := tc.es()
 			builder := defaults.NewPodTemplateBuilder(corev1.PodTemplateSpec{}, esv1.ElasticsearchContainerName)
-			_, err := WithMonitoring(context.Background(), fakeClient, builder, es)
+			_, err := WithMonitoring(context.Background(), fakeClient, builder, es, tc.readOnlyRootFilesystem)
 			assert.NoError(t, err)
 
 			actual, err := json.MarshalIndent(builder.PodTemplate, " ", "")
