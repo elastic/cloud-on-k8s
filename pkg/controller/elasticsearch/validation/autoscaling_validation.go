@@ -7,7 +7,7 @@ package validation
 import (
 	"k8s.io/apimachinery/pkg/util/validation/field"
 
-	esv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/elasticsearch/v1"
+	esv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/elasticsearch/v1"
 )
 
 func validAutoscalingConfiguration(es esv1.Elasticsearch) field.ErrorList {

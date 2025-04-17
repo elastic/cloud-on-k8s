@@ -7,7 +7,7 @@ package autoscaler
 import (
 	corev1 "k8s.io/api/core/v1"
 
-	"github.com/elastic/cloud-on-k8s/v2/pkg/apis/common/v1alpha1"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/apis/common/v1alpha1"
 )
 
 // GetResources calculates the resources required by all the NodeSets managed by a same autoscaling policy.

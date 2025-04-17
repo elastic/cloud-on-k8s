@@ -3,8 +3,8 @@ module github.com/elastic/cloud-on-k8s/hack/helm/release
 go 1.23.0
 
 require (
-	cloud.google.com/go/storage v1.50.0
-	github.com/elastic/cloud-on-k8s/v2 v2.16.1
+	cloud.google.com/go/storage v1.51.0
+	github.com/elastic/cloud-on-k8s/v3 v3.0.0
 	github.com/google/go-cmp v0.7.0
 	github.com/spf13/cobra v1.9.1
 	github.com/spf13/viper v1.19.0
@@ -13,9 +13,9 @@ require (
 	helm.sh/helm/v3 v3.17.1
 )
 
-replace github.com/elastic/cloud-on-k8s/v2 => ../../..
+replace github.com/elastic/cloud-on-k8s/v3 => ../../..
 
-// pulled by github.com/google/go-containerregistry pulled by github.com/elastic/cloud-on-k8s/v2
+// pulled by github.com/google/go-containerregistry pulled by github.com/elastic/cloud-on-k8s/v3
 // incompatible with oras.land/oras-go v1.2.3 pulled by helm.sh/helm/v3
 exclude github.com/docker/docker v24.0.0+incompatible
 

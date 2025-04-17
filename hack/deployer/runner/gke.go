@@ -13,9 +13,9 @@ import (
 	"github.com/ghodss/yaml"
 	storagev1 "k8s.io/api/storage/v1"
 
-	"github.com/elastic/cloud-on-k8s/v2/hack/deployer/exec"
-	"github.com/elastic/cloud-on-k8s/v2/hack/deployer/runner/kyverno"
-	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/vault"
+	"github.com/elastic/cloud-on-k8s/v3/hack/deployer/exec"
+	"github.com/elastic/cloud-on-k8s/v3/hack/deployer/runner/kyverno"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/vault"
 )
 
 const (

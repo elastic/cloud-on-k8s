@@ -9,7 +9,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
-	"github.com/elastic/cloud-on-k8s/v2/pkg/apis/common/v1alpha1"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/apis/common/v1alpha1"
 )
 
 func Test_distributeFairly(t *testing.T) {

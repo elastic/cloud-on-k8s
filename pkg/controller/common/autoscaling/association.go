@@ -9,10 +9,10 @@ import (
 
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
-	esav1alpha1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/autoscaling/v1alpha1"
-	"github.com/elastic/cloud-on-k8s/v2/pkg/apis/common/v1alpha1"
-	esv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/elasticsearch/v1"
-	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/k8s"
+	esav1alpha1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/autoscaling/v1alpha1"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/apis/common/v1alpha1"
+	esv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/elasticsearch/v1"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/k8s"
 )
 
 func GetAssociatedAutoscalingResource(

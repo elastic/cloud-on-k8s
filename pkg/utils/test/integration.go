@@ -18,9 +18,9 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 	metricsserver "sigs.k8s.io/controller-runtime/pkg/metrics/server"
 
-	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/operator"
-	controllerscheme "github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/scheme"
-	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/k8s"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/operator"
+	controllerscheme "github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/scheme"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/k8s"
 )
 
 const (

@@ -16,9 +16,9 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/utils/ptr"
 
-	commonv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/common/v1"
-	v1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/elasticsearch/v1"
-	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/version"
+	commonv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/common/v1"
+	v1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/elasticsearch/v1"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/version"
 )
 
 func TestClusterFromResourceLabels(t *testing.T) {

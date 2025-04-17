@@ -12,11 +12,11 @@ import (
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/types"
 
-	kibanav1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/kibana/v1"
-	commonannotation "github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/annotation"
-	common "github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/settings"
-	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/stackconfigpolicy"
-	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/k8s"
+	kibanav1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/kibana/v1"
+	commonannotation "github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/annotation"
+	common "github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/settings"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/stackconfigpolicy"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/k8s"
 )
 
 // PolicyConfig is a structure for storing Kibana config from the StackConfigPolicy

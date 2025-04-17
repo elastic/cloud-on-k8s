@@ -14,11 +14,11 @@ import (
 	"k8s.io/apimachinery/pkg/api/resource"
 	"k8s.io/apimachinery/pkg/util/validation/field"
 
-	"github.com/elastic/cloud-on-k8s/v2/pkg/apis/common/v1alpha1"
-	esv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/elasticsearch/v1"
-	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/version"
-	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/set"
-	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/stringsutil"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/apis/common/v1alpha1"
+	esv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/elasticsearch/v1"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/version"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/set"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/stringsutil"
 )
 
 const UnexpectedVolumeClaimError = "autoscaling supports only one volume claim"

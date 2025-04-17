@@ -15,7 +15,7 @@ import (
 	"k8s.io/client-go/kubernetes"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
-	ulog "github.com/elastic/cloud-on-k8s/v2/pkg/utils/log"
+	ulog "github.com/elastic/cloud-on-k8s/v3/pkg/utils/log"
 )
 
 type webhook struct {

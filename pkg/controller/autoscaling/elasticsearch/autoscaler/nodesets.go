@@ -8,7 +8,7 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/elastic/cloud-on-k8s/v2/pkg/apis/common/v1alpha1"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/apis/common/v1alpha1"
 )
 
 func distributeFairly(nodeSets v1alpha1.NodeSetNodeCountList, expectedNodeCount int32) {

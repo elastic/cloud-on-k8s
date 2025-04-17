@@ -21,7 +21,7 @@ import (
 
 	errors2 "github.com/pkg/errors"
 
-	ulog "github.com/elastic/cloud-on-k8s/v2/pkg/utils/log"
+	ulog "github.com/elastic/cloud-on-k8s/v3/pkg/utils/log"
 )
 
 // Verifier verifies Enterprise licenses.

@@ -13,15 +13,15 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 
-	kbv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/kibana/v1"
-	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/reconciler"
-	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/tracing"
-	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/version"
-	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/volume"
-	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/kibana/label"
-	kbvolume "github.com/elastic/cloud-on-k8s/v2/pkg/controller/kibana/volume"
-	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/k8s"
-	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/maps"
+	kbv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/kibana/v1"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/reconciler"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/tracing"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/version"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/volume"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/kibana/label"
+	kbvolume "github.com/elastic/cloud-on-k8s/v3/pkg/controller/kibana/volume"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/k8s"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/maps"
 )
 
 // HardenedSecurityContextSupportedVersion is the version in which a hardened security context is supported.

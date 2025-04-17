@@ -9,10 +9,10 @@ import (
 
 	"github.com/stretchr/testify/require"
 
-	esv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/elasticsearch/v1"
-	policyv1alpha1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/stackconfigpolicy/v1alpha1"
-	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/volume"
-	"github.com/elastic/cloud-on-k8s/v2/test/e2e/test"
+	esv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/elasticsearch/v1"
+	policyv1alpha1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/stackconfigpolicy/v1alpha1"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/volume"
+	"github.com/elastic/cloud-on-k8s/v3/test/e2e/test"
 )
 
 func usesEmptyDir(es esv1.Elasticsearch) bool {

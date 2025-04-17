@@ -10,7 +10,7 @@ import (
 	"os"
 	"path/filepath"
 
-	esclient "github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/client"
+	esclient "github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/client"
 )
 
 func loadFileBytes(fileName string) []byte {

@@ -22,7 +22,7 @@ import (
 	"time"
 
 	"github.com/Masterminds/sprig/v3"
-	"github.com/elastic/cloud-on-k8s/v2/hack/operatorhub/cmd/flags"
+	"github.com/elastic/cloud-on-k8s/v3/hack/operatorhub/cmd/flags"
 	gyaml "github.com/ghodss/yaml"
 	admissionv1 "k8s.io/api/admissionregistration/v1"
 	rbacv1 "k8s.io/api/rbac/v1"

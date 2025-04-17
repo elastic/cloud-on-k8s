@@ -19,8 +19,8 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/uuid"
 
-	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/chrono"
-	ulog "github.com/elastic/cloud-on-k8s/v2/pkg/utils/log"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/chrono"
+	ulog "github.com/elastic/cloud-on-k8s/v3/pkg/utils/log"
 )
 
 const (

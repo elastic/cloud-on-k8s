@@ -1,4 +1,4 @@
-module github.com/elastic/cloud-on-k8s/v2
+module github.com/elastic/cloud-on-k8s/v3
 
 go 1.23.0
 

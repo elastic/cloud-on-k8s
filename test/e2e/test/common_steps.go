@@ -15,9 +15,9 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	k8sclient "sigs.k8s.io/controller-runtime/pkg/client"
 
-	commonv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/common/v1"
-	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/hash"
-	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/license"
+	commonv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/common/v1"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/hash"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/license"
 )
 
 func AnnotatePodsWithBuilderHash(subj, prev Subject, k *K8sClient) StepList {

@@ -10,8 +10,8 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/elastic/cloud-on-k8s/v2/hack/operatorhub/cmd/flags"
-	"github.com/elastic/cloud-on-k8s/v2/hack/operatorhub/internal/container"
+	"github.com/elastic/cloud-on-k8s/v3/hack/operatorhub/cmd/flags"
+	"github.com/elastic/cloud-on-k8s/v3/hack/operatorhub/internal/container"
 )
 
 // Command will return the container command

@@ -15,9 +15,9 @@ E2E_TAGS=${E2E_TAGS:-e2e}
 run_e2e_tests() {
   if [ "${E2E_JSON}" == "true" ]
   then
-    go test -v -timeout=6h -tags="$E2E_TAGS" -p=1 --json github.com/elastic/cloud-on-k8s/v2/test/e2e/... "$@"
+    go test -v -timeout=6h -tags="$E2E_TAGS" -p=1 --json github.com/elastic/cloud-on-k8s/v3/test/e2e/... "$@"
   else
-    go test -v -timeout=6h -tags="$E2E_TAGS" -p=1 github.com/elastic/cloud-on-k8s/v2/test/e2e/... "$@"
+    go test -v -timeout=6h -tags="$E2E_TAGS" -p=1 github.com/elastic/cloud-on-k8s/v3/test/e2e/... "$@"
   fi
 
   # sleep 1s to allow filebeat to read all logs with 1s max_backoff

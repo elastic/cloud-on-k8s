@@ -11,11 +11,11 @@ import (
 
 	corev1 "k8s.io/api/core/v1"
 
-	commonv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/common/v1"
-	"github.com/elastic/cloud-on-k8s/v2/pkg/apis/logstash/v1alpha1"
-	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/association"
-	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/certificates"
-	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/logstash/volume"
+	commonv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/common/v1"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/apis/logstash/v1alpha1"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/association"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/certificates"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/logstash/volume"
 )
 
 func buildEnv(params Params, esAssociations []commonv1.Association) ([]corev1.EnvVar, error) {

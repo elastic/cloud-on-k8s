@@ -20,11 +20,11 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/utils/ptr"
 
-	agentv1alpha1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/agent/v1alpha1"
-	commonv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/common/v1"
-	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/certificates"
-	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/defaults"
-	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/k8s"
+	agentv1alpha1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/agent/v1alpha1"
+	commonv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/common/v1"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/certificates"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/defaults"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/k8s"
 )
 
 var (

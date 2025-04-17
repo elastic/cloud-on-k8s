@@ -12,9 +12,9 @@ import (
 
 	v1 "k8s.io/api/core/v1"
 
-	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/label"
-	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/user"
-	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/volume"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/label"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/user"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/volume"
 )
 
 func NewPreStopHook() *v1.LifecycleHandler {

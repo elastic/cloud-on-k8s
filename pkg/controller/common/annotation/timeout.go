@@ -10,7 +10,7 @@ import (
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
-	ulog "github.com/elastic/cloud-on-k8s/v2/pkg/utils/log"
+	ulog "github.com/elastic/cloud-on-k8s/v3/pkg/utils/log"
 )
 
 // ExtractTimeout extracts a timeout value specified as an annotation on a resource.

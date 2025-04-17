@@ -18,10 +18,10 @@ import (
 
 	"github.com/blang/semver/v4"
 
-	"github.com/elastic/cloud-on-k8s/v2/hack/deployer/exec"
-	"github.com/elastic/cloud-on-k8s/v2/hack/deployer/runner/env"
-	"github.com/elastic/cloud-on-k8s/v2/hack/deployer/runner/kyverno"
-	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/vault"
+	"github.com/elastic/cloud-on-k8s/v3/hack/deployer/exec"
+	"github.com/elastic/cloud-on-k8s/v3/hack/deployer/runner/env"
+	"github.com/elastic/cloud-on-k8s/v3/hack/deployer/runner/kyverno"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/vault"
 )
 
 const (

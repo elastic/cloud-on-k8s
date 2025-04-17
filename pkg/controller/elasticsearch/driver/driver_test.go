@@ -13,9 +13,9 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/utils/ptr"
 
-	esclient "github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/client"
-	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/user"
-	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/set"
+	esclient "github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/client"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/user"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/set"
 )
 
 func Test_esReachableConditionMessage(t *testing.T) {
