@@ -35,6 +35,7 @@ const (
 	ProjectIDFlag        = "project-id"
 	ForceFlag            = "force"
 	ScanTimeoutFlag      = "scan-timeout"
+	PreReleaseFlag       = "pre-release"
 
 	// operatorhub command flags
 	YamlManifestFlag = "yaml-manifest"
@@ -57,6 +58,7 @@ var (
 	ProjectID        string
 	Force            bool
 	ScanTimeout      time.Duration
+	PreRelease       bool
 
 	// root command variables
 	ConfigPath        string
