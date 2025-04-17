@@ -119,6 +119,11 @@ remoteClusters: {}
   #     name: cluster-two
   #     namespace: ns-two
 
+# RemoteClusterServer specifies if the remote cluster server should be enabled.
+# This must be enabled if this cluster is a remote cluster which is expected to be accessed using API key authentication.
+#
+remoteClusterServer: {}
+
 # VolumeClaimDeletePolicy sets the policy for handling deletion of PersistentVolumeClaims for all NodeSets.
 # Possible values are DeleteOnScaledownOnly and DeleteOnScaledownAndClusterDeletion.
 # By default, if not set or empty, the operator sets DeleteOnScaledownAndClusterDeletion.

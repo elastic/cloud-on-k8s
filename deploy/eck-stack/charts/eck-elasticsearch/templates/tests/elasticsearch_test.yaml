@@ -97,6 +97,8 @@ tests:
       - name: cluster-two
         elasticsearchRef:
           name: cluster-two
+      remoteClusterServer:
+        enabled: false
     release:
       name: quickstart
     asserts:
@@ -161,6 +163,11 @@ tests:
           - name: cluster-two
             elasticsearchRef:
               name: cluster-two
+      - equal:
+          path: spec.remoteClusterServer
+          value:
+            enabled:
+              false
   - it: should render node roles properly
     values:
       - ../../examples/hot-warm-cold.yaml

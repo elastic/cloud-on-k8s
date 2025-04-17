@@ -40,6 +40,10 @@ spec:
   remoteClusters:
     {{- toYaml . | nindent 2 }}
   {{- end }}
+  {{- with .Values.remoteClusterServer }}
+  remoteClusterServer:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
   {{- with .Values.volumeClaimDeletePolicy }}
   volumeClaimDeletePolicy:
     {{- if and (not (eq . "DeleteOnScaledownOnly")) (not (eq . "DeleteOnScaledownAndClusterDeletion")) }}
