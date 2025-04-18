@@ -18,14 +18,14 @@ const (
 	noGroup  = "nogroup"
 	repoName = "elastic/cloud-on-k8s"
 
-	releaseNotesTemplate = `## Release Notes for {{.Version}} 
+	releaseNotesTemplate = `## {{.Version}} [elastic-cloud-kubernetes-{{.Version | replace "." "" }}-release-notes] 
 
 {{range $group := .GroupOrder -}}
 {{$grouplbl := index $.LabelMapping $group}}
 {{with (index $.Groups $grouplbl)}}
-# {{index $.GroupLabels $grouplbl}}
+### {{index $.GroupLabels $grouplbl}}  [elastic-cloud-kubernetes-{{replace .Version "." ""}}-{{$grouplbl}}]
 {{range .}}
-- {{.Title}} ([#{{.Number}}](https://github.com/{{$.Repo}}/pull/{{.Number}})){{with .Issues -}}
+- {{.Title}} [#{{.Number}}](https://github.com/{{$.Repo}}/pull/{{.Number}}){{with .Issues -}}
 {{$length := len .}} (issue{{if gt $length 1}}s{{end}}: {{range $idx, $el := .}}{{if $idx}}, {{end}}[#{{$el}}](https://github.com/{{$.Repo}}/issues/{{$el}}){{end}})
 {{- end}}
 {{- end}}
