@@ -123,6 +123,8 @@ remoteClusters: {}
 # This must be enabled if this cluster is a remote cluster which is expected to be accessed using API key authentication.
 #
 remoteClusterServer: {}
+# remoteClusterServer:
+#   enabled: true
 
 # VolumeClaimDeletePolicy sets the policy for handling deletion of PersistentVolumeClaims for all NodeSets.
 # Possible values are DeleteOnScaledownOnly and DeleteOnScaledownAndClusterDeletion.
