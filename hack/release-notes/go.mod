@@ -2,7 +2,7 @@ module github.com/elastic/cloud-on-k8s/v3/hack/release-notes
 
 go 1.23.0
 
-toolchain go1.24.1
+toolchain go1.24.2
 
 require (
 	github.com/stretchr/testify v1.10.0
