@@ -68,6 +68,14 @@ func Command() *cobra.Command {
 		"force will force the attempted pushing of remote images, even when the exact version is found remotely. (OHUB_FORCE)",
 	)
 
+	cmd.PersistentFlags().BoolVarP(
+		&flags.PreRelease,
+		flags.PreReleaseFlag,
+		"P",
+		false,
+		"pre-release will pull eck images from the pre release repository (docker.elastic.co/eck-snapshots)",
+	)
+
 	publishCmd.Flags().DurationVarP(
 		&flags.ScanTimeout,
 		flags.ScanTimeoutFlag,
@@ -104,5 +112,6 @@ func commonConfig() container.CommonConfig {
 		ProjectID:           flags.ProjectID,
 		RedhatCatalogAPIKey: flags.APIKey,
 		RegistryPassword:    flags.RegistryPassword,
+		PreRelease:          flags.PreRelease,
 	}
 }
