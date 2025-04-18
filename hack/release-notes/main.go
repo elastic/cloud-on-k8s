@@ -18,12 +18,13 @@ const (
 	noGroup  = "nogroup"
 	repoName = "elastic/cloud-on-k8s"
 
-	releaseNotesTemplate = `## {{.Version}} [elastic-cloud-kubernetes-{{.Version | replace "." "" }}-release-notes] 
+	releaseNotesTemplate = `## {{$.Version}} [elastic-cloud-kubernetes-{{replace $.Version "." "" }}-release-notes] 
 
 {{range $group := .GroupOrder -}}
 {{$grouplbl := index $.LabelMapping $group}}
 {{with (index $.Groups $grouplbl)}}
-### {{index $.GroupLabels $grouplbl}}  [elastic-cloud-kubernetes-{{replace .Version "." ""}}-{{$grouplbl}}]
+{{$header := index $.GroupLabels $grouplbl}}
+### {{$header}}  [elastic-cloud-kubernetes-{{replace $.Version "." ""}}-{{replace $header " " "-"}}]
 {{range .}}
 - {{.Title}} [#{{.Number}}](https://github.com/{{$.Repo}}/pull/{{.Number}}){{with .Issues -}}
 {{$length := len .}} (issue{{if gt $length 1}}s{{end}}: {{range $idx, $el := .}}{{if $idx}}, {{end}}[#{{$el}}](https://github.com/{{$.Repo}}/issues/{{$el}}){{end}})
@@ -136,6 +137,10 @@ func render(version string, groups map[string][]github.PullRequest) error {
 	funcs := template.FuncMap{
 		"id": func(s string) string {
 			return strings.TrimPrefix(s, ">")
+		},
+		"replace": func(input, old, new string) string {
+			replacedString := strings.ReplaceAll(input, old, new)
+			return strings.ToLower(replacedString)
 		},
 	}
 
