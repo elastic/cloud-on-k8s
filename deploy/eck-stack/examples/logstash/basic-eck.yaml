@@ -29,7 +29,6 @@ eck-beats:
   enabled: true
   spec:
     type: filebeat
-    daemonSet: null
     config:
       filebeat.inputs:
       - type: log
