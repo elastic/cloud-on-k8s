@@ -120,12 +120,24 @@ func buildPodTemplate(params Params, configHash hash.Hash32) (corev1.PodTemplate
 		WithInitContainerDefaults().
 		WithPodSecurityContext(DefaultSecurityContext)
 
-	builder, err = stackmon.WithMonitoring(params.Context, params.Client, builder, params.Logstash, params.APIServerConfig)
+	builder, err = stackmon.WithMonitoring(params.Context, params.Client, builder, params.Logstash, params.APIServerConfig, isReadOnlyRootFilesystem(builder))
 	if err != nil {
 		return corev1.PodTemplateSpec{}, err
 	}
 
 	return builder.PodTemplate, nil
+}
+
+// isReadOnlyRootFilesystem returns true if any container in the pod template has a read-only root filesystem
+func isReadOnlyRootFilesystem(builder *defaults.PodTemplateBuilder) bool {
+	for _, container := range builder.PodTemplate.Spec.Containers {
+		if container.SecurityContext != nil && container.SecurityContext.ReadOnlyRootFilesystem != nil {
+			if *container.SecurityContext.ReadOnlyRootFilesystem {
+				return true
+			}
+		}
+	}
+	return false
 }
 
 func getDefaultContainerPorts() []corev1.ContainerPort {
