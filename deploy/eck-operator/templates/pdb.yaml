@@ -5,7 +5,7 @@ metadata:
   name: {{ include "eck-operator.fullname" . }}
   namespace: {{ .Release.Namespace }}
   labels:
-    {{- include "eck-operator.labels" . | indent 4 }}
+    {{- include "eck-operator.labels" . | nindent 4 }}
 spec:
   {{- with .Values.podDisruptionBudget.minAvailable }}
   minAvailable: {{ . }}
@@ -15,5 +15,5 @@ spec:
   {{- end  }}
   selector:
     matchLabels:
-      {{- include "eck-operator.selectorLabels" . | indent 6 }}
+      {{- include "eck-operator.selectorLabels" . | nindent 6 }}
 {{- end -}}
