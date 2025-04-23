@@ -22,6 +22,7 @@ import (
 
 const (
 	eckOperatorFormat              = "docker.elastic.co/eck/eck-operator-ubi:%s"
+	eckOperatorFormatPreRelease    = "docker.elastic.co/eck-snapshots/eck-operator-ubi:%s"
 	registryURL                    = "quay.io"
 	httpAcceptHeader               = "Accept"
 	httpContentTypeHeader          = "Content-Type"
@@ -49,6 +50,7 @@ type CommonConfig struct {
 	ProjectID           string
 	RedhatCatalogAPIKey string
 	RegistryPassword    string
+	PreRelease          bool
 }
 
 // PushImage will push an image to the Quay.io registry if it is determined
@@ -211,6 +213,9 @@ func pushImageToRegistry(c CommonConfig, tag string) error {
 	username := fmt.Sprintf(registryUserFormat, c.ProjectID)
 	formattedEckOperatorRedhatReference := fmt.Sprintf(eckOperatorRegistryReference, registryURL, c.ProjectID, tag)
 	imageToPull := fmt.Sprintf(eckOperatorFormat, tag)
+	if c.PreRelease {
+		imageToPull = fmt.Sprintf(eckOperatorFormatPreRelease, tag)
+	}
 
 	log.Printf("pulling image (%s) in preparation to push (%s) to quay.io registry: ", imageToPull, formattedEckOperatorRedhatReference)
 	// default credentials are used here, as the operator image which we use as a source is public.
