@@ -87,7 +87,7 @@ func Filebeat(ctx context.Context, client k8s.Client, es esv1.Elasticsearch) (st
 
 // WithMonitoring updates the Elasticsearch Pod template builder to deploy Metricbeat and Filebeat in sidecar containers
 // in the Elasticsearch pod and injects the volumes for the beat configurations and the ES CA certificates.
-func WithMonitoring(ctx context.Context, client k8s.Client, builder *defaults.PodTemplateBuilder, es esv1.Elasticsearch, readOnlyRootFilesystem bool) (*defaults.PodTemplateBuilder, error) {
+func WithMonitoring(ctx context.Context, client k8s.Client, builder *defaults.PodTemplateBuilder, es esv1.Elasticsearch) (*defaults.PodTemplateBuilder, error) {
 	isMonitoringReconcilable, err := monitoring.IsReconcilable(&es)
 	if err != nil {
 		return nil, err
@@ -105,12 +105,10 @@ func WithMonitoring(ctx context.Context, client k8s.Client, builder *defaults.Po
 			return nil, err
 		}
 
-		if readOnlyRootFilesystem {
-			// Add metricbeat logs volume
-			metricbeatLogsVolume := volume.NewEmptyDirVolume("metricbeat-logs", "/usr/share/metricbeat/logs")
-			volumes = append(volumes, metricbeatLogsVolume.Volume())
-			b.Container.VolumeMounts = append(b.Container.VolumeMounts, metricbeatLogsVolume.VolumeMount())
-		}
+		// Add metricbeat logs volume
+		metricbeatLogsVolume := volume.NewEmptyDirVolume("metricbeat-logs", "/usr/share/metricbeat/logs")
+		volumes = append(volumes, metricbeatLogsVolume.Volume())
+		b.Container.VolumeMounts = append(b.Container.VolumeMounts, metricbeatLogsVolume.VolumeMount())
 
 		volumes = append(volumes, b.Volumes...)
 		builder.WithContainers(b.Container)
@@ -126,12 +124,10 @@ func WithMonitoring(ctx context.Context, client k8s.Client, builder *defaults.Po
 			return nil, err
 		}
 
-		if readOnlyRootFilesystem {
-			// Add filebeat logs volume
-			filebeatLogsVolume := volume.NewEmptyDirVolume("filebeat-logs", "/usr/share/filebeat/logs")
-			volumes = append(volumes, filebeatLogsVolume.Volume())
-			b.Container.VolumeMounts = append(b.Container.VolumeMounts, filebeatLogsVolume.VolumeMount())
-		}
+		// Add filebeat logs volume
+		filebeatLogsVolume := volume.NewEmptyDirVolume("filebeat-logs", "/usr/share/filebeat/logs")
+		volumes = append(volumes, filebeatLogsVolume.Volume())
+		b.Container.VolumeMounts = append(b.Container.VolumeMounts, filebeatLogsVolume.VolumeMount())
 
 		volumes = append(volumes, b.Volumes...)
 		filebeat := b.Container

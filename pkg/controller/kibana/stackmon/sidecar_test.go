@@ -93,30 +93,26 @@ var (
 
 func TestWithMonitoring(t *testing.T) {
 	tests := []struct {
-		name                   string
-		kb                     func() kbv1.Kibana
-		readOnlyRootFilesystem bool
+		name string
+		kb   func() kbv1.Kibana
 	}{
 		{
 			name: "without monitoring",
 			kb: func() kbv1.Kibana {
 				return sampleKb
 			},
-			readOnlyRootFilesystem: false,
 		},
 		{
 			name: "with metrics monitoring",
 			kb: func() kbv1.Kibana {
 				return kbFixtureWithMetricsMonitoring(sampleKb, monitoringEsRef, monitoringAssocConf)
 			},
-			readOnlyRootFilesystem: false,
 		},
 		{
 			name: "with logs monitoring",
 			kb: func() kbv1.Kibana {
 				return kbFixtureWithLogsMonitoring(sampleKb, monitoringEsRef, monitoringAssocConf)
 			},
-			readOnlyRootFilesystem: false,
 		},
 		{
 			name: "with metrics and logs monitoring",
@@ -130,7 +126,6 @@ func TestWithMonitoring(t *testing.T) {
 					logsAssocConf,
 				)
 			},
-			readOnlyRootFilesystem: false,
 		},
 		{
 			name: "with metrics and logs monitoring with different es ref",
@@ -144,21 +139,6 @@ func TestWithMonitoring(t *testing.T) {
 					logsAssocConf,
 				)
 			},
-			readOnlyRootFilesystem: false,
-		},
-		{
-			name: "with metrics and logs monitoring and read only root filesystem",
-			kb: func() kbv1.Kibana {
-				return kbFixtureWithLogsMonitoring(
-					kbFixtureWithMetricsMonitoring(
-						sampleKb,
-						monitoringEsRef,
-						monitoringAssocConf),
-					logsEsRef,
-					logsAssocConf,
-				)
-			},
-			readOnlyRootFilesystem: true,
 		},
 	}
 
@@ -166,7 +146,7 @@ func TestWithMonitoring(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			kb := tc.kb()
 			builder := defaults.NewPodTemplateBuilder(corev1.PodTemplateSpec{}, kbv1.KibanaContainerName)
-			_, err := WithMonitoring(context.Background(), fakeClient, builder, kb, "", tc.readOnlyRootFilesystem)
+			_, err := WithMonitoring(context.Background(), fakeClient, builder, kb, "")
 			assert.NoError(t, err)
 
 			actual, err := json.MarshalIndent(builder.PodTemplate, " ", "")

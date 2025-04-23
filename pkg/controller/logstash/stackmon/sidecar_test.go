@@ -82,17 +82,15 @@ func TestWithMonitoring(t *testing.T) {
 	}
 
 	tests := []struct {
-		name                   string
-		ls                     func() logstashv1alpha1.Logstash
-		apiServerConfig        configs.APIServer
-		readOnlyRootFilesystem bool
+		name            string
+		ls              func() logstashv1alpha1.Logstash
+		apiServerConfig configs.APIServer
 	}{
 		{
 			name: "without monitoring",
 			ls: func() logstashv1alpha1.Logstash {
 				return sampleLs
 			},
-			readOnlyRootFilesystem: false,
 		},
 		{
 			name: "with metrics monitoring",
@@ -101,8 +99,7 @@ func TestWithMonitoring(t *testing.T) {
 				monitoring.GetMetricsAssociation(&sampleLs)[0].SetAssociationConf(&monitoringAssocConf)
 				return sampleLs
 			},
-			apiServerConfig:        GetAPIServerWithSSLEnabled(false),
-			readOnlyRootFilesystem: false,
+			apiServerConfig: GetAPIServerWithSSLEnabled(false),
 		},
 		{
 			name: "with TLS metrics monitoring",
@@ -111,8 +108,7 @@ func TestWithMonitoring(t *testing.T) {
 				monitoring.GetMetricsAssociation(&sampleLs)[0].SetAssociationConf(&monitoringAssocConf)
 				return sampleLs
 			},
-			apiServerConfig:        GetAPIServerWithSSLEnabled(true),
-			readOnlyRootFilesystem: false,
+			apiServerConfig: GetAPIServerWithSSLEnabled(true),
 		},
 		{
 			name: "with logs monitoring",
@@ -122,8 +118,7 @@ func TestWithMonitoring(t *testing.T) {
 				monitoring.GetLogsAssociation(&sampleLs)[0].SetAssociationConf(&monitoringAssocConf)
 				return sampleLs
 			},
-			apiServerConfig:        GetAPIServerWithSSLEnabled(false),
-			readOnlyRootFilesystem: false,
+			apiServerConfig: GetAPIServerWithSSLEnabled(false),
 		},
 		{
 			name: "with metrics and logs monitoring",
@@ -134,8 +129,7 @@ func TestWithMonitoring(t *testing.T) {
 				monitoring.GetLogsAssociation(&sampleLs)[0].SetAssociationConf(&logsAssocConf)
 				return sampleLs
 			},
-			apiServerConfig:        GetAPIServerWithSSLEnabled(false),
-			readOnlyRootFilesystem: false,
+			apiServerConfig: GetAPIServerWithSSLEnabled(false),
 		},
 		{
 			name: "with metrics and logs monitoring with different es ref",
@@ -146,8 +140,7 @@ func TestWithMonitoring(t *testing.T) {
 				monitoring.GetLogsAssociation(&sampleLs)[0].SetAssociationConf(&logsAssocConf)
 				return sampleLs
 			},
-			apiServerConfig:        GetAPIServerWithSSLEnabled(false),
-			readOnlyRootFilesystem: false,
+			apiServerConfig: GetAPIServerWithSSLEnabled(false),
 		},
 		{
 			name: "with metrics and logs monitoring with readonly root filesystem",
@@ -158,8 +151,7 @@ func TestWithMonitoring(t *testing.T) {
 				monitoring.GetLogsAssociation(&sampleLs)[0].SetAssociationConf(&logsAssocConf)
 				return sampleLs
 			},
-			apiServerConfig:        GetAPIServerWithSSLEnabled(false),
-			readOnlyRootFilesystem: true,
+			apiServerConfig: GetAPIServerWithSSLEnabled(false),
 		},
 	}
 
@@ -167,7 +159,7 @@ func TestWithMonitoring(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			ls := tc.ls()
 			builder := defaults.NewPodTemplateBuilder(corev1.PodTemplateSpec{}, logstashv1alpha1.LogstashContainerName)
-			_, err := WithMonitoring(context.Background(), fakeClient, builder, ls, tc.apiServerConfig, tc.readOnlyRootFilesystem)
+			_, err := WithMonitoring(context.Background(), fakeClient, builder, ls, tc.apiServerConfig)
 			assert.NoError(t, err)
 			actual, err := json.MarshalIndent(builder.PodTemplate, " ", "")
 			assert.NoError(t, err)

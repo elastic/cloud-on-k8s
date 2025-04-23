@@ -120,7 +120,7 @@ func buildPodTemplate(params Params, configHash hash.Hash32) (corev1.PodTemplate
 		WithInitContainerDefaults().
 		WithPodSecurityContext(DefaultSecurityContext)
 
-	builder, err = stackmon.WithMonitoring(params.Context, params.Client, builder, params.Logstash, params.APIServerConfig, isReadOnlyRootFilesystem(builder))
+	builder, err = stackmon.WithMonitoring(params.Context, params.Client, builder, params.Logstash, params.APIServerConfig)
 	if err != nil {
 		return corev1.PodTemplateSpec{}, err
 	}
