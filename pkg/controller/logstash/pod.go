@@ -128,18 +128,6 @@ func buildPodTemplate(params Params, configHash hash.Hash32) (corev1.PodTemplate
 	return builder.PodTemplate, nil
 }
 
-// isReadOnlyRootFilesystem returns true if any container in the pod template has a read-only root filesystem
-func isReadOnlyRootFilesystem(builder *defaults.PodTemplateBuilder) bool {
-	for _, container := range builder.PodTemplate.Spec.Containers {
-		if container.SecurityContext != nil && container.SecurityContext.ReadOnlyRootFilesystem != nil {
-			if *container.SecurityContext.ReadOnlyRootFilesystem {
-				return true
-			}
-		}
-	}
-	return false
-}
-
 func getDefaultContainerPorts() []corev1.ContainerPort {
 	return []corev1.ContainerPort{
 		{Name: "http", ContainerPort: int32(network.HTTPPort), Protocol: corev1.ProtocolTCP},
