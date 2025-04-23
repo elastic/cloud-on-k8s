@@ -296,6 +296,10 @@ setup.template.settings:
      {
       "mountPath": "/usr/share/metricbeat/data",
       "name": "metricbeat-data"
+     },
+     {
+      "mountPath": "/usr/share/metricbeat/logs",
+      "name": "metricbeat-logs"
      }
     ]
    }
@@ -318,6 +322,10 @@ setup.template.settings:
    {
     "emptyDir": {},
     "name": "metricbeat-data"
+   },
+   {
+    "emptyDir": {},
+    "name": "metricbeat-logs"
    },
    {
     "name": "sample-metricbeat-config",
@@ -425,6 +433,10 @@ setup.template.settings:
       "name": "filebeat-data"
      },
      {
+      "mountPath": "/usr/share/filebeat/logs",
+      "name": "filebeat-logs"
+     },
+     {
       "mountPath": "/usr/share/elasticsearch/logs",
       "name": "elasticsearch-logs"
      }
@@ -442,6 +454,10 @@ setup.template.settings:
    {
     "emptyDir": {},
     "name": "filebeat-data"
+   },
+   {
+    "emptyDir": {},
+    "name": "filebeat-logs"
    },
    {
     "name": "sample-filebeat-config",
@@ -552,6 +568,10 @@ setup.template.settings:
      {
       "mountPath": "/usr/share/metricbeat/data",
       "name": "metricbeat-data"
+     },
+     {
+      "mountPath": "/usr/share/metricbeat/logs",
+      "name": "metricbeat-logs"
      }
     ]
    },
@@ -628,6 +648,10 @@ setup.template.settings:
       "name": "filebeat-data"
      },
      {
+      "mountPath": "/usr/share/filebeat/logs",
+      "name": "filebeat-logs"
+     },
+     {
       "mountPath": "/usr/share/elasticsearch/logs",
       "name": "elasticsearch-logs"
      }
@@ -655,7 +679,15 @@ setup.template.settings:
    },
    {
     "emptyDir": {},
+    "name": "filebeat-logs"
+   },
+   {
+    "emptyDir": {},
     "name": "metricbeat-data"
+   },
+   {
+    "emptyDir": {},
+    "name": "metricbeat-logs"
    },
    {
     "name": "sample-filebeat-config",
@@ -773,6 +805,10 @@ setup.template.settings:
      {
       "mountPath": "/usr/share/metricbeat/data",
       "name": "metricbeat-data"
+     },
+     {
+      "mountPath": "/usr/share/metricbeat/logs",
+      "name": "metricbeat-logs"
      }
     ]
    },
@@ -849,6 +885,10 @@ setup.template.settings:
       "name": "filebeat-data"
      },
      {
+      "mountPath": "/usr/share/filebeat/logs",
+      "name": "filebeat-logs"
+     },
+     {
       "mountPath": "/usr/share/elasticsearch/logs",
       "name": "elasticsearch-logs"
      }
@@ -883,7 +923,15 @@ setup.template.settings:
    },
    {
     "emptyDir": {},
+    "name": "filebeat-logs"
+   },
+   {
+    "emptyDir": {},
     "name": "metricbeat-data"
+   },
+   {
+    "emptyDir": {},
+    "name": "metricbeat-logs"
    },
    {
     "name": "sample-filebeat-config",

@@ -235,6 +235,10 @@ processors:
      {
       "mountPath": "/usr/share/metricbeat/data",
       "name": "metricbeat-data"
+     },
+     {
+      "mountPath": "/usr/share/metricbeat/logs",
+      "name": "metricbeat-logs"
      }
     ]
    }
@@ -250,6 +254,10 @@ processors:
    {
     "emptyDir": {},
     "name": "metricbeat-data"
+   },
+   {
+    "emptyDir": {},
+    "name": "metricbeat-logs"
    },
    {
     "name": "sample-metricbeat-config",
@@ -344,6 +352,10 @@ processors:
      {
       "mountPath": "/usr/share/metricbeat/data",
       "name": "metricbeat-data"
+     },
+     {
+      "mountPath": "/usr/share/metricbeat/logs",
+      "name": "metricbeat-logs"
      }
     ]
    }
@@ -366,6 +378,10 @@ processors:
    {
     "emptyDir": {},
     "name": "metricbeat-data"
+   },
+   {
+    "emptyDir": {},
+    "name": "metricbeat-logs"
    },
    {
     "name": "sample-metricbeat-config",
@@ -463,6 +479,10 @@ processors:
       "name": "filebeat-data"
      },
      {
+      "mountPath": "/usr/share/filebeat/logs",
+      "name": "filebeat-logs"
+     },
+     {
       "mountPath": "/usr/share/logstash/logs",
       "name": "logstash-logs"
      }
@@ -473,6 +493,10 @@ processors:
    {
     "emptyDir": {},
     "name": "filebeat-data"
+   },
+   {
+    "emptyDir": {},
+    "name": "filebeat-logs"
    },
    {
     "name": "ls-monitoring-03f555-ca",
@@ -575,6 +599,10 @@ processors:
      {
       "mountPath": "/usr/share/metricbeat/data",
       "name": "metricbeat-data"
+     },
+     {
+      "mountPath": "/usr/share/metricbeat/logs",
+      "name": "metricbeat-logs"
      }
     ]
    },
@@ -641,6 +669,10 @@ processors:
       "name": "filebeat-data"
      },
      {
+      "mountPath": "/usr/share/filebeat/logs",
+      "name": "filebeat-logs"
+     },
+     {
       "mountPath": "/usr/share/logstash/logs",
       "name": "logstash-logs"
      }
@@ -653,6 +685,10 @@ processors:
     "name": "filebeat-data"
    },
    {
+    "emptyDir": {},
+    "name": "filebeat-logs"
+   },
+   {
     "name": "ls-monitoring-03f555-ca",
     "secret": {
      "optional": false,
@@ -662,6 +698,10 @@ processors:
    {
     "emptyDir": {},
     "name": "metricbeat-data"
+   },
+   {
+    "emptyDir": {},
+    "name": "metricbeat-logs"
    },
    {
     "name": "sample-filebeat-config",
@@ -764,6 +804,10 @@ processors:
      {
       "mountPath": "/usr/share/metricbeat/data",
       "name": "metricbeat-data"
+     },
+     {
+      "mountPath": "/usr/share/metricbeat/logs",
+      "name": "metricbeat-logs"
      }
     ]
    },
@@ -830,6 +874,10 @@ processors:
       "name": "filebeat-data"
      },
      {
+      "mountPath": "/usr/share/filebeat/logs",
+      "name": "filebeat-logs"
+     },
+     {
       "mountPath": "/usr/share/logstash/logs",
       "name": "logstash-logs"
      }
@@ -840,6 +888,10 @@ processors:
    {
     "emptyDir": {},
     "name": "filebeat-data"
+   },
+   {
+    "emptyDir": {},
+    "name": "filebeat-logs"
    },
    {
     "name": "ls-monitoring-03f555-ca",
@@ -858,6 +910,10 @@ processors:
    {
     "emptyDir": {},
     "name": "metricbeat-data"
+   },
+   {
+    "emptyDir": {},
+    "name": "metricbeat-logs"
    },
    {
     "name": "sample-filebeat-config",

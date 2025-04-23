@@ -97,6 +97,10 @@
      {
       "mountPath": "/usr/share/metricbeat/data",
       "name": "metricbeat-data"
+     },
+     {
+      "mountPath": "/usr/share/metricbeat/logs",
+      "name": "metricbeat-logs"
      }
     ]
    }
@@ -119,6 +123,10 @@
    {
     "emptyDir": {},
     "name": "metricbeat-data"
+   },
+   {
+    "emptyDir": {},
+    "name": "metricbeat-logs"
    },
    {
     "name": "sample-metricbeat-config",
@@ -216,6 +224,10 @@
       "name": "filebeat-data"
      },
      {
+      "mountPath": "/usr/share/filebeat/logs",
+      "name": "filebeat-logs"
+     },
+     {
       "mountPath": "/usr/share/kibana/logs",
       "name": "kibana-logs"
      }
@@ -226,6 +238,10 @@
    {
     "emptyDir": {},
     "name": "filebeat-data"
+   },
+   {
+    "emptyDir": {},
+    "name": "filebeat-logs"
    },
    {
     "name": "kb-monitoring-03f555-ca",
@@ -337,6 +353,10 @@
      {
       "mountPath": "/usr/share/metricbeat/data",
       "name": "metricbeat-data"
+     },
+     {
+      "mountPath": "/usr/share/metricbeat/logs",
+      "name": "metricbeat-logs"
      }
     ]
    },
@@ -403,6 +423,10 @@
       "name": "filebeat-data"
      },
      {
+      "mountPath": "/usr/share/filebeat/logs",
+      "name": "filebeat-logs"
+     },
+     {
       "mountPath": "/usr/share/kibana/logs",
       "name": "kibana-logs"
      }
@@ -413,6 +437,10 @@
    {
     "emptyDir": {},
     "name": "filebeat-data"
+   },
+   {
+    "emptyDir": {},
+    "name": "filebeat-logs"
    },
    {
     "name": "kb-monitoring-03f555-ca",
@@ -435,6 +463,10 @@
    {
     "emptyDir": {},
     "name": "metricbeat-data"
+   },
+   {
+    "emptyDir": {},
+    "name": "metricbeat-logs"
    },
    {
     "name": "sample-filebeat-config",
@@ -542,6 +574,10 @@
      {
       "mountPath": "/usr/share/metricbeat/data",
       "name": "metricbeat-data"
+     },
+     {
+      "mountPath": "/usr/share/metricbeat/logs",
+      "name": "metricbeat-logs"
      }
     ]
    },
@@ -608,6 +644,10 @@
       "name": "filebeat-data"
      },
      {
+      "mountPath": "/usr/share/filebeat/logs",
+      "name": "filebeat-logs"
+     },
+     {
       "mountPath": "/usr/share/kibana/logs",
       "name": "kibana-logs"
      }
@@ -618,6 +658,10 @@
    {
     "emptyDir": {},
     "name": "filebeat-data"
+   },
+   {
+    "emptyDir": {},
+    "name": "filebeat-logs"
    },
    {
     "name": "kb-monitoring-03f555-ca",
@@ -647,6 +691,10 @@
    {
     "emptyDir": {},
     "name": "metricbeat-data"
+   },
+   {
+    "emptyDir": {},
+    "name": "metricbeat-logs"
    },
    {
     "name": "sample-filebeat-config",
