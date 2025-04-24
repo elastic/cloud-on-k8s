@@ -5,8 +5,8 @@
 package logstash
 
 import (
-	v1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/common/v1"
-	lsv1alpha1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/logstash/v1alpha1"
+	v1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/common/v1"
+	lsv1alpha1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/logstash/v1alpha1"
 )
 
 // CalculateHealth returns health of Logstash based on association status, desired count and ready count.

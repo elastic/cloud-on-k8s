@@ -9,9 +9,9 @@ import (
 
 	appsv1 "k8s.io/api/apps/v1"
 
-	logstashv1alpha1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/logstash/v1alpha1"
-	commonvolume "github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/volume"
-	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/k8s"
+	logstashv1alpha1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/logstash/v1alpha1"
+	commonvolume "github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/volume"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/k8s"
 )
 
 func RecreateStatefulSets(ctx context.Context, k8sclient k8s.Client, ls logstashv1alpha1.Logstash) (int, error) {

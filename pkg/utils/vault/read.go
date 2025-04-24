@@ -11,7 +11,7 @@ import (
 
 	"github.com/hashicorp/vault/api"
 
-	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/retry"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/retry"
 )
 
 const (

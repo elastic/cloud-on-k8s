@@ -12,8 +12,8 @@ import (
 	apimachineryvalidation "k8s.io/apimachinery/pkg/api/validation"
 	utilvalidation "k8s.io/apimachinery/pkg/util/validation"
 
-	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/hash"
-	common_name "github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/name"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/hash"
+	common_name "github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/name"
 )
 
 const (

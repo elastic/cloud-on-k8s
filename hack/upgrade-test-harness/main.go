@@ -15,8 +15,8 @@ import (
 	"go.uber.org/zap"
 	"k8s.io/cli-runtime/pkg/genericclioptions"
 
-	"github.com/elastic/cloud-on-k8s/v2/hack/upgrade-test-harness/config"
-	"github.com/elastic/cloud-on-k8s/v2/hack/upgrade-test-harness/fixture"
+	"github.com/elastic/cloud-on-k8s/v3/hack/upgrade-test-harness/config"
+	"github.com/elastic/cloud-on-k8s/v3/hack/upgrade-test-harness/fixture"
 )
 
 type configOpts struct {

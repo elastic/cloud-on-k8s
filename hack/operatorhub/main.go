@@ -8,7 +8,7 @@ import (
 	"log"
 	"os"
 
-	root "github.com/elastic/cloud-on-k8s/v2/hack/operatorhub/cmd"
+	root "github.com/elastic/cloud-on-k8s/v3/hack/operatorhub/cmd"
 )
 
 func main() {

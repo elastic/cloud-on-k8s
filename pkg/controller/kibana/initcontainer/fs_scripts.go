@@ -8,7 +8,7 @@ import (
 	"bytes"
 	"text/template"
 
-	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/kibana/volume"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/kibana/volume"
 )
 
 const (

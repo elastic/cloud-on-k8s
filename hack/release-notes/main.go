@@ -11,52 +11,56 @@ import (
 	"strings"
 	"text/template"
 
-	"github.com/elastic/cloud-on-k8s/v2/hack/release-notes/github"
+	"github.com/elastic/cloud-on-k8s/v3/hack/release-notes/github"
 )
 
 const (
 	noGroup  = "nogroup"
 	repoName = "elastic/cloud-on-k8s"
 
-	releaseNotesTemplate = `:issue: https://github.com/{{.Repo}}/issues/
-:pull: https://github.com/{{.Repo}}/pull/
+	releaseNotesTemplate = `## {{$.Version}} [elastic-cloud-kubernetes-{{replace $.Version "." "" }}-release-notes] 
 
-[[release-notes-{{.Version}}]]
-== {n} version {{.Version}}
 {{range $group := .GroupOrder -}}
-{{with (index $.Groups $group)}}
-[[{{- id $group -}}-{{$.Version}}]]
-[float]
-=== {{index $.GroupLabels $group}}
+{{$grouplbl := index $.LabelMapping $group}}
+{{with (index $.Groups $grouplbl)}}
+{{$header := index $.GroupLabels $grouplbl}}
+### {{$header}}  [elastic-cloud-kubernetes-{{replace $.Version "." ""}}-{{replace $header " " "-"}}]
 {{range .}}
-* {{.Title}} {pull}{{.Number}}[#{{.Number}}]{{with .Issues -}}
-{{$length := len .}} (issue{{if gt $length 1}}s{{end}}: {{range $idx, $el := .}}{{if $idx}}, {{end}}{issue}{{$el}}[#{{$el}}]{{end}})
+- {{.Title}} [#{{.Number}}](https://github.com/{{$.Repo}}/pull/{{.Number}}){{with .Issues -}}
+{{$length := len .}} (issue{{if gt $length 1}}s{{end}}: {{range $idx, $el := .}}{{if $idx}}, {{end}}[#{{$el}}](https://github.com/{{$.Repo}}/issues/{{$el}}){{end}})
 {{- end}}
 {{- end}}
 {{- end}}
-{{end}}
-`
+{{end}}`
 )
 
 var (
 	groupLabels = map[string]string{
-		">breaking":    "Breaking changes",
-		">deprecation": "Deprecations",
-		">feature":     "New features",
-		">enhancement": "Enhancements",
-		">bug":         "Bug fixes",
-		">docs":        "Documentation improvements",
-		noGroup:        "Misc",
+		"breaking":    "Breaking changes",
+		"deprecation": "Deprecations",
+		"feature":     "Features and enhancements",
+		"bug":         "Fixes",
+		"docs":        "Documentation improvements",
+		noGroup:       "Miscellaneous",
 	}
 
 	groupOrder = []string{
 		">breaking",
 		">deprecation",
-		">feature",
-		">enhancement",
+		">feature", // This will include both >feature and >enhancement
 		">bug",
 		">docs",
 		noGroup,
+	}
+
+	labelMapping = map[string]string{
+		">bug":         "bug",
+		">docs":        "docs",
+		">feature":     "feature",
+		">enhancement": "feature",
+		">deprecation": "deprecation",
+		">breaking":    "breaking",
+		noGroup:        noGroup,
 	}
 
 	ignoredLabels = map[string]struct{}{
@@ -100,9 +104,9 @@ func groupPullRequests(prs []github.PullRequest) map[string][]github.PullRequest
 
 PR_LOOP:
 	for _, pr := range prs {
-		for _, lbl := range groupOrder {
-			if _, ok := pr.Labels[lbl]; ok {
-				groups[lbl] = append(groups[lbl], pr)
+		for prLabel, mappedLabel := range labelMapping {
+			if _, ok := pr.Labels[prLabel]; ok {
+				groups[mappedLabel] = append(groups[mappedLabel], pr)
 				continue PR_LOOP
 			}
 		}
@@ -115,22 +119,28 @@ PR_LOOP:
 
 func render(version string, groups map[string][]github.PullRequest) error {
 	params := struct {
-		Version     string
-		Repo        string
-		Groups      map[string][]github.PullRequest
-		GroupLabels map[string]string
-		GroupOrder  []string
+		Version      string
+		Repo         string
+		Groups       map[string][]github.PullRequest
+		GroupLabels  map[string]string
+		GroupOrder   []string
+		LabelMapping map[string]string
 	}{
-		Version:     version,
-		Repo:        repoName,
-		Groups:      groups,
-		GroupLabels: groupLabels,
-		GroupOrder:  groupOrder,
+		Version:      version,
+		Repo:         repoName,
+		Groups:       groups,
+		GroupLabels:  groupLabels,
+		GroupOrder:   groupOrder,
+		LabelMapping: labelMapping,
 	}
 
 	funcs := template.FuncMap{
 		"id": func(s string) string {
 			return strings.TrimPrefix(s, ">")
+		},
+		"replace": func(input, old, new string) string {
+			replacedString := strings.ReplaceAll(input, old, new)
+			return strings.ToLower(replacedString)
 		},
 	}
 
