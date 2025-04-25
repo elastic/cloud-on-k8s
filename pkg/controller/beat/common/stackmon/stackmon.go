@@ -103,6 +103,19 @@ func MetricBeat(ctx context.Context, client k8s.Client, beat *v1beta1.Beat) (sta
 		},
 	})
 
+	// Add shared volume for logs consumption.
+	sidecar.Container.VolumeMounts = append(sidecar.Container.VolumeMounts, corev1.VolumeMount{
+		Name:      "metricbeat-logs",
+		MountPath: "/usr/share/metricbeat/logs",
+		ReadOnly:  false,
+	})
+	sidecar.Volumes = append(sidecar.Volumes, corev1.Volume{
+		Name: "metricbeat-logs",
+		VolumeSource: corev1.VolumeSource{
+			EmptyDir: &corev1.EmptyDirVolumeSource{},
+		},
+	})
+
 	return sidecar, nil
 }
 

@@ -85,6 +85,11 @@ func TestMetricBeat(t *testing.T) {
 				ReadOnly:  false,
 				MountPath: "/var/shared",
 			},
+			{
+				Name:      "metricbeat-logs",
+				ReadOnly:  false,
+				MountPath: "/usr/share/metricbeat/logs",
+			},
 		},
 	}
 	beatYml := `http:
@@ -163,6 +168,10 @@ output:
 				},
 				{
 					Name:         "shared-data",
+					VolumeSource: corev1.VolumeSource{EmptyDir: &corev1.EmptyDirVolumeSource{}},
+				},
+				{
+					Name:         "metricbeat-logs",
 					VolumeSource: corev1.VolumeSource{EmptyDir: &corev1.EmptyDirVolumeSource{}},
 				},
 			},
