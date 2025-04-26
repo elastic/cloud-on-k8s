@@ -42,8 +42,8 @@ const (
 	ContainerName = "agent"
 
 	ConfigVolumeName = "config"
-	ConfigMountPath  = "/etc"
-	ConfigFileName   = "agent.yml"
+	ConfigMountPath  = "/etc/agent"
+	ConfigFileName   = "elastic-agent.yml"
 
 	FleetCertsVolumeName = "fleet-certs"
 	FleetCertsMountPath  = "/usr/share/fleet-server/config/http-certs"
@@ -234,8 +234,7 @@ func amendBuilderForFleetMode(params Params, fleetCerts *certificates.Certificat
 
 	builder = builder.
 		WithResources(defaultFleetResources).
-		// needed to pick up fleet-setup.yml correctly
-		WithEnv(corev1.EnvVar{Name: "CONFIG_PATH", Value: "/usr/share/elastic-agent"})
+		WithEnv(corev1.EnvVar{Name: "CONFIG_PATH", Value: "/etc/agent"})
 
 	return builder, nil
 }

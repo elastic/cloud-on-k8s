@@ -76,6 +76,17 @@ func buildConfig(params Params) ([]byte, error) {
 		return nil, err
 	}
 
+	// Agent in Fleet mode compares its default config with the one provided by the user. The default one only
+	// contains the fleet.enabled setting. If the user config does not contain this setting, it will be replaced by
+	// the default one. We want to avoid config file replacement by agents which will not work
+	// with config files mounted read-only from a secret.
+	if params.Agent.Spec.FleetModeEnabled() {
+		cfg.MergeWith(settings.MustCanonicalConfig(map[string]interface{}{
+			"fleet": map[string]interface{}{
+				"enabled": true,
+			}}))
+	}
+
 	if err = cfg.MergeWith(userConfig); err != nil {
 		return nil, err
 	}

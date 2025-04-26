@@ -142,7 +142,7 @@ func Test_amendBuilderForFleetMode(t *testing.T) {
 					},
 					{
 						Name:  "CONFIG_PATH",
-						Value: "/usr/share/elastic-agent",
+						Value: "/etc/agent",
 					},
 				}
 
@@ -236,7 +236,7 @@ func Test_amendBuilderForFleetMode(t *testing.T) {
 					},
 					{
 						Name:  "CONFIG_PATH",
-						Value: "/usr/share/elastic-agent",
+						Value: "/etc/agent",
 					},
 				}
 
@@ -272,7 +272,7 @@ func Test_amendBuilderForFleetMode(t *testing.T) {
 				ps.Containers[0].Env = []corev1.EnvVar{
 					{
 						Name:  "CONFIG_PATH",
-						Value: "/usr/share/elastic-agent",
+						Value: "/etc/agent",
 					},
 				}
 
@@ -361,7 +361,7 @@ func Test_amendBuilderForFleetMode(t *testing.T) {
 					},
 					{
 						Name:  "CONFIG_PATH",
-						Value: "/usr/share/elastic-agent",
+						Value: "/etc/agent",
 					},
 				}
 

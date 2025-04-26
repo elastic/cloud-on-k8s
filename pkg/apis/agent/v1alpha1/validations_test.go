@@ -442,49 +442,6 @@ func Test_checkESRefsNamed(t *testing.T) {
 	}
 }
 
-func Test_checkEmptyConfigForFleetMode(t *testing.T) {
-	for _, tt := range []struct {
-		name    string
-		a       *Agent
-		wantErr bool
-	}{
-		{
-			name: "no config: OK",
-			a: &Agent{
-				Spec: AgentSpec{
-					Mode: AgentFleetMode,
-				},
-			},
-			wantErr: false,
-		},
-		{
-			name: "config: NOK",
-			a: &Agent{
-				Spec: AgentSpec{
-					Mode:   AgentFleetMode,
-					Config: &commonv1.Config{},
-				},
-			},
-			wantErr: true,
-		},
-		{
-			name: "configref: NOK",
-			a: &Agent{
-				Spec: AgentSpec{
-					Mode:      AgentFleetMode,
-					ConfigRef: &commonv1.ConfigSource{},
-				},
-			},
-			wantErr: true,
-		},
-	} {
-		t.Run(tt.name, func(t *testing.T) {
-			got := checkEmptyConfigForFleetMode(tt.a)
-			assert.Equal(t, tt.wantErr, len(got) > 0)
-		})
-	}
-}
-
 func Test_checkFleetServerOnlyInFleetMode(t *testing.T) {
 	for _, tt := range []struct {
 		name    string

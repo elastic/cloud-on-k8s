@@ -26,7 +26,6 @@ var (
 		checkESRefsNamed,
 		checkSingleConfigSource,
 		checkSpec,
-		checkEmptyConfigForFleetMode,
 		checkFleetServerOnlyInFleetMode,
 		checkHTTPConfigOnlyForFleetServer,
 		checkFleetServerOrFleetServerRef,
@@ -183,29 +182,6 @@ func checkSpec(a *Agent) field.ErrorList {
 		}
 	}
 	return nil
-}
-
-func checkEmptyConfigForFleetMode(a *Agent) field.ErrorList {
-	var errors field.ErrorList
-	if a.Spec.FleetModeEnabled() {
-		if a.Spec.Config != nil {
-			errors = append(errors, field.Invalid(
-				field.NewPath("spec").Child("config"),
-				a.Spec.Config,
-				"remove config, it can't be set in fleet mode",
-			))
-		}
-
-		if a.Spec.ConfigRef != nil {
-			errors = append(errors, field.Invalid(
-				field.NewPath("spec").Child("configRef"),
-				a.Spec.ConfigRef,
-				"remove configRef, it can't be set in fleet mode",
-			))
-		}
-	}
-
-	return errors
 }
 
 func checkFleetServerOnlyInFleetMode(a *Agent) field.ErrorList {
