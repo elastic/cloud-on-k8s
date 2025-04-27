@@ -12,6 +12,7 @@ import (
 	apiequality "k8s.io/apimachinery/pkg/api/equality"
 	"k8s.io/apimachinery/pkg/util/validation/field"
 
+	"github.com/blang/semver/v4"
 	commonv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/common/v1"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/version"
 )
@@ -26,6 +27,7 @@ var (
 		checkESRefsNamed,
 		checkSingleConfigSource,
 		checkSpec,
+		checkEmptyConfigForFleetMode,
 		checkFleetServerOnlyInFleetMode,
 		checkHTTPConfigOnlyForFleetServer,
 		checkFleetServerOrFleetServerRef,
@@ -182,6 +184,37 @@ func checkSpec(a *Agent) field.ErrorList {
 		}
 	}
 	return nil
+}
+
+func checkEmptyConfigForFleetMode(a *Agent) field.ErrorList {
+	var errors field.ErrorList
+	v, err := semver.Parse(a.Spec.Version)
+	if err != nil {
+		return field.ErrorList{field.Invalid(
+			field.NewPath("spec").Child("version"),
+			a.Spec.Version,
+			"invalid version",
+		)}
+	}
+	if a.Spec.FleetModeEnabled() && v.LT(FleetAdvancedConfigMinVersion) {
+		if a.Spec.Config != nil {
+			errors = append(errors, field.Invalid(
+				field.NewPath("spec").Child("config"),
+				a.Spec.Config,
+				"remove config, it can't be set in fleet mode",
+			))
+		}
+
+		if a.Spec.ConfigRef != nil {
+			errors = append(errors, field.Invalid(
+				field.NewPath("spec").Child("configRef"),
+				a.Spec.ConfigRef,
+				"remove configRef, it can't be set in fleet mode",
+			))
+		}
+	}
+
+	return errors
 }
 
 func checkFleetServerOnlyInFleetMode(a *Agent) field.ErrorList {
