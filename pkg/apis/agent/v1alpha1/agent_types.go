@@ -221,7 +221,7 @@ const (
 // avoids replacing the local configuration file with the default, if the default is contained in the local configuration file.
 // Without it Elastic Agent will try to replace and rename the local configuration file which fails in containerized environments as
 // the file is typically mounted as read-only.
-// Elastic Agent advanced configuraiton is documented here: https://www.elastic.co/docs/reference/fleet/advanced-kubernetes-managed-by-fleet
+// Elastic Agent advanced configuration is documented here: https://www.elastic.co/docs/reference/fleet/advanced-kubernetes-managed-by-fleet
 var FleetAdvancedConfigMinVersion = semver.MustParse("8.13.0")
 
 // FleetModeEnabled returns true iff the Agent is running in fleet mode.
