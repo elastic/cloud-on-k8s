@@ -24,6 +24,7 @@ import (
 	commonv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/common/v1"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/certificates"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/defaults"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/version"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/k8s"
 )
 
@@ -63,8 +64,46 @@ func Test_amendBuilderForFleetMode(t *testing.T) {
 		wantPodSpec corev1.PodSpec
 	}{
 		{
+			name: "running older versions of Elastic Agent in Fleet mode",
+			params: Params{
+				AgentVersion: version.MinFor(8, 0, 0),
+				Agent: agentv1alpha1.Agent{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "agent",
+						Namespace: "default",
+					},
+					Spec: agentv1alpha1.AgentSpec{
+						Mode: agentv1alpha1.AgentFleetMode,
+					},
+				},
+				Client: k8s.NewFakeClient(),
+			},
+			fleetCerts: fleetCertsFixture,
+			wantPodSpec: generatePodSpec(func(ps corev1.PodSpec) corev1.PodSpec {
+				ps.Containers[0].Env = []corev1.EnvVar{
+					{
+						Name:  "CONFIG_PATH",
+						Value: "/usr/share/elastic-agent",
+					},
+				}
+
+				ps.Containers[0].Resources = corev1.ResourceRequirements{
+					Limits: map[corev1.ResourceName]resource.Quantity{
+						corev1.ResourceMemory: resource.MustParse("1Gi"),
+						corev1.ResourceCPU:    resource.MustParse("200m"),
+					},
+					Requests: map[corev1.ResourceName]resource.Quantity{
+						corev1.ResourceMemory: resource.MustParse("1Gi"),
+						corev1.ResourceCPU:    resource.MustParse("200m"),
+					},
+				}
+				return ps
+			}),
+		},
+		{
 			name: "running elastic agent, with fleet server, without es/kb association",
 			params: Params{
+				AgentVersion: version.MinFor(9, 0, 0),
 				Agent: agentv1alpha1.Agent{
 					ObjectMeta: metav1.ObjectMeta{
 						Name:      "agent",
@@ -163,6 +202,7 @@ func Test_amendBuilderForFleetMode(t *testing.T) {
 		{
 			name: "running elastic agent, with fleet server, without es/kb association, with well known CA",
 			params: Params{
+				AgentVersion: version.MinFor(9, 0, 0),
 				Agent: agentv1alpha1.Agent{
 					ObjectMeta: metav1.ObjectMeta{
 						Name:      "agent",
@@ -257,6 +297,7 @@ func Test_amendBuilderForFleetMode(t *testing.T) {
 		{
 			name: "running elastic agent, without running fleet server without kb association",
 			params: Params{
+				AgentVersion: version.MinFor(9, 0, 0),
 				Agent: agentv1alpha1.Agent{
 					ObjectMeta: metav1.ObjectMeta{
 						Name: "agent",
@@ -293,6 +334,7 @@ func Test_amendBuilderForFleetMode(t *testing.T) {
 		{
 			name: "running elastic agent, with fleet server, without es/kb association and without TLS",
 			params: Params{
+				AgentVersion: version.MinFor(9, 0, 0),
 				Agent: agentv1alpha1.Agent{
 					ObjectMeta: metav1.ObjectMeta{
 						Name:      "agent",

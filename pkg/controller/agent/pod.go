@@ -154,13 +154,9 @@ func buildPodTemplate(params Params, fleetCerts *certificates.CertificatesSecret
 			WithArgs("-e", "-c", path.Join(ConfigMountPath, ConfigFileName))
 	}
 
-	v, err := version.Parse(spec.Version)
-	if err != nil {
-		return corev1.PodTemplateSpec{}, err // error unlikely and should have been caught during validation
-	}
 	// volume with agent data path if version > 7.15 (available since 7.13 but non-functional as agent tries to fork child
 	// processes in data path directory and hostPath volumes are always mounted non-exec)
-	if v.GTE(version.MinFor(7, 15, 0)) {
+	if params.AgentVersion.GTE(version.MinFor(7, 15, 0)) {
 		vols = append(vols, createDataVolume(params))
 	}
 
@@ -181,7 +177,7 @@ func buildPodTemplate(params Params, fleetCerts *certificates.CertificatesSecret
 	builder = builder.
 		WithLabels(agentLabels).
 		WithAnnotations(annotations).
-		WithDockerImage(spec.Image, container.ImageRepository(container.AgentImageFor(v), v)).
+		WithDockerImage(spec.Image, container.ImageRepository(container.AgentImageFor(params.AgentVersion), params.AgentVersion)).
 		WithAutomountServiceAccountToken().
 		WithVolumeLikes(vols...).
 		WithEnv(
@@ -193,6 +189,15 @@ func buildPodTemplate(params Params, fleetCerts *certificates.CertificatesSecret
 		)
 
 	return builder.PodTemplate, nil
+}
+
+func fleetConfigPath(v version.Version) string {
+	if v.LT(agentv1alpha1.FleetAdvancedConfigMinVersion) {
+		// default to the in-container config directory for older versions of Elastic Agent
+		// that still try to rewrite the config file in Fleet mode during enrollment.
+		return "/usr/share/elastic-agent"
+	}
+	return ConfigMountPath
 }
 
 func amendBuilderForFleetMode(params Params, fleetCerts *certificates.CertificatesSecret, fleetToken EnrollmentAPIKey, builder *defaults.PodTemplateBuilder, configHash hash.Hash) (*defaults.PodTemplateBuilder, error) {
@@ -234,7 +239,7 @@ func amendBuilderForFleetMode(params Params, fleetCerts *certificates.Certificat
 
 	builder = builder.
 		WithResources(defaultFleetResources).
-		WithEnv(corev1.EnvVar{Name: "CONFIG_PATH", Value: "/etc/agent"})
+		WithEnv(corev1.EnvVar{Name: "CONFIG_PATH", Value: fleetConfigPath(params.AgentVersion)})
 
 	return builder, nil
 }
