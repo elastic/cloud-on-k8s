@@ -81,10 +81,12 @@ func buildConfig(params Params) ([]byte, error) {
 	// the default one. We want to avoid config file replacement by agents which will not work
 	// with config files mounted read-only from a secret.
 	if params.Agent.Spec.FleetModeEnabled() {
-		cfg.MergeWith(settings.MustCanonicalConfig(map[string]interface{}{
+		if err := cfg.MergeWith(settings.MustCanonicalConfig(map[string]interface{}{
 			"fleet": map[string]interface{}{
 				"enabled": true,
-			}}))
+			}})); err != nil {
+			return nil, err
+		}
 	}
 
 	if err = cfg.MergeWith(userConfig); err != nil {
