@@ -166,7 +166,7 @@ func getUserConfig(params Params) (*settings.CanonicalConfig, error) {
 	if params.Agent.Spec.Config != nil {
 		return settings.NewCanonicalConfigFrom(params.Agent.Spec.Config.Data)
 	}
-	return common.ParseConfigRef(params, &params.Agent, params.Agent.Spec.ConfigRef, ConfigFileName)
+	return common.ParseConfigRef(params, &params.Agent, params.Agent.Spec.ConfigRef, ConfigRefFileName)
 }
 
 // extractPodConnectionSettings extracts connections settings to be used inside an Elastic Agent Pod. That is without

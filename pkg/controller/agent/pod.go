@@ -43,7 +43,10 @@ const (
 
 	ConfigVolumeName = "config"
 	ConfigMountPath  = "/etc/agent"
-	ConfigFileName   = "elastic-agent.yml"
+	// ConfigSecretName is the name of config file projected into the agent pods.
+	ConfigFileName = "elastic-agent.yml"
+	// ConfigRefFileName is the name of the config file as documented in the ECK docs that users should use when relying on config refs.
+	ConfigRefFileName = "agent.yml"
 
 	FleetCertsVolumeName = "fleet-certs"
 	FleetCertsMountPath  = "/usr/share/fleet-server/config/http-certs"
