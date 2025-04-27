@@ -9,10 +9,10 @@ import (
 	"reflect"
 	"strings"
 
+	"github.com/blang/semver/v4"
 	apiequality "k8s.io/apimachinery/pkg/api/equality"
 	"k8s.io/apimachinery/pkg/util/validation/field"
 
-	"github.com/blang/semver/v4"
 	commonv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/common/v1"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/version"
 )
