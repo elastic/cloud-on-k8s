@@ -16,10 +16,10 @@ import (
 
 	"github.com/go-test/deep"
 
-	agentv1alpha1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/agent/v1alpha1"
-	eckadmission "github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/webhook/admission"
-	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/k8s"
-	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/set"
+	agentv1alpha1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/agent/v1alpha1"
+	eckadmission "github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/webhook/admission"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/k8s"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/set"
 )
 
 func asJSON(obj interface{}) []byte {

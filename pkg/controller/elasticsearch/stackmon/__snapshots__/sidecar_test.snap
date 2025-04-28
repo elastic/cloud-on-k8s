@@ -296,6 +296,10 @@ setup.template.settings:
      {
       "mountPath": "/usr/share/metricbeat/data",
       "name": "metricbeat-data"
+     },
+     {
+      "mountPath": "/usr/share/metricbeat/logs",
+      "name": "metricbeat-logs"
      }
     ]
    }
@@ -318,6 +322,10 @@ setup.template.settings:
    {
     "emptyDir": {},
     "name": "metricbeat-data"
+   },
+   {
+    "emptyDir": {},
+    "name": "metricbeat-logs"
    },
    {
     "name": "sample-metricbeat-config",
@@ -425,6 +433,10 @@ setup.template.settings:
       "name": "filebeat-data"
      },
      {
+      "mountPath": "/usr/share/filebeat/logs",
+      "name": "filebeat-logs"
+     },
+     {
       "mountPath": "/usr/share/elasticsearch/logs",
       "name": "elasticsearch-logs"
      }
@@ -442,6 +454,10 @@ setup.template.settings:
    {
     "emptyDir": {},
     "name": "filebeat-data"
+   },
+   {
+    "emptyDir": {},
+    "name": "filebeat-logs"
    },
    {
     "name": "sample-filebeat-config",
@@ -552,6 +568,10 @@ setup.template.settings:
      {
       "mountPath": "/usr/share/metricbeat/data",
       "name": "metricbeat-data"
+     },
+     {
+      "mountPath": "/usr/share/metricbeat/logs",
+      "name": "metricbeat-logs"
      }
     ]
    },
@@ -628,6 +648,10 @@ setup.template.settings:
       "name": "filebeat-data"
      },
      {
+      "mountPath": "/usr/share/filebeat/logs",
+      "name": "filebeat-logs"
+     },
+     {
       "mountPath": "/usr/share/elasticsearch/logs",
       "name": "elasticsearch-logs"
      }
@@ -655,7 +679,15 @@ setup.template.settings:
    },
    {
     "emptyDir": {},
+    "name": "filebeat-logs"
+   },
+   {
+    "emptyDir": {},
     "name": "metricbeat-data"
+   },
+   {
+    "emptyDir": {},
+    "name": "metricbeat-logs"
    },
    {
     "name": "sample-filebeat-config",
@@ -773,6 +805,10 @@ setup.template.settings:
      {
       "mountPath": "/usr/share/metricbeat/data",
       "name": "metricbeat-data"
+     },
+     {
+      "mountPath": "/usr/share/metricbeat/logs",
+      "name": "metricbeat-logs"
      }
     ]
    },
@@ -849,6 +885,10 @@ setup.template.settings:
       "name": "filebeat-data"
      },
      {
+      "mountPath": "/usr/share/filebeat/logs",
+      "name": "filebeat-logs"
+     },
+     {
       "mountPath": "/usr/share/elasticsearch/logs",
       "name": "elasticsearch-logs"
      }
@@ -883,7 +923,252 @@ setup.template.settings:
    },
    {
     "emptyDir": {},
+    "name": "filebeat-logs"
+   },
+   {
+    "emptyDir": {},
     "name": "metricbeat-data"
+   },
+   {
+    "emptyDir": {},
+    "name": "metricbeat-logs"
+   },
+   {
+    "name": "sample-filebeat-config",
+    "secret": {
+     "optional": false,
+     "secretName": "sample-es-monitoring-filebeat-config"
+    }
+   },
+   {
+    "name": "sample-metricbeat-config",
+    "secret": {
+     "optional": false,
+     "secretName": "sample-es-monitoring-metricbeat-config"
+    }
+   }
+  ]
+ }
+}
+---
+
+[TestWithMonitoring/with_metrics_and_logs_monitoring_and_read_only_root_filesystem - 1]
+{
+ "metadata": {
+  "annotations": {
+   "elasticsearch.k8s.elastic.co/monitoring-config-hash": "1805099278"
+  },
+  "creationTimestamp": null
+ },
+ "spec": {
+  "automountServiceAccountToken": false,
+  "containers": [
+   {
+    "env": [
+     {
+      "name": "ES_LOG_STYLE",
+      "value": "file"
+     }
+    ],
+    "name": "elasticsearch",
+    "resources": {}
+   },
+   {
+    "args": [
+     "-c",
+     "/etc/metricbeat-config/metricbeat.yml",
+     "-e"
+    ],
+    "env": [
+     {
+      "name": "POD_IP",
+      "valueFrom": {
+       "fieldRef": {
+        "apiVersion": "v1",
+        "fieldPath": "status.podIP"
+       }
+      }
+     },
+     {
+      "name": "POD_NAME",
+      "valueFrom": {
+       "fieldRef": {
+        "apiVersion": "v1",
+        "fieldPath": "metadata.name"
+       }
+      }
+     },
+     {
+      "name": "NODE_NAME",
+      "valueFrom": {
+       "fieldRef": {
+        "apiVersion": "v1",
+        "fieldPath": "spec.nodeName"
+       }
+      }
+     },
+     {
+      "name": "NAMESPACE",
+      "valueFrom": {
+       "fieldRef": {
+        "apiVersion": "v1",
+        "fieldPath": "metadata.namespace"
+       }
+      }
+     }
+    ],
+    "image": "docker.elastic.co/beats/metricbeat:7.14.0",
+    "name": "metricbeat",
+    "resources": {},
+    "securityContext": {
+     "allowPrivilegeEscalation": false,
+     "capabilities": {
+      "drop": [
+       "ALL"
+      ]
+     },
+     "privileged": false,
+     "readOnlyRootFilesystem": true
+    },
+    "volumeMounts": [
+     {
+      "mountPath": "/etc/metricbeat-config",
+      "name": "sample-metricbeat-config",
+      "readOnly": true
+     },
+     {
+      "mountPath": "/mnt/elastic-internal/es-monitoring-association/observability/monitoring/certs",
+      "name": "es-monitoring-03f555-ca",
+      "readOnly": true
+     },
+     {
+      "mountPath": "/mnt/elastic-internal/es-monitoring/aerospace/sample/certs",
+      "name": "es-monitoring-local-ca",
+      "readOnly": true
+     },
+     {
+      "mountPath": "/usr/share/metricbeat/data",
+      "name": "metricbeat-data"
+     },
+     {
+      "mountPath": "/usr/share/metricbeat/logs",
+      "name": "metricbeat-logs"
+     }
+    ]
+   },
+   {
+    "args": [
+     "-c",
+     "/etc/filebeat-config/filebeat.yml",
+     "-e"
+    ],
+    "env": [
+     {
+      "name": "POD_IP",
+      "valueFrom": {
+       "fieldRef": {
+        "apiVersion": "v1",
+        "fieldPath": "status.podIP"
+       }
+      }
+     },
+     {
+      "name": "POD_NAME",
+      "valueFrom": {
+       "fieldRef": {
+        "apiVersion": "v1",
+        "fieldPath": "metadata.name"
+       }
+      }
+     },
+     {
+      "name": "NODE_NAME",
+      "valueFrom": {
+       "fieldRef": {
+        "apiVersion": "v1",
+        "fieldPath": "spec.nodeName"
+       }
+      }
+     },
+     {
+      "name": "NAMESPACE",
+      "valueFrom": {
+       "fieldRef": {
+        "apiVersion": "v1",
+        "fieldPath": "metadata.namespace"
+       }
+      }
+     }
+    ],
+    "image": "docker.elastic.co/beats/filebeat:7.14.0",
+    "name": "filebeat",
+    "resources": {},
+    "securityContext": {
+     "allowPrivilegeEscalation": false,
+     "capabilities": {
+      "drop": [
+       "ALL"
+      ]
+     },
+     "privileged": false,
+     "readOnlyRootFilesystem": true
+    },
+    "volumeMounts": [
+     {
+      "mountPath": "/etc/filebeat-config",
+      "name": "sample-filebeat-config",
+      "readOnly": true
+     },
+     {
+      "mountPath": "/mnt/elastic-internal/es-monitoring-association/observability/monitoring/certs",
+      "name": "es-monitoring-03f555-ca",
+      "readOnly": true
+     },
+     {
+      "mountPath": "/usr/share/filebeat/data",
+      "name": "filebeat-data"
+     },
+     {
+      "mountPath": "/usr/share/filebeat/logs",
+      "name": "filebeat-logs"
+     },
+     {
+      "mountPath": "/usr/share/elasticsearch/logs",
+      "name": "elasticsearch-logs"
+     }
+    ]
+   }
+  ],
+  "volumes": [
+   {
+    "name": "es-monitoring-03f555-ca",
+    "secret": {
+     "optional": false,
+     "secretName": "sample-es-logs-observability-monitoring-ca"
+    }
+   },
+   {
+    "name": "es-monitoring-local-ca",
+    "secret": {
+     "optional": false,
+     "secretName": "sample-es-http-certs-public"
+    }
+   },
+   {
+    "emptyDir": {},
+    "name": "filebeat-data"
+   },
+   {
+    "emptyDir": {},
+    "name": "filebeat-logs"
+   },
+   {
+    "emptyDir": {},
+    "name": "metricbeat-data"
+   },
+   {
+    "emptyDir": {},
+    "name": "metricbeat-logs"
    },
    {
     "name": "sample-filebeat-config",

@@ -14,16 +14,16 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	crclient "sigs.k8s.io/controller-runtime/pkg/client"
 
-	esv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/elasticsearch/v1"
-	controllerscheme "github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/scheme"
-	settings2 "github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/settings"
-	sset "github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/statefulset"
-	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/client"
-	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/label"
-	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/nodespec"
-	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/settings"
-	es_sset "github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/sset"
-	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/k8s"
+	esv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/elasticsearch/v1"
+	controllerscheme "github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/scheme"
+	settings2 "github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/settings"
+	sset "github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/statefulset"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/client"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/label"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/nodespec"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/settings"
+	es_sset "github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/sset"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/k8s"
 )
 
 func TestSetupMinimumMasterNodesConfig(t *testing.T) {

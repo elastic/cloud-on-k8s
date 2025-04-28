@@ -4,18 +4,18 @@ go 1.23.0
 
 require (
 	cloud.google.com/go/storage v1.51.0
-	github.com/elastic/cloud-on-k8s/v2 v2.16.1
+	github.com/elastic/cloud-on-k8s/v3 v3.0.0
 	github.com/google/go-cmp v0.7.0
 	github.com/spf13/cobra v1.9.1
 	github.com/spf13/viper v1.20.1
 	google.golang.org/api v0.227.0
 	gopkg.in/yaml.v3 v3.0.1
-	helm.sh/helm/v3 v3.17.2
+	helm.sh/helm/v3 v3.17.3
 )
 
-replace github.com/elastic/cloud-on-k8s/v2 => ../../..
+replace github.com/elastic/cloud-on-k8s/v3 => ../../..
 
-// pulled by github.com/google/go-containerregistry pulled by github.com/elastic/cloud-on-k8s/v2
+// pulled by github.com/google/go-containerregistry pulled by github.com/elastic/cloud-on-k8s/v3
 // incompatible with oras.land/oras-go v1.2.3 pulled by helm.sh/helm/v3
 exclude github.com/docker/docker v24.0.0+incompatible
 

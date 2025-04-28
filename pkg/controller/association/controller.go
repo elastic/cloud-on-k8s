@@ -11,11 +11,11 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 	"sigs.k8s.io/controller-runtime/pkg/source"
 
-	commonv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/common/v1"
-	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common"
-	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/operator"
-	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/watches"
-	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/rbac"
+	commonv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/common/v1"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/operator"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/watches"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/rbac"
 )
 
 // AddAssociationController sets up and starts an association controller for the given associationInfo.

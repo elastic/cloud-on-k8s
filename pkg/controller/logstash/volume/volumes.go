@@ -9,12 +9,12 @@ import (
 
 	corev1 "k8s.io/api/core/v1"
 
-	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/certificates"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/certificates"
 
-	commonv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/common/v1"
-	logstashv1alpha1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/logstash/v1alpha1"
-	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/volume"
-	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/set"
+	commonv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/common/v1"
+	logstashv1alpha1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/logstash/v1alpha1"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/volume"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/set"
 )
 
 // AppendDefaultPVCs appends defaults PVCs to a given list of PVCs.

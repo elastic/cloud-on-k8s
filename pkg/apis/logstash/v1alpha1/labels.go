@@ -5,8 +5,8 @@
 package v1alpha1
 
 import (
-	commonv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/common/v1"
-	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/maps"
+	commonv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/common/v1"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/maps"
 )
 
 // GetIdentityLabels will return the common Elastic assigned labels for Logstash

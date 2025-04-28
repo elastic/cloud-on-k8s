@@ -26,15 +26,15 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
-	commonv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/common/v1"
-	logstashv1alpha1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/logstash/v1alpha1"
-	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common"
-	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/comparison"
-	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/expectations"
-	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/hash"
-	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/watches"
-	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/logstash/labels"
-	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/k8s"
+	commonv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/common/v1"
+	logstashv1alpha1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/logstash/v1alpha1"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/comparison"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/expectations"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/hash"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/watches"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/logstash/labels"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/k8s"
 )
 
 var (

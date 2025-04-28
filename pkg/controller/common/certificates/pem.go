@@ -19,7 +19,7 @@ import (
 	"github.com/pkg/errors"
 	corev1 "k8s.io/api/core/v1"
 
-	ulog "github.com/elastic/cloud-on-k8s/v2/pkg/utils/log"
+	ulog "github.com/elastic/cloud-on-k8s/v3/pkg/utils/log"
 )
 
 var ErrEncryptedPrivateKey = errors.New("encrypted private key")

@@ -14,9 +14,9 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
-	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/k8s"
-	ulog "github.com/elastic/cloud-on-k8s/v2/pkg/utils/log"
-	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/stringsutil"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/k8s"
+	ulog "github.com/elastic/cloud-on-k8s/v3/pkg/utils/log"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/stringsutil"
 )
 
 // PodName returns the name of the pod with the given ordinal for this StatefulSet.

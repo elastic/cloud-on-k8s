@@ -10,10 +10,10 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 
-	kbv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/kibana/v1"
-	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/defaults"
-	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/volume"
-	kbvolume "github.com/elastic/cloud-on-k8s/v2/pkg/controller/kibana/volume"
+	kbv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/kibana/v1"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/defaults"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/volume"
+	kbvolume "github.com/elastic/cloud-on-k8s/v3/pkg/controller/kibana/volume"
 )
 
 var (

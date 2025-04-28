@@ -11,8 +11,8 @@ import (
 
 	"k8s.io/apimachinery/pkg/util/rand"
 
-	"github.com/elastic/cloud-on-k8s/v2/test/e2e/test"
-	"github.com/elastic/cloud-on-k8s/v2/test/e2e/test/helper"
+	"github.com/elastic/cloud-on-k8s/v3/test/e2e/test"
+	"github.com/elastic/cloud-on-k8s/v3/test/e2e/test/helper"
 )
 
 const recipesFile = "../../config/recipes/autopilot/fleet-kubernetes-integration.yaml"

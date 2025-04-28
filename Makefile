@@ -51,10 +51,10 @@ OPERATOR_IMAGE      ?= $(IMAGE_NAME):$(IMAGE_TAG)
 print-%:
 	@ echo $($*)
 
-GO_LDFLAGS := -X github.com/elastic/cloud-on-k8s/v2/pkg/about.version=$(VERSION) \
-	-X github.com/elastic/cloud-on-k8s/v2/pkg/about.buildHash=$(SHA1) \
-	-X github.com/elastic/cloud-on-k8s/v2/pkg/about.buildDate=$(shell date -u +'%Y-%m-%dT%H:%M:%SZ') \
-	-X github.com/elastic/cloud-on-k8s/v2/pkg/about.buildSnapshot=$(SNAPSHOT)
+GO_LDFLAGS := -X github.com/elastic/cloud-on-k8s/v3/pkg/about.version=$(VERSION) \
+	-X github.com/elastic/cloud-on-k8s/v3/pkg/about.buildHash=$(SHA1) \
+	-X github.com/elastic/cloud-on-k8s/v3/pkg/about.buildDate=$(shell date -u +'%Y-%m-%dT%H:%M:%SZ') \
+	-X github.com/elastic/cloud-on-k8s/v3/pkg/about.buildSnapshot=$(SNAPSHOT)
 
 # options for 'go test'. for instance, set to "-race" to enable the race checker
 TEST_OPTS ?=
@@ -86,7 +86,7 @@ go-build: go-generate
 	go build \
 		-mod readonly \
 		-ldflags "$(GO_LDFLAGS)" -tags="$(GO_TAGS)" -a \
-		 -o elastic-operator github.com/elastic/cloud-on-k8s/v2/cmd
+		 -o elastic-operator github.com/elastic/cloud-on-k8s/v3/cmd
 
 reattach-pv:
 	# just check that reattach-pv still compiles

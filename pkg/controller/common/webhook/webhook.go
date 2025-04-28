@@ -18,10 +18,10 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/webhook"
 	"sigs.k8s.io/controller-runtime/pkg/webhook/admission"
 
-	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/license"
-	eckadmission "github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/webhook/admission"
-	ulog "github.com/elastic/cloud-on-k8s/v2/pkg/utils/log"
-	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/set"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/license"
+	eckadmission "github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/webhook/admission"
+	ulog "github.com/elastic/cloud-on-k8s/v3/pkg/utils/log"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/set"
 )
 
 // validatableObject is the object to be validated, along with methods

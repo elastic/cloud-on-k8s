@@ -10,8 +10,8 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/elastic/cloud-on-k8s/v2/hack/operatorhub/cmd/flags"
-	"github.com/elastic/cloud-on-k8s/v2/hack/operatorhub/internal/container"
+	"github.com/elastic/cloud-on-k8s/v3/hack/operatorhub/cmd/flags"
+	"github.com/elastic/cloud-on-k8s/v3/hack/operatorhub/internal/container"
 )
 
 // Command will return the container command
@@ -68,6 +68,14 @@ func Command() *cobra.Command {
 		"force will force the attempted pushing of remote images, even when the exact version is found remotely. (OHUB_FORCE)",
 	)
 
+	cmd.PersistentFlags().BoolVarP(
+		&flags.PreRelease,
+		flags.PreReleaseFlag,
+		"P",
+		false,
+		"pre-release will pull eck images from the pre release repository (docker.elastic.co/eck-snapshots)",
+	)
+
 	publishCmd.Flags().DurationVarP(
 		&flags.ScanTimeout,
 		flags.ScanTimeoutFlag,
@@ -104,5 +112,6 @@ func commonConfig() container.CommonConfig {
 		ProjectID:           flags.ProjectID,
 		RedhatCatalogAPIKey: flags.APIKey,
 		RegistryPassword:    flags.RegistryPassword,
+		PreRelease:          flags.PreRelease,
 	}
 }

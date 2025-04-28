@@ -11,10 +11,10 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/utils/ptr"
 
-	esv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/elasticsearch/v1"
-	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/version"
-	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/securitycontext"
-	"github.com/elastic/cloud-on-k8s/v2/test/e2e/test"
+	esv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/elasticsearch/v1"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/version"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/securitycontext"
+	"github.com/elastic/cloud-on-k8s/v3/test/e2e/test"
 )
 
 func CheckContainerSecurityContext(es esv1.Elasticsearch, k *test.K8sClient) test.Step {

@@ -13,16 +13,16 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 
-	commonv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/common/v1"
-	kibanav1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/kibana/v1"
-	policyv1alpha1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/stackconfigpolicy/v1alpha1"
-	commonannotation "github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/annotation"
-	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/hash"
-	commonlabels "github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/labels"
-	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/reconciler"
-	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/filesettings"
-	kblabel "github.com/elastic/cloud-on-k8s/v2/pkg/controller/kibana/label"
-	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/k8s"
+	commonv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/common/v1"
+	kibanav1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/kibana/v1"
+	policyv1alpha1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/stackconfigpolicy/v1alpha1"
+	commonannotation "github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/annotation"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/hash"
+	commonlabels "github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/labels"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/reconciler"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/filesettings"
+	kblabel "github.com/elastic/cloud-on-k8s/v3/pkg/controller/kibana/label"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/k8s"
 )
 
 const (
