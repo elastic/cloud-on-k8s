@@ -15,6 +15,7 @@ import (
 	commonv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/common/v1"
 	kbv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/kibana/v1"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/association"
+	beatstackmon "github.com/elastic/cloud-on-k8s/v3/pkg/controller/beat/common/stackmon"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/defaults"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/stackmon"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/stackmon/monitoring"
@@ -122,6 +123,11 @@ func WithMonitoring(ctx context.Context, client k8s.Client, builder *defaults.Po
 			return nil, err
 		}
 
+		// Add metricbeat logs volume
+		metricbeatLogsVolume := volume.NewEmptyDirVolume(beatstackmon.MetricbeatLogsVolumeName, beatstackmon.MetricbeatLogsVolumeMountPath)
+		volumes = append(volumes, metricbeatLogsVolume.Volume())
+		b.Container.VolumeMounts = append(b.Container.VolumeMounts, metricbeatLogsVolume.VolumeMount())
+
 		volumes = append(volumes, b.Volumes...)
 		builder.WithContainers(b.Container)
 		configHash.Write(b.ConfigHash.Sum(nil))
@@ -132,6 +138,11 @@ func WithMonitoring(ctx context.Context, client k8s.Client, builder *defaults.Po
 		if err != nil {
 			return nil, err
 		}
+
+		// Add filebeat logs volume
+		filebeatLogsVolume := volume.NewEmptyDirVolume("filebeat-logs", "/usr/share/filebeat/logs")
+		volumes = append(volumes, filebeatLogsVolume.Volume())
+		b.Container.VolumeMounts = append(b.Container.VolumeMounts, filebeatLogsVolume.VolumeMount())
 
 		// create a logs volume shared between Kibana and Filebeat
 		logsVolume := volume.NewEmptyDirVolume(kibanaLogsVolumeName, kibanaLogsMountPath)

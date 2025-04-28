@@ -142,6 +142,17 @@ func TestWithMonitoring(t *testing.T) {
 			},
 			apiServerConfig: GetAPIServerWithSSLEnabled(false),
 		},
+		{
+			name: "with metrics and logs monitoring with readonly root filesystem",
+			ls: func() logstashv1alpha1.Logstash {
+				sampleLs.Spec.Monitoring.Metrics.ElasticsearchRefs = monitoringEsRef
+				monitoring.GetMetricsAssociation(&sampleLs)[0].SetAssociationConf(&monitoringAssocConf)
+				sampleLs.Spec.Monitoring.Logs.ElasticsearchRefs = monitoringEsRef
+				monitoring.GetLogsAssociation(&sampleLs)[0].SetAssociationConf(&logsAssocConf)
+				return sampleLs
+			},
+			apiServerConfig: GetAPIServerWithSSLEnabled(false),
+		},
 	}
 
 	for _, tc := range tests {
