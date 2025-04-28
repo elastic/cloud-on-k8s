@@ -13,6 +13,7 @@ import (
 
 	commonv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/common/v1"
 	esv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/elasticsearch/v1"
+	beatstackmon "github.com/elastic/cloud-on-k8s/v3/pkg/controller/beat/common/stackmon"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/defaults"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/stackmon"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/stackmon/monitoring"
@@ -106,7 +107,7 @@ func WithMonitoring(ctx context.Context, client k8s.Client, builder *defaults.Po
 		}
 
 		// Add metricbeat logs volume
-		metricbeatLogsVolume := volume.NewEmptyDirVolume("metricbeat-logs", "/usr/share/metricbeat/logs")
+		metricbeatLogsVolume := volume.NewEmptyDirVolume(beatstackmon.MetricbeatLogsVolumeName, beatstackmon.MetricbeatLogsVolumeMountPath)
 		volumes = append(volumes, metricbeatLogsVolume.Volume())
 		b.Container.VolumeMounts = append(b.Container.VolumeMounts, metricbeatLogsVolume.VolumeMount())
 
@@ -125,7 +126,7 @@ func WithMonitoring(ctx context.Context, client k8s.Client, builder *defaults.Po
 		}
 
 		// Add filebeat logs volume
-		filebeatLogsVolume := volume.NewEmptyDirVolume("filebeat-logs", "/usr/share/filebeat/logs")
+		filebeatLogsVolume := volume.NewEmptyDirVolume(beatstackmon.FilebeatLogsVolumeName, beatstackmon.FilebeatLogsVolumeMountPath)
 		volumes = append(volumes, filebeatLogsVolume.Volume())
 		b.Container.VolumeMounts = append(b.Container.VolumeMounts, filebeatLogsVolume.VolumeMount())
 

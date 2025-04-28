@@ -10,16 +10,23 @@ import (
 	"errors"
 	"fmt"
 
-	corev1 "k8s.io/api/core/v1"
-
 	"github.com/elastic/cloud-on-k8s/v3/pkg/apis/beat/v1beta1"
 	esv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/elasticsearch/v1"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/association"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/stackmon"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/stackmon/monitoring"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/version"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/volume"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/bootstrap"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/k8s"
+)
+
+const (
+	FilebeatLogsVolumeName      string = "filebeat-logs"
+	FilebeatLogsVolumeMountPath string = "/usr/share/filebeat/logs"
+
+	MetricbeatLogsVolumeName      string = "metricbeat-logs"
+	MetricbeatLogsVolumeMountPath string = "/usr/share/metricbeat/logs"
 )
 
 var (
@@ -43,17 +50,10 @@ func Filebeat(ctx context.Context, client k8s.Client, resource monitoring.HasMon
 	}
 
 	// Add shared volume for logs consumption.
-	sidecar.Container.VolumeMounts = append(sidecar.Container.VolumeMounts, corev1.VolumeMount{
-		Name:      "filebeat-logs",
-		MountPath: "/usr/share/filebeat/logs",
-		ReadOnly:  false,
-	})
-	sidecar.Volumes = append(sidecar.Volumes, corev1.Volume{
-		Name: "filebeat-logs",
-		VolumeSource: corev1.VolumeSource{
-			EmptyDir: &corev1.EmptyDirVolumeSource{},
-		},
-	})
+	filebeatLogsVolume := volume.NewEmptyDirVolume(FilebeatLogsVolumeName, FilebeatLogsVolumeMountPath)
+	sidecar.Container.VolumeMounts = append(sidecar.Container.VolumeMounts, filebeatLogsVolume.VolumeMount())
+	sidecar.Volumes = append(sidecar.Volumes, filebeatLogsVolume.Volume())
+
 	return sidecar, nil
 }
 
@@ -91,30 +91,14 @@ func MetricBeat(ctx context.Context, client k8s.Client, beat *v1beta1.Beat) (sta
 	}
 
 	// Add shared volume for Unix socket between containers.
-	sidecar.Container.VolumeMounts = append(sidecar.Container.VolumeMounts, corev1.VolumeMount{
-		Name:      "shared-data",
-		MountPath: "/var/shared",
-		ReadOnly:  false,
-	})
-	sidecar.Volumes = append(sidecar.Volumes, corev1.Volume{
-		Name: "shared-data",
-		VolumeSource: corev1.VolumeSource{
-			EmptyDir: &corev1.EmptyDirVolumeSource{},
-		},
-	})
+	sharedDataVolume := volume.NewEmptyDirVolume("shared-data", "/var/shared")
+	sidecar.Container.VolumeMounts = append(sidecar.Container.VolumeMounts, sharedDataVolume.VolumeMount())
+	sidecar.Volumes = append(sidecar.Volumes, sharedDataVolume.Volume())
 
 	// Add shared volume for logs consumption.
-	sidecar.Container.VolumeMounts = append(sidecar.Container.VolumeMounts, corev1.VolumeMount{
-		Name:      "metricbeat-logs",
-		MountPath: "/usr/share/metricbeat/logs",
-		ReadOnly:  false,
-	})
-	sidecar.Volumes = append(sidecar.Volumes, corev1.Volume{
-		Name: "metricbeat-logs",
-		VolumeSource: corev1.VolumeSource{
-			EmptyDir: &corev1.EmptyDirVolumeSource{},
-		},
-	})
+	metricbeatLogsVolume := volume.NewEmptyDirVolume(MetricbeatLogsVolumeName, MetricbeatLogsVolumeMountPath)
+	sidecar.Volumes = append(sidecar.Volumes, metricbeatLogsVolume.Volume())
+	sidecar.Container.VolumeMounts = append(sidecar.Container.VolumeMounts, metricbeatLogsVolume.VolumeMount())
 
 	return sidecar, nil
 }
