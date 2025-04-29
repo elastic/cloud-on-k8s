@@ -179,7 +179,7 @@ func (k *K8sClient) GetService(namespace, name string) (*corev1.Service, error) 
 func (k *K8sClient) GetReadyEndpoints(namespace, name string, filters ...func(slice discoveryv1.EndpointSlice) bool) ([]discoveryv1.Endpoint, error) {
 	endpoints := discoveryv1.EndpointSliceList{}
 	listOps := &k8sclient.ListOptions{
-		LabelSelector: labels.SelectorFromSet(labels.Set{"kubernetes.io/service-name": name}),
+		LabelSelector: labels.SelectorFromSet(labels.Set{discoveryv1.LabelServiceName: name}),
 		Namespace:     namespace,
 	}
 

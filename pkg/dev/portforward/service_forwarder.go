@@ -130,7 +130,7 @@ func (f *ServiceForwarder) DialContext(ctx context.Context) (net.Conn, error) {
 
 	endpoints := discoveryv1.EndpointSliceList{}
 	listOps := &client.ListOptions{
-		LabelSelector: labels.SelectorFromSet(labels.Set{"kubernetes.io/service-name": service.Name}),
+		LabelSelector: labels.SelectorFromSet(labels.Set{discoveryv1.LabelServiceName: service.Name}),
 		Namespace:     service.Namespace,
 	}
 
