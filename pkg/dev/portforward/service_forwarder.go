@@ -13,6 +13,8 @@ import (
 	"strings"
 
 	corev1 "k8s.io/api/core/v1"
+	discoveryv1 "k8s.io/api/discovery/v1"
+	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/intstr"
 	netutils "k8s.io/utils/net"
@@ -126,29 +128,43 @@ func (f *ServiceForwarder) DialContext(ctx context.Context) (net.Conn, error) {
 		return nil, fmt.Errorf("service is not listening on port: %d", servicePort)
 	}
 
-	endpoints := corev1.Endpoints{}
+	endpoints := discoveryv1.EndpointSliceList{}
+	listOps := &client.ListOptions{
+		LabelSelector: labels.SelectorFromSet(labels.Set{"kubernetes.io/service-name": service.Name}),
+		Namespace:     service.Namespace,
+	}
 
-	if err := f.client.Get(ctx, f.serviceNSN, &endpoints); err != nil {
+	if err := f.client.List(ctx, &endpoints, listOps); err != nil {
 		return nil, err
 	}
 
 	var podTargets []*corev1.ObjectReference
-	for _, subset := range endpoints.Subsets {
+	for _, endpointSlice := range endpoints.Items {
 		foundPort := false
-		for _, port := range subset.Ports {
-			foundPort = port.Port == int32(targetPort.IntValue())
+		for _, port := range endpointSlice.Ports {
+			if port.Port == nil {
+				continue
+			}
+			foundPort = *port.Port == int32(targetPort.IntValue())
 			if foundPort {
 				break
 			}
 		}
 		if !foundPort {
+			// Port is not found in the EndpointSlice, try the next one.
 			continue
 		}
-
-		for _, address := range subset.Addresses {
-			if address.TargetRef.Kind == "Pod" {
-				podTargets = append(podTargets, address.TargetRef)
+		for _, endpoint := range endpointSlice.Endpoints {
+			if endpoint.Conditions.Ready == nil || !*endpoint.Conditions.Ready {
+				// Do not forward to a pod that is not ready.
+				// Note that if spec.publishNotReadyAddresses is set to "true", then `ready` is always true:
+				//   https://kubernetes.io/docs/concepts/services-networking/endpoint-slices/#ready
+				continue
 			}
+			if endpoint.TargetRef.Kind != "Pod" {
+				continue
+			}
+			podTargets = append(podTargets, endpoint.TargetRef)
 		}
 	}
 
