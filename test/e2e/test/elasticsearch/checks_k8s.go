@@ -386,7 +386,7 @@ func CheckServicesEndpoints(b Builder, k *test.K8sClient) test.Step {
 		Name: "ES services should have endpoints",
 		Test: test.Eventually(func() error {
 			expectedEs := b.GetExpectedElasticsearch()
-			for endpointName, addrCount := range map[string]int{
+			for serviceName, addrCount := range map[string]int{
 				// we intentionally hardcode the names here to catch any accidental breaking change
 				b.Elasticsearch.Name + "-es-internal-http": int(expectedEs.Spec.NodeCount()),
 				b.Elasticsearch.Name + "-es-http":          int(expectedEs.Spec.NodeCount()),
@@ -395,15 +395,15 @@ func CheckServicesEndpoints(b Builder, k *test.K8sClient) test.Step {
 				if addrCount == 0 {
 					continue // maybe no Kibana
 				}
-				endpoints, err := k.GetEndpoints(b.Elasticsearch.Namespace, endpointName)
+				endpoints, err := k.GetReadyEndpoints(b.Elasticsearch.Namespace, serviceName)
 				if err != nil {
 					return err
 				}
-				if len(endpoints.Subsets) == 0 {
-					return fmt.Errorf("no subset for endpoint %s", endpointName)
+				if len(endpoints) == 0 {
+					return fmt.Errorf("no endpoint for service %s", serviceName)
 				}
-				if len(endpoints.Subsets[0].Addresses) != addrCount {
-					return fmt.Errorf("%d addresses found for endpoint %s, expected %d", len(endpoints.Subsets[0].Addresses), endpointName, addrCount)
+				if len(endpoints) != addrCount {
+					return fmt.Errorf("%d addresses found for endpoint %s, expected %d", len(endpoints), serviceName, addrCount)
 				}
 			}
 			return nil
