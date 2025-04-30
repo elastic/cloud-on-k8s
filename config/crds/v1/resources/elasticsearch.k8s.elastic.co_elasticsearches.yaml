@@ -3,7 +3,7 @@ apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
   annotations:
-    controller-gen.kubebuilder.io/version: v0.17.2
+    controller-gen.kubebuilder.io/version: v0.17.3
   name: elasticsearches.elasticsearch.k8s.elastic.co
 spec:
   group: elasticsearch.k8s.elastic.co
@@ -439,13 +439,12 @@ spec:
                             type: object
                           trafficDistribution:
                             description: |-
-                              TrafficDistribution offers a way to express preferences for how traffic is
-                              distributed to Service endpoints. Implementations can use this field as a
-                              hint, but are not required to guarantee strict adherence. If the field is
-                              not set, the implementation will apply its default routing strategy. If set
-                              to "PreferClose", implementations should prioritize endpoints that are
-                              topologically close (e.g., same zone).
-                              This is a beta field and requires enabling ServiceTrafficDistribution feature.
+                              TrafficDistribution offers a way to express preferences for how traffic
+                              is distributed to Service endpoints. Implementations can use this field
+                              as a hint, but are not required to guarantee strict adherence. If the
+                              field is not set, the implementation will apply its default routing
+                              strategy. If set to "PreferClose", implementations should prioritize
+                              endpoints that are in the same zone.
                             type: string
                           type:
                             description: |-
@@ -955,7 +954,6 @@ spec:
                                                   pod labels will be ignored. The default value is empty.
                                                   The same key is forbidden to exist in both matchLabelKeys and labelSelector.
                                                   Also, matchLabelKeys cannot be set when labelSelector isn't set.
-                                                  This is a beta field and requires enabling MatchLabelKeysInPodAffinity feature gate (enabled by default).
                                                 items:
                                                   type: string
                                                 type: array
@@ -970,7 +968,6 @@ spec:
                                                   pod labels will be ignored. The default value is empty.
                                                   The same key is forbidden to exist in both mismatchLabelKeys and labelSelector.
                                                   Also, mismatchLabelKeys cannot be set when labelSelector isn't set.
-                                                  This is a beta field and requires enabling MatchLabelKeysInPodAffinity feature gate (enabled by default).
                                                 items:
                                                   type: string
                                                 type: array
@@ -1140,7 +1137,6 @@ spec:
                                               pod labels will be ignored. The default value is empty.
                                               The same key is forbidden to exist in both matchLabelKeys and labelSelector.
                                               Also, matchLabelKeys cannot be set when labelSelector isn't set.
-                                              This is a beta field and requires enabling MatchLabelKeysInPodAffinity feature gate (enabled by default).
                                             items:
                                               type: string
                                             type: array
@@ -1155,7 +1151,6 @@ spec:
                                               pod labels will be ignored. The default value is empty.
                                               The same key is forbidden to exist in both mismatchLabelKeys and labelSelector.
                                               Also, mismatchLabelKeys cannot be set when labelSelector isn't set.
-                                              This is a beta field and requires enabling MatchLabelKeysInPodAffinity feature gate (enabled by default).
                                             items:
                                               type: string
                                             type: array
@@ -1324,7 +1319,6 @@ spec:
                                                   pod labels will be ignored. The default value is empty.
                                                   The same key is forbidden to exist in both matchLabelKeys and labelSelector.
                                                   Also, matchLabelKeys cannot be set when labelSelector isn't set.
-                                                  This is a beta field and requires enabling MatchLabelKeysInPodAffinity feature gate (enabled by default).
                                                 items:
                                                   type: string
                                                 type: array
@@ -1339,7 +1333,6 @@ spec:
                                                   pod labels will be ignored. The default value is empty.
                                                   The same key is forbidden to exist in both mismatchLabelKeys and labelSelector.
                                                   Also, mismatchLabelKeys cannot be set when labelSelector isn't set.
-                                                  This is a beta field and requires enabling MatchLabelKeysInPodAffinity feature gate (enabled by default).
                                                 items:
                                                   type: string
                                                 type: array
@@ -1509,7 +1502,6 @@ spec:
                                               pod labels will be ignored. The default value is empty.
                                               The same key is forbidden to exist in both matchLabelKeys and labelSelector.
                                               Also, matchLabelKeys cannot be set when labelSelector isn't set.
-                                              This is a beta field and requires enabling MatchLabelKeysInPodAffinity feature gate (enabled by default).
                                             items:
                                               type: string
                                             type: array
@@ -1524,7 +1516,6 @@ spec:
                                               pod labels will be ignored. The default value is empty.
                                               The same key is forbidden to exist in both mismatchLabelKeys and labelSelector.
                                               Also, mismatchLabelKeys cannot be set when labelSelector isn't set.
-                                              This is a beta field and requires enabling MatchLabelKeysInPodAffinity feature gate (enabled by default).
                                             items:
                                               type: string
                                             type: array
@@ -1791,7 +1782,7 @@ spec:
                                       Cannot be updated.
                                     items:
                                       description: EnvFromSource represents the source
-                                        of a set of ConfigMaps
+                                        of a set of ConfigMaps or Secrets
                                       properties:
                                         configMapRef:
                                           description: The ConfigMap to select from
@@ -1812,9 +1803,9 @@ spec:
                                           type: object
                                           x-kubernetes-map-type: atomic
                                         prefix:
-                                          description: An optional identifier to prepend
-                                            to each key in the ConfigMap. Must be
-                                            a C_IDENTIFIER.
+                                          description: Optional text to prepend to
+                                            the name of each environment variable.
+                                            Must be a C_IDENTIFIER.
                                           type: string
                                         secretRef:
                                           description: The Secret to select from
@@ -2088,6 +2079,12 @@ spec:
                                             - port
                                             type: object
                                         type: object
+                                      stopSignal:
+                                        description: |-
+                                          StopSignal defines which signal will be sent to a container when it is being stopped.
+                                          If not specified, the default is defined by the container runtime in use.
+                                          StopSignal can only be set for Pods with a non-empty .spec.os.name
+                                        type: string
                                     type: object
                                   livenessProbe:
                                     description: |-
@@ -3322,7 +3319,7 @@ spec:
                                       Cannot be updated.
                                     items:
                                       description: EnvFromSource represents the source
-                                        of a set of ConfigMaps
+                                        of a set of ConfigMaps or Secrets
                                       properties:
                                         configMapRef:
                                           description: The ConfigMap to select from
@@ -3343,9 +3340,9 @@ spec:
                                           type: object
                                           x-kubernetes-map-type: atomic
                                         prefix:
-                                          description: An optional identifier to prepend
-                                            to each key in the ConfigMap. Must be
-                                            a C_IDENTIFIER.
+                                          description: Optional text to prepend to
+                                            the name of each environment variable.
+                                            Must be a C_IDENTIFIER.
                                           type: string
                                         secretRef:
                                           description: The Secret to select from
@@ -3616,6 +3613,12 @@ spec:
                                             - port
                                             type: object
                                         type: object
+                                      stopSignal:
+                                        description: |-
+                                          StopSignal defines which signal will be sent to a container when it is being stopped.
+                                          If not specified, the default is defined by the container runtime in use.
+                                          StopSignal can only be set for Pods with a non-empty .spec.os.name
+                                        type: string
                                     type: object
                                   livenessProbe:
                                     description: Probes are not allowed for ephemeral
@@ -4672,7 +4675,7 @@ spec:
                                 Init containers may not have Lifecycle actions, Readiness probes, Liveness probes, or Startup probes.
                                 The resourceRequirements of an init container are taken into account during scheduling
                                 by finding the highest request/limit for each resource type, and then using the max of
-                                of that value or the sum of the normal containers. Limits are applied to init containers
+                                that value or the sum of the normal containers. Limits are applied to init containers
                                 in a similar fashion.
                                 Init containers cannot currently be added or removed.
                                 Cannot be updated.
@@ -4850,7 +4853,7 @@ spec:
                                       Cannot be updated.
                                     items:
                                       description: EnvFromSource represents the source
-                                        of a set of ConfigMaps
+                                        of a set of ConfigMaps or Secrets
                                       properties:
                                         configMapRef:
                                           description: The ConfigMap to select from
@@ -4871,9 +4874,9 @@ spec:
                                           type: object
                                           x-kubernetes-map-type: atomic
                                         prefix:
-                                          description: An optional identifier to prepend
-                                            to each key in the ConfigMap. Must be
-                                            a C_IDENTIFIER.
+                                          description: Optional text to prepend to
+                                            the name of each environment variable.
+                                            Must be a C_IDENTIFIER.
                                           type: string
                                         secretRef:
                                           description: The Secret to select from
@@ -5147,6 +5150,12 @@ spec:
                                             - port
                                             type: object
                                         type: object
+                                      stopSignal:
+                                        description: |-
+                                          StopSignal defines which signal will be sent to a container when it is being stopped.
+                                          If not specified, the default is defined by the container runtime in use.
+                                          StopSignal can only be set for Pods with a non-empty .spec.os.name
+                                        type: string
                                     type: object
                                   livenessProbe:
                                     description: |-
@@ -6868,7 +6877,6 @@ spec:
                                       - Ignore: nodeAffinity/nodeSelector are ignored. All nodes are included in the calculations.
 
                                       If this value is nil, the behavior is equivalent to the Honor policy.
-                                      This is a beta-level feature default enabled by the NodeInclusionPolicyInPodTopologySpread feature flag.
                                     type: string
                                   nodeTaintsPolicy:
                                     description: |-
@@ -6879,7 +6887,6 @@ spec:
                                       - Ignore: node taints are ignored. All nodes are included.
 
                                       If this value is nil, the behavior is equivalent to the Ignore policy.
-                                      This is a beta-level feature default enabled by the NodeInclusionPolicyInPodTopologySpread feature flag.
                                     type: string
                                   topologyKey:
                                     description: |-
@@ -7885,7 +7892,7 @@ spec:
                                       The types of objects that may be mounted by this volume are defined by the container runtime implementation on a host machine and at minimum must include all valid types supported by the container image field.
                                       The OCI object gets mounted in a single directory (spec.containers[*].volumeMounts.mountPath) by merging the manifest layers in the same way as for container images.
                                       The volume will be mounted read-only (ro) and non-executable files (noexec).
-                                      Sub path mounts for containers are not supported (spec.containers[*].volumeMounts.subpath).
+                                      Sub path mounts for containers are not supported (spec.containers[*].volumeMounts.subpath) before 1.33.
                                       The field spec.securityContext.fsGroupChangePolicy has no effect on this volume type.
                                     properties:
                                       pullPolicy:
@@ -9356,9 +9363,6 @@ spec:
                           Additional policies may be added in the future.
                           Clients making eviction decisions should disallow eviction of unhealthy pods
                           if they encounter an unrecognized policy in this field.
-
-                          This field is beta-level. The eviction API uses this field when
-                          the feature gate PDBUnhealthyPodEvictionPolicy is enabled (enabled by default).
                         type: string
                     type: object
                 type: object
@@ -9845,13 +9849,12 @@ spec:
                             type: object
                           trafficDistribution:
                             description: |-
-                              TrafficDistribution offers a way to express preferences for how traffic is
-                              distributed to Service endpoints. Implementations can use this field as a
-                              hint, but are not required to guarantee strict adherence. If the field is
-                              not set, the implementation will apply its default routing strategy. If set
-                              to "PreferClose", implementations should prioritize endpoints that are
-                              topologically close (e.g., same zone).
-                              This is a beta field and requires enabling ServiceTrafficDistribution feature.
+                              TrafficDistribution offers a way to express preferences for how traffic
+                              is distributed to Service endpoints. Implementations can use this field
+                              as a hint, but are not required to guarantee strict adherence. If the
+                              field is not set, the implementation will apply its default routing
+                              strategy. If set to "PreferClose", implementations should prioritize
+                              endpoints that are in the same zone.
                             type: string
                           type:
                             description: |-
@@ -10549,13 +10552,12 @@ spec:
                             type: object
                           trafficDistribution:
                             description: |-
-                              TrafficDistribution offers a way to express preferences for how traffic is
-                              distributed to Service endpoints. Implementations can use this field as a
-                              hint, but are not required to guarantee strict adherence. If the field is
-                              not set, the implementation will apply its default routing strategy. If set
-                              to "PreferClose", implementations should prioritize endpoints that are
-                              topologically close (e.g., same zone).
-                              This is a beta field and requires enabling ServiceTrafficDistribution feature.
+                              TrafficDistribution offers a way to express preferences for how traffic
+                              is distributed to Service endpoints. Implementations can use this field
+                              as a hint, but are not required to guarantee strict adherence. If the
+                              field is not set, the implementation will apply its default routing
+                              strategy. If set to "PreferClose", implementations should prioritize
+                              endpoints that are in the same zone.
                             type: string
                           type:
                             description: |-
@@ -10973,7 +10975,6 @@ spec:
                                                   pod labels will be ignored. The default value is empty.
                                                   The same key is forbidden to exist in both matchLabelKeys and labelSelector.
                                                   Also, matchLabelKeys cannot be set when labelSelector isn't set.
-                                                  This is a beta field and requires enabling MatchLabelKeysInPodAffinity feature gate (enabled by default).
                                                 items:
                                                   type: string
                                                 type: array
@@ -10988,7 +10989,6 @@ spec:
                                                   pod labels will be ignored. The default value is empty.
                                                   The same key is forbidden to exist in both mismatchLabelKeys and labelSelector.
                                                   Also, mismatchLabelKeys cannot be set when labelSelector isn't set.
-                                                  This is a beta field and requires enabling MatchLabelKeysInPodAffinity feature gate (enabled by default).
                                                 items:
                                                   type: string
                                                 type: array
@@ -11158,7 +11158,6 @@ spec:
                                               pod labels will be ignored. The default value is empty.
                                               The same key is forbidden to exist in both matchLabelKeys and labelSelector.
                                               Also, matchLabelKeys cannot be set when labelSelector isn't set.
-                                              This is a beta field and requires enabling MatchLabelKeysInPodAffinity feature gate (enabled by default).
                                             items:
                                               type: string
                                             type: array
@@ -11173,7 +11172,6 @@ spec:
                                               pod labels will be ignored. The default value is empty.
                                               The same key is forbidden to exist in both mismatchLabelKeys and labelSelector.
                                               Also, mismatchLabelKeys cannot be set when labelSelector isn't set.
-                                              This is a beta field and requires enabling MatchLabelKeysInPodAffinity feature gate (enabled by default).
                                             items:
                                               type: string
                                             type: array
@@ -11342,7 +11340,6 @@ spec:
                                                   pod labels will be ignored. The default value is empty.
                                                   The same key is forbidden to exist in both matchLabelKeys and labelSelector.
                                                   Also, matchLabelKeys cannot be set when labelSelector isn't set.
-                                                  This is a beta field and requires enabling MatchLabelKeysInPodAffinity feature gate (enabled by default).
                                                 items:
                                                   type: string
                                                 type: array
@@ -11357,7 +11354,6 @@ spec:
                                                   pod labels will be ignored. The default value is empty.
                                                   The same key is forbidden to exist in both mismatchLabelKeys and labelSelector.
                                                   Also, mismatchLabelKeys cannot be set when labelSelector isn't set.
-                                                  This is a beta field and requires enabling MatchLabelKeysInPodAffinity feature gate (enabled by default).
                                                 items:
                                                   type: string
                                                 type: array
@@ -11527,7 +11523,6 @@ spec:
                                               pod labels will be ignored. The default value is empty.
                                               The same key is forbidden to exist in both matchLabelKeys and labelSelector.
                                               Also, matchLabelKeys cannot be set when labelSelector isn't set.
-                                              This is a beta field and requires enabling MatchLabelKeysInPodAffinity feature gate (enabled by default).
                                             items:
                                               type: string
                                             type: array
@@ -11542,7 +11537,6 @@ spec:
                                               pod labels will be ignored. The default value is empty.
                                               The same key is forbidden to exist in both mismatchLabelKeys and labelSelector.
                                               Also, mismatchLabelKeys cannot be set when labelSelector isn't set.
-                                              This is a beta field and requires enabling MatchLabelKeysInPodAffinity feature gate (enabled by default).
                                             items:
                                               type: string
                                             type: array
@@ -11809,7 +11803,7 @@ spec:
                                       Cannot be updated.
                                     items:
                                       description: EnvFromSource represents the source
-                                        of a set of ConfigMaps
+                                        of a set of ConfigMaps or Secrets
                                       properties:
                                         configMapRef:
                                           description: The ConfigMap to select from
@@ -11830,9 +11824,9 @@ spec:
                                           type: object
                                           x-kubernetes-map-type: atomic
                                         prefix:
-                                          description: An optional identifier to prepend
-                                            to each key in the ConfigMap. Must be
-                                            a C_IDENTIFIER.
+                                          description: Optional text to prepend to
+                                            the name of each environment variable.
+                                            Must be a C_IDENTIFIER.
                                           type: string
                                         secretRef:
                                           description: The Secret to select from
@@ -12106,6 +12100,12 @@ spec:
                                             - port
                                             type: object
                                         type: object
+                                      stopSignal:
+                                        description: |-
+                                          StopSignal defines which signal will be sent to a container when it is being stopped.
+                                          If not specified, the default is defined by the container runtime in use.
+                                          StopSignal can only be set for Pods with a non-empty .spec.os.name
+                                        type: string
                                     type: object
                                   livenessProbe:
                                     description: |-
@@ -13340,7 +13340,7 @@ spec:
                                       Cannot be updated.
                                     items:
                                       description: EnvFromSource represents the source
-                                        of a set of ConfigMaps
+                                        of a set of ConfigMaps or Secrets
                                       properties:
                                         configMapRef:
                                           description: The ConfigMap to select from
@@ -13361,9 +13361,9 @@ spec:
                                           type: object
                                           x-kubernetes-map-type: atomic
                                         prefix:
-                                          description: An optional identifier to prepend
-                                            to each key in the ConfigMap. Must be
-                                            a C_IDENTIFIER.
+                                          description: Optional text to prepend to
+                                            the name of each environment variable.
+                                            Must be a C_IDENTIFIER.
                                           type: string
                                         secretRef:
                                           description: The Secret to select from
@@ -13634,6 +13634,12 @@ spec:
                                             - port
                                             type: object
                                         type: object
+                                      stopSignal:
+                                        description: |-
+                                          StopSignal defines which signal will be sent to a container when it is being stopped.
+                                          If not specified, the default is defined by the container runtime in use.
+                                          StopSignal can only be set for Pods with a non-empty .spec.os.name
+                                        type: string
                                     type: object
                                   livenessProbe:
                                     description: Probes are not allowed for ephemeral
@@ -14690,7 +14696,7 @@ spec:
                                 Init containers may not have Lifecycle actions, Readiness probes, Liveness probes, or Startup probes.
                                 The resourceRequirements of an init container are taken into account during scheduling
                                 by finding the highest request/limit for each resource type, and then using the max of
-                                of that value or the sum of the normal containers. Limits are applied to init containers
+                                that value or the sum of the normal containers. Limits are applied to init containers
                                 in a similar fashion.
                                 Init containers cannot currently be added or removed.
                                 Cannot be updated.
@@ -14868,7 +14874,7 @@ spec:
                                       Cannot be updated.
                                     items:
                                       description: EnvFromSource represents the source
-                                        of a set of ConfigMaps
+                                        of a set of ConfigMaps or Secrets
                                       properties:
                                         configMapRef:
                                           description: The ConfigMap to select from
@@ -14889,9 +14895,9 @@ spec:
                                           type: object
                                           x-kubernetes-map-type: atomic
                                         prefix:
-                                          description: An optional identifier to prepend
-                                            to each key in the ConfigMap. Must be
-                                            a C_IDENTIFIER.
+                                          description: Optional text to prepend to
+                                            the name of each environment variable.
+                                            Must be a C_IDENTIFIER.
                                           type: string
                                         secretRef:
                                           description: The Secret to select from
@@ -15165,6 +15171,12 @@ spec:
                                             - port
                                             type: object
                                         type: object
+                                      stopSignal:
+                                        description: |-
+                                          StopSignal defines which signal will be sent to a container when it is being stopped.
+                                          If not specified, the default is defined by the container runtime in use.
+                                          StopSignal can only be set for Pods with a non-empty .spec.os.name
+                                        type: string
                                     type: object
                                   livenessProbe:
                                     description: |-
@@ -16886,7 +16898,6 @@ spec:
                                       - Ignore: nodeAffinity/nodeSelector are ignored. All nodes are included in the calculations.
 
                                       If this value is nil, the behavior is equivalent to the Honor policy.
-                                      This is a beta-level feature default enabled by the NodeInclusionPolicyInPodTopologySpread feature flag.
                                     type: string
                                   nodeTaintsPolicy:
                                     description: |-
@@ -16897,7 +16908,6 @@ spec:
                                       - Ignore: node taints are ignored. All nodes are included.
 
                                       If this value is nil, the behavior is equivalent to the Ignore policy.
-                                      This is a beta-level feature default enabled by the NodeInclusionPolicyInPodTopologySpread feature flag.
                                     type: string
                                   topologyKey:
                                     description: |-
@@ -17903,7 +17913,7 @@ spec:
                                       The types of objects that may be mounted by this volume are defined by the container runtime implementation on a host machine and at minimum must include all valid types supported by the container image field.
                                       The OCI object gets mounted in a single directory (spec.containers[*].volumeMounts.mountPath) by merging the manifest layers in the same way as for container images.
                                       The volume will be mounted read-only (ro) and non-executable files (noexec).
-                                      Sub path mounts for containers are not supported (spec.containers[*].volumeMounts.subpath).
+                                      Sub path mounts for containers are not supported (spec.containers[*].volumeMounts.subpath) before 1.33.
                                       The field spec.securityContext.fsGroupChangePolicy has no effect on this volume type.
                                     properties:
                                       pullPolicy:
@@ -19374,9 +19384,6 @@ spec:
                           Additional policies may be added in the future.
                           Clients making eviction decisions should disallow eviction of unhealthy pods
                           if they encounter an unrecognized policy in this field.
-
-                          This field is beta-level. The eviction API uses this field when
-                          the feature gate PDBUnhealthyPodEvictionPolicy is enabled (enabled by default).
                         type: string
                     type: object
                 type: object

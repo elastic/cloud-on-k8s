@@ -10,6 +10,7 @@ import (
 	"fmt"
 
 	corev1 "k8s.io/api/core/v1"
+	discoveryv1 "k8s.io/api/discovery/v1"
 
 	v1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/common/v1"
 	logstashv1alpha1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/logstash/v1alpha1"
@@ -282,27 +283,47 @@ func CheckServicesEndpoints(b Builder, k *test.K8sClient) test.Step {
 	return test.Step{
 		Name: "Logstash services should have endpoints",
 		Test: test.Eventually(func() error {
-			servicePorts := make(map[string]int32)
-			servicePorts[logstashv1alpha1.APIServiceName(b.Logstash.Name)] = b.Logstash.Spec.Count
-			for _, r := range b.Logstash.Spec.Services {
-				portsPerService := int32(len(r.Service.Spec.Ports))
-				servicePorts[logstashv1alpha1.UserServiceName(b.Logstash.Name, r.Name)] = b.Logstash.Spec.Count * portsPerService
+			type expectedEndpoint struct {
+				// count is the number of endpoints.
+				count int
+				// ports is the number of ports for the endpoints.
+				ports int
+			}
+			expectedEndpointsPerServices := make(map[string]expectedEndpoint)
+			expectedEndpointsPerServices[logstashv1alpha1.APIServiceName(b.Logstash.Name)] = expectedEndpoint{count: int(b.Logstash.Spec.Count)}
+			for _, additionalServices := range b.Logstash.Spec.Services {
+				expectedEndpointsPerServices[logstashv1alpha1.UserServiceName(b.Logstash.Name, additionalServices.Name)] = expectedEndpoint{
+					count: int(b.Logstash.Spec.Count),
+					ports: len(additionalServices.Service.Spec.Ports),
+				}
 			}
 
-			for endpointName, addrPortCount := range servicePorts {
-				if addrPortCount == 0 {
+			for serviceName, expectedEndpoint := range expectedEndpointsPerServices {
+				if expectedEndpoint.count == 0 {
 					continue
 				}
-				endpoints, err := k.GetEndpoints(b.Logstash.Namespace, endpointName)
+				endpoints, err := k.GetReadyEndpoints(
+					b.Logstash.Namespace,
+					serviceName,
+					func(slice discoveryv1.EndpointSlice) bool {
+						if expectedEndpoint.ports > 0 {
+							// We expect a specific number of ports per endpoint.
+							// Remove the endpoints that don't match this expectation.
+							return len(slice.Ports) == expectedEndpoint.ports
+						}
+						// No expectation, don't filter by port.
+						return true
+					},
+				)
 				if err != nil {
 					return err
 				}
-				if len(endpoints.Subsets) == 0 {
-					return fmt.Errorf("no subset for endpoint %s", endpointName)
+				if len(endpoints) == 0 {
+					return fmt.Errorf("no endpoint for service %s (expected number of ports is %d)", serviceName, expectedEndpoint.ports)
 				}
-				if int32(len(endpoints.Subsets[0].Addresses)*len(endpoints.Subsets[0].Ports)) != addrPortCount {
-					return fmt.Errorf("%d addresses and %d ports found for endpoint %s, expected %d", len(endpoints.Subsets[0].Addresses),
-						len(endpoints.Subsets[0].Ports), endpointName, addrPortCount)
+				if len(endpoints) != expectedEndpoint.count {
+					return fmt.Errorf("%d endpoints with %d ports found for service %s, expected %d", len(endpoints),
+						expectedEndpoint.ports, serviceName, expectedEndpoint.count)
 				}
 			}
 			return nil

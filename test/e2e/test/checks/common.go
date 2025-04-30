@@ -110,21 +110,21 @@ func CheckServicesEndpoints(subj test.Subject, k *test.K8sClient) test.Step {
 	return test.Step{
 		Name: subj.Kind() + " services should have endpoints",
 		Test: test.Eventually(func() error {
-			for endpointName, addrCount := range map[string]int{
+			for serviceName, addrCount := range map[string]int{
 				subj.ServiceName(): int(subj.Count()),
 			} {
 				if addrCount == 0 {
 					continue // maybe no test resource in this builder
 				}
-				endpoints, err := k.GetEndpoints(subj.NSN().Namespace, endpointName)
+				endpoints, err := k.GetReadyEndpoints(subj.NSN().Namespace, serviceName)
 				if err != nil {
 					return err
 				}
-				if len(endpoints.Subsets) == 0 {
-					return fmt.Errorf("no subset for endpoint %s", endpointName)
+				if len(endpoints) == 0 {
+					return fmt.Errorf("no endpoint for services %s", serviceName)
 				}
-				if len(endpoints.Subsets[0].Addresses) != addrCount {
-					return fmt.Errorf("%d addresses found for endpoint %s, expected %d", len(endpoints.Subsets[0].Addresses), endpointName, addrCount)
+				if len(endpoints) != addrCount {
+					return fmt.Errorf("%d addresses found for endpoint %s, expected %d", len(endpoints), serviceName, addrCount)
 				}
 			}
 			return nil
