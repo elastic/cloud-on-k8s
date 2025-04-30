@@ -193,7 +193,7 @@ func (k *K8sClient) GetReadyEndpoints(namespace, name string, filters ...func(sl
 			continue
 		}
 		for _, ep := range eps.Endpoints {
-			// Do not forward to a pod that is not ready.
+			// Do not consider pods which are not ready.
 			// Note that if spec.publishNotReadyAddresses is set to "true", then `ready` is always true:
 			//   https://kubernetes.io/docs/concepts/services-networking/endpoint-slices/#ready
 			if ep.Conditions.Ready == nil || !*ep.Conditions.Ready {
