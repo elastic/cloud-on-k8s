@@ -14,7 +14,9 @@ import (
 	"github.com/pkg/errors"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
+	discoveryv1 "k8s.io/api/discovery/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
+	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/version"
@@ -174,16 +176,42 @@ func (k *K8sClient) GetService(namespace, name string) (*corev1.Service, error) 
 	return &service, nil
 }
 
-func (k *K8sClient) GetEndpoints(namespace, name string) (*corev1.Endpoints, error) {
-	var endpoints corev1.Endpoints
-	key := types.NamespacedName{
-		Namespace: namespace,
-		Name:      name,
+func (k *K8sClient) GetReadyEndpoints(namespace, name string, filters ...func(slice discoveryv1.EndpointSlice) bool) ([]discoveryv1.Endpoint, error) {
+	endpoints := discoveryv1.EndpointSliceList{}
+	listOps := &k8sclient.ListOptions{
+		LabelSelector: labels.SelectorFromSet(labels.Set{discoveryv1.LabelServiceName: name}),
+		Namespace:     namespace,
 	}
-	if err := k.Client.Get(context.Background(), key, &endpoints); err != nil {
+
+	if err := k.Client.List(context.Background(), &endpoints, listOps); err != nil {
 		return nil, err
 	}
-	return &endpoints, nil
+
+	result := make([]discoveryv1.Endpoint, 0, len(endpoints.Items))
+	for _, eps := range endpoints.Items {
+		if !endpointSliceMatches(eps, filters...) {
+			continue
+		}
+		for _, ep := range eps.Endpoints {
+			// Do not consider pods which are not ready.
+			// Note that if spec.publishNotReadyAddresses is set to "true", then `ready` is always true:
+			//   https://kubernetes.io/docs/concepts/services-networking/endpoint-slices/#ready
+			if ep.Conditions.Ready == nil || !*ep.Conditions.Ready {
+				continue
+			}
+			result = append(result, ep)
+		}
+	}
+	return result, nil
+}
+
+func endpointSliceMatches(slice discoveryv1.EndpointSlice, filters ...func(slice discoveryv1.EndpointSlice) bool) bool {
+	for _, filter := range filters {
+		if !filter(slice) {
+			return false
+		}
+	}
+	return true
 }
 
 func (k *K8sClient) GetEvents(opts ...k8sclient.ListOption) ([]corev1.Event, error) {

@@ -10,7 +10,6 @@ import (
 
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
-	"k8s.io/apimachinery/pkg/types"
 
 	esv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/elasticsearch/v1"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/k8s"
@@ -57,18 +56,15 @@ func (b Builder) InitTestSteps(k *test.K8sClient) test.StepList {
 				if test.Ctx().IgnoreWebhookFailures {
 					return nil
 				}
-				webhookEndpoints := &corev1.Endpoints{}
-				if err := k.Client.Get(context.Background(), types.NamespacedName{
-					Namespace: test.Ctx().Operator.Namespace,
-					Name:      webhookServiceName,
-				}, webhookEndpoints); err != nil {
+				endpoints, err := k.GetReadyEndpoints(test.Ctx().Operator.Namespace, webhookServiceName)
+				if err != nil {
 					return err
 				}
-				if len(webhookEndpoints.Subsets) == 0 {
+				if len(endpoints) == 0 {
 					return fmt.Errorf(
-						"endpoint %s/%s is empty",
-						webhookEndpoints.Namespace,
-						webhookEndpoints.Name,
+						"no ready endpoint for service %s/%s",
+						test.Ctx().Operator.Namespace,
+						webhookServiceName,
 					)
 				}
 				return nil

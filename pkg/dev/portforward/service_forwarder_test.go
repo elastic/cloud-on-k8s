@@ -13,9 +13,11 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	corev1 "k8s.io/api/core/v1"
+	discoveryv1 "k8s.io/api/discovery/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/intstr"
+	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/k8s"
@@ -91,27 +93,33 @@ func Test_serviceForwarder_DialContext(t *testing.T) {
 							Ports: []corev1.ServicePort{
 								{
 									Port:       9200,
-									TargetPort: intstr.FromInt(9200),
+									TargetPort: intstr.FromInt32(9200),
 								},
 							},
 						},
 					},
-					&corev1.Endpoints{
+					&discoveryv1.EndpointSlice{
 						ObjectMeta: metav1.ObjectMeta{
-							Name:      "foo",
+							Name:      "foo-xwz",
 							Namespace: "bar",
+							Labels: map[string]string{
+								"kubernetes.io/service-name": "foo",
+							},
 						},
-						Subsets: []corev1.EndpointSubset{
+						Ports: []discoveryv1.EndpointPort{
 							{
-								Ports: []corev1.EndpointPort{{Port: 9200}},
-								Addresses: []corev1.EndpointAddress{
-									{
-										TargetRef: &corev1.ObjectReference{
-											Kind:      "Pod",
-											Name:      "some-pod-name",
-											Namespace: "bar",
-										},
-									},
+								Port: ptr.To(int32(9200)),
+							},
+						},
+						Endpoints: []discoveryv1.Endpoint{
+							{
+								Conditions: discoveryv1.EndpointConditions{
+									Ready: ptr.To(true),
+								},
+								TargetRef: &corev1.ObjectReference{
+									Kind:      "Pod",
+									Name:      "some-pod-name",
+									Namespace: "bar",
 								},
 							},
 						},

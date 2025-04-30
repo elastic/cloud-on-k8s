@@ -69,6 +69,14 @@ metadata:
     test-run: {{ .TestRun }}
 rules:
   - apiGroups:
+      - discovery.k8s.io
+    resources:
+      - endpointslices
+    verbs:
+      - get
+      - list
+      - watch
+  - apiGroups:
       - ""
     resources:
       - "pods/exec"
