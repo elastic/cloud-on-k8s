@@ -12,7 +12,7 @@ import (
 	"github.com/hashicorp/vault/api"
 	"github.com/spf13/viper"
 
-	"github.com/elastic/cloud-on-k8s/v2/hack/operatorhub/cmd/flags"
+	"github.com/elastic/cloud-on-k8s/v3/hack/operatorhub/cmd/flags"
 )
 
 const (

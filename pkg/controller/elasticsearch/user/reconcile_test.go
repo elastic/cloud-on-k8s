@@ -15,10 +15,10 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/tools/record"
 
-	esv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/elasticsearch/v1"
-	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/user/filerealm"
-	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/cryptutil"
-	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/k8s"
+	esv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/elasticsearch/v1"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/user/filerealm"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/cryptutil"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/k8s"
 )
 
 var testPasswordHasher cryptutil.PasswordHasher

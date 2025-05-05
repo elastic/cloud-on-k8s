@@ -14,13 +14,13 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/utils/ptr"
 
-	esv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/elasticsearch/v1"
-	sset "github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/statefulset"
+	esv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/elasticsearch/v1"
+	sset "github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/statefulset"
 
-	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/bootstrap"
-	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/nodespec"
-	es_sset "github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/sset"
-	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/k8s"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/bootstrap"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/nodespec"
+	es_sset "github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/sset"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/k8s"
 )
 
 func Test_upscaleState_limitNodesCreation(t *testing.T) {

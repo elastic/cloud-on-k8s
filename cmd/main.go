@@ -7,9 +7,9 @@ package main
 import (
 	"github.com/spf13/cobra"
 
-	"github.com/elastic/cloud-on-k8s/v2/cmd/manager"
-	"github.com/elastic/cloud-on-k8s/v2/pkg/about"
-	"github.com/elastic/cloud-on-k8s/v2/pkg/dev"
+	"github.com/elastic/cloud-on-k8s/v3/cmd/manager"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/about"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/dev"
 )
 
 func main() {

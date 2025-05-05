@@ -16,16 +16,16 @@ import (
 	"github.com/stretchr/testify/require"
 	"k8s.io/apimachinery/pkg/util/rand"
 
-	commonv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/common/v1"
-	logstashv1alpha1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/logstash/v1alpha1"
-	"github.com/elastic/cloud-on-k8s/v2/test/e2e/cmd/run"
-	"github.com/elastic/cloud-on-k8s/v2/test/e2e/test"
-	"github.com/elastic/cloud-on-k8s/v2/test/e2e/test/apmserver"
-	"github.com/elastic/cloud-on-k8s/v2/test/e2e/test/elasticsearch"
-	"github.com/elastic/cloud-on-k8s/v2/test/e2e/test/enterprisesearch"
-	"github.com/elastic/cloud-on-k8s/v2/test/e2e/test/helper"
-	"github.com/elastic/cloud-on-k8s/v2/test/e2e/test/kibana"
-	"github.com/elastic/cloud-on-k8s/v2/test/e2e/test/logstash"
+	commonv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/common/v1"
+	logstashv1alpha1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/logstash/v1alpha1"
+	"github.com/elastic/cloud-on-k8s/v3/test/e2e/cmd/run"
+	"github.com/elastic/cloud-on-k8s/v3/test/e2e/test"
+	"github.com/elastic/cloud-on-k8s/v3/test/e2e/test/apmserver"
+	"github.com/elastic/cloud-on-k8s/v3/test/e2e/test/elasticsearch"
+	"github.com/elastic/cloud-on-k8s/v3/test/e2e/test/enterprisesearch"
+	"github.com/elastic/cloud-on-k8s/v3/test/e2e/test/helper"
+	"github.com/elastic/cloud-on-k8s/v3/test/e2e/test/kibana"
+	"github.com/elastic/cloud-on-k8s/v3/test/e2e/test/logstash"
 )
 
 func TestSamples(t *testing.T) {

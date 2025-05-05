@@ -7,11 +7,11 @@ package driver
 import (
 	"context"
 
-	esv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/elasticsearch/v1"
-	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/autoscaling/elasticsearch/resources"
-	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/autoscaling"
-	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/version"
-	ulog "github.com/elastic/cloud-on-k8s/v2/pkg/utils/log"
+	esv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/elasticsearch/v1"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/autoscaling/elasticsearch/resources"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/autoscaling"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/version"
+	ulog "github.com/elastic/cloud-on-k8s/v3/pkg/utils/log"
 )
 
 // autoscaledResourcesSynced checks that the autoscaler controller has updated the resources

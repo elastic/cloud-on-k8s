@@ -8,7 +8,7 @@ import (
 	"github.com/go-logr/logr"
 	corev1 "k8s.io/api/core/v1"
 
-	"github.com/elastic/cloud-on-k8s/v2/pkg/apis/common/v1alpha1"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/apis/common/v1alpha1"
 )
 
 // GetOfflineNodeSetsResources attempts to create or restore resources.NodeSetsResources without an actual autoscaling

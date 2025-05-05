@@ -9,9 +9,9 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/sset"
-	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/k8s"
-	ulog "github.com/elastic/cloud-on-k8s/v2/pkg/utils/log"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/sset"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/k8s"
+	ulog "github.com/elastic/cloud-on-k8s/v3/pkg/utils/log"
 )
 
 // expectationsSatisfied checks that resources in our local cache match what we expect.

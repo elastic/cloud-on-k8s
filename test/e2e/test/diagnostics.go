@@ -11,7 +11,7 @@ import (
 	"os/exec"
 	"strings"
 
-	"github.com/elastic/cloud-on-k8s/v2/test/e2e/test/command"
+	"github.com/elastic/cloud-on-k8s/v3/test/e2e/test/command"
 )
 
 // canRunDiagnostics will determine if this e2e test run has the ability to run eck-diagnostics after

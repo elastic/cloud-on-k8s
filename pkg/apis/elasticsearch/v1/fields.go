@@ -4,7 +4,7 @@
 
 package v1
 
-import "github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/version"
+import "github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/version"
 
 // as of 8.2.0 a simplified unauthenticated readiness port is available which takes cluster membership into account
 // see https://www.elastic.co/guide/en/elasticsearch/reference/current/advanced-configuration.html#readiness-tcp-port
