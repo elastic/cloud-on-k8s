@@ -76,6 +76,19 @@ func buildConfig(params Params) ([]byte, error) {
 		return nil, err
 	}
 
+	// Agent in Fleet mode compares its default config with the one provided by the user. The default one only
+	// contains the fleet.enabled setting. If the user config does not contain this setting, it will be replaced by
+	// the default one. We want to avoid config file replacement by agents which will not work
+	// with config files mounted read-only from a secret.
+	if params.Agent.Spec.FleetModeEnabled() {
+		if err := cfg.MergeWith(settings.MustCanonicalConfig(map[string]interface{}{
+			"fleet": map[string]interface{}{
+				"enabled": true,
+			}})); err != nil {
+			return nil, err
+		}
+	}
+
 	if err = cfg.MergeWith(userConfig); err != nil {
 		return nil, err
 	}
@@ -153,7 +166,7 @@ func getUserConfig(params Params) (*settings.CanonicalConfig, error) {
 	if params.Agent.Spec.Config != nil {
 		return settings.NewCanonicalConfigFrom(params.Agent.Spec.Config.Data)
 	}
-	return common.ParseConfigRef(params, &params.Agent, params.Agent.Spec.ConfigRef, ConfigFileName)
+	return common.ParseConfigRef(params, &params.Agent, params.Agent.Spec.ConfigRef, ConfigRefFileName)
 }
 
 // extractPodConnectionSettings extracts connections settings to be used inside an Elastic Agent Pod. That is without

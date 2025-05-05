@@ -43,8 +43,10 @@ type Params struct {
 	EventRecorder record.EventRecorder
 	Watches       watches.DynamicWatches
 
-	Agent  agentv1alpha1.Agent
-	Status agentv1alpha1.AgentStatus
+	Agent agentv1alpha1.Agent
+	// AgentVersion is a convenience field to avoid parsing the version string multiple times.
+	AgentVersion version.Version
+	Status       agentv1alpha1.AgentStatus
 
 	OperatorParams operator.Parameters
 }
@@ -91,11 +93,7 @@ func internalReconcile(params Params) (*reconciler.Results, agentv1alpha1.AgentS
 	defer tracing.Span(&params.Context)()
 	results := reconciler.NewResult(params.Context)
 
-	agentVersion, err := version.Parse(params.Agent.Spec.Version)
-	if err != nil {
-		return results.WithError(err), params.Status
-	}
-	assocAllowed, err := association.AllowVersion(agentVersion, &params.Agent, params.Logger(), params.EventRecorder)
+	assocAllowed, err := association.AllowVersion(params.AgentVersion, &params.Agent, params.Logger(), params.EventRecorder)
 	if err != nil {
 		return results.WithError(err), params.Status
 	}

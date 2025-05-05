@@ -452,7 +452,8 @@ func Test_checkEmptyConfigForFleetMode(t *testing.T) {
 			name: "no config: OK",
 			a: &Agent{
 				Spec: AgentSpec{
-					Mode: AgentFleetMode,
+					Version: "8.1.0",
+					Mode:    AgentFleetMode,
 				},
 			},
 			wantErr: false,
@@ -461,8 +462,9 @@ func Test_checkEmptyConfigForFleetMode(t *testing.T) {
 			name: "config: NOK",
 			a: &Agent{
 				Spec: AgentSpec{
-					Mode:   AgentFleetMode,
-					Config: &commonv1.Config{},
+					Version: "8.1.0",
+					Mode:    AgentFleetMode,
+					Config:  &commonv1.Config{},
 				},
 			},
 			wantErr: true,
@@ -471,11 +473,34 @@ func Test_checkEmptyConfigForFleetMode(t *testing.T) {
 			name: "configref: NOK",
 			a: &Agent{
 				Spec: AgentSpec{
+					Version:   "8.1.0",
 					Mode:      AgentFleetMode,
 					ConfigRef: &commonv1.ConfigSource{},
 				},
 			},
 			wantErr: true,
+		},
+		{
+			name: "> 8.13: config OK",
+			a: &Agent{
+				Spec: AgentSpec{
+					Version: "8.14.0",
+					Mode:    AgentFleetMode,
+					Config:  &commonv1.Config{},
+				},
+			},
+			wantErr: false,
+		},
+		{
+			name: "> 8.13: configref OK",
+			a: &Agent{
+				Spec: AgentSpec{
+					Version:   "8.14.0",
+					Mode:      AgentFleetMode,
+					ConfigRef: &commonv1.ConfigSource{},
+				},
+			},
+			wantErr: false,
 		},
 	} {
 		t.Run(tt.name, func(t *testing.T) {

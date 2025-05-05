@@ -9,6 +9,7 @@ import (
 	"reflect"
 	"strings"
 
+	"github.com/blang/semver/v4"
 	apiequality "k8s.io/apimachinery/pkg/api/equality"
 	"k8s.io/apimachinery/pkg/util/validation/field"
 
@@ -187,7 +188,15 @@ func checkSpec(a *Agent) field.ErrorList {
 
 func checkEmptyConfigForFleetMode(a *Agent) field.ErrorList {
 	var errors field.ErrorList
-	if a.Spec.FleetModeEnabled() {
+	v, err := semver.Parse(a.Spec.Version)
+	if err != nil {
+		return field.ErrorList{field.Invalid(
+			field.NewPath("spec").Child("version"),
+			a.Spec.Version,
+			"invalid version",
+		)}
+	}
+	if a.Spec.FleetModeEnabled() && v.LT(FleetAdvancedConfigMinVersion) {
 		if a.Spec.Config != nil {
 			errors = append(errors, field.Invalid(
 				field.NewPath("spec").Child("config"),
