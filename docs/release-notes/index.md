@@ -61,7 +61,7 @@ Review the changes, fixes, and more in each release of Elastic Cloud on Kubernet
 - Bump github.com/go-jose/go-jose/v4 from 4.0.1 to 4.0.5 ([#8488](https://github.com/elastic/cloud-on-k8s/pull/8488))
 - fix(deps): update module github.com/go-git/go-git/v5 to v5.14.0 ([#8487](https://github.com/elastic/cloud-on-k8s/pull/8487))
 - fix(deps): update k8s ([#8486](https://github.com/elastic/cloud-on-k8s/pull/8486))
-- chore(deps): update docker.elastic.co/ci-agent-images/serverless-docker-builder:0.4.0 docker digest to 730f062 ([#8483](https://github.com/elastic/cloud-on-k8s/pull/8483))
+- chore(deps): update docker.elastic.co/ci-agent-images/serverless-docker-builder:0.6.1 docker digest to 730f062 ([#8483](https://github.com/elastic/cloud-on-k8s/pull/8483))
 - fix(deps): update module github.com/spf13/pflag to v1.0.6 ([#8468](https://github.com/elastic/cloud-on-k8s/pull/8468))
 - Update module github.com/gkampitakis/go-snaps to v0.5.10 ([#8467](https://github.com/elastic/cloud-on-k8s/pull/8467))
 - chore(deps): update dependency go to v1.24.1 ([#8454](https://github.com/elastic/cloud-on-k8s/pull/8454))
