@@ -40,7 +40,9 @@ func (d Defaulter) From(other corev1.Container) Defaulter {
 		WithEnv(other.Env).
 		WithResources(other.Resources).
 		WithVolumeMounts(other.VolumeMounts).
-		WithReadinessProbe(other.ReadinessProbe)
+		WithReadinessProbe(other.ReadinessProbe).
+		WithLivenessProbe(other.LivenessProbe).
+		WithStartupProbe(other.StartupProbe)
 }
 
 func (d Defaulter) WithCommand(command []string) Defaulter {
