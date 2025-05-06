@@ -33,6 +33,7 @@ const (
 )
 
 var Log = crlog.Log
+var verbosity *int
 
 func init() {
 	// Introduced mainly as a workaround for a controller-runtime bug.
@@ -41,9 +42,15 @@ func init() {
 	if logLevel, err := strconv.Atoi(os.Getenv(testLogLevelEnvVar)); err == nil {
 		setLogger(&logLevel)
 	}
-}
 
-var verbosity = flag.Int(FlagName, 0, "Verbosity level of logs (-2=Error, -1=Warn, 0=Info, >0=Debug)")
+	if flag.Lookup(FlagName) == nil {
+		// Register the log-verbosity flag with a default value of 0 (Info level).
+		verbosity = flag.Int(FlagName, 0, "Verbosity level of logs (-2=Error, -1=Warn, 0=Info, >0=Debug)")
+	} else {
+		// If previously registered, use the existing flag. (from https://stackoverflow.com/a/49195212)
+		verbosity = flag.Lookup(FlagName).Value.(flag.Getter).Get().(*int)
+	}
+}
 
 // BindFlags attaches logging flags to the given flag set.
 func BindFlags(flags *pflag.FlagSet) {
