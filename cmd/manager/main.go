@@ -7,6 +7,7 @@ package manager
 import (
 	"context"
 	"errors"
+	"flag"
 	"fmt"
 	"net/http"
 	"net/http/pprof"
@@ -143,6 +144,8 @@ func Command() *cobra.Command {
 		},
 		RunE: doRun,
 	}
+
+	cmd.Flags().AddGoFlagSet(flag.CommandLine)
 
 	cmd.Flags().Bool(
 		operator.AutoPortForwardFlag,
