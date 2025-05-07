@@ -48,8 +48,12 @@ func init() {
 		verbosity = flag.Int(FlagName, 0, "Verbosity level of logs (-2=Error, -1=Warn, 0=Info, >0=Debug)")
 	} else {
 		// If previously registered, use the existing flag. (from https://stackoverflow.com/a/49195212)
-		value := flag.Lookup(FlagName).Value.(flag.Getter).Get().(int)
-		verbosity = &value
+		value, ok := flag.Lookup(FlagName).Value.(flag.Getter).Get().(*int)
+		if !ok { // type assertion failed
+			// try assigning the flag again
+			value = flag.Int(FlagName, 0, "Verbosity level of logs (-2=Error, -1=Warn, 0=Info, >0=Debug)")
+		}
+		verbosity = value
 	}
 }
 
