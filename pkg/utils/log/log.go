@@ -48,7 +48,8 @@ func init() {
 		verbosity = flag.Int(FlagName, 0, "Verbosity level of logs (-2=Error, -1=Warn, 0=Info, >0=Debug)")
 	} else {
 		// If previously registered, use the existing flag. (from https://stackoverflow.com/a/49195212)
-		verbosity = flag.Lookup(FlagName).Value.(flag.Getter).Get().(*int)
+		value := flag.Lookup(FlagName).Value.(flag.Getter).Get().(int)
+		verbosity = &value
 	}
 }
 
