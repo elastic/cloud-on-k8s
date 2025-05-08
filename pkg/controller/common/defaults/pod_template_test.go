@@ -274,6 +274,146 @@ func TestPodTemplateBuilder_WithReadinessProbe(t *testing.T) {
 	}
 }
 
+func TestPodTemplateBuilder_WithLivenessProbe(t *testing.T) {
+	containerName := "mycontainer"
+	tests := []struct {
+		name          string
+		PodTemplate   corev1.PodTemplateSpec
+		livenessProbe corev1.Probe
+		want          *corev1.Probe
+	}{
+		{
+			name:        "no liveness probe in pod template: use default one",
+			PodTemplate: corev1.PodTemplateSpec{},
+			livenessProbe: corev1.Probe{
+				ProbeHandler: corev1.ProbeHandler{
+					HTTPGet: &corev1.HTTPGetAction{
+						Path: "/probe",
+					},
+				},
+			},
+			want: &corev1.Probe{
+				ProbeHandler: corev1.ProbeHandler{
+					HTTPGet: &corev1.HTTPGetAction{
+						Path: "/probe",
+					},
+				},
+			},
+		},
+		{
+			name: "don't override pod template liveness probe",
+			PodTemplate: corev1.PodTemplateSpec{
+				Spec: corev1.PodSpec{
+					Containers: []corev1.Container{
+						{
+							Name: containerName,
+							LivenessProbe: &corev1.Probe{
+								ProbeHandler: corev1.ProbeHandler{
+									HTTPGet: &corev1.HTTPGetAction{
+										Path: "/user-provided",
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+			livenessProbe: corev1.Probe{
+				ProbeHandler: corev1.ProbeHandler{
+					HTTPGet: &corev1.HTTPGetAction{
+						Path: "/probe",
+					},
+				},
+			},
+			want: &corev1.Probe{
+				ProbeHandler: corev1.ProbeHandler{
+					HTTPGet: &corev1.HTTPGetAction{
+						Path: "/user-provided",
+					},
+				},
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			b := NewPodTemplateBuilder(tt.PodTemplate, containerName)
+			if got := b.WithLivenessProbe(tt.livenessProbe).containerDefaulter.Container().LivenessProbe; !reflect.DeepEqual(got, tt.want) {
+				t.Errorf("PodTemplateBuilder.WithLivenessProbe() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+func TestPodTemplateBuilder_WithStartupProbe(t *testing.T) {
+	containerName := "mycontainer"
+	tests := []struct {
+		name         string
+		PodTemplate  corev1.PodTemplateSpec
+		startupProbe corev1.Probe
+		want         *corev1.Probe
+	}{
+		{
+			name:        "no startup probe in pod template: use default one",
+			PodTemplate: corev1.PodTemplateSpec{},
+			startupProbe: corev1.Probe{
+				ProbeHandler: corev1.ProbeHandler{
+					HTTPGet: &corev1.HTTPGetAction{
+						Path: "/probe",
+					},
+				},
+			},
+			want: &corev1.Probe{
+				ProbeHandler: corev1.ProbeHandler{
+					HTTPGet: &corev1.HTTPGetAction{
+						Path: "/probe",
+					},
+				},
+			},
+		},
+		{
+			name: "don't override pod template startup probe",
+			PodTemplate: corev1.PodTemplateSpec{
+				Spec: corev1.PodSpec{
+					Containers: []corev1.Container{
+						{
+							Name: containerName,
+							StartupProbe: &corev1.Probe{
+								ProbeHandler: corev1.ProbeHandler{
+									HTTPGet: &corev1.HTTPGetAction{
+										Path: "/user-provided",
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+			startupProbe: corev1.Probe{
+				ProbeHandler: corev1.ProbeHandler{
+					HTTPGet: &corev1.HTTPGetAction{
+						Path: "/probe",
+					},
+				},
+			},
+			want: &corev1.Probe{
+				ProbeHandler: corev1.ProbeHandler{
+					HTTPGet: &corev1.HTTPGetAction{
+						Path: "/user-provided",
+					},
+				},
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			b := NewPodTemplateBuilder(tt.PodTemplate, containerName)
+			if got := b.WithStartupProbe(tt.startupProbe).containerDefaulter.Container().StartupProbe; !reflect.DeepEqual(got, tt.want) {
+				t.Errorf("PodTemplateBuilder.WithStartupProbe() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
 func TestPodTemplateBuilder_WithAffinity(t *testing.T) {
 	defaultAffinity := &corev1.Affinity{
 		NodeAffinity: &corev1.NodeAffinity{},
