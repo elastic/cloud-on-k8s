@@ -1,4 +1,6 @@
 project: 'Elastic Cloud on Kubernetes'
+products:
+  - id: cloud-kubernetes
 exclude:
   - design/**/*.md
 cross_links:
