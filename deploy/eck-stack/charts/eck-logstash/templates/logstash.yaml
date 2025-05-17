@@ -3,6 +3,7 @@ apiVersion: logstash.k8s.elastic.co/v1alpha1
 kind: Logstash
 metadata:
   name: {{ include "logstash.fullname" . }}
+  namespace: {{ .Release.Namespace }}
   labels:
     {{- include "logstash.labels" . | nindent 4 }}
   annotations:

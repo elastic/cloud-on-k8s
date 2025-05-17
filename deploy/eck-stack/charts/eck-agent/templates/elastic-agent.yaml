@@ -3,6 +3,7 @@ apiVersion: agent.k8s.elastic.co/v1alpha1
 kind: Agent
 metadata:
   name: {{ include "elasticagent.fullname" . }}
+  namespace: {{ .Release.Namespace }}
   labels:
     {{- include "elasticagent.labels" $ | nindent 4 }}
   annotations:

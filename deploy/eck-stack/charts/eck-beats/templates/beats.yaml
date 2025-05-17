@@ -3,6 +3,7 @@ apiVersion: beat.k8s.elastic.co/v1beta1
 kind: Beat
 metadata:
   name: {{ include "beat.fullname" . }}
+  namespace: {{ .Release.Namespace }}
   labels:
     {{- include "beat.labels" . | nindent 4 }}
   annotations:

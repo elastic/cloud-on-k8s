@@ -3,6 +3,7 @@ apiVersion: agent.k8s.elastic.co/v1alpha1
 kind: Agent
 metadata:
   name: {{ include "fleet-server.fullname" . }}
+  namespace: {{ .Release.Namespace }}
   labels:
     {{- include "fleet-server.labels" . | nindent 4 }}
   annotations:
