@@ -187,7 +187,6 @@ func checkSpec(a *Agent) field.ErrorList {
 }
 
 func checkEmptyConfigForFleetMode(a *Agent) field.ErrorList {
-	var errors field.ErrorList
 	v, err := semver.Parse(a.Spec.Version)
 	if err != nil {
 		return field.ErrorList{field.Invalid(
@@ -197,6 +196,7 @@ func checkEmptyConfigForFleetMode(a *Agent) field.ErrorList {
 		)}
 	}
 	if a.Spec.FleetModeEnabled() && v.LT(FleetAdvancedConfigMinVersion) {
+		var errors field.ErrorList
 		if a.Spec.Config != nil {
 			errors = append(errors, field.Invalid(
 				field.NewPath("spec").Child("config"),
@@ -212,9 +212,10 @@ func checkEmptyConfigForFleetMode(a *Agent) field.ErrorList {
 				"remove configRef, it can't be set in fleet mode",
 			))
 		}
+		return errors
 	}
 
-	return errors
+	return nil
 }
 
 func checkFleetServerOnlyInFleetMode(a *Agent) field.ErrorList {
