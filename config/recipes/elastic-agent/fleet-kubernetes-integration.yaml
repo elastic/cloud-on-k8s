@@ -93,6 +93,18 @@ spec:
     name: kibana
   fleetServerRef: 
     name: fleet-server
+  # Advanced configuration is possible in Fleet mode to
+  # customize the agent's providers.
+  # See https://www.elastic.co/docs/reference/fleet/advanced-kubernetes-managed-by-fleet
+  # for more information.
+  # Note: the sample configuration below enables deployment metadata collection which is not
+  # enabled by default because it has a performance impact.
+  # config:
+  #   fleet:
+  #     enabled: true
+  #   providers.kubernetes:
+  #     add_resource_metadata:
+  #       deployment: true
   mode: fleet
   policyID: eck-agent
   daemonSet:
