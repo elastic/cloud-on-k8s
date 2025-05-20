@@ -82,8 +82,10 @@ type AgentSpec struct {
 	// +kubebuilder:validation:Optional
 	HTTP commonv1.HTTPConfig `json:"http,omitempty"`
 
-	// Mode specifies the source of configuration for the Agent. The configuration can be specified locally through
-	// `config` or `configRef` (`standalone` mode), or come from Fleet during runtime (`fleet` mode).
+	// Mode specifies the runtime mode for the Agent. The configuration can be specified locally through
+	// `config` or `configRef` (`standalone` mode), or come from Fleet during runtime (`fleet` mode). Starting with
+	// version 8.13.0 Fleet-managed agents support advanced configuration via a local configuration file.
+	// See https://www.elastic.co/docs/reference/fleet/advanced-kubernetes-managed-by-fleet
 	// Defaults to `standalone` mode.
 	// +kubebuilder:validation:Optional
 	Mode AgentMode `json:"mode,omitempty"`
@@ -213,6 +215,14 @@ const (
 	// AgentFleetMode denotes running the Agent using Fleet.
 	AgentFleetMode AgentMode = "fleet"
 )
+
+// FleetAdvancedConfigMinVersion is the minimum version of Fleet-managed agents that supports advanced configuration via a local
+// configuration file. This was enabled in https://github.com/elastic/elastic-agent/pull/4166 by introducing a feature that
+// avoids replacing the local configuration file with the default, if the default is contained in the local configuration file.
+// Without it Elastic Agent will try to replace and rename the local configuration file which fails in containerized environments as
+// the file is typically mounted as read-only.
+// Elastic Agent advanced configuration is documented here: https://www.elastic.co/docs/reference/fleet/advanced-kubernetes-managed-by-fleet
+var FleetAdvancedConfigMinVersion = semver.MustParse("8.13.0")
 
 // FleetModeEnabled returns true iff the Agent is running in fleet mode.
 func (a AgentSpec) FleetModeEnabled() bool {
