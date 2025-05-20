@@ -7,7 +7,6 @@
 package certificates
 
 import (
-	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
@@ -166,7 +165,7 @@ func Test_detectCAFileNames(t *testing.T) {
 
 			cert, key, err := detectCAFileNames(dir)
 			if tt.wantErr != (err != nil) {
-				t.Errorf(fmt.Sprintf("want err %v got %v,files: %v ", tt.wantErr, err, tt.files))
+				t.Errorf("want err %v got %v,files: %v ", tt.wantErr, err, tt.files)
 			}
 			if err == nil {
 				assert.Equalf(t, filepath.Join(dir, tt.wantCert), cert, "detectCAFileNames(), files: %v", tt.files)
