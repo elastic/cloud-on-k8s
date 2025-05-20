@@ -8,6 +8,15 @@
     - E2E_STACK_VERSION: "8.19.0-SNAPSHOT"
     - E2E_STACK_VERSION: "9.1.0-SNAPSHOT"
 
+- label: ocp
+  fixed:
+    E2E_PROVIDER: ocp
+  mixed:
+    ## Test the current stack version.
+    - E2E_STACK_VERSION: "9.0.0"
+    ## Also test the next stack version to detect any change in the images that might not be compatible with the CRI-O runtime.
+    - E2E_STACK_VERSION: "9.1.0-SNAPSHOT"
+
 - label: kind
   fixed:
     E2E_PROVIDER: kind
@@ -35,12 +44,6 @@
   fixed:
     E2E_PROVIDER: gke
     E2E_DEPLOY_CHAOS_JOB: true
-
-- label: ocp
-  fixed:
-    E2E_PROVIDER: ocp
-  mixed:
-    - DEPLOYER_CLIENT_VERSION: "4.18.1"
 
 - label: eks-arm
   fixed:
