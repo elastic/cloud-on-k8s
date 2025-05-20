@@ -19,4 +19,26 @@ Known issues are significant defects or limitations that may impact your impleme
 
 ## 3.0.0 [elastic-cloud-kubernetes-300-known-issues]
 
-There are currently no known issues for ECK 3.0
+:::{dropdown} Elastic Maps Server 9.0.0 does not start on certain container runtimes
+On May 19th 2025, it was discovered that the Elastic Maps Server container image in version 9.0.0 does not start on OpenShift Container Platform with the following error: `container create failed: open executable: Operation not permitted`
+.
+For more information, check [Issue #8655](https://github.com/elastic/cloud-on-k8s/issues/8655).
+
+**Workaround**
+
+To workaround the issue override the container command for Elastic Maps Server: 
+
+```
+apiVersion: maps.k8s.elastic.co/v1alpha1
+kind: ElasticMapsServer
+metadata:
+  name: ems-sample
+spec:
+  version: 9.0.0
+  count: 1
+  podTemplate:
+    spec:
+      containers:
+        - name: maps
+          command: [ /bin/sh, -c, "node app/index.js"]
+```
