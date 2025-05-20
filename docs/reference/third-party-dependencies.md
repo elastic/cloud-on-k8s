@@ -16,7 +16,7 @@ This page lists the third-party dependencies used to build {{eck}}.
 
 | Name | Version | Licence |
 | --- | --- | --- |
-| [dario.cat/mergo](https://dario.cat/mergo) | v1.0.1 | BSD-3-Clause |
+| [dario.cat/mergo](https://dario.cat/mergo) | v1.0.2 | BSD-3-Clause |
 | [github.com/Masterminds/sprig/v3](https://github.com/Masterminds/sprig) | v3.3.0 | MIT |
 | [github.com/blang/semver/v4](https://github.com/blang/semver) | v4.0.0 | MIT |
 | [github.com/davecgh/go-spew](https://github.com/davecgh/go-spew) | v1.1.2-0.20180830191138-d8f796af33cc | ISC |
