@@ -40,13 +40,13 @@ func TestReconcile(t *testing.T) {
 				Labels:    map[string]string{label.ClusterNameLabelName: "cluster", commonv1.TypeLabelName: label.Type},
 			},
 			Spec: policyv1.PodDisruptionBudgetSpec{
-				MinAvailable: intStrPtr(intstr.FromInt(3)),
+				MaxUnavailable: intStrPtr(intstr.FromInt(0)),
 				Selector: &metav1.LabelSelector{
 					MatchLabels: map[string]string{
 						label.ClusterNameLabelName: "cluster",
 					},
 				},
-				MaxUnavailable: nil,
+				MinAvailable: nil,
 			},
 		}
 	}
@@ -79,7 +79,7 @@ func TestReconcile(t *testing.T) {
 			wantPDB: defaultPDB(),
 		},
 		{
-			name: "pdb needs a MinAvailable update",
+			name: "pdb doesn't need a MaxUnavailable update",
 			args: args{
 				initObjs:     []client.Object{defaultPDB()},
 				es:           defaultEs,
@@ -92,13 +92,13 @@ func TestReconcile(t *testing.T) {
 					Labels:    map[string]string{label.ClusterNameLabelName: "cluster", commonv1.TypeLabelName: label.Type},
 				},
 				Spec: policyv1.PodDisruptionBudgetSpec{
-					MinAvailable: intStrPtr(intstr.FromInt(5)),
+					MaxUnavailable: intStrPtr(intstr.FromInt(0)),
 					Selector: &metav1.LabelSelector{
 						MatchLabels: map[string]string{
 							label.ClusterNameLabelName: "cluster",
 						},
 					},
-					MaxUnavailable: nil,
+					MinAvailable: nil,
 				},
 			},
 		},
@@ -196,13 +196,13 @@ func Test_expectedPDB(t *testing.T) {
 					Labels:    map[string]string{label.ClusterNameLabelName: "cluster", commonv1.TypeLabelName: label.Type},
 				},
 				Spec: policyv1.PodDisruptionBudgetSpec{
-					MinAvailable: intStrPtr(intstr.FromInt(3)),
+					MaxUnavailable: intStrPtr(intstr.FromInt(0)),
 					Selector: &metav1.LabelSelector{
 						MatchLabels: map[string]string{
 							label.ClusterNameLabelName: "cluster",
 						},
 					},
-					MaxUnavailable: nil,
+					MinAvailable: nil,
 				},
 			},
 		},
@@ -227,13 +227,13 @@ func Test_expectedPDB(t *testing.T) {
 					Labels:    map[string]string{"a": "b", "c": "d", label.ClusterNameLabelName: "cluster", commonv1.TypeLabelName: label.Type},
 				},
 				Spec: policyv1.PodDisruptionBudgetSpec{
-					MinAvailable: intStrPtr(intstr.FromInt(3)),
+					MaxUnavailable: intStrPtr(intstr.FromInt(0)),
 					Selector: &metav1.LabelSelector{
 						MatchLabels: map[string]string{
 							label.ClusterNameLabelName: "cluster",
 						},
 					},
-					MaxUnavailable: nil,
+					MinAvailable: nil,
 				},
 			},
 		},
