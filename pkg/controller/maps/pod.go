@@ -83,6 +83,12 @@ func newPodSpec(ems emsv1alpha1.ElasticMapsServer, configHash string) (corev1.Po
 		WithVolumeMounts(cfgVolume.VolumeMount(), logsVolume.VolumeMount()).
 		WithInitContainerDefaults()
 
+	// Add command override for versions 9.0.0 through 9.0.1 to fix OpenShift permission issue
+	// See issue #8655: container create fails with "open executable: Operation not permitted"
+	if v.GTE(version.From(9, 0, 0)) && v.LTE(version.From(9, 0, 1)) {
+		builder = builder.WithCommand([]string{"/bin/sh", "-c", "node app/index.js"})
+	}
+
 	builder, err = withESCertsVolume(builder, ems)
 	if err != nil {
 		return corev1.PodTemplateSpec{}, err
