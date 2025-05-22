@@ -15,79 +15,86 @@ import (
 	emsv1alpha1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/maps/v1alpha1"
 )
 
-func TestNewPodSpec(t *testing.T) {
+func TestNewPodSpec_CommandOverride(t *testing.T) {
+	// Command to use for the OpenShift workaround
+	commandOverride := []string{"/bin/sh", "-c", "node app/index.js"}
+
 	tests := []struct {
 		name                string
-		ems                 emsv1alpha1.ElasticMapsServer
+		version             string
 		wantCommandOverride bool
 		expectedCommand     []string
 	}{
+		// 7.x version tests
 		{
-			name: "version 8.9.0 - no command override",
-			ems: emsv1alpha1.ElasticMapsServer{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      "test-ems",
-					Namespace: "default",
-				},
-				Spec: emsv1alpha1.MapsSpec{
-					Version: "8.9.0",
-				},
-			},
+			name:                "version 7.17.27 - no command override",
+			version:             "7.17.27",
 			wantCommandOverride: false,
 		},
 		{
-			name: "version 9.0.0 - should apply command override",
-			ems: emsv1alpha1.ElasticMapsServer{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      "test-ems",
-					Namespace: "default",
-				},
-				Spec: emsv1alpha1.MapsSpec{
-					Version: "9.0.0",
-				},
-			},
+			name:                "version 7.17.28 - should apply command override",
+			version:             "7.17.28",
 			wantCommandOverride: true,
-			expectedCommand:     []string{"/bin/sh", "-c", "node app/index.js"},
+			expectedCommand:     commandOverride,
 		},
 		{
-			name: "version 9.0.1 - should apply command override",
-			ems: emsv1alpha1.ElasticMapsServer{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      "test-ems",
-					Namespace: "default",
-				},
-				Spec: emsv1alpha1.MapsSpec{
-					Version: "9.0.1",
-				},
-			},
-			wantCommandOverride: true,
-			expectedCommand:     []string{"/bin/sh", "-c", "node app/index.js"},
+			name:                "version 7.17.29 - should not apply command override",
+			version:             "7.17.29",
+			wantCommandOverride: false,
+		},
+		// 8.x version tests
+		{
+			name:                "version 8.17.6 - no command override",
+			version:             "8.17.6",
+			wantCommandOverride: false,
 		},
 		{
-			name: "version 9.1.0 - no command override",
-			ems: emsv1alpha1.ElasticMapsServer{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      "test-ems",
-					Namespace: "default",
-				},
-				Spec: emsv1alpha1.MapsSpec{
-					Version: "9.1.0",
-				},
-			},
+			name:                "version 8.18.0 - should apply command override",
+			version:             "8.18.0",
+			wantCommandOverride: true,
+			expectedCommand:     commandOverride,
+		},
+		{
+			name:                "version 8.18.1 - should apply command override",
+			version:             "8.18.1",
+			wantCommandOverride: true,
+			expectedCommand:     commandOverride,
+		},
+		{
+			name:                "version 8.19.0 - should not apply command override",
+			version:             "8.19.0",
+			wantCommandOverride: false,
+		},
+		// 9.x version tests
+		{
+			name:                "version 9.0.0 - should apply command override",
+			version:             "9.0.0",
+			wantCommandOverride: true,
+			expectedCommand:     commandOverride,
+		},
+		{
+			name:                "version 9.1.0 - should not apply command override",
+			version:             "9.1.0",
 			wantCommandOverride: false,
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			podSpec, err := newPodSpec(tt.ems, "test-hash")
+			// Create a test EMS with the specified version
+			ems := emsv1alpha1.ElasticMapsServer{
+				ObjectMeta: metav1.ObjectMeta{Name: "test-ems", Namespace: "default"},
+				Spec:       emsv1alpha1.MapsSpec{Version: tt.version},
+			}
+
+			podSpec, err := newPodSpec(ems, "test-hash")
 			require.NoError(t, err)
 
 			// Find the main container
 			var mapsContainer *corev1.Container
-			for _, container := range podSpec.Spec.Containers {
-				if container.Name == emsv1alpha1.MapsContainerName {
-					mapsContainer = &container
+			for i := range podSpec.Spec.Containers {
+				if podSpec.Spec.Containers[i].Name == emsv1alpha1.MapsContainerName {
+					mapsContainer = &podSpec.Spec.Containers[i]
 					break
 				}
 			}
@@ -96,10 +103,10 @@ func TestNewPodSpec(t *testing.T) {
 
 			if tt.wantCommandOverride {
 				assert.Equal(t, tt.expectedCommand, mapsContainer.Command,
-					"Command override doesn't match expected value")
+					"Command override doesn't match expected value for version %s", tt.version)
 			} else {
 				assert.Empty(t, mapsContainer.Command,
-					"Command should not be set for versions outside the override range")
+					"Command should not be set for version %s", tt.version)
 			}
 		})
 	}
