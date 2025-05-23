@@ -8,6 +8,8 @@ import (
 	"context"
 	"encoding/json"
 
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/metadata"
+
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -38,17 +40,21 @@ func newKibanaConfigSecret(policy policyv1alpha1.StackConfigPolicy, kibana kiban
 			return corev1.Secret{}, err
 		}
 	}
+	meta := metadata.Propagate(&kibana, metadata.Metadata{
+		Labels: kblabel.NewLabels(types.NamespacedName{
+			Name:      kibana.Name,
+			Namespace: kibana.Namespace,
+		}),
+		Annotations: map[string]string{
+			commonannotation.KibanaConfigHashAnnotation: kibanaConfigHash,
+		},
+	})
 	kibanaConfigSecret := corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
-			Namespace: kibana.Namespace,
-			Name:      GetPolicyConfigSecretName(kibana.Name),
-			Labels: kblabel.NewLabels(types.NamespacedName{
-				Name:      kibana.Name,
-				Namespace: kibana.Namespace,
-			}),
-			Annotations: map[string]string{
-				commonannotation.KibanaConfigHashAnnotation: kibanaConfigHash,
-			},
+			Namespace:   kibana.Namespace,
+			Name:        GetPolicyConfigSecretName(kibana.Name),
+			Labels:      meta.Labels,
+			Annotations: meta.Annotations,
 		},
 		Data: map[string][]byte{
 			KibanaConfigKey: configDataJSONBytes,

@@ -12,6 +12,8 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/metadata"
+
 	"go.elastic.co/apm/v2"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -213,7 +215,10 @@ func (r *ReconcileMapsServer) doReconcile(ctx context.Context, ems emsv1alpha1.E
 		return results.WithError(err), status
 	}
 
-	svc, err := common.ReconcileService(ctx, r.Client, NewService(ems), &ems)
+	// extract the metadata that should be propagated to children
+	meta := metadata.Propagate(&ems, metadata.Metadata{Labels: ems.GetIdentityLabels()})
+
+	svc, err := common.ReconcileService(ctx, r.Client, NewService(ems, meta), &ems)
 	if err != nil {
 		return results.WithError(err), status
 	}
@@ -224,7 +229,7 @@ func (r *ReconcileMapsServer) doReconcile(ctx context.Context, ems emsv1alpha1.E
 		Owner:                 &ems,
 		TLSOptions:            ems.Spec.HTTP.TLS,
 		Namer:                 EMSNamer,
-		Labels:                ems.GetIdentityLabels(),
+		Metadata:              meta,
 		Services:              []corev1.Service{*svc},
 		GlobalCA:              r.GlobalCA,
 		CACertRotation:        r.CACertRotation,
@@ -251,7 +256,7 @@ func (r *ReconcileMapsServer) doReconcile(ctx context.Context, ems emsv1alpha1.E
 		return results, status
 	}
 
-	configSecret, err := reconcileConfig(ctx, r, ems, r.IPFamily)
+	configSecret, err := reconcileConfig(ctx, r, ems, r.IPFamily, meta)
 	if err != nil {
 		return results.WithError(err), status
 	}
@@ -262,7 +267,7 @@ func (r *ReconcileMapsServer) doReconcile(ctx context.Context, ems emsv1alpha1.E
 		return results.WithError(fmt.Errorf("build config hash: %w", err)), status
 	}
 
-	deploy, err := r.reconcileDeployment(ctx, ems, configHash)
+	deploy, err := r.reconcileDeployment(ctx, ems, configHash, meta)
 	if err != nil {
 		return results.WithError(fmt.Errorf("reconcile deployment: %w", err)), status
 	}
@@ -294,7 +299,7 @@ func (r *ReconcileMapsServer) validate(ctx context.Context, ems emsv1alpha1.Elas
 	return nil
 }
 
-func NewService(ems emsv1alpha1.ElasticMapsServer) *corev1.Service {
+func NewService(ems emsv1alpha1.ElasticMapsServer, meta metadata.Metadata) *corev1.Service {
 	svc := corev1.Service{
 		ObjectMeta: ems.Spec.HTTP.Service.ObjectMeta,
 		Spec:       ems.Spec.HTTP.Service.Spec,
@@ -303,7 +308,7 @@ func NewService(ems emsv1alpha1.ElasticMapsServer) *corev1.Service {
 	svc.ObjectMeta.Namespace = ems.Namespace
 	svc.ObjectMeta.Name = HTTPService(ems.Name)
 
-	labels := ems.GetIdentityLabels()
+	selector := ems.GetIdentityLabels()
 	ports := []corev1.ServicePort{
 		{
 			Name:     ems.Spec.HTTP.Protocol(),
@@ -312,7 +317,7 @@ func NewService(ems emsv1alpha1.ElasticMapsServer) *corev1.Service {
 		},
 	}
 
-	return defaults.SetServiceDefaults(&svc, labels, labels, ports)
+	return defaults.SetServiceDefaults(&svc, meta, selector, ports)
 }
 
 func buildConfigHash(c k8s.Client, ems emsv1alpha1.ElasticMapsServer, configSecret corev1.Secret) (string, error) {
@@ -346,11 +351,12 @@ func (r *ReconcileMapsServer) reconcileDeployment(
 	ctx context.Context,
 	ems emsv1alpha1.ElasticMapsServer,
 	configHash string,
+	meta metadata.Metadata,
 ) (appsv1.Deployment, error) {
 	span, _ := apm.StartSpan(ctx, "reconcile_deployment", tracing.SpanTypeApp)
 	defer span.End()
 
-	deployParams, err := r.deploymentParams(ems, configHash)
+	deployParams, err := r.deploymentParams(ems, configHash, meta)
 	if err != nil {
 		return appsv1.Deployment{}, err
 	}
@@ -358,7 +364,7 @@ func (r *ReconcileMapsServer) reconcileDeployment(
 	return deployment.Reconcile(ctx, r.K8sClient(), deploy, &ems)
 }
 
-func (r *ReconcileMapsServer) deploymentParams(ems emsv1alpha1.ElasticMapsServer, configHash string) (deployment.Params, error) {
+func (r *ReconcileMapsServer) deploymentParams(ems emsv1alpha1.ElasticMapsServer, configHash string, meta metadata.Metadata) (deployment.Params, error) {
 	podSpec, err := newPodSpec(ems, configHash)
 	if err != nil {
 		return deployment.Params{}, err
@@ -375,7 +381,7 @@ func (r *ReconcileMapsServer) deploymentParams(ems emsv1alpha1.ElasticMapsServer
 		Namespace:       ems.Namespace,
 		Replicas:        ems.Spec.Count,
 		Selector:        deploymentLabels,
-		Labels:          deploymentLabels,
+		Metadata:        meta,
 		PodTemplateSpec: podSpec,
 		Strategy:        appsv1.DeploymentStrategy{Type: appsv1.RollingUpdateDeploymentStrategyType},
 	}, nil

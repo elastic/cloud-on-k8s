@@ -9,6 +9,8 @@ import (
 	"context"
 	"sort"
 
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/metadata"
+
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -39,6 +41,7 @@ func Reconcile(
 	c k8s.Client,
 	es esv1.Elasticsearch,
 	transportCA certificates.CA,
+	meta metadata.Metadata,
 ) error {
 	// Get all the remote certificate authorities
 	var remoteCAList v1.SecretList
@@ -68,11 +71,10 @@ func Reconcile(
 
 	expected := v1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      esv1.RemoteCaSecretName(es.Name),
-			Namespace: es.Namespace,
-			Labels: map[string]string{
-				label.ClusterNameLabelName: es.Name,
-			},
+			Name:        esv1.RemoteCaSecretName(es.Name),
+			Namespace:   es.Namespace,
+			Labels:      meta.Labels,
+			Annotations: meta.Annotations,
 		},
 		Data: map[string][]byte{
 			certificates.CAFileName: bytes.Join(remoteCertificateAuthorities, nil),

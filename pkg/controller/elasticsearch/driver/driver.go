@@ -30,6 +30,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/expectations"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/keystore"
 	commonlicense "github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/license"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/metadata"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/operator"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/reconciler"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/version"
@@ -134,16 +135,19 @@ func (d *defaultDriver) Reconcile(ctx context.Context) *reconciler.Results {
 		return results.WithError(err)
 	}
 
-	if err := configmap.ReconcileScriptsConfigMap(ctx, d.Client, d.ES); err != nil {
+	// extract the metadata that should be propagated to children
+	meta := metadata.Propagate(&d.ES, metadata.Metadata{Labels: label.NewLabels(k8s.ExtractNamespacedName(&d.ES))})
+
+	if err := configmap.ReconcileScriptsConfigMap(ctx, d.Client, d.ES, meta); err != nil {
 		return results.WithError(err)
 	}
 
-	_, err := common.ReconcileService(ctx, d.Client, services.NewTransportService(d.ES), &d.ES)
+	_, err := common.ReconcileService(ctx, d.Client, services.NewTransportService(d.ES, meta), &d.ES)
 	if err != nil {
 		return results.WithError(err)
 	}
 
-	externalService, err := common.ReconcileService(ctx, d.Client, services.NewExternalService(d.ES), &d.ES)
+	externalService, err := common.ReconcileService(ctx, d.Client, services.NewExternalService(d.ES, meta), &d.ES)
 	if err != nil {
 		if k8serrors.IsAlreadyExists(err) {
 			return results.WithReconciliationState(defaultRequeue.WithReason(fmt.Sprintf("Pending %s service recreation", services.ExternalServiceName(d.ES.Name))))
@@ -152,7 +156,7 @@ func (d *defaultDriver) Reconcile(ctx context.Context) *reconciler.Results {
 	}
 
 	var internalService *corev1.Service
-	internalService, err = common.ReconcileService(ctx, d.Client, services.NewInternalService(d.ES), &d.ES)
+	internalService, err = common.ReconcileService(ctx, d.Client, services.NewInternalService(d.ES, meta), &d.ES)
 	if err != nil {
 		return results.WithError(err)
 	}
@@ -160,7 +164,7 @@ func (d *defaultDriver) Reconcile(ctx context.Context) *reconciler.Results {
 	// Remote Cluster Server (RCS2) Kubernetes Service reconciliation.
 	if d.ES.Spec.RemoteClusterServer.Enabled {
 		// Remote Cluster Server is enabled, ensure that the related Kubernetes Service does exist.
-		if _, err := common.ReconcileService(ctx, d.Client, services.NewRemoteClusterService(d.ES), &d.ES); err != nil {
+		if _, err := common.ReconcileService(ctx, d.Client, services.NewRemoteClusterService(d.ES, meta), &d.ES); err != nil {
 			results.WithError(err)
 		}
 	} else {
@@ -181,7 +185,7 @@ func (d *defaultDriver) Reconcile(ctx context.Context) *reconciler.Results {
 
 	warnUnsupportedDistro(resourcesState.AllPods, d.ReconcileState.Recorder)
 
-	controllerUser, err := user.ReconcileUsersAndRoles(ctx, d.Client, d.ES, d.DynamicWatches(), d.Recorder(), d.OperatorParameters.PasswordHasher)
+	controllerUser, err := user.ReconcileUsersAndRoles(ctx, d.Client, d.ES, d.DynamicWatches(), d.Recorder(), d.OperatorParameters.PasswordHasher, meta)
 	if err != nil {
 		return results.WithError(err)
 	}
@@ -194,6 +198,7 @@ func (d *defaultDriver) Reconcile(ctx context.Context) *reconciler.Results {
 		d.OperatorParameters.GlobalCA,
 		d.OperatorParameters.CACertRotation,
 		d.OperatorParameters.CertRotation,
+		meta,
 	)
 	results.WithResults(res)
 	if res != nil && res.HasError() {
@@ -238,6 +243,7 @@ func (d *defaultDriver) Reconcile(ctx context.Context) *reconciler.Results {
 		d.OperatorParameters.GlobalCA,
 		d.OperatorParameters.CACertRotation,
 		d.OperatorParameters.CertRotation,
+		meta,
 	)
 	results.WithResults(res)
 	if res != nil && res.HasError() {
@@ -334,7 +340,7 @@ func (d *defaultDriver) Reconcile(ctx context.Context) *reconciler.Results {
 	}
 
 	// Compute seed hosts based on current masters with a podIP
-	if err := settings.UpdateSeedHostsConfigMap(ctx, d.Client, d.ES, resourcesState.AllPods); err != nil {
+	if err := settings.UpdateSeedHostsConfigMap(ctx, d.Client, d.ES, resourcesState.AllPods, meta); err != nil {
 		return results.WithError(err)
 	}
 
@@ -361,7 +367,7 @@ func (d *defaultDriver) Reconcile(ctx context.Context) *reconciler.Results {
 		d,
 		&d.ES,
 		esv1.ESNamer,
-		label.NewLabels(k8s.ExtractNamespacedName(&d.ES)),
+		meta,
 		keystoreParams,
 		remoteClusterAPIKeys...,
 	)
@@ -379,7 +385,7 @@ func (d *defaultDriver) Reconcile(ctx context.Context) *reconciler.Results {
 	}
 
 	// reconcile beats config secrets if Stack Monitoring is defined
-	err = stackmon.ReconcileConfigSecrets(ctx, d.Client, d.ES)
+	err = stackmon.ReconcileConfigSecrets(ctx, d.Client, d.ES, meta)
 	if err != nil {
 		return results.WithError(err)
 	}
@@ -401,7 +407,7 @@ func (d *defaultDriver) Reconcile(ctx context.Context) *reconciler.Results {
 	}
 
 	// reconcile StatefulSets and nodes configuration
-	return results.WithResults(d.reconcileNodeSpecs(ctx, esReachable, esClient, d.ReconcileState, *resourcesState, keystoreResources))
+	return results.WithResults(d.reconcileNodeSpecs(ctx, esReachable, esClient, d.ReconcileState, *resourcesState, keystoreResources, meta))
 }
 
 // apiKeyStoreSecretSource returns the Secret that holds the remote API keys, and which should be used as a secure settings source.

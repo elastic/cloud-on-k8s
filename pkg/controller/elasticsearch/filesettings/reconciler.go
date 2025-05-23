@@ -15,7 +15,9 @@ import (
 
 	esv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/elasticsearch/v1"
 	commonannotation "github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/annotation"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/metadata"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/reconciler"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/label"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/k8s"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/maps"
 )
@@ -48,8 +50,10 @@ func ReconcileEmptyFileSettingsSecret(
 		return err
 	}
 
+	// extract the metadata that should be propagated to children
+	meta := metadata.Propagate(&es, metadata.Metadata{Labels: label.NewLabels(k8s.ExtractNamespacedName(&es))})
 	// no secret, reconcile a new empty file settings
-	expectedSecret, _, err := NewSettingsSecretWithVersion(k8s.ExtractNamespacedName(&es), nil, nil)
+	expectedSecret, _, err := NewSettingsSecretWithVersion(k8s.ExtractNamespacedName(&es), nil, nil, meta)
 	if err != nil {
 		return err
 	}

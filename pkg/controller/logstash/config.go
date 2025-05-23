@@ -7,6 +7,7 @@ package logstash
 import (
 	"fmt"
 	"hash"
+	"maps"
 	"regexp"
 	"strconv"
 
@@ -57,9 +58,10 @@ func reconcileConfig(params Params, svcUseTLS bool, configHash hash.Hash) (*sett
 
 	expected := corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
-			Namespace: params.Logstash.Namespace,
-			Name:      logstashv1alpha1.ConfigSecretName(params.Logstash.Name),
-			Labels:    labels.AddCredentialsLabel(params.Logstash.GetIdentityLabels()),
+			Namespace:   params.Logstash.Namespace,
+			Name:        logstashv1alpha1.ConfigSecretName(params.Logstash.Name),
+			Labels:      labels.AddCredentialsLabel(maps.Clone(params.Logstash.GetIdentityLabels())),
+			Annotations: params.Meta.Annotations,
 		},
 		Data: map[string][]byte{
 			ConfigFileName: cfgBytes,

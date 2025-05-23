@@ -15,6 +15,7 @@ import (
 
 	esv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/elasticsearch/v1"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/defaults"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/metadata"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/client"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/label"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/network"
@@ -35,7 +36,7 @@ func TransportServiceName(esName string) string {
 
 // NewTransportService returns the transport service associated with the given cluster.
 // It is used by Elasticsearch nodes to talk to remote cluster nodes.
-func NewTransportService(es esv1.Elasticsearch) *corev1.Service {
+func NewTransportService(es esv1.Elasticsearch, meta metadata.Metadata) *corev1.Service {
 	nsn := k8s.ExtractNamespacedName(&es)
 	svc := corev1.Service{
 		ObjectMeta: es.Spec.Transport.Service.ObjectMeta,
@@ -52,7 +53,7 @@ func NewTransportService(es esv1.Elasticsearch) *corev1.Service {
 		// We set ClusterIP to None in order to let the ES nodes discover all other node IPs at once.
 		svc.Spec.ClusterIP = "None"
 	}
-	labels := label.NewLabels(nsn)
+	selector := label.NewLabels(nsn)
 	ports := []corev1.ServicePort{
 		{
 			Name:     "tls-transport", // prefix with protocol for Istio compatibility
@@ -61,7 +62,7 @@ func NewTransportService(es esv1.Elasticsearch) *corev1.Service {
 		},
 	}
 
-	return defaults.SetServiceDefaults(&svc, labels, labels, ports)
+	return defaults.SetServiceDefaults(&svc, meta, selector, ports)
 }
 
 // ExternalServiceName returns the name for the external service
@@ -104,7 +105,7 @@ func InternalServiceURL(es esv1.Elasticsearch) string {
 
 // NewExternalService returns the external service associated to the given cluster.
 // It is used by users to perform requests against one of the cluster nodes.
-func NewExternalService(es esv1.Elasticsearch) *corev1.Service {
+func NewExternalService(es esv1.Elasticsearch, meta metadata.Metadata) *corev1.Service {
 	nsn := k8s.ExtractNamespacedName(&es)
 
 	svc := corev1.Service{
@@ -119,7 +120,7 @@ func NewExternalService(es esv1.Elasticsearch) *corev1.Service {
 	if svc.Spec.Type == "" {
 		svc.Spec.Type = corev1.ServiceTypeClusterIP
 	}
-	labels := label.NewLabels(nsn)
+	selector := label.NewLabels(nsn)
 	ports := []corev1.ServicePort{
 		{
 			Name:     es.Spec.HTTP.Protocol(),
@@ -128,19 +129,20 @@ func NewExternalService(es esv1.Elasticsearch) *corev1.Service {
 		},
 	}
 
-	return defaults.SetServiceDefaults(&svc, labels, labels, ports)
+	return defaults.SetServiceDefaults(&svc, meta, selector, ports)
 }
 
 // NewInternalService returns the internal service associated to the given cluster.
 // It is used by the operator to perform requests against the Elasticsearch cluster nodes,
 // and does not inherit the spec defined within the Elasticsearch custom resource,
 // to remove the possibility of the user misconfiguring access to the ES cluster.
-func NewInternalService(es esv1.Elasticsearch) *corev1.Service {
+func NewInternalService(es esv1.Elasticsearch, meta metadata.Metadata) *corev1.Service {
 	return &corev1.Service{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      InternalServiceName(es.Name),
-			Namespace: es.Namespace,
-			Labels:    label.NewLabels(k8s.ExtractNamespacedName(&es)),
+			Name:        InternalServiceName(es.Name),
+			Namespace:   es.Namespace,
+			Labels:      meta.Labels,
+			Annotations: meta.Annotations,
 		},
 		Spec: corev1.ServiceSpec{
 			Type: corev1.ServiceTypeClusterIP,
@@ -158,12 +160,13 @@ func NewInternalService(es esv1.Elasticsearch) *corev1.Service {
 }
 
 // NewRemoteClusterService returns the service associated to the remote cluster service for the given cluster.
-func NewRemoteClusterService(es esv1.Elasticsearch) *corev1.Service {
+func NewRemoteClusterService(es esv1.Elasticsearch, meta metadata.Metadata) *corev1.Service {
 	svc := &corev1.Service{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      RemoteClusterServiceName(es.Name),
-			Namespace: es.Namespace,
-			Labels:    label.NewLabels(k8s.ExtractNamespacedName(&es)),
+			Name:        RemoteClusterServiceName(es.Name),
+			Namespace:   es.Namespace,
+			Labels:      meta.Labels,
+			Annotations: meta.Annotations,
 		},
 		Spec: corev1.ServiceSpec{
 			Type:                     corev1.ServiceTypeClusterIP,
@@ -172,7 +175,7 @@ func NewRemoteClusterService(es esv1.Elasticsearch) *corev1.Service {
 			ClusterIP:                "None",
 		},
 	}
-	labels := label.NewLabels(k8s.ExtractNamespacedName(&es))
+	selector := label.NewLabels(k8s.ExtractNamespacedName(&es))
 	ports := []corev1.ServicePort{
 		{
 			Name:     RemoteClusterServicePortName,
@@ -180,7 +183,7 @@ func NewRemoteClusterService(es esv1.Elasticsearch) *corev1.Service {
 			Port:     network.RemoteClusterPort,
 		},
 	}
-	return defaults.SetServiceDefaults(svc, labels, labels, ports)
+	return defaults.SetServiceDefaults(svc, meta, selector, ports)
 }
 
 type urlProvider struct {

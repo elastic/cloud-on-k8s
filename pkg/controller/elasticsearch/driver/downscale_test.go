@@ -21,6 +21,7 @@ import (
 	esv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/elasticsearch/v1"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/comparison"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/expectations"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/metadata"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/reconciler"
 	controllerscheme "github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/scheme"
 	sset "github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/statefulset"
@@ -1102,8 +1103,8 @@ func Test_doDownscale_zen1MinimumMasterNodes(t *testing.T) {
 func Test_deleteStatefulSetResources(t *testing.T) {
 	es := esv1.Elasticsearch{ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: "cluster"}}
 	sset := sset.TestSset{Namespace: "ns", Name: "sset", ClusterName: es.Name}.Build()
-	cfg := settings.ConfigSecret(es, sset.Name, []byte("fake config data"))
-	svc := nodespec.HeadlessService(&es, sset.Name)
+	cfg := settings.ConfigSecret(es, sset.Name, []byte("fake config data"), metadata.Metadata{})
+	svc := nodespec.HeadlessService(&es, sset.Name, metadata.Metadata{})
 
 	tests := []struct {
 		name      string

@@ -9,6 +9,8 @@ import (
 	"fmt"
 	"hash/fnv"
 
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/metadata"
+
 	"github.com/go-logr/logr"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -37,6 +39,8 @@ import (
 // Params are a set of parameters used during internal reconciliation of Logstash.
 type Params struct {
 	Context context.Context
+
+	Meta metadata.Metadata
 
 	Client        k8s.Client
 	EventRecorder record.EventRecorder
@@ -108,7 +112,7 @@ func internalReconcile(params Params) (*reconciler.Results, logstashv1alpha1.Log
 		Owner:                 &params.Logstash,
 		TLSOptions:            apiSvcTLS,
 		Namer:                 logstashv1alpha1.Namer,
-		Labels:                labels.NewLabels(params.Logstash),
+		Metadata:              params.Meta,
 		Services:              []corev1.Service{apiSvc},
 		GlobalCA:              params.OperatorParams.GlobalCA,
 		CACertRotation:        params.OperatorParams.CACertRotation,
@@ -128,7 +132,7 @@ func internalReconcile(params Params) (*reconciler.Results, logstashv1alpha1.Log
 	}
 
 	// reconcile beats config secrets if Stack Monitoring is defined
-	if err := stackmon.ReconcileConfigSecrets(params.Context, params.Client, params.Logstash, params.APIServerConfig); err != nil {
+	if err := stackmon.ReconcileConfigSecrets(params.Context, params.Client, params.Logstash, params.APIServerConfig, params.Meta); err != nil {
 		return results.WithError(err), params.Status
 	}
 

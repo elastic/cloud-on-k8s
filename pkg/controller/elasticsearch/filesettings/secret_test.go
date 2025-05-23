@@ -16,6 +16,7 @@ import (
 
 	commonv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/common/v1"
 	policyv1alpha1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/stackconfigpolicy/v1alpha1"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/metadata"
 )
 
 func Test_NewSettingsSecret(t *testing.T) {
@@ -37,7 +38,7 @@ func Test_NewSettingsSecret(t *testing.T) {
 
 	// no policy
 	expectedVersion := int64(1)
-	secret, reconciledVersion, err := NewSettingsSecret(expectedVersion, es, nil, nil)
+	secret, reconciledVersion, err := newSettingsSecret(expectedVersion, es, nil, nil, metadata.Metadata{})
 	assert.NoError(t, err)
 	assert.Equal(t, "esNs", secret.Namespace)
 	assert.Equal(t, "esName-es-file-settings", secret.Name)
@@ -46,7 +47,7 @@ func Test_NewSettingsSecret(t *testing.T) {
 
 	// policy
 	expectedVersion = int64(2)
-	secret, reconciledVersion, err = NewSettingsSecret(expectedVersion, es, &secret, &policy)
+	secret, reconciledVersion, err = newSettingsSecret(expectedVersion, es, &secret, &policy, metadata.Metadata{})
 	assert.NoError(t, err)
 	assert.Equal(t, "esNs", secret.Namespace)
 	assert.Equal(t, "esName-es-file-settings", secret.Name)
@@ -78,7 +79,7 @@ func Test_SettingsSecret_hasChanged(t *testing.T) {
 	expectedEmptySettings := NewEmptySettings(expectedVersion)
 
 	// no policy -> emptySettings
-	secret, reconciledVersion, err := NewSettingsSecret(expectedVersion, es, nil, nil)
+	secret, reconciledVersion, err := newSettingsSecret(expectedVersion, es, nil, nil, metadata.Metadata{})
 	assert.NoError(t, err)
 	assert.Equal(t, false, hasChanged(secret, expectedEmptySettings))
 	assert.Equal(t, expectedVersion, reconciledVersion)
@@ -125,7 +126,7 @@ func Test_SettingsSecret_setSoftOwner_canBeOwnedBy(t *testing.T) {
 	}
 
 	// empty settings can be owned by any policy
-	secret, _, err := NewSettingsSecretWithVersion(es, nil, nil)
+	secret, _, err := NewSettingsSecretWithVersion(es, nil, nil, metadata.Metadata{})
 	assert.NoError(t, err)
 	_, canBeOwned := CanBeOwnedBy(secret, policy)
 	assert.Equal(t, true, canBeOwned)
@@ -169,7 +170,7 @@ func Test_SettingsSecret_setSecureSettings_getSecureSettings(t *testing.T) {
 			SecureSettings: []commonv1.SecretSource{{SecretName: "secure-settings-secret"}},
 		}}
 
-	secret, _, err := NewSettingsSecretWithVersion(es, nil, nil)
+	secret, _, err := NewSettingsSecretWithVersion(es, nil, nil, metadata.Metadata{})
 	assert.NoError(t, err)
 
 	secureSettings, err := getSecureSettings(secret)

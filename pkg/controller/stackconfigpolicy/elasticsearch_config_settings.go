@@ -10,6 +10,8 @@ import (
 
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/metadata"
+
 	commonv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/common/v1"
 	esv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/elasticsearch/v1"
 	policyv1alpha1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/stackconfigpolicy/v1alpha1"
@@ -49,17 +51,21 @@ func newElasticsearchConfigSecret(policy policyv1alpha1.StackConfigPolicy, es es
 		}
 		data[ElasticSearchConfigKey] = configDataJSONBytes
 	}
+	meta := metadata.Propagate(&es, metadata.Metadata{
+		Labels: eslabel.NewLabels(types.NamespacedName{
+			Name:      es.Name,
+			Namespace: es.Namespace,
+		}),
+		Annotations: map[string]string{
+			commonannotation.ElasticsearchConfigAndSecretMountsHashAnnotation: elasticsearchAndMountsConfigHash,
+		},
+	})
 	elasticsearchConfigSecret := corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
-			Namespace: es.Namespace,
-			Name:      esv1.StackConfigElasticsearchConfigSecretName(es.Name),
-			Labels: eslabel.NewLabels(types.NamespacedName{
-				Name:      es.Name,
-				Namespace: es.Namespace,
-			}),
-			Annotations: map[string]string{
-				commonannotation.ElasticsearchConfigAndSecretMountsHashAnnotation: elasticsearchAndMountsConfigHash,
-			},
+			Namespace:   es.Namespace,
+			Name:        esv1.StackConfigElasticsearchConfigSecretName(es.Name),
+			Labels:      meta.Labels,
+			Annotations: meta.Annotations,
 		},
 		Data: data,
 	}
@@ -74,7 +80,7 @@ func newElasticsearchConfigSecret(policy policyv1alpha1.StackConfigPolicy, es es
 }
 
 // reconcileSecretMounts creates the secrets in SecretMounts to the respective Elasticsearch namespace where they should be mounted to.
-func reconcileSecretMounts(ctx context.Context, c k8s.Client, es esv1.Elasticsearch, policy *policyv1alpha1.StackConfigPolicy) error {
+func reconcileSecretMounts(ctx context.Context, c k8s.Client, es esv1.Elasticsearch, policy *policyv1alpha1.StackConfigPolicy, meta metadata.Metadata) error {
 	for _, secretMount := range policy.Spec.Elasticsearch.SecretMounts {
 		additionalSecret := corev1.Secret{}
 		namespacedName := types.NamespacedName{
@@ -85,19 +91,19 @@ func reconcileSecretMounts(ctx context.Context, c k8s.Client, es esv1.Elasticsea
 			return err
 		}
 
+		meta = meta.Merge(metadata.Metadata{
+			Annotations: map[string]string{
+				commonannotation.SourceSecretAnnotationName: secretMount.SecretName,
+			},
+		})
 		// Recreate it in the Elasticsearch namespace, prefix with es name.
 		secretName := esv1.StackConfigAdditionalSecretName(es.Name, secretMount.SecretName)
 		expected := corev1.Secret{
 			ObjectMeta: metav1.ObjectMeta{
-				Namespace: es.Namespace,
-				Name:      secretName,
-				Labels: eslabel.NewLabels(types.NamespacedName{
-					Name:      es.Name,
-					Namespace: es.Namespace,
-				}),
-				Annotations: map[string]string{
-					commonannotation.SourceSecretAnnotationName: secretMount.SecretName,
-				},
+				Namespace:   es.Namespace,
+				Name:        secretName,
+				Labels:      meta.Labels,
+				Annotations: meta.Annotations,
 			},
 			Data: additionalSecret.Data,
 		}

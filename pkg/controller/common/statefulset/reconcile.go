@@ -7,6 +7,8 @@ package statefulset
 import (
 	"context"
 
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/metadata"
+
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -24,7 +26,7 @@ type Params struct {
 	Namespace            string
 	ServiceName          string
 	Selector             map[string]string
-	Labels               map[string]string
+	Metadata             metadata.Metadata
 	PodTemplateSpec      corev1.PodTemplateSpec
 	VolumeClaimTemplates []corev1.PersistentVolumeClaim
 	Replicas             int32
@@ -36,9 +38,10 @@ type Params struct {
 func New(params Params) appsv1.StatefulSet {
 	return appsv1.StatefulSet{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      params.Name,
-			Namespace: params.Namespace,
-			Labels:    params.Labels,
+			Name:        params.Name,
+			Namespace:   params.Namespace,
+			Labels:      params.Metadata.Labels,
+			Annotations: params.Metadata.Annotations,
 		},
 		Spec: appsv1.StatefulSetSpec{
 			Replicas: &params.Replicas,
@@ -84,8 +87,10 @@ func Reconcile(
 		Expected:   &expected,
 		Reconciled: reconciled,
 		NeedsUpdate: func() bool {
-			// compare hash of the StatefulSet at the time it was built
-			return hash.GetTemplateHashLabel(reconciled.Labels) != hash.GetTemplateHashLabel(expected.Labels)
+			return !maps.IsSubset(expected.Labels, reconciled.Labels) ||
+				!maps.IsSubset(expected.Annotations, reconciled.Annotations) ||
+				// compare hash of the StatefulSet at the time it was built
+				hash.GetTemplateHashLabel(reconciled.Labels) != hash.GetTemplateHashLabel(expected.Labels)
 		},
 		UpdateReconciled: func() {
 			// set expected annotations and labels, but don't remove existing ones

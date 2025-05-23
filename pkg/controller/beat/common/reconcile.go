@@ -8,6 +8,8 @@ import (
 	"context"
 	"reflect"
 
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/metadata"
+
 	pkgerrors "github.com/pkg/errors"
 	v1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -27,7 +29,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/pointer"
 )
 
-func reconcilePodVehicle(podTemplate corev1.PodTemplateSpec, params DriverParams) (*reconciler.Results, *beatv1beta1.BeatStatus) {
+func reconcilePodVehicle(podTemplate corev1.PodTemplateSpec, params DriverParams, meta metadata.Metadata) (*reconciler.Results, *beatv1beta1.BeatStatus) {
 	results := reconciler.NewResult(params.Context)
 	spec := params.Beat.Spec
 	name := Name(params.Beat.Name, spec.Type)
@@ -58,6 +60,7 @@ func reconcilePodVehicle(podTemplate corev1.PodTemplateSpec, params DriverParams
 		client:      params.Client,
 		beat:        params.Beat,
 		podTemplate: podTemplate,
+		meta:        meta,
 	})
 	if err != nil {
 		return results.WithError(err), params.Status
@@ -86,6 +89,7 @@ type ReconciliationParams struct {
 	client      k8s.Client
 	beat        beatv1beta1.Beat
 	podTemplate corev1.PodTemplateSpec
+	meta        metadata.Metadata
 }
 
 func reconcileDeployment(rp ReconciliationParams) (int32, int32, error) {
@@ -93,7 +97,7 @@ func reconcileDeployment(rp ReconciliationParams) (int32, int32, error) {
 		Name:                 Name(rp.beat.Name, rp.beat.Spec.Type),
 		Namespace:            rp.beat.Namespace,
 		Selector:             rp.beat.GetIdentityLabels(),
-		Labels:               rp.beat.GetIdentityLabels(),
+		Metadata:             rp.meta,
 		PodTemplateSpec:      rp.podTemplate,
 		RevisionHistoryLimit: rp.beat.Spec.RevisionHistoryLimit,
 		Replicas:             pointer.Int32OrDefault(rp.beat.Spec.Deployment.Replicas, int32(1)),
@@ -116,7 +120,7 @@ func reconcileDaemonSet(rp ReconciliationParams) (int32, int32, error) {
 		PodTemplate:          rp.podTemplate,
 		Name:                 Name(rp.beat.Name, rp.beat.Spec.Type),
 		Owner:                &rp.beat,
-		Labels:               rp.beat.GetIdentityLabels(),
+		Metadata:             rp.meta,
 		RevisionHistoryLimit: rp.beat.Spec.RevisionHistoryLimit,
 		Selectors:            rp.beat.GetIdentityLabels(),
 		Strategy:             rp.beat.Spec.DaemonSet.UpdateStrategy,

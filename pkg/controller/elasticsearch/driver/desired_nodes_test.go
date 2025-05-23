@@ -33,6 +33,7 @@ import (
 
 	commonv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/common/v1"
 	esv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/elasticsearch/v1"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/metadata"
 	common "github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/settings"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/version"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/client"
@@ -602,7 +603,7 @@ func (esb esBuilder) toExpectedResources() nodespec.ResourcesList {
 		ssetname := esv1.StatefulSet("elasticsearch-desired-sample", fns.name)
 		resources[i] = nodespec.Resources{
 			NodeSet:         fns.name,
-			HeadlessService: nodespec.HeadlessService(&es, ssetname),
+			HeadlessService: nodespec.HeadlessService(&es, ssetname, metadata.Metadata{}),
 			Config:          settings.CanonicalConfig{CanonicalConfig: common.MustCanonicalConfig(fns.nodeConfig)},
 			StatefulSet: v1.StatefulSet{
 				ObjectMeta: metav1.ObjectMeta{

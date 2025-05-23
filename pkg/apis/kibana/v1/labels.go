@@ -6,12 +6,13 @@ package v1
 
 import (
 	commonv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/common/v1"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/kibana/label"
 )
 
 // GetIdentityLabels will return the common Elastic assigned labels for the Kibana.
 func (k *Kibana) GetIdentityLabels() map[string]string {
 	return map[string]string{
-		commonv1.TypeLabelName:       "kibana",
-		"kibana.k8s.elastic.co/name": k.Name,
+		commonv1.TypeLabelName:    "kibana",
+		label.KibanaNameLabelName: k.Name,
 	}
 }

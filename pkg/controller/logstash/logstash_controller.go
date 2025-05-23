@@ -7,6 +7,8 @@ package logstash
 import (
 	"context"
 
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/metadata"
+
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
@@ -198,6 +200,7 @@ func (r *ReconcileLogstash) doReconcile(ctx context.Context, logstash logstashv1
 
 	return internalReconcile(Params{
 		Context:        ctx,
+		Meta:           metadata.Propagate(&logstash, metadata.Metadata{Labels: labels.NewLabels(logstash)}),
 		Client:         r.Client,
 		EventRecorder:  r.recorder,
 		Watches:        r.dynamicWatches,

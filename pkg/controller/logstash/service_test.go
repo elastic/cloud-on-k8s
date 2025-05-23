@@ -17,6 +17,7 @@ import (
 	commonv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/common/v1"
 	logstashv1alpha1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/logstash/v1alpha1"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/comparison"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/metadata"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/k8s"
 )
 
@@ -232,6 +233,7 @@ func TestReconcileServices(t *testing.T) {
 				Context:  context.Background(),
 				Client:   client,
 				Logstash: tc.logstash,
+				Meta:     metadata.Propagate(&tc.logstash, metadata.Metadata{Labels: tc.logstash.GetIdentityLabels()}),
 			}
 			haveSvc, haveAPISvc, err := reconcileServices(params)
 			require.NoError(t, err)

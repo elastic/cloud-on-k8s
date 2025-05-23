@@ -16,6 +16,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/certificates"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/driver"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/events"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/metadata"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/k8s"
 	ulog "github.com/elastic/cloud-on-k8s/v3/pkg/utils/log"
 )
@@ -30,7 +31,7 @@ func ReconcileOrRetrieveCA(
 	ctx context.Context,
 	driver driver.Interface,
 	es esv1.Elasticsearch,
-	labels map[string]string,
+	meta metadata.Metadata,
 	globalCA *certificates.CA,
 	rotationParams certificates.RotationParams,
 ) (*certificates.CA, error) {
@@ -65,7 +66,7 @@ func ReconcileOrRetrieveCA(
 			driver.K8sClient(),
 			esv1.ESNamer,
 			&es,
-			labels,
+			meta,
 			certificates.TransportCAType,
 			rotationParams,
 		)
