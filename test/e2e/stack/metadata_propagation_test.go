@@ -5,42 +5,71 @@
 package stack
 
 import (
-	"bufio"
-	"bytes"
 	"context"
 	"fmt"
+	kblabel "github.com/elastic/cloud-on-k8s/v3/pkg/controller/kibana/label"
 	"reflect"
 	"testing"
-	"text/template"
 
 	"github.com/stretchr/testify/require"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	policyv1 "k8s.io/api/policy/v1"
 	"k8s.io/apimachinery/pkg/api/meta"
-	"k8s.io/apimachinery/pkg/util/rand"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	v1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/common/v1"
+	logstashv1alpha1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/logstash/v1alpha1"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/metadata"
 	eslabel "github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/label"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/maps"
+	e2e_agent "github.com/elastic/cloud-on-k8s/v3/test/e2e/agent"
 	"github.com/elastic/cloud-on-k8s/v3/test/e2e/test"
-	"github.com/elastic/cloud-on-k8s/v3/test/e2e/test/apmserver"
+	elasticagent "github.com/elastic/cloud-on-k8s/v3/test/e2e/test/agent"
+	"github.com/elastic/cloud-on-k8s/v3/test/e2e/test/beat"
 	"github.com/elastic/cloud-on-k8s/v3/test/e2e/test/elasticsearch"
-	"github.com/elastic/cloud-on-k8s/v3/test/e2e/test/helper"
 	"github.com/elastic/cloud-on-k8s/v3/test/e2e/test/kibana"
+	"github.com/elastic/cloud-on-k8s/v3/test/e2e/test/logstash"
 )
 
 func TestMetadataPropagation(t *testing.T) {
-	builders := mkMetadataPropBuilders(t)
-
 	c := test.NewK8sClientOrFatal()
 
 	want := metadata.Metadata{
 		Annotations: map[string]string{"my-annotation": "my-annotation-value"},
 		Labels:      map[string]string{"my-label": "my-label-value"},
 	}
+
+	name := "test-meta-prop"
+	es := elasticsearch.NewBuilder(name).
+		WithESMasterDataNodes(3, elasticsearch.DefaultResources).
+		WithLabel("my-label", "my-label-value").
+		WithAnnotation("eck.k8s.alpha.elastic.co/propagate-annotations", "*").
+		WithAnnotation("eck.k8s.alpha.elastic.co/propagate-labels", "*").
+		WithAnnotation("my-annotation", "my-annotation-value")
+	kb := kibana.NewBuilder(name).
+		WithNodeCount(1).
+		WithElasticsearchRef(es.Ref()).
+		WithLabel("my-label", "my-label-value").
+		WithAnnotation("eck.k8s.alpha.elastic.co/propagate-annotations", "*").
+		WithAnnotation("eck.k8s.alpha.elastic.co/propagate-labels", "*").
+		WithAnnotation("my-annotation", "my-annotation-value")
+	testPod := beat.NewPodBuilder(name)
+	agent := elasticagent.NewBuilder(name).
+		WithElasticsearchRefs(elasticagent.ToOutput(es.Ref(), "default")).
+		WithDefaultESValidation(elasticagent.HasWorkingDataStream(elasticagent.LogsType, "elastic_agent", "default")).
+		WithOpenShiftRoles(test.UseSCCRole)
+	agent = elasticagent.ApplyYamls(t, agent, e2e_agent.E2EAgentSystemIntegrationConfig, e2e_agent.E2EAgentSystemIntegrationPodTemplate)
+	ls := logstash.NewBuilder(name).
+		WithRestrictedSecurityContext().
+		WithNodeCount(1).
+		WithElasticsearchRefs(
+			logstashv1alpha1.ElasticsearchCluster{
+				ObjectSelector: es.Ref(),
+				ClusterName:    "es",
+			})
+
+	builders := []test.Builder{es, kb, agent, ls, testPod}
 
 	steps := func(k *test.K8sClient) test.StepList {
 		return []test.Step{
@@ -72,79 +101,34 @@ func TestMetadataPropagation(t *testing.T) {
 			},
 		}
 	}
-
 	test.Sequence(nil, steps, builders...).RunSequential(t)
-}
-
-func mkMetadataPropBuilders(t *testing.T) []test.Builder {
-	t.Helper()
-
-	tmpl, err := template.ParseFiles("testdata/metadata_propagation.yaml")
-	require.NoError(t, err, "Failed to parse template")
-
-	buf := new(bytes.Buffer)
-	rndSuffix := rand.String(4)
-
-	require.NoError(t, tmpl.Execute(buf, map[string]string{
-		"Suffix": rndSuffix,
-	}))
-
-	namespace := test.Ctx().ManagedNamespace(0)
-	stackVersion := test.Ctx().ElasticStackVersion
-
-	transform := func(builder test.Builder) test.Builder {
-		switch b := builder.(type) {
-		case elasticsearch.Builder:
-			return b.WithNamespace(namespace).
-				WithVersion(stackVersion).
-				WithRestrictedSecurityContext()
-		case kibana.Builder:
-			return b.WithNamespace(namespace).
-				WithVersion(stackVersion).
-				WithRestrictedSecurityContext()
-		case apmserver.Builder:
-			return b.WithNamespace(namespace).
-				WithVersion(stackVersion).
-				WithRestrictedSecurityContext()
-		default:
-			return b
-		}
-	}
-
-	decoder := helper.NewYAMLDecoder()
-	builders, err := decoder.ToBuilders(bufio.NewReader(buf), transform)
-	require.NoError(t, err, "Failed to create builders")
-
-	return builders
 }
 
 func expectedChildren(builder test.Builder, c *test.K8sClient) ([]child, error) {
 	switch b := builder.(type) {
 	case elasticsearch.Builder:
-		return expectedChildrenForElasticsearch(b, c)
+		return expectedChildrenFor(c, "Elasticsearch", b.Elasticsearch.Namespace, b.Elasticsearch.Name, map[string]string{
+			eslabel.ClusterNameLabelName: b.Elasticsearch.Name,
+			v1.TypeLabelName:             "elasticsearch",
+		},
+			&corev1.ServiceList{}, &corev1.SecretList{}, &corev1.ConfigMapList{}, &appsv1.StatefulSetList{}, &corev1.PodList{}, &policyv1.PodDisruptionBudgetList{},
+		)
+	case kibana.Builder:
+		return expectedChildrenFor(c, "Kibana", b.Kibana.Namespace, b.Kibana.Name, map[string]string{
+			kblabel.KibanaNameLabelName: b.Kibana.Name,
+			v1.TypeLabelName:            "kibana",
+		},
+			&corev1.ServiceList{}, &corev1.SecretList{}, &corev1.ConfigMapList{}, &appsv1.DeploymentList{}, &corev1.PodList{},
+		)
 	default:
 		return nil, nil
 	}
 }
 
-func expectedChildrenForElasticsearch(b elasticsearch.Builder, c *test.K8sClient) ([]child, error) {
-	ns := b.Elasticsearch.Namespace
-	name := b.Elasticsearch.Name
-
+func expectedChildrenFor(c *test.K8sClient, parentType, namespace, name string, matchingLabels map[string]string, objects ...client.ObjectList) ([]child, error) {
 	children := make([]child, 0, 20) // preallocate some space for children
-	matchLabels := client.MatchingLabels(map[string]string{
-		eslabel.ClusterNameLabelName: name,
-		v1.TypeLabelName:             "elasticsearch",
-	})
-	for _, list := range []client.ObjectList{
-		&corev1.ServiceList{},
-		&corev1.SecretList{},
-		&corev1.ConfigMapList{},
-		&appsv1.StatefulSetList{},
-		&corev1.PodList{},
-		&policyv1.PodDisruptionBudgetList{},
-	} {
-		if err := c.Client.List(context.Background(), list, client.InNamespace(ns), matchLabels); err != nil {
+	for _, list := range objects {
+		if err := c.Client.List(context.Background(), list, client.InNamespace(namespace), client.MatchingLabels(matchingLabels)); err != nil {
 			return nil, err
 		}
 		// Use reflection to get the Items field generically.
@@ -161,7 +145,7 @@ func expectedChildrenForElasticsearch(b elasticsearch.Builder, c *test.K8sClient
 				return nil, fmt.Errorf("item %d in list %T is not a client.Object", i, list)
 			}
 			children = append(children, child{
-				parent: "Elasticsearch",
+				parent: parentType,
 				key:    client.ObjectKey{Namespace: item.GetNamespace(), Name: item.GetName()},
 				obj: func(obj client.Object) func() client.Object {
 					return func() client.Object {
