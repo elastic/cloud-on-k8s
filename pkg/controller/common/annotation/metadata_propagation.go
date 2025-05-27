@@ -20,7 +20,7 @@ const (
 	PropagateLabelsAnnotation = "eck.k8s.alpha.elastic.co/propagate-labels"
 )
 
-var eckAnnotationsRegex = regexp.MustCompile(`.*\.k8s\.elastic\.co/.*`)
+var eckAnnotationsRegex = regexp.MustCompile(`.*\.k8s\.(.*\.)*elastic\.co/.*`)
 
 // MetadataToPropagate holds the annotations and labels that should be propagated to children.
 type MetadataToPropagate struct {
