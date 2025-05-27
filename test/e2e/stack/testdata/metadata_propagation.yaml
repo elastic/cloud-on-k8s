@@ -1,0 +1,72 @@
+---
+apiVersion: elasticsearch.k8s.elastic.co/v1
+kind: Elasticsearch
+metadata:
+  name: "test-meta-prop-{{ .Suffix }}"
+  labels:
+    my-label: my-label-value
+  annotations:
+    eck.k8s.alpha.elastic.co/propagate-annotations: "*"
+    eck.k8s.alpha.elastic.co/propagate-labels: "*"
+    my-annotation: my-annotation-value
+spec:
+  nodeSets:
+    - name: nsa
+      count: 2
+      podTemplate:
+        metadata:
+          labels:
+            my-template-label: my-template-label-value
+          annotations:
+            my-template-ann: my-template-ann-value
+      config:
+        node.store.allow_mmap: false
+    - name: nsb
+      count: 1
+      config:
+        node.store.allow_mmap: false
+---
+apiVersion: kibana.k8s.elastic.co/v1
+kind: Kibana
+metadata:
+  name: "test-meta-prop-{{ .Suffix }}"
+  labels:
+    my-label: my-label-value
+  annotations:
+    eck.k8s.alpha.elastic.co/propagate-annotations: "*"
+    eck.k8s.alpha.elastic.co/propagate-labels: "*"
+    my-annotation: my-annotation-value
+spec:
+  count: 1
+  podTemplate:
+    metadata:
+      labels:
+        my-template-label: my-template-label-value
+      annotations:
+        my-template-ann: my-template-ann-value
+  elasticsearchRef:
+    name: "test-meta-prop-{{ .Suffix }}"
+---
+apiVersion: apm.k8s.elastic.co/v1
+kind: ApmServer
+metadata:
+  name: "test-meta-prop-{{ .Suffix }}"
+  labels:
+    my-label: my-label-value
+  annotations:
+    eck.k8s.alpha.elastic.co/propagate-annotations: "*"
+    eck.k8s.alpha.elastic.co/propagate-labels: "*"
+    my-annotation: my-annotation-value
+spec:
+  count: 1
+  podTemplate:
+    metadata:
+      labels:
+        my-template-label: my-template-label-value
+      annotations:
+        my-template-ann: my-template-ann-value
+  elasticsearchRef:
+    name: "test-meta-prop-{{ .Suffix }}"
+  config:
+    apm-server.ilm.enabled: false
+    setup.template.settings.index.number_of_replicas: 0
