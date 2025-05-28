@@ -60,7 +60,7 @@ func reconcileConfig(params Params, svcUseTLS bool, configHash hash.Hash) (*sett
 		ObjectMeta: metav1.ObjectMeta{
 			Namespace:   params.Logstash.Namespace,
 			Name:        logstashv1alpha1.ConfigSecretName(params.Logstash.Name),
-			Labels:      labels.AddCredentialsLabel(maps.Clone(params.Logstash.GetIdentityLabels())),
+			Labels:      labels.AddCredentialsLabel(maps.Clone(params.Meta.Labels)),
 			Annotations: params.Meta.Annotations,
 		},
 		Data: map[string][]byte{
