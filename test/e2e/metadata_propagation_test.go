@@ -2,7 +2,7 @@
 // or more contributor license agreements. Licensed under the Elastic License 2.0;
 // you may not use this file except in compliance with the Elastic License 2.0.
 
-package stack
+package e2e
 
 import (
 	"context"
@@ -24,6 +24,7 @@ import (
 	eslabel "github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/label"
 	kblabel "github.com/elastic/cloud-on-k8s/v3/pkg/controller/kibana/label"
 	lslabels "github.com/elastic/cloud-on-k8s/v3/pkg/controller/logstash/labels"
+	emslabels "github.com/elastic/cloud-on-k8s/v3/pkg/controller/maps"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/maps"
 	e2e_agent "github.com/elastic/cloud-on-k8s/v3/test/e2e/agent"
 	"github.com/elastic/cloud-on-k8s/v3/test/e2e/test"
@@ -32,6 +33,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/v3/test/e2e/test/elasticsearch"
 	"github.com/elastic/cloud-on-k8s/v3/test/e2e/test/kibana"
 	"github.com/elastic/cloud-on-k8s/v3/test/e2e/test/logstash"
+	ems "github.com/elastic/cloud-on-k8s/v3/test/e2e/test/maps"
 )
 
 func TestMetadataPropagation(t *testing.T) {
@@ -78,8 +80,17 @@ func TestMetadataPropagation(t *testing.T) {
 		WithAnnotation("eck.k8s.alpha.elastic.co/propagate-annotations", "*").
 		WithAnnotation("eck.k8s.alpha.elastic.co/propagate-labels", "*").
 		WithAnnotation("my-annotation", "my-annotation-value")
+	emsBuilder := ems.NewBuilder(name).
+		WithNodeCount(1).
+		WithRestrictedSecurityContext().
+		WithLabel("my-label", "my-label-value").
+		WithAnnotation("eck.k8s.alpha.elastic.co/propagate-annotations", "*").
+		WithAnnotation("eck.k8s.alpha.elastic.co/propagate-labels", "*").
+		WithAnnotation("my-annotation", "my-annotation-value")
 
-	builders := []test.Builder{es, kb, agent, ls, testPod}
+	esWithLicense := test.LicenseTestBuilder(es)
+
+	builders := []test.Builder{esWithLicense, emsBuilder, kb, agent, ls, testPod}
 
 	steps := func(k *test.K8sClient) test.StepList {
 		return []test.Step{
@@ -143,6 +154,13 @@ func expectedChildren(builder test.Builder, c *test.K8sClient) ([]child, error) 
 			v1.TypeLabelName:       "logstash",
 		},
 			&corev1.ServiceList{}, &corev1.SecretList{}, &appsv1.StatefulSetList{}, &corev1.PodList{},
+		)
+	case ems.Builder:
+		return expectedChildrenFor(c, "maps", b.EMS.Namespace, b.EMS.Name, map[string]string{
+			emslabels.NameLabelName: b.EMS.Name,
+			v1.TypeLabelName:        "maps",
+		},
+			&corev1.ServiceList{}, &corev1.SecretList{}, &appsv1.DeploymentList{}, &corev1.PodList{},
 		)
 	default:
 		return nil, nil
