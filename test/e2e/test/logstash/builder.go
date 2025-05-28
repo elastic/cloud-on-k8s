@@ -76,6 +76,14 @@ func (b Builder) WithLabel(key, value string) Builder {
 	return b
 }
 
+func (b Builder) WithAnnotation(key, value string) Builder {
+	if b.Logstash.Annotations == nil {
+		b.Logstash.Annotations = make(map[string]string)
+	}
+	b.Logstash.Annotations[key] = value
+	return b
+}
+
 // WithRestrictedSecurityContext helps to enforce a restricted security context on the objects.
 func (b Builder) WithRestrictedSecurityContext() Builder {
 	b.Logstash.Spec.PodTemplate.Spec.SecurityContext = test.DefaultSecurityContext()

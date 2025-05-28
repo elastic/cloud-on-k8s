@@ -7,7 +7,6 @@ package stack
 import (
 	"context"
 	"fmt"
-	kblabel "github.com/elastic/cloud-on-k8s/v3/pkg/controller/kibana/label"
 	"reflect"
 	"testing"
 
@@ -20,8 +19,11 @@ import (
 
 	v1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/common/v1"
 	logstashv1alpha1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/logstash/v1alpha1"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/agent"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/metadata"
 	eslabel "github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/label"
+	kblabel "github.com/elastic/cloud-on-k8s/v3/pkg/controller/kibana/label"
+	lslabels "github.com/elastic/cloud-on-k8s/v3/pkg/controller/logstash/labels"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/maps"
 	e2e_agent "github.com/elastic/cloud-on-k8s/v3/test/e2e/agent"
 	"github.com/elastic/cloud-on-k8s/v3/test/e2e/test"
@@ -58,7 +60,11 @@ func TestMetadataPropagation(t *testing.T) {
 	agent := elasticagent.NewBuilder(name).
 		WithElasticsearchRefs(elasticagent.ToOutput(es.Ref(), "default")).
 		WithDefaultESValidation(elasticagent.HasWorkingDataStream(elasticagent.LogsType, "elastic_agent", "default")).
-		WithOpenShiftRoles(test.UseSCCRole)
+		WithOpenShiftRoles(test.UseSCCRole).
+		WithLabel("my-label", "my-label-value").
+		WithAnnotation("eck.k8s.alpha.elastic.co/propagate-annotations", "*").
+		WithAnnotation("eck.k8s.alpha.elastic.co/propagate-labels", "*").
+		WithAnnotation("my-annotation", "my-annotation-value")
 	agent = elasticagent.ApplyYamls(t, agent, e2e_agent.E2EAgentSystemIntegrationConfig, e2e_agent.E2EAgentSystemIntegrationPodTemplate)
 	ls := logstash.NewBuilder(name).
 		WithRestrictedSecurityContext().
@@ -67,7 +73,11 @@ func TestMetadataPropagation(t *testing.T) {
 			logstashv1alpha1.ElasticsearchCluster{
 				ObjectSelector: es.Ref(),
 				ClusterName:    "es",
-			})
+			}).
+		WithLabel("my-label", "my-label-value").
+		WithAnnotation("eck.k8s.alpha.elastic.co/propagate-annotations", "*").
+		WithAnnotation("eck.k8s.alpha.elastic.co/propagate-labels", "*").
+		WithAnnotation("my-annotation", "my-annotation-value")
 
 	builders := []test.Builder{es, kb, agent, ls, testPod}
 
@@ -107,18 +117,32 @@ func TestMetadataPropagation(t *testing.T) {
 func expectedChildren(builder test.Builder, c *test.K8sClient) ([]child, error) {
 	switch b := builder.(type) {
 	case elasticsearch.Builder:
-		return expectedChildrenFor(c, "Elasticsearch", b.Elasticsearch.Namespace, b.Elasticsearch.Name, map[string]string{
+		return expectedChildrenFor(c, "elasticsearch", b.Elasticsearch.Namespace, b.Elasticsearch.Name, map[string]string{
 			eslabel.ClusterNameLabelName: b.Elasticsearch.Name,
 			v1.TypeLabelName:             "elasticsearch",
 		},
 			&corev1.ServiceList{}, &corev1.SecretList{}, &corev1.ConfigMapList{}, &appsv1.StatefulSetList{}, &corev1.PodList{}, &policyv1.PodDisruptionBudgetList{},
 		)
 	case kibana.Builder:
-		return expectedChildrenFor(c, "Kibana", b.Kibana.Namespace, b.Kibana.Name, map[string]string{
+		return expectedChildrenFor(c, "kibana", b.Kibana.Namespace, b.Kibana.Name, map[string]string{
 			kblabel.KibanaNameLabelName: b.Kibana.Name,
 			v1.TypeLabelName:            "kibana",
 		},
 			&corev1.ServiceList{}, &corev1.SecretList{}, &corev1.ConfigMapList{}, &appsv1.DeploymentList{}, &corev1.PodList{},
+		)
+	case elasticagent.Builder:
+		return expectedChildrenFor(c, "agent", b.Agent.Namespace, b.Agent.Name, map[string]string{
+			agent.NameLabelName: b.Agent.Name,
+			v1.TypeLabelName:    "agent",
+		},
+			&corev1.SecretList{}, &appsv1.DaemonSetList{}, &corev1.PodList{},
+		)
+	case logstash.Builder:
+		return expectedChildrenFor(c, "logstash", b.Logstash.Namespace, b.Logstash.Name, map[string]string{
+			lslabels.NameLabelName: b.Logstash.Name,
+			v1.TypeLabelName:       "logstash",
+		},
+			&corev1.ServiceList{}, &corev1.SecretList{}, &appsv1.StatefulSetList{}, &corev1.PodList{},
 		)
 	default:
 		return nil, nil
