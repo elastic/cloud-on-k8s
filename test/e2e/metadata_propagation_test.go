@@ -127,6 +127,9 @@ func TestMetadataPropagation(t *testing.T) {
 
 func expectedChildren(builder test.Builder, c *test.K8sClient) ([]child, error) {
 	switch b := builder.(type) {
+	case test.WrappedBuilder:
+		// If the builder is wrapped, we need to unwrap it to get the actual builder.
+		return expectedChildren(b.BuildingThis, c)
 	case elasticsearch.Builder:
 		return expectedChildrenFor(c, "elasticsearch", b.Elasticsearch.Namespace, b.Elasticsearch.Name, map[string]string{
 			eslabel.ClusterNameLabelName: b.Elasticsearch.Name,
