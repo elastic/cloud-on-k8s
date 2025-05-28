@@ -21,6 +21,7 @@ import (
 	commonv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/common/v1"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/association"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/certificates"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/metadata"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/settings"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/stackmon/monitoring"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/volume"
@@ -35,7 +36,15 @@ type beatConfig struct {
 	volumes  []volume.VolumeLike
 }
 
-func newBeatConfig(ctx context.Context, client k8s.Client, beatName string, resource monitoring.HasMonitoring, associations []commonv1.Association, baseConfig string) (beatConfig, error) {
+func newBeatConfig(
+	ctx context.Context,
+	client k8s.Client,
+	beatName string,
+	resource monitoring.HasMonitoring,
+	associations []commonv1.Association,
+	baseConfig string,
+	meta metadata.Metadata,
+) (beatConfig, error) {
 	if len(associations) != 1 {
 		// should never happen because of the pre-creation validation
 		return beatConfig{}, errors.New("only one Elasticsearch reference is supported for Stack Monitoring")
@@ -82,11 +91,13 @@ func newBeatConfig(ctx context.Context, client k8s.Client, beatName string, reso
 		return beatConfig{}, err
 	}
 
+	meta = meta.Merge(metadata.Metadata{Labels: resource.GetIdentityLabels()})
 	configSecret := corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      configSecretName,
-			Namespace: resource.GetNamespace(),
-			Labels:    resource.GetIdentityLabels(),
+			Name:        configSecretName,
+			Namespace:   resource.GetNamespace(),
+			Labels:      meta.Labels,
+			Annotations: meta.Annotations,
 		},
 		Data: map[string][]byte{
 			configFilename: configBytes,

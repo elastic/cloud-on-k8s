@@ -12,6 +12,9 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/metadata"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/maps"
+
 	"go.elastic.co/apm/v2"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -43,6 +46,7 @@ func UpdateSeedHostsConfigMap(
 	c k8s.Client,
 	es esv1.Elasticsearch,
 	pods []corev1.Pod,
+	meta metadata.Metadata,
 ) error {
 	span, ctx := apm.StartSpan(ctx, "update_seed_hosts", tracing.SpanTypeApp)
 	defer span.End()
@@ -75,9 +79,10 @@ func UpdateSeedHostsConfigMap(
 	}
 	expected := corev1.ConfigMap{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      esv1.UnicastHostsConfigMap(es.Name),
-			Namespace: es.Namespace,
-			Labels:    label.NewLabels(k8s.ExtractNamespacedName(&es)),
+			Name:        esv1.UnicastHostsConfigMap(es.Name),
+			Namespace:   es.Namespace,
+			Labels:      meta.Labels,
+			Annotations: meta.Annotations,
 		},
 		Data: map[string]string{
 			volume.UnicastHostsFile: hosts,
@@ -93,9 +98,15 @@ func UpdateSeedHostsConfigMap(
 			Expected:   &expected,
 			Reconciled: reconciled,
 			NeedsUpdate: func() bool {
-				return !reflect.DeepEqual(expected.Data, reconciled.Data)
+				return !reflect.DeepEqual(expected.Data, reconciled.Data) ||
+					// expected labels are not there
+					!maps.IsSubset(expected.Labels, reconciled.Labels) ||
+					// expected annotations are not there
+					!maps.IsSubset(expected.Annotations, reconciled.Annotations)
 			},
 			UpdateReconciled: func() {
+				reconciled.Labels = maps.Merge(reconciled.Labels, expected.Labels)
+				reconciled.Annotations = maps.Merge(reconciled.Annotations, expected.Annotations)
 				reconciled.Data = expected.Data
 			},
 			PreCreate: func() error {

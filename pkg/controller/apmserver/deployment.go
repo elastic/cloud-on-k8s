@@ -18,16 +18,23 @@ import (
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/certificates"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/deployment"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/keystore"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/metadata"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/tracing"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/version"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/k8s"
 )
 
-func (r *ReconcileApmServer) reconcileApmServerDeployment(ctx context.Context, state State, as *apmv1.ApmServer, version version.Version) (State, error) {
+func (r *ReconcileApmServer) reconcileApmServerDeployment(
+	ctx context.Context,
+	state State,
+	as *apmv1.ApmServer,
+	version version.Version,
+	meta metadata.Metadata,
+) (State, error) {
 	span, ctx := apm.StartSpan(ctx, "reconcile_deployment", tracing.SpanTypeApp)
 	defer span.End()
 
-	tokenSecret, err := reconcileApmServerToken(ctx, r.Client, as)
+	tokenSecret, err := reconcileApmServerToken(ctx, r.Client, as, meta)
 	if err != nil {
 		return state, err
 	}
@@ -41,7 +48,7 @@ func (r *ReconcileApmServer) reconcileApmServerDeployment(ctx context.Context, s
 		r,
 		as,
 		Namer,
-		as.GetIdentityLabels(),
+		meta,
 		initContainerParameters,
 	)
 	if err != nil {
@@ -59,7 +66,7 @@ func (r *ReconcileApmServer) reconcileApmServerDeployment(ctx context.Context, s
 
 		keystoreResources: keystoreResources,
 	}
-	params, err := r.deploymentParams(as, apmServerPodSpecParams)
+	params, err := r.deploymentParams(as, apmServerPodSpecParams, meta)
 	if err != nil {
 		return state, err
 	}
@@ -83,8 +90,9 @@ func (r *ReconcileApmServer) reconcileApmServerDeployment(ctx context.Context, s
 func (r *ReconcileApmServer) deploymentParams(
 	as *apmv1.ApmServer,
 	params PodSpecParams,
+	meta metadata.Metadata,
 ) (deployment.Params, error) {
-	podSpec, err := newPodSpec(r.Client, as, params)
+	podSpec, err := newPodSpec(r.Client, as, params, meta)
 	if err != nil {
 		return deployment.Params{}, err
 	}
@@ -94,7 +102,7 @@ func (r *ReconcileApmServer) deploymentParams(
 		Namespace:            as.Namespace,
 		Replicas:             as.Spec.Count,
 		Selector:             as.GetIdentityLabels(),
-		Labels:               as.GetIdentityLabels(),
+		Metadata:             meta,
 		RevisionHistoryLimit: as.Spec.RevisionHistoryLimit,
 		PodTemplateSpec:      podSpec,
 		Strategy:             appsv1.DeploymentStrategy{Type: appsv1.RollingUpdateDeploymentStrategyType},

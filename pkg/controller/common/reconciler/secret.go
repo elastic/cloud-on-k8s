@@ -116,6 +116,9 @@ func ReconcileSecretNoOwnerRef(ctx context.Context, c k8s.Client, expected corev
 
 	// don't mutate expected (no side effects), make a copy
 	expected = *expected.DeepCopy()
+	if expected.Labels == nil {
+		expected.Labels = make(map[string]string)
+	}
 	expected.Labels[SoftOwnerNamespaceLabel] = ownerMeta.GetNamespace()
 	expected.Labels[SoftOwnerNameLabel] = ownerMeta.GetName()
 	expected.Labels[SoftOwnerKindLabel] = softOwner.GetObjectKind().GroupVersionKind().Kind

@@ -26,6 +26,7 @@ import (
 	commonv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/common/v1"
 	esv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/elasticsearch/v1"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/container"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/metadata"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/stackmon/monitoring"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/watches"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/bootstrap"
@@ -279,7 +280,8 @@ func Test_buildPodTemplate(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			tt.args.params.Context = context.Background()
-			podTemplateSpec, err := buildPodTemplate(tt.args.params, tt.args.defaultImage, tt.args.initialHash)
+			meta := metadata.Propagate(&tt.args.params.Beat, metadata.Metadata{Labels: tt.args.params.Beat.GetIdentityLabels()})
+			podTemplateSpec, err := buildPodTemplate(tt.args.params, tt.args.defaultImage, tt.args.initialHash, meta)
 			if (err != nil) != tt.want.err {
 				t.Errorf("buildPodTemplate() error = %v, wantErr %v", err, tt.want.err)
 				return

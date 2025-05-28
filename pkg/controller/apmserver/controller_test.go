@@ -25,6 +25,7 @@ import (
 	esv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/elasticsearch/v1"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/certificates"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/metadata"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/operator"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/watches"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/compare"
@@ -143,7 +144,7 @@ func Test_reconcileApmServerToken(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := reconcileApmServerToken(context.Background(), tt.c, apm)
+			got, err := reconcileApmServerToken(context.Background(), tt.c, apm, metadata.Metadata{})
 			require.NoError(t, err)
 			require.NotEmpty(t, got.Data[SecretTokenKey])
 			if tt.reuseToken != nil {
@@ -209,7 +210,8 @@ func TestNewService(t *testing.T) {
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
 			apm := mkAPMServer(tc.httpConf)
-			haveSvc := NewService(apm)
+			md := metadata.Propagate(&apm, metadata.Metadata{Labels: apm.GetIdentityLabels()})
+			haveSvc := NewService(apm, md)
 			compare.JSONEqual(t, tc.wantSvc(), haveSvc)
 		})
 	}

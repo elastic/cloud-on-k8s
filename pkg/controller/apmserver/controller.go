@@ -6,9 +6,12 @@ package apmserver
 
 import (
 	"context"
+	"maps"
 	"path/filepath"
 	"reflect"
 	"sync/atomic"
+
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/metadata"
 
 	"go.elastic.co/apm/v2"
 	appsv1 "k8s.io/api/apps/v1"
@@ -225,7 +228,10 @@ func (r *ReconcileApmServer) doReconcile(ctx context.Context, as *apmv1.ApmServe
 		return results.WithError(err), state
 	}
 
-	svc, err := common.ReconcileService(ctx, r.Client, NewService(*as), as)
+	// common metadata to pass on to children
+	meta := metadata.Propagate(as, metadata.Metadata{Labels: as.GetIdentityLabels()})
+
+	svc, err := common.ReconcileService(ctx, r.Client, NewService(*as, meta), as)
 	if err != nil {
 		return results.WithError(err), state
 	}
@@ -236,7 +242,7 @@ func (r *ReconcileApmServer) doReconcile(ctx context.Context, as *apmv1.ApmServe
 		Owner:                 as,
 		TLSOptions:            as.Spec.HTTP.TLS,
 		Namer:                 Namer,
-		Labels:                as.GetIdentityLabels(),
+		Metadata:              meta,
 		Services:              []corev1.Service{*svc},
 		GlobalCA:              r.GlobalCA,
 		CACertRotation:        r.CACertRotation,
@@ -262,7 +268,7 @@ func (r *ReconcileApmServer) doReconcile(ctx context.Context, as *apmv1.ApmServe
 		return results, state // will eventually retry
 	}
 
-	state, err = r.reconcileApmServerDeployment(ctx, state, as, asVersion)
+	state, err = r.reconcileApmServerDeployment(ctx, state, as, asVersion, meta)
 	if err != nil {
 		if apierrors.IsConflict(err) {
 			log.V(1).Info("Conflict while updating status")
@@ -302,12 +308,13 @@ func (r *ReconcileApmServer) onDelete(ctx context.Context, obj types.NamespacedN
 
 // reconcileApmServerToken reconciles a Secret containing the APM Server token.
 // It reuses the existing token if possible.
-func reconcileApmServerToken(ctx context.Context, c k8s.Client, as *apmv1.ApmServer) (corev1.Secret, error) {
+func reconcileApmServerToken(ctx context.Context, c k8s.Client, as *apmv1.ApmServer, meta metadata.Metadata) (corev1.Secret, error) {
 	expectedApmServerSecret := corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
-			Namespace: as.Namespace,
-			Name:      SecretToken(as.Name),
-			Labels:    labels.AddCredentialsLabel(as.GetIdentityLabels()),
+			Namespace:   as.Namespace,
+			Name:        SecretToken(as.Name),
+			Labels:      labels.AddCredentialsLabel(maps.Clone(meta.Labels)),
+			Annotations: meta.Annotations,
 		},
 		Data: make(map[string][]byte),
 	}
@@ -349,7 +356,7 @@ func (r *ReconcileApmServer) updateStatus(ctx context.Context, state State) erro
 }
 
 // NewService returns the service used by the APM Server.
-func NewService(as apmv1.ApmServer) *corev1.Service {
+func NewService(as apmv1.ApmServer, meta metadata.Metadata) *corev1.Service {
 	svc := corev1.Service{
 		ObjectMeta: as.Spec.HTTP.Service.ObjectMeta,
 		Spec:       as.Spec.HTTP.Service.Spec,
@@ -358,7 +365,7 @@ func NewService(as apmv1.ApmServer) *corev1.Service {
 	svc.ObjectMeta.Namespace = as.Namespace
 	svc.ObjectMeta.Name = HTTPService(as.Name)
 
-	labels := as.GetIdentityLabels()
+	selector := as.GetIdentityLabels()
 	ports := []corev1.ServicePort{
 		{
 			Name:     as.Spec.HTTP.Protocol(),
@@ -366,5 +373,5 @@ func NewService(as apmv1.ApmServer) *corev1.Service {
 			Port:     HTTPPort,
 		},
 	}
-	return defaults.SetServiceDefaults(&svc, labels, labels, ports)
+	return defaults.SetServiceDefaults(&svc, meta, selector, ports)
 }

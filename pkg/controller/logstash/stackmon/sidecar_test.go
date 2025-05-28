@@ -10,6 +10,8 @@ import (
 	"strconv"
 	"testing"
 
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/metadata"
+
 	"github.com/gkampitakis/go-snaps/snaps"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -159,7 +161,7 @@ func TestWithMonitoring(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			ls := tc.ls()
 			builder := defaults.NewPodTemplateBuilder(corev1.PodTemplateSpec{}, logstashv1alpha1.LogstashContainerName)
-			_, err := WithMonitoring(context.Background(), fakeClient, builder, ls, tc.apiServerConfig)
+			_, err := WithMonitoring(context.Background(), fakeClient, builder, ls, tc.apiServerConfig, metadata.Propagate(&ls, metadata.Metadata{Labels: ls.GetIdentityLabels()}))
 			assert.NoError(t, err)
 			actual, err := json.MarshalIndent(builder.PodTemplate, " ", "")
 			assert.NoError(t, err)

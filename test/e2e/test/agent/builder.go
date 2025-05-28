@@ -337,6 +337,14 @@ func (b Builder) WithLabel(key, value string) Builder {
 	return b
 }
 
+func (b Builder) WithAnnotation(key, value string) Builder {
+	if b.Agent.Annotations == nil {
+		b.Agent.Annotations = make(map[string]string)
+	}
+	b.Agent.Annotations[key] = value
+	return b
+}
+
 func (b Builder) WithPodLabel(key, value string) Builder {
 	if b.PodTemplate.Labels == nil {
 		b.PodTemplate.Labels = make(map[string]string)

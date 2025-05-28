@@ -14,6 +14,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	commonv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/common/v1"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/metadata"
 	commonname "github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/name"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/reconciler"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/tracing"
@@ -31,7 +32,7 @@ type Reconciler struct {
 	ExtraHTTPSANs []commonv1.SubjectAlternativeName // SANs dynamically set by a controller, only used in the self signed cert
 
 	Namer    commonname.Namer  // helps naming the reconciled secrets
-	Labels   map[string]string // to set on the reconciled cert secrets
+	Metadata metadata.Metadata // labels and annotations to set on reconciled cert secrets
 	Services []corev1.Service  // to be used for TLS SANs
 
 	GlobalCA *CA // if configured on the operator level supersedes self-signed CAs but not per-resource custom CAs
@@ -81,7 +82,7 @@ func (r Reconciler) ReconcileCAAndHTTPCerts(ctx context.Context) (*CertificatesS
 			r.K8sClient,
 			r.Namer,
 			r.Owner,
-			r.Labels,
+			r.Metadata,
 			HTTPCAType,
 			r.CACertRotation,
 		)

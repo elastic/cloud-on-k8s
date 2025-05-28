@@ -35,6 +35,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/events"
 	commonlabels "github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/labels"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/license"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/metadata"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/operator"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/reconciler"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/tracing"
@@ -324,8 +325,10 @@ func (r *ReconcileStackConfigPolicy) reconcileElasticsearchResources(ctx context
 			continue
 		}
 
+		// extract the metadata that should be propagated to children
+		meta := metadata.Propagate(&es, metadata.Metadata{Labels: eslabel.NewLabels(k8s.ExtractNamespacedName(&es))})
 		// create the expected Settings Secret
-		expectedSecret, expectedVersion, err := filesettings.NewSettingsSecretWithVersion(esNsn, &actualSettingsSecret, &policy)
+		expectedSecret, expectedVersion, err := filesettings.NewSettingsSecretWithVersion(esNsn, &actualSettingsSecret, &policy, meta)
 		if err != nil {
 			return results.WithError(err), status
 		}
@@ -335,7 +338,7 @@ func (r *ReconcileStackConfigPolicy) reconcileElasticsearchResources(ctx context
 		}
 
 		// Copy all the Secrets that are present in spec.elasticsearch.secretMounts
-		if err := reconcileSecretMounts(ctx, r.Client, es, &policy); err != nil {
+		if err := reconcileSecretMounts(ctx, r.Client, es, &policy, meta); err != nil {
 			if apierrors.IsNotFound(err) {
 				err = status.AddPolicyErrorFor(esNsn, policyv1alpha1.ErrorPhase, err.Error(), policyv1alpha1.ElasticsearchResourceType)
 				if err != nil {

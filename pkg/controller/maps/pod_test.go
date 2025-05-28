@@ -13,6 +13,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	emsv1alpha1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/maps/v1alpha1"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/metadata"
 )
 
 func TestNewPodSpec_CommandOverride(t *testing.T) {
@@ -87,7 +88,7 @@ func TestNewPodSpec_CommandOverride(t *testing.T) {
 				Spec:       emsv1alpha1.MapsSpec{Version: tt.version},
 			}
 
-			podSpec, err := newPodSpec(ems, "test-hash")
+			podSpec, err := newPodSpec(ems, "test-hash", metadata.Metadata{})
 			require.NoError(t, err)
 
 			// Find the main container

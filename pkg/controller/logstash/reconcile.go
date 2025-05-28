@@ -52,7 +52,7 @@ func reconcileStatefulSet(params Params, podTemplate corev1.PodTemplateSpec) (*r
 		Namespace:            params.Logstash.Namespace,
 		ServiceName:          logstashv1alpha1.APIServiceName(params.Logstash.Name),
 		Selector:             params.Logstash.GetIdentityLabels(),
-		Labels:               params.Logstash.GetIdentityLabels(),
+		Meta:                 params.Meta,
 		PodTemplateSpec:      podTemplate,
 		Replicas:             params.Logstash.Spec.Count,
 		RevisionHistoryLimit: params.Logstash.Spec.RevisionHistoryLimit,

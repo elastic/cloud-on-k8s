@@ -15,6 +15,7 @@ import (
 	apmv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/apm/v1"
 	commonv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/common/v1"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/container"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/metadata"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/version"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/volume"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/settings"
@@ -145,7 +146,7 @@ func TestNewPodSpec(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := newPodSpec(k8s.NewFakeClient(&testHTTPCertsInternalSecret), &tt.as, tt.p)
+			got, err := newPodSpec(k8s.NewFakeClient(&testHTTPCertsInternalSecret), &tt.as, tt.p, metadata.Metadata{})
 			assert.NoError(t, err)
 			diff := deep.Equal(tt.want, got)
 			assert.Empty(t, diff)
@@ -233,7 +234,7 @@ func Test_newPodSpec_withInitContainers(t *testing.T) {
 				CustomImageName: tt.as.Spec.Image,
 				PodTemplate:     tt.as.Spec.PodTemplate,
 			}
-			got, err := newPodSpec(k8s.NewFakeClient(&testHTTPCertsInternalSecret), &tt.as, params)
+			got, err := newPodSpec(k8s.NewFakeClient(&testHTTPCertsInternalSecret), &tt.as, params, metadata.Metadata{})
 			assert.NoError(t, err)
 			tt.assertions(got)
 		})

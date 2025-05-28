@@ -21,6 +21,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/v3/pkg/apis/beat/v1beta1"
 	commonv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/common/v1"
 	esv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/elasticsearch/v1"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/metadata"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/stackmon"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/bootstrap"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/k8s"
@@ -343,7 +344,7 @@ output:
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := MetricBeat(context.Background(), tt.args.client, tt.args.beat())
+			got, err := MetricBeat(context.Background(), tt.args.client, tt.args.beat(), metadata.Metadata{})
 			if (err != nil) != tt.wantErr {
 				t.Errorf("MetricBeat() error = %v, wantErr %v", err, tt.wantErr)
 				return

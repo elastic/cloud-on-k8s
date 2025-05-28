@@ -20,8 +20,8 @@ import (
 	policyv1alpha1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/stackconfigpolicy/v1alpha1"
 	commonannotation "github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/annotation"
 	commonlabel "github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/labels"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/metadata"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/reconciler"
-	eslabel "github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/label"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/k8s"
 )
 
@@ -34,13 +34,13 @@ const (
 // The Settings version is updated using the current timestamp only when the Settings have changed.
 // If the new settings from the policy changed compared to the actual from the secret, the settings version is
 // updated
-func NewSettingsSecretWithVersion(es types.NamespacedName, currentSecret *corev1.Secret, policy *policyv1alpha1.StackConfigPolicy) (corev1.Secret, int64, error) {
+func NewSettingsSecretWithVersion(es types.NamespacedName, currentSecret *corev1.Secret, policy *policyv1alpha1.StackConfigPolicy, meta metadata.Metadata) (corev1.Secret, int64, error) {
 	newVersion := time.Now().UnixNano()
-	return NewSettingsSecret(newVersion, es, currentSecret, policy)
+	return newSettingsSecret(newVersion, es, currentSecret, policy, meta)
 }
 
 // NewSettingsSecret returns a new SettingsSecret for a given Elasticsearch and StackConfigPolicy.
-func NewSettingsSecret(version int64, es types.NamespacedName, currentSecret *corev1.Secret, policy *policyv1alpha1.StackConfigPolicy) (corev1.Secret, int64, error) {
+func newSettingsSecret(version int64, es types.NamespacedName, currentSecret *corev1.Secret, policy *policyv1alpha1.StackConfigPolicy, meta metadata.Metadata) (corev1.Secret, int64, error) {
 	settings := NewEmptySettings(version)
 
 	// update the settings according to the config policy
@@ -63,18 +63,21 @@ func NewSettingsSecret(version int64, es types.NamespacedName, currentSecret *co
 	}
 
 	// prepare the SettingsSecret
+	secretMeta := meta.Merge(metadata.Metadata{
+		Annotations: map[string]string{
+			commonannotation.SettingsHashAnnotationName: settings.hash(),
+		},
+	})
 	settingsBytes, err := json.Marshal(settings)
 	if err != nil {
 		return corev1.Secret{}, 0, err
 	}
 	settingsSecret := &corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
-			Namespace: es.Namespace,
-			Name:      esv1.FileSettingsSecretName(es.Name),
-			Labels:    eslabel.NewLabels(es),
-			Annotations: map[string]string{
-				commonannotation.SettingsHashAnnotationName: settings.hash(),
-			},
+			Namespace:   es.Namespace,
+			Name:        esv1.FileSettingsSecretName(es.Name),
+			Labels:      secretMeta.Labels,
+			Annotations: secretMeta.Annotations,
 		},
 		Data: map[string][]byte{
 			SettingsSecretKey: settingsBytes,
@@ -92,6 +95,9 @@ func NewSettingsSecret(version int64, es types.NamespacedName, currentSecret *co
 	}
 
 	// Add a label to reset secret on deletion of the stack config policy
+	if settingsSecret.Labels == nil {
+		settingsSecret.Labels = make(map[string]string)
+	}
 	settingsSecret.Labels[commonlabel.StackConfigPolicyOnDeleteLabelName] = commonlabel.OrphanSecretResetOnPolicyDelete
 
 	return *settingsSecret, version, nil

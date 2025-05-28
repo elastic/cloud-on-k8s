@@ -14,6 +14,7 @@ import (
 	lsv1alpha1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/logstash/v1alpha1"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/expectations"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/hash"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/metadata"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/reconciler"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/statefulset"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/k8s"
@@ -25,7 +26,7 @@ type Params struct {
 	Namespace            string
 	ServiceName          string
 	Selector             map[string]string
-	Labels               map[string]string
+	Meta                 metadata.Metadata
 	PodTemplateSpec      corev1.PodTemplateSpec
 	UpdateStrategy       appsv1.StatefulSetUpdateStrategy
 	VolumeClaimTemplates []corev1.PersistentVolumeClaim
@@ -36,9 +37,10 @@ type Params struct {
 func New(params Params) appsv1.StatefulSet {
 	sset := appsv1.StatefulSet{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      params.Name,
-			Namespace: params.Namespace,
-			Labels:    params.Labels,
+			Name:        params.Name,
+			Namespace:   params.Namespace,
+			Labels:      params.Meta.Labels,
+			Annotations: params.Meta.Annotations,
 		},
 		Spec: appsv1.StatefulSetSpec{
 			UpdateStrategy: params.UpdateStrategy,

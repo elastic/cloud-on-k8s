@@ -13,6 +13,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/certificates"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/container"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/defaults"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/metadata"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/version"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/volume"
 )
@@ -57,9 +58,9 @@ func readinessProbe(useTLS bool) corev1.Probe {
 	}
 }
 
-func newPodSpec(ems emsv1alpha1.ElasticMapsServer, configHash string) (corev1.PodTemplateSpec, error) {
+func newPodSpec(ems emsv1alpha1.ElasticMapsServer, configHash string, meta metadata.Metadata) (corev1.PodTemplateSpec, error) {
 	// ensure the Pod gets rotated on config change
-	annotations := map[string]string{configHashAnnotationName: configHash}
+	podMeta := meta.Merge(metadata.Metadata{Annotations: map[string]string{configHashAnnotationName: configHash}})
 
 	defaultContainerPorts := []corev1.ContainerPort{
 		{Name: ems.Spec.HTTP.Protocol(), ContainerPort: int32(HTTPPort), Protocol: corev1.ProtocolTCP},
@@ -74,7 +75,8 @@ func newPodSpec(ems emsv1alpha1.ElasticMapsServer, configHash string) (corev1.Po
 	}
 
 	builder := defaults.NewPodTemplateBuilder(ems.Spec.PodTemplate, emsv1alpha1.MapsContainerName).
-		WithAnnotations(annotations).
+		WithAnnotations(podMeta.Annotations).
+		WithLabels(podMeta.Labels).
 		WithResources(DefaultResources).
 		WithDockerImage(ems.Spec.Image, container.ImageRepository(container.MapsImage, v)).
 		WithReadinessProbe(readinessProbe(ems.Spec.HTTP.TLS.Enabled())).

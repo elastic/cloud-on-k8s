@@ -67,6 +67,14 @@ func (b Builder) WithLabel(key, value string) Builder {
 	return b
 }
 
+func (b Builder) WithAnnotation(key, value string) Builder {
+	if b.EMS.Annotations == nil {
+		b.EMS.Annotations = make(map[string]string)
+	}
+	b.EMS.Annotations[key] = value
+	return b
+}
+
 // WithRestrictedSecurityContext helps to enforce a restricted security context on the objects.
 func (b Builder) WithRestrictedSecurityContext() Builder {
 	b.EMS.Spec.PodTemplate.Spec.SecurityContext = test.DefaultSecurityContext()

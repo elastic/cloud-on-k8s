@@ -20,6 +20,7 @@ import (
 	esv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/elasticsearch/v1"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/annotation"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/certificates"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/metadata"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/reconciler"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/label"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/sset"
@@ -38,6 +39,7 @@ func ReconcileTransportCertificatesSecrets(
 	additionalCAs []byte,
 	es esv1.Elasticsearch,
 	rotationParams certificates.RotationParams,
+	meta metadata.Metadata,
 ) *reconciler.Results {
 	results := &reconciler.Results{}
 
@@ -54,7 +56,7 @@ func ReconcileTransportCertificatesSecrets(
 	}
 
 	for ssetName := range ssets {
-		results.WithResults(reconcileNodeSetTransportCertificatesSecrets(ctx, c, ca, additionalCAs, es, ssetName, rotationParams))
+		results.WithResults(reconcileNodeSetTransportCertificatesSecrets(ctx, c, ca, additionalCAs, es, ssetName, rotationParams, meta))
 	}
 	return results
 }
@@ -88,6 +90,7 @@ func reconcileNodeSetTransportCertificatesSecrets(
 	es esv1.Elasticsearch,
 	ssetName string,
 	rotationParams certificates.RotationParams,
+	meta metadata.Metadata,
 ) *reconciler.Results {
 	results := &reconciler.Results{}
 	log := ulog.FromContext(ctx)
@@ -99,7 +102,7 @@ func reconcileNodeSetTransportCertificatesSecrets(
 		return results.WithError(errors.WithStack(err))
 	}
 
-	secret, err := ensureTransportCertificatesSecretExists(ctx, c, es, ssetName)
+	secret, err := ensureTransportCertificatesSecretExists(ctx, c, es, ssetName, meta)
 	if err != nil {
 		return results.WithError(err)
 	}
@@ -216,17 +219,19 @@ func ensureTransportCertificatesSecretExists(
 	c k8s.Client,
 	es esv1.Elasticsearch,
 	ssetName string,
+	meta metadata.Metadata,
 ) (*corev1.Secret, error) {
+	meta = meta.Merge(metadata.Metadata{
+		Labels: map[string]string{
+			// label indicating to which StatefulSet these certificates belong
+			label.StatefulSetNameLabelName: ssetName},
+	})
 	expected := corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
-			Namespace: es.Namespace,
-			Name:      esv1.StatefulSetTransportCertificatesSecret(ssetName),
-			Labels: map[string]string{
-				// a label showing which es these certificates belongs to
-				label.ClusterNameLabelName: es.Name,
-				// label indicating to which StatefulSet these certificates belong
-				label.StatefulSetNameLabelName: ssetName,
-			},
+			Namespace:   es.Namespace,
+			Name:        esv1.StatefulSetTransportCertificatesSecret(ssetName),
+			Labels:      meta.Labels,
+			Annotations: meta.Annotations,
 		},
 	}
 	// reconcile the secret resource:

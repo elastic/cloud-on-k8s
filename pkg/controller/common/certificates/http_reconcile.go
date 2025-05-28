@@ -35,9 +35,10 @@ func (r Reconciler) ReconcilePublicHTTPCerts(ctx context.Context, internalCerts 
 	nsn := PublicCertsSecretRef(r.Namer, k8s.ExtractNamespacedName(r.Owner))
 	expected := corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
-			Namespace: nsn.Namespace,
-			Name:      nsn.Name,
-			Labels:    r.Labels,
+			Namespace:   nsn.Namespace,
+			Name:        nsn.Name,
+			Labels:      r.Metadata.Labels,
+			Annotations: r.Metadata.Annotations,
 		},
 		Data: map[string][]byte{
 			CertFileName: internalCerts.CertPem(),
@@ -85,9 +86,19 @@ func (r Reconciler) ReconcileInternalHTTPCerts(ctx context.Context, ca *CA, cust
 	needsUpdate := false
 
 	// ensure our labels are set on the secret.
-	for k, v := range r.Labels {
+	for k, v := range r.Metadata.Labels {
 		if current, ok := secret.Labels[k]; !ok || current != v {
 			secret.Labels[k] = v
+			needsUpdate = true
+		}
+	}
+	// same for annotations
+	if secret.Annotations == nil {
+		secret.Annotations = make(map[string]string)
+	}
+	for k, v := range r.Metadata.Annotations {
+		if current, ok := secret.Annotations[k]; !ok || current != v {
+			secret.Annotations[k] = v
 			needsUpdate = true
 		}
 	}

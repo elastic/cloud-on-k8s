@@ -7,8 +7,11 @@ package enterprisesearch
 import (
 	"context"
 	"fmt"
+	"maps"
 	"net"
 	"path/filepath"
+
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/metadata"
 
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
@@ -58,7 +61,7 @@ func ReadinessProbeSecretVolume(ent entv1.EnterpriseSearch) volume.SecretVolume 
 // The secret contains 2 entries:
 // - the Enterprise Search configuration file
 // - a bash script used as readiness probe
-func ReconcileConfig(ctx context.Context, driver driver.Interface, ent entv1.EnterpriseSearch, ipFamily corev1.IPFamily) (corev1.Secret, error) {
+func ReconcileConfig(ctx context.Context, driver driver.Interface, ent entv1.EnterpriseSearch, ipFamily corev1.IPFamily, meta metadata.Metadata) (corev1.Secret, error) {
 	cfg, err := newConfig(ctx, driver, ent, ipFamily)
 	if err != nil {
 		return corev1.Secret{}, err
@@ -77,9 +80,10 @@ func ReconcileConfig(ctx context.Context, driver driver.Interface, ent entv1.Ent
 	// Reconcile the configuration in a secret
 	expectedConfigSecret := corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
-			Namespace: ent.Namespace,
-			Name:      ConfigName(ent.Name),
-			Labels:    labels.AddCredentialsLabel(ent.GetIdentityLabels()),
+			Namespace:   ent.Namespace,
+			Name:        ConfigName(ent.Name),
+			Labels:      labels.AddCredentialsLabel(maps.Clone(meta.Labels)),
+			Annotations: meta.Annotations,
 		},
 		Data: map[string][]byte{
 			ConfigFilename:         cfgBytes,

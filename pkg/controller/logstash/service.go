@@ -8,6 +8,8 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/metadata"
+
 	logstashv1alpha1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/logstash/v1alpha1"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/defaults"
@@ -42,7 +44,7 @@ func reconcileServices(params Params) ([]corev1.Service, corev1.Service, error) 
 		svcs = append(svcs, *svc)
 	}
 	if !createdAPIService {
-		svc := newAPIService(params.Logstash)
+		svc := newAPIService(params.Logstash, params.Meta)
 		if err := reconcileService(params, svc); err != nil {
 			return []corev1.Service{}, corev1.Service{}, err
 		}
@@ -80,7 +82,7 @@ func newService(service logstashv1alpha1.LogstashService, logstash logstashv1alp
 	return &svc
 }
 
-func newAPIService(logstash logstashv1alpha1.Logstash) *corev1.Service {
+func newAPIService(logstash logstashv1alpha1.Logstash, meta metadata.Metadata) *corev1.Service {
 	svc := corev1.Service{
 		ObjectMeta: metav1.ObjectMeta{},
 		Spec:       corev1.ServiceSpec{ClusterIP: "None"},
@@ -89,7 +91,7 @@ func newAPIService(logstash logstashv1alpha1.Logstash) *corev1.Service {
 	svc.ObjectMeta.Namespace = logstash.Namespace
 	svc.ObjectMeta.Name = logstashv1alpha1.APIServiceName(logstash.Name)
 
-	labels := labels.NewLabels(logstash)
+	selector := labels.NewLabels(logstash)
 	ports := []corev1.ServicePort{
 		{
 			Name:     LogstashAPIServiceName,
@@ -97,5 +99,5 @@ func newAPIService(logstash logstashv1alpha1.Logstash) *corev1.Service {
 			Port:     network.HTTPPort,
 		},
 	}
-	return defaults.SetServiceDefaults(&svc, labels, labels, ports)
+	return defaults.SetServiceDefaults(&svc, meta, selector, ports)
 }

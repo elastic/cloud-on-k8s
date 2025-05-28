@@ -23,6 +23,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/daemonset"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/deployment"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/metadata"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/reconciler"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/statefulset"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/tracing"
@@ -92,6 +93,7 @@ func reconcilePodVehicle(params Params, podTemplate corev1.PodTemplateSpec) (*re
 
 	ready, desired, err := reconciliationFunc(ReconciliationParams{
 		ctx:         params.Context,
+		meta:        params.Meta,
 		client:      params.Client,
 		agent:       params.Agent,
 		podTemplate: podTemplate,
@@ -126,7 +128,7 @@ func reconcileDeployment(rp ReconciliationParams) (int32, int32, error) {
 		Name:                 Name(rp.agent.Name),
 		Namespace:            rp.agent.Namespace,
 		Selector:             rp.agent.GetIdentityLabels(),
-		Labels:               rp.agent.GetIdentityLabels(),
+		Metadata:             rp.meta,
 		PodTemplateSpec:      rp.podTemplate,
 		Replicas:             pointer.Int32OrDefault(rp.agent.Spec.Deployment.Replicas, int32(1)),
 		RevisionHistoryLimit: rp.agent.Spec.RevisionHistoryLimit,
@@ -150,7 +152,7 @@ func reconcileStatefulSet(rp ReconciliationParams) (int32, int32, error) {
 		Namespace:            rp.agent.Namespace,
 		ServiceName:          rp.agent.Spec.StatefulSet.ServiceName,
 		Selector:             rp.agent.GetIdentityLabels(),
-		Labels:               rp.agent.GetIdentityLabels(),
+		Metadata:             rp.meta,
 		PodTemplateSpec:      rp.podTemplate,
 		VolumeClaimTemplates: rp.agent.Spec.StatefulSet.VolumeClaimTemplates,
 		Replicas:             pointer.Int32OrDefault(rp.agent.Spec.StatefulSet.Replicas, int32(1)),
@@ -174,7 +176,7 @@ func reconcileDaemonSet(rp ReconciliationParams) (int32, int32, error) {
 		PodTemplate:          rp.podTemplate,
 		Name:                 Name(rp.agent.Name),
 		Owner:                &rp.agent,
-		Labels:               rp.agent.GetIdentityLabels(),
+		Metadata:             rp.meta,
 		Selectors:            rp.agent.GetIdentityLabels(),
 		RevisionHistoryLimit: rp.agent.Spec.RevisionHistoryLimit,
 		Strategy:             rp.agent.Spec.DaemonSet.UpdateStrategy,
@@ -195,6 +197,7 @@ func reconcileDaemonSet(rp ReconciliationParams) (int32, int32, error) {
 // ReconciliationParams are the parameters used during an Elastic Agent's reconciliation.
 type ReconciliationParams struct {
 	ctx         context.Context
+	meta        metadata.Metadata
 	client      k8s.Client
 	agent       agentv1alpha1.Agent
 	podTemplate corev1.PodTemplateSpec

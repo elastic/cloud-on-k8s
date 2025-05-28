@@ -7,6 +7,9 @@ package daemonset
 import (
 	"context"
 
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/metadata"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/maps"
+
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -21,7 +24,7 @@ type Params struct {
 	PodTemplate          corev1.PodTemplateSpec
 	Name                 string
 	Owner                metav1.Object
-	Labels               map[string]string
+	Metadata             metadata.Metadata
 	Selectors            map[string]string
 	RevisionHistoryLimit *int32
 	Strategy             appsv1.DaemonSetUpdateStrategy
@@ -30,9 +33,10 @@ type Params struct {
 func New(params Params) appsv1.DaemonSet {
 	return appsv1.DaemonSet{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      params.Name,
-			Namespace: params.Owner.GetNamespace(),
-			Labels:    params.Labels,
+			Name:        params.Name,
+			Namespace:   params.Owner.GetNamespace(),
+			Labels:      params.Metadata.Labels,
+			Annotations: params.Metadata.Annotations,
 		},
 		Spec: appsv1.DaemonSetSpec{
 			Selector: &metav1.LabelSelector{
@@ -63,8 +67,11 @@ func Reconcile(
 		Expected:   &expected,
 		Reconciled: reconciled,
 		NeedsUpdate: func() bool {
-			// compare hash of the DaemonSet at the time it was built
-			return hash.GetTemplateHashLabel(reconciled.Labels) != hash.GetTemplateHashLabel(expected.Labels)
+			// expected labels or annotations not there
+			return !maps.IsSubset(expected.Labels, reconciled.Labels) ||
+				!maps.IsSubset(expected.Annotations, reconciled.Annotations) ||
+				// compare hash of the DaemonSet at the time it was built
+				hash.GetTemplateHashLabel(reconciled.Labels) != hash.GetTemplateHashLabel(expected.Labels)
 		},
 		UpdateReconciled: func() {
 			expected.DeepCopyInto(reconciled)

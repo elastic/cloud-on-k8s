@@ -13,6 +13,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/hash"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/metadata"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/reconciler"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/k8s"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/maps"
@@ -23,7 +24,7 @@ type Params struct {
 	Name                 string
 	Namespace            string
 	Selector             map[string]string
-	Labels               map[string]string
+	Metadata             metadata.Metadata
 	PodTemplateSpec      corev1.PodTemplateSpec
 	Replicas             int32
 	RevisionHistoryLimit *int32
@@ -34,9 +35,10 @@ type Params struct {
 func New(params Params) appsv1.Deployment {
 	return appsv1.Deployment{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      params.Name,
-			Namespace: params.Namespace,
-			Labels:    params.Labels,
+			Name:        params.Name,
+			Namespace:   params.Namespace,
+			Labels:      params.Metadata.Labels,
+			Annotations: params.Metadata.Annotations,
 		},
 		Spec: appsv1.DeploymentSpec{
 			RevisionHistoryLimit: params.RevisionHistoryLimit,
@@ -68,8 +70,10 @@ func Reconcile(
 		Expected:   &expected,
 		Reconciled: reconciled,
 		NeedsUpdate: func() bool {
-			// compare hash of the deployment at the time it was built
-			return hash.GetTemplateHashLabel(reconciled.Labels) != hash.GetTemplateHashLabel(expected.Labels)
+			return !maps.IsSubset(expected.Labels, reconciled.Labels) ||
+				!maps.IsSubset(expected.Annotations, reconciled.Annotations) ||
+				// compare hash of the deployment at the time it was built
+				hash.GetTemplateHashLabel(reconciled.Labels) != hash.GetTemplateHashLabel(expected.Labels)
 		},
 		UpdateReconciled: func() {
 			// set expected annotations and labels, but don't remove existing ones

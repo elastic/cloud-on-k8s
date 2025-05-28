@@ -13,6 +13,7 @@ import (
 
 	commonv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/common/v1"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/driver"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/metadata"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/name"
 )
 
@@ -56,12 +57,12 @@ func ReconcileResources(
 	r driver.Interface,
 	hasKeystore HasKeystore,
 	namer name.Namer,
-	labels map[string]string,
+	meta metadata.Metadata,
 	initContainerParams InitContainerParameters,
 	additionalSources ...commonv1.NamespacedSecretSource,
 ) (*Resources, error) {
 	// setup a volume from the user-provided secure settings secret
-	secretVolume, hash, err := secureSettingsVolume(ctx, r, hasKeystore, labels, namer, additionalSources...)
+	secretVolume, hash, err := secureSettingsVolume(ctx, r, hasKeystore, meta, namer, additionalSources...)
 	if err != nil {
 		return nil, err
 	}

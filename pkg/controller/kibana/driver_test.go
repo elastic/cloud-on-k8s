@@ -26,6 +26,7 @@ import (
 	kbv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/kibana/v1"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/certificates"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/deployment"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/metadata"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/watches"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/settings"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/kibana/initcontainer"
@@ -384,7 +385,7 @@ func TestDriverDeploymentParams(t *testing.T) {
 			d, err := newDriver(client, w, record.NewFakeRecorder(100), kb, corev1.IPv4Protocol)
 			require.NoError(t, err)
 
-			got, err := d.deploymentParams(context.Background(), kb, tt.args.policyAnnotations, "", tt.args.setDefaultSecurityContextFlag)
+			got, err := d.deploymentParams(context.Background(), kb, tt.args.policyAnnotations, "", tt.args.setDefaultSecurityContextFlag, metadata.Propagate(kb, metadata.Metadata{Labels: kb.GetIdentityLabels()}))
 			if tt.wantErr {
 				require.Error(t, err)
 				return
@@ -443,7 +444,7 @@ func expectedDeploymentParams() deployment.Params {
 		Name:      "test-kb",
 		Namespace: "default",
 		Selector:  map[string]string{"common.k8s.elastic.co/type": "kibana", "kibana.k8s.elastic.co/name": "test"},
-		Labels:    map[string]string{"common.k8s.elastic.co/type": "kibana", "kibana.k8s.elastic.co/name": "test"},
+		Metadata:  metadata.Metadata{Labels: map[string]string{"common.k8s.elastic.co/type": "kibana", "kibana.k8s.elastic.co/name": "test"}},
 		Replicas:  1,
 		Strategy:  appsv1.DeploymentStrategy{Type: appsv1.RollingUpdateDeploymentStrategyType},
 		PodTemplateSpec: corev1.PodTemplateSpec{
@@ -872,7 +873,7 @@ func TestNewService(t *testing.T) {
 					HTTP: tc.httpConf,
 				},
 			}
-			haveSvc := NewService(kb)
+			haveSvc := NewService(kb, metadata.Propagate(&kb, metadata.Metadata{Labels: kb.GetIdentityLabels()}))
 			compare.JSONEqual(t, tc.wantSvc(), haveSvc)
 		})
 	}

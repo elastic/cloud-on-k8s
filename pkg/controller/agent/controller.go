@@ -7,6 +7,8 @@ package agent
 import (
 	"context"
 
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/metadata"
+
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
@@ -200,8 +202,12 @@ func (r *ReconcileAgent) doReconcile(ctx context.Context, agent agentv1alpha1.Ag
 		return results.WithError(err), status
 	}
 
+	// extract the metadata that should be propagated to children
+	meta := metadata.Propagate(&agent, metadata.Metadata{Labels: agent.GetIdentityLabels()})
+
 	return internalReconcile(Params{
 		Context:        ctx,
+		Meta:           meta,
 		Client:         r.Client,
 		EventRecorder:  r.recorder,
 		Watches:        r.dynamicWatches,

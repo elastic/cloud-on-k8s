@@ -17,6 +17,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/association"
 	beatstackmon "github.com/elastic/cloud-on-k8s/v3/pkg/controller/beat/common/stackmon"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/defaults"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/metadata"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/stackmon"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/stackmon/monitoring"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/stackmon/validations"
@@ -35,7 +36,7 @@ const (
 	kibanaLogsMountPath  = "/usr/share/kibana/logs"
 )
 
-func Metricbeat(ctx context.Context, client k8s.Client, kb kbv1.Kibana, basePath string) (stackmon.BeatSidecar, error) {
+func Metricbeat(ctx context.Context, client k8s.Client, kb kbv1.Kibana, basePath string, meta metadata.Metadata) (stackmon.BeatSidecar, error) {
 	if !kb.Spec.ElasticsearchRef.IsDefined() {
 		// should never happen because of the pre-creation validation
 		return stackmon.BeatSidecar{}, errors.New(validations.InvalidKibanaElasticsearchRefForStackMonitoringMsg)
@@ -92,20 +93,20 @@ func Metricbeat(ctx context.Context, client k8s.Client, kb kbv1.Kibana, basePath
 		return stackmon.BeatSidecar{}, err
 	}
 
-	metricbeat, err := stackmon.NewMetricBeatSidecar(ctx, client, &kb, v, caVol, cfg)
+	metricbeat, err := stackmon.NewMetricBeatSidecar(ctx, client, &kb, v, caVol, cfg, meta)
 	if err != nil {
 		return stackmon.BeatSidecar{}, err
 	}
 	return metricbeat, nil
 }
 
-func Filebeat(ctx context.Context, client k8s.Client, kb kbv1.Kibana) (stackmon.BeatSidecar, error) {
-	return stackmon.NewFileBeatSidecar(ctx, client, &kb, kb.Spec.Version, filebeatConfig, nil)
+func Filebeat(ctx context.Context, client k8s.Client, kb kbv1.Kibana, meta metadata.Metadata) (stackmon.BeatSidecar, error) {
+	return stackmon.NewFileBeatSidecar(ctx, client, &kb, kb.Spec.Version, filebeatConfig, nil, meta)
 }
 
 // WithMonitoring updates the Kibana Pod template builder to deploy Metricbeat and Filebeat in sidecar containers
 // in the Kibana pod and injects the volumes for the beat configurations and the ES CA certificates.
-func WithMonitoring(ctx context.Context, client k8s.Client, builder *defaults.PodTemplateBuilder, kb kbv1.Kibana, basePath string) (*defaults.PodTemplateBuilder, error) {
+func WithMonitoring(ctx context.Context, client k8s.Client, builder *defaults.PodTemplateBuilder, kb kbv1.Kibana, basePath string, meta metadata.Metadata) (*defaults.PodTemplateBuilder, error) {
 	isMonitoringReconcilable, err := monitoring.IsReconcilable(&kb)
 	if err != nil {
 		return nil, err
@@ -118,7 +119,7 @@ func WithMonitoring(ctx context.Context, client k8s.Client, builder *defaults.Po
 	volumes := make([]corev1.Volume, 0)
 
 	if monitoring.IsMetricsDefined(&kb) {
-		b, err := Metricbeat(ctx, client, kb, basePath)
+		b, err := Metricbeat(ctx, client, kb, basePath, meta)
 		if err != nil {
 			return nil, err
 		}
@@ -134,7 +135,7 @@ func WithMonitoring(ctx context.Context, client k8s.Client, builder *defaults.Po
 	}
 
 	if monitoring.IsLogsDefined(&kb) {
-		b, err := Filebeat(ctx, client, kb)
+		b, err := Filebeat(ctx, client, kb, meta)
 		if err != nil {
 			return nil, err
 		}

@@ -19,6 +19,7 @@ import (
 	kbv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/kibana/v1"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/comparison"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/driver"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/metadata"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/name"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/volume"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/watches"
@@ -102,7 +103,7 @@ func Test_secureSettingsVolume(t *testing.T) {
 				Watches:      tt.w,
 				FakeRecorder: record.NewFakeRecorder(1000),
 			}
-			vol, hash, err := secureSettingsVolume(context.Background(), testDriver, &tt.kb, nil, kbNamer)
+			vol, hash, err := secureSettingsVolume(context.Background(), testDriver, &tt.kb, metadata.Metadata{}, kbNamer)
 			require.NoError(t, err)
 			assert.Equal(t, tt.wantVolume, vol)
 			assert.Equal(t, tt.wantHash, hash)
@@ -302,7 +303,7 @@ func Test_reconcileSecureSettings(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := reconcileSecureSettings(context.Background(), tt.args.c, tt.args.hasKeystore, tt.args.userSecrets, tt.args.namer, nil)
+			got, err := reconcileSecureSettings(context.Background(), tt.args.c, tt.args.hasKeystore, tt.args.userSecrets, tt.args.namer, metadata.Metadata{})
 			if (err != nil) != tt.wantErr {
 				t.Errorf("reconcileSecureSettings() error = %v, wantErr %v", err, tt.wantErr)
 				return

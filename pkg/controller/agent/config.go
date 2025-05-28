@@ -11,6 +11,7 @@ import (
 	"errors"
 	"fmt"
 	"hash"
+	"maps"
 	"path"
 
 	corev1 "k8s.io/api/core/v1"
@@ -46,9 +47,10 @@ func reconcileConfig(params Params, configHash hash.Hash) *reconciler.Results {
 
 	expected := corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
-			Namespace: params.Agent.Namespace,
-			Name:      ConfigSecretName(params.Agent.Name),
-			Labels:    labels.AddCredentialsLabel(params.Agent.GetIdentityLabels()),
+			Namespace:   params.Agent.Namespace,
+			Name:        ConfigSecretName(params.Agent.Name),
+			Labels:      labels.AddCredentialsLabel(maps.Clone(params.Meta.Labels)),
+			Annotations: params.Meta.Annotations,
 		},
 		Data: map[string][]byte{
 			ConfigFileName: cfgBytes,

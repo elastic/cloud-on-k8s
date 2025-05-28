@@ -15,6 +15,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	kbv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/kibana/v1"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/metadata"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/settings"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/version"
 	kblabel "github.com/elastic/cloud-on-k8s/v3/pkg/controller/kibana/label"
@@ -105,7 +106,7 @@ func TestReconcileConfigSecret(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			k8sClient := k8s.NewFakeClient(tt.args.initialObjects...)
 
-			err := ReconcileConfigSecret(context.Background(), k8sClient, tt.args.kb, CanonicalConfig{settings.NewCanonicalConfig()})
+			err := ReconcileConfigSecret(context.Background(), k8sClient, tt.args.kb, CanonicalConfig{settings.NewCanonicalConfig()}, metadata.Propagate(&tt.args.kb, metadata.Metadata{Labels: tt.args.kb.GetIdentityLabels()}))
 			assert.NoError(t, err)
 
 			var secrets corev1.SecretList

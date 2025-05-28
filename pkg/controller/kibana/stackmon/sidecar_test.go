@@ -17,6 +17,7 @@ import (
 	commonv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/common/v1"
 	kbv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/kibana/v1"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/defaults"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/metadata"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/stackmon/monitoring"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/k8s"
 )
@@ -146,7 +147,7 @@ func TestWithMonitoring(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			kb := tc.kb()
 			builder := defaults.NewPodTemplateBuilder(corev1.PodTemplateSpec{}, kbv1.KibanaContainerName)
-			_, err := WithMonitoring(context.Background(), fakeClient, builder, kb, "")
+			_, err := WithMonitoring(context.Background(), fakeClient, builder, kb, "", metadata.Metadata{})
 			assert.NoError(t, err)
 
 			actual, err := json.MarshalIndent(builder.PodTemplate, " ", "")
@@ -222,7 +223,7 @@ func TestMetricbeatConfig(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := Metricbeat(context.Background(), tt.args.client, tt.args.kb, tt.args.basePath)
+			got, err := Metricbeat(context.Background(), tt.args.client, tt.args.kb, tt.args.basePath, metadata.Metadata{})
 			if (err != nil) != tt.wantErr {
 				t.Errorf("Metricbeat() error = %v, wantErr %v", err, tt.wantErr)
 				return

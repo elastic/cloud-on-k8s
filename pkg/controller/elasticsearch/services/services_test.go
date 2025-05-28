@@ -17,6 +17,7 @@ import (
 
 	commonv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/common/v1"
 	esv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/elasticsearch/v1"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/metadata"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/client"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/label"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/network"
@@ -114,7 +115,7 @@ func TestNewExternalService(t *testing.T) {
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
 			es := mkElasticsearch(tc.httpConf)
-			haveSvc := NewExternalService(es)
+			haveSvc := NewExternalService(es, metadata.Propagate(&es, metadata.Metadata{Labels: es.GetIdentityLabels()}))
 			compare.JSONEqual(t, tc.wantSvc(), haveSvc)
 		})
 	}
@@ -150,7 +151,7 @@ func TestNewInternalService(t *testing.T) {
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
 			es := mkElasticsearch(tc.httpConf)
-			haveSvc := NewInternalService(es)
+			haveSvc := NewInternalService(es, metadata.Propagate(&es, metadata.Metadata{Labels: es.GetIdentityLabels()}))
 			compare.JSONEqual(t, tc.wantSvc(), haveSvc)
 		})
 	}
@@ -277,7 +278,7 @@ func TestNewTransportService(t *testing.T) {
 				},
 			}
 			want := tt.want()
-			got := NewTransportService(es)
+			got := NewTransportService(es, metadata.Propagate(&es, metadata.Metadata{Labels: es.GetIdentityLabels()}))
 			require.Nil(t, deep.Equal(*got, want))
 		})
 	}

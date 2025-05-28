@@ -13,7 +13,6 @@ import (
 	logstashv1alpha1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/logstash/v1alpha1"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/keystore"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/pod"
-	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/logstash/labels"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/logstash/volume"
 )
 
@@ -90,7 +89,7 @@ func reconcileKeystore(params Params, configHash hash.Hash) (*keystore.Resources
 		params,
 		&params.Logstash,
 		logstashv1alpha1.Namer,
-		labels.NewLabels(params.Logstash),
+		params.Meta,
 		initContainersParameters,
 	); err != nil {
 		return nil, err

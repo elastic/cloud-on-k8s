@@ -11,6 +11,8 @@ import (
 	"reflect"
 	"sync/atomic"
 
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/metadata"
+
 	"go.elastic.co/apm/v2"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -195,7 +197,10 @@ func (r *ReconcileEnterpriseSearch) doReconcile(ctx context.Context, ent entv1.E
 		return results.WithError(err), status
 	}
 
-	svc, err := common.ReconcileService(ctx, r.Client, NewService(ent), &ent)
+	// extract the metadata that should be propagated to children
+	meta := metadata.Propagate(&ent, metadata.Metadata{Labels: ent.GetIdentityLabels()})
+
+	svc, err := common.ReconcileService(ctx, r.Client, NewService(ent, meta), &ent)
 	if err != nil {
 		return results.WithError(err), status
 	}
@@ -206,7 +211,7 @@ func (r *ReconcileEnterpriseSearch) doReconcile(ctx context.Context, ent entv1.E
 		Owner:                 &ent,
 		TLSOptions:            ent.Spec.HTTP.TLS,
 		Namer:                 entv1.Namer,
-		Labels:                ent.GetIdentityLabels(),
+		Metadata:              meta,
 		Services:              []corev1.Service{*svc},
 		GlobalCA:              r.GlobalCA,
 		CACertRotation:        r.CACertRotation,
@@ -231,7 +236,7 @@ func (r *ReconcileEnterpriseSearch) doReconcile(ctx context.Context, ent entv1.E
 		return results, status // will eventually retry once updated
 	}
 
-	configSecret, err := ReconcileConfig(ctx, r, ent, r.IPFamily)
+	configSecret, err := ReconcileConfig(ctx, r, ent, r.IPFamily, meta)
 	if err != nil {
 		return results.WithError(err), status
 	}
@@ -248,7 +253,7 @@ func (r *ReconcileEnterpriseSearch) doReconcile(ctx context.Context, ent entv1.E
 		return results.WithError(fmt.Errorf("build config hash: %w", err)), status
 	}
 
-	deploy, err := r.reconcileDeployment(ctx, ent, configHash)
+	deploy, err := r.reconcileDeployment(ctx, ent, configHash, meta)
 	if err != nil {
 		return results.WithError(fmt.Errorf("reconcile deployment: %w", err)), status
 	}
@@ -314,7 +319,7 @@ func (r *ReconcileEnterpriseSearch) updateStatus(ctx context.Context, ent entv1.
 	return common.UpdateStatus(ctx, r.Client, &ent)
 }
 
-func NewService(ent entv1.EnterpriseSearch) *corev1.Service {
+func NewService(ent entv1.EnterpriseSearch, meta metadata.Metadata) *corev1.Service {
 	svc := corev1.Service{
 		ObjectMeta: ent.Spec.HTTP.Service.ObjectMeta,
 		Spec:       ent.Spec.HTTP.Service.Spec,
@@ -323,7 +328,7 @@ func NewService(ent entv1.EnterpriseSearch) *corev1.Service {
 	svc.ObjectMeta.Namespace = ent.Namespace
 	svc.ObjectMeta.Name = HTTPServiceName(ent.Name)
 
-	labels := ent.GetIdentityLabels()
+	selector := ent.GetIdentityLabels()
 	ports := []corev1.ServicePort{
 		{
 			Name:     ent.Spec.HTTP.Protocol(),
@@ -332,7 +337,7 @@ func NewService(ent entv1.EnterpriseSearch) *corev1.Service {
 		},
 	}
 
-	return defaults.SetServiceDefaults(&svc, labels, labels, ports)
+	return defaults.SetServiceDefaults(&svc, meta, selector, ports)
 }
 
 func buildConfigHash(c k8s.Client, ent entv1.EnterpriseSearch, configSecret corev1.Secret) (string, error) {

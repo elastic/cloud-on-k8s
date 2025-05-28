@@ -18,6 +18,7 @@ import (
 	commonv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/common/v1"
 	kbv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/kibana/v1"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/driver"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/metadata"
 	watches2 "github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/watches"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/k8s"
 )
@@ -220,7 +221,7 @@ echo "Keystore initialization successful."
 				Watches:      watches2.NewDynamicWatches(),
 				FakeRecorder: record.NewFakeRecorder(1000),
 			}
-			resources, err := ReconcileResources(context.Background(), testDriver, &tt.kb, kbNamer, nil, tt.initContainerParameters)
+			resources, err := ReconcileResources(context.Background(), testDriver, &tt.kb, kbNamer, metadata.Metadata{}, tt.initContainerParameters)
 			require.NoError(t, err)
 			if tt.wantNil {
 				require.Nil(t, resources)

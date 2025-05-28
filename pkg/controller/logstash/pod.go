@@ -22,6 +22,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/certificates"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/container"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/defaults"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/metadata"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/tracing"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/version"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/logstash/network"
@@ -105,10 +106,14 @@ func buildPodTemplate(params Params, configHash hash.Hash32) (corev1.PodTemplate
 		return corev1.PodTemplateSpec{}, err // error unlikely and should have been caught during validation
 	}
 
+	podMetadata := params.Meta.Merge(metadata.Metadata{
+		Labels:      labels,
+		Annotations: annotations,
+	})
 	builder = builder.
 		WithResources(DefaultResources).
-		WithLabels(labels).
-		WithAnnotations(annotations).
+		WithLabels(podMetadata.Labels).
+		WithAnnotations(podMetadata.Annotations).
 		WithDockerImage(spec.Image, container.ImageRepository(container.LogstashImage, v)).
 		WithAutomountServiceAccountToken().
 		WithPorts(ports).
@@ -120,7 +125,7 @@ func buildPodTemplate(params Params, configHash hash.Hash32) (corev1.PodTemplate
 		WithInitContainerDefaults().
 		WithPodSecurityContext(DefaultSecurityContext)
 
-	builder, err = stackmon.WithMonitoring(params.Context, params.Client, builder, params.Logstash, params.APIServerConfig)
+	builder, err = stackmon.WithMonitoring(params.Context, params.Client, builder, params.Logstash, params.APIServerConfig, params.Meta)
 	if err != nil {
 		return corev1.PodTemplateSpec{}, err
 	}

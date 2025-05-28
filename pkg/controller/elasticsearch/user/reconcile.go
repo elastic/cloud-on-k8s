@@ -16,11 +16,11 @@ import (
 	"k8s.io/client-go/tools/record"
 
 	esv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/elasticsearch/v1"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/metadata"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/reconciler"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/tracing"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/watches"
 	esclient "github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/client"
-	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/label"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/user/filerealm"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/cryptutil"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/k8s"
@@ -44,6 +44,7 @@ func ReconcileUsersAndRoles(
 	watched watches.DynamicWatches,
 	recorder record.EventRecorder,
 	passwordHasher cryptutil.PasswordHasher,
+	meta metadata.Metadata,
 ) (esclient.BasicAuth, error) {
 	span, ctx := apm.StartSpan(ctx, "reconcile_users", tracing.SpanTypeApp)
 	defer span.End()
@@ -53,7 +54,7 @@ func ReconcileUsersAndRoles(
 	if err != nil {
 		return esclient.BasicAuth{}, err
 	}
-	fileRealm, controllerUser, err := aggregateFileRealm(ctx, c, es, watched, recorder, passwordHasher)
+	fileRealm, controllerUser, err := aggregateFileRealm(ctx, c, es, watched, recorder, passwordHasher, meta)
 	if err != nil {
 		return esclient.BasicAuth{}, err
 	}
@@ -65,7 +66,7 @@ func ReconcileUsersAndRoles(
 	}
 
 	// reconcile the aggregate secret
-	if err := reconcileRolesFileRealmSecret(ctx, c, es, roles, fileRealm, saTokens); err != nil {
+	if err := reconcileRolesFileRealmSecret(ctx, c, es, roles, fileRealm, saTokens, meta); err != nil {
 		return esclient.BasicAuth{}, err
 	}
 
@@ -89,6 +90,7 @@ func aggregateFileRealm(
 	watched watches.DynamicWatches,
 	recorder record.EventRecorder,
 	passwordHasher cryptutil.PasswordHasher,
+	meta metadata.Metadata,
 ) (filerealm.Realm, esclient.BasicAuth, error) {
 	// retrieve existing file realm to reuse predefined users password hashes if possible
 	existingFileRealm, err := getExistingFileRealm(c, es)
@@ -106,11 +108,11 @@ func aggregateFileRealm(
 	}
 
 	// reconcile predefined users
-	elasticUser, err := reconcileElasticUser(ctx, c, es, existingFileRealm, userProvidedFileRealm, passwordHasher)
+	elasticUser, err := reconcileElasticUser(ctx, c, es, existingFileRealm, userProvidedFileRealm, passwordHasher, meta)
 	if err != nil {
 		return filerealm.Realm{}, esclient.BasicAuth{}, err
 	}
-	internalUsers, err := reconcileInternalUsers(ctx, c, es, existingFileRealm, passwordHasher)
+	internalUsers, err := reconcileInternalUsers(ctx, c, es, existingFileRealm, passwordHasher, meta)
 	if err != nil {
 		return filerealm.Realm{}, esclient.BasicAuth{}, err
 	}
@@ -165,6 +167,7 @@ func reconcileRolesFileRealmSecret(
 	roles RolesFileContent,
 	fileRealm filerealm.Realm,
 	saTokens ServiceAccountTokens,
+	meta metadata.Metadata,
 ) error {
 	secretData := fileRealm.FileBytes()
 	rolesBytes, err := roles.FileBytes()
@@ -176,9 +179,10 @@ func reconcileRolesFileRealmSecret(
 
 	expected := corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
-			Namespace: RolesFileRealmSecretKey(es).Namespace,
-			Name:      RolesFileRealmSecretKey(es).Name,
-			Labels:    label.NewLabels(k8s.ExtractNamespacedName(&es)),
+			Namespace:   RolesFileRealmSecretKey(es).Namespace,
+			Name:        RolesFileRealmSecretKey(es).Name,
+			Labels:      meta.Labels,
+			Annotations: meta.Annotations,
 		},
 		Data: secretData,
 	}
@@ -194,12 +198,14 @@ func reconcileRolesFileRealmSecret(
 			// update if secret content is different
 			return !reflect.DeepEqual(expected.Data, reconciled.Data) ||
 				// or expected labels are not there
-				!maps.IsSubset(expected.Labels, reconciled.Labels)
+				!maps.IsSubset(expected.Labels, reconciled.Labels) ||
+				// or expected annotations are not there
+				!maps.IsSubset(expected.Annotations, reconciled.Annotations)
 		},
 		UpdateReconciled: func() {
 			reconciled.Data = expected.Data
-			maps.Merge(reconciled.Labels, expected.Labels)
-			maps.Merge(reconciled.Annotations, expected.Annotations)
+			reconciled.Labels = maps.Merge(reconciled.Labels, expected.Labels)
+			reconciled.Annotations = maps.Merge(reconciled.Annotations, expected.Annotations)
 		},
 	})
 }

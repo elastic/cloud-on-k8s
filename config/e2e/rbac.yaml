@@ -69,6 +69,14 @@ metadata:
     test-run: {{ .TestRun }}
 rules:
   - apiGroups:
+      - policy
+    resources:
+      - poddisruptionbudgets
+    verbs:
+      - get
+      - list
+      - watch
+  - apiGroups:
       - discovery.k8s.io
     resources:
       - endpointslices
