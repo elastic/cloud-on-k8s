@@ -38,6 +38,13 @@
         "docs/design/0005-configurable-operator.md"
       ],
       "enabled": false
+    },
+    {
+      "description": "Docker images in the release notes should not be updated",
+      "matchFileNames": [
+        "docs/release-notes/index.md"
+      ],
+      "enabled": false
     }
   ]
 }
