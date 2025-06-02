@@ -173,7 +173,7 @@ func buildPodTemplate(params Params, fleetCerts *certificates.CertificatesSecret
 	vols = append(vols, caAssocVols...)
 
 	podMeta := params.Meta.Merge(metadata.Metadata{
-		Labels:      maps.Merge(params.Agent.GetIdentityLabels(), map[string]string{VersionLabelName: spec.Version}),
+		Labels:      map[string]string{VersionLabelName: spec.Version},
 		Annotations: map[string]string{ConfigHashAnnotationName: fmt.Sprint(configHash.Sum32())},
 	})
 	builder = builder.
