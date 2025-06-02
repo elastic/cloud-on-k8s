@@ -28,6 +28,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/logstash/network"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/logstash/stackmon"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/logstash/volume"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/maps"
 )
 
 const (
@@ -102,8 +103,9 @@ func buildPodTemplate(params Params, configHash hash.Hash32) (corev1.PodTemplate
 		return corev1.PodTemplateSpec{}, err // error unlikely and should have been caught during validation
 	}
 
+	labels := maps.Merge(params.Logstash.GetPodIdentityLabels(), map[string]string{VersionLabelName: spec.Version})
 	podMetadata := params.Meta.Merge(metadata.Metadata{
-		Labels:      map[string]string{VersionLabelName: spec.Version},
+		Labels:      labels,
 		Annotations: annotations,
 	})
 	builder = builder.
