@@ -41,10 +41,7 @@ func newKibanaConfigSecret(policy policyv1alpha1.StackConfigPolicy, kibana kiban
 		}
 	}
 	meta := metadata.Propagate(&kibana, metadata.Metadata{
-		Labels: kblabel.NewLabels(types.NamespacedName{
-			Name:      kibana.Name,
-			Namespace: kibana.Namespace,
-		}),
+		Labels: kblabel.NewLabels(k8s.ExtractNamespacedName(&kibana)),
 		Annotations: map[string]string{
 			commonannotation.KibanaConfigHashAnnotation: kibanaConfigHash,
 		},
