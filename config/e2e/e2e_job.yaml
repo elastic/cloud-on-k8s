@@ -53,12 +53,15 @@ spec:
             - name: tmp
               mountPath: /tmp
           # If resources aren't assigned in autopilot
-          # it will assign a tiny amount of cpu
-          # which causes e2e tests to be very slow.
+          # it will assign a tiny amount of cpu and only 1Gi of ephemeral storage
+          # which causes e2e tests to be very slow or Pod to be evicted.
           resources:
+            limits:
+              ephemeral-storage: 5Gi
             requests:
               cpu: "1"
               memory: 2Gi
+              ephemeral-storage: 5Gi
 {{ end }}
           securityContext:
             allowPrivilegeEscalation: false
