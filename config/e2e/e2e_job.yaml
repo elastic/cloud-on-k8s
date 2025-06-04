@@ -1,3 +1,20 @@
+{{ if .Context.AutopilotCluster }}
+---
+apiVersion: v1
+kind: ResourceQuota
+metadata:
+  name: e2e-quota
+  namespace: {{ .Context.E2ENamespace }}
+  labels:
+    test-run: {{ .Context.TestRun }}
+spec:
+  scopeSelector:
+    matchExpressions:
+      - operator: In
+        scopeName: PriorityClass
+        values:
+          - system-cluster-critical
+{{ end }}
 ---
 apiVersion: v1
 kind: ConfigMap
@@ -31,6 +48,9 @@ spec:
         test-run: {{ .Context.TestRun }}
         stream-logs: "true"
     spec:
+{{ if .Context.AutopilotCluster }}
+      priorityClassName: system-cluster-critical
+{{ end }}
       securityContext:
         runAsNonRoot: true
 {{ if not .Context.OcpCluster }}
