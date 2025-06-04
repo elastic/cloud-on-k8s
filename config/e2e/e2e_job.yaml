@@ -57,10 +57,12 @@ spec:
           # which causes e2e tests to be very slow or Pod to be evicted.
           resources:
             limits:
+              cpu: "4"
+              memory: 4Gi
               ephemeral-storage: 5Gi
             requests:
-              cpu: "1"
-              memory: 2Gi
+              cpu: "4"
+              memory: 4Gi
               ephemeral-storage: 5Gi
 {{ end }}
           securityContext:
