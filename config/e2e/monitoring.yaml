@@ -24,9 +24,15 @@ spec:
               limits:
                 memory: 1Gi
                 cpu: 1
+  {{ if .AutopilotCluster }}
+                ephemeral-storage: 5Gi
+  {{ end }}
               requests:
                 memory: 1Gi
                 cpu: 100m
+  {{ if .AutopilotCluster }}
+                ephemeral-storage: 5Gi
+  {{ end }}
             env:
               - name: NODE_NAME
                 valueFrom:
