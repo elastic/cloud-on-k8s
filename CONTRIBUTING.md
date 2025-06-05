@@ -99,7 +99,7 @@ We require license headers on all files that are part of the source code.
 
 #### Sign the CLA
 
-Make sure you signed the [Contributor License Agreement](https://www.elastic.co/fr/contributor-agreement/). You only need to sign the CLA once. By signing this agreement, you give us the right to distribute your code without restriction.
+Make sure you signed the [Contributor License Agreement](https://www.elastic.co/contributor-agreement). You only need to sign the CLA once. By signing this agreement, you give us the right to distribute your code without restriction.
 
 #### Prepare a Pull Request
 
