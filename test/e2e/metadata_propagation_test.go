@@ -98,7 +98,7 @@ func TestMetadataPropagation(t *testing.T) {
 				Name: "check metadata of children",
 				Test: func(t *testing.T) {
 					t.Helper()
-					// nolint:prealloc
+
 					var children []child
 					for _, b := range builders {
 						expectedChildren, err := expectedChildren(b, c)

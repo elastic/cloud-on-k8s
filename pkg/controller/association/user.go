@@ -6,6 +6,7 @@ package association
 
 import (
 	"context"
+	"maps"
 
 	"go.elastic.co/apm/v2"
 	"golang.org/x/crypto/bcrypt"
@@ -18,6 +19,7 @@ import (
 	esv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/elasticsearch/v1"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common"
 	commonlabels "github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/labels"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/metadata"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/reconciler"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/tracing"
 	eslabel "github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/label"
@@ -80,7 +82,7 @@ func reconcileEsUserSecret(
 	ctx context.Context,
 	c k8s.Client,
 	association commonv1.Association,
-	labels map[string]string,
+	meta metadata.Metadata,
 	userRoles string,
 	userObjectSuffix string,
 	es esv1.Elasticsearch,
@@ -88,16 +90,18 @@ func reconcileEsUserSecret(
 	span, ctx := apm.StartSpan(ctx, "reconcile_es_user", tracing.SpanTypeApp)
 	defer span.End()
 
-	// Add the Elasticsearch name, this is only intended to help the user to filter on these resources
-	labels[eslabel.ClusterNameLabelName] = es.Name
+	esUserSecretMeta := meta.Merge(metadata.Metadata{
+		Labels: map[string]string{eslabel.ClusterNameLabelName: es.Name},
+	})
 
 	secKey := secretKey(association, userObjectSuffix)
 	usrKey := UserKey(association, es.Namespace, userObjectSuffix)
 	expectedSecret := corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      secKey.Name,
-			Namespace: secKey.Namespace,
-			Labels:    commonlabels.AddCredentialsLabel(labels),
+			Name:        secKey.Name,
+			Namespace:   secKey.Namespace,
+			Labels:      commonlabels.AddCredentialsLabel(maps.Clone(esUserSecretMeta.Labels)),
+			Annotations: esUserSecretMeta.Annotations,
 		},
 		Data: map[string][]byte{},
 	}
@@ -125,16 +129,18 @@ func reconcileEsUserSecret(
 	// and the association label ("for that association object")
 
 	// merge the association labels provided by the controller with the one needed for a user
-	userLabels := esuser.AssociatedUserLabels(es)
-	for key, value := range labels {
-		userLabels[key] = value
-	}
+	metaUserSecret := meta.Merge(
+		metadata.Metadata{
+			Labels: esuser.AssociatedUserLabels(es),
+		},
+	)
 
 	expectedEsUser := corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      usrKey.Name,
-			Namespace: usrKey.Namespace,
-			Labels:    userLabels,
+			Name:        usrKey.Name,
+			Namespace:   usrKey.Namespace,
+			Labels:      metaUserSecret.Labels,
+			Annotations: metaUserSecret.Annotations,
 		},
 		Data: map[string][]byte{
 			esuser.UserNameField:  []byte(usrKey.Name),

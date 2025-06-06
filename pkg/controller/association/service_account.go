@@ -15,6 +15,8 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/metadata"
+
 	"go.elastic.co/apm/v2"
 	"golang.org/x/crypto/pbkdf2"
 	corev1 "k8s.io/api/core/v1"
@@ -62,7 +64,7 @@ func reconcileApplicationSecret(
 	client k8s.Client,
 	es esv1.Elasticsearch,
 	applicationSecretName types.NamespacedName,
-	commonLabels map[string]string,
+	meta metadata.Metadata,
 	tokenName string,
 	serviceAccount commonv1.ServiceAccountName,
 ) (*Token, error) {
@@ -90,15 +92,17 @@ func reconcileApplicationSecret(
 		}
 	}
 
-	labels := applicationSecretLabels(es)
-	for labelName, labelValue := range commonLabels {
-		labels[labelName] = labelValue
-	}
+	applicationSecretMeta := meta.Merge(
+		metadata.Metadata{
+			Labels: applicationSecretLabels(es),
+		},
+	)
 	applicationStore = corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      applicationSecretName.Name,
-			Namespace: applicationSecretName.Namespace,
-			Labels:    labels,
+			Name:        applicationSecretName.Name,
+			Namespace:   applicationSecretName.Namespace,
+			Labels:      applicationSecretMeta.Labels,
+			Annotations: applicationSecretMeta.Annotations,
 		},
 		Data: map[string][]byte{
 			esuser.ServiceAccountTokenNameField: []byte(token.TokenName),
@@ -137,21 +141,23 @@ func reconcileElasticsearchSecret(
 	client k8s.Client,
 	es esv1.Elasticsearch,
 	elasticsearchSecretName types.NamespacedName,
-	commonLabels map[string]string,
+	meta metadata.Metadata,
 	token Token,
 ) error {
 	span, ctx := apm.StartSpan(ctx, "reconcile_sa_token_elasticsearch", tracing.SpanTypeApp)
 	defer span.End()
 	fullyQualifiedName := token.ServiceAccountName + "/" + token.TokenName
-	labels := esSecretsLabels(es)
-	for labelName, labelValue := range commonLabels {
-		labels[labelName] = labelValue
-	}
+	esSecretMeta := meta.Merge(
+		metadata.Metadata{
+			Labels: esSecretsLabels(es),
+		},
+	)
 	esSecret := corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      elasticsearchSecretName.Name,
-			Namespace: elasticsearchSecretName.Namespace,
-			Labels:    labels,
+			Name:        elasticsearchSecretName.Name,
+			Namespace:   elasticsearchSecretName.Namespace,
+			Labels:      esSecretMeta.Labels,
+			Annotations: esSecretMeta.Annotations,
 		},
 		Data: map[string][]byte{
 			esuser.ServiceAccountTokenNameField: []byte(fullyQualifiedName),
@@ -166,7 +172,7 @@ func ReconcileServiceAccounts(
 	ctx context.Context,
 	client k8s.Client,
 	es esv1.Elasticsearch,
-	commonLabels map[string]string,
+	meta metadata.Metadata,
 	applicationSecretName types.NamespacedName,
 	elasticsearchSecretName types.NamespacedName,
 	serviceAccount commonv1.ServiceAccountName,
@@ -174,11 +180,11 @@ func ReconcileServiceAccounts(
 	applicationUID types.UID,
 ) error {
 	tokenName := tokenName(applicationSecretName.Namespace, applicationName, applicationUID)
-	token, err := reconcileApplicationSecret(ctx, client, es, applicationSecretName, commonLabels, tokenName, serviceAccount)
+	token, err := reconcileApplicationSecret(ctx, client, es, applicationSecretName, meta, tokenName, serviceAccount)
 	if err != nil {
 		return err
 	}
-	return reconcileElasticsearchSecret(ctx, client, es, elasticsearchSecretName, commonLabels, *token)
+	return reconcileElasticsearchSecret(ctx, client, es, elasticsearchSecretName, meta, *token)
 }
 
 // getCurrentApplicationToken returns the current token from the application Secret, or nil if the content of the Secret is not valid.
