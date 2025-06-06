@@ -10,6 +10,7 @@ import (
 	"reflect"
 	"testing"
 
+	"github.com/hashicorp/go-multierror"
 	"github.com/stretchr/testify/require"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -82,6 +83,7 @@ func TestMetadataPropagation(t *testing.T) {
 		WithAnnotation("my-annotation", "my-annotation-value")
 	emsBuilder := ems.NewBuilder(name).
 		WithNodeCount(1).
+		WithElasticsearchRef(es.Ref()).
 		WithRestrictedSecurityContext().
 		WithLabel("my-label", "my-label-value").
 		WithAnnotation("eck.k8s.alpha.elastic.co/propagate-annotations", "*").
@@ -131,66 +133,87 @@ func expectedChildren(builder test.Builder, c *test.K8sClient) ([]child, error) 
 		// If the builder is wrapped, we need to unwrap it to get the actual builder.
 		return expectedChildren(b.BuildingThis, c)
 	case elasticsearch.Builder:
-		return expectedChildrenFor(c, "elasticsearch", b.Elasticsearch.Namespace, b.Elasticsearch.Name, map[string]string{
-			eslabel.ClusterNameLabelName: b.Elasticsearch.Name,
-			v1.TypeLabelName:             "elasticsearch",
-		},
-			&corev1.ServiceList{}, &corev1.SecretList{}, &corev1.ConfigMapList{}, &appsv1.StatefulSetList{}, &corev1.PodList{}, &policyv1.PodDisruptionBudgetList{},
-		)
+		return expectedChildrenFor(c, "elasticsearch", b.Elasticsearch.Namespace).
+			GetObjects(map[string]string{eslabel.ClusterNameLabelName: b.Elasticsearch.Name, v1.TypeLabelName: "elasticsearch"}, &corev1.ServiceList{}, &corev1.SecretList{}, &corev1.ConfigMapList{}, &appsv1.StatefulSetList{}, &corev1.PodList{}, &policyv1.PodDisruptionBudgetList{}).
+			Result()
 	case kibana.Builder:
-		return expectedChildrenFor(c, "kibana", b.Kibana.Namespace, b.Kibana.Name, map[string]string{
-			kblabel.KibanaNameLabelName: b.Kibana.Name,
-			v1.TypeLabelName:            "kibana",
-		},
-			&corev1.ServiceList{}, &corev1.SecretList{}, &corev1.ConfigMapList{}, &appsv1.DeploymentList{}, &corev1.PodList{},
-		)
+		return expectedChildrenFor(c, "kibana", b.Kibana.Namespace).
+			GetObjects(map[string]string{kblabel.KibanaNameLabelName: b.Kibana.Name, v1.TypeLabelName: "kibana"}, &corev1.ServiceList{}, &corev1.SecretList{}, &corev1.ConfigMapList{}, &appsv1.DeploymentList{}, &corev1.PodList{}).
+			// Also check that the Secrets metadata from the association with Elasticsearch
+			GetObjects(map[string]string{"kibanaassociation.k8s.elastic.co/type": "elasticsearch"}, &corev1.SecretList{}).
+			Result()
 	case elasticagent.Builder:
-		return expectedChildrenFor(c, "agent", b.Agent.Namespace, b.Agent.Name, map[string]string{
-			agent.NameLabelName: b.Agent.Name,
-			v1.TypeLabelName:    "agent",
-		},
-			&corev1.SecretList{}, &appsv1.DaemonSetList{}, &corev1.PodList{},
-		)
+		return expectedChildrenFor(c, "agent", b.Agent.Namespace).
+			GetObjects(map[string]string{agent.NameLabelName: b.Agent.Name, v1.TypeLabelName: "agent"}, &corev1.SecretList{}, &appsv1.DaemonSetList{}, &corev1.PodList{}).
+			// Also check that the Secrets metadata from the association with Elasticsearch
+			GetObjects(map[string]string{"agentassociation.k8s.elastic.co/type": "elasticsearch"}, &corev1.SecretList{}).
+			Result()
 	case logstash.Builder:
-		return expectedChildrenFor(c, "logstash", b.Logstash.Namespace, b.Logstash.Name, map[string]string{
-			lslabels.NameLabelName: b.Logstash.Name,
-			v1.TypeLabelName:       "logstash",
-		},
-			&corev1.ServiceList{}, &corev1.SecretList{}, &appsv1.StatefulSetList{}, &corev1.PodList{},
-		)
+		return expectedChildrenFor(c, "logstash", b.Logstash.Namespace).
+			GetObjects(map[string]string{lslabels.NameLabelName: b.Logstash.Name, v1.TypeLabelName: "logstash"}, &corev1.ServiceList{}, &corev1.SecretList{}, &appsv1.StatefulSetList{}, &corev1.PodList{}).
+			// Also check that the Secrets metadata from the association with Elasticsearch
+			GetObjects(map[string]string{"logstashassociation.k8s.elastic.co/type": "elasticsearch"}, &corev1.SecretList{}).
+			Result()
 	case ems.Builder:
-		return expectedChildrenFor(c, "maps", b.EMS.Namespace, b.EMS.Name, map[string]string{
-			emslabels.NameLabelName: b.EMS.Name,
-			v1.TypeLabelName:        "maps",
-		},
-			&corev1.ServiceList{}, &corev1.SecretList{}, &appsv1.DeploymentList{}, &corev1.PodList{},
-		)
+		return expectedChildrenFor(c, "maps", b.EMS.Namespace).
+			GetObjects(map[string]string{emslabels.NameLabelName: b.EMS.Name, v1.TypeLabelName: "maps"}, &corev1.ServiceList{}, &corev1.SecretList{}, &appsv1.DeploymentList{}, &corev1.PodList{}).
+			// Also check that the Secrets metadata from the association with Elasticsearch
+			GetObjects(map[string]string{"mapsassociation.k8s.elastic.co/type": "elasticsearch"}, &corev1.SecretList{}).
+			Result()
 	default:
 		return nil, nil
 	}
 }
 
-func expectedChildrenFor(c *test.K8sClient, parentType, namespace, name string, matchingLabels map[string]string, objects ...client.ObjectList) ([]child, error) {
-	children := make([]child, 0, 20) // preallocate some space for children
+// -- Helper functions
+
+func expectedChildrenFor(c *test.K8sClient, parentType, namespace string) *expectedChildrenForHelper {
+	return &expectedChildrenForHelper{
+		c:          c,
+		parentType: parentType,
+		namespace:  namespace,
+		children:   make([]child, 0, 20), // preallocate some space for children
+	}
+}
+
+type expectedChildrenForHelper struct {
+	c                     *test.K8sClient
+	parentType, namespace string
+	children              []child
+	err                   error
+}
+
+func (ec *expectedChildrenForHelper) Result() ([]child, error) {
+	if ec.err != nil {
+		return nil, ec.err
+	}
+	return ec.children, nil
+}
+
+func (ec *expectedChildrenForHelper) GetObjects(matchingLabels map[string]string, objects ...client.ObjectList) *expectedChildrenForHelper {
 	for _, list := range objects {
-		if err := c.Client.List(context.Background(), list, client.InNamespace(namespace), client.MatchingLabels(matchingLabels)); err != nil {
-			return nil, err
+		if err := ec.c.Client.List(context.Background(), list, client.InNamespace(ec.namespace), client.MatchingLabels(matchingLabels)); err != nil {
+			ec.err = multierror.Append(ec.err, err)
+			return ec
 		}
 		// Use reflection to get the Items field generically.
 		v := reflect.ValueOf(list).Elem().FieldByName("Items")
 		if !v.IsValid() {
-			return nil, fmt.Errorf("no Items field found in %T", list)
+			ec.err = multierror.Append(ec.err, fmt.Errorf("no Items field found in %T", list))
+			return ec
 		}
 		if v.Len() == 0 {
-			return nil, fmt.Errorf("empty list returned by client, no items found for type %T", list)
+			ec.err = multierror.Append(ec.err, fmt.Errorf("empty list returned by client, no items found for type %T", list))
+			return ec
 		}
 		for i := 0; i < v.Len(); i++ {
 			item, ok := v.Index(i).Addr().Interface().(client.Object)
 			if !ok {
-				return nil, fmt.Errorf("item %d in list %T is not a client.Object", i, list)
+				ec.err = multierror.Append(ec.err, fmt.Errorf("item %d in list %T is not a client.Object", i, list))
+				return ec
 			}
-			children = append(children, child{
-				parent: parentType,
+			ec.children = append(ec.children, child{
+				parent: ec.parentType,
 				key:    client.ObjectKey{Namespace: item.GetNamespace(), Name: item.GetName()},
 				obj: func(obj client.Object) func() client.Object {
 					return func() client.Object {
@@ -200,7 +223,7 @@ func expectedChildrenFor(c *test.K8sClient, parentType, namespace, name string, 
 			})
 		}
 	}
-	return children, nil
+	return ec
 }
 
 type child struct {
