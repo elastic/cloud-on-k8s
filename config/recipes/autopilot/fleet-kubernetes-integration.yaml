@@ -53,11 +53,11 @@ spec:
         - name: elasticsearch
           resources:
             requests:
-              memory: 1Gi
-              cpu: 500m
+              memory: 4Gi
+              cpu: 4
             limits:
-              memory: 1Gi
-              cpu: 500m
+              memory: 4Gi
+              cpu: 4
         initContainers:
         - name: max-map-count-check
           command: ['sh', '-c', "while true; do mmc=$(cat /proc/sys/vm/max_map_count); if [ ${mmc} -eq 262144 ]; then exit 0; fi; sleep 1; done"]
@@ -127,11 +127,11 @@ spec:
       - name: kibana
         resources:
           requests:
-            memory: 1Gi
-            cpu: 500m
+            memory: 2Gi
+            cpu: 2
           limits:
-            memory: 1Gi
-            cpu: 500m
+            memory: 2Gi
+            cpu: 2
 ---
 apiVersion: agent.k8s.elastic.co/v1alpha1
 kind: Agent

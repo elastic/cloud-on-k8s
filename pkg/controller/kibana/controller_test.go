@@ -73,7 +73,7 @@ func TestReconcileKibana_Reconcile(t *testing.T) {
 		validate func(*testing.T, fields)
 	}{
 		{
-			name: "unmanaged kibana instance does increment observedGeneration",
+			name: "unmanaged kibana instance does not increment observedGeneration",
 			fields: fields{
 				Client: k8s.NewFakeClient(
 					&sampleElasticsearch,
