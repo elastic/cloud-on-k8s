@@ -7,6 +7,8 @@ package defaults
 import (
 	"testing"
 
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/metadata"
+
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
@@ -55,7 +57,7 @@ func TestSetServiceDefaults(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			haveSvc := SetServiceDefaults(tc.inSvc(), tc.defaultLabels, tc.defaultSelector, tc.defaultPorts)
+			haveSvc := SetServiceDefaults(tc.inSvc(), metadata.Metadata{Labels: tc.defaultLabels}, tc.defaultSelector, tc.defaultPorts)
 			compare.JSONEqual(t, tc.wantSvc(), haveSvc)
 		})
 	}

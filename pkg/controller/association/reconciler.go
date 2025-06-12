@@ -12,6 +12,8 @@ import (
 	"reflect"
 	"time"
 
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/metadata"
+
 	"github.com/pkg/errors"
 	"go.elastic.co/apm/v2"
 	corev1 "k8s.io/api/core/v1"
@@ -256,11 +258,14 @@ func (r *Reconciler) reconcileAssociation(ctx context.Context, association commo
 		return r.updateAssocConf(ctx, &expectedAssocConf, association)
 	}
 
+	// metadata to propagate to children
+	assocMeta := metadata.Propagate(association, metadata.Metadata{Labels: r.AssociationResourceLabels(k8s.ExtractNamespacedName(association), association.AssociationRef().NamespacedName())})
 	caSecret, err := r.ReconcileCASecret(
 		ctx,
 		association,
 		r.AssociationInfo.ReferencedResourceNamer,
 		assocRef.NamespacedName(),
+		assocMeta,
 	)
 	if err != nil {
 		return commonv1.AssociationPending, err // maybe not created yet
@@ -364,8 +369,7 @@ func (r *Reconciler) reconcileAssociation(ctx context.Context, association commo
 		}
 	}
 
-	// If it is the case create the related Secrets and update the association configuration on the associated resource.
-	assocLabels := r.AssociationResourceLabels(k8s.ExtractNamespacedName(association.Associated()), assocRef.NamespacedName())
+	// If it is the case, create the related Secrets and update the association configuration on the associated resource.
 	if len(serviceAccount) > 0 && esHints.ServiceAccounts.IsTrue() {
 		applicationSecretName := secretKey(association, r.ElasticsearchUserCreation.UserSecretSuffix)
 		log.V(1).Info("Ensure service account exists", "sa", serviceAccount)
@@ -373,7 +377,7 @@ func (r *Reconciler) reconcileAssociation(ctx context.Context, association commo
 			ctx,
 			r.Client,
 			es,
-			assocLabels,
+			assocMeta,
 			applicationSecretName,
 			UserKey(association, es.Namespace, r.ElasticsearchUserCreation.UserSecretSuffix),
 			serviceAccount,
@@ -399,7 +403,7 @@ func (r *Reconciler) reconcileAssociation(ctx context.Context, association commo
 		ctx,
 		r.Client,
 		association,
-		assocLabels,
+		assocMeta,
 		userRole,
 		r.ElasticsearchUserCreation.UserSecretSuffix,
 		es,

@@ -13,6 +13,8 @@ import (
 	"sort"
 	"strings"
 
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/metadata"
+
 	pkgerrors "github.com/pkg/errors"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
@@ -170,16 +172,13 @@ func buildPodTemplate(params Params, fleetCerts *certificates.CertificatesSecret
 	}
 	vols = append(vols, caAssocVols...)
 
-	agentLabels := maps.Merge(params.Agent.GetIdentityLabels(), map[string]string{
-		VersionLabelName: spec.Version})
-
-	annotations := map[string]string{
-		ConfigHashAnnotationName: fmt.Sprint(configHash.Sum32()),
-	}
-
+	podMeta := params.Meta.Merge(metadata.Metadata{
+		Labels:      map[string]string{VersionLabelName: spec.Version},
+		Annotations: map[string]string{ConfigHashAnnotationName: fmt.Sprint(configHash.Sum32())},
+	})
 	builder = builder.
-		WithLabels(agentLabels).
-		WithAnnotations(annotations).
+		WithLabels(podMeta.Labels).
+		WithAnnotations(podMeta.Annotations).
 		WithDockerImage(spec.Image, container.ImageRepository(container.AgentImageFor(params.AgentVersion), params.AgentVersion)).
 		WithAutomountServiceAccountToken().
 		WithVolumeLikes(vols...).

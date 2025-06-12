@@ -27,6 +27,7 @@ import (
 	driver2 "github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/driver"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/events"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/keystore"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/metadata"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/operator"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/reconciler"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/tracing"
@@ -117,7 +118,9 @@ func (d *driver) Reconcile(
 		return results
 	}
 
-	svc, err := common.ReconcileService(ctx, d.client, NewService(*kb), kb)
+	// metadata to propagate to children
+	meta := metadata.Propagate(kb, metadata.Metadata{Labels: kb.GetIdentityLabels()})
+	svc, err := common.ReconcileService(ctx, d.client, NewService(*kb, meta), kb)
 	if err != nil {
 		// TODO: consider updating some status here?
 		return results.WithError(err)
@@ -129,7 +132,7 @@ func (d *driver) Reconcile(
 		Owner:                 kb,
 		TLSOptions:            kb.Spec.HTTP.TLS,
 		Namer:                 kbv1.KBNamer,
-		Labels:                kb.GetIdentityLabels(),
+		Metadata:              meta,
 		Services:              []corev1.Service{*svc},
 		GlobalCA:              params.GlobalCA,
 		CACertRotation:        params.CACertRotation,
@@ -161,7 +164,7 @@ func (d *driver) Reconcile(
 		return results.WithError(err)
 	}
 
-	if err = ReconcileConfigSecret(ctx, d.client, *kb, kbSettings); err != nil {
+	if err = ReconcileConfigSecret(ctx, d.client, *kb, kbSettings, meta); err != nil {
 		return results.WithError(err)
 	}
 
@@ -170,18 +173,18 @@ func (d *driver) Reconcile(
 		return results.WithError(err)
 	}
 
-	if err = stackmon.ReconcileConfigSecrets(ctx, d.client, *kb, basePath); err != nil {
+	if err = stackmon.ReconcileConfigSecrets(ctx, d.client, *kb, basePath, meta); err != nil {
 		return results.WithError(err)
 	}
 
-	if err = initcontainer.ReconcileScriptsConfigMap(ctx, d.client, *kb); err != nil {
+	if err = initcontainer.ReconcileScriptsConfigMap(ctx, d.client, *kb, meta); err != nil {
 		return results.WithError(err)
 	}
 
 	span, _ := apm.StartSpan(ctx, "reconcile_deployment", tracing.SpanTypeApp)
 	defer span.End()
 
-	deploymentParams, err := d.deploymentParams(ctx, kb, kibanaPolicyCfg.PodAnnotations, basePath, params.SetDefaultSecurityContext)
+	deploymentParams, err := d.deploymentParams(ctx, kb, kibanaPolicyCfg.PodAnnotations, basePath, params.SetDefaultSecurityContext, meta)
 	if err != nil {
 		return results.WithError(err)
 	}
@@ -228,7 +231,7 @@ func (d *driver) getStrategyType(kb *kbv1.Kibana) (appsv1.DeploymentStrategyType
 	return appsv1.RollingUpdateDeploymentStrategyType, nil
 }
 
-func (d *driver) deploymentParams(ctx context.Context, kb *kbv1.Kibana, policyAnnotations map[string]string, basePath string, setDefaultSecurityContext bool) (deployment.Params, error) {
+func (d *driver) deploymentParams(ctx context.Context, kb *kbv1.Kibana, policyAnnotations map[string]string, basePath string, setDefaultSecurityContext bool, meta metadata.Metadata) (deployment.Params, error) {
 	initContainersParameters, err := initcontainer.NewInitContainersParameters(kb)
 	if err != nil {
 		return deployment.Params{}, err
@@ -239,7 +242,7 @@ func (d *driver) deploymentParams(ctx context.Context, kb *kbv1.Kibana, policyAn
 		d,
 		kb,
 		kbv1.KBNamer,
-		kb.GetIdentityLabels(),
+		meta,
 		initContainersParameters,
 	)
 	if err != nil {
@@ -250,7 +253,7 @@ func (d *driver) deploymentParams(ctx context.Context, kb *kbv1.Kibana, policyAn
 	if err != nil {
 		return deployment.Params{}, err
 	}
-	kibanaPodSpec, err := NewPodTemplateSpec(ctx, d.client, *kb, keystoreResources, volumes, basePath, setDefaultSecurityContext)
+	kibanaPodSpec, err := NewPodTemplateSpec(ctx, d.client, *kb, keystoreResources, volumes, basePath, setDefaultSecurityContext, meta)
 	if err != nil {
 		return deployment.Params{}, err
 	}
@@ -309,7 +312,7 @@ func (d *driver) deploymentParams(ctx context.Context, kb *kbv1.Kibana, policyAn
 		Namespace:            kb.Namespace,
 		Replicas:             kb.Spec.Count,
 		Selector:             kb.GetIdentityLabels(),
-		Labels:               kb.GetIdentityLabels(),
+		Metadata:             meta,
 		PodTemplateSpec:      kibanaPodSpec,
 		RevisionHistoryLimit: kb.Spec.RevisionHistoryLimit,
 		Strategy:             appsv1.DeploymentStrategy{Type: strategyType},
@@ -344,7 +347,7 @@ func (d *driver) buildVolumes(kb *kbv1.Kibana) ([]commonvolume.VolumeLike, error
 	return volumes, nil
 }
 
-func NewService(kb kbv1.Kibana) *corev1.Service {
+func NewService(kb kbv1.Kibana, meta metadata.Metadata) *corev1.Service {
 	svc := corev1.Service{
 		ObjectMeta: kb.Spec.HTTP.Service.ObjectMeta,
 		Spec:       kb.Spec.HTTP.Service.Spec,
@@ -353,7 +356,7 @@ func NewService(kb kbv1.Kibana) *corev1.Service {
 	svc.ObjectMeta.Namespace = kb.Namespace
 	svc.ObjectMeta.Name = kbv1.HTTPService(kb.Name)
 
-	labels := kb.GetIdentityLabels()
+	selector := kb.GetIdentityLabels()
 	ports := []corev1.ServicePort{
 		{
 			Name:     kb.Spec.HTTP.Protocol(),
@@ -361,5 +364,5 @@ func NewService(kb kbv1.Kibana) *corev1.Service {
 			Port:     network.HTTPPort,
 		},
 	}
-	return defaults.SetServiceDefaults(&svc, labels, labels, ports)
+	return defaults.SetServiceDefaults(&svc, meta, selector, ports)
 }

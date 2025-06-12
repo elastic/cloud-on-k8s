@@ -13,6 +13,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/v3/pkg/apis/beat/v1beta1"
 	esv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/elasticsearch/v1"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/association"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/metadata"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/stackmon"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/stackmon/monitoring"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/version"
@@ -43,8 +44,8 @@ var (
 	ErrMonitoringClusterUUIDUnavailable = errors.New("cluster UUID for Beats stack monitoring is unavailable")
 )
 
-func Filebeat(ctx context.Context, client k8s.Client, resource monitoring.HasMonitoring, version string) (stackmon.BeatSidecar, error) {
-	sidecar, err := stackmon.NewFileBeatSidecar(ctx, client, resource, version, filebeatConfig, nil)
+func Filebeat(ctx context.Context, client k8s.Client, resource monitoring.HasMonitoring, version string, meta metadata.Metadata) (stackmon.BeatSidecar, error) {
+	sidecar, err := stackmon.NewFileBeatSidecar(ctx, client, resource, version, filebeatConfig, nil, meta)
 	if err != nil {
 		return stackmon.BeatSidecar{}, err
 	}
@@ -57,7 +58,7 @@ func Filebeat(ctx context.Context, client k8s.Client, resource monitoring.HasMon
 	return sidecar, nil
 }
 
-func MetricBeat(ctx context.Context, client k8s.Client, beat *v1beta1.Beat) (stackmon.BeatSidecar, error) {
+func MetricBeat(ctx context.Context, client k8s.Client, beat *v1beta1.Beat, meta metadata.Metadata) (stackmon.BeatSidecar, error) {
 	if err := beat.ElasticsearchRef().IsValid(); err != nil {
 		return stackmon.BeatSidecar{}, err
 	}
@@ -85,7 +86,7 @@ func MetricBeat(ctx context.Context, client k8s.Client, beat *v1beta1.Beat) (sta
 		return stackmon.BeatSidecar{}, err
 	}
 
-	sidecar, err := stackmon.NewMetricBeatSidecar(ctx, client, beat, v, nil, cfg)
+	sidecar, err := stackmon.NewMetricBeatSidecar(ctx, client, beat, v, nil, cfg, meta)
 	if err != nil {
 		return stackmon.BeatSidecar{}, err
 	}

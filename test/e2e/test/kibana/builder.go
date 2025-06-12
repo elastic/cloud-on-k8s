@@ -188,6 +188,14 @@ func (b Builder) WithLabel(key, value string) Builder {
 	return b
 }
 
+func (b Builder) WithAnnotation(key, value string) Builder {
+	if b.Kibana.Annotations == nil {
+		b.Kibana.Annotations = make(map[string]string)
+	}
+	b.Kibana.Annotations[key] = value
+	return b
+}
+
 // WithPodLabel sets the label in the pod template. All invocations can be removed when
 // https://github.com/elastic/cloud-on-k8s/issues/2652 is implemented.
 func (b Builder) WithPodLabel(key, value string) Builder {

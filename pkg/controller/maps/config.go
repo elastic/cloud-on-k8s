@@ -6,6 +6,7 @@ package maps
 
 import (
 	"context"
+	"maps"
 	"path"
 	"path/filepath"
 
@@ -19,6 +20,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/certificates"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/driver"
 	commonlabels "github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/labels"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/metadata"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/reconciler"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/settings"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/volume"
@@ -36,7 +38,7 @@ func configSecretVolume(ems emsv1alpha1.ElasticMapsServer) volume.SecretVolume {
 	return volume.NewSecretVolume(Config(ems.Name), "config", ConfigMountPath, ConfigFilename, 0444)
 }
 
-func reconcileConfig(ctx context.Context, driver driver.Interface, ems emsv1alpha1.ElasticMapsServer, ipFamily corev1.IPFamily) (corev1.Secret, error) {
+func reconcileConfig(ctx context.Context, driver driver.Interface, ems emsv1alpha1.ElasticMapsServer, ipFamily corev1.IPFamily, meta metadata.Metadata) (corev1.Secret, error) {
 	cfg, err := newConfig(ctx, driver, ems, ipFamily)
 	if err != nil {
 		return corev1.Secret{}, err
@@ -50,9 +52,10 @@ func reconcileConfig(ctx context.Context, driver driver.Interface, ems emsv1alph
 	// Reconcile the configuration in a secret
 	expectedConfigSecret := corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
-			Namespace: ems.Namespace,
-			Name:      Config(ems.Name),
-			Labels:    commonlabels.AddCredentialsLabel(ems.GetIdentityLabels()),
+			Namespace:   ems.Namespace,
+			Name:        Config(ems.Name),
+			Labels:      commonlabels.AddCredentialsLabel(maps.Clone(meta.Labels)),
+			Annotations: meta.Annotations,
 		},
 		Data: map[string][]byte{
 			ConfigFilename: cfgBytes,

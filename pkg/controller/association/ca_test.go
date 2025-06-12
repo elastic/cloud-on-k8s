@@ -17,6 +17,7 @@ import (
 	esv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/elasticsearch/v1"
 	kbv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/kibana/v1"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/certificates"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/metadata"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/operator"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/watches"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/k8s"
@@ -178,12 +179,13 @@ func TestReconcileAssociation_reconcileCASecret(t *testing.T) {
 
 			// re-use the one used for ES association, but it could be anything else
 			caSecretServiceLabelName := "elasticsearch.k8s.elastic.co/cluster-name"
-
+			assocMeta := metadata.Propagate(&tt.kibana, metadata.Metadata{Labels: r.AssociationResourceLabels(k8s.ExtractNamespacedName(&tt.kibana), tt.kibana.EsAssociation().AssociationRef().NamespacedName())})
 			got, err := r.ReconcileCASecret(
 				context.Background(),
 				tt.kibana.EsAssociation(),
 				esv1.ESNamer,
 				k8s.ExtractNamespacedName(&tt.es),
+				assocMeta,
 			)
 			require.NoError(t, err)
 

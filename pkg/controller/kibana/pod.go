@@ -9,6 +9,8 @@ import (
 	"fmt"
 	"strconv"
 
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/metadata"
+
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	"k8s.io/apimachinery/pkg/util/intstr"
@@ -113,6 +115,7 @@ func NewPodTemplateSpec(
 	volumes []volume.VolumeLike,
 	basePath string,
 	setDefaultSecurityContext bool,
+	meta metadata.Metadata,
 ) (corev1.PodTemplateSpec, error) {
 	labels := kb.GetIdentityLabels()
 	labels[kblabel.KibanaVersionLabelName] = kb.Spec.Version
@@ -124,10 +127,14 @@ func NewPodTemplateSpec(
 	}
 
 	scriptsConfigMapVolume := initcontainer.NewScriptsConfigMapVolume(kb.Name)
+	meta = meta.Merge(metadata.Metadata{
+		Labels:      labels,
+		Annotations: DefaultAnnotations,
+	})
 	builder := defaults.NewPodTemplateBuilder(kb.Spec.PodTemplate, kbv1.KibanaContainerName).
 		WithResources(DefaultResources).
-		WithLabels(labels).
-		WithAnnotations(DefaultAnnotations).
+		WithLabels(meta.Labels).
+		WithAnnotations(meta.Annotations).
 		WithDockerImage(kb.Spec.Image, container.ImageRepository(container.KibanaImage, v)).
 		WithReadinessProbe(readinessProbe(kb.Spec.HTTP.TLS.Enabled(), basePath)).
 		WithVolumes(scriptsConfigMapVolume.Volume()).WithVolumeMounts(scriptsConfigMapVolume.VolumeMount()).
@@ -166,7 +173,7 @@ func NewPodTemplateSpec(
 			WithInitContainers(keystore.InitContainer)
 	}
 
-	builder, err = stackmon.WithMonitoring(ctx, client, builder, kb, basePath)
+	builder, err = stackmon.WithMonitoring(ctx, client, builder, kb, basePath, meta)
 	if err != nil {
 		return corev1.PodTemplateSpec{}, err
 	}

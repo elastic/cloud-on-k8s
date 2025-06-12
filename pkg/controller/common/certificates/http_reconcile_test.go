@@ -25,6 +25,7 @@ import (
 	commonv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/common/v1"
 	esv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/elasticsearch/v1"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/comparison"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/metadata"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/reconciler"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/watches"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/k8s"
@@ -225,7 +226,7 @@ func TestReconcilePublicHTTPCerts(t *testing.T) {
 				K8sClient: client,
 				Owner:     owner,
 				Namer:     esv1.ESNamer,
-				Labels:    labels,
+				Metadata:  metadata.Metadata{Labels: labels},
 			}.ReconcilePublicHTTPCerts(context.Background(), certificate)
 			if tt.wantErr {
 				require.Error(t, err, "Failed to reconcile")
@@ -451,7 +452,7 @@ func TestReconcileInternalHTTPCerts(t *testing.T) {
 				Owner:          &tt.args.es,
 				TLSOptions:     tt.args.es.Spec.HTTP.TLS,
 				Namer:          esv1.ESNamer,
-				Labels:         map[string]string{},
+				Metadata:       metadata.Metadata{},
 				Services:       tt.args.services,
 				CertRotation: RotationParams{
 					Validity:     DefaultCertValidity,

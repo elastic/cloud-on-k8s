@@ -7,6 +7,7 @@ package user
 import (
 	"context"
 	"fmt"
+	"maps"
 
 	"github.com/pkg/errors"
 	corev1 "k8s.io/api/core/v1"
@@ -17,9 +18,9 @@ import (
 	esv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/elasticsearch/v1"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/labels"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/metadata"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/reconciler"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/version"
-	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/label"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/user/filerealm"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/cryptutil"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/k8s"
@@ -48,6 +49,7 @@ func reconcileElasticUser(
 	existingFileRealm,
 	userProvidedFileRealm filerealm.Realm,
 	passwordHasher cryptutil.PasswordHasher,
+	meta metadata.Metadata,
 ) (users, error) {
 	if es.Spec.Auth.DisableElasticUser {
 		return nil, nil
@@ -74,6 +76,7 @@ func reconcileElasticUser(
 		// See https://github.com/elastic/cloud-on-k8s/issues/3986.
 		false,
 		passwordHasher,
+		meta,
 	)
 }
 
@@ -84,6 +87,7 @@ func reconcileInternalUsers(
 	es esv1.Elasticsearch,
 	existingFileRealm filerealm.Realm,
 	passwordHasher cryptutil.PasswordHasher,
+	meta metadata.Metadata,
 ) (users, error) {
 	users := users{
 		{Name: ControllerUserName, Roles: []string{SuperUserBuiltinRole}},
@@ -117,6 +121,7 @@ func reconcileInternalUsers(
 		esv1.InternalUsersSecret(es.Name),
 		true,
 		passwordHasher,
+		meta,
 	)
 }
 
@@ -143,6 +148,7 @@ func reconcilePredefinedUsers(
 	secretName string,
 	setOwnerRef bool,
 	passwordHasher cryptutil.PasswordHasher,
+	meta metadata.Metadata,
 ) (users, error) {
 	secretNsn := types.NamespacedName{Namespace: es.Namespace, Name: secretName}
 
@@ -165,9 +171,10 @@ func reconcilePredefinedUsers(
 
 	expected := corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
-			Namespace: secretNsn.Namespace,
-			Name:      secretNsn.Name,
-			Labels:    labels.AddCredentialsLabel(label.NewLabels(k8s.ExtractNamespacedName(&es))),
+			Namespace:   secretNsn.Namespace,
+			Name:        secretNsn.Name,
+			Labels:      labels.AddCredentialsLabel(maps.Clone(meta.Labels)),
+			Annotations: meta.Annotations,
 		},
 		Data: secretData,
 	}

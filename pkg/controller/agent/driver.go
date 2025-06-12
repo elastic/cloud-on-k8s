@@ -9,6 +9,8 @@ import (
 	"fmt"
 	"hash/fnv"
 
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/metadata"
+
 	"github.com/go-logr/logr"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
@@ -38,6 +40,8 @@ const (
 // Params are a set of parameters used during internal reconciliation of Elastic Agents.
 type Params struct {
 	Context context.Context
+
+	Meta metadata.Metadata
 
 	Client        k8s.Client
 	EventRecorder record.EventRecorder
@@ -116,7 +120,7 @@ func internalReconcile(params Params) (*reconciler.Results, agentv1alpha1.AgentS
 			Owner:                       &params.Agent,
 			TLSOptions:                  params.Agent.Spec.HTTP.TLS,
 			Namer:                       Namer,
-			Labels:                      params.Agent.GetIdentityLabels(),
+			Metadata:                    params.Meta,
 			Services:                    []corev1.Service{*svc},
 			GlobalCA:                    params.OperatorParams.GlobalCA,
 			CACertRotation:              params.OperatorParams.CACertRotation,
@@ -153,7 +157,7 @@ func internalReconcile(params Params) (*reconciler.Results, agentv1alpha1.AgentS
 }
 
 func reconcileService(params Params) (*corev1.Service, error) {
-	svc := newService(params.Agent)
+	svc := newService(params.Agent, params.Meta)
 
 	// setup Service only when Fleet Server is enabled
 	if !params.Agent.Spec.FleetServerEnabled {
@@ -171,7 +175,7 @@ func reconcileService(params Params) (*corev1.Service, error) {
 	return common.ReconcileService(params.Context, params.Client, svc, &params.Agent)
 }
 
-func newService(agent agentv1alpha1.Agent) *corev1.Service {
+func newService(agent agentv1alpha1.Agent, meta metadata.Metadata) *corev1.Service {
 	svc := corev1.Service{
 		ObjectMeta: agent.Spec.HTTP.Service.ObjectMeta,
 		Spec:       agent.Spec.HTTP.Service.Spec,
@@ -180,7 +184,7 @@ func newService(agent agentv1alpha1.Agent) *corev1.Service {
 	svc.ObjectMeta.Namespace = agent.Namespace
 	svc.ObjectMeta.Name = HTTPServiceName(agent.Name)
 
-	labels := agent.GetIdentityLabels()
+	selector := agent.GetIdentityLabels()
 	ports := []corev1.ServicePort{
 		{
 			Name:     agent.Spec.HTTP.Protocol(),
@@ -188,5 +192,5 @@ func newService(agent agentv1alpha1.Agent) *corev1.Service {
 			Port:     FleetServerPort,
 		},
 	}
-	return defaults.SetServiceDefaults(&svc, labels, labels, ports)
+	return defaults.SetServiceDefaults(&svc, meta, selector, ports)
 }
