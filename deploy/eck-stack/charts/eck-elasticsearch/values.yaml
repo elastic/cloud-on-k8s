@@ -185,21 +185,21 @@ nodeSets:
     #
     spec:
 
-    # If specified, the pod's scheduling constraints
-    # https://www.elastic.co/guide/en/cloud-on-k8s/current/k8s-advanced-node-scheduling.html
-    # https://kubernetes.io/docs/concepts/scheduling-eviction/assign-pod-node/
-    # affinity:
-    #   nodeAffinity:
-    #     requiredDuringSchedulingIgnoredDuringExecution:
-    #       nodeSelectorTerms:
-    #       - matchExpressions:
-    #         - key: topology.kubernetes.io/zone
-    #           operator: In
-    #           values:
-    #           - antarctica-east1
-    #           - antarctica-west1
+      # If specified, the pod's scheduling constraints
+      # https://www.elastic.co/guide/en/cloud-on-k8s/current/k8s-advanced-node-scheduling.html
+      # https://kubernetes.io/docs/concepts/scheduling-eviction/assign-pod-node/
+      # affinity:
+      #   nodeAffinity:
+      #     requiredDuringSchedulingIgnoredDuringExecution:
+      #       nodeSelectorTerms:
+      #       - matchExpressions:
+      #         - key: topology.kubernetes.io/zone
+      #           operator: In
+      #           values:
+      #           - antarctica-east1
+      #           - antarctica-west1
 
-    # Containers array.  Should only be used to customize the 'elasticsearch' container using the following fields.
+      # Containers array.  Should only be used to customize the 'elasticsearch' container using the following fields.
       containers:
       - name: elasticsearch
 
