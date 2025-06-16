@@ -3,6 +3,7 @@ apiVersion: enterprisesearch.k8s.elastic.co/v1
 kind: EnterpriseSearch
 metadata:
   name: {{ include "eck-enterprise-search.fullname" . }}
+  namespace: {{ .Release.Namespace }}
   labels:
     {{- include "eck-enterprise-search.labels" . | nindent 4 }}
     {{- with .Values.labels }}
