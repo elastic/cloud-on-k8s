@@ -15,6 +15,7 @@ import (
 
 	commonv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/common/v1"
 	esv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/elasticsearch/v1"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/metadata"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/stackmon/monitoring"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/k8s"
 )
@@ -114,6 +115,7 @@ param2: value2
 				hasMonitoring,
 				tt.args.associated.GetAssociations(),
 				tt.args.baseConfig,
+				metadata.Metadata{},
 			)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("newBeatConfig() error = %v, wantErr %v", err, tt.wantErr)

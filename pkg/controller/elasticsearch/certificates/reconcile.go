@@ -17,11 +17,11 @@ import (
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/certificates"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/driver"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/events"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/metadata"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/reconciler"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/tracing"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/certificates/remoteca"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/certificates/transport"
-	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/label"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/nodespec"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/k8s"
 )
@@ -35,14 +35,12 @@ func ReconcileHTTP(
 	globalCA *certificates.CA,
 	caRotation certificates.RotationParams,
 	certRotation certificates.RotationParams,
+	meta metadata.Metadata,
 ) ([]*x509.Certificate, *reconciler.Results) {
 	span, _ := apm.StartSpan(ctx, "reconcile_http_certs", tracing.SpanTypeApp)
 	defer span.End()
 
 	var results *reconciler.Results
-
-	// label certificates secrets with the cluster name
-	certsLabels := label.NewLabels(k8s.ExtractNamespacedName(&es))
 
 	// Create some additional SANs, mostly to be used in the context of client autodiscovery (a.k.a. sniffing).
 	extraHTTPSANs := make([]commonv1.SubjectAlternativeName, len(es.Spec.NodeSets))
@@ -60,7 +58,7 @@ func ReconcileHTTP(
 		TLSOptions:     es.Spec.HTTP.TLS,
 		ExtraHTTPSANs:  extraHTTPSANs,
 		Namer:          esv1.ESNamer,
-		Labels:         certsLabels,
+		Metadata:       meta,
 		Services:       services,
 		GlobalCA:       globalCA,
 		CACertRotation: caRotation,
@@ -91,14 +89,12 @@ func ReconcileTransport(
 	globalCA *certificates.CA,
 	caRotation certificates.RotationParams,
 	certRotation certificates.RotationParams,
+	meta metadata.Metadata,
 ) *reconciler.Results {
 	span, ctx := apm.StartSpan(ctx, "reconcile_transport_certs", tracing.SpanTypeApp)
 	defer span.End()
 
 	results := reconciler.NewResult(ctx)
-
-	// label certificates secrets with the cluster name
-	certsLabels := label.NewLabels(k8s.ExtractNamespacedName(&es))
 
 	// Maybe retrieve user defined additional trusted CAs from a config map.
 	// They will be concatenated with the ECK issued CA and distributed through the same transport secrets.
@@ -113,7 +109,7 @@ func ReconcileTransport(
 		ctx,
 		driver,
 		es,
-		certsLabels,
+		meta,
 		globalCA,
 		caRotation,
 	)
@@ -128,7 +124,7 @@ func ReconcileTransport(
 	)
 
 	// reconcile transport public certs secret
-	if err := transport.ReconcileTransportCertsPublicSecret(ctx, driver.K8sClient(), es, transportCA, additionalCAs); err != nil {
+	if err := transport.ReconcileTransportCertsPublicSecret(ctx, driver.K8sClient(), es, transportCA, additionalCAs, meta); err != nil {
 		return results.WithError(err)
 	}
 
@@ -140,10 +136,11 @@ func ReconcileTransport(
 		additionalCAs,
 		es,
 		certRotation,
+		meta,
 	)
 
 	// reconcile remote clusters certificate authorities
-	if err := remoteca.Reconcile(ctx, driver.K8sClient(), es, *transportCA); err != nil {
+	if err := remoteca.Reconcile(ctx, driver.K8sClient(), es, *transportCA, meta); err != nil {
 		results.WithError(err)
 	}
 

@@ -13,6 +13,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/certificates"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/container"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/defaults"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/metadata"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/version"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/volume"
 )
@@ -57,9 +58,9 @@ func readinessProbe(useTLS bool) corev1.Probe {
 	}
 }
 
-func newPodSpec(ems emsv1alpha1.ElasticMapsServer, configHash string) (corev1.PodTemplateSpec, error) {
+func newPodSpec(ems emsv1alpha1.ElasticMapsServer, configHash string, meta metadata.Metadata) (corev1.PodTemplateSpec, error) {
 	// ensure the Pod gets rotated on config change
-	annotations := map[string]string{configHashAnnotationName: configHash}
+	podMeta := meta.Merge(metadata.Metadata{Annotations: map[string]string{configHashAnnotationName: configHash}})
 
 	defaultContainerPorts := []corev1.ContainerPort{
 		{Name: ems.Spec.HTTP.Protocol(), ContainerPort: int32(HTTPPort), Protocol: corev1.ProtocolTCP},
@@ -74,7 +75,8 @@ func newPodSpec(ems emsv1alpha1.ElasticMapsServer, configHash string) (corev1.Po
 	}
 
 	builder := defaults.NewPodTemplateBuilder(ems.Spec.PodTemplate, emsv1alpha1.MapsContainerName).
-		WithAnnotations(annotations).
+		WithAnnotations(podMeta.Annotations).
+		WithLabels(podMeta.Labels).
 		WithResources(DefaultResources).
 		WithDockerImage(ems.Spec.Image, container.ImageRepository(container.MapsImage, v)).
 		WithReadinessProbe(readinessProbe(ems.Spec.HTTP.TLS.Enabled())).
@@ -82,6 +84,22 @@ func newPodSpec(ems emsv1alpha1.ElasticMapsServer, configHash string) (corev1.Po
 		WithVolumes(cfgVolume.Volume(), logsVolume.Volume()).
 		WithVolumeMounts(cfgVolume.VolumeMount(), logsVolume.VolumeMount()).
 		WithInitContainerDefaults()
+
+	// Add command override for affected versions to fix OpenShift permission issue
+	// See issue #8655: container create fails with "open executable: Operation not permitted"
+	// Known affected versions:
+	// - 7.17.28
+	// - 8.18.0
+	// - 8.18.1
+	// - 9.0.0
+	// - 9.0.1
+	affectedInVersion7 := v.EQ(version.From(7, 17, 28))
+	affectedInVersion8 := v.EQ(version.From(8, 18, 0)) || v.EQ(version.From(8, 18, 1))
+	affectedInVersion9 := v.EQ(version.From(9, 0, 0)) || v.EQ(version.From(9, 0, 1))
+
+	if affectedInVersion7 || affectedInVersion8 || affectedInVersion9 {
+		builder = builder.WithCommand([]string{"/bin/sh", "-c", "node app/index.js"})
+	}
 
 	builder, err = withESCertsVolume(builder, ems)
 	if err != nil {

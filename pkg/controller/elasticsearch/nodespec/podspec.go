@@ -11,6 +11,8 @@ import (
 	"sort"
 	"strings"
 
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/metadata"
+
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/utils/ptr"
@@ -60,6 +62,7 @@ func BuildPodTemplateSpec(
 	keystoreResources *keystore.Resources,
 	setDefaultSecurityContext bool,
 	policyConfig PolicyConfig,
+	meta metadata.Metadata,
 ) (corev1.PodTemplateSpec, error) {
 	ver, err := version.Parse(es.Spec.Version)
 	if err != nil {
@@ -115,9 +118,10 @@ func BuildPodTemplateSpec(
 	}
 
 	// build the podTemplate until we have the effective resources configured
+	meta = meta.Merge(metadata.Metadata{Labels: labels, Annotations: annotations})
 	builder = builder.
-		WithLabels(labels).
-		WithAnnotations(annotations).
+		WithLabels(meta.Labels).
+		WithAnnotations(meta.Annotations).
 		WithDockerImage(es.Spec.Image, container.ImageRepository(container.ElasticsearchImage, ver)).
 		WithResources(DefaultResources).
 		WithTerminationGracePeriod(DefaultTerminationGracePeriodSeconds).
@@ -134,7 +138,7 @@ func BuildPodTemplateSpec(
 		WithContainersSecurityContext(securitycontext.For(ver, enableReadOnlyRootFilesystem)).
 		WithPreStopHook(*NewPreStopHook())
 
-	builder, err = stackmon.WithMonitoring(ctx, client, builder, es)
+	builder, err = stackmon.WithMonitoring(ctx, client, builder, es, meta)
 	if err != nil {
 		return corev1.PodTemplateSpec{}, err
 	}

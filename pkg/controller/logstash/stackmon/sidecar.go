@@ -9,6 +9,8 @@ import (
 	"fmt"
 	"hash/fnv"
 
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/metadata"
+
 	corev1 "k8s.io/api/core/v1"
 
 	commonv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/common/v1"
@@ -30,7 +32,7 @@ const (
 	cfgHashAnnotation = "logstash.k8s.elastic.co/monitoring-config-hash"
 )
 
-func Metricbeat(ctx context.Context, client k8s.Client, logstash logstashv1alpha1.Logstash, apiServer configs.APIServer) (stackmon.BeatSidecar, error) {
+func Metricbeat(ctx context.Context, client k8s.Client, logstash logstashv1alpha1.Logstash, apiServer configs.APIServer, meta metadata.Metadata) (stackmon.BeatSidecar, error) {
 	useTLS := apiServer.UseTLS()
 
 	var protocol = "http"
@@ -61,20 +63,20 @@ func Metricbeat(ctx context.Context, client k8s.Client, logstash logstashv1alpha
 		return stackmon.BeatSidecar{}, err
 	}
 
-	metricbeat, err := stackmon.NewMetricBeatSidecar(ctx, client, &logstash, v, caVol, cfg)
+	metricbeat, err := stackmon.NewMetricBeatSidecar(ctx, client, &logstash, v, caVol, cfg, meta)
 	if err != nil {
 		return stackmon.BeatSidecar{}, err
 	}
 	return metricbeat, nil
 }
 
-func Filebeat(ctx context.Context, client k8s.Client, logstash logstashv1alpha1.Logstash) (stackmon.BeatSidecar, error) {
-	return stackmon.NewFileBeatSidecar(ctx, client, &logstash, logstash.Spec.Version, filebeatConfig, nil)
+func Filebeat(ctx context.Context, client k8s.Client, logstash logstashv1alpha1.Logstash, meta metadata.Metadata) (stackmon.BeatSidecar, error) {
+	return stackmon.NewFileBeatSidecar(ctx, client, &logstash, logstash.Spec.Version, filebeatConfig, nil, meta)
 }
 
 // WithMonitoring updates the Logstash Pod template builder to deploy Metricbeat and Filebeat in sidecar containers
 // in the Logstash pod and injects the volumes for the beat configurations and the ES CA certificates.
-func WithMonitoring(ctx context.Context, client k8s.Client, builder *defaults.PodTemplateBuilder, logstash logstashv1alpha1.Logstash, apiServer configs.APIServer) (*defaults.PodTemplateBuilder, error) {
+func WithMonitoring(ctx context.Context, client k8s.Client, builder *defaults.PodTemplateBuilder, logstash logstashv1alpha1.Logstash, apiServer configs.APIServer, meta metadata.Metadata) (*defaults.PodTemplateBuilder, error) {
 	isMonitoringReconcilable, err := monitoring.IsReconcilable(&logstash)
 	if err != nil {
 		return nil, err
@@ -87,7 +89,7 @@ func WithMonitoring(ctx context.Context, client k8s.Client, builder *defaults.Po
 	var volumes []corev1.Volume
 
 	if monitoring.IsMetricsDefined(&logstash) {
-		b, err := Metricbeat(ctx, client, logstash, apiServer)
+		b, err := Metricbeat(ctx, client, logstash, apiServer, meta)
 		if err != nil {
 			return nil, err
 		}
@@ -106,7 +108,7 @@ func WithMonitoring(ctx context.Context, client k8s.Client, builder *defaults.Po
 		// Set environment variable to tell Logstash container to write logs to disk
 		builder.WithEnv(fileLogStyleEnvVar())
 
-		b, err := Filebeat(ctx, client, logstash)
+		b, err := Filebeat(ctx, client, logstash, meta)
 		if err != nil {
 			return nil, err
 		}

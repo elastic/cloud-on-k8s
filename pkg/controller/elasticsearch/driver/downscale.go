@@ -13,6 +13,7 @@ import (
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	esv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/elasticsearch/v1"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/events"
@@ -200,7 +201,12 @@ func attemptDownscale(
 // deleteStatefulSetResources deletes the given StatefulSet along with the corresponding
 // headless service, configuration and transport certificates secret.
 func deleteStatefulSetResources(ctx context.Context, k8sClient k8s.Client, es esv1.Elasticsearch, statefulSet appsv1.StatefulSet) error {
-	headlessSvc := nodespec.HeadlessService(&es, statefulSet.Name)
+	headlessSvc := corev1.Service{
+		ObjectMeta: metav1.ObjectMeta{
+			Namespace: es.Namespace,
+			Name:      nodespec.HeadlessServiceName(statefulSet.Name),
+		},
+	}
 	err := k8sClient.Delete(ctx, &headlessSvc)
 	if err != nil && !apierrors.IsNotFound(err) {
 		return err

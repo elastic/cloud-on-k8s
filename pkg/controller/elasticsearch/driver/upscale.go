@@ -13,6 +13,7 @@ import (
 	esv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/elasticsearch/v1"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/expectations"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/metadata"
 	sset "github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/statefulset"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/nodespec"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/reconcile"
@@ -31,6 +32,7 @@ type upscaleCtx struct {
 	expectations         *expectations.Expectations
 	validateStorageClass bool
 	upscaleReporter      *reconcile.UpscaleReporter
+	meta                 metadata.Metadata
 }
 
 type UpscaleResults struct {
@@ -67,7 +69,7 @@ func HandleUpscaleAndSpecChanges(
 	// reconcile all resources
 	for _, res := range adjusted {
 		res := res
-		if err := settings.ReconcileConfig(ctx.parentCtx, ctx.k8sClient, ctx.es, res.StatefulSet.Name, res.Config); err != nil {
+		if err := settings.ReconcileConfig(ctx.parentCtx, ctx.k8sClient, ctx.es, res.StatefulSet.Name, res.Config, ctx.meta); err != nil {
 			return results, fmt.Errorf("reconcile config: %w", err)
 		}
 		if _, err := common.ReconcileService(ctx.parentCtx, ctx.k8sClient, &res.HeadlessService, &ctx.es); err != nil {

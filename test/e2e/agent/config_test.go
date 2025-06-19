@@ -48,7 +48,7 @@ func TestSystemIntegrationConfig(t *testing.T) {
 		WithDefaultESValidation(agent.HasWorkingDataStream(agent.MetricsType, "system.socket_summary", "default")).
 		WithDefaultESValidation(agent.HasWorkingDataStream(agent.MetricsType, "system.uptime", "default"))
 
-	agentBuilder = agent.ApplyYamls(t, agentBuilder, E2EAgentSystemIntegrationConfig, E2EAgentSystemIntegrationPodTemplate)
+	agentBuilder = agent.ApplyYamls(t, agentBuilder, E2EAgentSystemIntegrationConfig, E2EAgentSystemIntegrationPodTemplate).MoreResourcesForIssue4730()
 
 	test.Sequence(nil, test.EmptySteps, esBuilder, agentBuilder, testPodBuilder).RunSequential(t)
 }
@@ -88,7 +88,7 @@ func TestAgentConfigRef(t *testing.T) {
 		WithDefaultESValidation(agent.HasWorkingDataStream(agent.MetricsType, "system.socket_summary", "default")).
 		WithDefaultESValidation(agent.HasWorkingDataStream(agent.MetricsType, "system.uptime", "default"))
 
-	agentBuilder = agent.ApplyYamls(t, agentBuilder, "", E2EAgentSystemIntegrationPodTemplate)
+	agentBuilder = agent.ApplyYamls(t, agentBuilder, "", E2EAgentSystemIntegrationPodTemplate).MoreResourcesForIssue4730()
 
 	test.Sequence(nil, test.EmptySteps, esBuilder, agentBuilder).RunSequential(t)
 }
@@ -121,7 +121,7 @@ func TestMultipleOutputConfig(t *testing.T) {
 		WithESValidation(agent.HasWorkingDataStream(agent.MetricsType, "system.socket_summary", "default"), "default").
 		WithESValidation(agent.HasWorkingDataStream(agent.MetricsType, "system.uptime", "default"), "default")
 
-	agentBuilder = agent.ApplyYamls(t, agentBuilder, E2EAgentMultipleOutputConfig, E2EAgentSystemIntegrationPodTemplate)
+	agentBuilder = agent.ApplyYamls(t, agentBuilder, E2EAgentMultipleOutputConfig, E2EAgentSystemIntegrationPodTemplate).MoreResourcesForIssue4730()
 
 	test.Sequence(nil, test.EmptySteps, esBuilder1, esBuilder2, agentBuilder).RunSequential(t)
 }

@@ -7,6 +7,7 @@ package kibana
 import (
 	"context"
 	"fmt"
+	"maps"
 
 	"go.elastic.co/apm/v2"
 	corev1 "k8s.io/api/core/v1"
@@ -16,9 +17,9 @@ import (
 
 	kbv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/kibana/v1"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/labels"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/metadata"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/reconciler"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/tracing"
-	kblabel "github.com/elastic/cloud-on-k8s/v3/pkg/controller/kibana/label"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/k8s"
 )
 
@@ -34,6 +35,7 @@ func ReconcileConfigSecret(
 	client k8s.Client,
 	kb kbv1.Kibana,
 	kbSettings CanonicalConfig,
+	meta metadata.Metadata,
 ) error {
 	span, ctx := apm.StartSpan(ctx, "reconcile_config_secret", tracing.SpanTypeApp)
 	defer span.End()
@@ -58,11 +60,10 @@ func ReconcileConfigSecret(
 
 	expected := corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
-			Namespace: kb.Namespace,
-			Name:      kbv1.ConfigSecret(kb.Name),
-			Labels: labels.AddCredentialsLabel(map[string]string{
-				kblabel.KibanaNameLabelName: kb.Name,
-			}),
+			Namespace:   kb.Namespace,
+			Name:        kbv1.ConfigSecret(kb.Name),
+			Labels:      labels.AddCredentialsLabel(maps.Clone(meta.Labels)),
+			Annotations: meta.Annotations,
 		},
 		Data: data,
 	}

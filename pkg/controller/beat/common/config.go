@@ -9,7 +9,10 @@ import (
 	"encoding/base64"
 	"fmt"
 	"hash"
+	"maps"
 	"path"
+
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/metadata"
 
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -161,6 +164,7 @@ func reconcileConfig(
 	params DriverParams,
 	managedConfig *settings.CanonicalConfig,
 	configHash hash.Hash,
+	meta metadata.Metadata,
 ) error {
 	cfgBytes, err := buildBeatConfig(params, managedConfig)
 	if err != nil {
@@ -169,9 +173,10 @@ func reconcileConfig(
 
 	expected := corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
-			Namespace: params.Beat.Namespace,
-			Name:      ConfigSecretName(params.Beat.Spec.Type, params.Beat.Name),
-			Labels:    labels.AddCredentialsLabel(params.Beat.GetIdentityLabels()),
+			Namespace:   params.Beat.Namespace,
+			Name:        ConfigSecretName(params.Beat.Spec.Type, params.Beat.Name),
+			Labels:      labels.AddCredentialsLabel(maps.Clone(meta.Labels)),
+			Annotations: meta.Annotations,
 		},
 		Data: map[string][]byte{
 			ConfigFileName: cfgBytes,

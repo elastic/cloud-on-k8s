@@ -18,6 +18,7 @@ import (
 
 	commonv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/common/v1"
 	entv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/enterprisesearch/v1"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/metadata"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/settings"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/watches"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/k8s"
@@ -576,7 +577,7 @@ func TestReconcileConfig(t *testing.T) {
 			}
 
 			// secret metadata should be correct
-			got, err := ReconcileConfig(context.Background(), driver, tt.ent, tt.ipFamily)
+			got, err := ReconcileConfig(context.Background(), driver, tt.ent, tt.ipFamily, metadata.Propagate(&tt.ent, metadata.Metadata{Labels: tt.ent.GetIdentityLabels()}))
 			require.NoError(t, err)
 			assert.Equal(t, "sample-ent-config", got.Name)
 			assert.Equal(t, "ns", got.Namespace)
@@ -757,7 +758,7 @@ secret_session_key: alreadysetsessionkey
 				dynamicWatches: watches.NewDynamicWatches(),
 			}
 
-			got, err := ReconcileConfig(context.Background(), driver, tt.ent, corev1.IPv4Protocol)
+			got, err := ReconcileConfig(context.Background(), driver, tt.ent, corev1.IPv4Protocol, metadata.Metadata{})
 			require.NoError(t, err)
 			cfg, err := settings.ParseConfig(got.Data["enterprise-search.yml"])
 			require.NoError(t, err)
@@ -891,7 +892,7 @@ func TestReconcileConfig_ReadinessProbe(t *testing.T) {
 				dynamicWatches: watches.NewDynamicWatches(),
 			}
 
-			got, err := ReconcileConfig(context.Background(), driver, tt.ent, tt.ipFamily)
+			got, err := ReconcileConfig(context.Background(), driver, tt.ent, tt.ipFamily, metadata.Metadata{})
 			require.NoError(t, err)
 
 			require.Contains(t, string(got.Data[ReadinessProbeFilename]), tt.wantCmd)

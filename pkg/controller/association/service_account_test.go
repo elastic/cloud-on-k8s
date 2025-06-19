@@ -14,6 +14,8 @@ import (
 	"strconv"
 	"testing"
 
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/metadata"
+
 	"github.com/stretchr/testify/assert"
 	"golang.org/x/crypto/pbkdf2"
 	corev1 "k8s.io/api/core/v1"
@@ -174,12 +176,14 @@ func Test_ReconcileServiceAccounts(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			commonLabels := map[string]string{
-				"elasticsearch.k8s.elastic.co/cluster-name":      "elasticsearch-sample",
-				"elasticsearch.k8s.elastic.co/cluster-namespace": "e2e-mercury",
-				"kibanaassociation.k8s.elastic.co/type":          "elasticsearch",
-				"kibanaassociation.k8s.elastic.co/name":          "kibana-sample",
-				"kibanaassociation.k8s.elastic.co/namespace":     "e2e-venus",
+			meta := metadata.Metadata{
+				Labels: map[string]string{
+					"elasticsearch.k8s.elastic.co/cluster-name":      "elasticsearch-sample",
+					"elasticsearch.k8s.elastic.co/cluster-namespace": "e2e-mercury",
+					"kibanaassociation.k8s.elastic.co/type":          "elasticsearch",
+					"kibanaassociation.k8s.elastic.co/name":          "kibana-sample",
+					"kibanaassociation.k8s.elastic.co/namespace":     "e2e-venus",
+				},
 			}
 			applicationSecretName := types.NamespacedName{Namespace: "e2e-venus", Name: "kibana-sample-kibana-user"}
 			elasticsearchSecretName := types.NamespacedName{Namespace: "e2e-mercury", Name: "e2e-venus-kibana-sample-kibana-user"}
@@ -187,7 +191,7 @@ func Test_ReconcileServiceAccounts(t *testing.T) {
 				context.Background(),
 				tt.args.client,
 				existingElasticsearch,
-				commonLabels,
+				meta,
 				applicationSecretName,
 				elasticsearchSecretName,
 				tt.args.serviceAccount,

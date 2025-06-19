@@ -14,11 +14,11 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 
 	kbv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/kibana/v1"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/metadata"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/reconciler"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/tracing"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/version"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/volume"
-	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/kibana/label"
 	kbvolume "github.com/elastic/cloud-on-k8s/v3/pkg/controller/kibana/volume"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/k8s"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/maps"
@@ -37,7 +37,7 @@ func NewScriptsConfigMapVolume(kbName string) volume.ConfigMapVolume {
 }
 
 // ReconcileScriptsConfigMap reconciles the ConfigMap containing scripts used by the Kibana elastic-internal-init container.
-func ReconcileScriptsConfigMap(ctx context.Context, c k8s.Client, kb kbv1.Kibana) error {
+func ReconcileScriptsConfigMap(ctx context.Context, c k8s.Client, kb kbv1.Kibana, meta metadata.Metadata) error {
 	span, ctx := apm.StartSpan(ctx, "reconcile_scripts", tracing.SpanTypeApp)
 	defer span.End()
 
@@ -49,9 +49,10 @@ func ReconcileScriptsConfigMap(ctx context.Context, c k8s.Client, kb kbv1.Kibana
 	nsn := types.NamespacedName{Namespace: kb.Namespace, Name: kbv1.ScriptsConfigMap(kb.Name)}
 	scriptsConfigMap := corev1.ConfigMap{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      nsn.Name,
-			Namespace: kb.Namespace,
-			Labels:    label.NewLabels(nsn),
+			Name:        nsn.Name,
+			Namespace:   kb.Namespace,
+			Labels:      meta.Labels,
+			Annotations: meta.Annotations,
 		},
 		Data: map[string]string{
 			KibanaInitScriptConfigKey: initScript,

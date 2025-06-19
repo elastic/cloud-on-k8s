@@ -9,6 +9,8 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/metadata"
+
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
@@ -251,9 +253,11 @@ func Test_reconcileEsUser(t *testing.T) {
 				context.Background(),
 				c,
 				tt.args.kibana.EsAssociation(),
-				map[string]string{
-					associationLabelName:      tt.args.kibana.Name,
-					associationLabelNamespace: tt.args.kibana.Namespace,
+				metadata.Metadata{
+					Labels: map[string]string{
+						associationLabelName:      tt.args.kibana.Name,
+						associationLabelNamespace: tt.args.kibana.Namespace,
+					},
 				},
 				"kibana_system",
 				"kibana-user",

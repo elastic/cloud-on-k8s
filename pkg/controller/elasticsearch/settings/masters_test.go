@@ -8,6 +8,8 @@ import (
 	"context"
 	"testing"
 
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/metadata"
+
 	"github.com/stretchr/testify/assert"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -147,7 +149,7 @@ func TestUpdateSeedHostsConfigMap(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			err := UpdateSeedHostsConfigMap(context.Background(), tt.args.c, tt.args.es, tt.args.pods)
+			err := UpdateSeedHostsConfigMap(context.Background(), tt.args.c, tt.args.es, tt.args.pods, metadata.Metadata{})
 			if (err != nil) != tt.wantErr {
 				t.Errorf("UpdateSeedHostsConfigMap() error = %v, wantErr %v", err, tt.wantErr)
 				return

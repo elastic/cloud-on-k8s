@@ -7,6 +7,8 @@ package agent
 import (
 	"context"
 
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/metadata"
+
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
@@ -26,6 +28,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/operator"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/reconciler"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/tracing"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/version"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/watches"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/k8s"
 	logconf "github.com/elastic/cloud-on-k8s/v3/pkg/utils/log"
@@ -194,13 +197,22 @@ func (r *ReconcileAgent) doReconcile(ctx context.Context, agent agentv1alpha1.Ag
 		results = results.WithError(err)
 		return results, status
 	}
+	agentVersion, err := version.Parse(agent.Spec.Version)
+	if err != nil {
+		return results.WithError(err), status
+	}
+
+	// extract the metadata that should be propagated to children
+	meta := metadata.Propagate(&agent, metadata.Metadata{Labels: agent.GetIdentityLabels()})
 
 	return internalReconcile(Params{
 		Context:        ctx,
+		Meta:           meta,
 		Client:         r.Client,
 		EventRecorder:  r.recorder,
 		Watches:        r.dynamicWatches,
 		Agent:          agent,
+		AgentVersion:   agentVersion,
 		Status:         status,
 		OperatorParams: r.Parameters,
 	})

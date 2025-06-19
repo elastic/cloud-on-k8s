@@ -131,51 +131,15 @@ func NewBuilder(name string) Builder {
 		WithSuffix(suffix).
 		WithLabel(run.TestNameLabel, name).
 		WithDaemonSet()
-
-	if test.Ctx().OcpCluster || test.Ctx().AksCluster {
-		// Agent requires more resources on OpenShift, and AKS clusters. One hypothesis is that
-		// there are more resources deployed on OpenShift than on other K8s clusters
-		// used for E2E tests.
-		// Relates to https://github.com/elastic/cloud-on-k8s/pull/7789
-		// Should be reverted once https://github.com/elastic/elastic-agent/issues/4730 is addressed
-		builder = builder.WithResources(
-			corev1.ResourceRequirements{
-				Limits: map[corev1.ResourceName]resource.Quantity{
-					corev1.ResourceMemory: resource.MustParse("1Gi"),
-					corev1.ResourceCPU:    resource.MustParse("200m"),
-				},
-				Requests: map[corev1.ResourceName]resource.Quantity{
-					corev1.ResourceMemory: resource.MustParse("1Gi"),
-					corev1.ResourceCPU:    resource.MustParse("200m"),
-				},
-			},
-		)
-		return builder
-	}
-
-	builder = builder.MoreResourcesForIssue4730()
 	return builder
 }
 
 // MoreResourcesForIssue4730 adjusts Agent resource requirements to deal with https://github.com/elastic/elastic-agent/issues/4730.
 func (b Builder) MoreResourcesForIssue4730() Builder {
-	if test.Ctx().OcpCluster || test.Ctx().AksCluster {
-		// Agent requires even more resources on OpenShift, and AKS clusters. One hypothesis is that
-		// there are more resources deployed on these clusters than on other K8s clusters used for E2E tests.
-		return b.WithResources(
-			corev1.ResourceRequirements{
-				Limits: map[corev1.ResourceName]resource.Quantity{
-					corev1.ResourceMemory: resource.MustParse("1Gi"),
-					corev1.ResourceCPU:    resource.MustParse("200m"),
-				},
-				Requests: map[corev1.ResourceName]resource.Quantity{
-					corev1.ResourceMemory: resource.MustParse("1Gi"),
-					corev1.ResourceCPU:    resource.MustParse("200m"),
-				},
-			},
-		)
+	if b.Agent.Spec.FleetModeEnabled() {
+		// Pods running with fleet mode enabled are already running with 1Gi by default.
+		return b
 	}
-	// also increase memory a bit for other k8s distributions
 	return b.WithResources(
 		corev1.ResourceRequirements{
 			Limits: map[corev1.ResourceName]resource.Quantity{
@@ -334,6 +298,14 @@ func (b Builder) WithLabel(key, value string) Builder {
 	}
 	b.Agent.Labels[key] = value
 
+	return b
+}
+
+func (b Builder) WithAnnotation(key, value string) Builder {
+	if b.Agent.Annotations == nil {
+		b.Agent.Annotations = make(map[string]string)
+	}
+	b.Agent.Annotations[key] = value
 	return b
 }
 

@@ -14,6 +14,7 @@ import (
 	commonv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/common/v1"
 	esv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/elasticsearch/v1"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/keystore"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/metadata"
 	sset "github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/statefulset"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/version"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/label"
@@ -61,6 +62,7 @@ func BuildExpectedResources(
 	existingStatefulSets es_sset.StatefulSetList,
 	ipFamily corev1.IPFamily,
 	setDefaultSecurityContext bool,
+	meta metadata.Metadata,
 ) (ResourcesList, error) {
 	nodesResources := make(ResourcesList, 0, len(es.Spec.NodeSets))
 
@@ -87,11 +89,11 @@ func BuildExpectedResources(
 		}
 
 		// build stateful set and associated headless service
-		statefulSet, err := BuildStatefulSet(ctx, client, es, nodeSpec, cfg, keystoreResources, existingStatefulSets, setDefaultSecurityContext, policyConfig)
+		statefulSet, err := BuildStatefulSet(ctx, client, es, nodeSpec, cfg, keystoreResources, existingStatefulSets, setDefaultSecurityContext, policyConfig, meta)
 		if err != nil {
 			return nil, err
 		}
-		headlessSvc := HeadlessService(&es, statefulSet.Name)
+		headlessSvc := HeadlessService(&es, statefulSet.Name, meta)
 
 		nodesResources = append(nodesResources, Resources{
 			NodeSet:         nodeSpec.Name,

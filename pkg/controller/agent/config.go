@@ -11,6 +11,7 @@ import (
 	"errors"
 	"fmt"
 	"hash"
+	"maps"
 	"path"
 
 	corev1 "k8s.io/api/core/v1"
@@ -46,9 +47,10 @@ func reconcileConfig(params Params, configHash hash.Hash) *reconciler.Results {
 
 	expected := corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
-			Namespace: params.Agent.Namespace,
-			Name:      ConfigSecretName(params.Agent.Name),
-			Labels:    labels.AddCredentialsLabel(params.Agent.GetIdentityLabels()),
+			Namespace:   params.Agent.Namespace,
+			Name:        ConfigSecretName(params.Agent.Name),
+			Labels:      labels.AddCredentialsLabel(maps.Clone(params.Meta.Labels)),
+			Annotations: params.Meta.Annotations,
 		},
 		Data: map[string][]byte{
 			ConfigFileName: cfgBytes,
@@ -74,6 +76,19 @@ func buildConfig(params Params) ([]byte, error) {
 	userConfig, err := getUserConfig(params)
 	if err != nil {
 		return nil, err
+	}
+
+	// Agent in Fleet mode compares its default config with the one provided by the user. The default one only
+	// contains the fleet.enabled setting. If the user config does not contain this setting, it will be replaced by
+	// the default one. We want to avoid config file replacement by agents which will not work
+	// with config files mounted read-only from a secret.
+	if params.Agent.Spec.FleetModeEnabled() {
+		if err := cfg.MergeWith(settings.MustCanonicalConfig(map[string]interface{}{
+			"fleet": map[string]interface{}{
+				"enabled": true,
+			}})); err != nil {
+			return nil, err
+		}
 	}
 
 	if err = cfg.MergeWith(userConfig); err != nil {
@@ -153,7 +168,7 @@ func getUserConfig(params Params) (*settings.CanonicalConfig, error) {
 	if params.Agent.Spec.Config != nil {
 		return settings.NewCanonicalConfigFrom(params.Agent.Spec.Config.Data)
 	}
-	return common.ParseConfigRef(params, &params.Agent, params.Agent.Spec.ConfigRef, ConfigFileName)
+	return common.ParseConfigRef(params, &params.Agent, params.Agent.Spec.ConfigRef, ConfigRefFileName)
 }
 
 // extractPodConnectionSettings extracts connections settings to be used inside an Elastic Agent Pod. That is without

@@ -1,3 +1,20 @@
+{{ if .Context.AutopilotCluster }}
+---
+apiVersion: v1
+kind: ResourceQuota
+metadata:
+  name: e2e-quota
+  namespace: {{ .Context.E2ENamespace }}
+  labels:
+    test-run: {{ .Context.TestRun }}
+spec:
+  scopeSelector:
+    matchExpressions:
+      - operator: In
+        scopeName: PriorityClass
+        values:
+          - system-cluster-critical
+{{ end }}
 ---
 apiVersion: v1
 kind: ConfigMap
@@ -31,6 +48,9 @@ spec:
         test-run: {{ .Context.TestRun }}
         stream-logs: "true"
     spec:
+{{ if .Context.AutopilotCluster }}
+      priorityClassName: system-cluster-critical
+{{ end }}
       securityContext:
         runAsNonRoot: true
 {{ if not .Context.OcpCluster }}
@@ -53,12 +73,17 @@ spec:
             - name: tmp
               mountPath: /tmp
           # If resources aren't assigned in autopilot
-          # it will assign a tiny amount of cpu
-          # which causes e2e tests to be very slow.
+          # it will assign a tiny amount of cpu and only 1Gi of ephemeral storage
+          # which causes e2e tests to be very slow or Pod to be evicted.
           resources:
+            limits:
+              cpu: "4"
+              memory: 4Gi
+              ephemeral-storage: 5Gi
             requests:
-              cpu: "1"
-              memory: 2Gi
+              cpu: "4"
+              memory: 4Gi
+              ephemeral-storage: 5Gi
 {{ end }}
           securityContext:
             allowPrivilegeEscalation: false

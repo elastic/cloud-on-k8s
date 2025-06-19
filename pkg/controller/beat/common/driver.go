@@ -10,6 +10,8 @@ import (
 	"hash/fnv"
 	"time"
 
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/metadata"
+
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/client-go/tools/record"
 
@@ -91,7 +93,9 @@ func Reconcile(
 	}
 
 	configHash := fnv.New32a()
-	if err := reconcileConfig(params, managedConfig, configHash); err != nil {
+	// metadata to propagate to children
+	meta := metadata.Propagate(&params.Beat, metadata.Metadata{Labels: params.Beat.GetIdentityLabels()})
+	if err := reconcileConfig(params, managedConfig, configHash, meta); err != nil {
 		return results.WithError(err), params.Status
 	}
 
@@ -100,7 +104,7 @@ func Reconcile(
 		return results.WithError(err), params.Status
 	}
 
-	podTemplate, err := buildPodTemplate(params, defaultImage, configHash)
+	podTemplate, err := buildPodTemplate(params, defaultImage, configHash, meta)
 	if err != nil {
 		if errors.Is(err, beat_stackmon.ErrMonitoringClusterUUIDUnavailable) {
 			results.WithReconciliationState(reconciler.RequeueAfter(10 * time.Second).WithReason("ElasticsearchRef UUID unavailable while configuring Beats stack monitoring"))
@@ -110,7 +114,7 @@ func Reconcile(
 		return results, params.Status
 	}
 	var reconcileResults *reconciler.Results
-	reconcileResults, params.Status = reconcilePodVehicle(podTemplate, params)
+	reconcileResults, params.Status = reconcilePodVehicle(podTemplate, params, meta)
 	results.WithResults(reconcileResults)
 	return results, params.Status
 }

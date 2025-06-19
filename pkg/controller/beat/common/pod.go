@@ -8,6 +8,8 @@ import (
 	"fmt"
 	"hash"
 
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/metadata"
+
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	"k8s.io/utils/ptr"
@@ -22,7 +24,6 @@ import (
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/stackmon/monitoring"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/version"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/volume"
-	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/maps"
 )
 
 const (
@@ -77,6 +78,7 @@ func buildPodTemplate(
 	params DriverParams,
 	defaultImage container.Image,
 	configHash hash.Hash32,
+	meta metadata.Metadata,
 ) (corev1.PodTemplateSpec, error) {
 	podTemplate := params.GetPodTemplate()
 
@@ -85,7 +87,7 @@ func buildPodTemplate(
 		params,
 		&params.Beat,
 		namer,
-		params.Beat.GetIdentityLabels(),
+		meta,
 		initContainerParameters(params.Beat.Spec.Type),
 	)
 	if err != nil {
@@ -138,7 +140,7 @@ func buildPodTemplate(
 	}
 
 	if monitoring.IsLogsDefined(&params.Beat) {
-		sideCar, err := beat_stackmon.Filebeat(params.Context, params.Client, &params.Beat, params.Beat.Spec.Version)
+		sideCar, err := beat_stackmon.Filebeat(params.Context, params.Client, &params.Beat, params.Beat.Spec.Version, meta)
 		if err != nil {
 			return podTemplate, err
 		}
@@ -164,7 +166,7 @@ func buildPodTemplate(
 	}
 
 	if monitoring.IsMetricsDefined(&params.Beat) {
-		sideCar, err := beat_stackmon.MetricBeat(params.Context, params.Client, &params.Beat)
+		sideCar, err := beat_stackmon.MetricBeat(params.Context, params.Client, &params.Beat, meta)
 		if err != nil {
 			return podTemplate, err
 		}
@@ -189,12 +191,10 @@ func buildPodTemplate(
 		sideCars = append(sideCars, sideCar.Container)
 	}
 
-	labels := maps.Merge(params.Beat.GetIdentityLabels(), map[string]string{
-		VersionLabelName: spec.Version})
-
-	annotations := map[string]string{
-		ConfigHashAnnotationName: fmt.Sprint(configHash.Sum32()),
-	}
+	meta = meta.Merge(metadata.Metadata{
+		Labels:      map[string]string{VersionLabelName: spec.Version},
+		Annotations: map[string]string{ConfigHashAnnotationName: fmt.Sprint(configHash.Sum32())},
+	})
 
 	v, err := version.Parse(spec.Version)
 	if err != nil {
@@ -202,8 +202,8 @@ func buildPodTemplate(
 	}
 
 	builder := defaults.NewPodTemplateBuilder(podTemplate, spec.Type).
-		WithLabels(labels).
-		WithAnnotations(annotations).
+		WithLabels(meta.Labels).
+		WithAnnotations(meta.Annotations).
 		WithResources(defaultResources).
 		WithDockerImage(spec.Image, container.ImageRepository(defaultImage, v)).
 		WithVolumes(volumes...).

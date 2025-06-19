@@ -21,6 +21,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/defaults"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/deployment"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/keystore"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/metadata"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/watches"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/k8s"
 )
@@ -94,7 +95,7 @@ func expectedDeploymentParams() testParams {
 			Name:      "test-apm-server-apm-server",
 			Namespace: "",
 			Selector:  map[string]string{"apm.k8s.elastic.co/name": "test-apm-server", "common.k8s.elastic.co/type": "apm-server"},
-			Labels:    map[string]string{"apm.k8s.elastic.co/name": "test-apm-server", "common.k8s.elastic.co/type": "apm-server"},
+			Metadata:  metadata.Metadata{Labels: map[string]string{"apm.k8s.elastic.co/name": "test-apm-server", "common.k8s.elastic.co/type": "apm-server"}},
 			Strategy:  appsv1.DeploymentStrategy{Type: appsv1.RollingUpdateDeploymentStrategyType},
 			PodTemplateSpec: corev1.PodTemplateSpec{
 				ObjectMeta: metav1.ObjectMeta{
@@ -499,7 +500,8 @@ func TestReconcileApmServer_deploymentParams(t *testing.T) {
 				recorder:       record.NewFakeRecorder(100),
 				dynamicWatches: w,
 			}
-			got, err := r.deploymentParams(tt.args.as, tt.args.podSpecParams)
+			md := metadata.Propagate(tt.args.as, metadata.Metadata{Labels: tt.args.as.GetIdentityLabels()})
+			got, err := r.deploymentParams(tt.args.as, tt.args.podSpecParams, md)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("ReconcileApmServer.deploymentParams() error = %v, wantErr %v", err, tt.wantErr)
 				return

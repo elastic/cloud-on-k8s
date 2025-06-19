@@ -20,6 +20,7 @@ import (
 	esv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/elasticsearch/v1"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/certificates"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/comparison"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/metadata"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/label"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/k8s"
 )
@@ -231,7 +232,8 @@ func TestReconcileTransportCertificatesSecrets(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			k8sClient := k8s.NewFakeClient(tt.args.initialObjects...)
-			got := ReconcileTransportCertificatesSecrets(context.Background(), k8sClient, tt.args.ca, tt.args.extraCA, *tt.args.es, tt.args.rotationParams)
+			md := metadata.Propagate(tt.args.es, metadata.Metadata{Labels: tt.args.es.GetIdentityLabels()})
+			got := ReconcileTransportCertificatesSecrets(context.Background(), k8sClient, tt.args.ca, tt.args.extraCA, *tt.args.es, tt.args.rotationParams, md)
 			require.Equal(t, tt.wantRequeue, got.HasRequeue(), "expected requeue")
 			require.Equal(t, tt.wantErr, got.HasError(), "expected err")
 			// Check Secrets
@@ -362,6 +364,7 @@ func Test_ensureTransportCertificateSecretExists(t *testing.T) {
 			Namespace: testES.Namespace,
 			Labels: map[string]string{
 				label.ClusterNameLabelName:     testES.Name,
+				"common.k8s.elastic.co/type":   "elasticsearch",
 				label.StatefulSetNameLabelName: esv1.StatefulSet(testES.Name, "sset1"),
 			},
 		},
@@ -455,7 +458,8 @@ func Test_ensureTransportCertificateSecretExists(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := ensureTransportCertificatesSecretExists(context.Background(), tt.args.c, tt.args.owner, esv1.StatefulSet(testES.Name, "sset1"))
+			md := metadata.Propagate(&testES, metadata.Metadata{Labels: testES.GetIdentityLabels()})
+			got, err := ensureTransportCertificatesSecretExists(context.Background(), tt.args.c, tt.args.owner, esv1.StatefulSet(testES.Name, "sset1"), md)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("EnsureTransportCertificateSecretExists() error = %v, wantErr %v", err, tt.wantErr)
 				return

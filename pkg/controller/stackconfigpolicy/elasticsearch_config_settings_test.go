@@ -15,6 +15,7 @@ import (
 
 	esv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/elasticsearch/v1"
 	policyv1alpha1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/stackconfigpolicy/v1alpha1"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/metadata"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/k8s"
 )
 
@@ -92,7 +93,7 @@ func Test_reconcileSecretMountSecretsESNamespace(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			err := reconcileSecretMounts(context.TODO(), tt.args.client, tt.args.es, tt.args.policy)
+			err := reconcileSecretMounts(context.TODO(), tt.args.client, tt.args.es, tt.args.policy, metadata.Metadata{})
 			if (err != nil) != tt.wantErr {
 				t.Errorf("error = %v, wantErr %v", err, tt.wantErr)
 				return

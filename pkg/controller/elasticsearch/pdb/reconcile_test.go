@@ -26,6 +26,7 @@ import (
 	esv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/elasticsearch/v1"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/comparison"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/hash"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/metadata"
 	sset "github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/statefulset"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/label"
 	es_sset "github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/sset"
@@ -132,7 +133,7 @@ func TestReconcile(t *testing.T) {
 				WithRESTMapper(restMapper).
 				WithObjects(tt.args.initObjs...).Build()
 
-			err := Reconcile(context.Background(), k8sClient, tt.args.es, tt.args.statefulSets)
+			err := Reconcile(context.Background(), k8sClient, tt.args.es, tt.args.statefulSets, metadata.Propagate(&tt.args.es, metadata.Metadata{Labels: tt.args.es.GetIdentityLabels()}))
 			require.NoError(t, err)
 			pdbNsn := types.NamespacedName{Namespace: tt.args.es.Namespace, Name: esv1.DefaultPodDisruptionBudget(tt.args.es.Name)}
 			var retrieved policyv1.PodDisruptionBudget
@@ -267,7 +268,7 @@ func Test_expectedPDB(t *testing.T) {
 				// set owner ref
 				tt.want = withOwnerRef(tt.want, tt.args.es)
 			}
-			got, err := expectedPDB(tt.args.es, tt.args.statefulSets)
+			got, err := expectedPDB(tt.args.es, tt.args.statefulSets, metadata.Propagate(&tt.args.es, metadata.Metadata{Labels: tt.args.es.GetIdentityLabels()}))
 			require.NoError(t, err)
 			if !reflect.DeepEqual(got, tt.want) {
 				t.Errorf("expectedPDB() got = %v, want %v", got, tt.want)

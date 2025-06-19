@@ -15,6 +15,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/defaults"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/hash"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/keystore"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/metadata"
 	sset "github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/statefulset"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/label"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/network"
@@ -32,8 +33,10 @@ func HeadlessServiceName(ssetName string) string {
 }
 
 // HeadlessService returns a headless service for the given StatefulSet
-func HeadlessService(es *esv1.Elasticsearch, ssetName string) corev1.Service {
+func HeadlessService(es *esv1.Elasticsearch, ssetName string, meta metadata.Metadata) corev1.Service {
 	nsn := k8s.ExtractNamespacedName(es)
+	selector := label.NewStatefulSetLabels(nsn, ssetName)
+	mergedMeta := meta.Merge(metadata.Metadata{Labels: selector})
 	ports := []corev1.ServicePort{
 		{
 			Name:     es.Spec.HTTP.Protocol(),
@@ -53,14 +56,15 @@ func HeadlessService(es *esv1.Elasticsearch, ssetName string) corev1.Service {
 
 	return corev1.Service{
 		ObjectMeta: metav1.ObjectMeta{
-			Namespace: nsn.Namespace,
-			Name:      HeadlessServiceName(ssetName),
-			Labels:    label.NewStatefulSetLabels(nsn, ssetName),
+			Namespace:   nsn.Namespace,
+			Name:        HeadlessServiceName(ssetName),
+			Labels:      mergedMeta.Labels,
+			Annotations: mergedMeta.Annotations,
 		},
 		Spec: corev1.ServiceSpec{
 			Type:      corev1.ServiceTypeClusterIP,
 			ClusterIP: corev1.ClusterIPNone,
-			Selector:  label.NewStatefulSetLabels(nsn, ssetName),
+			Selector:  selector,
 			Ports:     ports,
 			// allow nodes to discover themselves via DNS while they are booting up ie. are not ready yet
 			PublishNotReadyAddresses: true,
@@ -78,11 +82,13 @@ func BuildStatefulSet(
 	existingStatefulSets es_sset.StatefulSetList,
 	setDefaultSecurityContext bool,
 	policyConfig PolicyConfig,
+	meta metadata.Metadata,
 ) (appsv1.StatefulSet, error) {
 	statefulSetName := esv1.StatefulSet(es.Name, nodeSet.Name)
 
 	// ssetSelector is used to match the sset pods
 	ssetSelector := label.NewStatefulSetLabels(k8s.ExtractNamespacedName(&es), statefulSetName)
+	mergedMeta := meta.Merge(metadata.Metadata{Labels: ssetSelector})
 
 	// add default PVCs to the node spec only if no user defined PVCs exist
 	nodeSet.VolumeClaimTemplates = defaults.AppendDefaultPVCs(
@@ -92,16 +98,9 @@ func BuildStatefulSet(
 	)
 
 	// build pod template
-	podTemplate, err := BuildPodTemplateSpec(ctx, client, es, nodeSet, cfg, keystoreResources, setDefaultSecurityContext, policyConfig)
+	podTemplate, err := BuildPodTemplateSpec(ctx, client, es, nodeSet, cfg, keystoreResources, setDefaultSecurityContext, policyConfig, meta)
 	if err != nil {
 		return appsv1.StatefulSet{}, err
-	}
-
-	// build sset labels on top of the selector
-	// TODO: inherit user-provided labels and annotations from the CRD?
-	ssetLabels := make(map[string]string)
-	for k, v := range ssetSelector {
-		ssetLabels[k] = v
 	}
 
 	// maybe inherit volumeClaimTemplates ownerRefs from the existing StatefulSet
@@ -113,9 +112,10 @@ func BuildStatefulSet(
 
 	sset := appsv1.StatefulSet{
 		ObjectMeta: metav1.ObjectMeta{
-			Namespace: es.Namespace,
-			Name:      statefulSetName,
-			Labels:    ssetLabels,
+			Namespace:   es.Namespace,
+			Name:        statefulSetName,
+			Labels:      mergedMeta.Labels,
+			Annotations: mergedMeta.Annotations,
 		},
 		Spec: appsv1.StatefulSetSpec{
 			UpdateStrategy: appsv1.StatefulSetUpdateStrategy{

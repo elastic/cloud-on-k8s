@@ -8,6 +8,8 @@ import (
 	"fmt"
 	"path/filepath"
 
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/metadata"
+
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	"k8s.io/apimachinery/pkg/util/intstr"
@@ -96,7 +98,7 @@ type PodSpecParams struct {
 	keystoreResources *keystore.Resources
 }
 
-func newPodSpec(c k8s.Client, as *apmv1.ApmServer, p PodSpecParams) (corev1.PodTemplateSpec, error) {
+func newPodSpec(c k8s.Client, as *apmv1.ApmServer, p PodSpecParams, meta metadata.Metadata) (corev1.PodTemplateSpec, error) {
 	labels := as.GetIdentityLabels()
 	labels[APMVersionLabelName] = p.Version
 
@@ -139,9 +141,10 @@ func newPodSpec(c k8s.Client, as *apmv1.ApmServer, p PodSpecParams) (corev1.PodT
 		return corev1.PodTemplateSpec{}, err // error unlikely and should have been caught during validation
 	}
 
+	meta = metadata.Propagate(as, metadata.Metadata{Labels: labels, Annotations: annotations})
 	builder := defaults.NewPodTemplateBuilder(p.PodTemplate, apmv1.ApmServerContainerName).
-		WithLabels(labels).
-		WithAnnotations(annotations).
+		WithLabels(meta.Labels).
+		WithAnnotations(meta.Annotations).
 		WithResources(DefaultResources).
 		WithDockerImage(p.CustomImageName, container.ImageRepository(container.APMServerImage, v)).
 		WithReadinessProbe(readinessProbe(as.Spec.HTTP.TLS.Enabled())).
