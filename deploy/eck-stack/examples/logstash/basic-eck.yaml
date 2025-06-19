@@ -27,46 +27,44 @@ eck-kibana:
       name: elasticsearch
 eck-beats:
   enabled: true
-  spec:
-    type: filebeat
-    daemonSet: null
-    config:
-      filebeat.inputs:
-      - type: log
-        paths:
-          - /data/logstash-tutorial.log
-      processors:
-      - add_host_metadata: {}
-      - add_cloud_metadata: {}
-      output.logstash:
-        # This needs to be {{logstash-name}}-ls-beats:5044
-        hosts: ["logstash-ls-beats-ls-beats:5044"]
-    deployment:
-      podTemplate:
-        spec:
-          automountServiceAccountToken: true
-          initContainers:
-            - name: download-tutorial
-              image: curlimages/curl
-              command: ["/bin/sh"]
-              args: ["-c", "curl -L https://download.elastic.co/demos/logstash/gettingstarted/logstash-tutorial.log.gz | gunzip -c > /data/logstash-tutorial.log"]
-              volumeMounts:
-                - name: data
-                  mountPath: /data
-          containers:
-            - name: filebeat
-              securityContext:
-                runAsUser: 1000
-              volumeMounts:
-                - name: data
-                  mountPath: /data
-                - name: beat-data
-                  mountPath: /usr/share/filebeat/data
-          volumes:
-            - name: data
-              emptydir: {}
-            - name: beat-data
-              emptydir: {}
+  deployment:
+    podTemplate:
+      spec:
+        automountServiceAccountToken: true
+        initContainers:
+          - name: download-tutorial
+            image: curlimages/curl
+            command: ["/bin/sh"]
+            args: ["-c", "curl -L https://download.elastic.co/demos/logstash/gettingstarted/logstash-tutorial.log.gz | gunzip -c > /data/logstash-tutorial.log"]
+            volumeMounts:
+              - name: data
+                mountPath: /data
+        containers:
+          - name: filebeat
+            securityContext:
+              runAsUser: 1000
+            volumeMounts:
+              - name: data
+                mountPath: /data
+              - name: beat-data
+                mountPath: /usr/share/filebeat/data
+        volumes:
+          - name: data
+            emptydir: {}
+          - name: beat-data
+            emptydir: {}
+  type: filebeat
+  config:
+    filebeat.inputs:
+    - type: log
+      paths:
+        - /data/logstash-tutorial.log
+    processors:
+    - add_host_metadata: {}
+    - add_cloud_metadata: {}
+    output.logstash:
+      # This needs to be {{logstash-name}}-ls-beats:5044
+      hosts: ["logstash-ls-beats-ls-beats:5044"]
 eck-logstash:
   enabled: true
   # This is required to be able to set the logstash
