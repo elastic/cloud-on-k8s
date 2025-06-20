@@ -131,7 +131,7 @@ func NewBuilder(name string) Builder {
 		WithSuffix(suffix).
 		WithLabel(run.TestNameLabel, name).
 		WithDaemonSet()
-	return builder.MoreResourcesForIssue4730()
+	return builder
 }
 
 // MoreResourcesForIssue4730 adjusts Agent resource requirements to deal with https://github.com/elastic/elastic-agent/issues/4730.

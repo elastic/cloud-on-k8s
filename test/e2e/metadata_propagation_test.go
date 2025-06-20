@@ -67,7 +67,8 @@ func TestMetadataPropagation(t *testing.T) {
 		WithLabel("my-label", "my-label-value").
 		WithAnnotation("eck.k8s.alpha.elastic.co/propagate-annotations", "*").
 		WithAnnotation("eck.k8s.alpha.elastic.co/propagate-labels", "*").
-		WithAnnotation("my-annotation", "my-annotation-value")
+		WithAnnotation("my-annotation", "my-annotation-value").
+		MoreResourcesForIssue4730()
 	agent = elasticagent.ApplyYamls(t, agent, e2e_agent.E2EAgentSystemIntegrationConfig, e2e_agent.E2EAgentSystemIntegrationPodTemplate)
 	ls := logstash.NewBuilder(name).
 		WithRestrictedSecurityContext().
