@@ -22,7 +22,7 @@ This page lists the third-party dependencies used to build {{eck}}.
 | [github.com/davecgh/go-spew](https://github.com/davecgh/go-spew) | v1.1.2-0.20180830191138-d8f796af33cc | ISC |
 | [github.com/elastic/go-ucfg](https://github.com/elastic/go-ucfg) | v0.8.9-0.20250307075119-2a22403faaea | Apache-2.0 |
 | [github.com/ghodss/yaml](https://github.com/ghodss/yaml) | v1.0.0 | MIT |
-| [github.com/gkampitakis/go-snaps](https://github.com/gkampitakis/go-snaps) | v0.5.11 | MIT |
+| [github.com/gkampitakis/go-snaps](https://github.com/gkampitakis/go-snaps) | v0.5.13 | MIT |
 | [github.com/go-logr/logr](https://github.com/go-logr/logr) | v1.4.3 | Apache-2.0 |
 | [github.com/go-test/deep](https://github.com/go-test/deep) | v1.1.1 | MIT |
 | [github.com/gobuffalo/flect](https://github.com/gobuffalo/flect) | v1.0.3 | MIT |
@@ -87,7 +87,7 @@ This page lists the third-party dependencies used to build {{eck}}.
 | [github.com/frankban/quicktest](https://github.com/frankban/quicktest) | v1.14.6 | MIT |
 | [github.com/fsnotify/fsnotify](https://github.com/fsnotify/fsnotify) | v1.8.0 | BSD-3-Clause |
 | [github.com/fxamacker/cbor/v2](https://github.com/fxamacker/cbor) | v2.7.0 | MIT |
-| [github.com/gkampitakis/ciinfo](https://github.com/gkampitakis/ciinfo) | v0.3.1 | MIT |
+| [github.com/gkampitakis/ciinfo](https://github.com/gkampitakis/ciinfo) | v0.3.2 | MIT |
 | [github.com/gkampitakis/go-diff](https://github.com/gkampitakis/go-diff) | v1.3.2 | MIT |
 | [github.com/go-jose/go-jose/v4](https://github.com/go-jose/go-jose) | v4.0.5 | Apache-2.0 |
 | [github.com/go-logr/stdr](https://github.com/go-logr/stdr) | v1.2.2 | Apache-2.0 |
@@ -97,7 +97,7 @@ This page lists the third-party dependencies used to build {{eck}}.
 | [github.com/go-openapi/swag](https://github.com/go-openapi/swag) | v0.23.0 | Apache-2.0 |
 | [github.com/go-task/slim-sprig/v3](https://github.com/go-task/slim-sprig) | v3.0.0 | MIT |
 | [github.com/go-viper/mapstructure/v2](https://github.com/go-viper/mapstructure) | v2.2.1 | MIT |
-| [github.com/goccy/go-yaml](https://github.com/goccy/go-yaml) | v1.15.13 | MIT |
+| [github.com/goccy/go-yaml](https://github.com/goccy/go-yaml) | v1.18.0 | MIT |
 | [github.com/gogo/protobuf](https://github.com/gogo/protobuf) | v1.3.2 | BSD-3-Clause |
 | [github.com/golang/protobuf](https://github.com/golang/protobuf) | v1.5.4 | BSD-3-Clause |
 | [github.com/google/btree](https://github.com/google/btree) | v1.1.3 | Apache-2.0 |
