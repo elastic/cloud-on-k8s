@@ -29,10 +29,10 @@ require (
 	github.com/spf13/pflag v1.0.6
 	github.com/spf13/viper v1.20.1
 	github.com/stretchr/testify v1.10.0
-	go.elastic.co/apm/module/apmelasticsearch/v2 v2.7.0
-	go.elastic.co/apm/module/apmhttp/v2 v2.7.0
+	go.elastic.co/apm/module/apmelasticsearch/v2 v2.7.1
+	go.elastic.co/apm/module/apmhttp/v2 v2.7.1
 	go.elastic.co/apm/module/apmzap/v2 v2.7.0
-	go.elastic.co/apm/v2 v2.7.0
+	go.elastic.co/apm/v2 v2.7.1
 	go.uber.org/automaxprocs v1.6.0
 	go.uber.org/zap v1.27.0
 	golang.org/x/crypto v0.39.0
@@ -134,7 +134,7 @@ require (
 	github.com/tidwall/sjson v1.2.5 // indirect
 	github.com/vbatts/tar-split v0.12.1 // indirect
 	github.com/x448/float16 v0.8.4 // indirect
-	go.elastic.co/fastjson v1.5.0 // indirect
+	go.elastic.co/fastjson v1.5.1 // indirect
 	go.opentelemetry.io/auto/sdk v1.1.0 // indirect
 	go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp v0.61.0 // indirect
 	go.opentelemetry.io/otel v1.36.0 // indirect
