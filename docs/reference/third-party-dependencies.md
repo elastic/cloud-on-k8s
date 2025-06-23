@@ -42,10 +42,10 @@ This page lists the third-party dependencies used to build {{eck}}.
 | [github.com/spf13/pflag](https://github.com/spf13/pflag) | v1.0.6 | BSD-3-Clause |
 | [github.com/spf13/viper](https://github.com/spf13/viper) | v1.20.1 | MIT |
 | [github.com/stretchr/testify](https://github.com/stretchr/testify) | v1.10.0 | MIT |
-| [go.elastic.co/apm/module/apmelasticsearch/v2](https://go.elastic.co/apm/module/apmelasticsearch/v2) | v2.7.0 | Apache-2.0 |
-| [go.elastic.co/apm/module/apmhttp/v2](https://go.elastic.co/apm/module/apmhttp/v2) | v2.7.0 | Apache-2.0 |
+| [go.elastic.co/apm/module/apmelasticsearch/v2](https://go.elastic.co/apm/module/apmelasticsearch/v2) | v2.7.1 | Apache-2.0 |
+| [go.elastic.co/apm/module/apmhttp/v2](https://go.elastic.co/apm/module/apmhttp/v2) | v2.7.1 | Apache-2.0 |
 | [go.elastic.co/apm/module/apmzap/v2](https://go.elastic.co/apm/module/apmzap/v2) | v2.7.0 | Apache-2.0 |
-| [go.elastic.co/apm/v2](https://go.elastic.co/apm/v2) | v2.7.0 | Apache-2.0 |
+| [go.elastic.co/apm/v2](https://go.elastic.co/apm/v2) | v2.7.1 | Apache-2.0 |
 | [go.uber.org/automaxprocs](https://go.uber.org/automaxprocs) | v1.6.0 | MIT |
 | [go.uber.org/zap](https://go.uber.org/zap) | v1.27.0 | MIT |
 | [golang.org/x/crypto](https://golang.org/x/crypto) | v0.39.0 | BSD-3-Clause |
@@ -164,7 +164,7 @@ This page lists the third-party dependencies used to build {{eck}}.
 | [github.com/tidwall/sjson](https://github.com/tidwall/sjson) | v1.2.5 | MIT |
 | [github.com/vbatts/tar-split](https://github.com/vbatts/tar-split) | v0.12.1 | BSD-3-Clause |
 | [github.com/x448/float16](https://github.com/x448/float16) | v0.8.4 | MIT |
-| [go.elastic.co/fastjson](https://go.elastic.co/fastjson) | v1.5.0 | MIT |
+| [go.elastic.co/fastjson](https://go.elastic.co/fastjson) | v1.5.1 | MIT |
 | [go.opentelemetry.io/auto/sdk](https://go.opentelemetry.io/auto/sdk) | v1.1.0 | Apache-2.0 |
 | [go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp](https://go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp) | v0.61.0 | Apache-2.0 |
 | [go.opentelemetry.io/otel](https://go.opentelemetry.io/otel) | v1.36.0 | Apache-2.0 |
