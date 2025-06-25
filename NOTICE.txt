@@ -405,11 +405,11 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 --------------------------------------------------------------------------------
 Module  : github.com/gkampitakis/go-snaps
-Version : v0.5.11
-Time    : 2025-02-14T19:05:50Z
+Version : v0.5.13
+Time    : 2025-06-04T20:11:01Z
 Licence : MIT
 
-Contents of probable licence file $GOMODCACHE/github.com/gkampitakis/go-snaps@v0.5.11/LICENSE:
+Contents of probable licence file $GOMODCACHE/github.com/gkampitakis/go-snaps@v0.5.13/LICENSE:
 
 MIT License
 
@@ -7435,11 +7435,11 @@ SOFTWARE.
 
 --------------------------------------------------------------------------------
 Module  : github.com/gkampitakis/ciinfo
-Version : v0.3.1
-Time    : 2024-11-23T15:55:52Z
+Version : v0.3.2
+Time    : 2025-02-02T10:01:22Z
 Licence : MIT
 
-Contents of probable licence file $GOMODCACHE/github.com/gkampitakis/ciinfo@v0.3.1/LICENSE:
+Contents of probable licence file $GOMODCACHE/github.com/gkampitakis/ciinfo@v0.3.2/LICENSE:
 
 MIT License
 
@@ -8826,11 +8826,11 @@ THE SOFTWARE.
 
 --------------------------------------------------------------------------------
 Module  : github.com/goccy/go-yaml
-Version : v1.15.13
-Time    : 2024-12-21T12:50:58Z
+Version : v1.18.0
+Time    : 2025-05-29T05:13:29Z
 Licence : MIT
 
-Contents of probable licence file $GOMODCACHE/github.com/goccy/go-yaml@v1.15.13/LICENSE:
+Contents of probable licence file $GOMODCACHE/github.com/goccy/go-yaml@v1.18.0/LICENSE:
 
 MIT License
 
