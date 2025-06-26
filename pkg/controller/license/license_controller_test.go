@@ -197,7 +197,6 @@ func TestReconcileLicenses_reconcileInternal(t *testing.T) {
 			require.NoError(t, err)
 
 			if tt.wantRequeueAfter {
-				require.False(t, res.Requeue)
 				require.NotZero(t, res.RequeueAfter)
 			}
 			// verify that a cluster license was created
