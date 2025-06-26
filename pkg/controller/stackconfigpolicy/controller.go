@@ -54,7 +54,7 @@ const (
 )
 
 var (
-	defaultRequeue = reconcile.Result{Requeue: true, RequeueAfter: 30 * time.Second}
+	defaultRequeue = reconcile.Result{RequeueAfter: 30 * time.Second}
 )
 
 // Add creates a new StackConfigPolicy Controller and adds it to the Manager with default RBAC. The Manager will set fields on the Controller
@@ -188,7 +188,7 @@ func (r *ReconcileStackConfigPolicy) Reconcile(ctx context.Context, request reco
 	// update status
 	if err := r.updateStatus(ctx, policy, status); err != nil {
 		if apierrors.IsConflict(err) {
-			return results.WithResult(reconcile.Result{Requeue: true}).Aggregate()
+			return results.WithRequeue().Aggregate()
 		}
 		results.WithError(err)
 	}
@@ -222,7 +222,7 @@ func (r *ReconcileStackConfigPolicy) doReconcile(ctx context.Context, policy pol
 		log.Info(msg)
 		r.recorder.Eventf(&policy, corev1.EventTypeWarning, events.EventReconciliationError, msg)
 		// we don't have a good way of watching for the license level to change so just requeue with a reasonably long delay
-		return results.WithResult(reconcile.Result{Requeue: true, RequeueAfter: 5 * time.Minute}), status
+		return results.WithResult(reconcile.Result{RequeueAfter: 5 * time.Minute}), status
 	}
 	// run validation in case the webhook is disabled
 	if err := r.validate(ctx, &policy); err != nil {

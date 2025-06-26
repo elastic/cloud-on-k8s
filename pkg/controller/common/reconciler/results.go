@@ -14,6 +14,8 @@ import (
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/tracing"
 )
 
+const DefaultRequeue = time.Second * 10
+
 type resultKind int
 
 const (
@@ -26,7 +28,7 @@ func kindOf(r reconcile.Result) resultKind {
 	switch {
 	case r.RequeueAfter > 0:
 		return specificKind
-	case r.Requeue:
+	case r.Requeue: //nolint:staticcheck
 		return genericKind
 	default:
 		return noqueueKind
@@ -41,7 +43,7 @@ type Results struct {
 	ctx        context.Context
 }
 
-var Requeue = ReconciliationState{Result: reconcile.Result{Requeue: true}}
+var Requeue = ReconciliationState{Result: reconcile.Result{RequeueAfter: DefaultRequeue}}
 
 func RequeueAfter(requeueAfter time.Duration) ReconciliationState {
 	return ReconciliationState{
@@ -97,7 +99,7 @@ func (r *Results) HasRequeue() bool {
 	if r == nil {
 		return false
 	}
-	return r.currResult.Result.Requeue || r.currResult.Result.RequeueAfter > 0
+	return r.currResult.Result.Requeue || r.currResult.Result.RequeueAfter > 0 //nolint:staticcheck
 }
 
 // WithResults appends the results and error from the other Results.
@@ -117,9 +119,13 @@ func (r *Results) WithError(err error) *Results {
 	return r
 }
 
+func (r *Results) WithRequeue() *Results {
+	return r.WithResult(reconcile.Result{RequeueAfter: DefaultRequeue})
+}
+
 // WithResult adds a result to the results.
 func (r *Results) WithResult(res reconcile.Result) *Results {
-	incomplete := res.Requeue || !res.IsZero()
+	incomplete := res.Requeue || !res.IsZero() //nolint:staticcheck
 	r.WithReconciliationState(ReconciliationState{incomplete: incomplete, Result: res})
 	return r
 }

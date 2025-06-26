@@ -58,7 +58,6 @@ func Test_defaultDriver_updateDesiredNodes(t *testing.T) {
 	type wantResult struct {
 		error        bool
 		reason       string
-		requeue      bool
 		requeueAfter time.Duration
 	}
 	type want struct {
@@ -239,7 +238,6 @@ func Test_defaultDriver_updateDesiredNodes(t *testing.T) {
 			want: want{
 				result: wantResult{
 					requeueAfter: defaultRequeue.RequeueAfter,
-					requeue:      defaultRequeue.Requeue,
 					reason:       "Waiting for Elasticsearch to be available to update the desired nodes API",
 				},
 				condition: &wantCondition{
@@ -285,8 +283,7 @@ func Test_defaultDriver_updateDesiredNodes(t *testing.T) {
 			),
 			want: want{
 				result: wantResult{
-					requeueAfter: defaultRequeue.RequeueAfter,
-					requeue:      defaultRequeue.Requeue, // requeue is expected to get a more accurate storage capacity from the PVC status later
+					requeueAfter: defaultRequeue.RequeueAfter, // requeue is expected to get a more accurate storage capacity from the PVC status later
 					reason:       "Storage capacity is not available in all PVC statuses, requeue to refine the capacity reported in the desired nodes API",
 				},
 				testdata: "happy_path.json",
@@ -331,8 +328,7 @@ func Test_defaultDriver_updateDesiredNodes(t *testing.T) {
 			),
 			want: want{
 				result: wantResult{
-					requeueAfter: defaultRequeue.RequeueAfter,
-					requeue:      defaultRequeue.Requeue, // requeue is expected to get a more accurate storage capacity from the PVC status later
+					requeueAfter: defaultRequeue.RequeueAfter, // requeue is expected to get a more accurate storage capacity from the PVC status later
 					reason:       "Storage capacity is not available in all PVC statuses, requeue to refine the capacity reported in the desired nodes API",
 				},
 				testdata: "happy_path.json",
@@ -484,7 +480,6 @@ func Test_defaultDriver_updateDesiredNodes(t *testing.T) {
 				),
 			want: want{
 				result: wantResult{
-					requeue:      true,
 					requeueAfter: defaultRequeue.RequeueAfter,
 				},
 				deleteCalled: false, // Elasticsearch is not reachable, client cannot be called
@@ -560,7 +555,6 @@ func Test_defaultDriver_updateDesiredNodes(t *testing.T) {
 			// Check reconcile result
 			result, err := got.Aggregate()
 			assert.Equal(t, tt.want.result.error, err != nil, "updateDesiredNodes(...): unexpected error result")
-			assert.Equal(t, tt.want.result.requeue, result.Requeue, "updateDesiredNodes(...): unexpected requeue result")
 			assert.Equal(t, tt.want.result.requeueAfter, result.RequeueAfter, "updateDesiredNodes(...): unexpected result.RequeueAfter value")
 			_, gotReason := got.IsReconciled()
 			assert.True(t, strings.Contains(gotReason, tt.want.result.reason), "updateDesiredNodes(...): unexpected reconciled reason")

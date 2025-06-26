@@ -43,7 +43,7 @@ import (
 )
 
 var (
-	defaultRequeue = reconcile.Result{Requeue: true, RequeueAfter: 10 * time.Second}
+	defaultRequeue = reconcile.Result{RequeueAfter: 10 * time.Second}
 )
 
 // AssociationInfo contains information specific to a particular associated resource (eg. Kibana, APMServer, etc.).

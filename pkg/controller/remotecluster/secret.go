@@ -62,7 +62,7 @@ func createOrUpdateCertificateAuthorities(
 		if !errors.IsNotFound(err) {
 			return results.WithError(err)
 		}
-		results.WithResult(defaultRequeue)
+		results.WithRequeue()
 	}
 
 	// Reciprocally, copy CA from local (source) to remote (target) cluster
@@ -70,7 +70,7 @@ func createOrUpdateCertificateAuthorities(
 		if !errors.IsNotFound(err) {
 			return results.WithError(err)
 		}
-		results.WithResult(defaultRequeue)
+		results.WithRequeue()
 	}
 
 	return nil

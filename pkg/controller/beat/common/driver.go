@@ -8,7 +8,6 @@ import (
 	"context"
 	"errors"
 	"hash/fnv"
-	"time"
 
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/metadata"
 
@@ -107,7 +106,7 @@ func Reconcile(
 	podTemplate, err := buildPodTemplate(params, defaultImage, configHash, meta)
 	if err != nil {
 		if errors.Is(err, beat_stackmon.ErrMonitoringClusterUUIDUnavailable) {
-			results.WithReconciliationState(reconciler.RequeueAfter(10 * time.Second).WithReason("ElasticsearchRef UUID unavailable while configuring Beats stack monitoring"))
+			results.WithReconciliationState(reconciler.RequeueAfter(reconciler.DefaultRequeue).WithReason("ElasticsearchRef UUID unavailable while configuring Beats stack monitoring"))
 		} else {
 			results.WithError(err)
 		}

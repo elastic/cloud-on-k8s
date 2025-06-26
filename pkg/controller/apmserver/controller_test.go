@@ -105,7 +105,6 @@ func TestReconcileApmServer_doReconcile(t *testing.T) {
 				return
 			}
 			require.NotNil(t, results)
-			require.Equal(t, res.Requeue, tt.wantRequeue)
 			if tt.wantRequeue {
 				require.True(t, res.RequeueAfter > 0)
 			}
