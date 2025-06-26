@@ -20,6 +20,7 @@ import (
 
 	esv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/elasticsearch/v1"
 	commonlicense "github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/license"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/reconciler"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/client"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/chrono"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/k8s"
@@ -37,7 +38,7 @@ func Test_nextReconcileRelativeTo(t *testing.T) {
 		want reconcile.Result
 	}{
 		{
-			name: "no expiry found, retry after ",
+			name: "no expiry found, retry after",
 			args: args{
 				expiry: time.Time{},
 				safety: 30 * 24 * time.Hour,
@@ -47,15 +48,15 @@ func Test_nextReconcileRelativeTo(t *testing.T) {
 			},
 		},
 		{
-			name: "remaining time too short: requeue immediately ",
+			name: "remaining time too short: requeue after default 10s interval",
 			args: args{
 				expiry: chrono.MustParseTime("2019-02-02"),
 				safety: 30 * 24 * time.Hour,
 			},
-			want: reconcile.Result{Requeue: true},
+			want: reconcile.Result{RequeueAfter: reconciler.DefaultRequeue},
 		},
 		{
-			name: "default: requeue after expiry - safety/2 ",
+			name: "default: requeue after expiry - safety/2",
 			args: args{
 				expiry: chrono.MustParseTime("2019-02-03"),
 				safety: 48 * time.Hour,
