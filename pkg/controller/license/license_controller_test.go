@@ -126,7 +126,6 @@ func TestReconcileLicenses_reconcileInternal(t *testing.T) {
 		k8sResources       []crclient.Object
 		wantErr            string
 		wantClusterLicense bool
-		wantRequeue        bool
 		wantRequeueAfter   bool
 	}{
 		{
@@ -135,7 +134,6 @@ func TestReconcileLicenses_reconcileInternal(t *testing.T) {
 			k8sResources:       []crclient.Object{cluster},
 			wantErr:            "",
 			wantClusterLicense: false,
-			wantRequeue:        false,
 			wantRequeueAfter:   false,
 		},
 		{
@@ -147,7 +145,6 @@ func TestReconcileLicenses_reconcileInternal(t *testing.T) {
 			}}},
 			wantErr:            "",
 			wantClusterLicense: false,
-			wantRequeue:        false,
 			wantRequeueAfter:   false,
 		},
 		{
@@ -159,7 +156,6 @@ func TestReconcileLicenses_reconcileInternal(t *testing.T) {
 			},
 			wantErr:            "",
 			wantClusterLicense: true,
-			wantRequeue:        false,
 			wantRequeueAfter:   true,
 		},
 		{
@@ -171,7 +167,6 @@ func TestReconcileLicenses_reconcileInternal(t *testing.T) {
 			},
 			wantErr:            "",
 			wantClusterLicense: true,
-			wantRequeue:        false,
 			wantRequeueAfter:   true,
 		},
 		{
@@ -183,7 +178,6 @@ func TestReconcileLicenses_reconcileInternal(t *testing.T) {
 			},
 			wantErr:            "",
 			wantClusterLicense: false,
-			wantRequeue:        false,
 			wantRequeueAfter:   false,
 		},
 	}
@@ -201,10 +195,7 @@ func TestReconcileLicenses_reconcileInternal(t *testing.T) {
 				return
 			}
 			require.NoError(t, err)
-			if tt.wantRequeue {
-				require.True(t, res.Requeue)
-				require.Zero(t, res.RequeueAfter)
-			}
+
 			if tt.wantRequeueAfter {
 				require.False(t, res.Requeue)
 				require.NotZero(t, res.RequeueAfter)
