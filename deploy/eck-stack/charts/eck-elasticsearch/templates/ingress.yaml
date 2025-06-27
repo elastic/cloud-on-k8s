@@ -45,18 +45,4 @@ spec:
             port:
               number: 9200
   {{- end }}
-
-{{- /* If the ingress is using GKE, add the required BackendConfig*/ -}}
-{{- if and .Values.http.service.metadata.annotations (index .Values.http.service.metadata.annotations "cloud.google.com/neg" | eq "{\"ingress\": true}") }}
----
-apiVersion: cloud.google.com/v1
-kind: BackendConfig
-metadata:
-  name: {{ include "elasticsearch.fullname" . }}
-spec:
-  healthCheck:
-    type: HTTPS
-    requestPath: /
-    port: 9200
-{{- end -}}
 {{- end }}

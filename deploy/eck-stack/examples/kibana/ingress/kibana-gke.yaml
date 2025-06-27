@@ -29,7 +29,6 @@ eck-elasticsearch:
           # This is required for `ClusterIP` services (which are the default ECK service type) to be used with Ingress in GKE clusters.
           cloud.google.com/neg: '{"ingress": true}'
           cloud.google.com/app-protocols: '{"https":"HTTPS"}'
-          cloud.google.com/backend-config: '{"default": "elasticsearch"}'
 
   nodeSets:
   - name: default
@@ -70,7 +69,6 @@ eck-kibana:
           # This is required for `ClusterIP` services (which are the default ECK service type) to be used with Ingress in GKE clusters.
           cloud.google.com/neg: '{"ingress": true}'
           cloud.google.com/app-protocols: '{"https":"HTTPS"}'
-          cloud.google.com/backend-config: '{"default": "kibana"}'
 
   ingress:
     enabled: true

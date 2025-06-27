@@ -45,18 +45,4 @@ spec:
             port:
               number: 5601
   {{- end }}
-
-{{- /* If the ingress is using GKE, add the required BackendConfig*/ -}}
-{{- if and .Values.http.service.metadata.annotations (index .Values.http.service.metadata.annotations "cloud.google.com/neg" | eq "{\"ingress\": true}") }}
----
-apiVersion: cloud.google.com/v1
-kind: BackendConfig
-metadata:
-  name: {{ include "kibana.fullname" . }}
-spec:
-  healthCheck:
-    type: HTTPS
-    requestPath: /login
-    port: 5601
-{{- end -}}
 {{- end }}
