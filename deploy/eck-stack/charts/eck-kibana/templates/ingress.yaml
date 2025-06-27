@@ -45,4 +45,4 @@ spec:
             port:
               number: 5601
   {{- end }}
-{{- end }}
+{{ end }}
