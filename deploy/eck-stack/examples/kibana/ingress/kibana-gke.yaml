@@ -17,7 +17,7 @@ eck-elasticsearch:
       my: label
     pathType: Prefix
     hosts:
-    - host: "kibana.company.dev"
+    - host: "elasticsearch.company.dev"
       path: "/"
     tls:
       enabled: true
