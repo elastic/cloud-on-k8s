@@ -20,7 +20,6 @@ http:
         cloud.google.com/neg: '{"ingress": true}'
         # This is required to enable the GKE Ingress Controller to use HTTPS as the backend protocol.
         cloud.google.com/app-protocols: '{"https":"HTTPS"}'
-        # cloud.google.com/backend-config: '{"default": "kibana"}'
 
 ingress:
   enabled: true
