@@ -224,6 +224,57 @@ func TestReconcileServices(t *testing.T) {
 				DefaultAPIService(),
 			},
 		},
+		{
+			name: "TLS is disabled in API service, no port provided",
+			logstash: logstashv1alpha1.Logstash{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "logstash",
+					Namespace: "test",
+				},
+				Spec: logstashv1alpha1.LogstashSpec{
+					Services: []logstashv1alpha1.LogstashService{
+						{
+							Name: LogstashAPIServiceName,
+							TLS: commonv1.TLSOptions{
+								SelfSignedCertificate: &commonv1.SelfSignedCertificate{
+									Disabled: true,
+								},
+							},
+						},
+					},
+				},
+			},
+			wantSvc: []corev1.Service{
+				{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "logstash-ls-api",
+						Namespace: "test",
+						Labels: map[string]string{
+							"common.k8s.elastic.co/type":   "logstash",
+							"logstash.k8s.elastic.co/name": "logstash",
+						},
+						OwnerReferences: []metav1.OwnerReference{
+							{
+								APIVersion:         "logstash.k8s.elastic.co/v1alpha1",
+								Kind:               "Logstash",
+								Name:               "logstash",
+								Controller:         ptr.To(true),
+								BlockOwnerDeletion: ptr.To(true),
+							},
+						},
+					},
+					Spec: corev1.ServiceSpec{
+						Selector: map[string]string{
+							"common.k8s.elastic.co/type":   "logstash",
+							"logstash.k8s.elastic.co/name": "logstash",
+						},
+						Ports: []corev1.ServicePort{
+							{Name: "api", Protocol: "TCP", Port: 9600},
+						},
+					},
+				},
+			},
+		},
 	}
 
 	for _, tc := range testCases {

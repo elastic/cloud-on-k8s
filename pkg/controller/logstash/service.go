@@ -27,32 +27,36 @@ const (
 // When a service is defined that matches the API service name, then that service is used to define
 // the service for the logstash API. If not, then a default service is created for the API service.
 func reconcileServices(params Params) ([]corev1.Service, corev1.Service, error) {
-	var apiSvc corev1.Service
-	createdAPIService := false
+	var apiSvc *corev1.Service
+
+	// defaultAPIService holds the specification of the default API service.
+	// It is used either as the API service, or it is used to fill in missing fields in the user-defined API service.
+	defaultAPIService := newAPIService(params.Logstash, params.Meta)
 
 	svcs := make([]corev1.Service, 0, len(params.Logstash.Spec.Services)+1)
-	for _, service := range params.Logstash.Spec.Services {
+	for _, userDefinedService := range params.Logstash.Spec.Services {
 		logstash := params.Logstash
-		svc := newService(service, params.Logstash)
+		svc := newService(userDefinedService, params.Logstash)
+		if logstashv1alpha1.UserServiceName(logstash.Name, userDefinedService.Name) == logstashv1alpha1.APIServiceName(logstash.Name) {
+			// Ensure the API service is created with the correct defaults.
+			defaults.SetServiceDefaults(svc, params.Meta, defaultAPIService.Spec.Selector, defaultAPIService.Spec.Ports)
+			apiSvc = svc
+		}
 		if err := reconcileService(params, svc); err != nil {
 			return []corev1.Service{}, corev1.Service{}, err
-		}
-		if logstashv1alpha1.UserServiceName(logstash.Name, service.Name) == logstashv1alpha1.APIServiceName(logstash.Name) {
-			createdAPIService = true
-			apiSvc = *svc
 		}
 		svcs = append(svcs, *svc)
 	}
-	if !createdAPIService {
-		svc := newAPIService(params.Logstash, params.Meta)
-		if err := reconcileService(params, svc); err != nil {
+	if apiSvc == nil {
+		// If no user-defined API service was found, create the default API service.
+		if err := reconcileService(params, defaultAPIService); err != nil {
 			return []corev1.Service{}, corev1.Service{}, err
 		}
-		apiSvc = *svc
-		svcs = append(svcs, *svc)
+		apiSvc = defaultAPIService
+		svcs = append(svcs, *defaultAPIService)
 	}
 
-	return svcs, apiSvc, nil
+	return svcs, *apiSvc, nil
 }
 
 func reconcileService(params Params, service *corev1.Service) error {

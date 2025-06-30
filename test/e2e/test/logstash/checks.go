@@ -38,10 +38,15 @@ func CheckSecrets(b Builder, k *test.K8sClient) test.Step {
 	return test.CheckSecretsContent(k, b.Logstash.Namespace, func() []test.ExpectedSecret {
 		logstashName := b.Logstash.Name
 		// hardcode all secret names and keys to catch any breaking change
+		lsConfigKeys := []string{"logstash.yml", "API_KEYSTORE_PASS"}
+		if !b.Logstash.APIServerService().TLS.Enabled() {
+			// If TLS is not enabled, the API keystore password is not set.
+			lsConfigKeys = []string{"logstash.yml"}
+		}
 		expected := []test.ExpectedSecret{
 			{
 				Name: logstashName + "-ls-config",
-				Keys: []string{"logstash.yml", "API_KEYSTORE_PASS"},
+				Keys: lsConfigKeys,
 				Labels: map[string]string{
 					"eck.k8s.elastic.co/credentials": "true",
 					"logstash.k8s.elastic.co/name":   logstashName,

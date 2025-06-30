@@ -64,6 +64,23 @@ func TestLogstashWithCustomService(t *testing.T) {
 	test.Sequence(nil, test.EmptySteps, logstashBuilder).RunSequential(t)
 }
 
+func TestLogstashTLSDisabled(t *testing.T) {
+	name := "test-logstash-tls-disabled"
+	service := logstashv1alpha1.LogstashService{
+		Name: "api",
+		TLS: commonv1.TLSOptions{
+			SelfSignedCertificate: &commonv1.SelfSignedCertificate{
+				Disabled: true,
+			},
+		},
+	}
+	logstashBuilder := logstash.NewBuilder(name).
+		WithNodeCount(1).
+		WithServices(service)
+
+	test.Sequence(nil, test.EmptySteps, logstashBuilder).RunSequential(t)
+}
+
 // This test sets a custom port for the Logstash API service
 func TestLogstashWithReworkedApiService(t *testing.T) {
 	name := "test-multiple-custom-logstash"

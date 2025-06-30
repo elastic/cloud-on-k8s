@@ -122,7 +122,9 @@ func defaultConfig() *settings.CanonicalConfig {
 
 func tlsConfig(useTLS bool) *settings.CanonicalConfig {
 	if !useTLS {
-		return nil
+		return settings.MustCanonicalConfig(map[string]interface{}{
+			"api.ssl.enabled": false,
+		})
 	}
 	return settings.MustCanonicalConfig(map[string]interface{}{
 		"api.ssl.enabled":           true,
