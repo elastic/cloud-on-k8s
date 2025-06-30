@@ -1,4 +1,4 @@
-FROM docker.elastic.co/wolfi/go:1.24.4@sha256:80347923994bc348fbbcf805a3dfe25e1d9651a11ed6f99164b77eaf8400def2 as builder
+FROM docker.elastic.co/wolfi/go:1.24.4@sha256:da3eab450fc5f4dc0225cfd00bf90248b4a8d0436fd99973a2536ef9cc875390 as builder
 ADD . /manifest-gen
 WORKDIR /manifest-gen
 ENV GO111MODULE=on CGO_ENABLED=0 GOOS=linux 
