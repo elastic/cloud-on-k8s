@@ -272,7 +272,7 @@ func (r *ReconcileApmServer) doReconcile(ctx context.Context, as *apmv1.ApmServe
 	if err != nil {
 		if apierrors.IsConflict(err) {
 			log.V(1).Info("Conflict while updating status")
-			return results.WithResult(reconcile.Result{Requeue: true}), state
+			return results.WithRequeue(), state
 		}
 		k8s.MaybeEmitErrorEvent(r.recorder, err, as, events.EventReconciliationError, "Deployment reconciliation error: %v", err)
 		return results.WithError(tracing.CaptureError(ctx, err)), state

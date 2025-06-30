@@ -46,7 +46,7 @@ const (
 )
 
 var (
-	defaultRequeue = reconcile.Result{Requeue: true, RequeueAfter: 10 * time.Second}
+	defaultRequeue = reconcile.Result{RequeueAfter: 10 * time.Second}
 )
 
 // Add creates a new ReconcileRemoteClusters Controller and adds it to the manager with default RBAC.

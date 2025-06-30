@@ -58,7 +58,7 @@ func (r *ReconcileLicenses) Reconcile(ctx context.Context, request reconcile.Req
 
 	results := r.reconcileInternal(ctx, request)
 	current, err := results.Aggregate()
-	ulog.FromContext(ctx).V(1).Info("Reconcile result", "requeue", current.Requeue, "requeueAfter", current.RequeueAfter)
+	ulog.FromContext(ctx).V(1).Info("Reconcile result", "requeueAfter", current.RequeueAfter)
 	return current, err
 }
 
@@ -97,7 +97,7 @@ func nextReconcileRelativeTo(now, expiry time.Time, safety time.Duration) reconc
 	}
 	requeueAfter := expiry.Add(-1 * (safety / 2)).Sub(now)
 	if requeueAfter <= 0 {
-		return reconcile.Result{Requeue: true}
+		return reconcile.Result{RequeueAfter: reconciler.DefaultRequeue}
 	}
 	return reconcile.Result{
 		// requeue at expiry minus safetyMargin/2 to ensure we actually reissue a license on the next attempt

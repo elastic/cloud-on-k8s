@@ -18,7 +18,6 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/sets"
 	"sigs.k8s.io/controller-runtime/pkg/client"
-	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
 	commonv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/common/v1"
 	esv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/elasticsearch/v1"
@@ -246,7 +245,7 @@ func (aks *APIKeyStore) Save(ctx context.Context, c k8s.Client, owner *esv1.Elas
 	}
 	if _, err := reconciler.ReconcileSecret(ctx, c, expected, owner); err != nil {
 		if errors.IsConflict(err) {
-			return results.WithResult(reconcile.Result{Requeue: true})
+			return results.WithRequeue()
 		}
 		return results.WithError(err)
 	}
@@ -271,7 +270,7 @@ func (aks *APIKeyStore) deleteSecret(ctx context.Context, c k8s.Client, secretNa
 			return nil
 		}
 		if errors.IsConflict(err) {
-			return results.WithResult(reconcile.Result{Requeue: true})
+			return results.WithRequeue()
 		}
 		return results.WithError(err)
 	}

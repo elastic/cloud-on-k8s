@@ -209,7 +209,7 @@ func (r *ReconcileElasticsearch) Reconcile(ctx context.Context, request reconcil
 	if err != nil {
 		if apierrors.IsConflict(err) {
 			log.V(1).Info("Conflict while updating status", "namespace", es.Namespace, "es_name", es.Name)
-			return reconcile.Result{Requeue: true}, nil
+			return reconcile.Result{RequeueAfter: reconciler.DefaultRequeue}, nil
 		}
 		k8s.MaybeEmitErrorEvent(r.recorder, err, &es, events.EventReconciliationError, "Reconciliation error: %v", err)
 	}

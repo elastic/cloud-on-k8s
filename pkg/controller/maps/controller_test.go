@@ -59,7 +59,6 @@ func TestReconcileMapsServer_Reconcile(t *testing.T) {
 		reconciler       ReconcileMapsServer
 		pre              func(r ReconcileMapsServer)
 		post             func(r ReconcileMapsServer)
-		wantRequeue      bool
 		wantRequeueAfter bool
 		wantErr          bool
 	}{
@@ -146,7 +145,6 @@ func TestReconcileMapsServer_Reconcile(t *testing.T) {
 				// observedGeneration should have been updated
 				assertObservedGeneration(r, 2)
 			},
-			wantRequeue:      true,
 			wantRequeueAfter: true, // license recheck
 			wantErr:          false,
 		},
@@ -289,7 +287,6 @@ func TestReconcileMapsServer_Reconcile(t *testing.T) {
 				// observedGeneration should have been updated
 				assertObservedGeneration(r, 2)
 			},
-			wantRequeue:      false,
 			wantRequeueAfter: true, // certificate refresh
 			wantErr:          false,
 		},
@@ -303,9 +300,6 @@ func TestReconcileMapsServer_Reconcile(t *testing.T) {
 			if (err != nil) != tt.wantErr {
 				t.Errorf("Reconcile() error = %v, wantErr %v", err, tt.wantErr)
 				return
-			}
-			if got.Requeue != tt.wantRequeue {
-				t.Errorf("Reconcile() got = %v, wantRequeue %v", got, tt.wantRequeue)
 			}
 			if got.RequeueAfter > 0 != tt.wantRequeueAfter {
 				t.Errorf("Reconcile() got = %v, wantRequeueAfter %v", got, tt.wantRequeueAfter)

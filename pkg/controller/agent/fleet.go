@@ -20,7 +20,6 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/tools/record"
-	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
 	agentv1alpha1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/agent/v1alpha1"
 	commonv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/common/v1"
@@ -250,7 +249,7 @@ func maybeReconcileFleetEnrollment(params Params, result *reconciler.Results) En
 		message := "Delaying deployment of Elastic Agent in Fleet Mode as Kibana is not available yet"
 		log.Info(message)
 		params.EventRecorder.Event(&params.Agent, corev1.EventTypeWarning, events.EventReasonDelayed, message)
-		result.WithResult(reconcile.Result{Requeue: true})
+		result.WithRequeue()
 		return EnrollmentAPIKey{}
 	}
 
@@ -273,12 +272,12 @@ func maybeReconcileFleetEnrollment(params Params, result *reconciler.Results) En
 		log.V(1).Info(err.Error())
 		log.Info(message)
 		params.EventRecorder.Event(&params.Agent, corev1.EventTypeWarning, events.EventReasonDelayed, message)
-		result.WithResult(reconcile.Result{Requeue: true})
+		result.WithRequeue()
 	case commonhttp.IsNotFound(err):
 		message := fmt.Sprintf("ECK cannot setup Fleet enrollment. This is likely a mis-configuration. %s", err.Error())
 		log.Info(message)
 		params.EventRecorder.Event(&params.Agent, corev1.EventTypeWarning, events.EventReasonUnexpected, message)
-		result.WithResult(reconcile.Result{Requeue: true})
+		result.WithRequeue()
 	case err != nil:
 		result.WithError(err)
 	}

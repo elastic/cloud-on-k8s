@@ -154,7 +154,7 @@ func (r *ReconcileBeat) Reconcile(ctx context.Context, request reconcile.Request
 	statusErr := beatcommon.UpdateStatus(ctx, beat, r.Client, status)
 	if statusErr != nil {
 		if apierrors.IsConflict(statusErr) {
-			return results.WithResult(reconcile.Result{Requeue: true}).Aggregate()
+			return results.WithRequeue().Aggregate()
 		}
 		results.WithError(statusErr)
 	}

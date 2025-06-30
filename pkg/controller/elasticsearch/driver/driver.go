@@ -9,7 +9,6 @@ import (
 	"crypto/x509"
 	"fmt"
 	"strings"
-	"time"
 
 	"github.com/pkg/errors"
 
@@ -61,7 +60,7 @@ import (
 )
 
 var (
-	defaultRequeue = reconciler.ReconciliationState{Result: controller.Result{Requeue: true, RequeueAfter: 10 * time.Second}}
+	defaultRequeue = reconciler.ReconciliationState{Result: controller.Result{RequeueAfter: reconciler.DefaultRequeue}}
 )
 
 // Driver orchestrates the reconciliation of an Elasticsearch resource.

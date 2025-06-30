@@ -67,7 +67,6 @@ var (
 
 func TestReconcile(t *testing.T) {
 	defaultRequeue := reconcile.Result{
-		Requeue:      true,
 		RequeueAfter: 60 * time.Second,
 	}
 	type fields struct {
@@ -194,7 +193,6 @@ func TestReconcile(t *testing.T) {
 				isOnline:     true,
 			},
 			want: reconcile.Result{
-				Requeue:      true,
 				RequeueAfter: 42 * time.Second,
 			},
 			wantEvents: []string{

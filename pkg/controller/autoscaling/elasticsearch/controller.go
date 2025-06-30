@@ -53,7 +53,6 @@ const (
 // licenseCheckRequeue is the default duration used to retry a licence check if the cluster is supposed to be managed by
 // the autoscaling controller and if the licence is not valid.
 var licenseCheckRequeue = reconcile.Result{
-	Requeue:      true,
 	RequeueAfter: 60 * time.Second,
 }
 
@@ -363,7 +362,6 @@ func defaultResult(autoscalingSpecification v1alpha1.AutoscalingResource) *recon
 	}
 	return results.WithResult(
 		reconcile.Result{
-			Requeue:      true,
 			RequeueAfter: requeueAfter,
 		})
 }

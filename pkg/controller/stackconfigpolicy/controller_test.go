@@ -267,7 +267,6 @@ func TestReconcileStackConfigPolicy_Reconcile(t *testing.T) {
 		args             args
 		pre              func(r ReconcileStackConfigPolicy)
 		post             func(r ReconcileStackConfigPolicy, recorder record.FakeRecorder)
-		wantRequeue      bool
 		wantRequeueAfter bool
 		wantErr          bool
 	}{
@@ -276,8 +275,8 @@ func TestReconcileStackConfigPolicy_Reconcile(t *testing.T) {
 			args: args{
 				client: k8s.NewFakeClient(),
 			},
-			wantErr:     false,
-			wantRequeue: false,
+			wantErr:          false,
+			wantRequeueAfter: false,
 		},
 		{
 			name: "Settings secret doesn't exist yet: requeue",
@@ -286,7 +285,6 @@ func TestReconcileStackConfigPolicy_Reconcile(t *testing.T) {
 				licenseChecker: &license.MockLicenseChecker{EnterpriseEnabled: true},
 			},
 			wantErr:          false,
-			wantRequeue:      true,
 			wantRequeueAfter: true,
 		},
 		{
@@ -363,7 +361,6 @@ func TestReconcileStackConfigPolicy_Reconcile(t *testing.T) {
 				assert.Equal(t, 0, policy.Status.Resources)
 			},
 			wantErr:          false,
-			wantRequeue:      true,
 			wantRequeueAfter: true,
 		},
 		{
@@ -382,7 +379,6 @@ func TestReconcileStackConfigPolicy_Reconcile(t *testing.T) {
 				assert.Equal(t, policyv1alpha1.ConflictPhase, policy.Status.Phase)
 			},
 			wantErr:          true,
-			wantRequeue:      true,
 			wantRequeueAfter: true,
 		},
 		{
@@ -401,7 +397,6 @@ func TestReconcileStackConfigPolicy_Reconcile(t *testing.T) {
 				assert.Equal(t, policyv1alpha1.ConflictPhase, policy.Status.Phase)
 			},
 			wantErr:          true,
-			wantRequeue:      true,
 			wantRequeueAfter: true,
 		},
 		{
@@ -420,7 +415,6 @@ func TestReconcileStackConfigPolicy_Reconcile(t *testing.T) {
 				assert.Equal(t, policyv1alpha1.ErrorPhase, policy.Status.Phase)
 			},
 			wantErr:          true,
-			wantRequeue:      true,
 			wantRequeueAfter: true,
 		},
 		{
@@ -438,7 +432,6 @@ func TestReconcileStackConfigPolicy_Reconcile(t *testing.T) {
 				assert.Equal(t, policyv1alpha1.ReadyPhase, policy.Status.Phase)
 			},
 			wantErr:          false,
-			wantRequeue:      true,
 			wantRequeueAfter: true,
 		},
 		{
@@ -467,7 +460,6 @@ func TestReconcileStackConfigPolicy_Reconcile(t *testing.T) {
 				assert.Equal(t, policyv1alpha1.ApplyingChangesPhase, policy.Status.Phase)
 			},
 			wantErr:          false,
-			wantRequeue:      true,
 			wantRequeueAfter: true,
 		},
 		{
@@ -490,7 +482,6 @@ func TestReconcileStackConfigPolicy_Reconcile(t *testing.T) {
 				assert.Equal(t, "invalid cluster settings", policy.Status.Details["elasticsearch"]["ns/test-es"].Error.Message)
 			},
 			wantErr:          false,
-			wantRequeue:      true,
 			wantRequeueAfter: true,
 		},
 		{
@@ -512,7 +503,6 @@ func TestReconcileStackConfigPolicy_Reconcile(t *testing.T) {
 				assert.Equal(t, policyv1alpha1.ApplyingChangesPhase, policy.Status.Phase)
 			},
 			wantErr:          false,
-			wantRequeue:      true,
 			wantRequeueAfter: true,
 		},
 		{
@@ -554,7 +544,6 @@ func TestReconcileStackConfigPolicy_Reconcile(t *testing.T) {
 				assert.NotEmpty(t, r.dynamicWatches.Secrets.Registrations())
 			},
 			wantErr:          false,
-			wantRequeue:      false,
 			wantRequeueAfter: false,
 		},
 		{
@@ -673,7 +662,6 @@ func TestReconcileStackConfigPolicy_Reconcile(t *testing.T) {
 				assert.Equal(t, policyv1alpha1.ReadyPhase, policy.Status.Phase)
 			},
 			wantErr:          false,
-			wantRequeue:      true,
 			wantRequeueAfter: true,
 		},
 		{
@@ -692,7 +680,6 @@ func TestReconcileStackConfigPolicy_Reconcile(t *testing.T) {
 				assert.Equal(t, policyv1alpha1.ApplyingChangesPhase, policy.Status.Phase)
 			},
 			wantErr:          false,
-			wantRequeue:      true,
 			wantRequeueAfter: true,
 		},
 	}
@@ -714,9 +701,6 @@ func TestReconcileStackConfigPolicy_Reconcile(t *testing.T) {
 			if (err != nil) != tt.wantErr {
 				t.Errorf("Reconcile() error = %v, wantErr %v", err, tt.wantErr)
 				return
-			}
-			if got.Requeue != tt.wantRequeue {
-				t.Errorf("Reconcile() got = %v, wantRequeue %v", got, tt.wantRequeue)
 			}
 			if got.RequeueAfter > 0 != tt.wantRequeueAfter {
 				t.Errorf("Reconcile() got = %v, wantRequeueAfter %v", got, tt.wantRequeueAfter)
