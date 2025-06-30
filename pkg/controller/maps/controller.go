@@ -176,7 +176,7 @@ func (r *ReconcileMapsServer) Reconcile(ctx context.Context, request reconcile.R
 	results, status := r.doReconcile(ctx, ems)
 	if err := r.updateStatus(ctx, ems, status); err != nil {
 		if apierrors.IsConflict(err) {
-			return results.WithResult(reconcile.Result{Requeue: true}).Aggregate()
+			return results.WithRequeue().Aggregate()
 		}
 		results.WithError(err)
 	}
@@ -198,7 +198,7 @@ func (r *ReconcileMapsServer) doReconcile(ctx context.Context, ems emsv1alpha1.E
 		log.Info(msg, "namespace", ems.Namespace, "maps_name", ems.Name)
 		r.recorder.Eventf(&ems, corev1.EventTypeWarning, events.EventReconciliationError, msg)
 		// we don't have a good way of watching for the license level to change so just requeue with a reasonably long delay
-		return results.WithResult(reconcile.Result{Requeue: true, RequeueAfter: 5 * time.Minute}), status
+		return results.WithRequeue(5 * time.Minute), status
 	}
 
 	isEsAssocConfigured, err := association.IsConfiguredIfSet(ctx, &ems, r.recorder)

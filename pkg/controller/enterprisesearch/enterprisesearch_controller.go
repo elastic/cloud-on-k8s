@@ -165,7 +165,7 @@ func (r *ReconcileEnterpriseSearch) Reconcile(ctx context.Context, request recon
 	results, status := r.doReconcile(ctx, ent)
 	if err := r.updateStatus(ctx, ent, status); err != nil {
 		if apierrors.IsConflict(err) {
-			return results.WithResult(reconcile.Result{Requeue: true}).Aggregate()
+			return results.WithRequeue().Aggregate()
 		}
 		results.WithError(err)
 	}

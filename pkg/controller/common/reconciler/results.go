@@ -121,13 +121,18 @@ func (r *Results) WithError(err error) *Results {
 
 // WithRequeue adds a default requeue result to the Results, indicating the reconciliation should be retried after the default interval.
 // See DefaultRequeue for the default interval.
-func (r *Results) WithRequeue() *Results {
-	return r.WithResult(reconcile.Result{RequeueAfter: DefaultRequeue})
+func (r *Results) WithRequeue(requeueAfter ...time.Duration) *Results {
+	ra := DefaultRequeue
+	if len(requeueAfter) > 0 {
+		ra = requeueAfter[0]
+	}
+	return r.WithResult(reconcile.Result{RequeueAfter: ra})
 }
 
 // WithResult adds a result to the results.
+// Deprecated: use WithRequeue instead.
 func (r *Results) WithResult(res reconcile.Result) *Results {
-	incomplete := res.Requeue || !res.IsZero() //nolint:staticcheck
+	incomplete := res.RequeueAfter > 0 || !res.IsZero()
 	r.WithReconciliationState(ReconciliationState{incomplete: incomplete, Result: res})
 	return r
 }

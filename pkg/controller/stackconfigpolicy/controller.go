@@ -54,7 +54,9 @@ const (
 )
 
 var (
-	defaultRequeue = reconcile.Result{RequeueAfter: 30 * time.Second}
+	// defaultRequeue is the default requeue interval for this controller. It islonger than the default interval used else where to account
+	// for secret propagation times and the time it takes for Elasticsearch to observe the updates.
+	defaultRequeue = 30 * time.Second
 )
 
 // Add creates a new StackConfigPolicy Controller and adds it to the Manager with default RBAC. The Manager will set fields on the Controller
@@ -222,7 +224,7 @@ func (r *ReconcileStackConfigPolicy) doReconcile(ctx context.Context, policy pol
 		log.Info(msg)
 		r.recorder.Eventf(&policy, corev1.EventTypeWarning, events.EventReconciliationError, msg)
 		// we don't have a good way of watching for the license level to change so just requeue with a reasonably long delay
-		return results.WithResult(reconcile.Result{RequeueAfter: 5 * time.Minute}), status
+		return results.WithRequeue(5 * time.Minute), status
 	}
 	// run validation in case the webhook is disabled
 	if err := r.validate(ctx, &policy); err != nil {
@@ -242,7 +244,7 @@ func (r *ReconcileStackConfigPolicy) doReconcile(ctx context.Context, policy pol
 
 	// requeue if not ready
 	if status.Phase != policyv1alpha1.ReadyPhase {
-		results.WithResult(defaultRequeue)
+		results.WithRequeue(defaultRequeue)
 	}
 
 	return results, status
@@ -306,7 +308,7 @@ func (r *ReconcileStackConfigPolicy) reconcileElasticsearchResources(ctx context
 		err = r.Client.Get(ctx, types.NamespacedName{Namespace: es.Namespace, Name: esv1.FileSettingsSecretName(es.Name)}, &actualSettingsSecret)
 		if err != nil && apierrors.IsNotFound(err) {
 			// requeue if the Secret has not been created yet
-			return results.WithResult(defaultRequeue), status
+			return results.WithRequeue(defaultRequeue), status
 		}
 		if err != nil {
 			return results.WithError(err), status
@@ -344,7 +346,7 @@ func (r *ReconcileStackConfigPolicy) reconcileElasticsearchResources(ctx context
 				if err != nil {
 					return results.WithError(err), status
 				}
-				results.WithResult(defaultRequeue)
+				results.WithRequeue(defaultRequeue)
 			}
 			continue
 		}
@@ -373,7 +375,7 @@ func (r *ReconcileStackConfigPolicy) reconcileElasticsearchResources(ctx context
 				return results.WithError(err), status
 			}
 			// requeue if ES not reachable
-			results.WithResult(defaultRequeue)
+			results.WithRequeue(defaultRequeue)
 		}
 
 		// update the ES resource status for this ES

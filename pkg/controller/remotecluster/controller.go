@@ -182,7 +182,7 @@ func doReconcile(
 		// API keys in this cluster.
 		if !services.NewElasticsearchURLProvider(*remoteServer, r.Client).HasEndpoints() {
 			log.Info("Elasticsearch API is not available yet")
-			return results.WithResult(defaultRequeue).Aggregate()
+			return results.WithRequeue().Aggregate()
 		}
 		// Create a new client
 		newEsClient, err := r.esClientProvider(ctx, r.Client, r.Dialer, *remoteServer)

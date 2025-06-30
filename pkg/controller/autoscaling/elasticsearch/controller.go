@@ -241,7 +241,7 @@ func (r *ReconcileElasticsearchAutoscaler) Reconcile(ctx context.Context, reques
 	// Update the Elasticsearch resource
 	if err := r.Client.Update(ctx, reconciledEs); err != nil {
 		if apierrors.IsConflict(err) {
-			return results.WithResult(reconcile.Result{Requeue: true}).Aggregate()
+			return results.WithRequeue().Aggregate()
 		}
 		return results.WithError(err).Aggregate()
 	}
@@ -343,7 +343,7 @@ func (r *ReconcileElasticsearchAutoscaler) updateStatus(
 				"esa_name", esa.Name,
 				"error", err.Error(),
 			)
-			return results.WithResult(reconcile.Result{Requeue: true}).Aggregate()
+			return results.WithRequeue().Aggregate()
 		}
 		return results.WithError(tracing.CaptureError(ctx, err)).Aggregate()
 	}
