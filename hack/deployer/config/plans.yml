@@ -3,7 +3,7 @@ plans:
   operation: create
   clusterName: ci
   provider: gke
-  kubernetesVersion: 1.31
+  kubernetesVersion: 1.33
   machineType: n1-standard-8
   serviceAccount: true
   enforceSecurityPolicies: true
@@ -18,7 +18,7 @@ plans:
   operation: create
   clusterName: ci-autopilot
   provider: gke
-  kubernetesVersion: 1.31
+  kubernetesVersion: 1.33
   serviceAccount: true
   enforceSecurityPolicies: true
   # this is disabled in autopilot: container provisioner is privileged; not allowed in Autopilot
@@ -31,7 +31,7 @@ plans:
   operation: create
   clusterName: dev
   provider: gke
-  kubernetesVersion: 1.31
+  kubernetesVersion: 1.33
   machineType: n1-standard-8
   serviceAccount: false
   enforceSecurityPolicies: true
@@ -58,7 +58,7 @@ plans:
   operation: create
   clusterName: dev-autopilot
   provider: gke
-  kubernetesVersion: 1.31
+  kubernetesVersion: 1.33
   serviceAccount: false
   enforceSecurityPolicies: true
   gke:
@@ -69,7 +69,7 @@ plans:
   operation: create
   clusterName: ci
   provider: aks
-  kubernetesVersion: 1.30.10
+  kubernetesVersion: 1.32.4
   machineType: Standard_D8s_v3
   serviceAccount: true
   enforceSecurityPolicies: true
@@ -82,7 +82,7 @@ plans:
   operation: create
   clusterName: dev
   provider: aks
-  kubernetesVersion: 1.30.10
+  kubernetesVersion: 1.32.4
   machineType: Standard_D8s_v3
   serviceAccount: false
   enforceSecurityPolicies: true
@@ -93,7 +93,7 @@ plans:
 - id: ocp-ci
   operation: create
   clusterName: ci
-  clientVersion: 4.18.1
+  clientVersion: 4.19.2
   provider: ocp
   machineType: n1-standard-8
   serviceAccount: true
@@ -103,7 +103,7 @@ plans:
 - id: ocp-dev
   operation: create
   clusterName: dev
-  clientVersion: 4.18.1
+  clientVersion: 4.19.2
   provider: ocp
   machineType: n1-standard-8
   serviceAccount: true
@@ -117,7 +117,7 @@ plans:
   machineType: c5d.2xlarge
   serviceAccount: false
   enforceSecurityPolicies: true
-  kubernetesVersion: 1.29
+  kubernetesVersion: 1.33
   diskSetup: kubectl apply -f hack/deployer/config/local-disks/ssd-provisioner.yaml
   eks:
     region: ap-northeast-3
@@ -130,7 +130,7 @@ plans:
   machineType: m6gd.2xlarge
   serviceAccount: false
   enforceSecurityPolicies: true
-  kubernetesVersion: 1.29
+  kubernetesVersion: 1.33
   diskSetup: kubectl apply -f hack/deployer/config/local-disks/ssd-provisioner.yaml
   eks:
     region: eu-west-1
@@ -142,7 +142,7 @@ plans:
   provider: eks
   machineType: c5d.2xlarge
   serviceAccount: false
-  kubernetesVersion: 1.29
+  kubernetesVersion: 1.33
   enforceSecurityPolicies: true
   eks:
     region: eu-west-2
@@ -151,22 +151,22 @@ plans:
 - id: kind-dev
   operation: create
   clusterName: eck
-  clientVersion: 0.24.0
+  clientVersion: 0.29.0
   provider: kind
   kubernetesVersion: 1.31.1
   enforceSecurityPolicies: true
   kind:
     nodeCount: 3
-    nodeImage: kindest/node:v1.32.0@sha256:c48c62eac5da28cdadcf560d1d8616cfa6783b58f0d94cf63ad1bf49600cb027
+    nodeImage: kindest/node:v1.33.1@sha256:050072256b9a903bd914c0b2866828150cb229cea0efe5892e2b644d5dd3b34f
     ipFamily: ipv4
 - id: kind-ci
   operation: create
   clusterName: kind-ci
-  clientVersion: 0.24.0
+  clientVersion: 0.29.0
   provider: kind
-  kubernetesVersion: 1.31.1
+  kubernetesVersion: 1.33.1
   enforceSecurityPolicies: true
   kind:
     nodeCount: 3
-    nodeImage: kindest/node:v1.32.0@sha256:c48c62eac5da28cdadcf560d1d8616cfa6783b58f0d94cf63ad1bf49600cb027
+    nodeImage: kindest/node:v1.33.1@sha256:050072256b9a903bd914c0b2866828150cb229cea0efe5892e2b644d5dd3b34f
     ipFamily: ipv4
