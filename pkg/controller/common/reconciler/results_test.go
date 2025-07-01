@@ -235,6 +235,13 @@ func TestResults_WithRequeue(t *testing.T) {
 			want: reconcile.Result{Requeue: false, RequeueAfter: 10 * time.Second},
 		},
 		{
+			name: "no requeue",
+			args: args{
+				requeueAfter: []time.Duration{0},
+			},
+			want: reconcile.Result{Requeue: false, RequeueAfter: 0},
+		},
+		{
 			name: "custom requeue",
 			args: args{
 				requeueAfter: []time.Duration{15 * time.Second},

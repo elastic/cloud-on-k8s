@@ -7,7 +7,6 @@ package license
 import (
 	"context"
 	"encoding/json"
-	"reflect"
 	"testing"
 	"time"
 
@@ -35,7 +34,7 @@ func Test_nextReconcileRelativeTo(t *testing.T) {
 	tests := []struct {
 		name string
 		args args
-		want reconcile.Result
+		want time.Duration
 	}{
 		{
 			name: "no expiry found, retry after",
@@ -43,9 +42,7 @@ func Test_nextReconcileRelativeTo(t *testing.T) {
 				expiry: time.Time{},
 				safety: 30 * 24 * time.Hour,
 			},
-			want: reconcile.Result{
-				RequeueAfter: minimumRetryInterval,
-			},
+			want: minimumRetryInterval,
 		},
 		{
 			name: "remaining time too short: requeue after default 10s interval",
@@ -53,7 +50,7 @@ func Test_nextReconcileRelativeTo(t *testing.T) {
 				expiry: chrono.MustParseTime("2019-02-02"),
 				safety: 30 * 24 * time.Hour,
 			},
-			want: reconcile.Result{RequeueAfter: reconciler.DefaultRequeue},
+			want: reconciler.DefaultRequeue,
 		},
 		{
 			name: "default: requeue after expiry - safety/2",
@@ -61,12 +58,12 @@ func Test_nextReconcileRelativeTo(t *testing.T) {
 				expiry: chrono.MustParseTime("2019-02-03"),
 				safety: 48 * time.Hour,
 			},
-			want: reconcile.Result{RequeueAfter: 24 * time.Hour},
+			want: 24 * time.Hour,
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if got := nextReconcileRelativeTo(now, tt.args.expiry, tt.args.safety); !reflect.DeepEqual(got, tt.want) {
+			if got := nextReconcileRelativeTo(now, tt.args.expiry, tt.args.safety); got != tt.want {
 				t.Errorf("nextReconcileRelativeTo() = %v, want %v", got, tt.want)
 			}
 		})
