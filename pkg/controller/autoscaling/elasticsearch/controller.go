@@ -360,8 +360,5 @@ func defaultResult(autoscalingSpecification v1alpha1.AutoscalingResource) *recon
 	if pollingPeriod != nil {
 		requeueAfter = pollingPeriod.Duration
 	}
-	return results.WithResult(
-		reconcile.Result{
-			RequeueAfter: requeueAfter,
-		})
+	return results.WithRequeue(requeueAfter)
 }

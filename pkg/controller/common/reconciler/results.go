@@ -130,7 +130,6 @@ func (r *Results) WithRequeue(requeueAfter ...time.Duration) *Results {
 }
 
 // WithResult adds a result to the results.
-// Deprecated: use WithRequeue instead.
 func (r *Results) WithResult(res reconcile.Result) *Results {
 	incomplete := res.RequeueAfter > 0 || !res.IsZero()
 	r.WithReconciliationState(ReconciliationState{incomplete: incomplete, Result: res})

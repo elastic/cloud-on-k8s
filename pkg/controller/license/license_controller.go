@@ -84,25 +84,20 @@ func newReconciler(mgr manager.Manager, params operator.Parameters) *ReconcileLi
 	}
 }
 
-func nextReconcile(expiry time.Time, safety time.Duration) reconcile.Result {
+func nextReconcile(expiry time.Time, safety time.Duration) time.Duration {
 	return nextReconcileRelativeTo(time.Now(), expiry, safety)
 }
 
-func nextReconcileRelativeTo(now, expiry time.Time, safety time.Duration) reconcile.Result {
+func nextReconcileRelativeTo(now, expiry time.Time, safety time.Duration) time.Duration {
 	// short-circuit to default if no expiry given
 	if expiry.IsZero() {
-		return reconcile.Result{
-			RequeueAfter: minimumRetryInterval,
-		}
+		return minimumRetryInterval
 	}
 	requeueAfter := expiry.Add(-1 * (safety / 2)).Sub(now)
 	if requeueAfter <= 0 {
-		return reconcile.Result{RequeueAfter: reconciler.DefaultRequeue}
+		return reconciler.DefaultRequeue
 	}
-	return reconcile.Result{
-		// requeue at expiry minus safetyMargin/2 to ensure we actually reissue a license on the next attempt
-		RequeueAfter: requeueAfter,
-	}
+	return requeueAfter
 }
 
 // addWatches adds a new Controller to mgr with r as the reconcile.Reconciler
@@ -278,5 +273,5 @@ func (r *ReconcileLicenses) reconcileInternal(ctx context.Context, request recon
 		// don't apply safety margin if we don't have a license but use requested requeue time as specified in newExpiry
 		margin = 0
 	}
-	return res.WithResult(nextReconcile(newExpiry, margin))
+	return res.WithRequeue(nextReconcile(newExpiry, margin))
 }
