@@ -37,14 +37,14 @@ func TestShouldRotateIn(t *testing.T) {
 			now:                now,
 			certExpiration:     now.Add(10 * time.Hour),
 			caCertRotateBefore: 20 * time.Hour,
-			want:               0 * time.Second,
+			want:               1 * time.Second,
 		},
 		{
 			name:               "cert already expired, requeue asap",
 			now:                now,
 			certExpiration:     now.Add(-1 * time.Hour),
 			caCertRotateBefore: 10 * time.Hour,
-			want:               0 * time.Second,
+			want:               1 * time.Second,
 		},
 	}
 	for _, tt := range tests {

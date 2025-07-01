@@ -124,7 +124,7 @@ func (r *Results) WithError(err error) *Results {
 // See DefaultRequeue for the default interval.
 func (r *Results) WithRequeue(requeueAfter ...time.Duration) *Results {
 	ra := DefaultRequeue
-	if len(requeueAfter) > 0 {
+	if len(requeueAfter) > 0 && requeueAfter[0] > 0 {
 		ra = requeueAfter[0]
 	}
 	return r.WithResult(reconcile.Result{RequeueAfter: ra})

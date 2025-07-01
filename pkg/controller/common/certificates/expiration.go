@@ -30,8 +30,8 @@ func ShouldRotateIn(now time.Time, certExpiration time.Time, certRotateBefore ti
 	requeueTime := certExpiration.Add(-safetyMargin)
 	requeueIn := requeueTime.Sub(now)
 	if requeueIn < 0 {
-		// requeue asap
-		requeueIn = 0
+		// requeue asap (requeueAfter > 0)
+		requeueIn = 1 * time.Second
 	}
 	return requeueIn
 }
