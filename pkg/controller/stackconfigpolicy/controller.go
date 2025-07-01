@@ -54,7 +54,7 @@ const (
 )
 
 var (
-	// defaultRequeue is the default requeue interval for this controller. It islonger than the default interval used else where to account
+	// defaultRequeue is the default requeue interval for this controller. It is longer than the default interval used elsewhere to account
 	// for secret propagation times and the time it takes for Elasticsearch to observe the updates.
 	defaultRequeue = 30 * time.Second
 )
