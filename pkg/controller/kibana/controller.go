@@ -178,7 +178,7 @@ func (r *ReconcileKibana) doReconcile(ctx context.Context, request reconcile.Req
 		statusErr := r.updateStatus(ctx, state)
 		if statusErr != nil && apierrors.IsConflict(statusErr) {
 			log.V(1).Info("Conflict while updating status", "namespace", kb.Namespace, "kibana_name", kb.Name)
-			result = reconcile.Result{Requeue: true}
+			result = reconcile.Result{RequeueAfter: reconciler.DefaultRequeue}
 		} else if statusErr != nil {
 			finalError := statusErr
 			if err != nil {

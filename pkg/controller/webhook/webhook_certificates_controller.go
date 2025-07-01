@@ -82,9 +82,7 @@ func (r *ReconcileWebhookResources) reconcileInternal(ctx context.Context) *reco
 		)
 	}
 
-	res.WithResult(reconcile.Result{
-		RequeueAfter: certificates.ShouldRotateIn(time.Now(), serverCA.Cert.NotAfter, r.webhookParams.Rotation.RotateBefore),
-	})
+	res.WithRequeue(certificates.ShouldRotateIn(time.Now(), serverCA.Cert.NotAfter, r.webhookParams.Rotation.RotateBefore))
 	return res
 }
 

@@ -159,7 +159,7 @@ func (r *ReconcileLogstash) Reconcile(ctx context.Context, request reconcile.Req
 	if err != nil {
 		if apierrors.IsConflict(err) {
 			logger.V(1).Info("Conflict while updating status. Requeueing", "namespace", logstash.Namespace, "ls_name", logstash.Name)
-			return reconcile.Result{Requeue: true}, nil
+			return results.WithRequeue().Aggregate()
 		}
 		k8s.MaybeEmitErrorEvent(r.recorder, err, logstash, events.EventReconciliationError, "Reconciliation error: %v", err)
 	}

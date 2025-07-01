@@ -7,7 +7,6 @@ package remotecluster
 import (
 	"context"
 	"fmt"
-	"time"
 
 	"go.elastic.co/apm/v2"
 	corev1 "k8s.io/api/core/v1"
@@ -43,10 +42,6 @@ const (
 	name = "remotecluster-controller"
 
 	EventReasonClusterCaCertNotFound = "ClusterCaCertNotFound"
-)
-
-var (
-	defaultRequeue = reconcile.Result{Requeue: true, RequeueAfter: 10 * time.Second}
 )
 
 // Add creates a new ReconcileRemoteClusters Controller and adds it to the manager with default RBAC.
@@ -150,7 +145,7 @@ func doReconcile(
 
 	enabled, err := r.licenseChecker.EnterpriseFeaturesEnabled(ctx)
 	if err != nil {
-		return defaultRequeue, err
+		return reconcile.Result{RequeueAfter: reconciler.DefaultRequeue}, err
 	}
 	if !enabled && len(expectedRemoteClients) > 0 {
 		log.V(1).Info(
@@ -182,7 +177,7 @@ func doReconcile(
 		// API keys in this cluster.
 		if !services.NewElasticsearchURLProvider(*remoteServer, r.Client).HasEndpoints() {
 			log.Info("Elasticsearch API is not available yet")
-			return results.WithResult(defaultRequeue).Aggregate()
+			return results.WithRequeue().Aggregate()
 		}
 		// Create a new client
 		newEsClient, err := r.esClientProvider(ctx, r.Client, r.Dialer, *remoteServer)

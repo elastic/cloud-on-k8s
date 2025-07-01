@@ -7,7 +7,6 @@ package license
 import (
 	"context"
 	"encoding/json"
-	"reflect"
 	"testing"
 	"time"
 
@@ -20,6 +19,7 @@ import (
 
 	esv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/elasticsearch/v1"
 	commonlicense "github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/license"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/reconciler"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/client"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/chrono"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/k8s"
@@ -34,38 +34,36 @@ func Test_nextReconcileRelativeTo(t *testing.T) {
 	tests := []struct {
 		name string
 		args args
-		want reconcile.Result
+		want time.Duration
 	}{
 		{
-			name: "no expiry found, retry after ",
+			name: "no expiry found, retry after",
 			args: args{
 				expiry: time.Time{},
 				safety: 30 * 24 * time.Hour,
 			},
-			want: reconcile.Result{
-				RequeueAfter: minimumRetryInterval,
-			},
+			want: minimumRetryInterval,
 		},
 		{
-			name: "remaining time too short: requeue immediately ",
+			name: "remaining time too short: requeue after default 10s interval",
 			args: args{
 				expiry: chrono.MustParseTime("2019-02-02"),
 				safety: 30 * 24 * time.Hour,
 			},
-			want: reconcile.Result{Requeue: true},
+			want: reconciler.DefaultRequeue,
 		},
 		{
-			name: "default: requeue after expiry - safety/2 ",
+			name: "default: requeue after expiry - safety/2",
 			args: args{
 				expiry: chrono.MustParseTime("2019-02-03"),
 				safety: 48 * time.Hour,
 			},
-			want: reconcile.Result{RequeueAfter: 24 * time.Hour},
+			want: 24 * time.Hour,
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if got := nextReconcileRelativeTo(now, tt.args.expiry, tt.args.safety); !reflect.DeepEqual(got, tt.want) {
+			if got := nextReconcileRelativeTo(now, tt.args.expiry, tt.args.safety); got != tt.want {
 				t.Errorf("nextReconcileRelativeTo() = %v, want %v", got, tt.want)
 			}
 		})
@@ -125,7 +123,6 @@ func TestReconcileLicenses_reconcileInternal(t *testing.T) {
 		k8sResources       []crclient.Object
 		wantErr            string
 		wantClusterLicense bool
-		wantRequeue        bool
 		wantRequeueAfter   bool
 	}{
 		{
@@ -134,7 +131,6 @@ func TestReconcileLicenses_reconcileInternal(t *testing.T) {
 			k8sResources:       []crclient.Object{cluster},
 			wantErr:            "",
 			wantClusterLicense: false,
-			wantRequeue:        false,
 			wantRequeueAfter:   false,
 		},
 		{
@@ -146,7 +142,6 @@ func TestReconcileLicenses_reconcileInternal(t *testing.T) {
 			}}},
 			wantErr:            "",
 			wantClusterLicense: false,
-			wantRequeue:        false,
 			wantRequeueAfter:   false,
 		},
 		{
@@ -158,7 +153,6 @@ func TestReconcileLicenses_reconcileInternal(t *testing.T) {
 			},
 			wantErr:            "",
 			wantClusterLicense: true,
-			wantRequeue:        false,
 			wantRequeueAfter:   true,
 		},
 		{
@@ -170,7 +164,6 @@ func TestReconcileLicenses_reconcileInternal(t *testing.T) {
 			},
 			wantErr:            "",
 			wantClusterLicense: true,
-			wantRequeue:        false,
 			wantRequeueAfter:   true,
 		},
 		{
@@ -182,7 +175,6 @@ func TestReconcileLicenses_reconcileInternal(t *testing.T) {
 			},
 			wantErr:            "",
 			wantClusterLicense: false,
-			wantRequeue:        false,
 			wantRequeueAfter:   false,
 		},
 	}
@@ -200,12 +192,8 @@ func TestReconcileLicenses_reconcileInternal(t *testing.T) {
 				return
 			}
 			require.NoError(t, err)
-			if tt.wantRequeue {
-				require.True(t, res.Requeue)
-				require.Zero(t, res.RequeueAfter)
-			}
+
 			if tt.wantRequeueAfter {
-				require.False(t, res.Requeue)
 				require.NotZero(t, res.RequeueAfter)
 			}
 			// verify that a cluster license was created

@@ -53,7 +53,6 @@ const (
 // licenseCheckRequeue is the default duration used to retry a licence check if the cluster is supposed to be managed by
 // the autoscaling controller and if the licence is not valid.
 var licenseCheckRequeue = reconcile.Result{
-	Requeue:      true,
 	RequeueAfter: 60 * time.Second,
 }
 
@@ -242,7 +241,7 @@ func (r *ReconcileElasticsearchAutoscaler) Reconcile(ctx context.Context, reques
 	// Update the Elasticsearch resource
 	if err := r.Client.Update(ctx, reconciledEs); err != nil {
 		if apierrors.IsConflict(err) {
-			return results.WithResult(reconcile.Result{Requeue: true}).Aggregate()
+			return results.WithRequeue().Aggregate()
 		}
 		return results.WithError(err).Aggregate()
 	}
@@ -344,7 +343,7 @@ func (r *ReconcileElasticsearchAutoscaler) updateStatus(
 				"esa_name", esa.Name,
 				"error", err.Error(),
 			)
-			return results.WithResult(reconcile.Result{Requeue: true}).Aggregate()
+			return results.WithRequeue().Aggregate()
 		}
 		return results.WithError(tracing.CaptureError(ctx, err)).Aggregate()
 	}
@@ -361,9 +360,5 @@ func defaultResult(autoscalingSpecification v1alpha1.AutoscalingResource) *recon
 	if pollingPeriod != nil {
 		requeueAfter = pollingPeriod.Duration
 	}
-	return results.WithResult(
-		reconcile.Result{
-			Requeue:      true,
-			RequeueAfter: requeueAfter,
-		})
+	return results.WithRequeue(requeueAfter)
 }

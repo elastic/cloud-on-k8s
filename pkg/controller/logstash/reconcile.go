@@ -18,7 +18,6 @@ import (
 	"k8s.io/client-go/kubernetes/scheme"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
-	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
 	"github.com/pkg/errors"
 
@@ -44,7 +43,7 @@ func reconcileStatefulSet(params Params, podTemplate corev1.PodTemplateSpec) (*r
 	}
 
 	if !ok {
-		return results.WithResult(reconcile.Result{Requeue: true}), params.Status
+		return results.WithRequeue(), params.Status
 	}
 
 	expected := sset.New(sset.Params{
@@ -65,7 +64,7 @@ func reconcileStatefulSet(params Params, podTemplate corev1.PodTemplateSpec) (*r
 	if err != nil {
 		if apierrors.IsConflict(err) {
 			ulog.FromContext(params.Context).V(1).Info("Conflict while recreating stateful set, requeueing", "message", err)
-			return results.WithResult(reconcile.Result{Requeue: true}), params.Status
+			return results.WithRequeue(), params.Status
 		}
 		return results.WithError(fmt.Errorf("StatefulSet recreation: %w", err)), params.Status
 	}
@@ -77,7 +76,7 @@ func reconcileStatefulSet(params Params, podTemplate corev1.PodTemplateSpec) (*r
 		// the sset doesn't exist (was just deleted), but the Pods do actually exist.
 		ulog.FromContext(params.Context).V(1).Info("StatefulSets recreation in progress, re-queueing after 30 seconds.", "namespace", params.Logstash.Namespace, "ls_name", params.Logstash.Name,
 			"status", params.Status)
-		return results.WithResult(reconcile.Result{RequeueAfter: 30 * time.Second}), params.Status
+		return results.WithRequeue(30 * time.Second), params.Status
 	}
 
 	actualStatefulSet, err := retrieveActualStatefulSet(params.Client, params.Logstash)
@@ -93,7 +92,7 @@ func reconcileStatefulSet(params Params, podTemplate corev1.PodTemplateSpec) (*r
 			return results.WithError(err), params.Status
 		}
 		if recreateSset {
-			return results.WithResult(reconcile.Result{Requeue: true}), params.Status
+			return results.WithRequeue(), params.Status
 		}
 	}
 

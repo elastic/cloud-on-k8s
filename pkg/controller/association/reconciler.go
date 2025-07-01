@@ -10,7 +10,6 @@ import (
 	"hash"
 	"hash/fnv"
 	"reflect"
-	"time"
 
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/metadata"
 
@@ -43,7 +42,7 @@ import (
 )
 
 var (
-	defaultRequeue = reconcile.Result{Requeue: true, RequeueAfter: 10 * time.Second}
+	defaultRequeue = reconcile.Result{RequeueAfter: reconciler.DefaultRequeue}
 )
 
 // AssociationInfo contains information specific to a particular associated resource (eg. Kibana, APMServer, etc.).
@@ -217,7 +216,7 @@ func (r *Reconciler) Reconcile(ctx context.Context, request reconcile.Request) (
 			"Conflict while updating status",
 			"namespace", associatedKey.Namespace,
 			"name", associatedKey.Name)
-		return results.WithResult(reconcile.Result{Requeue: true}).Aggregate()
+		return results.WithRequeue().Aggregate()
 	} else if err != nil {
 		return defaultRequeue, tracing.CaptureError(ctx, errors.Wrapf(err, "while updating status"))
 	}

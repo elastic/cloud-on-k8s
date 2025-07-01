@@ -14,19 +14,21 @@ import (
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/tracing"
 )
 
+const DefaultRequeue = time.Second * 10
+
 type resultKind int
 
 const (
 	noqueueKind  resultKind = iota // reconcile.Result{}
 	specificKind                   // reconcile.Result{RequeueAfter: x}
-	genericKind                    // reconcile.Result{Requeue: true}
+	genericKind                    // reconcile.Result{Requeue: true} (deprecated)
 )
 
 func kindOf(r reconcile.Result) resultKind {
 	switch {
 	case r.RequeueAfter > 0:
 		return specificKind
-	case r.Requeue:
+	case r.Requeue: //nolint:staticcheck // keep supporting Requeue as long as the field is still in the struct
 		return genericKind
 	default:
 		return noqueueKind
@@ -41,7 +43,7 @@ type Results struct {
 	ctx        context.Context
 }
 
-var Requeue = ReconciliationState{Result: reconcile.Result{Requeue: true}}
+var Requeue = ReconciliationState{Result: reconcile.Result{RequeueAfter: DefaultRequeue}}
 
 func RequeueAfter(requeueAfter time.Duration) ReconciliationState {
 	return ReconciliationState{
@@ -97,7 +99,7 @@ func (r *Results) HasRequeue() bool {
 	if r == nil {
 		return false
 	}
-	return r.currResult.Result.Requeue || r.currResult.Result.RequeueAfter > 0
+	return r.currResult.Result.Requeue || r.currResult.Result.RequeueAfter > 0 //nolint:staticcheck // keep supporting Requeue as long as the field is still in the struct
 }
 
 // WithResults appends the results and error from the other Results.
@@ -117,9 +119,20 @@ func (r *Results) WithError(err error) *Results {
 	return r
 }
 
+// WithRequeue adds a requeue result to the Results, indicating the reconciliation should be retried after the specified interval or the default interval if none is provided.
+// If provided only the first argument is used, any additional arguments are ignored.
+// See DefaultRequeue for the default interval.
+func (r *Results) WithRequeue(requeueAfter ...time.Duration) *Results {
+	ra := DefaultRequeue
+	if len(requeueAfter) > 0 && requeueAfter[0] > 0 {
+		ra = requeueAfter[0]
+	}
+	return r.WithResult(reconcile.Result{RequeueAfter: ra})
+}
+
 // WithResult adds a result to the results.
 func (r *Results) WithResult(res reconcile.Result) *Results {
-	incomplete := res.Requeue || !res.IsZero()
+	incomplete := res.RequeueAfter > 0 || !res.IsZero()
 	r.WithReconciliationState(ReconciliationState{incomplete: incomplete, Result: res})
 	return r
 }

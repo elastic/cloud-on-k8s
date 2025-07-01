@@ -7,6 +7,7 @@ package reconciler
 import (
 	"context"
 	"fmt"
+	"reflect"
 	"testing"
 	"time"
 
@@ -212,6 +213,47 @@ func TestResults_IsReconciled(t *testing.T) {
 			}
 			if gotReason != tt.wantReason {
 				t.Errorf("Results.IsReconciled() got1 = %v, want %v", gotReason, tt.wantReason)
+			}
+		})
+	}
+}
+
+func TestResults_WithRequeue(t *testing.T) {
+	type args struct {
+		requeueAfter []time.Duration
+	}
+	tests := []struct {
+		name string
+		args args
+		want reconcile.Result
+	}{
+		{
+			name: "default requeue",
+			args: args{
+				requeueAfter: nil,
+			},
+			want: reconcile.Result{Requeue: false, RequeueAfter: 10 * time.Second},
+		},
+		{
+			name: "0s requeue is forced to default requeue",
+			args: args{
+				requeueAfter: []time.Duration{0},
+			},
+			want: reconcile.Result{Requeue: false, RequeueAfter: 10 * time.Second},
+		},
+		{
+			name: "custom requeue",
+			args: args{
+				requeueAfter: []time.Duration{15 * time.Second},
+			},
+			want: reconcile.Result{Requeue: false, RequeueAfter: 15 * time.Second},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			r := &Results{}
+			if got := r.WithRequeue(tt.args.requeueAfter...); !reflect.DeepEqual(got.currResult.Result, tt.want) {
+				t.Errorf("Results.WithRequeue() = %v, want %v", got.currResult.Result, tt.want)
 			}
 		})
 	}
