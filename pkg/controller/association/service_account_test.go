@@ -14,8 +14,6 @@ import (
 	"strconv"
 	"testing"
 
-	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/metadata"
-
 	"github.com/stretchr/testify/assert"
 	"golang.org/x/crypto/pbkdf2"
 	corev1 "k8s.io/api/core/v1"
@@ -25,6 +23,7 @@ import (
 	commonv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/common/v1"
 	esv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/elasticsearch/v1"
 	kbv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/kibana/v1"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/metadata"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/k8s"
 )
 
@@ -104,12 +103,13 @@ var (
 func Test_ReconcileServiceAccounts(t *testing.T) {
 	type args struct {
 		client         k8s.Client
-		applicationUID types.UID
+		kibana         *kbv1.Kibana
 		serviceAccount commonv1.ServiceAccountName
 	}
 	tests := []struct {
 		name                                 string
 		args                                 args
+		wantTokenName                        string
 		wantNewToken                         bool
 		wantKibanaUserResourceVersion        string
 		wantElasticsearchUserResourceVersion string
@@ -119,7 +119,6 @@ func Test_ReconcileServiceAccounts(t *testing.T) {
 			name: "both secrets do not exist",
 			args: args{
 				client:         k8s.NewFakeClient(existingElasticsearch.DeepCopy(), existingKibana.DeepCopy()),
-				applicationUID: existingKibana.UID,
 				serviceAccount: "kibana",
 			},
 			wantNewToken:                         true,
@@ -135,8 +134,6 @@ func Test_ReconcileServiceAccounts(t *testing.T) {
 					expectedKibanaUserSecret.DeepCopy(),
 					expectedElasticsearchUserSecret.DeepCopy(),
 				),
-				// Kibana resource UID
-				applicationUID: existingKibana.UID,
 				serviceAccount: "kibana",
 			},
 			wantKibanaUserResourceVersion:        "3442951", // not updated
@@ -150,8 +147,6 @@ func Test_ReconcileServiceAccounts(t *testing.T) {
 					existingKibana.DeepCopy(),
 					expectedKibanaUserSecret.DeepCopy(),
 				),
-				// Kibana resource UID
-				applicationUID: existingKibana.UID,
 				serviceAccount: "kibana",
 			},
 			wantKibanaUserResourceVersion:        "3442951", // not updated
@@ -165,12 +160,27 @@ func Test_ReconcileServiceAccounts(t *testing.T) {
 					existingKibana.DeepCopy(),
 					expectedElasticsearchUserSecret.DeepCopy(),
 				),
-				// Kibana resource UID
-				applicationUID: existingKibana.UID,
 				serviceAccount: "kibana",
 			},
 			wantNewToken:                         true,
 			wantKibanaUserResourceVersion:        "1",       // new Secret
+			wantElasticsearchUserResourceVersion: "3443558", // updated with new token
+		},
+		{
+			name: "Kibana has been recreated, secret should be updated with new token",
+			args: args{
+				kibana: withUID(existingKibana.DeepCopy(), "af37b7aa-8014-4016-8fe4-53e96e752fa0"),
+				client: k8s.NewFakeClient(
+					existingElasticsearch.DeepCopy(),
+					withUID(existingKibana.DeepCopy(), "af37b7aa-8014-4016-8fe4-53e96e752fa0"),
+					expectedKibanaUserSecret.DeepCopy(), // Secret with the old UID
+					expectedElasticsearchUserSecret.DeepCopy(),
+				),
+				serviceAccount: "kibana",
+			},
+			wantTokenName:                        "e2e-venus_kibana-sample_af37b7aa-8014-4016-8fe4-53e96e752fa0",
+			wantNewToken:                         true,
+			wantKibanaUserResourceVersion:        "3442952", //  Secret holding the service account has been updated
 			wantElasticsearchUserResourceVersion: "3443558", // updated with new token
 		},
 	}
@@ -187,6 +197,11 @@ func Test_ReconcileServiceAccounts(t *testing.T) {
 			}
 			applicationSecretName := types.NamespacedName{Namespace: "e2e-venus", Name: "kibana-sample-kibana-user"}
 			elasticsearchSecretName := types.NamespacedName{Namespace: "e2e-mercury", Name: "e2e-venus-kibana-sample-kibana-user"}
+			existingKibana := existingKibana.DeepCopy()
+			if tt.args.kibana != nil {
+				// If a specific Kibana object is provided, use it instead of the existing one
+				existingKibana = tt.args.kibana.DeepCopy()
+			}
 			err := ReconcileServiceAccounts(
 				context.Background(),
 				tt.args.client,
@@ -195,8 +210,7 @@ func Test_ReconcileServiceAccounts(t *testing.T) {
 				applicationSecretName,
 				elasticsearchSecretName,
 				tt.args.serviceAccount,
-				existingKibana.Name,
-				existingKibana.UID,
+				existingKibana.DeepCopy(),
 			)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("store.EnsureTokenExists() error = %v, wantErr %v", err, tt.wantErr)
@@ -222,7 +236,11 @@ func Test_ReconcileServiceAccounts(t *testing.T) {
 
 			name, exist := reconciledKibanaSecret.Data["name"]
 			assert.True(t, exist)
-			assert.Equal(t, "e2e-venus_kibana-sample_892ff7d8-9cf2-48f0-89bc-5a530e77a930", string(name))
+			expectedTokenName := "e2e-venus_kibana-sample_892ff7d8-9cf2-48f0-89bc-5a530e77a930"
+			if tt.wantTokenName != "" {
+				expectedTokenName = tt.wantTokenName
+			}
+			assert.Equal(t, expectedTokenName, string(name))
 
 			hash, exist := reconciledKibanaSecret.Data["hash"]
 			assert.True(t, exist)
@@ -232,7 +250,8 @@ func Test_ReconcileServiceAccounts(t *testing.T) {
 			assert.Equal(t, 2, len(reconciledElasticsearchSecret.Data))
 			esName, exist := reconciledElasticsearchSecret.Data["name"]
 			assert.True(t, exist)
-			assert.Equal(t, "elastic/kibana/e2e-venus_kibana-sample_892ff7d8-9cf2-48f0-89bc-5a530e77a930", string(esName))
+			expectedESName := "elastic/kibana/" + expectedTokenName
+			assert.Equal(t, expectedESName, string(esName))
 
 			esHash, exist := reconciledElasticsearchSecret.Data["hash"]
 			assert.True(t, exist)
@@ -259,6 +278,12 @@ func Test_ReconcileServiceAccounts(t *testing.T) {
 			}
 		})
 	}
+}
+
+func withUID(object *kbv1.Kibana, uid string) *kbv1.Kibana {
+	// Set the UID of the object to a specific value for testing purposes
+	object.SetUID(types.UID(uid))
+	return object
 }
 
 func Test_newApplicationToken(t *testing.T) {

@@ -23,6 +23,7 @@ import (
 	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	commonv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/common/v1"
 	esv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/elasticsearch/v1"
@@ -67,6 +68,7 @@ func reconcileApplicationSecret(
 	meta metadata.Metadata,
 	tokenName string,
 	serviceAccount commonv1.ServiceAccountName,
+	application client.Object,
 ) (*Token, error) {
 	span, ctx := apm.StartSpan(ctx, "reconcile_sa_token_application", tracing.SpanTypeApp)
 	defer span.End()
@@ -112,7 +114,7 @@ func reconcileApplicationSecret(
 		},
 	}
 
-	if _, err := reconciler.ReconcileSecret(ctx, client, applicationStore, nil); err != nil {
+	if _, err := reconciler.ReconcileSecret(ctx, client, applicationStore, application); err != nil {
 		return nil, err
 	}
 
@@ -125,12 +127,12 @@ func getOrCreateToken(
 	secretName string,
 	secretData map[string][]byte,
 	serviceAccountName commonv1.ServiceAccountName,
-	tokenName string,
+	expectedTokenName string,
 ) (*Token, error) {
 	token := getCurrentApplicationToken(ctx, es, secretName, secretData)
-	if token == nil {
+	if token == nil || token.TokenName != expectedTokenName {
 		// We need to create a new token
-		return newApplicationToken(serviceAccountName, tokenName)
+		return newApplicationToken(serviceAccountName, expectedTokenName)
 	}
 	return token, nil
 }
@@ -176,11 +178,10 @@ func ReconcileServiceAccounts(
 	applicationSecretName types.NamespacedName,
 	elasticsearchSecretName types.NamespacedName,
 	serviceAccount commonv1.ServiceAccountName,
-	applicationName string,
-	applicationUID types.UID,
+	application client.Object,
 ) error {
-	tokenName := tokenName(applicationSecretName.Namespace, applicationName, applicationUID)
-	token, err := reconcileApplicationSecret(ctx, client, es, applicationSecretName, meta, tokenName, serviceAccount)
+	tokenName := tokenName(applicationSecretName.Namespace, application.GetName(), application.GetUID())
+	token, err := reconcileApplicationSecret(ctx, client, es, applicationSecretName, meta, tokenName, serviceAccount, application)
 	if err != nil {
 		return err
 	}

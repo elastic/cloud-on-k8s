@@ -381,8 +381,7 @@ func (r *Reconciler) reconcileAssociation(ctx context.Context, association commo
 			applicationSecretName,
 			UserKey(association, es.Namespace, r.ElasticsearchUserCreation.UserSecretSuffix),
 			serviceAccount,
-			association.GetName(),
-			association.GetUID(),
+			association.Associated(),
 		)
 		if err != nil {
 			return commonv1.AssociationFailed, err
