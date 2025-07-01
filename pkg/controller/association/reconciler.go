@@ -10,7 +10,6 @@ import (
 	"hash"
 	"hash/fnv"
 	"reflect"
-	"time"
 
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/metadata"
 
@@ -43,7 +42,7 @@ import (
 )
 
 var (
-	defaultRequeue = reconcile.Result{RequeueAfter: 10 * time.Second}
+	defaultRequeue = reconcile.Result{RequeueAfter: reconciler.DefaultRequeue}
 )
 
 // AssociationInfo contains information specific to a particular associated resource (eg. Kibana, APMServer, etc.).

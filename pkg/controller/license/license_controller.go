@@ -93,6 +93,7 @@ func nextReconcileRelativeTo(now, expiry time.Time, safety time.Duration) time.D
 	if expiry.IsZero() {
 		return minimumRetryInterval
 	}
+	// requeue at expiry minus safetyMargin/2 to ensure we actually reissue a license on the next attempt
 	requeueAfter := expiry.Add(-1 * (safety / 2)).Sub(now)
 	if requeueAfter <= 0 {
 		return reconciler.DefaultRequeue

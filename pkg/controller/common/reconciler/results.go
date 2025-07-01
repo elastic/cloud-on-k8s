@@ -21,14 +21,14 @@ type resultKind int
 const (
 	noqueueKind  resultKind = iota // reconcile.Result{}
 	specificKind                   // reconcile.Result{RequeueAfter: x}
-	genericKind                    // reconcile.Result{Requeue: true}
+	genericKind                    // reconcile.Result{Requeue: true} (deprecated)
 )
 
 func kindOf(r reconcile.Result) resultKind {
 	switch {
 	case r.RequeueAfter > 0:
 		return specificKind
-	case r.Requeue: //nolint:staticcheck
+	case r.Requeue: //nolint:staticcheck // keep supporting Requeue as long as the field is still in the struct
 		return genericKind
 	default:
 		return noqueueKind
@@ -99,7 +99,7 @@ func (r *Results) HasRequeue() bool {
 	if r == nil {
 		return false
 	}
-	return r.currResult.Result.Requeue || r.currResult.Result.RequeueAfter > 0 //nolint:staticcheck
+	return r.currResult.Result.Requeue || r.currResult.Result.RequeueAfter > 0 //nolint:staticcheck // keep supporting Requeue as long as the field is still in the struct
 }
 
 // WithResults appends the results and error from the other Results.
