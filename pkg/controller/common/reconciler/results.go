@@ -119,7 +119,7 @@ func (r *Results) WithError(err error) *Results {
 	return r
 }
 
-// WithRequeue adds a default requeue result to the Results, indicating the reconciliation should be retried after the default interval.
+// WithRequeue adds a requeue result to the Results, indicating the reconciliation should be retried after the specified interval or the default interval if none is provided.
 // If provided only the first argument is used, any additional arguments are ignored.
 // See DefaultRequeue for the default interval.
 func (r *Results) WithRequeue(requeueAfter ...time.Duration) *Results {
