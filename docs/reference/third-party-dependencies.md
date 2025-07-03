@@ -44,7 +44,7 @@ This page lists the third-party dependencies used to build {{eck}}.
 | [github.com/stretchr/testify](https://github.com/stretchr/testify) | v1.10.0 | MIT |
 | [go.elastic.co/apm/module/apmelasticsearch/v2](https://go.elastic.co/apm/module/apmelasticsearch/v2) | v2.7.1 | Apache-2.0 |
 | [go.elastic.co/apm/module/apmhttp/v2](https://go.elastic.co/apm/module/apmhttp/v2) | v2.7.1 | Apache-2.0 |
-| [go.elastic.co/apm/module/apmzap/v2](https://go.elastic.co/apm/module/apmzap/v2) | v2.7.0 | Apache-2.0 |
+| [go.elastic.co/apm/module/apmzap/v2](https://go.elastic.co/apm/module/apmzap/v2) | v2.7.1 | Apache-2.0 |
 | [go.elastic.co/apm/v2](https://go.elastic.co/apm/v2) | v2.7.1 | Apache-2.0 |
 | [go.uber.org/automaxprocs](https://go.uber.org/automaxprocs) | v1.6.0 | MIT |
 | [go.uber.org/zap](https://go.uber.org/zap) | v1.27.0 | MIT |

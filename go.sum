@@ -299,8 +299,8 @@ go.elastic.co/apm/module/apmelasticsearch/v2 v2.7.1 h1:nA7I325lIxf6hlVN1SdoOuVJG
 go.elastic.co/apm/module/apmelasticsearch/v2 v2.7.1/go.mod h1:+Xna0uioc2zNzfQzal40RfZ5PPLd2jRBsv49TGHmF8Y=
 go.elastic.co/apm/module/apmhttp/v2 v2.7.1 h1:1uPHesdm9nKytQ/N0bPmlS7F69oXvkzW+IlvzQuDUs8=
 go.elastic.co/apm/module/apmhttp/v2 v2.7.1/go.mod h1:DlBnNivf+eArsEI1QtUx7fygo/JDbdMIcU9+i/Wid1U=
-go.elastic.co/apm/module/apmzap/v2 v2.7.0 h1:jpfn3kLXcNpZkCPCipGdbkmi2Y7fOUeYUeoPDKSp+8Q=
-go.elastic.co/apm/module/apmzap/v2 v2.7.0/go.mod h1:31dKGp4KyNnbwIJn1Wc8zTtdxMmzutAcj6DE1dAb0kk=
+go.elastic.co/apm/module/apmzap/v2 v2.7.1 h1:s0s06RqHGauRNPk0N6xTmXaETXpNcTe6qJq3HyK2d8Q=
+go.elastic.co/apm/module/apmzap/v2 v2.7.1/go.mod h1:ZVYX+sXq++VNZDecaOsLWbCqsmIlOnmdUnaAUnGU9mQ=
 go.elastic.co/apm/v2 v2.7.1 h1:OFjARuESjBsxw7wHrEAnfSVNCHGBATXSI/kPvBARY/A=
 go.elastic.co/apm/v2 v2.7.1/go.mod h1:tQhBAjwh93b2leuAdzGwta/sP7Yc7QoKTSjeIHHDuog=
 go.elastic.co/fastjson v1.5.1 h1:zeh1xHrFH79aQ6Xsw7YxixvnOdAl3OSv0xch/jRDzko=
