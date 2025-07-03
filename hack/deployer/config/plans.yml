@@ -143,6 +143,7 @@ plans:
   machineType: c5d.2xlarge
   serviceAccount: false
   kubernetesVersion: 1.33
+  diskSetup: kubectl apply -f hack/deployer/config/local-disks/ssd-provisioner.yaml
   enforceSecurityPolicies: true
   eks:
     region: eu-west-2
