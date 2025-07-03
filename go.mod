@@ -31,7 +31,7 @@ require (
 	github.com/stretchr/testify v1.10.0
 	go.elastic.co/apm/module/apmelasticsearch/v2 v2.7.1
 	go.elastic.co/apm/module/apmhttp/v2 v2.7.1
-	go.elastic.co/apm/module/apmzap/v2 v2.7.0
+	go.elastic.co/apm/module/apmzap/v2 v2.7.1
 	go.elastic.co/apm/v2 v2.7.1
 	go.uber.org/automaxprocs v1.6.0
 	go.uber.org/zap v1.27.0
