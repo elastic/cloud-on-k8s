@@ -8795,11 +8795,11 @@ THE SOFTWARE.
 
 --------------------------------------------------------------------------------
 Module  : github.com/go-viper/mapstructure/v2
-Version : v2.2.1
-Time    : 2024-09-22T22:42:12Z
+Version : v2.3.0
+Time    : 2025-06-16T14:11:24Z
 Licence : MIT
 
-Contents of probable licence file $GOMODCACHE/github.com/go-viper/mapstructure/v2@v2.2.1/LICENSE:
+Contents of probable licence file $GOMODCACHE/github.com/go-viper/mapstructure/v2@v2.3.0/LICENSE:
 
 The MIT License (MIT)
 
