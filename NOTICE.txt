@@ -1731,11 +1731,11 @@ Exhibit B - "Incompatible With Secondary Licenses" Notice
 
 --------------------------------------------------------------------------------
 Module  : github.com/hashicorp/vault/api
-Version : v1.16.0
-Time    : 2025-02-10T19:15:50Z
+Version : v1.20.0
+Time    : 2025-06-04T18:42:15Z
 Licence : MPL-2.0
 
-Contents of probable licence file $GOMODCACHE/github.com/hashicorp/vault/api@v1.16.0/LICENSE:
+Contents of probable licence file $GOMODCACHE/github.com/hashicorp/vault/api@v1.20.0/LICENSE:
 
 Copyright (c) 2015 HashiCorp, Inc.
 
@@ -12744,11 +12744,11 @@ Exhibit B - "Incompatible With Secondary Licenses" Notice
 
 --------------------------------------------------------------------------------
 Module  : github.com/hashicorp/hcl
-Version : v1.0.0
-Time    : 2018-08-26T00:51:36Z
+Version : v1.0.1-vault-7
+Time    : 2024-11-07T22:23:56Z
 Licence : MPL-2.0
 
-Contents of probable licence file $GOMODCACHE/github.com/hashicorp/hcl@v1.0.0/LICENSE:
+Contents of probable licence file $GOMODCACHE/github.com/hashicorp/hcl@v1.0.1-vault-7/LICENSE:
 
 Mozilla Public License, version 2.0
 
