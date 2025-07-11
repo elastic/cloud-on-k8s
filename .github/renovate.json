@@ -45,6 +45,101 @@
         "docs/release-notes/index.md"
       ],
       "enabled": false
+    },
+    {
+      "matchUpdateTypes": [
+        "minor",
+        "patch",
+        "pin",
+        "digest"
+      ],
+      "enabled": true,
+      "automerge": true,
+      "postUpdateOptions": [
+        "gomodTidy"
+      ],
+      "matchPackageNames": [
+        "github.com/elastic/{/,}**",
+        "docker.elastic.co/wolfi/{/,}**"
+      ]
+    },
+    {
+      "matchUpdateTypes": [
+        "major"
+      ],
+      "enabled": true,
+      "automerge": false,
+      "postUpdateOptions": [
+        "gomodTidy"
+      ],
+      "matchPackageNames": [
+        "github.com/elastic/{/,}**"
+      ]
+    },
+    {
+      "matchUpdateTypes": [
+        "minor",
+        "patch",
+        "pin"
+      ],
+      "enabled": true,
+      "automerge": true,
+      "postUpdateOptions": [
+        "gomodTidy"
+      ],
+      "matchPackageNames": [
+        "!github.com/elastic/{/,}**"
+      ]
+    },
+    {
+      "matchUpdateTypes": [
+        "major"
+      ],
+      "enabled": true,
+      "automerge": false,
+      "postUpdateOptions": [
+        "gomodTidy"
+      ],
+      "matchPackageNames": [
+        "!github.com/elastic/{/,}**"
+      ]
+    },
+    {
+      "matchUpdateTypes": [
+        "digest"
+      ],
+      "enabled": false,
+      "matchPackageNames": [
+        "!github.com/elastic/{/,}**",
+        "!docker.elastic.co/wolfi/{/,}**"
+      ]
+    },
+    {
+      "groupName": "all ungrouped dependencies",
+      "matchPackageNames": [
+        "*"
+      ]
+    },
+    {
+      "groupName": "elastic-deps",
+      "matchPackageNames": [
+        "/^github.com/elastic/",
+        "/^go.elastic.co/"
+      ]
+    },
+    {
+      "matchPackageNames": [
+        "docker.elastic.co/ci-agent-images/eck-region/go-builder-buildkite-agent",
+        "go",
+        "golang",
+        "docker.io/library/golang",
+        "docker.elastic.co/wolfi/go",
+        "github.com/golangci/golangci-lint"
+      ],
+      "groupName": "go"
     }
-  ]
+  ],
+  "automergeStrategy": "squash",
+  "automergeType": "branch",
+  "separateMajorMinor": true
 }
