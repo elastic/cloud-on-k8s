@@ -1,0 +1,142 @@
+ifdef::env-github[]
+:tip-caption: :bulb:
+:note-caption: :information_source:
+:important-caption: :heavy_exclamation_mark:
+:caution-caption: :fire:
+:warning-caption: :warning:
+endif::[]
+
+:description: This document describes a few reference architectures for multi-tenancy in ECK deployments.
+:keywords: multi-tenancy, ECK, Elasticsearch, Kubernetes
+
+= Multi-Tenancy in ECK deployments
+
+In this recipe you will learn how to design multi-tenant deployments for Elastic Cloud on Kubernetes (ECK), focusing on some examples of different architectures and what their pros and cons are.
+
+== Disclaimer
+
+This recipe will cover the topic of multi-tenant ECK deployments. In other words, we will focus on the allocation of resources within Kubernetes. For multi-tenancy within Elasticsearch, please refer to the official Elastic documentation.
+
+== Multi-tenancy: a definition
+
+Multi-tenancy in Kubernetes refers to the ability to run multiple users, teams, or organizations (tenants) on a shared Kubernetes cluster while guaranteeing isolation, security, and resource fairness. Multi-tenancy enables efficient resource utilization and cost savings, alongside simplified operations, by avoiding the need for separate clusters for each tenant, which could end up in a so-called _cluster sprawl_.
+
+We can also "split" multi-tenancy into two sub-categories: _hard_ and _soft_ multi-tenancy. Hard multi-tenancy can be seen as "physical" separation (e.g. host-level), whereas soft multi-tenancy is more of a "logical" separation (e.g. Kubernetes namespaces).
+
+== Why does multi-tenancy matter for ECK?
+
+While multi-tenancy within Elasticsearch and Kibana is frequently discussed and well documented, the architectural task of deciding how to distribute Elastic Stack deployments on Kubernetes is oftentimes complex and highly dependent on the user's specific environment. Defining a multi-tenancy strategy requires understanding and balancing numerous implications regarding cost optimization, efficient resource allocation, the chance of dealing with noisy neighbors, the availability of the necessary hardware, and many other small yet important details.
+
+== Reference architectures
+
+=== Reference architecture #0: all-in-one
+
+In this simplified architecture, we have a single Kubernetes cluster running:
+
+- Two monitoring Elasticsearch clusters: one for productive deployments of the Elastic Stack, and one for non-productive deployments of the Stack
+- A given number of productive and non-productive Elasticsearch clusters
+
+Of course, in a real-world scenario we would most likely also have Kibana deployments and much more.
+
+image::all-in-one.jpeg[Reference architecture #0: all-in-one,align="center"]
+
+While this architecture works perfectly fine for very simple, non-mission-critical deployments, its shortcomings will appear quickly when trying to apply good engineering practices to it.
+
+In particular, we can clearly and easily see the pros:
+
+- Easy management: one Kubernetes cluster, one elastic-operator
+- Cost optimization: due to only having one Kubernetes cluster packed with pods
+
+However, the cons will soon outweigh the pros and make you resent your decision:
+
+- There is no environment in which to test Kubernetes and elastic-operator upgrades, which means each upgrade is going to be fire-and-pray.
+- Depending on the implementation, this architecture could become a noisy neighbors party. For instance, a misconfigured development cluster could saturate the underlying host's resources or bandwidth, hence degrading the performance of the pods deployed on the same host.
+
+
+
+=== Reference architecture #1: production and non-production
+
+Given the shortcomings of the previous architecture, let's move on to something that allows us to separate production workloads from the rest.
+
+image::prod-and-non-prod.jpeg[Reference architecture #1: production and non-production,align="center"]
+
+In this setup, we will have:
+
+- One "data plane" Kubernetes cluster for production workloads
+- One "data plane" Kubernetes cluster for non-production workloads
+
+We can think about different ways to distribute the Monitoring clusters. 
+
+The main two options are: 
+
+- Both the production and non-production Monitoring clusters live in a single, separate Kubernetes cluster
+- Each Monitoring cluster lives in its own Kubernetes cluster
+
+Regardless of which option is chosen, it is fundamental to separate the Monitoring Elasticsearch clusters from the other clusters. We do not want to end up in a situation where, due to some issues, we lose both our "workload" Elasticsearch clusters and their respective Monitoring clusters.
+
+This architecture seems like a good compromise as it allows us to fully separate productive and non-productive workloads. This means that we can test numerous upgrades (Kubernetes, Elasticsearch, `elastic-operator`) in a safe environment before promoting them to production. This level of isolation also guarantees that a misconfigured low environment (e.g. a Development cluster) will not affect production clusters!
+
+In the next sections, we will present two different iterations of this architecture - one relying on soft multi-tenancy, and one relying on hard multi-tenancy.
+
+==== Reference architecture #1 with team-based soft multi-tenancy
+
+In this architecture, the high-level setup remains exactly the same. What changes is the allocation of the pods in the data plane clusters. Let's focus on it:
+
+image::prod-and-non-prod-soft.jpeg[Reference architecture #1: production and non-production with soft multi-tenancy,align="center"]
+
+In this architecture, we use Kubernetes namespaces to achieve "soft" multi-tenancy. This means that each node in the Kubernetes cluster can host pods (i.e. Elasticsearch nodes) belonging to different Elasticsearch clusters and different teams. However, namespaces limit the number of people that can access them via RBAC, so that each team can only access their own workloads.
+
+The architecture presented here is most likely the sweet spot between complexity and flexibility for most multi-tenancy use cases within ECK deployments. This particular design helps in scenarios where tenants require a degree of independence in their Elastic Stack configurations, while still leveraging the operational efficiencies provided by a shared Kubernetes infrastructure.
+
+==== Reference architecture #1 with team-based hard multi-tenancy
+
+This architecture is a bit more convoluted than the previous one, but it might be interesting in case there is a need to "physically" separate the various Elasticsearch clusters. Similarly to before, the high-level setup remains exactly the same as Reference Architecture #1. What changes is the allocation of the pods in the data plane clusters.
+
+image::prod-and-non-prod-hard.jpeg[Reference architecture #1: production and non-production with hard multi-tenancy,align="center"]
+
+In this architecture, we use Kubernetes namespaces to achieve "soft" multi-tenancy, and pair that with Kubernetes taints, tolerations, and nodeAffinity to ensure "hard" multi-tenancy, so that a node in the Kubernetes cluster will only host pods for Elasticsearch clusters belonging to the same team. This scenario enforces stricter separation of concerns, but comes at a cost: it is in fact highly unlikely that such a deployment would allow for a similar level of resource and cost efficiency, since it probably requires more nodes to be added to the Kubernetes cluster than strictly necessary, likely ending up with some of them being under-utilized.
+
+An example of Elasticsearch CR follows. We assume that nodes are tainted and labeled as shown, for demo purposes.
+
+[source,yaml]
+----
+include::01-config.yaml[]
+----
+
+It would even be possible to take this architecture one step further, enforcing a node in the Kubernetes cluster to only host pods for a single Elasticsearch cluster, guaranteeing an even higher level of resource isolation - but also a lower level of resource efficiency.
+
+=== Reference architecture #2: one Kubernetes cluster per Elasticsearch deployment
+
+Many Elastic Stack admins opt for having 1:1 mapping between Elasticsearch clusters and Kubernetes clusters, meaning that each Kubernetes cluster is fully dedicated to one single Elasticsearch cluster. This allows for even stronger hard multi-tenancy (assuming this can be considered multi-tenancy) and does not require configurations such as the taints and tolerations, but requires the capability to run a fleet of Kubernetes clusters, which is a task on its own. In other words, in this case customers will intentionally decide to have a fleet of Kubernetes clusters, and will have all the needed automation to manage them. If no such automation is available, it is almost guaranteed that the final outcome will be an impossible-to-manage Kubernetes and Elasticsearch cluster sprawl. 
+
+In summary, such an architecture is 100% valid for many use-cases, but is not covered in depth in this article as such a design does not pose multi-tenancy challenges - each tenant simply gets their own infrastructure.
+
+== Conclusions
+
+=== Takeaway #1
+
+There are numerous layers at which we can tackle ECK multi-tenancy:
+
+- Within the Elasticsearch cluster
+- Within the Kubernetes cluster, logically
+- Within the Kubernetes cluster, "physically"
+- At the cloud provider layer (security groups, NACLs, …)
+…
+
+Ideally, a combination of the above will allow us to achieve our desired goal
+
+=== Takeaway #2
+
+As always, there is no such thing as a free lunch:
+
+- More nodes = more "wasted" resources:
+  - DaemonSets have a higher impact in percentage of resources used
+  - It becomes harder to do bin-packing
+- More Load Balancers = higher base cost
+- More Kubernetes clusters = higher base cost
+
+=== Takeaway #3
+
+As often, what looks perfect on paper is not always the best solution in practice:
+- Some architectures that look perfect can be hard to manage, lead to way-too-high cost, and end up in worse UX than simpler, slightly-less-perfect solutions
+- Kubernetes was born to run tens of pods on the same node. Forcing a node to run just 1 or 2 actual workloads because we don't trust Kubernetes to handle them properly might not be a great idea... unless we actually don't trust ourselves to be able to come up with a proper configuration

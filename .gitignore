@@ -73,3 +73,6 @@ Chart.lock
 # build
 build/dev*
 build/eck*
+
+# macOS specific files
+.DS_Store
