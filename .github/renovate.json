@@ -73,7 +73,7 @@
         "gomodTidy"
       ],
       "matchPackageNames": [
-        "github.com/elastic/{/,}**"
+        "*"
       ]
     },
     {
@@ -84,19 +84,6 @@
       ],
       "enabled": true,
       "automerge": true,
-      "postUpdateOptions": [
-        "gomodTidy"
-      ],
-      "matchPackageNames": [
-        "!github.com/elastic/{/,}**"
-      ]
-    },
-    {
-      "matchUpdateTypes": [
-        "major"
-      ],
-      "enabled": true,
-      "automerge": false,
       "postUpdateOptions": [
         "gomodTidy"
       ],
