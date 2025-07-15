@@ -20,7 +20,7 @@ Review the changes, fixes, and more in each release of Elastic Cloud on Kubernet
 
 ### Features and enhancements  [elastic-cloud-kubernetes-310-features-and-enhancements]
 
-- UBI: Use micro image [#8704](https://github.com/elastic/cloud-on-k8s/pull/8704)
+- UBI: Use micro image instead of minimal [#8704](https://github.com/elastic/cloud-on-k8s/pull/8704)
 - Propagate metadata to children [#8673](https://github.com/elastic/cloud-on-k8s/pull/8673) (issue: [#2652](https://github.com/elastic/cloud-on-k8s/issues/2652))
 - Allow advanced configuration for fleet-managed Elastic Agents [#8623](https://github.com/elastic/cloud-on-k8s/pull/8623) (issue: [#8619](https://github.com/elastic/cloud-on-k8s/issues/8619))
 
