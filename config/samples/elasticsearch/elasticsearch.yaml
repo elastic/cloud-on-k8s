@@ -50,8 +50,11 @@ spec:
           #  valueFrom:
           #    fieldRef:
           #      fieldPath: metadata.annotations['topology.kubernetes.io/zone']
-          - name: ES_JAVA_OPTS
-            value: "-Xms2g -Xmx2g"
+          # Starting from version 7.11, Elasticsearch automatically sizes JVM heap based on a node’s roles and total memory.
+          # If you want to override the default heap size, uncomment the line below and manually set the desired heap size.
+          # Refer to https://www.elastic.co/docs/deploy-manage/deploy/cloud-on-k8s/manage-compute-resources#k8s-elasticsearch-memory for more details.
+          #- name: ES_JAVA_OPTS
+          #  value: "-Xms2g -Xmx2g"
         #topologySpreadConstraints:
         #  - maxSkew: 1
         #    topologyKey: topology.kubernetes.io/zone
