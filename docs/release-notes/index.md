@@ -18,6 +18,10 @@ Review the changes, fixes, and more in each release of Elastic Cloud on Kubernet
 
 ## 3.1.0 [elastic-cloud-kubernetes-310-release-notes]
 
+### Release Highlights
+
+TODO
+
 ### Features and enhancements  [elastic-cloud-kubernetes-310-features-and-enhancements]
 
 - UBI: Use micro image instead of minimal [#8704](https://github.com/elastic/cloud-on-k8s/pull/8704)
