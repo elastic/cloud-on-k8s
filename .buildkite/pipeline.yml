@@ -75,7 +75,7 @@ steps:
           DRIVAH_BUILD_PATH: "build"
           DRIVAH_AMD_AGENT_MEMORY: "5G"
           RECURSIVE: true
-          SIGN_IMAGES: true
+          SIGN_IMAGES: false
 
   - group: build e2e-tests
     key: "e2e-tests-image-build"
