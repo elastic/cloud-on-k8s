@@ -20,15 +20,21 @@ Review the changes, fixes, and more in each release of Elastic Cloud on Kubernet
 
 ### Release Highlights
 
-TODO
+#### Propagate metadata to children
 
-### Features and enhancements  [elastic-cloud-kubernetes-310-features-and-enhancements]
+It is now possible to propagate metadata from the parent custom resource to the child resources created by the operator. If you add labels or annotations on {{eck_resources_list}} resources, these can be automatically propagated to the Pods, Services, and other resources created by the operator. Refer to the [Propagate Labels and Annotations](/deploy-manage/deploy/cloud-on-k8s/propagate-labels-annotations.md) page for an examples and more details.
+
+#### New UBI base image
+
+To reduce the attack surface and improve overall security UBI images are now based on the UBI micro base image.
+
+### Features and enhancements [elastic-cloud-kubernetes-310-features-and-enhancements]
 
 - UBI: Use micro image instead of minimal [#8704](https://github.com/elastic/cloud-on-k8s/pull/8704)
 - Propagate metadata to children [#8673](https://github.com/elastic/cloud-on-k8s/pull/8673) (issue: [#2652](https://github.com/elastic/cloud-on-k8s/issues/2652))
 - Allow advanced configuration for fleet-managed Elastic Agents [#8623](https://github.com/elastic/cloud-on-k8s/pull/8623) (issue: [#8619](https://github.com/elastic/cloud-on-k8s/issues/8619))
 
-### Fixes  [elastic-cloud-kubernetes-310-fixes]
+### Fixes [elastic-cloud-kubernetes-310-fixes]
 
 - Set owner on service account Secret, update it when application is recreated [#8716](https://github.com/elastic/cloud-on-k8s/pull/8716)
 - fix: Cannot disable TLS in Logstash [#8706](https://github.com/elastic/cloud-on-k8s/pull/8706) (issue: [#8600](https://github.com/elastic/cloud-on-k8s/issues/8600))
@@ -37,11 +43,11 @@ TODO
 - Bump go.mod to v3 [#8609](https://github.com/elastic/cloud-on-k8s/pull/8609)
 - Helm: Add support for missing `remoteClusterServer` value [#8612](https://github.com/elastic/cloud-on-k8s/pull/8612)
 
-### Documentation improvements  [elastic-cloud-kubernetes-310-documentation-improvements]
+### Documentation improvements [elastic-cloud-kubernetes-310-documentation-improvements]
 
 - [Helm] Fix examples/logstash/basic-eck.yaml [#8695](https://github.com/elastic/cloud-on-k8s/pull/8695)
 
-### Miscellaneous  [elastic-cloud-kubernetes-310-miscellaneous]
+### Miscellaneous [elastic-cloud-kubernetes-310-miscellaneous]
 
 - Update Go version to 1.24.5 [#8745](https://github.com/elastic/cloud-on-k8s/pull/8745)
 - chore(deps): update registry.access.redhat.com/ubi9/ubi-micro docker tag to v9.6-1750858477 [#8711](https://github.com/elastic/cloud-on-k8s/pull/8711)
