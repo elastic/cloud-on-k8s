@@ -92,7 +92,7 @@ To reduce the attack surface and improve overall security UBI images are now bas
 - [docs] Update heap dump command to use the most recent Java process ([#8294](https://github.com/elastic/cloud-on-k8s/pull/8294))
 - [DOC] Document the need for an ingest node for Enterprise Search analytics ([#8271](https://github.com/elastic/cloud-on-k8s/pull/8271))
 
-# Miscellaneous
+# Miscellaneous [elastic-cloud-kubernetes-300-miscellaneous]
 
 :::{dropdown} Updated dependencies
 - chore(deps): update dependency go to v1.24.1 ([#8454](https://github.com/elastic/cloud-on-k8s/pull/8454))
