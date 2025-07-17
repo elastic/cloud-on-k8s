@@ -22,7 +22,7 @@ Review the changes, fixes, and more in each release of Elastic Cloud on Kubernet
 
 #### Propagate metadata to child Kubernetes resources
 
-It is now possible to propagate metadata from the parent custom resource to the child resources created by the operator. If you add labels or annotations on an Elasticsearch, Kibana, or Agent resource, for example, these can be automatically propagated to the Pods, Services, and other resources created by the operator. Refer to the [Propagate Labels and Annotations](https://www.elastic.co/docs/deploy-manage/deploy/cloud-on-k8s/propagate-labels-annotations.md) page for examples and more details.
+It is now possible to propagate metadata from the parent custom resource to the child resources created by the operator. If you add labels or annotations on an Elasticsearch, Kibana, or Agent resources, for example, these can be automatically propagated to the Pods, Services, and other resources created by the operator. Refer to the [Propagate Labels and Annotations](https://www.elastic.co/docs/deploy-manage/deploy/cloud-on-k8s/propagate-labels-annotations.md) page for examples and more details.
 
 #### New UBI base image
 
