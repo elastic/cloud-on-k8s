@@ -6,15 +6,7 @@ mapped_pages:
 ---
 
 # Elastic Cloud on Kubernetes release notes [elastic-cloud-kubernetes-release-notes]
-Review the changes, fixes, and more in each release of Elastic Cloud on Kubernetes. 
-
-% Release notes include only features, enhancements, and fixes. Add breaking changes, deprecations, and known issues to the applicable release notes sections. 
-
-% ## version.next [elastic-cloud-lubernetes-versionext-release-notes]
-
-% ### Features and enhancements [elastic-cloud-kubernetes-versionext-features-enhancements]
-
-% ### Fixes [elastic-cloud-kubernetes-versionext-fixes]
+Review the changes, fixes, and more in each release of Elastic Cloud on Kubernetes.
 
 ## 3.1.0 [elastic-cloud-kubernetes-310-release-notes]
 
