@@ -2,5 +2,10 @@ toc:
   - file: index.md
   - file: api-docs.md
   - folder: third-party-dependencies
+    children:
+      - file: index.md
+      - file: 310.md
+      - file: 300.md
+      - file: main.md
   - file: eck-configuration-flags.md
   - file: upgrade-predicates.md
