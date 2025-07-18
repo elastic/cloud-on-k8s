@@ -11,6 +11,6 @@ applies_to:
 This section contains reference information for {{eck}}, including:
 
 * [API reference](./api-docs.md)
-* [Third-party dependencies](./third-party-dependencies.md)
+* [Third-party dependencies](./third-party-dependencies/index.md)
 * [ECK configuration flags](./eck-configuration-flags.md)
 * [ECK upgrade predicates](./upgrade-predicates.md)
