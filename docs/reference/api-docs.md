@@ -10,4 +10,4 @@ applies_to:
 
 # {{eck}} API Reference (moved)
 
-This page has moved [here](./api-docs/index.md).
+This page has moved [here](./api-reference/index.md).
