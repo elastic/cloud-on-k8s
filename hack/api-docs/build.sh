@@ -13,6 +13,10 @@ set -euo pipefail
 SCRATCH_DIR="${SCRATCH_DIR:-$(mktemp -d -t crd-ref-docs-XXXXX)}"
 CLEANUP="${CLEANUP:-true}"
 
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# Load the version script to get the current version of the project.
+source "${SCRIPT_DIR}"/../version.sh
+
 cleanup() {
     if [[ $CLEANUP == "true" ]]; then
         echo "Removing $SCRATCH_DIR"
@@ -21,25 +25,28 @@ cleanup() {
 }
 
 build_docs() {
-    local SCRIPT_DIR
-    SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
     local REPO_ROOT="${SCRIPT_DIR}/../.."
     local DOCS_DIR="${SCRIPT_DIR}/../../docs"
     local REFDOCS_REPO="${REFDOCS_REPO:-github.com/elastic/crd-ref-docs}"
-    local REFDOCS_VER="${REFDOCS_VER:-v0.0.12}"
+    local REFDOCS_VER="${REFDOCS_VER:-template-variables}"
     local BIN_DIR=${SCRATCH_DIR}/bin
+
+    local version="$(get_current_version)"
+    # Remove dots from the version string for compatibility with the doc web site.
+    local outFile="${version//./_}.md"
 
     (
         echo "Installing crd-ref-docs $REFDOCS_VER to $BIN_DIR"
         mkdir -p "$BIN_DIR"
         GOBIN=$BIN_DIR go install "${REFDOCS_REPO}@${REFDOCS_VER}"
 
-        echo "Generating API reference documentation"
+        echo "Generating API reference documentation for version: ${version}, output file: ${outFile}"
         "${BIN_DIR}"/crd-ref-docs --source-path="${REPO_ROOT}"/pkg/apis \
             --config="${SCRIPT_DIR}"/config.yaml \
             --renderer=markdown \
+            --template-value=eckVersion="${version}" \
             --templates-dir="${SCRIPT_DIR}"/templates \
-            --output-path="${DOCS_DIR}"/reference/api-docs.md
+            --output-path="${DOCS_DIR}"/reference/api-docs/"${outFile}"
     )
 }
 
