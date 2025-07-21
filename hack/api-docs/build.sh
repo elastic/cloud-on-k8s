@@ -31,7 +31,8 @@ build_docs() {
     local REFDOCS_VER="${REFDOCS_VER:-template-variables}"
     local BIN_DIR=${SCRATCH_DIR}/bin
 
-    local version="$(get_current_version)"
+    local version
+    version="$(get_current_version)"
     # Remove dots from the version string for compatibility with the doc web site.
     local outFile="${version//./_}.md"
 

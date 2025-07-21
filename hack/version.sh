@@ -9,7 +9,8 @@ is_version() {
 }
 
 get_current_version() {
-  local SCRIPT_DIR=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )
+  local SCRIPT_DIR
+  SCRIPT_DIR=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )
   local PROJECT_DIR="${SCRIPT_DIR}/.."
   version="$(<"${PROJECT_DIR}/VERSION")"
   if is_version "${version}"; then
