@@ -1,6 +1,6 @@
 toc:
   - file: index.md
-  - file: api-docs.md
+  - folder: api-docs
   - folder: third-party-dependencies
   - file: eck-configuration-flags.md
   - file: upgrade-predicates.md
