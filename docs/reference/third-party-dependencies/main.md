@@ -4,7 +4,7 @@ mapped_pages:
 navigation_title: Third-party dependencies for the main branch
 applies_to:
   deployment:
-    eck: all
+    eck: preview
 ---
 % Generated documentation. Please do not edit.
 
