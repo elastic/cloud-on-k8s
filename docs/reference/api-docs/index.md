@@ -7,6 +7,6 @@ applies_to:
     eck: all
 ---
 
-# Third-party dependencies [k8s-reference-dependencies]
+# {{eck}} API Reference [k8s-api-reference]
 
 This section contains the API references for {{eck}}.

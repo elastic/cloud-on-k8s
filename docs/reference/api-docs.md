@@ -8,6 +8,4 @@ applies_to:
 ---
 % Generated documentation. Please do not edit.
 
-# {{eck}} API Reference [k8s-api-reference]
-
 This page has moved [here](./api-docs/index.md).
