@@ -13,23 +13,13 @@ PROJECT_DIR=${SCRIPT_DIR}/../..
 TEMP_DIR=$(mktemp -d)
 LICENCE_DETECTOR="go.elastic.co/go-licence-detector@template-variables"
 
+# Load the version script to get the current version of the project.
+source "${SCRIPT_DIR}"/../version.sh
+
 trap '[[ $TEMP_DIR ]] && rm -rf "$TEMP_DIR"' EXIT
 
 get_licence_detector() {
     GOBIN="$TEMP_DIR" go install "$LICENCE_DETECTOR"
-}
-
-is_version() {
-  [[ "$1" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]
-}
-
-get_current_version() {
-  version="$(<"${PROJECT_DIR}/VERSION")"
-  if is_version "${version}"; then
-    echo "${version}"
-  else
-    echo "main"
-  fi
 }
 
 generate_notice() {
