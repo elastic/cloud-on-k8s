@@ -6,7 +6,11 @@
 ---
 mapped_pages:
   - https://www.elastic.co/guide/en/cloud-on-k8s/current/k8s-dependencies.html
-navigation_title: Third-party dependencies 
+{{if eq (index .TemplateValues "eckVersion") "main" -}}
+navigation_title: Third-party dependencies for the main branch
+{{- else -}}
+navigation_title: Third-party dependencies for {{index .TemplateValues "eckVersion"}}
+{{- end}}
 applies_to:
   deployment:
     eck: all
@@ -15,7 +19,11 @@ applies_to:
 
 # Third-party dependencies for Elastic Cloud on Kubernetes[k8s-dependencies]
 
-This page lists the third-party dependencies used to build {{`{{eck}}`}}.
+{{if eq (index .TemplateValues "eckVersion") "main" -}}
+This page lists the third-party dependencies used to build {{`{{eck}}`}} from the main branch.
+{{- else -}}
+This page lists the third-party dependencies used to build {{`{{eck}}`}} version {{index .TemplateValues "eckVersion"}}.
+{{- end}}
 
 ## Direct dependencies [k8s-dependencies-direct]
 
