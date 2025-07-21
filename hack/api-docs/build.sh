@@ -15,6 +15,7 @@ CLEANUP="${CLEANUP:-true}"
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 # Load the version script to get the current version of the project.
+# shellcheck disable=SC1091
 source "${SCRIPT_DIR}"/../version.sh
 
 cleanup() {

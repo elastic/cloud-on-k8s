@@ -14,6 +14,7 @@ TEMP_DIR=$(mktemp -d)
 LICENCE_DETECTOR="go.elastic.co/go-licence-detector@19eddea51b7b2cbd3dc8398aa50e602a451f459c"
 
 # Load the version script to get the current version of the project.
+# shellcheck disable=SC1091
 source "${SCRIPT_DIR}"/../version.sh
 
 trap '[[ $TEMP_DIR ]] && rm -rf "$TEMP_DIR"' EXIT
