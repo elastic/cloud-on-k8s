@@ -8,4 +8,6 @@ applies_to:
 ---
 % Generated documentation. Please do not edit.
 
+# {{eck}} API Reference (moved)
+
 This page has moved [here](./api-docs/index.md).
