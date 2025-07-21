@@ -37,6 +37,7 @@ generate_notice() {
         version="$(get_current_version)"
         # Remove dots from the version string for compatibility with the doc web site.
         outFile="${version//./_}.md"
+        echo "Generating notice file and dependency list for version: ${version}, output file: ${outFile}"
         cd "$PROJECT_DIR"
         go mod download
         go list -m -json all | "${TEMP_DIR}"/go-licence-detector \
@@ -51,6 +52,5 @@ generate_notice() {
     )
 }
 
-echo "Generating notice file and dependency list"
 get_licence_detector
 generate_notice
