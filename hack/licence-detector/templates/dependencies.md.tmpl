@@ -22,7 +22,7 @@ applies_to:
 {{if eq (index .TemplateValues "eckVersion") "main" -}}
 This page lists the third-party dependencies used to build {{`{{eck}}`}} from the main branch.
 {{- else -}}
-This page lists the third-party dependencies used to build {{`{{eck}}`}} version {{index .TemplateValues "eckVersion"}}.
+This page lists the third-party dependencies used to build {{`{{eck}}`}} {{index .TemplateValues "eckVersion"}}.
 {{- end}}
 
 ## Direct dependencies [k8s-dependencies-direct]
