@@ -17,7 +17,7 @@ applies_to:
 ---
 % Generated documentation. Please do not edit.
 
-# {{`{{eck}}`}} API Reference [k8s-api-reference]
+# {{`{{eck}}`}} API Reference [k8s-api-reference] for {{ markdownTemplateValue "eckVersion" }}
 
 ## Packages
 {{- range $groupVersions }}
