@@ -11,7 +11,7 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_DIR=${SCRIPT_DIR}/../..
 TEMP_DIR=$(mktemp -d)
-LICENCE_DETECTOR="go.elastic.co/go-licence-detector@19eddea51b7b2cbd3dc8398aa50e602a451f459c"
+LICENCE_DETECTOR="go.elastic.co/go-licence-detector@v0.9.0"
 
 # Load the version script to get the current version of the project.
 # shellcheck disable=SC1091
