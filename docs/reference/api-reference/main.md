@@ -8,7 +8,7 @@ applies_to:
 ---
 % Generated documentation. Please do not edit.
 
-# {{eck}} API Reference [k8s-api-reference] for main
+# {{eck}} API Reference for main [k8s-api-reference-main]
 
 ## Packages
 * [agent.k8s.elastic.co/v1alpha1](#agentk8selasticcov1alpha1)
