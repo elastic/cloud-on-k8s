@@ -48,7 +48,7 @@ build_docs() {
             --renderer=markdown \
             --template-value=eckVersion="${version}" \
             --templates-dir="${SCRIPT_DIR}"/templates \
-            --output-path="${DOCS_DIR}"/reference/api-docs/"${outFile}"
+            --output-path="${DOCS_DIR}"/reference/api-reference/"${outFile}"
     )
 }
 
