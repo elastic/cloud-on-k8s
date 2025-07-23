@@ -2,6 +2,8 @@ toc:
   - file: index.md
   - file: api-docs.md
   - folder: api-reference
+  - hidden: api-reference/main.md
   - folder: third-party-dependencies
+  - hidden: third-party-dependencies/main.md
   - file: eck-configuration-flags.md
   - file: upgrade-predicates.md
