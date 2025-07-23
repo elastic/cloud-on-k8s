@@ -1,7 +1,7 @@
 ---
 mapped_pages:
   - https://www.elastic.co/guide/en/cloud-on-k8s/current/k8s-api-reference.html
-navigation_title: API Reference for the main branch
+navigation_title: current
 applies_to:
   deployment:
     eck: preview

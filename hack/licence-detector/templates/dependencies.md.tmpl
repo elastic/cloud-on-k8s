@@ -7,12 +7,12 @@
 mapped_pages:
   - https://www.elastic.co/guide/en/cloud-on-k8s/current/k8s-dependencies.html
 {{if eq (TemplateValue "eckVersion") "main" -}}
-navigation_title: Third-party dependencies for the main branch
+navigation_title: current
 applies_to:
   deployment:
     eck: preview
 {{- else -}}
-navigation_title: Third-party dependencies for {{TemplateValue "eckVersion"}}
+navigation_title: {{TemplateValue "eckVersion"}}
 applies_to:
   deployment:
     eck: ga {{TemplateValue "eckVersion"}}
