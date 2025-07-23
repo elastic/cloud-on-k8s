@@ -24,12 +24,34 @@ import (
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/label"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/sset"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/k8s"
+	lic "github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/license"
 )
 
 // Reconcile ensures that a PodDisruptionBudget exists for this cluster, inheriting the spec content.
 // The default PDB we setup dynamically adapts MinAvailable to the number of nodes in the cluster.
 // If the spec has disabled the default PDB, it will ensure none exist.
 func Reconcile(ctx context.Context, k8sClient k8s.Client, es esv1.Elasticsearch, statefulSets sset.StatefulSetList, meta metadata.Metadata) error {
+	// License check: enterprise-specific PDBs
+	licenseChecker := lic.NewLicenseChecker(k8sClient, es.Namespace)
+	enterpriseEnabled, err := licenseChecker.EnterpriseFeaturesEnabled(ctx)
+	if err != nil {
+		return err
+	}
+	if enterpriseEnabled {
+		return reconcileRoleSpecificPDBs(ctx, k8sClient, es, statefulSets, meta)
+	}
+
+	return reconcileDefaultPDB(ctx, k8sClient, es, statefulSets, meta)
+}
+
+// reconcileDefaultPDB reconciles the default PDB for non-enterprise users.
+func reconcileDefaultPDB(
+	ctx context.Context,
+	k8sClient k8s.Client,
+	es esv1.Elasticsearch,
+	statefulSets sset.StatefulSetList,
+	meta metadata.Metadata,
+) error {
 	expected, err := expectedPDB(es, statefulSets, meta)
 	if err != nil {
 		return err
@@ -38,6 +60,16 @@ func Reconcile(ctx context.Context, k8sClient k8s.Client, es esv1.Elasticsearch,
 		return deleteDefaultPDB(ctx, k8sClient, es)
 	}
 
+	return reconcilePDB(ctx, k8sClient, es, expected)
+}
+
+// reconcilePDB reconciles a single PDB, handling both v1 and v1beta1 versions.
+func reconcilePDB(
+	ctx context.Context,
+	k8sClient k8s.Client,
+	es esv1.Elasticsearch,
+	expected *policyv1.PodDisruptionBudget,
+) error {
 	// label the PDB with a hash of its content, for comparison purposes
 	expected.Labels = hash.SetTemplateHashLabel(expected.Labels, expected)
 
