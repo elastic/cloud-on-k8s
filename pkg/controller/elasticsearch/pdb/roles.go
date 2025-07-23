@@ -2,14 +2,17 @@ package pdb
 
 import (
 	"context"
+	"fmt"
 	"slices"
 	"sort"
 
 	appsv1 "k8s.io/api/apps/v1"
 	policyv1 "k8s.io/api/policy/v1"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
 	"k8s.io/client-go/kubernetes/scheme"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 
 	esv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/elasticsearch/v1"
@@ -27,15 +30,15 @@ func reconcileRoleSpecificPDBs(
 	statefulSets sset.StatefulSetList,
 	meta metadata.Metadata,
 ) error {
+	// Check if PDB is disabled in the ES spec
+	if es.Spec.PodDisruptionBudget != nil && es.Spec.PodDisruptionBudget.IsDisabled() {
+		// PDB is disabled, delete all existing PDBs (both default and role-specific)
+		return deleteAllRoleSpecificPDBs(ctx, k8sClient, es)
+	}
+
 	// First, ensure any existing single PDB is removed
 	if err := deleteDefaultPDB(ctx, k8sClient, es); err != nil {
 		return err
-	}
-
-	// Check if PDB is disabled in the ES spec
-	if es.Spec.PodDisruptionBudget != nil && es.Spec.PodDisruptionBudget.IsDisabled() {
-		// PDB is disabled, we've already deleted the default PDB, so we're done
-		return nil
 	}
 
 	// Get the expected role-specific PDBs
@@ -211,7 +214,7 @@ func getMostConservativeRole(roles map[esv1.NodeRole]bool) esv1.NodeRole {
 
 	for _, dataRole := range dataRoles {
 		if roles[dataRole] {
-			return dataRole
+			return esv1.DataRole
 		}
 	}
 
@@ -293,7 +296,7 @@ func createPDBForStatefulSets(
 	// Create the PDB object
 	pdb := &policyv1.PodDisruptionBudget{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      rolePodDisruptionBudgetName(es.Name, role),
+			Name:      RolePodDisruptionBudgetName(es.Name, role),
 			Namespace: es.Namespace,
 		},
 		Spec: spec,
@@ -424,8 +427,48 @@ func selectorForStatefulSets(es esv1.Elasticsearch, ssetNames []string) *metav1.
 	}
 }
 
-// rolePodDisruptionBudgetName returns the name of the PDB for a specific role.
-func rolePodDisruptionBudgetName(esName string, role esv1.NodeRole) string {
+// deleteAllRoleSpecificPDBs deletes all existing role-specific PDBs for the cluster by retrieving
+// all PDBs in the namespace with the cluster label and verifying the owner reference.
+func deleteAllRoleSpecificPDBs(ctx context.Context, k8sClient k8s.Client, es esv1.Elasticsearch) error {
+	// List all PDBs in the namespace with the cluster label
+	var pdbList policyv1.PodDisruptionBudgetList
+	if err := k8sClient.List(ctx, &pdbList, client.InNamespace(es.Namespace), client.MatchingLabels{
+		label.ClusterNameLabelName: es.Name,
+	}); err != nil {
+		return err
+	}
+
+	// Delete only PDBs that are owned by this Elasticsearch controller
+	for _, pdb := range pdbList.Items {
+		// Check if this PDB is owned by the Elasticsearch resource
+		if isOwnedByElasticsearch(pdb, es) {
+			if err := k8sClient.Delete(ctx, &pdb); err != nil && !apierrors.IsNotFound(err) {
+				return err
+			}
+		} else {
+			// Debug: log why PDB wasn't deleted
+			// This is for debugging only and should be removed in production
+			fmt.Printf("PDB %s not deleted - not owned by ES %s\n", pdb.Name, es.Name)
+		}
+	}
+	return nil
+}
+
+// isOwnedByElasticsearch checks if a PDB is owned by the given Elasticsearch resource.
+func isOwnedByElasticsearch(pdb policyv1.PodDisruptionBudget, es esv1.Elasticsearch) bool {
+	for _, ownerRef := range pdb.OwnerReferences {
+		if ownerRef.Controller != nil && *ownerRef.Controller &&
+			ownerRef.APIVersion == esv1.GroupVersion.String() &&
+			ownerRef.Kind == esv1.Kind &&
+			ownerRef.Name == es.Name {
+			return true
+		}
+	}
+	return false
+}
+
+// RolePodDisruptionBudgetName returns the name of the PDB for a specific role.
+func RolePodDisruptionBudgetName(esName string, role esv1.NodeRole) string {
 	name := esv1.DefaultPodDisruptionBudget(esName) + "-" + string(role)
 	// For coordinating nodes (no roles), append "coord" to the name
 	if role == "" {

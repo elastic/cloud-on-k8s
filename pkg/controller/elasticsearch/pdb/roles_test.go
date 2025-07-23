@@ -1,16 +1,25 @@
 package pdb
 
 import (
+	"context"
+	"slices"
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
+	"github.com/stretchr/testify/require"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	policyv1 "k8s.io/api/policy/v1"
+	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/util/intstr"
+	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
 	"k8s.io/utils/ptr"
+	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 
+	commonv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/common/v1"
 	esv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/elasticsearch/v1"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/metadata"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/label"
@@ -242,6 +251,394 @@ func TestGroupStatefulSetsByConnectedRoles(t *testing.T) {
 
 			if !cmp.Equal(result, tt.expected) {
 				t.Errorf("Result does not match expected:\n%s", cmp.Diff(tt.expected, result))
+			}
+		})
+	}
+}
+
+func TestGetMostConservativeRole(t *testing.T) {
+	tests := []struct {
+		name     string
+		roles    map[esv1.NodeRole]bool
+		expected esv1.NodeRole
+	}{
+		{
+			name:     "empty roles map",
+			roles:    map[esv1.NodeRole]bool{},
+			expected: "",
+		},
+		{
+			name: "master role - most conservative",
+			roles: map[esv1.NodeRole]bool{
+				esv1.MasterRole: true,
+				esv1.IngestRole: true,
+				esv1.MLRole:     true,
+			},
+			expected: esv1.MasterRole,
+		},
+		{
+			name: "data role - second most conservative",
+			roles: map[esv1.NodeRole]bool{
+				esv1.DataRole:   true,
+				esv1.IngestRole: true,
+				esv1.MLRole:     true,
+			},
+			expected: esv1.DataRole,
+		},
+		{
+			name: "data_hot role",
+			roles: map[esv1.NodeRole]bool{
+				esv1.DataHotRole: true,
+				esv1.IngestRole:  true,
+				esv1.MLRole:      true,
+			},
+			expected: esv1.DataRole,
+		},
+		{
+			name: "data_warm role",
+			roles: map[esv1.NodeRole]bool{
+				esv1.DataWarmRole: true,
+				esv1.IngestRole:   true,
+				esv1.MLRole:       true,
+			},
+			expected: esv1.DataRole,
+		},
+		{
+			name: "data_cold role",
+			roles: map[esv1.NodeRole]bool{
+				esv1.DataColdRole: true,
+				esv1.IngestRole:   true,
+				esv1.MLRole:       true,
+			},
+			expected: esv1.DataRole,
+		},
+		{
+			name: "data_content role",
+			roles: map[esv1.NodeRole]bool{
+				esv1.DataContentRole: true,
+				esv1.IngestRole:      true,
+				esv1.MLRole:          true,
+			},
+			expected: esv1.DataRole,
+		},
+		{
+			name: "data_frozen role",
+			roles: map[esv1.NodeRole]bool{
+				esv1.DataFrozenRole: true,
+				esv1.IngestRole:     true,
+				esv1.MLRole:         true,
+			},
+			expected: esv1.DataRole,
+		},
+		{
+			name: "multiple data roles - should return first found",
+			roles: map[esv1.NodeRole]bool{
+				esv1.DataHotRole:  true,
+				esv1.DataWarmRole: true,
+				esv1.DataColdRole: true,
+				esv1.IngestRole:   true,
+			},
+			expected: esv1.DataRole,
+		},
+		{
+			name: "master and data roles - master wins",
+			roles: map[esv1.NodeRole]bool{
+				esv1.MasterRole:    true,
+				esv1.DataRole:      true,
+				esv1.DataHotRole:   true,
+				esv1.IngestRole:    true,
+				esv1.MLRole:        true,
+				esv1.TransformRole: true,
+			},
+			expected: esv1.MasterRole,
+		},
+		{
+			name: "only non-data roles - returns first found",
+			roles: map[esv1.NodeRole]bool{
+				esv1.IngestRole:    true,
+				esv1.MLRole:        true,
+				esv1.TransformRole: true,
+			},
+			expected: esv1.IngestRole,
+		},
+		{
+			name: "single ingest role",
+			roles: map[esv1.NodeRole]bool{
+				esv1.IngestRole: true,
+			},
+			expected: esv1.IngestRole,
+		},
+		{
+			name: "single ml role",
+			roles: map[esv1.NodeRole]bool{
+				esv1.MLRole: true,
+			},
+			expected: esv1.MLRole,
+		},
+		{
+			name: "single transform role",
+			roles: map[esv1.NodeRole]bool{
+				esv1.TransformRole: true,
+			},
+			expected: esv1.TransformRole,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := getMostConservativeRole(tt.roles)
+
+			if !cmp.Equal(tt.expected, result) {
+				t.Errorf("Expected %s, got %s", tt.expected, result)
+			}
+		})
+	}
+}
+
+func TestReconcileRoleSpecificPDBs(t *testing.T) {
+	// Helper function to create a default PDB (single cluster-wide PDB)
+	defaultPDB := func(esName, namespace string) *policyv1.PodDisruptionBudget {
+		return &policyv1.PodDisruptionBudget{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      esv1.DefaultPodDisruptionBudget(esName),
+				Namespace: namespace,
+				Labels:    map[string]string{label.ClusterNameLabelName: esName},
+			},
+			Spec: policyv1.PodDisruptionBudgetSpec{
+				Selector: &metav1.LabelSelector{
+					MatchLabels: map[string]string{
+						label.ClusterNameLabelName: esName,
+					},
+				},
+				MaxUnavailable: &intstr.IntOrString{Type: intstr.Int, IntVal: 1},
+			},
+		}
+	}
+
+	// Helper function to create a role-specific PDB
+	rolePDB := func(esName, namespace string, role esv1.NodeRole, statefulSetNames []string) *policyv1.PodDisruptionBudget {
+		pdb := &policyv1.PodDisruptionBudget{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      RolePodDisruptionBudgetName(esName, role),
+				Namespace: namespace,
+				Labels:    map[string]string{label.ClusterNameLabelName: esName},
+			},
+			Spec: policyv1.PodDisruptionBudgetSpec{
+				MaxUnavailable: &intstr.IntOrString{Type: intstr.Int, IntVal: 0}, // Default for unknown health
+			},
+		}
+
+		// Set selector based on number of StatefulSets
+		if len(statefulSetNames) == 1 {
+			// Single StatefulSet - use MatchLabels
+			pdb.Spec.Selector = &metav1.LabelSelector{
+				MatchLabels: map[string]string{
+					label.ClusterNameLabelName:     esName,
+					label.StatefulSetNameLabelName: statefulSetNames[0],
+				},
+			}
+		} else {
+			// Multiple StatefulSets - use MatchExpressions
+			pdb.Spec.Selector = &metav1.LabelSelector{
+				MatchExpressions: []metav1.LabelSelectorRequirement{
+					{
+						Key:      label.ClusterNameLabelName,
+						Operator: metav1.LabelSelectorOpIn,
+						Values:   []string{esName},
+					},
+					{
+						Key:      label.StatefulSetNameLabelName,
+						Operator: metav1.LabelSelectorOpIn,
+						Values: func() []string {
+							// Sort for consistent test comparison
+							sorted := make([]string, len(statefulSetNames))
+							copy(sorted, statefulSetNames)
+							slices.Sort(sorted)
+							return sorted
+						}(),
+					},
+				},
+			}
+		}
+
+		return pdb
+	}
+
+	defaultEs := esv1.Elasticsearch{
+		ObjectMeta: metav1.ObjectMeta{Name: "test-cluster", Namespace: "default"},
+	}
+
+	type args struct {
+		initObjs     []client.Object
+		es           esv1.Elasticsearch
+		statefulSets sset.StatefulSetList
+	}
+	tests := []struct {
+		name       string
+		args       args
+		wantedPDBs []*policyv1.PodDisruptionBudget
+	}{
+		{
+			name: "no existing PDBs: should create role-specific PDBs",
+			args: args{
+				es: defaultEs,
+				statefulSets: sset.StatefulSetList{
+					createStatefulSetWithRoles("master1", []esv1.NodeRole{esv1.MasterRole}),
+					createStatefulSetWithRoles("data1", []esv1.NodeRole{esv1.DataRole}),
+				},
+			},
+			wantedPDBs: []*policyv1.PodDisruptionBudget{
+				rolePDB("test-cluster", "default", esv1.MasterRole, []string{"master1"}),
+				rolePDB("test-cluster", "default", esv1.DataRole, []string{"data1"}),
+			},
+		},
+		{
+			name: "existing default PDB: should delete it and create role-specific PDBs",
+			args: args{
+				initObjs: []client.Object{
+					defaultPDB("test-cluster", "default"),
+				},
+				es: defaultEs,
+				statefulSets: sset.StatefulSetList{
+					createStatefulSetWithRoles("master1", []esv1.NodeRole{esv1.MasterRole}),
+				},
+			},
+			wantedPDBs: []*policyv1.PodDisruptionBudget{
+				rolePDB("test-cluster", "default", esv1.MasterRole, []string{"master1"}),
+			},
+		},
+		{
+			name: "coordinating nodes: should be grouped together",
+			args: args{
+				es: defaultEs,
+				statefulSets: sset.StatefulSetList{
+					createStatefulSetWithRoles("coord1", []esv1.NodeRole{}),
+					createStatefulSetWithRoles("coord2", []esv1.NodeRole{}),
+					createStatefulSetWithRoles("master1", []esv1.NodeRole{esv1.MasterRole}),
+				},
+			},
+			wantedPDBs: []*policyv1.PodDisruptionBudget{
+				// Coordinating nodes grouped together with empty role (gets "coord" suffix)
+				rolePDB("test-cluster", "default", "", []string{"coord1", "coord2"}),
+				rolePDB("test-cluster", "default", esv1.MasterRole, []string{"master1"}),
+			},
+		},
+		{
+			name: "mixed roles: should group StatefulSets sharing roles",
+			args: args{
+				es: defaultEs,
+				statefulSets: sset.StatefulSetList{
+					createStatefulSetWithRoles("master-data1", []esv1.NodeRole{esv1.MasterRole, esv1.DataRole}),
+					createStatefulSetWithRoles("data-ingest1", []esv1.NodeRole{esv1.DataRole, esv1.IngestRole}),
+					createStatefulSetWithRoles("ml1", []esv1.NodeRole{esv1.MLRole}),
+				},
+			},
+			wantedPDBs: []*policyv1.PodDisruptionBudget{
+				// master-data1 and data-ingest1 should be grouped because they share DataRole
+				// Most conservative role is MasterRole, so PDB uses master role
+				rolePDB("test-cluster", "default", esv1.MasterRole, []string{"master-data1", "data-ingest1"}),
+				// ml1 gets its own PDB
+				rolePDB("test-cluster", "default", esv1.MLRole, []string{"ml1"}),
+			},
+		},
+		{
+			name: "PDB disabled in ES spec: should delete existing PDBs and not create new ones",
+			args: func() args {
+				es := esv1.Elasticsearch{
+					ObjectMeta: metav1.ObjectMeta{Name: "test-cluster", Namespace: "default"},
+					Spec: esv1.ElasticsearchSpec{
+						PodDisruptionBudget: &commonv1.PodDisruptionBudgetTemplate{},
+					},
+				}
+				return args{
+					initObjs: []client.Object{
+						withOwnerRef(defaultPDB("test-cluster", "default"), es),
+						withOwnerRef(rolePDB("test-cluster", "default", esv1.MasterRole, []string{"master1"}), es),
+					},
+					es: es,
+					statefulSets: sset.StatefulSetList{
+						createStatefulSetWithRoles("master1", []esv1.NodeRole{esv1.MasterRole}),
+					},
+				}
+			}(),
+			wantedPDBs: []*policyv1.PodDisruptionBudget{}, // No PDBs should be created
+		},
+		{
+			name: "update existing role-specific PDBs",
+			args: args{
+				initObjs: []client.Object{
+					// Existing PDB with different configuration
+					&policyv1.PodDisruptionBudget{
+						ObjectMeta: metav1.ObjectMeta{
+							Name:      RolePodDisruptionBudgetName("test-cluster", esv1.MasterRole),
+							Namespace: "default",
+							Labels:    map[string]string{label.ClusterNameLabelName: "test-cluster"},
+						},
+						Spec: policyv1.PodDisruptionBudgetSpec{
+							MaxUnavailable: &intstr.IntOrString{Type: intstr.Int, IntVal: 2}, // Wrong value
+							Selector: &metav1.LabelSelector{
+								MatchLabels: map[string]string{
+									label.ClusterNameLabelName:     "test-cluster",
+									label.StatefulSetNameLabelName: "old-master", // Wrong StatefulSet
+								},
+							},
+						},
+					},
+				},
+				es: defaultEs,
+				statefulSets: sset.StatefulSetList{
+					createStatefulSetWithRoles("master1", []esv1.NodeRole{esv1.MasterRole}),
+				},
+			},
+			wantedPDBs: []*policyv1.PodDisruptionBudget{
+				// Should be updated with correct configuration
+				rolePDB("test-cluster", "default", esv1.MasterRole, []string{"master1"}),
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			restMapper := meta.NewDefaultRESTMapper([]schema.GroupVersion{{
+				Group:   "policy",
+				Version: "v1",
+			}})
+			restMapper.Add(
+				schema.GroupVersionKind{
+					Group:   "policy",
+					Version: "v1",
+					Kind:    "PodDisruptionBudget",
+				}, meta.RESTScopeNamespace)
+			c := fake.NewClientBuilder().
+				WithScheme(clientgoscheme.Scheme).
+				WithRESTMapper(restMapper).
+				WithObjects(tt.args.initObjs...).
+				Build()
+
+			// Create metadata
+			meta := metadata.Propagate(&tt.args.es, metadata.Metadata{Labels: tt.args.es.GetIdentityLabels()})
+
+			err := reconcileRoleSpecificPDBs(context.Background(), c, tt.args.es, tt.args.statefulSets, meta)
+			require.NoError(t, err)
+
+			var retrievedPDBs policyv1.PodDisruptionBudgetList
+			err = c.List(context.Background(), &retrievedPDBs, client.InNamespace(tt.args.es.Namespace))
+			require.NoError(t, err)
+
+			require.Equal(t, len(tt.wantedPDBs), len(retrievedPDBs.Items), "Expected %d PDBs, got %d", len(tt.wantedPDBs), len(retrievedPDBs.Items))
+
+			for _, expectedPDB := range tt.wantedPDBs {
+				// Find the matching PDB in the retrieved list
+				idx := slices.IndexFunc(retrievedPDBs.Items, func(pdb policyv1.PodDisruptionBudget) bool {
+					return pdb.Name == expectedPDB.Name
+				})
+				require.NotEqual(t, -1, idx, "Expected PDB %s should exist", expectedPDB.Name)
+				actualPDB := &retrievedPDBs.Items[idx]
+
+				// Verify key fields match (ignore metadata like resourceVersion, etc.)
+				require.Equal(t, expectedPDB.Spec.MaxUnavailable, actualPDB.Spec.MaxUnavailable, "MaxUnavailable should match for PDB %s", expectedPDB.Name)
+				require.Equal(t, expectedPDB.Spec.Selector, actualPDB.Spec.Selector, "Selector should match for PDB %s", expectedPDB.Name)
+				require.Equal(t, expectedPDB.Labels[label.ClusterNameLabelName], actualPDB.Labels[label.ClusterNameLabelName], "Cluster label should match for PDB %s", expectedPDB.Name)
 			}
 		})
 	}
