@@ -32,25 +32,26 @@ import (
 	es_sset "github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/sset"
 )
 
-func TestReconcile(t *testing.T) {
-	defaultPDB := func() *policyv1.PodDisruptionBudget {
-		return &policyv1.PodDisruptionBudget{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      esv1.DefaultPodDisruptionBudget("cluster"),
-				Namespace: "ns",
-				Labels:    map[string]string{label.ClusterNameLabelName: "cluster", commonv1.TypeLabelName: label.Type},
-			},
-			Spec: policyv1.PodDisruptionBudgetSpec{
-				MinAvailable: intStrPtr(intstr.FromInt(3)),
-				Selector: &metav1.LabelSelector{
-					MatchLabels: map[string]string{
-						label.ClusterNameLabelName: "cluster",
-					},
+func defaultPDB() *policyv1.PodDisruptionBudget {
+	return &policyv1.PodDisruptionBudget{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      esv1.DefaultPodDisruptionBudget("cluster"),
+			Namespace: "ns",
+			Labels:    map[string]string{label.ClusterNameLabelName: "cluster", commonv1.TypeLabelName: label.Type},
+		},
+		Spec: policyv1.PodDisruptionBudgetSpec{
+			MinAvailable: intStrPtr(intstr.FromInt(3)),
+			Selector: &metav1.LabelSelector{
+				MatchLabels: map[string]string{
+					label.ClusterNameLabelName: "cluster",
 				},
-				MaxUnavailable: nil,
 			},
-		}
+			MaxUnavailable: nil,
+		},
 	}
+}
+
+func TestReconcile(t *testing.T) {
 	defaultEs := esv1.Elasticsearch{ObjectMeta: metav1.ObjectMeta{Name: "cluster", Namespace: "ns"}}
 	type args struct {
 		initObjs     []client.Object
@@ -371,7 +372,7 @@ func Test_allowedDisruptions(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if got := allowedDisruptions(tt.args.es, tt.args.actualSsets); got != tt.want {
+			if got := allowedDisruptionsForRole(tt.args.es, esv1.DataRole, tt.args.actualSsets); got != tt.want {
 				t.Errorf("allowedDisruptions() = %v, want %v", got, tt.want)
 			}
 		})

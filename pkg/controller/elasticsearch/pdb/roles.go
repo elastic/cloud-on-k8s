@@ -1,9 +1,11 @@
+// Copyright Elasticsearch B.V. and/or licensed to Elasticsearch B.V. under one
+// or more contributor license agreements. Licensed under the Elastic License 2.0;
+// you may not use this file except in compliance with the Elastic License 2.0.
+
 package pdb
 
 import (
 	"context"
-	"fmt"
-	"slices"
 	"sort"
 
 	appsv1 "k8s.io/api/apps/v1"
@@ -22,7 +24,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/k8s"
 )
 
-// reconcileRoleSpecificPDBs creates and reconciles PodDisruptionBudgets per nodeSet role for enterprise-licensed clusters.
+// reconcileRoleSpecificPDBs creates and reconciles PodDisruptionBudgets per nodeSet roles for enterprise-licensed clusters.
 func reconcileRoleSpecificPDBs(
 	ctx context.Context,
 	k8sClient k8s.Client,
@@ -30,24 +32,24 @@ func reconcileRoleSpecificPDBs(
 	statefulSets sset.StatefulSetList,
 	meta metadata.Metadata,
 ) error {
-	// Check if PDB is disabled in the ES spec
+	// Check if PDB is disabled in the ES spec, and if so delete all existing PDBs (both default and role-specific)
 	if es.Spec.PodDisruptionBudget != nil && es.Spec.PodDisruptionBudget.IsDisabled() {
-		// PDB is disabled, delete all existing PDBs (both default and role-specific)
+		if err := deleteDefaultPDB(ctx, k8sClient, es); err != nil {
+			return err
+		}
 		return deleteAllRoleSpecificPDBs(ctx, k8sClient, es)
 	}
 
-	// First, ensure any existing single PDB is removed
+	// Always ensure any existing default PDB is removed
 	if err := deleteDefaultPDB(ctx, k8sClient, es); err != nil {
 		return err
 	}
 
-	// Get the expected role-specific PDBs
 	pdbs, err := expectedRolePDBs(es, statefulSets, meta)
 	if err != nil {
 		return err
 	}
 
-	// Reconcile each PDB using the shared reconciliation function
 	for _, expected := range pdbs {
 		if err := reconcilePDB(ctx, k8sClient, es, expected); err != nil {
 			return err
@@ -64,8 +66,8 @@ func expectedRolePDBs(
 ) ([]*policyv1.PodDisruptionBudget, error) {
 	pdbs := make([]*policyv1.PodDisruptionBudget, 0)
 
-	// Group StatefulSets by connected components (StatefulSets that share roles)
-	groups := groupStatefulSetsByConnectedRoles(statefulSets)
+	// Group StatefulSets by their connected roles.
+	groups := groupBySharedRoles(statefulSets)
 
 	// Create one PDB per group
 	for _, group := range groups {
@@ -73,17 +75,17 @@ func expectedRolePDBs(
 			continue
 		}
 
-		// Determine the roles for this group (union of all roles in the group)
-		groupRoles := make(map[esv1.NodeRole]bool)
+		// Determine the roles for this group
+		groupRoles := make(map[esv1.NodeRole]struct{})
 		for _, sset := range group {
 			roles := getRolesFromStatefulSetPodTemplate(sset)
 			for _, role := range roles {
-				groupRoles[role] = true
+				groupRoles[role] = struct{}{}
 			}
 		}
 
-		// Determine the most conservative role for disruption rules
-		// If group has no roles, it's coordinating nodes
+		// Determine the most conservative role for disruption purposes.
+		// If group has no roles, it's a coordinating ES role.
 		var primaryRole esv1.NodeRole
 		if len(groupRoles) == 0 {
 			primaryRole = "" // coordinating nodes
@@ -93,6 +95,11 @@ func expectedRolePDBs(
 		}
 
 		// Create a PDB for this group
+		//
+		// TODO: It feels like there's a possibility of overlapping pdb names here.
+		//       How do we ensure:
+		//       1. idempotency
+		//       2. no overlapping pdb names
 		pdb, err := createPDBForStatefulSets(es, primaryRole, group, statefulSets, meta)
 		if err != nil {
 			return nil, err
@@ -105,100 +112,12 @@ func expectedRolePDBs(
 	return pdbs, nil
 }
 
-// groupStatefulSetsByConnectedRoles groups StatefulSets by merging those that share roles.
-// Uses a simple iterative approach: for each role, collect all StatefulSets with that role,
-// then merge overlapping groups until no more merging is possible.
-// Coordinating nodes (with no roles) are treated as having an empty role ("") and are
-// merged together using the same logic.
-func groupStatefulSetsByConnectedRoles(statefulSets sset.StatefulSetList) [][]appsv1.StatefulSet {
-	if len(statefulSets) == 0 {
-		return nil
-	}
-
-	// Start with each StatefulSet as its own group and collect all unique roles
-	groups := make([][]appsv1.StatefulSet, 0, len(statefulSets))
-	allRoles := make(map[esv1.NodeRole]bool)
-
-	for _, sset := range statefulSets {
-		// Add StatefulSet as its own group
-		groups = append(groups, []appsv1.StatefulSet{sset})
-
-		// Collect all roles from this StatefulSet
-		roles := getRolesFromStatefulSetPodTemplate(sset)
-		if len(roles) == 0 {
-			// Coordinating nodes have no roles, treat as empty role
-			allRoles[""] = true
-		} else {
-			for _, role := range roles {
-				allRoles[role] = true
-			}
-		}
-	}
-
-	// For each role (including empty role for coordinating nodes), merge groups
-	for role := range allRoles {
-		groups = mergeGroupsWithRole(groups, role)
-	}
-
-	return groups
-}
-
-// mergeGroupsWithRole merges all groups that contain StatefulSets with the specified role
-func mergeGroupsWithRole(groups [][]appsv1.StatefulSet, role esv1.NodeRole) [][]appsv1.StatefulSet {
-	var groupsWithRole []int
-	var groupsWithoutRole [][]appsv1.StatefulSet
-
-	// Separate groups that have the role from those that don't
-	for i, group := range groups {
-		hasRole := false
-		for _, sset := range group {
-			roles := getRolesFromStatefulSetPodTemplate(sset)
-			// Handle empty role (coordinating nodes) specially
-			if role == "" {
-				// Empty role matches StatefulSets with no roles
-				if len(roles) == 0 {
-					hasRole = true
-					break
-				}
-			} else {
-				// Non-empty role uses normal contains check
-				if slices.Contains(roles, role) {
-					hasRole = true
-					break
-				}
-			}
-		}
-
-		if hasRole {
-			groupsWithRole = append(groupsWithRole, i)
-		} else {
-			groupsWithoutRole = append(groupsWithoutRole, group)
-		}
-	}
-
-	// If 0 or 1 groups have the role, no merging needed
-	if len(groupsWithRole) <= 1 {
-		return groups
-	}
-
-	// Merge all groups with the role into the first one
-	mergedGroup := []appsv1.StatefulSet{}
-	for _, groupIdx := range groupsWithRole {
-		mergedGroup = append(mergedGroup, groups[groupIdx]...)
-	}
-
-	// Return the merged group plus all groups without the role
-	result := [][]appsv1.StatefulSet{mergedGroup}
-	result = append(result, groupsWithoutRole...)
-	return result
-}
-
 // getMostConservativeRole returns the most conservative role from a set of roles
 // for determining PDB disruption rules. The hierarchy is:
 // master > data roles > other roles
-func getMostConservativeRole(roles map[esv1.NodeRole]bool) esv1.NodeRole {
+func getMostConservativeRole(roles map[esv1.NodeRole]struct{}) esv1.NodeRole {
 	// Master role is most conservative
-	if roles[esv1.MasterRole] {
+	if _, ok := roles[esv1.MasterRole]; ok {
 		return esv1.MasterRole
 	}
 
@@ -213,8 +132,8 @@ func getMostConservativeRole(roles map[esv1.NodeRole]bool) esv1.NodeRole {
 	}
 
 	for _, dataRole := range dataRoles {
-		if roles[dataRole] {
-			return esv1.DataRole
+		if _, ok := roles[dataRole]; ok {
+			return dataRole
 		}
 	}
 
@@ -265,7 +184,7 @@ func getRolesFromStatefulSetPodTemplate(statefulSet appsv1.StatefulSet) []esv1.N
 	return roles
 }
 
-// createPDBForStatefulSets creates a PDB for a group of StatefulSets with a shared role.
+// createPDBForStatefulSets creates a PDB for a group of StatefulSets with shared roles.
 func createPDBForStatefulSets(
 	es esv1.Elasticsearch,
 	role esv1.NodeRole,
@@ -273,12 +192,10 @@ func createPDBForStatefulSets(
 	allStatefulSets sset.StatefulSetList,
 	meta metadata.Metadata,
 ) (*policyv1.PodDisruptionBudget, error) {
-	// Skip if no StatefulSets
 	if len(statefulSets) == 0 {
 		return nil, nil
 	}
 
-	// Create the PDB spec
 	spec := buildRoleSpecificPDBSpec(es, role, allStatefulSets)
 
 	// Get StatefulSet names for the selector
@@ -287,22 +204,19 @@ func createPDBForStatefulSets(
 		ssetNames = append(ssetNames, sset.Name)
 	}
 
-	// Sort for consistent results
+	// Sort for consistency
 	sort.Strings(ssetNames)
 
-	// Set the selector to target all StatefulSets in this group
 	spec.Selector = selectorForStatefulSets(es, ssetNames)
 
-	// Create the PDB object
 	pdb := &policyv1.PodDisruptionBudget{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      RolePodDisruptionBudgetName(es.Name, role),
+			Name:      PodDisruptionBudgetNameForRole(es.Name, role),
 			Namespace: es.Namespace,
 		},
 		Spec: spec,
 	}
 
-	// Add labels and annotations
 	mergedMeta := meta.Merge(metadata.Metadata{
 		Labels:      pdb.Labels,
 		Annotations: pdb.Annotations,
@@ -445,10 +359,6 @@ func deleteAllRoleSpecificPDBs(ctx context.Context, k8sClient k8s.Client, es esv
 			if err := k8sClient.Delete(ctx, &pdb); err != nil && !apierrors.IsNotFound(err) {
 				return err
 			}
-		} else {
-			// Debug: log why PDB wasn't deleted
-			// This is for debugging only and should be removed in production
-			fmt.Printf("PDB %s not deleted - not owned by ES %s\n", pdb.Name, es.Name)
 		}
 	}
 	return nil
@@ -467,8 +377,8 @@ func isOwnedByElasticsearch(pdb policyv1.PodDisruptionBudget, es esv1.Elasticsea
 	return false
 }
 
-// RolePodDisruptionBudgetName returns the name of the PDB for a specific role.
-func RolePodDisruptionBudgetName(esName string, role esv1.NodeRole) string {
+// PodDisruptionBudgetNameForRole returns the name of the PDB for a specific role.
+func PodDisruptionBudgetNameForRole(esName string, role esv1.NodeRole) string {
 	name := esv1.DefaultPodDisruptionBudget(esName) + "-" + string(role)
 	// For coordinating nodes (no roles), append "coord" to the name
 	if role == "" {

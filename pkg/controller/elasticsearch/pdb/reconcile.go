@@ -19,12 +19,12 @@ import (
 	commonv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/common/v1"
 	esv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/elasticsearch/v1"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/hash"
+	lic "github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/license"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/metadata"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/reconciler"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/label"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/sset"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/k8s"
-	lic "github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/license"
 )
 
 // Reconcile ensures that a PodDisruptionBudget exists for this cluster, inheriting the spec content.
@@ -202,7 +202,7 @@ func buildPDBSpec(es esv1.Elasticsearch, statefulSets sset.StatefulSetList) poli
 	// compute MinAvailable based on the maximum number of Pods we're supposed to have
 	nodeCount := statefulSets.ExpectedNodeCount()
 	// maybe allow some Pods to be disrupted
-	minAvailable := nodeCount - allowedDisruptions(es, statefulSets)
+	minAvailable := nodeCount - allowedDisruptionsForRole(es, esv1.DataRole, statefulSets)
 
 	minAvailableIntStr := intstr.IntOrString{Type: intstr.Int, IntVal: minAvailable}
 
@@ -218,33 +218,4 @@ func buildPDBSpec(es esv1.Elasticsearch, statefulSets sset.StatefulSetList) poli
 		// (eg. Deployments, StatefulSets, etc.). We cannot use it with our own cluster-name selector.
 		MaxUnavailable: nil,
 	}
-}
-
-// allowedDisruptions returns the number of Pods that we allow to be disrupted while keeping the cluster healthy.
-func allowedDisruptions(es esv1.Elasticsearch, actualSsets sset.StatefulSetList) int32 {
-	if actualSsets.ExpectedNodeCount() == 1 {
-		// single node cluster (not highly-available)
-		// allow the node to be disrupted to ensure K8s nodes operations can be performed
-		return 1
-	}
-	if es.Status.Health != esv1.ElasticsearchGreenHealth {
-		// A non-green cluster may become red if we disrupt one node, don't allow it.
-		// The health information we're using here may be out-of-date, that's best effort.
-		return 0
-	}
-	if actualSsets.ExpectedMasterNodesCount() == 1 {
-		// There's a risk the single master of the cluster gets removed, don't allow it.
-		return 0
-	}
-	if actualSsets.ExpectedDataNodesCount() == 1 {
-		// There's a risk the single data node of the cluster gets removed, don't allow it.
-		return 0
-	}
-	if actualSsets.ExpectedIngestNodesCount() == 1 {
-		// There's a risk the single ingest node of the cluster gets removed, don't allow it.
-		return 0
-	}
-	// Allow one pod (only) to be disrupted on a healthy cluster.
-	// We could technically allow more, but the cluster health freshness would become a bigger problem.
-	return 1
 }
