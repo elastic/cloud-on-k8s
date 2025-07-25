@@ -69,7 +69,7 @@ We can think about different ways to distribute the Monitoring clusters.
 
 The main two options are: 
 
-- Both the production and non-production Monitoring clusters live in a single, separate Kubernetes cluster
+- Both the production and non-production monitoring clusters live in a single, separate Kubernetes cluster
 - Each Monitoring cluster lives in its own Kubernetes cluster
 
 Regardless of which option is chosen, it is fundamental to separate the Monitoring Elasticsearch clusters from the other clusters. We do not want to end up in a situation where, due to some issues, we lose both our "workload" Elasticsearch clusters and their respective Monitoring clusters.
