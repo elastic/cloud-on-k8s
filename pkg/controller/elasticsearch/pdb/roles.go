@@ -122,6 +122,7 @@ func getMostConservativeRole(roles map[esv1.NodeRole]struct{}) esv1.NodeRole {
 	}
 
 	// Data roles are next most conservative
+	// All data role variants should be treated as generic data role for PDB purposes
 	dataRoles := []esv1.NodeRole{
 		esv1.DataRole,
 		esv1.DataHotRole,
@@ -131,13 +132,31 @@ func getMostConservativeRole(roles map[esv1.NodeRole]struct{}) esv1.NodeRole {
 		esv1.DataFrozenRole,
 	}
 
+	// Check if any data role variant is present
 	for _, dataRole := range dataRoles {
 		if _, ok := roles[dataRole]; ok {
-			return dataRole
+			// Return generic data role for all data role variants
+			return esv1.DataRole
 		}
 	}
 
-	// Return the first role we encounter
+	// Return the first role we encounter in a deterministic order
+	// Define a priority order for non-data roles
+	nonDataRoles := []esv1.NodeRole{
+		esv1.IngestRole,
+		esv1.MLRole,
+		esv1.TransformRole,
+		esv1.RemoteClusterClientRole,
+	}
+
+	// Check non-data roles in priority order
+	for _, role := range nonDataRoles {
+		if _, ok := roles[role]; ok {
+			return role
+		}
+	}
+
+	// If no known role found, return any role from the map
 	for role := range roles {
 		return role
 	}
