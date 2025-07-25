@@ -253,9 +253,22 @@ func allowedDisruptionsForRole(
 	role esv1.NodeRole,
 	statefulSets sset.StatefulSetList,
 ) int32 {
-	// Single node clusters should allow 1 disruption to enable k8s operations
+	// In a single node cluster (not highly-available) always allow 1 disruption
+	// to ensure K8s nodes operations can be performed.
 	if statefulSets.ExpectedNodeCount() == 1 {
 		return 1
+	}
+	// There's a risk the single master of the cluster gets removed, don't allow it.
+	if statefulSets.ExpectedMasterNodesCount() == 1 {
+		return 0
+	}
+	// There's a risk the single data node of the cluster gets removed, don't allow it.
+	if statefulSets.ExpectedDataNodesCount() == 1 {
+		return 0
+	}
+	// There's a risk the single ingest node of the cluster gets removed, don't allow it.
+	if statefulSets.ExpectedIngestNodesCount() == 1 {
+		return 0
 	}
 
 	// Check if this is a data role (any of the data variants)
@@ -270,37 +283,8 @@ func allowedDisruptionsForRole(
 		return 0
 	}
 
-	// For data_frozen role, allow disruption if cluster is at least yellow
-	if role == esv1.DataFrozenRole && es.Status.Health != esv1.ElasticsearchGreenHealth && es.Status.Health != esv1.ElasticsearchYellowHealth {
-		return 0
-	}
-
-	// For master role, check if we have enough masters
-	if role == esv1.MasterRole {
-		if statefulSets.ExpectedMasterNodesCount() <= 1 {
-			// Don't allow disruption if there's only one master
-			return 0
-		}
-		// For multiple masters, allow disruption if cluster is at least yellow
-		if es.Status.Health != esv1.ElasticsearchGreenHealth && es.Status.Health != esv1.ElasticsearchYellowHealth {
-			return 0
-		}
-	}
-
-	// For ingest role, check if we have enough ingest nodes
-	if role == esv1.IngestRole {
-		if statefulSets.ExpectedIngestNodesCount() <= 1 {
-			// Don't allow disruption if there's only one ingest node
-			return 0
-		}
-		// For multiple ingest nodes, allow disruption if cluster is at least yellow
-		if es.Status.Health != esv1.ElasticsearchGreenHealth && es.Status.Health != esv1.ElasticsearchYellowHealth {
-			return 0
-		}
-	}
-
-	// For ML, transform, and coordinating (no roles) nodes, allow disruption if cluster is at least yellow
-	if role == esv1.MLRole || role == esv1.TransformRole || role == "" {
+	// For data_frozen, master, ingest, ml, transform, and coordinating (no roles) nodes, allow disruption if cluster is at least yellow
+	if role == esv1.DataFrozenRole || role == esv1.MasterRole || role == esv1.IngestRole || role == esv1.MLRole || role == esv1.TransformRole || role == "" {
 		if es.Status.Health != esv1.ElasticsearchGreenHealth && es.Status.Health != esv1.ElasticsearchYellowHealth {
 			return 0
 		}
