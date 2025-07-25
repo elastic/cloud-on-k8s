@@ -17,6 +17,10 @@ Known issues are significant defects or limitations that may impact your impleme
 
 :::
 
+## 3.1.0 [elastic-cloud-kubernetes-310-known-issues]
+
+There are no known issues in ECK 3.1
+
 ## 3.0.0 [elastic-cloud-kubernetes-300-known-issues]
 
 :::{dropdown} Elastic Maps Server does not start on certain container runtimes
