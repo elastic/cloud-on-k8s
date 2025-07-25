@@ -74,7 +74,7 @@ The main two options are:
 
 Regardless of which option is chosen, it is fundamental to separate the Monitoring Elasticsearch clusters from the other clusters. We do not want to end up in a situation where, due to some issues, we lose both our "workload" Elasticsearch clusters and their respective Monitoring clusters.
 
-This architecture seems like a good compromise as it allows us to fully separate productive and non-productive workloads. This means that we can test numerous upgrades (Kubernetes, Elasticsearch, `elastic-operator`) in a safe environment before promoting them to production. This level of isolation also guarantees that a misconfigured low environment (e.g. a Development cluster) will not affect production clusters!
+This architecture seems like a good compromise as it allows us to fully separate productive and non-productive workloads. This means that we can test numerous upgrades (Kubernetes, Elasticsearch, `elastic-operator`) in a safe environment before promoting them to production. This level of isolation also guarantees that a misconfigured low environment (e.g. a development cluster) will not affect production clusters!
 
 In the next sections, we will present two different iterations of this architecture - one relying on soft multi-tenancy, and one relying on hard multi-tenancy.
 
