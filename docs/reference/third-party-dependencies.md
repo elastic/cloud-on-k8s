@@ -39,7 +39,7 @@ This page lists the third-party dependencies used to build {{eck}}.
 | [github.com/prometheus/common](https://github.com/prometheus/common) | v0.65.0 | Apache-2.0 |
 | [github.com/sethvargo/go-password](https://github.com/sethvargo/go-password) | v0.3.1 | MIT |
 | [github.com/spf13/cobra](https://github.com/spf13/cobra) | v1.9.1 | Apache-2.0 |
-| [github.com/spf13/pflag](https://github.com/spf13/pflag) | v1.0.6 | BSD-3-Clause |
+| [github.com/spf13/pflag](https://github.com/spf13/pflag) | v1.0.7 | BSD-3-Clause |
 | [github.com/spf13/viper](https://github.com/spf13/viper) | v1.20.1 | MIT |
 | [github.com/stretchr/testify](https://github.com/stretchr/testify) | v1.10.0 | MIT |
 | [go.elastic.co/apm/module/apmelasticsearch/v2](https://go.elastic.co/apm/module/apmelasticsearch/v2) | v2.7.1 | Apache-2.0 |
@@ -51,9 +51,9 @@ This page lists the third-party dependencies used to build {{eck}}.
 | [golang.org/x/crypto](https://golang.org/x/crypto) | v0.40.0 | BSD-3-Clause |
 | [golang.org/x/exp](https://golang.org/x/exp) | v0.0.0-20240808152545-0cdaa3abc0fa | BSD-3-Clause |
 | [gopkg.in/yaml.v3](https://gopkg.in/yaml.v3) | v3.0.1 | MIT |
-| [k8s.io/api](https://github.com/kubernetes/api) | v0.33.2 | Apache-2.0 |
-| [k8s.io/apimachinery](https://github.com/kubernetes/apimachinery) | v0.33.2 | Apache-2.0 |
-| [k8s.io/client-go](https://github.com/kubernetes/client-go) | v0.33.2 | Apache-2.0 |
+| [k8s.io/api](https://github.com/kubernetes/api) | v0.33.3 | Apache-2.0 |
+| [k8s.io/apimachinery](https://github.com/kubernetes/apimachinery) | v0.33.3 | Apache-2.0 |
+| [k8s.io/client-go](https://github.com/kubernetes/client-go) | v0.33.3 | Apache-2.0 |
 | [k8s.io/klog/v2](https://github.com/kubernetes/klog) | v2.130.1 | Apache-2.0 |
 | [k8s.io/utils](https://github.com/kubernetes/utils) | v0.0.0-20241104100929-3ea5e8cea738 | Apache-2.0 |
 | [sigs.k8s.io/controller-runtime](https://sigs.k8s.io/controller-runtime) | v0.21.0 | Apache-2.0 |
