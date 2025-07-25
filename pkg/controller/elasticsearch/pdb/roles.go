@@ -90,8 +90,8 @@ func expectedRolePDBs(
 		if len(groupRoles) == 0 {
 			primaryRole = "" // coordinating nodes
 		} else {
-			// Use the most conservative role (master > data roles > others)
-			primaryRole = getMostConservativeRole(groupRoles)
+			// Use the primary role for PDB naming and grouping
+			primaryRole = getPrimaryRoleForPDB(groupRoles)
 		}
 
 		// Create a PDB for this group
@@ -112,32 +112,37 @@ func expectedRolePDBs(
 	return pdbs, nil
 }
 
-// getMostConservativeRole returns the most conservative role from a set of roles
-// for determining PDB disruption rules. The hierarchy is:
-// master > data roles > other roles
-func getMostConservativeRole(roles map[esv1.NodeRole]struct{}) esv1.NodeRole {
-	// Master role is most conservative
-	if _, ok := roles[esv1.MasterRole]; ok {
-		return esv1.MasterRole
-	}
-
-	// Data roles are next most conservative
-	// All data role variants should be treated as generic data role for PDB purposes
+// getPrimaryRoleForPDB returns the primary role from a set of roles for PDB naming and grouping.
+// Data roles are most restrictive (require green health), so they take priority.
+// All other roles have similar disruption rules (require yellow+ health).
+func getPrimaryRoleForPDB(roles map[esv1.NodeRole]struct{}) esv1.NodeRole {
+	// Data roles are most restrictive (require green health), so they take priority.
+	// All data role variants should be treated as a generic data role for PDB purposes
 	dataRoles := []esv1.NodeRole{
 		esv1.DataRole,
 		esv1.DataHotRole,
 		esv1.DataWarmRole,
 		esv1.DataColdRole,
 		esv1.DataContentRole,
-		esv1.DataFrozenRole,
+		// Note: DataFrozenRole is excluded as it has different disruption rules (yellow+ health)
 	}
 
-	// Check if any data role variant is present
+	// Check if any data role variant is present (excluding data_frozen)
 	for _, dataRole := range dataRoles {
 		if _, ok := roles[dataRole]; ok {
 			// Return generic data role for all data role variants
 			return esv1.DataRole
 		}
+	}
+
+	// Master role comes next in priority
+	if _, ok := roles[esv1.MasterRole]; ok {
+		return esv1.MasterRole
+	}
+
+	// Data frozen role (has different disruption rules than other data roles)
+	if _, ok := roles[esv1.DataFrozenRole]; ok {
+		return esv1.DataFrozenRole
 	}
 
 	// Return the first role we encounter in a deterministic order
