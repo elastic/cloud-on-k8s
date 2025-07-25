@@ -7,7 +7,7 @@ toolchain go1.24.5
 require (
 	github.com/spf13/cobra v1.9.1
 	helm.sh/helm/v3 v3.18.4
-	sigs.k8s.io/kustomize/kyaml v0.20.0
+	sigs.k8s.io/kustomize/kyaml v0.20.1
 )
 
 require (
