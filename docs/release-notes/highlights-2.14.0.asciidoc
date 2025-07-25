@@ -35,7 +35,7 @@ Starting with ECK 2.14.0 it becomes possible to fully delegate the transport cer
 [id="{p}-2140-advanced-readiness-probe"]
 === Advanced readiness probe
 
-The Elasticsearch containers are now configured to use the link:https://www.elastic.co/guide/en/elasticsearch/reference/current/modules-network.html#tcp-readiness-port[Elasticsearch TCP readiness port]. This change also improves cluster upgrade stability by fixing a bug in the upgrade process.
+The Elasticsearch containers are now configured to use the link:https://www.elastic.co/guide/en/elasticsearch/reference/8.19/modules-network.html#readiness-tcp-port[Elasticsearch TCP readiness port]. This change also improves cluster upgrade stability by fixing a bug in the upgrade process.
 
 [float]
 [id="{p}-2140-connect-resources-to-serverless"]
