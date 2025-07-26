@@ -68,6 +68,9 @@ securityContext:
       - ALL
   readOnlyRootFilesystem: true
   runAsNonRoot: true
+  seccompProfile:
+    type: RuntimeDefault
+
 
 # nodeSelector defines the node selector for the operator pod.
 nodeSelector: {}
