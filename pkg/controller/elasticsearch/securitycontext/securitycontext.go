@@ -28,6 +28,9 @@ func For(ver version.Version, enableReadOnlyRootFilesystem bool) corev1.Security
 		Privileged:               ptr.To[bool](false),
 		ReadOnlyRootFilesystem:   ptr.To[bool](enableReadOnlyRootFilesystem),
 		AllowPrivilegeEscalation: ptr.To[bool](false),
+		SeccompProfile: corev1.SeccompProfile{
+			Type: corev1.SeccompProfileTypeRuntimeDefault
+		},
 	}
 	if ver.LT(DropCapabilitiesMinStackVersion) {
 		return sc
