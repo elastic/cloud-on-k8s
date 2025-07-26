@@ -36,6 +36,9 @@ func TestFor(t *testing.T) {
 				Privileged:               ptr.To[bool](false),
 				ReadOnlyRootFilesystem:   ptr.To[bool](false),
 				AllowPrivilegeEscalation: ptr.To[bool](false),
+                                SeccompProfile:           &corev1.SeccompProfile{
+                                        Type: corev1.SeccompProfileTypeRuntimeDefault,
+                                },
 			},
 		},
 		{
@@ -49,6 +52,9 @@ func TestFor(t *testing.T) {
 				Privileged:               ptr.To[bool](false),
 				ReadOnlyRootFilesystem:   ptr.To[bool](false),
 				AllowPrivilegeEscalation: ptr.To[bool](false),
+                                SeccompProfile:           &corev1.SeccompProfile{
+                                        Type: corev1.SeccompProfileTypeRuntimeDefault,
+                                },
 			},
 		},
 		{
@@ -62,6 +68,9 @@ func TestFor(t *testing.T) {
 				Privileged:               ptr.To[bool](false),
 				ReadOnlyRootFilesystem:   ptr.To[bool](true),
 				AllowPrivilegeEscalation: ptr.To[bool](false),
+                                SeccompProfile:           &corev1.SeccompProfile{
+                                        Type: corev1.SeccompProfileTypeRuntimeDefault,
+                                },
 			},
 		},
 	}
@@ -90,6 +99,9 @@ func TestDefaultBeatSecurityContext(t *testing.T) {
 				Privileged:               ptr.To[bool](false),
 				ReadOnlyRootFilesystem:   ptr.To[bool](true),
 				AllowPrivilegeEscalation: ptr.To[bool](false),
+                                SeccompProfile:           &corev1.SeccompProfile{
+                                        Type: corev1.SeccompProfileTypeRuntimeDefault,
+                                },
 			},
 		},
 		{
@@ -103,6 +115,9 @@ func TestDefaultBeatSecurityContext(t *testing.T) {
 				ReadOnlyRootFilesystem:   ptr.To[bool](true),
 				RunAsNonRoot:             ptr.To[bool](true),
 				AllowPrivilegeEscalation: ptr.To[bool](false),
+                                SeccompProfile:           &corev1.SeccompProfile{
+                                        Type: corev1.SeccompProfileTypeRuntimeDefault,
+                                },
 			},
 		},
 	}

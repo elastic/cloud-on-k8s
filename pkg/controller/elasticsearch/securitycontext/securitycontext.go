@@ -28,7 +28,7 @@ func For(ver version.Version, enableReadOnlyRootFilesystem bool) corev1.Security
 		Privileged:               ptr.To[bool](false),
 		ReadOnlyRootFilesystem:   ptr.To[bool](enableReadOnlyRootFilesystem),
 		AllowPrivilegeEscalation: ptr.To[bool](false),
-		SeccompProfile: &corev1.SeccompProfile{
+		SeccompProfile:           &corev1.SeccompProfile{
 			Type: corev1.SeccompProfileTypeRuntimeDefault,
 		},
 	}
@@ -53,6 +53,9 @@ func DefaultBeatSecurityContext(ver version.Version) *corev1.SecurityContext {
 		Privileged:               ptr.To[bool](false),
 		ReadOnlyRootFilesystem:   ptr.To[bool](true),
 		AllowPrivilegeEscalation: ptr.To[bool](false),
+		SeccompProfile:           &corev1.SeccompProfile{
+			Type: corev1.SeccompProfileTypeRuntimeDefault,
+		},
 	}
 	if ver.LT(RunAsNonRootMinStackVersion) {
 		return sc
