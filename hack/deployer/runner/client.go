@@ -25,7 +25,7 @@ const (
 	clientBaseImageName     = dockerRegistry + "/" + ProjectTag + "/deployer"
 )
 
-func ensureClientImage(driverID string, vaultClient vault.Client, clientVersion string, clientBuildDefDir string) (string, error) {
+func ensureClientImage(driverID string, vaultClientProvider vault.ClientProvider, clientVersion string, clientBuildDefDir string) (string, error) {
 	if clientVersion == "" {
 		return "", errors.New("clientVersion must not be empty")
 	}
@@ -49,7 +49,7 @@ func ensureClientImage(driverID string, vaultClient vault.Client, clientVersion 
 		return image, fmt.Errorf("while building client image %s: %w", image, err)
 	}
 
-	if err = dockerLogin(vaultClient); err != nil {
+	if err = dockerLogin(vaultClientProvider); err != nil {
 		return image, fmt.Errorf("while logging into docker registry: %w", err)
 	}
 
@@ -83,7 +83,7 @@ func clientImageName(driverID, clientVersion, dockerfileName string) (string, er
 	return fmt.Sprintf("%s-%s:%s-%.8x", clientBaseImageName, driverID, clientVersion, h.Sum(nil)), nil
 }
 
-func dockerLogin(client vault.Client) error {
+func dockerLogin(clientProvider vault.ClientProvider) error {
 	// skip docker login in dev if registry exists in docker auth config file
 	if os.Getenv("CI") != "true" { //nolint:nestif
 		homeDir, err := os.UserHomeDir()
@@ -103,6 +103,10 @@ func dockerLogin(client vault.Client) error {
 		}
 	}
 
+	client, err := clientProvider()
+	if err != nil {
+		return err
+	}
 	creds, err := vault.GetMany(client, dockerRegistryVaultPath, "username", "password")
 	if err != nil {
 		return err
