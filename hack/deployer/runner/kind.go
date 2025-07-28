@@ -70,20 +70,16 @@ type KindDriverFactory struct{}
 var _ DriverFactory = &KindDriverFactory{}
 
 func (k KindDriverFactory) Create(plan Plan) (Driver, error) {
-	c, err := vault.NewClient()
-	if err != nil {
-		return nil, err
-	}
 	return &KindDriver{
 		plan:        plan,
-		vaultClient: c,
+		vaultClient: vault.NewClientProvider(),
 	}, nil
 }
 
 type KindDriver struct {
 	plan        Plan
 	clientImage string
-	vaultClient vault.Client
+	vaultClient vault.ClientProvider
 }
 
 func (k *KindDriver) Execute() error {

@@ -42,6 +42,14 @@ func NewClientProvider() func() (Client, error) {
 	}
 }
 
+// Provide returns a client provider for the given client.
+// Convenience function to avoid a lambda function when you already have a client.
+func Provide(c Client) ClientProvider {
+	return func() (Client, error) {
+		return c, nil
+	}
+}
+
 func NewClient() (Client, error) {
 	client, err := api.NewClient(api.DefaultConfig())
 	if err != nil {
