@@ -14,6 +14,68 @@ import (
 	"github.com/google/go-cmp/cmp/cmpopts"
 )
 
+func TestShouldNotOverwrite(t *testing.T) {
+	tests := []struct {
+		name           string
+		isNonSnapshot  bool
+		isProdHelmRepo bool
+		force          bool
+		want           bool
+	}{
+		{
+			name:           "Non-snapshot, prod repo, no force",
+			isNonSnapshot:  true,
+			isProdHelmRepo: true,
+			force:          false,
+			want:           true,
+		},
+		{
+			name:           "Non-snapshot, prod repo, force true",
+			isNonSnapshot:  true,
+			isProdHelmRepo: true,
+			force:          true,
+			want:           false,
+		},
+		{
+			name:           "Snapshot, prod repo, no force",
+			isNonSnapshot:  false,
+			isProdHelmRepo: true,
+			force:          false,
+			want:           false,
+		},
+		{
+			name:           "Non-snapshot, dev repo, no force",
+			isNonSnapshot:  true,
+			isProdHelmRepo: false,
+			force:          false,
+			want:           false,
+		},
+		{
+			name:           "Snapshot, dev repo, no force",
+			isNonSnapshot:  false,
+			isProdHelmRepo: false,
+			force:          false,
+			want:           false,
+		},
+		{
+			name:           "Non-snapshot, dev repo, force true",
+			isNonSnapshot:  true,
+			isProdHelmRepo: false,
+			force:          true,
+			want:           false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := shouldNotOverwrite(tt.isNonSnapshot, tt.isProdHelmRepo, tt.force)
+			if got != tt.want {
+				t.Errorf("shouldNotOverwrite() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
 func Test_readCharts(t *testing.T) {
 	tests := []struct {
 		name          string
