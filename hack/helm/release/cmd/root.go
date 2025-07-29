@@ -22,6 +22,7 @@ const (
 	chartsDirFlag       = "charts-dir"
 	credentialsFileFlag = "credentials-file"
 	dryRunFlag          = "dry-run"
+	forceFlag           = "force"
 	keepTmpDirFlag      = "keep-tmp-dir"
 	envFlag             = "env"
 	enableVaultFlag     = "enable-vault"
@@ -67,6 +68,7 @@ func releaseCmd() *cobra.Command {
 					ChartsRepoURL:       chartsRepoURL,
 					CredentialsFilePath: viper.GetString(credentialsFileFlag),
 					DryRun:              viper.GetBool(dryRunFlag),
+					Force:               viper.GetBool(forceFlag),
 					KeepTmpDir:          viper.GetBool(keepTmpDirFlag),
 				})
 		},
@@ -79,6 +81,14 @@ func releaseCmd() *cobra.Command {
 		"d",
 		true,
 		"Do not upload files to bucket, or update Helm index (env: HELM_DRY_RUN)",
+	)
+	_ = viper.BindPFlag(dryRunFlag, flags.Lookup(dryRunFlag))
+
+	flags.BoolP(
+		forceFlag,
+		"f",
+		false,
+		"Upload artifacts even if they already exist (env: HELM_FORCE)",
 	)
 	_ = viper.BindPFlag(dryRunFlag, flags.Lookup(dryRunFlag))
 

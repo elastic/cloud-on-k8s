@@ -41,6 +41,8 @@ type ReleaseConfig struct {
 	CredentialsFilePath string
 	// DryRun determines whether to run the release without making any changes to the GCS bucket or the Helm repository index file.
 	DryRun bool
+	// Force determines if uploading charts should overwrite existing charts in the GCS bucket even if they are not SNAPSHOT versions.
+	Force bool
 	// KeepTmpDir determines whether the temporary directory should be kept or not
 	KeepTmpDir bool
 }
@@ -198,7 +200,7 @@ func copyChartToGCSBucket(ctx context.Context, conf ReleaseConfig, chart chart, 
 	// specify that the object must not exist for non-SNAPSHOT chart when publishing to prod Helm repo
 	isNonSnapshot := !strings.HasSuffix(chart.Version, "-SNAPSHOT")
 	isProdHelmRepo := !strings.HasSuffix(conf.Bucket, "-dev")
-	if isNonSnapshot && isProdHelmRepo {
+	if shouldNotOverwrite(isNonSnapshot, isProdHelmRepo, conf.Force) {
 		chartArchiveObj = chartArchiveObj.If(storage.Conditions{DoesNotExist: true})
 	}
 
@@ -225,6 +227,14 @@ func copyChartToGCSBucket(ctx context.Context, conf ReleaseConfig, chart chart, 
 	}
 
 	return nil
+}
+
+// shouldNotOverwrite determines if a chart should not be overwritten in the bucket.
+func shouldNotOverwrite(isNonSnapshot, isProdHelmRepo, force bool) bool {
+	if force {
+		return false
+	}
+	return isNonSnapshot && isProdHelmRepo
 }
 
 // updateIndex updates the Helm repo index by merging the existing index in the bucket
