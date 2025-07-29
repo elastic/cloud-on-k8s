@@ -90,7 +90,7 @@ func releaseCmd() *cobra.Command {
 		false,
 		"Upload artifacts even if they already exist (env: HELM_FORCE)",
 	)
-	_ = viper.BindPFlag(dryRunFlag, flags.Lookup(dryRunFlag))
+	_ = viper.BindPFlag(forceFlag, flags.Lookup(forceFlag))
 
 	flags.BoolP(
 		keepTmpDirFlag,
