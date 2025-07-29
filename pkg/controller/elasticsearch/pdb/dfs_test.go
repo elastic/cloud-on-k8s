@@ -156,13 +156,6 @@ func sortStatefulSetGroups(groups [][]appsv1.StatefulSet) {
 
 	// Then sort the groups by the name of the first StatefulSet in each group
 	slices.SortFunc(groups, func(a, b []appsv1.StatefulSet) int {
-		// Empty groups come last
-		if len(a) == 0 {
-			return 1
-		}
-		if len(b) == 0 {
-			return -1
-		}
 		// Compare first StatefulSet names
 		return strings.Compare(a[0].Name, b[0].Name)
 	})
