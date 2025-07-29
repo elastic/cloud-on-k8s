@@ -24,6 +24,7 @@ set -eu
 : "$BK_TOKEN"
 : "$BRANCH"
 : "$DRY_RUN"
+: "$FORCE"
 
 # properties required to test PRs:
         # "pull_request_base_branch": "main",
@@ -40,7 +41,8 @@ main() {
         "branch": "'"$BRANCH"'",
         "message": "release '"$scope"' helm charts",
         "env": {
-            "HELM_DRY_RUN": "'"$DRY_RUN"'"
+            "HELM_DRY_RUN": "'"$DRY_RUN"'",
+            "HELM_FORCEN": "'"$FORCE"'",
         }
     }'
 }
