@@ -28,10 +28,11 @@ import (
 )
 
 // Reconcile ensures that a PodDisruptionBudget exists for this cluster, inheriting the spec content.
-// The default PDB we setup dynamically adapts MinAvailable to the number of nodes in the cluster.
+// For non-enterprise users: The default PDB we setup dynamically adapts MinAvailable to the number of nodes in the cluster.
+// For enterprise users: We optimize the PDBs that we setup to speed up Kubernetes cluster operations such as upgrades as much as safely possible.
+//
 // If the spec has disabled the default PDB, it will ensure none exist.
 func Reconcile(ctx context.Context, k8sClient k8s.Client, es esv1.Elasticsearch, statefulSets sset.StatefulSetList, meta metadata.Metadata) error {
-	// License check: enterprise-specific PDBs
 	licenseChecker := lic.NewLicenseChecker(k8sClient, es.Namespace)
 	enterpriseEnabled, err := licenseChecker.EnterpriseFeaturesEnabled(ctx)
 	if err != nil {
