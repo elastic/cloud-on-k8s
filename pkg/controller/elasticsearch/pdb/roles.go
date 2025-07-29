@@ -174,7 +174,6 @@ func getPrimaryRoleForPDB(roles map[esv1.NodeRole]struct{}) esv1.NodeRole {
 func getRolesFromStatefulSetPodTemplate(statefulSet appsv1.StatefulSet) []esv1.NodeRole {
 	roles := []esv1.NodeRole{}
 
-	// Get the pod template labels
 	labels := statefulSet.Spec.Template.Labels
 	if labels == nil {
 		return roles

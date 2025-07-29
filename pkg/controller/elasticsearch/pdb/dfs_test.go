@@ -161,7 +161,6 @@ func sortStatefulSetGroups(groups [][]appsv1.StatefulSet) {
 	})
 }
 
-// TestNormalizeRole tests the normalizeRole function
 func TestNormalizeRole(t *testing.T) {
 	tests := []struct {
 		name     string
