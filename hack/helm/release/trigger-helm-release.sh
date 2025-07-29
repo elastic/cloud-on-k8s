@@ -8,7 +8,7 @@
 #
 # Usage:  BK_TOKEN=$(jq .graphql_token ~/.buildkite/config.json -r) \
 #         BRANCH=2.8 DRY_RUN=true [FORCE=true] \
-#         ./trigger-bk-release.sh SCOPE
+#         ./trigger-helm-release.sh SCOPE
 #
 # Required environment variables:
 #    BK_TOKEN
