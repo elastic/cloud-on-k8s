@@ -45,7 +45,7 @@ main() {
         "message": "release '"$scope"' helm charts",
         "env": {
             "HELM_DRY_RUN": "'"$DRY_RUN"'",
-            "HELM_FORCEN": "'"$FORCE"'",
+            "HELM_FORCE": "'"$FORCE"'"
         }
     }'
 }
