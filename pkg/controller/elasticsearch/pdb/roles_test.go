@@ -258,6 +258,32 @@ func TestReconcileRoleSpecificPDBs(t *testing.T) {
 			},
 		},
 		{
+			name: "no existing PDBs: should create role-specific PDBs with data roles grouped",
+			args: args{
+				es: defaultEs,
+				statefulSets: sset.StatefulSetList{
+					ssetfixtures.TestSset{
+						Name:        "master-data1",
+						Namespace:   "ns",
+						ClusterName: "cluster",
+						Master:      true,
+						Data:        true,
+						Replicas:    1,
+					}.Build(),
+					ssetfixtures.TestSset{
+						Name:        "data2",
+						Namespace:   "ns",
+						ClusterName: "cluster",
+						DataHot:     true,
+						Replicas:    1,
+					}.Build(),
+				},
+			},
+			wantedPDBs: []*policyv1.PodDisruptionBudget{
+				rolePDB("cluster", "ns", esv1.DataRole, []string{"data2"}, 0),
+			},
+		},
+		{
 			name: "existing default PDB: should delete it and create role-specific PDBs",
 			args: args{
 				initObjs: []client.Object{
