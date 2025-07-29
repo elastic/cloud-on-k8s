@@ -200,7 +200,8 @@ func copyChartToGCSBucket(ctx context.Context, conf ReleaseConfig, chart chart, 
 	// specify that the object must not exist for non-SNAPSHOT chart when publishing to prod Helm repo
 	isNonSnapshot := !strings.HasSuffix(chart.Version, "-SNAPSHOT")
 	isProdHelmRepo := !strings.HasSuffix(conf.Bucket, "-dev")
-	if shouldNotOverwrite(isNonSnapshot, isProdHelmRepo, conf.Force) {
+	shouldNotOverwrite := shouldNotOverwrite(isNonSnapshot, isProdHelmRepo, conf.Force)
+	if shouldNotOverwrite {
 		chartArchiveObj = chartArchiveObj.If(storage.Conditions{DoesNotExist: true})
 	}
 
@@ -217,7 +218,7 @@ func copyChartToGCSBucket(ctx context.Context, conf ReleaseConfig, chart chart, 
 	if err := chartArchiveWriter.Close(); err != nil {
 		switch errType := err.(type) {
 		case *googleapi.Error:
-			if errType.Code == http.StatusPreconditionFailed && isNonSnapshot && isProdHelmRepo {
+			if errType.Code == http.StatusPreconditionFailed && shouldNotOverwrite {
 				return fmt.Errorf("file %s already exists in remote bucket; manually remove for this operation to succeed", chartPackagePath)
 			}
 			return fmt.Errorf("while writing data to bucket: %w", err)
