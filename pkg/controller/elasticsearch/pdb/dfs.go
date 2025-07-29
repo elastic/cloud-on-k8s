@@ -48,10 +48,12 @@ func normalizeRole(role string) string {
 //
 // The adjacency list would be:
 // [
+//
 //	[1, 2] # sts idx 0 is connected to sts idx 1 and 2
 //	[0, 2] # sts idx 1 is connected to sts idx 0 and 2
 //	[0, 1] # sts idx 2 is connected to sts idx 0 and 1
 //	[]     # sts idx 3 is not connected to any other sts'
+//
 // ]
 //
 // Why DFS?
@@ -64,7 +66,6 @@ func groupBySharedRoles(statefulSets sset.StatefulSetList) [][]appsv1.StatefulSe
 		return [][]appsv1.StatefulSet{}
 	}
 
-	// Build adjacency list based on shared roles
 	adjList := make([][]int, n)
 	roleToIndices := make(map[string][]int)
 

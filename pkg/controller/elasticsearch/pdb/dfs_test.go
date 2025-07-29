@@ -147,32 +147,24 @@ func TestGroupBySharedRoles(t *testing.T) {
 // sortStatefulSetGroups sorts the groups and StatefulSets within groups by name
 // for consistent comparison in tests
 func sortStatefulSetGroups(groups [][]appsv1.StatefulSet) {
-	// Sort the StatefulSets within each group by name
+	// First sort each group internally by StatefulSet names
 	for i := range groups {
-		sortStatefulSets(groups[i])
+		slices.SortFunc(groups[i], func(a, b appsv1.StatefulSet) int {
+			return strings.Compare(a.Name, b.Name)
+		})
 	}
 
-	// Consistent sorting:
-	// 1. First by size (largest first)
-	// 2. For groups of same size, sort by first StatefulSet name
-	for i := range groups {
-		for j := i + 1; j < len(groups); j++ {
-			// Sort by size (largest first)
-			if len(groups[i]) < len(groups[j]) {
-				groups[i], groups[j] = groups[j], groups[i]
-			} else if len(groups[i]) == len(groups[j]) && len(groups[i]) > 0 && len(groups[j]) > 0 {
-				// If same size and not empty, sort by name
-				if groups[i][0].Name > groups[j][0].Name {
-					groups[i], groups[j] = groups[j], groups[i]
-				}
-			}
+	// Then sort the groups by the name of the first StatefulSet in each group
+	slices.SortFunc(groups, func(a, b []appsv1.StatefulSet) int {
+		// Empty groups come last
+		if len(a) == 0 {
+			return 1
 		}
-	}
-}
-
-func sortStatefulSets(sts []appsv1.StatefulSet) {
-	slices.SortFunc(sts, func(i, j appsv1.StatefulSet) int {
-		return strings.Compare(i.Name, j.Name)
+		if len(b) == 0 {
+			return -1
+		}
+		// Compare first StatefulSet names
+		return strings.Compare(a[0].Name, b[0].Name)
 	})
 }
 
