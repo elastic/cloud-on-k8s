@@ -1,0 +1,34 @@
+apiVersion: elasticsearch.k8s.elastic.co/v1
+kind: Elasticsearch
+metadata:
+  name: cluster-a
+  namespace: team-a
+spec:
+  # shortened
+  podTemplate:
+    metadata:
+      labels:
+        elasticsearch.k8s.elastic.co/cluster-name: cluster-a
+    spec:
+      tolerations: # I "accept" the nodes defined for my team
+        - key: "taints.demo.elastic.co/team"
+          operator: "Equal"
+          value: "team-a"
+          effect: "NoSchedule"
+      affinity: # I want the nodes defined for my project
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+              - matchExpressions:
+                  - key: "labels.demo.elastic.co/team"
+                    operator: "In"
+                    values:
+                      - "team-a"
+        podAntiAffinity: # Try to not put me on the same host where other pods for the same ES cluster are running
+          preferredDuringSchedulingIgnoredDuringExecution: # or requiredDuring...
+            - weight: 100
+              podAffinityTerm:
+                labelSelector:
+                  matchLabels:
+                    elasticsearch.k8s.elastic.co/cluster-name: cluster-a
+                topologyKey: kubernetes.io/hostname
