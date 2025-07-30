@@ -3,6 +3,7 @@ apiVersion: kibana.k8s.elastic.co/v1
 kind: Kibana
 metadata:
   name: {{ include "kibana.fullname" . }}
+  namespace: {{ .Release.Namespace }}
   labels:
     {{- include "kibana.labels" . | nindent 4 }}
   annotations:
