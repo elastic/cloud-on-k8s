@@ -299,7 +299,9 @@ func updateIndex(ctx context.Context, conf ReleaseConfig, tempDir string) error 
 	if _, err = io.Copy(newIndexObjWriter, newIndexFile); err != nil {
 		return fmt.Errorf("while copying new index.yaml to bucket: %w", err)
 	}
-	defer newIndexObjWriter.Close()
+	if err := newIndexObjWriter.Close(); err != nil {
+		return fmt.Errorf("while finalizing upload of index.yaml: %w", err)
+	}
 
 	return nil
 }
