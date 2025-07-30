@@ -182,36 +182,24 @@ func TestReconcileRoleSpecificPDBs(t *testing.T) {
 			},
 		}
 
-		// Set selector based on number of StatefulSets
-		if len(statefulSetNames) == 1 {
-			// Single StatefulSet - use MatchLabels
-			pdb.Spec.Selector = &metav1.LabelSelector{
-				MatchLabels: map[string]string{
-					label.ClusterNameLabelName:     esName,
-					label.StatefulSetNameLabelName: statefulSetNames[0],
-				},
-			}
-		} else {
-			// Sort for consistent test comparison
-			sorted := make([]string, len(statefulSetNames))
-			copy(sorted, statefulSetNames)
-			slices.Sort(sorted)
+		// Sort for consistent test comparison
+		sorted := make([]string, len(statefulSetNames))
+		copy(sorted, statefulSetNames)
+		slices.Sort(sorted)
 
-			// Multiple StatefulSets - use MatchExpressions
-			pdb.Spec.Selector = &metav1.LabelSelector{
-				MatchExpressions: []metav1.LabelSelectorRequirement{
-					{
-						Key:      label.ClusterNameLabelName,
-						Operator: metav1.LabelSelectorOpIn,
-						Values:   []string{esName},
-					},
-					{
-						Key:      label.StatefulSetNameLabelName,
-						Operator: metav1.LabelSelectorOpIn,
-						Values:   sorted,
-					},
+		pdb.Spec.Selector = &metav1.LabelSelector{
+			MatchExpressions: []metav1.LabelSelectorRequirement{
+				{
+					Key:      label.ClusterNameLabelName,
+					Operator: metav1.LabelSelectorOpIn,
+					Values:   []string{esName},
 				},
-			}
+				{
+					Key:      label.StatefulSetNameLabelName,
+					Operator: metav1.LabelSelectorOpIn,
+					Values:   sorted,
+				},
+			},
 		}
 
 		return pdb
@@ -280,7 +268,7 @@ func TestReconcileRoleSpecificPDBs(t *testing.T) {
 				},
 			},
 			wantedPDBs: []*policyv1.PodDisruptionBudget{
-				rolePDB("cluster", "ns", esv1.DataRole, []string{"data2"}, 0),
+				rolePDB("cluster", "ns", esv1.DataRole, []string{"data2", "master-data1"}, 0),
 			},
 		},
 		{
@@ -521,9 +509,17 @@ func TestExpectedRolePDBs(t *testing.T) {
 					},
 					Spec: policyv1.PodDisruptionBudgetSpec{
 						Selector: &metav1.LabelSelector{
-							MatchLabels: map[string]string{
-								label.ClusterNameLabelName:     "test-es",
-								label.StatefulSetNameLabelName: "master1",
+							MatchExpressions: []metav1.LabelSelectorRequirement{
+								{
+									Key:      label.ClusterNameLabelName,
+									Operator: metav1.LabelSelectorOpIn,
+									Values:   []string{"test-es"},
+								},
+								{
+									Key:      label.StatefulSetNameLabelName,
+									Operator: metav1.LabelSelectorOpIn,
+									Values:   []string{"master1"},
+								},
 							},
 						},
 						MaxUnavailable: &intstr.IntOrString{Type: intstr.Int, IntVal: 1},
@@ -561,9 +557,17 @@ func TestExpectedRolePDBs(t *testing.T) {
 					},
 					Spec: policyv1.PodDisruptionBudgetSpec{
 						Selector: &metav1.LabelSelector{
-							MatchLabels: map[string]string{
-								label.ClusterNameLabelName:     "test-es",
-								label.StatefulSetNameLabelName: "coord1",
+							MatchExpressions: []metav1.LabelSelectorRequirement{
+								{
+									Key:      label.ClusterNameLabelName,
+									Operator: metav1.LabelSelectorOpIn,
+									Values:   []string{"test-es"},
+								},
+								{
+									Key:      label.StatefulSetNameLabelName,
+									Operator: metav1.LabelSelectorOpIn,
+									Values:   []string{"coord1"},
+								},
 							},
 						},
 						MaxUnavailable: &intstr.IntOrString{Type: intstr.Int, IntVal: 1},
@@ -616,9 +620,17 @@ func TestExpectedRolePDBs(t *testing.T) {
 					},
 					Spec: policyv1.PodDisruptionBudgetSpec{
 						Selector: &metav1.LabelSelector{
-							MatchLabels: map[string]string{
-								label.ClusterNameLabelName:     "test-es",
-								label.StatefulSetNameLabelName: "master1",
+							MatchExpressions: []metav1.LabelSelectorRequirement{
+								{
+									Key:      label.ClusterNameLabelName,
+									Operator: metav1.LabelSelectorOpIn,
+									Values:   []string{"test-es"},
+								},
+								{
+									Key:      label.StatefulSetNameLabelName,
+									Operator: metav1.LabelSelectorOpIn,
+									Values:   []string{"master1"},
+								},
 							},
 						},
 						MaxUnavailable: &intstr.IntOrString{Type: intstr.Int, IntVal: 0},
@@ -643,9 +655,17 @@ func TestExpectedRolePDBs(t *testing.T) {
 					},
 					Spec: policyv1.PodDisruptionBudgetSpec{
 						Selector: &metav1.LabelSelector{
-							MatchLabels: map[string]string{
-								label.ClusterNameLabelName:     "test-es",
-								label.StatefulSetNameLabelName: "data1",
+							MatchExpressions: []metav1.LabelSelectorRequirement{
+								{
+									Key:      label.ClusterNameLabelName,
+									Operator: metav1.LabelSelectorOpIn,
+									Values:   []string{"test-es"},
+								},
+								{
+									Key:      label.StatefulSetNameLabelName,
+									Operator: metav1.LabelSelectorOpIn,
+									Values:   []string{"data1"},
+								},
 							},
 						},
 						MaxUnavailable: &intstr.IntOrString{Type: intstr.Int, IntVal: 0},
@@ -670,9 +690,17 @@ func TestExpectedRolePDBs(t *testing.T) {
 					},
 					Spec: policyv1.PodDisruptionBudgetSpec{
 						Selector: &metav1.LabelSelector{
-							MatchLabels: map[string]string{
-								label.ClusterNameLabelName:     "test-es",
-								label.StatefulSetNameLabelName: "ingest1",
+							MatchExpressions: []metav1.LabelSelectorRequirement{
+								{
+									Key:      label.ClusterNameLabelName,
+									Operator: metav1.LabelSelectorOpIn,
+									Values:   []string{"test-es"},
+								},
+								{
+									Key:      label.StatefulSetNameLabelName,
+									Operator: metav1.LabelSelectorOpIn,
+									Values:   []string{"ingest1"},
+								},
 							},
 						},
 						MaxUnavailable: &intstr.IntOrString{Type: intstr.Int, IntVal: 0},
@@ -762,9 +790,17 @@ func TestExpectedRolePDBs(t *testing.T) {
 					},
 					Spec: policyv1.PodDisruptionBudgetSpec{
 						Selector: &metav1.LabelSelector{
-							MatchLabels: map[string]string{
-								label.ClusterNameLabelName:     "test-es",
-								label.StatefulSetNameLabelName: "ml1",
+							MatchExpressions: []metav1.LabelSelectorRequirement{
+								{
+									Key:      label.ClusterNameLabelName,
+									Operator: metav1.LabelSelectorOpIn,
+									Values:   []string{"test-es"},
+								},
+								{
+									Key:      label.StatefulSetNameLabelName,
+									Operator: metav1.LabelSelectorOpIn,
+									Values:   []string{"ml1"},
+								},
 							},
 						},
 						MaxUnavailable: &intstr.IntOrString{Type: intstr.Int, IntVal: 0},

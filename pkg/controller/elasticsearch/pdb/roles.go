@@ -6,6 +6,7 @@ package pdb
 
 import (
 	"context"
+	"fmt"
 	"sort"
 
 	appsv1 "k8s.io/api/apps/v1"
@@ -33,6 +34,7 @@ func reconcileRoleSpecificPDBs(
 	meta metadata.Metadata,
 ) error {
 	// Check if PDB is disabled in the ES spec, and if so delete all existing PDBs (both default and role-specific)
+	// that have a proper owner reference.
 	if es.Spec.PodDisruptionBudget != nil && es.Spec.PodDisruptionBudget.IsDisabled() {
 		if err := deleteDefaultPDB(ctx, k8sClient, es); err != nil {
 			return err
@@ -42,17 +44,18 @@ func reconcileRoleSpecificPDBs(
 
 	// Always ensure any existing default PDB is removed
 	if err := deleteDefaultPDB(ctx, k8sClient, es); err != nil {
-		return err
+		return fmt.Errorf("while deleting the default PDB: %w", err)
 	}
 
+	// Retrieve the expected list of PDBs.
 	pdbs, err := expectedRolePDBs(es, statefulSets, meta)
 	if err != nil {
-		return err
+		return fmt.Errorf("while retrieving expected role-specific PDBs: %w", err)
 	}
 
 	for _, expected := range pdbs {
 		if err := reconcilePDB(ctx, k8sClient, es, expected); err != nil {
-			return err
+			return fmt.Errorf("while reconciling role-specific pdb %s: %w", expected.Name, err)
 		}
 	}
 	return nil
@@ -88,7 +91,7 @@ func expectedRolePDBs(
 		// If group has no roles, it's a coordinating ES role.
 		var primaryRole esv1.NodeRole
 		if len(groupRoles) == 0 {
-			primaryRole = "" // coordinating nodes
+			primaryRole = "" // coordinating role
 		} else {
 			// Use the primary role for PDB naming and grouping
 			primaryRole = getPrimaryRoleForPDB(groupRoles)
@@ -211,7 +214,9 @@ func getRolesFromStatefulSetPodTemplate(statefulSet appsv1.StatefulSet) []esv1.N
 func createPDBForStatefulSets(
 	es esv1.Elasticsearch,
 	role esv1.NodeRole,
+	// statefulSets are the statefulSets grouped into this pdb.
 	statefulSets []appsv1.StatefulSet,
+	// allStatefulSets are all statefulsets in the whole ES cluster.
 	allStatefulSets sset.StatefulSetList,
 	meta metadata.Metadata,
 ) (*policyv1.PodDisruptionBudget, error) {
@@ -219,25 +224,12 @@ func createPDBForStatefulSets(
 		return nil, nil
 	}
 
-	spec := buildRoleSpecificPDBSpec(es, role, allStatefulSets)
-
-	// Get StatefulSet names for the selector
-	ssetNames := make([]string, 0, len(statefulSets))
-	for _, sset := range statefulSets {
-		ssetNames = append(ssetNames, sset.Name)
-	}
-
-	// Sort for consistency
-	sort.Strings(ssetNames)
-
-	spec.Selector = selectorForStatefulSets(es, ssetNames)
-
 	pdb := &policyv1.PodDisruptionBudget{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      PodDisruptionBudgetNameForRole(es.Name, role),
 			Namespace: es.Namespace,
 		},
-		Spec: spec,
+		Spec: buildRoleSpecificPDBSpec(es, role, statefulSets, allStatefulSets),
 	}
 
 	mergedMeta := meta.Merge(metadata.Metadata{
@@ -259,18 +251,32 @@ func createPDBForStatefulSets(
 func buildRoleSpecificPDBSpec(
 	es esv1.Elasticsearch,
 	role esv1.NodeRole,
+	// statefulSets are the statefulSets grouped into this pdb.
 	statefulSets sset.StatefulSetList,
+	// allStatefulSets are all statefulsets in the whole ES cluster.
+	allStatefulSets sset.StatefulSetList,
 ) policyv1.PodDisruptionBudgetSpec {
 	// Get the allowed disruptions for this role based on cluster health and role type
-	allowedDisruptions := allowedDisruptionsForRole(es, role, statefulSets)
+	allowedDisruptions := allowedDisruptionsForRole(es, role, allStatefulSets)
 
-	// We'll set the selector later in createRolePDB
-	return policyv1.PodDisruptionBudgetSpec{
+	spec := policyv1.PodDisruptionBudgetSpec{
 		MaxUnavailable: &intstr.IntOrString{Type: intstr.Int, IntVal: allowedDisruptions},
 	}
+
+	// Get StatefulSet names for the selector
+	ssetNames := make([]string, 0, len(statefulSets))
+	for _, sset := range statefulSets {
+		ssetNames = append(ssetNames, sset.Name)
+	}
+
+	// Sort for consistency
+	sort.Strings(ssetNames)
+
+	spec.Selector = selectorForStatefulSets(es, ssetNames)
+	return spec
 }
 
-// allowedDisruptionsForRole returns the number of pods that can be disrupted for a given role.
+// allowedDisruptionsForRole returns the maximum number of pods that can be disrupted for a given role.
 func allowedDisruptionsForRole(
 	es esv1.Elasticsearch,
 	role esv1.NodeRole,
@@ -318,20 +324,8 @@ func allowedDisruptionsForRole(
 }
 
 // selectorForStatefulSets returns a label selector that matches pods from specific StatefulSets.
-// If there's only one StatefulSet, it uses simple matchLabels.
-// If there are multiple StatefulSets, it uses matchExpressions with In operator.
 func selectorForStatefulSets(es esv1.Elasticsearch, ssetNames []string) *metav1.LabelSelector {
-	// For a single StatefulSet, use simple matchLabels
-	if len(ssetNames) == 1 {
-		return &metav1.LabelSelector{
-			MatchLabels: map[string]string{
-				label.ClusterNameLabelName:     es.Name,
-				label.StatefulSetNameLabelName: ssetNames[0],
-			},
-		}
-	}
-
-	// For multiple StatefulSets, use matchExpressions with In operator
+	// For simplicity both single and multi-statefulsets use matchExpressions with In operator
 	return &metav1.LabelSelector{
 		MatchExpressions: []metav1.LabelSelectorRequirement{
 			{
