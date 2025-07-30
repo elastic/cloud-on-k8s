@@ -3,14 +3,21 @@
 ---
 mapped_pages:
   - https://www.elastic.co/guide/en/cloud-on-k8s/current/k8s-api-reference.html
-navigation_title: API Reference
+{{if eq ( markdownTemplateValue "eckVersion" ) "main" -}}
+navigation_title: current
 applies_to:
   deployment:
-    eck: all
+    eck: preview
+{{- else -}}
+navigation_title: {{ markdownTemplateValue "eckVersion" }}
+applies_to:
+  deployment:
+    eck: ga {{ markdownTemplateValue "eckVersion" }}
+{{- end}}
 ---
 % Generated documentation. Please do not edit.
 
-# {{`{{eck}}`}} API Reference [k8s-api-reference]
+# {{`{{eck}}`}} API Reference for {{ markdownTemplateValue "eckVersion" }} [k8s-api-reference-{{ markdownTemplateValue "eckVersion" }}]
 
 ## Packages
 {{- range $groupVersions }}
