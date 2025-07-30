@@ -1,5 +1,6 @@
 env:
   HELM_DRY_RUN: ${HELM_DRY_RUN:-true}
+  HELM_FORCE: ${HELM_FORCE:-false}
 
 steps:
 

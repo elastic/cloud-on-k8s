@@ -41,6 +41,8 @@ type ReleaseConfig struct {
 	CredentialsFilePath string
 	// DryRun determines whether to run the release without making any changes to the GCS bucket or the Helm repository index file.
 	DryRun bool
+	// Force determines if uploading charts should overwrite existing charts in the GCS bucket even if they are not SNAPSHOT versions.
+	Force bool
 	// KeepTmpDir determines whether the temporary directory should be kept or not
 	KeepTmpDir bool
 }
@@ -198,7 +200,8 @@ func copyChartToGCSBucket(ctx context.Context, conf ReleaseConfig, chart chart, 
 	// specify that the object must not exist for non-SNAPSHOT chart when publishing to prod Helm repo
 	isNonSnapshot := !strings.HasSuffix(chart.Version, "-SNAPSHOT")
 	isProdHelmRepo := !strings.HasSuffix(conf.Bucket, "-dev")
-	if isNonSnapshot && isProdHelmRepo {
+	shouldNotOverwrite := shouldNotOverwrite(isNonSnapshot, isProdHelmRepo, conf.Force)
+	if shouldNotOverwrite {
 		chartArchiveObj = chartArchiveObj.If(storage.Conditions{DoesNotExist: true})
 	}
 
@@ -215,7 +218,7 @@ func copyChartToGCSBucket(ctx context.Context, conf ReleaseConfig, chart chart, 
 	if err := chartArchiveWriter.Close(); err != nil {
 		switch errType := err.(type) {
 		case *googleapi.Error:
-			if errType.Code == http.StatusPreconditionFailed && isNonSnapshot && isProdHelmRepo {
+			if errType.Code == http.StatusPreconditionFailed && shouldNotOverwrite {
 				return fmt.Errorf("file %s already exists in remote bucket; manually remove for this operation to succeed", chartPackagePath)
 			}
 			return fmt.Errorf("while writing data to bucket: %w", err)
@@ -225,6 +228,14 @@ func copyChartToGCSBucket(ctx context.Context, conf ReleaseConfig, chart chart, 
 	}
 
 	return nil
+}
+
+// shouldNotOverwrite determines if a chart should not be overwritten in the bucket.
+func shouldNotOverwrite(isNonSnapshot, isProdHelmRepo, force bool) bool {
+	if force {
+		return false
+	}
+	return isNonSnapshot && isProdHelmRepo
 }
 
 // updateIndex updates the Helm repo index by merging the existing index in the bucket
