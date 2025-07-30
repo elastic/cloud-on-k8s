@@ -5,7 +5,7 @@ metadata:
   name: e2e-agent
   namespace: {{ .E2ENamespace }}
 spec:
-  version: 9.0.0
+  version: 9.1.0
   elasticsearchRefs:
     - secretName: eck-{{ .TestRun }}
   daemonSet:
@@ -227,7 +227,7 @@ spec:
       meta:
         package:
           name: system
-          version: 9.0.0
+          version: 9.1.0
       data_stream:
         namespace: default
       processors:
