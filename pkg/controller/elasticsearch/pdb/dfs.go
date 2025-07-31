@@ -100,9 +100,9 @@ func buildConnectedStatefulSets(statefulSets sset.StatefulSetList, adjList [][]i
 
 			// Using the adjacency list previously built, push all unvisited statefulSets onto the stack
 			// so they are visited on the next iteration.
-			for _, neighbor := range adjList[stsIdx] {
-				if !visited[neighbor] {
-					stack = append(stack, neighbor)
+			for _, sts := range adjList[stsIdx] {
+				if !visited[sts] {
+					stack = append(stack, sts)
 				}
 			}
 		}
