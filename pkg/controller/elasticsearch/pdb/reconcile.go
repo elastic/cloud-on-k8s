@@ -6,6 +6,7 @@ package pdb
 
 import (
 	"context"
+	"fmt"
 
 	policyv1 "k8s.io/api/policy/v1"
 	policyv1beta1 "k8s.io/api/policy/v1beta1"
@@ -19,6 +20,7 @@ import (
 	commonv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/common/v1"
 	esv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/elasticsearch/v1"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/hash"
+	lic "github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/license"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/metadata"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/reconciler"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/label"
@@ -26,10 +28,36 @@ import (
 	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/k8s"
 )
 
-// Reconcile ensures that a PodDisruptionBudget exists for this cluster, inheriting the spec content.
-// The default PDB we setup dynamically adapts MinAvailable to the number of nodes in the cluster.
+// Reconcile ensures that PodDisruptionBudget(s) exists for this cluster, inheriting the spec content.
+//
+// For non-enterprise users: The default PDB we setup dynamically adapts MinAvailable to the number of nodes in the cluster.
+// For enterprise users: We optimize the PDBs that we setup to speed up Kubernetes cluster operations such as upgrades as much as safely possible
+//
+//	by grouping statefulSets by associated Elasticsearch node roles into the same PDB, and then dynamically maxUnavailable
+//	according to whatever cluster health is optimal for the set of roles.
+//
 // If the spec has disabled the default PDB, it will ensure none exist.
 func Reconcile(ctx context.Context, k8sClient k8s.Client, es esv1.Elasticsearch, statefulSets sset.StatefulSetList, meta metadata.Metadata) error {
+	licenseChecker := lic.NewLicenseChecker(k8sClient, es.Namespace)
+	enterpriseEnabled, err := licenseChecker.EnterpriseFeaturesEnabled(ctx)
+	if err != nil {
+		return fmt.Errorf("while checking license during pdb reconciliation: %w", err)
+	}
+	if enterpriseEnabled {
+		return reconcileRoleSpecificPDBs(ctx, k8sClient, es, statefulSets, meta)
+	}
+
+	return reconcileDefaultPDB(ctx, k8sClient, es, statefulSets, meta)
+}
+
+// reconcileDefaultPDB reconciles the default PDB for non-enterprise users.
+func reconcileDefaultPDB(
+	ctx context.Context,
+	k8sClient k8s.Client,
+	es esv1.Elasticsearch,
+	statefulSets sset.StatefulSetList,
+	meta metadata.Metadata,
+) error {
 	expected, err := expectedPDB(es, statefulSets, meta)
 	if err != nil {
 		return err
@@ -38,6 +66,16 @@ func Reconcile(ctx context.Context, k8sClient k8s.Client, es esv1.Elasticsearch,
 		return deleteDefaultPDB(ctx, k8sClient, es)
 	}
 
+	return reconcilePDB(ctx, k8sClient, es, expected)
+}
+
+// reconcilePDB reconciles a single PDB, handling both v1 and v1beta1 versions.
+func reconcilePDB(
+	ctx context.Context,
+	k8sClient k8s.Client,
+	es esv1.Elasticsearch,
+	expected *policyv1.PodDisruptionBudget,
+) error {
 	// label the PDB with a hash of its content, for comparison purposes
 	expected.Labels = hash.SetTemplateHashLabel(expected.Labels, expected)
 
@@ -170,7 +208,7 @@ func buildPDBSpec(es esv1.Elasticsearch, statefulSets sset.StatefulSetList) poli
 	// compute MinAvailable based on the maximum number of Pods we're supposed to have
 	nodeCount := statefulSets.ExpectedNodeCount()
 	// maybe allow some Pods to be disrupted
-	minAvailable := nodeCount - allowedDisruptions(es, statefulSets)
+	minAvailable := nodeCount - allowedDisruptionsForRole(es, esv1.DataRole, statefulSets)
 
 	minAvailableIntStr := intstr.IntOrString{Type: intstr.Int, IntVal: minAvailable}
 
@@ -186,33 +224,4 @@ func buildPDBSpec(es esv1.Elasticsearch, statefulSets sset.StatefulSetList) poli
 		// (eg. Deployments, StatefulSets, etc.). We cannot use it with our own cluster-name selector.
 		MaxUnavailable: nil,
 	}
-}
-
-// allowedDisruptions returns the number of Pods that we allow to be disrupted while keeping the cluster healthy.
-func allowedDisruptions(es esv1.Elasticsearch, actualSsets sset.StatefulSetList) int32 {
-	if actualSsets.ExpectedNodeCount() == 1 {
-		// single node cluster (not highly-available)
-		// allow the node to be disrupted to ensure K8s nodes operations can be performed
-		return 1
-	}
-	if es.Status.Health != esv1.ElasticsearchGreenHealth {
-		// A non-green cluster may become red if we disrupt one node, don't allow it.
-		// The health information we're using here may be out-of-date, that's best effort.
-		return 0
-	}
-	if actualSsets.ExpectedMasterNodesCount() == 1 {
-		// There's a risk the single master of the cluster gets removed, don't allow it.
-		return 0
-	}
-	if actualSsets.ExpectedDataNodesCount() == 1 {
-		// There's a risk the single data node of the cluster gets removed, don't allow it.
-		return 0
-	}
-	if actualSsets.ExpectedIngestNodesCount() == 1 {
-		// There's a risk the single ingest node of the cluster gets removed, don't allow it.
-		return 0
-	}
-	// Allow one pod (only) to be disrupted on a healthy cluster.
-	// We could technically allow more, but the cluster health freshness would become a bigger problem.
-	return 1
 }
