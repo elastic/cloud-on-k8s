@@ -73,7 +73,6 @@ func groupBySharedRoles(statefulSets sset.StatefulSetList) [][]appsv1.StatefulSe
 
 // buildConnectedStatefulSets uses iterative DFS (avoiding recursion) to find connected statefulSets.
 func buildConnectedStatefulSets(statefulSets sset.StatefulSetList, adjList [][]int, size int) [][]appsv1.StatefulSet {
-	// Use iterative DFS (avoiding recursion) to find connected statefulsets.
 	var result [][]appsv1.StatefulSet
 	visited := make([]bool, size)
 
