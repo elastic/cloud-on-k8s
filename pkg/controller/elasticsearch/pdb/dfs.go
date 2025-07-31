@@ -65,38 +65,17 @@ func groupBySharedRoles(statefulSets sset.StatefulSetList) [][]appsv1.StatefulSe
 	if n == 0 {
 		return [][]appsv1.StatefulSet{}
 	}
+	rolesToIndices := buildRolesToIndicesMap(statefulSets)
+	adjList := buildAdjacencyList(rolesToIndices, n)
 
-	adjList := make([][]int, n)
-	roleToIndices := make(map[string][]int)
+	return buildConnectedStatefulSets(statefulSets, adjList, n)
+}
 
-	// Map roles to StatefulSet indices
-	for i, sset := range statefulSets {
-		roles := getRolesFromStatefulSetPodTemplate(sset)
-		if len(roles) == 0 {
-			// StatefulSets with no roles are coordinating nodes - group them together
-			roleToIndices["coordinating"] = append(roleToIndices["coordinating"], i)
-			continue
-		}
-		for _, role := range roles {
-			normalizedRole := normalizeRole(string(role))
-			roleToIndices[normalizedRole] = append(roleToIndices[normalizedRole], i)
-		}
-	}
-
-	// Populate the adjacency list with each StatefulSet index, and the slice of StatefulSet
-	// indices which share roles.
-	for _, indices := range roleToIndices {
-		for i := 1; i < len(indices); i++ {
-			// Connect each StatefulSet to the first StatefulSet with the same role
-			// This ensures all StatefulSets with the role are in the same component
-			adjList[indices[0]] = append(adjList[indices[0]], indices[i])
-			adjList[indices[i]] = append(adjList[indices[i]], indices[0])
-		}
-	}
-
-	// use iterative DFS (avoiding recursion) to find connected components
+// buildConnectedStatefulSets uses iterative DFS (avoiding recursion) to find connected statefulSets.
+func buildConnectedStatefulSets(statefulSets sset.StatefulSetList, adjList [][]int, size int) [][]appsv1.StatefulSet {
+	// Use iterative DFS (avoiding recursion) to find connected statefulsets.
 	var result [][]appsv1.StatefulSet
-	visited := make([]bool, n)
+	visited := make([]bool, size)
 
 	for i := range statefulSets {
 		if visited[i] {
@@ -133,4 +112,43 @@ func groupBySharedRoles(statefulSets sset.StatefulSetList) [][]appsv1.StatefulSe
 	}
 
 	return result
+}
+
+// buildRolesToIndicesMap maps roles to StatefulSet indices which will be used to build an adjacency list.
+func buildRolesToIndicesMap(statefulSets sset.StatefulSetList) map[string][]int {
+	rolesToIndices := make(map[string][]int)
+	for i, sset := range statefulSets {
+		roles := getRolesFromStatefulSetPodTemplate(sset)
+		if len(roles) == 0 {
+			// StatefulSets with no roles are coordinating nodes - group them together
+			rolesToIndices["coordinating"] = append(rolesToIndices["coordinating"], i)
+			continue
+		}
+		for _, role := range roles {
+			normalizedRole := normalizeRole(string(role))
+			rolesToIndices[normalizedRole] = append(rolesToIndices[normalizedRole], i)
+		}
+	}
+	return rolesToIndices
+}
+
+// buildAdjacencyList builds an adjacency list from the given roles to indices map
+// and the size of the statefulsets.
+func buildAdjacencyList(roleToIndices map[string][]int, size int) [][]int {
+	adjList := make([][]int, size)
+	// Populate the adjacency list with each StatefulSet index, and the slice of StatefulSet
+	// indices which share roles.
+	for _, indices := range roleToIndices {
+		for i := 1; i < len(indices); i++ {
+			adjList[indices[0]] = append(adjList[indices[0]], indices[i])
+			adjList[indices[i]] = append(adjList[indices[i]], indices[0])
+			for j := 1; j < len(indices); j++ {
+				if indices[i] != indices[j] && !slices.Contains(adjList[indices[i]], indices[j]) {
+					adjList[indices[i]] = append(adjList[indices[i]], indices[j])
+					adjList[indices[j]] = append(adjList[indices[j]], indices[i])
+				}
+			}
+		}
+	}
+	return adjList
 }

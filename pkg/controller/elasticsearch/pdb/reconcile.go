@@ -6,6 +6,7 @@ package pdb
 
 import (
 	"context"
+	"fmt"
 
 	policyv1 "k8s.io/api/policy/v1"
 	policyv1beta1 "k8s.io/api/policy/v1beta1"
@@ -36,7 +37,7 @@ func Reconcile(ctx context.Context, k8sClient k8s.Client, es esv1.Elasticsearch,
 	licenseChecker := lic.NewLicenseChecker(k8sClient, es.Namespace)
 	enterpriseEnabled, err := licenseChecker.EnterpriseFeaturesEnabled(ctx)
 	if err != nil {
-		return err
+		return fmt.Errorf("while checking license during pdb reconciliation: %w", err)
 	}
 	if enterpriseEnabled {
 		return reconcileRoleSpecificPDBs(ctx, k8sClient, es, statefulSets, meta)

@@ -9,6 +9,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/google/go-cmp/cmp"
 	"github.com/stretchr/testify/assert"
 	appsv1 "k8s.io/api/apps/v1"
 
@@ -198,6 +199,53 @@ func TestNormalizeRole(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			got := normalizeRole(tt.role)
 			assert.Equal(t, tt.expected, got)
+		})
+	}
+}
+
+func TestBuildAdjacencyList(t *testing.T) {
+	tests := []struct {
+		name           string
+		rolesToIndices map[string][]int
+		size           int
+		want           [][]int
+	}{
+		{
+			name: "simple grouping",
+			rolesToIndices: map[string][]int{
+				"master": []int{0},
+				"data":   []int{0, 1},
+			},
+			size: 2,
+			want: [][]int{
+				[]int{1},
+				[]int{0},
+			},
+		},
+		{
+			name: "More complex grouping",
+			rolesToIndices: map[string][]int{
+				"master": []int{0},
+				"data":   []int{0, 1, 2, 3},
+				"ingest": []int{4},
+			},
+			size: 5,
+			want: [][]int{
+				[]int{1, 2, 3},
+				[]int{0, 2, 3},
+				[]int{1, 0, 3},
+				[]int{1, 2, 0},
+				nil,
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := buildAdjacencyList(tt.rolesToIndices, tt.size)
+			if !cmp.Equal(got, tt.want) {
+				t.Errorf("buildAdjacencyList: diff: %s", cmp.Diff(got, tt.want))
+			}
 		})
 	}
 }
