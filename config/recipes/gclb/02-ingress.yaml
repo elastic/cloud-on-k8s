@@ -37,3 +37,18 @@ spec:
                 name: hulk-kb-http
                 port:
                   name: https
+---
+apiVersion: networking.gke.io/v1
+kind: HealthCheckPolicy
+metadata:
+  name: es-lb-healthcheck
+spec:
+  default:
+    config:
+      tcpHealthCheck:
+        port: 8080
+      type: TCP
+  targetRef:
+    group: ''
+    kind: Service
+    name: hulk-es-http

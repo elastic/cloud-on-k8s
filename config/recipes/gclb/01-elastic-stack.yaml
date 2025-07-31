@@ -23,11 +23,6 @@ spec:
     count: 3
     config:
       node.store.allow_mmap: false
-      # Enable anonymous access to allow GCLB health probes to succeed
-      xpack.security.authc:
-        anonymous:
-          username: anon
-          roles: monitoring_user
     podTemplate:
       spec:
         containers:
