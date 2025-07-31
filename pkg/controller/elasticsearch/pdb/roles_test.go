@@ -78,7 +78,7 @@ func TestGetPrimaryRoleForPDB(t *testing.T) {
 			expected: esv1.DataRole,
 		},
 		{
-			name: "data_cold role should match data role	",
+			name: "data_cold role should match data role",
 			roles: map[esv1.NodeRole]struct{}{
 				esv1.DataColdRole: struct{}{},
 				esv1.IngestRole:   struct{}{},
