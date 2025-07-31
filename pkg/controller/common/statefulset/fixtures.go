@@ -16,24 +16,24 @@ import (
 )
 
 type TestSset struct {
-	Namespace       string
-	Name            string
-	ClusterName     string
-	Version         string
-	Replicas        int32
-	Master          bool
-	Data            bool
-	Ingest          bool
-	ML              bool
-	Transform       bool
+	Namespace           string
+	Name                string
+	ClusterName         string
+	Version             string
+	Replicas            int32
+	Master              bool
+	Data                bool
+	Ingest              bool
+	ML                  bool
+	Transform           bool
 	RemoteClusterClient bool
-	DataHot         bool
-	DataWarm        bool
-	DataCold        bool
-	DataContent     bool
-	DataFrozen      bool
-	Status          appsv1.StatefulSetStatus
-	ResourceVersion string
+	DataHot             bool
+	DataWarm            bool
+	DataCold            bool
+	DataContent         bool
+	DataFrozen          bool
+	Status              appsv1.StatefulSetStatus
+	ResourceVersion     string
 }
 
 func (t TestSset) Pods() []client.Object {
@@ -102,27 +102,27 @@ func (t TestSset) BuildPtr() *appsv1.StatefulSet {
 }
 
 type TestPod struct {
-	Namespace       string
-	Name            string
-	ClusterName     string
-	StatefulSetName string
-	Version         string
-	Revision        string
-	Master          bool
-	Data            bool
-	Ingest          bool
-	ML              bool
-	Transform       bool
+	Namespace           string
+	Name                string
+	ClusterName         string
+	StatefulSetName     string
+	Version             string
+	Revision            string
+	Master              bool
+	Data                bool
+	Ingest              bool
+	ML                  bool
+	Transform           bool
 	RemoteClusterClient bool
-	DataHot         bool
-	DataWarm        bool
-	DataCold        bool
-	DataContent     bool
-	DataFrozen      bool
-	Ready           bool
-	RestartCount    int32
-	Phase           corev1.PodPhase
-	ResourceVersion string
+	DataHot             bool
+	DataWarm            bool
+	DataCold            bool
+	DataContent         bool
+	DataFrozen          bool
+	Ready               bool
+	RestartCount        int32
+	Phase               corev1.PodPhase
+	ResourceVersion     string
 }
 
 func (t TestPod) Build() corev1.Pod {

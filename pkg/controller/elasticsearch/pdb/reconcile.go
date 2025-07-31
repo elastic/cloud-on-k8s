@@ -32,8 +32,9 @@ import (
 //
 // For non-enterprise users: The default PDB we setup dynamically adapts MinAvailable to the number of nodes in the cluster.
 // For enterprise users: We optimize the PDBs that we setup to speed up Kubernetes cluster operations such as upgrades as much as safely possible
-//	                     by grouping statefulSets by associated Elasticsearch node roles into the same PDB, and then dynamically maxUnavailable
-//	                     according to whatever cluster health is optimal for the set of roles.
+//
+//	by grouping statefulSets by associated Elasticsearch node roles into the same PDB, and then dynamically maxUnavailable
+//	according to whatever cluster health is optimal for the set of roles.
 //
 // If the spec has disabled the default PDB, it will ensure none exist.
 func Reconcile(ctx context.Context, k8sClient k8s.Client, es esv1.Elasticsearch, statefulSets sset.StatefulSetList, meta metadata.Metadata) error {
