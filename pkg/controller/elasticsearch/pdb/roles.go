@@ -99,10 +99,16 @@ func expectedRolePDBs(
 
 		// Create a PDB for this group
 		//
-		// TODO: It feels like there's a possibility of overlapping pdb names here.
+		// TODO: Remove before merge: It feels like there's a possibility of overlapping pdb names here.
+		//
 		//       How do we ensure:
 		//       1. idempotency
 		//       2. no overlapping pdb names
+		//
+		// Even though it feels like there's a possibility for the same pdb name in the same namespace,
+		// since we are grouping associated roles into the same pdb, in theory this should never happen.
+		// I'm leaving this comment in for the review to spark a discussion and see if there's a better
+		// way to handle this section of the code.
 		pdb, err := createPDBForStatefulSets(es, primaryRole, group, statefulSets, meta)
 		if err != nil {
 			return nil, err
