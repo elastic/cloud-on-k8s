@@ -68,6 +68,10 @@ steps:
 
       - .buildkite/scripts/test/set-deployer-config.sh
 
+      {{- if eq $test.Provider "k3d" }}
+      - "wget -q -O - https://raw.githubusercontent.com/k3d-io/k3d/main/install.sh | TAG=v5.8.3 bash"
+      {{- end }}
+
       {{- $deployerCommand := "run-deployer" }}
       {{- if $test.RemoteKubeconfig }}
         {{- $deployerCommand = "set-kubeconfig" }}
@@ -83,7 +87,7 @@ steps:
       {{- if $test.Dind }}
       provider: "gcp"
       image: "family/core-ubuntu-2004"
-      {{- if eq $test.Provider "kind" }}
+      {{- if or (eq $test.Provider "kind") (eq $test.Provider "k3d") }}
       machineType: "{{ $.KindAgentsMachineType }}"
       diskSizeGb: 150
       {{- end }}
@@ -121,6 +125,9 @@ steps:
         soft_fail: true
         commands:
           - .buildkite/scripts/test/set-deployer-config.sh
+        {{- if eq $test.Provider "k3d" }}
+          - "wget -q -O - https://raw.githubusercontent.com/k3d-io/k3d/main/install.sh | TAG=v5.8.3 bash"
+        {{- end }}
         {{- if not $test.Dind }}
           - make run-deployer
         agents:
