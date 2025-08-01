@@ -233,7 +233,9 @@ spec:
                     secretName:
                       description: |-
                         SecretName is the name of an existing Kubernetes secret that contains connection information for associating an
-                        Elastic resource not managed by the operator. The referenced secret must contain the following:
+                        Elastic resource not managed by the operator.
+                        SecretName is only supported for monitoring associations. Refer to https://www.elastic.co/docs/deploy-manage/monitor/stack-monitoring/eck-stack-monitoring#k8s_connect_to_an_external_monitoring_elasticsearch_cluster
+                        The referenced secret must contain the following:
                         - `url`: the URL to reach the Elastic resource
                         - `username`: the username of the user to be authenticated to the Elastic resource
                         - `password`: the password of the user to be authenticated to the Elastic resource
@@ -269,7 +271,9 @@ spec:
                   secretName:
                     description: |-
                       SecretName is the name of an existing Kubernetes secret that contains connection information for associating an
-                      Elastic resource not managed by the operator. The referenced secret must contain the following:
+                      Elastic resource not managed by the operator.
+                      SecretName is only supported for monitoring associations. Refer to https://www.elastic.co/docs/deploy-manage/monitor/stack-monitoring/eck-stack-monitoring#k8s_connect_to_an_external_monitoring_elasticsearch_cluster
+                      The referenced secret must contain the following:
                       - `url`: the URL to reach the Elastic resource
                       - `username`: the username of the user to be authenticated to the Elastic resource
                       - `password`: the password of the user to be authenticated to the Elastic resource
@@ -720,7 +724,9 @@ spec:
                   secretName:
                     description: |-
                       SecretName is the name of an existing Kubernetes secret that contains connection information for associating an
-                      Elastic resource not managed by the operator. The referenced secret must contain the following:
+                      Elastic resource not managed by the operator.
+                      SecretName is only supported for monitoring associations. Refer to https://www.elastic.co/docs/deploy-manage/monitor/stack-monitoring/eck-stack-monitoring#k8s_connect_to_an_external_monitoring_elasticsearch_cluster
+                      The referenced secret must contain the following:
                       - `url`: the URL to reach the Elastic resource
                       - `username`: the username of the user to be authenticated to the Elastic resource
                       - `password`: the password of the user to be authenticated to the Elastic resource
@@ -1220,7 +1226,9 @@ spec:
                   secretName:
                     description: |-
                       SecretName is the name of an existing Kubernetes secret that contains connection information for associating an
-                      Elastic resource not managed by the operator. The referenced secret must contain the following:
+                      Elastic resource not managed by the operator.
+                      SecretName is only supported for monitoring associations. Refer to https://www.elastic.co/docs/deploy-manage/monitor/stack-monitoring/eck-stack-monitoring#k8s_connect_to_an_external_monitoring_elasticsearch_cluster
+                      The referenced secret must contain the following:
                       - `url`: the URL to reach the Elastic resource
                       - `username`: the username of the user to be authenticated to the Elastic resource
                       - `password`: the password of the user to be authenticated to the Elastic resource
@@ -1670,7 +1678,9 @@ spec:
                   secretName:
                     description: |-
                       SecretName is the name of an existing Kubernetes secret that contains connection information for associating an
-                      Elastic resource not managed by the operator. The referenced secret must contain the following:
+                      Elastic resource not managed by the operator.
+                      SecretName is only supported for monitoring associations. Refer to https://www.elastic.co/docs/deploy-manage/monitor/stack-monitoring/eck-stack-monitoring#k8s_connect_to_an_external_monitoring_elasticsearch_cluster
+                      The referenced secret must contain the following:
                       - `url`: the URL to reach the Elastic resource
                       - `username`: the username of the user to be authenticated to the Elastic resource
                       - `password`: the password of the user to be authenticated to the Elastic resource
@@ -2598,7 +2608,9 @@ spec:
                   secretName:
                     description: |-
                       SecretName is the name of an existing Kubernetes secret that contains connection information for associating an
-                      Elastic resource not managed by the operator. The referenced secret must contain the following:
+                      Elastic resource not managed by the operator.
+                      SecretName is only supported for monitoring associations. Refer to https://www.elastic.co/docs/deploy-manage/monitor/stack-monitoring/eck-stack-monitoring#k8s_connect_to_an_external_monitoring_elasticsearch_cluster
+                      The referenced secret must contain the following:
                       - `url`: the URL to reach the Elastic resource
                       - `username`: the username of the user to be authenticated to the Elastic resource
                       - `password`: the password of the user to be authenticated to the Elastic resource
@@ -2633,7 +2645,9 @@ spec:
                   secretName:
                     description: |-
                       SecretName is the name of an existing Kubernetes secret that contains connection information for associating an
-                      Elastic resource not managed by the operator. The referenced secret must contain the following:
+                      Elastic resource not managed by the operator.
+                      SecretName is only supported for monitoring associations. Refer to https://www.elastic.co/docs/deploy-manage/monitor/stack-monitoring/eck-stack-monitoring#k8s_connect_to_an_external_monitoring_elasticsearch_cluster
+                      The referenced secret must contain the following:
                       - `url`: the URL to reach the Elastic resource
                       - `username`: the username of the user to be authenticated to the Elastic resource
                       - `password`: the password of the user to be authenticated to the Elastic resource
@@ -2678,7 +2692,9 @@ spec:
                             secretName:
                               description: |-
                                 SecretName is the name of an existing Kubernetes secret that contains connection information for associating an
-                                Elastic resource not managed by the operator. The referenced secret must contain the following:
+                                Elastic resource not managed by the operator.
+                                SecretName is only supported for monitoring associations. Refer to https://www.elastic.co/docs/deploy-manage/monitor/stack-monitoring/eck-stack-monitoring#k8s_connect_to_an_external_monitoring_elasticsearch_cluster
+                                The referenced secret must contain the following:
                                 - `url`: the URL to reach the Elastic resource
                                 - `username`: the username of the user to be authenticated to the Elastic resource
                                 - `password`: the password of the user to be authenticated to the Elastic resource
@@ -2719,7 +2735,9 @@ spec:
                             secretName:
                               description: |-
                                 SecretName is the name of an existing Kubernetes secret that contains connection information for associating an
-                                Elastic resource not managed by the operator. The referenced secret must contain the following:
+                                Elastic resource not managed by the operator.
+                                SecretName is only supported for monitoring associations. Refer to https://www.elastic.co/docs/deploy-manage/monitor/stack-monitoring/eck-stack-monitoring#k8s_connect_to_an_external_monitoring_elasticsearch_cluster
+                                The referenced secret must contain the following:
                                 - `url`: the URL to reach the Elastic resource
                                 - `username`: the username of the user to be authenticated to the Elastic resource
                                 - `password`: the password of the user to be authenticated to the Elastic resource
@@ -2945,7 +2963,9 @@ spec:
                   secretName:
                     description: |-
                       SecretName is the name of an existing Kubernetes secret that contains connection information for associating an
-                      Elastic resource not managed by the operator. The referenced secret must contain the following:
+                      Elastic resource not managed by the operator.
+                      SecretName is only supported for monitoring associations. Refer to https://www.elastic.co/docs/deploy-manage/monitor/stack-monitoring/eck-stack-monitoring#k8s_connect_to_an_external_monitoring_elasticsearch_cluster
+                      The referenced secret must contain the following:
                       - `url`: the URL to reach the Elastic resource
                       - `username`: the username of the user to be authenticated to the Elastic resource
                       - `password`: the password of the user to be authenticated to the Elastic resource
@@ -4356,7 +4376,9 @@ spec:
                             secretName:
                               description: |-
                                 SecretName is the name of an existing Kubernetes secret that contains connection information for associating an
-                                Elastic resource not managed by the operator. The referenced secret must contain the following:
+                                Elastic resource not managed by the operator.
+                                SecretName is only supported for monitoring associations. Refer to https://www.elastic.co/docs/deploy-manage/monitor/stack-monitoring/eck-stack-monitoring#k8s_connect_to_an_external_monitoring_elasticsearch_cluster
+                                The referenced secret must contain the following:
                                 - `url`: the URL to reach the Elastic resource
                                 - `username`: the username of the user to be authenticated to the Elastic resource
                                 - `password`: the password of the user to be authenticated to the Elastic resource
@@ -4397,7 +4419,9 @@ spec:
                             secretName:
                               description: |-
                                 SecretName is the name of an existing Kubernetes secret that contains connection information for associating an
-                                Elastic resource not managed by the operator. The referenced secret must contain the following:
+                                Elastic resource not managed by the operator.
+                                SecretName is only supported for monitoring associations. Refer to https://www.elastic.co/docs/deploy-manage/monitor/stack-monitoring/eck-stack-monitoring#k8s_connect_to_an_external_monitoring_elasticsearch_cluster
+                                The referenced secret must contain the following:
                                 - `url`: the URL to reach the Elastic resource
                                 - `username`: the username of the user to be authenticated to the Elastic resource
                                 - `password`: the password of the user to be authenticated to the Elastic resource
@@ -6696,7 +6720,9 @@ spec:
                   secretName:
                     description: |-
                       SecretName is the name of an existing Kubernetes secret that contains connection information for associating an
-                      Elastic resource not managed by the operator. The referenced secret must contain the following:
+                      Elastic resource not managed by the operator.
+                      SecretName is only supported for monitoring associations. Refer to https://www.elastic.co/docs/deploy-manage/monitor/stack-monitoring/eck-stack-monitoring#k8s_connect_to_an_external_monitoring_elasticsearch_cluster
+                      The referenced secret must contain the following:
                       - `url`: the URL to reach the Elastic resource
                       - `username`: the username of the user to be authenticated to the Elastic resource
                       - `password`: the password of the user to be authenticated to the Elastic resource
@@ -7274,7 +7300,9 @@ spec:
                   secretName:
                     description: |-
                       SecretName is the name of an existing Kubernetes secret that contains connection information for associating an
-                      Elastic resource not managed by the operator. The referenced secret must contain the following:
+                      Elastic resource not managed by the operator.
+                      SecretName is only supported for monitoring associations. Refer to https://www.elastic.co/docs/deploy-manage/monitor/stack-monitoring/eck-stack-monitoring#k8s_connect_to_an_external_monitoring_elasticsearch_cluster
+                      The referenced secret must contain the following:
                       - `url`: the URL to reach the Elastic resource
                       - `username`: the username of the user to be authenticated to the Elastic resource
                       - `password`: the password of the user to be authenticated to the Elastic resource
@@ -7851,7 +7879,9 @@ spec:
                   secretName:
                     description: |-
                       SecretName is the name of an existing Kubernetes secret that contains connection information for associating an
-                      Elastic resource not managed by the operator. The referenced secret must contain the following:
+                      Elastic resource not managed by the operator.
+                      SecretName is only supported for monitoring associations. Refer to https://www.elastic.co/docs/deploy-manage/monitor/stack-monitoring/eck-stack-monitoring#k8s_connect_to_an_external_monitoring_elasticsearch_cluster
+                      The referenced secret must contain the following:
                       - `url`: the URL to reach the Elastic resource
                       - `username`: the username of the user to be authenticated to the Elastic resource
                       - `password`: the password of the user to be authenticated to the Elastic resource
@@ -7882,7 +7912,9 @@ spec:
                   secretName:
                     description: |-
                       SecretName is the name of an existing Kubernetes secret that contains connection information for associating an
-                      Elastic resource not managed by the operator. The referenced secret must contain the following:
+                      Elastic resource not managed by the operator.
+                      SecretName is only supported for monitoring associations. Refer to https://www.elastic.co/docs/deploy-manage/monitor/stack-monitoring/eck-stack-monitoring#k8s_connect_to_an_external_monitoring_elasticsearch_cluster
+                      The referenced secret must contain the following:
                       - `url`: the URL to reach the Elastic resource
                       - `username`: the username of the user to be authenticated to the Elastic resource
                       - `password`: the password of the user to be authenticated to the Elastic resource
@@ -8346,7 +8378,9 @@ spec:
                             secretName:
                               description: |-
                                 SecretName is the name of an existing Kubernetes secret that contains connection information for associating an
-                                Elastic resource not managed by the operator. The referenced secret must contain the following:
+                                Elastic resource not managed by the operator.
+                                SecretName is only supported for monitoring associations. Refer to https://www.elastic.co/docs/deploy-manage/monitor/stack-monitoring/eck-stack-monitoring#k8s_connect_to_an_external_monitoring_elasticsearch_cluster
+                                The referenced secret must contain the following:
                                 - `url`: the URL to reach the Elastic resource
                                 - `username`: the username of the user to be authenticated to the Elastic resource
                                 - `password`: the password of the user to be authenticated to the Elastic resource
@@ -8387,7 +8421,9 @@ spec:
                             secretName:
                               description: |-
                                 SecretName is the name of an existing Kubernetes secret that contains connection information for associating an
-                                Elastic resource not managed by the operator. The referenced secret must contain the following:
+                                Elastic resource not managed by the operator.
+                                SecretName is only supported for monitoring associations. Refer to https://www.elastic.co/docs/deploy-manage/monitor/stack-monitoring/eck-stack-monitoring#k8s_connect_to_an_external_monitoring_elasticsearch_cluster
+                                The referenced secret must contain the following:
                                 - `url`: the URL to reach the Elastic resource
                                 - `username`: the username of the user to be authenticated to the Elastic resource
                                 - `password`: the password of the user to be authenticated to the Elastic resource
@@ -9187,7 +9223,9 @@ spec:
                     secretName:
                       description: |-
                         SecretName is the name of an existing Kubernetes secret that contains connection information for associating an
-                        Elastic resource not managed by the operator. The referenced secret must contain the following:
+                        Elastic resource not managed by the operator.
+                        SecretName is only supported for monitoring associations. Refer to https://www.elastic.co/docs/deploy-manage/monitor/stack-monitoring/eck-stack-monitoring#k8s_connect_to_an_external_monitoring_elasticsearch_cluster
+                        The referenced secret must contain the following:
                         - `url`: the URL to reach the Elastic resource
                         - `username`: the username of the user to be authenticated to the Elastic resource
                         - `password`: the password of the user to be authenticated to the Elastic resource
@@ -9239,7 +9277,9 @@ spec:
                             secretName:
                               description: |-
                                 SecretName is the name of an existing Kubernetes secret that contains connection information for associating an
-                                Elastic resource not managed by the operator. The referenced secret must contain the following:
+                                Elastic resource not managed by the operator.
+                                SecretName is only supported for monitoring associations. Refer to https://www.elastic.co/docs/deploy-manage/monitor/stack-monitoring/eck-stack-monitoring#k8s_connect_to_an_external_monitoring_elasticsearch_cluster
+                                The referenced secret must contain the following:
                                 - `url`: the URL to reach the Elastic resource
                                 - `username`: the username of the user to be authenticated to the Elastic resource
                                 - `password`: the password of the user to be authenticated to the Elastic resource
@@ -9280,7 +9320,9 @@ spec:
                             secretName:
                               description: |-
                                 SecretName is the name of an existing Kubernetes secret that contains connection information for associating an
-                                Elastic resource not managed by the operator. The referenced secret must contain the following:
+                                Elastic resource not managed by the operator.
+                                SecretName is only supported for monitoring associations. Refer to https://www.elastic.co/docs/deploy-manage/monitor/stack-monitoring/eck-stack-monitoring#k8s_connect_to_an_external_monitoring_elasticsearch_cluster
+                                The referenced secret must contain the following:
                                 - `url`: the URL to reach the Elastic resource
                                 - `username`: the username of the user to be authenticated to the Elastic resource
                                 - `password`: the password of the user to be authenticated to the Elastic resource
