@@ -61,6 +61,8 @@ func CreateCommand() *cobra.Command {
 				cfgData = fmt.Sprintf(runner.DefaultEKSRunConfigTemplate, user, vaultAddr, token)
 			case runner.KindDriverID:
 				cfgData = fmt.Sprintf(runner.DefaultKindRunConfigTemplate, user)
+			case runner.K3dDriverID:
+				cfgData = fmt.Sprintf(runner.DefaultK3dRunConfigTemplate, user)
 			default:
 				return fmt.Errorf("unknown provider %s", provider)
 			}
