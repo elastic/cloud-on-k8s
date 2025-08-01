@@ -29,10 +29,10 @@ steps:
       {{- end }}
 
     agents:
-      {{- if $test.Dind }}
+      {{- if or ($test.Dind) (eq $test.Provider "k3d") }}
       provider: "gcp"
       image: "family/core-ubuntu-2004"
-      {{- if eq $test.Provider "kind" }}
+      {{- if or (eq $test.Provider "kind") (eq $test.Provider "k3d") }}
       machineType: "{{ .KindAgentsMachineType }}"
       {{- end }}
       {{- else }}
