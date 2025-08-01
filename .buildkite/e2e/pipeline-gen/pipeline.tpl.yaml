@@ -29,11 +29,11 @@ steps:
       {{- end }}
 
     agents:
-      {{- if or ($test.Dind) (eq $test.Provider "k3d") }}
+      {{- if $test.Dind }}
       provider: "gcp"
       image: "family/core-ubuntu-2004"
       {{- if or (eq $test.Provider "kind") (eq $test.Provider "k3d") }}
-      machineType: "{{ .KindAgentsMachineType }}"
+      machineType: "{{ $.KindAgentsMachineType }}"
       {{- end }}
       {{- else }}
       image: docker.elastic.co/ci-agent-images/cloud-k8s-operator/buildkite-agent:c39fad65
