@@ -53,12 +53,7 @@ func reconcileRoleSpecificPDBs(
 		return fmt.Errorf("while retrieving expected role-specific PDBs: %w", err)
 	}
 
-	for _, expected := range pdbs {
-		if err := reconcilePDB(ctx, k8sClient, es, expected); err != nil {
-			return fmt.Errorf("while reconciling role-specific pdb %s: %w", expected.Name, err)
-		}
-	}
-	return nil
+	return reconcileAndDeleteUnnecessaryPDBs(ctx, k8sClient, es, pdbs)
 }
 
 // expectedRolePDBs returns a slice of PDBs to reconcile based on statefulSet roles.
@@ -126,6 +121,7 @@ func expectedRolePDBs(
 // All other roles have similar disruption rules (require yellow+ health).
 func getPrimaryRoleForPDB(roles map[esv1.NodeRole]struct{}) esv1.NodeRole {
 	// Data roles are most restrictive (require green health), so they take priority.
+
 	// Check if any data role variant is present (excluding data_frozen)
 	for _, dataRole := range dataRoles {
 		if _, ok := roles[dataRole]; ok {
@@ -336,6 +332,61 @@ func selectorForStatefulSets(es esv1.Elasticsearch, ssetNames []string) *metav1.
 			},
 		},
 	}
+}
+
+// reconcileAndDeleteUnnecessaryPDBs reconciles the PDBs that are expected to exist and deletes any that exist but are not expected.
+func reconcileAndDeleteUnnecessaryPDBs(ctx context.Context, k8sClient k8s.Client, es esv1.Elasticsearch, expectedPDBs []*policyv1.PodDisruptionBudget) error {
+	existingPDBs, err := listAllRoleSpecificPDBs(ctx, k8sClient, es)
+	if err != nil {
+		return fmt.Errorf("while listing existing role-specific PDBs: %w", err)
+	}
+
+	toDelete := make(map[string]policyv1.PodDisruptionBudget)
+
+	// Populate the toDelete map with existing PDBs
+	for _, pdb := range existingPDBs {
+		toDelete[pdb.Name] = pdb
+	}
+
+	// Remove expected PDBs from the toDelete map
+	for _, pdb := range expectedPDBs {
+		delete(toDelete, pdb.Name)
+		// Ensure that the expected PDB is reconciled.
+		if err := reconcilePDB(ctx, k8sClient, es, pdb); err != nil {
+			return fmt.Errorf("while reconciling role-specific PDB %s: %w", pdb.Name, err)
+		}
+	}
+
+	// Delete unnecessary PDBs
+	for name, pdb := range toDelete {
+		if err := k8sClient.Delete(ctx, &pdb); err != nil {
+			return fmt.Errorf("while deleting role-specific PDB %s: %w", name, err)
+		}
+	}
+
+	return nil
+}
+
+// listAllRoleSpecificPDBs lists all role-specific PDBs for the cluster by retrieving
+// all PDBs in the namespace with the cluster label and verifying the owner reference.
+func listAllRoleSpecificPDBs(ctx context.Context, k8sClient k8s.Client, es esv1.Elasticsearch) ([]policyv1.PodDisruptionBudget, error) {
+	// List all PDBs in the namespace with the cluster label
+	var pdbList policyv1.PodDisruptionBudgetList
+	if err := k8sClient.List(ctx, &pdbList, client.InNamespace(es.Namespace), client.MatchingLabels{
+		label.ClusterNameLabelName: es.Name,
+	}); err != nil {
+		return nil, err
+	}
+
+	// Filter only PDBs that are owned by this Elasticsearch controller
+	var roleSpecificPDBs []policyv1.PodDisruptionBudget
+	for _, pdb := range pdbList.Items {
+		// Check if this PDB is owned by the Elasticsearch resource
+		if isOwnedByElasticsearch(pdb, es) {
+			roleSpecificPDBs = append(roleSpecificPDBs, pdb)
+		}
+	}
+	return roleSpecificPDBs, nil
 }
 
 // deleteAllRoleSpecificPDBs deletes all existing role-specific PDBs for the cluster by retrieving
