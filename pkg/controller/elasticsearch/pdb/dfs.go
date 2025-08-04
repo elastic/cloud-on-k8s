@@ -14,21 +14,22 @@ import (
 )
 
 var (
-	dataRoles = []string{
-		string(esv1.DataRole),
-		string(esv1.DataHotRole),
-		string(esv1.DataWarmRole),
-		string(esv1.DataColdRole),
-		string(esv1.DataContentRole),
+	// All data role variants should be treated as a generic data role for PDB purposes
+	dataRoles = []esv1.NodeRole{
+		esv1.DataRole,
+		esv1.DataHotRole,
+		esv1.DataWarmRole,
+		esv1.DataColdRole,
+		esv1.DataContentRole,
 		// Note: DataFrozenRole is excluded as it has different disruption rules (yellow+ health)
 	}
 )
 
 // normalizeRole returns the normalized form of a role where any data role
 // is normalized to the same data role.
-func normalizeRole(role string) string {
+func normalizeRole(role esv1.NodeRole) esv1.NodeRole {
 	if slices.Contains(dataRoles, role) {
-		return string(esv1.DataRole)
+		return esv1.DataRole
 	}
 	return role
 }
@@ -124,7 +125,7 @@ func buildRolesToIndicesMap(statefulSets sset.StatefulSetList) map[string][]int 
 			continue
 		}
 		for _, role := range roles {
-			normalizedRole := normalizeRole(string(role))
+			normalizedRole := string(normalizeRole(role))
 			rolesToIndices[normalizedRole] = append(rolesToIndices[normalizedRole], i)
 		}
 	}

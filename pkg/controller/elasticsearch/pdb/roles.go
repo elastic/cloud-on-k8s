@@ -126,16 +126,6 @@ func expectedRolePDBs(
 // All other roles have similar disruption rules (require yellow+ health).
 func getPrimaryRoleForPDB(roles map[esv1.NodeRole]struct{}) esv1.NodeRole {
 	// Data roles are most restrictive (require green health), so they take priority.
-	// All data role variants should be treated as a generic data role for PDB purposes
-	dataRoles := []esv1.NodeRole{
-		esv1.DataRole,
-		esv1.DataHotRole,
-		esv1.DataWarmRole,
-		esv1.DataColdRole,
-		esv1.DataContentRole,
-		// Note: DataFrozenRole is excluded as it has different disruption rules (yellow+ health)
-	}
-
 	// Check if any data role variant is present (excluding data_frozen)
 	for _, dataRole := range dataRoles {
 		if _, ok := roles[dataRole]; ok {

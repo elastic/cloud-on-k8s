@@ -13,6 +13,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	appsv1 "k8s.io/api/apps/v1"
 
+	esv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/elasticsearch/v1"
 	ssetfixtures "github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/statefulset"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/sset"
 )
@@ -165,33 +166,33 @@ func sortStatefulSetGroups(groups [][]appsv1.StatefulSet) {
 func TestNormalizeRole(t *testing.T) {
 	tests := []struct {
 		name     string
-		role     string
-		expected string
+		role     esv1.NodeRole
+		expected esv1.NodeRole
 	}{
 		{
 			name:     "data role should remain the same",
-			role:     "data",
-			expected: "data",
+			role:     esv1.DataRole,
+			expected: esv1.DataRole,
 		},
 		{
 			name:     "data_hot role should be normalized to data",
-			role:     "data_hot",
-			expected: "data",
+			role:     esv1.DataHotRole,
+			expected: esv1.DataRole,
 		},
 		{
 			name:     "data_frozen role should remain the same",
-			role:     "data_frozen",
-			expected: "data_frozen",
+			role:     esv1.DataFrozenRole,
+			expected: esv1.DataFrozenRole,
 		},
 		{
 			name:     "other roles should remain the same",
-			role:     "master",
-			expected: "master",
+			role:     esv1.MasterRole,
+			expected: esv1.MasterRole,
 		},
 		{
 			name:     "empty role should remain empty",
-			role:     "",
-			expected: "",
+			role:     esv1.NodeRole(""),
+			expected: esv1.NodeRole(""),
 		},
 	}
 
