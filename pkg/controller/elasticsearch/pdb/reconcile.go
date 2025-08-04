@@ -208,7 +208,7 @@ func buildPDBSpec(es esv1.Elasticsearch, statefulSets sset.StatefulSetList) poli
 	// compute MinAvailable based on the maximum number of Pods we're supposed to have
 	nodeCount := statefulSets.ExpectedNodeCount()
 	// maybe allow some Pods to be disrupted
-	minAvailable := nodeCount - allowedDisruptionsForRole(es, esv1.DataRole, statefulSets)
+	minAvailable := nodeCount - allowedDisruptionsForSinglePDB(es, statefulSets)
 
 	minAvailableIntStr := intstr.IntOrString{Type: intstr.Int, IntVal: minAvailable}
 
@@ -224,4 +224,34 @@ func buildPDBSpec(es esv1.Elasticsearch, statefulSets sset.StatefulSetList) poli
 		// (eg. Deployments, StatefulSets, etc.). We cannot use it with our own cluster-name selector.
 		MaxUnavailable: nil,
 	}
+}
+
+// allowedDisruptionsForSinglePDB returns the number of Pods that we allow to be disrupted while keeping the cluster healthy
+// when there is a single PodDisruptionBudget that encompasses a whole Elasticsearch cluster.
+func allowedDisruptionsForSinglePDB(es esv1.Elasticsearch, actualSsets sset.StatefulSetList) int32 {
+	if actualSsets.ExpectedNodeCount() == 1 {
+		// single node cluster (not highly-available)
+		// allow the node to be disrupted to ensure K8s nodes operations can be performed
+		return 1
+	}
+	if es.Status.Health != esv1.ElasticsearchGreenHealth {
+		// A non-green cluster may become red if we disrupt one node, don't allow it.
+		// The health information we're using here may be out-of-date, that's best effort.
+		return 0
+	}
+	if actualSsets.ExpectedMasterNodesCount() == 1 {
+		// There's a risk the single master of the cluster gets removed, don't allow it.
+		return 0
+	}
+	if actualSsets.ExpectedDataNodesCount() == 1 {
+		// There's a risk the single data node of the cluster gets removed, don't allow it.
+		return 0
+	}
+	if actualSsets.ExpectedIngestNodesCount() == 1 {
+		// There's a risk the single ingest node of the cluster gets removed, don't allow it.
+		return 0
+	}
+	// Allow one pod (only) to be disrupted on a healthy cluster.
+	// We could technically allow more, but the cluster health freshness would become a bigger problem.
+	return 1
 }
