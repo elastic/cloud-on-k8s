@@ -104,15 +104,16 @@ type ElasticsearchSpec struct {
 	UpdateStrategy UpdateStrategy `json:"updateStrategy,omitempty"`
 
 	// PodDisruptionBudget provides access to the default Pod disruption budget(s) for the Elasticsearch cluster.
-	// For non-enterprise customers:
+	// The behavior depends on the license level.
+	// With a Basic license:
 	//   The default budget doesn't allow any Pod to be removed in case the cluster is not green or if there is only one node of type `data` or `master`.
 	//   In all other cases the default PodDisruptionBudget sets `minUnavailable` equal to the total number of nodes minus 1.
-	// For enterprise customers:
-	//   The default budget optionally is optionally split into multiple budgets, each targeting a specific node role types allowing additional disruptions
+	// With an Enterprise license:
+	//   The default budget is optionally split into multiple budgets, each targeting a specific node role types allowing additional disruptions
 	//   for certain roles according to the health status of the cluster.
-	//     example:
-	//       all data roles (exclusing frozen): allows disruptions only when the cluster is green.
-	//       all other roles: allows disruptions only when the cluster is yellow or green.
+	//     Example:
+	//       All data roles (excluding frozen): allows disruptions only when the cluster is green.
+	//       All other roles: allows disruptions only when the cluster is yellow or green.
 	// To disable, set `PodDisruptionBudget` to the empty value (`{}` in YAML).
 	// +kubebuilder:validation:Optional
 	PodDisruptionBudget *commonv1.PodDisruptionBudgetTemplate `json:"podDisruptionBudget,omitempty"`
