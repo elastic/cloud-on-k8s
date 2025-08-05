@@ -280,15 +280,15 @@ func allowedDisruptionsForRole(
 		return 1
 	}
 	// There's a risk the single master of the cluster gets removed, don't allow it.
-	if statefulSets.ExpectedMasterNodesCount() == 1 {
+	if role == esv1.MasterRole && statefulSets.ExpectedMasterNodesCount() == 1 {
 		return 0
 	}
 	// There's a risk the single data node of the cluster gets removed, don't allow it.
-	if statefulSets.ExpectedDataNodesCount() == 1 {
+	if role == esv1.DataRole && statefulSets.ExpectedDataNodesCount() == 1 {
 		return 0
 	}
 	// There's a risk the single ingest node of the cluster gets removed, don't allow it.
-	if statefulSets.ExpectedIngestNodesCount() == 1 {
+	if role == esv1.IngestRole && statefulSets.ExpectedIngestNodesCount() == 1 {
 		return 0
 	}
 
