@@ -28,6 +28,9 @@ import (
 )
 
 var (
+	// group the statefulsets by the priority of their roles.
+	// master, data_*, ingest, ml, transform, coordinating, and we ignore remote_cluster_client as it has no impact on availability
+	priority = []string{"master", "data", "data_frozen", "ingest", "ml", "transform", "coordinating"}
 	// All data role variants should be treated as a generic data role for PDB purposes
 	dataRoles = []esv1.NodeRole{
 		esv1.DataRole,
@@ -91,7 +94,12 @@ func expectedRolePDBs(
 	groups := groupBySharedRoles(statefulSets)
 
 	// Create one PDB per group
-	for roleName, group := range groups {
+	// Maps order isn't guaranteed so process in order of defined priority.
+	for _, roleName := range priority {
+		group, ok := groups[roleName]
+		if !ok {
+			continue
+		}
 		if len(group) == 0 {
 			continue
 		}
@@ -147,9 +155,6 @@ func groupBySharedRoles(statefulSets sset.StatefulSetList) map[string][]appsv1.S
 		}
 	}
 
-	// group the statefulsets in priority of their roles
-	// master, data_*, ingest, ml, transform, coordinating, and we ignore remote_cluster_client as it has no impact on availability
-	priority := []string{"master", "data", "data_frozen", "ingest", "ml", "transform", "coordinating"}
 	// This keeps track of which roles have been assigned to a PDB to avoid assigning the same role to multiple PDBs.
 	roleToTargetPDB := map[string]string{}
 	grouped := map[string][]int{}
