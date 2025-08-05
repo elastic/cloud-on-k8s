@@ -506,7 +506,7 @@ func TestExpectedRolePDBs(t *testing.T) {
 			expected:     []*policyv1.PodDisruptionBudget{},
 		},
 		{
-			name: "single master nodeset; healthy es; 0 disruptions",
+			name: "single node cluster; role doesn't matter; 1 disruption",
 			es:   *defaultHealthyES,
 			statefulSets: []appsv1.StatefulSet{
 				ssetfixtures.TestSset{
@@ -550,7 +550,7 @@ func TestExpectedRolePDBs(t *testing.T) {
 								},
 							},
 						},
-						MaxUnavailable: &intstr.IntOrString{Type: intstr.Int, IntVal: 0},
+						MaxUnavailable: &intstr.IntOrString{Type: intstr.Int, IntVal: 1},
 					},
 				},
 			},
@@ -850,7 +850,7 @@ func TestExpectedRolePDBs(t *testing.T) {
 			expected: []*policyv1.PodDisruptionBudget{
 				{
 					ObjectMeta: metav1.ObjectMeta{
-						Name:      "test-es-es-default-coord",
+						Name:      "test-es-es-default-coordinating",
 						Namespace: "ns",
 						Labels: map[string]string{
 							label.ClusterNameLabelName: "test-es",
