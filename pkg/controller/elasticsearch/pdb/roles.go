@@ -82,15 +82,9 @@ func expectedRolePDBs(
 			}
 		}
 
-		// Determine the most conservative role for disruption purposes.
+		// Determine the most conservative role naming and grouping purposes.
 		// If group has no roles, it's a coordinating ES role.
-		var primaryRole esv1.NodeRole
-		if len(groupRoles) == 0 {
-			primaryRole = "" // coordinating role
-		} else {
-			// Use the primary role for PDB naming and grouping
-			primaryRole = getPrimaryRoleForPDB(groupRoles)
-		}
+		primaryRole := getPrimaryRoleForPDB(groupRoles)
 
 		// Create a PDB for this group
 		//
@@ -120,8 +114,11 @@ func expectedRolePDBs(
 // Data roles are most restrictive (require green health), so they take priority.
 // All other roles have similar disruption rules (require yellow+ health).
 func getPrimaryRoleForPDB(roles map[esv1.NodeRole]struct{}) esv1.NodeRole {
-	// Data roles are most restrictive (require green health), so they take priority.
+	if len(roles) == 0 {
+		return "" // coordinating role
+	}
 
+	// Data roles are most restrictive (require green health), so they take priority.
 	// Check if any data role variant is present (excluding data_frozen)
 	for _, dataRole := range dataRoles {
 		if _, ok := roles[dataRole]; ok {
