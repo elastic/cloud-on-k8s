@@ -278,7 +278,7 @@ func Test_expectedPDB(t *testing.T) {
 	}
 }
 
-func Test_allowedDisruptions(t *testing.T) {
+func Test_allowedDisruptionsForSinglePDB(t *testing.T) {
 	type args struct {
 		es          esv1.Elasticsearch
 		actualSsets es_sset.StatefulSetList
@@ -289,7 +289,7 @@ func Test_allowedDisruptions(t *testing.T) {
 		want int32
 	}{
 		{
-			name: "no health reported: no disruption allowed",
+			name: "no health reported: 0 disruptions allowed",
 			args: args{
 				es:          esv1.Elasticsearch{Status: esv1.ElasticsearchStatus{}},
 				actualSsets: es_sset.StatefulSetList{sset.TestSset{Replicas: 3}.Build()},
@@ -297,7 +297,7 @@ func Test_allowedDisruptions(t *testing.T) {
 			want: 0,
 		},
 		{
-			name: "yellow health: no disruption allowed",
+			name: "yellow health: 0 disruptions allowed",
 			args: args{
 				es:          esv1.Elasticsearch{Status: esv1.ElasticsearchStatus{Health: esv1.ElasticsearchYellowHealth}},
 				actualSsets: es_sset.StatefulSetList{sset.TestSset{Replicas: 3}.Build()},
@@ -305,7 +305,7 @@ func Test_allowedDisruptions(t *testing.T) {
 			want: 0,
 		},
 		{
-			name: "red health: no disruption allowed",
+			name: "red health: 0 disruptions allowed",
 			args: args{
 				es:          esv1.Elasticsearch{Status: esv1.ElasticsearchStatus{Health: esv1.ElasticsearchRedHealth}},
 				actualSsets: es_sset.StatefulSetList{sset.TestSset{Replicas: 3, Master: true, Data: true}.Build()},
@@ -313,7 +313,7 @@ func Test_allowedDisruptions(t *testing.T) {
 			want: 0,
 		},
 		{
-			name: "unknown health: no disruption allowed",
+			name: "unknown health: 0 disruptions allowed",
 			args: args{
 				es:          esv1.Elasticsearch{Status: esv1.ElasticsearchStatus{Health: esv1.ElasticsearchUnknownHealth}},
 				actualSsets: es_sset.StatefulSetList{sset.TestSset{Replicas: 3, Master: true, Data: true}.Build()},
@@ -337,7 +337,7 @@ func Test_allowedDisruptions(t *testing.T) {
 			want: 1,
 		},
 		{
-			name: "green health but only 1 master: 0 disruption allowed",
+			name: "green health but only 1 master: 0 disruptions allowed",
 			args: args{
 				es: esv1.Elasticsearch{Status: esv1.ElasticsearchStatus{Health: esv1.ElasticsearchGreenHealth}},
 				actualSsets: es_sset.StatefulSetList{
@@ -348,7 +348,7 @@ func Test_allowedDisruptions(t *testing.T) {
 			want: 0,
 		},
 		{
-			name: "green health but only 1 data node: 0 disruption allowed",
+			name: "green health but only 1 data node: 0 disruptions allowed",
 			args: args{
 				es: esv1.Elasticsearch{Status: esv1.ElasticsearchStatus{Health: esv1.ElasticsearchGreenHealth}},
 				actualSsets: es_sset.StatefulSetList{
@@ -372,7 +372,7 @@ func Test_allowedDisruptions(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if got := allowedDisruptionsForRole(tt.args.es, esv1.DataRole, tt.args.actualSsets); got != tt.want {
+			if got := allowedDisruptionsForSinglePDB(tt.args.es, tt.args.actualSsets); got != tt.want {
 				t.Errorf("allowedDisruptions() = %v, want %v", got, tt.want)
 			}
 		})

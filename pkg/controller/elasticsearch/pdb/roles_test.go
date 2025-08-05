@@ -7,9 +7,11 @@ package pdb
 import (
 	"context"
 	"slices"
+	"sort"
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	appsv1 "k8s.io/api/apps/v1"
 	policyv1 "k8s.io/api/policy/v1"
@@ -173,7 +175,7 @@ func TestReconcileRoleSpecificPDBs(t *testing.T) {
 	rolePDB := func(esName, namespace string, role esv1.NodeRole, statefulSetNames []string, maxUnavailable int32) *policyv1.PodDisruptionBudget {
 		pdb := &policyv1.PodDisruptionBudget{
 			ObjectMeta: metav1.ObjectMeta{
-				Name:      PodDisruptionBudgetNameForRole(esName, role),
+				Name:      podDisruptionBudgetName(esName, string(role)),
 				Namespace: namespace,
 				Labels:    map[string]string{label.ClusterNameLabelName: esName},
 			},
@@ -388,7 +390,7 @@ func TestReconcileRoleSpecificPDBs(t *testing.T) {
 					// Existing PDB with different configuration
 					&policyv1.PodDisruptionBudget{
 						ObjectMeta: metav1.ObjectMeta{
-							Name:      PodDisruptionBudgetNameForRole("cluster", esv1.MasterRole),
+							Name:      podDisruptionBudgetName("cluster", string(esv1.MasterRole)),
 							Namespace: "ns",
 							Labels:    map[string]string{label.ClusterNameLabelName: "cluster"},
 						},
@@ -885,6 +887,341 @@ func TestExpectedRolePDBs(t *testing.T) {
 
 			if !cmp.Equal(tt.expected, pdbs) {
 				t.Errorf("expectedRolePDBs: PDBs do not match expected:\n%s", cmp.Diff(tt.expected, pdbs))
+			}
+		})
+	}
+}
+
+func Test_allowedDisruptionsForRole(t *testing.T) {
+	type args struct {
+		es          esv1.Elasticsearch
+		role        []esv1.NodeRole
+		actualSsets sset.StatefulSetList
+	}
+	tests := []struct {
+		name string
+		args args
+		want int32
+	}{
+		{
+			name: "no health reported: 0 disruptions allowed for any role",
+			args: args{
+				es:          esv1.Elasticsearch{Status: esv1.ElasticsearchStatus{}},
+				role:        []esv1.NodeRole{esv1.MasterRole, esv1.IngestRole, esv1.TransformRole, esv1.MLRole, esv1.DataFrozenRole},
+				actualSsets: sset.StatefulSetList{ssetfixtures.TestSset{Replicas: 3}.Build()},
+			},
+			want: 0,
+		},
+		{
+			name: "Unknown health reported: 0 disruptions allowed for any role",
+			args: args{
+				es:          esv1.Elasticsearch{Status: esv1.ElasticsearchStatus{Health: esv1.ElasticsearchUnknownHealth}},
+				role:        []esv1.NodeRole{esv1.MasterRole, esv1.IngestRole, esv1.TransformRole, esv1.MLRole, esv1.DataFrozenRole},
+				actualSsets: sset.StatefulSetList{ssetfixtures.TestSset{Replicas: 3}.Build()},
+			},
+			want: 0,
+		},
+		{
+			name: "yellow health: 0 disruptions allowed for data nodes",
+			args: args{
+				es:          esv1.Elasticsearch{Status: esv1.ElasticsearchStatus{Health: esv1.ElasticsearchYellowHealth}},
+				role:        []esv1.NodeRole{esv1.DataRole},
+				actualSsets: sset.StatefulSetList{ssetfixtures.TestSset{Replicas: 3}.Build()},
+			},
+			want: 0,
+		},
+		{
+			name: "yellow health: 1 disruption allowed for master/ingest/transform/ml/data_frozen",
+			args: args{
+				es:          esv1.Elasticsearch{Status: esv1.ElasticsearchStatus{Health: esv1.ElasticsearchYellowHealth}},
+				role:        []esv1.NodeRole{esv1.MasterRole, esv1.IngestRole, esv1.TransformRole, esv1.MLRole, esv1.DataFrozenRole},
+				actualSsets: sset.StatefulSetList{ssetfixtures.TestSset{Replicas: 3}.Build()},
+			},
+			want: 1,
+		},
+		{
+			name: "red health: 0 disruptions allowed for any role",
+			args: args{
+				es:          esv1.Elasticsearch{Status: esv1.ElasticsearchStatus{Health: esv1.ElasticsearchRedHealth}},
+				role:        []esv1.NodeRole{esv1.MasterRole, esv1.IngestRole, esv1.TransformRole, esv1.MLRole, esv1.DataFrozenRole, esv1.DataRole},
+				actualSsets: sset.StatefulSetList{ssetfixtures.TestSset{Replicas: 3, Master: true, Data: true}.Build()},
+			},
+			want: 0,
+		},
+		{
+			name: "green health: 1 disruption allowed for any role",
+			args: args{
+				es:          esv1.Elasticsearch{Status: esv1.ElasticsearchStatus{Health: esv1.ElasticsearchGreenHealth}},
+				role:        []esv1.NodeRole{esv1.MasterRole, esv1.IngestRole, esv1.TransformRole, esv1.MLRole, esv1.DataFrozenRole, esv1.DataRole},
+				actualSsets: sset.StatefulSetList{ssetfixtures.TestSset{Replicas: 3, Master: true, Data: true}.Build()},
+			},
+			want: 1,
+		},
+		{
+			name: "single-node cluster (not high-available): 1 disruption allowed",
+			args: args{
+				es:          esv1.Elasticsearch{Status: esv1.ElasticsearchStatus{Health: esv1.ElasticsearchGreenHealth}},
+				role:        []esv1.NodeRole{esv1.MasterRole},
+				actualSsets: sset.StatefulSetList{ssetfixtures.TestSset{Replicas: 1, Master: true, Data: true}.Build()},
+			},
+			want: 1,
+		},
+		{
+			name: "green health but only 1 master: 0 disruptions allowed for master role",
+			args: args{
+				es:   esv1.Elasticsearch{Status: esv1.ElasticsearchStatus{Health: esv1.ElasticsearchGreenHealth}},
+				role: []esv1.NodeRole{esv1.MasterRole},
+				actualSsets: sset.StatefulSetList{
+					ssetfixtures.TestSset{Replicas: 1, Master: true, Data: false}.Build(),
+					ssetfixtures.TestSset{Replicas: 3, Master: false, Data: true}.Build(),
+				},
+			},
+			want: 0,
+		},
+		{
+			name: "green health but only 1 master: 1 disruption allowed for data role",
+			args: args{
+				es:   esv1.Elasticsearch{Status: esv1.ElasticsearchStatus{Health: esv1.ElasticsearchGreenHealth}},
+				role: []esv1.NodeRole{esv1.DataRole},
+				actualSsets: sset.StatefulSetList{
+					ssetfixtures.TestSset{Replicas: 1, Master: true, Data: false}.Build(),
+					ssetfixtures.TestSset{Replicas: 3, Master: false, Data: true}.Build(),
+				},
+			},
+			want: 1,
+		},
+		{
+			name: "green health but only 1 data node: 0 disruptions allowed for data role",
+			args: args{
+				es:   esv1.Elasticsearch{Status: esv1.ElasticsearchStatus{Health: esv1.ElasticsearchGreenHealth}},
+				role: []esv1.NodeRole{esv1.DataRole},
+				actualSsets: sset.StatefulSetList{
+					ssetfixtures.TestSset{Replicas: 3, Master: true, Data: false}.Build(),
+					ssetfixtures.TestSset{Replicas: 1, Master: false, Data: true}.Build(),
+				},
+			},
+			want: 0,
+		},
+		{
+			name: "green health but only 1 ingest node: 0 disruptions allowed for ingest role",
+			args: args{
+				es:   esv1.Elasticsearch{Status: esv1.ElasticsearchStatus{Health: esv1.ElasticsearchGreenHealth}},
+				role: []esv1.NodeRole{esv1.IngestRole},
+				actualSsets: sset.StatefulSetList{
+					ssetfixtures.TestSset{Replicas: 3, Master: true, Data: true, Ingest: false}.Build(),
+					ssetfixtures.TestSset{Replicas: 1, Ingest: true, Data: true}.Build(),
+				},
+			},
+			want: 0,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			for _, role := range tt.args.role {
+				if got := allowedDisruptionsForRole(tt.args.es, role, tt.args.actualSsets); got != tt.want {
+					t.Errorf("allowedDisruptionsForRole() = %v, want %v for role: %s", got, tt.want, role)
+				}
+			}
+		})
+	}
+}
+
+func TestGroupBySharedRoles(t *testing.T) {
+	tests := []struct {
+		name         string
+		statefulSets sset.StatefulSetList
+		want         map[string][]appsv1.StatefulSet
+	}{
+		{
+			name:         "empty statefulsets",
+			statefulSets: sset.StatefulSetList{},
+			want:         map[string][]appsv1.StatefulSet{},
+		},
+		{
+			name: "single statefulset with no roles",
+			statefulSets: sset.StatefulSetList{
+				ssetfixtures.TestSset{Name: "coordinating"}.Build(),
+			},
+			want: map[string][]appsv1.StatefulSet{
+				"coordinating": {
+					ssetfixtures.TestSset{Name: "coordinating"}.Build(),
+				},
+			},
+		},
+		{
+			name: "all statefulsets with different roles",
+			statefulSets: sset.StatefulSetList{
+				ssetfixtures.TestSset{Name: "master", Master: true}.Build(),
+				ssetfixtures.TestSset{Name: "ingest", Ingest: true}.Build(),
+			},
+			want: map[string][]appsv1.StatefulSet{
+				"master": {
+					ssetfixtures.TestSset{Name: "master", Master: true}.Build(),
+				},
+				"ingest": {
+					ssetfixtures.TestSset{Name: "ingest", Ingest: true}.Build(),
+				},
+			},
+		},
+		{
+			name: "statefulsets with shared roles are grouped properly",
+			statefulSets: sset.StatefulSetList{
+				ssetfixtures.TestSset{Name: "master", Master: true, Data: true}.Build(),
+				ssetfixtures.TestSset{Name: "data", Data: true}.Build(),
+				ssetfixtures.TestSset{Name: "ingest", Ingest: true}.Build(),
+			},
+			want: map[string][]appsv1.StatefulSet{
+				"master": {
+					ssetfixtures.TestSset{Name: "master", Master: true, Data: true}.Build(),
+					ssetfixtures.TestSset{Name: "data", Data: true}.Build(),
+				},
+				"ingest": {
+					ssetfixtures.TestSset{Name: "ingest", Ingest: true}.Build(),
+				},
+			},
+		},
+		{
+			name: "statefulsets with multiple shared roles in multiple groups, and data* roles are grouped properly",
+			statefulSets: sset.StatefulSetList{
+				ssetfixtures.TestSset{Name: "master", Master: true, Data: true}.Build(),
+				ssetfixtures.TestSset{Name: "data", Data: true}.Build(),
+				ssetfixtures.TestSset{Name: "data_hot", DataHot: true}.Build(),
+				ssetfixtures.TestSset{Name: "data_warm", DataWarm: true}.Build(),
+				ssetfixtures.TestSset{Name: "data_cold", DataCold: true}.Build(),
+				ssetfixtures.TestSset{Name: "data_frozen", DataFrozen: true}.Build(),
+				ssetfixtures.TestSset{Name: "ingest", Ingest: true, ML: true}.Build(),
+				ssetfixtures.TestSset{Name: "ml", ML: true}.Build(),
+			},
+			want: map[string][]appsv1.StatefulSet{
+				"master": {
+					ssetfixtures.TestSset{Name: "master", Master: true, Data: true}.Build(),
+					ssetfixtures.TestSset{Name: "data", Data: true}.Build(),
+					ssetfixtures.TestSset{Name: "data_hot", DataHot: true}.Build(),
+					ssetfixtures.TestSset{Name: "data_warm", DataWarm: true}.Build(),
+					ssetfixtures.TestSset{Name: "data_cold", DataCold: true}.Build(),
+				},
+				"data_frozen": {
+					ssetfixtures.TestSset{Name: "data_frozen", DataFrozen: true}.Build(),
+				},
+				"ingest": {
+					ssetfixtures.TestSset{Name: "ingest", Ingest: true, ML: true}.Build(),
+					ssetfixtures.TestSset{Name: "ml", ML: true}.Build(),
+				},
+			},
+		},
+		{
+			name: "coordinating nodes (no roles) in separate group",
+			statefulSets: sset.StatefulSetList{
+				ssetfixtures.TestSset{Name: "data", Data: true}.Build(),
+				ssetfixtures.TestSset{Name: "coordinating1"}.Build(),
+				ssetfixtures.TestSset{Name: "coordinating2"}.Build(),
+			},
+			want: map[string][]appsv1.StatefulSet{
+				"data": {
+					ssetfixtures.TestSset{Name: "data", Data: true}.Build(),
+				},
+				"coordinating": {
+					ssetfixtures.TestSset{Name: "coordinating1"}.Build(),
+					ssetfixtures.TestSset{Name: "coordinating2"}.Build(),
+				},
+			},
+		},
+		{
+			name: "statefulsets with multiple roles respect priority order",
+			statefulSets: sset.StatefulSetList{
+				ssetfixtures.TestSset{Name: "master-data-ingest", Master: true, Data: true, Ingest: true}.Build(),
+				ssetfixtures.TestSset{Name: "data-ingest", Data: true, Ingest: true}.Build(),
+				ssetfixtures.TestSset{Name: "ingest-only", Ingest: true}.Build(),
+			},
+			want: map[string][]appsv1.StatefulSet{
+				"master": {
+					ssetfixtures.TestSset{Name: "master-data-ingest", Master: true, Data: true, Ingest: true}.Build(),
+					ssetfixtures.TestSset{Name: "data-ingest", Data: true, Ingest: true}.Build(),
+					ssetfixtures.TestSset{Name: "ingest-only", Ingest: true}.Build(),
+				},
+			},
+		},
+		{
+			name: "mixed data role types are properly collapsed even with generic data role existing",
+			statefulSets: sset.StatefulSetList{
+				ssetfixtures.TestSset{Name: "data", Data: true}.Build(),
+				ssetfixtures.TestSset{Name: "data_hot", DataHot: true}.Build(),
+				ssetfixtures.TestSset{Name: "data_content", DataContent: true}.Build(),
+				ssetfixtures.TestSset{Name: "master", Master: true}.Build(),
+			},
+			want: map[string][]appsv1.StatefulSet{
+				"master": {
+					ssetfixtures.TestSset{Name: "master", Master: true}.Build(),
+				},
+				"data": {
+					ssetfixtures.TestSset{Name: "data", Data: true}.Build(),
+					ssetfixtures.TestSset{Name: "data_hot", DataHot: true}.Build(),
+					ssetfixtures.TestSset{Name: "data_content", DataContent: true}.Build(),
+				},
+			},
+		},
+		{
+			name: "data roles without generic data role do not maintain separate groups",
+			statefulSets: sset.StatefulSetList{
+				ssetfixtures.TestSset{Name: "data_hot", DataHot: true}.Build(),
+				ssetfixtures.TestSset{Name: "data_cold", DataCold: true}.Build(),
+				ssetfixtures.TestSset{Name: "master", Master: true}.Build(),
+			},
+			want: map[string][]appsv1.StatefulSet{
+				"master": {
+					ssetfixtures.TestSset{Name: "master", Master: true}.Build(),
+				},
+				"data": {
+					ssetfixtures.TestSset{Name: "data_hot", DataHot: true}.Build(),
+					ssetfixtures.TestSset{Name: "data_cold", DataCold: true}.Build(),
+				},
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := groupBySharedRoles(tt.statefulSets)
+
+			// Check that the number of groups matches
+			assert.Equal(t, len(tt.want), len(got), "Expected %d groups, got %d", len(tt.want), len(got))
+
+			// Check each expected group
+			for role, expectedSsets := range tt.want {
+				gotSsets, exists := got[role]
+				assert.True(t, exists, "Expected group for role %s not found", role)
+				if !exists {
+					continue
+				}
+
+				// Sort both slices for consistent comparison
+				sort.Slice(expectedSsets, func(i, j int) bool {
+					return expectedSsets[i].Name < expectedSsets[j].Name
+				})
+				sort.Slice(gotSsets, func(i, j int) bool {
+					return gotSsets[i].Name < gotSsets[j].Name
+				})
+
+				assert.Equal(t, len(expectedSsets), len(gotSsets), "Group %s has wrong size", role)
+
+				// Check if all StatefulSets in the group match
+				for i := 0; i < len(expectedSsets); i++ {
+					if i >= len(gotSsets) {
+						t.Errorf("Missing StatefulSet at index %d in group %s", i, role)
+						continue
+					}
+
+					assert.Equal(t, expectedSsets[i].Name, gotSsets[i].Name,
+						"StatefulSet names do not match in group %s", role)
+					assert.Equal(t, expectedSsets[i].Spec.Template.Labels, gotSsets[i].Spec.Template.Labels,
+						"StatefulSet labels do not match in group %s", role)
+				}
+			}
+
+			// Check if there are any unexpected groups
+			for role := range got {
+				_, exists := tt.want[role]
+				assert.True(t, exists, "Unexpected group found: %s", role)
 			}
 		})
 	}

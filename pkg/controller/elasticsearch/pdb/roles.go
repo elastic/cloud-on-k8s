@@ -7,6 +7,7 @@ package pdb
 import (
 	"context"
 	"fmt"
+	"slices"
 	"sort"
 
 	appsv1 "k8s.io/api/apps/v1"
@@ -23,7 +24,29 @@ import (
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/label"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/sset"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/k8s"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/set"
 )
+
+var (
+	// All data role variants should be treated as a generic data role for PDB purposes
+	dataRoles = []esv1.NodeRole{
+		esv1.DataRole,
+		esv1.DataHotRole,
+		esv1.DataWarmRole,
+		esv1.DataColdRole,
+		esv1.DataContentRole,
+		// Note: DataFrozenRole is excluded as it has different disruption rules (yellow+ health)
+	}
+)
+
+// normalizeRole returns the normalized form of a role where any data role
+// is normalized to the same data role.
+func normalizeRole(role esv1.NodeRole) esv1.NodeRole {
+	if slices.Contains(dataRoles, role) {
+		return esv1.DataRole
+	}
+	return role
+}
 
 // reconcileRoleSpecificPDBs creates and reconciles PodDisruptionBudgets per nodeSet roles for enterprise-licensed clusters.
 func reconcileRoleSpecificPDBs(
@@ -68,7 +91,7 @@ func expectedRolePDBs(
 	groups := groupBySharedRoles(statefulSets)
 
 	// Create one PDB per group
-	for _, group := range groups {
+	for roleName, group := range groups {
 		if len(group) == 0 {
 			continue
 		}
@@ -82,23 +105,11 @@ func expectedRolePDBs(
 			}
 		}
 
-		// Determine the most conservative role for naming and grouping purposes.
+		// Determine the most conservative role to use when determining the maxUnavailable setting.
 		// If group has no roles, it's a coordinating ES role.
 		primaryRole := getPrimaryRoleForPDB(groupRoles)
 
-		// Create a PDB for this group
-		//
-		// TODO: Remove before merge: It feels like there's a possibility of overlapping pdb names here.
-		//
-		//       How do we ensure:
-		//       1. idempotency
-		//       2. no overlapping pdb names
-		//
-		// Even though it feels like there's a possibility for the same pdb name in the same namespace,
-		// since we are grouping associated roles into the same pdb, in theory this should never happen.
-		// I'm leaving this comment in for the review to spark a discussion and see if there's a better
-		// way to handle this section of the code.
-		pdb, err := createPDBForStatefulSets(es, primaryRole, group, statefulSets, meta)
+		pdb, err := createPDBForStatefulSets(es, primaryRole, roleName, group, statefulSets, meta)
 		if err != nil {
 			return nil, err
 		}
@@ -108,6 +119,69 @@ func expectedRolePDBs(
 	}
 
 	return pdbs, nil
+}
+
+func groupBySharedRoles(statefulSets sset.StatefulSetList) map[string][]appsv1.StatefulSet {
+	n := len(statefulSets)
+	if n == 0 {
+		return map[string][]appsv1.StatefulSet{}
+	}
+	rolesToIndices := make(map[string][]int)
+	indicesToRoles := make(map[int]set.StringSet)
+	for i, sset := range statefulSets {
+		roles := getRolesFromStatefulSetPodTemplate(sset)
+		if len(roles) == 0 {
+			// StatefulSets with no roles are coordinating nodes - group them together
+			rolesToIndices["coordinating"] = append(rolesToIndices["coordinating"], i)
+			indicesToRoles[i] = set.Make("coordinating")
+			continue
+		}
+		for _, role := range roles {
+			// Ensure that the data* roles are grouped together.
+			normalizedRole := string(normalizeRole(role))
+			rolesToIndices[normalizedRole] = append(rolesToIndices[normalizedRole], i)
+			if _, ok := indicesToRoles[i]; !ok {
+				indicesToRoles[i] = set.Make()
+			}
+			indicesToRoles[i].Add(normalizedRole)
+		}
+	}
+
+	// group the statefulsets in priority of their roles
+	// master, data_*, ingest, ml, transform, coordinating, and we ignore remote_cluster_client as it has no impact on availability
+	priority := []string{"master", "data", "data_frozen", "ingest", "ml", "transform", "coordinating"}
+	// This keeps track of which roles have been assigned to a PDB to avoid assigning the same role to multiple PDBs.
+	roleToTargetPDB := map[string]string{}
+	grouped := map[string][]int{}
+	visited := make([]bool, n)
+	for _, role := range priority {
+		if indices, ok := rolesToIndices[role]; ok {
+			for _, idx := range indices {
+				if !visited[idx] {
+					targetPDBRole := role
+					// if we already assigned a PDB for this role, use that instead
+					if target, ok := roleToTargetPDB[role]; ok {
+						targetPDBRole = target
+					}
+					grouped[targetPDBRole] = append(grouped[targetPDBRole], idx)
+					for _, r := range indicesToRoles[idx].AsSlice() {
+						roleToTargetPDB[r] = targetPDBRole
+					}
+					visited[idx] = true
+				}
+			}
+		}
+	}
+	// transform into the expected format
+	res := make(map[string][]appsv1.StatefulSet)
+	for role, indices := range grouped {
+		group := make([]appsv1.StatefulSet, 0, len(indices))
+		for _, idx := range indices {
+			group = append(group, statefulSets[idx])
+		}
+		res[role] = group
+	}
+	return res
 }
 
 // getPrimaryRoleForPDB returns the primary role from a set of roles for PDB naming and grouping.
@@ -202,7 +276,10 @@ func getRolesFromStatefulSetPodTemplate(statefulSet appsv1.StatefulSet) []esv1.N
 // createPDBForStatefulSets creates a PDB for a group of StatefulSets with shared roles.
 func createPDBForStatefulSets(
 	es esv1.Elasticsearch,
+	// role is the role used to determine the maxUnavailable value.
 	role esv1.NodeRole,
+	// roleName is used to determine the name of the PDB.
+	roleName string,
 	// statefulSets are the statefulSets grouped into this pdb.
 	statefulSets []appsv1.StatefulSet,
 	// allStatefulSets are all statefulsets in the whole ES cluster.
@@ -215,7 +292,7 @@ func createPDBForStatefulSets(
 
 	pdb := &policyv1.PodDisruptionBudget{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      PodDisruptionBudgetNameForRole(es.Name, role),
+			Name:      podDisruptionBudgetName(es.Name, roleName),
 			Namespace: es.Namespace,
 		},
 		Spec: buildRoleSpecificPDBSpec(es, role, statefulSets, allStatefulSets),
@@ -271,6 +348,9 @@ func allowedDisruptionsForRole(
 	role esv1.NodeRole,
 	statefulSets sset.StatefulSetList,
 ) int32 {
+	if es.Status.Health == esv1.ElasticsearchUnknownHealth || es.Status.Health == esv1.ElasticsearchHealth("") {
+		return 0
+	}
 	// In a single node cluster (not highly-available) always allow 1 disruption
 	// to ensure K8s nodes operations can be performed.
 	if statefulSets.ExpectedNodeCount() == 1 {
@@ -422,9 +502,9 @@ func isOwnedByElasticsearch(pdb policyv1.PodDisruptionBudget, es esv1.Elasticsea
 	return false
 }
 
-// PodDisruptionBudgetNameForRole returns the name of the PDB for a specific role.
-func PodDisruptionBudgetNameForRole(esName string, role esv1.NodeRole) string {
-	name := esv1.DefaultPodDisruptionBudget(esName) + "-" + string(role)
+// podDisruptionBudgetName returns the name of the PDB.
+func podDisruptionBudgetName(esName string, role string) string {
+	name := esv1.DefaultPodDisruptionBudget(esName) + "-" + role
 	// For coordinating nodes (no roles), append "coord" to the name
 	if role == "" {
 		name += "coord"
