@@ -82,7 +82,7 @@ func expectedRolePDBs(
 			}
 		}
 
-		// Determine the most conservative role naming and grouping purposes.
+		// Determine the most conservative role for naming and grouping purposes.
 		// If group has no roles, it's a coordinating ES role.
 		primaryRole := getPrimaryRoleForPDB(groupRoles)
 
