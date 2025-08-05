@@ -6,15 +6,54 @@ mapped_pages:
 ---
 
 # Elastic Cloud on Kubernetes release notes [elastic-cloud-kubernetes-release-notes]
-Review the changes, fixes, and more in each release of Elastic Cloud on Kubernetes. 
+Review the changes, fixes, and more in each release of Elastic Cloud on Kubernetes.
 
-% Release notes includes only features, enhancements, and fixes. Add breaking changes, deprecations, and known issues to the applicable release notes sections. 
+## 3.1.0 [elastic-cloud-kubernetes-310-release-notes]
 
-% ## version.next [elastic-cloud-lubernetes-versionext-release-notes]
+### Release Highlights
 
-% ### Features and enhancements [elastic-cloud-kubernetes-versionext-features-enhancements]
+#### Propagate metadata to child Kubernetes resources
 
-% ### Fixes [elastic-cloud-kubernetes-versionext-fixes]
+It is now possible to propagate metadata from the parent custom resource to the child resources created by the operator. If you add labels or annotations on an Elasticsearch, Kibana, or Agent resource, for example, these can be automatically propagated to the Pods, Services, and other resources created by the operator. Refer to the [Propagate Labels and Annotations](docs-content://deploy-manage/deploy/cloud-on-k8s/propagate-labels-annotations.md) page for examples and more details.
+
+#### New UBI base image
+
+To reduce the attack surface and improve overall security UBI images are now based on the UBI micro base image.
+
+### Features and enhancements [elastic-cloud-kubernetes-310-features-and-enhancements]
+
+- UBI: Use micro image instead of minimal [#8704](https://github.com/elastic/cloud-on-k8s/pull/8704)
+- Propagate metadata to children [#8673](https://github.com/elastic/cloud-on-k8s/pull/8673) (issue: [#2652](https://github.com/elastic/cloud-on-k8s/issues/2652))
+- Allow advanced configuration for fleet-managed Elastic Agents [#8623](https://github.com/elastic/cloud-on-k8s/pull/8623) (issue: [#8619](https://github.com/elastic/cloud-on-k8s/issues/8619))
+
+### Fixes [elastic-cloud-kubernetes-310-fixes]
+
+- Set owner on service account Secret, update it when application is recreated [#8716](https://github.com/elastic/cloud-on-k8s/pull/8716)
+- fix: Cannot disable TLS in Logstash [#8706](https://github.com/elastic/cloud-on-k8s/pull/8706) (issue: [#8600](https://github.com/elastic/cloud-on-k8s/issues/8600))
+- Move from deprecated container input to filestream [#8679](https://github.com/elastic/cloud-on-k8s/pull/8679) (issue: [#8667](https://github.com/elastic/cloud-on-k8s/issues/8667))
+- Add automated workaround for 9.0.0 maps issue [#8665](https://github.com/elastic/cloud-on-k8s/pull/8665) (issue: [#8655](https://github.com/elastic/cloud-on-k8s/issues/8655))
+- Bump go.mod to v3 [#8609](https://github.com/elastic/cloud-on-k8s/pull/8609)
+- Helm: Add support for missing `remoteClusterServer` value [#8612](https://github.com/elastic/cloud-on-k8s/pull/8612)
+
+### Documentation improvements [elastic-cloud-kubernetes-310-documentation-improvements]
+
+- [Helm] Fix examples/logstash/basic-eck.yaml [#8695](https://github.com/elastic/cloud-on-k8s/pull/8695)
+
+### Miscellaneous [elastic-cloud-kubernetes-310-miscellaneous]
+
+:::{dropdown} Updated dependencies
+- Update Go version to 1.24.5 [#8745](https://github.com/elastic/cloud-on-k8s/pull/8745)
+- chore(deps): update registry.access.redhat.com/ubi9/ubi-micro docker tag to v9.6-1750858477 [#8711](https://github.com/elastic/cloud-on-k8s/pull/8711)
+- fix(deps): update k8s to v0.33.2 [#8699](https://github.com/elastic/cloud-on-k8s/pull/8699)
+- fix(deps): update module cloud.google.com/go/storage to v1.52.0 [#8629](https://github.com/elastic/cloud-on-k8s/pull/8629)
+- fix(deps): update module github.com/go-git/go-git/v5 to v5.16.0 [#8631](https://github.com/elastic/cloud-on-k8s/pull/8631)
+- fix(deps): update module github.com/google/go-containerregistry to v0.20.6 [#8672](https://github.com/elastic/cloud-on-k8s/pull/8672)
+- fix(deps): update module github.com/magiconair/properties to v1.8.10 [#8625](https://github.com/elastic/cloud-on-k8s/pull/8625)
+- fix(deps): update module github.com/prometheus/common to v0.63.0 [#8569](https://github.com/elastic/cloud-on-k8s/pull/8569)
+- fix(deps): update module github.com/spf13/viper to v1.20.1 [#8570](https://github.com/elastic/cloud-on-k8s/pull/8570)
+- fix(deps): update module google.golang.org/api to v0.227.0 [#8529](https://github.com/elastic/cloud-on-k8s/pull/8529)
+- fix(deps): update module helm.sh/helm/v3 to 3.17.3 [#8598](https://github.com/elastic/cloud-on-k8s/pull/8598)
+:::
 
 ## 3.0.0 [elastic-cloud-kubernetes-300-release-notes]
 
@@ -45,31 +84,29 @@ Review the changes, fixes, and more in each release of Elastic Cloud on Kubernet
 - [docs] Update heap dump command to use the most recent Java process ([#8294](https://github.com/elastic/cloud-on-k8s/pull/8294))
 - [DOC] Document the need for an ingest node for Enterprise Search analytics ([#8271](https://github.com/elastic/cloud-on-k8s/pull/8271))
 
-# Miscellaneous
-- Update golang.org/x/net package to 0.38.0 ([#8591](https://github.com/elastic/cloud-on-k8s/pull/8591))
-- fix(deps): update module go.elastic.co/apm/v2 to v2.7.0 ([#8576](https://github.com/elastic/cloud-on-k8s/pull/8576))
-- chore(deps): update registry.access.redhat.com/ubi9/ubi-minimal docker tag to v9.5-1741850109 ([#8544](https://github.com/elastic/cloud-on-k8s/pull/8544))
-- fix(deps): update module golang.org/x/oauth2 to v0.28.0 ([#8528](https://github.com/elastic/cloud-on-k8s/pull/8528))
-- fix(deps): update module github.com/gkampitakis/go-snaps to v0.5.11 ([#8524](https://github.com/elastic/cloud-on-k8s/pull/8524))
-- fix(deps): update module github.com/spf13/cobra to v1.9.1 ([#8523](https://github.com/elastic/cloud-on-k8s/pull/8523))
-- fix(deps): update module github.com/prometheus/client_golang to v1.21.1 ([#8520](https://github.com/elastic/cloud-on-k8s/pull/8520))
-- fix(deps): update module github.com/jonboulle/clockwork to v0.5.0 ([#8519](https://github.com/elastic/cloud-on-k8s/pull/8519))
-- fix(deps): update module github.com/hashicorp/vault/api to v1.16.0 ([#8517](https://github.com/elastic/cloud-on-k8s/pull/8517))
-- fix(deps): update module github.com/google/go-cmp to v0.7.0 ([#8516](https://github.com/elastic/cloud-on-k8s/pull/8516))
-- fix(deps): update module helm.sh/helm/v3 to v3.17.1 ([#8505](https://github.com/elastic/cloud-on-k8s/pull/8505))
-- chore(deps): update wolfi (versioned) ([#8504](https://github.com/elastic/cloud-on-k8s/pull/8504))
-- Bump github.com/go-jose/go-jose/v4 from 4.0.1 to 4.0.5 ([#8488](https://github.com/elastic/cloud-on-k8s/pull/8488))
-- fix(deps): update module github.com/go-git/go-git/v5 to v5.14.0 ([#8487](https://github.com/elastic/cloud-on-k8s/pull/8487))
-- fix(deps): update k8s ([#8486](https://github.com/elastic/cloud-on-k8s/pull/8486))
-- chore(deps): update docker.elastic.co/ci-agent-images/serverless-docker-builder:0.4.0 docker digest to 730f062 ([#8483](https://github.com/elastic/cloud-on-k8s/pull/8483))
-- fix(deps): update module github.com/spf13/pflag to v1.0.6 ([#8468](https://github.com/elastic/cloud-on-k8s/pull/8468))
-- Update module github.com/gkampitakis/go-snaps to v0.5.10 ([#8467](https://github.com/elastic/cloud-on-k8s/pull/8467))
+### Miscellaneous [elastic-cloud-kubernetes-300-miscellaneous]
+
+:::{dropdown} Updated dependencies
 - chore(deps): update dependency go to v1.24.1 ([#8454](https://github.com/elastic/cloud-on-k8s/pull/8454))
 - chore(deps): update docker.elastic.co/wolfi/go docker tag to v1.24 ([#8453](https://github.com/elastic/cloud-on-k8s/pull/8453))
-- fix(deps): update module go.elastic.co/apm/v2/* to v2.6.3 ([#8440](https://github.com/elastic/cloud-on-k8s/pull/8440))
-- chore(deps): update wolfi to v1.23.5-r1 ([#8434](https://github.com/elastic/cloud-on-k8s/pull/8434))
-- Bump golang.org/x/crypto from 0.29.0 to 0.31.0 ([#8334](https://github.com/elastic/cloud-on-k8s/pull/8334))
-- fix(deps): update module github.com/prometheus/common to v0.61.0 ([#8333](https://github.com/elastic/cloud-on-k8s/pull/8333))
+- chore(deps): update registry.access.redhat.com/ubi9/ubi-minimal docker tag to v9.5-1741850109 ([#8544](https://github.com/elastic/cloud-on-k8s/pull/8544))
+- fix(deps): update k8s to v0.32.2 ([#8486](https://github.com/elastic/cloud-on-k8s/pull/8486))
+- fix(deps): update module github.com/gkampitakis/go-snaps to v0.5.11 ([#8524](https://github.com/elastic/cloud-on-k8s/pull/8524))
+- fix(deps): update module github.com/go-git/go-git/v5 to v5.14.0 ([#8487](https://github.com/elastic/cloud-on-k8s/pull/8487))
+- fix(deps): update module github.com/go-jose/go-jose/v4 from 4.0.1 to 4.0.5 ([#8488](https://github.com/elastic/cloud-on-k8s/pull/8488))
+- fix(deps): update module github.com/google/go-cmp to v0.7.0 ([#8516](https://github.com/elastic/cloud-on-k8s/pull/8516))
+- fix(deps): update module github.com/hashicorp/vault/api to v1.16.0 ([#8517](https://github.com/elastic/cloud-on-k8s/pull/8517))
+- fix(deps): update module github.com/jonboulle/clockwork to v0.5.0 ([#8519](https://github.com/elastic/cloud-on-k8s/pull/8519))
 - fix(deps): update module github.com/magiconair/properties to v1.8.9 ([#8307](https://github.com/elastic/cloud-on-k8s/pull/8307))
-- chore(deps): update docker.elastic.co/wolfi/go docker tag to v1.23.4 ([#8306](https://github.com/elastic/cloud-on-k8s/pull/8306))
+- fix(deps): update module github.com/prometheus/client_golang to v1.21.1 ([#8520](https://github.com/elastic/cloud-on-k8s/pull/8520))
+- fix(deps): update module github.com/prometheus/common to v0.61.0 ([#8333](https://github.com/elastic/cloud-on-k8s/pull/8333))
+- fix(deps): update module github.com/spf13/cobra to v1.9.1 ([#8523](https://github.com/elastic/cloud-on-k8s/pull/8523))
+- fix(deps): update module github.com/spf13/pflag to v1.0.6 ([#8468](https://github.com/elastic/cloud-on-k8s/pull/8468))
 - fix(deps): update module github.com/stretchr/testify to v1.10.0 ([#8282](https://github.com/elastic/cloud-on-k8s/pull/8282))
+- fix(deps): update module go.elastic.co/apm/v2 to v2.7.0 ([#8576](https://github.com/elastic/cloud-on-k8s/pull/8576))
+- fix(deps): update module golang.org/x/crypto from 0.29.0 to 0.31.0 ([#8334](https://github.com/elastic/cloud-on-k8s/pull/8334))
+- fix(deps): update module golang.org/x/net package to 0.38.0 ([#8591](https://github.com/elastic/cloud-on-k8s/pull/8591))
+- fix(deps): update module golang.org/x/oauth2 to v0.28.0 ([#8528](https://github.com/elastic/cloud-on-k8s/pull/8528))
+- fix(deps): update module helm.sh/helm/v3 to v3.17.1 ([#8505](https://github.com/elastic/cloud-on-k8s/pull/8505))
+- Update module github.com/gkampitakis/go-snaps to v0.5.10 ([#8467](https://github.com/elastic/cloud-on-k8s/pull/8467))
+:::

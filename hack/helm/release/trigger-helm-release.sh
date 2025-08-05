@@ -7,13 +7,16 @@
 # Script to call the Buildkite API to trigger the release of the ECK Helm charts.
 #
 # Usage:  BK_TOKEN=$(jq .graphql_token ~/.buildkite/config.json -r) \
-#         BRANCH=2.8 DRY_RUN=true \
-#         ./trigger-bk-release.sh SCOPE
+#         BRANCH=2.8 DRY_RUN=true [FORCE=true] \
+#         ./trigger-helm-release.sh SCOPE
 #
 # Required environment variables:
 #    BK_TOKEN
 #    BRANCH
 #    DRY_RUN
+#
+# Optional environment variable:
+#    FORCE (default: false)
 #
 # Argument:
 #    SCOPE  to select which charts to release ("all", "eck-operator" or "eck-stack")
@@ -24,6 +27,7 @@ set -eu
 : "$BK_TOKEN"
 : "$BRANCH"
 : "$DRY_RUN"
+FORCE=${FORCE:-false}
 
 # properties required to test PRs:
         # "pull_request_base_branch": "main",
@@ -40,7 +44,8 @@ main() {
         "branch": "'"$BRANCH"'",
         "message": "release '"$scope"' helm charts",
         "env": {
-            "HELM_DRY_RUN": "'"$DRY_RUN"'"
+            "HELM_DRY_RUN": "'"$DRY_RUN"'",
+            "HELM_FORCE": "'"$FORCE"'"
         }
     }'
 }
