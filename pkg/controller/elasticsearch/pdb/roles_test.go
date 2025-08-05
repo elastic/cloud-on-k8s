@@ -211,6 +211,9 @@ func TestReconcileRoleSpecificPDBs(t *testing.T) {
 		ObjectMeta: metav1.ObjectMeta{Name: "cluster", Namespace: "ns"},
 	}
 
+	defaultHealthyES := defaultEs.DeepCopy()
+	defaultHealthyES.Status.Health = esv1.ElasticsearchGreenHealth
+
 	type args struct {
 		initObjs     []client.Object
 		es           esv1.Elasticsearch
@@ -243,6 +246,7 @@ func TestReconcileRoleSpecificPDBs(t *testing.T) {
 				},
 			},
 			wantedPDBs: []*policyv1.PodDisruptionBudget{
+				// Unhealthy es cluster; 0 disruptions allowed
 				rolePDB("cluster", "ns", esv1.MasterRole, []string{"master1"}, 0),
 				rolePDB("cluster", "ns", esv1.DataRole, []string{"data1"}, 0),
 			},
@@ -250,7 +254,7 @@ func TestReconcileRoleSpecificPDBs(t *testing.T) {
 		{
 			name: "no existing PDBs: should create role-specific PDBs with data roles grouped",
 			args: args{
-				es: defaultEs,
+				es: *defaultHealthyES,
 				statefulSets: sset.StatefulSetList{
 					ssetfixtures.TestSset{
 						Name:        "master-data1",
@@ -265,12 +269,12 @@ func TestReconcileRoleSpecificPDBs(t *testing.T) {
 						Namespace:   "ns",
 						ClusterName: "cluster",
 						DataHot:     true,
-						Replicas:    1,
+						Replicas:    2,
 					}.Build(),
 				},
 			},
 			wantedPDBs: []*policyv1.PodDisruptionBudget{
-				rolePDB("cluster", "ns", esv1.DataRole, []string{"data2", "master-data1"}, 0),
+				rolePDB("cluster", "ns", esv1.MasterRole, []string{"data2", "master-data1"}, 1),
 			},
 		},
 		{
@@ -279,13 +283,13 @@ func TestReconcileRoleSpecificPDBs(t *testing.T) {
 				initObjs: []client.Object{
 					defaultPDB(),
 				},
-				es: defaultEs,
+				es: *defaultHealthyES,
 				statefulSets: sset.StatefulSetList{
 					ssetfixtures.TestSset{Name: "master1", Namespace: "ns", ClusterName: "cluster", Master: true, Replicas: 1}.Build(),
 				},
 			},
 			wantedPDBs: []*policyv1.PodDisruptionBudget{
-				// single node cluster should allow 1 pod to be unavailable
+				// single node cluster should allow 1 pod to be unavailable when cluster is healthy.
 				rolePDB("cluster", "ns", esv1.MasterRole, []string{"master1"}, 1),
 			},
 		},
@@ -316,6 +320,7 @@ func TestReconcileRoleSpecificPDBs(t *testing.T) {
 				},
 			},
 			wantedPDBs: []*policyv1.PodDisruptionBudget{
+				// Unhealthy es cluster; 0 disruptions allowed
 				rolePDB("cluster", "ns", "", []string{"coord1", "coord2"}, 0),
 				rolePDB("cluster", "ns", esv1.MasterRole, []string{"master1"}, 0),
 			},
@@ -351,7 +356,8 @@ func TestReconcileRoleSpecificPDBs(t *testing.T) {
 				},
 			},
 			wantedPDBs: []*policyv1.PodDisruptionBudget{
-				rolePDB("cluster", "ns", esv1.DataRole, []string{"master-data1", "data-ingest1"}, 0),
+				// Unhealthy es cluster; 0 disruptions allowed
+				rolePDB("cluster", "ns", esv1.MasterRole, []string{"master-data1", "data-ingest1"}, 0),
 				rolePDB("cluster", "ns", esv1.MLRole, []string{"ml1"}, 0),
 			},
 		},
@@ -417,7 +423,8 @@ func TestReconcileRoleSpecificPDBs(t *testing.T) {
 				},
 			},
 			wantedPDBs: []*policyv1.PodDisruptionBudget{
-				rolePDB("cluster", "ns", esv1.MasterRole, []string{"master1"}, 1),
+				// Unhealthy es cluster; 0 disruptions allowed
+				rolePDB("cluster", "ns", esv1.MasterRole, []string{"master1"}, 0),
 			},
 		},
 	}
@@ -457,7 +464,7 @@ func TestReconcileRoleSpecificPDBs(t *testing.T) {
 				idx := slices.IndexFunc(retrievedPDBs.Items, func(pdb policyv1.PodDisruptionBudget) bool {
 					return pdb.Name == expectedPDB.Name
 				})
-				require.NotEqual(t, -1, idx, "Expected PDB %s should exist", expectedPDB.Name)
+				require.NotEqual(t, -1, idx, "Expected PDB %s should exist, found: %+v", expectedPDB.Name, retrievedPDBs.Items)
 				actualPDB := &retrievedPDBs.Items[idx]
 
 				// Verify key fields match (ignore metadata like resourceVersion, etc.)
@@ -470,18 +477,37 @@ func TestReconcileRoleSpecificPDBs(t *testing.T) {
 }
 
 func TestExpectedRolePDBs(t *testing.T) {
+	defaultUnhealthyES := esv1.Elasticsearch{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "test-es",
+			Namespace: "ns",
+		},
+		Spec: esv1.ElasticsearchSpec{
+			Version: "8.0.0",
+		},
+		Status: esv1.ElasticsearchStatus{
+			Health: esv1.ElasticsearchUnknownHealth,
+		},
+	}
+
+	defaultHealthyES := defaultUnhealthyES.DeepCopy()
+	defaultHealthyES.Status.Health = esv1.ElasticsearchGreenHealth
+
 	tests := []struct {
 		name         string
+		es           esv1.Elasticsearch
 		statefulSets []appsv1.StatefulSet
 		expected     []*policyv1.PodDisruptionBudget
 	}{
 		{
 			name:         "empty input",
+			es:           *defaultHealthyES,
 			statefulSets: []appsv1.StatefulSet{},
 			expected:     []*policyv1.PodDisruptionBudget{},
 		},
 		{
-			name: "single master nodeset",
+			name: "single master nodeset; healthy es; 0 disruptions",
+			es:   *defaultHealthyES,
 			statefulSets: []appsv1.StatefulSet{
 				ssetfixtures.TestSset{
 					Name:        "master1",
@@ -524,25 +550,26 @@ func TestExpectedRolePDBs(t *testing.T) {
 								},
 							},
 						},
-						MaxUnavailable: &intstr.IntOrString{Type: intstr.Int, IntVal: 1},
+						MaxUnavailable: &intstr.IntOrString{Type: intstr.Int, IntVal: 0},
 					},
 				},
 			},
 		},
 		{
-			name: "single coordinating node",
+			name: "multiple coordinating nodes; healthy es; 1 disruption allowed",
+			es:   *defaultHealthyES,
 			statefulSets: []appsv1.StatefulSet{
 				ssetfixtures.TestSset{
 					Name:        "coord1",
 					Namespace:   "ns",
 					ClusterName: "test-es",
-					Replicas:    1,
+					Replicas:    2,
 				}.Build(),
 			},
 			expected: []*policyv1.PodDisruptionBudget{
 				{
 					ObjectMeta: metav1.ObjectMeta{
-						Name:      "test-es-es-default-coord",
+						Name:      "test-es-es-default-coordinating",
 						Namespace: "ns",
 						Labels: map[string]string{
 							label.ClusterNameLabelName: "test-es",
@@ -579,6 +606,7 @@ func TestExpectedRolePDBs(t *testing.T) {
 		},
 		{
 			name: "separate roles - no shared roles",
+			es:   defaultUnhealthyES,
 			statefulSets: []appsv1.StatefulSet{
 				ssetfixtures.TestSset{
 					Name:        "master1",
@@ -712,6 +740,7 @@ func TestExpectedRolePDBs(t *testing.T) {
 		},
 		{
 			name: "shared roles - should be grouped",
+			es:   defaultUnhealthyES,
 			statefulSets: []appsv1.StatefulSet{
 				ssetfixtures.TestSset{
 					Name:        "master-data1",
@@ -740,7 +769,7 @@ func TestExpectedRolePDBs(t *testing.T) {
 			expected: []*policyv1.PodDisruptionBudget{
 				{
 					ObjectMeta: metav1.ObjectMeta{
-						Name:      "test-es-es-default-data",
+						Name:      "test-es-es-default-master",
 						Namespace: "ns",
 						Labels: map[string]string{
 							label.ClusterNameLabelName: "test-es",
@@ -812,6 +841,7 @@ func TestExpectedRolePDBs(t *testing.T) {
 		},
 		{
 			name: "multiple coordinating nodeSets",
+			es:   defaultUnhealthyES,
 			statefulSets: []appsv1.StatefulSet{
 				ssetfixtures.TestSset{Name: "coord1", Namespace: "ns", ClusterName: "test-es", Replicas: 1}.Build(),
 				ssetfixtures.TestSset{Name: "coord2", Namespace: "ns", ClusterName: "test-es", Replicas: 1}.Build(),
@@ -859,16 +889,6 @@ func TestExpectedRolePDBs(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			es := esv1.Elasticsearch{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      "test-es",
-					Namespace: "ns",
-				},
-				Spec: esv1.ElasticsearchSpec{
-					Version: "8.0.0",
-				},
-			}
-
 			statefulSetList := sset.StatefulSetList{}
 			for _, s := range tt.statefulSets {
 				statefulSetList = append(statefulSetList, s)
@@ -880,7 +900,7 @@ func TestExpectedRolePDBs(t *testing.T) {
 				},
 			}
 
-			pdbs, err := expectedRolePDBs(es, statefulSetList, meta)
+			pdbs, err := expectedRolePDBs(tt.es, statefulSetList, meta)
 			if err != nil {
 				t.Fatalf("expectedRolePDBs: %v", err)
 			}

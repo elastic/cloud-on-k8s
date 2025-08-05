@@ -505,9 +505,9 @@ func isOwnedByElasticsearch(pdb policyv1.PodDisruptionBudget, es esv1.Elasticsea
 // podDisruptionBudgetName returns the name of the PDB.
 func podDisruptionBudgetName(esName string, role string) string {
 	name := esv1.DefaultPodDisruptionBudget(esName) + "-" + role
-	// For coordinating nodes (no roles), append "coord" to the name
+	// For coordinating nodes (no roles), append "coordinating" to the name
 	if role == "" {
-		name += "coord"
+		name += "coordinating"
 	}
 	return name
 }
