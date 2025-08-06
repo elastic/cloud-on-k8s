@@ -42,9 +42,9 @@ var (
 	}
 )
 
-// normalizeRole returns the normalized form of a role where any data role
+// toGenericDataRole returns the normalized form of a role where any data role
 // is normalized to the same data role.
-func normalizeRole(role esv1.NodeRole) esv1.NodeRole {
+func toGenericDataRole(role esv1.NodeRole) esv1.NodeRole {
 	if slices.Contains(dataRoles, role) {
 		return esv1.DataRole
 	}
@@ -146,7 +146,7 @@ func groupBySharedRoles(statefulSets sset.StatefulSetList) map[string][]appsv1.S
 		}
 		for _, role := range roles {
 			// Ensure that the data* roles are grouped together.
-			normalizedRole := string(normalizeRole(role))
+			normalizedRole := string(toGenericDataRole(role))
 			rolesToIndices[normalizedRole] = append(rolesToIndices[normalizedRole], i)
 			if _, ok := indicesToRoles[i]; !ok {
 				indicesToRoles[i] = set.Make()
