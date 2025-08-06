@@ -160,21 +160,24 @@ func groupBySharedRoles(statefulSets sset.StatefulSetList) map[string][]appsv1.S
 	grouped := map[string][]int{}
 	visited := make([]bool, n)
 	for _, role := range priority {
-		if indices, ok := rolesToIndices[role]; ok {
-			for _, idx := range indices {
-				if !visited[idx] {
-					targetPDBRole := role
-					// if we already assigned a PDB for this role, use that instead
-					if target, ok := roleToTargetPDB[role]; ok {
-						targetPDBRole = target
-					}
-					grouped[targetPDBRole] = append(grouped[targetPDBRole], idx)
-					for _, r := range indicesToRoles[idx].AsSlice() {
-						roleToTargetPDB[r] = targetPDBRole
-					}
-					visited[idx] = true
-				}
+		indices, ok := rolesToIndices[role]
+		if !ok {
+			continue
+		}
+		for _, idx := range indices {
+			if visited[idx] {
+				continue
 			}
+			targetPDBRole := role
+			// if we already assigned a PDB for this role, use that instead
+			if target, ok := roleToTargetPDB[role]; ok {
+				targetPDBRole = target
+			}
+			grouped[targetPDBRole] = append(grouped[targetPDBRole], idx)
+			for _, r := range indicesToRoles[idx].AsSlice() {
+				roleToTargetPDB[r] = targetPDBRole
+			}
+			visited[idx] = true
 		}
 	}
 	// transform into the expected format
