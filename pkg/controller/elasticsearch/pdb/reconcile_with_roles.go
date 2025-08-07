@@ -166,8 +166,8 @@ func groupBySharedRoles(statefulSets sset.StatefulSetList, resources nodespec.Re
 		}
 		if len(roles) == 0 {
 			// StatefulSets with no roles are coordinating nodes - group them together
-			rolesToIndices["coordinating"] = append(rolesToIndices["coordinating"], i)
-			indicesToRoles[i] = set.Make("coordinating")
+			rolesToIndices[string(esv1.CoordinatingRole)] = append(rolesToIndices[string(esv1.CoordinatingRole)], i)
+			indicesToRoles[i] = set.Make(string(esv1.CoordinatingRole))
 			continue
 		}
 		for _, role := range roles {
@@ -587,7 +587,7 @@ func podDisruptionBudgetName(esName string, role string) string {
 	name := esv1.DefaultPodDisruptionBudget(esName) + "-" + role
 	// For coordinating nodes (no roles), append "coordinating" to the name
 	if role == "" {
-		name += "coordinating"
+		name += string(esv1.CoordinatingRole)
 	}
 	return name
 }

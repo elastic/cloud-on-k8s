@@ -16,6 +16,7 @@ import (
 type NodeRole string
 
 const (
+	CoordinatingRole        NodeRole = ""
 	DataColdRole            NodeRole = "data_cold"
 	DataContentRole         NodeRole = "data_content"
 	DataFrozenRole          NodeRole = "data_frozen"
