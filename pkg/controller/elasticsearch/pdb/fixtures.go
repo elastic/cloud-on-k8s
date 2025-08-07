@@ -8,7 +8,6 @@ import (
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"strings"
 
 	"github.com/elastic/cloud-on-k8s/v3/pkg/apis/common/v1"
 	esv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/elasticsearch/v1"
@@ -54,22 +53,14 @@ func (b Builder) WithVersion(version string) Builder {
 }
 
 // WithNodeSet adds a NodeSet to the Elasticsearch spec.
-func (b Builder) WithNodeSet(name string, count int32, nodeTypes ...string) Builder {
+func (b Builder) WithNodeSet(name string, count int32, nodeTypes ...esv1.NodeRole) Builder {
 	config := map[string]interface{}{}
 
-	// Convert legacy node type notation to roles array
-	if len(nodeTypes) > 0 {
-		roles := []string{}
-		for _, nodeType := range nodeTypes {
-			// Convert legacy node.X format to just X
-			if role := strings.TrimPrefix(nodeType, "node."); role != nodeType {
-				roles = append(roles, role)
-			}
-		}
-
-		// Only set roles if we have any
-		if len(roles) > 0 {
-			config["node.roles"] = roles
+	// This handles the 'coordinating' role properly.
+	config["node.roles"] = []esv1.NodeRole{}
+	for _, nodeType := range nodeTypes {
+		if string(nodeType) != "" {
+			config["node.roles"] = append(config["node.roles"].([]esv1.NodeRole), nodeType)
 		}
 	}
 
@@ -91,7 +82,7 @@ func (b Builder) WithNodeSet(name string, count int32, nodeTypes ...string) Buil
 }
 
 // buildStatefulSet creates a StatefulSet based on the given parameters.
-func (b Builder) buildStatefulSet(name string, replicas int32, nodeTypes []string) appsv1.StatefulSet {
+func (b Builder) buildStatefulSet(name string, replicas int32, nodeTypes []esv1.NodeRole) appsv1.StatefulSet {
 	sset := statefulset.TestSset{
 		Namespace:   b.Elasticsearch.Namespace,
 		Name:        name,
@@ -102,31 +93,29 @@ func (b Builder) buildStatefulSet(name string, replicas int32, nodeTypes []strin
 
 	// Set node roles based on nodeTypes
 	for _, nodeType := range nodeTypes {
-		// Strip the "node." prefix if present
-		role := strings.TrimPrefix(nodeType, "node.")
 
-		switch role {
-		case "master":
+		switch nodeType {
+		case esv1.MasterRole:
 			sset.Master = true
-		case "data":
+		case esv1.DataRole:
 			sset.Data = true
-		case "ingest":
+		case esv1.IngestRole:
 			sset.Ingest = true
-		case "ml":
+		case esv1.MLRole:
 			sset.ML = true
-		case "transform":
+		case esv1.TransformRole:
 			sset.Transform = true
-		case "remote_cluster_client":
+		case esv1.RemoteClusterClientRole:
 			sset.RemoteClusterClient = true
-		case "data_hot":
+		case esv1.DataHotRole:
 			sset.DataHot = true
-		case "data_warm":
+		case esv1.DataWarmRole:
 			sset.DataWarm = true
-		case "data_cold":
+		case esv1.DataColdRole:
 			sset.DataCold = true
-		case "data_content":
+		case esv1.DataContentRole:
 			sset.DataContent = true
-		case "data_frozen":
+		case esv1.DataFrozenRole:
 			sset.DataFrozen = true
 		}
 	}
@@ -180,26 +169,6 @@ func (b Builder) BuildResourcesList() (nodespec.ResourcesList, error) {
 	}
 
 	return resourcesList, nil
-}
-
-// WithMasterDataNodes adds both master and data nodes to the Elasticsearch cluster.
-func (b Builder) WithMasterDataNodes(name string, count int32) Builder {
-	return b.WithNodeSet(name, count, "node.master", "node.data")
-}
-
-// WithMasterOnlyNodes adds master-only nodes to the Elasticsearch cluster.
-func (b Builder) WithMasterOnlyNodes(name string, count int32) Builder {
-	return b.WithNodeSet(name, count, "node.master")
-}
-
-// WithDataOnlyNodes adds data-only nodes to the Elasticsearch cluster.
-func (b Builder) WithDataOnlyNodes(name string, count int32) Builder {
-	return b.WithNodeSet(name, count, "node.data")
-}
-
-// WithIngestOnlyNodes adds ingest-only nodes to the Elasticsearch cluster.
-func (b Builder) WithIngestOnlyNodes(name string, count int32) Builder {
-	return b.WithNodeSet(name, count, "node.ingest")
 }
 
 func (b Builder) GetStatefulSets() []appsv1.StatefulSet {

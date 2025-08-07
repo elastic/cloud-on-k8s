@@ -70,7 +70,7 @@ func TestReconcile(t *testing.T) {
 				builder: NewBuilder("cluster").
 					WithNamespace("ns").
 					WithVersion("9.0.1").
-					WithNodeSet("master-data", 3, "node.master", "node.data"),
+					WithNodeSet("master-data", 3, esv1.MasterRole, esv1.DataRole),
 			},
 			wantPDB: defaultPDB(),
 		},
@@ -82,7 +82,7 @@ func TestReconcile(t *testing.T) {
 				builder: NewBuilder("cluster").
 					WithNamespace("ns").
 					WithVersion("9.0.1").
-					WithNodeSet("master-data", 3, "node.master", "node.data"),
+					WithNodeSet("master-data", 3, esv1.MasterRole, esv1.DataRole),
 			},
 			wantPDB: defaultPDB(),
 		},
@@ -94,7 +94,7 @@ func TestReconcile(t *testing.T) {
 				builder: NewBuilder("cluster").
 					WithNamespace("ns").
 					WithVersion("9.0.1").
-					WithNodeSet("master-data", 5, "node.master", "node.data"),
+					WithNodeSet("master-data", 5, esv1.MasterRole, esv1.DataRole),
 			},
 			wantPDB: &policyv1.PodDisruptionBudget{
 				ObjectMeta: metav1.ObjectMeta{
@@ -124,7 +124,7 @@ func TestReconcile(t *testing.T) {
 				builder: NewBuilder("cluster").
 					WithNamespace("ns").
 					WithVersion("9.0.1").
-					WithNodeSet("master-data", 3, "node.master", "node.data"),
+					WithNodeSet("master-data", 3, esv1.MasterRole, esv1.DataRole),
 			},
 			wantPDB: nil,
 		},
@@ -201,7 +201,7 @@ func Test_expectedPDB(t *testing.T) {
 				builder: NewBuilder("cluster").
 					WithNamespace("ns").
 					WithVersion("9.0.1").
-					WithNodeSet("master-data", 3, "node.master", "node.data"),
+					WithNodeSet("master-data", 3, esv1.MasterRole, esv1.DataRole),
 			},
 			want: nil,
 		},
@@ -212,7 +212,7 @@ func Test_expectedPDB(t *testing.T) {
 				builder: NewBuilder("cluster").
 					WithNamespace("ns").
 					WithVersion("9.0.1").
-					WithNodeSet("master-data", 3, "node.master", "node.data"),
+					WithNodeSet("master-data", 3, esv1.MasterRole, esv1.DataRole),
 			},
 			want: &policyv1.PodDisruptionBudget{
 				ObjectMeta: metav1.ObjectMeta{
@@ -246,7 +246,7 @@ func Test_expectedPDB(t *testing.T) {
 				builder: NewBuilder("cluster").
 					WithNamespace("ns").
 					WithVersion("9.0.1").
-					WithNodeSet("master-data", 3, "node.master", "node.data"),
+					WithNodeSet("master-data", 3, esv1.MasterRole, esv1.DataRole),
 			},
 			want: &policyv1.PodDisruptionBudget{
 				ObjectMeta: metav1.ObjectMeta{
@@ -278,7 +278,7 @@ func Test_expectedPDB(t *testing.T) {
 				builder: NewBuilder("cluster").
 					WithNamespace("ns").
 					WithVersion("9.0.1").
-					WithNodeSet("master-data", 3, "node.master", "node.data"),
+					WithNodeSet("master-data", 3, esv1.MasterRole, esv1.DataRole),
 			},
 			want: &policyv1.PodDisruptionBudget{
 				ObjectMeta: metav1.ObjectMeta{
