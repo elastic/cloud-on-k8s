@@ -52,11 +52,11 @@ func defaultPDB() *policyv1.PodDisruptionBudget {
 }
 
 func TestReconcile(t *testing.T) {
-	defaultEs := esv1.Elasticsearch{ObjectMeta: metav1.ObjectMeta{Name: "cluster", Namespace: "ns"}}
+	defaultEs := esv1.Elasticsearch{ObjectMeta: metav1.ObjectMeta{Name: "cluster", Namespace: "ns"}, Spec: esv1.ElasticsearchSpec{Version: "9.0.1"}}
 	type args struct {
-		initObjs     []client.Object
-		es           esv1.Elasticsearch
-		statefulSets es_sset.StatefulSetList
+		initObjs []client.Object
+		es       esv1.Elasticsearch
+		builder  Builder
 	}
 	tests := []struct {
 		name    string
@@ -66,26 +66,35 @@ func TestReconcile(t *testing.T) {
 		{
 			name: "no existing pdb: should create one",
 			args: args{
-				es:           defaultEs,
-				statefulSets: es_sset.StatefulSetList{sset.TestSset{Replicas: 3, Master: true, Data: true}.Build()},
+				es: defaultEs,
+				builder: NewBuilder("cluster").
+					WithNamespace("ns").
+					WithVersion("9.0.1").
+					WithNodeSet("master-data", 3, "node.master", "node.data"),
 			},
 			wantPDB: defaultPDB(),
 		},
 		{
 			name: "pdb already exists: should remain unmodified",
 			args: args{
-				initObjs:     []client.Object{withHashLabel(withOwnerRef(defaultPDB(), defaultEs))},
-				es:           defaultEs,
-				statefulSets: es_sset.StatefulSetList{sset.TestSset{Replicas: 3, Master: true, Data: true}.Build()},
+				initObjs: []client.Object{withHashLabel(withOwnerRef(defaultPDB(), defaultEs))},
+				es:       defaultEs,
+				builder: NewBuilder("cluster").
+					WithNamespace("ns").
+					WithVersion("9.0.1").
+					WithNodeSet("master-data", 3, "node.master", "node.data"),
 			},
 			wantPDB: defaultPDB(),
 		},
 		{
 			name: "pdb needs a MinAvailable update",
 			args: args{
-				initObjs:     []client.Object{defaultPDB()},
-				es:           defaultEs,
-				statefulSets: es_sset.StatefulSetList{sset.TestSset{Replicas: 5, Master: true, Data: true}.Build()},
+				initObjs: []client.Object{defaultPDB()},
+				es:       defaultEs,
+				builder: NewBuilder("cluster").
+					WithNamespace("ns").
+					WithVersion("9.0.1").
+					WithNodeSet("master-data", 3, "node.master", "node.data"),
 			},
 			wantPDB: &policyv1.PodDisruptionBudget{
 				ObjectMeta: metav1.ObjectMeta{
@@ -112,7 +121,10 @@ func TestReconcile(t *testing.T) {
 					ObjectMeta: metav1.ObjectMeta{Name: "cluster", Namespace: "ns"},
 					Spec:       esv1.ElasticsearchSpec{PodDisruptionBudget: &commonv1.PodDisruptionBudgetTemplate{}},
 				},
-				statefulSets: es_sset.StatefulSetList{sset.TestSset{Replicas: 3, Master: true, Data: true}.Build()},
+				builder: NewBuilder("cluster").
+					WithNamespace("ns").
+					WithVersion("9.0.1").
+					WithNodeSet("master-data", 3, "node.master", "node.data"),
 			},
 			wantPDB: nil,
 		},
@@ -134,7 +146,12 @@ func TestReconcile(t *testing.T) {
 				WithRESTMapper(restMapper).
 				WithObjects(tt.args.initObjs...).Build()
 
-			err := Reconcile(context.Background(), k8sClient, tt.args.es, tt.args.statefulSets, metadata.Propagate(&tt.args.es, metadata.Metadata{Labels: tt.args.es.GetIdentityLabels()}))
+			resourcesList, err := tt.args.builder.BuildResourcesList()
+			require.NoError(t, err)
+
+			statefulSets := tt.args.builder.GetStatefulSets()
+
+			err = Reconcile(context.Background(), k8sClient, tt.args.es, statefulSets, resourcesList, metadata.Propagate(&tt.args.es, metadata.Metadata{Labels: tt.args.es.GetIdentityLabels()}))
 			require.NoError(t, err)
 			pdbNsn := types.NamespacedName{Namespace: tt.args.es.Namespace, Name: esv1.DefaultPodDisruptionBudget(tt.args.es.Name)}
 			var retrieved policyv1.PodDisruptionBudget
@@ -169,8 +186,8 @@ func intStrPtr(intStr intstr.IntOrString) *intstr.IntOrString {
 
 func Test_expectedPDB(t *testing.T) {
 	type args struct {
-		es           esv1.Elasticsearch
-		statefulSets es_sset.StatefulSetList
+		es      esv1.Elasticsearch
+		builder Builder
 	}
 	tests := []struct {
 		name string
@@ -180,16 +197,22 @@ func Test_expectedPDB(t *testing.T) {
 		{
 			name: "PDB disabled in the spec",
 			args: args{
-				es:           esv1.Elasticsearch{Spec: esv1.ElasticsearchSpec{PodDisruptionBudget: &commonv1.PodDisruptionBudgetTemplate{}}},
-				statefulSets: es_sset.StatefulSetList{sset.TestSset{Replicas: 3, Master: true, Data: true}.Build()},
+				es: esv1.Elasticsearch{Spec: esv1.ElasticsearchSpec{PodDisruptionBudget: &commonv1.PodDisruptionBudgetTemplate{}}},
+				builder: NewBuilder("cluster").
+					WithNamespace("ns").
+					WithVersion("9.0.1").
+					WithNodeSet("master-data", 3, "node.master", "node.data"),
 			},
 			want: nil,
 		},
 		{
 			name: "Build default PDB",
 			args: args{
-				es:           esv1.Elasticsearch{ObjectMeta: metav1.ObjectMeta{Name: "cluster", Namespace: "ns"}},
-				statefulSets: es_sset.StatefulSetList{sset.TestSset{Replicas: 3, Master: true, Data: true}.Build()},
+				es: esv1.Elasticsearch{ObjectMeta: metav1.ObjectMeta{Name: "cluster", Namespace: "ns"}},
+				builder: NewBuilder("cluster").
+					WithNamespace("ns").
+					WithVersion("9.0.1").
+					WithNodeSet("master-data", 3, "node.master", "node.data"),
 			},
 			want: &policyv1.PodDisruptionBudget{
 				ObjectMeta: metav1.ObjectMeta{
@@ -220,7 +243,10 @@ func Test_expectedPDB(t *testing.T) {
 							}},
 					},
 				},
-				statefulSets: es_sset.StatefulSetList{sset.TestSset{Replicas: 3, Master: true, Data: true}.Build()},
+				builder: NewBuilder("cluster").
+					WithNamespace("ns").
+					WithVersion("9.0.1").
+					WithNodeSet("master-data", 3, "node.master", "node.data"),
 			},
 			want: &policyv1.PodDisruptionBudget{
 				ObjectMeta: metav1.ObjectMeta{
@@ -249,7 +275,10 @@ func Test_expectedPDB(t *testing.T) {
 							Spec: policyv1.PodDisruptionBudgetSpec{MinAvailable: intStrPtr(intstr.FromInt(42))}},
 					},
 				},
-				statefulSets: es_sset.StatefulSetList{sset.TestSset{Replicas: 3, Master: true, Data: true}.Build()},
+				builder: NewBuilder("cluster").
+					WithNamespace("ns").
+					WithVersion("9.0.1").
+					WithNodeSet("master-data", 3, "node.master", "node.data"),
 			},
 			want: &policyv1.PodDisruptionBudget{
 				ObjectMeta: metav1.ObjectMeta{
@@ -269,7 +298,8 @@ func Test_expectedPDB(t *testing.T) {
 				// set owner ref
 				tt.want = withOwnerRef(tt.want, tt.args.es)
 			}
-			got, err := expectedPDB(tt.args.es, tt.args.statefulSets, metadata.Propagate(&tt.args.es, metadata.Metadata{Labels: tt.args.es.GetIdentityLabels()}))
+			statefulSets := tt.args.builder.GetStatefulSets()
+			got, err := expectedPDB(tt.args.es, statefulSets, metadata.Propagate(&tt.args.es, metadata.Metadata{Labels: tt.args.es.GetIdentityLabels()}))
 			require.NoError(t, err)
 			if !reflect.DeepEqual(got, tt.want) {
 				t.Errorf("expectedPDB() got = %v, want %v", got, tt.want)

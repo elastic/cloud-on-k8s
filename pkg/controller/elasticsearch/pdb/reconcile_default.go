@@ -24,6 +24,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/metadata"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/reconciler"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/label"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/nodespec"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/sset"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/k8s"
 )
@@ -35,14 +36,14 @@ import (
 //     maxUnavailable according to whatever cluster health is optimal for the set of roles.
 //
 // If the spec has disabled the default PDB, it will ensure none exist.
-func Reconcile(ctx context.Context, k8sClient k8s.Client, es esv1.Elasticsearch, statefulSets sset.StatefulSetList, meta metadata.Metadata) error {
+func Reconcile(ctx context.Context, k8sClient k8s.Client, es esv1.Elasticsearch, statefulSets sset.StatefulSetList, resources nodespec.ResourcesList, meta metadata.Metadata) error {
 	licenseChecker := lic.NewLicenseChecker(k8sClient, es.Namespace)
 	enterpriseEnabled, err := licenseChecker.EnterpriseFeaturesEnabled(ctx)
 	if err != nil {
 		return fmt.Errorf("while checking license during pdb reconciliation: %w", err)
 	}
 	if enterpriseEnabled {
-		return reconcileRoleSpecificPDBs(ctx, k8sClient, es, statefulSets, meta)
+		return reconcileRoleSpecificPDBs(ctx, k8sClient, es, statefulSets, resources, meta)
 	}
 
 	return reconcileDefaultPDB(ctx, k8sClient, es, statefulSets, meta)

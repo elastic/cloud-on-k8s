@@ -21,7 +21,9 @@ import (
 
 	esv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/elasticsearch/v1"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/metadata"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/version"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/label"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/nodespec"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/sset"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/k8s"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/set"
@@ -57,6 +59,7 @@ func reconcileRoleSpecificPDBs(
 	k8sClient k8s.Client,
 	es esv1.Elasticsearch,
 	statefulSets sset.StatefulSetList,
+	resources nodespec.ResourcesList,
 	meta metadata.Metadata,
 ) error {
 	// Check if PDB is disabled in the ES spec, and if so delete all existing PDBs (both default and role-specific)
@@ -68,30 +71,45 @@ func reconcileRoleSpecificPDBs(
 		return deleteAllRoleSpecificPDBs(ctx, k8sClient, es)
 	}
 
-	// Always ensure any existing default PDB is removed
-	if err := deleteDefaultPDB(ctx, k8sClient, es); err != nil {
-		return fmt.Errorf("while deleting the default PDB: %w", err)
-	}
-
 	// Retrieve the expected list of PDBs.
-	pdbs, err := expectedRolePDBs(es, statefulSets, meta)
+	pdbs, err := expectedRolePDBs(es, statefulSets, resources, meta)
 	if err != nil {
 		return fmt.Errorf("while retrieving expected role-specific PDBs: %w", err)
 	}
 
-	return reconcileAndDeleteUnnecessaryPDBs(ctx, k8sClient, es, pdbs)
+	// Reconcile and delete unnecessary role-specific PDBs that could have been created
+	// by a previous reconciliation with a different set of StatefulSets.
+	if err := reconcileAndDeleteUnnecessaryPDBs(ctx, k8sClient, es, pdbs); err != nil {
+		return err
+	}
+
+	// Always ensure any existing default PDB is removed.
+	if err := deleteDefaultPDB(ctx, k8sClient, es); err != nil {
+		return fmt.Errorf("while deleting the default PDB: %w", err)
+	}
+
+	return nil
 }
 
 // expectedRolePDBs returns a slice of PDBs to reconcile based on statefulSet roles.
 func expectedRolePDBs(
 	es esv1.Elasticsearch,
 	statefulSets sset.StatefulSetList,
+	resources nodespec.ResourcesList,
 	meta metadata.Metadata,
 ) ([]*policyv1.PodDisruptionBudget, error) {
-	pdbs := make([]*policyv1.PodDisruptionBudget, 0)
+	pdbs := make([]*policyv1.PodDisruptionBudget, 0, len(statefulSets))
+
+	v, err := version.Parse(es.Spec.Version)
+	if err != nil {
+		return nil, fmt.Errorf("while parsing Elasticsearch version: %w", err)
+	}
 
 	// Group StatefulSets by their connected roles.
-	groups := groupBySharedRoles(statefulSets)
+	groups, err := groupBySharedRoles(statefulSets, resources, v)
+	if err != nil {
+		return nil, fmt.Errorf("while grouping StatefulSets by roles: %w", err)
+	}
 
 	// Create one PDB per group
 	// Maps order isn't guaranteed so process in order of defined priority.
@@ -107,9 +125,12 @@ func expectedRolePDBs(
 		// Determine the roles for this group
 		groupRoles := make(map[esv1.NodeRole]struct{})
 		for _, sset := range group {
-			roles := getRolesFromStatefulSetPodTemplate(sset)
+			roles, err := getRolesForStatefulSet(sset, resources, v)
+			if err != nil {
+				return nil, err
+			}
 			for _, role := range roles {
-				groupRoles[role] = struct{}{}
+				groupRoles[esv1.NodeRole(role)] = struct{}{}
 			}
 		}
 
@@ -129,15 +150,18 @@ func expectedRolePDBs(
 	return pdbs, nil
 }
 
-func groupBySharedRoles(statefulSets sset.StatefulSetList) map[string][]appsv1.StatefulSet {
+func groupBySharedRoles(statefulSets sset.StatefulSetList, resources nodespec.ResourcesList, v version.Version) (map[string][]appsv1.StatefulSet, error) {
 	n := len(statefulSets)
 	if n == 0 {
-		return map[string][]appsv1.StatefulSet{}
+		return map[string][]appsv1.StatefulSet{}, nil
 	}
 	rolesToIndices := make(map[string][]int)
 	indicesToRoles := make(map[int]set.StringSet)
 	for i, sset := range statefulSets {
-		roles := getRolesFromStatefulSetPodTemplate(sset)
+		roles, err := getRolesForStatefulSet(sset, resources, v)
+		if err != nil {
+			return nil, err
+		}
 		if len(roles) == 0 {
 			// StatefulSets with no roles are coordinating nodes - group them together
 			rolesToIndices["coordinating"] = append(rolesToIndices["coordinating"], i)
@@ -146,7 +170,7 @@ func groupBySharedRoles(statefulSets sset.StatefulSetList) map[string][]appsv1.S
 		}
 		for _, role := range roles {
 			// Ensure that the data* roles are grouped together.
-			normalizedRole := string(toGenericDataRole(role))
+			normalizedRole := string(toGenericDataRole(esv1.NodeRole(role)))
 			rolesToIndices[normalizedRole] = append(rolesToIndices[normalizedRole], i)
 			if _, ok := indicesToRoles[i]; !ok {
 				indicesToRoles[i] = set.Make()
@@ -189,7 +213,7 @@ func groupBySharedRoles(statefulSets sset.StatefulSetList) map[string][]appsv1.S
 		}
 		res[role] = group
 	}
-	return res
+	return res, nil
 }
 
 // getPrimaryRoleForPDB returns the primary role from a set of roles for PDB naming and grouping.
@@ -244,41 +268,21 @@ func getPrimaryRoleForPDB(roles map[esv1.NodeRole]struct{}) esv1.NodeRole {
 	return ""
 }
 
-// getRolesFromStatefulSetPodTemplate extracts the roles from a StatefulSet's pod template labels.
-func getRolesFromStatefulSetPodTemplate(statefulSet appsv1.StatefulSet) []esv1.NodeRole {
-	roles := []esv1.NodeRole{}
-
-	labels := statefulSet.Spec.Template.Labels
-	if labels == nil {
-		return roles
+// getRolesForStatefulSet gets the roles from a StatefulSet's expected configuration.
+func getRolesForStatefulSet(
+	statefulSet appsv1.StatefulSet,
+	expectedResources nodespec.ResourcesList,
+	v version.Version,
+) ([]string, error) {
+	forStatefulSet, err := expectedResources.ForStatefulSet(statefulSet.Name)
+	if err != nil {
+		return nil, err
 	}
-
-	// Define label-role mappings
-	labelRoleMappings := []struct {
-		labelName string
-		role      esv1.NodeRole
-	}{
-		{string(label.NodeTypesMasterLabelName), esv1.MasterRole},
-		{string(label.NodeTypesDataLabelName), esv1.DataRole},
-		{string(label.NodeTypesIngestLabelName), esv1.IngestRole},
-		{string(label.NodeTypesMLLabelName), esv1.MLRole},
-		{string(label.NodeTypesTransformLabelName), esv1.TransformRole},
-		{string(label.NodeTypesRemoteClusterClientLabelName), esv1.RemoteClusterClientRole},
-		{string(label.NodeTypesDataHotLabelName), esv1.DataHotRole},
-		{string(label.NodeTypesDataWarmLabelName), esv1.DataWarmRole},
-		{string(label.NodeTypesDataColdLabelName), esv1.DataColdRole},
-		{string(label.NodeTypesDataContentLabelName), esv1.DataContentRole},
-		{string(label.NodeTypesDataFrozenLabelName), esv1.DataFrozenRole},
+	cfg, err := forStatefulSet.Config.Unpack(v)
+	if err != nil {
+		return nil, err
 	}
-
-	// Check each label-role mapping
-	for _, mapping := range labelRoleMappings {
-		if val, exists := labels[mapping.labelName]; exists && val == "true" {
-			roles = append(roles, mapping.role)
-		}
-	}
-
-	return roles
+	return cfg.Node.Roles, nil
 }
 
 // createPDBForStatefulSets creates a PDB for a group of StatefulSets with shared roles.

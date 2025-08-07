@@ -14,6 +14,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	appsv1 "k8s.io/api/apps/v1"
+	_ "k8s.io/api/core/v1"
 	policyv1 "k8s.io/api/policy/v1"
 	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -28,7 +29,10 @@ import (
 	esv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/elasticsearch/v1"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/metadata"
 	ssetfixtures "github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/statefulset"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/version"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/label"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/nodespec"
+	_ "github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/settings"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/sset"
 )
 
@@ -215,9 +219,9 @@ func TestReconcileRoleSpecificPDBs(t *testing.T) {
 	defaultHealthyES.Status.Health = esv1.ElasticsearchGreenHealth
 
 	type args struct {
-		initObjs     []client.Object
-		es           esv1.Elasticsearch
-		statefulSets sset.StatefulSetList
+		initObjs []client.Object
+		es       esv1.Elasticsearch
+		builder  Builder
 	}
 	tests := []struct {
 		name       string
@@ -228,22 +232,10 @@ func TestReconcileRoleSpecificPDBs(t *testing.T) {
 			name: "no existing PDBs: should create role-specific PDBs",
 			args: args{
 				es: defaultEs,
-				statefulSets: sset.StatefulSetList{
-					ssetfixtures.TestSset{
-						Name:        "master1",
-						Namespace:   "ns",
-						ClusterName: "cluster",
-						Master:      true,
-						Replicas:    1,
-					}.Build(),
-					ssetfixtures.TestSset{
-						Name:        "data1",
-						Namespace:   "ns",
-						ClusterName: "cluster",
-						Data:        true,
-						Replicas:    1,
-					}.Build(),
-				},
+				builder: NewBuilder("cluster").
+					WithNamespace("ns").
+					WithNodeSet("master1", 1, "node.master").
+					WithNodeSet("data1", 1, "node.data"),
 			},
 			wantedPDBs: []*policyv1.PodDisruptionBudget{
 				// Unhealthy es cluster; 0 disruptions allowed
@@ -255,23 +247,10 @@ func TestReconcileRoleSpecificPDBs(t *testing.T) {
 			name: "no existing PDBs: should create role-specific PDBs with data roles grouped",
 			args: args{
 				es: *defaultHealthyES,
-				statefulSets: sset.StatefulSetList{
-					ssetfixtures.TestSset{
-						Name:        "master-data1",
-						Namespace:   "ns",
-						ClusterName: "cluster",
-						Master:      true,
-						Data:        true,
-						Replicas:    1,
-					}.Build(),
-					ssetfixtures.TestSset{
-						Name:        "data2",
-						Namespace:   "ns",
-						ClusterName: "cluster",
-						DataHot:     true,
-						Replicas:    2,
-					}.Build(),
-				},
+				builder: NewBuilder("cluster").
+					WithNamespace("ns").
+					WithNodeSet("master-data1", 1, "node.master", "node.data").
+					WithNodeSet("data2", 2, "node.data_hot"),
 			},
 			wantedPDBs: []*policyv1.PodDisruptionBudget{
 				rolePDB("cluster", "ns", esv1.MasterRole, []string{"data2", "master-data1"}, 1),
@@ -284,9 +263,9 @@ func TestReconcileRoleSpecificPDBs(t *testing.T) {
 					defaultPDB(),
 				},
 				es: *defaultHealthyES,
-				statefulSets: sset.StatefulSetList{
-					ssetfixtures.TestSset{Name: "master1", Namespace: "ns", ClusterName: "cluster", Master: true, Replicas: 1}.Build(),
-				},
+				builder: NewBuilder("cluster").
+					WithNamespace("ns").
+					WithNodeSet("master1", 1, "node.master"),
 			},
 			wantedPDBs: []*policyv1.PodDisruptionBudget{
 				// single node cluster should allow 1 pod to be unavailable when cluster is healthy.
@@ -294,30 +273,14 @@ func TestReconcileRoleSpecificPDBs(t *testing.T) {
 			},
 		},
 		{
-			name: "coordinating nodes: should be grouped together",
+			name: "create pdb with coordinating nodes: no existing PDBs",
 			args: args{
 				es: defaultEs,
-				statefulSets: sset.StatefulSetList{
-					ssetfixtures.TestSset{
-						Name:        "coord1",
-						Namespace:   "ns",
-						ClusterName: "cluster",
-						Replicas:    1,
-					}.Build(),
-					ssetfixtures.TestSset{
-						Name:        "coord2",
-						Namespace:   "ns",
-						ClusterName: "cluster",
-						Replicas:    1,
-					}.Build(),
-					ssetfixtures.TestSset{
-						Name:        "master1",
-						Namespace:   "ns",
-						ClusterName: "cluster",
-						Master:      true,
-						Replicas:    1,
-					}.Build(),
-				},
+				builder: NewBuilder("cluster").
+					WithNamespace("ns").
+					WithNodeSet("coord1", 1, "").
+					WithNodeSet("coord2", 1, "").
+					WithNodeSet("master1", 1, "node.master"),
 			},
 			wantedPDBs: []*policyv1.PodDisruptionBudget{
 				// Unhealthy es cluster; 0 disruptions allowed
@@ -329,31 +292,11 @@ func TestReconcileRoleSpecificPDBs(t *testing.T) {
 			name: "mixed roles: should group StatefulSets sharing roles",
 			args: args{
 				es: defaultEs,
-				statefulSets: sset.StatefulSetList{
-					ssetfixtures.TestSset{
-						Name:        "master-data1",
-						Namespace:   "ns",
-						ClusterName: "cluster",
-						Master:      true,
-						Data:        true,
-						Replicas:    1,
-					}.Build(),
-					ssetfixtures.TestSset{
-						Name:        "data-ingest1",
-						Namespace:   "ns",
-						ClusterName: "cluster",
-						Data:        true,
-						Ingest:      true,
-						Replicas:    1,
-					}.Build(),
-					ssetfixtures.TestSset{
-						Name:        "ml1",
-						Namespace:   "ns",
-						ClusterName: "cluster",
-						ML:          true,
-						Replicas:    1,
-					}.Build(),
-				},
+				builder: NewBuilder("cluster").
+					WithNamespace("ns").
+					WithNodeSet("master-data1", 1, "node.master", "node.data").
+					WithNodeSet("data-ingest1", 1, "node.data", "node.ingest").
+					WithNodeSet("ml1", 1, "node.ml"),
 			},
 			wantedPDBs: []*policyv1.PodDisruptionBudget{
 				// Unhealthy es cluster; 0 disruptions allowed
@@ -376,15 +319,9 @@ func TestReconcileRoleSpecificPDBs(t *testing.T) {
 						withOwnerRef(rolePDB("cluster", "ns", esv1.MasterRole, []string{"master1"}, 0), es),
 					},
 					es: es,
-					statefulSets: sset.StatefulSetList{
-						ssetfixtures.TestSset{
-							Name:        "master1",
-							Namespace:   "ns",
-							ClusterName: "cluster",
-							Master:      true,
-							Replicas:    1,
-						}.Build(),
-					},
+					builder: NewBuilder("cluster").
+						WithNamespace("ns").
+						WithNodeSet("master1", 1, "node.master"),
 				}
 			}(),
 			wantedPDBs: []*policyv1.PodDisruptionBudget{},
@@ -412,15 +349,9 @@ func TestReconcileRoleSpecificPDBs(t *testing.T) {
 					},
 				},
 				es: defaultEs,
-				statefulSets: sset.StatefulSetList{
-					ssetfixtures.TestSset{
-						Name:        "master1",
-						Namespace:   "ns",
-						ClusterName: "cluster",
-						Master:      true,
-						Replicas:    1,
-					}.Build(),
-				},
+				builder: NewBuilder("cluster").
+					WithNamespace("ns").
+					WithNodeSet("master1", 1, "node.master"),
 			},
 			wantedPDBs: []*policyv1.PodDisruptionBudget{
 				// Unhealthy es cluster; 0 disruptions allowed
@@ -450,7 +381,12 @@ func TestReconcileRoleSpecificPDBs(t *testing.T) {
 			// Create metadata
 			meta := metadata.Propagate(&tt.args.es, metadata.Metadata{Labels: tt.args.es.GetIdentityLabels()})
 
-			err := reconcileRoleSpecificPDBs(context.Background(), c, tt.args.es, tt.args.statefulSets, meta)
+			resourcesList, err := tt.args.builder.BuildResourcesList()
+			require.NoError(t, err)
+
+			statefulSets := tt.args.builder.GetStatefulSets()
+
+			err = reconcileRoleSpecificPDBs(context.Background(), c, tt.args.es, statefulSets, resourcesList, meta)
 			require.NoError(t, err)
 
 			var retrievedPDBs policyv1.PodDisruptionBudgetList
@@ -494,29 +430,24 @@ func TestExpectedRolePDBs(t *testing.T) {
 	defaultHealthyES.Status.Health = esv1.ElasticsearchGreenHealth
 
 	tests := []struct {
-		name         string
-		es           esv1.Elasticsearch
-		statefulSets []appsv1.StatefulSet
-		expected     []*policyv1.PodDisruptionBudget
+		name     string
+		es       esv1.Elasticsearch
+		builder  Builder
+		expected []*policyv1.PodDisruptionBudget
 	}{
 		{
-			name:         "empty input",
-			es:           *defaultHealthyES,
-			statefulSets: []appsv1.StatefulSet{},
-			expected:     []*policyv1.PodDisruptionBudget{},
+			name:     "empty input",
+			es:       *defaultHealthyES,
+			builder:  NewBuilder("test-es").WithNamespace("ns").WithVersion("8.0.0"),
+			expected: []*policyv1.PodDisruptionBudget{},
 		},
 		{
 			name: "single node cluster; role doesn't matter; 1 disruption",
 			es:   *defaultHealthyES,
-			statefulSets: []appsv1.StatefulSet{
-				ssetfixtures.TestSset{
-					Name:        "master1",
-					Namespace:   "ns",
-					ClusterName: "test-es",
-					Master:      true,
-					Replicas:    1,
-				}.Build(),
-			},
+			builder: NewBuilder("test-es").
+				WithNamespace("ns").
+				WithVersion("8.0.0").
+				WithNodeSet("master1", 1, "node.master"),
 			expected: []*policyv1.PodDisruptionBudget{
 				{
 					ObjectMeta: metav1.ObjectMeta{
@@ -558,14 +489,10 @@ func TestExpectedRolePDBs(t *testing.T) {
 		{
 			name: "multiple coordinating nodes; healthy es; 1 disruption allowed",
 			es:   *defaultHealthyES,
-			statefulSets: []appsv1.StatefulSet{
-				ssetfixtures.TestSset{
-					Name:        "coord1",
-					Namespace:   "ns",
-					ClusterName: "test-es",
-					Replicas:    2,
-				}.Build(),
-			},
+			builder: NewBuilder("test-es").
+				WithNamespace("ns").
+				WithVersion("8.0.0").
+				WithNodeSet("coord1", 2, ""),
 			expected: []*policyv1.PodDisruptionBudget{
 				{
 					ObjectMeta: metav1.ObjectMeta{
@@ -607,29 +534,12 @@ func TestExpectedRolePDBs(t *testing.T) {
 		{
 			name: "separate roles - no shared roles",
 			es:   defaultUnhealthyES,
-			statefulSets: []appsv1.StatefulSet{
-				ssetfixtures.TestSset{
-					Name:        "master1",
-					Namespace:   "ns",
-					ClusterName: "test-es",
-					Master:      true,
-					Replicas:    1,
-				}.Build(),
-				ssetfixtures.TestSset{
-					Name:        "data1",
-					Namespace:   "ns",
-					ClusterName: "test-es",
-					Data:        true,
-					Replicas:    1,
-				}.Build(),
-				ssetfixtures.TestSset{
-					Name:        "ingest1",
-					Namespace:   "ns",
-					ClusterName: "test-es",
-					Ingest:      true,
-					Replicas:    1,
-				}.Build(),
-			},
+			builder: NewBuilder("test-es").
+				WithNamespace("ns").
+				WithVersion("8.0.0").
+				WithNodeSet("master1", 1, "node.master").
+				WithNodeSet("data1", 1, "node.data").
+				WithNodeSet("ingest1", 1, "node.ingest"),
 			expected: []*policyv1.PodDisruptionBudget{
 				{
 					ObjectMeta: metav1.ObjectMeta{
@@ -666,9 +576,19 @@ func TestExpectedRolePDBs(t *testing.T) {
 						MaxUnavailable: &intstr.IntOrString{Type: intstr.Int, IntVal: 0},
 					},
 				},
+			},
+		},
+		{
+			name: "existing PDB with different selector: should be updated",
+			es:   defaultUnhealthyES,
+			builder: NewBuilder("test-es").
+				WithNamespace("ns").
+				WithVersion("8.0.0").
+				WithNodeSet("master1", 1, "node.master"),
+			expected: []*policyv1.PodDisruptionBudget{
 				{
 					ObjectMeta: metav1.ObjectMeta{
-						Name:      "test-es-es-default-data",
+						Name:      "test-es-es-default-master",
 						Namespace: "ns",
 						Labels: map[string]string{
 							label.ClusterNameLabelName: "test-es",
@@ -694,16 +614,28 @@ func TestExpectedRolePDBs(t *testing.T) {
 								{
 									Key:      label.StatefulSetNameLabelName,
 									Operator: metav1.LabelSelectorOpIn,
-									Values:   []string{"data1"},
+									Values:   []string{"master1"},
 								},
 							},
 						},
 						MaxUnavailable: &intstr.IntOrString{Type: intstr.Int, IntVal: 0},
 					},
 				},
+			},
+		},
+		{
+			name: "multiple coordinating nodeSets",
+			es:   defaultUnhealthyES,
+			builder: NewBuilder("test-es").
+				WithNamespace("ns").
+				WithVersion("8.0.0").
+				WithNodeSet("coord1", 1, "").
+				WithNodeSet("coord2", 1, "").
+				WithNodeSet("coord3", 1, ""),
+			expected: []*policyv1.PodDisruptionBudget{
 				{
 					ObjectMeta: metav1.ObjectMeta{
-						Name:      "test-es-es-default-ingest",
+						Name:      "test-es-es-default-coordinating",
 						Namespace: "ns",
 						Labels: map[string]string{
 							label.ClusterNameLabelName: "test-es",
@@ -729,7 +661,7 @@ func TestExpectedRolePDBs(t *testing.T) {
 								{
 									Key:      label.StatefulSetNameLabelName,
 									Operator: metav1.LabelSelectorOpIn,
-									Values:   []string{"ingest1"},
+									Values:   []string{"coord1", "coord2", "coord3"},
 								},
 							},
 						},
@@ -741,31 +673,12 @@ func TestExpectedRolePDBs(t *testing.T) {
 		{
 			name: "shared roles - should be grouped",
 			es:   defaultUnhealthyES,
-			statefulSets: []appsv1.StatefulSet{
-				ssetfixtures.TestSset{
-					Name:        "master-data1",
-					Namespace:   "ns",
-					ClusterName: "test-es",
-					Master:      true,
-					Data:        true,
-					Replicas:    1,
-				}.Build(),
-				ssetfixtures.TestSset{
-					Name:        "data-ingest1",
-					Namespace:   "ns",
-					ClusterName: "test-es",
-					Data:        true,
-					Ingest:      true,
-					Replicas:    1,
-				}.Build(),
-				ssetfixtures.TestSset{
-					Name:        "ml1",
-					Namespace:   "ns",
-					ClusterName: "test-es",
-					ML:          true,
-					Replicas:    1,
-				}.Build(),
-			},
+			builder: NewBuilder("test-es").
+				WithNamespace("ns").
+				WithVersion("8.0.0").
+				WithNodeSet("master-data1", 1, "node.master", "node.data").
+				WithNodeSet("data-ingest1", 1, "node.data", "node.ingest").
+				WithNodeSet("ml1", 1, "node.ml"),
 			expected: []*policyv1.PodDisruptionBudget{
 				{
 					ObjectMeta: metav1.ObjectMeta{
@@ -842,11 +755,59 @@ func TestExpectedRolePDBs(t *testing.T) {
 		{
 			name: "multiple coordinating nodeSets",
 			es:   defaultUnhealthyES,
-			statefulSets: []appsv1.StatefulSet{
-				ssetfixtures.TestSset{Name: "coord1", Namespace: "ns", ClusterName: "test-es", Replicas: 1}.Build(),
-				ssetfixtures.TestSset{Name: "coord2", Namespace: "ns", ClusterName: "test-es", Replicas: 1}.Build(),
-				ssetfixtures.TestSset{Name: "coord3", Namespace: "ns", ClusterName: "test-es", Replicas: 1}.Build(),
+			builder: NewBuilder("test-es").
+				WithNamespace("ns").
+				WithVersion("8.0.0").
+				WithNodeSet("coord1", 1, "").
+				WithNodeSet("coord2", 1, "").
+				WithNodeSet("coord3", 1, ""),
+			expected: []*policyv1.PodDisruptionBudget{
+				{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "test-es-es-default-coordinating",
+						Namespace: "ns",
+						Labels: map[string]string{
+							label.ClusterNameLabelName: "test-es",
+						},
+						OwnerReferences: []metav1.OwnerReference{
+							{
+								APIVersion:         "elasticsearch.k8s.elastic.co/v1",
+								Kind:               "Elasticsearch",
+								Name:               "test-es",
+								Controller:         ptr.To[bool](true),
+								BlockOwnerDeletion: ptr.To[bool](true),
+							},
+						},
+					},
+					Spec: policyv1.PodDisruptionBudgetSpec{
+						Selector: &metav1.LabelSelector{
+							MatchExpressions: []metav1.LabelSelectorRequirement{
+								{
+									Key:      label.ClusterNameLabelName,
+									Operator: metav1.LabelSelectorOpIn,
+									Values:   []string{"test-es"},
+								},
+								{
+									Key:      label.StatefulSetNameLabelName,
+									Operator: metav1.LabelSelectorOpIn,
+									Values:   []string{"coord1", "coord2", "coord3"},
+								},
+							},
+						},
+						MaxUnavailable: &intstr.IntOrString{Type: intstr.Int, IntVal: 0},
+					},
+				},
 			},
+		},
+		{
+			name: "multiple coordinating nodeSets",
+			es:   defaultUnhealthyES,
+			builder: NewBuilder("test-es").
+				WithNamespace("ns").
+				WithVersion("8.0.0").
+				WithNodeSet("coord1", 1, "").
+				WithNodeSet("coord2", 1, "").
+				WithNodeSet("coord3", 1, ""),
 			expected: []*policyv1.PodDisruptionBudget{
 				{
 					ObjectMeta: metav1.ObjectMeta{
@@ -889,18 +850,18 @@ func TestExpectedRolePDBs(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			statefulSetList := sset.StatefulSetList{}
-			for _, s := range tt.statefulSets {
-				statefulSetList = append(statefulSetList, s)
-			}
-
 			meta := metadata.Metadata{
 				Labels: map[string]string{
 					"elasticsearch.k8s.elastic.co/cluster-name": "test-es",
 				},
 			}
 
-			pdbs, err := expectedRolePDBs(tt.es, statefulSetList, meta)
+			resourcesList, err := tt.builder.BuildResourcesList()
+			require.NoError(t, err)
+
+			statefulSetList := tt.builder.GetStatefulSets()
+
+			pdbs, err := expectedRolePDBs(tt.es, statefulSetList, resourcesList, meta)
 			if err != nil {
 				t.Fatalf("expectedRolePDBs: %v", err)
 			}
@@ -1048,152 +1009,152 @@ func Test_allowedDisruptionsForRole(t *testing.T) {
 
 func TestGroupBySharedRoles(t *testing.T) {
 	tests := []struct {
-		name         string
-		statefulSets sset.StatefulSetList
-		want         map[string][]appsv1.StatefulSet
+		name    string
+		builder Builder
+		want    map[string][]appsv1.StatefulSet
 	}{
 		{
-			name:         "empty statefulsets",
-			statefulSets: sset.StatefulSetList{},
-			want:         map[string][]appsv1.StatefulSet{},
+			name:    "empty statefulsets",
+			builder: NewBuilder("test-es"),
+			want:    map[string][]appsv1.StatefulSet{},
 		},
 		{
 			name: "single statefulset with no roles",
-			statefulSets: sset.StatefulSetList{
-				ssetfixtures.TestSset{Name: "coordinating"}.Build(),
-			},
+			builder: NewBuilder("test-es").
+				WithVersion("9.0.1").
+				WithNodeSet("coordinating", 1, ""),
 			want: map[string][]appsv1.StatefulSet{
 				"coordinating": {
-					ssetfixtures.TestSset{Name: "coordinating"}.Build(),
+					ssetfixtures.TestSset{Name: "coordinating", ClusterName: "test-es", Version: "9.0.1"}.Build(),
 				},
 			},
 		},
 		{
 			name: "all statefulsets with different roles",
-			statefulSets: sset.StatefulSetList{
-				ssetfixtures.TestSset{Name: "master", Master: true}.Build(),
-				ssetfixtures.TestSset{Name: "ingest", Ingest: true}.Build(),
-			},
+			builder: NewBuilder("test-es").
+				WithVersion("9.0.1").
+				WithNodeSet("master", 1, "node.master").
+				WithNodeSet("ingest", 1, "node.ingest"),
 			want: map[string][]appsv1.StatefulSet{
 				"master": {
-					ssetfixtures.TestSset{Name: "master", Master: true}.Build(),
+					ssetfixtures.TestSset{Name: "master", Master: true, Version: "9.0.1", ClusterName: "test-es"}.Build(),
 				},
 				"ingest": {
-					ssetfixtures.TestSset{Name: "ingest", Ingest: true}.Build(),
+					ssetfixtures.TestSset{Name: "ingest", Ingest: true, Version: "9.0.1", ClusterName: "test-es"}.Build(),
 				},
 			},
 		},
 		{
 			name: "statefulsets with shared roles are grouped properly",
-			statefulSets: sset.StatefulSetList{
-				ssetfixtures.TestSset{Name: "master", Master: true, Data: true}.Build(),
-				ssetfixtures.TestSset{Name: "data", Data: true}.Build(),
-				ssetfixtures.TestSset{Name: "ingest", Ingest: true}.Build(),
-			},
+			builder: NewBuilder("test-es").
+				WithVersion("9.0.1").
+				WithNodeSet("master", 1, "node.master", "node.data").
+				WithNodeSet("data", 1, "node.data").
+				WithNodeSet("ingest", 1, "node.ingest"),
 			want: map[string][]appsv1.StatefulSet{
 				"master": {
-					ssetfixtures.TestSset{Name: "master", Master: true, Data: true}.Build(),
-					ssetfixtures.TestSset{Name: "data", Data: true}.Build(),
+					ssetfixtures.TestSset{Name: "master", Master: true, Data: true, Version: "9.0.1", ClusterName: "test-es"}.Build(),
+					ssetfixtures.TestSset{Name: "data", Data: true, Version: "9.0.1", ClusterName: "test-es"}.Build(),
 				},
 				"ingest": {
-					ssetfixtures.TestSset{Name: "ingest", Ingest: true}.Build(),
+					ssetfixtures.TestSset{Name: "ingest", Ingest: true, Version: "9.0.1", ClusterName: "test-es"}.Build(),
 				},
 			},
 		},
 		{
 			name: "statefulsets with multiple shared roles in multiple groups, and data* roles are grouped properly",
-			statefulSets: sset.StatefulSetList{
-				ssetfixtures.TestSset{Name: "master", Master: true, Data: true}.Build(),
-				ssetfixtures.TestSset{Name: "data", Data: true}.Build(),
-				ssetfixtures.TestSset{Name: "data_hot", DataHot: true}.Build(),
-				ssetfixtures.TestSset{Name: "data_warm", DataWarm: true}.Build(),
-				ssetfixtures.TestSset{Name: "data_cold", DataCold: true}.Build(),
-				ssetfixtures.TestSset{Name: "data_frozen", DataFrozen: true}.Build(),
-				ssetfixtures.TestSset{Name: "ingest", Ingest: true, ML: true}.Build(),
-				ssetfixtures.TestSset{Name: "ml", ML: true}.Build(),
-			},
+			builder: NewBuilder("test-es").
+				WithVersion("9.0.1").
+				WithNodeSet("master", 1, "node.master", "node.data").
+				WithNodeSet("data", 1, "node.data").
+				WithNodeSet("data_hot", 1, "node.data_hot").
+				WithNodeSet("data_warm", 1, "node.data_warm").
+				WithNodeSet("data_cold", 1, "node.data_cold").
+				WithNodeSet("data_frozen", 1, "node.data_frozen").
+				WithNodeSet("ingest", 1, "node.ingest", "node.ml").
+				WithNodeSet("ml", 1, "node.ml"),
 			want: map[string][]appsv1.StatefulSet{
 				"master": {
-					ssetfixtures.TestSset{Name: "master", Master: true, Data: true}.Build(),
-					ssetfixtures.TestSset{Name: "data", Data: true}.Build(),
-					ssetfixtures.TestSset{Name: "data_hot", DataHot: true}.Build(),
-					ssetfixtures.TestSset{Name: "data_warm", DataWarm: true}.Build(),
-					ssetfixtures.TestSset{Name: "data_cold", DataCold: true}.Build(),
+					ssetfixtures.TestSset{Name: "master", Master: true, Data: true, Version: "9.0.1", ClusterName: "test-es"}.Build(),
+					ssetfixtures.TestSset{Name: "data", Data: true, Version: "9.0.1", ClusterName: "test-es"}.Build(),
+					ssetfixtures.TestSset{Name: "data_hot", DataHot: true, Version: "9.0.1", ClusterName: "test-es"}.Build(),
+					ssetfixtures.TestSset{Name: "data_warm", DataWarm: true, Version: "9.0.1", ClusterName: "test-es"}.Build(),
+					ssetfixtures.TestSset{Name: "data_cold", DataCold: true, Version: "9.0.1", ClusterName: "test-es"}.Build(),
 				},
 				"data_frozen": {
-					ssetfixtures.TestSset{Name: "data_frozen", DataFrozen: true}.Build(),
+					ssetfixtures.TestSset{Name: "data_frozen", DataFrozen: true, Version: "9.0.1", ClusterName: "test-es"}.Build(),
 				},
 				"ingest": {
-					ssetfixtures.TestSset{Name: "ingest", Ingest: true, ML: true}.Build(),
-					ssetfixtures.TestSset{Name: "ml", ML: true}.Build(),
+					ssetfixtures.TestSset{Name: "ingest", Ingest: true, ML: true, Version: "9.0.1", ClusterName: "test-es"}.Build(),
+					ssetfixtures.TestSset{Name: "ml", ML: true, Version: "9.0.1", ClusterName: "test-es"}.Build(),
 				},
 			},
 		},
 		{
 			name: "coordinating nodes (no roles) in separate group",
-			statefulSets: sset.StatefulSetList{
-				ssetfixtures.TestSset{Name: "data", Data: true}.Build(),
-				ssetfixtures.TestSset{Name: "coordinating1"}.Build(),
-				ssetfixtures.TestSset{Name: "coordinating2"}.Build(),
-			},
+			builder: NewBuilder("test-es").
+				WithVersion("9.0.1").
+				WithNodeSet("data", 1, "node.data").
+				WithNodeSet("coordinating1", 1, "").
+				WithNodeSet("coordinating2", 1, ""),
 			want: map[string][]appsv1.StatefulSet{
 				"data": {
-					ssetfixtures.TestSset{Name: "data", Data: true}.Build(),
+					ssetfixtures.TestSset{Name: "data", Data: true, Version: "9.0.1", ClusterName: "test-es"}.Build(),
 				},
 				"coordinating": {
-					ssetfixtures.TestSset{Name: "coordinating1"}.Build(),
-					ssetfixtures.TestSset{Name: "coordinating2"}.Build(),
+					ssetfixtures.TestSset{Name: "coordinating1", Version: "9.0.1", ClusterName: "test-es"}.Build(),
+					ssetfixtures.TestSset{Name: "coordinating2", Version: "9.0.1", ClusterName: "test-es"}.Build(),
 				},
 			},
 		},
 		{
 			name: "statefulsets with multiple roles respect priority order",
-			statefulSets: sset.StatefulSetList{
-				ssetfixtures.TestSset{Name: "master-data-ingest", Master: true, Data: true, Ingest: true}.Build(),
-				ssetfixtures.TestSset{Name: "data-ingest", Data: true, Ingest: true}.Build(),
-				ssetfixtures.TestSset{Name: "ingest-only", Ingest: true}.Build(),
-			},
+			builder: NewBuilder("test-es").
+				WithVersion("9.0.1").
+				WithNodeSet("master-data-ingest", 1, "node.master", "node.data", "node.ingest").
+				WithNodeSet("data-ingest", 1, "node.data", "node.ingest").
+				WithNodeSet("ingest-only", 1, "node.ingest"),
 			want: map[string][]appsv1.StatefulSet{
 				"master": {
-					ssetfixtures.TestSset{Name: "master-data-ingest", Master: true, Data: true, Ingest: true}.Build(),
-					ssetfixtures.TestSset{Name: "data-ingest", Data: true, Ingest: true}.Build(),
-					ssetfixtures.TestSset{Name: "ingest-only", Ingest: true}.Build(),
+					ssetfixtures.TestSset{Name: "master-data-ingest", Master: true, Data: true, Ingest: true, Version: "9.0.1", ClusterName: "test-es"}.Build(),
+					ssetfixtures.TestSset{Name: "data-ingest", Data: true, Ingest: true, Version: "9.0.1", ClusterName: "test-es"}.Build(),
+					ssetfixtures.TestSset{Name: "ingest-only", Ingest: true, Version: "9.0.1", ClusterName: "test-es"}.Build(),
 				},
 			},
 		},
 		{
 			name: "mixed data role types are properly collapsed even with generic data role existing",
-			statefulSets: sset.StatefulSetList{
-				ssetfixtures.TestSset{Name: "data", Data: true}.Build(),
-				ssetfixtures.TestSset{Name: "data_hot", DataHot: true}.Build(),
-				ssetfixtures.TestSset{Name: "data_content", DataContent: true}.Build(),
-				ssetfixtures.TestSset{Name: "master", Master: true}.Build(),
-			},
+			builder: NewBuilder("test-es").
+				WithVersion("9.0.1").
+				WithNodeSet("data", 1, "node.data").
+				WithNodeSet("data_hot", 1, "node.data_hot").
+				WithNodeSet("data_content", 1, "node.data_content").
+				WithNodeSet("master", 1, "node.master"),
 			want: map[string][]appsv1.StatefulSet{
 				"master": {
-					ssetfixtures.TestSset{Name: "master", Master: true}.Build(),
+					ssetfixtures.TestSset{Name: "master", Master: true, Version: "9.0.1", ClusterName: "test-es"}.Build(),
 				},
 				"data": {
-					ssetfixtures.TestSset{Name: "data", Data: true}.Build(),
-					ssetfixtures.TestSset{Name: "data_hot", DataHot: true}.Build(),
-					ssetfixtures.TestSset{Name: "data_content", DataContent: true}.Build(),
+					ssetfixtures.TestSset{Name: "data", Data: true, Version: "9.0.1", ClusterName: "test-es"}.Build(),
+					ssetfixtures.TestSset{Name: "data_hot", DataHot: true, Version: "9.0.1", ClusterName: "test-es"}.Build(),
+					ssetfixtures.TestSset{Name: "data_content", DataContent: true, Version: "9.0.1", ClusterName: "test-es"}.Build(),
 				},
 			},
 		},
 		{
 			name: "data roles without generic data role do not maintain separate groups",
-			statefulSets: sset.StatefulSetList{
-				ssetfixtures.TestSset{Name: "data_hot", DataHot: true}.Build(),
-				ssetfixtures.TestSset{Name: "data_cold", DataCold: true}.Build(),
-				ssetfixtures.TestSset{Name: "master", Master: true}.Build(),
-			},
+			builder: NewBuilder("test-es").
+				WithVersion("9.0.1").
+				WithNodeSet("data_hot", 1, "node.data_hot").
+				WithNodeSet("data_cold", 1, "node.data_cold").
+				WithNodeSet("master", 1, "node.master"),
 			want: map[string][]appsv1.StatefulSet{
 				"master": {
-					ssetfixtures.TestSset{Name: "master", Master: true}.Build(),
+					ssetfixtures.TestSset{Name: "master", Master: true, Version: "9.0.1", ClusterName: "test-es"}.Build(),
 				},
 				"data": {
-					ssetfixtures.TestSset{Name: "data_hot", DataHot: true}.Build(),
-					ssetfixtures.TestSset{Name: "data_cold", DataCold: true}.Build(),
+					ssetfixtures.TestSset{Name: "data_hot", DataHot: true, Version: "9.0.1", ClusterName: "test-es"}.Build(),
+					ssetfixtures.TestSset{Name: "data_cold", DataCold: true, Version: "9.0.1", ClusterName: "test-es"}.Build(),
 				},
 			},
 		},
@@ -1201,7 +1162,15 @@ func TestGroupBySharedRoles(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got := groupBySharedRoles(tt.statefulSets)
+			resourcesList := make(nodespec.ResourcesList, 0, len(tt.builder.GetStatefulSets()))
+			var err error
+			resourcesList, err = tt.builder.BuildResourcesList()
+			require.NoError(t, err)
+
+			v := version.MustParse(tt.builder.Elasticsearch.Spec.Version)
+
+			got, err := groupBySharedRoles(tt.builder.GetStatefulSets(), resourcesList, v)
+			assert.NoError(t, err)
 
 			// Check that the number of groups matches
 			assert.Equal(t, len(tt.want), len(got), "Expected %d groups, got %d", len(tt.want), len(got))
