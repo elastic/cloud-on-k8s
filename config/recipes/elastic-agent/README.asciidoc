@@ -46,3 +46,7 @@ Deploys single instance Elastic Agent Deployment in Fleet mode with APM integrat
 ===== Synthetic monitoring - `synthetic-monitoring.yaml`
 
 Deploys an Fleet-enrolled Elastic Agent that can be used as for link:https://www.elastic.co/guide/en/observability/current/monitor-uptime-synthetics.html[Synthetic monitoring]. This Elastic Agent uses the `elastic-agent-complete` image. The agent policy still needs to be link:https://www.elastic.co/guide/en/observability/current/synthetics-private-location.html#synthetics-private-location-add[registered as private location] in Kibana.
+
+===== Fleet Server exposed both internally and externally - `fleet-ingress-setup.yaml`
+
+This example shows how to expose the Fleet Server to the outside world using a Kubernetes Ingress resource. The Fleet Server is configured to use custom TLS certificates, and all communications are secured with TLS. The same Fleet Server is also accessible from within the cluster, allowing agents to connect to it regardless of their location. Refer to the comments in the `fleet-ingress-setup.yaml` file for more details on how to set up the Ingress resource and TLS certificates to enable this configuration.
