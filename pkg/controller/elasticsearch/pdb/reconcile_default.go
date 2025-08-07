@@ -124,12 +124,21 @@ func reconcilePDB(
 
 // deleteDefaultPDB deletes the default pdb if it exists.
 func deleteDefaultPDB(ctx context.Context, k8sClient k8s.Client, es esv1.Elasticsearch) error {
+	pdb, err := versionedPDB(k8sClient, &es)
+	if err != nil {
+		return err
+	}
+
+	return deletePDB(ctx, k8sClient, pdb)
+}
+
+func versionedPDB(k8sClient client.Client, es *esv1.Elasticsearch) (client.Object, error) {
 	// we do this by getting first because that is a local cache read,
 	// versus a Delete call, which would hit the API.
 
 	v1Available, err := isPDBV1Available(k8sClient)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	var pdb client.Object
 	if v1Available {
@@ -147,7 +156,10 @@ func deleteDefaultPDB(ctx context.Context, k8sClient k8s.Client, es esv1.Elastic
 			},
 		}
 	}
+	return pdb, nil
+}
 
+func deletePDB(ctx context.Context, k8sClient client.Client, pdb client.Object) error {
 	if err := k8sClient.Get(ctx, k8s.ExtractNamespacedName(pdb), pdb); err != nil && !apierrors.IsNotFound(err) {
 		return err
 	} else if apierrors.IsNotFound(err) {

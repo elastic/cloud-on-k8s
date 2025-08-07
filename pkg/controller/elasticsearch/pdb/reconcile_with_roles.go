@@ -12,6 +12,7 @@ import (
 
 	appsv1 "k8s.io/api/apps/v1"
 	policyv1 "k8s.io/api/policy/v1"
+	policyv1beta1 "k8s.io/api/policy/v1beta1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
@@ -430,11 +431,11 @@ func reconcileAndDeleteUnnecessaryPDBs(ctx context.Context, k8sClient k8s.Client
 		return fmt.Errorf("while listing existing role-specific PDBs: %w", err)
 	}
 
-	toDelete := make(map[string]policyv1.PodDisruptionBudget)
+	toDelete := make(map[string]client.Object)
 
 	// Populate the toDelete map with existing PDBs
 	for _, pdb := range existingPDBs {
-		toDelete[pdb.Name] = pdb
+		toDelete[pdb.GetName()] = pdb
 	}
 
 	// Remove expected PDBs from the toDelete map
@@ -448,7 +449,7 @@ func reconcileAndDeleteUnnecessaryPDBs(ctx context.Context, k8sClient k8s.Client
 
 	// Delete unnecessary PDBs
 	for name, pdb := range toDelete {
-		if err := k8sClient.Delete(ctx, &pdb); err != nil {
+		if err := deletePDB(ctx, k8sClient, pdb); err != nil {
 			return fmt.Errorf("while deleting role-specific PDB %s: %w", name, err)
 		}
 	}
@@ -458,20 +459,44 @@ func reconcileAndDeleteUnnecessaryPDBs(ctx context.Context, k8sClient k8s.Client
 
 // listAllRoleSpecificPDBs lists all role-specific PDBs for the cluster by retrieving
 // all PDBs in the namespace with the cluster label and verifying the owner reference.
-func listAllRoleSpecificPDBs(ctx context.Context, k8sClient k8s.Client, es esv1.Elasticsearch) ([]policyv1.PodDisruptionBudget, error) {
+func listAllRoleSpecificPDBs(ctx context.Context, k8sClient k8s.Client, es esv1.Elasticsearch) ([]client.Object, error) {
 	// List all PDBs in the namespace with the cluster label
-	var pdbList policyv1.PodDisruptionBudgetList
-	if err := k8sClient.List(ctx, &pdbList, client.InNamespace(es.Namespace), client.MatchingLabels{
+	var pdbList client.ObjectList
+
+	v1Available, err := isPDBV1Available(k8sClient)
+	if err != nil {
+		return nil, err
+	}
+
+	if v1Available {
+		pdbList = &policyv1.PodDisruptionBudgetList{}
+	} else {
+		pdbList = &policyv1beta1.PodDisruptionBudgetList{}
+	}
+
+	if err := k8sClient.List(ctx, pdbList, client.InNamespace(es.Namespace), client.MatchingLabels{
 		label.ClusterNameLabelName: es.Name,
 	}); err != nil {
 		return nil, err
 	}
 
+	var items []client.Object
+	switch list := pdbList.(type) {
+	case *policyv1.PodDisruptionBudgetList:
+		for i := range list.Items {
+			items = append(items, &list.Items[i])
+		}
+	case *policyv1beta1.PodDisruptionBudgetList:
+		for i := range list.Items {
+			items = append(items, &list.Items[i])
+		}
+	}
+
 	// Filter only PDBs that are owned by this Elasticsearch controller
-	var roleSpecificPDBs []policyv1.PodDisruptionBudget
-	for _, pdb := range pdbList.Items {
+	var roleSpecificPDBs []client.Object
+	for _, pdb := range items {
 		// Check if this PDB is owned by the Elasticsearch resource
-		if isOwnedByElasticsearch(pdb, es) {
+		if isOwnerRefMatch(pdb, es) {
 			roleSpecificPDBs = append(roleSpecificPDBs, pdb)
 		}
 	}
@@ -481,29 +506,71 @@ func listAllRoleSpecificPDBs(ctx context.Context, k8sClient k8s.Client, es esv1.
 // deleteAllRoleSpecificPDBs deletes all existing role-specific PDBs for the cluster by retrieving
 // all PDBs in the namespace with the cluster label and verifying the owner reference.
 func deleteAllRoleSpecificPDBs(ctx context.Context, k8sClient k8s.Client, es esv1.Elasticsearch) error {
+	v1Available, err := isPDBV1Available(k8sClient)
+	if err != nil {
+		return err
+	}
+
+	// List and process PDBs based on the available API version
+	if v1Available {
+		return deleteAllRoleSpecificPDBsWithVersion(ctx, k8sClient, es, &policyv1.PodDisruptionBudgetList{})
+	} else {
+		return deleteAllRoleSpecificPDBsWithVersion(ctx, k8sClient, es, &policyv1beta1.PodDisruptionBudgetList{})
+	}
+}
+
+// deleteAllRoleSpecificPDBsWithVersion handles listing and deleting PDBs using a specific PDB version
+func deleteAllRoleSpecificPDBsWithVersion(ctx context.Context, k8sClient k8s.Client, es esv1.Elasticsearch, pdbList client.ObjectList) error {
 	// List all PDBs in the namespace with the cluster label
-	var pdbList policyv1.PodDisruptionBudgetList
-	if err := k8sClient.List(ctx, &pdbList, client.InNamespace(es.Namespace), client.MatchingLabels{
+	if err := k8sClient.List(ctx, pdbList, client.InNamespace(es.Namespace), client.MatchingLabels{
 		label.ClusterNameLabelName: es.Name,
 	}); err != nil {
 		return err
 	}
 
-	// Delete only PDBs that are owned by this Elasticsearch controller
-	for _, pdb := range pdbList.Items {
-		// Check if this PDB is owned by the Elasticsearch resource
-		if isOwnedByElasticsearch(pdb, es) {
-			if err := k8sClient.Delete(ctx, &pdb); err != nil && !apierrors.IsNotFound(err) {
+	// Get items from the list and delete those owned by this Elasticsearch resource
+	var items []client.Object
+
+	// Extract items based on the concrete type
+	switch list := pdbList.(type) {
+	case *policyv1.PodDisruptionBudgetList:
+		for i := range list.Items {
+			items = append(items, &list.Items[i])
+		}
+	case *policyv1beta1.PodDisruptionBudgetList:
+		for i := range list.Items {
+			items = append(items, &list.Items[i])
+		}
+	}
+
+	// Delete PDBs owned by this Elasticsearch resource
+	for _, item := range items {
+		if isOwnerRefMatch(item, es) {
+			if err := k8sClient.Delete(ctx, item); err != nil && !apierrors.IsNotFound(err) {
 				return err
 			}
 		}
 	}
+
 	return nil
 }
 
-// isOwnedByElasticsearch checks if a PDB is owned by the given Elasticsearch resource.
+// isOwnedByElasticsearch checks if a v1 PDB is owned by the given Elasticsearch resource.
 func isOwnedByElasticsearch(pdb policyv1.PodDisruptionBudget, es esv1.Elasticsearch) bool {
 	for _, ownerRef := range pdb.OwnerReferences {
+		if ownerRef.Controller != nil && *ownerRef.Controller &&
+			ownerRef.APIVersion == esv1.GroupVersion.String() &&
+			ownerRef.Kind == esv1.Kind &&
+			ownerRef.Name == es.Name {
+			return true
+		}
+	}
+	return false
+}
+
+// isOwnerRefMatch is a version-agnostic function to check if an object is owned by the given Elasticsearch resource
+func isOwnerRefMatch(obj client.Object, es esv1.Elasticsearch) bool {
+	for _, ownerRef := range obj.GetOwnerReferences() {
 		if ownerRef.Controller != nil && *ownerRef.Controller &&
 			ownerRef.APIVersion == esv1.GroupVersion.String() &&
 			ownerRef.Kind == esv1.Kind &&
