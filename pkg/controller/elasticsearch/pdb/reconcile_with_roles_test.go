@@ -20,6 +20,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/util/intstr"
+	"k8s.io/apimachinery/pkg/util/sets"
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
 	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -39,126 +40,102 @@ import (
 func TestGetPrimaryRoleForPDB(t *testing.T) {
 	tests := []struct {
 		name     string
-		roles    map[esv1.NodeRole]struct{}
+		roles    func() sets.Set[esv1.NodeRole]
 		expected esv1.NodeRole
 	}{
 		{
 			name:     "empty roles map",
-			roles:    map[esv1.NodeRole]struct{}{},
+			roles:    func() sets.Set[esv1.NodeRole] { return sets.New[esv1.NodeRole]() },
 			expected: "",
 		},
 		{
 			name: "data role should be highest priority (most restrictive)",
-			roles: map[esv1.NodeRole]struct{}{
-				esv1.DataRole:   struct{}{},
-				esv1.IngestRole: struct{}{},
-				esv1.MLRole:     struct{}{},
+			roles: func() sets.Set[esv1.NodeRole] {
+				return sets.New(esv1.DataRole, esv1.IngestRole, esv1.MLRole)
 			},
 			expected: esv1.DataRole,
 		},
 		{
 			name: "master role should be second priority when no data roles",
-			roles: map[esv1.NodeRole]struct{}{
-				esv1.MasterRole: struct{}{},
-				esv1.IngestRole: struct{}{},
-				esv1.MLRole:     struct{}{},
+			roles: func() sets.Set[esv1.NodeRole] {
+				return sets.New(esv1.MasterRole, esv1.IngestRole, esv1.MLRole)
 			},
 			expected: esv1.MasterRole,
 		},
 		{
 			name: "data_hot role should match data role",
-			roles: map[esv1.NodeRole]struct{}{
-				esv1.DataHotRole: struct{}{},
-				esv1.IngestRole:  struct{}{},
-				esv1.MLRole:      struct{}{},
+			roles: func() sets.Set[esv1.NodeRole] {
+				return sets.New(esv1.DataHotRole, esv1.IngestRole, esv1.MLRole)
 			},
 			expected: esv1.DataRole,
 		},
 		{
 			name: "data_warm role should match data role",
-			roles: map[esv1.NodeRole]struct{}{
-				esv1.DataWarmRole: struct{}{},
-				esv1.IngestRole:   struct{}{},
-				esv1.MLRole:       struct{}{},
+			roles: func() sets.Set[esv1.NodeRole] {
+				return sets.New(esv1.DataWarmRole, esv1.IngestRole, esv1.MLRole)
 			},
 			expected: esv1.DataRole,
 		},
 		{
 			name: "data_cold role should match data role",
-			roles: map[esv1.NodeRole]struct{}{
-				esv1.DataColdRole: struct{}{},
-				esv1.IngestRole:   struct{}{},
-				esv1.MLRole:       struct{}{},
+			roles: func() sets.Set[esv1.NodeRole] {
+				return sets.New(esv1.DataColdRole, esv1.IngestRole, esv1.MLRole)
 			},
 			expected: esv1.DataRole,
 		},
 		{
 			name: "data_content role should match data role",
-			roles: map[esv1.NodeRole]struct{}{
-				esv1.DataContentRole: struct{}{},
-				esv1.IngestRole:      struct{}{},
-				esv1.MLRole:          struct{}{},
+			roles: func() sets.Set[esv1.NodeRole] {
+				return sets.New(esv1.DataContentRole, esv1.IngestRole, esv1.MLRole)
 			},
 			expected: esv1.DataRole,
 		},
 		{
 			name: "data_frozen role should return data_frozen (has different disruption rules)",
-			roles: map[esv1.NodeRole]struct{}{
-				esv1.DataFrozenRole: struct{}{},
-				esv1.IngestRole:     struct{}{},
-				esv1.MLRole:         struct{}{},
+			roles: func() sets.Set[esv1.NodeRole] {
+				return sets.New(esv1.DataFrozenRole, esv1.IngestRole, esv1.MLRole)
 			},
 			expected: esv1.DataFrozenRole,
 		},
 		{
 			name: "multiple data roles should match data role",
-			roles: map[esv1.NodeRole]struct{}{
-				esv1.DataHotRole:  struct{}{},
-				esv1.DataWarmRole: struct{}{},
-				esv1.DataColdRole: struct{}{},
-				esv1.IngestRole:   struct{}{},
+			roles: func() sets.Set[esv1.NodeRole] {
+				return sets.New(esv1.DataHotRole, esv1.DataWarmRole, esv1.DataColdRole, esv1.IngestRole)
 			},
 			expected: esv1.DataRole,
 		},
 		{
 			name: "master and data roles should return data role (data has higher priority)",
-			roles: map[esv1.NodeRole]struct{}{
-				esv1.MasterRole:    struct{}{},
-				esv1.DataRole:      struct{}{},
-				esv1.DataHotRole:   struct{}{},
-				esv1.IngestRole:    struct{}{},
-				esv1.MLRole:        struct{}{},
-				esv1.TransformRole: struct{}{},
+			roles: func() sets.Set[esv1.NodeRole] {
+				return sets.New(esv1.MasterRole, esv1.DataRole, esv1.DataHotRole, esv1.IngestRole, esv1.MLRole, esv1.TransformRole)
 			},
 			expected: esv1.DataRole,
 		},
 		{
 			name: "only non-data roles should return first found",
-			roles: map[esv1.NodeRole]struct{}{
-				esv1.IngestRole:    struct{}{},
-				esv1.MLRole:        struct{}{},
-				esv1.TransformRole: struct{}{},
+			roles: func() sets.Set[esv1.NodeRole] {
+				return sets.New(esv1.IngestRole, esv1.MLRole, esv1.TransformRole)
 			},
 			expected: esv1.IngestRole,
 		},
 		{
 			name: "single ingest role should return ingest role",
-			roles: map[esv1.NodeRole]struct{}{
-				esv1.IngestRole: struct{}{},
+			roles: func() sets.Set[esv1.NodeRole] {
+				return sets.New(esv1.IngestRole)
 			},
 			expected: esv1.IngestRole,
 		},
 		{
 			name: "single ml role should return ml role",
-			roles: map[esv1.NodeRole]struct{}{
-				esv1.MLRole: struct{}{},
+			roles: func() sets.Set[esv1.NodeRole] {
+				return sets.New(esv1.MLRole)
 			},
 			expected: esv1.MLRole,
 		},
 		{
 			name: "single transform role should return transform role",
-			roles: map[esv1.NodeRole]struct{}{
-				esv1.TransformRole: struct{}{},
+			roles: func() sets.Set[esv1.NodeRole] {
+				return sets.New(esv1.TransformRole)
 			},
 			expected: esv1.TransformRole,
 		},
@@ -166,7 +143,7 @@ func TestGetPrimaryRoleForPDB(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			result := getPrimaryRoleForPDB(tt.roles)
+			result := getPrimaryRoleForPDB(tt.roles())
 
 			if !cmp.Equal(tt.expected, result) {
 				t.Errorf("Expected %s, got %s", tt.expected, result)

@@ -16,6 +16,7 @@ import (
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
+	"k8s.io/apimachinery/pkg/util/sets"
 	"k8s.io/client-go/kubernetes/scheme"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
@@ -124,14 +125,14 @@ func expectedRolePDBs(
 		}
 
 		// Determine the roles for this group
-		groupRoles := make(map[esv1.NodeRole]struct{})
+		groupRoles := sets.New[esv1.NodeRole]()
 		for _, sset := range group {
 			roles, err := getRolesForStatefulSet(sset, resources, v)
 			if err != nil {
-				return nil, err
+				return nil, fmt.Errorf("while getting roles for StatefulSet %s: %w", sset.Name, err)
 			}
 			for _, role := range roles {
-				groupRoles[esv1.NodeRole(role)] = struct{}{}
+				groupRoles.Insert(esv1.NodeRole(role))
 			}
 		}
 
@@ -220,7 +221,7 @@ func groupBySharedRoles(statefulSets sset.StatefulSetList, resources nodespec.Re
 // getPrimaryRoleForPDB returns the primary role from a set of roles for PDB naming and grouping.
 // Data roles are most restrictive (require green health), so they take priority.
 // All other roles have similar disruption rules (require yellow+ health).
-func getPrimaryRoleForPDB(roles map[esv1.NodeRole]struct{}) esv1.NodeRole {
+func getPrimaryRoleForPDB(roles sets.Set[esv1.NodeRole]) esv1.NodeRole {
 	if len(roles) == 0 {
 		return "" // coordinating role
 	}
@@ -228,7 +229,7 @@ func getPrimaryRoleForPDB(roles map[esv1.NodeRole]struct{}) esv1.NodeRole {
 	// Data roles are most restrictive (require green health), so they take priority.
 	// Check if any data role variant is present (excluding data_frozen)
 	for _, dataRole := range dataRoles {
-		if _, ok := roles[dataRole]; ok {
+		if roles.Has(dataRole) {
 			// Return generic data role for all data role variants
 			return esv1.DataRole
 		}
