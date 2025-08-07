@@ -130,6 +130,8 @@ func (b Builder) WithStatefulSet(sset appsv1.StatefulSet) Builder {
 }
 
 // BuildResourcesList generates a nodespec.ResourcesList from the builder data.
+// This allows the tests to properly unpack the Config object for a nodeSet
+// and use the Node.Roles directly.
 func (b Builder) BuildResourcesList() (nodespec.ResourcesList, error) {
 	v, err := version.Parse(b.Elasticsearch.Spec.Version)
 	if err != nil {
@@ -140,11 +142,9 @@ func (b Builder) BuildResourcesList() (nodespec.ResourcesList, error) {
 
 	for i, sset := range b.StatefulSets {
 		// Create config based on the nodeset if available
-		var config *v1.Config
+		config := &v1.Config{Data: map[string]interface{}{}}
 		if i < len(b.Elasticsearch.Spec.NodeSets) {
 			config = b.Elasticsearch.Spec.NodeSets[i].Config
-		} else {
-			config = &v1.Config{Data: map[string]interface{}{}}
 		}
 
 		cfg, err := settings.NewMergedESConfig(
