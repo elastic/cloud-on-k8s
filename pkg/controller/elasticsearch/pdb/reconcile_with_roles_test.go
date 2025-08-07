@@ -213,6 +213,9 @@ func TestReconcileRoleSpecificPDBs(t *testing.T) {
 
 	defaultEs := esv1.Elasticsearch{
 		ObjectMeta: metav1.ObjectMeta{Name: "cluster", Namespace: "ns"},
+		Spec: esv1.ElasticsearchSpec{
+			Version: "9.0.1",
+		},
 	}
 
 	defaultHealthyES := defaultEs.DeepCopy()
@@ -570,6 +573,76 @@ func TestExpectedRolePDBs(t *testing.T) {
 									Key:      label.StatefulSetNameLabelName,
 									Operator: metav1.LabelSelectorOpIn,
 									Values:   []string{"master1"},
+								},
+							},
+						},
+						MaxUnavailable: &intstr.IntOrString{Type: intstr.Int, IntVal: 0},
+					},
+				},
+				{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "test-es-es-default-data",
+						Namespace: "ns",
+						Labels: map[string]string{
+							label.ClusterNameLabelName: "test-es",
+						},
+						OwnerReferences: []metav1.OwnerReference{
+							{
+								APIVersion:         "elasticsearch.k8s.elastic.co/v1",
+								Kind:               "Elasticsearch",
+								Name:               "test-es",
+								Controller:         ptr.To[bool](true),
+								BlockOwnerDeletion: ptr.To[bool](true),
+							},
+						},
+					},
+					Spec: policyv1.PodDisruptionBudgetSpec{
+						Selector: &metav1.LabelSelector{
+							MatchExpressions: []metav1.LabelSelectorRequirement{
+								{
+									Key:      label.ClusterNameLabelName,
+									Operator: metav1.LabelSelectorOpIn,
+									Values:   []string{"test-es"},
+								},
+								{
+									Key:      label.StatefulSetNameLabelName,
+									Operator: metav1.LabelSelectorOpIn,
+									Values:   []string{"data1"},
+								},
+							},
+						},
+						MaxUnavailable: &intstr.IntOrString{Type: intstr.Int, IntVal: 0},
+					},
+				},
+				{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "test-es-es-default-ingest",
+						Namespace: "ns",
+						Labels: map[string]string{
+							label.ClusterNameLabelName: "test-es",
+						},
+						OwnerReferences: []metav1.OwnerReference{
+							{
+								APIVersion:         "elasticsearch.k8s.elastic.co/v1",
+								Kind:               "Elasticsearch",
+								Name:               "test-es",
+								Controller:         ptr.To[bool](true),
+								BlockOwnerDeletion: ptr.To[bool](true),
+							},
+						},
+					},
+					Spec: policyv1.PodDisruptionBudgetSpec{
+						Selector: &metav1.LabelSelector{
+							MatchExpressions: []metav1.LabelSelectorRequirement{
+								{
+									Key:      label.ClusterNameLabelName,
+									Operator: metav1.LabelSelectorOpIn,
+									Values:   []string{"test-es"},
+								},
+								{
+									Key:      label.StatefulSetNameLabelName,
+									Operator: metav1.LabelSelectorOpIn,
+									Values:   []string{"ingest1"},
 								},
 							},
 						},

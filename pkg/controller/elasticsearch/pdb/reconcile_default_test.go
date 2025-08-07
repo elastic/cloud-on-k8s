@@ -94,7 +94,7 @@ func TestReconcile(t *testing.T) {
 				builder: NewBuilder("cluster").
 					WithNamespace("ns").
 					WithVersion("9.0.1").
-					WithNodeSet("master-data", 3, "node.master", "node.data"),
+					WithNodeSet("master-data", 5, "node.master", "node.data"),
 			},
 			wantPDB: &policyv1.PodDisruptionBudget{
 				ObjectMeta: metav1.ObjectMeta{
