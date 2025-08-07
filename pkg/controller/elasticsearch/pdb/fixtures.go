@@ -82,7 +82,7 @@ func (b Builder) WithNodeSet(name string, count int32, nodeTypes ...esv1.NodeRol
 }
 
 // buildStatefulSet creates a StatefulSet based on the given parameters.
-func (b Builder) buildStatefulSet(name string, replicas int32, nodeTypes []esv1.NodeRole) appsv1.StatefulSet {
+func (b Builder) buildStatefulSet(name string, replicas int32, nodeRoles []esv1.NodeRole) appsv1.StatefulSet {
 	sset := statefulset.TestSset{
 		Namespace:   b.Elasticsearch.Namespace,
 		Name:        name,
@@ -91,10 +91,10 @@ func (b Builder) buildStatefulSet(name string, replicas int32, nodeTypes []esv1.
 		Replicas:    replicas,
 	}
 
-	// Set node roles based on nodeTypes
-	for _, nodeType := range nodeTypes {
+	// Set node roles based on nodeRoles
+	for _, nodeRole := range nodeRoles {
 
-		switch nodeType {
+		switch nodeRole {
 		case esv1.MasterRole:
 			sset.Master = true
 		case esv1.DataRole:
