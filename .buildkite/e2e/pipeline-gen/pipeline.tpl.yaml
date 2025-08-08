@@ -129,6 +129,7 @@ steps:
           - "wget -q -O - https://raw.githubusercontent.com/k3d-io/k3d/main/install.sh | TAG=v5.8.3 bash"
         {{- end }}
         {{- if not $test.Dind }}
+          - "wget -q -O - https://raw.githubusercontent.com/k3d-io/k3d/main/install.sh | TAG=v5.8.3 bash"
           - make run-deployer
         agents:
           image: docker.elastic.co/ci-agent-images/cloud-k8s-operator/buildkite-agent:c39fad65
