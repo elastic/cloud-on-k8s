@@ -132,6 +132,11 @@ func TestFleetKubernetesNonRootIntegrationRecipe(t *testing.T) {
 		t.SkipNow()
 	}
 
+	if (v.GE(version.MinFor(9, 0, 1)) && v.LE(version.MinFor(9, 0, 4))) ||
+		(v.EQ(version.From(9, 1, 0))) {
+		t.Skipf("Skipped as version %s is affected by https://github.com/elastic/kibana/pull/230211", v)
+	}
+
 	// The recipe does not work fully within an openshift cluster without modifications.
 	if test.Ctx().OcpCluster {
 		t.SkipNow()
