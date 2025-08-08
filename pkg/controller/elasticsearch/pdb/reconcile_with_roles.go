@@ -497,7 +497,7 @@ func listAllRoleSpecificPDBs(ctx context.Context, k8sClient k8s.Client, es esv1.
 	var roleSpecificPDBs []client.Object
 	for _, pdb := range items {
 		// Check if this PDB is owned by the Elasticsearch resource
-		if isOwnerRefMatch(pdb, es) {
+		if k8s.HasOwner(pdb, &es) {
 			roleSpecificPDBs = append(roleSpecificPDBs, pdb)
 		}
 	}
@@ -546,7 +546,7 @@ func deleteAllRoleSpecificPDBsWithVersion(ctx context.Context, k8sClient k8s.Cli
 
 	// Delete PDBs owned by this Elasticsearch resource
 	for _, item := range items {
-		if isOwnerRefMatch(item, es) {
+		if k8s.HasOwner(item, &es) {
 			if err := k8sClient.Delete(ctx, item); err != nil && !apierrors.IsNotFound(err) {
 				return err
 			}
@@ -554,32 +554,6 @@ func deleteAllRoleSpecificPDBsWithVersion(ctx context.Context, k8sClient k8s.Cli
 	}
 
 	return nil
-}
-
-// isOwnedByElasticsearch checks if a v1 PDB is owned by the given Elasticsearch resource.
-func isOwnedByElasticsearch(pdb policyv1.PodDisruptionBudget, es esv1.Elasticsearch) bool {
-	for _, ownerRef := range pdb.OwnerReferences {
-		if ownerRef.Controller != nil && *ownerRef.Controller &&
-			ownerRef.APIVersion == esv1.GroupVersion.String() &&
-			ownerRef.Kind == esv1.Kind &&
-			ownerRef.Name == es.Name {
-			return true
-		}
-	}
-	return false
-}
-
-// isOwnerRefMatch is a version-agnostic function to check if an object is owned by the given Elasticsearch resource
-func isOwnerRefMatch(obj client.Object, es esv1.Elasticsearch) bool {
-	for _, ownerRef := range obj.GetOwnerReferences() {
-		if ownerRef.Controller != nil && *ownerRef.Controller &&
-			ownerRef.APIVersion == esv1.GroupVersion.String() &&
-			ownerRef.Kind == esv1.Kind &&
-			ownerRef.Name == es.Name {
-			return true
-		}
-	}
-	return false
 }
 
 // podDisruptionBudgetName returns the name of the PDB.
