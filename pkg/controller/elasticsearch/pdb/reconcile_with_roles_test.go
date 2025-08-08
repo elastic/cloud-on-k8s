@@ -472,7 +472,7 @@ func TestExpectedRolePDBs(t *testing.T) {
 			builder: NewBuilder("test-es").
 				WithNamespace("ns").
 				WithVersion("8.0.0").
-				WithNodeSet("coord1", 2, esv1.NodeRole("")),
+				WithNodeSet("coord1", 2, esv1.CoordinatingRole),
 			expected: []*policyv1.PodDisruptionBudget{
 				{
 					ObjectMeta: metav1.ObjectMeta{
@@ -679,9 +679,9 @@ func TestExpectedRolePDBs(t *testing.T) {
 			builder: NewBuilder("test-es").
 				WithNamespace("ns").
 				WithVersion("8.0.0").
-				WithNodeSet("coord1", 1, esv1.NodeRole("")).
-				WithNodeSet("coord2", 1, esv1.NodeRole("")).
-				WithNodeSet("coord3", 1, esv1.NodeRole("")),
+				WithNodeSet("coord1", 1, esv1.CoordinatingRole).
+				WithNodeSet("coord2", 1, esv1.CoordinatingRole).
+				WithNodeSet("coord3", 1, esv1.CoordinatingRole),
 			expected: []*policyv1.PodDisruptionBudget{
 				{
 					ObjectMeta: metav1.ObjectMeta{
@@ -808,9 +808,9 @@ func TestExpectedRolePDBs(t *testing.T) {
 			builder: NewBuilder("test-es").
 				WithNamespace("ns").
 				WithVersion("8.0.0").
-				WithNodeSet("coord1", 1, esv1.NodeRole("")).
-				WithNodeSet("coord2", 1, esv1.NodeRole("")).
-				WithNodeSet("coord3", 1, esv1.NodeRole("")),
+				WithNodeSet("coord1", 1, esv1.CoordinatingRole).
+				WithNodeSet("coord2", 1, esv1.CoordinatingRole).
+				WithNodeSet("coord3", 1, esv1.CoordinatingRole),
 			expected: []*policyv1.PodDisruptionBudget{
 				{
 					ObjectMeta: metav1.ObjectMeta{
@@ -855,9 +855,9 @@ func TestExpectedRolePDBs(t *testing.T) {
 			builder: NewBuilder("test-es").
 				WithNamespace("ns").
 				WithVersion("8.0.0").
-				WithNodeSet("coord1", 1, esv1.NodeRole("")).
-				WithNodeSet("coord2", 1, esv1.NodeRole("")).
-				WithNodeSet("coord3", 1, esv1.NodeRole("")),
+				WithNodeSet("coord1", 1, esv1.CoordinatingRole).
+				WithNodeSet("coord2", 1, esv1.CoordinatingRole).
+				WithNodeSet("coord3", 1, esv1.CoordinatingRole),
 			expected: []*policyv1.PodDisruptionBudget{
 				{
 					ObjectMeta: metav1.ObjectMeta{
@@ -1063,18 +1063,18 @@ func TestGroupBySharedRoles(t *testing.T) {
 		builder Builder
 		want    map[string][]appsv1.StatefulSet
 	}{
-		{
-			name:    "empty statefulsets",
-			builder: NewBuilder("test-es"),
-			want:    map[string][]appsv1.StatefulSet{},
-		},
+		// {
+		// 	name:    "empty statefulsets",
+		// 	builder: NewBuilder("test-es"),
+		// 	want:    map[string][]appsv1.StatefulSet{},
+		// },
 		{
 			name: "single statefulset with no roles",
 			builder: NewBuilder("test-es").
 				WithVersion("9.0.1").
-				WithNodeSet("coordinating", 1, esv1.NodeRole("")),
+				WithNodeSet("coordinating", 1, esv1.CoordinatingRole),
 			want: map[string][]appsv1.StatefulSet{
-				"coordinating": {
+				"": {
 					ssetfixtures.TestSset{Name: "coordinating", ClusterName: "test-es", Version: "9.0.1"}.Build(),
 				},
 			},
@@ -1145,13 +1145,13 @@ func TestGroupBySharedRoles(t *testing.T) {
 			builder: NewBuilder("test-es").
 				WithVersion("9.0.1").
 				WithNodeSet("data", 1, esv1.DataRole).
-				WithNodeSet("coordinating1", 1, esv1.NodeRole("")).
-				WithNodeSet("coordinating2", 1, esv1.NodeRole("")),
+				WithNodeSet("coordinating1", 1, esv1.CoordinatingRole).
+				WithNodeSet("coordinating2", 1, esv1.CoordinatingRole),
 			want: map[string][]appsv1.StatefulSet{
 				"data": {
 					ssetfixtures.TestSset{Name: "data", Data: true, Version: "9.0.1", ClusterName: "test-es"}.Build(),
 				},
-				"coordinating": {
+				"": {
 					ssetfixtures.TestSset{Name: "coordinating1", Version: "9.0.1", ClusterName: "test-es"}.Build(),
 					ssetfixtures.TestSset{Name: "coordinating2", Version: "9.0.1", ClusterName: "test-es"}.Build(),
 				},

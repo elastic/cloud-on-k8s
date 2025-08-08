@@ -116,6 +116,9 @@ func expectedRolePDBs(
 	// Create one PDB per group
 	// Maps order isn't guaranteed so process in order of defined priority.
 	for _, roleName := range priority {
+		if roleName == "coordinating" {
+			roleName = ""
+		}
 		group, ok := groups[roleName]
 		if !ok {
 			continue
@@ -186,6 +189,11 @@ func groupBySharedRoles(statefulSets sset.StatefulSetList, resources nodespec.Re
 	grouped := map[string][]int{}
 	visited := make([]bool, n)
 	for _, role := range priority {
+		// the coordinating role is stored in the rolesToIndices map
+		// with the key being '', so we must handle it separately.
+		if role == "coordinating" {
+			role = ""
+		}
 		indices, ok := rolesToIndices[role]
 		if !ok {
 			continue
@@ -228,11 +236,11 @@ func getPrimaryRoleForPDB(roles sets.Set[esv1.NodeRole]) esv1.NodeRole {
 
 	// Data roles are most restrictive (require green health), so they take priority.
 	// Check if any data role variant is present (excluding data_frozen)
-	for _, dataRole := range dataRoles {
-		if roles.Has(dataRole) {
-			// Return generic data role for all data role variants
-			return esv1.DataRole
-		}
+	if slices.ContainsFunc(dataRoles, func(dataRole esv1.NodeRole) bool {
+		return roles.Has(dataRole)
+	}) {
+		// Return generic data role for all data role variants
+		return esv1.DataRole
 	}
 
 	// Master role comes next in priority

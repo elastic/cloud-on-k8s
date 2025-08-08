@@ -206,7 +206,7 @@ func PodDisruptionBudgetNameForRole(esName string, role string) string {
 	name := DefaultPodDisruptionBudget(esName) + "-" + role
 	// For coordinating nodes (no roles), append "coordinating" to the name
 	if role == "" {
-		name += string(CoordinatingRole)
+		name += "coordinating"
 	}
 	return name
 }
