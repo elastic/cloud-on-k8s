@@ -156,7 +156,7 @@ func TestReconcileRoleSpecificPDBs(t *testing.T) {
 	rolePDB := func(esName, namespace string, role esv1.NodeRole, statefulSetNames []string, maxUnavailable int32) *policyv1.PodDisruptionBudget {
 		pdb := &policyv1.PodDisruptionBudget{
 			ObjectMeta: metav1.ObjectMeta{
-				Name:      podDisruptionBudgetName(esName, string(role)),
+				Name:      esv1.PodDisruptionBudgetNameForRole(esName, string(role)),
 				Namespace: namespace,
 				Labels:    map[string]string{label.ClusterNameLabelName: esName},
 			},
@@ -313,7 +313,7 @@ func TestReconcileRoleSpecificPDBs(t *testing.T) {
 					// Existing PDB with different configuration
 					&policyv1.PodDisruptionBudget{
 						ObjectMeta: metav1.ObjectMeta{
-							Name:      podDisruptionBudgetName("cluster", string(esv1.MasterRole)),
+							Name:      esv1.PodDisruptionBudgetNameForRole("cluster", string(esv1.MasterRole)),
 							Namespace: "ns",
 							Labels:    map[string]string{label.ClusterNameLabelName: "cluster"},
 						},
