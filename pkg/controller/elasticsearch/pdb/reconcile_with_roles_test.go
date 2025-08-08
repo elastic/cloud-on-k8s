@@ -1063,11 +1063,11 @@ func TestGroupBySharedRoles(t *testing.T) {
 		builder Builder
 		want    map[esv1.NodeRole][]appsv1.StatefulSet
 	}{
-		// {
-		// 	name:    "empty statefulsets",
-		// 	builder: NewBuilder("test-es"),
-		// 	want:    map[esv1.NodeRole][]appsv1.StatefulSet{},
-		// },
+		{
+			name:    "empty statefulsets",
+			builder: NewBuilder("test-es"),
+			want:    map[esv1.NodeRole][]appsv1.StatefulSet{},
+		},
 		{
 			name: "single statefulset with no roles",
 			builder: NewBuilder("test-es").
