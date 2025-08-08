@@ -52,9 +52,9 @@ var (
 	pipelineTemplate string
 
 	// providersInDocker are k8s providers that require the deployer to run in Docker
-	providersInDocker = []string{"kind", "aks", "ocp", "k3d"}
+	providersInDocker = []string{"kind", "aks", "ocp"}
 	// providersNoCleanup are k8s providers that do not require the cluster to be deleted after use
-	providersNoCleanup = []string{"kind"}
+	providersNoCleanup = []string{"kind", "k3d"}
 	// providers are k8s providers for which it is not possible to retrieve the kube config after cluster creation
 	providersNoRemoteConfig = []string{"kind"}
 
