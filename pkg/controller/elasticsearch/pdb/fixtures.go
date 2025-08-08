@@ -9,7 +9,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
-	"github.com/elastic/cloud-on-k8s/v3/pkg/apis/common/v1"
+	v1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/common/v1"
 	esv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/elasticsearch/v1"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/statefulset"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/version"
@@ -93,7 +93,6 @@ func (b Builder) buildStatefulSet(name string, replicas int32, nodeRoles []esv1.
 
 	// Set node roles based on nodeRoles
 	for _, nodeRole := range nodeRoles {
-
 		switch nodeRole {
 		case esv1.MasterRole:
 			sset.Master = true
