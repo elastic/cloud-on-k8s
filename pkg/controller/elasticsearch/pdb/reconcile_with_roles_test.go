@@ -1061,20 +1061,20 @@ func TestGroupBySharedRoles(t *testing.T) {
 	tests := []struct {
 		name    string
 		builder Builder
-		want    map[string][]appsv1.StatefulSet
+		want    map[esv1.NodeRole][]appsv1.StatefulSet
 	}{
 		// {
 		// 	name:    "empty statefulsets",
 		// 	builder: NewBuilder("test-es"),
-		// 	want:    map[string][]appsv1.StatefulSet{},
+		// 	want:    map[esv1.NodeRole][]appsv1.StatefulSet{},
 		// },
 		{
 			name: "single statefulset with no roles",
 			builder: NewBuilder("test-es").
 				WithVersion("9.0.1").
 				WithNodeSet("coordinating", 1, esv1.CoordinatingRole),
-			want: map[string][]appsv1.StatefulSet{
-				"": {
+			want: map[esv1.NodeRole][]appsv1.StatefulSet{
+				esv1.CoordinatingRole: {
 					ssetfixtures.TestSset{Name: "coordinating", ClusterName: "test-es", Version: "9.0.1"}.Build(),
 				},
 			},
@@ -1085,11 +1085,11 @@ func TestGroupBySharedRoles(t *testing.T) {
 				WithVersion("9.0.1").
 				WithNodeSet("master", 1, esv1.MasterRole).
 				WithNodeSet("ingest", 1, esv1.IngestRole),
-			want: map[string][]appsv1.StatefulSet{
-				"master": {
+			want: map[esv1.NodeRole][]appsv1.StatefulSet{
+				esv1.MasterRole: {
 					ssetfixtures.TestSset{Name: "master", Master: true, Version: "9.0.1", ClusterName: "test-es"}.Build(),
 				},
-				"ingest": {
+				esv1.IngestRole: {
 					ssetfixtures.TestSset{Name: "ingest", Ingest: true, Version: "9.0.1", ClusterName: "test-es"}.Build(),
 				},
 			},
@@ -1101,12 +1101,12 @@ func TestGroupBySharedRoles(t *testing.T) {
 				WithNodeSet("master", 1, esv1.MasterRole, esv1.DataRole).
 				WithNodeSet("data", 1, esv1.DataRole).
 				WithNodeSet("ingest", 1, esv1.IngestRole),
-			want: map[string][]appsv1.StatefulSet{
-				"master": {
+			want: map[esv1.NodeRole][]appsv1.StatefulSet{
+				esv1.MasterRole: {
 					ssetfixtures.TestSset{Name: "master", Master: true, Data: true, Version: "9.0.1", ClusterName: "test-es"}.Build(),
 					ssetfixtures.TestSset{Name: "data", Data: true, Version: "9.0.1", ClusterName: "test-es"}.Build(),
 				},
-				"ingest": {
+				esv1.IngestRole: {
 					ssetfixtures.TestSset{Name: "ingest", Ingest: true, Version: "9.0.1", ClusterName: "test-es"}.Build(),
 				},
 			},
@@ -1123,18 +1123,18 @@ func TestGroupBySharedRoles(t *testing.T) {
 				WithNodeSet("data_frozen", 1, esv1.DataFrozenRole).
 				WithNodeSet("ingest", 1, esv1.IngestRole, esv1.MLRole).
 				WithNodeSet("ml", 1, esv1.MLRole),
-			want: map[string][]appsv1.StatefulSet{
-				"master": {
+			want: map[esv1.NodeRole][]appsv1.StatefulSet{
+				esv1.MasterRole: {
 					ssetfixtures.TestSset{Name: "master", Master: true, Data: true, Version: "9.0.1", ClusterName: "test-es"}.Build(),
 					ssetfixtures.TestSset{Name: "data", Data: true, Version: "9.0.1", ClusterName: "test-es"}.Build(),
 					ssetfixtures.TestSset{Name: "data_hot", DataHot: true, Version: "9.0.1", ClusterName: "test-es"}.Build(),
 					ssetfixtures.TestSset{Name: "data_warm", DataWarm: true, Version: "9.0.1", ClusterName: "test-es"}.Build(),
 					ssetfixtures.TestSset{Name: "data_cold", DataCold: true, Version: "9.0.1", ClusterName: "test-es"}.Build(),
 				},
-				"data_frozen": {
+				esv1.DataFrozenRole: {
 					ssetfixtures.TestSset{Name: "data_frozen", DataFrozen: true, Version: "9.0.1", ClusterName: "test-es"}.Build(),
 				},
-				"ingest": {
+				esv1.IngestRole: {
 					ssetfixtures.TestSset{Name: "ingest", Ingest: true, ML: true, Version: "9.0.1", ClusterName: "test-es"}.Build(),
 					ssetfixtures.TestSset{Name: "ml", ML: true, Version: "9.0.1", ClusterName: "test-es"}.Build(),
 				},
@@ -1147,11 +1147,11 @@ func TestGroupBySharedRoles(t *testing.T) {
 				WithNodeSet("data", 1, esv1.DataRole).
 				WithNodeSet("coordinating1", 1, esv1.CoordinatingRole).
 				WithNodeSet("coordinating2", 1, esv1.CoordinatingRole),
-			want: map[string][]appsv1.StatefulSet{
-				"data": {
+			want: map[esv1.NodeRole][]appsv1.StatefulSet{
+				esv1.DataRole: {
 					ssetfixtures.TestSset{Name: "data", Data: true, Version: "9.0.1", ClusterName: "test-es"}.Build(),
 				},
-				"": {
+				esv1.CoordinatingRole: {
 					ssetfixtures.TestSset{Name: "coordinating1", Version: "9.0.1", ClusterName: "test-es"}.Build(),
 					ssetfixtures.TestSset{Name: "coordinating2", Version: "9.0.1", ClusterName: "test-es"}.Build(),
 				},
@@ -1164,8 +1164,8 @@ func TestGroupBySharedRoles(t *testing.T) {
 				WithNodeSet("master-data-ingest", 1, esv1.MasterRole, esv1.DataRole, esv1.IngestRole).
 				WithNodeSet("data-ingest", 1, esv1.DataRole, esv1.IngestRole).
 				WithNodeSet("ingest-only", 1, esv1.IngestRole),
-			want: map[string][]appsv1.StatefulSet{
-				"master": {
+			want: map[esv1.NodeRole][]appsv1.StatefulSet{
+				esv1.MasterRole: {
 					ssetfixtures.TestSset{Name: "master-data-ingest", Master: true, Data: true, Ingest: true, Version: "9.0.1", ClusterName: "test-es"}.Build(),
 					ssetfixtures.TestSset{Name: "data-ingest", Data: true, Ingest: true, Version: "9.0.1", ClusterName: "test-es"}.Build(),
 					ssetfixtures.TestSset{Name: "ingest-only", Ingest: true, Version: "9.0.1", ClusterName: "test-es"}.Build(),
@@ -1180,11 +1180,11 @@ func TestGroupBySharedRoles(t *testing.T) {
 				WithNodeSet("data_hot", 1, esv1.DataHotRole).
 				WithNodeSet("data_content", 1, esv1.DataContentRole).
 				WithNodeSet("master", 1, esv1.MasterRole),
-			want: map[string][]appsv1.StatefulSet{
-				"master": {
+			want: map[esv1.NodeRole][]appsv1.StatefulSet{
+				esv1.MasterRole: {
 					ssetfixtures.TestSset{Name: "master", Master: true, Version: "9.0.1", ClusterName: "test-es"}.Build(),
 				},
-				"data": {
+				esv1.DataRole: {
 					ssetfixtures.TestSset{Name: "data", Data: true, Version: "9.0.1", ClusterName: "test-es"}.Build(),
 					ssetfixtures.TestSset{Name: "data_hot", DataHot: true, Version: "9.0.1", ClusterName: "test-es"}.Build(),
 					ssetfixtures.TestSset{Name: "data_content", DataContent: true, Version: "9.0.1", ClusterName: "test-es"}.Build(),
@@ -1198,11 +1198,11 @@ func TestGroupBySharedRoles(t *testing.T) {
 				WithNodeSet("data_hot", 1, esv1.DataHotRole).
 				WithNodeSet("data_cold", 1, esv1.DataColdRole).
 				WithNodeSet("master", 1, esv1.MasterRole),
-			want: map[string][]appsv1.StatefulSet{
-				"master": {
+			want: map[esv1.NodeRole][]appsv1.StatefulSet{
+				esv1.MasterRole: {
 					ssetfixtures.TestSset{Name: "master", Master: true, Version: "9.0.1", ClusterName: "test-es"}.Build(),
 				},
-				"data": {
+				esv1.DataRole: {
 					ssetfixtures.TestSset{Name: "data_hot", DataHot: true, Version: "9.0.1", ClusterName: "test-es"}.Build(),
 					ssetfixtures.TestSset{Name: "data_cold", DataCold: true, Version: "9.0.1", ClusterName: "test-es"}.Build(),
 				},

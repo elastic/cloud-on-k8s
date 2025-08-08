@@ -116,7 +116,7 @@ func expectedRolePDBs(
 	// Create one PDB per group
 	// Maps order isn't guaranteed so process in order of defined priority.
 	for _, roleName := range priority {
-		group, ok := groups[string(roleName)]
+		group, ok := groups[roleName]
 		if !ok {
 			continue
 		}
@@ -132,7 +132,7 @@ func expectedRolePDBs(
 				return nil, fmt.Errorf("while getting roles for StatefulSet %s: %w", sset.Name, err)
 			}
 			for _, role := range roles {
-				groupRoles.Insert(esv1.NodeRole(role))
+				groupRoles.Insert(role)
 			}
 		}
 
@@ -152,12 +152,12 @@ func expectedRolePDBs(
 	return pdbs, nil
 }
 
-func groupBySharedRoles(statefulSets sset.StatefulSetList, resources nodespec.ResourcesList, v version.Version) (map[string][]appsv1.StatefulSet, error) {
+func groupBySharedRoles(statefulSets sset.StatefulSetList, resources nodespec.ResourcesList, v version.Version) (map[esv1.NodeRole][]appsv1.StatefulSet, error) {
 	n := len(statefulSets)
 	if n == 0 {
-		return map[string][]appsv1.StatefulSet{}, nil
+		return map[esv1.NodeRole][]appsv1.StatefulSet{}, nil
 	}
-	rolesToIndices := make(map[string][]int)
+	rolesToIndices := make(map[esv1.NodeRole][]int)
 	indicesToRoles := make(map[int]set.StringSet)
 	for i, sset := range statefulSets {
 		roles, err := getRolesForStatefulSet(sset, resources, v)
@@ -166,27 +166,27 @@ func groupBySharedRoles(statefulSets sset.StatefulSetList, resources nodespec.Re
 		}
 		if len(roles) == 0 {
 			// StatefulSets with no roles are coordinating nodes - group them together
-			rolesToIndices[string(esv1.CoordinatingRole)] = append(rolesToIndices[string(esv1.CoordinatingRole)], i)
+			rolesToIndices[esv1.CoordinatingRole] = append(rolesToIndices[esv1.CoordinatingRole], i)
 			indicesToRoles[i] = set.Make(string(esv1.CoordinatingRole))
 			continue
 		}
 		for _, role := range roles {
 			// Ensure that the data* roles are grouped together.
-			normalizedRole := string(toGenericDataRole(esv1.NodeRole(role)))
+			normalizedRole := toGenericDataRole(role)
 			rolesToIndices[normalizedRole] = append(rolesToIndices[normalizedRole], i)
 			if _, ok := indicesToRoles[i]; !ok {
 				indicesToRoles[i] = set.Make()
 			}
-			indicesToRoles[i].Add(normalizedRole)
+			indicesToRoles[i].Add(string(normalizedRole))
 		}
 	}
 
 	// This keeps track of which roles have been assigned to a PDB to avoid assigning the same role to multiple PDBs.
-	roleToTargetPDB := map[string]string{}
-	grouped := map[string][]int{}
+	roleToTargetPDB := map[esv1.NodeRole]esv1.NodeRole{}
+	grouped := map[esv1.NodeRole][]int{}
 	visited := make([]bool, n)
 	for _, role := range priority {
-		indices, ok := rolesToIndices[string(role)]
+		indices, ok := rolesToIndices[role]
 		if !ok {
 			continue
 		}
@@ -194,20 +194,20 @@ func groupBySharedRoles(statefulSets sset.StatefulSetList, resources nodespec.Re
 			if visited[idx] {
 				continue
 			}
-			targetPDBRole := string(role)
+			targetPDBRole := role
 			// if we already assigned a PDB for this role, use that instead
-			if target, ok := roleToTargetPDB[string(role)]; ok {
+			if target, ok := roleToTargetPDB[role]; ok {
 				targetPDBRole = target
 			}
 			grouped[targetPDBRole] = append(grouped[targetPDBRole], idx)
 			for _, r := range indicesToRoles[idx].AsSlice() {
-				roleToTargetPDB[r] = targetPDBRole
+				roleToTargetPDB[esv1.NodeRole(r)] = targetPDBRole
 			}
 			visited[idx] = true
 		}
 	}
 	// transform into the expected format
-	res := make(map[string][]appsv1.StatefulSet)
+	res := make(map[esv1.NodeRole][]appsv1.StatefulSet)
 	for role, indices := range grouped {
 		group := make([]appsv1.StatefulSet, 0, len(indices))
 		for _, idx := range indices {
@@ -275,7 +275,7 @@ func getRolesForStatefulSet(
 	statefulSet appsv1.StatefulSet,
 	expectedResources nodespec.ResourcesList,
 	v version.Version,
-) ([]string, error) {
+) ([]esv1.NodeRole, error) {
 	forStatefulSet, err := expectedResources.ForStatefulSet(statefulSet.Name)
 	if err != nil {
 		return nil, err
@@ -284,7 +284,11 @@ func getRolesForStatefulSet(
 	if err != nil {
 		return nil, err
 	}
-	return cfg.Node.Roles, nil
+	nodeRoles := make([]esv1.NodeRole, len(cfg.Node.Roles))
+	for i, role := range cfg.Node.Roles {
+		nodeRoles[i] = esv1.NodeRole(role)
+	}
+	return nodeRoles, nil
 }
 
 // createPDBForStatefulSets creates a PDB for a group of StatefulSets with shared roles.
