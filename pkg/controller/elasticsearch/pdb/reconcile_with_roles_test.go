@@ -1212,7 +1212,7 @@ func TestGroupBySharedRoles(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			resourcesList := make(nodespec.ResourcesList, 0, len(tt.builder.GetStatefulSets()))
+			var resourcesList nodespec.ResourcesList
 			var err error
 			resourcesList, err = tt.builder.BuildResourcesList()
 			require.NoError(t, err)

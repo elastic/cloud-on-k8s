@@ -515,9 +515,8 @@ func deleteAllRoleSpecificPDBs(ctx context.Context, k8sClient k8s.Client, es esv
 	// List and process PDBs based on the available API version
 	if v1Available {
 		return deleteAllRoleSpecificPDBsWithVersion(ctx, k8sClient, es, &policyv1.PodDisruptionBudgetList{})
-	} else {
-		return deleteAllRoleSpecificPDBsWithVersion(ctx, k8sClient, es, &policyv1beta1.PodDisruptionBudgetList{})
 	}
+	return deleteAllRoleSpecificPDBsWithVersion(ctx, k8sClient, es, &policyv1beta1.PodDisruptionBudgetList{})
 }
 
 // deleteAllRoleSpecificPDBsWithVersion handles listing and deleting PDBs using a specific PDB version
@@ -554,14 +553,4 @@ func deleteAllRoleSpecificPDBsWithVersion(ctx context.Context, k8sClient k8s.Cli
 	}
 
 	return nil
-}
-
-// podDisruptionBudgetName returns the name of the PDB.
-func podDisruptionBudgetName(esName string, role string) string {
-	name := esv1.DefaultPodDisruptionBudget(esName) + "-" + role
-	// For coordinating nodes (no roles), append "coordinating" to the name
-	if role == "" {
-		name += string(esv1.CoordinatingRole)
-	}
-	return name
 }

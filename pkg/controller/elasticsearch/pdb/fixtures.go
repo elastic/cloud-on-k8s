@@ -60,7 +60,7 @@ func (b Builder) WithNodeSet(name string, count int32, nodeTypes ...esv1.NodeRol
 	config["node.roles"] = []esv1.NodeRole{}
 	for _, nodeType := range nodeTypes {
 		if string(nodeType) != "" {
-			config["node.roles"] = append(config["node.roles"].([]esv1.NodeRole), nodeType)
+			config["node.roles"] = append(config["node.roles"].([]esv1.NodeRole), nodeType) //nolint:forcetypeassert
 		}
 	}
 
@@ -117,6 +117,10 @@ func (b Builder) buildStatefulSet(name string, replicas int32, nodeRoles []esv1.
 			sset.DataContent = true
 		case esv1.DataFrozenRole:
 			sset.DataFrozen = true
+		case esv1.CoordinatingRole:
+			continue
+		case esv1.VotingOnlyRole:
+			continue
 		}
 	}
 

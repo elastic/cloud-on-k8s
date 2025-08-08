@@ -130,6 +130,8 @@ func (n *Node) IsConfiguredWithRole(role NodeRole) bool {
 		return ptr.Deref(n.Transform, n.IsConfiguredWithRole(DataRole))
 	case VotingOnlyRole:
 		return ptr.Deref(n.VotingOnly, false)
+	case CoordinatingRole:
+		return len(n.Roles) == 0
 	}
 
 	// This point should never be reached. The default is to assume that a node has all roles except voting_only.
