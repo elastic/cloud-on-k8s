@@ -7,9 +7,11 @@ package runner
 import (
 	"fmt"
 	"os"
+	"runtime"
 	"time"
 
 	"github.com/elastic/cloud-on-k8s/v3/hack/deployer/exec"
+	"github.com/elastic/cloud-on-k8s/v3/hack/deployer/runner/env"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/vault"
 )
 
@@ -34,6 +36,8 @@ func (k K3dDriverFactory) Create(plan Plan) (Driver, error) {
 	return &K3dDriver{
 		plan:        plan,
 		vaultClient: vault.NewClientProvider(),
+		clientImage: plan.K3d.ClientImage,
+		nodeImage:   plan.K3d.NodeImage,
 	}, nil
 }
 
@@ -41,6 +45,7 @@ type K3dDriver struct {
 	plan        Plan
 	clientImage string
 	vaultClient vault.ClientProvider
+	nodeImage   string
 }
 
 func (k *K3dDriver) Execute() error {
@@ -85,26 +90,29 @@ func (k *K3dDriver) delete() error {
 
 func (k *K3dDriver) cmd(args ...string) *exec.Command {
 	params := map[string]interface{}{
-		"ClusterName": k.plan.ClusterName,
-		"Args":        args,
+		"ClusterName":    k.plan.ClusterName,
+		"SharedVolume":   env.SharedVolumeName(),
+		"K3dClientImage": k.clientImage,
+		"K3dNodeImage":   k.nodeImage,
+		"Args":           args,
 	}
 
 	// on macOS, the docker socket is located in $HOME
-	// dockerSocket := "/var/run/docker.sock"
-	// if runtime.GOOS == "darwin" {
-	// 	dockerSocket = "$HOME/.docker/run/docker.sock"
-	// }
+	dockerSocket := "/var/run/docker.sock"
+	if runtime.GOOS == "darwin" {
+		dockerSocket = "$HOME/.docker/run/docker.sock"
+	}
 	// We need the docker socket so that kind can bootstrap
 	// --userns=host to support Docker daemon host configured to run containers only in user namespaces
-	cmd := exec.NewCommand(`k3d {{Join .Args " "}} {{.ClusterName}}`)
-	// cmd := exec.NewCommand(`docker run --rm \
-	// 	--userns=host \
-	// 	-v {{.SharedVolume}}:/home \
-	// 	-v /var/run/docker.sock:` + dockerSocket + ` \
-	// 	-e HOME=/home \
-	// 	-e PATH=/ \
-	// 	{{.KindClientImage}} \
-	// 	/kind {{Join .Args " "}} --name {{.ClusterName}}`)
+	command := `docker run --rm \
+		--userns=host \
+		-v {{.SharedVolume}}:/home \
+		-v /var/run/docker.sock:` + dockerSocket + ` \
+		-e HOME=/home \
+		-e PATH=/ \
+		{{.K3dClientImage}} \
+		{{Join .Args " "}} {{.ClusterName}}`
+	cmd := exec.NewCommand(command)
 	cmd = cmd.AsTemplate(params)
 	return cmd
 }
@@ -130,25 +138,12 @@ func (k *K3dDriver) getKubeConfig() (*os.File, error) {
 }
 
 func (k *K3dDriver) GetCredentials() error {
-	if err := k.ensureClientImage(); err != nil {
-		return err
-	}
-
 	config, err := k.getKubeConfig()
 	if err != nil {
 		return err
 	}
 	defer os.Remove(config.Name())
 	return mergeKubeconfig(config.Name())
-}
-
-func (k *K3dDriver) ensureClientImage() error {
-	image, err := ensureClientImage(K3dDriverID, k.vaultClient, k.plan.ClientVersion, k.plan.ClientBuildDefDir)
-	if err != nil {
-		return err
-	}
-	k.clientImage = image
-	return nil
 }
 
 func (k *K3dDriver) Cleanup(string, time.Duration) error {

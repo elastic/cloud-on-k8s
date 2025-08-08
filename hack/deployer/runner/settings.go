@@ -88,8 +88,9 @@ type KindSettings struct {
 }
 
 type K3dSettings struct {
-	NodeCount int    `yaml:"nodeCount"`
-	NodeImage string `yaml:"nodeImage"`
+	ClientImage string `yaml:"clientImage"`
+	NodeCount   int    `yaml:"nodeCount"`
+	NodeImage   string `yaml:"nodeImage"`
 }
 
 // RunConfig encapsulates Id used to choose a plan and a map of overrides to apply to the plan, expected to map to a file
