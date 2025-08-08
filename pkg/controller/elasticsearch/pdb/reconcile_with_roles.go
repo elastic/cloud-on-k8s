@@ -34,7 +34,7 @@ import (
 var (
 	// group the statefulsets by the priority of their roles.
 	// master, data_*, ingest, ml, transform, coordinating, and we ignore remote_cluster_client as it has no impact on availability
-	priority = []string{"master", "data", "data_frozen", "ingest", "ml", "transform", "coordinating"}
+	priority = []esv1.NodeRole{esv1.MasterRole, esv1.DataRole, esv1.DataFrozenRole, esv1.IngestRole, esv1.MLRole, esv1.TransformRole, esv1.CoordinatingRole}
 	// All data role variants should be treated as a generic data role for PDB purposes
 	dataRoles = []esv1.NodeRole{
 		esv1.DataRole,
@@ -116,10 +116,7 @@ func expectedRolePDBs(
 	// Create one PDB per group
 	// Maps order isn't guaranteed so process in order of defined priority.
 	for _, roleName := range priority {
-		if roleName == "coordinating" {
-			roleName = ""
-		}
-		group, ok := groups[roleName]
+		group, ok := groups[string(roleName)]
 		if !ok {
 			continue
 		}
@@ -143,7 +140,7 @@ func expectedRolePDBs(
 		// If group has no roles, it's a coordinating ES role.
 		primaryRole := getPrimaryRoleForPDB(groupRoles)
 
-		pdb, err := createPDBForStatefulSets(es, primaryRole, roleName, group, statefulSets, meta)
+		pdb, err := createPDBForStatefulSets(es, primaryRole, string(roleName), group, statefulSets, meta)
 		if err != nil {
 			return nil, err
 		}
@@ -189,12 +186,7 @@ func groupBySharedRoles(statefulSets sset.StatefulSetList, resources nodespec.Re
 	grouped := map[string][]int{}
 	visited := make([]bool, n)
 	for _, role := range priority {
-		// the coordinating role is stored in the rolesToIndices map
-		// with the key being '', so we must handle it separately.
-		if role == "coordinating" {
-			role = ""
-		}
-		indices, ok := rolesToIndices[role]
+		indices, ok := rolesToIndices[string(role)]
 		if !ok {
 			continue
 		}
@@ -202,9 +194,9 @@ func groupBySharedRoles(statefulSets sset.StatefulSetList, resources nodespec.Re
 			if visited[idx] {
 				continue
 			}
-			targetPDBRole := role
+			targetPDBRole := string(role)
 			// if we already assigned a PDB for this role, use that instead
-			if target, ok := roleToTargetPDB[role]; ok {
+			if target, ok := roleToTargetPDB[string(role)]; ok {
 				targetPDBRole = target
 			}
 			grouped[targetPDBRole] = append(grouped[targetPDBRole], idx)
