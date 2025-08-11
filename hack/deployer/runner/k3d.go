@@ -6,7 +6,9 @@ package runner
 
 import (
 	"fmt"
+	"io/fs"
 	"os"
+	"path/filepath"
 	"runtime"
 	"time"
 
@@ -81,7 +83,17 @@ func (k *K3dDriver) create() error {
 	}
 	defer os.Remove(kubeCfg.Name())
 
-	return nil
+	// Delete standard storage class but ignore error if not found
+	if err := kubectl("--kubeconfig", kubeCfg.Name(), "delete", "storageclass", "standard"); err != nil {
+		return err
+	}
+
+	tmpStorageClass, err := k.createTmpStorageClass()
+	if err != nil {
+		return err
+	}
+
+	return kubectl("--kubeconfig", kubeCfg.Name(), "apply", "-f", tmpStorageClass)
 }
 
 func (k *K3dDriver) delete() error {
@@ -144,6 +156,12 @@ func (k *K3dDriver) GetCredentials() error {
 	}
 	defer os.Remove(config.Name())
 	return mergeKubeconfig(config.Name())
+}
+
+func (k *K3dDriver) createTmpStorageClass() (string, error) {
+	tmpFile := filepath.Join(os.Getenv("HOME"), storageClassFileName)
+	err := os.WriteFile(tmpFile, []byte(storageClass), fs.ModePerm)
+	return tmpFile, err
 }
 
 func (k *K3dDriver) Cleanup(string, time.Duration) error {
