@@ -56,7 +56,7 @@ var (
 	// providersNoCleanup are k8s providers that do not require the cluster to be deleted after use
 	providersNoCleanup = []string{"kind", "k3d"}
 	// providers are k8s providers for which it is not possible to retrieve the kube config after cluster creation
-	providersNoRemoteConfig = []string{"kind"}
+	providersNoRemoteConfig = []string{"kind", "k3d"}
 
 	semverRE = regexp.MustCompile(`\d*\.\d*\.\d*(-\w*)?`)
 	chars    = []rune("abcdefghijklmnopqrstuvwxyz")
