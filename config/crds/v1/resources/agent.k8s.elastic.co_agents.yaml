@@ -16502,7 +16502,7 @@ spec:
                 description: |-
                   FleetServerRef is a reference to Fleet Server that this Agent should connect to to obtain it's configuration.
                   Don't set unless `mode` is set to `fleet`.
-                  References to Fleet servers running outside the Kubernetes cluster via the secretName attribute are not supported.
+                  References to Fleet servers running outside the Kubernetes cluster via the `secretName` attribute are not supported.
                 properties:
                   name:
                     description: Name of an existing Kubernetes object corresponding

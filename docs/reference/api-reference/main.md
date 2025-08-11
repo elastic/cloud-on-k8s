@@ -92,7 +92,7 @@ AgentSpec defines the desired state of the Agent
 | *`fleetServerEnabled`* __boolean__ | FleetServerEnabled determines whether this Agent will launch Fleet Server. Don't set unless `mode` is set to `fleet`. |
 | *`policyID`* __string__ | PolicyID determines into which Agent Policy this Agent will be enrolled.<br>This field will become mandatory in a future release, default policies are deprecated since 8.1.0. |
 | *`kibanaRef`* __[ObjectSelector](#objectselector)__ | KibanaRef is a reference to Kibana where Fleet should be set up and this Agent should be enrolled. Don't set<br>unless `mode` is set to `fleet`. |
-| *`fleetServerRef`* __[ObjectSelector](#objectselector)__ | FleetServerRef is a reference to Fleet Server that this Agent should connect to to obtain it's configuration.<br>Don't set unless `mode` is set to `fleet`.<br>References to Fleet servers running outside the Kubernetes cluster via the secretName attribute are not supported. |
+| *`fleetServerRef`* __[ObjectSelector](#objectselector)__ | FleetServerRef is a reference to Fleet Server that this Agent should connect to to obtain it's configuration.<br>Don't set unless `mode` is set to `fleet`.<br>References to Fleet servers running outside the Kubernetes cluster via the `secretName` attribute are not supported. |
 
 
 ### DaemonSetSpec  [#daemonsetspec]
