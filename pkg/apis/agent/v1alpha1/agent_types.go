@@ -106,6 +106,7 @@ type AgentSpec struct {
 
 	// FleetServerRef is a reference to Fleet Server that this Agent should connect to to obtain it's configuration.
 	// Don't set unless `mode` is set to `fleet`.
+	// References to Fleet servers running outside the Kubernetes cluster via the `secretName` attribute are not supported.
 	// +kubebuilder:validation:Optional
 	FleetServerRef commonv1.ObjectSelector `json:"fleetServerRef,omitempty"`
 }
