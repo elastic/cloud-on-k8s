@@ -109,7 +109,7 @@ type ElasticsearchSpec struct {
 	//   The default budget doesn't allow any Pod to be removed in case the cluster is not green or if there is only one node of type `data` or `master`.
 	//   In all other cases the default PodDisruptionBudget sets `minUnavailable` equal to the total number of nodes minus 1.
 	// With an Enterprise license:
-	//   The default budget is optionally split into multiple budgets, each targeting a specific node role types allowing additional disruptions
+	//   The default budget is split into multiple budgets, each targeting a specific node role type allowing additional disruptions
 	//   for certain roles according to the health status of the cluster.
 	//     Example:
 	//       All data roles (excluding frozen): allows disruptions only when the cluster is green.
