@@ -35,7 +35,7 @@ import (
 var (
 	// group the statefulsets by the priority of their roles.
 	// master, data_*, ingest, ml, transform, coordinating, and we ignore remote_cluster_client as it has no impact on availability
-	priority = []esv1.NodeRole{esv1.MasterRole, esv1.DataRole, esv1.DataFrozenRole, esv1.IngestRole, esv1.MLRole, esv1.TransformRole, esv1.CoordinatingRole}
+	priority = []esv1.NodeRole{esv1.DataRole, esv1.MasterRole, esv1.DataFrozenRole, esv1.IngestRole, esv1.MLRole, esv1.TransformRole, esv1.CoordinatingRole}
 	// All data role variants should be treated as a generic data role for PDB purposes
 	dataRoles = []esv1.NodeRole{
 		esv1.DataRole,
@@ -382,13 +382,10 @@ func allowedDisruptionsForRole(
 		return 1
 	}
 
-	// If the statefulSets that are contained within this PDB include the master or ingest role and
-	// there's a risk the single master or ingest node of the cluster gets removed, don't allow it.
+	// If the statefulSets that are contained within this PDB include the master, ingest, or data role and
+	// there's a risk the single master, ingest, or data node of the cluster gets removed, don't allow it.
 	for _, sts := range statefulSets {
-		if label.IsMasterNodeSet(sts) && commonsts.GetReplicas(sts) == 1 {
-			return 0
-		}
-		if label.IsIngestNodeSet(sts) && commonsts.GetReplicas(sts) == 1 {
+		if isSensitiveToDisruptions(sts) && commonsts.GetReplicas(sts) == 1 {
 			return 0
 		}
 	}
@@ -429,6 +426,10 @@ func selectorForStatefulSets(es esv1.Elasticsearch, ssetNames []string) *metav1.
 			},
 		},
 	}
+}
+
+func isSensitiveToDisruptions(sts appsv1.StatefulSet) bool {
+	return label.IsMasterNodeSet(sts) || label.IsIngestNodeSet(sts) || label.IsDataNodeSet(sts)
 }
 
 // reconcileAndDeleteUnnecessaryPDBs reconciles the PDBs that are expected to exist and deletes any that exist but are not expected.

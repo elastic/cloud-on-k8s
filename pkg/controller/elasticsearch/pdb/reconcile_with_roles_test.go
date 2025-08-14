@@ -234,7 +234,7 @@ func TestReconcileRoleSpecificPDBs(t *testing.T) {
 					WithNodeSet("data2", 2, esv1.DataHotRole),
 			},
 			wantedPDBs: []*policyv1.PodDisruptionBudget{
-				rolePDB("cluster", "ns", esv1.MasterRole, []string{"data2", "master-data1"}, 1),
+				rolePDB("cluster", "ns", esv1.DataRole, []string{"data2", "master-data1"}, 1),
 			},
 		},
 		{
@@ -247,7 +247,7 @@ func TestReconcileRoleSpecificPDBs(t *testing.T) {
 					WithNodeSet("data2", 2, esv1.DataHotRole),
 			},
 			wantedPDBs: []*policyv1.PodDisruptionBudget{
-				rolePDB("cluster", "ns", esv1.MasterRole, []string{"data2", "master-data1"}, 0),
+				rolePDB("cluster", "ns", esv1.DataRole, []string{"data2", "master-data1"}, 0),
 			},
 		},
 		{
@@ -294,7 +294,7 @@ func TestReconcileRoleSpecificPDBs(t *testing.T) {
 			},
 			wantedPDBs: []*policyv1.PodDisruptionBudget{
 				// Unhealthy es cluster; 0 disruptions allowed
-				rolePDB("cluster", "ns", esv1.MasterRole, []string{"master-data1", "data-ingest1"}, 0),
+				rolePDB("cluster", "ns", esv1.DataRole, []string{"master-data1", "data-ingest1"}, 0),
 				rolePDB("cluster", "ns", esv1.MLRole, []string{"ml1"}, 0),
 			},
 		},
@@ -537,41 +537,6 @@ func TestExpectedRolePDBs(t *testing.T) {
 			expected: []*policyv1.PodDisruptionBudget{
 				{
 					ObjectMeta: metav1.ObjectMeta{
-						Name:      "test-es-es-default-master",
-						Namespace: "ns",
-						Labels: map[string]string{
-							label.ClusterNameLabelName: "test-es",
-						},
-						OwnerReferences: []metav1.OwnerReference{
-							{
-								APIVersion:         "elasticsearch.k8s.elastic.co/v1",
-								Kind:               "Elasticsearch",
-								Name:               "test-es",
-								Controller:         ptr.To[bool](true),
-								BlockOwnerDeletion: ptr.To[bool](true),
-							},
-						},
-					},
-					Spec: policyv1.PodDisruptionBudgetSpec{
-						Selector: &metav1.LabelSelector{
-							MatchExpressions: []metav1.LabelSelectorRequirement{
-								{
-									Key:      label.ClusterNameLabelName,
-									Operator: metav1.LabelSelectorOpIn,
-									Values:   []string{"test-es"},
-								},
-								{
-									Key:      label.StatefulSetNameLabelName,
-									Operator: metav1.LabelSelectorOpIn,
-									Values:   []string{"master1"},
-								},
-							},
-						},
-						MaxUnavailable: &intstr.IntOrString{Type: intstr.Int, IntVal: 0},
-					},
-				},
-				{
-					ObjectMeta: metav1.ObjectMeta{
 						Name:      "test-es-es-default-data",
 						Namespace: "ns",
 						Labels: map[string]string{
@@ -599,6 +564,41 @@ func TestExpectedRolePDBs(t *testing.T) {
 									Key:      label.StatefulSetNameLabelName,
 									Operator: metav1.LabelSelectorOpIn,
 									Values:   []string{"data1"},
+								},
+							},
+						},
+						MaxUnavailable: &intstr.IntOrString{Type: intstr.Int, IntVal: 0},
+					},
+				},
+				{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "test-es-es-default-master",
+						Namespace: "ns",
+						Labels: map[string]string{
+							label.ClusterNameLabelName: "test-es",
+						},
+						OwnerReferences: []metav1.OwnerReference{
+							{
+								APIVersion:         "elasticsearch.k8s.elastic.co/v1",
+								Kind:               "Elasticsearch",
+								Name:               "test-es",
+								Controller:         ptr.To[bool](true),
+								BlockOwnerDeletion: ptr.To[bool](true),
+							},
+						},
+					},
+					Spec: policyv1.PodDisruptionBudgetSpec{
+						Selector: &metav1.LabelSelector{
+							MatchExpressions: []metav1.LabelSelectorRequirement{
+								{
+									Key:      label.ClusterNameLabelName,
+									Operator: metav1.LabelSelectorOpIn,
+									Values:   []string{"test-es"},
+								},
+								{
+									Key:      label.StatefulSetNameLabelName,
+									Operator: metav1.LabelSelectorOpIn,
+									Values:   []string{"master1"},
 								},
 							},
 						},
@@ -746,7 +746,7 @@ func TestExpectedRolePDBs(t *testing.T) {
 			expected: []*policyv1.PodDisruptionBudget{
 				{
 					ObjectMeta: metav1.ObjectMeta{
-						Name:      "test-es-es-default-master",
+						Name:      "test-es-es-default-data",
 						Namespace: "ns",
 						Labels: map[string]string{
 							label.ClusterNameLabelName: "test-es",
@@ -1136,7 +1136,7 @@ func TestGroupBySharedRoles(t *testing.T) {
 				WithNodeSet("data", 1, esv1.DataRole).
 				WithNodeSet("ingest", 1, esv1.IngestRole),
 			want: map[esv1.NodeRole][]appsv1.StatefulSet{
-				esv1.MasterRole: {
+				esv1.DataRole: {
 					ssetfixtures.TestSset{Name: "master", Master: true, Data: true, Version: "9.0.1", ClusterName: "test-es"}.Build(),
 					ssetfixtures.TestSset{Name: "data", Data: true, Version: "9.0.1", ClusterName: "test-es"}.Build(),
 				},
@@ -1163,7 +1163,7 @@ func TestGroupBySharedRoles(t *testing.T) {
 				WithNodeSet("ingest", 1, esv1.IngestRole, esv1.MLRole).
 				WithNodeSet("ml", 1, esv1.MLRole),
 			want: map[esv1.NodeRole][]appsv1.StatefulSet{
-				esv1.MasterRole: {
+				esv1.DataRole: {
 					ssetfixtures.TestSset{Name: "master", Master: true, Data: true, Version: "9.0.1", ClusterName: "test-es"}.Build(),
 					ssetfixtures.TestSset{Name: "data", Data: true, Version: "9.0.1", ClusterName: "test-es"}.Build(),
 					ssetfixtures.TestSset{Name: "data_hot", DataHot: true, Version: "9.0.1", ClusterName: "test-es"}.Build(),
@@ -1219,7 +1219,7 @@ func TestGroupBySharedRoles(t *testing.T) {
 				WithNodeSet("data-ingest", 1, esv1.DataRole, esv1.IngestRole).
 				WithNodeSet("ingest-only", 1, esv1.IngestRole),
 			want: map[esv1.NodeRole][]appsv1.StatefulSet{
-				esv1.MasterRole: {
+				esv1.DataRole: {
 					ssetfixtures.TestSset{Name: "master-data-ingest", Master: true, Data: true, Ingest: true, Version: "9.0.1", ClusterName: "test-es"}.Build(),
 					ssetfixtures.TestSset{Name: "data-ingest", Data: true, Ingest: true, Version: "9.0.1", ClusterName: "test-es"}.Build(),
 					ssetfixtures.TestSset{Name: "ingest-only", Ingest: true, Version: "9.0.1", ClusterName: "test-es"}.Build(),
