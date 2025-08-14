@@ -22,10 +22,12 @@ import (
 
 	esv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/elasticsearch/v1"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/metadata"
+	commonsts "github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/statefulset"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/version"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/label"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/nodespec"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/sset"
+
 	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/k8s"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/set"
 )
@@ -337,11 +339,11 @@ func buildRoleSpecificPDBSpec(
 	role esv1.NodeRole,
 	// statefulSets are the statefulSets grouped into this pdb.
 	statefulSets sset.StatefulSetList,
-	// allStatefulSets are all statefulsets in the whole ES cluster.
+	// allStatefulSets are all statefulSets in the whole ES cluster.
 	allStatefulSets sset.StatefulSetList,
 ) policyv1.PodDisruptionBudgetSpec {
 	// Get the allowed disruptions for this role based on cluster health and role type
-	allowedDisruptions := allowedDisruptionsForRole(es, role, allStatefulSets)
+	allowedDisruptions := allowedDisruptionsForRole(es, role, statefulSets, allStatefulSets)
 
 	spec := policyv1.PodDisruptionBudgetSpec{
 		MaxUnavailable: &intstr.IntOrString{Type: intstr.Int, IntVal: allowedDisruptions},
@@ -364,26 +366,35 @@ func buildRoleSpecificPDBSpec(
 func allowedDisruptionsForRole(
 	es esv1.Elasticsearch,
 	role esv1.NodeRole,
+	// statefulSets are the statefulSets grouped into this pdb.
 	statefulSets sset.StatefulSetList,
+	// allStatefulSets are all statefulSets in the whole ES cluster.
+	allStatefulSets sset.StatefulSetList,
 ) int32 {
+	// If the Elasticsearch cluster's health is unknown or not healthy, don't allow any disruptions.
 	if es.Status.Health == esv1.ElasticsearchUnknownHealth || es.Status.Health == esv1.ElasticsearchHealth("") {
 		return 0
 	}
+
 	// In a single node cluster (not highly-available) always allow 1 disruption
 	// to ensure K8s nodes operations can be performed.
-	if statefulSets.ExpectedNodeCount() == 1 {
+	if allStatefulSets.ExpectedNodeCount() == 1 {
 		return 1
 	}
-	// There's a risk the single master of the cluster gets removed, don't allow it.
-	if role == esv1.MasterRole && statefulSets.ExpectedMasterNodesCount() == 1 {
-		return 0
+
+	// If the statefulSets that are contained within this PDB include the master or ingest role and
+	// there's a risk the single master or ingest node of the cluster gets removed, don't allow it.
+	for _, sts := range statefulSets {
+		if label.IsMasterNodeSet(sts) && commonsts.GetReplicas(sts) == 1 {
+			return 0
+		}
+		if label.IsIngestNodeSet(sts) && commonsts.GetReplicas(sts) == 1 {
+			return 0
+		}
 	}
+
 	// There's a risk the single data node of the cluster gets removed, don't allow it.
-	if role == esv1.DataRole && statefulSets.ExpectedDataNodesCount() == 1 {
-		return 0
-	}
-	// There's a risk the single ingest node of the cluster gets removed, don't allow it.
-	if role == esv1.IngestRole && statefulSets.ExpectedIngestNodesCount() == 1 {
+	if role == esv1.DataRole && allStatefulSets.ExpectedDataNodesCount() == 1 {
 		return 0
 	}
 
