@@ -107,7 +107,7 @@ func expectedRolePDBs(
 	}
 
 	// Group StatefulSets by their connected roles.
-	groups, err := groupBySharedRoles(statefulSets, resources, v)
+	groups, ssetNamesToRoles, err := groupBySharedRoles(statefulSets, resources, v)
 	if err != nil {
 		return nil, fmt.Errorf("while grouping StatefulSets by roles: %w", err)
 	}
@@ -126,12 +126,9 @@ func expectedRolePDBs(
 		// Determine the roles for this group
 		groupRoles := sets.New[esv1.NodeRole]()
 		for _, sset := range group {
-			roles, err := getRolesForStatefulSet(sset, resources, v)
-			if err != nil {
-				return nil, fmt.Errorf("while getting roles for StatefulSet %s: %w", sset.Name, err)
-			}
-			for _, role := range roles {
-				groupRoles.Insert(role)
+			roles := ssetNamesToRoles[sset.Name]
+			for _, role := range roles.AsSlice() {
+				groupRoles.Insert(esv1.NodeRole(role))
 			}
 		}
 
@@ -151,22 +148,25 @@ func expectedRolePDBs(
 	return pdbs, nil
 }
 
-func groupBySharedRoles(statefulSets sset.StatefulSetList, resources nodespec.ResourcesList, v version.Version) (map[esv1.NodeRole][]appsv1.StatefulSet, error) {
+func groupBySharedRoles(statefulSets sset.StatefulSetList, resources nodespec.ResourcesList, v version.Version) (map[esv1.NodeRole][]appsv1.StatefulSet, map[string]set.StringSet, error) {
 	n := len(statefulSets)
 	if n == 0 {
-		return map[esv1.NodeRole][]appsv1.StatefulSet{}, nil
+		return map[esv1.NodeRole][]appsv1.StatefulSet{}, nil, nil
 	}
+
 	rolesToIndices := make(map[esv1.NodeRole][]int)
 	indicesToRoles := make(map[int]set.StringSet)
+	ssetNamesToRoles := make(map[string]set.StringSet)
 	for i, sset := range statefulSets {
 		roles, err := getRolesForStatefulSet(sset, resources, v)
 		if err != nil {
-			return nil, err
+			return nil, nil, err
 		}
 		if len(roles) == 0 {
 			// StatefulSets with no roles are coordinating nodes - group them together
 			rolesToIndices[esv1.CoordinatingRole] = append(rolesToIndices[esv1.CoordinatingRole], i)
 			indicesToRoles[i] = set.Make(string(esv1.CoordinatingRole))
+			ssetNamesToRoles[sset.Name] = set.Make(string(esv1.CoordinatingRole))
 			continue
 		}
 		for _, role := range roles {
@@ -177,6 +177,7 @@ func groupBySharedRoles(statefulSets sset.StatefulSetList, resources nodespec.Re
 				indicesToRoles[i] = set.Make()
 			}
 			indicesToRoles[i].Add(string(normalizedRole))
+			ssetNamesToRoles[sset.Name] = indicesToRoles[i]
 		}
 	}
 
@@ -214,7 +215,7 @@ func groupBySharedRoles(statefulSets sset.StatefulSetList, resources nodespec.Re
 		}
 		res[role] = group
 	}
-	return res, nil
+	return res, ssetNamesToRoles, nil
 }
 
 // getPrimaryRoleForPDB returns the primary role from a set of roles for PDB naming and grouping.
@@ -386,23 +387,14 @@ func allowedDisruptionsForRole(
 		return 0
 	}
 
-	// Check if this is a data role (any of the data variants)
-	isDataRole := role == esv1.DataRole ||
-		role == esv1.DataHotRole ||
-		role == esv1.DataWarmRole ||
-		role == esv1.DataColdRole ||
-		role == esv1.DataContentRole
-
 	// For data roles, only allow disruption if cluster is green
-	if isDataRole && es.Status.Health != esv1.ElasticsearchGreenHealth {
+	if role == esv1.DataRole && es.Status.Health != esv1.ElasticsearchGreenHealth {
 		return 0
 	}
 
-	// For data_frozen, master, ingest, ml, transform, and coordinating (no roles) nodes, allow disruption if cluster is at least yellow
-	if role == esv1.DataFrozenRole || role == esv1.MasterRole || role == esv1.IngestRole || role == esv1.MLRole || role == esv1.TransformRole || role == "" {
-		if es.Status.Health != esv1.ElasticsearchGreenHealth && es.Status.Health != esv1.ElasticsearchYellowHealth {
-			return 0
-		}
+	// If we end up here, we are one of the remaining roles where we can allow disruptions if the cluster is at least yellow.
+	if es.Status.Health != esv1.ElasticsearchGreenHealth && es.Status.Health != esv1.ElasticsearchYellowHealth {
+		return 0
 	}
 
 	// Allow one pod to be disrupted for all other cases

@@ -35,6 +35,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/nodespec"
 	_ "github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/settings"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/sset"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/set"
 )
 
 func TestGetPrimaryRoleForPDB(t *testing.T) {
@@ -1059,14 +1060,16 @@ func Test_allowedDisruptionsForRole(t *testing.T) {
 
 func TestGroupBySharedRoles(t *testing.T) {
 	tests := []struct {
-		name    string
-		builder Builder
-		want    map[esv1.NodeRole][]appsv1.StatefulSet
+		name           string
+		builder        Builder
+		want           map[esv1.NodeRole][]appsv1.StatefulSet
+		wantSTSToRoles map[string]set.StringSet
 	}{
 		{
-			name:    "empty statefulsets",
-			builder: NewBuilder("test-es"),
-			want:    map[esv1.NodeRole][]appsv1.StatefulSet{},
+			name:           "empty statefulsets",
+			builder:        NewBuilder("test-es"),
+			want:           map[esv1.NodeRole][]appsv1.StatefulSet{},
+			wantSTSToRoles: nil,
 		},
 		{
 			name: "single statefulset with no roles",
@@ -1077,6 +1080,9 @@ func TestGroupBySharedRoles(t *testing.T) {
 				esv1.CoordinatingRole: {
 					ssetfixtures.TestSset{Name: "coordinating", ClusterName: "test-es", Version: "9.0.1"}.Build(),
 				},
+			},
+			wantSTSToRoles: map[string]set.StringSet{
+				"coordinating": set.Make(""),
 			},
 		},
 		{
@@ -1092,6 +1098,10 @@ func TestGroupBySharedRoles(t *testing.T) {
 				esv1.IngestRole: {
 					ssetfixtures.TestSset{Name: "ingest", Ingest: true, Version: "9.0.1", ClusterName: "test-es"}.Build(),
 				},
+			},
+			wantSTSToRoles: map[string]set.StringSet{
+				"master": set.Make("master"),
+				"ingest": set.Make("ingest"),
 			},
 		},
 		{
@@ -1109,6 +1119,11 @@ func TestGroupBySharedRoles(t *testing.T) {
 				esv1.IngestRole: {
 					ssetfixtures.TestSset{Name: "ingest", Ingest: true, Version: "9.0.1", ClusterName: "test-es"}.Build(),
 				},
+			},
+			wantSTSToRoles: map[string]set.StringSet{
+				"master": set.Make("master", "data"),
+				"data":   set.Make("data"),
+				"ingest": set.Make("ingest"),
 			},
 		},
 		{
@@ -1139,6 +1154,16 @@ func TestGroupBySharedRoles(t *testing.T) {
 					ssetfixtures.TestSset{Name: "ml", ML: true, Version: "9.0.1", ClusterName: "test-es"}.Build(),
 				},
 			},
+			wantSTSToRoles: map[string]set.StringSet{
+				"master":      set.Make("master", "data"),
+				"data":        set.Make("data"),
+				"data_hot":    set.Make("data"),
+				"data_warm":   set.Make("data"),
+				"data_cold":   set.Make("data"),
+				"data_frozen": set.Make("data_frozen"),
+				"ingest":      set.Make("ingest", "ml"),
+				"ml":          set.Make("ml"),
+			},
 		},
 		{
 			name: "coordinating nodes (no roles) in separate group",
@@ -1156,6 +1181,11 @@ func TestGroupBySharedRoles(t *testing.T) {
 					ssetfixtures.TestSset{Name: "coordinating2", Version: "9.0.1", ClusterName: "test-es"}.Build(),
 				},
 			},
+			wantSTSToRoles: map[string]set.StringSet{
+				"data":          set.Make("data"),
+				"coordinating1": set.Make(""),
+				"coordinating2": set.Make(""),
+			},
 		},
 		{
 			name: "statefulsets with multiple roles respect priority order",
@@ -1170,6 +1200,11 @@ func TestGroupBySharedRoles(t *testing.T) {
 					ssetfixtures.TestSset{Name: "data-ingest", Data: true, Ingest: true, Version: "9.0.1", ClusterName: "test-es"}.Build(),
 					ssetfixtures.TestSset{Name: "ingest-only", Ingest: true, Version: "9.0.1", ClusterName: "test-es"}.Build(),
 				},
+			},
+			wantSTSToRoles: map[string]set.StringSet{
+				"master-data-ingest": set.Make("master", "data", "ingest"),
+				"data-ingest":        set.Make("data", "ingest"),
+				"ingest-only":        set.Make("ingest"),
 			},
 		},
 		{
@@ -1190,6 +1225,12 @@ func TestGroupBySharedRoles(t *testing.T) {
 					ssetfixtures.TestSset{Name: "data_content", DataContent: true, Version: "9.0.1", ClusterName: "test-es"}.Build(),
 				},
 			},
+			wantSTSToRoles: map[string]set.StringSet{
+				"data":         set.Make("data"),
+				"data_hot":     set.Make("data"),
+				"data_content": set.Make("data"),
+				"master":       set.Make("master"),
+			},
 		},
 		{
 			name: "data roles without generic data role do not maintain separate groups",
@@ -1207,6 +1248,11 @@ func TestGroupBySharedRoles(t *testing.T) {
 					ssetfixtures.TestSset{Name: "data_cold", DataCold: true, Version: "9.0.1", ClusterName: "test-es"}.Build(),
 				},
 			},
+			wantSTSToRoles: map[string]set.StringSet{
+				"data_hot":  set.Make("data"),
+				"data_cold": set.Make("data"),
+				"master":    set.Make("master"),
+			},
 		},
 	}
 
@@ -1220,8 +1266,12 @@ func TestGroupBySharedRoles(t *testing.T) {
 			v := version.MustParse(tt.builder.Elasticsearch.Spec.Version)
 			stss := tt.builder.GetStatefulSets()
 
-			got, err := groupBySharedRoles(stss, resourcesList, v)
+			got, gotSTSToRoles, err := groupBySharedRoles(stss, resourcesList, v)
 			assert.NoError(t, err)
+
+			if !cmp.Equal(gotSTSToRoles, tt.wantSTSToRoles) {
+				t.Errorf("gotSTSToRoles: diff = %s", cmp.Diff(gotSTSToRoles, tt.wantSTSToRoles))
+			}
 
 			// Check that the number of groups matches
 			assert.Equal(t, len(tt.want), len(got), "Expected %d groups, got %d", len(tt.want), len(got))
