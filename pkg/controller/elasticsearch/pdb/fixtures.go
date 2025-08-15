@@ -56,11 +56,9 @@ func (b Builder) WithVersion(version string) Builder {
 func (b Builder) WithNodeSet(name string, count int32, nodeTypes ...esv1.NodeRole) Builder {
 	config := map[string]interface{}{}
 
-	// Special case: if only one role is provided and it's "all_roles",
-	// don't specify node.roles at all (nil)
-	if len(nodeTypes) == 1 && nodeTypes[0] == "all_roles" {
-		// Don't set config["node.roles"] at all, which means the node gets all roles
-	} else {
+	// Only set node.Roles if the first role is not "all_roles"
+	// to properly handle no roles set to equal having all roles assigned.
+	if !(len(nodeTypes) == 1 && nodeTypes[0] == "all_roles") {
 		// This handles the 'coordinating' role properly.
 		config["node.roles"] = []esv1.NodeRole{}
 		for _, nodeType := range nodeTypes {
