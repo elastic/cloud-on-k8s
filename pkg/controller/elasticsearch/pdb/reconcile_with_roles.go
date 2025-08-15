@@ -286,7 +286,23 @@ func getRolesForStatefulSet(
 	if err != nil {
 		return nil, err
 	}
-	nodeRoles := make([]esv1.NodeRole, len(cfg.Node.Roles))
+	var nodeRoles []esv1.NodeRole
+	// Special case of no roles specified, which results in all roles being valid for this sts.
+	if cfg.Node.Roles == nil {
+		// since the priority slice contains all the roles that we are interested in
+		// when creating a pdb for a sts, we can use the priority slice as the roles.
+		nodeRoles = priority
+		// remove Coordinating role from the end of the slice.
+		nodeRoles = nodeRoles[:len(nodeRoles)-1]
+		return nodeRoles, nil
+	}
+	// Special case of empty roles being specified, which indicates the coordinating role for this sts.
+	if len(cfg.Node.Roles) == 0 {
+		nodeRoles = append(nodeRoles, esv1.CoordinatingRole)
+		return nodeRoles, nil
+	}
+	nodeRoles = make([]esv1.NodeRole, len(cfg.Node.Roles))
+	// Otherwise, use the list of roles from the configuration.
 	for i, role := range cfg.Node.Roles {
 		nodeRoles[i] = esv1.NodeRole(role)
 	}
@@ -388,11 +404,6 @@ func allowedDisruptionsForRole(
 		if isSensitiveToDisruptions(sts) && commonsts.GetReplicas(sts) == 1 {
 			return 0
 		}
-	}
-
-	// There's a risk the single data node of the cluster gets removed, don't allow it.
-	if role == esv1.DataRole && allStatefulSets.ExpectedDataNodesCount() == 1 {
-		return 0
 	}
 
 	// For data roles, only allow disruption if cluster is green

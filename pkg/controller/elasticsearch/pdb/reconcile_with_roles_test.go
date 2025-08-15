@@ -6,6 +6,7 @@ package pdb
 
 import (
 	"context"
+	"reflect"
 	"slices"
 	"sort"
 	"testing"
@@ -1046,6 +1047,9 @@ func Test_allowedDisruptionsForRole(t *testing.T) {
 			args: args{
 				es:   esv1.Elasticsearch{Status: esv1.ElasticsearchStatus{Health: esv1.ElasticsearchGreenHealth}},
 				role: []esv1.NodeRole{esv1.DataRole},
+				statefulSetsInPDB: sset.StatefulSetList{
+					ssetfixtures.TestSset{Replicas: 1, Master: false, Data: true}.Build(),
+				},
 				allStatefulSets: sset.StatefulSetList{
 					ssetfixtures.TestSset{Replicas: 3, Master: true, Data: false}.Build(),
 					ssetfixtures.TestSset{Replicas: 1, Master: false, Data: true}.Build(),
@@ -1077,6 +1081,147 @@ func Test_allowedDisruptionsForRole(t *testing.T) {
 				if got := allowedDisruptionsForRole(tt.args.es, role, tt.args.statefulSetsInPDB, tt.args.allStatefulSets); got != tt.want {
 					t.Errorf("allowedDisruptionsForRole() = %v, want %v for role: %s", got, tt.want, role)
 				}
+			}
+		})
+	}
+}
+
+func TestGetRolesForStatefulSet(t *testing.T) {
+	type args struct {
+		statefulSetName string
+		builder         Builder
+		version         string
+	}
+	tests := []struct {
+		name    string
+		args    args
+		want    []esv1.NodeRole
+		wantErr bool
+	}{
+		{
+			name: "unspecified roles (nil) - should represent all roles excluding coordinating",
+			args: args{
+				statefulSetName: "all-roles",
+				builder: NewBuilder("test-es").
+					WithNamespace("ns").
+					WithVersion("8.0.0").
+					WithNodeSet("all-roles", 3, "all_roles"),
+				version: "8.0.0",
+			},
+			want:    []esv1.NodeRole{esv1.DataRole, esv1.MasterRole, esv1.DataFrozenRole, esv1.IngestRole, esv1.MLRole, esv1.TransformRole},
+			wantErr: false,
+		},
+		{
+			name: "master only",
+			args: args{
+				statefulSetName: "master-only",
+				builder: NewBuilder("test-es").
+					WithNamespace("ns").
+					WithVersion("8.0.0").
+					WithNodeSet("master-only", 3, esv1.MasterRole),
+				version: "8.0.0",
+			},
+			want:    []esv1.NodeRole{esv1.MasterRole},
+			wantErr: false,
+		},
+		{
+			name: "data only",
+			args: args{
+				statefulSetName: "data-only",
+				builder: NewBuilder("test-es").
+					WithNamespace("ns").
+					WithVersion("8.0.0").
+					WithNodeSet("data-only", 3, esv1.DataRole),
+				version: "8.0.0",
+			},
+			want:    []esv1.NodeRole{esv1.DataRole},
+			wantErr: false,
+		},
+		{
+			name: "multiple roles",
+			args: args{
+				statefulSetName: "master-data",
+				builder: NewBuilder("test-es").
+					WithNamespace("ns").
+					WithVersion("8.0.0").
+					WithNodeSet("master-data", 3, esv1.MasterRole, esv1.DataRole),
+				version: "8.0.0",
+			},
+			want:    []esv1.NodeRole{esv1.MasterRole, esv1.DataRole},
+			wantErr: false,
+		},
+		{
+			name: "coordinating node (empty roles slice)",
+			args: args{
+				statefulSetName: "coordinating",
+				builder: NewBuilder("test-es").
+					WithNamespace("ns").
+					WithVersion("8.0.0").
+					WithNodeSet("coordinating", 2, esv1.CoordinatingRole),
+				version: "8.0.0",
+			},
+			want:    []esv1.NodeRole{esv1.CoordinatingRole},
+			wantErr: false,
+		},
+		{
+			name: "data tier roles",
+			args: args{
+				statefulSetName: "data-hot-warm",
+				builder: NewBuilder("test-es").
+					WithNamespace("ns").
+					WithVersion("8.0.0").
+					WithNodeSet("data-hot-warm", 3, esv1.DataHotRole, esv1.DataWarmRole),
+				version: "8.0.0",
+			},
+			want:    []esv1.NodeRole{esv1.DataHotRole, esv1.DataWarmRole},
+			wantErr: false,
+		},
+		{
+			name: "non-existent statefulset",
+			args: args{
+				statefulSetName: "non-existent",
+				builder: NewBuilder("test-es").
+					WithNamespace("ns").
+					WithVersion("8.0.0").
+					WithNodeSet("master-only", 3, esv1.MasterRole),
+				version: "8.0.0",
+			},
+			want:    nil,
+			wantErr: true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			resourcesList, err := tt.args.builder.BuildResourcesList()
+			require.NoError(t, err)
+
+			statefulSets := tt.args.builder.GetStatefulSets()
+			// get the specified statefulSet from the list to pass as argument to getRolesForStatefulSet
+			var statefulSet appsv1.StatefulSet
+			found := false
+			for _, sset := range statefulSets {
+				if sset.Name == tt.args.statefulSetName {
+					statefulSet = sset
+					found = true
+					break
+				}
+			}
+
+			if !found && !tt.wantErr {
+				t.Fatalf("StatefulSet %s not found in test fixtures", tt.args.statefulSetName)
+			}
+
+			v, err := version.Parse(tt.args.version)
+			require.NoError(t, err)
+
+			got, err := getRolesForStatefulSet(statefulSet, resourcesList, v)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("getRolesForStatefulSet() error = %v, wantErr %v", err, tt.wantErr)
+				return
+			}
+			if !reflect.DeepEqual(got, tt.want) {
+				t.Errorf("getRolesForStatefulSet() = %v, want %v", got, tt.want)
 			}
 		})
 	}
