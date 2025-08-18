@@ -16,6 +16,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 
+	commonv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/common/v1"
 	policyv1alpha1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/stackconfigpolicy/v1alpha1"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/license"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/operator"
@@ -181,6 +182,109 @@ func TestCheckWeightConflicts(t *testing.T) {
 			},
 			operatorNamespace: "elastic-system",
 			expectError:       false,
+		},
+		{
+			name: "no conflict - same weight, same selectors, but different snapshot repositories",
+			currentPolicy: &policyv1alpha1.StackConfigPolicy{
+				ObjectMeta: metav1.ObjectMeta{Name: "policy1", Namespace: "default"},
+				Spec: policyv1alpha1.StackConfigPolicySpec{
+					Weight: 10,
+					ResourceSelector: metav1.LabelSelector{
+						MatchLabels: map[string]string{"app": "elasticsearch"},
+					},
+					Elasticsearch: policyv1alpha1.ElasticsearchConfigPolicySpec{
+						SnapshotRepositories: &commonv1.Config{
+							Data: map[string]interface{}{
+								"policy-1-backups": map[string]interface{}{
+									"type": "s3",
+									"settings": map[string]interface{}{
+										"bucket": "policy-1-backups",
+										"region": "us-west-2",
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+			existingPolicies: []policyv1alpha1.StackConfigPolicy{
+				{
+					ObjectMeta: metav1.ObjectMeta{Name: "policy2", Namespace: "default"},
+					Spec: policyv1alpha1.StackConfigPolicySpec{
+						Weight: 10,
+						ResourceSelector: metav1.LabelSelector{
+							MatchLabels: map[string]string{"app": "elasticsearch"},
+						},
+						Elasticsearch: policyv1alpha1.ElasticsearchConfigPolicySpec{
+							SnapshotRepositories: &commonv1.Config{
+								Data: map[string]interface{}{
+									"policy-2-backups": map[string]interface{}{
+										"type": "s3",
+										"settings": map[string]interface{}{
+											"bucket": "policy-2-backups",
+											"region": "us-east-1",
+										},
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+			operatorNamespace: "elastic-system",
+			expectError:       false,
+		},
+		{
+			name: "conflict - same weight, same selectors, conflicting snapshot repositories",
+			currentPolicy: &policyv1alpha1.StackConfigPolicy{
+				ObjectMeta: metav1.ObjectMeta{Name: "policy1", Namespace: "default"},
+				Spec: policyv1alpha1.StackConfigPolicySpec{
+					Weight: 10,
+					ResourceSelector: metav1.LabelSelector{
+						MatchLabels: map[string]string{"app": "elasticsearch"},
+					},
+					Elasticsearch: policyv1alpha1.ElasticsearchConfigPolicySpec{
+						SnapshotRepositories: &commonv1.Config{
+							Data: map[string]interface{}{
+								"shared-backups": map[string]interface{}{
+									"type": "s3",
+									"settings": map[string]interface{}{
+										"bucket": "policy-1-backups",
+										"region": "us-west-2",
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+			existingPolicies: []policyv1alpha1.StackConfigPolicy{
+				{
+					ObjectMeta: metav1.ObjectMeta{Name: "policy2", Namespace: "default"},
+					Spec: policyv1alpha1.StackConfigPolicySpec{
+						Weight: 10,
+						ResourceSelector: metav1.LabelSelector{
+							MatchLabels: map[string]string{"app": "elasticsearch"},
+						},
+						Elasticsearch: policyv1alpha1.ElasticsearchConfigPolicySpec{
+							SnapshotRepositories: &commonv1.Config{
+								Data: map[string]interface{}{
+									"shared-backups": map[string]interface{}{
+										"type": "s3",
+										"settings": map[string]interface{}{
+											"bucket": "policy-2-backups",
+											"region": "us-east-1",
+										},
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+			operatorNamespace: "elastic-system",
+			expectError:       true,
+			errorContains:     "weight conflict detected",
 		},
 	}
 

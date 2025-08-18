@@ -159,6 +159,7 @@ func (s *Settings) updateState(es types.NamespacedName, policy policyv1alpha1.St
 }
 
 // mergeConfig merges source config into target config, with source taking precedence
+// For map-type values (like snapshot repositories), individual entries are merged rather than replaced
 func (s *Settings) mergeConfig(target, source *commonv1.Config) {
 	if source == nil || source.Data == nil {
 		return
@@ -168,6 +169,19 @@ func (s *Settings) mergeConfig(target, source *commonv1.Config) {
 	}
 
 	for key, value := range source.Data {
+		// Check if both target and source values are maps (like snapshot repositories)
+		if targetValue, exists := target.Data[key]; exists {
+			if targetMap, targetIsMap := targetValue.(map[string]interface{}); targetIsMap {
+				if sourceMap, sourceIsMap := value.(map[string]interface{}); sourceIsMap {
+					// Deep merge maps - source entries take precedence
+					for subKey, subValue := range sourceMap {
+						targetMap[subKey] = subValue
+					}
+					continue
+				}
+			}
+		}
+		// For non-map values or if target doesn't exist, replace entirely
 		target.Data[key] = value
 	}
 }

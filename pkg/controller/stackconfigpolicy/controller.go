@@ -846,7 +846,7 @@ func additionalSecretMountsWatcherName(watcher types.NamespacedName) string {
 }
 
 // checkWeightConflicts validates that no other StackConfigPolicy has the same weight
-// and targets overlapping resources
+// and would create conflicting configuration for the same resources
 func (r *ReconcileStackConfigPolicy) checkWeightConflicts(ctx context.Context, policy *policyv1alpha1.StackConfigPolicy) error {
 	var allPolicies policyv1alpha1.StackConfigPolicyList
 	if err := r.Client.List(ctx, &allPolicies); err != nil {
@@ -868,7 +868,7 @@ func (r *ReconcileStackConfigPolicy) checkWeightConflicts(ctx context.Context, p
 		policiesByWeight[otherPolicy.Spec.Weight] = append(policiesByWeight[otherPolicy.Spec.Weight], otherPolicy)
 	}
 
-	// Check if any policies with the same weight could target overlapping resources
+	// Check if any policies with the same weight could target overlapping resources and have conflicting settings
 	conflictingPolicies := policiesByWeight[policy.Spec.Weight]
 	if len(conflictingPolicies) == 0 {
 		return nil // No conflicts
@@ -876,12 +876,142 @@ func (r *ReconcileStackConfigPolicy) checkWeightConflicts(ctx context.Context, p
 
 	for _, otherPolicy := range conflictingPolicies {
 		if r.policiesCouldOverlap(ctx, policy, &otherPolicy, policySelector) {
-			return fmt.Errorf("weight conflict detected: StackConfigPolicy %s/%s has the same weight (%d) and could target overlapping resources. Policies with the same weight must target non-overlapping resources to ensure deterministic behavior",
-				otherPolicy.Namespace, otherPolicy.Name, policy.Spec.Weight)
+			// Check if the policies have conflicting settings
+			if r.policiesHaveConflictingSettings(policy, &otherPolicy) {
+				return fmt.Errorf("weight conflict detected: StackConfigPolicy %s/%s has the same weight (%d) and would overwrite conflicting settings. Policies with the same weight that target overlapping resources must configure different, non-conflicting settings",
+					otherPolicy.Namespace, otherPolicy.Name, policy.Spec.Weight)
+			}
 		}
 	}
 
 	return nil
+}
+
+// policiesHaveConflictingSettings checks if two policies would configure conflicting settings
+// that would overwrite each other. Returns true if both policies configure the same setting keys,
+// or if both policies have completely empty configurations (to maintain existing behavior).
+func (r *ReconcileStackConfigPolicy) policiesHaveConflictingSettings(policy1, policy2 *policyv1alpha1.StackConfigPolicy) bool {
+	// Check if both policies are essentially empty (no meaningful configuration)
+	if r.policyIsEmpty(policy1) && r.policyIsEmpty(policy2) {
+		return true // Both empty policies would conflict in the same namespace/selectors
+	}
+	
+	// Check Elasticsearch settings for conflicts
+	if r.elasticsearchSettingsConflict(policy1, policy2) {
+		return true
+	}
+	
+	// Check Kibana settings for conflicts
+	if r.kibanaSettingsConflict(policy1, policy2) {
+		return true
+	}
+	
+	return false
+}
+
+// policyIsEmpty checks if a policy has no meaningful configuration
+func (r *ReconcileStackConfigPolicy) policyIsEmpty(policy *policyv1alpha1.StackConfigPolicy) bool {
+	es := &policy.Spec.Elasticsearch
+	kb := &policy.Spec.Kibana
+	
+	// Check if Elasticsearch settings are empty
+	esEmpty := (es.ClusterSettings == nil || len(es.ClusterSettings.Data) == 0) &&
+		(es.SnapshotRepositories == nil || len(es.SnapshotRepositories.Data) == 0) &&
+		(es.SnapshotLifecyclePolicies == nil || len(es.SnapshotLifecyclePolicies.Data) == 0) &&
+		(es.SecurityRoleMappings == nil || len(es.SecurityRoleMappings.Data) == 0) &&
+		(es.IndexLifecyclePolicies == nil || len(es.IndexLifecyclePolicies.Data) == 0) &&
+		(es.IngestPipelines == nil || len(es.IngestPipelines.Data) == 0) &&
+		(es.IndexTemplates.ComponentTemplates == nil || len(es.IndexTemplates.ComponentTemplates.Data) == 0) &&
+		(es.IndexTemplates.ComposableIndexTemplates == nil || len(es.IndexTemplates.ComposableIndexTemplates.Data) == 0) &&
+		(es.Config == nil || len(es.Config.Data) == 0) &&
+		len(es.SecretMounts) == 0
+	
+	// Check if Kibana settings are empty
+	kbEmpty := (kb.Config == nil || len(kb.Config.Data) == 0)
+	
+	return esEmpty && kbEmpty
+}
+
+// elasticsearchSettingsConflict checks if two policies have conflicting Elasticsearch settings
+func (r *ReconcileStackConfigPolicy) elasticsearchSettingsConflict(policy1, policy2 *policyv1alpha1.StackConfigPolicy) bool {
+	es1 := &policy1.Spec.Elasticsearch
+	es2 := &policy2.Spec.Elasticsearch
+	
+	// Check each type of setting for key conflicts
+	if r.configsConflict(es1.ClusterSettings, es2.ClusterSettings) {
+		return true
+	}
+	if r.configsConflict(es1.SnapshotRepositories, es2.SnapshotRepositories) {
+		return true
+	}
+	if r.configsConflict(es1.SnapshotLifecyclePolicies, es2.SnapshotLifecyclePolicies) {
+		return true
+	}
+	if r.configsConflict(es1.SecurityRoleMappings, es2.SecurityRoleMappings) {
+		return true
+	}
+	if r.configsConflict(es1.IndexLifecyclePolicies, es2.IndexLifecyclePolicies) {
+		return true
+	}
+	if r.configsConflict(es1.IngestPipelines, es2.IngestPipelines) {
+		return true
+	}
+	if r.configsConflict(es1.IndexTemplates.ComponentTemplates, es2.IndexTemplates.ComponentTemplates) {
+		return true
+	}
+	if r.configsConflict(es1.IndexTemplates.ComposableIndexTemplates, es2.IndexTemplates.ComposableIndexTemplates) {
+		return true
+	}
+	if r.configsConflict(es1.Config, es2.Config) {
+		return true
+	}
+	
+	// Check secret mounts for path conflicts
+	return r.secretMountsConflict(es1.SecretMounts, es2.SecretMounts)
+}
+
+// kibanaSettingsConflict checks if two policies have conflicting Kibana settings
+func (r *ReconcileStackConfigPolicy) kibanaSettingsConflict(policy1, policy2 *policyv1alpha1.StackConfigPolicy) bool {
+	kb1 := &policy1.Spec.Kibana
+	kb2 := &policy2.Spec.Kibana
+	
+	return r.configsConflict(kb1.Config, kb2.Config)
+}
+
+// configsConflict checks if two Config objects have overlapping keys
+func (r *ReconcileStackConfigPolicy) configsConflict(config1, config2 *commonv1.Config) bool {
+	if config1 == nil || config2 == nil || config1.Data == nil || config2.Data == nil {
+		return false
+	}
+	
+	// Check if there are any common keys
+	for key := range config1.Data {
+		if _, exists := config2.Data[key]; exists {
+			return true
+		}
+	}
+	
+	return false
+}
+
+// secretMountsConflict checks if two sets of secret mounts have overlapping mount paths
+func (r *ReconcileStackConfigPolicy) secretMountsConflict(mounts1, mounts2 []policyv1alpha1.SecretMount) bool {
+	if len(mounts1) == 0 || len(mounts2) == 0 {
+		return false
+	}
+	
+	paths1 := make(map[string]bool)
+	for _, mount := range mounts1 {
+		paths1[mount.MountPath] = true
+	}
+	
+	for _, mount := range mounts2 {
+		if paths1[mount.MountPath] {
+			return true
+		}
+	}
+	
+	return false
 }
 
 // policiesCouldOverlap checks if two policies could potentially target the same resources
