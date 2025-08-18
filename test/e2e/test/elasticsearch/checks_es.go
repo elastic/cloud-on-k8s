@@ -370,15 +370,18 @@ func compareCgroupMemoryLimit(topologyElement esv1.NodeSet, nodeStats client.Nod
 			memoryLimit = c.Resources.Limits.Memory()
 		}
 	}
+	fmt.Printf("ES manifest memory limit: %v\n", memoryLimit)
 	if memoryLimit == nil || memoryLimit.IsZero() {
 		// no expected memory, consider it's ok
 		return nil
 	}
 
+	fmt.Printf("ES returned cgroup memory limit in bytes: %s\n", nodeStats.OS.CGroup.Memory.LimitInBytes)
 	// ES returns a string, parse it as an int64, base10
 	actualCgroupMemoryLimit, err := strconv.ParseInt(
 		nodeStats.OS.CGroup.Memory.LimitInBytes, 10, 64,
 	)
+	fmt.Printf("ES parsed cgroup memory limit in bytes: %d\n", actualCgroupMemoryLimit)
 	if err != nil {
 		return fmt.Errorf("while parsing cgroup memory limit: %w", err)
 	}
@@ -397,13 +400,17 @@ func compareCgroupCPULimit(topologyElement esv1.NodeSet, nodeStats client.NodeSt
 			expectedCPULimit = c.Resources.Limits.Cpu()
 		}
 	}
+
+	fmt.Printf("ES manifest cpu limit: %v\n", expectedCPULimit)
 	if expectedCPULimit == nil || expectedCPULimit.IsZero() {
 		// no expected cpu, consider it's ok
 		return nil
 	}
 
 	cgroupCPU := nodeStats.OS.CGroup.CPU
+	fmt.Printf("ES returned cgroup cpu limit: %v\n", cgroupCPU)
 	actualCgroupCPULimit := float64(cgroupCPU.CFSQuotaMicros) / float64(cgroupCPU.CFSPeriodMicros)
+	fmt.Printf("ES calculated cgroup cpu limit: %v\n", actualCgroupCPULimit)
 	if expectedCPULimit.AsApproximateFloat64() != actualCgroupCPULimit {
 		return fmt.Errorf("expected cgroup CPU limit [%f], got [%f]", expectedCPULimit.AsApproximateFloat64(), actualCgroupCPULimit)
 	}
