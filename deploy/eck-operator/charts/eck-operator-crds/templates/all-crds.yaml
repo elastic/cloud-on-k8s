@@ -233,8 +233,7 @@ spec:
                     secretName:
                       description: |-
                         SecretName is the name of an existing Kubernetes secret that contains connection information for associating an
-                        Elastic resource not managed by the operator.
-                        The referenced secret must contain the following:
+                        Elastic resource not managed by the operator. The referenced secret must contain the following:
                         - `url`: the URL to reach the Elastic resource
                         - `username`: the username of the user to be authenticated to the Elastic resource
                         - `password`: the password of the user to be authenticated to the Elastic resource
@@ -258,7 +257,6 @@ spec:
                 description: |-
                   FleetServerRef is a reference to Fleet Server that this Agent should connect to to obtain it's configuration.
                   Don't set unless `mode` is set to `fleet`.
-                  References to Fleet servers running outside the Kubernetes cluster via the `secretName` attribute are not supported.
                 properties:
                   name:
                     description: Name of an existing Kubernetes object corresponding
@@ -271,8 +269,7 @@ spec:
                   secretName:
                     description: |-
                       SecretName is the name of an existing Kubernetes secret that contains connection information for associating an
-                      Elastic resource not managed by the operator.
-                      The referenced secret must contain the following:
+                      Elastic resource not managed by the operator. The referenced secret must contain the following:
                       - `url`: the URL to reach the Elastic resource
                       - `username`: the username of the user to be authenticated to the Elastic resource
                       - `password`: the password of the user to be authenticated to the Elastic resource
@@ -723,8 +720,7 @@ spec:
                   secretName:
                     description: |-
                       SecretName is the name of an existing Kubernetes secret that contains connection information for associating an
-                      Elastic resource not managed by the operator.
-                      The referenced secret must contain the following:
+                      Elastic resource not managed by the operator. The referenced secret must contain the following:
                       - `url`: the URL to reach the Elastic resource
                       - `username`: the username of the user to be authenticated to the Elastic resource
                       - `password`: the password of the user to be authenticated to the Elastic resource
@@ -1224,8 +1220,7 @@ spec:
                   secretName:
                     description: |-
                       SecretName is the name of an existing Kubernetes secret that contains connection information for associating an
-                      Elastic resource not managed by the operator.
-                      The referenced secret must contain the following:
+                      Elastic resource not managed by the operator. The referenced secret must contain the following:
                       - `url`: the URL to reach the Elastic resource
                       - `username`: the username of the user to be authenticated to the Elastic resource
                       - `password`: the password of the user to be authenticated to the Elastic resource
@@ -1675,8 +1670,7 @@ spec:
                   secretName:
                     description: |-
                       SecretName is the name of an existing Kubernetes secret that contains connection information for associating an
-                      Elastic resource not managed by the operator.
-                      The referenced secret must contain the following:
+                      Elastic resource not managed by the operator. The referenced secret must contain the following:
                       - `url`: the URL to reach the Elastic resource
                       - `username`: the username of the user to be authenticated to the Elastic resource
                       - `password`: the password of the user to be authenticated to the Elastic resource
@@ -2604,8 +2598,7 @@ spec:
                   secretName:
                     description: |-
                       SecretName is the name of an existing Kubernetes secret that contains connection information for associating an
-                      Elastic resource not managed by the operator.
-                      The referenced secret must contain the following:
+                      Elastic resource not managed by the operator. The referenced secret must contain the following:
                       - `url`: the URL to reach the Elastic resource
                       - `username`: the username of the user to be authenticated to the Elastic resource
                       - `password`: the password of the user to be authenticated to the Elastic resource
@@ -2640,8 +2633,7 @@ spec:
                   secretName:
                     description: |-
                       SecretName is the name of an existing Kubernetes secret that contains connection information for associating an
-                      Elastic resource not managed by the operator.
-                      The referenced secret must contain the following:
+                      Elastic resource not managed by the operator. The referenced secret must contain the following:
                       - `url`: the URL to reach the Elastic resource
                       - `username`: the username of the user to be authenticated to the Elastic resource
                       - `password`: the password of the user to be authenticated to the Elastic resource
@@ -2686,8 +2678,7 @@ spec:
                             secretName:
                               description: |-
                                 SecretName is the name of an existing Kubernetes secret that contains connection information for associating an
-                                Elastic resource not managed by the operator.
-                                The referenced secret must contain the following:
+                                Elastic resource not managed by the operator. The referenced secret must contain the following:
                                 - `url`: the URL to reach the Elastic resource
                                 - `username`: the username of the user to be authenticated to the Elastic resource
                                 - `password`: the password of the user to be authenticated to the Elastic resource
@@ -2728,8 +2719,7 @@ spec:
                             secretName:
                               description: |-
                                 SecretName is the name of an existing Kubernetes secret that contains connection information for associating an
-                                Elastic resource not managed by the operator.
-                                The referenced secret must contain the following:
+                                Elastic resource not managed by the operator. The referenced secret must contain the following:
                                 - `url`: the URL to reach the Elastic resource
                                 - `username`: the username of the user to be authenticated to the Elastic resource
                                 - `password`: the password of the user to be authenticated to the Elastic resource
@@ -2955,8 +2945,7 @@ spec:
                   secretName:
                     description: |-
                       SecretName is the name of an existing Kubernetes secret that contains connection information for associating an
-                      Elastic resource not managed by the operator.
-                      The referenced secret must contain the following:
+                      Elastic resource not managed by the operator. The referenced secret must contain the following:
                       - `url`: the URL to reach the Elastic resource
                       - `username`: the username of the user to be authenticated to the Elastic resource
                       - `password`: the password of the user to be authenticated to the Elastic resource
@@ -4367,8 +4356,7 @@ spec:
                             secretName:
                               description: |-
                                 SecretName is the name of an existing Kubernetes secret that contains connection information for associating an
-                                Elastic resource not managed by the operator.
-                                The referenced secret must contain the following:
+                                Elastic resource not managed by the operator. The referenced secret must contain the following:
                                 - `url`: the URL to reach the Elastic resource
                                 - `username`: the username of the user to be authenticated to the Elastic resource
                                 - `password`: the password of the user to be authenticated to the Elastic resource
@@ -4409,8 +4397,7 @@ spec:
                             secretName:
                               description: |-
                                 SecretName is the name of an existing Kubernetes secret that contains connection information for associating an
-                                Elastic resource not managed by the operator.
-                                The referenced secret must contain the following:
+                                Elastic resource not managed by the operator. The referenced secret must contain the following:
                                 - `url`: the URL to reach the Elastic resource
                                 - `username`: the username of the user to be authenticated to the Elastic resource
                                 - `password`: the password of the user to be authenticated to the Elastic resource
@@ -6709,8 +6696,7 @@ spec:
                   secretName:
                     description: |-
                       SecretName is the name of an existing Kubernetes secret that contains connection information for associating an
-                      Elastic resource not managed by the operator.
-                      The referenced secret must contain the following:
+                      Elastic resource not managed by the operator. The referenced secret must contain the following:
                       - `url`: the URL to reach the Elastic resource
                       - `username`: the username of the user to be authenticated to the Elastic resource
                       - `password`: the password of the user to be authenticated to the Elastic resource
@@ -7288,8 +7274,7 @@ spec:
                   secretName:
                     description: |-
                       SecretName is the name of an existing Kubernetes secret that contains connection information for associating an
-                      Elastic resource not managed by the operator.
-                      The referenced secret must contain the following:
+                      Elastic resource not managed by the operator. The referenced secret must contain the following:
                       - `url`: the URL to reach the Elastic resource
                       - `username`: the username of the user to be authenticated to the Elastic resource
                       - `password`: the password of the user to be authenticated to the Elastic resource
@@ -7866,8 +7851,7 @@ spec:
                   secretName:
                     description: |-
                       SecretName is the name of an existing Kubernetes secret that contains connection information for associating an
-                      Elastic resource not managed by the operator.
-                      The referenced secret must contain the following:
+                      Elastic resource not managed by the operator. The referenced secret must contain the following:
                       - `url`: the URL to reach the Elastic resource
                       - `username`: the username of the user to be authenticated to the Elastic resource
                       - `password`: the password of the user to be authenticated to the Elastic resource
@@ -7898,8 +7882,7 @@ spec:
                   secretName:
                     description: |-
                       SecretName is the name of an existing Kubernetes secret that contains connection information for associating an
-                      Elastic resource not managed by the operator.
-                      The referenced secret must contain the following:
+                      Elastic resource not managed by the operator. The referenced secret must contain the following:
                       - `url`: the URL to reach the Elastic resource
                       - `username`: the username of the user to be authenticated to the Elastic resource
                       - `password`: the password of the user to be authenticated to the Elastic resource
@@ -8363,8 +8346,7 @@ spec:
                             secretName:
                               description: |-
                                 SecretName is the name of an existing Kubernetes secret that contains connection information for associating an
-                                Elastic resource not managed by the operator.
-                                The referenced secret must contain the following:
+                                Elastic resource not managed by the operator. The referenced secret must contain the following:
                                 - `url`: the URL to reach the Elastic resource
                                 - `username`: the username of the user to be authenticated to the Elastic resource
                                 - `password`: the password of the user to be authenticated to the Elastic resource
@@ -8405,8 +8387,7 @@ spec:
                             secretName:
                               description: |-
                                 SecretName is the name of an existing Kubernetes secret that contains connection information for associating an
-                                Elastic resource not managed by the operator.
-                                The referenced secret must contain the following:
+                                Elastic resource not managed by the operator. The referenced secret must contain the following:
                                 - `url`: the URL to reach the Elastic resource
                                 - `username`: the username of the user to be authenticated to the Elastic resource
                                 - `password`: the password of the user to be authenticated to the Elastic resource
@@ -9206,8 +9187,7 @@ spec:
                     secretName:
                       description: |-
                         SecretName is the name of an existing Kubernetes secret that contains connection information for associating an
-                        Elastic resource not managed by the operator.
-                        The referenced secret must contain the following:
+                        Elastic resource not managed by the operator. The referenced secret must contain the following:
                         - `url`: the URL to reach the Elastic resource
                         - `username`: the username of the user to be authenticated to the Elastic resource
                         - `password`: the password of the user to be authenticated to the Elastic resource
@@ -9259,8 +9239,7 @@ spec:
                             secretName:
                               description: |-
                                 SecretName is the name of an existing Kubernetes secret that contains connection information for associating an
-                                Elastic resource not managed by the operator.
-                                The referenced secret must contain the following:
+                                Elastic resource not managed by the operator. The referenced secret must contain the following:
                                 - `url`: the URL to reach the Elastic resource
                                 - `username`: the username of the user to be authenticated to the Elastic resource
                                 - `password`: the password of the user to be authenticated to the Elastic resource
@@ -9301,8 +9280,7 @@ spec:
                             secretName:
                               description: |-
                                 SecretName is the name of an existing Kubernetes secret that contains connection information for associating an
-                                Elastic resource not managed by the operator.
-                                The referenced secret must contain the following:
+                                Elastic resource not managed by the operator. The referenced secret must contain the following:
                                 - `url`: the URL to reach the Elastic resource
                                 - `username`: the username of the user to be authenticated to the Elastic resource
                                 - `password`: the password of the user to be authenticated to the Elastic resource
@@ -10634,6 +10612,13 @@ spec:
                   - secretName
                   type: object
                 type: array
+              weight:
+                default: 0
+                description: |-
+                  Weight determines the priority of this policy when multiple policies target the same resource.
+                  Lower weight values take precedence (0 is highest priority). Defaults to 0.
+                format: int32
+                type: integer
             type: object
           status:
             properties:

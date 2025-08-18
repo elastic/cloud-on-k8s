@@ -144,3 +144,151 @@ func setKibanaSecureSettings(settingsSecret *corev1.Secret, policy policyv1alpha
 	settingsSecret.Annotations[commonannotation.SecureSettingsSecretsAnnotationName] = string(bytes)
 	return nil
 }
+
+// Multi-policy versions of Kibana functions
+
+// newKibanaConfigSecretFromPolicies creates a Kibana config secret from multiple policies
+func (r *ReconcileStackConfigPolicy) newKibanaConfigSecretFromPolicies(policies []policyv1alpha1.StackConfigPolicy, kibana kibanav1.Kibana) (corev1.Secret, error) {
+	var mergedConfig *commonv1.Config
+	
+	// Sort policies by weight (descending) so lower weights override higher ones
+	sortedPolicies := make([]policyv1alpha1.StackConfigPolicy, len(policies))
+	copy(sortedPolicies, policies)
+	for i := 0; i < len(sortedPolicies)-1; i++ {
+		for j := 0; j < len(sortedPolicies)-i-1; j++ {
+			if sortedPolicies[j].Spec.Weight < sortedPolicies[j+1].Spec.Weight {
+				sortedPolicies[j], sortedPolicies[j+1] = sortedPolicies[j+1], sortedPolicies[j]
+			}
+		}
+	}
+	
+	// Merge Kibana configs (lower weight policies override higher ones)
+	for _, policy := range sortedPolicies {
+		if policy.Spec.Kibana.Config != nil {
+			if mergedConfig == nil {
+				mergedConfig = policy.Spec.Kibana.Config.DeepCopy()
+			} else {
+				// Merge the config data, with current policy taking precedence
+				for key, value := range policy.Spec.Kibana.Config.Data {
+					mergedConfig.Data[key] = value
+				}
+			}
+		}
+	}
+	
+	kibanaConfigHash := getKibanaConfigHash(mergedConfig)
+	configDataJSONBytes := []byte("")
+	var err error
+	if mergedConfig != nil {
+		if configDataJSONBytes, err = mergedConfig.MarshalJSON(); err != nil {
+			return corev1.Secret{}, err
+		}
+	}
+	
+	meta := metadata.Propagate(&kibana, metadata.Metadata{
+		Labels: kblabel.NewLabels(k8s.ExtractNamespacedName(&kibana)),
+		Annotations: map[string]string{
+			commonannotation.KibanaConfigHashAnnotation: kibanaConfigHash,
+		},
+	})
+	kibanaConfigSecret := corev1.Secret{
+		ObjectMeta: metav1.ObjectMeta{
+			Namespace:   kibana.Namespace,
+			Name:        GetPolicyConfigSecretName(kibana.Name),
+			Labels:      meta.Labels,
+			Annotations: meta.Annotations,
+		},
+		Data: map[string][]byte{
+			KibanaConfigKey: configDataJSONBytes,
+		},
+	}
+
+	// Store all policy references in the secret
+	var policyRefs []filesettings.PolicyRef
+	for _, policy := range policies {
+		policyRefs = append(policyRefs, filesettings.PolicyRef{
+			Name:      policy.Name,
+			Namespace: policy.Namespace,
+			Weight:    policy.Spec.Weight,
+		})
+	}
+	if err := filesettings.SetPolicyRefs(&kibanaConfigSecret, policyRefs); err != nil {
+		return corev1.Secret{}, err
+	}
+
+	// Add label to delete secret on deletion of stack config policies
+	kibanaConfigSecret.Labels[commonlabels.StackConfigPolicyOnDeleteLabelName] = commonlabels.OrphanSecretDeleteOnPolicyDelete
+
+	// Add SecureSettings from all policies as annotation
+	if err = r.setKibanaSecureSettingsFromPolicies(&kibanaConfigSecret, policies); err != nil {
+		return kibanaConfigSecret, err
+	}
+
+	return kibanaConfigSecret, nil
+}
+
+// kibanaConfigAppliedFromPolicies checks if configs from all policies have been applied to Kibana
+func (r *ReconcileStackConfigPolicy) kibanaConfigAppliedFromPolicies(policies []policyv1alpha1.StackConfigPolicy, kb kibanav1.Kibana) (bool, error) {
+	existingKibanaPods, err := k8s.PodsMatchingLabels(r.Client, kb.Namespace, map[string]string{"kibana.k8s.elastic.co/name": kb.Name})
+	if err != nil || len(existingKibanaPods) == 0 {
+		return false, err
+	}
+
+	// Compute expected hash from merged policies
+	var mergedConfig *commonv1.Config
+
+	// Sort policies by weight and merge (descending order)
+	sortedPolicies := make([]policyv1alpha1.StackConfigPolicy, len(policies))
+	copy(sortedPolicies, policies)
+	for i := 0; i < len(sortedPolicies)-1; i++ {
+		for j := 0; j < len(sortedPolicies)-i-1; j++ {
+			if sortedPolicies[j].Spec.Weight < sortedPolicies[j+1].Spec.Weight {
+				sortedPolicies[j], sortedPolicies[j+1] = sortedPolicies[j+1], sortedPolicies[j]
+			}
+		}
+	}
+
+	for _, policy := range sortedPolicies {
+		if policy.Spec.Kibana.Config != nil {
+			if mergedConfig == nil {
+				mergedConfig = policy.Spec.Kibana.Config.DeepCopy()
+			} else {
+				for key, value := range policy.Spec.Kibana.Config.Data {
+					mergedConfig.Data[key] = value
+				}
+			}
+		}
+	}
+
+	expectedHash := getKibanaConfigHash(mergedConfig)
+	for _, kbPod := range existingKibanaPods {
+		if kbPod.Annotations[commonannotation.KibanaConfigHashAnnotation] != expectedHash {
+			return false, nil
+		}
+	}
+
+	return true, nil
+}
+
+// setKibanaSecureSettingsFromPolicies stores secure settings from multiple policies
+func (r *ReconcileStackConfigPolicy) setKibanaSecureSettingsFromPolicies(settingsSecret *corev1.Secret, policies []policyv1alpha1.StackConfigPolicy) error {
+	var allSecretSources []commonv1.NamespacedSecretSource //nolint:prealloc
+	
+	for _, policy := range policies {
+		// SecureSettings field under Kibana in the StackConfigPolicy
+		for _, src := range policy.Spec.Kibana.SecureSettings {
+			allSecretSources = append(allSecretSources, commonv1.NamespacedSecretSource{Namespace: policy.GetNamespace(), SecretName: src.SecretName, Entries: src.Entries})
+		}
+	}
+	
+	if len(allSecretSources) == 0 {
+		return nil
+	}
+
+	bytes, err := json.Marshal(allSecretSources)
+	if err != nil {
+		return err
+	}
+	settingsSecret.Annotations[commonannotation.SecureSettingsSecretsAnnotationName] = string(bytes)
+	return nil
+}

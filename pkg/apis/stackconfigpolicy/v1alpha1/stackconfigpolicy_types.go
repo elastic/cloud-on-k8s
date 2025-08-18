@@ -55,6 +55,10 @@ type StackConfigPolicyList struct {
 
 type StackConfigPolicySpec struct {
 	ResourceSelector metav1.LabelSelector `json:"resourceSelector,omitempty"`
+	// Weight determines the priority of this policy when multiple policies target the same resource.
+	// Lower weight values take precedence (0 is highest priority). Defaults to 0.
+	// +kubebuilder:default=0
+	Weight int32 `json:"weight,omitempty"`
 	// Deprecated: SecureSettings only applies to Elasticsearch and is deprecated. It must be set per application instead.
 	SecureSettings []commonv1.SecretSource       `json:"secureSettings,omitempty"`
 	Elasticsearch  ElasticsearchConfigPolicySpec `json:"elasticsearch,omitempty"`

@@ -39,6 +39,85 @@ func NewSettingsSecretWithVersion(es types.NamespacedName, currentSecret *corev1
 	return newSettingsSecret(newVersion, es, currentSecret, policy, meta)
 }
 
+// NewSettingsSecretWithVersionFromPolicies returns a new SettingsSecret for a given Elasticsearch from multiple policies.
+// Policies are merged based on their weights, with higher weights taking precedence.
+func NewSettingsSecretWithVersionFromPolicies(es types.NamespacedName, currentSecret *corev1.Secret, policies []policyv1alpha1.StackConfigPolicy, meta metadata.Metadata) (corev1.Secret, int64, error) {
+	newVersion := time.Now().UnixNano()
+	return newSettingsSecretFromPolicies(newVersion, es, currentSecret, policies, meta)
+}
+
+// NewSettingsSecretFromPolicies returns a new SettingsSecret for a given Elasticsearch from multiple StackConfigPolicies.
+func newSettingsSecretFromPolicies(version int64, es types.NamespacedName, currentSecret *corev1.Secret, policies []policyv1alpha1.StackConfigPolicy, meta metadata.Metadata) (corev1.Secret, int64, error) {
+	settings := NewEmptySettings(version)
+
+	// update the settings according to the config policies
+	if len(policies) > 0 {
+		err := settings.updateStateFromPolicies(es, policies)
+		if err != nil {
+			return corev1.Secret{}, 0, err
+		}
+	}
+
+	// do not update version if hash hasn't changed
+	if currentSecret != nil && !hasChanged(*currentSecret, settings) {
+		currentVersion, err := extractVersion(*currentSecret)
+		if err != nil {
+			return corev1.Secret{}, 0, err
+		}
+
+		version = currentVersion
+		settings.Metadata.Version = strconv.FormatInt(currentVersion, 10)
+	}
+
+	// prepare the SettingsSecret
+	secretMeta := meta.Merge(metadata.Metadata{
+		Annotations: map[string]string{
+			commonannotation.SettingsHashAnnotationName: settings.hash(),
+		},
+	})
+	settingsBytes, err := json.Marshal(settings)
+	if err != nil {
+		return corev1.Secret{}, 0, err
+	}
+	settingsSecret := &corev1.Secret{
+		ObjectMeta: metav1.ObjectMeta{
+			Namespace:   es.Namespace,
+			Name:        esv1.FileSettingsSecretName(es.Name),
+			Labels:      secretMeta.Labels,
+			Annotations: secretMeta.Annotations,
+		},
+		Data: map[string][]byte{
+			SettingsSecretKey: settingsBytes,
+		},
+	}
+
+	// Store all policy references in the secret
+	var policyRefs []PolicyRef
+	for _, policy := range policies {
+		policyRefs = append(policyRefs, PolicyRef{
+			Name:      policy.Name,
+			Namespace: policy.Namespace,
+			Weight:    policy.Spec.Weight,
+		})
+	}
+	if err := SetPolicyRefs(settingsSecret, policyRefs); err != nil {
+		return corev1.Secret{}, 0, err
+	}
+
+	// Add secure settings from all policies
+	if err := setSecureSettingsFromPolicies(settingsSecret, policies); err != nil {
+		return corev1.Secret{}, 0, err
+	}
+
+	// Add a label to reset secret on deletion of the stack config policy
+	if settingsSecret.Labels == nil {
+		settingsSecret.Labels = make(map[string]string)
+	}
+	settingsSecret.Labels[commonlabel.StackConfigPolicyOnDeleteLabelName] = commonlabel.OrphanSecretResetOnPolicyDelete
+
+	return *settingsSecret, version, nil
+}
+
 // NewSettingsSecret returns a new SettingsSecret for a given Elasticsearch and StackConfigPolicy.
 func newSettingsSecret(version int64, es types.NamespacedName, currentSecret *corev1.Secret, policy *policyv1alpha1.StackConfigPolicy, meta metadata.Metadata) (corev1.Secret, int64, error) {
 	settings := NewEmptySettings(version)
@@ -160,6 +239,35 @@ func setSecureSettings(settingsSecret *corev1.Secret, policy policyv1alpha1.Stac
 	return nil
 }
 
+// setSecureSettingsFromPolicies sets secure settings from multiple policies into the settings secret
+func setSecureSettingsFromPolicies(settingsSecret *corev1.Secret, policies []policyv1alpha1.StackConfigPolicy) error {
+	var allSecretSources []commonv1.NamespacedSecretSource //nolint:prealloc
+	
+	for _, policy := range policies {
+		// Common secureSettings field, this is mainly there to maintain backwards compatibility
+		//nolint:staticcheck
+		for _, src := range policy.Spec.SecureSettings {
+			allSecretSources = append(allSecretSources, commonv1.NamespacedSecretSource{Namespace: policy.GetNamespace(), SecretName: src.SecretName, Entries: src.Entries})
+		}
+
+		// SecureSettings field under Elasticsearch in the StackConfigPolicy
+		for _, src := range policy.Spec.Elasticsearch.SecureSettings {
+			allSecretSources = append(allSecretSources, commonv1.NamespacedSecretSource{Namespace: policy.GetNamespace(), SecretName: src.SecretName, Entries: src.Entries})
+		}
+	}
+	
+	if len(allSecretSources) == 0 {
+		return nil
+	}
+
+	bytes, err := json.Marshal(allSecretSources)
+	if err != nil {
+		return err
+	}
+	settingsSecret.Annotations[commonannotation.SecureSettingsSecretsAnnotationName] = string(bytes)
+	return nil
+}
+
 // CanBeOwnedBy return true if the Settings Secret can be owned by the given StackConfigPolicy, either because the Secret
 // belongs to no one or because it already belongs to the given policy.
 func CanBeOwnedBy(settingsSecret corev1.Secret, policy policyv1alpha1.StackConfigPolicy) (reconciler.SoftOwnerRef, bool) {
@@ -171,6 +279,94 @@ func CanBeOwnedBy(settingsSecret corev1.Secret, policy policyv1alpha1.StackConfi
 	// or the owner is already the given policy
 	canBeOwned := currentOwner.Kind == policyv1alpha1.Kind && currentOwner.Namespace == policy.Namespace && currentOwner.Name == policy.Name
 	return currentOwner, canBeOwned
+}
+
+// PolicyRef represents a reference to a StackConfigPolicy with its weight
+type PolicyRef struct {
+	Name      string
+	Namespace string
+	Weight    int32
+}
+
+// GetPolicyRefs extracts all policy references from a secret's annotations
+func GetPolicyRefs(secret corev1.Secret) ([]PolicyRef, error) {
+	if secret.Annotations == nil {
+		return nil, nil
+	}
+	
+	policiesData, ok := secret.Annotations["stackconfigpolicy.k8s.elastic.co/policies"]
+	if !ok {
+		return nil, nil
+	}
+	
+	var policies []PolicyRef
+	if err := json.Unmarshal([]byte(policiesData), &policies); err != nil {
+		return nil, err
+	}
+	
+	return policies, nil
+}
+
+// SetPolicyRefs stores policy references in a secret's annotations
+func SetPolicyRefs(secret *corev1.Secret, policies []PolicyRef) error {
+	if secret.Annotations == nil {
+		secret.Annotations = make(map[string]string)
+	}
+	
+	data, err := json.Marshal(policies)
+	if err != nil {
+		return err
+	}
+	
+	secret.Annotations["stackconfigpolicy.k8s.elastic.co/policies"] = string(data)
+	return nil
+}
+
+// AddOrUpdatePolicyRef adds or updates a policy reference in the secret
+func AddOrUpdatePolicyRef(secret *corev1.Secret, policy policyv1alpha1.StackConfigPolicy) error {
+	policies, err := GetPolicyRefs(*secret)
+	if err != nil {
+		return err
+	}
+	
+	policyRef := PolicyRef{
+		Name:      policy.Name,
+		Namespace: policy.Namespace,
+		Weight:    policy.Spec.Weight,
+	}
+	
+	// Update existing policy or add new one
+	found := false
+	for i, p := range policies {
+		if p.Name == policy.Name && p.Namespace == policy.Namespace {
+			policies[i] = policyRef
+			found = true
+			break
+		}
+	}
+	
+	if !found {
+		policies = append(policies, policyRef)
+	}
+	
+	return SetPolicyRefs(secret, policies)
+}
+
+// RemovePolicyRef removes a policy reference from the secret
+func RemovePolicyRef(secret *corev1.Secret, policyName, policyNamespace string) error {
+	policies, err := GetPolicyRefs(*secret)
+	if err != nil {
+		return err
+	}
+	
+	var filtered []PolicyRef
+	for _, p := range policies {
+		if !(p.Name == policyName && p.Namespace == policyNamespace) {
+			filtered = append(filtered, p)
+		}
+	}
+	
+	return SetPolicyRefs(secret, filtered)
 }
 
 // getSecureSettings returns the SecureSettings Secret sources stores in an annotation of the given file settings Secret.
