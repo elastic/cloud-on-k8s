@@ -90,7 +90,7 @@ func (s *Settings) updateStateFromPolicies(es types.NamespacedName, policies []p
 	sortedPolicies := make([]policyv1alpha1.StackConfigPolicy, len(policies))
 	copy(sortedPolicies, policies)
 
-	// Simple bubble sort by weight (descending order)
+	// Bubble sort by weight (descending order)
 	for i := 0; i < len(sortedPolicies)-1; i++ {
 		for j := 0; j < len(sortedPolicies)-i-1; j++ {
 			if sortedPolicies[j].Spec.Weight < sortedPolicies[j+1].Spec.Weight {
@@ -99,7 +99,6 @@ func (s *Settings) updateStateFromPolicies(es types.NamespacedName, policies []p
 		}
 	}
 
-	// Merge settings from all policies in order of decreasing weight (lower weight = higher priority)
 	for _, policy := range sortedPolicies {
 		if err := s.updateState(es, policy); err != nil {
 			return err
@@ -169,11 +168,9 @@ func (s *Settings) mergeConfig(target, source *commonv1.Config) {
 	}
 
 	for key, value := range source.Data {
-		// Check if both target and source values are maps (like snapshot repositories)
 		if targetValue, exists := target.Data[key]; exists {
 			if targetMap, targetIsMap := targetValue.(map[string]interface{}); targetIsMap {
 				if sourceMap, sourceIsMap := value.(map[string]interface{}); sourceIsMap {
-					// Deep merge maps - source entries take precedence
 					for subKey, subValue := range sourceMap {
 						targetMap[subKey] = subValue
 					}
