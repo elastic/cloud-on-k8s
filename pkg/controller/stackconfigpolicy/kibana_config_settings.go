@@ -150,7 +150,7 @@ func setKibanaSecureSettings(settingsSecret *corev1.Secret, policy policyv1alpha
 // newKibanaConfigSecretFromPolicies creates a Kibana config secret from multiple policies
 func (r *ReconcileStackConfigPolicy) newKibanaConfigSecretFromPolicies(policies []policyv1alpha1.StackConfigPolicy, kibana kibanav1.Kibana) (corev1.Secret, error) {
 	var mergedConfig *commonv1.Config
-	
+
 	// Sort policies by weight (descending) so lower weights override higher ones
 	sortedPolicies := make([]policyv1alpha1.StackConfigPolicy, len(policies))
 	copy(sortedPolicies, policies)
@@ -161,7 +161,7 @@ func (r *ReconcileStackConfigPolicy) newKibanaConfigSecretFromPolicies(policies 
 			}
 		}
 	}
-	
+
 	// Merge Kibana configs (lower weight policies override higher ones)
 	for _, policy := range sortedPolicies {
 		if policy.Spec.Kibana.Config != nil {
@@ -175,7 +175,7 @@ func (r *ReconcileStackConfigPolicy) newKibanaConfigSecretFromPolicies(policies 
 			}
 		}
 	}
-	
+
 	kibanaConfigHash := getKibanaConfigHash(mergedConfig)
 	configDataJSONBytes := []byte("")
 	var err error
@@ -184,7 +184,7 @@ func (r *ReconcileStackConfigPolicy) newKibanaConfigSecretFromPolicies(policies 
 			return corev1.Secret{}, err
 		}
 	}
-	
+
 	meta := metadata.Propagate(&kibana, metadata.Metadata{
 		Labels: kblabel.NewLabels(k8s.ExtractNamespacedName(&kibana)),
 		Annotations: map[string]string{
@@ -204,7 +204,7 @@ func (r *ReconcileStackConfigPolicy) newKibanaConfigSecretFromPolicies(policies 
 	}
 
 	// Store all policy references in the secret
-	var policyRefs []filesettings.PolicyRef
+	policyRefs := make([]filesettings.PolicyRef, 0, len(policies))
 	for _, policy := range policies {
 		policyRefs = append(policyRefs, filesettings.PolicyRef{
 			Name:      policy.Name,
@@ -273,14 +273,14 @@ func (r *ReconcileStackConfigPolicy) kibanaConfigAppliedFromPolicies(policies []
 // setKibanaSecureSettingsFromPolicies stores secure settings from multiple policies
 func (r *ReconcileStackConfigPolicy) setKibanaSecureSettingsFromPolicies(settingsSecret *corev1.Secret, policies []policyv1alpha1.StackConfigPolicy) error {
 	var allSecretSources []commonv1.NamespacedSecretSource //nolint:prealloc
-	
+
 	for _, policy := range policies {
 		// SecureSettings field under Kibana in the StackConfigPolicy
 		for _, src := range policy.Spec.Kibana.SecureSettings {
 			allSecretSources = append(allSecretSources, commonv1.NamespacedSecretSource{Namespace: policy.GetNamespace(), SecretName: src.SecretName, Entries: src.Entries})
 		}
 	}
-	
+
 	if len(allSecretSources) == 0 {
 		return nil
 	}

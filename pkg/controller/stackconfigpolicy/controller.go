@@ -551,15 +551,15 @@ func (r *ReconcileStackConfigPolicy) reconcileKibanaResources(ctx context.Contex
 
 		// Check if required Kibana configs from all policies are applied.
 		var configApplied bool
-		if len(allPolicies) > 1 {
-			configApplied, err = r.kibanaConfigAppliedFromPolicies(allPolicies, kibana)
-		} else if len(allPolicies) == 1 {
+
+		switch len(allPolicies) {
+		case 0:
+			// No policies, so nothing to apply
+			configApplied = true
+		case 1:
 			configApplied, err = kibanaConfigApplied(r.Client, allPolicies[0], kibana)
-		} else {
-			configApplied = true // No policies, so nothing to apply
-		}
-		if err != nil {
-			return results.WithError(err), status
+		default:
+			configApplied, err = r.kibanaConfigAppliedFromPolicies(allPolicies, kibana)
 		}
 
 		// update the Kibana resource status for this Kibana
