@@ -33,49 +33,6 @@ const (
 	SecretsMountKey        = "secretMounts.json"
 )
 
-func newElasticsearchConfigSecret(policy policyv1alpha1.StackConfigPolicy, es esv1.Elasticsearch) (corev1.Secret, error) {
-	data := make(map[string][]byte)
-	if len(policy.Spec.Elasticsearch.SecretMounts) > 0 {
-		secretMountBytes, err := json.Marshal(policy.Spec.Elasticsearch.SecretMounts)
-		if err != nil {
-			return corev1.Secret{}, err
-		}
-		data[SecretsMountKey] = secretMountBytes
-	}
-
-	elasticsearchAndMountsConfigHash := getElasticsearchConfigAndMountsHash(policy.Spec.Elasticsearch.Config, policy.Spec.Elasticsearch.SecretMounts)
-	if policy.Spec.Elasticsearch.Config != nil {
-		configDataJSONBytes, err := policy.Spec.Elasticsearch.Config.MarshalJSON()
-		if err != nil {
-			return corev1.Secret{}, err
-		}
-		data[ElasticSearchConfigKey] = configDataJSONBytes
-	}
-	meta := metadata.Propagate(&es, metadata.Metadata{
-		Labels: eslabel.NewLabels(k8s.ExtractNamespacedName(&es)),
-		Annotations: map[string]string{
-			commonannotation.ElasticsearchConfigAndSecretMountsHashAnnotation: elasticsearchAndMountsConfigHash,
-		},
-	})
-	elasticsearchConfigSecret := corev1.Secret{
-		ObjectMeta: metav1.ObjectMeta{
-			Namespace:   es.Namespace,
-			Name:        esv1.StackConfigElasticsearchConfigSecretName(es.Name),
-			Labels:      meta.Labels,
-			Annotations: meta.Annotations,
-		},
-		Data: data,
-	}
-
-	// Set StackConfigPolicy as the soft owner
-	filesettings.SetSoftOwner(&elasticsearchConfigSecret, policy)
-
-	// Add label to delete secret on deletion of the stack config policy
-	elasticsearchConfigSecret.Labels[commonlabels.StackConfigPolicyOnDeleteLabelName] = commonlabels.OrphanSecretDeleteOnPolicyDelete
-
-	return elasticsearchConfigSecret, nil
-}
-
 // reconcileSecretMounts creates the secrets in SecretMounts to the respective Elasticsearch namespace where they should be mounted to.
 func reconcileSecretMounts(ctx context.Context, c k8s.Client, es esv1.Elasticsearch, policy *policyv1alpha1.StackConfigPolicy, meta metadata.Metadata) error {
 	for _, secretMount := range policy.Spec.Elasticsearch.SecretMounts {
@@ -125,26 +82,6 @@ func getElasticsearchConfigAndMountsHash(elasticsearchConfig *commonv1.Config, s
 	return hash.HashObject(secretMounts)
 }
 
-// elasticsearchConfigAndSecretMountsApplied checks if the Elasticsearch config and secret mounts from the stack config policy have been applied to the Elasticsearch cluster.
-func elasticsearchConfigAndSecretMountsApplied(ctx context.Context, c k8s.Client, policy policyv1alpha1.StackConfigPolicy, es esv1.Elasticsearch) (bool, error) {
-	// Get Pods for the given Elasticsearch
-	podList := corev1.PodList{}
-	if err := c.List(ctx, &podList, client.InNamespace(es.Namespace), client.MatchingLabels{
-		eslabel.ClusterNameLabelName: es.Name,
-	}); err != nil || len(podList.Items) == 0 {
-		return false, err
-	}
-
-	elasticsearchAndMountsConfigHash := getElasticsearchConfigAndMountsHash(policy.Spec.Elasticsearch.Config, policy.Spec.Elasticsearch.SecretMounts)
-	for _, esPod := range podList.Items {
-		if esPod.Annotations[commonannotation.ElasticsearchConfigAndSecretMountsHashAnnotation] != elasticsearchAndMountsConfigHash {
-			return false, nil
-		}
-	}
-
-	return true, nil
-}
-
 // Multi-policy versions of the above functions
 
 // newElasticsearchConfigSecretFromPolicies creates an Elasticsearch config secret from multiple policies
@@ -152,7 +89,7 @@ func (r *ReconcileStackConfigPolicy) newElasticsearchConfigSecretFromPolicies(po
 	data := make(map[string][]byte)
 	var allSecretMounts []policyv1alpha1.SecretMount
 	var mergedConfig *commonv1.Config
-	
+
 	// Sort policies by weight (descending) so lower weights override higher ones
 	sortedPolicies := make([]policyv1alpha1.StackConfigPolicy, len(policies))
 	copy(sortedPolicies, policies)
@@ -163,11 +100,11 @@ func (r *ReconcileStackConfigPolicy) newElasticsearchConfigSecretFromPolicies(po
 			}
 		}
 	}
-	
+
 	// Merge secret mounts from all policies
 	for _, policy := range sortedPolicies {
 		allSecretMounts = append(allSecretMounts, policy.Spec.Elasticsearch.SecretMounts...)
-		
+
 		// Merge Elasticsearch configs (lower weight policies override higher ones)
 		if policy.Spec.Elasticsearch.Config != nil {
 			if mergedConfig == nil {
@@ -180,7 +117,7 @@ func (r *ReconcileStackConfigPolicy) newElasticsearchConfigSecretFromPolicies(po
 			}
 		}
 	}
-	
+
 	// Add secret mounts to data if any exist
 	if len(allSecretMounts) > 0 {
 		secretMountBytes, err := json.Marshal(allSecretMounts)
@@ -217,7 +154,7 @@ func (r *ReconcileStackConfigPolicy) newElasticsearchConfigSecretFromPolicies(po
 	}
 
 	// Store all policy references in the secret
-	var policyRefs []filesettings.PolicyRef
+	policyRefs := make([]filesettings.PolicyRef, 0, len(policies))
 	for _, policy := range policies {
 		policyRefs = append(policyRefs, filesettings.PolicyRef{
 			Name:      policy.Name,
@@ -278,7 +215,7 @@ func (r *ReconcileStackConfigPolicy) reconcileSecretMountsFromPolicies(ctx conte
 				commonannotation.SourceSecretAnnotationName: secretMount.SecretName,
 			},
 		})
-		
+
 		// Recreate it in the Elasticsearch namespace, prefix with es name.
 		secretName := esv1.StackConfigAdditionalSecretName(es.Name, secretMount.SecretName)
 		expected := corev1.Secret{
@@ -292,7 +229,7 @@ func (r *ReconcileStackConfigPolicy) reconcileSecretMountsFromPolicies(ctx conte
 		}
 
 		// Store policy references that use this secret mount
-		var policyRefs []filesettings.PolicyRef
+		policyRefs := make([]filesettings.PolicyRef, 0, len(policies))
 		for _, policy := range policies {
 			for _, mount := range policy.Spec.Elasticsearch.SecretMounts {
 				if mount.SecretName == secretMount.SecretName {

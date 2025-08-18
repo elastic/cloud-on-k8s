@@ -92,7 +92,7 @@ func newSettingsSecretFromPolicies(version int64, es types.NamespacedName, curre
 	}
 
 	// Store all policy references in the secret
-	var policyRefs []PolicyRef
+	policyRefs := make([]PolicyRef, 0, len(policies))
 	for _, policy := range policies {
 		policyRefs = append(policyRefs, PolicyRef{
 			Name:      policy.Name,
@@ -242,7 +242,7 @@ func setSecureSettings(settingsSecret *corev1.Secret, policy policyv1alpha1.Stac
 // setSecureSettingsFromPolicies sets secure settings from multiple policies into the settings secret
 func setSecureSettingsFromPolicies(settingsSecret *corev1.Secret, policies []policyv1alpha1.StackConfigPolicy) error {
 	var allSecretSources []commonv1.NamespacedSecretSource //nolint:prealloc
-	
+
 	for _, policy := range policies {
 		// Common secureSettings field, this is mainly there to maintain backwards compatibility
 		//nolint:staticcheck
@@ -255,7 +255,7 @@ func setSecureSettingsFromPolicies(settingsSecret *corev1.Secret, policies []pol
 			allSecretSources = append(allSecretSources, commonv1.NamespacedSecretSource{Namespace: policy.GetNamespace(), SecretName: src.SecretName, Entries: src.Entries})
 		}
 	}
-	
+
 	if len(allSecretSources) == 0 {
 		return nil
 	}
@@ -293,17 +293,17 @@ func GetPolicyRefs(secret corev1.Secret) ([]PolicyRef, error) {
 	if secret.Annotations == nil {
 		return nil, nil
 	}
-	
+
 	policiesData, ok := secret.Annotations["stackconfigpolicy.k8s.elastic.co/policies"]
 	if !ok {
 		return nil, nil
 	}
-	
+
 	var policies []PolicyRef
 	if err := json.Unmarshal([]byte(policiesData), &policies); err != nil {
 		return nil, err
 	}
-	
+
 	return policies, nil
 }
 
@@ -312,12 +312,12 @@ func SetPolicyRefs(secret *corev1.Secret, policies []PolicyRef) error {
 	if secret.Annotations == nil {
 		secret.Annotations = make(map[string]string)
 	}
-	
+
 	data, err := json.Marshal(policies)
 	if err != nil {
 		return err
 	}
-	
+
 	secret.Annotations["stackconfigpolicy.k8s.elastic.co/policies"] = string(data)
 	return nil
 }
@@ -328,13 +328,13 @@ func AddOrUpdatePolicyRef(secret *corev1.Secret, policy policyv1alpha1.StackConf
 	if err != nil {
 		return err
 	}
-	
+
 	policyRef := PolicyRef{
 		Name:      policy.Name,
 		Namespace: policy.Namespace,
 		Weight:    policy.Spec.Weight,
 	}
-	
+
 	// Update existing policy or add new one
 	found := false
 	for i, p := range policies {
@@ -344,11 +344,11 @@ func AddOrUpdatePolicyRef(secret *corev1.Secret, policy policyv1alpha1.StackConf
 			break
 		}
 	}
-	
+
 	if !found {
 		policies = append(policies, policyRef)
 	}
-	
+
 	return SetPolicyRefs(secret, policies)
 }
 
@@ -358,14 +358,14 @@ func RemovePolicyRef(secret *corev1.Secret, policyName, policyNamespace string) 
 	if err != nil {
 		return err
 	}
-	
+
 	var filtered []PolicyRef
 	for _, p := range policies {
 		if !(p.Name == policyName && p.Namespace == policyNamespace) {
 			filtered = append(filtered, p)
 		}
 	}
-	
+
 	return SetPolicyRefs(secret, filtered)
 }
 

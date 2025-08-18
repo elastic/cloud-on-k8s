@@ -389,19 +389,20 @@ func (r *ReconcileStackConfigPolicy) reconcileElasticsearchResources(ctx context
 
 		// extract the metadata that should be propagated to children
 		meta := metadata.Propagate(&es, metadata.Metadata{Labels: eslabel.NewLabels(k8s.ExtractNamespacedName(&es))})
-		
+
 		// create the expected Settings Secret from all applicable policies
 		var expectedSecret corev1.Secret
 		var expectedVersion int64
-		if len(allPolicies) > 1 {
-			// Multiple policies - use the multi-policy approach
-			expectedSecret, expectedVersion, err = filesettings.NewSettingsSecretWithVersionFromPolicies(esNsn, &actualSettingsSecret, allPolicies, meta)
-		} else if len(allPolicies) == 1 {
-			// Single policy - use the original approach for backward compatibility
-			expectedSecret, expectedVersion, err = filesettings.NewSettingsSecretWithVersion(esNsn, &actualSettingsSecret, &allPolicies[0], meta)
-		} else {
+		switch len(allPolicies) {
+		case 0:
 			// No policies target this resource - skip (shouldn't happen in practice)
 			continue
+		case 1:
+			// Single policy - use the original approach for backward compatibility
+			expectedSecret, expectedVersion, err = filesettings.NewSettingsSecretWithVersion(esNsn, &actualSettingsSecret, &allPolicies[0], meta)
+		default:
+			// Multiple policies - use the multi-policy approach
+			expectedSecret, expectedVersion, err = filesettings.NewSettingsSecretWithVersionFromPolicies(esNsn, &actualSettingsSecret, allPolicies, meta)
 		}
 		if err != nil {
 			return results.WithError(err), status
@@ -524,18 +525,21 @@ func (r *ReconcileStackConfigPolicy) reconcileKibanaResources(ctx context.Contex
 		if hasKibanaConfig {
 			// Only add to configured resources if at least one policy has Kibana config set.
 			configuredResources[kibanaNsn] = kibana
-			
+
 			var expectedConfigSecret corev1.Secret
-			if len(allPolicies) > 1 {
-				// Multiple policies - use the multi-policy approach
-				expectedConfigSecret, err = r.newKibanaConfigSecretFromPolicies(allPolicies, kibana)
-			} else if len(allPolicies) == 1 {
-				// Single policy - use the original approach for backward compatibility
-				expectedConfigSecret, err = newKibanaConfigSecret(allPolicies[0], kibana)
-			} else {
+
+			switch len(allPolicies) {
+			case 0:
 				// No policies target this resource - skip (shouldn't happen in practice)
 				continue
+			case 1:
+				// Single policy - use the original approach for backward compatibility
+				expectedConfigSecret, err = newKibanaConfigSecret(allPolicies[0], kibana)
+			default:
+				// Multiple policies - use the multi-policy approach
+				expectedConfigSecret, err = r.newKibanaConfigSecretFromPolicies(allPolicies, kibana)
 			}
+
 			if err != nil {
 				return results.WithError(err), status
 			}
@@ -875,7 +879,7 @@ func (r *ReconcileStackConfigPolicy) checkWeightConflicts(ctx context.Context, p
 	}
 
 	for _, otherPolicy := range conflictingPolicies {
-		if r.policiesCouldOverlap(ctx, policy, &otherPolicy, policySelector) {
+		if r.policiesCouldOverlap(policy, &otherPolicy, policySelector) {
 			// Check if the policies have conflicting settings
 			if r.policiesHaveConflictingSettings(policy, &otherPolicy) {
 				return fmt.Errorf("weight conflict detected: StackConfigPolicy %s/%s has the same weight (%d) and would overwrite conflicting settings. Policies with the same weight that target overlapping resources must configure different, non-conflicting settings",
@@ -895,17 +899,17 @@ func (r *ReconcileStackConfigPolicy) policiesHaveConflictingSettings(policy1, po
 	if r.policyIsEmpty(policy1) && r.policyIsEmpty(policy2) {
 		return true // Both empty policies would conflict in the same namespace/selectors
 	}
-	
+
 	// Check Elasticsearch settings for conflicts
 	if r.elasticsearchSettingsConflict(policy1, policy2) {
 		return true
 	}
-	
+
 	// Check Kibana settings for conflicts
 	if r.kibanaSettingsConflict(policy1, policy2) {
 		return true
 	}
-	
+
 	return false
 }
 
@@ -913,7 +917,7 @@ func (r *ReconcileStackConfigPolicy) policiesHaveConflictingSettings(policy1, po
 func (r *ReconcileStackConfigPolicy) policyIsEmpty(policy *policyv1alpha1.StackConfigPolicy) bool {
 	es := &policy.Spec.Elasticsearch
 	kb := &policy.Spec.Kibana
-	
+
 	// Check if Elasticsearch settings are empty
 	esEmpty := (es.ClusterSettings == nil || len(es.ClusterSettings.Data) == 0) &&
 		(es.SnapshotRepositories == nil || len(es.SnapshotRepositories.Data) == 0) &&
@@ -925,10 +929,10 @@ func (r *ReconcileStackConfigPolicy) policyIsEmpty(policy *policyv1alpha1.StackC
 		(es.IndexTemplates.ComposableIndexTemplates == nil || len(es.IndexTemplates.ComposableIndexTemplates.Data) == 0) &&
 		(es.Config == nil || len(es.Config.Data) == 0) &&
 		len(es.SecretMounts) == 0
-	
+
 	// Check if Kibana settings are empty
 	kbEmpty := (kb.Config == nil || len(kb.Config.Data) == 0)
-	
+
 	return esEmpty && kbEmpty
 }
 
@@ -936,7 +940,7 @@ func (r *ReconcileStackConfigPolicy) policyIsEmpty(policy *policyv1alpha1.StackC
 func (r *ReconcileStackConfigPolicy) elasticsearchSettingsConflict(policy1, policy2 *policyv1alpha1.StackConfigPolicy) bool {
 	es1 := &policy1.Spec.Elasticsearch
 	es2 := &policy2.Spec.Elasticsearch
-	
+
 	// Check each type of setting for key conflicts
 	if r.configsConflict(es1.ClusterSettings, es2.ClusterSettings) {
 		return true
@@ -965,7 +969,7 @@ func (r *ReconcileStackConfigPolicy) elasticsearchSettingsConflict(policy1, poli
 	if r.configsConflict(es1.Config, es2.Config) {
 		return true
 	}
-	
+
 	// Check secret mounts for path conflicts
 	return r.secretMountsConflict(es1.SecretMounts, es2.SecretMounts)
 }
@@ -974,7 +978,7 @@ func (r *ReconcileStackConfigPolicy) elasticsearchSettingsConflict(policy1, poli
 func (r *ReconcileStackConfigPolicy) kibanaSettingsConflict(policy1, policy2 *policyv1alpha1.StackConfigPolicy) bool {
 	kb1 := &policy1.Spec.Kibana
 	kb2 := &policy2.Spec.Kibana
-	
+
 	return r.configsConflict(kb1.Config, kb2.Config)
 }
 
@@ -983,14 +987,14 @@ func (r *ReconcileStackConfigPolicy) configsConflict(config1, config2 *commonv1.
 	if config1 == nil || config2 == nil || config1.Data == nil || config2.Data == nil {
 		return false
 	}
-	
+
 	// Check if there are any common keys
 	for key := range config1.Data {
 		if _, exists := config2.Data[key]; exists {
 			return true
 		}
 	}
-	
+
 	return false
 }
 
@@ -999,23 +1003,23 @@ func (r *ReconcileStackConfigPolicy) secretMountsConflict(mounts1, mounts2 []pol
 	if len(mounts1) == 0 || len(mounts2) == 0 {
 		return false
 	}
-	
+
 	paths1 := make(map[string]bool)
 	for _, mount := range mounts1 {
 		paths1[mount.MountPath] = true
 	}
-	
+
 	for _, mount := range mounts2 {
 		if paths1[mount.MountPath] {
 			return true
 		}
 	}
-	
+
 	return false
 }
 
 // policiesCouldOverlap checks if two policies could potentially target the same resources
-func (r *ReconcileStackConfigPolicy) policiesCouldOverlap(ctx context.Context, policy1, policy2 *policyv1alpha1.StackConfigPolicy, policy1Selector labels.Selector) bool {
+func (r *ReconcileStackConfigPolicy) policiesCouldOverlap(policy1, policy2 *policyv1alpha1.StackConfigPolicy, policy1Selector labels.Selector) bool {
 	// Check namespace-based restrictions first
 	if !r.namespacesCouldOverlap(policy1.Namespace, policy2.Namespace) {
 		return false
