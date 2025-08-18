@@ -408,7 +408,8 @@ func compareCgroupCPULimit(topologyElement esv1.NodeSet, nodeStats client.NodeSt
 	}
 
 	cgroupCPU := nodeStats.OS.CGroup.CPU
-	fmt.Printf("ES returned cgroup cpu limit: %v\n", cgroupCPU)
+	fmt.Printf("ES returned cgroup cfs_period_micros %d\n", cgroupCPU.CFSPeriodMicros)
+	fmt.Printf("ES returned cgroup cfs_quota_micros %d\n", cgroupCPU.CFSQuotaMicros)
 	actualCgroupCPULimit := float64(cgroupCPU.CFSQuotaMicros) / float64(cgroupCPU.CFSPeriodMicros)
 	fmt.Printf("ES calculated cgroup cpu limit: %v\n", actualCgroupCPULimit)
 	if expectedCPULimit.AsApproximateFloat64() != actualCgroupCPULimit {
