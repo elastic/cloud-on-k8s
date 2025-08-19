@@ -405,11 +405,11 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 --------------------------------------------------------------------------------
 Module  : github.com/gkampitakis/go-snaps
-Version : v0.5.13
-Time    : 2025-06-04T20:11:01Z
+Version : v0.5.14
+Time    : 2025-07-28T20:15:32Z
 Licence : MIT
 
-Contents of probable licence file $GOMODCACHE/github.com/gkampitakis/go-snaps@v0.5.13/LICENSE:
+Contents of probable licence file $GOMODCACHE/github.com/gkampitakis/go-snaps@v0.5.14/LICENSE:
 
 MIT License
 
@@ -2210,11 +2210,11 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 --------------------------------------------------------------------------------
 Module  : github.com/prometheus/client_golang
-Version : v1.22.0
-Time    : 2025-04-08T08:06:13Z
+Version : v1.23.0
+Time    : 2025-07-30T11:48:12Z
 Licence : Apache-2.0
 
-Contents of probable licence file $GOMODCACHE/github.com/prometheus/client_golang@v1.22.0/LICENSE:
+Contents of probable licence file $GOMODCACHE/github.com/prometheus/client_golang@v1.23.0/LICENSE:
 
                                  Apache License
                            Version 2.0, January 2004
@@ -3846,11 +3846,11 @@ THE SOFTWARE.
 
 --------------------------------------------------------------------------------
 Module  : golang.org/x/crypto
-Version : v0.40.0
-Time    : 2025-07-10T17:21:43Z
+Version : v0.41.0
+Time    : 2025-08-07T17:21:04Z
 Licence : BSD-3-Clause
 
-Contents of probable licence file $GOMODCACHE/golang.org/x/crypto@v0.40.0/LICENSE:
+Contents of probable licence file $GOMODCACHE/golang.org/x/crypto@v0.41.0/LICENSE:
 
 Copyright 2009 The Go Authors.
 
@@ -3980,11 +3980,11 @@ limitations under the License.
 
 --------------------------------------------------------------------------------
 Module  : k8s.io/api
-Version : v0.33.3
-Time    : 2025-07-16T01:18:25Z
+Version : v0.33.4
+Time    : 2025-08-13T22:36:02Z
 Licence : Apache-2.0
 
-Contents of probable licence file $GOMODCACHE/k8s.io/api@v0.33.3/LICENSE:
+Contents of probable licence file $GOMODCACHE/k8s.io/api@v0.33.4/LICENSE:
 
 
                                  Apache License
@@ -4192,11 +4192,11 @@ Contents of probable licence file $GOMODCACHE/k8s.io/api@v0.33.3/LICENSE:
 
 --------------------------------------------------------------------------------
 Module  : k8s.io/apimachinery
-Version : v0.33.3
+Version : v0.33.4
 Time    : 2025-05-13T12:05:15Z
 Licence : Apache-2.0
 
-Contents of probable licence file $GOMODCACHE/k8s.io/apimachinery@v0.33.3/LICENSE:
+Contents of probable licence file $GOMODCACHE/k8s.io/apimachinery@v0.33.4/LICENSE:
 
 
                                  Apache License
@@ -4404,11 +4404,11 @@ Contents of probable licence file $GOMODCACHE/k8s.io/apimachinery@v0.33.3/LICENS
 
 --------------------------------------------------------------------------------
 Module  : k8s.io/client-go
-Version : v0.33.3
-Time    : 2025-07-16T01:32:24Z
+Version : v0.33.4
+Time    : 2025-08-13T22:50:05Z
 Licence : Apache-2.0
 
-Contents of probable licence file $GOMODCACHE/k8s.io/client-go@v0.33.3/LICENSE:
+Contents of probable licence file $GOMODCACHE/k8s.io/client-go@v0.33.4/LICENSE:
 
 
                                  Apache License
@@ -15911,11 +15911,11 @@ Contents of probable licence file $GOMODCACHE/github.com/prometheus/client_model
 
 --------------------------------------------------------------------------------
 Module  : github.com/prometheus/procfs
-Version : v0.16.0
-Time    : 2025-03-02T19:44:35Z
+Version : v0.16.1
+Time    : 2025-04-19T15:43:08Z
 Licence : Apache-2.0
 
-Contents of probable licence file $GOMODCACHE/github.com/prometheus/procfs@v0.16.0/LICENSE:
+Contents of probable licence file $GOMODCACHE/github.com/prometheus/procfs@v0.16.1/LICENSE:
 
                                  Apache License
                            Version 2.0, January 2004
@@ -19038,11 +19038,11 @@ THE SOFTWARE.
 
 --------------------------------------------------------------------------------
 Module  : golang.org/x/mod
-Version : v0.25.0
-Time    : 2025-05-08T14:04:30Z
+Version : v0.26.0
+Time    : 2025-07-09T20:10:54Z
 Licence : BSD-3-Clause
 
-Contents of probable licence file $GOMODCACHE/golang.org/x/mod@v0.25.0/LICENSE:
+Contents of probable licence file $GOMODCACHE/golang.org/x/mod@v0.26.0/LICENSE:
 
 Copyright 2009 The Go Authors.
 
@@ -19075,11 +19075,11 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 --------------------------------------------------------------------------------
 Module  : golang.org/x/net
-Version : v0.41.0
-Time    : 2025-06-05T20:28:24Z
+Version : v0.42.0
+Time    : 2025-07-10T19:49:10Z
 Licence : BSD-3-Clause
 
-Contents of probable licence file $GOMODCACHE/golang.org/x/net@v0.41.0/LICENSE:
+Contents of probable licence file $GOMODCACHE/golang.org/x/net@v0.42.0/LICENSE:
 
 Copyright 2009 The Go Authors.
 
@@ -19186,11 +19186,11 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 --------------------------------------------------------------------------------
 Module  : golang.org/x/sys
-Version : v0.34.0
-Time    : 2025-06-17T17:35:38Z
+Version : v0.35.0
+Time    : 2025-08-06T21:03:43Z
 Licence : BSD-3-Clause
 
-Contents of probable licence file $GOMODCACHE/golang.org/x/sys@v0.34.0/LICENSE:
+Contents of probable licence file $GOMODCACHE/golang.org/x/sys@v0.35.0/LICENSE:
 
 Copyright 2009 The Go Authors.
 
@@ -19223,11 +19223,11 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 --------------------------------------------------------------------------------
 Module  : golang.org/x/term
-Version : v0.33.0
-Time    : 2025-07-09T20:10:58Z
+Version : v0.34.0
+Time    : 2025-08-07T14:52:19Z
 Licence : BSD-3-Clause
 
-Contents of probable licence file $GOMODCACHE/golang.org/x/term@v0.33.0/LICENSE:
+Contents of probable licence file $GOMODCACHE/golang.org/x/term@v0.34.0/LICENSE:
 
 Copyright 2009 The Go Authors.
 
@@ -19260,11 +19260,11 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 --------------------------------------------------------------------------------
 Module  : golang.org/x/text
-Version : v0.27.0
-Time    : 2025-07-09T20:56:05Z
+Version : v0.28.0
+Time    : 2025-08-07T14:53:29Z
 Licence : BSD-3-Clause
 
-Contents of probable licence file $GOMODCACHE/golang.org/x/text@v0.27.0/LICENSE:
+Contents of probable licence file $GOMODCACHE/golang.org/x/text@v0.28.0/LICENSE:
 
 Copyright 2009 The Go Authors.
 
@@ -19334,11 +19334,85 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 --------------------------------------------------------------------------------
 Module  : golang.org/x/tools
-Version : v0.34.0
-Time    : 2025-06-05T21:20:03Z
+Version : v0.35.0
+Time    : 2025-07-11T16:19:56Z
 Licence : BSD-3-Clause
 
-Contents of probable licence file $GOMODCACHE/golang.org/x/tools@v0.34.0/LICENSE:
+Contents of probable licence file $GOMODCACHE/golang.org/x/tools@v0.35.0/LICENSE:
+
+Copyright 2009 The Go Authors.
+
+Redistribution and use in source and binary forms, with or without
+modification, are permitted provided that the following conditions are
+met:
+
+   * Redistributions of source code must retain the above copyright
+notice, this list of conditions and the following disclaimer.
+   * Redistributions in binary form must reproduce the above
+copyright notice, this list of conditions and the following disclaimer
+in the documentation and/or other materials provided with the
+distribution.
+   * Neither the name of Google LLC nor the names of its
+contributors may be used to endorse or promote products derived from
+this software without specific prior written permission.
+
+THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
+"AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
+LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
+A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT
+OWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
+SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT
+LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
+DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
+THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+(INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+
+--------------------------------------------------------------------------------
+Module  : golang.org/x/tools/go/expect
+Version : v0.1.0-deprecated
+Time    : 2025-06-12T15:17:39Z
+Licence : BSD-3-Clause
+
+Contents of probable licence file $GOMODCACHE/golang.org/x/tools/go/expect@v0.1.0-deprecated/LICENSE:
+
+Copyright 2009 The Go Authors.
+
+Redistribution and use in source and binary forms, with or without
+modification, are permitted provided that the following conditions are
+met:
+
+   * Redistributions of source code must retain the above copyright
+notice, this list of conditions and the following disclaimer.
+   * Redistributions in binary form must reproduce the above
+copyright notice, this list of conditions and the following disclaimer
+in the documentation and/or other materials provided with the
+distribution.
+   * Neither the name of Google LLC nor the names of its
+contributors may be used to endorse or promote products derived from
+this software without specific prior written permission.
+
+THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
+"AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
+LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
+A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT
+OWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
+SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT
+LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
+DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
+THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+(INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+
+--------------------------------------------------------------------------------
+Module  : golang.org/x/tools/go/packages/packagestest
+Version : v0.1.1-deprecated
+Time    : 2025-06-13T18:44:18Z
+Licence : BSD-3-Clause
+
+Contents of probable licence file $GOMODCACHE/golang.org/x/tools/go/packages/packagestest@v0.1.1-deprecated/LICENSE:
 
 Copyright 2009 The Go Authors.
 
