@@ -71,8 +71,7 @@ steps:
       {{- end }}
 
       # Double check that we are running on a node with cgroup v2
-      - ls -l /sys/fs/cgroup/
-      - ls -l "/sys/fs/cgroup/cpu/*"
+      - find /sys/fs/cgroup/ -ls
 
       # Check k3s configuration
       - wget https://github.com/k3s-io/k3s/releases/download/v1.33.3%2Bk3s1/k3s && chmod +x k3s
