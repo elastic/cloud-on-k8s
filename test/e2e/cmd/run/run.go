@@ -832,6 +832,7 @@ func (h *helper) dumpEventLog() {
 
 func (h *helper) runECKDiagnostics() {
 	operatorNS := h.testContext.Operator.Namespace
+	// include the default namespace to have diagnostics on the local disk provisioner used in some environments
 	otherNS := append([]string{h.testContext.E2ENamespace, "default"}, h.testContext.Operator.ManagedNamespaces...)
 	cmd := exec.Command("eck-diagnostics", "-o", operatorNS, "-r", strings.Join(otherNS, ","), "--run-agent-diagnostics")
 	cmd.Stdout = os.Stdout
