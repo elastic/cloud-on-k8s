@@ -19,9 +19,6 @@ steps:
 
     commands:
       - .buildkite/scripts/test/set-deployer-config.sh
-      {{- if eq $test.Provider "k3d" }}
-      - "wget -q -O - https://raw.githubusercontent.com/k3d-io/k3d/main/install.sh | TAG=v5.8.3 bash"
-      {{- end }}
       {{- if $test.Dind }}
       - make -C .buildkite TARGET="run-deployer" ci
       {{- else }}
@@ -68,14 +65,13 @@ steps:
 
       - .buildkite/scripts/test/set-deployer-config.sh
 
-      {{- if eq $test.Provider "k3d" }}
-      - "wget -q -O - https://raw.githubusercontent.com/k3d-io/k3d/main/install.sh | TAG=v5.8.3 bash"
-      {{- end }}
-
       {{- $deployerCommand := "run-deployer" }}
       {{- if $test.RemoteKubeconfig }}
         {{- $deployerCommand = "set-kubeconfig" }}
       {{- end }}
+
+      # Double check that we are running on a node with cgroup v2
+      - ls -l /sys/fs/cgroup/
 
       {{- if $test.Dind }}
       - make -C .buildkite TARGET="{{ $deployerCommand }} e2e-run" ci
