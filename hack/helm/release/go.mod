@@ -4,7 +4,7 @@ go 1.24.5
 
 require (
 	cloud.google.com/go/storage v1.56.0
-	github.com/elastic/cloud-on-k8s/v3 v3.0.0
+	github.com/elastic/cloud-on-k8s/v3 v3.1.0
 	github.com/google/go-cmp v0.7.0
 	github.com/spf13/cobra v1.9.1
 	github.com/spf13/viper v1.20.1
