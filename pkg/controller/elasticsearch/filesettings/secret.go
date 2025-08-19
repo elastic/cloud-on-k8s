@@ -241,7 +241,7 @@ func setSecureSettings(settingsSecret *corev1.Secret, policy policyv1alpha1.Stac
 
 // setSecureSettingsFromPolicies sets secure settings from multiple policies into the settings secret
 func setSecureSettingsFromPolicies(settingsSecret *corev1.Secret, policies []policyv1alpha1.StackConfigPolicy) error {
-	var allSecretSources []commonv1.NamespacedSecretSource //nolint:prealloc
+	var allSecretSources []commonv1.NamespacedSecretSource
 
 	for _, policy := range policies {
 		// Common secureSettings field, this is mainly there to maintain backwards compatibility

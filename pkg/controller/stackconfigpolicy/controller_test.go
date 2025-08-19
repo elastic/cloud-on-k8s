@@ -397,7 +397,7 @@ func TestReconcileStackConfigPolicy_Reconcile(t *testing.T) {
 				policy := r.getPolicy(t, k8s.ExtractNamespacedName(&policyFixture))
 				assert.Equal(t, 1, policy.Status.Resources)
 				// The policy should show an error since Elasticsearch client might not be available in test
-				assert.Equal(t, 0, policy.Status.Ready) // Error state
+				assert.Equal(t, 0, policy.Status.Ready)                         // Error state
 				assert.Equal(t, policyv1alpha1.ErrorPhase, policy.Status.Phase) // Error due to test limitations
 			},
 			wantErr:          false,

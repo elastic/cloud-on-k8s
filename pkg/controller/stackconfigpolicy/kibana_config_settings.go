@@ -272,7 +272,7 @@ func (r *ReconcileStackConfigPolicy) kibanaConfigAppliedFromPolicies(policies []
 
 // setKibanaSecureSettingsFromPolicies stores secure settings from multiple policies
 func (r *ReconcileStackConfigPolicy) setKibanaSecureSettingsFromPolicies(settingsSecret *corev1.Secret, policies []policyv1alpha1.StackConfigPolicy) error {
-	var allSecretSources []commonv1.NamespacedSecretSource //nolint:prealloc
+	var allSecretSources []commonv1.NamespacedSecretSource
 
 	for _, policy := range policies {
 		// SecureSettings field under Kibana in the StackConfigPolicy

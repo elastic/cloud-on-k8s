@@ -561,6 +561,9 @@ func (r *ReconcileStackConfigPolicy) reconcileKibanaResources(ctx context.Contex
 		default:
 			configApplied, err = r.kibanaConfigAppliedFromPolicies(allPolicies, kibana)
 		}
+		if err != nil {
+			return results.WithError(err), status
+		}
 
 		// update the Kibana resource status for this Kibana
 		err = status.UpdateResourceStatusPhase(kibanaNsn, policyv1alpha1.ResourcePolicyStatus{}, configApplied, policyv1alpha1.KibanaResourceType)
