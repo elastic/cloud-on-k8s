@@ -28,7 +28,7 @@ steps:
     agents:
       {{- if $test.Dind }}
       provider: "gcp"
-      image: "family/core-ubuntu-2004"
+      image: "family/core-ubuntu-2204"
       {{- if or (eq $test.Provider "kind") (eq $test.Provider "k3d") }}
       machineType: "{{ $.KindAgentsMachineType }}"
       {{- end }}
