@@ -32,20 +32,6 @@ func RunMutations(t *testing.T, creationBuilders []Builder, mutationBuilders []B
 	for _, toCreate := range creationBuilders {
 		steps = steps.WithSteps(toCreate.CreationTestSteps(k))
 	}
-	for _, toCreate := range creationBuilders {
-		steps = steps.WithSteps(CheckTestSteps(toCreate, k))
-	}
-
-	// Trigger some mutations
-	for _, mutateTo := range mutationBuilders {
-		steps = steps.WithSteps(mutateTo.MutationTestSteps(k))
-	}
-
-	// Delete using the original builder (so that we can use it as a mutation builder as well)
-	for _, toCreate := range creationBuilders {
-		steps = steps.WithSteps(toCreate.DeletionTestSteps(k))
-	}
-
 	steps = steps.WithSteps(StepList{
 		{
 			Name: "get cgroup information from elasticsearch",
@@ -76,6 +62,19 @@ func RunMutations(t *testing.T, creationBuilders []Builder, mutationBuilders []B
 				return nil
 			}),
 		}})
+	for _, toCreate := range creationBuilders {
+		steps = steps.WithSteps(CheckTestSteps(toCreate, k))
+	}
+
+	// Trigger some mutations
+	for _, mutateTo := range mutationBuilders {
+		steps = steps.WithSteps(mutateTo.MutationTestSteps(k))
+	}
+
+	// Delete using the original builder (so that we can use it as a mutation builder as well)
+	for _, toCreate := range creationBuilders {
+		steps = steps.WithSteps(toCreate.DeletionTestSteps(k))
+	}
 
 	steps.RunSequential(t)
 }
