@@ -5,7 +5,17 @@
 package test
 
 import (
+	"errors"
+	"fmt"
 	"testing"
+
+	"k8s.io/apimachinery/pkg/labels"
+	k8sclient "sigs.k8s.io/controller-runtime/pkg/client"
+
+	commonv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/common/v1"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/label"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/k8s"
+	// testes "github.com/elastic/cloud-on-k8s/v3/test/e2e/test/elasticsearch"
 )
 
 // RunMutations tests resources changes on given resources.
@@ -35,6 +45,37 @@ func RunMutations(t *testing.T, creationBuilders []Builder, mutationBuilders []B
 	for _, toCreate := range creationBuilders {
 		steps = steps.WithSteps(toCreate.DeletionTestSteps(k))
 	}
+
+	steps = steps.WithSteps(StepList{
+		{
+			Name: "get cgroup information from elasticsearch",
+			Test: Eventually(func() error {
+				ctx := Ctx()
+				namespace := fmt.Sprintf("%s-%s", ctx.TestRun, "mercury")
+				listOptions := k8sclient.ListOptions{
+					Namespace: namespace,
+					LabelSelector: labels.SelectorFromSet(labels.Set{
+						commonv1.TypeLabelName: label.Type,
+					}),
+				}
+				pods, err := k.GetPods(&listOptions)
+				if err != nil {
+					return err
+				}
+				if len(pods) == 0 {
+					return errors.New("no pods found")
+				}
+
+				// exec into the pod to list keystore entries
+				stdout, _, err := k.Exec(k8s.ExtractNamespacedName(&pods[0]),
+					[]string{"cat", "/proc/1/cgroup"})
+				if err != nil {
+					return err
+				}
+				fmt.Printf("cgroup data: %s", stdout)
+				return nil
+			}),
+		}})
 
 	steps.RunSequential(t)
 }
