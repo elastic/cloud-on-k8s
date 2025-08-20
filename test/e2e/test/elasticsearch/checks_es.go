@@ -370,18 +370,15 @@ func compareCgroupMemoryLimit(topologyElement esv1.NodeSet, nodeStats client.Nod
 			memoryLimit = c.Resources.Limits.Memory()
 		}
 	}
-	fmt.Printf("ES manifest memory limit: %v\n", memoryLimit)
 	if memoryLimit == nil || memoryLimit.IsZero() {
 		// no expected memory, consider it's ok
 		return nil
 	}
 
-	fmt.Printf("ES returned cgroup memory limit in bytes: %s\n", nodeStats.OS.CGroup.Memory.LimitInBytes)
 	// ES returns a string, parse it as an int64, base10
 	actualCgroupMemoryLimit, err := strconv.ParseInt(
 		nodeStats.OS.CGroup.Memory.LimitInBytes, 10, 64,
 	)
-	fmt.Printf("ES parsed cgroup memory limit in bytes: %d\n", actualCgroupMemoryLimit)
 	if err != nil {
 		return fmt.Errorf("while parsing cgroup memory limit: %w", err)
 	}

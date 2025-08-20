@@ -7,6 +7,9 @@ package test
 import (
 	"errors"
 	"fmt"
+	"os"
+	"path"
+	"strings"
 	"testing"
 
 	"k8s.io/apimachinery/pkg/labels"
@@ -58,7 +61,22 @@ func RunMutations(t *testing.T, creationBuilders []Builder, mutationBuilders []B
 				if err != nil {
 					return err
 				}
+				var cpuAcctData string
 				fmt.Printf("cgroup data: %s", stdout)
+				for _, line := range strings.Split(stdout, "\n") {
+					for _, controlGroup := range strings.Split(line, ":") {
+						if strings.Contains(controlGroup, "cpuacct") {
+							cpuAcctData = strings.Split(line, ":")[2]
+						}
+					}
+				}
+				fullPath := path.Join("/sys/fs/cgroup/cpu,cpuacct", cpuAcctData, "cpuacct.usage")
+				if _, err := os.Stat(fullPath); err != nil {
+					return fmt.Errorf("while attempting to stat %s: %w", fullPath, err)
+				} else {
+					fmt.Printf("cpuacct.usage file exists")
+				}
+
 				return nil
 			}),
 		}})
