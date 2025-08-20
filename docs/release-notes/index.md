@@ -34,6 +34,7 @@ To reduce the attack surface and improve overall security UBI images are now bas
 - Add automated workaround for 9.0.0 maps issue [#8665](https://github.com/elastic/cloud-on-k8s/pull/8665) (issue: [#8655](https://github.com/elastic/cloud-on-k8s/issues/8655))
 - Bump go.mod to v3 [#8609](https://github.com/elastic/cloud-on-k8s/pull/8609)
 - Helm: Add support for missing `remoteClusterServer` value [#8612](https://github.com/elastic/cloud-on-k8s/pull/8612)
+- Add logs volume for Filebeat and Metricbeat in stack monitoring [#8606](https://github.com/elastic/cloud-on-k8s/pull/8606) (issue: [#8605](https://github.com/elastic/cloud-on-k8s/issues/8605))
 
 ### Documentation improvements [elastic-cloud-kubernetes-310-documentation-improvements]
 
