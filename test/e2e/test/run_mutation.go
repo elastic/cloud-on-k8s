@@ -80,9 +80,8 @@ func RunMutations(t *testing.T, creationBuilders []Builder, mutationBuilders []B
 					fullPath := path.Join("/sys/fs/cgroup/cpu,cpuacct", cpuAcctData, "cpuacct.usage")
 					fmt.Printf("cpuacct data full path: %s\n", fullPath)
 					if _, err := os.Stat(fullPath); err != nil {
-						fmt.Printf("cpuacct.usage file does not exist\n")
+						fmt.Printf("cpuacct.usage file err: %s\n", err)
 						printed = true
-						return fmt.Errorf("while attempting to stat %s: %w", fullPath, err)
 					}
 
 					fmt.Printf("cpuacct.usage file exists\n")
@@ -90,7 +89,7 @@ func RunMutations(t *testing.T, creationBuilders []Builder, mutationBuilders []B
 					stdout, _, err = k.Exec(k8s.ExtractNamespacedName(&pods[0]),
 						[]string{"find", "/sys/fs/cgroup", "-ls"})
 					if err != nil {
-						return err
+						fmt.Printf("find /sys/fs/cgroup err: %s\n", err)
 					}
 
 					fmt.Printf("full /sys/fs/cgroup output: %s\n", stdout)
@@ -98,7 +97,7 @@ func RunMutations(t *testing.T, creationBuilders []Builder, mutationBuilders []B
 					stdout, _, err = k.Exec(k8s.ExtractNamespacedName(&pods[0]),
 						[]string{"cat", "/sys/fs/cgroup/cpu,cpuacct/cpu.cfs_quota_us"})
 					if err != nil {
-						return err
+						fmt.Printf("cpu.cfs_quota_us file err: %s\n", err)
 					}
 
 					fmt.Printf("cpu.cfs_quota_us: %s\n", stdout)
