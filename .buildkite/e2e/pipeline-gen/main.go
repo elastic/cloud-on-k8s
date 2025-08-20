@@ -44,7 +44,7 @@ const (
 	EnvVarOperatorImage        = "OPERATOR_IMAGE"
 	EnvVarE2EImage             = "E2E_IMG"
 
-	KindAgentsMachineType = "n4-standard-16"
+	KindAgentsMachineType = "n2d-standard-16"
 )
 
 var (
