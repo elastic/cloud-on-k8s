@@ -39,10 +39,9 @@ metadata:
     {{- end }}
 nodeGroups:
   - name: ng-1
-    amiFamily: AmazonLinux2023
+    amiFamily: Bottlerocket
     instanceType: {{.MachineType}}
     desiredCapacity: {{.NodeCount}}
-    ami: {{.NodeAMI}}
     iam:
       instanceProfileARN: {{.InstanceProfileARN}}
       instanceRoleARN: {{.InstanceRoleARN}}
@@ -126,6 +125,7 @@ func (e *EKSDriver) Execute() error {
 			if err := os.WriteFile(createCfgFile, createCfg.Bytes(), 0600); err != nil {
 				return fmt.Errorf("while writing create cfg %w", err)
 			}
+			log.Printf("Cluster create cfg written to %s, contents: %s", createCfgFile, createCfg.String())
 			if err := e.newCmd(`eksctl create cluster -v 1 -f {{.CreateCfgFile}}`).Run(); err != nil {
 				return err
 			}
