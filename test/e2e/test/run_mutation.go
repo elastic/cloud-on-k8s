@@ -69,7 +69,6 @@ func RunMutations(t *testing.T, creationBuilders []Builder, mutationBuilders []B
 				if !printed {
 					fmt.Printf("cgroup data: %s", stdout)
 				}
-				printed = true
 				for _, line := range strings.Split(stdout, "\n") {
 					for _, controlGroup := range strings.Split(line, ":") {
 						if strings.Contains(controlGroup, "cpuacct") {
@@ -77,15 +76,35 @@ func RunMutations(t *testing.T, creationBuilders []Builder, mutationBuilders []B
 						}
 					}
 				}
-				fullPath := path.Join("/sys/fs/cgroup/cpu,cpuacct", cpuAcctData, "cpuacct.usage")
-				fmt.Printf("cpuacct data full path: %s\n", fullPath)
-				if _, err := os.Stat(fullPath); err != nil {
-					fmt.Printf("cpuacct.usage file does not exist\n")
-					return fmt.Errorf("while attempting to stat %s: %w", fullPath, err)
+				if !printed {
+					fullPath := path.Join("/sys/fs/cgroup/cpu,cpuacct", cpuAcctData, "cpuacct.usage")
+					fmt.Printf("cpuacct data full path: %s\n", fullPath)
+					if _, err := os.Stat(fullPath); err != nil {
+						fmt.Printf("cpuacct.usage file does not exist\n")
+						printed = true
+						return fmt.Errorf("while attempting to stat %s: %w", fullPath, err)
+					}
+
+					fmt.Printf("cpuacct.usage file exists\n")
+
+					stdout, _, err = k.Exec(k8s.ExtractNamespacedName(&pods[0]),
+						[]string{"find", "/sys/fs/cgroup", "-ls"})
+					if err != nil {
+						return err
+					}
+
+					fmt.Printf("full /sys/fs/cgroup output: %s\n", stdout)
+
+					stdout, _, err = k.Exec(k8s.ExtractNamespacedName(&pods[0]),
+						[]string{"cat", "/sys/fs/cgroup/cpu,cpuacct/cpu.cfs_quota_us"})
+					if err != nil {
+						return err
+					}
+
+					fmt.Printf("cpu.cfs_quota_us: %s\n", stdout)
 				}
 
-				fmt.Printf("cpuacct.usage file exists\n")
-
+				printed = true
 				return nil
 			}),
 		}})
