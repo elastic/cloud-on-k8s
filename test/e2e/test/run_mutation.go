@@ -21,6 +21,10 @@ import (
 	// testes "github.com/elastic/cloud-on-k8s/v3/test/e2e/test/elasticsearch"
 )
 
+var (
+	printed bool
+)
+
 // RunMutations tests resources changes on given resources.
 // If the resource to mutate to is the same as the original resource, then all tests should still pass.
 // //nolint:thelper
@@ -62,7 +66,10 @@ func RunMutations(t *testing.T, creationBuilders []Builder, mutationBuilders []B
 					return err
 				}
 				var cpuAcctData string
-				fmt.Printf("cgroup data: %s", stdout)
+				if !printed {
+					fmt.Printf("cgroup data: %s", stdout)
+				}
+				printed = true
 				for _, line := range strings.Split(stdout, "\n") {
 					for _, controlGroup := range strings.Split(line, ":") {
 						if strings.Contains(controlGroup, "cpuacct") {
@@ -71,6 +78,7 @@ func RunMutations(t *testing.T, creationBuilders []Builder, mutationBuilders []B
 					}
 				}
 				fullPath := path.Join("/sys/fs/cgroup/cpu,cpuacct", cpuAcctData, "cpuacct.usage")
+				fmt.Printf("cpuacct data full path: %s", fullPath)
 				if _, err := os.Stat(fullPath); err != nil {
 					return fmt.Errorf("while attempting to stat %s: %w", fullPath, err)
 				}
