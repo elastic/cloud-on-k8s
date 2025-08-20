@@ -80,6 +80,7 @@ func RunMutations(t *testing.T, creationBuilders []Builder, mutationBuilders []B
 				fullPath := path.Join("/sys/fs/cgroup/cpu,cpuacct", cpuAcctData, "cpuacct.usage")
 				fmt.Printf("cpuacct data full path: %s", fullPath)
 				if _, err := os.Stat(fullPath); err != nil {
+					fmt.Printf("cpuacct.usage file does not exist")
 					return fmt.Errorf("while attempting to stat %s: %w", fullPath, err)
 				}
 
