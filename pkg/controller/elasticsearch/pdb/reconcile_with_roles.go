@@ -431,10 +431,6 @@ func selectorForStatefulSets(es esv1.Elasticsearch, ssetNames []string) *metav1.
 	}
 }
 
-func isSensitiveToDisruptions(sts appsv1.StatefulSet) bool {
-	return label.IsMasterNodeSet(sts) || label.IsIngestNodeSet(sts) || label.IsDataNodeSet(sts)
-}
-
 // reconcileAndDeleteUnnecessaryPDBs reconciles the PDBs that are expected to exist and deletes any that exist but are not expected.
 func reconcileAndDeleteUnnecessaryPDBs(ctx context.Context, k8sClient k8s.Client, es esv1.Elasticsearch, expectedPDBs []*policyv1.PodDisruptionBudget) error {
 	existingPDBs, err := listAllRoleSpecificPDBs(ctx, k8sClient, es)
