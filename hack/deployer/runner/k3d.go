@@ -65,7 +65,7 @@ func (k *K3dDriver) create() error {
 	if cmd == nil {
 		return fmt.Errorf("failed to create k3d cluster")
 	}
-	err = cmd.Run()
+	err := cmd.Run()
 	if err != nil {
 		return err
 	}
@@ -77,7 +77,6 @@ func (k *K3dDriver) create() error {
 	}
 	defer os.Remove(kubeCfg.Name())
 
-	// Delete standard storage class but ignore error if not found
 	if err := kubectl("--kubeconfig", kubeCfg.Name(), "delete", "storageclass", "standard"); err != nil {
 		return err
 	}
