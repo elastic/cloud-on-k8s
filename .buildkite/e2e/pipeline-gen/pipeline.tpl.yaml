@@ -70,10 +70,6 @@ steps:
         {{- $deployerCommand = "set-kubeconfig" }}
       {{- end }}
 
-      # Check k3s configuration
-      - wget https://github.com/k3s-io/k3s/releases/download/v1.33.3%2Bk3s1/k3s && chmod +x k3s
-      - ./k3s check-config
-
       {{- if $test.Dind }}
       - make -C .buildkite TARGET="{{ $deployerCommand }} e2e-run" ci
       {{- else }}
@@ -122,11 +118,7 @@ steps:
         soft_fail: true
         commands:
           - .buildkite/scripts/test/set-deployer-config.sh
-        {{- if eq $test.Provider "k3d" }}
-          - "wget -q -O - https://raw.githubusercontent.com/k3d-io/k3d/main/install.sh | TAG=v5.8.3 bash"
-        {{- end }}
         {{- if not $test.Dind }}
-          - "wget -q -O - https://raw.githubusercontent.com/k3d-io/k3d/main/install.sh | TAG=v5.8.3 bash"
           - make run-deployer
         agents:
           image: docker.elastic.co/ci-agent-images/cloud-k8s-operator/buildkite-agent:c39fad65

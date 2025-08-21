@@ -61,12 +61,6 @@ func (k *K3dDriver) Execute() error {
 }
 
 func (k *K3dDriver) create() error {
-	// Delete any previous e2e k3d cluster with the same name
-	err := k.delete()
-	if err != nil {
-		return err
-	}
-
 	cmd := k.cmd("cluster", "create", "--image", k.plan.K3d.NodeImage)
 	if cmd == nil {
 		return fmt.Errorf("failed to create k3d cluster")
@@ -97,7 +91,7 @@ func (k *K3dDriver) create() error {
 }
 
 func (k *K3dDriver) delete() error {
-	return k.cmd("cluster", "delete").Run()
+	return fmt.Errorf("unimplemented")
 }
 
 func (k *K3dDriver) cmd(args ...string) *exec.Command {
@@ -130,7 +124,7 @@ func (k *K3dDriver) cmd(args ...string) *exec.Command {
 }
 
 func (k *K3dDriver) getKubeConfig() (*os.File, error) {
-	// Get kubeconfig from kind
+	// Get kubeconfig from k3d binary
 	output, err := k.cmd("kubeconfig", "get").WithoutStreaming().Output()
 	if err != nil {
 		return nil, err
