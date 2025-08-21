@@ -397,7 +397,6 @@ func compareCgroupCPULimit(topologyElement esv1.NodeSet, nodeStats client.NodeSt
 			expectedCPULimit = c.Resources.Limits.Cpu()
 		}
 	}
-
 	if expectedCPULimit == nil || expectedCPULimit.IsZero() {
 		// no expected cpu, consider it's ok
 		return nil

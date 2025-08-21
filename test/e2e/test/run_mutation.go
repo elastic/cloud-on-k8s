@@ -22,7 +22,6 @@ func RunMutations(t *testing.T, creationBuilders []Builder, mutationBuilders []B
 	for _, toCreate := range creationBuilders {
 		steps = steps.WithSteps(toCreate.CreationTestSteps(k))
 	}
-
 	for _, toCreate := range creationBuilders {
 		steps = steps.WithSteps(CheckTestSteps(toCreate, k))
 	}
