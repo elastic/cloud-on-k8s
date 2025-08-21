@@ -40,6 +40,7 @@ metadata:
 nodeGroups:
   - name: ng-1
     amiFamily: Bottlerocket
+    ami: ami-0a12a162c74b30f00
     instanceType: {{.MachineType}}
     desiredCapacity: {{.NodeCount}}
     iam:
