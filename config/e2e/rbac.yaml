@@ -361,6 +361,20 @@ rules:
       - delete
       - deletecollection
   - apiGroups:
+      - epr.k8s.elastic.co
+    resources:
+      - elasticpackageregistries
+      - elasticpackageregistries/status
+    verbs:
+      - get
+      - list
+      - watch
+      - create
+      - update
+      - patch
+      - delete
+      - deletecollection
+  - apiGroups:
       - storage.k8s.io
     resources:
       - storageclasses
