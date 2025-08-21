@@ -15,7 +15,6 @@ import (
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
-	"k8s.io/apimachinery/pkg/util/sets"
 	"k8s.io/client-go/kubernetes/scheme"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
@@ -108,7 +107,7 @@ func expectedRolePDBs(
 	}
 
 	// Group StatefulSets by their connected roles.
-	groups, ssetNamesToRoles, err := groupBySharedRoles(statefulSets, resources, v)
+	groups, err := groupBySharedRoles(statefulSets, resources, v)
 	if err != nil {
 		return nil, fmt.Errorf("while grouping StatefulSets by roles: %w", err)
 	}
@@ -124,20 +123,7 @@ func expectedRolePDBs(
 			continue
 		}
 
-		// Determine the roles for this group
-		groupRoles := sets.New[esv1.NodeRole]()
-		for _, sset := range group {
-			roles := ssetNamesToRoles[sset.Name]
-			for _, role := range roles.AsSlice() {
-				groupRoles.Insert(esv1.NodeRole(role))
-			}
-		}
-
-		// Determine the most conservative role to use when determining the maxUnavailable setting.
-		// If group has no roles, it's a coordinating ES role.
-		primaryRole := getPrimaryRoleForPDB(groupRoles)
-
-		pdb, err := createPDBForStatefulSets(es, primaryRole, string(roleName), group, statefulSets, meta)
+		pdb, err := createPDBForStatefulSets(es, roleName, string(roleName), group, statefulSets, meta)
 		if err != nil {
 			return nil, err
 		}
@@ -149,25 +135,23 @@ func expectedRolePDBs(
 	return pdbs, nil
 }
 
-func groupBySharedRoles(statefulSets sset.StatefulSetList, resources nodespec.ResourcesList, v version.Version) (map[esv1.NodeRole][]appsv1.StatefulSet, map[string]set.StringSet, error) {
+func groupBySharedRoles(statefulSets sset.StatefulSetList, resources nodespec.ResourcesList, v version.Version) (map[esv1.NodeRole][]appsv1.StatefulSet, error) {
 	n := len(statefulSets)
 	if n == 0 {
-		return map[esv1.NodeRole][]appsv1.StatefulSet{}, nil, nil
+		return map[esv1.NodeRole][]appsv1.StatefulSet{}, nil
 	}
 
 	rolesToIndices := make(map[esv1.NodeRole][]int)
 	indicesToRoles := make(map[int]set.StringSet)
-	ssetNamesToRoles := make(map[string]set.StringSet)
 	for i, sset := range statefulSets {
 		roles, err := getRolesForStatefulSet(sset, resources, v)
 		if err != nil {
-			return nil, nil, err
+			return nil, err
 		}
 		if len(roles) == 0 {
 			// StatefulSets with no roles are coordinating nodes - group them together
 			rolesToIndices[esv1.CoordinatingRole] = append(rolesToIndices[esv1.CoordinatingRole], i)
 			indicesToRoles[i] = set.Make(string(esv1.CoordinatingRole))
-			ssetNamesToRoles[sset.Name] = set.Make(string(esv1.CoordinatingRole))
 			continue
 		}
 		for _, role := range roles {
@@ -178,7 +162,6 @@ func groupBySharedRoles(statefulSets sset.StatefulSetList, resources nodespec.Re
 				indicesToRoles[i] = set.Make()
 			}
 			indicesToRoles[i].Add(string(normalizedRole))
-			ssetNamesToRoles[sset.Name] = indicesToRoles[i]
 		}
 	}
 
@@ -216,59 +199,7 @@ func groupBySharedRoles(statefulSets sset.StatefulSetList, resources nodespec.Re
 		}
 		res[role] = group
 	}
-	return res, ssetNamesToRoles, nil
-}
-
-// getPrimaryRoleForPDB returns the primary role from a set of roles for PDB naming and grouping.
-// Data roles are most restrictive (require green health), so they take priority.
-// All other roles have similar disruption rules (require yellow+ health).
-func getPrimaryRoleForPDB(roles sets.Set[esv1.NodeRole]) esv1.NodeRole {
-	if len(roles) == 0 {
-		return "" // coordinating role
-	}
-
-	// Data roles are most restrictive (require green health), so they take priority.
-	// Check if any data role variant is present (excluding data_frozen)
-	if slices.ContainsFunc(dataRoles, func(dataRole esv1.NodeRole) bool {
-		return roles.Has(dataRole)
-	}) {
-		// Return generic data role for all data role variants
-		return esv1.DataRole
-	}
-
-	// Master role comes next in priority
-	if _, ok := roles[esv1.MasterRole]; ok {
-		return esv1.MasterRole
-	}
-
-	// Data frozen role (has different disruption rules than other data roles)
-	if _, ok := roles[esv1.DataFrozenRole]; ok {
-		return esv1.DataFrozenRole
-	}
-
-	// Return the first role we encounter in a deterministic order
-	// Define a priority order for non-data roles
-	nonDataRoles := []esv1.NodeRole{
-		esv1.IngestRole,
-		esv1.MLRole,
-		esv1.TransformRole,
-		esv1.RemoteClusterClientRole,
-	}
-
-	// Check non-data roles in priority order
-	for _, role := range nonDataRoles {
-		if _, ok := roles[role]; ok {
-			return role
-		}
-	}
-
-	// If no known role found, return any role from the map
-	for role := range roles {
-		return role
-	}
-
-	// Should never reach here if roles is not empty
-	return ""
+	return res, nil
 }
 
 // getRolesForStatefulSet gets the roles from a StatefulSet's expected configuration.
@@ -358,7 +289,7 @@ func buildRoleSpecificPDBSpec(
 	allStatefulSets sset.StatefulSetList,
 ) policyv1.PodDisruptionBudgetSpec {
 	// Get the allowed disruptions for this role based on cluster health and role type
-	allowedDisruptions := allowedDisruptionsForRole(es, role, statefulSets, allStatefulSets)
+	allowedDisruptions := allowedDisruptionsForRole(es, role, allStatefulSets)
 
 	spec := policyv1.PodDisruptionBudgetSpec{
 		MaxUnavailable: &intstr.IntOrString{Type: intstr.Int, IntVal: allowedDisruptions},
@@ -381,8 +312,6 @@ func buildRoleSpecificPDBSpec(
 func allowedDisruptionsForRole(
 	es esv1.Elasticsearch,
 	role esv1.NodeRole,
-	// statefulSets are the statefulSets grouped into this pdb.
-	statefulSets sset.StatefulSetList,
 	// allStatefulSets are all statefulSets in the whole ES cluster.
 	allStatefulSets sset.StatefulSetList,
 ) int32 {
