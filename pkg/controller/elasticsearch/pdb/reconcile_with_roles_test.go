@@ -239,7 +239,7 @@ func TestReconcileRoleSpecificPDBs(t *testing.T) {
 			},
 		},
 		{
-			name: "no existing PDBs: should create role-specific PDBs with data roles grouped, but no disruptions allowed because single master node",
+			name: "no existing PDBs: should create role-specific PDBs with data roles grouped, allowing 1 disruption because single master node",
 			args: args{
 				es: *defaultHealthyES,
 				builder: NewBuilder("cluster").
@@ -248,7 +248,7 @@ func TestReconcileRoleSpecificPDBs(t *testing.T) {
 					WithNodeSet("data2", 2, esv1.DataHotRole),
 			},
 			wantedPDBs: []*policyv1.PodDisruptionBudget{
-				rolePDB("cluster", "ns", esv1.DataRole, []string{"data2", "master-data1"}, 0),
+				rolePDB("cluster", "ns", esv1.DataRole, []string{"data2", "master-data1"}, 1),
 			},
 		},
 		{
@@ -978,6 +978,24 @@ func Test_allowedDisruptionsForRole(t *testing.T) {
 			want: 0,
 		},
 		{
+			name: "green health: 1 disruption allowed for data sts that is not HA",
+			args: args{
+				es:              esv1.Elasticsearch{Status: esv1.ElasticsearchStatus{Health: esv1.ElasticsearchGreenHealth}},
+				role:            []esv1.NodeRole{esv1.DataRole},
+				allStatefulSets: sset.StatefulSetList{ssetfixtures.TestSset{Replicas: 1}.Build()},
+			},
+			want: 1,
+		},
+		{
+			name: "green health: 1 disruption allowed for data sts that is HA",
+			args: args{
+				es:              esv1.Elasticsearch{Status: esv1.ElasticsearchStatus{Health: esv1.ElasticsearchGreenHealth}},
+				role:            []esv1.NodeRole{esv1.DataRole},
+				allStatefulSets: sset.StatefulSetList{ssetfixtures.TestSset{Replicas: 3}.Build()},
+			},
+			want: 1,
+		},
+		{
 			name: "yellow health: 1 disruption allowed for master/ingest/transform/ml/data_frozen",
 			args: args{
 				es:              esv1.Elasticsearch{Status: esv1.ElasticsearchStatus{Health: esv1.ElasticsearchYellowHealth}},
@@ -1005,7 +1023,7 @@ func Test_allowedDisruptionsForRole(t *testing.T) {
 			want: 1,
 		},
 		{
-			name: "single-node cluster (not high-available): 1 disruption allowed",
+			name: "single-node cluster (not high-available): 1 disruption allowed for master role when the cluster is green.",
 			args: args{
 				es:              esv1.Elasticsearch{Status: esv1.ElasticsearchStatus{Health: esv1.ElasticsearchGreenHealth}},
 				role:            []esv1.NodeRole{esv1.MasterRole},
@@ -1014,10 +1032,19 @@ func Test_allowedDisruptionsForRole(t *testing.T) {
 			want: 1,
 		},
 		{
-			name: "green health but only 1 master: 0 disruptions allowed for master role",
+			name: "single-node cluster (not high-available): 1 disruption allowed for master role when the cluster is yellow.",
+			args: args{
+				es:              esv1.Elasticsearch{Status: esv1.ElasticsearchStatus{Health: esv1.ElasticsearchYellowHealth}},
+				role:            []esv1.NodeRole{esv1.MasterRole},
+				allStatefulSets: sset.StatefulSetList{ssetfixtures.TestSset{Replicas: 1, Master: true, Data: true}.Build()},
+			},
+			want: 1,
+		},
+		{
+			name: "green health but only 1 master: 1 disruption allowed as the cluster is non-ha",
 			args: args{
 				es:   esv1.Elasticsearch{Status: esv1.ElasticsearchStatus{Health: esv1.ElasticsearchGreenHealth}},
-				role: []esv1.NodeRole{esv1.MasterRole},
+				role: []esv1.NodeRole{esv1.DataRole},
 				statefulSetsInPDB: sset.StatefulSetList{
 					ssetfixtures.TestSset{Replicas: 1, Master: true, Data: false}.Build(),
 					ssetfixtures.TestSset{Replicas: 3, Master: false, Data: true}.Build(),
@@ -1028,24 +1055,27 @@ func Test_allowedDisruptionsForRole(t *testing.T) {
 					ssetfixtures.TestSset{Replicas: 2, Ingest: true}.Build(),
 				},
 			},
-			want: 0,
+			want: 1,
 		},
 		{
-			name: "green health but only 1 master: 1 disruption allowed for data role",
+			name: "green health and only 1 data node: 1 disruption allowed for data role",
 			args: args{
 				es:   esv1.Elasticsearch{Status: esv1.ElasticsearchStatus{Health: esv1.ElasticsearchGreenHealth}},
 				role: []esv1.NodeRole{esv1.DataRole},
+				statefulSetsInPDB: sset.StatefulSetList{
+					ssetfixtures.TestSset{Replicas: 1, Master: false, Data: true}.Build(),
+				},
 				allStatefulSets: sset.StatefulSetList{
-					ssetfixtures.TestSset{Replicas: 1, Master: true, Data: false}.Build(),
-					ssetfixtures.TestSset{Replicas: 3, Master: false, Data: true}.Build(),
+					ssetfixtures.TestSset{Replicas: 3, Master: true, Data: false}.Build(),
+					ssetfixtures.TestSset{Replicas: 1, Master: false, Data: true}.Build(),
 				},
 			},
 			want: 1,
 		},
 		{
-			name: "green health but only 1 data node: 0 disruptions allowed for data role",
+			name: "yellow health and only 1 data node: 0 disruption allowed for data role",
 			args: args{
-				es:   esv1.Elasticsearch{Status: esv1.ElasticsearchStatus{Health: esv1.ElasticsearchGreenHealth}},
+				es:   esv1.Elasticsearch{Status: esv1.ElasticsearchStatus{Health: esv1.ElasticsearchYellowHealth}},
 				role: []esv1.NodeRole{esv1.DataRole},
 				statefulSetsInPDB: sset.StatefulSetList{
 					ssetfixtures.TestSset{Replicas: 1, Master: false, Data: true}.Build(),
@@ -1058,7 +1088,7 @@ func Test_allowedDisruptionsForRole(t *testing.T) {
 			want: 0,
 		},
 		{
-			name: "green health but only 1 ingest node: 0 disruptions allowed for ingest role",
+			name: "green health but only 1 ingest node: 1 disruptions allowed for ingest role",
 			args: args{
 				es:   esv1.Elasticsearch{Status: esv1.ElasticsearchStatus{Health: esv1.ElasticsearchGreenHealth}},
 				role: []esv1.NodeRole{esv1.IngestRole},
@@ -1072,7 +1102,7 @@ func Test_allowedDisruptionsForRole(t *testing.T) {
 					ssetfixtures.TestSset{Replicas: 1, DataFrozen: true}.Build(),
 				},
 			},
-			want: 0,
+			want: 1,
 		},
 	}
 	for _, tt := range tests {

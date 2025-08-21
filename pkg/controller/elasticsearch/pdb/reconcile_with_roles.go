@@ -22,7 +22,6 @@ import (
 
 	esv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/elasticsearch/v1"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/metadata"
-	commonsts "github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/statefulset"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/version"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/label"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/nodespec"
@@ -387,8 +386,8 @@ func allowedDisruptionsForRole(
 	// allStatefulSets are all statefulSets in the whole ES cluster.
 	allStatefulSets sset.StatefulSetList,
 ) int32 {
-	// If the Elasticsearch cluster's health is unknown or not healthy, don't allow any disruptions.
-	if es.Status.Health == esv1.ElasticsearchUnknownHealth || es.Status.Health == esv1.ElasticsearchHealth("") {
+	// If the Elasticsearch cluster's health is unknown, not healthy, or red, never allow disruptions.
+	if es.Status.Health == esv1.ElasticsearchUnknownHealth || es.Status.Health == esv1.ElasticsearchHealth("") || es.Status.Health == esv1.ElasticsearchRedHealth {
 		return 0
 	}
 
@@ -398,26 +397,19 @@ func allowedDisruptionsForRole(
 		return 1
 	}
 
-	// If the statefulSets that are contained within this PDB include the master, ingest, or data role and
-	// there's a risk the single master, ingest, or data node of the cluster gets removed, don't allow it.
-	for _, sts := range statefulSets {
-		if isSensitiveToDisruptions(sts) && commonsts.GetReplicas(sts) == 1 {
-			return 0
-		}
+	// If the Elasticsearch cluster's health is green or yellow, allow 1 disruption for the following roles regardless of the number of nodes
+	// as we do not want to block K8s nodes operations, even if we are presented a non-HA cluster.
+	if slices.Contains([]esv1.NodeRole{esv1.MasterRole, esv1.IngestRole, esv1.MLRole, esv1.DataFrozenRole, esv1.CoordinatingRole, esv1.TransformRole, esv1.VotingOnlyRole}, role) && slices.Contains([]esv1.ElasticsearchHealth{esv1.ElasticsearchGreenHealth, esv1.ElasticsearchYellowHealth}, es.Status.Health) {
+		return 1
 	}
 
-	// For data roles, only allow disruption if cluster is green
-	if role == esv1.DataRole && es.Status.Health != esv1.ElasticsearchGreenHealth {
-		return 0
+	// For data roles, only allow disruptions if the cluster is green
+	if role == esv1.DataRole && es.Status.Health == esv1.ElasticsearchGreenHealth {
+		return 1
 	}
 
-	// If we end up here, we are one of the remaining roles where we can allow disruptions if the cluster is at least yellow.
-	if es.Status.Health != esv1.ElasticsearchGreenHealth && es.Status.Health != esv1.ElasticsearchYellowHealth {
-		return 0
-	}
-
-	// Allow one pod to be disrupted for all other cases
-	return 1
+	// In all other cases, we want to allow no disruptions.
+	return 0
 }
 
 // selectorForStatefulSets returns a label selector that matches pods from specific StatefulSets.
