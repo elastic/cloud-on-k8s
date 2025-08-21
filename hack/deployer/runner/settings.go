@@ -89,7 +89,6 @@ type KindSettings struct {
 
 type K3dSettings struct {
 	ClientImage string `yaml:"clientImage"`
-	NodeCount   int    `yaml:"nodeCount"`
 	NodeImage   string `yaml:"nodeImage"`
 }
 
