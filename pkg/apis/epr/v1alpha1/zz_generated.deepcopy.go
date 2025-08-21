@@ -85,7 +85,6 @@ func (in *PackageRegistrySpec) DeepCopyInto(out *PackageRegistrySpec) {
 		**out = **in
 	}
 	in.HTTP.DeepCopyInto(&out.HTTP)
-	out.KibanaRef = in.KibanaRef
 	in.PodTemplate.DeepCopyInto(&out.PodTemplate)
 	if in.RevisionHistoryLimit != nil {
 		in, out := &in.RevisionHistoryLimit, &out.RevisionHistoryLimit

@@ -584,7 +584,6 @@ or a Secret describing an external Elastic resource not managed by the operator.
 * [MapsSpec](#mapsspec)
 * [MetricsMonitoring](#metricsmonitoring)
 * [Output](#output)
-* [PackageRegistrySpec](#packageregistryspec)
 
 :::
 
@@ -1743,7 +1742,6 @@ PackageRegistrySpec holds the specification of an Elastic Package Registry insta
 | *`config`* __[Config](#config)__ | Config holds the ElasticPackageRegistry configuration. See: https://github.com/elastic/package-registry/blob/main/config.reference.yml |
 | *`configRef`* __[ConfigSource](#configsource)__ | ConfigRef contains a reference to an existing Kubernetes Secret holding the Elastic Package Registry configuration.<br>Configuration settings are merged and have precedence over settings specified in `config`. |
 | *`http`* __[HTTPConfig](#httpconfig)__ | HTTP holds the HTTP layer configuration for Elastic Package Registry. |
-| *`kibanaRef`* __[ObjectSelector](#objectselector)__ | KibanaRef is a reference to a Kibana instance running in the same Kubernetes cluster.<br>It allows automatic configuration of the Package Registry URL in Kibana. |
 | *`podTemplate`* __[PodTemplateSpec](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.32/#podtemplatespec-v1-core)__ | PodTemplate provides customisation options (labels, annotations, affinity rules, resource requests, and so on) for the Elastic Package Registry pods |
 | *`revisionHistoryLimit`* __integer__ | RevisionHistoryLimit is the number of revisions to retain to allow rollback in the underlying Deployment. |
 | *`serviceAccountName`* __string__ | ServiceAccountName is used to check access from the current resource to a resource (for ex. Elasticsearch) in a different namespace.<br>Can only be used if ECK is enforcing RBAC on references. |

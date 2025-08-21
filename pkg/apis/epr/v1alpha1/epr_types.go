@@ -45,11 +45,6 @@ type PackageRegistrySpec struct {
 	// HTTP holds the HTTP layer configuration for Elastic Package Registry.
 	HTTP commonv1.HTTPConfig `json:"http,omitempty"`
 
-	// KibanaRef is a reference to a Kibana instance running in the same Kubernetes cluster.
-	// It allows automatic configuration of the Package Registry URL in Kibana.
-	// +kubebuilder:validation:Optional
-	KibanaRef commonv1.ObjectSelector `json:"kibanaRef,omitempty"`
-
 	// PodTemplate provides customisation options (labels, annotations, affinity rules, resource requests, and so on) for the Elastic Package Registry pods
 	// +kubebuilder:validation:Optional
 	// +kubebuilder:pruning:PreserveUnknownFields
