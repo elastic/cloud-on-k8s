@@ -1,193 +1,193 @@
 plans:
-  - id: gke-ci
-    operation: create
-    clusterName: ci
-    provider: gke
-    kubernetesVersion: 1.33
-    machineType: n1-standard-8
-    serviceAccount: true
-    enforceSecurityPolicies: true
-    # use kustomize in GKE to remove the NVMe provisioning already taken care of by the platform
-    diskSetup: kubectl apply -k hack/deployer/config/local-disks
-    gke:
-      region: us-central1
-      localSsdCount: 1
-      nodeCountPerZone: 1
-      gcpScopes: https://www.googleapis.com/auth/devstorage.read_only,https://www.googleapis.com/auth/logging.write,https://www.googleapis.com/auth/monitoring,https://www.googleapis.com/auth/servicecontrol,https://www.googleapis.com/auth/service.management.readonly,https://www.googleapis.com/auth/trace.append
-  - id: gke-autopilot-ci
-    operation: create
-    clusterName: ci-autopilot
-    provider: gke
-    kubernetesVersion: 1.33
-    serviceAccount: true
-    enforceSecurityPolicies: true
-    # this is disabled in autopilot: container provisioner is privileged; not allowed in Autopilot
-    # diskSetup: kubectl apply -k hack/deployer/config/local-disks
-    gke:
-      autopilot: true
-      region: us-central1
-      gcpScopes: https://www.googleapis.com/auth/devstorage.read_only,https://www.googleapis.com/auth/logging.write,https://www.googleapis.com/auth/monitoring,https://www.googleapis.com/auth/servicecontrol,https://www.googleapis.com/auth/service.management.readonly,https://www.googleapis.com/auth/trace.append
-  - id: gke-dev
-    operation: create
-    clusterName: dev
-    provider: gke
-    kubernetesVersion: 1.33
-    machineType: n1-standard-8
-    serviceAccount: false
-    enforceSecurityPolicies: true
-    gke:
-      region: europe-west1
-      localSsdCount: 1
-      nodeCountPerZone: 1
-      # Uncomment option below to enable network policy enforcement in GKE.
-      # networkPolicy: true
-      # Uncomment option below to create a private GKE cluster.
-      # Note that when a cluster is private you must:
-      #   1. Create a firewall rule so that the webhook can be accessed from the API server (see https://github.com/elastic/cloud-on-k8s/issues/1673#issuecomment-528449682)
-      #   2. Create a VM to access the subnet and authorize the VM to access the master, see https://cloud.google.com/kubernetes-engine/docs/how-to/private-clusters#private_master
-      # private: true
-      # gke creates a secondary IP range for all Pods of a cluster
-      # gke defaults to a /14 subnet, which allows 262k Pods per cluster, but only 62 subnets to be created
-      # /20 allows 4094 subnets, with up to 4094 IPs (Pods) per subnet
-      # more clusters can therefore be created in the same VPC network.
-      # we set a default of /20 that can be overridden here
-      # clusterIpv4Cidr: /20
-      # servicesIpv4Cidr: /20
-      gcpScopes: https://www.googleapis.com/auth/devstorage.read_only,https://www.googleapis.com/auth/logging.write,https://www.googleapis.com/auth/monitoring,https://www.googleapis.com/auth/servicecontrol,https://www.googleapis.com/auth/service.management.readonly,https://www.googleapis.com/auth/trace.append
-  - id: gke-autopilot-dev
-    operation: create
-    clusterName: dev-autopilot
-    provider: gke
-    kubernetesVersion: 1.33
-    serviceAccount: false
-    enforceSecurityPolicies: true
-    gke:
-      autopilot: true
-      region: europe-west1
-      gcpScopes: https://www.googleapis.com/auth/devstorage.read_only,https://www.googleapis.com/auth/logging.write,https://www.googleapis.com/auth/monitoring,https://www.googleapis.com/auth/servicecontrol,https://www.googleapis.com/auth/service.management.readonly,https://www.googleapis.com/auth/trace.append
-  - id: aks-ci
-    operation: create
-    clusterName: ci
-    provider: aks
-    kubernetesVersion: 1.32.4
-    machineType: Standard_D8s_v3
-    serviceAccount: true
-    enforceSecurityPolicies: true
-    diskSetup: kubectl apply -k hack/deployer/config/local-disks
-    aks:
-      nodeCount: 3
-      location: westeurope
-      zones: "1 2 3"
-  - id: aks-dev
-    operation: create
-    clusterName: dev
-    provider: aks
-    kubernetesVersion: 1.32.4
-    machineType: Standard_D8s_v3
-    serviceAccount: false
-    enforceSecurityPolicies: true
-    aks:
-      nodeCount: 3
-      location: northeurope
-      zones: "1 2 3"
-  - id: ocp-ci
-    operation: create
-    clusterName: ci
-    clientVersion: 4.19.2
-    provider: ocp
-    machineType: n1-standard-8
-    serviceAccount: true
-    ocp:
-      region: europe-west6
-      nodeCount: 3
-  - id: ocp-dev
-    operation: create
-    clusterName: dev
-    clientVersion: 4.19.2
-    provider: ocp
-    machineType: n1-standard-8
-    serviceAccount: true
-    ocp:
-      region: europe-west1
-      nodeCount: 3
-  - id: eks-ci
-    operation: create
-    clusterName: ci
-    provider: eks
-    machineType: c5d.2xlarge
-    serviceAccount: false
-    enforceSecurityPolicies: true
-    kubernetesVersion: 1.33
-    diskSetup: kubectl apply -f hack/deployer/config/local-disks/ssd-provisioner.yaml
-    eks:
-      region: ap-northeast-3
-      nodeCount: 3
-      nodeAMI: auto
-  - id: eks-arm-ci
-    operation: create
-    clusterName: arm-ci
-    provider: eks
-    machineType: m6gd.2xlarge
-    serviceAccount: false
-    enforceSecurityPolicies: true
-    kubernetesVersion: 1.33
-    diskSetup: kubectl apply -f hack/deployer/config/local-disks/ssd-provisioner.yaml
-    eks:
-      region: eu-west-1
-      nodeCount: 3
-      nodeAMI: auto
-  - id: eks-dev
-    operation: create
-    clusterName: dev
-    provider: eks
-    machineType: c5d.2xlarge
-    serviceAccount: false
-    kubernetesVersion: 1.33
-    diskSetup: kubectl apply -f hack/deployer/config/local-disks/ssd-provisioner.yaml
-    enforceSecurityPolicies: true
-    eks:
-      region: eu-west-2
-      nodeCount: 3
-      nodeAMI: auto
-  - id: kind-dev
-    operation: create
-    clusterName: eck
-    clientVersion: 0.29.0
-    provider: kind
-    kubernetesVersion: 1.31.1
-    enforceSecurityPolicies: true
-    kind:
-      nodeCount: 3
-      nodeImage: kindest/node:v1.33.1@sha256:050072256b9a903bd914c0b2866828150cb229cea0efe5892e2b644d5dd3b34f
-      ipFamily: ipv4
-  - id: kind-ci
-    operation: create
-    clusterName: kind-ci
-    clientVersion: 0.29.0
-    provider: kind
-    kubernetesVersion: 1.33.1
-    enforceSecurityPolicies: true
-    kind:
-      nodeCount: 3
-      nodeImage: kindest/node:v1.33.1@sha256:050072256b9a903bd914c0b2866828150cb229cea0efe5892e2b644d5dd3b34f
-      ipFamily: ipv4
-  - id: k3d-dev
-    operation: create
-    clusterName: eck
-    clientVersion: v5.8.3
-    provider: k3d
-    kubernetesVersion: 1.33.1
-    k3d:
-      nodeCount: 3
-      clientImage: ghcr.io/k3d-io/k3d:5.8.3
-      nodeImage: rancher/k3s:v1.33.2-k3s1
-  - id: k3d-ci
-    operation: create
-    clusterName: k3d-ci
-    clientVersion: v5.8.3
-    provider: k3d
-    kubernetesVersion: 1.33.1
-    k3d:
-      nodeCount: 3
-      clientImage: ghcr.io/k3d-io/k3d:5.8.3
-      nodeImage: rancher/k3s:v1.33.2-k3s1
+- id: gke-ci
+  operation: create
+  clusterName: ci
+  provider: gke
+  kubernetesVersion: 1.33
+  machineType: n1-standard-8
+  serviceAccount: true
+  enforceSecurityPolicies: true
+  # use kustomize in GKE to remove the NVMe provisioning already taken care of by the platform
+  diskSetup: kubectl apply -k hack/deployer/config/local-disks
+  gke:
+    region: us-central1
+    localSsdCount: 1
+    nodeCountPerZone: 1
+    gcpScopes: https://www.googleapis.com/auth/devstorage.read_only,https://www.googleapis.com/auth/logging.write,https://www.googleapis.com/auth/monitoring,https://www.googleapis.com/auth/servicecontrol,https://www.googleapis.com/auth/service.management.readonly,https://www.googleapis.com/auth/trace.append
+- id: gke-autopilot-ci
+  operation: create
+  clusterName: ci-autopilot
+  provider: gke
+  kubernetesVersion: 1.33
+  serviceAccount: true
+  enforceSecurityPolicies: true
+  # this is disabled in autopilot: container provisioner is privileged; not allowed in Autopilot
+  # diskSetup: kubectl apply -k hack/deployer/config/local-disks
+  gke:
+    autopilot: true
+    region: us-central1
+    gcpScopes: https://www.googleapis.com/auth/devstorage.read_only,https://www.googleapis.com/auth/logging.write,https://www.googleapis.com/auth/monitoring,https://www.googleapis.com/auth/servicecontrol,https://www.googleapis.com/auth/service.management.readonly,https://www.googleapis.com/auth/trace.append
+- id: gke-dev
+  operation: create
+  clusterName: dev
+  provider: gke
+  kubernetesVersion: 1.33
+  machineType: n1-standard-8
+  serviceAccount: false
+  enforceSecurityPolicies: true
+  gke:
+    region: europe-west1
+    localSsdCount: 1
+    nodeCountPerZone: 1
+    # Uncomment option below to enable network policy enforcement in GKE.
+    # networkPolicy: true
+    # Uncomment option below to create a private GKE cluster.
+    # Note that when a cluster is private you must:
+    #   1. Create a firewall rule so that the webhook can be accessed from the API server (see https://github.com/elastic/cloud-on-k8s/issues/1673#issuecomment-528449682)
+    #   2. Create a VM to access the subnet and authorize the VM to access the master, see https://cloud.google.com/kubernetes-engine/docs/how-to/private-clusters#private_master
+    # private: true
+    # gke creates a secondary IP range for all Pods of a cluster
+    # gke defaults to a /14 subnet, which allows 262k Pods per cluster, but only 62 subnets to be created
+    # /20 allows 4094 subnets, with up to 4094 IPs (Pods) per subnet
+    # more clusters can therefore be created in the same VPC network.
+    # we set a default of /20 that can be overridden here
+    # clusterIpv4Cidr: /20
+    # servicesIpv4Cidr: /20
+    gcpScopes: https://www.googleapis.com/auth/devstorage.read_only,https://www.googleapis.com/auth/logging.write,https://www.googleapis.com/auth/monitoring,https://www.googleapis.com/auth/servicecontrol,https://www.googleapis.com/auth/service.management.readonly,https://www.googleapis.com/auth/trace.append
+- id: gke-autopilot-dev
+  operation: create
+  clusterName: dev-autopilot
+  provider: gke
+  kubernetesVersion: 1.33
+  serviceAccount: false
+  enforceSecurityPolicies: true
+  gke:
+    autopilot: true
+    region: europe-west1
+    gcpScopes: https://www.googleapis.com/auth/devstorage.read_only,https://www.googleapis.com/auth/logging.write,https://www.googleapis.com/auth/monitoring,https://www.googleapis.com/auth/servicecontrol,https://www.googleapis.com/auth/service.management.readonly,https://www.googleapis.com/auth/trace.append
+- id: aks-ci
+  operation: create
+  clusterName: ci
+  provider: aks
+  kubernetesVersion: 1.32.4
+  machineType: Standard_D8s_v3
+  serviceAccount: true
+  enforceSecurityPolicies: true
+  diskSetup: kubectl apply -k hack/deployer/config/local-disks
+  aks:
+    nodeCount: 3
+    location: westeurope
+    zones: "1 2 3"
+- id: aks-dev
+  operation: create
+  clusterName: dev
+  provider: aks
+  kubernetesVersion: 1.32.4
+  machineType: Standard_D8s_v3
+  serviceAccount: false
+  enforceSecurityPolicies: true
+  aks:
+    nodeCount: 3
+    location: northeurope
+    zones: "1 2 3"
+- id: ocp-ci
+  operation: create
+  clusterName: ci
+  clientVersion: 4.19.2
+  provider: ocp
+  machineType: n1-standard-8
+  serviceAccount: true
+  ocp:
+    region: europe-west6
+    nodeCount: 3
+- id: ocp-dev
+  operation: create
+  clusterName: dev
+  clientVersion: 4.19.2
+  provider: ocp
+  machineType: n1-standard-8
+  serviceAccount: true
+  ocp:
+    region: europe-west1
+    nodeCount: 3
+- id: eks-ci
+  operation: create
+  clusterName: ci
+  provider: eks
+  machineType: c5d.2xlarge
+  serviceAccount: false
+  enforceSecurityPolicies: true
+  kubernetesVersion: 1.33
+  diskSetup: kubectl apply -f hack/deployer/config/local-disks/ssd-provisioner.yaml
+  eks:
+    region: ap-northeast-3
+    nodeCount: 3
+    nodeAMI: auto
+- id: eks-arm-ci
+  operation: create
+  clusterName: arm-ci
+  provider: eks
+  machineType: m6gd.2xlarge
+  serviceAccount: false
+  enforceSecurityPolicies: true
+  kubernetesVersion: 1.33
+  diskSetup: kubectl apply -f hack/deployer/config/local-disks/ssd-provisioner.yaml
+  eks:
+    region: eu-west-1
+    nodeCount: 3
+    nodeAMI: auto
+- id: eks-dev
+  operation: create
+  clusterName: dev
+  provider: eks
+  machineType: c5d.2xlarge
+  serviceAccount: false
+  kubernetesVersion: 1.33
+  diskSetup: kubectl apply -f hack/deployer/config/local-disks/ssd-provisioner.yaml
+  enforceSecurityPolicies: true
+  eks:
+    region: eu-west-2
+    nodeCount: 3
+    nodeAMI: auto
+- id: kind-dev
+  operation: create
+  clusterName: eck
+  clientVersion: 0.29.0
+  provider: kind
+  kubernetesVersion: 1.31.1
+  enforceSecurityPolicies: true
+  kind:
+    nodeCount: 3
+    nodeImage: kindest/node:v1.33.1@sha256:050072256b9a903bd914c0b2866828150cb229cea0efe5892e2b644d5dd3b34f
+    ipFamily: ipv4
+- id: kind-ci
+  operation: create
+  clusterName: kind-ci
+  clientVersion: 0.29.0
+  provider: kind
+  kubernetesVersion: 1.33.1
+  enforceSecurityPolicies: true
+  kind:
+    nodeCount: 3
+    nodeImage: kindest/node:v1.33.1@sha256:050072256b9a903bd914c0b2866828150cb229cea0efe5892e2b644d5dd3b34f
+    ipFamily: ipv4
+- id: k3d-dev
+  operation: create
+  clusterName: eck
+  clientVersion: v5.8.3
+  provider: k3d
+  kubernetesVersion: 1.33.1
+  k3d:
+    nodeCount: 3
+    clientImage: ghcr.io/k3d-io/k3d:5.8.3
+    nodeImage: rancher/k3s:v1.33.2-k3s1
+- id: k3d-ci
+  operation: create
+  clusterName: k3d-ci
+  clientVersion: v5.8.3
+  provider: k3d
+  kubernetesVersion: 1.33.1
+  k3d:
+    nodeCount: 3
+    clientImage: ghcr.io/k3d-io/k3d:5.8.3
+    nodeImage: rancher/k3s:v1.33.2-k3s1
