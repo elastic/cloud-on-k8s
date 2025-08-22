@@ -823,10 +823,9 @@ func TestExpectedRolePDBs(t *testing.T) {
 
 func Test_allowedDisruptionsForRole(t *testing.T) {
 	type args struct {
-		es                esv1.Elasticsearch
-		role              []esv1.NodeRole
-		statefulSetsInPDB sset.StatefulSetList
-		allStatefulSets   sset.StatefulSetList
+		es              esv1.Elasticsearch
+		role            []esv1.NodeRole
+		allStatefulSets sset.StatefulSetList
 	}
 	tests := []struct {
 		name string
@@ -874,7 +873,7 @@ func Test_allowedDisruptionsForRole(t *testing.T) {
 			args: args{
 				es:              esv1.Elasticsearch{Status: esv1.ElasticsearchStatus{Health: esv1.ElasticsearchGreenHealth}},
 				role:            []esv1.NodeRole{esv1.DataRole},
-				allStatefulSets: sset.StatefulSetList{ssetfixtures.TestSset{Replicas: 3}.Build()},
+				allStatefulSets: sset.StatefulSetList{ssetfixtures.TestSset{Replicas: 2}.Build()},
 			},
 			want: 1,
 		},
@@ -924,7 +923,7 @@ func Test_allowedDisruptionsForRole(t *testing.T) {
 			want: 1,
 		},
 		{
-			name: "green health but only 1 master: 1 disruption allowed as the cluster is non-ha",
+			name: "green health with HA data tier: 1 disruption allowed for data role",
 			args: args{
 				es:   esv1.Elasticsearch{Status: esv1.ElasticsearchStatus{Health: esv1.ElasticsearchGreenHealth}},
 				role: []esv1.NodeRole{esv1.DataRole},
@@ -953,9 +952,6 @@ func Test_allowedDisruptionsForRole(t *testing.T) {
 			args: args{
 				es:   esv1.Elasticsearch{Status: esv1.ElasticsearchStatus{Health: esv1.ElasticsearchYellowHealth}},
 				role: []esv1.NodeRole{esv1.DataRole},
-				statefulSetsInPDB: sset.StatefulSetList{
-					ssetfixtures.TestSset{Replicas: 1, Master: false, Data: true}.Build(),
-				},
 				allStatefulSets: sset.StatefulSetList{
 					ssetfixtures.TestSset{Replicas: 3, Master: true, Data: false}.Build(),
 					ssetfixtures.TestSset{Replicas: 1, Master: false, Data: true}.Build(),
