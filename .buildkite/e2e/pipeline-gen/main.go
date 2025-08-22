@@ -44,7 +44,7 @@ const (
 	EnvVarOperatorImage        = "OPERATOR_IMAGE"
 	EnvVarE2EImage             = "E2E_IMG"
 
-	KindAgentsMachineType = "n1-standard-16"
+	K8sInDockerMachineType = "n1-standard-16"
 )
 
 var (
@@ -158,9 +158,9 @@ func main() {
 	handleErr("Failed to parse template", err)
 
 	err = tpl.Execute(os.Stdout, map[string]interface{}{
-		"Cleanup":               cleanup,
-		"Tests":                 tests,
-		"KindAgentsMachineType": KindAgentsMachineType,
+		"Cleanup":                cleanup,
+		"Tests":                  tests,
+		"K8sInDockerMachineType": K8sInDockerMachineType,
 	})
 	handleErr("Failed to generate pipeline", err)
 }

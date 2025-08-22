@@ -43,8 +43,6 @@
 - label: k3d
   fixed:
     E2E_PROVIDER: k3d
-  mixed:
-    - DEPLOYER_K3D_NODE_IMAGE: "rancher/k3s:v1.33.3+k3s1"
 
 - label: gke
   fixed:

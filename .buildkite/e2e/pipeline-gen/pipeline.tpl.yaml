@@ -30,7 +30,7 @@ steps:
       provider: "gcp"
       image: "family/core-ubuntu-2204"
       {{- if or (eq $test.Provider "kind") (eq $test.Provider "k3d") }}
-      machineType: "{{ $.KindAgentsMachineType }}"
+      machineType: "{{ $.K8sInDockerMachineType }}"
       {{- end }}
       {{- else }}
       image: docker.elastic.co/ci-agent-images/cloud-k8s-operator/buildkite-agent:c39fad65
@@ -81,7 +81,7 @@ steps:
       provider: "gcp"
       image: "family/core-ubuntu-2204"
       {{- if or (eq $test.Provider "kind") (eq $test.Provider "k3d") }}
-      machineType: "{{ $.KindAgentsMachineType }}"
+      machineType: "{{ $.K8sInDockerMachineType }}"
       diskSizeGb: 150
       {{- end }}
       {{- else }}

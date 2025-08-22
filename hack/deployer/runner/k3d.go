@@ -61,7 +61,7 @@ func (k *K3dDriver) Execute() error {
 }
 
 func (k *K3dDriver) create() error {
-	cmd := k.cmd("cluster", "create", "--image", k.plan.K3d.NodeImage)
+	cmd := k.cmd("cluster", "create", "--image", k.plan.K3d.NodeImage, "--kubeconfig-update-default=false")
 	if cmd == nil {
 		return fmt.Errorf("failed to create k3d cluster")
 	}
@@ -90,7 +90,15 @@ func (k *K3dDriver) create() error {
 }
 
 func (k *K3dDriver) delete() error {
-	return fmt.Errorf("unimplemented")
+	cmd := k.cmd("cluster", "delete")
+	if cmd == nil {
+		return fmt.Errorf("failed to create k3d cluster")
+	}
+	err := cmd.Run()
+	if err != nil {
+		return err
+	}
+	return nil
 }
 
 func (k *K3dDriver) cmd(args ...string) *exec.Command {
