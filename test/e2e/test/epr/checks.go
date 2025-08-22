@@ -24,7 +24,7 @@ func CheckSecrets(b Builder, k *test.K8sClient) test.Step {
 				Name: eprName + "-epr-config",
 				Keys: []string{"config.yml"},
 				Labels: map[string]string{
-					"eck.k8s.elastic.co/credentials":       "true",
+					"eck.k8s.elastic.co/credentials":      "true",
 					"packageregistry.k8s.elastic.co/name": eprName,
 				},
 			},
@@ -99,13 +99,6 @@ func CheckStatus(b Builder, k *test.K8sClient) test.Step {
 			return nil
 		}),
 	}
-}
-
-type eprStatus struct {
-	Version string `json:"version"`
-	Overall struct {
-		State string `json:"state"`
-	} `json:"overall"`
 }
 
 func (b Builder) CheckStackTestSteps(k *test.K8sClient) test.StepList {
