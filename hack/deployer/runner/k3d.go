@@ -133,6 +133,8 @@ func (k *K3dDriver) getKubeConfig() (*os.File, error) {
 		return nil, err
 	}
 
+	fmt.Printf("Kubeconfig output: %s\n", output)
+
 	// Persist kubeconfig for reliability in following kubectl commands
 	kubeCfg, err := os.CreateTemp("", "kubeconfig")
 	if err != nil {
