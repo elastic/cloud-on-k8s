@@ -10,6 +10,7 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
+	"strings"
 	"time"
 
 	"github.com/elastic/cloud-on-k8s/v3/hack/deployer/exec"
@@ -133,7 +134,11 @@ func (k *K3dDriver) getKubeConfig() (*os.File, error) {
 		return nil, err
 	}
 
-	fmt.Printf("Kubeconfig output: %s\n", output)
+	// Replace host.docker.internal with 127.0.0.1 only if not running inside the CI container
+	// and on macOS.
+	if os.Getenv("CI") != "true" && runtime.GOOS == "darwin" {
+		output = strings.Replace(output, "host.docker.internal", "127.0.0.1", -1)
+	}
 
 	// Persist kubeconfig for reliability in following kubectl commands
 	kubeCfg, err := os.CreateTemp("", "kubeconfig")
