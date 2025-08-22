@@ -77,10 +77,6 @@ func (k *K3dDriver) create() error {
 	}
 	defer os.Remove(kubeCfg.Name())
 
-	if err := kubectl("--kubeconfig", kubeCfg.Name(), "delete", "storageclass", "standard"); err != nil {
-		return err
-	}
-
 	tmpStorageClass, err := k.createTmpStorageClass()
 	if err != nil {
 		return err
