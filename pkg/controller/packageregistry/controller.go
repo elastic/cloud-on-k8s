@@ -111,7 +111,7 @@ func addWatches(mgr manager.Manager, c controller.Controller, r *ReconcilePackag
 
 var _ reconcile.Reconciler = &ReconcilePackageRegistry{}
 
-// ReconcilePackageRegistry reconciles a MapsServer object
+// ReconcilePackageRegistry reconciles a ElasticPackageRegistry object
 type ReconcilePackageRegistry struct {
 	k8s.Client
 	operator.Parameters
@@ -135,10 +135,10 @@ func (r *ReconcilePackageRegistry) Recorder() record.EventRecorder {
 
 var _ driver.Interface = &ReconcilePackageRegistry{}
 
-// Reconcile reads that state of the cluster for a MapsServer object and makes changes based on the state read and what is
-// in the MapsServer.Spec
+// Reconcile reads that state of the cluster for a ElasticPackageRegistry object and makes changes based on the state read and what is
+// in the ElasticPackageRegistry.Spec
 func (r *ReconcilePackageRegistry) Reconcile(ctx context.Context, request reconcile.Request) (reconcile.Result, error) {
-	ctx = common.NewReconciliationContext(ctx, &r.iteration, r.Tracer, controllerName, "maps_name", request)
+	ctx = common.NewReconciliationContext(ctx, &r.iteration, r.Tracer, controllerName, "epr_name", request)
 	defer common.LogReconciliationRun(ulog.FromContext(ctx))()
 	defer tracing.EndContextTransaction(ctx)
 
@@ -156,11 +156,11 @@ func (r *ReconcilePackageRegistry) Reconcile(ctx context.Context, request reconc
 	}
 
 	if common.IsUnmanaged(ctx, &epr) {
-		ulog.FromContext(ctx).Info("Object is currently not managed by this controller. Skipping reconciliation", "namespace", epr.Namespace, "maps_name", epr.Name)
+		ulog.FromContext(ctx).Info("Object is currently not managed by this controller. Skipping reconciliation", "namespace", epr.Namespace, "epr_name", epr.Name)
 		return reconcile.Result{}, nil
 	}
 
-	// MapsServer will be deleted nothing to do other than remove the watches
+	// ElasticPackageRegistry will be deleted nothing to do other than remove the watches
 	if epr.IsMarkedForDeletion() {
 		return reconcile.Result{}, r.onDelete(ctx, k8s.ExtractNamespacedName(&epr))
 	}
@@ -280,10 +280,10 @@ func buildConfigHash(c k8s.Client, epr eprv1alpha1.ElasticPackageRegistry, confi
 	// build a hash of various settings to rotate the Pod on any change
 	configHash := fnv.New32a()
 
-	// - in the Elastic Maps Server configuration file content
+	// - in the Elastic Package Registry configuration file content
 	_, _ = configHash.Write(configSecret.Data[ConfigFilename])
 
-	// - in the Elastic Maps Server TLS certificates
+	// - in the Elastic Package Registry TLS certificates
 	if epr.Spec.HTTP.TLS.Enabled() {
 		var tlsCertSecret corev1.Secret
 		tlsSecretKey := types.NamespacedName{Namespace: epr.Namespace, Name: certificates.InternalCertsSecretName(eprv1alpha1.Namer, epr.Name)}
