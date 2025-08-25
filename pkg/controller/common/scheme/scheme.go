@@ -25,7 +25,6 @@ import (
 )
 
 var addToScheme sync.Once
-var addToSchemeV1beta1 sync.Once
 
 func mustAddSchemeOnce(once *sync.Once, schemes []func(scheme *runtime.Scheme) error) {
 	once.Do(func() {
