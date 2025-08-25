@@ -38,6 +38,16 @@ Deployer is the provisioning tool that aims to be the interface to multiple Kube
 
   * This will give you a working Kind cluster based on default values. See [Advanced usage](#advanced-usage) on how to tweak these configuration defaults if the need arises. Relevant parameters for Kind are: `client_version` which is the version of Kind to use. Make sure to check the [Kind release notes](https://github.com/kubernetes-sigs/kind/releases) when changing the client version and make sure `kubernetesVersion` and `client_version` are compatible. `kind.nodeImage` allows you to use a specific Kind node image matching your chosen Kind version. Again, the [Kind release notes](https://github.com/kubernetes-sigs/kind/releases) list the compatible pre-built node images for each version. `kind.ipFamily` allows you to switch between either an IPv4 or IPv6 network setup.
 
+* K3d
+  * No need to install the K3d CLI. Deployer will do that for you and run K3d inside a Docker container without changing the host system.
+  * Run from the [project root](/):
+
+    ```bash
+    make switch-k3d bootstrap-cloud
+    ```
+
+  * This will give you a working K3d cluster based on default values. See [Advanced usage](#advanced-usage) on how to tweak these configuration defaults if the need arises. Relevant parameters for K3d are: `clientImage` which is the version of K3d to use and `nodeImage` which is the version of `k3s` that runs on the nodes, which also defines the Kubernetes version. Make sure to check the [K3d release notes](https://github.com/k3d-io/k3d/releases) when changing the client image and make sure `nodeImage`` and `clientImage` are compatible.
+
 ### Deprovision
 
 ```bash

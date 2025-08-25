@@ -19,7 +19,6 @@ steps:
 
     commands:
       - .buildkite/scripts/test/set-deployer-config.sh
-
       {{- if $test.Dind }}
       - make -C .buildkite TARGET="run-deployer" ci
       {{- else }}
@@ -29,9 +28,9 @@ steps:
     agents:
       {{- if $test.Dind }}
       provider: "gcp"
-      image: "family/core-ubuntu-2004"
-      {{- if eq $test.Provider "kind" }}
-      machineType: "{{ .KindAgentsMachineType }}"
+      image: "family/core-ubuntu-2204"
+      {{- if or (eq $test.Provider "kind") (eq $test.Provider "k3d") }}
+      machineType: "{{ $.K8sInDockerMachineType }}"
       {{- end }}
       {{- else }}
       image: docker.elastic.co/ci-agent-images/cloud-k8s-operator/buildkite-agent:c39fad65
@@ -80,9 +79,9 @@ steps:
     agents:
       {{- if $test.Dind }}
       provider: "gcp"
-      image: "family/core-ubuntu-2004"
-      {{- if eq $test.Provider "kind" }}
-      machineType: "{{ $.KindAgentsMachineType }}"
+      image: "family/core-ubuntu-2204"
+      {{- if or (eq $test.Provider "kind") (eq $test.Provider "k3d") }}
+      machineType: "{{ $.K8sInDockerMachineType }}"
       diskSizeGb: 150
       {{- end }}
       {{- else }}
@@ -128,7 +127,7 @@ steps:
           - make -C .buildkite TARGET="run-deployer" ci
         agents:
           provider: "gcp"
-          image: "family/core-ubuntu-2004"
+          image: "family/core-ubuntu-2204"
         {{- end }}
 
     {{- end }}

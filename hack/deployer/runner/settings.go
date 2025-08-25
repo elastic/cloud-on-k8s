@@ -32,6 +32,7 @@ type Plan struct {
 	Ocp                     *OCPSettings  `yaml:"ocp,omitempty"`
 	Eks                     *EKSSettings  `yaml:"eks,omitempty"`
 	Kind                    *KindSettings `yaml:"kind,omitempty"`
+	K3d                     *K3dSettings  `yaml:"k3d,omitempty"`
 	ServiceAccount          bool          `yaml:"serviceAccount"`
 	EnforceSecurityPolicies bool          `yaml:"enforceSecurityPolicies"`
 	DiskSetup               string        `yaml:"diskSetup"`
@@ -84,6 +85,11 @@ type KindSettings struct {
 	NodeCount int    `yaml:"nodeCount"`
 	NodeImage string `yaml:"nodeImage"`
 	IPFamily  string `yaml:"ipFamily"`
+}
+
+type K3dSettings struct {
+	ClientImage string `yaml:"clientImage"`
+	NodeImage   string `yaml:"nodeImage"`
 }
 
 // RunConfig encapsulates Id used to choose a plan and a map of overrides to apply to the plan, expected to map to a file
