@@ -73,7 +73,7 @@ func TestWebhook(t *testing.T) {
 			),
 		},
 		{
-			Name:      "deprecated-version",
+			Name:      "unsupported-version-below-minimum",
 			Operation: admissionv1beta1.Create,
 			Object: func(t *testing.T, uid string) []byte {
 				t.Helper()
@@ -81,8 +81,8 @@ func TestWebhook(t *testing.T) {
 				epr.Spec.Version = "7.14.0"
 				return serialize(t, epr)
 			},
-			Check: test.ValidationWebhookSucceededWithWarnings(
-				`Version 7.14.0 is EOL and support for it will be removed in a future release of the ECK operator`,
+			Check: test.ValidationWebhookFailed(
+				`spec.version: Invalid value: "7.14.0": Unsupported version: version 7.14.0 is lower than the lowest supported version of 7.15.1`,
 			),
 		},
 		{

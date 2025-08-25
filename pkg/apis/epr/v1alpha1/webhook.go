@@ -64,7 +64,6 @@ func (m *ElasticPackageRegistry) WebhookPath() string {
 
 func (m *ElasticPackageRegistry) validate() (admission.Warnings, error) {
 	var errors field.ErrorList
-	var warnings admission.Warnings
 
 	for _, dc := range defaultChecks {
 		if err := dc(m); err != nil {
@@ -72,21 +71,11 @@ func (m *ElasticPackageRegistry) validate() (admission.Warnings, error) {
 		}
 	}
 
-	// check for deprecated version
-	deprecationWarnings, deprecationErrors := checkIfVersionDeprecated(m)
-	if deprecationErrors != nil {
-		errors = append(errors, deprecationErrors...)
-	}
-
-	if deprecationWarnings != "" {
-		warnings = append(warnings, deprecationWarnings)
-	}
-
 	if len(errors) > 0 {
 		validationLog.V(1).Info("failed validation", "errors", errors)
-		return warnings, apierrors.NewInvalid(groupKind, m.Name, errors)
+		return nil, apierrors.NewInvalid(groupKind, m.Name, errors)
 	}
-	return warnings, nil
+	return nil, nil
 }
 
 func checkNoUnknownFields(epr *ElasticPackageRegistry) field.ErrorList {
@@ -101,6 +90,3 @@ func checkSupportedVersion(epr *ElasticPackageRegistry) field.ErrorList {
 	return commonv1.CheckSupportedStackVersion(epr.Spec.Version, version.SupportedPackageRegistryVersions)
 }
 
-func checkIfVersionDeprecated(epr *ElasticPackageRegistry) (string, field.ErrorList) {
-	return commonv1.CheckDeprecatedStackVersion(epr.Spec.Version)
-}

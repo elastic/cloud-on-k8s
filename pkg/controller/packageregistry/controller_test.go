@@ -37,7 +37,7 @@ var eprFixture = v1alpha1.ElasticPackageRegistry{
 		Generation: 2,
 	},
 	Spec: v1alpha1.PackageRegistrySpec{
-		Version: "7.12.0",
+		Version: "7.15.1",
 		Count:   1,
 	},
 	Status: v1alpha1.PackageRegistryStatus{
@@ -137,7 +137,7 @@ func TestReconcilePackageRegistry_Reconcile(t *testing.T) {
 						Generation: 2,
 					},
 					Spec: v1alpha1.PackageRegistrySpec{
-						Version: "7.10.0", // unsupported version
+						Version: "7.14.0", // unsupported version - below minimum 7.15.1
 					},
 					Status: v1alpha1.PackageRegistryStatus{
 						ObservedGeneration: 1,
