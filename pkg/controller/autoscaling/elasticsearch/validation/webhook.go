@@ -23,7 +23,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/set"
 )
 
-// +kubebuilder:webhook:path=/validate-autoscaling-k8s-elastic-co-v1alpha1-elasticsearchautoscaler,mutating=false,failurePolicy=ignore,groups=autoscaling.k8s.elastic.co,resources=elasticsearchautoscalers,verbs=create;update,versions=v1alpha1,name=elastic-esa-validation-v1alpha1.k8s.elastic.co,sideEffects=None,admissionReviewVersions=v1;v1beta1,matchPolicy=Exact
+// +kubebuilder:webhook:path=/validate-autoscaling-k8s-elastic-co-v1alpha1-elasticsearchautoscaler,mutating=false,failurePolicy=ignore,groups=autoscaling.k8s.elastic.co,resources=elasticsearchautoscalers,verbs=create;update,versions=v1alpha1,name=elastic-esa-validation-v1alpha1.k8s.elastic.co,sideEffects=None,admissionReviewVersions=v1,matchPolicy=Exact
 
 const (
 	webhookPath = "/validate-autoscaling-k8s-elastic-co-v1alpha1-elasticsearchautoscaler"

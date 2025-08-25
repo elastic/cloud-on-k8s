@@ -10,7 +10,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/require"
-	admissionv1beta1 "k8s.io/api/admission/v1beta1"
+	admissionv1 "k8s.io/api/admission/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
@@ -24,7 +24,7 @@ func TestWebhook(t *testing.T) {
 	testCases := []test.ValidationWebhookTestCase{
 		{
 			Name:      "create-valid",
-			Operation: admissionv1beta1.Create,
+			Operation: admissionv1.Create,
 			Object: func(t *testing.T, uid string) []byte {
 				t.Helper()
 				k := mkKibana(uid)
@@ -34,7 +34,7 @@ func TestWebhook(t *testing.T) {
 		},
 		{
 			Name:      "unknown-field",
-			Operation: admissionv1beta1.Create,
+			Operation: admissionv1.Create,
 			Object: func(t *testing.T, uid string) []byte {
 				t.Helper()
 				k := mkKibana(uid)
@@ -49,7 +49,7 @@ func TestWebhook(t *testing.T) {
 		},
 		{
 			Name:      "long-name",
-			Operation: admissionv1beta1.Create,
+			Operation: admissionv1.Create,
 			Object: func(t *testing.T, uid string) []byte {
 				t.Helper()
 				k := mkKibana(uid)
@@ -62,7 +62,7 @@ func TestWebhook(t *testing.T) {
 		},
 		{
 			Name:      "invalid-version",
-			Operation: admissionv1beta1.Create,
+			Operation: admissionv1.Create,
 			Object: func(t *testing.T, uid string) []byte {
 				t.Helper()
 				k := mkKibana(uid)
@@ -75,7 +75,7 @@ func TestWebhook(t *testing.T) {
 		},
 		{
 			Name:      "deprecated-version",
-			Operation: admissionv1beta1.Create,
+			Operation: admissionv1.Create,
 			Object: func(t *testing.T, uid string) []byte {
 				t.Helper()
 				k := mkKibana(uid)
@@ -88,7 +88,7 @@ func TestWebhook(t *testing.T) {
 		},
 		{
 			Name:      "unsupported-version-lower",
-			Operation: admissionv1beta1.Create,
+			Operation: admissionv1.Create,
 			Object: func(t *testing.T, uid string) []byte {
 				t.Helper()
 				k := mkKibana(uid)
@@ -101,7 +101,7 @@ func TestWebhook(t *testing.T) {
 		},
 		{
 			Name:      "unsupported-version-higher",
-			Operation: admissionv1beta1.Create,
+			Operation: admissionv1.Create,
 			Object: func(t *testing.T, uid string) []byte {
 				t.Helper()
 				k := mkKibana(uid)
@@ -114,7 +114,7 @@ func TestWebhook(t *testing.T) {
 		},
 		{
 			Name:      "update-valid",
-			Operation: admissionv1beta1.Update,
+			Operation: admissionv1.Update,
 			OldObject: func(t *testing.T, uid string) []byte {
 				t.Helper()
 				k := mkKibana(uid)
@@ -131,7 +131,7 @@ func TestWebhook(t *testing.T) {
 		},
 		{
 			Name:      "version-downgrade",
-			Operation: admissionv1beta1.Update,
+			Operation: admissionv1.Update,
 			OldObject: func(t *testing.T, uid string) []byte {
 				t.Helper()
 				k := mkKibana(uid)
@@ -150,7 +150,7 @@ func TestWebhook(t *testing.T) {
 		},
 		{
 			Name:      "version-downgrade-with-override",
-			Operation: admissionv1beta1.Update,
+			Operation: admissionv1.Update,
 			OldObject: func(t *testing.T, uid string) []byte {
 				t.Helper()
 				k := mkKibana(uid)
@@ -170,7 +170,7 @@ func TestWebhook(t *testing.T) {
 		},
 		{
 			Name:      "named-es-ref",
-			Operation: admissionv1beta1.Create,
+			Operation: admissionv1.Create,
 			Object: func(t *testing.T, uid string) []byte {
 				t.Helper()
 				ent := mkKibana(uid)
@@ -181,7 +181,7 @@ func TestWebhook(t *testing.T) {
 		},
 		{
 			Name:      "named-es-ref-with-namesapce",
-			Operation: admissionv1beta1.Create,
+			Operation: admissionv1.Create,
 			Object: func(t *testing.T, uid string) []byte {
 				t.Helper()
 				ent := mkKibana(uid)
@@ -192,7 +192,7 @@ func TestWebhook(t *testing.T) {
 		},
 		{
 			Name:      "named-es-ref-with-servicename",
-			Operation: admissionv1beta1.Create,
+			Operation: admissionv1.Create,
 			Object: func(t *testing.T, uid string) []byte {
 				t.Helper()
 				ent := mkKibana(uid)
@@ -203,7 +203,7 @@ func TestWebhook(t *testing.T) {
 		},
 		{
 			Name:      "secret-es-ref",
-			Operation: admissionv1beta1.Create,
+			Operation: admissionv1.Create,
 			Object: func(t *testing.T, uid string) []byte {
 				t.Helper()
 				ent := mkKibana(uid)
@@ -214,7 +214,7 @@ func TestWebhook(t *testing.T) {
 		},
 		{
 			Name:      "invalid-secret-es-ref-secret-and-name",
-			Operation: admissionv1beta1.Create,
+			Operation: admissionv1.Create,
 			Object: func(t *testing.T, uid string) []byte {
 				t.Helper()
 				kb := mkKibana(uid)
@@ -227,7 +227,7 @@ func TestWebhook(t *testing.T) {
 		},
 		{
 			Name:      "invalid-secret-es-ref-secret-and-namespace",
-			Operation: admissionv1beta1.Create,
+			Operation: admissionv1.Create,
 			Object: func(t *testing.T, uid string) []byte {
 				t.Helper()
 				kb := mkKibana(uid)
@@ -240,7 +240,7 @@ func TestWebhook(t *testing.T) {
 		},
 		{
 			Name:      "invalid-secret-es-ref-secret-and-service",
-			Operation: admissionv1beta1.Create,
+			Operation: admissionv1.Create,
 			Object: func(t *testing.T, uid string) []byte {
 				t.Helper()
 				kb := mkKibana(uid)
@@ -253,7 +253,7 @@ func TestWebhook(t *testing.T) {
 		},
 		{
 			Name:      "simple-stackmon-ref",
-			Operation: admissionv1beta1.Create,
+			Operation: admissionv1.Create,
 			Object: func(t *testing.T, uid string) []byte {
 				t.Helper()
 				ent := mkKibana(uid)
@@ -266,7 +266,7 @@ func TestWebhook(t *testing.T) {
 		},
 		{
 			Name:      "multiple-stackmon-ref",
-			Operation: admissionv1beta1.Create,
+			Operation: admissionv1.Create,
 			Object: func(t *testing.T, uid string) []byte {
 				t.Helper()
 				ent := mkKibana(uid)
@@ -282,7 +282,7 @@ func TestWebhook(t *testing.T) {
 		},
 		{
 			Name:      "invalid-version-for-stackmon",
-			Operation: admissionv1beta1.Create,
+			Operation: admissionv1.Create,
 			Object: func(t *testing.T, uid string) []byte {
 				t.Helper()
 				ent := mkKibana(uid)
@@ -297,7 +297,7 @@ func TestWebhook(t *testing.T) {
 		},
 		{
 			Name:      "invalid-stackmon-ref-with-name",
-			Operation: admissionv1beta1.Create,
+			Operation: admissionv1.Create,
 			Object: func(t *testing.T, uid string) []byte {
 				t.Helper()
 				ent := mkKibana(uid)
@@ -315,7 +315,7 @@ func TestWebhook(t *testing.T) {
 		},
 		{
 			Name:      "invalid-stackmon-ref-with-service-name",
-			Operation: admissionv1beta1.Create,
+			Operation: admissionv1.Create,
 			Object: func(t *testing.T, uid string) []byte {
 				t.Helper()
 				ent := mkKibana(uid)

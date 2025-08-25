@@ -33,7 +33,7 @@ var (
 	}
 )
 
-// +kubebuilder:webhook:path=/validate-ems-k8s-elastic-co-v1alpha1-mapsservers,mutating=false,failurePolicy=ignore,groups=maps.k8s.elastic.co,resources=mapsservers,verbs=create;update,versions=v1alpha1,name=elastic-ems-validation-v1alpha1.k8s.elastic.co,sideEffects=None,admissionReviewVersions=v1;v1beta1,matchPolicy=Exact
+// +kubebuilder:webhook:path=/validate-ems-k8s-elastic-co-v1alpha1-mapsservers,mutating=false,failurePolicy=ignore,groups=maps.k8s.elastic.co,resources=mapsservers,verbs=create;update,versions=v1alpha1,name=elastic-ems-validation-v1alpha1.k8s.elastic.co,sideEffects=None,admissionReviewVersions=v1,matchPolicy=Exact
 
 var _ admission.Validator = &ElasticMapsServer{}
 
