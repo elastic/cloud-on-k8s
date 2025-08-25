@@ -230,17 +230,17 @@ func runAgentRecipe(
 
 		// TODO: remove once https://github.com/elastic/cloud-on-k8s/issues/4092 is resolved
 		if test.Ctx().HasTag("ipv6") {
-			t.SkipNow()
+			t.Skipf("Test skipped on IPv6")
 		}
 
 		if isStackIncompatible(agentBuilder.Agent) {
-			t.SkipNow()
+			t.Skipf("Agent version %s is not compatible with stack %s", agentBuilder.Agent.Spec.Version, test.Ctx().ElasticStackVersion)
 		}
 
 		// OpenShift requires different securityContext than provided in the recipe.
 		// Skipping it altogether to reduce maintenance burden.
 		if strings.HasPrefix(test.Ctx().Provider, "ocp") {
-			t.SkipNow()
+			t.Skipf("Test skipped on OpenShift clusters")
 		}
 
 		agentBuilder.Suffix = suffix
