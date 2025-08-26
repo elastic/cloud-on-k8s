@@ -52,19 +52,11 @@ type PackageRegistrySpec struct {
 
 	// RevisionHistoryLimit is the number of revisions to retain to allow rollback in the underlying Deployment.
 	RevisionHistoryLimit *int32 `json:"revisionHistoryLimit,omitempty"`
-
-	// ServiceAccountName is used to check access from the current resource to a resource (for ex. Elasticsearch) in a different namespace.
-	// Can only be used if ECK is enforcing RBAC on references.
-	// +optional
-	ServiceAccountName string `json:"serviceAccountName,omitempty"`
 }
 
 // PackageRegistryStatus defines the observed state of Elastic Package Registry
 type PackageRegistryStatus struct {
 	commonv1.DeploymentStatus `json:",inline"`
-
-	// +kubebuilder:validation:Optional
-	KibanaAssociationsStatus commonv1.AssociationStatusMap `json:"kibanaAssociationsStatus,omitempty"`
 
 	// ObservedGeneration is the most recent generation observed for this Elastic Package Registry.
 	// It corresponds to the metadata generation, which is updated on mutation by the API Server.
@@ -90,10 +82,6 @@ type ElasticPackageRegistry struct {
 
 	Spec   PackageRegistrySpec   `json:"spec,omitempty"`
 	Status PackageRegistryStatus `json:"status,omitempty"`
-}
-
-func (m *ElasticPackageRegistry) ServiceAccountName() string {
-	return m.Spec.ServiceAccountName
 }
 
 // IsMarkedForDeletion returns true if the Elastic Package Registry instance is going to be deleted
