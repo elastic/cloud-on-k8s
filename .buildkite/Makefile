@@ -29,6 +29,9 @@ ci-internal:
 		-e VAULT_ADDR -e VAULT_TOKEN -e VAULT_ROLE_ID -e VAULT_SECRET_ID -e VAULT_ROOT_PATH \
 		-w $(GO_MOUNT_PATH) \
 		--network="host" \
+		--cap-add=AUDIT_READ \
+		--cap-add=AUDIT_WRITE \
+		--cap-add=AUDIT_CONTROL \
 		$(CI_IMAGE) \
 		bash -c "$(DOCKER_CMD)" ; exit=$$?; \
 	  docker volume rm $(ECK_CI_VOLUME) > /dev/null; exit $$exit
