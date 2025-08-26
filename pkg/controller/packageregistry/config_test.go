@@ -121,11 +121,11 @@ package_paths:
 				runtimeObjs: []client.Object{
 					&corev1.Secret{
 						ObjectMeta: metav1.ObjectMeta{
-							Name:      "sample-maps-user",
+							Name:      "sample-epr-user",
 							Namespace: "ns",
 						},
 						Data: map[string][]byte{
-							"ns-sample-maps-user": []byte("password"),
+							"ns-sample-epr-user": []byte("password"),
 						},
 					},
 				},
