@@ -462,45 +462,45 @@ type KibanaEPRAssociation struct {
 
 var _ commonv1.Association = &KibanaEPRAssociation{}
 
-func (kbent *KibanaEPRAssociation) ElasticServiceAccount() (commonv1.ServiceAccountName, error) {
+func (kbepr *KibanaEPRAssociation) ElasticServiceAccount() (commonv1.ServiceAccountName, error) {
 	return "", nil
 }
 
-func (kbent *KibanaEPRAssociation) Associated() commonv1.Associated {
-	if kbent == nil {
+func (kbepr *KibanaEPRAssociation) Associated() commonv1.Associated {
+	if kbepr == nil {
 		return nil
 	}
-	if kbent.Kibana == nil {
-		kbent.Kibana = &Kibana{}
+	if kbepr.Kibana == nil {
+		kbepr.Kibana = &Kibana{}
 	}
-	return kbent.Kibana
+	return kbepr.Kibana
 }
 
-func (kbent *KibanaEPRAssociation) AssociationConfAnnotationName() string {
+func (kbepr *KibanaEPRAssociation) AssociationConfAnnotationName() string {
 	return commonv1.EPRConfigAnnotationNameBase
 }
 
-func (kbent *KibanaEPRAssociation) AssociationType() commonv1.AssociationType {
+func (kbepr *KibanaEPRAssociation) AssociationType() commonv1.AssociationType {
 	return commonv1.PackageRegistryAssociationType
 }
 
-func (kbent *KibanaEPRAssociation) AssociationRef() commonv1.ObjectSelector {
-	return kbent.Spec.PackageRegistryRef.WithDefaultNamespace(kbent.Namespace)
+func (kbepr *KibanaEPRAssociation) AssociationRef() commonv1.ObjectSelector {
+	return kbepr.Spec.PackageRegistryRef.WithDefaultNamespace(kbepr.Namespace)
 }
 
-func (kbent *KibanaEPRAssociation) AssociationConf() (*commonv1.AssociationConf, error) {
-	return commonv1.GetAndSetAssociationConf(kbent, kbent.eprAssocConf)
+func (kbepr *KibanaEPRAssociation) AssociationConf() (*commonv1.AssociationConf, error) {
+	return commonv1.GetAndSetAssociationConf(kbepr, kbepr.eprAssocConf)
 }
 
-func (kbent *KibanaEPRAssociation) SetAssociationConf(assocConf *commonv1.AssociationConf) {
-	kbent.eprAssocConf = assocConf
+func (kbepr *KibanaEPRAssociation) SetAssociationConf(assocConf *commonv1.AssociationConf) {
+	kbepr.eprAssocConf = assocConf
 }
 
-func (kbent *KibanaEPRAssociation) SupportsAuthAPIKey() bool {
+func (kbepr *KibanaEPRAssociation) SupportsAuthAPIKey() bool {
 	return false
 }
 
-func (kbent *KibanaEPRAssociation) AssociationID() string {
+func (kbepr *KibanaEPRAssociation) AssociationID() string {
 	return commonv1.SingletonAssociationID
 }
 
