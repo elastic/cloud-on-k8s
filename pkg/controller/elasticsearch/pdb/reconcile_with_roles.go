@@ -312,11 +312,12 @@ func buildRoleSpecificPDBSpec(
 func allowedDisruptionsForRole(
 	es esv1.Elasticsearch,
 	role esv1.NodeRole,
-	// allStatefulSets are all statefulSets in the whole ES cluster.
 	allStatefulSets sset.StatefulSetList,
 ) int32 {
-	// If the Elasticsearch cluster's health is unknown, not healthy, or red, never allow disruptions.
-	if es.Status.Health == esv1.ElasticsearchUnknownHealth || es.Status.Health == esv1.ElasticsearchHealth("") || es.Status.Health == esv1.ElasticsearchRedHealth {
+	// Disallow disruptions when health is unknown, empty or red.
+	if es.Status.Health == esv1.ElasticsearchUnknownHealth ||
+		es.Status.Health == esv1.ElasticsearchHealth("") ||
+		es.Status.Health == esv1.ElasticsearchRedHealth {
 		return 0
 	}
 
@@ -326,14 +327,16 @@ func allowedDisruptionsForRole(
 		return 1
 	}
 
-	// If the Elasticsearch cluster's health is green or yellow, allow 1 disruption for the following roles regardless of the number of nodes
-	// as we do not want to block K8s nodes operations, even if we are presented a non-HA cluster.
-	if slices.Contains([]esv1.NodeRole{esv1.MasterRole, esv1.IngestRole, esv1.MLRole, esv1.DataFrozenRole, esv1.CoordinatingRole, esv1.TransformRole, esv1.VotingOnlyRole}, role) && slices.Contains([]esv1.ElasticsearchHealth{esv1.ElasticsearchGreenHealth, esv1.ElasticsearchYellowHealth}, es.Status.Health) {
-		return 1
+	// Allow 1 disruption for data roles only if health is green.
+	if role == esv1.DataRole {
+		if es.Status.Health == esv1.ElasticsearchGreenHealth {
+			return 1
+		}
+		return 0
 	}
 
-	// For data roles, only allow disruptions if the cluster is green
-	if role == esv1.DataRole && es.Status.Health == esv1.ElasticsearchGreenHealth {
+	// Allow a single disruption for non-data roles when health is green or yellow.
+	if es.Status.Health == esv1.ElasticsearchGreenHealth || es.Status.Health == esv1.ElasticsearchYellowHealth {
 		return 1
 	}
 
