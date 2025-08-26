@@ -73,15 +73,15 @@ func TestNewPodSpec_CommandOverride(t *testing.T) {
 			require.NoError(t, err)
 
 			// Find the main container
-			var mapsContainer *corev1.Container
+			var eprContainer *corev1.Container
 			for i := range podSpec.Spec.Containers {
 				if podSpec.Spec.Containers[i].Name == eprv1alpha1.EPRContainerName {
-					mapsContainer = &podSpec.Spec.Containers[i]
+					eprContainer = &podSpec.Spec.Containers[i]
 					break
 				}
 			}
 
-			require.NotNil(t, mapsContainer, "Maps container not found")
+			require.NotNil(t, eprContainer, "EPR container not found")
 		})
 	}
 }
