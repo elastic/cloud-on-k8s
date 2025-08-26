@@ -112,7 +112,7 @@ func (k *K3dDriver) cmd(args ...string) *exec.Command {
 	if runtime.GOOS == "darwin" {
 		dockerSocket = "$HOME/.docker/run/docker.sock"
 	}
-	// We need the docker socket so that kind can bootstrap
+	// We need the docker socket so that k3d can bootstrap
 	// --userns=host to support Docker daemon host configured to run containers only in user namespaces
 	command := `docker run --rm \
 		--userns=host \
