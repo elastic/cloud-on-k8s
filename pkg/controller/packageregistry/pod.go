@@ -8,6 +8,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	"k8s.io/apimachinery/pkg/util/intstr"
+	"k8s.io/utils/ptr"
 
 	eprv1alpha1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/epr/v1alpha1"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/certificates"
@@ -20,9 +21,9 @@ import (
 const (
 	HTTPPort                 = 8080
 	configHashAnnotationName = "packageregistry.k8s.elastic.co/config-hash"
-	EPRTLSKey                = "EPR_TLS_KEY"
-	EPRTLSCert               = "EPR_TLS_CERT"
-	EPRAddress               = "EPR_ADDRESS"
+	TLSKeyEnvName            = "EPR_TLS_KEY"
+	TLSCertEnvName           = "EPR_TLS_CERT"
+	AddressEnvName           = "EPR_ADDRESS"
 )
 
 var (
@@ -42,40 +43,18 @@ var (
 	}
 )
 
-// startupProbe is the startup probe for the packageregistry container
-func startupProbe(useTLS bool) corev1.Probe {
-	scheme := corev1.URISchemeHTTP
-	if useTLS {
-		scheme = corev1.URISchemeHTTPS
-	}
-	return corev1.Probe{
-		FailureThreshold:    3,
-		InitialDelaySeconds: 120,
-		PeriodSeconds:       10,
-		SuccessThreshold:    1,
-		TimeoutSeconds:      5,
-		ProbeHandler: corev1.ProbeHandler{
-			HTTPGet: &corev1.HTTPGetAction{
-				Port:   intstr.FromInt(HTTPPort),
-				Path:   "/health",
-				Scheme: scheme,
-			},
-		},
-	}
-}
-
-// readinessProbe is the readiness probe for the maps container
+// readinessProbe is the readiness probe for the epr container
 func readinessProbe(useTLS bool) corev1.Probe {
 	scheme := corev1.URISchemeHTTP
 	if useTLS {
 		scheme = corev1.URISchemeHTTPS
 	}
 	return corev1.Probe{
-		FailureThreshold:    3,
-		InitialDelaySeconds: 30,
+		FailureThreshold:    16,
+		InitialDelaySeconds: 120,
 		PeriodSeconds:       10,
 		SuccessThreshold:    1,
-		TimeoutSeconds:      5,
+		TimeoutSeconds:      30,
 		ProbeHandler: corev1.ProbeHandler{
 			HTTPGet: &corev1.HTTPGetAction{
 				Port:   intstr.FromInt(HTTPPort),
@@ -102,12 +81,12 @@ func newPodSpec(epr eprv1alpha1.ElasticPackageRegistry, configHash string, meta 
 	}
 
 	eprVars := []corev1.EnvVar{
-		corev1.EnvVar{Name: EPRAddress, Value: "0.0.0.0:8080"},
+		{Name: AddressEnvName, Value: "0.0.0.0:8080"},
 	}
 
 	if epr.Spec.HTTP.TLS.Enabled() {
-		eprVars = append(eprVars, corev1.EnvVar{Name: EPRTLSKey, Value: "/mnt/elastic-internal/http-certs/tls.key"})
-		eprVars = append(eprVars, corev1.EnvVar{Name: EPRTLSCert, Value: "/mnt/elastic-internal/http-certs/tls.crt"})
+		eprVars = append(eprVars, corev1.EnvVar{Name: TLSKeyEnvName, Value: "/mnt/elastic-internal/http-certs/tls.key"})
+		eprVars = append(eprVars, corev1.EnvVar{Name: TLSCertEnvName, Value: "/mnt/elastic-internal/http-certs/tls.crt"})
 	}
 
 	builder = builder.
@@ -118,8 +97,17 @@ func newPodSpec(epr eprv1alpha1.ElasticPackageRegistry, configHash string, meta 
 		WithReadinessProbe(readinessProbe(epr.Spec.HTTP.TLS.Enabled())).
 		WithPorts(defaultContainerPorts).
 		WithInitContainerDefaults().
-		WithStartupProbe(startupProbe(epr.Spec.HTTP.TLS.Enabled())).
-		WithEnv(eprVars...)
+		WithEnv(eprVars...).
+		WithContainersSecurityContext(corev1.SecurityContext{
+			AllowPrivilegeEscalation: ptr.To(false),
+			Capabilities: &corev1.Capabilities{
+				Drop: []corev1.Capability{"ALL"},
+			},
+			Privileged:             ptr.To(false),
+			ReadOnlyRootFilesystem: ptr.To(true),
+			RunAsUser:              ptr.To(int64(1000)),
+			RunAsGroup:             ptr.To(int64(1000)),
+		})
 
 	// Add configuration volume
 	configVolume := configSecretVolume(epr)
