@@ -46,7 +46,7 @@ Deployer is the provisioning tool that aims to be the interface to multiple Kube
     make switch-k3d bootstrap-cloud
     ```
 
-  * This will give you a working K3d cluster based on default values. See [Advanced usage](#advanced-usage) on how to tweak these configuration defaults if the need arises. Relevant parameters for K3d are: `clientImage` which is the version of K3d to use and `nodeImage` which is the version of `k3s` that runs on the nodes, which also defines the Kubernetes version. Make sure to check the [K3d release notes](https://github.com/k3d-io/k3d/releases) when changing the client image and make sure `nodeImage`` and `clientImage` are compatible.
+  * This will give you a working K3d cluster based on default values. See [Advanced usage](#advanced-usage) on how to tweak these configuration defaults if the need arises. Relevant parameters for K3d are: `clientImage` which is the version of K3d to use and `nodeImage` which is the version of `k3s` that runs on the nodes, which also defines the Kubernetes version. Make sure to check the [K3d release notes](https://github.com/k3d-io/k3d/releases) when changing the client image and make sure `nodeImage` and `clientImage` are compatible.
 
 ### Deprovision
 
