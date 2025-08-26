@@ -26,8 +26,8 @@ func AddKibanaEpr(mgr manager.Manager, accessReviewer rbac.AccessReviewer, param
 	return association.AddAssociationController(mgr, accessReviewer, params, association.AssociationInfo{
 		AssociatedObjTemplate:     func() commonv1.Associated { return &kbv1.Kibana{} },
 		ReferencedObjTemplate:     func() client.Object { return &eprv1alpha1.ElasticPackageRegistry{} },
-		ExternalServiceURL:        getEprExternalURL,
-		ReferencedResourceVersion: referencedEprStatusVersion,
+		ExternalServiceURL:        getEPRExternalURL,
+		ReferencedResourceVersion: referencedEPRStatusVersion,
 		ReferencedResourceNamer:   eprv1alpha1.Namer,
 		AssociationName:           "kb-epr",
 		AssociatedShortName:       "kb",
@@ -42,11 +42,11 @@ func AddKibanaEpr(mgr manager.Manager, accessReviewer rbac.AccessReviewer, param
 		AssociationConfAnnotationNameBase:     commonv1.EPRConfigAnnotationNameBase,
 		AssociationResourceNameLabelName:      eprctl.NameLabelName,
 		AssociationResourceNamespaceLabelName: eprctl.PackageRegistryNamespaceLabelName,
-		ElasticsearchUserCreation:             nil, // no dedicated ES user required for Kibana->Ent connection
+		ElasticsearchUserCreation:             nil, // no dedicated ES user required for Kibana->EPR connection
 	})
 }
 
-func getEprExternalURL(c k8s.Client, assoc commonv1.Association) (string, error) {
+func getEPRExternalURL(c k8s.Client, assoc commonv1.Association) (string, error) {
 	eprRef := assoc.AssociationRef()
 	if !eprRef.IsDefined() {
 		return "", nil
@@ -78,9 +78,9 @@ func (evr eprVersionResponse) GetVersion() (string, error) {
 	return evr.Number, nil
 }
 
-// referencedEprStatusVersion returns the currently running version of Package Registry
+// referencedEPRStatusVersion returns the currently running version of Package Registry
 // reported in its status.
-func referencedEprStatusVersion(c k8s.Client, eprAssociation commonv1.Association) (string, bool, error) {
+func referencedEPRStatusVersion(c k8s.Client, eprAssociation commonv1.Association) (string, bool, error) {
 	eprRef := eprAssociation.AssociationRef()
 	if eprRef.IsExternal() {
 		info, err := association.GetUnmanagedAssociationConnectionInfoFromSecret(c, eprAssociation)
