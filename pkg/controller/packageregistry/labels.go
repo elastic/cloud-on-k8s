@@ -17,7 +17,7 @@ const (
 	// PackageRegistryNamespaceLabelName used to represent a Package Registry in k8s resources.
 	PackageRegistryNamespaceLabelName = "packageregistry.k8s.elastic.co/namespace"
 
-	// Type represents the MapsServer type
+	// Type represents the ElasticPackageRegistry type
 	Type = "packageregistry"
 )
 
