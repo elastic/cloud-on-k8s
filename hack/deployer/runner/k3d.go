@@ -91,11 +91,7 @@ func (k *K3dDriver) delete() error {
 	if cmd == nil {
 		return fmt.Errorf("failed to create k3d cluster")
 	}
-	err := cmd.Run()
-	if err != nil {
-		return err
-	}
-	return nil
+	return cmd.Run()
 }
 
 func (k *K3dDriver) cmd(args ...string) *exec.Command {
