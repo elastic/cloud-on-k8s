@@ -8,7 +8,7 @@ import (
 	commonv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/common/v1"
 )
 
-// GetIdentityLabels will return the common Elastic assigned labels for the Elastic Maps Server.
+// GetIdentityLabels will return the common Elastic assigned labels for the Elastic Package Registry.
 func (m *ElasticPackageRegistry) GetIdentityLabels() map[string]string {
 	return map[string]string{
 		commonv1.TypeLabelName:    "epr",
