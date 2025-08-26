@@ -307,30 +307,42 @@ func TestExpectedRolePDBs(t *testing.T) {
 	defaultHealthyES := defaultUnhealthyES.DeepCopy()
 	defaultHealthyES.Status.Health = esv1.ElasticsearchGreenHealth
 
+	defaultMeta := metadata.Metadata{
+		Labels: map[string]string{
+			"elasticsearch.k8s.elastic.co/cluster-name": "test-es",
+		},
+	}
+
 	tests := []struct {
 		name     string
 		es       esv1.Elasticsearch
 		builder  Builder
+		meta     metadata.Metadata
 		expected []*policyv1.PodDisruptionBudget
 	}{
 		{
 			name:     "empty input",
 			es:       *defaultHealthyES,
 			builder:  NewBuilder("test-es").WithNamespace("ns").WithVersion("8.0.0"),
+			meta:     defaultMeta,
 			expected: []*policyv1.PodDisruptionBudget{},
 		},
 		{
-			name: "single node cluster; role doesn't matter; 1 disruption",
+			name: "single node cluster; role doesn't matter; 1 disruption with custom metadata",
 			es:   *defaultHealthyES,
 			builder: NewBuilder("test-es").
 				WithNamespace("ns").
 				WithVersion("8.0.0").
 				WithNodeSet("master1", 1, esv1.MasterRole),
+			meta: defaultMeta.Merge(metadata.Metadata{Annotations: map[string]string{"custom": "annotation"}}),
 			expected: []*policyv1.PodDisruptionBudget{
 				{
 					ObjectMeta: metav1.ObjectMeta{
 						Name:      "test-es-es-default-master",
 						Namespace: "ns",
+						Annotations: map[string]string{
+							"custom": "annotation",
+						},
 						Labels: map[string]string{
 							label.ClusterNameLabelName: "test-es",
 						},
@@ -371,6 +383,7 @@ func TestExpectedRolePDBs(t *testing.T) {
 				WithNamespace("ns").
 				WithVersion("8.0.0").
 				WithNodeSet("coord1", 2, esv1.CoordinatingRole),
+			meta: defaultMeta,
 			expected: []*policyv1.PodDisruptionBudget{
 				{
 					ObjectMeta: metav1.ObjectMeta{
@@ -418,6 +431,7 @@ func TestExpectedRolePDBs(t *testing.T) {
 				WithNodeSet("master1", 1, esv1.MasterRole).
 				WithNodeSet("data1", 1, esv1.DataRole).
 				WithNodeSet("ingest1", 1, esv1.IngestRole),
+			meta: defaultMeta,
 			expected: []*policyv1.PodDisruptionBudget{
 				{
 					ObjectMeta: metav1.ObjectMeta{
@@ -533,6 +547,7 @@ func TestExpectedRolePDBs(t *testing.T) {
 				WithNamespace("ns").
 				WithVersion("8.0.0").
 				WithNodeSet("master1", 1, esv1.MasterRole),
+			meta: defaultMeta,
 			expected: []*policyv1.PodDisruptionBudget{
 				{
 					ObjectMeta: metav1.ObjectMeta{
@@ -580,6 +595,7 @@ func TestExpectedRolePDBs(t *testing.T) {
 				WithNodeSet("coord1", 1, esv1.CoordinatingRole).
 				WithNodeSet("coord2", 1, esv1.CoordinatingRole).
 				WithNodeSet("coord3", 1, esv1.CoordinatingRole),
+			meta: defaultMeta,
 			expected: []*policyv1.PodDisruptionBudget{
 				{
 					ObjectMeta: metav1.ObjectMeta{
@@ -627,6 +643,7 @@ func TestExpectedRolePDBs(t *testing.T) {
 				WithNodeSet("master-data1", 1, esv1.MasterRole, esv1.DataRole).
 				WithNodeSet("data-ingest1", 1, esv1.DataRole, esv1.IngestRole).
 				WithNodeSet("ml1", 1, esv1.MLRole),
+			meta: defaultMeta,
 			expected: []*policyv1.PodDisruptionBudget{
 				{
 					ObjectMeta: metav1.ObjectMeta{
@@ -709,6 +726,7 @@ func TestExpectedRolePDBs(t *testing.T) {
 				WithNodeSet("coord1", 1, esv1.CoordinatingRole).
 				WithNodeSet("coord2", 1, esv1.CoordinatingRole).
 				WithNodeSet("coord3", 1, esv1.CoordinatingRole),
+			meta: defaultMeta,
 			expected: []*policyv1.PodDisruptionBudget{
 				{
 					ObjectMeta: metav1.ObjectMeta{
@@ -756,6 +774,7 @@ func TestExpectedRolePDBs(t *testing.T) {
 				WithNodeSet("coord1", 1, esv1.CoordinatingRole).
 				WithNodeSet("coord2", 1, esv1.CoordinatingRole).
 				WithNodeSet("coord3", 1, esv1.CoordinatingRole),
+			meta: defaultMeta,
 			expected: []*policyv1.PodDisruptionBudget{
 				{
 					ObjectMeta: metav1.ObjectMeta{
@@ -798,18 +817,12 @@ func TestExpectedRolePDBs(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			meta := metadata.Metadata{
-				Labels: map[string]string{
-					"elasticsearch.k8s.elastic.co/cluster-name": "test-es",
-				},
-			}
-
 			resourcesList, err := tt.builder.BuildResourcesList()
 			require.NoError(t, err)
 
 			statefulSetList := tt.builder.GetStatefulSets()
 
-			pdbs, err := expectedRolePDBs(tt.es, statefulSetList, resourcesList, meta)
+			pdbs, err := expectedRolePDBs(tt.es, statefulSetList, resourcesList, tt.meta)
 			if err != nil {
 				t.Fatalf("expectedRolePDBs: %v", err)
 			}

@@ -248,7 +248,7 @@ func createPDBForStatefulSets(
 	roleName string,
 	// statefulSets are the statefulSets grouped into this pdb.
 	statefulSets []appsv1.StatefulSet,
-	// allStatefulSets are all statefulsets in the whole ES cluster.
+	// allStatefulSets are all statefulSets in the whole ES cluster.
 	allStatefulSets sset.StatefulSetList,
 	meta metadata.Metadata,
 ) (*policyv1.PodDisruptionBudget, error) {
@@ -432,7 +432,8 @@ func deleteAllRoleSpecificPDBs(ctx context.Context, k8sClient k8s.Client, es esv
 
 	// Delete PDBs owned by this Elasticsearch resource
 	for _, pdb := range pdbList.Items {
-		if k8s.HasOwner(&pdb, &es) {
+		// Ensure we do not delete the default PDB if it exists.
+		if k8s.HasOwner(&pdb, &es) && pdb.GetName() != esv1.DefaultPodDisruptionBudget(es.Name) {
 			if err := k8sClient.Delete(ctx, &pdb); err != nil && !apierrors.IsNotFound(err) {
 				return err
 			}

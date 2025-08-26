@@ -60,10 +60,15 @@ func reconcileDefaultPDB(
 	if err != nil {
 		return err
 	}
+	// in the case of downgrading to basic, we should ensure that the
+	// role-specific PDBs are deleted when attempting to create
+	// the default PDB.
+	if err := deleteAllRoleSpecificPDBs(ctx, k8sClient, es); err != nil {
+		return fmt.Errorf("while deleting role-specific PDBs: %w", err)
+	}
 	if expected == nil {
 		return deleteDefaultPDB(ctx, k8sClient, es)
 	}
-
 	return reconcilePDB(ctx, k8sClient, es, expected)
 }
 
