@@ -41,7 +41,9 @@ func Reconcile(ctx context.Context, k8sClient k8s.Client, es esv1.Elasticsearch,
 	if err != nil {
 		return fmt.Errorf("while checking license during pdb reconciliation: %w", err)
 	}
-	if enterpriseEnabled {
+	// Only reconcile role specific PDBs if an enterprise license is enabled and the default PDB is not specified.
+	// If the PDB is specified in the spec, we will reconcile the default PDB, which will simply use the specified PDB.
+	if enterpriseEnabled && !es.Spec.PodDisruptionBudget.IsSpecified() {
 		return reconcileRoleSpecificPDBs(ctx, k8sClient, es, statefulSets, resources, meta)
 	}
 
