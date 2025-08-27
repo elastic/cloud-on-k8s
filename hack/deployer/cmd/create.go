@@ -30,6 +30,10 @@ func CreateCommand() *cobra.Command {
 			if err != nil {
 				return err
 			}
+
+			// Truncate username to ensure clusterName (%s-dev-cluster) doesn't exceed 32 chars
+			user = user[:20]
+
 			var cfgData string
 			switch provider {
 			case runner.GKEDriverID:

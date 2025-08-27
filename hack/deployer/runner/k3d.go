@@ -117,7 +117,9 @@ func (k *K3dDriver) delete() error {
 	// Manually remove the kubeconfig entry.
 	clusterName := fmt.Sprintf("%s-%s", "k3d", k.plan.ClusterName)
 	userName := fmt.Sprintf("admin@%s", clusterName)
-	return removeKubeconfig(clusterName, clusterName, userName)
+	// ignore errors when removing clusters/users/contexts using k3d
+	_ = removeKubeconfig(clusterName, clusterName, userName)
+	return nil
 }
 
 func (k *K3dDriver) cmd(args ...string) *exec.Command {
