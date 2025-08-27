@@ -34,8 +34,6 @@ func mergeKubeconfig(kubeConfig string) error {
 	if err != nil {
 		return err
 	}
-	// Print additional debug information to diagnose merging issues
-	fmt.Printf("Original kubeconfig from cluster:\n%s\n", kubeConfig)
 	originalData, err := os.ReadFile(kubeConfig)
 	if err != nil {
 		fmt.Printf("Error reading original kubeconfig: %v\n", err)
