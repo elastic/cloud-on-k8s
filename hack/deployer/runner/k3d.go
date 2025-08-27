@@ -62,7 +62,8 @@ func (k *K3dDriver) Execute() error {
 }
 
 func (k *K3dDriver) create() error {
-	cmd := k.cmd("cluster", "create", "--image", k.plan.K3d.NodeImage, "--kubeconfig-update-default=false")
+	// Do not have k3d modify the kubeconfig by default, as it ends up owned by the root user.
+	cmd := k.cmd("cluster", "create", "--image", k.plan.K3d.NodeImage, "--kubeconfig-update-default=false", "--kubeconfig-switch-context=false")
 	if cmd == nil {
 		return fmt.Errorf("failed to create k3d cluster")
 	}
@@ -78,6 +79,23 @@ func (k *K3dDriver) create() error {
 	}
 	defer os.Remove(kubeCfg.Name())
 
+	clusterName := fmt.Sprintf("%s-%s", "k3d", k.plan.ClusterName)
+	userName := fmt.Sprintf("admin@%s", clusterName)
+	// First try to remove any existing kubeconfig entries to ensure a clean merge
+	if err := removeKubeconfig(clusterName, clusterName, userName); err != nil {
+		return err
+	}
+
+	// Call mergeKubeconfig to properly merge the kubeconfig without incorrectly overwriting ownership.
+	if err := mergeKubeconfig(kubeCfg.Name()); err != nil {
+		return err
+	}
+
+	// Activate the kubeconfig context to replicate the behavior of the other runners.
+	if err := activateKubeconfig(clusterName); err != nil {
+		return err
+	}
+
 	tmpStorageClass, err := k.createTmpStorageClass()
 	if err != nil {
 		return err
@@ -87,11 +105,19 @@ func (k *K3dDriver) create() error {
 }
 
 func (k *K3dDriver) delete() error {
+	// The cluster delete operation will not properly remove the kubeconfig entry
+	// as the /home directory isn't mounted in the k3d flow.
 	cmd := k.cmd("cluster", "delete")
 	if cmd == nil {
 		return fmt.Errorf("failed to create k3d cluster")
 	}
-	return cmd.Run()
+	if err := cmd.Run(); err != nil {
+		return err
+	}
+	// Manually remove the kubeconfig entry.
+	clusterName := fmt.Sprintf("%s-%s", "k3d", k.plan.ClusterName)
+	userName := fmt.Sprintf("admin@%s", clusterName)
+	return removeKubeconfig(clusterName, clusterName, userName)
 }
 
 func (k *K3dDriver) cmd(args ...string) *exec.Command {
@@ -112,7 +138,6 @@ func (k *K3dDriver) cmd(args ...string) *exec.Command {
 	// --userns=host to support Docker daemon host configured to run containers only in user namespaces
 	command := `docker run --rm \
 		--userns=host \
-		-v {{.SharedVolume}}:/home \
 		-v /var/run/docker.sock:` + dockerSocket + ` \
 		-e HOME=/home \
 		-e PATH=/ \
@@ -125,7 +150,7 @@ func (k *K3dDriver) cmd(args ...string) *exec.Command {
 
 func (k *K3dDriver) getKubeConfig() (*os.File, error) {
 	// Get kubeconfig from k3d binary
-	output, err := k.cmd("kubeconfig", "get").WithoutStreaming().Output()
+	output, err := k.cmd("kubeconfig", "get", k.plan.ClusterName).WithoutStreaming().Output()
 	if err != nil {
 		return nil, err
 	}
