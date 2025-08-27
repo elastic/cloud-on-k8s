@@ -1,7 +1,0 @@
-apiVersion: epr.k8s.elastic.co/v1alpha1
-kind: ElasticPackageRegistry
-metadata:
-  name: epr-sample
-spec:
-  version: 9.0.0
-  count: 1
