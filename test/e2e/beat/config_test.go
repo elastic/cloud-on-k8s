@@ -310,8 +310,8 @@ processors:
 }
 
 func TestAuditbeatConfig(t *testing.T) {
-	if test.Ctx().Provider == "kind" {
-		// kind doesn't support configuring required settings
+	if test.Ctx().Provider == "kind" || test.Ctx().Provider == "k3d" {
+		// both kind and k3d do not support configuring required settings
 		// see https://github.com/elastic/cloud-on-k8s/issues/3328 for more context
 		t.SkipNow()
 	}
