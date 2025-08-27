@@ -89,4 +89,3 @@ func checkNameLength(epr *ElasticPackageRegistry) field.ErrorList {
 func checkSupportedVersion(epr *ElasticPackageRegistry) field.ErrorList {
 	return commonv1.CheckSupportedStackVersion(epr.Spec.Version, version.SupportedPackageRegistryVersions)
 }
-
