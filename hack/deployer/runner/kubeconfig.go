@@ -51,9 +51,6 @@ func mergeKubeconfig(kubeConfig string) error {
 		fmt.Printf("Existing host kubeconfig before merge:\n%s\n", string(existingData))
 	}
 
-	fmt.Printf("Merged kubeconfig data to be written:\n%s\n", merged)
-	fmt.Printf("merging merged data: %s into %s\n", merged, hostKubeconfig)
-
 	// Write the merged kubeconfig
 	err = os.WriteFile(hostKubeconfig, []byte(merged), 0600)
 	if err != nil {

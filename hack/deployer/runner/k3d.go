@@ -129,9 +129,17 @@ func (k *K3dDriver) cmd(args ...string) *exec.Command {
 		"Args":           args,
 	}
 
-	// on macOS, the docker socket is located in $HOME
 	dockerSocket := "/var/run/docker.sock"
-	if runtime.GOOS == "darwin" {
+
+	var socketExists bool
+	_, err := os.Stat(dockerSocket)
+	socketExists = !os.IsNotExist(err)
+
+	// If we are on macOS and the docker socket does not exist, we need to
+	// fall back to using the docker socket in the user's home directory
+	// as with recent changes for docker desktop /var/run/docker.sock
+	// can be created/used, and the docker socket in $HOME errors.
+	if runtime.GOOS == "darwin" && !socketExists {
 		dockerSocket = "$HOME/.docker/run/docker.sock"
 	}
 	// We need the docker socket so that k3d can bootstrap
@@ -143,9 +151,7 @@ func (k *K3dDriver) cmd(args ...string) *exec.Command {
 		-e PATH=/ \
 		{{.K3dClientImage}} \
 		{{Join .Args " "}} {{.ClusterName}}`
-	cmd := exec.NewCommand(command)
-	cmd = cmd.AsTemplate(params)
-	return cmd
+	return exec.NewCommand(command).AsTemplate(params)
 }
 
 func (k *K3dDriver) getKubeConfig() (*os.File, error) {
