@@ -34,36 +34,7 @@ func mergeKubeconfig(kubeConfig string) error {
 	if err != nil {
 		return err
 	}
-	originalData, err := os.ReadFile(kubeConfig)
-	if err != nil {
-		fmt.Printf("Error reading original kubeconfig: %v\n", err)
-	} else {
-		fmt.Printf("Original kubeconfig content:\n%s\n", string(originalData))
-	}
-
-	// Print existing host kubeconfig
-	existingData, err := os.ReadFile(hostKubeconfig)
-	if err != nil {
-		fmt.Printf("Error reading existing host kubeconfig: %v\n", err)
-	} else {
-		fmt.Printf("Existing host kubeconfig before merge:\n%s\n", string(existingData))
-	}
-
-	// Write the merged kubeconfig
-	err = os.WriteFile(hostKubeconfig, []byte(merged), 0600)
-	if err != nil {
-		return err
-	}
-
-	// Read and print the final kubeconfig to verify it was written correctly
-	finalData, err := os.ReadFile(hostKubeconfig)
-	if err != nil {
-		fmt.Printf("Error reading final kubeconfig: %v\n", err)
-	} else {
-		fmt.Printf("Final kubeconfig after merge:\n%s\n", string(finalData))
-	}
-
-	return nil
+	return os.WriteFile(hostKubeconfig, []byte(merged), 0600)
 }
 
 func removeKubeconfig(context, clusterName, userName string) error {
