@@ -32,7 +32,9 @@ func CreateCommand() *cobra.Command {
 			}
 
 			// Truncate username to ensure clusterName (%s-dev-cluster) doesn't exceed 32 chars
-			user = user[:20]
+			if len(user) > 20 {
+				user = user[:20]
+			}
 
 			var cfgData string
 			switch provider {
