@@ -188,7 +188,7 @@ func TestHeartbeatEsKbHealthRecipe(t *testing.T) {
 
 func TestAuditbeatHostsRecipe(t *testing.T) {
 
-	if test.Ctx().Provider == "kind" || test.Ctx().Provider == "kind" || test.Ctx().HasTag(test.ArchARMTag) {
+	if test.Ctx().Provider == "kind" || test.Ctx().Provider == "k3d" || test.Ctx().HasTag(test.ArchARMTag) {
 		// Skipping test because recipe relies on syscall audit rules unavailable on arm64
 		// Also: both kind and k3d do not support configuring required settings
 		// see https://github.com/elastic/cloud-on-k8s/issues/3328 for more context
