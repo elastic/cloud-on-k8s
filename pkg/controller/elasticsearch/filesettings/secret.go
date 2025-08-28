@@ -43,11 +43,11 @@ func NewSettingsSecretWithVersion(es types.NamespacedName, currentSecret *corev1
 // Policies are merged based on their weights, with higher weights taking precedence.
 func NewSettingsSecretWithVersionFromPolicies(es types.NamespacedName, currentSecret *corev1.Secret, policies []policyv1alpha1.StackConfigPolicy, meta metadata.Metadata) (corev1.Secret, int64, error) {
 	newVersion := time.Now().UnixNano()
-	return newSettingsSecretFromPolicies(newVersion, es, currentSecret, policies, meta)
+	return NewSettingsSecretFromPolicies(newVersion, es, currentSecret, policies, meta)
 }
 
 // NewSettingsSecretFromPolicies returns a new SettingsSecret for a given Elasticsearch from multiple StackConfigPolicies.
-func newSettingsSecretFromPolicies(version int64, es types.NamespacedName, currentSecret *corev1.Secret, policies []policyv1alpha1.StackConfigPolicy, meta metadata.Metadata) (corev1.Secret, int64, error) {
+func NewSettingsSecretFromPolicies(version int64, es types.NamespacedName, currentSecret *corev1.Secret, policies []policyv1alpha1.StackConfigPolicy, meta metadata.Metadata) (corev1.Secret, int64, error) {
 	settings := NewEmptySettings(version)
 
 	// update the settings according to the config policies
