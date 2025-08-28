@@ -346,7 +346,7 @@ rules:
       - patch
       - delete
       - deletecollection
-  - apiGroups :
+  - apiGroups:
       - logstash.k8s.elastic.co
     resources:
       - logstashes
