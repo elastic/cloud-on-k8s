@@ -166,7 +166,7 @@ func (k *K3dDriver) getKubeConfig() (*os.File, error) {
 	// Replace host.docker.internal with 127.0.0.1 only if not running inside the CI container
 	// and on macOS.
 	if os.Getenv("CI") != "true" && runtime.GOOS == "darwin" {
-		output = strings.Replace(output, "host.docker.internal", "127.0.0.1", -1)
+		output = strings.ReplaceAll(output, "host.docker.internal", "127.0.0.1")
 	}
 
 	// Persist kubeconfig for reliability in following kubectl commands
