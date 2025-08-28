@@ -7,6 +7,7 @@ package runner
 import (
 	"fmt"
 	"io/fs"
+	"log"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -101,6 +102,8 @@ func (k *K3dDriver) create() error {
 		return err
 	}
 
+	defer os.Remove(tmpStorageClass)
+
 	return kubectl("--kubeconfig", kubeCfg.Name(), "apply", "-f", tmpStorageClass)
 }
 
@@ -124,26 +127,18 @@ func (k *K3dDriver) delete() error {
 
 func (k *K3dDriver) cmd(args ...string) *exec.Command {
 	params := map[string]interface{}{
-		"ClusterName":    k.plan.ClusterName,
+2		"ClusterName":    k.plan.ClusterName,
 		"SharedVolume":   env.SharedVolumeName(),
 		"K3dClientImage": k.clientImage,
 		"K3dNodeImage":   k.nodeImage,
 		"Args":           args,
 	}
 
-	dockerSocket := "/var/run/docker.sock"
-
-	var socketExists bool
-	_, err := os.Stat(dockerSocket)
-	socketExists = !os.IsNotExist(err)
-
-	// If we are on macOS and the docker socket does not exist, we need to
-	// fall back to using the docker socket in the user's home directory
-	// as with recent changes for docker desktop /var/run/docker.sock
-	// can be created/used, and the docker socket in $HOME errors.
-	if runtime.GOOS == "darwin" && !socketExists {
-		dockerSocket = "$HOME/.docker/run/docker.sock"
+	dockerSocket, err := getDockerSocket()
+	if err != nil {
+		log.Printf("Failed to get docker socket: %v, the following command may fail", err)
 	}
+
 	// We need the docker socket so that k3d can bootstrap
 	// --userns=host to support Docker daemon host configured to run containers only in user namespaces
 	command := `docker run --rm \
@@ -192,7 +187,7 @@ func (k *K3dDriver) GetCredentials() error {
 }
 
 func (k *K3dDriver) createTmpStorageClass() (string, error) {
-	tmpFile := filepath.Join(os.Getenv("HOME"), storageClassFileName)
+	tmpFile := filepath.Join(os.TempDir(), storageClassFileName)
 	err := os.WriteFile(tmpFile, []byte(storageClass), fs.ModePerm)
 	return tmpFile, err
 }

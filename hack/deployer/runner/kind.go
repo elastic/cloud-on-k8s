@@ -132,6 +132,8 @@ func (k *KindDriver) create() error {
 		return err
 	}
 
+	defer os.Remove(tmpStorageClass)
+
 	if k.plan.EnforceSecurityPolicies {
 		if err := kyverno.Install("--kubeconfig", kubeCfg.Name()); err != nil {
 			return err
@@ -205,18 +207,9 @@ func (k *KindDriver) cmd(args ...string) *exec.Command {
 		"Args":            args,
 	}
 
-	dockerSocket := "/var/run/docker.sock"
-
-	var socketExists bool
-	_, err := os.Stat(dockerSocket)
-	socketExists = !os.IsNotExist(err)
-
-	// If we are on macOS and the docker socket does not exist, we need to
-	// fall back to using the docker socket in the user's home directory
-	// as with recent changes for docker desktop /var/run/docker.sock
-	// can be created/used, and the docker socket in $HOME errors.
-	if runtime.GOOS == "darwin" && !socketExists {
-		dockerSocket = "$HOME/.docker/run/docker.sock"
+	dockerSocket, err := getDockerSocket()
+	if err != nil {
+		log.Printf("Failed to get docker socket: %v, the following command may fail", err)
 	}
 
 	// We need the docker socket so that kind can bootstrap
@@ -275,7 +268,7 @@ func (k *KindDriver) GetCredentials() error {
 }
 
 func (k *KindDriver) createTmpStorageClass() (string, error) {
-	tmpFile := filepath.Join(os.Getenv("HOME"), storageClassFileName)
+	tmpFile := filepath.Join(os.TempDir(), storageClassFileName)
 	err := os.WriteFile(tmpFile, []byte(storageClass), fs.ModePerm)
 	return tmpFile, err
 }
