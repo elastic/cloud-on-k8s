@@ -33,6 +33,10 @@ type failingSubClient struct {
 	err error
 }
 
+func (fc failingClient) Apply(_ context.Context, _ runtime.ApplyConfiguration, _ ...client.ApplyOption) error {
+	return fc.err
+}
+
 func (fc failingSubClient) Create(_ context.Context, _ client.Object, _ client.Object, _ ...client.SubResourceCreateOption) error {
 	return fc.err
 }
