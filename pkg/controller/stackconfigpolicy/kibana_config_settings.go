@@ -7,6 +7,7 @@ package stackconfigpolicy
 import (
 	"context"
 	"encoding/json"
+	"sort"
 
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/metadata"
 
@@ -154,13 +155,9 @@ func (r *ReconcileStackConfigPolicy) newKibanaConfigSecretFromPolicies(policies 
 	// Sort policies by weight (descending) so lower weights override higher ones
 	sortedPolicies := make([]policyv1alpha1.StackConfigPolicy, len(policies))
 	copy(sortedPolicies, policies)
-	for i := 0; i < len(sortedPolicies)-1; i++ {
-		for j := 0; j < len(sortedPolicies)-i-1; j++ {
-			if sortedPolicies[j].Spec.Weight < sortedPolicies[j+1].Spec.Weight {
-				sortedPolicies[j], sortedPolicies[j+1] = sortedPolicies[j+1], sortedPolicies[j]
-			}
-		}
-	}
+	sort.SliceStable(sortedPolicies, func(i, j int) bool {
+		return sortedPolicies[i].Spec.Weight > sortedPolicies[j].Spec.Weight
+	})
 
 	// Merge Kibana configs (lower weight policies override higher ones)
 	for _, policy := range sortedPolicies {
@@ -240,13 +237,9 @@ func (r *ReconcileStackConfigPolicy) kibanaConfigAppliedFromPolicies(policies []
 	// Sort policies by weight and merge (descending order)
 	sortedPolicies := make([]policyv1alpha1.StackConfigPolicy, len(policies))
 	copy(sortedPolicies, policies)
-	for i := 0; i < len(sortedPolicies)-1; i++ {
-		for j := 0; j < len(sortedPolicies)-i-1; j++ {
-			if sortedPolicies[j].Spec.Weight < sortedPolicies[j+1].Spec.Weight {
-				sortedPolicies[j], sortedPolicies[j+1] = sortedPolicies[j+1], sortedPolicies[j]
-			}
-		}
-	}
+	sort.SliceStable(sortedPolicies, func(i, j int) bool {
+		return sortedPolicies[i].Spec.Weight > sortedPolicies[j].Spec.Weight
+	})
 
 	for _, policy := range sortedPolicies {
 		if policy.Spec.Kibana.Config != nil {

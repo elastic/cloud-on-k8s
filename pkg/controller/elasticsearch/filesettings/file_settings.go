@@ -7,6 +7,7 @@ package filesettings
 import (
 	"fmt"
 	"path/filepath"
+	"sort"
 
 	"k8s.io/apimachinery/pkg/types"
 
@@ -90,14 +91,10 @@ func (s *Settings) updateStateFromPolicies(es types.NamespacedName, policies []p
 	sortedPolicies := make([]policyv1alpha1.StackConfigPolicy, len(policies))
 	copy(sortedPolicies, policies)
 
-	// Bubble sort by weight (descending order)
-	for i := 0; i < len(sortedPolicies)-1; i++ {
-		for j := 0; j < len(sortedPolicies)-i-1; j++ {
-			if sortedPolicies[j].Spec.Weight < sortedPolicies[j+1].Spec.Weight {
-				sortedPolicies[j], sortedPolicies[j+1] = sortedPolicies[j+1], sortedPolicies[j]
-			}
-		}
-	}
+	// sort by weight (descending order)
+	sort.SliceStable(sortedPolicies, func(i, j int) bool {
+		return sortedPolicies[i].Spec.Weight > sortedPolicies[j].Spec.Weight
+	})
 
 	for _, policy := range sortedPolicies {
 		if err := s.updateState(es, policy); err != nil {
