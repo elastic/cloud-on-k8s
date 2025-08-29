@@ -44,7 +44,7 @@ const (
 	EnvVarOperatorImage        = "OPERATOR_IMAGE"
 	EnvVarE2EImage             = "E2E_IMG"
 
-	KindAgentsMachineType = "n1-standard-16"
+	K8sInDockerMachineType = "n1-standard-16"
 )
 
 var (
@@ -52,11 +52,11 @@ var (
 	pipelineTemplate string
 
 	// providersInDocker are k8s providers that require the deployer to run in Docker
-	providersInDocker = []string{"kind", "aks", "ocp"}
+	providersInDocker = []string{"kind", "aks", "ocp", "k3d"}
 	// providersNoCleanup are k8s providers that do not require the cluster to be deleted after use
-	providersNoCleanup = []string{"kind"}
+	providersNoCleanup = []string{"kind", "k3d"}
 	// providers are k8s providers for which it is not possible to retrieve the kube config after cluster creation
-	providersNoRemoteConfig = []string{"kind"}
+	providersNoRemoteConfig = []string{"kind", "k3d"}
 
 	semverRE = regexp.MustCompile(`\d*\.\d*\.\d*(-\w*)?`)
 	chars    = []rune("abcdefghijklmnopqrstuvwxyz")
@@ -158,9 +158,9 @@ func main() {
 	handleErr("Failed to parse template", err)
 
 	err = tpl.Execute(os.Stdout, map[string]interface{}{
-		"Cleanup":               cleanup,
-		"Tests":                 tests,
-		"KindAgentsMachineType": KindAgentsMachineType,
+		"Cleanup":                cleanup,
+		"Tests":                  tests,
+		"K8sInDockerMachineType": K8sInDockerMachineType,
 	})
 	handleErr("Failed to generate pipeline", err)
 }

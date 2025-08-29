@@ -10,7 +10,6 @@ import (
 	"log"
 	"os"
 	"path/filepath"
-	"runtime"
 	"strconv"
 	"strings"
 	"text/template"
@@ -70,16 +69,22 @@ type KindDriverFactory struct{}
 var _ DriverFactory = &KindDriverFactory{}
 
 func (k KindDriverFactory) Create(plan Plan) (Driver, error) {
+	dockerSocket, err := getDockerSocket()
+	if err != nil {
+		return nil, err
+	}
 	return &KindDriver{
-		plan:        plan,
-		vaultClient: vault.NewClientProvider(),
+		plan:         plan,
+		vaultClient:  vault.NewClientProvider(),
+		dockerSocket: dockerSocket,
 	}, nil
 }
 
 type KindDriver struct {
-	plan        Plan
-	clientImage string
-	vaultClient vault.ClientProvider
+	plan         Plan
+	clientImage  string
+	vaultClient  vault.ClientProvider
+	dockerSocket string
 }
 
 func (k *KindDriver) Execute() error {
@@ -131,6 +136,8 @@ func (k *KindDriver) create() error {
 	if err != nil {
 		return err
 	}
+
+	defer os.Remove(tmpStorageClass)
 
 	if k.plan.EnforceSecurityPolicies {
 		if err := kyverno.Install("--kubeconfig", kubeCfg.Name()); err != nil {
@@ -205,17 +212,12 @@ func (k *KindDriver) cmd(args ...string) *exec.Command {
 		"Args":            args,
 	}
 
-	// on macOS, the docker socket is located in $HOME
-	dockerSocket := "/var/run/docker.sock"
-	if runtime.GOOS == "darwin" {
-		dockerSocket = "$HOME/.docker/run/docker.sock"
-	}
 	// We need the docker socket so that kind can bootstrap
 	// --userns=host to support Docker daemon host configured to run containers only in user namespaces
 	cmd := exec.NewCommand(`docker run --rm \
 		--userns=host \
 		-v {{.SharedVolume}}:/home \
-		-v /var/run/docker.sock:` + dockerSocket + ` \
+		-v /var/run/docker.sock:` + k.dockerSocket + ` \
 		-e HOME=/home \
 		-e PATH=/ \
 		{{.KindClientImage}} \
@@ -266,7 +268,7 @@ func (k *KindDriver) GetCredentials() error {
 }
 
 func (k *KindDriver) createTmpStorageClass() (string, error) {
-	tmpFile := filepath.Join(os.Getenv("HOME"), storageClassFileName)
+	tmpFile := filepath.Join(os.TempDir(), storageClassFileName)
 	err := os.WriteFile(tmpFile, []byte(storageClass), fs.ModePerm)
 	return tmpFile, err
 }
