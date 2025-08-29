@@ -1689,7 +1689,6 @@ Package v1alpha1 contains API schema definitions for managing Elastic Package Re
 
 ### Resource Types
 - [ElasticPackageRegistry](#elasticpackageregistry)
-- [ElasticPackageRegistryList](#elasticpackageregistrylist)
 
 
 
@@ -1697,10 +1696,7 @@ Package v1alpha1 contains API schema definitions for managing Elastic Package Re
 
 ElasticPackageRegistry represents an Elastic Package Registry resource in a Kubernetes cluster.
 
-:::{admonition} Appears In:
-* [ElasticPackageRegistryList](#elasticpackageregistrylist)
 
-:::
 
 | Field | Description |
 | --- | --- |
@@ -1709,20 +1705,6 @@ ElasticPackageRegistry represents an Elastic Package Registry resource in a Kube
 | *`metadata`* __[ObjectMeta](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.32/#objectmeta-v1-meta)__ | Refer to Kubernetes API documentation for fields of `metadata`. |
 | *`spec`* __[PackageRegistrySpec](#packageregistryspec)__ |  |
 | *`status`* __[PackageRegistryStatus](#packageregistrystatus)__ |  |
-
-
-### ElasticPackageRegistryList  [#elasticpackageregistrylist]
-
-ElasticPackageRegistryList contains a list of ElasticPackageRegistry
-
-
-
-| Field | Description |
-| --- | --- |
-| *`apiVersion`* __string__ | `epr.k8s.elastic.co/v1alpha1` |
-| *`kind`* __string__ | `ElasticPackageRegistryList` | 
-| *`metadata`* __[ListMeta](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.32/#listmeta-v1-meta)__ | Refer to Kubernetes API documentation for fields of `metadata`. |
-| *`items`* __[ElasticPackageRegistry](#elasticpackageregistry) array__ |  |
 
 
 ### PackageRegistrySpec  [#packageregistryspec]
