@@ -35,8 +35,15 @@ import (
 //  3. In the case of an expired enterprise license, the PDBs will revert back to a single PDB that covers the whole cluster.
 //
 // If the spec has disabled the default PDB, it will ensure none exist.
-func Reconcile(ctx context.Context, k8sClient k8s.Client, es esv1.Elasticsearch, statefulSets sset.StatefulSetList, resources nodespec.ResourcesList, meta metadata.Metadata) error {
-	licenseChecker := lic.NewLicenseChecker(k8sClient, es.Namespace)
+func Reconcile(
+	ctx context.Context,
+	k8sClient k8s.Client,
+	es esv1.Elasticsearch,
+	operatorNamespace string,
+	statefulSets sset.StatefulSetList,
+	resources nodespec.ResourcesList,
+	meta metadata.Metadata) error {
+	licenseChecker := lic.NewLicenseChecker(k8sClient, operatorNamespace)
 	enterpriseEnabled, err := licenseChecker.EnterpriseFeaturesEnabled(ctx)
 	if err != nil {
 		return fmt.Errorf("while checking license during pdb reconciliation: %w", err)
