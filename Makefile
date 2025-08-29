@@ -422,7 +422,7 @@ E2E_STACK_VERSION          ?= 9.0.0
 # regexp to filter tests to run
 export TESTS_MATCH         ?= "^Test"
 export E2E_JSON            ?= false
-TEST_TIMEOUT               ?= 15m
+TEST_TIMEOUT               ?= 20m
 E2E_SKIP_CLEANUP           ?= false
 E2E_DEPLOY_CHAOS_JOB       ?= false
 # go build constraints potentially restricting the tests to run

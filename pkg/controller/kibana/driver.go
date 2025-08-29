@@ -117,6 +117,13 @@ func (d *driver) Reconcile(
 	if !isEntAssocConfigured {
 		return results
 	}
+	isEPRAssocConfigured, err := association.IsConfiguredIfSet(ctx, kb.EPRAssociation(), d.recorder)
+	if err != nil {
+		return results.WithError(err)
+	}
+	if !isEPRAssocConfigured {
+		return results
+	}
 
 	// metadata to propagate to children
 	meta := metadata.Propagate(kb, metadata.Metadata{Labels: kb.GetIdentityLabels()})
@@ -338,6 +345,15 @@ func (d *driver) buildVolumes(kb *kbv1.Kibana) ([]commonvolume.VolumeLike, error
 	if entAssocConf.CAIsConfigured() {
 		entCertsVolume := entCaCertSecretVolume(*entAssocConf)
 		volumes = append(volumes, entCertsVolume)
+	}
+
+	eprAssocConf, err := kb.EPRAssociation().AssociationConf()
+	if err != nil {
+		return nil, err
+	}
+	if eprAssocConf.CAIsConfigured() {
+		eprCertsVolume := eprCaCertSecretVolume(*eprAssocConf)
+		volumes = append(volumes, eprCertsVolume)
 	}
 
 	if kb.Spec.HTTP.TLS.Enabled() {

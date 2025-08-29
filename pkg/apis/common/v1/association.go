@@ -112,6 +112,9 @@ const (
 
 	LogstashMonitoringAssociationType = "ls-monitoring"
 
+	EPRConfigAnnotationNameBase    = "association.k8s.elastic.co/epr-conf"
+	PackageRegistryAssociationType = "package-registry"
+
 	AssociationUnknown     AssociationStatus = ""
 	AssociationPending     AssociationStatus = "Pending"
 	AssociationEstablished AssociationStatus = "Established"
@@ -300,4 +303,10 @@ func ElasticsearchConfigAnnotationName(o ObjectSelector) string {
 	// annotation key should be stable to allow the Elasticsearch Controller to only pick up the ones it expects,
 	// based on the ObjectSelector
 	return FormatNameWithID(ElasticsearchConfigAnnotationNameBase+"%s", hash.HashObject(o))
+}
+
+func KibanaConfigAnnotationName(o ObjectSelector) string {
+	// annotation key should be stable to allow the Kibana Controller to only pick up the ones it expects,
+	// based on the ObjectSelector
+	return FormatNameWithID(KibanaConfigAnnotationNameBase+"%s", hash.HashObject(o))
 }
