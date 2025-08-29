@@ -69,16 +69,22 @@ type KindDriverFactory struct{}
 var _ DriverFactory = &KindDriverFactory{}
 
 func (k KindDriverFactory) Create(plan Plan) (Driver, error) {
+	dockerSocket, err := getDockerSocket()
+	if err != nil {
+		return nil, err
+	}
 	return &KindDriver{
-		plan:        plan,
-		vaultClient: vault.NewClientProvider(),
+		plan:         plan,
+		vaultClient:  vault.NewClientProvider(),
+		dockerSocket: dockerSocket,
 	}, nil
 }
 
 type KindDriver struct {
-	plan        Plan
-	clientImage string
-	vaultClient vault.ClientProvider
+	plan         Plan
+	clientImage  string
+	vaultClient  vault.ClientProvider
+	dockerSocket string
 }
 
 func (k *KindDriver) Execute() error {
@@ -206,17 +212,12 @@ func (k *KindDriver) cmd(args ...string) *exec.Command {
 		"Args":            args,
 	}
 
-	dockerSocket, err := getDockerSocket()
-	if err != nil {
-		log.Printf("Failed to get docker socket: %v, the following command may fail", err)
-	}
-
 	// We need the docker socket so that kind can bootstrap
 	// --userns=host to support Docker daemon host configured to run containers only in user namespaces
 	cmd := exec.NewCommand(`docker run --rm \
 		--userns=host \
 		-v {{.SharedVolume}}:/home \
-		-v /var/run/docker.sock:` + dockerSocket + ` \
+		-v /var/run/docker.sock:` + k.dockerSocket + ` \
 		-e HOME=/home \
 		-e PATH=/ \
 		{{.KindClientImage}} \

@@ -7,7 +7,6 @@ package runner
 import (
 	"fmt"
 	"io/fs"
-	"log"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -37,19 +36,25 @@ type K3dDriverFactory struct{}
 var _ DriverFactory = &K3dDriverFactory{}
 
 func (k K3dDriverFactory) Create(plan Plan) (Driver, error) {
+	dockerSocket, err := getDockerSocket()
+	if err != nil {
+		return nil, err
+	}
 	return &K3dDriver{
-		plan:        plan,
-		vaultClient: vault.NewClientProvider(),
-		clientImage: plan.K3d.ClientImage,
-		nodeImage:   plan.K3d.NodeImage,
+		plan:         plan,
+		vaultClient:  vault.NewClientProvider(),
+		clientImage:  plan.K3d.ClientImage,
+		nodeImage:    plan.K3d.NodeImage,
+		dockerSocket: dockerSocket,
 	}, nil
 }
 
 type K3dDriver struct {
-	plan        Plan
-	clientImage string
-	vaultClient vault.ClientProvider
-	nodeImage   string
+	plan         Plan
+	clientImage  string
+	vaultClient  vault.ClientProvider
+	nodeImage    string
+	dockerSocket string
 }
 
 func (k *K3dDriver) Execute() error {
@@ -134,16 +139,11 @@ func (k *K3dDriver) cmd(args ...string) *exec.Command {
 		"Args":           args,
 	}
 
-	dockerSocket, err := getDockerSocket()
-	if err != nil {
-		log.Printf("Failed to get docker socket: %v, the following command may fail", err)
-	}
-
 	// We need the docker socket so that k3d can bootstrap
 	// --userns=host to support Docker daemon host configured to run containers only in user namespaces
 	command := `docker run --rm \
 		--userns=host \
-		-v /var/run/docker.sock:` + dockerSocket + ` \
+		-v /var/run/docker.sock:` + k.dockerSocket + ` \
 		-e HOME=/home \
 		-e PATH=/ \
 		{{.K3dClientImage}} \
