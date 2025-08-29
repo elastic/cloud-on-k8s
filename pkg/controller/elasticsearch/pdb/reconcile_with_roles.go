@@ -309,6 +309,14 @@ func buildRoleSpecificPDBSpec(
 }
 
 // allowedDisruptionsForRole returns the maximum number of pods that can be disrupted for a given role.
+// Notes:
+//   - Disruptions are never allowed when the cluster health is unknown, empty or red, even if the
+//     cluster is not a highly available cluster. This is to ensure no further damage can be done
+//     to a cluster which is already unhealthy for an unknown reason.
+//   - In a single node cluster (not highly-available) always allow 1 disruption
+//     to ensure K8s nodes operations can be performed when the cluster health is not unknown or red.
+//   - For data roles, allow 1 disruption if health is green.
+//   - For any other roles, allow 1 disruption if the health is yellow or green.
 func allowedDisruptionsForRole(
 	es esv1.Elasticsearch,
 	role esv1.NodeRole,
