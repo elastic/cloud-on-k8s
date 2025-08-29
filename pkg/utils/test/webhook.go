@@ -17,7 +17,7 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/require"
-	admissionv1beta1 "k8s.io/api/admission/v1beta1"
+	admissionv1 "k8s.io/api/admission/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	runtime "k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/serializer"
@@ -32,22 +32,22 @@ import (
 
 // ValidationWebhookTestCase represents a test case for testing a validation webhook
 type ValidationWebhookTestCase struct {
-	Name      string                                                           // Name of the test
-	Operation admissionv1beta1.Operation                                       // Operation type (Create, Update, or Delete)
-	Object    func(t *testing.T, uid string) []byte                            // Object to check
-	OldObject func(t *testing.T, uid string) []byte                            // Old object (for updates)
-	Check     func(t *testing.T, response *admissionv1beta1.AdmissionResponse) // Logic to check the response
+	Name      string                                                      // Name of the test
+	Operation admissionv1.Operation                                       // Operation type (Create, Update, or Delete)
+	Object    func(t *testing.T, uid string) []byte                       // Object to check
+	OldObject func(t *testing.T, uid string) []byte                       // Old object (for updates)
+	Check     func(t *testing.T, response *admissionv1.AdmissionResponse) // Logic to check the response
 }
 
 // ValidationWebhookSucceeded is a helper function to verify that the validation webhook accepted the request.
-func ValidationWebhookSucceeded(t *testing.T, response *admissionv1beta1.AdmissionResponse) {
+func ValidationWebhookSucceeded(t *testing.T, response *admissionv1.AdmissionResponse) {
 	t.Helper()
 	require.True(t, response.Allowed, "Request denied: %s", response.Result.Reason)
 }
 
 // ValidationWebhookFailed is a helper function to verify that the validation webhook rejected the request.
-func ValidationWebhookFailed(causeRegexes ...string) func(*testing.T, *admissionv1beta1.AdmissionResponse) {
-	return func(t *testing.T, response *admissionv1beta1.AdmissionResponse) {
+func ValidationWebhookFailed(causeRegexes ...string) func(*testing.T, *admissionv1.AdmissionResponse) {
+	return func(t *testing.T, response *admissionv1.AdmissionResponse) {
 		t.Helper()
 		require.False(t, response.Allowed)
 
@@ -74,8 +74,8 @@ func ValidationWebhookFailed(causeRegexes ...string) func(*testing.T, *admission
 	}
 }
 
-func ValidationWebhookSucceededWithWarnings(warningsRegexes ...string) func(*testing.T, *admissionv1beta1.AdmissionResponse) {
-	return func(t *testing.T, response *admissionv1beta1.AdmissionResponse) {
+func ValidationWebhookSucceededWithWarnings(warningsRegexes ...string) func(*testing.T, *admissionv1.AdmissionResponse) {
+	return func(t *testing.T, response *admissionv1.AdmissionResponse) {
 		t.Helper()
 		require.True(t, response.Allowed, "Request denied: %s", response.Result.Reason)
 		for _, wr := range warningsRegexes {
@@ -112,9 +112,9 @@ func RunValidationWebhookTests(t *testing.T, gvk metav1.GroupVersionKind, valida
 		tc := tt
 		t.Run(tc.Name, func(t *testing.T) {
 			uid := tc.Name
-			payload := &admissionv1beta1.AdmissionReview{
+			payload := &admissionv1.AdmissionReview{
 				TypeMeta: metav1.TypeMeta{Kind: "AdmissionReview"},
-				Request: &admissionv1beta1.AdmissionRequest{
+				Request: &admissionv1.AdmissionRequest{
 					UID:       types.UID(uid),
 					Kind:      gvk,
 					Resource:  metav1.GroupVersionResource{Group: gvk.Group, Version: gvk.Version, Resource: gvk.Kind},
@@ -123,7 +123,7 @@ func RunValidationWebhookTests(t *testing.T, gvk metav1.GroupVersionKind, valida
 				},
 			}
 
-			if tc.Operation == admissionv1beta1.Update {
+			if tc.Operation == admissionv1.Update {
 				payload.Request.OldObject = runtime.RawExtension{Raw: tc.OldObject(t, uid)}
 			}
 
@@ -152,13 +152,13 @@ func RunValidationWebhookTests(t *testing.T, gvk metav1.GroupVersionKind, valida
 	}
 }
 
-func decodeResponse(t *testing.T, decoder runtime.Decoder, body io.Reader) *admissionv1beta1.AdmissionResponse {
+func decodeResponse(t *testing.T, decoder runtime.Decoder, body io.Reader) *admissionv1.AdmissionResponse {
 	t.Helper()
 
 	responseBytes, err := io.ReadAll(body)
 	require.NoError(t, err, "Failed to read response body")
 
-	response := &admissionv1beta1.AdmissionReview{}
+	response := &admissionv1.AdmissionReview{}
 	_, _, err = decoder.Decode(responseBytes, nil, response)
 	require.NoError(t, err, "Failed to decode response")
 

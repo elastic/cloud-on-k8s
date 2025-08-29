@@ -10,7 +10,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/require"
-	admissionv1beta1 "k8s.io/api/admission/v1beta1"
+	admissionv1 "k8s.io/api/admission/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
@@ -24,7 +24,7 @@ func TestWebhook(t *testing.T) {
 	testCases := []test.ValidationWebhookTestCase{
 		{
 			Name:      "create-valid",
-			Operation: admissionv1beta1.Create,
+			Operation: admissionv1.Create,
 			Object: func(t *testing.T, uid string) []byte {
 				t.Helper()
 				m := mkMaps(uid)
@@ -34,7 +34,7 @@ func TestWebhook(t *testing.T) {
 		},
 		{
 			Name:      "unknown-field",
-			Operation: admissionv1beta1.Create,
+			Operation: admissionv1.Create,
 			Object: func(t *testing.T, uid string) []byte {
 				t.Helper()
 				m := mkMaps(uid)
@@ -49,7 +49,7 @@ func TestWebhook(t *testing.T) {
 		},
 		{
 			Name:      "long-name",
-			Operation: admissionv1beta1.Create,
+			Operation: admissionv1.Create,
 			Object: func(t *testing.T, uid string) []byte {
 				t.Helper()
 				m := mkMaps(uid)
@@ -62,7 +62,7 @@ func TestWebhook(t *testing.T) {
 		},
 		{
 			Name:      "invalid-version",
-			Operation: admissionv1beta1.Create,
+			Operation: admissionv1.Create,
 			Object: func(t *testing.T, uid string) []byte {
 				t.Helper()
 				m := mkMaps(uid)
@@ -75,7 +75,7 @@ func TestWebhook(t *testing.T) {
 		},
 		{
 			Name:      "deprecated-version",
-			Operation: admissionv1beta1.Create,
+			Operation: admissionv1.Create,
 			Object: func(t *testing.T, uid string) []byte {
 				t.Helper()
 				m := mkMaps(uid)
@@ -88,7 +88,7 @@ func TestWebhook(t *testing.T) {
 		},
 		{
 			Name:      "unsupported-version-lower",
-			Operation: admissionv1beta1.Create,
+			Operation: admissionv1.Create,
 			Object: func(t *testing.T, uid string) []byte {
 				t.Helper()
 				m := mkMaps(uid)
@@ -101,7 +101,7 @@ func TestWebhook(t *testing.T) {
 		},
 		{
 			Name:      "unsupported-version-higher",
-			Operation: admissionv1beta1.Create,
+			Operation: admissionv1.Create,
 			Object: func(t *testing.T, uid string) []byte {
 				t.Helper()
 				m := mkMaps(uid)
@@ -114,7 +114,7 @@ func TestWebhook(t *testing.T) {
 		},
 		{
 			Name:      "named-es-ref",
-			Operation: admissionv1beta1.Create,
+			Operation: admissionv1.Create,
 			Object: func(t *testing.T, uid string) []byte {
 				t.Helper()
 				m := mkMaps(uid)
@@ -126,7 +126,7 @@ func TestWebhook(t *testing.T) {
 		},
 		{
 			Name:      "secret-es-ref",
-			Operation: admissionv1beta1.Create,
+			Operation: admissionv1.Create,
 			Object: func(t *testing.T, uid string) []byte {
 				t.Helper()
 				m := mkMaps(uid)
@@ -138,7 +138,7 @@ func TestWebhook(t *testing.T) {
 		},
 		{
 			Name:      "invalid-secret-es-ref-name",
-			Operation: admissionv1beta1.Create,
+			Operation: admissionv1.Create,
 			Object: func(t *testing.T, uid string) []byte {
 				t.Helper()
 				m := mkMaps(uid)
@@ -152,7 +152,7 @@ func TestWebhook(t *testing.T) {
 		},
 		{
 			Name:      "invalid-secret-es-ref-namespace",
-			Operation: admissionv1beta1.Create,
+			Operation: admissionv1.Create,
 			Object: func(t *testing.T, uid string) []byte {
 				t.Helper()
 				m := mkMaps(uid)
