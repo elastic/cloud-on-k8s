@@ -277,7 +277,10 @@ func (p *PodDisruptionBudgetTemplate) IsDisabled() bool {
 
 // IsSpecified returns true if the PodDisruptionBudget is specified (not nil, and has a non-empty spec).
 func (p *PodDisruptionBudgetTemplate) IsSpecified() bool {
-	return p != nil && (p.Spec.Selector != nil || p.Spec.MinAvailable != nil || p.Spec.MaxUnavailable != nil)
+	return p != nil && (p.Spec.Selector != nil ||
+		p.Spec.MinAvailable != nil ||
+		p.Spec.MaxUnavailable != nil ||
+		p.Spec.UnhealthyPodEvictionPolicy != nil)
 }
 
 // NamespacedSecretSource defines a data source based on a Kubernetes Secret in a given namespace.

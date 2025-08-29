@@ -32,6 +32,10 @@ import (
 	es_sset "github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/sset"
 )
 
+var (
+	ifHealthyBudget = policyv1.UnhealthyPodEvictionPolicyType(policyv1.IfHealthyBudget)
+)
+
 func defaultPDB() *policyv1.PodDisruptionBudget {
 	return &policyv1.PodDisruptionBudget{
 		ObjectMeta: metav1.ObjectMeta{
@@ -46,7 +50,8 @@ func defaultPDB() *policyv1.PodDisruptionBudget {
 					label.ClusterNameLabelName: "cluster",
 				},
 			},
-			MaxUnavailable: nil,
+			MaxUnavailable:             nil,
+			UnhealthyPodEvictionPolicy: &ifHealthyBudget,
 		},
 	}
 }
@@ -109,7 +114,8 @@ func TestReconcile(t *testing.T) {
 							label.ClusterNameLabelName: "cluster",
 						},
 					},
-					MaxUnavailable: nil,
+					MaxUnavailable:             nil,
+					UnhealthyPodEvictionPolicy: &ifHealthyBudget,
 				},
 			},
 		},
@@ -227,7 +233,8 @@ func Test_expectedPDB(t *testing.T) {
 							label.ClusterNameLabelName: "cluster",
 						},
 					},
-					MaxUnavailable: nil,
+					MaxUnavailable:             nil,
+					UnhealthyPodEvictionPolicy: &ifHealthyBudget,
 				},
 			},
 		},
@@ -261,7 +268,8 @@ func Test_expectedPDB(t *testing.T) {
 							label.ClusterNameLabelName: "cluster",
 						},
 					},
-					MaxUnavailable: nil,
+					MaxUnavailable:             nil,
+					UnhealthyPodEvictionPolicy: &ifHealthyBudget,
 				},
 			},
 		},

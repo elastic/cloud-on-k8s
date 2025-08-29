@@ -422,16 +422,13 @@ func listAllRoleSpecificPDBs(ctx context.Context, k8sClient k8s.Client, es esv1.
 // deleteAllRoleSpecificPDBs deletes all existing role-specific PDBs for the cluster by retrieving
 // all PDBs in the namespace with the cluster label and verifying the owner reference.
 func deleteAllRoleSpecificPDBs(ctx context.Context, k8sClient k8s.Client, es esv1.Elasticsearch) error {
-	// List all PDBs in the namespace with the cluster label
-	var pdbList policyv1.PodDisruptionBudgetList
-	if err := k8sClient.List(ctx, &pdbList, client.InNamespace(es.Namespace), client.MatchingLabels{
-		label.ClusterNameLabelName: es.Name,
-	}); err != nil {
+	pdbList, err := listAllRoleSpecificPDBs(ctx, k8sClient, es)
+	if err != nil {
 		return err
 	}
 
 	// Delete PDBs owned by this Elasticsearch resource
-	for _, pdb := range pdbList.Items {
+	for _, pdb := range pdbList {
 		// Ensure we do not delete the default PDB if it exists.
 		if k8s.HasOwner(&pdb, &es) && pdb.GetName() != esv1.DefaultPodDisruptionBudget(es.Name) {
 			if err := k8sClient.Delete(ctx, &pdb); err != nil && !apierrors.IsNotFound(err) {

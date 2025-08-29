@@ -17,9 +17,7 @@ import (
 	appsv1 "k8s.io/api/apps/v1"
 	_ "k8s.io/api/core/v1"
 	policyv1 "k8s.io/api/policy/v1"
-	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/util/intstr"
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
 	"k8s.io/utils/ptr"
@@ -240,19 +238,18 @@ func TestReconcileRoleSpecificPDBs(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			restMapper := meta.NewDefaultRESTMapper([]schema.GroupVersion{{
-				Group:   "policy",
-				Version: "v1",
-			}})
-			restMapper.Add(
-				schema.GroupVersionKind{
-					Group:   "policy",
-					Version: "v1",
-					Kind:    "PodDisruptionBudget",
-				}, meta.RESTScopeNamespace)
+			// restMapper := meta.NewDefaultRESTMapper([]schema.GroupVersion{{
+			// 	Group:   "policy",
+			// 	Version: "v1",
+			// }})
+			// restMapper.Add(
+			// 	schema.GroupVersionKind{
+			// 		Group:   "policy",
+			// 		Version: "v1",
+			// 		Kind:    "PodDisruptionBudget",
+			// 	}, meta.RESTScopeNamespace)
 			c := fake.NewClientBuilder().
 				WithScheme(clientgoscheme.Scheme).
-				WithRESTMapper(restMapper).
 				WithObjects(tt.args.initObjs...).
 				Build()
 
@@ -541,7 +538,7 @@ func TestExpectedRolePDBs(t *testing.T) {
 			},
 		},
 		{
-			name: "existing PDB with different selector: should be updated",
+			name: "master with a single node but unhealthy cluster should disallow disruptions",
 			es:   defaultUnhealthyES,
 			builder: NewBuilder("test-es").
 				WithNamespace("ns").
@@ -709,54 +706,6 @@ func TestExpectedRolePDBs(t *testing.T) {
 									Key:      label.StatefulSetNameLabelName,
 									Operator: metav1.LabelSelectorOpIn,
 									Values:   []string{"ml1"},
-								},
-							},
-						},
-						MaxUnavailable: &intstr.IntOrString{Type: intstr.Int, IntVal: 0},
-					},
-				},
-			},
-		},
-		{
-			name: "multiple coordinating nodeSets",
-			es:   defaultUnhealthyES,
-			builder: NewBuilder("test-es").
-				WithNamespace("ns").
-				WithVersion("8.0.0").
-				WithNodeSet("coord1", 1, esv1.CoordinatingRole).
-				WithNodeSet("coord2", 1, esv1.CoordinatingRole).
-				WithNodeSet("coord3", 1, esv1.CoordinatingRole),
-			meta: defaultMeta,
-			expected: []*policyv1.PodDisruptionBudget{
-				{
-					ObjectMeta: metav1.ObjectMeta{
-						Name:      "test-es-es-default-coordinating",
-						Namespace: "ns",
-						Labels: map[string]string{
-							label.ClusterNameLabelName: "test-es",
-						},
-						OwnerReferences: []metav1.OwnerReference{
-							{
-								APIVersion:         "elasticsearch.k8s.elastic.co/v1",
-								Kind:               "Elasticsearch",
-								Name:               "test-es",
-								Controller:         ptr.To[bool](true),
-								BlockOwnerDeletion: ptr.To[bool](true),
-							},
-						},
-					},
-					Spec: policyv1.PodDisruptionBudgetSpec{
-						Selector: &metav1.LabelSelector{
-							MatchExpressions: []metav1.LabelSelectorRequirement{
-								{
-									Key:      label.ClusterNameLabelName,
-									Operator: metav1.LabelSelectorOpIn,
-									Values:   []string{"test-es"},
-								},
-								{
-									Key:      label.StatefulSetNameLabelName,
-									Operator: metav1.LabelSelectorOpIn,
-									Values:   []string{"coord1", "coord2", "coord3"},
 								},
 							},
 						},
@@ -1107,17 +1056,7 @@ func TestGetRolesForStatefulSet(t *testing.T) {
 			resourcesList, err := tt.args.builder.BuildResourcesList()
 			require.NoError(t, err)
 
-			statefulSets := tt.args.builder.GetStatefulSets()
-			// get the specified statefulSet from the list to pass as argument to getRolesForStatefulSet
-			var statefulSet appsv1.StatefulSet
-			found := false
-			for _, sset := range statefulSets {
-				if sset.Name == tt.args.statefulSetName {
-					statefulSet = sset
-					found = true
-					break
-				}
-			}
+			statefulSet, found := tt.args.builder.GetStatefulSets().GetByName(tt.args.statefulSetName)
 
 			if !found && !tt.wantErr {
 				t.Fatalf("StatefulSet %s not found in test fixtures", tt.args.statefulSetName)

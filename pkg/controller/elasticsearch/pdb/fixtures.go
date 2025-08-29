@@ -15,6 +15,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/version"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/nodespec"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/settings"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/sset"
 )
 
 // Builder helps create test fixtures for the Elasticsearch PDB tests.
@@ -178,6 +179,6 @@ func (b Builder) BuildResourcesList() (nodespec.ResourcesList, error) {
 	return resourcesList, nil
 }
 
-func (b Builder) GetStatefulSets() []appsv1.StatefulSet {
+func (b Builder) GetStatefulSets() sset.StatefulSetList {
 	return b.StatefulSets
 }
