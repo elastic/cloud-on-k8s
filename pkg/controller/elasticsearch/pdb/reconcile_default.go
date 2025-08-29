@@ -187,7 +187,7 @@ func buildPDBSpec(es esv1.Elasticsearch, statefulSets sset.StatefulSetList) poli
 
 	minAvailableIntStr := intstr.IntOrString{Type: intstr.Int, IntVal: minAvailable}
 
-	ifHealthyBudget := policyv1.UnhealthyPodEvictionPolicyType(policyv1.IfHealthyBudget)
+	ifHealthyBudget := policyv1.IfHealthyBudget
 
 	return policyv1.PodDisruptionBudgetSpec{
 		// match all pods for this cluster

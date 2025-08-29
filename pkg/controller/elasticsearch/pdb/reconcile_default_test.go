@@ -33,7 +33,7 @@ import (
 )
 
 var (
-	ifHealthyBudget = policyv1.UnhealthyPodEvictionPolicyType(policyv1.IfHealthyBudget)
+	ifHealthyBudget = policyv1.IfHealthyBudget
 )
 
 func defaultPDB() *policyv1.PodDisruptionBudget {
