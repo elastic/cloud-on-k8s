@@ -279,7 +279,7 @@ func createPDBForStatefulSets(
 	return pdb, nil
 }
 
-// buildRoleSpecificPDBSpec returns a PDBSpec for a specific node role.
+// buildRoleSpecificPDBSpec returns a policyv1.PodDisruptionBudgetSpec for a specific node role.
 func buildRoleSpecificPDBSpec(
 	es esv1.Elasticsearch,
 	role esv1.NodeRole,

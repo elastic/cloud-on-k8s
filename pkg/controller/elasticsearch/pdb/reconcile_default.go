@@ -74,7 +74,7 @@ func reconcileDefaultPDB(
 	return reconcilePDB(ctx, k8sClient, es, expected)
 }
 
-// reconcilePDB reconciles a single PDB, handling both v1 and v1beta1 versions.
+// reconcilePDB reconciles a single PDB.
 func reconcilePDB(
 	ctx context.Context,
 	k8sClient k8s.Client,
