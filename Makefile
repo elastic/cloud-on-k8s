@@ -350,6 +350,9 @@ switch-eks:
 switch-kind:
 	@ echo "kind" > hack/deployer/config/provider
 
+switch-k3d:
+	@ echo "k3d" > hack/deployer/config/provider
+
 #################################
 ##  --    Docker images    --  ##
 #################################

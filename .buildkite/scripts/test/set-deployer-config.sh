@@ -25,7 +25,7 @@ ROOT="$WD/../../.."
 
 w()  { echo "$@" >> "$ROOT/deployer-config.yml"; }
 
-write_deployer_config() { 
+write_deployer_config() {
     :> "$ROOT/deployer-config.yml"
 
     w "id: ${E2E_PROVIDER}-ci"
@@ -36,7 +36,7 @@ write_deployer_config() {
     w "  operation: ${DEPLOYER_OPERATION:-create}"
     w "  clusterName: ${CLUSTER_NAME}"
 
-    # k8s version for ocp, kind    
+    # k8s version for ocp, kind
     if [[ "${DEPLOYER_CLIENT_VERSION:-}" != "" ]]; then
     w '  clientVersion: "'"${DEPLOYER_CLIENT_VERSION}"'"'
     fi
@@ -57,6 +57,11 @@ write_deployer_config() {
     w "  kind:"
     w "    nodeImage: ${DEPLOYER_KIND_NODE_IMAGE}"
     w "    ipFamily: ${DEPLOYER_KIND_IP_FAMILY:-ipv4}"
+    fi
+
+    if [[ "${DEPLOYER_K3D_NODE_IMAGE:-}" ]]; then
+    w "  k3d:"
+    w "    nodeImage: ${DEPLOYER_K3D_NODE_IMAGE}"
     fi
 }
 

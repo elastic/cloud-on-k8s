@@ -115,7 +115,8 @@ type ObjectSelector struct {
 	ServiceName string `json:"serviceName,omitempty"`
 
 	// SecretName is the name of an existing Kubernetes secret that contains connection information for associating an
-	// Elastic resource not managed by the operator. The referenced secret must contain the following:
+	// Elastic resource not managed by the operator.
+	// The referenced secret must contain the following:
 	// - `url`: the URL to reach the Elastic resource
 	// - `username`: the username of the user to be authenticated to the Elastic resource
 	// - `password`: the password of the user to be authenticated to the Elastic resource

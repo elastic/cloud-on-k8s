@@ -31,7 +31,8 @@ spec:
   version: 9.1.2
   config:
     filebeat.inputs:
-      - type: log
+      - type: filestream
+        id: logstash
         paths:
           - /data/logstash-tutorial.log
     output.logstash:

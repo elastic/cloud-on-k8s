@@ -37,10 +37,12 @@ update_chart() {
     "$SED" -E "s#version: [0-9]+\.[0-9]+\.[0-9]+.*#version: $VERSION#" "${CRD_CHART_DIR}/Chart.yaml"
 }
 
+# shellcheck disable=SC2329
 sed_gnu() {
     sed -i "$@"
 }
 
+# shellcheck disable=SC2329
 sed_bsd() {
     sed -i '' "$@"
 }
