@@ -17,8 +17,10 @@ import (
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes/scheme"
+	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
 	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/client/apiutil"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 
 	esv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/elasticsearch/v1"
@@ -225,7 +227,11 @@ func Test_handleVolumeExpansionElasticsearch(t *testing.T) {
 				wantUpdatedSset.Spec.VolumeClaimTemplates = tt.args.expectedSset.Spec.VolumeClaimTemplates
 
 				// test ssetsToRecreate along the way
-				toRecreate, err := ssetsToRecreate(&retrievedES, retrievedES.Kind)
+				gvk, err := apiutil.GVKForObject(&retrievedES, clientgoscheme.Scheme)
+				if err != nil {
+					t.Fatal(err)
+				}
+				toRecreate, err := ssetsToRecreate(&retrievedES, gvk.Kind)
 				require.NoError(t, err)
 				require.Equal(t,
 					map[string]appsv1.StatefulSet{
@@ -392,7 +398,11 @@ func Test_handleVolumeExpansionLogstash(t *testing.T) {
 				wantUpdatedSset.Spec.VolumeClaimTemplates = tt.args.expectedSset.Spec.VolumeClaimTemplates
 
 				// test ssetsToRecreate along the way
-				toRecreate, err := ssetsToRecreate(&retrievedLS, retrievedLS.Kind)
+				gvk, err := apiutil.GVKForObject(&retrievedLS, clientgoscheme.Scheme)
+				if err != nil {
+					t.Fatal(err)
+				}
+				toRecreate, err := ssetsToRecreate(&retrievedLS, gvk.Kind)
 				require.NoError(t, err)
 				require.Equal(t,
 					map[string]appsv1.StatefulSet{
