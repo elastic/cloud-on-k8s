@@ -139,7 +139,7 @@ func TestValidateElasticsearchAutoscaler(t *testing.T) {
 				},
 				checker: yesCheck,
 			},
-			wantValidationError: ptr.To[string]("Invalid value: []string{\"ml\"}: roles must be used in at least one nodeSet"),
+			wantValidationError: ptr.To[string]("Invalid value: [\"ml\"]: roles must be used in at least one nodeSet"),
 		},
 		{
 			name: "Policy name is duplicated",
@@ -505,7 +505,7 @@ func TestValidateElasticsearchAutoscaler(t *testing.T) {
 				},
 				checker: yesCheck,
 			},
-			wantValidationError: ptr.To[string]("ElasticsearchAutoscaler.autoscaling.k8s.elastic.co \"esa\" is invalid: Elasticsearch.spec.nodeSets[0]: Invalid value: []string{\"volume1\", \"volume2\"}: autoscaling supports only one volume claim"),
+			wantValidationError: ptr.To[string]("ElasticsearchAutoscaler.autoscaling.k8s.elastic.co \"esa\" is invalid: Elasticsearch.spec.nodeSets[0]: Invalid value: [\"volume1\",\"volume2\"]: autoscaling supports only one volume claim"),
 		},
 		{
 			name: "ML policy with roles [ml, remote_cluster_client] succeeds",
