@@ -200,7 +200,7 @@ func Test_handleVolumeExpansionElasticsearch(t *testing.T) {
 			}
 
 			k8sClient := k8s.NewFakeClient(append(tt.runtimeObjs, &es)...)
-			recreate, err := HandleVolumeExpansion(context.Background(), k8sClient, &es, es.Kind,
+			recreate, err := HandleVolumeExpansion(context.Background(), k8sClient, &es,
 				tt.args.expectedSset, tt.args.actualSset, tt.args.validateStorageClass)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("handleVolumeExpansion() error = %v, wantErr %v", err, tt.wantErr)
@@ -371,7 +371,7 @@ func Test_handleVolumeExpansionLogstash(t *testing.T) {
 				ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: "ls"},
 				TypeMeta:   metav1.TypeMeta{Kind: logstashv1alpha1.Kind}}
 			k8sClient := k8s.NewFakeClient(append(tt.runtimeObjs, &ls)...)
-			recreate, err := HandleVolumeExpansion(context.Background(), k8sClient, &ls, ls.Kind,
+			recreate, err := HandleVolumeExpansion(context.Background(), k8sClient, &ls,
 				tt.args.expectedSset, tt.args.actualSset, tt.args.validateStorageClass)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("handleVolumeExpansion() error = %v, wantErr %v", err, tt.wantErr)
@@ -578,7 +578,7 @@ func Test_recreateStatefulSets(t *testing.T) {
 			es := tt.args.es
 			k8sClient := k8s.NewFakeClient(append(tt.args.runtimeObjs, &es)...)
 
-			got, err := RecreateStatefulSets(context.Background(), k8sClient, &es, es.Kind)
+			got, err := RecreateStatefulSets(context.Background(), k8sClient, &es)
 			require.NoError(t, err)
 			require.Equal(t, tt.wantRecreations, got)
 
