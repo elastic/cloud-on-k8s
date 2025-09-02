@@ -187,8 +187,6 @@ func buildPDBSpec(es esv1.Elasticsearch, statefulSets sset.StatefulSetList) poli
 
 	minAvailableIntStr := intstr.IntOrString{Type: intstr.Int, IntVal: minAvailable}
 
-	ifHealthyBudget := policyv1.IfHealthyBudget
-
 	return policyv1.PodDisruptionBudgetSpec{
 		// match all pods for this cluster
 		Selector: &metav1.LabelSelector{
@@ -199,8 +197,7 @@ func buildPDBSpec(es esv1.Elasticsearch, statefulSets sset.StatefulSetList) poli
 		MinAvailable: &minAvailableIntStr,
 		// MaxUnavailable can only be used if the selector matches a builtin controller selector
 		// (eg. Deployments, StatefulSets, etc.). We cannot use it with our own cluster-name selector.
-		MaxUnavailable:             nil,
-		UnhealthyPodEvictionPolicy: &ifHealthyBudget,
+		MaxUnavailable: nil,
 	}
 }
 

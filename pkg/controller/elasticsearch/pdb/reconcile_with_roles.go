@@ -41,7 +41,7 @@ var (
 		esv1.DataWarmRole,
 		esv1.DataColdRole,
 		esv1.DataContentRole,
-		// Note: DataFrozenRole is excluded as it has different disruption rules (yellow+ health)
+		// Note: DataFrozenRole is excluded as it can be disrupted even when cluster health is yellow.
 	}
 )
 
@@ -123,7 +123,7 @@ func expectedRolePDBs(
 			continue
 		}
 
-		pdb, err := createPDBForStatefulSets(es, roleName, string(roleName), group, statefulSets, meta)
+		pdb, err := createPDBForStatefulSets(es, roleName, group, statefulSets, meta)
 		if err != nil {
 			return nil, err
 		}
@@ -244,8 +244,6 @@ func createPDBForStatefulSets(
 	es esv1.Elasticsearch,
 	// role is the role used to determine the maxUnavailable value.
 	role esv1.NodeRole,
-	// roleName is used to determine the name of the PDB.
-	roleName string,
 	// statefulSets are the statefulSets grouped into this pdb.
 	statefulSets []appsv1.StatefulSet,
 	// allStatefulSets are all statefulSets in the whole ES cluster.
@@ -258,7 +256,7 @@ func createPDBForStatefulSets(
 
 	pdb := &policyv1.PodDisruptionBudget{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      esv1.PodDisruptionBudgetNameForRole(es.Name, roleName),
+			Name:      esv1.PodDisruptionBudgetNameForRole(es.Name, string(role)),
 			Namespace: es.Namespace,
 		},
 		Spec: buildRoleSpecificPDBSpec(es, role, statefulSets, allStatefulSets),
@@ -316,7 +314,8 @@ func buildRoleSpecificPDBSpec(
 //   - In a single node cluster (not highly-available) always allow 1 disruption
 //     to ensure K8s nodes operations can be performed when the cluster health is not unknown or red.
 //   - For data roles, allow 1 disruption if health is green.
-//   - For any other roles, allow 1 disruption if the health is yellow or green.
+//   - For any other roles, excluding frozen which should have been filtered in groupBySharedRoles,
+//     allow one disruption if health is green.
 func allowedDisruptionsForRole(
 	es esv1.Elasticsearch,
 	role esv1.NodeRole,
