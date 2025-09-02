@@ -134,6 +134,9 @@ func (d *defaultDriver) reconcileNodeSpecs(
 
 	// Update PDB to account for new replicas.
 	if err := pdb.Reconcile(ctx, d.Client, d.ES, d.OperatorParameters.OperatorNamespace, actualStatefulSets, expectedResources, meta); err != nil {
+		if errors.Is(err, nodespec.ErrNoResourcesForStatefulSet) {
+			return results.WithReconciliationState(defaultRequeue.WithReason("Possible modification of NodeSets"))
+		}
 		return results.WithError(err)
 	}
 

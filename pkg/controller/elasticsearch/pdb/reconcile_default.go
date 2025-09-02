@@ -163,10 +163,7 @@ func expectedPDB(es esv1.Elasticsearch, statefulSets sset.StatefulSetList, meta 
 		return nil, err
 	}
 
-	if template.Spec.Selector != nil ||
-		template.Spec.MaxUnavailable != nil ||
-		template.Spec.MinAvailable != nil ||
-		template.Spec.UnhealthyPodEvictionPolicy != nil {
+	if template.IsSpecified() {
 		// use the user-defined spec
 		expected.Spec = template.Spec
 	} else {

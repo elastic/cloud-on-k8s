@@ -6,6 +6,7 @@ package nodespec
 
 import (
 	"context"
+	"errors"
 	"fmt"
 
 	appsv1 "k8s.io/api/apps/v1"
@@ -33,13 +34,15 @@ type Resources struct {
 
 type ResourcesList []Resources
 
+var ErrNoResourcesForStatefulSet = errors.New("no expected resources for StatefulSet")
+
 func (l ResourcesList) ForStatefulSet(name string) (Resources, error) {
 	for _, resource := range l {
 		if resource.StatefulSet.Name == name {
 			return resource, nil
 		}
 	}
-	return Resources{}, fmt.Errorf("no expected resources for StatefulSet %s", name)
+	return Resources{}, fmt.Errorf("while searching for resources for StatefulSet %s: %w", name, ErrNoResourcesForStatefulSet)
 }
 
 func (l ResourcesList) StatefulSets() es_sset.StatefulSetList {
