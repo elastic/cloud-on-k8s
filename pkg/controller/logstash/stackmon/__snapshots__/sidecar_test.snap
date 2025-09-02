@@ -144,9 +144,7 @@ processors:
 
 [TestWithMonitoring/without_monitoring - 1]
 {
- "metadata": {
-  "creationTimestamp": null
- },
+ "metadata": {},
  "spec": {
   "automountServiceAccountToken": false,
   "containers": [
@@ -164,8 +162,7 @@ processors:
  "metadata": {
   "annotations": {
    "logstash.k8s.elastic.co/monitoring-config-hash": "625208580"
-  },
-  "creationTimestamp": null
+  }
  },
  "spec": {
   "automountServiceAccountToken": false,
@@ -276,8 +273,7 @@ processors:
  "metadata": {
   "annotations": {
    "logstash.k8s.elastic.co/monitoring-config-hash": "2320787694"
-  },
-  "creationTimestamp": null
+  }
  },
  "spec": {
   "automountServiceAccountToken": false,
@@ -400,8 +396,7 @@ processors:
  "metadata": {
   "annotations": {
    "logstash.k8s.elastic.co/monitoring-config-hash": "983125293"
-  },
-  "creationTimestamp": null
+  }
  },
  "spec": {
   "automountServiceAccountToken": false,
@@ -522,8 +517,7 @@ processors:
  "metadata": {
   "annotations": {
    "logstash.k8s.elastic.co/monitoring-config-hash": "808554888"
-  },
-  "creationTimestamp": null
+  }
  },
  "spec": {
   "automountServiceAccountToken": false,
@@ -727,8 +721,7 @@ processors:
  "metadata": {
   "annotations": {
    "logstash.k8s.elastic.co/monitoring-config-hash": "2399876695"
-  },
-  "creationTimestamp": null
+  }
  },
  "spec": {
   "automountServiceAccountToken": false,
@@ -939,8 +932,7 @@ processors:
  "metadata": {
   "annotations": {
    "logstash.k8s.elastic.co/monitoring-config-hash": "808554888"
-  },
-  "creationTimestamp": null
+  }
  },
  "spec": {
   "automountServiceAccountToken": false,

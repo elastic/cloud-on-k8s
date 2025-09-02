@@ -190,9 +190,7 @@ setup.template.settings:
 
 [TestWithMonitoring/without_monitoring - 1]
 {
- "metadata": {
-  "creationTimestamp": null
- },
+ "metadata": {},
  "spec": {
   "automountServiceAccountToken": false,
   "containers": [
@@ -210,8 +208,7 @@ setup.template.settings:
  "metadata": {
   "annotations": {
    "elasticsearch.k8s.elastic.co/monitoring-config-hash": "421654492"
-  },
-  "creationTimestamp": null
+  }
  },
  "spec": {
   "automountServiceAccountToken": false,
@@ -344,8 +341,7 @@ setup.template.settings:
  "metadata": {
   "annotations": {
    "elasticsearch.k8s.elastic.co/monitoring-config-hash": "3392808927"
-  },
-  "creationTimestamp": null
+  }
  },
  "spec": {
   "automountServiceAccountToken": false,
@@ -476,8 +472,7 @@ setup.template.settings:
  "metadata": {
   "annotations": {
    "elasticsearch.k8s.elastic.co/monitoring-config-hash": "1805099278"
-  },
-  "creationTimestamp": null
+  }
  },
  "spec": {
   "automountServiceAccountToken": false,
@@ -713,8 +708,7 @@ setup.template.settings:
  "metadata": {
   "annotations": {
    "elasticsearch.k8s.elastic.co/monitoring-config-hash": "1086800329"
-  },
-  "creationTimestamp": null
+  }
  },
  "spec": {
   "automountServiceAccountToken": false,

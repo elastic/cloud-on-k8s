@@ -1,9 +1,7 @@
 
 [TestWithMonitoring/without_monitoring - 1]
 {
- "metadata": {
-  "creationTimestamp": null
- },
+ "metadata": {},
  "spec": {
   "automountServiceAccountToken": false,
   "containers": [
@@ -21,8 +19,7 @@
  "metadata": {
   "annotations": {
    "kibana.k8s.elastic.co/monitoring-config-hash": "1132877422"
-  },
-  "creationTimestamp": null
+  }
  },
  "spec": {
   "automountServiceAccountToken": false,
@@ -145,8 +142,7 @@
  "metadata": {
   "annotations": {
    "kibana.k8s.elastic.co/monitoring-config-hash": "95064241"
-  },
-  "creationTimestamp": null
+  }
  },
  "spec": {
   "automountServiceAccountToken": false,
@@ -271,8 +267,7 @@
  "metadata": {
   "annotations": {
    "kibana.k8s.elastic.co/monitoring-config-hash": "1633666673"
-  },
-  "creationTimestamp": null
+  }
  },
  "spec": {
   "automountServiceAccountToken": false,
@@ -492,8 +487,7 @@
  "metadata": {
   "annotations": {
    "kibana.k8s.elastic.co/monitoring-config-hash": "1902028541"
-  },
-  "creationTimestamp": null
+  }
  },
  "spec": {
   "automountServiceAccountToken": false,
