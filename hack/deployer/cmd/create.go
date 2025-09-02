@@ -30,6 +30,12 @@ func CreateCommand() *cobra.Command {
 			if err != nil {
 				return err
 			}
+
+			// Truncate username to ensure clusterName (%s-dev-cluster) doesn't exceed 32 chars
+			if len(user) > 20 {
+				user = user[:20]
+			}
+
 			var cfgData string
 			switch provider {
 			case runner.GKEDriverID:
@@ -61,6 +67,8 @@ func CreateCommand() *cobra.Command {
 				cfgData = fmt.Sprintf(runner.DefaultEKSRunConfigTemplate, user, vaultAddr, token)
 			case runner.KindDriverID:
 				cfgData = fmt.Sprintf(runner.DefaultKindRunConfigTemplate, user)
+			case runner.K3dDriverID:
+				cfgData = fmt.Sprintf(runner.DefaultK3dRunConfigTemplate, user)
 			default:
 				return fmt.Errorf("unknown provider %s", provider)
 			}

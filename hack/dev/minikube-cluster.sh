@@ -16,7 +16,7 @@ set -eu
 
 if [[ "$(minikube status --format '{{.ApiServer}}')" != "Running" ]]; then
     echo "Starting minikube..."
-    minikube start --kubernetes-version ${MINIKUBE_KUBERNETES_VERSION} --memory ${MINIKUBE_MEMORY} --cpus ${MINIKUBE_CPUS}
+    minikube start --kubernetes-version "${MINIKUBE_KUBERNETES_VERSION}" --memory "${MINIKUBE_MEMORY}" --cpus "${MINIKUBE_CPUS}"
 else
     echo "Minikube already started."
 fi

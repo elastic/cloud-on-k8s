@@ -70,3 +70,11 @@ func copyFile(src, tgt string) error {
 	cmd := fmt.Sprintf("cp %s %s", src, tgt)
 	return exec.NewCommand(cmd).WithoutStreaming().WithLog("Copying kubeconfig").Run()
 }
+
+// activateKubeconfig activates the kubeconfig for the given cluster.
+// Intended to be run after merging of the kubeconfig has already happened.
+// Currently only used in the k3d runner, as it doesn't properly handle kubeconfig operations.
+func activateKubeconfig(clusterName string) error {
+	return exec.NewCommand("kubectl config use-context " + clusterName).
+		Run()
+}
