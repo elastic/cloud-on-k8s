@@ -147,7 +147,9 @@ func groupBySharedRoles(statefulSets sset.StatefulSetList, resources nodespec.Re
 		// If the statefulSet is not found within the expected resources,
 		// then the statefulSet could have been recently deleted from the
 		// spec and still exist within the cluster. Ignore it in this case.
-		if stsNotExpected(sset.GetName(), resources) {
+		if !slices.ContainsFunc([]appsv1.StatefulSet(resources.StatefulSets()), func(s appsv1.StatefulSet) bool {
+			return s.Name == sset.Name
+		}) {
 			continue
 		}
 		roles, err := getRolesForStatefulSet(sset, resources, v)
@@ -206,15 +208,6 @@ func groupBySharedRoles(statefulSets sset.StatefulSetList, resources nodespec.Re
 		res[role] = group
 	}
 	return res, nil
-}
-
-func stsNotExpected(statefulSetName string, expected nodespec.ResourcesList) bool {
-	for _, sts := range expected.StatefulSets() {
-		if sts.GetName() == statefulSetName {
-			return false
-		}
-	}
-	return true
 }
 
 // getRolesForStatefulSet gets the roles from a StatefulSet's expected configuration.
