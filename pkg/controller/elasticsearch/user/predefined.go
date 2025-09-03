@@ -49,6 +49,7 @@ func reconcileElasticUser(
 	existingFileRealm,
 	userProvidedFileRealm filerealm.Realm,
 	passwordHasher cryptutil.PasswordHasher,
+	passwordLength int,
 	meta metadata.Metadata,
 ) (users, error) {
 	if es.Spec.Auth.DisableElasticUser {
@@ -76,6 +77,7 @@ func reconcileElasticUser(
 		// See https://github.com/elastic/cloud-on-k8s/issues/3986.
 		false,
 		passwordHasher,
+		passwordLength,
 		meta,
 	)
 }
@@ -87,6 +89,7 @@ func reconcileInternalUsers(
 	es esv1.Elasticsearch,
 	existingFileRealm filerealm.Realm,
 	passwordHasher cryptutil.PasswordHasher,
+	passwordLength int,
 	meta metadata.Metadata,
 ) (users, error) {
 	users := users{
@@ -121,6 +124,7 @@ func reconcileInternalUsers(
 		esv1.InternalUsersSecret(es.Name),
 		true,
 		passwordHasher,
+		passwordLength,
 		meta,
 	)
 }
@@ -148,13 +152,14 @@ func reconcilePredefinedUsers(
 	secretName string,
 	setOwnerRef bool,
 	passwordHasher cryptutil.PasswordHasher,
+	passwordLength int,
 	meta metadata.Metadata,
 ) (users, error) {
 	secretNsn := types.NamespacedName{Namespace: es.Namespace, Name: secretName}
 
 	// build users, reusing existing passwords and bcrypt hashes if possible
 	var err error
-	users, err = reuseOrGeneratePassword(c, users, secretNsn)
+	users, err = reuseOrGeneratePassword(c, users, secretNsn, passwordLength)
 	if err != nil {
 		return nil, err
 	}
@@ -189,7 +194,7 @@ func reconcilePredefinedUsers(
 
 // reuseOrGeneratePassword updates the users with existing passwords reused from the existing K8s secret,
 // or generates new passwords.
-func reuseOrGeneratePassword(c k8s.Client, users users, secretRef types.NamespacedName) (users, error) {
+func reuseOrGeneratePassword(c k8s.Client, users users, secretRef types.NamespacedName, length int) (users, error) {
 	var secret corev1.Secret
 	err := c.Get(context.Background(), secretRef, &secret)
 	if err != nil && !apierrors.IsNotFound(err) {
@@ -207,7 +212,7 @@ func reuseOrGeneratePassword(c k8s.Client, users users, secretRef types.Namespac
 		if password, exists := secret.Data[u.Name]; exists {
 			users[i].Password = password
 		} else {
-			users[i].Password = common.FixedLengthRandomPasswordBytes()
+			users[i].Password = common.FixedLengthRandomPasswordBytes(length)
 		}
 	}
 	return users, nil

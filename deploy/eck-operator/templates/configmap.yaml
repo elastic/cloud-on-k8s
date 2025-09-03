@@ -2,10 +2,9 @@
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: {{ include "eck-operator.fullname" . }}
-  namespace: {{ .Release.Namespace }}
-  labels:
-    {{- include "eck-operator.labels" . | nindent 4 }}
+  name: { { include "eck-operator.fullname" . } }
+  namespace: { { .Release.Namespace } }
+  labels: { { - include "eck-operator.labels" . | nindent 4 } }
 data:
   eck.yaml: |-
     {{- $metricsPort := int (include "eck-operator.metrics.port" .)}}
@@ -79,3 +78,9 @@ data:
     {{- with .Values.webhook.certsSecret }}
     webhook-secret: {{ . }}
     {{- end }}
+    {{- $passwordLength := int (dig "policies" "passwords" "length" 24 .Values.config) }}
+    {{- if lt $passwordLength 24 }}
+    {{- fail "config.policies.passwords.length must be >= 24" }}
+    {{- end }}
+    password-length: {{ $passwordLength }}
+    password-allowed-characters: {{ include "eck-operator.passwordAllowedCharacters" . }}

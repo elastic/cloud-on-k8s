@@ -314,6 +314,16 @@ func Command() *cobra.Command {
 		"",
 		"Kubernetes namespace the operator runs in",
 	)
+	cmd.Flags().String(
+		operator.PasswordAllowedCharactersFlag,
+		"abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789",
+		"Allowed characters for generated passwords",
+	)
+	cmd.Flags().String(
+		operator.PasswordLengthFlag,
+		"24",
+		"Length of generated passwords",
+	)
 	cmd.Flags().Duration(
 		operator.TelemetryIntervalFlag,
 		1*time.Hour,
@@ -714,6 +724,8 @@ func startOperator(ctx context.Context) error {
 			RotateBefore: certRotateBefore,
 		},
 		PasswordHasher:            passwordHasher,
+		PasswordLength:            viper.GetInt(operator.PasswordLengthFlag),
+		PasswordAllowedChars:      viper.GetString(operator.PasswordAllowedCharactersFlag),
 		MaxConcurrentReconciles:   viper.GetInt(operator.MaxConcurrentReconcilesFlag),
 		SetDefaultSecurityContext: setDefaultSecurityContext,
 		ValidateStorageClass:      viper.GetBool(operator.ValidateStorageClassFlag),

@@ -31,6 +31,8 @@ type Parameters struct {
 	Dialer net.Dialer
 	// PasswordHasher is the password hash generator used by the operator.
 	PasswordHasher cryptutil.PasswordHasher
+	PasswordLength int
+	PasswordAllowedChars string
 	// IPFamily represents the IP family to use when creating configuration and services.
 	IPFamily corev1.IPFamily
 	// GlobalCA is an optionally configured, globally shared CA to be used for all managed resources.

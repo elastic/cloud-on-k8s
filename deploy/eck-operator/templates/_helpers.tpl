@@ -79,7 +79,7 @@ Determine effective Kubernetes version
 {{- end -}}
 
 {{/*
-Determine the name for the webhook 
+Determine the name for the webhook
 */}}
 {{- define "eck-operator.webhookName" -}}
 {{- if .Values.global.manifestGen -}}
@@ -91,7 +91,7 @@ elastic-webhook.k8s.elastic.co
 {{- end -}}
 
 {{/*
-Determine the name for the webhook secret 
+Determine the name for the webhook secret
 */}}
 {{- define "eck-operator.webhookSecretName" -}}
 {{- if .Values.global.manifestGen -}}
@@ -105,7 +105,7 @@ elastic-webhook-server-cert
 {{- end -}}
 
 {{/*
-Determine the name for the webhook service 
+Determine the name for the webhook service
 */}}
 {{- define "eck-operator.webhookServiceName" -}}
 {{- if .Values.global.manifestGen -}}
@@ -126,6 +126,21 @@ Determine the metrics port
 {{- .Values.config.metricsPort -}}
 {{- else -}}
 0
+{{- end -}}
+{{- end -}}
+
+{{/*
+Concatenate password allowed characters with a default of all alphanumeric characters if not defined
+*/}}
+{{- define "eck-operator.passwordAllowedCharacters" -}}
+{{- if and (hasKey .Values "config") (hasKey .Values.config "policies") (hasKey .Values.config.policies "passwords") (hasKey .Values.config.policies.passwords "allowedCharacters") -}}
+{{- $result := "" -}}
+{{- range .Values.config.policies.passwords.allowedCharacters -}}
+{{- $result = print $result . -}}
+{{- end -}}
+{{- $result -}}
+{{- else -}}
+abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789
 {{- end -}}
 {{- end -}}
 
