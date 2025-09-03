@@ -559,6 +559,9 @@ func startOperator(ctx context.Context) error {
 	log.Info("Setting up scheme")
 	controllerscheme.SetupScheme()
 
+	// also set up the v1beta1 scheme, used by the v1beta1 webhook
+	controllerscheme.SetupV1beta1Scheme()
+
 	// Create a new Cmd to provide shared dependencies and start components
 	opts := ctrl.Options{
 		Scheme:                     clientgoscheme.Scheme,
