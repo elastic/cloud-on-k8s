@@ -249,6 +249,7 @@ func transformToE2E(namespace, fullTestName, suffix string, transformers []Build
 			b := elasticsearch.NewBuilderWithoutSuffix(decodedObj.Name)
 			b.Elasticsearch = *decodedObj
 			b = b.WithNamespace(namespace).
+				WithVersion(test.Ctx().ElasticStackVersion).
 				WithSuffix(suffix).
 				WithRestrictedSecurityContext().
 				WithLabel(run.TestNameLabel, fullTestName).
@@ -265,6 +266,7 @@ func transformToE2E(namespace, fullTestName, suffix string, transformers []Build
 			b := kibana.NewBuilderWithoutSuffix(decodedObj.Name)
 			b.Kibana = *decodedObj
 			builder = b.WithNamespace(namespace).
+				WithVersion(test.Ctx().ElasticStackVersion).
 				WithSuffix(suffix).
 				WithElasticsearchRef(tweakServiceRef(b.Kibana.Spec.ElasticsearchRef, suffix)).
 				WithRestrictedSecurityContext().
@@ -275,6 +277,7 @@ func transformToE2E(namespace, fullTestName, suffix string, transformers []Build
 			b := apmserver.NewBuilderWithoutSuffix(decodedObj.Name)
 			b.ApmServer = *decodedObj
 			builder = b.WithNamespace(namespace).
+				WithVersion(test.Ctx().ElasticStackVersion).
 				WithSuffix(suffix).
 				WithElasticsearchRef(tweakServiceRef(b.ApmServer.Spec.ElasticsearchRef, suffix)).
 				WithKibanaRef(tweakServiceRef(b.ApmServer.Spec.KibanaRef, suffix)).
@@ -285,6 +288,7 @@ func transformToE2E(namespace, fullTestName, suffix string, transformers []Build
 		case *beatv1beta1.Beat:
 			b := beat.NewBuilderFromBeat(decodedObj)
 			b = b.WithNamespace(namespace).
+				WithVersion(test.Ctx().ElasticStackVersion).
 				WithSuffix(suffix).
 				WithElasticsearchRef(tweakServiceRef(b.Beat.Spec.ElasticsearchRef, suffix)).
 				WithLabel(run.TestNameLabel, fullTestName).
@@ -301,6 +305,7 @@ func transformToE2E(namespace, fullTestName, suffix string, transformers []Build
 			b := enterprisesearch.NewBuilderWithoutSuffix(decodedObj.Name)
 			b.EnterpriseSearch = *decodedObj
 			builder = b.WithNamespace(namespace).
+				WithVersion(test.Ctx().ElasticStackVersion).
 				WithSuffix(suffix).
 				WithElasticsearchRef(tweakServiceRef(b.EnterpriseSearch.Spec.ElasticsearchRef, suffix)).
 				WithRestrictedSecurityContext().
@@ -309,6 +314,7 @@ func transformToE2E(namespace, fullTestName, suffix string, transformers []Build
 		case *agentv1alpha1.Agent:
 			b := agent.NewBuilderFromAgent(decodedObj)
 			b = b.WithNamespace(namespace).
+				WithVersion(test.Ctx().ElasticStackVersion).
 				WithSuffix(suffix).
 				WithElasticsearchRefs(tweakOutputRefs(b.Agent.Spec.ElasticsearchRefs, suffix)...).
 				WithLabel(run.TestNameLabel, fullTestName).

@@ -5,7 +5,7 @@ metadata:
   name: e2e-agent
   namespace: {{ .E2ENamespace }}
 spec:
-  version: 9.0.0
+  version: 9.1.2
   elasticsearchRefs:
     - secretName: eck-{{ .TestRun }}
   daemonSet:
@@ -111,7 +111,7 @@ spec:
       meta:
         package:
           name: journald
-          version: 1.1.0
+          version: 1.2.1
       data_stream:
         namespace: default
       streams:
@@ -126,7 +126,7 @@ spec:
       meta:
         package:
           name: kubernetes
-          version: 1.49.0
+          version: 1.80.2
       data_stream:
         namespace: k8s
       processors:
@@ -227,7 +227,7 @@ spec:
       meta:
         package:
           name: system
-          version: 9.0.0
+          version: 2.5.1
       data_stream:
         namespace: default
       processors:
