@@ -144,6 +144,12 @@ func groupBySharedRoles(statefulSets sset.StatefulSetList, resources nodespec.Re
 	rolesToIndices := make(map[esv1.NodeRole][]int)
 	indicesToRoles := make(map[int]set.StringSet)
 	for i, sset := range statefulSets {
+		// If the statefulSet is not found within the expected resources,
+		// then the statefulSet could have been recently deleted from the
+		// spec and still exist within the cluster. Ignore it in this case.
+		if stsNotExpected(sset.GetName(), resources) {
+			continue
+		}
 		roles, err := getRolesForStatefulSet(sset, resources, v)
 		if err != nil {
 			return nil, err
@@ -200,6 +206,15 @@ func groupBySharedRoles(statefulSets sset.StatefulSetList, resources nodespec.Re
 		res[role] = group
 	}
 	return res, nil
+}
+
+func stsNotExpected(statefulSetName string, expected nodespec.ResourcesList) bool {
+	for _, sts := range expected.StatefulSets() {
+		if sts.GetName() == statefulSetName {
+			return false
+		}
+	}
+	return true
 }
 
 // getRolesForStatefulSet gets the roles from a StatefulSet's expected configuration.

@@ -84,6 +84,7 @@ func TestReconcileRoleSpecificPDBs(t *testing.T) {
 	type args struct {
 		initObjs []client.Object
 		es       esv1.Elasticsearch
+		stss     sset.StatefulSetList
 		builder  Builder
 	}
 	tests := []struct {
@@ -95,6 +96,26 @@ func TestReconcileRoleSpecificPDBs(t *testing.T) {
 			name: "no existing PDBs: should create role-specific PDBs",
 			args: args{
 				es: defaultEs,
+				builder: NewBuilder("cluster").
+					WithNamespace("ns").
+					WithNodeSet("master1", 1, esv1.MasterRole).
+					WithNodeSet("data1", 1, esv1.DataRole),
+			},
+			wantedPDBs: []*policyv1.PodDisruptionBudget{
+				// Unhealthy es cluster; 0 disruptions allowed
+				rolePDB("cluster", "ns", esv1.MasterRole, []string{"master1"}, 0),
+				rolePDB("cluster", "ns", esv1.DataRole, []string{"data1"}, 0),
+			},
+		},
+		{
+			name: "no existing PDBs: should create role-specific PDBs and ignore additional provided sts",
+			args: args{
+				es: defaultEs,
+				stss: sset.StatefulSetList{
+					ssetfixtures.TestSset{Name: "master1", Namespace: "ns", Master: true}.Build(),
+					ssetfixtures.TestSset{Name: "data1", Namespace: "ns", Data: true}.Build(),
+					ssetfixtures.TestSset{Name: "invalid", Namespace: "ns", Data: true}.Build(),
+				},
 				builder: NewBuilder("cluster").
 					WithNamespace("ns").
 					WithNodeSet("master1", 1, esv1.MasterRole).
@@ -238,16 +259,6 @@ func TestReconcileRoleSpecificPDBs(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			// restMapper := meta.NewDefaultRESTMapper([]schema.GroupVersion{{
-			// 	Group:   "policy",
-			// 	Version: "v1",
-			// }})
-			// restMapper.Add(
-			// 	schema.GroupVersionKind{
-			// 		Group:   "policy",
-			// 		Version: "v1",
-			// 		Kind:    "PodDisruptionBudget",
-			// 	}, meta.RESTScopeNamespace)
 			c := fake.NewClientBuilder().
 				WithScheme(clientgoscheme.Scheme).
 				WithObjects(tt.args.initObjs...).
@@ -259,7 +270,12 @@ func TestReconcileRoleSpecificPDBs(t *testing.T) {
 			resourcesList, err := tt.args.builder.BuildResourcesList()
 			require.NoError(t, err)
 
-			statefulSets := tt.args.builder.GetStatefulSets()
+			statefulSets := tt.args.stss
+			// allow for more control over the args to the function by
+			// allowing for a custom stateful set list.
+			if statefulSets == nil {
+				statefulSets = tt.args.builder.GetStatefulSets()
+			}
 
 			err = reconcileRoleSpecificPDBs(context.Background(), c, tt.args.es, statefulSets, resourcesList, meta)
 			require.NoError(t, err)
