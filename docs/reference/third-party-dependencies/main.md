@@ -96,7 +96,7 @@ This page lists the third-party dependencies used to build {{eck}} from the main
 | [github.com/go-openapi/jsonreference](https://github.com/go-openapi/jsonreference) | v0.21.0 | Apache-2.0 |
 | [github.com/go-openapi/swag](https://github.com/go-openapi/swag) | v0.23.0 | Apache-2.0 |
 | [github.com/go-task/slim-sprig/v3](https://github.com/go-task/slim-sprig) | v3.0.0 | MIT |
-| [github.com/go-viper/mapstructure/v2](https://github.com/go-viper/mapstructure) | v2.3.0 | MIT |
+| [github.com/go-viper/mapstructure/v2](https://github.com/go-viper/mapstructure) | v2.4.0 | MIT |
 | [github.com/goccy/go-yaml](https://github.com/goccy/go-yaml) | v1.18.0 | MIT |
 | [github.com/gogo/protobuf](https://github.com/gogo/protobuf) | v1.3.2 | BSD-3-Clause |
 | [github.com/golang/protobuf](https://github.com/golang/protobuf) | v1.5.4 | BSD-3-Clause |
