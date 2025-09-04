@@ -155,6 +155,23 @@ spec:
       spec:
         serviceAccountName: fleet-server
         automountServiceAccountToken: true
+        ## Uncomment the following lines to run fleet-server with restricted privileges and drop capabilities.
+#        containers:
+#        - name: agent
+#          securityContext:
+#            allowPrivilegeEscalation: false
+#            readOnlyRootFilesystem: true
+#            capabilities:
+#              drop: ["ALL"]
+#          env:
+#            - name: STATE_PATH
+#              value: /usr/share/elastic-agent/state
+#            - name: CONFIG_PATH
+#              value: /usr/share/elastic-agent/state
+#          args:
+#            - -e
+#            - -c
+#            - /etc/agent/elastic-agent.yml
 ---
 apiVersion: agent.k8s.elastic.co/v1alpha1
 kind: Agent
