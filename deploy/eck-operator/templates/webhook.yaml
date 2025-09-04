@@ -30,7 +30,7 @@ webhooks:
 {{- end }}
   name: elastic-agent-validation-v1alpha1.k8s.elastic.co
   matchPolicy: Exact
-  admissionReviewVersions: [v1,v1beta1]
+  admissionReviewVersions: [v1]
   sideEffects: None
   rules:
   - apiGroups:
@@ -52,7 +52,7 @@ webhooks:
       path: /validate-apm-k8s-elastic-co-v1-apmserver
   failurePolicy: {{ .Values.webhook.failurePolicy }}
 {{- with .Values.webhook.namespaceSelector }}
-  namespaceSelector: 
+  namespaceSelector:
     {{- toYaml . | nindent 4 }}
 {{- end }}
 {{- with .Values.webhook.objectSelector }}
@@ -61,7 +61,7 @@ webhooks:
 {{- end }}
   name: elastic-apm-validation-v1.k8s.elastic.co
   matchPolicy: Exact
-  admissionReviewVersions: [v1,v1beta1]
+  admissionReviewVersions: [v1]
   sideEffects: None
   rules:
   - apiGroups:
@@ -83,7 +83,7 @@ webhooks:
       path: /validate-apm-k8s-elastic-co-v1beta1-apmserver
   failurePolicy: {{ .Values.webhook.failurePolicy }}
 {{- with .Values.webhook.namespaceSelector }}
-  namespaceSelector: 
+  namespaceSelector:
     {{- toYaml . | nindent 4 }}
 {{- end }}
 {{- with .Values.webhook.objectSelector }}
@@ -92,7 +92,7 @@ webhooks:
 {{- end }}
   name: elastic-apm-validation-v1beta1.k8s.elastic.co
   matchPolicy: Exact
-  admissionReviewVersions: [v1,v1beta1]
+  admissionReviewVersions: [v1]
   sideEffects: None
   rules:
   - apiGroups:
@@ -114,7 +114,7 @@ webhooks:
       path: /validate-beat-k8s-elastic-co-v1beta1-beat
   failurePolicy: {{ .Values.webhook.failurePolicy }}
 {{- with .Values.webhook.namespaceSelector }}
-  namespaceSelector: 
+  namespaceSelector:
     {{- toYaml . | nindent 4 }}
 {{- end }}
 {{- with .Values.webhook.objectSelector }}
@@ -123,7 +123,7 @@ webhooks:
 {{- end }}
   name: elastic-beat-validation-v1beta1.k8s.elastic.co
   matchPolicy: Exact
-  admissionReviewVersions: [v1,v1beta1]
+  admissionReviewVersions: [v1]
   sideEffects: None
   rules:
   - apiGroups:
@@ -154,7 +154,7 @@ webhooks:
 {{- end }}
   name: elastic-ent-validation-v1.k8s.elastic.co
   matchPolicy: Exact
-  admissionReviewVersions: [v1,v1beta1]
+  admissionReviewVersions: [v1]
   sideEffects: None
   rules:
   - apiGroups:
@@ -176,7 +176,7 @@ webhooks:
       path: /validate-enterprisesearch-k8s-elastic-co-v1beta1-enterprisesearch
   failurePolicy: {{ .Values.webhook.failurePolicy }}
 {{- with .Values.webhook.namespaceSelector }}
-  namespaceSelector: 
+  namespaceSelector:
     {{- toYaml . | nindent 4 }}
 {{- end }}
 {{- with .Values.webhook.objectSelector }}
@@ -185,7 +185,7 @@ webhooks:
 {{- end }}
   name: elastic-ent-validation-v1beta1.k8s.elastic.co
   matchPolicy: Exact
-  admissionReviewVersions: [v1,v1beta1]
+  admissionReviewVersions: [v1]
   sideEffects: None
   rules:
   - apiGroups:
@@ -207,7 +207,7 @@ webhooks:
       path: /validate-elasticsearch-k8s-elastic-co-v1-elasticsearch
   failurePolicy: {{ .Values.webhook.failurePolicy }}
 {{- with .Values.webhook.namespaceSelector }}
-  namespaceSelector: 
+  namespaceSelector:
     {{- toYaml . | nindent 4 }}
 {{- end }}
 {{- with .Values.webhook.objectSelector }}
@@ -216,7 +216,7 @@ webhooks:
 {{- end }}
   name: elastic-es-validation-v1.k8s.elastic.co
   matchPolicy: Exact
-  admissionReviewVersions: [v1,v1beta1]
+  admissionReviewVersions: [v1]
   sideEffects: None
   rules:
   - apiGroups:
@@ -238,7 +238,7 @@ webhooks:
       path: /validate-elasticsearch-k8s-elastic-co-v1beta1-elasticsearch
   failurePolicy: {{ .Values.webhook.failurePolicy }}
 {{- with .Values.webhook.namespaceSelector }}
-  namespaceSelector: 
+  namespaceSelector:
     {{- toYaml . | nindent 4 }}
 {{- end }}
 {{- with .Values.webhook.objectSelector }}
@@ -247,7 +247,7 @@ webhooks:
 {{- end }}
   name: elastic-es-validation-v1beta1.k8s.elastic.co
   matchPolicy: Exact
-  admissionReviewVersions: [v1,v1beta1]
+  admissionReviewVersions: [v1]
   sideEffects: None
   rules:
   - apiGroups:
@@ -278,7 +278,7 @@ webhooks:
 {{- end }}
   name: elastic-ems-validation-v1alpha1.k8s.elastic.co
   matchPolicy: Exact
-  admissionReviewVersions: [v1,v1beta1]
+  admissionReviewVersions: [v1]
   sideEffects: None
   rules:
     - apiGroups:
@@ -300,7 +300,7 @@ webhooks:
       path: /validate-kibana-k8s-elastic-co-v1-kibana
   failurePolicy: {{ .Values.webhook.failurePolicy }}
 {{- with .Values.webhook.namespaceSelector }}
-  namespaceSelector: 
+  namespaceSelector:
     {{- toYaml . | nindent 4 }}
 {{- end }}
 {{- with .Values.webhook.objectSelector }}
@@ -309,7 +309,7 @@ webhooks:
 {{- end }}
   name: elastic-kb-validation-v1.k8s.elastic.co
   matchPolicy: Exact
-  admissionReviewVersions: [v1,v1beta1]
+  admissionReviewVersions: [v1]
   sideEffects: None
   rules:
   - apiGroups:
@@ -331,7 +331,7 @@ webhooks:
       path: /validate-kibana-k8s-elastic-co-v1beta1-kibana
   failurePolicy: {{ .Values.webhook.failurePolicy }}
 {{- with .Values.webhook.namespaceSelector }}
-  namespaceSelector: 
+  namespaceSelector:
     {{- toYaml . | nindent 4 }}
 {{- end }}
 {{- with .Values.webhook.objectSelector }}
@@ -340,7 +340,7 @@ webhooks:
 {{- end }}
   name: elastic-kb-validation-v1beta1.k8s.elastic.co
   matchPolicy: Exact
-  admissionReviewVersions: [v1,v1beta1]
+  admissionReviewVersions: [v1]
   sideEffects: None
   rules:
   - apiGroups:
@@ -371,7 +371,7 @@ webhooks:
 {{- end }}
   name: elastic-esa-validation-v1alpha1.k8s.elastic.co
   matchPolicy: Exact
-  admissionReviewVersions: [v1,v1beta1]
+  admissionReviewVersions: [v1]
   sideEffects: None
   rules:
     - apiGroups:
@@ -402,7 +402,7 @@ webhooks:
 {{- end }}
   name: elastic-scp-validation-v1alpha1.k8s.elastic.co
   matchPolicy: Exact
-  admissionReviewVersions: [v1,v1beta1]
+  admissionReviewVersions: [v1]
   sideEffects: None
   rules:
     - apiGroups:
@@ -433,7 +433,7 @@ webhooks:
 {{- end }}
   name: elastic-logstash-validation-v1alpha1.k8s.elastic.co
   matchPolicy: Exact
-  admissionReviewVersions: [v1,v1beta1]
+  admissionReviewVersions: [v1]
   sideEffects: None
   rules:
     - apiGroups:
