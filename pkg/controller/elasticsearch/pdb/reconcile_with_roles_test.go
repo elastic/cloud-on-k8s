@@ -108,13 +108,16 @@ func TestReconcileRoleSpecificPDBs(t *testing.T) {
 			},
 		},
 		{
-			name: "no existing PDBs: should create role-specific PDBs and ignore additional provided sts",
+			name: "no existing PDBs: should create role-specific PDBs and deduce roles from sts labels where sts is not listed as expected",
 			args: args{
 				es: defaultEs,
 				stss: sset.StatefulSetList{
 					ssetfixtures.TestSset{Name: "master1", Namespace: "ns", Master: true}.Build(),
 					ssetfixtures.TestSset{Name: "data1", Namespace: "ns", Data: true}.Build(),
-					ssetfixtures.TestSset{Name: "invalid", Namespace: "ns", Data: true}.Build(),
+					// This additional sts is within the cluster, but not listed as "expected"
+					// It's roles should be deduced from it's labels. This replicates the case
+					// where an sts was recently deleted or renamed within the cluster.
+					ssetfixtures.TestSset{Name: "frozen1", Namespace: "ns", DataFrozen: true}.Build(),
 				},
 				builder: NewBuilder("cluster").
 					WithNamespace("ns").
@@ -125,6 +128,7 @@ func TestReconcileRoleSpecificPDBs(t *testing.T) {
 				// Unhealthy es cluster; 0 disruptions allowed
 				rolePDB("cluster", "ns", esv1.MasterRole, []string{"master1"}, 0),
 				rolePDB("cluster", "ns", esv1.DataRole, []string{"data1"}, 0),
+				rolePDB("cluster", "ns", esv1.DataFrozenRole, []string{"frozen1"}, 0),
 			},
 		},
 		{
@@ -962,7 +966,7 @@ func Test_allowedDisruptionsForRole(t *testing.T) {
 	}
 }
 
-func TestGetRolesForStatefulSet(t *testing.T) {
+func TestGetRolesFromStatefulSetConfig(t *testing.T) {
 	type args struct {
 		statefulSetName string
 		builder         Builder
@@ -1081,7 +1085,7 @@ func TestGetRolesForStatefulSet(t *testing.T) {
 			v, err := version.Parse(tt.args.version)
 			require.NoError(t, err)
 
-			got, err := getRolesForStatefulSet(statefulSet, resourcesList, v)
+			got, err := getRolesFromStatefulSetConfig(statefulSet, resourcesList, v)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("getRolesForStatefulSet() error = %v, wantErr %v", err, tt.wantErr)
 				return

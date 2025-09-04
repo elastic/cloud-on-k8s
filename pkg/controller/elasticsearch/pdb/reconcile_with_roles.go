@@ -144,17 +144,23 @@ func groupBySharedRoles(statefulSets sset.StatefulSetList, resources nodespec.Re
 	rolesToIndices := make(map[esv1.NodeRole][]int)
 	indicesToRoles := make(map[int]set.StringSet)
 	for i, sset := range statefulSets {
+		var roles []esv1.NodeRole
 		// If the statefulSet is not found within the expected resources,
-		// then the statefulSet could have been recently deleted from the
-		// spec and still exist within the cluster. Ignore it in this case.
+		// then the statefulSet could have been recently deleted/renamed
+		// within the spec. In this case we must retrieve the roles in
+		// a different manner.
 		if !slices.ContainsFunc([]appsv1.StatefulSet(resources.StatefulSets()), func(s appsv1.StatefulSet) bool {
 			return s.Name == sset.Name
 		}) {
-			continue
-		}
-		roles, err := getRolesForStatefulSet(sset, resources, v)
-		if err != nil {
-			return nil, err
+			// Retrieve the roles from the statefulSet's existing labels.
+			roles = getRolesFromStatefulSet(sset)
+		} else {
+			// Retrieve roles directly from the expected StatefulSet's configuration.
+			var err error
+			roles, err = getRolesFromStatefulSetConfig(sset, resources, v)
+			if err != nil {
+				return nil, err
+			}
 		}
 		if len(roles) == 0 {
 			// StatefulSets with no roles are coordinating nodes - group them together
@@ -210,8 +216,8 @@ func groupBySharedRoles(statefulSets sset.StatefulSetList, resources nodespec.Re
 	return res, nil
 }
 
-// getRolesForStatefulSet gets the roles from a StatefulSet's expected configuration.
-func getRolesForStatefulSet(
+// getRolesFromStatefulSetConfig gets the roles from a StatefulSet's expected configuration.
+func getRolesFromStatefulSetConfig(
 	statefulSet appsv1.StatefulSet,
 	expectedResources nodespec.ResourcesList,
 	v version.Version,
@@ -245,6 +251,38 @@ func getRolesForStatefulSet(
 		nodeRoles[i] = esv1.NodeRole(role)
 	}
 	return nodeRoles, nil
+}
+
+func getRolesFromStatefulSet(statefulSet appsv1.StatefulSet) []esv1.NodeRole {
+	roles := []esv1.NodeRole{}
+	labels := statefulSet.Spec.Template.Labels
+	if labels == nil {
+		return roles
+	}
+	// Define label-role mappings
+	labelRoleMappings := []struct {
+		labelName string
+		role      esv1.NodeRole
+	}{
+		{string(label.NodeTypesMasterLabelName), esv1.MasterRole},
+		{string(label.NodeTypesDataLabelName), esv1.DataRole},
+		{string(label.NodeTypesIngestLabelName), esv1.IngestRole},
+		{string(label.NodeTypesMLLabelName), esv1.MLRole},
+		{string(label.NodeTypesTransformLabelName), esv1.TransformRole},
+		{string(label.NodeTypesRemoteClusterClientLabelName), esv1.RemoteClusterClientRole},
+		{string(label.NodeTypesDataHotLabelName), esv1.DataHotRole},
+		{string(label.NodeTypesDataWarmLabelName), esv1.DataWarmRole},
+		{string(label.NodeTypesDataColdLabelName), esv1.DataColdRole},
+		{string(label.NodeTypesDataContentLabelName), esv1.DataContentRole},
+		{string(label.NodeTypesDataFrozenLabelName), esv1.DataFrozenRole},
+	}
+	// Check each label-role mapping
+	for _, mapping := range labelRoleMappings {
+		if val, exists := labels[mapping.labelName]; exists && val == "true" {
+			roles = append(roles, mapping.role)
+		}
+	}
+	return roles
 }
 
 // createPDBForStatefulSets creates a PDB for a group of StatefulSets with shared roles.
