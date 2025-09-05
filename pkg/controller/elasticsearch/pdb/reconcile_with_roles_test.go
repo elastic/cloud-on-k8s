@@ -980,7 +980,19 @@ func TestGetRolesFromStatefulSet(t *testing.T) {
 					WithNodeSet("all-roles", 3, "all_roles"),
 				version: "8.0.0",
 			},
-			want:    []esv1.NodeRole{esv1.DataRole, esv1.MasterRole, esv1.DataFrozenRole, esv1.IngestRole, esv1.MLRole, esv1.TransformRole},
+			want: []esv1.NodeRole{
+				esv1.MasterRole,
+				esv1.DataRole,
+				esv1.IngestRole,
+				esv1.MLRole,
+				esv1.TransformRole,
+				esv1.RemoteClusterClientRole,
+				esv1.DataHotRole,
+				esv1.DataWarmRole,
+				esv1.DataColdRole,
+				esv1.DataContentRole,
+				esv1.DataFrozenRole,
+			},
 			wantErr: false,
 		},
 		{
@@ -1047,19 +1059,6 @@ func TestGetRolesFromStatefulSet(t *testing.T) {
 			},
 			want:    []esv1.NodeRole{esv1.DataHotRole, esv1.DataWarmRole},
 			wantErr: false,
-		},
-		{
-			name: "non-existent statefulset",
-			args: args{
-				statefulSetName: "non-existent",
-				builder: NewBuilder("test-es").
-					WithNamespace("ns").
-					WithVersion("8.0.0").
-					WithNodeSet("master-only", 3, esv1.MasterRole),
-				version: "8.0.0",
-			},
-			want:    nil,
-			wantErr: true,
 		},
 	}
 

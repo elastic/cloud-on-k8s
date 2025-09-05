@@ -203,6 +203,10 @@ func getRolesFromStatefulSet(statefulSet appsv1.StatefulSet) []esv1.NodeRole {
 	if labels == nil {
 		return roles
 	}
+	// if the statefulset is a coordinating role none of the labels are set to true
+	// so we can initially assume it is, and then check for any labels that are set to true
+	// to invalidate the assumption.
+	isCoordinating := true
 	// Define label-role mappings
 	labelRoleMappings := []struct {
 		labelName string
@@ -223,24 +227,14 @@ func getRolesFromStatefulSet(statefulSet appsv1.StatefulSet) []esv1.NodeRole {
 	// Check each label-role mapping
 	for _, mapping := range labelRoleMappings {
 		if val, exists := labels[mapping.labelName]; exists && val == "true" {
+			isCoordinating = false
 			roles = append(roles, mapping.role)
 		}
 	}
-	// No specified roles equates to all roles, excluding coordinating.
-	//
-	// verify: This seems to break many things.
-	//
-	// if len(roles) == 0 {
-	// 	roles = append(
-	// 		roles,
-	// 		esv1.DataRole,
-	// 		esv1.MasterRole,
-	// 		esv1.DataFrozenRole,
-	// 		esv1.IngestRole,
-	// 		esv1.MLRole,
-	// 		esv1.TransformRole,
-	// 	)
-	// }
+
+	if isCoordinating {
+		roles = append(roles, esv1.CoordinatingRole)
+	}
 	return roles
 }
 

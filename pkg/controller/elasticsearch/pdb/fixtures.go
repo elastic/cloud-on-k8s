@@ -55,7 +55,7 @@ func (b Builder) WithVersion(version string) Builder {
 
 // WithNodeSet adds a NodeSet to the Elasticsearch spec.
 func (b Builder) WithNodeSet(name string, count int32, nodeTypes ...esv1.NodeRole) Builder {
-	config := map[string]interface{}{}
+	config := map[string]any{}
 
 	// Only set node.Roles if the first role is not "all_roles"
 	// to properly handle no roles set to equal having all roles assigned.
@@ -126,6 +126,23 @@ func (b Builder) buildStatefulSet(name string, replicas int32, nodeRoles []esv1.
 		case esv1.VotingOnlyRole:
 			continue
 		}
+	}
+
+	// If no roles are specified (not empty, but nil)
+	// this implies all roles, which is handled by
+	// 'all_roles' in the tests.
+	if len(nodeRoles) == 1 && nodeRoles[0] == "all_roles" {
+		sset.Master = true
+		sset.Data = true
+		sset.Ingest = true
+		sset.ML = true
+		sset.Transform = true
+		sset.RemoteClusterClient = true
+		sset.DataHot = true
+		sset.DataWarm = true
+		sset.DataCold = true
+		sset.DataContent = true
+		sset.DataFrozen = true
 	}
 
 	return sset.Build()
