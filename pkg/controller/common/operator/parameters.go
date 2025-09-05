@@ -31,7 +31,9 @@ type Parameters struct {
 	Dialer net.Dialer
 	// PasswordHasher is the password hash generator used by the operator.
 	PasswordHasher cryptutil.PasswordHasher
+	// PasswordLength is the length of the generated passwords for the file-based Elasticsearch users.
 	PasswordLength int
+	// PasswordAllowedChars is the set of allowed characters for the generated passwords.
 	PasswordAllowedChars string
 	// IPFamily represents the IP family to use when creating configuration and services.
 	IPFamily corev1.IPFamily

@@ -319,9 +319,9 @@ func Command() *cobra.Command {
 		"abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789",
 		"Allowed characters for generated passwords",
 	)
-	cmd.Flags().String(
+	cmd.Flags().Int(
 		operator.PasswordLengthFlag,
-		"24",
+		24,
 		"Length of generated passwords",
 	)
 	cmd.Flags().Duration(
