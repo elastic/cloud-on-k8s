@@ -112,7 +112,7 @@ func Test_reconcileElasticUser(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			c := k8s.NewFakeClient(tt.existingSecrets...)
-			got, err := reconcileElasticUser(context.Background(), c, es, tt.existingFileRealm, filerealm.New(), testPasswordHasher, 24, metadata.Metadata{})
+			got, err := reconcileElasticUser(context.Background(), c, es, tt.existingFileRealm, filerealm.New(), testPasswordHasher, 16, metadata.Metadata{})
 			require.NoError(t, err)
 			// check returned user
 			require.Len(t, got, 1)
@@ -313,7 +313,7 @@ func Test_reconcileInternalUsers(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			c := k8s.NewFakeClient(tt.existingSecrets...)
 			es := tt.es()
-			got, err := reconcileInternalUsers(context.Background(), c, es, tt.existingFileRealm, testPasswordHasher, 24, metadata.Propagate(&es, metadata.Metadata{Labels: es.GetIdentityLabels()}))
+			got, err := reconcileInternalUsers(context.Background(), c, es, tt.existingFileRealm, testPasswordHasher, 16, metadata.Propagate(&es, metadata.Metadata{Labels: es.GetIdentityLabels()}))
 			require.True(t, ((err != nil) == tt.errorExpected), "error expected: %v, got: %v", tt.errorExpected, err)
 			if tt.errorExpected {
 				return
