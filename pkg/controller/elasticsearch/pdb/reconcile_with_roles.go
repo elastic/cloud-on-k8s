@@ -132,12 +132,11 @@ func groupBySharedRoles(statefulSets sset.StatefulSetList) map[esv1.NodeRole][]a
 	rolesToIndices := make(map[esv1.NodeRole][]int)
 	indicesToRoles := make(map[int]set.StringSet)
 	for i, sset := range statefulSets {
-		var roles []esv1.NodeRole
 		// A statefulSet may not be found within the expected resources,
 		// as it could have been recently deleted/renamed
 		// within the spec so we must retrieve the roles from the
 		// labels in the statefulSet, not the expected configuration.
-		roles = getRolesFromStatefulSet(sset)
+		roles := getRolesFromStatefulSet(sset)
 
 		if len(roles) == 0 {
 			// StatefulSets with no roles are coordinating nodes - group them together
