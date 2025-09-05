@@ -98,10 +98,7 @@ func expectedRolePDBs(
 	pdbs := make([]*policyv1.PodDisruptionBudget, 0, len(statefulSets))
 
 	// Group StatefulSets by their connected roles.
-	groups, err := groupBySharedRoles(statefulSets)
-	if err != nil {
-		return nil, fmt.Errorf("while grouping StatefulSets by roles: %w", err)
-	}
+	groups := groupBySharedRoles(statefulSets)
 
 	// Create one PDB per group
 	// Maps order isn't guaranteed so process in order of defined priority.
@@ -126,10 +123,10 @@ func expectedRolePDBs(
 	return pdbs, nil
 }
 
-func groupBySharedRoles(statefulSets sset.StatefulSetList) (map[esv1.NodeRole][]appsv1.StatefulSet, error) {
+func groupBySharedRoles(statefulSets sset.StatefulSetList) map[esv1.NodeRole][]appsv1.StatefulSet {
 	n := len(statefulSets)
 	if n == 0 {
-		return map[esv1.NodeRole][]appsv1.StatefulSet{}, nil
+		return map[esv1.NodeRole][]appsv1.StatefulSet{}
 	}
 
 	rolesToIndices := make(map[esv1.NodeRole][]int)
@@ -193,7 +190,7 @@ func groupBySharedRoles(statefulSets sset.StatefulSetList) (map[esv1.NodeRole][]
 		}
 		res[role] = group
 	}
-	return res, nil
+	return res
 }
 
 // getRolesFromStatefulSet extracts the roles from a StatefulSet's labels.

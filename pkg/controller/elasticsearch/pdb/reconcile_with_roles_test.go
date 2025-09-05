@@ -1235,8 +1235,7 @@ func TestGroupBySharedRoles(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			stss := tt.builder.GetStatefulSets()
 
-			got, err := groupBySharedRoles(stss)
-			assert.NoError(t, err)
+			got := groupBySharedRoles(stss)
 
 			// Check that the number of groups matches
 			assert.Equal(t, len(tt.want), len(got), "Expected %d groups, got %d", len(tt.want), len(got))
