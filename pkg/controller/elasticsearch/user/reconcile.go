@@ -44,6 +44,7 @@ func ReconcileUsersAndRoles(
 	watched watches.DynamicWatches,
 	recorder record.EventRecorder,
 	passwordHasher cryptutil.PasswordHasher,
+	passwordLength int,
 	meta metadata.Metadata,
 ) (esclient.BasicAuth, error) {
 	span, ctx := apm.StartSpan(ctx, "reconcile_users", tracing.SpanTypeApp)
@@ -54,7 +55,7 @@ func ReconcileUsersAndRoles(
 	if err != nil {
 		return esclient.BasicAuth{}, err
 	}
-	fileRealm, controllerUser, err := aggregateFileRealm(ctx, c, es, watched, recorder, passwordHasher, meta)
+	fileRealm, controllerUser, err := aggregateFileRealm(ctx, c, es, watched, recorder, passwordHasher, passwordLength, meta)
 	if err != nil {
 		return esclient.BasicAuth{}, err
 	}
@@ -90,6 +91,7 @@ func aggregateFileRealm(
 	watched watches.DynamicWatches,
 	recorder record.EventRecorder,
 	passwordHasher cryptutil.PasswordHasher,
+	passwordLength int,
 	meta metadata.Metadata,
 ) (filerealm.Realm, esclient.BasicAuth, error) {
 	// retrieve existing file realm to reuse predefined users password hashes if possible
@@ -108,11 +110,11 @@ func aggregateFileRealm(
 	}
 
 	// reconcile predefined users
-	elasticUser, err := reconcileElasticUser(ctx, c, es, existingFileRealm, userProvidedFileRealm, passwordHasher, meta)
+	elasticUser, err := reconcileElasticUser(ctx, c, es, existingFileRealm, userProvidedFileRealm, passwordHasher, passwordLength, meta)
 	if err != nil {
 		return filerealm.Realm{}, esclient.BasicAuth{}, err
 	}
-	internalUsers, err := reconcileInternalUsers(ctx, c, es, existingFileRealm, passwordHasher, meta)
+	internalUsers, err := reconcileInternalUsers(ctx, c, es, existingFileRealm, passwordHasher, passwordLength, meta)
 	if err != nil {
 		return filerealm.Realm{}, esclient.BasicAuth{}, err
 	}

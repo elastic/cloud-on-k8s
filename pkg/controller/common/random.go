@@ -9,8 +9,8 @@ import (
 )
 
 // FixedLengthRandomPasswordBytes generates a random password
-func FixedLengthRandomPasswordBytes() []byte {
-	return RandomBytes(24)
+func FixedLengthRandomPasswordBytes(length int) []byte {
+	return RandomBytes(length)
 }
 
 // RandomBytes generates some random bytes that can be used as a token or as a key

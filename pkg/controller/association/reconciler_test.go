@@ -247,6 +247,8 @@ var (
 			},
 		}
 	}
+	defaultPasswordAllowedChars = "abcdefghijklmnopqrstuvwxyz"
+	defaultPasswordLength       = 24
 )
 
 func assocConf(authSecretName string, authSecretKey string, caCertProvided bool, caSecretName string, url string) string {
@@ -273,6 +275,8 @@ func testReconciler(runtimeObjs ...client.Object) Reconciler {
 					Version: "1.5.0",
 				},
 			},
+			PasswordLength:       defaultPasswordLength,
+			PasswordAllowedChars: defaultPasswordAllowedChars,
 		},
 	}
 }
@@ -927,6 +931,8 @@ func TestReconciler_Reconcile_MultiRef(t *testing.T) {
 					Version: "1.4.0-unittest",
 				},
 			},
+			PasswordLength:       defaultPasswordLength,
+			PasswordAllowedChars: defaultPasswordAllowedChars,
 		},
 	}
 

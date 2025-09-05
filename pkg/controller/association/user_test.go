@@ -262,6 +262,7 @@ func Test_reconcileEsUser(t *testing.T) {
 				"kibana_system",
 				"kibana-user",
 				tt.args.es,
+				24,
 			); (err != nil) != tt.wantErr {
 				t.Errorf("reconcileEsUser() error = %v, wantErr %v", err, tt.wantErr)
 			}

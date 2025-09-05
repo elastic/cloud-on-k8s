@@ -34,7 +34,7 @@ func init() {
 
 func TestReconcileUsersAndRoles(t *testing.T) {
 	c := k8s.NewFakeClient(append(sampleUserProvidedFileRealmSecrets, sampleUserProvidedRolesSecret...)...)
-	controllerUser, err := ReconcileUsersAndRoles(context.Background(), c, sampleEsWithAuth, initDynamicWatches(), record.NewFakeRecorder(10), testPasswordHasher, metadata.Metadata{})
+	controllerUser, err := ReconcileUsersAndRoles(context.Background(), c, sampleEsWithAuth, initDynamicWatches(), record.NewFakeRecorder(10), testPasswordHasher, 24, metadata.Metadata{})
 	require.NoError(t, err)
 	require.NotEmpty(t, controllerUser.Password)
 	var reconciledSecret corev1.Secret
@@ -114,7 +114,7 @@ func Test_aggregateFileRealm(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			c := k8s.NewFakeClient(sampleUserProvidedFileRealmSecrets...)
-			fileRealm, controllerUser, err := aggregateFileRealm(context.Background(), c, tt.es, initDynamicWatches(), record.NewFakeRecorder(10), testPasswordHasher, metadata.Metadata{})
+			fileRealm, controllerUser, err := aggregateFileRealm(context.Background(), c, tt.es, initDynamicWatches(), record.NewFakeRecorder(10), testPasswordHasher, 24, metadata.Metadata{})
 			require.NoError(t, err)
 			require.NotEmpty(t, controllerUser.Password)
 			actualUsers := fileRealm.UserNames()

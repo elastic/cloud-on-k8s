@@ -20,3 +20,5 @@ operator-namespace: elastic-system
 enable-leader-election: true
 elasticsearch-observation-interval: 10s
 ubi-only: false
+password-length: 24
+password-allowed-characters: abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789
