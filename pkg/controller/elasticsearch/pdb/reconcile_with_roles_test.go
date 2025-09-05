@@ -28,9 +28,7 @@ import (
 	esv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/elasticsearch/v1"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/metadata"
 	ssetfixtures "github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/statefulset"
-	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/version"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/label"
-	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/nodespec"
 	_ "github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/settings"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/sset"
 )
@@ -271,9 +269,6 @@ func TestReconcileRoleSpecificPDBs(t *testing.T) {
 			// Create metadata
 			meta := metadata.Propagate(&tt.args.es, metadata.Metadata{Labels: tt.args.es.GetIdentityLabels()})
 
-			resourcesList, err := tt.args.builder.BuildResourcesList()
-			require.NoError(t, err)
-
 			statefulSets := tt.args.stss
 			// allow for more control over the args to the function by
 			// allowing for a custom stateful set list.
@@ -281,7 +276,7 @@ func TestReconcileRoleSpecificPDBs(t *testing.T) {
 				statefulSets = tt.args.builder.GetStatefulSets()
 			}
 
-			err = reconcileRoleSpecificPDBs(context.Background(), c, tt.args.es, statefulSets, resourcesList, meta)
+			err := reconcileRoleSpecificPDBs(context.Background(), c, tt.args.es, statefulSets, meta)
 			require.NoError(t, err)
 
 			var retrievedPDBs policyv1.PodDisruptionBudgetList
@@ -786,12 +781,9 @@ func TestExpectedRolePDBs(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			resourcesList, err := tt.builder.BuildResourcesList()
-			require.NoError(t, err)
-
 			statefulSetList := tt.builder.GetStatefulSets()
 
-			pdbs, err := expectedRolePDBs(tt.es, statefulSetList, resourcesList, tt.meta)
+			pdbs, err := expectedRolePDBs(tt.es, statefulSetList, tt.meta)
 			if err != nil {
 				t.Fatalf("expectedRolePDBs: %v", err)
 			}
@@ -966,7 +958,7 @@ func Test_allowedDisruptionsForRole(t *testing.T) {
 	}
 }
 
-func TestGetRolesFromStatefulSetConfig(t *testing.T) {
+func TestGetRolesFromStatefulSet(t *testing.T) {
 	type args struct {
 		statefulSetName string
 		builder         Builder
@@ -1073,23 +1065,13 @@ func TestGetRolesFromStatefulSetConfig(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			resourcesList, err := tt.args.builder.BuildResourcesList()
-			require.NoError(t, err)
-
 			statefulSet, found := tt.args.builder.GetStatefulSets().GetByName(tt.args.statefulSetName)
 
 			if !found && !tt.wantErr {
 				t.Fatalf("StatefulSet %s not found in test fixtures", tt.args.statefulSetName)
 			}
 
-			v, err := version.Parse(tt.args.version)
-			require.NoError(t, err)
-
-			got, err := getRolesFromStatefulSetConfig(statefulSet, resourcesList, v)
-			if (err != nil) != tt.wantErr {
-				t.Errorf("getRolesForStatefulSet() error = %v, wantErr %v", err, tt.wantErr)
-				return
-			}
+			got := getRolesFromStatefulSet(statefulSet)
 			if !reflect.DeepEqual(got, tt.want) {
 				t.Errorf("getRolesForStatefulSet() = %v, want %v", got, tt.want)
 			}
@@ -1252,15 +1234,9 @@ func TestGroupBySharedRoles(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			var resourcesList nodespec.ResourcesList
-			var err error
-			resourcesList, err = tt.builder.BuildResourcesList()
-			require.NoError(t, err)
-
-			v := version.MustParse(tt.builder.Elasticsearch.Spec.Version)
 			stss := tt.builder.GetStatefulSets()
 
-			got, err := groupBySharedRoles(stss, resourcesList, v)
+			got, err := groupBySharedRoles(stss)
 			assert.NoError(t, err)
 
 			// Check that the number of groups matches

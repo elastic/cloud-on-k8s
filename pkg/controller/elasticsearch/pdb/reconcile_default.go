@@ -22,7 +22,6 @@ import (
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/metadata"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/reconciler"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/label"
-	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/nodespec"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/sset"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/k8s"
 )
@@ -41,7 +40,6 @@ func Reconcile(
 	es esv1.Elasticsearch,
 	operatorNamespace string,
 	statefulSets sset.StatefulSetList,
-	resources nodespec.ResourcesList,
 	meta metadata.Metadata) error {
 	licenseChecker := lic.NewLicenseChecker(k8sClient, operatorNamespace)
 	enterpriseEnabled, err := licenseChecker.EnterpriseFeaturesEnabled(ctx)
@@ -51,7 +49,7 @@ func Reconcile(
 	// Only reconcile role specific PDBs if an enterprise license is enabled and the default PDB is not specified.
 	// If the PDB is specified in the spec, we will reconcile the default PDB, which will simply use the specified PDB.
 	if enterpriseEnabled && !es.Spec.PodDisruptionBudget.IsSpecified() {
-		return reconcileRoleSpecificPDBs(ctx, k8sClient, es, statefulSets, resources, meta)
+		return reconcileRoleSpecificPDBs(ctx, k8sClient, es, statefulSets, meta)
 	}
 
 	return reconcileDefaultPDB(ctx, k8sClient, es, statefulSets, meta)

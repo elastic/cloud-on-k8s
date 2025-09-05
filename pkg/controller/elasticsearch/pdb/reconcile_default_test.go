@@ -146,12 +146,9 @@ func TestReconcile(t *testing.T) {
 				WithRESTMapper(restMapper).
 				WithObjects(tt.args.initObjs...).Build()
 
-			resourcesList, err := tt.args.builder.BuildResourcesList()
-			require.NoError(t, err)
-
 			statefulSets := tt.args.builder.GetStatefulSets()
 
-			err = Reconcile(context.Background(), k8sClient, tt.args.es, "test_ns", statefulSets, resourcesList, metadata.Propagate(&tt.args.es, metadata.Metadata{Labels: tt.args.es.GetIdentityLabels()}))
+			err := Reconcile(context.Background(), k8sClient, tt.args.es, "test_ns", statefulSets, metadata.Propagate(&tt.args.es, metadata.Metadata{Labels: tt.args.es.GetIdentityLabels()}))
 			require.NoError(t, err)
 			pdbNsn := types.NamespacedName{Namespace: tt.args.es.Namespace, Name: esv1.DefaultPodDisruptionBudget(tt.args.es.Name)}
 			var retrieved policyv1.PodDisruptionBudget

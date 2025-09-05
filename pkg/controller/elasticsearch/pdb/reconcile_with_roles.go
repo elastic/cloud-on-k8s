@@ -21,9 +21,7 @@ import (
 
 	esv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/elasticsearch/v1"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/metadata"
-	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/version"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/label"
-	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/nodespec"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/sset"
 
 	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/k8s"
@@ -60,7 +58,6 @@ func reconcileRoleSpecificPDBs(
 	k8sClient k8s.Client,
 	es esv1.Elasticsearch,
 	statefulSets sset.StatefulSetList,
-	resources nodespec.ResourcesList,
 	meta metadata.Metadata,
 ) error {
 	// Check if PDB is disabled in the ES spec, and if so delete all existing PDBs (both default and role-specific)
@@ -73,7 +70,7 @@ func reconcileRoleSpecificPDBs(
 	}
 
 	// Retrieve the expected list of PDBs.
-	pdbs, err := expectedRolePDBs(es, statefulSets, resources, meta)
+	pdbs, err := expectedRolePDBs(es, statefulSets, meta)
 	if err != nil {
 		return fmt.Errorf("while retrieving expected role-specific PDBs: %w", err)
 	}
@@ -96,18 +93,12 @@ func reconcileRoleSpecificPDBs(
 func expectedRolePDBs(
 	es esv1.Elasticsearch,
 	statefulSets sset.StatefulSetList,
-	resources nodespec.ResourcesList,
 	meta metadata.Metadata,
 ) ([]*policyv1.PodDisruptionBudget, error) {
 	pdbs := make([]*policyv1.PodDisruptionBudget, 0, len(statefulSets))
 
-	v, err := version.Parse(es.Spec.Version)
-	if err != nil {
-		return nil, fmt.Errorf("while parsing Elasticsearch version: %w", err)
-	}
-
 	// Group StatefulSets by their connected roles.
-	groups, err := groupBySharedRoles(statefulSets, resources, v)
+	groups, err := groupBySharedRoles(statefulSets)
 	if err != nil {
 		return nil, fmt.Errorf("while grouping StatefulSets by roles: %w", err)
 	}
@@ -135,7 +126,7 @@ func expectedRolePDBs(
 	return pdbs, nil
 }
 
-func groupBySharedRoles(statefulSets sset.StatefulSetList, resources nodespec.ResourcesList, v version.Version) (map[esv1.NodeRole][]appsv1.StatefulSet, error) {
+func groupBySharedRoles(statefulSets sset.StatefulSetList) (map[esv1.NodeRole][]appsv1.StatefulSet, error) {
 	n := len(statefulSets)
 	if n == 0 {
 		return map[esv1.NodeRole][]appsv1.StatefulSet{}, nil
@@ -145,23 +136,12 @@ func groupBySharedRoles(statefulSets sset.StatefulSetList, resources nodespec.Re
 	indicesToRoles := make(map[int]set.StringSet)
 	for i, sset := range statefulSets {
 		var roles []esv1.NodeRole
-		// If the statefulSet is not found within the expected resources,
-		// then the statefulSet could have been recently deleted/renamed
-		// within the spec. In this case we must retrieve the roles in
-		// a different manner.
-		if !slices.ContainsFunc([]appsv1.StatefulSet(resources.StatefulSets()), func(s appsv1.StatefulSet) bool {
-			return s.Name == sset.Name
-		}) {
-			// Retrieve the roles from the statefulSet's existing labels.
-			roles = getRolesFromStatefulSet(sset)
-		} else {
-			// Retrieve roles directly from the expected StatefulSet's configuration.
-			var err error
-			roles, err = getRolesFromStatefulSetConfig(sset, resources, v)
-			if err != nil {
-				return nil, err
-			}
-		}
+		// A statefulSet may not be found within the expected resources,
+		// as it could have been recently deleted/renamed
+		// within the spec so we must retrieve the roles from the
+		// labels in the statefulSet, not the expected configuration.
+		roles = getRolesFromStatefulSet(sset)
+
 		if len(roles) == 0 {
 			// StatefulSets with no roles are coordinating nodes - group them together
 			rolesToIndices[esv1.CoordinatingRole] = append(rolesToIndices[esv1.CoordinatingRole], i)
@@ -216,43 +196,7 @@ func groupBySharedRoles(statefulSets sset.StatefulSetList, resources nodespec.Re
 	return res, nil
 }
 
-// getRolesFromStatefulSetConfig gets the roles from a StatefulSet's expected configuration.
-func getRolesFromStatefulSetConfig(
-	statefulSet appsv1.StatefulSet,
-	expectedResources nodespec.ResourcesList,
-	v version.Version,
-) ([]esv1.NodeRole, error) {
-	forStatefulSet, err := expectedResources.ForStatefulSet(statefulSet.Name)
-	if err != nil {
-		return nil, err
-	}
-	cfg, err := forStatefulSet.Config.Unpack(v)
-	if err != nil {
-		return nil, err
-	}
-	var nodeRoles []esv1.NodeRole
-	// Special case of no roles specified, which results in all roles being valid for this sts.
-	if cfg.Node.Roles == nil {
-		// since the priority slice contains all the roles that we are interested in
-		// when creating a pdb for a sts, we can use the priority slice as the roles.
-		nodeRoles = priority
-		// remove Coordinating role from the end of the slice.
-		nodeRoles = nodeRoles[:len(nodeRoles)-1]
-		return nodeRoles, nil
-	}
-	// Special case of empty roles being specified, which indicates the coordinating role for this sts.
-	if len(cfg.Node.Roles) == 0 {
-		nodeRoles = append(nodeRoles, esv1.CoordinatingRole)
-		return nodeRoles, nil
-	}
-	nodeRoles = make([]esv1.NodeRole, len(cfg.Node.Roles))
-	// Otherwise, use the list of roles from the configuration.
-	for i, role := range cfg.Node.Roles {
-		nodeRoles[i] = esv1.NodeRole(role)
-	}
-	return nodeRoles, nil
-}
-
+// getRolesFromStatefulSet extracts the roles from a StatefulSet's labels.
 func getRolesFromStatefulSet(statefulSet appsv1.StatefulSet) []esv1.NodeRole {
 	roles := []esv1.NodeRole{}
 	labels := statefulSet.Spec.Template.Labels
@@ -282,6 +226,21 @@ func getRolesFromStatefulSet(statefulSet appsv1.StatefulSet) []esv1.NodeRole {
 			roles = append(roles, mapping.role)
 		}
 	}
+	// No specified roles equates to all roles, excluding coordinating.
+	//
+	// verify: This seems to break many things.
+	//
+	// if len(roles) == 0 {
+	// 	roles = append(
+	// 		roles,
+	// 		esv1.DataRole,
+	// 		esv1.MasterRole,
+	// 		esv1.DataFrozenRole,
+	// 		esv1.IngestRole,
+	// 		esv1.MLRole,
+	// 		esv1.TransformRole,
+	// 	)
+	// }
 	return roles
 }
 
