@@ -11,6 +11,8 @@ CAUTION: {role_mappings_warning}
 
 NOTE: This requires a valid Enterprise license or Enterprise trial license. Check <<{p}-licensing,the license documentation>> for more details about managing licenses.
 
+NOTE: Component templates created in configuration policies cannot be referenced from index templates created through the Elasticsearch API currently.
+
 Starting from ECK `2.6.1` and Elasticsearch `8.6.1`, Elastic Stack configuration policies allow you to configure the following settings for Elasticsearch:
 
 - link:https://www.elastic.co/guide/en/elasticsearch/reference/current/settings.html#dynamic-cluster-setting[Cluster Settings]
