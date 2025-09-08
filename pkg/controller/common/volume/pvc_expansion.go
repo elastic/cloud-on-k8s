@@ -18,6 +18,7 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/kubernetes/scheme"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/client/apiutil"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 
 	sset "github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/statefulset"
@@ -26,7 +27,7 @@ import (
 	ulog "github.com/elastic/cloud-on-k8s/v3/pkg/utils/log"
 )
 
-// handleVolumeExpansion works around the immutability of VolumeClaimTemplates in StatefulSets by:
+// HandleVolumeExpansion works around the immutability of VolumeClaimTemplates in StatefulSets by:
 // 1. updating storage requests in PVCs whose storage class supports volume expansion
 // 2. scheduling the StatefulSet for recreation with the new storage spec
 // It returns a boolean indicating whether the StatefulSet needs to be recreated.
@@ -37,7 +38,6 @@ func HandleVolumeExpansion(
 	ctx context.Context,
 	k8sClient k8s.Client,
 	owner client.Object,
-	ownerKind string,
 	expectedSset appsv1.StatefulSet,
 	actualSset appsv1.StatefulSet,
 	validateStorageClass bool,
@@ -60,7 +60,7 @@ func HandleVolumeExpansion(
 
 	// schedule the StatefulSet for recreation if needed
 	if needsRecreate(expectedSset, actualSset) {
-		return true, annotateForRecreation(ctx, k8sClient, owner, ownerKind, actualSset, expectedSset.Spec.VolumeClaimTemplates)
+		return true, annotateForRecreation(ctx, k8sClient, owner, actualSset, expectedSset.Spec.VolumeClaimTemplates)
 	}
 
 	return false, nil
@@ -117,7 +117,6 @@ func annotateForRecreation(
 	ctx context.Context,
 	k8sClient k8s.Client,
 	owner client.Object,
-	ownerKind string,
 	actualSset appsv1.StatefulSet,
 	expectedClaims []corev1.PersistentVolumeClaim,
 ) error {
@@ -128,10 +127,15 @@ func annotateForRecreation(
 
 	actualSset.Spec.VolumeClaimTemplates = expectedClaims
 	asJSON, err := json.Marshal(actualSset)
-
 	if err != nil {
 		return err
 	}
+
+	gvk, err := apiutil.GVKForObject(owner, scheme.Scheme)
+	if err != nil {
+		return err
+	}
+	ownerKind := gvk.Kind
 
 	err = setAnnotation(owner, getRecreateStatefulSetAnnotationKey(ownerKind, actualSset.Name), string(asJSON))
 	if err != nil {
@@ -165,7 +169,12 @@ func needsRecreate(expectedSset appsv1.StatefulSet, actualSset appsv1.StatefulSe
 //  3. An annotation specifies StatefulSet Foo needs to be recreated. That StatefulSet does not exist: create it.
 //  4. An annotation specifies StatefulSet Foo needs to be recreated. That StatefulSet actually exists, but with
 //     a different UID: the re-creation is over, remove the annotation.
-func RecreateStatefulSets(ctx context.Context, k8sClient k8s.Client, owner client.Object, ownerKind string) (int, error) {
+func RecreateStatefulSets(ctx context.Context, k8sClient k8s.Client, owner client.Object) (int, error) {
+	gvk, err := apiutil.GVKForObject(owner, scheme.Scheme)
+	if err != nil {
+		return 0, err
+	}
+	ownerKind := gvk.Kind
 	log := ulog.FromContext(ctx)
 	recreateList, err := ssetsToRecreate(owner, ownerKind)
 	if err != nil {

@@ -15,12 +15,11 @@ import (
 )
 
 func RecreateStatefulSets(ctx context.Context, k8sclient k8s.Client, ls logstashv1alpha1.Logstash) (int, error) {
-	return commonvolume.RecreateStatefulSets(ctx, k8sclient, &ls, ls.Kind)
+	return commonvolume.RecreateStatefulSets(ctx, k8sclient, &ls)
 }
 
 func HandleVolumeExpansion(ctx context.Context, k8sClient k8s.Client, ls logstashv1alpha1.Logstash,
 	expectedSset appsv1.StatefulSet, actualSset appsv1.StatefulSet,
 	validateStorageClass bool) (bool, error) {
-	return commonvolume.HandleVolumeExpansion(ctx, k8sClient, &ls, ls.Kind, expectedSset,
-		actualSset, validateStorageClass)
+	return commonvolume.HandleVolumeExpansion(ctx, k8sClient, &ls, expectedSset, actualSset, validateStorageClass)
 }

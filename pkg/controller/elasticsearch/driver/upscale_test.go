@@ -323,6 +323,8 @@ func TestHandleUpscaleAndSpecChanges_PVCResize(t *testing.T) {
 	require.True(t, res.Requeue)
 	require.NoError(t, k8sClient.Get(context.Background(), k8s.ExtractNamespacedName(&es.ObjectMeta), &es))
 	require.Len(t, es.Annotations, 2) // initial master nodes + sset to recreate
+	_, hasRecreateAnnotationForSset2 := es.Annotations["elasticsearch.k8s.elastic.co/recreate-sset2"]
+	require.True(t, hasRecreateAnnotationForSset2)
 }
 
 func Test_adjustStatefulSetReplicas(t *testing.T) {

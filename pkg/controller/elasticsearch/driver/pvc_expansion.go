@@ -15,11 +15,10 @@ import (
 )
 
 func recreateStatefulSets(ctx context.Context, k8sclient k8s.Client, es esv1.Elasticsearch) (int, error) {
-	return volume.RecreateStatefulSets(ctx, k8sclient, &es, es.Kind)
+	return volume.RecreateStatefulSets(ctx, k8sclient, &es)
 }
 
 func handleVolumeExpansion(ctx context.Context, k8sClient k8s.Client, es esv1.Elasticsearch, expectedSset appsv1.StatefulSet,
 	actualSset appsv1.StatefulSet, validateStorageClass bool) (bool, error) {
-	return volume.HandleVolumeExpansion(ctx, k8sClient, &es, es.Kind, expectedSset, actualSset,
-		validateStorageClass)
+	return volume.HandleVolumeExpansion(ctx, k8sClient, &es, expectedSset, actualSset, validateStorageClass)
 }

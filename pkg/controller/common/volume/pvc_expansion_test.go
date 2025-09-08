@@ -17,8 +17,10 @@ import (
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes/scheme"
+	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
 	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/client/apiutil"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 
 	esv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/elasticsearch/v1"
@@ -198,7 +200,7 @@ func Test_handleVolumeExpansionElasticsearch(t *testing.T) {
 			}
 
 			k8sClient := k8s.NewFakeClient(append(tt.runtimeObjs, &es)...)
-			recreate, err := HandleVolumeExpansion(context.Background(), k8sClient, &es, es.Kind,
+			recreate, err := HandleVolumeExpansion(context.Background(), k8sClient, &es,
 				tt.args.expectedSset, tt.args.actualSset, tt.args.validateStorageClass)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("handleVolumeExpansion() error = %v, wantErr %v", err, tt.wantErr)
@@ -225,7 +227,11 @@ func Test_handleVolumeExpansionElasticsearch(t *testing.T) {
 				wantUpdatedSset.Spec.VolumeClaimTemplates = tt.args.expectedSset.Spec.VolumeClaimTemplates
 
 				// test ssetsToRecreate along the way
-				toRecreate, err := ssetsToRecreate(&retrievedES, retrievedES.Kind)
+				gvk, err := apiutil.GVKForObject(&retrievedES, clientgoscheme.Scheme)
+				if err != nil {
+					t.Fatal(err)
+				}
+				toRecreate, err := ssetsToRecreate(&retrievedES, gvk.Kind)
 				require.NoError(t, err)
 				require.Equal(t,
 					map[string]appsv1.StatefulSet{
@@ -365,7 +371,7 @@ func Test_handleVolumeExpansionLogstash(t *testing.T) {
 				ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: "ls"},
 				TypeMeta:   metav1.TypeMeta{Kind: logstashv1alpha1.Kind}}
 			k8sClient := k8s.NewFakeClient(append(tt.runtimeObjs, &ls)...)
-			recreate, err := HandleVolumeExpansion(context.Background(), k8sClient, &ls, ls.Kind,
+			recreate, err := HandleVolumeExpansion(context.Background(), k8sClient, &ls,
 				tt.args.expectedSset, tt.args.actualSset, tt.args.validateStorageClass)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("handleVolumeExpansion() error = %v, wantErr %v", err, tt.wantErr)
@@ -392,7 +398,11 @@ func Test_handleVolumeExpansionLogstash(t *testing.T) {
 				wantUpdatedSset.Spec.VolumeClaimTemplates = tt.args.expectedSset.Spec.VolumeClaimTemplates
 
 				// test ssetsToRecreate along the way
-				toRecreate, err := ssetsToRecreate(&retrievedLS, retrievedLS.Kind)
+				gvk, err := apiutil.GVKForObject(&retrievedLS, clientgoscheme.Scheme)
+				if err != nil {
+					t.Fatal(err)
+				}
+				toRecreate, err := ssetsToRecreate(&retrievedLS, gvk.Kind)
 				require.NoError(t, err)
 				require.Equal(t,
 					map[string]appsv1.StatefulSet{
@@ -568,7 +578,7 @@ func Test_recreateStatefulSets(t *testing.T) {
 			es := tt.args.es
 			k8sClient := k8s.NewFakeClient(append(tt.args.runtimeObjs, &es)...)
 
-			got, err := RecreateStatefulSets(context.Background(), k8sClient, &es, es.Kind)
+			got, err := RecreateStatefulSets(context.Background(), k8sClient, &es)
 			require.NoError(t, err)
 			require.Equal(t, tt.wantRecreations, got)
 
