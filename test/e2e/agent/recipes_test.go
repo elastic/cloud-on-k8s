@@ -132,6 +132,16 @@ func TestFleetKubernetesNonRootIntegrationRecipe(t *testing.T) {
 		t.SkipNow()
 	}
 
+	if (v.GE(version.MinFor(9, 0, 1)) && v.LE(version.MinFor(9, 0, 4))) ||
+		(v.EQ(version.From(9, 1, 0))) {
+		t.Skipf("Skipped as version %s is affected by https://github.com/elastic/kibana/pull/230211", v)
+	}
+
+	// TODO: see https://github.com/elastic/cloud-on-k8s/issues/8820
+	if v.GE(version.From(9, 1, 0)) {
+		t.Skipf("Skipped as version %s is affected by https://github.com/elastic/kibana/issues/233780", v)
+	}
+
 	// The recipe does not work fully within an openshift cluster without modifications.
 	if test.Ctx().OcpCluster {
 		t.SkipNow()
@@ -225,17 +235,17 @@ func runAgentRecipe(
 
 		// TODO: remove once https://github.com/elastic/cloud-on-k8s/issues/4092 is resolved
 		if test.Ctx().HasTag("ipv6") {
-			t.SkipNow()
+			t.Skipf("Test skipped on IPv6")
 		}
 
 		if isStackIncompatible(agentBuilder.Agent) {
-			t.SkipNow()
+			t.Skipf("Agent version %s is not compatible with stack %s", agentBuilder.Agent.Spec.Version, test.Ctx().ElasticStackVersion)
 		}
 
 		// OpenShift requires different securityContext than provided in the recipe.
 		// Skipping it altogether to reduce maintenance burden.
 		if strings.HasPrefix(test.Ctx().Provider, "ocp") {
-			t.SkipNow()
+			t.Skipf("Test skipped on OpenShift clusters")
 		}
 
 		agentBuilder.Suffix = suffix
