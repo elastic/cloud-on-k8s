@@ -17,6 +17,7 @@ import (
 	"time"
 
 	"github.com/go-logr/logr"
+	"github.com/sethvargo/go-password/password"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 	"go.elastic.co/apm/v2"
@@ -316,7 +317,13 @@ func Command() *cobra.Command {
 	)
 	cmd.Flags().String(
 		operator.PasswordAllowedCharactersFlag,
-		"abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789",
+		fmt.Sprintf(
+			"%s%s%s%s",
+			password.LowerLetters,
+			password.UpperLetters,
+			password.Digits,
+			password.Symbols,
+		),
 		"Allowed characters for generated passwords",
 	)
 	cmd.Flags().Int(
