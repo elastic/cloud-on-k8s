@@ -76,6 +76,17 @@ elasticsearchRef: {}
   # will be assumed.
   #
   # namespace: default
+  #
+  # Optional secretName referencing an existing Kubernetes secret that contains connection information
+  # for associating an Enterprise Search instance to a remote Elasticsearch instance not managed by ECK.
+  # The referenced secret must contain the following:
+  # - `url`: the URL to reach the Elastic resource
+  # - `username`: the username of the user to be authenticated to the Elastic resource
+  # - `password`: the password of the user to be authenticated to the Elastic resource
+  # - `ca.crt`: the CA certificate in PEM format (optional)
+  # This field cannot be used in combination with the other fields name, namespace or serviceName.
+  #
+  # secretName: my-remote-es-credentials
 
 # Set podTemplate to customize the pod used by Enterprise Search
 # ref: https://www.elastic.co/guide/en/cloud-on-k8s/current/k8s-customize-pods.html
