@@ -23,7 +23,7 @@ check() {
 
     echo "Ensuring dependencies are updated for $(basename "${TEST_DIR}") chart."
     helm dependency update . 1>/dev/null
-
+    
     echo "Running 'helm lint' on $(basename "${TEST_DIR}") chart."
     if [[ -f "lint-values.yaml" ]]; then
         helm lint --strict -f lint-values.yaml .
@@ -32,7 +32,7 @@ check() {
     fi
 
     if [[ -d templates/tests ]]; then
-        helm unittest -f 'templates/tests/*.yaml' --with-subchart=false .
+        helm unittest -3 -f 'templates/tests/*.yaml' --with-subchart=false .
     fi
 
     cd -
