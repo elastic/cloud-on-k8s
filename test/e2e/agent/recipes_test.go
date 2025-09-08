@@ -137,6 +137,11 @@ func TestFleetKubernetesNonRootIntegrationRecipe(t *testing.T) {
 		t.Skipf("Skipped as version %s is affected by https://github.com/elastic/kibana/pull/230211", v)
 	}
 
+	// TODO: see https://github.com/elastic/cloud-on-k8s/issues/8820
+	if v.GE(version.From(9, 1, 0)) {
+		t.Skipf("Skipped as version %s is affected by https://github.com/elastic/kibana/issues/233780", v)
+	}
+
 	// The recipe does not work fully within an openshift cluster without modifications.
 	if test.Ctx().OcpCluster {
 		t.SkipNow()
