@@ -11,6 +11,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 
 	"github.com/elastic/cloud-on-k8s/v3/pkg/about"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/certificates"
 	esvalidation "github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/validation"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/cryptutil"
@@ -31,10 +32,9 @@ type Parameters struct {
 	Dialer net.Dialer
 	// PasswordHasher is the password hash generator used by the operator.
 	PasswordHasher cryptutil.PasswordHasher
-	// PasswordLength is the length of the generated passwords for the file-based Elasticsearch users.
-	PasswordLength int
-	// PasswordAllowedChars is the set of allowed characters for the generated passwords.
-	PasswordAllowedChars string
+	// PasswordGeneratorParams are the parameters for password generation including
+	// the allowed characters and length.
+	PasswordGeneratorParams common.PasswordGeneratorParams
 	// IPFamily represents the IP family to use when creating configuration and services.
 	IPFamily corev1.IPFamily
 	// GlobalCA is an optionally configured, globally shared CA to be used for all managed resources.

@@ -15,6 +15,7 @@ import (
 	"strconv"
 	"strings"
 	"time"
+	"unicode"
 
 	"github.com/go-logr/logr"
 	"github.com/sethvargo/go-password/password"
@@ -63,6 +64,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/autoscaling"
 	esavalidation "github.com/elastic/cloud-on-k8s/v3/pkg/controller/autoscaling/elasticsearch/validation"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/beat"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/certificates"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/container"
 	commonlicense "github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/license"
@@ -318,11 +320,10 @@ func Command() *cobra.Command {
 	cmd.Flags().String(
 		operator.PasswordAllowedCharactersFlag,
 		fmt.Sprintf(
-			"%s%s%s%s",
+			"%s%s%s",
 			password.LowerLetters,
 			password.UpperLetters,
-			password.Digits,
-			password.Symbols,
+			password.Digits, // We do not use password.Symbols in the generator by default
 		),
 		"Allowed characters for generated passwords",
 	)
@@ -714,6 +715,23 @@ func startOperator(ctx context.Context) error {
 		return err
 	}
 
+	allowedCharacters := viper.GetString(operator.PasswordAllowedCharactersFlag)
+	passwordParams, other := categorizeAllowedCharacters(allowedCharacters)
+	if len(other) > 0 {
+		err := fmt.Errorf("invalid characters in passwords allowed characters: %s", other)
+		log.Error(err, "while parsing passwords allowed characters")
+		return err
+	}
+
+	passwordParams.Length = viper.GetInt(operator.PasswordLengthFlag)
+	// Elasticsearch requires at least 6 characters for passwords
+	// https://www.elastic.co/guide/en/elasticsearch/reference/7.5/security-api-put-user.html
+	if passwordParams.Length < 6 {
+		err := fmt.Errorf("password length must be at least 6")
+		log.Error(err, "while parsing password length")
+		return err
+	}
+
 	params := operator.Parameters{
 		Dialer:                           dialer,
 		ElasticsearchObservationInterval: viper.GetDuration(operator.ElasticsearchObservationIntervalFlag),
@@ -731,8 +749,7 @@ func startOperator(ctx context.Context) error {
 			RotateBefore: certRotateBefore,
 		},
 		PasswordHasher:            passwordHasher,
-		PasswordLength:            viper.GetInt(operator.PasswordLengthFlag),
-		PasswordAllowedChars:      viper.GetString(operator.PasswordAllowedCharactersFlag),
+		PasswordGeneratorParams:   passwordParams,
 		MaxConcurrentReconciles:   viper.GetInt(operator.MaxConcurrentReconcilesFlag),
 		SetDefaultSecurityContext: setDefaultSecurityContext,
 		ValidateStorageClass:      viper.GetBool(operator.ValidateStorageClassFlag),
@@ -1129,4 +1146,29 @@ func reconcileWebhookCertsAndAddController(ctx context.Context, mgr manager.Mana
 	}
 
 	return webhook.Add(mgr, webhookParams, clientset, wh, tracer)
+}
+
+func categorizeAllowedCharacters(s string) (params common.PasswordGeneratorParams, other []rune) {
+	var lowercase, uppercase, digits, symbols []rune
+	for _, r := range s {
+		switch {
+		case unicode.IsLower(r):
+			lowercase = append(lowercase, r)
+		case unicode.IsUpper(r):
+			uppercase = append(uppercase, r)
+		case unicode.IsDigit(r):
+			digits = append(digits, r)
+		case unicode.IsPunct(r) || unicode.IsSymbol(r):
+			symbols = append(symbols, r)
+		default:
+			other = append(other, r)
+		}
+	}
+
+	params.LowerLetters = string(lowercase)
+	params.UpperLetters = string(uppercase)
+	params.Digits = string(digits)
+	params.Symbols = string(symbols)
+
+	return
 }
