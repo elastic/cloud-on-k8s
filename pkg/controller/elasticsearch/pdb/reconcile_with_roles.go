@@ -23,6 +23,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/metadata"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/label"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/sset"
+	ulog "github.com/elastic/cloud-on-k8s/v3/pkg/utils/log"
 
 	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/k8s"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/set"
@@ -70,7 +71,7 @@ func reconcileRoleSpecificPDBs(
 	}
 
 	// Retrieve the expected list of PDBs.
-	pdbs, err := expectedRolePDBs(es, statefulSets, meta)
+	pdbs, err := expectedRolePDBs(ctx, es, statefulSets, meta)
 	if err != nil {
 		return fmt.Errorf("while retrieving expected role-specific PDBs: %w", err)
 	}
@@ -91,6 +92,7 @@ func reconcileRoleSpecificPDBs(
 
 // expectedRolePDBs returns a slice of PDBs to reconcile based on statefulSet roles.
 func expectedRolePDBs(
+	ctx context.Context,
 	es esv1.Elasticsearch,
 	statefulSets sset.StatefulSetList,
 	meta metadata.Metadata,
@@ -114,7 +116,7 @@ func expectedRolePDBs(
 			continue
 		}
 
-		pdb, err := createPDBForStatefulSets(es, roleName, group, statefulSets, meta)
+		pdb, err := createPDBForStatefulSets(ctx, es, roleName, group, statefulSets, meta)
 		if err != nil {
 			return nil, err
 		}
@@ -220,6 +222,7 @@ func getRolesFromStatefulSet(statefulSet appsv1.StatefulSet) ([]esv1.NodeRole, e
 
 // createPDBForStatefulSets creates a PDB for a group of StatefulSets with shared roles.
 func createPDBForStatefulSets(
+	ctx context.Context,
 	es esv1.Elasticsearch,
 	// role is the role used to determine the maxUnavailable value.
 	role esv1.NodeRole,
@@ -238,7 +241,7 @@ func createPDBForStatefulSets(
 			Name:      esv1.PodDisruptionBudgetNameForRole(es.Name, string(role)),
 			Namespace: es.Namespace,
 		},
-		Spec: buildRoleSpecificPDBSpec(es, role, statefulSets, allStatefulSets),
+		Spec: buildRoleSpecificPDBSpec(ctx, es, role, statefulSets, allStatefulSets),
 	}
 
 	mergedMeta := meta.Merge(metadata.Metadata{
@@ -258,6 +261,7 @@ func createPDBForStatefulSets(
 
 // buildRoleSpecificPDBSpec returns a policyv1.PodDisruptionBudgetSpec for a specific node role.
 func buildRoleSpecificPDBSpec(
+	ctx context.Context,
 	es esv1.Elasticsearch,
 	role esv1.NodeRole,
 	// statefulSets are the statefulSets grouped into this pdb.
@@ -266,7 +270,7 @@ func buildRoleSpecificPDBSpec(
 	allStatefulSets sset.StatefulSetList,
 ) policyv1.PodDisruptionBudgetSpec {
 	// Get the allowed disruptions for this role based on cluster health and role type
-	allowedDisruptions := allowedDisruptionsForRole(es, role, allStatefulSets)
+	allowedDisruptions := allowedDisruptionsForRole(ctx, es, role, allStatefulSets)
 
 	spec := policyv1.PodDisruptionBudgetSpec{
 		MaxUnavailable: &intstr.IntOrString{Type: intstr.Int, IntVal: allowedDisruptions},
@@ -296,6 +300,7 @@ func buildRoleSpecificPDBSpec(
 //   - For any other roles, excluding frozen which should have been filtered in groupBySharedRoles,
 //     allow one disruption if health is green.
 func allowedDisruptionsForRole(
+	ctx context.Context,
 	es esv1.Elasticsearch,
 	role esv1.NodeRole,
 	allStatefulSets sset.StatefulSetList,
@@ -304,6 +309,7 @@ func allowedDisruptionsForRole(
 	if es.Status.Health == esv1.ElasticsearchUnknownHealth ||
 		es.Status.Health == esv1.ElasticsearchHealth("") ||
 		es.Status.Health == esv1.ElasticsearchRedHealth {
+		ulog.FromContext(ctx).Info("Disruptions not allowed due to health status. Health: %s", es.Status.Health)
 		return 0
 	}
 
@@ -318,6 +324,7 @@ func allowedDisruptionsForRole(
 		if es.Status.Health == esv1.ElasticsearchGreenHealth {
 			return 1
 		}
+		ulog.FromContext(ctx).Info("Disruptions not allowed for data roles due to health not being green. Health: %s", es.Status.Health)
 		return 0
 	}
 
@@ -327,6 +334,7 @@ func allowedDisruptionsForRole(
 	}
 
 	// In all other cases, we want to allow no disruptions.
+	ulog.FromContext(ctx).Info("Disruptions not allowed for unknown reasons. Role: %s, Health: %s", role, es.Status.Health)
 	return 0
 }
 

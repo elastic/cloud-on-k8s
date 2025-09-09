@@ -783,7 +783,7 @@ func TestExpectedRolePDBs(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			statefulSetList := tt.builder.GetStatefulSets()
 
-			pdbs, err := expectedRolePDBs(tt.es, statefulSetList, tt.meta)
+			pdbs, err := expectedRolePDBs(context.Background(), tt.es, statefulSetList, tt.meta)
 			if err != nil {
 				t.Fatalf("expectedRolePDBs: %v", err)
 			}
@@ -950,7 +950,7 @@ func Test_allowedDisruptionsForRole(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			for _, role := range tt.args.role {
-				if got := allowedDisruptionsForRole(tt.args.es, role, tt.args.allStatefulSets); got != tt.want {
+				if got := allowedDisruptionsForRole(context.Background(), tt.args.es, role, tt.args.allStatefulSets); got != tt.want {
 					t.Errorf("allowedDisruptionsForRole() = %v, want %v for role: %s", got, tt.want, role)
 				}
 			}
