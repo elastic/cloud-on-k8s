@@ -59,6 +59,28 @@ const (
 	Type = "elasticsearch"
 )
 
+// RoleMapping is a struct that maps a label name to a node role.
+// This is used when creating PDBs for each node role.
+type RoleMapping struct {
+	LabelName string
+	Role      esv1.NodeRole
+}
+
+// RoleMappings is the definitive list of labels to node roles.
+var RoleMappings = []RoleMapping{
+	{string(NodeTypesMasterLabelName), esv1.MasterRole},
+	{string(NodeTypesDataLabelName), esv1.DataRole},
+	{string(NodeTypesIngestLabelName), esv1.IngestRole},
+	{string(NodeTypesMLLabelName), esv1.MLRole},
+	{string(NodeTypesTransformLabelName), esv1.TransformRole},
+	{string(NodeTypesRemoteClusterClientLabelName), esv1.RemoteClusterClientRole},
+	{string(NodeTypesDataHotLabelName), esv1.DataHotRole},
+	{string(NodeTypesDataWarmLabelName), esv1.DataWarmRole},
+	{string(NodeTypesDataColdLabelName), esv1.DataColdRole},
+	{string(NodeTypesDataContentLabelName), esv1.DataContentRole},
+	{string(NodeTypesDataFrozenLabelName), esv1.DataFrozenRole},
+}
+
 // NonMasterRoles are all Elasticsearch node roles except master or voting-only.
 var NonMasterRoles = []labels.TrueFalseLabel{
 	NodeTypesDataLabelName,

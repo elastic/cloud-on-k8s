@@ -962,6 +962,7 @@ func TestGetRolesFromStatefulSet(t *testing.T) {
 	type args struct {
 		statefulSetName string
 		builder         Builder
+		statefulSet     *appsv1.StatefulSet
 		version         string
 	}
 	tests := []struct {
@@ -1060,17 +1061,43 @@ func TestGetRolesFromStatefulSet(t *testing.T) {
 			want:    []esv1.NodeRole{esv1.DataHotRole, esv1.DataWarmRole},
 			wantErr: false,
 		},
+		{
+			name: "sts with no labels returns an error",
+			args: args{
+				statefulSetName: "no-labels",
+				statefulSet: &appsv1.StatefulSet{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "no-labels",
+						Namespace: "ns",
+					},
+				},
+				version: "8.0.0",
+			},
+			wantErr: true,
+		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			statefulSet, found := tt.args.builder.GetStatefulSets().GetByName(tt.args.statefulSetName)
+			var statefulSet appsv1.StatefulSet
+			var found bool
+			// This allows overriding the statefulset for conditions such as error testing.
+			if tt.args.statefulSet == nil {
+				statefulSet, found = tt.args.builder.GetStatefulSets().GetByName(tt.args.statefulSetName)
+			} else {
+				statefulSet = *tt.args.statefulSet
+				found = true
+			}
 
 			if !found && !tt.wantErr {
 				t.Fatalf("StatefulSet %s not found in test fixtures", tt.args.statefulSetName)
 			}
 
-			got := getRolesFromStatefulSet(statefulSet)
+			got, err := getRolesFromStatefulSet(statefulSet)
+			if err != nil && !tt.wantErr {
+				t.Errorf("getRolesFromStatefulSet() error = %v", err)
+				return
+			}
 			if !reflect.DeepEqual(got, tt.want) {
 				t.Errorf("getRolesForStatefulSet() = %v, want %v", got, tt.want)
 			}
@@ -1235,7 +1262,14 @@ func TestGroupBySharedRoles(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			stss := tt.builder.GetStatefulSets()
 
-			got := groupBySharedRoles(stss)
+			got, err := groupBySharedRoles(stss)
+			// There's only one path to an error here, which is a statefulset
+			// with no labels, which currently this test doesn't have the ability to create.
+			// There is a test in the underlying getRolesFromStatefulSet func that tests this condition.
+			if err != nil {
+				t.Errorf("groupBySharedRoles() error = %v", err)
+				return
+			}
 
 			// Check that the number of groups matches
 			assert.Equal(t, len(tt.want), len(got), "Expected %d groups, got %d", len(tt.want), len(got))

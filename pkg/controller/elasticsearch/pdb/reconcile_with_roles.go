@@ -98,7 +98,10 @@ func expectedRolePDBs(
 	pdbs := make([]*policyv1.PodDisruptionBudget, 0, len(statefulSets))
 
 	// Group StatefulSets by their connected roles.
-	groups := groupBySharedRoles(statefulSets)
+	groups, err := groupBySharedRoles(statefulSets)
+	if err != nil {
+		return nil, err
+	}
 
 	// Create one PDB per group
 	// Maps order isn't guaranteed so process in order of defined priority.
@@ -123,10 +126,10 @@ func expectedRolePDBs(
 	return pdbs, nil
 }
 
-func groupBySharedRoles(statefulSets sset.StatefulSetList) map[esv1.NodeRole][]appsv1.StatefulSet {
+func groupBySharedRoles(statefulSets sset.StatefulSetList) (map[esv1.NodeRole][]appsv1.StatefulSet, error) {
 	n := len(statefulSets)
 	if n == 0 {
-		return map[esv1.NodeRole][]appsv1.StatefulSet{}
+		return map[esv1.NodeRole][]appsv1.StatefulSet{}, nil
 	}
 
 	rolesToIndices := make(map[esv1.NodeRole][]int)
@@ -136,14 +139,11 @@ func groupBySharedRoles(statefulSets sset.StatefulSetList) map[esv1.NodeRole][]a
 		// as it could have been recently deleted/renamed
 		// within the spec so we must retrieve the roles from the
 		// labels in the statefulSet, not the expected configuration.
-		roles := getRolesFromStatefulSet(sset)
-
-		if len(roles) == 0 {
-			// StatefulSets with no roles are coordinating nodes - group them together
-			rolesToIndices[esv1.CoordinatingRole] = append(rolesToIndices[esv1.CoordinatingRole], i)
-			indicesToRoles[i] = set.Make(string(esv1.CoordinatingRole))
-			continue
+		roles, err := getRolesFromStatefulSet(sset)
+		if err != nil {
+			return nil, err
 		}
+
 		for _, role := range roles {
 			// Ensure that the data* roles are grouped together.
 			normalizedRole := toGenericDataRole(role)
@@ -189,49 +189,33 @@ func groupBySharedRoles(statefulSets sset.StatefulSetList) map[esv1.NodeRole][]a
 		}
 		res[role] = group
 	}
-	return res
+	return res, nil
 }
 
 // getRolesFromStatefulSet extracts the roles from a StatefulSet's labels.
-func getRolesFromStatefulSet(statefulSet appsv1.StatefulSet) []esv1.NodeRole {
-	roles := []esv1.NodeRole{}
+func getRolesFromStatefulSet(statefulSet appsv1.StatefulSet) ([]esv1.NodeRole, error) {
+	roles := make([]esv1.NodeRole, 0, len(label.RoleMappings))
 	labels := statefulSet.Spec.Template.Labels
 	if labels == nil {
-		return roles
+		return nil, fmt.Errorf("statefulSet %s/%s has no labels", statefulSet.Namespace, statefulSet.Name)
 	}
 	// if the statefulset is a coordinating role none of the labels are set to true
 	// so we can initially assume it is, and then check for any labels that are set to true
 	// to invalidate the assumption.
 	isCoordinating := true
-	// Define label-role mappings
-	labelRoleMappings := []struct {
-		labelName string
-		role      esv1.NodeRole
-	}{
-		{string(label.NodeTypesMasterLabelName), esv1.MasterRole},
-		{string(label.NodeTypesDataLabelName), esv1.DataRole},
-		{string(label.NodeTypesIngestLabelName), esv1.IngestRole},
-		{string(label.NodeTypesMLLabelName), esv1.MLRole},
-		{string(label.NodeTypesTransformLabelName), esv1.TransformRole},
-		{string(label.NodeTypesRemoteClusterClientLabelName), esv1.RemoteClusterClientRole},
-		{string(label.NodeTypesDataHotLabelName), esv1.DataHotRole},
-		{string(label.NodeTypesDataWarmLabelName), esv1.DataWarmRole},
-		{string(label.NodeTypesDataColdLabelName), esv1.DataColdRole},
-		{string(label.NodeTypesDataContentLabelName), esv1.DataContentRole},
-		{string(label.NodeTypesDataFrozenLabelName), esv1.DataFrozenRole},
-	}
+
 	// Check each label-role mapping
-	for _, mapping := range labelRoleMappings {
-		if val, exists := labels[mapping.labelName]; exists && val == "true" {
+	for _, mapping := range label.RoleMappings {
+		if val, exists := labels[mapping.LabelName]; exists && val == "true" {
 			isCoordinating = false
-			roles = append(roles, mapping.role)
+			roles = append(roles, mapping.Role)
 		}
 	}
 
 	if isCoordinating {
-		roles = append(roles, esv1.CoordinatingRole)
+		return []esv1.NodeRole{esv1.CoordinatingRole}, nil
 	}
-	return roles
+	return roles, nil
 }
 
 // createPDBForStatefulSets creates a PDB for a group of StatefulSets with shared roles.
