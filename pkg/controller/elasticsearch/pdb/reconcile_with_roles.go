@@ -244,6 +244,11 @@ func createPDBForStatefulSets(
 		Spec: buildRoleSpecificPDBSpec(ctx, es, role, statefulSets, allStatefulSets),
 	}
 
+	if es.Spec.PodDisruptionBudget != nil {
+		pdb.Annotations = es.Spec.PodDisruptionBudget.ObjectMeta.Annotations
+		pdb.Labels = es.Spec.PodDisruptionBudget.ObjectMeta.Labels
+	}
+
 	mergedMeta := meta.Merge(metadata.Metadata{
 		Labels:      pdb.Labels,
 		Annotations: pdb.Annotations,
