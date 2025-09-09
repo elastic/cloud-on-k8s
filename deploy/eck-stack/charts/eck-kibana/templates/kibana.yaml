@@ -12,8 +12,8 @@ metadata:
     {{- end }}
 spec:
   version: {{ required "A Kibana version is required" .Values.version }}
-  {{- /* 
-    The following templates with 'or' are to allow both .spec.field and .field to be set for backwards 
+  {{- /*
+    The following templates with 'or' are to allow both .spec.field and .field to be set for backwards
     compatibility purposes. See https://github.com/elastic/cloud-on-k8s/pull/8192 for details.
   */ -}}
   {{- with or ((.Values.spec).image) (.Values.image) }}
@@ -23,8 +23,8 @@ spec:
   count: {{ . }}
   {{- end }}
   {{- $esRef := or ((.Values.spec).elasticsearchRef) (.Values.elasticsearchRef) }}
-  {{- if not ($esRef).name }}
-  {{ fail "An elasticsearchRef is required" }}
+{{- if not (or ($esRef).name ($esRef).secretName) }}
+  {{ fail "An elasticsearchRef name or secretName is required" }}
   {{- end }}
   elasticsearchRef:
   {{- toYaml $esRef | nindent 4 }}

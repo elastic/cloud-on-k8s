@@ -69,9 +69,20 @@ elasticsearchRef: {}
   # will be assumed.
   #
   # namespace: default
+  #
+  # Optional secretName referencing an existing Kubernetes secret that contains connection information
+  # for associating an APM Server instance to a remote Elasticsearch instance not managed by ECK.
+  # The referenced secret must contain the following:
+  # - `url`: the URL to reach the Elastic resource
+  # - `username`: the username of the user to be authenticated to the Elastic resource
+  # - `password`: the password of the user to be authenticated to the Elastic resource
+  # - `ca.crt`: the CA certificate in PEM format (optional)
+  # This field cannot be used in combination with the other fields name, namespace or serviceName.
+  #
+  # secretName: my-remote-es-credentials
 
 # Optional reference to ECK-managed Kibana resource which allows ECK to
-# automatically configure the Kibana endpoint as described in 
+# automatically configure the Kibana endpoint as described in
 # https://www.elastic.co/guide/en/apm/server/current/setup-kibana-endpoint.html
 #
 # kibanaRef:
