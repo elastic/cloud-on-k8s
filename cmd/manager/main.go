@@ -732,6 +732,12 @@ func startOperator(ctx context.Context) error {
 		return err
 	}
 
+	if len(passwordParams.LowerLetters)+len(passwordParams.UpperLetters)+len(passwordParams.Digits)+len(passwordParams.Symbols) < 10 {
+		err := fmt.Errorf("allowedCharacters for password generation needs to be at least 10 for randomness")
+		log.Error(err, "while parsing password allowed characters")
+		return err
+	}
+
 	params := operator.Parameters{
 		Dialer:                           dialer,
 		ElasticsearchObservationInterval: viper.GetDuration(operator.ElasticsearchObservationIntervalFlag),
@@ -1148,6 +1154,9 @@ func reconcileWebhookCertsAndAddController(ctx context.Context, mgr manager.Mana
 	return webhook.Add(mgr, webhookParams, clientset, wh, tracer)
 }
 
+// categorizeAllowedCharacters categorizes the allowed characters into different categories which
+// are needed to use the go-password package properly. It also buckets the 'other' characters into a separate slice
+// such that invalid characters are able to be filtered out.
 func categorizeAllowedCharacters(s string) (params common.PasswordGeneratorParams, other []rune) {
 	var lowercase, uppercase, digits, symbols []rune
 	for _, r := range s {

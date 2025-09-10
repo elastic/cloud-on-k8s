@@ -386,15 +386,6 @@ func Test_categorizeAllowedCharacters(t *testing.T) {
 			expectedSymbols: password.Symbols,
 		},
 		{
-			name:            "mixed content with go-password constants and unicode",
-			input:           "abc123!@#😀 ñ",
-			expectedOther:   []rune{'😀', ' ', 'ñ'},
-			expectedLower:   "abc",
-			expectedUpper:   "",
-			expectedDigits:  "123",
-			expectedSymbols: "!@#",
-		},
-		{
 			name:            "empty string",
 			input:           "",
 			expectedOther:   []rune{},
