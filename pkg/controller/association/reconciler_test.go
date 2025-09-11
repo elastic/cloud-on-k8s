@@ -30,6 +30,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/comparison"
 	common_name "github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/name"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/operator"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/random/fixtures"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/watches"
 	eslabel "github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/label"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/services"
@@ -275,8 +276,7 @@ func testReconciler(runtimeObjs ...client.Object) Reconciler {
 					Version: "1.5.0",
 				},
 			},
-			PasswordLength:       defaultPasswordLength,
-			PasswordAllowedChars: defaultPasswordAllowedChars,
+			ByteGeneratorParams: fixtures.DefaultByteGeneratorParams(),
 		},
 	}
 }
@@ -931,8 +931,7 @@ func TestReconciler_Reconcile_MultiRef(t *testing.T) {
 					Version: "1.4.0-unittest",
 				},
 			},
-			PasswordLength:       defaultPasswordLength,
-			PasswordAllowedChars: defaultPasswordAllowedChars,
+			ByteGeneratorParams: fixtures.DefaultByteGeneratorParams(),
 		},
 	}
 

@@ -235,6 +235,7 @@ func getOrCreateReusableSettings(ctx context.Context, c k8s.Client, kb kbv1.Kiba
 	} else if err := cfg.Unpack(&r); err != nil {
 		return nil, err
 	}
+	// TODO: Why was this hard-coded to 64 bytes?
 	bytes, err := random.RandomBytes(params)
 	if err != nil {
 		return nil, err
@@ -242,6 +243,7 @@ func getOrCreateReusableSettings(ctx context.Context, c k8s.Client, kb kbv1.Kiba
 	if len(r.EncryptionKey) == 0 {
 		r.EncryptionKey = string(bytes)
 	}
+	// TODO: Why was this hard-coded to 64 bytes?
 	bytes, err = random.RandomBytes(params)
 	if err != nil {
 		return nil, err
@@ -256,6 +258,7 @@ func getOrCreateReusableSettings(ctx context.Context, c k8s.Client, kb kbv1.Kiba
 	}
 	// xpack.encryptedSavedObjects.encryptionKey was only added in 7.6.0 and earlier versions error out
 	if len(r.SavedObjectsKey) == 0 && kbVer.GTE(version.From(7, 6, 0)) {
+		// TODO: Why was this hard-coded to 64 bytes?
 		bytes, err := random.RandomBytes(params)
 		if err != nil {
 			return nil, err

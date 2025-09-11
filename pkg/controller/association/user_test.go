@@ -10,6 +10,7 @@ import (
 	"testing"
 
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/metadata"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/random/fixtures"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -262,7 +263,7 @@ func Test_reconcileEsUser(t *testing.T) {
 				"kibana_system",
 				"kibana-user",
 				tt.args.es,
-				24,
+				fixtures.DefaultByteGeneratorParams(),
 			); (err != nil) != tt.wantErr {
 				t.Errorf("reconcileEsUser() error = %v, wantErr %v", err, tt.wantErr)
 			}

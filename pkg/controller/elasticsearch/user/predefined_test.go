@@ -9,6 +9,7 @@ import (
 	"testing"
 
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/metadata"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/random/fixtures"
 
 	"github.com/stretchr/testify/require"
 	"golang.org/x/crypto/bcrypt"
@@ -112,7 +113,10 @@ func Test_reconcileElasticUser(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			c := k8s.NewFakeClient(tt.existingSecrets...)
-			got, err := reconcileElasticUser(context.Background(), c, es, tt.existingFileRealm, filerealm.New(), testPasswordHasher, 16, metadata.Metadata{})
+			// allow re-use of existing passwords of the length in these tests.
+			defaultGeneratorParams := fixtures.DefaultByteGeneratorParams()
+			defaultGeneratorParams.Length = 16
+			got, err := reconcileElasticUser(context.Background(), c, es, tt.existingFileRealm, filerealm.New(), testPasswordHasher, defaultGeneratorParams, metadata.Metadata{})
 			require.NoError(t, err)
 			// check returned user
 			require.Len(t, got, 1)
@@ -158,7 +162,7 @@ func Test_reconcileElasticUser_conditionalCreation(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			c := k8s.NewFakeClient()
-			got, err := reconcileElasticUser(context.Background(), c, es, filerealm.New(), tt.userFileReam, testPasswordHasher, 24, md)
+			got, err := reconcileElasticUser(context.Background(), c, es, filerealm.New(), tt.userFileReam, testPasswordHasher, fixtures.DefaultByteGeneratorParams(), md)
 			require.NoError(t, err)
 			// check returned user
 			wantLen := 1
@@ -313,7 +317,10 @@ func Test_reconcileInternalUsers(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			c := k8s.NewFakeClient(tt.existingSecrets...)
 			es := tt.es()
-			got, err := reconcileInternalUsers(context.Background(), c, es, tt.existingFileRealm, testPasswordHasher, 16, metadata.Propagate(&es, metadata.Metadata{Labels: es.GetIdentityLabels()}))
+			// allow re-use of existing passwords of the length in these tests.
+			defaultGeneratorParams := fixtures.DefaultByteGeneratorParams()
+			defaultGeneratorParams.Length = 17
+			got, err := reconcileInternalUsers(context.Background(), c, es, tt.existingFileRealm, testPasswordHasher, defaultGeneratorParams, metadata.Propagate(&es, metadata.Metadata{Labels: es.GetIdentityLabels()}))
 			require.True(t, ((err != nil) == tt.errorExpected), "error expected: %v, got: %v", tt.errorExpected, err)
 			if tt.errorExpected {
 				return

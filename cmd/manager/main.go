@@ -718,7 +718,7 @@ func startOperator(ctx context.Context) error {
 	allowedCharacters := viper.GetString(operator.PasswordAllowedCharactersFlag)
 	generatorParams, other := categorizeAllowedCharacters(allowedCharacters)
 	if len(other) > 0 {
-		err := fmt.Errorf("invalid characters in passwords allowed characters: %s", other)
+		err := fmt.Errorf("invalid characters in passwords allowed characters: %s", string(other))
 		log.Error(err, "while parsing passwords allowed characters")
 		return err
 	}

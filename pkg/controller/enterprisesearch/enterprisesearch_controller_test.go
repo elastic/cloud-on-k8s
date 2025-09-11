@@ -24,6 +24,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/certificates"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/operator"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/random/fixtures"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/watches"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/k8s"
 	ulog "github.com/elastic/cloud-on-k8s/v3/pkg/utils/log"
@@ -118,7 +119,10 @@ func TestReconcileEnterpriseSearch_Reconcile_Create_Update_Resources(t *testing.
 		Client:         k8s.NewFakeClient(&sample),
 		dynamicWatches: watches.NewDynamicWatches(),
 		recorder:       record.NewFakeRecorder(10),
-		Parameters:     operator.Parameters{OperatorInfo: about.OperatorInfo{BuildInfo: about.BuildInfo{Version: "1.0.0"}}},
+		Parameters: operator.Parameters{
+			OperatorInfo:        about.OperatorInfo{BuildInfo: about.BuildInfo{Version: "1.0.0"}},
+			ByteGeneratorParams: fixtures.DefaultByteGeneratorParams(),
+		},
 	}
 
 	checkResources := func() {
@@ -265,7 +269,10 @@ func TestReconcileEnterpriseSearch_doReconcile_AssociationDelaysVersionUpgrade(t
 		Client:         k8s.NewFakeClient(&ent, &es, &esTLSCertsSecret, &esAuthSecret, &entSearchPod),
 		dynamicWatches: watches.NewDynamicWatches(),
 		recorder:       record.NewFakeRecorder(10),
-		Parameters:     operator.Parameters{OperatorInfo: about.OperatorInfo{BuildInfo: about.BuildInfo{Version: "1.0.0"}}},
+		Parameters: operator.Parameters{
+			OperatorInfo:        about.OperatorInfo{BuildInfo: about.BuildInfo{Version: "1.0.0"}},
+			ByteGeneratorParams: fixtures.DefaultByteGeneratorParams(),
+		},
 	}
 	results, _ := r.doReconcile(context.Background(), ent)
 	_, err := results.Aggregate()

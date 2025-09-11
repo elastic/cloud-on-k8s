@@ -236,7 +236,7 @@ func (r *ReconcileEnterpriseSearch) doReconcile(ctx context.Context, ent entv1.E
 		return results, status // will eventually retry once updated
 	}
 
-	configSecret, err := ReconcileConfig(ctx, r, ent, r.IPFamily, meta)
+	configSecret, err := ReconcileConfig(ctx, r, ent, r.IPFamily, r.ByteGeneratorParams, meta)
 	if err != nil {
 		return results.WithError(err), status
 	}

@@ -25,6 +25,7 @@ import (
 	kibanav1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/kibana/v1"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/operator"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/random/fixtures"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/watches"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/k8s"
 )
@@ -338,7 +339,9 @@ func TestReconcileKibana_Reconcile(t *testing.T) {
 				Client:         tt.fields.Client,
 				recorder:       record.NewFakeRecorder(100),
 				dynamicWatches: watches.NewDynamicWatches(),
-				params:         operator.Parameters{},
+				params: operator.Parameters{
+					ByteGeneratorParams: fixtures.DefaultByteGeneratorParams(),
+				},
 			}
 			got, err := r.Reconcile(context.Background(), tt.request)
 			if (err != nil) != tt.wantErr {

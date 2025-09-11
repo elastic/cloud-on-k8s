@@ -212,6 +212,7 @@ func getOrCreateReusableSettings(ctx context.Context, c k8s.Client, ent entv1.En
 		return nil, err
 	}
 
+	// TODO: Find out why 32 was hard-coded here as the random bytes length
 	bytes, err := random.RandomBytes(params)
 	if err != nil {
 		return nil, err
@@ -231,6 +232,7 @@ func getOrCreateReusableSettings(ctx context.Context, c k8s.Client, ent entv1.En
 	// in that case we still keep the first item we manage, user-provided keys will be appended to the array.
 	// This allows users to go from no custom key provided (use operator's generated one), to providing their own.
 	if len(e.EncryptionKeys) == 0 {
+		// TODO: Find out why 32 was hard-coded here as the random bytes length
 		bytes, err := random.RandomBytes(params)
 		if err != nil {
 			return nil, err
