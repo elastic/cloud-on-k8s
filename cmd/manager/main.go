@@ -15,7 +15,6 @@ import (
 	"strconv"
 	"strings"
 	"time"
-	"unicode"
 
 	"github.com/go-logr/logr"
 	"github.com/sethvargo/go-password/password"
@@ -1159,25 +1158,26 @@ func reconcileWebhookCertsAndAddController(ctx context.Context, mgr manager.Mana
 // such that invalid characters are able to be filtered out.
 func categorizeAllowedCharacters(s string) (params random.ByteGeneratorParams, other []rune) {
 	var lowercase, uppercase, digits, symbols []rune
+
 	for _, r := range s {
 		switch {
-		case unicode.IsLower(r):
+		case strings.ContainsRune(password.LowerLetters, r):
 			lowercase = append(lowercase, r)
-		case unicode.IsUpper(r):
+		case strings.ContainsRune(password.UpperLetters, r):
 			uppercase = append(uppercase, r)
-		case unicode.IsDigit(r):
+		case strings.ContainsRune(password.Digits, r):
 			digits = append(digits, r)
-		case unicode.IsPunct(r) || unicode.IsSymbol(r):
+		case strings.ContainsRune(password.Symbols, r):
 			symbols = append(symbols, r)
 		default:
 			other = append(other, r)
 		}
 	}
 
-	params.LowerLetters = string(lowercase)
-	params.UpperLetters = string(uppercase)
-	params.Digits = string(digits)
-	params.Symbols = string(symbols)
-
-	return
+	return random.ByteGeneratorParams{
+		LowerLetters: string(lowercase),
+		UpperLetters: string(uppercase),
+		Digits:       string(digits),
+		Symbols:      string(symbols),
+	}, other
 }

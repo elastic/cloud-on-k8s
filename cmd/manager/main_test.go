@@ -379,7 +379,7 @@ func Test_categorizeAllowedCharacters(t *testing.T) {
 		{
 			name:            "go-password constants do not show up in other slice",
 			input:           password.LowerLetters + password.UpperLetters + password.Digits + password.Symbols,
-			expectedOther:   []rune{},
+			expectedOther:   nil,
 			expectedLower:   password.LowerLetters,
 			expectedUpper:   password.UpperLetters,
 			expectedDigits:  password.Digits,
@@ -388,7 +388,7 @@ func Test_categorizeAllowedCharacters(t *testing.T) {
 		{
 			name:            "empty string",
 			input:           "",
-			expectedOther:   []rune{},
+			expectedOther:   nil,
 			expectedLower:   "",
 			expectedUpper:   "",
 			expectedDigits:  "",
