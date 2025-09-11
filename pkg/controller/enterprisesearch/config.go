@@ -11,8 +11,6 @@ import (
 	"net"
 	"path/filepath"
 
-	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/metadata"
-
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -25,6 +23,8 @@ import (
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/certificates"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/driver"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/labels"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/metadata"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/random"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/reconciler"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/settings"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/version"
@@ -61,8 +61,8 @@ func ReadinessProbeSecretVolume(ent entv1.EnterpriseSearch) volume.SecretVolume 
 // The secret contains 2 entries:
 // - the Enterprise Search configuration file
 // - a bash script used as readiness probe
-func ReconcileConfig(ctx context.Context, driver driver.Interface, ent entv1.EnterpriseSearch, ipFamily corev1.IPFamily, meta metadata.Metadata) (corev1.Secret, error) {
-	cfg, err := newConfig(ctx, driver, ent, ipFamily)
+func ReconcileConfig(ctx context.Context, driver driver.Interface, ent entv1.EnterpriseSearch, ipFamily corev1.IPFamily, params random.ByteGeneratorParams, meta metadata.Metadata) (corev1.Secret, error) {
+	cfg, err := newConfig(ctx, driver, ent, ipFamily, params)
 	if err != nil {
 		return corev1.Secret{}, err
 	}
@@ -151,8 +151,8 @@ func readinessProbeScript(ent entv1.EnterpriseSearch, config *settings.Canonical
 // - user-provided plaintext configuration
 // - user-provided secret configuration
 // In case of duplicate settings, the last one takes precedence.
-func newConfig(ctx context.Context, driver driver.Interface, ent entv1.EnterpriseSearch, ipFamily corev1.IPFamily) (*settings.CanonicalConfig, error) {
-	reusedCfg, err := getOrCreateReusableSettings(ctx, driver.K8sClient(), ent)
+func newConfig(ctx context.Context, driver driver.Interface, ent entv1.EnterpriseSearch, ipFamily corev1.IPFamily, params random.ByteGeneratorParams) (*settings.CanonicalConfig, error) {
+	reusedCfg, err := getOrCreateReusableSettings(ctx, driver.K8sClient(), ent, params)
 	if err != nil {
 		return nil, err
 	}
@@ -199,7 +199,7 @@ type reusableSettings struct {
 }
 
 // getOrCreateReusableSettings reads the current configuration and reuse existing secrets it they exist.
-func getOrCreateReusableSettings(ctx context.Context, c k8s.Client, ent entv1.EnterpriseSearch) (*settings.CanonicalConfig, error) {
+func getOrCreateReusableSettings(ctx context.Context, c k8s.Client, ent entv1.EnterpriseSearch, params random.ByteGeneratorParams) (*settings.CanonicalConfig, error) {
 	cfg, err := getExistingConfig(ctx, c, ent)
 	if err != nil {
 		return nil, err
@@ -212,9 +212,14 @@ func getOrCreateReusableSettings(ctx context.Context, c k8s.Client, ent entv1.En
 		return nil, err
 	}
 
+	bytes, err := random.RandomBytes(params)
+	if err != nil {
+		return nil, err
+	}
+
 	// generate a random secret session key, or reuse the existing one
 	if len(e.SecretSession) == 0 {
-		e.SecretSession = string(common.RandomBytes(32))
+		e.SecretSession = string(bytes)
 	}
 
 	// generate a random encryption key, or reuse the existing one
@@ -226,8 +231,12 @@ func getOrCreateReusableSettings(ctx context.Context, c k8s.Client, ent entv1.En
 	// in that case we still keep the first item we manage, user-provided keys will be appended to the array.
 	// This allows users to go from no custom key provided (use operator's generated one), to providing their own.
 	if len(e.EncryptionKeys) == 0 {
+		bytes, err := random.RandomBytes(params)
+		if err != nil {
+			return nil, err
+		}
 		// no encryption key, generate a new one
-		e.EncryptionKeys = []string{string(common.RandomBytes(32))}
+		e.EncryptionKeys = []string{string(bytes)}
 	} else {
 		// encryption keys already exist, reuse the first ECK-managed one
 		// other user-provided keys from user-provided config will be merged in later

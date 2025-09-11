@@ -191,7 +191,7 @@ func (d *defaultDriver) Reconcile(ctx context.Context) *reconciler.Results {
 		d.DynamicWatches(),
 		d.Recorder(),
 		d.OperatorParameters.PasswordHasher,
-		d.OperatorParameters.PasswordLength,
+		d.OperatorParameters.ByteGeneratorParams,
 		meta)
 	if err != nil {
 		return results.WithError(err)

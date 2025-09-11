@@ -19,8 +19,8 @@ import (
 	commonv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/common/v1"
 	kbv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/kibana/v1"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/association"
-	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/certificates"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/random"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/settings"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/tracing"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/version"
@@ -80,11 +80,11 @@ type CanonicalConfig struct {
 }
 
 // NewConfigSettings returns the Kibana configuration settings for the given Kibana resource.
-func NewConfigSettings(ctx context.Context, client k8s.Client, kb kbv1.Kibana, v version.Version, ipFamily corev1.IPFamily, kibanaConfigFromPolicy *settings.CanonicalConfig) (CanonicalConfig, error) {
+func NewConfigSettings(ctx context.Context, client k8s.Client, kb kbv1.Kibana, v version.Version, ipFamily corev1.IPFamily, kibanaConfigFromPolicy *settings.CanonicalConfig, params random.ByteGeneratorParams) (CanonicalConfig, error) {
 	span, _ := apm.StartSpan(ctx, "new_config_settings", tracing.SpanTypeApp)
 	defer span.End()
 
-	reusableSettings, err := getOrCreateReusableSettings(ctx, client, kb)
+	reusableSettings, err := getOrCreateReusableSettings(ctx, client, kb, params)
 	if err != nil {
 		return CanonicalConfig{}, err
 	}
@@ -223,7 +223,7 @@ func getExistingConfig(ctx context.Context, client k8s.Client, kb kbv1.Kibana) (
 
 // getOrCreateReusableSettings filters an existing config for only items we want to preserve between spec changes
 // because they cannot be generated deterministically, e.g. encryption keys
-func getOrCreateReusableSettings(ctx context.Context, c k8s.Client, kb kbv1.Kibana) (*settings.CanonicalConfig, error) {
+func getOrCreateReusableSettings(ctx context.Context, c k8s.Client, kb kbv1.Kibana, params random.ByteGeneratorParams) (*settings.CanonicalConfig, error) {
 	cfg, err := getExistingConfig(ctx, c, kb)
 	if err != nil {
 		return nil, err
@@ -235,11 +235,19 @@ func getOrCreateReusableSettings(ctx context.Context, c k8s.Client, kb kbv1.Kiba
 	} else if err := cfg.Unpack(&r); err != nil {
 		return nil, err
 	}
+	bytes, err := random.RandomBytes(params)
+	if err != nil {
+		return nil, err
+	}
 	if len(r.EncryptionKey) == 0 {
-		r.EncryptionKey = string(common.RandomBytes(64))
+		r.EncryptionKey = string(bytes)
+	}
+	bytes, err = random.RandomBytes(params)
+	if err != nil {
+		return nil, err
 	}
 	if len(r.ReportingKey) == 0 {
-		r.ReportingKey = string(common.RandomBytes(64))
+		r.ReportingKey = string(bytes)
 	}
 
 	kbVer, err := version.Parse(kb.Spec.Version)
@@ -248,7 +256,11 @@ func getOrCreateReusableSettings(ctx context.Context, c k8s.Client, kb kbv1.Kiba
 	}
 	// xpack.encryptedSavedObjects.encryptionKey was only added in 7.6.0 and earlier versions error out
 	if len(r.SavedObjectsKey) == 0 && kbVer.GTE(version.From(7, 6, 0)) {
-		r.SavedObjectsKey = string(common.RandomBytes(64))
+		bytes, err := random.RandomBytes(params)
+		if err != nil {
+			return nil, err
+		}
+		r.SavedObjectsKey = string(bytes)
 	}
 	return settings.MustCanonicalConfig(r), nil
 }

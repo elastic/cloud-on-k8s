@@ -64,11 +64,11 @@ import (
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/autoscaling"
 	esavalidation "github.com/elastic/cloud-on-k8s/v3/pkg/controller/autoscaling/elasticsearch/validation"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/beat"
-	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/certificates"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/container"
 	commonlicense "github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/license"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/operator"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/random"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/reconciler"
 	controllerscheme "github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/scheme"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/tracing"
@@ -716,23 +716,23 @@ func startOperator(ctx context.Context) error {
 	}
 
 	allowedCharacters := viper.GetString(operator.PasswordAllowedCharactersFlag)
-	passwordParams, other := categorizeAllowedCharacters(allowedCharacters)
+	generatorParams, other := categorizeAllowedCharacters(allowedCharacters)
 	if len(other) > 0 {
 		err := fmt.Errorf("invalid characters in passwords allowed characters: %s", other)
 		log.Error(err, "while parsing passwords allowed characters")
 		return err
 	}
 
-	passwordParams.Length = viper.GetInt(operator.PasswordLengthFlag)
+	generatorParams.Length = viper.GetInt(operator.PasswordLengthFlag)
 	// Elasticsearch requires at least 6 characters for passwords
 	// https://www.elastic.co/guide/en/elasticsearch/reference/7.5/security-api-put-user.html
-	if passwordParams.Length < 6 {
+	if generatorParams.Length < 6 {
 		err := fmt.Errorf("password length must be at least 6")
 		log.Error(err, "while parsing password length")
 		return err
 	}
 
-	if len(passwordParams.LowerLetters)+len(passwordParams.UpperLetters)+len(passwordParams.Digits)+len(passwordParams.Symbols) < 10 {
+	if len(generatorParams.LowerLetters)+len(generatorParams.UpperLetters)+len(generatorParams.Digits)+len(generatorParams.Symbols) < 10 {
 		err := fmt.Errorf("allowedCharacters for password generation needs to be at least 10 for randomness")
 		log.Error(err, "while parsing password allowed characters")
 		return err
@@ -755,7 +755,7 @@ func startOperator(ctx context.Context) error {
 			RotateBefore: certRotateBefore,
 		},
 		PasswordHasher:            passwordHasher,
-		PasswordGeneratorParams:   passwordParams,
+		ByteGeneratorParams:       generatorParams,
 		MaxConcurrentReconciles:   viper.GetInt(operator.MaxConcurrentReconcilesFlag),
 		SetDefaultSecurityContext: setDefaultSecurityContext,
 		ValidateStorageClass:      viper.GetBool(operator.ValidateStorageClassFlag),
@@ -1157,7 +1157,7 @@ func reconcileWebhookCertsAndAddController(ctx context.Context, mgr manager.Mana
 // categorizeAllowedCharacters categorizes the allowed characters into different categories which
 // are needed to use the go-password package properly. It also buckets the 'other' characters into a separate slice
 // such that invalid characters are able to be filtered out.
-func categorizeAllowedCharacters(s string) (params common.PasswordGeneratorParams, other []rune) {
+func categorizeAllowedCharacters(s string) (params random.ByteGeneratorParams, other []rune) {
 	var lowercase, uppercase, digits, symbols []rune
 	for _, r := range s {
 		switch {

@@ -16,9 +16,9 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 
 	esv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/elasticsearch/v1"
-	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/labels"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/metadata"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/random"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/reconciler"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/version"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/user/filerealm"
@@ -49,7 +49,7 @@ func reconcileElasticUser(
 	existingFileRealm,
 	userProvidedFileRealm filerealm.Realm,
 	passwordHasher cryptutil.PasswordHasher,
-	passwordLength int,
+	params random.ByteGeneratorParams,
 	meta metadata.Metadata,
 ) (users, error) {
 	if es.Spec.Auth.DisableElasticUser {
@@ -77,7 +77,7 @@ func reconcileElasticUser(
 		// See https://github.com/elastic/cloud-on-k8s/issues/3986.
 		false,
 		passwordHasher,
-		passwordLength,
+		params,
 		meta,
 	)
 }
@@ -89,7 +89,7 @@ func reconcileInternalUsers(
 	es esv1.Elasticsearch,
 	existingFileRealm filerealm.Realm,
 	passwordHasher cryptutil.PasswordHasher,
-	passwordLength int,
+	params random.ByteGeneratorParams,
 	meta metadata.Metadata,
 ) (users, error) {
 	users := users{
@@ -124,7 +124,7 @@ func reconcileInternalUsers(
 		esv1.InternalUsersSecret(es.Name),
 		true,
 		passwordHasher,
-		passwordLength,
+		params,
 		meta,
 	)
 }
@@ -152,14 +152,14 @@ func reconcilePredefinedUsers(
 	secretName string,
 	setOwnerRef bool,
 	passwordHasher cryptutil.PasswordHasher,
-	passwordLength int,
+	params random.ByteGeneratorParams,
 	meta metadata.Metadata,
 ) (users, error) {
 	secretNsn := types.NamespacedName{Namespace: es.Namespace, Name: secretName}
 
 	// build users, reusing existing passwords and bcrypt hashes if possible
 	var err error
-	users, err = reuseOrGeneratePassword(c, users, secretNsn, passwordLength)
+	users, err = reuseOrGeneratePassword(c, users, secretNsn, params)
 	if err != nil {
 		return nil, err
 	}
@@ -194,7 +194,7 @@ func reconcilePredefinedUsers(
 
 // reuseOrGeneratePassword updates the users with existing passwords reused from the existing K8s secret,
 // or generates new passwords.
-func reuseOrGeneratePassword(c k8s.Client, users users, secretRef types.NamespacedName, length int) (users, error) {
+func reuseOrGeneratePassword(c k8s.Client, users users, secretRef types.NamespacedName, params random.ByteGeneratorParams) (users, error) {
 	var secret corev1.Secret
 	err := c.Get(context.Background(), secretRef, &secret)
 	if err != nil && !apierrors.IsNotFound(err) {
@@ -209,10 +209,10 @@ func reuseOrGeneratePassword(c k8s.Client, users users, secretRef types.Namespac
 	}
 	// either reuse the password or generate a new one
 	for i, u := range users {
-		if password, exists := secret.Data[u.Name]; exists && len(password) >= length {
+		if password, exists := secret.Data[u.Name]; exists && len(password) >= params.Length {
 			users[i].Password = password
 		} else {
-			users[i].Password = common.FixedLengthRandomPasswordBytes(length)
+			users[i].Password = random.FixedLengthRandomPasswordBytes(params)
 		}
 	}
 	return users, nil

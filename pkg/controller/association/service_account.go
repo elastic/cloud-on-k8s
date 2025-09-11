@@ -16,6 +16,7 @@ import (
 	"strings"
 
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/metadata"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/random"
 
 	"go.elastic.co/apm/v2"
 	"golang.org/x/crypto/pbkdf2"
@@ -27,7 +28,6 @@ import (
 
 	commonv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/common/v1"
 	esv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/elasticsearch/v1"
-	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/labels"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/reconciler"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/tracing"
@@ -69,6 +69,7 @@ func reconcileApplicationSecret(
 	tokenName string,
 	serviceAccount commonv1.ServiceAccountName,
 	application client.Object,
+	params random.ByteGeneratorParams,
 ) (*Token, error) {
 	span, ctx := apm.StartSpan(ctx, "reconcile_sa_token_application", tracing.SpanTypeApp)
 	defer span.End()
@@ -82,13 +83,13 @@ func reconcileApplicationSecret(
 	var token *Token
 	if k8serrors.IsNotFound(err) || len(applicationStore.Data) == 0 {
 		// Secret does not exist or is empty, create a new token
-		token, err = newApplicationToken(serviceAccount, tokenName)
+		token, err = newApplicationToken(serviceAccount, tokenName, params)
 		if err != nil {
 			return nil, err
 		}
 	} else {
 		// Attempt to read current token, create a new one in case of an error.
-		token, err = getOrCreateToken(ctx, &es, applicationSecretName.Name, applicationStore.Data, serviceAccount, tokenName)
+		token, err = getOrCreateToken(ctx, &es, applicationSecretName.Name, applicationStore.Data, serviceAccount, tokenName, params)
 		if err != nil {
 			return nil, err
 		}
@@ -128,11 +129,12 @@ func getOrCreateToken(
 	secretData map[string][]byte,
 	serviceAccountName commonv1.ServiceAccountName,
 	expectedTokenName string,
+	params random.ByteGeneratorParams,
 ) (*Token, error) {
 	token := getCurrentApplicationToken(ctx, es, secretName, secretData)
 	if token == nil || token.TokenName != expectedTokenName {
 		// We need to create a new token
-		return newApplicationToken(serviceAccountName, expectedTokenName)
+		return newApplicationToken(serviceAccountName, expectedTokenName, params)
 	}
 	return token, nil
 }
@@ -179,9 +181,10 @@ func ReconcileServiceAccounts(
 	elasticsearchSecretName types.NamespacedName,
 	serviceAccount commonv1.ServiceAccountName,
 	application client.Object,
+	params random.ByteGeneratorParams,
 ) error {
 	tokenName := tokenName(applicationSecretName.Namespace, application.GetName(), application.GetUID())
-	token, err := reconcileApplicationSecret(ctx, client, es, applicationSecretName, meta, tokenName, serviceAccount, application)
+	token, err := reconcileApplicationSecret(ctx, client, es, applicationSecretName, meta, tokenName, serviceAccount, application, params)
 	if err != nil {
 		return err
 	}
@@ -235,8 +238,11 @@ func getFieldOrNil(ctx context.Context, es *esv1.Elasticsearch, secretName strin
 var prefix = [...]byte{0x0, 0x1, 0x0, 0x1}
 
 // newApplicationToken generates a new token for a given service account.
-func newApplicationToken(serviceAccountName commonv1.ServiceAccountName, tokenName string) (*Token, error) {
-	secret := common.RandomBytes(64)
+func newApplicationToken(serviceAccountName commonv1.ServiceAccountName, tokenName string, params random.ByteGeneratorParams) (*Token, error) {
+	secret, err := random.RandomBytes(params)
+	if err != nil {
+		return nil, fmt.Errorf("while generating random bytes for service account token: %w", err)
+	}
 	hash, err := pbkdf2Key(secret)
 	if err != nil {
 		return nil, err

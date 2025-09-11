@@ -12,6 +12,7 @@ import (
 	"sync/atomic"
 
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/metadata"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/random"
 
 	"go.elastic.co/apm/v2"
 	appsv1 "k8s.io/api/apps/v1"
@@ -268,7 +269,7 @@ func (r *ReconcileApmServer) doReconcile(ctx context.Context, as *apmv1.ApmServe
 		return results, state // will eventually retry
 	}
 
-	state, err = r.reconcileApmServerDeployment(ctx, state, as, asVersion, meta)
+	state, err = r.reconcileApmServerDeployment(ctx, state, as, asVersion, r.ByteGeneratorParams, meta)
 	if err != nil {
 		if apierrors.IsConflict(err) {
 			log.V(1).Info("Conflict while updating status")
@@ -308,7 +309,7 @@ func (r *ReconcileApmServer) onDelete(ctx context.Context, obj types.NamespacedN
 
 // reconcileApmServerToken reconciles a Secret containing the APM Server token.
 // It reuses the existing token if possible.
-func reconcileApmServerToken(ctx context.Context, c k8s.Client, as *apmv1.ApmServer, meta metadata.Metadata) (corev1.Secret, error) {
+func reconcileApmServerToken(ctx context.Context, c k8s.Client, as *apmv1.ApmServer, params random.ByteGeneratorParams, meta metadata.Metadata) (corev1.Secret, error) {
 	expectedApmServerSecret := corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
 			Namespace:   as.Namespace,
@@ -327,7 +328,11 @@ func reconcileApmServerToken(ctx context.Context, c k8s.Client, as *apmv1.ApmSer
 	if token, exists := existingSecret.Data[SecretTokenKey]; exists {
 		expectedApmServerSecret.Data[SecretTokenKey] = token
 	} else {
-		expectedApmServerSecret.Data[SecretTokenKey] = common.RandomBytes(24)
+		bytes, err := random.RandomBytes(params)
+		if err != nil {
+			return corev1.Secret{}, err
+		}
+		expectedApmServerSecret.Data[SecretTokenKey] = bytes
 	}
 
 	// Don't set an ownerRef for the APM token secret, likely to be copied into different namespaces.
