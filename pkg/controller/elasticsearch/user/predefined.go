@@ -159,7 +159,7 @@ func reconcilePredefinedUsers(
 
 	// build users, reusing existing passwords and bcrypt hashes if possible
 	var err error
-	users, err = reuseOrGeneratePassword(c, users, secretNsn, params)
+	users, err = reuseOrGeneratePassword(ctx, c, users, secretNsn, params)
 	if err != nil {
 		return nil, err
 	}
@@ -194,9 +194,9 @@ func reconcilePredefinedUsers(
 
 // reuseOrGeneratePassword updates the users with existing passwords reused from the existing K8s secret,
 // or generates new passwords.
-func reuseOrGeneratePassword(c k8s.Client, users users, secretRef types.NamespacedName, params random.ByteGeneratorParams) (users, error) {
+func reuseOrGeneratePassword(ctx context.Context, c k8s.Client, users users, secretRef types.NamespacedName, params random.ByteGeneratorParams) (users, error) {
 	var secret corev1.Secret
-	err := c.Get(context.Background(), secretRef, &secret)
+	err := c.Get(ctx, secretRef, &secret)
 	if err != nil && !apierrors.IsNotFound(err) {
 		return nil, err
 	}
@@ -212,7 +212,11 @@ func reuseOrGeneratePassword(c k8s.Client, users users, secretRef types.Namespac
 		if password, exists := secret.Data[u.Name]; exists && len(password) >= params.Length {
 			users[i].Password = password
 		} else {
-			users[i].Password = random.FixedLengthRandomPasswordBytes(params)
+			bytes, err := random.RandomBytesRespectingLicense(ctx, c, "", params)
+			if err != nil {
+				return nil, err
+			}
+			users[i].Password = bytes
 		}
 	}
 	return users, nil

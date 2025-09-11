@@ -5,6 +5,10 @@
 package random
 
 import (
+	"context"
+
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/license"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/k8s"
 	"github.com/sethvargo/go-password/password"
 )
 
@@ -18,11 +22,22 @@ type ByteGeneratorParams struct {
 	Length       int
 }
 
+func RandomBytesRespectingLicense(ctx context.Context, client k8s.Client, namespace string, params ByteGeneratorParams) ([]byte, error) {
+	enabled, err := license.NewLicenseChecker(client, namespace).EnterpriseFeaturesEnabled(ctx)
+	if err != nil {
+		return nil, err
+	}
+	if enabled {
+		return RandomBytes(params)
+	}
+	return BasicLicenseFixedLengthRandomPasswordbytes(24), nil
+}
+
 // BasicLicenseFixedLengthRandomPasswordbytes generates a random password with a fixed length of 24 characters
 // than is used by users with a basic license.
-func BasicLicenseFixedLengthRandomPasswordbytes() []byte {
+func BasicLicenseFixedLengthRandomPasswordbytes(length int) []byte {
 	return []byte(password.MustGenerate(
-		24,
+		length,
 		10,    // number of digits to include in the result
 		0,     // number of symbols to include in the result
 		false, // noUpper
