@@ -17,6 +17,18 @@ type PasswordGeneratorParams struct {
 	Length       int
 }
 
+// BasicLicenseFixedLengthRandomPasswordbytes generates a random password with a fixed length of 24 characters
+// than is used by users with a basic license.
+func BasicLicenseFixedLengthRandomPasswordbytes() []byte {
+	return []byte(password.MustGenerate(
+		24,
+		10,    // number of digits to include in the result
+		0,     // number of symbols to include in the result
+		false, // noUpper
+		true,  // allowRepeat
+	))
+}
+
 // FixedLengthRandomPasswordBytes generates a random password
 func FixedLengthRandomPasswordBytes(params PasswordGeneratorParams) []byte {
 	return MustRandomBytes(params)
