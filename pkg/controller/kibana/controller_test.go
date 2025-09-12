@@ -339,9 +339,7 @@ func TestReconcileKibana_Reconcile(t *testing.T) {
 				Client:         tt.fields.Client,
 				recorder:       record.NewFakeRecorder(100),
 				dynamicWatches: watches.NewDynamicWatches(),
-				params: operator.Parameters{
-					ByteGeneratorParams: fixtures.DefaultByteGeneratorParams(),
-				},
+				params:         operator.Parameters{},
 			}
 			got, err := r.Reconcile(context.Background(), tt.request)
 			if (err != nil) != tt.wantErr {
