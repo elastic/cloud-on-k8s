@@ -71,11 +71,3 @@ func RandomBytes(params ByteGeneratorParams) ([]byte, error) {
 	)
 	return []byte(str), err
 }
-
-// min returns the minimum of two integers used for generating random bytes.
-func min(a, b int) int {
-	if a <= b {
-		return a
-	}
-	return b
-}

@@ -31,6 +31,7 @@ func TestRandomBytes(t *testing.T) {
 			},
 			wantErr: false,
 			validate: func(t *testing.T, result []byte, params ByteGeneratorParams) {
+				t.Helper()
 				password := string(result)
 				assert.Len(t, password, params.Length)
 
