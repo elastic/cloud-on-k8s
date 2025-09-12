@@ -80,8 +80,8 @@ data:
     webhook-secret: {{ . }}
     {{- end }}
     {{- $passwordLength := int (dig "policies" "passwords" "length" 24 .Values.config) }}
-    {{- if lt $passwordLength 24 }}
-    {{- fail "config.policies.passwords.length must be >= 24" }}
+    {{- if lt $passwordLength 6}}
+    {{- fail "config.policies.passwords.length must be >= 6" }}
     {{- end }}
     password-length: {{ $passwordLength }}
     password-allowed-characters: {{ include "eck-operator.passwordAllowedCharacters" . }}
