@@ -17,6 +17,7 @@ import (
 	"time"
 
 	"github.com/go-logr/logr"
+	"github.com/sethvargo/go-password/password"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 	"go.elastic.co/apm/v2"
@@ -64,6 +65,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/beat"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/certificates"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/container"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/generator"
 	commonlicense "github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/license"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/operator"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/reconciler"
@@ -313,6 +315,21 @@ func Command() *cobra.Command {
 		operator.OperatorNamespaceFlag,
 		"",
 		"Kubernetes namespace the operator runs in",
+	)
+	cmd.Flags().String(
+		operator.PasswordAllowedCharactersFlag,
+		fmt.Sprintf(
+			"%s%s%s",
+			password.LowerLetters,
+			password.UpperLetters,
+			password.Digits, // We do not use password.Symbols in the generator by default
+		),
+		"Allowed characters for generated file-based passwords (enterprise-only feature)",
+	)
+	cmd.Flags().Int(
+		operator.PasswordLengthFlag,
+		24,
+		"Length of generated file-based passwords (enterprise-only feature)",
 	)
 	cmd.Flags().Duration(
 		operator.TelemetryIntervalFlag,
@@ -697,6 +714,29 @@ func startOperator(ctx context.Context) error {
 		return err
 	}
 
+	allowedCharacters := viper.GetString(operator.PasswordAllowedCharactersFlag)
+	generatorParams, other := categorizeAllowedCharacters(allowedCharacters)
+	if len(other) > 0 {
+		err := fmt.Errorf("invalid characters in passwords allowed characters: %s", string(other))
+		log.Error(err, "while parsing passwords allowed characters")
+		return err
+	}
+
+	generatorParams.Length = viper.GetInt(operator.PasswordLengthFlag)
+	// Elasticsearch requires at least 6 characters for passwords
+	// https://www.elastic.co/guide/en/elasticsearch/reference/7.5/security-api-put-user.html
+	if generatorParams.Length < 6 {
+		err := fmt.Errorf("password length must be at least 6")
+		log.Error(err, "while parsing password length")
+		return err
+	}
+
+	if len(generatorParams.LowerLetters)+len(generatorParams.UpperLetters)+len(generatorParams.Digits)+len(generatorParams.Symbols) < 10 {
+		err := fmt.Errorf("allowedCharacters for password generation needs to be at least 10 for randomness")
+		log.Error(err, "while parsing password allowed characters")
+		return err
+	}
+
 	params := operator.Parameters{
 		Dialer:                           dialer,
 		ElasticsearchObservationInterval: viper.GetDuration(operator.ElasticsearchObservationIntervalFlag),
@@ -714,6 +754,7 @@ func startOperator(ctx context.Context) error {
 			RotateBefore: certRotateBefore,
 		},
 		PasswordHasher:            passwordHasher,
+		ByteGeneratorParams:       generatorParams,
 		MaxConcurrentReconciles:   viper.GetInt(operator.MaxConcurrentReconcilesFlag),
 		SetDefaultSecurityContext: setDefaultSecurityContext,
 		ValidateStorageClass:      viper.GetBool(operator.ValidateStorageClassFlag),
@@ -1110,4 +1151,33 @@ func reconcileWebhookCertsAndAddController(ctx context.Context, mgr manager.Mana
 	}
 
 	return webhook.Add(mgr, webhookParams, clientset, wh, tracer)
+}
+
+// categorizeAllowedCharacters categorizes the allowed characters into different categories which
+// are needed to use the go-password package properly. It also buckets the 'other' characters into a separate slice
+// such that invalid characters are able to be filtered out.
+func categorizeAllowedCharacters(s string) (params generator.ByteGeneratorParams, other []rune) {
+	var lowercase, uppercase, digits, symbols []rune
+
+	for _, r := range s {
+		switch {
+		case strings.ContainsRune(password.LowerLetters, r):
+			lowercase = append(lowercase, r)
+		case strings.ContainsRune(password.UpperLetters, r):
+			uppercase = append(uppercase, r)
+		case strings.ContainsRune(password.Digits, r):
+			digits = append(digits, r)
+		case strings.ContainsRune(password.Symbols, r):
+			symbols = append(symbols, r)
+		default:
+			other = append(other, r)
+		}
+	}
+
+	return generator.ByteGeneratorParams{
+		LowerLetters: string(lowercase),
+		UpperLetters: string(uppercase),
+		Digits:       string(digits),
+		Symbols:      string(symbols),
+	}, other
 }

@@ -28,6 +28,7 @@ import (
 	kbv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/kibana/v1"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/comparison"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/generator/fixtures"
 	common_name "github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/name"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/operator"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/watches"
@@ -273,6 +274,7 @@ func testReconciler(runtimeObjs ...client.Object) Reconciler {
 					Version: "1.5.0",
 				},
 			},
+			ByteGeneratorParams: fixtures.DefaultByteGeneratorParams(),
 		},
 	}
 }
@@ -927,6 +929,7 @@ func TestReconciler_Reconcile_MultiRef(t *testing.T) {
 					Version: "1.4.0-unittest",
 				},
 			},
+			ByteGeneratorParams: fixtures.DefaultByteGeneratorParams(),
 		},
 	}
 

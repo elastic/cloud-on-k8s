@@ -16,6 +16,7 @@ import (
 	"k8s.io/client-go/tools/record"
 
 	esv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/elasticsearch/v1"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/generator"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/metadata"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/reconciler"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/tracing"
@@ -44,6 +45,7 @@ func ReconcileUsersAndRoles(
 	watched watches.DynamicWatches,
 	recorder record.EventRecorder,
 	passwordHasher cryptutil.PasswordHasher,
+	params generator.ByteGeneratorParams,
 	meta metadata.Metadata,
 ) (esclient.BasicAuth, error) {
 	span, ctx := apm.StartSpan(ctx, "reconcile_users", tracing.SpanTypeApp)
@@ -54,7 +56,7 @@ func ReconcileUsersAndRoles(
 	if err != nil {
 		return esclient.BasicAuth{}, err
 	}
-	fileRealm, controllerUser, err := aggregateFileRealm(ctx, c, es, watched, recorder, passwordHasher, meta)
+	fileRealm, controllerUser, err := aggregateFileRealm(ctx, c, es, watched, recorder, passwordHasher, params, meta)
 	if err != nil {
 		return esclient.BasicAuth{}, err
 	}
@@ -90,6 +92,7 @@ func aggregateFileRealm(
 	watched watches.DynamicWatches,
 	recorder record.EventRecorder,
 	passwordHasher cryptutil.PasswordHasher,
+	params generator.ByteGeneratorParams,
 	meta metadata.Metadata,
 ) (filerealm.Realm, esclient.BasicAuth, error) {
 	// retrieve existing file realm to reuse predefined users password hashes if possible
@@ -108,11 +111,11 @@ func aggregateFileRealm(
 	}
 
 	// reconcile predefined users
-	elasticUser, err := reconcileElasticUser(ctx, c, es, existingFileRealm, userProvidedFileRealm, passwordHasher, meta)
+	elasticUser, err := reconcileElasticUser(ctx, c, es, existingFileRealm, userProvidedFileRealm, passwordHasher, params, meta)
 	if err != nil {
 		return filerealm.Realm{}, esclient.BasicAuth{}, err
 	}
-	internalUsers, err := reconcileInternalUsers(ctx, c, es, existingFileRealm, passwordHasher, meta)
+	internalUsers, err := reconcileInternalUsers(ctx, c, es, existingFileRealm, passwordHasher, params, meta)
 	if err != nil {
 		return filerealm.Realm{}, esclient.BasicAuth{}, err
 	}

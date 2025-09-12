@@ -15,6 +15,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/generator"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/metadata"
 
 	"go.elastic.co/apm/v2"
@@ -27,7 +28,6 @@ import (
 
 	commonv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/common/v1"
 	esv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/elasticsearch/v1"
-	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/labels"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/reconciler"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/tracing"
@@ -236,7 +236,7 @@ var prefix = [...]byte{0x0, 0x1, 0x0, 0x1}
 
 // newApplicationToken generates a new token for a given service account.
 func newApplicationToken(serviceAccountName commonv1.ServiceAccountName, tokenName string) (*Token, error) {
-	secret := common.RandomBytes(64)
+	secret := generator.FixedLengthRandomBytes(64)
 	hash, err := pbkdf2Key(secret)
 	if err != nil {
 		return nil, err
