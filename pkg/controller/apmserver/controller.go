@@ -52,6 +52,11 @@ const (
 
 	// ApmBaseDir is the base directory of the APM server
 	ApmBaseDir = "/usr/share/apm-server"
+
+	// SecretTokenMinimumBytes is the minimum number of bytes required for the secret token.
+	// There are no specific recommendations for the minimum length of the secret token
+	// so 24 is a good middle ground.
+	SecretTokenMinimumBytes = 24
 )
 
 var (
@@ -327,11 +332,7 @@ func reconcileApmServerToken(ctx context.Context, c k8s.Client, as *apmv1.ApmSer
 	if token, exists := existingSecret.Data[SecretTokenKey]; exists {
 		expectedApmServerSecret.Data[SecretTokenKey] = token
 	} else {
-		bytes, err := generator.RandomBytes(params)
-		if err != nil {
-			return corev1.Secret{}, err
-		}
-		expectedApmServerSecret.Data[SecretTokenKey] = bytes
+		expectedApmServerSecret.Data[SecretTokenKey] = generator.FixedLengthRandomBytes(SecretTokenMinimumBytes)
 	}
 
 	// Don't set an ownerRef for the APM token secret, likely to be copied into different namespaces.

@@ -272,9 +272,7 @@ config:
   # policies contains policies for the operator, currently only password generation policies are supported.
   policies: {}
     # passwords:
-    # # Document the default password length.
     #   length: 24
-    # # Document the default allowed characters.
     #   allowedCharacters:
     #   - "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
     #   - "0123456789"
