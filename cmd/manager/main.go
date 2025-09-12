@@ -65,9 +65,9 @@ import (
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/beat"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/certificates"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/container"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/generator"
 	commonlicense "github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/license"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/operator"
-	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/random"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/reconciler"
 	controllerscheme "github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/scheme"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/tracing"
@@ -1156,7 +1156,7 @@ func reconcileWebhookCertsAndAddController(ctx context.Context, mgr manager.Mana
 // categorizeAllowedCharacters categorizes the allowed characters into different categories which
 // are needed to use the go-password package properly. It also buckets the 'other' characters into a separate slice
 // such that invalid characters are able to be filtered out.
-func categorizeAllowedCharacters(s string) (params random.ByteGeneratorParams, other []rune) {
+func categorizeAllowedCharacters(s string) (params generator.ByteGeneratorParams, other []rune) {
 	var lowercase, uppercase, digits, symbols []rune
 
 	for _, r := range s {
@@ -1174,7 +1174,7 @@ func categorizeAllowedCharacters(s string) (params random.ByteGeneratorParams, o
 		}
 	}
 
-	return random.ByteGeneratorParams{
+	return generator.ByteGeneratorParams{
 		LowerLetters: string(lowercase),
 		UpperLetters: string(uppercase),
 		Digits:       string(digits),

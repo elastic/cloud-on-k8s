@@ -11,9 +11,6 @@ import (
 	"reflect"
 	"sync/atomic"
 
-	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/metadata"
-	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/random"
-
 	"go.elastic.co/apm/v2"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -36,8 +33,10 @@ import (
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/driver"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/events"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/finalizer"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/generator"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/keystore"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/labels"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/metadata"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/operator"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/reconciler"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/tracing"
@@ -309,7 +308,7 @@ func (r *ReconcileApmServer) onDelete(ctx context.Context, obj types.NamespacedN
 
 // reconcileApmServerToken reconciles a Secret containing the APM Server token.
 // It reuses the existing token if possible.
-func reconcileApmServerToken(ctx context.Context, c k8s.Client, as *apmv1.ApmServer, params random.ByteGeneratorParams, meta metadata.Metadata) (corev1.Secret, error) {
+func reconcileApmServerToken(ctx context.Context, c k8s.Client, as *apmv1.ApmServer, params generator.ByteGeneratorParams, meta metadata.Metadata) (corev1.Secret, error) {
 	expectedApmServerSecret := corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
 			Namespace:   as.Namespace,
@@ -328,7 +327,7 @@ func reconcileApmServerToken(ctx context.Context, c k8s.Client, as *apmv1.ApmSer
 	if token, exists := existingSecret.Data[SecretTokenKey]; exists {
 		expectedApmServerSecret.Data[SecretTokenKey] = token
 	} else {
-		bytes, err := random.RandomBytes(params)
+		bytes, err := generator.RandomBytes(params)
 		if err != nil {
 			return corev1.Secret{}, err
 		}

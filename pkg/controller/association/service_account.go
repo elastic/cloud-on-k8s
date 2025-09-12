@@ -15,8 +15,8 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/generator"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/metadata"
-	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/random"
 
 	"go.elastic.co/apm/v2"
 	"golang.org/x/crypto/pbkdf2"
@@ -69,7 +69,7 @@ func reconcileApplicationSecret(
 	tokenName string,
 	serviceAccount commonv1.ServiceAccountName,
 	application client.Object,
-	params random.ByteGeneratorParams,
+	params generator.ByteGeneratorParams,
 ) (*Token, error) {
 	span, ctx := apm.StartSpan(ctx, "reconcile_sa_token_application", tracing.SpanTypeApp)
 	defer span.End()
@@ -129,7 +129,7 @@ func getOrCreateToken(
 	secretData map[string][]byte,
 	serviceAccountName commonv1.ServiceAccountName,
 	expectedTokenName string,
-	params random.ByteGeneratorParams,
+	params generator.ByteGeneratorParams,
 ) (*Token, error) {
 	token := getCurrentApplicationToken(ctx, es, secretName, secretData)
 	if token == nil || token.TokenName != expectedTokenName {
@@ -181,7 +181,7 @@ func ReconcileServiceAccounts(
 	elasticsearchSecretName types.NamespacedName,
 	serviceAccount commonv1.ServiceAccountName,
 	application client.Object,
-	params random.ByteGeneratorParams,
+	params generator.ByteGeneratorParams,
 ) error {
 	tokenName := tokenName(applicationSecretName.Namespace, application.GetName(), application.GetUID())
 	token, err := reconcileApplicationSecret(ctx, client, es, applicationSecretName, meta, tokenName, serviceAccount, application, params)
@@ -238,8 +238,8 @@ func getFieldOrNil(ctx context.Context, es *esv1.Elasticsearch, secretName strin
 var prefix = [...]byte{0x0, 0x1, 0x0, 0x1}
 
 // newApplicationToken generates a new token for a given service account.
-func newApplicationToken(serviceAccountName commonv1.ServiceAccountName, tokenName string, params random.ByteGeneratorParams) (*Token, error) {
-	secret, err := random.RandomBytes(params)
+func newApplicationToken(serviceAccountName commonv1.ServiceAccountName, tokenName string, params generator.ByteGeneratorParams) (*Token, error) {
+	secret, err := generator.RandomBytes(params)
 	if err != nil {
 		return nil, fmt.Errorf("while generating random bytes for service account token: %w", err)
 	}

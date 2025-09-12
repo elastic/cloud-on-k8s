@@ -12,7 +12,7 @@ import (
 
 	"github.com/elastic/cloud-on-k8s/v3/pkg/about"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/certificates"
-	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/random"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/generator"
 	esvalidation "github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/validation"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/cryptutil"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/net"
@@ -34,7 +34,7 @@ type Parameters struct {
 	PasswordHasher cryptutil.PasswordHasher
 	// ByteGeneratorParams are the parameters for the generation of random bytes for services
 	// such as passwords and service account including the allowed characters and length.
-	ByteGeneratorParams random.ByteGeneratorParams
+	ByteGeneratorParams generator.ByteGeneratorParams
 	// IPFamily represents the IP family to use when creating configuration and services.
 	IPFamily corev1.IPFamily
 	// GlobalCA is an optionally configured, globally shared CA to be used for all managed resources.

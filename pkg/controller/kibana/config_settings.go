@@ -20,7 +20,7 @@ import (
 	kbv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/kibana/v1"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/association"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/certificates"
-	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/random"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/generator"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/settings"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/tracing"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/version"
@@ -80,7 +80,7 @@ type CanonicalConfig struct {
 }
 
 // NewConfigSettings returns the Kibana configuration settings for the given Kibana resource.
-func NewConfigSettings(ctx context.Context, client k8s.Client, kb kbv1.Kibana, v version.Version, ipFamily corev1.IPFamily, kibanaConfigFromPolicy *settings.CanonicalConfig, params random.ByteGeneratorParams) (CanonicalConfig, error) {
+func NewConfigSettings(ctx context.Context, client k8s.Client, kb kbv1.Kibana, v version.Version, ipFamily corev1.IPFamily, kibanaConfigFromPolicy *settings.CanonicalConfig, params generator.ByteGeneratorParams) (CanonicalConfig, error) {
 	span, _ := apm.StartSpan(ctx, "new_config_settings", tracing.SpanTypeApp)
 	defer span.End()
 
@@ -223,7 +223,7 @@ func getExistingConfig(ctx context.Context, client k8s.Client, kb kbv1.Kibana) (
 
 // getOrCreateReusableSettings filters an existing config for only items we want to preserve between spec changes
 // because they cannot be generated deterministically, e.g. encryption keys
-func getOrCreateReusableSettings(ctx context.Context, c k8s.Client, kb kbv1.Kibana, params random.ByteGeneratorParams) (*settings.CanonicalConfig, error) {
+func getOrCreateReusableSettings(ctx context.Context, c k8s.Client, kb kbv1.Kibana, params generator.ByteGeneratorParams) (*settings.CanonicalConfig, error) {
 	cfg, err := getExistingConfig(ctx, c, kb)
 	if err != nil {
 		return nil, err
@@ -236,7 +236,7 @@ func getOrCreateReusableSettings(ctx context.Context, c k8s.Client, kb kbv1.Kiba
 		return nil, err
 	}
 	// TODO: Why was this hard-coded to 64 bytes?
-	bytes, err := random.RandomBytes(params)
+	bytes, err := generator.RandomBytes(params)
 	if err != nil {
 		return nil, err
 	}
@@ -244,7 +244,7 @@ func getOrCreateReusableSettings(ctx context.Context, c k8s.Client, kb kbv1.Kiba
 		r.EncryptionKey = string(bytes)
 	}
 	// TODO: Why was this hard-coded to 64 bytes?
-	bytes, err = random.RandomBytes(params)
+	bytes, err = generator.RandomBytes(params)
 	if err != nil {
 		return nil, err
 	}
@@ -259,7 +259,7 @@ func getOrCreateReusableSettings(ctx context.Context, c k8s.Client, kb kbv1.Kiba
 	// xpack.encryptedSavedObjects.encryptionKey was only added in 7.6.0 and earlier versions error out
 	if len(r.SavedObjectsKey) == 0 && kbVer.GTE(version.From(7, 6, 0)) {
 		// TODO: Why was this hard-coded to 64 bytes?
-		bytes, err := random.RandomBytes(params)
+		bytes, err := generator.RandomBytes(params)
 		if err != nil {
 			return nil, err
 		}

@@ -22,9 +22,9 @@ import (
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/certificates"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/driver"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/generator"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/labels"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/metadata"
-	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/random"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/reconciler"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/settings"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/version"
@@ -61,7 +61,7 @@ func ReadinessProbeSecretVolume(ent entv1.EnterpriseSearch) volume.SecretVolume 
 // The secret contains 2 entries:
 // - the Enterprise Search configuration file
 // - a bash script used as readiness probe
-func ReconcileConfig(ctx context.Context, driver driver.Interface, ent entv1.EnterpriseSearch, ipFamily corev1.IPFamily, params random.ByteGeneratorParams, meta metadata.Metadata) (corev1.Secret, error) {
+func ReconcileConfig(ctx context.Context, driver driver.Interface, ent entv1.EnterpriseSearch, ipFamily corev1.IPFamily, params generator.ByteGeneratorParams, meta metadata.Metadata) (corev1.Secret, error) {
 	cfg, err := newConfig(ctx, driver, ent, ipFamily, params)
 	if err != nil {
 		return corev1.Secret{}, err
@@ -151,7 +151,7 @@ func readinessProbeScript(ent entv1.EnterpriseSearch, config *settings.Canonical
 // - user-provided plaintext configuration
 // - user-provided secret configuration
 // In case of duplicate settings, the last one takes precedence.
-func newConfig(ctx context.Context, driver driver.Interface, ent entv1.EnterpriseSearch, ipFamily corev1.IPFamily, params random.ByteGeneratorParams) (*settings.CanonicalConfig, error) {
+func newConfig(ctx context.Context, driver driver.Interface, ent entv1.EnterpriseSearch, ipFamily corev1.IPFamily, params generator.ByteGeneratorParams) (*settings.CanonicalConfig, error) {
 	reusedCfg, err := getOrCreateReusableSettings(ctx, driver.K8sClient(), ent, params)
 	if err != nil {
 		return nil, err
@@ -199,7 +199,7 @@ type reusableSettings struct {
 }
 
 // getOrCreateReusableSettings reads the current configuration and reuse existing secrets it they exist.
-func getOrCreateReusableSettings(ctx context.Context, c k8s.Client, ent entv1.EnterpriseSearch, params random.ByteGeneratorParams) (*settings.CanonicalConfig, error) {
+func getOrCreateReusableSettings(ctx context.Context, c k8s.Client, ent entv1.EnterpriseSearch, params generator.ByteGeneratorParams) (*settings.CanonicalConfig, error) {
 	cfg, err := getExistingConfig(ctx, c, ent)
 	if err != nil {
 		return nil, err
@@ -213,7 +213,7 @@ func getOrCreateReusableSettings(ctx context.Context, c k8s.Client, ent entv1.En
 	}
 
 	// TODO: Find out why 32 was hard-coded here as the random bytes length
-	bytes, err := random.RandomBytes(params)
+	bytes, err := generator.RandomBytes(params)
 	if err != nil {
 		return nil, err
 	}
@@ -233,7 +233,7 @@ func getOrCreateReusableSettings(ctx context.Context, c k8s.Client, ent entv1.En
 	// This allows users to go from no custom key provided (use operator's generated one), to providing their own.
 	if len(e.EncryptionKeys) == 0 {
 		// TODO: Find out why 32 was hard-coded here as the random bytes length
-		bytes, err := random.RandomBytes(params)
+		bytes, err := generator.RandomBytes(params)
 		if err != nil {
 			return nil, err
 		}
