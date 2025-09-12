@@ -32,8 +32,8 @@ type Parameters struct {
 	Dialer net.Dialer
 	// PasswordHasher is the password hash generator used by the operator.
 	PasswordHasher cryptutil.PasswordHasher
-	// ByteGeneratorParams are the parameters for the generation of random bytes for services
-	// such as passwords and service account including the allowed characters and length.
+	// ByteGeneratorParams are the parameters for the generation of random bytes for generating passwords
+	// including the allowed characters and length.
 	ByteGeneratorParams generator.ByteGeneratorParams
 	// IPFamily represents the IP family to use when creating configuration and services.
 	IPFamily corev1.IPFamily
