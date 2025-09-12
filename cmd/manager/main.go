@@ -324,12 +324,12 @@ func Command() *cobra.Command {
 			password.UpperLetters,
 			password.Digits, // We do not use password.Symbols in the generator by default
 		),
-		"Allowed characters for generated passwords",
+		"Allowed characters for generated file-based passwords (enterprise-only feature)",
 	)
 	cmd.Flags().Int(
 		operator.PasswordLengthFlag,
 		24,
-		"Length of generated passwords",
+		"Length of generated file-based passwords (enterprise-only feature)",
 	)
 	cmd.Flags().Duration(
 		operator.TelemetryIntervalFlag,
