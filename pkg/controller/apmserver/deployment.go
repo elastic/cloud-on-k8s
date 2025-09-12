@@ -66,12 +66,12 @@ func (r *ReconcileApmServer) reconcileApmServerDeployment(
 
 		keystoreResources: keystoreResources,
 	}
-	deployParams, err := r.deploymentParams(as, apmServerPodSpecParams, meta)
+	params, err := r.deploymentParams(as, apmServerPodSpecParams, meta)
 	if err != nil {
 		return state, err
 	}
 
-	deploy := deployment.New(deployParams)
+	deploy := deployment.New(params)
 	result, err := deployment.Reconcile(ctx, r.K8sClient(), deploy, as)
 	if err != nil {
 		return state, err
