@@ -23,7 +23,6 @@ import (
 	entv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/enterprisesearch/v1"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/certificates"
-	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/generator/fixtures"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/operator"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/watches"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/k8s"
@@ -120,8 +119,7 @@ func TestReconcileEnterpriseSearch_Reconcile_Create_Update_Resources(t *testing.
 		dynamicWatches: watches.NewDynamicWatches(),
 		recorder:       record.NewFakeRecorder(10),
 		Parameters: operator.Parameters{
-			OperatorInfo:        about.OperatorInfo{BuildInfo: about.BuildInfo{Version: "1.0.0"}},
-			ByteGeneratorParams: fixtures.DefaultByteGeneratorParams(),
+			OperatorInfo: about.OperatorInfo{BuildInfo: about.BuildInfo{Version: "1.0.0"}},
 		},
 	}
 
@@ -270,8 +268,7 @@ func TestReconcileEnterpriseSearch_doReconcile_AssociationDelaysVersionUpgrade(t
 		dynamicWatches: watches.NewDynamicWatches(),
 		recorder:       record.NewFakeRecorder(10),
 		Parameters: operator.Parameters{
-			OperatorInfo:        about.OperatorInfo{BuildInfo: about.BuildInfo{Version: "1.0.0"}},
-			ByteGeneratorParams: fixtures.DefaultByteGeneratorParams(),
+			OperatorInfo: about.OperatorInfo{BuildInfo: about.BuildInfo{Version: "1.0.0"}},
 		},
 	}
 	results, _ := r.doReconcile(context.Background(), ent)
