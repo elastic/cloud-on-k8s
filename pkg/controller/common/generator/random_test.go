@@ -52,7 +52,7 @@ func TestRandomBytes(t *testing.T) {
 			},
 		},
 		{
-			name: "long password with balanced distribution",
+			name: "long password with better distribution",
 			params: ByteGeneratorParams{
 				LowerLetters: "abcdefghijklmnopqrstuvwxyz",
 				UpperLetters: "ABCDEFGHIJKLMNOPQRSTUVWXYZ",
@@ -137,7 +137,7 @@ func TestRandomBytes(t *testing.T) {
 			},
 		},
 		{
-			name: "short password",
+			name: "short password splits all digits and symbols",
 			params: ByteGeneratorParams{
 				LowerLetters: "abcdefghijklmnopqrstuvwxyz",
 				UpperLetters: "ABCDEFGHIJKLMNOPQRSTUVWXYZ",
@@ -158,12 +158,10 @@ func TestRandomBytes(t *testing.T) {
 
 				assert.Equal(t, expectedDigits, counts.digits)
 				assert.Equal(t, expectedSymbols, counts.symbols)
-				assert.Equal(t, 1, counts.digits)
-				assert.Equal(t, 1, counts.symbols)
 			},
 		},
 		{
-			name: "empty character sets uses default charset",
+			name: "empty character set uses default charset",
 			params: ByteGeneratorParams{
 				LowerLetters: "",
 				UpperLetters: "",
