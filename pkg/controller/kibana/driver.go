@@ -159,7 +159,7 @@ func (d *driver) Reconcile(
 		return results.WithError(err)
 	}
 
-	kbSettings, err := NewConfigSettings(ctx, d.client, *kb, d.version, d.ipFamily, kibanaPolicyCfg.KibanaConfig, params.ByteGeneratorParams)
+	kbSettings, err := NewConfigSettings(ctx, d.client, *kb, d.version, d.ipFamily, kibanaPolicyCfg.KibanaConfig)
 	if err != nil {
 		return results.WithError(err)
 	}

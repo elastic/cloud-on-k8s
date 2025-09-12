@@ -19,7 +19,6 @@ import (
 
 	commonv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/common/v1"
 	kbv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/kibana/v1"
-	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/generator/fixtures"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/settings"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/version"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/k8s"
@@ -173,10 +172,7 @@ func Test_reuseOrGenerateSecrets(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			// allows re-use of existing encryption keys/etc.
-			defaultGeneratorParams := fixtures.DefaultByteGeneratorParams()
-			defaultGeneratorParams.Length = 64
-			got, err := getOrCreateReusableSettings(context.Background(), tt.args.c, tt.args.kibana, defaultGeneratorParams)
+			got, err := getOrCreateReusableSettings(context.Background(), tt.args.c, tt.args.kibana)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("getOrCreateReusableSettings() error = %v, wantErr %v", err, tt.wantErr)
 				return
@@ -568,7 +564,7 @@ func TestNewConfigSettings(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			kb := tt.args.kb()
 			v := version.From(7, 6, 0)
-			got, err := NewConfigSettings(context.Background(), tt.args.client, kb, v, tt.args.ipFamily, tt.args.kibanaConfigFromPolicy, fixtures.DefaultByteGeneratorParams())
+			got, err := NewConfigSettings(context.Background(), tt.args.client, kb, v, tt.args.ipFamily, tt.args.kibanaConfigFromPolicy)
 			if tt.wantErr {
 				require.Error(t, err)
 			}
@@ -594,7 +590,7 @@ func TestNewConfigSettingsCreateEncryptionKeys(t *testing.T) {
 	client := k8s.NewFakeClient()
 	kb := mkKibana()
 	v := version.MustParse(kb.Spec.Version)
-	got, err := NewConfigSettings(context.Background(), client, kb, v, corev1.IPv4Protocol, nil, fixtures.DefaultByteGeneratorParams())
+	got, err := NewConfigSettings(context.Background(), client, kb, v, corev1.IPv4Protocol, nil)
 	require.NoError(t, err)
 	for _, key := range []string{XpackSecurityEncryptionKey, XpackReportingEncryptionKey, XpackEncryptedSavedObjectsEncryptionKey} {
 		val, err := (*ucfg.Config)(got.CanonicalConfig).String(key, -1, settings.Options...)
@@ -620,7 +616,7 @@ func TestNewConfigSettingsExistingEncryptionKey(t *testing.T) {
 	}
 	client := k8s.NewFakeClient(existingSecret)
 	v := version.MustParse(kb.Spec.Version)
-	got, err := NewConfigSettings(context.Background(), client, kb, v, corev1.IPv4Protocol, nil, fixtures.DefaultByteGeneratorParams())
+	got, err := NewConfigSettings(context.Background(), client, kb, v, corev1.IPv4Protocol, nil)
 	require.NoError(t, err)
 	var gotCfg map[string]interface{}
 	require.NoError(t, got.Unpack(&gotCfg))
@@ -649,7 +645,7 @@ func TestNewConfigSettingsExplicitEncryptionKey(t *testing.T) {
 	kb.Spec.Config = &cfg
 	client := k8s.NewFakeClient()
 	v := version.MustParse(kb.Spec.Version)
-	got, err := NewConfigSettings(context.Background(), client, kb, v, corev1.IPv4Protocol, nil, fixtures.DefaultByteGeneratorParams())
+	got, err := NewConfigSettings(context.Background(), client, kb, v, corev1.IPv4Protocol, nil)
 	require.NoError(t, err)
 	val, err := (*ucfg.Config)(got.CanonicalConfig).String(XpackSecurityEncryptionKey, -1, settings.Options...)
 	require.NoError(t, err)
@@ -662,7 +658,7 @@ func TestNewConfigSettingsPre760(t *testing.T) {
 	kb.Spec.Version = "7.5.0"
 	client := k8s.NewFakeClient()
 	v := version.MustParse(kb.Spec.Version)
-	got, err := NewConfigSettings(context.Background(), client, kb, v, corev1.IPv4Protocol, nil, fixtures.DefaultByteGeneratorParams())
+	got, err := NewConfigSettings(context.Background(), client, kb, v, corev1.IPv4Protocol, nil)
 	require.NoError(t, err)
 	assert.Equal(t, 0, len(got.CanonicalConfig.HasKeys([]string{XpackEncryptedSavedObjects})))
 }

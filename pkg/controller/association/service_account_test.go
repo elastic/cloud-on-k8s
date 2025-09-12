@@ -23,7 +23,6 @@ import (
 	commonv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/common/v1"
 	esv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/elasticsearch/v1"
 	kbv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/kibana/v1"
-	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/generator/fixtures"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/metadata"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/k8s"
 )
@@ -212,7 +211,6 @@ func Test_ReconcileServiceAccounts(t *testing.T) {
 				elasticsearchSecretName,
 				tt.args.serviceAccount,
 				existingKibana.DeepCopy(),
-				fixtures.DefaultByteGeneratorParams(),
 			)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("store.EnsureTokenExists() error = %v, wantErr %v", err, tt.wantErr)
@@ -308,7 +306,7 @@ func Test_newApplicationToken(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := newApplicationToken(tt.args.serviceAccountName, tt.args.tokenName, fixtures.DefaultByteGeneratorParams())
+			got, err := newApplicationToken(tt.args.serviceAccountName, tt.args.tokenName)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("newApplicationToken() error = %v, wantErr %v", err, tt.wantErr)
 				return

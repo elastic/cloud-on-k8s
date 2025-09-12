@@ -117,7 +117,11 @@ func reconcileEsUserSecret(
 	if existingPassword, exists := existingSecret.Data[usrKey.Name]; exists {
 		password = existingPassword
 	} else {
-		password = generator.FixedLengthRandomPasswordBytes(params)
+		// TODO: pass operator namespace here.
+		password, err = generator.RandomBytesRespectingLicense(ctx, c, "", params)
+		if err != nil {
+			return err
+		}
 	}
 	expectedSecret.Data[usrKey.Name] = password
 

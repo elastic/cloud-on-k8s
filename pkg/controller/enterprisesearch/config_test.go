@@ -18,7 +18,6 @@ import (
 
 	commonv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/common/v1"
 	entv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/enterprisesearch/v1"
-	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/generator/fixtures"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/metadata"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/settings"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/watches"
@@ -184,10 +183,7 @@ func Test_reuseOrGenerateSecrets(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			// allow re-use of existing session keys of length 32 in these tests.
-			defaultGeneratorParams := fixtures.DefaultByteGeneratorParams()
-			defaultGeneratorParams.Length = 32
-			got, err := getOrCreateReusableSettings(context.Background(), tt.args.c, tt.args.ent, defaultGeneratorParams)
+			got, err := getOrCreateReusableSettings(context.Background(), tt.args.c, tt.args.ent)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("getOrCreateReusableSettings() error = %v, wantErr %v", err, tt.wantErr)
 				return
@@ -581,7 +577,7 @@ func TestReconcileConfig(t *testing.T) {
 			}
 
 			// secret metadata should be correct
-			got, err := ReconcileConfig(context.Background(), driver, tt.ent, tt.ipFamily, fixtures.DefaultByteGeneratorParams(), metadata.Propagate(&tt.ent, metadata.Metadata{Labels: tt.ent.GetIdentityLabels()}))
+			got, err := ReconcileConfig(context.Background(), driver, tt.ent, tt.ipFamily, metadata.Propagate(&tt.ent, metadata.Metadata{Labels: tt.ent.GetIdentityLabels()}))
 			require.NoError(t, err)
 			assert.Equal(t, "sample-ent-config", got.Name)
 			assert.Equal(t, "ns", got.Namespace)
@@ -762,7 +758,7 @@ secret_session_key: alreadysetsessionkey
 				dynamicWatches: watches.NewDynamicWatches(),
 			}
 
-			got, err := ReconcileConfig(context.Background(), driver, tt.ent, corev1.IPv4Protocol, fixtures.DefaultByteGeneratorParams(), metadata.Metadata{})
+			got, err := ReconcileConfig(context.Background(), driver, tt.ent, corev1.IPv4Protocol, metadata.Metadata{})
 			require.NoError(t, err)
 			cfg, err := settings.ParseConfig(got.Data["enterprise-search.yml"])
 			require.NoError(t, err)
@@ -896,7 +892,7 @@ func TestReconcileConfig_ReadinessProbe(t *testing.T) {
 				dynamicWatches: watches.NewDynamicWatches(),
 			}
 
-			got, err := ReconcileConfig(context.Background(), driver, tt.ent, tt.ipFamily, fixtures.DefaultByteGeneratorParams(), metadata.Metadata{})
+			got, err := ReconcileConfig(context.Background(), driver, tt.ent, tt.ipFamily, metadata.Metadata{})
 			require.NoError(t, err)
 
 			require.Contains(t, string(got.Data[ReadinessProbeFilename]), tt.wantCmd)

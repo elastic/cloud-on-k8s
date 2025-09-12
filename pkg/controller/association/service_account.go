@@ -69,7 +69,6 @@ func reconcileApplicationSecret(
 	tokenName string,
 	serviceAccount commonv1.ServiceAccountName,
 	application client.Object,
-	params generator.ByteGeneratorParams,
 ) (*Token, error) {
 	span, ctx := apm.StartSpan(ctx, "reconcile_sa_token_application", tracing.SpanTypeApp)
 	defer span.End()
@@ -83,13 +82,13 @@ func reconcileApplicationSecret(
 	var token *Token
 	if k8serrors.IsNotFound(err) || len(applicationStore.Data) == 0 {
 		// Secret does not exist or is empty, create a new token
-		token, err = newApplicationToken(serviceAccount, tokenName, params)
+		token, err = newApplicationToken(serviceAccount, tokenName)
 		if err != nil {
 			return nil, err
 		}
 	} else {
 		// Attempt to read current token, create a new one in case of an error.
-		token, err = getOrCreateToken(ctx, &es, applicationSecretName.Name, applicationStore.Data, serviceAccount, tokenName, params)
+		token, err = getOrCreateToken(ctx, &es, applicationSecretName.Name, applicationStore.Data, serviceAccount, tokenName)
 		if err != nil {
 			return nil, err
 		}
@@ -129,12 +128,11 @@ func getOrCreateToken(
 	secretData map[string][]byte,
 	serviceAccountName commonv1.ServiceAccountName,
 	expectedTokenName string,
-	params generator.ByteGeneratorParams,
 ) (*Token, error) {
 	token := getCurrentApplicationToken(ctx, es, secretName, secretData)
 	if token == nil || token.TokenName != expectedTokenName {
 		// We need to create a new token
-		return newApplicationToken(serviceAccountName, expectedTokenName, params)
+		return newApplicationToken(serviceAccountName, expectedTokenName)
 	}
 	return token, nil
 }
@@ -181,10 +179,9 @@ func ReconcileServiceAccounts(
 	elasticsearchSecretName types.NamespacedName,
 	serviceAccount commonv1.ServiceAccountName,
 	application client.Object,
-	params generator.ByteGeneratorParams,
 ) error {
 	tokenName := tokenName(applicationSecretName.Namespace, application.GetName(), application.GetUID())
-	token, err := reconcileApplicationSecret(ctx, client, es, applicationSecretName, meta, tokenName, serviceAccount, application, params)
+	token, err := reconcileApplicationSecret(ctx, client, es, applicationSecretName, meta, tokenName, serviceAccount, application)
 	if err != nil {
 		return err
 	}
@@ -238,11 +235,8 @@ func getFieldOrNil(ctx context.Context, es *esv1.Elasticsearch, secretName strin
 var prefix = [...]byte{0x0, 0x1, 0x0, 0x1}
 
 // newApplicationToken generates a new token for a given service account.
-func newApplicationToken(serviceAccountName commonv1.ServiceAccountName, tokenName string, params generator.ByteGeneratorParams) (*Token, error) {
-	secret, err := generator.RandomBytes(params)
-	if err != nil {
-		return nil, fmt.Errorf("while generating random bytes for service account token: %w", err)
-	}
+func newApplicationToken(serviceAccountName commonv1.ServiceAccountName, tokenName string) (*Token, error) {
+	secret := generator.FixedLengthRandomBytes(64)
 	hash, err := pbkdf2Key(secret)
 	if err != nil {
 		return nil, err

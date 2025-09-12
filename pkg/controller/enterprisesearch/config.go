@@ -45,6 +45,11 @@ const (
 
 	SecretSessionSetting  = "secret_session_key"
 	EncryptionKeysSetting = "secret_management.encryption_keys"
+
+	// EncryptionKeyMinimumBytes is the minimum number of bytes required for an encryption key.
+	// This is in line with the documentation (256 bits) as of 8.19:
+	//   https://www.elastic.co/guide/en/enterprise-search/8.19/encryption-keys.html
+	EncryptionKeyMinimumBytes = 32
 )
 
 func ConfigSecretVolume(ent entv1.EnterpriseSearch) volume.SecretVolume {
@@ -61,8 +66,8 @@ func ReadinessProbeSecretVolume(ent entv1.EnterpriseSearch) volume.SecretVolume 
 // The secret contains 2 entries:
 // - the Enterprise Search configuration file
 // - a bash script used as readiness probe
-func ReconcileConfig(ctx context.Context, driver driver.Interface, ent entv1.EnterpriseSearch, ipFamily corev1.IPFamily, params generator.ByteGeneratorParams, meta metadata.Metadata) (corev1.Secret, error) {
-	cfg, err := newConfig(ctx, driver, ent, ipFamily, params)
+func ReconcileConfig(ctx context.Context, driver driver.Interface, ent entv1.EnterpriseSearch, ipFamily corev1.IPFamily, meta metadata.Metadata) (corev1.Secret, error) {
+	cfg, err := newConfig(ctx, driver, ent, ipFamily)
 	if err != nil {
 		return corev1.Secret{}, err
 	}
@@ -151,8 +156,8 @@ func readinessProbeScript(ent entv1.EnterpriseSearch, config *settings.Canonical
 // - user-provided plaintext configuration
 // - user-provided secret configuration
 // In case of duplicate settings, the last one takes precedence.
-func newConfig(ctx context.Context, driver driver.Interface, ent entv1.EnterpriseSearch, ipFamily corev1.IPFamily, params generator.ByteGeneratorParams) (*settings.CanonicalConfig, error) {
-	reusedCfg, err := getOrCreateReusableSettings(ctx, driver.K8sClient(), ent, params)
+func newConfig(ctx context.Context, driver driver.Interface, ent entv1.EnterpriseSearch, ipFamily corev1.IPFamily) (*settings.CanonicalConfig, error) {
+	reusedCfg, err := getOrCreateReusableSettings(ctx, driver.K8sClient(), ent)
 	if err != nil {
 		return nil, err
 	}
@@ -199,7 +204,7 @@ type reusableSettings struct {
 }
 
 // getOrCreateReusableSettings reads the current configuration and reuse existing secrets it they exist.
-func getOrCreateReusableSettings(ctx context.Context, c k8s.Client, ent entv1.EnterpriseSearch, params generator.ByteGeneratorParams) (*settings.CanonicalConfig, error) {
+func getOrCreateReusableSettings(ctx context.Context, c k8s.Client, ent entv1.EnterpriseSearch) (*settings.CanonicalConfig, error) {
 	cfg, err := getExistingConfig(ctx, c, ent)
 	if err != nil {
 		return nil, err
@@ -212,15 +217,9 @@ func getOrCreateReusableSettings(ctx context.Context, c k8s.Client, ent entv1.En
 		return nil, err
 	}
 
-	// TODO: Find out why 32 was hard-coded here as the random bytes length
-	bytes, err := generator.RandomBytes(params)
-	if err != nil {
-		return nil, err
-	}
-
 	// generate a random secret session key, or reuse the existing one
 	if len(e.SecretSession) == 0 {
-		e.SecretSession = string(bytes)
+		e.SecretSession = string(generator.FixedLengthRandomBytes(EncryptionKeyMinimumBytes))
 	}
 
 	// generate a random encryption key, or reuse the existing one
@@ -232,13 +231,8 @@ func getOrCreateReusableSettings(ctx context.Context, c k8s.Client, ent entv1.En
 	// in that case we still keep the first item we manage, user-provided keys will be appended to the array.
 	// This allows users to go from no custom key provided (use operator's generated one), to providing their own.
 	if len(e.EncryptionKeys) == 0 {
-		// TODO: Find out why 32 was hard-coded here as the random bytes length
-		bytes, err := generator.RandomBytes(params)
-		if err != nil {
-			return nil, err
-		}
 		// no encryption key, generate a new one
-		e.EncryptionKeys = []string{string(bytes)}
+		e.EncryptionKeys = []string{string(generator.FixedLengthRandomBytes(EncryptionKeyMinimumBytes))}
 	} else {
 		// encryption keys already exist, reuse the first ECK-managed one
 		// other user-provided keys from user-provided config will be merged in later

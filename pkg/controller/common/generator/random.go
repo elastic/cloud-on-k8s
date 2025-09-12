@@ -30,12 +30,14 @@ func RandomBytesRespectingLicense(ctx context.Context, client k8s.Client, namesp
 	if enabled {
 		return RandomBytes(params)
 	}
-	return BasicLicenseFixedLengthRandomPasswordbytes(24), nil
+	return FixedLengthRandomBytes(24), nil
 }
 
-// BasicLicenseFixedLengthRandomPasswordbytes generates a random password with a fixed length of 24 characters
-// than is used by users with a basic license.
-func BasicLicenseFixedLengthRandomPasswordbytes(length int) []byte {
+// FixedLengthRandomBytes generates random bytes with the given length and the default character set
+// than is both used for:
+// 1. File-based passwords for users with a basic license.
+// 2. Encryption keys for Kibana and EnterpriseSearch.
+func FixedLengthRandomBytes(length int) []byte {
 	return []byte(password.MustGenerate(
 		length,
 		10,    // number of digits to include in the result
@@ -45,20 +47,8 @@ func BasicLicenseFixedLengthRandomPasswordbytes(length int) []byte {
 	))
 }
 
-// FixedLengthRandomPasswordBytes generates a random password
-func FixedLengthRandomPasswordBytes(params ByteGeneratorParams) []byte {
-	return MustRandomBytes(params)
-}
-
-// RandomBytes generates some random bytes that can be used as a token or as a key
-func MustRandomBytes(params ByteGeneratorParams) []byte {
-	results, err := RandomBytes(params)
-	if err != nil {
-		panic(err)
-	}
-	return results
-}
-
+// RandomBytes generates random bytes that can be used as a token or as a key using the provided parameters.
+// This provides Enterprise licensed users more control over password generation.
 func RandomBytes(params ByteGeneratorParams) ([]byte, error) {
 	generator, err := password.NewGenerator(&password.GeneratorInput{
 		LowerLetters: params.LowerLetters,
@@ -69,18 +59,15 @@ func RandomBytes(params ByteGeneratorParams) ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
-	// This indicates to the user that we can have upper and symbols
-	// but then we completely disable that here. Why was this setup this
-	// way initially?
-	return []byte(generator.MustGenerate(
+	// Generate the random bytes with 1/2 being digits and symbols, including uppercase letters
+	// and allowing repeating characters.
+	// TODO: This doesn't take into account the parameters where they could disable uppercase letters / etc.
+	str, err := generator.Generate(
 		params.Length,
-		10,    // number of digits to include in the result
-		0,     // number of symbols to include in the result
-		false, // noUpper
-		true,  // allowRepeat
-	)), nil
-}
-
-func RandomPassword(params ByteGeneratorParams) string {
-	return string(MustRandomBytes(params))
+		params.Length/4, // number of digits to include in the result
+		params.Length/4, // number of symbols to include in the result
+		false,           // noUpper
+		true,            // allowRepeat
+	)
+	return []byte(str), err
 }

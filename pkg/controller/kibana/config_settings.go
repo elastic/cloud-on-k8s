@@ -41,6 +41,11 @@ const (
 	esCertsVolumeMountPath = "/usr/share/kibana/config/elasticsearch-certs"
 	// entCertsVolumeMountPath is the directory into which trusted Enterprise Search HTTP CA certs are mounted.
 	entCertsVolumeMountPath = "/usr/share/kibana/config/ent-certs"
+
+	// EncryptionKeyMinimumBytes is the minimum number of bytes required for the encryption key.
+	// This is in line with the documentation (32 characters) as of 9.0 (unicode characters can use > 1 byte):
+	//   https://www.elastic.co/guide/en/kibana/9.0/using-kibana-with-security.html#security-configure-settings
+	EncryptionKeyMinimumBytes = 64
 )
 
 // Constants to use for the Kibana configuration settings.
@@ -80,11 +85,11 @@ type CanonicalConfig struct {
 }
 
 // NewConfigSettings returns the Kibana configuration settings for the given Kibana resource.
-func NewConfigSettings(ctx context.Context, client k8s.Client, kb kbv1.Kibana, v version.Version, ipFamily corev1.IPFamily, kibanaConfigFromPolicy *settings.CanonicalConfig, params generator.ByteGeneratorParams) (CanonicalConfig, error) {
+func NewConfigSettings(ctx context.Context, client k8s.Client, kb kbv1.Kibana, v version.Version, ipFamily corev1.IPFamily, kibanaConfigFromPolicy *settings.CanonicalConfig) (CanonicalConfig, error) {
 	span, _ := apm.StartSpan(ctx, "new_config_settings", tracing.SpanTypeApp)
 	defer span.End()
 
-	reusableSettings, err := getOrCreateReusableSettings(ctx, client, kb, params)
+	reusableSettings, err := getOrCreateReusableSettings(ctx, client, kb)
 	if err != nil {
 		return CanonicalConfig{}, err
 	}
@@ -223,7 +228,7 @@ func getExistingConfig(ctx context.Context, client k8s.Client, kb kbv1.Kibana) (
 
 // getOrCreateReusableSettings filters an existing config for only items we want to preserve between spec changes
 // because they cannot be generated deterministically, e.g. encryption keys
-func getOrCreateReusableSettings(ctx context.Context, c k8s.Client, kb kbv1.Kibana, params generator.ByteGeneratorParams) (*settings.CanonicalConfig, error) {
+func getOrCreateReusableSettings(ctx context.Context, c k8s.Client, kb kbv1.Kibana) (*settings.CanonicalConfig, error) {
 	cfg, err := getExistingConfig(ctx, c, kb)
 	if err != nil {
 		return nil, err
@@ -235,21 +240,11 @@ func getOrCreateReusableSettings(ctx context.Context, c k8s.Client, kb kbv1.Kiba
 	} else if err := cfg.Unpack(&r); err != nil {
 		return nil, err
 	}
-	// TODO: Why was this hard-coded to 64 bytes?
-	bytes, err := generator.RandomBytes(params)
-	if err != nil {
-		return nil, err
-	}
 	if len(r.EncryptionKey) == 0 {
-		r.EncryptionKey = string(bytes)
-	}
-	// TODO: Why was this hard-coded to 64 bytes?
-	bytes, err = generator.RandomBytes(params)
-	if err != nil {
-		return nil, err
+		r.EncryptionKey = string(generator.FixedLengthRandomBytes(EncryptionKeyMinimumBytes))
 	}
 	if len(r.ReportingKey) == 0 {
-		r.ReportingKey = string(bytes)
+		r.ReportingKey = string(generator.FixedLengthRandomBytes(EncryptionKeyMinimumBytes))
 	}
 
 	kbVer, err := version.Parse(kb.Spec.Version)
@@ -258,12 +253,7 @@ func getOrCreateReusableSettings(ctx context.Context, c k8s.Client, kb kbv1.Kiba
 	}
 	// xpack.encryptedSavedObjects.encryptionKey was only added in 7.6.0 and earlier versions error out
 	if len(r.SavedObjectsKey) == 0 && kbVer.GTE(version.From(7, 6, 0)) {
-		// TODO: Why was this hard-coded to 64 bytes?
-		bytes, err := generator.RandomBytes(params)
-		if err != nil {
-			return nil, err
-		}
-		r.SavedObjectsKey = string(bytes)
+		r.SavedObjectsKey = string(generator.FixedLengthRandomBytes(EncryptionKeyMinimumBytes))
 	}
 	return settings.MustCanonicalConfig(r), nil
 }

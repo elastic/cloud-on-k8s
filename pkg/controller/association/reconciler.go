@@ -381,7 +381,6 @@ func (r *Reconciler) reconcileAssociation(ctx context.Context, association commo
 			UserKey(association, es.Namespace, r.ElasticsearchUserCreation.UserSecretSuffix),
 			serviceAccount,
 			association.Associated(),
-			r.Parameters.ByteGeneratorParams,
 		)
 		if err != nil {
 			return commonv1.AssociationFailed, err
