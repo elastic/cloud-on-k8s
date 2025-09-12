@@ -17,7 +17,6 @@ import (
 	apmv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/apm/v1"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/certificates"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/deployment"
-	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/generator"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/keystore"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/metadata"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/tracing"
@@ -30,13 +29,12 @@ func (r *ReconcileApmServer) reconcileApmServerDeployment(
 	state State,
 	as *apmv1.ApmServer,
 	version version.Version,
-	params generator.ByteGeneratorParams,
 	meta metadata.Metadata,
 ) (State, error) {
 	span, ctx := apm.StartSpan(ctx, "reconcile_deployment", tracing.SpanTypeApp)
 	defer span.End()
 
-	tokenSecret, err := reconcileApmServerToken(ctx, r.Client, as, params, meta)
+	tokenSecret, err := reconcileApmServerToken(ctx, r.Client, as, meta)
 	if err != nil {
 		return state, err
 	}

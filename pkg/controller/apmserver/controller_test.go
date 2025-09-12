@@ -25,7 +25,6 @@ import (
 	esv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/elasticsearch/v1"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/certificates"
-	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/generator/fixtures"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/metadata"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/operator"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/watches"
@@ -67,7 +66,6 @@ func TestReconcileApmServer_doReconcile(t *testing.T) {
 						Validity:     certificates.DefaultCertValidity,
 						RotateBefore: certificates.DefaultRotateBefore,
 					},
-					ByteGeneratorParams: fixtures.DefaultByteGeneratorParams(),
 				},
 			},
 			wantRequeue: false,
@@ -87,9 +85,7 @@ func TestReconcileApmServer_doReconcile(t *testing.T) {
 				resources:      []client.Object{},
 				recorder:       record.NewFakeRecorder(100),
 				dynamicWatches: watches.NewDynamicWatches(),
-				Parameters: operator.Parameters{
-					ByteGeneratorParams: fixtures.DefaultByteGeneratorParams(),
-				},
+				Parameters:     operator.Parameters{},
 			},
 			wantErr: true,
 		},
@@ -147,7 +143,7 @@ func Test_reconcileApmServerToken(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := reconcileApmServerToken(context.Background(), tt.c, apm, fixtures.DefaultByteGeneratorParams(), metadata.Metadata{})
+			got, err := reconcileApmServerToken(context.Background(), tt.c, apm, metadata.Metadata{})
 			require.NoError(t, err)
 			require.NotEmpty(t, got.Data[SecretTokenKey])
 			if tt.reuseToken != nil {
@@ -457,9 +453,7 @@ func TestReconcileApmServer_Reconcile(t *testing.T) {
 				Client:         tt.fields.Client,
 				recorder:       record.NewFakeRecorder(100),
 				dynamicWatches: watches.NewDynamicWatches(),
-				Parameters: operator.Parameters{
-					ByteGeneratorParams: fixtures.DefaultByteGeneratorParams(),
-				},
+				Parameters:     operator.Parameters{},
 			}
 			got, err := r.Reconcile(context.Background(), tt.args.request)
 			if (err != nil) != tt.wantErr {
