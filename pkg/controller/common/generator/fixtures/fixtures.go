@@ -5,8 +5,9 @@
 package fixtures
 
 import (
-	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/generator"
 	"github.com/sethvargo/go-password/password"
+
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/generator"
 )
 
 func DefaultByteGeneratorParams() generator.ByteGeneratorParams {

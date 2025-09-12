@@ -7,9 +7,10 @@ package generator
 import (
 	"context"
 
+	"github.com/sethvargo/go-password/password"
+
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/license"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/k8s"
-	"github.com/sethvargo/go-password/password"
 )
 
 // ByteGeneratorParams defines the parameters for generating random strings
