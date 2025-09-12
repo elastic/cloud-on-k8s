@@ -264,6 +264,7 @@ func Test_reconcileEsUser(t *testing.T) {
 				"kibana-user",
 				tt.args.es,
 				fixtures.DefaultByteGeneratorParams(),
+				"elastic-system",
 			); (err != nil) != tt.wantErr {
 				t.Errorf("reconcileEsUser() error = %v, wantErr %v", err, tt.wantErr)
 			}

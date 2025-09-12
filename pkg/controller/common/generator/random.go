@@ -59,15 +59,23 @@ func RandomBytes(params ByteGeneratorParams) ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
-	// Generate the random bytes with 1/2 being digits and symbols, including uppercase letters
-	// and allowing repeating characters.
-	// TODO: This doesn't take into account the parameters where they could disable uppercase letters / etc.
+	// Generate the random bytes with 1/2 being digits and symbols (if possible), including uppercase letters
+	// and allowing repeating characters. This attempts to use 1/4 of the length for digits and another 1/4
+	// for symbols, unless the user has requested fewer potential digits or symbols.
 	str, err := generator.Generate(
 		params.Length,
-		params.Length/4, // number of digits to include in the result
-		params.Length/4, // number of symbols to include in the result
-		false,           // noUpper
-		true,            // allowRepeat
+		min(params.Length/4, len(params.Digits)),  // number of digits to include in the result
+		min(params.Length/4, len(params.Symbols)), // number of symbols to include in the result
+		false, // noUpper
+		true,  // allowRepeat
 	)
 	return []byte(str), err
+}
+
+// min returns the minimum of two integers used for generating random bytes.
+func min(a, b int) int {
+	if a <= b {
+		return a
+	}
+	return b
 }

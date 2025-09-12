@@ -87,6 +87,7 @@ func reconcileEsUserSecret(
 	userObjectSuffix string,
 	es esv1.Elasticsearch,
 	params generator.ByteGeneratorParams,
+	operatorNamespace string,
 ) error {
 	span, ctx := apm.StartSpan(ctx, "reconcile_es_user", tracing.SpanTypeApp)
 	defer span.End()
@@ -117,8 +118,7 @@ func reconcileEsUserSecret(
 	if existingPassword, exists := existingSecret.Data[usrKey.Name]; exists {
 		password = existingPassword
 	} else {
-		// TODO: pass operator namespace here.
-		password, err = generator.RandomBytesRespectingLicense(ctx, c, "", params)
+		password, err = generator.RandomBytesRespectingLicense(ctx, c, operatorNamespace, params)
 		if err != nil {
 			return err
 		}
