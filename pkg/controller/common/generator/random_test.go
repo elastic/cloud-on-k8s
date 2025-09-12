@@ -63,6 +63,7 @@ func TestRandomBytes(t *testing.T) {
 			},
 			wantErr: false,
 			validate: func(t *testing.T, result []byte, params ByteGeneratorParams) {
+				t.Helper()
 				password := string(result)
 				assert.Len(t, password, params.Length)
 
@@ -91,6 +92,7 @@ func TestRandomBytes(t *testing.T) {
 			},
 			wantErr: false,
 			validate: func(t *testing.T, result []byte, params ByteGeneratorParams) {
+				t.Helper()
 				password := string(result)
 				counts := countCharacterTypes(password, params)
 
@@ -110,6 +112,7 @@ func TestRandomBytes(t *testing.T) {
 			},
 			wantErr: false,
 			validate: func(t *testing.T, result []byte, params ByteGeneratorParams) {
+				t.Helper()
 				password := string(result)
 				counts := countCharacterTypes(password, params)
 
@@ -129,6 +132,7 @@ func TestRandomBytes(t *testing.T) {
 			},
 			wantErr: false,
 			validate: func(t *testing.T, result []byte, params ByteGeneratorParams) {
+				t.Helper()
 				password := string(result)
 				counts := countCharacterTypes(password, params)
 
@@ -148,6 +152,7 @@ func TestRandomBytes(t *testing.T) {
 			},
 			wantErr: false,
 			validate: func(t *testing.T, result []byte, params ByteGeneratorParams) {
+				t.Helper()
 				password := string(result)
 				assert.Len(t, password, params.Length)
 
@@ -172,6 +177,7 @@ func TestRandomBytes(t *testing.T) {
 			},
 			wantErr: false, // This doesn't error, it uses default character set
 			validate: func(t *testing.T, result []byte, params ByteGeneratorParams) {
+				t.Helper()
 				password := string(result)
 				assert.Len(t, password, params.Length)
 			},
