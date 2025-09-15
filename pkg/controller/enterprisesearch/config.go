@@ -218,7 +218,7 @@ func getOrCreateReusableSettings(ctx context.Context, c k8s.Client, ent entv1.En
 
 	// generate a random secret session key, or reuse the existing one
 	if len(e.SecretSession) == 0 {
-		e.SecretSession = string(common.RandomBytes(24))
+		e.SecretSession = string(common.RandomBytes(EncryptionKeyMinimumBytes))
 	}
 
 	// generate a random encryption key, or reuse the existing one
@@ -231,7 +231,7 @@ func getOrCreateReusableSettings(ctx context.Context, c k8s.Client, ent entv1.En
 	// This allows users to go from no custom key provided (use operator's generated one), to providing their own.
 	if len(e.EncryptionKeys) == 0 {
 		// no encryption key, generate a new one
-		e.EncryptionKeys = []string{string(common.RandomBytes(24))}
+		e.EncryptionKeys = []string{string(common.RandomBytes(EncryptionKeyMinimumBytes))}
 	} else {
 		// encryption keys already exist, reuse the first ECK-managed one
 		// other user-provided keys from user-provided config will be merged in later

@@ -192,6 +192,7 @@ func (d *defaultDriver) Reconcile(ctx context.Context) *reconciler.Results {
 		d.Recorder(),
 		d.OperatorParameters.PasswordHasher,
 		d.OperatorParameters.PasswordGeneratorParams,
+		d.OperatorParameters.OperatorNamespace,
 		meta)
 	if err != nil {
 		return results.WithError(err)
