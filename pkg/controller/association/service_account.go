@@ -15,7 +15,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/generator"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/metadata"
 
 	"go.elastic.co/apm/v2"
@@ -42,6 +42,11 @@ const (
 
 	ServiceAccountNameField       = "serviceAccount"
 	ServiceAccountTokenValueField = "token"
+
+	// ServiceAccountMinimumBytes is the ECK minimum length of the service account token.
+	// The documented minimum length is 10, but both the api and cli return a length of 22.
+	// The ECK operator uses 64 as the default length to provide a more secure default.
+	ServiceAccountMinimumBytes = 64
 )
 
 func applicationSecretLabels(es esv1.Elasticsearch) map[string]string {
@@ -236,7 +241,7 @@ var prefix = [...]byte{0x0, 0x1, 0x0, 0x1}
 
 // newApplicationToken generates a new token for a given service account.
 func newApplicationToken(serviceAccountName commonv1.ServiceAccountName, tokenName string) (*Token, error) {
-	secret := generator.FixedLengthRandomBytes(64)
+	secret := common.RandomBytes(ServiceAccountMinimumBytes)
 	hash, err := pbkdf2Key(secret)
 	if err != nil {
 		return nil, err

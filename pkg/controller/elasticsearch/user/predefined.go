@@ -16,9 +16,10 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 
 	esv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/elasticsearch/v1"
-	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/generator"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/labels"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/metadata"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/operator"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/reconciler"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/version"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/user/filerealm"
@@ -49,7 +50,7 @@ func reconcileElasticUser(
 	existingFileRealm,
 	userProvidedFileRealm filerealm.Realm,
 	passwordHasher cryptutil.PasswordHasher,
-	params generator.ByteGeneratorParams,
+	params operator.PasswordGeneratorParams,
 	meta metadata.Metadata,
 ) (users, error) {
 	if es.Spec.Auth.DisableElasticUser {
@@ -89,7 +90,7 @@ func reconcileInternalUsers(
 	es esv1.Elasticsearch,
 	existingFileRealm filerealm.Realm,
 	passwordHasher cryptutil.PasswordHasher,
-	params generator.ByteGeneratorParams,
+	params operator.PasswordGeneratorParams,
 	meta metadata.Metadata,
 ) (users, error) {
 	users := users{
@@ -152,7 +153,7 @@ func reconcilePredefinedUsers(
 	secretName string,
 	setOwnerRef bool,
 	passwordHasher cryptutil.PasswordHasher,
-	params generator.ByteGeneratorParams,
+	params operator.PasswordGeneratorParams,
 	meta metadata.Metadata,
 ) (users, error) {
 	secretNsn := types.NamespacedName{Namespace: es.Namespace, Name: secretName}
@@ -194,7 +195,7 @@ func reconcilePredefinedUsers(
 
 // reuseOrGeneratePassword updates the users with existing passwords reused from the existing K8s secret,
 // or generates new passwords.
-func reuseOrGeneratePassword(ctx context.Context, c k8s.Client, users users, secretRef types.NamespacedName, params generator.ByteGeneratorParams) (users, error) {
+func reuseOrGeneratePassword(ctx context.Context, c k8s.Client, users users, secretRef types.NamespacedName, params operator.PasswordGeneratorParams) (users, error) {
 	var secret corev1.Secret
 	err := c.Get(ctx, secretRef, &secret)
 	if err != nil && !apierrors.IsNotFound(err) {
@@ -212,7 +213,7 @@ func reuseOrGeneratePassword(ctx context.Context, c k8s.Client, users users, sec
 		if password, exists := secret.Data[u.Name]; exists && len(password) >= params.Length {
 			users[i].Password = password
 		} else {
-			bytes, err := generator.RandomBytesRespectingLicense(ctx, c, "", params)
+			bytes, err := common.RandomBytesRespectingLicense(ctx, c, "", params)
 			if err != nil {
 				return nil, err
 			}

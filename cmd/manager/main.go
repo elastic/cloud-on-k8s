@@ -65,7 +65,6 @@ import (
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/beat"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/certificates"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/container"
-	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/generator"
 	commonlicense "github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/license"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/operator"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/reconciler"
@@ -754,7 +753,7 @@ func startOperator(ctx context.Context) error {
 			RotateBefore: certRotateBefore,
 		},
 		PasswordHasher:            passwordHasher,
-		ByteGeneratorParams:       generatorParams,
+		PasswordGeneratorParams:   generatorParams,
 		MaxConcurrentReconciles:   viper.GetInt(operator.MaxConcurrentReconcilesFlag),
 		SetDefaultSecurityContext: setDefaultSecurityContext,
 		ValidateStorageClass:      viper.GetBool(operator.ValidateStorageClassFlag),
@@ -1156,7 +1155,7 @@ func reconcileWebhookCertsAndAddController(ctx context.Context, mgr manager.Mana
 // categorizeAllowedCharacters categorizes the allowed characters into different categories which
 // are needed to use the go-password package properly. It also buckets the 'other' characters into a separate slice
 // such that invalid characters are able to be filtered out.
-func categorizeAllowedCharacters(s string) (params generator.ByteGeneratorParams, other []rune) {
+func categorizeAllowedCharacters(s string) (params operator.PasswordGeneratorParams, other []rune) {
 	var lowercase, uppercase, digits, symbols []rune
 
 	for _, r := range s {
@@ -1174,7 +1173,7 @@ func categorizeAllowedCharacters(s string) (params generator.ByteGeneratorParams
 		}
 	}
 
-	return generator.ByteGeneratorParams{
+	return operator.PasswordGeneratorParams{
 		LowerLetters: string(lowercase),
 		UpperLetters: string(uppercase),
 		Digits:       string(digits),

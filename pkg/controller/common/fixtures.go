@@ -2,16 +2,17 @@
 // or more contributor license agreements. Licensed under the Elastic License 2.0;
 // you may not use this file except in compliance with the Elastic License 2.0.
 
-package fixtures
+package common
 
 import (
 	"github.com/sethvargo/go-password/password"
 
-	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/operator"
 )
 
-func DefaultPasswordGeneratorParams() common.PasswordGeneratorParams {
-	return common.PasswordGeneratorParams{
+// DefaultPasswordGeneratorParams returns default parameters for password generation
+func DefaultPasswordGeneratorParams() operator.PasswordGeneratorParams {
+	return operator.PasswordGeneratorParams{
 		LowerLetters: password.LowerLetters,
 		UpperLetters: password.UpperLetters,
 		Symbols:      password.Symbols,

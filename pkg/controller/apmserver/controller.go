@@ -33,7 +33,6 @@ import (
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/driver"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/events"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/finalizer"
-	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/generator"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/keystore"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/labels"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/metadata"
@@ -332,7 +331,7 @@ func reconcileApmServerToken(ctx context.Context, c k8s.Client, as *apmv1.ApmSer
 	if token, exists := existingSecret.Data[SecretTokenKey]; exists {
 		expectedApmServerSecret.Data[SecretTokenKey] = token
 	} else {
-		expectedApmServerSecret.Data[SecretTokenKey] = generator.FixedLengthRandomBytes(SecretTokenMinimumBytes)
+		expectedApmServerSecret.Data[SecretTokenKey] = common.RandomBytes(SecretTokenMinimumBytes)
 	}
 
 	// Don't set an ownerRef for the APM token secret, likely to be copied into different namespaces.
