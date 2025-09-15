@@ -44,7 +44,8 @@ const (
 	ServiceAccountTokenValueField = "token"
 
 	// ServiceAccountMinimumBytes is the ECK minimum length of the service account token.
-	// The documented minimum length is 10, but both the api and cli return a length of 22.
+	// The [documented](https://www.elastic.co/docs/deploy-manage/users-roles/cluster-or-deployment-auth/service-accounts)
+	// minimum length is 10, but the Elasticsearch api call to create service accounts returns a length of 22.
 	// The ECK operator uses 64 as the default length to provide a more secure default.
 	ServiceAccountMinimumBytes = 64
 )

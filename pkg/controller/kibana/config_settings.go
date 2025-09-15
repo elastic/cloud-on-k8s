@@ -44,7 +44,7 @@ const (
 
 	// EncryptionKeyMinimumBytes is the minimum number of bytes required for the encryption key.
 	// This is in line with the documentation (32 characters) as of 9.0 (unicode characters can use > 1 byte):
-	//   https://www.elastic.co/guide/en/kibana/9.0/using-kibana-with-security.html#security-configure-settings
+	// https://www.elastic.co/guide/en/kibana/9.0/using-kibana-with-security.html#security-configure-settings
 	EncryptionKeyMinimumBytes = 64
 )
 

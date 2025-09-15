@@ -47,7 +47,7 @@ const (
 
 	// EncryptionKeyMinimumBytes is the minimum number of bytes required for an encryption key.
 	// This is in line with the documentation (256 bits) as of 8.19:
-	//   https://www.elastic.co/guide/en/enterprise-search/8.19/encryption-keys.html
+	// https://www.elastic.co/guide/en/enterprise-search/8.19/encryption-keys.html
 	EncryptionKeyMinimumBytes = 32
 )
 
