@@ -54,7 +54,7 @@ const (
 
 	// SecretTokenMinimumBytes is the minimum number of bytes required for the secret token.
 	// There are no specific recommendations for the minimum length of the secret token
-	// so 24 is a good middle ground.
+	// so the ECK operator uses 24 as the default length to provide a more secure default.
 	SecretTokenMinimumBytes = 24
 )
 
