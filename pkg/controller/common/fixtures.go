@@ -11,6 +11,7 @@ import (
 )
 
 // DefaultPasswordGeneratorParams returns default parameters for password generation
+// * This is to be used for testing purposes only *
 func DefaultPasswordGeneratorParams() operator.PasswordGeneratorParams {
 	return operator.PasswordGeneratorParams{
 		LowerLetters: password.LowerLetters,
