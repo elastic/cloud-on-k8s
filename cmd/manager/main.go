@@ -987,8 +987,8 @@ func validatePasswordFlags(passwordAllowedCharactersFlag string, passwordLengthF
 	generatorParams.Length = viper.GetInt(passwordLengthFlag)
 	// Elasticsearch requires at least 6 characters for passwords
 	// https://www.elastic.co/guide/en/elasticsearch/reference/7.5/security-api-put-user.html
-	if generatorParams.Length < 6 || generatorParams.Length > 128 {
-		return operator.PasswordGeneratorParams{}, fmt.Errorf("password length must be at least 6 and at most 128")
+	if generatorParams.Length < 6 || generatorParams.Length > 72 {
+		return operator.PasswordGeneratorParams{}, fmt.Errorf("password length must be at least 6 and at most 72")
 	}
 
 	if len(generatorParams.LowerLetters)+len(generatorParams.UpperLetters)+len(generatorParams.Digits)+len(generatorParams.Symbols) < 10 {
