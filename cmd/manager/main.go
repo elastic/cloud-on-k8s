@@ -698,7 +698,7 @@ func startOperator(ctx context.Context) error {
 
 	setDefaultSecurityContext, err := determineSetDefaultSecurityContext(viper.GetString(operator.SetDefaultSecurityContextFlag), clientset)
 	if err != nil {
-		log.Error(err, "failed to determine how to set default security context")
+		log.Error(err, "Failed to determine how to set default security context")
 		return err
 	}
 
@@ -709,30 +709,13 @@ func startOperator(ctx context.Context) error {
 	}
 	passwordHasher, err := cryptutil.NewPasswordHasher(hashCacheSize)
 	if err != nil {
-		log.Error(err, "failed to create hash cache")
+		log.Error(err, "Failed to create hash cache")
 		return err
 	}
 
-	allowedCharacters := viper.GetString(operator.PasswordAllowedCharactersFlag)
-	generatorParams, other := categorizeAllowedCharacters(allowedCharacters)
-	if len(other) > 0 {
-		err := fmt.Errorf("invalid characters in passwords allowed characters: %s", string(other))
-		log.Error(err, "while parsing passwords allowed characters")
-		return err
-	}
-
-	generatorParams.Length = viper.GetInt(operator.PasswordLengthFlag)
-	// Elasticsearch requires at least 6 characters for passwords
-	// https://www.elastic.co/guide/en/elasticsearch/reference/7.5/security-api-put-user.html
-	if generatorParams.Length < 6 {
-		err := fmt.Errorf("password length must be at least 6")
-		log.Error(err, "while parsing password length")
-		return err
-	}
-
-	if len(generatorParams.LowerLetters)+len(generatorParams.UpperLetters)+len(generatorParams.Digits)+len(generatorParams.Symbols) < 10 {
-		err := fmt.Errorf("allowedCharacters for password generation needs to be at least 10 for randomness")
-		log.Error(err, "while parsing password allowed characters")
+	generatorParams, err := validatePasswordFlags(operator.PasswordAllowedCharactersFlag, operator.PasswordLengthFlag)
+	if err != nil {
+		log.Error(err, "Failed validating password flags: %s", err)
 		return err
 	}
 
@@ -992,6 +975,27 @@ func registerControllers(mgr manager.Manager, params operator.Parameters, access
 	}
 
 	return nil
+}
+
+func validatePasswordFlags(passwordAllowedCharactersFlag string, passwordLengthFlag string) (operator.PasswordGeneratorParams, error) {
+	allowedCharacters := viper.GetString(operator.PasswordAllowedCharactersFlag)
+	generatorParams, other := categorizeAllowedCharacters(allowedCharacters)
+	if len(other) > 0 {
+		return operator.PasswordGeneratorParams{}, fmt.Errorf("invalid characters in passwords allowed characters: %s", string(other))
+	}
+
+	generatorParams.Length = viper.GetInt(operator.PasswordLengthFlag)
+	// Elasticsearch requires at least 6 characters for passwords
+	// https://www.elastic.co/guide/en/elasticsearch/reference/7.5/security-api-put-user.html
+	if generatorParams.Length < 6 || generatorParams.Length > 128 {
+		return operator.PasswordGeneratorParams{}, fmt.Errorf("password length must be at least 6 and at most 128")
+	}
+
+	if len(generatorParams.LowerLetters)+len(generatorParams.UpperLetters)+len(generatorParams.Digits)+len(generatorParams.Symbols) < 10 {
+		return operator.PasswordGeneratorParams{}, fmt.Errorf("allowedCharacters for password generation needs to be at least 10 for randomness")
+	}
+
+	return generatorParams, nil
 }
 
 func validateCertExpirationFlags(validityFlag string, rotateBeforeFlag string) (time.Duration, time.Duration, error) {
