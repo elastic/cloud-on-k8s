@@ -241,10 +241,10 @@ func getOrCreateReusableSettings(ctx context.Context, c k8s.Client, kb kbv1.Kiba
 		return nil, err
 	}
 	if len(r.EncryptionKey) == 0 {
-		r.EncryptionKey = string(common.RandomBytes(24))
+		r.EncryptionKey = string(common.RandomBytes(EncryptionKeyMinimumBytes))
 	}
 	if len(r.ReportingKey) == 0 {
-		r.ReportingKey = string(common.RandomBytes(24))
+		r.ReportingKey = string(common.RandomBytes(EncryptionKeyMinimumBytes))
 	}
 
 	kbVer, err := version.Parse(kb.Spec.Version)
@@ -253,7 +253,7 @@ func getOrCreateReusableSettings(ctx context.Context, c k8s.Client, kb kbv1.Kiba
 	}
 	// xpack.encryptedSavedObjects.encryptionKey was only added in 7.6.0 and earlier versions error out
 	if len(r.SavedObjectsKey) == 0 && kbVer.GTE(version.From(7, 6, 0)) {
-		r.SavedObjectsKey = string(common.RandomBytes(24))
+		r.SavedObjectsKey = string(common.RandomBytes(EncryptionKeyMinimumBytes))
 	}
 	return settings.MustCanonicalConfig(r), nil
 }
