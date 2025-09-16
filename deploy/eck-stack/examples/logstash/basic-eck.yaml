@@ -56,7 +56,8 @@ eck-beats:
   type: filebeat
   config:
     filebeat.inputs:
-    - type: log
+    - type: filestream
+      id: logstash-tutorial
       paths:
         - /data/logstash-tutorial.log
     processors:

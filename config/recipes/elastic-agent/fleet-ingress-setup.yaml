@@ -1,90 +1,15 @@
----
-apiVersion: apps/v1
-kind: DaemonSet
-metadata:
-  name: manage-agent-hostpath-permissions
-spec:
-  selector:
-    matchLabels:
-      name: manage-agent-hostpath-permissions
-  template:
-    metadata:
-      labels:
-        name: manage-agent-hostpath-permissions
-    spec:
-      # This is only required when running in an SELinux-enabled/OpenShift environment.
-      # Ensure this user has been added to the privileged scc in the correct namespace.
-      # oc adm policy add-scc-to-user privileged -z elastic-agent -n elastic-apps
-      # serviceAccountName: elastic-agent
-      volumes:
-        - hostPath:
-            path: /var/lib/elastic-agent
-            type: DirectoryOrCreate
-          name: "agent-data"
-      initContainers:
-        - name: manage-agent-hostpath-permissions
-          # UBI is only required when needing the `chcon` binary when running
-          # in an SELinux-enabled/OpenShift environment. If that
-          # is not required then the following smaller image can be used instead:
-          # image: registry.access.redhat.com/ubi9/ubi-minimal:latest
-          image: docker.io/bash:5.2.15
-          resources:
-            limits:
-              cpu: 100m
-              memory: 32Mi
-          securityContext:
-            # privileged is only required when running in an SELinux-enabled/OpenShift environment.
-            # privileged: true
-            runAsUser: 0
-          volumeMounts:
-            - mountPath: /var/lib/elastic-agent
-              name: agent-data
-          command:
-          - 'bash'
-          - '-e'
-          - '-c'
-          - |-
-            # Adjust this be /var/lib/elastic-agent/YOUR-NAMESPACE/YOUR-AGENT-NAME/state
-            # Multiple directories are supported for the fleet-server + agent use case.
-            dirs=(
-              "/var/lib/elastic-agent/default/elastic-agent/state"
-              "/var/lib/elastic-agent/default/fleet-server/state"
-              )
-            for dir in ${dirs[@]}; do
-              mkdir -p "${dir}"
-              # chcon is only required when running an SELinux-enabled/OpenShift environment.
-              # chcon -Rt svirt_sandbox_file_t "${dir}"
-              chmod g+rw "${dir}"
-              chgrp 1000 "${dir}"
-              if [ -n "$(ls -A ${dir} 2>/dev/null)" ]
-              then
-                chgrp 1000 "${dir}"/*
-                chmod g+rw "${dir}"/*
-              fi
-            done
-      containers:
-        - name: pause
-          image: gcr.io/google-containers/pause-amd64:3.1
----
 apiVersion: kibana.k8s.elastic.co/v1
 kind: Kibana
 metadata:
   name: kibana
 spec:
-  version: 9.1.2
+  version: 9.1.0
   count: 1
   elasticsearchRef:
     name: elasticsearch
   config:
-    xpack.fleet.agents.fleet_server.hosts: ["https://fleet-server-agent-http.default.svc:8220"]
-    xpack.fleet.outputs:
-    - id: eck-fleet-agent-output-elasticsearch
-      is_default: true
-      name: eck-elasticsearch
-      type: elasticsearch
-      hosts: ["https://elasticsearch-es-http.default.svc:9200"]
-      ssl:
-        certificate_authorities: ["/mnt/elastic-internal/elasticsearch-association/default/elasticsearch/certs/ca.crt"]
+    xpack.fleet.agents.elasticsearch.hosts: ["https://es.example.com:443"]
+    xpack.fleet.agents.fleet_server.hosts: [ "https://fleet.example.com:443"]  
     xpack.fleet.packages:
     - name: system
       version: latest
@@ -94,10 +19,12 @@ spec:
       version: latest
     - name: kubernetes
       version: latest
+    - name: apm
+      version: latest
     xpack.fleet.agentPolicies:
     - name: Fleet Server on ECK policy
       id: eck-fleet-server
-      namespace: default
+      namespace: elastic
       is_managed: true
       monitoring_enabled:
       - logs
@@ -110,7 +37,7 @@ spec:
           name: fleet_server
     - name: Elastic Agent on ECK policy
       id: eck-agent
-      namespace: default
+      namespace: elastic
       is_managed: true
       monitoring_enabled:
       - logs
@@ -123,25 +50,99 @@ spec:
       - package:
           name: kubernetes
         name: kubernetes-1
+      
 ---
 apiVersion: elasticsearch.k8s.elastic.co/v1
 kind: Elasticsearch
 metadata:
   name: elasticsearch
 spec:
-  version: 9.1.2
+  version: 9.1.0
   nodeSets:
-  - name: default
+  - name: default-3
     count: 3
     config:
       node.store.allow_mmap: false
+    volumeClaimTemplates:
+    - metadata:
+        name: elasticsearch-data
+      spec:
+        accessModes: ["ReadWriteOnce"]
+        resources:
+          requests:
+            storage: 30Gi
+
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: elastic-ingress
+  annotations:
+    # Disable HTTP traffic
+    kubernetes.io/ingress.allow-http: "false"
+    nginx.ingress.kubernetes.io/backend-protocol: "HTTPS"
+    nginx.ingress.kubernetes.io/proxy-ssl-verify: "off"
+    nginx.ingress.kubernetes.io/ssl-redirect: "true"
+    # Depending on the ingress implementation in your environment you may need to specify the ingress class
+    # kubernetes.io/ingress.class: "example"
+spec:
+  # or alternatively use the ingressClassName field. Consult the documentation of your ingress controller.
+  # ingressClassName: example
+  tls:
+    # The assumption here is that these are certificates that are trusted both by agents outside the cluster as well as 
+    # as inside. See the comments in the Agent spec below for more details.
+    - hosts: ["fleet.example.com"]
+      secretName: fleet-server-acme 
+    - hosts: ["es.example.com"]
+      secretName: es-acme
+    - hosts: ["kb.example.com"]
+      secretName: kb-acme
+  rules:
+    - host: "kb.example.com"
+      http:
+        paths:
+        - path: "/"
+          pathType: Prefix
+          backend:
+            service:
+              name: kibana-kb-http
+              port:
+                number: 5601
+    - host: "es.example.com"
+      http:
+        paths:
+        - path: "/"
+          pathType: Prefix
+          backend:
+            service:
+              name: elasticsearch-es-http
+              port:
+                number: 9200
+    - host: "fleet.example.com"
+      http:
+        paths:
+          - path: "/"
+            pathType: Prefix
+            backend:
+              service:
+                name: fleet-server-agent-http
+                port:
+                  number: 8220
 ---
 apiVersion: agent.k8s.elastic.co/v1alpha1
 kind: Agent
 metadata:
   name: fleet-server
 spec:
-  version: 9.1.2
+  version: 9.1.0
+  http:
+    # Configuring the same certificates used for the ingress here has the effect that 
+    # the CA certificate that is expected in ca.crt inside this secret is propagated to the agents
+    # and configured in the FLEET_CA environment variable. 
+    # Without this the agents would only trust the self-signed certificates generated by ECK.
+    tls:
+      certificate:
+        secretName: fleet-server-acme
   kibanaRef:
     name: kibana
   elasticsearchRefs:
@@ -153,28 +154,57 @@ spec:
     replicas: 1
     podTemplate:
       spec:
+        containers:
+        - name: agent
+          env:
+          # Force Elastic Agent to bootstrap itself through the public Fleet Server URL
+          # We are asuming here the certificates configured above are only valid for the public URL.
+          - name: FLEET_URL
+            value: https://fleet.example.com:443
         serviceAccountName: fleet-server
         automountServiceAccountToken: true
+        securityContext:
+          runAsUser: 0
 ---
 apiVersion: agent.k8s.elastic.co/v1alpha1
 kind: Agent
 metadata: 
   name: elastic-agent
 spec:
-  version: 9.1.2
+  config:
+    fleet:
+      enabled: true
+    providers.kubernetes:
+      add_resource_metadata:
+        deployment: true
+  version: 9.1.0
   kibanaRef:
     name: kibana
-  fleetServerRef: 
+  fleetServerRef:
     name: fleet-server
   mode: fleet
   policyID: eck-agent
   daemonSet:
     podTemplate:
       spec:
+        volumes:
+        - name: fleet-ca
+          secret:
+            secretName: fleet-server-acme
+        containers:
+        - name: agent
+          env:
+          - name: FLEET_URL
+            value: https://fleet.example.com
+          volumeMounts:
+          - name: fleet-ca
+            mountPath: /mnt/extra 
+        serviceAccountName: elastic-agent
         hostNetwork: true
         dnsPolicy: ClusterFirstWithHostNet
-        serviceAccountName: elastic-agent
         automountServiceAccountToken: true
+        securityContext:
+          runAsUser: 0
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
@@ -216,6 +246,7 @@ apiVersion: v1
 kind: ServiceAccount
 metadata:
   name: fleet-server
+  namespace: default
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding
@@ -322,4 +353,3 @@ roleRef:
   kind: ClusterRole
   name: elastic-agent
   apiGroup: rbac.authorization.k8s.io
-...

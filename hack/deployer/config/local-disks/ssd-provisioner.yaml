@@ -33,7 +33,7 @@ data:
     set -o pipefail
 
     # TODO custom docker image
-    apt-get update && apt-get -y install nvme-cli
+    apt-get update && apt-get -y install nvme-cli e2fsprogs
 
     SSD_NVME_DEVICE_LIST=($(nvme list | grep "Amazon EC2 NVMe Instance Storage" | cut -d " " -f 1 || true))
     SSD_NVME_DEVICE_COUNT=${#SSD_NVME_DEVICE_LIST[@]}

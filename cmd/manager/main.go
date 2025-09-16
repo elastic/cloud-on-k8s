@@ -560,6 +560,7 @@ func startOperator(ctx context.Context) error {
 	// Setup Scheme for all resources
 	log.Info("Setting up scheme")
 	controllerscheme.SetupScheme()
+
 	// also set up the v1beta1 scheme, used by the v1beta1 webhook
 	controllerscheme.SetupV1beta1Scheme()
 

@@ -45,7 +45,8 @@ func maybeRunECKDiagnostics(ctx context.Context, testName string, step Step) {
 	}
 	log.Info("Running eck-diagnostics", "cluster", testCtx.ClusterName, "test", testName, "step", step.Name)
 
-	otherNS := append([]string{testCtx.E2ENamespace}, testCtx.Operator.ManagedNamespaces...)
+	// include the default namespace to have diagnostics on the local disk provisioner used in some environments
+	otherNS := append([]string{testCtx.E2ENamespace, "default"}, testCtx.Operator.ManagedNamespaces...)
 	// The following appends the clustername, test name, and it's sub-test names together with a '-'.
 	// The cluster name is added to the eck-diagnostics file name to avoid conflicts at the last step
 	// of the e2e tests where all diagnostics are downloaded locally to the same directory, and uploaded to buildkite as artifacts.

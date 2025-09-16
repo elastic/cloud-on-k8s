@@ -128,7 +128,21 @@ tests:
   - it: not setting elasticsearchRef should fail
     asserts:
       - failedTemplate:
-          errorMessage: "An elasticsearchRef is required"
+          errorMessage: "An elasticsearchRef name or secretName is required"
+  - it: setting elasticsearchRef.secretName should not fail
+    set:
+      spec:
+        elasticsearchRef:
+          secretName: remote-es-credentials
+    release:
+      name: quickstart
+    asserts:
+      - isKind:
+          of: Kibana
+      - equal:
+          path: spec.elasticsearchRef
+          value:
+            secretName: remote-es-credentials
   - it: values.spec.config should render properly
     set:
       spec:

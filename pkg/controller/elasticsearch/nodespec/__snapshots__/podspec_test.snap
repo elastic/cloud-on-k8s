@@ -8,7 +8,6 @@
    "pod-template-annotation-name": "pod-template-annotation-value",
    "policy.k8s.elastic.co/elasticsearch-config-mounts-hash": "2095567618"
   },
-  "creationTimestamp": null,
   "labels": {
    "common.k8s.elastic.co/type": "elasticsearch",
    "elasticsearch.k8s.elastic.co/cluster-name": "name",
@@ -986,7 +985,6 @@
    "elasticsearch.k8s.elastic.co/config-hash": "2170302367",
    "pod-template-annotation-name": "pod-template-annotation-value"
   },
-  "creationTimestamp": null,
   "labels": {
    "common.k8s.elastic.co/type": "elasticsearch",
    "elasticsearch.k8s.elastic.co/cluster-name": "name",
@@ -1842,9 +1840,7 @@
 
 [TestBuildPodTemplateSpec/failing_client - 1]
 {
- "metadata": {
-  "creationTimestamp": null
- },
+ "metadata": {},
  "spec": {
   "containers": null
  }
