@@ -1,0 +1,39 @@
+---
+apiVersion: epr.k8s.elastic.co/v1alpha1
+kind: ElasticPackageRegistry
+metadata:
+  name: {{ include "epr.fullname" . }}
+  labels:
+    {{- include "epr.labels" . | nindent 4 }}
+  annotations:
+    eck.k8s.elastic.co/license: basic
+    {{- with .Values.annotations }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
+spec:
+  version: {{ required "A Elastic Package Registry version is required" .Values.version }}
+  {{- /* 
+    The following templates with 'or' are to allow both .spec.field and .field to be set for backwards 
+    compatibility purposes. See https://github.com/elastic/cloud-on-k8s/pull/8192 for details.
+  */ -}}
+  {{- with or ((.Values.spec).image) (.Values.image) }}
+  image: {{ . }}
+  {{- end }}
+  {{- with or ((.Values.spec).count) (.Values.count) }}
+  count: {{ . }}
+  {{- end }}
+  {{- with or ((.Values.spec).config) (.Values.config) }}
+  config:
+    {{ toYaml . | nindent 4 }}
+  {{- end }}
+  {{- with or ((.Values.spec).http) (.Values.http) }}
+  http:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+  {{- with or ((.Values.spec).podTemplate) (.Values.podTemplate) }}
+  podTemplate:
+    {{ toYaml . | nindent 4 }}
+  {{- end }}
+  {{- with or ((.Values.spec).revisionHistoryLimit) (.Values.revisionHistoryLimit) }}
+  revisionHistoryLimit: {{ . }}
+  {{- end }}

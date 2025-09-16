@@ -41,6 +41,8 @@ const (
 	esCertsVolumeMountPath = "/usr/share/kibana/config/elasticsearch-certs"
 	// entCertsVolumeMountPath is the directory into which trusted Enterprise Search HTTP CA certs are mounted.
 	entCertsVolumeMountPath = "/usr/share/kibana/config/ent-certs"
+	// eprCertsVolumeMountPath is the directory into which trusted Package Registry CA certs are mounted.
+	eprCertsVolumeMountPath = "/usr/share/kibana/config/epr-certs"
 )
 
 // Constants to use for the Kibana configuration settings.
@@ -54,6 +56,7 @@ const (
 	XpackReportingEncryptionKey                    = "xpack.reporting.encryptionKey"
 	XpackEncryptedSavedObjects                     = "xpack.encryptedSavedObjects"
 	XpackEncryptedSavedObjectsEncryptionKey        = "xpack.encryptedSavedObjects.encryptionKey"
+	XpackFleetRegistryURL                          = "xpack.fleet.registryUrl"
 
 	ElasticsearchSslCertificateAuthorities = "elasticsearch.ssl.certificateAuthorities"
 	ElasticsearchSslVerificationMode       = "elasticsearch.ssl.verificationMode"
@@ -114,6 +117,7 @@ func NewConfigSettings(ctx context.Context, client k8s.Client, kb kbv1.Kibana, v
 	kibanaTLSCfg := settings.MustCanonicalConfig(kibanaTLSSettings(kb))
 	versionSpecificCfg := VersionDefaults(&kb, v)
 	entSearchCfg := settings.MustCanonicalConfig(enterpriseSearchSettings(kb))
+	eprCfg := settings.MustCanonicalConfig(packageRegistrySettings(kb))
 	monitoringCfg, err := settings.NewCanonicalConfigFrom(stackmon.MonitoringConfig(kb).Data)
 	if err != nil {
 		return CanonicalConfig{}, err
@@ -124,7 +128,8 @@ func NewConfigSettings(ctx context.Context, client k8s.Client, kb kbv1.Kibana, v
 		versionSpecificCfg,
 		kibanaTLSCfg,
 		entSearchCfg,
-		monitoringCfg)
+		monitoringCfg,
+		eprCfg)
 	if err != nil {
 		return CanonicalConfig{}, err
 	}
@@ -320,6 +325,15 @@ func entCaCertSecretVolume(entAssocConf commonv1.AssociationConf) volume.SecretV
 	)
 }
 
+// eprCaCertSecretVolume returns a SecretVolume to hold the Elastic Package Registry CA certs for the given Kibana resource.
+func eprCaCertSecretVolume(eprAssocConf commonv1.AssociationConf) volume.SecretVolume {
+	return volume.NewSecretVolumeWithMountPath(
+		eprAssocConf.GetCASecretName(),
+		"epr-certs",
+		eprCertsVolumeMountPath,
+	)
+}
+
 func enterpriseSearchSettings(kb kbv1.Kibana) map[string]interface{} {
 	cfg := map[string]interface{}{}
 	assocConf, _ := kb.EntAssociation().AssociationConf()
@@ -332,6 +346,15 @@ func enterpriseSearchSettings(kb kbv1.Kibana) map[string]interface{} {
 		// to connect to Enterprise Search through the k8s-internal service DNS name
 		// even though the user-provided certificate may only specify a public-facing DNS.
 		cfg[EnterpriseSearchSslVerificationMode] = "certificate"
+	}
+	return cfg
+}
+
+func packageRegistrySettings(kb kbv1.Kibana) map[string]interface{} {
+	cfg := map[string]interface{}{}
+	assocConf, _ := kb.EPRAssociation().AssociationConf()
+	if assocConf.URLIsConfigured() {
+		cfg[XpackFleetRegistryURL] = assocConf.GetURL()
 	}
 	return cfg
 }
