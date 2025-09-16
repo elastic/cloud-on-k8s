@@ -314,7 +314,7 @@ func allowedDisruptionsForRole(
 	if es.Status.Health == esv1.ElasticsearchUnknownHealth ||
 		es.Status.Health == esv1.ElasticsearchHealth("") ||
 		es.Status.Health == esv1.ElasticsearchRedHealth {
-		ulog.FromContext(ctx).Info("Disruptions not allowed due to health status. Health: %s", es.Status.Health)
+		ulog.FromContext(ctx).Info("Disruptions not allowed due to health status", "health", es.Status.Health)
 		return 0
 	}
 
@@ -339,7 +339,7 @@ func allowedDisruptionsForRole(
 	}
 
 	// In all other cases, we want to allow no disruptions.
-	ulog.FromContext(ctx).Info("Disruptions not allowed for unknown reasons. Role: %s, Health: %s", role, es.Status.Health)
+	ulog.FromContext(ctx).Info("Disruptions not allowed for unknown reasons", "role", role, "health", es.Status.Health)
 	return 0
 }
 
