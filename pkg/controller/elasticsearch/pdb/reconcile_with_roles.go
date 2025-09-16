@@ -329,7 +329,7 @@ func allowedDisruptionsForRole(
 		if es.Status.Health == esv1.ElasticsearchGreenHealth {
 			return 1
 		}
-		ulog.FromContext(ctx).Info("Disruptions not allowed for data roles due to health not being green. Health: %s", es.Status.Health)
+		ulog.FromContext(ctx).Info("Disruptions not allowed for data roles due to health not being green", "health", es.Status.Health)
 		return 0
 	}
 
