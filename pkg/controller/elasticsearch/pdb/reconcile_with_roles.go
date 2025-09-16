@@ -339,7 +339,7 @@ func allowedDisruptionsForRole(
 	}
 
 	// In all other cases, we want to allow no disruptions.
-	ulog.FromContext(ctx).Info("Disruptions not allowed for unknown reasons", "role", role, "health", es.Status.Health)
+	ulog.FromContext(ctx).Info("Disruptions not allowed by default", "role", role, "health", es.Status.Health)
 	return 0
 }
 
