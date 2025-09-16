@@ -333,7 +333,7 @@ func TestWebhook(t *testing.T) {
 		},
 		{
 			Name:      "simple-epr-ref",
-			Operation: admissionv1beta1.Create,
+			Operation: admissionv1.Create,
 			Object: func(t *testing.T, uid string) []byte {
 				t.Helper()
 				ent := mkKibana(uid)
