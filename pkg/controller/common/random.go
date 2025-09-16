@@ -6,6 +6,7 @@ package common
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/sethvargo/go-password/password"
 
@@ -39,14 +40,17 @@ func RandomBytesRespectingLicense(ctx context.Context, client k8s.Client, namesp
 		return nil, err
 	}
 	if enabled {
-		// For enterprise license, use the provided parameters
-		return []byte(password.MustGenerate(
+		data, err := password.Generate(
 			params.Length,
 			min(params.Length/4, len(params.Digits)),  // number of digits to include in the result
 			min(params.Length/4, len(params.Symbols)), // number of symbols to include in the result
 			false, // noUpper
 			true,  // allowRepeat
-		)), nil
+		)
+		if err != nil {
+			return nil, fmt.Errorf("while generating random bytes for password: %w", err)
+		}
+		return []byte(data), nil
 	}
 	// For basic license, use the original fixed behavior
 	return RandomBytes(24), nil
