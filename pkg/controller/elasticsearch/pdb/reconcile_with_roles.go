@@ -245,6 +245,7 @@ func createPDBForStatefulSets(
 	}
 
 	if es.Spec.PodDisruptionBudget != nil {
+		// Copy not done prior to assignment here as maps.Clone is used in the metadata.Merge call.
 		pdb.Annotations = es.Spec.PodDisruptionBudget.ObjectMeta.Annotations
 		pdb.Labels = es.Spec.PodDisruptionBudget.ObjectMeta.Labels
 	}
