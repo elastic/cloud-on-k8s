@@ -32,30 +32,31 @@ import (
 	es_sset "github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/sset"
 )
 
-func TestReconcile(t *testing.T) {
-	defaultPDB := func() *policyv1.PodDisruptionBudget {
-		return &policyv1.PodDisruptionBudget{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      esv1.DefaultPodDisruptionBudget("cluster"),
-				Namespace: "ns",
-				Labels:    map[string]string{label.ClusterNameLabelName: "cluster", commonv1.TypeLabelName: label.Type},
-			},
-			Spec: policyv1.PodDisruptionBudgetSpec{
-				MinAvailable: intStrPtr(intstr.FromInt(3)),
-				Selector: &metav1.LabelSelector{
-					MatchLabels: map[string]string{
-						label.ClusterNameLabelName: "cluster",
-					},
+func defaultPDB() *policyv1.PodDisruptionBudget {
+	return &policyv1.PodDisruptionBudget{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      esv1.DefaultPodDisruptionBudget("cluster"),
+			Namespace: "ns",
+			Labels:    map[string]string{label.ClusterNameLabelName: "cluster", commonv1.TypeLabelName: label.Type},
+		},
+		Spec: policyv1.PodDisruptionBudgetSpec{
+			MinAvailable: intStrPtr(intstr.FromInt(3)),
+			Selector: &metav1.LabelSelector{
+				MatchLabels: map[string]string{
+					label.ClusterNameLabelName: "cluster",
 				},
-				MaxUnavailable: nil,
 			},
-		}
+			MaxUnavailable: nil,
+		},
 	}
-	defaultEs := esv1.Elasticsearch{ObjectMeta: metav1.ObjectMeta{Name: "cluster", Namespace: "ns"}}
+}
+
+func TestReconcile(t *testing.T) {
+	defaultEs := esv1.Elasticsearch{ObjectMeta: metav1.ObjectMeta{Name: "cluster", Namespace: "ns"}, Spec: esv1.ElasticsearchSpec{Version: "9.0.1"}}
 	type args struct {
-		initObjs     []client.Object
-		es           esv1.Elasticsearch
-		statefulSets es_sset.StatefulSetList
+		initObjs []client.Object
+		es       esv1.Elasticsearch
+		builder  Builder
 	}
 	tests := []struct {
 		name    string
@@ -65,26 +66,35 @@ func TestReconcile(t *testing.T) {
 		{
 			name: "no existing pdb: should create one",
 			args: args{
-				es:           defaultEs,
-				statefulSets: es_sset.StatefulSetList{sset.TestSset{Replicas: 3, Master: true, Data: true}.Build()},
+				es: defaultEs,
+				builder: NewBuilder("cluster").
+					WithNamespace("ns").
+					WithVersion("9.0.1").
+					WithNodeSet("master-data", 3, esv1.MasterRole, esv1.DataRole),
 			},
 			wantPDB: defaultPDB(),
 		},
 		{
 			name: "pdb already exists: should remain unmodified",
 			args: args{
-				initObjs:     []client.Object{withHashLabel(withOwnerRef(defaultPDB(), defaultEs))},
-				es:           defaultEs,
-				statefulSets: es_sset.StatefulSetList{sset.TestSset{Replicas: 3, Master: true, Data: true}.Build()},
+				initObjs: []client.Object{withHashLabel(withOwnerRef(defaultPDB(), defaultEs))},
+				es:       defaultEs,
+				builder: NewBuilder("cluster").
+					WithNamespace("ns").
+					WithVersion("9.0.1").
+					WithNodeSet("master-data", 3, esv1.MasterRole, esv1.DataRole),
 			},
 			wantPDB: defaultPDB(),
 		},
 		{
 			name: "pdb needs a MinAvailable update",
 			args: args{
-				initObjs:     []client.Object{defaultPDB()},
-				es:           defaultEs,
-				statefulSets: es_sset.StatefulSetList{sset.TestSset{Replicas: 5, Master: true, Data: true}.Build()},
+				initObjs: []client.Object{defaultPDB()},
+				es:       defaultEs,
+				builder: NewBuilder("cluster").
+					WithNamespace("ns").
+					WithVersion("9.0.1").
+					WithNodeSet("master-data", 5, esv1.MasterRole, esv1.DataRole),
 			},
 			wantPDB: &policyv1.PodDisruptionBudget{
 				ObjectMeta: metav1.ObjectMeta{
@@ -111,7 +121,10 @@ func TestReconcile(t *testing.T) {
 					ObjectMeta: metav1.ObjectMeta{Name: "cluster", Namespace: "ns"},
 					Spec:       esv1.ElasticsearchSpec{PodDisruptionBudget: &commonv1.PodDisruptionBudgetTemplate{}},
 				},
-				statefulSets: es_sset.StatefulSetList{sset.TestSset{Replicas: 3, Master: true, Data: true}.Build()},
+				builder: NewBuilder("cluster").
+					WithNamespace("ns").
+					WithVersion("9.0.1").
+					WithNodeSet("master-data", 3, esv1.MasterRole, esv1.DataRole),
 			},
 			wantPDB: nil,
 		},
@@ -133,7 +146,9 @@ func TestReconcile(t *testing.T) {
 				WithRESTMapper(restMapper).
 				WithObjects(tt.args.initObjs...).Build()
 
-			err := Reconcile(context.Background(), k8sClient, tt.args.es, tt.args.statefulSets, metadata.Propagate(&tt.args.es, metadata.Metadata{Labels: tt.args.es.GetIdentityLabels()}))
+			statefulSets := tt.args.builder.GetStatefulSets()
+
+			err := Reconcile(context.Background(), k8sClient, tt.args.es, "test_ns", statefulSets, metadata.Propagate(&tt.args.es, metadata.Metadata{Labels: tt.args.es.GetIdentityLabels()}))
 			require.NoError(t, err)
 			pdbNsn := types.NamespacedName{Namespace: tt.args.es.Namespace, Name: esv1.DefaultPodDisruptionBudget(tt.args.es.Name)}
 			var retrieved policyv1.PodDisruptionBudget
@@ -168,8 +183,8 @@ func intStrPtr(intStr intstr.IntOrString) *intstr.IntOrString {
 
 func Test_expectedPDB(t *testing.T) {
 	type args struct {
-		es           esv1.Elasticsearch
-		statefulSets es_sset.StatefulSetList
+		es      esv1.Elasticsearch
+		builder Builder
 	}
 	tests := []struct {
 		name string
@@ -179,16 +194,22 @@ func Test_expectedPDB(t *testing.T) {
 		{
 			name: "PDB disabled in the spec",
 			args: args{
-				es:           esv1.Elasticsearch{Spec: esv1.ElasticsearchSpec{PodDisruptionBudget: &commonv1.PodDisruptionBudgetTemplate{}}},
-				statefulSets: es_sset.StatefulSetList{sset.TestSset{Replicas: 3, Master: true, Data: true}.Build()},
+				es: esv1.Elasticsearch{Spec: esv1.ElasticsearchSpec{PodDisruptionBudget: &commonv1.PodDisruptionBudgetTemplate{}}},
+				builder: NewBuilder("cluster").
+					WithNamespace("ns").
+					WithVersion("9.0.1").
+					WithNodeSet("master-data", 3, esv1.MasterRole, esv1.DataRole),
 			},
 			want: nil,
 		},
 		{
 			name: "Build default PDB",
 			args: args{
-				es:           esv1.Elasticsearch{ObjectMeta: metav1.ObjectMeta{Name: "cluster", Namespace: "ns"}},
-				statefulSets: es_sset.StatefulSetList{sset.TestSset{Replicas: 3, Master: true, Data: true}.Build()},
+				es: esv1.Elasticsearch{ObjectMeta: metav1.ObjectMeta{Name: "cluster", Namespace: "ns"}},
+				builder: NewBuilder("cluster").
+					WithNamespace("ns").
+					WithVersion("9.0.1").
+					WithNodeSet("master-data", 3, esv1.MasterRole, esv1.DataRole),
 			},
 			want: &policyv1.PodDisruptionBudget{
 				ObjectMeta: metav1.ObjectMeta{
@@ -219,7 +240,10 @@ func Test_expectedPDB(t *testing.T) {
 							}},
 					},
 				},
-				statefulSets: es_sset.StatefulSetList{sset.TestSset{Replicas: 3, Master: true, Data: true}.Build()},
+				builder: NewBuilder("cluster").
+					WithNamespace("ns").
+					WithVersion("9.0.1").
+					WithNodeSet("master-data", 3, esv1.MasterRole, esv1.DataRole),
 			},
 			want: &policyv1.PodDisruptionBudget{
 				ObjectMeta: metav1.ObjectMeta{
@@ -248,7 +272,10 @@ func Test_expectedPDB(t *testing.T) {
 							Spec: policyv1.PodDisruptionBudgetSpec{MinAvailable: intStrPtr(intstr.FromInt(42))}},
 					},
 				},
-				statefulSets: es_sset.StatefulSetList{sset.TestSset{Replicas: 3, Master: true, Data: true}.Build()},
+				builder: NewBuilder("cluster").
+					WithNamespace("ns").
+					WithVersion("9.0.1").
+					WithNodeSet("master-data", 3, esv1.MasterRole, esv1.DataRole),
 			},
 			want: &policyv1.PodDisruptionBudget{
 				ObjectMeta: metav1.ObjectMeta{
@@ -268,7 +295,8 @@ func Test_expectedPDB(t *testing.T) {
 				// set owner ref
 				tt.want = withOwnerRef(tt.want, tt.args.es)
 			}
-			got, err := expectedPDB(tt.args.es, tt.args.statefulSets, metadata.Propagate(&tt.args.es, metadata.Metadata{Labels: tt.args.es.GetIdentityLabels()}))
+			statefulSets := tt.args.builder.GetStatefulSets()
+			got, err := expectedPDB(tt.args.es, statefulSets, metadata.Propagate(&tt.args.es, metadata.Metadata{Labels: tt.args.es.GetIdentityLabels()}))
 			require.NoError(t, err)
 			if !reflect.DeepEqual(got, tt.want) {
 				t.Errorf("expectedPDB() got = %v, want %v", got, tt.want)
@@ -277,7 +305,7 @@ func Test_expectedPDB(t *testing.T) {
 	}
 }
 
-func Test_allowedDisruptions(t *testing.T) {
+func Test_allowedDisruptionsForSinglePDB(t *testing.T) {
 	type args struct {
 		es          esv1.Elasticsearch
 		actualSsets es_sset.StatefulSetList
@@ -336,7 +364,7 @@ func Test_allowedDisruptions(t *testing.T) {
 			want: 1,
 		},
 		{
-			name: "green health but only 1 master: 0 disruption allowed",
+			name: "green health but only 1 master: no disruption allowed",
 			args: args{
 				es: esv1.Elasticsearch{Status: esv1.ElasticsearchStatus{Health: esv1.ElasticsearchGreenHealth}},
 				actualSsets: es_sset.StatefulSetList{
@@ -347,7 +375,7 @@ func Test_allowedDisruptions(t *testing.T) {
 			want: 0,
 		},
 		{
-			name: "green health but only 1 data node: 0 disruption allowed",
+			name: "green health but only 1 data node: no disruption allowed",
 			args: args{
 				es: esv1.Elasticsearch{Status: esv1.ElasticsearchStatus{Health: esv1.ElasticsearchGreenHealth}},
 				actualSsets: es_sset.StatefulSetList{
@@ -371,7 +399,7 @@ func Test_allowedDisruptions(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if got := allowedDisruptions(tt.args.es, tt.args.actualSsets); got != tt.want {
+			if got := allowedDisruptionsForSinglePDB(tt.args.es, tt.args.actualSsets); got != tt.want {
 				t.Errorf("allowedDisruptions() = %v, want %v", got, tt.want)
 			}
 		})
