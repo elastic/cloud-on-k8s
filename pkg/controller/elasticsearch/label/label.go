@@ -107,7 +107,11 @@ func IsMasterNodeSet(statefulSet appsv1.StatefulSet) bool {
 
 // IsDataNodeSet returns true if the given StatefulSet specifies data nodes.
 func IsDataNodeSet(statefulSet appsv1.StatefulSet) bool {
-	return NodeTypesDataLabelName.HasValue(true, statefulSet.Spec.Template.Labels) || NodeTypesDataHotLabelName.HasValue(true, statefulSet.Spec.Template.Labels) || NodeTypesDataColdLabelName.HasValue(true, statefulSet.Spec.Template.Labels) || NodeTypesDataContentLabelName.HasValue(true, statefulSet.Spec.Template.Labels) || NodeTypesDataWarmLabelName.HasValue(true, statefulSet.Spec.Template.Labels)
+	return NodeTypesDataLabelName.HasValue(true, statefulSet.Spec.Template.Labels) ||
+		NodeTypesDataHotLabelName.HasValue(true, statefulSet.Spec.Template.Labels) ||
+		NodeTypesDataColdLabelName.HasValue(true, statefulSet.Spec.Template.Labels) ||
+		NodeTypesDataContentLabelName.HasValue(true, statefulSet.Spec.Template.Labels) ||
+		NodeTypesDataWarmLabelName.HasValue(true, statefulSet.Spec.Template.Labels)
 }
 
 // IsIngestNodeSet returns true if the given StatefulSet specifies ingest nodes.

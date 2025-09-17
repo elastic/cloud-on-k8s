@@ -319,6 +319,15 @@ func TestExpectedRolePDBs(t *testing.T) {
 	defaultHealthyES := defaultUnhealthyES.DeepCopy()
 	defaultHealthyES.Status.Health = esv1.ElasticsearchGreenHealth
 
+	defaultHealthyESWithPDBSpecified := defaultHealthyES.DeepCopy()
+	defaultHealthyESWithPDBSpecified.Spec.PodDisruptionBudget = &commonv1.PodDisruptionBudgetTemplate{
+		ObjectMeta: metav1.ObjectMeta{
+			Labels: map[string]string{
+				"mykey": "myvalue",
+			},
+		},
+	}
+
 	defaultMeta := metadata.Metadata{
 		Labels: map[string]string{
 			"elasticsearch.k8s.elastic.co/cluster-name": "test-es",
@@ -356,6 +365,56 @@ func TestExpectedRolePDBs(t *testing.T) {
 							"custom": "annotation",
 						},
 						Labels: map[string]string{
+							label.ClusterNameLabelName: "test-es",
+						},
+						OwnerReferences: []metav1.OwnerReference{
+							{
+								APIVersion:         "elasticsearch.k8s.elastic.co/v1",
+								Kind:               "Elasticsearch",
+								Name:               "test-es",
+								Controller:         ptr.To[bool](true),
+								BlockOwnerDeletion: ptr.To[bool](true),
+							},
+						},
+					},
+					Spec: policyv1.PodDisruptionBudgetSpec{
+						Selector: &metav1.LabelSelector{
+							MatchExpressions: []metav1.LabelSelectorRequirement{
+								{
+									Key:      label.ClusterNameLabelName,
+									Operator: metav1.LabelSelectorOpIn,
+									Values:   []string{"test-es"},
+								},
+								{
+									Key:      label.StatefulSetNameLabelName,
+									Operator: metav1.LabelSelectorOpIn,
+									Values:   []string{"master1"},
+								},
+							},
+						},
+						MaxUnavailable: &intstr.IntOrString{Type: intstr.Int, IntVal: 1},
+					},
+				},
+			},
+		},
+		{
+			name: "single node cluster; role doesn't matter; 1 disruption with custom metadata in the pdb which is merged into the pdb",
+			es:   *defaultHealthyESWithPDBSpecified,
+			builder: NewBuilder("test-es").
+				WithNamespace("ns").
+				WithVersion("8.0.0").
+				WithNodeSet("master1", 1, esv1.MasterRole),
+			meta: defaultMeta.Merge(metadata.Metadata{Annotations: map[string]string{"custom": "annotation"}}),
+			expected: []*policyv1.PodDisruptionBudget{
+				{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "test-es-es-default-master",
+						Namespace: "ns",
+						Annotations: map[string]string{
+							"custom": "annotation",
+						},
+						Labels: map[string]string{
+							"mykey":                    "myvalue",
 							label.ClusterNameLabelName: "test-es",
 						},
 						OwnerReferences: []metav1.OwnerReference{
