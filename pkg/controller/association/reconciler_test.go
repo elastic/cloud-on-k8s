@@ -273,6 +273,7 @@ func testReconciler(runtimeObjs ...client.Object) Reconciler {
 					Version: "1.5.0",
 				},
 			},
+			PasswordGeneratorParams: common.DefaultPasswordGeneratorParams(),
 		},
 	}
 }
@@ -927,6 +928,7 @@ func TestReconciler_Reconcile_MultiRef(t *testing.T) {
 					Version: "1.4.0-unittest",
 				},
 			},
+			PasswordGeneratorParams: common.DefaultPasswordGeneratorParams(),
 		},
 	}
 

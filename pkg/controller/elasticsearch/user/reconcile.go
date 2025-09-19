@@ -17,6 +17,7 @@ import (
 
 	esv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/elasticsearch/v1"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/metadata"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/operator"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/reconciler"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/tracing"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/watches"
@@ -44,6 +45,8 @@ func ReconcileUsersAndRoles(
 	watched watches.DynamicWatches,
 	recorder record.EventRecorder,
 	passwordHasher cryptutil.PasswordHasher,
+	params operator.PasswordGeneratorParams,
+	operatorNamespace string,
 	meta metadata.Metadata,
 ) (esclient.BasicAuth, error) {
 	span, ctx := apm.StartSpan(ctx, "reconcile_users", tracing.SpanTypeApp)
@@ -54,7 +57,7 @@ func ReconcileUsersAndRoles(
 	if err != nil {
 		return esclient.BasicAuth{}, err
 	}
-	fileRealm, controllerUser, err := aggregateFileRealm(ctx, c, es, watched, recorder, passwordHasher, meta)
+	fileRealm, controllerUser, err := aggregateFileRealm(ctx, c, es, watched, recorder, passwordHasher, params, operatorNamespace, meta)
 	if err != nil {
 		return esclient.BasicAuth{}, err
 	}
@@ -90,6 +93,8 @@ func aggregateFileRealm(
 	watched watches.DynamicWatches,
 	recorder record.EventRecorder,
 	passwordHasher cryptutil.PasswordHasher,
+	params operator.PasswordGeneratorParams,
+	operatorNamespace string,
 	meta metadata.Metadata,
 ) (filerealm.Realm, esclient.BasicAuth, error) {
 	// retrieve existing file realm to reuse predefined users password hashes if possible
@@ -108,11 +113,11 @@ func aggregateFileRealm(
 	}
 
 	// reconcile predefined users
-	elasticUser, err := reconcileElasticUser(ctx, c, es, existingFileRealm, userProvidedFileRealm, passwordHasher, meta)
+	elasticUser, err := reconcileElasticUser(ctx, c, es, existingFileRealm, userProvidedFileRealm, passwordHasher, params, operatorNamespace, meta)
 	if err != nil {
 		return filerealm.Realm{}, esclient.BasicAuth{}, err
 	}
-	internalUsers, err := reconcileInternalUsers(ctx, c, es, existingFileRealm, passwordHasher, meta)
+	internalUsers, err := reconcileInternalUsers(ctx, c, es, existingFileRealm, passwordHasher, params, operatorNamespace, meta)
 	if err != nil {
 		return filerealm.Realm{}, esclient.BasicAuth{}, err
 	}

@@ -11,8 +11,6 @@ import (
 	"reflect"
 	"sync/atomic"
 
-	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/metadata"
-
 	"go.elastic.co/apm/v2"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -37,6 +35,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/finalizer"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/keystore"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/labels"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/metadata"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/operator"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/reconciler"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/tracing"
@@ -52,6 +51,11 @@ const (
 
 	// ApmBaseDir is the base directory of the APM server
 	ApmBaseDir = "/usr/share/apm-server"
+
+	// SecretTokenMinimumBytes is the minimum number of bytes required for the secret token.
+	// There are no specific recommendations for the minimum length of the secret token
+	// so the ECK operator uses 24 as the default length to provide a more secure default.
+	SecretTokenMinimumBytes = 24
 )
 
 var (
@@ -327,7 +331,7 @@ func reconcileApmServerToken(ctx context.Context, c k8s.Client, as *apmv1.ApmSer
 	if token, exists := existingSecret.Data[SecretTokenKey]; exists {
 		expectedApmServerSecret.Data[SecretTokenKey] = token
 	} else {
-		expectedApmServerSecret.Data[SecretTokenKey] = common.RandomBytes(24)
+		expectedApmServerSecret.Data[SecretTokenKey] = common.RandomBytes(SecretTokenMinimumBytes)
 	}
 
 	// Don't set an ownerRef for the APM token secret, likely to be copied into different namespaces.

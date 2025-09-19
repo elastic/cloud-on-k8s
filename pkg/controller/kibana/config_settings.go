@@ -41,6 +41,11 @@ const (
 	esCertsVolumeMountPath = "/usr/share/kibana/config/elasticsearch-certs"
 	// entCertsVolumeMountPath is the directory into which trusted Enterprise Search HTTP CA certs are mounted.
 	entCertsVolumeMountPath = "/usr/share/kibana/config/ent-certs"
+
+	// EncryptionKeyMinimumBytes is the minimum number of bytes required for the encryption key.
+	// This is in line with the documentation (32 characters) as of 9.0 (unicode characters can use > 1 byte):
+	// https://www.elastic.co/guide/en/kibana/9.0/using-kibana-with-security.html#security-configure-settings
+	EncryptionKeyMinimumBytes = 64
 )
 
 // Constants to use for the Kibana configuration settings.
@@ -236,10 +241,10 @@ func getOrCreateReusableSettings(ctx context.Context, c k8s.Client, kb kbv1.Kiba
 		return nil, err
 	}
 	if len(r.EncryptionKey) == 0 {
-		r.EncryptionKey = string(common.RandomBytes(64))
+		r.EncryptionKey = string(common.RandomBytes(EncryptionKeyMinimumBytes))
 	}
 	if len(r.ReportingKey) == 0 {
-		r.ReportingKey = string(common.RandomBytes(64))
+		r.ReportingKey = string(common.RandomBytes(EncryptionKeyMinimumBytes))
 	}
 
 	kbVer, err := version.Parse(kb.Spec.Version)
@@ -248,7 +253,7 @@ func getOrCreateReusableSettings(ctx context.Context, c k8s.Client, kb kbv1.Kiba
 	}
 	// xpack.encryptedSavedObjects.encryptionKey was only added in 7.6.0 and earlier versions error out
 	if len(r.SavedObjectsKey) == 0 && kbVer.GTE(version.From(7, 6, 0)) {
-		r.SavedObjectsKey = string(common.RandomBytes(64))
+		r.SavedObjectsKey = string(common.RandomBytes(EncryptionKeyMinimumBytes))
 	}
 	return settings.MustCanonicalConfig(r), nil
 }

@@ -17,6 +17,15 @@ import (
 	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/net"
 )
 
+// PasswordGeneratorParams defines the parameters for generating random passwords.
+type PasswordGeneratorParams struct {
+	LowerLetters string
+	UpperLetters string
+	Digits       string
+	Symbols      string
+	Length       int
+}
+
 // Parameters contain parameters to create new operators.
 type Parameters struct {
 	// ElasticsearchObservationInterval is the interval between (asynchronous) observations of Elasticsearch health.
@@ -31,6 +40,9 @@ type Parameters struct {
 	Dialer net.Dialer
 	// PasswordHasher is the password hash generator used by the operator.
 	PasswordHasher cryptutil.PasswordHasher
+	// PasswordGeneratorParams are the parameters for the generation of random bytes for generating passwords
+	// including the allowed characters and length.
+	PasswordGeneratorParams PasswordGeneratorParams
 	// IPFamily represents the IP family to use when creating configuration and services.
 	IPFamily corev1.IPFamily
 	// GlobalCA is an optionally configured, globally shared CA to be used for all managed resources.
