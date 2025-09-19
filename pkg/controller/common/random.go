@@ -40,7 +40,16 @@ func RandomBytesRespectingLicense(ctx context.Context, client k8s.Client, namesp
 		return nil, err
 	}
 	if enabled {
-		data, err := password.Generate(
+		generator, err := password.NewGenerator(&password.GeneratorInput{
+			LowerLetters: params.LowerLetters,
+			UpperLetters: params.UpperLetters,
+			Digits:       params.Digits,
+			Symbols:      params.Symbols,
+		})
+		if err != nil {
+			return nil, fmt.Errorf("while creating password generator: %w", err)
+		}
+		data, err := generator.Generate(
 			params.Length,
 			min(params.Length/4, len(params.Digits)),  // number of digits to include in the result
 			min(params.Length/4, len(params.Symbols)), // number of symbols to include in the result
