@@ -640,7 +640,7 @@ spec:
                     type: object
                 type: object
               packageRegistryRef:
-                description: PackageRegistryRef is a reference to a Elastic Package
+                description: PackageRegistryRef is a reference to an Elastic Package
                   Registry running in the same Kubernetes cluster.
                 properties:
                   name:

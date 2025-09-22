@@ -41,6 +41,8 @@ func newBuilder(name, randSuffix string) Builder {
 			ObjectMeta: meta,
 			Spec: v1alpha1.PackageRegistrySpec{
 				Count: 1,
+				// replace with smaller image
+				Image: "docker.elastic.co/package-registry/distribution:lite",
 			},
 		},
 	}.
