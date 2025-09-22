@@ -16,16 +16,24 @@ import (
 )
 
 type TestSset struct {
-	Namespace       string
-	Name            string
-	ClusterName     string
-	Version         string
-	Replicas        int32
-	Master          bool
-	Data            bool
-	Ingest          bool
-	Status          appsv1.StatefulSetStatus
-	ResourceVersion string
+	Namespace           string
+	Name                string
+	ClusterName         string
+	Version             string
+	Replicas            int32
+	Master              bool
+	Data                bool
+	Ingest              bool
+	ML                  bool
+	Transform           bool
+	RemoteClusterClient bool
+	DataHot             bool
+	DataWarm            bool
+	DataCold            bool
+	DataContent         bool
+	DataFrozen          bool
+	Status              appsv1.StatefulSetStatus
+	ResourceVersion     string
 }
 
 func (t TestSset) Pods() []client.Object {
@@ -54,6 +62,14 @@ func (t TestSset) Build() appsv1.StatefulSet {
 	label.NodeTypesMasterLabelName.Set(t.Master, labels)
 	label.NodeTypesDataLabelName.Set(t.Data, labels)
 	label.NodeTypesIngestLabelName.Set(t.Ingest, labels)
+	label.NodeTypesMLLabelName.Set(t.ML, labels)
+	label.NodeTypesTransformLabelName.Set(t.Transform, labels)
+	label.NodeTypesRemoteClusterClientLabelName.Set(t.RemoteClusterClient, labels)
+	label.NodeTypesDataHotLabelName.Set(t.DataHot, labels)
+	label.NodeTypesDataWarmLabelName.Set(t.DataWarm, labels)
+	label.NodeTypesDataColdLabelName.Set(t.DataCold, labels)
+	label.NodeTypesDataContentLabelName.Set(t.DataContent, labels)
+	label.NodeTypesDataFrozenLabelName.Set(t.DataFrozen, labels)
 	statefulSet := appsv1.StatefulSet{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      t.Name,
@@ -86,19 +102,27 @@ func (t TestSset) BuildPtr() *appsv1.StatefulSet {
 }
 
 type TestPod struct {
-	Namespace       string
-	Name            string
-	ClusterName     string
-	StatefulSetName string
-	Version         string
-	Revision        string
-	Master          bool
-	Data            bool
-	Ingest          bool
-	Ready           bool
-	RestartCount    int32
-	Phase           corev1.PodPhase
-	ResourceVersion string
+	Namespace           string
+	Name                string
+	ClusterName         string
+	StatefulSetName     string
+	Version             string
+	Revision            string
+	Master              bool
+	Data                bool
+	Ingest              bool
+	ML                  bool
+	Transform           bool
+	RemoteClusterClient bool
+	DataHot             bool
+	DataWarm            bool
+	DataCold            bool
+	DataContent         bool
+	DataFrozen          bool
+	Ready               bool
+	RestartCount        int32
+	Phase               corev1.PodPhase
+	ResourceVersion     string
 }
 
 func (t TestPod) Build() corev1.Pod {
@@ -111,6 +135,14 @@ func (t TestPod) Build() corev1.Pod {
 	label.NodeTypesMasterLabelName.Set(t.Master, labels)
 	label.NodeTypesDataLabelName.Set(t.Data, labels)
 	label.NodeTypesIngestLabelName.Set(t.Ingest, labels)
+	label.NodeTypesMLLabelName.Set(t.ML, labels)
+	label.NodeTypesTransformLabelName.Set(t.Transform, labels)
+	label.NodeTypesRemoteClusterClientLabelName.Set(t.RemoteClusterClient, labels)
+	label.NodeTypesDataHotLabelName.Set(t.DataHot, labels)
+	label.NodeTypesDataWarmLabelName.Set(t.DataWarm, labels)
+	label.NodeTypesDataColdLabelName.Set(t.DataCold, labels)
+	label.NodeTypesDataContentLabelName.Set(t.DataContent, labels)
+	label.NodeTypesDataFrozenLabelName.Set(t.DataFrozen, labels)
 
 	status := corev1.PodStatus{
 		// assume Running by default

@@ -13,6 +13,7 @@ import (
 	"go.elastic.co/apm/v2"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
+	policyv1 "k8s.io/api/policy/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/tools/record"
@@ -105,6 +106,12 @@ func addWatches(mgr manager.Manager, c controller.Controller, r *ReconcileElasti
 
 	// Watch config maps for dynamic watches (currently used for additional CAs trust)
 	if err := c.Watch(source.Kind(mgr.GetCache(), &corev1.ConfigMap{}, r.dynamicWatches.ConfigMaps)); err != nil {
+		return err
+	}
+
+	// Watch PodDisruptionBudgets
+	if err := c.Watch(
+		source.Kind(mgr.GetCache(), &policyv1.PodDisruptionBudget{}, handler.TypedEnqueueRequestForOwner[*policyv1.PodDisruptionBudget](mgr.GetScheme(), mgr.GetRESTMapper(), &esv1.Elasticsearch{}, handler.OnlyControllerOwner()))); err != nil {
 		return err
 	}
 

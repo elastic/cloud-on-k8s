@@ -133,7 +133,7 @@ func (d *defaultDriver) reconcileNodeSpecs(
 	}
 
 	// Update PDB to account for new replicas.
-	if err := pdb.Reconcile(ctx, d.Client, d.ES, actualStatefulSets, meta); err != nil {
+	if err := pdb.Reconcile(ctx, d.Client, d.ES, d.OperatorParameters.OperatorNamespace, actualStatefulSets, meta); err != nil {
 		return results.WithError(err)
 	}
 
