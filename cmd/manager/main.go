@@ -1109,32 +1109,3 @@ func reconcileWebhookCertsAndAddController(ctx context.Context, mgr manager.Mana
 
 	return webhook.Add(mgr, webhookParams, clientset, wh, tracer)
 }
-
-// categorizeAllowedCharacters categorizes the allowed characters into different categories which
-// are needed to use the go-password package properly. It also buckets the 'other' characters into a separate slice
-// such that invalid characters are able to be filtered out.
-func categorizeAllowedCharacters(s string) (params operator.PasswordGeneratorParams, other []rune) {
-	var lowercase, uppercase, digits, symbols []rune
-
-	for _, r := range s {
-		switch {
-		case strings.ContainsRune(password.LowerLetters, r):
-			lowercase = append(lowercase, r)
-		case strings.ContainsRune(password.UpperLetters, r):
-			uppercase = append(uppercase, r)
-		case strings.ContainsRune(password.Digits, r):
-			digits = append(digits, r)
-		case strings.ContainsRune(password.Symbols, r):
-			symbols = append(symbols, r)
-		default:
-			other = append(other, r)
-		}
-	}
-
-	return operator.PasswordGeneratorParams{
-		LowerLetters: string(lowercase),
-		UpperLetters: string(uppercase),
-		Digits:       string(digits),
-		Symbols:      string(symbols),
-	}, other
-}
