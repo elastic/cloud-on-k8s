@@ -304,9 +304,3 @@ func ElasticsearchConfigAnnotationName(o ObjectSelector) string {
 	// based on the ObjectSelector
 	return FormatNameWithID(ElasticsearchConfigAnnotationNameBase+"%s", hash.HashObject(o))
 }
-
-func KibanaConfigAnnotationName(o ObjectSelector) string {
-	// annotation key should be stable to allow the Kibana Controller to only pick up the ones it expects,
-	// based on the ObjectSelector
-	return FormatNameWithID(KibanaConfigAnnotationNameBase+"%s", hash.HashObject(o))
-}
