@@ -78,7 +78,7 @@ type KibanaSpec struct {
 	// ElasticsearchRef is a reference to an Elasticsearch cluster running in the same Kubernetes cluster.
 	ElasticsearchRef commonv1.ObjectSelector `json:"elasticsearchRef,omitempty"`
 
-	// PackageRegistryRef is a reference to a Elastic Package Registry running in the same Kubernetes cluster.
+	// PackageRegistryRef is a reference to an Elastic Package Registry running in the same Kubernetes cluster.
 	PackageRegistryRef commonv1.ObjectSelector `json:"packageRegistryRef,omitempty"`
 
 	// EnterpriseSearchRef is a reference to an EnterpriseSearch running in the same Kubernetes cluster.
