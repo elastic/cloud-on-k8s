@@ -933,7 +933,7 @@ func registerControllers(mgr manager.Manager, params operator.Parameters, access
 		{name: "APM-KB", registerFunc: associationctl.AddApmKibana},
 		{name: "KB-ES", registerFunc: associationctl.AddKibanaES},
 		{name: "KB-ENT", registerFunc: associationctl.AddKibanaEnt},
-		{name: "KB-EPR", registerFunc: associationctl.AddKibanaEpr},
+		{name: "KB-EPR", registerFunc: associationctl.AddKibanaEPR},
 		{name: "ENT-ES", registerFunc: associationctl.AddEntES},
 		{name: "BEAT-ES", registerFunc: associationctl.AddBeatES},
 		{name: "BEAT-KB", registerFunc: associationctl.AddBeatKibana},

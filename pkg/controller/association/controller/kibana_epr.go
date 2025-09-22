@@ -22,7 +22,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/rbac"
 )
 
-func AddKibanaEpr(mgr manager.Manager, accessReviewer rbac.AccessReviewer, params operator.Parameters) error {
+func AddKibanaEPR(mgr manager.Manager, accessReviewer rbac.AccessReviewer, params operator.Parameters) error {
 	return association.AddAssociationController(mgr, accessReviewer, params, association.AssociationInfo{
 		AssociatedObjTemplate:     func() commonv1.Associated { return &kbv1.Kibana{} },
 		ReferencedObjTemplate:     func() client.Object { return &eprv1alpha1.ElasticPackageRegistry{} },
