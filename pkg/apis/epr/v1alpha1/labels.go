@@ -11,7 +11,7 @@ import (
 // GetIdentityLabels will return the common Elastic assigned labels for the Elastic Package Registry.
 func (m *ElasticPackageRegistry) GetIdentityLabels() map[string]string {
 	return map[string]string{
-		commonv1.TypeLabelName:    "epr",
-		"epr.k8s.elastic.co/name": m.Name,
+		commonv1.TypeLabelName:                "epr",
+		"packageregistry.k8s.elastic.co/name": m.Name,
 	}
 }
