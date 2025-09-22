@@ -215,7 +215,7 @@ func reuseOrGeneratePassword(ctx context.Context, c k8s.Client, users users, sec
 	}
 	// either reuse the password or generate a new one
 	for i, u := range users {
-		if password, exists := secret.Data[u.Name]; exists && len(password) >= params.Length {
+		if password, exists := secret.Data[u.Name]; exists {
 			users[i].Password = password
 		} else {
 			bytes, err := common.RandomBytesRespectingLicense(ctx, c, operatorNamespace, params)
