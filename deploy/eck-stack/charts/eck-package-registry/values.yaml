@@ -1,5 +1,5 @@
 ---
-# Default values for eck-kibana.
+# Default values for eck-package-registry.
 # This is a YAML-formatted file.
 
 # Overridable names of the PackageRegistry resource.
@@ -16,7 +16,7 @@
 #
 # fullnameOverride: "quickstart"
 
-# Version of Kibana.
+# Version of Package Registry.
 #
 version: 9.2.0
 
@@ -28,7 +28,7 @@ version: 9.2.0
 #
 labels: {}
 
-# Annotations that will be applied to Kibana.
+# Annotations that will be applied to Package Registry.
 #
 annotations: {}
 
@@ -42,7 +42,7 @@ count: 1
 #
 config: null
 
-# The HTTP layer configuration for Kibana.
+# The HTTP layer configuration for Package Registry.
 #
 # http:
 
