@@ -18,7 +18,7 @@
 {
  "metadata": {
   "annotations": {
-   "kibana.k8s.elastic.co/monitoring-config-hash": "1132877422"
+   "kibana.k8s.elastic.co/monitoring-config-hash": "1056987677"
   }
  },
  "spec": {
@@ -141,7 +141,7 @@
 {
  "metadata": {
   "annotations": {
-   "kibana.k8s.elastic.co/monitoring-config-hash": "95064241"
+   "kibana.k8s.elastic.co/monitoring-config-hash": "2429826242"
   }
  },
  "spec": {
@@ -266,7 +266,7 @@
 {
  "metadata": {
   "annotations": {
-   "kibana.k8s.elastic.co/monitoring-config-hash": "1633666673"
+   "kibana.k8s.elastic.co/monitoring-config-hash": "3429140325"
   }
  },
  "spec": {
@@ -486,7 +486,7 @@
 {
  "metadata": {
   "annotations": {
-   "kibana.k8s.elastic.co/monitoring-config-hash": "1902028541"
+   "kibana.k8s.elastic.co/monitoring-config-hash": "1212557327"
   }
  },
  "spec": {
@@ -740,6 +740,9 @@ output:
         ssl:
             certificate_authorities:
                 - /mnt/elastic-internal/kb-monitoring-association/observability/monitoring/certs/ca.crt
+            restart_on_cert_change:
+                enabled: true
+                period: 1m
             verification_mode: certificate
         username: aerospace-sample-observability-monitoring-beat-es-mon-user
 processors:
@@ -773,6 +776,9 @@ output:
         ssl:
             certificate_authorities:
                 - /mnt/elastic-internal/kb-monitoring-association/observability/monitoring/certs/ca.crt
+            restart_on_cert_change:
+                enabled: true
+                period: 1m
             verification_mode: certificate
         username: aerospace-sample-observability-monitoring-beat-es-mon-user
 processors:
@@ -806,6 +812,9 @@ output:
         ssl:
             certificate_authorities:
                 - /mnt/elastic-internal/kb-monitoring-association/observability/monitoring/certs/ca.crt
+            restart_on_cert_change:
+                enabled: true
+                period: 1m
             verification_mode: certificate
         username: aerospace-sample-observability-monitoring-beat-es-mon-user
 processors:
@@ -842,6 +851,9 @@ output:
         ssl:
             certificate_authorities:
                 - /mnt/elastic-internal/kb-monitoring-association/observability/monitoring/certs/ca.crt
+            restart_on_cert_change:
+                enabled: true
+                period: 1m
             verification_mode: certificate
         username: aerospace-sample-observability-monitoring-beat-es-mon-user
 processors:

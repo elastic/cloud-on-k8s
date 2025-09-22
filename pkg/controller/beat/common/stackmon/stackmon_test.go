@@ -115,6 +115,9 @@ output:
             - %s
         password: es-password
         ssl:
+            restart_on_cert_change:
+                enabled: true
+                period: 1m
             verification_mode: certificate
         username: es-user
 `
@@ -139,6 +142,9 @@ output:
             - es-metrics-monitoring-url
         password: es-password
         ssl:
+            restart_on_cert_change:
+                enabled: true
+                period: 1m
             verification_mode: certificate
         username: es-user
 `

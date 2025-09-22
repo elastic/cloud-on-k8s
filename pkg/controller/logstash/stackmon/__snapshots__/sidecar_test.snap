@@ -161,7 +161,7 @@ processors:
 {
  "metadata": {
   "annotations": {
-   "logstash.k8s.elastic.co/monitoring-config-hash": "625208580"
+   "logstash.k8s.elastic.co/monitoring-config-hash": "919407702"
   }
  },
  "spec": {
@@ -272,7 +272,7 @@ processors:
 {
  "metadata": {
   "annotations": {
-   "logstash.k8s.elastic.co/monitoring-config-hash": "2320787694"
+   "logstash.k8s.elastic.co/monitoring-config-hash": "786331701"
   }
  },
  "spec": {
@@ -395,7 +395,7 @@ processors:
 {
  "metadata": {
   "annotations": {
-   "logstash.k8s.elastic.co/monitoring-config-hash": "983125293"
+   "logstash.k8s.elastic.co/monitoring-config-hash": "865363027"
   }
  },
  "spec": {
@@ -516,7 +516,7 @@ processors:
 {
  "metadata": {
   "annotations": {
-   "logstash.k8s.elastic.co/monitoring-config-hash": "808554888"
+   "logstash.k8s.elastic.co/monitoring-config-hash": "483023769"
   }
  },
  "spec": {
@@ -720,7 +720,7 @@ processors:
 {
  "metadata": {
   "annotations": {
-   "logstash.k8s.elastic.co/monitoring-config-hash": "2399876695"
+   "logstash.k8s.elastic.co/monitoring-config-hash": "3728307572"
   }
  },
  "spec": {
@@ -931,7 +931,7 @@ processors:
 {
  "metadata": {
   "annotations": {
-   "logstash.k8s.elastic.co/monitoring-config-hash": "808554888"
+   "logstash.k8s.elastic.co/monitoring-config-hash": "483023769"
   }
  },
  "spec": {
