@@ -138,6 +138,7 @@ Concatenate password allowed characters with a default of all alphanumeric chara
 {{- range $allowed -}}
 {{- $result = print $result . -}}
 {{- end -}}
+{{- $result -}}
 {{- end -}}
 
 {{/*
