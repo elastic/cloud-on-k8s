@@ -6,6 +6,7 @@ package license
 
 import (
 	"context"
+	"encoding/json"
 	"testing"
 	"time"
 
