@@ -133,14 +133,10 @@ Determine the metrics port
 Concatenate password allowed characters with a default of all alphanumeric characters if not defined
 */}}
 {{- define "eck-operator.passwordAllowedCharacters" -}}
-{{- if dig "config" "policies" "passwords" "allowedCharacters" }}
+{{- $allowed := dig "policies" "passwords" "allowedCharacters" (list "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789") .Values.config -}}
 {{- $result := "" -}}
-{{- range .Values.config.policies.passwords.allowedCharacters -}}
+{{- range $allowed -}}
 {{- $result = print $result . -}}
-{{- end -}}
-{{- $result -}}
-{{- else -}}
-abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789
 {{- end -}}
 {{- end -}}
 
