@@ -213,16 +213,12 @@ func (r *ReconcileLicenses) reconcileClusterLicense(ctx context.Context, cluster
 	}
 	matchingSpec, parent, found := r.findLicense(ctx, r, r.checker, minVersion)
 	if !found {
-		// ensure the password generator is set to use basic features.
-		r.Parameters.PasswordGenerator.SetEnterpriseEnabled(false)
 		// no matching license found, delete cluster level license if it exists to revert to basic
 		clusterLicenseNSN := types.NamespacedName{Namespace: cluster.Namespace, Name: esv1.LicenseSecretName(cluster.Name)}
 		log.V(1).Info("No enterprise license found. Attempting to remove cluster license secret", "namespace", cluster.Namespace, "es_name", cluster.Name)
 		err := k8s.DeleteSecretIfExists(ctx, r.Client, clusterLicenseNSN)
 		return noResult, false, err
 	}
-	// ensure the password generator is set to use enterprise features.
-	r.Parameters.PasswordGenerator.SetEnterpriseEnabled(true)
 	log.V(1).Info("Found license for cluster", "eck_license", parent, "es_license", matchingSpec.UID, "license_type", matchingSpec.Type, "namespace", cluster.Namespace, "es_name", cluster.Name)
 	// make sure the signature secret is created in the cluster's namespace
 	if err := reconcileSecret(ctx, r, cluster, parent, matchingSpec); err != nil {
