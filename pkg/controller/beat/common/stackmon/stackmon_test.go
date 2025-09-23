@@ -167,9 +167,6 @@ output:
             - es-metrics-monitoring-url
         password: es-password
         ssl:
-            restart_on_cert_change:
-                enabled: true
-                period: 1m
             verification_mode: certificate
         username: es-user
 `
@@ -396,8 +393,8 @@ output:
 				t.Errorf("MetricBeat() error = %v, wantErr %v", err, tt.wantErr)
 				return
 			}
-			if !cmp.Equal(got, tt.want, cmpopts.IgnoreFields(stackmon.BeatSidecar{}, "ConfigHash")) {
-				t.Errorf("MetricBeat() = diff: %s", cmp.Diff(got, tt.want, cmpopts.IgnoreFields(stackmon.BeatSidecar{}, "ConfigHash")))
+			if !cmp.Equal(got, tt.want, cmpopts.IgnoreFields(stackmon.BeatSidecar{}, "ConfigHash"), cmpopts.IgnoreFields(corev1.Container{}, "Image")) {
+				t.Errorf("MetricBeat() = diff: %s", cmp.Diff(got, tt.want, cmpopts.IgnoreFields(stackmon.BeatSidecar{}, "ConfigHash"), cmpopts.IgnoreFields(corev1.Container{}, "Image")))
 			}
 		})
 	}

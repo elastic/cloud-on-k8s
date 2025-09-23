@@ -94,8 +94,8 @@ param2: value2
             certificate_authorities:
                 - /mnt/elastic-internal/es-monitoring-association/default/monitoring/certs/ca.crt
             restart_on_cert_change:
-                    enabled: true
-                    period: 1m
+                enabled: true
+                period: 1m
             verification_mode: certificate
         username: default-monitored-default-monitoring-beat-es-mon-user
 param1: value1
