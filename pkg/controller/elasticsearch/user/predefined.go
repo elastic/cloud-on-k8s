@@ -212,7 +212,7 @@ func reuseOrGeneratePassword(ctx context.Context, c k8s.Client, users users, sec
 		if password, exists := secret.Data[u.Name]; exists {
 			users[i].Password = password
 		} else {
-			bytes, err := generator.GeneratePassword()
+			bytes, err := generator.Generate()
 			if err != nil {
 				return nil, err
 			}

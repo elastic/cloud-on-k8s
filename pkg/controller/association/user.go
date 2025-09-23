@@ -118,7 +118,7 @@ func reconcileEsUserSecret(
 	if existingPassword, exists := existingSecret.Data[usrKey.Name]; exists {
 		password = existingPassword
 	} else {
-		password, err = generator.GeneratePassword()
+		password, err = generator.Generate()
 		if err != nil {
 			return err
 		}

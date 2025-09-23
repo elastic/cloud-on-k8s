@@ -8,6 +8,19 @@ import (
 	"github.com/sethvargo/go-password/password"
 )
 
+type RandomGenerator interface {
+	Generate() ([]byte, error)
+	SetEnterpriseEnabled(enabled bool)
+}
+
+type RandomPasswordGenerator struct {
+	generator         password.PasswordGenerator
+	enterpriseLicense bool
+	params            PasswordGeneratorParams
+}
+
+var _ RandomGenerator = (*RandomPasswordGenerator)(nil)
+
 // PasswordGeneratorParams defines the parameters for generating random passwords.
 type PasswordGeneratorParams struct {
 	LowerLetters string
@@ -17,13 +30,7 @@ type PasswordGeneratorParams struct {
 	Length       int
 }
 
-type RandomPasswordGenerator struct {
-	generator         password.PasswordGenerator
-	enterpriseLicense bool
-	params            PasswordGeneratorParams
-}
-
-func (r *RandomPasswordGenerator) GeneratePassword() ([]byte, error) {
+func (r *RandomPasswordGenerator) Generate() ([]byte, error) {
 	if r.enterpriseLicense {
 		data, err := r.generator.Generate(
 			r.params.Length,
@@ -35,6 +42,10 @@ func (r *RandomPasswordGenerator) GeneratePassword() ([]byte, error) {
 		return []byte(data), err
 	}
 	return randomBytes(24), nil
+}
+
+func (r *RandomPasswordGenerator) SetEnterpriseEnabled(enabled bool) {
+	r.enterpriseLicense = enabled
 }
 
 func NewRandomPasswordGenerator(generator password.PasswordGenerator, params PasswordGeneratorParams, enterpriseLicense bool) *RandomPasswordGenerator {
