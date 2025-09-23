@@ -712,9 +712,9 @@ func startOperator(ctx context.Context) error {
 		return err
 	}
 
-	generatorParams, err := validatePasswordFlags(operator.PasswordAllowedCharactersFlag, operator.PasswordLengthFlag)
+	generator, err := getPasswordGenerator(ctx, mgr, operatorNamespace)
 	if err != nil {
-		log.Error(err, "Failed validating password flags: %s", err)
+		log.Error(err, "Failed to create password generator")
 		return err
 	}
 
@@ -735,7 +735,7 @@ func startOperator(ctx context.Context) error {
 			RotateBefore: certRotateBefore,
 		},
 		PasswordHasher:            passwordHasher,
-		PasswordGeneratorParams:   generatorParams,
+		PasswordGenerator:         *generator,
 		MaxConcurrentReconciles:   viper.GetInt(operator.MaxConcurrentReconcilesFlag),
 		SetDefaultSecurityContext: setDefaultSecurityContext,
 		ValidateStorageClass:      viper.GetBool(operator.ValidateStorageClassFlag),

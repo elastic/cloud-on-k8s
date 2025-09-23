@@ -9,7 +9,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/operator"
+	commonpassword "github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/password"
 	"github.com/sethvargo/go-password/password"
 	"github.com/spf13/viper"
 	corev1 "k8s.io/api/core/v1"
@@ -28,22 +28,22 @@ func chooseAndValidateIPFamily(ipFamilyStr string, ipFamilyDefault corev1.IPFami
 	}
 }
 
-func validatePasswordFlags(passwordAllowedCharactersFlag string, passwordLengthFlag string) (operator.PasswordGeneratorParams, error) {
+func validatePasswordFlags(passwordAllowedCharactersFlag string, passwordLengthFlag string) (commonpassword.PasswordGeneratorParams, error) {
 	allowedCharacters := viper.GetString(passwordAllowedCharactersFlag)
 	generatorParams, other := categorizeAllowedCharacters(allowedCharacters)
 	if len(other) > 0 {
-		return operator.PasswordGeneratorParams{}, fmt.Errorf("invalid characters in passwords allowed characters: %s", string(other))
+		return commonpassword.PasswordGeneratorParams{}, fmt.Errorf("invalid characters in passwords allowed characters: %s", string(other))
 	}
 
 	generatorParams.Length = viper.GetInt(passwordLengthFlag)
 	// Elasticsearch requires at least 6 characters for passwords
 	// https://www.elastic.co/guide/en/elasticsearch/reference/7.5/security-api-put-user.html
 	if generatorParams.Length < 6 || generatorParams.Length > 72 {
-		return operator.PasswordGeneratorParams{}, fmt.Errorf("password length must be at least 6 and at most 72")
+		return commonpassword.PasswordGeneratorParams{}, fmt.Errorf("password length must be at least 6 and at most 72")
 	}
 
 	if len(generatorParams.LowerLetters)+len(generatorParams.UpperLetters)+len(generatorParams.Digits)+len(generatorParams.Symbols) < 10 {
-		return operator.PasswordGeneratorParams{}, fmt.Errorf("allowedCharacters for password generation needs to be at least 10 for randomness")
+		return commonpassword.PasswordGeneratorParams{}, fmt.Errorf("allowedCharacters for password generation needs to be at least 10 for randomness")
 	}
 
 	return generatorParams, nil
@@ -52,7 +52,7 @@ func validatePasswordFlags(passwordAllowedCharactersFlag string, passwordLengthF
 // categorizeAllowedCharacters categorizes the allowed characters into different categories which
 // are needed to use the go-password package properly. It also buckets the 'other' characters into a separate slice
 // such that invalid characters are able to be filtered out.
-func categorizeAllowedCharacters(s string) (params operator.PasswordGeneratorParams, other []rune) {
+func categorizeAllowedCharacters(s string) (params commonpassword.PasswordGeneratorParams, other []rune) {
 	var lowercase, uppercase, digits, symbols []rune
 
 	for _, r := range s {
@@ -70,7 +70,7 @@ func categorizeAllowedCharacters(s string) (params operator.PasswordGeneratorPar
 		}
 	}
 
-	return operator.PasswordGeneratorParams{
+	return commonpassword.PasswordGeneratorParams{
 		LowerLetters: string(lowercase),
 		UpperLetters: string(uppercase),
 		Digits:       string(digits),

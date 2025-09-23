@@ -12,19 +12,11 @@ import (
 
 	"github.com/elastic/cloud-on-k8s/v3/pkg/about"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/certificates"
+	commonpassword "github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/password"
 	esvalidation "github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/validation"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/cryptutil"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/net"
 )
-
-// PasswordGeneratorParams defines the parameters for generating random passwords.
-type PasswordGeneratorParams struct {
-	LowerLetters string
-	UpperLetters string
-	Digits       string
-	Symbols      string
-	Length       int
-}
 
 // Parameters contain parameters to create new operators.
 type Parameters struct {
@@ -40,9 +32,8 @@ type Parameters struct {
 	Dialer net.Dialer
 	// PasswordHasher is the password hash generator used by the operator.
 	PasswordHasher cryptutil.PasswordHasher
-	// PasswordGeneratorParams are the parameters for the generation of random bytes for generating passwords
-	// including the allowed characters and length.
-	PasswordGeneratorParams PasswordGeneratorParams
+	// PasswordGenerator is the password generator used by the operator according to the license level.
+	PasswordGenerator commonpassword.RandomPasswordGenerator
 	// IPFamily represents the IP family to use when creating configuration and services.
 	IPFamily corev1.IPFamily
 	// GlobalCA is an optionally configured, globally shared CA to be used for all managed resources.

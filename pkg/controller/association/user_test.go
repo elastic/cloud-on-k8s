@@ -9,8 +9,9 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/metadata"
+	commonpassword "github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/password"
+	"github.com/sethvargo/go-password/password"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -249,6 +250,8 @@ func Test_reconcileEsUser(t *testing.T) {
 	}
 	for _, tt := range tests {
 		c := k8s.NewFakeClient(tt.args.initialObjects...)
+		generator, _ := password.NewGenerator(nil)
+		randomGenerator := commonpassword.NewRandomPasswordGenerator(generator, commonpassword.DefaultPasswordGeneratorParams(), false)
 		t.Run(tt.name, func(t *testing.T) {
 			if err := reconcileEsUserSecret(
 				context.Background(),
@@ -263,7 +266,7 @@ func Test_reconcileEsUser(t *testing.T) {
 				"kibana_system",
 				"kibana-user",
 				tt.args.es,
-				common.DefaultPasswordGeneratorParams(),
+				*randomGenerator,
 				"elastic-system",
 			); (err != nil) != tt.wantErr {
 				t.Errorf("reconcileEsUser() error = %v, wantErr %v", err, tt.wantErr)

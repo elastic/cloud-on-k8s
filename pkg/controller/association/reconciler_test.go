@@ -10,6 +10,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/sethvargo/go-password/password"
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
@@ -30,6 +31,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/comparison"
 	common_name "github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/name"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/operator"
+	commonpassword "github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/password"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/watches"
 	eslabel "github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/label"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/services"
@@ -261,6 +263,8 @@ func (a denyAllAccessReviewer) AccessAllowed(_ context.Context, _ string, _ stri
 }
 
 func testReconciler(runtimeObjs ...client.Object) Reconciler {
+	generator, _ := password.NewGenerator(nil)
+	randomGenerator := commonpassword.NewRandomPasswordGenerator(generator, commonpassword.DefaultPasswordGeneratorParams(), false)
 	return Reconciler{
 		AssociationInfo: kbAssociationInfo,
 		Client:          k8s.NewFakeClient(runtimeObjs...),
@@ -273,7 +277,7 @@ func testReconciler(runtimeObjs ...client.Object) Reconciler {
 					Version: "1.5.0",
 				},
 			},
-			PasswordGeneratorParams: common.DefaultPasswordGeneratorParams(),
+			PasswordGenerator: *randomGenerator,
 		},
 	}
 }
@@ -879,6 +883,8 @@ func TestReconciler_Reconcile_MultiRef(t *testing.T) {
 		},
 	}
 
+	generator, _ := password.NewGenerator(nil)
+	randomGenerator := commonpassword.NewRandomPasswordGenerator(generator, commonpassword.DefaultPasswordGeneratorParams(), false)
 	// Set Agent, two ES resources and their public cert Secrets
 	r := Reconciler{
 		AssociationInfo: agentAssociationInfo,
@@ -928,7 +934,7 @@ func TestReconciler_Reconcile_MultiRef(t *testing.T) {
 					Version: "1.4.0-unittest",
 				},
 			},
-			PasswordGeneratorParams: common.DefaultPasswordGeneratorParams(),
+			PasswordGenerator: *randomGenerator,
 		},
 	}
 
