@@ -328,6 +328,7 @@ func TestReconcileElasticsearch_LicensePasswordLength(t *testing.T) {
 		require.Equal(t, 24, len(password), "Basic license password should be 24 characters for user %s", userKey)
 	}
 
+	// Ensure the operator namespace exists, and start an enterprise trial
 	require.NoError(t, test.EnsureNamespace(esReconciler.Client, operatorNs))
 	startTrial(t, esReconciler.Client)
 
