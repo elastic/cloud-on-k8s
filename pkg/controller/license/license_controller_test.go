@@ -80,6 +80,42 @@ var cluster = &esv1.Elasticsearch{
 	},
 }
 
+func enterpriseLicense(t *testing.T, licenseType client.ElasticsearchLicenseType, maxNodes int, expired bool) *corev1.Secret {
+	t.Helper()
+	expiry := time.Now().Add(31 * 24 * time.Hour)
+	if expired {
+		expiry = time.Now().Add(-24 * time.Hour)
+	}
+	license := commonlicense.EnterpriseLicense{
+		License: commonlicense.LicenseSpec{
+			ExpiryDateInMillis: expiry.Unix() * 1000,
+			StartDateInMillis:  time.Now().Add(-1*time.Minute).Unix() * 1000,
+			Type:               "enterprise",
+			ClusterLicenses: []commonlicense.ElasticsearchLicense{
+				{
+					License: client.License{
+						ExpiryDateInMillis: expiry.Unix() * 1000,
+						StartDateInMillis:  time.Now().Add(-1*time.Minute).Unix() * 1000,
+						Type:               string(licenseType),
+						MaxNodes:           maxNodes,
+						Signature:          "blah",
+					},
+				},
+			},
+		},
+	}
+	bytes, err := json.Marshal(license)
+	require.NoError(t, err)
+	return &corev1.Secret{
+		ObjectMeta: metav1.ObjectMeta{
+			Labels: commonlicense.LabelsForOperatorScope(license.License.Type),
+		},
+		Data: map[string][]byte{
+			commonlicense.FileName: bytes,
+		},
+	}
+}
+
 func TestReconcileLicenses_reconcileInternal(t *testing.T) {
 	tests := []struct {
 		name               string
@@ -176,38 +212,3 @@ func TestReconcileLicenses_reconcileInternal(t *testing.T) {
 	}
 }
 
-func enterpriseLicense(t *testing.T, licenseType client.ElasticsearchLicenseType, maxNodes int, expired bool) *corev1.Secret {
-	t.Helper()
-	expiry := time.Now().Add(31 * 24 * time.Hour)
-	if expired {
-		expiry = time.Now().Add(-24 * time.Hour)
-	}
-	license := commonlicense.EnterpriseLicense{
-		License: commonlicense.LicenseSpec{
-			ExpiryDateInMillis: expiry.Unix() * 1000,
-			StartDateInMillis:  time.Now().Add(-1*time.Minute).Unix() * 1000,
-			Type:               "enterprise",
-			ClusterLicenses: []commonlicense.ElasticsearchLicense{
-				{
-					License: client.License{
-						ExpiryDateInMillis: expiry.Unix() * 1000,
-						StartDateInMillis:  time.Now().Add(-1*time.Minute).Unix() * 1000,
-						Type:               string(licenseType),
-						MaxNodes:           maxNodes,
-						Signature:          "blah",
-					},
-				},
-			},
-		},
-	}
-	bytes, err := json.Marshal(license)
-	require.NoError(t, err)
-	return &corev1.Secret{
-		ObjectMeta: metav1.ObjectMeta{
-			Labels: commonlicense.LabelsForOperatorScope(license.License.Type),
-		},
-		Data: map[string][]byte{
-			commonlicense.FileName: bytes,
-		},
-	}
-}
