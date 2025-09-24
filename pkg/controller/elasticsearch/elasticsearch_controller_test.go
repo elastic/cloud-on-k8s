@@ -262,7 +262,6 @@ func TestReconcileElasticsearch_Reconcile(t *testing.T) {
 }
 
 func TestReconcileElasticsearch_LicensePasswordLength(t *testing.T) {
-	// Create a test Elasticsearch cluster
 	es := newBuilder("test-es", "test").
 		WithVersion("8.0.0").
 		Build()
@@ -275,7 +274,6 @@ func TestReconcileElasticsearch_LicensePasswordLength(t *testing.T) {
 	generator, _ := password.NewGenerator(nil)
 	passwordGen := commonpassword.NewRandomPasswordGenerator(generator, defaultGeneratorParams, false)
 
-	// Create operator parameters with the password generator
 	params := operator.Parameters{
 		PasswordGenerator: *passwordGen,
 		OperatorNamespace: "test-system",
@@ -300,8 +298,8 @@ func TestReconcileElasticsearch_LicensePasswordLength(t *testing.T) {
 	_, err := esReconciler.Reconcile(ctx, request)
 	require.NoError(t, err)
 
-	// Create internal users secret using user.ReconcileUsersAndRoles directly
-	// This simulates what the ES reconciler would call internally with 24-char passwords
+  // Create internal users secret using user.ReconcileUsersAndRoles directly.:with
+	// This simulates what the ES reconciler would call internally with 24-char passwords.
 	_, err = user.ReconcileUsersAndRoles(ctx, esReconciler.Client, *es, watches.NewDynamicWatches(),
 		record.NewFakeRecorder(100), &testPasswordHasher{}, esReconciler.Parameters.PasswordGenerator,
 		metadata.Propagate(es, metadata.Metadata{Labels: es.GetIdentityLabels()}))
@@ -316,13 +314,12 @@ func TestReconcileElasticsearch_LicensePasswordLength(t *testing.T) {
 	err = esReconciler.Client.Get(ctx, secretNSN, &internalUsersSecret)
 	require.NoError(t, err, "Internal users secret should be created")
 
-	// Check all passwords in the secret are 24 characters (basic license)
 	require.NotEmpty(t, internalUsersSecret.Data, "Internal users secret should contain user passwords")
 	for userKey, password := range internalUsersSecret.Data {
 		require.Equal(t, 24, len(password), "Basic license password should be 24 characters for user %s", userKey)
 	}
 
-	// Enable enterprise features on the password generator (simulating license reconciler effect)
+	// Enable enterprise features on the password generator (simulating license controller reconcile)
 	esReconciler.Parameters.PasswordGenerator.SetEnterpriseEnabled(true)
 	esReconciler.licenseChecker = license.MockLicenseChecker{EnterpriseEnabled: true}
 
@@ -330,11 +327,11 @@ func TestReconcileElasticsearch_LicensePasswordLength(t *testing.T) {
 	_, err = esReconciler.Reconcile(ctx, request)
 	require.NoError(t, err)
 
-	// Delete existing secrets to force regeneration with enterprise settings
+	// Delete existing secrets to force regeneration
 	err = esReconciler.Client.Delete(ctx, &internalUsersSecret)
 	require.NoError(t, err)
 
-	// Also delete the roles and file realm secret that was created by the first call
+	// Also delete the roles and file realm secret.
 	var rolesSecret corev1.Secret
 	rolesSecretNSN := types.NamespacedName{
 		Namespace: "test",
@@ -353,11 +350,10 @@ func TestReconcileElasticsearch_LicensePasswordLength(t *testing.T) {
 		metadata.Propagate(es, metadata.Metadata{Labels: es.GetIdentityLabels()}))
 	require.NoError(t, err)
 
-	// Verify actual secrets now contain 32-character passwords (enterprise license)
+	// Verify actual secrets now contain 32-character passwords.
 	err = esReconciler.Client.Get(ctx, secretNSN, &internalUsersSecret)
 	require.NoError(t, err, "Internal users secret should be recreated with enterprise license")
 
-	// Check all passwords in the secret are now 32 characters (enterprise license)
 	require.NotEmpty(t, internalUsersSecret.Data, "Internal users secret should contain user passwords")
 	for userKey, password := range internalUsersSecret.Data {
 		require.Equal(t, 32, len(password), "Enterprise license password should be 32 characters for user %s", userKey)
@@ -368,7 +364,6 @@ func TestReconcileElasticsearch_LicensePasswordLength(t *testing.T) {
 type testPasswordHasher struct{}
 
 func (h *testPasswordHasher) GenerateHash(password []byte) ([]byte, error) {
-	// Simple mock hash - just prefix with "hash:"
 	hash := make([]byte, len(password)+5)
 	copy(hash[:5], "hash:")
 	copy(hash[5:], password)
@@ -376,6 +371,5 @@ func (h *testPasswordHasher) GenerateHash(password []byte) ([]byte, error) {
 }
 
 func (h *testPasswordHasher) ReuseOrGenerateHash(password []byte, existingHash []byte) ([]byte, error) {
-	// For testing, always generate new hash
 	return h.GenerateHash(password)
 }
