@@ -20,7 +20,6 @@ import (
 func getPasswordGenerator(ctx context.Context, mgr manager.Manager, operatorNamespace string) (*commonpassword.RandomPasswordGenerator, error) {
 	generatorParams, err := validatePasswordFlags(operator.PasswordAllowedCharactersFlag, operator.PasswordLengthFlag)
 	if err != nil {
-		log.Error(err, "Failed validating password flags: %s", err)
 		return nil, err
 	}
 
@@ -41,7 +40,6 @@ func getPasswordGenerator(ctx context.Context, mgr manager.Manager, operatorName
 	}
 	generator, err := password.NewGenerator(generatorInput)
 	if err != nil {
-		log.Error(err, "Failed to create password generator")
 		return nil, err
 	}
 	return commonpassword.NewRandomPasswordGenerator(generator, generatorParams, enabled), nil
