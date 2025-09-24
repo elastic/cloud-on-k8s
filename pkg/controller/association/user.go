@@ -87,7 +87,6 @@ func reconcileEsUserSecret(
 	userObjectSuffix string,
 	es esv1.Elasticsearch,
 	generator commonpassword.RandomPasswordGenerator,
-	operatorNamespace string,
 ) error {
 	span, ctx := apm.StartSpan(ctx, "reconcile_es_user", tracing.SpanTypeApp)
 	defer span.End()

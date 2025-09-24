@@ -406,7 +406,6 @@ func (r *Reconciler) reconcileAssociation(ctx context.Context, association commo
 		r.ElasticsearchUserCreation.UserSecretSuffix,
 		es,
 		r.Parameters.PasswordGenerator,
-		r.Parameters.OperatorNamespace,
 	); err != nil {
 		return commonv1.AssociationPending, err
 	}

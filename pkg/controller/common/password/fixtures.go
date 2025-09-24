@@ -10,8 +10,8 @@ import (
 
 // DefaultPasswordGeneratorParams returns default parameters for password generation
 // * This is to be used for testing purposes only *
-func DefaultPasswordGeneratorParams() PasswordGeneratorParams {
-	return PasswordGeneratorParams{
+func DefaultPasswordGeneratorParams() GeneratorParams {
+	return GeneratorParams{
 		LowerLetters: password.LowerLetters,
 		UpperLetters: password.UpperLetters,
 		Symbols:      password.Symbols,

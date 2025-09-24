@@ -16,13 +16,13 @@ type RandomGenerator interface {
 type RandomPasswordGenerator struct {
 	generator         password.PasswordGenerator
 	enterpriseLicense bool
-	params            PasswordGeneratorParams
+	params            GeneratorParams
 }
 
 var _ RandomGenerator = (*RandomPasswordGenerator)(nil)
 
-// PasswordGeneratorParams defines the parameters for generating random passwords.
-type PasswordGeneratorParams struct {
+// GeneratorParams defines the parameters for generating random passwords.
+type GeneratorParams struct {
 	LowerLetters string
 	UpperLetters string
 	Digits       string
@@ -48,7 +48,7 @@ func (r *RandomPasswordGenerator) SetEnterpriseEnabled(enabled bool) {
 	r.enterpriseLicense = enabled
 }
 
-func NewRandomPasswordGenerator(generator password.PasswordGenerator, params PasswordGeneratorParams, enterpriseLicense bool) *RandomPasswordGenerator {
+func NewRandomPasswordGenerator(generator password.PasswordGenerator, params GeneratorParams, enterpriseLicense bool) *RandomPasswordGenerator {
 	return &RandomPasswordGenerator{
 		generator:         generator,
 		enterpriseLicense: enterpriseLicense,
