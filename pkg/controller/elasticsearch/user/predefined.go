@@ -49,7 +49,7 @@ func reconcileElasticUser(
 	existingFileRealm,
 	userProvidedFileRealm filerealm.Realm,
 	passwordHasher cryptutil.PasswordHasher,
-	generator commonpassword.RandomPasswordGenerator,
+	generator commonpassword.RandomGenerator,
 	meta metadata.Metadata,
 ) (users, error) {
 	if es.Spec.Auth.DisableElasticUser {
@@ -89,7 +89,7 @@ func reconcileInternalUsers(
 	es esv1.Elasticsearch,
 	existingFileRealm filerealm.Realm,
 	passwordHasher cryptutil.PasswordHasher,
-	generator commonpassword.RandomPasswordGenerator,
+	generator commonpassword.RandomGenerator,
 	meta metadata.Metadata,
 ) (users, error) {
 	users := users{
@@ -152,7 +152,7 @@ func reconcilePredefinedUsers(
 	secretName string,
 	setOwnerRef bool,
 	passwordHasher cryptutil.PasswordHasher,
-	generator commonpassword.RandomPasswordGenerator,
+	generator commonpassword.RandomGenerator,
 	meta metadata.Metadata,
 ) (users, error) {
 	secretNsn := types.NamespacedName{Namespace: es.Namespace, Name: secretName}
@@ -194,7 +194,7 @@ func reconcilePredefinedUsers(
 
 // reuseOrGeneratePassword updates the users with existing passwords reused from the existing K8s secret,
 // or generates new passwords.
-func reuseOrGeneratePassword(ctx context.Context, c k8s.Client, users users, secretRef types.NamespacedName, generator commonpassword.RandomPasswordGenerator) (users, error) {
+func reuseOrGeneratePassword(ctx context.Context, c k8s.Client, users users, secretRef types.NamespacedName, generator commonpassword.RandomGenerator) (users, error) {
 	var secret corev1.Secret
 	err := c.Get(ctx, secretRef, &secret)
 	if err != nil && !apierrors.IsNotFound(err) {
@@ -212,7 +212,7 @@ func reuseOrGeneratePassword(ctx context.Context, c k8s.Client, users users, sec
 		if password, exists := secret.Data[u.Name]; exists {
 			users[i].Password = password
 		} else {
-			bytes, err := generator.Generate()
+			bytes, err := generator.Generate(ctx)
 			if err != nil {
 				return nil, err
 			}

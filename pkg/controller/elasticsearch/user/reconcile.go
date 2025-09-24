@@ -45,7 +45,7 @@ func ReconcileUsersAndRoles(
 	watched watches.DynamicWatches,
 	recorder record.EventRecorder,
 	passwordHasher cryptutil.PasswordHasher,
-	generator commonpassword.RandomPasswordGenerator,
+	generator commonpassword.RandomGenerator,
 	meta metadata.Metadata,
 ) (esclient.BasicAuth, error) {
 	span, ctx := apm.StartSpan(ctx, "reconcile_users", tracing.SpanTypeApp)
@@ -92,7 +92,7 @@ func aggregateFileRealm(
 	watched watches.DynamicWatches,
 	recorder record.EventRecorder,
 	passwordHasher cryptutil.PasswordHasher,
-	generator commonpassword.RandomPasswordGenerator,
+	generator commonpassword.RandomGenerator,
 	meta metadata.Metadata,
 ) (filerealm.Realm, esclient.BasicAuth, error) {
 	// retrieve existing file realm to reuse predefined users password hashes if possible

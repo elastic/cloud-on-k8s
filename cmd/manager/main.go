@@ -712,7 +712,7 @@ func startOperator(ctx context.Context) error {
 		return err
 	}
 
-	generator, err := getPasswordGenerator(ctx, mgr, operatorNamespace)
+	generator, err := newPasswordGenerator(mgr, operatorNamespace)
 	if err != nil {
 		log.Error(err, "Failed to create password generator")
 		return err
@@ -1015,7 +1015,8 @@ func setupWebhook(
 	clientset kubernetes.Interface,
 	exposedNodeLabels esvalidation.NodeLabels,
 	managedNamespaces []string,
-	tracer *apm.Tracer) {
+	tracer *apm.Tracer,
+) {
 	manageWebhookCerts := viper.GetBool(operator.ManageWebhookCertsFlag)
 	if manageWebhookCerts {
 		if err := reconcileWebhookCertsAndAddController(ctx, mgr, params.CertRotation, clientset, tracer); err != nil {

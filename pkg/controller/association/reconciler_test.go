@@ -10,7 +10,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/sethvargo/go-password/password"
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
@@ -107,8 +106,10 @@ var (
 
 	kibanaNamespace = "kbns"
 	esNamespace     = "esns"
-	sampleES        = esv1.Elasticsearch{ObjectMeta: metav1.ObjectMeta{Namespace: esNamespace, Name: "esname"},
-		Status: esv1.ElasticsearchStatus{Version: stackVersion}}
+	sampleES        = esv1.Elasticsearch{
+		ObjectMeta: metav1.ObjectMeta{Namespace: esNamespace, Name: "esname"},
+		Status:     esv1.ElasticsearchStatus{Version: stackVersion},
+	}
 	sampleKibanaNoEsRef = func() kbv1.Kibana {
 		return kbv1.Kibana{
 			ObjectMeta: metav1.ObjectMeta{
@@ -263,8 +264,6 @@ func (a denyAllAccessReviewer) AccessAllowed(_ context.Context, _ string, _ stri
 }
 
 func testReconciler(runtimeObjs ...client.Object) Reconciler {
-	generator, _ := password.NewGenerator(nil)
-	randomGenerator := commonpassword.NewRandomPasswordGenerator(generator, commonpassword.DefaultPasswordGeneratorParams(), false)
 	return Reconciler{
 		AssociationInfo: kbAssociationInfo,
 		Client:          k8s.NewFakeClient(runtimeObjs...),
@@ -277,7 +276,7 @@ func testReconciler(runtimeObjs ...client.Object) Reconciler {
 					Version: "1.5.0",
 				},
 			},
-			PasswordGenerator: *randomGenerator,
+			PasswordGenerator: commonpassword.TestRandomGenerator(),
 		},
 	}
 }
@@ -883,8 +882,6 @@ func TestReconciler_Reconcile_MultiRef(t *testing.T) {
 		},
 	}
 
-	generator, _ := password.NewGenerator(nil)
-	randomGenerator := commonpassword.NewRandomPasswordGenerator(generator, commonpassword.DefaultPasswordGeneratorParams(), false)
 	// Set Agent, two ES resources and their public cert Secrets
 	r := Reconciler{
 		AssociationInfo: agentAssociationInfo,
@@ -934,7 +931,7 @@ func TestReconciler_Reconcile_MultiRef(t *testing.T) {
 					Version: "1.4.0-unittest",
 				},
 			},
-			PasswordGenerator: *randomGenerator,
+			PasswordGenerator: commonpassword.TestRandomGenerator(),
 		},
 	}
 

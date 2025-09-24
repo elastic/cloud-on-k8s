@@ -5,6 +5,8 @@ package elasticsearch
 
 import (
 	"context"
+	"encoding/json"
+	"fmt"
 	"testing"
 
 	"github.com/sethvargo/go-password/password"
@@ -129,7 +131,8 @@ func TestReconcileElasticsearch_Reconcile(t *testing.T) {
 					newBuilder("testES", "test").
 						WithGeneration(2).
 						WithAnnotations(map[string]string{common.ManagedAnnotation: "false"}).
-						WithStatus(esv1.ElasticsearchStatus{ObservedGeneration: 1}).Build()},
+						WithStatus(esv1.ElasticsearchStatus{ObservedGeneration: 1}).Build(),
+				},
 			},
 			args: args{
 				request: reconcile.Request{
@@ -185,7 +188,8 @@ func TestReconcileElasticsearch_Reconcile(t *testing.T) {
 						WithGeneration(2).
 						// we need two reconciliations here: first sets this annotation second updates status, this simulates that the first has happened
 						WithAnnotations(map[string]string{hints.OrchestrationsHintsAnnotation: `{"no_transient_settings":false}`}).
-						WithStatus(esv1.ElasticsearchStatus{ObservedGeneration: 1}).Build()},
+						WithStatus(esv1.ElasticsearchStatus{ObservedGeneration: 1}).Build(),
+				},
 			},
 			args: args{
 				request: reconcile.Request{
@@ -217,7 +221,8 @@ func TestReconcileElasticsearch_Reconcile(t *testing.T) {
 						WithGeneration(2).
 						WithVersion("invalid").
 						WithAnnotations(map[string]string{hints.OrchestrationsHintsAnnotation: `{"no_transient_settings":false}`}).
-						WithStatus(esv1.ElasticsearchStatus{ObservedGeneration: 1}).Build()},
+						WithStatus(esv1.ElasticsearchStatus{ObservedGeneration: 1}).Build(),
+				},
 			},
 			args: args{
 				request: reconcile.Request{
@@ -262,43 +267,48 @@ func TestReconcileElasticsearch_Reconcile(t *testing.T) {
 }
 
 func TestReconcileElasticsearch_LicensePasswordLength(t *testing.T) {
-	es := newBuilder("test-es", "test").
+	testNS := "test"
+	operatorNS := "elastic-system"
+	es := newBuilder("test-es", testNS).
 		WithVersion("8.0.0").
 		Build()
 
 	ctx := context.Background()
 
-	// Initialize password generator with 32-char length for enterprise mode
-	defaultGeneratorParams := commonpassword.DefaultPasswordGeneratorParams()
-	defaultGeneratorParams.Length = 32
-	generator, _ := password.NewGenerator(nil)
-	passwordGen := commonpassword.NewRandomPasswordGenerator(generator, defaultGeneratorParams, false)
-
-	params := operator.Parameters{
-		PasswordGenerator: *passwordGen,
-		OperatorNamespace: "test-system",
+	generatorParams := commonpassword.GeneratorParams{
+		LowerLetters: password.LowerLetters,
+		UpperLetters: password.UpperLetters,
+		Digits:       password.Digits,
+		Symbols:      password.Symbols,
+		Length:       32,
 	}
+	internalGenerator, err := password.NewGenerator(nil)
+	require.NoError(t, err)
 
 	request := reconcile.Request{
 		NamespacedName: types.NamespacedName{
 			Name:      "test-es",
-			Namespace: "test",
+			Namespace: testNS,
 		},
 	}
 
 	// Create ES reconciler with basic license (no enterprise features)
 	esReconciler := newTestReconciler(es)
-	esReconciler.Parameters = params
-	esReconciler.licenseChecker = license.MockLicenseChecker{EnterpriseEnabled: false}
+	checker := license.NewLicenseChecker(esReconciler.Client, operatorNS)
 
-	// Ensure password generator is set to basic (not enterprise)
-	esReconciler.Parameters.PasswordGenerator.SetEnterpriseEnabled(false)
+	generator := commonpassword.NewRandomPasswordGenerator(internalGenerator, generatorParams, checker.EnterpriseFeaturesEnabled)
+	params := operator.Parameters{
+		PasswordGenerator: generator,
+		OperatorNamespace: operatorNS,
+	}
+	esReconciler.Parameters = params
+	esReconciler.licenseChecker = checker
 
 	// Run ES reconciliation with basic license
-	_, err := esReconciler.Reconcile(ctx, request)
+	_, err = esReconciler.Reconcile(ctx, request)
 	require.NoError(t, err)
 
-  // Create internal users secret using user.ReconcileUsersAndRoles directly.:with
+	// Create internal users secret using user.ReconcileUsersAndRoles directly.:with
 	// This simulates what the ES reconciler would call internally with 24-char passwords.
 	_, err = user.ReconcileUsersAndRoles(ctx, esReconciler.Client, *es, watches.NewDynamicWatches(),
 		record.NewFakeRecorder(100), &testPasswordHasher{}, esReconciler.Parameters.PasswordGenerator,
@@ -308,7 +318,7 @@ func TestReconcileElasticsearch_LicensePasswordLength(t *testing.T) {
 	// Verify actual secrets contain 24-character passwords (basic license)
 	var internalUsersSecret corev1.Secret
 	secretNSN := types.NamespacedName{
-		Namespace: "test",
+		Namespace: testNS,
 		Name:      esv1.InternalUsersSecret("test-es"),
 	}
 	err = esReconciler.Client.Get(ctx, secretNSN, &internalUsersSecret)
@@ -319,9 +329,12 @@ func TestReconcileElasticsearch_LicensePasswordLength(t *testing.T) {
 		require.Equal(t, 24, len(password), "Basic license password should be 24 characters for user %s", userKey)
 	}
 
-	// Enable enterprise features on the password generator (simulating license controller reconcile)
-	esReconciler.Parameters.PasswordGenerator.SetEnterpriseEnabled(true)
-	esReconciler.licenseChecker = license.MockLicenseChecker{EnterpriseEnabled: true}
+	// Simulate enterprise trial creation
+	licenseNSN := types.NamespacedName{
+		Namespace: operatorNS,
+		Name:      "eck-trial",
+	}
+	require.NoError(t, license.CreateTrialLicense(ctx, esReconciler.Client, licenseNSN))
 
 	// Run ES controller reconcile with enterprise license active
 	_, err = esReconciler.Reconcile(ctx, request)
@@ -334,13 +347,12 @@ func TestReconcileElasticsearch_LicensePasswordLength(t *testing.T) {
 	// Also delete the roles and file realm secret.
 	var rolesSecret corev1.Secret
 	rolesSecretNSN := types.NamespacedName{
-		Namespace: "test",
+		Namespace: testNS,
 		Name:      esv1.RolesAndFileRealmSecret("test-es"),
 	}
 	err = esReconciler.Client.Get(ctx, rolesSecretNSN, &rolesSecret)
 	if err == nil {
-		err = esReconciler.Client.Delete(ctx, &rolesSecret)
-		require.NoError(t, err)
+		require.NoError(t, esReconciler.Client.Delete(ctx, &rolesSecret))
 	}
 
 	// Recreate secrets with enterprise settings using user.ReconcileUsersAndRoles directly
@@ -372,4 +384,22 @@ func (h *testPasswordHasher) GenerateHash(password []byte) ([]byte, error) {
 
 func (h *testPasswordHasher) ReuseOrGenerateHash(password []byte, existingHash []byte) ([]byte, error) {
 	return h.GenerateHash(password)
+}
+
+// CreateEnterpriseLicense creates an Enterprise license wrapped in a secret.
+func createEnterpriseLicense(c k8s.Client, key types.NamespacedName, l license.EnterpriseLicense) error {
+	bytes, err := json.Marshal(l)
+	if err != nil {
+		return fmt.Errorf("failed to marshal license: %w", err)
+	}
+	return c.Create(context.Background(), &corev1.Secret{
+		ObjectMeta: metav1.ObjectMeta{
+			Namespace: key.Namespace,
+			Name:      key.Name,
+			Labels:    license.LabelsForOperatorScope(l.License.Type),
+		},
+		Data: map[string][]byte{
+			"license": bytes,
+		},
+	})
 }

@@ -86,7 +86,7 @@ func reconcileEsUserSecret(
 	userRoles string,
 	userObjectSuffix string,
 	es esv1.Elasticsearch,
-	generator commonpassword.RandomPasswordGenerator,
+	generator commonpassword.RandomGenerator,
 ) error {
 	span, ctx := apm.StartSpan(ctx, "reconcile_es_user", tracing.SpanTypeApp)
 	defer span.End()
@@ -117,7 +117,7 @@ func reconcileEsUserSecret(
 	if existingPassword, exists := existingSecret.Data[usrKey.Name]; exists {
 		password = existingPassword
 	} else {
-		password, err = generator.Generate()
+		password, err = generator.Generate(ctx)
 		if err != nil {
 			return err
 		}

@@ -8,7 +8,6 @@ import (
 	"context"
 	"testing"
 
-	"github.com/sethvargo/go-password/password"
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
@@ -36,9 +35,7 @@ func init() {
 
 func TestReconcileUsersAndRoles(t *testing.T) {
 	c := k8s.NewFakeClient(append(sampleUserProvidedFileRealmSecrets, sampleUserProvidedRolesSecret...)...)
-	generator, _ := password.NewGenerator(nil)
-	randomGenerator := commonpassword.NewRandomPasswordGenerator(generator, commonpassword.DefaultPasswordGeneratorParams(), false)
-	controllerUser, err := ReconcileUsersAndRoles(context.Background(), c, sampleEsWithAuth, initDynamicWatches(), record.NewFakeRecorder(10), testPasswordHasher, *randomGenerator, metadata.Metadata{})
+	controllerUser, err := ReconcileUsersAndRoles(context.Background(), c, sampleEsWithAuth, initDynamicWatches(), record.NewFakeRecorder(10), testPasswordHasher, commonpassword.TestRandomGenerator(), metadata.Metadata{})
 	require.NoError(t, err)
 	require.NotEmpty(t, controllerUser.Password)
 	var reconciledSecret corev1.Secret
@@ -118,9 +115,7 @@ func Test_aggregateFileRealm(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			c := k8s.NewFakeClient(sampleUserProvidedFileRealmSecrets...)
-			generator, _ := password.NewGenerator(nil)
-			randomGenerator := commonpassword.NewRandomPasswordGenerator(generator, commonpassword.DefaultPasswordGeneratorParams(), false)
-			fileRealm, controllerUser, err := aggregateFileRealm(context.Background(), c, tt.es, initDynamicWatches(), record.NewFakeRecorder(10), testPasswordHasher, *randomGenerator, metadata.Metadata{})
+			fileRealm, controllerUser, err := aggregateFileRealm(context.Background(), c, tt.es, initDynamicWatches(), record.NewFakeRecorder(10), testPasswordHasher, commonpassword.TestRandomGenerator(), metadata.Metadata{})
 			require.NoError(t, err)
 			require.NotEmpty(t, controllerUser.Password)
 			actualUsers := fileRealm.UserNames()

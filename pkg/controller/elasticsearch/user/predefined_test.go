@@ -8,7 +8,6 @@ import (
 	"context"
 	"testing"
 
-	"github.com/sethvargo/go-password/password"
 	"github.com/stretchr/testify/require"
 	"golang.org/x/crypto/bcrypt"
 	corev1 "k8s.io/api/core/v1"
@@ -113,12 +112,7 @@ func Test_reconcileElasticUser(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			c := k8s.NewFakeClient(tt.existingSecrets...)
-			// allow re-use of existing passwords of the length in these tests.
-			defaultGeneratorParams := commonpassword.DefaultPasswordGeneratorParams()
-			defaultGeneratorParams.Length = 16
-			generator, _ := password.NewGenerator(nil)
-			randomGenerator := commonpassword.NewRandomPasswordGenerator(generator, defaultGeneratorParams, false)
-			got, err := reconcileElasticUser(context.Background(), c, es, tt.existingFileRealm, filerealm.New(), testPasswordHasher, *randomGenerator, metadata.Metadata{})
+			got, err := reconcileElasticUser(context.Background(), c, es, tt.existingFileRealm, filerealm.New(), testPasswordHasher, commonpassword.TestRandomGenerator().SetLength(16), metadata.Metadata{})
 			require.NoError(t, err)
 			// check returned user
 			require.Len(t, got, 1)
@@ -164,9 +158,7 @@ func Test_reconcileElasticUser_conditionalCreation(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			c := k8s.NewFakeClient()
-			generator, _ := password.NewGenerator(nil)
-			randomGenerator := commonpassword.NewRandomPasswordGenerator(generator, commonpassword.DefaultPasswordGeneratorParams(), false)
-			got, err := reconcileElasticUser(context.Background(), c, es, filerealm.New(), tt.userFileReam, testPasswordHasher, *randomGenerator, md)
+			got, err := reconcileElasticUser(context.Background(), c, es, filerealm.New(), tt.userFileReam, testPasswordHasher, commonpassword.TestRandomGenerator(), md)
 			require.NoError(t, err)
 			// check returned user
 			wantLen := 1
@@ -321,12 +313,7 @@ func Test_reconcileInternalUsers(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			c := k8s.NewFakeClient(tt.existingSecrets...)
 			es := tt.es()
-			// allow re-use of existing passwords of the length in these tests.
-			defaultGeneratorParams := commonpassword.DefaultPasswordGeneratorParams()
-			defaultGeneratorParams.Length = 17
-			generator, _ := password.NewGenerator(nil)
-			randomGenerator := commonpassword.NewRandomPasswordGenerator(generator, defaultGeneratorParams, false)
-			got, err := reconcileInternalUsers(context.Background(), c, es, tt.existingFileRealm, testPasswordHasher, *randomGenerator, metadata.Propagate(&es, metadata.Metadata{Labels: es.GetIdentityLabels()}))
+			got, err := reconcileInternalUsers(context.Background(), c, es, tt.existingFileRealm, testPasswordHasher, commonpassword.TestRandomGenerator().SetLength(17), metadata.Propagate(&es, metadata.Metadata{Labels: es.GetIdentityLabels()}))
 			require.True(t, ((err != nil) == tt.errorExpected), "error expected: %v, got: %v", tt.errorExpected, err)
 			if tt.errorExpected {
 				return
