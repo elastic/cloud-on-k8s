@@ -19,7 +19,7 @@ import (
 func newPasswordGenerator(mgr manager.Manager, operatorNamespace string) (commonpassword.RandomGenerator, error) {
 	allowedCharacters := viper.GetString(operator.PasswordAllowedCharactersFlag)
 	passwordLength := viper.GetInt(operator.PasswordLengthFlag)
-	generatorParams, err := commonpassword.ValidatePasswordFlags(allowedCharacters, passwordLength)
+	generatorParams, err := commonpassword.NewGeneratorParams(allowedCharacters, passwordLength)
 	if err != nil {
 		return nil, err
 	}
