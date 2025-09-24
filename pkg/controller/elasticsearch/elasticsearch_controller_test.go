@@ -5,8 +5,6 @@ package elasticsearch
 
 import (
 	"context"
-	"encoding/json"
-	"fmt"
 	"testing"
 
 	"github.com/sethvargo/go-password/password"
@@ -30,6 +28,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/hints"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/user"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/k8s"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/test"
 )
 
 // newTestReconciler returns a ReconcileElasticsearch struct, allowing the internal k8s client to
@@ -268,7 +267,7 @@ func TestReconcileElasticsearch_Reconcile(t *testing.T) {
 
 func TestReconcileElasticsearch_LicensePasswordLength(t *testing.T) {
 	testNS := "test"
-	operatorNS := "elastic-system"
+	operatorNs := "elastic-system"
 	es := newBuilder("test-es", testNS).
 		WithVersion("8.0.0").
 		Build()
@@ -294,12 +293,12 @@ func TestReconcileElasticsearch_LicensePasswordLength(t *testing.T) {
 
 	// Create ES reconciler with basic license (no enterprise features)
 	esReconciler := newTestReconciler(es)
-	checker := license.NewLicenseChecker(esReconciler.Client, operatorNS)
+	checker := license.NewLicenseChecker(esReconciler.Client, operatorNs)
 
 	generator := commonpassword.NewRandomPasswordGenerator(internalGenerator, generatorParams, checker.EnterpriseFeaturesEnabled)
 	params := operator.Parameters{
 		PasswordGenerator: generator,
-		OperatorNamespace: operatorNS,
+		OperatorNamespace: operatorNs,
 	}
 	esReconciler.Parameters = params
 	esReconciler.licenseChecker = checker
@@ -329,12 +328,8 @@ func TestReconcileElasticsearch_LicensePasswordLength(t *testing.T) {
 		require.Equal(t, 24, len(password), "Basic license password should be 24 characters for user %s", userKey)
 	}
 
-	// Simulate enterprise trial creation
-	licenseNSN := types.NamespacedName{
-		Namespace: operatorNS,
-		Name:      "eck-trial",
-	}
-	require.NoError(t, license.CreateTrialLicense(ctx, esReconciler.Client, licenseNSN))
+	require.NoError(t, test.EnsureNamespace(esReconciler.Client, operatorNs))
+	startTrial(t, esReconciler.Client)
 
 	// Run ES controller reconcile with enterprise license active
 	_, err = esReconciler.Reconcile(ctx, request)
@@ -386,20 +381,28 @@ func (h *testPasswordHasher) ReuseOrGenerateHash(password []byte, existingHash [
 	return h.GenerateHash(password)
 }
 
-// CreateEnterpriseLicense creates an Enterprise license wrapped in a secret.
-func createEnterpriseLicense(c k8s.Client, key types.NamespacedName, l license.EnterpriseLicense) error {
-	bytes, err := json.Marshal(l)
-	if err != nil {
-		return fmt.Errorf("failed to marshal license: %w", err)
+func startTrial(t *testing.T, k8sClient client.Client) {
+	t.Helper()
+	// start a trial
+	operatorNs := "elastic-system"
+	trialState, err := license.NewTrialState()
+	require.NoError(t, err)
+	wrappedClient := k8sClient
+	licenseNSN := types.NamespacedName{
+		Namespace: operatorNs,
+		Name:      "eck-trial",
 	}
-	return c.Create(context.Background(), &corev1.Secret{
-		ObjectMeta: metav1.ObjectMeta{
-			Namespace: key.Namespace,
-			Name:      key.Name,
-			Labels:    license.LabelsForOperatorScope(l.License.Type),
-		},
-		Data: map[string][]byte{
-			"license": bytes,
-		},
-	})
+	// simulate user kicking off the trial activation
+	require.NoError(t, license.CreateTrialLicense(context.Background(), wrappedClient, licenseNSN))
+	// fetch user created license
+	licenseSecret, lic, err := license.TrialLicense(wrappedClient, licenseNSN)
+	require.NoError(t, err)
+	// fill in and sign
+	require.NoError(t, trialState.InitTrialLicense(context.Background(), &lic))
+	status, err := license.ExpectedTrialStatus(operatorNs, licenseNSN, trialState)
+	require.NoError(t, err)
+	// persist status
+	require.NoError(t, wrappedClient.Create(context.Background(), &status))
+	// persist updated license
+	require.NoError(t, license.UpdateEnterpriseLicense(context.Background(), wrappedClient, licenseSecret, lic))
 }
