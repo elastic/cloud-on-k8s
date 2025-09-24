@@ -6,6 +6,7 @@ package manager
 
 import (
 	"github.com/sethvargo/go-password/password"
+	"github.com/spf13/viper"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 
 	license "github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/license"
@@ -16,7 +17,9 @@ import (
 // newPasswordGenerator returns a password generator based on both the operator flags
 // and the license status.
 func newPasswordGenerator(mgr manager.Manager, operatorNamespace string) (commonpassword.RandomGenerator, error) {
-	generatorParams, err := commonpassword.ValidatePasswordFlags(operator.PasswordAllowedCharactersFlag, operator.PasswordLengthFlag)
+	allowedCharacters := viper.GetString(operator.PasswordAllowedCharactersFlag)
+	passwordLength := viper.GetInt(operator.PasswordLengthFlag)
+	generatorParams, err := commonpassword.ValidatePasswordFlags(allowedCharacters, passwordLength)
 	if err != nil {
 		return nil, err
 	}
