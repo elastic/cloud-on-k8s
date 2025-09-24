@@ -9,11 +9,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/sethvargo/go-password/password"
 	"github.com/spf13/viper"
 	corev1 "k8s.io/api/core/v1"
-
-	commonpassword "github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/password"
 )
 
 func chooseAndValidateIPFamily(ipFamilyStr string, ipFamilyDefault corev1.IPFamily) (corev1.IPFamily, error) {
@@ -27,35 +24,6 @@ func chooseAndValidateIPFamily(ipFamilyStr string, ipFamilyDefault corev1.IPFami
 	default:
 		return ipFamilyDefault, fmt.Errorf("IP family can be one of: IPv4, IPv6 or \"\" to auto-detect, but was %s", ipFamilyStr)
 	}
-}
-
-// categorizeAllowedCharacters categorizes the allowed characters into different categories which
-// are needed to use the go-password package properly. It also buckets the 'other' characters into a separate slice
-// such that invalid characters are able to be filtered out.
-func categorizeAllowedCharacters(s string) (params commonpassword.GeneratorParams, other []rune) {
-	var lowercase, uppercase, digits, symbols []rune
-
-	for _, r := range s {
-		switch {
-		case strings.ContainsRune(password.LowerLetters, r):
-			lowercase = append(lowercase, r)
-		case strings.ContainsRune(password.UpperLetters, r):
-			uppercase = append(uppercase, r)
-		case strings.ContainsRune(password.Digits, r):
-			digits = append(digits, r)
-		case strings.ContainsRune(password.Symbols, r):
-			symbols = append(symbols, r)
-		default:
-			other = append(other, r)
-		}
-	}
-
-	return commonpassword.GeneratorParams{
-		LowerLetters: string(lowercase),
-		UpperLetters: string(uppercase),
-		Digits:       string(digits),
-		Symbols:      string(symbols),
-	}, other
 }
 
 func validateCertExpirationFlags(validityFlag string, rotateBeforeFlag string) (time.Duration, time.Duration, error) {
