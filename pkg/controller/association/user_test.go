@@ -20,7 +20,7 @@ import (
 	esv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/elasticsearch/v1"
 	kbv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/kibana/v1"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/metadata"
-	commonpassword "github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/password"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/password/fixtures"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/label"
 	esuser "github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/user"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/k8s"
@@ -264,7 +264,7 @@ func Test_reconcileEsUser(t *testing.T) {
 				"kibana_system",
 				"kibana-user",
 				tt.args.es,
-				commonpassword.TestRandomGenerator(),
+				fixtures.TestRandomGenerator(),
 			); (err != nil) != tt.wantErr {
 				t.Errorf("reconcileEsUser() error = %v, wantErr %v", err, tt.wantErr)
 			}
