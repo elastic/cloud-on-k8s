@@ -29,27 +29,6 @@ func chooseAndValidateIPFamily(ipFamilyStr string, ipFamilyDefault corev1.IPFami
 	}
 }
 
-func validatePasswordFlags(passwordAllowedCharactersFlag string, passwordLengthFlag string) (commonpassword.GeneratorParams, error) {
-	allowedCharacters := viper.GetString(passwordAllowedCharactersFlag)
-	generatorParams, other := categorizeAllowedCharacters(allowedCharacters)
-	if len(other) > 0 {
-		return commonpassword.GeneratorParams{}, fmt.Errorf("invalid characters in passwords allowed characters: %s", string(other))
-	}
-
-	generatorParams.Length = viper.GetInt(passwordLengthFlag)
-	// Elasticsearch requires at least 6 characters for passwords
-	// https://www.elastic.co/guide/en/elasticsearch/reference/7.5/security-api-put-user.html
-	if generatorParams.Length < 6 || generatorParams.Length > 72 {
-		return commonpassword.GeneratorParams{}, fmt.Errorf("password length must be at least 6 and at most 72")
-	}
-
-	if len(generatorParams.LowerLetters)+len(generatorParams.UpperLetters)+len(generatorParams.Digits)+len(generatorParams.Symbols) < 10 {
-		return commonpassword.GeneratorParams{}, fmt.Errorf("allowedCharacters for password generation needs to be at least 10 for randomness")
-	}
-
-	return generatorParams, nil
-}
-
 // categorizeAllowedCharacters categorizes the allowed characters into different categories which
 // are needed to use the go-password package properly. It also buckets the 'other' characters into a separate slice
 // such that invalid characters are able to be filtered out.

@@ -16,7 +16,7 @@ import (
 // newPasswordGenerator returns a password generator based on both the operator flags
 // and the license status.
 func newPasswordGenerator(mgr manager.Manager, operatorNamespace string) (commonpassword.RandomGenerator, error) {
-	generatorParams, err := validatePasswordFlags(operator.PasswordAllowedCharactersFlag, operator.PasswordLengthFlag)
+	generatorParams, err := commonpassword.ValidatePasswordFlags(operator.PasswordAllowedCharactersFlag, operator.PasswordLengthFlag)
 	if err != nil {
 		return nil, err
 	}
