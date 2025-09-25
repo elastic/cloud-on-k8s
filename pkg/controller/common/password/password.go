@@ -18,17 +18,17 @@ type RandomGenerator interface {
 // RandomPasswordGenerator is an implementation of RandomGenerator
 // that generates random passwords according to the specified parameters
 // and according to the Enterprise license level.
-type RandomPasswordGenerator struct {
+type randomPasswordGenerator struct {
 	generator password.PasswordGenerator
 	useParams func(ctx context.Context) (bool, error)
 	params    GeneratorParams
 }
 
-var _ RandomGenerator = (*RandomPasswordGenerator)(nil)
+var _ RandomGenerator = (*randomPasswordGenerator)(nil)
 
 // Generate returns random password bytes according to the specified parameters
 // and according to the Enterprise license level.
-func (r *RandomPasswordGenerator) Generate(ctx context.Context) ([]byte, error) {
+func (r *randomPasswordGenerator) Generate(ctx context.Context) ([]byte, error) {
 	useParams, err := r.useParams(ctx)
 	if err != nil {
 		return nil, err
@@ -62,7 +62,7 @@ func NewRandomPasswordGenerator(params GeneratorParams, useParams func(context.C
 	if err != nil {
 		return nil, err
 	}
-	return &RandomPasswordGenerator{
+	return &randomPasswordGenerator{
 		generator: generator,
 		useParams: useParams,
 		params:    params,
