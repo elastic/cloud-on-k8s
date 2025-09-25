@@ -5,8 +5,6 @@
 package manager
 
 import (
-	"github.com/sethvargo/go-password/password"
-	"github.com/spf13/viper"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 
 	license "github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/license"
@@ -25,15 +23,5 @@ func newPasswordGenerator(mgr manager.Manager, operatorNamespace string) (common
 	}
 
 	licenseChecker := license.NewLicenseChecker(mgr.GetClient(), operatorNamespace)
-	generatorInput := &password.GeneratorInput{
-		LowerLetters: generatorParams.LowerLetters,
-		UpperLetters: generatorParams.UpperLetters,
-		Digits:       generatorParams.Digits,
-		Symbols:      generatorParams.Symbols,
-	}
-	generator, err := password.NewGenerator(generatorInput)
-	if err != nil {
-		return nil, err
-	}
-	return commonpassword.NewRandomPasswordGenerator(generator, generatorParams, licenseChecker.EnterpriseFeaturesEnabled), nil
+	return commonpassword.NewRandomPasswordGenerator(generatorParams, licenseChecker.EnterpriseFeaturesEnabled)
 }

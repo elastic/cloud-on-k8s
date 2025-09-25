@@ -51,12 +51,22 @@ func (r *RandomPasswordGenerator) Generate(ctx context.Context) ([]byte, error) 
 // generator: The password generator to use.
 // params: The parameters to use for generating passwords.
 // useParams: A function that determines whether to use the parameters or default to non-enterprise functionality.
-func NewRandomPasswordGenerator(generator password.PasswordGenerator, params GeneratorParams, useParams func(context.Context) (bool, error)) RandomGenerator {
+func NewRandomPasswordGenerator(params GeneratorParams, useParams func(context.Context) (bool, error)) (RandomGenerator, error) {
+	generatorInput := &password.GeneratorInput{
+		LowerLetters: params.LowerLetters,
+		UpperLetters: params.UpperLetters,
+		Digits:       params.Digits,
+		Symbols:      params.Symbols,
+	}
+	generator, err := password.NewGenerator(generatorInput)
+	if err != nil {
+		return nil, err
+	}
 	return &RandomPasswordGenerator{
 		generator: generator,
 		useParams: useParams,
 		params:    params,
-	}
+	}, nil
 }
 
 // randomBytes generates some random bytes that can be used as a token or as a key

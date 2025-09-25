@@ -281,8 +281,6 @@ func TestReconcileElasticsearch_LicensePasswordLength(t *testing.T) {
 		Symbols:      password.Symbols,
 		Length:       32,
 	}
-	internalGenerator, err := password.NewGenerator(nil)
-	require.NoError(t, err)
 
 	request := reconcile.Request{
 		NamespacedName: types.NamespacedName{
@@ -295,7 +293,9 @@ func TestReconcileElasticsearch_LicensePasswordLength(t *testing.T) {
 	esReconciler := newTestReconciler(es)
 	checker := license.NewLicenseChecker(esReconciler.Client, operatorNs)
 
-	generator := commonpassword.NewRandomPasswordGenerator(internalGenerator, generatorParams, checker.EnterpriseFeaturesEnabled)
+	generator, err := commonpassword.NewRandomPasswordGenerator(generatorParams, checker.EnterpriseFeaturesEnabled)
+	require.NoError(t, err)
+
 	params := operator.Parameters{
 		PasswordGenerator: generator,
 		OperatorNamespace: operatorNs,
