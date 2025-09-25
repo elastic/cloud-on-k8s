@@ -5,6 +5,7 @@
 package manager
 
 import (
+	"github.com/spf13/viper"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 
 	license "github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/license"
