@@ -7,8 +7,6 @@ package password
 import (
 	"fmt"
 	"strings"
-
-	"github.com/sethvargo/go-password/password"
 )
 
 // GeneratorParams defines the parameters for generating random passwords.
@@ -39,20 +37,20 @@ func NewGeneratorParams(allowedCharacter string, maxLength int) (GeneratorParams
 }
 
 // categorizeAllowedCharacters categorizes the allowed characters into different categories which
-// are needed to use the go-password package properly. It also buckets the 'other' characters into a separate slice
+// are needed to use the password generator package properly. It also buckets the 'other' characters into a separate slice
 // such that invalid characters are able to be filtered out.
 func categorizeAllowedCharacters(s string) (params GeneratorParams, other []rune) {
 	var lowercase, uppercase, digits, symbols []rune
 
 	for _, r := range s {
 		switch {
-		case strings.ContainsRune(password.LowerLetters, r):
+		case strings.ContainsRune(LowerLetters, r):
 			lowercase = append(lowercase, r)
-		case strings.ContainsRune(password.UpperLetters, r):
+		case strings.ContainsRune(UpperLetters, r):
 			uppercase = append(uppercase, r)
-		case strings.ContainsRune(password.Digits, r):
+		case strings.ContainsRune(Digits, r):
 			digits = append(digits, r)
-		case strings.ContainsRune(password.Symbols, r):
+		case strings.ContainsRune(Symbols, r):
 			symbols = append(symbols, r)
 		default:
 			other = append(other, r)

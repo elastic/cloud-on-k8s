@@ -7,7 +7,6 @@ package password
 import (
 	"testing"
 
-	"github.com/sethvargo/go-password/password"
 	"github.com/stretchr/testify/require"
 )
 
@@ -49,13 +48,13 @@ func Test_categorizeAllowedCharacters(t *testing.T) {
 			expectedSymbols: "",
 		},
 		{
-			name:            "go-password constants do not show up in other slice",
-			input:           password.LowerLetters + password.UpperLetters + password.Digits + password.Symbols,
+			name:            "password constants do not show up in other slice",
+			input:           LowerLetters + UpperLetters + Digits + Symbols,
 			expectedOther:   nil,
-			expectedLower:   password.LowerLetters,
-			expectedUpper:   password.UpperLetters,
-			expectedDigits:  password.Digits,
-			expectedSymbols: password.Symbols,
+			expectedLower:   LowerLetters,
+			expectedUpper:   UpperLetters,
+			expectedDigits:  Digits,
+			expectedSymbols: Symbols,
 		},
 		{
 			name:            "empty string",
@@ -111,18 +110,18 @@ func Test_categorizeAllowedCharacters(t *testing.T) {
 			// Check that spaces, emojis, and unicode chars are in other slice
 			require.Equal(t, tt.expectedOther, other, "other slice should contain expected characters")
 
-			// Check that go-password constants characters are properly categorized
+			// Check that character constants are properly categorized
 			require.Equal(t, tt.expectedLower, params.LowerLetters, "lowercase letters should match expected")
 			require.Equal(t, tt.expectedUpper, params.UpperLetters, "uppercase letters should match expected")
 			require.Equal(t, tt.expectedDigits, params.Digits, "digits should match expected")
 			require.Equal(t, tt.expectedSymbols, params.Symbols, "symbols should match expected")
 
-			// Verify that none of the go-password constant characters appear in other
+			// Verify that none of the defined constant characters appear in other
 			for _, r := range other {
-				require.NotContains(t, password.LowerLetters, string(r), "lowercase letter should not be in other slice")
-				require.NotContains(t, password.UpperLetters, string(r), "uppercase letter should not be in other slice")
-				require.NotContains(t, password.Digits, string(r), "digit should not be in other slice")
-				require.NotContains(t, password.Symbols, string(r), "symbol should not be in other slice")
+				require.NotContains(t, LowerLetters, string(r), "lowercase letter should not be in other slice")
+				require.NotContains(t, UpperLetters, string(r), "uppercase letter should not be in other slice")
+				require.NotContains(t, Digits, string(r), "digit should not be in other slice")
+				require.NotContains(t, Symbols, string(r), "symbol should not be in other slice")
 			}
 		})
 	}

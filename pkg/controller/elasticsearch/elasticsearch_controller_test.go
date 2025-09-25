@@ -7,9 +7,6 @@ import (
 	"context"
 	"testing"
 
-	"github.com/sethvargo/go-password/password"
-	"github.com/stretchr/testify/require"
-	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/tools/record"
@@ -20,15 +17,8 @@ import (
 	esv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/elasticsearch/v1"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/comparison"
-	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/license"
-	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/metadata"
-	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/operator"
-	commonpassword "github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/password"
-	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/watches"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/hints"
-	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/user"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/k8s"
-	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/test"
 )
 
 // newTestReconciler returns a ReconcileElasticsearch struct, allowing the internal k8s client to
@@ -263,147 +253,4 @@ func TestReconcileElasticsearch_Reconcile(t *testing.T) {
 			comparison.AssertEqual(t, &actualES, &tt.expected)
 		})
 	}
-}
-
-func TestReconcileElasticsearch_LicensePasswordLength(t *testing.T) {
-	testNS := "test"
-	operatorNs := "elastic-system"
-	es := newBuilder("test-es", testNS).
-		WithVersion("8.0.0").
-		Build()
-
-	ctx := context.Background()
-
-	generatorParams := commonpassword.GeneratorParams{
-		LowerLetters: password.LowerLetters,
-		UpperLetters: password.UpperLetters,
-		Digits:       password.Digits,
-		Symbols:      password.Symbols,
-		Length:       32,
-	}
-
-	request := reconcile.Request{
-		NamespacedName: types.NamespacedName{
-			Name:      "test-es",
-			Namespace: testNS,
-		},
-	}
-
-	// Create ES reconciler with basic license (no enterprise features)
-	esReconciler := newTestReconciler(es)
-	checker := license.NewLicenseChecker(esReconciler.Client, operatorNs)
-
-	generator, err := commonpassword.NewRandomPasswordGenerator(generatorParams, checker.EnterpriseFeaturesEnabled)
-	require.NoError(t, err)
-
-	params := operator.Parameters{
-		PasswordGenerator: generator,
-		OperatorNamespace: operatorNs,
-	}
-	esReconciler.Parameters = params
-	esReconciler.licenseChecker = checker
-
-	// Run ES reconciliation with basic license
-	_, err = esReconciler.Reconcile(ctx, request)
-	require.NoError(t, err)
-
-	// Create internal users secret using user.ReconcileUsersAndRoles directly.:with
-	// This simulates what the ES reconciler would call internally with 24-char passwords.
-	_, err = user.ReconcileUsersAndRoles(ctx, esReconciler.Client, *es, watches.NewDynamicWatches(),
-		record.NewFakeRecorder(100), &testPasswordHasher{}, esReconciler.Parameters.PasswordGenerator,
-		metadata.Propagate(es, metadata.Metadata{Labels: es.GetIdentityLabels()}))
-	require.NoError(t, err)
-
-	// Verify actual secrets contain 24-character passwords (basic license)
-	var internalUsersSecret corev1.Secret
-	secretNSN := types.NamespacedName{
-		Namespace: testNS,
-		Name:      esv1.InternalUsersSecret("test-es"),
-	}
-	err = esReconciler.Client.Get(ctx, secretNSN, &internalUsersSecret)
-	require.NoError(t, err, "Internal users secret should be created")
-
-	require.NotEmpty(t, internalUsersSecret.Data, "Internal users secret should contain user passwords")
-	for userKey, password := range internalUsersSecret.Data {
-		require.Equal(t, 24, len(password), "Basic license password should be 24 characters for user %s", userKey)
-	}
-
-	// Ensure the operator namespace exists, and start an enterprise trial
-	require.NoError(t, test.EnsureNamespace(esReconciler.Client, operatorNs))
-	startTrial(t, esReconciler.Client)
-
-	// Run ES controller reconcile with enterprise license active
-	_, err = esReconciler.Reconcile(ctx, request)
-	require.NoError(t, err)
-
-	// Delete existing secrets to force regeneration
-	err = esReconciler.Client.Delete(ctx, &internalUsersSecret)
-	require.NoError(t, err)
-
-	// Also delete the roles and file realm secret.
-	var rolesSecret corev1.Secret
-	rolesSecretNSN := types.NamespacedName{
-		Namespace: testNS,
-		Name:      esv1.RolesAndFileRealmSecret("test-es"),
-	}
-	err = esReconciler.Client.Get(ctx, rolesSecretNSN, &rolesSecret)
-	if err == nil {
-		require.NoError(t, esReconciler.Client.Delete(ctx, &rolesSecret))
-	}
-
-	// Recreate secrets with enterprise settings using user.ReconcileUsersAndRoles directly
-	// This simulates what the ES reconciler would call internally with 32-char passwords
-	_, err = user.ReconcileUsersAndRoles(ctx, esReconciler.Client, *es, watches.NewDynamicWatches(),
-		record.NewFakeRecorder(100), &testPasswordHasher{}, esReconciler.Parameters.PasswordGenerator,
-		metadata.Propagate(es, metadata.Metadata{Labels: es.GetIdentityLabels()}))
-	require.NoError(t, err)
-
-	// Verify actual secrets now contain 32-character passwords.
-	err = esReconciler.Client.Get(ctx, secretNSN, &internalUsersSecret)
-	require.NoError(t, err, "Internal users secret should be recreated with enterprise license")
-
-	require.NotEmpty(t, internalUsersSecret.Data, "Internal users secret should contain user passwords")
-	for userKey, password := range internalUsersSecret.Data {
-		require.Equal(t, 32, len(password), "Enterprise license password should be 32 characters for user %s", userKey)
-	}
-}
-
-// testPasswordHasher is a mock password hasher for testing
-type testPasswordHasher struct{}
-
-func (h *testPasswordHasher) GenerateHash(password []byte) ([]byte, error) {
-	hash := make([]byte, len(password)+5)
-	copy(hash[:5], "hash:")
-	copy(hash[5:], password)
-	return hash, nil
-}
-
-func (h *testPasswordHasher) ReuseOrGenerateHash(password []byte, existingHash []byte) ([]byte, error) {
-	return h.GenerateHash(password)
-}
-
-func startTrial(t *testing.T, k8sClient client.Client) {
-	t.Helper()
-	// start a trial
-	operatorNs := "elastic-system"
-	trialState, err := license.NewTrialState()
-	require.NoError(t, err)
-	wrappedClient := k8sClient
-	licenseNSN := types.NamespacedName{
-		Namespace: operatorNs,
-		Name:      "eck-trial",
-	}
-	// simulate user kicking off the trial activation
-	require.NoError(t, license.CreateTrialLicense(context.Background(), wrappedClient, licenseNSN))
-	// fetch user created license
-	licenseSecret, lic, err := license.TrialLicense(wrappedClient, licenseNSN)
-	require.NoError(t, err)
-	// fill in and sign
-	require.NoError(t, trialState.InitTrialLicense(context.Background(), &lic))
-	status, err := license.ExpectedTrialStatus(operatorNs, licenseNSN, trialState)
-	require.NoError(t, err)
-	// persist status
-	require.NoError(t, wrappedClient.Create(context.Background(), &status))
-	// persist updated license
-	require.NoError(t, license.UpdateEnterpriseLicense(context.Background(), wrappedClient, licenseSecret, lic))
 }

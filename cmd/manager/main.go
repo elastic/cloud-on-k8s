@@ -17,7 +17,6 @@ import (
 	"time"
 
 	"github.com/go-logr/logr"
-	"github.com/sethvargo/go-password/password"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 	"go.elastic.co/apm/v2"
@@ -66,6 +65,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/container"
 	commonlicense "github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/license"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/operator"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/password"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/reconciler"
 	controllerscheme "github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/scheme"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/tracing"

@@ -6,8 +6,35 @@ package password
 
 import (
 	"context"
+	"fmt"
+	"strings"
 
-	"github.com/sethvargo/go-password/password"
+	pwgenerator "github.com/m1/go-generate-password/generator"
+)
+
+const (
+	// LowerLetters is the list of lowercase letters.
+	LowerLetters = "abcdefghijklmnopqrstuvwxyz"
+
+	// UpperLetters is the list of uppercase letters.
+	UpperLetters = "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
+
+	// Digits is the list of permitted digits.
+	Digits = "0123456789"
+
+	// Symbols is the list of symbols.
+	Symbols = "~!@#$%^&*()_+`-={}|[]\\:\"<>?,./"
+)
+
+var (
+	defaultConfig = pwgenerator.Config{
+		Length:                  uint(24),
+		CharacterSet:            strings.Join([]string{LowerLetters, UpperLetters, Digits}, ""),
+		IncludeUppercaseLetters: true,
+		IncludeLowercaseLetters: true,
+		IncludeNumbers:          true,
+		IncludeSymbols:          false,
+	}
 )
 
 // RandomGenerator is an interface for generating random passwords.
@@ -19,7 +46,8 @@ type RandomGenerator interface {
 // that generates random passwords according to the specified parameters
 // and according to the Enterprise license level.
 type randomPasswordGenerator struct {
-	generator password.PasswordGenerator
+	generator *pwgenerator.Generator
+	// generator password.PasswordGenerator
 	useParams func(ctx context.Context) (bool, error)
 	params    GeneratorParams
 }
@@ -34,23 +62,11 @@ func (r *randomPasswordGenerator) Generate(ctx context.Context) ([]byte, error) 
 		return nil, err
 	}
 	if !useParams {
-		return randomBytes(24), nil
+		return randomBytes(24)
 	}
 
-	// set noUpper arg in Generate according to set parameters.
-	noUpper := false
-	if len(r.params.UpperLetters) == 0 {
-		noUpper = true
-	}
-
-	data, err := r.generator.Generate(
-		r.params.Length,
-		min(r.params.Length/4, len(r.params.Digits)),  // number of digits to include in the result
-		min(r.params.Length/4, len(r.params.Symbols)), // number of symbols to include in the result
-		noUpper, // noUpper
-		true,    // allowRepeat
-	)
-	return []byte(data), err
+	data, err := r.generator.Generate()
+	return []byte(*data), err
 }
 
 // NewRandomPasswordGenerator creates a new instance of RandomPasswordGenerator.
@@ -58,13 +74,15 @@ func (r *randomPasswordGenerator) Generate(ctx context.Context) ([]byte, error) 
 // params: The parameters to use for generating passwords.
 // useParams: A function that determines whether to use the parameters or default to non-enterprise functionality.
 func NewRandomPasswordGenerator(params GeneratorParams, useParams func(context.Context) (bool, error)) (RandomGenerator, error) {
-	generatorInput := &password.GeneratorInput{
-		LowerLetters: params.LowerLetters,
-		UpperLetters: params.UpperLetters,
-		Digits:       params.Digits,
-		Symbols:      params.Symbols,
+	config := pwgenerator.Config{
+		Length:                  uint(params.Length),
+		CharacterSet:            strings.Join([]string{params.LowerLetters, params.UpperLetters, params.Digits, params.Symbols}, ""),
+		IncludeSymbols:          len(params.Symbols) > 0,
+		IncludeUppercaseLetters: len(params.UpperLetters) > 0,
+		IncludeLowercaseLetters: len(params.LowerLetters) > 0,
+		IncludeNumbers:          len(params.Digits) > 0,
 	}
-	generator, err := password.NewGenerator(generatorInput)
+	generator, err := pwgenerator.New(&config)
 	if err != nil {
 		return nil, err
 	}
@@ -76,12 +94,14 @@ func NewRandomPasswordGenerator(params GeneratorParams, useParams func(context.C
 }
 
 // randomBytes generates some random bytes that can be used as a token or as a key
-func randomBytes(length int) []byte {
-	return []byte(password.MustGenerate(
-		length,
-		10,    // number of digits to include in the result
-		0,     // number of symbols to include in the result
-		false, // noUpper
-		true,  // allowRepeat
-	))
+func randomBytes(length int) ([]byte, error) {
+	generator, err := pwgenerator.New(&defaultConfig)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create password generator: %w", err)
+	}
+	data, err := generator.Generate()
+	if err != nil {
+		return nil, fmt.Errorf("failed to generate password: %w", err)
+	}
+	return []byte(*data), nil
 }
