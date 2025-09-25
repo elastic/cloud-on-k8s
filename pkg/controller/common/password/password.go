@@ -37,12 +37,18 @@ func (r *randomPasswordGenerator) Generate(ctx context.Context) ([]byte, error) 
 		return randomBytes(24), nil
 	}
 
+	// set noUpper arg in Generate according to set parameters.
+	noUpper := false
+	if len(r.params.UpperLetters) == 0 {
+		noUpper = true
+	}
+
 	data, err := r.generator.Generate(
 		r.params.Length,
 		min(r.params.Length/4, len(r.params.Digits)),  // number of digits to include in the result
 		min(r.params.Length/4, len(r.params.Symbols)), // number of symbols to include in the result
-		false, // noUpper
-		true,  // allowRepeat
+		noUpper, // noUpper
+		true,    // allowRepeat
 	)
 	return []byte(data), err
 }
