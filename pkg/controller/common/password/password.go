@@ -62,7 +62,7 @@ func (r *randomPasswordGenerator) Generate(ctx context.Context) ([]byte, error) 
 		return nil, err
 	}
 	if !useParams {
-		return randomBytes(24)
+		return randomBytes()
 	}
 
 	data, err := r.generator.Generate()
@@ -93,8 +93,8 @@ func NewRandomPasswordGenerator(params GeneratorParams, useParams func(context.C
 	}, nil
 }
 
-// randomBytes generates some random bytes that can be used as a token or as a key
-func randomBytes(length int) ([]byte, error) {
+// randomBytes generates some random bytes that can be used as a token or as a key.
+func randomBytes() ([]byte, error) {
 	generator, err := pwgenerator.New(&defaultConfig)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create password generator: %w", err)
