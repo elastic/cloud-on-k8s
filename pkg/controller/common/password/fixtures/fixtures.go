@@ -10,32 +10,21 @@ import (
 	commonpassword "github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/password"
 )
 
-type testGenerator struct {
-	length int
-	RandomGeneratorWithSetter
-}
-
-type RandomGeneratorWithSetter interface {
-	commonpassword.RandomGenerator
-	SetLength(length int) commonpassword.RandomGenerator
-}
-
-func (t *testGenerator) Generate(ctx context.Context) ([]byte, error) {
-	generator := commonpassword.MustNewRandomPasswordGenerator(
+func MustTestRandomGenerator(length int) commonpassword.RandomGenerator {
+	generator, err := commonpassword.NewRandomPasswordGenerator(
 		commonpassword.GeneratorParams{
+			Length:       length,
 			LowerLetters: commonpassword.LowerLetters,
 			UpperLetters: commonpassword.UpperLetters,
 			Digits:       commonpassword.Digits,
-			Length:       t.length,
-		}, func(ctx context.Context) (bool, error) { return true, nil })
-	return generator.Generate(ctx)
-}
-
-func (t *testGenerator) SetLength(length int) commonpassword.RandomGenerator {
-	t.length = length
-	return t
-}
-
-func TestRandomGenerator() RandomGeneratorWithSetter {
-	return &testGenerator{length: 24}
+			Symbols:      commonpassword.Symbols,
+		},
+		func(ctx context.Context) (bool, error) {
+			return true, nil
+		},
+	)
+	if err != nil {
+		panic(err) // acceptable for test fixtures
+	}
+	return generator
 }

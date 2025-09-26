@@ -276,7 +276,7 @@ func testReconciler(runtimeObjs ...client.Object) Reconciler {
 					Version: "1.5.0",
 				},
 			},
-			PasswordGenerator: fixtures.TestRandomGenerator(),
+			PasswordGenerator: fixtures.MustTestRandomGenerator(24),
 		},
 	}
 }
@@ -931,7 +931,7 @@ func TestReconciler_Reconcile_MultiRef(t *testing.T) {
 					Version: "1.4.0-unittest",
 				},
 			},
-			PasswordGenerator: fixtures.TestRandomGenerator(),
+			PasswordGenerator: fixtures.MustTestRandomGenerator(24),
 		},
 	}
 
