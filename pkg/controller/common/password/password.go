@@ -5,7 +5,6 @@
 package password
 
 import (
-	"bytes"
 	"context"
 	"crypto/rand"
 	"fmt"
@@ -106,13 +105,13 @@ func randomBytes() ([]byte, error) {
 // using the specified character set and length.
 // Inspired from https://github.com/sethvargo/go-password/blob/v0.3.1/password/generate.go.
 func randomBytesWithLength(length int, characterSet string) ([]byte, error) {
-	buf := bytes.NewBuffer(make([]byte, length))
-	for range length {
-		n, err := rand.Int(rand.Reader, big.NewInt(int64(length)))
+	b := make([]byte, length)
+	for i := range length {
+		n, err := rand.Int(rand.Reader, big.NewInt(int64(len(characterSet))))
 		if err != nil {
 			return nil, fmt.Errorf("while generating random data: %w", err)
 		}
-		buf.WriteByte(characterSet[n.Int64()])
+		b[i] = characterSet[n.Int64()]
 	}
-	return buf.Bytes(), nil
+	return b, nil
 }

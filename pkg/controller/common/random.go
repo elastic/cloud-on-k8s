@@ -17,9 +17,11 @@ func FixedLengthRandomPasswordBytes() []byte {
 
 // RandomBytes generates some random bytes that can be used as a token or as a key
 func RandomBytes(length int) []byte {
+	params := commonpassword.DefaultParameters
+	params.Length = length
 	data, err := commonpassword.MustNewRandomPasswordGenerator(
-		commonpassword.DefaultParameters,
-		func(ctx context.Context) (bool, error) { return false, nil }).
+		params,
+		func(ctx context.Context) (bool, error) { return true, nil }).
 		Generate(context.Background())
 	if err != nil {
 		panic(err)
