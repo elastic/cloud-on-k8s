@@ -320,7 +320,7 @@ func Command() *cobra.Command {
 			"%s%s%s",
 			password.LowerLetters,
 			password.UpperLetters,
-			password.Digits, // We do not use password.Symbols in the generator by default
+			password.Digits, // We do not use symbols by default for password generation.
 		),
 		"Allowed characters for generated file-based passwords (enterprise-only feature)",
 	)
