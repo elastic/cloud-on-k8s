@@ -24,7 +24,7 @@ func MustTestRandomGenerator(length int) commonpassword.RandomGenerator {
 		},
 	)
 	if err != nil {
-		panic(err) // acceptable for test fixtures
+		panic(err)
 	}
 	return generator
 }
