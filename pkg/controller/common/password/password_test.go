@@ -126,3 +126,143 @@ func Test_categorizeAllowedCharacters(t *testing.T) {
 		})
 	}
 }
+
+func Test_validateCharactersInParams(t *testing.T) {
+	tests := []struct {
+		name        string
+		params      GeneratorParams
+		expectError bool
+		errorMsg    string
+	}{
+		{
+			name: "valid params with all default constants",
+			params: GeneratorParams{
+				LowerLetters: LowerLetters,
+				UpperLetters: UpperLetters,
+				Digits:       Digits,
+				Symbols:      Symbols,
+				Length:       24,
+			},
+			expectError: false,
+		},
+		{
+			name: "valid params with subset of constants",
+			params: GeneratorParams{
+				LowerLetters: "abc",
+				UpperLetters: "XYZ",
+				Digits:       "123",
+				Symbols:      "!@#",
+				Length:       12,
+			},
+			expectError: false,
+		},
+		{
+			name: "invalid lowercase letter",
+			params: GeneratorParams{
+				LowerLetters: "abcé",
+				UpperLetters: "ABC",
+				Digits:       "123",
+				Symbols:      "!@#",
+				Length:       10,
+			},
+			expectError: true,
+			errorMsg:    "invalid character 'é' in LowerLetters",
+		},
+		{
+			name: "invalid uppercase letter",
+			params: GeneratorParams{
+				LowerLetters: "abc",
+				UpperLetters: "ABCΩ",
+				Digits:       "123",
+				Symbols:      "!@#",
+				Length:       10,
+			},
+			expectError: true,
+			errorMsg:    "invalid character 'Ω' in UpperLetters",
+		},
+		{
+			name: "invalid digit",
+			params: GeneratorParams{
+				LowerLetters: "abc",
+				UpperLetters: "ABC",
+				Digits:       "123A",
+				Symbols:      "!@#",
+				Length:       10,
+			},
+			expectError: true,
+			errorMsg:    "invalid character 'A' in Digits",
+		},
+		{
+			name: "invalid symbol",
+			params: GeneratorParams{
+				LowerLetters: "abc",
+				UpperLetters: "ABC",
+				Digits:       "123",
+				Symbols:      "!@#α", // α is not in Symbols constant
+				Length:       10,
+			},
+			expectError: true,
+			errorMsg:    "invalid character 'α' in Symbols",
+		},
+		{
+			name: "emoji in symbols",
+			params: GeneratorParams{
+				LowerLetters: "abc",
+				UpperLetters: "ABC",
+				Digits:       "123",
+				Symbols:      "!@#😀",
+				Length:       10,
+			},
+			expectError: true,
+			errorMsg:    "invalid character '😀' in Symbols",
+		},
+		{
+			name: "space character in lowercase",
+			params: GeneratorParams{
+				LowerLetters: "abc ",
+				UpperLetters: "ABC",
+				Digits:       "123",
+				Symbols:      "!@#",
+				Length:       10,
+			},
+			expectError: true,
+			errorMsg:    "invalid character ' ' in LowerLetters",
+		},
+		{
+			name: "tab character in digits",
+			params: GeneratorParams{
+				LowerLetters: "abc",
+				UpperLetters: "ABC",
+				Digits:       "123\t",
+				Symbols:      "!@#",
+				Length:       10,
+			},
+			expectError: true,
+			errorMsg:    "invalid character '\\t' in Digits",
+		},
+		{
+			name: "all fields empty",
+			params: GeneratorParams{
+				LowerLetters: "",
+				UpperLetters: "",
+				Digits:       "",
+				Symbols:      "",
+				Length:       10,
+			},
+			expectError: false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			err := validateCharactersInParams(tt.params)
+
+			if tt.expectError {
+				require.Error(t, err)
+				require.Equal(t, tt.errorMsg, err.Error())
+			} else {
+				require.NoError(t, err)
+			}
+		})
+	}
+}

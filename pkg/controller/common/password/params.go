@@ -18,21 +18,17 @@ type GeneratorParams struct {
 	Length       int
 }
 
-func NewGeneratorParams(allowedCharacter string, maxLength int) (GeneratorParams, error) {
-	generatorParams, other := categorizeAllowedCharacters(allowedCharacter)
+func NewGeneratorParams(allowedCharacters string, maxLength int) (GeneratorParams, error) {
+	generatorParams, other := categorizeAllowedCharacters(allowedCharacters)
 	if len(other) > 0 {
 		return GeneratorParams{}, fmt.Errorf("invalid characters in passwords allowed characters: %s", string(other))
 	}
+
 	generatorParams.Length = maxLength
-	// Elasticsearch requires at least 6 characters for passwords
-	// https://www.elastic.co/guide/en/elasticsearch/reference/7.5/security-api-put-user.html
-	if generatorParams.Length < 6 || generatorParams.Length > 72 {
-		return GeneratorParams{}, fmt.Errorf("password length must be at least 6 and at most 72")
+	if err := validateParams(generatorParams); err != nil {
+		return GeneratorParams{}, err
 	}
 
-	if len(generatorParams.LowerLetters)+len(generatorParams.UpperLetters)+len(generatorParams.Digits)+len(generatorParams.Symbols) < 10 {
-		return GeneratorParams{}, fmt.Errorf("allowedCharacters for password generation needs to be at least 10 for randomness")
-	}
 	return generatorParams, nil
 }
 

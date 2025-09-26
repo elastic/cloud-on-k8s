@@ -10,6 +10,8 @@ import (
 	"fmt"
 	"math/big"
 	"strings"
+
+	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/set"
 )
 
 const (
@@ -87,10 +89,47 @@ func MustNewRandomPasswordGenerator(params GeneratorParams, useParams func(conte
 	return generator
 }
 
+// validateParams validates the parameters for generating passwords.
 func validateParams(params GeneratorParams) error {
+	// Elasticsearch requires at least 6 characters for passwords
+	// https://www.elastic.co/guide/en/elasticsearch/reference/7.5/security-api-put-user.html
 	if params.Length < 6 || params.Length > 72 {
 		return fmt.Errorf("password length must be at least 6 and at most 72")
 	}
+
+	if len(params.LowerLetters)+len(params.UpperLetters)+len(params.Digits)+len(params.Symbols) < 10 {
+		return fmt.Errorf("allowedCharacters for password generation needs to be at least 10 for randomness")
+	}
+
+	return validateCharactersInParams(params)
+}
+
+// validateCharactersInParams validates each type of character set against the defined constants.
+func validateCharactersInParams(params GeneratorParams) error {
+	type validator struct {
+		name            string
+		validate        string
+		validateAgainst string
+	}
+
+	for _, t := range []validator{
+		{"LowerLetters", params.LowerLetters, LowerLetters},
+		{"UpperLetters", params.UpperLetters, UpperLetters},
+		{"Digits", params.Digits, Digits},
+		{"Symbols", params.Symbols, Symbols},
+	} {
+		validateAgainst := make(set.StringSet)
+		for _, s := range t.validateAgainst {
+			validateAgainst.Add(string(s))
+		}
+
+		for _, s := range t.validate {
+			if !validateAgainst.Has(string(s)) {
+				return fmt.Errorf("invalid character %q in %s", s, t.name)
+			}
+		}
+	}
+
 	return nil
 }
 
