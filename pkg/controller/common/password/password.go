@@ -104,6 +104,7 @@ func randomBytes() ([]byte, error) {
 
 // randomBytesWithLength generates some random bytes that can be used as a token or as a key
 // using the specified character set and length.
+// Inspired from https://github.com/sethvargo/go-password/blob/v0.3.1/password/generate.go.
 func randomBytesWithLength(length int, characterSet string) ([]byte, error) {
 	buf := bytes.NewBuffer(make([]byte, length))
 	for range length {
