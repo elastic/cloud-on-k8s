@@ -155,6 +155,8 @@ func randomBytesWithLength(length int, characterSet string) ([]byte, error) {
 	return b, nil
 }
 
+// MustGenerate is a convenience function for generating random bytes with a specified length
+// using the default character set which includes lowercase letters, uppercase letters and digits.
 func MustGenerate(length int) []byte {
 	b, err := randomBytesWithLength(length, defaultCharacterSet)
 	if err != nil {
