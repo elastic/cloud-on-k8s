@@ -18,6 +18,7 @@ type GeneratorParams struct {
 	Length       int
 }
 
+// NewGeneratorParams creates a new GeneratorParams instance with the given allowed characters and maximum length.
 func NewGeneratorParams(allowedCharacters string, maxLength int) (GeneratorParams, error) {
 	generatorParams, other := categorizeAllowedCharacters(allowedCharacters)
 	if len(other) > 0 {
