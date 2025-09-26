@@ -154,3 +154,11 @@ func randomBytesWithLength(length int, characterSet string) ([]byte, error) {
 	}
 	return b, nil
 }
+
+func MustGenerate(length int) []byte {
+	b, err := randomBytesWithLength(length, defaultCharacterSet)
+	if err != nil {
+		panic(err)
+	}
+	return b
+}

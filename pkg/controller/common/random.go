@@ -5,8 +5,6 @@
 package common
 
 import (
-	"context"
-
 	commonpassword "github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/password"
 )
 
@@ -17,14 +15,5 @@ func FixedLengthRandomPasswordBytes() []byte {
 
 // RandomBytes generates some random bytes that can be used as a token or as a key
 func RandomBytes(length int) []byte {
-	params := commonpassword.DefaultParameters
-	params.Length = length
-	data, err := commonpassword.MustNewRandomPasswordGenerator(
-		params,
-		func(ctx context.Context) (bool, error) { return true, nil }).
-		Generate(context.Background())
-	if err != nil {
-		panic(err)
-	}
-	return data
+	return commonpassword.MustGenerate(length)
 }
