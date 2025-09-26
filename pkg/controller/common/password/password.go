@@ -5,11 +5,12 @@
 package password
 
 import (
+	"bytes"
 	"context"
+	"crypto/rand"
 	"fmt"
+	"math/big"
 	"strings"
-
-	pwgenerator "github.com/m1/go-generate-password/generator"
 )
 
 const (
@@ -27,13 +28,12 @@ const (
 )
 
 var (
-	defaultConfig = pwgenerator.Config{
-		Length:                  uint(24),
-		CharacterSet:            strings.Join([]string{LowerLetters, UpperLetters, Digits}, ""),
-		IncludeUppercaseLetters: true,
-		IncludeLowercaseLetters: true,
-		IncludeNumbers:          true,
-		IncludeSymbols:          false,
+	defaultCharacterSet = strings.Join([]string{LowerLetters, UpperLetters, Digits}, "")
+	DefaultParameters   = GeneratorParams{
+		Length:       24,
+		LowerLetters: LowerLetters,
+		UpperLetters: UpperLetters,
+		Digits:       Digits,
 	}
 )
 
@@ -46,8 +46,6 @@ type RandomGenerator interface {
 // that generates random passwords according to the specified parameters
 // and according to the Enterprise license level.
 type randomPasswordGenerator struct {
-	generator *pwgenerator.Generator
-	// generator password.PasswordGenerator
 	useParams func(ctx context.Context) (bool, error)
 	params    GeneratorParams
 }
@@ -65,43 +63,55 @@ func (r *randomPasswordGenerator) Generate(ctx context.Context) ([]byte, error) 
 		return randomBytes()
 	}
 
-	data, err := r.generator.Generate()
-	return []byte(*data), err
+	return randomBytesWithLength(r.params.Length, strings.Join([]string{r.params.LowerLetters, r.params.UpperLetters, r.params.Digits, r.params.Symbols}, ""))
 }
 
 // NewRandomPasswordGenerator creates a new instance of RandomPasswordGenerator.
-// generator: The password generator to use.
 // params: The parameters to use for generating passwords.
 // useParams: A function that determines whether to use the parameters or default to non-enterprise functionality.
 func NewRandomPasswordGenerator(params GeneratorParams, useParams func(context.Context) (bool, error)) (RandomGenerator, error) {
-	config := pwgenerator.Config{
-		Length:                  uint(params.Length),
-		CharacterSet:            strings.Join([]string{params.LowerLetters, params.UpperLetters, params.Digits, params.Symbols}, ""),
-		IncludeSymbols:          len(params.Symbols) > 0,
-		IncludeUppercaseLetters: len(params.UpperLetters) > 0,
-		IncludeLowercaseLetters: len(params.LowerLetters) > 0,
-		IncludeNumbers:          len(params.Digits) > 0,
-	}
-	generator, err := pwgenerator.New(&config)
-	if err != nil {
+	if err := validateParams(params); err != nil {
 		return nil, err
 	}
 	return &randomPasswordGenerator{
-		generator: generator,
 		useParams: useParams,
 		params:    params,
 	}, nil
 }
 
-// randomBytes generates some random bytes that can be used as a token or as a key.
+// MustNewRandomPasswordGenerator creates a new instance of RandomPasswordGenerator and panics if it fails.
+func MustNewRandomPasswordGenerator(params GeneratorParams, useParams func(context.Context) (bool, error)) RandomGenerator {
+	generator, err := NewRandomPasswordGenerator(params, useParams)
+	if err != nil {
+		panic(err)
+	}
+	return generator
+}
+
+func validateParams(params GeneratorParams) error {
+	if params.Length < 6 || params.Length > 72 {
+		return fmt.Errorf("password length must be at least 6 and at most 72")
+	}
+	return nil
+}
+
+// randomBytes generates some random bytes that can be used as a token or as a key
+// using the default character set which includes lowercase letters, uppercase letters and digits
+// but no symbols and a length of 24.
 func randomBytes() ([]byte, error) {
-	generator, err := pwgenerator.New(&defaultConfig)
-	if err != nil {
-		return nil, fmt.Errorf("failed to create password generator: %w", err)
+	return randomBytesWithLength(24, defaultCharacterSet)
+}
+
+// randomBytesWithLength generates some random bytes that can be used as a token or as a key
+// using the specified character set and length.
+func randomBytesWithLength(length int, characterSet string) ([]byte, error) {
+	buf := bytes.NewBuffer(make([]byte, length))
+	for range length {
+		n, err := rand.Int(rand.Reader, big.NewInt(int64(length)))
+		if err != nil {
+			return nil, fmt.Errorf("while generating random data: %w", err)
+		}
+		buf.WriteByte(characterSet[n.Int64()])
 	}
-	data, err := generator.Generate()
-	if err != nil {
-		return nil, fmt.Errorf("failed to generate password: %w", err)
-	}
-	return []byte(*data), nil
+	return buf.Bytes(), nil
 }

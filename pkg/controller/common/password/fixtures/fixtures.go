@@ -7,14 +7,11 @@ package fixtures
 import (
 	"context"
 
-	pwgenerator "github.com/m1/go-generate-password/generator"
-
 	commonpassword "github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/password"
 )
 
 type testGenerator struct {
 	length int
-	commonpassword.RandomGenerator
 	RandomGeneratorWithSetter
 }
 
@@ -24,12 +21,14 @@ type RandomGeneratorWithSetter interface {
 }
 
 func (t *testGenerator) Generate(ctx context.Context) ([]byte, error) {
-	generator, err := pwgenerator.NewWithDefault()
-	if err != nil {
-		return nil, err
-	}
-	data, err := generator.Generate()
-	return []byte(*data), err
+	generator := commonpassword.MustNewRandomPasswordGenerator(
+		commonpassword.GeneratorParams{
+			LowerLetters: commonpassword.LowerLetters,
+			UpperLetters: commonpassword.UpperLetters,
+			Digits:       commonpassword.Digits,
+			Length:       t.length,
+		}, func(ctx context.Context) (bool, error) { return true, nil })
+	return generator.Generate(ctx)
 }
 
 func (t *testGenerator) SetLength(length int) commonpassword.RandomGenerator {
