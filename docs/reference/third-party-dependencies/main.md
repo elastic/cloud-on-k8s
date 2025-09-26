@@ -32,13 +32,11 @@ This page lists the third-party dependencies used to build {{eck}} from the main
 | [github.com/hashicorp/go-multierror](https://github.com/hashicorp/go-multierror) | v1.1.1 | MPL-2.0 |
 | [github.com/hashicorp/golang-lru/v2](https://github.com/hashicorp/golang-lru) | v2.0.7 | MPL-2.0 |
 | [github.com/hashicorp/vault/api](https://github.com/hashicorp/vault) | v1.20.0 | MPL-2.0 |
-| [github.com/m1/go-generate-password](https://github.com/m1/go-generate-password) | v0.2.0 | MIT |
 | [github.com/magiconair/properties](https://github.com/magiconair/properties) | v1.8.10 | BSD-2-Clause |
 | [github.com/pkg/errors](https://github.com/pkg/errors) | v0.9.1 | BSD-2-Clause |
 | [github.com/pmezard/go-difflib](https://github.com/pmezard/go-difflib) | v1.0.1-0.20181226105442-5d4384ee4fb2 | BSD-3-Clause |
 | [github.com/prometheus/client_golang](https://github.com/prometheus/client_golang) | v1.23.0 | Apache-2.0 |
 | [github.com/prometheus/common](https://github.com/prometheus/common) | v0.65.0 | Apache-2.0 |
-| [github.com/sethvargo/go-password](https://github.com/sethvargo/go-password) | v0.3.1 | MIT |
 | [github.com/spf13/cobra](https://github.com/spf13/cobra) | v1.10.1 | Apache-2.0 |
 | [github.com/spf13/pflag](https://github.com/spf13/pflag) | v1.0.9 | BSD-3-Clause |
 | [github.com/spf13/viper](https://github.com/spf13/viper) | v1.20.1 | MIT |
