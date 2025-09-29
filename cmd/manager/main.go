@@ -314,15 +314,14 @@ func Command() *cobra.Command {
 		"",
 		"Kubernetes namespace the operator runs in",
 	)
-	cmd.Flags().String(
+	cmd.Flags().StringSlice(
 		operator.PasswordAllowedCharactersFlag,
-		fmt.Sprintf(
-			"%s%s%s",
+		[]string{
 			password.LowerLetters,
 			password.UpperLetters,
 			password.Digits, // We do not use symbols by default for password generation.
-		),
-		"Allowed characters for generated file-based passwords (enterprise-only feature)",
+		},
+		"Allowed character sets for generated file-based passwords (enterprise-only feature)",
 	)
 	cmd.Flags().Int(
 		operator.PasswordLengthFlag,

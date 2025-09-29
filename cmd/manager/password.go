@@ -5,6 +5,8 @@
 package manager
 
 import (
+	"strings"
+
 	"github.com/spf13/viper"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 
@@ -14,9 +16,11 @@ import (
 )
 
 // newPasswordGenerator returns a password generator based on both the operator flags
-// and the license status.
+// and the license status. The allowed characters are provided as an array of character sets
+// that are concatenated together for password generation.
 func newPasswordGenerator(mgr manager.Manager, operatorNamespace string) (commonpassword.RandomGenerator, error) {
-	allowedCharacters := viper.GetString(operator.PasswordAllowedCharactersFlag)
+	allowedCharacterSets := viper.GetStringSlice(operator.PasswordAllowedCharactersFlag)
+	allowedCharacters := strings.Join(allowedCharacterSets, "")
 	passwordLength := viper.GetInt(operator.PasswordLengthFlag)
 	generatorParams, err := commonpassword.NewGeneratorParams(allowedCharacters, passwordLength)
 	if err != nil {

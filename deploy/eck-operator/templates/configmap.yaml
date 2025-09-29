@@ -84,4 +84,4 @@ data:
     {{- fail "config.policies.passwords.length must be >= 6 and <= 72" }}
     {{- end }}
     password-length: {{ $passwordLength }}
-    password-allowed-characters: {{ include "eck-operator.passwordAllowedCharacters" . | quote }}
+    password-allowed-characters: {{ include "eck-operator.passwordAllowedCharacters" . }}
