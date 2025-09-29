@@ -5,8 +5,11 @@
 package password
 
 import (
+	"context"
+	"fmt"
 	"testing"
 
+	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/set"
 	"github.com/stretchr/testify/require"
 )
 
@@ -262,6 +265,136 @@ func Test_validateCharactersInParams(t *testing.T) {
 				require.Equal(t, tt.errorMsg, err.Error())
 			} else {
 				require.NoError(t, err)
+			}
+		})
+	}
+}
+
+func TestRandomPasswordGenerator_Generate(t *testing.T) {
+	ctx := context.Background()
+
+	tests := []struct {
+		name                 string
+		params               GeneratorParams
+		useParamsFunc        func(context.Context) (bool, error)
+		expectError          bool
+		expectedLength       int
+		expectedCharacterSet string
+	}{
+		{
+			name: "useParams returns false - should use default character set",
+			params: GeneratorParams{
+				LowerLetters: "xyz",
+				UpperLetters: "XYZ",
+				Digits:       "789",
+				Symbols:      "!@#",
+				Length:       10,
+			},
+			useParamsFunc: func(context.Context) (bool, error) {
+				return false, nil
+			},
+			expectError:          false,
+			expectedLength:       24,                                   // default length historically is 24
+			expectedCharacterSet: LowerLetters + UpperLetters + Digits, // defaultCharacterSet
+		},
+		{
+			name: "useParams returns true - should use character set defined in parameters",
+			params: GeneratorParams{
+				LowerLetters: "abc",
+				UpperLetters: "XYZ",
+				Digits:       "123",
+				Symbols:      "!@",
+				Length:       15,
+			},
+			useParamsFunc: func(context.Context) (bool, error) {
+				return true, nil
+			},
+			expectError:          false,
+			expectedLength:       15,
+			expectedCharacterSet: "abcXYZ123!@",
+		},
+		{
+			name: "useParams returns true with minimal character set",
+			params: GeneratorParams{
+				LowerLetters: "a",
+				UpperLetters: "B",
+				Digits:       "1",
+				Symbols:      "",
+				Length:       8,
+			},
+			useParamsFunc: func(context.Context) (bool, error) {
+				return true, nil
+			},
+			expectError:          false,
+			expectedLength:       8,
+			expectedCharacterSet: "aB1",
+		},
+		{
+			name: "useParams returns true with only symbols",
+			params: GeneratorParams{
+				LowerLetters: "",
+				UpperLetters: "",
+				Digits:       "",
+				Symbols:      "!@#$%",
+				Length:       12,
+			},
+			useParamsFunc: func(context.Context) (bool, error) {
+				return true, nil
+			},
+			expectError:          false,
+			expectedLength:       12,
+			expectedCharacterSet: "!@#$%",
+		},
+		{
+			name: "useParams returns error",
+			params: GeneratorParams{
+				LowerLetters: "abc",
+				UpperLetters: "XYZ",
+				Digits:       "123",
+				Symbols:      "!@#",
+				Length:       10,
+			},
+			useParamsFunc: func(context.Context) (bool, error) {
+				return false, fmt.Errorf("license check failed")
+			},
+			expectError:          true,
+			expectedLength:       0,
+			expectedCharacterSet: "",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			generator := &randomPasswordGenerator{
+				useParams: tt.useParamsFunc,
+				params:    tt.params,
+			}
+
+			result, err := generator.Generate(ctx)
+
+			if tt.expectError {
+				require.Error(t, err)
+				require.Nil(t, result)
+				return
+			}
+
+			require.NoError(t, err)
+			require.NotNil(t, result)
+			require.Len(t, result, tt.expectedLength, "Generated password should have expected length")
+
+			// Only validate the returned password when no error is expected
+			if !tt.expectError {
+				// Validate that all characters in the result are from the expected character set
+				expectedCharSet := make(set.StringSet)
+				for _, char := range tt.expectedCharacterSet {
+					expectedCharSet.Add(string(char))
+				}
+
+				for _, b := range result {
+					require.True(t, expectedCharSet.Has(string(b)),
+						"Character %s is not in expected character set %q",
+						string(b), tt.expectedCharacterSet)
+				}
 			}
 		})
 	}
