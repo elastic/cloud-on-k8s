@@ -29,8 +29,9 @@ helm install elastic-operator-crds ./eck-operator/charts/eck-operator-crds
 # This step can be done by any user with full access to the my-namespace namespace.
 helm install elastic-operator ./eck-operator -n my-namespace --create-namespace \
   --set=installCRDs=false \
-  --set=managedNamespaces='{my-namespace}' \
+  --set=singleNamespaceMode=true \
   --set=createClusterScopedResources=false \
+  --set=config.validateStorageClass=false \
   --set=webhook.enabled=false
 ```
 
