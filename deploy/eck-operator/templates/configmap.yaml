@@ -67,8 +67,12 @@ data:
       {{- end }}
     webhook-port: {{ .Values.webhook.port }}
     {{- end }}
-    {{- with .Values.managedNamespaces }}
+    {{- if .Values.singleNamespaceMode }}
+    namespaces: [{{ .Release.Namespace }}]
+    {{- else }}
+      {{- with .Values.managedNamespaces }}
     namespaces: [{{ join "," . }}]
+      {{- end }}
     {{- end }}
     operator-namespace: {{ .Release.Namespace }}
     enable-leader-election: {{ .Values.config.enableLeaderElection }}

@@ -97,6 +97,9 @@ volumes: []
 # createClusterScopedResources determines whether cluster-scoped resources (ClusterRoles, ClusterRoleBindings) should be created.
 createClusterScopedResources: true
 
+# singleNamespaceMode will set the operator to only watch its deployed namespace
+singleNamespaceMode: false
+
 # Automount API credentials for the Service Account into the pod.
 automountServiceAccountToken: true
 
