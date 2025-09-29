@@ -31,7 +31,7 @@ helm install elastic-operator ./eck-operator -n my-namespace --create-namespace 
   --set=installCRDs=false \
   --set=singleNamespaceMode=true \
   --set=createClusterScopedResources=false \
-  --set config.validateStorageClass=false \
+  --set=config.validateStorageClass=false \
   --set=webhook.enabled=false
 ```
 
