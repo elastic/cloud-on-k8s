@@ -2,8 +2,6 @@
 // or more contributor license agreements. Licensed under the Elastic License 2.0;
 // you may not use this file except in compliance with the Elastic License 2.0.
 
-//go:build es || e2e
-
 package es
 
 import (
@@ -374,8 +372,8 @@ func TestStackConfigPolicyMultipleWeights(t *testing.T) {
 				},
 				ClusterSettings: &commonv1.Config{
 					Data: map[string]interface{}{
-						"persistent": map[string]interface{}{
-							"indices.recovery.max_bytes_per_sec": "50mb",
+						"indices": map[string]interface{}{
+							"recovery.max_bytes_per_sec": "50mb",
 						},
 					},
 				},
@@ -397,13 +395,17 @@ func TestStackConfigPolicyMultipleWeights(t *testing.T) {
 			Elasticsearch: policyv1alpha1.ElasticsearchConfigPolicySpec{
 				Config: &commonv1.Config{
 					Data: map[string]interface{}{
-						"cluster.name": "high-priority-cluster",
+						"cluster": map[string]interface{}{
+							"name": "high-priority-cluster",
+						},
 					},
 				},
 				ClusterSettings: &commonv1.Config{
 					Data: map[string]interface{}{
-						"persistent": map[string]interface{}{
-							"indices.recovery.max_bytes_per_sec": "200mb",
+						"indices": map[string]interface{}{
+							"recovery": map[string]interface{}{
+								"max_bytes_per_sec": "200mb",
+							},
 						},
 					},
 				},

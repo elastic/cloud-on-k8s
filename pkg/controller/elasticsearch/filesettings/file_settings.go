@@ -14,6 +14,7 @@ import (
 	commonv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/common/v1"
 	policyv1alpha1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/stackconfigpolicy/v1alpha1"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/hash"
+	commonsettings "github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/settings"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/version"
 )
 
@@ -127,57 +128,95 @@ func (s *Settings) updateState(es types.NamespacedName, policy policyv1alpha1.St
 			}
 			p.Spec.Elasticsearch.SnapshotRepositories.Data[name] = repoSettings
 		}
-		s.mergeConfig(s.State.SnapshotRepositories, p.Spec.Elasticsearch.SnapshotRepositories)
+		s.State.SnapshotRepositories = mergeConfig(s.State.SnapshotRepositories, p.Spec.Elasticsearch.SnapshotRepositories)
 	}
-	// merge other settings
 	if p.Spec.Elasticsearch.ClusterSettings != nil {
-		s.mergeConfig(s.State.ClusterSettings, p.Spec.Elasticsearch.ClusterSettings)
+		s.State.ClusterSettings = mergeClusterConfig(s.State.ClusterSettings, p.Spec.Elasticsearch.ClusterSettings)
 	}
 	if p.Spec.Elasticsearch.SnapshotLifecyclePolicies != nil {
-		s.mergeConfig(s.State.SLM, p.Spec.Elasticsearch.SnapshotLifecyclePolicies)
+		s.State.SLM = mergeConfig(s.State.SLM, p.Spec.Elasticsearch.SnapshotLifecyclePolicies)
 	}
 	if p.Spec.Elasticsearch.SecurityRoleMappings != nil {
-		s.mergeConfig(s.State.RoleMappings, p.Spec.Elasticsearch.SecurityRoleMappings)
+		s.State.RoleMappings = mergeConfig(s.State.RoleMappings, p.Spec.Elasticsearch.SecurityRoleMappings)
 	}
 	if p.Spec.Elasticsearch.IndexLifecyclePolicies != nil {
-		s.mergeConfig(s.State.IndexLifecyclePolicies, p.Spec.Elasticsearch.IndexLifecyclePolicies)
+		s.State.IndexLifecyclePolicies = mergeConfig(s.State.IndexLifecyclePolicies, p.Spec.Elasticsearch.IndexLifecyclePolicies)
 	}
 	if p.Spec.Elasticsearch.IngestPipelines != nil {
-		s.mergeConfig(s.State.IngestPipelines, p.Spec.Elasticsearch.IngestPipelines)
+		s.State.IngestPipelines = mergeConfig(s.State.IngestPipelines, p.Spec.Elasticsearch.IngestPipelines)
 	}
 	if p.Spec.Elasticsearch.IndexTemplates.ComposableIndexTemplates != nil {
-		s.mergeConfig(s.State.IndexTemplates.ComposableIndexTemplates, p.Spec.Elasticsearch.IndexTemplates.ComposableIndexTemplates)
+		s.State.IndexTemplates.ComposableIndexTemplates = mergeConfig(s.State.IndexTemplates.ComposableIndexTemplates, p.Spec.Elasticsearch.IndexTemplates.ComposableIndexTemplates)
 	}
 	if p.Spec.Elasticsearch.IndexTemplates.ComponentTemplates != nil {
-		s.mergeConfig(s.State.IndexTemplates.ComponentTemplates, p.Spec.Elasticsearch.IndexTemplates.ComponentTemplates)
+		s.State.IndexTemplates.ComponentTemplates = mergeConfig(s.State.IndexTemplates.ComponentTemplates, p.Spec.Elasticsearch.IndexTemplates.ComponentTemplates)
 	}
 	return nil
 }
 
-// mergeConfig merges source config into target config, with source taking precedence
-// For map-type values (like snapshot repositories), individual entries are merged rather than replaced
-func (s *Settings) mergeConfig(target, source *commonv1.Config) {
+// mergeClusterConfig merges source config into target config with flat/nested syntax support.
+// Both flat syntax (e.g., "cluster.routing.allocation.enable") and nested syntax
+// (e.g., {"cluster": {"routing": {"allocation": {"enable": "value"}}}}) are supported.
+// All settings are normalized to nested format for consistent output.
+func mergeClusterConfig(target, source *commonv1.Config) *commonv1.Config {
 	if source == nil || source.Data == nil {
-		return
+		return target
 	}
 	if target == nil || target.Data == nil {
 		target = &commonv1.Config{Data: make(map[string]interface{})}
 	}
 
-	for key, value := range source.Data {
-		if targetValue, exists := target.Data[key]; exists {
-			if targetMap, targetIsMap := targetValue.(map[string]interface{}); targetIsMap {
-				if sourceMap, sourceIsMap := value.(map[string]interface{}); sourceIsMap {
-					for subKey, subValue := range sourceMap {
-						targetMap[subKey] = subValue
-					}
-					continue
-				}
-			}
-		}
-		// For non-map values or if target doesn't exist, replace entirely
-		target.Data[key] = value
+	// Convert to CanonicalConfig for proper dot notation handling
+	targetCanonical, err := commonsettings.NewCanonicalConfigFrom(target.Data)
+	if err != nil {
+		return target
 	}
+
+	sourceCanonical, err := commonsettings.NewCanonicalConfigFrom(source.Data)
+	if err != nil {
+		return target
+	}
+
+	// Merge with source taking precedence
+	err = targetCanonical.MergeWith(sourceCanonical)
+	if err != nil {
+		return target
+	}
+
+	// Convert back to commonv1.Config
+	var result map[string]interface{}
+	err = targetCanonical.Unpack(&result)
+	if err != nil {
+		return target
+	}
+
+	return &commonv1.Config{Data: result}
+}
+
+// mergeConfig merges source config into target config for non-cluster settings.
+// This is a simple merge without flat/nested syntax support since only ClusterSettings
+// support dot notation in Elasticsearch.
+func mergeConfig(target, source *commonv1.Config) *commonv1.Config {
+	if source == nil || source.Data == nil {
+		return target
+	}
+	if target == nil || target.Data == nil {
+		target = &commonv1.Config{Data: make(map[string]interface{})}
+	}
+
+	result := &commonv1.Config{Data: make(map[string]interface{})}
+
+	// Copy target data
+	for key, value := range target.Data {
+		result.Data[key] = value
+	}
+
+	// Merge source data, with source taking precedence
+	for key, value := range source.Data {
+		result.Data[key] = value
+	}
+
+	return result
 }
 
 // mutateSnapshotRepositorySettings ensures that a snapshot repository can be used across multiple ES clusters.

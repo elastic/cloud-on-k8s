@@ -184,7 +184,7 @@ func TestReconcileStackConfigPolicy_Reconcile(t *testing.T) {
 				commonlabels.StackConfigPolicyOnDeleteLabelName: commonlabels.OrphanSecretResetOnPolicyDelete,
 			},
 		},
-		Data: map[string][]byte{"settings.json": []byte(`{"metadata":{"version":"42","compatibility":"8.4.0"},"state":{"cluster_settings":{"indices.recovery.max_bytes_per_sec":"42mb"},"snapshot_repositories":{},"slm":{},"role_mappings":{},"autoscaling":{},"ilm":{},"ingest_pipelines":{},"index_templates":{"component_templates":{},"composable_index_templates":{}}}}`)},
+		Data: map[string][]byte{"settings.json": []byte(`{"metadata":{"version":"42","compatibility":"8.4.0"},"state":{"cluster_settings":{"indices":{"recovery":{"max_bytes_per_sec":"42mb"}}},"snapshot_repositories":{},"slm":{},"role_mappings":{},"autoscaling":{},"ilm":{},"ingest_pipelines":{},"index_templates":{"component_templates":{},"composable_index_templates":{}}}}`)},
 	}
 	secretHash, err := getSettingsHash(secretFixture)
 	assert.NoError(t, err)
@@ -447,11 +447,21 @@ func TestReconcileStackConfigPolicy_Reconcile(t *testing.T) {
 			},
 			pre: func(r ReconcileStackConfigPolicy) {
 				settings := r.getSettings(t, k8s.ExtractNamespacedName(&secretFixture))
-				assert.Equal(t, "42mb", settings.State.ClusterSettings.Data["indices.recovery.max_bytes_per_sec"])
+				// Check nested format in test data
+				indices, ok := settings.State.ClusterSettings.Data["indices"].(map[string]interface{})
+				assert.True(t, ok, "indices should be a map")
+				recovery, ok := indices["recovery"].(map[string]interface{})
+				assert.True(t, ok, "recovery should be a map")
+				assert.Equal(t, "42mb", recovery["max_bytes_per_sec"])
 			},
 			post: func(r ReconcileStackConfigPolicy, recorder record.FakeRecorder) {
 				settings := r.getSettings(t, k8s.ExtractNamespacedName(&secretFixture))
-				assert.Equal(t, "43mb", settings.State.ClusterSettings.Data["indices.recovery.max_bytes_per_sec"])
+				// After normalization, cluster settings should be in nested format
+				indices, ok := settings.State.ClusterSettings.Data["indices"].(map[string]interface{})
+				assert.True(t, ok, "indices should be a map")
+				recovery, ok := indices["recovery"].(map[string]interface{})
+				assert.True(t, ok, "recovery should be a map")
+				assert.Equal(t, "43mb", recovery["max_bytes_per_sec"])
 
 				var policy policyv1alpha1.StackConfigPolicy
 				err := r.Client.Get(context.Background(), types.NamespacedName{

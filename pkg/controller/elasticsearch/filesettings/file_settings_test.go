@@ -405,7 +405,7 @@ func Test_updateState(t *testing.T) {
 			wantErr: errors.New("invalid type (float64) for snapshot repository path"),
 		},
 		{
-			name: "other settings: no mutation",
+			name: "other settings: configuration normalization",
 			args: args{policy: policyv1alpha1.StackConfigPolicy{Spec: policyv1alpha1.StackConfigPolicySpec{Elasticsearch: policyv1alpha1.ElasticsearchConfigPolicySpec{
 				ClusterSettings:           clusterSettings,
 				SnapshotRepositories:      &commonv1.Config{Data: map[string]any{}},
@@ -419,7 +419,13 @@ func Test_updateState(t *testing.T) {
 				},
 			}}}},
 			want: SettingsState{
-				ClusterSettings:        clusterSettings,
+				ClusterSettings: &commonv1.Config{Data: map[string]any{
+					"indices": map[string]any{
+						"recovery": map[string]any{
+							"max_bytes_per_sec": "100mb",
+						},
+					},
+				}},
 				SnapshotRepositories:   &commonv1.Config{Data: map[string]any{}},
 				SLM:                    snapshotLifecyclePolicies,
 				RoleMappings:           roleMappings,
@@ -445,6 +451,159 @@ func Test_updateState(t *testing.T) {
 			if !reflect.DeepEqual(settings.State, tt.want) {
 				fmt.Println(cmp.Diff(settings.State, tt.want))
 				t.Errorf("settings.updateState(policy, es) = %v, want %v", settings.State, tt.want)
+			}
+		})
+	}
+}
+
+// TestMergeConfigWithNormalization tests the mergeClusterConfig function with various flat and nested syntax scenarios
+func TestMergeConfigWithNormalization(t *testing.T) {
+	tests := []struct {
+		name     string
+		target   *commonv1.Config
+		source   *commonv1.Config
+		expected *commonv1.Config
+	}{
+		{
+			name: "flat syntax merged with nested syntax",
+			target: &commonv1.Config{Data: map[string]interface{}{
+				"cluster.routing.allocation.enable": "all",
+			}},
+			source: &commonv1.Config{Data: map[string]interface{}{
+				"cluster": map[string]interface{}{
+					"routing": map[string]interface{}{
+						"allocation": map[string]interface{}{
+							"disk": map[string]interface{}{
+								"watermark": map[string]interface{}{
+									"low": "85%",
+								},
+							},
+						},
+					},
+				},
+			}},
+			expected: &commonv1.Config{Data: map[string]interface{}{
+				"cluster": map[string]interface{}{
+					"routing": map[string]interface{}{
+						"allocation": map[string]interface{}{
+							"enable": "all",
+							"disk": map[string]interface{}{
+								"watermark": map[string]interface{}{
+									"low": "85%",
+								},
+							},
+						},
+					},
+				},
+			}},
+		},
+		{
+			name: "nested syntax merged with flat syntax",
+			target: &commonv1.Config{Data: map[string]interface{}{
+				"cluster": map[string]interface{}{
+					"routing": map[string]interface{}{
+						"allocation": map[string]interface{}{
+							"enable": "all",
+						},
+					},
+				},
+			}},
+			source: &commonv1.Config{Data: map[string]interface{}{
+				"cluster.routing.allocation.disk.watermark.low": "85%",
+			}},
+			expected: &commonv1.Config{Data: map[string]interface{}{
+				"cluster": map[string]interface{}{
+					"routing": map[string]interface{}{
+						"allocation": map[string]interface{}{
+							"enable": "all",
+							"disk": map[string]interface{}{
+								"watermark": map[string]interface{}{
+									"low": "85%",
+								},
+							},
+						},
+					},
+				},
+			}},
+		},
+		{
+			name: "flat syntax conflict - source takes precedence",
+			target: &commonv1.Config{Data: map[string]interface{}{
+				"cluster.routing.allocation.enable": "all",
+			}},
+			source: &commonv1.Config{Data: map[string]interface{}{
+				"cluster.routing.allocation.enable": "primaries",
+			}},
+			expected: &commonv1.Config{Data: map[string]interface{}{
+				"cluster": map[string]interface{}{
+					"routing": map[string]interface{}{
+						"allocation": map[string]interface{}{
+							"enable": "primaries",
+						},
+					},
+				},
+			}},
+		},
+		{
+			name: "mixed flat and nested with different paths",
+			target: &commonv1.Config{Data: map[string]interface{}{
+				"indices.recovery.max_bytes_per_sec": "100mb",
+				"cluster": map[string]interface{}{
+					"routing": map[string]interface{}{
+						"allocation": map[string]interface{}{
+							"enable": "all",
+						},
+					},
+				},
+			}},
+			source: &commonv1.Config{Data: map[string]interface{}{
+				"indices.memory.index_buffer_size": "10%",
+				"cluster.routing.rebalance.enable": "replicas",
+			}},
+			expected: &commonv1.Config{Data: map[string]interface{}{
+				"cluster": map[string]interface{}{
+					"routing": map[string]interface{}{
+						"allocation": map[string]interface{}{
+							"enable": "all",
+						},
+						"rebalance": map[string]interface{}{
+							"enable": "replicas",
+						},
+					},
+				},
+				"indices": map[string]interface{}{
+					"recovery": map[string]interface{}{
+						"max_bytes_per_sec": "100mb",
+					},
+					"memory": map[string]interface{}{
+						"index_buffer_size": "10%",
+					},
+				},
+			}},
+		},
+		{
+			name:   "nil source returns target unchanged",
+			target: &commonv1.Config{Data: map[string]interface{}{"test": "value"}},
+			source: nil,
+			expected: &commonv1.Config{Data: map[string]interface{}{
+				"test": "value",
+			}},
+		},
+		{
+			name:   "nil target returns source as target",
+			target: nil,
+			source: &commonv1.Config{Data: map[string]interface{}{"test": "value"}},
+			expected: &commonv1.Config{Data: map[string]interface{}{
+				"test": "value",
+			}},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := mergeClusterConfig(tt.target, tt.source)
+			if !reflect.DeepEqual(result.Data, tt.expected.Data) {
+				t.Errorf("mergeClusterConfig() = %+v, want %+v\nDiff: %s", result.Data, tt.expected.Data, cmp.Diff(tt.expected.Data, result.Data))
 			}
 		})
 	}
