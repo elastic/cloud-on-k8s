@@ -134,7 +134,7 @@ Get password allowed character sets with a default of standard alphanumeric char
 */}}
 {{- define "eck-operator.passwordAllowedCharacters" -}}
 {{- $allowed := dig "policies" "passwords" "allowedCharacters" (list "abcdefghijklmnopqrstuvwxyz" "ABCDEFGHIJKLMNOPQRSTUVWXYZ" "0123456789") .Values.config -}}
-[{{ join "," $allowed }}]
+[{{- range $index, $element := $allowed -}}{{- if $index -}},{{- end -}}{{- $element | quote -}}{{- end -}}]
 {{- end -}}
 
 {{/*
