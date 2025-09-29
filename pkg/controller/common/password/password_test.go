@@ -9,8 +9,9 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/set"
 	"github.com/stretchr/testify/require"
+
+	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/set"
 )
 
 func Test_categorizeAllowedCharacters(t *testing.T) {
