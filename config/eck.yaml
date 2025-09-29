@@ -21,4 +21,4 @@ enable-leader-election: true
 elasticsearch-observation-interval: 10s
 ubi-only: false
 password-length: 24
-password-allowed-characters: [abcdefghijklmnopqrstuvwxyz,ABCDEFGHIJKLMNOPQRSTUVWXYZ,0123456789]
+password-allowed-characters: ["abcdefghijklmnopqrstuvwxyz","ABCDEFGHIJKLMNOPQRSTUVWXYZ","0123456789"]
