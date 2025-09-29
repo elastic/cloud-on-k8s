@@ -5,6 +5,8 @@
 package main
 
 import (
+	// By default this sets `GOMEMLIMIT` to 90% of cgroup's memory limit.
+	_ "github.com/KimMachineGun/automemlimit"
 	"github.com/spf13/cobra"
 
 	"github.com/elastic/cloud-on-k8s/v3/cmd/manager"
