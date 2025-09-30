@@ -365,38 +365,41 @@ func TestRandomPasswordGenerator_Generate(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			generator := &randomPasswordGenerator{
-				useParams: tt.useParamsFunc,
-				params:    tt.params,
-			}
-
-			result, err := generator.Generate(ctx)
-
-			if tt.expectError {
-				require.Error(t, err)
-				require.Nil(t, result)
-				return
-			}
-
-			require.NoError(t, err)
-			require.NotNil(t, result)
-			require.Len(t, result, tt.expectedLength, "Generated password should have expected length")
-
-			// Only validate the returned password when no error is expected
-			if !tt.expectError {
-				// Validate that all characters in the result are from the expected character set
-				expectedCharSet := make(set.StringSet)
-				for _, char := range tt.expectedCharacterSet {
-					expectedCharSet.Add(string(char))
+		// run each test case 20 times because of the use of randomness.
+		for range 20 {
+			t.Run(tt.name, func(t *testing.T) {
+				generator := &randomPasswordGenerator{
+					useParams: tt.useParamsFunc,
+					params:    tt.params,
 				}
 
-				for _, b := range result {
-					require.True(t, expectedCharSet.Has(string(b)),
-						"Character %s is not in expected character set %q",
-						string(b), tt.expectedCharacterSet)
+				result, err := generator.Generate(ctx)
+
+				if tt.expectError {
+					require.Error(t, err)
+					require.Nil(t, result)
+					return
 				}
-			}
-		})
+
+				require.NoError(t, err)
+				require.NotNil(t, result)
+				require.Len(t, result, tt.expectedLength, "Generated password should have expected length")
+
+				// Only validate the returned password when no error is expected
+				if !tt.expectError {
+					// Validate that all characters in the result are from the expected character set
+					expectedCharSet := make(set.StringSet)
+					for _, char := range tt.expectedCharacterSet {
+						expectedCharSet.Add(string(char))
+					}
+
+					for _, b := range result {
+						require.True(t, expectedCharSet.Has(string(b)),
+							"Character %s is not in expected character set %q",
+							string(b), tt.expectedCharacterSet)
+					}
+				}
+			})
+		}
 	}
 }

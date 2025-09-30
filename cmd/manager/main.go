@@ -321,7 +321,7 @@ func Command() *cobra.Command {
 			password.UpperLetters,
 			password.Digits, // We do not use symbols by default for password generation.
 		},
-		"Allowed character sets for generated file-based passwords (enterprise-only feature)",
+		"Allowed character set for generated file-based passwords (enterprise-only feature)",
 	)
 	cmd.Flags().Int(
 		operator.PasswordLengthFlag,
