@@ -188,8 +188,8 @@ func Test_reconcileInternalUsers(t *testing.T) {
 			assertions: func(t *testing.T, u users) {
 				t.Helper()
 				// random passwords should be generated
-				require.NotEmpty(t, u[0].Password)
-				require.NotEmpty(t, u[1].Password)
+				require.Len(t, u[0].Password, 17)
+				require.Len(t, u[1].Password, 17)
 			},
 		},
 		{
@@ -279,6 +279,7 @@ func Test_reconcileInternalUsers(t *testing.T) {
 				t.Helper()
 				require.Len(t, u, 5)
 				require.Equal(t, []string{SuperUserBuiltinRole}, u[4].Roles)
+				require.Len(t, u[4].Password, 17)
 			},
 		},
 		{
@@ -293,6 +294,7 @@ func Test_reconcileInternalUsers(t *testing.T) {
 				t.Helper()
 				require.Len(t, u, 5)
 				require.Equal(t, []string{DiagnosticsUserRoleV80}, u[4].Roles)
+				require.Len(t, u[4].Password, 17)
 			},
 		},
 		{
