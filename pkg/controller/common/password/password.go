@@ -11,6 +11,8 @@ import (
 	"math/big"
 	"strings"
 
+	license "github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/license"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/k8s"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/set"
 )
 
@@ -30,12 +32,6 @@ const (
 
 var (
 	defaultCharacterSet = strings.Join([]string{LowerLetters, UpperLetters, Digits}, "")
-	DefaultParameters   = GeneratorParams{
-		Length:       24,
-		LowerLetters: LowerLetters,
-		UpperLetters: UpperLetters,
-		Digits:       Digits,
-	}
 )
 
 // RandomGenerator is an interface for generating random passwords.
@@ -49,6 +45,7 @@ type RandomGenerator interface {
 type randomPasswordGenerator struct {
 	useParams func(ctx context.Context) (bool, error)
 	params    GeneratorParams
+	charSet   string
 }
 
 var _ RandomGenerator = (*randomPasswordGenerator)(nil)
@@ -64,7 +61,26 @@ func (r *randomPasswordGenerator) Generate(ctx context.Context) ([]byte, error) 
 		return randomBytes()
 	}
 
-	return randomBytesWithLength(r.params.Length, strings.Join([]string{r.params.LowerLetters, r.params.UpperLetters, r.params.Digits, r.params.Symbols}, ""))
+	return randomBytesWithLength(r.params.Length, r.charSet)
+}
+
+// NewGenerator returns a password generator based on both the operator flags
+// and the license status. The allowed characters are provided as an array of character sets
+// that are concatenated together for password generation.
+func NewGenerator(
+	client k8s.Client,
+	allowedCharacterSets []string,
+	passwordLength int,
+	operatorNamespace string,
+) (RandomGenerator, error) {
+	allowedCharacters := strings.Join(allowedCharacterSets, "")
+	generatorParams, err := NewGeneratorParams(allowedCharacters, passwordLength)
+	if err != nil {
+		return nil, err
+	}
+
+	licenseChecker := license.NewLicenseChecker(client, operatorNamespace)
+	return NewRandomPasswordGenerator(generatorParams, licenseChecker.EnterpriseFeaturesEnabled)
 }
 
 // NewRandomPasswordGenerator creates a new instance of RandomPasswordGenerator.
@@ -77,28 +93,31 @@ func NewRandomPasswordGenerator(params GeneratorParams, useParams func(context.C
 	return &randomPasswordGenerator{
 		useParams: useParams,
 		params:    params,
+		charSet:   strings.Join([]string{params.LowerLetters, params.UpperLetters, params.Digits, params.Symbols}, ""),
 	}, nil
-}
-
-// MustNewRandomPasswordGenerator creates a new instance of RandomPasswordGenerator and panics if it fails.
-func MustNewRandomPasswordGenerator(params GeneratorParams, useParams func(context.Context) (bool, error)) RandomGenerator {
-	generator, err := NewRandomPasswordGenerator(params, useParams)
-	if err != nil {
-		panic(err)
-	}
-	return generator
 }
 
 // validateParams validates the parameters for generating passwords.
 func validateParams(params GeneratorParams) error {
 	// Elasticsearch requires at least 6 characters for passwords
 	// https://www.elastic.co/guide/en/elasticsearch/reference/7.5/security-api-put-user.html
+	// 72 characters is the upper limit for the bcrypt algorithm, which is used by ECK.
 	if params.Length < 6 || params.Length > 72 {
 		return fmt.Errorf("password length must be at least 6 and at most 72")
 	}
 
-	if len(params.LowerLetters)+len(params.UpperLetters)+len(params.Digits)+len(params.Symbols) < 10 {
-		return fmt.Errorf("allowedCharacters for password generation needs to be at least 10 for randomness")
+	// split all of the given parameters on each character and form a set
+	// to ensure the allowedCharacters for password generation contains at
+	// least 10 distinct characters for randomness.
+	var allChars []string
+	for _, str := range []string{params.LowerLetters, params.UpperLetters, params.Digits, params.Symbols} {
+		for _, char := range str {
+			allChars = append(allChars, string(char))
+		}
+	}
+	paramsSet := set.Make(allChars...)
+	if len(paramsSet) < 10 {
+		return fmt.Errorf("allowedCharacters for password generation needs to be at least 10 distinct characters for randomness")
 	}
 
 	return validateCharactersInParams(params)

@@ -319,7 +319,9 @@ func Command() *cobra.Command {
 		[]string{
 			password.LowerLetters,
 			password.UpperLetters,
-			password.Digits, // We do not use symbols by default for password generation.
+			password.Digits, // We do not use symbols by default for password generation as the
+			// original library we were using did not use symbols by default. (go-password) After
+			// removing the use of the library, we are maintaining the same behavior.
 		},
 		"Allowed character set for generated file-based passwords (enterprise-only feature)",
 	)
@@ -707,11 +709,16 @@ func startOperator(ctx context.Context) error {
 	}
 	passwordHasher, err := cryptutil.NewPasswordHasher(hashCacheSize)
 	if err != nil {
-		log.Error(err, "Failed to create hash cache")
+		log.Error(err, "Failed to create password hash cache")
 		return err
 	}
 
-	generator, err := newPasswordGenerator(mgr, operatorNamespace)
+	generator, err := password.NewGenerator(
+		mgr.GetClient(),
+		viper.GetStringSlice(operator.PasswordAllowedCharactersFlag),
+		viper.GetInt(operator.PasswordLengthFlag),
+		operatorNamespace,
+	)
 	if err != nil {
 		log.Error(err, "Failed to create password generator")
 		return err

@@ -7,6 +7,7 @@ package password
 import (
 	"context"
 	"fmt"
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -371,6 +372,7 @@ func TestRandomPasswordGenerator_Generate(t *testing.T) {
 				generator := &randomPasswordGenerator{
 					useParams: tt.useParamsFunc,
 					params:    tt.params,
+					charSet:   strings.Join([]string{tt.params.LowerLetters, tt.params.UpperLetters, tt.params.Digits, tt.params.Symbols}, ""),
 				}
 
 				result, err := generator.Generate(ctx)
