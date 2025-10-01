@@ -139,7 +139,7 @@ func buildOutputConfig(ctx context.Context, client k8s.Client, assoc commonv1.As
 		return nil, nil, err
 	}
 	// Reloading of certificates is only supported for Beats >= 8.8.0.
-	if v.GE(version.MustParse("8.8.0")) {
+	if v.GE(version.MinFor(8, 8, 0)) {
 		// Allow beats to reload when the ssl certificate changes (renewals)
 		outputConfig["ssl.restart_on_cert_change"] = map[string]interface{}{
 			"enabled": true,
