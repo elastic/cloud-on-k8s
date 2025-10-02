@@ -19,8 +19,8 @@ import (
 	commonv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/common/v1"
 	kbv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/kibana/v1"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/association"
-	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/certificates"
+	commonpassword "github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/password"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/settings"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/tracing"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/version"
@@ -241,10 +241,18 @@ func getOrCreateReusableSettings(ctx context.Context, c k8s.Client, kb kbv1.Kiba
 		return nil, err
 	}
 	if len(r.EncryptionKey) == 0 {
-		r.EncryptionKey = string(common.RandomBytes(EncryptionKeyMinimumBytes))
+		bytes, err := commonpassword.RandomBytesWithoutSymbols(EncryptionKeyMinimumBytes)
+		if err != nil {
+			return nil, err
+		}
+		r.EncryptionKey = string(bytes)
 	}
 	if len(r.ReportingKey) == 0 {
-		r.ReportingKey = string(common.RandomBytes(EncryptionKeyMinimumBytes))
+		bytes, err := commonpassword.RandomBytesWithoutSymbols(EncryptionKeyMinimumBytes)
+		if err != nil {
+			return nil, err
+		}
+		r.ReportingKey = string(bytes)
 	}
 
 	kbVer, err := version.Parse(kb.Spec.Version)
@@ -253,7 +261,11 @@ func getOrCreateReusableSettings(ctx context.Context, c k8s.Client, kb kbv1.Kiba
 	}
 	// xpack.encryptedSavedObjects.encryptionKey was only added in 7.6.0 and earlier versions error out
 	if len(r.SavedObjectsKey) == 0 && kbVer.GTE(version.From(7, 6, 0)) {
-		r.SavedObjectsKey = string(common.RandomBytes(EncryptionKeyMinimumBytes))
+		bytes, err := commonpassword.RandomBytesWithoutSymbols(EncryptionKeyMinimumBytes)
+		if err != nil {
+			return nil, err
+		}
+		r.SavedObjectsKey = string(bytes)
 	}
 	return settings.MustCanonicalConfig(r), nil
 }

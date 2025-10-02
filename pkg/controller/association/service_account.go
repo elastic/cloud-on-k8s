@@ -15,8 +15,8 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/metadata"
+	commonpassword "github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/password"
 
 	"go.elastic.co/apm/v2"
 	"golang.org/x/crypto/pbkdf2"
@@ -242,7 +242,10 @@ var prefix = [...]byte{0x0, 0x1, 0x0, 0x1}
 
 // newApplicationToken generates a new token for a given service account.
 func newApplicationToken(serviceAccountName commonv1.ServiceAccountName, tokenName string) (*Token, error) {
-	secret := common.RandomBytes(ServiceAccountMinimumBytes)
+	secret, err := commonpassword.RandomBytesWithoutSymbols(ServiceAccountMinimumBytes)
+	if err != nil {
+		return nil, err
+	}
 	hash, err := pbkdf2Key(secret)
 	if err != nil {
 		return nil, err

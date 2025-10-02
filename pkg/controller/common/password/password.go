@@ -30,7 +30,8 @@ const (
 )
 
 var (
-	defaultCharacterSet = strings.Join([]string{LowerLetters, UpperLetters, Digits, Symbols}, "")
+	defaultCharacterSet        = strings.Join([]string{LowerLetters, UpperLetters, Digits, Symbols}, "")
+	characterSetWithoutSymbols = strings.Join([]string{LowerLetters, UpperLetters, Digits}, "")
 )
 
 // RandomGenerator is an interface for generating random passwords.
@@ -56,9 +57,9 @@ func (r *randomPasswordGenerator) Generate(ctx context.Context) ([]byte, error) 
 		return nil, err
 	}
 	if useLength {
-		return randomBytesWithLength(r.length)
+		return randomBytesWithLengthAndCharset(r.length, defaultCharacterSet)
 	}
-	return randomBytesWithLength(24)
+	return randomBytesWithLengthAndCharset(24, defaultCharacterSet)
 }
 
 // NewGenerator returns a password generator with the specified length.
@@ -100,20 +101,27 @@ func validateLength(length int) error {
 // using the default character set which includes lowercase letters, uppercase letters, digits
 // and symbols with a length of 24.
 func randomBytes() ([]byte, error) {
-	return randomBytesWithLength(24)
+	return randomBytesWithLengthAndCharset(24, defaultCharacterSet)
+}
+
+// RandomBytesWithoutSymbols generates some random bytes that can be used as a token or as a key
+// using the character set without symbols and specified length. This is primarily used for
+// generating encryption keys.
+func RandomBytesWithoutSymbols(length int) ([]byte, error) {
+	return randomBytesWithLengthAndCharset(length, characterSetWithoutSymbols)
 }
 
 // randomBytesWithLength generates some random bytes that can be used as a token or as a key
 // using the default character set and specified length.
 // Inspired from https://github.com/sethvargo/go-password/blob/v0.3.1/password/generate.go.
-func randomBytesWithLength(length int) ([]byte, error) {
+func randomBytesWithLengthAndCharset(length int, charSet string) ([]byte, error) {
 	b := make([]byte, length)
 	for i := range length {
-		n, err := rand.Int(rand.Reader, big.NewInt(int64(len(defaultCharacterSet))))
+		n, err := rand.Int(rand.Reader, big.NewInt(int64(len(charSet))))
 		if err != nil {
 			return nil, fmt.Errorf("while generating random data: %w", err)
 		}
-		b[i] = defaultCharacterSet[n.Int64()]
+		b[i] = charSet[n.Int64()]
 	}
 	return b, nil
 }
@@ -121,7 +129,7 @@ func randomBytesWithLength(length int) ([]byte, error) {
 // MustGenerate is a convenience function for generating random bytes with a specified length
 // using the default character set which includes lowercase letters, uppercase letters and digits.
 func MustGenerate(length int) []byte {
-	b, err := randomBytesWithLength(length)
+	b, err := randomBytesWithLengthAndCharset(length, defaultCharacterSet)
 	if err != nil {
 		panic(err)
 	}
