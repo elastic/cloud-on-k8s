@@ -26,7 +26,6 @@ const (
 	EnableWebhookFlag                    = "enable-webhook"
 	EnforceRBACOnRefsFlag                = "enforce-rbac-on-refs"
 	ExposedNodeLabels                    = "exposed-node-labels"
-	PasswordAllowedCharactersFlag        = "password-allowed-characters"
 	PasswordLengthFlag                   = "password-length"
 	PasswordHashCacheSize                = "password-hash-cache-size"
 	IPFamilyFlag                         = "ip-family"

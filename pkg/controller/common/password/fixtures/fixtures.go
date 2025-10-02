@@ -11,18 +11,7 @@ import (
 )
 
 func MustTestRandomGenerator(length int) commonpassword.RandomGenerator {
-	generator, err := commonpassword.NewRandomPasswordGenerator(
-		commonpassword.GeneratorParams{
-			Length:       length,
-			LowerLetters: commonpassword.LowerLetters,
-			UpperLetters: commonpassword.UpperLetters,
-			Digits:       commonpassword.Digits,
-			Symbols:      commonpassword.Symbols,
-		},
-		func(ctx context.Context) (bool, error) {
-			return true, nil
-		},
-	)
+	generator, err := commonpassword.NewRandomPasswordGenerator(length, func(ctx context.Context) (bool, error) { return false, nil })
 	if err != nil {
 		panic(err)
 	}

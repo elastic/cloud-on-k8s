@@ -314,17 +314,7 @@ func Command() *cobra.Command {
 		"",
 		"Kubernetes namespace the operator runs in",
 	)
-	cmd.Flags().StringSlice(
-		operator.PasswordAllowedCharactersFlag,
-		[]string{
-			password.LowerLetters,
-			password.UpperLetters,
-			password.Digits, // We do not use symbols by default for password generation as the
-			// original library we were using did not use symbols by default. (go-password) After
-			// removing the use of the library, we are maintaining the same behavior.
-		},
-		"Allowed character set for generated file-based passwords (enterprise-only feature)",
-	)
+
 	cmd.Flags().Int(
 		operator.PasswordLengthFlag,
 		24,
@@ -715,7 +705,6 @@ func startOperator(ctx context.Context) error {
 
 	generator, err := password.NewGenerator(
 		mgr.GetClient(),
-		viper.GetStringSlice(operator.PasswordAllowedCharactersFlag),
 		viper.GetInt(operator.PasswordLengthFlag),
 		operatorNamespace,
 	)

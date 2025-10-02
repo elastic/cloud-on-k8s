@@ -129,13 +129,7 @@ Determine the metrics port
 {{- end -}}
 {{- end -}}
 
-{{/*
-Get password allowed character sets with a default of standard alphanumeric character sets if not defined
-*/}}
-{{- define "eck-operator.passwordAllowedCharacters" -}}
-{{- $allowed := dig "policies" "passwords" "allowedCharacters" (list "abcdefghijklmnopqrstuvwxyz" "ABCDEFGHIJKLMNOPQRSTUVWXYZ" "0123456789") .Values.config -}}
-[{{- range $index, $element := $allowed -}}{{- if $index -}},{{- end -}}{{- $element | quote -}}{{- end -}}]
-{{- end -}}
+
 
 {{/*
 RBAC permissions

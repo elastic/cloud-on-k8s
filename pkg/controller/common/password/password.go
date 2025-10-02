@@ -11,9 +11,8 @@ import (
 	"math/big"
 	"strings"
 
-	license "github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/license"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/license"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/k8s"
-	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/set"
 )
 
 const (
@@ -31,7 +30,7 @@ const (
 )
 
 var (
-	defaultCharacterSet = strings.Join([]string{LowerLetters, UpperLetters, Digits}, "")
+	defaultCharacterSet = strings.Join([]string{LowerLetters, UpperLetters, Digits, Symbols}, "")
 )
 
 // RandomGenerator is an interface for generating random passwords.
@@ -40,136 +39,81 @@ type RandomGenerator interface {
 }
 
 // RandomPasswordGenerator is an implementation of RandomGenerator
-// that generates random passwords according to the specified parameters
-// and according to the Enterprise license level.
+// that generates random passwords with the specified length.
 type randomPasswordGenerator struct {
-	useParams func(ctx context.Context) (bool, error)
-	params    GeneratorParams
-	charSet   string
+	useLength func(ctx context.Context) (bool, error)
+	length    int
 }
 
 var _ RandomGenerator = (*randomPasswordGenerator)(nil)
 
-// Generate returns random password bytes according to the specified parameters
-// and according to the Enterprise license level.
+// Generate returns random password bytes. It either uses the specified length
+// or a default length of 24 characters depending on the results of the useLength function
+// provided, which is intended to be licenseCheck.EnterpriseFeaturesEnabled.
 func (r *randomPasswordGenerator) Generate(ctx context.Context) ([]byte, error) {
-	useParams, err := r.useParams(ctx)
+	useLength, err := r.useLength(ctx)
 	if err != nil {
 		return nil, err
 	}
-	if !useParams {
-		return randomBytes()
+	if useLength {
+		return randomBytesWithLength(r.length)
 	}
-
-	return randomBytesWithLength(r.params.Length, r.charSet)
+	return randomBytesWithLength(24)
 }
 
-// NewGenerator returns a password generator based on both the operator flags
-// and the license status. The allowed characters are provided as an array of character sets
-// that are concatenated together for password generation.
+// NewGenerator returns a password generator with the specified length.
+// All character types (lowercase, uppercase, digits, symbols) are always used.
 func NewGenerator(
 	client k8s.Client,
-	allowedCharacterSets []string,
 	passwordLength int,
 	operatorNamespace string,
 ) (RandomGenerator, error) {
-	allowedCharacters := strings.Join(allowedCharacterSets, "")
-	generatorParams, err := NewGeneratorParams(allowedCharacters, passwordLength)
-	if err != nil {
-		return nil, err
-	}
-
 	licenseChecker := license.NewLicenseChecker(client, operatorNamespace)
-	return NewRandomPasswordGenerator(generatorParams, licenseChecker.EnterpriseFeaturesEnabled)
+	return NewRandomPasswordGenerator(passwordLength, licenseChecker.EnterpriseFeaturesEnabled)
 }
 
 // NewRandomPasswordGenerator creates a new instance of RandomPasswordGenerator.
-// params: The parameters to use for generating passwords.
-// useParams: A function that determines whether to use the parameters or default to non-enterprise functionality.
-func NewRandomPasswordGenerator(params GeneratorParams, useParams func(context.Context) (bool, error)) (RandomGenerator, error) {
-	if err := validateParams(params); err != nil {
+// useLength: A function that determines whether to use length restrictions.
+// length: The length of the password to generate.
+func NewRandomPasswordGenerator(length int, useLength func(ctx context.Context) (bool, error)) (RandomGenerator, error) {
+	if err := validateLength(length); err != nil {
 		return nil, err
 	}
 	return &randomPasswordGenerator{
-		useParams: useParams,
-		params:    params,
-		charSet:   strings.Join([]string{params.LowerLetters, params.UpperLetters, params.Digits, params.Symbols}, ""),
+		useLength: useLength,
+		length:    length,
 	}, nil
 }
 
-// validateParams validates the parameters for generating passwords.
-func validateParams(params GeneratorParams) error {
+// validateLength validates the length for generating passwords.
+func validateLength(length int) error {
 	// Elasticsearch requires at least 6 characters for passwords
 	// https://www.elastic.co/guide/en/elasticsearch/reference/7.5/security-api-put-user.html
 	// 72 characters is the upper limit for the bcrypt algorithm, which is used by ECK.
-	if params.Length < 6 || params.Length > 72 {
+	if length < 6 || length > 72 {
 		return fmt.Errorf("password length must be at least 6 and at most 72")
 	}
-
-	// split all of the given parameters on each character and form a set
-	// to ensure the allowedCharacters for password generation contains at
-	// least 10 distinct characters for randomness.
-	var allChars []string
-	for _, str := range []string{params.LowerLetters, params.UpperLetters, params.Digits, params.Symbols} {
-		for _, char := range str {
-			allChars = append(allChars, string(char))
-		}
-	}
-	paramsSet := set.Make(allChars...)
-	if len(paramsSet) < 10 {
-		return fmt.Errorf("allowedCharacters for password generation needs to be at least 10 distinct characters for randomness")
-	}
-
-	return validateCharactersInParams(params)
-}
-
-// validateCharactersInParams validates each type of character set against the defined constants.
-func validateCharactersInParams(params GeneratorParams) error {
-	type validator struct {
-		name            string
-		validate        string
-		validateAgainst string
-	}
-
-	for _, t := range []validator{
-		{"LowerLetters", params.LowerLetters, LowerLetters},
-		{"UpperLetters", params.UpperLetters, UpperLetters},
-		{"Digits", params.Digits, Digits},
-		{"Symbols", params.Symbols, Symbols},
-	} {
-		validateAgainst := make(set.StringSet)
-		for _, s := range t.validateAgainst {
-			validateAgainst.Add(string(s))
-		}
-
-		for _, s := range t.validate {
-			if !validateAgainst.Has(string(s)) {
-				return fmt.Errorf("invalid character %q in %s", s, t.name)
-			}
-		}
-	}
-
 	return nil
 }
 
 // randomBytes generates some random bytes that can be used as a token or as a key
-// using the default character set which includes lowercase letters, uppercase letters and digits
-// but no symbols and a length of 24.
+// using the default character set which includes lowercase letters, uppercase letters, digits
+// and symbols with a length of 24.
 func randomBytes() ([]byte, error) {
-	return randomBytesWithLength(24, defaultCharacterSet)
+	return randomBytesWithLength(24)
 }
 
 // randomBytesWithLength generates some random bytes that can be used as a token or as a key
-// using the specified character set and length.
+// using the default character set and specified length.
 // Inspired from https://github.com/sethvargo/go-password/blob/v0.3.1/password/generate.go.
-func randomBytesWithLength(length int, characterSet string) ([]byte, error) {
+func randomBytesWithLength(length int) ([]byte, error) {
 	b := make([]byte, length)
 	for i := range length {
-		n, err := rand.Int(rand.Reader, big.NewInt(int64(len(characterSet))))
+		n, err := rand.Int(rand.Reader, big.NewInt(int64(len(defaultCharacterSet))))
 		if err != nil {
 			return nil, fmt.Errorf("while generating random data: %w", err)
 		}
-		b[i] = characterSet[n.Int64()]
+		b[i] = defaultCharacterSet[n.Int64()]
 	}
 	return b, nil
 }
@@ -177,7 +121,7 @@ func randomBytesWithLength(length int, characterSet string) ([]byte, error) {
 // MustGenerate is a convenience function for generating random bytes with a specified length
 // using the default character set which includes lowercase letters, uppercase letters and digits.
 func MustGenerate(length int) []byte {
-	b, err := randomBytesWithLength(length, defaultCharacterSet)
+	b, err := randomBytesWithLength(length)
 	if err != nil {
 		panic(err)
 	}

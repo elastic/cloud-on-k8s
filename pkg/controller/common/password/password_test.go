@@ -6,7 +6,6 @@ package password
 
 import (
 	"context"
-	"fmt"
 	"strings"
 	"testing"
 
@@ -15,252 +14,132 @@ import (
 	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/set"
 )
 
-func Test_categorizeAllowedCharacters(t *testing.T) {
+func TestRandomPasswordGenerator_Generate(t *testing.T) {
+	ctx := context.Background()
+
 	tests := []struct {
-		name            string
-		input           string
-		expectedOther   []rune
-		expectedLower   string
-		expectedUpper   string
-		expectedDigits  string
-		expectedSymbols string
+		name        string
+		length      int
+		expectError bool
 	}{
 		{
-			name:            "spaces show up in other slice",
-			input:           "abc XYZ 123 !@# \t\n",
-			expectedOther:   []rune{' ', ' ', ' ', ' ', '\t', '\n'},
-			expectedLower:   "abc",
-			expectedUpper:   "XYZ",
-			expectedDigits:  "123",
-			expectedSymbols: "!@#",
+			name:        "valid length 6",
+			length:      6,
+			expectError: false,
 		},
 		{
-			name:            "unicode emojis show up in other slice",
-			input:           "abc123😀🎉👍",
-			expectedOther:   []rune{'😀', '🎉', '👍'},
-			expectedLower:   "abc",
-			expectedUpper:   "",
-			expectedDigits:  "123",
-			expectedSymbols: "",
+			name:        "valid length 24",
+			length:      24,
+			expectError: false,
 		},
 		{
-			name:            "various unicode characters in other slice",
-			input:           "café123ñΩ€",
-			expectedOther:   []rune{'é', 'ñ', 'Ω', '€'},
-			expectedLower:   "caf",
-			expectedUpper:   "",
-			expectedDigits:  "123",
-			expectedSymbols: "",
+			name:        "valid length 72",
+			length:      72,
+			expectError: false,
 		},
 		{
-			name:            "password constants do not show up in other slice",
-			input:           LowerLetters + UpperLetters + Digits + Symbols,
-			expectedOther:   nil,
-			expectedLower:   LowerLetters,
-			expectedUpper:   UpperLetters,
-			expectedDigits:  Digits,
-			expectedSymbols: Symbols,
+			name:        "length too small",
+			length:      5,
+			expectError: true,
 		},
 		{
-			name:            "empty string",
-			input:           "",
-			expectedOther:   nil,
-			expectedLower:   "",
-			expectedUpper:   "",
-			expectedDigits:  "",
-			expectedSymbols: "",
-		},
-		{
-			name:            "only spaces and tabs",
-			input:           "   \t\t   ",
-			expectedOther:   []rune{' ', ' ', ' ', '\t', '\t', ' ', ' ', ' '},
-			expectedLower:   "",
-			expectedUpper:   "",
-			expectedDigits:  "",
-			expectedSymbols: "",
-		},
-		{
-			name:            "control characters in other slice",
-			input:           "abc\x00\x01\x02",
-			expectedOther:   []rune{'\x00', '\x01', '\x02'},
-			expectedLower:   "abc",
-			expectedUpper:   "",
-			expectedDigits:  "",
-			expectedSymbols: "",
-		},
-		{
-			name:            "non-latin scripts in other slice",
-			input:           "abc123αβγ中文العربية",
-			expectedOther:   []rune{'α', 'β', 'γ', '中', '文', 'ا', 'ل', 'ع', 'ر', 'ب', 'ي', 'ة'},
-			expectedLower:   "abc",
-			expectedUpper:   "",
-			expectedDigits:  "123",
-			expectedSymbols: "",
-		},
-		{
-			name:            "mathematical symbols some in symbols some in other",
-			input:           "+-*/=<>≠≤≥∑∏",
-			expectedOther:   []rune{'≠', '≤', '≥', '∑', '∏'},
-			expectedLower:   "",
-			expectedUpper:   "",
-			expectedDigits:  "",
-			expectedSymbols: "+-*/=<>",
+			name:        "length too large",
+			length:      73,
+			expectError: true,
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			params, other := categorizeAllowedCharacters(tt.input)
+			useLength := func(context.Context) (bool, error) { return true, nil }
+			generator, err := NewRandomPasswordGenerator(tt.length, useLength)
 
-			// Check that spaces, emojis, and unicode chars are in other slice
-			require.Equal(t, tt.expectedOther, other, "other slice should contain expected characters")
+			if tt.expectError {
+				require.Error(t, err)
+				require.Nil(t, generator)
+				return
+			}
 
-			// Check that character constants are properly categorized
-			require.Equal(t, tt.expectedLower, params.LowerLetters, "lowercase letters should match expected")
-			require.Equal(t, tt.expectedUpper, params.UpperLetters, "uppercase letters should match expected")
-			require.Equal(t, tt.expectedDigits, params.Digits, "digits should match expected")
-			require.Equal(t, tt.expectedSymbols, params.Symbols, "symbols should match expected")
+			require.NoError(t, err)
+			require.NotNil(t, generator)
 
-			// Verify that none of the defined constant characters appear in other
-			for _, r := range other {
-				require.NotContains(t, LowerLetters, string(r), "lowercase letter should not be in other slice")
-				require.NotContains(t, UpperLetters, string(r), "uppercase letter should not be in other slice")
-				require.NotContains(t, Digits, string(r), "digit should not be in other slice")
-				require.NotContains(t, Symbols, string(r), "symbol should not be in other slice")
+			// Generate password multiple times to test randomness
+			passwords := make([]string, 10)
+			for i := range 10 {
+				result, err := generator.Generate(ctx)
+				require.NoError(t, err)
+				require.NotNil(t, result)
+				require.Len(t, result, tt.length, "Generated password should have expected length")
+
+				passwords[i] = string(result)
+
+				// Validate that all characters in the result are from the expected character set
+				expectedCharSet := make(set.StringSet)
+				for _, char := range defaultCharacterSet {
+					expectedCharSet.Add(string(char))
+				}
+
+				for _, b := range result {
+					require.True(t, expectedCharSet.Has(string(b)),
+						"Character %s is not in expected character set %q",
+						string(b), defaultCharacterSet)
+				}
 			}
 		})
 	}
 }
 
-func Test_validateCharactersInParams(t *testing.T) {
+func TestValidateLength(t *testing.T) {
 	tests := []struct {
 		name        string
-		params      GeneratorParams
+		length      int
 		expectError bool
 		errorMsg    string
 	}{
 		{
-			name: "valid params with all default constants",
-			params: GeneratorParams{
-				LowerLetters: LowerLetters,
-				UpperLetters: UpperLetters,
-				Digits:       Digits,
-				Symbols:      Symbols,
-				Length:       24,
-			},
+			name:        "valid minimum length",
+			length:      6,
 			expectError: false,
 		},
 		{
-			name: "valid params with subset of constants",
-			params: GeneratorParams{
-				LowerLetters: "abc",
-				UpperLetters: "XYZ",
-				Digits:       "123",
-				Symbols:      "!@#",
-				Length:       12,
-			},
+			name:        "valid maximum length",
+			length:      72,
 			expectError: false,
 		},
 		{
-			name: "invalid lowercase letter",
-			params: GeneratorParams{
-				LowerLetters: "abcé",
-				UpperLetters: "ABC",
-				Digits:       "123",
-				Symbols:      "!@#",
-				Length:       10,
-			},
-			expectError: true,
-			errorMsg:    "invalid character 'é' in LowerLetters",
-		},
-		{
-			name: "invalid uppercase letter",
-			params: GeneratorParams{
-				LowerLetters: "abc",
-				UpperLetters: "ABCΩ",
-				Digits:       "123",
-				Symbols:      "!@#",
-				Length:       10,
-			},
-			expectError: true,
-			errorMsg:    "invalid character 'Ω' in UpperLetters",
-		},
-		{
-			name: "invalid digit",
-			params: GeneratorParams{
-				LowerLetters: "abc",
-				UpperLetters: "ABC",
-				Digits:       "123A",
-				Symbols:      "!@#",
-				Length:       10,
-			},
-			expectError: true,
-			errorMsg:    "invalid character 'A' in Digits",
-		},
-		{
-			name: "invalid symbol",
-			params: GeneratorParams{
-				LowerLetters: "abc",
-				UpperLetters: "ABC",
-				Digits:       "123",
-				Symbols:      "!@#α", // α is not in Symbols constant
-				Length:       10,
-			},
-			expectError: true,
-			errorMsg:    "invalid character 'α' in Symbols",
-		},
-		{
-			name: "emoji in symbols",
-			params: GeneratorParams{
-				LowerLetters: "abc",
-				UpperLetters: "ABC",
-				Digits:       "123",
-				Symbols:      "!@#😀",
-				Length:       10,
-			},
-			expectError: true,
-			errorMsg:    "invalid character '😀' in Symbols",
-		},
-		{
-			name: "space character in lowercase",
-			params: GeneratorParams{
-				LowerLetters: "abc ",
-				UpperLetters: "ABC",
-				Digits:       "123",
-				Symbols:      "!@#",
-				Length:       10,
-			},
-			expectError: true,
-			errorMsg:    "invalid character ' ' in LowerLetters",
-		},
-		{
-			name: "tab character in digits",
-			params: GeneratorParams{
-				LowerLetters: "abc",
-				UpperLetters: "ABC",
-				Digits:       "123\t",
-				Symbols:      "!@#",
-				Length:       10,
-			},
-			expectError: true,
-			errorMsg:    "invalid character '\\t' in Digits",
-		},
-		{
-			name: "all fields empty",
-			params: GeneratorParams{
-				LowerLetters: "",
-				UpperLetters: "",
-				Digits:       "",
-				Symbols:      "",
-				Length:       10,
-			},
+			name:        "valid middle length",
+			length:      24,
 			expectError: false,
+		},
+		{
+			name:        "length too small",
+			length:      5,
+			expectError: true,
+			errorMsg:    "password length must be at least 6 and at most 72",
+		},
+		{
+			name:        "length too large",
+			length:      73,
+			expectError: true,
+			errorMsg:    "password length must be at least 6 and at most 72",
+		},
+		{
+			name:        "zero length",
+			length:      0,
+			expectError: true,
+			errorMsg:    "password length must be at least 6 and at most 72",
+		},
+		{
+			name:        "negative length",
+			length:      -1,
+			expectError: true,
+			errorMsg:    "password length must be at least 6 and at most 72",
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			err := validateCharactersInParams(tt.params)
+			err := validateLength(tt.length)
 
 			if tt.expectError {
 				require.Error(t, err)
@@ -272,136 +151,64 @@ func Test_validateCharactersInParams(t *testing.T) {
 	}
 }
 
-func TestRandomPasswordGenerator_Generate(t *testing.T) {
-	ctx := context.Background()
+func TestCharacterConstants(t *testing.T) {
+	// Test that character constants are as expected
+	require.Equal(t, "abcdefghijklmnopqrstuvwxyz", LowerLetters)
+	require.Equal(t, "ABCDEFGHIJKLMNOPQRSTUVWXYZ", UpperLetters)
+	require.Equal(t, "0123456789", Digits)
+	require.Equal(t, "~!@#$%^&*()_+`-={}|[]\\:\"<>?,./", Symbols)
 
-	tests := []struct {
-		name                 string
-		params               GeneratorParams
-		useParamsFunc        func(context.Context) (bool, error)
-		expectError          bool
-		expectedLength       int
-		expectedCharacterSet string
-	}{
-		{
-			name: "useParams returns false - should use default character set",
-			params: GeneratorParams{
-				LowerLetters: "xyz",
-				UpperLetters: "XYZ",
-				Digits:       "789",
-				Symbols:      "!@#",
-				Length:       10,
-			},
-			useParamsFunc: func(context.Context) (bool, error) {
-				return false, nil
-			},
-			expectError:          false,
-			expectedLength:       24,                                   // default length historically is 24
-			expectedCharacterSet: LowerLetters + UpperLetters + Digits, // defaultCharacterSet
-		},
-		{
-			name: "useParams returns true - should use character set defined in parameters",
-			params: GeneratorParams{
-				LowerLetters: "abc",
-				UpperLetters: "XYZ",
-				Digits:       "123",
-				Symbols:      "!@",
-				Length:       15,
-			},
-			useParamsFunc: func(context.Context) (bool, error) {
-				return true, nil
-			},
-			expectError:          false,
-			expectedLength:       15,
-			expectedCharacterSet: "abcXYZ123!@",
-		},
-		{
-			name: "useParams returns true with minimal character set",
-			params: GeneratorParams{
-				LowerLetters: "a",
-				UpperLetters: "B",
-				Digits:       "1",
-				Symbols:      "",
-				Length:       8,
-			},
-			useParamsFunc: func(context.Context) (bool, error) {
-				return true, nil
-			},
-			expectError:          false,
-			expectedLength:       8,
-			expectedCharacterSet: "aB1",
-		},
-		{
-			name: "useParams returns true with only symbols",
-			params: GeneratorParams{
-				LowerLetters: "",
-				UpperLetters: "",
-				Digits:       "",
-				Symbols:      "!@#$%",
-				Length:       12,
-			},
-			useParamsFunc: func(context.Context) (bool, error) {
-				return true, nil
-			},
-			expectError:          false,
-			expectedLength:       12,
-			expectedCharacterSet: "!@#$%",
-		},
-		{
-			name: "useParams returns error",
-			params: GeneratorParams{
-				LowerLetters: "abc",
-				UpperLetters: "XYZ",
-				Digits:       "123",
-				Symbols:      "!@#",
-				Length:       10,
-			},
-			useParamsFunc: func(context.Context) (bool, error) {
-				return false, fmt.Errorf("license check failed")
-			},
-			expectError:          true,
-			expectedLength:       0,
-			expectedCharacterSet: "",
-		},
+	// Ensure no overlap between character sets
+	for _, lower := range LowerLetters {
+		require.NotContains(t, UpperLetters, string(lower))
+		require.NotContains(t, Digits, string(lower))
+		require.NotContains(t, Symbols, string(lower))
 	}
 
-	for _, tt := range tests {
-		// run each test case 20 times because of the use of randomness.
-		for range 20 {
-			t.Run(tt.name, func(t *testing.T) {
-				generator := &randomPasswordGenerator{
-					useParams: tt.useParamsFunc,
-					params:    tt.params,
-					charSet:   strings.Join([]string{tt.params.LowerLetters, tt.params.UpperLetters, tt.params.Digits, tt.params.Symbols}, ""),
-				}
+	for _, upper := range UpperLetters {
+		require.NotContains(t, LowerLetters, string(upper))
+		require.NotContains(t, Digits, string(upper))
+		require.NotContains(t, Symbols, string(upper))
+	}
 
-				result, err := generator.Generate(ctx)
+	for _, digit := range Digits {
+		require.NotContains(t, LowerLetters, string(digit))
+		require.NotContains(t, UpperLetters, string(digit))
+		require.NotContains(t, Symbols, string(digit))
+	}
+}
 
-				if tt.expectError {
-					require.Error(t, err)
-					require.Nil(t, result)
-					return
-				}
+func TestPasswordGenerationIncludesSymbols(t *testing.T) {
+	ctx := context.Background()
+	useLength := func(context.Context) (bool, error) { return true, nil }
+	generator, err := NewRandomPasswordGenerator(24, useLength)
+	require.NoError(t, err)
 
-				require.NoError(t, err)
-				require.NotNil(t, result)
-				require.Len(t, result, tt.expectedLength, "Generated password should have expected length")
+	// Generate multiple passwords to ensure symbols are included
+	symbolsFound := false
+	for range 20 {
+		result, err := generator.Generate(ctx)
+		require.NoError(t, err)
+		require.Len(t, result, 24)
 
-				// Only validate the returned password when no error is expected
-				if !tt.expectError {
-					// Validate that all characters in the result are from the expected character set
-					expectedCharSet := make(set.StringSet)
-					for _, char := range tt.expectedCharacterSet {
-						expectedCharSet.Add(string(char))
-					}
-
-					for _, b := range result {
-						require.True(t, expectedCharSet.Has(string(b)),
-							"Character %s is not in expected character set %q",
-							string(b), tt.expectedCharacterSet)
-					}
-				}
-			})
+		// Check if this password contains symbols
+		for _, b := range result {
+			if strings.ContainsRune(Symbols, rune(b)) {
+				symbolsFound = true
+				break
+			}
+		}
+		if symbolsFound {
+			break
 		}
 	}
+
+	// With the new implementation, symbols should be included in the character set
+	// and should appear in generated passwords (though not necessarily in every single password)
+	require.True(t, symbolsFound, "Generated passwords should include symbols from the default character set")
+
+	// Verify the default character set actually contains symbols
+	require.Contains(t, defaultCharacterSet, "!", "Default character set should contain symbols")
+	require.Contains(t, defaultCharacterSet, "@", "Default character set should contain symbols")
+	require.Contains(t, defaultCharacterSet, "#", "Default character set should contain symbols")
 }

@@ -273,13 +273,6 @@ config:
   policies: {}
     # passwords:
     #   length: 24
-    #   # allowedCharacters is an array of character sets that will be used for password generation
-    #   # Each string in the array represents a set of allowed characters (e.g., lowercase, uppercase, digits, symbols)
-    #   allowedCharacters:
-    #   - "abcdefghijklmnopqrstuvwxyz"        # lowercase letters
-    #   - "ABCDEFGHIJKLMNOPQRSTUVWXYZ"        # uppercase letters
-    #   - "0123456789"                        # digits
-    #   - "~!@#$%^&*()_+`-={}|[]\\:\"<>?,./"  # symbols (optional)
 
   # validateStorageClass specifies whether storage classes volume expansion support should be verified.
   # Can be disabled if cluster-wide storage class RBAC access is not available.
