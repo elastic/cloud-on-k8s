@@ -166,8 +166,8 @@ func (r *Reconciler) Reconcile(ctx context.Context, request reconcile.Request) (
 
 	associatedKey := k8s.ExtractNamespacedName(associated)
 
-	if common.IsUnmanaged(ctx, associated) {
-		log.Info("Object is currently not managed by this controller. Skipping reconciliation")
+	if common.IsUnmanagedOrFiltered(ctx, r.Client, associated, r.Parameters) {
+		log.Info("Object is currently not managed by this controller or namespace is filtered. Skipping reconciliation")
 		return reconcile.Result{}, nil
 	}
 

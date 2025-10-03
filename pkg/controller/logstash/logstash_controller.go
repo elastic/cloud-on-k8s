@@ -143,8 +143,8 @@ func (r *ReconcileLogstash) Reconcile(ctx context.Context, request reconcile.Req
 		return reconcile.Result{}, tracing.CaptureError(ctx, err)
 	}
 
-	if common.IsUnmanaged(ctx, logstash) {
-		ulog.FromContext(ctx).Info("Object is currently not managed by this controller. Skipping reconciliation")
+	if common.IsUnmanagedOrFiltered(ctx, r.Client, logstash, r.Parameters) {
+		ulog.FromContext(ctx).Info("Object is currently not managed by this controller or namespace is filtered. Skipping reconciliation", "namespace", logstash.Namespace, "logstash_name", logstash.Name)
 		return reconcile.Result{}, nil
 	}
 

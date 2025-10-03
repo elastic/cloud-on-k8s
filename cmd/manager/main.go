@@ -22,6 +22,7 @@ import (
 	"go.elastic.co/apm/v2"
 	"go.uber.org/automaxprocs/maxprocs"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/util/wait"
@@ -314,6 +315,11 @@ func Command() *cobra.Command {
 		operator.NamespacesFlag,
 		nil,
 		"Comma-separated list of namespaces in which this operator should manage resources (defaults to all namespaces)",
+	)
+	cmd.Flags().String(
+		operator.NamespaceLabelSelectorFlag,
+		"",
+		"Label selector to filter namespaces that this operator should manage (in addition to namespace list). Format: key1=value1,key2=value2 or key1!=value1,key2!=value2. Empty means all namespaces.",
 	)
 	cmd.Flags().String(
 		operator.OperatorNamespaceFlag,
@@ -719,6 +725,19 @@ func startOperator(ctx context.Context) error {
 		return err
 	}
 
+	// Parse namespace label selector if provided
+	var namespaceLabelSelector *metav1.LabelSelector
+	namespaceLabelSelectorStr := viper.GetString(operator.NamespaceLabelSelectorFlag)
+	if namespaceLabelSelectorStr != "" {
+		selector, err := metav1.ParseToLabelSelector(namespaceLabelSelectorStr)
+		if err != nil {
+			log.Error(err, "Failed to parse namespace label selector", "selector", namespaceLabelSelectorStr)
+			return err
+		}
+		namespaceLabelSelector = selector
+		log.Info("Namespace label selector configured", "selector", namespaceLabelSelector)
+	}
+
 	params := operator.Parameters{
 		Dialer:                           dialer,
 		ElasticsearchObservationInterval: viper.GetDuration(operator.ElasticsearchObservationIntervalFlag),
@@ -741,6 +760,7 @@ func startOperator(ctx context.Context) error {
 		SetDefaultSecurityContext: setDefaultSecurityContext,
 		ValidateStorageClass:      viper.GetBool(operator.ValidateStorageClassFlag),
 		Tracer:                    tracer,
+		NamespaceLabelSelector:    namespaceLabelSelector,
 	}
 
 	if viper.GetBool(operator.EnableWebhookFlag) {

@@ -260,6 +260,12 @@ func (r *ReconcileLicenses) reconcileInternal(ctx context.Context, request recon
 		return res.WithError(err)
 	}
 
+	log := ulog.FromContext(ctx)
+	if common.IsUnmanagedOrFiltered(ctx, r.Client, &cluster, r.Parameters) {
+		log.Info("Object is currently not managed by this controller. Skipping reconciliation", "namespace", cluster.Namespace, "es_name", cluster.Name)
+		return res
+	}
+
 	if !cluster.DeletionTimestamp.IsZero() {
 		// cluster is being deleted nothing to do
 		return res
