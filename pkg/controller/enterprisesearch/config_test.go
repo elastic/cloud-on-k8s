@@ -152,7 +152,7 @@ func Test_reuseOrGenerateSecrets(t *testing.T) {
 				assert.NoError(t, got.Unpack(&e))
 				assert.Equal(t, 1, len(e.EncryptionKeys))     // We set 1 encryption key by default
 				assert.Equal(t, 32, len(e.EncryptionKeys[0])) // encryption key length should be 32
-				assert.Equal(t, 32, len(e.SecretSession))     // session key length should be 24
+				assert.Equal(t, 32, len(e.SecretSession))     // session key length should be 32
 			},
 		},
 		{
