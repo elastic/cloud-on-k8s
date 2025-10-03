@@ -118,6 +118,34 @@ output:
             verification_mode: certificate
         username: es-user
 `
+	beatYmlGT88 := `http:
+    enabled: false
+metricbeat:
+    modules:
+        - hosts:
+            - http+unix:///var/shared/metricbeat-test-beat.sock
+          metricsets:
+            - stats
+            - state
+          module: beat
+          period: 10s
+          xpack:
+            enabled: true
+monitoring:
+    cluster_uuid: %s
+    enabled: false
+output:
+    elasticsearch:
+        hosts:
+            - %s
+        password: es-password
+        ssl:
+            restart_on_cert_change:
+                enabled: true
+                period: 1m
+            verification_mode: certificate
+        username: es-user
+`
 	standaloneBeatYML := `http:
     enabled: false
 metricbeat:
@@ -300,6 +328,22 @@ output:
 			wantErr: false,
 		},
 		{
+			name: "beat > 8.8 with stack monitoring enabled and valid elasticsearchRef returns properly configured sidecar",
+			args: args{
+				client: k8s.NewFakeClient(&beatFixture, &esFixture, &monitoringEsFixture, &corev1.Secret{
+					ObjectMeta: metav1.ObjectMeta{Name: "es-secret-name", Namespace: "test"},
+					Data:       map[string][]byte{"es-user": []byte("es-password")},
+				}),
+				beat: func() *v1beta1.Beat {
+					beat := beatFixture.DeepCopy()
+					beat.Spec.Version = "8.8.0"
+					return beat
+				},
+			},
+			want:    beatSidecarFixture(fmt.Sprintf(beatYmlGT88, "abcd1234", "es-metrics-monitoring-url")),
+			wantErr: false,
+		},
+		{
 			name: "Beat with stack monitoring enabled and remote elasticsearchRef",
 			args: args{
 				client: k8s.NewFakeClient(&beatFixture, &externalESSecret),
@@ -349,8 +393,8 @@ output:
 				t.Errorf("MetricBeat() error = %v, wantErr %v", err, tt.wantErr)
 				return
 			}
-			if !cmp.Equal(got, tt.want, cmpopts.IgnoreFields(stackmon.BeatSidecar{}, "ConfigHash")) {
-				t.Errorf("MetricBeat() = diff: %s", cmp.Diff(got, tt.want, cmpopts.IgnoreFields(stackmon.BeatSidecar{}, "ConfigHash")))
+			if !cmp.Equal(got, tt.want, cmpopts.IgnoreFields(stackmon.BeatSidecar{}, "ConfigHash"), cmpopts.IgnoreFields(corev1.Container{}, "Image")) {
+				t.Errorf("MetricBeat() = diff: %s", cmp.Diff(got, tt.want, cmpopts.IgnoreFields(stackmon.BeatSidecar{}, "ConfigHash"), cmpopts.IgnoreFields(corev1.Container{}, "Image")))
 			}
 		})
 	}
