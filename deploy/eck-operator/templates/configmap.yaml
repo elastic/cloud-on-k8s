@@ -79,3 +79,10 @@ data:
     {{- with .Values.webhook.certsSecret }}
     webhook-secret: {{ . }}
     {{- end }}
+    {{- $passwordLength := int (dig "policies" "passwords" "length" 0 .Values.config) }}
+    {{- with $passwordLength }}
+    {{- if or (lt $passwordLength 6) (gt $passwordLength 72) }}
+    {{- fail "config.policies.passwords.length must be >= 6 and <= 72" }}
+    {{- end }}
+    password-length: {{ $passwordLength }}
+    {{- end }}

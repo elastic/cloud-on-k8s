@@ -17,9 +17,9 @@ import (
 
 	commonv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/common/v1"
 	esv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/elasticsearch/v1"
-	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common"
 	commonlabels "github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/labels"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/metadata"
+	commonpassword "github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/password"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/reconciler"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/tracing"
 	eslabel "github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/label"
@@ -86,6 +86,7 @@ func reconcileEsUserSecret(
 	userRoles string,
 	userObjectSuffix string,
 	es esv1.Elasticsearch,
+	generator commonpassword.RandomGenerator,
 ) error {
 	span, ctx := apm.StartSpan(ctx, "reconcile_es_user", tracing.SpanTypeApp)
 	defer span.End()
@@ -116,7 +117,10 @@ func reconcileEsUserSecret(
 	if existingPassword, exists := existingSecret.Data[usrKey.Name]; exists {
 		password = existingPassword
 	} else {
-		password = common.FixedLengthRandomPasswordBytes()
+		password, err = generator.Generate(ctx)
+		if err != nil {
+			return err
+		}
 	}
 	expectedSecret.Data[usrKey.Name] = password
 

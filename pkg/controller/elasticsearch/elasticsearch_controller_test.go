@@ -120,7 +120,8 @@ func TestReconcileElasticsearch_Reconcile(t *testing.T) {
 					newBuilder("testES", "test").
 						WithGeneration(2).
 						WithAnnotations(map[string]string{common.ManagedAnnotation: "false"}).
-						WithStatus(esv1.ElasticsearchStatus{ObservedGeneration: 1}).Build()},
+						WithStatus(esv1.ElasticsearchStatus{ObservedGeneration: 1}).Build(),
+				},
 			},
 			args: args{
 				request: reconcile.Request{
@@ -176,7 +177,8 @@ func TestReconcileElasticsearch_Reconcile(t *testing.T) {
 						WithGeneration(2).
 						// we need two reconciliations here: first sets this annotation second updates status, this simulates that the first has happened
 						WithAnnotations(map[string]string{hints.OrchestrationsHintsAnnotation: `{"no_transient_settings":false}`}).
-						WithStatus(esv1.ElasticsearchStatus{ObservedGeneration: 1}).Build()},
+						WithStatus(esv1.ElasticsearchStatus{ObservedGeneration: 1}).Build(),
+				},
 			},
 			args: args{
 				request: reconcile.Request{
@@ -208,7 +210,8 @@ func TestReconcileElasticsearch_Reconcile(t *testing.T) {
 						WithGeneration(2).
 						WithVersion("invalid").
 						WithAnnotations(map[string]string{hints.OrchestrationsHintsAnnotation: `{"no_transient_settings":false}`}).
-						WithStatus(esv1.ElasticsearchStatus{ObservedGeneration: 1}).Build()},
+						WithStatus(esv1.ElasticsearchStatus{ObservedGeneration: 1}).Build(),
+				},
 			},
 			args: args{
 				request: reconcile.Request{

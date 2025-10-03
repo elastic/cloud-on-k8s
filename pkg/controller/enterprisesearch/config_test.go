@@ -150,9 +150,9 @@ func Test_reuseOrGenerateSecrets(t *testing.T) {
 				// Unpack the configuration to check that some default reusable settings have been generated
 				var e reusableSettings
 				assert.NoError(t, got.Unpack(&e))
-				assert.Equal(t, len(e.EncryptionKeys), 1)     // We set 1 encryption key by default
-				assert.Equal(t, len(e.EncryptionKeys[0]), 32) // encryption key length should be 32
-				assert.Equal(t, len(e.SecretSession), 32)     // session key length should be 24
+				assert.Equal(t, 1, len(e.EncryptionKeys))     // We set 1 encryption key by default
+				assert.Equal(t, 32, len(e.EncryptionKeys[0])) // encryption key length should be 32
+				assert.Equal(t, 32, len(e.SecretSession))     // session key length should be 32
 			},
 		},
 		{

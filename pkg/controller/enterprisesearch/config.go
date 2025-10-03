@@ -11,8 +11,6 @@ import (
 	"net"
 	"path/filepath"
 
-	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/metadata"
-
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -25,6 +23,8 @@ import (
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/certificates"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/driver"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/labels"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/metadata"
+	commonpassword "github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/password"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/reconciler"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/settings"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/version"
@@ -45,6 +45,11 @@ const (
 
 	SecretSessionSetting  = "secret_session_key"
 	EncryptionKeysSetting = "secret_management.encryption_keys"
+
+	// EncryptionKeyMinimumBytes is the minimum number of bytes required for an encryption key.
+	// This is in line with the documentation (256 bits) as of 8.19:
+	// https://www.elastic.co/guide/en/enterprise-search/8.19/encryption-keys.html
+	EncryptionKeyMinimumBytes = 32
 )
 
 func ConfigSecretVolume(ent entv1.EnterpriseSearch) volume.SecretVolume {
@@ -214,7 +219,13 @@ func getOrCreateReusableSettings(ctx context.Context, c k8s.Client, ent entv1.En
 
 	// generate a random secret session key, or reuse the existing one
 	if len(e.SecretSession) == 0 {
-		e.SecretSession = string(common.RandomBytes(32))
+		// This is generated without symbols to stay in line with Elasticsearch's service accounts
+		// which are UUIDv4 and cannot include symbols.
+		bytes, err := commonpassword.RandomBytesWithoutSymbols(EncryptionKeyMinimumBytes)
+		if err != nil {
+			return nil, err
+		}
+		e.SecretSession = string(bytes)
 	}
 
 	// generate a random encryption key, or reuse the existing one
@@ -227,7 +238,14 @@ func getOrCreateReusableSettings(ctx context.Context, c k8s.Client, ent entv1.En
 	// This allows users to go from no custom key provided (use operator's generated one), to providing their own.
 	if len(e.EncryptionKeys) == 0 {
 		// no encryption key, generate a new one
-		e.EncryptionKeys = []string{string(common.RandomBytes(32))}
+		//
+		// This is generated without symbols to stay in line with Elasticsearch's service accounts
+		// which are UUIDv4 and cannot include symbols.
+		bytes, err := commonpassword.RandomBytesWithoutSymbols(EncryptionKeyMinimumBytes)
+		if err != nil {
+			return nil, err
+		}
+		e.EncryptionKeys = []string{string(bytes)}
 	} else {
 		// encryption keys already exist, reuse the first ECK-managed one
 		// other user-provided keys from user-provided config will be merged in later
