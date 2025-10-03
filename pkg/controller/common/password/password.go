@@ -97,13 +97,6 @@ func validateLength(length int) error {
 	return nil
 }
 
-// randomBytes generates some random bytes that can be used as a token or as a key
-// using the default character set which includes lowercase letters, uppercase letters, digits
-// and symbols with a length of 24.
-func randomBytes() ([]byte, error) {
-	return randomBytesWithLengthAndCharset(24, defaultCharacterSet)
-}
-
 // RandomBytesWithoutSymbols generates some random bytes that can be used as a token or as a key
 // using the character set without symbols and specified length. This is primarily used for
 // generating encryption keys.
