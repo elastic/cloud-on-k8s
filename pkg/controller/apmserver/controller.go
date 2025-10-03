@@ -37,6 +37,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/labels"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/metadata"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/operator"
+	commonpassword "github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/password"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/reconciler"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/tracing"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/version"
@@ -331,7 +332,13 @@ func reconcileApmServerToken(ctx context.Context, c k8s.Client, as *apmv1.ApmSer
 	if token, exists := existingSecret.Data[SecretTokenKey]; exists {
 		expectedApmServerSecret.Data[SecretTokenKey] = token
 	} else {
-		expectedApmServerSecret.Data[SecretTokenKey] = common.RandomBytes(SecretTokenMinimumBytes)
+		// This is generated without symbols to stay in line with Elasticsearch's service accounts
+		// which are UUIDv4 and cannot include symbols.
+		data, err := commonpassword.RandomBytesWithoutSymbols(SecretTokenMinimumBytes)
+		if err != nil {
+			return corev1.Secret{}, err
+		}
+		expectedApmServerSecret.Data[SecretTokenKey] = data
 	}
 
 	// Don't set an ownerRef for the APM token secret, likely to be copied into different namespaces.

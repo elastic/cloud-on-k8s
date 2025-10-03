@@ -219,6 +219,8 @@ func getOrCreateReusableSettings(ctx context.Context, c k8s.Client, ent entv1.En
 
 	// generate a random secret session key, or reuse the existing one
 	if len(e.SecretSession) == 0 {
+		// This is generated without symbols to stay in line with Elasticsearch's service accounts
+		// which are UUIDv4 and cannot include symbols.
 		bytes, err := commonpassword.RandomBytesWithoutSymbols(EncryptionKeyMinimumBytes)
 		if err != nil {
 			return nil, err
@@ -236,6 +238,9 @@ func getOrCreateReusableSettings(ctx context.Context, c k8s.Client, ent entv1.En
 	// This allows users to go from no custom key provided (use operator's generated one), to providing their own.
 	if len(e.EncryptionKeys) == 0 {
 		// no encryption key, generate a new one
+		//
+		// This is generated without symbols to stay in line with Elasticsearch's service accounts
+		// which are UUIDv4 and cannot include symbols.
 		bytes, err := commonpassword.RandomBytesWithoutSymbols(EncryptionKeyMinimumBytes)
 		if err != nil {
 			return nil, err

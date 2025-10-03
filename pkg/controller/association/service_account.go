@@ -242,6 +242,8 @@ var prefix = [...]byte{0x0, 0x1, 0x0, 0x1}
 
 // newApplicationToken generates a new token for a given service account.
 func newApplicationToken(serviceAccountName commonv1.ServiceAccountName, tokenName string) (*Token, error) {
+	// This is generated without symbols to stay in line with Elasticsearch's service accounts
+	// which are UUIDv4 and cannot include symbols.
 	secret, err := commonpassword.RandomBytesWithoutSymbols(ServiceAccountMinimumBytes)
 	if err != nil {
 		return nil, err

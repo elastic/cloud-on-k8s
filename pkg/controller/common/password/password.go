@@ -99,7 +99,7 @@ func validateLength(length int) error {
 
 // RandomBytesWithoutSymbols generates some random bytes that can be used as a token or as a key
 // using the character set without symbols and specified length. This is primarily used for
-// generating encryption keys.
+// generating encryption keys and tokens which are based on UUIDV4, which cannot include symbols.
 func RandomBytesWithoutSymbols(length int) ([]byte, error) {
 	return randomBytesWithLengthAndCharset(length, characterSetWithoutSymbols)
 }
