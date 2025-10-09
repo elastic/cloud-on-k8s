@@ -16,6 +16,7 @@ import (
 	"strings"
 
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/metadata"
+	commonpassword "github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/password"
 
 	"go.elastic.co/apm/v2"
 	"golang.org/x/crypto/pbkdf2"
@@ -27,7 +28,6 @@ import (
 
 	commonv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/common/v1"
 	esv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/elasticsearch/v1"
-	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/labels"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/reconciler"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/tracing"
@@ -42,6 +42,12 @@ const (
 
 	ServiceAccountNameField       = "serviceAccount"
 	ServiceAccountTokenValueField = "token"
+
+	// ServiceAccountMinimumBytes is the ECK minimum length of the service account token.
+	// The [documented](https://www.elastic.co/docs/deploy-manage/users-roles/cluster-or-deployment-auth/service-accounts)
+	// minimum length is 10, but the Elasticsearch api call to create service accounts returns a length of 22.
+	// The ECK operator uses 64 as the default length to provide a more secure default.
+	ServiceAccountMinimumBytes = 64
 )
 
 func applicationSecretLabels(es esv1.Elasticsearch) map[string]string {
@@ -236,7 +242,12 @@ var prefix = [...]byte{0x0, 0x1, 0x0, 0x1}
 
 // newApplicationToken generates a new token for a given service account.
 func newApplicationToken(serviceAccountName commonv1.ServiceAccountName, tokenName string) (*Token, error) {
-	secret := common.RandomBytes(64)
+	// This is generated without symbols to stay in line with Elasticsearch's service accounts
+	// which are UUIDv4 and cannot include symbols.
+	secret, err := commonpassword.RandomBytesWithoutSymbols(ServiceAccountMinimumBytes)
+	if err != nil {
+		return nil, err
+	}
 	hash, err := pbkdf2Key(secret)
 	if err != nil {
 		return nil, err
