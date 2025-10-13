@@ -125,7 +125,7 @@ func readinessProbeScript(ent entv1.EnterpriseSearch, config *settings.Canonical
 
 	# fail should be called as a last resort to help the user to understand why the probe failed
 	function fail {
-	  timestamp=$(date --iso-8601=seconds)
+	  timestamp=$(date +%Y-%m-%dT%H:%M:%S%z)
 	  echo '{"timestamp": "'"${timestamp}"'", "message": "readiness probe failed", '"${1}"'}'| tee /proc/1/fd/2 2> /dev/null
 	  exit 1
 	}
