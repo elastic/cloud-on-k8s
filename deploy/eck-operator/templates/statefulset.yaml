@@ -25,13 +25,17 @@ spec:
       annotations:
         # Rename the fields "error" to "error.message" and "source" to "event.source"
         # This is to avoid a conflict with the ECS "error" and "source" documents.
-        "co.elastic.logs/raw": "[{\"type\":\"filestream\",\"enabled\":true,\"id\":\"eck-container-logs-${data.kubernetes.container.id}\",\"paths\":[\"/var/log/containers/*${data.kubernetes.container.id}.log\"],\"parsers\":[{\"container\":{}},{\"ndjson\":{\"keys_under_root\":true}}],\"prospector.scanner.symlinks\":true,\"processors\":[{\"convert\":{\"mode\":\"rename\",\"ignore_missing\":true,\"fields\":[{\"from\":\"error\",\"to\":\"_error\"}]}},{\"convert\":{\"mode\":\"rename\",\"ignore_missing\":true,\"fields\":[{\"from\":\"_error\",\"to\":\"error.message\"}]}},{\"convert\":{\"mode\":\"rename\",\"ignore_missing\":true,\"fields\":[{\"from\":\"source\",\"to\":\"_source\"}]}},{\"convert\":{\"mode\":\"rename\",\"ignore_missing\":true,\"fields\":[{\"from\":\"_source\",\"to\":\"event.source\"}]}}]}]" 
+        "co.elastic.logs/raw": "[{\"type\":\"filestream\",\"enabled\":true,\"id\":\"eck-container-logs-${data.kubernetes.container.id}\",\"paths\":[\"/var/log/containers/*${data.kubernetes.container.id}.log\"],\"parsers\":[{\"container\":{}},{\"ndjson\":{\"keys_under_root\":true}}],\"prospector.scanner.symlinks\":true,\"processors\":[{\"convert\":{\"mode\":\"rename\",\"ignore_missing\":true,\"fields\":[{\"from\":\"error\",\"to\":\"_error\"}]}},{\"convert\":{\"mode\":\"rename\",\"ignore_missing\":true,\"fields\":[{\"from\":\"_error\",\"to\":\"error.message\"}]}},{\"convert\":{\"mode\":\"rename\",\"ignore_missing\":true,\"fields\":[{\"from\":\"source\",\"to\":\"_source\"}]}},{\"convert\":{\"mode\":\"rename\",\"ignore_missing\":true,\"fields\":[{\"from\":\"_source\",\"to\":\"event.source\"}]}}]}]"
         "checksum/config": {{ include (print $.Template.BasePath "/configmap.yaml") . | sha256sum }}
         {{- with .Values.podAnnotations }}
         {{- toYaml . | nindent 8 }}
         {{- end }}
       labels:
+        {{- if .Values.global.manifestGen }}
         {{- include "eck-operator.selectorLabels" . | nindent 8 }}
+        {{- else }}
+        {{- include "eck-operator.labels" . | nindent 8 }}
+        {{- end }}
         {{- with .Values.podLabels }}
         {{- toYaml . | nindent 8 }}
         {{- end }}
@@ -98,7 +102,7 @@ spec:
             - containerPort: {{ .Values.webhook.port }}
               name: https-webhook
               protocol: TCP
-            {{- end }}  
+            {{- end }}
           {{- end }}
           volumeMounts:
             - mountPath: "/conf"
@@ -113,7 +117,7 @@ spec:
             - mountPath: "/tmp/k8s-metrics-server/serving-certs"
               name: tls-certificate
               readOnly: true
-            {{- end }} 
+            {{- end }}
             {{- with .Values.volumeMounts }}
               {{- toYaml . | nindent 12 }}
             {{- end }}
