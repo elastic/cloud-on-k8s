@@ -118,7 +118,7 @@ func readinessProbeScript(ent entv1.EnterpriseSearch, config *settings.Canonical
 	}
 	basicAuthArgs := "" // no credentials: no basic auth
 	if esAuth.Elasticsearch.Username != "" {
-		basicAuthArgs = fmt.Sprintf("-u %s:%s", esAuth.Elasticsearch.Username, esAuth.Elasticsearch.Password)
+		basicAuthArgs = fmt.Sprintf("-u %s:'%s'", esAuth.Elasticsearch.Username, esAuth.Elasticsearch.Password)
 	}
 
 	return []byte(`#!/usr/bin/env bash
@@ -126,7 +126,7 @@ func readinessProbeScript(ent entv1.EnterpriseSearch, config *settings.Canonical
 	# fail should be called as a last resort to help the user to understand why the probe failed
 	function fail {
 	  timestamp=$(date --iso-8601=seconds)
-	  echo "{\"timestamp\": \"${timestamp}\", \"message\": \"readiness probe failed\", "$1"}" | tee /proc/1/fd/2 2> /dev/null
+	  echo '{"timestamp": "'"${timestamp}"'", "message": "readiness probe failed", '"${1}"'}'| tee /proc/1/fd/2 2> /dev/null
 	  exit 1
 	}
 
@@ -134,7 +134,7 @@ func readinessProbeScript(ent entv1.EnterpriseSearch, config *settings.Canonical
 	READINESS_PROBE_TIMEOUT=${READINESS_PROBE_TIMEOUT:=` + fmt.Sprintf("%d", ReadinessProbeTimeoutSec) + `}
 
 	# request the health endpoint and expect http status code 200. Turning globbing off for unescaped IPv6 addresses
-	status=$(curl -g -o /dev/null -w "%{http_code}" ` + url + ` ` + basicAuthArgs + ` -k -s --max-time ${READINESS_PROBE_TIMEOUT})
+	status=$(curl -g -o /dev/null -w "%{http_code}" ` + url + ` ` + basicAuthArgs + ` -k -s --max-time "${READINESS_PROBE_TIMEOUT}")
 	curl_rc=$?
 
 	if [[ ${curl_rc} -ne 0 ]]; then
@@ -144,7 +144,7 @@ func readinessProbeScript(ent entv1.EnterpriseSearch, config *settings.Canonical
 	if [[ ${status} == "200" ]]; then
 	  exit 0
 	else
-	  fail " \"status\": \"${status}\", \"version\":\"${version}\" "
+	  fail " \"status\": \"${status}\" "
 	fi
 `), nil
 }
