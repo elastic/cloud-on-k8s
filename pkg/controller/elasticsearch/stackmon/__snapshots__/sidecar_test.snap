@@ -20,7 +20,7 @@ metricbeat.modules:
     xpack.enabled: true
     hosts: ["https://localhost:9200"]
     username: elastic
-    password: secret
+    password: "secret"
     ssl.enabled: true
     # The ssl verification_mode is set to `certificate` in the config template to verify that the certificate is signed by a trusted authority,
     # but does not perform any hostname verification. This is used when SSL is enabled with or without CA, to support self-signed certificate
@@ -57,7 +57,7 @@ metricbeat.modules:
     xpack.enabled: true
     hosts: ["https://localhost:9200"]
     username: elastic
-    password: secret
+    password: "secret"
     ssl.enabled: true
     # The ssl verification_mode is set to `certificate` in the config template to verify that the certificate is signed by a trusted authority,
     # but does not perform any hostname verification. This is used when SSL is enabled with or without CA, to support self-signed certificate
@@ -94,7 +94,7 @@ metricbeat.modules:
     xpack.enabled: true
     hosts: ["https://localhost:9200"]
     username: elastic
-    password: secret
+    password: "secret"
     ssl.enabled: true
     # The ssl verification_mode is set to `certificate` in the config template to verify that the certificate is signed by a trusted authority,
     # but does not perform any hostname verification. This is used when SSL is enabled with or without CA, to support self-signed certificate
@@ -133,7 +133,7 @@ metricbeat.modules:
     xpack.enabled: true
     hosts: ["https://localhost:9200"]
     username: elastic
-    password: secret
+    password: "secret"
     ssl.enabled: false
     # The ssl verification_mode is set to `certificate` in the config template to verify that the certificate is signed by a trusted authority,
     # but does not perform any hostname verification. This is used when SSL is enabled with or without CA, to support self-signed certificate
@@ -170,7 +170,7 @@ metricbeat.modules:
     xpack.enabled: true
     hosts: ["https://localhost:9200"]
     username: elastic
-    password: secret
+    password: "secret"
     ssl.enabled: true
     # The ssl verification_mode is set to `certificate` in the config template to verify that the certificate is signed by a trusted authority,
     # but does not perform any hostname verification. This is used when SSL is enabled with or without CA, to support self-signed certificate
@@ -207,7 +207,7 @@ setup.template.settings:
 {
  "metadata": {
   "annotations": {
-   "elasticsearch.k8s.elastic.co/monitoring-config-hash": "421654492"
+   "elasticsearch.k8s.elastic.co/monitoring-config-hash": "3826168075"
   }
  },
  "spec": {
@@ -471,7 +471,7 @@ setup.template.settings:
 {
  "metadata": {
   "annotations": {
-   "elasticsearch.k8s.elastic.co/monitoring-config-hash": "1805099278"
+   "elasticsearch.k8s.elastic.co/monitoring-config-hash": "3784706159"
   }
  },
  "spec": {
@@ -707,7 +707,7 @@ setup.template.settings:
 {
  "metadata": {
   "annotations": {
-   "elasticsearch.k8s.elastic.co/monitoring-config-hash": "1086800329"
+   "elasticsearch.k8s.elastic.co/monitoring-config-hash": "3685568186"
   }
  },
  "spec": {
