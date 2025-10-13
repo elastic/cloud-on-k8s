@@ -40,7 +40,7 @@ Deployer is the provisioning tool that aims to be the interface to multiple Kube
     make switch-eks bootstrap-cloud
     ```
 
-  * If wanting to use a different region (default us eu-west-2), set `overrides.eks.region` in `hack/deployer/config/deployer-config-eks.yml`
+  * If wanting to use a different region (default is eu-west-2), set `overrides.eks.region` in `hack/deployer/config/deployer-config-eks.yml`
 
 * Kind
   * No need to install the Kind CLI. Deployer will do that for you and run Kind inside a Docker container without changing the host system.
