@@ -8,6 +8,36 @@ mapped_pages:
 # Elastic Cloud on Kubernetes release notes [elastic-cloud-kubernetes-release-notes]
 Review the changes, fixes, and more in each release of Elastic Cloud on Kubernetes.
 
+## 3.2.0 [elastic-cloud-kubernetes-320-release-notes]
+
+### Release Highlights
+
+<TBD>
+
+### Features and enhancements  [elastic-cloud-kubernetes-320-features-and-enhancements]
+
+- Fix beats stack monitoring cert reload [#8833](https://github.com/elastic/cloud-on-k8s/pull/8833) (issue: [#5448](https://github.com/elastic/cloud-on-k8s/issues/5448))
+- Allow configuration parameters for file-base generated passwords. [#8817](https://github.com/elastic/cloud-on-k8s/pull/8817) (issues: [#2795](https://github.com/elastic/cloud-on-k8s/issues/2795), [#8693](https://github.com/elastic/cloud-on-k8s/issues/8693))
+- Add automemlimit to automatically set GOMEMLIMIT. [#8814](https://github.com/elastic/cloud-on-k8s/pull/8814) (issue: [#8790](https://github.com/elastic/cloud-on-k8s/issues/8790))
+- Improving the default PDB implementation. [#8780](https://github.com/elastic/cloud-on-k8s/pull/8780) (issue: [#2936](https://github.com/elastic/cloud-on-k8s/issues/2936))
+
+### Fixes  [elastic-cloud-kubernetes-320-fixes]
+
+- Allow elasticsearchRef.secretName for eck-stack/Kibana [#8822](https://github.com/elastic/cloud-on-k8s/pull/8822) (issue: [#8816](https://github.com/elastic/cloud-on-k8s/issues/8816))
+
+### Documentation improvements  [elastic-cloud-kubernetes-320-documentation-improvements]
+
+- Fix broken Logstash samples [#8801](https://github.com/elastic/cloud-on-k8s/pull/8801)
+- [DOC] Comment JVM heap settings [#8753](https://github.com/elastic/cloud-on-k8s/pull/8753)
+
+### Miscellaneous  [elastic-cloud-kubernetes-320-miscellaneous]
+
+- fix(deps): update all ungrouped dependencies [#8826](https://github.com/elastic/cloud-on-k8s/pull/8826)
+- chore(deps): update go to v1.25.1 [#8823](https://github.com/elastic/cloud-on-k8s/pull/8823)
+- Bump github.com/go-viper/mapstructure/v2 from 2.3.0 to 2.4.0 in /hack/operatorhub [#8810](https://github.com/elastic/cloud-on-k8s/pull/8810)
+- fix(deps): update all ungrouped dependencies [#8809](https://github.com/elastic/cloud-on-k8s/pull/8809)
+- Upgrade k8s libraries [#8806](https://github.com/elastic/cloud-on-k8s/pull/8806)
+
 ## 3.1.0 [elastic-cloud-kubernetes-310-release-notes]
 
 ### Release Highlights
