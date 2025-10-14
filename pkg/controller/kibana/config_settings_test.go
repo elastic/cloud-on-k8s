@@ -68,8 +68,6 @@ var esAssociationConfig = []byte(`
 elasticsearch:
   hosts:
     - "https://es-url:9200"
-  username: "elastic"
-  password: "password"
   ssl:
     certificateAuthorities: /usr/share/kibana/config/elasticsearch-certs/ca.crt
     verificationMode: certificate
@@ -261,7 +259,7 @@ func TestNewConfigSettings(t *testing.T) {
 			wantErr: false,
 		},
 		{
-			name: "with elasticsearch Association",
+			name: "with elasticsearch Association v1",
 			args: args{
 				kb: func() kbv1.Kibana {
 					kb := mkKibana()
@@ -306,7 +304,6 @@ func TestNewConfigSettings(t *testing.T) {
 					[]byte(`elasticsearch:
   hosts:
     - "https://es-url:9200"
-  serviceAccountToken: AAEAAWVsYXN0aWMva2liYW5hL2RlZmF1bHRfa2liYW5hXzRjMWJkZTQzLWFiYjMtNDE0MC1hNDk4LTA4NDRkMDkwZjE3Yjplb3RYYlhDbThtOFgxU2pPelpqdktCcjB3V1NPNHZUQ0FRWU4yWEFNMGRyU1lrYTdNUWJXTHozY1lIVzF3YlZw
   ssl:
     certificateAuthorities: /usr/share/kibana/config/elasticsearch-certs/ca.crt
     verificationMode: certificate
@@ -321,7 +318,7 @@ func TestNewConfigSettings(t *testing.T) {
 			wantErr: false,
 		},
 		{
-			name: "with elasticsearch Association",
+			name: "with elasticsearch Association v2",
 			args: args{
 				kb: func() kbv1.Kibana {
 					kb := mkKibana()

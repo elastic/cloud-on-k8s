@@ -133,6 +133,18 @@ func NewConfigSettings(ctx context.Context, client k8s.Client, kb kbv1.Kibana, v
 		return CanonicalConfig{}, err
 	}
 
+	// Elasticsearch configuration
+	esAssocConf, err := kb.EsAssociation().AssociationConf()
+	if err != nil {
+		return CanonicalConfig{}, err
+	}
+	if esAssocConf.IsConfigured() {
+		esAssocCfg := settings.MustCanonicalConfig(elasticsearchTLSSettings(*esAssocConf))
+		if err = cfg.MergeWith(esAssocCfg); err != nil {
+			return CanonicalConfig{}, err
+		}
+	}
+
 	// Kibana settings from a StackConfigPolicy takes precedence over user provided settings, merge them last.
 	if err = cfg.MergeWith(userSettings, kibanaConfigFromPolicy); err != nil {
 		return CanonicalConfig{}, err

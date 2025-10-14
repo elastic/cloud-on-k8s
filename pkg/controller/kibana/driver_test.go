@@ -11,6 +11,7 @@ import (
 	"testing"
 
 	"github.com/go-test/deep"
+	"github.com/google/go-cmp/cmp"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	appsv1 "k8s.io/api/apps/v1"
@@ -392,7 +393,7 @@ func TestDriverDeploymentParams(t *testing.T) {
 			}
 
 			if diff := deep.Equal(got, tt.want); diff != nil {
-				t.Error(diff)
+				t.Errorf("diff: %s", cmp.Diff(got, tt.want))
 			}
 		})
 	}
@@ -456,7 +457,7 @@ func expectedDeploymentParams() deployment.Params {
 				},
 				Annotations: map[string]string{
 					"co.elastic.logs/module":            "kibana",
-					"kibana.k8s.elastic.co/config-hash": "272660573",
+					"kibana.k8s.elastic.co/config-hash": "3677277583",
 				},
 			},
 			Spec: corev1.PodSpec{
@@ -661,6 +662,32 @@ func expectedDeploymentParams() deployment.Params {
 					Ports: []corev1.ContainerPort{
 						{Name: "https", ContainerPort: int32(5601), Protocol: corev1.ProtocolTCP},
 					},
+					Env: []corev1.EnvVar{
+						{
+							Name: "ELASTICSEARCH_USERNAME",
+							ValueFrom: &corev1.EnvVarSource{
+								SecretKeyRef: &corev1.SecretKeySelector{
+									Key: ElasticsearchUsername,
+									LocalObjectReference: corev1.LocalObjectReference{
+										Name: "test-kb-credentials",
+									},
+									Optional: ptr.To(false),
+								},
+							},
+						},
+						{
+							Name: "ELASTICSEARCH_PASSWORD",
+							ValueFrom: &corev1.EnvVarSource{
+								SecretKeyRef: &corev1.SecretKeySelector{
+									Key: ElasticsearchPassword,
+									LocalObjectReference: corev1.LocalObjectReference{
+										Name: "test-kb-credentials",
+									},
+									Optional: ptr.To(false),
+								},
+							},
+						},
+					},
 					ReadinessProbe: &corev1.Probe{
 						FailureThreshold:    3,
 						InitialDelaySeconds: 10,
@@ -767,7 +794,7 @@ func defaultInitialObjects() []client.Object {
 				Namespace: "default",
 			},
 			Data: map[string][]byte{
-				"kibana-user": nil,
+				"kibana-user": []byte("password"),
 			},
 		},
 		&corev1.Secret{
@@ -786,6 +813,16 @@ func defaultInitialObjects() []client.Object {
 			},
 			Data: map[string][]byte{
 				"ca.crt": nil,
+			},
+		},
+		&corev1.Secret{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "test-kb-credentials",
+				Namespace: "default",
+			},
+			Data: map[string][]byte{
+				"elasticsearch.username": []byte("kibana-user"),
+				"elasticsearch.password": []byte("password"),
 			},
 		},
 	}
