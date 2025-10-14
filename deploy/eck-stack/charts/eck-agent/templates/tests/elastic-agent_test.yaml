@@ -22,7 +22,7 @@ tests:
           value: quickstart-eck-agent
       - equal:
           path: spec.version
-          value: 9.2.0-SNAPSHOT
+          value: 9.2.0
       - equal:
           path: spec.config
           value: null
@@ -102,7 +102,7 @@ tests:
       - equal:
           path: spec
           value:
-            version: 9.2.0-SNAPSHOT
+            version: 9.2.0
             daemonSet: {}
             elasticsearchRefs:
             - name: eck-elasticsearch
@@ -171,7 +171,7 @@ tests:
       - equal:
           path: spec
           value:
-            version: 9.2.0-SNAPSHOT
+            version: 9.2.0
             daemonSet: {}
             elasticsearchRefs:
             - name: eck-elasticsearch
