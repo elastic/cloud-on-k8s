@@ -168,6 +168,10 @@ func (d *driver) Reconcile(
 		return results.WithError(err)
 	}
 
+	if err = reconcileCredentialsSecret(ctx, d.client, kb, meta); err != nil {
+		return results.WithError(err)
+	}
+
 	basePath, err := GetKibanaBasePath(*kb)
 	if err != nil {
 		return results.WithError(err)
@@ -293,6 +297,16 @@ func (d *driver) deploymentParams(ctx context.Context, kb *kbv1.Kibana, policyAn
 		return deployment.Params{}, err
 	}
 	_, _ = configHash.Write(configSecret.Data[SettingsFilename])
+
+	// get credentials secret to add its content to the config checksum
+	credsSecret := corev1.Secret{}
+	err = d.client.Get(ctx, types.NamespacedName{Name: kbv1.CredentialsSecret(kb.Name), Namespace: kb.Namespace}, &credsSecret)
+	if err != nil {
+		return deployment.Params{}, err
+	}
+	_, _ = configHash.Write(credsSecret.Data[ElasticsearchServiceAccountToken])
+	_, _ = configHash.Write(credsSecret.Data[ElasticsearchUsername])
+	_, _ = configHash.Write(credsSecret.Data[ElasticsearchPassword])
 
 	// add the checksum to an annotation for the deployment and its pods (the important bit is that the pod template
 	// changes, which will trigger a rolling update)

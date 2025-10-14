@@ -18,7 +18,6 @@ import (
 
 	commonv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/common/v1"
 	kbv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/kibana/v1"
-	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/association"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/certificates"
 	commonpassword "github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/password"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/settings"
@@ -132,34 +131,6 @@ func NewConfigSettings(ctx context.Context, client k8s.Client, kb kbv1.Kibana, v
 		monitoringCfg)
 	if err != nil {
 		return CanonicalConfig{}, err
-	}
-
-	// Elasticsearch configuration
-	esAssocConf, err := kb.EsAssociation().AssociationConf()
-	if err != nil {
-		return CanonicalConfig{}, err
-	}
-	if esAssocConf.IsConfigured() {
-		credentials, err := association.ElasticsearchAuthSettings(ctx, client, kb.EsAssociation())
-		if err != nil {
-			return CanonicalConfig{}, err
-		}
-		var esCreds map[string]interface{}
-		if credentials.HasServiceAccountToken() {
-			esCreds = map[string]interface{}{
-				ElasticsearchServiceAccountToken: credentials.ServiceAccountToken,
-			}
-		} else {
-			esCreds = map[string]interface{}{
-				ElasticsearchUsername: credentials.Username,
-				ElasticsearchPassword: credentials.Password,
-			}
-		}
-		credentialsCfg := settings.MustCanonicalConfig(esCreds)
-		esAssocCfg := settings.MustCanonicalConfig(elasticsearchTLSSettings(*esAssocConf))
-		if err = cfg.MergeWith(esAssocCfg, credentialsCfg); err != nil {
-			return CanonicalConfig{}, err
-		}
 	}
 
 	// Kibana settings from a StackConfigPolicy takes precedence over user provided settings, merge them last.

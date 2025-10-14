@@ -13,6 +13,7 @@ import (
 
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
+	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/intstr"
 	k8sclient "sigs.k8s.io/controller-runtime/pkg/client"
 
@@ -178,6 +179,11 @@ func NewPodTemplateSpec(
 		return corev1.PodTemplateSpec{}, err
 	}
 
+	builder, err = withCredentialsEnvVars(ctx, client, &kb, builder)
+	if err != nil {
+		return corev1.PodTemplateSpec{}, err
+	}
+
 	return builder.WithInitContainerDefaults().PodTemplate, nil
 }
 
@@ -248,4 +254,39 @@ func GetKibanaBasePath(kb kbv1.Kibana) (string, error) {
 	}
 
 	return "", nil
+}
+
+func withCredentialsEnvVars(ctx context.Context, client k8sclient.Client, kb *kbv1.Kibana, builder *defaults.PodTemplateBuilder) (*defaults.PodTemplateBuilder, error) {
+	var credsSecret corev1.Secret
+	if err := client.Get(ctx, types.NamespacedName{Name: kbv1.CredentialsSecret(kb.GetName()), Namespace: kb.GetNamespace()}, &credsSecret); err != nil {
+		return nil, fmt.Errorf("while retrieving credentials secret: %w", err)
+	}
+	if _, exists := credsSecret.Data[ElasticsearchServiceAccountToken]; exists {
+		return builder.WithEnv(envVar("ELASTICSEARCH_SERVICEACCOUNTTOKEN", kbv1.CredentialsSecret(kb.GetName()), ElasticsearchServiceAccountToken)), nil
+	}
+	_, usernameExists := credsSecret.Data[ElasticsearchUsername]
+	_, passwordExists := credsSecret.Data[ElasticsearchPassword]
+	if !usernameExists && !passwordExists {
+		return builder, fmt.Errorf("Elasticsearch username and/or password doesn't exist for Kibana reference")
+	}
+
+	usernameEnvVar := envVar("ELASTICSEARCH_USERNAME", kbv1.CredentialsSecret(kb.GetName()), ElasticsearchUsername)
+	passwordEnvVar := envVar("ELASTICSEARCH_PASSWORD", kbv1.CredentialsSecret(kb.GetName()), ElasticsearchPassword)
+	return builder.WithEnv(usernameEnvVar, passwordEnvVar), nil
+}
+
+func envVar(envVarName, secretName, key string) corev1.EnvVar {
+	f := false
+	return corev1.EnvVar{
+		Name: envVarName,
+		ValueFrom: &corev1.EnvVarSource{
+			SecretKeyRef: &corev1.SecretKeySelector{
+				LocalObjectReference: corev1.LocalObjectReference{
+					Name: secretName,
+				},
+				Key:      key,
+				Optional: &f,
+			},
+		},
+	}
 }
