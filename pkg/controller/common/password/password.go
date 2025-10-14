@@ -24,14 +24,15 @@ const (
 
 	// Digits is the list of permitted digits.
 	Digits = "0123456789"
-
-	// Symbols is the list of symbols.
-	Symbols = "~!@#$%^&*()_+`-={}|[]\\:\"<>?,./"
 )
 
 var (
-	defaultCharacterSet        = strings.Join([]string{LowerLetters, UpperLetters, Digits, Symbols}, "")
 	characterSetWithoutSymbols = strings.Join([]string{LowerLetters, UpperLetters, Digits}, "")
+
+	// defaultCharacterSet is the default character set used for generating passwords.
+	// It includes lowercase letters, uppercase letters and digits, but excludes symbols.
+	// This is to ensure compatibility with configurations which do not offer a way to escape symbols.
+	defaultCharacterSet = characterSetWithoutSymbols
 )
 
 // RandomGenerator is an interface for generating random passwords.
@@ -63,7 +64,7 @@ func (r *randomPasswordGenerator) Generate(ctx context.Context) ([]byte, error) 
 }
 
 // NewGenerator returns a password generator with the specified length.
-// All character types (lowercase, uppercase, digits, symbols) are always used.
+// All character types (lowercase, uppercase, digits) except symbols are used.
 func NewGenerator(
 	client k8s.Client,
 	passwordLength int,
