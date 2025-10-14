@@ -15,6 +15,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	commonv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/common/v1"
 	kbv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/kibana/v1"
@@ -32,16 +33,30 @@ func TestNewPodTemplateSpec(t *testing.T) {
 		name       string
 		kb         kbv1.Kibana
 		keystore   *keystore.Resources
+		initObjs   []client.Object
 		assertions func(pod corev1.PodTemplateSpec)
 	}{
 		{
 			name: "defaults",
 			kb: kbv1.Kibana{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "kibana-name",
+				},
 				Spec: kbv1.KibanaSpec{
 					Version: "7.1.0",
 				},
 			},
 			keystore: nil,
+			initObjs: []client.Object{
+				&corev1.Secret{
+					ObjectMeta: metav1.ObjectMeta{
+						Name: kbv1.CredentialsSecret("kibana-name"),
+					},
+					Data: map[string][]byte{
+						ElasticsearchServiceAccountToken: []byte("random-letters-numbers"),
+					},
+				},
+			},
 			assertions: func(pod corev1.PodTemplateSpec) {
 				assert.Equal(t, false, *pod.Spec.AutomountServiceAccountToken)
 				assert.Len(t, pod.Spec.Containers, 1)
@@ -53,11 +68,15 @@ func TestNewPodTemplateSpec(t *testing.T) {
 				assert.Equal(t, container.ImageRepository(container.KibanaImage, version.MustParse("7.1.0")), kibanaContainer.Image)
 				assert.NotNil(t, kibanaContainer.ReadinessProbe)
 				assert.NotEmpty(t, kibanaContainer.Ports)
+				assert.Len(t, kibanaContainer.Env, 1)
 			},
 		},
 		{
 			name: "with additional volumes and init containers for the Keystore",
 			kb: kbv1.Kibana{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "kibana-name",
+				},
 				Spec: kbv1.KibanaSpec{
 					Version: "7.1.0",
 				},
@@ -66,6 +85,16 @@ func TestNewPodTemplateSpec(t *testing.T) {
 				InitContainer: corev1.Container{Name: "init"},
 				Volume:        corev1.Volume{Name: "vol"},
 			},
+			initObjs: []client.Object{
+				&corev1.Secret{
+					ObjectMeta: metav1.ObjectMeta{
+						Name: kbv1.CredentialsSecret("kibana-name"),
+					},
+					Data: map[string][]byte{
+						ElasticsearchServiceAccountToken: []byte("random-letters-numbers"),
+					},
+				},
+			},
 			assertions: func(pod corev1.PodTemplateSpec) {
 				assert.Len(t, pod.Spec.InitContainers, 2)
 				assert.Len(t, pod.Spec.Volumes, 3)
@@ -73,45 +102,91 @@ func TestNewPodTemplateSpec(t *testing.T) {
 		},
 		{
 			name: "with custom image",
-			kb: kbv1.Kibana{Spec: kbv1.KibanaSpec{
-				Image:   "my-custom-image:1.0.0",
-				Version: "7.1.0",
-			}},
+			kb: kbv1.Kibana{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "kibana-name",
+				},
+				Spec: kbv1.KibanaSpec{
+					Image:   "my-custom-image:1.0.0",
+					Version: "7.1.0",
+				},
+			},
 			keystore: nil,
+			initObjs: []client.Object{
+				&corev1.Secret{
+					ObjectMeta: metav1.ObjectMeta{
+						Name: kbv1.CredentialsSecret("kibana-name"),
+					},
+					Data: map[string][]byte{
+						ElasticsearchServiceAccountToken: []byte("random-letters-numbers"),
+					},
+				},
+			},
 			assertions: func(pod corev1.PodTemplateSpec) {
 				assert.Equal(t, "my-custom-image:1.0.0", GetKibanaContainer(pod.Spec).Image)
 			},
 		},
 		{
 			name: "with default resources",
-			kb: kbv1.Kibana{Spec: kbv1.KibanaSpec{
-				Version: "7.1.0",
-			}},
+			kb: kbv1.Kibana{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "kibana-name",
+				},
+				Spec: kbv1.KibanaSpec{
+					Image:   "my-custom-image:1.0.0",
+					Version: "7.1.0",
+				},
+			},
 			keystore: nil,
+			initObjs: []client.Object{
+				&corev1.Secret{
+					ObjectMeta: metav1.ObjectMeta{
+						Name: kbv1.CredentialsSecret("kibana-name"),
+					},
+					Data: map[string][]byte{
+						ElasticsearchServiceAccountToken: []byte("random-letters-numbers"),
+					},
+				},
+			},
 			assertions: func(pod corev1.PodTemplateSpec) {
 				assert.Equal(t, DefaultResources, GetKibanaContainer(pod.Spec).Resources)
 			},
 		},
 		{
 			name: "with user-provided resources",
-			kb: kbv1.Kibana{Spec: kbv1.KibanaSpec{
-				Version: "7.1.0",
-				PodTemplate: corev1.PodTemplateSpec{
-					Spec: corev1.PodSpec{
-						Containers: []corev1.Container{
-							{
-								Name: kbv1.KibanaContainerName,
-								Resources: corev1.ResourceRequirements{
-									Limits: map[corev1.ResourceName]resource.Quantity{
-										corev1.ResourceMemory: resource.MustParse("3Gi"),
+			kb: kbv1.Kibana{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "kibana-name",
+				},
+				Spec: kbv1.KibanaSpec{
+					Version: "7.1.0",
+					PodTemplate: corev1.PodTemplateSpec{
+						Spec: corev1.PodSpec{
+							Containers: []corev1.Container{
+								{
+									Name: kbv1.KibanaContainerName,
+									Resources: corev1.ResourceRequirements{
+										Limits: map[corev1.ResourceName]resource.Quantity{
+											corev1.ResourceMemory: resource.MustParse("3Gi"),
+										},
 									},
 								},
 							},
 						},
 					},
 				},
-			}},
+			},
 			keystore: nil,
+			initObjs: []client.Object{
+				&corev1.Secret{
+					ObjectMeta: metav1.ObjectMeta{
+						Name: kbv1.CredentialsSecret("kibana-name"),
+					},
+					Data: map[string][]byte{
+						ElasticsearchServiceAccountToken: []byte("random-letters-numbers"),
+					},
+				},
+			},
 			assertions: func(pod corev1.PodTemplateSpec) {
 				assert.Equal(t, corev1.ResourceRequirements{
 					Limits: map[corev1.ResourceName]resource.Quantity{
@@ -122,19 +197,34 @@ func TestNewPodTemplateSpec(t *testing.T) {
 		},
 		{
 			name: "with user-provided init containers",
-			kb: kbv1.Kibana{Spec: kbv1.KibanaSpec{
-				PodTemplate: corev1.PodTemplateSpec{
-					Spec: corev1.PodSpec{
-						InitContainers: []corev1.Container{
-							{
-								Name: "user-init-container",
+			kb: kbv1.Kibana{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "kibana-name",
+				},
+				Spec: kbv1.KibanaSpec{
+					PodTemplate: corev1.PodTemplateSpec{
+						Spec: corev1.PodSpec{
+							InitContainers: []corev1.Container{
+								{
+									Name: "user-init-container",
+								},
 							},
 						},
 					},
+					Version: "8.12.0",
 				},
-				Version: "8.12.0",
-			}},
+			},
 			keystore: nil,
+			initObjs: []client.Object{
+				&corev1.Secret{
+					ObjectMeta: metav1.ObjectMeta{
+						Name: kbv1.CredentialsSecret("kibana-name"),
+					},
+					Data: map[string][]byte{
+						ElasticsearchServiceAccountToken: []byte("random-letters-numbers"),
+					},
+				},
+			},
 			assertions: func(pod corev1.PodTemplateSpec) {
 				assert.Len(t, pod.Spec.InitContainers, 2)
 				assert.Equal(t, pod.Spec.Containers[0].Image, pod.Spec.InitContainers[0].Image)
@@ -160,6 +250,16 @@ func TestNewPodTemplateSpec(t *testing.T) {
 					},
 					Version: "7.4.0",
 				}},
+			initObjs: []client.Object{
+				&corev1.Secret{
+					ObjectMeta: metav1.ObjectMeta{
+						Name: kbv1.CredentialsSecret("kibana-name"),
+					},
+					Data: map[string][]byte{
+						ElasticsearchServiceAccountToken: []byte("random-letters-numbers"),
+					},
+				},
+			},
 			assertions: func(pod corev1.PodTemplateSpec) {
 				labels := (&kbv1.Kibana{ObjectMeta: metav1.ObjectMeta{Name: "kibana-name"}}).GetIdentityLabels()
 				labels[kblabel.KibanaVersionLabelName] = "7.4.0"
@@ -173,52 +273,82 @@ func TestNewPodTemplateSpec(t *testing.T) {
 		},
 		{
 			name: "with user-provided environment",
-			kb: kbv1.Kibana{Spec: kbv1.KibanaSpec{
-				PodTemplate: corev1.PodTemplateSpec{
-					Spec: corev1.PodSpec{
-						Containers: []corev1.Container{
-							{
-								Name: kbv1.KibanaContainerName,
-								Env: []corev1.EnvVar{
-									{
-										Name:  "user-env",
-										Value: "user-env-value",
+			kb: kbv1.Kibana{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "kibana-name",
+				},
+				Spec: kbv1.KibanaSpec{
+					PodTemplate: corev1.PodTemplateSpec{
+						Spec: corev1.PodSpec{
+							Containers: []corev1.Container{
+								{
+									Name: kbv1.KibanaContainerName,
+									Env: []corev1.EnvVar{
+										{
+											Name:  "user-env",
+											Value: "user-env-value",
+										},
 									},
 								},
 							},
 						},
 					},
+					Version: "8.12.0",
 				},
-				Version: "8.12.0",
-			}},
+			},
+			initObjs: []client.Object{
+				&corev1.Secret{
+					ObjectMeta: metav1.ObjectMeta{
+						Name: kbv1.CredentialsSecret("kibana-name"),
+					},
+					Data: map[string][]byte{
+						ElasticsearchServiceAccountToken: []byte("random-letters-numbers"),
+					},
+				},
+			},
 			assertions: func(pod corev1.PodTemplateSpec) {
-				assert.Len(t, GetKibanaContainer(pod.Spec).Env, 1)
+				assert.Len(t, GetKibanaContainer(pod.Spec).Env, 2)
 			},
 		},
 		{
 			name: "with user-provided volumes and 8.x should have volume mounts including /tmp and plugins volumes and security contexts",
-			kb: kbv1.Kibana{Spec: kbv1.KibanaSpec{
-				PodTemplate: corev1.PodTemplateSpec{
-					Spec: corev1.PodSpec{
-						Containers: []corev1.Container{
-							{
-								Name: kbv1.KibanaContainerName,
-								VolumeMounts: []corev1.VolumeMount{
-									{
-										Name: "user-volume-mount",
+			kb: kbv1.Kibana{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "kibana-name",
+				},
+				Spec: kbv1.KibanaSpec{
+					PodTemplate: corev1.PodTemplateSpec{
+						Spec: corev1.PodSpec{
+							Containers: []corev1.Container{
+								{
+									Name: kbv1.KibanaContainerName,
+									VolumeMounts: []corev1.VolumeMount{
+										{
+											Name: "user-volume-mount",
+										},
 									},
 								},
 							},
-						},
-						Volumes: []corev1.Volume{
-							{
-								Name: "user-volume",
+							Volumes: []corev1.Volume{
+								{
+									Name: "user-volume",
+								},
 							},
 						},
 					},
+					Version: "8.12.0",
 				},
-				Version: "8.12.0",
-			}},
+			},
+			initObjs: []client.Object{
+				&corev1.Secret{
+					ObjectMeta: metav1.ObjectMeta{
+						Name: kbv1.CredentialsSecret("kibana-name"),
+					},
+					Data: map[string][]byte{
+						ElasticsearchServiceAccountToken: []byte("random-letters-numbers"),
+					},
+				},
+			},
 			assertions: func(pod corev1.PodTemplateSpec) {
 				assert.Len(t, pod.Spec.InitContainers, 1)
 				assert.Len(t, pod.Spec.InitContainers[0].VolumeMounts, 7)
@@ -229,17 +359,32 @@ func TestNewPodTemplateSpec(t *testing.T) {
 		},
 		{
 			name: "with user-provided basePath in spec config",
-			kb: kbv1.Kibana{Spec: kbv1.KibanaSpec{
-				Config: &commonv1.Config{
-					Data: map[string]interface{}{
-						"server": map[string]interface{}{
-							"basePath":        "/monitoring/kibana",
-							"rewriteBasePath": true,
+			kb: kbv1.Kibana{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "kibana-name",
+				},
+				Spec: kbv1.KibanaSpec{
+					Config: &commonv1.Config{
+						Data: map[string]interface{}{
+							"server": map[string]interface{}{
+								"basePath":        "/monitoring/kibana",
+								"rewriteBasePath": true,
+							},
 						},
 					},
+					Version: "8.12.0",
 				},
-				Version: "8.12.0",
-			}},
+			},
+			initObjs: []client.Object{
+				&corev1.Secret{
+					ObjectMeta: metav1.ObjectMeta{
+						Name: kbv1.CredentialsSecret("kibana-name"),
+					},
+					Data: map[string][]byte{
+						ElasticsearchServiceAccountToken: []byte("random-letters-numbers"),
+					},
+				},
+			},
 			assertions: func(pod corev1.PodTemplateSpec) {
 				kbContainer := GetKibanaContainer(pod.Spec)
 				assert.Equal(t, kbContainer.ReadinessProbe.ProbeHandler.HTTPGet.Path, "/monitoring/kibana/login")
@@ -247,15 +392,30 @@ func TestNewPodTemplateSpec(t *testing.T) {
 		},
 		{
 			name: "with user-provided basePath in spec config flattened",
-			kb: kbv1.Kibana{Spec: kbv1.KibanaSpec{
-				Config: &commonv1.Config{
-					Data: map[string]interface{}{
-						"server.basePath":        "/monitoring/kibana",
-						"server.rewriteBasePath": true,
+			kb: kbv1.Kibana{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "kibana-name",
+				},
+				Spec: kbv1.KibanaSpec{
+					Config: &commonv1.Config{
+						Data: map[string]interface{}{
+							"server.basePath":        "/monitoring/kibana",
+							"server.rewriteBasePath": true,
+						},
+					},
+					Version: "8.12.0",
+				},
+			},
+			initObjs: []client.Object{
+				&corev1.Secret{
+					ObjectMeta: metav1.ObjectMeta{
+						Name: kbv1.CredentialsSecret("kibana-name"),
+					},
+					Data: map[string][]byte{
+						ElasticsearchServiceAccountToken: []byte("random-letters-numbers"),
 					},
 				},
-				Version: "8.12.0",
-			}},
+			},
 			assertions: func(pod corev1.PodTemplateSpec) {
 				kbContainer := GetKibanaContainer(pod.Spec)
 				assert.Equal(t, kbContainer.ReadinessProbe.ProbeHandler.HTTPGet.Path, "/monitoring/kibana/login")
@@ -263,28 +423,43 @@ func TestNewPodTemplateSpec(t *testing.T) {
 		},
 		{
 			name: "with user-provided basePath in spec pod template",
-			kb: kbv1.Kibana{Spec: kbv1.KibanaSpec{
-				PodTemplate: corev1.PodTemplateSpec{
-					Spec: corev1.PodSpec{
-						Containers: []corev1.Container{
-							{
-								Name: kbv1.KibanaContainerName,
-								Env: []corev1.EnvVar{
-									{
-										Name:  "SERVER_BASEPATH",
-										Value: "/monitoring/kibana",
-									},
-									{
-										Name:  "SERVER_REWRITEBASEPATH",
-										Value: "true",
+			kb: kbv1.Kibana{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "kibana-name",
+				},
+				Spec: kbv1.KibanaSpec{
+					PodTemplate: corev1.PodTemplateSpec{
+						Spec: corev1.PodSpec{
+							Containers: []corev1.Container{
+								{
+									Name: kbv1.KibanaContainerName,
+									Env: []corev1.EnvVar{
+										{
+											Name:  "SERVER_BASEPATH",
+											Value: "/monitoring/kibana",
+										},
+										{
+											Name:  "SERVER_REWRITEBASEPATH",
+											Value: "true",
+										},
 									},
 								},
 							},
 						},
 					},
+					Version: "8.12.0",
 				},
-				Version: "8.12.0",
-			}},
+			},
+			initObjs: []client.Object{
+				&corev1.Secret{
+					ObjectMeta: metav1.ObjectMeta{
+						Name: kbv1.CredentialsSecret("kibana-name"),
+					},
+					Data: map[string][]byte{
+						ElasticsearchServiceAccountToken: []byte("random-letters-numbers"),
+					},
+				},
+			},
 			assertions: func(pod corev1.PodTemplateSpec) {
 				kbContainer := GetKibanaContainer(pod.Spec)
 				assert.Equal(t, kbContainer.ReadinessProbe.ProbeHandler.HTTPGet.Path, "/monitoring/kibana/login")
@@ -292,16 +467,31 @@ func TestNewPodTemplateSpec(t *testing.T) {
 		},
 		{
 			name: "with user-provided basePath in spec config but rewriteBasePath not set",
-			kb: kbv1.Kibana{Spec: kbv1.KibanaSpec{
-				Config: &commonv1.Config{
-					Data: map[string]interface{}{
-						"server": map[string]interface{}{
-							"basePath": "/monitoring/kibana",
+			kb: kbv1.Kibana{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "kibana-name",
+				},
+				Spec: kbv1.KibanaSpec{
+					Config: &commonv1.Config{
+						Data: map[string]interface{}{
+							"server": map[string]interface{}{
+								"basePath": "/monitoring/kibana",
+							},
 						},
 					},
+					Version: "8.12.0",
 				},
-				Version: "8.12.0",
-			}},
+			},
+			initObjs: []client.Object{
+				&corev1.Secret{
+					ObjectMeta: metav1.ObjectMeta{
+						Name: kbv1.CredentialsSecret("kibana-name"),
+					},
+					Data: map[string][]byte{
+						ElasticsearchServiceAccountToken: []byte("random-letters-numbers"),
+					},
+				},
+			},
 			assertions: func(pod corev1.PodTemplateSpec) {
 				kbContainer := GetKibanaContainer(pod.Spec)
 				assert.Equal(t, kbContainer.ReadinessProbe.ProbeHandler.HTTPGet.Path, "/login")
@@ -309,24 +499,39 @@ func TestNewPodTemplateSpec(t *testing.T) {
 		},
 		{
 			name: "with user-provided basePath in spec pod template but rewriteBasePath not set",
-			kb: kbv1.Kibana{Spec: kbv1.KibanaSpec{
-				PodTemplate: corev1.PodTemplateSpec{
-					Spec: corev1.PodSpec{
-						Containers: []corev1.Container{
-							{
-								Name: kbv1.KibanaContainerName,
-								Env: []corev1.EnvVar{
-									{
-										Name:  "SERVER_BASEPATH",
-										Value: "/monitoring/kibana",
+			kb: kbv1.Kibana{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "kibana-name",
+				},
+				Spec: kbv1.KibanaSpec{
+					PodTemplate: corev1.PodTemplateSpec{
+						Spec: corev1.PodSpec{
+							Containers: []corev1.Container{
+								{
+									Name: kbv1.KibanaContainerName,
+									Env: []corev1.EnvVar{
+										{
+											Name:  "SERVER_BASEPATH",
+											Value: "/monitoring/kibana",
+										},
 									},
 								},
 							},
 						},
 					},
+					Version: "8.12.0",
 				},
-				Version: "8.12.0",
-			}},
+			},
+			initObjs: []client.Object{
+				&corev1.Secret{
+					ObjectMeta: metav1.ObjectMeta{
+						Name: kbv1.CredentialsSecret("kibana-name"),
+					},
+					Data: map[string][]byte{
+						ElasticsearchServiceAccountToken: []byte("random-letters-numbers"),
+					},
+				},
+			},
 			assertions: func(pod corev1.PodTemplateSpec) {
 				kbContainer := GetKibanaContainer(pod.Spec)
 				assert.Equal(t, kbContainer.ReadinessProbe.ProbeHandler.HTTPGet.Path, "/login")
@@ -334,36 +539,51 @@ func TestNewPodTemplateSpec(t *testing.T) {
 		},
 		{
 			name: "with user-provided basePath in spec pod template and spec config, env var in pod template should take precedence",
-			kb: kbv1.Kibana{Spec: kbv1.KibanaSpec{
-				Config: &commonv1.Config{
-					Data: map[string]interface{}{
-						"server": map[string]interface{}{
-							"basePath":        "/monitoring/kibana/spec",
-							"rewriteBasePath": true,
+			kb: kbv1.Kibana{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "kibana-name",
+				},
+				Spec: kbv1.KibanaSpec{
+					Config: &commonv1.Config{
+						Data: map[string]interface{}{
+							"server": map[string]interface{}{
+								"basePath":        "/monitoring/kibana/spec",
+								"rewriteBasePath": true,
+							},
 						},
 					},
-				},
-				PodTemplate: corev1.PodTemplateSpec{
-					Spec: corev1.PodSpec{
-						Containers: []corev1.Container{
-							{
-								Name: kbv1.KibanaContainerName,
-								Env: []corev1.EnvVar{
-									{
-										Name:  "SERVER_BASEPATH",
-										Value: "/monitoring/kibana",
-									},
-									{
-										Name:  "SERVER_REWRITEBASEPATH",
-										Value: "true",
+					PodTemplate: corev1.PodTemplateSpec{
+						Spec: corev1.PodSpec{
+							Containers: []corev1.Container{
+								{
+									Name: kbv1.KibanaContainerName,
+									Env: []corev1.EnvVar{
+										{
+											Name:  "SERVER_BASEPATH",
+											Value: "/monitoring/kibana",
+										},
+										{
+											Name:  "SERVER_REWRITEBASEPATH",
+											Value: "true",
+										},
 									},
 								},
 							},
 						},
 					},
+					Version: "8.12.0",
 				},
-				Version: "8.12.0",
-			}},
+			},
+			initObjs: []client.Object{
+				&corev1.Secret{
+					ObjectMeta: metav1.ObjectMeta{
+						Name: kbv1.CredentialsSecret("kibana-name"),
+					},
+					Data: map[string][]byte{
+						ElasticsearchServiceAccountToken: []byte("random-letters-numbers"),
+					},
+				},
+			},
 			assertions: func(pod corev1.PodTemplateSpec) {
 				kbContainer := GetKibanaContainer(pod.Spec)
 				assert.Equal(t, kbContainer.ReadinessProbe.ProbeHandler.HTTPGet.Path, "/monitoring/kibana/login")
@@ -375,7 +595,7 @@ func TestNewPodTemplateSpec(t *testing.T) {
 			bp, err := GetKibanaBasePath(tt.kb)
 			require.NoError(t, err)
 			md := metadata.Propagate(&tt.kb, metadata.Metadata{Labels: tt.kb.GetIdentityLabels()})
-			got, err := NewPodTemplateSpec(context.Background(), k8s.NewFakeClient(), tt.kb, tt.keystore, []commonvolume.VolumeLike{}, bp, true, md)
+			got, err := NewPodTemplateSpec(context.Background(), k8s.NewFakeClient(tt.initObjs...), tt.kb, tt.keystore, []commonvolume.VolumeLike{}, bp, true, md)
 			assert.NoError(t, err)
 			tt.assertions(got)
 		})
