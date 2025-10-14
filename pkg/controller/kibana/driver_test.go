@@ -325,12 +325,22 @@ func TestDriverDeploymentParams(t *testing.T) {
 								"tls.crt": []byte("this is also relevant"),
 							},
 						},
+						&corev1.Secret{
+							ObjectMeta: metav1.ObjectMeta{
+								Name:      "test-kb-credentials",
+								Namespace: "default",
+							},
+							Data: map[string][]byte{
+								"elasticsearch.username": []byte("kibana-user"),
+								"elasticsearch.password": []byte("password"),
+							},
+						},
 					}
 				},
 			},
 			want: func() deployment.Params {
 				p := pre710(expectedDeploymentParams())
-				p.PodTemplateSpec.Annotations["kibana.k8s.elastic.co/config-hash"] = "2368465874"
+				p.PodTemplateSpec.Annotations["kibana.k8s.elastic.co/config-hash"] = "1998711499"
 				return p
 			}(),
 			wantErr: false,
