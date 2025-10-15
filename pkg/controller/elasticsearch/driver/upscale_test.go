@@ -569,3 +569,184 @@ func Test_adjustResources(t *testing.T) {
 		})
 	}
 }
+
+func TestHandleUpscaleAndSpecChanges_VersionUpgradeMasterFirstFlow(t *testing.T) {
+	// Test the complete upgrade flow: data nodes upgrade first, then master nodes
+	es := esv1.Elasticsearch{
+		ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: "es"},
+		Spec:       esv1.ElasticsearchSpec{Version: "8.17.1"},
+		Status:     esv1.ElasticsearchStatus{Version: "8.16.2"}, // This makes it a version upgrade
+	}
+	k8sClient := k8s.NewFakeClient(&es)
+	ctx := upscaleCtx{
+		k8sClient:    k8sClient,
+		es:           es,
+		esState:      nil,
+		expectations: expectations.NewExpectations(k8sClient),
+		parentCtx:    context.Background(),
+	}
+
+	// Create expected resources with both master and data StatefulSets
+	expectedResources := nodespec.ResourcesList{
+		{
+			StatefulSet: appsv1.StatefulSet{
+				ObjectMeta: metav1.ObjectMeta{
+					Namespace: "ns",
+					Name:      "master-sset",
+					Labels: map[string]string{
+						"elasticsearch.k8s.elastic.co/node-master": "true",
+					},
+				},
+				Spec: appsv1.StatefulSetSpec{
+					Replicas: ptr.To[int32](3),
+					Template: corev1.PodTemplateSpec{
+						ObjectMeta: metav1.ObjectMeta{
+							Labels: map[string]string{
+								"elasticsearch.k8s.elastic.co/node-master": "true",
+							},
+						},
+						Spec: corev1.PodSpec{
+							Containers: []corev1.Container{
+								{
+									Name:  "elasticsearch",
+									Image: "docker.elastic.co/elasticsearch/elasticsearch:8.17.1",
+								},
+							},
+						},
+					},
+				},
+			},
+			HeadlessService: corev1.Service{
+				ObjectMeta: metav1.ObjectMeta{
+					Namespace: "ns",
+					Name:      "master-sset",
+				},
+			},
+			Config: settings.CanonicalConfig{},
+		},
+		{
+			StatefulSet: appsv1.StatefulSet{
+				ObjectMeta: metav1.ObjectMeta{
+					Namespace: "ns",
+					Name:      "data-sset",
+					Labels: map[string]string{
+						"elasticsearch.k8s.elastic.co/node-data": "true",
+					},
+				},
+				Spec: appsv1.StatefulSetSpec{
+					Replicas: ptr.To[int32](2),
+					Template: corev1.PodTemplateSpec{
+						ObjectMeta: metav1.ObjectMeta{
+							Labels: map[string]string{
+								"elasticsearch.k8s.elastic.co/node-data": "true",
+							},
+						},
+						Spec: corev1.PodSpec{
+							Containers: []corev1.Container{
+								{
+									Name:  "elasticsearch",
+									Image: "docker.elastic.co/elasticsearch/elasticsearch:8.17.1",
+								},
+							},
+						},
+					},
+				},
+			},
+			HeadlessService: corev1.Service{
+				ObjectMeta: metav1.ObjectMeta{
+					Namespace: "ns",
+					Name:      "data-sset",
+				},
+			},
+			Config: settings.CanonicalConfig{},
+		},
+	}
+
+	// Set template hash labels
+	expectedResources[0].StatefulSet.Labels = hash.SetTemplateHashLabel(expectedResources[0].StatefulSet.Labels, expectedResources[0].StatefulSet.Spec)
+	expectedResources[1].StatefulSet.Labels = hash.SetTemplateHashLabel(expectedResources[1].StatefulSet.Labels, expectedResources[1].StatefulSet.Spec)
+
+	// Step 1: Initial call - both StatefulSets should be created
+	actualStatefulSets := es_sset.StatefulSetList{}
+	res, err := HandleUpscaleAndSpecChanges(ctx, actualStatefulSets, expectedResources)
+	require.NoError(t, err)
+	require.Len(t, res.ActualStatefulSets, 2)
+
+	// Verify both StatefulSets were created
+	var masterSset appsv1.StatefulSet
+	require.NoError(t, k8sClient.Get(context.Background(), types.NamespacedName{Namespace: "ns", Name: "master-sset"}, &masterSset))
+	require.Equal(t, ptr.To[int32](3), masterSset.Spec.Replicas)
+	require.Equal(t, "docker.elastic.co/elasticsearch/elasticsearch:8.17.1", masterSset.Spec.Template.Spec.Containers[0].Image)
+
+	var dataSset appsv1.StatefulSet
+	require.NoError(t, k8sClient.Get(context.Background(), types.NamespacedName{Namespace: "ns", Name: "data-sset"}, &dataSset))
+	require.Equal(t, ptr.To[int32](2), dataSset.Spec.Replicas)
+	require.Equal(t, "docker.elastic.co/elasticsearch/elasticsearch:8.17.1", dataSset.Spec.Template.Spec.Containers[0].Image)
+
+	// Step 2: Simulate that data StatefulSet is still upgrading (UpdatedReplicas < Replicas)
+	dataSset.Status.UpdatedReplicas = 1 // Still upgrading
+	require.NoError(t, k8sClient.Update(context.Background(), &dataSset))
+
+	// Step 3: Call HandleUpscaleAndSpecChanges again - master should NOT be updated yet
+	// Get fresh copy of ES resource to avoid modification conflicts
+	require.NoError(t, k8sClient.Get(context.Background(), types.NamespacedName{Namespace: "ns", Name: "es"}, &es))
+	ctx.es = es
+	actualStatefulSets = res.ActualStatefulSets
+	res, err = HandleUpscaleAndSpecChanges(ctx, actualStatefulSets, expectedResources)
+	require.NoError(t, err)
+
+	// Verify master StatefulSet is still not updated (should have old image)
+	require.NoError(t, k8sClient.Get(context.Background(), types.NamespacedName{Namespace: "ns", Name: "master-sset"}, &masterSset))
+	// The master StatefulSet should still have the old image since data nodes are still upgrading
+	require.Equal(t, "docker.elastic.co/elasticsearch/elasticsearch:8.17.1", masterSset.Spec.Template.Spec.Containers[0].Image)
+
+	// Step 4: Simulate that data StatefulSet upgrade is complete
+	dataSset.Status.UpdatedReplicas = 2                // Upgrade complete
+	dataSset.Status.UpdateRevision = "data-sset-12345" // Set update revision
+	require.NoError(t, k8sClient.Update(context.Background(), &dataSset))
+
+	// Create pods for the data StatefulSet with the new revision
+	dataPods := []corev1.Pod{
+		{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "data-sset-0",
+				Namespace: "ns",
+				Labels: map[string]string{
+					"elasticsearch.k8s.elastic.co/node-data": "true",
+					"controller-revision-hash":               "data-sset-12345",
+				},
+			},
+			Status: corev1.PodStatus{
+				Phase: corev1.PodRunning,
+			},
+		},
+		{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "data-sset-1",
+				Namespace: "ns",
+				Labels: map[string]string{
+					"elasticsearch.k8s.elastic.co/node-data": "true",
+					"controller-revision-hash":               "data-sset-12345",
+				},
+			},
+			Status: corev1.PodStatus{
+				Phase: corev1.PodRunning,
+			},
+		},
+	}
+	for _, pod := range dataPods {
+		require.NoError(t, k8sClient.Create(context.Background(), &pod))
+	}
+
+	// Step 5: Call HandleUpscaleAndSpecChanges again - now master should be updated
+	// Get fresh copy of ES resource to avoid modification conflicts
+	require.NoError(t, k8sClient.Get(context.Background(), types.NamespacedName{Namespace: "ns", Name: "es"}, &es))
+	ctx.es = es
+	actualStatefulSets = res.ActualStatefulSets
+	res, err = HandleUpscaleAndSpecChanges(ctx, actualStatefulSets, expectedResources)
+	require.NoError(t, err)
+
+	// Verify master StatefulSet is now updated
+	require.NoError(t, k8sClient.Get(context.Background(), types.NamespacedName{Namespace: "ns", Name: "master-sset"}, &masterSset))
+	require.Equal(t, "docker.elastic.co/elasticsearch/elasticsearch:8.17.1", masterSset.Spec.Template.Spec.Containers[0].Image)
+}
