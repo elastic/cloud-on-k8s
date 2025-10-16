@@ -353,14 +353,14 @@ func TestStackConfigPolicyMultipleWeights(t *testing.T) {
 
 	namespace := test.Ctx().ManagedNamespace(0)
 
-	// Policy with weight 10 (lower priority) - sets cluster.name
+	// Policy with weight 20 (lower priority) - sets cluster.name
 	lowPriorityPolicy := policyv1alpha1.StackConfigPolicy{
 		ObjectMeta: metav1.ObjectMeta{
 			Namespace: namespace,
 			Name:      fmt.Sprintf("low-priority-scp-%s", rand.String(4)),
 		},
 		Spec: policyv1alpha1.StackConfigPolicySpec{
-			Weight: 10,
+			Weight: 20,
 			ResourceSelector: metav1.LabelSelector{
 				MatchLabels: map[string]string{"app": "elasticsearch"},
 			},
@@ -381,14 +381,14 @@ func TestStackConfigPolicyMultipleWeights(t *testing.T) {
 		},
 	}
 
-	// Policy with weight 20 (higher priority) - should override cluster.name and settings
+	// Policy with weight 10 (higher priority) - should override cluster.name and settings
 	highPriorityPolicy := policyv1alpha1.StackConfigPolicy{
 		ObjectMeta: metav1.ObjectMeta{
 			Namespace: namespace,
 			Name:      fmt.Sprintf("high-priority-scp-%s", rand.String(4)),
 		},
 		Spec: policyv1alpha1.StackConfigPolicySpec{
-			Weight: 20,
+			Weight: 10,
 			ResourceSelector: metav1.LabelSelector{
 				MatchLabels: map[string]string{"app": "elasticsearch"},
 			},
