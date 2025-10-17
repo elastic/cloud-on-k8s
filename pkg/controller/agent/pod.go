@@ -450,7 +450,7 @@ if [[ -f %[1]s ]]; then
     %[5]s
   fi
 fi
-/usr/bin/tini -- /usr/local/bin/docker-entrypoint -e
+/usr/bin/tini -- /usr/local/bin/docker-entrypoint -e "$@"
 `, caPath, ubiSharedCAPath, ubiUpdateCmd, debianSharedCAPath, debianUpdateCmd)
 }
 

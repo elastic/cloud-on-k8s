@@ -38,6 +38,15 @@ func reconcilePodVehicle(params Params, podTemplate corev1.PodTemplateSpec) (*re
 	spec := params.Agent.Spec
 	name := Name(params.Agent.Name)
 
+	initContainer, err := maybeAddConfigPathInitContainer(params.Context, params.Client, params.Agent)
+	if err != nil {
+		return results.WithError(err), params.Status
+	}
+
+	if initContainer != nil {
+		podTemplate.Spec.InitContainers = append(podTemplate.Spec.InitContainers, *initContainer)
+	}
+
 	var toDelete []client.Object
 	var reconciliationFunc func(params ReconciliationParams) (int32, int32, error)
 	switch {
@@ -121,6 +130,55 @@ func reconcilePodVehicle(params Params, podTemplate corev1.PodTemplateSpec) (*re
 	}
 
 	return results.WithError(err), status
+}
+
+func maybeAddConfigPathInitContainer(ctx context.Context, k8sClient k8s.Client, agent agentv1alpha1.Agent) (*corev1.Container, error) {
+	type duck struct {
+		client.Object
+		Spec struct {
+			Template struct {
+				corev1.PodTemplateSpec
+			} `json:"template"`
+		} `json:"spec"`
+	}
+	var d duck
+	if err := k8sClient.Get(ctx, types.NamespacedName{
+		Namespace: agent.Namespace,
+		Name:      Name(agent.Name),
+	}, &d); err != nil {
+		return nil, err
+	}
+
+	// if the existing pod template spec environment variables for the agent container do not include STATE_PATH
+	// add an init container to help with the migration process from /etc/agent to /usr/share/elastic-agent/state.
+	hasStatePath := false
+	image := ""
+	for _, container := range d.Spec.Template.Spec.Containers {
+		if container.Name == "agent" {
+			image = container.Image
+			for _, env := range container.Env {
+				if env.Name == "STATE_PATH" {
+					hasStatePath = true
+					break
+				}
+			}
+		}
+	}
+	cmd := `if [[ ! -f "/usr/share/elastic-agent/state/eck.config_migrated" ]]; then
+  echo "Attempting to remove fleet.enc and fleet.enc.lock from state path (ignore if not present)"
+  rm -f "/usr/share/elastic-agent/state/fleet.enc" "/usr/share/elastic-agent/state/fleet.enc.lock" 2>/dev/null || true
+  echo "Creating eck.config_migrated marker"
+  touch "/usr/share/elastic-agent/state/eck.config_migrated"
+fi
+`
+	if !hasStatePath {
+		return &corev1.Container{
+			Name:    "config-path-init",
+			Image:   image,
+			Command: []string{"/usr/bin/env", "bash", "-c", cmd},
+		}, nil
+	}
+	return nil, nil
 }
 
 func reconcileDeployment(rp ReconciliationParams) (int32, int32, error) {
