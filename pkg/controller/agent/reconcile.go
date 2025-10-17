@@ -129,6 +129,7 @@ func maybeAddConfigPathInitContainer(ctx context.Context, spec corev1.PodTemplat
 	// if the existing pod template spec environment variables for the agent container do not include STATE_PATH
 	// add an init container to help with the migration process from /etc/agent to /usr/share/elastic-agent/state.
 	hasStatePath := false
+	hasConfigInitContainer := false
 	image := ""
 	logconf.FromContext(ctx).Info("maybeAddConfigPathInitContainer", "spec", spec)
 	for _, container := range spec.Spec.Containers {
@@ -142,6 +143,12 @@ func maybeAddConfigPathInitContainer(ctx context.Context, spec corev1.PodTemplat
 			}
 		}
 	}
+	for _, container := range spec.Spec.InitContainers {
+		if container.Name == "config-path-init" {
+			hasConfigInitContainer = true
+			break
+		}
+	}
 	cmd := `if [[ ! -f "/usr/share/elastic-agent/state/eck.config_migrated" ]]; then
   echo "Attempting to remove fleet.enc and fleet.enc.lock from state path (ignore if not present)"
   rm -f "/usr/share/elastic-agent/state/fleet.enc" "/usr/share/elastic-agent/state/fleet.enc.lock" 2>/dev/null || true
@@ -149,7 +156,8 @@ func maybeAddConfigPathInitContainer(ctx context.Context, spec corev1.PodTemplat
   touch "/usr/share/elastic-agent/state/eck.config_migrated"
 fi
 `
-	if !hasStatePath {
+	// if the state path env var does not exist or the config init container already exists, add the init container
+	if !hasStatePath || hasConfigInitContainer {
 		return &corev1.Container{
 			Name:    "config-path-init",
 			Image:   image,
