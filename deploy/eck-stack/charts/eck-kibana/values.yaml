@@ -70,6 +70,10 @@ elasticsearchRef: {}
 #
 # enterpriseSearchRef:
 
+# Reference to an PackageRegistry running in the same Kubernetes cluster
+#
+# packageRegistryRef:
+
 # The Kibana configuration (kibana.yml)
 # ref: https://www.elastic.co/guide/en/kibana/current/settings.html
 #

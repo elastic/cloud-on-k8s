@@ -57,6 +57,35 @@ fi
 touch "${init_plugins_copied_flag}"
 echo "Files copy duration: $(duration $mv_start) sec."
 
+#############################
+# CA Certificate Management #
+#############################
+
+# Handle EPR CA certificate consolidation with user-provided NODE_EXTRA_CA_CERTS
+# This must run before the early exit to ensure certificates are always processed
+if [[ -f "` + volume.EPRCACertPath + `" ]]; then
+	echo "EPR CA certificate found, checking for user-provided CA bundle..."
+	
+	# Check if user provided their own NODE_EXTRA_CA_CERTS (from init container env)
+	if [[ -n "${NODE_EXTRA_CA_CERTS:-}" ]]; then
+		echo "User provided NODE_EXTRA_CA_CERTS: $NODE_EXTRA_CA_CERTS"
+		if [[ -f "$NODE_EXTRA_CA_CERTS" ]]; then
+			# Create combined CA bundle in config directory for main container
+			COMBINED_CA_PATH="` + volume.InitContainerConfigVolumeMountPath + `/combined-ca-bundle.crt"
+			echo "Creating combined CA bundle at: $COMBINED_CA_PATH"
+			cp "$NODE_EXTRA_CA_CERTS" "$COMBINED_CA_PATH"
+			cat "` + volume.EPRCACertPath + `" >> "$COMBINED_CA_PATH"
+			echo "Combined CA bundle created with user CA + EPR CA certificates."
+		else
+			echo "User-specified NODE_EXTRA_CA_CERTS file not found: $NODE_EXTRA_CA_CERTS"
+			echo "Creating EPR-only CA bundle..."
+			cp "` + volume.EPRCACertPath + `" "` + volume.InitContainerConfigVolumeMountPath + `/combined-ca-bundle.crt"
+		fi
+	else
+		echo "No user CA bundle provided, EPR CA will be used directly via NODE_EXTRA_CA_CERTS."
+	fi
+fi
+
 init_config_initialized_flag=` + volume.InitContainerConfigVolumeMountPath + `/elastic-internal-init-config.ok
 
 if [[ -f "${init_config_initialized_flag}" ]]; then

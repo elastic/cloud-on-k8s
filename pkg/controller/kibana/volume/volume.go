@@ -39,4 +39,6 @@ const (
 	InternalConfigVolumeName = "elastic-internal-kibana-config"
 	// InternalConfigVolumeMountPath is the path where the generated configuration is mounted in the Kibana init container
 	InternalConfigVolumeMountPath = "/mnt/elastic-internal/kibana-config"
+	// EPRCACertPath is the path to the EPR CA certificate file
+	EPRCACertPath = "/usr/share/kibana/config/epr-certs/ca.crt"
 )

@@ -340,6 +340,20 @@ updating docs/operating-eck/eck-permissions.asciidoc file.
   - create
   - update
   - patch
+- apiGroups:
+  - epr.k8s.elastic.co
+  resources:
+  - elasticpackageregistries
+  - elasticpackageregistries/status
+  verbs:
+  - get
+  - list
+  - watch
+  - create
+  - update
+  - patch
+  - delete
+  - deletecollection
 {{- end -}}
 
 {{/*
