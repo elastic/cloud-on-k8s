@@ -8,6 +8,7 @@ import (
 	"context"
 	"reflect"
 
+	appsv1 "k8s.io/api/apps/v1"
 	v1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
@@ -132,28 +133,12 @@ func reconcilePodVehicle(params Params, podTemplate corev1.PodTemplateSpec) (*re
 	return results.WithError(err), status
 }
 
-func maybeAddConfigPathInitContainer(ctx context.Context, k8sClient k8s.Client, agent agentv1alpha1.Agent) (*corev1.Container, error) {
-	type duck struct {
-		client.Object
-		Spec struct {
-			Template struct {
-				corev1.PodTemplateSpec
-			} `json:"template"`
-		} `json:"spec"`
-	}
-	var d duck
-	if err := k8sClient.Get(ctx, types.NamespacedName{
-		Namespace: agent.Namespace,
-		Name:      Name(agent.Name),
-	}, &d); err != nil {
-		return nil, err
-	}
-
+func maybeAddConfigPathInitContainer(spec corev1.PodTemplateSpec) *corev1.Container {
 	// if the existing pod template spec environment variables for the agent container do not include STATE_PATH
 	// add an init container to help with the migration process from /etc/agent to /usr/share/elastic-agent/state.
 	hasStatePath := false
 	image := ""
-	for _, container := range d.Spec.Template.Spec.Containers {
+	for _, container := range spec.Spec.Containers {
 		if container.Name == "agent" {
 			image = container.Image
 			for _, env := range container.Env {
@@ -176,12 +161,23 @@ fi
 			Name:    "config-path-init",
 			Image:   image,
 			Command: []string{"/usr/bin/env", "bash", "-c", cmd},
-		}, nil
+		}
 	}
-	return nil, nil
+	return nil
 }
 
 func reconcileDeployment(rp ReconciliationParams) (int32, int32, error) {
+	var deploy appsv1.Deployment
+	if err := rp.client.Get(rp.ctx, types.NamespacedName{
+		Namespace: rp.agent.Namespace,
+		Name:      Name(rp.agent.Name),
+	}, &deploy); err != nil && !apierrors.IsNotFound(err) {
+		return 0, 0, err
+	}
+	initContainer := maybeAddConfigPathInitContainer(deploy.Spec.Template)
+	if initContainer != nil {
+		rp.podTemplate.Spec.InitContainers = append(rp.podTemplate.Spec.InitContainers, *initContainer)
+	}
 	d := deployment.New(deployment.Params{
 		Name:                 Name(rp.agent.Name),
 		Namespace:            rp.agent.Namespace,
@@ -205,6 +201,17 @@ func reconcileDeployment(rp ReconciliationParams) (int32, int32, error) {
 }
 
 func reconcileStatefulSet(rp ReconciliationParams) (int32, int32, error) {
+	var sts appsv1.StatefulSet
+	if err := rp.client.Get(rp.ctx, types.NamespacedName{
+		Namespace: rp.agent.Namespace,
+		Name:      Name(rp.agent.Name),
+	}, &sts); err != nil && !apierrors.IsNotFound(err) {
+		return 0, 0, err
+	}
+	initContainer := maybeAddConfigPathInitContainer(sts.Spec.Template)
+	if initContainer != nil {
+		rp.podTemplate.Spec.InitContainers = append(rp.podTemplate.Spec.InitContainers, *initContainer)
+	}
 	d := statefulset.New(statefulset.Params{
 		Name:                 Name(rp.agent.Name),
 		Namespace:            rp.agent.Namespace,
@@ -230,6 +237,17 @@ func reconcileStatefulSet(rp ReconciliationParams) (int32, int32, error) {
 }
 
 func reconcileDaemonSet(rp ReconciliationParams) (int32, int32, error) {
+	var existingDS appsv1.DaemonSet
+	if err := rp.client.Get(rp.ctx, types.NamespacedName{
+		Namespace: rp.agent.Namespace,
+		Name:      Name(rp.agent.Name),
+	}, &existingDS); err != nil && !apierrors.IsNotFound(err) {
+		return 0, 0, err
+	}
+	initContainer := maybeAddConfigPathInitContainer(existingDS.Spec.Template)
+	if initContainer != nil {
+		rp.podTemplate.Spec.InitContainers = append(rp.podTemplate.Spec.InitContainers, *initContainer)
+	}
 	ds := daemonset.New(daemonset.Params{
 		PodTemplate:          rp.podTemplate,
 		Name:                 Name(rp.agent.Name),
