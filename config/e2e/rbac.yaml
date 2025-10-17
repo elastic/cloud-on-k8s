@@ -123,6 +123,12 @@ rules:
       - create
       - update
   - apiGroups:
+      - ""
+    resources:
+      - persistentvolumes
+    verbs:
+      - list # for ECK Diagnostics
+  - apiGroups:
       - "security.openshift.io"
     resources:
       - securitycontextconstraints
@@ -136,6 +142,13 @@ rules:
     - podsecuritypolicies
     verbs:
     - get
+    - list # for ECK Diagnostics
+  - apiGroups:
+      - "networking.k8s.io"
+    resources:
+      - networkpolicies
+    verbs:
+      - list # for ECK Diagnostics
     # to dynamically bind service accounts to Beat ClusterRoles
   - apiGroups:
     - rbac.authorization.k8s.io
@@ -171,6 +184,12 @@ rules:
       - update
       - delete
       - create
+  - apiGroups:
+      - "apps"
+    resources:
+      - controllerrevisions
+    verbs:
+      - list # for ECK Diagnostics
     # to create resources defined in recipes
   - apiGroups:
     - "extensions"

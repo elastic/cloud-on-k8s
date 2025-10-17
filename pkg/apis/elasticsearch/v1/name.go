@@ -200,3 +200,12 @@ func StackConfigAdditionalSecretName(esName string, secretName string) string {
 	secretNameHash := hash.HashObject(secretName)
 	return ESNamer.Suffix(esName, "scp", secretNameHash)
 }
+
+// PodDisruptionBudgetNameForRole returns the name of the PodDisruptionBudget for a given Elasticsearch cluster name and role.
+func PodDisruptionBudgetNameForRole(esName string, role string) string {
+	// For coordinating nodes (no roles), append "coordinating" to the name
+	if role == "" {
+		role = "coordinating"
+	}
+	return ESNamer.Suffix(esName, defaultPodDisruptionBudget, role)
+}

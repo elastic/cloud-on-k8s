@@ -9,8 +9,6 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/metadata"
-
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
@@ -21,6 +19,8 @@ import (
 	commonv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/common/v1"
 	esv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/elasticsearch/v1"
 	kbv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/kibana/v1"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/metadata"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/password/fixtures"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/label"
 	esuser "github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/user"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/k8s"
@@ -128,7 +128,8 @@ func Test_reconcileEsUser(t *testing.T) {
 					ObjectMeta: metav1.ObjectMeta{
 						Name:      userSecretName,
 						Namespace: "other",
-					}}},
+					},
+				}},
 				kibana: kibanaFixture,
 				es:     esFixture,
 			},
@@ -202,7 +203,8 @@ func Test_reconcileEsUser(t *testing.T) {
 							esuser.PasswordHashField: []byte("$2a$10$mE3yo/AkZgR4eVW9kbA1TeIQ40Jv6WaWU494rx4C6EhLvuY0BSg4e"),
 							esuser.UserRolesField:    []byte("kibana_system"),
 						},
-					}},
+					},
+				},
 				kibana: kibanaFixture,
 				es:     esFixture,
 			},
@@ -262,6 +264,7 @@ func Test_reconcileEsUser(t *testing.T) {
 				"kibana_system",
 				"kibana-user",
 				tt.args.es,
+				fixtures.MustTestRandomGenerator(24),
 			); (err != nil) != tt.wantErr {
 				t.Errorf("reconcileEsUser() error = %v, wantErr %v", err, tt.wantErr)
 			}

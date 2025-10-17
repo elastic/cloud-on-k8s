@@ -26,6 +26,7 @@ const (
 	EnableWebhookFlag                    = "enable-webhook"
 	EnforceRBACOnRefsFlag                = "enforce-rbac-on-refs"
 	ExposedNodeLabels                    = "exposed-node-labels"
+	PasswordLengthFlag                   = "password-length"
 	PasswordHashCacheSize                = "password-hash-cache-size"
 	IPFamilyFlag                         = "ip-family"
 	KubeClientTimeout                    = "kube-client-timeout"
