@@ -167,7 +167,7 @@ func reconcileDeployment(rp ReconciliationParams) (int32, int32, error) {
 	}, &deploy); err != nil && !apierrors.IsNotFound(err) {
 		return 0, 0, err
 	}
-	initContainer := maybeAddConfigPathInitContainer(deploy.Spec.Template)
+	initContainer := maybeAddConfigPathInitContainer(rp.ctx, deploy.Spec.Template)
 	if initContainer != nil {
 		rp.podTemplate.Spec.InitContainers = append(rp.podTemplate.Spec.InitContainers, *initContainer)
 	}
@@ -201,7 +201,7 @@ func reconcileStatefulSet(rp ReconciliationParams) (int32, int32, error) {
 	}, &sts); err != nil && !apierrors.IsNotFound(err) {
 		return 0, 0, err
 	}
-	initContainer := maybeAddConfigPathInitContainer(sts.Spec.Template)
+	initContainer := maybeAddConfigPathInitContainer(rp.ctx, sts.Spec.Template)
 	if initContainer != nil {
 		rp.podTemplate.Spec.InitContainers = append(rp.podTemplate.Spec.InitContainers, *initContainer)
 	}
