@@ -29,6 +29,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/statefulset"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/tracing"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/k8s"
+	logconf "github.com/elastic/cloud-on-k8s/v3/pkg/utils/log"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/pointer"
 )
 
@@ -124,11 +125,12 @@ func reconcilePodVehicle(params Params, podTemplate corev1.PodTemplateSpec) (*re
 	return results.WithError(err), status
 }
 
-func maybeAddConfigPathInitContainer(spec corev1.PodTemplateSpec) *corev1.Container {
+func maybeAddConfigPathInitContainer(ctx context.Context, spec corev1.PodTemplateSpec) *corev1.Container {
 	// if the existing pod template spec environment variables for the agent container do not include STATE_PATH
 	// add an init container to help with the migration process from /etc/agent to /usr/share/elastic-agent/state.
 	hasStatePath := false
 	image := ""
+	logconf.FromContext(ctx).Info("maybeAddConfigPathInitContainer", "spec", spec)
 	for _, container := range spec.Spec.Containers {
 		if container.Name == "agent" {
 			image = container.Image
@@ -235,7 +237,7 @@ func reconcileDaemonSet(rp ReconciliationParams) (int32, int32, error) {
 	}, &existingDS); err != nil && !apierrors.IsNotFound(err) {
 		return 0, 0, err
 	}
-	initContainer := maybeAddConfigPathInitContainer(existingDS.Spec.Template)
+	initContainer := maybeAddConfigPathInitContainer(rp.ctx, existingDS.Spec.Template)
 	if initContainer != nil {
 		rp.podTemplate.Spec.InitContainers = append(rp.podTemplate.Spec.InitContainers, *initContainer)
 	}
