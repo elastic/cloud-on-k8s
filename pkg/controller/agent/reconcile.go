@@ -162,6 +162,12 @@ fi
 			Name:    "config-path-init",
 			Image:   image,
 			Command: []string{"/usr/bin/env", "bash", "-c", cmd},
+			VolumeMounts: []corev1.VolumeMount{
+				{
+					Name:      DataVolumeName,
+					MountPath: "/usr/share/elastic-agent/state",
+				},
+			},
 		}
 	}
 	return nil
