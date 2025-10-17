@@ -39,15 +39,6 @@ func reconcilePodVehicle(params Params, podTemplate corev1.PodTemplateSpec) (*re
 	spec := params.Agent.Spec
 	name := Name(params.Agent.Name)
 
-	initContainer, err := maybeAddConfigPathInitContainer(params.Context, params.Client, params.Agent)
-	if err != nil {
-		return results.WithError(err), params.Status
-	}
-
-	if initContainer != nil {
-		podTemplate.Spec.InitContainers = append(podTemplate.Spec.InitContainers, *initContainer)
-	}
-
 	var toDelete []client.Object
 	var reconciliationFunc func(params ReconciliationParams) (int32, int32, error)
 	switch {
