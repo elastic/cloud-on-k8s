@@ -944,7 +944,7 @@ if [[ -f /mnt/elastic-internal/elasticsearch-association/%[1]s/elasticsearch/cer
     /usr/sbin/update-ca-certificates
   fi
 fi
-/usr/bin/tini -- /usr/local/bin/docker-entrypoint -e
+/usr/bin/tini -- /usr/local/bin/docker-entrypoint -e "$@"
 `, ns)}
 	}
 	for _, tt := range []struct {
