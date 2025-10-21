@@ -98,7 +98,6 @@ func reconcilePodVehicle(params Params, podTemplate corev1.PodTemplateSpec) (*re
 		agent:       params.Agent,
 		podTemplate: podTemplate,
 	})
-
 	if err != nil {
 		return results.WithError(err), params.Status
 	}
