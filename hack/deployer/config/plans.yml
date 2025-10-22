@@ -178,7 +178,7 @@ plans:
   kubernetesVersion: 1.34.1
   k3d:
     clientImage: ghcr.io/k3d-io/k3d:5.8.3
-    nodeImage: rancher/k3s:v1.34.1+k3s1
+    nodeImage: rancher/k3s:v1.34.1-k3s1
 - id: k3d-ci
   operation: create
   clusterName: k3d-ci
@@ -186,4 +186,4 @@ plans:
   kubernetesVersion: 1.34.1
   k3d:
     clientImage: ghcr.io/k3d-io/k3d:5.8.3
-    nodeImage: rancher/k3s:v1.34.1+k3s1
+    nodeImage: rancher/k3s:v1.34.1-k3s1
