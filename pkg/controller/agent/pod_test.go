@@ -82,12 +82,8 @@ func Test_amendBuilderForFleetMode(t *testing.T) {
 			wantPodSpec: generatePodSpec(func(ps corev1.PodSpec) corev1.PodSpec {
 				ps.Containers[0].Env = []corev1.EnvVar{
 					{
-						Name:  "STATE_PATH",
-						Value: "/usr/share/elastic-agent/state",
-					},
-					{
 						Name:  "CONFIG_PATH",
-						Value: "/usr/share/elastic-agent/state",
+						Value: "/usr/share/elastic-agent",
 					},
 				}
 
@@ -182,10 +178,6 @@ func Test_amendBuilderForFleetMode(t *testing.T) {
 					{
 						Name:  "FLEET_URL",
 						Value: "https://agent-agent-http.default.svc:8220",
-					},
-					{
-						Name:  "STATE_PATH",
-						Value: "/usr/share/elastic-agent/state",
 					},
 					{
 						Name:  "CONFIG_PATH",
@@ -283,10 +275,6 @@ func Test_amendBuilderForFleetMode(t *testing.T) {
 						Value: "https://agent-agent-http.default.svc:8220",
 					},
 					{
-						Name:  "STATE_PATH",
-						Value: "/usr/share/elastic-agent/state",
-					},
-					{
 						Name:  "CONFIG_PATH",
 						Value: "/usr/share/elastic-agent/state",
 					},
@@ -323,10 +311,6 @@ func Test_amendBuilderForFleetMode(t *testing.T) {
 			fleetCerts: fleetCertsFixture,
 			wantPodSpec: generatePodSpec(func(ps corev1.PodSpec) corev1.PodSpec {
 				ps.Containers[0].Env = []corev1.EnvVar{
-					{
-						Name:  "STATE_PATH",
-						Value: "/usr/share/elastic-agent/state",
-					},
 					{
 						Name:  "CONFIG_PATH",
 						Value: "/usr/share/elastic-agent/state",
@@ -416,10 +400,6 @@ func Test_amendBuilderForFleetMode(t *testing.T) {
 					{
 						Name:  "FLEET_URL",
 						Value: "http://agent-agent-http.default.svc:8220",
-					},
-					{
-						Name:  "STATE_PATH",
-						Value: "/usr/share/elastic-agent/state",
 					},
 					{
 						Name:  "CONFIG_PATH",
