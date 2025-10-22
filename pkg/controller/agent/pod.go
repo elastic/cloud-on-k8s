@@ -247,6 +247,7 @@ func amendBuilderForFleetMode(params Params, fleetCerts *certificates.Certificat
 	builder = builder.
 		WithResources(defaultFleetResources).
 		WithEnv(
+			corev1.EnvVar{Name: "STATE_PATH", Value: DataMountPath},
 			corev1.EnvVar{Name: "CONFIG_PATH", Value: fleetConfigPath(params.AgentVersion)},
 		)
 
