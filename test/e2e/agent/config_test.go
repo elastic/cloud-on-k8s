@@ -196,6 +196,43 @@ func TestFleetMode(t *testing.T) {
 	})
 }
 
+func TestFleetModeAdvancedConfig(t *testing.T) {
+
+	name := "fleet-adv-cfg"
+	esBuilder := elasticsearch.NewBuilder(name).
+		WithESMasterDataNodes(3, elasticsearch.DefaultResources)
+
+	kbBuilder := kibana.NewBuilder(name).
+		WithElasticsearchRef(esBuilder.Ref()).
+		WithNodeCount(1)
+
+	fleetServerBuilder := agent.NewBuilder(name+"-fs").
+		WithRoles(agent.AgentFleetModeRoleName).
+		WithOpenShiftRoles(test.UseSCCRole).
+		WithDeployment().
+		WithFleetMode().
+		WithFleetServer().
+		WithElasticsearchRefs(agent.ToOutput(esBuilder.Ref(), "default")).
+		WithKibanaRef(kbBuilder.Ref()).
+		// Check that we have Kubernetes deployment metadata in any log index (this can only be done on the Fleet server builder which has an ES output):
+		WithESValidation(agent.HasEvent("/logs-*/_search?q=_exists_:kubernetes.deployment.name"), "default")
+
+	agentBuilder := agent.NewBuilder(name + "-ea").
+		WithRoles(agent.AgentFleetModeRoleName).
+		WithOpenShiftRoles(test.UseSCCRole).
+		WithFleetMode().
+		WithKibanaRef(kbBuilder.Ref()).
+		WithFleetServerRef(fleetServerBuilder.Ref())
+
+	kbBuilder = kbBuilder.WithConfig(fleetConfigForKibana(t, fleetServerBuilder.Agent.Spec.Version, esBuilder.Ref(), fleetServerBuilder.Ref(), true))
+
+	fleetServerBuilder = agent.ApplyYamls(t, fleetServerBuilder, "", E2EAgentFleetModePodTemplate)
+	agentBuilder = agent.ApplyYamls(t, agentBuilder, E2EAgentFleetModeAdvancedConfig, E2EAgentFleetModeHostPathPodTemplate)
+
+	test.Sequence(nil, test.EmptySteps, esBuilder, kbBuilder, fleetServerBuilder, agentBuilder).RunSequential(t)
+
+}
+
 func fleetConfigForKibana(t *testing.T, agentVersion string, esRef v1.ObjectSelector, fsRef v1.ObjectSelector, tlsEnabled bool) map[string]interface{} {
 	t.Helper()
 	kibanaConfig := map[string]interface{}{}
