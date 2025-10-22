@@ -15,6 +15,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
+	agentv1alpha1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/agent/v1alpha1"
 	v1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/common/v1"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/version"
 	"github.com/elastic/cloud-on-k8s/v3/test/e2e/test"
@@ -197,6 +198,9 @@ func TestFleetMode(t *testing.T) {
 }
 
 func TestFleetModeAdvancedConfig(t *testing.T) {
+	if version.MustParse(test.Ctx().ElasticStackVersion).LT(agentv1alpha1.FleetAdvancedConfigMinVersion) {
+		t.Skipf("Skipping test %s because Fleet advanced config is not supported for stack version %s", t.Name(), test.Ctx().ElasticStackVersion)
+	}
 
 	name := "fleet-adv-cfg"
 	esBuilder := elasticsearch.NewBuilder(name).
