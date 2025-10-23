@@ -45,7 +45,40 @@ const (
         name: system-1
       - package:
           name: kubernetes
-        name: kubernetes-1`
+        name: kubernetes-1
+        inputs:
+        - type: kubelet-kubernetes/metrics
+          enabled: false
+        - type: kube-state-metrics-kubernetes/metrics
+          enabled: false
+        - type:  kube-apiserver-kubernetes/metrics
+          enabled: false
+        - type:  kube-proxy-kubernetes/metrics
+          enabled: false
+        - type:  kube-scheduler-kubernetes/metrics
+          enabled: false
+        - type: kube-controller-manager-kubernetes/metrics
+          enabled: false
+        - type: events-kubernetes/metrics
+          enabled: false
+        - type: container-logs-filestream
+          enabled: true
+          streams:
+          - data_stream:
+              dataset: kubernetes.container_logs
+            enabled: true
+            vars:
+            - name: paths
+              value:
+              - /var/log/containers/*${kubernetes.container.id}.log
+            - name: symlinks
+              value: true
+            - name: containerParserStream
+              value: all
+            - name: containerParserFormat
+              value: auto
+        - type: audit-logs-filestream
+          enabled: false`
 
 	E2EAgentSystemIntegrationConfig = `id: 2d70a6f0-33a5-11eb-bb2f-418d0388a8cf
 revision: 2
@@ -396,4 +429,35 @@ inputs:
   securityContext:
     runAsUser: 0
 `
+	E2EAgentFleetModeHostPathPodTemplate = `spec:
+   hostNetwork: true
+   dnsPolicy: ClusterFirstWithHostNet
+   automountServiceAccountToken: true
+   securityContext:
+     runAsUser: 0
+   containers:
+   - name: agent
+     volumeMounts:
+     - mountPath: /var/lib/docker/containers
+       name: varlibdockercontainers
+     - mountPath: /var/log/containers
+       name: varlogcontainers
+     - mountPath: /var/log/pods
+       name: varlogpods
+   volumes:
+   - name: varlibdockercontainers
+     hostPath:
+       path: /var/lib/docker/containers
+   - name: varlogcontainers
+     hostPath:
+       path: /var/log/containers
+   - name: varlogpods
+     hostPath:
+       path: /var/log/pods`
+
+	E2EAgentFleetModeAdvancedConfig = `fleet:
+  enabled: true
+providers.kubernetes:
+  add_resource_metadata:
+    deployment: true`
 )
