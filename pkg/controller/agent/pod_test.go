@@ -87,7 +87,7 @@ func Test_amendBuilderForFleetMode(t *testing.T) {
 					},
 					{
 						Name:  "CONFIG_PATH",
-						Value: "/usr/share/elastic-agent/state",
+						Value: "/usr/share/elastic-agent",
 					},
 				}
 
