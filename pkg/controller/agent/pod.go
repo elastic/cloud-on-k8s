@@ -160,6 +160,7 @@ func buildPodTemplate(params Params, fleetCerts *certificates.CertificatesSecret
 
 		builder = builder.
 			WithResources(defaultResources).
+			WithEnv(corev1.EnvVar{Name: "STATE_PATH", Value: DataMountPath}).
 			// Point agent to static config file mounted from a secret to /etc/agent/elastic-agent.yml
 			WithArgs("-e", "-c", path.Join(ConfigMountPath, ConfigFileName))
 	}
