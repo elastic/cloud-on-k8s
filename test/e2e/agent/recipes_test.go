@@ -127,6 +127,11 @@ func TestFleetKubernetesIntegrationRecipe(t *testing.T) {
 func TestFleetKubernetesNonRootIntegrationRecipe(t *testing.T) {
 	v := version.MustParse(test.Ctx().ElasticStackVersion)
 
+	if (v.GE(version.MinFor(7, 17, 28)) && v.LT(version.MinFor(8, 0, 0))) ||
+		(v.GE(version.MinFor(8, 1, 3)) && v.LT(version.MinFor(8, 2, 0))) {
+		t.Skipf("Skipped as version %s is affected by https://github.com/elastic/kibana/pull/236788", v)
+	}
+
 	// https://github.com/elastic/cloud-on-k8s/issues/6331
 	if v.LT(version.MinFor(8, 7, 0)) && v.GE(version.MinFor(8, 6, 0)) {
 		t.SkipNow()
