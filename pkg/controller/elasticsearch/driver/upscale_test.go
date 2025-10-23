@@ -743,7 +743,7 @@ func TestHandleUpscaleAndSpecChanges_VersionUpgradeMasterFirstFlow(t *testing.T)
 	require.NoError(t, k8sClient.Get(context.Background(), types.NamespacedName{Namespace: "ns", Name: "es"}, &es))
 	ctx.es = es
 	actualStatefulSets = res.ActualStatefulSets
-	res, err = HandleUpscaleAndSpecChanges(ctx, actualStatefulSets, expectedResources)
+	_, err = HandleUpscaleAndSpecChanges(ctx, actualStatefulSets, expectedResources)
 	require.NoError(t, err)
 
 	// Verify master StatefulSet is now updated
