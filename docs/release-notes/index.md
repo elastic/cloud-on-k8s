@@ -14,11 +14,11 @@ Review the changes, fixes, and more in each release of Elastic Cloud on Kubernet
 
 #### Automatic pod disruption budget (Enterprise feature)
 
-ECK now offers better out-of-the-box pod disruption budgets that automatically keep your cluster available as pods move across nodes. The new policy calculates the number of pods per tier that can sustain replacement and automatically generates a pod-disruption budget for each tier, enabling the Elasticsearch cluster to vacate Kubernetes nodes more quickly, while considering cluster health, without interruption.
+ECK now offers better out-of-the-box PodDisruptionBudgets that automatically keep your cluster available as Pods move across nodes. The new policy calculates the number of Pods per tier that can sustain replacement and automatically generates a PodDisruptionBudget for each tier, enabling the Elasticsearch cluster to vacate Kubernetes nodes more quickly, while considering cluster health, without interruption.
 
 #### User Password Generation (Enterprise feature)
 
-ECK will now generate longer passwords by default for the administrative user of each Elasticsearch Cluster. The password is 24 characters in length by default (can be configured to a maximum of 72 characters), incorporating alphabetic and numeric characters, to make password complexity stronger.
+ECK will now generate longer passwords by default for the administrative user of each Elasticsearch cluster. The password is 24 characters in length by default (can be configured to a maximum of 72 characters), incorporating alphabetic and numeric characters, to make password complexity stronger.
 
 ### Features and enhancements  [elastic-cloud-kubernetes-320-features-and-enhancements]
 
