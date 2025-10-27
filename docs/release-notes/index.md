@@ -22,27 +22,43 @@ ECK will now generate longer passwords by default for the administrative user of
 
 ### Features and enhancements  [elastic-cloud-kubernetes-320-features-and-enhancements]
 
-- Fix beats stack monitoring cert reload [#8833](https://github.com/elastic/cloud-on-k8s/pull/8833) (issue: [#5448](https://github.com/elastic/cloud-on-k8s/issues/5448))
-- Allow configuration parameters for file-base generated passwords. [#8817](https://github.com/elastic/cloud-on-k8s/pull/8817) (issues: [#2795](https://github.com/elastic/cloud-on-k8s/issues/2795), [#8693](https://github.com/elastic/cloud-on-k8s/issues/8693))
-- Add automemlimit to automatically set GOMEMLIMIT. [#8814](https://github.com/elastic/cloud-on-k8s/pull/8814) (issue: [#8790](https://github.com/elastic/cloud-on-k8s/issues/8790))
-- Improving the default PDB implementation. [#8780](https://github.com/elastic/cloud-on-k8s/pull/8780) (issue: [#2936](https://github.com/elastic/cloud-on-k8s/issues/2936))
+- Enable certificate reloading for stack monitoring Beats [#8833](https://github.com/elastic/cloud-on-k8s/pull/8833) (issue: [#5448](https://github.com/elastic/cloud-on-k8s/issues/5448))
+- Allow configuration of file-based password character set and length [#8817](https://github.com/elastic/cloud-on-k8s/pull/8817) (issues: [#2795](https://github.com/elastic/cloud-on-k8s/issues/2795), [#8693](https://github.com/elastic/cloud-on-k8s/issues/8693))
+- Automatically set GOMEMLIMIT based on CGroup memory limits [#8814](https://github.com/elastic/cloud-on-k8s/pull/8814) (issue: [#8790](https://github.com/elastic/cloud-on-k8s/issues/8790))
+- Introduce granular PodDisruptionBudgets based on node roles [#8780](https://github.com/elastic/cloud-on-k8s/pull/8780) (issue: [#2936](https://github.com/elastic/cloud-on-k8s/issues/2936))
 
 ### Fixes  [elastic-cloud-kubernetes-320-fixes]
 
-- Allow elasticsearchRef.secretName for eck-stack/Kibana [#8822](https://github.com/elastic/cloud-on-k8s/pull/8822) (issue: [#8816](https://github.com/elastic/cloud-on-k8s/issues/8816))
+- Gate advanced Fleet config logic to Agent v8.13 and later [#8869](https://github.com/elastic/cloud-on-k8s/pull/8869)
+- Set CONFIG_PATH and STATE_PATH to the same directory in Fleet mode [#8856](https://github.com/elastic/cloud-on-k8s/pull/8856) (issue: [#8819](https://github.com/elastic/cloud-on-k8s/issues/8819))
+- Do not set credentials label on Kibana config secret [#8852](https://github.com/elastic/cloud-on-k8s/pull/8852) (issue: [#8839](https://github.com/elastic/cloud-on-k8s/issues/8839))
+- Allow elasticsearchRef.secretName in Kibana helm validation [#8822](https://github.com/elastic/cloud-on-k8s/pull/8822) (issue: [#8816](https://github.com/elastic/cloud-on-k8s/issues/8816))
 
 ### Documentation improvements  [elastic-cloud-kubernetes-320-documentation-improvements]
 
-- Fix broken Logstash samples [#8801](https://github.com/elastic/cloud-on-k8s/pull/8801)
-- [DOC] Comment JVM heap settings [#8753](https://github.com/elastic/cloud-on-k8s/pull/8753)
+- Update Logstash recipes from to filestream input [#8801](https://github.com/elastic/cloud-on-k8s/pull/8801)
+- Recipe for exposing Fleet server to outside of the Kubernetes cluster [#8788](https://github.com/elastic/cloud-on-k8s/pull/8788)
+- Clarify secretName restrictions [#8782](https://github.com/elastic/cloud-on-k8s/pull/8782)
+- Update ES_JAVA_OPTS comments and explain auto-heap behavior [#8753](https://github.com/elastic/cloud-on-k8s/pull/8753)
 
 ### Miscellaneous  [elastic-cloud-kubernetes-320-miscellaneous]
 
+- chore(deps): update go [#8837](https://github.com/elastic/cloud-on-k8s/pull/8837)
+- fix(deps): update all ungrouped dependencies [#8836](https://github.com/elastic/cloud-on-k8s/pull/8836)
 - fix(deps): update all ungrouped dependencies [#8826](https://github.com/elastic/cloud-on-k8s/pull/8826)
 - chore(deps): update go to v1.25.1 [#8823](https://github.com/elastic/cloud-on-k8s/pull/8823)
 - Bump github.com/go-viper/mapstructure/v2 from 2.3.0 to 2.4.0 in /hack/operatorhub [#8810](https://github.com/elastic/cloud-on-k8s/pull/8810)
 - fix(deps): update all ungrouped dependencies [#8809](https://github.com/elastic/cloud-on-k8s/pull/8809)
+- chore(deps): update docker.elastic.co/wolfi/go docker tag to v1.25.0-r1 [#8808](https://github.com/elastic/cloud-on-k8s/pull/8808)
 - Upgrade k8s libraries [#8806](https://github.com/elastic/cloud-on-k8s/pull/8806)
+- Bump github.com/go-viper/mapstructure/v2 from 2.3.0 to 2.4.0 in /hack/helm/release [#8802](https://github.com/elastic/cloud-on-k8s/pull/8802)
+- Bump helm.sh/helm/v3 from 3.18.4 to 3.18.5 in /hack/helm/release [#8791](https://github.com/elastic/cloud-on-k8s/pull/8791)
+- fix(deps): update module github.com/elastic/cloud-on-k8s/v3 to v3.1.0 [#8787](https://github.com/elastic/cloud-on-k8s/pull/8787)
+- chore(deps): update go [#8786](https://github.com/elastic/cloud-on-k8s/pull/8786)
+- fix(deps): update all ungrouped dependencies [#8785](https://github.com/elastic/cloud-on-k8s/pull/8785)
+- chore(deps): update docker.elastic.co/wolfi/go docker tag to v1.24.5-r2 [#8763](https://github.com/elastic/cloud-on-k8s/pull/8763)
+- fix(deps): update all ungrouped dependencies [#8762](https://github.com/elastic/cloud-on-k8s/pull/8762)
+
 
 ## 3.1.0 [elastic-cloud-kubernetes-310-release-notes]
 
