@@ -25,7 +25,6 @@ If you upgrade to 3.2.0, downgrade to a previous version (like 3.1.0), and then 
 
 You will see errors in the agent logs similar to one of the following:
 
-
 `Error: fail to read state store '/usr/share/elastic-agent/state/data/state.enc': failed migrating YAML store JSON store: could not parse YAML `
 `fail to decode bytes: cipher: message authentication failed`
 
