@@ -43,22 +43,20 @@ ECK will now generate longer passwords by default for the administrative user of
 
 ### Miscellaneous  [elastic-cloud-kubernetes-320-miscellaneous]
 
-- chore(deps): update go [#8837](https://github.com/elastic/cloud-on-k8s/pull/8837)
-- fix(deps): update all ungrouped dependencies [#8836](https://github.com/elastic/cloud-on-k8s/pull/8836)
-- fix(deps): update all ungrouped dependencies [#8826](https://github.com/elastic/cloud-on-k8s/pull/8826)
-- chore(deps): update go to v1.25.1 [#8823](https://github.com/elastic/cloud-on-k8s/pull/8823)
-- Bump github.com/go-viper/mapstructure/v2 from 2.3.0 to 2.4.0 in /hack/operatorhub [#8810](https://github.com/elastic/cloud-on-k8s/pull/8810)
-- fix(deps): update all ungrouped dependencies [#8809](https://github.com/elastic/cloud-on-k8s/pull/8809)
-- chore(deps): update docker.elastic.co/wolfi/go docker tag to v1.25.0-r1 [#8808](https://github.com/elastic/cloud-on-k8s/pull/8808)
-- Upgrade k8s libraries [#8806](https://github.com/elastic/cloud-on-k8s/pull/8806)
+:::{dropdown} Updated dependencies
 - Bump github.com/go-viper/mapstructure/v2 from 2.3.0 to 2.4.0 in /hack/helm/release [#8802](https://github.com/elastic/cloud-on-k8s/pull/8802)
+- Bump github.com/go-viper/mapstructure/v2 from 2.3.0 to 2.4.0 in /hack/operatorhub [#8810](https://github.com/elastic/cloud-on-k8s/pull/8810)
 - Bump helm.sh/helm/v3 from 3.18.4 to 3.18.5 in /hack/helm/release [#8791](https://github.com/elastic/cloud-on-k8s/pull/8791)
-- fix(deps): update module github.com/elastic/cloud-on-k8s/v3 to v3.1.0 [#8787](https://github.com/elastic/cloud-on-k8s/pull/8787)
-- chore(deps): update go [#8786](https://github.com/elastic/cloud-on-k8s/pull/8786)
-- fix(deps): update all ungrouped dependencies [#8785](https://github.com/elastic/cloud-on-k8s/pull/8785)
-- chore(deps): update docker.elastic.co/wolfi/go docker tag to v1.24.5-r2 [#8763](https://github.com/elastic/cloud-on-k8s/pull/8763)
+- chore(deps): update docker.elastic.co/wolfi/go docker tag to v1.25.0-r1 [#8808](https://github.com/elastic/cloud-on-k8s/pull/8808)
+- chore(deps): update go [#8837](https://github.com/elastic/cloud-on-k8s/pull/8837)
 - fix(deps): update all ungrouped dependencies [#8762](https://github.com/elastic/cloud-on-k8s/pull/8762)
-
+- fix(deps): update all ungrouped dependencies [#8785](https://github.com/elastic/cloud-on-k8s/pull/8785)
+- fix(deps): update all ungrouped dependencies [#8809](https://github.com/elastic/cloud-on-k8s/pull/8809)
+- fix(deps): update all ungrouped dependencies [#8826](https://github.com/elastic/cloud-on-k8s/pull/8826)
+- fix(deps): update all ungrouped dependencies [#8836](https://github.com/elastic/cloud-on-k8s/pull/8836)
+- fix(deps): update module github.com/elastic/cloud-on-k8s/v3 to v3.1.0 [#8787](https://github.com/elastic/cloud-on-k8s/pull/8787)
+- Upgrade k8s libraries [#8806](https://github.com/elastic/cloud-on-k8s/pull/8806)
+:::
 
 ## 3.1.0 [elastic-cloud-kubernetes-310-release-notes]
 
