@@ -86,11 +86,6 @@ func HandleUpscaleAndSpecChanges(
 		return results, nil
 	}
 
-	targetVersion, err := version.Parse(ctx.es.Spec.Version)
-	if err != nil {
-		return results, fmt.Errorf("while parsing Elasticsearch upgrade target version: %w", err)
-	}
-
 	// Version upgrade: separate master and non-master StatefulSets
 	var masterResources, nonMasterResources []nodespec.Resources
 	for _, res := range adjusted {
@@ -110,6 +105,11 @@ func HandleUpscaleAndSpecChanges(
 		results.Requeue = true
 		results.ActualStatefulSets = actualStatefulSets
 		return results, nil
+	}
+
+	targetVersion, err := version.Parse(ctx.es.Spec.Version)
+	if err != nil {
+		return results, fmt.Errorf("while parsing Elasticsearch upgrade target version: %w", err)
 	}
 
 	// Check if all non-master StatefulSets have completed their upgrades before proceeding with master StatefulSets
