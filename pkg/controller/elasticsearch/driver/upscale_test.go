@@ -197,7 +197,6 @@ func TestHandleUpscaleAndSpecChanges(t *testing.T) {
 	comparison.RequireEqual(t, &res.ActualStatefulSets[1], &sset2)
 	// expectations should have been set
 	require.NotEmpty(t, ctx.expectations.GetGenerations())
-
 	// apply a spec change
 	actualStatefulSets = es_sset.StatefulSetList{sset1, sset2}
 	expectedResources[1].StatefulSet.Spec.Template.Labels = map[string]string{"a": "b"}
@@ -573,9 +572,16 @@ func Test_adjustResources(t *testing.T) {
 func TestHandleUpscaleAndSpecChanges_VersionUpgradeMasterFirstFlow(t *testing.T) {
 	// Test the complete upgrade flow: data nodes upgrade first, then master nodes
 	es := esv1.Elasticsearch{
-		ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: "es"},
-		Spec:       esv1.ElasticsearchSpec{Version: "8.17.1"},
-		Status:     esv1.ElasticsearchStatus{Version: "8.16.2"}, // This makes it a version upgrade
+		ObjectMeta: metav1.ObjectMeta{
+			Namespace: "ns",
+			Name:      "es",
+			Annotations: map[string]string{
+				"elasticsearch.k8s.elastic.co/initial-master-nodes": "node-1,node-2,node-3",
+				bootstrap.ClusterUUIDAnnotationName:                 "uuid",
+			},
+		},
+		Spec:   esv1.ElasticsearchSpec{Version: "8.17.1"},
+		Status: esv1.ElasticsearchStatus{Version: "8.16.2"}, // This makes it a version upgrade
 	}
 	k8sClient := k8s.NewFakeClient(&es)
 	ctx := upscaleCtx{
@@ -595,6 +601,7 @@ func TestHandleUpscaleAndSpecChanges_VersionUpgradeMasterFirstFlow(t *testing.T)
 					Name:      "master-sset",
 					Labels: map[string]string{
 						"elasticsearch.k8s.elastic.co/node-master": "true",
+						"elasticsearch.k8s.elastic.co/version":     "8.17.1",
 					},
 				},
 				Spec: appsv1.StatefulSetSpec{
@@ -603,6 +610,7 @@ func TestHandleUpscaleAndSpecChanges_VersionUpgradeMasterFirstFlow(t *testing.T)
 						ObjectMeta: metav1.ObjectMeta{
 							Labels: map[string]string{
 								"elasticsearch.k8s.elastic.co/node-master": "true",
+								"elasticsearch.k8s.elastic.co/version":     "8.17.1",
 							},
 						},
 						Spec: corev1.PodSpec{
@@ -622,7 +630,7 @@ func TestHandleUpscaleAndSpecChanges_VersionUpgradeMasterFirstFlow(t *testing.T)
 					Name:      "master-sset",
 				},
 			},
-			Config: settings.CanonicalConfig{},
+			Config: settings.NewCanonicalConfig(),
 		},
 		{
 			StatefulSet: appsv1.StatefulSet{
@@ -631,6 +639,7 @@ func TestHandleUpscaleAndSpecChanges_VersionUpgradeMasterFirstFlow(t *testing.T)
 					Name:      "data-sset",
 					Labels: map[string]string{
 						"elasticsearch.k8s.elastic.co/node-data": "true",
+						"elasticsearch.k8s.elastic.co/version":   "8.17.1",
 					},
 				},
 				Spec: appsv1.StatefulSetSpec{
@@ -639,6 +648,7 @@ func TestHandleUpscaleAndSpecChanges_VersionUpgradeMasterFirstFlow(t *testing.T)
 						ObjectMeta: metav1.ObjectMeta{
 							Labels: map[string]string{
 								"elasticsearch.k8s.elastic.co/node-data": "true",
+								"elasticsearch.k8s.elastic.co/version":   "8.17.1",
 							},
 						},
 						Spec: corev1.PodSpec{
@@ -658,7 +668,7 @@ func TestHandleUpscaleAndSpecChanges_VersionUpgradeMasterFirstFlow(t *testing.T)
 					Name:      "data-sset",
 				},
 			},
-			Config: settings.CanonicalConfig{},
+			Config: settings.NewCanonicalConfig(),
 		},
 	}
 
@@ -675,12 +685,15 @@ func TestHandleUpscaleAndSpecChanges_VersionUpgradeMasterFirstFlow(t *testing.T)
 	// Verify both StatefulSets were created
 	var masterSset appsv1.StatefulSet
 	require.NoError(t, k8sClient.Get(context.Background(), types.NamespacedName{Namespace: "ns", Name: "master-sset"}, &masterSset))
-	require.Equal(t, ptr.To[int32](3), masterSset.Spec.Replicas)
+	require.NotNil(t, masterSset.Spec.Replicas)
+	// Master nodes/pods are limited to 1 creation at a time regardless of the replicas setting.
+	require.Equal(t, int32(1), *masterSset.Spec.Replicas)
 	require.Equal(t, "docker.elastic.co/elasticsearch/elasticsearch:8.17.1", masterSset.Spec.Template.Spec.Containers[0].Image)
 
 	var dataSset appsv1.StatefulSet
 	require.NoError(t, k8sClient.Get(context.Background(), types.NamespacedName{Namespace: "ns", Name: "data-sset"}, &dataSset))
-	require.Equal(t, ptr.To[int32](2), dataSset.Spec.Replicas)
+	require.NotNil(t, dataSset.Spec.Replicas)
+	require.Equal(t, int32(2), *dataSset.Spec.Replicas)
 	require.Equal(t, "docker.elastic.co/elasticsearch/elasticsearch:8.17.1", dataSset.Spec.Template.Spec.Containers[0].Image)
 
 	// Step 2: Simulate that data StatefulSet is still upgrading (UpdatedReplicas < Replicas)
