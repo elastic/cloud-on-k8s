@@ -19,9 +19,9 @@ import (
 	"github.com/elastic/cloud-on-k8s/v3/test/e2e/test/elasticsearch"
 )
 
-// NewNonMasterFirstUpgradeWatcher creates a watcher that monitors StatefulSet upgrade order
+// newNonMasterFirstUpgradeWatcher creates a watcher that monitors StatefulSet upgrade order
 // and ensures non-master StatefulSets upgrade before master StatefulSets
-func NewNonMasterFirstUpgradeWatcher(es esv1.Elasticsearch) test.Watcher {
+func newNonMasterFirstUpgradeWatcher(es esv1.Elasticsearch) test.Watcher {
 	var violations []string
 
 	return test.NewWatcher(
@@ -67,7 +67,7 @@ func NewNonMasterFirstUpgradeWatcher(es esv1.Elasticsearch) test.Watcher {
 
 // runNonMasterFirstUpgradeTest runs the complete test for non-master first upgrade behavior
 func runNonMasterFirstUpgradeTest(t *testing.T, initial, mutated elasticsearch.Builder) {
-	watcher := NewNonMasterFirstUpgradeWatcher(initial.Elasticsearch)
+	watcher := newNonMasterFirstUpgradeWatcher(initial.Elasticsearch)
 
 	test.RunMutationsWhileWatching(
 		t,
