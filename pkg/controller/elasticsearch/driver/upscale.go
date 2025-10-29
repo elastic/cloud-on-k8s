@@ -123,6 +123,7 @@ func HandleUpscaleAndSpecChanges(
 			// Non-master StatefulSets are still upgrading, skipping master StatefulSets temporarily.
 			// This will cause a requeue, and master StatefulSets will attempt to be processed in the next reconciliation
 			results.ActualStatefulSets = actualStatefulSets
+			results.Requeue = true
 			return results, nil
 		}
 
