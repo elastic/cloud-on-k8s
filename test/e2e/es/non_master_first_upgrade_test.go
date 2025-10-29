@@ -30,7 +30,7 @@ func newNonMasterFirstUpgradeWatcher(es esv1.Elasticsearch) test.Watcher {
 		func(k *test.K8sClient, t *testing.T) {
 			statefulSets, err := essset.RetrieveActualStatefulSets(k.Client, k8s.ExtractNamespacedName(&es))
 			if err != nil {
-				t.Logf("failed to get StatefulSets: %v", err)
+				t.Logf("failed to get StatefulSets: %s", err.Error())
 				return
 			}
 
@@ -39,7 +39,7 @@ func newNonMasterFirstUpgradeWatcher(es esv1.Elasticsearch) test.Watcher {
 			for _, sset := range statefulSets {
 				masterSTSVersion, err := essset.GetESVersion(sset)
 				if err != nil {
-					t.Logf("failed to get StatefulSet version: %v", err)
+					t.Logf("failed to get StatefulSet version: %s", err.Error())
 					continue
 				}
 				if !label.IsMasterNodeSet(sset) {
@@ -49,7 +49,7 @@ func newNonMasterFirstUpgradeWatcher(es esv1.Elasticsearch) test.Watcher {
 				for _, otherSset := range statefulSets {
 					otherSsetVersion, err := essset.GetESVersion(otherSset)
 					if err != nil {
-						t.Logf("failed to get StatefulSet version: %v", err)
+						t.Logf("failed to get StatefulSet version: %s", err.Error())
 						continue
 					}
 					if masterSTSVersion.GT(otherSsetVersion) {
