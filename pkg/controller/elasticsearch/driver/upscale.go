@@ -15,6 +15,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/expectations"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/metadata"
 	sset "github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/statefulset"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/version"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/label"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/nodespec"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/reconcile"
@@ -85,6 +86,11 @@ func HandleUpscaleAndSpecChanges(
 		return results, nil
 	}
 
+	targetVersion, err := version.Parse(ctx.es.Spec.Version)
+	if err != nil {
+		return results, fmt.Errorf("while parsing Elasticsearch upgrade target version: %w", err)
+	}
+
 	// Version upgrade: separate master and non-master StatefulSets
 	var masterResources, nonMasterResources []nodespec.Resources
 	for _, res := range adjusted {
@@ -108,7 +114,7 @@ func HandleUpscaleAndSpecChanges(
 
 	// Check if all non-master StatefulSets have completed their upgrades before proceeding with master StatefulSets
 	if len(masterResources) > 0 {
-		allNonMastersUpgraded, err := areAllNonMasterStatefulSetsUpgraded(ctx.k8sClient, actualStatefulSets)
+		allNonMastersUpgraded, err := areAllNonMasterStatefulSetsUpgraded(ctx.k8sClient, actualStatefulSets, targetVersion)
 		if err != nil {
 			return results, fmt.Errorf("while checking non-master upgrade status: %w", err)
 		}
@@ -245,11 +251,22 @@ func reconcileResources(
 func areAllNonMasterStatefulSetsUpgraded(
 	client k8s.Client,
 	actualStatefulSets es_sset.StatefulSetList,
+	targetVersion version.Version,
 ) (bool, error) {
 	for _, statefulSet := range actualStatefulSets {
 		// Skip master StatefulSets
 		if label.IsMasterNodeSet(statefulSet) {
 			continue
+		}
+
+		// If the StatefulSet is not at the target version, it is not upgraded
+		// so don't even bother looking at the state/status of the StatefulSet.
+		actualVersion, err := es_sset.GetESVersion(statefulSet)
+		if err != nil {
+			return false, err
+		}
+		if actualVersion.LT(targetVersion) {
+			return false, nil
 		}
 
 		// Check if this StatefulSet has pending updates
