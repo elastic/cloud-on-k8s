@@ -894,7 +894,7 @@ func TestHandleUpscaleAndSpecChanges_VersionUpgradeDataFirstFlow(t *testing.T) {
 	require.NoError(t, k8sClient.Status().Update(context.Background(), &dataSset))
 
 	// Call HandleUpscaleAndSpecChanges and verify that both data upgrade has begun and master STS is not updated
-	res, err = HandleUpscaleAndSpecChanges(ctx, actualStatefulSets, expectedResourcesUpgrade)
+	_, err = HandleUpscaleAndSpecChanges(ctx, actualStatefulSets, expectedResourcesUpgrade)
 	require.NoError(t, err)
 
 	// Update actualStatefulSets to reflect the current state
