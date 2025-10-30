@@ -29,6 +29,14 @@ get_deps() {
     }
 }
 
+get_go_version() {
+    local branch=$1
+    git show "$branch:go.mod" 2>/dev/null | grep -E '^go\s+[0-9.]+' | awk '{print $2}' || {
+        echo "Error: Failed to get Go version from branch '$branch'. Does the branch exist and have a go.mod file?" >&2
+        exit 1
+    }
+}
+
 # Get dependencies for both branches
 DEPS1=$(get_deps "$BRANCH1")
 DEPS2=$(get_deps "$BRANCH2")
@@ -53,6 +61,13 @@ done <<< "$DEPS2"
 
 # Collect changes in a variable for sorting
 changes=""
+
+# Check for Go version change
+GO_VERSION1=$(get_go_version "$BRANCH1")
+GO_VERSION2=$(get_go_version "$BRANCH2")
+if [ "$GO_VERSION1" != "$GO_VERSION2" ]; then
+    changes+="go $GO_VERSION1 => $GO_VERSION2\n"
+fi
 
 # Find updated and added dependencies
 for dep in "${!deps2[@]}"; do
