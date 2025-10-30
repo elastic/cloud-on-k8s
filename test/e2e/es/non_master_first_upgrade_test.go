@@ -47,6 +47,10 @@ func newNonMasterFirstUpgradeWatcher(es esv1.Elasticsearch) test.Watcher {
 				}
 				// Ensure that the master StatefulSet never has a version higher than any non-master StatefulSet.
 				for _, otherSset := range statefulSets {
+					// don't compare master against master.
+					if label.IsMasterNodeSet(otherSset) {
+						continue
+					}
 					otherSsetVersion, err := essset.GetESVersion(otherSset)
 					if err != nil {
 						t.Logf("failed to get StatefulSet version: %s", err.Error())
