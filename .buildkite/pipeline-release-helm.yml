@@ -42,7 +42,6 @@ steps:
       || build.message == "release eck-stack helm charts"
       || build.message == "release all helm charts"
     depends_on:
-      - "build-helm-releaser-tool"
       - "eck-operator-dev-helm"
     key: "eck-stack-dev-helm"
     commands:
@@ -59,8 +58,7 @@ steps:
       || build.message == "release eck-operator helm charts"
       || build.message == "release all helm charts"
     depends_on:
-      - "build-helm-releaser-tool"
-      - "eck-operator-dev-helm"
+      - "eck-stack-dev-helm"
     key: "eck-operator-prod-helm"
     commands:
       - buildkite-agent artifact download "bin/releaser" /usr/local/
@@ -76,7 +74,6 @@ steps:
       || build.message == "release eck-stack helm charts"
       || build.message == "release all helm charts"
     depends_on:
-      - "build-helm-releaser-tool"
       - "eck-operator-prod-helm"
     commands:
       - buildkite-agent artifact download "bin/releaser" /usr/local/
