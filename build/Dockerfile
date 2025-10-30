@@ -27,7 +27,7 @@ RUN --mount=type=cache,mode=0755,target=/go/pkg/mod \
 
 # ---------------------------------------------
 # Copy the operator binary into a lighter image
-FROM docker.elastic.co/wolfi/static:latest@sha256:b2e1c3d3627093e54f6805823e73edd17ab93d6c7202e672988080c863e0412b
+FROM docker.elastic.co/wolfi/static:latest@sha256:939a132511fcbc2702e0e251b6f3ea368c0ad4f114678ae5973903352357d01a
 
 ARG VERSION
 

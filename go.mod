@@ -4,7 +4,7 @@ go 1.24.5
 
 require (
 	dario.cat/mergo v1.0.2
-	github.com/KimMachineGun/automemlimit v0.7.4
+	github.com/KimMachineGun/automemlimit v0.7.5
 	github.com/Masterminds/sprig/v3 v3.3.0
 	github.com/blang/semver/v4 v4.0.0
 	github.com/davecgh/go-spew v1.1.2-0.20180830191138-d8f796af33cc
@@ -24,7 +24,7 @@ require (
 	github.com/pkg/errors v0.9.1
 	github.com/pmezard/go-difflib v1.0.1-0.20181226105442-5d4384ee4fb2
 	github.com/prometheus/client_golang v1.23.2
-	github.com/prometheus/common v0.67.1
+	github.com/prometheus/common v0.67.2
 	github.com/spf13/cobra v1.10.1
 	github.com/spf13/pflag v1.0.10
 	github.com/spf13/viper v1.21.0
@@ -43,7 +43,7 @@ require (
 	k8s.io/client-go v0.34.1
 	k8s.io/klog/v2 v2.130.1
 	k8s.io/utils v0.0.0-20250604170112-4c0f3b243397
-	sigs.k8s.io/controller-runtime v0.22.2
+	sigs.k8s.io/controller-runtime v0.22.3
 	sigs.k8s.io/controller-tools v0.19.0
 )
 
@@ -149,8 +149,8 @@ require (
 	go.yaml.in/yaml/v2 v2.4.3 // indirect
 	go.yaml.in/yaml/v3 v3.0.4 // indirect
 	golang.org/x/mod v0.28.0 // indirect
-	golang.org/x/net v0.45.0 // indirect
-	golang.org/x/oauth2 v0.31.0 // indirect
+	golang.org/x/net v0.46.0 // indirect
+	golang.org/x/oauth2 v0.32.0 // indirect
 	golang.org/x/sync v0.17.0 // indirect
 	golang.org/x/sys v0.37.0 // indirect
 	golang.org/x/term v0.36.0 // indirect
