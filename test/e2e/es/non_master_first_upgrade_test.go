@@ -34,7 +34,7 @@ func newNonMasterFirstUpgradeWatcher(es esv1.Elasticsearch) test.Watcher {
 				return
 			}
 
-			// Check if any master StatefulSet has it's version higher than any non-master StatefulSet
+			// Check if any master StatefulSet has its version higher than any non-master StatefulSet
 			// which indicates that the master StatefulSet is upgrading before the non-master StatefulSets
 			for _, sset := range statefulSets {
 				masterSTSVersion, err := essset.GetESVersion(sset)
