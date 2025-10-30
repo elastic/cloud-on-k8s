@@ -44,18 +44,23 @@ ECK will now generate longer passwords by default for the administrative user of
 ### Miscellaneous  [elastic-cloud-kubernetes-320-miscellaneous]
 
 :::{dropdown} Updated dependencies
-- Bump github.com/go-viper/mapstructure/v2 from 2.3.0 to 2.4.0 in /hack/helm/release [#8802](https://github.com/elastic/cloud-on-k8s/pull/8802)
-- Bump github.com/go-viper/mapstructure/v2 from 2.3.0 to 2.4.0 in /hack/operatorhub [#8810](https://github.com/elastic/cloud-on-k8s/pull/8810)
-- Bump helm.sh/helm/v3 from 3.18.4 to 3.18.5 in /hack/helm/release [#8791](https://github.com/elastic/cloud-on-k8s/pull/8791)
-- chore(deps): update docker.elastic.co/wolfi/go docker tag to v1.25.0-r1 [#8808](https://github.com/elastic/cloud-on-k8s/pull/8808)
-- chore(deps): update go [#8837](https://github.com/elastic/cloud-on-k8s/pull/8837)
-- fix(deps): update all ungrouped dependencies [#8762](https://github.com/elastic/cloud-on-k8s/pull/8762)
-- fix(deps): update all ungrouped dependencies [#8785](https://github.com/elastic/cloud-on-k8s/pull/8785)
-- fix(deps): update all ungrouped dependencies [#8809](https://github.com/elastic/cloud-on-k8s/pull/8809)
-- fix(deps): update all ungrouped dependencies [#8826](https://github.com/elastic/cloud-on-k8s/pull/8826)
-- fix(deps): update all ungrouped dependencies [#8836](https://github.com/elastic/cloud-on-k8s/pull/8836)
-- fix(deps): update module github.com/elastic/cloud-on-k8s/v3 to v3.1.0 [#8787](https://github.com/elastic/cloud-on-k8s/pull/8787)
-- Upgrade k8s libraries [#8806](https://github.com/elastic/cloud-on-k8s/pull/8806)
+- github.com/gkampitakis/go-snaps v0.5.13 => v0.5.15
+- github.com/hashicorp/vault/api v1.20.0 => v1.22.0
+- github.com/KimMachineGun/automemlimit => v0.7.4
+- github.com/prometheus/client_golang v1.22.0 => v1.23.2
+- github.com/prometheus/common v0.65.0 => v0.67.1
+- github.com/sethvargo/go-password v0.3.1 => REMOVED
+- github.com/spf13/cobra v1.9.1 => v1.10.1
+- github.com/spf13/pflag v1.0.6 => v1.0.10
+- github.com/spf13/viper v1.20.1 => v1.21.0
+- github.com/stretchr/testify v1.10.0 => v1.11.1
+- golang.org/x/crypto v0.40.0 => v0.43.0
+- k8s.io/api v0.33.2 => v0.34.1
+- k8s.io/apimachinery v0.33.2 => v0.34.1
+- k8s.io/client-go v0.33.2 => v0.34.1
+- k8s.io/utils v0.0.0-20241104100929-3ea5e8cea738 => v0.0.0-20250604170112-4c0f3b243397
+- sigs.k8s.io/controller-runtime v0.21.0 => v0.22.2
+- sigs.k8s.io/controller-tools v0.18.0 => v0.19.0
 :::
 
 ## 3.1.0 [elastic-cloud-kubernetes-310-release-notes]
