@@ -628,6 +628,10 @@ func startOperator(ctx context.Context) error {
 		CertDir: webhookCertDir,
 	})
 
+	// Suppress client-go warnings.
+	// See https://github.com/elastic/cloud-on-k8s/issues/8797
+	cfg.WarningHandler = rest.NoWarnings{}
+
 	mgr, err := ctrl.NewManager(cfg, opts)
 	if err != nil {
 		log.Error(err, "Failed to create controller manager")
