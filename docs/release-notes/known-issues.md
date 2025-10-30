@@ -21,7 +21,7 @@ Known issues are significant defects or limitations that may impact your impleme
 
 :::{dropdown} Elastic Agent fails to start with "cipher: message authentication failed" after re-upgrading to ECK 3.2.0, the CONFIG_PATH for Elastic Agent in Fleet mode was changed to align with the STATE_PATH (tracking [Issue #8819](https://github.com/elastic/cloud-on-k8s/issues/8819).
 
-If you upgrade to 3.2.0, downgrade to a previous version (like 3.1.0), and then upgrade back to 3.2.0, the Elastic Agent pods may fail to start. This occurs because the agent, using the new CONFIG_PATH, is unable to decrypt the existing state files encrypted with keys from the old path.
+If you upgrade to 3.2.0, downgrade to a previous version (like 3.1.0), and then upgrade back to 3.2.0, the Elastic Agent Pods may fail to start. This occurs because the agent, using the new CONFIG_PATH, is unable to decrypt the existing state files encrypted with keys from the old path.
 
 You will see errors in the agent logs similar to one of the following:
 
