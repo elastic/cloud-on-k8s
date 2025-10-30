@@ -18,7 +18,7 @@ ECK now offers better out-of-the-box PodDisruptionBudgets that automatically kee
 
 #### User Password Generation (Enterprise feature)
 
-ECK will now generate longer passwords by default for the administrative users of each Elasticsearch cluster. The password is 24 characters in length by default (can be configured to a maximum of 72 characters), incorporating alphabetic and numeric characters, to make password complexity stronger. Refer to the [managed credentials](docs-content://deploy-manage/users-roles/cluster-or-deployment-auth/managed-credentials-eck.md) page for examples and more details.
+ECK now supports configuring the length of the generated password for the administrative user of each Elasticsearch cluster. While the default length remains 24 characters, this can now be configured up to a maximum of 72 characters. The password incorporates alphabetic and numeric characters to ensure strong complexity. Refer to the [managed credentials](docs-content://deploy-manage/users-roles/cluster-or-deployment-auth/managed-credentials-eck.md) page for examples and more details.
 
 ### Features and enhancements  [elastic-cloud-kubernetes-320-features-and-enhancements]
 
