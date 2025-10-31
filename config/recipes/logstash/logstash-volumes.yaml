@@ -4,7 +4,7 @@ kind: Elasticsearch
 metadata:
   name: elasticsearch
 spec:
-  version: 9.1.2
+  version: 9.2.0
   nodeSets:
     - name: default
       count: 3
@@ -18,7 +18,7 @@ metadata:
   name: filebeat
 spec:
   type: filebeat
-  version: 9.1.2
+  version: 9.2.0
   config:
     filebeat.inputs:
       - type: filestream
@@ -58,7 +58,7 @@ metadata:
   name: logstash
 spec:
   count: 1
-  version: 9.1.2
+  version: 9.2.0
   elasticsearchRefs:
     - clusterName: eck
       name: elasticsearch
