@@ -8,6 +8,9 @@ metadata:
   annotations:
     # Issue certificates for TLS hosts automatically
     cert-manager.io/cluster-issuer: "selfsigning-issuer"
+    # GCP/GKE requires a domain name or the certificate will fail
+    # to parse with sslCertificateCouldNotParseCert.
+    cert-manager.io/common-name: test.com
     # Disable HTTP traffic
     kubernetes.io/ingress.allow-http: "false"
 spec:
@@ -20,8 +23,8 @@ spec:
     - host: "elasticsearch.hulk"
       http:
         paths:
-          - path: "/*"
-            pathType: Exact
+          - path: "/"
+            pathType: Prefix
             backend:
               service:
                 name: hulk-es-http
@@ -30,8 +33,8 @@ spec:
     - host: "kibana.hulk"
       http:
         paths:
-          - path: "/*"
-            pathType: Exact
+          - path: "/"
+            pathType: Prefix
             backend:
               service:
                 name: hulk-kb-http
