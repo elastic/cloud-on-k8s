@@ -57,6 +57,7 @@ spec:
             - name: FLEET_FORCE
               value: "true"
 ```
+:::
 
 ## 3.1.0 [elastic-cloud-kubernetes-310-known-issues]
 
