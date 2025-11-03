@@ -33,8 +33,6 @@ steps:
       image: docker.elastic.co/ci-agent-images/cloud-k8s-operator/buildkite-agent:a9130ecd
       memory: "2G"
 
-  - wait
-
   - label: "eck-stack dev helm charts"
     if: |
       ( build.branch == "main" && build.source != "schedule" )
@@ -44,7 +42,7 @@ steps:
       || build.message == "release eck-stack helm charts"
       || build.message == "release all helm charts"
     depends_on:
-      - "build-helm-releaser-tool"
+      - "eck-operator-dev-helm"
     key: "eck-stack-dev-helm"
     commands:
       - buildkite-agent artifact download "bin/releaser" /usr/local/
@@ -54,16 +52,14 @@ steps:
       image: docker.elastic.co/ci-agent-images/cloud-k8s-operator/buildkite-agent:a9130ecd
       memory: "2G"
 
-  - wait
-
   - label: "operator prod helm chart"
     if: |
       build.tag =~ /^v[0-9]+\.[0-9]+\.[0-9]+\$/
       || build.message == "release eck-operator helm charts"
       || build.message == "release all helm charts"
     depends_on:
-      - "build-helm-releaser-tool"
-      - "eck-operator-dev-helm"
+      - "eck-stack-dev-helm"
+    key: "eck-operator-prod-helm"
     commands:
       - buildkite-agent artifact download "bin/releaser" /usr/local/
       - chmod u+x /usr/local/bin/releaser
@@ -72,16 +68,13 @@ steps:
       image: docker.elastic.co/ci-agent-images/cloud-k8s-operator/buildkite-agent:a9130ecd
       memory: "2G"
 
-  - wait
-
   - label: "eck-stack prod helm charts"
     if: |
       build.tag =~ /^v[0-9]+\.[0-9]+\.[0-9]+\$/
       || build.message == "release eck-stack helm charts"
       || build.message == "release all helm charts"
     depends_on:
-      - "build-helm-releaser-tool"
-      - "eck-stack-dev-helm"
+      - "eck-operator-prod-helm"
     commands:
       - buildkite-agent artifact download "bin/releaser" /usr/local/
       - chmod u+x /usr/local/bin/releaser
