@@ -17,7 +17,7 @@ This page lists the third-party dependencies used to build {{eck}} from the main
 | Name | Version | Licence |
 | --- | --- | --- |
 | [dario.cat/mergo](https://dario.cat/mergo) | v1.0.2 | BSD-3-Clause |
-| [github.com/KimMachineGun/automemlimit](https://github.com/KimMachineGun/automemlimit) | v0.7.4 | MIT |
+| [github.com/KimMachineGun/automemlimit](https://github.com/KimMachineGun/automemlimit) | v0.7.5 | MIT |
 | [github.com/Masterminds/sprig/v3](https://github.com/Masterminds/sprig) | v3.3.0 | MIT |
 | [github.com/blang/semver/v4](https://github.com/blang/semver) | v4.0.0 | MIT |
 | [github.com/davecgh/go-spew](https://github.com/davecgh/go-spew) | v1.1.2-0.20180830191138-d8f796af33cc | ISC |
@@ -37,7 +37,7 @@ This page lists the third-party dependencies used to build {{eck}} from the main
 | [github.com/pkg/errors](https://github.com/pkg/errors) | v0.9.1 | BSD-2-Clause |
 | [github.com/pmezard/go-difflib](https://github.com/pmezard/go-difflib) | v1.0.1-0.20181226105442-5d4384ee4fb2 | BSD-3-Clause |
 | [github.com/prometheus/client_golang](https://github.com/prometheus/client_golang) | v1.23.2 | Apache-2.0 |
-| [github.com/prometheus/common](https://github.com/prometheus/common) | v0.67.1 | Apache-2.0 |
+| [github.com/prometheus/common](https://github.com/prometheus/common) | v0.67.2 | Apache-2.0 |
 | [github.com/spf13/cobra](https://github.com/spf13/cobra) | v1.10.1 | Apache-2.0 |
 | [github.com/spf13/pflag](https://github.com/spf13/pflag) | v1.0.10 | BSD-3-Clause |
 | [github.com/spf13/viper](https://github.com/spf13/viper) | v1.21.0 | MIT |
@@ -56,7 +56,7 @@ This page lists the third-party dependencies used to build {{eck}} from the main
 | [k8s.io/client-go](https://github.com/kubernetes/client-go) | v0.34.1 | Apache-2.0 |
 | [k8s.io/klog/v2](https://github.com/kubernetes/klog) | v2.130.1 | Apache-2.0 |
 | [k8s.io/utils](https://github.com/kubernetes/utils) | v0.0.0-20250604170112-4c0f3b243397 | Apache-2.0 |
-| [sigs.k8s.io/controller-runtime](https://sigs.k8s.io/controller-runtime) | v0.22.2 | Apache-2.0 |
+| [sigs.k8s.io/controller-runtime](https://sigs.k8s.io/controller-runtime) | v0.22.3 | Apache-2.0 |
 | [sigs.k8s.io/controller-tools](https://sigs.k8s.io/controller-tools) | v0.19.0 | Apache-2.0 |
 
 
@@ -181,8 +181,8 @@ This page lists the third-party dependencies used to build {{eck}} from the main
 | [go.yaml.in/yaml/v2](https://go.yaml.in/yaml/v2) | v2.4.3 | Apache-2.0 |
 | [go.yaml.in/yaml/v3](https://go.yaml.in/yaml/v3) | v3.0.4 | MIT |
 | [golang.org/x/mod](https://golang.org/x/mod) | v0.28.0 | BSD-3-Clause |
-| [golang.org/x/net](https://golang.org/x/net) | v0.45.0 | BSD-3-Clause |
-| [golang.org/x/oauth2](https://golang.org/x/oauth2) | v0.31.0 | BSD-3-Clause |
+| [golang.org/x/net](https://golang.org/x/net) | v0.46.0 | BSD-3-Clause |
+| [golang.org/x/oauth2](https://golang.org/x/oauth2) | v0.32.0 | BSD-3-Clause |
 | [golang.org/x/sync](https://golang.org/x/sync) | v0.17.0 | BSD-3-Clause |
 | [golang.org/x/sys](https://golang.org/x/sys) | v0.37.0 | BSD-3-Clause |
 | [golang.org/x/term](https://golang.org/x/term) | v0.36.0 | BSD-3-Clause |
