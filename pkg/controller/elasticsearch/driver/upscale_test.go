@@ -572,6 +572,7 @@ func Test_adjustResources(t *testing.T) {
 
 func TestHandleUpscaleAndSpecChanges_VersionUpgradeDataFirstFlow(t *testing.T) {
 	// Test the complete upgrade flow: data nodes upgrade first, then master nodes
+	// starting at 8.16.2 and upgrading to 8.17.1
 	es := esv1.Elasticsearch{
 		ObjectMeta: metav1.ObjectMeta{
 			Namespace: "ns",
@@ -581,8 +582,8 @@ func TestHandleUpscaleAndSpecChanges_VersionUpgradeDataFirstFlow(t *testing.T) {
 				bootstrap.ClusterUUIDAnnotationName:                 "uuid",
 			},
 		},
-		Spec:   esv1.ElasticsearchSpec{Version: "8.16.2"},   // Start at 8.16.2
-		Status: esv1.ElasticsearchStatus{Version: "8.16.2"}, // Start at 8.16.2
+		Spec:   esv1.ElasticsearchSpec{Version: "8.16.2"},
+		Status: esv1.ElasticsearchStatus{Version: "8.16.2"},
 	}
 	k8sClient := k8s.NewFakeClient(&es)
 	ctx := upscaleCtx{
@@ -894,7 +895,7 @@ func TestHandleUpscaleAndSpecChanges_VersionUpgradeDataFirstFlow(t *testing.T) {
 	require.NoError(t, k8sClient.Status().Update(context.Background(), &dataSset))
 
 	// Call HandleUpscaleAndSpecChanges and verify that both data upgrade has begun and master STS is not updated
-	res, err = HandleUpscaleAndSpecChanges(ctx, actualStatefulSets, expectedResourcesUpgrade)
+	_, err = HandleUpscaleAndSpecChanges(ctx, actualStatefulSets, expectedResourcesUpgrade)
 	require.NoError(t, err)
 
 	// Update actualStatefulSets to reflect the current state
