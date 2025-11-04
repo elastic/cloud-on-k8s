@@ -174,6 +174,7 @@ func (b Builder) BuildResourcesList() (nodespec.ResourcesList, error) {
 
 		cfg, err := settings.NewMergedESConfig(
 			b.Elasticsearch.Name,
+			false,
 			v,
 			corev1.IPv4Protocol,
 			b.Elasticsearch.Spec.HTTP,

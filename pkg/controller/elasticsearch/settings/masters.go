@@ -12,13 +12,13 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/metadata"
-	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/maps"
-
 	"go.elastic.co/apm/v2"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/metadata"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/maps"
 
 	esv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/elasticsearch/v1"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/annotation"
@@ -55,7 +55,7 @@ func UpdateSeedHostsConfigMap(
 	// Get the masters from the pods
 	var masters []corev1.Pod
 	for _, p := range pods {
-		if label.IsMasterNode(p) {
+		if label.IsMasterNode(p) || label.IsIndexTierNode(p) {
 			masters = append(masters, p)
 		}
 	}

@@ -121,7 +121,7 @@ func validPVCModification(ctx context.Context, current esv1.Elasticsearch, propo
 		// errors out for some reasons, then reverts the storage size to a correct 1GB. In that case the StatefulSet
 		// claim is still configured with 1GB even though the current Elasticsearch specifies 2GB.
 		// Hence here we compare proposed claims with **current StatefulSet** claims.
-		matchingSsetName := esv1.StatefulSet(proposed.Name, proposedNodeSet.Name)
+		matchingSsetName := esv1.PodsControllerResourceName(proposed.Name, proposedNodeSet.Name)
 		var matchingSset appsv1.StatefulSet
 		err := k8sClient.Get(context.Background(), types.NamespacedName{Namespace: proposed.Namespace, Name: matchingSsetName}, &matchingSset)
 		if err != nil && apierrors.IsNotFound(err) {

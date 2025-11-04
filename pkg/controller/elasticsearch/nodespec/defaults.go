@@ -13,7 +13,6 @@ import (
 
 	commonv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/common/v1"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/defaults"
-	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/version"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/label"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/settings"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/user"
@@ -43,16 +42,23 @@ var (
 )
 
 // DefaultEnvVars are environment variables injected into Elasticsearch pods.
-func DefaultEnvVars(v version.Version, httpCfg commonv1.HTTPConfig, headlessServiceName string) []corev1.EnvVar {
-	vars := []corev1.EnvVar{
-		// needed in elasticsearch.yml
-		// We do not recommend overriding the default readiness probe on Elasticsearch 8.2.0 and later.
-		// ECK configures a socket based readiness probe using the Elasticsearch which is not influenced by the load on the Elasticsearch cluster.
-		// These settings are added only for backwards compatibility and will be removed in a future release.
-		{Name: settings.HeadlessServiceName, Value: headlessServiceName},
-		{Name: settings.EnvProbePasswordPath, Value: path.Join(esvolume.PodMountedUsersSecretMountPath, user.ProbeUserName)},
-		{Name: settings.EnvProbeUsername, Value: user.ProbeUserName},
-		{Name: settings.EnvReadinessProbeProtocol, Value: httpCfg.Protocol()},
+func DefaultEnvVars(httpCfg commonv1.HTTPConfig, headlessServiceName string) []corev1.EnvVar {
+	vars := make([]corev1.EnvVar, 0, 10)
+	if headlessServiceName != "" {
+		vars = append(vars,
+			corev1.EnvVar{
+				// needed in elasticsearch.yml
+				// We do not recommend overriding the default readiness probe on Elasticsearch 8.2.0 and later.
+				// ECK configures a socket based readiness probe using the Elasticsearch which is not influenced by the load on the Elasticsearch cluster.
+				// These settings are added only for backwards compatibility and will be removed in a future release.
+				Name: settings.HeadlessServiceName, Value: headlessServiceName,
+			},
+		)
+	}
+	vars = append(vars,
+		corev1.EnvVar{Name: settings.EnvProbePasswordPath, Value: path.Join(esvolume.PodMountedUsersSecretMountPath, user.ProbeUserName)},
+		corev1.EnvVar{Name: settings.EnvProbeUsername, Value: user.ProbeUserName},
+		corev1.EnvVar{Name: settings.EnvReadinessProbeProtocol, Value: httpCfg.Protocol()},
 
 		// Disable curl/libnss use of sqlite caching to avoid triggering an issue in linux/kubernetes
 		// where the kernel's dentry cache grows by 5mb every time curl is invoked. This cache usage
@@ -65,8 +71,9 @@ func DefaultEnvVars(v version.Version, httpCfg commonv1.HTTPConfig, headlessServ
 		//   https://github.com/elastic/cloud-on-k8s/issues/1581#issuecomment-525527334
 		//   https://github.com/elastic/cloud-on-k8s/issues/1635
 		//   https://issuetracker.google.com/issues/140577001
-		{Name: "NSS_SDB_USE_CACHE", Value: "no"},
-	}
+		corev1.EnvVar{Name: "NSS_SDB_USE_CACHE", Value: "no"},
+	)
+
 	return defaults.ExtendPodDownwardEnvVars(vars...)
 }
 

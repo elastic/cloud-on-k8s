@@ -171,7 +171,7 @@ func expectedVolumeClaims(es esv1.Elasticsearch) map[types.NamespacedName]v1.Per
 			claim.Name = fmt.Sprintf(
 				"%s-%s",
 				volume.ElasticsearchDataVolumeName,
-				sset.PodName(esv1.StatefulSet(es.Name, nodeSet.Name), i))
+				sset.PodName(esv1.PodsControllerResourceName(es.Name, nodeSet.Name), i))
 			claim.Namespace = es.Namespace
 			if claim.Namespace == "" {
 				claim.Namespace = "default"

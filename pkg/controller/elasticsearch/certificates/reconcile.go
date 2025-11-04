@@ -46,7 +46,7 @@ func ReconcileHTTP(
 	extraHTTPSANs := make([]commonv1.SubjectAlternativeName, len(es.Spec.NodeSets))
 	for i, nodeSet := range es.Spec.NodeSets {
 		extraHTTPSANs[i] =
-			commonv1.SubjectAlternativeName{DNS: "*." + nodespec.HeadlessServiceName(esv1.StatefulSet(es.Name, nodeSet.Name)) + "." + es.Namespace + ".svc"}
+			commonv1.SubjectAlternativeName{DNS: "*." + nodespec.HeadlessServiceName(esv1.PodsControllerResourceName(es.Name, nodeSet.Name)) + "." + es.Namespace + ".svc"}
 	}
 
 	// reconcile HTTP CA and cert
@@ -129,15 +129,28 @@ func ReconcileTransport(
 	}
 
 	// reconcile transport certificates
-	transportResults := transport.ReconcileTransportCertificatesSecrets(
-		ctx,
-		driver.K8sClient(),
-		transportCA,
-		additionalCAs,
-		es,
-		certRotation,
-		meta,
-	)
+	var transportResults *reconciler.Results
+	if es.IsStateless() {
+		transportResults = transport.ReconcileStatelessTransportCertificatesSecrets(
+			ctx,
+			driver.K8sClient(),
+			transportCA,
+			additionalCAs,
+			es,
+			certRotation,
+			meta,
+		)
+	} else {
+		transportResults = transport.ReconcileStatefulTransportCertificatesSecrets(
+			ctx,
+			driver.K8sClient(),
+			transportCA,
+			additionalCAs,
+			es,
+			certRotation,
+			meta,
+		)
+	}
 
 	// reconcile remote clusters certificate authorities
 	if err := remoteca.Reconcile(ctx, driver.K8sClient(), es, *transportCA, meta); err != nil {

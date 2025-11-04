@@ -133,7 +133,7 @@ func NewPrepareFSInitContainer(transportCertificatesVolume volume.SecretVolume, 
 	return container, nil
 }
 
-func RenderPrepareFsScript(expectedAnnotations []string) (string, error) {
+func RenderPrepareFsScript(isStateless bool, expectedAnnotations []string) (string, error) {
 	templateParams := TemplateParams{
 		PluginVolumes: PluginVolumes,
 		LinkedFiles:   linkedFiles,
@@ -143,6 +143,15 @@ func RenderPrepareFsScript(expectedAnnotations []string) (string, error) {
 		},
 		InitContainerTransportCertificatesSecretVolumeMountPath: initContainerTransportCertificatesVolumeMountPath,
 		TransportCertificatesSecretVolumeMountPath:              esvolume.TransportCertificatesSecretVolumeMountPath,
+	}
+	if isStateless {
+		templateParams.LinkedFiles.Array = append(
+			templateParams.LinkedFiles.Array,
+			LinkedFile{
+				Source: stringsutil.Concat(settings.ConfigVolumeMountPath, "/", settings.OperatorUsersSettingsFileName),
+				Target: stringsutil.Concat(EsConfigSharedVolume.InitContainerMountPath, "/", settings.OperatorUsersSettingsFileName),
+			},
+		)
 	}
 	if len(expectedAnnotations) > 0 {
 		expectedAnnotationsAsString := strings.Join(expectedAnnotations, " ")

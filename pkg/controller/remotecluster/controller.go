@@ -108,6 +108,10 @@ func (r *ReconcileRemoteClusters) Reconcile(ctx context.Context, request reconci
 		ulog.FromContext(ctx).Info("Object is currently not managed by this controller. Skipping reconciliation", "namespace", es.Namespace, "es_name", es.Name)
 		return reconcile.Result{}, nil
 	}
+	if es.IsStateless() {
+		ulog.FromContext(ctx).Info("Stateless Elasticsearch clusters cannot be part of remote cluster associations. Skipping reconciliation", "namespace", es.Namespace, "es_name", es.Name)
+		return reconcile.Result{}, nil
+	}
 	return doReconcile(ctx, r, &es)
 }
 

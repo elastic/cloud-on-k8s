@@ -6,6 +6,7 @@ package k8s
 
 import (
 	"context"
+	"errors"
 
 	"k8s.io/apimachinery/pkg/api/meta"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -113,4 +114,18 @@ func (fc failingClient) Scheme() *runtime.Scheme {
 
 func (fc failingClient) RESTMapper() meta.RESTMapper {
 	return nil
+}
+
+type failingListClient struct {
+	Client
+}
+
+func (fc failingListClient) List(_ context.Context, _ client.ObjectList, _ ...client.ListOption) error {
+	return errors.New("failingListClient")
+}
+
+func NewFailingListClient(initObjs ...client.Object) Client {
+	return failingListClient{
+		Client: NewFakeClient(initObjs...),
+	}
 }

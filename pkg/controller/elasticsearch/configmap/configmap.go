@@ -31,7 +31,7 @@ func ReconcileScriptsConfigMap(ctx context.Context, c k8s.Client, es esv1.Elasti
 	span, ctx := apm.StartSpan(ctx, "reconcile_scripts", tracing.SpanTypeApp)
 	defer span.End()
 
-	fsScript, err := initcontainer.RenderPrepareFsScript(es.DownwardNodeLabels())
+	fsScript, err := initcontainer.RenderPrepareFsScript(es.IsStateless(), es.DownwardNodeLabels())
 	if err != nil {
 		return err
 	}

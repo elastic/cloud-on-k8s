@@ -433,7 +433,7 @@ func ESPodListOptions(esNamespace, esName string) []k8sclient.ListOption {
 // ESPodListOptionsByNodeSet returns a list option to list the pods corresponding to a given NodeSet
 func ESPodListOptionsByNodeSet(esNamespace, esName, nodeSetName string) []k8sclient.ListOption {
 	ns := k8sclient.InNamespace(esNamespace)
-	stsName := esv1.StatefulSet(esName, nodeSetName)
+	stsName := esv1.PodsControllerResourceName(esName, nodeSetName)
 	matchLabels := k8sclient.MatchingLabels(map[string]string{
 		label.StatefulSetNameLabelName: stsName,
 	})

@@ -76,7 +76,7 @@ func TestForceUpgradePendingPodsInOneStatefulSet(t *testing.T) {
 			{
 				Name: "Wait for Pods of the first StatefulSet to be running, and second StatefulSet to be Pending",
 				Test: test.Eventually(func() error {
-					pendingSset := esv1.StatefulSet(initial.Elasticsearch.Name, initial.Elasticsearch.Spec.NodeSets[1].Name)
+					pendingSset := esv1.PodsControllerResourceName(initial.Elasticsearch.Name, initial.Elasticsearch.Spec.NodeSets[1].Name)
 					pods, err := k.GetPods(test.ESPodListOptions(initial.Elasticsearch.Namespace, initial.Elasticsearch.Name)...)
 					if err != nil {
 						return err

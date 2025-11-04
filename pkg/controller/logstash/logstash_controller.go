@@ -61,7 +61,7 @@ func newReconciler(mgr manager.Manager, params operator.Parameters) *ReconcileLo
 		recorder:       mgr.GetEventRecorderFor(controllerName),
 		dynamicWatches: watches.NewDynamicWatches(),
 		Parameters:     params,
-		expectations:   expectations.NewClustersExpectations(client),
+		expectations:   expectations.NewClustersExpectations(client, &appsv1.StatefulSet{}),
 	}
 }
 

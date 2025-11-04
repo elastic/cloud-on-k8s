@@ -27,7 +27,6 @@ import (
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/volume"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/initcontainer"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/label"
-	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/network"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/securitycontext"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/settings"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/stackmon"
@@ -57,7 +56,7 @@ func BuildPodTemplateSpec(
 	ctx context.Context,
 	client k8s.Client,
 	es esv1.Elasticsearch,
-	nodeSet esv1.NodeSet,
+	nodeSet esv1.NodeSetSpec,
 	cfg settings.CanonicalConfig,
 	keystoreResources *keystore.Resources,
 	setDefaultSecurityContext bool,
@@ -70,18 +69,27 @@ func BuildPodTemplateSpec(
 	}
 
 	downwardAPIVolume := volume.DownwardAPI{}.WithAnnotations(es.HasDownwardNodeLabels())
-	volumes, volumeMounts := buildVolumes(es.Name, ver, nodeSet, keystoreResources, downwardAPIVolume, policyConfig.AdditionalVolumes)
+	volumes, volumeMounts := buildVolumes(
+		es.Name,
+		es.IsStateless(),
+		ver,
+		nodeSet,
+		keystoreResources,
+		downwardAPIVolume,
+		policyConfig.AdditionalVolumes,
+	)
 
 	labels, err := buildLabels(es, cfg, nodeSet)
 	if err != nil {
 		return corev1.PodTemplateSpec{}, err
 	}
 
-	defaultContainerPorts := getDefaultContainerPorts(es)
+	defaultContainerPorts := es.GetDefaultContainerPorts()
 
 	// now build the initContainers using the effective main container resources as an input
 	initContainers, err := initcontainer.NewInitContainers(
-		transportCertificatesVolume(esv1.StatefulSet(es.Name, nodeSet.Name)),
+		es.IsStateless(),
+		transportCertificatesVolume(esv1.PodsControllerResourceName(es.Name, nodeSet.GetName())),
 		keystoreResources,
 		es.DownwardNodeLabels(),
 	)
@@ -89,7 +97,7 @@ func BuildPodTemplateSpec(
 		return corev1.PodTemplateSpec{}, err
 	}
 
-	builder := defaults.NewPodTemplateBuilder(nodeSet.PodTemplate, esv1.ElasticsearchContainerName)
+	builder := defaults.NewPodTemplateBuilder(nodeSet.GetPodTemplate(), esv1.ElasticsearchContainerName)
 
 	if ver.GTE(minDefaultSecurityContextVersion) && setDefaultSecurityContext {
 		builder = builder.WithPodSecurityContext(corev1.PodSecurityContext{
@@ -97,7 +105,10 @@ func BuildPodTemplateSpec(
 		})
 	}
 
-	headlessServiceName := HeadlessServiceName(esv1.StatefulSet(es.Name, nodeSet.Name))
+	var headlessServiceName string
+	if !es.IsStateless() {
+		headlessServiceName = HeadlessServiceName(esv1.PodsControllerResourceName(es.Name, nodeSet.GetName()))
+	}
 
 	// We retrieve the ConfigMap that holds the scripts to trigger a Pod restart if it is updated.
 	esScripts := &corev1.ConfigMap{}
@@ -128,15 +139,18 @@ func BuildPodTemplateSpec(
 		WithPorts(defaultContainerPorts).
 		WithReadinessProbe(*NewReadinessProbe(ver)).
 		WithAffinity(DefaultAffinity(es.Name)).
-		WithEnv(DefaultEnvVars(ver, es.Spec.HTTP, headlessServiceName)...).
+		WithEnv(DefaultEnvVars(es.Spec.HTTP, headlessServiceName)...).
 		WithVolumes(volumes...).
 		WithVolumeMounts(volumeMounts...).
 		WithInitContainers(initContainers...).
 		// inherit all env vars from main containers to allow Elasticsearch tools that read ES config to work in initContainers
 		WithInitContainerDefaults(builder.MainContainer().Env...).
 		// set a default security context for both the Containers and the InitContainers
-		WithContainersSecurityContext(securitycontext.For(ver, enableReadOnlyRootFilesystem)).
-		WithPreStopHook(*NewPreStopHook())
+		WithContainersSecurityContext(securitycontext.For(ver, enableReadOnlyRootFilesystem))
+
+	if !es.IsStateless() {
+		builder = builder.WithPreStopHook(*NewPreStopHook())
+	}
 
 	builder, err = stackmon.WithMonitoring(ctx, client, builder, es, meta)
 	if err != nil {
@@ -151,13 +165,6 @@ func BuildPodTemplateSpec(
 	return builder.PodTemplate, nil
 }
 
-func getDefaultContainerPorts(es esv1.Elasticsearch) []corev1.ContainerPort {
-	return []corev1.ContainerPort{
-		{Name: es.Spec.HTTP.Protocol(), ContainerPort: network.HTTPPort, Protocol: corev1.ProtocolTCP},
-		{Name: "transport", ContainerPort: network.TransportPort, Protocol: corev1.ProtocolTCP},
-	}
-}
-
 func transportCertificatesVolume(ssetName string) volume.SecretVolume {
 	return volume.NewSecretVolumeWithMountPath(
 		esv1.StatefulSetTransportCertificatesSecret(ssetName),
@@ -169,7 +176,7 @@ func transportCertificatesVolume(ssetName string) volume.SecretVolume {
 func buildLabels(
 	es esv1.Elasticsearch,
 	cfg settings.CanonicalConfig,
-	nodeSet esv1.NodeSet,
+	nodeSet esv1.NodeSetSpec,
 ) (map[string]string, error) {
 	// label with version
 	ver, err := version.Parse(es.Spec.Version)
@@ -185,7 +192,8 @@ func buildLabels(
 	node := unpackedCfg.Node
 	podLabels := label.NewPodLabels(
 		k8s.ExtractNamespacedName(&es),
-		esv1.StatefulSet(es.Name, nodeSet.Name),
+		es.IsStateless(),
+		esv1.PodsControllerResourceName(es.Name, nodeSet.GetName()),
 		ver, node, es.Spec.HTTP.Protocol(),
 	)
 

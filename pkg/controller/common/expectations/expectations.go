@@ -8,6 +8,8 @@ import (
 	"fmt"
 	"strings"
 
+	"sigs.k8s.io/controller-runtime/pkg/client"
+
 	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/k8s"
 )
 
@@ -81,15 +83,15 @@ technically less efficient.
 
 // Expectations stores expectations for a single cluster. It is not thread-safe.
 type Expectations struct {
-	*ExpectedStatefulSetUpdates
+	*ExpectedGenerations
 	*ExpectedPodDeletions
 }
 
 // NewExpectations returns an initialized Expectations.
-func NewExpectations(client k8s.Client) *Expectations {
+func NewExpectations(client k8s.Client, object client.Object) *Expectations {
 	return &Expectations{
-		ExpectedStatefulSetUpdates: NewExpectedStatefulSetUpdates(client),
-		ExpectedPodDeletions:       NewExpectedPodDeletions(client),
+		ExpectedGenerations:  NewExpectedGenerations(client, object),
+		ExpectedPodDeletions: NewExpectedPodDeletions(client),
 	}
 }
 
@@ -107,7 +109,7 @@ func (e *Expectations) Satisfied() (bool, string, error) {
 		return false, "", err
 	}
 	if len(pendingGenerations) > 0 {
-		return false, fmt.Sprintf("StatefulSets not reconciled yet: %s", strings.Join(pendingGenerations, ",")), nil
+		return false, fmt.Sprintf("%T not reconciled yet: %s", e.object, strings.Join(pendingGenerations, ",")), nil
 	}
 	return true, "", nil
 }

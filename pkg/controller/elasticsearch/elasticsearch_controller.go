@@ -9,6 +9,7 @@ import (
 	"reflect"
 	"sync/atomic"
 
+	"github.com/openkruise/kruise-api/apps/v1alpha1"
 	pkgerrors "github.com/pkg/errors"
 	"go.elastic.co/apm/v2"
 	appsv1 "k8s.io/api/apps/v1"
@@ -38,7 +39,9 @@ import (
 	commonversion "github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/version"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/watches"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/certificates/transport"
-	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/driver"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/driver/api"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/driver/stateful"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/driver/stateless"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/label"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/observer"
 	esreconcile "github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/reconcile"
@@ -73,10 +76,10 @@ func newReconciler(mgr manager.Manager, params operator.Parameters) *ReconcileEl
 		licenseChecker: license.NewLicenseChecker(client, params.OperatorNamespace),
 		esObservers:    observer.NewManager(params.ElasticsearchObservationInterval, params.Tracer),
 
-		dynamicWatches: watches.NewDynamicWatches(),
-		expectations:   expectations.NewClustersExpectations(client),
-
-		Parameters: params,
+		dynamicWatches:        watches.NewDynamicWatches(),
+		statefulExpectations:  expectations.NewClustersExpectations(client, &appsv1.StatefulSet{}),
+		statelessExpectations: expectations.NewClustersExpectations(client, &v1alpha1.CloneSet{}),
+		Parameters:            params,
 	}
 }
 
@@ -151,7 +154,7 @@ type ReconcileElasticsearch struct {
 
 	// expectations help dealing with inconsistencies in our client cache,
 	// by marking resources updates as expected, and skipping some operations if the cache is not up-to-date.
-	expectations *expectations.ClustersExpectation
+	statefulExpectations, statelessExpectations *expectations.ClustersExpectation
 
 	// iteration is the number of times this controller has run its Reconcile method
 	iteration uint64
@@ -290,19 +293,32 @@ func (r *ReconcileElasticsearch) internalReconcile(
 		return results.WithError(pkgerrors.Errorf("unsupported version: %s", ver))
 	}
 
-	return driver.NewDefaultDriver(driver.DefaultDriverParameters{
+	var expectations *expectations.Expectations
+	if es.IsStateless() {
+		expectations = r.statelessExpectations.ForCluster(k8s.ExtractNamespacedName(&es))
+	} else {
+		expectations = r.statefulExpectations.ForCluster(k8s.ExtractNamespacedName(&es))
+	}
+
+	defaultDriverParameters := api.DefaultDriverParameters{
 		OperatorParameters: r.Parameters,
 		ES:                 es,
 		ReconcileState:     reconcileState,
 		Client:             r.Client,
 		Recorder:           r.recorder,
 		Version:            ver,
-		Expectations:       r.expectations.ForCluster(k8s.ExtractNamespacedName(&es)),
+		Expectations:       expectations,
 		Observers:          r.esObservers,
 		DynamicWatches:     r.dynamicWatches,
 		SupportedVersions:  *supported,
 		LicenseChecker:     r.licenseChecker,
-	}).Reconcile(ctx)
+	}
+
+	if es.IsStateless() {
+		return stateless.NewDriver(defaultDriverParameters).Reconcile(ctx)
+	}
+
+	return stateful.NewDriver(defaultDriverParameters).Reconcile(ctx)
 }
 
 func (r *ReconcileElasticsearch) updateStatus(
@@ -361,7 +377,9 @@ func (r *ReconcileElasticsearch) annotateResource(
 
 // onDelete garbage collect resources when an Elasticsearch cluster is deleted
 func (r *ReconcileElasticsearch) onDelete(ctx context.Context, es types.NamespacedName) error {
-	r.expectations.RemoveCluster(es)
+	// Resource has been deleted. We don't know if it was stateful or stateless, so we clean up both.
+	r.statefulExpectations.RemoveCluster(es)
+	r.statelessExpectations.RemoveCluster(es)
 	r.esObservers.StopObserving(es)
 	r.dynamicWatches.Secrets.RemoveHandlerForKey(keystore.SecureSettingsWatchName(es))
 	r.dynamicWatches.Secrets.RemoveHandlerForKey(certificates.CertificateWatchKey(esv1.ESNamer, es.Name))

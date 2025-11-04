@@ -90,7 +90,7 @@ func Test_BuildVolumes_DataVolumeMountPath(t *testing.T) {
 
 	for _, tc := range tt {
 		t.Run(tc.name, func(t *testing.T) {
-			_, volumeMounts := buildVolumes("esname", version.MustParse("8.8.0"), tc.nodeSpec, nil, volume.DownwardAPI{}, []volume.VolumeLike{})
+			_, volumeMounts := buildVolumes("esname", false, version.MustParse("8.8.0"), &tc.nodeSpec, nil, volume.DownwardAPI{}, []volume.VolumeLike{})
 			assert.True(t, contains(volumeMounts, "elasticsearch-data", "/usr/share/elasticsearch/data"))
 		})
 	}

@@ -182,7 +182,7 @@ type transportCertsSecretBuilder struct {
 // newtransportCertsSecretBuilder helps to create an existing Secret which contains some transport certs.
 func newtransportCertsSecretBuilder(esName string, nodeSetName string) *transportCertsSecretBuilder {
 	tcb := &transportCertsSecretBuilder{}
-	tcb.statefulset = esv1.StatefulSet(esName, nodeSetName)
+	tcb.statefulset = esv1.PodsControllerResourceName(esName, nodeSetName)
 	tcb.data = make(map[string][]byte)
 	caBytes := certificates.EncodePEMCert(testRSACA.Cert.Raw)
 	tcb.data[certificates.CAFileName] = caBytes
@@ -253,9 +253,9 @@ func (pb *podBuilder) build() *corev1.Pod {
 	pod := &corev1.Pod{
 		ObjectMeta: metav1.ObjectMeta{
 			Namespace: testNamespace,
-			Name:      fmt.Sprintf("%s-%d", esv1.StatefulSet(pb.es, pb.nodeSet), pb.index),
+			Name:      fmt.Sprintf("%s-%d", esv1.PodsControllerResourceName(pb.es, pb.nodeSet), pb.index),
 			Labels: map[string]string{
-				label.StatefulSetNameLabelName: esv1.StatefulSet(pb.es, pb.nodeSet),
+				label.StatefulSetNameLabelName: esv1.PodsControllerResourceName(pb.es, pb.nodeSet),
 				label.ClusterNameLabelName:     pb.es,
 			},
 			Annotations: pb.annotations,

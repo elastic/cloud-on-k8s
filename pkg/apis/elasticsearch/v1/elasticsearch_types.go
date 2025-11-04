@@ -12,6 +12,8 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/utils/ptr"
 
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/network"
+
 	commonv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/common/v1"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/hash"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/set"
@@ -82,6 +84,9 @@ type ElasticsearchSpec struct {
 	// Image is the Elasticsearch Docker image to deploy.
 	Image string `json:"image,omitempty"`
 
+	// +kubebuilder:validation:Optional
+	StatelessSpec *StatelessSpec `json:"stateless,omitempty"`
+
 	// RemoteClusterServer specifies if the remote cluster server should be enabled.
 	// This must be enabled if this cluster is a remote cluster which is expected to be accessed using API key authentication.
 	// +kubebuilder:validation:Optional
@@ -96,8 +101,8 @@ type ElasticsearchSpec struct {
 	Transport TransportConfig `json:"transport,omitempty"`
 
 	// NodeSets allow specifying groups of Elasticsearch nodes sharing the same configuration and Pod templates.
-	// +kubebuilder:validation:MinItems=1
-	NodeSets []NodeSet `json:"nodeSets"`
+	// +kubebuilder:validation:MinItems=0
+	NodeSets []NodeSet `json:"nodeSets,omitempty"`
 
 	// UpdateStrategy specifies how updates to the cluster should be performed.
 	// +kubebuilder:validation:Optional
@@ -350,6 +355,36 @@ type NodeSet struct {
 	VolumeClaimTemplates []corev1.PersistentVolumeClaim `json:"volumeClaimTemplates,omitempty"`
 }
 
+// NodeSetSpec helps abstract over NodeSet in stateful, and TierSpec in stateless specs.
+// They both define similar concepts even though their implementation can differ.
+// +kubebuilder:object:generate=false
+type NodeSetSpec interface {
+	GetName() string
+	GetPodTemplate() corev1.PodTemplateSpec
+	GetVolumeClaimTemplates() []corev1.PersistentVolumeClaim
+}
+
+func (n *NodeSet) GetName() string {
+	if n == nil {
+		return ""
+	}
+	return n.Name
+}
+
+func (n *NodeSet) GetVolumeClaimTemplates() []corev1.PersistentVolumeClaim {
+	if n == nil {
+		return nil
+	}
+	return n.VolumeClaimTemplates
+}
+
+func (n *NodeSet) GetPodTemplate() corev1.PodTemplateSpec {
+	if n == nil {
+		return corev1.PodTemplateSpec{}
+	}
+	return n.PodTemplate
+}
+
 // +kubebuilder:object:generate=false
 type NodeSetList []NodeSet
 
@@ -502,6 +537,13 @@ func (es Elasticsearch) GetObservedGeneration() int64 {
 	return es.Status.ObservedGeneration
 }
 
+func (es Elasticsearch) GetDefaultContainerPorts() []corev1.ContainerPort {
+	return []corev1.ContainerPort{
+		{Name: es.Spec.HTTP.Protocol(), ContainerPort: network.HTTPPort, Protocol: corev1.ProtocolTCP},
+		{Name: "transport", ContainerPort: network.TransportPort, Protocol: corev1.ProtocolTCP},
+	}
+}
+
 func setFromAnnotations(annotationKey string, annotations map[string]string) set.StringSet {
 	allValues, exists := annotations[annotationKey]
 	if !exists {
@@ -617,4 +659,11 @@ func (es *Elasticsearch) MonitoringAssociation(ref commonv1.ObjectSelector) comm
 // DisableUpgradePredicatesAnnotation annotation.
 func (es Elasticsearch) DisabledPredicates() set.StringSet {
 	return setFromAnnotations(DisableUpgradePredicatesAnnotation, es.Annotations)
+}
+
+func (es *Elasticsearch) IsStateless() bool {
+	if es == nil || es.Spec.StatelessSpec == nil {
+		return false
+	}
+	return true
 }

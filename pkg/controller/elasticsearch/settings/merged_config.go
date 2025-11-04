@@ -29,6 +29,7 @@ var nodeAttrNodeName = fmt.Sprintf("%s.%s", esv1.NodeAttr, nodeAttrK8sNodeName)
 // parameters. The user provided config overrides have precedence over the ECK config.
 func NewMergedESConfig(
 	clusterName string,
+	isStateless bool,
 	ver version.Version,
 	ipFamily corev1.IPFamily,
 	httpConfig commonv1.HTTPConfig,
@@ -41,9 +42,9 @@ func NewMergedESConfig(
 		return CanonicalConfig{}, err
 	}
 
-	config := baseConfig(clusterName, ver, ipFamily, remoteClusterServerEnabled).CanonicalConfig
+	config := baseConfig(clusterName, isStateless, ver, ipFamily, remoteClusterServerEnabled).CanonicalConfig
 	err = config.MergeWith(
-		xpackConfig(ver, httpConfig, remoteClusterServerEnabled, remoteClusterClientEnabled).CanonicalConfig,
+		xpackConfig(ver, isStateless, httpConfig, remoteClusterServerEnabled, remoteClusterClientEnabled).CanonicalConfig,
 		userCfg,
 		esConfigFromStackConfigPolicy,
 	)
@@ -53,8 +54,17 @@ func NewMergedESConfig(
 	return CanonicalConfig{config}, nil
 }
 
+func WithStatelessConfig(objectStoreConfig esv1.ObjectStoreConfig, baseCfg CanonicalConfig) (CanonicalConfig, error) {
+	statelessCfg := statelessConfig(objectStoreConfig).CanonicalConfig
+	err := baseCfg.CanonicalConfig.MergeWith(statelessCfg)
+	if err != nil {
+		return CanonicalConfig{}, err
+	}
+	return baseCfg, nil
+}
+
 // baseConfig returns the base ES configuration to apply for the given cluster
-func baseConfig(clusterName string, ver version.Version, ipFamily corev1.IPFamily, remoteClusterServerEnabled bool) *CanonicalConfig {
+func baseConfig(clusterName string, isStateless bool, ver version.Version, ipFamily corev1.IPFamily, remoteClusterServerEnabled bool) *CanonicalConfig {
 	cfg := map[string]interface{}{
 		// derive node name dynamically from the pod name, injected as env var
 		esv1.NodeName:    "${" + EnvPodName + "}",
@@ -62,7 +72,6 @@ func baseConfig(clusterName string, ver version.Version, ipFamily corev1.IPFamil
 
 		// use the DNS name as the publish host
 		esv1.NetworkPublishHost: netutil.IPLiteralFor("${"+EnvPodIP+"}", ipFamily),
-		esv1.HTTPPublishHost:    "${" + EnvPodName + "}.${" + HeadlessServiceName + "}.${" + EnvNamespace + "}.svc",
 		esv1.NetworkHost:        "0",
 
 		// allow ES to be aware of k8s node the pod is running on when allocating shards
@@ -71,6 +80,12 @@ func baseConfig(clusterName string, ver version.Version, ipFamily corev1.IPFamil
 
 		esv1.PathData: volume.ElasticsearchDataMountPath,
 		esv1.PathLogs: volume.ElasticsearchLogsMountPath,
+	}
+
+	if isStateless {
+		cfg[esv1.HTTPPublishHost] = "0" // no headless service per node set
+	} else {
+		cfg[esv1.HTTPPublishHost] = "${" + EnvPodName + "}.${" + HeadlessServiceName + "}.${" + EnvNamespace + "}.svc"
 	}
 
 	if remoteClusterServerEnabled {
@@ -98,7 +113,7 @@ func baseConfig(clusterName string, ver version.Version, ipFamily corev1.IPFamil
 }
 
 // xpackConfig returns the configuration bit related to XPack settings
-func xpackConfig(ver version.Version, httpCfg commonv1.HTTPConfig, remoteClusterServerEnabled, remoteClusterClientEnabled bool) *CanonicalConfig {
+func xpackConfig(ver version.Version, isStateless bool, httpCfg commonv1.HTTPConfig, remoteClusterServerEnabled, remoteClusterClientEnabled bool) *CanonicalConfig {
 	// enable x-pack security, including TLS
 	cfg := map[string]interface{}{
 		// x-pack security general settings
@@ -152,20 +167,22 @@ func xpackConfig(ver version.Version, httpCfg commonv1.HTTPConfig, remoteCluster
 		}
 	}
 
-	// always enable the built-in file and native internal realms for user auth, ordered as first
-	if ver.Major < 7 {
-		// 6.x syntax
-		cfg[esv1.XPackSecurityAuthcRealmsFile1Type] = "file"
-		cfg[esv1.XPackSecurityAuthcRealmsFile1Order] = -100
-		cfg[esv1.XPackSecurityAuthcRealmsNative1Type] = "native"
-		cfg[esv1.XPackSecurityAuthcRealmsNative1Order] = -99
-	} else {
-		// 7.x syntax
-		cfg[esv1.XPackSecurityAuthcRealmsFileFile1Order] = -100
-		cfg[esv1.XPackSecurityAuthcRealmsNativeNative1Order] = -99
+	if !isStateless {
+		// always enable the built-in file and native internal realms for user auth, ordered as first
+		if ver.Major < 7 {
+			// 6.x syntax
+			cfg[esv1.XPackSecurityAuthcRealmsFile1Type] = "file"
+			cfg[esv1.XPackSecurityAuthcRealmsFile1Order] = -100
+			cfg[esv1.XPackSecurityAuthcRealmsNative1Type] = "native"
+			cfg[esv1.XPackSecurityAuthcRealmsNative1Order] = -99
+		} else {
+			// 7.x syntax
+			cfg[esv1.XPackSecurityAuthcRealmsFileFile1Order] = -100
+			cfg[esv1.XPackSecurityAuthcRealmsNativeNative1Order] = -99
+		}
 	}
 
-	if ver.GTE(version.MustParse("7.8.1")) {
+	if ver.GTE(version.MustParse("7.8.1")) && !isStateless {
 		cfg[esv1.XPackLicenseUploadTypes] = []string{
 			string(client.ElasticsearchLicenseTypeTrial), string(client.ElasticsearchLicenseTypeEnterprise),
 		}

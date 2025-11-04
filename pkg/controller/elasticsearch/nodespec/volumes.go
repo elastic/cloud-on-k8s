@@ -7,6 +7,8 @@ package nodespec
 import (
 	corev1 "k8s.io/api/core/v1"
 
+	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/stringsutil"
+
 	esv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/elasticsearch/v1"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/certificates"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/keystore"
@@ -21,13 +23,16 @@ import (
 
 func buildVolumes(
 	esName string,
+	isStateless bool,
 	version version.Version,
-	nodeSpec esv1.NodeSet,
+	nodeSetSpec esv1.NodeSetSpec,
 	keystoreResources *keystore.Resources,
 	downwardAPIVolume volume.DownwardAPI,
 	additionalMountsFromPolicy []volume.VolumeLike,
 ) ([]corev1.Volume, []corev1.VolumeMount) {
-	configVolume := settings.ConfigSecretVolume(esv1.StatefulSet(esName, nodeSpec.Name))
+	podControllerResourceName := esv1.PodsControllerResourceName(esName, nodeSetSpec.GetName())
+	configVolume := settings.ConfigSecretVolume(podControllerResourceName)
+
 	probeSecret := volume.NewSelectiveSecretVolumeWithMountPath(
 		esv1.InternalUsersSecret(esName), esvolume.ProbeUserVolumeName,
 		esvolume.PodMountedUsersSecretMountPath, []string{user.ProbeUserName, user.PreStopUserName},
@@ -37,14 +42,11 @@ func buildVolumes(
 		esvolume.HTTPCertificatesSecretVolumeName,
 		esvolume.HTTPCertificatesSecretVolumeMountPath,
 	)
-	transportCertificatesVolume := transportCertificatesVolume(esv1.StatefulSet(esName, nodeSpec.Name))
+	transportCertificatesVolume := transportCertificatesVolume(podControllerResourceName)
 	remoteCertificateAuthoritiesVolume := volume.NewSecretVolumeWithMountPath(
 		esv1.RemoteCaSecretName(esName),
 		esvolume.RemoteCertificateAuthoritiesSecretVolumeName,
 		esvolume.RemoteCertificateAuthoritiesSecretVolumeMountPath,
-	)
-	unicastHostsVolume := volume.NewConfigMapVolume(
-		esv1.UnicastHostsConfigMap(esName), esvolume.UnicastHostsVolumeName, esvolume.UnicastHostsVolumeMountPath,
 	)
 	usersSecretVolume := volume.NewSecretVolumeWithMountPath(
 		esv1.RolesAndFileRealmSecret(esName),
@@ -66,8 +68,9 @@ func buildVolumes(
 		esvolume.TempVolumeMountPath,
 	)
 	// append future volumes from PVCs (not resolved to a claim yet)
-	persistentVolumes := make([]corev1.Volume, 0, len(nodeSpec.VolumeClaimTemplates))
-	for _, claimTemplate := range nodeSpec.VolumeClaimTemplates {
+	volumeTemplate := nodeSetSpec.GetVolumeClaimTemplates()
+	persistentVolumes := make([]corev1.Volume, 0, len(volumeTemplate))
+	for _, claimTemplate := range volumeTemplate {
 		persistentVolumes = append(persistentVolumes, corev1.Volume{
 			Name: claimTemplate.Name,
 			VolumeSource: corev1.VolumeSource{
@@ -79,14 +82,18 @@ func buildVolumes(
 		})
 	}
 
-	volumes := persistentVolumes
+	volumes := make([]corev1.Volume, 0, len(persistentVolumes)+len(volumeTemplate))
+	if !isStateless {
+		// CloneSet automatically adds PVC volumes in Spec.VolumeClaimTemplates, no need to add them again.
+		// We still need to add the mount point later though...
+		volumes = append(volumes, persistentVolumes...)
+	}
 	volumes = append(
 		volumes, // includes the data volume, unless specified differently in the pod template
 		append(
 			initcontainer.PluginVolumes.Volumes(),
 			esvolume.DefaultLogsVolume,
 			usersSecretVolume.Volume(),
-			unicastHostsVolume.Volume(),
 			probeSecret.Volume(),
 			transportCertificatesVolume.Volume(),
 			remoteCertificateAuthoritiesVolume.Volume(),
@@ -104,7 +111,6 @@ func buildVolumes(
 		initcontainer.PluginVolumes.ContainerVolumeMounts(),
 		esvolume.DefaultLogsVolumeMount,
 		usersSecretVolume.VolumeMount(),
-		unicastHostsVolume.VolumeMount(),
 		probeSecret.VolumeMount(),
 		transportCertificatesVolume.VolumeMount(),
 		remoteCertificateAuthoritiesVolume.VolumeMount(),
@@ -115,8 +121,29 @@ func buildVolumes(
 		tmpVolume.VolumeMount(),
 	)
 
+	// Unicast is still required for cluster bootstrapping even for stateless nodes.
+	unicastHostsVolume := volume.NewConfigMapVolume(
+		esv1.UnicastHostsConfigMap(esName), esvolume.UnicastHostsVolumeName, esvolume.UnicastHostsVolumeMountPath,
+	)
+	volumes = append(volumes, unicastHostsVolume.Volume())
+	volumeMounts = append(volumeMounts, unicastHostsVolume.VolumeMount())
+
+	if isStateless {
+		// mount again the config secret for each settings file watched by ES, with only the file projected in the volume.
+		// If we handle these files like the other config files with symlinks created via the initcontainer, updates to these
+		// files are not seen by ES.
+		secureSettingsVolume := volume.NewSelectiveSecretVolumeWithMountPath(
+			settings.ConfigSecretName(podControllerResourceName),
+			settings.SecureSettingVolumeName,
+			stringsutil.Concat(esvolume.ConfigVolumeMountPath, "/", settings.SecureSettingsDirName),
+			[]string{settings.SecureSettingsFileName},
+		)
+		volumes = append(volumes, secureSettingsVolume.Volume())
+		volumeMounts = append(volumeMounts, secureSettingsVolume.VolumeMount())
+	}
+
 	// version gate for the file-based settings volume and volumeMounts
-	if version.GTE(filesettings.FileBasedSettingsMinPreVersion) {
+	if isStateless || version.GTE(filesettings.FileBasedSettingsMinPreVersion) {
 		volumes = append(volumes, fileSettingsVolume.Volume())
 		volumeMounts = append(volumeMounts, fileSettingsVolume.VolumeMount())
 	}
@@ -127,8 +154,9 @@ func buildVolumes(
 		volumeMounts = append(volumeMounts, volume.VolumeMount())
 	}
 
+	podTemplate := nodeSetSpec.GetPodTemplate()
 	// include the user-provided PodTemplate volumes as the user may have defined the data volume there (e.g.: emptyDir or hostpath volume)
-	volumeMounts = esvolume.AppendDefaultDataVolumeMount(volumeMounts, append(volumes, nodeSpec.PodTemplate.Spec.Volumes...))
+	volumeMounts = esvolume.AppendDefaultDataVolumeMount(volumeMounts, append(volumes, podTemplate.Spec.Volumes...), persistentVolumes)
 
 	return volumes, volumeMounts
 }

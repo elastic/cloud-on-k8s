@@ -6,18 +6,21 @@ package expectations
 
 import (
 	"context"
+	"fmt"
 
-	appsv1 "k8s.io/api/apps/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/k8s"
 )
 
-// ExpectedStatefulSetUpdates stores StatefulSets generations that are expected in the cache,
+// ExpectedGenerations stores StatefulSets generations that are expected in the cache,
 // following a StatefulSet update. It allows making sure we're not working with an
 // out-of-date version of the StatefulSet resource we previously updated.
-type ExpectedStatefulSetUpdates struct {
+type ExpectedGenerations struct {
+	object      client.Object
 	client      k8s.Client
 	generations map[types.NamespacedName]ResourceGeneration // per StatefulSet
 }
@@ -28,49 +31,53 @@ type ResourceGeneration struct {
 	Generation int64
 }
 
-// NewExpectedStatefulSetUpdates returns an initialized ExpectedStatefulSetUpdates.
-func NewExpectedStatefulSetUpdates(client k8s.Client) *ExpectedStatefulSetUpdates {
-	return &ExpectedStatefulSetUpdates{
+// NewExpectedGenerations returns an initialized ExpectedGenerations.
+func NewExpectedGenerations(client k8s.Client, object client.Object) *ExpectedGenerations {
+	return &ExpectedGenerations{
+		object:      object,
 		client:      client,
 		generations: make(map[types.NamespacedName]ResourceGeneration),
 	}
 }
 
-// ExpectGeneration registers the Generation of the given StatefulSets as expected.
-// The StatefulSet we receive as argument here is the "updated" StatefulSet.
+// ExpectGeneration registers the Generation of the given object as expected.
+// The object we receive as argument here is the "updated" StatefulSet.
 // We expect to see its generation (at least) in PendingGenerations().
-func (e *ExpectedStatefulSetUpdates) ExpectGeneration(statefulSet appsv1.StatefulSet) {
-	resource := types.NamespacedName{Namespace: statefulSet.Namespace, Name: statefulSet.Name}
+func (e *ExpectedGenerations) ExpectGeneration(object metav1.Object) {
+	resource := types.NamespacedName{Namespace: object.GetNamespace(), Name: object.GetName()}
 	e.generations[resource] = ResourceGeneration{
-		UID:        statefulSet.UID,
-		Generation: statefulSet.Generation,
+		UID:        object.GetUID(),
+		Generation: object.GetGeneration(),
 	}
 }
 
 // PendingGenerations compares expected StatefulSets generations with the ones we have in the cache,
 // and returns the list of StatefulSets for which the generation has not been updated yet.
 // Expectations are cleared once they are matched.
-func (e *ExpectedStatefulSetUpdates) PendingGenerations() ([]string, error) {
-	var pendingStatefulSet []string
-	for statefulSet, expectedGen := range e.generations {
-		satisfied, err := e.generationSatisfied(statefulSet, expectedGen)
+func (e *ExpectedGenerations) PendingGenerations() ([]string, error) {
+	var pendingObjects []string
+	for objectName, expectedGen := range e.generations {
+		satisfied, err := e.generationSatisfied(objectName, expectedGen)
 		if err != nil {
 			return nil, err
 		}
 		if !satisfied {
-			pendingStatefulSet = append(pendingStatefulSet, statefulSet.Name)
+			pendingObjects = append(pendingObjects, objectName.Name)
 		} else {
 			// cache is up-to-date: remove the existing expectation
-			delete(e.generations, statefulSet)
+			delete(e.generations, objectName)
 		}
 	}
-	return pendingStatefulSet, nil
+	return pendingObjects, nil
 }
 
 // generationSatisfied returns true if the generation of the cached StatefulSet matches what is expected.
-func (e *ExpectedStatefulSetUpdates) generationSatisfied(statefulSet types.NamespacedName, expected ResourceGeneration) (bool, error) {
-	var ssetInCache appsv1.StatefulSet
-	err := e.client.Get(context.Background(), statefulSet, &ssetInCache)
+func (e *ExpectedGenerations) generationSatisfied(name types.NamespacedName, expected ResourceGeneration) (bool, error) {
+	object, ok := e.object.DeepCopyObject().(client.Object)
+	if !ok {
+		return false, fmt.Errorf("unable to deep copy object of type %T", e.object)
+	}
+	err := e.client.Get(context.Background(), name, object)
 	if err != nil {
 		if apierrors.IsNotFound(err) {
 			// StatefulSet does not exist anymore
@@ -78,11 +85,11 @@ func (e *ExpectedStatefulSetUpdates) generationSatisfied(statefulSet types.Names
 		}
 		return false, err
 	}
-	if ssetInCache.UID != expected.UID {
+	if object.GetUID() != expected.UID {
 		// StatefulSet was replaced by another one with the same name
 		return true, nil
 	}
-	if ssetInCache.Generation >= expected.Generation {
+	if object.GetGeneration() >= expected.Generation {
 		// StatefulSet generation matches our expectations
 		return true, nil
 	}
@@ -90,6 +97,6 @@ func (e *ExpectedStatefulSetUpdates) generationSatisfied(statefulSet types.Names
 }
 
 // GetGenerations returns the map of generations, for testing purposes mostly.
-func (e *ExpectedStatefulSetUpdates) GetGenerations() map[types.NamespacedName]ResourceGeneration {
+func (e *ExpectedGenerations) GetGenerations() map[types.NamespacedName]ResourceGeneration {
 	return e.generations
 }

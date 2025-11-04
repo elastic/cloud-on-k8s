@@ -8,6 +8,12 @@
 - op: remove
   path: /spec/versions/1/schema/openAPIV3Schema/properties/spec/properties/nodeSets/items/properties/podTemplate/properties
 - op: remove
+  path: /spec/versions/0/schema/openAPIV3Schema/properties/spec/properties/stateless/properties/tiers/properties/index/properties/podTemplate/properties
+- op: remove
+  path: /spec/versions/0/schema/openAPIV3Schema/properties/spec/properties/stateless/properties/tiers/properties/search/properties/podTemplate/properties
+- op: remove
+  path: /spec/versions/0/schema/openAPIV3Schema/properties/spec/properties/stateless/properties/tiers/properties/ml/properties/podTemplate/properties
+- op: remove
   path: /spec/versions/0/schema/openAPIV3Schema/properties/spec/properties/nodeSets/items/properties/volumeClaimTemplates/items/properties/status
 - op: remove
   path: /spec/versions/1/schema/openAPIV3Schema/properties/spec/properties/nodeSets/items/properties/volumeClaimTemplates/items/properties/status

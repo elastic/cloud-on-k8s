@@ -474,7 +474,7 @@ func checkExpectedPodsReady(b Builder, k *test.K8sClient) error {
 		if err := k.Client.Get(context.Background(),
 			types.NamespacedName{
 				Namespace: es.Namespace,
-				Name:      esv1.StatefulSet(es.Name, nodeSet.Name),
+				Name:      esv1.PodsControllerResourceName(es.Name, nodeSet.Name),
 			},
 			&statefulSet,
 		); err != nil {
@@ -521,7 +521,7 @@ func checkStatefulSetsReplicas(es esv1.Elasticsearch, k *test.K8sClient) error {
 	// build names and replicas count of expected StatefulSets
 	expected := make(map[string]int32, len(es.Spec.NodeSets)) // map[StatefulSetName]Replicas
 	for _, nodeSet := range es.Spec.NodeSets {
-		expected[esv1.StatefulSet(es.Name, nodeSet.Name)] = nodeSet.Count
+		expected[esv1.PodsControllerResourceName(es.Name, nodeSet.Name)] = nodeSet.Count
 	}
 	statefulSets, err := k.GetESStatefulSets(es.Namespace, es.Name)
 	if err != nil {
@@ -547,7 +547,7 @@ func AnnotatePodsWithBuilderHash(b Builder, k *test.K8sClient) []test.Step {
 				for _, nodeSet := range b.Elasticsearch.Spec.NodeSets {
 					pods, err := es_sset.GetActualPodsForStatefulSet(k.Client, types.NamespacedName{
 						Namespace: es.Namespace,
-						Name:      esv1.StatefulSet(es.Name, nodeSet.Name),
+						Name:      esv1.PodsControllerResourceName(es.Name, nodeSet.Name),
 					})
 					if err != nil {
 						return err

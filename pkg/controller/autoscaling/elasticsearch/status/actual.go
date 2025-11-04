@@ -84,7 +84,7 @@ func nodeSetsResourcesResourcesFromStatefulSets(
 	// 1. we try to get the corresponding StatefulSet
 	// 2. we build a NodeSetsResources from the max. resources of each StatefulSet
 	for _, nodeSetName := range nodeSets {
-		statefulSetName := esv1.StatefulSet(es.Name, nodeSetName)
+		statefulSetName := esv1.PodsControllerResourceName(es.Name, nodeSetName)
 		statefulSet := appsv1.StatefulSet{}
 		err := c.Get(
 			context.Background(),

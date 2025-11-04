@@ -246,7 +246,7 @@ func buildStatefulSet(
 ) *appsv1.StatefulSet {
 	statefulSet := appsv1.StatefulSet{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      esv1.StatefulSet("esname", nodeSetName),
+			Name:      esv1.PodsControllerResourceName("esname", nodeSetName),
 			Namespace: "esns",
 		},
 		Spec: appsv1.StatefulSetSpec{

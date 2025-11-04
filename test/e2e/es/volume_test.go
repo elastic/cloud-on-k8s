@@ -163,8 +163,8 @@ func TestVolumeExpansion(t *testing.T) {
 	t.Log(fmt.Sprintf("Using storage class %s to test volume expansion", storageClass))
 	patchStorageClasses(&b.Elasticsearch, storageClass)
 
-	masterSset := esv1.StatefulSet(b.Elasticsearch.Name, b.Elasticsearch.Spec.NodeSets[0].Name)
-	dataSset := esv1.StatefulSet(b.Elasticsearch.Name, b.Elasticsearch.Spec.NodeSets[1].Name)
+	masterSset := esv1.PodsControllerResourceName(b.Elasticsearch.Name, b.Elasticsearch.Spec.NodeSets[0].Name)
+	dataSset := esv1.PodsControllerResourceName(b.Elasticsearch.Name, b.Elasticsearch.Spec.NodeSets[1].Name)
 
 	// resize the volume with an additional 1Gi after the cluster is up
 	initialStorageSize := b.Elasticsearch.Spec.NodeSets[0].VolumeClaimTemplates[0].Spec.Resources.Requests.Storage()

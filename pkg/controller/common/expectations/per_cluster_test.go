@@ -9,6 +9,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/require"
+	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
@@ -19,7 +20,7 @@ import (
 
 func TestClustersExpectation(t *testing.T) {
 	client := k8s.NewFakeClient()
-	e := NewClustersExpectations(client)
+	e := NewClustersExpectations(client, &appsv1.StatefulSet{})
 
 	cluster := types.NamespacedName{Namespace: "ns", Name: "name"}
 

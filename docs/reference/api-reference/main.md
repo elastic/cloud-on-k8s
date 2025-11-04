@@ -418,6 +418,7 @@ Config represents untyped YAML configuration.
 * [MapsSpec](#mapsspec)
 * [NodeSet](#nodeset)
 * [Search](#search)
+* [TierSpec](#tierspec)
 
 :::
 
@@ -1088,6 +1089,7 @@ ElasticsearchSpec holds the specification of an Elasticsearch cluster.
 | --- | --- |
 | *`version`* __string__ | Version of Elasticsearch. |
 | *`image`* __string__ | Image is the Elasticsearch Docker image to deploy. |
+| *`stateless`* __[StatelessSpec](#statelessspec)__ |  |
 | *`remoteClusterServer`* __[RemoteClusterServer](#remoteclusterserver)__ | RemoteClusterServer specifies if the remote cluster server should be enabled.<br>This must be enabled if this cluster is a remote cluster which is expected to be accessed using API key authentication. |
 | *`http`* __[HTTPConfig](#httpconfig)__ | HTTP holds HTTP layer settings for Elasticsearch. |
 | *`transport`* __[TransportConfig](#transportconfig)__ | Transport holds transport layer settings for Elasticsearch. |
@@ -1121,6 +1123,8 @@ ElasticsearchStatus represents the observed state of Elasticsearch.
 | *`conditions`* __[Conditions](#conditions)__ | Conditions holds the current service state of an Elasticsearch cluster.<br>**This API is in technical preview and may be changed or removed in a future release.** |
 | *`inProgressOperations`* __[InProgressOperations](#inprogressoperations)__ | InProgressOperations represents changes being applied by the operator to the Elasticsearch cluster.<br>**This API is in technical preview and may be changed or removed in a future release.** |
 | *`observedGeneration`* __integer__ | ObservedGeneration is the most recent generation observed for this Elasticsearch cluster.<br>It corresponds to the metadata generation, which is updated on mutation by the API Server.<br>If the generation observed in status diverges from the generation in metadata, the Elasticsearch<br>controller has not yet processed the changes contained in the Elasticsearch specification. |
+
+
 
 
 ### FieldSecurity  [#fieldsecurity]
@@ -1217,6 +1221,27 @@ NodeSet is the specification for a group of Elasticsearch nodes sharing the same
 | *`count`* __integer__ | Count of Elasticsearch nodes to deploy.<br>If the node set is managed by an autoscaling policy the initial value is automatically set by the autoscaling controller. |
 | *`podTemplate`* __[PodTemplateSpec](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.32/#podtemplatespec-v1-core)__ | PodTemplate provides customisation options (labels, annotations, affinity rules, resource requests, and so on) for the Pods belonging to this NodeSet. |
 | *`volumeClaimTemplates`* __[PersistentVolumeClaim](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.32/#persistentvolumeclaim-v1-core) array__ | VolumeClaimTemplates is a list of persistent volume claims to be used by each Pod in this NodeSet.<br>Every claim in this list must have a matching volumeMount in one of the containers defined in the PodTemplate.<br>Items defined here take precedence over any default claims added by the operator with the same name. |
+
+
+
+
+### ObjectStoreConfig  [#objectstoreconfig]
+
+
+
+:::{admonition} Appears In:
+* [StatelessConfig](#statelessconfig)
+
+:::
+
+| Field | Description |
+| --- | --- |
+| *`base_path`* __string__ |  |
+| *`bucket`* __string__ |  |
+| *`client`* __string__ |  |
+| *`type`* __string__ |  |
+
+
 
 
 ### RemoteCluster  [#remotecluster]
@@ -1337,6 +1362,94 @@ SelfSignedTransportCertificates holds configuration for the self-signed certific
 | *`disabled`* __boolean__ | Disabled indicates that provisioning of the self-signed certificates should be disabled. |
 
 
+### SimpleMetadata  [#simplemetadata]
+
+
+
+:::{admonition} Appears In:
+* [VolumeClaimTemplate](#volumeclaimtemplate)
+
+:::
+
+| Field | Description |
+| --- | --- |
+| *`annotations`* __object (keys:string, values:string)__ |  |
+| *`labels`* __object (keys:string, values:string)__ |  |
+
+
+### StatelessConfig  [#statelessconfig]
+
+
+
+:::{admonition} Appears In:
+* [StatelessSpec](#statelessspec)
+
+:::
+
+| Field | Description |
+| --- | --- |
+| *`object_store`* __[ObjectStoreConfig](#objectstoreconfig)__ |  |
+
+
+### StatelessSpec  [#statelessspec]
+
+
+
+:::{admonition} Appears In:
+* [ElasticsearchSpec](#elasticsearchspec)
+
+:::
+
+| Field | Description |
+| --- | --- |
+| *`tiers`* __[Tiers](#tiers)__ |  |
+| *`config`* __[StatelessConfig](#statelessconfig)__ |  |
+
+
+### TierSpec  [#tierspec]
+
+
+
+:::{admonition} Appears In:
+* [Tiers](#tiers)
+
+:::
+
+| Field | Description |
+| --- | --- |
+| *`count`* __integer__ | Count is the desired number of pods in this tier. |
+| *`podTemplate`* __[PodTemplateSpec](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.32/#podtemplatespec-v1-core)__ | PodTemplate is the pod template to use for the pods in this tier. |
+| *`config`* __[Config](#config)__ | Config holds the Elasticsearch configuration specific to a tier. |
+| *`volumeClaimTemplate`* __[VolumeClaimTemplate](#volumeclaimtemplate)__ | VolumeClaimTemplate is the volume claim template to use for the caching volume in this tier. |
+
+
+### Tiers  [#tiers]
+
+
+
+:::{admonition} Appears In:
+* [StatelessSpec](#statelessspec)
+
+:::
+
+| Field | Description |
+| --- | --- |
+| *`index`* __[TierSpec](#tierspec)__ |  |
+| *`search`* __[TierSpec](#tierspec)__ |  |
+| *`ml`* __[TierSpec](#tierspec)__ |  |
+
+
+### TopologySpreadConstraintsTemplate  [#topologyspreadconstraintstemplate]
+
+
+
+:::{admonition} Appears In:
+* [PodTemplate](#podtemplate)
+
+:::
+
+
+
 ### TransportConfig  [#transportconfig]
 
 TransportConfig holds the transport layer settings for Elasticsearch.
@@ -1444,6 +1557,21 @@ Inspired by https://github.com/kubernetes/enhancements/pull/2440
 
 :::
 
+
+
+### VolumeClaimTemplate  [#volumeclaimtemplate]
+
+
+
+:::{admonition} Appears In:
+* [TierSpec](#tierspec)
+
+:::
+
+| Field | Description |
+| --- | --- |
+| *`metadata`* __[SimpleMetadata](#simplemetadata)__ | Refer to Kubernetes API documentation for fields of `metadata`. |
+| *`spec`* __[PersistentVolumeClaimSpec](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.32/#persistentvolumeclaimspec-v1-core)__ | spec defines the desired characteristics of a volume requested by a pod author.<br>More info: https://kubernetes.io/docs/concepts/storage/persistent-volumes#persistentvolumeclaims |
 
 
 

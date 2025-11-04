@@ -1,0 +1,62 @@
+# This is a sample Elasticsearch stateless cluster configuration
+# Requirements:
+# 1. Install the CloneSet controller in your Kubernetes cluster: https://openkruise.io/docs/installation#install-with-helm
+# 2. To pull a private image, create a Kubernetes Secret named elastic-docker-registry with your Docker registry credentials:
+#    https://kubernetes.io/docs/tasks/configure-pod-container/pull-image-private-registry/#registry-secret-existing-credentials
+# 3. Update the object_store section with your S3 bucket details.
+# 4. Adjust s3.client.default.region in the tier configs if needed.
+# 5. Ensure the elasticsearch-object-store Kubernetes Secret exists with the necessary credentials:
+##cat <<EOF | kubectl apply -f -
+##apiVersion: v1
+##kind: Secret
+##metadata:
+##  name: elasticsearch-object-store
+##type: Opaque
+##stringData:
+##  s3.client.default.access_key: ${AWS_ACCESS_KEY_ID}
+##  s3.client.default.secret_key: ${AWS_SECRET_ACCESS_KEY}
+##  s3.client.default.session_token: ${AWS_SESSION_TOKEN}
+##EOF
+### NOTE: If you recreate a cluster during your tests, make sure to delete the content of the bucket, election is going to fail otherwise.
+apiVersion: elasticsearch.k8s.elastic.co/v1
+kind: Elasticsearch
+metadata:
+  name: elasticsearch-stateless
+spec:
+  version: 9.1.2
+  image: docker.elastic.co/elasticsearch-ci/elasticsearch-serverless:git-f24e76623dcf
+  secureSettings:
+    - secretName: elasticsearch-object-store
+  stateless:
+    config:
+      object_store:
+        base_path: my_base_path/
+        bucket: my-bucket
+        client: default
+        type: s3
+    tiers:
+      index:
+        count: 3
+        config:
+          node.store.allow_mmap: false
+          s3.client.default.region: eu-west-1
+        podTemplate:
+          spec:
+            imagePullSecrets:
+              - name: elastic-docker-registry
+      search:
+        count: 1
+        config:
+          node.store.allow_mmap: false
+          s3.client.default.region: eu-west-1
+        volumeClaimTemplate:
+          spec:
+            resources:
+              requests:
+                storage: 10Gi
+        podTemplate:
+          spec:
+            imagePullSecrets:
+              - name: elastic-docker-registry
+      ml:
+        count: 0

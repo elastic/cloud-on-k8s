@@ -7,8 +7,7 @@ package scheme
 import (
 	"sync"
 
-	logstashv1alpha1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/logstash/v1alpha1"
-
+	clonesetv1alpha1 "github.com/openkruise/kruise-api/apps/v1alpha1"
 	"k8s.io/apimachinery/pkg/runtime"
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
 
@@ -25,6 +24,7 @@ import (
 	entv1beta1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/enterprisesearch/v1beta1"
 	kbv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/kibana/v1"
 	kbv1beta1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/kibana/v1beta1"
+	logstashv1alpha1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/logstash/v1alpha1"
 	emsv1alpha1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/maps/v1alpha1"
 	policyv1alpha1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/stackconfigpolicy/v1alpha1"
 )
@@ -58,6 +58,8 @@ func SetupScheme() {
 		emsv1alpha1.AddToScheme,
 		policyv1alpha1.AddToScheme,
 		logstashv1alpha1.AddToScheme,
+		// CloneSet is used for stateless Elasticsearch nodes.
+		clonesetv1alpha1.AddToScheme,
 	}
 	mustAddSchemeOnce(&addToScheme, schemes)
 }

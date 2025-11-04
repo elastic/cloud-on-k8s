@@ -143,7 +143,7 @@ func Test_updateState(t *testing.T) {
 		{
 			name: "empty settings",
 			args: args{policy: policyv1alpha1.StackConfigPolicy{}},
-			want: newEmptySettingsState(),
+			want: newEmptySettingsState(false),
 		},
 		{
 			name: "gcs, azure and s3 snapshot repository settings: default base_path",

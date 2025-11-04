@@ -84,7 +84,7 @@ func BuildStatefulSet(
 	policyConfig PolicyConfig,
 	meta metadata.Metadata,
 ) (appsv1.StatefulSet, error) {
-	statefulSetName := esv1.StatefulSet(es.Name, nodeSet.Name)
+	statefulSetName := esv1.PodsControllerResourceName(es.Name, nodeSet.Name)
 
 	// ssetSelector is used to match the sset pods
 	ssetSelector := label.NewStatefulSetLabels(k8s.ExtractNamespacedName(&es), statefulSetName)
@@ -98,7 +98,7 @@ func BuildStatefulSet(
 	)
 
 	// build pod template
-	podTemplate, err := BuildPodTemplateSpec(ctx, client, es, nodeSet, cfg, keystoreResources, setDefaultSecurityContext, policyConfig, meta)
+	podTemplate, err := BuildPodTemplateSpec(ctx, client, es, &nodeSet, cfg, keystoreResources, setDefaultSecurityContext, policyConfig, meta)
 	if err != nil {
 		return appsv1.StatefulSet{}, err
 	}

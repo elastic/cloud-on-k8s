@@ -23,8 +23,9 @@ var (
 
 // Settings represents the "File-based Settings" to write to the JSON file watched by Elasticsearch.
 type Settings struct {
-	Metadata SettingsMetadata `json:"metadata"`
-	State    SettingsState    `json:"state"`
+	Metadata    SettingsMetadata `json:"metadata"`
+	State       SettingsState    `json:"state"`
+	IsStateless bool             `json:"-"`
 }
 
 // SettingsMetadata represents the metadata of the "File-based Settings".
@@ -57,33 +58,37 @@ func (s *Settings) hash() string {
 }
 
 // NewEmptySettings returns empty new Settings.
-func NewEmptySettings(version int64) Settings {
+func NewEmptySettings(version int64, isStateless bool) Settings {
 	return Settings{
-		Metadata: SettingsMetadata{Version: fmt.Sprintf("%d", version), Compatibility: FileBasedSettingsMinVersion.String()},
-		State:    newEmptySettingsState(),
+		Metadata:    SettingsMetadata{Version: fmt.Sprintf("%d", version), Compatibility: FileBasedSettingsMinVersion.String()},
+		State:       newEmptySettingsState(isStateless),
+		IsStateless: isStateless,
 	}
 }
 
 // newEmptySettingsState returns an empty new Settings state.
-func newEmptySettingsState() SettingsState {
-	return SettingsState{
-		ClusterSettings:        &commonv1.Config{Data: map[string]interface{}{}},
-		SnapshotRepositories:   &commonv1.Config{Data: map[string]interface{}{}},
-		SLM:                    &commonv1.Config{Data: map[string]interface{}{}},
-		RoleMappings:           &commonv1.Config{Data: map[string]interface{}{}},
-		IndexLifecyclePolicies: &commonv1.Config{Data: map[string]interface{}{}},
-		IngestPipelines:        &commonv1.Config{Data: map[string]interface{}{}},
+func newEmptySettingsState(isStateless bool) SettingsState {
+	settingsState := SettingsState{
+		ClusterSettings:      &commonv1.Config{Data: map[string]interface{}{}},
+		SnapshotRepositories: &commonv1.Config{Data: map[string]interface{}{}},
+		SLM:                  &commonv1.Config{Data: map[string]interface{}{}},
+		RoleMappings:         &commonv1.Config{Data: map[string]interface{}{}},
+		IngestPipelines:      &commonv1.Config{Data: map[string]interface{}{}},
 		IndexTemplates: &IndexTemplates{
 			ComponentTemplates:       &commonv1.Config{Data: map[string]interface{}{}},
 			ComposableIndexTemplates: &commonv1.Config{Data: map[string]interface{}{}},
 		},
 	}
+	if !isStateless {
+		settingsState.IndexLifecyclePolicies = &commonv1.Config{Data: map[string]interface{}{}}
+	}
+	return settingsState
 }
 
 // updateState updates the Settings state from a StackConfigPolicy for a given Elasticsearch.
 func (s *Settings) updateState(es types.NamespacedName, policy policyv1alpha1.StackConfigPolicy) error {
 	p := policy.DeepCopy() // be sure to not mutate the original policy
-	state := newEmptySettingsState()
+	state := newEmptySettingsState(s.IsStateless)
 	// mutate Snapshot Repositories
 	if p.Spec.Elasticsearch.SnapshotRepositories != nil {
 		for name, untypedDefinition := range p.Spec.Elasticsearch.SnapshotRepositories.Data {

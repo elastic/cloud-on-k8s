@@ -38,7 +38,7 @@ func Test_NewSettingsSecret(t *testing.T) {
 
 	// no policy
 	expectedVersion := int64(1)
-	secret, reconciledVersion, err := newSettingsSecret(expectedVersion, es, nil, nil, metadata.Metadata{})
+	secret, reconciledVersion, err := newSettingsSecret(expectedVersion, es, false, nil, nil, metadata.Metadata{})
 	assert.NoError(t, err)
 	assert.Equal(t, "esNs", secret.Namespace)
 	assert.Equal(t, "esName-es-file-settings", secret.Name)
@@ -47,7 +47,7 @@ func Test_NewSettingsSecret(t *testing.T) {
 
 	// policy
 	expectedVersion = int64(2)
-	secret, reconciledVersion, err = newSettingsSecret(expectedVersion, es, &secret, &policy, metadata.Metadata{})
+	secret, reconciledVersion, err = newSettingsSecret(expectedVersion, es, false, &secret, &policy, metadata.Metadata{})
 	assert.NoError(t, err)
 	assert.Equal(t, "esNs", secret.Namespace)
 	assert.Equal(t, "esName-es-file-settings", secret.Name)
@@ -76,16 +76,16 @@ func Test_SettingsSecret_hasChanged(t *testing.T) {
 		}}
 
 	expectedVersion := int64(1)
-	expectedEmptySettings := NewEmptySettings(expectedVersion)
+	expectedEmptySettings := NewEmptySettings(expectedVersion, false)
 
 	// no policy -> emptySettings
-	secret, reconciledVersion, err := newSettingsSecret(expectedVersion, es, nil, nil, metadata.Metadata{})
+	secret, reconciledVersion, err := newSettingsSecret(expectedVersion, es, false, nil, nil, metadata.Metadata{})
 	assert.NoError(t, err)
 	assert.Equal(t, false, hasChanged(secret, expectedEmptySettings))
 	assert.Equal(t, expectedVersion, reconciledVersion)
 
 	// policy without settings -> emptySettings
-	sameSettings := NewEmptySettings(expectedVersion)
+	sameSettings := NewEmptySettings(expectedVersion, false)
 	err = sameSettings.updateState(es, policy)
 	assert.NoError(t, err)
 	assert.Equal(t, false, hasChanged(secret, sameSettings))
@@ -93,7 +93,7 @@ func Test_SettingsSecret_hasChanged(t *testing.T) {
 
 	// new policy -> settings changed
 	newVersion := int64(2)
-	newSettings := NewEmptySettings(newVersion)
+	newSettings := NewEmptySettings(newVersion, false)
 
 	err = newSettings.updateState(es, otherPolicy)
 	assert.NoError(t, err)
@@ -126,7 +126,7 @@ func Test_SettingsSecret_setSoftOwner_canBeOwnedBy(t *testing.T) {
 	}
 
 	// empty settings can be owned by any policy
-	secret, _, err := NewSettingsSecretWithVersion(es, nil, nil, metadata.Metadata{})
+	secret, _, err := NewSettingsSecretWithVersion(es, false, nil, nil, metadata.Metadata{})
 	assert.NoError(t, err)
 	_, canBeOwned := CanBeOwnedBy(secret, policy)
 	assert.Equal(t, true, canBeOwned)
@@ -170,7 +170,7 @@ func Test_SettingsSecret_setSecureSettings_getSecureSettings(t *testing.T) {
 			SecureSettings: []commonv1.SecretSource{{SecretName: "secure-settings-secret"}},
 		}}
 
-	secret, _, err := NewSettingsSecretWithVersion(es, nil, nil, metadata.Metadata{})
+	secret, _, err := NewSettingsSecretWithVersion(es, false, nil, nil, metadata.Metadata{})
 	assert.NoError(t, err)
 
 	secureSettings, err := getSecureSettings(secret)

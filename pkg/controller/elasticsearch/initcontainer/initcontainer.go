@@ -20,6 +20,7 @@ const (
 
 // NewInitContainers creates init containers according to the given parameters
 func NewInitContainers(
+	isStateless bool,
 	transportCertificatesVolume volume.SecretVolume,
 	keystoreResources *keystore.Resources,
 	nodeLabelsAsAnnotations []string,
@@ -35,7 +36,9 @@ func NewInitContainers(
 		containers = append(containers, keystoreResources.InitContainer)
 	}
 
-	containers = append(containers, NewSuspendInitContainer())
+	if !isStateless {
+		containers = append(containers, NewSuspendInitContainer())
+	}
 
 	return containers, nil
 }

@@ -177,6 +177,14 @@ func supportsRemoteClusterUsingAPIKey(es esv1.Elasticsearch) field.ErrorList {
 // There must be at least one master node.
 // node.roles are only supported on Elasticsearch 7.9.0 and above
 func hasCorrectNodeRoles(es esv1.Elasticsearch) field.ErrorList {
+	if es.IsStateless() {
+		// Stateless clusters do not have node roles configured in the same way.
+		if len(es.Spec.NodeSets) > 0 {
+			return field.ErrorList{field.Invalid(field.NewPath("spec").Child("nodeSets"), es.Spec.NodeSets, "Stateless Elasticsearch clusters should not have nodeSets defined")}
+		}
+		return nil
+	}
+
 	v, err := version.Parse(es.Spec.Version)
 	if err != nil {
 		return field.ErrorList{field.Invalid(field.NewPath("spec").Child("version"), es.Spec.Version, parseVersionErrMsg)}

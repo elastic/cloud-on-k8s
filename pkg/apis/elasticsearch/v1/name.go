@@ -110,8 +110,8 @@ func ValidateNames(es Elasticsearch) error {
 	return nil
 }
 
-// StatefulSet returns the name of the StatefulSet corresponding to the given NodeSet.
-func StatefulSet(esName string, nodeSetName string) string {
+// PodsControllerResourceName returns the name of the StatefulSet or CloneSet corresponding to the given NodeSet or Tier.
+func PodsControllerResourceName(esName string, nodeSetName string) string {
 	return ESNamer.Suffix(esName, nodeSetName)
 }
 

@@ -5,6 +5,7 @@
 package reconcile
 
 import (
+	"fmt"
 	"reflect"
 	"sort"
 
@@ -53,6 +54,17 @@ func (s *StatusReporter) ReportCondition(
 		LastTransitionTime: metav1.Now(),
 		Message:            message,
 	})
+}
+
+func EsReachableConditionMessage(internalService *corev1.Service, isServiceReady bool, isRespondingToRequests bool) string {
+	switch {
+	case !isServiceReady:
+		return fmt.Sprintf("Service %s/%s has no endpoint", internalService.Namespace, internalService.Name)
+	case !isRespondingToRequests:
+		return fmt.Sprintf("Service %s/%s has endpoints but Elasticsearch is unavailable", internalService.Namespace, internalService.Name)
+	default:
+		return fmt.Sprintf("Service %s/%s has endpoints", internalService.Namespace, internalService.Name)
+	}
 }
 
 // -- Upscale status

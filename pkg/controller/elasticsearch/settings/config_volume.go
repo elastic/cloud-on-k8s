@@ -6,6 +6,9 @@ package settings
 
 import (
 	"context"
+	"encoding/json"
+
+	"gopkg.in/yaml.v3"
 
 	pkgerrors "github.com/pkg/errors"
 	corev1 "k8s.io/api/core/v1"
@@ -76,9 +79,22 @@ func GetESConfigSecret(client k8s.Client, namespace string, ssetName string) (co
 	return secret, nil
 }
 
-func ConfigSecret(es esv1.Elasticsearch, ssetName string, configData []byte, meta metadata.Metadata) corev1.Secret {
+func ConfigSecret(
+	es esv1.Elasticsearch,
+	ssetName string,
+	configData []byte,
+	meta metadata.Metadata,
+	secureSettings *SecureSettings,
+	operatorPrivilegesSettings OperatorPrivilegesSettings,
+) (corev1.Secret, error) {
 	mergedMeta := meta.Merge(metadata.Metadata{Labels: label.NewConfigLabels(k8s.ExtractNamespacedName(&es), ssetName)})
-	return corev1.Secret{
+
+	operatorSettingsData, err := yaml.Marshal(&operatorPrivilegesSettings)
+	if err != nil {
+		return corev1.Secret{}, err
+	}
+
+	configSecret := corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
 			Namespace:   es.Namespace,
 			Name:        ConfigSecretName(ssetName),
@@ -86,18 +102,43 @@ func ConfigSecret(es esv1.Elasticsearch, ssetName string, configData []byte, met
 			Annotations: mergedMeta.Annotations,
 		},
 		Data: map[string][]byte{
-			ConfigFileName: configData,
+			ConfigFileName:                configData,
+			OperatorUsersSettingsFileName: operatorSettingsData,
 		},
 	}
+	if secureSettings != nil {
+		secureSettingsData, err := json.Marshal(secureSettings)
+		if err != nil {
+			return corev1.Secret{}, err
+		}
+		configSecret.Data[SecureSettingsFileName] = secureSettingsData
+		if configSecret.Annotations == nil {
+			configSecret.Annotations = make(map[string]string)
+		}
+		configSecret.Annotations[SecureSettingsHashAnnotationName] = secureSettings.Hash
+	}
+	return configSecret, nil
 }
 
 // ReconcileConfig ensures the ES config for the pod is set in the apiserver.
-func ReconcileConfig(ctx context.Context, client k8s.Client, es esv1.Elasticsearch, ssetName string, config CanonicalConfig, meta metadata.Metadata) error {
+func ReconcileConfig(
+	ctx context.Context,
+	client k8s.Client,
+	es esv1.Elasticsearch,
+	ssetName string,
+	config CanonicalConfig,
+	meta metadata.Metadata,
+	secureSettings *SecureSettings,
+	operatorPrivilegesSettings OperatorPrivilegesSettings,
+) error {
 	rendered, err := config.Render()
 	if err != nil {
 		return err
 	}
-	expected := ConfigSecret(es, ssetName, rendered, meta)
+	expected, err := ConfigSecret(es, ssetName, rendered, meta, secureSettings, operatorPrivilegesSettings)
+	if err != nil {
+		return err
+	}
 	_, err = reconciler.ReconcileSecret(ctx, client, expected, &es)
 	return err
 }

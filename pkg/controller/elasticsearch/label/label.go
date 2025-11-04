@@ -57,6 +57,12 @@ const (
 
 	// Type represents the Elasticsearch type
 	Type = "elasticsearch"
+
+	// CloneSetNameLabelName used to store the name of the statefulset.
+	CloneSetNameLabelName = "elasticsearch.k8s.elastic.co/cloneset-name"
+
+	// TierLabelName holds the tier name in the context of Stateless Elasticsearch clusters.
+	TierLabelName = "elasticsearch.k8s.elastic.co/tier"
 )
 
 // RoleMapping is a struct that maps a label name to a node role.
@@ -98,6 +104,17 @@ var NonMasterRoles = []labels.TrueFalseLabel{
 // IsMasterNode returns true if the pod has the master node label
 func IsMasterNode(pod corev1.Pod) bool {
 	return NodeTypesMasterLabelName.HasValue(true, pod.Labels)
+}
+
+// IsIndexTierNode returns true if the pod is in the index tier (i.e., is a master node)
+func IsIndexTierNode(pod corev1.Pod) bool {
+	if pod.Labels == nil {
+		return false
+	}
+	if tier, ok := pod.Labels[TierLabelName]; ok {
+		return tier == string(esv1.IndexTierName)
+	}
+	return false
 }
 
 // IsMasterNodeSet returns true if the given StatefulSet specifies master nodes.
@@ -150,6 +167,7 @@ func NewLabels(es types.NamespacedName) map[string]string {
 // NewPodLabels returns labels to apply for a new Elasticsearch pod.
 func NewPodLabels(
 	es types.NamespacedName,
+	isStateless bool,
 	ssetName string,
 	ver version.Version,
 	nodeRoles *esv1.Node,
@@ -159,6 +177,15 @@ func NewPodLabels(
 	labels := NewLabels(es)
 	// version label
 	labels[VersionLabelName] = ver.String()
+
+	labels[HTTPSchemeLabelName] = scheme
+
+	if isStateless {
+		for k, v := range NewCloneSetLabels(es, ssetName) {
+			labels[k] = v
+		}
+		return labels
+	}
 
 	// node types labels
 	NodeTypesMasterLabelName.Set(nodeRoles.IsConfiguredWithRole(esv1.MasterRole), labels)
@@ -186,8 +213,6 @@ func NewPodLabels(
 		NodeTypesDataFrozenLabelName.Set(nodeRoles.IsConfiguredWithRole(esv1.DataFrozenRole), labels)
 	}
 
-	labels[HTTPSchemeLabelName] = scheme
-
 	// apply stateful set label selector
 	for k, v := range NewStatefulSetLabels(es, ssetName) {
 		labels[k] = v
@@ -205,6 +230,21 @@ func NewStatefulSetLabels(es types.NamespacedName, ssetName string) map[string]s
 	lbls := NewLabels(es)
 	lbls[StatefulSetNameLabelName] = ssetName
 	return lbls
+}
+
+func NewCloneSetLabels(es types.NamespacedName, ssetName string) map[string]string {
+	lbls := NewLabels(es)
+	lbls[CloneSetNameLabelName] = ssetName
+	return lbls
+}
+
+// NewLabelSelectorForCloneSetName returns a labels.Selector that matches the labels set on resources managed for
+// a given cloneSetName in a cluster.
+func NewLabelSelectorForCloneSetName(clusterName, cloneSetName string) client.MatchingLabels {
+	return client.MatchingLabels(map[string]string{
+		ClusterNameLabelName:  clusterName,
+		CloneSetNameLabelName: cloneSetName,
+	})
 }
 
 // NewLabelSelectorForElasticsearch returns a labels.Selector that matches the labels as constructed by NewLabels
