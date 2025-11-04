@@ -269,6 +269,12 @@ func areAllNonMasterStatefulSetsUpgraded(
 			return false, nil
 		}
 
+		// If the StatefulSet observedGeneration is not in sync with the generation,
+		// then a change is in progress, and we should not consider it as upgraded.
+		if statefulSet.Generation != statefulSet.Status.ObservedGeneration {
+			return false, nil
+		}
+
 		// Check if this StatefulSet has pending updates
 		if statefulSet.Status.UpdatedReplicas != statefulSet.Status.Replicas {
 			return false, nil
