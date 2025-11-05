@@ -53,7 +53,7 @@ func (d *defaultDriver) handleUpgrades(
 	if err != nil {
 		return results.WithError(err)
 	}
-	podsToUpgrade, err := podsToUpgrade(d.Client, statefulSets)
+	podsToUpgrade, err := podsToUpgrade(ctx, d.Client, statefulSets)
 	if err != nil {
 		return results.WithError(err)
 	}
@@ -249,6 +249,7 @@ func healthyPods(
 // podsToUpgrade returns all Pods of all StatefulSets where the controller-revision-hash label compared to the sset's
 // .status.updateRevision indicates that the Pod still needs to be deleted to be recreated with the new spec.
 func podsToUpgrade(
+	ctx context.Context,
 	client k8s.Client,
 	statefulSets es_sset.StatefulSetList,
 ) ([]corev1.Pod, error) {
@@ -256,8 +257,10 @@ func podsToUpgrade(
 	for _, statefulSet := range statefulSets {
 		if statefulSet.Status.UpdateRevision == "" {
 			// no upgrade scheduled
+			ulog.FromContext(ctx).Info("No upgrade scheduled as updateRevision is empty", "sset_name", statefulSet.Name)
 			continue
 		}
+		ulog.FromContext(ctx).Info("Inspecting pods for upgrade", "sset_name", statefulSet.Name)
 		// Inspect each pod, starting from the highest ordinal, and decrement the idx to allow
 		// pod upgrades to go through, controlled by the StatefulSet controller.
 		for idx := sset.GetReplicas(statefulSet) - 1; idx >= 0; idx-- {
@@ -271,9 +274,11 @@ func podsToUpgrade(
 				return toUpgrade, err
 			}
 			if apierrors.IsNotFound(err) {
+				ulog.FromContext(ctx).Info("Pod does not exist, continuing loop", "sset_name", statefulSet.Name, "pod_name", podName)
 				// Pod does not exist, continue the loop as the absence will be accounted by the deletion driver
 				continue
 			}
+			ulog.FromContext(ctx).Info("Pod exists, checking pod revision comparing to sts.updateRevision", "sset_name", statefulSet.Name, "pod_name", podName, "pod_revision", sset.PodRevision(pod), "sts_update_revision", statefulSet.Status.UpdateRevision)
 			if sset.PodRevision(pod) != statefulSet.Status.UpdateRevision {
 				toUpgrade = append(toUpgrade, pod)
 			}
