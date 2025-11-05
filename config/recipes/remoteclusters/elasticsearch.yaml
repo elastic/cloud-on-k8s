@@ -9,7 +9,7 @@ metadata:
   name: cluster1
   namespace: ns1
 spec:
-  version: 9.1.2
+  version: 9.2.0
   remoteClusters:
     - name: to-ns2-cluster2
       elasticsearchRef:
@@ -38,7 +38,7 @@ spec:
 #      spec:
 #        # expose this cluster Service with a LoadBalancer
 #        type: LoadBalancer
-  version: 9.1.2
+  version: 9.2.0
   count: 1
   elasticsearchRef:
     name: "cluster1"
@@ -54,7 +54,7 @@ metadata:
   name: cluster2
   namespace: ns2
 spec:
-  version: 9.1.2
+  version: 9.2.0
   ## Required for this cluster to be accessed using remote cluster API keys.
   remoteClusterServer:
     enabled: true
@@ -75,7 +75,7 @@ spec:
 #      spec:
 #        # expose this cluster Service with a LoadBalancer
 #        type: LoadBalancer
-  version: 9.1.2
+  version: 9.2.0
   count: 1
   elasticsearchRef:
     name: "cluster2"
