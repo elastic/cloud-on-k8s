@@ -24,6 +24,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/version/zen1"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/version/zen2"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/k8s"
+	ulog "github.com/elastic/cloud-on-k8s/v3/pkg/utils/log"
 )
 
 type upscaleCtx struct {
@@ -97,11 +98,15 @@ func HandleUpscaleAndSpecChanges(
 	}
 
 	// First, reconcile all non-master resources
+	ulog.FromContext(ctx.parentCtx).Info("Reconciling non-master resources", "resources", nonMasterResources)
 	actualStatefulSets, requeue, err := reconcileResources(ctx, actualStatefulSets, nonMasterResources)
 	if err != nil {
+		ulog.FromContext(ctx.parentCtx).Error(err, "while reconciling non-master resources")
 		return results, fmt.Errorf("while reconciling non-master resources: %w", err)
 	}
+	ulog.FromContext(ctx.parentCtx).Info("Non-master resources reconciled", "actualStatefulSets", actualStatefulSets, "requeue", requeue)
 	if requeue {
+		ulog.FromContext(ctx.parentCtx).Info("Requeuing non-master resources", "actualStatefulSets", actualStatefulSets, "requeue", requeue)
 		results.Requeue = true
 		results.ActualStatefulSets = actualStatefulSets
 		return results, nil
@@ -109,17 +114,21 @@ func HandleUpscaleAndSpecChanges(
 
 	targetVersion, err := version.Parse(ctx.es.Spec.Version)
 	if err != nil {
+		ulog.FromContext(ctx.parentCtx).Error(err, "while parsing Elasticsearch upgrade target version")
 		return results, fmt.Errorf("while parsing Elasticsearch upgrade target version: %w", err)
 	}
 
 	// Check if all non-master StatefulSets have completed their upgrades before proceeding with master StatefulSets
 	if len(masterResources) > 0 {
+		ulog.FromContext(ctx.parentCtx).Info("Checking if all non-master StatefulSets have completed their upgrades", "masterResources", masterResources, "targetVersion", targetVersion)
 		allNonMastersUpgraded, err := areAllNonMasterStatefulSetsUpgraded(ctx.k8sClient, actualStatefulSets, targetVersion)
 		if err != nil {
+			ulog.FromContext(ctx.parentCtx).Error(err, "while checking non-master upgrade status")
 			return results, fmt.Errorf("while checking non-master upgrade status: %w", err)
 		}
 
 		if !allNonMastersUpgraded {
+			ulog.FromContext(ctx.parentCtx).Info("Non-master StatefulSets are still upgrading, skipping master StatefulSets temporarily", "actualStatefulSets", actualStatefulSets, "requeue", true)
 			// Non-master StatefulSets are still upgrading, skipping master StatefulSets temporarily.
 			// This will cause a requeue, and master StatefulSets will attempt to be processed in the next reconciliation
 			results.ActualStatefulSets = actualStatefulSets
@@ -128,13 +137,17 @@ func HandleUpscaleAndSpecChanges(
 		}
 
 		// All non-master StatefulSets are upgraded, now process master StatefulSets
+		ulog.FromContext(ctx.parentCtx).Info("Reconciling master resources", "masterResources", masterResources)
 		actualStatefulSets, results.Requeue, err = reconcileResources(ctx, actualStatefulSets, masterResources)
 		if err != nil {
+			ulog.FromContext(ctx.parentCtx).Error(err, "while reconciling master resources")
 			return results, fmt.Errorf("while reconciling master resources: %w", err)
 		}
+		ulog.FromContext(ctx.parentCtx).Info("Master resources reconciled", "actualStatefulSets", actualStatefulSets, "requeue", results.Requeue)
 	}
 
 	results.ActualStatefulSets = actualStatefulSets
+	ulog.FromContext(ctx.parentCtx).Info("Upscale completed", "results", results)
 	return results, nil
 }
 
