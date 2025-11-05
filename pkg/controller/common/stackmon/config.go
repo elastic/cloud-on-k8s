@@ -7,6 +7,7 @@ package stackmon
 import (
 	"bytes"
 	"context"
+	"encoding/json"
 	"fmt"
 	"hash"
 	"hash/fnv"
@@ -24,6 +25,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/metadata"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/settings"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/stackmon/monitoring"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/version"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/volume"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/k8s"
 )
@@ -40,6 +42,7 @@ func newBeatConfig(
 	ctx context.Context,
 	client k8s.Client,
 	beatName string,
+	imageVersion string,
 	resource monitoring.HasMonitoring,
 	associations []commonv1.Association,
 	baseConfig string,
@@ -52,7 +55,7 @@ func newBeatConfig(
 	assoc := associations[0]
 
 	// build the output section of the beat configuration file
-	outputCfg, caVolume, err := buildOutputConfig(ctx, client, assoc)
+	outputCfg, caVolume, err := buildOutputConfig(ctx, client, assoc, imageVersion)
 	if err != nil {
 		return beatConfig{}, err
 	}
@@ -112,7 +115,7 @@ func newBeatConfig(
 	}, err
 }
 
-func buildOutputConfig(ctx context.Context, client k8s.Client, assoc commonv1.Association) (map[string]interface{}, volume.VolumeLike, error) {
+func buildOutputConfig(ctx context.Context, client k8s.Client, assoc commonv1.Association, imageVersion string) (map[string]interface{}, volume.VolumeLike, error) {
 	credentials, err := association.ElasticsearchAuthSettings(ctx, client, assoc)
 	if err != nil {
 		return nil, volume.SecretVolume{}, err
@@ -131,6 +134,19 @@ func buildOutputConfig(ctx context.Context, client k8s.Client, assoc commonv1.As
 	// Elasticsearch certificate might have been generated for a "public" hostname,
 	// and therefore not being valid for the internal URL.
 	outputConfig["ssl.verification_mode"] = "certificate"
+
+	v, err := version.Parse(imageVersion)
+	if err != nil {
+		return nil, nil, err
+	}
+	// Reloading of certificates is only supported for Beats >= 8.8.0.
+	if v.GE(version.MinFor(8, 8, 0)) {
+		// Allow beats to reload when the ssl certificate changes (renewals)
+		outputConfig["ssl.restart_on_cert_change"] = map[string]interface{}{
+			"enabled": true,
+			"period":  "1m",
+		}
+	}
 
 	caDirPath := fmt.Sprintf(
 		"/mnt/elastic-internal/%s-association/%s/%s/certs",
@@ -188,6 +204,13 @@ func TemplateFuncs(
 	version semver.Version,
 ) template.FuncMap {
 	return template.FuncMap{
+		"sanitizeJSON": func(v any) (string, error) {
+			b, err := json.Marshal(v)
+			if err != nil {
+				return "", fmt.Errorf("json marshal failed: %w", err)
+			}
+			return string(b), nil
+		},
 		"isVersionGTE": func(minAllowedVersion string) (bool, error) {
 			minAllowedSemver, err := semver.Parse(minAllowedVersion)
 			if err != nil {

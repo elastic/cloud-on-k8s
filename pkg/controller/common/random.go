@@ -5,7 +5,7 @@
 package common
 
 import (
-	"github.com/sethvargo/go-password/password"
+	commonpassword "github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/password"
 )
 
 // FixedLengthRandomPasswordBytes generates a random password
@@ -15,11 +15,5 @@ func FixedLengthRandomPasswordBytes() []byte {
 
 // RandomBytes generates some random bytes that can be used as a token or as a key
 func RandomBytes(length int) []byte {
-	return []byte(password.MustGenerate(
-		length,
-		10,    // number of digits to include in the result
-		0,     // number of symbols to include in the result
-		false, // noUpper
-		true,  // allowRepeat
-	))
+	return commonpassword.MustGenerate(length)
 }

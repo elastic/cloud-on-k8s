@@ -150,9 +150,9 @@ func Test_reuseOrGenerateSecrets(t *testing.T) {
 				// Unpack the configuration to check that some default reusable settings have been generated
 				var e reusableSettings
 				assert.NoError(t, got.Unpack(&e))
-				assert.Equal(t, len(e.EncryptionKeys), 1)     // We set 1 encryption key by default
-				assert.Equal(t, len(e.EncryptionKeys[0]), 32) // encryption key length should be 32
-				assert.Equal(t, len(e.SecretSession), 32)     // session key length should be 24
+				assert.Equal(t, 1, len(e.EncryptionKeys))     // We set 1 encryption key by default
+				assert.Equal(t, 32, len(e.EncryptionKeys[0])) // encryption key length should be 32
+				assert.Equal(t, 32, len(e.SecretSession))     // session key length should be 32
 			},
 		},
 		{
@@ -790,7 +790,7 @@ func TestReconcileConfig_ReadinessProbe(t *testing.T) {
 				},
 			},
 			ipFamily: corev1.IPv4Protocol,
-			wantCmd:  `curl -g -o /dev/null -w "%{http_code}" https://127.0.0.1:3002/api/ent/v1/internal/health  -k -s --max-time ${READINESS_PROBE_TIMEOUT}`, // no ES basic auth
+			wantCmd:  `curl -g -o /dev/null -w "%{http_code}" https://127.0.0.1:3002/api/ent/v1/internal/health  -k -s --max-time "${READINESS_PROBE_TIMEOUT}"`, // no ES basic auth
 		},
 		{
 			name:        "create default readiness probe script (no es association, IPv6)",
@@ -805,7 +805,7 @@ func TestReconcileConfig_ReadinessProbe(t *testing.T) {
 				},
 			},
 			ipFamily: corev1.IPv6Protocol,
-			wantCmd:  `curl -g -o /dev/null -w "%{http_code}" https://[::1]:3002/api/ent/v1/internal/health  -k -s --max-time ${READINESS_PROBE_TIMEOUT}`, // no ES basic auth
+			wantCmd:  `curl -g -o /dev/null -w "%{http_code}" https://[::1]:3002/api/ent/v1/internal/health  -k -s --max-time "${READINESS_PROBE_TIMEOUT}"`, // no ES basic auth
 		},
 		{
 			name: "update existing readiness probe script if different",
@@ -830,7 +830,7 @@ func TestReconcileConfig_ReadinessProbe(t *testing.T) {
 				},
 			},
 			ipFamily: corev1.IPv4Protocol,
-			wantCmd:  `curl -g -o /dev/null -w "%{http_code}" https://127.0.0.1:3002/api/ent/v1/internal/health  -k -s --max-time ${READINESS_PROBE_TIMEOUT}`, // no ES basic auth
+			wantCmd:  `curl -g -o /dev/null -w "%{http_code}" https://127.0.0.1:3002/api/ent/v1/internal/health  -k -s --max-time "${READINESS_PROBE_TIMEOUT}"`, // no ES basic auth
 		},
 		{
 			name: "with ES association: use ES user credentials",
@@ -853,7 +853,7 @@ func TestReconcileConfig_ReadinessProbe(t *testing.T) {
 				},
 			},
 			ipFamily: corev1.IPv4Protocol,
-			wantCmd:  `curl -g -o /dev/null -w "%{http_code}" https://127.0.0.1:3002/api/ent/v1/internal/health -u ns-sample-ent-user:password -k -s --max-time ${READINESS_PROBE_TIMEOUT}`,
+			wantCmd:  `curl -g -o /dev/null -w "%{http_code}" https://127.0.0.1:3002/api/ent/v1/internal/health -u ns-sample-ent-user:'password' -k -s --max-time "${READINESS_PROBE_TIMEOUT}"`,
 		},
 		{
 			name: "with es credentials in a user-provided config secret",
@@ -881,7 +881,7 @@ func TestReconcileConfig_ReadinessProbe(t *testing.T) {
 				},
 			},
 			ipFamily: corev1.IPv4Protocol,
-			wantCmd:  `curl -g -o /dev/null -w "%{http_code}" https://127.0.0.1:3002/api/ent/v1/internal/health -u myusername:mypassword -k -s --max-time ${READINESS_PROBE_TIMEOUT}`,
+			wantCmd:  `curl -g -o /dev/null -w "%{http_code}" https://127.0.0.1:3002/api/ent/v1/internal/health -u myusername:'mypassword' -k -s --max-time "${READINESS_PROBE_TIMEOUT}"`,
 		},
 	}
 	for _, tt := range tests {

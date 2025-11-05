@@ -25,6 +25,7 @@ func Test_newBeatConfig(t *testing.T) {
 		initObjects []client.Object
 		beatName    string
 		baseConfig  string
+		image       string
 		associated  commonv1.Associated
 	}
 	tests := []struct {
@@ -52,6 +53,7 @@ param2: value2
 					},
 				},
 				beatName: "metricbeat",
+				image:    "8.8.0",
 				associated: &esv1.Elasticsearch{
 					ObjectMeta: metav1.ObjectMeta{
 						Name:      "monitored",
@@ -91,6 +93,9 @@ param2: value2
         ssl:
             certificate_authorities:
                 - /mnt/elastic-internal/es-monitoring-association/default/monitoring/certs/ca.crt
+            restart_on_cert_change:
+                enabled: true
+                period: 1m
             verification_mode: certificate
         username: default-monitored-default-monitoring-beat-es-mon-user
 param1: value1
@@ -112,6 +117,7 @@ param2: value2
 				context.Background(),
 				fakeClient,
 				tt.args.beatName,
+				tt.args.image,
 				hasMonitoring,
 				tt.args.associated.GetAssociations(),
 				tt.args.baseConfig,
