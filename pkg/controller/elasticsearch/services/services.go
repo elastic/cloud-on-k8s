@@ -161,21 +161,23 @@ func NewInternalService(es esv1.Elasticsearch, meta metadata.Metadata) *corev1.S
 
 // NewRemoteClusterService returns the service associated to the remote cluster service for the given cluster.
 func NewRemoteClusterService(es esv1.Elasticsearch, meta metadata.Metadata) *corev1.Service {
-	svc := &corev1.Service{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:        RemoteClusterServiceName(es.Name),
-			Namespace:   es.Namespace,
-			Labels:      meta.Labels,
-			Annotations: meta.Annotations,
-		},
-		Spec: corev1.ServiceSpec{
-			Type:                     corev1.ServiceTypeClusterIP,
-			Selector:                 label.NewLabels(k8s.ExtractNamespacedName(&es)),
-			PublishNotReadyAddresses: true,
-			ClusterIP:                "None",
-		},
+	nsn := k8s.ExtractNamespacedName(&es)
+	svc := corev1.Service{
+		ObjectMeta: es.Spec.RemoteClusterServer.Service.ObjectMeta,
+		Spec:       es.Spec.RemoteClusterServer.Service.Spec,
 	}
-	selector := label.NewLabels(k8s.ExtractNamespacedName(&es))
+
+	svc.ObjectMeta.Namespace = es.Namespace
+	svc.ObjectMeta.Name = RemoteClusterServiceName(es.Name)
+	// Nodes need to discover themselves before the pod is considered ready,
+	// otherwise minimum master nodes would never be reached
+	svc.Spec.PublishNotReadyAddresses = true
+	if svc.Spec.Type == "" {
+		svc.Spec.Type = corev1.ServiceTypeClusterIP
+		// We set ClusterIP to None in order to let the ES nodes discover all other node IPs at once.
+		svc.Spec.ClusterIP = "None"
+	}
+	selector := label.NewLabels(nsn)
 	ports := []corev1.ServicePort{
 		{
 			Name:     RemoteClusterServicePortName,
@@ -183,7 +185,8 @@ func NewRemoteClusterService(es esv1.Elasticsearch, meta metadata.Metadata) *cor
 			Port:     network.RemoteClusterPort,
 		},
 	}
-	return defaults.SetServiceDefaults(svc, meta, selector, ports)
+
+	return defaults.SetServiceDefaults(&svc, meta, selector, ports)
 }
 
 type urlProvider struct {
