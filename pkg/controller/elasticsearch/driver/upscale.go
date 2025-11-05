@@ -230,6 +230,7 @@ func reconcileResources(
 	resources []nodespec.Resources,
 ) (es_sset.StatefulSetList, bool, error) {
 	requeue := false
+	ulog.FromContext(ctx.parentCtx).Info("Reconciling resources", "resource_size", len(resources))
 	for _, res := range resources {
 		res := res
 		if err := settings.ReconcileConfig(ctx.parentCtx, ctx.k8sClient, ctx.es, res.StatefulSet.Name, res.Config, ctx.meta); err != nil {
@@ -244,11 +245,15 @@ func reconcileResources(
 				return actualStatefulSets, false, fmt.Errorf("handle volume expansion: %w", err)
 			}
 			if recreateSset {
+				ulog.FromContext(ctx.parentCtx).Info("StatefulSet is scheduled for recreation, requeuing", "name", res.StatefulSet.Name)
 				// The StatefulSet is scheduled for recreation: let's requeue before attempting any further spec change.
 				requeue = true
 				continue
 			}
+		} else if !exists {
+			ulog.FromContext(ctx.parentCtx).Info("StatefulSet does not exist", "name", res.StatefulSet.Name)
 		}
+		ulog.FromContext(ctx.parentCtx).Info("Reconciling StatefulSet", "name", res.StatefulSet.Name)
 		reconciled, err := es_sset.ReconcileStatefulSet(ctx.parentCtx, ctx.k8sClient, ctx.es, res.StatefulSet, ctx.expectations)
 		if err != nil {
 			return actualStatefulSets, false, fmt.Errorf("reconcile StatefulSet: %w", err)
@@ -256,6 +261,7 @@ func reconcileResources(
 		// update actual with the reconciled ones for next steps to work with up-to-date information
 		actualStatefulSets = actualStatefulSets.WithStatefulSet(reconciled)
 	}
+	ulog.FromContext(ctx.parentCtx).Info("Resources reconciled", "actualStatefulSets_size", len(actualStatefulSets), "requeue", requeue)
 	return actualStatefulSets, requeue, nil
 }
 
