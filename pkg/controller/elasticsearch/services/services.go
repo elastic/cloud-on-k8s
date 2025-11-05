@@ -169,12 +169,11 @@ func NewRemoteClusterService(es esv1.Elasticsearch, meta metadata.Metadata) *cor
 
 	svc.ObjectMeta.Namespace = es.Namespace
 	svc.ObjectMeta.Name = RemoteClusterServiceName(es.Name)
-	// Nodes need to discover themselves before the pod is considered ready,
-	// otherwise minimum master nodes would never be reached
+	// Allow connections to pods that are not yet ready
 	svc.Spec.PublishNotReadyAddresses = true
 	if svc.Spec.Type == "" {
 		svc.Spec.Type = corev1.ServiceTypeClusterIP
-		// We set ClusterIP to None in order to let the ES nodes discover all other node IPs at once.
+		// ClusterIP None creates a headless service, allowing direct access to all pods for remote cluster connections
 		svc.Spec.ClusterIP = "None"
 	}
 	selector := label.NewLabels(nsn)
