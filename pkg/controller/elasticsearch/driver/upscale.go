@@ -119,8 +119,8 @@ func HandleUpscaleAndSpecChanges(
 	}
 
 	// Check if all non-master StatefulSets have completed their upgrades before proceeding with master StatefulSets
-	ulog.FromContext(ctx.parentCtx).Info("Checking if all non-master StatefulSets have completed their upgrades", "targetVersion", targetVersion)
-	pendingNonMasterSTS, err := findPendingNonMasterStatefulSetUpgrades(ctx.k8sClient, actualStatefulSets, targetVersion)
+	ulog.FromContext(ctx.parentCtx).Info("Checking if all expected non-master StatefulSets have completed their upgrades", "targetVersion", targetVersion)
+	pendingNonMasterSTS, err := findPendingNonMasterStatefulSetUpgrades(ctx.k8sClient, actualStatefulSets, expectedResources.StatefulSets(), targetVersion)
 	if err != nil {
 		ulog.FromContext(ctx.parentCtx).Error(err, "while checking non-master upgrade status")
 		return results, fmt.Errorf("while checking non-master upgrade status: %w", err)
@@ -269,50 +269,54 @@ func reconcileResources(
 func findPendingNonMasterStatefulSetUpgrades(
 	client k8s.Client,
 	actualStatefulSets es_sset.StatefulSetList,
+	expectedStatefulSets es_sset.StatefulSetList,
 	targetVersion version.Version,
 ) ([]appsv1.StatefulSet, error) {
 	pendingNonMasterSTS := make([]appsv1.StatefulSet, 0)
-	for _, statefulSet := range actualStatefulSets {
-		// Skip master StatefulSets
-		if label.IsMasterNodeSet(statefulSet) {
+	for _, actualStatefulSet := range actualStatefulSets {
+		expectedSset, _ := expectedStatefulSets.GetByName(actualStatefulSet.Name)
+
+		// Skip master StatefulSets. We check both here because the master role may have been added
+		// to a non-master StatefulSet during the upgrade spec change.
+		if label.IsMasterNodeSet(actualStatefulSet) && label.IsMasterNodeSet(expectedSset) {
 			continue
 		}
 
 		// If the StatefulSet is not at the target version, it is not upgraded
 		// so don't even bother looking at the state/status of the StatefulSet.
-		actualVersion, err := es_sset.GetESVersion(statefulSet)
+		actualVersion, err := es_sset.GetESVersion(actualStatefulSet)
 		if err != nil {
 			return pendingNonMasterSTS, err
 		}
 		if actualVersion.LT(targetVersion) {
-			pendingNonMasterSTS = append(pendingNonMasterSTS, statefulSet)
+			pendingNonMasterSTS = append(pendingNonMasterSTS, actualStatefulSet)
 			continue
 		}
 
 		// If the StatefulSet observedGeneration is not in sync with the generation,
 		// then a change is in progress, and we should not consider it as upgraded.
-		if statefulSet.Generation != statefulSet.Status.ObservedGeneration {
-			pendingNonMasterSTS = append(pendingNonMasterSTS, statefulSet)
+		if actualStatefulSet.Generation != actualStatefulSet.Status.ObservedGeneration {
+			pendingNonMasterSTS = append(pendingNonMasterSTS, actualStatefulSet)
 			continue
 		}
 
 		// Check if this StatefulSet has pending updates
-		if statefulSet.Status.UpdatedReplicas != statefulSet.Status.Replicas {
-			pendingNonMasterSTS = append(pendingNonMasterSTS, statefulSet)
+		if actualStatefulSet.Status.UpdatedReplicas != actualStatefulSet.Status.Replicas {
+			pendingNonMasterSTS = append(pendingNonMasterSTS, actualStatefulSet)
 			continue
 		}
 
 		// Check if there are any pods that need to be upgraded
-		pods, err := es_sset.GetActualPodsForStatefulSet(client, k8s.ExtractNamespacedName(&statefulSet))
+		pods, err := es_sset.GetActualPodsForStatefulSet(client, k8s.ExtractNamespacedName(&actualStatefulSet))
 		if err != nil {
 			return pendingNonMasterSTS, err
 		}
 
 		for _, pod := range pods {
 			// Check if pod revision matches StatefulSet update revision
-			if statefulSet.Status.UpdateRevision != "" && sset.PodRevision(pod) != statefulSet.Status.UpdateRevision {
+			if actualStatefulSet.Status.UpdateRevision != "" && sset.PodRevision(pod) != actualStatefulSet.Status.UpdateRevision {
 				// This pod still needs to be upgraded
-				pendingNonMasterSTS = append(pendingNonMasterSTS, statefulSet)
+				pendingNonMasterSTS = append(pendingNonMasterSTS, actualStatefulSet)
 				continue
 			}
 		}
