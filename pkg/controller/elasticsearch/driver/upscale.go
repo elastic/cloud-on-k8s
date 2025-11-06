@@ -120,18 +120,18 @@ func HandleUpscaleAndSpecChanges(
 
 	// Check if all non-master StatefulSets have completed their upgrades before proceeding with master StatefulSets
 	ulog.FromContext(ctx.parentCtx).Info("Checking if all non-master StatefulSets have completed their upgrades", "targetVersion", targetVersion)
-	allNonMastersUpgraded, err := areAllNonMasterStatefulSetsUpgraded(ctx.k8sClient, actualStatefulSets, targetVersion)
+	pendingNonMasterSTS, err := findPendingNonMasterStatefulSetUpgrades(ctx.k8sClient, actualStatefulSets, targetVersion)
 	if err != nil {
 		ulog.FromContext(ctx.parentCtx).Error(err, "while checking non-master upgrade status")
 		return results, fmt.Errorf("while checking non-master upgrade status: %w", err)
 	}
 
-	if !allNonMastersUpgraded {
+	if len(pendingNonMasterSTS) > 0 {
 		ulog.FromContext(ctx.parentCtx).Info("Non-master StatefulSets are still upgrading, skipping master StatefulSets temporarily", "requeue", true)
 		// Non-master StatefulSets are still upgrading, skipping master StatefulSets temporarily.
-		// This will cause a requeue, and master StatefulSets will attempt to be processed in the next reconciliation
+		// This will cause a requeue in the caller, and master StatefulSets will attempt to be processed in the next reconciliation
+		ctx.upscaleReporter.RecordPendingNonMasterSTSUpgrades(pendingNonMasterSTS)
 		results.ActualStatefulSets = actualStatefulSets
-		results.Requeue = true
 		return results, nil
 	}
 
@@ -265,12 +265,13 @@ func reconcileResources(
 	return actualStatefulSets, requeue, nil
 }
 
-// areAllNonMasterStatefulSetsUpgraded checks if all non-master StatefulSets have completed their upgrades
-func areAllNonMasterStatefulSetsUpgraded(
+// findPendingNonMasterStatefulSetUpgrades finds all non-master StatefulSets that have not completed their upgrades
+func findPendingNonMasterStatefulSetUpgrades(
 	client k8s.Client,
 	actualStatefulSets es_sset.StatefulSetList,
 	targetVersion version.Version,
-) (bool, error) {
+) ([]appsv1.StatefulSet, error) {
+	pendingNonMasterSTS := make([]appsv1.StatefulSet, 0)
 	for _, statefulSet := range actualStatefulSets {
 		// Skip master StatefulSets
 		if label.IsMasterNodeSet(statefulSet) {
@@ -281,37 +282,41 @@ func areAllNonMasterStatefulSetsUpgraded(
 		// so don't even bother looking at the state/status of the StatefulSet.
 		actualVersion, err := es_sset.GetESVersion(statefulSet)
 		if err != nil {
-			return false, err
+			return pendingNonMasterSTS, err
 		}
 		if actualVersion.LT(targetVersion) {
-			return false, nil
+			pendingNonMasterSTS = append(pendingNonMasterSTS, statefulSet)
+			continue
 		}
 
 		// If the StatefulSet observedGeneration is not in sync with the generation,
 		// then a change is in progress, and we should not consider it as upgraded.
 		if statefulSet.Generation != statefulSet.Status.ObservedGeneration {
-			return false, nil
+			pendingNonMasterSTS = append(pendingNonMasterSTS, statefulSet)
+			continue
 		}
 
 		// Check if this StatefulSet has pending updates
 		if statefulSet.Status.UpdatedReplicas != statefulSet.Status.Replicas {
-			return false, nil
+			pendingNonMasterSTS = append(pendingNonMasterSTS, statefulSet)
+			continue
 		}
 
 		// Check if there are any pods that need to be upgraded
 		pods, err := es_sset.GetActualPodsForStatefulSet(client, k8s.ExtractNamespacedName(&statefulSet))
 		if err != nil {
-			return false, err
+			return pendingNonMasterSTS, err
 		}
 
 		for _, pod := range pods {
 			// Check if pod revision matches StatefulSet update revision
 			if statefulSet.Status.UpdateRevision != "" && sset.PodRevision(pod) != statefulSet.Status.UpdateRevision {
 				// This pod still needs to be upgraded
-				return false, nil
+				pendingNonMasterSTS = append(pendingNonMasterSTS, statefulSet)
+				continue
 			}
 		}
 	}
 
-	return true, nil
+	return pendingNonMasterSTS, nil
 }
