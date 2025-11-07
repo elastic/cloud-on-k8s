@@ -7,6 +7,7 @@ package driver
 import (
 	"context"
 	"fmt"
+	"strings"
 
 	appsv1 "k8s.io/api/apps/v1"
 
@@ -96,6 +97,20 @@ func HandleUpscaleAndSpecChanges(
 			nonMasterResources = append(nonMasterResources, res)
 		}
 	}
+	ulog.FromContext(ctx.parentCtx).Info("Master resources", "resources", func() string {
+		names := make([]string, 0, len(masterResources))
+		for _, res := range masterResources {
+			names = append(names, res.StatefulSet.Name)
+		}
+		return strings.Join(names, ", ")
+	}())
+	ulog.FromContext(ctx.parentCtx).Info("Non-master resources", "resources", func() string {
+		names := make([]string, 0, len(nonMasterResources))
+		for _, res := range nonMasterResources {
+			names = append(names, res.StatefulSet.Name)
+		}
+		return strings.Join(names, ", ")
+	}())
 
 	// First, reconcile all non-master resources
 	ulog.FromContext(ctx.parentCtx).Info("Reconciling non-master resources")
@@ -127,7 +142,13 @@ func HandleUpscaleAndSpecChanges(
 	}
 
 	if len(pendingNonMasterSTS) > 0 {
-		ulog.FromContext(ctx.parentCtx).Info("Non-master StatefulSets are still upgrading, skipping master StatefulSets temporarily", "requeue", true)
+		ulog.FromContext(ctx.parentCtx).Info("Non-master StatefulSets are still upgrading, skipping master StatefulSets temporarily", "requeue", true, "pendingNonMasterSTS", func() string {
+			names := make([]string, 0, len(pendingNonMasterSTS))
+			for _, sst := range pendingNonMasterSTS {
+				names = append(names, sst.Name)
+			}
+			return strings.Join(names, ", ")
+		}())
 		// Non-master StatefulSets are still upgrading, skipping master StatefulSets temporarily.
 		// This will cause a requeue in the caller, and master StatefulSets will attempt to be processed in the next reconciliation
 		ctx.upscaleReporter.RecordPendingNonMasterSTSUpgrades(pendingNonMasterSTS)
