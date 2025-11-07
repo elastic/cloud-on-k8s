@@ -299,7 +299,7 @@ func findPendingNonMasterStatefulSetUpgrades(
 
 		// Skip master StatefulSets. We check both here because the master role may have been added
 		// to a non-master StatefulSet during the upgrade spec change.
-		if label.IsMasterNodeSet(actualStatefulSet) && label.IsMasterNodeSet(expectedSset) {
+		if label.IsMasterNodeSet(actualStatefulSet) || label.IsMasterNodeSet(expectedSset) {
 			continue
 		}
 
