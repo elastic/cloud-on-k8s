@@ -14,23 +14,23 @@ tests:
           path: spec.elasticsearchRef.name
           value: eck-elasticsearch
       - equal:
-          path: spec.config.[heartbeat.monitors][0].type
+          path: spec.config["heartbeat.monitors"][0].type
           value: tcp
       - equal:
-          path: spec.config.[heartbeat.monitors][0].schedule
+          path: spec.config["heartbeat.monitors"][0].schedule
           value: '@every 5s'
       - equal:
-          path: spec.config.[heartbeat.monitors][0].hosts
+          path: spec.config["heartbeat.monitors"][0].hosts
           value:
           - "elasticsearch-es-http.default.svc:9200"
       - equal:
-          path: spec.config.[heartbeat.monitors][1].type
+          path: spec.config["heartbeat.monitors"][1].type
           value: tcp
       - equal:
-          path: spec.config.[heartbeat.monitors][1].schedule
+          path: spec.config["heartbeat.monitors"][1].schedule
           value: '@every 5s'
       - equal:
-          path: spec.config.[heartbeat.monitors][1].hosts
+          path: spec.config["heartbeat.monitors"][1].hosts
           value:
           - "eck-kibana-kb-http.default.svc:5601"
       - equal:
