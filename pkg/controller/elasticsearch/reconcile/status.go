@@ -106,10 +106,12 @@ func (u *UpscaleReporter) HasPendingNewNodes() bool {
 	return len(u.nodes) > 0
 }
 
+// HasPendingNonMasterSTSUpgrades returns true if at least one non-master StatefulSet is still upgrading.
 func (u *UpscaleReporter) HasPendingNonMasterSTSUpgrades() bool {
 	return u.nonMasterSTSUpgrades > 0
 }
 
+// RecordPendingNonMasterSTSUpgrades records the number of non-master StatefulSets that have upgrades pending.
 func (u *UpscaleReporter) RecordPendingNonMasterSTSUpgrades(pendingNonMasterSTS []appsv1.StatefulSet) {
 	if u == nil {
 		return
