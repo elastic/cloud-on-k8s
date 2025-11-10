@@ -137,7 +137,7 @@ func Test_podsToUpgrade(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			client := k8s.NewFakeClient(tt.args.pods...)
-			got, err := podsToUpgrade(context.Background(), client, tt.args.statefulSets)
+			got, err := podsToUpgrade(client, tt.args.statefulSets)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("podsToUpgrade() error = %v, wantErr %v", err, tt.wantErr)
 				return

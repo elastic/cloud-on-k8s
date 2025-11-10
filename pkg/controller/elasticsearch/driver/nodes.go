@@ -257,7 +257,7 @@ func (d *defaultDriver) isNodeSpecsReconciled(ctx context.Context, actualStatefu
 	}
 
 	// all pods should have been upgraded
-	pods, err := podsToUpgrade(ctx, client, actualStatefulSets)
+	pods, err := podsToUpgrade(client, actualStatefulSets)
 	if err != nil {
 		return false
 	}
