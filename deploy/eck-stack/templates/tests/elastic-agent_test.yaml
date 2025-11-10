@@ -33,9 +33,8 @@ tests:
       - equal:
           path: spec.version
           value: 9.3.0-SNAPSHOT
-      - equal:
+      - notExists:
           path: spec.elasticsearchRefs
-          value: null
       - equal:
           path: spec.kibanaRef.name
           value: kibana

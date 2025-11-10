@@ -144,9 +144,8 @@ tests:
         nameservers: "1.2.3.4"
     asserts:
       - template: statefulset.yaml
-        equal:
+        notExists:
           path: spec.template.spec.hostNetwork
-          value: null
       - template: statefulset.yaml
         equal:
           path: spec.template.spec.dnsPolicy
