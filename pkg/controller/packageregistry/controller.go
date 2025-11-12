@@ -44,7 +44,7 @@ const (
 	controllerName = "packageregistry-controller"
 )
 
-// Add creates a new PackageRegistry Controller and adds it to the Manager with default RBAC. The Manager will set fields on the Controller
+// Add creates a new PackageRegistry Controller and adds it to the Manager with default RBAC. The manager will set fields on the Controller
 // and start it when the manager is started.
 func Add(mgr manager.Manager, params operator.Parameters) error {
 	reconciler := newReconciler(mgr, params)
