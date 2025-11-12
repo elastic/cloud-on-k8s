@@ -45,7 +45,7 @@ type Kibana struct {
 	assocConf *commonv1.AssociationConf `json:"-"`
 	// entAssocConf holds the configuration for the Enterprise Search association
 	entAssocConf *commonv1.AssociationConf `json:"-"`
-	// eprAssocConf  holds the configuration for the Elastic Package Registry association
+	// eprAssocConf holds the configuration for the Elastic Package Registry association
 	eprAssocConf *commonv1.AssociationConf `json:"-"`
 	// monitoringAssocConf holds the configuration for the monitoring Elasticsearch clusters association
 	monitoringAssocConfs map[commonv1.ObjectSelector]commonv1.AssociationConf `json:"-"`
