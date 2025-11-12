@@ -455,7 +455,7 @@ func (k *Kibana) EPRAssociation() *KibanaEPRAssociation {
 	return &KibanaEPRAssociation{Kibana: k}
 }
 
-// KibanaEPRAssociation helps to manage the Kibana / Enterprise Search association.
+// KibanaEPRAssociation helps to manage the Kibana / Elastic Package Registry association.
 type KibanaEPRAssociation struct {
 	*Kibana
 }
