@@ -72,7 +72,6 @@ func (m *ElasticPackageRegistry) validate() (admission.Warnings, error) {
 	}
 
 	if len(errors) > 0 {
-		validationLog.V(1).Info("failed validation", "errors", errors)
 		return nil, apierrors.NewInvalid(groupKind, m.Name, errors)
 	}
 	return nil, nil

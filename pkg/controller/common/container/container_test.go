@@ -176,6 +176,12 @@ func TestImageRepository(t *testing.T) {
 			suffix:  "-ubi",
 			want:    testRegistry + "/elastic-maps-service/elastic-maps-server-ubi:8.16.0",
 		},
+		{
+			name:    "Package registry image",
+			image:   PackageRegistryImage,
+			version: "1.0.0",
+			want:    testRegistry + "/package-registry/distribution:lite-1.0.0",
+		},
 	}
 
 	for _, tc := range testCases {

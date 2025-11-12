@@ -57,9 +57,8 @@ func Add(mgr manager.Manager, params operator.Parameters) error {
 
 // newReconciler returns a new reconcile.Reconciler
 func newReconciler(mgr manager.Manager, params operator.Parameters) *ReconcilePackageRegistry {
-	client := mgr.GetClient()
 	return &ReconcilePackageRegistry{
-		Client:         client,
+		Client:         mgr.GetClient(),
 		recorder:       mgr.GetEventRecorderFor(controllerName),
 		dynamicWatches: watches.NewDynamicWatches(),
 		Parameters:     params,

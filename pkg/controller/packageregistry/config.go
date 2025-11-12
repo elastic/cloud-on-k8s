@@ -15,7 +15,6 @@ import (
 	eprv1alpha1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/epr/v1alpha1"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/driver"
-	commonlabels "github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/labels"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/metadata"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/reconciler"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/settings"
@@ -47,7 +46,7 @@ func reconcileConfig(ctx context.Context, driver driver.Interface, epr eprv1alph
 		ObjectMeta: metav1.ObjectMeta{
 			Namespace:   epr.Namespace,
 			Name:        ConfigName(epr.Name),
-			Labels:      commonlabels.AddCredentialsLabel(maps.Clone(meta.Labels)),
+			Labels:      maps.Clone(meta.Labels),
 			Annotations: meta.Annotations,
 		},
 		Data: map[string][]byte{

@@ -104,6 +104,12 @@ func ImageRepository(img Image, ver version.Version) string {
 		suffix += containerSuffix
 	}
 
+	// If the image is for the package registry, we want to always
+	// default to using the 'lite' image.
+	if img.Name() == PackageRegistryImage.Name() {
+		return fmt.Sprintf("%s/%s%s:lite-%s", containerRegistry, image, suffix, ver)
+	}
+
 	return fmt.Sprintf("%s/%s%s:%s", containerRegistry, image, suffix, ver)
 }
 
