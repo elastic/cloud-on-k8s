@@ -9761,8 +9761,8 @@ spec:
                   enabled:
                     type: boolean
                   service:
-                    description: Service defines the template for the associated Kubernetes
-                      Service object.
+                    description: Service defines the template for the remote cluster
+                      server Service object.
                     properties:
                       metadata:
                         description: |-

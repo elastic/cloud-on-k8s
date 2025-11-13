@@ -1277,7 +1277,7 @@ RemoteClusterAccess models the API key specification as documented in https://ww
 | Field | Description |
 | --- | --- |
 | *`enabled`* __boolean__ |  |
-| *`service`* __[ServiceTemplate](#servicetemplate)__ | Service defines the template for the associated Kubernetes Service object. |
+| *`service`* __[ServiceTemplate](#servicetemplate)__ | Service defines the template for the remote cluster server Service object. |
 
 
 ### Replication  [#replication]
