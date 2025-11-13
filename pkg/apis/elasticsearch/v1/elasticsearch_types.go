@@ -155,7 +155,7 @@ type ElasticsearchSpec struct {
 type RemoteClusterServer struct {
 	// +kubebuilder:validation:Optional
 	Enabled bool `json:"enabled,omitempty"`
-	// Service defines the template for the associated Kubernetes Service object.
+	// Service defines the template for the remote cluster server Service object.
 	Service commonv1.ServiceTemplate `json:"service,omitempty"`
 }
 
