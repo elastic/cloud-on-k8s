@@ -56,7 +56,7 @@ This page lists the third-party dependencies used to build {{eck}} from the main
 | [k8s.io/client-go](https://github.com/kubernetes/client-go) | v0.34.1 | Apache-2.0 |
 | [k8s.io/klog/v2](https://github.com/kubernetes/klog) | v2.130.1 | Apache-2.0 |
 | [k8s.io/utils](https://github.com/kubernetes/utils) | v0.0.0-20250604170112-4c0f3b243397 | Apache-2.0 |
-| [sigs.k8s.io/controller-runtime](https://sigs.k8s.io/controller-runtime) | v0.22.3 | Apache-2.0 |
+| [sigs.k8s.io/controller-runtime](https://sigs.k8s.io/controller-runtime) | v0.22.4 | Apache-2.0 |
 | [sigs.k8s.io/controller-tools](https://sigs.k8s.io/controller-tools) | v0.19.0 | Apache-2.0 |
 
 

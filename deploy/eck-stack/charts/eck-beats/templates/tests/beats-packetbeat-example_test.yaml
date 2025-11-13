@@ -17,10 +17,10 @@ tests:
           path: spec.kibanaRef.name
           value: eck-kibana
       - equal:
-          path: spec.config.[packetbeat.interfaces.device]
+          path: spec.config["packetbeat.interfaces.device"]
           value: any
       - equal:
-          path: spec.config.[packetbeat.protocols]
+          path: spec.config["packetbeat.protocols"]
           value:
           - type: dns
             ports:
@@ -34,7 +34,7 @@ tests:
             - 8080
             - 9200
       - equal:
-          path: spec.config.[packetbeat.flows]
+          path: spec.config["packetbeat.flows"]
           value:
             timeout: 30s
             period: 10s

@@ -52,12 +52,12 @@ kubectl get elastic -l "app.kubernetes.io/instance"=es-kb-quickstart -n elastic-
 
 ### ECK Helm Chart test suite
 
-[Helm UnitTest Plugin](https://github.com/quintush/helm-unittest) is used to ensure Helm Charts render properly.
+[Helm UnitTest Plugin](https://github.com/helm-unittest/helm-unittest) is used to ensure Helm Charts render properly.
 
 #### Installation
 
 ```
-helm plugin install https://github.com/quintush/helm-unittest --version 0.2.8
+helm plugin install https://github.com/helm-unittest/helm-unittest.git --version 1.0.3
 ```
 
 #### Running Test Suite
