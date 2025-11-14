@@ -89,11 +89,6 @@ func ConfigSecret(
 ) (corev1.Secret, error) {
 	mergedMeta := meta.Merge(metadata.Metadata{Labels: label.NewConfigLabels(k8s.ExtractNamespacedName(&es), ssetName)})
 
-	operatorSettingsData, err := yaml.Marshal(&operatorPrivilegesSettings)
-	if err != nil {
-		return corev1.Secret{}, err
-	}
-
 	configSecret := corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
 			Namespace:   es.Namespace,
@@ -102,9 +97,15 @@ func ConfigSecret(
 			Annotations: mergedMeta.Annotations,
 		},
 		Data: map[string][]byte{
-			ConfigFileName:                configData,
-			OperatorUsersSettingsFileName: operatorSettingsData,
+			ConfigFileName: configData,
 		},
+	}
+	if es.IsStateless() {
+		operatorSettingsData, err := yaml.Marshal(&operatorPrivilegesSettings)
+		if err != nil {
+			return corev1.Secret{}, err
+		}
+		configSecret.Data[OperatorUsersSettingsFileName] = operatorSettingsData
 	}
 	if secureSettings != nil {
 		secureSettingsData, err := json.Marshal(secureSettings)

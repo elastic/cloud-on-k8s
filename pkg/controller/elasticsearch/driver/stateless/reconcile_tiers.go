@@ -96,7 +96,7 @@ func (sd *statelessDriver) reconcileTiers(
 		}
 
 		// Add stateless specific config
-		cfg, err = settings.WithStatelessConfig(sd.ES.Spec.StatelessSpec.StatelessConfig.ObjectStore, cfg)
+		cfg, err = settings.WithStatelessConfig(tier, sd.ES.Spec.StatelessSpec.StatelessConfig.ObjectStore, cfg)
 		if err != nil {
 			results.WithError(err)
 			continue

@@ -54,10 +54,12 @@ func NewMergedESConfig(
 	return CanonicalConfig{config}, nil
 }
 
-func WithStatelessConfig(objectStoreConfig esv1.ObjectStoreConfig, baseCfg CanonicalConfig) (CanonicalConfig, error) {
-	statelessCfg := statelessConfig(objectStoreConfig).CanonicalConfig
-	err := baseCfg.CanonicalConfig.MergeWith(statelessCfg)
+func WithStatelessConfig(tier esv1.ElasticsearchTierName, objectStoreConfig esv1.ObjectStoreConfig, baseCfg CanonicalConfig) (CanonicalConfig, error) {
+	statelessCfg, err := statelessConfig(tier, objectStoreConfig)
 	if err != nil {
+		return CanonicalConfig{}, err
+	}
+	if err := baseCfg.CanonicalConfig.MergeWith(statelessCfg.CanonicalConfig); err != nil {
 		return CanonicalConfig{}, err
 	}
 	return baseCfg, nil

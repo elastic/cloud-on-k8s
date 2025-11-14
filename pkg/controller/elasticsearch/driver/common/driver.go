@@ -9,6 +9,10 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/pkg/errors"
+	corev1 "k8s.io/api/core/v1"
+	k8serrors "k8s.io/apimachinery/pkg/api/errors"
+
 	esv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/elasticsearch/v1"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/association"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common"
@@ -30,9 +34,6 @@ import (
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/user"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/k8s"
 	ulog "github.com/elastic/cloud-on-k8s/v3/pkg/utils/log"
-	"github.com/pkg/errors"
-	corev1 "k8s.io/api/core/v1"
-	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 )
 
 // Reconcile performs the reconciliation of the resources used by both stateless and stateful Elasticsearch clusters.
@@ -187,16 +188,16 @@ func (d *DefaultDriverParameters) Reconcile(ctx context.Context) *DefaultDriverP
 
 	// use unknown health as a proxy for a cluster not responding to requests
 	hasKnownHealthState := observedState() != esv1.ElasticsearchUnknownHealth
-	esReachable := hasEndpoints && hasKnownHealthState
+	results.EsReachable = hasEndpoints && hasKnownHealthState
 	// report condition in Pod status
-	if esReachable {
+	if results.EsReachable {
 		d.ReconcileState.ReportCondition(esv1.ElasticsearchIsReachable, corev1.ConditionTrue, reconcile.EsReachableConditionMessage(internalService, hasEndpoints, hasKnownHealthState))
 	} else {
 		d.ReconcileState.ReportCondition(esv1.ElasticsearchIsReachable, corev1.ConditionFalse, reconcile.EsReachableConditionMessage(internalService, hasEndpoints, hasKnownHealthState))
 	}
 
 	var currentLicense esclient.License
-	if esReachable {
+	if results.EsReachable {
 		currentLicense, err = license.CheckElasticsearchLicense(ctx, results.EsClient)
 		var e *license.GetLicenseError
 		if errors.As(err, &e) {
@@ -209,7 +210,7 @@ func (d *DefaultDriverParameters) Reconcile(ctx context.Context) *DefaultDriverP
 				return results.WithError(errors.Wrap(err, strings.ToLower(msg[0:1])+msg[1:]))
 			}
 			// update esReachable to bypass steps that requires ES up in order to not block reconciliation for long periods
-			esReachable = e.EsReachable
+			results.EsReachable = e.EsReachable
 		}
 		if err != nil {
 			msg := "Could not verify license, re-queuing"
@@ -249,7 +250,7 @@ func (d *DefaultDriverParameters) Reconcile(ctx context.Context) *DefaultDriverP
 	}
 
 	// set an annotation with the ClusterUUID, if bootstrapped
-	requeue, err := bootstrap.ReconcileClusterUUID(ctx, d.Client, &d.ES, results.EsClient, esReachable)
+	requeue, err := bootstrap.ReconcileClusterUUID(ctx, d.Client, &d.ES, results.EsClient, results.EsReachable)
 	if err != nil {
 		return results.WithError(err)
 	}

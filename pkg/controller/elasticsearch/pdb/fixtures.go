@@ -125,6 +125,8 @@ func (b Builder) buildStatefulSet(name string, replicas int32, nodeRoles []esv1.
 			continue
 		case esv1.VotingOnlyRole:
 			continue
+		case esv1.SearchRole, esv1.IndexRole:
+			continue
 		}
 	}
 

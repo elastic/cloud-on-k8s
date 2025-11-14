@@ -43,7 +43,7 @@ var (
 )
 
 // NewDriver returns the stateful driver implementation.
-func NewDriver(parameters *drivercommon.DefaultDriverParameters) *defaultDriver {
+func NewDriver(parameters *drivercommon.DefaultDriverParameters) *defaultDriver { //nolint:revive
 	return &defaultDriver{DefaultDriverParameters: parameters}
 }
 

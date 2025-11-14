@@ -6,6 +6,7 @@ package settings
 
 import (
 	"encoding/json"
+	"fmt"
 
 	corev1 "k8s.io/api/core/v1"
 
@@ -15,8 +16,22 @@ import (
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/filesettings"
 )
 
+var (
+	DefaultNodeRoles = map[esv1.ElasticsearchTierName][]esv1.NodeRole{
+		esv1.IndexTierName:  {esv1.MasterRole, esv1.IndexRole, esv1.IngestRole, esv1.RemoteClusterClientRole},
+		esv1.SearchTierName: {esv1.SearchRole, esv1.RemoteClusterClientRole, esv1.TransformRole},
+		esv1.MLTierName:     {esv1.MLRole, esv1.RemoteClusterClientRole},
+	}
+)
+
+const (
+	HealthPeriodicLoggerEnabled         = "health.periodic_logger.enabled"
+	HealthPeriodicLoggerPollInterval    = "health.periodic_logger.poll_interval"
+	HealthMasterIdentityChangeThreshold = "health.master_history.identity_changes_threshold"
+)
+
 // xpackConfig returns the configuration bit related to XPack settings
-func statelessConfig(objectSoreConfig esv1.ObjectStoreConfig) *CanonicalConfig {
+func statelessConfig(tier esv1.ElasticsearchTierName, objectSoreConfig esv1.ObjectStoreConfig) (*CanonicalConfig, error) {
 	// enable x-pack security, including TLS
 	objectSoreConfigAsMap := map[string]interface{}{
 		"object_store.type":   objectSoreConfig.Type,
@@ -27,8 +42,28 @@ func statelessConfig(objectSoreConfig esv1.ObjectStoreConfig) *CanonicalConfig {
 		objectSoreConfigAsMap["object_store.base_path"] = objectSoreConfig.BasePath
 	}
 
-	cfg := map[string]interface{}{"stateless": objectSoreConfigAsMap}
-	return &CanonicalConfig{commonsettings.MustCanonicalConfig(cfg)}
+	nodeRoles, ok := DefaultNodeRoles[tier]
+	if !ok {
+		return nil, fmt.Errorf("cannot find default node role for tier [%s]", tier)
+	}
+
+	cfg := map[string]interface{}{
+		"stateless":                 objectSoreConfigAsMap,
+		esv1.DiscoverySeedProviders: "file",
+		// to avoid misleading error messages about the inability to connect to localhost for discovery despite us using
+		// file based discovery
+		esv1.DiscoverySeedHosts: []string{},
+
+		// Enable the HealthPeriodicLogger to log the output of /_health_report every 60 seconds
+		HealthPeriodicLoggerEnabled:      "true",
+		HealthPeriodicLoggerPollInterval: "60s",
+
+		// Make the master_is_stable Health API indicator more tolerant of master changes in Serverless
+		HealthMasterIdentityChangeThreshold: "30",
+
+		"node.roles": nodeRoles,
+	}
+	return &CanonicalConfig{commonsettings.MustCanonicalConfig(cfg)}, nil
 }
 
 const (
