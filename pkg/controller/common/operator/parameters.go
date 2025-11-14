@@ -9,6 +9,7 @@ import (
 
 	"go.elastic.co/apm/v2"
 	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	"github.com/elastic/cloud-on-k8s/v3/pkg/about"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/certificates"
@@ -52,4 +53,6 @@ type Parameters struct {
 	ValidateStorageClass bool
 	// Tracer is a shared APM tracer instance or nil
 	Tracer *apm.Tracer
+	// NamespaceLabelSelector optionally filters namespaces by labels
+	NamespaceLabelSelector *metav1.LabelSelector
 }
