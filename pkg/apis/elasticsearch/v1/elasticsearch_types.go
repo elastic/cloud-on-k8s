@@ -97,6 +97,8 @@ type ElasticsearchSpec struct {
 
 	// NodeSets allow specifying groups of Elasticsearch nodes sharing the same configuration and Pod templates.
 	// +kubebuilder:validation:MinItems=1
+    // +listType=map
+    // +listMapKey=name
 	NodeSets []NodeSet `json:"nodeSets"`
 
 	// UpdateStrategy specifies how updates to the cluster should be performed.
