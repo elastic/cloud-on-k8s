@@ -39,7 +39,7 @@ import (
 	commonversion "github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/version"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/watches"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/certificates/transport"
-	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/driver/api"
+	drivercommon "github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/driver/common"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/driver/stateful"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/driver/stateless"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/label"
@@ -300,19 +300,19 @@ func (r *ReconcileElasticsearch) internalReconcile(
 		expectations = r.statefulExpectations.ForCluster(k8s.ExtractNamespacedName(&es))
 	}
 
-	defaultDriverParameters := api.DefaultDriverParameters{
-		OperatorParameters: r.Parameters,
-		ES:                 es,
-		ReconcileState:     reconcileState,
-		Client:             r.Client,
-		Recorder:           r.recorder,
-		Version:            ver,
-		Expectations:       expectations,
-		Observers:          r.esObservers,
-		DynamicWatches:     r.dynamicWatches,
-		SupportedVersions:  *supported,
-		LicenseChecker:     r.licenseChecker,
-	}
+	defaultDriverParameters := drivercommon.NewDefaultDriverParameters(
+		r.Parameters,
+		es,
+		reconcileState,
+		r.Client,
+		r.recorder,
+		ver,
+		expectations,
+		r.esObservers,
+		r.dynamicWatches,
+		*supported,
+		r.licenseChecker,
+	)
 
 	if es.IsStateless() {
 		return stateless.NewDriver(defaultDriverParameters).Reconcile(ctx)

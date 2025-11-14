@@ -2,7 +2,7 @@
 // or more contributor license agreements. Licensed under the Elastic License 2.0;
 // you may not use this file except in compliance with the Elastic License 2.0.
 
-package stateful
+package common
 
 import (
 	"testing"
@@ -11,7 +11,6 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/version"
-	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/driver/api"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/label"
 )
 
@@ -106,10 +105,8 @@ func Test_lowestHighestSupportedVersions_VerifySupportsExistingPods(t *testing.T
 				Min: tt.fields.min,
 				Max: tt.fields.max,
 			}
-			d := defaultDriver{
-				api.DefaultDriverParameters{
-					SupportedVersions: lh,
-				},
+			d := DefaultDriverParameters{
+				SupportedVersions: lh,
 			}
 			if err := d.verifySupportsExistingPods(tt.args.pods); (err != nil) != tt.wantErr {
 				t.Errorf("verifySupportsExistingPods() error = %v, wantErr %v", err, tt.wantErr)

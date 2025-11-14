@@ -2,7 +2,7 @@
 // or more contributor license agreements. Licensed under the Elastic License 2.0;
 // you may not use this file except in compliance with the Elastic License 2.0.
 
-package stateful
+package common
 
 import (
 	"github.com/pkg/errors"
@@ -11,7 +11,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/label"
 )
 
-func (d *defaultDriver) verifySupportsExistingPods(pods []corev1.Pod) error {
+func (d *DefaultDriverParameters) verifySupportsExistingPods(pods []corev1.Pod) error {
 	for _, pod := range pods {
 		v, err := label.ExtractVersion(pod.Labels)
 		if err != nil {

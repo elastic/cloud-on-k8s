@@ -19,6 +19,7 @@ import (
 	"testing"
 	"time"
 
+	drivercommon "github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/driver/common"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	v1 "k8s.io/api/apps/v1"
@@ -37,7 +38,6 @@ import (
 	common "github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/settings"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/version"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/client"
-	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/driver/api"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/hints"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/nodespec"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/reconcile"
@@ -533,13 +533,11 @@ func Test_defaultDriver_updateDesiredNodes(t *testing.T) {
 				k8sClient = k8s.NewFakeClient(existingResources...)
 			}
 
-			d := &defaultDriver{
-				DefaultDriverParameters: api.DefaultDriverParameters{
-					ReconcileState: reconcileState,
-					ES:             es,
-					Client:         k8sClient,
-				},
-			}
+			d := NewDriver(&drivercommon.DefaultDriverParameters{
+				ReconcileState: reconcileState,
+				ES:             es,
+				Client:         k8sClient,
+			})
 
 			wantClient := wantClient{}
 			if tt.want.testdata != "" {

@@ -16,14 +16,13 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	crlog "sigs.k8s.io/controller-runtime/pkg/log"
 
-	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/driver/api"
-
 	esv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/elasticsearch/v1"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/expectations"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/reconciler"
 	sset "github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/statefulset"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/version"
 	esclient "github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/client"
+	drivercommon "github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/driver/common"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/hints"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/reconcile"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/shutdown"
@@ -556,14 +555,12 @@ func Test_defaultDriver_maybeCompleteNodeUpgrades(t *testing.T) {
 			reconcileState, err := reconcile.NewState(tt.es)
 			require.NoError(t, err)
 
-			d := &defaultDriver{
-				DefaultDriverParameters: api.DefaultDriverParameters{
-					Client:         client,
-					ES:             tt.es,
-					Expectations:   expectations.NewExpectations(client, &appsv1.StatefulSet{}),
-					ReconcileState: reconcileState,
-				},
-			}
+			d := NewDriver(&drivercommon.DefaultDriverParameters{
+				Client:         client,
+				ES:             tt.es,
+				Expectations:   expectations.NewExpectations(client, &appsv1.StatefulSet{}),
+				ReconcileState: reconcileState,
+			})
 			if tt.expectations != nil {
 				tt.expectations(d.Expectations)
 			}

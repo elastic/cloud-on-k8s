@@ -6,47 +6,30 @@ package stateful
 
 import (
 	"context"
-	"fmt"
-	"strings"
-
-	"github.com/pkg/errors"
 
 	corev1 "k8s.io/api/core/v1"
 	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
-	"k8s.io/client-go/tools/record"
 	"k8s.io/utils/ptr"
 	controller "sigs.k8s.io/controller-runtime/pkg/reconcile"
 
 	commonv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/common/v1"
 	esv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/elasticsearch/v1"
-	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/association"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common"
 	commondriver "github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/driver"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/events"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/keystore"
-	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/metadata"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/reconciler"
-	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/version"
-	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/watches"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/bootstrap"
-	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/certificates"
-	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/cleanup"
 	esclient "github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/client"
-	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/configmap"
-	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/driver/api"
 	drivercommon "github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/driver/common"
-	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/filesettings"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/hints"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/initcontainer"
-	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/label"
-	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/license"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/reconcile"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/remotecluster"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/securitycontext"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/services"
-	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/settings"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/stackmon"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/user"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/k8s"
@@ -60,25 +43,13 @@ var (
 )
 
 // NewDriver returns the stateful driver implementation.
-func NewDriver(parameters api.DefaultDriverParameters) api.Driver {
+func NewDriver(parameters *drivercommon.DefaultDriverParameters) *defaultDriver {
 	return &defaultDriver{DefaultDriverParameters: parameters}
 }
 
 // defaultDriver is the default Driver implementation
 type defaultDriver struct {
-	api.DefaultDriverParameters
-}
-
-func (d *defaultDriver) K8sClient() k8s.Client {
-	return d.Client
-}
-
-func (d *defaultDriver) DynamicWatches() watches.DynamicWatches {
-	return d.DefaultDriverParameters.DynamicWatches
-}
-
-func (d *defaultDriver) Recorder() record.EventRecorder {
-	return d.DefaultDriverParameters.Recorder
+	*drivercommon.DefaultDriverParameters
 }
 
 var _ commondriver.Interface = &defaultDriver{}
@@ -88,38 +59,21 @@ func (d *defaultDriver) Reconcile(ctx context.Context) *reconciler.Results {
 	results := reconciler.NewResult(ctx)
 	log := ulog.FromContext(ctx)
 
-	// garbage collect secrets attached to this cluster that we don't need anymore
-	if err := cleanup.DeleteOrphanedSecrets(ctx, d.Client, d.ES); err != nil {
-		return results.WithError(err)
+	// Reconcile common resources shared by all drivers (stateful/stateless)
+	defaultDriverResult := d.DefaultDriverParameters.Reconcile(ctx)
+	defer defaultDriverResult.Close()
+	results.WithResults(defaultDriverResult.Results)
+	if results.HasError() {
+		return results
 	}
 
-	// extract the metadata that should be propagated to children
-	meta := metadata.Propagate(&d.ES, metadata.Metadata{Labels: label.NewLabels(k8s.ExtractNamespacedName(&d.ES))})
-
-	if err := configmap.ReconcileScriptsConfigMap(ctx, d.Client, d.ES, meta); err != nil {
-		return results.WithError(err)
-	}
-
-	_, err := common.ReconcileService(ctx, d.Client, services.NewTransportService(d.ES, meta), &d.ES)
-	if err != nil {
-		return results.WithError(err)
-	}
-
-	externalService, err := common.ReconcileService(ctx, d.Client, services.NewExternalService(d.ES, meta), &d.ES)
-	if err != nil {
-		if k8serrors.IsAlreadyExists(err) {
-			return results.WithReconciliationState(defaultRequeue.WithReason(fmt.Sprintf("Pending %s service recreation", services.ExternalServiceName(d.ES.Name))))
-		}
-		return results.WithError(err)
-	}
-
-	var internalService *corev1.Service
-	internalService, err = common.ReconcileService(ctx, d.Client, services.NewInternalService(d.ES, meta), &d.ES)
-	if err != nil {
-		return results.WithError(err)
-	}
+	esClient := defaultDriverResult.EsClient
+	resourcesState := defaultDriverResult.ResourcesState
+	esReachable := defaultDriverResult.EsReachable
+	meta := defaultDriverResult.Meta
 
 	// Remote Cluster Server (RCS2) Kubernetes Service reconciliation.
+	// Only valid for stateful clusters for now.
 	if d.ES.Spec.RemoteClusterServer.Enabled {
 		// Remote Cluster Server is enabled, ensure that the related Kubernetes Service does exist.
 		if _, err := common.ReconcileService(ctx, d.Client, services.NewRemoteClusterService(d.ES, meta), &d.ES); err != nil {
@@ -136,166 +90,13 @@ func (d *defaultDriver) Reconcile(ctx context.Context) *reconciler.Results {
 		results.WithError(k8s.DeleteResourceIfExists(ctx, d.Client, remoteClusterService))
 	}
 
-	resourcesState, err := reconcile.NewResourcesStateFromAPI(d.Client, d.ES)
-	if err != nil {
-		return results.WithError(err)
-	}
-
-	drivercommon.WarnUnsupportedDistro(resourcesState.AllPods, d.ReconcileState.Recorder)
-
-	controllerUser, err := user.ReconcileUsersAndRoles(
-		ctx,
-		d.Client,
-		d.ES,
-		d.DynamicWatches(),
-		d.Recorder(),
-		d.OperatorParameters.PasswordHasher,
-		d.OperatorParameters.PasswordGenerator,
-		meta)
-	if err != nil {
-		return results.WithError(err)
-	}
-
-	trustedHTTPCertificates, res := certificates.ReconcileHTTP(
-		ctx,
-		d,
-		d.ES,
-		[]corev1.Service{*externalService, *internalService},
-		d.OperatorParameters.GlobalCA,
-		d.OperatorParameters.CACertRotation,
-		d.OperatorParameters.CertRotation,
-		meta,
-	)
-	results.WithResults(res)
-	if res != nil && res.HasError() {
-		return results
-	}
-
-	// start the ES observer
-	minVersion, err := version.MinInPods(resourcesState.CurrentPods, label.VersionLabelName)
-	if err != nil {
-		return results.WithError(err)
-	}
-	if minVersion == nil {
-		minVersion = &d.Version
-	}
-
-	urlProvider := services.NewElasticsearchURLProvider(d.ES, d.Client)
-	hasEndpoints := urlProvider.HasEndpoints()
-
-	observedState := d.Observers.ObservedStateResolver(
-		ctx,
-		d.ES,
-		drivercommon.ElasticsearchClientProvider(
-			ctx,
-			&d.ES,
-			d.OperatorParameters.Dialer,
-			urlProvider,
-			controllerUser,
-			*minVersion,
-			trustedHTTPCertificates,
-		),
-		hasEndpoints,
-	)
-
-	// Always update the Elasticsearch state bits with the latest observed state.
-	d.ReconcileState.
-		UpdateClusterHealth(observedState()).         // Elasticsearch cluster health
-		UpdateAvailableNodes(*resourcesState).        // Available nodes
-		UpdateMinRunningVersion(ctx, *resourcesState) // Min running version
-
-	res = certificates.ReconcileTransport(
-		ctx,
-		d,
-		d.ES,
-		d.OperatorParameters.GlobalCA,
-		d.OperatorParameters.CACertRotation,
-		d.OperatorParameters.CertRotation,
-		meta,
-	)
-	results.WithResults(res)
-	if res != nil && res.HasError() {
-		return results
-	}
-
-	// Patch the Pods to add the expected node labels as annotations. Record the error, if any, but do not stop the
-	// reconciliation loop as we don't want to prevent other updates from being applied to the cluster.
-	results.WithResults(annotatePodsWithNodeLabels(ctx, d.Client, d.ES))
-
-	if err := d.verifySupportsExistingPods(resourcesState.CurrentPods); err != nil {
-		if !d.ES.IsConfiguredToAllowDowngrades() {
-			return results.WithError(err)
-		}
-		log.Info("Allowing downgrade on user request", "warning", err.Error())
-	}
-
-	// TODO: support user-supplied certificate (non-ca)
-	esClient := drivercommon.NewElasticsearchClient(
-		ctx,
-		&d.ES,
-		d.OperatorParameters.Dialer,
-		urlProvider,
-		controllerUser,
-		*minVersion,
-		trustedHTTPCertificates,
-	)
-	defer esClient.Close()
-
-	// use unknown health as a proxy for a cluster not responding to requests
-	hasKnownHealthState := observedState() != esv1.ElasticsearchUnknownHealth
-	esReachable := hasEndpoints && hasKnownHealthState
-	// report condition in Pod status
-	if esReachable {
-		d.ReconcileState.ReportCondition(esv1.ElasticsearchIsReachable, corev1.ConditionTrue, reconcile.EsReachableConditionMessage(internalService, hasEndpoints, hasKnownHealthState))
-	} else {
-		d.ReconcileState.ReportCondition(esv1.ElasticsearchIsReachable, corev1.ConditionFalse, reconcile.EsReachableConditionMessage(internalService, hasEndpoints, hasKnownHealthState))
-	}
-
-	var currentLicense esclient.License
-	if esReachable {
-		currentLicense, err = license.CheckElasticsearchLicense(ctx, esClient)
-		var e *license.GetLicenseError
-		if errors.As(err, &e) {
-			if !e.SupportedDistribution {
-				msg := "Unsupported Elasticsearch distribution"
-				// unsupported distribution, let's update the phase to "invalid" and stop the reconciliation
-				d.ReconcileState.
-					UpdateWithPhase(esv1.ElasticsearchResourceInvalid).
-					AddEvent(corev1.EventTypeWarning, events.EventReasonUnexpected, fmt.Sprintf("%s: %s", msg, err.Error()))
-				return results.WithError(errors.Wrap(err, strings.ToLower(msg[0:1])+msg[1:]))
-			}
-			// update esReachable to bypass steps that requires ES up in order to not block reconciliation for long periods
-			esReachable = e.EsReachable
-		}
-		if err != nil {
-			msg := "Could not verify license, re-queuing"
-			log.Info(msg, "err", err, "namespace", d.ES.Namespace, "es_name", d.ES.Name)
-			d.ReconcileState.AddEvent(corev1.EventTypeWarning, events.EventReasonUnexpected, fmt.Sprintf("%s: %s", msg, err.Error()))
-			results.WithReconciliationState(defaultRequeue.WithReason(msg))
-		}
-	}
-
 	// Update the service account orchestration hint. This is done early in the reconciliation loop to unblock association
 	// controllers that may be waiting for the orchestration hint.
+	// Only valid for stateful clusters.
 	results.WithError(d.maybeSetServiceAccountsOrchestrationHint(ctx, esReachable, esClient, resourcesState))
 
-	// reconcile the Elasticsearch license (even if we assume the cluster might not respond to requests to cover the case of
-	// expired licenses where all health API responses are 403)
-	if hasEndpoints {
-		err = license.Reconcile(ctx, d.Client, d.ES, esClient, currentLicense)
-		if err != nil {
-			msg := "Could not reconcile cluster license, re-queuing"
-			// only log an event if Elasticsearch is in a state where success of this API call can be expected. The API call itself
-			// will be logged by the client
-			if hasKnownHealthState {
-				log.Info(msg, "err", err, "namespace", d.ES.Namespace, "es_name", d.ES.Name)
-				d.ReconcileState.AddEvent(corev1.EventTypeWarning, events.EventReasonUnexpected, fmt.Sprintf("%s: %s", msg, err.Error()))
-			}
-			results.WithReconciliationState(defaultRequeue.WithReason(msg))
-		}
-	}
-
 	// reconcile remote clusters
+	// Only valid for stateful clusters for now.
 	if esReachable {
 		requeue, err := remotecluster.UpdateSettings(ctx, d.Client, esClient, d.Recorder(), d.LicenseChecker, d.ES)
 		msg := "Could not update remote clusters in Elasticsearch settings, re-queuing"
@@ -309,19 +110,7 @@ func (d *defaultDriver) Reconcile(ctx context.Context) *reconciler.Results {
 		}
 	}
 
-	// Compute seed hosts based on current masters with a podIP
-	if err := settings.UpdateSeedHostsConfigMap(ctx, d.Client, d.ES, resourcesState.AllPods, meta); err != nil {
-		return results.WithError(err)
-	}
-
-	// reconcile an empty File based settings Secret if it doesn't exist
-	if d.Version.GTE(filesettings.FileBasedSettingsMinPreVersion) {
-		err = filesettings.ReconcileEmptyFileSettingsSecret(ctx, d.Client, d.ES, true)
-		if err != nil {
-			return results.WithError(err)
-		}
-	}
-
+	// Only valid for stateful clusters, use secure file settings in stateless.
 	keystoreParams := initcontainer.GetKeystoreParams()
 	keystoreSecurityContext := securitycontext.For(d.Version, true)
 	keystoreParams.SecurityContext = &keystoreSecurityContext
@@ -345,33 +134,15 @@ func (d *defaultDriver) Reconcile(ctx context.Context) *reconciler.Results {
 		return results.WithError(err)
 	}
 
-	// set an annotation with the ClusterUUID, if bootstrapped
-	requeue, err := bootstrap.ReconcileClusterUUID(ctx, d.Client, &d.ES, esClient, esReachable)
-	if err != nil {
-		return results.WithError(err)
-	}
-	if requeue {
-		results = results.WithReconciliationState(defaultRequeue.WithReason("Elasticsearch cluster UUID is not reconciled"))
-	}
-
 	// reconcile beats config secrets if Stack Monitoring is defined
 	err = stackmon.ReconcileConfigSecrets(ctx, d.Client, d.ES, meta)
 	if err != nil {
 		return results.WithError(err)
 	}
 
-	// requeue if associations are defined but not yet configured, otherwise we may be in a situation where we deploy
-	// Elasticsearch Pods once, then change their spec a few seconds later once the association is configured
-	areAssocsConfigured, err := association.AreConfiguredIfSet(ctx, d.ES.GetAssociations(), d.Recorder())
-	if err != nil {
-		return results.WithError(err)
-	}
-	if !areAssocsConfigured {
-		results.WithReconciliationState(defaultRequeue.WithReason("Some associations are not reconciled"))
-	}
-
 	// we want to reconcile suspended Pods before we start reconciling node specs as this is considered a debugging and
 	// troubleshooting tool that does not follow the change budget restrictions
+	// This is only valid for stateful clusters as Pod name cannot be predicted in stateless mode.
 	if err := reconcileSuspendedPods(ctx, d.Client, d.ES, d.Expectations); err != nil {
 		return results.WithError(err)
 	}
