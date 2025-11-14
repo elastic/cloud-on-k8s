@@ -671,6 +671,7 @@ ServiceTemplate defines the template for a Kubernetes Service.
 :::{admonition} Appears In:
 * [HTTPConfig](#httpconfig)
 * [LogstashService](#logstashservice)
+* [RemoteClusterServer](#remoteclusterserver)
 * [TransportConfig](#transportconfig)
 
 :::
@@ -1276,6 +1277,7 @@ RemoteClusterAccess models the API key specification as documented in https://ww
 | Field | Description |
 | --- | --- |
 | *`enabled`* __boolean__ |  |
+| *`service`* __[ServiceTemplate](#servicetemplate)__ | Service defines the template for the remote cluster server Service object. |
 
 
 ### Replication  [#replication]
