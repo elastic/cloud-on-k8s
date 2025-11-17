@@ -7,6 +7,7 @@ package driver
 import (
 	"context"
 	"fmt"
+	"slices"
 
 	appsv1 "k8s.io/api/apps/v1"
 
@@ -115,7 +116,13 @@ func HandleUpscaleAndSpecChanges(
 	}
 
 	// Check if all non-master StatefulSets have completed their upgrades before proceeding with master StatefulSets
-	pendingNonMasterSTS, err := findPendingNonMasterStatefulSetUpgrades(ctx.k8sClient, actualStatefulSets, expectedResources.StatefulSets(), targetVersion)
+	pendingNonMasterSTS, err := findPendingNonMasterStatefulSetUpgrades(
+		ctx.k8sClient,
+		actualStatefulSets,
+		expectedResources.StatefulSets(),
+		targetVersion,
+		expectations.NewExpectations(ctx.k8sClient),
+	)
 	if err != nil {
 		return results, fmt.Errorf("while checking non-master upgrade status: %w", err)
 	}
@@ -260,7 +267,13 @@ func findPendingNonMasterStatefulSetUpgrades(
 	actualStatefulSets es_sset.StatefulSetList,
 	expectedStatefulSets es_sset.StatefulSetList,
 	targetVersion version.Version,
+	expectations *expectations.Expectations,
 ) ([]appsv1.StatefulSet, error) {
+	pendingStatefulSet, err := expectations.ExpectedStatefulSetUpdates.PendingGenerations()
+	if err != nil {
+		return nil, err
+	}
+
 	pendingNonMasterSTS := make([]appsv1.StatefulSet, 0)
 	for _, actualStatefulSet := range actualStatefulSets {
 		expectedSset, _ := expectedStatefulSets.GetByName(actualStatefulSet.Name)
@@ -268,6 +281,12 @@ func findPendingNonMasterStatefulSetUpgrades(
 		// Skip master StatefulSets. We check both here because the master role may have been added
 		// to a non-master StatefulSet during the upgrade spec change.
 		if label.IsMasterNodeSet(actualStatefulSet) || label.IsMasterNodeSet(expectedSset) {
+			continue
+		}
+
+		// If the expectations show this as a pending StatefulSet, add it to the list.
+		if slices.Contains(pendingStatefulSet, actualStatefulSet.Name) {
+			pendingNonMasterSTS = append(pendingNonMasterSTS, actualStatefulSet)
 			continue
 		}
 
