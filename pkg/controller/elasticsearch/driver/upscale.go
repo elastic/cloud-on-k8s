@@ -119,11 +119,11 @@ func HandleUpscaleAndSpecChanges(
 		ulog.FromContext(ctx.parentCtx).Error(err, "while reconciling non-master resources")
 		return results, fmt.Errorf("while reconciling non-master resources: %w", err)
 	}
-	ulog.FromContext(ctx.parentCtx).Info("Non-master resources reconciled", "requeue", requeue)
+	results.ActualStatefulSets = actualStatefulSets
+
 	if requeue {
 		ulog.FromContext(ctx.parentCtx).Info("Requeuing non-master resources", "requeue", requeue)
 		results.Requeue = true
-		results.ActualStatefulSets = actualStatefulSets
 		return results, nil
 	}
 
@@ -141,6 +141,8 @@ func HandleUpscaleAndSpecChanges(
 		return results, fmt.Errorf("while checking non-master upgrade status: %w", err)
 	}
 
+	ctx.upscaleReporter.RecordPendingNonMasterSTSUpgrades(pendingNonMasterSTS)
+
 	if len(pendingNonMasterSTS) > 0 {
 		ulog.FromContext(ctx.parentCtx).Info("Non-master StatefulSets are still upgrading, skipping master StatefulSets temporarily", "requeue", true, "pendingNonMasterSTS", func() string {
 			names := make([]string, 0, len(pendingNonMasterSTS))
@@ -151,8 +153,6 @@ func HandleUpscaleAndSpecChanges(
 		}())
 		// Non-master StatefulSets are still upgrading, skipping master StatefulSets temporarily.
 		// This will cause a requeue in the caller, and master StatefulSets will attempt to be processed in the next reconciliation
-		ctx.upscaleReporter.RecordPendingNonMasterSTSUpgrades(pendingNonMasterSTS)
-		results.ActualStatefulSets = actualStatefulSets
 		return results, nil
 	}
 
