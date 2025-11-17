@@ -10,6 +10,7 @@ import (
 	"slices"
 
 	appsv1 "k8s.io/api/apps/v1"
+	"k8s.io/utils/ptr"
 
 	esv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/elasticsearch/v1"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common"
@@ -98,6 +99,12 @@ func HandleUpscaleAndSpecChanges(
 		}
 	}
 
+	// The only adjustment we want to make to master statefulSets before ensuring that all non-master
+	// statefulSets have been reconciled is to scale up the replicas to the expected number.
+	if err = maybeUpscaleMasterResources(ctx, actualStatefulSets, masterResources); err != nil {
+		return results, fmt.Errorf("while scaling up master resources: %w", err)
+	}
+
 	// First, reconcile all non-master resources
 	actualStatefulSets, requeue, err := reconcileResources(ctx, actualStatefulSets, nonMasterResources)
 	if err != nil {
@@ -143,6 +150,28 @@ func HandleUpscaleAndSpecChanges(
 
 	results.ActualStatefulSets = actualStatefulSets
 	return results, nil
+}
+
+func maybeUpscaleMasterResources(ctx upscaleCtx, actualStatefulSets es_sset.StatefulSetList, masterResources []nodespec.Resources) error {
+	for _, sts := range masterResources {
+		fmt.Println("Attempting upscale of master StatefulSet", sts.StatefulSet.Name)
+		actualSset, found := actualStatefulSets.GetByName(sts.StatefulSet.Name)
+		if !found {
+			fmt.Println("Master StatefulSet not found in actualStatefulSets", sts.StatefulSet.Name)
+			continue
+		}
+		actualReplicas := sset.GetReplicas(actualSset)
+		targetReplicas := sset.GetReplicas(sts.StatefulSet)
+		fmt.Println("Actual replicas", actualReplicas, "Target replicas", targetReplicas)
+		if actualReplicas < targetReplicas {
+			actualSset.Spec.Replicas = ptr.To[int32](targetReplicas)
+			fmt.Println("Updating master StatefulSet replicas", actualSset.Spec.Replicas, "to", targetReplicas)
+			if err := ctx.k8sClient.Update(ctx.parentCtx, &actualSset); err != nil {
+				return fmt.Errorf("while upscaling master sts replicas: %w", err)
+			}
+		}
+	}
+	return nil
 }
 
 func podsToCreate(

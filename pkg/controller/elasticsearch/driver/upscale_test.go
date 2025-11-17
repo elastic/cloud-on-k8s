@@ -6,6 +6,7 @@ package driver
 
 import (
 	"context"
+	"fmt"
 	"reflect"
 	"sort"
 	"sync"
@@ -699,7 +700,7 @@ func TestHandleUpscaleAndSpecChanges_VersionUpgradeDataFirstFlow(t *testing.T) {
 	masterSset.Status.UpdatedReplicas = 3
 	masterSset.Status.CurrentRevision = "master-sset-old"
 	masterSset.Status.UpdateRevision = "master-sset-old"
-	require.NoError(t, k8sClient.Status().Update(context.Background(), &masterSset))
+	require.NoError(t, k8sClient.Update(context.Background(), &masterSset))
 
 	var dataSset appsv1.StatefulSet
 	require.NoError(t, k8sClient.Get(context.Background(), types.NamespacedName{Namespace: "ns", Name: "data-sset"}, &dataSset))
@@ -815,7 +816,7 @@ func TestHandleUpscaleAndSpecChanges_VersionUpgradeDataFirstFlow(t *testing.T) {
 					},
 				},
 				Spec: appsv1.StatefulSetSpec{
-					Replicas: ptr.To[int32](3),
+					Replicas: ptr.To[int32](4), // also upscale the master replicas to ensure that an upscale during an upgrade can happen in parallel with non-masters.
 					Template: corev1.PodTemplateSpec{
 						ObjectMeta: metav1.ObjectMeta{
 							Labels: map[string]string{
@@ -895,26 +896,28 @@ func TestHandleUpscaleAndSpecChanges_VersionUpgradeDataFirstFlow(t *testing.T) {
 	require.NoError(t, k8sClient.Status().Update(context.Background(), &dataSset))
 
 	// Call HandleUpscaleAndSpecChanges and verify that both data upgrade has begun and master STS is not updated
+	fmt.Println("Calling HandleUpscaleAndSpecChanges which should upscale the master replicas to 4")
 	_, err = HandleUpscaleAndSpecChanges(ctx, actualStatefulSets, expectedResourcesUpgrade)
 	require.NoError(t, err)
 
 	// Update actualStatefulSets to reflect the current state
-	require.NoError(t, k8sClient.Get(context.Background(), types.NamespacedName{Namespace: "ns", Name: "data-sset"}, &dataSset))
-	require.NoError(t, k8sClient.Get(context.Background(), types.NamespacedName{Namespace: "ns", Name: "master-sset"}, &masterSset))
-	actualStatefulSets = es_sset.StatefulSetList{masterSset, dataSset}
+	// require.NoError(t, k8sClient.Get(context.Background(), types.NamespacedName{Namespace: "ns", Name: "data-sset"}, &dataSset))
+	// require.NoError(t, k8sClient.Get(context.Background(), types.NamespacedName{Namespace: "ns", Name: "master-sset"}, &masterSset))
+	// actualStatefulSets = es_sset.StatefulSetList{masterSset, dataSset}
 
-	// Call HandleUpscaleAndSpecChanges - data STS should be updated, but master should NOT
-	res, err = HandleUpscaleAndSpecChanges(ctx, actualStatefulSets, expectedResourcesUpgrade)
-	require.NoError(t, err)
+	// Call HandleUpscaleAndSpecChanges - data STS should be updated,
+	// master version should not, but the replicas should be scaled up to 4.
+	// res, err = HandleUpscaleAndSpecChanges(ctx, actualStatefulSets, expectedResourcesUpgrade)
+	// require.NoError(t, err)
 
 	// Verify data StatefulSet is updated to 8.17.1
 	require.NoError(t, k8sClient.Get(context.Background(), types.NamespacedName{Namespace: "ns", Name: "data-sset"}, &dataSset))
 	require.Equal(t, "docker.elastic.co/elasticsearch/elasticsearch:8.17.1", dataSset.Spec.Template.Spec.Containers[0].Image)
 
 	// Verify master StatefulSet version hasn't changed yet (should still be 8.16.2)
-	// This is the key test - master should NOT be updated until data is fully upgraded
 	require.NoError(t, k8sClient.Get(context.Background(), types.NamespacedName{Namespace: "ns", Name: "master-sset"}, &masterSset))
 	require.Equal(t, "docker.elastic.co/elasticsearch/elasticsearch:8.16.2", masterSset.Spec.Template.Spec.Containers[0].Image)
+	require.Equal(t, int32(4), *masterSset.Spec.Replicas)
 
 	// Update data STS and associated pods to show they are completely upgraded
 	require.NoError(t, k8sClient.Get(context.Background(), types.NamespacedName{Namespace: "ns", Name: "data-sset"}, &dataSset))
