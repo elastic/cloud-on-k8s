@@ -301,13 +301,6 @@ func findPendingNonMasterStatefulSetUpgrades(
 			continue
 		}
 
-		// If the StatefulSet observedGeneration is not in sync with the generation,
-		// then a change is in progress, and we should not consider it as upgraded.
-		if actualStatefulSet.Generation != actualStatefulSet.Status.ObservedGeneration {
-			pendingNonMasterSTS = append(pendingNonMasterSTS, actualStatefulSet)
-			continue
-		}
-
 		// Check if this StatefulSet has pending updates
 		if actualStatefulSet.Status.UpdatedReplicas != actualStatefulSet.Status.Replicas {
 			pendingNonMasterSTS = append(pendingNonMasterSTS, actualStatefulSet)
