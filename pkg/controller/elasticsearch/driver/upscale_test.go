@@ -908,6 +908,7 @@ func TestHandleUpscaleAndSpecChanges_VersionUpgradeDataFirstFlow(t *testing.T) {
 	// Verify master StatefulSet version hasn't changed yet (should still be 8.16.2)
 	require.NoError(t, k8sClient.Get(context.Background(), types.NamespacedName{Namespace: "ns", Name: "master-sset"}, &masterSset))
 	require.Equal(t, "docker.elastic.co/elasticsearch/elasticsearch:8.16.2", masterSset.Spec.Template.Spec.Containers[0].Image)
+	// Verify master StatefulSet replicas have been scaled up to 4
 	require.Equal(t, int32(4), *masterSset.Spec.Replicas)
 
 	// Update data STS and associated pods to show they are completely upgraded
