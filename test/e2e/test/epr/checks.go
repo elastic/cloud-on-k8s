@@ -36,7 +36,7 @@ func CheckSecrets(b Builder, k *test.K8sClient) test.Step {
 					Keys: []string{"tls.crt", "tls.key"},
 					Labels: map[string]string{
 						"packageregistry.k8s.elastic.co/name": eprName,
-						"common.k8s.elastic.co/type":          "packageregistry",
+						"common.k8s.elastic.co/type":          "package-registry",
 					},
 				},
 				test.ExpectedSecret{
@@ -44,7 +44,7 @@ func CheckSecrets(b Builder, k *test.K8sClient) test.Step {
 					Keys: []string{"tls.crt", "tls.key", "ca.crt"},
 					Labels: map[string]string{
 						"packageregistry.k8s.elastic.co/name": eprName,
-						"common.k8s.elastic.co/type":          "packageregistry",
+						"common.k8s.elastic.co/type":          "package-registry",
 					},
 				},
 				test.ExpectedSecret{
@@ -52,7 +52,7 @@ func CheckSecrets(b Builder, k *test.K8sClient) test.Step {
 					Keys: []string{"ca.crt", "tls.crt"},
 					Labels: map[string]string{
 						"packageregistry.k8s.elastic.co/name": eprName,
-						"common.k8s.elastic.co/type":          "packageregistry",
+						"common.k8s.elastic.co/type":          "package-registry",
 					},
 				},
 			)
@@ -77,7 +77,7 @@ func CheckStatus(b Builder, k *test.K8sClient) test.Step {
 				epr.Status.Selector,
 				map[string]string{
 					"packageregistry.k8s.elastic.co/name": epr.Name,
-					"common.k8s.elastic.co/type":          "packageregistry",
+					"common.k8s.elastic.co/type":          "package-registry",
 				}); err != nil {
 				return err
 			}
