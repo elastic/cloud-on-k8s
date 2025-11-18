@@ -9,7 +9,7 @@ import (
 	"fmt"
 
 	commonv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/common/v1"
-	"github.com/elastic/cloud-on-k8s/v3/pkg/apis/epr/v1alpha1"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/apis/packageregistry/v1alpha1"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/k8s"
 	"github.com/elastic/cloud-on-k8s/v3/test/e2e/test"
 )
@@ -65,7 +65,7 @@ func CheckStatus(b Builder, k *test.K8sClient) test.Step {
 	return test.Step{
 		Name: "Elastic Package Registry status should be updated",
 		Test: test.Eventually(func() error {
-			var epr v1alpha1.ElasticPackageRegistry
+			var epr v1alpha1.PackageRegistry
 			if err := k.Client.Get(context.Background(), k8s.ExtractNamespacedName(&b.EPR), &epr); err != nil {
 				return err
 			}

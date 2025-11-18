@@ -341,10 +341,10 @@ updating docs/operating-eck/eck-permissions.asciidoc file.
   - update
   - patch
 - apiGroups:
-  - epr.k8s.elastic.co
+  - packageregistry.k8s.elastic.co
   resources:
-  - elasticpackageregistries
-  - elasticpackageregistries/status
+  - packageregistries
+  - packageregistries/status
   verbs:
   - get
   - list

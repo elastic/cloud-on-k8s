@@ -18,7 +18,7 @@ import (
 
 	"github.com/elastic/cloud-on-k8s/v3/pkg/about"
 	commonv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/common/v1"
-	"github.com/elastic/cloud-on-k8s/v3/pkg/apis/epr/v1alpha1"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/apis/packageregistry/v1alpha1"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/certificates"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/operator"
@@ -30,7 +30,7 @@ var nsnFixture = types.NamespacedName{
 	Namespace: "ns",
 	Name:      "test-resource",
 }
-var eprFixture = v1alpha1.ElasticPackageRegistry{
+var eprFixture = v1alpha1.PackageRegistry{
 	ObjectMeta: metav1.ObjectMeta{
 		Namespace:  nsnFixture.Namespace,
 		Name:       nsnFixture.Name,
@@ -49,7 +49,7 @@ func TestReconcilePackageRegistry_Reconcile(t *testing.T) {
 	timeFixture := metav1.Now()
 
 	assertObservedGeneration := func(r k8s.Client, expected int) {
-		var ems v1alpha1.ElasticPackageRegistry
+		var ems v1alpha1.PackageRegistry
 		require.NoError(t, r.Get(context.Background(), types.NamespacedName{Name: nsnFixture.Name, Namespace: nsnFixture.Namespace}, &ems))
 		require.Equal(t, int64(expected), ems.Status.ObservedGeneration)
 	}
@@ -83,7 +83,7 @@ func TestReconcilePackageRegistry_Reconcile(t *testing.T) {
 		{
 			name: "Resource marked for deletion",
 			reconciler: ReconcilePackageRegistry{
-				Client: k8s.NewFakeClient(&v1alpha1.ElasticPackageRegistry{
+				Client: k8s.NewFakeClient(&v1alpha1.PackageRegistry{
 					ObjectMeta: metav1.ObjectMeta{
 						Name:              nsnFixture.Name,
 						Namespace:         nsnFixture.Namespace,
@@ -115,7 +115,7 @@ func TestReconcilePackageRegistry_Reconcile(t *testing.T) {
 		{
 			name: "Resource is unmanaged",
 			reconciler: ReconcilePackageRegistry{
-				Client: k8s.NewFakeClient(&v1alpha1.ElasticPackageRegistry{
+				Client: k8s.NewFakeClient(&v1alpha1.PackageRegistry{
 					ObjectMeta: metav1.ObjectMeta{
 						Name:      nsnFixture.Name,
 						Namespace: nsnFixture.Namespace,
@@ -130,7 +130,7 @@ func TestReconcilePackageRegistry_Reconcile(t *testing.T) {
 		{
 			name: "validates on reconcile",
 			reconciler: ReconcilePackageRegistry{
-				Client: k8s.NewFakeClient(&v1alpha1.ElasticPackageRegistry{
+				Client: k8s.NewFakeClient(&v1alpha1.PackageRegistry{
 					ObjectMeta: metav1.ObjectMeta{
 						Name:       nsnFixture.Name,
 						Namespace:  nsnFixture.Namespace,
@@ -248,7 +248,7 @@ func Test_buildConfigHash(t *testing.T) {
 	}
 	type args struct {
 		c            k8s.Client
-		epr          v1alpha1.ElasticPackageRegistry
+		epr          v1alpha1.PackageRegistry
 		configSecret corev1.Secret
 	}
 	tests := []struct {

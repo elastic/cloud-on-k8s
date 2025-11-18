@@ -4,5 +4,5 @@
 
 // Package v1alpha1 contains API schema definitions for managing Elastic Package Registry resources.
 // +kubebuilder:object:generate=true
-// +groupName=epr.k8s.elastic.co
+// +groupName=packageregistry.k8s.elastic.co
 package v1alpha1

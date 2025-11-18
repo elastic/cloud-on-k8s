@@ -1,6 +1,6 @@
 ---
-apiVersion: epr.k8s.elastic.co/v1alpha1
-kind: ElasticPackageRegistry
+apiVersion: packageregistry.k8s.elastic.co/v1alpha1
+kind: PackageRegistry
 metadata:
   name: {{ include "epr.fullname" . }}
   labels:

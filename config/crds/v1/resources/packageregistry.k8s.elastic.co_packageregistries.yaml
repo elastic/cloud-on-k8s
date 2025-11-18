@@ -4,18 +4,18 @@ kind: CustomResourceDefinition
 metadata:
   annotations:
     controller-gen.kubebuilder.io/version: v0.19.0
-  name: elasticpackageregistries.epr.k8s.elastic.co
+  name: packageregistries.packageregistry.k8s.elastic.co
 spec:
-  group: epr.k8s.elastic.co
+  group: packageregistry.k8s.elastic.co
   names:
     categories:
     - elastic
-    kind: ElasticPackageRegistry
-    listKind: ElasticPackageRegistryList
-    plural: elasticpackageregistries
+    kind: PackageRegistry
+    listKind: PackageRegistryList
+    plural: packageregistries
     shortNames:
     - epr
-    singular: elasticpackageregistry
+    singular: packageregistry
   scope: Namespaced
   versions:
   - additionalPrinterColumns:
@@ -26,7 +26,7 @@ spec:
       jsonPath: .status.availableNodes
       name: nodes
       type: integer
-    - description: ElasticPackageRegistry version
+    - description: PackageRegistry version
       jsonPath: .status.version
       name: version
       type: string
@@ -36,8 +36,8 @@ spec:
     name: v1alpha1
     schema:
       openAPIV3Schema:
-        description: ElasticPackageRegistry represents an Elastic Package Registry
-          resource in a Kubernetes cluster.
+        description: PackageRegistry represents an Elastic Package Registry resource
+          in a Kubernetes cluster.
         properties:
           apiVersion:
             description: |-
@@ -61,8 +61,8 @@ spec:
               Package Registry instance.
             properties:
               config:
-                description: 'Config holds the ElasticPackageRegistry configuration.
-                  See: https://github.com/elastic/package-registry/blob/main/config.reference.yml'
+                description: 'Config holds the PackageRegistry configuration. See:
+                  https://github.com/elastic/package-registry/blob/main/config.reference.yml'
                 type: object
                 x-kubernetes-preserve-unknown-fields: true
               configRef:

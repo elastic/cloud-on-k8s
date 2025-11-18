@@ -32,7 +32,7 @@ crds:
   - name: logstashes.logstash.k8s.elastic.co
     displayName: Logstash
     description: Logstash instance
-  - name: elasticpackageregistries.epr.k8s.elastic.co
+  - name: packageregistries.packageregistry.k8s.elastic.co
     displayName: Elastic Package Registry
     description: Elastic Package Registry instance
 packages:

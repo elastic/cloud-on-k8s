@@ -12,7 +12,7 @@ import (
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/types"
 
-	eprv1alpha1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/epr/v1alpha1"
+	eprv1alpha1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/packageregistry/v1alpha1"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/certificates"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/k8s"
 	"github.com/elastic/cloud-on-k8s/v3/test/e2e/cmd/run"
@@ -46,7 +46,7 @@ func (b Builder) InitTestSteps(k *test.K8sClient) test.StepList {
 		{
 			Name: "Elastic Package Registry CRDs should exist",
 			Test: test.Eventually(func() error {
-				crdList := &eprv1alpha1.ElasticPackageRegistryList{}
+				crdList := &eprv1alpha1.PackageRegistryList{}
 				return k.Client.List(context.Background(), crdList)
 			}),
 		},
@@ -75,7 +75,7 @@ func (b Builder) CreationTestSteps(k *test.K8sClient) test.StepList {
 		{
 			Name: "Elastic Package Registry should be created",
 			Test: test.Eventually(func() error {
-				var epr eprv1alpha1.ElasticPackageRegistry
+				var epr eprv1alpha1.PackageRegistry
 				return k.Client.Get(context.Background(), k8s.ExtractNamespacedName(&b.EPR), &epr)
 			}),
 		},
@@ -98,7 +98,7 @@ func (b Builder) UpgradeTestSteps(k *test.K8sClient) test.StepList {
 		{
 			Name: "Updating the Elastic Package Registry spec succeed",
 			Test: test.Eventually(func() error {
-				var epr eprv1alpha1.ElasticPackageRegistry
+				var epr eprv1alpha1.PackageRegistry
 				if err := k.Client.Get(context.Background(), k8s.ExtractNamespacedName(&b.EPR), &epr); err != nil {
 					return err
 				}

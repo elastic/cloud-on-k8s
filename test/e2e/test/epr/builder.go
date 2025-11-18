@@ -11,7 +11,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	commonv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/common/v1"
-	"github.com/elastic/cloud-on-k8s/v3/pkg/apis/epr/v1alpha1"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/apis/packageregistry/v1alpha1"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/version"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/k8s"
 	"github.com/elastic/cloud-on-k8s/v3/test/e2e/cmd/run"
@@ -19,7 +19,7 @@ import (
 )
 
 type Builder struct {
-	EPR         v1alpha1.ElasticPackageRegistry
+	EPR         v1alpha1.PackageRegistry
 	MutatedFrom *Builder
 }
 
@@ -37,7 +37,7 @@ func newBuilder(name, randSuffix string) Builder {
 		Namespace: test.Ctx().ManagedNamespace(0),
 	}
 	return Builder{
-		EPR: v1alpha1.ElasticPackageRegistry{
+		EPR: v1alpha1.PackageRegistry{
 			ObjectMeta: meta,
 			Spec: v1alpha1.PackageRegistrySpec{
 				Count: 1,

@@ -10,8 +10,8 @@ spec:
     config:
       node.store.allow_mmap: false
 ---
-apiVersion: epr.k8s.elastic.co/v1alpha1
-kind: ElasticPackageRegistry
+apiVersion: packageregistry.k8s.elastic.co/v1alpha1
+kind: PackageRegistry
 metadata:
   name: epr-sample
 spec:

@@ -14,7 +14,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	commonv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/common/v1"
-	"github.com/elastic/cloud-on-k8s/v3/pkg/apis/epr/v1alpha1"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/apis/packageregistry/v1alpha1"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/watches"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/k8s"
 )
@@ -22,7 +22,7 @@ import (
 func Test_newConfig(t *testing.T) {
 	type args struct {
 		runtimeObjs []client.Object
-		epr         v1alpha1.ElasticPackageRegistry
+		epr         v1alpha1.PackageRegistry
 	}
 	tests := []struct {
 		name    string
@@ -34,7 +34,7 @@ func Test_newConfig(t *testing.T) {
 			name: "no user config",
 			args: args{
 				runtimeObjs: nil,
-				epr:         v1alpha1.ElasticPackageRegistry{},
+				epr:         v1alpha1.PackageRegistry{},
 			},
 			want: `cache_time:
     catch_all: 10m
@@ -51,7 +51,7 @@ package_paths:
 			name: "inline user config",
 			args: args{
 				runtimeObjs: nil,
-				epr: v1alpha1.ElasticPackageRegistry{
+				epr: v1alpha1.PackageRegistry{
 					Spec: v1alpha1.PackageRegistrySpec{Config: &commonv1.Config{Data: map[string]interface{}{
 						"cache_time": map[string]interface{}{
 							"index": "11s",
@@ -171,8 +171,8 @@ func secretWithConfig(name string, cfg []byte) *corev1.Secret {
 	}
 }
 
-func eprWithConfigRef(name string, cfg *commonv1.Config) v1alpha1.ElasticPackageRegistry {
-	return v1alpha1.ElasticPackageRegistry{
+func eprWithConfigRef(name string, cfg *commonv1.Config) v1alpha1.PackageRegistry {
+	return v1alpha1.PackageRegistry{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "epr",
 			Namespace: "ns",

@@ -12,7 +12,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	commonv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/common/v1"
-	eprv1alpha1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/epr/v1alpha1"
+	eprv1alpha1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/packageregistry/v1alpha1"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/driver"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/metadata"
@@ -26,11 +26,11 @@ const (
 	ConfigMountPath = "/package-registry/config.yml"
 )
 
-func configSecretVolume(epr eprv1alpha1.ElasticPackageRegistry) volume.SecretVolume {
+func configSecretVolume(epr eprv1alpha1.PackageRegistry) volume.SecretVolume {
 	return volume.NewSecretVolume(ConfigName(epr.Name), "config", ConfigMountPath, ConfigFilename, 0444)
 }
 
-func reconcileConfig(ctx context.Context, driver driver.Interface, epr eprv1alpha1.ElasticPackageRegistry, meta metadata.Metadata) (corev1.Secret, error) {
+func reconcileConfig(ctx context.Context, driver driver.Interface, epr eprv1alpha1.PackageRegistry, meta metadata.Metadata) (corev1.Secret, error) {
 	cfg, err := newConfig(driver, epr)
 	if err != nil {
 		return corev1.Secret{}, err
@@ -57,7 +57,7 @@ func reconcileConfig(ctx context.Context, driver driver.Interface, epr eprv1alph
 	return reconciler.ReconcileSecret(ctx, driver.K8sClient(), expectedConfigSecret, &epr)
 }
 
-func newConfig(d driver.Interface, epr eprv1alpha1.ElasticPackageRegistry) (*settings.CanonicalConfig, error) {
+func newConfig(d driver.Interface, epr eprv1alpha1.PackageRegistry) (*settings.CanonicalConfig, error) {
 	cfg := settings.NewCanonicalConfig()
 
 	inlineUserCfg, err := inlineUserConfig(epr.Spec.Config)

@@ -13,7 +13,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/v3/test/e2e/test/epr"
 )
 
-func TestElasticPackageRegistryStandalone(t *testing.T) {
+func TestPackageRegistryStandalone(t *testing.T) {
 	name := "test-epr-standalone"
 	eprBuilder := epr.NewBuilder(name).
 		WithNodeCount(1).
@@ -22,7 +22,7 @@ func TestElasticPackageRegistryStandalone(t *testing.T) {
 	test.Sequence(nil, test.EmptySteps, eprBuilder).RunSequential(t)
 }
 
-func TestElasticPackageRegistryTLSDisabled(t *testing.T) {
+func TestPackageRegistryTLSDisabled(t *testing.T) {
 	name := "test-epr-tls-disabled"
 	eprBuilder := epr.NewBuilder(name).
 		WithNodeCount(1).
@@ -32,7 +32,7 @@ func TestElasticPackageRegistryTLSDisabled(t *testing.T) {
 	test.Sequence(nil, test.EmptySteps, eprBuilder).RunSequential(t)
 }
 
-func TestElasticPackageRegistryVersionUpgradeToLatest8x(t *testing.T) {
+func TestPackageRegistryVersionUpgradeToLatest8x(t *testing.T) {
 	srcVersion, dstVersion := test.GetUpgradePathTo8x(test.Ctx().ElasticStackVersion)
 
 	test.SkipInvalidUpgrade(t, srcVersion, dstVersion)

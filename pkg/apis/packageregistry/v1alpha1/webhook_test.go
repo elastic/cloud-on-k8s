@@ -15,7 +15,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 
-	eprv1alpha1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/epr/v1alpha1"
+	eprv1alpha1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/packageregistry/v1alpha1"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/test"
 )
 
@@ -113,13 +113,13 @@ func TestWebhook(t *testing.T) {
 		},
 	}
 
-	validator := &eprv1alpha1.ElasticPackageRegistry{}
+	validator := &eprv1alpha1.PackageRegistry{}
 	gvk := metav1.GroupVersionKind{Group: eprv1alpha1.GroupVersion.Group, Version: eprv1alpha1.GroupVersion.Version, Kind: eprv1alpha1.Kind}
 	test.RunValidationWebhookTests(t, gvk, validator, testCases...)
 }
 
-func mkEPR(uid string) *eprv1alpha1.ElasticPackageRegistry {
-	return &eprv1alpha1.ElasticPackageRegistry{
+func mkEPR(uid string) *eprv1alpha1.PackageRegistry {
+	return &eprv1alpha1.PackageRegistry{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: "webhook-test",
 			UID:  types.UID(uid),
@@ -130,7 +130,7 @@ func mkEPR(uid string) *eprv1alpha1.ElasticPackageRegistry {
 	}
 }
 
-func serialize(t *testing.T, k *eprv1alpha1.ElasticPackageRegistry) []byte {
+func serialize(t *testing.T, k *eprv1alpha1.PackageRegistry) []byte {
 	t.Helper()
 
 	objBytes, err := json.Marshal(k)

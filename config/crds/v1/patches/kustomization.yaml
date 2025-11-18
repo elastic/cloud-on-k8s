@@ -77,12 +77,12 @@ patches:
       kind: CustomResourceDefinition
       name: logstashes.logstash.k8s.elastic.co
     path: logstash-patches.yaml
-  # custom patches for ElasticPackageRegistry
+  # custom patches for PackageRegistry
   - target:
       group: apiextensions.k8s.io
       version: v1
       kind: CustomResourceDefinition
-      name: elasticpackageregistries.epr.k8s.elastic.co
-    path: epr-patches.yaml
+      name: packageregistries.packageregistry.k8s.elastic.co
+    path: packageregistry-patches.yaml
 
 

@@ -11,7 +11,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
-	eprv1alpha1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/epr/v1alpha1"
+	eprv1alpha1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/packageregistry/v1alpha1"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/metadata"
 )
 
@@ -64,7 +64,7 @@ func TestNewPodSpec_CommandOverride(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			epr := eprv1alpha1.ElasticPackageRegistry{
+			epr := eprv1alpha1.PackageRegistry{
 				ObjectMeta: metav1.ObjectMeta{Name: "test-epr", Namespace: "default"},
 				Spec:       eprv1alpha1.PackageRegistrySpec{Version: tt.version},
 			}

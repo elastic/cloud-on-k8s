@@ -468,14 +468,14 @@ webhooks:
   sideEffects: None
   rules:
     - apiGroups:
-        - epr.k8s.elastic.co
+        - packageregistry.k8s.elastic.co
       apiVersions:
         - v1alpha1
       operations:
         - CREATE
         - UPDATE
       resources:
-        - elasticpackageregistries
+        - packageregistries
 ---
 apiVersion: v1
 kind: Service

@@ -16,7 +16,7 @@ const (
 	EPRContainerName = "package-registry"
 	// Kind is inferred from the struct name using reflection in SchemeBuilder.Register()
 	// we duplicate it as a constant here for practical purposes.
-	Kind = "ElasticPackageRegistry"
+	Kind = "PackageRegistry"
 )
 
 // Namer is a Namer that is configured with the defaults for resources related to a Package Registry resource.
@@ -33,7 +33,7 @@ type PackageRegistrySpec struct {
 	// Count of Elastic Package Registry instances to deploy.
 	Count int32 `json:"count,omitempty"`
 
-	// Config holds the ElasticPackageRegistry configuration. See: https://github.com/elastic/package-registry/blob/main/config.reference.yml
+	// Config holds the PackageRegistry configuration. See: https://github.com/elastic/package-registry/blob/main/config.reference.yml
 	// +kubebuilder:pruning:PreserveUnknownFields
 	Config *commonv1.Config `json:"config,omitempty"`
 
@@ -67,16 +67,16 @@ type PackageRegistryStatus struct {
 
 // +kubebuilder:object:root=true
 
-// ElasticPackageRegistry represents an Elastic Package Registry resource in a Kubernetes cluster.
+// PackageRegistry represents an Elastic Package Registry resource in a Kubernetes cluster.
 // +kubebuilder:resource:categories=elastic,shortName=epr
 // +kubebuilder:subresource:status
 // +kubebuilder:printcolumn:name="health",type="string",JSONPath=".status.health"
 // +kubebuilder:printcolumn:name="nodes",type="integer",JSONPath=".status.availableNodes",description="Available nodes"
-// +kubebuilder:printcolumn:name="version",type="string",JSONPath=".status.version",description="ElasticPackageRegistry version"
+// +kubebuilder:printcolumn:name="version",type="string",JSONPath=".status.version",description="PackageRegistry version"
 // +kubebuilder:printcolumn:name="age",type="date",JSONPath=".metadata.creationTimestamp"
 // +kubebuilder:subresource:scale:specpath=.spec.count,statuspath=.status.count,selectorpath=.status.selector
 // +kubebuilder:storageversion
-type ElasticPackageRegistry struct {
+type PackageRegistry struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
 
@@ -85,24 +85,24 @@ type ElasticPackageRegistry struct {
 }
 
 // IsMarkedForDeletion returns true if the Elastic Package Registry instance is going to be deleted
-func (m *ElasticPackageRegistry) IsMarkedForDeletion() bool {
+func (m *PackageRegistry) IsMarkedForDeletion() bool {
 	return !m.DeletionTimestamp.IsZero()
 }
 
 // GetObservedGeneration will return the observedGeneration from the Elastic Agent's status.
-func (m *ElasticPackageRegistry) GetObservedGeneration() int64 {
+func (m *PackageRegistry) GetObservedGeneration() int64 {
 	return m.Status.ObservedGeneration
 }
 
 // +kubebuilder:object:root=true
 
-// ElasticPackageRegistryList contains a list of ElasticPackageRegistry
-type ElasticPackageRegistryList struct {
+// PackageRegistryList contains a list of PackageRegistry
+type PackageRegistryList struct {
 	metav1.TypeMeta `json:",inline"`
 	metav1.ListMeta `json:"metadata,omitempty"`
-	Items           []ElasticPackageRegistry `json:"items"`
+	Items           []PackageRegistry `json:"items"`
 }
 
 func init() {
-	SchemeBuilder.Register(&ElasticPackageRegistry{}, &ElasticPackageRegistryList{})
+	SchemeBuilder.Register(&PackageRegistry{}, &PackageRegistryList{})
 }

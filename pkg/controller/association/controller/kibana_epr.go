@@ -12,8 +12,8 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 
 	commonv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/common/v1"
-	eprv1alpha1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/epr/v1alpha1"
 	kbv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/kibana/v1"
+	eprv1alpha1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/packageregistry/v1alpha1"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/association"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/operator"
 	ver "github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/version"
@@ -25,7 +25,7 @@ import (
 func AddKibanaEPR(mgr manager.Manager, accessReviewer rbac.AccessReviewer, params operator.Parameters) error {
 	return association.AddAssociationController(mgr, accessReviewer, params, association.AssociationInfo{
 		AssociatedObjTemplate:     func() commonv1.Associated { return &kbv1.Kibana{} },
-		ReferencedObjTemplate:     func() client.Object { return &eprv1alpha1.ElasticPackageRegistry{} },
+		ReferencedObjTemplate:     func() client.Object { return &eprv1alpha1.PackageRegistry{} },
 		ExternalServiceURL:        getEPRExternalURL,
 		ReferencedResourceVersion: referencedEPRStatusVersion,
 		ReferencedResourceNamer:   eprv1alpha1.Namer,
@@ -51,7 +51,7 @@ func getEPRExternalURL(c k8s.Client, assoc commonv1.Association) (string, error)
 	if !eprRef.IsDefined() {
 		return "", nil
 	}
-	epr := eprv1alpha1.ElasticPackageRegistry{}
+	epr := eprv1alpha1.PackageRegistry{}
 	if err := c.Get(context.Background(), eprRef.NamespacedName(), &epr); err != nil {
 		return "", err
 	}
@@ -95,7 +95,7 @@ func referencedEPRStatusVersion(c k8s.Client, eprAssociation commonv1.Associatio
 		return ver, isServerless, nil
 	}
 
-	var epr eprv1alpha1.ElasticPackageRegistry
+	var epr eprv1alpha1.PackageRegistry
 	err := c.Get(context.Background(), eprRef.NamespacedName(), &epr)
 	if err != nil {
 		return "", false, err

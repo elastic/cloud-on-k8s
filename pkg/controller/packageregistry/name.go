@@ -4,7 +4,7 @@
 
 package packageregistry
 
-import eprv1alpha1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/epr/v1alpha1"
+import eprv1alpha1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/packageregistry/v1alpha1"
 
 const (
 	httpServiceSuffix = "http"

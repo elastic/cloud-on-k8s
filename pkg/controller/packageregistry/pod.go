@@ -10,7 +10,7 @@ import (
 	"k8s.io/apimachinery/pkg/util/intstr"
 	"k8s.io/utils/ptr"
 
-	eprv1alpha1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/epr/v1alpha1"
+	eprv1alpha1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/packageregistry/v1alpha1"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/certificates"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/container"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/defaults"
@@ -65,7 +65,7 @@ func readinessProbe(useTLS bool) corev1.Probe {
 	}
 }
 
-func newPodSpec(epr eprv1alpha1.ElasticPackageRegistry, configHash string, meta metadata.Metadata) (corev1.PodTemplateSpec, error) {
+func newPodSpec(epr eprv1alpha1.PackageRegistry, configHash string, meta metadata.Metadata) (corev1.PodTemplateSpec, error) {
 	// ensure the Pod gets rotated on config change
 	podMeta := meta.Merge(metadata.Metadata{Annotations: map[string]string{configHashAnnotationName: configHash}})
 
@@ -119,7 +119,7 @@ func newPodSpec(epr eprv1alpha1.ElasticPackageRegistry, configHash string, meta 
 	return builder.PodTemplate, nil
 }
 
-func withHTTPCertsVolume(builder *defaults.PodTemplateBuilder, epr eprv1alpha1.ElasticPackageRegistry) *defaults.PodTemplateBuilder {
+func withHTTPCertsVolume(builder *defaults.PodTemplateBuilder, epr eprv1alpha1.PackageRegistry) *defaults.PodTemplateBuilder {
 	if !epr.Spec.HTTP.TLS.Enabled() {
 		return builder
 	}

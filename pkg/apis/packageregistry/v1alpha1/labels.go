@@ -9,9 +9,9 @@ import (
 )
 
 // GetIdentityLabels will return the common Elastic assigned labels for the Elastic Package Registry.
-func (m *ElasticPackageRegistry) GetIdentityLabels() map[string]string {
+func (m *PackageRegistry) GetIdentityLabels() map[string]string {
 	return map[string]string{
-		commonv1.TypeLabelName:                "epr",
+		commonv1.TypeLabelName:                "package-registry",
 		"packageregistry.k8s.elastic.co/name": m.Name,
 	}
 }

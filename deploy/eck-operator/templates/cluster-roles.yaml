@@ -56,8 +56,8 @@ rules:
   - apiGroups: ["logstash.k8s.elastic.co"]
     resources: ["logstashes"]
     verbs: ["get", "list", "watch"]
-  - apiGroups: ["epr.k8s.elastic.co"]
-    resources: ["elasticpackageregistries"]
+  - apiGroups: ["packageregistry.k8s.elastic.co"]
+    resources: ["packageregistries"]
     verbs: ["get", "list", "watch"]
 ---
 apiVersion: rbac.authorization.k8s.io/v1
@@ -99,8 +99,8 @@ rules:
   - apiGroups: ["logstash.k8s.elastic.co"]
     resources: ["logstashes"]
     verbs: ["create", "delete", "deletecollection", "patch", "update"]
-  - apiGroups: ["epr.k8s.elastic.co"]
-    resources: ["elasticpackageregistries"]
+  - apiGroups: ["packageregistry.k8s.elastic.co"]
+    resources: ["packageregistries"]
     verbs: ["create", "delete", "deletecollection", "patch", "update"]
 {{- if .Values.config.metrics.secureMode.enabled }}
 ---

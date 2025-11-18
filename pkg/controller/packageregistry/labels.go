@@ -5,7 +5,7 @@
 package packageregistry
 
 import (
-	eprv1alpha1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/epr/v1alpha1"
+	eprv1alpha1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/packageregistry/v1alpha1"
 )
 
 const (
@@ -17,11 +17,11 @@ const (
 	// PackageRegistryNamespaceLabelName used to represent a Package Registry in k8s resources.
 	PackageRegistryNamespaceLabelName = "packageregistry.k8s.elastic.co/namespace"
 
-	// Type represents the ElasticPackageRegistry type
+	// Type represents the PackageRegistry type
 	Type = "packageregistry"
 )
 
-func versionLabels(epr eprv1alpha1.ElasticPackageRegistry) map[string]string {
+func versionLabels(epr eprv1alpha1.PackageRegistry) map[string]string {
 	return map[string]string{
 		VersionLabelName: epr.Spec.Version,
 	}

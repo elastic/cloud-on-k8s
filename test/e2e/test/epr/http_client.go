@@ -12,7 +12,7 @@ import (
 	"net/http"
 	"net/url"
 
-	"github.com/elastic/cloud-on-k8s/v3/pkg/apis/epr/v1alpha1"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/apis/packageregistry/v1alpha1"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/packageregistry"
 	"github.com/elastic/cloud-on-k8s/v3/test/e2e/test"
 )
@@ -26,7 +26,7 @@ func (e *APIError) Error() string {
 	return e.msg
 }
 
-func NewEPRClient(epr v1alpha1.ElasticPackageRegistry, k *test.K8sClient) (*http.Client, error) {
+func NewEPRClient(epr v1alpha1.PackageRegistry, k *test.K8sClient) (*http.Client, error) {
 	var caCerts []*x509.Certificate
 	if epr.Spec.HTTP.TLS.Enabled() {
 		crts, err := k.GetHTTPCerts(v1alpha1.Namer, epr.Namespace, epr.Name)
@@ -38,7 +38,7 @@ func NewEPRClient(epr v1alpha1.ElasticPackageRegistry, k *test.K8sClient) (*http
 	return test.NewHTTPClient(caCerts), nil
 }
 
-func DoRequest(client *http.Client, epr v1alpha1.ElasticPackageRegistry, method, path string) ([]byte, error) {
+func DoRequest(client *http.Client, epr v1alpha1.PackageRegistry, method, path string) ([]byte, error) {
 	scheme := "http"
 	if epr.Spec.HTTP.TLS.Enabled() {
 		scheme = "https"

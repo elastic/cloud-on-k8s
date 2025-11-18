@@ -23,7 +23,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 	"sigs.k8s.io/controller-runtime/pkg/source"
 
-	eprv1alpha1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/epr/v1alpha1"
+	eprv1alpha1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/packageregistry/v1alpha1"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/certificates"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/defaults"
@@ -67,14 +67,14 @@ func newReconciler(mgr manager.Manager, params operator.Parameters) *ReconcilePa
 
 func addWatches(mgr manager.Manager, c controller.Controller, r *ReconcilePackageRegistry) error {
 	// Watch for changes to packageregistry
-	if err := c.Watch(source.Kind(mgr.GetCache(), &eprv1alpha1.ElasticPackageRegistry{}, &handler.TypedEnqueueRequestForObject[*eprv1alpha1.ElasticPackageRegistry]{})); err != nil {
+	if err := c.Watch(source.Kind(mgr.GetCache(), &eprv1alpha1.PackageRegistry{}, &handler.TypedEnqueueRequestForObject[*eprv1alpha1.PackageRegistry]{})); err != nil {
 		return err
 	}
 
 	// Watch deployments
 	if err := c.Watch(source.Kind(mgr.GetCache(), &appsv1.Deployment{}, handler.TypedEnqueueRequestForOwner[*appsv1.Deployment](
 		mgr.GetScheme(), mgr.GetRESTMapper(),
-		&eprv1alpha1.ElasticPackageRegistry{}, handler.OnlyControllerOwner(),
+		&eprv1alpha1.PackageRegistry{}, handler.OnlyControllerOwner(),
 	))); err != nil {
 		return err
 	}
@@ -88,7 +88,7 @@ func addWatches(mgr manager.Manager, c controller.Controller, r *ReconcilePackag
 	// Watch services
 	if err := c.Watch(source.Kind(mgr.GetCache(), &corev1.Service{}, handler.TypedEnqueueRequestForOwner[*corev1.Service](
 		mgr.GetScheme(), mgr.GetRESTMapper(),
-		&eprv1alpha1.ElasticPackageRegistry{}, handler.OnlyControllerOwner(),
+		&eprv1alpha1.PackageRegistry{}, handler.OnlyControllerOwner(),
 	))); err != nil {
 		return err
 	}
@@ -96,7 +96,7 @@ func addWatches(mgr manager.Manager, c controller.Controller, r *ReconcilePackag
 	// Watch owned and soft-owned secrets
 	if err := c.Watch(source.Kind(mgr.GetCache(), &corev1.Secret{}, handler.TypedEnqueueRequestForOwner[*corev1.Secret](
 		mgr.GetScheme(), mgr.GetRESTMapper(),
-		&eprv1alpha1.ElasticPackageRegistry{}, handler.OnlyControllerOwner(),
+		&eprv1alpha1.PackageRegistry{}, handler.OnlyControllerOwner(),
 	))); err != nil {
 		return err
 	}
@@ -110,7 +110,7 @@ func addWatches(mgr manager.Manager, c controller.Controller, r *ReconcilePackag
 
 var _ reconcile.Reconciler = &ReconcilePackageRegistry{}
 
-// ReconcilePackageRegistry reconciles a ElasticPackageRegistry object
+// ReconcilePackageRegistry reconciles a PackageRegistry object
 type ReconcilePackageRegistry struct {
 	k8s.Client
 	operator.Parameters
@@ -134,15 +134,15 @@ func (r *ReconcilePackageRegistry) Recorder() record.EventRecorder {
 
 var _ driver.Interface = &ReconcilePackageRegistry{}
 
-// Reconcile reads that state of the cluster for a ElasticPackageRegistry object and makes changes based on the state read and what is
-// in the ElasticPackageRegistry.Spec
+// Reconcile reads that state of the cluster for a PackageRegistry object and makes changes based on the state read and what is
+// in the PackageRegistry.Spec
 func (r *ReconcilePackageRegistry) Reconcile(ctx context.Context, request reconcile.Request) (reconcile.Result, error) {
 	ctx = common.NewReconciliationContext(ctx, &r.iteration, r.Tracer, controllerName, "epr_name", request)
 	defer common.LogReconciliationRun(ulog.FromContext(ctx))()
 	defer tracing.EndContextTransaction(ctx)
 
 	// retrieve the epr object
-	var epr eprv1alpha1.ElasticPackageRegistry
+	var epr eprv1alpha1.PackageRegistry
 	if err := r.Client.Get(ctx, request.NamespacedName, &epr); err != nil {
 		if apierrors.IsNotFound(err) {
 			return reconcile.Result{}, r.onDelete(ctx,
@@ -159,7 +159,7 @@ func (r *ReconcilePackageRegistry) Reconcile(ctx context.Context, request reconc
 		return reconcile.Result{}, nil
 	}
 
-	// ElasticPackageRegistry will be deleted nothing to do other than remove the watches
+	// PackageRegistry will be deleted nothing to do other than remove the watches
 	if epr.IsMarkedForDeletion() {
 		return reconcile.Result{}, r.onDelete(ctx, k8s.ExtractNamespacedName(&epr))
 	}
@@ -175,7 +175,7 @@ func (r *ReconcilePackageRegistry) Reconcile(ctx context.Context, request reconc
 	return results.Aggregate()
 }
 
-func (r *ReconcilePackageRegistry) doReconcile(ctx context.Context, epr eprv1alpha1.ElasticPackageRegistry) (*reconciler.Results, eprv1alpha1.PackageRegistryStatus) {
+func (r *ReconcilePackageRegistry) doReconcile(ctx context.Context, epr eprv1alpha1.PackageRegistry) (*reconciler.Results, eprv1alpha1.PackageRegistryStatus) {
 	results := reconciler.NewResult(ctx)
 	status := newStatus(epr)
 
@@ -235,13 +235,13 @@ func (r *ReconcilePackageRegistry) doReconcile(ctx context.Context, epr eprv1alp
 	return results, status
 }
 
-func newStatus(epr eprv1alpha1.ElasticPackageRegistry) eprv1alpha1.PackageRegistryStatus {
+func newStatus(epr eprv1alpha1.PackageRegistry) eprv1alpha1.PackageRegistryStatus {
 	status := epr.Status
 	status.ObservedGeneration = epr.Generation
 	return status
 }
 
-func (r *ReconcilePackageRegistry) validate(ctx context.Context, epr eprv1alpha1.ElasticPackageRegistry) error {
+func (r *ReconcilePackageRegistry) validate(ctx context.Context, epr eprv1alpha1.PackageRegistry) error {
 	span, vctx := apm.StartSpan(ctx, "validate", tracing.SpanTypeApp)
 	defer span.End()
 
@@ -254,7 +254,7 @@ func (r *ReconcilePackageRegistry) validate(ctx context.Context, epr eprv1alpha1
 	return nil
 }
 
-func NewService(epr eprv1alpha1.ElasticPackageRegistry, meta metadata.Metadata) *corev1.Service {
+func NewService(epr eprv1alpha1.PackageRegistry, meta metadata.Metadata) *corev1.Service {
 	svc := corev1.Service{
 		ObjectMeta: epr.Spec.HTTP.Service.ObjectMeta,
 		Spec:       epr.Spec.HTTP.Service.Spec,
@@ -275,7 +275,7 @@ func NewService(epr eprv1alpha1.ElasticPackageRegistry, meta metadata.Metadata) 
 	return defaults.SetServiceDefaults(&svc, meta, selector, ports)
 }
 
-func buildConfigHash(c k8s.Client, epr eprv1alpha1.ElasticPackageRegistry, configSecret corev1.Secret) (string, error) {
+func buildConfigHash(c k8s.Client, epr eprv1alpha1.PackageRegistry, configSecret corev1.Secret) (string, error) {
 	// build a hash of various settings to rotate the Pod on any change
 	configHash := fnv.New32a()
 
@@ -299,7 +299,7 @@ func buildConfigHash(c k8s.Client, epr eprv1alpha1.ElasticPackageRegistry, confi
 
 func (r *ReconcilePackageRegistry) reconcileDeployment(
 	ctx context.Context,
-	epr eprv1alpha1.ElasticPackageRegistry,
+	epr eprv1alpha1.PackageRegistry,
 	configHash string,
 	meta metadata.Metadata,
 ) (appsv1.Deployment, error) {
@@ -314,7 +314,7 @@ func (r *ReconcilePackageRegistry) reconcileDeployment(
 	return deployment.Reconcile(ctx, r.K8sClient(), deploy, &epr)
 }
 
-func (r *ReconcilePackageRegistry) deploymentParams(epr eprv1alpha1.ElasticPackageRegistry, configHash string, meta metadata.Metadata) (deployment.Params, error) {
+func (r *ReconcilePackageRegistry) deploymentParams(epr eprv1alpha1.PackageRegistry, configHash string, meta metadata.Metadata) (deployment.Params, error) {
 	podSpec, err := newPodSpec(epr, configHash, meta)
 	if err != nil {
 		return deployment.Params{}, err
@@ -337,7 +337,7 @@ func (r *ReconcilePackageRegistry) deploymentParams(epr eprv1alpha1.ElasticPacka
 	}, nil
 }
 
-func (r *ReconcilePackageRegistry) getStatus(ctx context.Context, epr eprv1alpha1.ElasticPackageRegistry, deploy appsv1.Deployment) (eprv1alpha1.PackageRegistryStatus, error) {
+func (r *ReconcilePackageRegistry) getStatus(ctx context.Context, epr eprv1alpha1.PackageRegistry, deploy appsv1.Deployment) (eprv1alpha1.PackageRegistryStatus, error) {
 	status := newStatus(epr)
 	pods, err := k8s.PodsMatchingLabels(r.K8sClient(), epr.Namespace, map[string]string{NameLabelName: epr.Name})
 	if err != nil {
@@ -352,7 +352,7 @@ func (r *ReconcilePackageRegistry) getStatus(ctx context.Context, epr eprv1alpha
 	return status, nil
 }
 
-func (r *ReconcilePackageRegistry) updateStatus(ctx context.Context, epr eprv1alpha1.ElasticPackageRegistry, status eprv1alpha1.PackageRegistryStatus) error {
+func (r *ReconcilePackageRegistry) updateStatus(ctx context.Context, epr eprv1alpha1.PackageRegistry, status eprv1alpha1.PackageRegistryStatus) error {
 	if reflect.DeepEqual(status, epr.Status) {
 		return nil // nothing to do
 	}
