@@ -10,6 +10,7 @@ import (
 	"slices"
 
 	appsv1 "k8s.io/api/apps/v1"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/utils/ptr"
 
 	esv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/elasticsearch/v1"
@@ -101,7 +102,10 @@ func HandleUpscaleAndSpecChanges(
 
 	// The only adjustment we want to make to master statefulSets before ensuring that all non-master
 	// statefulSets have been reconciled is to scale up the replicas to the expected number.
-	if err = maybeUpscaleMasterResources(ctx, actualStatefulSets, masterResources); err != nil {
+	// The only adjustment we want to make to master statefulSets before ensuring that all non-master
+	// statefulSets have been reconciled is to potentially scale up the replicas
+	// which should happen 1 at a time as we adjust the replicas early.
+	if err = maybeUpscaleMasterResources(ctx, masterResources); err != nil {
 		return results, fmt.Errorf("while scaling up master resources: %w", err)
 	}
 
@@ -152,20 +156,26 @@ func HandleUpscaleAndSpecChanges(
 	return results, nil
 }
 
-func maybeUpscaleMasterResources(ctx upscaleCtx, actualStatefulSets es_sset.StatefulSetList, masterResources []nodespec.Resources) error {
-	for _, sts := range masterResources {
-		fmt.Println("Attempting upscale of master StatefulSet", sts.StatefulSet.Name)
-		actualSset, found := actualStatefulSets.GetByName(sts.StatefulSet.Name)
-		if !found {
-			fmt.Println("Master StatefulSet not found in actualStatefulSets", sts.StatefulSet.Name)
-			continue
+func maybeUpscaleMasterResources(ctx upscaleCtx, masterResources []nodespec.Resources) error {
+	// Upscale master StatefulSets using the adjusted resources and read the current StatefulSet
+	// from k8s to get the latest state.
+	for _, res := range masterResources {
+		stsName := res.StatefulSet.Name
+
+		// Read the current StatefulSet from k8s to get the latest state
+		var actualSset appsv1.StatefulSet
+		if err := ctx.k8sClient.Get(ctx.parentCtx, k8s.ExtractNamespacedName(&res.StatefulSet), &actualSset); err != nil {
+			if apierrors.IsNotFound(err) {
+				continue
+			}
+			return fmt.Errorf("while getting master StatefulSet %s: %w", stsName, err)
 		}
+
 		actualReplicas := sset.GetReplicas(actualSset)
-		targetReplicas := sset.GetReplicas(sts.StatefulSet)
-		fmt.Println("Actual replicas", actualReplicas, "Target replicas", targetReplicas)
+		targetReplicas := sset.GetReplicas(res.StatefulSet)
+
 		if actualReplicas < targetReplicas {
 			actualSset.Spec.Replicas = ptr.To[int32](targetReplicas)
-			fmt.Println("Updating master StatefulSet replicas", actualSset.Spec.Replicas, "to", targetReplicas)
 			if err := ctx.k8sClient.Update(ctx.parentCtx, &actualSset); err != nil {
 				return fmt.Errorf("while upscaling master sts replicas: %w", err)
 			}

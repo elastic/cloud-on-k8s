@@ -701,6 +701,7 @@ func TestHandleUpscaleAndSpecChanges_VersionUpgradeDataFirstFlow(t *testing.T) {
 	masterSset.Status.CurrentRevision = "master-sset-old"
 	masterSset.Status.UpdateRevision = "master-sset-old"
 	require.NoError(t, k8sClient.Update(context.Background(), &masterSset))
+	require.NoError(t, k8sClient.Status().Update(context.Background(), &masterSset))
 
 	var dataSset appsv1.StatefulSet
 	require.NoError(t, k8sClient.Get(context.Background(), types.NamespacedName{Namespace: "ns", Name: "data-sset"}, &dataSset))
@@ -899,16 +900,6 @@ func TestHandleUpscaleAndSpecChanges_VersionUpgradeDataFirstFlow(t *testing.T) {
 	fmt.Println("Calling HandleUpscaleAndSpecChanges which should upscale the master replicas to 4")
 	_, err = HandleUpscaleAndSpecChanges(ctx, actualStatefulSets, expectedResourcesUpgrade)
 	require.NoError(t, err)
-
-	// Update actualStatefulSets to reflect the current state
-	// require.NoError(t, k8sClient.Get(context.Background(), types.NamespacedName{Namespace: "ns", Name: "data-sset"}, &dataSset))
-	// require.NoError(t, k8sClient.Get(context.Background(), types.NamespacedName{Namespace: "ns", Name: "master-sset"}, &masterSset))
-	// actualStatefulSets = es_sset.StatefulSetList{masterSset, dataSset}
-
-	// Call HandleUpscaleAndSpecChanges - data STS should be updated,
-	// master version should not, but the replicas should be scaled up to 4.
-	// res, err = HandleUpscaleAndSpecChanges(ctx, actualStatefulSets, expectedResourcesUpgrade)
-	// require.NoError(t, err)
 
 	// Verify data StatefulSet is updated to 8.17.1
 	require.NoError(t, k8sClient.Get(context.Background(), types.NamespacedName{Namespace: "ns", Name: "data-sset"}, &dataSset))
