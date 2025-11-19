@@ -84,7 +84,7 @@ func (b Builder) CreationTestSteps(k *test.K8sClient) test.StepList {
 
 func (b Builder) CheckK8sTestSteps(k *test.K8sClient) test.StepList {
 	return test.StepList{
-		checks.CheckDeployment(b, k, eprv1alpha1.Namer.Suffix(b.EPR.Name, "epr")),
+		checks.CheckDeployment(b, k, b.EPR.Name+"-epr"),
 		checks.CheckPods(b, k),
 		checks.CheckServices(b, k),
 		checks.CheckServicesEndpoints(b, k),
