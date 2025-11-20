@@ -105,8 +105,6 @@ func newPodSpec(epr eprv1alpha1.PackageRegistry, configHash string, meta metadat
 			},
 			Privileged:             ptr.To(false),
 			ReadOnlyRootFilesystem: ptr.To(true),
-			RunAsUser:              ptr.To(int64(1000)),
-			RunAsGroup:             ptr.To(int64(1000)),
 			RunAsNonRoot:           ptr.To(true),
 			SeccompProfile: &corev1.SeccompProfile{
 				Type: corev1.SeccompProfileTypeRuntimeDefault,
