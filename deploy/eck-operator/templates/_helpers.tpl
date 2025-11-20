@@ -344,7 +344,8 @@ updating docs/operating-eck/eck-permissions.asciidoc file.
   - packageregistry.k8s.elastic.co
   resources:
   - packageregistries
-  - packageregistries/status
+  - packageregistries/status 
+  - packageregistries/finalizers # needed for ownerReferences with blockOwnerDeletion on OCP
   verbs:
   - get
   - list
