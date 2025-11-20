@@ -18,7 +18,7 @@ const (
 	PackageRegistryNamespaceLabelName = "packageregistry.k8s.elastic.co/namespace"
 
 	// Type represents the PackageRegistry type
-	Type = "packageregistry"
+	Type = "package-registry"
 )
 
 func versionLabels(epr eprv1alpha1.PackageRegistry) map[string]string {
