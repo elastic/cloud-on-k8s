@@ -9,6 +9,7 @@ import (
 	"reflect"
 	"testing"
 
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -20,6 +21,7 @@ import (
 
 	esv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/elasticsearch/v1"
 	policyv1alpha1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/stackconfigpolicy/v1alpha1"
+	commonannotation "github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/annotation"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/k8s"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/maps"
 )
@@ -257,6 +259,15 @@ func ownedSecret(namespace, name, ownerNs, ownerName, ownerKind string) *corev1.
 		}}}
 }
 
+func ownedSecretMultiRefs(namespace, name, ownerRefs, ownerKind string) *corev1.Secret {
+	return &corev1.Secret{
+		ObjectMeta: metav1.ObjectMeta{Namespace: namespace, Name: name, Labels: map[string]string{
+			SoftOwnerKindLabel: ownerKind,
+		}, Annotations: map[string]string{
+			commonannotation.SoftOwnerRefsAnnotation: ownerRefs,
+		}}}
+}
+
 func TestGarbageCollectSoftOwnedSecrets(t *testing.T) {
 	tests := []struct {
 		name            string
@@ -433,6 +444,37 @@ func TestGarbageCollectAllSoftOwnedOrphanSecrets(t *testing.T) {
 				ownedSecret("ns", "secret-1", "another-namespace", sampleOwner().Name, sampleOwner().Kind),
 			},
 		},
+		{
+			name: "secret with multiple soft-owners that all exist",
+			runtimeObjs: []client.Object{
+				&policyv1alpha1.StackConfigPolicy{ObjectMeta: metav1.ObjectMeta{Name: "policy-1", Namespace: "namespace-1"}},
+				&policyv1alpha1.StackConfigPolicy{ObjectMeta: metav1.ObjectMeta{Name: "policy-2", Namespace: "namespace-2"}},
+				&policyv1alpha1.StackConfigPolicy{ObjectMeta: metav1.ObjectMeta{Name: "policy-3", Namespace: "namespace-3"}},
+				ownedSecretMultiRefs("ns", "secret-1", `{"namespace-1/policy-1":{},"namespace-2/policy-2":{},"namespace-3/policy-3":{}}`, "StackConfigPolicy"),
+			},
+			wantObjs: []client.Object{
+				ownedSecretMultiRefs("ns", "secret-1", `{"namespace-1/policy-1":{},"namespace-2/policy-2":{},"namespace-3/policy-3":{}}`, "StackConfigPolicy"),
+			},
+		},
+		{
+			name: "secret with multiple soft-owners that all exist but some in different namespace",
+			runtimeObjs: []client.Object{
+				&policyv1alpha1.StackConfigPolicy{ObjectMeta: metav1.ObjectMeta{Name: "policy-1", Namespace: "namespace-1"}},
+				&policyv1alpha1.StackConfigPolicy{ObjectMeta: metav1.ObjectMeta{Name: "policy-2", Namespace: "namespace-other"}},
+				&policyv1alpha1.StackConfigPolicy{ObjectMeta: metav1.ObjectMeta{Name: "policy-3", Namespace: "namespace-3"}},
+				ownedSecretMultiRefs("ns", "secret-1", `{"namespace-1/policy-1":{},"namespace-2/policy-2":{},"namespace-3/policy-3":{}}`, "StackConfigPolicy"),
+			},
+			wantObjs: []client.Object{
+				ownedSecretMultiRefs("ns", "secret-1", `{"namespace-1/policy-1":{},"namespace-2/policy-2":{},"namespace-3/policy-3":{}}`, "StackConfigPolicy"),
+			},
+		},
+		{
+			name: "secret with multiple soft-owners that none exists",
+			runtimeObjs: []client.Object{
+				ownedSecretMultiRefs("ns", "secret-1", `{"namespace-1/policy-1":{},"namespace-2/policy-2":{},"namespace-3/policy-3":{}}`, "StackConfigPolicy"),
+			},
+			wantObjs: []client.Object{},
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -543,6 +585,135 @@ func TestSoftOwnerRefFromLabels(t *testing.T) {
 			if got1 != tt.wantReferenced {
 				t.Errorf("SoftOwnerRefFromLabels() got1 = %v, want %v", got1, tt.wantReferenced)
 			}
+		})
+	}
+}
+
+//nolint:thelper
+func TestSoftOwnerRefs(t *testing.T) {
+	tests := []struct {
+		name     string
+		secret   *corev1.Secret
+		validate func(t *testing.T, owners []SoftOwnerRef, err error)
+	}{
+		{
+			name: "returns multi-owner policies from annotation",
+			secret: &corev1.Secret{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "test-secret",
+					Namespace: "test-namespace",
+					Labels: map[string]string{
+						SoftOwnerKindLabel: policyv1alpha1.Kind,
+					},
+					Annotations: map[string]string{
+						commonannotation.SoftOwnerRefsAnnotation: `{"namespace-1/policy-1":{},"namespace-2/policy-2":{}}`,
+					},
+				},
+			},
+			validate: func(t *testing.T, owners []SoftOwnerRef, err error) {
+				require.NoError(t, err)
+				require.Len(t, owners, 2)
+				assert.Contains(t, owners, SoftOwnerRef{Name: "policy-1", Namespace: "namespace-1", Kind: policyv1alpha1.Kind})
+				assert.Contains(t, owners, SoftOwnerRef{Name: "policy-2", Namespace: "namespace-2", Kind: policyv1alpha1.Kind})
+			},
+		},
+		{
+			name: "returns single-owner policy from labels",
+			secret: &corev1.Secret{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "test-secret",
+					Namespace: "test-namespace",
+					Labels: map[string]string{
+						SoftOwnerKindLabel:      policyv1alpha1.Kind,
+						SoftOwnerNameLabel:      "single-policy",
+						SoftOwnerNamespaceLabel: "single-namespace",
+					},
+				},
+			},
+			validate: func(t *testing.T, owners []SoftOwnerRef, err error) {
+				require.NoError(t, err)
+				require.Len(t, owners, 1)
+				assert.Equal(t, SoftOwnerRef{Name: "single-policy", Namespace: "single-namespace", Kind: policyv1alpha1.Kind}, owners[0])
+			},
+		},
+		{
+			name: "returns nil when secret has kind label but no owner labels",
+			secret: &corev1.Secret{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "test-secret",
+					Namespace: "test-namespace",
+					Labels: map[string]string{
+						SoftOwnerKindLabel: policyv1alpha1.Kind,
+						"other-label":      "other-value",
+					},
+				},
+			},
+			validate: func(t *testing.T, owners []SoftOwnerRef, err error) {
+				require.NoError(t, err)
+				assert.Nil(t, owners)
+			},
+		},
+		{
+			name: "returns nil for non-policy-owned secret",
+			secret: &corev1.Secret{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "test-secret",
+					Namespace: "test-namespace",
+					Labels: map[string]string{
+						"some-other-label": "some-value",
+					},
+				},
+			},
+			validate: func(t *testing.T, owners []SoftOwnerRef, err error) {
+				require.NoError(t, err)
+				assert.Nil(t, owners)
+			},
+		},
+		{
+			name: "returns error for invalid JSON in annotation",
+			secret: &corev1.Secret{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "test-secret",
+					Namespace: "test-namespace",
+					Labels: map[string]string{
+						SoftOwnerKindLabel: policyv1alpha1.Kind,
+					},
+					Annotations: map[string]string{
+						commonannotation.SoftOwnerRefsAnnotation: `invalid-json`,
+					},
+				},
+			},
+			validate: func(t *testing.T, owners []SoftOwnerRef, err error) {
+				require.Error(t, err)
+				assert.Nil(t, owners)
+			},
+		},
+		{
+			name: "skips malformed namespaced names in annotation",
+			secret: &corev1.Secret{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "test-secret",
+					Namespace: "test-namespace",
+					Labels: map[string]string{
+						SoftOwnerKindLabel: policyv1alpha1.Kind,
+					},
+					Annotations: map[string]string{
+						commonannotation.SoftOwnerRefsAnnotation: `{"namespace-1/policy-1":{},"malformed":{},"too/many/slashes":{}}`,
+					},
+				},
+			},
+			validate: func(t *testing.T, owners []SoftOwnerRef, err error) {
+				require.NoError(t, err)
+				require.Len(t, owners, 1)
+				assert.Equal(t, SoftOwnerRef{Name: "policy-1", Namespace: "namespace-1", Kind: policyv1alpha1.Kind}, owners[0])
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			owners, err := SoftOwnerRefs(tt.secret)
+			tt.validate(t, owners, err)
 		})
 	}
 }
