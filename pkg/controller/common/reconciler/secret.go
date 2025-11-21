@@ -6,7 +6,9 @@ package reconciler
 
 import (
 	"context"
+	"encoding/json"
 	"reflect"
+	"strings"
 
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
@@ -17,6 +19,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	policyv1alpha1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/stackconfigpolicy/v1alpha1"
+	commonannotation "github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/annotation"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/k8s"
 	ulog "github.com/elastic/cloud-on-k8s/v3/pkg/utils/log"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/maps"
@@ -90,6 +93,49 @@ func SoftOwnerRefFromLabels(labels map[string]string) (SoftOwnerRef, bool) {
 		return SoftOwnerRef{}, false
 	}
 	return SoftOwnerRef{Namespace: namespace, Name: name, Kind: kind}, true
+}
+
+// SoftOwnerRefs returns the soft owner references of the given object.
+func SoftOwnerRefs(obj metav1.Object) ([]SoftOwnerRef, error) {
+	// Check if this Secret has a soft-owner kind label set
+	ownerKind, exists := obj.GetLabels()[SoftOwnerKindLabel]
+	if !exists {
+		// Not a soft-owned secret
+		return nil, nil
+	}
+
+	// Check for multi-policy ownership (annotation-based)
+	if ownerRefsBytes, exists := obj.GetAnnotations()[commonannotation.SoftOwnerRefsAnnotation]; exists {
+		// Multi-policy soft owned secret - parse the JSON map of owners
+		var ownerRefs map[string]struct{}
+		if err := json.Unmarshal([]byte(ownerRefsBytes), &ownerRefs); err != nil {
+			return nil, err
+		}
+
+		// Convert the map keys (namespaced name strings) back to NamespacedName objects
+		var ownerRefsNsn []SoftOwnerRef
+		for nsnStr := range ownerRefs {
+			// Split the string format "namespace/name" into components
+			nsnComponents := strings.Split(nsnStr, string(types.Separator))
+			if len(nsnComponents) != 2 {
+				// Skip malformed entries
+				continue
+			}
+			ownerRefsNsn = append(ownerRefsNsn, SoftOwnerRef{Namespace: nsnComponents[0], Name: nsnComponents[1], Kind: ownerKind})
+		}
+
+		return ownerRefsNsn, nil
+	}
+
+	// Fall back to single-policy ownership (label-based)
+	currentOwner, referenced := SoftOwnerRefFromLabels(obj.GetLabels())
+	if !referenced {
+		// No soft owner found in labels
+		return nil, nil
+	}
+
+	// Return the single owner as a slice with one element
+	return []SoftOwnerRef{currentOwner}, nil
 }
 
 // ReconcileSecretNoOwnerRef should be called to reconcile a Secret for which we explicitly don't want
@@ -200,43 +246,54 @@ func GarbageCollectAllSoftOwnedOrphanSecrets(ctx context.Context, c k8s.Client, 
 	var secrets corev1.SecretList
 	if err := c.List(ctx,
 		&secrets,
-		client.HasLabels{SoftOwnerNamespaceLabel, SoftOwnerNameLabel, SoftOwnerKindLabel},
+		client.HasLabels{SoftOwnerKindLabel},
 	); err != nil {
 		return err
 	}
 	// remove any secret whose owner doesn't exist
 	for i := range secrets.Items {
 		secret := secrets.Items[i]
-		softOwner, referenced := SoftOwnerRefFromLabels(secret.Labels)
-		if !referenced {
-			continue
-		}
-		if restrictedToOwnerNamespace(softOwner.Kind) && softOwner.Namespace != secret.Namespace {
-			// Secret references an owner in a different namespace: this likely results
-			// from a "manual" copy of the secret in another namespace, not handled by the operator.
-			// We don't want to touch that secret.
-			continue
-		}
-		owner, managed := ownerKinds[softOwner.Kind]
-		if !managed {
-			continue
-		}
-		owner = k8s.DeepCopyObject(owner)
-		err := c.Get(ctx, types.NamespacedName{Namespace: softOwner.Namespace, Name: softOwner.Name}, owner)
+		softOwners, err := SoftOwnerRefs(&secret)
 		if err != nil {
-			if apierrors.IsNotFound(err) {
-				// owner doesn't exit anymore
-				ulog.FromContext(ctx).Info("Deleting secret as part of garbage collection",
-					"namespace", secret.Namespace, "secret_name", secret.Name,
-					"owner_kind", softOwner.Kind, "owner_namespace", softOwner.Namespace, "owner_name", softOwner.Name,
-				)
-				options := client.DeleteOptions{Preconditions: &metav1.Preconditions{UID: &secret.UID}}
-				if err := c.Delete(ctx, &secret, &options); err != nil && !apierrors.IsNotFound(err) {
-					return err
-				}
+			return err
+		}
+		if len(softOwners) == 0 {
+			continue
+		}
+
+		missingOwners := make(map[types.NamespacedName]client.Object)
+		for _, softOwner := range softOwners {
+			if restrictedToOwnerNamespace(softOwner.Kind) && softOwner.Namespace != secret.Namespace {
+				// Secret references an owner in a different namespace: this likely results
+				// from a "manual" copy of the secret in another namespace, not handled by the operator.
+				// We don't want to touch that secret.
 				continue
 			}
-			return err
+			owner, managed := ownerKinds[softOwner.Kind]
+			if !managed {
+				continue
+			}
+			owner = k8s.DeepCopyObject(owner)
+			err := c.Get(ctx, types.NamespacedName{Namespace: softOwner.Namespace, Name: softOwner.Name}, owner)
+			if err != nil {
+				if apierrors.IsNotFound(err) {
+					// owner doesn't exit anymore
+					ulog.FromContext(ctx).Info("Deleting secret as part of garbage collection",
+						"namespace", secret.Namespace, "secret_name", secret.Name,
+						"owner_kind", softOwner.Kind, "owner_namespace", softOwner.Namespace, "owner_name", softOwner.Name,
+					)
+					missingOwners[types.NamespacedName{Namespace: softOwner.Namespace, Name: softOwner.Name}] = owner
+					continue
+				}
+				return err
+			}
+		}
+
+		if len(missingOwners) == len(softOwners) {
+			options := client.DeleteOptions{Preconditions: &metav1.Preconditions{UID: &secret.UID}}
+			if err := c.Delete(ctx, &secret, &options); err != nil && !apierrors.IsNotFound(err) {
+				return err
+			}
 		}
 		// owner still exists, keep the secret
 	}

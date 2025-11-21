@@ -85,9 +85,6 @@ func newSettingsSecret(version int64, es types.NamespacedName, currentSecret *co
 	}
 
 	if policy != nil {
-		// set this policy as soft owner of this Secret
-		SetSoftOwner(settingsSecret, *policy)
-
 		// add the Secure Settings Secret sources to the Settings Secret
 		if err := setSecureSettings(settingsSecret, *policy); err != nil {
 			return corev1.Secret{}, 0, err
@@ -158,19 +155,6 @@ func setSecureSettings(settingsSecret *corev1.Secret, policy policyv1alpha1.Stac
 	}
 	settingsSecret.Annotations[commonannotation.SecureSettingsSecretsAnnotationName] = string(bytes)
 	return nil
-}
-
-// CanBeOwnedBy return true if the Settings Secret can be owned by the given StackConfigPolicy, either because the Secret
-// belongs to no one or because it already belongs to the given policy.
-func CanBeOwnedBy(settingsSecret corev1.Secret, policy policyv1alpha1.StackConfigPolicy) (reconciler.SoftOwnerRef, bool) {
-	currentOwner, referenced := reconciler.SoftOwnerRefFromLabels(settingsSecret.Labels)
-	// either there is no soft owner
-	if !referenced {
-		return reconciler.SoftOwnerRef{}, true
-	}
-	// or the owner is already the given policy
-	canBeOwned := currentOwner.Kind == policyv1alpha1.Kind && currentOwner.Namespace == policy.Namespace && currentOwner.Name == policy.Name
-	return currentOwner, canBeOwned
 }
 
 // getSecureSettings returns the SecureSettings Secret sources stores in an annotation of the given file settings Secret.

@@ -29,7 +29,7 @@ var (
 
 	// managedAnnotations are the annotations managed by the operator for the stack config policy related secrets, which means that the operator
 	// will always take precedence to update or remove these annotations.
-	managedAnnotations = []string{commonannotation.SecureSettingsSecretsAnnotationName, commonannotation.SettingsHashAnnotationName, commonannotation.ElasticsearchConfigAndSecretMountsHashAnnotation, commonannotation.KibanaConfigHashAnnotation}
+	managedAnnotations = []string{commonannotation.SecureSettingsSecretsAnnotationName, commonannotation.SettingsHashAnnotationName, commonannotation.ElasticsearchConfigAndSecretMountsHashAnnotation, commonannotation.KibanaConfigHashAnnotation, commonannotation.SoftOwnerRefsAnnotation}
 )
 
 // ReconcileEmptyFileSettingsSecret reconciles an empty File settings Secret for the given Elasticsearch only when there is no Secret.

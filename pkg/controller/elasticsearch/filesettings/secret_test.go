@@ -101,53 +101,6 @@ func Test_SettingsSecret_hasChanged(t *testing.T) {
 	assert.Equal(t, strconv.FormatInt(newVersion, 10), newSettings.Metadata.Version)
 }
 
-func Test_SettingsSecret_setSoftOwner_canBeOwnedBy(t *testing.T) {
-	es := types.NamespacedName{
-		Namespace: "esNs",
-		Name:      "esName",
-	}
-	policy := policyv1alpha1.StackConfigPolicy{
-		TypeMeta: metav1.TypeMeta{
-			Kind: policyv1alpha1.Kind,
-		},
-		ObjectMeta: metav1.ObjectMeta{
-			Namespace: "policyNs",
-			Name:      "policyName",
-		},
-	}
-	otherPolicy := policyv1alpha1.StackConfigPolicy{
-		TypeMeta: metav1.TypeMeta{
-			Kind: policyv1alpha1.Kind,
-		},
-		ObjectMeta: metav1.ObjectMeta{
-			Namespace: "otherPolicyNs",
-			Name:      "otherPolicyName",
-		},
-	}
-
-	// empty settings can be owned by any policy
-	secret, _, err := NewSettingsSecretWithVersion(es, nil, nil, metadata.Metadata{})
-	assert.NoError(t, err)
-	_, canBeOwned := CanBeOwnedBy(secret, policy)
-	assert.Equal(t, true, canBeOwned)
-	_, canBeOwned = CanBeOwnedBy(secret, otherPolicy)
-	assert.Equal(t, true, canBeOwned)
-
-	// set a policy soft owner
-	SetSoftOwner(&secret, policy)
-	_, canBeOwned = CanBeOwnedBy(secret, policy)
-	assert.Equal(t, true, canBeOwned)
-	_, canBeOwned = CanBeOwnedBy(secret, otherPolicy)
-	assert.Equal(t, false, canBeOwned)
-
-	// update the policy soft owner
-	SetSoftOwner(&secret, otherPolicy)
-	_, canBeOwned = CanBeOwnedBy(secret, policy)
-	assert.Equal(t, false, canBeOwned)
-	_, canBeOwned = CanBeOwnedBy(secret, otherPolicy)
-	assert.Equal(t, true, canBeOwned)
-}
-
 func Test_SettingsSecret_setSecureSettings_getSecureSettings(t *testing.T) {
 	es := types.NamespacedName{
 		Namespace: "esNs",
