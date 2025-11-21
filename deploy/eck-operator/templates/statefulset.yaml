@@ -20,6 +20,9 @@ spec:
       {{- include "eck-operator.selectorLabels" . | nindent 6 }}
   serviceName: {{ include "eck-operator.fullname" . }}
   replicas: {{ .Values.replicaCount }}
+  persistentVolumeClaimRetentionPolicy:
+    whenDeleted: {{ .Values.persistentVolumeClaimRetentionPolicy.whenDeleted  }}
+    whenScaled: {{ .Values.persistentVolumeClaimRetentionPolicy.whenScaled }}
   template:
     metadata:
       annotations:
