@@ -48,11 +48,11 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 --------------------------------------------------------------------------------
 Module  : github.com/KimMachineGun/automemlimit
-Version : v0.7.4
-Time    : 2025-07-10T02:38:34Z
+Version : v0.7.5
+Time    : 2025-10-08T05:39:30Z
 Licence : MIT
 
-Contents of probable licence file $GOMODCACHE/github.com/!kim!machine!gun/automemlimit@v0.7.4/LICENSE:
+Contents of probable licence file $GOMODCACHE/github.com/!kim!machine!gun/automemlimit@v0.7.5/LICENSE:
 
 MIT License
 
@@ -165,11 +165,11 @@ OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
 --------------------------------------------------------------------------------
 Module  : github.com/elastic/go-ucfg
-Version : v0.8.9-0.20250307075119-2a22403faaea
-Time    : 2025-03-07T07:51:19Z
+Version : v0.8.9-0.20251017163010-3520930bed4f
+Time    : 2025-10-17T16:30:10Z
 Licence : Apache-2.0
 
-Contents of probable licence file $GOMODCACHE/github.com/elastic/go-ucfg@v0.8.9-0.20250307075119-2a22403faaea/LICENSE:
+Contents of probable licence file $GOMODCACHE/github.com/elastic/go-ucfg@v0.8.9-0.20251017163010-3520930bed4f/LICENSE:
 
                                  Apache License
                            Version 2.0, January 2004
@@ -2452,11 +2452,11 @@ Contents of probable licence file $GOMODCACHE/github.com/prometheus/client_golan
 
 --------------------------------------------------------------------------------
 Module  : github.com/prometheus/common
-Version : v0.67.1
-Time    : 2025-10-07T13:31:04Z
+Version : v0.67.2
+Time    : 2025-10-28T14:07:29Z
 Licence : Apache-2.0
 
-Contents of probable licence file $GOMODCACHE/github.com/prometheus/common@v0.67.1/LICENSE:
+Contents of probable licence file $GOMODCACHE/github.com/prometheus/common@v0.67.2/LICENSE:
 
                                  Apache License
                            Version 2.0, January 2004
@@ -5030,11 +5030,11 @@ Contents of probable licence file $GOMODCACHE/k8s.io/utils@v0.0.0-20250604170112
 
 --------------------------------------------------------------------------------
 Module  : sigs.k8s.io/controller-runtime
-Version : v0.22.2
-Time    : 2025-10-06T16:02:59Z
+Version : v0.22.4
+Time    : 2025-11-03T14:00:07Z
 Licence : Apache-2.0
 
-Contents of probable licence file $GOMODCACHE/sigs.k8s.io/controller-runtime@v0.22.2/LICENSE:
+Contents of probable licence file $GOMODCACHE/sigs.k8s.io/controller-runtime@v0.22.4/LICENSE:
 
                                  Apache License
                            Version 2.0, January 2004
@@ -19390,11 +19390,11 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 --------------------------------------------------------------------------------
 Module  : golang.org/x/net
-Version : v0.45.0
-Time    : 2025-10-07T18:18:01Z
+Version : v0.46.0
+Time    : 2025-10-08T19:18:16Z
 Licence : BSD-3-Clause
 
-Contents of probable licence file $GOMODCACHE/golang.org/x/net@v0.45.0/LICENSE:
+Contents of probable licence file $GOMODCACHE/golang.org/x/net@v0.46.0/LICENSE:
 
 Copyright 2009 The Go Authors.
 
@@ -19427,11 +19427,11 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 --------------------------------------------------------------------------------
 Module  : golang.org/x/oauth2
-Version : v0.31.0
-Time    : 2025-08-13T14:52:40Z
+Version : v0.32.0
+Time    : 2025-09-16T00:27:56Z
 Licence : BSD-3-Clause
 
-Contents of probable licence file $GOMODCACHE/golang.org/x/oauth2@v0.31.0/LICENSE:
+Contents of probable licence file $GOMODCACHE/golang.org/x/oauth2@v0.32.0/LICENSE:
 
 Copyright 2009 The Go Authors.
 

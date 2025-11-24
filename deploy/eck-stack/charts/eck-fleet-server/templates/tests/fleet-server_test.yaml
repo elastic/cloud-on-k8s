@@ -22,7 +22,7 @@ tests:
           value: quickstart-eck-fleet-server
       - equal:
           path: spec.version
-          value: 9.2.0-SNAPSHOT
+          value: 9.3.0-SNAPSHOT
       - equal:
           path: spec.kibanaRef.name
           value: eck-kibana
@@ -52,7 +52,7 @@ tests:
             app.kubernetes.io/instance: quickstart
             app.kubernetes.io/managed-by: Helm
             app.kubernetes.io/name: eck-fleet-server
-            helm.sh/chart: eck-fleet-server-0.17.0-SNAPSHOT
+            helm.sh/chart: eck-fleet-server-0.18.0-SNAPSHOT
             test: label
       - equal:
           path: metadata.annotations
@@ -87,14 +87,14 @@ tests:
             app.kubernetes.io/instance: quickstart
             app.kubernetes.io/managed-by: Helm
             app.kubernetes.io/name: eck-fleet-server
-            helm.sh/chart: eck-fleet-server-0.17.0-SNAPSHOT
+            helm.sh/chart: eck-fleet-server-0.18.0-SNAPSHOT
       - equal:
           path: spec
           value:
             fleetServerEnabled: true
             mode: fleet
             policyID: eck-fleet-server
-            version: 9.2.0-SNAPSHOT
+            version: 9.3.0-SNAPSHOT
             deployment: {}
             elasticsearchRefs:
             - name: eck-elasticsearch
@@ -135,14 +135,14 @@ tests:
             app.kubernetes.io/instance: quickstart
             app.kubernetes.io/managed-by: Helm
             app.kubernetes.io/name: eck-fleet-server
-            helm.sh/chart: eck-fleet-server-0.17.0-SNAPSHOT
+            helm.sh/chart: eck-fleet-server-0.18.0-SNAPSHOT
       - equal:
           path: spec
           value:
             fleetServerEnabled: true
             mode: fleet
             policyID: eck-fleet-server
-            version: 9.2.0-SNAPSHOT
+            version: 9.3.0-SNAPSHOT
             deployment: {}
             elasticsearchRefs:
             - name: eck-elasticsearch

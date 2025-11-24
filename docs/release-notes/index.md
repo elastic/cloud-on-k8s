@@ -8,6 +8,62 @@ mapped_pages:
 # Elastic Cloud on Kubernetes release notes [elastic-cloud-kubernetes-release-notes]
 Review the changes, fixes, and more in each release of Elastic Cloud on Kubernetes.
 
+## 3.2.0 [elastic-cloud-kubernetes-320-release-notes]
+
+### Release Highlights
+
+#### Advanced PodDisruptionBudget management (Enterprise feature)
+
+ECK now offers better out-of-the-box PodDisruptionBudgets that automatically keep your cluster available as Pods move across nodes. The new policy calculates the number of Pods per tier that can sustain replacement, and automatically generates a PodDisruptionBudget for each tier. This enables the Elasticsearch cluster to vacate Kubernetes nodes more quickly, while considering cluster health, without interruption. The documentation about [PodDisruptionBudget](docs-content://deploy-manage/deploy/cloud-on-k8s/pod-disruption-budget.md) has more information and details.
+
+#### User Password Generation (Enterprise feature)
+
+ECK now supports configuring the length of the generated password for the administrative user of each Elasticsearch cluster. While the default length remains 24 characters, this can now be configured up to a maximum of 72 characters. The password incorporates alphabetic and numeric characters to ensure strong complexity. Refer to the [managed credentials](docs-content://deploy-manage/users-roles/cluster-or-deployment-auth/managed-credentials-eck.md) page for examples and more details.
+
+### Features and enhancements  [elastic-cloud-kubernetes-320-features-and-enhancements]
+
+- Enable certificate reloading for stack monitoring Beats [#8833](https://github.com/elastic/cloud-on-k8s/pull/8833) (issue: [#5448](https://github.com/elastic/cloud-on-k8s/issues/5448))
+- Allow configuration of file-based password character set and length [#8817](https://github.com/elastic/cloud-on-k8s/pull/8817) (issues: [#2795](https://github.com/elastic/cloud-on-k8s/issues/2795), [#8693](https://github.com/elastic/cloud-on-k8s/issues/8693))
+- Automatically set GOMEMLIMIT based on cgroups memory limits [#8814](https://github.com/elastic/cloud-on-k8s/pull/8814) (issue: [#8790](https://github.com/elastic/cloud-on-k8s/issues/8790))
+- Introduce granular PodDisruptionBudgets based on node roles [#8780](https://github.com/elastic/cloud-on-k8s/pull/8780) (issue: [#2936](https://github.com/elastic/cloud-on-k8s/issues/2936))
+
+### Fixes  [elastic-cloud-kubernetes-320-fixes]
+
+- Gate advanced Fleet config logic to Agent v8.13 and later [#8869](https://github.com/elastic/cloud-on-k8s/pull/8869)
+- Ensure Agent configuration and state persist across restarts in Fleet mode [#8856](https://github.com/elastic/cloud-on-k8s/pull/8856) (issue: [#8819](https://github.com/elastic/cloud-on-k8s/issues/8819))
+- Do not set credentials label on Kibana config secret [#8852](https://github.com/elastic/cloud-on-k8s/pull/8852) (issue: [#8839](https://github.com/elastic/cloud-on-k8s/issues/8839))
+- Allow elasticsearchRef.secretName in Kibana helm validation [#8822](https://github.com/elastic/cloud-on-k8s/pull/8822) (issue: [#8816](https://github.com/elastic/cloud-on-k8s/issues/8816))
+
+### Documentation improvements  [elastic-cloud-kubernetes-320-documentation-improvements]
+
+- Update Logstash recipes from to filestream input [#8801](https://github.com/elastic/cloud-on-k8s/pull/8801)
+- Recipe for exposing Fleet server to outside of the Kubernetes cluster [#8788](https://github.com/elastic/cloud-on-k8s/pull/8788)
+- Clarify secretName restrictions [#8782](https://github.com/elastic/cloud-on-k8s/pull/8782)
+- Update ES_JAVA_OPTS comments and explain auto-heap behavior [#8753](https://github.com/elastic/cloud-on-k8s/pull/8753)
+
+### Miscellaneous  [elastic-cloud-kubernetes-320-miscellaneous]
+
+:::{dropdown} Updated dependencies
+- Go 1.24.5 => 1.25.2
+- github.com/gkampitakis/go-snaps v0.5.13 => v0.5.15
+- github.com/hashicorp/vault/api v1.20.0 => v1.22.0
+- github.com/KimMachineGun/automemlimit => v0.7.4
+- github.com/prometheus/client_golang v1.22.0 => v1.23.2
+- github.com/prometheus/common v0.65.0 => v0.67.1
+- github.com/sethvargo/go-password v0.3.1 => REMOVED
+- github.com/spf13/cobra v1.9.1 => v1.10.1
+- github.com/spf13/pflag v1.0.6 => v1.0.10
+- github.com/spf13/viper v1.20.1 => v1.21.0
+- github.com/stretchr/testify v1.10.0 => v1.11.1
+- golang.org/x/crypto v0.40.0 => v0.43.0
+- k8s.io/api v0.33.2 => v0.34.1
+- k8s.io/apimachinery v0.33.2 => v0.34.1
+- k8s.io/client-go v0.33.2 => v0.34.1
+- k8s.io/utils v0.0.0-20241104100929-3ea5e8cea738 => v0.0.0-20250604170112-4c0f3b243397
+- sigs.k8s.io/controller-runtime v0.21.0 => v0.22.2
+- sigs.k8s.io/controller-tools v0.18.0 => v0.19.0
+:::
+
 ## 3.1.0 [elastic-cloud-kubernetes-310-release-notes]
 
 ### Release Highlights

@@ -69,7 +69,7 @@ plans:
   operation: create
   clusterName: ci
   provider: aks
-  kubernetesVersion: 1.32.4
+  kubernetesVersion: 1.33.3
   machineType: Standard_D8s_v3
   serviceAccount: true
   enforceSecurityPolicies: true
@@ -82,7 +82,7 @@ plans:
   operation: create
   clusterName: dev
   provider: aks
-  kubernetesVersion: 1.32.4
+  kubernetesVersion: 1.33.3
   machineType: Standard_D8s_v3
   serviceAccount: false
   enforceSecurityPolicies: true
@@ -93,7 +93,7 @@ plans:
 - id: ocp-ci
   operation: create
   clusterName: ci
-  clientVersion: 4.19.2
+  clientVersion: 4.20.4
   provider: ocp
   machineType: n1-standard-8
   serviceAccount: true
@@ -103,7 +103,7 @@ plans:
 - id: ocp-dev
   operation: create
   clusterName: dev
-  clientVersion: 4.19.2
+  clientVersion: 4.20.4
   provider: ocp
   machineType: n1-standard-8
   serviceAccount: true
@@ -117,7 +117,7 @@ plans:
   machineType: c5d.2xlarge
   serviceAccount: false
   enforceSecurityPolicies: true
-  kubernetesVersion: 1.33
+  kubernetesVersion: 1.34
   diskSetup: kubectl apply -f hack/deployer/config/local-disks/ssd-provisioner.yaml
   eks:
     region: ap-northeast-3
@@ -130,7 +130,7 @@ plans:
   machineType: m6gd.2xlarge
   serviceAccount: false
   enforceSecurityPolicies: true
-  kubernetesVersion: 1.33
+  kubernetesVersion: 1.34
   diskSetup: kubectl apply -f hack/deployer/config/local-disks/ssd-provisioner.yaml
   eks:
     region: eu-west-1
@@ -142,7 +142,7 @@ plans:
   provider: eks
   machineType: c5d.2xlarge
   serviceAccount: false
-  kubernetesVersion: 1.33
+  kubernetesVersion: 1.34
   diskSetup: kubectl apply -f hack/deployer/config/local-disks/ssd-provisioner.yaml
   enforceSecurityPolicies: true
   eks:
@@ -152,38 +152,38 @@ plans:
 - id: kind-dev
   operation: create
   clusterName: eck
-  clientVersion: 0.29.0
+  clientVersion: 0.30.0
   provider: kind
-  kubernetesVersion: 1.31.1
+  kubernetesVersion: 1.34.0
   enforceSecurityPolicies: true
   kind:
     nodeCount: 3
-    nodeImage: kindest/node:v1.33.1@sha256:050072256b9a903bd914c0b2866828150cb229cea0efe5892e2b644d5dd3b34f
+    nodeImage: kindest/node:v1.34.0@sha256:7416a61b42b1662ca6ca89f02028ac133a309a2a30ba309614e8ec94d976dc5a
     ipFamily: ipv4
 - id: kind-ci
   operation: create
   clusterName: kind-ci
-  clientVersion: 0.29.0
+  clientVersion: 0.30.0
   provider: kind
-  kubernetesVersion: 1.33.1
+  kubernetesVersion: 1.34.0
   enforceSecurityPolicies: true
   kind:
     nodeCount: 3
-    nodeImage: kindest/node:v1.33.1@sha256:050072256b9a903bd914c0b2866828150cb229cea0efe5892e2b644d5dd3b34f
+    nodeImage: kindest/node:v1.34.0@sha256:7416a61b42b1662ca6ca89f02028ac133a309a2a30ba309614e8ec94d976dc5a
     ipFamily: ipv4
 - id: k3d-dev
   operation: create
   clusterName: eck
   provider: k3d
-  kubernetesVersion: 1.33.3
+  kubernetesVersion: 1.34.1
   k3d:
     clientImage: ghcr.io/k3d-io/k3d:5.8.3
-    nodeImage: rancher/k3s:v1.33.3-k3s1
+    nodeImage: rancher/k3s:v1.34.1-k3s1
 - id: k3d-ci
   operation: create
   clusterName: k3d-ci
   provider: k3d
-  kubernetesVersion: 1.33.3
+  kubernetesVersion: 1.34.1
   k3d:
     clientImage: ghcr.io/k3d-io/k3d:5.8.3
-    nodeImage: rancher/k3s:v1.33.3-k3s1
+    nodeImage: rancher/k3s:v1.34.1-k3s1

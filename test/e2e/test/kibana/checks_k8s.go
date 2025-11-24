@@ -38,8 +38,7 @@ func CheckSecrets(b Builder, k *test.K8sClient) test.Step {
 				Keys:         []string{"kibana.yml"},
 				OptionalKeys: []string{"telemetry.yml"},
 				Labels: map[string]string{
-					"eck.k8s.elastic.co/credentials": "true",
-					"kibana.k8s.elastic.co/name":     kbName,
+					"kibana.k8s.elastic.co/name": kbName,
 				},
 			},
 		}

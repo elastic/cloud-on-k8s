@@ -127,18 +127,24 @@ func TestFleetKubernetesIntegrationRecipe(t *testing.T) {
 func TestFleetKubernetesNonRootIntegrationRecipe(t *testing.T) {
 	v := version.MustParse(test.Ctx().ElasticStackVersion)
 
+	if (v.GE(version.MinFor(7, 17, 28)) && v.LT(version.MinFor(8, 0, 0))) ||
+		(v.GE(version.MinFor(8, 1, 3)) && v.LT(version.MinFor(8, 2, 0))) {
+		t.Skipf("Skipped as version %s is affected by https://github.com/elastic/kibana/pull/236788", v)
+	}
+
 	// https://github.com/elastic/cloud-on-k8s/issues/6331
 	if v.LT(version.MinFor(8, 7, 0)) && v.GE(version.MinFor(8, 6, 0)) {
 		t.SkipNow()
 	}
 
 	if (v.GE(version.MinFor(9, 0, 1)) && v.LE(version.MinFor(9, 0, 4))) ||
-		(v.EQ(version.From(9, 1, 0))) {
+		(v.EQ(version.From(9, 1, 0))) ||
+		(v.EQ(version.MustParse("9.3.0-SNAPSHOT"))) { // TODO remove once https://github.com/elastic/kibana/pull/230211 is backported to 9.3.x
 		t.Skipf("Skipped as version %s is affected by https://github.com/elastic/kibana/pull/230211", v)
 	}
 
-	// TODO: see https://github.com/elastic/cloud-on-k8s/issues/8820
-	if v.GE(version.From(9, 1, 0)) {
+	// Do not test between 9.1.0 and 9.1.5 due to broken ssl settings in Kibana, see https://github.com/elastic/cloud-on-k8s/issues/8820
+	if v.GE(version.From(9, 1, 0)) && v.LT(version.From(9, 1, 5)) {
 		t.Skipf("Skipped as version %s is affected by https://github.com/elastic/kibana/issues/233780", v)
 	}
 
