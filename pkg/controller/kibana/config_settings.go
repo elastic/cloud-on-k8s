@@ -283,7 +283,6 @@ func baseSettings(kb *kbv1.Kibana, ipFamily corev1.IPFamily) (map[string]interfa
 	}
 
 	conf := map[string]interface{}{
-		ServerName: kb.Name,
 		ServerHost: net.InAddrAnyFor(ipFamily).String(),
 	}
 
