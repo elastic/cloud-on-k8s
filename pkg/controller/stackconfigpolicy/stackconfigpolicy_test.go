@@ -8,7 +8,6 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 
@@ -21,14 +20,15 @@ import (
 
 func Test_getStackPolicyConfigForElasticsearch(t *testing.T) {
 	for _, tc := range []struct {
-		name                   string
-		policyNamespace        string
-		operatorNamespace      string
-		targetElasticsearch    *esv1.Elasticsearch
-		stackConfigPolicies    []policyv1alpha1.StackConfigPolicy
-		expectedConfigPolicy   policyv1alpha1.StackConfigPolicy
-		expectedPolicyRefs     map[string]struct{}
-		expectedConflictErrors map[types.NamespacedName]bool // map of policy names that should have conflict errors
+		name                  string
+		policyNamespace       string
+		operatorNamespace     string
+		targetElasticsearch   *esv1.Elasticsearch
+		stackConfigPolicies   []policyv1alpha1.StackConfigPolicy
+		expectedConfigPolicy  policyv1alpha1.StackConfigPolicy
+		expectedSecretSources []commonv1.NamespacedSecretSource
+		expectedPolicyRefs    map[string]struct{}
+		expectedMergeConflict bool
 	}{
 		{
 			name: "merges without overwrites",
@@ -60,7 +60,7 @@ func Test_getStackPolicyConfigForElasticsearch(t *testing.T) {
 							}},
 							SecureSettings: []commonv1.SecretSource{
 								{
-									SecretName: "test",
+									SecretName: "test-secret-policy1",
 									Entries: []commonv1.KeyToPath{
 										{Key: "test", Path: "/test-policy1"},
 									},
@@ -95,7 +95,7 @@ func Test_getStackPolicyConfigForElasticsearch(t *testing.T) {
 							}},
 							SecureSettings: []commonv1.SecretSource{
 								{
-									SecretName: "test",
+									SecretName: "test-secret-policy2",
 									Entries: []commonv1.KeyToPath{
 										{Key: "test1", Path: "/test1-policy2"},
 										{Key: "test2", Path: "/test2-policy2"},
@@ -123,16 +123,6 @@ func Test_getStackPolicyConfigForElasticsearch(t *testing.T) {
 							"test1.name": "policy1",
 							"test2.name": "policy2",
 						}},
-						SecureSettings: []commonv1.SecretSource{
-							{
-								SecretName: "test",
-								Entries: []commonv1.KeyToPath{
-									{Key: "test", Path: "/test-policy1"},
-									{Key: "test1", Path: "/test1-policy2"},
-									{Key: "test2", Path: "/test2-policy2"},
-								},
-							},
-						},
 						SecretMounts: []policyv1alpha1.SecretMount{
 							{SecretName: "secret-policy1", MountPath: "/secret-policy1"},
 							{SecretName: "secret-policy2", MountPath: "/secret-policy2"},
@@ -148,6 +138,23 @@ func Test_getStackPolicyConfigForElasticsearch(t *testing.T) {
 								"settings.location": "/backups",
 							},
 						}},
+					},
+				},
+			},
+			expectedSecretSources: []commonv1.NamespacedSecretSource{
+				{
+					SecretName: "test-secret-policy1",
+					Namespace:  "test",
+					Entries: []commonv1.KeyToPath{
+						{Key: "test", Path: "/test-policy1"},
+					},
+				},
+				{
+					SecretName: "test-secret-policy2",
+					Namespace:  "test",
+					Entries: []commonv1.KeyToPath{
+						{Key: "test1", Path: "/test1-policy2"},
+						{Key: "test2", Path: "/test2-policy2"},
 					},
 				},
 			},
@@ -248,15 +255,6 @@ func Test_getStackPolicyConfigForElasticsearch(t *testing.T) {
 						ClusterSettings: &commonv1.Config{Data: map[string]any{
 							"test.name": "policy2",
 						}},
-						SecureSettings: []commonv1.SecretSource{
-							{
-								SecretName: "test",
-								Entries: []commonv1.KeyToPath{
-									{Key: "test1", Path: "/test1-policy2"},
-									{Key: "test2", Path: "/test2-policy2"},
-								},
-							},
-						},
 						SecretMounts: []policyv1alpha1.SecretMount{
 							{SecretName: "secret-policy-1", MountPath: "/secret-policy1"},
 							{SecretName: "secret-policy-2", MountPath: "/secret-policy2"},
@@ -268,6 +266,24 @@ func Test_getStackPolicyConfigForElasticsearch(t *testing.T) {
 								"region": "us-west-2",
 							},
 						}},
+					},
+				},
+			},
+			expectedSecretSources: []commonv1.NamespacedSecretSource{
+				{
+					SecretName: "test",
+					Namespace:  "test",
+					Entries: []commonv1.KeyToPath{
+						{Key: "test1", Path: "/test1-policy1"},
+						{Key: "test2", Path: "/test2-policy1"},
+					},
+				},
+				{
+					SecretName: "test",
+					Namespace:  "test",
+					Entries: []commonv1.KeyToPath{
+						{Key: "test1", Path: "/test1-policy2"},
+						{Key: "test2", Path: "/test2-policy2"},
 					},
 				},
 			},
@@ -365,10 +381,7 @@ func Test_getStackPolicyConfigForElasticsearch(t *testing.T) {
 					},
 				},
 			},
-			expectedConflictErrors: map[types.NamespacedName]bool{
-				{Namespace: "test", Name: "policy2-conflict"}: true,
-				{Namespace: "test", Name: "policy3-conflict"}: true,
-			},
+			expectedMergeConflict: true,
 		},
 		{
 			name: "detects conflicts when same secret defined in multiple policies",
@@ -428,10 +441,7 @@ func Test_getStackPolicyConfigForElasticsearch(t *testing.T) {
 					},
 				},
 			},
-			expectedConflictErrors: map[types.NamespacedName]bool{
-				{Namespace: "test", Name: "policy2"}: true,
-				{Namespace: "test", Name: "policy1"}: true,
-			},
+			expectedMergeConflict: true,
 		},
 		{
 			name: "detects conflicts when same mount path defined in multiple policies",
@@ -491,10 +501,7 @@ func Test_getStackPolicyConfigForElasticsearch(t *testing.T) {
 					},
 				},
 			},
-			expectedConflictErrors: map[types.NamespacedName]bool{
-				{Namespace: "test", Name: "policy2"}: true,
-				{Namespace: "test", Name: "policy1"}: true,
-			},
+			expectedMergeConflict: true,
 		},
 		{
 			name: "successfully merges when different secrets use different mount paths",
@@ -674,39 +681,29 @@ func Test_getStackPolicyConfigForElasticsearch(t *testing.T) {
 		},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			esStackConfig, err := getPolicyConfigForElasticsearch(tc.targetElasticsearch, tc.stackConfigPolicies, operator.Parameters{
+			esConfigPolicy, err := getConfigPolicyForElasticsearch(tc.targetElasticsearch, tc.stackConfigPolicies, operator.Parameters{
 				OperatorNamespace: tc.operatorNamespace,
 			})
 			// Check for expected conflict errors
-			if tc.expectedConflictErrors != nil {
-				assert.ErrorIs(t, err, errMergeConflict, "getPolicyConfigForElasticsearch should return an error")
-				assert.NotNil(t, esStackConfig.PoliciesWithConflictErrors, "should have conflict errors")
-				assert.Len(t, esStackConfig.PoliciesWithConflictErrors, len(tc.expectedConflictErrors), "should have expected number of conflict errors")
-
-				for policyNsn, shouldHaveError := range tc.expectedConflictErrors {
-					if shouldHaveError {
-						assert.Containsf(t, esStackConfig.PoliciesWithConflictErrors, policyNsn, "Expected conflict error for policy %s but found none", policyNsn)
-					} else {
-						assert.NotContainsf(t, esStackConfig.PoliciesWithConflictErrors, policyNsn, "Not expected conflict error for policy %s but found none", policyNsn)
-					}
-				}
+			if tc.expectedMergeConflict {
+				assert.ErrorIs(t, err, errMergeConflict, "getConfigPolicyForElasticsearch should return an error")
 				return
 			}
-			assert.NoError(t, err, "getPolicyConfigForElasticsearch should not return an error")
-			assert.Empty(t, esStackConfig.PoliciesWithConflictErrors, "should not have any conflict errors")
+			assert.NoError(t, err, "getConfigPolicyForElasticsearch should not return an error")
 
-			// we self-merge the expected config just to canonicalise it
-			expectedConfigPolicyCopy := tc.expectedConfigPolicy.Spec.Elasticsearch.DeepCopy()
-			expectedConfigPolicyCopy.SecretMounts = nil
-			err = mergeElasticsearchConfig(&tc.expectedConfigPolicy.Spec.Elasticsearch, *expectedConfigPolicyCopy)
-			require.NoError(t, err, "canonicalise expected config should not return an error")
+			// Compare secret sources if expected
+			if tc.expectedSecretSources != nil {
+				assert.EqualValues(t, tc.expectedSecretSources, esConfigPolicy.SecretSources)
+			}
 
-			// Compare the merged Elasticsearch configuration
-			assert.EqualValues(t, tc.expectedConfigPolicy.Spec.Elasticsearch, esStackConfig.Spec)
+			if len(tc.stackConfigPolicies) > 1 {
+				canonicaliseElasticsearchPolicyConfig(t, &tc.expectedConfigPolicy.Spec.Elasticsearch)
+			}
+			assert.EqualValues(t, tc.expectedConfigPolicy.Spec.Elasticsearch, esConfigPolicy.Spec)
 
 			// Compare policy references by building a map from the actual refs
 			actualPolicyRefs := make(map[string]struct{})
-			for _, policy := range esStackConfig.PoliciesRefs {
+			for _, policy := range esConfigPolicy.PolicyRefs {
 				nsn := types.NamespacedName{Namespace: policy.Namespace, Name: policy.Name}
 				actualPolicyRefs[nsn.String()] = struct{}{}
 			}
@@ -717,14 +714,15 @@ func Test_getStackPolicyConfigForElasticsearch(t *testing.T) {
 
 func Test_getPolicyConfigForKibana(t *testing.T) {
 	for _, tc := range []struct {
-		name                   string
-		policyNamespace        string
-		operatorNamespace      string
-		targetKibana           *kbv1.Kibana
-		stackConfigPolicies    []policyv1alpha1.StackConfigPolicy
-		expectedConfigPolicy   policyv1alpha1.StackConfigPolicy
-		expectedPolicyRefs     map[string]struct{}
-		expectedConflictErrors map[types.NamespacedName]bool
+		name                  string
+		policyNamespace       string
+		operatorNamespace     string
+		targetKibana          *kbv1.Kibana
+		stackConfigPolicies   []policyv1alpha1.StackConfigPolicy
+		expectedConfigPolicy  policyv1alpha1.StackConfigPolicy
+		expectedSecretSources []commonv1.NamespacedSecretSource
+		expectedPolicyRefs    map[string]struct{}
+		expectedMergeConflict bool
 	}{
 		{
 			name: "merges Kibana configs without overwrites",
@@ -811,17 +809,19 @@ func Test_getPolicyConfigForKibana(t *testing.T) {
 								"maxPayload": float64(2097152),
 							},
 						}},
-						SecureSettings: []commonv1.SecretSource{
-							{
-								SecretName: "kb-secret1",
-								Entries:    []commonv1.KeyToPath{{Key: "key1", Path: "path1"}},
-							},
-							{
-								SecretName: "kb-secret2",
-								Entries:    []commonv1.KeyToPath{{Key: "key2", Path: "path2"}},
-							},
-						},
 					},
+				},
+			},
+			expectedSecretSources: []commonv1.NamespacedSecretSource{
+				{
+					SecretName: "kb-secret1",
+					Namespace:  "test",
+					Entries:    []commonv1.KeyToPath{{Key: "key1", Path: "path1"}},
+				},
+				{
+					SecretName: "kb-secret2",
+					Namespace:  "test",
+					Entries:    []commonv1.KeyToPath{{Key: "key2", Path: "path2"}},
 				},
 			},
 			expectedPolicyRefs: map[string]struct{}{
@@ -951,10 +951,7 @@ func Test_getPolicyConfigForKibana(t *testing.T) {
 					},
 				},
 			},
-			expectedConflictErrors: map[types.NamespacedName]bool{
-				{Namespace: "test", Name: "kb-conflict-1"}: true,
-				{Namespace: "test", Name: "kb-conflict-2"}: true,
-			},
+			expectedMergeConflict: true,
 		},
 		{
 			name: "Kibana policy doesn't match due to namespace",
@@ -1088,35 +1085,63 @@ func Test_getPolicyConfigForKibana(t *testing.T) {
 		},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			kbPolicyConfig, err := getPolicyConfigForKibana(tc.targetKibana, tc.stackConfigPolicies, operator.Parameters{
+			kbPolicyConfig, err := getConfigPolicyForKibana(tc.targetKibana, tc.stackConfigPolicies, operator.Parameters{
 				OperatorNamespace: tc.operatorNamespace,
 			})
 			// Verify conflict errors
-			if tc.expectedConflictErrors != nil {
+			if tc.expectedMergeConflict {
 				assert.ErrorIs(t, err, errMergeConflict)
-				assert.NotNil(t, kbPolicyConfig.PoliciesWithConflictErrors, "Expected conflict errors but got none")
-				for policyNsn, shouldHaveError := range tc.expectedConflictErrors {
-					if shouldHaveError {
-						assert.Containsf(t, kbPolicyConfig.PoliciesWithConflictErrors, policyNsn, "Expected conflict error for policy %s but found none", policyNsn)
-					} else {
-						assert.NotContainsf(t, kbPolicyConfig.PoliciesWithConflictErrors, policyNsn, "Not expected conflict error for policy %s but found none", policyNsn)
-					}
-				}
 				return
 			}
 			assert.NoError(t, err)
-			assert.Empty(t, kbPolicyConfig.PoliciesWithConflictErrors, "Expected no conflict errors")
 
-			// Compare the merged Kibana configuration
+			// Compare secret sources if expected
+			if tc.expectedSecretSources != nil {
+				assert.EqualValues(t, tc.expectedSecretSources, kbPolicyConfig.SecretSources)
+			}
+
+			if len(tc.stackConfigPolicies) > 1 {
+				canonicaliseKibanaPolicyConfig(t, &tc.expectedConfigPolicy.Spec.Kibana)
+			}
 			assert.EqualValues(t, tc.expectedConfigPolicy.Spec.Kibana, kbPolicyConfig.Spec)
 
 			// Compare policy references
 			actualPolicyRefs := make(map[string]struct{})
-			for _, policy := range kbPolicyConfig.PoliciesRefs {
+			for _, policy := range kbPolicyConfig.PolicyRefs {
 				nsn := types.NamespacedName{Namespace: policy.Namespace, Name: policy.Name}
 				actualPolicyRefs[nsn.String()] = struct{}{}
 			}
 			assert.EqualValues(t, tc.expectedPolicyRefs, actualPolicyRefs)
 		})
 	}
+}
+
+func canonicaliseElasticsearchPolicyConfig(t *testing.T, spec *policyv1alpha1.ElasticsearchConfigPolicySpec) {
+	t.Helper()
+	var err error
+	spec.ClusterSettings, err = deepMergeConfig(spec.ClusterSettings, spec.ClusterSettings)
+	assert.NoError(t, err)
+	spec.SnapshotRepositories, err = mergeConfig(spec.SnapshotRepositories, spec.SnapshotRepositories)
+	assert.NoError(t, err)
+	spec.SnapshotLifecyclePolicies, err = deepMergeConfig(spec.SnapshotLifecyclePolicies, spec.SnapshotLifecyclePolicies)
+	assert.NoError(t, err)
+	spec.SecurityRoleMappings, err = deepMergeConfig(spec.SecurityRoleMappings, spec.SecurityRoleMappings)
+	assert.NoError(t, err)
+	spec.IndexLifecyclePolicies, err = deepMergeConfig(spec.IndexLifecyclePolicies, spec.IndexLifecyclePolicies)
+	assert.NoError(t, err)
+	spec.IngestPipelines, err = deepMergeConfig(spec.IngestPipelines, spec.IngestPipelines)
+	assert.NoError(t, err)
+	spec.IndexTemplates.ComposableIndexTemplates, err = deepMergeConfig(spec.IndexTemplates.ComposableIndexTemplates, spec.IndexTemplates.ComposableIndexTemplates)
+	assert.NoError(t, err)
+	spec.IndexTemplates.ComponentTemplates, err = deepMergeConfig(spec.IndexTemplates.ComponentTemplates, spec.IndexTemplates.ComposableIndexTemplates)
+	assert.NoError(t, err)
+	spec.Config, err = deepMergeConfig(spec.Config, spec.Config)
+	assert.NoError(t, err)
+}
+
+func canonicaliseKibanaPolicyConfig(t *testing.T, spec *policyv1alpha1.KibanaConfigPolicySpec) {
+	t.Helper()
+	var err error
+	spec.Config, err = deepMergeConfig(spec.Config, spec.Config)
+	assert.NoError(t, err)
 }

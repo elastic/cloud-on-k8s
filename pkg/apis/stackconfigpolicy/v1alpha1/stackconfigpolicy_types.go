@@ -98,6 +98,54 @@ type ElasticsearchConfigPolicySpec struct {
 	SecureSettings []commonv1.SecretSource `json:"secureSettings,omitempty"`
 }
 
+// GetElasticsearchNamespacedSecureSettings returns the Elasticsearch secure settings from this policy
+// as NamespacedSecretSources, with each secret source namespaced to the policy's namespace.
+// Returns nil if the policy is nil or has no Elasticsearch secure settings defined.
+func (p *StackConfigPolicy) GetElasticsearchNamespacedSecureSettings() []commonv1.NamespacedSecretSource {
+	if p == nil {
+		return nil
+	}
+
+	ssLen := len(p.Spec.Elasticsearch.SecureSettings)
+	if ssLen == 0 {
+		return nil
+	}
+	pNs := p.GetNamespace()
+	ssNsn := make([]commonv1.NamespacedSecretSource, ssLen)
+	for idx, ss := range p.Spec.Elasticsearch.SecureSettings {
+		ssNsn[idx] = commonv1.NamespacedSecretSource{
+			Namespace:  pNs,
+			SecretName: ss.SecretName,
+			Entries:    ss.Entries,
+		}
+	}
+	return ssNsn
+}
+
+// GetKibanaNamespacedSecureSettings returns the Kibana secure settings from this policy
+// as NamespacedSecretSources, with each secret source namespaced to the policy's namespace.
+// Returns nil if the policy is nil or has no Kibana secure settings defined.
+func (p *StackConfigPolicy) GetKibanaNamespacedSecureSettings() []commonv1.NamespacedSecretSource {
+	if p == nil {
+		return nil
+	}
+
+	ssLen := len(p.Spec.Kibana.SecureSettings)
+	if ssLen == 0 {
+		return nil
+	}
+	pNs := p.GetNamespace()
+	ssNsn := make([]commonv1.NamespacedSecretSource, ssLen)
+	for idx, ss := range p.Spec.Kibana.SecureSettings {
+		ssNsn[idx] = commonv1.NamespacedSecretSource{
+			Namespace:  pNs,
+			SecretName: ss.SecretName,
+			Entries:    ss.Entries,
+		}
+	}
+	return ssNsn
+}
+
 type KibanaConfigPolicySpec struct {
 	// Config holds the settings that go into kibana.yml.
 	// +kubebuilder:pruning:PreserveUnknownFields

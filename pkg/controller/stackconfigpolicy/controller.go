@@ -333,20 +333,11 @@ func (r *ReconcileStackConfigPolicy) reconcileElasticsearchResources(ctx context
 		}
 
 		// build the final config by merging all policies that target the given Elasticsearch cluster
-		esPolicyConfigFinal, err := getPolicyConfigForElasticsearch(&es, allPolicies, r.params)
+		esConfigPolicyFinal, err := getConfigPolicyForElasticsearch(&es, allPolicies, r.params)
 		switch {
 		case errors.Is(err, errMergeConflict):
-			log.V(1).Info("StackConfigPolicy merge conflict for Elasticsearch", "es_namespace", es.Namespace, "es_name", es.Name, "error", err)
-			results.WithRequeue(defaultRequeue)
-			if esPolicyConfigFinal == nil {
-				continue
-			}
-			conflictErr, exists := esPolicyConfigFinal.PoliciesWithConflictErrors[reconcilingPolicyNsn]
-			if !exists || conflictErr == nil {
-				continue
-			}
-			err = status.AddPolicyErrorFor(esNsn, policyv1alpha1.ConflictPhase, conflictErr.Error(), policyv1alpha1.ElasticsearchResourceType)
-			if err != nil {
+			log.Info("StackConfigPolicy merge conflict for Elasticsearch", "es_namespace", es.Namespace, "es_name", es.Name, "error", err)
+			if err = status.AddPolicyErrorFor(esNsn, policyv1alpha1.ConflictPhase, err.Error(), policyv1alpha1.ElasticsearchResourceType); err != nil {
 				return results.WithError(err), status
 			}
 			continue
@@ -357,16 +348,11 @@ func (r *ReconcileStackConfigPolicy) reconcileElasticsearchResources(ctx context
 		// extract the metadata that should be propagated to children
 		meta := metadata.Propagate(&es, metadata.Metadata{Labels: eslabel.NewLabels(k8s.ExtractNamespacedName(&es))})
 		// create the expected Settings Secret
-		expectedSecret, expectedVersion, err := filesettings.NewSettingsSecretWithVersion(esNsn, &actualSettingsSecret, &policyv1alpha1.StackConfigPolicy{
-			ObjectMeta: reconcilingPolicy.ObjectMeta,
-			Spec: policyv1alpha1.StackConfigPolicySpec{
-				Elasticsearch: esPolicyConfigFinal.Spec,
-			},
-		}, meta)
+		expectedSecret, expectedVersion, err := filesettings.NewSettingsSecretWithVersion(esNsn, &actualSettingsSecret, &esConfigPolicyFinal.Spec, esConfigPolicyFinal.SecretSources, meta)
 		if err != nil {
 			return results.WithError(err), status
 		}
-		err = setMultipleSoftOwners(&expectedSecret, esPolicyConfigFinal.PoliciesRefs)
+		err = setMultipleSoftOwners(&expectedSecret, esConfigPolicyFinal.PolicyRefs)
 		if err != nil {
 			return results.WithError(err), status
 		}
@@ -390,11 +376,11 @@ func (r *ReconcileStackConfigPolicy) reconcileElasticsearchResources(ctx context
 		}
 
 		// create expected elasticsearch config secret
-		expectedConfigSecret, err := newElasticsearchConfigSecret(esPolicyConfigFinal.Spec, es)
+		expectedConfigSecret, err := newElasticsearchConfigSecret(esConfigPolicyFinal.Spec, es)
 		if err != nil {
 			return results.WithError(err), status
 		}
-		err = setMultipleSoftOwners(&expectedConfigSecret, esPolicyConfigFinal.PoliciesRefs)
+		err = setMultipleSoftOwners(&expectedConfigSecret, esConfigPolicyFinal.PolicyRefs)
 		if err != nil {
 			return results.WithError(err), status
 		}
@@ -404,7 +390,7 @@ func (r *ReconcileStackConfigPolicy) reconcileElasticsearchResources(ctx context
 		}
 
 		// Check if required Elasticsearch config and secret mounts are applied.
-		configAndSecretMountsApplied, err := elasticsearchConfigAndSecretMountsApplied(ctx, r.Client, esPolicyConfigFinal.Spec, es)
+		configAndSecretMountsApplied, err := elasticsearchConfigAndSecretMountsApplied(ctx, r.Client, esConfigPolicyFinal.Spec, es)
 		if err != nil {
 			return results.WithError(err), status
 		}
@@ -467,7 +453,6 @@ func (r *ReconcileStackConfigPolicy) reconcileKibanaResources(ctx context.Contex
 		return results.WithError(err), status
 	}
 
-	reconcilingPolicyNsn := k8s.ExtractNamespacedName(&reconcilingPolicy)
 	configuredResources := kbMap{}
 	for _, kibana := range kibanaList.Items {
 		log.V(1).Info("Reconcile StackConfigPolicy", "kibana_namespace", kibana.Namespace, "kibana_name", kibana.Name)
@@ -477,20 +462,11 @@ func (r *ReconcileStackConfigPolicy) reconcileKibanaResources(ctx context.Contex
 		kibanaNsn := k8s.ExtractNamespacedName(&kibana)
 
 		// build the final config by merging all policies that target the given Kibana instance
-		kbnPolicyConfigFinal, err := getPolicyConfigForKibana(&kibana, allPolicies, r.params)
+		kbnPolicyConfigFinal, err := getConfigPolicyForKibana(&kibana, allPolicies, r.params)
 		switch {
 		case errors.Is(err, errMergeConflict):
-			log.V(1).Info("StackConfigPolicy merge conflict for Kibana", "kibana_namespace", kibana.Namespace, "kibana_name", kibana.Name, "error", err)
-			results.WithRequeue(defaultRequeue)
-			if kbnPolicyConfigFinal == nil {
-				continue
-			}
-			conflictErr, exists := kbnPolicyConfigFinal.PoliciesWithConflictErrors[reconcilingPolicyNsn]
-			if !exists || conflictErr == nil {
-				continue
-			}
-			err = status.AddPolicyErrorFor(kibanaNsn, policyv1alpha1.ConflictPhase, conflictErr.Error(), policyv1alpha1.KibanaResourceType)
-			if err != nil {
+			log.Info("StackConfigPolicy merge conflict for Kibana", "kibana_namespace", kibana.Namespace, "kibana_name", kibana.Name, "error", err)
+			if err = status.AddPolicyErrorFor(kibanaNsn, policyv1alpha1.ConflictPhase, err.Error(), policyv1alpha1.KibanaResourceType); err != nil {
 				return results.WithError(err), status
 			}
 			continue
@@ -503,7 +479,7 @@ func (r *ReconcileStackConfigPolicy) reconcileKibanaResources(ctx context.Contex
 			// Only add to configured resources if Kibana config is set.
 			// This will help clean up the config secret if config gets removed from the stack config reconcilingPolicy.
 			configuredResources[kibanaNsn] = kibana
-			expectedConfigSecret, err := newKibanaConfigSecret(kbnPolicyConfigFinal.Spec, reconcilingPolicy.GetNamespace(), kibana, kbnPolicyConfigFinal.PoliciesRefs)
+			expectedConfigSecret, err := newKibanaConfigSecret(kbnPolicyConfigFinal.Spec, kbnPolicyConfigFinal.SecretSources, kibana, kbnPolicyConfigFinal.PolicyRefs)
 			if err != nil {
 				return results.WithError(err), status
 			}

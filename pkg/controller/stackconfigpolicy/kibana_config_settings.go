@@ -25,7 +25,12 @@ const (
 	KibanaConfigKey = "kibana.json"
 )
 
-func newKibanaConfigSecret(kbConfigPolicy policyv1alpha1.KibanaConfigPolicySpec, policyNamespace string, kibana kibanav1.Kibana, policyRefs []policyv1alpha1.StackConfigPolicy) (corev1.Secret, error) {
+func newKibanaConfigSecret(
+	kbConfigPolicy policyv1alpha1.KibanaConfigPolicySpec,
+	namespacedSecretSources []commonv1.NamespacedSecretSource,
+	kibana kibanav1.Kibana,
+	policyRefs []policyv1alpha1.StackConfigPolicy,
+) (corev1.Secret, error) {
 	kibanaConfigHash := getKibanaConfigHash(kbConfigPolicy.Config)
 	configDataJSONBytes := []byte("")
 	var err error
@@ -56,7 +61,7 @@ func newKibanaConfigSecret(kbConfigPolicy policyv1alpha1.KibanaConfigPolicySpec,
 	kibanaConfigSecret.Labels[commonlabels.StackConfigPolicyOnDeleteLabelName] = commonlabels.OrphanSecretDeleteOnPolicyDelete
 
 	// Add SecureSettings as annotation
-	if err = setKibanaSecureSettings(&kibanaConfigSecret, kbConfigPolicy, policyNamespace); err != nil {
+	if err = setKibanaSecureSettings(&kibanaConfigSecret, namespacedSecretSources); err != nil {
 		return kibanaConfigSecret, err
 	}
 
@@ -95,18 +100,12 @@ func kibanaConfigApplied(c k8s.Client, kbConfigPolicy policyv1alpha1.KibanaConfi
 }
 
 // setKibanaSecureSettings stores the SecureSettings Secret sources referenced in the given StackConfigPolicy for Kibana in the annotation of the Kibana config Secret.
-func setKibanaSecureSettings(settingsSecret *corev1.Secret, kbConfigPolicy policyv1alpha1.KibanaConfigPolicySpec, policyNamespace string) error {
-	if len(kbConfigPolicy.SecureSettings) == 0 {
+func setKibanaSecureSettings(settingsSecret *corev1.Secret, namespacedSecretSources []commonv1.NamespacedSecretSource) error {
+	if len(namespacedSecretSources) == 0 {
 		return nil
 	}
 
-	var secretSources []commonv1.NamespacedSecretSource //nolint:prealloc
-	// SecureSettings field under Kibana in the StackConfigPolicy
-	for _, src := range kbConfigPolicy.SecureSettings {
-		secretSources = append(secretSources, commonv1.NamespacedSecretSource{Namespace: policyNamespace, SecretName: src.SecretName, Entries: src.Entries})
-	}
-
-	bytes, err := json.Marshal(secretSources)
+	bytes, err := json.Marshal(namespacedSecretSources)
 	if err != nil {
 		return err
 	}

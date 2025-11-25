@@ -83,7 +83,7 @@ func Test_newKibanaConfigSecret(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := newKibanaConfigSecret(tt.args.policy.Spec.Kibana, tt.args.policy.GetNamespace(), tt.args.kb, []policyv1alpha1.StackConfigPolicy{*tt.args.policy})
+			got, err := newKibanaConfigSecret(tt.args.policy.Spec.Kibana, tt.args.policy.GetKibanaNamespacedSecureSettings(), tt.args.kb, []policyv1alpha1.StackConfigPolicy{*tt.args.policy})
 			require.NoError(t, err)
 			require.Equal(t, tt.want, got)
 		})
