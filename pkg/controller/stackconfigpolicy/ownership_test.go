@@ -15,7 +15,6 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 
 	policyv1alpha1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/stackconfigpolicy/v1alpha1"
-	commonannotation "github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/annotation"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/reconciler"
 )
 
@@ -40,8 +39,8 @@ func Test_setSingleSoftOwner(t *testing.T) {
 						"existing-label":                   "existing-value",
 					},
 					Annotations: map[string]string{
-						commonannotation.SoftOwnerRefsAnnotation: "{}",
-						"existing-annotation":                    "existing-value",
+						reconciler.SoftOwnerRefsAnnotation: "{}",
+						"existing-annotation":              "existing-value",
 					},
 				},
 			},
@@ -58,7 +57,7 @@ func Test_setSingleSoftOwner(t *testing.T) {
 				assert.Equal(t, "new-namespace", secret.Labels[reconciler.SoftOwnerNamespaceLabel])
 				assert.Equal(t, "existing-value", secret.Labels["existing-label"])
 				assert.Equal(t, "existing-value", secret.Annotations["existing-annotation"])
-				assert.NotContains(t, secret.Annotations, commonannotation.SoftOwnerRefsAnnotation)
+				assert.NotContains(t, secret.Annotations, reconciler.SoftOwnerRefsAnnotation)
 			},
 		},
 		{
@@ -106,8 +105,8 @@ func Test_setMultipleSoftOwners(t *testing.T) {
 						"existing-label":                   "existing-value",
 					},
 					Annotations: map[string]string{
-						commonannotation.SoftOwnerRefsAnnotation: "replaced-value",
-						"existing-annotation":                    "existing-value",
+						reconciler.SoftOwnerRefsAnnotation: "replaced-value",
+						"existing-annotation":              "existing-value",
 					},
 				},
 			},
@@ -149,7 +148,7 @@ func Test_setMultipleSoftOwners(t *testing.T) {
 				assert.Equal(t, "existing-value", secret.Annotations["existing-annotation"])
 
 				// Verify multi-owner annotation is set with both policies
-				ownerRefsJSON := secret.Annotations[commonannotation.SoftOwnerRefsAnnotation]
+				ownerRefsJSON := secret.Annotations[reconciler.SoftOwnerRefsAnnotation]
 				assert.NotEmpty(t, ownerRefsJSON)
 
 				var ownerRefs map[string]struct{}
@@ -207,7 +206,7 @@ func Test_removePolicySoftOwner(t *testing.T) {
 						reconciler.SoftOwnerKindLabel: policyv1alpha1.Kind,
 					},
 					Annotations: map[string]string{
-						commonannotation.SoftOwnerRefsAnnotation: `{"namespace-1/policy-1":{},"namespace-2/policy-2":{},"namespace-3/policy-3":{}}`,
+						reconciler.SoftOwnerRefsAnnotation: `{"namespace-1/policy-1":{},"namespace-2/policy-2":{},"namespace-3/policy-3":{}}`,
 					},
 				},
 			},
@@ -217,7 +216,7 @@ func Test_removePolicySoftOwner(t *testing.T) {
 				assert.Equal(t, 2, remainingCount)
 
 				// Verify the annotation still exists with remaining owners
-				ownerRefsJSON := secret.Annotations[commonannotation.SoftOwnerRefsAnnotation]
+				ownerRefsJSON := secret.Annotations[reconciler.SoftOwnerRefsAnnotation]
 				assert.NotEmpty(t, ownerRefsJSON)
 
 				var ownerRefs map[string]struct{}
@@ -242,8 +241,8 @@ func Test_removePolicySoftOwner(t *testing.T) {
 						reconciler.SoftOwnerKindLabel: policyv1alpha1.Kind,
 					},
 					Annotations: map[string]string{
-						commonannotation.SoftOwnerRefsAnnotation: `{"namespace-1/policy-1":{}}`,
-						"other-annotation":                       "preserved",
+						reconciler.SoftOwnerRefsAnnotation: `{"namespace-1/policy-1":{}}`,
+						"other-annotation":                 "preserved",
 					},
 				},
 			},
@@ -253,7 +252,7 @@ func Test_removePolicySoftOwner(t *testing.T) {
 				assert.Equal(t, 0, remainingCount)
 
 				// Verify the annotation was removed
-				assert.NotContains(t, secret.Annotations, commonannotation.SoftOwnerRefsAnnotation)
+				assert.NotContains(t, secret.Annotations, reconciler.SoftOwnerRefsAnnotation)
 
 				// Verify other annotations are preserved
 				assert.Equal(t, "preserved", secret.Annotations["other-annotation"])
@@ -346,7 +345,7 @@ func Test_removePolicySoftOwner(t *testing.T) {
 						reconciler.SoftOwnerKindLabel: policyv1alpha1.Kind,
 					},
 					Annotations: map[string]string{
-						commonannotation.SoftOwnerRefsAnnotation: `invalid-json`,
+						reconciler.SoftOwnerRefsAnnotation: `invalid-json`,
 					},
 				},
 			},
@@ -366,7 +365,7 @@ func Test_removePolicySoftOwner(t *testing.T) {
 						reconciler.SoftOwnerKindLabel: policyv1alpha1.Kind,
 					},
 					Annotations: map[string]string{
-						commonannotation.SoftOwnerRefsAnnotation: `{"namespace-1/policy-1":{},"namespace-2/policy-2":{}}`,
+						reconciler.SoftOwnerRefsAnnotation: `{"namespace-1/policy-1":{},"namespace-2/policy-2":{}}`,
 					},
 				},
 			},
@@ -377,7 +376,7 @@ func Test_removePolicySoftOwner(t *testing.T) {
 
 				// Verify both original policies remain
 				var ownerRefs map[string]struct{}
-				err = json.Unmarshal([]byte(secret.Annotations[commonannotation.SoftOwnerRefsAnnotation]), &ownerRefs)
+				err = json.Unmarshal([]byte(secret.Annotations[reconciler.SoftOwnerRefsAnnotation]), &ownerRefs)
 				require.NoError(t, err)
 				assert.Len(t, ownerRefs, 2)
 			},
@@ -410,7 +409,7 @@ func Test_isPolicySoftOwner(t *testing.T) {
 						reconciler.SoftOwnerKindLabel: policyv1alpha1.Kind,
 					},
 					Annotations: map[string]string{
-						commonannotation.SoftOwnerRefsAnnotation: `{"namespace-1/policy-1":{},"namespace-2/policy-2":{}}`,
+						reconciler.SoftOwnerRefsAnnotation: `{"namespace-1/policy-1":{},"namespace-2/policy-2":{}}`,
 					},
 				},
 			},
@@ -430,7 +429,7 @@ func Test_isPolicySoftOwner(t *testing.T) {
 						reconciler.SoftOwnerKindLabel: policyv1alpha1.Kind,
 					},
 					Annotations: map[string]string{
-						commonannotation.SoftOwnerRefsAnnotation: `{"namespace-1/policy-1":{},"namespace-2/policy-2":{}}`,
+						reconciler.SoftOwnerRefsAnnotation: `{"namespace-1/policy-1":{},"namespace-2/policy-2":{}}`,
 					},
 				},
 			},
@@ -514,7 +513,7 @@ func Test_isPolicySoftOwner(t *testing.T) {
 						reconciler.SoftOwnerKindLabel: policyv1alpha1.Kind,
 					},
 					Annotations: map[string]string{
-						commonannotation.SoftOwnerRefsAnnotation: `invalid-json`,
+						reconciler.SoftOwnerRefsAnnotation: `invalid-json`,
 					},
 				},
 			},

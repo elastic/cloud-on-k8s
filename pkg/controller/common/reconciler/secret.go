@@ -19,7 +19,6 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	policyv1alpha1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/stackconfigpolicy/v1alpha1"
-	commonannotation "github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/annotation"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/k8s"
 	ulog "github.com/elastic/cloud-on-k8s/v3/pkg/utils/log"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/maps"
@@ -31,6 +30,7 @@ const (
 	SoftOwnerNamespaceLabel = "eck.k8s.elastic.co/owner-namespace"
 	SoftOwnerNameLabel      = "eck.k8s.elastic.co/owner-name"
 	SoftOwnerKindLabel      = "eck.k8s.elastic.co/owner-kind"
+	SoftOwnerRefsAnnotation = "eck.k8s.elastic.co/owner-refs"
 )
 
 func WithPostUpdate(f func()) func(p *Params) {
@@ -105,7 +105,7 @@ func SoftOwnerRefs(obj metav1.Object) ([]SoftOwnerRef, error) {
 	}
 
 	// Check for multi-policy ownership (annotation-based)
-	if ownerRefsBytes, exists := obj.GetAnnotations()[commonannotation.SoftOwnerRefsAnnotation]; exists {
+	if ownerRefsBytes, exists := obj.GetAnnotations()[SoftOwnerRefsAnnotation]; exists {
 		// Multi-policy soft owned secret - parse the JSON map of owners
 		var ownerRefs map[string]struct{}
 		if err := json.Unmarshal([]byte(ownerRefsBytes), &ownerRefs); err != nil {

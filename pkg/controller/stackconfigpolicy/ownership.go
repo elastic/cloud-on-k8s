@@ -11,7 +11,6 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 
 	policyv1alpha1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/stackconfigpolicy/v1alpha1"
-	commonannotation "github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/annotation"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/reconciler"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/filesettings"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/k8s"
@@ -28,7 +27,7 @@ func setSingleSoftOwner(secret *corev1.Secret, policy policyv1alpha1.StackConfig
 
 	if secret.Annotations != nil {
 		// Remove multi-owner annotation if it exists
-		delete(secret.Annotations, commonannotation.SoftOwnerRefsAnnotation)
+		delete(secret.Annotations, reconciler.SoftOwnerRefsAnnotation)
 	}
 
 	filesettings.SetSoftOwner(secret, policy)
@@ -40,7 +39,7 @@ func setSingleSoftOwner(secret *corev1.Secret, policy policyv1alpha1.StackConfig
 //
 // The function sets:
 //   - The label reconciler.SoftOwnerKindLabel indicating the soft owner kind to policyv1alpha1.Kind
-//   - The annotation commonannotation.SoftOwnerRefsAnnotation containing a JSON map of all owner namespaced names
+//   - The annotation reconciler.SoftOwnerRefsAnnotation containing a JSON map of all owner namespaced names
 //
 // Returns an error if JSON marshaling fails.
 func setMultipleSoftOwners(secret *corev1.Secret, policies []policyv1alpha1.StackConfigPolicy) error {
@@ -76,13 +75,13 @@ func setMultipleSoftOwners(secret *corev1.Secret, policies []policyv1alpha1.Stac
 		return err
 	}
 
-	secret.Annotations[commonannotation.SoftOwnerRefsAnnotation] = string(ownerRefsBytes)
+	secret.Annotations[reconciler.SoftOwnerRefsAnnotation] = string(ownerRefsBytes)
 	return nil
 }
 
 // isPolicySoftOwner checks if the given StackConfigPolicy is a soft owner of the Secret.
 // It handles both single-owner (reconciler.SoftOwnerNameLabel, reconciler.SoftOwnerNamespaceLabel)
-// and multi-owner (commonannotation.SoftOwnerRefsAnnotation) scenarios.
+// and multi-owner (reconciler.SoftOwnerRefsAnnotation) scenarios.
 // Returns true or false depending on whether the policy is an owner of the secret
 // and an error if there's a problem unmarshalling the owner references
 func isPolicySoftOwner(secret *corev1.Secret, policyNsn types.NamespacedName) (bool, error) {
@@ -97,7 +96,7 @@ func isPolicySoftOwner(secret *corev1.Secret, policyNsn types.NamespacedName) (b
 	}
 
 	// Check for multi-policy ownership (annotation-based)
-	if ownerRefsBytes, exists := secret.Annotations[commonannotation.SoftOwnerRefsAnnotation]; exists {
+	if ownerRefsBytes, exists := secret.Annotations[reconciler.SoftOwnerRefsAnnotation]; exists {
 		// Multi-policy soft owned secret - parse the JSON map of owners
 		var ownerRefs map[string]struct{}
 		if err := json.Unmarshal([]byte(ownerRefsBytes), &ownerRefs); err != nil {
@@ -121,7 +120,7 @@ func isPolicySoftOwner(secret *corev1.Secret, policyNsn types.NamespacedName) (b
 
 // removePolicySoftOwner removes a StackConfigPolicy if it is soft owning the given secret.
 // It handles both single-owner (reconciler.SoftOwnerNameLabel, reconciler.SoftOwnerNamespaceLabel)
-// and multi-owner (commonannotation.SoftOwnerRefsAnnotation) scenarios.
+// and multi-owner (reconciler.SoftOwnerRefsAnnotation) scenarios.
 //
 // For single-owner secrets:
 //   - If the owner matches, removes all soft owner labels/annotations
@@ -138,7 +137,7 @@ func removePolicySoftOwner(secret *corev1.Secret, policyNsn types.NamespacedName
 	}
 
 	// Check for multi-policy ownership (annotation-based)
-	if ownerRefsBytes, exists := secret.Annotations[commonannotation.SoftOwnerRefsAnnotation]; exists {
+	if ownerRefsBytes, exists := secret.Annotations[reconciler.SoftOwnerRefsAnnotation]; exists {
 		// Multi-policy soft owned secret - parse and update the owner map
 		var ownerRefs map[string]struct{}
 		if err := json.Unmarshal([]byte(ownerRefsBytes), &ownerRefs); err != nil {
@@ -149,7 +148,7 @@ func removePolicySoftOwner(secret *corev1.Secret, policyNsn types.NamespacedName
 		delete(ownerRefs, types.NamespacedName{Name: policyNsn.Name, Namespace: policyNsn.Namespace}.String())
 		if len(ownerRefs) == 0 {
 			// No owners remain, remove the annotation
-			delete(secret.Annotations, commonannotation.SoftOwnerRefsAnnotation)
+			delete(secret.Annotations, reconciler.SoftOwnerRefsAnnotation)
 			return 0, nil
 		}
 
@@ -160,7 +159,7 @@ func removePolicySoftOwner(secret *corev1.Secret, policyNsn types.NamespacedName
 		}
 
 		// Update the annotation with the new owner list
-		secret.Annotations[commonannotation.SoftOwnerRefsAnnotation] = string(ownerRefsBytes)
+		secret.Annotations[reconciler.SoftOwnerRefsAnnotation] = string(ownerRefsBytes)
 		return len(ownerRefs), nil
 	}
 

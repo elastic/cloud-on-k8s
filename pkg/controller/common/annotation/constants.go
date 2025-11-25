@@ -25,6 +25,4 @@ const (
 
 	ElasticsearchConfigAndSecretMountsHashAnnotation = "policy.k8s.elastic.co/elasticsearch-config-mounts-hash" //nolint:gosec
 	SourceSecretAnnotationName                       = "policy.k8s.elastic.co/source-secret-name"               //nolint:gosec
-
-	SoftOwnerRefsAnnotation = "eck.k8s.elastic.co/owner-refs"
 )

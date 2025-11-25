@@ -21,7 +21,6 @@ import (
 
 	esv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/elasticsearch/v1"
 	policyv1alpha1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/stackconfigpolicy/v1alpha1"
-	commonannotation "github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/annotation"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/k8s"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/maps"
 )
@@ -264,7 +263,7 @@ func ownedSecretMultiRefs(namespace, name, ownerRefs, ownerKind string) *corev1.
 		ObjectMeta: metav1.ObjectMeta{Namespace: namespace, Name: name, Labels: map[string]string{
 			SoftOwnerKindLabel: ownerKind,
 		}, Annotations: map[string]string{
-			commonannotation.SoftOwnerRefsAnnotation: ownerRefs,
+			SoftOwnerRefsAnnotation: ownerRefs,
 		}}}
 }
 
@@ -606,7 +605,7 @@ func TestSoftOwnerRefs(t *testing.T) {
 						SoftOwnerKindLabel: policyv1alpha1.Kind,
 					},
 					Annotations: map[string]string{
-						commonannotation.SoftOwnerRefsAnnotation: `{"namespace-1/policy-1":{},"namespace-2/policy-2":{}}`,
+						SoftOwnerRefsAnnotation: `{"namespace-1/policy-1":{},"namespace-2/policy-2":{}}`,
 					},
 				},
 			},
@@ -679,7 +678,7 @@ func TestSoftOwnerRefs(t *testing.T) {
 						SoftOwnerKindLabel: policyv1alpha1.Kind,
 					},
 					Annotations: map[string]string{
-						commonannotation.SoftOwnerRefsAnnotation: `invalid-json`,
+						SoftOwnerRefsAnnotation: `invalid-json`,
 					},
 				},
 			},
@@ -698,7 +697,7 @@ func TestSoftOwnerRefs(t *testing.T) {
 						SoftOwnerKindLabel: policyv1alpha1.Kind,
 					},
 					Annotations: map[string]string{
-						commonannotation.SoftOwnerRefsAnnotation: `{"namespace-1/policy-1":{},"malformed":{},"too/many/slashes":{}}`,
+						SoftOwnerRefsAnnotation: `{"namespace-1/policy-1":{},"malformed":{},"too/many/slashes":{}}`,
 					},
 				},
 			},
