@@ -10673,6 +10673,9 @@ spec:
     - jsonPath: .metadata.creationTimestamp
       name: Age
       type: date
+    - jsonPath: .spec.weight
+      name: Weight
+      type: integer
     name: v1alpha1
     schema:
       openAPIV3Schema:

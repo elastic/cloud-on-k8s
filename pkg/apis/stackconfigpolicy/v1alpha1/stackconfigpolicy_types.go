@@ -34,6 +34,7 @@ func init() {
 // +kubebuilder:printcolumn:name="Ready",type="string",JSONPath=".status.readyCount",description="Resources configured"
 // +kubebuilder:printcolumn:name="Phase",type="string",JSONPath=".status.phase"
 // +kubebuilder:printcolumn:name="Age",type="date",JSONPath=".metadata.creationTimestamp"
+// +kubebuilder:printcolumn:name="Weight",type="integer",JSONPath=".spec.weight"
 // +kubebuilder:subresource:status
 // +kubebuilder:storageversion
 type StackConfigPolicy struct {
