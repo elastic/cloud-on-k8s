@@ -427,6 +427,7 @@ func (d *defaultDriver) Reconcile(ctx context.Context) *reconciler.Results {
 // StackConfigPolicy targets this cluster it creates an empty file-settings secret. Note: This logic here prevents
 // the race condition described in https://github.com/elastic/cloud-on-k8s/issues/8912.
 func maybeReconcileEmptyFileSettingsSecret(ctx context.Context, c k8s.Client, lcnChecker commonlicense.Checker, es *esv1.Elasticsearch, operatorNamespace string) (bool, error) {
+	log := ulog.FromContext(ctx)
 	enabled, err := lcnChecker.EnterpriseFeaturesEnabled(ctx)
 	if err != nil {
 		return false, err
@@ -447,10 +448,9 @@ func maybeReconcileEmptyFileSettingsSecret(ctx context.Context, c k8s.Client, lc
 		// Check if this policy's namespace and label selector match this ES cluster
 		matches, err := stackconfigpolicy.DoesPolicyMatchObject(&policy, es, operatorNamespace)
 		if err != nil {
-			// Return error if label selector is invalid
-			return false, err
-		}
-		if !matches {
+			log.Error(err, "Failed to check if StackConfigPolicy matches object", "scp_name", policy.Name, "scp_namespace", policy.Namespace, "es_name", es.Name, "es_namespace", es.Namespace)
+			continue
+		} else if !matches {
 			continue
 		}
 		// Found a policy that targets this ES cluster. Don't create the empty secret - let the SCP controller
