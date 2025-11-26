@@ -426,9 +426,9 @@ func (d *defaultDriver) Reconcile(ctx context.Context) *reconciler.Results {
 // targets this cluster returns true to requeue and doesn't create the empty file-settings secret. If no
 // StackConfigPolicy targets this cluster it creates an empty file-settings secret. Note: This logic here prevents
 // the race condition described in https://github.com/elastic/cloud-on-k8s/issues/8912.
-func maybeReconcileEmptyFileSettingsSecret(ctx context.Context, c k8s.Client, lcnChecker commonlicense.Checker, es *esv1.Elasticsearch, operatorNamespace string) (bool, error) {
+func maybeReconcileEmptyFileSettingsSecret(ctx context.Context, c k8s.Client, licenseChecker commonlicense.Checker, es *esv1.Elasticsearch, operatorNamespace string) (bool, error) {
 	log := ulog.FromContext(ctx)
-	enabled, err := lcnChecker.EnterpriseFeaturesEnabled(ctx)
+	enabled, err := licenseChecker.EnterpriseFeaturesEnabled(ctx)
 	if err != nil {
 		return false, err
 	}
