@@ -17,18 +17,18 @@ import (
 // 2. The policy's label selector matches the object's labels
 // Returns true if the policy targets the object, false otherwise, and an error if the label selector is invalid.
 func DoesPolicyMatchObject(policy *policyv1alpha1.StackConfigPolicy, obj metav1.Object, operatorNamespace string) (bool, error) {
-	// Convert the label selector from the policy spec into a labels.Selector that can be used for matching
-	selector, err := metav1.LabelSelectorAsSelector(&policy.Spec.ResourceSelector)
-	if err != nil {
-		// Return error if the label selector syntax is invalid (e.g., malformed expressions)
-		return false, err
-	}
-
 	// Check namespace restrictions; the policy must be in operator namespace or same namespace as the target object.
 	// This enforces the scoping rules: policies in the operator namespace are global,
 	// policies in other namespaces can only target resources in their own namespace.
 	if policy.Namespace != operatorNamespace && policy.Namespace != obj.GetNamespace() {
 		return false, nil
+	}
+
+	// Convert the label selector from the policy spec into a labels.Selector that can be used for matching
+	selector, err := metav1.LabelSelectorAsSelector(&policy.Spec.ResourceSelector)
+	if err != nil {
+		// Return error if the label selector syntax is invalid (e.g., malformed expressions)
+		return false, err
 	}
 
 	// Check if the label selector matches the object's labels.
