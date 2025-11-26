@@ -303,10 +303,8 @@ func (r *ReconcileStackConfigPolicy) reconcileElasticsearchResources(ctx context
 			continue
 		}
 
-		// Get the file settings secret. If it doesn't exist, we'll create it ourselves.
-		// Previously, we would requeue waiting for the ES controller to create it,
-		// but this caused a race condition (see https://github.com/elastic/cloud-on-k8s/issues/8912).
-		// Now the StackConfigPolicy controller takes full ownership of creating this secret.
+		// Get the file settings secret. Create it if it doesn't exist.
+		// This resolves the race condition from https://github.com/elastic/cloud-on-k8s/issues/8912
 		var actualSettingsSecret corev1.Secret
 		err = r.Client.Get(ctx, types.NamespacedName{Namespace: es.Namespace, Name: esv1.FileSettingsSecretName(es.Name)}, &actualSettingsSecret)
 		if err != nil && !apierrors.IsNotFound(err) {
