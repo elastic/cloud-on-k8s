@@ -449,10 +449,10 @@ func TestGarbageCollectAllSoftOwnedOrphanSecrets(t *testing.T) {
 				&policyv1alpha1.StackConfigPolicy{ObjectMeta: metav1.ObjectMeta{Name: "policy-1", Namespace: "namespace-1"}},
 				&policyv1alpha1.StackConfigPolicy{ObjectMeta: metav1.ObjectMeta{Name: "policy-2", Namespace: "namespace-2"}},
 				&policyv1alpha1.StackConfigPolicy{ObjectMeta: metav1.ObjectMeta{Name: "policy-3", Namespace: "namespace-3"}},
-				ownedSecretMultiRefs("ns", "secret-1", `{"namespace-1/policy-1":{},"namespace-2/policy-2":{},"namespace-3/policy-3":{}}`, "StackConfigPolicy"),
+				ownedSecretMultiRefs("ns", "secret-1", `["namespace-1/policy-1","namespace-2/policy-2","namespace-3/policy-3"]`, "StackConfigPolicy"),
 			},
 			wantObjs: []client.Object{
-				ownedSecretMultiRefs("ns", "secret-1", `{"namespace-1/policy-1":{},"namespace-2/policy-2":{},"namespace-3/policy-3":{}}`, "StackConfigPolicy"),
+				ownedSecretMultiRefs("ns", "secret-1", `["namespace-1/policy-1","namespace-2/policy-2","namespace-3/policy-3"]`, "StackConfigPolicy"),
 			},
 		},
 		{
@@ -461,16 +461,16 @@ func TestGarbageCollectAllSoftOwnedOrphanSecrets(t *testing.T) {
 				&policyv1alpha1.StackConfigPolicy{ObjectMeta: metav1.ObjectMeta{Name: "policy-1", Namespace: "namespace-1"}},
 				&policyv1alpha1.StackConfigPolicy{ObjectMeta: metav1.ObjectMeta{Name: "policy-2", Namespace: "namespace-other"}},
 				&policyv1alpha1.StackConfigPolicy{ObjectMeta: metav1.ObjectMeta{Name: "policy-3", Namespace: "namespace-3"}},
-				ownedSecretMultiRefs("ns", "secret-1", `{"namespace-1/policy-1":{},"namespace-2/policy-2":{},"namespace-3/policy-3":{}}`, "StackConfigPolicy"),
+				ownedSecretMultiRefs("ns", "secret-1", `["namespace-1/policy-1","namespace-2/policy-2","namespace-3/policy-3"]`, "StackConfigPolicy"),
 			},
 			wantObjs: []client.Object{
-				ownedSecretMultiRefs("ns", "secret-1", `{"namespace-1/policy-1":{},"namespace-2/policy-2":{},"namespace-3/policy-3":{}}`, "StackConfigPolicy"),
+				ownedSecretMultiRefs("ns", "secret-1", `["namespace-1/policy-1","namespace-2/policy-2","namespace-3/policy-3"]`, "StackConfigPolicy"),
 			},
 		},
 		{
 			name: "secret with multiple soft-owners that none exists",
 			runtimeObjs: []client.Object{
-				ownedSecretMultiRefs("ns", "secret-1", `{"namespace-1/policy-1":{},"namespace-2/policy-2":{},"namespace-3/policy-3":{}}`, "StackConfigPolicy"),
+				ownedSecretMultiRefs("ns", "secret-1", `["namespace-1/policy-1","namespace-2/policy-2","namespace-3/policy-3"]`, "StackConfigPolicy"),
 			},
 			wantObjs: []client.Object{},
 		},
@@ -605,7 +605,7 @@ func TestSoftOwnerRefs(t *testing.T) {
 						SoftOwnerKindLabel: policyv1alpha1.Kind,
 					},
 					Annotations: map[string]string{
-						SoftOwnerRefsAnnotation: `{"namespace-1/policy-1":{},"namespace-2/policy-2":{}}`,
+						SoftOwnerRefsAnnotation: `["namespace-1/policy-1","namespace-2/policy-2"]`,
 					},
 				},
 			},
@@ -697,7 +697,7 @@ func TestSoftOwnerRefs(t *testing.T) {
 						SoftOwnerKindLabel: policyv1alpha1.Kind,
 					},
 					Annotations: map[string]string{
-						SoftOwnerRefsAnnotation: `{"namespace-1/policy-1":{},"malformed":{},"too/many/slashes":{}}`,
+						SoftOwnerRefsAnnotation: `["namespace-1/policy-1","malformed","too/many/slashes"]`,
 					},
 				},
 			},
