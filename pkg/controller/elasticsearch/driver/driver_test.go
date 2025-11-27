@@ -363,7 +363,7 @@ func Test_maybeReconcileEmptyFileSettingsSecret(t *testing.T) {
 			wantErr:           false,
 		},
 		{
-			name: "Multiple policies, one targets ES - should NOT create empty secret but requeue",
+			name: "Multiple policies, one targets ES, file-settings secret does not exist - should NOT create empty secret but requeue",
 			es: &esv1.Elasticsearch{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "test-es",
@@ -405,6 +405,59 @@ func Test_maybeReconcileEmptyFileSettingsSecret(t *testing.T) {
 			licenseChecker:    commonlicense.MockLicenseChecker{EnterpriseEnabled: true},
 			wantSecretCreated: false,
 			wantRequeue:       true,
+			wantErr:           false,
+		},
+		{
+			name: "Multiple policies, one targets ES, file-settings secret exists - should NOT requeue",
+			es: &esv1.Elasticsearch{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "test-es",
+					Namespace: "default",
+					Labels: map[string]string{
+						"app":  "elasticsearch",
+						"team": "platform",
+					},
+				},
+			},
+			existingSecrets: []corev1.Secret{
+				{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      esv1.FileSettingsSecretName("test-es"),
+						Namespace: "default",
+					},
+				},
+			},
+			policies: []policyv1alpha1.StackConfigPolicy{
+				{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "unrelated-policy",
+						Namespace: "default",
+					},
+					Spec: policyv1alpha1.StackConfigPolicySpec{
+						ResourceSelector: metav1.LabelSelector{
+							MatchLabels: map[string]string{
+								"app": "other-app",
+							},
+						},
+					},
+				},
+				{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "matching-policy",
+						Namespace: "default",
+					},
+					Spec: policyv1alpha1.StackConfigPolicySpec{
+						ResourceSelector: metav1.LabelSelector{
+							MatchLabels: map[string]string{
+								"team": "platform",
+							},
+						},
+					},
+				},
+			},
+			licenseChecker:    commonlicense.MockLicenseChecker{EnterpriseEnabled: true},
+			wantSecretCreated: true,
+			wantRequeue:       false,
 			wantErr:           false,
 		},
 	}
