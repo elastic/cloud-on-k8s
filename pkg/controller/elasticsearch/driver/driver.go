@@ -455,8 +455,17 @@ func maybeReconcileEmptyFileSettingsSecret(ctx context.Context, c k8s.Client, li
 		} else if !matches {
 			continue
 		}
-		// Found a policy that targets this ES cluster. Don't create the empty secret - let the SCP controller
-		// manage it. However, do return requeue true to handle the following edge case:
+
+		// Check if file-settings secret already exists
+		var currentSecret corev1.Secret
+		if err := c.Get(ctx, types.NamespacedName{Namespace: es.Namespace, Name: esv1.FileSettingsSecretName(es.Name)}, &currentSecret); err == nil {
+			// Secret does exist
+			return false, nil
+		} else if !k8serrors.IsNotFound(err) {
+			return false, err
+		}
+		// Found a policy that targets this ES cluster but the file-settings secret does not exist.
+		// Let the SCP controller manage it, however, return requeue true to handle the following edge case:
 		// 1. SCP exists and targets ES cluster at creation time
 		// 2. ES controller "defers" to SCP controller (doesn't create secret)
 		// 3. SCP is deleted before it reconciles and creates the file-settings secret
