@@ -1991,6 +1991,8 @@ Package v1alpha1 contains API schema definitions for managing StackConfigPolicy 
 | *`secureSettings`* __[SecretSource](#secretsource) array__ | SecureSettings are additional Secrets that contain data to be configured to Elasticsearch's keystore. |
 
 
+
+
 ### IndexTemplates  [#indextemplates]
 
 
