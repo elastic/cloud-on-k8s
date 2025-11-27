@@ -351,7 +351,9 @@ func (r *ReconcileStackConfigPolicy) reconcileElasticsearchResources(ctx context
 			return results.WithError(err), status
 		}
 
-		if err = setMultipleSoftOwners(&expectedSecret, esConfigPolicyFinal.PolicyRefs); err != nil {
+		// We must keep track of the soft owner references of the file-settings secret to ensure that the secret is reconciled
+		// back to an empty one when no policies are targeting it (look at resetOrphanSoftOwnedFileSettingSecrets)
+		if err := setMultipleSoftOwners(&expectedSecret, esConfigPolicyFinal.PolicyRefs); err != nil {
 			return results.WithError(err), status
 		}
 
