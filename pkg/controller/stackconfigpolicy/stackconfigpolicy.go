@@ -141,32 +141,26 @@ func getConfigPolicyForElasticsearch(es *esv1.Elasticsearch, allPolicies []polic
 // mergeElasticsearchSpecs merges src policyv1alpha1.ElasticsearchConfigPolicySpec into dst.
 func mergeElasticsearchSpecs(dst, src *policyv1alpha1.ElasticsearchConfigPolicySpec) error {
 	var err error
-	if dst.ClusterSettings, err = deepMergeConfig(dst.ClusterSettings, src.ClusterSettings); err != nil {
-		return err
+	fields := []struct {
+		dst   **commonv1.Config
+		src   *commonv1.Config
+		merge func(*commonv1.Config, *commonv1.Config) (*commonv1.Config, error)
+	}{
+		{&dst.ClusterSettings, src.ClusterSettings, deepMergeConfig},
+		{&dst.SnapshotRepositories, src.SnapshotRepositories, mergeConfig},
+		{&dst.SnapshotLifecyclePolicies, src.SnapshotLifecyclePolicies, deepMergeConfig},
+		{&dst.SecurityRoleMappings, src.SecurityRoleMappings, deepMergeConfig},
+		{&dst.IndexLifecyclePolicies, src.IndexLifecyclePolicies, deepMergeConfig},
+		{&dst.IngestPipelines, src.IngestPipelines, deepMergeConfig},
+		{&dst.IndexTemplates.ComposableIndexTemplates, src.IndexTemplates.ComposableIndexTemplates, deepMergeConfig},
+		{&dst.IndexTemplates.ComponentTemplates, src.IndexTemplates.ComponentTemplates, deepMergeConfig},
+		{&dst.Config, src.Config, deepMergeConfig},
 	}
-	if dst.SnapshotRepositories, err = mergeConfig(dst.SnapshotRepositories, src.SnapshotRepositories); err != nil {
-		return err
-	}
-	if dst.SnapshotLifecyclePolicies, err = deepMergeConfig(dst.SnapshotLifecyclePolicies, src.SnapshotLifecyclePolicies); err != nil {
-		return err
-	}
-	if dst.SecurityRoleMappings, err = deepMergeConfig(dst.SecurityRoleMappings, src.SecurityRoleMappings); err != nil {
-		return err
-	}
-	if dst.IndexLifecyclePolicies, err = deepMergeConfig(dst.IndexLifecyclePolicies, src.IndexLifecyclePolicies); err != nil {
-		return err
-	}
-	if dst.IngestPipelines, err = deepMergeConfig(dst.IngestPipelines, src.IngestPipelines); err != nil {
-		return err
-	}
-	if dst.IndexTemplates.ComposableIndexTemplates, err = deepMergeConfig(dst.IndexTemplates.ComposableIndexTemplates, src.IndexTemplates.ComposableIndexTemplates); err != nil {
-		return err
-	}
-	if dst.IndexTemplates.ComponentTemplates, err = deepMergeConfig(dst.IndexTemplates.ComponentTemplates, src.IndexTemplates.ComponentTemplates); err != nil {
-		return err
-	}
-	if dst.Config, err = deepMergeConfig(dst.Config, src.Config); err != nil {
-		return err
+	for _, f := range fields {
+		*f.dst, err = f.merge(*f.dst, f.src)
+		if err != nil {
+			return err
+		}
 	}
 	return nil
 }
