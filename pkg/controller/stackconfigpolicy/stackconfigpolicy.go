@@ -130,8 +130,8 @@ func getConfigPolicyForElasticsearch(es *esv1.Elasticsearch, allPolicies []polic
 			return nil
 		},
 	}
-	err := merge(cfgPolicy, es, allPolicies, params.OperatorNamespace)
-	if err != nil {
+
+	if err := merge(cfgPolicy, es, allPolicies, params.OperatorNamespace); err != nil {
 		return cfgPolicy, err
 	}
 	cfgPolicy.SecretSources = sSrcAggr.namespacedSecretSources
@@ -201,8 +201,8 @@ func getConfigPolicyForKibana(kbn *kbv1.Kibana, allPolicies []policyv1alpha1.Sta
 			return nil
 		},
 	}
-	err := merge(cfgPolicy, kbn, allPolicies, params.OperatorNamespace)
-	if err != nil {
+
+	if err := merge(cfgPolicy, kbn, allPolicies, params.OperatorNamespace); err != nil {
 		return cfgPolicy, err
 	}
 	cfgPolicy.SecretSources = sSrcAggr.namespacedSecretSources
@@ -260,14 +260,12 @@ func deepMergeConfig(dst *commonv1.Config, src *commonv1.Config) (*commonv1.Conf
 		return nil, err
 	}
 
-	err = dstCanonicalConfig.MergeWith(srcCanonicalConfig)
-	if err != nil {
+	if err = dstCanonicalConfig.MergeWith(srcCanonicalConfig); err != nil {
 		return nil, err
 	}
 
 	dst.Data = nil
-	err = dstCanonicalConfig.Unpack(&dst.Data)
-	if err != nil {
+	if err = dstCanonicalConfig.Unpack(&dst.Data); err != nil {
 		return nil, err
 	}
 
@@ -302,14 +300,12 @@ func mergeConfig(dst *commonv1.Config, src *commonv1.Config) (*commonv1.Config, 
 	}
 
 	dst.Data = nil
-	err = dstCanonicalConfig.Unpack(&dst.Data)
-	if err != nil {
+	if err = dstCanonicalConfig.Unpack(&dst.Data); err != nil {
 		return nil, err
 	}
 
 	srcCfg := &commonv1.Config{}
-	err = srcCanonicalConfig.Unpack(&srcCfg.Data)
-	if err != nil {
+	if err = srcCanonicalConfig.Unpack(&srcCfg.Data); err != nil {
 		return nil, err
 	}
 

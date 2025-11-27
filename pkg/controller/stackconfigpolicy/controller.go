@@ -136,8 +136,7 @@ func reconcileRequestForSoftOwnerPolicy() handler.TypedEventHandler[*corev1.Secr
 func reconcileRequestForAllPolicies(clnt k8s.Client) handler.TypedEventHandler[client.Object, reconcile.Request] {
 	return handler.TypedEnqueueRequestsFromMapFunc[client.Object](func(ctx context.Context, es client.Object) []reconcile.Request {
 		var stackConfigList policyv1alpha1.StackConfigPolicyList
-		err := clnt.List(context.Background(), &stackConfigList)
-		if err != nil {
+		if err := clnt.List(context.Background(), &stackConfigList); err != nil {
 			ulog.Log.Error(err, "Fail to list StackConfigurationList while watching Elasticsearch")
 			return nil
 		}
@@ -173,8 +172,7 @@ func (r *ReconcileStackConfigPolicy) Reconcile(ctx context.Context, request reco
 
 	// retrieve the StackConfigPolicy resource
 	var policy policyv1alpha1.StackConfigPolicy
-	err := r.Client.Get(ctx, request.NamespacedName, &policy)
-	if err != nil {
+	if err := r.Client.Get(ctx, request.NamespacedName, &policy); err != nil {
 		if apierrors.IsNotFound(err) {
 			return reconcile.Result{}, r.onDelete(ctx,
 				types.NamespacedName{
@@ -352,8 +350,8 @@ func (r *ReconcileStackConfigPolicy) reconcileElasticsearchResources(ctx context
 		if err != nil {
 			return results.WithError(err), status
 		}
-		err = setMultipleSoftOwners(&expectedSecret, esConfigPolicyFinal.PolicyRefs)
-		if err != nil {
+
+		if err = setMultipleSoftOwners(&expectedSecret, esConfigPolicyFinal.PolicyRefs); err != nil {
 			return results.WithError(err), status
 		}
 
@@ -588,8 +586,7 @@ func handleOrphanSoftOwnedSecrets(
 	configuredKibanaResources kbMap,
 	resourceType policyv1alpha1.ResourceType,
 ) error {
-	err := resetOrphanSoftOwnedFileSettingSecrets(ctx, c, softOwner, configuredESResources, resourceType)
-	if err != nil {
+	if err := resetOrphanSoftOwnedFileSettingSecrets(ctx, c, softOwner, configuredESResources, resourceType); err != nil {
 		return err
 	}
 	return deleteOrphanSoftOwnedSecrets(ctx, c, softOwner, configuredESResources, configuredKibanaResources, resourceType)
@@ -646,8 +643,7 @@ func resetOrphanSoftOwnedFileSettingSecrets(
 			}
 
 			var es esv1.Elasticsearch
-			err := c.Get(ctx, namespacedName, &es)
-			if err != nil && !apierrors.IsNotFound(err) {
+			if err := c.Get(ctx, namespacedName, &es); err != nil && !apierrors.IsNotFound(err) {
 				return err
 			}
 			if apierrors.IsNotFound(err) {
