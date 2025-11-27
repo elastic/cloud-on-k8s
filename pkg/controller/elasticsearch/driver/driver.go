@@ -448,6 +448,8 @@ func maybeReconcileEmptyFileSettingsSecret(ctx context.Context, c k8s.Client, li
 		// Check if this policy's namespace and label selector match this ES cluster
 		matches, err := stackconfigpolicy.DoesPolicyMatchObject(&policy, es, operatorNamespace)
 		if err != nil {
+			// Do not return an err here as this potentially can block ES reconciliation if any SCP in the cluster
+			// has an invalid label selector, even if it doesn't target the current elasticsearch cluster.
 			log.Error(err, "Failed to check if StackConfigPolicy matches object", "scp_name", policy.Name, "scp_namespace", policy.Namespace, "es_name", es.Name, "es_namespace", es.Namespace)
 			continue
 		} else if !matches {
