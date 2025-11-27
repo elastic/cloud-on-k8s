@@ -106,21 +106,7 @@ func (p *StackConfigPolicy) GetElasticsearchNamespacedSecureSettings() []commonv
 	if p == nil {
 		return nil
 	}
-
-	ssLen := len(p.Spec.Elasticsearch.SecureSettings)
-	if ssLen == 0 {
-		return nil
-	}
-	pNs := p.GetNamespace()
-	ssNsn := make([]commonv1.NamespacedSecretSource, ssLen)
-	for idx, ss := range p.Spec.Elasticsearch.SecureSettings {
-		ssNsn[idx] = commonv1.NamespacedSecretSource{
-			Namespace:  pNs,
-			SecretName: ss.SecretName,
-			Entries:    ss.Entries,
-		}
-	}
-	return ssNsn
+	return toNamespacedSecretSources(&p.Spec.Elasticsearch, p.Namespace)
 }
 
 // GetKibanaNamespacedSecureSettings returns the Kibana secure settings from this policy
@@ -130,21 +116,34 @@ func (p *StackConfigPolicy) GetKibanaNamespacedSecureSettings() []commonv1.Names
 	if p == nil {
 		return nil
 	}
+	return toNamespacedSecretSources(&p.Spec.Kibana, p.Namespace)
+}
 
-	ssLen := len(p.Spec.Kibana.SecureSettings)
-	if ssLen == 0 {
-		return nil
-	}
-	pNs := p.GetNamespace()
-	ssNsn := make([]commonv1.NamespacedSecretSource, ssLen)
-	for idx, ss := range p.Spec.Kibana.SecureSettings {
-		ssNsn[idx] = commonv1.NamespacedSecretSource{
-			Namespace:  pNs,
-			SecretName: ss.SecretName,
-			Entries:    ss.Entries,
+// HasSecureSettings represents a ConfigPolicySpec that has secure settings.
+// +kubebuilder:object:generate=false
+type HasSecureSettings interface {
+	GetSecureSettings() []commonv1.SecretSource
+}
+
+func toNamespacedSecretSources(hasSecureSettings HasSecureSettings, inNamespace string) []commonv1.NamespacedSecretSource {
+	secureSettings := hasSecureSettings.GetSecureSettings()
+	namespacedSecretSources := make([]commonv1.NamespacedSecretSource, len(secureSettings))
+	for i, s := range secureSettings {
+		namespacedSecretSources[i] = commonv1.NamespacedSecretSource{
+			Namespace:  inNamespace,
+			SecretName: s.SecretName,
+			Entries:    s.Entries,
 		}
 	}
-	return ssNsn
+	return namespacedSecretSources
+}
+
+// GetSecureSettings returns the secure settings of the ElasticsearchConfigPolicySpec.
+func (e *ElasticsearchConfigPolicySpec) GetSecureSettings() []commonv1.SecretSource {
+	if e == nil {
+		return nil
+	}
+	return e.SecureSettings
 }
 
 type KibanaConfigPolicySpec struct {
@@ -154,6 +153,14 @@ type KibanaConfigPolicySpec struct {
 	// SecureSettings are additional Secrets that contain data to be configured to Kibana's keystore.
 	// +kubebuilder:pruning:PreserveUnknownFields
 	SecureSettings []commonv1.SecretSource `json:"secureSettings,omitempty"`
+}
+
+// GetSecureSettings returns the secure settings of the KibanaConfigPolicySpec.
+func (k *KibanaConfigPolicySpec) GetSecureSettings() []commonv1.SecretSource {
+	if k == nil {
+		return nil
+	}
+	return k.SecureSettings
 }
 
 type ResourceType string
