@@ -106,15 +106,15 @@ func SoftOwnerRefs(obj metav1.Object) ([]SoftOwnerRef, error) {
 
 	// Check for multi-policy ownership (annotation-based)
 	if ownerRefsBytes, exists := obj.GetAnnotations()[SoftOwnerRefsAnnotation]; exists {
-		// Multi-policy soft owned secret - parse the JSON map of owners
-		var ownerRefs map[string]struct{}
-		if err := json.Unmarshal([]byte(ownerRefsBytes), &ownerRefs); err != nil {
+		// Multi-policy soft owned secret - parse the list of owners
+		var ownerRefsSlice []string
+		if err := json.Unmarshal([]byte(ownerRefsBytes), &ownerRefsSlice); err != nil {
 			return nil, err
 		}
 
-		// Convert the map keys (namespaced name strings) back to NamespacedName objects
+		// Convert the list to []SoftOwnerRef
 		var ownerRefsNsn []SoftOwnerRef
-		for nsnStr := range ownerRefs {
+		for _, nsnStr := range ownerRefsSlice {
 			// Split the string format "namespace/name" into components
 			nsnComponents := strings.Split(nsnStr, string(types.Separator))
 			if len(nsnComponents) != 2 {

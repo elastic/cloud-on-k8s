@@ -151,12 +151,12 @@ func Test_setMultipleSoftOwners(t *testing.T) {
 				ownerRefsJSON := secret.Annotations[reconciler.SoftOwnerRefsAnnotation]
 				assert.NotEmpty(t, ownerRefsJSON)
 
-				var ownerRefs map[string]struct{}
+				var ownerRefs []string
 				err = json.Unmarshal([]byte(ownerRefsJSON), &ownerRefs)
 				require.NoError(t, err)
-				assert.EqualValues(t, map[string]struct{}{
-					types.NamespacedName{Name: "policy-1", Namespace: "namespace-1"}.String(): {},
-					types.NamespacedName{Name: "policy-2", Namespace: "namespace-2"}.String(): {},
+				assert.EqualValues(t, []string{
+					types.NamespacedName{Name: "policy-1", Namespace: "namespace-1"}.String(),
+					types.NamespacedName{Name: "policy-2", Namespace: "namespace-2"}.String(),
 				}, ownerRefs)
 			},
 		},
@@ -206,7 +206,7 @@ func Test_removePolicySoftOwner(t *testing.T) {
 						reconciler.SoftOwnerKindLabel: policyv1alpha1.Kind,
 					},
 					Annotations: map[string]string{
-						reconciler.SoftOwnerRefsAnnotation: `{"namespace-1/policy-1":{},"namespace-2/policy-2":{},"namespace-3/policy-3":{}}`,
+						reconciler.SoftOwnerRefsAnnotation: `["namespace-1/policy-1","namespace-2/policy-2","namespace-3/policy-3"]`,
 					},
 				},
 			},
@@ -219,15 +219,15 @@ func Test_removePolicySoftOwner(t *testing.T) {
 				ownerRefsJSON := secret.Annotations[reconciler.SoftOwnerRefsAnnotation]
 				assert.NotEmpty(t, ownerRefsJSON)
 
-				var ownerRefs map[string]struct{}
+				var ownerRefs []string
 				err = json.Unmarshal([]byte(ownerRefsJSON), &ownerRefs)
 				require.NoError(t, err)
 				assert.Len(t, ownerRefs, 2)
 
 				// Verify policy-2 was removed
-				assert.EqualValues(t, map[string]struct{}{
-					"namespace-1/policy-1": {},
-					"namespace-3/policy-3": {},
+				assert.EqualValues(t, []string{
+					"namespace-1/policy-1",
+					"namespace-3/policy-3",
 				}, ownerRefs)
 			},
 		},
@@ -241,7 +241,7 @@ func Test_removePolicySoftOwner(t *testing.T) {
 						reconciler.SoftOwnerKindLabel: policyv1alpha1.Kind,
 					},
 					Annotations: map[string]string{
-						reconciler.SoftOwnerRefsAnnotation: `{"namespace-1/policy-1":{}}`,
+						reconciler.SoftOwnerRefsAnnotation: `["namespace-1/policy-1"]`,
 						"other-annotation":                 "preserved",
 					},
 				},
@@ -365,7 +365,7 @@ func Test_removePolicySoftOwner(t *testing.T) {
 						reconciler.SoftOwnerKindLabel: policyv1alpha1.Kind,
 					},
 					Annotations: map[string]string{
-						reconciler.SoftOwnerRefsAnnotation: `{"namespace-1/policy-1":{},"namespace-2/policy-2":{}}`,
+						reconciler.SoftOwnerRefsAnnotation: `["namespace-1/policy-1","namespace-2/policy-2"]`,
 					},
 				},
 			},
@@ -375,7 +375,7 @@ func Test_removePolicySoftOwner(t *testing.T) {
 				assert.Equal(t, 2, remainingCount)
 
 				// Verify both original policies remain
-				var ownerRefs map[string]struct{}
+				var ownerRefs []string
 				err = json.Unmarshal([]byte(secret.Annotations[reconciler.SoftOwnerRefsAnnotation]), &ownerRefs)
 				require.NoError(t, err)
 				assert.Len(t, ownerRefs, 2)
@@ -409,7 +409,7 @@ func Test_isPolicySoftOwner(t *testing.T) {
 						reconciler.SoftOwnerKindLabel: policyv1alpha1.Kind,
 					},
 					Annotations: map[string]string{
-						reconciler.SoftOwnerRefsAnnotation: `{"namespace-1/policy-1":{},"namespace-2/policy-2":{}}`,
+						reconciler.SoftOwnerRefsAnnotation: `["namespace-1/policy-1","namespace-2/policy-2"]`,
 					},
 				},
 			},
@@ -429,7 +429,7 @@ func Test_isPolicySoftOwner(t *testing.T) {
 						reconciler.SoftOwnerKindLabel: policyv1alpha1.Kind,
 					},
 					Annotations: map[string]string{
-						reconciler.SoftOwnerRefsAnnotation: `{"namespace-1/policy-1":{},"namespace-2/policy-2":{}}`,
+						reconciler.SoftOwnerRefsAnnotation: `["namespace-1/policy-1","namespace-2/policy-2"]`,
 					},
 				},
 			},

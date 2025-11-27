@@ -71,7 +71,7 @@ func Test_newKibanaConfigSecret(t *testing.T) {
 					Annotations: map[string]string{
 						"policy.k8s.elastic.co/kibana-config-hash":      "3077592849",
 						"policy.k8s.elastic.co/secure-settings-secrets": `[{"namespace":"test-policy-ns","secretName":"shared-secret"}]`,
-						"eck.k8s.elastic.co/owner-refs":                 `{"test-policy-ns/test-policy":{}}`,
+						"eck.k8s.elastic.co/owner-refs":                 `["test-policy-ns/test-policy"]`,
 					},
 				},
 				Data: map[string][]byte{
@@ -228,7 +228,7 @@ func MkKibanaConfigSecret(namespace string, owningPolicyName string, owningPolic
 			},
 			Annotations: map[string]string{
 				"policy.k8s.elastic.co/kibana-config-hash": hashValue,
-				"eck.k8s.elastic.co/owner-refs":            `{"` + owningPolicyNamespace + `/` + owningPolicyName + `":{}}`,
+				"eck.k8s.elastic.co/owner-refs":            `["` + owningPolicyNamespace + `/` + owningPolicyName + `"]`,
 			},
 		},
 		Data: map[string][]byte{
