@@ -358,7 +358,12 @@ func (d *defaultDriver) Reconcile(ctx context.Context) *reconciler.Results {
 		if err != nil {
 			return results.WithError(err)
 		} else if requeue {
-			results.WithReconciliationState(defaultRequeue.WithReason("File settings secret is not reconciled"))
+			results.WithReconciliationState(
+				defaultRequeue.WithReason(
+					fmt.Sprintf("This cluster is targeted by at least one StackConfigPolicy, expecting Secret %s to be created by StackConfigPolicy controller",
+						esv1.FileSettingsSecretName(d.ES.Name)),
+				),
+			)
 		}
 	}
 
