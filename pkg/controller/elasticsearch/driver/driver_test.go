@@ -194,11 +194,12 @@ func (f *fakeSecurityClient) withFileTokens(namespacedService, tokenName string,
 }
 
 func Test_maybeReconcileEmptyFileSettingsSecret(t *testing.T) {
+	const operatorNamespace = "elastic-system"
+
 	tests := []struct {
 		name              string
 		es                *esv1.Elasticsearch
 		policies          []policyv1alpha1.StackConfigPolicy
-		operatorNamespace string
 		existingSecrets   []corev1.Secret
 		licenseChecker    commonlicense.Checker
 		wantSecretCreated bool
@@ -216,9 +217,6 @@ func Test_maybeReconcileEmptyFileSettingsSecret(t *testing.T) {
 					},
 				},
 			},
-			policies:          []policyv1alpha1.StackConfigPolicy{},
-			operatorNamespace: "elastic-system",
-			existingSecrets:   []corev1.Secret{},
 			licenseChecker:    commonlicense.MockLicenseChecker{EnterpriseEnabled: true},
 			wantSecretCreated: true,
 			wantRequeue:       false,
@@ -235,9 +233,6 @@ func Test_maybeReconcileEmptyFileSettingsSecret(t *testing.T) {
 					},
 				},
 			},
-			policies:          []policyv1alpha1.StackConfigPolicy{},
-			operatorNamespace: "elastic-system",
-			existingSecrets:   []corev1.Secret{},
 			licenseChecker:    commonlicense.MockLicenseChecker{EnterpriseEnabled: false},
 			wantSecretCreated: true,
 			wantRequeue:       false,
@@ -269,8 +264,6 @@ func Test_maybeReconcileEmptyFileSettingsSecret(t *testing.T) {
 					},
 				},
 			},
-			operatorNamespace: "elastic-system",
-			existingSecrets:   []corev1.Secret{},
 			licenseChecker:    commonlicense.MockLicenseChecker{EnterpriseEnabled: true},
 			wantSecretCreated: false,
 			wantRequeue:       true,
@@ -302,8 +295,6 @@ func Test_maybeReconcileEmptyFileSettingsSecret(t *testing.T) {
 					},
 				},
 			},
-			operatorNamespace: "elastic-system",
-			existingSecrets:   []corev1.Secret{},
 			licenseChecker:    commonlicense.MockLicenseChecker{EnterpriseEnabled: true},
 			wantSecretCreated: false,
 			wantRequeue:       true,
@@ -335,8 +326,6 @@ func Test_maybeReconcileEmptyFileSettingsSecret(t *testing.T) {
 					},
 				},
 			},
-			operatorNamespace: "elastic-system",
-			existingSecrets:   []corev1.Secret{},
 			licenseChecker:    commonlicense.MockLicenseChecker{EnterpriseEnabled: true},
 			wantSecretCreated: true,
 			wantRequeue:       false,
@@ -368,8 +357,6 @@ func Test_maybeReconcileEmptyFileSettingsSecret(t *testing.T) {
 					},
 				},
 			},
-			operatorNamespace: "elastic-system",
-			existingSecrets:   []corev1.Secret{},
 			licenseChecker:    commonlicense.MockLicenseChecker{EnterpriseEnabled: true},
 			wantSecretCreated: true,
 			wantRequeue:       false,
@@ -415,8 +402,6 @@ func Test_maybeReconcileEmptyFileSettingsSecret(t *testing.T) {
 					},
 				},
 			},
-			operatorNamespace: "elastic-system",
-			existingSecrets:   []corev1.Secret{},
 			licenseChecker:    commonlicense.MockLicenseChecker{EnterpriseEnabled: true},
 			wantSecretCreated: false,
 			wantRequeue:       true,
@@ -438,7 +423,7 @@ func Test_maybeReconcileEmptyFileSettingsSecret(t *testing.T) {
 
 			c := k8s.NewFakeClient(initObjs...)
 
-			requeue, err := maybeReconcileEmptyFileSettingsSecret(t.Context(), c, tt.licenseChecker, tt.es, tt.operatorNamespace)
+			requeue, err := maybeReconcileEmptyFileSettingsSecret(t.Context(), c, tt.licenseChecker, tt.es, operatorNamespace)
 
 			// Check error expectation
 			if tt.wantErr {
