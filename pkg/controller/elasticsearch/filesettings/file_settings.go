@@ -7,12 +7,14 @@ package filesettings
 import (
 	"fmt"
 	"path/filepath"
+	"sort"
 
 	"k8s.io/apimachinery/pkg/types"
 
 	commonv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/common/v1"
 	policyv1alpha1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/stackconfigpolicy/v1alpha1"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/hash"
+	commonsettings "github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/settings"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/version"
 )
 
@@ -80,10 +82,39 @@ func newEmptySettingsState() SettingsState {
 	}
 }
 
+// updateStateFromPolicies merges settings from multiple StackConfigPolicies based on their weights.
+// Lower weight policies override higher weight policies for conflicting settings.
+func (s *Settings) updateStateFromPolicies(es types.NamespacedName, policies []policyv1alpha1.StackConfigPolicy) error {
+	if len(policies) == 0 {
+		return nil
+	}
+
+	sortedPolicies := make([]policyv1alpha1.StackConfigPolicy, len(policies))
+	copy(sortedPolicies, policies)
+
+	// sort by weight (descending order)
+	sort.SliceStable(sortedPolicies, func(i, j int) bool {
+		return sortedPolicies[i].Spec.Weight > sortedPolicies[j].Spec.Weight
+	})
+
+	for _, policy := range sortedPolicies {
+		if err := s.updateState(es, policy); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
 // updateState updates the Settings state from a StackConfigPolicy for a given Elasticsearch.
 func (s *Settings) updateState(es types.NamespacedName, policy policyv1alpha1.StackConfigPolicy) error {
 	p := policy.DeepCopy() // be sure to not mutate the original policy
-	state := newEmptySettingsState()
+
+	// Initialize state if not already done
+	if s.State.ClusterSettings == nil {
+		s.State = newEmptySettingsState()
+	}
+
 	// mutate Snapshot Repositories
 	if p.Spec.Elasticsearch.SnapshotRepositories != nil {
 		for name, untypedDefinition := range p.Spec.Elasticsearch.SnapshotRepositories.Data {
@@ -97,32 +128,95 @@ func (s *Settings) updateState(es types.NamespacedName, policy policyv1alpha1.St
 			}
 			p.Spec.Elasticsearch.SnapshotRepositories.Data[name] = repoSettings
 		}
-		state.SnapshotRepositories = p.Spec.Elasticsearch.SnapshotRepositories
+		s.State.SnapshotRepositories = mergeConfig(s.State.SnapshotRepositories, p.Spec.Elasticsearch.SnapshotRepositories)
 	}
-	// just copy other settings
 	if p.Spec.Elasticsearch.ClusterSettings != nil {
-		state.ClusterSettings = p.Spec.Elasticsearch.ClusterSettings
+		s.State.ClusterSettings = mergeClusterConfig(s.State.ClusterSettings, p.Spec.Elasticsearch.ClusterSettings)
 	}
 	if p.Spec.Elasticsearch.SnapshotLifecyclePolicies != nil {
-		state.SLM = p.Spec.Elasticsearch.SnapshotLifecyclePolicies
+		s.State.SLM = mergeConfig(s.State.SLM, p.Spec.Elasticsearch.SnapshotLifecyclePolicies)
 	}
 	if p.Spec.Elasticsearch.SecurityRoleMappings != nil {
-		state.RoleMappings = p.Spec.Elasticsearch.SecurityRoleMappings
+		s.State.RoleMappings = mergeConfig(s.State.RoleMappings, p.Spec.Elasticsearch.SecurityRoleMappings)
 	}
 	if p.Spec.Elasticsearch.IndexLifecyclePolicies != nil {
-		state.IndexLifecyclePolicies = p.Spec.Elasticsearch.IndexLifecyclePolicies
+		s.State.IndexLifecyclePolicies = mergeConfig(s.State.IndexLifecyclePolicies, p.Spec.Elasticsearch.IndexLifecyclePolicies)
 	}
 	if p.Spec.Elasticsearch.IngestPipelines != nil {
-		state.IngestPipelines = p.Spec.Elasticsearch.IngestPipelines
+		s.State.IngestPipelines = mergeConfig(s.State.IngestPipelines, p.Spec.Elasticsearch.IngestPipelines)
 	}
 	if p.Spec.Elasticsearch.IndexTemplates.ComposableIndexTemplates != nil {
-		state.IndexTemplates.ComposableIndexTemplates = p.Spec.Elasticsearch.IndexTemplates.ComposableIndexTemplates
+		s.State.IndexTemplates.ComposableIndexTemplates = mergeConfig(s.State.IndexTemplates.ComposableIndexTemplates, p.Spec.Elasticsearch.IndexTemplates.ComposableIndexTemplates)
 	}
 	if p.Spec.Elasticsearch.IndexTemplates.ComponentTemplates != nil {
-		state.IndexTemplates.ComponentTemplates = p.Spec.Elasticsearch.IndexTemplates.ComponentTemplates
+		s.State.IndexTemplates.ComponentTemplates = mergeConfig(s.State.IndexTemplates.ComponentTemplates, p.Spec.Elasticsearch.IndexTemplates.ComponentTemplates)
 	}
-	s.State = state
 	return nil
+}
+
+// mergeClusterConfig merges source config into target config with flat/nested syntax support.
+// Both flat syntax (e.g., "cluster.routing.allocation.enable") and nested syntax
+// (e.g., {"cluster": {"routing": {"allocation": {"enable": "value"}}}}) are supported.
+// All settings are normalized to nested format for consistent output.
+func mergeClusterConfig(target, source *commonv1.Config) *commonv1.Config {
+	if source == nil || source.Data == nil {
+		return target
+	}
+	if target == nil || target.Data == nil {
+		target = &commonv1.Config{Data: make(map[string]interface{})}
+	}
+
+	// Convert to CanonicalConfig for proper dot notation handling
+	targetCanonical, err := commonsettings.NewCanonicalConfigFrom(target.Data)
+	if err != nil {
+		return target
+	}
+
+	sourceCanonical, err := commonsettings.NewCanonicalConfigFrom(source.Data)
+	if err != nil {
+		return target
+	}
+
+	// Merge with source taking precedence
+	err = targetCanonical.MergeWith(sourceCanonical)
+	if err != nil {
+		return target
+	}
+
+	// Convert back to commonv1.Config
+	var result map[string]interface{}
+	err = targetCanonical.Unpack(&result)
+	if err != nil {
+		return target
+	}
+
+	return &commonv1.Config{Data: result}
+}
+
+// mergeConfig merges source config into target config for non-cluster settings.
+// This is a simple merge without flat/nested syntax support since only ClusterSettings
+// support dot notation in Elasticsearch.
+func mergeConfig(target, source *commonv1.Config) *commonv1.Config {
+	if source == nil || source.Data == nil {
+		return target
+	}
+	if target == nil || target.Data == nil {
+		target = &commonv1.Config{Data: make(map[string]interface{})}
+	}
+
+	result := &commonv1.Config{Data: make(map[string]interface{})}
+
+	// Copy target data
+	for key, value := range target.Data {
+		result.Data[key] = value
+	}
+
+	// Merge source data, with source taking precedence
+	for key, value := range source.Data {
+		result.Data[key] = value
+	}
+
+	return result
 }
 
 // mutateSnapshotRepositorySettings ensures that a snapshot repository can be used across multiple ES clusters.

@@ -17,6 +17,8 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/labels"
+	"k8s.io/apimachinery/pkg/selection"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/tools/record"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -233,6 +235,13 @@ func (r *ReconcileStackConfigPolicy) doReconcile(ctx context.Context, policy pol
 		return results.WithError(err), status
 	}
 
+	// check for weight conflicts with other policies
+	if err := r.checkWeightConflicts(ctx, &policy); err != nil {
+		status.Phase = policyv1alpha1.ConflictPhase
+		r.recorder.Eventf(&policy, corev1.EventTypeWarning, events.EventReasonValidation, err.Error())
+		return results.WithError(err), status
+	}
+
 	// reconcile elasticsearch resources
 	results, status = r.reconcileElasticsearchResources(ctx, policy, status)
 
@@ -248,6 +257,64 @@ func (r *ReconcileStackConfigPolicy) doReconcile(ctx context.Context, policy pol
 	}
 
 	return results, status
+}
+
+// findPoliciesForElasticsearch finds all StackConfigPolicies that target a given Elasticsearch cluster
+func (r *ReconcileStackConfigPolicy) findPoliciesForElasticsearch(ctx context.Context, es esv1.Elasticsearch) ([]policyv1alpha1.StackConfigPolicy, error) {
+	var allPolicies policyv1alpha1.StackConfigPolicyList
+	err := r.Client.List(ctx, &allPolicies)
+	if err != nil {
+		return nil, err
+	}
+
+	var matchingPolicies []policyv1alpha1.StackConfigPolicy
+	for _, policy := range allPolicies.Items {
+		// Check if policy's resource selector matches this Elasticsearch
+		selector, err := metav1.LabelSelectorAsSelector(&policy.Spec.ResourceSelector)
+		if err != nil {
+			continue // Skip malformed selectors
+		}
+
+		// Check namespace restrictions
+		if policy.Namespace != r.params.OperatorNamespace && policy.Namespace != es.Namespace {
+			continue
+		}
+
+		if selector.Matches(labels.Set(es.Labels)) {
+			matchingPolicies = append(matchingPolicies, policy)
+		}
+	}
+
+	return matchingPolicies, nil
+}
+
+// findPoliciesForKibana finds all StackConfigPolicies that target a given Kibana instance
+func (r *ReconcileStackConfigPolicy) findPoliciesForKibana(ctx context.Context, kibana kibanav1.Kibana) ([]policyv1alpha1.StackConfigPolicy, error) {
+	var allPolicies policyv1alpha1.StackConfigPolicyList
+	err := r.Client.List(ctx, &allPolicies)
+	if err != nil {
+		return nil, err
+	}
+
+	var matchingPolicies []policyv1alpha1.StackConfigPolicy
+	for _, policy := range allPolicies.Items {
+		// Check if policy's resource selector matches this Kibana
+		selector, err := metav1.LabelSelectorAsSelector(&policy.Spec.ResourceSelector)
+		if err != nil {
+			continue // Skip malformed selectors
+		}
+
+		// Check namespace restrictions
+		if policy.Namespace != r.params.OperatorNamespace && policy.Namespace != kibana.Namespace {
+			continue
+		}
+
+		if selector.Matches(labels.Set(kibana.Labels)) {
+			matchingPolicies = append(matchingPolicies, policy)
+		}
+	}
+
+	return matchingPolicies, nil
 }
 
 func (r *ReconcileStackConfigPolicy) reconcileElasticsearchResources(ctx context.Context, policy policyv1alpha1.StackConfigPolicy, status policyv1alpha1.StackConfigPolicyStatus) (*reconciler.Results, policyv1alpha1.StackConfigPolicyStatus) {
@@ -311,23 +378,29 @@ func (r *ReconcileStackConfigPolicy) reconcileElasticsearchResources(ctx context
 			return results.WithError(err), status
 		}
 
-		// check that there is no other policy that already owns the Settings Secret
-		currentOwner, ok := filesettings.CanBeOwnedBy(actualSettingsSecret, policy)
-		if !ok {
-			err = fmt.Errorf("conflict: resource Elasticsearch %s/%s already configured by StackConfigpolicy %s/%s", es.Namespace, es.Name, currentOwner.Namespace, currentOwner.Name)
-			r.recorder.Eventf(&policy, corev1.EventTypeWarning, events.EventReasonUnexpected, err.Error())
-			results.WithError(err)
-			err = status.AddPolicyErrorFor(esNsn, policyv1alpha1.ConflictPhase, err.Error(), policyv1alpha1.ElasticsearchResourceType)
-			if err != nil {
-				return results.WithError(err), status
-			}
-			continue
+		// Find all policies that target this Elasticsearch cluster
+		allPolicies, err := r.findPoliciesForElasticsearch(ctx, es)
+		if err != nil {
+			return results.WithError(err), status
 		}
 
 		// extract the metadata that should be propagated to children
 		meta := metadata.Propagate(&es, metadata.Metadata{Labels: eslabel.NewLabels(k8s.ExtractNamespacedName(&es))})
-		// create the expected Settings Secret
-		expectedSecret, expectedVersion, err := filesettings.NewSettingsSecretWithVersion(esNsn, &actualSettingsSecret, &policy, meta)
+
+		// create the expected Settings Secret from all applicable policies
+		var expectedSecret corev1.Secret
+		var expectedVersion int64
+		switch len(allPolicies) {
+		case 0:
+			// No policies target this resource - skip (shouldn't happen in practice)
+			continue
+		case 1:
+			// Single policy - use the original approach for backward compatibility
+			expectedSecret, expectedVersion, err = filesettings.NewSettingsSecretWithVersion(esNsn, &actualSettingsSecret, &allPolicies[0], meta)
+		default:
+			// Multiple policies - use the multi-policy approach
+			expectedSecret, expectedVersion, err = filesettings.NewSettingsSecretWithVersionFromPolicies(esNsn, &actualSettingsSecret, allPolicies, meta)
+		}
 		if err != nil {
 			return results.WithError(err), status
 		}
@@ -336,8 +409,8 @@ func (r *ReconcileStackConfigPolicy) reconcileElasticsearchResources(ctx context
 			return results.WithError(err), status
 		}
 
-		// Copy all the Secrets that are present in spec.elasticsearch.secretMounts
-		if err := reconcileSecretMounts(ctx, r.Client, es, &policy, meta); err != nil {
+		// Handle secret mounts and config from all policies
+		if err := r.reconcileSecretMountsFromPolicies(ctx, es, allPolicies, meta); err != nil {
 			if apierrors.IsNotFound(err) {
 				err = status.AddPolicyErrorFor(esNsn, policyv1alpha1.ErrorPhase, err.Error(), policyv1alpha1.ElasticsearchResourceType)
 				if err != nil {
@@ -348,8 +421,8 @@ func (r *ReconcileStackConfigPolicy) reconcileElasticsearchResources(ctx context
 			continue
 		}
 
-		// create expected elasticsearch config secret
-		expectedConfigSecret, err := newElasticsearchConfigSecret(policy, es)
+		// create expected elasticsearch config secret from all policies
+		expectedConfigSecret, err := r.newElasticsearchConfigSecretFromPolicies(allPolicies, es)
 		if err != nil {
 			return results.WithError(err), status
 		}
@@ -358,8 +431,8 @@ func (r *ReconcileStackConfigPolicy) reconcileElasticsearchResources(ctx context
 			return results.WithError(err), status
 		}
 
-		// Check if required Elasticsearch config and secret mounts are applied.
-		configAndSecretMountsApplied, err := elasticsearchConfigAndSecretMountsApplied(ctx, r.Client, policy, es)
+		// Check if required Elasticsearch config and secret mounts are applied from all policies.
+		configAndSecretMountsApplied, err := r.elasticsearchConfigAndSecretMountsAppliedFromPolicies(ctx, allPolicies, es)
 		if err != nil {
 			return results.WithError(err), status
 		}
@@ -430,29 +503,40 @@ func (r *ReconcileStackConfigPolicy) reconcileKibanaResources(ctx context.Contex
 		// keep the list of Kibana to be configured
 		kibanaNsn := k8s.ExtractNamespacedName(&kibana)
 
-		// check that there is no other policy that already owns the kibana config secret
-		currentOwner, ok, err := canBeOwned(ctx, r.Client, policy, kibana)
+		// Find all policies that target this Kibana instance
+		allPolicies, err := r.findPoliciesForKibana(ctx, kibana)
 		if err != nil {
 			return results.WithError(err), status
 		}
 
-		// record error if already owned by another stack config policy
-		if !ok {
-			err := fmt.Errorf("conflict: resource Kibana %s/%s already configured by StackConfigpolicy %s/%s", kibana.Namespace, kibana.Name, currentOwner.Namespace, currentOwner.Name)
-			r.recorder.Eventf(&policy, corev1.EventTypeWarning, events.EventReasonUnexpected, err.Error())
-			results.WithError(err)
-			if err := status.AddPolicyErrorFor(kibanaNsn, policyv1alpha1.ConflictPhase, err.Error(), policyv1alpha1.KibanaResourceType); err != nil {
-				return results.WithError(err), status
+		// Check if any policy has Kibana config
+		hasKibanaConfig := false
+		for _, p := range allPolicies {
+			if p.Spec.Kibana.Config != nil {
+				hasKibanaConfig = true
+				break
 			}
-			continue
 		}
 
-		// Create the Secret that holds the Kibana configuration.
-		if policy.Spec.Kibana.Config != nil {
-			// Only add to configured resources if Kibana config is set.
-			// This will help clean up the config secret if config gets removed from the stack config policy.
+		// Create the Secret that holds the Kibana configuration from all policies.
+		if hasKibanaConfig {
+			// Only add to configured resources if at least one policy has Kibana config set.
 			configuredResources[kibanaNsn] = kibana
-			expectedConfigSecret, err := newKibanaConfigSecret(policy, kibana)
+
+			var expectedConfigSecret corev1.Secret
+
+			switch len(allPolicies) {
+			case 0:
+				// No policies target this resource - skip (shouldn't happen in practice)
+				continue
+			case 1:
+				// Single policy - use the original approach for backward compatibility
+				expectedConfigSecret, err = newKibanaConfigSecret(allPolicies[0], kibana)
+			default:
+				// Multiple policies - use the multi-policy approach
+				expectedConfigSecret, err = r.newKibanaConfigSecretFromPolicies(allPolicies, kibana)
+			}
+
 			if err != nil {
 				return results.WithError(err), status
 			}
@@ -462,8 +546,18 @@ func (r *ReconcileStackConfigPolicy) reconcileKibanaResources(ctx context.Contex
 			}
 		}
 
-		// Check if required Kibana configs are applied.
-		configApplied, err := kibanaConfigApplied(r.Client, policy, kibana)
+		// Check if required Kibana configs from all policies are applied.
+		var configApplied bool
+
+		switch len(allPolicies) {
+		case 0:
+			// No policies, so nothing to apply
+			configApplied = true
+		case 1:
+			configApplied, err = kibanaConfigApplied(r.Client, allPolicies[0], kibana)
+		default:
+			configApplied, err = r.kibanaConfigAppliedFromPolicies(allPolicies, kibana)
+		}
 		if err != nil {
 			return results.WithError(err), status
 		}
@@ -753,4 +847,266 @@ func (r *ReconcileStackConfigPolicy) addDynamicWatchesOnAdditionalSecretMounts(p
 
 func additionalSecretMountsWatcherName(watcher types.NamespacedName) string {
 	return fmt.Sprintf("%s-%s-additional-secret-mounts-watcher", watcher.Name, watcher.Namespace)
+}
+
+// checkWeightConflicts validates that no other StackConfigPolicy has the same weight
+// and would create conflicting configuration for the same resources
+func (r *ReconcileStackConfigPolicy) checkWeightConflicts(ctx context.Context, policy *policyv1alpha1.StackConfigPolicy) error {
+	var allPolicies policyv1alpha1.StackConfigPolicyList
+	if err := r.Client.List(ctx, &allPolicies); err != nil {
+		return fmt.Errorf("failed to list StackConfigPolicies for weight conflict check: %w", err)
+	}
+
+	policySelector, err := metav1.LabelSelectorAsSelector(&policy.Spec.ResourceSelector)
+	if err != nil {
+		return fmt.Errorf("invalid resource selector: %w", err)
+	}
+
+	// Group policies by weight to detect conflicts more efficiently
+	policiesByWeight := make(map[int32][]policyv1alpha1.StackConfigPolicy)
+	for _, otherPolicy := range allPolicies.Items {
+		// Skip self
+		if otherPolicy.Namespace == policy.Namespace && otherPolicy.Name == policy.Name {
+			continue
+		}
+		policiesByWeight[otherPolicy.Spec.Weight] = append(policiesByWeight[otherPolicy.Spec.Weight], otherPolicy)
+	}
+
+	// Check if any policies with the same weight could target overlapping resources and have conflicting settings
+	conflictingPolicies := policiesByWeight[policy.Spec.Weight]
+	if len(conflictingPolicies) == 0 {
+		return nil // No conflicts
+	}
+
+	for _, otherPolicy := range conflictingPolicies {
+		if r.policiesCouldOverlap(policy, &otherPolicy, policySelector) {
+			// Check if the policies have conflicting settings
+			if r.policiesHaveConflictingSettings(policy, &otherPolicy) {
+				return fmt.Errorf("weight conflict detected: StackConfigPolicy %s/%s has the same weight (%d) and would overwrite conflicting settings. Policies with the same weight that target overlapping resources must configure different, non-conflicting settings",
+					otherPolicy.Namespace, otherPolicy.Name, policy.Spec.Weight)
+			}
+		}
+	}
+
+	return nil
+}
+
+// policiesHaveConflictingSettings checks if two policies would configure conflicting settings
+// that would overwrite each other. Returns true if both policies configure the same setting keys,
+// or if both policies have completely empty configurations (to maintain existing behavior).
+func (r *ReconcileStackConfigPolicy) policiesHaveConflictingSettings(policy1, policy2 *policyv1alpha1.StackConfigPolicy) bool {
+	// Check if both policies are essentially empty (no meaningful configuration)
+	if r.policyIsEmpty(policy1) && r.policyIsEmpty(policy2) {
+		return true // Both empty policies would conflict in the same namespace/selectors
+	}
+
+	// Check Elasticsearch settings for conflicts
+	if r.elasticsearchSettingsConflict(policy1, policy2) {
+		return true
+	}
+
+	// Check Kibana settings for conflicts
+	if r.kibanaSettingsConflict(policy1, policy2) {
+		return true
+	}
+
+	return false
+}
+
+// policyIsEmpty checks if a policy has no meaningful configuration
+func (r *ReconcileStackConfigPolicy) policyIsEmpty(policy *policyv1alpha1.StackConfigPolicy) bool {
+	es := &policy.Spec.Elasticsearch
+	kb := &policy.Spec.Kibana
+
+	// Check if Elasticsearch settings are empty
+	esEmpty := (es.ClusterSettings == nil || len(es.ClusterSettings.Data) == 0) &&
+		(es.SnapshotRepositories == nil || len(es.SnapshotRepositories.Data) == 0) &&
+		(es.SnapshotLifecyclePolicies == nil || len(es.SnapshotLifecyclePolicies.Data) == 0) &&
+		(es.SecurityRoleMappings == nil || len(es.SecurityRoleMappings.Data) == 0) &&
+		(es.IndexLifecyclePolicies == nil || len(es.IndexLifecyclePolicies.Data) == 0) &&
+		(es.IngestPipelines == nil || len(es.IngestPipelines.Data) == 0) &&
+		(es.IndexTemplates.ComponentTemplates == nil || len(es.IndexTemplates.ComponentTemplates.Data) == 0) &&
+		(es.IndexTemplates.ComposableIndexTemplates == nil || len(es.IndexTemplates.ComposableIndexTemplates.Data) == 0) &&
+		(es.Config == nil || len(es.Config.Data) == 0) &&
+		len(es.SecretMounts) == 0
+
+	// Check if Kibana settings are empty
+	kbEmpty := (kb.Config == nil || len(kb.Config.Data) == 0)
+
+	return esEmpty && kbEmpty
+}
+
+// elasticsearchSettingsConflict checks if two policies have conflicting Elasticsearch settings
+func (r *ReconcileStackConfigPolicy) elasticsearchSettingsConflict(policy1, policy2 *policyv1alpha1.StackConfigPolicy) bool {
+	es1 := &policy1.Spec.Elasticsearch
+	es2 := &policy2.Spec.Elasticsearch
+
+	// Check each type of setting for key conflicts
+	if r.configsConflict(es1.ClusterSettings, es2.ClusterSettings) {
+		return true
+	}
+	if r.configsConflict(es1.SnapshotRepositories, es2.SnapshotRepositories) {
+		return true
+	}
+	if r.configsConflict(es1.SnapshotLifecyclePolicies, es2.SnapshotLifecyclePolicies) {
+		return true
+	}
+	if r.configsConflict(es1.SecurityRoleMappings, es2.SecurityRoleMappings) {
+		return true
+	}
+	if r.configsConflict(es1.IndexLifecyclePolicies, es2.IndexLifecyclePolicies) {
+		return true
+	}
+	if r.configsConflict(es1.IngestPipelines, es2.IngestPipelines) {
+		return true
+	}
+	if r.configsConflict(es1.IndexTemplates.ComponentTemplates, es2.IndexTemplates.ComponentTemplates) {
+		return true
+	}
+	if r.configsConflict(es1.IndexTemplates.ComposableIndexTemplates, es2.IndexTemplates.ComposableIndexTemplates) {
+		return true
+	}
+	if r.configsConflict(es1.Config, es2.Config) {
+		return true
+	}
+
+	// Check secret mounts for path conflicts
+	return r.secretMountsConflict(es1.SecretMounts, es2.SecretMounts)
+}
+
+// kibanaSettingsConflict checks if two policies have conflicting Kibana settings
+func (r *ReconcileStackConfigPolicy) kibanaSettingsConflict(policy1, policy2 *policyv1alpha1.StackConfigPolicy) bool {
+	kb1 := &policy1.Spec.Kibana
+	kb2 := &policy2.Spec.Kibana
+
+	return r.configsConflict(kb1.Config, kb2.Config)
+}
+
+// configsConflict checks if two Config objects have overlapping keys
+func (r *ReconcileStackConfigPolicy) configsConflict(config1, config2 *commonv1.Config) bool {
+	if config1 == nil || config2 == nil || config1.Data == nil || config2.Data == nil {
+		return false
+	}
+
+	// Check if there are any common keys
+	for key := range config1.Data {
+		if _, exists := config2.Data[key]; exists {
+			return true
+		}
+	}
+
+	return false
+}
+
+// secretMountsConflict checks if two sets of secret mounts have overlapping mount paths
+func (r *ReconcileStackConfigPolicy) secretMountsConflict(mounts1, mounts2 []policyv1alpha1.SecretMount) bool {
+	if len(mounts1) == 0 || len(mounts2) == 0 {
+		return false
+	}
+
+	paths1 := make(map[string]bool)
+	for _, mount := range mounts1 {
+		paths1[mount.MountPath] = true
+	}
+
+	for _, mount := range mounts2 {
+		if paths1[mount.MountPath] {
+			return true
+		}
+	}
+
+	return false
+}
+
+// policiesCouldOverlap checks if two policies could potentially target the same resources
+func (r *ReconcileStackConfigPolicy) policiesCouldOverlap(policy1, policy2 *policyv1alpha1.StackConfigPolicy, policy1Selector labels.Selector) bool {
+	// Check namespace-based restrictions first
+	if !r.namespacesCouldOverlap(policy1.Namespace, policy2.Namespace) {
+		return false
+	}
+
+	// Parse policy2 selector
+	policy2Selector, err := metav1.LabelSelectorAsSelector(&policy2.Spec.ResourceSelector)
+	if err != nil {
+		// If we can't parse the selector, assume they could overlap to be safe
+		return true
+	}
+
+	// Check if selectors could match the same labels
+	return r.selectorsCouldOverlap(policy1Selector, policy2Selector)
+}
+
+// namespacesCouldOverlap checks if two policies from different namespaces could target the same resources
+// Based on the controller logic in reconcileElasticsearchResources and reconcileKibanaResources
+func (r *ReconcileStackConfigPolicy) namespacesCouldOverlap(ns1, ns2 string) bool {
+	// If both policies are in the same namespace, they can overlap
+	if ns1 == ns2 {
+		return true
+	}
+
+	// Check if either policy is in the operator namespace (can target resources in other namespaces)
+	if ns1 == r.params.OperatorNamespace || ns2 == r.params.OperatorNamespace {
+		return true
+	}
+
+	// Policies from different non-operator namespaces cannot overlap
+	return false
+}
+
+// selectorsCouldOverlap checks if two label selectors could potentially match the same resources
+func (r *ReconcileStackConfigPolicy) selectorsCouldOverlap(selector1, selector2 labels.Selector) bool {
+	// If either selector matches everything, they overlap
+	if selector1.Empty() || selector2.Empty() {
+		return true
+	}
+
+	// Get requirements for both selectors
+	reqs1, _ := selector1.Requirements()
+	reqs2, _ := selector2.Requirements()
+
+	// Create maps for easier lookup
+	equalsReqs1 := make(map[string]map[string]bool)
+	equalsReqs2 := make(map[string]map[string]bool)
+
+	for _, req := range reqs1 {
+		if req.Operator() == selection.Equals {
+			if equalsReqs1[req.Key()] == nil {
+				equalsReqs1[req.Key()] = make(map[string]bool)
+			}
+			for v := range req.Values() {
+				equalsReqs1[req.Key()][v] = true
+			}
+		}
+	}
+
+	for _, req := range reqs2 {
+		if req.Operator() == selection.Equals {
+			if equalsReqs2[req.Key()] == nil {
+				equalsReqs2[req.Key()] = make(map[string]bool)
+			}
+			for v := range req.Values() {
+				equalsReqs2[req.Key()][v] = true
+			}
+		}
+	}
+
+	// Check for definitely disjoint selectors
+	for key, values1 := range equalsReqs1 {
+		if values2, exists := equalsReqs2[key]; exists {
+			// Both selectors require the same key - check if value sets overlap
+			hasOverlap := false
+			for v := range values1 {
+				if values2[v] {
+					hasOverlap = true
+					break
+				}
+			}
+			if !hasOverlap {
+				return false // Definitely no overlap for this key
+			}
+		}
+	}
+
+	// If we can't prove they're disjoint, assume they could overlap
+	return true
 }
