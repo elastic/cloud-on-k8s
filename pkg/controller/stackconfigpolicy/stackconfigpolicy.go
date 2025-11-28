@@ -59,7 +59,7 @@ func merge[T any](
 
 	policiesByWeight := make(map[int32]policyv1alpha1.StackConfigPolicy)
 	for _, p := range allPolicies {
-		matches, err := doesPolicyMatchObject(&p, obj, operatorNamespace)
+		matches, err := DoesPolicyMatchObject(&p, obj, operatorNamespace)
 		if err != nil {
 			return err
 		}
@@ -203,28 +203,33 @@ func getConfigPolicyForKibana(kbn *kbv1.Kibana, allPolicies []policyv1alpha1.Sta
 	return cfgPolicy, nil
 }
 
-// doesPolicyMatchObject checks if the given StackConfigPolicy targets the given object.
+// DoesPolicyMatchObject checks if the given StackConfigPolicy targets the given object (e.g., Elasticsearch or Kibana).
 // A policy targets an object if both following conditions are met:
 // 1. The policy is in either the operator namespace or the same namespace as the object
 // 2. The policy's label selector matches the object's labels
 // Returns true if the policy targets the object, false otherwise, and an error if the label selector is invalid.
-func doesPolicyMatchObject(policy *policyv1alpha1.StackConfigPolicy, obj metav1.Object, operatorNamespace string) (bool, error) {
-	// Convert the label selector to a selector object
-	selector, err := metav1.LabelSelectorAsSelector(&policy.Spec.ResourceSelector)
-	if err != nil {
-		return false, err
-	}
-
-	// Check namespace restrictions; the policy must be in operator namespace or same namespace as the target object
+func DoesPolicyMatchObject(policy *policyv1alpha1.StackConfigPolicy, obj metav1.Object, operatorNamespace string) (bool, error) {
+	// Check namespace restrictions; the policy must be in operator namespace or same namespace as the target object.
+	// This enforces the scoping rules: policies in the operator namespace are global,
+	// policies in other namespaces can only target resources in their own namespace.
 	if policy.Namespace != operatorNamespace && policy.Namespace != obj.GetNamespace() {
 		return false, nil
 	}
 
-	// Check if the label selector matches the Elasticsearch labels
+	// Convert the label selector from the policy spec into a labels.Selector that can be used for matching
+	selector, err := metav1.LabelSelectorAsSelector(&policy.Spec.ResourceSelector)
+	if err != nil {
+		// Return error if the label selector syntax is invalid (e.g., malformed expressions)
+		return false, err
+	}
+
+	// Check if the label selector matches the object's labels.
+	// This is the actual matching logic - does this policy's selector match this object's labels?
 	if !selector.Matches(labels.Set(obj.GetLabels())) {
 		return false, nil
 	}
 
+	// Both conditions met: namespace is valid and labels match
 	return true, nil
 }
 
