@@ -301,6 +301,11 @@ func (c *Client) createPullRequest(repo githubRepository, branchName string) err
 	}
 	if res.StatusCode < 200 || res.StatusCode > 299 {
 		log.Println("ⅹ")
+		// 422 is returned when the PR already exists.
+		if res.StatusCode == http.StatusUnprocessableEntity {
+			log.Printf("Pull request for (%s) seems to exist already. Status code: %d. Ignored\n", repo.repository, res.StatusCode)
+			return nil // ignore the error and return nil
+		}
 		if bodyBytes, err := io.ReadAll(res.Body); err != nil {
 			return fmt.Errorf("while creating draft pr for (%s), body: %s, code: %d", repo.repository, string(bodyBytes), res.StatusCode)
 		}
