@@ -66,6 +66,7 @@ const (
 	AgentImage            Image = "elastic-agent/elastic-agent"
 	MapsImage             Image = "elastic-maps-service/elastic-maps-server"
 	LogstashImage         Image = "logstash/logstash"
+	PackageRegistryImage  Image = "package-registry/distribution"
 )
 
 var MinMapsVersionOnARM = version.MinFor(8, 16, 0)
@@ -101,6 +102,12 @@ func ImageRepository(img Image, ver version.Version) string {
 	// use the global container suffix in non-UBI mode
 	if !useUBISuffix {
 		suffix += containerSuffix
+	}
+
+	// If the image is for the package registry, we want to always
+	// default to using the 'lite' image.
+	if img.Name() == PackageRegistryImage.Name() {
+		return fmt.Sprintf("%s/%s%s:lite-%s", containerRegistry, image, suffix, ver)
 	}
 
 	return fmt.Sprintf("%s/%s%s:%s", containerRegistry, image, suffix, ver)

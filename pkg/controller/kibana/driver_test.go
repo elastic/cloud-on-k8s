@@ -27,6 +27,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/certificates"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/deployment"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/metadata"
+	commonvolume "github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/volume"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/watches"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/settings"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/kibana/initcontainer"
@@ -902,5 +903,124 @@ func mkService() corev1.Service {
 				commonv1.TypeLabelName:      kblabel.Type,
 			},
 		},
+	}
+}
+
+func TestDriver_buildVolumes(t *testing.T) {
+	tests := []struct {
+		name       string
+		kb         *kbv1.Kibana
+		assertions func(t *testing.T, volumes []commonvolume.VolumeLike, err error)
+	}{
+		{
+			name: "without associations",
+			kb: &kbv1.Kibana{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "test-kb",
+					Namespace: "test-ns",
+				},
+				Spec: kbv1.KibanaSpec{
+					Version: "7.10.0",
+				},
+			},
+			assertions: func(t *testing.T, volumes []commonvolume.VolumeLike, err error) {
+				t.Helper()
+				require.NoError(t, err)
+				// Should have default volumes but no association certificate volumes
+				assert.Equal(t, 4, len(volumes)) // DataVolume, ConfigSharedVolume, ConfigVolume, HTTPCertsVolume
+			},
+		},
+		{
+			name: "with EPR association and CA configured",
+			kb: func() *kbv1.Kibana {
+				kb := &kbv1.Kibana{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "test-kb",
+						Namespace: "test-ns",
+						Annotations: map[string]string{
+							"association.k8s.elastic.co/epr-conf": `{"authSecretName":"-","authSecretKey":"","caCertProvided":true,"caSecretName":"test-epr-ca","url":"https://test-epr:8080"}`,
+						},
+					},
+					Spec: kbv1.KibanaSpec{
+						Version: "7.10.0",
+						PackageRegistryRef: commonv1.ObjectSelector{
+							Name: "test-epr",
+						},
+					},
+				}
+				return kb
+			}(),
+			assertions: func(t *testing.T, volumes []commonvolume.VolumeLike, err error) {
+				t.Helper()
+				require.NoError(t, err)
+				// Should have default volumes + EPR certificate volume
+				assert.Equal(t, 5, len(volumes)) // DataVolume, ConfigSharedVolume, ConfigVolume, HTTPCertsVolume, EPRCertsVolume
+
+				// Check that EPR certificate volume is present
+				foundEPRCertsVolume := false
+				for _, vol := range volumes {
+					if vol.Name() == "epr-certs" {
+						foundEPRCertsVolume = true
+						assert.Equal(t, eprCertsVolumeMountPath, vol.VolumeMount().MountPath)
+						break
+					}
+				}
+				assert.True(t, foundEPRCertsVolume, "EPR certificates volume should be present")
+			},
+		},
+		{
+			name: "with multiple associations",
+			kb: func() *kbv1.Kibana {
+				kb := &kbv1.Kibana{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "test-kb",
+						Namespace: "test-ns",
+						Annotations: map[string]string{
+							"association.k8s.elastic.co/es-conf":  `{"authSecretName":"test-es-user","authSecretKey":"token","caCertProvided":true,"caSecretName":"test-es-ca","url":"https://test-es:9200"}`,
+							"association.k8s.elastic.co/epr-conf": `{"authSecretName":"-","authSecretKey":"","caCertProvided":true,"caSecretName":"test-epr-ca","url":"https://test-epr:8080"}`,
+						},
+					},
+					Spec: kbv1.KibanaSpec{
+						Version: "7.10.0",
+						ElasticsearchRef: commonv1.ObjectSelector{
+							Name: "test-es",
+						},
+						PackageRegistryRef: commonv1.ObjectSelector{
+							Name: "test-epr",
+						},
+					},
+				}
+				return kb
+			}(),
+			assertions: func(t *testing.T, volumes []commonvolume.VolumeLike, err error) {
+				t.Helper()
+				require.NoError(t, err)
+				// Should have default volumes + ES certificate volume + EPR certificate volume
+				assert.Equal(t, 6, len(volumes)) // DataVolume, ConfigSharedVolume, ConfigVolume, HTTPCertsVolume, ESCertsVolume, EPRCertsVolume
+
+				// Check that both certificate volumes are present
+				foundESCertsVolume := false
+				foundEPRCertsVolume := false
+				for _, vol := range volumes {
+					if vol.Name() == "elasticsearch-certs" {
+						foundESCertsVolume = true
+						assert.Equal(t, esCertsVolumeMountPath, vol.VolumeMount().MountPath)
+					} else if vol.Name() == "epr-certs" {
+						foundEPRCertsVolume = true
+						assert.Equal(t, eprCertsVolumeMountPath, vol.VolumeMount().MountPath)
+					}
+				}
+				assert.True(t, foundESCertsVolume, "ES certificates volume should be present")
+				assert.True(t, foundEPRCertsVolume, "EPR certificates volume should be present")
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			d := &driver{}
+			volumes, err := d.buildVolumes(tt.kb)
+			tt.assertions(t, volumes, err)
+		})
 	}
 }

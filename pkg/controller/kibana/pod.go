@@ -41,6 +41,7 @@ const (
 	basePathEnvName = "SERVER_BASEPATH"
 	// rewriteBasePathEnvName is the environment variable name that specifies whether Kibana should rewrite requests that are prefixed with server.basePath
 	rewriteBasePathEnvName = "SERVER_REWRITEBASEPATH"
+	nodeExtraCACerts       = "NODE_EXTRA_CA_CERTS"
 )
 
 var (
@@ -173,12 +174,53 @@ func NewPodTemplateSpec(
 			WithInitContainers(keystore.InitContainer)
 	}
 
+	var additionalInitEnvVars []corev1.EnvVar
+	if kb.Spec.PackageRegistryRef.IsDefined() {
+		userNodeExtraCACerts := getUserNodeExtraCACerts(kb)
+		builder, err = withEPRCertsVolume(
+			builder,
+			kb,
+			userNodeExtraCACerts != "",
+		)
+		if err != nil {
+			return corev1.PodTemplateSpec{}, err
+		}
+		if userNodeExtraCACerts != "" {
+			// Pass original user path to init container so it can copy from there
+			additionalInitEnvVars = append(additionalInitEnvVars, corev1.EnvVar{
+				Name:  nodeExtraCACerts,
+				Value: userNodeExtraCACerts,
+			})
+		}
+	}
+
 	builder, err = stackmon.WithMonitoring(ctx, client, builder, kb, basePath, meta)
 	if err != nil {
 		return corev1.PodTemplateSpec{}, err
 	}
 
-	return builder.WithInitContainerDefaults().PodTemplate, nil
+	return builder.WithInitContainerDefaults(additionalInitEnvVars...).PodTemplate, nil
+}
+
+// getUserNodeExtraCACerts extracts the NODE_EXTRA_CA_CERTS environment variable value from the Kibana container spec.
+func getUserNodeExtraCACerts(kb kbv1.Kibana) string {
+	if kb.Spec.PodTemplate.Spec.Containers == nil {
+		return ""
+	}
+
+	for _, container := range kb.Spec.PodTemplate.Spec.Containers {
+		if container.Name != kbv1.KibanaContainerName {
+			continue
+		}
+
+		for _, env := range container.Env {
+			if env.Name == nodeExtraCACerts {
+				return env.Value
+			}
+		}
+	}
+
+	return ""
 }
 
 // GetKibanaContainer returns the Kibana container from the given podSpec.
@@ -248,4 +290,32 @@ func GetKibanaBasePath(kb kbv1.Kibana) (string, error) {
 	}
 
 	return "", nil
+}
+
+// withEPRCertsVolume sets NODE_EXTRA_CA_CERTS environment variable to point to either ca.crt or combined-ca-bundle.crt if the user has already set NODE_EXTRA_CA_CERTS in the podTemplate.
+func withEPRCertsVolume(builder *defaults.PodTemplateBuilder, kb kbv1.Kibana, userProvidedNodeExtraCACerts bool) (*defaults.PodTemplateBuilder, error) {
+	eprAssocConf, err := kb.EPRAssociation().AssociationConf()
+	if err != nil {
+		return nil, err
+	}
+	if !eprAssocConf.CAIsConfigured() {
+		return builder, nil
+	}
+	if !userProvidedNodeExtraCACerts {
+		// User hasn't provided NODE_EXTRA_CA_CERTS, set it to EPR CA path
+		return builder.WithEnv(corev1.EnvVar{Name: nodeExtraCACerts, Value: eprCertsVolumeMountPath + "/ca.crt"}), nil
+	}
+	// User provided NODE_EXTRA_CA_CERTS, init container will create combined bundle
+	// Override the user-provided value by directly modifying the container
+	mainContainer := builder.MainContainer()
+	if mainContainer == nil {
+		return builder, nil
+	}
+	for i, env := range mainContainer.Env {
+		if env.Name == nodeExtraCACerts {
+			mainContainer.Env[i].Value = "/usr/share/kibana/config/combined-ca-bundle.crt"
+			break
+		}
+	}
+	return builder, nil
 }
