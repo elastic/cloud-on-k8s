@@ -279,10 +279,37 @@ func TestReconcileStackConfigPolicy_Reconcile(t *testing.T) {
 			wantRequeueAfter: false,
 		},
 		{
-			name: "Settings secret doesn't exist yet: requeue",
+			name: "Settings secret doesn't exist: policy controller creates it and re-queues waiting for ES to apply settings",
 			args: args{
-				client:         k8s.NewFakeClient(&policyFixture, &esFixture),
-				licenseChecker: &license.MockLicenseChecker{EnterpriseEnabled: true},
+				client:           k8s.NewFakeClient(&policyFixture, &esFixture, secretMountsSecretFixture),
+				licenseChecker:   &license.MockLicenseChecker{EnterpriseEnabled: true},
+				esClientProvider: fakeClientProvider(clusterStateFileSettingsFixture(0, nil), nil),
+			},
+			post: func(r ReconcileStackConfigPolicy, recorder record.FakeRecorder) {
+				// Verify that the file settings secret was created by the StackConfigPolicy controller
+				var secret corev1.Secret
+				err := r.Client.Get(context.Background(), types.NamespacedName{
+					Namespace: "ns",
+					Name:      "test-es-es-file-settings",
+				}, &secret)
+				assert.NoError(t, err, "file settings secret should be created by the policy controller")
+
+				// Verify the secret has proper ownership labels pointing to the policy
+				assert.Equal(t, "StackConfigPolicy", secret.Labels["eck.k8s.elastic.co/owner-kind"])
+				assert.Equal(t, "ns", secret.Labels["eck.k8s.elastic.co/owner-namespace"])
+				assert.Equal(t, "test-policy", secret.Labels["eck.k8s.elastic.co/owner-name"])
+
+				// Verify settings are applied in the secret
+				var settings filesettings.Settings
+				err = json.Unmarshal(secret.Data[filesettings.SettingsSecretKey], &settings)
+				assert.NoError(t, err)
+				assert.Equal(t, "42mb", settings.State.ClusterSettings.Data["indices.recovery.max_bytes_per_sec"])
+
+				// Verify the policy status shows it's applying changes (waiting for ES to pick up the settings)
+				policy := r.getPolicy(t, k8s.ExtractNamespacedName(&policyFixture))
+				assert.Equal(t, 1, policy.Status.Resources)
+				assert.Equal(t, 0, policy.Status.Ready)
+				assert.Equal(t, policyv1alpha1.ApplyingChangesPhase, policy.Status.Phase)
 			},
 			wantErr:          false,
 			wantRequeueAfter: true,
