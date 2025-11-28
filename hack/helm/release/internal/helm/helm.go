@@ -20,9 +20,9 @@ import (
 	"cloud.google.com/go/storage"
 	"google.golang.org/api/googleapi"
 	"gopkg.in/yaml.v3"
-	"helm.sh/helm/v3/pkg/action"
-	"helm.sh/helm/v3/pkg/downloader"
-	"helm.sh/helm/v3/pkg/repo"
+	"helm.sh/helm/v4/pkg/action"
+	"helm.sh/helm/v4/pkg/downloader"
+	"helm.sh/helm/v4/pkg/repo/v1"
 )
 
 const (
