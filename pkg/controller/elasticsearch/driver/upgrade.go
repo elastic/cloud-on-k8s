@@ -207,6 +207,12 @@ func isVersionUpgrade(es esv1.Elasticsearch) (bool, error) {
 	if err != nil {
 		return false, err
 	}
+
+	// If status version is empty, this is a new cluster, not an upgrade
+	if es.Status.Version == "" {
+		return false, nil
+	}
+
 	statusVersion, err := version.Parse(es.Status.Version)
 	if err != nil {
 		return false, err
