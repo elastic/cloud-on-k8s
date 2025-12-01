@@ -49,6 +49,8 @@ type AutoOpsAgentPolicyList struct {
 }
 
 type AutoOpsAgentPolicySpec struct {
+	// Version of the AutoOpsAgentPolicy.
+	Version string `json:"version"`
 	// ResourceSelector is a label selector for the resources to be configured.
 	// Any Elasticsearch instances that match the selector will be configured to send data to AutoOps.
 	ResourceSelector metav1.LabelSelector `json:"resourceSelector,omitempty"`

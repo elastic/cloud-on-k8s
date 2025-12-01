@@ -10,7 +10,6 @@ import (
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/util/validation/field"
 
-	commonv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/common/v1"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/webhook/admission"
 	ulog "github.com/elastic/cloud-on-k8s/v3/pkg/utils/log"
 )
@@ -27,6 +26,7 @@ var (
 	defaultChecks = []func(*AutoOpsAgentPolicy) field.ErrorList{
 		checkNoUnknownFields,
 		checkNameLength,
+		checkSupportedVersion,
 		validSettings,
 	}
 )
@@ -82,14 +82,6 @@ func (p *AutoOpsAgentPolicy) GetWarnings() []string {
 		return nil
 	}
 	return nil
-}
-
-func checkNoUnknownFields(policy *AutoOpsAgentPolicy) field.ErrorList {
-	return commonv1.NoUnknownFields(policy, policy.ObjectMeta)
-}
-
-func checkNameLength(policy *AutoOpsAgentPolicy) field.ErrorList {
-	return commonv1.CheckNameLength(policy)
 }
 
 func validSettings(policy *AutoOpsAgentPolicy) field.ErrorList {

@@ -38,6 +38,9 @@ var (
 	SupportedMapsVersions           = MinMaxVersion{Min: From(7, 11, 0), Max: From(9, 99, 99)}
 	SupportedLogstashVersions       = MinMaxVersion{Min: From(8, 12, 0), Max: From(9, 99, 99)}
 
+	// AutoOpsAgent was introduced in 9.1.0 and is supported on all 9.x versions.
+	SupportedAutoOpsAgentVersions = MinMaxVersion{Min: From(9, 1, 0), Max: From(9, 99, 99)}
+
 	// minPreReleaseVersion is the lowest prerelease identifier as numeric prerelease takes precedence before
 	// alphanumeric ones and it can't have leading zeros.
 	minPreReleaseVersion = mustNewPRVersion("1")
