@@ -2495,6 +2495,11 @@ spec:
                     type: object
                 type: object
                 x-kubernetes-map-type: atomic
+              version:
+                description: Version of the AutoOpsAgentPolicy.
+                type: string
+            required:
+            - version
             type: object
           status:
             properties:

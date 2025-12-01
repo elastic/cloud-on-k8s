@@ -86,7 +86,7 @@ func (r *ReconcileAutoOpsAgentPolicy) deploymentParams(autoops autoopsv1alpha1.A
 		WithLabels(meta.Labels).
 		WithAnnotations(meta.Annotations).
 		WithDockerImage(container.ImageRepository(container.AutoOpsAgentImage, v), v.String()).
-		WithEnv(autoopsEnvVars()...).
+		WithEnv(autoopsEnvVars(es.Name)...).
 		WithVolumes(volumes...).
 		WithVolumeMounts(volumeMounts...).
 		WithContainersSecurityContext(corev1.SecurityContext{
@@ -94,9 +94,16 @@ func (r *ReconcileAutoOpsAgentPolicy) deploymentParams(autoops autoopsv1alpha1.A
 			Capabilities: &corev1.Capabilities{
 				Drop: []corev1.Capability{"ALL"},
 			},
-			Privileged:             ptr.To(false),
-			ReadOnlyRootFilesystem: ptr.To(true),
-			RunAsNonRoot:           ptr.To(true),
+			Privileged: ptr.To(false),
+			// Can't set this to true because of:
+			// failed to build pipelines:
+			// failed to create "metricbeatreceiver" receiver for data type "logs":
+			// error creating metricbeatreceiver: error loading meta data:
+			// failed to create Beat meta file: open data/meta.json.new: read-only file system
+			ReadOnlyRootFilesystem: ptr.To(false),
+			// Can't currently do this because of:
+			// Error: container has runAsNonRoot and image has non-numeric user (elastic-agent)
+			// RunAsNonRoot:           ptr.To(true),
 			SeccompProfile: &corev1.SeccompProfile{
 				Type: corev1.SeccompProfileTypeRuntimeDefault,
 			},
@@ -108,8 +115,8 @@ func (r *ReconcileAutoOpsAgentPolicy) deploymentParams(autoops autoopsv1alpha1.A
 }
 
 // autoopsEnvVars returns the environment variables for the AutoOps deployment
-// that reference values from the autoops-secret.
-func autoopsEnvVars() []corev1.EnvVar {
+// that reference values from the autoops-secret and the ES elastic user secret.
+func autoopsEnvVars(esName string) []corev1.EnvVar {
 	return []corev1.EnvVar{
 		{
 			Name: "AUTOOPS_TOKEN",
@@ -156,13 +163,18 @@ func autoopsEnvVars() []corev1.EnvVar {
 			},
 		},
 		{
-			Name: "ELASTICSEARCH_READ_API_KEY",
+			Name:  "AUTOOPS_ES_USERNAME",
+			Value: "elastic",
+		},
+		{
+			Name: "AUTOOPS_ES_PASSWORD",
 			ValueFrom: &corev1.EnvVarSource{
 				SecretKeyRef: &corev1.SecretKeySelector{
 					LocalObjectReference: corev1.LocalObjectReference{
-						Name: "autoops-secret",
+						Name: esv1.ElasticUserSecret(esName),
 					},
-					Key: "es-api-key",
+					Key:      "elastic",
+					Optional: ptr.To(false),
 				},
 			},
 		},

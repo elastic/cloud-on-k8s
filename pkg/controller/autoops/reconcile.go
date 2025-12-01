@@ -47,10 +47,15 @@ func (r *ReconcileAutoOpsAgentPolicy) doReconcile(ctx context.Context, policy au
 		return results.WithError(err), status
 	}
 
-	return r.internalReconcile(ctx, policy, results, status)
+	if err := ReconcileAutoOpsESConfigMap(ctx, r.Client, policy); err != nil {
+		return results.WithError(err), status
+	}
+
+	result := r.internalReconcile(ctx, policy, results, &status)
+	return result, status
 }
 
-func (r *ReconcileAutoOpsAgentPolicy) internalReconcile(ctx context.Context, policy autoopsv1alpha1.AutoOpsAgentPolicy, results *reconciler.Results, status autoopsv1alpha1.AutoOpsAgentPolicyStatus) (*reconciler.Results, autoopsv1alpha1.AutoOpsAgentPolicyStatus) {
+func (r *ReconcileAutoOpsAgentPolicy) internalReconcile(ctx context.Context, policy autoopsv1alpha1.AutoOpsAgentPolicy, results *reconciler.Results, status *autoopsv1alpha1.AutoOpsAgentPolicyStatus) *reconciler.Results {
 	log := ulog.FromContext(ctx)
 	log.V(1).Info("Internal reconcile AutoOpsAgentPolicy")
 
@@ -58,7 +63,14 @@ func (r *ReconcileAutoOpsAgentPolicy) internalReconcile(ctx context.Context, pol
 	if err := r.Client.List(ctx, &esList, &client.ListOptions{
 		LabelSelector: labels.SelectorFromSet(policy.Spec.ResourceSelector.MatchLabels),
 	}, &client.ListOptions{Namespace: ""}); err != nil {
-		return results.WithError(err), status
+		return results.WithError(err)
+	}
+
+	if len(esList.Items) == 0 {
+		log.Info("No Elasticsearch resources found for the AutoOpsAgentPolicy", "namespace", policy.Namespace, "name", policy.Name)
+		status.Phase = autoopsv1alpha1.NoResourcesPhase
+		status.Resources = len(esList.Items)
+		return results
 	}
 
 	for _, es := range esList.Items {
@@ -70,15 +82,15 @@ func (r *ReconcileAutoOpsAgentPolicy) internalReconcile(ctx context.Context, pol
 		// generate expected resources for the autoops deployment
 		expectedResources, err := r.generateExpectedResources(policy, es)
 		if err != nil {
-			return results.WithError(err), status
+			return results.WithError(err)
 		}
 
 		// Reconcile the deployment
 		_, err = deployment.Reconcile(ctx, r.Client, expectedResources.deployment, &es)
 		if err != nil {
-			return results.WithError(err), status
+			return results.WithError(err)
 		}
 	}
 
-	return results, status
+	return results
 }

@@ -152,7 +152,9 @@ func (r *ReconcileAutoOpsAgentPolicy) updateStatus(ctx context.Context, policy a
 	if status.ObservedGeneration == policy.Status.ObservedGeneration &&
 		status.Resources == policy.Status.Resources &&
 		status.Ready == policy.Status.Ready &&
-		status.Errors == policy.Status.Errors {
+		status.Errors == policy.Status.Errors &&
+		status.Phase == policy.Status.Phase {
+		ulog.FromContext(ctx).V(1).Info("Status is up to date", "iteration", atomic.LoadUint64(&r.iteration), "status", status)
 		return nil // nothing to do
 	}
 

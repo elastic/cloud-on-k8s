@@ -91,6 +91,7 @@ const (
 	ReadyPhase           PolicyPhase = "Ready"
 	ApplyingChangesPhase PolicyPhase = "ApplyingChanges"
 	InvalidPhase         PolicyPhase = "Invalid"
+	NoResourcesPhase     PolicyPhase = "NoResources"
 	ErrorPhase           PolicyPhase = "Error"
 )
 
