@@ -73,7 +73,7 @@ func (r *ReconcileAutoOpsAgentPolicy) internalReconcile(ctx context.Context, pol
 		}
 
 		// generate expected resources for the autoops deployment
-		expectedResources, err := r.generateExpectedResources(ctx, policy, es)
+		expectedResources, err := r.generateExpectedResources(policy, es)
 		if err != nil {
 			return results.WithError(err), status
 		}
