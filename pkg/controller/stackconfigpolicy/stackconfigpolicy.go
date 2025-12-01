@@ -36,8 +36,9 @@ type configPolicy[T any] struct {
 	Spec T
 	// extractFunc extracts the relevant spec (ES or Kibana) from a StackConfigPolicy
 	extractFunc func(p *policyv1alpha1.StackConfigPolicy) (spec T)
-	// mergeFunc merges a source spec into the destination spec, handling conflicts
-	mergeFunc func(dstSpec *T, srcSpec T, srcPolicy *policyv1alpha1.StackConfigPolicy) error
+	// mergeFunc merges a source spec into the destination configPolicy, handling conflicts and aggregating
+	// secret sources and mounts. It receives the entire configPolicy to allow updating both Spec and SecretSources.
+	mergeFunc func(dst *configPolicy[T], srcSpec T, srcPolicy *policyv1alpha1.StackConfigPolicy) error
 	// SecretSources contains aggregated secure settings secret sources, keyed by StackConfigPolicy namespace
 	SecretSources []commonv1.NamespacedSecretSource
 	// PolicyRefs contains references to all policies that targeted and were merged for this object
@@ -85,7 +86,7 @@ func merge[T any](
 
 	for _, p := range c.PolicyRefs {
 		srcSpec := c.extractFunc(&p)
-		if err := c.mergeFunc(&c.Spec, srcSpec, &p); err != nil {
+		if err := c.mergeFunc(c, srcSpec, &p); err != nil {
 			return err
 		}
 	}
@@ -98,35 +99,22 @@ func merge[T any](
 // in order of their weight (lowest to highest). Policies with the same weight are flagged as conflicts.
 // Returns an esPolicyConfig containing the merged configuration and any error occurred during merging.
 func getConfigPolicyForElasticsearch(es *esv1.Elasticsearch, allPolicies []policyv1alpha1.StackConfigPolicy, params operator.Parameters) (*configPolicy[policyv1alpha1.ElasticsearchConfigPolicySpec], error) {
-	mergedPolicies := 0
-	sMntAggr := secretMountsAggregator{}
-	sSrcAggr := secretSourceAggregator{}
+	secretMountsAggr := secretMountsAggregator{}
 	cfgPolicy := &configPolicy[policyv1alpha1.ElasticsearchConfigPolicySpec]{
 		extractFunc: func(p *policyv1alpha1.StackConfigPolicy) policyv1alpha1.ElasticsearchConfigPolicySpec {
 			return p.Spec.Elasticsearch
 		},
-		mergeFunc: func(dst *policyv1alpha1.ElasticsearchConfigPolicySpec, src policyv1alpha1.ElasticsearchConfigPolicySpec, srcPolicy *policyv1alpha1.StackConfigPolicy) error {
+		mergeFunc: func(c *configPolicy[policyv1alpha1.ElasticsearchConfigPolicySpec], src policyv1alpha1.ElasticsearchConfigPolicySpec, srcPolicy *policyv1alpha1.StackConfigPolicy) error {
 			var err error
-			if mergedPolicies == 0 {
-				// First policy: copy directly without merging/canonicalizing to avoid unnecessary differences
-				specCopy := src.DeepCopy()
-				// SecureSettings are aggregated by sSrcAggr
-				specCopy.SecureSettings = nil
-				// SecretMounts are aggregated by sMntAggr
-				specCopy.SecretMounts = nil
-				*dst = *specCopy
-			} else {
-				if err = mergeElasticsearchSpecs(dst, &src); err != nil {
-					return err
-				}
-			}
-
-			if dst.SecretMounts, err = sMntAggr.aggregate(dst.SecretMounts, srcPolicy.Spec.Elasticsearch.SecretMounts, srcPolicy); err != nil {
+			if err = mergeElasticsearchSpecs(&c.Spec, &src); err != nil {
 				return err
 			}
 
-			sSrcAggr.aggregate(srcPolicy.Spec.Elasticsearch.SecureSettings, srcPolicy)
-			mergedPolicies++
+			if c.Spec.SecretMounts, err = secretMountsAggr.mergeInto(c.Spec.SecretMounts, srcPolicy.Spec.Elasticsearch.SecretMounts, srcPolicy); err != nil {
+				return err
+			}
+
+			c.SecretSources = mergeSecretSources(c.SecretSources, srcPolicy.Spec.Elasticsearch.SecureSettings, srcPolicy)
 			return nil
 		},
 	}
@@ -134,7 +122,6 @@ func getConfigPolicyForElasticsearch(es *esv1.Elasticsearch, allPolicies []polic
 	if err := merge(cfgPolicy, es, allPolicies, params.OperatorNamespace); err != nil {
 		return cfgPolicy, err
 	}
-	cfgPolicy.SecretSources = sSrcAggr.namespacedSecretSources
 	return cfgPolicy, nil
 }
 
@@ -170,28 +157,17 @@ func mergeElasticsearchSpecs(dst, src *policyv1alpha1.ElasticsearchConfigPolicyS
 // in order of their weight (lowest to highest). Policies with the same weight are flagged as conflicts.
 // Returns an kbnPolicyConfig containing the merged configuration and any error occurred during merging.
 func getConfigPolicyForKibana(kbn *kbv1.Kibana, allPolicies []policyv1alpha1.StackConfigPolicy, params operator.Parameters) (*configPolicy[policyv1alpha1.KibanaConfigPolicySpec], error) {
-	mergedPolicies := 0
-	sSrcAggr := secretSourceAggregator{}
 	cfgPolicy := &configPolicy[policyv1alpha1.KibanaConfigPolicySpec]{
 		extractFunc: func(p *policyv1alpha1.StackConfigPolicy) policyv1alpha1.KibanaConfigPolicySpec {
 			return p.Spec.Kibana
 		},
-		mergeFunc: func(dst *policyv1alpha1.KibanaConfigPolicySpec, src policyv1alpha1.KibanaConfigPolicySpec, srcPolicy *policyv1alpha1.StackConfigPolicy) error {
-			if mergedPolicies == 0 {
-				// First policy: copy directly without merging/canonicalizing to avoid unnecessary differences
-				specCopy := src.DeepCopy()
-				// SecureSettings are aggregated by sSrcAggr
-				specCopy.SecureSettings = nil
-				*dst = *specCopy
-			} else {
-				var err error
-				if dst.Config, err = deepMergeConfig(dst.Config, src.Config); err != nil {
-					return err
-				}
+		mergeFunc: func(c *configPolicy[policyv1alpha1.KibanaConfigPolicySpec], src policyv1alpha1.KibanaConfigPolicySpec, srcPolicy *policyv1alpha1.StackConfigPolicy) error {
+			var err error
+			if c.Spec.Config, err = deepMergeConfig(c.Spec.Config, src.Config); err != nil {
+				return err
 			}
 
-			sSrcAggr.aggregate(srcPolicy.Spec.Kibana.SecureSettings, srcPolicy)
-			mergedPolicies++
+			c.SecretSources = mergeSecretSources(c.SecretSources, srcPolicy.Spec.Kibana.SecureSettings, srcPolicy)
 			return nil
 		},
 	}
@@ -199,7 +175,6 @@ func getConfigPolicyForKibana(kbn *kbv1.Kibana, allPolicies []policyv1alpha1.Sta
 	if err := merge(cfgPolicy, kbn, allPolicies, params.OperatorNamespace); err != nil {
 		return cfgPolicy, err
 	}
-	cfgPolicy.SecretSources = sSrcAggr.namespacedSecretSources
 	return cfgPolicy, nil
 }
 
@@ -235,23 +210,20 @@ func DoesPolicyMatchObject(policy *policyv1alpha1.StackConfigPolicy, obj metav1.
 
 // deepMergeConfig merges the source Config into the destination Config using canonical configuration merging.
 // The merge is performed at the field level, with source values overriding destination values.
-// If src is nil, dst is returned unchanged. If dst is nil, it is initialized before merging.
+// If src is nil, dst is returned unchanged. If dst is nil, a deep copy of src is returned.
 // Returns the merged config and any error occurred during config parsing or merging.
 func deepMergeConfig(dst *commonv1.Config, src *commonv1.Config) (*commonv1.Config, error) {
 	if src == nil {
 		return dst, nil
 	}
 
-	var dstCanonicalConfig *settings.CanonicalConfig
-	var err error
 	if dst == nil {
-		dst = &commonv1.Config{}
-		dstCanonicalConfig = settings.NewCanonicalConfig()
-	} else {
-		dstCanonicalConfig, err = settings.NewCanonicalConfigFrom(dst.DeepCopy().Data)
-		if err != nil {
-			return nil, err
-		}
+		return src.DeepCopy(), nil
+	}
+
+	dstCanonicalConfig, err := settings.NewCanonicalConfigFrom(dst.DeepCopy().Data)
+	if err != nil {
+		return nil, err
 	}
 
 	srcCanonicalConfig, err := settings.NewCanonicalConfigFrom(src.DeepCopy().Data)
@@ -274,23 +246,20 @@ func deepMergeConfig(dst *commonv1.Config, src *commonv1.Config) (*commonv1.Conf
 // mergeConfig merges the source Config into the destination Config by replacing entire top-level keys.
 // Unlike deepMergeConfig which performs recursive merging, this function replaces each top-level key
 // in dst with the corresponding value from src. Both configs are first canonicalized to ensure
-// consistent structure. If src is nil, dst is returned unchanged. If dst is nil, it is initialized.
+// consistent structure. If src is nil, dst is returned unchanged. If dst is nil, a deep copy of src is returned.
 // Returns the merged config and any error occurred during config parsing or unpacking.
 func mergeConfig(dst *commonv1.Config, src *commonv1.Config) (*commonv1.Config, error) {
 	if src == nil {
 		return dst, nil
 	}
 
-	var dstCanonicalConfig *settings.CanonicalConfig
-	var err error
 	if dst == nil {
-		dst = &commonv1.Config{}
-		dstCanonicalConfig = settings.NewCanonicalConfig()
-	} else {
-		dstCanonicalConfig, err = settings.NewCanonicalConfigFrom(dst.DeepCopy().Data)
-		if err != nil {
-			return nil, err
-		}
+		return src.DeepCopy(), nil
+	}
+
+	dstCanonicalConfig, err := settings.NewCanonicalConfigFrom(dst.DeepCopy().Data)
+	if err != nil {
+		return nil, err
 	}
 
 	srcCanonicalConfig, err := settings.NewCanonicalConfigFrom(src.DeepCopy().Data)
@@ -319,18 +288,24 @@ func mergeConfig(dst *commonv1.Config, src *commonv1.Config) (*commonv1.Config, 
 type secretMountsAggregator struct {
 	policiesByMountPath  map[string]*policyv1alpha1.StackConfigPolicy
 	policiesBySecretName map[string]*policyv1alpha1.StackConfigPolicy
-	appliedPolicies      int
 }
 
-// aggregate merges source secret mounts into destination, checking for conflicts on secret names
-// and mount paths. Returns the merged slice of secret mounts sorted deterministically when
+// mergeInto merges source secret mounts into destination, checking for conflicts on secret names
+// and mount paths. The function validates that no two policies define the same secret name or
+// mount to the same path. Returns the merged slice of secret mounts sorted deterministically when
 // multiple policies have been applied, or an error if conflicts are detected.
-func (s *secretMountsAggregator) aggregate(dst []policyv1alpha1.SecretMount, src []policyv1alpha1.SecretMount, srcPolicy *policyv1alpha1.StackConfigPolicy) ([]policyv1alpha1.SecretMount, error) {
-	if src == nil {
+func (s *secretMountsAggregator) mergeInto(
+	dst []policyv1alpha1.SecretMount,
+	src []policyv1alpha1.SecretMount,
+	srcPolicy *policyv1alpha1.StackConfigPolicy,
+) ([]policyv1alpha1.SecretMount, error) {
+	if len(src) == 0 {
 		return dst, nil
 	}
 
-	s.appliedPolicies++
+	// if both dst and src are non-empty, we need to sort the merge result to guarantee deterministic order.
+	// otherwise, we leave the result as it is to avoid undesired differences
+	shouldSort := len(dst) > 0
 
 	if s.policiesBySecretName == nil {
 		s.policiesBySecretName = make(map[string]*policyv1alpha1.StackConfigPolicy)
@@ -360,9 +335,7 @@ func (s *secretMountsAggregator) aggregate(dst []policyv1alpha1.SecretMount, src
 		dst = append(dst, secretMount)
 	}
 
-	if s.appliedPolicies > 1 {
-		// we want sort only when we have applied more than one policy to guarantee deterministic order, otherwise
-		// leave namespacedSecretSources as they came to not cause undesired differences
+	if shouldSort {
 		slices.SortFunc(dst, func(a, b policyv1alpha1.SecretMount) int {
 			return strings.Compare(a.SecretName, b.SecretName)
 		})
@@ -370,37 +343,39 @@ func (s *secretMountsAggregator) aggregate(dst []policyv1alpha1.SecretMount, src
 	return dst, nil
 }
 
-// secretSourceAggregator aggregates secure settings secret sources from multiple policies.
-// It organizes secret sources by policy namespace and ensures deterministic ordering when
-// multiple policies contribute sources.
-type secretSourceAggregator struct {
-	appliedPolicies         int
-	namespacedSecretSources []commonv1.NamespacedSecretSource
-}
-
-// aggregate merges source secure settings into the aggregator, organizing them by the source
+// mergeSecretSources merges source secure settings into the destination slice, organizing them by the source
 // policy's namespace. Secret sources are sorted deterministically when multiple policies have
-// been applied to ensure consistent results.
-func (s *secretSourceAggregator) aggregate(src []commonv1.SecretSource, srcPolicy *policyv1alpha1.StackConfigPolicy) {
-	if src == nil {
-		return
+// been applied to ensure consistent results. Returns the updated slice of namespaced secret sources.
+func mergeSecretSources(
+	dst []commonv1.NamespacedSecretSource,
+	src []commonv1.SecretSource,
+	srcPolicy *policyv1alpha1.StackConfigPolicy,
+) []commonv1.NamespacedSecretSource {
+	if len(src) == 0 {
+		return dst
 	}
-	s.appliedPolicies++
+
+	// if both dst and src are non-empty, we need to sort the merge result to guarantee deterministic order.
+	// otherwise, we leave the result as it is to avoid undesired differences
+	shouldSort := len(dst) > 0
 
 	srcPolicyNamespace := srcPolicy.GetNamespace()
 	for _, ss := range src {
-		s.namespacedSecretSources = append(s.namespacedSecretSources, commonv1.NamespacedSecretSource{
+		dst = append(dst, commonv1.NamespacedSecretSource{
 			Namespace:  srcPolicyNamespace,
 			SecretName: ss.SecretName,
 			Entries:    ss.Entries,
 		})
 	}
 
-	if s.appliedPolicies > 1 {
-		// we want sort only when we have applied more than one policy to guarantee deterministic order, otherwise
-		// leave namespacedSecretSources as they came to not cause undesired differences
-		slices.SortFunc(s.namespacedSecretSources, func(a, b commonv1.NamespacedSecretSource) int {
+	if shouldSort {
+		slices.SortFunc(dst, func(a, b commonv1.NamespacedSecretSource) int {
+			if nsComp := strings.Compare(a.Namespace, b.Namespace); nsComp != 0 {
+				return nsComp
+			}
 			return strings.Compare(a.SecretName, b.SecretName)
 		})
 	}
+
+	return dst
 }
