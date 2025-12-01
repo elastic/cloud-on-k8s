@@ -1,7 +1,6 @@
 package autoops
 
 import (
-	"context"
 	"path"
 
 	appsv1 "k8s.io/api/apps/v1"
@@ -67,8 +66,9 @@ func (r *ReconcileAutoOpsAgentPolicy) deploymentParams(autoops autoopsv1alpha1.A
 		"autoops.k8s.elastic.co/name": autoops.Name,
 	}
 	deployment.ObjectMeta = metav1.ObjectMeta{
-		Name:   AutoOpsNamer.Suffix(es.Name, "deploy"),
-		Labels: labels,
+		Name:      AutoOpsNamer.Suffix(es.Name, "deploy"),
+		Namespace: es.Namespace,
+		Labels:    labels,
 	}
 	deployment.Spec = appsv1.DeploymentSpec{
 		Replicas: pointer.Int32(1),
@@ -190,8 +190,4 @@ func autoopsEnvVars() []corev1.EnvVar {
 			},
 		},
 	}
-}
-
-func (r *ReconcileAutoOpsAgentPolicy) reconcileExpectedResources(ctx context.Context, es esv1.Elasticsearch, expectedResources ExpectedResources) error {
-	return nil
 }

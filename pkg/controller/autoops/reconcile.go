@@ -10,6 +10,7 @@ import (
 
 	autoopsv1alpha1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/autoops/v1alpha1"
 	esv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/elasticsearch/v1"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/deployment"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/events"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/reconciler"
 	ulog "github.com/elastic/cloud-on-k8s/v3/pkg/utils/log"
@@ -53,12 +54,6 @@ func (r *ReconcileAutoOpsAgentPolicy) internalReconcile(ctx context.Context, pol
 	log := ulog.FromContext(ctx)
 	log.V(1).Info("Internal reconcile AutoOpsAgentPolicy")
 
-	// 1. Search for resources matching the ResourceSelector
-	// 2. For each resource, check if it is ready
-	// 3. If the resource is not ready, requeue with a reasonably long delay
-	// 4. If ready, generate expected resources for the autoops deployment
-	// 5. reconcile the expected resources with the actual resources
-
 	var esList esv1.ElasticsearchList
 	if err := r.Client.List(ctx, &esList, &client.ListOptions{
 		LabelSelector: labels.SelectorFromSet(policy.Spec.ResourceSelector.MatchLabels),
@@ -78,8 +73,9 @@ func (r *ReconcileAutoOpsAgentPolicy) internalReconcile(ctx context.Context, pol
 			return results.WithError(err), status
 		}
 
-		// reconcile the expected resources with the actual resources
-		if err := r.reconcileExpectedResources(ctx, es, expectedResources); err != nil {
+		// Reconcile the deployment
+		_, err = deployment.Reconcile(ctx, r.Client, expectedResources.deployment, &es)
+		if err != nil {
 			return results.WithError(err), status
 		}
 	}
