@@ -81,12 +81,10 @@ func HandleUpscaleAndSpecChanges(
 
 	// If this is not a version upgrade, process all resources normally and return
 	if !isVersionUpgrade {
-		actualStatefulSets, requeue, err := reconcileResources(ctx, actualStatefulSets, adjusted)
+		results, err = reconcileResources(ctx, actualStatefulSets, adjusted)
 		if err != nil {
 			return results, fmt.Errorf("while reconciling resources: %w", err)
 		}
-		results.Requeue = requeue
-		results.ActualStatefulSets = actualStatefulSets
 		return results, nil
 	}
 
@@ -101,8 +99,6 @@ func HandleUpscaleAndSpecChanges(
 	}
 
 	// The only adjustment we want to make to master statefulSets before ensuring that all non-master
-	// statefulSets have been reconciled is to scale up the replicas to the expected number.
-	// The only adjustment we want to make to master statefulSets before ensuring that all non-master
 	// statefulSets have been reconciled is to potentially scale up the replicas
 	// which should happen 1 at a time as we adjust the replicas early.
 	if err = maybeUpscaleMasterResources(ctx, masterResources); err != nil {
@@ -110,14 +106,13 @@ func HandleUpscaleAndSpecChanges(
 	}
 
 	// First, reconcile all non-master resources
-	actualStatefulSets, requeue, err := reconcileResources(ctx, actualStatefulSets, nonMasterResources)
+	results, err = reconcileResources(ctx, actualStatefulSets, nonMasterResources)
 	if err != nil {
 		return results, fmt.Errorf("while reconciling non-master resources: %w", err)
 	}
 	results.ActualStatefulSets = actualStatefulSets
 
-	if requeue {
-		results.Requeue = true
+	if results.Requeue {
 		return results, nil
 	}
 
@@ -132,7 +127,7 @@ func HandleUpscaleAndSpecChanges(
 		actualStatefulSets,
 		expectedResources.StatefulSets(),
 		targetVersion,
-		expectations.NewExpectations(ctx.k8sClient),
+		ctx.expectations,
 	)
 	if err != nil {
 		return results, fmt.Errorf("while checking non-master upgrade status: %w", err)
@@ -147,7 +142,7 @@ func HandleUpscaleAndSpecChanges(
 	}
 
 	// All non-master StatefulSets are upgraded, now process master StatefulSets
-	actualStatefulSets, results.Requeue, err = reconcileResources(ctx, actualStatefulSets, masterResources)
+	results, err = reconcileResources(ctx, actualStatefulSets, masterResources)
 	if err != nil {
 		return results, fmt.Errorf("while reconciling master resources: %w", err)
 	}
@@ -175,7 +170,7 @@ func maybeUpscaleMasterResources(ctx upscaleCtx, masterResources []nodespec.Reso
 		targetReplicas := sset.GetReplicas(res.StatefulSet)
 
 		if actualReplicas < targetReplicas {
-			actualSset.Spec.Replicas = ptr.To[int32](targetReplicas)
+			actualSset.Spec.Replicas = ptr.To(targetReplicas)
 			if err := ctx.k8sClient.Update(ctx.parentCtx, &actualSset); err != nil {
 				return fmt.Errorf("while upscaling master sts replicas: %w", err)
 			}
@@ -263,41 +258,43 @@ func reconcileResources(
 	ctx upscaleCtx,
 	actualStatefulSets es_sset.StatefulSetList,
 	resources []nodespec.Resources,
-) (es_sset.StatefulSetList, bool, error) {
-	requeue := false
+) (UpscaleResults, error) {
+	results := UpscaleResults{
+		ActualStatefulSets: actualStatefulSets,
+	}
 	ulog.FromContext(ctx.parentCtx).Info("Reconciling resources", "resource_size", len(resources))
 	for _, res := range resources {
 		res := res
 		if err := settings.ReconcileConfig(ctx.parentCtx, ctx.k8sClient, ctx.es, res.StatefulSet.Name, res.Config, ctx.meta); err != nil {
-			return actualStatefulSets, false, fmt.Errorf("reconcile config: %w", err)
+			return results, fmt.Errorf("reconcile config: %w", err)
 		}
 		if _, err := common.ReconcileService(ctx.parentCtx, ctx.k8sClient, &res.HeadlessService, &ctx.es); err != nil {
-			return actualStatefulSets, false, fmt.Errorf("reconcile service: %w", err)
+			return results, fmt.Errorf("reconcile service: %w", err)
 		}
 		if actualSset, exists := actualStatefulSets.GetByName(res.StatefulSet.Name); exists {
 			recreateSset, err := handleVolumeExpansion(ctx.parentCtx, ctx.k8sClient, ctx.es, res.StatefulSet, actualSset, ctx.validateStorageClass)
 			if err != nil {
-				return actualStatefulSets, false, fmt.Errorf("handle volume expansion: %w", err)
+				return results, fmt.Errorf("handle volume expansion: %w", err)
 			}
 			if recreateSset {
 				ulog.FromContext(ctx.parentCtx).Info("StatefulSet is scheduled for recreation, requeuing", "name", res.StatefulSet.Name)
 				// The StatefulSet is scheduled for recreation: let's requeue before attempting any further spec change.
-				requeue = true
+				results.Requeue = true
 				continue
 			}
-		} else if !exists {
+		} else {
 			ulog.FromContext(ctx.parentCtx).Info("StatefulSet does not exist", "name", res.StatefulSet.Name)
 		}
 		ulog.FromContext(ctx.parentCtx).Info("Reconciling StatefulSet", "name", res.StatefulSet.Name)
 		reconciled, err := es_sset.ReconcileStatefulSet(ctx.parentCtx, ctx.k8sClient, ctx.es, res.StatefulSet, ctx.expectations)
 		if err != nil {
-			return actualStatefulSets, false, fmt.Errorf("reconcile StatefulSet: %w", err)
+			return results, fmt.Errorf("reconcile StatefulSet: %w", err)
 		}
 		// update actual with the reconciled ones for next steps to work with up-to-date information
-		actualStatefulSets = actualStatefulSets.WithStatefulSet(reconciled)
+		results.ActualStatefulSets = results.ActualStatefulSets.WithStatefulSet(reconciled)
 	}
-	ulog.FromContext(ctx.parentCtx).Info("Resources reconciled", "actualStatefulSets_size", len(actualStatefulSets), "requeue", requeue)
-	return actualStatefulSets, requeue, nil
+	ulog.FromContext(ctx.parentCtx).Info("Resources reconciled", "actualStatefulSets_size", len(results.ActualStatefulSets), "requeue", results.Requeue)
+	return results, nil
 }
 
 // findPendingNonMasterStatefulSetUpgrades finds all non-master StatefulSets that have not completed their upgrades
@@ -357,7 +354,7 @@ func findPendingNonMasterStatefulSetUpgrades(
 			if actualStatefulSet.Status.UpdateRevision != "" && sset.PodRevision(pod) != actualStatefulSet.Status.UpdateRevision {
 				// This pod still needs to be upgraded
 				pendingNonMasterSTS = append(pendingNonMasterSTS, actualStatefulSet)
-				continue
+				break
 			}
 		}
 	}
