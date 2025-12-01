@@ -19,7 +19,6 @@ import (
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/hash"
 	commonlabels "github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/labels"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/reconciler"
-	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/filesettings"
 	eslabel "github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/label"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/k8s"
 
@@ -103,7 +102,7 @@ func reconcileSecretMounts(ctx context.Context, c k8s.Client, es esv1.Elasticsea
 		}
 
 		// Set stackconfigpolicy as a softowner
-		filesettings.SetSoftOwner(&expected, *policy)
+		setSingleSoftOwner(&expected, *policy)
 
 		// Set the secret to be deleted when the stack config policy is deleted.
 		expected.Labels[commonlabels.StackConfigPolicyOnDeleteLabelName] = commonlabels.OrphanSecretDeleteOnPolicyDelete

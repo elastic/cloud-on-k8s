@@ -21,7 +21,6 @@ import (
 	commonannotation "github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/annotation"
 	commonlabel "github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/labels"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/metadata"
-	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/reconciler"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/k8s"
 )
 
@@ -116,16 +115,6 @@ func extractVersion(settingsSecret corev1.Secret) (int64, error) {
 // hasChanged compares the hash of the given new Settings Secret with the hash stored in the annotation of the given Settings Secret.
 func hasChanged(settingsSecret corev1.Secret, newSettings Settings) bool {
 	return settingsSecret.Annotations[commonannotation.SettingsHashAnnotationName] != newSettings.hash()
-}
-
-// SetSoftOwner sets the given StackConfigPolicy as soft owner of the Settings Secret using the "softOwned" labels.
-func SetSoftOwner(settingsSecret *corev1.Secret, policy policyv1alpha1.StackConfigPolicy) {
-	if settingsSecret.Labels == nil {
-		settingsSecret.Labels = map[string]string{}
-	}
-	settingsSecret.Labels[reconciler.SoftOwnerNamespaceLabel] = policy.GetNamespace()
-	settingsSecret.Labels[reconciler.SoftOwnerNameLabel] = policy.GetName()
-	settingsSecret.Labels[reconciler.SoftOwnerKindLabel] = policyv1alpha1.Kind
 }
 
 // setSecureSettings stores the SecureSettings Secret sources referenced in the given StackConfigPolicy in the annotation of the Settings Secret.

@@ -5,179 +5,53 @@
 package stackconfigpolicy
 
 import (
-	"encoding/json"
-
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/types"
-	"k8s.io/apimachinery/pkg/util/sets"
 
 	policyv1alpha1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/stackconfigpolicy/v1alpha1"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/reconciler"
-	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/filesettings"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/k8s"
 )
 
 // setSingleSoftOwner marks a Secret as soft-owned by a single StackConfigPolicy.
-// This uses labels (reconciler.SoftOwnerKindLabel, reconciler.SoftOwnerNameLabel, reconciler.SoftOwnerNamespaceLabel)
-// to store the ownership relationship, allowing the policy to manage
-// the Secret's lifecycle without using Kubernetes OwnerReferences.
 func setSingleSoftOwner(secret *corev1.Secret, policy policyv1alpha1.StackConfigPolicy) {
 	if secret == nil {
 		return
 	}
 
-	if secret.Annotations != nil {
-		// Remove multi-owner annotation if it exists
-		delete(secret.Annotations, reconciler.SoftOwnerRefsAnnotation)
-	}
-
-	filesettings.SetSoftOwner(secret, policy)
+	reconciler.SetSingleSoftOwner(secret, reconciler.SoftOwnerRef{
+		Namespace: policy.GetNamespace(),
+		Name:      policy.GetName(),
+		Kind:      policyv1alpha1.Kind,
+	})
 }
 
 // setMultipleSoftOwners marks a Secret as soft-owned by multiple StackConfigPolicies.
-// Unlike single ownership (which uses labels), multiple ownership stores a JSON-encoded
-// map of owner references in annotations to accommodate multiple policies.
-//
-// The function sets:
-//   - The label reconciler.SoftOwnerKindLabel indicating the soft owner kind to policyv1alpha1.Kind
-//   - The annotation reconciler.SoftOwnerRefsAnnotation containing a JSON map of all owner namespaced names
-//
-// Returns an error if JSON marshaling fails.
 func setMultipleSoftOwners(secret *corev1.Secret, policies []policyv1alpha1.StackConfigPolicy) error {
 	if secret == nil {
 		return nil
 	}
-
-	if secret.Labels == nil {
-		secret.Labels = map[string]string{}
-	} else {
-		// Remove single owner labels if they exist
-		delete(secret.Labels, reconciler.SoftOwnerNamespaceLabel)
-		delete(secret.Labels, reconciler.SoftOwnerNameLabel)
+	ownersNsn := make([]types.NamespacedName, len(policies))
+	for idx, p := range policies {
+		ownersNsn[idx] = k8s.ExtractNamespacedName(&p)
 	}
-
-	// Mark this Secret as being soft-owned by StackConfigPolicy resources
-	secret.Labels[reconciler.SoftOwnerKindLabel] = policyv1alpha1.Kind
-
-	if secret.Annotations == nil {
-		secret.Annotations = map[string]string{}
-	}
-
-	// Build a set of owner references using namespaced names as keys.
-	ownerRefs := sets.Set[string]{}
-	for _, p := range policies {
-		ownerRefs.Insert(k8s.ExtractNamespacedName(&p).String())
-	}
-	// Store the owner references as a JSON-encoded annotation
-	ownerRefsBytes, err := json.Marshal(sets.List(ownerRefs))
-	if err != nil {
-		return err
-	}
-
-	secret.Annotations[reconciler.SoftOwnerRefsAnnotation] = string(ownerRefsBytes)
-	return nil
+	return reconciler.SetMultipleSoftOwners(secret, policyv1alpha1.Kind, ownersNsn)
 }
 
 // isPolicySoftOwner checks if the given StackConfigPolicy is a soft owner of the Secret.
-// It handles both single-owner (reconciler.SoftOwnerNameLabel, reconciler.SoftOwnerNamespaceLabel)
-// and multi-owner (reconciler.SoftOwnerRefsAnnotation) scenarios.
-// Returns true or false depending on whether the policy is an owner of the secret
-// and an error if there's a problem unmarshalling the owner references
 func isPolicySoftOwner(secret *corev1.Secret, policyNsn types.NamespacedName) (bool, error) {
 	if secret == nil {
 		return false, nil
 	}
-
-	// Check if this Secret is soft-owned by a StackConfigPolicy
-	if ownerKind := secret.Labels[reconciler.SoftOwnerKindLabel]; ownerKind != policyv1alpha1.Kind {
-		// Not a policy soft-owned secret
-		return false, nil
-	}
-
-	// Check for multi-policy ownership (annotation-based)
-	if ownerRefsBytes, exists := secret.Annotations[reconciler.SoftOwnerRefsAnnotation]; exists {
-		// Multi-policy soft owned secret - parse the JSON map of owners
-		var ownerRefsSlice []string
-		if err := json.Unmarshal([]byte(ownerRefsBytes), &ownerRefsSlice); err != nil {
-			return false, err
-		}
-
-		ownerRefs := sets.New(ownerRefsSlice...)
-		return ownerRefs.Has(types.NamespacedName{Name: policyNsn.Name, Namespace: policyNsn.Namespace}.String()), nil
-	}
-
-	// Fall back to single-policy ownership (label-based)
-	currentOwner, referenced := reconciler.SoftOwnerRefFromLabels(secret.Labels)
-	if !referenced {
-		// No soft owner found in labels
-		return false, nil
-	}
-
-	// Check if the single owner matches the given policy
-	return currentOwner.Name == policyNsn.Name && currentOwner.Namespace == policyNsn.Namespace, nil
+	return reconciler.IsSoftOwnedBy(secret, policyv1alpha1.Kind, policyNsn)
 }
 
-// removePolicySoftOwner removes a StackConfigPolicy if it is soft owning the given secret.
-// It handles both single-owner (reconciler.SoftOwnerNameLabel, reconciler.SoftOwnerNamespaceLabel)
-// and multi-owner (reconciler.SoftOwnerRefsAnnotation) scenarios.
-//
-// For single-owner secrets:
-//   - If the owner matches, removes all soft owner labels/annotations
-//   - If the owner doesn't match, leaves the secret unchanged
-//
-// For multi-owner secrets:
-//   - Removes the policy from the JSON map in annotations
-//   - Updates the annotation with the remaining owners or removes the annotation if no owners remain
-//
-// Returns the number of remaining owners after removal and an error if there's a problem with JSON marshaling/unmarshalling
+// removePolicySoftOwner removes a StackConfigPolicy from the soft owners of the given secret.
+// Returns the number of remaining owners after removal.
 func removePolicySoftOwner(secret *corev1.Secret, policyNsn types.NamespacedName) (int, error) {
 	if secret == nil {
 		return 0, nil
 	}
 
-	// Check for multi-policy ownership (annotation-based)
-	if ownerRefsBytes, exists := secret.Annotations[reconciler.SoftOwnerRefsAnnotation]; exists {
-		// Multi-policy soft owned secret - parse and update the set
-		var ownerRefsSlice []string
-		if err := json.Unmarshal([]byte(ownerRefsBytes), &ownerRefsSlice); err != nil {
-			return 0, err
-		}
-
-		ownerRefs := sets.New(ownerRefsSlice...)
-		// Remove the specified policy from the set
-		ownerRefs.Delete(types.NamespacedName{Name: policyNsn.Name, Namespace: policyNsn.Namespace}.String())
-		if ownerRefs.Len() == 0 {
-			// No owners remain, remove the annotation
-			delete(secret.Annotations, reconciler.SoftOwnerRefsAnnotation)
-			return 0, nil
-		}
-
-		// Marshal the updated owner list back to JSON
-		ownerRefsBytes, err := json.Marshal(sets.List(ownerRefs))
-		if err != nil {
-			return 0, err
-		}
-
-		// Update the annotation with the new owner list
-		secret.Annotations[reconciler.SoftOwnerRefsAnnotation] = string(ownerRefsBytes)
-		return len(ownerRefs), nil
-	}
-
-	// Handle single-policy ownership (label-based)
-	currentOwner, referenced := reconciler.SoftOwnerRefFromLabels(secret.Labels)
-	if !referenced {
-		// No soft owner found
-		return 0, nil
-	}
-
-	// Check if the single owner matches the policy to be removed
-	if currentOwner.Name == policyNsn.Name && currentOwner.Namespace == policyNsn.Namespace {
-		// Remove the soft owner labels since this was the only owner
-		delete(secret.Labels, reconciler.SoftOwnerNamespaceLabel)
-		delete(secret.Labels, reconciler.SoftOwnerNameLabel)
-		return 0, nil
-	}
-
-	// The policy to remove doesn't match the current owner, so no change
-	return 1, nil
+	return reconciler.RemoveSoftOwner(secret, policyNsn)
 }

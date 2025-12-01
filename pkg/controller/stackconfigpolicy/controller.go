@@ -626,8 +626,7 @@ func resetOrphanSoftOwnedFileSettingSecrets(
 		owned, err := isPolicySoftOwner(&s, softOwner)
 		if err != nil {
 			return err
-		}
-		if !owned {
+		} else if !owned {
 			continue
 		}
 		configuredApplicationType := s.Labels[commonv1.TypeLabelName]
@@ -712,8 +711,7 @@ func deleteOrphanSoftOwnedSecrets(
 		owned, err := isPolicySoftOwner(&secret, softOwner)
 		if err != nil {
 			return err
-		}
-		if !owned {
+		} else if !owned {
 			continue
 		}
 

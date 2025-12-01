@@ -16,6 +16,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/apimachinery/pkg/util/sets"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	policyv1alpha1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/stackconfigpolicy/v1alpha1"
@@ -95,18 +96,192 @@ func SoftOwnerRefFromLabels(labels map[string]string) (SoftOwnerRef, bool) {
 	return SoftOwnerRef{Namespace: namespace, Name: name, Kind: kind}, true
 }
 
+// SetMultipleSoftOwners sets multiple soft owner references to an object.
+// Unlike single ownership (which uses labels), multiple ownership stores a JSON-encoded
+// list of owner references in the SoftOwnerRefsAnnotation annotation to accommodate multiple owners.
+//
+// The function sets:
+//   - The label SoftOwnerKindLabel indicating the soft owner kind (e.g., "StackConfigPolicy")
+//   - The annotation SoftOwnerRefsAnnotation containing a JSON list of all owner namespaced names
+//   - Removes any existing single-owner labels if present
+//
+// Returns an error if JSON marshaling fails.
+func SetMultipleSoftOwners(obj metav1.Object, ownerKind string, owners []types.NamespacedName) error {
+	objLabels := obj.GetLabels()
+	if objLabels == nil {
+		objLabels = map[string]string{}
+	} else {
+		// Remove single owner labels if they exist
+		delete(objLabels, SoftOwnerNamespaceLabel)
+		delete(objLabels, SoftOwnerNameLabel)
+	}
+
+	// Mark this Secret as being soft-owned by ownerKind
+	objLabels[SoftOwnerKindLabel] = ownerKind
+
+	objAnnotations := obj.GetAnnotations()
+	if objAnnotations == nil {
+		objAnnotations = map[string]string{}
+	}
+
+	// Build a set of owner references using namespaced names as keys.
+	ownerRefs := sets.Set[string]{}
+	for _, o := range owners {
+		ownerRefs.Insert(o.String())
+	}
+	// Store the owner references as a JSON-encoded annotation
+	ownerRefsBytes, err := json.Marshal(sets.List(ownerRefs))
+	if err != nil {
+		return err
+	}
+
+	objAnnotations[SoftOwnerRefsAnnotation] = string(ownerRefsBytes)
+	obj.SetAnnotations(objAnnotations)
+	obj.SetLabels(objLabels)
+	return nil
+}
+
+// SetSingleSoftOwner sets a single soft owner reference to an object.
+// This uses labels (SoftOwnerKindLabel, SoftOwnerNameLabel, SoftOwnerNamespaceLabel)
+// to store the ownership relationship, allowing the owner to manage
+// the object's lifecycle without using Kubernetes OwnerReferences.
+// Removes any existing multi-owner annotation if present.
+func SetSingleSoftOwner(obj metav1.Object, owner SoftOwnerRef) {
+	objLabels := obj.GetLabels()
+	if objLabels == nil {
+		objLabels = map[string]string{}
+	}
+
+	objAnnotations := obj.GetAnnotations()
+	if objAnnotations != nil {
+		// Remove multi-owner annotation if it exists
+		delete(objAnnotations, SoftOwnerRefsAnnotation)
+	}
+
+	objLabels[SoftOwnerNamespaceLabel] = owner.Namespace
+	objLabels[SoftOwnerNameLabel] = owner.Name
+	objLabels[SoftOwnerKindLabel] = owner.Kind
+	obj.SetLabels(objLabels)
+	obj.SetAnnotations(objAnnotations)
+}
+
+// RemoveSoftOwner removes a soft owner from an object.
+// It handles both single-owner (label-based) and multi-owner (annotation-based) scenarios.
+//
+// For single-owner objects:
+//   - If the owner matches, removes all soft owner labels
+//   - If the owner doesn't match, leaves the object unchanged
+//
+// For multi-owner objects:
+//   - Removes the owner from the JSON list in the SoftOwnerRefsAnnotation
+//   - Updates the annotation with the remaining owners or removes it if no owners remain
+//
+// Returns the number of remaining owners after removal and an error if there's a problem
+// with JSON marshalling/unmarshalling.
+func RemoveSoftOwner(obj metav1.Object, owner types.NamespacedName) (remainingCount int, err error) {
+	objLabels := obj.GetLabels()
+	if objLabels == nil {
+		return 0, nil
+	}
+
+	objAnnotations := obj.GetAnnotations()
+
+	// Check for multi-owner ownership (annotation-based)
+	if ownerRefsBytes, exists := objAnnotations[SoftOwnerRefsAnnotation]; exists {
+		// Multi-owner soft owned object - parse and update the set
+		var ownerRefsSlice []string
+		if err := json.Unmarshal([]byte(ownerRefsBytes), &ownerRefsSlice); err != nil {
+			return 0, err
+		}
+
+		ownerRefs := sets.New(ownerRefsSlice...)
+		// Remove the specified owner from the set
+		ownerRefs.Delete(owner.String())
+		if ownerRefs.Len() == 0 {
+			// No owners remain, remove the annotation
+			delete(objAnnotations, SoftOwnerRefsAnnotation)
+			return 0, nil
+		}
+
+		// Marshal the updated owner list back to JSON
+		ownerRefsBytes, err := json.Marshal(sets.List(ownerRefs))
+		if err != nil {
+			return 0, err
+		}
+
+		// Update the annotation with the new owner list
+		objAnnotations[SoftOwnerRefsAnnotation] = string(ownerRefsBytes)
+		return len(ownerRefs), nil
+	}
+
+	// Handle single-owner ownership (label-based)
+	currentOwner, referenced := SoftOwnerRefFromLabels(objLabels)
+	if !referenced {
+		// No soft owner found
+		return 0, nil
+	}
+
+	// Check if the single owner matches the owner to be removed
+	if currentOwner.Name == owner.Name && currentOwner.Namespace == owner.Namespace {
+		// Remove the soft owner labels since this was the only owner
+		delete(objLabels, SoftOwnerNamespaceLabel)
+		delete(objLabels, SoftOwnerNameLabel)
+		return 0, nil
+	}
+
+	// The owner to remove doesn't match the current owner, so no change
+	return 1, nil
+}
+
+// IsSoftOwnedBy checks if an object is soft-owned by the given owner.
+// It handles both single-owner (label-based) and multi-owner (annotation-based) scenarios.
+// Returns true if the object is owned by the specified owner, false otherwise, and an error
+// if there's a problem unmarshalling the owner references from annotations.
+func IsSoftOwnedBy(obj metav1.Object, ownerKind string, owner types.NamespacedName) (bool, error) {
+	objLabels := obj.GetLabels()
+	if objLabels == nil {
+		return false, nil
+	}
+
+	if objOwnerKind := objLabels[SoftOwnerKindLabel]; objOwnerKind != ownerKind {
+		return false, nil
+	}
+
+	objAnnotations := obj.GetAnnotations()
+	// Check for multi-owner ownership (annotation-based)
+	if ownerRefsBytes, exists := objAnnotations[SoftOwnerRefsAnnotation]; exists {
+		var ownerRefsSlice []string
+		if err := json.Unmarshal([]byte(ownerRefsBytes), &ownerRefsSlice); err != nil {
+			return false, err
+		}
+
+		ownerRefs := sets.New(ownerRefsSlice...)
+		return ownerRefs.Has(owner.String()), nil
+	}
+
+	// Fall back to single-owner ownership (label-based)
+	currentOwner, referenced := SoftOwnerRefFromLabels(objLabels)
+	if !referenced {
+		// No soft owner found in labels
+		return false, nil
+	}
+
+	// Check if the single owner matches the given owner
+	return currentOwner.Name == owner.Name && currentOwner.Namespace == owner.Namespace, nil
+}
+
 // SoftOwnerRefs returns the soft owner references of the given object.
 func SoftOwnerRefs(obj metav1.Object) ([]SoftOwnerRef, error) {
-	// Check if this Secret has a soft-owner kind label set
+	// Check if this object has a soft-owner kind label set
 	ownerKind, exists := obj.GetLabels()[SoftOwnerKindLabel]
 	if !exists {
-		// Not a soft-owned secret
+		// Not a soft-owned object
 		return nil, nil
 	}
 
-	// Check for multi-policy ownership (annotation-based)
+	// Check for multi-owner ownership (annotation-based)
 	if ownerRefsBytes, exists := obj.GetAnnotations()[SoftOwnerRefsAnnotation]; exists {
-		// Multi-policy soft owned secret - parse the list of owners
+		// Multi-owner soft owned object - parse the list of owners
 		var ownerRefsSlice []string
 		if err := json.Unmarshal([]byte(ownerRefsBytes), &ownerRefsSlice); err != nil {
 			return nil, err
@@ -127,7 +302,7 @@ func SoftOwnerRefs(obj metav1.Object) ([]SoftOwnerRef, error) {
 		return ownerRefsNsn, nil
 	}
 
-	// Fall back to single-policy ownership (label-based)
+	// Fall back to single-owner ownership (label-based)
 	currentOwner, referenced := SoftOwnerRefFromLabels(obj.GetLabels())
 	if !referenced {
 		// No soft owner found in labels
