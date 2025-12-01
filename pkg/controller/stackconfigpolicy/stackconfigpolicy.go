@@ -115,7 +115,11 @@ func getConfigPolicyForElasticsearch(es *esv1.Elasticsearch, allPolicies []polic
 				return err
 			}
 
-			c.SecretSources = mergeSecretSources(c.SecretSources, srcPolicy.Spec.Elasticsearch.SecureSettings, srcPolicy)
+			var secureSettings []commonv1.SecretSource
+			secureSettings = append(secureSettings, srcPolicy.Spec.SecureSettings...) //nolint:staticcheck // keep supporting deprecated SecureSettings until it is completely removed
+			secureSettings = append(secureSettings, srcPolicy.Spec.Elasticsearch.SecureSettings...)
+
+			c.SecretSources = mergeSecretSources(c.SecretSources, secureSettings, srcPolicy)
 			return nil
 		},
 	}
