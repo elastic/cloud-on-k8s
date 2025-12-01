@@ -81,7 +81,7 @@ spec:
         serviceAccountName: fleet-server
         automountServiceAccountToken: true
         # Since Elastic Agent v8.16.0, the runAsUser: 0 is not needed
-        # as Agent chowns the data directory to the container user id.
+        # as Agent changes ownership of the data directory to the container user id.
         # securityContext:
         #   runAsUser: 0
 ---
@@ -117,7 +117,7 @@ spec:
         dnsPolicy: ClusterFirstWithHostNet
         automountServiceAccountToken: true
         # Since Elastic Agent v8.16.0, the runAsUser: 0 is not needed
-        # as Agent chowns the data directory to the container user id.
+        # as Agent changes ownership of the data directory to the container user id.
         # securityContext:
         #   runAsUser: 0
 ---
