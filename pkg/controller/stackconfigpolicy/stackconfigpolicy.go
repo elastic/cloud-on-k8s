@@ -302,13 +302,13 @@ func (s *secretMountsAggregator) mergeInto(
 	for _, secretMount := range src {
 		if existingPolicy, exists := s.policiesBySecretName[secretMount.SecretName]; exists {
 			existingPolicyNsn := k8s.ExtractNamespacedName(existingPolicy)
-			err := fmt.Errorf("%w: secret with name %q is defined in policies %q, %q", errMergeConflict, secretMount.SecretName,
+			err := fmt.Errorf("%w: secret with name %q is defined in policy %q, %q", errMergeConflict, secretMount.SecretName,
 				srcPolicyNsn.String(), existingPolicyNsn.String())
 			return nil, err
 		}
 		if existingPolicy, exists := s.policiesByMountPath[secretMount.MountPath]; exists {
 			existingPolicyNsn := k8s.ExtractNamespacedName(existingPolicy)
-			err := fmt.Errorf("%w: secret mount path %q is defined in policies %q, %q", errMergeConflict, secretMount.MountPath,
+			err := fmt.Errorf("%w: secret mount path %q is defined in policy %q, %q", errMergeConflict, secretMount.MountPath,
 				srcPolicyNsn.String(), existingPolicyNsn.String())
 			return nil, err
 		}
