@@ -263,7 +263,6 @@ Package v1alpha1 contains API schema definitions for managing AutoOpsAgentPolicy
 
 ### Resource Types
 - [AutoOpsAgentPolicy](#autoopsagentpolicy)
-- [AutoOpsAgentPolicyList](#autoopsagentpolicylist)
 
 
 
@@ -271,10 +270,7 @@ Package v1alpha1 contains API schema definitions for managing AutoOpsAgentPolicy
 
 AutoOpsAgentPolicy represents an AutoOpsAgentPolicy resource in a Kubernetes cluster.
 
-:::{admonition} Appears In:
-* [AutoOpsAgentPolicyList](#autoopsagentpolicylist)
 
-:::
 
 | Field | Description |
 | --- | --- |
@@ -282,20 +278,6 @@ AutoOpsAgentPolicy represents an AutoOpsAgentPolicy resource in a Kubernetes clu
 | *`kind`* __string__ | `AutoOpsAgentPolicy` | 
 | *`metadata`* __[ObjectMeta](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.32/#objectmeta-v1-meta)__ | Refer to Kubernetes API documentation for fields of `metadata`. |
 | *`spec`* __[AutoOpsAgentPolicySpec](#autoopsagentpolicyspec)__ |  |
-
-
-### AutoOpsAgentPolicyList  [#autoopsagentpolicylist]
-
-AutoOpsAgentPolicyList contains a list of AutoOpsAgentPolicy resources.
-
-
-
-| Field | Description |
-| --- | --- |
-| *`apiVersion`* __string__ | `autoops.k8s.elastic.co/v1alpha1` |
-| *`kind`* __string__ | `AutoOpsAgentPolicyList` | 
-| *`metadata`* __[ListMeta](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.32/#listmeta-v1-meta)__ | Refer to Kubernetes API documentation for fields of `metadata`. |
-| *`items`* __[AutoOpsAgentPolicy](#autoopsagentpolicy) array__ |  |
 
 
 ### AutoOpsAgentPolicySpec  [#autoopsagentpolicyspec]
@@ -310,7 +292,9 @@ AutoOpsAgentPolicyList contains a list of AutoOpsAgentPolicy resources.
 | Field | Description |
 | --- | --- |
 | *`resourceSelector`* __[LabelSelector](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.32/#labelselector-v1-meta)__ | ResourceSelector is a label selector for the resources to be configured.<br>Any Elasticsearch instances that match the selector will be configured to send data to AutoOps. |
-| *`config`* __[Config](#config)__ | Config holds the AutoOpsAgentPolicy configuration.<br>The contents of the referenced secret requires the following format:<br>  kind: Secret<br>  apiVersion: v1<br>  metadata:<br>    name: autoops-agent-policy-config<br>  stringData:<br>    ccmApiKey: aslkfjsldkjfslkdjflksdjfl<br>    tempResourceID: u857abce4-9214-446b-951c-a1644b7d204ao<br>    autoOpsOTelURL: https://otel.auto-ops.console.qa.cld.elstc.co<br>    autoOpsToken: skdfjdskjf |
+| *`config`* __[ConfigSource](#configsource)__ | Config holds the AutoOpsAgentPolicy configuration.<br>The contents of the referenced secret requires the following format:<br>  kind: Secret<br>  apiVersion: v1<br>  metadata:<br>    name: autoops-agent-policy-config<br>  stringData:<br>    ccmApiKey: aslkfjsldkjfslkdjflksdjfl<br>    tempResourceID: u857abce4-9214-446b-951c-a1644b7d204ao<br>    autoOpsOTelURL: https://otel.auto-ops.console.qa.cld.elstc.co<br>    autoOpsToken: skdfjdskjf |
+
+
 
 
 
@@ -466,7 +450,6 @@ Config represents untyped YAML configuration.
 :::{admonition} Appears In:
 * [AgentSpec](#agentspec)
 * [ApmServerSpec](#apmserverspec)
-* [AutoOpsAgentPolicySpec](#autoopsagentpolicyspec)
 * [BeatSpec](#beatspec)
 * [ElasticsearchConfigPolicySpec](#elasticsearchconfigpolicyspec)
 * [EnterpriseSearchSpec](#enterprisesearchspec)
@@ -503,6 +486,7 @@ ConfigSource references configuration settings.
 
 :::{admonition} Appears In:
 * [AgentSpec](#agentspec)
+* [AutoOpsAgentPolicySpec](#autoopsagentpolicyspec)
 * [BeatSpec](#beatspec)
 * [EnterpriseSearchSpec](#enterprisesearchspec)
 * [EnterpriseSearchSpec](#enterprisesearchspec)

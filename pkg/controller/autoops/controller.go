@@ -6,6 +6,7 @@ package autoops
 
 import (
 	"context"
+	"fmt"
 	"sync/atomic"
 	"time"
 
@@ -38,7 +39,7 @@ const (
 
 var (
 	// defaultRequeue is the default requeue interval for this controller.
-	defaultRequeue = 30 * time.Second
+	defaultRequeue = 10 * time.Second
 )
 
 // Add creates a new AutoOpsAgentPolicy Controller and adds it to the Manager with default RBAC. The Manager will set fields on the Controller
@@ -70,25 +71,8 @@ func addWatches(mgr manager.Manager, c controller.Controller, r *ReconcileAutoOp
 		return err
 	}
 
-	// watch Secrets soft owned by AutoOpsAgentPolicy
-	if err := c.Watch(source.Kind(mgr.GetCache(), &corev1.Secret{}, reconcileRequestForSoftOwner())); err != nil {
-		return err
-	}
-
 	// watch dynamically referenced secrets
 	return c.Watch(source.Kind(mgr.GetCache(), &corev1.Secret{}, r.dynamicWatches.Secrets))
-}
-
-func reconcileRequestForSoftOwner() handler.TypedEventHandler[*corev1.Secret, reconcile.Request] {
-	return handler.TypedEnqueueRequestsFromMapFunc[*corev1.Secret](func(ctx context.Context, secret *corev1.Secret) []reconcile.Request {
-		softOwner, referenced := reconciler.SoftOwnerRefFromLabels(secret.GetLabels())
-		if !referenced || softOwner.Kind != autoopsv1alpha1.Kind {
-			return nil
-		}
-		return []reconcile.Request{
-			{NamespacedName: types.NamespacedName{Namespace: softOwner.Namespace, Name: softOwner.Name}},
-		}
-	})
 }
 
 var _ reconcile.Reconciler = &ReconcileAutoOpsAgentPolicy{}
@@ -131,7 +115,6 @@ func (r *ReconcileAutoOpsAgentPolicy) Reconcile(ctx context.Context, request rec
 		return reconcile.Result{}, nil
 	}
 
-	// the AutoOpsAgentPolicy will be deleted nothing to do other than remove the watches
 	if policy.IsMarkedForDeletion() {
 		return reconcile.Result{}, r.onDelete(ctx, k8s.ExtractNamespacedName(&policy))
 	}
@@ -156,7 +139,6 @@ func (r *ReconcileAutoOpsAgentPolicy) doReconcile(ctx context.Context, policy au
 
 	results := reconciler.NewResult(ctx)
 	status := autoopsv1alpha1.NewStatus(policy)
-	defer status.Update()
 
 	// Enterprise license check
 	enabled, err := r.licenseChecker.EnterpriseFeaturesEnabled(ctx)
@@ -177,12 +159,17 @@ func (r *ReconcileAutoOpsAgentPolicy) doReconcile(ctx context.Context, policy au
 		return results.WithError(err), status
 	}
 
-	// TODO: Add internal reconciliation logic here
-	// This is intentionally left empty as per requirements
+	// reconcile dynamic watch for secret referenced in the spec
+	if err := r.reconcileWatches(policy); err != nil {
+		return results.WithError(err), status
+	}
 
-	// requeue if not ready
-	// TODO: Update this based on actual status phase when implemented
-	results.WithRequeue(defaultRequeue)
+	return r.internalReconcile(ctx, policy, results, status)
+}
+
+func (r *ReconcileAutoOpsAgentPolicy) internalReconcile(ctx context.Context, policy autoopsv1alpha1.AutoOpsAgentPolicy, results *reconciler.Results, status autoopsv1alpha1.AutoOpsAgentPolicyStatus) (*reconciler.Results, autoopsv1alpha1.AutoOpsAgentPolicyStatus) {
+	log := ulog.FromContext(ctx)
+	log.V(1).Info("Internal reconcile AutoOpsAgentPolicy")
 
 	return results, status
 }
@@ -222,6 +209,29 @@ func (r *ReconcileAutoOpsAgentPolicy) updateStatus(ctx context.Context, policy a
 func (r *ReconcileAutoOpsAgentPolicy) onDelete(ctx context.Context, obj types.NamespacedName) error {
 	defer tracing.Span(&ctx)()
 	// Remove dynamic watches on secrets
-	// TODO: Add cleanup for any dynamic watches if needed
-	return reconciler.GarbageCollectSoftOwnedSecrets(ctx, r.Client, obj, autoopsv1alpha1.Kind)
+	r.dynamicWatches.Secrets.RemoveHandlerForKey(configSecretWatchName(obj))
+	return nil
+}
+
+// reconcileWatches sets up dynamic watches for secrets referenced in the AutoOpsAgentPolicy spec.
+func (r *ReconcileAutoOpsAgentPolicy) reconcileWatches(policy autoopsv1alpha1.AutoOpsAgentPolicy) error {
+	watcher := types.NamespacedName{
+		Name:      policy.Name,
+		Namespace: policy.Namespace,
+	}
+
+	secretNames := []string{policy.Spec.Config.SecretRef.SecretName}
+
+	// Set up dynamic watches for referenced secrets
+	return watches.WatchUserProvidedSecrets(
+		watcher,
+		r.dynamicWatches,
+		configSecretWatchName(watcher),
+		secretNames,
+	)
+}
+
+// configSecretWatchName returns the name of the watch registered on secrets referenced in the config.
+func configSecretWatchName(watcher types.NamespacedName) string {
+	return fmt.Sprintf("%s-%s-config-secret", watcher.Namespace, watcher.Name)
 }

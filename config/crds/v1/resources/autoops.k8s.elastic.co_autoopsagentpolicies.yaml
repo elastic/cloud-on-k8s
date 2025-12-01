@@ -19,8 +19,8 @@ spec:
   scope: Namespaced
   versions:
   - additionalPrinterColumns:
-    - description: Resources configured
-      jsonPath: .status.readyCount
+    - description: Ready resources
+      jsonPath: .status.ready
       name: Ready
       type: string
     - jsonPath: .status.phase
@@ -67,6 +67,10 @@ spec:
                       tempResourceID: u857abce4-9214-446b-951c-a1644b7d204ao
                       autoOpsOTelURL: https://otel.auto-ops.console.qa.cld.elstc.co
                       autoOpsToken: skdfjdskjf
+                properties:
+                  secretName:
+                    description: SecretName is the name of the secret.
+                    type: string
                 type: object
               resourceSelector:
                 description: |-
@@ -128,6 +132,9 @@ spec:
                   for this AutoOpsAgentPolicy.
                 format: int64
                 type: integer
+              phase:
+                description: Phase is the phase of the AutoOpsAgentPolicy.
+                type: string
               ready:
                 description: Ready is the number of resources that are in a ready
                   state.

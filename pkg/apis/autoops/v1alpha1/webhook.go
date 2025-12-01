@@ -17,8 +17,7 @@ import (
 
 const (
 	// webhookPath is the HTTP path for the AutoOpsAgentPolicy validating webhook.
-	webhookPath                  = "/validate-autoops-k8s-elastic-co-v1alpha1-autoopsagentpolicies"
-	SpecSecureSettingsDeprecated = "spec.SecureSettings is deprecated, secure settings must be set per application"
+	webhookPath = "/validate-autoops-k8s-elastic-co-v1alpha1-autoopsagentpolicies"
 )
 
 var (
@@ -100,4 +99,3 @@ func validSettings(policy *AutoOpsAgentPolicy) field.ErrorList {
 	}
 	return nil
 }
-

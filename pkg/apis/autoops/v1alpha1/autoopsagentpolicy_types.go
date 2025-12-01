@@ -6,7 +6,6 @@ package v1alpha1
 
 import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/types"
 
 	commonv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/common/v1"
 )
@@ -27,7 +26,7 @@ func init() {
 
 // AutoOpsAgentPolicy represents an AutoOpsAgentPolicy resource in a Kubernetes cluster.
 // +kubebuilder:resource:categories=elastic,shortName=autoops
-// +kubebuilder:printcolumn:name="Ready",type="string",JSONPath=".status.readyCount",description="Resources configured"
+// +kubebuilder:printcolumn:name="Ready",type="string",JSONPath=".status.ready",description="Ready resources"
 // +kubebuilder:printcolumn:name="Phase",type="string",JSONPath=".status.phase"
 // +kubebuilder:printcolumn:name="Age",type="date",JSONPath=".metadata.creationTimestamp"
 // +kubebuilder:subresource:status
@@ -64,7 +63,7 @@ type AutoOpsAgentPolicySpec struct {
 	//     tempResourceID: u857abce4-9214-446b-951c-a1644b7d204ao
 	//     autoOpsOTelURL: https://otel.auto-ops.console.qa.cld.elstc.co
 	//     autoOpsToken: skdfjdskjf
-	Config *commonv1.Config `json:"config,omitempty"`
+	Config commonv1.ConfigSource `json:"config,omitempty"`
 	// AutoOpsRef is a reference to an AutoOps instance running in the same Kubernetes cluster.
 	// (TODO) AutoOpsRef is not yet implemented.
 	// AutoOpsRef commonv1.ObjectSelector `json:"autoOpsRef,omitempty"`
@@ -77,14 +76,26 @@ type AutoOpsAgentPolicyStatus struct {
 	Ready int `json:"ready,omitempty"`
 	// Errors is the number of resources that are in an error state.
 	Errors int `json:"errors,omitempty"`
+	// Phase is the phase of the AutoOpsAgentPolicy.
+	Phase PolicyPhase `json:"phase,omitempty"`
 	// ObservedGeneration is the most recent generation observed for this AutoOpsAgentPolicy.
 	ObservedGeneration int64 `json:"observedGeneration,omitempty"`
 }
 
+type PolicyPhase string
+
+const (
+	UnknownPhase         PolicyPhase = "Unknown"
+	ReadyPhase           PolicyPhase = "Ready"
+	ApplyingChangesPhase PolicyPhase = "ApplyingChanges"
+	InvalidPhase         PolicyPhase = "Invalid"
+	ErrorPhase           PolicyPhase = "Error"
+)
+
 func NewStatus(policy AutoOpsAgentPolicy) AutoOpsAgentPolicyStatus {
 	status := AutoOpsAgentPolicyStatus{
 		// Details:            map[ResourceType]map[string]ResourcePolicyStatus{},
-		// Phase:              ReadyPhase,
+		Phase:              UnknownPhase,
 		ObservedGeneration: policy.Generation,
 	}
 	return status
@@ -94,16 +105,7 @@ func NewStatus(policy AutoOpsAgentPolicy) AutoOpsAgentPolicyStatus {
 func (s *AutoOpsAgentPolicyStatus) Update() {
 }
 
-// IsDegraded returns true when the AutoOpsAgentPolicyStatus resource is degraded compared to the previous status.
-// func (s AutoOpsAgentPolicyStatus) IsDegraded(prev AutoOpsAgentPolicyStatus) bool {
-// 	return prev.Phase == ReadyPhase && s.Phase != ReadyPhase && s.Phase != ApplyingChangesPhase
-// }
-
 // IsMarkedForDeletion returns true if the AutoOpsAgentPolicy resource is going to be deleted.
 func (p *AutoOpsAgentPolicy) IsMarkedForDeletion() bool {
 	return !p.DeletionTimestamp.IsZero()
-}
-
-func (s AutoOpsAgentPolicyStatus) getResourceStatusKey(nsn types.NamespacedName) string {
-	return nsn.String()
 }
