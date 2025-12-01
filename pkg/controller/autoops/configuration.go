@@ -25,10 +25,10 @@ type Config struct {
 
 const (
 	// Secret key names for the configuration fields
-	secretKeyCCMApiKey      = "ccmApiKey"
-	secretKeyTempResourceID = "tempResourceID"
-	secretKeyAutoOpsOTelURL = "autoOpsOTelURL"
-	secretKeyAutoOpsToken   = "autoOpsToken"
+	CCMApiKey      = "ccmApiKey"
+	TempResourceID = "tempResourceID"
+	AutoOpsOTelURL = "autoOpsOTelURL"
+	AutoOpsToken   = "autoOpsToken"
 )
 
 // ParseConfigSecret retrieves and parses the configuration secret referenced in the AutoOpsAgentPolicy.
@@ -46,35 +46,35 @@ func ParseConfigSecret(ctx context.Context, client k8s.Client, secretKey types.N
 		return nil, fmt.Errorf("failed to retrieve configuration secret %s/%s: %w", secretKey.Namespace, secretKey.Name, err)
 	}
 
-	config := &Config{}
+	return validateAndPopulateConfig(secret, secretKey)
+}
 
-	// Parse ccmApiKey
-	if data, exists := secret.Data[secretKeyCCMApiKey]; exists {
+func validateAndPopulateConfig(secret corev1.Secret, secretKey types.NamespacedName) (*Config, error) {
+	var config Config
+
+	if data, exists := secret.Data[CCMApiKey]; exists {
 		config.CCMApiKey = string(data)
 	} else {
-		return nil, fmt.Errorf("missing required key %s in configuration secret %s/%s", secretKeyCCMApiKey, secretKey.Namespace, secretKey.Name)
+		return nil, fmt.Errorf("missing required key %s in configuration secret %s/%s", CCMApiKey, secretKey.Namespace, secretKey.Name)
 	}
 
-	// Parse tempResourceID
-	if data, exists := secret.Data[secretKeyTempResourceID]; exists {
+	if data, exists := secret.Data[TempResourceID]; exists {
 		config.TempResourceID = string(data)
 	} else {
-		return nil, fmt.Errorf("missing required key %s in configuration secret %s/%s", secretKeyTempResourceID, secretKey.Namespace, secretKey.Name)
+		return nil, fmt.Errorf("missing required key %s in configuration secret %s/%s", TempResourceID, secretKey.Namespace, secretKey.Name)
 	}
 
-	// Parse autoOpsOTelURL
-	if data, exists := secret.Data[secretKeyAutoOpsOTelURL]; exists {
+	if data, exists := secret.Data[AutoOpsOTelURL]; exists {
 		config.AutoOpsOTelURL = string(data)
 	} else {
-		return nil, fmt.Errorf("missing required key %s in configuration secret %s/%s", secretKeyAutoOpsOTelURL, secretKey.Namespace, secretKey.Name)
+		return nil, fmt.Errorf("missing required key %s in configuration secret %s/%s", AutoOpsOTelURL, secretKey.Namespace, secretKey.Name)
 	}
 
-	// Parse autoOpsToken
-	if data, exists := secret.Data[secretKeyAutoOpsToken]; exists {
+	if data, exists := secret.Data[AutoOpsToken]; exists {
 		config.AutoOpsToken = string(data)
 	} else {
-		return nil, fmt.Errorf("missing required key %s in configuration secret %s/%s", secretKeyAutoOpsToken, secretKey.Namespace, secretKey.Name)
+		return nil, fmt.Errorf("missing required key %s in configuration secret %s/%s", AutoOpsToken, secretKey.Namespace, secretKey.Name)
 	}
 
-	return config, nil
+	return &config, nil
 }
