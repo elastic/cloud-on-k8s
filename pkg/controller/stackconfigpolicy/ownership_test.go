@@ -17,7 +17,6 @@ import (
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/reconciler"
 )
 
-//nolint:thelper
 func Test_setSingleSoftOwner(t *testing.T) {
 	secret := &corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{

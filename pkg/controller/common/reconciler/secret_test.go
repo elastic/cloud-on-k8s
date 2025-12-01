@@ -966,7 +966,6 @@ func TestRemoveSoftOwner(t *testing.T) {
 	}
 }
 
-//nolint:thelper
 func TestIsSoftOwnedBy(t *testing.T) {
 	tests := []struct {
 		name      string
