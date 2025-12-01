@@ -96,8 +96,9 @@ func merge[T any](
 
 // getConfigPolicyForElasticsearch builds a merged stack config policy for the given Elasticsearch cluster.
 // It processes all provided policies, filtering those that target the Elasticsearch cluster, and merges them
-// in order of their weight (lowest to highest). Policies with the same weight are flagged as conflicts.
-// Returns an esPolicyConfig containing the merged configuration and any error occurred during merging.
+// in order of their weight (highest to lowest), with lower weight values taking precedence as they are
+// merged last. Policies with the same weight are flagged as conflicts.
+// Returns a configPolicy containing the merged configuration and any error occurred during merging.
 func getConfigPolicyForElasticsearch(es *esv1.Elasticsearch, allPolicies []policyv1alpha1.StackConfigPolicy, params operator.Parameters) (*configPolicy[policyv1alpha1.ElasticsearchConfigPolicySpec], error) {
 	secretMountsAggr := secretMountsAggregator{}
 	cfgPolicy := &configPolicy[policyv1alpha1.ElasticsearchConfigPolicySpec]{
@@ -133,15 +134,16 @@ func mergeElasticsearchSpecs(dst, src *policyv1alpha1.ElasticsearchConfigPolicyS
 		src   *commonv1.Config
 		merge func(*commonv1.Config, *commonv1.Config) (*commonv1.Config, error)
 	}{
+		// canonicalise and deep merging is supported only for Config and ClusterSettings
 		{&dst.ClusterSettings, src.ClusterSettings, deepMergeConfig},
-		{&dst.SnapshotRepositories, src.SnapshotRepositories, mergeConfig},
-		{&dst.SnapshotLifecyclePolicies, src.SnapshotLifecyclePolicies, deepMergeConfig},
-		{&dst.SecurityRoleMappings, src.SecurityRoleMappings, deepMergeConfig},
-		{&dst.IndexLifecyclePolicies, src.IndexLifecyclePolicies, deepMergeConfig},
-		{&dst.IngestPipelines, src.IngestPipelines, deepMergeConfig},
-		{&dst.IndexTemplates.ComposableIndexTemplates, src.IndexTemplates.ComposableIndexTemplates, deepMergeConfig},
-		{&dst.IndexTemplates.ComponentTemplates, src.IndexTemplates.ComponentTemplates, deepMergeConfig},
 		{&dst.Config, src.Config, deepMergeConfig},
+		{&dst.SnapshotRepositories, src.SnapshotRepositories, mergeConfig},
+		{&dst.SnapshotLifecyclePolicies, src.SnapshotLifecyclePolicies, mergeConfig},
+		{&dst.SecurityRoleMappings, src.SecurityRoleMappings, mergeConfig},
+		{&dst.IndexLifecyclePolicies, src.IndexLifecyclePolicies, mergeConfig},
+		{&dst.IngestPipelines, src.IngestPipelines, mergeConfig},
+		{&dst.IndexTemplates.ComposableIndexTemplates, src.IndexTemplates.ComposableIndexTemplates, mergeConfig},
+		{&dst.IndexTemplates.ComponentTemplates, src.IndexTemplates.ComponentTemplates, mergeConfig},
 	}
 	for _, f := range fields {
 		*f.dst, err = f.merge(*f.dst, f.src)
@@ -154,8 +156,9 @@ func mergeElasticsearchSpecs(dst, src *policyv1alpha1.ElasticsearchConfigPolicyS
 
 // getConfigPolicyForKibana builds a merged stack config policy for the given Kibana instance.
 // It processes all provided policies, filtering those that target the Kibana instance, and merges them
-// in order of their weight (lowest to highest). Policies with the same weight are flagged as conflicts.
-// Returns an kbnPolicyConfig containing the merged configuration and any error occurred during merging.
+// in order of their weight (highest to lowest), with lower weight values taking precedence as they are
+// merged last. Policies with the same weight are flagged as conflicts.
+// Returns a configPolicy containing the merged configuration and any error occurred during merging.
 func getConfigPolicyForKibana(kbn *kbv1.Kibana, allPolicies []policyv1alpha1.StackConfigPolicy, params operator.Parameters) (*configPolicy[policyv1alpha1.KibanaConfigPolicySpec], error) {
 	cfgPolicy := &configPolicy[policyv1alpha1.KibanaConfigPolicySpec]{
 		extractFunc: func(p *policyv1alpha1.StackConfigPolicy) policyv1alpha1.KibanaConfigPolicySpec {
@@ -213,11 +216,11 @@ func DoesPolicyMatchObject(policy *policyv1alpha1.StackConfigPolicy, obj metav1.
 // If src is nil, dst is returned unchanged. If dst is nil, a deep copy of src is returned.
 // Returns the merged config and any error occurred during config parsing or merging.
 func deepMergeConfig(dst *commonv1.Config, src *commonv1.Config) (*commonv1.Config, error) {
-	if src == nil {
+	if src == nil || len(src.Data) == 0 {
 		return dst, nil
 	}
 
-	if dst == nil {
+	if dst == nil || len(dst.Data) == 0 {
 		return src.DeepCopy(), nil
 	}
 
@@ -245,39 +248,18 @@ func deepMergeConfig(dst *commonv1.Config, src *commonv1.Config) (*commonv1.Conf
 
 // mergeConfig merges the source Config into the destination Config by replacing entire top-level keys.
 // Unlike deepMergeConfig which performs recursive merging, this function replaces each top-level key
-// in dst with the corresponding value from src. Both configs are first canonicalized to ensure
-// consistent structure. If src is nil, dst is returned unchanged. If dst is nil, a deep copy of src is returned.
-// Returns the merged config and any error occurred during config parsing or unpacking.
+// in dst with the corresponding value from src. If src is nil, dst is returned unchanged. If dst is nil,
+// a deep copy of src is returned.
 func mergeConfig(dst *commonv1.Config, src *commonv1.Config) (*commonv1.Config, error) {
-	if src == nil {
+	if src == nil || len(src.Data) == 0 {
 		return dst, nil
 	}
 
-	if dst == nil {
+	if dst == nil || len(dst.Data) == 0 {
 		return src.DeepCopy(), nil
 	}
 
-	dstCanonicalConfig, err := settings.NewCanonicalConfigFrom(dst.DeepCopy().Data)
-	if err != nil {
-		return nil, err
-	}
-
-	srcCanonicalConfig, err := settings.NewCanonicalConfigFrom(src.DeepCopy().Data)
-	if err != nil {
-		return nil, err
-	}
-
-	dst.Data = nil
-	if err = dstCanonicalConfig.Unpack(&dst.Data); err != nil {
-		return nil, err
-	}
-
-	srcCfg := &commonv1.Config{}
-	if err = srcCanonicalConfig.Unpack(&srcCfg.Data); err != nil {
-		return nil, err
-	}
-
-	maps.Copy(dst.Data, srcCfg.Data)
+	maps.Copy(dst.Data, src.DeepCopy().Data)
 
 	return dst, nil
 }

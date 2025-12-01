@@ -8,6 +8,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 
@@ -16,12 +17,12 @@ import (
 	kbv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/kibana/v1"
 	policyv1alpha1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/stackconfigpolicy/v1alpha1"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/operator"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/settings"
 )
 
 func Test_getStackPolicyConfigForElasticsearch(t *testing.T) {
 	for _, tc := range []struct {
 		name                  string
-		policyNamespace       string
 		operatorNamespace     string
 		targetElasticsearch   *esv1.Elasticsearch
 		stackConfigPolicies   []policyv1alpha1.StackConfigPolicy
@@ -41,7 +42,6 @@ func Test_getStackPolicyConfigForElasticsearch(t *testing.T) {
 					},
 				},
 			},
-			policyNamespace: "test",
 			stackConfigPolicies: []policyv1alpha1.StackConfigPolicy{
 				{
 					ObjectMeta: metav1.ObjectMeta{
@@ -54,27 +54,72 @@ func Test_getStackPolicyConfigForElasticsearch(t *testing.T) {
 							MatchLabels: map[string]string{"test": "test"},
 						},
 						Weight: 1,
+						SecureSettings: []commonv1.SecretSource{
+							{
+								SecretName: "policy1-deprecated-secure-setting",
+							},
+						},
 						Elasticsearch: policyv1alpha1.ElasticsearchConfigPolicySpec{
 							ClusterSettings: &commonv1.Config{Data: map[string]any{
-								"test1.name": "policy1",
+								"policy1.name": "policy1",
 							}},
+							SnapshotRepositories: &commonv1.Config{Data: map[string]any{
+								"policy1": map[string]any{
+									"type": "gcp",
+								},
+							}},
+							SnapshotLifecyclePolicies: &commonv1.Config{Data: map[string]any{
+								"policy1": map[string]any{
+									"schedule": "0 1 2 3 4 ?",
+								},
+							}},
+							SecurityRoleMappings: &commonv1.Config{Data: map[string]any{
+								"policy1": map[string]any{
+									"enabled": true,
+								},
+							}},
+							IndexLifecyclePolicies: &commonv1.Config{Data: map[string]any{
+								"policy1": map[string]any{
+									"phases": map[string]any{
+										"delete": map[string]any{
+											"actions": map[string]any{
+												"delete": map[string]any{},
+											},
+										},
+									},
+								},
+							}},
+							IngestPipelines: &commonv1.Config{Data: map[string]any{
+								"policy1": map[string]any{
+									"description": "description",
+								},
+							}},
+							IndexTemplates: policyv1alpha1.IndexTemplates{
+								ComponentTemplates: &commonv1.Config{Data: map[string]any{
+									"policy1": map[string]any{
+										"template": map[string]any{},
+									},
+								}},
+								ComposableIndexTemplates: &commonv1.Config{Data: map[string]any{
+									"policy1": map[string]any{
+										"priority": 500,
+									},
+								}},
+							},
+							Config: &commonv1.Config{Data: map[string]any{
+								"node.roles": []any{"policy1"},
+							}},
+							SecretMounts: []policyv1alpha1.SecretMount{
+								{SecretName: "policy1-secret-mount", MountPath: "/policy1-mount-path"},
+							},
 							SecureSettings: []commonv1.SecretSource{
 								{
-									SecretName: "test-secret-policy1",
+									SecretName: "policy1-secure-setting",
 									Entries: []commonv1.KeyToPath{
-										{Key: "test", Path: "/test-policy1"},
+										{Key: "test", Path: "/policy1-mount-path"},
 									},
 								},
 							},
-							SecretMounts: []policyv1alpha1.SecretMount{
-								{SecretName: "secret-policy1", MountPath: "/secret-policy1"},
-							},
-							SnapshotRepositories: &commonv1.Config{Data: map[string]any{
-								"policy-backups.type": "fs",
-								"policy-backups": map[string]any{
-									"settings.location": "/backups",
-								},
-							}},
 						},
 					},
 				},
@@ -88,30 +133,73 @@ func Test_getStackPolicyConfigForElasticsearch(t *testing.T) {
 						ResourceSelector: metav1.LabelSelector{
 							MatchLabels: map[string]string{"test": "test"},
 						},
-						Weight: -1,
+						Weight: 10,
+						SecureSettings: []commonv1.SecretSource{
+							{
+								SecretName: "policy2-deprecated-secure-setting",
+							},
+						},
 						Elasticsearch: policyv1alpha1.ElasticsearchConfigPolicySpec{
 							ClusterSettings: &commonv1.Config{Data: map[string]any{
-								"test2.name": "policy2",
+								"policy2.name": "policy2",
 							}},
+							SnapshotRepositories: &commonv1.Config{Data: map[string]any{
+								"policy2": map[string]any{
+									"type": "gcp",
+								},
+							}},
+							SnapshotLifecyclePolicies: &commonv1.Config{Data: map[string]any{
+								"policy2": map[string]any{
+									"schedule": "0 1 2 3 4 ?",
+								},
+							}},
+							SecurityRoleMappings: &commonv1.Config{Data: map[string]any{
+								"policy2": map[string]any{
+									"enabled": true,
+								},
+							}},
+							IndexLifecyclePolicies: &commonv1.Config{Data: map[string]any{
+								"policy2": map[string]any{
+									"phases": map[string]any{
+										"delete": map[string]any{
+											"actions": map[string]any{
+												"delete": map[string]any{},
+											},
+										},
+									},
+								},
+							}},
+							IngestPipelines: &commonv1.Config{Data: map[string]any{
+								"policy2": map[string]any{
+									"description": "description",
+								},
+							}},
+							IndexTemplates: policyv1alpha1.IndexTemplates{
+								ComponentTemplates: &commonv1.Config{Data: map[string]any{
+									"policy2": map[string]any{
+										"template": map[string]any{},
+									},
+								}},
+								ComposableIndexTemplates: &commonv1.Config{Data: map[string]any{
+									"policy2": map[string]any{
+										"priority": 500,
+									},
+								}},
+							},
+							Config: &commonv1.Config{Data: map[string]any{
+								"node.roles": []any{"policy2"},
+							}},
+							SecretMounts: []policyv1alpha1.SecretMount{
+								{SecretName: "policy2-secret-mount", MountPath: "/policy2-mount-path"},
+							},
 							SecureSettings: []commonv1.SecretSource{
 								{
-									SecretName: "test-secret-policy2",
+									SecretName: "policy2-secure-setting",
 									Entries: []commonv1.KeyToPath{
-										{Key: "test1", Path: "/test1-policy2"},
-										{Key: "test2", Path: "/test2-policy2"},
+										{Key: "test", Path: "/policy2-mount-path"},
 									},
 								},
 							},
-							SecretMounts: []policyv1alpha1.SecretMount{
-								{SecretName: "secret-policy2", MountPath: "/secret-policy2"},
-							},
-							SnapshotRepositories: &commonv1.Config{Data: map[string]any{
-								"policy-2-backups.type": "s3",
-								"policy-2-backups.settings": map[string]any{
-									"bucket": "policy-2-backups",
-									"region": "us-west-2",
-								},
-							}},
 						},
 					},
 				},
@@ -119,42 +207,111 @@ func Test_getStackPolicyConfigForElasticsearch(t *testing.T) {
 			expectedConfigPolicy: policyv1alpha1.StackConfigPolicy{
 				Spec: policyv1alpha1.StackConfigPolicySpec{
 					Elasticsearch: policyv1alpha1.ElasticsearchConfigPolicySpec{
-						ClusterSettings: &commonv1.Config{Data: map[string]any{
-							"test1.name": "policy1",
-							"test2.name": "policy2",
-						}},
-						SecretMounts: []policyv1alpha1.SecretMount{
-							{SecretName: "secret-policy1", MountPath: "/secret-policy1"},
-							{SecretName: "secret-policy2", MountPath: "/secret-policy2"},
-						},
+						ClusterSettings: &commonv1.Config{Data: canonicaliseMap(t, map[string]any{
+							"policy1.name": "policy1",
+							"policy2.name": "policy2",
+						})},
 						SnapshotRepositories: &commonv1.Config{Data: map[string]any{
-							"policy-2-backups.type": "s3",
-							"policy-2-backups.settings": map[string]any{
-								"bucket": "policy-2-backups",
-								"region": "us-west-2",
+							"policy1": map[string]any{
+								"type": "gcp",
 							},
-							"policy-backups.type": "fs",
-							"policy-backups": map[string]any{
-								"settings.location": "/backups",
+							"policy2": map[string]any{
+								"type": "gcp",
 							},
 						}},
+						SnapshotLifecyclePolicies: &commonv1.Config{Data: map[string]any{
+							"policy1": map[string]any{
+								"schedule": "0 1 2 3 4 ?",
+							},
+							"policy2": map[string]any{
+								"schedule": "0 1 2 3 4 ?",
+							},
+						}},
+						SecurityRoleMappings: &commonv1.Config{Data: map[string]any{
+							"policy1": map[string]any{
+								"enabled": true,
+							},
+							"policy2": map[string]any{
+								"enabled": true,
+							},
+						}},
+						IndexLifecyclePolicies: &commonv1.Config{Data: map[string]any{
+							"policy1": map[string]any{
+								"phases": map[string]any{
+									"delete": map[string]any{
+										"actions": map[string]any{
+											"delete": map[string]any{},
+										},
+									},
+								},
+							},
+							"policy2": map[string]any{
+								"phases": map[string]any{
+									"delete": map[string]any{
+										"actions": map[string]any{
+											"delete": map[string]any{},
+										},
+									},
+								},
+							},
+						}},
+						IngestPipelines: &commonv1.Config{Data: map[string]any{
+							"policy1": map[string]any{
+								"description": "description",
+							},
+							"policy2": map[string]any{
+								"description": "description",
+							},
+						}},
+						IndexTemplates: policyv1alpha1.IndexTemplates{
+							ComponentTemplates: &commonv1.Config{Data: map[string]any{
+								"policy1": map[string]any{
+									"template": map[string]any{},
+								},
+								"policy2": map[string]any{
+									"template": map[string]any{},
+								},
+							}},
+							ComposableIndexTemplates: &commonv1.Config{Data: map[string]any{
+								"policy1": map[string]any{
+									"priority": float64(500),
+								},
+								"policy2": map[string]any{
+									"priority": float64(500),
+								},
+							}},
+						},
+						Config: &commonv1.Config{Data: canonicaliseMap(t, map[string]any{
+							"node.roles": []any{"policy2", "policy1"},
+						})},
+						SecretMounts: []policyv1alpha1.SecretMount{
+							{SecretName: "policy1-secret-mount", MountPath: "/policy1-mount-path"},
+							{SecretName: "policy2-secret-mount", MountPath: "/policy2-mount-path"},
+						},
 					},
 				},
 			},
 			expectedSecretSources: []commonv1.NamespacedSecretSource{
 				{
-					SecretName: "test-secret-policy1",
+					SecretName: "policy1-deprecated-secure-setting",
+					Namespace:  "test",
+				},
+				{
+					SecretName: "policy1-secure-setting",
 					Namespace:  "test",
 					Entries: []commonv1.KeyToPath{
-						{Key: "test", Path: "/test-policy1"},
+						{Key: "test", Path: "/policy1-mount-path"},
 					},
 				},
 				{
-					SecretName: "test-secret-policy2",
+					SecretName: "policy2-deprecated-secure-setting",
+					Namespace:  "test",
+				},
+				{
+					SecretName: "policy2-secure-setting",
 					Namespace:  "test",
 					Entries: []commonv1.KeyToPath{
-						{Key: "test1", Path: "/test1-policy2"},
-						{Key: "test2", Path: "/test2-policy2"},
+						{Key: "test", Path: "/policy2-mount-path"},
 					},
 				},
 			},
@@ -173,7 +330,6 @@ func Test_getStackPolicyConfigForElasticsearch(t *testing.T) {
 					},
 				},
 			},
-			policyNamespace: "test",
 			stackConfigPolicies: []policyv1alpha1.StackConfigPolicy{
 				{
 					ObjectMeta: metav1.ObjectMeta{
@@ -186,28 +342,72 @@ func Test_getStackPolicyConfigForElasticsearch(t *testing.T) {
 							MatchLabels: map[string]string{"test": "test"},
 						},
 						Weight: 1,
+						SecureSettings: []commonv1.SecretSource{
+							{
+								SecretName: "policy1-deprecated-secure-setting",
+							},
+						},
 						Elasticsearch: policyv1alpha1.ElasticsearchConfigPolicySpec{
 							ClusterSettings: &commonv1.Config{Data: map[string]any{
-								"test.name": "policy1",
+								"policy.name": "policy1",
 							}},
+							SnapshotRepositories: &commonv1.Config{Data: map[string]any{
+								"policy": map[string]any{
+									"type": "gcp",
+								},
+							}},
+							SnapshotLifecyclePolicies: &commonv1.Config{Data: map[string]any{
+								"policy": map[string]any{
+									"schedule": "0 1 2 3 4 ?",
+								},
+							}},
+							SecurityRoleMappings: &commonv1.Config{Data: map[string]any{
+								"policy": map[string]any{
+									"enabled": true,
+								},
+							}},
+							IndexLifecyclePolicies: &commonv1.Config{Data: map[string]any{
+								"policy": map[string]any{
+									"phases": map[string]any{
+										"delete": map[string]any{
+											"actions": map[string]any{
+												"delete": map[string]any{},
+											},
+										},
+									},
+								},
+							}},
+							IngestPipelines: &commonv1.Config{Data: map[string]any{
+								"policy": map[string]any{
+									"description": "policy1",
+								},
+							}},
+							IndexTemplates: policyv1alpha1.IndexTemplates{
+								ComponentTemplates: &commonv1.Config{Data: map[string]any{
+									"policy": map[string]any{
+										"template": map[string]any{},
+									},
+								}},
+								ComposableIndexTemplates: &commonv1.Config{Data: map[string]any{
+									"policy": map[string]any{
+										"priority": 500,
+									},
+								}},
+							},
+							Config: &commonv1.Config{Data: map[string]any{
+								"node.store.allow_mmap": false,
+							}},
+							SecretMounts: []policyv1alpha1.SecretMount{
+								{SecretName: "policy1-secret-mount", MountPath: "/policy1-mount-path"},
+							},
 							SecureSettings: []commonv1.SecretSource{
 								{
-									SecretName: "test",
+									SecretName: "policy1-secure-setting",
 									Entries: []commonv1.KeyToPath{
-										{Key: "test1", Path: "/test1-policy1"},
-										{Key: "test2", Path: "/test2-policy1"},
+										{Key: "test", Path: "/policy1-mount-path"},
 									},
 								},
 							},
-							SecretMounts: []policyv1alpha1.SecretMount{
-								{SecretName: "secret-policy-1", MountPath: "/secret-policy1"},
-							},
-							SnapshotRepositories: &commonv1.Config{Data: map[string]any{
-								"policy-2-backups.type": "fs",
-								"policy-2-backups.settings": map[string]any{
-									"location": "/tmp/location",
-								},
-							}},
 						},
 					},
 				},
@@ -221,30 +421,222 @@ func Test_getStackPolicyConfigForElasticsearch(t *testing.T) {
 						ResourceSelector: metav1.LabelSelector{
 							MatchLabels: map[string]string{"test": "test"},
 						},
-						Weight: -1,
+						Weight: 10,
+						SecureSettings: []commonv1.SecretSource{
+							{
+								SecretName: "policy2-deprecated-secure-setting",
+							},
+						},
 						Elasticsearch: policyv1alpha1.ElasticsearchConfigPolicySpec{
 							ClusterSettings: &commonv1.Config{Data: map[string]any{
-								"test.name": "policy2",
+								"policy.name": "policy2",
 							}},
+							SnapshotRepositories: &commonv1.Config{Data: map[string]any{
+								"policy": map[string]any{
+									"type": "fs",
+								},
+							}},
+							SnapshotLifecyclePolicies: &commonv1.Config{Data: map[string]any{
+								"policy": map[string]any{
+									"schedule": "5 ?",
+								},
+							}},
+							SecurityRoleMappings: &commonv1.Config{Data: map[string]any{
+								"policy": map[string]any{
+									"enabled": false,
+								},
+							}},
+							IndexLifecyclePolicies: &commonv1.Config{Data: map[string]any{
+								"policy": map[string]any{
+									"phases": map[string]any{
+										"delete": map[string]any{
+											"actions": map[string]any{
+												"delete": []any{"*"},
+											},
+										},
+									},
+								},
+							}},
+							IngestPipelines: &commonv1.Config{Data: map[string]any{
+								"policy": map[string]any{
+									"description": "policy2",
+								},
+							}},
+							IndexTemplates: policyv1alpha1.IndexTemplates{
+								ComponentTemplates: &commonv1.Config{Data: map[string]any{
+									"policy": map[string]any{
+										"template": map[string]any{
+											"properties": map[string]any{},
+										},
+									},
+								}},
+								ComposableIndexTemplates: &commonv1.Config{Data: map[string]any{
+									"policy": map[string]any{
+										"priority": 300,
+									},
+								}},
+							},
+							Config: &commonv1.Config{Data: map[string]any{
+								"node.store.allow_mmap": true,
+							}},
+							SecretMounts: []policyv1alpha1.SecretMount{
+								{SecretName: "policy2-secret-mount", MountPath: "/policy2-mount-path"},
+							},
 							SecureSettings: []commonv1.SecretSource{
 								{
-									SecretName: "test",
+									SecretName: "policy2-secure-setting",
 									Entries: []commonv1.KeyToPath{
-										{Key: "test1", Path: "/test1-policy2"},
-										{Key: "test2", Path: "/test2-policy2"},
+										{Key: "test", Path: "/policy2-mount-path"},
 									},
 								},
 							},
-							SecretMounts: []policyv1alpha1.SecretMount{
-								{SecretName: "secret-policy-2", MountPath: "/secret-policy2"},
+						},
+					},
+				},
+			},
+			expectedConfigPolicy: policyv1alpha1.StackConfigPolicy{
+				Spec: policyv1alpha1.StackConfigPolicySpec{
+					Elasticsearch: policyv1alpha1.ElasticsearchConfigPolicySpec{
+						ClusterSettings: &commonv1.Config{Data: canonicaliseMap(t, map[string]any{
+							"policy.name": "policy1",
+						})},
+						SnapshotRepositories: &commonv1.Config{Data: map[string]any{
+							"policy": map[string]any{
+								"type": "gcp",
 							},
-							SnapshotRepositories: &commonv1.Config{Data: map[string]any{
-								"policy-2-backups.type": "s3",
-								"policy-2-backups.settings": map[string]any{
-									"bucket": "policy-2-backups",
-									"region": "us-west-2",
+						}},
+						SnapshotLifecyclePolicies: &commonv1.Config{Data: map[string]any{
+							"policy": map[string]any{
+								"schedule": "0 1 2 3 4 ?",
+							},
+						}},
+						SecurityRoleMappings: &commonv1.Config{Data: map[string]any{
+							"policy": map[string]any{
+								"enabled": true,
+							},
+						}},
+						IndexLifecyclePolicies: &commonv1.Config{Data: map[string]any{
+							"policy": map[string]any{
+								"phases": map[string]any{
+									"delete": map[string]any{
+										"actions": map[string]any{
+											"delete": map[string]any{},
+										},
+									},
+								},
+							},
+						}},
+						IngestPipelines: &commonv1.Config{Data: map[string]any{
+							"policy": map[string]any{
+								"description": "policy1",
+							},
+						}},
+						IndexTemplates: policyv1alpha1.IndexTemplates{
+							ComponentTemplates: &commonv1.Config{Data: map[string]any{
+								"policy": map[string]any{
+									"template": map[string]any{},
 								},
 							}},
+							ComposableIndexTemplates: &commonv1.Config{Data: map[string]any{
+								"policy": map[string]any{
+									"priority": float64(500),
+								},
+							}},
+						},
+						Config: &commonv1.Config{Data: canonicaliseMap(t, map[string]any{
+							"node.store.allow_mmap": false,
+						})},
+						SecretMounts: []policyv1alpha1.SecretMount{
+							{SecretName: "policy1-secret-mount", MountPath: "/policy1-mount-path"},
+							{SecretName: "policy2-secret-mount", MountPath: "/policy2-mount-path"},
+						},
+					},
+				},
+			},
+			expectedSecretSources: []commonv1.NamespacedSecretSource{
+				{
+					SecretName: "policy1-deprecated-secure-setting",
+					Namespace:  "test",
+				},
+				{
+					SecretName: "policy1-secure-setting",
+					Namespace:  "test",
+					Entries: []commonv1.KeyToPath{
+						{Key: "test", Path: "/policy1-mount-path"},
+					},
+				},
+				{
+					SecretName: "policy2-deprecated-secure-setting",
+					Namespace:  "test",
+				},
+				{
+					SecretName: "policy2-secure-setting",
+					Namespace:  "test",
+					Entries: []commonv1.KeyToPath{
+						{Key: "test", Path: "/policy2-mount-path"},
+					},
+				},
+			},
+			expectedPolicyRefs: map[string]struct{}{
+				"test/policy1": {},
+				"test/policy2": {},
+			},
+		}, {
+			name: "no changes for single policy",
+			targetElasticsearch: &esv1.Elasticsearch{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "test",
+					Namespace: "test",
+					Labels: map[string]string{
+						"test": "test",
+					},
+				},
+			},
+			stackConfigPolicies: []policyv1alpha1.StackConfigPolicy{
+				{
+					ObjectMeta: metav1.ObjectMeta{
+						Namespace:       "test",
+						Name:            "policy1",
+						ResourceVersion: "1",
+					},
+					Spec: policyv1alpha1.StackConfigPolicySpec{
+						ResourceSelector: metav1.LabelSelector{
+							MatchLabels: map[string]string{"test": "test"},
+						},
+						Weight: 1,
+						SecureSettings: []commonv1.SecretSource{
+							{
+								SecretName: "policy1-deprecated-secure-setting-2",
+							},
+							{
+								SecretName: "policy1-deprecated-secure-setting-1",
+							},
+						},
+						Elasticsearch: policyv1alpha1.ElasticsearchConfigPolicySpec{
+							ClusterSettings: &commonv1.Config{Data: map[string]any{
+								"policy.name": "policy1",
+							}},
+							Config: &commonv1.Config{Data: map[string]any{
+								"node.store.allow_mmap": false,
+							}},
+							SecretMounts: []policyv1alpha1.SecretMount{
+								{SecretName: "policy2-secret-mount", MountPath: "/policy2-mount-path"},
+								{SecretName: "policy1-secret-mount", MountPath: "/policy1-mount-path"},
+							},
+							SecureSettings: []commonv1.SecretSource{
+								{
+									SecretName: "policy1-secure-setting-2",
+									Entries: []commonv1.KeyToPath{
+										{Key: "test", Path: "/policy1-mount-path"},
+									},
+								},
+								{
+									SecretName: "policy1-secure-setting-1",
+									Entries: []commonv1.KeyToPath{
+										{Key: "test", Path: "/policy1-mount-path"},
+									},
+								},
+							},
 						},
 					},
 				},
@@ -253,43 +645,44 @@ func Test_getStackPolicyConfigForElasticsearch(t *testing.T) {
 				Spec: policyv1alpha1.StackConfigPolicySpec{
 					Elasticsearch: policyv1alpha1.ElasticsearchConfigPolicySpec{
 						ClusterSettings: &commonv1.Config{Data: map[string]any{
-							"test.name": "policy2",
+							"policy.name": "policy1",
+						}},
+						Config: &commonv1.Config{Data: map[string]any{
+							"node.store.allow_mmap": false,
 						}},
 						SecretMounts: []policyv1alpha1.SecretMount{
-							{SecretName: "secret-policy-1", MountPath: "/secret-policy1"},
-							{SecretName: "secret-policy-2", MountPath: "/secret-policy2"},
+							{SecretName: "policy2-secret-mount", MountPath: "/policy2-mount-path"},
+							{SecretName: "policy1-secret-mount", MountPath: "/policy1-mount-path"},
 						},
-						SnapshotRepositories: &commonv1.Config{Data: map[string]any{
-							"policy-2-backups.type": "s3",
-							"policy-2-backups.settings": map[string]any{
-								"bucket": "policy-2-backups",
-								"region": "us-west-2",
-							},
-						}},
 					},
 				},
 			},
 			expectedSecretSources: []commonv1.NamespacedSecretSource{
 				{
-					SecretName: "test",
+					SecretName: "policy1-deprecated-secure-setting-2",
+					Namespace:  "test",
+				},
+				{
+					SecretName: "policy1-deprecated-secure-setting-1",
+					Namespace:  "test",
+				},
+				{
+					SecretName: "policy1-secure-setting-2",
 					Namespace:  "test",
 					Entries: []commonv1.KeyToPath{
-						{Key: "test1", Path: "/test1-policy1"},
-						{Key: "test2", Path: "/test2-policy1"},
+						{Key: "test", Path: "/policy1-mount-path"},
 					},
 				},
 				{
-					SecretName: "test",
+					SecretName: "policy1-secure-setting-1",
 					Namespace:  "test",
 					Entries: []commonv1.KeyToPath{
-						{Key: "test1", Path: "/test1-policy2"},
-						{Key: "test2", Path: "/test2-policy2"},
+						{Key: "test", Path: "/policy1-mount-path"},
 					},
 				},
 			},
 			expectedPolicyRefs: map[string]struct{}{
 				"test/policy1": {},
-				"test/policy2": {},
 			},
 		},
 		{
@@ -303,7 +696,6 @@ func Test_getStackPolicyConfigForElasticsearch(t *testing.T) {
 					},
 				},
 			},
-			policyNamespace: "test",
 			stackConfigPolicies: []policyv1alpha1.StackConfigPolicy{
 				// Policy with unique weight - should be merged
 				{
@@ -361,25 +753,6 @@ func Test_getStackPolicyConfigForElasticsearch(t *testing.T) {
 						},
 					},
 				},
-				// Another policy with unique weight - should be merged
-				{
-					ObjectMeta: metav1.ObjectMeta{
-						Namespace:       "test",
-						Name:            "policy4",
-						ResourceVersion: "1",
-					},
-					Spec: policyv1alpha1.StackConfigPolicySpec{
-						ResourceSelector: metav1.LabelSelector{
-							MatchLabels: map[string]string{"test": "test"},
-						},
-						Weight: 10,
-						Elasticsearch: policyv1alpha1.ElasticsearchConfigPolicySpec{
-							ClusterSettings: &commonv1.Config{Data: map[string]any{
-								"from": "policy4",
-							}},
-						},
-					},
-				},
 			},
 			expectedMergeConflict: true,
 		},
@@ -394,7 +767,6 @@ func Test_getStackPolicyConfigForElasticsearch(t *testing.T) {
 					},
 				},
 			},
-			policyNamespace: "test",
 			stackConfigPolicies: []policyv1alpha1.StackConfigPolicy{
 				// Policy 1 with lower weight - should be merged first
 				{
@@ -454,7 +826,6 @@ func Test_getStackPolicyConfigForElasticsearch(t *testing.T) {
 					},
 				},
 			},
-			policyNamespace: "test",
 			stackConfigPolicies: []policyv1alpha1.StackConfigPolicy{
 				// Policy 1 with lower weight - should be merged first
 				{
@@ -504,75 +875,6 @@ func Test_getStackPolicyConfigForElasticsearch(t *testing.T) {
 			expectedMergeConflict: true,
 		},
 		{
-			name: "successfully merges when different secrets use different mount paths",
-			targetElasticsearch: &esv1.Elasticsearch{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      "test",
-					Namespace: "test",
-					Labels: map[string]string{
-						"test": "test",
-					},
-				},
-			},
-			policyNamespace: "test",
-			stackConfigPolicies: []policyv1alpha1.StackConfigPolicy{
-				{
-					ObjectMeta: metav1.ObjectMeta{
-						Namespace:       "test",
-						Name:            "policy1",
-						ResourceVersion: "1",
-					},
-					Spec: policyv1alpha1.StackConfigPolicySpec{
-						ResourceSelector: metav1.LabelSelector{
-							MatchLabels: map[string]string{"test": "test"},
-						},
-						Weight: 1,
-						Elasticsearch: policyv1alpha1.ElasticsearchConfigPolicySpec{
-							SecretMounts: []policyv1alpha1.SecretMount{
-								{SecretName: "db-creds", MountPath: "/etc/db"},
-								{SecretName: "api-keys", MountPath: "/etc/api"},
-							},
-						},
-					},
-				},
-				{
-					ObjectMeta: metav1.ObjectMeta{
-						Namespace:       "test",
-						Name:            "policy2",
-						ResourceVersion: "1",
-					},
-					Spec: policyv1alpha1.StackConfigPolicySpec{
-						ResourceSelector: metav1.LabelSelector{
-							MatchLabels: map[string]string{"test": "test"},
-						},
-						Weight: 5,
-						Elasticsearch: policyv1alpha1.ElasticsearchConfigPolicySpec{
-							SecretMounts: []policyv1alpha1.SecretMount{
-								{SecretName: "tls-cert", MountPath: "/etc/tls"},
-								{SecretName: "backup-creds", MountPath: "/etc/backup"},
-							},
-						},
-					},
-				},
-			},
-			expectedConfigPolicy: policyv1alpha1.StackConfigPolicy{
-				Spec: policyv1alpha1.StackConfigPolicySpec{
-					Elasticsearch: policyv1alpha1.ElasticsearchConfigPolicySpec{
-						SecretMounts: []policyv1alpha1.SecretMount{
-							{SecretName: "api-keys", MountPath: "/etc/api"},
-							{SecretName: "backup-creds", MountPath: "/etc/backup"},
-							{SecretName: "db-creds", MountPath: "/etc/db"},
-							{SecretName: "tls-cert", MountPath: "/etc/tls"},
-						},
-					},
-				},
-			},
-			expectedPolicyRefs: map[string]struct{}{
-				"test/policy1": {},
-				"test/policy2": {},
-			},
-		},
-		{
 			name:              "elasticsearch different namespace",
 			operatorNamespace: "operator-namespace",
 			targetElasticsearch: &esv1.Elasticsearch{
@@ -584,7 +886,6 @@ func Test_getStackPolicyConfigForElasticsearch(t *testing.T) {
 					},
 				},
 			},
-			policyNamespace: "test",
 			stackConfigPolicies: []policyv1alpha1.StackConfigPolicy{
 				// Policy in wrong namespace - should not match
 				{
@@ -625,7 +926,6 @@ func Test_getStackPolicyConfigForElasticsearch(t *testing.T) {
 					},
 				},
 			},
-			policyNamespace: "test",
 			stackConfigPolicies: []policyv1alpha1.StackConfigPolicy{
 				// Policy with non-matching label selector - should not match
 				{
@@ -696,9 +996,6 @@ func Test_getStackPolicyConfigForElasticsearch(t *testing.T) {
 				assert.EqualValues(t, tc.expectedSecretSources, esConfigPolicy.SecretSources)
 			}
 
-			if len(tc.stackConfigPolicies) > 1 {
-				canonicaliseElasticsearchPolicyConfig(t, &tc.expectedConfigPolicy.Spec.Elasticsearch)
-			}
 			assert.EqualValues(t, tc.expectedConfigPolicy.Spec.Elasticsearch, esConfigPolicy.Spec)
 
 			// Compare policy references by building a map from the actual refs
@@ -715,7 +1012,6 @@ func Test_getStackPolicyConfigForElasticsearch(t *testing.T) {
 func Test_getPolicyConfigForKibana(t *testing.T) {
 	for _, tc := range []struct {
 		name                  string
-		policyNamespace       string
 		operatorNamespace     string
 		targetKibana          *kbv1.Kibana
 		stackConfigPolicies   []policyv1alpha1.StackConfigPolicy
@@ -735,7 +1031,6 @@ func Test_getPolicyConfigForKibana(t *testing.T) {
 					},
 				},
 			},
-			policyNamespace: "test",
 			stackConfigPolicies: []policyv1alpha1.StackConfigPolicy{
 				{
 					ObjectMeta: metav1.ObjectMeta{
@@ -830,7 +1125,7 @@ func Test_getPolicyConfigForKibana(t *testing.T) {
 			},
 		},
 		{
-			name: "merges Kibana configs with overwrites - higher weight wins",
+			name: "merges Kibana configs with overwrites - lower weight wins",
 			targetKibana: &kbv1.Kibana{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "test-kb",
@@ -840,7 +1135,6 @@ func Test_getPolicyConfigForKibana(t *testing.T) {
 					},
 				},
 			},
-			policyNamespace: "test",
 			stackConfigPolicies: []policyv1alpha1.StackConfigPolicy{
 				{
 					ObjectMeta: metav1.ObjectMeta{
@@ -856,7 +1150,7 @@ func Test_getPolicyConfigForKibana(t *testing.T) {
 						Kibana: policyv1alpha1.KibanaConfigPolicySpec{
 							Config: &commonv1.Config{Data: map[string]any{
 								"logging.root.level": "info",
-								"server.port":        uint64(5601),
+								"server.port":        5601,
 							}},
 						},
 					},
@@ -912,7 +1206,6 @@ func Test_getPolicyConfigForKibana(t *testing.T) {
 					},
 				},
 			},
-			policyNamespace: "test",
 			stackConfigPolicies: []policyv1alpha1.StackConfigPolicy{
 				{
 					ObjectMeta: metav1.ObjectMeta{
@@ -964,7 +1257,6 @@ func Test_getPolicyConfigForKibana(t *testing.T) {
 					},
 				},
 			},
-			policyNamespace:   "dev",
 			operatorNamespace: "elastic-system",
 			stackConfigPolicies: []policyv1alpha1.StackConfigPolicy{
 				{
@@ -1005,7 +1297,6 @@ func Test_getPolicyConfigForKibana(t *testing.T) {
 					},
 				},
 			},
-			policyNamespace: "test",
 			stackConfigPolicies: []policyv1alpha1.StackConfigPolicy{
 				{
 					ObjectMeta: metav1.ObjectMeta{
@@ -1022,9 +1313,9 @@ func Test_getPolicyConfigForKibana(t *testing.T) {
 						},
 						Weight: 10,
 						Kibana: policyv1alpha1.KibanaConfigPolicySpec{
-							Config: &commonv1.Config{Data: map[string]any{
+							Config: &commonv1.Config{Data: canonicaliseMap(t, map[string]any{
 								"xpack.canvas.enabled": true,
-							}},
+							})},
 						},
 					},
 				},
@@ -1037,7 +1328,7 @@ func Test_getPolicyConfigForKibana(t *testing.T) {
 			expectedPolicyRefs: map[string]struct{}{},
 		},
 		{
-			name: "Single Kibana policy - no merging optimization",
+			name: "no changes for single policy",
 			targetKibana: &kbv1.Kibana{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "test-kb",
@@ -1047,7 +1338,6 @@ func Test_getPolicyConfigForKibana(t *testing.T) {
 					},
 				},
 			},
-			policyNamespace: "test",
 			stackConfigPolicies: []policyv1alpha1.StackConfigPolicy{
 				{
 					ObjectMeta: metav1.ObjectMeta{
@@ -1100,9 +1390,6 @@ func Test_getPolicyConfigForKibana(t *testing.T) {
 				assert.EqualValues(t, tc.expectedSecretSources, kbPolicyConfig.SecretSources)
 			}
 
-			if len(tc.stackConfigPolicies) > 1 {
-				canonicaliseKibanaPolicyConfig(t, &tc.expectedConfigPolicy.Spec.Kibana)
-			}
 			assert.EqualValues(t, tc.expectedConfigPolicy.Spec.Kibana, kbPolicyConfig.Spec)
 
 			// Compare policy references
@@ -1116,32 +1403,14 @@ func Test_getPolicyConfigForKibana(t *testing.T) {
 	}
 }
 
-func canonicaliseElasticsearchPolicyConfig(t *testing.T, spec *policyv1alpha1.ElasticsearchConfigPolicySpec) {
+func canonicaliseMap(t *testing.T, src map[string]any) map[string]any {
 	t.Helper()
-	var err error
-	spec.ClusterSettings, err = deepMergeConfig(spec.ClusterSettings, spec.ClusterSettings)
-	assert.NoError(t, err)
-	spec.SnapshotRepositories, err = mergeConfig(spec.SnapshotRepositories, spec.SnapshotRepositories)
-	assert.NoError(t, err)
-	spec.SnapshotLifecyclePolicies, err = deepMergeConfig(spec.SnapshotLifecyclePolicies, spec.SnapshotLifecyclePolicies)
-	assert.NoError(t, err)
-	spec.SecurityRoleMappings, err = deepMergeConfig(spec.SecurityRoleMappings, spec.SecurityRoleMappings)
-	assert.NoError(t, err)
-	spec.IndexLifecyclePolicies, err = deepMergeConfig(spec.IndexLifecyclePolicies, spec.IndexLifecyclePolicies)
-	assert.NoError(t, err)
-	spec.IngestPipelines, err = deepMergeConfig(spec.IngestPipelines, spec.IngestPipelines)
-	assert.NoError(t, err)
-	spec.IndexTemplates.ComposableIndexTemplates, err = deepMergeConfig(spec.IndexTemplates.ComposableIndexTemplates, spec.IndexTemplates.ComposableIndexTemplates)
-	assert.NoError(t, err)
-	spec.IndexTemplates.ComponentTemplates, err = deepMergeConfig(spec.IndexTemplates.ComponentTemplates, spec.IndexTemplates.ComposableIndexTemplates)
-	assert.NoError(t, err)
-	spec.Config, err = deepMergeConfig(spec.Config, spec.Config)
-	assert.NoError(t, err)
-}
 
-func canonicaliseKibanaPolicyConfig(t *testing.T, spec *policyv1alpha1.KibanaConfigPolicySpec) {
-	t.Helper()
-	var err error
-	spec.Config, err = deepMergeConfig(spec.Config, spec.Config)
-	assert.NoError(t, err)
+	dstCanonicalConfig, err := settings.NewCanonicalConfigFrom(src)
+	require.NoError(t, err, "failed to canonicalise map")
+
+	var canonicalisedMap map[string]any
+	err = dstCanonicalConfig.Unpack(&canonicalisedMap)
+	require.NoError(t, err, "failed to unpack")
+	return canonicalisedMap
 }

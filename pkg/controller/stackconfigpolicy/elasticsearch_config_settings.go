@@ -122,7 +122,7 @@ func getElasticsearchConfigAndMountsHash(elasticsearchConfig *commonv1.Config, s
 	return hash.HashObject(secretMounts)
 }
 
-// elasticsearchConfigAndSecretMountsApplied checks if the Elasticsearch config and secret mounts from the stack config policy have been applied to the Elasticsearch cluster.
+// elasticsearchConfigAndSecretMountsApplied checks if the Elasticsearch config and secret mounts have been applied to the Elasticsearch cluster.
 func elasticsearchConfigAndSecretMountsApplied(ctx context.Context, c k8s.Client, esConfigPolicy policyv1alpha1.ElasticsearchConfigPolicySpec, es esv1.Elasticsearch) (bool, error) {
 	// Get Pods for the given Elasticsearch
 	podList := corev1.PodList{}
