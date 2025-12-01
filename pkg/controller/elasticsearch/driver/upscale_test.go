@@ -897,7 +897,6 @@ func TestHandleUpscaleAndSpecChanges_VersionUpgradeDataFirstFlow(t *testing.T) {
 	require.NoError(t, k8sClient.Status().Update(context.Background(), &dataSset))
 
 	// Call HandleUpscaleAndSpecChanges and verify that both data upgrade has begun and master STS is not updated
-	fmt.Println("Calling HandleUpscaleAndSpecChanges which should upscale the master replicas to 4")
 	_, err = HandleUpscaleAndSpecChanges(ctx, actualStatefulSets, expectedResourcesUpgrade)
 	require.NoError(t, err)
 
@@ -919,16 +918,12 @@ func TestHandleUpscaleAndSpecChanges_VersionUpgradeDataFirstFlow(t *testing.T) {
 	require.NoError(t, k8sClient.Status().Update(context.Background(), &dataSset))
 
 	// Update the existing data pods to have the new revision
-	var pod0 corev1.Pod
-	require.NoError(t, k8sClient.Get(context.Background(), types.NamespacedName{Namespace: "ns", Name: "data-sset-0"}, &pod0))
-	pod0.Labels["controller-revision-hash"] = "data-sset-12345"
-	require.NoError(t, k8sClient.Update(context.Background(), &pod0))
-
-	var pod1 corev1.Pod
-	require.NoError(t, k8sClient.Get(context.Background(), types.NamespacedName{Namespace: "ns", Name: "data-sset-1"}, &pod1))
-	pod1.Labels["controller-revision-hash"] = "data-sset-12345"
-	require.NoError(t, k8sClient.Update(context.Background(), &pod1))
-
+	for i := 0; i < int(dataSset.Status.Replicas); i++ {
+		var pod corev1.Pod
+		require.NoError(t, k8sClient.Get(context.Background(), types.NamespacedName{Namespace: "ns", Name: fmt.Sprintf("data-sset-%d", i)}, &pod))
+		pod.Labels["controller-revision-hash"] = "data-sset-12345"
+		require.NoError(t, k8sClient.Update(context.Background(), &pod))
+	}
 	// Call HandleUpscaleAndSpecChanges and verify that master STS is now set to be upgraded
 	actualStatefulSets = res.ActualStatefulSets
 	_, err = HandleUpscaleAndSpecChanges(ctx, actualStatefulSets, expectedResourcesUpgrade)

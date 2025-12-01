@@ -174,6 +174,7 @@ func maybeUpscaleMasterResources(ctx upscaleCtx, masterResources []nodespec.Reso
 			if err := ctx.k8sClient.Update(ctx.parentCtx, &actualSset); err != nil {
 				return fmt.Errorf("while upscaling master sts replicas: %w", err)
 			}
+			ctx.expectations.ExpectGeneration(actualSset)
 		}
 	}
 	return nil
@@ -305,7 +306,7 @@ func findPendingNonMasterStatefulSetUpgrades(
 	targetVersion version.Version,
 	expectations *expectations.Expectations,
 ) ([]appsv1.StatefulSet, error) {
-	pendingStatefulSet, err := expectations.ExpectedStatefulSetUpdates.PendingGenerations()
+	pendingStatefulSets, err := expectations.ExpectedStatefulSetUpdates.PendingGenerations()
 	if err != nil {
 		return nil, err
 	}
@@ -321,7 +322,7 @@ func findPendingNonMasterStatefulSetUpgrades(
 		}
 
 		// If the expectations show this as a pending StatefulSet, add it to the list.
-		if slices.Contains(pendingStatefulSet, actualStatefulSet.Name) {
+		if slices.Contains(pendingStatefulSets, actualStatefulSet.Name) {
 			pendingNonMasterSTS = append(pendingNonMasterSTS, actualStatefulSet)
 			continue
 		}
