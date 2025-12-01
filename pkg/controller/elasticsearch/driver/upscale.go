@@ -338,6 +338,12 @@ func findPendingNonMasterStatefulSetUpgrades(
 			continue
 		}
 
+		if actualStatefulSet.Status.ObservedGeneration < actualStatefulSet.Generation {
+			// The StatefulSet controller has not yet observed the latest generation.
+			pendingNonMasterSTS = append(pendingNonMasterSTS, actualStatefulSet)
+			continue
+		}
+
 		// Check if this StatefulSet has pending updates
 		if actualStatefulSet.Status.UpdatedReplicas != actualStatefulSet.Status.Replicas {
 			pendingNonMasterSTS = append(pendingNonMasterSTS, actualStatefulSet)
