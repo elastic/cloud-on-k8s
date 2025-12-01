@@ -94,6 +94,27 @@ webhooks:
     service:
       name: webhook-service
       namespace: system
+      path: /validate-ccm-k8s-elastic-co-v1alpha1-cloudconnectedmodes
+  failurePolicy: Ignore
+  matchPolicy: Exact
+  name: elastic-ccm-validation-v1alpha1.k8s.elastic.co
+  rules:
+  - apiGroups:
+    - cloudconnected.k8s.elastic.co
+    apiVersions:
+    - v1alpha1
+    operations:
+    - CREATE
+    - UPDATE
+    resources:
+    - cloudconnectedmodes
+  sideEffects: None
+- admissionReviewVersions:
+  - v1
+  clientConfig:
+    service:
+      name: webhook-service
+      namespace: system
       path: /validate-elasticsearch-k8s-elastic-co-v1beta1-elasticsearch
   failurePolicy: Ignore
   matchPolicy: Exact

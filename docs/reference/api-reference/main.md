@@ -16,6 +16,7 @@ applies_to:
 * [apm.k8s.elastic.co/v1beta1](#apmk8selasticcov1beta1)
 * [autoscaling.k8s.elastic.co/v1alpha1](#autoscalingk8selasticcov1alpha1)
 * [beat.k8s.elastic.co/v1beta1](#beatk8selasticcov1beta1)
+* [cloudconnected.k8s.elastic.co/v1alpha1](#cloudconnectedk8selasticcov1alpha1)
 * [common.k8s.elastic.co/v1](#commonk8selasticcov1)
 * [common.k8s.elastic.co/v1alpha1](#commonk8selasticcov1alpha1)
 * [common.k8s.elastic.co/v1beta1](#commonk8selasticcov1beta1)
@@ -388,6 +389,84 @@ BeatSpec defines the desired state of a Beat.
 | *`podTemplate`* __[PodTemplateSpec](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.32/#podtemplatespec-v1-core)__ |  |
 | *`replicas`* __integer__ |  |
 | *`strategy`* __[DeploymentStrategy](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.32/#deploymentstrategy-v1-apps)__ |  |
+
+
+
+% TODO add function to crd-ref-docs return anchor used in links docs-v3 does not seem to produce valid markdown anchors
+## cloudconnected.k8s.elastic.co/v1alpha1 [#cloudconnectedk8selasticcov1alpha1]
+
+Package v1alpha1 contains API schema definitions for managing StackConfigPolicy resources.
+
+### Resource Types
+- [CloudConnectedMode](#cloudconnectedmode)
+- [CloudConnectedModeList](#cloudconnectedmodelist)
+
+
+
+### CloudConnectedMode  [#cloudconnectedmode]
+
+CloudConnectedMode represents a CloudConnectedMode resource in a Kubernetes cluster.
+
+:::{admonition} Appears In:
+* [CloudConnectedModeList](#cloudconnectedmodelist)
+
+:::
+
+| Field | Description |
+| --- | --- |
+| *`apiVersion`* __string__ | `cloudconnected.k8s.elastic.co/v1alpha1` |
+| *`kind`* __string__ | `CloudConnectedMode` | 
+| *`metadata`* __[ObjectMeta](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.32/#objectmeta-v1-meta)__ | Refer to Kubernetes API documentation for fields of `metadata`. |
+| *`spec`* __[CloudConnectedModeSpec](#cloudconnectedmodespec)__ |  |
+| *`status`* __[CloudConnectedModeStatus](#cloudconnectedmodestatus)__ |  |
+
+
+### CloudConnectedModeList  [#cloudconnectedmodelist]
+
+CloudConnectedModeList contains a list of CloudConnectedMode resources.
+
+
+
+| Field | Description |
+| --- | --- |
+| *`apiVersion`* __string__ | `cloudconnected.k8s.elastic.co/v1alpha1` |
+| *`kind`* __string__ | `CloudConnectedModeList` | 
+| *`metadata`* __[ListMeta](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.32/#listmeta-v1-meta)__ | Refer to Kubernetes API documentation for fields of `metadata`. |
+| *`items`* __[CloudConnectedMode](#cloudconnectedmode) array__ |  |
+
+
+### CloudConnectedModeSpec  [#cloudconnectedmodespec]
+
+
+
+:::{admonition} Appears In:
+* [CloudConnectedMode](#cloudconnectedmode)
+
+:::
+
+| Field | Description |
+| --- | --- |
+| *`resourceSelector`* __[LabelSelector](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.32/#labelselector-v1-meta)__ |  |
+
+
+### CloudConnectedModeStatus  [#cloudconnectedmodestatus]
+
+
+
+:::{admonition} Appears In:
+* [CloudConnectedMode](#cloudconnectedmode)
+
+:::
+
+| Field | Description |
+| --- | --- |
+| *`resources`* __integer__ | Resources is the number of resources to be configured. |
+| *`ready`* __integer__ | Ready is the number of resources successfully configured. |
+| *`errors`* __integer__ | Errors is the number of resources which have an incorrect configuration |
+| *`readyCount`* __string__ | ReadyCount is a human representation of the number of resources successfully configured. |
+| *`observedGeneration`* __integer__ | ObservedGeneration is the most recent generation observed for this CloudConnectedMode. |
+
+
 
 
 

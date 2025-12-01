@@ -5,8 +5,6 @@
 package v1alpha1
 
 import (
-	"fmt"
-
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
@@ -87,18 +85,18 @@ func (p *CloudConnectedMode) GetWarnings() []string {
 	return nil
 }
 
-// func checkNoUnknownFields(policy *CloudConnectedMode) field.ErrorList {
-// 	return commonv1.NoUnknownFields(policy, policy.ObjectMeta)
-// }
+func checkNoUnknownFields(policy *CloudConnectedMode) field.ErrorList {
+	return commonv1.NoUnknownFields(policy, policy.ObjectMeta)
+}
 
-// func checkNameLength(policy *CloudConnectedMode) field.ErrorList {
-// 	return commonv1.CheckNameLength(policy)
-// }
+func checkNameLength(policy *CloudConnectedMode) field.ErrorList {
+	return commonv1.CheckNameLength(policy)
+}
 
 func validSettings(policy *CloudConnectedMode) field.ErrorList {
-	settingsCount := 0
-	if settingsCount == 0 {
-		return field.ErrorList{field.Required(field.NewPath("spec").Child("elasticsearch"), "One out of Elasticsearch or Kibana settings is mandatory, both must not be empty")}
+	// Validate that ResourceSelector is not empty
+	if policy.Spec.ResourceSelector.MatchLabels == nil && len(policy.Spec.ResourceSelector.MatchExpressions) == 0 {
+		return field.ErrorList{field.Required(field.NewPath("spec").Child("resourceSelector"), "ResourceSelector must be specified with either matchLabels or matchExpressions")}
 	}
 	return nil
 }
