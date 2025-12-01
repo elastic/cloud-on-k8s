@@ -4,18 +4,18 @@ kind: CustomResourceDefinition
 metadata:
   annotations:
     controller-gen.kubebuilder.io/version: v0.19.0
-  name: cloudconnectedmodes.cloudconnected.k8s.elastic.co
+  name: autoopsagentpolicies.autoops.k8s.elastic.co
 spec:
-  group: cloudconnected.k8s.elastic.co
+  group: autoops.k8s.elastic.co
   names:
     categories:
     - elastic
-    kind: CloudConnectedMode
-    listKind: CloudConnectedModeList
-    plural: cloudconnectedmodes
+    kind: AutoOpsAgentPolicy
+    listKind: AutoOpsAgentPolicyList
+    plural: autoopsagentpolicies
     shortNames:
-    - ccm
-    singular: cloudconnectedmode
+    - autoops
+    singular: autoopsagentpolicy
   scope: Namespaced
   versions:
   - additionalPrinterColumns:
@@ -32,8 +32,8 @@ spec:
     name: v1alpha1
     schema:
       openAPIV3Schema:
-        description: CloudConnectedMode represents a CloudConnectedMode resource in
-          a Kubernetes cluster.
+        description: AutoOpsAgentPolicy represents an AutoOpsAgentPolicy resource
+          in a Kubernetes cluster.
         properties:
           apiVersion:
             description: |-
@@ -54,11 +54,24 @@ spec:
             type: object
           spec:
             properties:
+              config:
+                description: |-
+                  Config holds the AutoOpsAgentPolicy configuration.
+                  The contents of the referenced secret requires the following format:
+                    kind: Secret
+                    apiVersion: v1
+                    metadata:
+                      name: autoops-agent-policy-config
+                    stringData:
+                      ccmApiKey: aslkfjsldkjfslkdjflksdjfl
+                      tempResourceID: u857abce4-9214-446b-951c-a1644b7d204ao
+                      autoOpsOTelURL: https://otel.auto-ops.console.qa.cld.elstc.co
+                      autoOpsToken: skdfjdskjf
+                type: object
               resourceSelector:
                 description: |-
-                  A label selector is a label query over a set of resources. The result of matchLabels and
-                  matchExpressions are ANDed. An empty label selector matches all objects. A null
-                  label selector matches no objects.
+                  ResourceSelector is a label selector for the resources to be configured.
+                  Any Elasticsearch instances that match the selector will be configured to send data to AutoOps.
                 properties:
                   matchExpressions:
                     description: matchExpressions is a list of label selector requirements.
@@ -107,23 +120,20 @@ spec:
           status:
             properties:
               errors:
-                description: Errors is the number of resources which have an incorrect
-                  configuration
+                description: Errors is the number of resources that are in an error
+                  state.
                 type: integer
               observedGeneration:
                 description: ObservedGeneration is the most recent generation observed
-                  for this CloudConnectedMode.
+                  for this AutoOpsAgentPolicy.
                 format: int64
                 type: integer
               ready:
-                description: Ready is the number of resources successfully configured.
+                description: Ready is the number of resources that are in a ready
+                  state.
                 type: integer
-              readyCount:
-                description: ReadyCount is a human representation of the number of
-                  resources successfully configured.
-                type: string
               resources:
-                description: Resources is the number of resources to be configured.
+                description: Resources is the number of resources that match the ResourceSelector.
                 type: integer
             type: object
         type: object

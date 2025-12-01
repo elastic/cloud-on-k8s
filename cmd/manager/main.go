@@ -46,7 +46,7 @@ import (
 	apmv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/apm/v1"
 	apmv1beta1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/apm/v1beta1"
 	beatv1beta1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/beat/v1beta1"
-	ccmv1alpha1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/cloudconnectedmode/v1alpha1"
+	autoopsv1alpha1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/autoops/v1alpha1"
 	esv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/elasticsearch/v1"
 	esv1beta1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/elasticsearch/v1beta1"
 	entv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/enterprisesearch/v1"
@@ -63,7 +63,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/autoscaling"
 	esavalidation "github.com/elastic/cloud-on-k8s/v3/pkg/controller/autoscaling/elasticsearch/validation"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/beat"
-	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/cloudconnectedmode"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/autoops"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/certificates"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/container"
 	commonlicense "github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/license"
@@ -913,7 +913,7 @@ func registerControllers(mgr manager.Manager, params operator.Parameters, access
 		{name: "Agent", registerFunc: agent.Add},
 		{name: "Maps", registerFunc: maps.Add},
 		{name: "StackConfigPolicy", registerFunc: stackconfigpolicy.Add},
-		{name: "CloudConnectedMode", registerFunc: cloudconnectedmode.Add},
+		{name: "AutoOpsAgentPolicy", registerFunc: autoops.Add},
 		{name: "Logstash", registerFunc: logstash.Add},
 	}
 
@@ -1004,7 +1004,7 @@ func garbageCollectSoftOwnedSecrets(ctx context.Context, k8sClient k8s.Client) {
 		agentv1alpha1.Kind:    &agentv1alpha1.Agent{},
 		emsv1alpha1.Kind:      &emsv1alpha1.ElasticMapsServer{},
 		policyv1alpha1.Kind:   &policyv1alpha1.StackConfigPolicy{},
-		ccmv1alpha1.Kind:      &ccmv1alpha1.CloudConnectedMode{},
+		autoopsv1alpha1.Kind:  &autoopsv1alpha1.AutoOpsAgentPolicy{},
 		logstashv1alpha1.Kind: &logstashv1alpha1.Logstash{},
 	}); err != nil {
 		log.Error(err, "Orphan secrets garbage collection failed, will be attempted again at next operator restart.")
@@ -1048,7 +1048,7 @@ func setupWebhook(
 		&kbv1beta1.Kibana{},
 		&emsv1alpha1.ElasticMapsServer{},
 		&policyv1alpha1.StackConfigPolicy{},
-		&ccmv1alpha1.CloudConnectedMode{},
+		&autoopsv1alpha1.AutoOpsAgentPolicy{},
 	}
 	for _, obj := range webhookObjects {
 		commonwebhook.SetupValidatingWebhookWithConfig(&commonwebhook.Config{

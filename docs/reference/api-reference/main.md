@@ -14,9 +14,9 @@ applies_to:
 * [agent.k8s.elastic.co/v1alpha1](#agentk8selasticcov1alpha1)
 * [apm.k8s.elastic.co/v1](#apmk8selasticcov1)
 * [apm.k8s.elastic.co/v1beta1](#apmk8selasticcov1beta1)
+* [autoops.k8s.elastic.co/v1alpha1](#autoopsk8selasticcov1alpha1)
 * [autoscaling.k8s.elastic.co/v1alpha1](#autoscalingk8selasticcov1alpha1)
 * [beat.k8s.elastic.co/v1beta1](#beatk8selasticcov1beta1)
-* [cloudconnected.k8s.elastic.co/v1alpha1](#cloudconnectedk8selasticcov1alpha1)
 * [common.k8s.elastic.co/v1](#commonk8selasticcov1)
 * [common.k8s.elastic.co/v1alpha1](#commonk8selasticcov1alpha1)
 * [common.k8s.elastic.co/v1beta1](#commonk8selasticcov1beta1)
@@ -257,6 +257,64 @@ ApmServerSpec holds the specification of an APM Server.
 
 
 % TODO add function to crd-ref-docs return anchor used in links docs-v3 does not seem to produce valid markdown anchors
+## autoops.k8s.elastic.co/v1alpha1 [#autoopsk8selasticcov1alpha1]
+
+Package v1alpha1 contains API schema definitions for managing AutoOpsAgentPolicy resources.
+
+### Resource Types
+- [AutoOpsAgentPolicy](#autoopsagentpolicy)
+- [AutoOpsAgentPolicyList](#autoopsagentpolicylist)
+
+
+
+### AutoOpsAgentPolicy  [#autoopsagentpolicy]
+
+AutoOpsAgentPolicy represents an AutoOpsAgentPolicy resource in a Kubernetes cluster.
+
+:::{admonition} Appears In:
+* [AutoOpsAgentPolicyList](#autoopsagentpolicylist)
+
+:::
+
+| Field | Description |
+| --- | --- |
+| *`apiVersion`* __string__ | `autoops.k8s.elastic.co/v1alpha1` |
+| *`kind`* __string__ | `AutoOpsAgentPolicy` | 
+| *`metadata`* __[ObjectMeta](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.32/#objectmeta-v1-meta)__ | Refer to Kubernetes API documentation for fields of `metadata`. |
+| *`spec`* __[AutoOpsAgentPolicySpec](#autoopsagentpolicyspec)__ |  |
+
+
+### AutoOpsAgentPolicyList  [#autoopsagentpolicylist]
+
+AutoOpsAgentPolicyList contains a list of AutoOpsAgentPolicy resources.
+
+
+
+| Field | Description |
+| --- | --- |
+| *`apiVersion`* __string__ | `autoops.k8s.elastic.co/v1alpha1` |
+| *`kind`* __string__ | `AutoOpsAgentPolicyList` | 
+| *`metadata`* __[ListMeta](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.32/#listmeta-v1-meta)__ | Refer to Kubernetes API documentation for fields of `metadata`. |
+| *`items`* __[AutoOpsAgentPolicy](#autoopsagentpolicy) array__ |  |
+
+
+### AutoOpsAgentPolicySpec  [#autoopsagentpolicyspec]
+
+
+
+:::{admonition} Appears In:
+* [AutoOpsAgentPolicy](#autoopsagentpolicy)
+
+:::
+
+| Field | Description |
+| --- | --- |
+| *`resourceSelector`* __[LabelSelector](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.32/#labelselector-v1-meta)__ | ResourceSelector is a label selector for the resources to be configured.<br>Any Elasticsearch instances that match the selector will be configured to send data to AutoOps. |
+| *`config`* __[Config](#config)__ | Config holds the AutoOpsAgentPolicy configuration.<br>The contents of the referenced secret requires the following format:<br>  kind: Secret<br>  apiVersion: v1<br>  metadata:<br>    name: autoops-agent-policy-config<br>  stringData:<br>    ccmApiKey: aslkfjsldkjfslkdjflksdjfl<br>    tempResourceID: u857abce4-9214-446b-951c-a1644b7d204ao<br>    autoOpsOTelURL: https://otel.auto-ops.console.qa.cld.elstc.co<br>    autoOpsToken: skdfjdskjf |
+
+
+
+% TODO add function to crd-ref-docs return anchor used in links docs-v3 does not seem to produce valid markdown anchors
 ## autoscaling.k8s.elastic.co/v1alpha1 [#autoscalingk8selasticcov1alpha1]
 
 Package v1alpha1 contains API schema definitions for managing ElasticsearchAutoscaler resources.
@@ -393,84 +451,6 @@ BeatSpec defines the desired state of a Beat.
 
 
 % TODO add function to crd-ref-docs return anchor used in links docs-v3 does not seem to produce valid markdown anchors
-## cloudconnected.k8s.elastic.co/v1alpha1 [#cloudconnectedk8selasticcov1alpha1]
-
-Package v1alpha1 contains API schema definitions for managing StackConfigPolicy resources.
-
-### Resource Types
-- [CloudConnectedMode](#cloudconnectedmode)
-- [CloudConnectedModeList](#cloudconnectedmodelist)
-
-
-
-### CloudConnectedMode  [#cloudconnectedmode]
-
-CloudConnectedMode represents a CloudConnectedMode resource in a Kubernetes cluster.
-
-:::{admonition} Appears In:
-* [CloudConnectedModeList](#cloudconnectedmodelist)
-
-:::
-
-| Field | Description |
-| --- | --- |
-| *`apiVersion`* __string__ | `cloudconnected.k8s.elastic.co/v1alpha1` |
-| *`kind`* __string__ | `CloudConnectedMode` | 
-| *`metadata`* __[ObjectMeta](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.32/#objectmeta-v1-meta)__ | Refer to Kubernetes API documentation for fields of `metadata`. |
-| *`spec`* __[CloudConnectedModeSpec](#cloudconnectedmodespec)__ |  |
-| *`status`* __[CloudConnectedModeStatus](#cloudconnectedmodestatus)__ |  |
-
-
-### CloudConnectedModeList  [#cloudconnectedmodelist]
-
-CloudConnectedModeList contains a list of CloudConnectedMode resources.
-
-
-
-| Field | Description |
-| --- | --- |
-| *`apiVersion`* __string__ | `cloudconnected.k8s.elastic.co/v1alpha1` |
-| *`kind`* __string__ | `CloudConnectedModeList` | 
-| *`metadata`* __[ListMeta](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.32/#listmeta-v1-meta)__ | Refer to Kubernetes API documentation for fields of `metadata`. |
-| *`items`* __[CloudConnectedMode](#cloudconnectedmode) array__ |  |
-
-
-### CloudConnectedModeSpec  [#cloudconnectedmodespec]
-
-
-
-:::{admonition} Appears In:
-* [CloudConnectedMode](#cloudconnectedmode)
-
-:::
-
-| Field | Description |
-| --- | --- |
-| *`resourceSelector`* __[LabelSelector](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.32/#labelselector-v1-meta)__ |  |
-
-
-### CloudConnectedModeStatus  [#cloudconnectedmodestatus]
-
-
-
-:::{admonition} Appears In:
-* [CloudConnectedMode](#cloudconnectedmode)
-
-:::
-
-| Field | Description |
-| --- | --- |
-| *`resources`* __integer__ | Resources is the number of resources to be configured. |
-| *`ready`* __integer__ | Ready is the number of resources successfully configured. |
-| *`errors`* __integer__ | Errors is the number of resources which have an incorrect configuration |
-| *`readyCount`* __string__ | ReadyCount is a human representation of the number of resources successfully configured. |
-| *`observedGeneration`* __integer__ | ObservedGeneration is the most recent generation observed for this CloudConnectedMode. |
-
-
-
-
-
-% TODO add function to crd-ref-docs return anchor used in links docs-v3 does not seem to produce valid markdown anchors
 ## common.k8s.elastic.co/v1 [#commonk8selasticcov1]
 
 Package v1 contains API schema definitions for common types used by all resources.
@@ -486,6 +466,7 @@ Config represents untyped YAML configuration.
 :::{admonition} Appears In:
 * [AgentSpec](#agentspec)
 * [ApmServerSpec](#apmserverspec)
+* [AutoOpsAgentPolicySpec](#autoopsagentpolicyspec)
 * [BeatSpec](#beatspec)
 * [ElasticsearchConfigPolicySpec](#elasticsearchconfigpolicyspec)
 * [EnterpriseSearchSpec](#enterprisesearchspec)

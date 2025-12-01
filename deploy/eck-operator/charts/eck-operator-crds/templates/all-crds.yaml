@@ -2379,6 +2379,156 @@ metadata:
     app.kubernetes.io/name: '{{ include "eck-operator-crds.name" . }}'
     app.kubernetes.io/version: '{{ .Chart.AppVersion }}'
     helm.sh/chart: '{{ include "eck-operator-crds.chart" . }}'
+  name: autoopsagentpolicies.autoops.k8s.elastic.co
+spec:
+  group: autoops.k8s.elastic.co
+  names:
+    categories:
+    - elastic
+    kind: AutoOpsAgentPolicy
+    listKind: AutoOpsAgentPolicyList
+    plural: autoopsagentpolicies
+    shortNames:
+    - autoops
+    singular: autoopsagentpolicy
+  scope: Namespaced
+  versions:
+  - additionalPrinterColumns:
+    - description: Resources configured
+      jsonPath: .status.readyCount
+      name: Ready
+      type: string
+    - jsonPath: .status.phase
+      name: Phase
+      type: string
+    - jsonPath: .metadata.creationTimestamp
+      name: Age
+      type: date
+    name: v1alpha1
+    schema:
+      openAPIV3Schema:
+        description: AutoOpsAgentPolicy represents an AutoOpsAgentPolicy resource
+          in a Kubernetes cluster.
+        properties:
+          apiVersion:
+            description: |-
+              APIVersion defines the versioned schema of this representation of an object.
+              Servers should convert recognized schemas to the latest internal value, and
+              may reject unrecognized values.
+              More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources
+            type: string
+          kind:
+            description: |-
+              Kind is a string value representing the REST resource this object represents.
+              Servers may infer this from the endpoint the client submits requests to.
+              Cannot be updated.
+              In CamelCase.
+              More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds
+            type: string
+          metadata:
+            type: object
+          spec:
+            properties:
+              config:
+                description: |-
+                  Config holds the AutoOpsAgentPolicy configuration.
+                  The contents of the referenced secret requires the following format:
+                    kind: Secret
+                    apiVersion: v1
+                    metadata:
+                      name: autoops-agent-policy-config
+                    stringData:
+                      ccmApiKey: aslkfjsldkjfslkdjflksdjfl
+                      tempResourceID: u857abce4-9214-446b-951c-a1644b7d204ao
+                      autoOpsOTelURL: https://otel.auto-ops.console.qa.cld.elstc.co
+                      autoOpsToken: skdfjdskjf
+                type: object
+              resourceSelector:
+                description: |-
+                  ResourceSelector is a label selector for the resources to be configured.
+                  Any Elasticsearch instances that match the selector will be configured to send data to AutoOps.
+                properties:
+                  matchExpressions:
+                    description: matchExpressions is a list of label selector requirements.
+                      The requirements are ANDed.
+                    items:
+                      description: |-
+                        A label selector requirement is a selector that contains values, a key, and an operator that
+                        relates the key and values.
+                      properties:
+                        key:
+                          description: key is the label key that the selector applies
+                            to.
+                          type: string
+                        operator:
+                          description: |-
+                            operator represents a key's relationship to a set of values.
+                            Valid operators are In, NotIn, Exists and DoesNotExist.
+                          type: string
+                        values:
+                          description: |-
+                            values is an array of string values. If the operator is In or NotIn,
+                            the values array must be non-empty. If the operator is Exists or DoesNotExist,
+                            the values array must be empty. This array is replaced during a strategic
+                            merge patch.
+                          items:
+                            type: string
+                          type: array
+                          x-kubernetes-list-type: atomic
+                      required:
+                      - key
+                      - operator
+                      type: object
+                    type: array
+                    x-kubernetes-list-type: atomic
+                  matchLabels:
+                    additionalProperties:
+                      type: string
+                    description: |-
+                      matchLabels is a map of {key,value} pairs. A single {key,value} in the matchLabels
+                      map is equivalent to an element of matchExpressions, whose key field is "key", the
+                      operator is "In", and the values array contains only "value". The requirements are ANDed.
+                    type: object
+                type: object
+                x-kubernetes-map-type: atomic
+            type: object
+          status:
+            properties:
+              errors:
+                description: Errors is the number of resources that are in an error
+                  state.
+                type: integer
+              observedGeneration:
+                description: ObservedGeneration is the most recent generation observed
+                  for this AutoOpsAgentPolicy.
+                format: int64
+                type: integer
+              ready:
+                description: Ready is the number of resources that are in a ready
+                  state.
+                type: integer
+              resources:
+                description: Resources is the number of resources that match the ResourceSelector.
+                type: integer
+            type: object
+        type: object
+    served: true
+    storage: true
+    subresources:
+      status: {}
+---
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  annotations:
+    controller-gen.kubebuilder.io/version: v0.19.0
+    helm.sh/resource-policy: keep
+  labels:
+    app.kubernetes.io/instance: '{{ .Release.Name }}'
+    app.kubernetes.io/managed-by: '{{ .Release.Service }}'
+    app.kubernetes.io/name: '{{ include "eck-operator-crds.name" . }}'
+    app.kubernetes.io/version: '{{ .Chart.AppVersion }}'
+    helm.sh/chart: '{{ include "eck-operator-crds.chart" . }}'
   name: beats.beat.k8s.elastic.co
 spec:
   group: beat.k8s.elastic.co
@@ -2845,146 +2995,6 @@ spec:
                   Version of the stack resource currently running. During version upgrades, multiple versions may run
                   in parallel: this value specifies the lowest version currently running.
                 type: string
-            type: object
-        type: object
-    served: true
-    storage: true
-    subresources:
-      status: {}
----
-apiVersion: apiextensions.k8s.io/v1
-kind: CustomResourceDefinition
-metadata:
-  annotations:
-    controller-gen.kubebuilder.io/version: v0.19.0
-    helm.sh/resource-policy: keep
-  labels:
-    app.kubernetes.io/instance: '{{ .Release.Name }}'
-    app.kubernetes.io/managed-by: '{{ .Release.Service }}'
-    app.kubernetes.io/name: '{{ include "eck-operator-crds.name" . }}'
-    app.kubernetes.io/version: '{{ .Chart.AppVersion }}'
-    helm.sh/chart: '{{ include "eck-operator-crds.chart" . }}'
-  name: cloudconnectedmodes.cloudconnected.k8s.elastic.co
-spec:
-  group: cloudconnected.k8s.elastic.co
-  names:
-    categories:
-    - elastic
-    kind: CloudConnectedMode
-    listKind: CloudConnectedModeList
-    plural: cloudconnectedmodes
-    shortNames:
-    - ccm
-    singular: cloudconnectedmode
-  scope: Namespaced
-  versions:
-  - additionalPrinterColumns:
-    - description: Resources configured
-      jsonPath: .status.readyCount
-      name: Ready
-      type: string
-    - jsonPath: .status.phase
-      name: Phase
-      type: string
-    - jsonPath: .metadata.creationTimestamp
-      name: Age
-      type: date
-    name: v1alpha1
-    schema:
-      openAPIV3Schema:
-        description: CloudConnectedMode represents a CloudConnectedMode resource in
-          a Kubernetes cluster.
-        properties:
-          apiVersion:
-            description: |-
-              APIVersion defines the versioned schema of this representation of an object.
-              Servers should convert recognized schemas to the latest internal value, and
-              may reject unrecognized values.
-              More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources
-            type: string
-          kind:
-            description: |-
-              Kind is a string value representing the REST resource this object represents.
-              Servers may infer this from the endpoint the client submits requests to.
-              Cannot be updated.
-              In CamelCase.
-              More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds
-            type: string
-          metadata:
-            type: object
-          spec:
-            properties:
-              resourceSelector:
-                description: |-
-                  A label selector is a label query over a set of resources. The result of matchLabels and
-                  matchExpressions are ANDed. An empty label selector matches all objects. A null
-                  label selector matches no objects.
-                properties:
-                  matchExpressions:
-                    description: matchExpressions is a list of label selector requirements.
-                      The requirements are ANDed.
-                    items:
-                      description: |-
-                        A label selector requirement is a selector that contains values, a key, and an operator that
-                        relates the key and values.
-                      properties:
-                        key:
-                          description: key is the label key that the selector applies
-                            to.
-                          type: string
-                        operator:
-                          description: |-
-                            operator represents a key's relationship to a set of values.
-                            Valid operators are In, NotIn, Exists and DoesNotExist.
-                          type: string
-                        values:
-                          description: |-
-                            values is an array of string values. If the operator is In or NotIn,
-                            the values array must be non-empty. If the operator is Exists or DoesNotExist,
-                            the values array must be empty. This array is replaced during a strategic
-                            merge patch.
-                          items:
-                            type: string
-                          type: array
-                          x-kubernetes-list-type: atomic
-                      required:
-                      - key
-                      - operator
-                      type: object
-                    type: array
-                    x-kubernetes-list-type: atomic
-                  matchLabels:
-                    additionalProperties:
-                      type: string
-                    description: |-
-                      matchLabels is a map of {key,value} pairs. A single {key,value} in the matchLabels
-                      map is equivalent to an element of matchExpressions, whose key field is "key", the
-                      operator is "In", and the values array contains only "value". The requirements are ANDed.
-                    type: object
-                type: object
-                x-kubernetes-map-type: atomic
-            type: object
-          status:
-            properties:
-              errors:
-                description: Errors is the number of resources which have an incorrect
-                  configuration
-                type: integer
-              observedGeneration:
-                description: ObservedGeneration is the most recent generation observed
-                  for this CloudConnectedMode.
-                format: int64
-                type: integer
-              ready:
-                description: Ready is the number of resources successfully configured.
-                type: integer
-              readyCount:
-                description: ReadyCount is a human representation of the number of
-                  resources successfully configured.
-                type: string
-              resources:
-                description: Resources is the number of resources to be configured.
-                type: integer
             type: object
         type: object
     served: true
