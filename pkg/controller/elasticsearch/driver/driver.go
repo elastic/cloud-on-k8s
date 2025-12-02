@@ -22,6 +22,7 @@ import (
 
 	commonv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/common/v1"
 	esv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/elasticsearch/v1"
+	policyv1alpha1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/stackconfigpolicy/v1alpha1"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/association"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common"
 	commondriver "github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/driver"
@@ -52,6 +53,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/settings"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/stackmon"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/user"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/stackconfigpolicy"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/dev"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/k8s"
 	ulog "github.com/elastic/cloud-on-k8s/v3/pkg/utils/log"
@@ -351,11 +353,17 @@ func (d *defaultDriver) Reconcile(ctx context.Context) *reconciler.Results {
 		return results.WithError(err)
 	}
 
-	// reconcile an empty File based settings Secret if it doesn't exist
 	if d.Version.GTE(filesettings.FileBasedSettingsMinPreVersion) {
-		err = filesettings.ReconcileEmptyFileSettingsSecret(ctx, d.Client, d.ES, true)
+		requeue, err := maybeReconcileEmptyFileSettingsSecret(ctx, d.Client, d.LicenseChecker, &d.ES, d.OperatorParameters.OperatorNamespace)
 		if err != nil {
 			return results.WithError(err)
+		} else if requeue {
+			results.WithReconciliationState(
+				defaultRequeue.WithReason(
+					fmt.Sprintf("This cluster is targeted by at least one StackConfigPolicy, expecting Secret %s to be created by StackConfigPolicy controller",
+						esv1.FileSettingsSecretName(d.ES.Name)),
+				),
+			)
 		}
 	}
 
@@ -415,6 +423,64 @@ func (d *defaultDriver) Reconcile(ctx context.Context) *reconciler.Results {
 
 	// reconcile StatefulSets and nodes configuration
 	return results.WithResults(d.reconcileNodeSpecs(ctx, esReachable, esClient, d.ReconcileState, *resourcesState, keystoreResources, meta))
+}
+
+// maybeReconcileEmptyFileSettingsSecret reconciles an empty file-settings secret for this ES cluster
+// based on license status and StackConfigPolicy targeting. When enterprise features are disabled always
+// creates an empty file-settings secret. When enterprise features are enabled and at least one StackConfigPolicy
+// targets this cluster returns true to requeue and doesn't create the empty file-settings secret. If no
+// StackConfigPolicy targets this cluster it creates an empty file-settings secret. Note: This logic here prevents
+// the race condition described in https://github.com/elastic/cloud-on-k8s/issues/8912.
+func maybeReconcileEmptyFileSettingsSecret(ctx context.Context, c k8s.Client, licenseChecker commonlicense.Checker, es *esv1.Elasticsearch, operatorNamespace string) (bool, error) {
+	// Check if file-settings secret already exists
+	var currentSecret corev1.Secret
+	if err := c.Get(ctx, types.NamespacedName{Namespace: es.Namespace, Name: esv1.FileSettingsSecretName(es.Name)}, &currentSecret); err == nil {
+		// Secret does exist
+		return false, nil
+	} else if !k8serrors.IsNotFound(err) {
+		return false, err
+	}
+
+	log := ulog.FromContext(ctx)
+	enabled, err := licenseChecker.EnterpriseFeaturesEnabled(ctx)
+	if err != nil {
+		return false, err
+	}
+	if !enabled {
+		// If the license is not enabled, we reconcile the empty file-settings secret
+		return false, filesettings.ReconcileEmptyFileSettingsSecret(ctx, c, *es, true)
+	}
+
+	// Get all StackConfigPolicies in the cluster
+	var policyList policyv1alpha1.StackConfigPolicyList
+	if err := c.List(ctx, &policyList); err != nil {
+		return false, err
+	}
+
+	// Check each policy to see if it targets this ES cluster
+	for _, policy := range policyList.Items {
+		// Check if this policy's namespace and label selector match this ES cluster
+		matches, err := stackconfigpolicy.DoesPolicyMatchObject(&policy, es, operatorNamespace)
+		if err != nil {
+			// Do not return an err here as this potentially can block ES reconciliation if any SCP in the cluster
+			// has an invalid label selector, even if it doesn't target the current elasticsearch cluster.
+			log.Error(err, "Failed to check if StackConfigPolicy matches object", "scp_name", policy.Name, "scp_namespace", policy.Namespace)
+			continue
+		} else if !matches {
+			continue
+		}
+
+		// Found a policy that targets this ES cluster but the file-settings secret does not exist.
+		// Let the SCP controller manage it, however, return requeue true to handle the following edge case:
+		// 1. SCP exists and targets ES cluster at creation time
+		// 2. ES controller "defers" to SCP controller (doesn't create secret)
+		// 3. SCP is deleted before it reconciles and creates the file-settings secret
+		// 4. Result: ES cluster left without any file-settings secret
+		return true, nil
+	}
+
+	// No policies target this cluster, so ES controller should create the empty secret
+	return false, filesettings.ReconcileEmptyFileSettingsSecret(ctx, c, *es, true)
 }
 
 // apiKeyStoreSecretSource returns the Secret that holds the remote API keys, and which should be used as a secure settings source.
