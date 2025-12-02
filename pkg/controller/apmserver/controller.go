@@ -196,8 +196,8 @@ func (r *ReconcileApmServer) Reconcile(ctx context.Context, request reconcile.Re
 		return reconcile.Result{}, tracing.CaptureError(ctx, err)
 	}
 
-	if common.IsUnmanaged(ctx, &as) {
-		log.Info("Object currently not managed by this controller. Skipping reconciliation", "namespace", as.Namespace, "as_name", as.Name)
+	if common.IsUnmanagedOrFiltered(ctx, r.Client, &as, r.Parameters) {
+		log.Info("Object currently not managed by this controller or namespace is filtered. Skipping reconciliation", "namespace", as.Namespace, "as_name", as.Name)
 		return reconcile.Result{}, nil
 	}
 
