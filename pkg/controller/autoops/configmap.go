@@ -19,10 +19,10 @@ import (
 )
 
 const (
-	// AutoOpsESConfigMapName is the static name for the autoops-es-config ConfigMap
-	AutoOpsESConfigMapName = "autoops-es-config"
-	// AutoOpsESConfigFileName is the key name for the config file in the ConfigMap
-	AutoOpsESConfigFileName = "autoops_es.yml"
+	// autoOpsESConfigMapName is the static name for the autoops-es-config ConfigMap
+	autoOpsESConfigMapName = "autoops-es-config"
+	// autoOpsESConfigFileName is the key name for the config file in the ConfigMap
+	autoOpsESConfigFileName = "autoops_es.yml"
 )
 
 // autoOpsESConfigData contains the static configuration data for the autoops agent
@@ -76,7 +76,7 @@ service:
 `
 
 // ReconcileAutoOpsESConfigMap reconciles the ConfigMap containing the autoops configuration.
-// This ConfigMap is shared by all deployments created by the controller.
+// This ConfigMap is shared by all deployments created by the controller within the same namespace.
 func ReconcileAutoOpsESConfigMap(ctx context.Context, c k8s.Client, policy autoopsv1alpha1.AutoOpsAgentPolicy) error {
 	expected := buildAutoOpsESConfigMap(policy)
 
@@ -105,21 +105,19 @@ func ReconcileAutoOpsESConfigMap(ctx context.Context, c k8s.Client, policy autoo
 // buildAutoOpsESConfigMap builds the expected ConfigMap for autoops configuration.
 func buildAutoOpsESConfigMap(policy autoopsv1alpha1.AutoOpsAgentPolicy) corev1.ConfigMap {
 	meta := metadata.Propagate(&policy, metadata.Metadata{
-		Labels:      map[string]string{},
-		Annotations: map[string]string{},
+		Labels:      policy.GetLabels(),
+		Annotations: policy.GetAnnotations(),
 	})
 
 	return corev1.ConfigMap{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:        AutoOpsESConfigMapName,
-			Namespace:   policy.Namespace,
+			Name:        autoOpsESConfigMapName,
+			Namespace:   policy.GetNamespace(),
 			Labels:      meta.Labels,
 			Annotations: meta.Annotations,
 		},
 		Data: map[string]string{
-			AutoOpsESConfigFileName: autoOpsESConfigData,
+			autoOpsESConfigFileName: autoOpsESConfigData,
 		},
 	}
 }
-
-

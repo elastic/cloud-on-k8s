@@ -6,6 +6,7 @@ import (
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/utils/ptr"
 
 	autoopsv1alpha1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/autoops/v1alpha1"
@@ -38,15 +39,15 @@ var (
 			},
 		},
 	}
-	configVolume = volume.NewConfigMapVolume(AutoOpsESConfigMapName, configVolumeName, configVolumePath)
+	configVolume = volume.NewConfigMapVolume(autoOpsESConfigMapName, configVolumeName, configVolumePath)
 )
 
 type ExpectedResources struct {
 	deployment appsv1.Deployment
 }
 
-func (r *ReconcileAutoOpsAgentPolicy) generateExpectedResources(autoops autoopsv1alpha1.AutoOpsAgentPolicy, es esv1.Elasticsearch) (ExpectedResources, error) {
-	deployment, err := r.deploymentParams(autoops, es)
+func (r *ReconcileAutoOpsAgentPolicy) generateExpectedResources(policy autoopsv1alpha1.AutoOpsAgentPolicy, es esv1.Elasticsearch) (ExpectedResources, error) {
+	deployment, err := r.deploymentParams(policy, es)
 	if err != nil {
 		return ExpectedResources{}, err
 	}
@@ -55,38 +56,38 @@ func (r *ReconcileAutoOpsAgentPolicy) generateExpectedResources(autoops autoopsv
 	}, nil
 }
 
-func (r *ReconcileAutoOpsAgentPolicy) deploymentParams(autoops autoopsv1alpha1.AutoOpsAgentPolicy, es esv1.Elasticsearch) (appsv1.Deployment, error) {
+func (r *ReconcileAutoOpsAgentPolicy) deploymentParams(policy autoopsv1alpha1.AutoOpsAgentPolicy, es esv1.Elasticsearch) (appsv1.Deployment, error) {
 	var deployment appsv1.Deployment
-	v, err := version.Parse(autoops.Spec.Version)
+	v, err := version.Parse(policy.Spec.Version)
 	if err != nil {
 		return appsv1.Deployment{}, err
 	}
 	labels := map[string]string{
 		commonv1.TypeLabelName:        "autoops-agent",
-		"autoops.k8s.elastic.co/name": autoops.Name,
+		"autoops.k8s.elastic.co/name": policy.Name,
 	}
 	deployment.ObjectMeta = metav1.ObjectMeta{
-		Name:      AutoOpsNamer.Suffix(es.Name, "deploy"),
-		Namespace: es.Namespace,
+		Name:      AutoOpsNamer.Suffix(es.Name, es.GetNamespace(), "deploy"),
+		Namespace: policy.GetNamespace(),
 		Labels:    labels,
 	}
 	deployment.Spec = appsv1.DeploymentSpec{
 		Replicas: pointer.Int32(1),
 		Selector: &metav1.LabelSelector{
 			MatchLabels: map[string]string{
-				"autoops.k8s.elastic.co/name": autoops.Name,
+				"autoops.k8s.elastic.co/name": policy.Name,
 			},
 		},
 	}
 	volumes := []corev1.Volume{configVolume.Volume()}
 	volumeMounts := []corev1.VolumeMount{configVolume.VolumeMount()}
-	meta := metadata.Propagate(&autoops, metadata.Metadata{Labels: labels, Annotations: nil})
+	meta := metadata.Propagate(&policy, metadata.Metadata{Labels: labels, Annotations: nil})
 	podTemplateSpec := defaults.NewPodTemplateBuilder(basePodTemplate, "autoops-agent").
-		WithArgs("--config", path.Join(configVolumePath, AutoOpsESConfigFileName)).
+		WithArgs("--config", path.Join(configVolumePath, autoOpsESConfigFileName)).
 		WithLabels(meta.Labels).
 		WithAnnotations(meta.Annotations).
 		WithDockerImage(container.ImageRepository(container.AutoOpsAgentImage, v), v.String()).
-		WithEnv(autoopsEnvVars(es.Name)...).
+		WithEnv(autoopsEnvVars(types.NamespacedName{Namespace: es.Namespace, Name: es.Name})...).
 		WithVolumes(volumes...).
 		WithVolumeMounts(volumeMounts...).
 		WithContainersSecurityContext(corev1.SecurityContext{
@@ -116,7 +117,9 @@ func (r *ReconcileAutoOpsAgentPolicy) deploymentParams(autoops autoopsv1alpha1.A
 
 // autoopsEnvVars returns the environment variables for the AutoOps deployment
 // that reference values from the autoops-secret and the ES elastic user secret.
-func autoopsEnvVars(esName string) []corev1.EnvVar {
+func autoopsEnvVars(esNN types.NamespacedName) []corev1.EnvVar {
+	// Encode the secret key using base64 URL encoding to ensure it matches the regex '[-._a-zA-Z0-9]+'
+	secretKey := encodeESSecretKey(esNN.Namespace, esNN.Name)
 	return []corev1.EnvVar{
 		{
 			Name: "AUTOOPS_TOKEN",
@@ -140,17 +143,17 @@ func autoopsEnvVars(esName string) []corev1.EnvVar {
 				},
 			},
 		},
-		{
-			Name: "AUTOOPS_TEMP_RESOURCE_ID",
-			ValueFrom: &corev1.EnvVarSource{
-				SecretKeyRef: &corev1.SecretKeySelector{
-					LocalObjectReference: corev1.LocalObjectReference{
-						Name: "autoops-secret",
-					},
-					Key: "temp-resource-id",
-				},
-			},
-		},
+		// {
+		// 	Name: "AUTOOPS_TEMP_RESOURCE_ID",
+		// 	ValueFrom: &corev1.EnvVarSource{
+		// 		SecretKeyRef: &corev1.SecretKeySelector{
+		// 			LocalObjectReference: corev1.LocalObjectReference{
+		// 				Name: "autoops-secret",
+		// 			},
+		// 			Key: "temp-resource-id",
+		// 		},
+		// 	},
+		// },
 		{
 			Name: "AUTOOPS_OTEL_URL",
 			ValueFrom: &corev1.EnvVarSource{
@@ -164,16 +167,16 @@ func autoopsEnvVars(esName string) []corev1.EnvVar {
 		},
 		{
 			Name:  "AUTOOPS_ES_USERNAME",
-			Value: "elastic",
+			Value: "elastic-internal-monitoring",
 		},
 		{
 			Name: "AUTOOPS_ES_PASSWORD",
 			ValueFrom: &corev1.EnvVarSource{
 				SecretKeyRef: &corev1.SecretKeySelector{
 					LocalObjectReference: corev1.LocalObjectReference{
-						Name: esv1.ElasticUserSecret(esName),
+						Name: autoOpsESPasswordsSecretName,
 					},
-					Key:      "elastic",
+					Key:      secretKey,
 					Optional: ptr.To(false),
 				},
 			},

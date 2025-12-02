@@ -25,10 +25,10 @@ type Config struct {
 
 const (
 	// Secret key names for the configuration fields
-	CCMApiKey      = "ccmApiKey"
-	TempResourceID = "tempResourceID"
-	AutoOpsOTelURL = "autoOpsOTelURL"
-	AutoOpsToken   = "autoOpsToken"
+	CCMApiKey = "cloud-connected-mode-api-key"
+	// TempResourceID = "temp-resource-id"
+	AutoOpsOTelURL = "autoops-otel-url"
+	AutoOpsToken   = "autoops-token"
 )
 
 // ParseConfigSecret retrieves and parses the configuration secret referenced in the AutoOpsAgentPolicy.
@@ -58,11 +58,11 @@ func validateAndPopulateConfig(secret corev1.Secret, secretKey types.NamespacedN
 		return nil, fmt.Errorf("missing required key %s in configuration secret %s/%s", CCMApiKey, secretKey.Namespace, secretKey.Name)
 	}
 
-	if data, exists := secret.Data[TempResourceID]; exists {
-		config.TempResourceID = string(data)
-	} else {
-		return nil, fmt.Errorf("missing required key %s in configuration secret %s/%s", TempResourceID, secretKey.Namespace, secretKey.Name)
-	}
+	// if data, exists := secret.Data[TempResourceID]; exists {
+	// 	config.TempResourceID = string(data)
+	// } else {
+	// 	return nil, fmt.Errorf("missing required key %s in configuration secret %s/%s", TempResourceID, secretKey.Namespace, secretKey.Name)
+	// }
 
 	if data, exists := secret.Data[AutoOpsOTelURL]; exists {
 		config.AutoOpsOTelURL = string(data)

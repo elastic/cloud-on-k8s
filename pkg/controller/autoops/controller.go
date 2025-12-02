@@ -26,6 +26,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/events"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/license"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/operator"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/reconciler"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/tracing"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/watches"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/k8s"
@@ -108,6 +109,33 @@ func (r *ReconcileAutoOpsAgentPolicy) Reconcile(ctx context.Context, request rec
 		return reconcile.Result{}, tracing.CaptureError(ctx, err)
 	}
 
+	status := autoopsv1alpha1.NewStatus(policy)
+	results := reconciler.NewResult(ctx)
+
+	defer func() {
+		// update status
+		if err := r.updateStatus(ctx, policy, status); err != nil {
+			if apierrors.IsConflict(err) {
+				results.WithRequeue().Aggregate()
+			}
+			results.WithError(err)
+		}
+	}()
+
+	_, err = ParseConfigSecret(ctx, r.Client, types.NamespacedName{
+		Namespace: policy.Namespace,
+		Name:      policy.Spec.Config.SecretRef.SecretName,
+	})
+	if err != nil {
+		if apierrors.IsNotFound(err) {
+			status.Phase = autoopsv1alpha1.InvalidPhase
+			r.recorder.Eventf(&policy, corev1.EventTypeWarning, events.EventReasonValidation, "Config secret not found")
+			return reconcile.Result{Requeue: true, RequeueAfter: defaultRequeue}, nil
+		}
+		status.Phase = autoopsv1alpha1.ErrorPhase
+		return reconcile.Result{}, tracing.CaptureError(ctx, err)
+	}
+
 	// skip unmanaged resources
 	if common.IsUnmanaged(ctx, &policy) {
 		ulog.FromContext(ctx).Info("Object is currently not managed by this controller. Skipping reconciliation")
@@ -119,7 +147,7 @@ func (r *ReconcileAutoOpsAgentPolicy) Reconcile(ctx context.Context, request rec
 	}
 
 	// main reconciliation logic
-	results, status := r.doReconcile(ctx, policy)
+	results, status = r.doReconcile(ctx, policy)
 
 	// update status
 	if err := r.updateStatus(ctx, policy, status); err != nil {

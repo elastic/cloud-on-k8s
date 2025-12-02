@@ -5,7 +5,7 @@ import (
 	"time"
 
 	corev1 "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/labels"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	autoopsv1alpha1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/autoops/v1alpha1"
@@ -32,22 +32,20 @@ func (r *ReconcileAutoOpsAgentPolicy) doReconcile(ctx context.Context, policy au
 		msg := "AutoOpsAgentPolicy is an enterprise feature. Enterprise features are disabled"
 		log.Info(msg)
 		r.recorder.Eventf(&policy, corev1.EventTypeWarning, events.EventReconciliationError, msg)
-		// we don't have a good way of watching for the license level to change so just requeue with a reasonably long delay
+		status.Phase = autoopsv1alpha1.InvalidPhase
 		return results.WithRequeue(5 * time.Minute), status
 	}
 
 	// run validation in case the webhook is disabled
 	if err := r.validate(ctx, &policy); err != nil {
 		r.recorder.Eventf(&policy, corev1.EventTypeWarning, events.EventReasonValidation, err.Error())
+		status.Phase = autoopsv1alpha1.InvalidPhase
 		return results.WithError(err), status
 	}
 
 	// reconcile dynamic watch for secret referenced in the spec
 	if err := r.reconcileWatches(policy); err != nil {
-		return results.WithError(err), status
-	}
-
-	if err := ReconcileAutoOpsESConfigMap(ctx, r.Client, policy); err != nil {
+		status.Phase = autoopsv1alpha1.ErrorPhase
 		return results.WithError(err), status
 	}
 
@@ -55,14 +53,35 @@ func (r *ReconcileAutoOpsAgentPolicy) doReconcile(ctx context.Context, policy au
 	return result, status
 }
 
-func (r *ReconcileAutoOpsAgentPolicy) internalReconcile(ctx context.Context, policy autoopsv1alpha1.AutoOpsAgentPolicy, results *reconciler.Results, status *autoopsv1alpha1.AutoOpsAgentPolicyStatus) *reconciler.Results {
+func (r *ReconcileAutoOpsAgentPolicy) internalReconcile(
+	ctx context.Context,
+	policy autoopsv1alpha1.AutoOpsAgentPolicy,
+	results *reconciler.Results,
+	status *autoopsv1alpha1.AutoOpsAgentPolicyStatus) *reconciler.Results {
 	log := ulog.FromContext(ctx)
 	log.V(1).Info("Internal reconcile AutoOpsAgentPolicy")
 
+	// prepare the selector to find resources.
+	selector, err := metav1.LabelSelectorAsSelector(&metav1.LabelSelector{
+		MatchLabels:      policy.Spec.ResourceSelector.MatchLabels,
+		MatchExpressions: policy.Spec.ResourceSelector.MatchExpressions,
+	})
+	if err != nil {
+		status.Phase = autoopsv1alpha1.ErrorPhase
+		return results.WithError(err)
+	}
+	listOpts := client.ListOptions{LabelSelector: selector}
+
+	// restrict the search to the policy namespace if it is different from the operator namespace
+	log.V(1).Info("comparing policy namespace with operator namespace", "policy namespace", policy.Namespace, "operator namespace", r.params.OperatorNamespace)
+	if policy.Namespace != r.params.OperatorNamespace {
+		log.V(1).Info("Restricting search to policy namespace", "namespace", policy.Namespace)
+		listOpts.Namespace = policy.Namespace
+	}
+
 	var esList esv1.ElasticsearchList
-	if err := r.Client.List(ctx, &esList, &client.ListOptions{
-		LabelSelector: labels.SelectorFromSet(policy.Spec.ResourceSelector.MatchLabels),
-	}, &client.ListOptions{Namespace: ""}); err != nil {
+	if err := r.Client.List(ctx, &esList, &listOpts); err != nil {
+		status.Phase = autoopsv1alpha1.ErrorPhase
 		return results.WithError(err)
 	}
 
@@ -73,24 +92,35 @@ func (r *ReconcileAutoOpsAgentPolicy) internalReconcile(ctx context.Context, pol
 		return results
 	}
 
+	if err := reconcileAutoOpsESPasswordsSecret(ctx, r.Client, policy, esList.Items); err != nil {
+		status.Phase = autoopsv1alpha1.ErrorPhase
+		return results.WithError(err)
+	}
+
 	for _, es := range esList.Items {
 		if es.Status.Phase != esv1.ElasticsearchReadyPhase {
 			results = results.WithRequeue(defaultRequeue)
 			continue
 		}
 
-		// generate expected resources for the autoops deployment
-		expectedResources, err := r.generateExpectedResources(policy, es)
-		if err != nil {
+		if err := ReconcileAutoOpsESConfigMap(ctx, r.Client, policy); err != nil {
+			status.Phase = autoopsv1alpha1.ErrorPhase
 			return results.WithError(err)
 		}
 
-		// Reconcile the deployment
-		_, err = deployment.Reconcile(ctx, r.Client, expectedResources.deployment, &es)
+		expectedResources, err := r.generateExpectedResources(policy, es)
 		if err != nil {
+			status.Phase = autoopsv1alpha1.ErrorPhase
+			return results.WithError(err)
+		}
+
+		_, err = deployment.Reconcile(ctx, r.Client, expectedResources.deployment, &policy)
+		if err != nil {
+			status.Phase = autoopsv1alpha1.ErrorPhase
 			return results.WithError(err)
 		}
 	}
 
+	status.Phase = autoopsv1alpha1.ReadyPhase
 	return results
 }
