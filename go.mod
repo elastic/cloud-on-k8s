@@ -29,10 +29,10 @@ require (
 	github.com/spf13/pflag v1.0.10
 	github.com/spf13/viper v1.21.0
 	github.com/stretchr/testify v1.11.1
-	go.elastic.co/apm/module/apmelasticsearch/v2 v2.7.1
-	go.elastic.co/apm/module/apmhttp/v2 v2.7.1
-	go.elastic.co/apm/module/apmzap/v2 v2.7.1
-	go.elastic.co/apm/v2 v2.7.1
+	go.elastic.co/apm/module/apmelasticsearch/v2 v2.7.2
+	go.elastic.co/apm/module/apmhttp/v2 v2.7.2
+	go.elastic.co/apm/module/apmzap/v2 v2.7.2
+	go.elastic.co/apm/v2 v2.7.2
 	go.uber.org/automaxprocs v1.6.0
 	go.uber.org/zap v1.27.0
 	golang.org/x/crypto v0.45.0
