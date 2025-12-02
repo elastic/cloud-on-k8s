@@ -51,15 +51,15 @@ const autoOpsESConfigData = `receivers:
             - cat_template
             - component_template
             - index_template
-      processors:
-        - add_fields:
-            target: autoops_es
-            fields:
-              temp_resource_id: ${env:AUTOOPS_TEMP_RESOURCE_ID}
-              token: ${env:AUTOOPS_TOKEN}
-      output:
-        otelconsumer:
-      telemetry_types: ["logs"]
+    processors:
+      - add_fields:
+          target: autoops_es
+          fields:
+            temp_resource_id: ${env:AUTOOPS_TEMP_RESOURCE_ID}
+            token: ${env:AUTOOPS_TOKEN}
+    output:
+      otelconsumer: {}
+    telemetry_types: ["logs"]
 exporters:
   otlphttp:
     headers:
