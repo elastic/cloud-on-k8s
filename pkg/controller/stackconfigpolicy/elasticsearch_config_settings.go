@@ -152,7 +152,8 @@ func cleanupOrphanedSecretMounts(ctx context.Context, c k8s.Client, es esv1.Elas
 	for i := range secrets.Items {
 		secret := &secrets.Items[i]
 
-		// Skip secrets that do not have a source secret annotation
+		// Skip secrets that do not have commonannotation.SourceSecretAnnotationName which identifies the ones that
+		// were reconciled from a secret mount in the owner StackConfigPolicy. See reconcileSecretMounts func
 		if secret.Annotations[commonannotation.SourceSecretAnnotationName] == "" {
 			continue
 		}
