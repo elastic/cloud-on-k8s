@@ -96,7 +96,7 @@ func (r *ReconcileAutoOpsAgentPolicy) deploymentParams(ctx context.Context, poli
 
 	// Add CA certificate volume for this ES instance only if TLS is enabled
 	if es.Spec.HTTP.TLS.Enabled() {
-		caSecretName := fmt.Sprintf("%s-%s-%s", es.Name, es.Namespace, autoOpsESCASecretPrefix)
+		caSecretName := fmt.Sprintf("%s-%s-%s", es.Name, es.Namespace, autoOpsESCASecretSuffix)
 		caVolume := volume.NewSecretVolumeWithMountPath(
 			caSecretName,
 			fmt.Sprintf("es-ca-%s-%s", es.Name, es.Namespace),

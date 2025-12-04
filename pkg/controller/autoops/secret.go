@@ -16,6 +16,7 @@ import (
 
 	autoopsv1alpha1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/autoops/v1alpha1"
 	esv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/elasticsearch/v1"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/certificates"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/metadata"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/reconciler"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/k8s"
@@ -24,8 +25,8 @@ import (
 )
 
 const (
-	// autoOpsESCASecretPrefix is the prefix for CA secrets created for each ES instance
-	autoOpsESCASecretPrefix = "autoops-es-ca"
+	// autoOpsESCASecretSuffix is the suffix for CA secrets created for each ES instance
+	autoOpsESCASecretSuffix = "autoops-es-ca"
 )
 
 // reconcileAutoOpsESCASecret reconciles the Secret containing the CA certificate
@@ -46,7 +47,7 @@ func reconcileAutoOpsESCASecret(
 
 	sourceSecretKey := types.NamespacedName{
 		Namespace: es.Namespace,
-		Name:      fmt.Sprintf("%s-es-http-ca-internal", es.Name),
+		Name:      certificates.CAInternalSecretName(esv1.ESNamer, es.Name, certificates.HTTPCAType),
 	}
 	var sourceSecret corev1.Secret
 	if err := c.Get(ctx, sourceSecretKey, &sourceSecret); err != nil {
@@ -57,14 +58,14 @@ func reconcileAutoOpsESCASecret(
 		return fmt.Errorf("while retrieving http-ca-internal secret for ES cluster %s/%s: %w", es.Namespace, es.Name, err)
 	}
 
-	caCert, ok := sourceSecret.Data["tls.crt"]
+	caCert, ok := sourceSecret.Data[certificates.CertFileName]
 	if !ok || len(caCert) == 0 {
 		log.V(1).Info("tls.crt not found in http-ca-internal secret, skipping", "namespace", es.Namespace, "name", es.Name)
 		return nil
 	}
 
-	secretName := fmt.Sprintf("%s-%s-%s", es.Name, es.Namespace, autoOpsESCASecretPrefix)
-	expected := buildAutoOpsESCASecret(policy, es, secretName, caCert)
+	secretName := fmt.Sprintf("%s-%s-%s", es.Name, es.Namespace, autoOpsESCASecretSuffix)
+	expected := buildAutoOpsESCASecret(policy, secretName, caCert)
 
 	reconciled := &corev1.Secret{}
 	return reconciler.ReconcileResource(
@@ -89,7 +90,7 @@ func reconcileAutoOpsESCASecret(
 }
 
 // buildAutoOpsESCASecret builds the expected Secret for autoops ES CA certificate.
-func buildAutoOpsESCASecret(policy autoopsv1alpha1.AutoOpsAgentPolicy, es esv1.Elasticsearch, secretName string, caCert []byte) corev1.Secret {
+func buildAutoOpsESCASecret(policy autoopsv1alpha1.AutoOpsAgentPolicy, secretName string, caCert []byte) corev1.Secret {
 	if len(caCert) == 0 {
 		return corev1.Secret{}
 	}
@@ -107,7 +108,7 @@ func buildAutoOpsESCASecret(policy autoopsv1alpha1.AutoOpsAgentPolicy, es esv1.E
 			Annotations: meta.Annotations,
 		},
 		Data: map[string][]byte{
-			"ca.crt": caCert,
+			certificates.CAFileName: caCert,
 		},
 	}
 }
