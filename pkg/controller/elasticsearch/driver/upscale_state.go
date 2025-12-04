@@ -24,17 +24,21 @@ import (
 	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/k8s"
 )
 
-type upscaleState struct {
-	isBootstrapped      bool
+type masterUpscaleState struct {
 	allowMasterCreation bool
+	once                *sync.Once
+	isBootstrapped      bool
+}
+
+type upscaleState struct {
 	// indicates how many creates, out of createsAllowed, were already recorded
 	recordedCreates int32
 	// indicates how many creates are allowed when taking into account maxSurge setting,
 	// nil indicates that any number of pods can be created, negative value is not expected.
 	createsAllowed  *int32
 	ctx             upscaleCtx
-	once            *sync.Once
 	upscaleReporter *reconcile.UpscaleReporter
+	masterState     *masterUpscaleState
 }
 
 func newUpscaleState(
@@ -43,8 +47,10 @@ func newUpscaleState(
 	expectedResources nodespec.ResourcesList,
 ) *upscaleState {
 	return &upscaleState{
-		once: &sync.Once{},
-		ctx:  ctx,
+		masterState: &masterUpscaleState{
+			once: &sync.Once{},
+		},
+		ctx: ctx,
 		createsAllowed: calculateCreatesAllowed(
 			ctx.es.Spec.UpdateStrategy.ChangeBudget.GetMaxSurgeOrDefault(),
 			actualStatefulSets.ExpectedNodeCount(),
@@ -53,17 +59,17 @@ func newUpscaleState(
 	}
 }
 
-func buildOnce(s *upscaleState) error {
-	if s.once == nil {
+func initMasterState(s *upscaleState) error {
+	if s.masterState.once == nil {
 		return nil
 	}
 
 	var result error
-	s.once.Do(func() {
-		s.isBootstrapped = bootstrap.AnnotatedForBootstrap(s.ctx.es)
-		s.allowMasterCreation = true
+	s.masterState.once.Do(func() {
+		s.masterState.isBootstrapped = bootstrap.AnnotatedForBootstrap(s.ctx.es)
+		s.masterState.allowMasterCreation = true
 
-		if s.isBootstrapped {
+		if s.masterState.isBootstrapped {
 			// is there a master node creation in progress already?
 			masters, err := es_sset.GetActualMastersForCluster(s.ctx.k8sClient, s.ctx.es)
 			if err != nil {
@@ -136,14 +142,14 @@ func isMasterNodeJoining(pod corev1.Pod, esState ESState) (bool, error) {
 
 func (s *upscaleState) recordMasterNodeCreation() {
 	// if the cluster is already formed, don't allow more master nodes to be created
-	if s.isBootstrapped {
-		s.allowMasterCreation = false
+	if s.masterState.isBootstrapped {
+		s.masterState.allowMasterCreation = false
 	}
 	s.recordNodesCreation(1)
 }
 
 func (s *upscaleState) canCreateMasterNode() bool {
-	return s.getMaxNodesToCreate(1) == 1 && s.allowMasterCreation
+	return s.getMaxNodesToCreate(1) == 1 && s.masterState.allowMasterCreation
 }
 
 func (s *upscaleState) recordNodesCreation(count int32) {
@@ -169,11 +175,11 @@ func (s *upscaleState) limitNodesCreation(
 	actual appsv1.StatefulSet,
 	toApply appsv1.StatefulSet,
 ) (appsv1.StatefulSet, error) {
-	if err := buildOnce(s); err != nil {
-		return appsv1.StatefulSet{}, err
-	}
 
 	if label.IsMasterNodeSet(toApply) {
+		if err := initMasterState(s); err != nil {
+			return appsv1.StatefulSet{}, err
+		}
 		return s.limitMasterNodesCreation(actual, toApply)
 	}
 

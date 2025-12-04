@@ -34,83 +34,83 @@ func Test_upscaleState_limitNodesCreation(t *testing.T) {
 	}{
 		{
 			name:        "no change on the sset spec",
-			state:       &upscaleState{allowMasterCreation: true, isBootstrapped: true},
+			state:       &upscaleState{masterState: &masterUpscaleState{allowMasterCreation: true, isBootstrapped: true}},
 			actual:      sset.TestSset{Name: "sset", Replicas: 3, Master: true}.Build(),
 			ssetToApply: sset.TestSset{Name: "sset", Replicas: 3, Master: true}.Build(),
 			wantSset:    sset.TestSset{Name: "sset", Replicas: 3, Master: true}.Build(),
-			wantState:   &upscaleState{allowMasterCreation: true, isBootstrapped: true},
+			wantState:   &upscaleState{masterState: &masterUpscaleState{allowMasterCreation: true, isBootstrapped: true}},
 		},
 		{
 			name:        "spec change (same replicas)",
-			state:       &upscaleState{allowMasterCreation: true, isBootstrapped: true},
+			state:       &upscaleState{masterState: &masterUpscaleState{allowMasterCreation: true, isBootstrapped: true}},
 			actual:      sset.TestSset{Name: "sset", Version: "6.8.0", Replicas: 3, Master: true}.Build(),
 			ssetToApply: sset.TestSset{Name: "sset", Version: "7.2.0", Replicas: 3, Master: true}.Build(),
 			wantSset:    sset.TestSset{Name: "sset", Version: "7.2.0", Replicas: 3, Master: true}.Build(),
-			wantState:   &upscaleState{allowMasterCreation: true, isBootstrapped: true},
+			wantState:   &upscaleState{masterState: &masterUpscaleState{allowMasterCreation: true, isBootstrapped: true}},
 		},
 		{
 			name:        "upscale data nodes from 1 to 3: should go through",
-			state:       &upscaleState{allowMasterCreation: true, isBootstrapped: true, createsAllowed: ptr.To[int32](2)},
+			state:       &upscaleState{masterState: nil, createsAllowed: ptr.To[int32](2)}, // masterState must not be used for data nodes
 			actual:      sset.TestSset{Name: "sset", Replicas: 1, Master: false}.Build(),
 			ssetToApply: sset.TestSset{Name: "sset", Replicas: 3, Master: false}.Build(),
 			wantSset:    sset.TestSset{Name: "sset", Replicas: 3, Master: false}.Build(),
-			wantState:   &upscaleState{allowMasterCreation: true, isBootstrapped: true, createsAllowed: ptr.To[int32](2), recordedCreates: 2},
+			wantState:   &upscaleState{masterState: nil, createsAllowed: ptr.To[int32](2), recordedCreates: 2},
 		},
 		{
 			name:        "upscale data nodes from 1 to 4: should limit to 3",
-			state:       &upscaleState{allowMasterCreation: true, isBootstrapped: true, createsAllowed: ptr.To[int32](2)},
+			state:       &upscaleState{masterState: nil, createsAllowed: ptr.To[int32](2)}, // masterState must not be used for data nodes
 			actual:      sset.TestSset{Name: "sset", Replicas: 1, Master: false}.Build(),
 			ssetToApply: sset.TestSset{Name: "sset", Replicas: 4, Master: false}.Build(),
 			wantSset:    sset.TestSset{Name: "sset", Replicas: 3, Master: false}.Build(),
-			wantState:   &upscaleState{allowMasterCreation: true, isBootstrapped: true, createsAllowed: ptr.To[int32](2), recordedCreates: 2},
+			wantState:   &upscaleState{masterState: nil, createsAllowed: ptr.To[int32](2), recordedCreates: 2},
 		},
 		{
 			name:        "upscale master nodes from 1 to 3: should limit to 2",
-			state:       &upscaleState{allowMasterCreation: true, isBootstrapped: true, createsAllowed: ptr.To[int32](1)},
+			state:       &upscaleState{masterState: &masterUpscaleState{allowMasterCreation: true, isBootstrapped: true}, createsAllowed: ptr.To[int32](1)},
 			actual:      sset.TestSset{Name: "sset", Replicas: 1, Master: true}.Build(),
 			ssetToApply: sset.TestSset{Name: "sset", Replicas: 3, Master: true}.Build(),
 			wantSset:    sset.TestSset{Name: "sset", Replicas: 2, Master: true}.Build(),
-			wantState:   &upscaleState{allowMasterCreation: false, isBootstrapped: true, createsAllowed: ptr.To[int32](1), recordedCreates: 1},
+			wantState:   &upscaleState{masterState: &masterUpscaleState{allowMasterCreation: false, isBootstrapped: true}, createsAllowed: ptr.To[int32](1), recordedCreates: 1},
 		},
 		{
 			name:        "upscale master nodes from 1 to 3 when cluster not yet bootstrapped: should go through",
-			state:       &upscaleState{allowMasterCreation: true, isBootstrapped: false, createsAllowed: ptr.To[int32](2)},
+			state:       &upscaleState{masterState: &masterUpscaleState{allowMasterCreation: true, isBootstrapped: false}, createsAllowed: ptr.To[int32](2)},
 			actual:      sset.TestSset{Name: "sset", Replicas: 1, Master: true}.Build(),
 			ssetToApply: sset.TestSset{Name: "sset", Replicas: 3, Master: true}.Build(),
 			wantSset:    sset.TestSset{Name: "sset", Replicas: 3, Master: true}.Build(),
-			wantState:   &upscaleState{allowMasterCreation: true, isBootstrapped: false, createsAllowed: ptr.To[int32](2), recordedCreates: 2},
+			wantState:   &upscaleState{masterState: &masterUpscaleState{allowMasterCreation: true, isBootstrapped: false}, createsAllowed: ptr.To[int32](2), recordedCreates: 2},
 		},
 		{
 			name:        "upscale masters from 3 to 4, but no creates allowed: should limit to 0",
-			state:       &upscaleState{allowMasterCreation: true, isBootstrapped: true, createsAllowed: ptr.To[int32](0)},
+			state:       &upscaleState{masterState: &masterUpscaleState{allowMasterCreation: true, isBootstrapped: true}, createsAllowed: ptr.To[int32](0)},
 			actual:      sset.TestSset{Name: "sset", Replicas: 3, Master: true}.Build(),
 			ssetToApply: sset.TestSset{Name: "sset", Replicas: 4, Master: true}.Build(),
 			wantSset:    sset.TestSset{Name: "sset", Replicas: 3, Master: true}.Build(),
-			wantState:   &upscaleState{allowMasterCreation: true, isBootstrapped: true, createsAllowed: ptr.To[int32](0), recordedCreates: 0},
+			wantState:   &upscaleState{masterState: &masterUpscaleState{allowMasterCreation: true, isBootstrapped: true}, createsAllowed: ptr.To[int32](0), recordedCreates: 0},
 		},
 		{
 			name:        "upscale data nodes from 3 to 4, but no creates allowed: should limit to 0",
-			state:       &upscaleState{allowMasterCreation: true, isBootstrapped: true, createsAllowed: ptr.To[int32](0)},
+			state:       &upscaleState{masterState: &masterUpscaleState{allowMasterCreation: true, isBootstrapped: true}, createsAllowed: ptr.To[int32](0)},
 			actual:      sset.TestSset{Name: "sset", Replicas: 3, Master: false}.Build(),
 			ssetToApply: sset.TestSset{Name: "sset", Replicas: 4, Master: false}.Build(),
 			wantSset:    sset.TestSset{Name: "sset", Replicas: 3, Master: false}.Build(),
-			wantState:   &upscaleState{allowMasterCreation: true, isBootstrapped: true, createsAllowed: ptr.To[int32](0), recordedCreates: 0},
+			wantState:   &upscaleState{masterState: &masterUpscaleState{allowMasterCreation: true, isBootstrapped: true}, createsAllowed: ptr.To[int32](0), recordedCreates: 0},
 		},
 		{
 			name:        "new StatefulSet with 5 master nodes, cluster isn't bootstrapped yet: should go through",
-			state:       &upscaleState{allowMasterCreation: true, isBootstrapped: false, createsAllowed: ptr.To[int32](3)},
+			state:       &upscaleState{masterState: &masterUpscaleState{allowMasterCreation: true, isBootstrapped: false}, createsAllowed: ptr.To[int32](3)},
 			actual:      appsv1.StatefulSet{},
 			ssetToApply: sset.TestSset{Name: "sset", Replicas: 3, Master: true}.Build(),
 			wantSset:    sset.TestSset{Name: "sset", Replicas: 3, Master: true}.Build(),
-			wantState:   &upscaleState{allowMasterCreation: true, isBootstrapped: false, createsAllowed: ptr.To[int32](3), recordedCreates: 3},
+			wantState:   &upscaleState{masterState: &masterUpscaleState{allowMasterCreation: true, isBootstrapped: false}, createsAllowed: ptr.To[int32](3), recordedCreates: 3},
 		},
 		{
 			name:        "new StatefulSet with 5 master nodes, cluster already bootstrapped: should limit to 1",
-			state:       &upscaleState{allowMasterCreation: true, isBootstrapped: true, createsAllowed: ptr.To[int32](1)},
+			state:       &upscaleState{masterState: &masterUpscaleState{allowMasterCreation: true, isBootstrapped: true}, createsAllowed: ptr.To[int32](1)},
 			actual:      appsv1.StatefulSet{},
 			ssetToApply: sset.TestSset{Name: "sset", Replicas: 3, Master: true}.Build(),
 			wantSset:    sset.TestSset{Name: "sset", Replicas: 1, Master: true}.Build(),
-			wantState:   &upscaleState{allowMasterCreation: false, isBootstrapped: true, createsAllowed: ptr.To[int32](1), recordedCreates: 1},
+			wantState:   &upscaleState{masterState: &masterUpscaleState{allowMasterCreation: false, isBootstrapped: true}, createsAllowed: ptr.To[int32](1), recordedCreates: 1},
 		},
 	}
 	for _, tt := range tests {
@@ -244,12 +244,12 @@ func Test_newUpscaleState(t *testing.T) {
 		{
 			name: "cluster not bootstrapped",
 			args: args{ctx: upscaleCtx{es: notBootstrappedES}},
-			want: &upscaleState{allowMasterCreation: true, isBootstrapped: false, createsAllowed: nil},
+			want: &upscaleState{masterState: &masterUpscaleState{allowMasterCreation: true, isBootstrapped: false}, createsAllowed: nil},
 		},
 		{
 			name: "bootstrapped, no master node joining",
 			args: args{ctx: upscaleCtx{k8sClient: k8s.NewFakeClient(), es: bootstrappedES}},
-			want: &upscaleState{allowMasterCreation: true, isBootstrapped: true, createsAllowed: nil},
+			want: &upscaleState{masterState: &masterUpscaleState{allowMasterCreation: true, isBootstrapped: true}, createsAllowed: nil},
 		},
 		{
 			name: "bootstrapped, a master node is pending",
@@ -259,7 +259,7 @@ func Test_newUpscaleState(t *testing.T) {
 					es:        bootstrappedES,
 				},
 			},
-			want: &upscaleState{allowMasterCreation: false, isBootstrapped: true, createsAllowed: nil, recordedCreates: 1},
+			want: &upscaleState{masterState: &masterUpscaleState{allowMasterCreation: false, isBootstrapped: true}, createsAllowed: nil, recordedCreates: 1},
 		},
 		{
 			name: "bootstrapped, a data node is pending",
@@ -269,15 +269,15 @@ func Test_newUpscaleState(t *testing.T) {
 					es:        bootstrappedES,
 				},
 			},
-			want: &upscaleState{allowMasterCreation: true, isBootstrapped: true, createsAllowed: nil},
+			want: &upscaleState{masterState: &masterUpscaleState{allowMasterCreation: true, isBootstrapped: true}, createsAllowed: nil},
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			got := newUpscaleState(tt.args.ctx, tt.args.actual, tt.args.expected)
-			require.NoError(t, buildOnce(got))
+			require.NoError(t, initMasterState(got))
 			got.ctx = upscaleCtx{}
-			got.once = nil
+			got.masterState.once = nil
 			if !reflect.DeepEqual(got, tt.want) {
 				t.Errorf("newUpscaleState() got = %v, want %v", got, tt.want)
 			}
@@ -339,7 +339,7 @@ func Test_newUpscaleStateWithChangeBudget(t *testing.T) {
 			},
 			actual:   actualSsets,
 			expected: expectedResources,
-			want:     &upscaleState{allowMasterCreation: true, isBootstrapped: true, createsAllowed: args.createsAllowed},
+			want:     &upscaleState{masterState: &masterUpscaleState{allowMasterCreation: true, isBootstrapped: true}, createsAllowed: args.createsAllowed},
 		}
 	}
 	defaultTest := getTest(args{actual: []int{3}, expected: []int{3}, maxSurge: nil, createsAllowed: nil, name: "5 nodes present, 5 nodes target, n/a maxSurge - unbounded creates allowed"})
@@ -356,9 +356,9 @@ func Test_newUpscaleStateWithChangeBudget(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			got := newUpscaleState(tt.ctx, tt.actual, tt.expected)
-			require.NoError(t, buildOnce(got))
+			require.NoError(t, initMasterState(got))
 			got.ctx = upscaleCtx{}
-			got.once = nil
+			got.masterState.once = nil
 			if !reflect.DeepEqual(got, tt.want) {
 				t.Errorf("newUpscaleState() got = %v, want %v", got, tt.want)
 			}

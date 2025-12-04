@@ -342,62 +342,62 @@ func Test_adjustStatefulSetReplicas(t *testing.T) {
 		{
 			name: "new StatefulSet to create",
 			args: args{
-				state:              &upscaleState{isBootstrapped: true, allowMasterCreation: false, createsAllowed: ptr.To[int32](3)},
+				state:              &upscaleState{masterState: &masterUpscaleState{isBootstrapped: true, allowMasterCreation: false}, createsAllowed: ptr.To[int32](3)},
 				actualStatefulSets: es_sset.StatefulSetList{},
 				expected:           sset.TestSset{Name: "new-sset", Replicas: 3}.Build(),
 			},
 			want:             sset.TestSset{Name: "new-sset", Replicas: 3}.Build(),
-			wantUpscaleState: &upscaleState{recordedCreates: 3, isBootstrapped: true, allowMasterCreation: false, createsAllowed: ptr.To[int32](3)},
+			wantUpscaleState: &upscaleState{recordedCreates: 3, masterState: &masterUpscaleState{isBootstrapped: true, allowMasterCreation: false}, createsAllowed: ptr.To[int32](3)},
 		},
 		{
 			name: "same StatefulSet already exists",
 			args: args{
-				state:              &upscaleState{isBootstrapped: true, allowMasterCreation: false, createsAllowed: ptr.To[int32](3)},
+				state:              &upscaleState{masterState: &masterUpscaleState{isBootstrapped: true, allowMasterCreation: false}, createsAllowed: ptr.To[int32](3)},
 				actualStatefulSets: es_sset.StatefulSetList{sset.TestSset{Name: "sset", Replicas: 3}.Build()},
 				expected:           sset.TestSset{Name: "sset", Replicas: 3}.Build(),
 			},
 			want:             sset.TestSset{Name: "sset", Replicas: 3}.Build(),
-			wantUpscaleState: &upscaleState{recordedCreates: 0, isBootstrapped: true, allowMasterCreation: false, createsAllowed: ptr.To[int32](3)},
+			wantUpscaleState: &upscaleState{recordedCreates: 0, masterState: &masterUpscaleState{isBootstrapped: true, allowMasterCreation: false}, createsAllowed: ptr.To[int32](3)},
 		},
 		{
 			name: "downscale case",
 			args: args{
-				state:              &upscaleState{isBootstrapped: true, allowMasterCreation: false, createsAllowed: ptr.To[int32](3)},
+				state:              &upscaleState{masterState: &masterUpscaleState{isBootstrapped: true, allowMasterCreation: false}, createsAllowed: ptr.To[int32](3)},
 				actualStatefulSets: es_sset.StatefulSetList{sset.TestSset{Name: "sset", Replicas: 3}.Build()},
 				expected:           sset.TestSset{Name: "sset", Replicas: 1}.Build(),
 			},
 			want:             sset.TestSset{Name: "sset", Replicas: 3}.Build(),
-			wantUpscaleState: &upscaleState{recordedCreates: 0, isBootstrapped: true, allowMasterCreation: false, createsAllowed: ptr.To[int32](3)},
+			wantUpscaleState: &upscaleState{recordedCreates: 0, masterState: &masterUpscaleState{isBootstrapped: true, allowMasterCreation: false}, createsAllowed: ptr.To[int32](3)},
 		},
 		{
 			name: "upscale case: data nodes",
 			args: args{
-				state:              &upscaleState{isBootstrapped: true, allowMasterCreation: false, createsAllowed: ptr.To[int32](3)},
+				state:              &upscaleState{masterState: &masterUpscaleState{isBootstrapped: true, allowMasterCreation: false}, createsAllowed: ptr.To[int32](3)},
 				actualStatefulSets: es_sset.StatefulSetList{sset.TestSset{Name: "sset", Replicas: 3, Master: false, Data: true}.Build()},
 				expected:           sset.TestSset{Name: "sset", Replicas: 5, Master: false, Data: true}.Build(),
 			},
 			want:             sset.TestSset{Name: "sset", Replicas: 5, Master: false, Data: true}.Build(),
-			wantUpscaleState: &upscaleState{recordedCreates: 2, isBootstrapped: true, allowMasterCreation: false, createsAllowed: ptr.To[int32](3)},
+			wantUpscaleState: &upscaleState{recordedCreates: 2, masterState: &masterUpscaleState{isBootstrapped: true, allowMasterCreation: false}, createsAllowed: ptr.To[int32](3)},
 		},
 		{
 			name: "upscale case: master nodes - one by one",
 			args: args{
-				state:              &upscaleState{isBootstrapped: true, allowMasterCreation: true, createsAllowed: ptr.To[int32](3)},
+				state:              &upscaleState{masterState: &masterUpscaleState{isBootstrapped: true, allowMasterCreation: true}, createsAllowed: ptr.To[int32](3)},
 				actualStatefulSets: es_sset.StatefulSetList{sset.TestSset{Name: "sset", Replicas: 3, Master: true, Data: true}.Build()},
 				expected:           sset.TestSset{Name: "sset", Replicas: 5, Master: true, Data: true}.Build(),
 			},
 			want:             sset.TestSset{Name: "sset", Replicas: 4, Master: true, Data: true}.Build(),
-			wantUpscaleState: &upscaleState{recordedCreates: 1, isBootstrapped: true, allowMasterCreation: false, createsAllowed: ptr.To[int32](3)},
+			wantUpscaleState: &upscaleState{recordedCreates: 1, masterState: &masterUpscaleState{isBootstrapped: true, allowMasterCreation: false}, createsAllowed: ptr.To[int32](3)},
 		},
 		{
 			name: "upscale case: new additional master sset - one by one",
 			args: args{
-				state:              &upscaleState{isBootstrapped: true, allowMasterCreation: true, createsAllowed: ptr.To[int32](3)},
+				state:              &upscaleState{masterState: &masterUpscaleState{isBootstrapped: true, allowMasterCreation: true}, createsAllowed: ptr.To[int32](3)},
 				actualStatefulSets: es_sset.StatefulSetList{sset.TestSset{Name: "sset", Replicas: 3, Master: true, Data: true}.Build()},
 				expected:           sset.TestSset{Name: "sset-2", Replicas: 3, Master: true, Data: true}.Build(),
 			},
 			want:             sset.TestSset{Name: "sset-2", Replicas: 1, Master: true, Data: true}.Build(),
-			wantUpscaleState: &upscaleState{recordedCreates: 1, isBootstrapped: true, allowMasterCreation: false, createsAllowed: ptr.To[int32](3)},
+			wantUpscaleState: &upscaleState{recordedCreates: 1, masterState: &masterUpscaleState{isBootstrapped: true, allowMasterCreation: false}, createsAllowed: ptr.To[int32](3)},
 		},
 	}
 	for _, tt := range tests {
