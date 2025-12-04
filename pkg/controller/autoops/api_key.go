@@ -42,6 +42,10 @@ const (
 	configHashMetadataKey = "elasticsearch.k8s.elastic.co/config-hash"
 	// managedByValue is the value for the managed-by metadata
 	managedByValue = "eck"
+	// policyNameLabelKey is the label key for the AutoOpsAgentPolicy name
+	policyNameLabelKey = "autoops.k8s.elastic.co/policy-name"
+	// policyNamespaceLabelKey is the label key for the AutoOpsAgentPolicy namespace
+	policyNamespaceLabelKey = "autoops.k8s.elastic.co/policy-namespace"
 )
 
 // APIKeySpec represents the specification for an autoops API key
@@ -274,6 +278,10 @@ func buildAutoOpsESAPIKeySecret(policy autoopsv1alpha1.AutoOpsAgentPolicy, es es
 		Annotations: policy.GetAnnotations(),
 	})
 
+	// The 'managed-by' is only needed/wanted for the API key in
+	// Elasticsearch so we remove it from the secret.
+	delete(meta.Labels, managedByMetadataKey)
+
 	return corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:        secretName,
@@ -300,12 +308,12 @@ func apiKeySecretNameFrom(es esv1.Elasticsearch) string {
 // newMetadataFor returns the metadata to be set in the Elasticsearch API key.
 func newMetadataFor(policy *autoopsv1alpha1.AutoOpsAgentPolicy, es *esv1.Elasticsearch, expectedHash string) map[string]string {
 	return map[string]string{
-		configHashMetadataKey:                     expectedHash,
-		"elasticsearch.k8s.elastic.co/name":       es.Name,
-		"elasticsearch.k8s.elastic.co/namespace":  es.Namespace,
-		managedByMetadataKey:                      managedByValue,
-		"autoops.k8s.elastic.co/policy-name":      policy.Name,
-		"autoops.k8s.elastic.co/policy-namespace": policy.Namespace,
+		configHashMetadataKey:                    expectedHash,
+		"elasticsearch.k8s.elastic.co/name":      es.Name,
+		"elasticsearch.k8s.elastic.co/namespace": es.Namespace,
+		managedByMetadataKey:                     managedByValue,
+		policyNameLabelKey:                       policy.Name,
+		policyNamespaceLabelKey:                  policy.Namespace,
 	}
 }
 
@@ -315,14 +323,14 @@ func cleanupAutoOpsESAPIKey(
 	c k8s.Client,
 	esClientProvider commonesclient.Provider,
 	dialer net.Dialer,
-	policy autoopsv1alpha1.AutoOpsAgentPolicy,
+	policyNamespace, policyName string,
 	es esv1.Elasticsearch,
 ) error {
 	log := ulog.FromContext(ctx).WithValues(
 		"es_namespace", es.Namespace,
 		"es_name", es.Name,
-		"policy_namespace", policy.Namespace,
-		"policy_name", policy.Name,
+		"policy_namespace", policyNamespace,
+		"policy_name", policyName,
 	)
 	log.V(1).Info("Cleaning up AutoOps ES API key")
 
@@ -339,7 +347,7 @@ func cleanupAutoOpsESAPIKey(
 	defer esClient.Close()
 
 	// Generate API key name
-	apiKeyName := apiKeyNameFor(policy, es)
+	apiKeyName := fmt.Sprintf("eck-autoops-%s-%s-%s-%s", policyNamespace, policyName, es.Namespace, es.Name)
 
 	// Check if API key exists
 	activeAPIKeys, err := esClient.GetAPIKeysByName(ctx, apiKeyName)
@@ -361,7 +369,7 @@ func cleanupAutoOpsESAPIKey(
 	// Delete the secret
 	secretName := apiKeySecretNameFrom(es)
 	secretKey := types.NamespacedName{
-		Namespace: policy.Namespace,
+		Namespace: policyNamespace,
 		Name:      secretName,
 	}
 	var secret corev1.Secret

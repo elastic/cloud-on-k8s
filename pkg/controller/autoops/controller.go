@@ -15,6 +15,7 @@ import (
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/tools/record"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
 	"sigs.k8s.io/controller-runtime/pkg/handler"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
@@ -22,6 +23,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/source"
 
 	autoopsv1alpha1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/autoops/v1alpha1"
+	esv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/elasticsearch/v1"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common"
 	commonesclient "github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/esclient"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/events"
@@ -197,13 +199,49 @@ func (r *ReconcileAutoOpsAgentPolicy) updateStatus(ctx context.Context, policy a
 
 func (r *ReconcileAutoOpsAgentPolicy) onDelete(ctx context.Context, obj types.NamespacedName) error {
 	defer tracing.Span(&ctx)()
+	log := ulog.FromContext(ctx).WithValues("policy_namespace", obj.Namespace, "policy_name", obj.Name)
+	log.Info("Cleaning up AutoOpsAgentPolicy resources")
+
 	// Remove dynamic watches on secrets
 	r.dynamicWatches.Secrets.RemoveHandlerForKey(configSecretWatchName(obj))
 
-	// (TODO)
 	// Cleanup API keys for all Elasticsearch clusters that match this policy.
-	// If we label the secrets created from the policy properly, we can query
-	// for these, and properly delete the api keys.
+	// Query for secrets labeled with this policy to find all associated ES clusters.
+	var secrets corev1.SecretList
+	matchLabels := client.MatchingLabels{
+		policyNameLabelKey:      obj.Name,
+		policyNamespaceLabelKey: obj.Namespace,
+	}
+	if err := r.Client.List(ctx, &secrets, matchLabels); err != nil {
+		return tracing.CaptureError(ctx, fmt.Errorf("while listing secrets for policy %s/%s: %w", obj.Namespace, obj.Name, err))
+	}
+
+	// Cleanup API keys for each ES cluster referenced by the secrets
+	for _, secret := range secrets.Items {
+		esName, hasESName := secret.Labels["elasticsearch.k8s.elastic.co/name"]
+		esNamespace, hasESNamespace := secret.Labels["elasticsearch.k8s.elastic.co/namespace"]
+		if !hasESName || !hasESNamespace {
+			log.V(1).Info("Secret missing ES cluster labels, skipping", "secret", secret.Name)
+			continue
+		}
+
+		var es esv1.Elasticsearch
+		if err := r.Client.Get(ctx, types.NamespacedName{Namespace: esNamespace, Name: esName}, &es); err != nil {
+			if apierrors.IsNotFound(err) {
+				log.V(1).Info("Elasticsearch cluster not found, skipping cleanup", "es_namespace", esNamespace, "es_name", esName)
+				continue
+			}
+			log.Error(err, "Failed to get Elasticsearch cluster", "es_namespace", esNamespace, "es_name", esName)
+			continue
+		}
+
+		if err := cleanupAutoOpsESAPIKey(ctx, r.Client, r.esClientProvider, r.params.Dialer, obj.Namespace, obj.Name, es); err != nil {
+			log.Error(err, "Failed to cleanup API key for Elasticsearch cluster", "es_namespace", esNamespace, "es_name", esName)
+			continue
+		}
+		log.V(1).Info("Successfully cleaned up API key", "es_namespace", esNamespace, "es_name", esName)
+	}
+
 	return nil
 }
 

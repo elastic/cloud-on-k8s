@@ -52,7 +52,7 @@ func ParseConfigSecret(ctx context.Context, client k8s.Client, secretKey types.N
 func validateAndPopulateConfig(secret corev1.Secret, secretKey types.NamespacedName) (*Config, error) {
 	var config Config
 
-	if data, exists := secret.Data[CCMApiKey]; exists {
+	if data, exists := secret.Data[CCMApiKey]; exists && len(data) > 0 {
 		config.CCMApiKey = string(data)
 	} else {
 		return nil, fmt.Errorf("missing required key %s in configuration secret %s/%s", CCMApiKey, secretKey.Namespace, secretKey.Name)
@@ -64,13 +64,13 @@ func validateAndPopulateConfig(secret corev1.Secret, secretKey types.NamespacedN
 	// 	return nil, fmt.Errorf("missing required key %s in configuration secret %s/%s", TempResourceID, secretKey.Namespace, secretKey.Name)
 	// }
 
-	if data, exists := secret.Data[AutoOpsOTelURL]; exists {
+	if data, exists := secret.Data[AutoOpsOTelURL]; exists && len(data) > 0 {
 		config.AutoOpsOTelURL = string(data)
 	} else {
 		return nil, fmt.Errorf("missing required key %s in configuration secret %s/%s", AutoOpsOTelURL, secretKey.Namespace, secretKey.Name)
 	}
 
-	if data, exists := secret.Data[AutoOpsToken]; exists {
+	if data, exists := secret.Data[AutoOpsToken]; exists && len(data) > 0 {
 		config.AutoOpsToken = string(data)
 	} else {
 		return nil, fmt.Errorf("missing required key %s in configuration secret %s/%s", AutoOpsToken, secretKey.Namespace, secretKey.Name)

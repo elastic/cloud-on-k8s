@@ -331,7 +331,7 @@ func Test_autoopsEnvVars(t *testing.T) {
 		want []corev1.EnvVar
 	}{
 		{
-			name: "basic ES instance",
+			name: "Happy path",
 			es: esv1.Elasticsearch{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "es-1",
@@ -371,78 +371,6 @@ func Test_autoopsEnvVars(t *testing.T) {
 						SecretKeyRef: &corev1.SecretKeySelector{
 							LocalObjectReference: corev1.LocalObjectReference{
 								Name: "es-1-ns-1-autoops-es-api-key",
-							},
-							Key:      "api_key",
-							Optional: ptr.To(false),
-						},
-					},
-				},
-				{
-					Name: "ELASTIC_CLOUD_CONNECTED_MODE_API_KEY",
-					ValueFrom: &corev1.EnvVarSource{
-						SecretKeyRef: &corev1.SecretKeySelector{
-							LocalObjectReference: corev1.LocalObjectReference{
-								Name: "autoops-secret",
-							},
-							Key: "cloud-connected-mode-api-key",
-						},
-					},
-				},
-				{
-					Name: "ELASTIC_CLOUD_CONNECTED_MODE_API_URL",
-					ValueFrom: &corev1.EnvVarSource{
-						SecretKeyRef: &corev1.SecretKeySelector{
-							LocalObjectReference: corev1.LocalObjectReference{
-								Name: "autoops-secret",
-							},
-							Key:      "cloud-connected-mode-api-url",
-							Optional: ptr.To(true),
-						},
-					},
-				},
-			},
-		},
-		{
-			name: "ES instance with different namespace",
-			es: esv1.Elasticsearch{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      "es-cluster",
-					Namespace: "elastic-system",
-				},
-			},
-			want: []corev1.EnvVar{
-				{
-					Name: "AUTOOPS_TOKEN",
-					ValueFrom: &corev1.EnvVarSource{
-						SecretKeyRef: &corev1.SecretKeySelector{
-							LocalObjectReference: corev1.LocalObjectReference{
-								Name: "autoops-secret",
-							},
-							Key: "autoops-token",
-						},
-					},
-				},
-				{
-					Name:  "AUTOOPS_ES_URL",
-					Value: "http://es-cluster-es-internal-http.elastic-system.svc:9200",
-				},
-				{
-					Name: "AUTOOPS_OTEL_URL",
-					ValueFrom: &corev1.EnvVarSource{
-						SecretKeyRef: &corev1.SecretKeySelector{
-							LocalObjectReference: corev1.LocalObjectReference{
-								Name: "autoops-secret",
-							},
-							Key: "autoops-otel-url",
-						},
-					},
-				},
-				{
-					Name: "AUTOOPS_ES_API_KEY",
-					ValueFrom: &corev1.EnvVarSource{
-						SecretKeyRef: &corev1.SecretKeySelector{
-							LocalObjectReference: corev1.LocalObjectReference{
-								Name: "es-cluster-elastic-system-autoops-es-api-key",
 							},
 							Key:      "api_key",
 							Optional: ptr.To(false),

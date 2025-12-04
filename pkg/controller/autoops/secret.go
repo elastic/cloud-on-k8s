@@ -44,7 +44,6 @@ func reconcileAutoOpsESCASecret(
 		return nil
 	}
 
-	// Get the source secret: {es-name}-es-http-ca-internal
 	sourceSecretKey := types.NamespacedName{
 		Namespace: es.Namespace,
 		Name:      fmt.Sprintf("%s-es-http-ca-internal", es.Name),
@@ -58,14 +57,12 @@ func reconcileAutoOpsESCASecret(
 		return fmt.Errorf("while retrieving http-ca-internal secret for ES cluster %s/%s: %w", es.Namespace, es.Name, err)
 	}
 
-	// Extract tls.crt from the source secret
 	caCert, ok := sourceSecret.Data["tls.crt"]
 	if !ok || len(caCert) == 0 {
 		log.V(1).Info("tls.crt not found in http-ca-internal secret, skipping", "namespace", es.Namespace, "name", es.Name)
 		return nil
 	}
 
-	// Create secret name: {es-name}-{es-namespace}-es-ca
 	secretName := fmt.Sprintf("%s-%s-%s", es.Name, es.Namespace, autoOpsESCASecretPrefix)
 	expected := buildAutoOpsESCASecret(policy, es, secretName, caCert)
 
@@ -93,6 +90,10 @@ func reconcileAutoOpsESCASecret(
 
 // buildAutoOpsESCASecret builds the expected Secret for autoops ES CA certificate.
 func buildAutoOpsESCASecret(policy autoopsv1alpha1.AutoOpsAgentPolicy, es esv1.Elasticsearch, secretName string, caCert []byte) corev1.Secret {
+	if len(caCert) == 0 {
+		return corev1.Secret{}
+	}
+
 	meta := metadata.Propagate(&policy, metadata.Metadata{
 		Labels:      policy.GetLabels(),
 		Annotations: policy.GetAnnotations(),
