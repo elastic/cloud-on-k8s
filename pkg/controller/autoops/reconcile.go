@@ -68,7 +68,8 @@ func (r *ReconcileAutoOpsAgentPolicy) internalReconcile(
 	}
 	listOpts := client.ListOptions{LabelSelector: selector}
 
-	// restrict the search to the policy namespace if it is different from the operator namespace
+	// Restrict the search to the policy namespace if it is different from the operator namespace
+	// This follows the same behavior as the stackconfigpolicy controller for consistency.
 	log.V(1).Info("comparing policy namespace with operator namespace", "policy namespace", policy.Namespace, "operator namespace", r.params.OperatorNamespace)
 	if policy.Namespace != r.params.OperatorNamespace {
 		log.V(1).Info("Restricting search to policy namespace", "namespace", policy.Namespace)
@@ -106,7 +107,6 @@ func (r *ReconcileAutoOpsAgentPolicy) internalReconcile(
 			}
 		}
 
-		// Reconcile API key for this Elasticsearch cluster
 		if err := reconcileAutoOpsESAPIKey(ctx, r.Client, r.esClientProvider, r.params.Dialer, policy, es); err != nil {
 			errorCount++
 			state.UpdateWithPhase(autoopsv1alpha1.ErrorPhase)
