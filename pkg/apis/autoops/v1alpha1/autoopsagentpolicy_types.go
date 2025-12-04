@@ -96,15 +96,10 @@ const (
 
 func NewStatus(policy AutoOpsAgentPolicy) AutoOpsAgentPolicyStatus {
 	status := AutoOpsAgentPolicyStatus{
-		// Details:            map[ResourceType]map[string]ResourcePolicyStatus{},
 		Phase:              UnknownPhase,
 		ObservedGeneration: policy.Generation,
 	}
 	return status
-}
-
-// Update updates the policy status from its resources statuses.
-func (s *AutoOpsAgentPolicyStatus) Update() {
 }
 
 // IsMarkedForDeletion returns true if the AutoOpsAgentPolicy resource is going to be deleted.

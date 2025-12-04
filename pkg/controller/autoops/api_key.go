@@ -34,23 +34,25 @@ var (
 )
 
 const (
-	// autoOpsESAPIKeySecretNamePrefix is the prefix for API key secrets created for each ES instance
-	autoOpsESAPIKeySecretNamePrefix = "autoops-es-api-key"
-	// managedByMetadataKey is the metadata key indicating the secret is managed by ECK
+	// autoOpsESAPIKeySecretNameSuffix is the suffix for API key secrets created for each ES instance
+	autoOpsESAPIKeySecretNameSuffix = "autoops-es-api-key"
+	// managedByMetadataKey is the metadata key indicating the API key is managed by ECK.
+	// This is used when storing the API key in Elasticsearch to clearly identify it as managed by ECK.
+	// This is not included in the labels of the secret.
 	managedByMetadataKey = "elasticsearch.k8s.elastic.co/managed-by"
-	// configHashMetadataKey is the metadata key storing the hash API key
-	configHashMetadataKey = "elasticsearch.k8s.elastic.co/config-hash"
 	// managedByValue is the value for the managed-by metadata
 	managedByValue = "eck"
+	// configHashMetadataKey is the metadata key storing the hash API key
+	configHashMetadataKey = "elasticsearch.k8s.elastic.co/config-hash"
 	// policyNameLabelKey is the label key for the AutoOpsAgentPolicy name
 	policyNameLabelKey = "autoops.k8s.elastic.co/policy-name"
 	// policyNamespaceLabelKey is the label key for the AutoOpsAgentPolicy namespace
 	policyNamespaceLabelKey = "autoops.k8s.elastic.co/policy-namespace"
 )
 
-// APIKeySpec represents the specification for an autoops API key
-type APIKeySpec struct {
-	RoleDescriptors map[string]esclient.Role
+// apiKeySpec represents the specification for an autoops API key
+type apiKeySpec struct {
+	roleDescriptors map[string]esclient.Role
 }
 
 // reconcileAutoOpsESAPIKey reconciles the API key and secret for a specific Elasticsearch cluster.
@@ -75,16 +77,14 @@ func reconcileAutoOpsESAPIKey(
 		return nil
 	}
 
-	// Get Elasticsearch client
 	esClient, err := esClientProvider(ctx, c, dialer, es)
 	if err != nil {
 		return fmt.Errorf("while creating Elasticsearch client for %s/%s: %w", es.Namespace, es.Name, err)
 	}
 	defer esClient.Close()
 
-	// Build API key specification
-	apiKeySpec := APIKeySpec{
-		RoleDescriptors: map[string]esclient.Role{
+	apiKeySpec := apiKeySpec{
+		roleDescriptors: map[string]esclient.Role{
 			"eck_autoops_role": defaultMonitoringRole,
 		},
 	}
@@ -92,7 +92,6 @@ func reconcileAutoOpsESAPIKey(
 	// Calculate expected hash
 	expectedHash := hash.HashObject(apiKeySpec)
 
-	// Generate API key name
 	apiKeyName := apiKeyNameFor(policy, es)
 
 	// Check if API key exists
@@ -123,7 +122,7 @@ func createAPIKey(
 	c k8s.Client,
 	esClient esclient.Client,
 	apiKeyName string,
-	apiKeySpec APIKeySpec,
+	apiKeySpec apiKeySpec,
 	expectedHash string,
 	policy autoopsv1alpha1.AutoOpsAgentPolicy,
 	es esv1.Elasticsearch,
@@ -131,6 +130,8 @@ func createAPIKey(
 	log.Info("Creating API key", "key", apiKeyName)
 
 	metadata := newMetadataFor(&policy, &es, expectedHash)
+	// Unfortunatelly we need to convert the metadata to a map[string]any to satisfy the APIKeyCreateRequest type.
+	// We return map[string]string because this is also used when storing the API key in a secret.
 	metadataAny := make(map[string]any, len(metadata))
 	for k, v := range metadata {
 		metadataAny[k] = v
@@ -139,7 +140,7 @@ func createAPIKey(
 	apiKeyResp, err := esClient.CreateAPIKey(ctx, esclient.APIKeyCreateRequest{
 		Name: apiKeyName,
 		APIKeyUpdateRequest: esclient.APIKeyUpdateRequest{
-			RoleDescriptors: apiKeySpec.RoleDescriptors,
+			RoleDescriptors: apiKeySpec.roleDescriptors,
 			Metadata:        metadataAny,
 		},
 	})
@@ -147,7 +148,7 @@ func createAPIKey(
 		return fmt.Errorf("while creating API key %s: %w", apiKeyName, err)
 	}
 
-	return storeAPIKeyInSecret(ctx, c, apiKeyName, apiKeyResp.Encoded, expectedHash, policy, es)
+	return storeAPIKeyInSecret(ctx, c, apiKeyResp.Encoded, expectedHash, policy, es)
 }
 
 // maybeUpdateAPIKey checks if the API key needs to be updated and handles it.
@@ -158,7 +159,7 @@ func maybeUpdateAPIKey(
 	esClient esclient.Client,
 	activeAPIKey *esclient.APIKey,
 	apiKeyName string,
-	apiKeySpec APIKeySpec,
+	apiKeySpec apiKeySpec,
 	expectedHash string,
 	policy autoopsv1alpha1.AutoOpsAgentPolicy,
 	es esv1.Elasticsearch,
@@ -168,7 +169,7 @@ func maybeUpdateAPIKey(
 		return invalidateAndCreateAPIKey(ctx, log, c, esClient, activeAPIKey, apiKeyName, apiKeySpec, expectedHash, policy, es)
 	}
 
-	// The api key is seemlingly up to date, so we need to ensure the secret exists with correct value
+	// The API key is seemingly up to date, so we need to ensure the secret exists with correct value
 	secretName := apiKeySecretNameFrom(es)
 	var secret corev1.Secret
 	nsn := types.NamespacedName{
@@ -177,14 +178,14 @@ func maybeUpdateAPIKey(
 	}
 	if err := c.Get(ctx, nsn, &secret); err != nil {
 		if apierrors.IsNotFound(err) {
-			// Secret doesn't exist so again we need to invalidate and recreate the api key.
+			// Secret doesn't exist so again we need to invalidate and recreate the API key.
 			log.Info("API key secret not found, recreating key", "key", apiKeyName)
 			return invalidateAndCreateAPIKey(ctx, log, c, esClient, activeAPIKey, apiKeyName, apiKeySpec, expectedHash, policy, es)
 		}
 		return fmt.Errorf("while retrieving API key secret %s: %w", secretName, err)
 	}
 
-	// Since the secret exists, just just need to verify the data is correct.
+	// Since the secret exists, we just need to verify the data is correct.
 	if encodedKey, ok := secret.Data["api_key"]; !ok || string(encodedKey) == "" {
 		log.Info("API key secret exists but is missing api_key, recreating key", "key", apiKeyName)
 		return invalidateAndCreateAPIKey(ctx, log, c, esClient, activeAPIKey, apiKeyName, apiKeySpec, expectedHash, policy, es)
@@ -201,7 +202,7 @@ func invalidateAndCreateAPIKey(
 	esClient esclient.Client,
 	activeAPIKey *esclient.APIKey,
 	apiKeyName string,
-	apiKeySpec APIKeySpec,
+	apiKeySpec apiKeySpec,
 	expectedHash string,
 	policy autoopsv1alpha1.AutoOpsAgentPolicy,
 	es esv1.Elasticsearch,
@@ -212,6 +213,11 @@ func invalidateAndCreateAPIKey(
 	return createAPIKey(ctx, log, c, esClient, apiKeyName, apiKeySpec, expectedHash, policy, es)
 }
 
+// apiKeyNeedsRecreation checks if the API key needs to be recreated.
+// It will be recreated in the following cases:
+// - The API key has no metadata
+// - The API key has the wrong "managed-by" value
+// - The API key has the wrong "config-hash" value
 func apiKeyNeedsRecreation(apiKey *esclient.APIKey, expectedHash string) bool {
 	if apiKey.Metadata == nil {
 		return true
@@ -228,7 +234,7 @@ func apiKeyNeedsRecreation(apiKey *esclient.APIKey, expectedHash string) bool {
 	return false
 }
 
-// invalidateAPIKey invalidates an API key by its ID.
+// invalidateAPIKey invalidates an API key by its key ID by calling the Elasticsearch API.
 func invalidateAPIKey(ctx context.Context, esClient esclient.Client, keyID string) error {
 	_, err := esClient.InvalidateAPIKeys(ctx, esclient.APIKeysInvalidateRequest{
 		IDs: []string{keyID},
@@ -240,7 +246,6 @@ func invalidateAPIKey(ctx context.Context, esClient esclient.Client, keyID strin
 func storeAPIKeyInSecret(
 	ctx context.Context,
 	c k8s.Client,
-	apiKeyName string,
 	encodedKey string,
 	expectedHash string,
 	policy autoopsv1alpha1.AutoOpsAgentPolicy,
@@ -302,7 +307,7 @@ func apiKeyNameFor(policy autoopsv1alpha1.AutoOpsAgentPolicy, es esv1.Elasticsea
 
 // apiKeySecretNameFrom generates the name for the API key secret from an ES instance.
 func apiKeySecretNameFrom(es esv1.Elasticsearch) string {
-	return fmt.Sprintf("%s-%s-%s", es.Name, es.Namespace, autoOpsESAPIKeySecretNamePrefix)
+	return fmt.Sprintf("%s-%s-%s", es.Name, es.Namespace, autoOpsESAPIKeySecretNameSuffix)
 }
 
 // newMetadataFor returns the metadata to be set in the Elasticsearch API key.
@@ -346,13 +351,12 @@ func cleanupAutoOpsESAPIKey(
 	}
 	defer esClient.Close()
 
-	// Generate API key name
-	apiKeyName := fmt.Sprintf("eck-autoops-%s-%s-%s-%s", policyNamespace, policyName, es.Namespace, es.Name)
+	apiKeyName := apiKeyNameFor(autoopsv1alpha1.AutoOpsAgentPolicy{ObjectMeta: metav1.ObjectMeta{Namespace: policyNamespace, Name: policyName}}, es)
 
 	// Check if API key exists
 	activeAPIKeys, err := esClient.GetAPIKeysByName(ctx, apiKeyName)
 	if err != nil {
-		return fmt.Errorf("failed to get API keys by name %s: %w", apiKeyName, err)
+		return fmt.Errorf("while getting API keys by name %s: %w", apiKeyName, err)
 	}
 
 	// Invalidate all matching API keys
@@ -360,13 +364,11 @@ func cleanupAutoOpsESAPIKey(
 		if key.Name == apiKeyName {
 			log.Info("Invalidating API key", "key", apiKeyName, "id", key.ID)
 			if err := invalidateAPIKey(ctx, esClient, key.ID); err != nil {
-				log.Error(err, "Failed to invalidate API key", "key", apiKeyName, "id", key.ID)
-				// Continue to try to invalidate other keys
+				log.Error(err, "while invalidating API key", "key", apiKeyName, "id", key.ID)
 			}
 		}
 	}
 
-	// Delete the secret
 	secretName := apiKeySecretNameFrom(es)
 	secretKey := types.NamespacedName{
 		Namespace: policyNamespace,
@@ -378,16 +380,15 @@ func cleanupAutoOpsESAPIKey(
 			// Secret already deleted, nothing to do
 			return nil
 		}
-		return fmt.Errorf("failed to get API key secret %s: %w", secretName, err)
+		return fmt.Errorf("while getting API key secret %s: %w", secretName, err)
 	}
 
 	log.Info("Deleting API key secret", "secret", secretName)
 	if err := c.Delete(ctx, &secret); err != nil {
 		if apierrors.IsNotFound(err) {
-			// Already deleted
 			return nil
 		}
-		return fmt.Errorf("failed to delete API key secret %s: %w", secretName, err)
+		return fmt.Errorf("while deleting API key secret %s: %w", secretName, err)
 	}
 
 	return nil
