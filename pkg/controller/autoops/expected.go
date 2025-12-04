@@ -28,6 +28,7 @@ import (
 )
 
 const (
+	autoOpsLabelName         = "autoops.k8s.elastic.co/name"
 	configVolumeName         = "config-volume"
 	configVolumePath         = "/mnt/config"
 	configHashAnnotationName = "autoops.k8s.elastic.co/config-hash"
@@ -70,8 +71,8 @@ func (r *ReconcileAutoOpsAgentPolicy) deploymentParams(ctx context.Context, poli
 		return appsv1.Deployment{}, err
 	}
 	labels := map[string]string{
-		commonv1.TypeLabelName:        "autoops-agent",
-		"autoops.k8s.elastic.co/name": policy.Name,
+		commonv1.TypeLabelName: "autoops-agent",
+		autoOpsLabelName:       policy.Name,
 	}
 	deployment.ObjectMeta = metav1.ObjectMeta{
 		Name:      AutoOpsNamer.Suffix(es.Name, es.GetNamespace(), "deploy"),
@@ -82,7 +83,7 @@ func (r *ReconcileAutoOpsAgentPolicy) deploymentParams(ctx context.Context, poli
 		Replicas: pointer.Int32(1),
 		Selector: &metav1.LabelSelector{
 			MatchLabels: map[string]string{
-				"autoops.k8s.elastic.co/name": policy.Name,
+				autoOpsLabelName: policy.Name,
 			},
 		},
 	}
