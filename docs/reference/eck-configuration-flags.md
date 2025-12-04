@@ -43,6 +43,7 @@ The following table lists and describes all the available configuration flags fo
 | `namespaces` | `""` | Namespaces in which this operator should manage resources. Accepts multiple comma-separated values. Defaults to all namespaces if empty or unspecified. |
 | `operator-namespace` | `""` | Namespace the operator runs in. Required. |
 | `password-hash-cache-size` | `5 x max-concurrent-reconciles` | Sets the size of the password hash cache. Caching is disabled if explicitly set to 0 or any negative value. |
+| `password-length` | `24` | Length of generated file-based passwords (enterprise-only feature) |
 | `set-default-security-context` | `auto-detect` | Enables adding a default Pod Security Context to Elasticsearch Pods in Elasticsearch `8.0.0` and later. `fsGroup` is set to `1000` by default to match Elasticsearch container default UID. This behavior might not be appropriate for OpenShift and PSP-secured Kubernetes clusters, so it can be disabled. |
 | `ubi-only` | `false` | Use only UBI container images to deploy Elastic Stack applications. UBI images are only available from 7.10.0 onward. Ignored from 9.x as default images are based on UBI. Cannot be combined with `--container-suffix` flag. |
 | `validate-storage-class` | `true` | Specifies whether the operator should retrieve storage classes to verify volume expansion support. Can be disabled if cluster-wide storage class RBAC access is not available. |

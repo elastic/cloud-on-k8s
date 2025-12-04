@@ -11,8 +11,6 @@ import (
 	"net"
 	"path/filepath"
 
-	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/metadata"
-
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -25,6 +23,8 @@ import (
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/certificates"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/driver"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/labels"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/metadata"
+	commonpassword "github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/password"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/reconciler"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/settings"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/version"
@@ -45,6 +45,11 @@ const (
 
 	SecretSessionSetting  = "secret_session_key"
 	EncryptionKeysSetting = "secret_management.encryption_keys"
+
+	// EncryptionKeyMinimumBytes is the minimum number of bytes required for an encryption key.
+	// This is in line with the documentation (256 bits) as of 8.19:
+	// https://www.elastic.co/guide/en/enterprise-search/8.19/encryption-keys.html
+	EncryptionKeyMinimumBytes = 32
 )
 
 func ConfigSecretVolume(ent entv1.EnterpriseSearch) volume.SecretVolume {
@@ -113,15 +118,15 @@ func readinessProbeScript(ent entv1.EnterpriseSearch, config *settings.Canonical
 	}
 	basicAuthArgs := "" // no credentials: no basic auth
 	if esAuth.Elasticsearch.Username != "" {
-		basicAuthArgs = fmt.Sprintf("-u %s:%s", esAuth.Elasticsearch.Username, esAuth.Elasticsearch.Password)
+		basicAuthArgs = fmt.Sprintf("-u %s:'%s'", esAuth.Elasticsearch.Username, esAuth.Elasticsearch.Password)
 	}
 
 	return []byte(`#!/usr/bin/env bash
 
 	# fail should be called as a last resort to help the user to understand why the probe failed
 	function fail {
-	  timestamp=$(date --iso-8601=seconds)
-	  echo "{\"timestamp\": \"${timestamp}\", \"message\": \"readiness probe failed\", "$1"}" | tee /proc/1/fd/2 2> /dev/null
+	  timestamp=$(date +%Y-%m-%dT%H:%M:%S%z)
+	  echo '{"timestamp": "'"${timestamp}"'", "message": "readiness probe failed", '"${1}"'}'| tee /proc/1/fd/2 2> /dev/null
 	  exit 1
 	}
 
@@ -129,7 +134,7 @@ func readinessProbeScript(ent entv1.EnterpriseSearch, config *settings.Canonical
 	READINESS_PROBE_TIMEOUT=${READINESS_PROBE_TIMEOUT:=` + fmt.Sprintf("%d", ReadinessProbeTimeoutSec) + `}
 
 	# request the health endpoint and expect http status code 200. Turning globbing off for unescaped IPv6 addresses
-	status=$(curl -g -o /dev/null -w "%{http_code}" ` + url + ` ` + basicAuthArgs + ` -k -s --max-time ${READINESS_PROBE_TIMEOUT})
+	status=$(curl -g -o /dev/null -w "%{http_code}" ` + url + ` ` + basicAuthArgs + ` -k -s --max-time "${READINESS_PROBE_TIMEOUT}")
 	curl_rc=$?
 
 	if [[ ${curl_rc} -ne 0 ]]; then
@@ -139,7 +144,7 @@ func readinessProbeScript(ent entv1.EnterpriseSearch, config *settings.Canonical
 	if [[ ${status} == "200" ]]; then
 	  exit 0
 	else
-	  fail " \"status\": \"${status}\", \"version\":\"${version}\" "
+	  fail " \"status\": \"${status}\" "
 	fi
 `), nil
 }
@@ -214,7 +219,13 @@ func getOrCreateReusableSettings(ctx context.Context, c k8s.Client, ent entv1.En
 
 	// generate a random secret session key, or reuse the existing one
 	if len(e.SecretSession) == 0 {
-		e.SecretSession = string(common.RandomBytes(32))
+		// This is generated without symbols to stay in line with Elasticsearch's service accounts
+		// which are UUIDv4 and cannot include symbols.
+		bytes, err := commonpassword.RandomBytesWithoutSymbols(EncryptionKeyMinimumBytes)
+		if err != nil {
+			return nil, err
+		}
+		e.SecretSession = string(bytes)
 	}
 
 	// generate a random encryption key, or reuse the existing one
@@ -227,7 +238,14 @@ func getOrCreateReusableSettings(ctx context.Context, c k8s.Client, ent entv1.En
 	// This allows users to go from no custom key provided (use operator's generated one), to providing their own.
 	if len(e.EncryptionKeys) == 0 {
 		// no encryption key, generate a new one
-		e.EncryptionKeys = []string{string(common.RandomBytes(32))}
+		//
+		// This is generated without symbols to stay in line with Elasticsearch's service accounts
+		// which are UUIDv4 and cannot include symbols.
+		bytes, err := commonpassword.RandomBytesWithoutSymbols(EncryptionKeyMinimumBytes)
+		if err != nil {
+			return nil, err
+		}
+		e.EncryptionKeys = []string{string(bytes)}
 	} else {
 		// encryption keys already exist, reuse the first ECK-managed one
 		// other user-provided keys from user-provided config will be merged in later

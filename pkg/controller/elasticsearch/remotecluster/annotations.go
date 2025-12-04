@@ -59,7 +59,12 @@ func annotateWithCreatedRemoteClusters(ctx context.Context, c k8s.Client, es esv
 	}
 
 	sort.Strings(annotation)
-	es.Annotations[ManagedRemoteClustersAnnotationName] = strings.Join(annotation, ",")
+	expected := strings.Join(annotation, ",")
+	current, ok := es.Annotations[ManagedRemoteClustersAnnotationName]
 
-	return c.Update(ctx, &es)
+	if !ok || current != expected {
+		es.Annotations[ManagedRemoteClustersAnnotationName] = expected
+		return c.Update(ctx, &es)
+	}
+	return nil
 }

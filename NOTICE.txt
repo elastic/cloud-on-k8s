@@ -48,11 +48,11 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 --------------------------------------------------------------------------------
 Module  : github.com/KimMachineGun/automemlimit
-Version : v0.7.4
-Time    : 2025-07-10T02:38:34Z
+Version : v0.7.5
+Time    : 2025-10-08T05:39:30Z
 Licence : MIT
 
-Contents of probable licence file /home/mmontgomery/.asdf/installs/golang/1.23.4/packages/pkg/mod/github.com/!kim!machine!gun/automemlimit@v0.7.4/LICENSE:
+Contents of probable licence file $GOMODCACHE/github.com/!kim!machine!gun/automemlimit@v0.7.5/LICENSE:
 
 MIT License
 
@@ -165,11 +165,11 @@ OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
 --------------------------------------------------------------------------------
 Module  : github.com/elastic/go-ucfg
-Version : v0.8.9-0.20250307075119-2a22403faaea
-Time    : 2025-03-07T07:51:19Z
+Version : v0.8.9-0.20251017163010-3520930bed4f
+Time    : 2025-10-17T16:30:10Z
 Licence : Apache-2.0
 
-Contents of probable licence file /home/mmontgomery/.asdf/installs/golang/1.23.4/packages/pkg/mod/github.com/elastic/go-ucfg@v0.8.9-0.20250307075119-2a22403faaea/LICENSE:
+Contents of probable licence file $GOMODCACHE/github.com/elastic/go-ucfg@v0.8.9-0.20251017163010-3520930bed4f/LICENSE:
 
                                  Apache License
                            Version 2.0, January 2004
@@ -436,11 +436,11 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 --------------------------------------------------------------------------------
 Module  : github.com/gkampitakis/go-snaps
-Version : v0.5.14
-Time    : 2025-07-28T20:15:32Z
+Version : v0.5.15
+Time    : 2025-09-17T06:08:35Z
 Licence : MIT
 
-Contents of probable licence file /home/mmontgomery/.asdf/installs/golang/1.23.4/packages/pkg/mod/github.com/gkampitakis/go-snaps@v0.5.14/LICENSE:
+Contents of probable licence file $GOMODCACHE/github.com/gkampitakis/go-snaps@v0.5.15/LICENSE:
 
 MIT License
 
@@ -1762,11 +1762,11 @@ Exhibit B - "Incompatible With Secondary Licenses" Notice
 
 --------------------------------------------------------------------------------
 Module  : github.com/hashicorp/vault/api
-Version : v1.21.0
-Time    : 2025-09-01T15:28:10Z
+Version : v1.22.0
+Time    : 2025-10-02T22:02:29Z
 Licence : MPL-2.0
 
-Contents of probable licence file /home/mmontgomery/.asdf/installs/golang/1.23.4/packages/pkg/mod/github.com/hashicorp/vault/api@v1.21.0/LICENSE:
+Contents of probable licence file $GOMODCACHE/github.com/hashicorp/vault/api@v1.22.0/LICENSE:
 
 Copyright (c) 2015 HashiCorp, Inc.
 
@@ -2452,11 +2452,11 @@ Contents of probable licence file /home/mmontgomery/.asdf/installs/golang/1.23.4
 
 --------------------------------------------------------------------------------
 Module  : github.com/prometheus/common
-Version : v0.66.1
-Time    : 2025-09-05T07:53:47Z
+Version : v0.67.2
+Time    : 2025-10-28T14:07:29Z
 Licence : Apache-2.0
 
-Contents of probable licence file /home/mmontgomery/.asdf/installs/golang/1.23.4/packages/pkg/mod/github.com/prometheus/common@v0.66.1/LICENSE:
+Contents of probable licence file $GOMODCACHE/github.com/prometheus/common@v0.67.2/LICENSE:
 
                                  Apache License
                            Version 2.0, January 2004
@@ -2659,36 +2659,6 @@ Contents of probable licence file /home/mmontgomery/.asdf/installs/golang/1.23.4
    WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
    See the License for the specific language governing permissions and
    limitations under the License.
-
-
---------------------------------------------------------------------------------
-Module  : github.com/sethvargo/go-password
-Version : v0.3.1
-Time    : 2024-06-25T00:17:20Z
-Licence : MIT
-
-Contents of probable licence file /home/mmontgomery/.asdf/installs/golang/1.23.4/packages/pkg/mod/github.com/sethvargo/go-password@v0.3.1/LICENSE:
-
-Copyright 2017 Seth Vargo <seth@sethvargo.com>
-
-Permission is hereby granted, free of charge, to any person obtaining
-a copy of this software and associated documentation files (the
-"Software"), to deal in the Software without restriction, including
-without limitation the rights to use, copy, modify, merge, publish,
-distribute, sublicense, and/or sell copies of the Software, and to
-permit persons to whom the Software is furnished to do so, subject to
-the following conditions:
-
-The above copyright notice and this permission notice shall be
-included in all copies or substantial portions of the Software.
-
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
-EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
-MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
-NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE
-LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION
-OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
-WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 
 --------------------------------------------------------------------------------
@@ -2976,11 +2946,11 @@ SOFTWARE.
 
 --------------------------------------------------------------------------------
 Module  : go.elastic.co/apm/module/apmelasticsearch/v2
-Version : v2.7.1
-Time    : 2025-05-26T15:07:42Z
+Version : v2.7.2
+Time    : 2025-11-28T10:07:18Z
 Licence : Apache-2.0
 
-Contents of probable licence file /home/mmontgomery/.asdf/installs/golang/1.23.4/packages/pkg/mod/go.elastic.co/apm/module/apmelasticsearch/v2@v2.7.1/LICENSE:
+Contents of probable licence file $GOMODCACHE/go.elastic.co/apm/module/apmelasticsearch/v2@v2.7.2/LICENSE:
 
                                  Apache License
                            Version 2.0, January 2004
@@ -3187,11 +3157,11 @@ Contents of probable licence file /home/mmontgomery/.asdf/installs/golang/1.23.4
 
 --------------------------------------------------------------------------------
 Module  : go.elastic.co/apm/module/apmhttp/v2
-Version : v2.7.1
-Time    : 2025-05-26T15:07:42Z
+Version : v2.7.2
+Time    : 2025-11-28T10:07:18Z
 Licence : Apache-2.0
 
-Contents of probable licence file /home/mmontgomery/.asdf/installs/golang/1.23.4/packages/pkg/mod/go.elastic.co/apm/module/apmhttp/v2@v2.7.1/LICENSE:
+Contents of probable licence file $GOMODCACHE/go.elastic.co/apm/module/apmhttp/v2@v2.7.2/LICENSE:
 
                                  Apache License
                            Version 2.0, January 2004
@@ -3398,11 +3368,11 @@ Contents of probable licence file /home/mmontgomery/.asdf/installs/golang/1.23.4
 
 --------------------------------------------------------------------------------
 Module  : go.elastic.co/apm/module/apmzap/v2
-Version : v2.7.1
-Time    : 2025-05-26T15:07:42Z
+Version : v2.7.2
+Time    : 2025-11-28T10:07:18Z
 Licence : Apache-2.0
 
-Contents of probable licence file /home/mmontgomery/.asdf/installs/golang/1.23.4/packages/pkg/mod/go.elastic.co/apm/module/apmzap/v2@v2.7.1/LICENSE:
+Contents of probable licence file $GOMODCACHE/go.elastic.co/apm/module/apmzap/v2@v2.7.2/LICENSE:
 
                                  Apache License
                            Version 2.0, January 2004
@@ -3609,11 +3579,11 @@ Contents of probable licence file /home/mmontgomery/.asdf/installs/golang/1.23.4
 
 --------------------------------------------------------------------------------
 Module  : go.elastic.co/apm/v2
-Version : v2.7.1
-Time    : 2025-05-26T15:07:42Z
+Version : v2.7.2
+Time    : 2025-11-28T10:07:18Z
 Licence : Apache-2.0
 
-Contents of probable licence file /home/mmontgomery/.asdf/installs/golang/1.23.4/packages/pkg/mod/go.elastic.co/apm/v2@v2.7.1/LICENSE:
+Contents of probable licence file $GOMODCACHE/go.elastic.co/apm/v2@v2.7.2/LICENSE:
 
                                  Apache License
                            Version 2.0, January 2004
@@ -3877,11 +3847,11 @@ THE SOFTWARE.
 
 --------------------------------------------------------------------------------
 Module  : golang.org/x/crypto
-Version : v0.42.0
-Time    : 2025-09-08T15:14:28Z
+Version : v0.45.0
+Time    : 2025-11-19T19:55:48Z
 Licence : BSD-3-Clause
 
-Contents of probable licence file /home/mmontgomery/.asdf/installs/golang/1.23.4/packages/pkg/mod/golang.org/x/crypto@v0.42.0/LICENSE:
+Contents of probable licence file $GOMODCACHE/golang.org/x/crypto@v0.45.0/LICENSE:
 
 Copyright 2009 The Go Authors.
 
@@ -5060,11 +5030,11 @@ Contents of probable licence file /home/mmontgomery/.asdf/installs/golang/1.23.4
 
 --------------------------------------------------------------------------------
 Module  : sigs.k8s.io/controller-runtime
-Version : v0.22.1
-Time    : 2025-09-05T13:19:27Z
+Version : v0.22.4
+Time    : 2025-11-03T14:00:07Z
 Licence : Apache-2.0
 
-Contents of probable licence file /home/mmontgomery/.asdf/installs/golang/1.23.4/packages/pkg/mod/sigs.k8s.io/controller-runtime@v0.22.1/LICENSE:
+Contents of probable licence file $GOMODCACHE/sigs.k8s.io/controller-runtime@v0.22.4/LICENSE:
 
                                  Apache License
                            Version 2.0, January 2004
@@ -19112,11 +19082,11 @@ THE SOFTWARE.
 
 --------------------------------------------------------------------------------
 Module  : go.yaml.in/yaml/v2
-Version : v2.4.2
-Time    : 2025-06-02T16:37:17Z
+Version : v2.4.3
+Time    : 2025-09-11T04:10:14Z
 Licence : Apache-2.0
 
-Contents of probable licence file /home/mmontgomery/.asdf/installs/golang/1.23.4/packages/pkg/mod/go.yaml.in/yaml/v2@v2.4.2/LICENSE:
+Contents of probable licence file $GOMODCACHE/go.yaml.in/yaml/v2@v2.4.3/LICENSE:
 
                                  Apache License
                            Version 2.0, January 2004
@@ -19383,11 +19353,11 @@ limitations under the License.
 
 --------------------------------------------------------------------------------
 Module  : golang.org/x/mod
-Version : v0.27.0
-Time    : 2025-08-07T14:51:59Z
+Version : v0.29.0
+Time    : 2025-10-08T15:23:01Z
 Licence : BSD-3-Clause
 
-Contents of probable licence file /home/mmontgomery/.asdf/installs/golang/1.23.4/packages/pkg/mod/golang.org/x/mod@v0.27.0/LICENSE:
+Contents of probable licence file $GOMODCACHE/golang.org/x/mod@v0.29.0/LICENSE:
 
 Copyright 2009 The Go Authors.
 
@@ -19420,11 +19390,11 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 --------------------------------------------------------------------------------
 Module  : golang.org/x/net
-Version : v0.43.0
-Time    : 2025-08-07T19:56:06Z
+Version : v0.47.0
+Time    : 2025-11-11T18:55:31Z
 Licence : BSD-3-Clause
 
-Contents of probable licence file /home/mmontgomery/.asdf/installs/golang/1.23.4/packages/pkg/mod/golang.org/x/net@v0.43.0/LICENSE:
+Contents of probable licence file $GOMODCACHE/golang.org/x/net@v0.47.0/LICENSE:
 
 Copyright 2009 The Go Authors.
 
@@ -19457,11 +19427,11 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 --------------------------------------------------------------------------------
 Module  : golang.org/x/oauth2
-Version : v0.30.0
-Time    : 2025-04-30T15:42:02Z
+Version : v0.32.0
+Time    : 2025-09-16T00:27:56Z
 Licence : BSD-3-Clause
 
-Contents of probable licence file /home/mmontgomery/.asdf/installs/golang/1.23.4/packages/pkg/mod/golang.org/x/oauth2@v0.30.0/LICENSE:
+Contents of probable licence file $GOMODCACHE/golang.org/x/oauth2@v0.32.0/LICENSE:
 
 Copyright 2009 The Go Authors.
 
@@ -19494,11 +19464,11 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 --------------------------------------------------------------------------------
 Module  : golang.org/x/sync
-Version : v0.17.0
-Time    : 2025-08-13T14:47:05Z
+Version : v0.18.0
+Time    : 2025-10-21T17:44:11Z
 Licence : BSD-3-Clause
 
-Contents of probable licence file /home/mmontgomery/.asdf/installs/golang/1.23.4/packages/pkg/mod/golang.org/x/sync@v0.17.0/LICENSE:
+Contents of probable licence file $GOMODCACHE/golang.org/x/sync@v0.18.0/LICENSE:
 
 Copyright 2009 The Go Authors.
 
@@ -19531,11 +19501,11 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 --------------------------------------------------------------------------------
 Module  : golang.org/x/sys
-Version : v0.36.0
-Time    : 2025-09-05T15:44:06Z
+Version : v0.38.0
+Time    : 2025-11-04T21:29:36Z
 Licence : BSD-3-Clause
 
-Contents of probable licence file /home/mmontgomery/.asdf/installs/golang/1.23.4/packages/pkg/mod/golang.org/x/sys@v0.36.0/LICENSE:
+Contents of probable licence file $GOMODCACHE/golang.org/x/sys@v0.38.0/LICENSE:
 
 Copyright 2009 The Go Authors.
 
@@ -19568,11 +19538,11 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 --------------------------------------------------------------------------------
 Module  : golang.org/x/term
-Version : v0.35.0
-Time    : 2025-09-08T03:32:07Z
+Version : v0.37.0
+Time    : 2025-11-11T15:03:38Z
 Licence : BSD-3-Clause
 
-Contents of probable licence file /home/mmontgomery/.asdf/installs/golang/1.23.4/packages/pkg/mod/golang.org/x/term@v0.35.0/LICENSE:
+Contents of probable licence file $GOMODCACHE/golang.org/x/term@v0.37.0/LICENSE:
 
 Copyright 2009 The Go Authors.
 
@@ -19605,11 +19575,11 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 --------------------------------------------------------------------------------
 Module  : golang.org/x/text
-Version : v0.29.0
-Time    : 2025-09-08T03:32:21Z
+Version : v0.31.0
+Time    : 2025-11-11T15:05:00Z
 Licence : BSD-3-Clause
 
-Contents of probable licence file /home/mmontgomery/.asdf/installs/golang/1.23.4/packages/pkg/mod/golang.org/x/text@v0.29.0/LICENSE:
+Contents of probable licence file $GOMODCACHE/golang.org/x/text@v0.31.0/LICENSE:
 
 Copyright 2009 The Go Authors.
 
@@ -19679,11 +19649,11 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 --------------------------------------------------------------------------------
 Module  : golang.org/x/tools
-Version : v0.36.0
-Time    : 2025-08-07T20:42:58Z
+Version : v0.38.0
+Time    : 2025-10-08T22:17:26Z
 Licence : BSD-3-Clause
 
-Contents of probable licence file /home/mmontgomery/.asdf/installs/golang/1.23.4/packages/pkg/mod/golang.org/x/tools@v0.36.0/LICENSE:
+Contents of probable licence file $GOMODCACHE/golang.org/x/tools@v0.38.0/LICENSE:
 
 Copyright 2009 The Go Authors.
 
@@ -20638,11 +20608,11 @@ Contents of probable licence file /home/mmontgomery/.asdf/installs/golang/1.23.4
 
 --------------------------------------------------------------------------------
 Module  : google.golang.org/protobuf
-Version : v1.36.8
-Time    : 2025-08-20T14:38:26Z
+Version : v1.36.10
+Time    : 2025-10-02T08:56:10Z
 Licence : BSD-3-Clause
 
-Contents of probable licence file /home/mmontgomery/.asdf/installs/golang/1.23.4/packages/pkg/mod/google.golang.org/protobuf@v1.36.8/LICENSE:
+Contents of probable licence file $GOMODCACHE/google.golang.org/protobuf@v1.36.10/LICENSE:
 
 Copyright (c) 2018 The Go Authors. All rights reserved.
 
@@ -21124,11 +21094,11 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 --------------------------------------------------------------------------------
 Module  : k8s.io/apiextensions-apiserver
-Version : v0.34.0
-Time    : 2025-08-27T20:41:17Z
+Version : v0.34.1
+Time    : 2025-09-10T06:10:56Z
 Licence : Apache-2.0
 
-Contents of probable licence file /home/mmontgomery/.asdf/installs/golang/1.23.4/packages/pkg/mod/k8s.io/apiextensions-apiserver@v0.34.0/LICENSE:
+Contents of probable licence file $GOMODCACHE/k8s.io/apiextensions-apiserver@v0.34.1/LICENSE:
 
 
                                  Apache License
@@ -21336,11 +21306,11 @@ Contents of probable licence file /home/mmontgomery/.asdf/installs/golang/1.23.4
 
 --------------------------------------------------------------------------------
 Module  : k8s.io/apiserver
-Version : v0.34.0
-Time    : 2025-08-27T20:24:55Z
+Version : v0.34.1
+Time    : 2025-09-10T05:40:11Z
 Licence : Apache-2.0
 
-Contents of probable licence file /home/mmontgomery/.asdf/installs/golang/1.23.4/packages/pkg/mod/k8s.io/apiserver@v0.34.0/LICENSE:
+Contents of probable licence file $GOMODCACHE/k8s.io/apiserver@v0.34.1/LICENSE:
 
 
                                  Apache License
@@ -21548,11 +21518,11 @@ Contents of probable licence file /home/mmontgomery/.asdf/installs/golang/1.23.4
 
 --------------------------------------------------------------------------------
 Module  : k8s.io/code-generator
-Version : v0.34.0
-Time    : 2025-08-27T20:05:46Z
+Version : v0.34.1
+Time    : 2025-09-10T05:02:15Z
 Licence : Apache-2.0
 
-Contents of probable licence file /home/mmontgomery/.asdf/installs/golang/1.23.4/packages/pkg/mod/k8s.io/code-generator@v0.34.0/LICENSE:
+Contents of probable licence file $GOMODCACHE/k8s.io/code-generator@v0.34.1/LICENSE:
 
 
                                  Apache License
@@ -21760,11 +21730,11 @@ Contents of probable licence file /home/mmontgomery/.asdf/installs/golang/1.23.4
 
 --------------------------------------------------------------------------------
 Module  : k8s.io/component-base
-Version : v0.34.0
-Time    : 2025-08-27T20:09:10Z
+Version : v0.34.1
+Time    : 2025-09-10T05:08:32Z
 Licence : Apache-2.0
 
-Contents of probable licence file /home/mmontgomery/.asdf/installs/golang/1.23.4/packages/pkg/mod/k8s.io/component-base@v0.34.0/LICENSE:
+Contents of probable licence file $GOMODCACHE/k8s.io/component-base@v0.34.1/LICENSE:
 
 
                                  Apache License

@@ -148,6 +148,10 @@ func buildPodTemplate(params Params, fleetCerts *certificates.CertificatesSecret
 		if builder, err = amendBuilderForFleetMode(params, fleetCerts, fleetToken, builder, configHash); err != nil {
 			return corev1.PodTemplateSpec{}, err
 		}
+		if params.AgentVersion.GTE(agentv1alpha1.FleetAdvancedConfigMinVersion) {
+			// Point agent to static config file mounted from a secret to /etc/agent/elastic-agent.yml for versions that support advanced configuration to be used in addition to the config coming from Fleet.
+			builder = builder.WithArgs("-e", "-c", path.Join(ConfigMountPath, ConfigFileName))
+		}
 	} else if spec.StandaloneModeEnabled() {
 		// cleanup secret used in Fleet mode
 		if err := cleanupEnvVarsSecret(params); err != nil {
@@ -156,6 +160,8 @@ func buildPodTemplate(params Params, fleetCerts *certificates.CertificatesSecret
 
 		builder = builder.
 			WithResources(defaultResources).
+			WithEnv(corev1.EnvVar{Name: "STATE_PATH", Value: DataMountPath}).
+			// Point agent to static config file mounted from a secret to /etc/agent/elastic-agent.yml
 			WithArgs("-e", "-c", path.Join(ConfigMountPath, ConfigFileName))
 	}
 
@@ -199,7 +205,7 @@ func fleetConfigPath(v version.Version) string {
 		// that still try to rewrite the config file in Fleet mode during enrollment.
 		return "/usr/share/elastic-agent"
 	}
-	return ConfigMountPath
+	return DataMountPath
 }
 
 func amendBuilderForFleetMode(params Params, fleetCerts *certificates.CertificatesSecret, fleetToken EnrollmentAPIKey, builder *defaults.PodTemplateBuilder, configHash hash.Hash) (*defaults.PodTemplateBuilder, error) {
@@ -241,7 +247,10 @@ func amendBuilderForFleetMode(params Params, fleetCerts *certificates.Certificat
 
 	builder = builder.
 		WithResources(defaultFleetResources).
-		WithEnv(corev1.EnvVar{Name: "CONFIG_PATH", Value: fleetConfigPath(params.AgentVersion)})
+		WithEnv(
+			corev1.EnvVar{Name: "STATE_PATH", Value: DataMountPath},
+			corev1.EnvVar{Name: "CONFIG_PATH", Value: fleetConfigPath(params.AgentVersion)},
+		)
 
 	return builder, nil
 }
@@ -452,7 +461,7 @@ if [[ -f %[1]s ]]; then
     %[5]s
   fi
 fi
-/usr/bin/tini -- /usr/local/bin/docker-entrypoint -e
+/usr/bin/tini -- /usr/local/bin/docker-entrypoint -e "$@"
 `, caPath, ubiSharedCAPath, ubiUpdateCmd, debianSharedCAPath, debianUpdateCmd)
 }
 

@@ -62,6 +62,8 @@ tests:
         key1: value1
       statefulsetLabels:
         key2: value2
+      podLabels:
+        key3: value3
     asserts:
       - template: statefulset.yaml
         equal:
@@ -75,9 +77,19 @@ tests:
             app.kubernetes.io/instance: RELEASE-NAME
             app.kubernetes.io/managed-by: Helm
             app.kubernetes.io/name: elastic-operator
-            app.kubernetes.io/version: 3.2.0-SNAPSHOT
-            helm.sh/chart: eck-operator-3.2.0-SNAPSHOT
+            app.kubernetes.io/version: 3.3.0-SNAPSHOT
+            helm.sh/chart: eck-operator-3.3.0-SNAPSHOT
             key2: value2
+      - template: statefulset.yaml
+        equal:
+          path: spec.template.metadata.labels
+          value:
+            app.kubernetes.io/instance: RELEASE-NAME
+            app.kubernetes.io/managed-by: Helm
+            app.kubernetes.io/name: elastic-operator
+            app.kubernetes.io/version: 3.3.0-SNAPSHOT
+            helm.sh/chart: eck-operator-3.3.0-SNAPSHOT
+            key3: value3
   - it: should use the specified webhook secret name
     set:
       webhook:
@@ -132,9 +144,8 @@ tests:
         nameservers: "1.2.3.4"
     asserts:
       - template: statefulset.yaml
-        equal:
+        notExists:
           path: spec.template.spec.hostNetwork
-          value: null
       - template: statefulset.yaml
         equal:
           path: spec.template.spec.dnsPolicy

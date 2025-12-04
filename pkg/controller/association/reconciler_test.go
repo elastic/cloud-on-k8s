@@ -30,6 +30,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/comparison"
 	common_name "github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/name"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/operator"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/password/fixtures"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/watches"
 	eslabel "github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/label"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/services"
@@ -105,8 +106,10 @@ var (
 
 	kibanaNamespace = "kbns"
 	esNamespace     = "esns"
-	sampleES        = esv1.Elasticsearch{ObjectMeta: metav1.ObjectMeta{Namespace: esNamespace, Name: "esname"},
-		Status: esv1.ElasticsearchStatus{Version: stackVersion}}
+	sampleES        = esv1.Elasticsearch{
+		ObjectMeta: metav1.ObjectMeta{Namespace: esNamespace, Name: "esname"},
+		Status:     esv1.ElasticsearchStatus{Version: stackVersion},
+	}
 	sampleKibanaNoEsRef = func() kbv1.Kibana {
 		return kbv1.Kibana{
 			ObjectMeta: metav1.ObjectMeta{
@@ -273,6 +276,7 @@ func testReconciler(runtimeObjs ...client.Object) Reconciler {
 					Version: "1.5.0",
 				},
 			},
+			PasswordGenerator: fixtures.MustTestRandomGenerator(24),
 		},
 	}
 }
@@ -927,6 +931,7 @@ func TestReconciler_Reconcile_MultiRef(t *testing.T) {
 					Version: "1.4.0-unittest",
 				},
 			},
+			PasswordGenerator: fixtures.MustTestRandomGenerator(24),
 		},
 	}
 

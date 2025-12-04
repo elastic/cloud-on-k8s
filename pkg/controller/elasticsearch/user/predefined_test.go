@@ -8,8 +8,6 @@ import (
 	"context"
 	"testing"
 
-	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/metadata"
-
 	"github.com/stretchr/testify/require"
 	"golang.org/x/crypto/bcrypt"
 	corev1 "k8s.io/api/core/v1"
@@ -18,6 +16,8 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	esv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/elasticsearch/v1"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/metadata"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/password/fixtures"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/user/filerealm"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/k8s"
 )
@@ -112,7 +112,7 @@ func Test_reconcileElasticUser(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			c := k8s.NewFakeClient(tt.existingSecrets...)
-			got, err := reconcileElasticUser(context.Background(), c, es, tt.existingFileRealm, filerealm.New(), testPasswordHasher, metadata.Metadata{})
+			got, err := reconcileElasticUser(context.Background(), c, es, tt.existingFileRealm, filerealm.New(), testPasswordHasher, fixtures.MustTestRandomGenerator(16), metadata.Metadata{})
 			require.NoError(t, err)
 			// check returned user
 			require.Len(t, got, 1)
@@ -158,7 +158,7 @@ func Test_reconcileElasticUser_conditionalCreation(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			c := k8s.NewFakeClient()
-			got, err := reconcileElasticUser(context.Background(), c, es, filerealm.New(), tt.userFileReam, testPasswordHasher, md)
+			got, err := reconcileElasticUser(context.Background(), c, es, filerealm.New(), tt.userFileReam, testPasswordHasher, fixtures.MustTestRandomGenerator(16), md)
 			require.NoError(t, err)
 			// check returned user
 			wantLen := 1
@@ -188,8 +188,8 @@ func Test_reconcileInternalUsers(t *testing.T) {
 			assertions: func(t *testing.T, u users) {
 				t.Helper()
 				// random passwords should be generated
-				require.NotEmpty(t, u[0].Password)
-				require.NotEmpty(t, u[1].Password)
+				require.Len(t, u[0].Password, 17)
+				require.Len(t, u[1].Password, 17)
 			},
 		},
 		{
@@ -279,6 +279,7 @@ func Test_reconcileInternalUsers(t *testing.T) {
 				t.Helper()
 				require.Len(t, u, 5)
 				require.Equal(t, []string{SuperUserBuiltinRole}, u[4].Roles)
+				require.Len(t, u[4].Password, 17)
 			},
 		},
 		{
@@ -293,6 +294,7 @@ func Test_reconcileInternalUsers(t *testing.T) {
 				t.Helper()
 				require.Len(t, u, 5)
 				require.Equal(t, []string{DiagnosticsUserRoleV80}, u[4].Roles)
+				require.Len(t, u[4].Password, 17)
 			},
 		},
 		{
@@ -313,7 +315,7 @@ func Test_reconcileInternalUsers(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			c := k8s.NewFakeClient(tt.existingSecrets...)
 			es := tt.es()
-			got, err := reconcileInternalUsers(context.Background(), c, es, tt.existingFileRealm, testPasswordHasher, metadata.Propagate(&es, metadata.Metadata{Labels: es.GetIdentityLabels()}))
+			got, err := reconcileInternalUsers(context.Background(), c, es, tt.existingFileRealm, testPasswordHasher, fixtures.MustTestRandomGenerator(17), metadata.Propagate(&es, metadata.Metadata{Labels: es.GetIdentityLabels()}))
 			require.True(t, ((err != nil) == tt.errorExpected), "error expected: %v, got: %v", tt.errorExpected, err)
 			if tt.errorExpected {
 				return

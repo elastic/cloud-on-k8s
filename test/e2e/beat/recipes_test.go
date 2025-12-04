@@ -36,6 +36,8 @@ const (
 )
 
 func TestFilebeatNoAutodiscoverRecipe(t *testing.T) {
+	skipIfFingerprintIdentityNotSupported(t)
+
 	name := "fb-no-autodiscover"
 	pod, loggedString := loggingTestPod(name)
 	customize := func(builder beat.Builder) beat.Builder {
@@ -49,6 +51,8 @@ func TestFilebeatNoAutodiscoverRecipe(t *testing.T) {
 }
 
 func TestFilebeatAutodiscoverRecipe(t *testing.T) {
+	skipIfFingerprintIdentityNotSupported(t)
+
 	name := "fb-autodiscover"
 	pod, loggedString := loggingTestPod(name)
 	customize := func(builder beat.Builder) beat.Builder {
@@ -63,6 +67,8 @@ func TestFilebeatAutodiscoverRecipe(t *testing.T) {
 }
 
 func TestFilebeatAutodiscoverByMetadataRecipe(t *testing.T) {
+	skipIfFingerprintIdentityNotSupported(t)
+
 	name := "fb-autodiscover-meta"
 	podBad, badLog := loggingTestPod(name + "-bad")
 	podLabel, goodLog := loggingTestPod(name + "-label")
@@ -100,6 +106,8 @@ func TestMetricbeatHostsRecipe(t *testing.T) {
 }
 
 func TestMetricbeatStackMonitoringRecipe(t *testing.T) {
+	skipIfFingerprintIdentityNotSupported(t)
+
 	name := "fb-autodiscover"
 	pod, loggedString := loggingTestPod(name)
 	customize := func(builder beat.Builder) beat.Builder {
@@ -260,6 +268,12 @@ func runBeatRecipe(
 	}
 
 	helper.RunFile(t, filePath, namespace, suffix, additionalObjects, transformationsWrapped)
+}
+
+func skipIfFingerprintIdentityNotSupported(t *testing.T) {
+	if !SupportsFingerprintIdentity(version.MustParse(test.Ctx().ElasticStackVersion)) {
+		t.Skipf("Skipping test %s because fingerprint identity is not supported for stack version %s", t.Name(), test.Ctx().ElasticStackVersion)
+	}
 }
 
 // isStackIncompatible returns true iff Beat version is higher than tested Stack version

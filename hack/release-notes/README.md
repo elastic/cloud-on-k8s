@@ -12,6 +12,7 @@ PRs labeled with the following are not included:
 - `backport`
 - `exclude-from-release-notes`
 
+If the previous version is provided, the tool will also include the Golang changes between the two versions, including the updated dependencies and the new Go version.
 
 Prerequisites
 --------------
@@ -26,5 +27,5 @@ Usage
 GITHUB_TOKEN=<token> go run main.go <version>
 
 Example:
-GITHUB_TOKEN=xxxyyy go run main.go 1.2.0 > ../../docs/release-notes/1.2.0.md
+GITHUB_TOKEN=xxxyyy go run main.go 3.2.0 3.1.0 > ../../docs/release-notes/1.2.0.md
 ```

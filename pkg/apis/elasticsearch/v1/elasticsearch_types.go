@@ -155,6 +155,8 @@ type ElasticsearchSpec struct {
 type RemoteClusterServer struct {
 	// +kubebuilder:validation:Optional
 	Enabled bool `json:"enabled,omitempty"`
+	// Service defines the template for the remote cluster server Service object.
+	Service commonv1.ServiceTemplate `json:"service,omitempty"`
 }
 
 // VolumeClaimDeletePolicy describes the delete policy for handling PersistentVolumeClaims that hold Elasticsearch data.

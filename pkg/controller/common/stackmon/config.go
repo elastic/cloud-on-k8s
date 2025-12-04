@@ -7,6 +7,7 @@ package stackmon
 import (
 	"bytes"
 	"context"
+	"encoding/json"
 	"fmt"
 	"hash"
 	"hash/fnv"
@@ -203,6 +204,13 @@ func TemplateFuncs(
 	version semver.Version,
 ) template.FuncMap {
 	return template.FuncMap{
+		"sanitizeJSON": func(v any) (string, error) {
+			b, err := json.Marshal(v)
+			if err != nil {
+				return "", fmt.Errorf("json marshal failed: %w", err)
+			}
+			return string(b), nil
+		},
 		"isVersionGTE": func(minAllowedVersion string) (bool, error) {
 			minAllowedSemver, err := semver.Parse(minAllowedVersion)
 			if err != nil {
