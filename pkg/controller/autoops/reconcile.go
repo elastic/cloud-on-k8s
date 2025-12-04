@@ -92,23 +92,31 @@ func (r *ReconcileAutoOpsAgentPolicy) internalReconcile(
 		return results
 	}
 
-	if err := reconcileAutoOpsESPasswordsSecret(ctx, r.Client, policy, esList.Items); err != nil {
-		status.Phase = autoopsv1alpha1.ErrorPhase
-		return results.WithError(err)
-	}
-
 	for _, es := range esList.Items {
 		if es.Status.Phase != esv1.ElasticsearchReadyPhase {
 			results = results.WithRequeue(defaultRequeue)
 			continue
 		}
 
-		if err := ReconcileAutoOpsESConfigMap(ctx, r.Client, policy); err != nil {
+		if es.Spec.HTTP.TLS.Enabled() {
+			if err := reconcileAutoOpsESCASecret(ctx, r.Client, policy, es); err != nil {
+				status.Phase = autoopsv1alpha1.ErrorPhase
+				return results.WithError(err)
+			}
+		}
+
+		// Reconcile API key for this Elasticsearch cluster
+		if err := reconcileAutoOpsESAPIKey(ctx, r.Client, r.esClientProvider, r.params.Dialer, policy, es); err != nil {
 			status.Phase = autoopsv1alpha1.ErrorPhase
 			return results.WithError(err)
 		}
 
-		expectedResources, err := r.generateExpectedResources(policy, es)
+		if err := ReconcileAutoOpsESConfigMap(ctx, r.Client, policy, es); err != nil {
+			status.Phase = autoopsv1alpha1.ErrorPhase
+			return results.WithError(err)
+		}
+
+		expectedResources, err := r.generateExpectedResources(ctx, policy, es)
 		if err != nil {
 			status.Phase = autoopsv1alpha1.ErrorPhase
 			return results.WithError(err)

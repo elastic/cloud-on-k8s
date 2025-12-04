@@ -1,12 +1,16 @@
 package autoops
 
 import (
+	"context"
+	"fmt"
+	"hash/fnv"
 	"path"
 
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/apimachinery/pkg/util/intstr"
 	"k8s.io/utils/ptr"
 
 	autoopsv1alpha1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/autoops/v1alpha1"
@@ -18,12 +22,16 @@ import (
 	common_name "github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/name"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/version"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/volume"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/services"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/k8s"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/pointer"
 )
 
 const (
-	configVolumeName = "config-volume"
-	configVolumePath = "/mnt/config"
+	configVolumeName         = "config-volume"
+	configVolumePath         = "/mnt/config"
+	configHashAnnotationName = "autoops.k8s.elastic.co/config-hash"
+	readinessProbePort       = 13133
 )
 
 var (
@@ -39,15 +47,14 @@ var (
 			},
 		},
 	}
-	configVolume = volume.NewConfigMapVolume(autoOpsESConfigMapName, configVolumeName, configVolumePath)
 )
 
 type ExpectedResources struct {
 	deployment appsv1.Deployment
 }
 
-func (r *ReconcileAutoOpsAgentPolicy) generateExpectedResources(policy autoopsv1alpha1.AutoOpsAgentPolicy, es esv1.Elasticsearch) (ExpectedResources, error) {
-	deployment, err := r.deploymentParams(policy, es)
+func (r *ReconcileAutoOpsAgentPolicy) generateExpectedResources(ctx context.Context, policy autoopsv1alpha1.AutoOpsAgentPolicy, es esv1.Elasticsearch) (ExpectedResources, error) {
+	deployment, err := r.deploymentParams(ctx, policy, es)
 	if err != nil {
 		return ExpectedResources{}, err
 	}
@@ -56,7 +63,7 @@ func (r *ReconcileAutoOpsAgentPolicy) generateExpectedResources(policy autoopsv1
 	}, nil
 }
 
-func (r *ReconcileAutoOpsAgentPolicy) deploymentParams(policy autoopsv1alpha1.AutoOpsAgentPolicy, es esv1.Elasticsearch) (appsv1.Deployment, error) {
+func (r *ReconcileAutoOpsAgentPolicy) deploymentParams(ctx context.Context, policy autoopsv1alpha1.AutoOpsAgentPolicy, es esv1.Elasticsearch) (appsv1.Deployment, error) {
 	var deployment appsv1.Deployment
 	v, err := version.Parse(policy.Spec.Version)
 	if err != nil {
@@ -79,17 +86,43 @@ func (r *ReconcileAutoOpsAgentPolicy) deploymentParams(policy autoopsv1alpha1.Au
 			},
 		},
 	}
+	// Create ES-specific config map volume
+	configMapName := fmt.Sprintf("%s-%s-%s", autoOpsESConfigMapName, es.Namespace, es.Name)
+	configVolume := volume.NewConfigMapVolume(configMapName, configVolumeName, configVolumePath)
+
 	volumes := []corev1.Volume{configVolume.Volume()}
 	volumeMounts := []corev1.VolumeMount{configVolume.VolumeMount()}
-	meta := metadata.Propagate(&policy, metadata.Metadata{Labels: labels, Annotations: nil})
+
+	// Add CA certificate volume for this ES instance only if TLS is enabled
+	if es.Spec.HTTP.TLS.Enabled() {
+		caSecretName := fmt.Sprintf("%s-%s-%s", es.Name, es.Namespace, autoOpsESCASecretPrefix)
+		caVolume := volume.NewSecretVolumeWithMountPath(
+			caSecretName,
+			fmt.Sprintf("es-ca-%s-%s", es.Name, es.Namespace),
+			fmt.Sprintf("/mnt/elastic-internal/es-ca/%s-%s", es.Namespace, es.Name),
+		)
+		volumes = append(volumes, caVolume.Volume())
+		volumeMounts = append(volumeMounts, caVolume.VolumeMount())
+	}
+
+	// Build config hash from ConfigMap to trigger pod restart on config changes
+	configHash, err := buildConfigHash(ctx, r.Client, policy, es)
+	if err != nil {
+		return appsv1.Deployment{}, err
+	}
+
+	annotations := map[string]string{configHashAnnotationName: configHash}
+	meta := metadata.Propagate(&policy, metadata.Metadata{Labels: labels, Annotations: annotations})
 	podTemplateSpec := defaults.NewPodTemplateBuilder(basePodTemplate, "autoops-agent").
 		WithArgs("--config", path.Join(configVolumePath, autoOpsESConfigFileName)).
 		WithLabels(meta.Labels).
 		WithAnnotations(meta.Annotations).
 		WithDockerImage(container.ImageRepository(container.AutoOpsAgentImage, v), v.String()).
-		WithEnv(autoopsEnvVars(types.NamespacedName{Namespace: es.Namespace, Name: es.Name})...).
+		WithEnv(autoopsEnvVars(es)...).
 		WithVolumes(volumes...).
 		WithVolumeMounts(volumeMounts...).
+		WithPorts([]corev1.ContainerPort{{Name: "http", ContainerPort: int32(readinessProbePort), Protocol: corev1.ProtocolTCP}}).
+		WithReadinessProbe(readinessProbe()).
 		WithContainersSecurityContext(corev1.SecurityContext{
 			AllowPrivilegeEscalation: ptr.To(false),
 			Capabilities: &corev1.Capabilities{
@@ -115,11 +148,47 @@ func (r *ReconcileAutoOpsAgentPolicy) deploymentParams(policy autoopsv1alpha1.Au
 	return deployment, nil
 }
 
+// readinessProbe is the readiness probe for the AutoOps Agent container
+func readinessProbe() corev1.Probe {
+	scheme := corev1.URISchemeHTTP
+	return corev1.Probe{
+		FailureThreshold:    3,
+		InitialDelaySeconds: 5,
+		PeriodSeconds:       10,
+		SuccessThreshold:    1,
+		TimeoutSeconds:      5,
+		ProbeHandler: corev1.ProbeHandler{
+			HTTPGet: &corev1.HTTPGetAction{
+				Port:   intstr.FromInt(readinessProbePort),
+				Path:   "/health/status",
+				Scheme: scheme,
+			},
+		},
+	}
+}
+
+// buildConfigHash builds a hash of the ConfigMap data to trigger pod restart on config changes
+func buildConfigHash(ctx context.Context, c k8s.Client, policy autoopsv1alpha1.AutoOpsAgentPolicy, es esv1.Elasticsearch) (string, error) {
+	configHash := fnv.New32a()
+
+	configMapName := fmt.Sprintf("%s-%s-%s", autoOpsESConfigMapName, es.Namespace, es.Name)
+	var configMap corev1.ConfigMap
+	configMapKey := types.NamespacedName{Namespace: policy.Namespace, Name: configMapName}
+	if err := c.Get(ctx, configMapKey, &configMap); err != nil {
+		return "", err
+	}
+
+	if configData, ok := configMap.Data[autoOpsESConfigFileName]; ok {
+		_, _ = configHash.Write([]byte(configData))
+	}
+
+	return fmt.Sprint(configHash.Sum32()), nil
+}
+
 // autoopsEnvVars returns the environment variables for the AutoOps deployment
 // that reference values from the autoops-secret and the ES elastic user secret.
-func autoopsEnvVars(esNN types.NamespacedName) []corev1.EnvVar {
-	// Encode the secret key using base64 URL encoding to ensure it matches the regex '[-._a-zA-Z0-9]+'
-	secretKey := encodeESSecretKey(esNN.Namespace, esNN.Name)
+func autoopsEnvVars(es esv1.Elasticsearch) []corev1.EnvVar {
+	esService := services.InternalServiceURL(es)
 	return []corev1.EnvVar{
 		{
 			Name: "AUTOOPS_TOKEN",
@@ -133,27 +202,9 @@ func autoopsEnvVars(esNN types.NamespacedName) []corev1.EnvVar {
 			},
 		},
 		{
-			Name: "AUTOOPS_ES_URL",
-			ValueFrom: &corev1.EnvVarSource{
-				SecretKeyRef: &corev1.SecretKeySelector{
-					LocalObjectReference: corev1.LocalObjectReference{
-						Name: "autoops-secret",
-					},
-					Key: "autoops-es-url",
-				},
-			},
+			Name:  "AUTOOPS_ES_URL",
+			Value: esService,
 		},
-		// {
-		// 	Name: "AUTOOPS_TEMP_RESOURCE_ID",
-		// 	ValueFrom: &corev1.EnvVarSource{
-		// 		SecretKeyRef: &corev1.SecretKeySelector{
-		// 			LocalObjectReference: corev1.LocalObjectReference{
-		// 				Name: "autoops-secret",
-		// 			},
-		// 			Key: "temp-resource-id",
-		// 		},
-		// 	},
-		// },
 		{
 			Name: "AUTOOPS_OTEL_URL",
 			ValueFrom: &corev1.EnvVarSource{
@@ -166,17 +217,13 @@ func autoopsEnvVars(esNN types.NamespacedName) []corev1.EnvVar {
 			},
 		},
 		{
-			Name:  "AUTOOPS_ES_USERNAME",
-			Value: "elastic-internal-monitoring",
-		},
-		{
-			Name: "AUTOOPS_ES_PASSWORD",
+			Name: "AUTOOPS_ES_API_KEY",
 			ValueFrom: &corev1.EnvVarSource{
 				SecretKeyRef: &corev1.SecretKeySelector{
 					LocalObjectReference: corev1.LocalObjectReference{
-						Name: autoOpsESPasswordsSecretName,
+						Name: apiKeySecretNameFrom(es),
 					},
-					Key:      secretKey,
+					Key:      "api_key",
 					Optional: ptr.To(false),
 				},
 			},

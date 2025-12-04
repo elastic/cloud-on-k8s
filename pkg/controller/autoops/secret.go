@@ -6,7 +6,6 @@ package autoops
 
 import (
 	"context"
-	"encoding/base64"
 	"fmt"
 	"reflect"
 
@@ -23,104 +22,6 @@ import (
 	ulog "github.com/elastic/cloud-on-k8s/v3/pkg/utils/log"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/maps"
 )
-
-const (
-	// autoOpsESPasswordsSecretName is the name for the autoops-es-passwords Secret
-	autoOpsESPasswordsSecretName = "autoops-es-passwords"
-	// monitoringUserName is the name of the elastic-internal-monitoring user
-	monitoringUserName = "elastic-internal-monitoring"
-)
-
-// encodeESSecretKey encodes a namespace/name combination into a valid secret key.
-// Secret keys must match the regex '[-._a-zA-Z0-9]+', so we use base64 URL encoding
-// which produces characters in that range.
-func encodeESSecretKey(namespace, name string) string {
-	key := fmt.Sprintf("%s/%s", namespace, name)
-	return base64.URLEncoding.EncodeToString([]byte(key))
-}
-
-// reconcileAutoOpsESPasswordsSecret reconciles the Secret containing the elastic-internal-monitoring
-// password for all Elasticsearch clusters referenced by the policy.
-func reconcileAutoOpsESPasswordsSecret(
-	ctx context.Context,
-	c k8s.Client,
-	policy autoopsv1alpha1.AutoOpsAgentPolicy,
-	esList []esv1.Elasticsearch,
-) error {
-	log := ulog.FromContext(ctx)
-	log.V(1).Info("Reconciling AutoOps ES passwords secret", "namespace", policy.Namespace)
-
-	secretData := make(map[string][]byte)
-	for _, es := range esList {
-		if es.Status.Phase != esv1.ElasticsearchReadyPhase {
-			log.V(1).Info("Skipping ES cluster that is not ready", "namespace", es.Namespace, "name", es.Name)
-			continue
-		}
-
-		internalUsersSecretKey := types.NamespacedName{
-			Namespace: es.Namespace,
-			Name:      esv1.InternalUsersSecret(es.Name),
-		}
-		var internalUsersSecret corev1.Secret
-		if err := c.Get(ctx, internalUsersSecretKey, &internalUsersSecret); err != nil {
-			if apierrors.IsNotFound(err) {
-				log.V(1).Info("InternalUsersSecret not found for ES cluster, skipping", "namespace", es.Namespace, "name", es.Name)
-				continue
-			}
-			return fmt.Errorf("while retrieving internal-users secret for ES cluster %s/%s: %w", es.Namespace, es.Name, err)
-		}
-
-		password, ok := internalUsersSecret.Data[monitoringUserName]
-		if !ok {
-			log.V(1).Info("elastic-internal-monitoring user not found in internal-users secret, skipping", "namespace", es.Namespace, "name", es.Name)
-			continue
-		}
-
-		secretKey := encodeESSecretKey(es.Namespace, es.Name)
-		secretData[secretKey] = password
-	}
-
-	expected := buildAutoOpsESPasswordsSecret(policy, secretData)
-
-	reconciled := &corev1.Secret{}
-	return reconciler.ReconcileResource(
-		reconciler.Params{
-			Context:    ctx,
-			Client:     c,
-			Owner:      &policy,
-			Expected:   &expected,
-			Reconciled: reconciled,
-			NeedsUpdate: func() bool {
-				return !maps.IsSubset(expected.Labels, reconciled.Labels) ||
-					!maps.IsSubset(expected.Annotations, reconciled.Annotations) ||
-					!reflect.DeepEqual(expected.Data, reconciled.Data)
-			},
-			UpdateReconciled: func() {
-				reconciled.Labels = maps.Merge(reconciled.Labels, expected.Labels)
-				reconciled.Annotations = maps.Merge(reconciled.Annotations, expected.Annotations)
-				reconciled.Data = expected.Data
-			},
-		},
-	)
-}
-
-// buildAutoOpsESPasswordsSecret builds the expected Secret for autoops ES passwords.
-func buildAutoOpsESPasswordsSecret(policy autoopsv1alpha1.AutoOpsAgentPolicy, secretData map[string][]byte) corev1.Secret {
-	meta := metadata.Propagate(&policy, metadata.Metadata{
-		Labels:      policy.GetLabels(),
-		Annotations: policy.GetAnnotations(),
-	})
-
-	return corev1.Secret{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:        autoOpsESPasswordsSecretName,
-			Namespace:   policy.GetNamespace(),
-			Labels:      meta.Labels,
-			Annotations: meta.Annotations,
-		},
-		Data: secretData,
-	}
-}
 
 const (
 	// autoOpsESCASecretPrefix is the prefix for CA secrets created for each ES instance

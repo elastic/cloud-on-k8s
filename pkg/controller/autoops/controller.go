@@ -23,6 +23,7 @@ import (
 
 	autoopsv1alpha1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/autoops/v1alpha1"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common"
+	commonesclient "github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/esclient"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/events"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/license"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/operator"
@@ -37,10 +38,8 @@ const (
 	controllerName = "autoops-controller"
 )
 
-var (
-	// defaultRequeue is the default requeue interval for this controller.
-	defaultRequeue = 5 * time.Second
-)
+// defaultRequeue is the default requeue interval for this controller.
+var defaultRequeue = 5 * time.Second
 
 // Add creates a new AutoOpsAgentPolicy Controller and adds it to the Manager with default RBAC. The Manager will set fields on the Controller
 // and Start it when the Manager is Started.
@@ -57,11 +56,12 @@ func Add(mgr manager.Manager, params operator.Parameters) error {
 func newReconciler(mgr manager.Manager, params operator.Parameters) *ReconcileAutoOpsAgentPolicy {
 	k8sClient := mgr.GetClient()
 	return &ReconcileAutoOpsAgentPolicy{
-		Client:         k8sClient,
-		recorder:       mgr.GetEventRecorderFor(controllerName),
-		licenseChecker: license.NewLicenseChecker(k8sClient, params.OperatorNamespace),
-		params:         params,
-		dynamicWatches: watches.NewDynamicWatches(),
+		Client:           k8sClient,
+		recorder:         mgr.GetEventRecorderFor(controllerName),
+		licenseChecker:   license.NewLicenseChecker(k8sClient, params.OperatorNamespace),
+		params:           params,
+		dynamicWatches:   watches.NewDynamicWatches(),
+		esClientProvider: commonesclient.NewClient,
 	}
 }
 
@@ -80,10 +80,11 @@ var _ reconcile.Reconciler = &ReconcileAutoOpsAgentPolicy{}
 // ReconcileAutoOpsAgentPolicy reconciles an AutoOpsAgentPolicy object
 type ReconcileAutoOpsAgentPolicy struct {
 	k8s.Client
-	recorder       record.EventRecorder
-	licenseChecker license.Checker
-	params         operator.Parameters
-	dynamicWatches watches.DynamicWatches
+	recorder         record.EventRecorder
+	licenseChecker   license.Checker
+	params           operator.Parameters
+	dynamicWatches   watches.DynamicWatches
+	esClientProvider commonesclient.Provider
 	// iteration is the number of times this controller has run its Reconcile method
 	iteration uint64
 }
@@ -198,6 +199,11 @@ func (r *ReconcileAutoOpsAgentPolicy) onDelete(ctx context.Context, obj types.Na
 	defer tracing.Span(&ctx)()
 	// Remove dynamic watches on secrets
 	r.dynamicWatches.Secrets.RemoveHandlerForKey(configSecretWatchName(obj))
+
+	// (TODO)
+	// Cleanup API keys for all Elasticsearch clusters that match this policy.
+	// If we label the secrets created from the policy properly, we can query
+	// for these, and properly delete the api keys.
 	return nil
 }
 
