@@ -91,8 +91,7 @@ type ReconcileAutoOpsAgentPolicy struct {
 	iteration uint64
 }
 
-// Reconcile reads that state of the cluster for an AutoOpsAgentPolicy object and makes changes based on the state read and what is
-// in the AutoOpsAgentPolicy.Spec.
+// Reconcile reconciles the AutoOpsAgentPolicy resource ensuring that any deployments are created/updated/deleted as needed.
 func (r *ReconcileAutoOpsAgentPolicy) Reconcile(ctx context.Context, request reconcile.Request) (reconcile.Result, error) {
 	ctx = common.NewReconciliationContext(ctx, &r.iteration, r.params.Tracer, controllerName, "autoops_name", request)
 	defer common.LogReconciliationRun(ulog.FromContext(ctx))()
@@ -141,7 +140,6 @@ func (r *ReconcileAutoOpsAgentPolicy) Reconcile(ctx context.Context, request rec
 		return reconcile.Result{}, tracing.CaptureError(ctx, err)
 	}
 
-	// skip unmanaged resources
 	if common.IsUnmanaged(ctx, &policy) {
 		ulog.FromContext(ctx).Info("Object is currently not managed by this controller. Skipping reconciliation")
 		return reconcile.Result{}, nil
@@ -151,10 +149,8 @@ func (r *ReconcileAutoOpsAgentPolicy) Reconcile(ctx context.Context, request rec
 		return reconcile.Result{}, r.onDelete(ctx, k8s.ExtractNamespacedName(&policy))
 	}
 
-	// main reconciliation logic
 	results = r.doReconcile(ctx, policy, state)
 
-	// Update phase based on reconciliation state
 	if state.status.Phase != autoopsv1alpha1.InvalidPhase && state.status.Phase != autoopsv1alpha1.ErrorPhase {
 		if isReconciled, _ := results.IsReconciled(); !isReconciled {
 			state.UpdateWithPhase(autoopsv1alpha1.ApplyingChangesPhase)
@@ -163,7 +159,6 @@ func (r *ReconcileAutoOpsAgentPolicy) Reconcile(ctx context.Context, request rec
 		}
 	}
 
-	// update status
 	if err := r.updateStatusFromState(ctx, state); err != nil {
 		if apierrors.IsConflict(err) {
 			return results.WithRequeue().Aggregate()
