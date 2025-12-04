@@ -42,7 +42,7 @@ func Test_validateAndPopulateConfig(t *testing.T) {
 			wantErr: false,
 		},
 		{
-			name: "missing CCMApiKey returns an error",
+			name: "missing ccmApiKey returns an error",
 			secret: corev1.Secret{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "config-secret",
@@ -58,7 +58,7 @@ func Test_validateAndPopulateConfig(t *testing.T) {
 			wantErr:   true,
 		},
 		{
-			name: "missing AutoOpsOTelURL returns an error",
+			name: "missing autoOpsOTelURL returns an error",
 			secret: corev1.Secret{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "config-secret",
@@ -74,7 +74,7 @@ func Test_validateAndPopulateConfig(t *testing.T) {
 			wantErr:   true,
 		},
 		{
-			name: "missing AutoOpsToken returns an error",
+			name: "missing autoOpsToken returns an error",
 			secret: corev1.Secret{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "config-secret",
@@ -168,13 +168,13 @@ func Test_validateAndPopulateConfig(t *testing.T) {
 					return
 				}
 				if got.CCMApiKey != tt.want.CCMApiKey {
-					t.Errorf("validateAndPopulateConfig() CCMApiKey = %v, want %v", got.CCMApiKey, tt.want.CCMApiKey)
+					t.Errorf("validateAndPopulateConfig() ccmApiKey = %v, want %v", got.CCMApiKey, tt.want.CCMApiKey)
 				}
 				if got.AutoOpsOTelURL != tt.want.AutoOpsOTelURL {
-					t.Errorf("validateAndPopulateConfig() AutoOpsOTelURL = %v, want %v", got.AutoOpsOTelURL, tt.want.AutoOpsOTelURL)
+					t.Errorf("validateAndPopulateConfig() autoOpsOTelURL = %v, want %v", got.AutoOpsOTelURL, tt.want.AutoOpsOTelURL)
 				}
 				if got.AutoOpsToken != tt.want.AutoOpsToken {
-					t.Errorf("validateAndPopulateConfig() AutoOpsToken = %v, want %v", got.AutoOpsToken, tt.want.AutoOpsToken)
+					t.Errorf("validateAndPopulateConfig() autoOpsToken = %v, want %v", got.AutoOpsToken, tt.want.AutoOpsToken)
 				}
 			}
 		})
