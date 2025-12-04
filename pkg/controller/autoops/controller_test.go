@@ -81,7 +81,7 @@ func TestReconcileAutoOpsAgentPolicy_onDelete(t *testing.T) {
 						Name:      "es-1-ns-2-autoops-es-api-key",
 						Namespace: "ns-1",
 						Labels: map[string]string{
-							policyNameLabelKey:                       "policy-1",
+							PolicyNameLabelKey:                       "policy-1",
 							policyNamespaceLabelKey:                  "ns-1",
 							"elasticsearch.k8s.elastic.co/name":      "es-1",
 							"elasticsearch.k8s.elastic.co/namespace": "ns-2",
@@ -117,7 +117,7 @@ func TestReconcileAutoOpsAgentPolicy_onDelete(t *testing.T) {
 						Name:      "es-1-ns-2-autoops-es-api-key",
 						Namespace: "ns-1",
 						Labels: map[string]string{
-							policyNameLabelKey:                       "policy-1",
+							PolicyNameLabelKey:                       "policy-1",
 							policyNamespaceLabelKey:                  "ns-1",
 							"elasticsearch.k8s.elastic.co/name":      "es-1",
 							"elasticsearch.k8s.elastic.co/namespace": "ns-2",
@@ -199,7 +199,7 @@ func TestReconcileAutoOpsAgentPolicy_onDelete(t *testing.T) {
 						Name:      "es-1-ns-2-autoops-es-api-key",
 						Namespace: "ns-1",
 						Labels: map[string]string{
-							policyNameLabelKey:                       "policy-1",
+							PolicyNameLabelKey:                       "policy-1",
 							policyNamespaceLabelKey:                  "ns-1",
 							"elasticsearch.k8s.elastic.co/name":      "es-1",
 							"elasticsearch.k8s.elastic.co/namespace": "ns-2",
@@ -222,7 +222,7 @@ func TestReconcileAutoOpsAgentPolicy_onDelete(t *testing.T) {
 						Name:      "es-1-ns-2-autoops-es-api-key",
 						Namespace: "ns-1",
 						Labels: map[string]string{
-							policyNameLabelKey:                       "policy-1",
+							PolicyNameLabelKey:                       "policy-1",
 							policyNamespaceLabelKey:                  "ns-1",
 							"elasticsearch.k8s.elastic.co/name":      "es-1",
 							"elasticsearch.k8s.elastic.co/namespace": "ns-2",
@@ -234,7 +234,7 @@ func TestReconcileAutoOpsAgentPolicy_onDelete(t *testing.T) {
 						Name:      "es-1-ns-2-autoops-es-api-key-duplicate",
 						Namespace: "ns-1",
 						Labels: map[string]string{
-							policyNameLabelKey:                       "policy-1",
+							PolicyNameLabelKey:                       "policy-1",
 							policyNamespaceLabelKey:                  "ns-1",
 							"elasticsearch.k8s.elastic.co/name":      "es-1",
 							"elasticsearch.k8s.elastic.co/namespace": "ns-2",

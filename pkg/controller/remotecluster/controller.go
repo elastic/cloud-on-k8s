@@ -21,6 +21,7 @@ import (
 	commonv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/common/v1"
 	esv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/elasticsearch/v1"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/association"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/autoops"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common"
 	commonesclient "github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/esclient"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/license"
@@ -270,6 +271,10 @@ func doReconcile(
 		// Delete orphaned API keys from clusters which have been deleted
 		// **************************************************************
 		for _, activeAPIKey := range activeAPIKeys.APIKeys {
+			// Skip API keys managed by the autoops controller.
+			if activeAPIKey.Metadata != nil && activeAPIKey.Metadata[autoops.PolicyNameLabelKey] != nil {
+				continue
+			}
 			clientCluster, err := activeAPIKey.GetElasticsearchName()
 			if err != nil {
 				results.WithError(err)

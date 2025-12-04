@@ -117,7 +117,7 @@ func Test_newMetadataFor(t *testing.T) {
 				"elasticsearch.k8s.elastic.co/name":      "es-1",
 				"elasticsearch.k8s.elastic.co/namespace": "ns-2",
 				managedByMetadataKey:                     managedByValue,
-				policyNameLabelKey:                       "policy-1",
+				PolicyNameLabelKey:                       "policy-1",
 				policyNamespaceLabelKey:                  "ns-1",
 			},
 		},

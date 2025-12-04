@@ -44,8 +44,9 @@ const (
 	managedByValue = "eck"
 	// configHashMetadataKey is the metadata key storing the hash API key
 	configHashMetadataKey = "elasticsearch.k8s.elastic.co/config-hash"
-	// policyNameLabelKey is the label key for the AutoOpsAgentPolicy name
-	policyNameLabelKey = "autoops.k8s.elastic.co/policy-name"
+	// PolicyNameLabelKey is the label key for the AutoOpsAgentPolicy name.
+	// This is exported as its used in the remotecluster controller to identify API keys managed by the autoops controller.
+	PolicyNameLabelKey = "autoops.k8s.elastic.co/policy-name"
 	// policyNamespaceLabelKey is the label key for the AutoOpsAgentPolicy namespace
 	policyNamespaceLabelKey = "autoops.k8s.elastic.co/policy-namespace"
 )
@@ -317,7 +318,7 @@ func newMetadataFor(policy *autoopsv1alpha1.AutoOpsAgentPolicy, es *esv1.Elastic
 		"elasticsearch.k8s.elastic.co/name":      es.Name,
 		"elasticsearch.k8s.elastic.co/namespace": es.Namespace,
 		managedByMetadataKey:                     managedByValue,
-		policyNameLabelKey:                       policy.Name,
+		PolicyNameLabelKey:                       policy.Name,
 		policyNamespaceLabelKey:                  policy.Namespace,
 	}
 }

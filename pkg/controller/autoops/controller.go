@@ -215,7 +215,7 @@ func (r *ReconcileAutoOpsAgentPolicy) onDelete(ctx context.Context, obj types.Na
 	// Query for secrets labeled with this policy to find all associated ES clusters.
 	var secrets corev1.SecretList
 	matchLabels := client.MatchingLabels{
-		policyNameLabelKey:      obj.Name,
+		PolicyNameLabelKey:      obj.Name,
 		policyNamespaceLabelKey: obj.Namespace,
 	}
 	if err := r.Client.List(ctx, &secrets, matchLabels); err != nil {

@@ -17,6 +17,7 @@ home: https://github.com/elastic/cloud-on-k8s
 kubeVersion: ">=1.21.0-0"
 
 keywords:
+  - AutoOps
   - Logstash
   - Elasticsearch
   - Kibana
