@@ -112,18 +112,8 @@ func (r *ReconcileAutoOpsAgentPolicy) Reconcile(ctx context.Context, request rec
 		return reconcile.Result{}, tracing.CaptureError(ctx, err)
 	}
 
-	status := autoopsv1alpha1.NewStatus(policy)
+	state := NewState(policy)
 	results := reconciler.NewResult(ctx)
-
-	defer func() {
-		// update status
-		if err := r.updateStatus(ctx, policy, status); err != nil {
-			if apierrors.IsConflict(err) {
-				results.WithRequeue().Aggregate()
-			}
-			results.WithError(err)
-		}
-	}()
 
 	_, err = ParseConfigSecret(ctx, r.Client, types.NamespacedName{
 		Namespace: policy.Namespace,
@@ -131,11 +121,23 @@ func (r *ReconcileAutoOpsAgentPolicy) Reconcile(ctx context.Context, request rec
 	})
 	if err != nil {
 		if apierrors.IsNotFound(err) {
-			status.Phase = autoopsv1alpha1.InvalidPhase
-			r.recorder.Eventf(&policy, corev1.EventTypeWarning, events.EventReasonValidation, "Config secret not found")
+			state.UpdateInvalidPhaseWithEvent("Config secret not found")
+			// update status before returning
+			if err := r.updateStatusFromState(ctx, state); err != nil {
+				if apierrors.IsConflict(err) {
+					return reconcile.Result{Requeue: true, RequeueAfter: defaultRequeue}, nil
+				}
+				return reconcile.Result{}, tracing.CaptureError(ctx, err)
+			}
 			return reconcile.Result{Requeue: true, RequeueAfter: defaultRequeue}, nil
 		}
-		status.Phase = autoopsv1alpha1.ErrorPhase
+		state.UpdateWithPhase(autoopsv1alpha1.ErrorPhase)
+		// update status before returning
+		if err := r.updateStatusFromState(ctx, state); err != nil {
+			if apierrors.IsConflict(err) {
+				return reconcile.Result{Requeue: true, RequeueAfter: defaultRequeue}, nil
+			}
+		}
 		return reconcile.Result{}, tracing.CaptureError(ctx, err)
 	}
 
@@ -150,10 +152,19 @@ func (r *ReconcileAutoOpsAgentPolicy) Reconcile(ctx context.Context, request rec
 	}
 
 	// main reconciliation logic
-	results, status = r.doReconcile(ctx, policy)
+	results = r.doReconcile(ctx, policy, state)
+
+	// Update phase based on reconciliation state
+	if state.status.Phase != autoopsv1alpha1.InvalidPhase && state.status.Phase != autoopsv1alpha1.ErrorPhase {
+		if isReconciled, _ := results.IsReconciled(); !isReconciled {
+			state.UpdateWithPhase(autoopsv1alpha1.ApplyingChangesPhase)
+		} else {
+			state.UpdateWithPhase(autoopsv1alpha1.ReadyPhase)
+		}
+	}
 
 	// update status
-	if err := r.updateStatus(ctx, policy, status); err != nil {
+	if err := r.updateStatusFromState(ctx, state); err != nil {
 		if apierrors.IsConflict(err) {
 			return results.WithRequeue().Aggregate()
 		}
@@ -176,25 +187,25 @@ func (r *ReconcileAutoOpsAgentPolicy) validate(ctx context.Context, policy *auto
 	return nil
 }
 
-func (r *ReconcileAutoOpsAgentPolicy) updateStatus(ctx context.Context, policy autoopsv1alpha1.AutoOpsAgentPolicy, status autoopsv1alpha1.AutoOpsAgentPolicyStatus) error {
+func (r *ReconcileAutoOpsAgentPolicy) updateStatusFromState(ctx context.Context, state *State) error {
 	span, _ := apm.StartSpan(ctx, "update_status", tracing.SpanTypeApp)
 	defer span.End()
 
-	if status.ObservedGeneration == policy.Status.ObservedGeneration &&
-		status.Resources == policy.Status.Resources &&
-		status.Ready == policy.Status.Ready &&
-		status.Errors == policy.Status.Errors &&
-		status.Phase == policy.Status.Phase {
-		ulog.FromContext(ctx).V(1).Info("Status is up to date", "iteration", atomic.LoadUint64(&r.iteration), "status", status)
-		return nil // nothing to do
+	events, policy := state.Apply()
+	for _, evt := range events {
+		ulog.FromContext(ctx).V(1).Info("Recording event", "event", evt)
+		r.recorder.Event(&state.policy, evt.EventType, evt.Reason, evt.Message)
+	}
+	if policy == nil {
+		ulog.FromContext(ctx).V(1).Info("Status is up to date", "iteration", atomic.LoadUint64(&r.iteration))
+		return nil
 	}
 
 	ulog.FromContext(ctx).V(1).Info("Updating status",
 		"iteration", atomic.LoadUint64(&r.iteration),
-		"status", status,
+		"status", policy.Status,
 	)
-	policy.Status = status
-	return common.UpdateStatus(ctx, r.Client, &policy)
+	return common.UpdateStatus(ctx, r.Client, policy)
 }
 
 func (r *ReconcileAutoOpsAgentPolicy) onDelete(ctx context.Context, obj types.NamespacedName) error {

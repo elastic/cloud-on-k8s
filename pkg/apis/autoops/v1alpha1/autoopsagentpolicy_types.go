@@ -62,7 +62,6 @@ type AutoOpsAgentPolicySpec struct {
 	//     name: autoops-agent-policy-config
 	//   stringData:
 	//     ccmApiKey: aslkfjsldkjfslkdjflksdjfl
-	//     tempResourceID: u857abce4-9214-446b-951c-a1644b7d204ao
 	//     autoOpsOTelURL: https://otel.auto-ops.console.qa.cld.elstc.co
 	//     autoOpsToken: skdfjdskjf
 	Config commonv1.ConfigSource `json:"config,omitempty"`
