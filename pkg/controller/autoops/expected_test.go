@@ -60,7 +60,6 @@ func TestReconcileAutoOpsAgentPolicy_deploymentParams(t *testing.T) {
 	tests := []struct {
 		name    string
 		args    args
-		want    appsv1.Deployment
 		wantErr bool
 	}{
 		{
@@ -69,7 +68,6 @@ func TestReconcileAutoOpsAgentPolicy_deploymentParams(t *testing.T) {
 				autoops: autoopsFixture,
 				es:      esFixture,
 			},
-			want:    appsv1.Deployment{}, // Will be computed in test
 			wantErr: false,
 		},
 		{
@@ -86,7 +84,6 @@ func TestReconcileAutoOpsAgentPolicy_deploymentParams(t *testing.T) {
 				},
 				es: esFixture,
 			},
-			want:    appsv1.Deployment{},
 			wantErr: true,
 		},
 	}
@@ -128,11 +125,11 @@ func TestReconcileAutoOpsAgentPolicy_deploymentParams(t *testing.T) {
 	}
 }
 
-func expectedDeployment(autoops autoopsv1alpha1.AutoOpsAgentPolicy, es esv1.Elasticsearch, configHashValue string) appsv1.Deployment {
-	v, _ := version.Parse(autoops.Spec.Version)
+func expectedDeployment(policy autoopsv1alpha1.AutoOpsAgentPolicy, es esv1.Elasticsearch, configHashValue string) appsv1.Deployment {
+	v, _ := version.Parse(policy.Spec.Version)
 	labels := map[string]string{
 		commonv1.TypeLabelName:        "autoops-agent",
-		"autoops.k8s.elastic.co/name": autoops.Name,
+		"autoops.k8s.elastic.co/name": policy.GetName(),
 	}
 
 	annotations := map[string]string{
@@ -141,15 +138,15 @@ func expectedDeployment(autoops autoopsv1alpha1.AutoOpsAgentPolicy, es esv1.Elas
 
 	return appsv1.Deployment{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      AutoOpsNamer.Suffix(es.Name, es.GetNamespace(), "deploy"),
-			Namespace: autoops.GetNamespace(),
+			Name:      AutoOpsNamer.Suffix(policy.GetName(), policy.GetNamespace(), es.GetName(), es.GetNamespace(), "deploy"),
+			Namespace: policy.GetNamespace(),
 			Labels:    labels,
 		},
 		Spec: appsv1.DeploymentSpec{
 			Replicas: pointer.Int32(1),
 			Selector: &metav1.LabelSelector{
 				MatchLabels: map[string]string{
-					"autoops.k8s.elastic.co/name": autoops.Name,
+					"autoops.k8s.elastic.co/name": policy.GetName(),
 				},
 			},
 			Template: corev1.PodTemplateSpec{
@@ -164,7 +161,7 @@ func expectedDeployment(autoops autoopsv1alpha1.AutoOpsAgentPolicy, es esv1.Elas
 							VolumeSource: corev1.VolumeSource{
 								ConfigMap: &corev1.ConfigMapVolumeSource{
 									LocalObjectReference: corev1.LocalObjectReference{
-										Name: fmt.Sprintf("%s-%s-%s", autoOpsESConfigMapName, es.Namespace, es.Name),
+										Name: fmt.Sprintf("%s-%s-%s", autoOpsESConfigMapName, policy.GetNamespace(), es.GetName()),
 									},
 									DefaultMode: ptr.To(corev1.ConfigMapVolumeSourceDefaultMode),
 									Optional:    ptr.To(false),
@@ -352,7 +349,7 @@ func Test_autoopsEnvVars(t *testing.T) {
 				},
 				{
 					Name:  "AUTOOPS_ES_URL",
-					Value: "http://es-1-es-internal-http.ns-1.svc:9200",
+					Value: "https://es-1-es-internal-http.ns-1.svc:9200",
 				},
 				{
 					Name: "AUTOOPS_OTEL_URL",

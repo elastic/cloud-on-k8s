@@ -35,7 +35,7 @@ var (
 
 const (
 	// autoOpsESAPIKeySecretNameSuffix is the suffix for API key secrets created for each ES instance
-	autoOpsESAPIKeySecretNameSuffix = "autoops-es-api-key"
+	autoOpsESAPIKeySecretNameSuffix = "autoops-es-api-key" //nolint:gosec
 	// managedByMetadataKey is the metadata key indicating the API key is managed by ECK.
 	// This is used when storing the API key in Elasticsearch to clearly identify it as managed by ECK.
 	// This is not included in the labels of the secret.
@@ -84,9 +84,14 @@ func reconcileAutoOpsESAPIKey(
 	}
 	defer esClient.Close()
 
+	stackMonitoringUserRole, ok := esuser.PredefinedRoles[esuser.StackMonitoringUserRole].(esclient.Role)
+	if !ok {
+		return fmt.Errorf("stackMonitoringUserRole could not be converted to esclient.Role")
+	}
+
 	apiKeySpec := apiKeySpec{
 		roleDescriptors: map[string]esclient.Role{
-			"eck_autoops_role": defaultMonitoringRole,
+			"eck_autoops_role": stackMonitoringUserRole,
 		},
 	}
 
@@ -222,15 +227,14 @@ func invalidateAndCreateAPIKey(
 func apiKeyNeedsRecreation(apiKey *esclient.APIKey, expectedHash string) bool {
 	if apiKey.Metadata == nil {
 		return true
-	} else {
-		managedBy, ok := apiKey.Metadata[managedByMetadataKey].(string)
-		if !ok || managedBy != managedByValue {
-			return true
-		}
-		currentHash, ok := apiKey.Metadata[configHashMetadataKey].(string)
-		if !ok || currentHash != expectedHash {
-			return true
-		}
+	}
+	managedBy, ok := apiKey.Metadata[managedByMetadataKey].(string)
+	if !ok || managedBy != managedByValue {
+		return true
+	}
+	currentHash, ok := apiKey.Metadata[configHashMetadataKey].(string)
+	if !ok || currentHash != expectedHash {
+		return true
 	}
 	return false
 }

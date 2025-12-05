@@ -24,7 +24,7 @@ type Config struct {
 
 const (
 	// Secret key names for the configuration fields
-	ccmApiKey      = "cloud-connected-mode-api-key"
+	ccmAPIKey      = "cloud-connected-mode-api-key"
 	autoOpsOTelURL = "autoops-otel-url"
 	autoOpsToken   = "autoops-token"
 )
@@ -50,10 +50,10 @@ func ParseConfigSecret(ctx context.Context, client k8s.Client, secretKey types.N
 func validateAndPopulateConfig(secret corev1.Secret, secretKey types.NamespacedName) (*Config, error) {
 	var config Config
 
-	if data, exists := secret.Data[ccmApiKey]; exists && len(data) > 0 {
+	if data, exists := secret.Data[ccmAPIKey]; exists && len(data) > 0 {
 		config.CCMApiKey = string(data)
 	} else {
-		return nil, fmt.Errorf("missing required key %s in configuration secret %s/%s", ccmApiKey, secretKey.Namespace, secretKey.Name)
+		return nil, fmt.Errorf("missing required key %s in configuration secret %s/%s", ccmAPIKey, secretKey.Namespace, secretKey.Name)
 	}
 
 	if data, exists := secret.Data[autoOpsOTelURL]; exists && len(data) > 0 {

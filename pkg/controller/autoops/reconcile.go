@@ -11,6 +11,7 @@ import (
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	autoopsv1alpha1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/autoops/v1alpha1"
@@ -60,6 +61,15 @@ func (r *ReconcileAutoOpsAgentPolicy) internalReconcile(
 	state *State) *reconciler.Results {
 	log := ulog.FromContext(ctx)
 	log.V(1).Info("Internal reconcile AutoOpsAgentPolicy")
+
+	_, err := ParseConfigSecret(ctx, r.Client, types.NamespacedName{
+		Namespace: policy.Namespace,
+		Name:      policy.Spec.Config.SecretRef.SecretName,
+	})
+	if err != nil {
+		state.UpdateWithPhase(autoopsv1alpha1.ErrorPhase)
+		return results.WithError(err)
+	}
 
 	// prepare the selector to find resources.
 	selector, err := metav1.LabelSelectorAsSelector(&metav1.LabelSelector{

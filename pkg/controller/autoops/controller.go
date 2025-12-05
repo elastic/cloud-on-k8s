@@ -29,7 +29,6 @@ import (
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/events"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/license"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/operator"
-	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/reconciler"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/tracing"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/watches"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/k8s"
@@ -117,39 +116,12 @@ func (r *ReconcileAutoOpsAgentPolicy) Reconcile(ctx context.Context, request rec
 	}
 
 	state := NewState(policy)
-	results := reconciler.NewResult(ctx)
-
-	_, err = ParseConfigSecret(ctx, r.Client, types.NamespacedName{
-		Namespace: policy.Namespace,
-		Name:      policy.Spec.Config.SecretRef.SecretName,
-	})
-	if err != nil {
-		if apierrors.IsNotFound(err) {
-			state.UpdateInvalidPhaseWithEvent("Config secret not found")
-			// update status before returning
-			if err := r.updateStatusFromState(ctx, state); err != nil {
-				if apierrors.IsConflict(err) {
-					return reconcile.Result{Requeue: true, RequeueAfter: defaultRequeue}, nil
-				}
-				return reconcile.Result{}, tracing.CaptureError(ctx, err)
-			}
-			return reconcile.Result{Requeue: true, RequeueAfter: defaultRequeue}, nil
-		}
-		state.UpdateWithPhase(autoopsv1alpha1.ErrorPhase)
-		// update status before returning
-		if err := r.updateStatusFromState(ctx, state); err != nil {
-			if apierrors.IsConflict(err) {
-				return reconcile.Result{Requeue: true, RequeueAfter: defaultRequeue}, nil
-			}
-		}
-		return reconcile.Result{}, tracing.CaptureError(ctx, err)
-	}
 
 	if policy.IsMarkedForDeletion() {
 		return reconcile.Result{}, r.onDelete(ctx, k8s.ExtractNamespacedName(&policy))
 	}
 
-	results = r.doReconcile(ctx, policy, state)
+	results := r.doReconcile(ctx, policy, state)
 
 	if state.status.Phase != autoopsv1alpha1.InvalidPhase && state.status.Phase != autoopsv1alpha1.ErrorPhase {
 		if isReconciled, _ := results.IsReconciled(); !isReconciled {
@@ -159,11 +131,11 @@ func (r *ReconcileAutoOpsAgentPolicy) Reconcile(ctx context.Context, request rec
 		}
 	}
 
-	if err := r.updateStatusFromState(ctx, state); err != nil {
-		if apierrors.IsConflict(err) {
-			return results.WithRequeue().Aggregate()
-		}
+	result, err := r.updateStatusFromState(ctx, state)
+	if err != nil {
 		results.WithError(err)
+	} else if result.RequeueAfter > 0 {
+		return results.WithRequeue().Aggregate()
 	}
 
 	return results.Aggregate()
@@ -182,7 +154,7 @@ func (r *ReconcileAutoOpsAgentPolicy) validate(ctx context.Context, policy *auto
 	return nil
 }
 
-func (r *ReconcileAutoOpsAgentPolicy) updateStatusFromState(ctx context.Context, state *State) error {
+func (r *ReconcileAutoOpsAgentPolicy) updateStatusFromState(ctx context.Context, state *State) (reconcile.Result, error) {
 	span, _ := apm.StartSpan(ctx, "update_status", tracing.SpanTypeApp)
 	defer span.End()
 
@@ -193,14 +165,20 @@ func (r *ReconcileAutoOpsAgentPolicy) updateStatusFromState(ctx context.Context,
 	}
 	if policy == nil {
 		ulog.FromContext(ctx).V(1).Info("Status is up to date", "iteration", atomic.LoadUint64(&r.iteration))
-		return nil
+		return reconcile.Result{}, nil
 	}
 
 	ulog.FromContext(ctx).V(1).Info("Updating status",
 		"iteration", atomic.LoadUint64(&r.iteration),
 		"status", policy.Status,
 	)
-	return common.UpdateStatus(ctx, r.Client, policy)
+	if err := common.UpdateStatus(ctx, r.Client, policy); err != nil {
+		if apierrors.IsConflict(err) {
+			return reconcile.Result{RequeueAfter: defaultRequeue}, nil
+		}
+		return reconcile.Result{}, tracing.CaptureError(ctx, err)
+	}
+	return reconcile.Result{}, nil
 }
 
 func (r *ReconcileAutoOpsAgentPolicy) onDelete(ctx context.Context, obj types.NamespacedName) error {

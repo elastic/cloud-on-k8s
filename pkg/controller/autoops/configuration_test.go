@@ -28,7 +28,7 @@ func Test_validateAndPopulateConfig(t *testing.T) {
 					Namespace: "default",
 				},
 				Data: map[string][]byte{
-					ccmApiKey:      []byte("ccm-api-key-value"),
+					ccmAPIKey:      []byte("ccm-api-key-value"),
 					autoOpsOTelURL: []byte("https://otel.example.com"),
 					autoOpsToken:   []byte("token-value"),
 				},
@@ -65,7 +65,7 @@ func Test_validateAndPopulateConfig(t *testing.T) {
 					Namespace: "default",
 				},
 				Data: map[string][]byte{
-					ccmApiKey:    []byte("ccm-api-key-value"),
+					ccmAPIKey:    []byte("ccm-api-key-value"),
 					autoOpsToken: []byte("token-value"),
 				},
 			},
@@ -81,7 +81,7 @@ func Test_validateAndPopulateConfig(t *testing.T) {
 					Namespace: "default",
 				},
 				Data: map[string][]byte{
-					ccmApiKey:      []byte("ccm-api-key-value"),
+					ccmAPIKey:      []byte("ccm-api-key-value"),
 					autoOpsOTelURL: []byte("https://otel.example.com"),
 				},
 			},
@@ -97,7 +97,7 @@ func Test_validateAndPopulateConfig(t *testing.T) {
 					Namespace: "default",
 				},
 				Data: map[string][]byte{
-					ccmApiKey:      []byte(""),
+					ccmAPIKey:      []byte(""),
 					autoOpsOTelURL: []byte(""),
 					autoOpsToken:   []byte(""),
 				},
@@ -140,7 +140,7 @@ func Test_validateAndPopulateConfig(t *testing.T) {
 					Namespace: "default",
 				},
 				Data: map[string][]byte{
-					ccmApiKey:      []byte("ccm-api-key-value"),
+					ccmAPIKey:      []byte("ccm-api-key-value"),
 					autoOpsOTelURL: []byte("https://otel.example.com"),
 					autoOpsToken:   []byte("token-value"),
 					"extra-field":  []byte("extra-value"),

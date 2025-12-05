@@ -14,8 +14,6 @@ const (
 	// Kind is inferred from the struct name using reflection in SchemeBuilder.Register()
 	// we duplicate it as a constant here for practical purposes.
 	Kind = "AutoOpsAgentPolicy"
-
-	unknownVersion = 0
 )
 
 func init() {
