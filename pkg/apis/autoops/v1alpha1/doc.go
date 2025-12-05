@@ -6,4 +6,3 @@
 // +kubebuilder:object:generate=true
 // +groupName=autoops.k8s.elastic.co
 package v1alpha1
-
