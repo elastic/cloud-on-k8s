@@ -6,6 +6,7 @@ package autoops
 
 import (
 	"context"
+	"encoding/base64"
 	"fmt"
 	"hash/fnv"
 	"path"
@@ -79,7 +80,7 @@ func (r *ReconcileAutoOpsAgentPolicy) deploymentParams(ctx context.Context, poli
 		autoOpsLabelName:       policy.Name,
 	}
 	deployment.ObjectMeta = metav1.ObjectMeta{
-		Name:      AutoOpsNamer.Suffix(policy.GetName(), policy.GetNamespace(), es.GetName(), es.GetNamespace(), "deploy"),
+		Name:      AutoOpsNamer.Suffix(policy.GetName(), es.GetName(), es.GetNamespace()),
 		Namespace: policy.GetNamespace(),
 		Labels:    labels,
 	}
@@ -123,7 +124,7 @@ func (r *ReconcileAutoOpsAgentPolicy) deploymentParams(ctx context.Context, poli
 		WithLabels(meta.Labels).
 		WithAnnotations(meta.Annotations).
 		WithDockerImage(container.ImageRepository(container.AutoOpsAgentImage, v), v.String()).
-		WithEnv(autoopsEnvVars(es)...).
+		WithEnv(autoopsEnvVars(policy, es)...).
 		WithVolumes(volumes...).
 		WithVolumeMounts(volumeMounts...).
 		WithPorts([]corev1.ContainerPort{{Name: "http", ContainerPort: int32(readinessProbePort), Protocol: corev1.ProtocolTCP}}).
@@ -192,7 +193,7 @@ func buildConfigHash(ctx context.Context, c k8s.Client, policy autoopsv1alpha1.A
 
 // autoopsEnvVars returns the environment variables for the AutoOps deployment
 // that reference values from the autoops-secret and the ES elastic user secret.
-func autoopsEnvVars(es esv1.Elasticsearch) []corev1.EnvVar {
+func autoopsEnvVars(policy autoopsv1alpha1.AutoOpsAgentPolicy, es esv1.Elasticsearch) []corev1.EnvVar {
 	esService := services.InternalServiceURL(es)
 	return []corev1.EnvVar{
 		{
@@ -234,6 +235,10 @@ func autoopsEnvVars(es esv1.Elasticsearch) []corev1.EnvVar {
 			},
 		},
 		{
+			Name:  "AUTOOPS_TEMP_RESOURCE_ID",
+			Value: tempResourceID(policy, es),
+		},
+		{
 			Name: "ELASTIC_CLOUD_CONNECTED_MODE_API_KEY",
 			ValueFrom: &corev1.EnvVarSource{
 				SecretKeyRef: &corev1.SecretKeySelector{
@@ -257,4 +262,10 @@ func autoopsEnvVars(es esv1.Elasticsearch) []corev1.EnvVar {
 			},
 		},
 	}
+}
+
+// tempResourceID returns the base64 encoded temp resource ID for the AutoOps deployment.
+// It uses the policy name, the ES name, and the ES namespace to create a unique ID.
+func tempResourceID(policy autoopsv1alpha1.AutoOpsAgentPolicy, es esv1.Elasticsearch) string {
+	return base64.StdEncoding.EncodeToString([]byte(fmt.Sprintf("%s-%s-%s", policy.GetName(), es.GetName(), es.GetNamespace())))
 }

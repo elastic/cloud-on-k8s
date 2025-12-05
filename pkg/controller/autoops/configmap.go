@@ -72,6 +72,7 @@ const autoOpsESConfigTemplate = `receivers:
           target: autoops_es
           fields:
             token: ${env:AUTOOPS_TOKEN}
+            temp_resource_id: ${env:AUTOOPS_TEMP_RESOURCE_ID}
     output:
       otelconsumer: {}
     telemetry_types: ["logs"]

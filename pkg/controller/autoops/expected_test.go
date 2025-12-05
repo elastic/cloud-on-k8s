@@ -6,6 +6,7 @@ package autoops
 
 import (
 	"context"
+	"encoding/base64"
 	"fmt"
 	"hash/fnv"
 	"testing"
@@ -323,9 +324,10 @@ func Test_readinessProbe(t *testing.T) {
 
 func Test_autoopsEnvVars(t *testing.T) {
 	tests := []struct {
-		name string
-		es   esv1.Elasticsearch
-		want []corev1.EnvVar
+		name   string
+		es     esv1.Elasticsearch
+		policy autoopsv1alpha1.AutoOpsAgentPolicy
+		want   []corev1.EnvVar
 	}{
 		{
 			name: "Happy path",
@@ -333,6 +335,12 @@ func Test_autoopsEnvVars(t *testing.T) {
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "es-1",
 					Namespace: "ns-1",
+				},
+			},
+			policy: autoopsv1alpha1.AutoOpsAgentPolicy{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "policy-1",
+					Namespace: "ns-2",
 				},
 			},
 			want: []corev1.EnvVar{
@@ -375,6 +383,10 @@ func Test_autoopsEnvVars(t *testing.T) {
 					},
 				},
 				{
+					Name:  "AUTOOPS_TEMP_RESOURCE_ID",
+					Value: base64.StdEncoding.EncodeToString([]byte(fmt.Sprintf("%s-%s-%s", "policy-1", "es-1", "ns-1"))),
+				},
+				{
 					Name: "ELASTIC_CLOUD_CONNECTED_MODE_API_KEY",
 					ValueFrom: &corev1.EnvVarSource{
 						SecretKeyRef: &corev1.SecretKeySelector{
@@ -402,7 +414,7 @@ func Test_autoopsEnvVars(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got := autoopsEnvVars(tt.es)
+			got := autoopsEnvVars(tt.policy, tt.es)
 			if !cmp.Equal(got, tt.want) {
 				t.Errorf("autoopsEnvVars() diff = %v", cmp.Diff(got, tt.want))
 			}
