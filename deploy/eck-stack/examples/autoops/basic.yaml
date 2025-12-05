@@ -1,0 +1,32 @@
+---
+eck-autoops:
+  enabled: true
+  ccmApiKey: "your-api-key-here"
+  autoOpsOTelURL: "https://otel-auto-ops.us-east-2.aws.svc.elastic.cloud"
+  autoOpsToken: "your-token-here"
+  secretName: "autoops-secret"
+  resourceSelector:
+    matchLabels:
+      autoops: enabled
+
+eck-elasticsearch:
+  enabled: true
+
+  # This label is used to select the Elasticsearch instance for AutoOps integration.
+  labels:
+    autoops: enabled
+
+  # Name of the Elasticsearch instance.
+  #
+  fullnameOverride: elasticsearch
+
+  nodeSets:
+  - name: default
+    count: 1
+    # Comment out when setting the vm.max_map_count via initContainer, as these are mutually exclusive.
+    # For production workloads, it is strongly recommended to increase the kernel setting vm.max_map_count to 262144
+    # and leave node.store.allow_mmap unset.
+    # ref: https://www.elastic.co/guide/en/cloud-on-k8s/master/k8s-virtual-memory.html
+    #
+    config:
+      node.store.allow_mmap: false

@@ -1,0 +1,21 @@
+---
+apiVersion: autoops.k8s.elastic.co/v1alpha1
+kind: AutoOpsAgentPolicy
+metadata:
+  name: {{ include "autoops.fullname" . }}
+  labels:
+    {{- include "autoops.labels" . | nindent 4 }}
+  annotations:
+    eck.k8s.elastic.co/license: basic
+    {{- with .Values.annotations }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
+spec:
+  version: {{ required "An AutoOps Agent Policy version is required" .Values.version }}
+  config:
+    secretName: {{ include "autoops.secretName" . }}
+  {{- with .Values.resourceSelector }}
+  resourceSelector:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+

@@ -14,6 +14,7 @@ applies_to:
 * [agent.k8s.elastic.co/v1alpha1](#agentk8selasticcov1alpha1)
 * [apm.k8s.elastic.co/v1](#apmk8selasticcov1)
 * [apm.k8s.elastic.co/v1beta1](#apmk8selasticcov1beta1)
+* [autoops.k8s.elastic.co/v1alpha1](#autoopsk8selasticcov1alpha1)
 * [autoscaling.k8s.elastic.co/v1alpha1](#autoscalingk8selasticcov1alpha1)
 * [beat.k8s.elastic.co/v1beta1](#beatk8selasticcov1beta1)
 * [common.k8s.elastic.co/v1](#commonk8selasticcov1)
@@ -256,6 +257,49 @@ ApmServerSpec holds the specification of an APM Server.
 
 
 % TODO add function to crd-ref-docs return anchor used in links docs-v3 does not seem to produce valid markdown anchors
+## autoops.k8s.elastic.co/v1alpha1 [#autoopsk8selasticcov1alpha1]
+
+Package v1alpha1 contains API schema definitions for managing AutoOpsAgentPolicy resources.
+
+### Resource Types
+- [AutoOpsAgentPolicy](#autoopsagentpolicy)
+
+
+
+### AutoOpsAgentPolicy  [#autoopsagentpolicy]
+
+AutoOpsAgentPolicy represents an AutoOpsAgentPolicy resource in a Kubernetes cluster.
+
+
+
+| Field | Description |
+| --- | --- |
+| *`apiVersion`* __string__ | `autoops.k8s.elastic.co/v1alpha1` |
+| *`kind`* __string__ | `AutoOpsAgentPolicy` | 
+| *`metadata`* __[ObjectMeta](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.32/#objectmeta-v1-meta)__ | Refer to Kubernetes API documentation for fields of `metadata`. |
+| *`spec`* __[AutoOpsAgentPolicySpec](#autoopsagentpolicyspec)__ |  |
+
+
+### AutoOpsAgentPolicySpec  [#autoopsagentpolicyspec]
+
+
+
+:::{admonition} Appears In:
+* [AutoOpsAgentPolicy](#autoopsagentpolicy)
+
+:::
+
+| Field | Description |
+| --- | --- |
+| *`version`* __string__ | Version of the AutoOpsAgentPolicy. |
+| *`resourceSelector`* __[LabelSelector](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.32/#labelselector-v1-meta)__ | ResourceSelector is a label selector for the resources to be configured.<br>Any Elasticsearch instances that match the selector will be configured to send data to AutoOps. |
+| *`config`* __[ConfigSource](#configsource)__ | Config holds the AutoOpsAgentPolicy configuration.<br>The contents of the referenced secret requires the following format:<br>  kind: Secret<br>  apiVersion: v1<br>  metadata:<br>    name: autoops-agent-policy-config<br>  stringData:<br>    ccmApiKey: aslkfjsldkjfslkdjflksdjfl<br>    autoOpsOTelURL: https://otel.auto-ops.console.qa.cld.elstc.co<br>    autoOpsToken: skdfjdskjf |
+
+
+
+
+
+% TODO add function to crd-ref-docs return anchor used in links docs-v3 does not seem to produce valid markdown anchors
 ## autoscaling.k8s.elastic.co/v1alpha1 [#autoscalingk8selasticcov1alpha1]
 
 Package v1alpha1 contains API schema definitions for managing ElasticsearchAutoscaler resources.
@@ -443,6 +487,7 @@ ConfigSource references configuration settings.
 
 :::{admonition} Appears In:
 * [AgentSpec](#agentspec)
+* [AutoOpsAgentPolicySpec](#autoopsagentpolicyspec)
 * [BeatSpec](#beatspec)
 * [EnterpriseSearchSpec](#enterprisesearchspec)
 * [EnterpriseSearchSpec](#enterprisesearchspec)

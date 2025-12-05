@@ -1,0 +1,9 @@
+apiVersion: v2
+name: eck-autoops
+description: AutoOps Agent Policy managed by the ECK operator
+kubeVersion: ">= 1.21.0-0"
+type: application
+version: 0.18.0-SNAPSHOT
+sources:
+  - https://github.com/elastic/cloud-on-k8s
+

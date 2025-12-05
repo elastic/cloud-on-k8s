@@ -1,0 +1,24 @@
+---
+# Version of AutoOps Agent Policy.
+#
+version: 9.2.0
+
+# AutoOps configuration values.
+# These values are required and will be used to create a Kubernetes Secret.
+#
+ccmApiKey: "your-api-key-here"
+autoOpsOTelURL: "https://otel-auto-ops.us-east-2.aws.svc.elastic.cloud"
+autoOpsToken: "your-token-here"
+
+# Optional: Override the default secret name.
+# If not specified, defaults to the fullname of the chart with '-secret' suffix.
+#
+# secretName: "custom-secret-name"
+
+# ResourceSelector is a label selector for the resources to be configured.
+# Any Elasticsearch instances that match the selector will be configured to send data to AutoOps.
+#
+resourceSelector:
+  matchLabels:
+    autoops: enabled
+

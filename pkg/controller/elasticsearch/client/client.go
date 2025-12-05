@@ -38,7 +38,7 @@ type BasicAuth struct {
 
 type IndexRole struct {
 	Names                  []string `json:"names,omitempty"`
-	Privileges             []string `json:",omitempty"`
+	Privileges             []string `json:"privileges,omitempty"`
 	AllowRestrictedIndices *bool    `json:"allow_restricted_indices,omitempty" yaml:"allow_restricted_indices,omitempty"`
 }
 
