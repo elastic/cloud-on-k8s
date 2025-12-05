@@ -26,7 +26,7 @@ import (
 
 const (
 	// autoOpsESCASecretSuffix is the suffix for CA secrets created for each ES instance
-	autoOpsESCASecretSuffix = "autoops-es-ca"
+	autoOpsESCASecretSuffix = "autoops-es-ca" //nolint:gosec
 )
 
 // reconcileAutoOpsESCASecret reconciles the Secret containing the CA certificate

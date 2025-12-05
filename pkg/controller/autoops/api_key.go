@@ -29,10 +29,6 @@ import (
 	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/net"
 )
 
-var (
-	defaultMonitoringRole = esuser.PredefinedRoles[esuser.StackMonitoringUserRole].(esclient.Role)
-)
-
 const (
 	// autoOpsESAPIKeySecretNameSuffix is the suffix for API key secrets created for each ES instance
 	autoOpsESAPIKeySecretNameSuffix = "autoops-es-api-key" //nolint:gosec

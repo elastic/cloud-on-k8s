@@ -117,37 +117,38 @@ func (r *ReconcileAutoOpsAgentPolicy) internalReconcile(
 			if err := reconcileAutoOpsESCASecret(ctx, r.Client, policy, es); err != nil {
 				errorCount++
 				state.UpdateWithPhase(autoopsv1alpha1.ErrorPhase)
-				return results.WithError(err)
+				continue
 			}
 		}
 
 		if err := reconcileAutoOpsESAPIKey(ctx, r.Client, r.esClientProvider, r.params.Dialer, policy, es); err != nil {
 			errorCount++
 			state.UpdateWithPhase(autoopsv1alpha1.ErrorPhase)
-			return results.WithError(err)
+			continue
 		}
 
 		if err := ReconcileAutoOpsESConfigMap(ctx, r.Client, policy, es); err != nil {
 			errorCount++
 			state.UpdateWithPhase(autoopsv1alpha1.ErrorPhase)
-			return results.WithError(err)
+			continue
 		}
 
 		expectedResources, err := r.generateExpectedResources(ctx, policy, es)
 		if err != nil {
 			errorCount++
 			state.UpdateWithPhase(autoopsv1alpha1.ErrorPhase)
-			return results.WithError(err)
+			continue
 		}
 
 		reconciledDeployment, err := deployment.Reconcile(ctx, r.Client, expectedResources.deployment, &policy)
 		if err != nil {
 			errorCount++
 			state.UpdateWithPhase(autoopsv1alpha1.ErrorPhase)
-			return results.WithError(err)
+			continue
 		}
 
-		if isDeploymentReady(reconciledDeployment) {
+		// Only increment readyCount if there are no errors in previous ES instances.
+		if isDeploymentReady(reconciledDeployment) && errorCount == 0 {
 			readyCount++
 		}
 	}
