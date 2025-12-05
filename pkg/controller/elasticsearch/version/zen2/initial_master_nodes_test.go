@@ -109,7 +109,7 @@ func TestSetupInitialMasterNodes(t *testing.T) {
 			name: "v7 cluster currently bootstrapping: reuse the annotated cluster.initial_master_nodes value for master nodes",
 			// initial master node names do not match the "real" node names: that's on purpose so we make sure
 			// those "fake" node values are the ones being reused
-			es:                withAnnotations(esv7(), map[string]string{initialMasterNodesAnnotation: "node-0,node-1,node-2"}),
+			es:                withAnnotations(esv7(), map[string]string{InitialMasterNodesAnnotation: "node-0,node-1,node-2"}),
 			nodeSpecResources: expectedv7resources(),
 			k8sClient:         k8s.NewFakeClient(),
 			expectedConfigs: []settings.CanonicalConfig{
@@ -225,7 +225,7 @@ func TestSetupInitialMasterNodes(t *testing.T) {
 			err = tt.k8sClient.Get(context.Background(), k8s.ExtractNamespacedName(&tt.es), &updatedEs)
 			require.NoError(t, err)
 			if tt.expectedAnnotation != "" {
-				require.Equal(t, tt.expectedAnnotation, updatedEs.Annotations[initialMasterNodesAnnotation])
+				require.Equal(t, tt.expectedAnnotation, updatedEs.Annotations[InitialMasterNodesAnnotation])
 			}
 		})
 	}
@@ -252,14 +252,14 @@ func Test_getInitialMasterNodesAnnotation(t *testing.T) {
 		{
 			name: "annotation set with 1 master node",
 			es: esv1.Elasticsearch{ObjectMeta: metav1.ObjectMeta{Annotations: map[string]string{
-				initialMasterNodesAnnotation: "node-0",
+				InitialMasterNodesAnnotation: "node-0",
 			}}},
 			want: []string{"node-0"},
 		},
 		{
 			name: "annotation set with several master nodes",
 			es: esv1.Elasticsearch{ObjectMeta: metav1.ObjectMeta{Annotations: map[string]string{
-				initialMasterNodesAnnotation: "node-0,node-1,node-2",
+				InitialMasterNodesAnnotation: "node-0,node-1,node-2",
 			}}},
 			want: []string{"node-0", "node-1", "node-2"},
 		},
@@ -282,7 +282,7 @@ func Test_setInitialMasterNodesAnnotation(t *testing.T) {
 	var updatedEs esv1.Elasticsearch
 	err = k8sClient.Get(context.Background(), k8s.ExtractNamespacedName(&es), &updatedEs)
 	require.NoError(t, err)
-	require.Equal(t, "node-0,node-1,node-2", updatedEs.Annotations[initialMasterNodesAnnotation])
+	require.Equal(t, "node-0,node-1,node-2", updatedEs.Annotations[InitialMasterNodesAnnotation])
 }
 
 type mockZen2BootstrapESClient struct {
@@ -327,7 +327,7 @@ func TestRemoveZen2BootstrapAnnotation(t *testing.T) {
 		{
 			name: "v7 cluster with annotation but bootstrap not over yet: requeue & keep annotation",
 			args: args{
-				es:       withAnnotations(esv7(), map[string]string{initialMasterNodesAnnotation: "foo,bar"}),
+				es:       withAnnotations(esv7(), map[string]string{InitialMasterNodesAnnotation: "foo,bar"}),
 				esClient: &mockZen2BootstrapESClient{zen2Bootstrapped: false, err: nil},
 			},
 			wantRequeue:    true,
@@ -336,7 +336,7 @@ func TestRemoveZen2BootstrapAnnotation(t *testing.T) {
 		{
 			name: "v7 cluster with annotation but ES call returns an error: propagate the error",
 			args: args{
-				es:       withAnnotations(esv7(), map[string]string{initialMasterNodesAnnotation: "foo,bar"}),
+				es:       withAnnotations(esv7(), map[string]string{InitialMasterNodesAnnotation: "foo,bar"}),
 				esClient: &mockZen2BootstrapESClient{zen2Bootstrapped: false, err: errors.New("err")},
 			},
 			wantRequeue:    false,
@@ -345,7 +345,7 @@ func TestRemoveZen2BootstrapAnnotation(t *testing.T) {
 		{
 			name: "v7 cluster with annotation, bootstrap is over: remove the annotation",
 			args: args{
-				es:       withAnnotations(esv7(), map[string]string{initialMasterNodesAnnotation: "foo,bar"}),
+				es:       withAnnotations(esv7(), map[string]string{InitialMasterNodesAnnotation: "foo,bar"}),
 				esClient: &mockZen2BootstrapESClient{zen2Bootstrapped: true, err: nil},
 			},
 			wantRequeue:    false,
@@ -365,7 +365,7 @@ func TestRemoveZen2BootstrapAnnotation(t *testing.T) {
 			var updatedES esv1.Elasticsearch
 			err = k8sClient.Get(context.Background(), k8s.ExtractNamespacedName(&tt.args.es), &updatedES)
 			require.NoError(t, err)
-			_, exists := updatedES.Annotations[initialMasterNodesAnnotation]
+			_, exists := updatedES.Annotations[InitialMasterNodesAnnotation]
 			require.Equal(t, tt.wantAnnotation, exists)
 		})
 	}

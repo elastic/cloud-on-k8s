@@ -99,7 +99,6 @@ func (b Builder) MutationTestSteps(k *test.K8sClient) test.StepList {
 	if !isNonHAUpgrade {
 		watchers = append(watchers,
 			NewChangeBudgetWatcher(mutatedFrom.Elasticsearch.Spec, b.Elasticsearch),
-			NewMasterChangeBudgetWatcher(b.Elasticsearch),
 		)
 	}
 

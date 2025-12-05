@@ -26,7 +26,7 @@ import (
 const (
 	// InitialMasterNodesAnnotation is applied on the Elasticsearch resource while a cluster is
 	// bootstrapping zen2, and removed when bootstrapping is done.
-	initialMasterNodesAnnotation = "elasticsearch.k8s.elastic.co/initial-master-nodes"
+	InitialMasterNodesAnnotation = "elasticsearch.k8s.elastic.co/initial-master-nodes"
 )
 
 // SetupInitialMasterNodes sets the `cluster.initial_master_nodes` configuration setting on
@@ -107,7 +107,7 @@ func RemoveZen2BootstrapAnnotation(ctx context.Context, k8sClient k8s.Client, es
 		"es_name", es.Name,
 	)
 	// remove the annotation to indicate we're done with zen2 bootstrapping
-	delete(es.Annotations, initialMasterNodesAnnotation)
+	delete(es.Annotations, InitialMasterNodesAnnotation)
 	return false, k8sClient.Update(ctx, &es)
 }
 
@@ -183,7 +183,7 @@ func nonHAZen1MasterUpgrade(c k8s.Client, es esv1.Elasticsearch, nodeSpecResourc
 // annotations on es, or returns nil if not set.
 func getInitialMasterNodesAnnotation(es esv1.Elasticsearch) []string {
 	var nodes []string
-	if value := es.Annotations[initialMasterNodesAnnotation]; value != "" {
+	if value := es.Annotations[InitialMasterNodesAnnotation]; value != "" {
 		nodes = strings.Split(value, ",")
 	}
 	return nodes
@@ -195,6 +195,6 @@ func setInitialMasterNodesAnnotation(ctx context.Context, k8sClient k8s.Client, 
 	if es.Annotations == nil {
 		es.Annotations = map[string]string{}
 	}
-	es.Annotations[initialMasterNodesAnnotation] = strings.Join(initialMasterNodes, ",")
+	es.Annotations[InitialMasterNodesAnnotation] = strings.Join(initialMasterNodes, ",")
 	return k8sClient.Update(ctx, &es)
 }
