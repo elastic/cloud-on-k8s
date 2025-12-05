@@ -674,6 +674,170 @@ func TestReconcileStackConfigPolicy_Reconcile(t *testing.T) {
 			wantErr:          false,
 			wantRequeueAfter: true,
 		},
+		{
+			name: "Secret mount is removed when policy is updated to remove it from SecretMounts",
+			args: args{
+				client: func() k8s.Client {
+					// Simulates a policy that previously had 2 SecretMounts (test-secret-mount, another-secret-mount)
+					// but was updated to only have 1 (test-secret-mount). The copied secrets from the previous
+					// reconciliation still exist, and we expect the cleanup logic to remove the orphaned one.
+					policyWithOneMount := policyFixture.DeepCopy()
+					policyWithOneMount.Spec.Elasticsearch.SecretMounts = []policyv1alpha1.SecretMount{
+						{
+							SecretName: "test-secret-mount",
+							MountPath:  "/usr/test",
+						},
+					}
+
+					// Source secrets in policy namespace (these don't need owner labels, they're just data sources)
+					sourceSecret1 := &corev1.Secret{
+						ObjectMeta: metav1.ObjectMeta{
+							Name:      "test-secret-mount",
+							Namespace: "ns",
+						},
+						Data: map[string][]byte{
+							"idfile.txt": []byte("test id file"),
+						},
+					}
+					sourceSecret2 := &corev1.Secret{
+						ObjectMeta: metav1.ObjectMeta{
+							Name:      "another-secret-mount",
+							Namespace: "ns",
+						},
+						Data: map[string][]byte{
+							"another-file.txt": []byte("another test file"),
+						},
+					}
+
+					// Copied secrets in ES namespace (created by previous reconciliation)
+					// These have the source secret annotation - should be eligible for cleanup
+					copiedSecret1 := getSecretMountSecret(t, esv1.StackConfigAdditionalSecretName("test-es", "test-secret-mount"), "ns", "test-policy", "ns", "delete")
+					copiedSecret1.Labels["elasticsearch.k8s.elastic.co/cluster-name"] = "test-es"
+					copiedSecret1.Annotations = map[string]string{
+						"policy.k8s.elastic.co/source-secret-name": "test-secret-mount",
+					}
+					copiedSecret2 := getSecretMountSecret(t, esv1.StackConfigAdditionalSecretName("test-es", "another-secret-mount"), "ns", "test-policy", "ns", "delete")
+					copiedSecret2.Labels["elasticsearch.k8s.elastic.co/cluster-name"] = "test-es"
+					copiedSecret2.Annotations = map[string]string{
+						"policy.k8s.elastic.co/source-secret-name": "another-secret-mount",
+					}
+
+					// Create a third secret owned by the policy but WITHOUT the source secret annotation
+					// This should NOT be deleted even though it's not in SecretMounts
+					secretWithoutAnnotation := getSecretMountSecret(t, esv1.StackConfigAdditionalSecretName("test-es", "test-es-other-secret"), "ns", "test-policy", "ns", "delete")
+					secretWithoutAnnotation.Labels["elasticsearch.k8s.elastic.co/cluster-name"] = "test-es"
+
+					return k8s.NewFakeClient(policyWithOneMount, &esFixture, &secretFixture, sourceSecret1, sourceSecret2, copiedSecret1, copiedSecret2, secretWithoutAnnotation, esPodFixture)
+				}(),
+				licenseChecker:   &license.MockLicenseChecker{EnterpriseEnabled: true},
+				esClientProvider: fakeClientProvider(clusterStateFileSettingsFixture(42, nil), nil),
+			},
+			post: func(r ReconcileStackConfigPolicy, recorder record.FakeRecorder) {
+				// Verify the first secret exists (reconciled because still in SecretMounts)
+				var copiedSecret1 corev1.Secret
+				err := r.Client.Get(context.Background(), types.NamespacedName{
+					Name:      esv1.StackConfigAdditionalSecretName("test-es", "test-secret-mount"),
+					Namespace: "ns",
+				}, &copiedSecret1)
+				assert.NoError(t, err, "first copied secret should exist (still in SecretMounts)")
+
+				// Verify the second secret was deleted (removed from SecretMounts and has source annotation)
+				var copiedSecret2 corev1.Secret
+				err = r.Client.Get(context.Background(), types.NamespacedName{
+					Name:      esv1.StackConfigAdditionalSecretName("test-es", "another-secret-mount"),
+					Namespace: "ns",
+				}, &copiedSecret2)
+				assert.True(t, apierrors.IsNotFound(err), "second copied secret should be deleted (removed from SecretMounts)")
+
+				// Verify the secret without annotation was NOT deleted (lacks source secret annotation)
+				var secretWithoutAnnotation corev1.Secret
+				err = r.Client.Get(context.Background(), types.NamespacedName{
+					Name:      esv1.StackConfigAdditionalSecretName("test-es", "test-es-other-secret"),
+					Namespace: "ns",
+				}, &secretWithoutAnnotation)
+				assert.NoError(t, err, "secret without source annotation should NOT be deleted")
+			},
+			wantErr: false,
+		},
+		{
+			name: "All secret mounts removed from policy - all copied secrets should be deleted",
+			args: args{
+				client: func() k8s.Client {
+					// Simulates a policy that previously had SecretMounts but was updated to have none.
+					// All previously copied secrets with source annotations should be cleaned up.
+					policyWithNoMounts := policyFixture.DeepCopy()
+					policyWithNoMounts.Spec.Elasticsearch.SecretMounts = []policyv1alpha1.SecretMount{}
+
+					// Source secrets in policy namespace (left over from before, not currently used)
+					sourceSecret1 := &corev1.Secret{
+						ObjectMeta: metav1.ObjectMeta{
+							Name:      "test-secret-mount",
+							Namespace: "ns",
+						},
+						Data: map[string][]byte{
+							"idfile.txt": []byte("test id file"),
+						},
+					}
+					sourceSecret2 := &corev1.Secret{
+						ObjectMeta: metav1.ObjectMeta{
+							Name:      "another-secret-mount",
+							Namespace: "ns",
+						},
+						Data: map[string][]byte{
+							"another-file.txt": []byte("another test file"),
+						},
+					}
+
+					// Copied secrets in ES namespace (created by previous reconciliation)
+					// Both have the source secret annotation and should be cleaned up
+					copiedSecret1 := getSecretMountSecret(t, esv1.StackConfigAdditionalSecretName("test-es", "test-secret-mount"), "ns", "test-policy", "ns", "delete")
+					copiedSecret1.Labels["elasticsearch.k8s.elastic.co/cluster-name"] = "test-es"
+					copiedSecret1.Annotations = map[string]string{
+						"policy.k8s.elastic.co/source-secret-name": "test-secret-mount",
+					}
+					copiedSecret2 := getSecretMountSecret(t, esv1.StackConfigAdditionalSecretName("test-es", "another-secret-mount"), "ns", "test-policy", "ns", "delete")
+					copiedSecret2.Labels["elasticsearch.k8s.elastic.co/cluster-name"] = "test-es"
+					copiedSecret2.Annotations = map[string]string{
+						"policy.k8s.elastic.co/source-secret-name": "another-secret-mount",
+					}
+
+					// Create a secret owned by the policy but WITHOUT the source secret annotation
+					// This should NOT be deleted (not a SecretMount-managed secret)
+					secretWithoutAnnotation := getSecretMountSecret(t, esv1.StackConfigAdditionalSecretName("test-es", "test-es-other-secret"), "ns", "test-policy", "ns", "delete")
+					secretWithoutAnnotation.Labels["elasticsearch.k8s.elastic.co/cluster-name"] = "test-es"
+
+					return k8s.NewFakeClient(policyWithNoMounts, &esFixture, &secretFixture, sourceSecret1, sourceSecret2, copiedSecret1, copiedSecret2, secretWithoutAnnotation, esPodFixture)
+				}(),
+				licenseChecker:   &license.MockLicenseChecker{EnterpriseEnabled: true},
+				esClientProvider: fakeClientProvider(clusterStateFileSettingsFixture(42, nil), nil),
+			},
+			post: func(r ReconcileStackConfigPolicy, recorder record.FakeRecorder) {
+				// Verify both copied secrets with source annotations were deleted
+				var copiedSecret1 corev1.Secret
+				err := r.Client.Get(context.Background(), types.NamespacedName{
+					Name:      esv1.StackConfigAdditionalSecretName("test-es", "test-secret-mount"),
+					Namespace: "ns",
+				}, &copiedSecret1)
+				assert.True(t, apierrors.IsNotFound(err), "first copied secret should be deleted (all SecretMounts removed)")
+
+				var copiedSecret2 corev1.Secret
+				err = r.Client.Get(context.Background(), types.NamespacedName{
+					Name:      esv1.StackConfigAdditionalSecretName("test-es", "another-secret-mount"),
+					Namespace: "ns",
+				}, &copiedSecret2)
+				assert.True(t, apierrors.IsNotFound(err), "second copied secret should be deleted (all SecretMounts removed)")
+
+				// Verify the secret without annotation was NOT deleted
+				var secretWithoutAnnotation corev1.Secret
+				err = r.Client.Get(context.Background(), types.NamespacedName{
+					Name:      esv1.StackConfigAdditionalSecretName("test-es", "test-es-other-secret"),
+					Namespace: "ns",
+				}, &secretWithoutAnnotation)
+				assert.NoError(t, err, "secret without source annotation should NOT be deleted")
+			},
+			wantErr:          false,
+			wantRequeueAfter: true,
+		},
 	}
 
 	for _, tt := range tests {
