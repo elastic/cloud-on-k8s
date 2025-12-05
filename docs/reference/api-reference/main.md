@@ -293,7 +293,7 @@ AutoOpsAgentPolicy represents an AutoOpsAgentPolicy resource in a Kubernetes clu
 | --- | --- |
 | *`version`* __string__ | Version of the AutoOpsAgentPolicy. |
 | *`resourceSelector`* __[LabelSelector](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.32/#labelselector-v1-meta)__ | ResourceSelector is a label selector for the resources to be configured.<br>Any Elasticsearch instances that match the selector will be configured to send data to AutoOps. |
-| *`config`* __[ConfigSource](#configsource)__ | Config holds the AutoOpsAgentPolicy configuration.<br>The contents of the referenced secret requires the following format:<br>  kind: Secret<br>  apiVersion: v1<br>  metadata:<br>    name: autoops-agent-policy-config<br>  stringData:<br>    ccmApiKey: aslkfjsldkjfslkdjflksdjfl<br>    tempResourceID: u857abce4-9214-446b-951c-a1644b7d204ao<br>    autoOpsOTelURL: https://otel.auto-ops.console.qa.cld.elstc.co<br>    autoOpsToken: skdfjdskjf |
+| *`config`* __[ConfigSource](#configsource)__ | Config holds the AutoOpsAgentPolicy configuration.<br>The contents of the referenced secret requires the following format:<br>  kind: Secret<br>  apiVersion: v1<br>  metadata:<br>    name: autoops-agent-policy-config<br>  stringData:<br>    ccmApiKey: aslkfjsldkjfslkdjflksdjfl<br>    autoOpsOTelURL: https://otel.auto-ops.console.qa.cld.elstc.co<br>    autoOpsToken: skdfjdskjf |
 
 
 

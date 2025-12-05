@@ -111,6 +111,11 @@ func (r *ReconcileAutoOpsAgentPolicy) Reconcile(ctx context.Context, request rec
 		return reconcile.Result{}, tracing.CaptureError(ctx, err)
 	}
 
+	if common.IsUnmanaged(ctx, &policy) {
+		ulog.FromContext(ctx).Info("Object is currently not managed by this controller. Skipping reconciliation")
+		return reconcile.Result{}, nil
+	}
+
 	state := NewState(policy)
 	results := reconciler.NewResult(ctx)
 
@@ -138,11 +143,6 @@ func (r *ReconcileAutoOpsAgentPolicy) Reconcile(ctx context.Context, request rec
 			}
 		}
 		return reconcile.Result{}, tracing.CaptureError(ctx, err)
-	}
-
-	if common.IsUnmanaged(ctx, &policy) {
-		ulog.FromContext(ctx).Info("Object is currently not managed by this controller. Skipping reconciliation")
-		return reconcile.Result{}, nil
 	}
 
 	if policy.IsMarkedForDeletion() {

@@ -131,7 +131,7 @@ func createAPIKey(
 	log.Info("Creating API key", "key", apiKeyName)
 
 	metadata := newMetadataFor(&policy, &es, expectedHash)
-	// Unfortunatelly we need to convert the metadata to a map[string]any to satisfy the APIKeyCreateRequest type.
+	// Unfortunately we need to convert the metadata to a map[string]any to satisfy the APIKeyCreateRequest type.
 	// We return map[string]string because this is also used when storing the API key in a secret.
 	metadataAny := make(map[string]any, len(metadata))
 	for k, v := range metadata {
@@ -301,9 +301,18 @@ func buildAutoOpsESAPIKeySecret(policy autoopsv1alpha1.AutoOpsAgentPolicy, es es
 	}
 }
 
+// IsManagedByAutoOps checks if an API key is managed by the autoops controller.
+func IsManagedByAutoOps(metadata map[string]any) bool {
+	if metadata == nil {
+		return false
+	}
+	_, exists := metadata[PolicyNameLabelKey]
+	return exists
+}
+
 // apiKeyNameFor generates a unique name for the API key according to the policy, and ES instance.
 func apiKeyNameFor(policy autoopsv1alpha1.AutoOpsAgentPolicy, es esv1.Elasticsearch) string {
-	return fmt.Sprintf("eck-autoops-%s-%s-%s-%s", policy.Namespace, policy.Name, es.Namespace, es.Name)
+	return fmt.Sprintf("autoops-%s-%s-%s-%s", policy.Namespace, policy.Name, es.Namespace, es.Name)
 }
 
 // apiKeySecretNameFrom generates the name for the API key secret from an ES instance.

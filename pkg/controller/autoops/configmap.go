@@ -71,7 +71,6 @@ const autoOpsESConfigTemplate = `receivers:
       - add_fields:
           target: autoops_es
           fields:
-            temp_resource_id: ${env:AUTOOPS_TEMP_RESOURCE_ID}
             token: ${env:AUTOOPS_TOKEN}
     output:
       otelconsumer: {}

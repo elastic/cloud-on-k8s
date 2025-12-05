@@ -1,3 +1,7 @@
+// Copyright Elasticsearch B.V. and/or licensed to Elasticsearch B.V. under one
+// or more contributor license agreements. Licensed under the Elastic License 2.0;
+// you may not use this file except in compliance with the Elastic License 2.0.
+
 package autoops
 
 import (
@@ -75,7 +79,7 @@ func (r *ReconcileAutoOpsAgentPolicy) deploymentParams(ctx context.Context, poli
 		autoOpsLabelName:       policy.Name,
 	}
 	deployment.ObjectMeta = metav1.ObjectMeta{
-		Name:      AutoOpsNamer.Suffix(es.Name, es.GetNamespace(), "deploy"),
+		Name:      AutoOpsNamer.Suffix(policy.GetName(), policy.GetNamespace(), es.GetName(), es.GetNamespace(), "deploy"),
 		Namespace: policy.GetNamespace(),
 		Labels:    labels,
 	}
@@ -83,7 +87,7 @@ func (r *ReconcileAutoOpsAgentPolicy) deploymentParams(ctx context.Context, poli
 		Replicas: pointer.Int32(1),
 		Selector: &metav1.LabelSelector{
 			MatchLabels: map[string]string{
-				autoOpsLabelName: policy.Name,
+				autoOpsLabelName: policy.GetName(),
 			},
 		},
 	}

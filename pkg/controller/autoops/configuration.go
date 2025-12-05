@@ -18,7 +18,6 @@ import (
 // Config holds the parsed configuration from the AutoOpsAgentPolicy configuration secret.
 type Config struct {
 	CCMApiKey      string
-	TempResourceID string
 	AutoOpsOTelURL string
 	AutoOpsToken   string
 }

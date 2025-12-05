@@ -272,7 +272,7 @@ func doReconcile(
 		// **************************************************************
 		for _, activeAPIKey := range activeAPIKeys.APIKeys {
 			// Skip API keys managed by the autoops controller.
-			if activeAPIKey.Metadata != nil && activeAPIKey.Metadata[autoops.PolicyNameLabelKey] != nil {
+			if autoops.IsManagedByAutoOps(activeAPIKey.Metadata) {
 				continue
 			}
 			clientCluster, err := activeAPIKey.GetElasticsearchName()

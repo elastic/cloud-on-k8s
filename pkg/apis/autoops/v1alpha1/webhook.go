@@ -27,6 +27,7 @@ var (
 		checkNoUnknownFields,
 		checkNameLength,
 		checkSupportedVersion,
+		checkConfigSecretName,
 		validSettings,
 	}
 )

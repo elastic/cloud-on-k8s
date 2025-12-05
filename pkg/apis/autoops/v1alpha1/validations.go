@@ -18,3 +18,10 @@ func checkNameLength(policy *AutoOpsAgentPolicy) field.ErrorList {
 func checkSupportedVersion(policy *AutoOpsAgentPolicy) field.ErrorList {
 	return commonv1.CheckSupportedStackVersion(policy.Spec.Version, version.SupportedAutoOpsAgentVersions)
 }
+
+func checkConfigSecretName(policy *AutoOpsAgentPolicy) field.ErrorList {
+	if policy.Spec.Config.SecretName == "" {
+		return field.ErrorList{field.Required(field.NewPath("spec").Child("config").Child("secretName"), "Config secret name must be specified")}
+	}
+	return nil
+}
