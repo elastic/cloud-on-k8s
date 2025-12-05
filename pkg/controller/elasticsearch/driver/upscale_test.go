@@ -6,6 +6,7 @@ package driver
 
 import (
 	"context"
+	"fmt"
 	"reflect"
 	"sort"
 	"sync"
@@ -28,6 +29,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/hash"
 	sset "github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/statefulset"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/bootstrap"
+	esclient "github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/client"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/label"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/nodespec"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/settings"
@@ -575,4 +577,89 @@ func Test_adjustResources(t *testing.T) {
 			require.Equal(t, tt.wantInitialMasterNodesAnnotation, updatedEs.Annotations[zen2.InitialMasterNodesAnnotation])
 		})
 	}
+}
+
+// errorESState is a mock ESState that returns errors for all operations,
+// simulating a completely unavailable Elasticsearch API (e.g., cluster overloaded).
+type errorESState struct{}
+
+func (e *errorESState) NodesInCluster(nodeNames []string) (bool, error) {
+	return false, fmt.Errorf("simulated ES API error: cluster overloaded")
+}
+
+func (e *errorESState) NodeNameToID() (map[string]string, error) {
+	return nil, fmt.Errorf("simulated ES API error: cluster overloaded")
+}
+
+func (e *errorESState) ShardAllocationsEnabled() (bool, error) {
+	return false, fmt.Errorf("simulated ES API error: cluster overloaded")
+}
+
+func (e *errorESState) Health() (esclient.Health, error) {
+	return esclient.Health{}, fmt.Errorf("simulated ES API error: cluster overloaded")
+}
+
+// TestHandleUpscaleAndSpecChanges_WithUnavailableESAPI verifies that upscales can proceed
+// even when the Elasticsearch API is completely unavailable (returning errors).
+// This demonstrates that upscale operations are resilient and don't depend on ES API availability.
+func TestHandleUpscaleAndSpecChanges_WithUnavailableESAPI(t *testing.T) {
+	es := esv1.Elasticsearch{
+		ObjectMeta: metav1.ObjectMeta{
+			Namespace:   "ns",
+			Name:        "es",
+			Annotations: map[string]string{bootstrap.ClusterUUIDAnnotationName: "uuid"}, // already bootstrapped
+		},
+		Spec: esv1.ElasticsearchSpec{Version: "9.3.0"},
+	}
+
+	// Create existing StatefulSets: 3 masters, 2 data nodes
+	actualStatefulSets := es_sset.StatefulSetList{
+		sset.TestSset{Name: "masters", Namespace: "ns", ClusterName: "es", Replicas: 3, Master: true, Data: false, Version: "9.3.0"}.Build(),
+		sset.TestSset{Name: "data", Namespace: "ns", ClusterName: "es", Replicas: 2, Master: false, Data: true, Version: "9.3.0"}.Build(),
+	}
+
+	k8sClient := k8s.NewFakeClient(&es, &actualStatefulSets[0], &actualStatefulSets[1])
+
+	// Create upscale context with an errorESState that always fails
+	ctx := upscaleCtx{
+		k8sClient:    k8sClient,
+		es:           es,
+		esState:      &errorESState{}, // Simulate completely unavailable ES API
+		expectations: expectations.NewExpectations(k8sClient),
+		parentCtx:    context.Background(),
+	}
+
+	// Expected: scale masters from 3 to 5, and data nodes from 2 to 6
+	expectedResources := nodespec.ResourcesList{
+		{
+			StatefulSet: sset.TestSset{Name: "masters", Namespace: "ns", ClusterName: "es", Replicas: 5, Master: true, Data: false, Version: "9.3.0"}.Build(),
+			HeadlessService: corev1.Service{
+				ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: "masters"},
+			},
+		},
+		{
+			StatefulSet: sset.TestSset{Name: "data", Namespace: "ns", ClusterName: "es", Replicas: 6, Master: false, Data: true, Version: "9.3.0"}.Build(),
+			HeadlessService: corev1.Service{
+				ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: "data"},
+			},
+		},
+	}
+
+	// Perform the upscale
+	res, err := HandleUpscaleAndSpecChanges(ctx, actualStatefulSets, expectedResources)
+
+	// Assert: upscale should succeed despite ES API being unavailable
+	require.NoError(t, err, "Upscale should succeed even when ES API is unavailable")
+	require.False(t, res.Requeue)
+	require.Len(t, res.ActualStatefulSets, 2)
+
+	// Verify masters were scaled from 3 to 5
+	var mastersSset appsv1.StatefulSet
+	require.NoError(t, k8sClient.Get(context.Background(), types.NamespacedName{Namespace: "ns", Name: "masters"}, &mastersSset))
+	require.Equal(t, ptr.To[int32](5), mastersSset.Spec.Replicas, "Masters should be scaled to 5")
+
+	// Verify data nodes were scaled from 2 to 6
+	var dataSset appsv1.StatefulSet
+	require.NoError(t, k8sClient.Get(context.Background(), types.NamespacedName{Namespace: "ns", Name: "data"}, &dataSset))
+	require.Equal(t, ptr.To[int32](6), dataSset.Spec.Replicas, "Data nodes should be scaled to 6")
 }
