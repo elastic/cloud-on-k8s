@@ -82,7 +82,6 @@ func (s *upscaleState) limitNodesCreation(
 	actual appsv1.StatefulSet,
 	toApply appsv1.StatefulSet,
 ) (appsv1.StatefulSet, error) {
-
 	actualReplicas := sset.GetReplicas(actual)
 	targetReplicas := sset.GetReplicas(toApply)
 
