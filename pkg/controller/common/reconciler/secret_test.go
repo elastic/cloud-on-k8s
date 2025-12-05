@@ -6,9 +6,11 @@ package reconciler
 
 import (
 	"context"
+	"encoding/json"
 	"reflect"
 	"testing"
 
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -257,6 +259,15 @@ func ownedSecret(namespace, name, ownerNs, ownerName, ownerKind string) *corev1.
 		}}}
 }
 
+func ownedSecretMultiRefs(namespace, name, ownerRefs, ownerKind string) *corev1.Secret {
+	return &corev1.Secret{
+		ObjectMeta: metav1.ObjectMeta{Namespace: namespace, Name: name, Labels: map[string]string{
+			SoftOwnerKindLabel: ownerKind,
+		}, Annotations: map[string]string{
+			SoftOwnerRefsAnnotation: ownerRefs,
+		}}}
+}
+
 func TestGarbageCollectSoftOwnedSecrets(t *testing.T) {
 	tests := []struct {
 		name            string
@@ -433,6 +444,37 @@ func TestGarbageCollectAllSoftOwnedOrphanSecrets(t *testing.T) {
 				ownedSecret("ns", "secret-1", "another-namespace", sampleOwner().Name, sampleOwner().Kind),
 			},
 		},
+		{
+			name: "secret with multiple soft-owners that all exist",
+			runtimeObjs: []client.Object{
+				&policyv1alpha1.StackConfigPolicy{ObjectMeta: metav1.ObjectMeta{Name: "policy-1", Namespace: "namespace-1"}},
+				&policyv1alpha1.StackConfigPolicy{ObjectMeta: metav1.ObjectMeta{Name: "policy-2", Namespace: "namespace-2"}},
+				&policyv1alpha1.StackConfigPolicy{ObjectMeta: metav1.ObjectMeta{Name: "policy-3", Namespace: "namespace-3"}},
+				ownedSecretMultiRefs("ns", "secret-1", `["namespace-1/policy-1","namespace-2/policy-2","namespace-3/policy-3"]`, "StackConfigPolicy"),
+			},
+			wantObjs: []client.Object{
+				ownedSecretMultiRefs("ns", "secret-1", `["namespace-1/policy-1","namespace-2/policy-2","namespace-3/policy-3"]`, "StackConfigPolicy"),
+			},
+		},
+		{
+			name: "secret with multiple soft-owners that all exist but some in different namespace",
+			runtimeObjs: []client.Object{
+				&policyv1alpha1.StackConfigPolicy{ObjectMeta: metav1.ObjectMeta{Name: "policy-1", Namespace: "namespace-1"}},
+				&policyv1alpha1.StackConfigPolicy{ObjectMeta: metav1.ObjectMeta{Name: "policy-2", Namespace: "namespace-other"}},
+				&policyv1alpha1.StackConfigPolicy{ObjectMeta: metav1.ObjectMeta{Name: "policy-3", Namespace: "namespace-3"}},
+				ownedSecretMultiRefs("ns", "secret-1", `["namespace-1/policy-1","namespace-2/policy-2","namespace-3/policy-3"]`, "StackConfigPolicy"),
+			},
+			wantObjs: []client.Object{
+				ownedSecretMultiRefs("ns", "secret-1", `["namespace-1/policy-1","namespace-2/policy-2","namespace-3/policy-3"]`, "StackConfigPolicy"),
+			},
+		},
+		{
+			name: "secret with multiple soft-owners that none exists",
+			runtimeObjs: []client.Object{
+				ownedSecretMultiRefs("ns", "secret-1", `["namespace-1/policy-1","namespace-2/policy-2","namespace-3/policy-3"]`, "StackConfigPolicy"),
+			},
+			wantObjs: []client.Object{},
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -543,6 +585,484 @@ func TestSoftOwnerRefFromLabels(t *testing.T) {
 			if got1 != tt.wantReferenced {
 				t.Errorf("SoftOwnerRefFromLabels() got1 = %v, want %v", got1, tt.wantReferenced)
 			}
+		})
+	}
+}
+
+//nolint:thelper
+func TestSoftOwnerRefs(t *testing.T) {
+	tests := []struct {
+		name     string
+		secret   *corev1.Secret
+		validate func(t *testing.T, owners []SoftOwnerRef, err error)
+	}{
+		{
+			name: "returns multi-owner policies from annotation",
+			secret: &corev1.Secret{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "test-secret",
+					Namespace: "test-namespace",
+					Labels: map[string]string{
+						SoftOwnerKindLabel: policyv1alpha1.Kind,
+					},
+					Annotations: map[string]string{
+						SoftOwnerRefsAnnotation: `["namespace-1/policy-1","namespace-2/policy-2"]`,
+					},
+				},
+			},
+			validate: func(t *testing.T, owners []SoftOwnerRef, err error) {
+				require.NoError(t, err)
+				require.Len(t, owners, 2)
+				assert.Contains(t, owners, SoftOwnerRef{Name: "policy-1", Namespace: "namespace-1", Kind: policyv1alpha1.Kind})
+				assert.Contains(t, owners, SoftOwnerRef{Name: "policy-2", Namespace: "namespace-2", Kind: policyv1alpha1.Kind})
+			},
+		},
+		{
+			name: "returns single-owner policy from labels",
+			secret: &corev1.Secret{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "test-secret",
+					Namespace: "test-namespace",
+					Labels: map[string]string{
+						SoftOwnerKindLabel:      policyv1alpha1.Kind,
+						SoftOwnerNameLabel:      "single-policy",
+						SoftOwnerNamespaceLabel: "single-namespace",
+					},
+				},
+			},
+			validate: func(t *testing.T, owners []SoftOwnerRef, err error) {
+				require.NoError(t, err)
+				require.Len(t, owners, 1)
+				assert.Equal(t, SoftOwnerRef{Name: "single-policy", Namespace: "single-namespace", Kind: policyv1alpha1.Kind}, owners[0])
+			},
+		},
+		{
+			name: "returns nil when secret has kind label but no owner labels",
+			secret: &corev1.Secret{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "test-secret",
+					Namespace: "test-namespace",
+					Labels: map[string]string{
+						SoftOwnerKindLabel: policyv1alpha1.Kind,
+						"other-label":      "other-value",
+					},
+				},
+			},
+			validate: func(t *testing.T, owners []SoftOwnerRef, err error) {
+				require.NoError(t, err)
+				assert.Nil(t, owners)
+			},
+		},
+		{
+			name: "returns nil for non-policy-owned secret",
+			secret: &corev1.Secret{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "test-secret",
+					Namespace: "test-namespace",
+					Labels: map[string]string{
+						"some-other-label": "some-value",
+					},
+				},
+			},
+			validate: func(t *testing.T, owners []SoftOwnerRef, err error) {
+				require.NoError(t, err)
+				assert.Nil(t, owners)
+			},
+		},
+		{
+			name: "returns error for invalid JSON in annotation",
+			secret: &corev1.Secret{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "test-secret",
+					Namespace: "test-namespace",
+					Labels: map[string]string{
+						SoftOwnerKindLabel: policyv1alpha1.Kind,
+					},
+					Annotations: map[string]string{
+						SoftOwnerRefsAnnotation: `invalid-json`,
+					},
+				},
+			},
+			validate: func(t *testing.T, owners []SoftOwnerRef, err error) {
+				require.Error(t, err)
+				assert.Nil(t, owners)
+			},
+		},
+		{
+			name: "skips malformed namespaced names in annotation",
+			secret: &corev1.Secret{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "test-secret",
+					Namespace: "test-namespace",
+					Labels: map[string]string{
+						SoftOwnerKindLabel: policyv1alpha1.Kind,
+					},
+					Annotations: map[string]string{
+						SoftOwnerRefsAnnotation: `["namespace-1/policy-1","malformed","too/many/slashes"]`,
+					},
+				},
+			},
+			validate: func(t *testing.T, owners []SoftOwnerRef, err error) {
+				require.NoError(t, err)
+				require.Len(t, owners, 1)
+				assert.Equal(t, SoftOwnerRef{Name: "policy-1", Namespace: "namespace-1", Kind: policyv1alpha1.Kind}, owners[0])
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			owners, err := SoftOwnerRefs(tt.secret)
+			tt.validate(t, owners, err)
+		})
+	}
+}
+
+//nolint:thelper
+func TestSetSingleSoftOwner(t *testing.T) {
+	tests := []struct {
+		name     string
+		obj      *corev1.Secret
+		owner    SoftOwnerRef
+		validate func(t *testing.T, obj *corev1.Secret)
+	}{
+		{
+			name: "sets soft owner labels on empty object",
+			obj:  &corev1.Secret{},
+			owner: SoftOwnerRef{
+				Namespace: "test-namespace",
+				Name:      "test-owner",
+				Kind:      "TestKind",
+			},
+			validate: func(t *testing.T, obj *corev1.Secret) {
+				assert.Equal(t, "TestKind", obj.Labels[SoftOwnerKindLabel])
+				assert.Equal(t, "test-owner", obj.Labels[SoftOwnerNameLabel])
+				assert.Equal(t, "test-namespace", obj.Labels[SoftOwnerNamespaceLabel])
+			},
+		},
+		{
+			name: "overwrites existing soft owner labels",
+			obj: &corev1.Secret{
+				ObjectMeta: metav1.ObjectMeta{
+					Labels: map[string]string{
+						SoftOwnerKindLabel:      "OldKind",
+						SoftOwnerNameLabel:      "old-owner",
+						SoftOwnerNamespaceLabel: "old-namespace",
+						"existing-label":        "existing-value",
+					},
+					Annotations: map[string]string{
+						SoftOwnerRefsAnnotation: `["old/owner"]`,
+						"existing-annotation":   "existing-value",
+					},
+				},
+			},
+			owner: SoftOwnerRef{
+				Namespace: "new-namespace",
+				Name:      "new-owner",
+				Kind:      "NewKind",
+			},
+			validate: func(t *testing.T, obj *corev1.Secret) {
+				assert.Equal(t, "NewKind", obj.Labels[SoftOwnerKindLabel])
+				assert.Equal(t, "new-owner", obj.Labels[SoftOwnerNameLabel])
+				assert.Equal(t, "new-namespace", obj.Labels[SoftOwnerNamespaceLabel])
+				assert.Equal(t, "existing-value", obj.Labels["existing-label"])
+				assert.NotContains(t, obj.Annotations, SoftOwnerRefsAnnotation)
+				assert.Equal(t, "existing-value", obj.Annotations["existing-annotation"])
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			SetSingleSoftOwner(tt.obj, tt.owner)
+			tt.validate(t, tt.obj)
+		})
+	}
+}
+
+//nolint:thelper
+func TestSetMultipleSoftOwners(t *testing.T) {
+	tests := []struct {
+		name      string
+		obj       *corev1.Secret
+		ownerKind string
+		owners    []types.NamespacedName
+		validate  func(t *testing.T, obj *corev1.Secret, err error)
+	}{
+		{
+			name:      "sets multiple owners on empty object",
+			obj:       &corev1.Secret{},
+			ownerKind: "TestKind",
+			owners: []types.NamespacedName{
+				{Namespace: "ns1", Name: "owner1"},
+				{Namespace: "ns2", Name: "owner2"},
+			},
+			validate: func(t *testing.T, obj *corev1.Secret, err error) {
+				require.NoError(t, err)
+				assert.Equal(t, "TestKind", obj.Labels[SoftOwnerKindLabel])
+				assert.NotContains(t, obj.Labels, SoftOwnerNameLabel)
+				assert.NotContains(t, obj.Labels, SoftOwnerNamespaceLabel)
+
+				var ownerRefs []string
+				err = json.Unmarshal([]byte(obj.Annotations[SoftOwnerRefsAnnotation]), &ownerRefs)
+				require.NoError(t, err)
+				assert.ElementsMatch(t, []string{"ns1/owner1", "ns2/owner2"}, ownerRefs)
+			},
+		},
+		{
+			name: "removes single-owner labels when setting multiple owners",
+			obj: &corev1.Secret{
+				ObjectMeta: metav1.ObjectMeta{
+					Labels: map[string]string{
+						SoftOwnerKindLabel:      "TestKind",
+						SoftOwnerNameLabel:      "old-owner",
+						SoftOwnerNamespaceLabel: "old-namespace",
+					},
+				},
+			},
+			ownerKind: "TestKind",
+			owners: []types.NamespacedName{
+				{Namespace: "ns1", Name: "owner1"},
+			},
+			validate: func(t *testing.T, obj *corev1.Secret, err error) {
+				require.NoError(t, err)
+				assert.NotContains(t, obj.Labels, SoftOwnerNameLabel)
+				assert.NotContains(t, obj.Labels, SoftOwnerNamespaceLabel)
+			},
+		},
+		{
+			name:      "deduplicates owners",
+			obj:       &corev1.Secret{},
+			ownerKind: "TestKind",
+			owners: []types.NamespacedName{
+				{Namespace: "ns1", Name: "owner1"},
+				{Namespace: "ns1", Name: "owner1"}, // duplicate
+				{Namespace: "ns2", Name: "owner2"},
+			},
+			validate: func(t *testing.T, obj *corev1.Secret, err error) {
+				require.NoError(t, err)
+				var ownerRefs []string
+				err = json.Unmarshal([]byte(obj.Annotations[SoftOwnerRefsAnnotation]), &ownerRefs)
+				require.NoError(t, err)
+				assert.Len(t, ownerRefs, 2)
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			err := SetMultipleSoftOwners(tt.obj, tt.ownerKind, tt.owners)
+			tt.validate(t, tt.obj, err)
+		})
+	}
+}
+
+//nolint:thelper
+func TestRemoveSoftOwner(t *testing.T) {
+	tests := []struct {
+		name      string
+		obj       *corev1.Secret
+		owner     types.NamespacedName
+		wantCount int
+		wantErr   bool
+		validate  func(t *testing.T, obj *corev1.Secret)
+	}{
+		{
+			name: "removes owner from multi-owner with remaining owners",
+			obj: &corev1.Secret{
+				ObjectMeta: metav1.ObjectMeta{
+					Labels: map[string]string{
+						SoftOwnerKindLabel: "TestKind",
+					},
+					Annotations: map[string]string{
+						SoftOwnerRefsAnnotation: `["ns1/owner1","ns2/owner2","ns3/owner3"]`,
+					},
+				},
+			},
+			owner:     types.NamespacedName{Namespace: "ns2", Name: "owner2"},
+			wantCount: 2,
+			validate: func(t *testing.T, obj *corev1.Secret) {
+				var ownerRefs []string
+				err := json.Unmarshal([]byte(obj.Annotations[SoftOwnerRefsAnnotation]), &ownerRefs)
+				require.NoError(t, err)
+				assert.ElementsMatch(t, []string{"ns1/owner1", "ns3/owner3"}, ownerRefs)
+				assert.Equal(t, "TestKind", obj.Labels[SoftOwnerKindLabel])
+			},
+		},
+		{
+			name: "removes last owner and cleans up annotation",
+			obj: &corev1.Secret{
+				ObjectMeta: metav1.ObjectMeta{
+					Labels: map[string]string{
+						SoftOwnerKindLabel: "TestKind",
+					},
+					Annotations: map[string]string{
+						SoftOwnerRefsAnnotation: `["ns1/owner1"]`,
+						"other-annotation":      "preserved",
+					},
+				},
+			},
+			owner:     types.NamespacedName{Namespace: "ns1", Name: "owner1"},
+			wantCount: 0,
+			validate: func(t *testing.T, obj *corev1.Secret) {
+				assert.NotContains(t, obj.Annotations, SoftOwnerRefsAnnotation)
+				assert.Equal(t, "preserved", obj.Annotations["other-annotation"])
+			},
+		},
+		{
+			name: "removes matching single-owner",
+			obj: &corev1.Secret{
+				ObjectMeta: metav1.ObjectMeta{
+					Labels: map[string]string{
+						SoftOwnerKindLabel:      "TestKind",
+						SoftOwnerNameLabel:      "single-owner",
+						SoftOwnerNamespaceLabel: "single-namespace",
+						"other-label":           "preserved",
+					},
+				},
+			},
+			owner:     types.NamespacedName{Namespace: "single-namespace", Name: "single-owner"},
+			wantCount: 0,
+			validate: func(t *testing.T, obj *corev1.Secret) {
+				assert.NotContains(t, obj.Labels, SoftOwnerNameLabel)
+				assert.NotContains(t, obj.Labels, SoftOwnerNamespaceLabel)
+				assert.Equal(t, "preserved", obj.Labels["other-label"])
+			},
+		},
+		{
+			name: "returns 1 when owner doesn't match single-owner",
+			obj: &corev1.Secret{
+				ObjectMeta: metav1.ObjectMeta{
+					Labels: map[string]string{
+						SoftOwnerKindLabel:      "TestKind",
+						SoftOwnerNameLabel:      "existing-owner",
+						SoftOwnerNamespaceLabel: "existing-namespace",
+					},
+				},
+			},
+			owner:     types.NamespacedName{Namespace: "different-namespace", Name: "different-owner"},
+			wantCount: 1,
+			validate: func(t *testing.T, obj *corev1.Secret) {
+				assert.Equal(t, "existing-owner", obj.Labels[SoftOwnerNameLabel])
+				assert.Equal(t, "existing-namespace", obj.Labels[SoftOwnerNamespaceLabel])
+				assert.Equal(t, "TestKind", obj.Labels[SoftOwnerKindLabel])
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			count, err := RemoveSoftOwner(tt.obj, tt.owner)
+			if tt.wantErr {
+				require.Error(t, err)
+			} else {
+				require.NoError(t, err)
+			}
+			assert.Equal(t, tt.wantCount, count)
+			if tt.validate != nil {
+				tt.validate(t, tt.obj)
+			}
+		})
+	}
+}
+
+func TestIsSoftOwnedBy(t *testing.T) {
+	tests := []struct {
+		name      string
+		obj       *corev1.Secret
+		ownerKind string
+		owner     types.NamespacedName
+		want      bool
+		wantErr   bool
+	}{
+		{
+			name: "returns true for multi-owner match",
+			obj: &corev1.Secret{
+				ObjectMeta: metav1.ObjectMeta{
+					Labels: map[string]string{
+						SoftOwnerKindLabel: "TestKind",
+					},
+					Annotations: map[string]string{
+						SoftOwnerRefsAnnotation: `["ns1/owner1","ns2/owner2"]`,
+					},
+				},
+			},
+			ownerKind: "TestKind",
+			owner:     types.NamespacedName{Namespace: "ns1", Name: "owner1"},
+			want:      true,
+		},
+		{
+			name: "returns false for multi-owner non-match",
+			obj: &corev1.Secret{
+				ObjectMeta: metav1.ObjectMeta{
+					Labels: map[string]string{
+						SoftOwnerKindLabel: "TestKind",
+					},
+					Annotations: map[string]string{
+						SoftOwnerRefsAnnotation: `["ns1/owner1","ns2/owner2"]`,
+					},
+				},
+			},
+			ownerKind: "TestKind",
+			owner:     types.NamespacedName{Namespace: "ns3", Name: "owner3"},
+			want:      false,
+		},
+		{
+			name: "returns true for single-owner match",
+			obj: &corev1.Secret{
+				ObjectMeta: metav1.ObjectMeta{
+					Labels: map[string]string{
+						SoftOwnerKindLabel:      "TestKind",
+						SoftOwnerNameLabel:      "single-owner",
+						SoftOwnerNamespaceLabel: "single-namespace",
+					},
+				},
+			},
+			ownerKind: "TestKind",
+			owner:     types.NamespacedName{Namespace: "single-namespace", Name: "single-owner"},
+			want:      true,
+		},
+		{
+			name: "returns false for single-owner non-match",
+			obj: &corev1.Secret{
+				ObjectMeta: metav1.ObjectMeta{
+					Labels: map[string]string{
+						SoftOwnerKindLabel:      "TestKind",
+						SoftOwnerNameLabel:      "single-owner",
+						SoftOwnerNamespaceLabel: "single-namespace",
+					},
+				},
+			},
+			ownerKind: "TestKind",
+			owner:     types.NamespacedName{Namespace: "different-namespace", Name: "different-owner"},
+			want:      false,
+		},
+		{
+			name: "returns false for wrong kind",
+			obj: &corev1.Secret{
+				ObjectMeta: metav1.ObjectMeta{
+					Labels: map[string]string{
+						SoftOwnerKindLabel:      "DifferentKind",
+						SoftOwnerNameLabel:      "owner",
+						SoftOwnerNamespaceLabel: "namespace",
+					},
+				},
+			},
+			ownerKind: "TestKind",
+			owner:     types.NamespacedName{Namespace: "namespace", Name: "owner"},
+			want:      false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, err := IsSoftOwnedBy(tt.obj, tt.ownerKind, tt.owner)
+			if tt.wantErr {
+				require.Error(t, err)
+			} else {
+				require.NoError(t, err)
+			}
+			assert.Equal(t, tt.want, got)
 		})
 	}
 }

@@ -81,12 +81,12 @@ func newEmptySettingsState() SettingsState {
 }
 
 // updateState updates the Settings state from a StackConfigPolicy for a given Elasticsearch.
-func (s *Settings) updateState(es types.NamespacedName, policy policyv1alpha1.StackConfigPolicy) error {
-	p := policy.DeepCopy() // be sure to not mutate the original policy
+func (s *Settings) updateState(es types.NamespacedName, esConfigPolicy policyv1alpha1.ElasticsearchConfigPolicySpec) error {
+	esConfigPolicy = *esConfigPolicy.DeepCopy() // be sure to not mutate the original es config policy
 	state := newEmptySettingsState()
 	// mutate Snapshot Repositories
-	if p.Spec.Elasticsearch.SnapshotRepositories != nil {
-		for name, untypedDefinition := range p.Spec.Elasticsearch.SnapshotRepositories.Data {
+	if esConfigPolicy.SnapshotRepositories != nil {
+		for name, untypedDefinition := range esConfigPolicy.SnapshotRepositories.Data {
 			definition, ok := untypedDefinition.(map[string]interface{})
 			if !ok {
 				return fmt.Errorf(`invalid type (%T) for definition of snapshot repository %q of Elasticsearch "%s/%s"`, untypedDefinition, name, es.Namespace, es.Name)
@@ -95,31 +95,31 @@ func (s *Settings) updateState(es types.NamespacedName, policy policyv1alpha1.St
 			if err != nil {
 				return err
 			}
-			p.Spec.Elasticsearch.SnapshotRepositories.Data[name] = repoSettings
+			esConfigPolicy.SnapshotRepositories.Data[name] = repoSettings
 		}
-		state.SnapshotRepositories = p.Spec.Elasticsearch.SnapshotRepositories
+		state.SnapshotRepositories = esConfigPolicy.SnapshotRepositories
 	}
 	// just copy other settings
-	if p.Spec.Elasticsearch.ClusterSettings != nil {
-		state.ClusterSettings = p.Spec.Elasticsearch.ClusterSettings
+	if esConfigPolicy.ClusterSettings != nil {
+		state.ClusterSettings = esConfigPolicy.ClusterSettings
 	}
-	if p.Spec.Elasticsearch.SnapshotLifecyclePolicies != nil {
-		state.SLM = p.Spec.Elasticsearch.SnapshotLifecyclePolicies
+	if esConfigPolicy.SnapshotLifecyclePolicies != nil {
+		state.SLM = esConfigPolicy.SnapshotLifecyclePolicies
 	}
-	if p.Spec.Elasticsearch.SecurityRoleMappings != nil {
-		state.RoleMappings = p.Spec.Elasticsearch.SecurityRoleMappings
+	if esConfigPolicy.SecurityRoleMappings != nil {
+		state.RoleMappings = esConfigPolicy.SecurityRoleMappings
 	}
-	if p.Spec.Elasticsearch.IndexLifecyclePolicies != nil {
-		state.IndexLifecyclePolicies = p.Spec.Elasticsearch.IndexLifecyclePolicies
+	if esConfigPolicy.IndexLifecyclePolicies != nil {
+		state.IndexLifecyclePolicies = esConfigPolicy.IndexLifecyclePolicies
 	}
-	if p.Spec.Elasticsearch.IngestPipelines != nil {
-		state.IngestPipelines = p.Spec.Elasticsearch.IngestPipelines
+	if esConfigPolicy.IngestPipelines != nil {
+		state.IngestPipelines = esConfigPolicy.IngestPipelines
 	}
-	if p.Spec.Elasticsearch.IndexTemplates.ComposableIndexTemplates != nil {
-		state.IndexTemplates.ComposableIndexTemplates = p.Spec.Elasticsearch.IndexTemplates.ComposableIndexTemplates
+	if esConfigPolicy.IndexTemplates.ComposableIndexTemplates != nil {
+		state.IndexTemplates.ComposableIndexTemplates = esConfigPolicy.IndexTemplates.ComposableIndexTemplates
 	}
-	if p.Spec.Elasticsearch.IndexTemplates.ComponentTemplates != nil {
-		state.IndexTemplates.ComponentTemplates = p.Spec.Elasticsearch.IndexTemplates.ComponentTemplates
+	if esConfigPolicy.IndexTemplates.ComponentTemplates != nil {
+		state.IndexTemplates.ComponentTemplates = esConfigPolicy.IndexTemplates.ComponentTemplates
 	}
 	s.State = state
 	return nil
