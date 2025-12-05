@@ -45,7 +45,6 @@ type UpscaleResults struct {
 // - create any new StatefulSets
 // - update existing StatefulSets specification, to be used for future pods rotation
 // - upscale StatefulSet for which we expect more replicas
-// - limit master node creation to one at a time
 // - resize (inline) existing PVCs to match new StatefulSet storage reqs and schedule the StatefulSet recreation
 // It does not:
 // - perform any StatefulSet downscale (left for downscale phase)

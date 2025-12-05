@@ -32,6 +32,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/nodespec"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/settings"
 	es_sset "github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/sset"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/version/zen2"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/k8s"
 )
 
@@ -342,62 +343,62 @@ func Test_adjustStatefulSetReplicas(t *testing.T) {
 		{
 			name: "new StatefulSet to create",
 			args: args{
-				state:              &upscaleState{masterState: &masterUpscaleState{isBootstrapped: true, allowMasterCreation: false}, createsAllowed: ptr.To[int32](3)},
+				state:              &upscaleState{createsAllowed: ptr.To[int32](3)},
 				actualStatefulSets: es_sset.StatefulSetList{},
 				expected:           sset.TestSset{Name: "new-sset", Replicas: 3}.Build(),
 			},
 			want:             sset.TestSset{Name: "new-sset", Replicas: 3}.Build(),
-			wantUpscaleState: &upscaleState{recordedCreates: 3, masterState: &masterUpscaleState{isBootstrapped: true, allowMasterCreation: false}, createsAllowed: ptr.To[int32](3)},
+			wantUpscaleState: &upscaleState{recordedCreates: 3, createsAllowed: ptr.To[int32](3)},
 		},
 		{
 			name: "same StatefulSet already exists",
 			args: args{
-				state:              &upscaleState{masterState: &masterUpscaleState{isBootstrapped: true, allowMasterCreation: false}, createsAllowed: ptr.To[int32](3)},
+				state:              &upscaleState{createsAllowed: ptr.To[int32](3)},
 				actualStatefulSets: es_sset.StatefulSetList{sset.TestSset{Name: "sset", Replicas: 3}.Build()},
 				expected:           sset.TestSset{Name: "sset", Replicas: 3}.Build(),
 			},
 			want:             sset.TestSset{Name: "sset", Replicas: 3}.Build(),
-			wantUpscaleState: &upscaleState{recordedCreates: 0, masterState: &masterUpscaleState{isBootstrapped: true, allowMasterCreation: false}, createsAllowed: ptr.To[int32](3)},
+			wantUpscaleState: &upscaleState{recordedCreates: 0, createsAllowed: ptr.To[int32](3)},
 		},
 		{
 			name: "downscale case",
 			args: args{
-				state:              &upscaleState{masterState: &masterUpscaleState{isBootstrapped: true, allowMasterCreation: false}, createsAllowed: ptr.To[int32](3)},
+				state:              &upscaleState{createsAllowed: ptr.To[int32](3)},
 				actualStatefulSets: es_sset.StatefulSetList{sset.TestSset{Name: "sset", Replicas: 3}.Build()},
 				expected:           sset.TestSset{Name: "sset", Replicas: 1}.Build(),
 			},
 			want:             sset.TestSset{Name: "sset", Replicas: 3}.Build(),
-			wantUpscaleState: &upscaleState{recordedCreates: 0, masterState: &masterUpscaleState{isBootstrapped: true, allowMasterCreation: false}, createsAllowed: ptr.To[int32](3)},
+			wantUpscaleState: &upscaleState{recordedCreates: 0, createsAllowed: ptr.To[int32](3)},
 		},
 		{
 			name: "upscale case: data nodes",
 			args: args{
-				state:              &upscaleState{masterState: &masterUpscaleState{isBootstrapped: true, allowMasterCreation: false}, createsAllowed: ptr.To[int32](3)},
+				state:              &upscaleState{createsAllowed: ptr.To[int32](3)},
 				actualStatefulSets: es_sset.StatefulSetList{sset.TestSset{Name: "sset", Replicas: 3, Master: false, Data: true}.Build()},
 				expected:           sset.TestSset{Name: "sset", Replicas: 5, Master: false, Data: true}.Build(),
 			},
 			want:             sset.TestSset{Name: "sset", Replicas: 5, Master: false, Data: true}.Build(),
-			wantUpscaleState: &upscaleState{recordedCreates: 2, masterState: &masterUpscaleState{isBootstrapped: true, allowMasterCreation: false}, createsAllowed: ptr.To[int32](3)},
+			wantUpscaleState: &upscaleState{recordedCreates: 2, createsAllowed: ptr.To[int32](3)},
 		},
 		{
-			name: "upscale case: master nodes - one by one",
+			name: "upscale case: master nodes (one allowed by maxSurge)",
 			args: args{
-				state:              &upscaleState{masterState: &masterUpscaleState{isBootstrapped: true, allowMasterCreation: true}, createsAllowed: ptr.To[int32](3)},
+				state:              &upscaleState{createsAllowed: ptr.To[int32](1)},
 				actualStatefulSets: es_sset.StatefulSetList{sset.TestSset{Name: "sset", Replicas: 3, Master: true, Data: true}.Build()},
 				expected:           sset.TestSset{Name: "sset", Replicas: 5, Master: true, Data: true}.Build(),
 			},
 			want:             sset.TestSset{Name: "sset", Replicas: 4, Master: true, Data: true}.Build(),
-			wantUpscaleState: &upscaleState{recordedCreates: 1, masterState: &masterUpscaleState{isBootstrapped: true, allowMasterCreation: false}, createsAllowed: ptr.To[int32](3)},
+			wantUpscaleState: &upscaleState{recordedCreates: 1, createsAllowed: ptr.To[int32](1)},
 		},
 		{
-			name: "upscale case: new additional master sset - one by one",
+			name: "upscale case: new additional master sset",
 			args: args{
-				state:              &upscaleState{masterState: &masterUpscaleState{isBootstrapped: true, allowMasterCreation: true}, createsAllowed: ptr.To[int32](3)},
+				state:              &upscaleState{createsAllowed: ptr.To[int32](3)},
 				actualStatefulSets: es_sset.StatefulSetList{sset.TestSset{Name: "sset", Replicas: 3, Master: true, Data: true}.Build()},
 				expected:           sset.TestSset{Name: "sset-2", Replicas: 3, Master: true, Data: true}.Build(),
 			},
-			want:             sset.TestSset{Name: "sset-2", Replicas: 1, Master: true, Data: true}.Build(),
-			wantUpscaleState: &upscaleState{recordedCreates: 1, masterState: &masterUpscaleState{isBootstrapped: true, allowMasterCreation: false}, createsAllowed: ptr.To[int32](3)},
+			want:             sset.TestSset{Name: "sset-2", Replicas: 3, Master: true, Data: true}.Build(),
+			wantUpscaleState: &upscaleState{recordedCreates: 3, createsAllowed: ptr.To[int32](3)},
 		},
 	}
 	for _, tt := range tests {
@@ -501,9 +502,10 @@ func Test_adjustResources(t *testing.T) {
 		expectedResources  nodespec.ResourcesList
 	}
 	tests := []struct {
-		name      string
-		args      args
-		wantSsets es_sset.StatefulSetList
+		name                             string
+		args                             args
+		wantSsets                        es_sset.StatefulSetList
+		wantInitialMasterNodesAnnotation string
 	}{
 		{
 			name: "initial cluster creation: add all masters from several nodeSets",
@@ -528,9 +530,10 @@ func Test_adjustResources(t *testing.T) {
 				sset.TestSset{Name: "masters1", Master: true, Replicas: 3, Namespace: "ns", ClusterName: "es", Version: "7.5.0"}.Build(),
 				sset.TestSset{Name: "masters2", Master: true, Replicas: 3, Namespace: "ns", ClusterName: "es", Version: "7.5.0"}.Build(),
 			},
+			wantInitialMasterNodesAnnotation: "masters1-0,masters1-1,masters1-2,masters2-0,masters2-1,masters2-2",
 		},
 		{
-			name: "cluster already bootstrapped: add masters one by one",
+			name: "cluster already bootstrapped: add masters but do not add to initial master nodes",
 			args: args{
 				es: esv1.Elasticsearch{
 					ObjectMeta: metav1.ObjectMeta{Name: "es", Namespace: "ns", Annotations: map[string]string{bootstrap.ClusterUUIDAnnotationName: "uuid"}},
@@ -549,9 +552,10 @@ func Test_adjustResources(t *testing.T) {
 				},
 			},
 			wantSsets: es_sset.StatefulSetList{
-				sset.TestSset{Name: "masters1", Master: true, Replicas: 1, Namespace: "ns", ClusterName: "es", Version: "7.5.0"}.Build(),
-				sset.TestSset{Name: "masters2", Master: true, Replicas: 0, Namespace: "ns", ClusterName: "es", Version: "7.5.0"}.Build(),
+				sset.TestSset{Name: "masters1", Master: true, Replicas: 3, Namespace: "ns", ClusterName: "es", Version: "7.5.0"}.Build(),
+				sset.TestSset{Name: "masters2", Master: true, Replicas: 3, Namespace: "ns", ClusterName: "es", Version: "7.5.0"}.Build(),
 			},
+			wantInitialMasterNodesAnnotation: "", // do not set initial master nodes annotation when cluster is already bootstrapped
 		},
 	}
 	for _, tt := range tests {
@@ -566,6 +570,9 @@ func Test_adjustResources(t *testing.T) {
 			got, err := adjustResources(ctx, tt.args.actualStatefulSets, tt.args.expectedResources)
 			require.NoError(t, err)
 			require.Nil(t, deep.Equal(got.StatefulSets(), tt.wantSsets))
+			var updatedEs esv1.Elasticsearch
+			require.NoError(t, k8sClient.Get(context.Background(), k8s.ExtractNamespacedName(&tt.args.es), &updatedEs))
+			require.Equal(t, tt.wantInitialMasterNodesAnnotation, updatedEs.Annotations[zen2.InitialMasterNodesAnnotation])
 		})
 	}
 }

@@ -43,7 +43,6 @@ StatefulSets generation expectations.
 ## Give me some concrete examples why this is useful!
 
 Things that could happen without this mechanism in place:
-- create more than one master node at a time
 - delete more than one master node at a time
 - outgrow the changeBudget during upscale and downscales
 - clear shards allocation excludes for a node that is not removed yet
