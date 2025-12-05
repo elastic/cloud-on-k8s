@@ -28,7 +28,6 @@ var defaultConfig = []byte(`
 elasticsearch:
 server:
   host: "0.0.0.0"
-  name: "testkb"
   ssl:
     enabled: true
     key: /mnt/elastic-internal/http-certs/tls.key
@@ -48,7 +47,6 @@ var defaultConfig8 = []byte(`
 elasticsearch:
 server:
   host: "0.0.0.0"
-  name: "testkb"
   ssl:
     enabled: true
     key: /mnt/elastic-internal/http-certs/tls.key
