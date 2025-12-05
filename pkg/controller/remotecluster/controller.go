@@ -266,7 +266,7 @@ func doReconcile(
 		results.WithResults(reconcileAPIKeys(ctx, r.Client, activeAPIKeys, remoteServer, remoteClient, remoteClusterRefs, esClient, r.keystoreProvider))
 	}
 
-	if remoteServerSupportsClusterAPIKeys.IsTrue() {
+	if remoteServerSupportsClusterAPIKeys.IsTrue() { //nolint:nestif
 		// **************************************************************
 		// Delete orphaned API keys from clusters which have been deleted
 		// **************************************************************
