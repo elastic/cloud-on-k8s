@@ -6,8 +6,8 @@ toolchain go1.25.5
 
 require (
 	github.com/stretchr/testify v1.11.1
-	golang.org/x/net v0.46.0
-	golang.org/x/oauth2 v0.33.0
+	golang.org/x/net v0.47.0
+	golang.org/x/oauth2 v0.34.0
 )
 
 require (
