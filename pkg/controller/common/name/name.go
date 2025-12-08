@@ -64,12 +64,6 @@ func NewNamer(defaultSuffixes ...string) Namer {
 	}
 }
 
-// WithMaxNameLength returns a new Namer with updated max name length.
-func (n Namer) WithMaxNameLength(length int) Namer {
-	n.MaxNameLength = length
-	return n
-}
-
 // WithDefaultSuffixes returns a new Namer with updated default suffixes.
 func (n Namer) WithDefaultSuffixes(defaultSuffixes ...string) Namer {
 	n.DefaultSuffixes = defaultSuffixes

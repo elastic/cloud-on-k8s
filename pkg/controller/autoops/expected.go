@@ -6,6 +6,7 @@ package autoops
 
 import (
 	"context"
+	"crypto/sha256"
 	"fmt"
 	"hash/fnv"
 	"path"
@@ -41,9 +42,8 @@ const (
 
 var (
 	// ESNAutoOpsNamer is a Namer that generates names for AutoOps deployments
-	// according to the Policy name, and associated Elasticsearch name ensuring
-	// the name doesn't exceed the max length of 27 characters for deployments.
-	AutoOpsNamer    = common_name.NewNamer("autoops").WithMaxNameLength(27)
+	// according to the Policy name, and associated Elasticsearch name.
+	AutoOpsNamer    = common_name.NewNamer("autoops")
 	basePodTemplate = corev1.PodTemplateSpec{
 		Spec: corev1.PodSpec{
 			Containers: []corev1.Container{
@@ -79,8 +79,12 @@ func (r *ReconcileAutoOpsAgentPolicy) deploymentParams(ctx context.Context, poli
 		commonv1.TypeLabelName: "autoops-agent",
 		autoOpsLabelName:       policy.Name,
 	}
+	// Hash ES namespace and name to create a short unique identifier
+	// preventing name length issues.
+	esIdentifier := es.GetNamespace() + es.GetName()
+	esHash := fmt.Sprintf("%x", sha256.Sum256([]byte(esIdentifier)))[0:6]
 	deployment.ObjectMeta = metav1.ObjectMeta{
-		Name:      AutoOpsNamer.Suffix(policy.GetName(), es.GetName(), es.GetNamespace()),
+		Name:      AutoOpsNamer.Suffix(policy.GetName(), esHash),
 		Namespace: policy.GetNamespace(),
 		Labels:    labels,
 	}
