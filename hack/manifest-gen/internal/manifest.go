@@ -7,17 +7,17 @@ package internal
 import (
 	"bytes"
 	"fmt"
-	"log"
 	"os"
 	"path/filepath"
 	"strings"
 
-	"helm.sh/helm/v3/pkg/action"
-	"helm.sh/helm/v3/pkg/chart/loader"
-	"helm.sh/helm/v3/pkg/chartutil"
-	"helm.sh/helm/v3/pkg/cli"
-	"helm.sh/helm/v3/pkg/cli/values"
-	"helm.sh/helm/v3/pkg/getter"
+	"helm.sh/helm/v4/pkg/action"
+	"helm.sh/helm/v4/pkg/chart/common"
+	"helm.sh/helm/v4/pkg/chart/loader"
+	"helm.sh/helm/v4/pkg/cli"
+	"helm.sh/helm/v4/pkg/cli/values"
+	"helm.sh/helm/v4/pkg/getter"
+	releasev1 "helm.sh/helm/v4/pkg/release/v1"
 	"sigs.k8s.io/kustomize/kyaml/kio"
 	"sigs.k8s.io/kustomize/kyaml/yaml"
 )
@@ -46,7 +46,7 @@ func Generate(opts *GenerateFlags) error {
 	settings := cli.New()
 	actionConfig := new(action.Configuration)
 
-	if err := actionConfig.Init(settings.RESTClientGetter(), opts.OperatorNamespace, os.Getenv("HELM_DRIVER"), log.Printf); err != nil {
+	if err := actionConfig.Init(settings.RESTClientGetter(), opts.OperatorNamespace, os.Getenv("HELM_DRIVER")); err != nil {
 		return err
 	}
 
@@ -65,9 +65,8 @@ func Generate(opts *GenerateFlags) error {
 	}
 
 	client := action.NewInstall(actionConfig)
-	client.DryRun = true
+	client.DryRunStrategy = action.DryRunClient
 	client.Replace = true
-	client.ClientOnly = true
 	client.IncludeCRDs = false
 	client.Version = ">0.0.0-0"
 	client.ReleaseName = "elastic-operator"
@@ -75,7 +74,7 @@ func Generate(opts *GenerateFlags) error {
 	client.PostRenderer = helmLabelRemover{}
 	// Arbitrarily sets a k8s version greater than the min required version in the Chart, otherwise v1.20 is used by default
 	// because Helm doesn't connect to a real K8S API server (clientOnly = true).
-	fakeKubeVersion, err := chartutil.ParseKubeVersion("v9.99.99")
+	fakeKubeVersion, err := common.ParseKubeVersion("v9.99.99")
 	if err != nil {
 		return fmt.Errorf("invalid fake kube version %q: %s", fakeKubeVersion, err)
 	}
@@ -91,9 +90,14 @@ func Generate(opts *GenerateFlags) error {
 		return err
 	}
 
-	rel, err := client.Run(chartRequested, vals)
+	releaser, err := client.Run(chartRequested, vals)
 	if err != nil {
 		return err
+	}
+
+	rel, ok := releaser.(*releasev1.Release)
+	if !ok {
+		return fmt.Errorf("expected *releasev1.Release, got %T", releaser)
 	}
 
 	if rel != nil {
@@ -119,8 +123,8 @@ func Options(opts *OptionsFlags) error {
 	}
 
 	fmt.Println(chartPath)
-
-	client := action.NewShow(action.ShowValues)
+	actionConfig := action.NewConfiguration()
+	client := action.NewShow(action.ShowValues, actionConfig)
 	client.Version = ">0.0.0-0"
 
 	out, err := client.Run(chartPath)
