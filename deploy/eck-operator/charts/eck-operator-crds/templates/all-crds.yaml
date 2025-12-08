@@ -2407,7 +2407,7 @@ spec:
     name: v1alpha1
     schema:
       openAPIV3Schema:
-        description: AutoOpsAgentPolicy represents an AutoOpsAgentPolicy resource
+        description: AutoOpsAgentPolicy represents an Elastic AutoOps Policy resource
           in a Kubernetes cluster.
         properties:
           apiVersion:

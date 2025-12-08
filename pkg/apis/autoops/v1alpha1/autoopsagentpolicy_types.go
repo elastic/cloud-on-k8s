@@ -22,7 +22,7 @@ func init() {
 
 // +kubebuilder:object:root=true
 
-// AutoOpsAgentPolicy represents an AutoOpsAgentPolicy resource in a Kubernetes cluster.
+// AutoOpsAgentPolicy represents an Elastic AutoOps Policy resource in a Kubernetes cluster.
 // +kubebuilder:resource:categories=elastic,shortName=autoops
 // +kubebuilder:printcolumn:name="Ready",type="string",JSONPath=".status.ready",description="Ready resources"
 // +kubebuilder:printcolumn:name="Phase",type="string",JSONPath=".status.phase"

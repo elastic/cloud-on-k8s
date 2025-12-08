@@ -268,7 +268,7 @@ Package v1alpha1 contains API schema definitions for managing AutoOpsAgentPolicy
 
 ### AutoOpsAgentPolicy  [#autoopsagentpolicy]
 
-AutoOpsAgentPolicy represents an AutoOpsAgentPolicy resource in a Kubernetes cluster.
+AutoOpsAgentPolicy represents an Elastic AutoOps Policy resource in a Kubernetes cluster.
 
 
 
