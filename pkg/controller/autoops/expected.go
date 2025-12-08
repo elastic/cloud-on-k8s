@@ -41,8 +41,9 @@ const (
 
 var (
 	// ESNAutoOpsNamer is a Namer that generates names for AutoOps deployments
-	// according to the associated Elasticsearch cluster name.
-	AutoOpsNamer    = common_name.NewNamer("autoops")
+	// according to the Policy name, and associated Elasticsearch name ensuring
+	// the name doesn't exceed the max length of 27 characters for deployments.
+	AutoOpsNamer    = common_name.NewNamer("autoops").WithMaxNameLength(27)
 	basePodTemplate = corev1.PodTemplateSpec{
 		Spec: corev1.PodSpec{
 			Containers: []corev1.Container{

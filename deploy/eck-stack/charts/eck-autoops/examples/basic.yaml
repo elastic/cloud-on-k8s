@@ -10,10 +10,10 @@ ccmApiKey: "your-api-key-here"
 autoOpsOTelURL: "https://otel-auto-ops.us-east-2.aws.svc.elastic.cloud"
 autoOpsToken: "your-token-here"
 
-# Optional: Override the default secret name.
+# Secret name for the AutoOps configuration.
 # If not specified, defaults to the fullname of the chart with '-secret' suffix.
 #
-# secretName: "custom-secret-name"
+# secretName: ""
 
 # ResourceSelector is a label selector for the resources to be configured.
 # Any Elasticsearch instances that match the selector will be configured to send data to AutoOps.
