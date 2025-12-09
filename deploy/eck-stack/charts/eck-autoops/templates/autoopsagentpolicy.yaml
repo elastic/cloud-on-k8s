@@ -5,6 +5,9 @@ metadata:
   name: {{ include "autoops.fullname" . }}
   labels:
     {{- include "autoops.labels" . | nindent 4 }}
+    {{- with .Values.labels }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
   annotations:
     eck.k8s.elastic.co/license: basic
     {{- with .Values.annotations }}
