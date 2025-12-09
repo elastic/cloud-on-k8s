@@ -86,7 +86,7 @@ func (p *AutoOpsAgentPolicy) GetWarnings() []string {
 }
 
 func validSettings(policy *AutoOpsAgentPolicy) field.ErrorList {
-	// Validate that ResourceSelector is not empty
+	// Validate that the ResourceSelector is not empty
 	if policy.Spec.ResourceSelector.MatchLabels == nil && len(policy.Spec.ResourceSelector.MatchExpressions) == 0 {
 		return field.ErrorList{field.Required(field.NewPath("spec").Child("resourceSelector"), "ResourceSelector must be specified with either matchLabels or matchExpressions")}
 	}

@@ -42,8 +42,8 @@ const (
 // defaultRequeue is the default requeue interval for this controller.
 var defaultRequeue = 5 * time.Second
 
-// Add creates a new AutoOpsAgentPolicy Controller and adds it to the Manager with default RBAC. The Manager will set fields on the Controller
-// and Start it when the Manager is Started.
+// Add creates a new AutoOpsAgentPolicy controller and adds it to the manager with default RBAC. The manager will set fields on the controller
+// and start it when the manager is started.
 func Add(mgr manager.Manager, params operator.Parameters) error {
 	r := newReconciler(mgr, params)
 	c, err := common.NewController(mgr, controllerName, r, params)
@@ -53,7 +53,6 @@ func Add(mgr manager.Manager, params operator.Parameters) error {
 	return addWatches(mgr, c, r)
 }
 
-// newReconciler returns a new reconcile.Reconciler of AutoOpsAgentPolicy.
 func newReconciler(mgr manager.Manager, params operator.Parameters) *ReconcileAutoOpsAgentPolicy {
 	k8sClient := mgr.GetClient()
 	return &ReconcileAutoOpsAgentPolicy{
@@ -90,7 +89,7 @@ type ReconcileAutoOpsAgentPolicy struct {
 	iteration uint64
 }
 
-// Reconcile reconciles the AutoOpsAgentPolicy resource ensuring that any deployments are created/updated/deleted as needed.
+// Reconcile reconciles the AutoOpsAgentPolicy resource ensuring that any resources are created/updated/deleted as needed.
 func (r *ReconcileAutoOpsAgentPolicy) Reconcile(ctx context.Context, request reconcile.Request) (reconcile.Result, error) {
 	ctx = common.NewReconciliationContext(ctx, &r.iteration, r.params.Tracer, controllerName, "autoops_name", request)
 	defer common.LogReconciliationRun(ulog.FromContext(ctx))()
@@ -142,13 +141,13 @@ func (r *ReconcileAutoOpsAgentPolicy) Reconcile(ctx context.Context, request rec
 }
 
 func (r *ReconcileAutoOpsAgentPolicy) validate(ctx context.Context, policy *autoopsv1alpha1.AutoOpsAgentPolicy) error {
-	span, vctx := apm.StartSpan(ctx, "validate", tracing.SpanTypeApp)
+	span, apmctx := apm.StartSpan(ctx, "validate", tracing.SpanTypeApp)
 	defer span.End()
 
 	if _, err := policy.ValidateCreate(); err != nil {
 		ulog.FromContext(ctx).Error(err, "Validation failed")
 		k8s.MaybeEmitErrorEvent(r.recorder, err, policy, events.EventReasonValidation, err.Error())
-		return tracing.CaptureError(vctx, err)
+		return tracing.CaptureError(apmctx, err)
 	}
 
 	return nil
