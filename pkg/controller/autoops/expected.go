@@ -164,10 +164,12 @@ func readinessProbe() corev1.Probe {
 	}
 }
 
-// buildConfigHash builds a hash of the ConfigMap data to trigger pod restart on config changes
+// buildConfigHash builds a hash of the ConfigMap data and secret values
+// to trigger pod restart on config changes
 func buildConfigHash(ctx context.Context, c k8s.Client, policy autoopsv1alpha1.AutoOpsAgentPolicy, es esv1.Elasticsearch) (string, error) {
 	configHash := fnv.New32a()
 
+	// Hash ConfigMap data
 	configMapName := fmt.Sprintf("%s-%s-%s", autoOpsESConfigMapName, es.Namespace, es.Name)
 	var configMap corev1.ConfigMap
 	configMapKey := types.NamespacedName{Namespace: policy.Namespace, Name: configMapName}
@@ -177,6 +179,37 @@ func buildConfigHash(ctx context.Context, c k8s.Client, policy autoopsv1alpha1.A
 
 	if configData, ok := configMap.Data[autoOpsESConfigFileName]; ok {
 		_, _ = configHash.Write([]byte(configData))
+	}
+
+	// Hash secret values from autoops-secret
+	autoopsSecretKey := types.NamespacedName{Namespace: policy.Namespace, Name: "autoops-secret"}
+	var autoopsSecret corev1.Secret
+	if err := c.Get(ctx, autoopsSecretKey, &autoopsSecret); err != nil {
+		return "", fmt.Errorf("failed to get autoops-secret: %w", err)
+	}
+
+	// Hash secret keys, including optional keys. There's no code here to handle missing keys as
+	// 1. The optional keys are included here.
+	// 2. The required keys are already validated in the controller, so they should always be present.
+	requiredKeys := []string{"autoops-token", "autoops-otel-url", "cloud-connected-mode-api-key", "cloud-connected-mode-api-url"}
+	for _, key := range requiredKeys {
+		if data, ok := autoopsSecret.Data[key]; ok {
+			_, _ = configHash.Write(data)
+		}
+	}
+
+	// Hash ES API key secret
+	esAPIKeySecretName := apiKeySecretNameFor(types.NamespacedName{Namespace: es.Namespace, Name: es.Name})
+	esAPIKeySecretKey := types.NamespacedName{Namespace: policy.Namespace, Name: esAPIKeySecretName}
+	var esAPIKeySecret corev1.Secret
+	if err := c.Get(ctx, esAPIKeySecretKey, &esAPIKeySecret); err != nil {
+		return "", fmt.Errorf("failed to get ES API key secret %s: %w", esAPIKeySecretName, err)
+	}
+
+	// This data may not exist on initial reconciliation, so we don't return an error if it's missing.
+	// This should resolve itself on the next reconciliation after the API key is created.
+	if apiKeyData, ok := esAPIKeySecret.Data["api_key"]; ok {
+		_, _ = configHash.Write(apiKeyData)
 	}
 
 	return fmt.Sprint(configHash.Sum32()), nil
