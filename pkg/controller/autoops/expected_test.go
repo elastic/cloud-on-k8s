@@ -143,9 +143,10 @@ func expectedDeployment(policy autoopsv1alpha1.AutoOpsAgentPolicy, es esv1.Elast
 	esHash := fmt.Sprintf("%x", sha256.Sum256([]byte(esIdentifier)))[0:6]
 	return appsv1.Deployment{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      AutoOpsNamer.Suffix(policy.GetName(), esHash),
-			Namespace: policy.GetNamespace(),
-			Labels:    labels,
+			Name:        AutoOpsNamer.Suffix(policy.GetName(), esHash),
+			Namespace:   policy.GetNamespace(),
+			Labels:      labels,
+			Annotations: annotations,
 		},
 		Spec: appsv1.DeploymentSpec{
 			Replicas: pointer.Int32(1),
@@ -183,6 +184,7 @@ func expectedDeployment(policy autoopsv1alpha1.AutoOpsAgentPolicy, es esv1.Elast
 								"--config",
 								"/mnt/config/autoops_es.yml",
 							},
+							Resources: defaultResources,
 							Ports: []corev1.ContainerPort{
 								{
 									Name:          "http",

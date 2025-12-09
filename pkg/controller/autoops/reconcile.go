@@ -106,7 +106,7 @@ func (r *ReconcileAutoOpsAgentPolicy) internalReconcile(
 		}
 
 		if es.Spec.HTTP.TLS.Enabled() {
-			if err := reconcileAutoOpsESCASecret(ctx, r.Client, policy, es); err != nil {
+			if err := r.reconcileAutoOpsESCASecret(ctx, policy, es); err != nil {
 				errorCount++
 				state.UpdateWithPhase(autoopsv1alpha1.ErrorPhase)
 				continue

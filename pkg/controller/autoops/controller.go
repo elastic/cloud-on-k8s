@@ -72,8 +72,30 @@ func addWatches(mgr manager.Manager, c controller.Controller, r *ReconcileAutoOp
 		return err
 	}
 
+	// watch for changes to Elasticsearch and reconcile all AutoOpsAgentPolicies
+	if err := c.Watch(source.Kind[client.Object](mgr.GetCache(), &esv1.Elasticsearch{}, reconcileRequestForAllAutoOpsPolicies(r.Client))); err != nil {
+		return err
+	}
+
 	// watch dynamically referenced secrets
 	return c.Watch(source.Kind(mgr.GetCache(), &corev1.Secret{}, r.dynamicWatches.Secrets))
+}
+
+// reconcileRequestForAllAutoOpsPolicies returns the requests to reconcile all AutoOpsAgentPolicy resources.
+func reconcileRequestForAllAutoOpsPolicies(clnt k8s.Client) handler.TypedEventHandler[client.Object, reconcile.Request] {
+	return handler.TypedEnqueueRequestsFromMapFunc(func(ctx context.Context, es client.Object) []reconcile.Request {
+		var autoOpsAgentPolicyList autoopsv1alpha1.AutoOpsAgentPolicyList
+		err := clnt.List(context.Background(), &autoOpsAgentPolicyList)
+		if err != nil {
+			ulog.Log.Error(err, "Fail to list AutoOpsAgentPolicyList while watching Elasticsearch")
+			return nil
+		}
+		requests := make([]reconcile.Request, 0)
+		for _, autoOpsAgentPolicy := range autoOpsAgentPolicyList.Items {
+			requests = append(requests, reconcile.Request{NamespacedName: k8s.ExtractNamespacedName(&autoOpsAgentPolicy)})
+		}
+		return requests
+	})
 }
 
 var _ reconcile.Reconciler = (*ReconcileAutoOpsAgentPolicy)(nil)

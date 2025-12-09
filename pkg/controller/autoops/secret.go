@@ -19,7 +19,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/certificates"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/metadata"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/reconciler"
-	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/k8s"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/watches"
 	ulog "github.com/elastic/cloud-on-k8s/v3/pkg/utils/log"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/maps"
 )
@@ -31,9 +31,8 @@ const (
 
 // reconcileAutoOpsESCASecret reconciles the Secret containing the CA certificate
 // for a specific Elasticsearch cluster, copying it from the ES instance's http-ca-internal secret.
-func reconcileAutoOpsESCASecret(
+func (r *ReconcileAutoOpsAgentPolicy) reconcileAutoOpsESCASecret(
 	ctx context.Context,
-	c k8s.Client,
 	policy autoopsv1alpha1.AutoOpsAgentPolicy,
 	es esv1.Elasticsearch,
 ) error {
@@ -50,7 +49,7 @@ func reconcileAutoOpsESCASecret(
 		Name:      certificates.CAInternalSecretName(esv1.ESNamer, es.Name, certificates.HTTPCAType),
 	}
 	var sourceSecret corev1.Secret
-	if err := c.Get(ctx, sourceSecretKey, &sourceSecret); err != nil {
+	if err := r.Client.Get(ctx, sourceSecretKey, &sourceSecret); err != nil {
 		if apierrors.IsNotFound(err) {
 			log.V(1).Info("ES http-ca-internal secret not found, skipping", "namespace", es.Namespace, "name", es.Name)
 			return nil
@@ -68,10 +67,10 @@ func reconcileAutoOpsESCASecret(
 	expected := buildAutoOpsESCASecret(policy, secretName, caCert)
 
 	reconciled := &corev1.Secret{}
-	return reconciler.ReconcileResource(
+	err := reconciler.ReconcileResource(
 		reconciler.Params{
 			Context:    ctx,
-			Client:     c,
+			Client:     r.Client,
 			Owner:      &policy,
 			Expected:   &expected,
 			Reconciled: reconciled,
@@ -86,6 +85,22 @@ func reconcileAutoOpsESCASecret(
 				reconciled.Data = expected.Data
 			},
 		},
+	)
+	if err != nil {
+		return err
+	}
+
+	watcher := types.NamespacedName{
+		Name:      policy.Name,
+		Namespace: policy.Namespace,
+	}
+
+	// Add a watch for the AutoOps CA secret
+	return watches.WatchUserProvidedSecrets(
+		watcher,
+		r.dynamicWatches,
+		secretName,
+		[]string{secretName},
 	)
 }
 
