@@ -29,6 +29,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/events"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/license"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/operator"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/reconciler"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/tracing"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/watches"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/k8s"
@@ -75,7 +76,7 @@ func addWatches(mgr manager.Manager, c controller.Controller, r *ReconcileAutoOp
 	return c.Watch(source.Kind(mgr.GetCache(), &corev1.Secret{}, r.dynamicWatches.Secrets))
 }
 
-var _ reconcile.Reconciler = &ReconcileAutoOpsAgentPolicy{}
+var _ reconcile.Reconciler = (*ReconcileAutoOpsAgentPolicy)(nil)
 
 // ReconcileAutoOpsAgentPolicy reconciles an AutoOpsAgentPolicy object
 type ReconcileAutoOpsAgentPolicy struct {
@@ -92,7 +93,8 @@ type ReconcileAutoOpsAgentPolicy struct {
 // Reconcile reconciles the AutoOpsAgentPolicy resource ensuring that any resources are created/updated/deleted as needed.
 func (r *ReconcileAutoOpsAgentPolicy) Reconcile(ctx context.Context, request reconcile.Request) (reconcile.Result, error) {
 	ctx = common.NewReconciliationContext(ctx, &r.iteration, r.params.Tracer, controllerName, "autoops_name", request)
-	defer common.LogReconciliationRun(ulog.FromContext(ctx))()
+	log := ulog.FromContext(ctx)
+	defer common.LogReconciliationRun(log)()
 	defer tracing.EndContextTransaction(ctx)
 
 	// retrieve the AutoOpsAgentPolicy resource
@@ -110,7 +112,7 @@ func (r *ReconcileAutoOpsAgentPolicy) Reconcile(ctx context.Context, request rec
 	}
 
 	if common.IsUnmanaged(ctx, &policy) {
-		ulog.FromContext(ctx).Info("Object is currently not managed by this controller. Skipping reconciliation")
+		log.Info("Object is currently not managed by this controller. Skipping reconciliation")
 		return reconcile.Result{}, nil
 	}
 
@@ -122,13 +124,7 @@ func (r *ReconcileAutoOpsAgentPolicy) Reconcile(ctx context.Context, request rec
 
 	results := r.doReconcile(ctx, policy, state)
 
-	if state.status.Phase != autoopsv1alpha1.InvalidPhase && state.status.Phase != autoopsv1alpha1.ErrorPhase {
-		if isReconciled, _ := results.IsReconciled(); !isReconciled {
-			state.UpdateWithPhase(autoopsv1alpha1.ApplyingChangesPhase)
-		} else {
-			state.UpdateWithPhase(autoopsv1alpha1.ReadyPhase)
-		}
-	}
+	updatePhaseFromResults(results, state)
 
 	result, err := r.updateStatusFromState(ctx, state)
 	if err != nil {
@@ -138,6 +134,15 @@ func (r *ReconcileAutoOpsAgentPolicy) Reconcile(ctx context.Context, request rec
 	}
 
 	return results.Aggregate()
+}
+
+// updatePhaseFromResults updates the phase of the AutoOpsAgentPolicy status based on the results of the reconciliation
+func updatePhaseFromResults(results *reconciler.Results, state *State) {
+	if isReconciled, _ := results.IsReconciled(); !isReconciled {
+		state.UpdateWithPhase(autoopsv1alpha1.ApplyingChangesPhase)
+	} else {
+		state.UpdateWithPhase(autoopsv1alpha1.ReadyPhase)
+	}
 }
 
 func (r *ReconcileAutoOpsAgentPolicy) validate(ctx context.Context, policy *autoopsv1alpha1.AutoOpsAgentPolicy) error {
@@ -211,7 +216,10 @@ func (r *ReconcileAutoOpsAgentPolicy) onDelete(ctx context.Context, obj types.Na
 		var es esv1.Elasticsearch
 		if err := r.Client.Get(ctx, types.NamespacedName{Namespace: esNamespace, Name: esName}, &es); err != nil {
 			if apierrors.IsNotFound(err) {
-				log.V(1).Info("Elasticsearch cluster not found, skipping cleanup", "es_namespace", esNamespace, "es_name", esName)
+				// The ES cluster is gone, so we need to delete the API key secret
+				if err := deleteESAPIKeySecret(ctx, r.Client, log, obj.Namespace, types.NamespacedName{Namespace: esNamespace, Name: esName}); err != nil {
+					log.Error(err, "Failed to delete API key secret", "es_namespace", esNamespace, "es_name", esName)
+				}
 				continue
 			}
 			log.Error(err, "Failed to get Elasticsearch cluster", "es_namespace", esNamespace, "es_name", esName)

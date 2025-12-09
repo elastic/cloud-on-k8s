@@ -231,7 +231,7 @@ func autoopsEnvVars(es esv1.Elasticsearch) []corev1.EnvVar {
 			ValueFrom: &corev1.EnvVarSource{
 				SecretKeyRef: &corev1.SecretKeySelector{
 					LocalObjectReference: corev1.LocalObjectReference{
-						Name: apiKeySecretNameFrom(es),
+						Name: apiKeySecretNameFor(types.NamespacedName{Namespace: es.Namespace, Name: es.Name}),
 					},
 					Key:      "api_key",
 					Optional: ptr.To(false),

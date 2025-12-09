@@ -15,6 +15,7 @@ import (
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/intstr"
 	"k8s.io/utils/ptr"
 
@@ -139,7 +140,7 @@ func expectedDeployment(policy autoopsv1alpha1.AutoOpsAgentPolicy, es esv1.Elast
 
 	// Hash ES namespace and name to match the implementation
 	esIdentifier := es.GetNamespace() + es.GetName()
-	esHash := fmt.Sprintf("%x", sha256.Sum256([]byte(esIdentifier)))[0:8]
+	esHash := fmt.Sprintf("%x", sha256.Sum256([]byte(esIdentifier)))[0:6]
 	return appsv1.Deployment{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      AutoOpsNamer.Suffix(policy.GetName(), esHash),
@@ -242,7 +243,7 @@ func expectedDeployment(policy autoopsv1alpha1.AutoOpsAgentPolicy, es esv1.Elast
 									ValueFrom: &corev1.EnvVarSource{
 										SecretKeyRef: &corev1.SecretKeySelector{
 											LocalObjectReference: corev1.LocalObjectReference{
-												Name: apiKeySecretNameFrom(es),
+												Name: apiKeySecretNameFor(types.NamespacedName{Namespace: es.Namespace, Name: es.Name}),
 											},
 											Key:      "api_key",
 											Optional: ptr.To(false),

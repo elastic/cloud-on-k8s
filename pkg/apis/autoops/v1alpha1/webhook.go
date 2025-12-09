@@ -78,13 +78,6 @@ func (p *AutoOpsAgentPolicy) validate() (admission.Warnings, error) {
 	return nil, nil
 }
 
-func (p *AutoOpsAgentPolicy) GetWarnings() []string {
-	if p == nil {
-		return nil
-	}
-	return nil
-}
-
 func validSettings(policy *AutoOpsAgentPolicy) field.ErrorList {
 	// Validate that the ResourceSelector is not empty
 	if policy.Spec.ResourceSelector.MatchLabels == nil && len(policy.Spec.ResourceSelector.MatchExpressions) == 0 {

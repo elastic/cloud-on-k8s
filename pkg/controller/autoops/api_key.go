@@ -172,7 +172,7 @@ func maybeUpdateAPIKey(
 	}
 
 	// The API key is seemingly up to date, so we need to ensure the secret exists with correct value
-	secretName := apiKeySecretNameFrom(es)
+	secretName := apiKeySecretNameFor(types.NamespacedName{Namespace: policy.Namespace, Name: es.Name})
 	var secret corev1.Secret
 	nsn := types.NamespacedName{
 		Namespace: policy.Namespace,
@@ -252,7 +252,7 @@ func storeAPIKeyInSecret(
 	policy autoopsv1alpha1.AutoOpsAgentPolicy,
 	es esv1.Elasticsearch,
 ) error {
-	secretName := apiKeySecretNameFrom(es)
+	secretName := apiKeySecretNameFor(types.NamespacedName{Namespace: policy.Namespace, Name: es.Name})
 	expected := buildAutoOpsESAPIKeySecret(policy, es, secretName, encodedKey, expectedHash)
 
 	reconciled := &corev1.Secret{}
@@ -316,7 +316,7 @@ func apiKeyNameFor(policy autoopsv1alpha1.AutoOpsAgentPolicy, es esv1.Elasticsea
 }
 
 // apiKeySecretNameFrom generates the name for the API key secret from an ES instance.
-func apiKeySecretNameFrom(es esv1.Elasticsearch) string {
+func apiKeySecretNameFor(es types.NamespacedName) string {
 	return fmt.Sprintf("%s-%s-%s", es.Name, es.Namespace, autoOpsESAPIKeySecretNameSuffix)
 }
 
@@ -379,7 +379,11 @@ func cleanupAutoOpsESAPIKey(
 		}
 	}
 
-	secretName := apiKeySecretNameFrom(es)
+	return deleteESAPIKeySecret(ctx, c, log, policyNamespace, types.NamespacedName{Namespace: es.Namespace, Name: es.Name})
+}
+
+func deleteESAPIKeySecret(ctx context.Context, c k8s.Client, log logr.Logger, policyNamespace string, es types.NamespacedName) error {
+	secretName := apiKeySecretNameFor(es)
 	secretKey := types.NamespacedName{
 		Namespace: policyNamespace,
 		Name:      secretName,
@@ -400,6 +404,5 @@ func cleanupAutoOpsESAPIKey(
 		}
 		return fmt.Errorf("while deleting API key secret %s: %w", secretName, err)
 	}
-
 	return nil
 }

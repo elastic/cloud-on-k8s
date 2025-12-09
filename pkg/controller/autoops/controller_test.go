@@ -286,7 +286,7 @@ func TestReconcileAutoOpsAgentPolicy_onDelete(t *testing.T) {
 
 			for _, es := range tt.esClusters {
 				if es.Status.Phase == esv1.ElasticsearchReadyPhase {
-					expectedSecretName := apiKeySecretNameFrom(es)
+					expectedSecretName := apiKeySecretNameFor(types.NamespacedName{Namespace: es.Namespace, Name: es.Name})
 					var retrievedSecret corev1.Secret
 					err := k8sClient.Get(ctx, types.NamespacedName{Namespace: tt.policy.Namespace, Name: expectedSecretName}, &retrievedSecret)
 					assert.True(t, apierrors.IsNotFound(err), "Expected secret %s/%s to be deleted", tt.policy.Namespace, expectedSecretName)
