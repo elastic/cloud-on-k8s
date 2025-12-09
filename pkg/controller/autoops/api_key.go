@@ -69,11 +69,6 @@ func reconcileAutoOpsESAPIKey(
 	)
 	log.V(1).Info("Reconciling AutoOps ES API key")
 
-	if es.Status.Phase != esv1.ElasticsearchReadyPhase {
-		log.V(1).Info("Skipping ES cluster that is not ready")
-		return nil
-	}
-
 	esClient, err := esClientProvider(ctx, c, dialer, es)
 	if err != nil {
 		return fmt.Errorf("while creating Elasticsearch client for %s/%s: %w", es.Namespace, es.Name, err)
