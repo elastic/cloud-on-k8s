@@ -51,7 +51,7 @@ func (s *State) UpdateWithPhase(phase autoopsv1alpha1.PolicyPhase) *State {
 	return s
 }
 
-// UpdateAutoOpsInvalidWithEvent is a convenient method to set the phase to InvalidPhase
+// UpdateInvalidPhaseWithEvent is a convenient method to set the phase to InvalidPhase
 // and generate an event at the same time.
 func (s *State) UpdateInvalidPhaseWithEvent(msg string) {
 	s.status.Phase = autoopsv1alpha1.InvalidPhase
