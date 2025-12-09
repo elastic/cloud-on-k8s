@@ -18,7 +18,7 @@
 
 # Version of AutoOps Agent Policy.
 #
-version: 9.2.0
+version: 9.3.0-SNAPSHOT
 
 # Labels that will be applied to AutoOps Agent Policy.
 #
@@ -46,7 +46,7 @@ autoOpsToken: ""
 cloudConnectedModeAPIURL: ""
 
 # Secret name for the AutoOps configuration.
-# If not specified, defaults to the fullname of the chart with '-secret' suffix.
+# This is not a required field.
 #
 # secretName: ""
 

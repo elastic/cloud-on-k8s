@@ -13,7 +13,7 @@ metadata:
 spec:
   version: {{ required "An AutoOps Agent Policy version is required" .Values.version }}
   config:
-    secretName: {{ include "autoops.secretName" . }}
+    secretName: {{ required "An AutoOps Agent Policy secretName is required" (include "autoops.secretName" .) }}
   {{- with .Values.resourceSelector }}
   resourceSelector:
     {{- toYaml . | nindent 4 }}

@@ -1,7 +1,7 @@
 ---
 # Version of AutoOps Agent Policy.
 #
-version: 9.2.0
+version: 9.3.0-SNAPSHOT
 
 # AutoOps configuration values.
 # These values are required and will be used to create a Kubernetes Secret.
