@@ -50,6 +50,27 @@ cloudConnectedModeAPIURL: ""
 #
 # secretName: ""
 
+# Image is the AutoOps Agent Docker image to deploy.
+# image: "docker.elastic.co/elastic-agent/elastic-otel-collector-wolfi:9.3.0-SNAPSHOT"
+
+# RevisionHistoryLimit is the number of revisions to retain to allow rollback in the underlying Deployment.
+# revisionHistoryLimit: 2
+
+# PodTemplate provides customisation options (labels, annotations, affinity rules, resource requests, and so on) for the Agent pods
+# +kubebuilder:validation:Optional
+# +kubebuilder:pruning:PreserveUnknownFields
+# podTemplate:
+#   spec:
+#     containers:
+#       - name: autoops-agent
+#         resources:
+#           limits:
+#             memory: 400Mi
+#             cpu: 200m
+#           requests:
+#             memory: 400Mi
+#             cpu: 200m
+
 # ResourceSelector is a label selector for the resources to be configured.
 # Any Elasticsearch instances that match the selector will be configured to send data to AutoOps.
 #
