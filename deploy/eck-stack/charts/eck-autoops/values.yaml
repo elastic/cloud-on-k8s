@@ -45,10 +45,15 @@ autoOpsToken: ""
 # This is not a required field.
 cloudConnectedModeAPIURL: ""
 
-# Secret name for the AutoOps configuration.
-# This is not a required field.
+# Reference an existing Kubernetes secret holding the AutoOps configuration.
+# The referenced secret must contain the following:
+# - `ccmApiKey`: the Cloud Connected Mode API key
+# - `autoOpsOTelURL`: the URL of the AutoOps OTel endpoint
+# - `autoOpsToken`: the token to authenticate against the AutoOps platform
+# - `cloudConnectedModeAPIURL`: the URL of the Cloud Connected Mode API (optional)
 #
-# secretName: ""
+# configRef:
+#   secretName: ""
 
 # Image is the AutoOps Agent Docker image to deploy.
 # image: "docker.elastic.co/elastic-agent/elastic-otel-collector-wolfi:9.3.0-SNAPSHOT"
