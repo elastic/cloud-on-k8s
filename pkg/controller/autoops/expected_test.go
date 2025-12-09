@@ -103,7 +103,34 @@ func TestReconcileAutoOpsAgentPolicy_deploymentParams(t *testing.T) {
 					autoOpsESConfigFileName: configData,
 				},
 			}
-			client := k8s.NewFakeClient(configMap)
+
+			// We need the autoops-secret with all required keys to build the config hash
+			autoopsSecret := &corev1.Secret{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "autoops-secret",
+					Namespace: tt.args.autoops.Namespace,
+				},
+				Data: map[string][]byte{
+					"autoops-token":                []byte("test-autoops-token"),
+					"autoops-otel-url":             []byte("https://test-otel-url"),
+					"cloud-connected-mode-api-key": []byte("test-ccm-api-key"),
+					"cloud-connected-mode-api-url": []byte("https://test-ccm-api-url"),
+				},
+			}
+
+			// We need the ES API key secret as well to build the config hash
+			esAPIKeySecretName := apiKeySecretNameFor(types.NamespacedName{Namespace: tt.args.es.Namespace, Name: tt.args.es.Name})
+			esAPIKeySecret := &corev1.Secret{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      esAPIKeySecretName,
+					Namespace: tt.args.autoops.Namespace,
+				},
+				Data: map[string][]byte{
+					"api_key": []byte("test-es-api-key"),
+				},
+			}
+
+			client := k8s.NewFakeClient(configMap, autoopsSecret, esAPIKeySecret)
 			r := &ReconcileAutoOpsAgentPolicy{
 				Client: client,
 			}
@@ -117,6 +144,13 @@ func TestReconcileAutoOpsAgentPolicy_deploymentParams(t *testing.T) {
 				// Calculate expected config hash to match what buildConfigHash computes
 				expectedConfigHash := fnv.New32a()
 				_, _ = expectedConfigHash.Write([]byte(configData))
+				// Hash autoops-secret values
+				_, _ = expectedConfigHash.Write([]byte("test-autoops-token"))
+				_, _ = expectedConfigHash.Write([]byte("https://test-otel-url"))
+				_, _ = expectedConfigHash.Write([]byte("test-ccm-api-key"))
+				_, _ = expectedConfigHash.Write([]byte("https://test-ccm-api-url"))
+				// Hash ES API key secret value
+				_, _ = expectedConfigHash.Write([]byte("test-es-api-key"))
 				expectedHashStr := fmt.Sprint(expectedConfigHash.Sum32())
 				want := expectedDeployment(tt.args.autoops, tt.args.es, expectedHashStr)
 				if !cmp.Equal(got, want) {
