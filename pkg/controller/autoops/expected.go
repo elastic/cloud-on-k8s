@@ -13,7 +13,7 @@ import (
 
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/api/resource"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/intstr"
 	"k8s.io/utils/ptr"
@@ -23,13 +23,13 @@ import (
 	esv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/elasticsearch/v1"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/container"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/defaults"
+	common_deployment "github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/deployment"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/metadata"
 	common_name "github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/name"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/version"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/volume"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/services"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/k8s"
-	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/pointer"
 )
 
 const (
@@ -43,34 +43,22 @@ const (
 var (
 	// ESNAutoOpsNamer is a Namer that generates names for AutoOps deployments
 	// according to the Policy name, and associated Elasticsearch name.
-	AutoOpsNamer    = common_name.NewNamer("autoops")
-	basePodTemplate = corev1.PodTemplateSpec{
-		Spec: corev1.PodSpec{
-			Containers: []corev1.Container{
-				{
-					Name: "autoops-agent",
-				},
-			},
+	AutoOpsNamer = common_name.NewNamer("autoops")
+	// Default resources for the AutoOps Agent deployment.
+	// These currently mirror the defaults for the Elastic Agent deployment.
+	defaultResources = corev1.ResourceRequirements{
+		Limits: map[corev1.ResourceName]resource.Quantity{
+			corev1.ResourceMemory: resource.MustParse("400Mi"),
+			corev1.ResourceCPU:    resource.MustParse("200m"),
+		},
+		Requests: map[corev1.ResourceName]resource.Quantity{
+			corev1.ResourceMemory: resource.MustParse("400Mi"),
+			corev1.ResourceCPU:    resource.MustParse("200m"),
 		},
 	}
 )
 
-type ExpectedResources struct {
-	deployment appsv1.Deployment
-}
-
-func (r *ReconcileAutoOpsAgentPolicy) generateExpectedResources(ctx context.Context, policy autoopsv1alpha1.AutoOpsAgentPolicy, es esv1.Elasticsearch) (ExpectedResources, error) {
-	deployment, err := r.deploymentParams(ctx, policy, es)
-	if err != nil {
-		return ExpectedResources{}, err
-	}
-	return ExpectedResources{
-		deployment: deployment,
-	}, nil
-}
-
 func (r *ReconcileAutoOpsAgentPolicy) deploymentParams(ctx context.Context, policy autoopsv1alpha1.AutoOpsAgentPolicy, es esv1.Elasticsearch) (appsv1.Deployment, error) {
-	var deployment appsv1.Deployment
 	v, err := version.Parse(policy.Spec.Version)
 	if err != nil {
 		return appsv1.Deployment{}, err
@@ -79,23 +67,7 @@ func (r *ReconcileAutoOpsAgentPolicy) deploymentParams(ctx context.Context, poli
 		commonv1.TypeLabelName: "autoops-agent",
 		autoOpsLabelName:       policy.Name,
 	}
-	// Hash ES namespace and name to create a short unique identifier
-	// preventing name length issues.
-	esIdentifier := es.GetNamespace() + es.GetName()
-	esHash := fmt.Sprintf("%x", sha256.Sum256([]byte(esIdentifier)))[0:6]
-	deployment.ObjectMeta = metav1.ObjectMeta{
-		Name:      AutoOpsNamer.Suffix(policy.GetName(), esHash),
-		Namespace: policy.GetNamespace(),
-		Labels:    labels,
-	}
-	deployment.Spec = appsv1.DeploymentSpec{
-		Replicas: pointer.Int32(1),
-		Selector: &metav1.LabelSelector{
-			MatchLabels: map[string]string{
-				autoOpsLabelName: policy.GetName(),
-			},
-		},
-	}
+
 	// Create ES-specific config map volume
 	configMapName := fmt.Sprintf("%s-%s-%s", autoOpsESConfigMapName, es.Namespace, es.Name)
 	configVolume := volume.NewConfigMapVolume(configMapName, configVolumeName, configVolumePath)
@@ -123,12 +95,13 @@ func (r *ReconcileAutoOpsAgentPolicy) deploymentParams(ctx context.Context, poli
 
 	annotations := map[string]string{configHashAnnotationName: configHash}
 	meta := metadata.Propagate(&policy, metadata.Metadata{Labels: labels, Annotations: annotations})
-	podTemplateSpec := defaults.NewPodTemplateBuilder(basePodTemplate, "autoops-agent").
+	podTemplateSpec := defaults.NewPodTemplateBuilder(policy.Spec.PodTemplate, "autoops-agent").
 		WithArgs("--config", path.Join(configVolumePath, autoOpsESConfigFileName)).
 		WithLabels(meta.Labels).
 		WithAnnotations(meta.Annotations).
-		WithDockerImage(container.ImageRepository(container.AutoOpsAgentImage, v), v.String()).
+		WithDockerImage(policy.Spec.Image, container.ImageRepository(container.AutoOpsAgentImage, v)).
 		WithEnv(autoopsEnvVars(es)...).
+		WithResources(defaultResources).
 		WithVolumes(volumes...).
 		WithVolumeMounts(volumeMounts...).
 		WithPorts([]corev1.ContainerPort{{Name: "http", ContainerPort: int32(readinessProbePort), Protocol: corev1.ProtocolTCP}}).
@@ -154,8 +127,22 @@ func (r *ReconcileAutoOpsAgentPolicy) deploymentParams(ctx context.Context, poli
 		}).
 		PodTemplate
 
-	deployment.Spec.Template = podTemplateSpec
-	return deployment, nil
+	// Hash ES namespace and name to create a short unique identifier
+	// preventing name length issues.
+	esIdentifier := es.GetNamespace() + es.GetName()
+	esHash := fmt.Sprintf("%x", sha256.Sum256([]byte(esIdentifier)))[0:6]
+
+	return common_deployment.New(common_deployment.Params{
+		Name:      AutoOpsNamer.Suffix(policy.GetName(), esHash),
+		Namespace: policy.GetNamespace(),
+		Selector: map[string]string{
+			autoOpsLabelName: policy.GetName(),
+		},
+		Metadata:             meta,
+		PodTemplateSpec:      podTemplateSpec,
+		Replicas:             1,
+		RevisionHistoryLimit: policy.Spec.RevisionHistoryLimit,
+	}), nil
 }
 
 // readinessProbe is the readiness probe for the AutoOps Agent container

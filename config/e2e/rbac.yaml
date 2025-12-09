@@ -390,6 +390,7 @@ rules:
       - autoops.k8s.elastic.co
     resources:
       - autoopsagentpolicies
+      - autoopsagentpolicies/status
     verbs:
       - get
       - list

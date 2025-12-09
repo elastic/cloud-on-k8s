@@ -5,6 +5,7 @@
 package v1alpha1
 
 import (
+	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	commonv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/common/v1"
@@ -66,6 +67,17 @@ type AutoOpsAgentPolicySpec struct {
 	// AutoOpsRef is a reference to an AutoOps instance running in the same Kubernetes cluster.
 	// (TODO) AutoOpsRef is not yet implemented.
 	// AutoOpsRef commonv1.ObjectSelector `json:"autoOpsRef,omitempty"`
+
+	// Image is the AutoOps Agent Docker image to deploy.
+	Image string `json:"image,omitempty"`
+
+	// PodTemplate provides customisation options (labels, annotations, affinity rules, resource requests, and so on) for the Agent pods
+	// +kubebuilder:validation:Optional
+	// +kubebuilder:pruning:PreserveUnknownFields
+	PodTemplate corev1.PodTemplateSpec `json:"podTemplate,omitempty"`
+
+	// RevisionHistoryLimit is the number of revisions to retain to allow rollback in the underlying Deployment.
+	RevisionHistoryLimit *int32 `json:"revisionHistoryLimit,omitempty"`
 }
 
 type AutoOpsAgentPolicyStatus struct {
