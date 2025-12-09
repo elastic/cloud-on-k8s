@@ -10673,6 +10673,9 @@ spec:
     - jsonPath: .metadata.creationTimestamp
       name: Age
       type: date
+    - jsonPath: .spec.weight
+      name: Weight
+      type: integer
     name: v1alpha1
     schema:
       openAPIV3Schema:
@@ -10932,6 +10935,13 @@ spec:
                   - secretName
                   type: object
                 type: array
+              weight:
+                default: 0
+                description: |-
+                  Weight determines the priority of this policy when multiple policies target the same resource.
+                  Lower weight values take precedence. Defaults to 0.
+                format: int32
+                type: integer
             type: object
           status:
             properties:
