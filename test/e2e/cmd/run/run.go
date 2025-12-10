@@ -344,8 +344,8 @@ func (h *helper) installOperatorUnderTest() error {
 		return err
 	}
 
-	if _, _, err := h.kubectl("create", "-f", manifestFile); err != nil {
-		return fmt.Errorf("failed to create operator manifest: %w", err)
+	if _, _, err := h.kubectl("apply", "-f", manifestFile); err != nil {
+		return fmt.Errorf("failed to apply operator manifest: %w", err)
 	}
 
 	h.addCleanupFunc(h.deleteResources(manifestFile))
