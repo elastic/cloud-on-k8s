@@ -41,6 +41,8 @@ const (
 	basePathEnvName = "SERVER_BASEPATH"
 	// rewriteBasePathEnvName is the environment variable name that specifies whether Kibana should rewrite requests that are prefixed with server.basePath
 	rewriteBasePathEnvName = "SERVER_REWRITEBASEPATH"
+	// maxOldSpacePercentage is the percentage of the container's memory limit to allocate to Node.js old space (heap)
+	maxOldSpacePercentage = 75
 )
 
 var (
@@ -83,6 +85,23 @@ type basePathConfig struct {
 		RewriteBasePath bool   `config:"rewriteBasePath"`
 		BasePath        string `config:"basePath"`
 	}
+}
+
+// calculateMaxOldSpace calculates the --max-old-space-size value based on the container's memory limit.
+// It returns a NODE_OPTIONS string with --max-old-space-size set to maxOldSpacePercentage of the memory limit (in MB).
+// If no memory limit is set, it returns an empty string.
+func calculateMaxOldSpace(resources corev1.ResourceRequirements) string {
+	memoryLimit, hasLimit := resources.Limits[corev1.ResourceMemory]
+	if !hasLimit || memoryLimit.IsZero() {
+		// No memory limit set, don't set --max-old-space-size
+		return ""
+	}
+
+	// Convert memory limit to MB and calculate percentage
+	memoryMB := memoryLimit.Value() / (1024 * 1024)
+	maxOldSpaceSizeMB := memoryMB * maxOldSpacePercentage / 100
+
+	return fmt.Sprintf("--max-old-space-size=%d", maxOldSpaceSizeMB)
 }
 
 // readinessProbe is the readiness probe for the Kibana container
@@ -139,9 +158,16 @@ func NewPodTemplateSpec(
 		WithReadinessProbe(readinessProbe(kb.Spec.HTTP.TLS.Enabled(), basePath)).
 		WithVolumes(scriptsConfigMapVolume.Volume()).WithVolumeMounts(scriptsConfigMapVolume.VolumeMount()).
 		WithVolumes(PluginsVolume.Volume()).WithVolumeMounts(PluginsVolume.VolumeMount()).
-		WithPorts(ports).
-		// Temporary fix to expand the usable memory to 75% of the total memory for Kibana until https://github.com/elastic/kibana/issues/245742 is implemented.
-		WithEnv(corev1.EnvVar{Name: EnvNodeOptions, Value: "--max-old-space-size-percentage=75"})
+		WithPorts(ports)
+
+	// Calculate and set NODE_OPTIONS based on the container's memory limit (after resources have been merged)
+	// This is a temporary fix to expand the usable memory to 75% of the total memory for Kibana
+	// until https://github.com/elastic/kibana/issues/245742 is implemented.
+	if kbContainer := builder.MainContainer(); kbContainer != nil {
+		if nodeOptions := calculateMaxOldSpace(kbContainer.Resources); nodeOptions != "" {
+			builder = builder.WithEnv(corev1.EnvVar{Name: EnvNodeOptions, Value: nodeOptions})
+		}
+	}
 
 	for _, volume := range volumes {
 		builder.WithVolumes(volume.Volume()).WithVolumeMounts(volume.VolumeMount())

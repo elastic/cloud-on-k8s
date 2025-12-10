@@ -68,8 +68,8 @@ func TestNewPodTemplateSpec(t *testing.T) {
 				assert.Equal(t, container.ImageRepository(container.KibanaImage, version.MustParse("7.1.0")), kibanaContainer.Image)
 				assert.NotNil(t, kibanaContainer.ReadinessProbe)
 				assert.NotEmpty(t, kibanaContainer.Ports)
-				// Check that NODE_OPTIONS is set with max-old-space-size-percentage
-				assertEnvValue(t, kibanaContainer, EnvNodeOptions, "--max-old-space-size-percentage=75", "NODE_OPTIONS environment variable should be set")
+				// Check that NODE_OPTIONS is set with max-old-space-size
+				assertEnvValue(t, kibanaContainer, EnvNodeOptions, "--max-old-space-size=768", "NODE_OPTIONS environment variable should be set")
 			},
 		},
 		{
@@ -130,11 +130,14 @@ func TestNewPodTemplateSpec(t *testing.T) {
 			}},
 			keystore: nil,
 			assertions: func(pod corev1.PodTemplateSpec) {
+				kibanaContainer := GetKibanaContainer(pod.Spec)
 				assert.Equal(t, corev1.ResourceRequirements{
 					Limits: map[corev1.ResourceName]resource.Quantity{
 						corev1.ResourceMemory: resource.MustParse("3Gi"),
 					},
-				}, GetKibanaContainer(pod.Spec).Resources)
+				}, kibanaContainer.Resources)
+				// Verify NODE_OPTIONS is calculated based on the custom memory limit: 3Gi * 0.75 = 2304MB
+				assertEnvValue(t, kibanaContainer, EnvNodeOptions, "--max-old-space-size=2304", "NODE_OPTIONS should be 75% of 3Gi")
 			},
 		},
 		{
@@ -212,7 +215,7 @@ func TestNewPodTemplateSpec(t *testing.T) {
 				kibanaContainer := GetKibanaContainer(pod.Spec)
 				assert.Len(t, kibanaContainer.Env, 2)
 				// Check that NODE_OPTIONS is set by default
-				assertEnvValue(t, kibanaContainer, EnvNodeOptions, "--max-old-space-size-percentage=75", "NODE_OPTIONS should be set by default")
+				assertEnvValue(t, kibanaContainer, EnvNodeOptions, "--max-old-space-size=768", "NODE_OPTIONS should be set by default")
 			},
 		},
 		{
@@ -424,6 +427,71 @@ func TestNewPodTemplateSpec(t *testing.T) {
 			got, err := NewPodTemplateSpec(context.Background(), k8s.NewFakeClient(), tt.kb, tt.keystore, []commonvolume.VolumeLike{}, bp, true, md)
 			assert.NoError(t, err)
 			tt.assertions(got)
+		})
+	}
+}
+
+func Test_calculateMaxOldSpace(t *testing.T) {
+	tests := []struct {
+		name      string
+		resources corev1.ResourceRequirements
+		want      string
+	}{
+		{
+			name: "with 1Gi memory limit",
+			resources: corev1.ResourceRequirements{
+				Limits: map[corev1.ResourceName]resource.Quantity{
+					corev1.ResourceMemory: resource.MustParse("1Gi"),
+				},
+			},
+			want: "--max-old-space-size=768",
+		},
+		{
+			name: "with 2Gi memory limit",
+			resources: corev1.ResourceRequirements{
+				Limits: map[corev1.ResourceName]resource.Quantity{
+					corev1.ResourceMemory: resource.MustParse("2Gi"),
+				},
+			},
+			want: "--max-old-space-size=1536",
+		},
+		{
+			name: "with 512Mi memory limit",
+			resources: corev1.ResourceRequirements{
+				Limits: map[corev1.ResourceName]resource.Quantity{
+					corev1.ResourceMemory: resource.MustParse("512Mi"),
+				},
+			},
+			want: "--max-old-space-size=384",
+		},
+		{
+			name: "with 3Gi memory limit",
+			resources: corev1.ResourceRequirements{
+				Limits: map[corev1.ResourceName]resource.Quantity{
+					corev1.ResourceMemory: resource.MustParse("3Gi"),
+				},
+			},
+			want: "--max-old-space-size=2304",
+		},
+		{
+			name:      "with no memory limit",
+			resources: corev1.ResourceRequirements{},
+			want:      "",
+		},
+		{
+			name: "with zero memory limit",
+			resources: corev1.ResourceRequirements{
+				Limits: map[corev1.ResourceName]resource.Quantity{
+					corev1.ResourceMemory: resource.MustParse("0"),
+				},
+			},
+			want: "",
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := calculateMaxOldSpace(tt.resources)
+			assert.Equal(t, tt.want, got)
 		})
 	}
 }

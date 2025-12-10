@@ -276,6 +276,12 @@ func TestDriverDeploymentParams(t *testing.T) {
 				for i, c := range p.PodTemplateSpec.Spec.Containers {
 					if c.Name == kbv1.KibanaContainerName {
 						p.PodTemplateSpec.Spec.Containers[i].Resources = customResourceLimits
+						// Update NODE_OPTIONS to reflect the custom 2Gi memory limit (75% of 2048MB = 1536MB)
+						for j, env := range p.PodTemplateSpec.Spec.Containers[i].Env {
+							if env.Name == EnvNodeOptions {
+								p.PodTemplateSpec.Spec.Containers[i].Env[j].Value = "--max-old-space-size=1536"
+							}
+						}
 					}
 				}
 				return p
@@ -676,7 +682,7 @@ func expectedDeploymentParams() deployment.Params {
 						},
 					},
 					Env: []corev1.EnvVar{
-						{Name: EnvNodeOptions, Value: "--max-old-space-size-percentage=75"},
+						{Name: EnvNodeOptions, Value: "--max-old-space-size=768"},
 					},
 					Resources:       DefaultResources,
 					SecurityContext: &defaultSecurityContext,
