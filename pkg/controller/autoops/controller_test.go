@@ -17,6 +17,7 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
+	autoopsv1alpha1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/autoops/v1alpha1"
 	esv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/elasticsearch/v1"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/operator"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/watches"
@@ -286,7 +287,7 @@ func TestReconcileAutoOpsAgentPolicy_onDelete(t *testing.T) {
 
 			for _, es := range tt.esClusters {
 				if es.Status.Phase == esv1.ElasticsearchReadyPhase {
-					expectedSecretName := apiKeySecretNameFor(types.NamespacedName{Namespace: es.Namespace, Name: es.Name})
+					expectedSecretName := autoopsv1alpha1.APIKeySecret(tt.policy.Name, types.NamespacedName{Namespace: es.Namespace, Name: es.Name})
 					var retrievedSecret corev1.Secret
 					err := k8sClient.Get(ctx, types.NamespacedName{Namespace: tt.policy.Namespace, Name: expectedSecretName}, &retrievedSecret)
 					assert.True(t, apierrors.IsNotFound(err), "Expected secret %s/%s to be deleted", tt.policy.Namespace, expectedSecretName)

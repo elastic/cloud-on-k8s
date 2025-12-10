@@ -8,6 +8,7 @@ import (
 	esv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/elasticsearch/v1"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/hash"
 	common_name "github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/name"
+	"k8s.io/apimachinery/pkg/types"
 )
 
 var (
@@ -41,7 +42,7 @@ func CASecret(policyName string, es esv1.Elasticsearch) string {
 }
 
 // APIKeySecret returns the name of the Secret which holds the Elasticsearch API key for the given policy and ES instance.
-func APIKeySecret(policyName string, es esv1.Elasticsearch) string {
-	hash := hash.HashObject(es.GetNamespace() + es.GetName())
+func APIKeySecret(policyName string, es types.NamespacedName) string {
+	hash := hash.HashObject(es.Namespace + es.Name)
 	return AutoOpsNamer.Suffix(policyName, apiKeySecretSuffix, hash)
 }

@@ -118,7 +118,7 @@ func TestReconcileAutoOpsAgentPolicy_deploymentParams(t *testing.T) {
 			}
 
 			// We need the ES API key secret as well to build the config hash
-			esAPIKeySecretName := apiKeySecretNameFor(types.NamespacedName{Namespace: tt.args.es.Namespace, Name: tt.args.es.Name})
+			esAPIKeySecretName := autoopsv1alpha1.APIKeySecret(tt.args.autoops.Name, types.NamespacedName{Namespace: tt.args.es.Namespace, Name: tt.args.es.Name})
 			esAPIKeySecret := &corev1.Secret{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      esAPIKeySecretName,
@@ -276,7 +276,7 @@ func expectedDeployment(policy autoopsv1alpha1.AutoOpsAgentPolicy, es esv1.Elast
 									ValueFrom: &corev1.EnvVarSource{
 										SecretKeyRef: &corev1.SecretKeySelector{
 											LocalObjectReference: corev1.LocalObjectReference{
-												Name: apiKeySecretNameFor(types.NamespacedName{Namespace: es.Namespace, Name: es.Name}),
+												Name: autoopsv1alpha1.APIKeySecret(policy.GetName(), types.NamespacedName{Namespace: es.Namespace, Name: es.Name}),
 											},
 											Key:      "api_key",
 											Optional: ptr.To(false),
@@ -412,7 +412,7 @@ func Test_autoopsEnvVars(t *testing.T) {
 					ValueFrom: &corev1.EnvVarSource{
 						SecretKeyRef: &corev1.SecretKeySelector{
 							LocalObjectReference: corev1.LocalObjectReference{
-								Name: "es-1-ns-1-autoops-es-api-key",
+								Name: "policy-1-autoops-apikey-2334712842",
 							},
 							Key:      "api_key",
 							Optional: ptr.To(false),
@@ -447,7 +447,7 @@ func Test_autoopsEnvVars(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got := autoopsEnvVars(tt.es)
+			got := autoopsEnvVars(tt.policy, tt.es)
 			if !cmp.Equal(got, tt.want) {
 				t.Errorf("autoopsEnvVars() diff = %v", cmp.Diff(got, tt.want))
 			}

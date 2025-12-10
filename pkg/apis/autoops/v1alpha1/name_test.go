@@ -9,6 +9,7 @@ import (
 	"testing"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/types"
 
 	esv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/elasticsearch/v1"
 )
@@ -52,19 +53,14 @@ func TestAPIKeySecret(t *testing.T) {
 	tests := []struct {
 		name       string
 		policyName string
-		es         esv1.Elasticsearch
+		es         types.NamespacedName
 		want       string
 	}{
 		{
 			name:       "test-api-key-secret-too-long",
 			policyName: "eck-autoops-config-policy",
-			es: esv1.Elasticsearch{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      "testing",
-					Namespace: "elastic",
-				},
-			},
-			want: "eck-autoops-config-policy-autoops-apikey-4269947480",
+			es:         types.NamespacedName{Namespace: "elastic", Name: "testing"},
+			want:       "eck-autoops-config-policy-autoops-apikey-4269947480",
 		},
 	}
 	for _, tt := range tests {

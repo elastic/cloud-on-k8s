@@ -167,7 +167,7 @@ func maybeUpdateAPIKey(
 	}
 
 	// The API key is seemingly up to date, so we need to ensure the secret exists with correct value
-	secretName := apiKeySecretNameFor(types.NamespacedName{Namespace: policy.Namespace, Name: es.Name})
+	secretName := autoopsv1alpha1.APIKeySecret(policy.GetName(), types.NamespacedName{Namespace: es.Namespace, Name: es.Name})
 	var secret corev1.Secret
 	nsn := types.NamespacedName{
 		Namespace: policy.Namespace,
@@ -247,7 +247,7 @@ func storeAPIKeyInSecret(
 	policy autoopsv1alpha1.AutoOpsAgentPolicy,
 	es esv1.Elasticsearch,
 ) error {
-	secretName := autoopsv1alpha1.APIKeySecret(policy.GetName(), es)
+	secretName := autoopsv1alpha1.APIKeySecret(policy.GetName(), types.NamespacedName{Namespace: es.Namespace, Name: es.Name})
 	expected := buildAutoOpsESAPIKeySecret(policy, es, secretName, encodedKey, expectedHash)
 
 	reconciled := &corev1.Secret{}
@@ -310,11 +310,6 @@ func apiKeyNameFor(policy autoopsv1alpha1.AutoOpsAgentPolicy, es esv1.Elasticsea
 	return fmt.Sprintf("autoops-%s-%s-%s-%s", policy.Namespace, policy.Name, es.Namespace, es.Name)
 }
 
-// apiKeySecretNameFrom generates the name for the API key secret from an ES instance.
-func apiKeySecretNameFor(es types.NamespacedName) string {
-	return fmt.Sprintf("%s-%s-%s", es.Name, es.Namespace, autoOpsESAPIKeySecretNameSuffix)
-}
-
 // newMetadataFor returns the metadata to be set in the Elasticsearch API key.
 func newMetadataFor(policy *autoopsv1alpha1.AutoOpsAgentPolicy, es *esv1.Elasticsearch, expectedHash string) map[string]string {
 	return map[string]string{
@@ -374,13 +369,15 @@ func cleanupAutoOpsESAPIKey(
 		}
 	}
 
-	return deleteESAPIKeySecret(ctx, c, log, policyNamespace, types.NamespacedName{Namespace: es.Namespace, Name: es.Name})
+	return deleteESAPIKeySecret(ctx, c, log,
+		types.NamespacedName{Namespace: policyNamespace, Name: policyName},
+		types.NamespacedName{Namespace: es.Namespace, Name: es.Name})
 }
 
-func deleteESAPIKeySecret(ctx context.Context, c k8s.Client, log logr.Logger, policyNamespace string, es types.NamespacedName) error {
-	secretName := apiKeySecretNameFor(es)
+func deleteESAPIKeySecret(ctx context.Context, c k8s.Client, log logr.Logger, policy types.NamespacedName, es types.NamespacedName) error {
+	secretName := autoopsv1alpha1.APIKeySecret(policy.Name, es)
 	secretKey := types.NamespacedName{
-		Namespace: policyNamespace,
+		Namespace: policy.Namespace,
 		Name:      secretName,
 	}
 	var secret corev1.Secret

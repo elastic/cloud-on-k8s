@@ -96,7 +96,7 @@ func (r *ReconcileAutoOpsAgentPolicy) deploymentParams(ctx context.Context, poli
 		WithLabels(meta.Labels).
 		WithAnnotations(meta.Annotations).
 		WithDockerImage(policy.Spec.Image, container.ImageRepository(container.AutoOpsAgentImage, v)).
-		WithEnv(autoopsEnvVars(es)...).
+		WithEnv(autoopsEnvVars(policy, es)...).
 		WithResources(defaultResources).
 		WithVolumes(volumes...).
 		WithVolumeMounts(volumeMounts...).
@@ -190,7 +190,7 @@ func buildConfigHash(ctx context.Context, c k8s.Client, policy autoopsv1alpha1.A
 	}
 
 	// // Hash ES API key secret
-	esAPIKeySecretName := apiKeySecretNameFor(types.NamespacedName{Namespace: es.Namespace, Name: es.Name})
+	esAPIKeySecretName := autoopsv1alpha1.APIKeySecret(policy.GetName(), types.NamespacedName{Namespace: es.Namespace, Name: es.Name})
 	esAPIKeySecretKey := types.NamespacedName{Namespace: policy.Namespace, Name: esAPIKeySecretName}
 	var esAPIKeySecret corev1.Secret
 	if err := c.Get(ctx, esAPIKeySecretKey, &esAPIKeySecret); err != nil {
@@ -208,7 +208,7 @@ func buildConfigHash(ctx context.Context, c k8s.Client, policy autoopsv1alpha1.A
 
 // autoopsEnvVars returns the environment variables for the AutoOps deployment
 // that reference values from the autoops-secret and the ES elastic user secret.
-func autoopsEnvVars(es esv1.Elasticsearch) []corev1.EnvVar {
+func autoopsEnvVars(policy autoopsv1alpha1.AutoOpsAgentPolicy, es esv1.Elasticsearch) []corev1.EnvVar {
 	esService := services.InternalServiceURL(es)
 	return []corev1.EnvVar{
 		{
@@ -242,7 +242,7 @@ func autoopsEnvVars(es esv1.Elasticsearch) []corev1.EnvVar {
 			ValueFrom: &corev1.EnvVarSource{
 				SecretKeyRef: &corev1.SecretKeySelector{
 					LocalObjectReference: corev1.LocalObjectReference{
-						Name: apiKeySecretNameFor(types.NamespacedName{Namespace: es.Namespace, Name: es.Name}),
+						Name: autoopsv1alpha1.APIKeySecret(policy.GetName(), types.NamespacedName{Namespace: es.Namespace, Name: es.Name}),
 					},
 					Key:      "api_key",
 					Optional: ptr.To(false),

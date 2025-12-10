@@ -239,7 +239,9 @@ func (r *ReconcileAutoOpsAgentPolicy) onDelete(ctx context.Context, obj types.Na
 		if err := r.Client.Get(ctx, types.NamespacedName{Namespace: esNamespace, Name: esName}, &es); err != nil {
 			if apierrors.IsNotFound(err) {
 				// The ES cluster is gone, so we need to delete the API key secret
-				if err := deleteESAPIKeySecret(ctx, r.Client, log, obj.Namespace, types.NamespacedName{Namespace: esNamespace, Name: esName}); err != nil {
+				if err := deleteESAPIKeySecret(ctx, r.Client, log,
+					types.NamespacedName{Namespace: obj.Namespace, Name: obj.Name},
+					types.NamespacedName{Namespace: esNamespace, Name: esName}); err != nil {
 					log.Error(err, "Failed to delete API key secret", "es_namespace", esNamespace, "es_name", esName)
 				}
 				continue
