@@ -140,6 +140,7 @@ func NewPodTemplateSpec(
 		WithVolumes(scriptsConfigMapVolume.Volume()).WithVolumeMounts(scriptsConfigMapVolume.VolumeMount()).
 		WithVolumes(PluginsVolume.Volume()).WithVolumeMounts(PluginsVolume.VolumeMount()).
 		WithPorts(ports).
+		// Temporary fix to expand the usable memory to 75% of the total memory for Kibana until https://github.com/elastic/kibana/issues/245742 is implemented.
 		WithEnv(corev1.EnvVar{Name: EnvNodeOptions, Value: "--max-old-space-size-percentage=75"})
 
 	for _, volume := range volumes {
