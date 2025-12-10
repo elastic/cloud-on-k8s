@@ -101,12 +101,14 @@ func (r *ReconcileAutoOpsAgentPolicy) internalReconcile(
 
 	for _, es := range esList.Items {
 		if es.Status.Phase != esv1.ElasticsearchReadyPhase {
+			log.V(1).Info("Skipping ES cluster that is not ready", "namespace", es.Namespace, "name", es.Name)
 			results = results.WithRequeue(defaultRequeue)
 			continue
 		}
 
 		if es.Spec.HTTP.TLS.Enabled() {
 			if err := r.reconcileAutoOpsESCASecret(ctx, policy, es); err != nil {
+				log.Error(err, "Error reconciling AutoOps ES CA secret", "namespace", es.Namespace, "name", es.Name)
 				errorCount++
 				state.UpdateWithPhase(autoopsv1alpha1.ErrorPhase)
 				continue
@@ -114,12 +116,14 @@ func (r *ReconcileAutoOpsAgentPolicy) internalReconcile(
 		}
 
 		if err := reconcileAutoOpsESAPIKey(ctx, r.Client, r.esClientProvider, r.params.Dialer, policy, es); err != nil {
+			log.Error(err, "Error reconciling AutoOps ES API key", "namespace", es.Namespace, "name", es.Name)
 			errorCount++
 			state.UpdateWithPhase(autoopsv1alpha1.ErrorPhase)
 			continue
 		}
 
 		if err := ReconcileAutoOpsESConfigMap(ctx, r.Client, policy, es); err != nil {
+			log.Error(err, "Error reconciling AutoOps ES config map", "namespace", es.Namespace, "name", es.Name)
 			errorCount++
 			state.UpdateWithPhase(autoopsv1alpha1.ErrorPhase)
 			continue
@@ -127,6 +131,7 @@ func (r *ReconcileAutoOpsAgentPolicy) internalReconcile(
 
 		deploymentParams, err := r.deploymentParams(ctx, policy, es)
 		if err != nil {
+			log.Error(err, "Error getting deployment params", "namespace", es.Namespace, "name", es.Name)
 			errorCount++
 			state.UpdateWithPhase(autoopsv1alpha1.ErrorPhase)
 			continue
@@ -134,6 +139,7 @@ func (r *ReconcileAutoOpsAgentPolicy) internalReconcile(
 
 		reconciledDeployment, err := deployment.Reconcile(ctx, r.Client, deploymentParams, &policy)
 		if err != nil {
+			log.Error(err, "Error reconciling deployment", "namespace", es.Namespace, "name", es.Name)
 			errorCount++
 			state.UpdateWithPhase(autoopsv1alpha1.ErrorPhase)
 			continue
