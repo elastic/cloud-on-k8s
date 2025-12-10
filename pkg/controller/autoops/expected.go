@@ -6,7 +6,6 @@ package autoops
 
 import (
 	"context"
-	"crypto/sha256"
 	"fmt"
 	"hash/fnv"
 	"path"
@@ -25,7 +24,6 @@ import (
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/defaults"
 	common_deployment "github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/deployment"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/metadata"
-	common_name "github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/name"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/version"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/volume"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/services"
@@ -41,12 +39,6 @@ const (
 )
 
 var (
-	// ESNAutoOpsNamer is a Namer that generates names for AutoOps deployments
-	// according to the Policy name, and associated Elasticsearch name.
-	AutoOpsDeploymentNamer   = common_name.NewNamer("deploy")
-	AutoOpsConfigNamer       = common_name.NewNamer("config")
-	AutoOpsCASecretNamer     = common_name.NewNamer("ca-secret")
-	AutoOpsAPIKeySecretNamer = common_name.NewNamer("api-key-secret")
 	// Default resources for the AutoOps Agent deployment.
 	// These currently mirror the defaults for the Elastic Agent deployment.
 	defaultResources = corev1.ResourceRequirements{
@@ -67,14 +59,13 @@ func (r *ReconcileAutoOpsAgentPolicy) deploymentParams(ctx context.Context, poli
 		return appsv1.Deployment{}, err
 	}
 
-	namingHash := fmt.Sprintf("%x", sha256.Sum256([]byte(es.GetNamespace()+es.GetName())))[0:6]
 	labels := map[string]string{
 		commonv1.TypeLabelName: "autoops-agent",
 		autoOpsLabelName:       policy.Name,
 	}
 
 	// Create ES-specific config map volume
-	configMapName := AutoOpsConfigNamer.Suffix(policy.GetName(), namingHash)
+	configMapName := autoopsv1alpha1.Config(policy.GetName(), es)
 	configVolume := volume.NewConfigMapVolume(configMapName, configVolumeName, configVolumePath)
 
 	volumes := []corev1.Volume{configVolume.Volume()}
@@ -82,7 +73,7 @@ func (r *ReconcileAutoOpsAgentPolicy) deploymentParams(ctx context.Context, poli
 
 	// Add CA certificate volume for this ES instance only if TLS is enabled
 	if es.Spec.HTTP.TLS.Enabled() {
-		caSecretName := AutoOpsCASecretNamer.Suffix(policy.GetName(), namingHash)
+		caSecretName := autoopsv1alpha1.CASecret(policy.GetName(), es)
 		caVolume := volume.NewSecretVolumeWithMountPath(
 			caSecretName,
 			fmt.Sprintf("es-ca-%s-%s", es.Name, es.Namespace),
@@ -133,7 +124,7 @@ func (r *ReconcileAutoOpsAgentPolicy) deploymentParams(ctx context.Context, poli
 		PodTemplate
 
 	return common_deployment.New(common_deployment.Params{
-		Name:      AutoOpsDeploymentNamer.Suffix(policy.GetName(), namingHash),
+		Name:      autoopsv1alpha1.Deployment(policy.GetName(), es),
 		Namespace: policy.GetNamespace(),
 		Selector: map[string]string{
 			autoOpsLabelName: policy.GetName(),

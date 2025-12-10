@@ -6,7 +6,6 @@ package autoops
 
 import (
 	"context"
-	"crypto/sha256"
 	"fmt"
 	"reflect"
 
@@ -248,8 +247,7 @@ func storeAPIKeyInSecret(
 	policy autoopsv1alpha1.AutoOpsAgentPolicy,
 	es esv1.Elasticsearch,
 ) error {
-	namingHash := fmt.Sprintf("%x", sha256.Sum256([]byte(es.GetNamespace()+es.GetName())))[0:6]
-	secretName := AutoOpsAPIKeySecretNamer.Suffix(policy.GetName(), namingHash)
+	secretName := autoopsv1alpha1.APIKeySecret(policy.GetName(), es)
 	expected := buildAutoOpsESAPIKeySecret(policy, es, secretName, encodedKey, expectedHash)
 
 	reconciled := &corev1.Secret{}

@@ -6,7 +6,6 @@ package autoops
 
 import (
 	"context"
-	"crypto/sha256"
 	"fmt"
 	"hash/fnv"
 	"testing"
@@ -172,10 +171,7 @@ func expectedDeployment(policy autoopsv1alpha1.AutoOpsAgentPolicy, es esv1.Elast
 		configHashAnnotationName: configHashValue,
 	}
 
-	// Hash ES namespace and name to match the implementation
-	esIdentifier := es.GetNamespace() + es.GetName()
-	esHash := fmt.Sprintf("%x", sha256.Sum256([]byte(esIdentifier)))[0:6]
-	name := AutoOpsDeploymentNamer.Suffix(policy.GetName(), esHash)
+	name := autoopsv1alpha1.Deployment(policy.GetName(), es)
 	return appsv1.Deployment{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:        name,
@@ -202,7 +198,7 @@ func expectedDeployment(policy autoopsv1alpha1.AutoOpsAgentPolicy, es esv1.Elast
 							VolumeSource: corev1.VolumeSource{
 								ConfigMap: &corev1.ConfigMapVolumeSource{
 									LocalObjectReference: corev1.LocalObjectReference{
-										Name: AutoOpsConfigNamer.Suffix(policy.GetName(), esHash),
+										Name: autoopsv1alpha1.Config(policy.GetName(), es),
 									},
 									DefaultMode: ptr.To(corev1.ConfigMapVolumeSourceDefaultMode),
 									Optional:    ptr.To(false),
