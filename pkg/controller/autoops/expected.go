@@ -43,10 +43,10 @@ const (
 var (
 	// ESNAutoOpsNamer is a Namer that generates names for AutoOps deployments
 	// according to the Policy name, and associated Elasticsearch name.
-	AutoOpsNamer             = common_name.NewNamer("autoops")
-	AutoOpsConfigNamer       = common_name.NewNamer("autoops-config")
-	AutoOpsCASecretNamer     = common_name.NewNamer("autoops-ca-secret")
-	AutoOpsAPIKeySecretNamer = common_name.NewNamer("autoops-api-key-secret")
+	AutoOpsDeploymentNamer   = common_name.NewNamer("deploy")
+	AutoOpsConfigNamer       = common_name.NewNamer("config")
+	AutoOpsCASecretNamer     = common_name.NewNamer("ca-secret")
+	AutoOpsAPIKeySecretNamer = common_name.NewNamer("api-key-secret")
 	// Default resources for the AutoOps Agent deployment.
 	// These currently mirror the defaults for the Elastic Agent deployment.
 	defaultResources = corev1.ResourceRequirements{
@@ -133,7 +133,7 @@ func (r *ReconcileAutoOpsAgentPolicy) deploymentParams(ctx context.Context, poli
 		PodTemplate
 
 	return common_deployment.New(common_deployment.Params{
-		Name:      AutoOpsNamer.Suffix(policy.GetName(), namingHash),
+		Name:      AutoOpsDeploymentNamer.Suffix(policy.GetName(), namingHash),
 		Namespace: policy.GetNamespace(),
 		Selector: map[string]string{
 			autoOpsLabelName: policy.GetName(),

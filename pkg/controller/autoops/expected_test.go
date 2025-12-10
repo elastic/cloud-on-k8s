@@ -175,7 +175,7 @@ func expectedDeployment(policy autoopsv1alpha1.AutoOpsAgentPolicy, es esv1.Elast
 	// Hash ES namespace and name to match the implementation
 	esIdentifier := es.GetNamespace() + es.GetName()
 	esHash := fmt.Sprintf("%x", sha256.Sum256([]byte(esIdentifier)))[0:6]
-	name := AutoOpsNamer.Suffix(policy.GetName(), esHash)
+	name := AutoOpsDeploymentNamer.Suffix(policy.GetName(), esHash)
 	return appsv1.Deployment{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:        name,
