@@ -161,7 +161,7 @@ func buildConfigHash(ctx context.Context, c k8s.Client, policy autoopsv1alpha1.A
 	configHash := fnv.New32a()
 
 	// Hash ConfigMap data
-	configMapName := fmt.Sprintf("%s-%s-%s", autoOpsESConfigMapName, es.Namespace, es.Name)
+	configMapName := autoopsv1alpha1.Config(policy.GetName(), es)
 	var configMap corev1.ConfigMap
 	configMapKey := types.NamespacedName{Namespace: policy.Namespace, Name: configMapName}
 	if err := c.Get(ctx, configMapKey, &configMap); err != nil {
