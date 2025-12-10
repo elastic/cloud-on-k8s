@@ -64,7 +64,7 @@ func TestAPIKeySecret(t *testing.T) {
 					Namespace: "elastic",
 				},
 			},
-			want: "eck-autoops-config-policy-autoops-pkg/apis/autoops/v1alpha1/name_test.go-4269947480",
+			want: "eck-autoops-config-policy-autoops-apikey-4269947480",
 		},
 	}
 	for _, tt := range tests {

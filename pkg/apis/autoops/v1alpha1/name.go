@@ -11,7 +11,7 @@ import (
 )
 
 var (
-	// AutoOpsNamer is a Namer that is configured with the defaults for resources related to an AutoOps agent.a
+	// AutoOpsNamer is a Namer that is configured with the defaults for resources related to an AutoOps agent
 	AutoOpsNamer = common_name.NewNamer("autoops")
 )
 
