@@ -27,6 +27,21 @@ import (
 	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/k8s"
 )
 
+// assertEnvValue is a helper function that checks if a specific environment variable
+// exists in a container and has the expected value.
+func assertEnvValue(t *testing.T, container *corev1.Container, envName, expectedValue, message string) {
+	t.Helper()
+	var found bool
+	for _, env := range container.Env {
+		if env.Name == envName {
+			assert.Equal(t, expectedValue, env.Value, message)
+			found = true
+			break
+		}
+	}
+	assert.True(t, found, message)
+}
+
 func TestNewPodTemplateSpec(t *testing.T) {
 	tests := []struct {
 		name       string
@@ -53,6 +68,8 @@ func TestNewPodTemplateSpec(t *testing.T) {
 				assert.Equal(t, container.ImageRepository(container.KibanaImage, version.MustParse("7.1.0")), kibanaContainer.Image)
 				assert.NotNil(t, kibanaContainer.ReadinessProbe)
 				assert.NotEmpty(t, kibanaContainer.Ports)
+				// Check that NODE_OPTIONS is set with max-old-space-size-percentage
+				assertEnvValue(t, kibanaContainer, EnvNodeOptions, "--max-old-space-size-percentage=75", "NODE_OPTIONS environment variable should be set")
 			},
 		},
 		{
@@ -192,7 +209,36 @@ func TestNewPodTemplateSpec(t *testing.T) {
 				Version: "8.12.0",
 			}},
 			assertions: func(pod corev1.PodTemplateSpec) {
-				assert.Len(t, GetKibanaContainer(pod.Spec).Env, 1)
+				kibanaContainer := GetKibanaContainer(pod.Spec)
+				assert.Len(t, kibanaContainer.Env, 2)
+				// Check that NODE_OPTIONS is set by default
+				assertEnvValue(t, kibanaContainer, EnvNodeOptions, "--max-old-space-size-percentage=75", "NODE_OPTIONS should be set by default")
+			},
+		},
+		{
+			name: "with user-provided NODE_OPTIONS override",
+			kb: kbv1.Kibana{Spec: kbv1.KibanaSpec{
+				PodTemplate: corev1.PodTemplateSpec{
+					Spec: corev1.PodSpec{
+						Containers: []corev1.Container{
+							{
+								Name: kbv1.KibanaContainerName,
+								Env: []corev1.EnvVar{
+									{
+										Name:  EnvNodeOptions,
+										Value: "--max-old-space-size=2048",
+									},
+								},
+							},
+						},
+					},
+				},
+				Version: "8.12.0",
+			}},
+			assertions: func(pod corev1.PodTemplateSpec) {
+				kibanaContainer := GetKibanaContainer(pod.Spec)
+				// User-provided NODE_OPTIONS should take precedence
+				assertEnvValue(t, kibanaContainer, EnvNodeOptions, "--max-old-space-size=2048", "User-provided NODE_OPTIONS should override default")
 			},
 		},
 		{

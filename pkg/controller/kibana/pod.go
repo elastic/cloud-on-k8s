@@ -139,7 +139,8 @@ func NewPodTemplateSpec(
 		WithReadinessProbe(readinessProbe(kb.Spec.HTTP.TLS.Enabled(), basePath)).
 		WithVolumes(scriptsConfigMapVolume.Volume()).WithVolumeMounts(scriptsConfigMapVolume.VolumeMount()).
 		WithVolumes(PluginsVolume.Volume()).WithVolumeMounts(PluginsVolume.VolumeMount()).
-		WithPorts(ports)
+		WithPorts(ports).
+		WithEnv(corev1.EnvVar{Name: EnvNodeOptions, Value: "--max-old-space-size-percentage=75"})
 
 	for _, volume := range volumes {
 		builder.WithVolumes(volume.Volume()).WithVolumeMounts(volume.VolumeMount())
