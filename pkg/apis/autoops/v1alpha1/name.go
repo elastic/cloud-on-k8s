@@ -18,8 +18,8 @@ var (
 const (
 	deploymentSuffix   = "deploy"
 	configSuffix       = "config"
-	caSecretSuffix     = "ca-secret"      //nolint:gosec
-	apiKeySecretSuffix = "api-key-secret" //nolint:gosec
+	caSecretSuffix     = "ca-secret"
+	apiKeySecretSuffix = "api-key-secret"
 )
 
 // Deployment returns the name of the deployment for the given policy and ES instance.
