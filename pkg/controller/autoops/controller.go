@@ -160,8 +160,9 @@ func (r *ReconcileAutoOpsAgentPolicy) Reconcile(ctx context.Context, request rec
 
 // updatePhaseFromResults updates the phase of the AutoOpsAgentPolicy status based on the results of the reconciliation
 func updatePhaseFromResults(results *reconciler.Results, state *State) {
-	if isReconciled, _ := results.IsReconciled(); !isReconciled {
+	if isReconciled, message := results.IsReconciled(); !isReconciled {
 		state.UpdateWithPhase(autoopsv1alpha1.ApplyingChangesPhase)
+		state.AddEvent(corev1.EventTypeWarning, events.EventReasonDelayed, message)
 	} else {
 		state.UpdateWithPhase(autoopsv1alpha1.ReadyPhase)
 	}
