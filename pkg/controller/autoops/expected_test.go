@@ -175,9 +175,10 @@ func expectedDeployment(policy autoopsv1alpha1.AutoOpsAgentPolicy, es esv1.Elast
 	// Hash ES namespace and name to match the implementation
 	esIdentifier := es.GetNamespace() + es.GetName()
 	esHash := fmt.Sprintf("%x", sha256.Sum256([]byte(esIdentifier)))[0:6]
+	name := AutoOpsNamer.Suffix(policy.GetName(), esHash)
 	return appsv1.Deployment{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:        AutoOpsNamer.Suffix(policy.GetName(), esHash),
+			Name:        name,
 			Namespace:   policy.GetNamespace(),
 			Labels:      labels,
 			Annotations: annotations,
@@ -201,7 +202,7 @@ func expectedDeployment(policy autoopsv1alpha1.AutoOpsAgentPolicy, es esv1.Elast
 							VolumeSource: corev1.VolumeSource{
 								ConfigMap: &corev1.ConfigMapVolumeSource{
 									LocalObjectReference: corev1.LocalObjectReference{
-										Name: fmt.Sprintf("%s-%s-%s", autoOpsESConfigMapName, policy.GetNamespace(), es.GetName()),
+										Name: AutoOpsConfigNamer.Suffix(policy.GetName(), esHash),
 									},
 									DefaultMode: ptr.To(corev1.ConfigMapVolumeSourceDefaultMode),
 									Optional:    ptr.To(false),
