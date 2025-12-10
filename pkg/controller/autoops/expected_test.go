@@ -145,12 +145,12 @@ func TestReconcileAutoOpsAgentPolicy_deploymentParams(t *testing.T) {
 				expectedConfigHash := fnv.New32a()
 				_, _ = expectedConfigHash.Write([]byte(configData))
 				// Hash autoops-secret values
-				_, _ = expectedConfigHash.Write([]byte("test-autoops-token"))
-				_, _ = expectedConfigHash.Write([]byte("https://test-otel-url"))
-				_, _ = expectedConfigHash.Write([]byte("test-ccm-api-key"))
-				_, _ = expectedConfigHash.Write([]byte("https://test-ccm-api-url"))
+				// _, _ = expectedConfigHash.Write([]byte("test-autoops-token"))
+				// _, _ = expectedConfigHash.Write([]byte("https://test-otel-url"))
+				// _, _ = expectedConfigHash.Write([]byte("test-ccm-api-key"))
+				// _, _ = expectedConfigHash.Write([]byte("https://test-ccm-api-url"))
 				// Hash ES API key secret value
-				_, _ = expectedConfigHash.Write([]byte("test-es-api-key"))
+				// _, _ = expectedConfigHash.Write([]byte("test-es-api-key"))
 				expectedHashStr := fmt.Sprint(expectedConfigHash.Sum32())
 				want := expectedDeployment(tt.args.autoops, tt.args.es, expectedHashStr)
 				if !cmp.Equal(got, want) {
