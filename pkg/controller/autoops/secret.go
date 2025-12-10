@@ -63,7 +63,7 @@ func (r *ReconcileAutoOpsAgentPolicy) reconcileAutoOpsESCASecret(
 		return nil
 	}
 
-	secretName := fmt.Sprintf("%s-%s-%s", es.Name, es.Namespace, autoOpsESCASecretSuffix)
+	secretName := autoopsv1alpha1.CASecret(policy.GetName(), es)
 	expected := buildAutoOpsESCASecret(policy, secretName, caCert)
 
 	reconciled := &corev1.Secret{}

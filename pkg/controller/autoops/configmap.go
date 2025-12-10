@@ -175,7 +175,7 @@ func buildAutoOpsESConfigMap(policy autoopsv1alpha1.AutoOpsAgentPolicy, es esv1.
 	}
 
 	// Use ES-specific ConfigMap name to allow per-ES configuration
-	configMapName := fmt.Sprintf("%s-%s-%s", autoOpsESConfigMapName, es.Namespace, es.Name)
+	configMapName := autoopsv1alpha1.Config(policy.GetName(), es)
 
 	return corev1.ConfigMap{
 		ObjectMeta: metav1.ObjectMeta{
