@@ -675,6 +675,9 @@ func expectedDeploymentParams() deployment.Params {
 							},
 						},
 					},
+					Env: []corev1.EnvVar{
+						{Name: EnvNodeOptions, Value: "--max-old-space-size-percentage=75"},
+					},
 					Resources:       DefaultResources,
 					SecurityContext: &defaultSecurityContext,
 				}},
