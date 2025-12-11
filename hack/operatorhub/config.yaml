@@ -1,5 +1,5 @@
-newVersion: 3.3.0-SNAPSHOT
-prevVersion: 3.2.0
+newVersion: 3.3.0-rc6
+prevVersion: 3.3.0-rc5
 stackVersion: 9.3.0-SNAPSHOT
 crds:
   - name: elasticsearches.elasticsearch.k8s.elastic.co

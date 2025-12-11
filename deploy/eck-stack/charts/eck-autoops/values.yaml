@@ -41,8 +41,8 @@ annotations: {}
 #     relevant Elastic Cloud organization
 # - `cloudConnectedModeAPIURL`: the URL of the Cloud Connected Mode API (optional)
 #
-# configRef:
-#   secretName: ""
+configRef: {}
+  # secretName: ""
 
 # Image is the AutoOps Agent Docker image to deploy.
 # image: "docker.elastic.co/elastic-agent/elastic-otel-collector-wolfi:9.3.0-SNAPSHOT"
