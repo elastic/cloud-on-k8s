@@ -144,7 +144,49 @@ func ReconcileResource(params Params) error {
 		log.Info("Deleted resource successfully")
 		return create()
 	}
+	// Check if owner reference needs to be added/updated independently of NeedsUpdate
+	if params.Owner != nil {
+		reconciledMeta, err := meta.Accessor(params.Reconciled)
+		if err != nil {
+			return err
+		}
+		expectedMeta, err := meta.Accessor(params.Expected)
+		if err != nil {
+			return err
+		}
+		expectedOwners := expectedMeta.GetOwnerReferences()
 
+		// Check if we need to update the owner reference
+		needsOwnerUpdate := false
+		if len(expectedOwners) > 0 {
+			reconciledOwners := reconciledMeta.GetOwnerReferences()
+			// Check if controller reference is missing or different
+			controllerRefIndex := -1
+			for i, owner := range reconciledOwners {
+				if owner.Controller != nil && *owner.Controller {
+					controllerRefIndex = i
+					break
+				}
+			}
+
+			if controllerRefIndex == -1 {
+				// No controller reference exists
+				needsOwnerUpdate = true
+			} else if reconciledOwners[controllerRefIndex].UID != expectedOwners[0].UID {
+				// Controller reference exists but points to a different owner
+				needsOwnerUpdate = true
+			}
+		}
+
+		if needsOwnerUpdate {
+			log.Info("Updating owner reference")
+			k8s.OverrideControllerReference(reconciledMeta, expectedOwners[0])
+			if err := params.Client.Update(params.Context, params.Reconciled); err != nil {
+				return err
+			}
+			log.Info("Updated owner reference successfully", resourceVersionKey, params.Reconciled.GetResourceVersion())
+		}
+	}
 	//nolint:nestif
 	// Update if needed
 	if params.NeedsUpdate() {
