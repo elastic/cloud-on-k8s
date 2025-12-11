@@ -25,8 +25,6 @@ import (
 )
 
 const (
-	// autoOpsESConfigMapName is the static name for the autoops-es-config ConfigMap
-	autoOpsESConfigMapName = "autoops-es-config"
 	// autoOpsESConfigFileName is the key name for the config file in the ConfigMap
 	autoOpsESConfigFileName = "autoops_es.yml"
 )
