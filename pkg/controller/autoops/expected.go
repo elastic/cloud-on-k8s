@@ -64,7 +64,7 @@ func (r *ReconcileAutoOpsAgentPolicy) deploymentParams(ctx context.Context, poli
 		autoOpsLabelName:       policy.Name,
 	}
 
-	// Create ES-specific config map volume
+	// Create ES-specific ConfigMap volume
 	configMapName := autoopsv1alpha1.Config(policy.GetName(), es)
 	configVolume := volume.NewConfigMapVolume(configMapName, configVolumeName, configVolumePath)
 
