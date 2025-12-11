@@ -8,6 +8,7 @@ import (
 	"context"
 	"fmt"
 	"strconv"
+	"strings"
 
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/metadata"
 
@@ -41,6 +42,10 @@ const (
 	basePathEnvName = "SERVER_BASEPATH"
 	// rewriteBasePathEnvName is the environment variable name that specifies whether Kibana should rewrite requests that are prefixed with server.basePath
 	rewriteBasePathEnvName = "SERVER_REWRITEBASEPATH"
+	// maxOldSpacePercentage is the percentage of the container's memory limit to allocate to Node.js old space (heap)
+	maxOldSpacePercentage = 75
+	// maxOldSpaceSizeOption is the Node.js option name for setting the max old space size
+	maxOldSpaceSizeOption = "--max-old-space-size"
 )
 
 var (
@@ -83,6 +88,50 @@ type basePathConfig struct {
 		RewriteBasePath bool   `config:"rewriteBasePath"`
 		BasePath        string `config:"basePath"`
 	}
+}
+
+// calculateMaxOldSpace calculates the --max-old-space-size value based on the container's memory limit.
+// It returns a NODE_OPTIONS string with --max-old-space-size set to maxOldSpacePercentage of the memory limit (in MB).
+// If no memory limit is set, it returns an empty string.
+func calculateMaxOldSpace(resources corev1.ResourceRequirements) string {
+	memoryLimit, hasLimit := resources.Limits[corev1.ResourceMemory]
+	if !hasLimit || memoryLimit.IsZero() {
+		// No memory limit set, don't set --max-old-space-size
+		return ""
+	}
+
+	// Convert memory limit to MB and calculate percentage
+	memoryMB := memoryLimit.Value() / (1024 * 1024)
+	maxOldSpaceSizeMB := memoryMB * maxOldSpacePercentage / 100
+
+	return fmt.Sprintf("%s=%d", maxOldSpaceSizeOption, maxOldSpaceSizeMB)
+}
+
+// mergeNodeOptions merges the calculated maxOldSpaceOption with any existing NODE_OPTIONS value
+// from the container's environment. If the user has already specified --max-old-space-size in their
+// NODE_OPTIONS, it will be preserved and not overwritten. Returns the updated environment slice.
+func mergeNodeOptions(containerEnv []corev1.EnvVar, maxOldSpaceOption string) []corev1.EnvVar {
+	// Look for existing NODE_OPTIONS in the container's env
+	for i, env := range containerEnv {
+		if env.Name == EnvNodeOptions {
+			// User has NODE_OPTIONS defined
+			if strings.Contains(env.Value, maxOldSpaceSizeOption) {
+				// User already specified max-old-space-size, don't modify it
+				return containerEnv
+			}
+			// Append the calculated max-old-space-size to the existing NODE_OPTIONS
+			mergedValue := strings.TrimSpace(env.Value)
+			if mergedValue != "" {
+				mergedValue = mergedValue + " " + maxOldSpaceOption
+			} else {
+				mergedValue = maxOldSpaceOption
+			}
+			containerEnv[i].Value = mergedValue
+			return containerEnv
+		}
+	}
+	// No existing NODE_OPTIONS, append it
+	return append(containerEnv, corev1.EnvVar{Name: EnvNodeOptions, Value: maxOldSpaceOption})
 }
 
 // readinessProbe is the readiness probe for the Kibana container
@@ -140,6 +189,21 @@ func NewPodTemplateSpec(
 		WithVolumes(scriptsConfigMapVolume.Volume()).WithVolumeMounts(scriptsConfigMapVolume.VolumeMount()).
 		WithVolumes(PluginsVolume.Volume()).WithVolumeMounts(PluginsVolume.VolumeMount()).
 		WithPorts(ports)
+
+	// Calculate and set NODE_OPTIONS based on the container's memory limit (after resources have been merged)
+	// This is a temporary fix to expand the usable memory to 75% of the total memory for Kibana
+	// until https://github.com/elastic/kibana/issues/245742 is implemented.
+	//
+	// We modify kbContainer.Env directly instead of using builder.WithEnv() because WithEnv only adds
+	// env vars if they don't already exist - it cannot modify existing values. We need to potentially
+	// append --max-old-space-size to an existing NODE_OPTIONS value provided by the user.
+	// This is safe because MainContainer() returns a pointer to the same container struct that the
+	// builder's containerDefaulter references.
+	if kbContainer := builder.MainContainer(); kbContainer != nil {
+		if nodeOptions := calculateMaxOldSpace(kbContainer.Resources); nodeOptions != "" {
+			kbContainer.Env = mergeNodeOptions(kbContainer.Env, nodeOptions)
+		}
+	}
 
 	for _, volume := range volumes {
 		builder.WithVolumes(volume.Volume()).WithVolumeMounts(volume.VolumeMount())
