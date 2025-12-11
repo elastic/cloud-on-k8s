@@ -28,7 +28,6 @@ type upscaleCtx struct {
 	parentCtx            context.Context
 	k8sClient            k8s.Client
 	es                   esv1.Elasticsearch
-	esState              ESState
 	expectations         *expectations.Expectations
 	validateStorageClass bool
 	upscaleReporter      *reconcile.UpscaleReporter
