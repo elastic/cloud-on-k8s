@@ -93,11 +93,7 @@ func TestNonMasterFirstUpgradeComplexTopology(t *testing.T) {
 		WithESDataNodes(2, elasticsearch.DefaultResources).
 		WithESCoordinatingNodes(1, elasticsearch.DefaultResources)
 
-	mutated := initial.WithNoESTopology().
-		WithVersion(dstVersion).
-		WithESMasterNodes(3, elasticsearch.DefaultResources).
-		WithESDataNodes(2, elasticsearch.DefaultResources).
-		WithESCoordinatingNodes(1, elasticsearch.DefaultResources)
+	mutated := initial.WithVersion(dstVersion).WithMutatedFrom(&initial)
 
 	runNonMasterFirstUpgradeTest(t, initial, mutated)
 }
