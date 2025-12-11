@@ -64,8 +64,6 @@ func reconcileAutoOpsESAPIKey(
 	log := ulog.FromContext(ctx).WithValues(
 		"es_namespace", es.Namespace,
 		"es_name", es.Name,
-		"policy_namespace", policy.Namespace,
-		"policy_name", policy.Name,
 	)
 	log.V(1).Info("Reconciling AutoOps ES API key")
 
@@ -334,8 +332,6 @@ func cleanupAutoOpsESAPIKey(
 	log := ulog.FromContext(ctx).WithValues(
 		"es_namespace", es.Namespace,
 		"es_name", es.Name,
-		"policy_namespace", policyNamespace,
-		"policy_name", policyName,
 	)
 	log.V(1).Info("Cleaning up AutoOps ES API key")
 

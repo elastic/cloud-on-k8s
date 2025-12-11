@@ -115,7 +115,10 @@ type ReconcileAutoOpsAgentPolicy struct {
 // Reconcile reconciles the AutoOpsAgentPolicy resource ensuring that any resources are created/updated/deleted as needed.
 func (r *ReconcileAutoOpsAgentPolicy) Reconcile(ctx context.Context, request reconcile.Request) (reconcile.Result, error) {
 	ctx = common.NewReconciliationContext(ctx, &r.iteration, r.params.Tracer, controllerName, "autoops_name", request)
-	log := ulog.FromContext(ctx)
+	log := ulog.FromContext(ctx).WithValues(
+		"policy_namespace", request.Namespace,
+		"policy_name", request.Name,
+	)
 	defer common.LogReconciliationRun(log)()
 	defer tracing.EndContextTransaction(ctx)
 
@@ -210,7 +213,7 @@ func (r *ReconcileAutoOpsAgentPolicy) updateStatusFromState(ctx context.Context,
 
 func (r *ReconcileAutoOpsAgentPolicy) onDelete(ctx context.Context, obj types.NamespacedName) error {
 	defer tracing.Span(&ctx)()
-	log := ulog.FromContext(ctx).WithValues("policy_namespace", obj.Namespace, "policy_name", obj.Name)
+	log := ulog.FromContext(ctx)
 	log.Info("Cleaning up AutoOpsAgentPolicy resources")
 
 	// Remove dynamic watches on secrets

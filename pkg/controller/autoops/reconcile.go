@@ -111,6 +111,7 @@ func (r *ReconcileAutoOpsAgentPolicy) internalReconcile(
 				log.Error(err, "Error reconciling AutoOps ES CA secret", "namespace", es.Namespace, "name", es.Name)
 				errorCount++
 				state.UpdateWithPhase(autoopsv1alpha1.ErrorPhase)
+				results.WithError(err)
 				continue
 			}
 		}
@@ -119,6 +120,7 @@ func (r *ReconcileAutoOpsAgentPolicy) internalReconcile(
 			log.Error(err, "Error reconciling AutoOps ES API key", "namespace", es.Namespace, "name", es.Name)
 			errorCount++
 			state.UpdateWithPhase(autoopsv1alpha1.ErrorPhase)
+			results.WithError(err)
 			continue
 		}
 
@@ -126,6 +128,7 @@ func (r *ReconcileAutoOpsAgentPolicy) internalReconcile(
 			log.Error(err, "Error reconciling AutoOps ES config map", "namespace", es.Namespace, "name", es.Name)
 			errorCount++
 			state.UpdateWithPhase(autoopsv1alpha1.ErrorPhase)
+			results.WithError(err)
 			continue
 		}
 
@@ -134,6 +137,7 @@ func (r *ReconcileAutoOpsAgentPolicy) internalReconcile(
 			log.Error(err, "Error getting deployment params", "namespace", es.Namespace, "name", es.Name)
 			errorCount++
 			state.UpdateWithPhase(autoopsv1alpha1.ErrorPhase)
+			results.WithError(err)
 			continue
 		}
 
@@ -142,6 +146,7 @@ func (r *ReconcileAutoOpsAgentPolicy) internalReconcile(
 			log.Error(err, "Error reconciling deployment", "namespace", es.Namespace, "name", es.Name)
 			errorCount++
 			state.UpdateWithPhase(autoopsv1alpha1.ErrorPhase)
+			results.WithError(err)
 			continue
 		}
 
