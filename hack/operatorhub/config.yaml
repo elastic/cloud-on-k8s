@@ -1,5 +1,5 @@
-newVersion: 3.3.0-rc6
-prevVersion: 3.3.0-rc5
+newVersion: 3.3.0-SNAPSHOT
+prevVersion: 3.2.0
 stackVersion: 9.3.0-SNAPSHOT
 crds:
   - name: elasticsearches.elasticsearch.k8s.elastic.co
@@ -32,9 +32,6 @@ crds:
   - name: logstashes.logstash.k8s.elastic.co
     displayName: Logstash
     description: Logstash instance
-  - name: autoopsagentpolicies.autoops.k8s.elastic.co
-    displayName: AutoOps Agent Policy
-    description: AutoOps Agent Policy instance
 packages:
   - outputPath: community-operators
     packageName: elastic-cloud-eck
