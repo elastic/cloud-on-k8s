@@ -32,6 +32,8 @@ func (r *ReconcileAutoOpsAgentPolicy) doReconcile(ctx context.Context, policy au
 	if err != nil {
 		return results.WithError(err)
 	}
+	// temporary to see what happens in non-enterprise
+	enabled = true
 	if !enabled {
 		msg := "AutoOpsAgentPolicy is an enterprise feature. Enterprise features are disabled"
 		log.Info(msg)
@@ -58,7 +60,8 @@ func (r *ReconcileAutoOpsAgentPolicy) internalReconcile(
 	ctx context.Context,
 	policy autoopsv1alpha1.AutoOpsAgentPolicy,
 	results *reconciler.Results,
-	state *State) *reconciler.Results {
+	state *State,
+) *reconciler.Results {
 	log := ulog.FromContext(ctx)
 	log.V(1).Info("Internal reconcile AutoOpsAgentPolicy")
 
