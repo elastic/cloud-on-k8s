@@ -165,6 +165,9 @@ func maybeUpscaleMasterResources(ctx upscaleCtx, actualStatefulSets es_sset.Stat
 		// Read the current StatefulSet from k8s to get the latest state
 		var actualSset appsv1.StatefulSet
 		if err := ctx.k8sClient.Get(ctx.parentCtx, k8s.ExtractNamespacedName(&res.StatefulSet), &actualSset); err != nil {
+			// If the StatefulSet is not found, it means that it has not been created yet, so we can skip it.
+			// This should only happen when a user is upscaling the master nodes with a new NodeSet/StatefulSet.
+			// We are only interested in scaling up the existing master StatefulSets in this case.
 			if apierrors.IsNotFound(err) {
 				continue
 			}
