@@ -26,13 +26,7 @@ spec:
     {{- toYaml . | nindent 4 }}
   {{- end }}
   config:
-    {{- if .Values.configRef }}
-    secretName: {{ required "configRef.secretName is required when configRef is specified" .Values.configRef.secretName }}
-    {{- else }}
-    secretName: {{ printf "%s-config" (include "autoops.fullname" .) }}
-    {{- end }}
-  {{- with .Values.resourceSelector }}
+    secretName: {{ required "configRef.secretName is required to reference the AutoOps configuration secret" .Values.configRef.secretName }}
   resourceSelector:
-    {{- toYaml . | nindent 4 }}
-  {{- end }}
+    {{- required "resourceSelector is required" .Values.resourceSelector | toYaml | nindent 4 }}
 

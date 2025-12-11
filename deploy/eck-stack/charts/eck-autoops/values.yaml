@@ -28,28 +28,17 @@ labels: {}
 #
 annotations: {}
 
-# AutoOps configuration values.
-# These values are required and will be used to create a Kubernetes Secret.
+# Reference an existing Kubernetes secret holding the AutoOps configuration.
 #
-# All of these can be obtained the Elastic Cloud Console (https://cloud.elastic.co/connect-cluster-services-portal)
+# All of the following items can be obtained the Elastic Cloud Console (https://cloud.elastic.co/connect-cluster-services-portal)
 # by selecting the ECK connect wizard and following the instructions.
 #
-# This is the Cloud Connected Mode API key and is required. This is used to register the Agent with Elastic Cloud AutoOps.
-ccmApiKey: ""
-# This is the URL of the AutoOps OTel endpoint and is required. This is used to send Agent data to the AutoOps platform and is region specific.
-# Example: "https://otel-auto-ops.us-east-2.aws.svc.elastic.cloud"
-autoOpsOTelURL: ""
-# This token is required and is how AutoOps knows how to connect Agent data to the relevant Elastic Cloud organization
-autoOpsToken: ""
-# URL of the Cloud Connected Mode API.
-# This is not a required field.
-cloudConnectedModeAPIURL: ""
-
-# Reference an existing Kubernetes secret holding the AutoOps configuration.
 # The referenced secret must contain the following:
-# - `ccmApiKey`: the Cloud Connected Mode API key
-# - `autoOpsOTelURL`: the URL of the AutoOps OTel endpoint
-# - `autoOpsToken`: the token to authenticate against the AutoOps platform
+# - `ccmApiKey`: the Cloud Connected Mode API key. This is used to register the Agent with Elastic Cloud AutoOps.
+# - `autoOpsOTelURL`: the URL of the AutoOps OTel endpoint. This is used to send Agent data to the AutoOps platform and is region specific.
+#     Example: "https://otel-auto-ops.us-east-2.aws.svc.elastic.cloud"
+# - `autoOpsToken`: the token to authenticate against the AutoOps platform and is how AutoOps knows how to connect Agent data to the
+#     relevant Elastic Cloud organization
 # - `cloudConnectedModeAPIURL`: the URL of the Cloud Connected Mode API (optional)
 #
 # configRef:
