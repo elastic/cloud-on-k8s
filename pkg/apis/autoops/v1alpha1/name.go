@@ -5,10 +5,11 @@
 package v1alpha1
 
 import (
+	"k8s.io/apimachinery/pkg/types"
+
 	esv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/elasticsearch/v1"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/hash"
 	common_name "github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/name"
-	"k8s.io/apimachinery/pkg/types"
 )
 
 var (
