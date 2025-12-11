@@ -1,0 +1,26 @@
+= Using Elastic Package Registry with ECK
+
+This recipe illustrates how to run Elastic Package Registry with Kibana and Elasticsearch deployed via ECK.
+
+IMPORTANT: This recipe assumes that you have valid TLS certificates issued by a trusted certificate authority for the domain you want to use.
+
+== Deploy Elastic Package Resistry - `epr-eck.yaml`
+
+Create an Elastic Package Registry instance.
+
+== Extra Node CA certificates with Kibana - `epr-extra-ca.yaml`
+
+Create an Elastic Package Registry instance while also mounting extra CA certificates for Kibana to trust.
+
+== Deploy packages to EPR with mounted volume - `epr-volumes.yaml`
+
+Create an Elastic Package Registry instance and add extra packages to EPR as a volume.
+
+This example uses a configmap which can be created with the following pointing to the directory where your packages live.
+
+[source,sh,subs="attributes"]
+----
+kubectl create configmap custom-packages --from-file=/path/to/your/packages
+----
+
+CAUTION: These recipes use the `node.store.allow_mmap: false` configuration value to avoid configuring memory mapping settings on the underlying host. This could have a significant performance impact on your Elasticsearch cluster and should not be used in production without careful consideration. See https://www.elastic.co/guide/en/cloud-on-k8s/current/k8s-virtual-memory.html for more information.
