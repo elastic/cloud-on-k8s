@@ -266,10 +266,7 @@ func (r *ReconcileAutoOpsAgentPolicy) onDelete(ctx context.Context, obj types.Na
 
 // reconcileWatches sets up dynamic watches for secrets referenced in the AutoOpsAgentPolicy spec.
 func (r *ReconcileAutoOpsAgentPolicy) reconcileWatches(policy autoopsv1alpha1.AutoOpsAgentPolicy) error {
-	watcher := types.NamespacedName{
-		Name:      policy.Name,
-		Namespace: policy.Namespace,
-	}
+	watcher := k8s.ExtractNamespacedName(&policy)
 
 	secretNames := []string{policy.Spec.Config.SecretRef.SecretName}
 

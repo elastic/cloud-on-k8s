@@ -14,7 +14,6 @@ import (
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/intstr"
 	"k8s.io/utils/ptr"
 
@@ -118,7 +117,7 @@ func TestReconcileAutoOpsAgentPolicy_deploymentParams(t *testing.T) {
 			}
 
 			// We need the ES API key secret as well to build the config hash
-			esAPIKeySecretName := autoopsv1alpha1.APIKeySecret(tt.args.autoops.Name, types.NamespacedName{Namespace: tt.args.es.Namespace, Name: tt.args.es.Name})
+			esAPIKeySecretName := autoopsv1alpha1.APIKeySecret(tt.args.autoops.Name, k8s.ExtractNamespacedName(&tt.args.es))
 			esAPIKeySecret := &corev1.Secret{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      esAPIKeySecretName,
@@ -274,9 +273,9 @@ func expectedDeployment(policy autoopsv1alpha1.AutoOpsAgentPolicy, es esv1.Elast
 								{
 									Name: "AUTOOPS_ES_API_KEY",
 									ValueFrom: &corev1.EnvVarSource{
-										SecretKeyRef: &corev1.SecretKeySelector{
-											LocalObjectReference: corev1.LocalObjectReference{
-												Name: autoopsv1alpha1.APIKeySecret(policy.GetName(), types.NamespacedName{Namespace: es.Namespace, Name: es.Name}),
+									SecretKeyRef: &corev1.SecretKeySelector{
+										LocalObjectReference: corev1.LocalObjectReference{
+											Name: autoopsv1alpha1.APIKeySecret(policy.GetName(), k8s.ExtractNamespacedName(&es)),
 											},
 											Key:      "api_key",
 											Optional: ptr.To(false),

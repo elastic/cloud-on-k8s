@@ -165,7 +165,7 @@ func maybeUpdateAPIKey(
 	}
 
 	// The API key is seemingly up to date, so we need to ensure the secret exists with correct value
-	secretName := autoopsv1alpha1.APIKeySecret(policy.GetName(), types.NamespacedName{Namespace: es.Namespace, Name: es.Name})
+	secretName := autoopsv1alpha1.APIKeySecret(policy.GetName(), k8s.ExtractNamespacedName(&es))
 	var secret corev1.Secret
 	nsn := types.NamespacedName{
 		Namespace: policy.Namespace,
@@ -245,7 +245,7 @@ func storeAPIKeyInSecret(
 	policy autoopsv1alpha1.AutoOpsAgentPolicy,
 	es esv1.Elasticsearch,
 ) error {
-	secretName := autoopsv1alpha1.APIKeySecret(policy.GetName(), types.NamespacedName{Namespace: es.Namespace, Name: es.Name})
+	secretName := autoopsv1alpha1.APIKeySecret(policy.GetName(), k8s.ExtractNamespacedName(&es))
 	expected := buildAutoOpsESAPIKeySecret(policy, es, secretName, encodedKey, expectedHash)
 
 	reconciled := &corev1.Secret{}
@@ -367,7 +367,7 @@ func cleanupAutoOpsESAPIKey(
 
 	return deleteESAPIKeySecret(ctx, c, log,
 		types.NamespacedName{Namespace: policyNamespace, Name: policyName},
-		types.NamespacedName{Namespace: es.Namespace, Name: es.Name})
+		k8s.ExtractNamespacedName(&es))
 }
 
 func deleteESAPIKeySecret(ctx context.Context, c k8s.Client, log logr.Logger, policy types.NamespacedName, es types.NamespacedName) error {

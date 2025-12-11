@@ -20,6 +20,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/metadata"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/reconciler"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/watches"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/k8s"
 	ulog "github.com/elastic/cloud-on-k8s/v3/pkg/utils/log"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/maps"
 )
@@ -90,10 +91,7 @@ func (r *ReconcileAutoOpsAgentPolicy) reconcileAutoOpsESCASecret(
 		return err
 	}
 
-	watcher := types.NamespacedName{
-		Name:      policy.Name,
-		Namespace: policy.Namespace,
-	}
+	watcher := k8s.ExtractNamespacedName(&policy)
 
 	// Add a watch for the AutoOps CA secret
 	return watches.WatchUserProvidedSecrets(
