@@ -2,5 +2,5 @@ eck-autoops:
   ccmApiKey: "required"
   autoOpsOTelURL: "required"
   autoOpsToken: "required"
-  configRef
+  configRef:
     secretName: "test-secret"
