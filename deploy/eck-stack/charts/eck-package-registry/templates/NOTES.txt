@@ -1,6 +1,6 @@
 
 1. Check Package Registry status
-  $ kubectl get kibana {{ include "epr.fullname" . }} -n {{ .Release.Namespace }}
+  $ kubectl get epr {{ include "epr.fullname" . }} -n {{ .Release.Namespace }}
 
 2. Check Package Registry pod status
   $ kubectl get pods --namespace={{ .Release.Namespace }} -l packageregistry.k8s.elastic.co/name={{ include "epr.fullname" . }}
