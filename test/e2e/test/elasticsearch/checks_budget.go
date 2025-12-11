@@ -5,7 +5,6 @@
 package elasticsearch
 
 import (
-	"math"
 	"testing"
 	"time"
 
@@ -16,37 +15,6 @@ import (
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/sset"
 	"github.com/elastic/cloud-on-k8s/v3/test/e2e/test"
 )
-
-// NewMasterChangeBudgetWatcher returns a watcher that checks whether at most one master pod at a time is added/removed.
-// Relies on the assumption that resolution of 1 second is high enough to observe all change steps.
-func NewMasterChangeBudgetWatcher(es esv1.Elasticsearch) test.Watcher {
-	var observations []int
-
-	//nolint:thelper
-	return test.NewWatcher(
-		"master additions and removals: expect single master added/removed at a time",
-		1*time.Second,
-		func(k *test.K8sClient, t *testing.T) {
-			pods, err := sset.GetActualMastersForCluster(k.Client, es)
-			if err != nil {
-				t.Logf("got error listing masters: %v", err)
-				return
-			}
-			observations = append(observations, len(pods))
-		},
-		func(k *test.K8sClient, t *testing.T) {
-			for i := 1; i < len(observations); i++ {
-				prev := observations[i-1]
-				cur := observations[i]
-				abs := int(math.Abs(float64(cur - prev)))
-				// This is ofc potentially flaky if we miss an observation and see suddenly more than one master
-				// node popping up. This is due the fact that this check is depending on timing, the underlying
-				// assumption being that the observation interval is always shorter than the time an Elasticsearch
-				// node needs to boot.
-				assert.False(t, abs > 1, "%d master changes in one observation, expected max 1", abs)
-			}
-		})
-}
 
 // NewChangeBudgetWatcher returns a watcher that checks whether the pod count stays within the given change budget.
 // Assumes that observations resolution of 1 second is high enough to observe all changes steps.
