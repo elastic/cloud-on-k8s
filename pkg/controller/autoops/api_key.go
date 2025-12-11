@@ -30,8 +30,6 @@ import (
 )
 
 const (
-	// autoOpsESAPIKeySecretNameSuffix is the suffix for API key secrets created for each ES instance
-	autoOpsESAPIKeySecretNameSuffix = "autoops-es-api-key" //nolint:gosec
 	// managedByMetadataKey is the metadata key indicating the API key is managed by ECK.
 	// This is used when storing the API key in Elasticsearch to clearly identify it as managed by ECK.
 	// This is not included in the labels of the secret.

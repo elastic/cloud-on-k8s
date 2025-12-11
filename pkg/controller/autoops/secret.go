@@ -25,11 +25,6 @@ import (
 	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/maps"
 )
 
-const (
-	// autoOpsESCASecretSuffix is the suffix for CA secrets created for each ES instance
-	autoOpsESCASecretSuffix = "autoops-es-ca" //nolint:gosec
-)
-
 // reconcileAutoOpsESCASecret reconciles the Secret containing the CA certificate
 // for a specific Elasticsearch cluster, copying it from the ES instance's http-ca-internal secret.
 func (r *ReconcileAutoOpsAgentPolicy) reconcileAutoOpsESCASecret(

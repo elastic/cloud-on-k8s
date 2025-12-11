@@ -94,7 +94,7 @@ func TestReconcileAutoOpsAgentPolicy_deploymentParams(t *testing.T) {
 			configData := "test-config-data"
 			configMap := &corev1.ConfigMap{
 				ObjectMeta: metav1.ObjectMeta{
-					Name:      fmt.Sprintf("%s-%s-%s", autoOpsESConfigMapName, tt.args.es.Namespace, tt.args.es.Name),
+					Name:      autoopsv1alpha1.Config(tt.args.autoops.Name, tt.args.es),
 					Namespace: tt.args.autoops.Namespace,
 				},
 				Data: map[string]string{
@@ -273,9 +273,9 @@ func expectedDeployment(policy autoopsv1alpha1.AutoOpsAgentPolicy, es esv1.Elast
 								{
 									Name: "AUTOOPS_ES_API_KEY",
 									ValueFrom: &corev1.EnvVarSource{
-									SecretKeyRef: &corev1.SecretKeySelector{
-										LocalObjectReference: corev1.LocalObjectReference{
-											Name: autoopsv1alpha1.APIKeySecret(policy.GetName(), k8s.ExtractNamespacedName(&es)),
+										SecretKeyRef: &corev1.SecretKeySelector{
+											LocalObjectReference: corev1.LocalObjectReference{
+												Name: autoopsv1alpha1.APIKeySecret(policy.GetName(), k8s.ExtractNamespacedName(&es)),
 											},
 											Key:      "api_key",
 											Optional: ptr.To(false),
