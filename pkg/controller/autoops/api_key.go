@@ -46,7 +46,7 @@ type apiKeySpec struct {
 }
 
 // reconcileAutoOpsESAPIKey reconciles the API key and secret for a specific Elasticsearch cluster.
-func (r *AutoOpsAgentPolicyReconciler) reconcileAutoOpsESAPIKey(
+func (r *AgentPolicyReconciler) reconcileAutoOpsESAPIKey(
 	ctx context.Context,
 	policy autoopsv1alpha1.AutoOpsAgentPolicy,
 	es esv1.Elasticsearch,
@@ -101,7 +101,7 @@ func (r *AutoOpsAgentPolicyReconciler) reconcileAutoOpsESAPIKey(
 }
 
 // createAPIKey creates a new API key in Elasticsearch and stores it in a secret.
-func (r *AutoOpsAgentPolicyReconciler) createAPIKey(
+func (r *AgentPolicyReconciler) createAPIKey(
 	ctx context.Context,
 	log logr.Logger,
 	esClient esclient.Client,
@@ -136,7 +136,7 @@ func (r *AutoOpsAgentPolicyReconciler) createAPIKey(
 }
 
 // maybeUpdateAPIKey checks if the API key needs to be updated and handles it.
-func (r *AutoOpsAgentPolicyReconciler) maybeUpdateAPIKey(
+func (r *AgentPolicyReconciler) maybeUpdateAPIKey(
 	ctx context.Context,
 	log logr.Logger,
 	activeAPIKey *esclient.APIKey,
@@ -177,7 +177,7 @@ func (r *AutoOpsAgentPolicyReconciler) maybeUpdateAPIKey(
 	return nil
 }
 
-func (r *AutoOpsAgentPolicyReconciler) invalidateAndCreateAPIKey(
+func (r *AgentPolicyReconciler) invalidateAndCreateAPIKey(
 	ctx context.Context,
 	log logr.Logger,
 	activeAPIKey *esclient.APIKey,
@@ -207,7 +207,7 @@ func invalidateAPIKey(ctx context.Context, esClient esclient.Client, keyID strin
 }
 
 // storeAPIKeyInSecret stores the API key in a Kubernetes secret.
-func (r *AutoOpsAgentPolicyReconciler) storeAPIKeyInSecret(
+func (r *AgentPolicyReconciler) storeAPIKeyInSecret(
 	ctx context.Context,
 	policy autoopsv1alpha1.AutoOpsAgentPolicy,
 	es esv1.Elasticsearch,

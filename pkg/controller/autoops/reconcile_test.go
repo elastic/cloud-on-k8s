@@ -573,7 +573,7 @@ func TestAutoOpsAgentPolicyReconciler_internalReconcile(t *testing.T) {
 				esClientProvider = newFakeESClientProvider().Provider
 			}
 
-			r := &AutoOpsAgentPolicyReconciler{
+			r := &AgentPolicyReconciler{
 				Client:           k8sClient,
 				esClientProvider: esClientProvider,
 				params: operator.Parameters{

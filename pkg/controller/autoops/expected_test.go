@@ -139,7 +139,7 @@ func TestReconcileAutoOpsAgentPolicy_deploymentParams(t *testing.T) {
 			}
 
 			client := k8s.NewFakeClient(configMap, autoopsSecret, esAPIKeySecret)
-			r := &AutoOpsAgentPolicyReconciler{
+			r := &AgentPolicyReconciler{
 				Client: client,
 			}
 			ctx := context.Background()
