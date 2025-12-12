@@ -146,7 +146,7 @@ func (r *ReconcileAutoOpsAgentPolicy) maybeUpdateAPIKey(
 	es esv1.Elasticsearch,
 ) error {
 	// If the key isn't managed by ECK or it's hash is incorrect, invalidate and recreate the api key.
-	if apiKeyNeedsRecreation(activeAPIKey, expectedHash) {
+	if !commonapikey.IsManagedByECK(activeAPIKey.Metadata) || commonapikey.NeedsUpdate(activeAPIKey.Metadata, expectedHash) {
 		return r.invalidateAndCreateAPIKey(ctx, log, activeAPIKey, apiKeyName, apiKeySpec, expectedHash, policy, es)
 	}
 
@@ -195,26 +195,6 @@ func (r *ReconcileAutoOpsAgentPolicy) invalidateAndCreateAPIKey(
 		return err
 	}
 	return r.createAPIKey(ctx, log, esClient, apiKeyName, apiKeySpec, expectedHash, policy, es)
-}
-
-// apiKeyNeedsRecreation checks if the API key needs to be recreated.
-// It will be recreated in the following cases:
-// - The API key has no metadata
-// - The API key has the wrong "managed-by" value
-// - The API key has the wrong "config-hash" value
-func apiKeyNeedsRecreation(apiKey *esclient.APIKey, expectedHash string) bool {
-	if apiKey.Metadata == nil {
-		return true
-	}
-	managedBy, ok := apiKey.Metadata[commonapikey.MetadataKeyManagedBy].(string)
-	if !ok || managedBy != commonapikey.MetadataValueECK {
-		return true
-	}
-	currentHash, ok := apiKey.Metadata[commonapikey.MetadataKeyConfigHash].(string)
-	if !ok || currentHash != expectedHash {
-		return true
-	}
-	return false
 }
 
 // invalidateAPIKey invalidates an API key by its key ID by calling the Elasticsearch API.
