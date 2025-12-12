@@ -17,10 +17,12 @@ import (
 
 	autoopsv1alpha1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/autoops/v1alpha1"
 	esv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/elasticsearch/v1"
+	commonapikey "github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/apikey"
 	commonesclient "github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/esclient"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/hash"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/metadata"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/reconciler"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/watches"
 	esclient "github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/client"
 	esuser "github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/user"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/k8s"
@@ -30,14 +32,6 @@ import (
 )
 
 const (
-	// managedByMetadataKey is the metadata key indicating the API key is managed by ECK.
-	// This is used when storing the API key in Elasticsearch to clearly identify it as managed by ECK.
-	// This is not included in the labels of the secret.
-	managedByMetadataKey = "elasticsearch.k8s.elastic.co/managed-by"
-	// managedByValue is the value for the managed-by metadata
-	managedByValue = "eck"
-	// configHashMetadataKey is the metadata key storing the hash API key
-	configHashMetadataKey = "elasticsearch.k8s.elastic.co/config-hash"
 	// PolicyNameLabelKey is the label key for the AutoOpsAgentPolicy name.
 	// This is exported as its used in the remotecluster controller to identify API keys managed by the autoops controller.
 	PolicyNameLabelKey = "autoops.k8s.elastic.co/policy-name"
@@ -51,11 +45,8 @@ type apiKeySpec struct {
 }
 
 // reconcileAutoOpsESAPIKey reconciles the API key and secret for a specific Elasticsearch cluster.
-func reconcileAutoOpsESAPIKey(
+func (r *ReconcileAutoOpsAgentPolicy) reconcileAutoOpsESAPIKey(
 	ctx context.Context,
-	c k8s.Client,
-	esClientProvider commonesclient.Provider,
-	dialer net.Dialer,
 	policy autoopsv1alpha1.AutoOpsAgentPolicy,
 	es esv1.Elasticsearch,
 ) error {
@@ -65,20 +56,20 @@ func reconcileAutoOpsESAPIKey(
 	)
 	log.V(1).Info("Reconciling AutoOps ES API key")
 
-	esClient, err := esClientProvider(ctx, c, dialer, es)
+	esClient, err := r.esClientProvider(ctx, r.Client, r.params.Dialer, es)
 	if err != nil {
 		return fmt.Errorf("while creating Elasticsearch client for %s/%s: %w", es.Namespace, es.Name, err)
 	}
 	defer esClient.Close()
 
-	stackMonitoringUserRole, ok := esuser.PredefinedRoles[esuser.StackMonitoringUserRole].(esclient.Role)
+	autoOpsUserRole, ok := esuser.PredefinedRoles[esuser.AutoOpsUserRole].(esclient.Role)
 	if !ok {
-		return fmt.Errorf("stackMonitoringUserRole could not be converted to esclient.Role")
+		return fmt.Errorf("autoOpsUserRole could not be converted to esclient.Role")
 	}
 
 	apiKeySpec := apiKeySpec{
 		roleDescriptors: map[string]esclient.Role{
-			"eck_autoops_role": stackMonitoringUserRole,
+			"eck_autoops_role": autoOpsUserRole,
 		},
 	}
 
@@ -102,17 +93,16 @@ func reconcileAutoOpsESAPIKey(
 	}
 
 	if activeAPIKey == nil {
-		return createAPIKey(ctx, log, c, esClient, apiKeyName, apiKeySpec, expectedHash, policy, es)
+		return r.createAPIKey(ctx, log, esClient, apiKeyName, apiKeySpec, expectedHash, policy, es)
 	}
 
-	return maybeUpdateAPIKey(ctx, log, c, esClient, activeAPIKey, apiKeyName, apiKeySpec, expectedHash, policy, es)
+	return r.maybeUpdateAPIKey(ctx, log, activeAPIKey, apiKeyName, apiKeySpec, expectedHash, policy, es)
 }
 
 // createAPIKey creates a new API key in Elasticsearch and stores it in a secret.
-func createAPIKey(
+func (r *ReconcileAutoOpsAgentPolicy) createAPIKey(
 	ctx context.Context,
 	log logr.Logger,
-	c k8s.Client,
 	esClient esclient.Client,
 	apiKeyName string,
 	apiKeySpec apiKeySpec,
@@ -141,15 +131,13 @@ func createAPIKey(
 		return fmt.Errorf("while creating API key %s: %w", apiKeyName, err)
 	}
 
-	return storeAPIKeyInSecret(ctx, c, apiKeyResp.Encoded, expectedHash, policy, es)
+	return r.storeAPIKeyInSecret(ctx, policy, es, apiKeyResp.Encoded, expectedHash)
 }
 
 // maybeUpdateAPIKey checks if the API key needs to be updated and handles it.
-func maybeUpdateAPIKey(
+func (r *ReconcileAutoOpsAgentPolicy) maybeUpdateAPIKey(
 	ctx context.Context,
 	log logr.Logger,
-	c k8s.Client,
-	esClient esclient.Client,
 	activeAPIKey *esclient.APIKey,
 	apiKeyName string,
 	apiKeySpec apiKeySpec,
@@ -159,7 +147,7 @@ func maybeUpdateAPIKey(
 ) error {
 	// If the key isn't managed by ECK or it's hash is incorrect, invalidate and recreate the api key.
 	if apiKeyNeedsRecreation(activeAPIKey, expectedHash) {
-		return invalidateAndCreateAPIKey(ctx, log, c, esClient, activeAPIKey, apiKeyName, apiKeySpec, expectedHash, policy, es)
+		return r.invalidateAndCreateAPIKey(ctx, log, activeAPIKey, apiKeyName, apiKeySpec, expectedHash, policy, es)
 	}
 
 	// The API key is seemingly up to date, so we need to ensure the secret exists with correct value
@@ -169,11 +157,11 @@ func maybeUpdateAPIKey(
 		Namespace: policy.Namespace,
 		Name:      secretName,
 	}
-	if err := c.Get(ctx, nsn, &secret); err != nil {
+	if err := r.Client.Get(ctx, nsn, &secret); err != nil {
 		if apierrors.IsNotFound(err) {
 			// Secret doesn't exist so again we need to invalidate and recreate the API key.
 			log.Info("API key secret not found, recreating key", "key", apiKeyName)
-			return invalidateAndCreateAPIKey(ctx, log, c, esClient, activeAPIKey, apiKeyName, apiKeySpec, expectedHash, policy, es)
+			return r.invalidateAndCreateAPIKey(ctx, log, activeAPIKey, apiKeyName, apiKeySpec, expectedHash, policy, es)
 		}
 		return fmt.Errorf("while retrieving API key secret %s: %w", secretName, err)
 	}
@@ -181,18 +169,16 @@ func maybeUpdateAPIKey(
 	// Since the secret exists, we just need to verify the data is correct.
 	if encodedKey, ok := secret.Data["api_key"]; !ok || string(encodedKey) == "" {
 		log.Info("API key secret exists but is missing api_key, recreating key", "key", apiKeyName)
-		return invalidateAndCreateAPIKey(ctx, log, c, esClient, activeAPIKey, apiKeyName, apiKeySpec, expectedHash, policy, es)
+		return r.invalidateAndCreateAPIKey(ctx, log, activeAPIKey, apiKeyName, apiKeySpec, expectedHash, policy, es)
 	}
 
 	log.V(1).Info("API key is up to date", "key", apiKeyName)
 	return nil
 }
 
-func invalidateAndCreateAPIKey(
+func (r *ReconcileAutoOpsAgentPolicy) invalidateAndCreateAPIKey(
 	ctx context.Context,
 	log logr.Logger,
-	c k8s.Client,
-	esClient esclient.Client,
 	activeAPIKey *esclient.APIKey,
 	apiKeyName string,
 	apiKeySpec apiKeySpec,
@@ -200,10 +186,15 @@ func invalidateAndCreateAPIKey(
 	policy autoopsv1alpha1.AutoOpsAgentPolicy,
 	es esv1.Elasticsearch,
 ) error {
+	esClient, err := r.esClientProvider(ctx, r.Client, r.params.Dialer, es)
+	if err != nil {
+		return fmt.Errorf("while creating Elasticsearch client for %s/%s: %w", es.Namespace, es.Name, err)
+	}
+	defer esClient.Close()
 	if err := invalidateAPIKey(ctx, esClient, activeAPIKey.ID); err != nil {
 		return err
 	}
-	return createAPIKey(ctx, log, c, esClient, apiKeyName, apiKeySpec, expectedHash, policy, es)
+	return r.createAPIKey(ctx, log, esClient, apiKeyName, apiKeySpec, expectedHash, policy, es)
 }
 
 // apiKeyNeedsRecreation checks if the API key needs to be recreated.
@@ -215,11 +206,11 @@ func apiKeyNeedsRecreation(apiKey *esclient.APIKey, expectedHash string) bool {
 	if apiKey.Metadata == nil {
 		return true
 	}
-	managedBy, ok := apiKey.Metadata[managedByMetadataKey].(string)
-	if !ok || managedBy != managedByValue {
+	managedBy, ok := apiKey.Metadata[commonapikey.MetadataKeyManagedBy].(string)
+	if !ok || managedBy != commonapikey.MetadataValueECK {
 		return true
 	}
-	currentHash, ok := apiKey.Metadata[configHashMetadataKey].(string)
+	currentHash, ok := apiKey.Metadata[commonapikey.MetadataKeyConfigHash].(string)
 	if !ok || currentHash != expectedHash {
 		return true
 	}
@@ -235,22 +226,21 @@ func invalidateAPIKey(ctx context.Context, esClient esclient.Client, keyID strin
 }
 
 // storeAPIKeyInSecret stores the API key in a Kubernetes secret.
-func storeAPIKeyInSecret(
+func (r *ReconcileAutoOpsAgentPolicy) storeAPIKeyInSecret(
 	ctx context.Context,
-	c k8s.Client,
-	encodedKey string,
-	expectedHash string,
 	policy autoopsv1alpha1.AutoOpsAgentPolicy,
 	es esv1.Elasticsearch,
+	encodedKey string,
+	expectedHash string,
 ) error {
 	secretName := autoopsv1alpha1.APIKeySecret(policy.GetName(), k8s.ExtractNamespacedName(&es))
 	expected := buildAutoOpsESAPIKeySecret(policy, es, secretName, encodedKey, expectedHash)
 
 	reconciled := &corev1.Secret{}
-	return reconciler.ReconcileResource(
+	err := reconciler.ReconcileResource(
 		reconciler.Params{
 			Context:    ctx,
-			Client:     c,
+			Client:     r.Client,
 			Owner:      &policy,
 			Expected:   &expected,
 			Reconciled: reconciled,
@@ -266,6 +256,19 @@ func storeAPIKeyInSecret(
 			},
 		},
 	)
+	if err != nil {
+		return err
+	}
+
+	watcher := k8s.ExtractNamespacedName(&policy)
+
+	// Add a watch for the AutoOps API key secret
+	return watches.WatchUserProvidedSecrets(
+		watcher,
+		r.dynamicWatches,
+		secretName,
+		[]string{secretName},
+	)
 }
 
 // buildAutoOpsESAPIKeySecret builds the expected Secret for autoops ES API key.
@@ -277,7 +280,7 @@ func buildAutoOpsESAPIKeySecret(policy autoopsv1alpha1.AutoOpsAgentPolicy, es es
 
 	// The 'managed-by' is only needed/wanted for the API key in
 	// Elasticsearch so we remove it from the secret.
-	delete(meta.Labels, managedByMetadataKey)
+	delete(meta.Labels, commonapikey.MetadataKeyManagedBy)
 
 	return corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
@@ -309,12 +312,12 @@ func apiKeyNameFor(policy autoopsv1alpha1.AutoOpsAgentPolicy, es esv1.Elasticsea
 // newMetadataFor returns the metadata to be set in the Elasticsearch API key.
 func newMetadataFor(policy *autoopsv1alpha1.AutoOpsAgentPolicy, es *esv1.Elasticsearch, expectedHash string) map[string]string {
 	return map[string]string{
-		configHashMetadataKey:                    expectedHash,
-		"elasticsearch.k8s.elastic.co/name":      es.Name,
-		"elasticsearch.k8s.elastic.co/namespace": es.Namespace,
-		managedByMetadataKey:                     managedByValue,
-		PolicyNameLabelKey:                       policy.Name,
-		policyNamespaceLabelKey:                  policy.Namespace,
+		commonapikey.MetadataKeyConfigHash:  expectedHash,
+		commonapikey.MetadataKeyESName:      es.Name,
+		commonapikey.MetadataKeyESNamespace: es.Namespace,
+		commonapikey.MetadataKeyManagedBy:   commonapikey.MetadataValueECK,
+		PolicyNameLabelKey:                  policy.Name,
+		policyNamespaceLabelKey:             policy.Namespace,
 	}
 }
 

@@ -172,20 +172,20 @@ func updatePhaseFromResults(results *reconciler.Results, state *State) {
 }
 
 func (r *ReconcileAutoOpsAgentPolicy) validate(ctx context.Context, policy *autoopsv1alpha1.AutoOpsAgentPolicy) error {
-	span, apmctx := apm.StartSpan(ctx, "validate", tracing.SpanTypeApp)
+	span, ctx := apm.StartSpan(ctx, "validate", tracing.SpanTypeApp)
 	defer span.End()
 
 	if _, err := policy.ValidateCreate(); err != nil {
 		ulog.FromContext(ctx).Error(err, "Validation failed")
 		k8s.MaybeEmitErrorEvent(r.recorder, err, policy, events.EventReasonValidation, err.Error())
-		return tracing.CaptureError(apmctx, err)
+		return tracing.CaptureError(ctx, err)
 	}
 
 	return nil
 }
 
 func (r *ReconcileAutoOpsAgentPolicy) updateStatusFromState(ctx context.Context, state *State) (reconcile.Result, error) {
-	span, _ := apm.StartSpan(ctx, "update_status", tracing.SpanTypeApp)
+	span, ctx := apm.StartSpan(ctx, "update_status", tracing.SpanTypeApp)
 	defer span.End()
 
 	events, policy := state.Apply()

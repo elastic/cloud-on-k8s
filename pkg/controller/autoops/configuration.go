@@ -27,6 +27,7 @@ const (
 	ccmAPIKey      = "cloud-connected-mode-api-key"
 	autoOpsOTelURL = "autoops-otel-url"
 	autoOpsToken   = "autoops-token"
+	ccmAPIURL      = "cloud-connected-mode-api-url"
 )
 
 // ParseConfigSecret retrieves and parses the configuration secret referenced in the AutoOpsAgentPolicy.

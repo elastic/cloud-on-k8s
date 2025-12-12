@@ -119,7 +119,7 @@ func (r *ReconcileAutoOpsAgentPolicy) internalReconcile(
 			}
 		}
 
-		if err := reconcileAutoOpsESAPIKey(ctx, r.Client, r.esClientProvider, r.params.Dialer, policy, es); err != nil {
+		if err := r.reconcileAutoOpsESAPIKey(ctx, policy, es); err != nil {
 			log.Error(err, "Error reconciling AutoOps ES API key", "namespace", es.Namespace, "name", es.Name)
 			errorCount++
 			state.UpdateWithPhase(autoopsv1alpha1.ErrorPhase)

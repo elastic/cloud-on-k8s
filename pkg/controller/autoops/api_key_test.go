@@ -13,6 +13,7 @@ import (
 
 	autoopsv1alpha1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/autoops/v1alpha1"
 	esv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/elasticsearch/v1"
+	commonapikey "github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/apikey"
 	esclient "github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/client"
 )
 
@@ -41,7 +42,7 @@ func Test_apiKeyNeedsRecreation(t *testing.T) {
 			name: "wrong managed-by value requires recreation",
 			apiKey: &esclient.APIKey{
 				Metadata: map[string]any{
-					managedByMetadataKey: "wrong-value",
+					commonapikey.MetadataKeyManagedBy: "wrong-value",
 				},
 			},
 			expectedHash: "hash123",
@@ -51,7 +52,7 @@ func Test_apiKeyNeedsRecreation(t *testing.T) {
 			name: "missing config hash requires recreation",
 			apiKey: &esclient.APIKey{
 				Metadata: map[string]any{
-					managedByMetadataKey: managedByValue,
+					commonapikey.MetadataKeyManagedBy: commonapikey.MetadataValueECK,
 				},
 			},
 			expectedHash: "hash123",
@@ -61,8 +62,8 @@ func Test_apiKeyNeedsRecreation(t *testing.T) {
 			name: "wrong config hash requires recreation",
 			apiKey: &esclient.APIKey{
 				Metadata: map[string]any{
-					managedByMetadataKey:  managedByValue,
-					configHashMetadataKey: "wrong-hash",
+					commonapikey.MetadataKeyManagedBy:  commonapikey.MetadataValueECK,
+					commonapikey.MetadataKeyConfigHash: "wrong-hash",
 				},
 			},
 			expectedHash: "hash123",
@@ -72,8 +73,8 @@ func Test_apiKeyNeedsRecreation(t *testing.T) {
 			name: "correct metadata does not require recreation",
 			apiKey: &esclient.APIKey{
 				Metadata: map[string]any{
-					managedByMetadataKey:  managedByValue,
-					configHashMetadataKey: "hash123",
+					commonapikey.MetadataKeyManagedBy:  commonapikey.MetadataValueECK,
+					commonapikey.MetadataKeyConfigHash: "hash123",
 				},
 			},
 			expectedHash: "hash123",
@@ -113,12 +114,12 @@ func Test_newMetadataFor(t *testing.T) {
 			},
 			expectedHash: "hash123",
 			want: map[string]string{
-				configHashMetadataKey:                    "hash123",
-				"elasticsearch.k8s.elastic.co/name":      "es-1",
-				"elasticsearch.k8s.elastic.co/namespace": "ns-2",
-				managedByMetadataKey:                     managedByValue,
-				PolicyNameLabelKey:                       "policy-1",
-				policyNamespaceLabelKey:                  "ns-1",
+				commonapikey.MetadataKeyConfigHash:  "hash123",
+				commonapikey.MetadataKeyESName:      "es-1",
+				commonapikey.MetadataKeyESNamespace: "ns-2",
+				commonapikey.MetadataKeyManagedBy:   commonapikey.MetadataValueECK,
+				PolicyNameLabelKey:                  "policy-1",
+				policyNamespaceLabelKey:             "ns-1",
 			},
 		},
 	}
@@ -170,11 +171,12 @@ func Test_buildAutoOpsESAPIKeySecret(t *testing.T) {
 					Name:      "secret-1",
 					Namespace: "ns-1",
 					Labels: map[string]string{
-						configHashMetadataKey:                     "hash123",
-						"elasticsearch.k8s.elastic.co/name":       "es-1",
-						"elasticsearch.k8s.elastic.co/namespace":  "ns-2",
-						"autoops.k8s.elastic.co/policy-name":      "policy-1",
-						"autoops.k8s.elastic.co/policy-namespace": "ns-1",
+						commonapikey.MetadataKeyConfigHash:  "hash123",
+						commonapikey.MetadataKeyESName:      "es-1",
+						commonapikey.MetadataKeyESNamespace: "ns-2",
+						commonapikey.MetadataKeyManagedBy:   commonapikey.MetadataValueECK,
+						PolicyNameLabelKey:                  "policy-1",
+						policyNamespaceLabelKey:             "ns-1",
 					},
 					Annotations: map[string]string{
 						"annotation1": "value1",
@@ -207,11 +209,12 @@ func Test_buildAutoOpsESAPIKeySecret(t *testing.T) {
 					Name:      "secret-1",
 					Namespace: "ns-1",
 					Labels: map[string]string{
-						configHashMetadataKey:                     "hash123",
-						"elasticsearch.k8s.elastic.co/name":       "es-1",
-						"elasticsearch.k8s.elastic.co/namespace":  "ns-2",
-						"autoops.k8s.elastic.co/policy-name":      "policy-1",
-						"autoops.k8s.elastic.co/policy-namespace": "ns-1",
+						commonapikey.MetadataKeyConfigHash:  "hash123",
+						commonapikey.MetadataKeyESName:      "es-1",
+						commonapikey.MetadataKeyESNamespace: "ns-2",
+						commonapikey.MetadataKeyManagedBy:   commonapikey.MetadataValueECK,
+						PolicyNameLabelKey:                  "policy-1",
+						policyNamespaceLabelKey:             "ns-1",
 					},
 				},
 				Data: map[string][]byte{

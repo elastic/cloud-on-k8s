@@ -173,17 +173,18 @@ func buildConfigHash(ctx context.Context, c k8s.Client, policy autoopsv1alpha1.A
 	}
 
 	// Hash secret values from autoops-secret
-	autoopsSecretKey := types.NamespacedName{Namespace: policy.Namespace, Name: "autoops-secret"}
+	autoopsSecretNSN := types.NamespacedName{Namespace: policy.GetNamespace(), Name: policy.Spec.Config.SecretRef.SecretName}
 	var autoopsSecret corev1.Secret
-	if err := c.Get(ctx, autoopsSecretKey, &autoopsSecret); err != nil {
-		return "", fmt.Errorf("failed to get autoops-secret: %w", err)
+	if err := c.Get(ctx, autoopsSecretNSN, &autoopsSecret); err != nil {
+		return "", fmt.Errorf("failed to get autoops configuration secret %s: %w", autoopsSecretNSN.String(), err)
 	}
 
-	// Hash secret keys, including optional keys. There's no code here to handle missing keys as
+	// Hash secret keys, including optional keys. There's no code here to handle missing keys as:
 	// 1. The optional keys are included here.
+	//   1a. cloud-connected-mode-api-url is optional, and is only required if connecting to an environment such as non-production or air-gapped.
 	// 2. The required keys are already validated in the controller, so they should always be present.
-	requiredKeys := []string{"autoops-token", "autoops-otel-url", "cloud-connected-mode-api-key", "cloud-connected-mode-api-url"}
-	for _, key := range requiredKeys {
+	keys := []string{autoOpsToken, autoOpsOTelURL, ccmAPIKey, ccmAPIURL}
+	for _, key := range keys {
 		if data, ok := autoopsSecret.Data[key]; ok {
 			_, _ = configHash.Write(data)
 		}
@@ -216,7 +217,7 @@ func autoopsEnvVars(policy autoopsv1alpha1.AutoOpsAgentPolicy, es esv1.Elasticse
 			ValueFrom: &corev1.EnvVarSource{
 				SecretKeyRef: &corev1.SecretKeySelector{
 					LocalObjectReference: corev1.LocalObjectReference{
-						Name: "autoops-secret",
+						Name: policy.Spec.Config.SecretRef.SecretName,
 					},
 					Key: "autoops-token",
 				},
@@ -231,7 +232,7 @@ func autoopsEnvVars(policy autoopsv1alpha1.AutoOpsAgentPolicy, es esv1.Elasticse
 			ValueFrom: &corev1.EnvVarSource{
 				SecretKeyRef: &corev1.SecretKeySelector{
 					LocalObjectReference: corev1.LocalObjectReference{
-						Name: "autoops-secret",
+						Name: policy.Spec.Config.SecretRef.SecretName,
 					},
 					Key: "autoops-otel-url",
 				},
@@ -254,7 +255,7 @@ func autoopsEnvVars(policy autoopsv1alpha1.AutoOpsAgentPolicy, es esv1.Elasticse
 			ValueFrom: &corev1.EnvVarSource{
 				SecretKeyRef: &corev1.SecretKeySelector{
 					LocalObjectReference: corev1.LocalObjectReference{
-						Name: "autoops-secret",
+						Name: policy.Spec.Config.SecretRef.SecretName,
 					},
 					Key: "cloud-connected-mode-api-key",
 				},
@@ -265,7 +266,7 @@ func autoopsEnvVars(policy autoopsv1alpha1.AutoOpsAgentPolicy, es esv1.Elasticse
 			ValueFrom: &corev1.EnvVarSource{
 				SecretKeyRef: &corev1.SecretKeySelector{
 					LocalObjectReference: corev1.LocalObjectReference{
-						Name: "autoops-secret",
+						Name: policy.Spec.Config.SecretRef.SecretName,
 					},
 					Key:      "cloud-connected-mode-api-url",
 					Optional: ptr.To(true),
