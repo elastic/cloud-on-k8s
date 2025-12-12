@@ -53,7 +53,7 @@ var (
 	}
 )
 
-func (r *ReconcileAutoOpsAgentPolicy) deploymentParams(ctx context.Context, policy autoopsv1alpha1.AutoOpsAgentPolicy, es esv1.Elasticsearch) (appsv1.Deployment, error) {
+func (r *AutoOpsAgentPolicyReconciler) deploymentParams(ctx context.Context, policy autoopsv1alpha1.AutoOpsAgentPolicy, es esv1.Elasticsearch) (appsv1.Deployment, error) {
 	v, err := version.Parse(policy.Spec.Version)
 	if err != nil {
 		return appsv1.Deployment{}, err
@@ -200,7 +200,7 @@ func buildConfigHash(ctx context.Context, c k8s.Client, policy autoopsv1alpha1.A
 
 	// // This data may not exist on initial reconciliation, so we don't return an error if it's missing.
 	// // This should resolve itself on the next reconciliation after the API key is created.
-	if apiKeyData, ok := esAPIKeySecret.Data["api_key"]; ok {
+	if apiKeyData, ok := esAPIKeySecret.Data[apiKeySecretKey]; ok {
 		_, _ = configHash.Write(apiKeyData)
 	}
 
@@ -245,7 +245,7 @@ func autoopsEnvVars(policy autoopsv1alpha1.AutoOpsAgentPolicy, es esv1.Elasticse
 					LocalObjectReference: corev1.LocalObjectReference{
 						Name: autoopsv1alpha1.APIKeySecret(policy.GetName(), k8s.ExtractNamespacedName(&es)),
 					},
-					Key:      "api_key",
+					Key:      apiKeySecretKey,
 					Optional: ptr.To(false),
 				},
 			},

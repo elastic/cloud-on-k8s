@@ -27,7 +27,7 @@ import (
 
 // reconcileAutoOpsESCASecret reconciles the Secret containing the CA certificate
 // for a specific Elasticsearch cluster, copying it from the ES instance's http-ca-internal secret.
-func (r *ReconcileAutoOpsAgentPolicy) reconcileAutoOpsESCASecret(
+func (r *AutoOpsAgentPolicyReconciler) reconcileAutoOpsESCASecret(
 	ctx context.Context,
 	policy autoopsv1alpha1.AutoOpsAgentPolicy,
 	es esv1.Elasticsearch,

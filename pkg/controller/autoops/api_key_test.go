@@ -109,7 +109,7 @@ func Test_buildAutoOpsESAPIKeySecret(t *testing.T) {
 					},
 				},
 				Data: map[string][]byte{
-					"api_key": []byte("encoded-api-key-value"),
+					apiKeySecretKey: []byte("encoded-api-key-value"),
 				},
 			},
 		},
@@ -144,7 +144,7 @@ func Test_buildAutoOpsESAPIKeySecret(t *testing.T) {
 					},
 				},
 				Data: map[string][]byte{
-					"api_key": []byte("key"),
+					apiKeySecretKey: []byte("key"),
 				},
 			},
 		},

@@ -54,9 +54,9 @@ func Add(mgr manager.Manager, params operator.Parameters) error {
 	return addWatches(mgr, c, r)
 }
 
-func newReconciler(mgr manager.Manager, params operator.Parameters) *ReconcileAutoOpsAgentPolicy {
+func newReconciler(mgr manager.Manager, params operator.Parameters) *AutoOpsAgentPolicyReconciler {
 	k8sClient := mgr.GetClient()
-	return &ReconcileAutoOpsAgentPolicy{
+	return &AutoOpsAgentPolicyReconciler{
 		Client:           k8sClient,
 		recorder:         mgr.GetEventRecorderFor(controllerName),
 		licenseChecker:   license.NewLicenseChecker(k8sClient, params.OperatorNamespace),
@@ -66,7 +66,7 @@ func newReconciler(mgr manager.Manager, params operator.Parameters) *ReconcileAu
 	}
 }
 
-func addWatches(mgr manager.Manager, c controller.Controller, r *ReconcileAutoOpsAgentPolicy) error {
+func addWatches(mgr manager.Manager, c controller.Controller, r *AutoOpsAgentPolicyReconciler) error {
 	// watch for changes to AutoOpsAgentPolicy
 	if err := c.Watch(source.Kind(mgr.GetCache(), &autoopsv1alpha1.AutoOpsAgentPolicy{}, &handler.TypedEnqueueRequestForObject[*autoopsv1alpha1.AutoOpsAgentPolicy]{})); err != nil {
 		return err
@@ -98,10 +98,10 @@ func reconcileRequestForAllAutoOpsPolicies(clnt k8s.Client) handler.TypedEventHa
 	})
 }
 
-var _ reconcile.Reconciler = (*ReconcileAutoOpsAgentPolicy)(nil)
+var _ reconcile.Reconciler = (*AutoOpsAgentPolicyReconciler)(nil)
 
-// ReconcileAutoOpsAgentPolicy reconciles an AutoOpsAgentPolicy object
-type ReconcileAutoOpsAgentPolicy struct {
+// AutoOpsAgentPolicyReconciler reconciles an AutoOpsAgentPolicy object
+type AutoOpsAgentPolicyReconciler struct {
 	k8s.Client
 	recorder         record.EventRecorder
 	licenseChecker   license.Checker
@@ -113,7 +113,7 @@ type ReconcileAutoOpsAgentPolicy struct {
 }
 
 // Reconcile reconciles the AutoOpsAgentPolicy resource ensuring that any resources are created/updated/deleted as needed.
-func (r *ReconcileAutoOpsAgentPolicy) Reconcile(ctx context.Context, request reconcile.Request) (reconcile.Result, error) {
+func (r *AutoOpsAgentPolicyReconciler) Reconcile(ctx context.Context, request reconcile.Request) (reconcile.Result, error) {
 	ctx = common.NewReconciliationContext(ctx, &r.iteration, r.params.Tracer, controllerName, "autoops_name", request)
 	log := ulog.FromContext(ctx).WithValues(
 		"policy_namespace", request.Namespace,
@@ -171,7 +171,7 @@ func updatePhaseFromResults(results *reconciler.Results, state *State) {
 	}
 }
 
-func (r *ReconcileAutoOpsAgentPolicy) validate(ctx context.Context, policy *autoopsv1alpha1.AutoOpsAgentPolicy) error {
+func (r *AutoOpsAgentPolicyReconciler) validate(ctx context.Context, policy *autoopsv1alpha1.AutoOpsAgentPolicy) error {
 	span, ctx := apm.StartSpan(ctx, "validate", tracing.SpanTypeApp)
 	defer span.End()
 
@@ -184,7 +184,7 @@ func (r *ReconcileAutoOpsAgentPolicy) validate(ctx context.Context, policy *auto
 	return nil
 }
 
-func (r *ReconcileAutoOpsAgentPolicy) updateStatusFromState(ctx context.Context, state *State) (reconcile.Result, error) {
+func (r *AutoOpsAgentPolicyReconciler) updateStatusFromState(ctx context.Context, state *State) (reconcile.Result, error) {
 	span, ctx := apm.StartSpan(ctx, "update_status", tracing.SpanTypeApp)
 	defer span.End()
 
@@ -211,7 +211,7 @@ func (r *ReconcileAutoOpsAgentPolicy) updateStatusFromState(ctx context.Context,
 	return reconcile.Result{}, nil
 }
 
-func (r *ReconcileAutoOpsAgentPolicy) onDelete(ctx context.Context, obj types.NamespacedName) error {
+func (r *AutoOpsAgentPolicyReconciler) onDelete(ctx context.Context, obj types.NamespacedName) error {
 	defer tracing.Span(&ctx)()
 	log := ulog.FromContext(ctx)
 	log.Info("Cleaning up AutoOpsAgentPolicy resources")
@@ -265,7 +265,7 @@ func (r *ReconcileAutoOpsAgentPolicy) onDelete(ctx context.Context, obj types.Na
 }
 
 // reconcileWatches sets up dynamic watches for secrets referenced in the AutoOpsAgentPolicy spec.
-func (r *ReconcileAutoOpsAgentPolicy) reconcileWatches(policy autoopsv1alpha1.AutoOpsAgentPolicy) error {
+func (r *AutoOpsAgentPolicyReconciler) reconcileWatches(policy autoopsv1alpha1.AutoOpsAgentPolicy) error {
 	watcher := k8s.ExtractNamespacedName(&policy)
 
 	secretNames := []string{policy.Spec.Config.SecretRef.SecretName}

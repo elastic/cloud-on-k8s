@@ -21,7 +21,7 @@ import (
 	ulog "github.com/elastic/cloud-on-k8s/v3/pkg/utils/log"
 )
 
-func (r *ReconcileAutoOpsAgentPolicy) doReconcile(ctx context.Context, policy autoopsv1alpha1.AutoOpsAgentPolicy, state *State) *reconciler.Results {
+func (r *AutoOpsAgentPolicyReconciler) doReconcile(ctx context.Context, policy autoopsv1alpha1.AutoOpsAgentPolicy, state *State) *reconciler.Results {
 	log := ulog.FromContext(ctx)
 	log.V(1).Info("Reconcile AutoOpsAgentPolicy")
 
@@ -56,7 +56,7 @@ func (r *ReconcileAutoOpsAgentPolicy) doReconcile(ctx context.Context, policy au
 	return r.internalReconcile(ctx, policy, results, state)
 }
 
-func (r *ReconcileAutoOpsAgentPolicy) internalReconcile(
+func (r *AutoOpsAgentPolicyReconciler) internalReconcile(
 	ctx context.Context,
 	policy autoopsv1alpha1.AutoOpsAgentPolicy,
 	results *reconciler.Results,

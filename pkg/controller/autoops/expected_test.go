@@ -124,12 +124,12 @@ func TestReconcileAutoOpsAgentPolicy_deploymentParams(t *testing.T) {
 					Namespace: tt.args.autoops.Namespace,
 				},
 				Data: map[string][]byte{
-					"api_key": []byte("test-es-api-key"),
+					apiKeySecretKey: []byte("test-es-api-key"),
 				},
 			}
 
 			client := k8s.NewFakeClient(configMap, autoopsSecret, esAPIKeySecret)
-			r := &ReconcileAutoOpsAgentPolicy{
+			r := &AutoOpsAgentPolicyReconciler{
 				Client: client,
 			}
 			ctx := context.Background()
@@ -277,7 +277,7 @@ func expectedDeployment(policy autoopsv1alpha1.AutoOpsAgentPolicy, es esv1.Elast
 											LocalObjectReference: corev1.LocalObjectReference{
 												Name: autoopsv1alpha1.APIKeySecret(policy.GetName(), k8s.ExtractNamespacedName(&es)),
 											},
-											Key:      "api_key",
+											Key:      apiKeySecretKey,
 											Optional: ptr.To(false),
 										},
 									},
@@ -413,7 +413,7 @@ func Test_autoopsEnvVars(t *testing.T) {
 							LocalObjectReference: corev1.LocalObjectReference{
 								Name: "policy-1-autoops-apikey-2334712842",
 							},
-							Key:      "api_key",
+							Key:      apiKeySecretKey,
 							Optional: ptr.To(false),
 						},
 					},

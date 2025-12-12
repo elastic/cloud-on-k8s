@@ -37,6 +37,7 @@ const (
 	PolicyNameLabelKey = "autoops.k8s.elastic.co/policy-name"
 	// policyNamespaceLabelKey is the label key for the AutoOpsAgentPolicy namespace
 	policyNamespaceLabelKey = "autoops.k8s.elastic.co/policy-namespace"
+	apiKeySecretKey         = "api_key"
 )
 
 // apiKeySpec represents the specification for an autoops API key
@@ -45,7 +46,7 @@ type apiKeySpec struct {
 }
 
 // reconcileAutoOpsESAPIKey reconciles the API key and secret for a specific Elasticsearch cluster.
-func (r *ReconcileAutoOpsAgentPolicy) reconcileAutoOpsESAPIKey(
+func (r *AutoOpsAgentPolicyReconciler) reconcileAutoOpsESAPIKey(
 	ctx context.Context,
 	policy autoopsv1alpha1.AutoOpsAgentPolicy,
 	es esv1.Elasticsearch,
@@ -100,7 +101,7 @@ func (r *ReconcileAutoOpsAgentPolicy) reconcileAutoOpsESAPIKey(
 }
 
 // createAPIKey creates a new API key in Elasticsearch and stores it in a secret.
-func (r *ReconcileAutoOpsAgentPolicy) createAPIKey(
+func (r *AutoOpsAgentPolicyReconciler) createAPIKey(
 	ctx context.Context,
 	log logr.Logger,
 	esClient esclient.Client,
@@ -135,7 +136,7 @@ func (r *ReconcileAutoOpsAgentPolicy) createAPIKey(
 }
 
 // maybeUpdateAPIKey checks if the API key needs to be updated and handles it.
-func (r *ReconcileAutoOpsAgentPolicy) maybeUpdateAPIKey(
+func (r *AutoOpsAgentPolicyReconciler) maybeUpdateAPIKey(
 	ctx context.Context,
 	log logr.Logger,
 	activeAPIKey *esclient.APIKey,
@@ -167,7 +168,7 @@ func (r *ReconcileAutoOpsAgentPolicy) maybeUpdateAPIKey(
 	}
 
 	// Since the secret exists, we just need to verify the data is correct.
-	if encodedKey, ok := secret.Data["api_key"]; !ok || string(encodedKey) == "" {
+	if encodedKey, ok := secret.Data[apiKeySecretKey]; !ok || string(encodedKey) == "" {
 		log.Info("API key secret exists but is missing api_key, recreating key", "key", apiKeyName)
 		return r.invalidateAndCreateAPIKey(ctx, log, activeAPIKey, apiKeyName, apiKeySpec, expectedHash, policy, es)
 	}
@@ -176,7 +177,7 @@ func (r *ReconcileAutoOpsAgentPolicy) maybeUpdateAPIKey(
 	return nil
 }
 
-func (r *ReconcileAutoOpsAgentPolicy) invalidateAndCreateAPIKey(
+func (r *AutoOpsAgentPolicyReconciler) invalidateAndCreateAPIKey(
 	ctx context.Context,
 	log logr.Logger,
 	activeAPIKey *esclient.APIKey,
@@ -206,7 +207,7 @@ func invalidateAPIKey(ctx context.Context, esClient esclient.Client, keyID strin
 }
 
 // storeAPIKeyInSecret stores the API key in a Kubernetes secret.
-func (r *ReconcileAutoOpsAgentPolicy) storeAPIKeyInSecret(
+func (r *AutoOpsAgentPolicyReconciler) storeAPIKeyInSecret(
 	ctx context.Context,
 	policy autoopsv1alpha1.AutoOpsAgentPolicy,
 	es esv1.Elasticsearch,
@@ -270,7 +271,7 @@ func buildAutoOpsESAPIKeySecret(policy autoopsv1alpha1.AutoOpsAgentPolicy, es es
 			Annotations: meta.Annotations,
 		},
 		Data: map[string][]byte{
-			"api_key": []byte(encodedKey),
+			apiKeySecretKey: []byte(encodedKey),
 		},
 	}
 }

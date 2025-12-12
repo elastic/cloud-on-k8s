@@ -89,7 +89,7 @@ func TestReconcileAutoOpsAgentPolicy_onDelete(t *testing.T) {
 						},
 					},
 					Data: map[string][]byte{
-						"api_key": []byte("test-key"),
+						apiKeySecretKey: []byte("test-key"),
 					},
 				},
 			},
@@ -125,7 +125,7 @@ func TestReconcileAutoOpsAgentPolicy_onDelete(t *testing.T) {
 						},
 					},
 					Data: map[string][]byte{
-						"api_key": []byte("test-key-1"),
+						apiKeySecretKey: []byte("test-key-1"),
 					},
 				},
 				{
@@ -140,7 +140,7 @@ func TestReconcileAutoOpsAgentPolicy_onDelete(t *testing.T) {
 						},
 					},
 					Data: map[string][]byte{
-						"api_key": []byte("test-key-2"),
+						apiKeySecretKey: []byte("test-key-2"),
 					},
 				},
 			},
@@ -271,7 +271,7 @@ func TestReconcileAutoOpsAgentPolicy_onDelete(t *testing.T) {
 			k8sClient := k8s.NewFakeClient(objects...)
 			esClientProvider := newFakeESClientProvider()
 
-			r := &ReconcileAutoOpsAgentPolicy{
+			r := &AutoOpsAgentPolicyReconciler{
 				Client:           k8sClient,
 				esClientProvider: esClientProvider.Provider,
 				params: operator.Parameters{
