@@ -53,7 +53,7 @@ type AutoOpsAgentPolicySpec struct {
 	// ResourceSelector is a label selector for the resources to be configured.
 	// Any Elasticsearch instances that match the selector will be configured to send data to AutoOps.
 	ResourceSelector metav1.LabelSelector `json:"resourceSelector,omitempty"`
-	// Config holds the AutoOpsAgentPolicy configuration.
+	// ConfigRef holds the AutoOpsAgentPolicy configuration.
 	// The contents of the referenced secret requires the following format:
 	//   kind: Secret
 	//   apiVersion: v1
@@ -63,7 +63,12 @@ type AutoOpsAgentPolicySpec struct {
 	//     ccmApiKey: aslkfjsldkjfslkdjflksdjfl
 	//     autoOpsOTelURL: https://otel.auto-ops.console.qa.cld.elstc.co
 	//     autoOpsToken: skdfjdskjf
-	Config commonv1.ConfigSource `json:"config,omitempty"`
+	ConfigRef commonv1.ConfigSource `json:"config,omitempty"`
+	// Config holds the AutoOps agent configuration for Elasticsearch monitoring.
+	// This configuration is intended to override parts of the autoops_es.yml configmap.
+	// See: https://github.com/elastic/elastic-agent/blob/c6eaa3c903d4357824d345ee2002123fdffbec91/internal/pkg/otel/samples/linux/autoops_es.yml
+	// +kubebuilder:pruning:PreserveUnknownFields
+	Config *commonv1.Config `json:"esConfig,omitempty"`
 	// AutoOpsRef is a reference to an AutoOps instance running in the same Kubernetes cluster.
 	// (TODO) AutoOpsRef is not yet implemented.
 	// AutoOpsRef commonv1.ObjectSelector `json:"autoOpsRef,omitempty"`

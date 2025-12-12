@@ -51,7 +51,7 @@ func TestAutoOpsAgentPolicyReconciler_internalReconcile(t *testing.T) {
 				},
 				Spec: autoopsv1alpha1.AutoOpsAgentPolicySpec{
 					Version: "9.1.0",
-					Config: commonv1.ConfigSource{
+					ConfigRef: commonv1.ConfigSource{
 						SecretRef: commonv1.SecretRef{
 							SecretName: "missing-secret",
 						},
@@ -76,7 +76,7 @@ func TestAutoOpsAgentPolicyReconciler_internalReconcile(t *testing.T) {
 				},
 				Spec: autoopsv1alpha1.AutoOpsAgentPolicySpec{
 					Version: "9.1.0",
-					Config: commonv1.ConfigSource{
+					ConfigRef: commonv1.ConfigSource{
 						SecretRef: commonv1.SecretRef{
 							SecretName: "invalid-secret",
 						},
@@ -109,7 +109,7 @@ func TestAutoOpsAgentPolicyReconciler_internalReconcile(t *testing.T) {
 				},
 				Spec: autoopsv1alpha1.AutoOpsAgentPolicySpec{
 					Version: "9.1.0",
-					Config: commonv1.ConfigSource{
+					ConfigRef: commonv1.ConfigSource{
 						SecretRef: commonv1.SecretRef{
 							SecretName: "config-secret",
 						},
@@ -152,7 +152,7 @@ func TestAutoOpsAgentPolicyReconciler_internalReconcile(t *testing.T) {
 				},
 				Spec: autoopsv1alpha1.AutoOpsAgentPolicySpec{
 					Version: "9.1.0",
-					Config: commonv1.ConfigSource{
+					ConfigRef: commonv1.ConfigSource{
 						SecretRef: commonv1.SecretRef{
 							SecretName: "config-secret",
 						},
@@ -190,7 +190,7 @@ func TestAutoOpsAgentPolicyReconciler_internalReconcile(t *testing.T) {
 				},
 				Spec: autoopsv1alpha1.AutoOpsAgentPolicySpec{
 					Version: "9.1.0",
-					Config: commonv1.ConfigSource{
+					ConfigRef: commonv1.ConfigSource{
 						SecretRef: commonv1.SecretRef{
 							SecretName: "config-secret",
 						},
@@ -239,7 +239,7 @@ func TestAutoOpsAgentPolicyReconciler_internalReconcile(t *testing.T) {
 				},
 				Spec: autoopsv1alpha1.AutoOpsAgentPolicySpec{
 					Version: "9.1.0",
-					Config: commonv1.ConfigSource{
+					ConfigRef: commonv1.ConfigSource{
 						SecretRef: commonv1.SecretRef{
 							SecretName: "config-secret",
 						},
@@ -298,7 +298,7 @@ func TestAutoOpsAgentPolicyReconciler_internalReconcile(t *testing.T) {
 				},
 				Spec: autoopsv1alpha1.AutoOpsAgentPolicySpec{
 					Version: "9.1.0",
-					Config: commonv1.ConfigSource{
+					ConfigRef: commonv1.ConfigSource{
 						SecretRef: commonv1.SecretRef{
 							SecretName: "config-secret",
 						},
@@ -368,7 +368,7 @@ func TestAutoOpsAgentPolicyReconciler_internalReconcile(t *testing.T) {
 				},
 				Spec: autoopsv1alpha1.AutoOpsAgentPolicySpec{
 					Version: "9.1.0",
-					Config: commonv1.ConfigSource{
+					ConfigRef: commonv1.ConfigSource{
 						SecretRef: commonv1.SecretRef{
 							SecretName: "config-secret",
 						},
@@ -460,7 +460,7 @@ func TestAutoOpsAgentPolicyReconciler_internalReconcile(t *testing.T) {
 				},
 				Spec: autoopsv1alpha1.AutoOpsAgentPolicySpec{
 					Version: "9.1.0",
-					Config: commonv1.ConfigSource{
+					ConfigRef: commonv1.ConfigSource{
 						SecretRef: commonv1.SecretRef{
 							SecretName: "config-secret",
 						},

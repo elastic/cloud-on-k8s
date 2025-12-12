@@ -33,7 +33,7 @@ func TestReconcileAutoOpsAgentPolicy_deploymentParams(t *testing.T) {
 		},
 		Spec: autoopsv1alpha1.AutoOpsAgentPolicySpec{
 			Version: "9.1.0-SNAPSHOT",
-			Config: commonv1.ConfigSource{
+			ConfigRef: commonv1.ConfigSource{
 				SecretRef: commonv1.SecretRef{
 					SecretName: "autoops-secret",
 				},
@@ -85,7 +85,7 @@ func TestReconcileAutoOpsAgentPolicy_deploymentParams(t *testing.T) {
 					},
 					Spec: autoopsv1alpha1.AutoOpsAgentPolicySpec{
 						Version: "invalid-version",
-						Config: commonv1.ConfigSource{
+						ConfigRef: commonv1.ConfigSource{
 							SecretRef: commonv1.SecretRef{
 								SecretName: "autoops-secret",
 							},
@@ -389,7 +389,7 @@ func Test_autoopsEnvVars(t *testing.T) {
 					Namespace: "ns-2",
 				},
 				Spec: autoopsv1alpha1.AutoOpsAgentPolicySpec{
-					Config: commonv1.ConfigSource{
+					ConfigRef: commonv1.ConfigSource{
 						SecretRef: commonv1.SecretRef{
 							SecretName: "autoops-secret",
 						},

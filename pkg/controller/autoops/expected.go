@@ -173,7 +173,7 @@ func buildConfigHash(ctx context.Context, c k8s.Client, policy autoopsv1alpha1.A
 	}
 
 	// Hash secret values from autoops-secret
-	autoopsSecretNSN := types.NamespacedName{Namespace: policy.GetNamespace(), Name: policy.Spec.Config.SecretRef.SecretName}
+	autoopsSecretNSN := types.NamespacedName{Namespace: policy.GetNamespace(), Name: policy.Spec.ConfigRef.SecretRef.SecretName}
 	var autoopsSecret corev1.Secret
 	if err := c.Get(ctx, autoopsSecretNSN, &autoopsSecret); err != nil {
 		return "", fmt.Errorf("failed to get autoops configuration secret %s: %w", autoopsSecretNSN.String(), err)
@@ -217,7 +217,7 @@ func autoopsEnvVars(policy autoopsv1alpha1.AutoOpsAgentPolicy, es esv1.Elasticse
 			ValueFrom: &corev1.EnvVarSource{
 				SecretKeyRef: &corev1.SecretKeySelector{
 					LocalObjectReference: corev1.LocalObjectReference{
-						Name: policy.Spec.Config.SecretRef.SecretName,
+						Name: policy.Spec.ConfigRef.SecretRef.SecretName,
 					},
 					Key: "autoops-token",
 				},
@@ -232,7 +232,7 @@ func autoopsEnvVars(policy autoopsv1alpha1.AutoOpsAgentPolicy, es esv1.Elasticse
 			ValueFrom: &corev1.EnvVarSource{
 				SecretKeyRef: &corev1.SecretKeySelector{
 					LocalObjectReference: corev1.LocalObjectReference{
-						Name: policy.Spec.Config.SecretRef.SecretName,
+						Name: policy.Spec.ConfigRef.SecretRef.SecretName,
 					},
 					Key: "autoops-otel-url",
 				},
@@ -255,7 +255,7 @@ func autoopsEnvVars(policy autoopsv1alpha1.AutoOpsAgentPolicy, es esv1.Elasticse
 			ValueFrom: &corev1.EnvVarSource{
 				SecretKeyRef: &corev1.SecretKeySelector{
 					LocalObjectReference: corev1.LocalObjectReference{
-						Name: policy.Spec.Config.SecretRef.SecretName,
+						Name: policy.Spec.ConfigRef.SecretRef.SecretName,
 					},
 					Key: "cloud-connected-mode-api-key",
 				},
@@ -266,7 +266,7 @@ func autoopsEnvVars(policy autoopsv1alpha1.AutoOpsAgentPolicy, es esv1.Elasticse
 			ValueFrom: &corev1.EnvVarSource{
 				SecretKeyRef: &corev1.SecretKeySelector{
 					LocalObjectReference: corev1.LocalObjectReference{
-						Name: policy.Spec.Config.SecretRef.SecretName,
+						Name: policy.Spec.ConfigRef.SecretRef.SecretName,
 					},
 					Key:      "cloud-connected-mode-api-url",
 					Optional: ptr.To(true),

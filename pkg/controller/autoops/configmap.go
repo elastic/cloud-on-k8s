@@ -20,6 +20,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/certificates"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/metadata"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/reconciler"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/settings"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/k8s"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/maps"
 )
@@ -172,6 +173,30 @@ func buildAutoOpsESConfigMap(policy autoopsv1alpha1.AutoOpsAgentPolicy, es esv1.
 		return corev1.ConfigMap{}, err
 	}
 
+	// Parse the template-rendered YAML into a CanonicalConfig
+	baseConfig, err := settings.ParseConfig(configBuf.Bytes())
+	if err != nil {
+		return corev1.ConfigMap{}, fmt.Errorf("failed to parse template config: %w", err)
+	}
+
+	// Parse user-provided config if specified
+	if policy.Spec.Config != nil {
+		userConfig, err := settings.NewCanonicalConfigFrom(policy.Spec.Config.Data)
+		if err != nil {
+			return corev1.ConfigMap{}, fmt.Errorf("failed to parse user config: %w", err)
+		}
+		// Merge user config with base config (user config takes precedence)
+		if err := baseConfig.MergeWith(userConfig); err != nil {
+			return corev1.ConfigMap{}, fmt.Errorf("failed to merge user config: %w", err)
+		}
+	}
+
+	// Render the merged config back to YAML
+	finalConfigBytes, err := baseConfig.Render()
+	if err != nil {
+		return corev1.ConfigMap{}, fmt.Errorf("failed to render final config: %w", err)
+	}
+
 	// Use ES-specific ConfigMap name to allow per-ES configuration
 	configMapName := autoopsv1alpha1.Config(policy.GetName(), es)
 
@@ -183,7 +208,7 @@ func buildAutoOpsESConfigMap(policy autoopsv1alpha1.AutoOpsAgentPolicy, es esv1.
 			Annotations: meta.Annotations,
 		},
 		Data: map[string]string{
-			autoOpsESConfigFileName: configBuf.String(),
+			autoOpsESConfigFileName: string(finalConfigBytes),
 		},
 	}, nil
 }

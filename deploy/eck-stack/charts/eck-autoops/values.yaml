@@ -44,6 +44,12 @@ annotations: {}
 configRef: {}
   # secretName: ""
 
+# Config holds the AutoOps Agent configuration for Elasticsearch monitoring.
+# This configuration is intended to override parts of the autoops_es.yml configmap.
+# See: https://github.com/elastic/elastic-agent/blob/c6eaa3c903d4357824d345ee2002123fdffbec91/internal/pkg/otel/samples/linux/autoops_es.yml
+# +kubebuilder:pruning:PreserveUnknownFields
+# config: {}
+
 # Image is the AutoOps Agent Docker image to deploy.
 # image: "docker.elastic.co/elastic-agent/elastic-otel-collector-wolfi:9.3.0-SNAPSHOT"
 
