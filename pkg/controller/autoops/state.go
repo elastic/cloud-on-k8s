@@ -22,8 +22,8 @@ type State struct {
 	status autoopsv1alpha1.AutoOpsAgentPolicyStatus
 }
 
-// NewState creates a new reconcile state based on the given policy
-func NewState(policy autoopsv1alpha1.AutoOpsAgentPolicy) *State {
+// newState creates a new reconcile state based on the given policy
+func newState(policy autoopsv1alpha1.AutoOpsAgentPolicy) *State {
 	status := *policy.Status.DeepCopy()
 	status.ObservedGeneration = policy.Generation
 	// Similar to ES, we initially set the phase to an empty string so that we do not report an outdated phase

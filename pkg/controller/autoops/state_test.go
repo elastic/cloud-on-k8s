@@ -146,7 +146,7 @@ func TestState_UpdateWithPhase(t *testing.T) {
 					Phase: tt.initialPhase,
 				},
 			}
-			state := NewState(policy)
+			state := newState(policy)
 			state.status.Phase = tt.initialPhase
 			state.UpdateWithPhase(tt.updatePhase)
 			assert.Equal(t, tt.expectedPhase, state.status.Phase)

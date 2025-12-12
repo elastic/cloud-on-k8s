@@ -141,14 +141,12 @@ func (r *AutoOpsAgentPolicyReconciler) Reconcile(ctx context.Context, request re
 		return reconcile.Result{}, nil
 	}
 
-	state := NewState(policy)
-
+	state := newState(policy)
 	if policy.IsMarkedForDeletion() {
 		return reconcile.Result{}, r.onDelete(ctx, k8s.ExtractNamespacedName(&policy))
 	}
 
 	results := r.doReconcile(ctx, policy, state)
-
 	updatePhaseFromResults(results, state)
 
 	result, err := r.updateStatusFromState(ctx, state)

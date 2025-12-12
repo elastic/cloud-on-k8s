@@ -584,7 +584,7 @@ func TestAutoOpsAgentPolicyReconciler_internalReconcile(t *testing.T) {
 			}
 
 			ctx := context.Background()
-			state := NewState(tt.policy)
+			state := newState(tt.policy)
 			results := reconciler.NewResult(ctx)
 
 			gotResults := r.internalReconcile(ctx, tt.policy, results, state)
