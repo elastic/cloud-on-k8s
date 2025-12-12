@@ -241,19 +241,16 @@ func (r *AutoOpsAgentPolicyReconciler) onDelete(ctx context.Context, obj types.N
 
 		var es esv1.Elasticsearch
 		if err := r.Client.Get(ctx, types.NamespacedName{Namespace: esNamespace, Name: esName}, &es); err != nil {
-			if apierrors.IsNotFound(err) {
-				// The ES cluster is gone, so we need to delete the API key secret
-				if err := deleteESAPIKeySecret(ctx, r.Client, log,
-					types.NamespacedName{Namespace: obj.Namespace, Name: obj.Name},
-					types.NamespacedName{Namespace: esNamespace, Name: esName}); err != nil {
-					log.Error(err, "Failed to delete API key secret", "es_namespace", esNamespace, "es_name", esName)
-				}
-				continue
+			// On any error, still attempt to delete the API key secret.
+			if err := deleteESAPIKeySecret(ctx, r.Client, log,
+				types.NamespacedName{Namespace: obj.Namespace, Name: obj.Name},
+				types.NamespacedName{Namespace: esNamespace, Name: esName}); err != nil {
+				log.Error(err, "Failed to delete API key secret", "es_namespace", esNamespace, "es_name", esName)
 			}
-			log.Error(err, "Failed to get Elasticsearch cluster", "es_namespace", esNamespace, "es_name", esName)
 			continue
 		}
 
+		// This cleanup requires communicating with Elasticsearch so we do not attempt this is the previous retrival of the ES cluster fails.
 		if err := cleanupAutoOpsESAPIKey(ctx, r.Client, r.esClientProvider, r.params.Dialer, obj.Namespace, obj.Name, es); err != nil {
 			log.Error(err, "Failed to cleanup API key for Elasticsearch cluster", "es_namespace", esNamespace, "es_name", esName)
 			continue
