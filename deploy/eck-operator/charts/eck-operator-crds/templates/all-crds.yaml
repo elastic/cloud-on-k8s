@@ -2431,7 +2431,7 @@ spec:
             properties:
               config:
                 description: |-
-                  Config holds the AutoOpsAgentPolicy configuration.
+                  ConfigRef holds the AutoOpsAgentPolicy configuration.
                   The contents of the referenced secret requires the following format:
                     kind: Secret
                     apiVersion: v1
@@ -2446,6 +2446,13 @@ spec:
                     description: SecretName is the name of the secret.
                     type: string
                 type: object
+              esConfig:
+                description: |-
+                  Config holds the AutoOps agent configuration for Elasticsearch monitoring.
+                  This configuration is intended to override parts of the autoops_es.yml configmap.
+                  See: https://github.com/elastic/elastic-agent/blob/c6eaa3c903d4357824d345ee2002123fdffbec91/internal/pkg/otel/samples/linux/autoops_es.yml
+                type: object
+                x-kubernetes-preserve-unknown-fields: true
               image:
                 description: Image is the AutoOps Agent Docker image to deploy.
                 type: string
