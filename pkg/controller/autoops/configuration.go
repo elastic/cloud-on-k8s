@@ -30,44 +30,35 @@ const (
 	ccmAPIURL      = "cloud-connected-mode-api-url"
 )
 
-// ParseConfigSecret retrieves and parses the configuration secret referenced in the AutoOpsAgentPolicy.
-// It returns a Config struct containing the parsed configuration values and any error encountered.
-func ParseConfigSecret(ctx context.Context, client k8s.Client, secretKey types.NamespacedName) (*Config, error) {
-	if secretKey.Name == "" {
-		return nil, fmt.Errorf("secret name cannot be empty")
+// validateConfigSecret validates the configuration secret referenced in the AutoOpsAgentPolicy.
+func validateConfigSecret(ctx context.Context, client k8s.Client, secretNSN types.NamespacedName) error {
+	if secretNSN.Name == "" {
+		return fmt.Errorf("secret name cannot be empty")
 	}
 
 	var secret corev1.Secret
-	if err := client.Get(ctx, secretKey, &secret); err != nil {
+	if err := client.Get(ctx, secretNSN, &secret); err != nil {
 		if apierrors.IsNotFound(err) {
-			return nil, fmt.Errorf("configuration secret %s/%s not found: %w", secretKey.Namespace, secretKey.Name, err)
+			return fmt.Errorf("configuration secret %s/%s not found: %w", secretNSN.Namespace, secretNSN.Name, err)
 		}
-		return nil, fmt.Errorf("failed to retrieve configuration secret %s/%s: %w", secretKey.Namespace, secretKey.Name, err)
+		return fmt.Errorf("failed to retrieve configuration secret %s/%s: %w", secretNSN.Namespace, secretNSN.Name, err)
 	}
 
-	return validateAndPopulateConfig(secret, secretKey)
+	return internalValidate(secret)
 }
 
-func validateAndPopulateConfig(secret corev1.Secret, secretKey types.NamespacedName) (*Config, error) {
-	var config Config
-
-	if data, exists := secret.Data[ccmAPIKey]; exists && len(data) > 0 {
-		config.CCMApiKey = string(data)
-	} else {
-		return nil, fmt.Errorf("missing required key %s in configuration secret %s/%s", ccmAPIKey, secretKey.Namespace, secretKey.Name)
+func internalValidate(secret corev1.Secret) error {
+	if data, exists := secret.Data[ccmAPIKey]; !exists || exists && len(data) == 0 {
+		return fmt.Errorf("missing required key %s in configuration secret %s/%s", ccmAPIKey, secret.Namespace, secret.Name)
 	}
 
-	if data, exists := secret.Data[autoOpsOTelURL]; exists && len(data) > 0 {
-		config.AutoOpsOTelURL = string(data)
-	} else {
-		return nil, fmt.Errorf("missing required key %s in configuration secret %s/%s", autoOpsOTelURL, secretKey.Namespace, secretKey.Name)
+	if data, exists := secret.Data[autoOpsOTelURL]; !exists || exists && len(data) == 0 {
+		return fmt.Errorf("missing required key %s in configuration secret %s/%s", autoOpsOTelURL, secret.Namespace, secret.Name)
 	}
 
-	if data, exists := secret.Data[autoOpsToken]; exists && len(data) > 0 {
-		config.AutoOpsToken = string(data)
-	} else {
-		return nil, fmt.Errorf("missing required key %s in configuration secret %s/%s", autoOpsToken, secretKey.Namespace, secretKey.Name)
+	if data, exists := secret.Data[autoOpsToken]; !exists || exists && len(data) == 0 {
+		return fmt.Errorf("missing required key %s in configuration secret %s/%s", autoOpsToken, secret.Namespace, secret.Name)
 	}
 
-	return &config, nil
+	return nil
 }

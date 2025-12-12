@@ -65,11 +65,11 @@ func (r *ReconcileAutoOpsAgentPolicy) internalReconcile(
 	log := ulog.FromContext(ctx)
 	log.V(1).Info("Internal reconcile AutoOpsAgentPolicy")
 
-	_, err := ParseConfigSecret(ctx, r.Client, types.NamespacedName{
+	if err := validateConfigSecret(ctx, r.Client, types.NamespacedName{
 		Namespace: policy.Namespace,
 		Name:      policy.Spec.Config.SecretRef.SecretName,
-	})
-	if err != nil {
+	}); err != nil {
+		log.Error(err, "Error validating configuration secret", "namespace", policy.Namespace, "name", policy.Spec.Config.SecretRef.SecretName)
 		state.UpdateWithPhase(autoopsv1alpha1.ErrorPhase)
 		return results.WithError(err)
 	}
