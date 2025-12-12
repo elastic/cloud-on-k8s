@@ -37,17 +37,20 @@ func NewState(policy autoopsv1alpha1.AutoOpsAgentPolicy) *State {
 }
 
 // UpdateWithPhase updates the phase of the AutoOpsAgentPolicy status.
-// It respects phase stickiness - InvalidPhase will not be overwritten, and ApplyingChangesPhase
-// and ReadyPhase will not overwrite other non-ready phases.
+// It respects phase stickiness - InvalidPhase and NoResourcesPhase will not be overwritten,
+// and ApplyingChangesPhase and ReadyPhase will not overwrite other non-ready phases.
 func (s *State) UpdateWithPhase(phase autoopsv1alpha1.PolicyPhase) *State {
 	nonReadyPhases := set.Make(
 		string(autoopsv1alpha1.ErrorPhase),
 		string(autoopsv1alpha1.NoResourcesPhase),
-		string(autoopsv1alpha1.UnknownPhase),
+		string(autoopsv1alpha1.ResourcesNotReadyPhase),
 	)
 	switch {
 	// do not overwrite the Invalid phase
 	case s.status.Phase == autoopsv1alpha1.InvalidPhase:
+		return s
+	// do not overwrite the NoResources phase
+	case s.status.Phase == autoopsv1alpha1.NoResourcesPhase:
 		return s
 	// do not overwrite non-ready phases with ApplyingChangesPhase
 	case phase == autoopsv1alpha1.ApplyingChangesPhase && nonReadyPhases.Has(string(s.status.Phase)):

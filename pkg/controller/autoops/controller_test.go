@@ -6,6 +6,7 @@ package autoops
 
 import (
 	"context"
+	"errors"
 	"net"
 	"testing"
 
@@ -19,6 +20,7 @@ import (
 
 	autoopsv1alpha1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/autoops/v1alpha1"
 	esv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/elasticsearch/v1"
+	commonesclient "github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/esclient"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/operator"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/watches"
 	esclient "github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/client"
@@ -37,19 +39,38 @@ func newFakeESClientProvider() *fakeESClientProvider {
 	}
 }
 
+func newFakeESClientProviderWithClient(client *fakeESClient) *fakeESClientProvider {
+	return &fakeESClientProvider{
+		client: client,
+	}
+}
+
 func (f *fakeESClientProvider) Provider(ctx context.Context, c k8s.Client, dialer netutil.Dialer, es esv1.Elasticsearch) (esclient.Client, error) {
 	return f.client, nil
 }
 
 type fakeESClient struct {
 	esclient.Client
+	getAPIKeysByNameErr error
 }
 
 func (f *fakeESClient) Close() {
 }
 
 func (f *fakeESClient) GetAPIKeysByName(ctx context.Context, name string) (esclient.APIKeyList, error) {
+	if f.getAPIKeysByNameErr != nil {
+		return esclient.APIKeyList{}, f.getAPIKeysByNameErr
+	}
 	return esclient.APIKeyList{APIKeys: []esclient.APIKey{}}, nil
+}
+
+func (f *fakeESClient) CreateAPIKey(ctx context.Context, req esclient.APIKeyCreateRequest) (esclient.APIKeyCreateResponse, error) {
+	return esclient.APIKeyCreateResponse{
+		ID:      req.ID,
+		Name:    req.Name,
+		APIKey:  req.APIKey.Name,
+		Encoded: "dGVzdC1hcGkta2V5LWlkOnRlc3QtYXBpLWtleQ==",
+	}, nil
 }
 
 func (f *fakeESClient) InvalidateAPIKeys(ctx context.Context, req esclient.APIKeysInvalidateRequest) (esclient.APIKeysInvalidateResponse, error) {
@@ -64,11 +85,12 @@ func (f *fakeDialer) DialContext(ctx context.Context, network, addr string) (net
 
 func TestReconcileAutoOpsAgentPolicy_onDelete(t *testing.T) {
 	tests := []struct {
-		name       string
-		policy     types.NamespacedName
-		secrets    []corev1.Secret
-		esClusters []esv1.Elasticsearch
-		wantErr    bool
+		name             string
+		policy           types.NamespacedName
+		secrets          []corev1.Secret
+		esClusters       []esv1.Elasticsearch
+		esClientProvider commonesclient.Provider
+		wantErr          bool
 	}{
 		{
 			name: "cleanup API keys for single ES cluster",
@@ -256,6 +278,45 @@ func TestReconcileAutoOpsAgentPolicy_onDelete(t *testing.T) {
 			},
 			wantErr: false,
 		},
+		{
+			name: "handle ES cluster error when getting API keys",
+			policy: types.NamespacedName{
+				Namespace: "ns-1",
+				Name:      "policy-1",
+			},
+			secrets: []corev1.Secret{
+				{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "es-1-ns-2-autoops-es-api-key",
+						Namespace: "ns-1",
+						Labels: map[string]string{
+							PolicyNameLabelKey:                       "policy-1",
+							policyNamespaceLabelKey:                  "ns-1",
+							"elasticsearch.k8s.elastic.co/name":      "es-1",
+							"elasticsearch.k8s.elastic.co/namespace": "ns-2",
+						},
+					},
+					Data: map[string][]byte{
+						apiKeySecretKey: []byte("test-key"),
+					},
+				},
+			},
+			esClusters: []esv1.Elasticsearch{
+				{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "es-1",
+						Namespace: "ns-2",
+					},
+					Status: esv1.ElasticsearchStatus{
+						Phase: esv1.ElasticsearchReadyPhase,
+					},
+				},
+			},
+			esClientProvider: newFakeESClientProviderWithClient(&fakeESClient{
+				getAPIKeysByNameErr: errors.New("elasticsearch cluster unavailable"),
+			}).Provider,
+			wantErr: false, // onDelete continues on error, hence no error wanted here
+		},
 	}
 
 	for _, tt := range tests {
@@ -269,11 +330,14 @@ func TestReconcileAutoOpsAgentPolicy_onDelete(t *testing.T) {
 			}
 
 			k8sClient := k8s.NewFakeClient(objects...)
-			esClientProvider := newFakeESClientProvider()
+			esClientProvider := tt.esClientProvider
+			if esClientProvider == nil {
+				esClientProvider = newFakeESClientProvider().Provider
+			}
 
 			r := &AutoOpsAgentPolicyReconciler{
 				Client:           k8sClient,
-				esClientProvider: esClientProvider.Provider,
+				esClientProvider: esClientProvider,
 				params: operator.Parameters{
 					Dialer: &fakeDialer{},
 				},

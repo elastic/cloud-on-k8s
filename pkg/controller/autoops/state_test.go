@@ -99,13 +99,6 @@ func TestState_UpdateWithPhase(t *testing.T) {
 			shouldUpdate:  false,
 		},
 		{
-			name:          "UnknownPhase should not be overwritten by ApplyingChangesPhase",
-			initialPhase:  autoopsv1alpha1.UnknownPhase,
-			updatePhase:   autoopsv1alpha1.ApplyingChangesPhase,
-			expectedPhase: autoopsv1alpha1.UnknownPhase,
-			shouldUpdate:  false,
-		},
-		{
 			name:          "ReadyPhase can be overwritten by ApplyingChangesPhase",
 			initialPhase:  autoopsv1alpha1.ReadyPhase,
 			updatePhase:   autoopsv1alpha1.ApplyingChangesPhase,
@@ -127,18 +120,18 @@ func TestState_UpdateWithPhase(t *testing.T) {
 			shouldUpdate:  false,
 		},
 		{
-			name:          "UnknownPhase should not be overwritten by ReadyPhase",
-			initialPhase:  autoopsv1alpha1.UnknownPhase,
-			updatePhase:   autoopsv1alpha1.ReadyPhase,
-			expectedPhase: autoopsv1alpha1.UnknownPhase,
-			shouldUpdate:  false,
-		},
-		{
 			name:          "ApplyingChangesPhase can transition to ReadyPhase",
 			initialPhase:  autoopsv1alpha1.ApplyingChangesPhase,
 			updatePhase:   autoopsv1alpha1.ReadyPhase,
 			expectedPhase: autoopsv1alpha1.ReadyPhase,
 			shouldUpdate:  true,
+		},
+		{
+			name:          "NoResourcesPhase should not be overwritten by ErrorPhase",
+			initialPhase:  autoopsv1alpha1.NoResourcesPhase,
+			updatePhase:   autoopsv1alpha1.ErrorPhase,
+			expectedPhase: autoopsv1alpha1.NoResourcesPhase,
+			shouldUpdate:  false,
 		},
 	}
 

@@ -32,8 +32,6 @@ func (r *AutoOpsAgentPolicyReconciler) doReconcile(ctx context.Context, policy a
 	if err != nil {
 		return results.WithError(err)
 	}
-	// temporary to see what happens in non-enterprise
-	enabled = true
 	if !enabled {
 		msg := "AutoOpsAgentPolicy is an enterprise feature. Enterprise features are disabled"
 		log.Info(msg)
@@ -105,6 +103,7 @@ func (r *AutoOpsAgentPolicyReconciler) internalReconcile(
 	for _, es := range esList.Items {
 		if es.Status.Phase != esv1.ElasticsearchReadyPhase {
 			log.V(1).Info("Skipping ES cluster that is not ready", "namespace", es.Namespace, "name", es.Name)
+			state.UpdateWithPhase(autoopsv1alpha1.ResourcesNotReadyPhase)
 			results = results.WithRequeue(defaultRequeue)
 			continue
 		}
@@ -153,8 +152,7 @@ func (r *AutoOpsAgentPolicyReconciler) internalReconcile(
 			continue
 		}
 
-		// Only increment readyCount if there are no errors in previous ES instances.
-		if isDeploymentReady(reconciledDeployment) && errorCount == 0 {
+		if isDeploymentReady(reconciledDeployment) {
 			readyCount++
 		}
 	}

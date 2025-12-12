@@ -96,21 +96,13 @@ type AutoOpsAgentPolicyStatus struct {
 type PolicyPhase string
 
 const (
-	UnknownPhase         PolicyPhase = "Unknown"
-	ReadyPhase           PolicyPhase = "Ready"
-	ApplyingChangesPhase PolicyPhase = "ApplyingChanges"
-	InvalidPhase         PolicyPhase = "Invalid"
-	NoResourcesPhase     PolicyPhase = "NoResources"
-	ErrorPhase           PolicyPhase = "Error"
+	ReadyPhase             PolicyPhase = "Ready"
+	ApplyingChangesPhase   PolicyPhase = "ApplyingChanges"
+	InvalidPhase           PolicyPhase = "Invalid"
+	NoResourcesPhase       PolicyPhase = "NoResources"
+	ResourcesNotReadyPhase PolicyPhase = "ResourcesNotReady"
+	ErrorPhase             PolicyPhase = "Error"
 )
-
-func NewStatus(policy AutoOpsAgentPolicy) AutoOpsAgentPolicyStatus {
-	status := AutoOpsAgentPolicyStatus{
-		Phase:              UnknownPhase,
-		ObservedGeneration: policy.Generation,
-	}
-	return status
-}
 
 // IsMarkedForDeletion returns true if the AutoOpsAgentPolicy resource is going to be deleted.
 func (p *AutoOpsAgentPolicy) IsMarkedForDeletion() bool {
