@@ -63,12 +63,12 @@ type AutoOpsAgentPolicySpec struct {
 	//     ccmApiKey: aslkfjsldkjfslkdjflksdjfl
 	//     autoOpsOTelURL: https://otel.auto-ops.console.qa.cld.elstc.co
 	//     autoOpsToken: skdfjdskjf
-	ConfigRef commonv1.ConfigSource `json:"config,omitempty"`
+	ConfigRef commonv1.ConfigSource `json:"configRef,omitempty"`
 	// Config holds the AutoOps agent configuration for Elasticsearch monitoring.
 	// This configuration is intended to override parts of the autoops_es.yml configmap.
 	// See: https://github.com/elastic/elastic-agent/blob/c6eaa3c903d4357824d345ee2002123fdffbec91/internal/pkg/otel/samples/linux/autoops_es.yml
 	// +kubebuilder:pruning:PreserveUnknownFields
-	Config *commonv1.Config `json:"esConfig,omitempty"`
+	Config *commonv1.Config `json:"config,omitempty"`
 	// AutoOpsRef is a reference to an AutoOps instance running in the same Kubernetes cluster.
 	// (TODO) AutoOpsRef is not yet implemented.
 	// AutoOpsRef commonv1.ObjectSelector `json:"autoOpsRef,omitempty"`
