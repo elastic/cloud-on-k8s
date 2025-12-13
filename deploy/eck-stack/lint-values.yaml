@@ -1,0 +1,3 @@
+eck-autoops:
+  configRef:
+    secretName: "test-secret"

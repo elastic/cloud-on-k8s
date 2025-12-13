@@ -163,6 +163,7 @@ func Test_allNodesRunningServiceAccounts(t *testing.T) {
 type fakeSecurityClient struct {
 	// namespacedService -> ServiceAccountCredential
 	serviceAccountCredentials map[string]esclient.ServiceAccountCredential
+	apiKeys                   map[string]esclient.APIKey
 }
 
 var _ esclient.SecurityClient = &fakeSecurityClient{}
@@ -172,9 +173,34 @@ func (f *fakeSecurityClient) GetServiceAccountCredentials(_ context.Context, nam
 	return serviceAccountCredential, nil
 }
 
+func (f *fakeSecurityClient) GetAPIKeysByName(_ context.Context, name string) (esclient.APIKeyList, error) {
+	apiKeys := esclient.APIKeyList{
+		APIKeys: []esclient.APIKey{f.apiKeys[name]},
+	}
+	return apiKeys, nil
+}
+
+func (f *fakeSecurityClient) CreateAPIKey(_ context.Context, request esclient.APIKeyCreateRequest) (esclient.APIKeyCreateResponse, error) {
+	apiKey := esclient.APIKeyCreateResponse{
+		ID:      f.apiKeys[request.Name].ID,
+		Name:    f.apiKeys[request.Name].Name,
+		APIKey:  f.apiKeys[request.Name].APIKey,
+		Encoded: f.apiKeys[request.Name].Encoded,
+	}
+	return apiKey, nil
+}
+
+func (f *fakeSecurityClient) InvalidateAPIKeys(_ context.Context, request esclient.APIKeysInvalidateRequest) (esclient.APIKeysInvalidateResponse, error) {
+	response := esclient.APIKeysInvalidateResponse{
+		InvalidatedAPIKeys: request.IDs,
+	}
+	return response, nil
+}
+
 func newFakeSecurityClient() *fakeSecurityClient {
 	return &fakeSecurityClient{
 		serviceAccountCredentials: make(map[string]esclient.ServiceAccountCredential),
+		apiKeys:                   make(map[string]esclient.APIKey),
 	}
 }
 
