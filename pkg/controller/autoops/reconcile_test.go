@@ -51,10 +51,8 @@ func TestAutoOpsAgentPolicyReconciler_internalReconcile(t *testing.T) {
 				},
 				Spec: autoopsv1alpha1.AutoOpsAgentPolicySpec{
 					Version: "9.1.0",
-					ConfigRef: commonv1.ConfigSource{
-						SecretRef: commonv1.SecretRef{
-							SecretName: "missing-secret",
-						},
+					AutoOpsRef: commonv1.ObjectSelector{
+						Name: "missing-secret",
 					},
 					ResourceSelector: metav1.LabelSelector{
 						MatchLabels: map[string]string{"app": "elasticsearch"},
@@ -76,10 +74,8 @@ func TestAutoOpsAgentPolicyReconciler_internalReconcile(t *testing.T) {
 				},
 				Spec: autoopsv1alpha1.AutoOpsAgentPolicySpec{
 					Version: "9.1.0",
-					ConfigRef: commonv1.ConfigSource{
-						SecretRef: commonv1.SecretRef{
-							SecretName: "invalid-secret",
-						},
+					AutoOpsRef: commonv1.ObjectSelector{
+						Name: "invalid-secret",
 					},
 					ResourceSelector: metav1.LabelSelector{
 						MatchLabels: map[string]string{"app": "elasticsearch"},
@@ -109,10 +105,8 @@ func TestAutoOpsAgentPolicyReconciler_internalReconcile(t *testing.T) {
 				},
 				Spec: autoopsv1alpha1.AutoOpsAgentPolicySpec{
 					Version: "9.1.0",
-					ConfigRef: commonv1.ConfigSource{
-						SecretRef: commonv1.SecretRef{
-							SecretName: "config-secret",
-						},
+					AutoOpsRef: commonv1.ObjectSelector{
+						Name: "config-secret",
 					},
 					ResourceSelector: metav1.LabelSelector{
 						MatchExpressions: []metav1.LabelSelectorRequirement{
@@ -152,10 +146,8 @@ func TestAutoOpsAgentPolicyReconciler_internalReconcile(t *testing.T) {
 				},
 				Spec: autoopsv1alpha1.AutoOpsAgentPolicySpec{
 					Version: "9.1.0",
-					ConfigRef: commonv1.ConfigSource{
-						SecretRef: commonv1.SecretRef{
-							SecretName: "config-secret",
-						},
+					AutoOpsRef: commonv1.ObjectSelector{
+						Name: "config-secret",
 					},
 					ResourceSelector: metav1.LabelSelector{
 						MatchLabels: map[string]string{"app": "elasticsearch"},
@@ -190,10 +182,8 @@ func TestAutoOpsAgentPolicyReconciler_internalReconcile(t *testing.T) {
 				},
 				Spec: autoopsv1alpha1.AutoOpsAgentPolicySpec{
 					Version: "9.1.0",
-					ConfigRef: commonv1.ConfigSource{
-						SecretRef: commonv1.SecretRef{
-							SecretName: "config-secret",
-						},
+					AutoOpsRef: commonv1.ObjectSelector{
+						Name: "config-secret",
 					},
 					ResourceSelector: metav1.LabelSelector{
 						MatchLabels: map[string]string{"app": "elasticsearch"},
@@ -239,10 +229,8 @@ func TestAutoOpsAgentPolicyReconciler_internalReconcile(t *testing.T) {
 				},
 				Spec: autoopsv1alpha1.AutoOpsAgentPolicySpec{
 					Version: "9.1.0",
-					ConfigRef: commonv1.ConfigSource{
-						SecretRef: commonv1.SecretRef{
-							SecretName: "config-secret",
-						},
+					AutoOpsRef: commonv1.ObjectSelector{
+						Name: "config-secret",
 					},
 					ResourceSelector: metav1.LabelSelector{
 						MatchLabels: map[string]string{"app": "elasticsearch"},
@@ -298,10 +286,8 @@ func TestAutoOpsAgentPolicyReconciler_internalReconcile(t *testing.T) {
 				},
 				Spec: autoopsv1alpha1.AutoOpsAgentPolicySpec{
 					Version: "9.1.0",
-					ConfigRef: commonv1.ConfigSource{
-						SecretRef: commonv1.SecretRef{
-							SecretName: "config-secret",
-						},
+					AutoOpsRef: commonv1.ObjectSelector{
+						Name: "config-secret",
 					},
 					ResourceSelector: metav1.LabelSelector{
 						MatchLabels: map[string]string{"app": "elasticsearch"},
@@ -368,10 +354,8 @@ func TestAutoOpsAgentPolicyReconciler_internalReconcile(t *testing.T) {
 				},
 				Spec: autoopsv1alpha1.AutoOpsAgentPolicySpec{
 					Version: "9.1.0",
-					ConfigRef: commonv1.ConfigSource{
-						SecretRef: commonv1.SecretRef{
-							SecretName: "config-secret",
-						},
+					AutoOpsRef: commonv1.ObjectSelector{
+						Name: "config-secret",
 					},
 					ResourceSelector: metav1.LabelSelector{
 						MatchLabels: map[string]string{"app": "elasticsearch"},
@@ -460,10 +444,8 @@ func TestAutoOpsAgentPolicyReconciler_internalReconcile(t *testing.T) {
 				},
 				Spec: autoopsv1alpha1.AutoOpsAgentPolicySpec{
 					Version: "9.1.0",
-					ConfigRef: commonv1.ConfigSource{
-						SecretRef: commonv1.SecretRef{
-							SecretName: "config-secret",
-						},
+					AutoOpsRef: commonv1.ObjectSelector{
+						Name: "config-secret",
 					},
 					ResourceSelector: metav1.LabelSelector{
 						MatchLabels: map[string]string{"app": "elasticsearch"},

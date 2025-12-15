@@ -177,31 +177,6 @@ func buildAutoOpsESConfigMap(policy autoopsv1alpha1.AutoOpsAgentPolicy, es esv1.
 		return corev1.ConfigMap{}, err
 	}
 
-	// This is disabled as it's currently not working. It appends additional data to slices within the config.
-	//
-	// // Parse the template-rendered YAML into a CanonicalConfig
-	// baseConfig, err := settings.ParseConfig(configBuf.Bytes())
-	// if err != nil {
-	// 	return corev1.ConfigMap{}, fmt.Errorf("failed to parse template config: %w", err)
-	// }
-
-	// if policy.Spec.Config != nil {
-	// 	userConfig, err := settings.NewCanonicalConfigFrom(policy.Spec.Config.Data)
-	// 	if err != nil {
-	// 		return corev1.ConfigMap{}, fmt.Errorf("failed to parse user config: %w", err)
-	// 	}
-	// 	// Merge user config with base config (user config takes precedence)
-	// 	if err := baseConfig.MergeWith(userConfig); err != nil {
-	// 		return corev1.ConfigMap{}, fmt.Errorf("failed to merge user config: %w", err)
-	// 	}
-	// }
-
-	// // Render the merged config back to YAML
-	// finalConfigBytes, err := baseConfig.Render()
-	// if err != nil {
-	// 	return corev1.ConfigMap{}, fmt.Errorf("failed to render final config: %w", err)
-	// }
-
 	// Use ES-specific ConfigMap name to allow per-ES configuration
 	configMapName := autoopsv1alpha1.Config(policy.GetName(), es)
 

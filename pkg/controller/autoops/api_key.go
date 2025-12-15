@@ -221,9 +221,11 @@ func (r *AgentPolicyReconciler) storeAPIKeyInSecret(
 	reconciled := &corev1.Secret{}
 	err := reconciler.ReconcileResource(
 		reconciler.Params{
-			Context:    ctx,
-			Client:     r.Client,
-			Owner:      &policy,
+			Context: ctx,
+			Client:  r.Client,
+			// explicitly setting the owner to nil to allow the controller to clean up
+			// the api keys in Elasticsearch when the policy is deleted.
+			Owner:      nil,
 			Expected:   &expected,
 			Reconciled: reconciled,
 			NeedsUpdate: func() bool {
