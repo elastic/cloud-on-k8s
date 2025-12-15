@@ -541,8 +541,8 @@ type FileSettingsErrors struct {
 // ReloadSecureSettingsResponse is the response from POST /_nodes/reload_secure_settings.
 // The response includes keystore information for each node (available in Elasticsearch 9.3+).
 type ReloadSecureSettingsResponse struct {
-	ClusterName string                               `json:"cluster_name"`
-	Nodes       map[string]ReloadSecureSettingsNode  `json:"nodes"`
+	ClusterName string                              `json:"cluster_name"`
+	Nodes       map[string]ReloadSecureSettingsNode `json:"nodes"`
 }
 
 // ReloadSecureSettingsNode contains the reload result for a single node.
