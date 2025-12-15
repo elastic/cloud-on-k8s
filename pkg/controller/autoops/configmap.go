@@ -16,11 +16,11 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	autoopsv1alpha1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/autoops/v1alpha1"
+	commonv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/common/v1"
 	esv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/elasticsearch/v1"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/certificates"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/metadata"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/reconciler"
-	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/settings"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/k8s"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/maps"
 )
@@ -144,8 +144,12 @@ func ReconcileAutoOpsESConfigMap(ctx context.Context, c k8s.Client, policy autoo
 // buildAutoOpsESConfigMap builds the expected ConfigMap for autoops configuration.
 // SSL is enabled based on the Elasticsearch CRD's spec.http.tls configuration.
 func buildAutoOpsESConfigMap(policy autoopsv1alpha1.AutoOpsAgentPolicy, es esv1.Elasticsearch) (corev1.ConfigMap, error) {
+	labels := map[string]string{
+		commonv1.TypeLabelName: "autoops-agent",
+		autoOpsLabelName:       policy.Name,
+	}
 	meta := metadata.Propagate(&policy, metadata.Metadata{
-		Labels:      policy.GetLabels(),
+		Labels:      maps.Merge(policy.GetLabels(), labels),
 		Annotations: policy.GetAnnotations(),
 	})
 
@@ -173,29 +177,30 @@ func buildAutoOpsESConfigMap(policy autoopsv1alpha1.AutoOpsAgentPolicy, es esv1.
 		return corev1.ConfigMap{}, err
 	}
 
-	// Parse the template-rendered YAML into a CanonicalConfig
-	baseConfig, err := settings.ParseConfig(configBuf.Bytes())
-	if err != nil {
-		return corev1.ConfigMap{}, fmt.Errorf("failed to parse template config: %w", err)
-	}
+	// This is disabled as it's currently not working. It appends additional data to slices within the config.
+	//
+	// // Parse the template-rendered YAML into a CanonicalConfig
+	// baseConfig, err := settings.ParseConfig(configBuf.Bytes())
+	// if err != nil {
+	// 	return corev1.ConfigMap{}, fmt.Errorf("failed to parse template config: %w", err)
+	// }
 
-	// Parse user-provided config if specified
-	if policy.Spec.Config != nil {
-		userConfig, err := settings.NewCanonicalConfigFrom(policy.Spec.Config.Data)
-		if err != nil {
-			return corev1.ConfigMap{}, fmt.Errorf("failed to parse user config: %w", err)
-		}
-		// Merge user config with base config (user config takes precedence)
-		if err := baseConfig.MergeWith(userConfig); err != nil {
-			return corev1.ConfigMap{}, fmt.Errorf("failed to merge user config: %w", err)
-		}
-	}
+	// if policy.Spec.Config != nil {
+	// 	userConfig, err := settings.NewCanonicalConfigFrom(policy.Spec.Config.Data)
+	// 	if err != nil {
+	// 		return corev1.ConfigMap{}, fmt.Errorf("failed to parse user config: %w", err)
+	// 	}
+	// 	// Merge user config with base config (user config takes precedence)
+	// 	if err := baseConfig.MergeWith(userConfig); err != nil {
+	// 		return corev1.ConfigMap{}, fmt.Errorf("failed to merge user config: %w", err)
+	// 	}
+	// }
 
-	// Render the merged config back to YAML
-	finalConfigBytes, err := baseConfig.Render()
-	if err != nil {
-		return corev1.ConfigMap{}, fmt.Errorf("failed to render final config: %w", err)
-	}
+	// // Render the merged config back to YAML
+	// finalConfigBytes, err := baseConfig.Render()
+	// if err != nil {
+	// 	return corev1.ConfigMap{}, fmt.Errorf("failed to render final config: %w", err)
+	// }
 
 	// Use ES-specific ConfigMap name to allow per-ES configuration
 	configMapName := autoopsv1alpha1.Config(policy.GetName(), es)
@@ -208,7 +213,7 @@ func buildAutoOpsESConfigMap(policy autoopsv1alpha1.AutoOpsAgentPolicy, es esv1.
 			Annotations: meta.Annotations,
 		},
 		Data: map[string]string{
-			autoOpsESConfigFileName: string(finalConfigBytes),
+			autoOpsESConfigFileName: configBuf.String(),
 		},
 	}, nil
 }

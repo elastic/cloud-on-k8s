@@ -12,6 +12,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	autoopsv1alpha1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/autoops/v1alpha1"
+	commonv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/common/v1"
 	esv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/elasticsearch/v1"
 	commonapikey "github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/apikey"
 )
@@ -44,6 +45,7 @@ func Test_newMetadataFor(t *testing.T) {
 				commonapikey.MetadataKeyESName:      "es-1",
 				commonapikey.MetadataKeyESNamespace: "ns-2",
 				commonapikey.MetadataKeyManagedBy:   commonapikey.MetadataValueECK,
+				commonv1.TypeLabelName:              "autoops-agent",
 				PolicyNameLabelKey:                  "policy-1",
 				policyNamespaceLabelKey:             "ns-1",
 			},
@@ -100,6 +102,7 @@ func Test_buildAutoOpsESAPIKeySecret(t *testing.T) {
 						commonapikey.MetadataKeyConfigHash:  "hash123",
 						commonapikey.MetadataKeyESName:      "es-1",
 						commonapikey.MetadataKeyESNamespace: "ns-2",
+						commonv1.TypeLabelName:              "autoops-agent",
 						PolicyNameLabelKey:                  "policy-1",
 						policyNamespaceLabelKey:             "ns-1",
 					},
@@ -137,6 +140,7 @@ func Test_buildAutoOpsESAPIKeySecret(t *testing.T) {
 						commonapikey.MetadataKeyConfigHash:  "hash123",
 						commonapikey.MetadataKeyESName:      "es-1",
 						commonapikey.MetadataKeyESNamespace: "ns-2",
+						commonv1.TypeLabelName:              "autoops-agent",
 						PolicyNameLabelKey:                  "policy-1",
 						policyNamespaceLabelKey:             "ns-1",
 					},
