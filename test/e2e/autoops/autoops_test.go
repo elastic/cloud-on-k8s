@@ -17,6 +17,10 @@ import (
 )
 
 func TestAutoOpsAgentPolicy(t *testing.T) {
+	// only execute this test if we have a test license to work with
+	if test.Ctx().TestLicense == "" {
+		t.SkipNow()
+	}
 	// Use separate namespaces for ES and policy
 	esNamespace := test.Ctx().ManagedNamespace(0)
 	policyNamespace := test.Ctx().ManagedNamespace(1)
@@ -28,6 +32,8 @@ func TestAutoOpsAgentPolicy(t *testing.T) {
 		WithVersion(test.Ctx().ElasticStackVersion).
 		WithLabel("autoops", "enabled")
 
+	esWithlicense := test.LicenseTestBuilder(esBuilder)
+
 	policyBuilder := autoops.NewBuilder("autoops-policy").
 		WithNamespace(policyNamespace).
 		WithResourceSelector(metav1.LabelSelector{
@@ -36,6 +42,6 @@ func TestAutoOpsAgentPolicy(t *testing.T) {
 			},
 		})
 
-	test.Sequence(nil, test.EmptySteps, esBuilder, policyBuilder).
+	test.Sequence(nil, test.EmptySteps, esWithlicense, policyBuilder).
 		RunSequential(t)
 }
