@@ -69,17 +69,16 @@ func (c *clientV7) GetAPIKeysByName(ctx context.Context, name string) (APIKeyLis
 	if err := c.get(ctx, path, &apiKeys); err != nil {
 		return apiKeys, err
 	}
-	return apiKeys, nil
-}
-
-func (c *clientV8) GetAPIKeysByName(ctx context.Context, name string) (APIKeyList, error) {
-	var apiKeys APIKeyList
-	// active_only added in 8.10
-	path := fmt.Sprintf("/_security/api_key?name=%s&active_only=true", name)
-	if err := c.get(ctx, path, &apiKeys); err != nil {
-		return apiKeys, err
+	// active_only=true was added in 8.10, but since we support all versions of V8 and Elasticsearch
+	// returns a 400 error if active_only=true is used we can't use it. We must filter
+	// out inactive api keys manually to have the same behavior across all versions Of Elasticsearch.
+	activeAPIKeys := make([]APIKey, 0, len(apiKeys.APIKeys))
+	for _, apiKey := range apiKeys.APIKeys {
+		if apiKey.isActive() {
+			activeAPIKeys = append(activeAPIKeys, apiKey)
+		}
 	}
-	return apiKeys, nil
+	return APIKeyList{APIKeys: activeAPIKeys}, nil
 }
 
 func (c *clientV6) CreateAPIKey(ctx context.Context, request APIKeyCreateRequest) (APIKeyCreateResponse, error) {
@@ -95,29 +94,11 @@ func (c *clientV7) CreateAPIKey(ctx context.Context, request APIKeyCreateRequest
 	return apiKey, nil
 }
 
-func (c *clientV8) CreateAPIKey(ctx context.Context, request APIKeyCreateRequest) (APIKeyCreateResponse, error) {
-	var apiKey APIKeyCreateResponse
-	path := "/_security/api_key"
-	if err := c.post(ctx, path, request, &apiKey); err != nil {
-		return apiKey, err
-	}
-	return apiKey, nil
-}
-
 func (c *clientV6) InvalidateAPIKeys(ctx context.Context, request APIKeysInvalidateRequest) (APIKeysInvalidateResponse, error) {
 	return APIKeysInvalidateResponse{}, errNotSupportedInEs6x
 }
 
 func (c *clientV7) InvalidateAPIKeys(ctx context.Context, request APIKeysInvalidateRequest) (APIKeysInvalidateResponse, error) {
-	path := "/_security/api_key"
-	var response APIKeysInvalidateResponse
-	if err := c.deleteWithObjects(ctx, path, request, &response); err != nil {
-		return response, err
-	}
-	return response, nil
-}
-
-func (c *clientV8) InvalidateAPIKeys(ctx context.Context, request APIKeysInvalidateRequest) (APIKeysInvalidateResponse, error) {
 	path := "/_security/api_key"
 	var response APIKeysInvalidateResponse
 	if err := c.deleteWithObjects(ctx, path, request, &response); err != nil {
