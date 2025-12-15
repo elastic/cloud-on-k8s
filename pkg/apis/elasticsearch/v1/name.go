@@ -44,6 +44,12 @@ const (
 	// remoteAPIKeysNameSuffix is a suffix for the secret that contains the API keys for the remote clusters.
 	remoteAPIKeysNameSuffix = "remote-api-keys"
 
+	// keystoreSecretSuffix is a suffix for the secret that contains the keystore file for 9.3+ clusters.
+	keystoreSecretSuffix = "keystore"
+
+	// keystoreJobSuffix is a suffix for the job that creates the keystore file for 9.3+ clusters.
+	keystoreJobSuffix = "keystore"
+
 	controllerRevisionHashLen = 10
 )
 
@@ -65,6 +71,8 @@ var (
 		statefulSetTransportCertificatesSecretSuffix,
 		remoteCaNameSuffix,
 		remoteAPIKeysNameSuffix,
+		keystoreSecretSuffix,
+		keystoreJobSuffix,
 	}
 )
 
@@ -188,6 +196,17 @@ func RemoteAPIKeysSecretName(esName string) string {
 
 func FileSettingsSecretName(esName string) string {
 	return ESNamer.Suffix(esName, fileSettingsSecretSuffix)
+}
+
+// KeystoreSecretName returns the name of the Secret that contains the keystore file for 9.3+ clusters.
+// This secret is created by a Job and mounted into all Elasticsearch pods.
+func KeystoreSecretName(esName string) string {
+	return ESNamer.Suffix(esName, keystoreSecretSuffix)
+}
+
+// KeystoreJobName returns the name of the Job that creates the keystore file for 9.3+ clusters.
+func KeystoreJobName(esName string) string {
+	return ESNamer.Suffix(esName, keystoreJobSuffix)
 }
 
 func StackConfigElasticsearchConfigSecretName(esName string) string {
