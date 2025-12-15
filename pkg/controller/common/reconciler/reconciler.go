@@ -118,7 +118,6 @@ func ReconcileResource(params Params) error {
 	if err != nil && apierrors.IsNotFound(err) {
 		return create()
 	} else if err != nil {
-		log.Error(err, fmt.Sprintf("Generic GET for %s %s/%s failed with error", kind, namespace, name))
 		return fmt.Errorf("failed to get %s %s/%s: %w", kind, namespace, name, err)
 	}
 
