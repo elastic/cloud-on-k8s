@@ -537,3 +537,23 @@ type FileSettingsErrors struct {
 	ErrorKind string   `json:"error_kind"`
 	Errors    []string `json:"errors"`
 }
+
+// ReloadSecureSettingsResponse is the response from POST /_nodes/reload_secure_settings.
+// The response includes keystore information for each node (available in Elasticsearch 9.3+).
+type ReloadSecureSettingsResponse struct {
+	ClusterName string                               `json:"cluster_name"`
+	Nodes       map[string]ReloadSecureSettingsNode  `json:"nodes"`
+}
+
+// ReloadSecureSettingsNode contains the reload result for a single node.
+type ReloadSecureSettingsNode struct {
+	Name string `json:"name"`
+	// SecureSettingNames is the list of secure setting names loaded from the keystore.
+	SecureSettingNames []string `json:"secure_setting_names,omitempty"`
+	// KeystorePath is the path to the keystore file on the node.
+	KeystorePath string `json:"keystore_path,omitempty"`
+	// KeystoreDigest is the SHA-256 digest of the keystore file (available in 9.3+).
+	KeystoreDigest string `json:"keystore_digest,omitempty"`
+	// KeystoreLastModifiedTime is the last modification time of the keystore file (available in 9.3+).
+	KeystoreLastModifiedTime string `json:"keystore_last_modified_time,omitempty"`
+}
