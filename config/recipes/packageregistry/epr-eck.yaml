@@ -4,7 +4,7 @@ kind: PackageRegistry
 metadata:
   name: registry
 spec:
-  version: 9.2.0
+  version: 9.2.2
   count: 1
 ---
 apiVersion: kibana.k8s.elastic.co/v1
@@ -12,7 +12,7 @@ kind: Kibana
 metadata:
   name: kibana
 spec:
-  version: 9.2.0
+  version: 9.2.2
   count: 1
   elasticsearchRef:
     name: elasticsearch
@@ -48,7 +48,7 @@ kind: Elasticsearch
 metadata:
   name: elasticsearch
 spec:
-  version: 9.2.0
+  version: 9.2.2
   nodeSets:
   - name: default
     count: 1
@@ -60,7 +60,7 @@ kind: Agent
 metadata:
   name: fleet-server
 spec:
-  version: 9.2.0
+  version: 9.2.2
   kibanaRef:
     name: kibana
   elasticsearchRefs:

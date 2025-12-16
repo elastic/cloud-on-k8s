@@ -18,11 +18,11 @@
 
 # Version of Package Registry.
 #
-version: 9.2.0
+version: 9.2.2
 
 # Elastic Package Registry Docker image to deploy
 #
-# image: docker.elastic.co/package-registry/distribution:9.2.0
+# image: docker.elastic.co/package-registry/distribution:lite-9.2.2
 
 # Labels that will be applied to Package Registry.
 #
