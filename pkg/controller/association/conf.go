@@ -133,10 +133,6 @@ func AllowVersion(resourceVersion version.Version, associated commonv1.Associate
 			// no association specified, move on
 			continue
 		}
-		if assoc.AssociationType() == commonv1.PackageRegistryAssociationType {
-			// EPR is version-agnostic, skip version compatibility check
-			continue
-		}
 		assocConf, err := assoc.AssociationConf()
 		if err != nil {
 			return false, err
