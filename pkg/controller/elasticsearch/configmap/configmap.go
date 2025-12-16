@@ -27,11 +27,16 @@ import (
 
 // ReconcileScriptsConfigMap reconciles a configmap containing scripts and related configuration used by
 // init containers and readiness probe.
-func ReconcileScriptsConfigMap(ctx context.Context, c k8s.Client, es esv1.Elasticsearch, meta metadata.Metadata) error {
+// keystoreSecretMountPath should be set when using the reloadable keystore feature (9.3+) to create
+// a symlink from the keystore secret to the ES config directory.
+func ReconcileScriptsConfigMap(ctx context.Context, c k8s.Client, es esv1.Elasticsearch, meta metadata.Metadata, keystoreSecretMountPath string) error {
 	span, ctx := apm.StartSpan(ctx, "reconcile_scripts", tracing.SpanTypeApp)
 	defer span.End()
 
-	fsScript, err := initcontainer.RenderPrepareFsScript(es.DownwardNodeLabels())
+	fsScript, err := initcontainer.RenderPrepareFsScript(initcontainer.PrepareFsScriptParams{
+		ExpectedAnnotations:     es.DownwardNodeLabels(),
+		KeystoreSecretMountPath: keystoreSecretMountPath,
+	})
 	if err != nil {
 		return err
 	}

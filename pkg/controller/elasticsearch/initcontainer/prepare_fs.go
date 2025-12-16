@@ -133,10 +133,33 @@ func NewPrepareFSInitContainer(transportCertificatesVolume volume.SecretVolume, 
 	return container, nil
 }
 
-func RenderPrepareFsScript(expectedAnnotations []string) (string, error) {
+// PrepareFsScriptParams contains optional parameters for rendering the prepare-fs script.
+type PrepareFsScriptParams struct {
+	// ExpectedAnnotations are annotations to wait for before starting ES.
+	ExpectedAnnotations []string
+	// KeystoreSecretMountPath is the mount path for the reloadable keystore secret (9.3+).
+	// If set, a symlink will be created from here to the config directory.
+	KeystoreSecretMountPath string
+}
+
+func RenderPrepareFsScript(params PrepareFsScriptParams) (string, error) {
+	// Start with the default linked files
+	allLinkedFiles := linkedFiles
+
+	// Add keystore symlink if using reloadable keystore
+	if params.KeystoreSecretMountPath != "" {
+		keystoreLink := LinkedFile{
+			Source: stringsutil.Concat(params.KeystoreSecretMountPath, "/", esvolume.KeystoreFileName),
+			Target: stringsutil.Concat(EsConfigSharedVolume.InitContainerMountPath, "/", esvolume.KeystoreFileName),
+		}
+		allLinkedFiles = LinkedFilesArray{
+			Array: append(linkedFiles.Array, keystoreLink),
+		}
+	}
+
 	templateParams := TemplateParams{
 		PluginVolumes: PluginVolumes,
-		LinkedFiles:   linkedFiles,
+		LinkedFiles:   allLinkedFiles,
 		ChownToElasticsearch: []string{
 			esvolume.ElasticsearchDataMountPath,
 			esvolume.ElasticsearchLogsMountPath,
@@ -144,8 +167,8 @@ func RenderPrepareFsScript(expectedAnnotations []string) (string, error) {
 		InitContainerTransportCertificatesSecretVolumeMountPath: initContainerTransportCertificatesVolumeMountPath,
 		TransportCertificatesSecretVolumeMountPath:              esvolume.TransportCertificatesSecretVolumeMountPath,
 	}
-	if len(expectedAnnotations) > 0 {
-		expectedAnnotationsAsString := strings.Join(expectedAnnotations, " ")
+	if len(params.ExpectedAnnotations) > 0 {
+		expectedAnnotationsAsString := strings.Join(params.ExpectedAnnotations, " ")
 		templateParams.ExpectedAnnotations = &expectedAnnotationsAsString
 	}
 	return RenderScriptTemplate(templateParams)

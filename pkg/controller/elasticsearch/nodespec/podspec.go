@@ -59,7 +59,7 @@ func BuildPodTemplateSpec(
 	es esv1.Elasticsearch,
 	nodeSet esv1.NodeSet,
 	cfg settings.CanonicalConfig,
-	keystoreResources *keystore.Resources,
+	keystoreConfig KeystoreConfig,
 	setDefaultSecurityContext bool,
 	policyConfig PolicyConfig,
 	meta metadata.Metadata,
@@ -70,7 +70,15 @@ func BuildPodTemplateSpec(
 	}
 
 	downwardAPIVolume := volume.DownwardAPI{}.WithAnnotations(es.HasDownwardNodeLabels())
-	volumes, volumeMounts := buildVolumes(es.Name, ver, nodeSet, keystoreResources, downwardAPIVolume, policyConfig.AdditionalVolumes)
+	volumes, volumeMounts := buildVolumes(BuildVolumesParams{
+		ESName:                     es.Name,
+		Version:                    ver,
+		NodeSpec:                   nodeSet,
+		KeystoreResources:          keystoreConfig.Resources,
+		KeystoreSecretName:         keystoreConfig.SecretName,
+		DownwardAPIVolume:          downwardAPIVolume,
+		AdditionalMountsFromPolicy: policyConfig.AdditionalVolumes,
+	})
 
 	labels, err := buildLabels(es, cfg, nodeSet)
 	if err != nil {
@@ -82,7 +90,7 @@ func BuildPodTemplateSpec(
 	// now build the initContainers using the effective main container resources as an input
 	initContainers, err := initcontainer.NewInitContainers(
 		transportCertificatesVolume(esv1.StatefulSet(es.Name, nodeSet.Name)),
-		keystoreResources,
+		keystoreConfig.Resources,
 		es.DownwardNodeLabels(),
 	)
 	if err != nil {
@@ -104,7 +112,7 @@ func BuildPodTemplateSpec(
 	if err := client.Get(context.Background(), types.NamespacedName{Namespace: es.Namespace, Name: esv1.ScriptsConfigMap(es.Name)}, esScripts); err != nil {
 		return corev1.PodTemplateSpec{}, err
 	}
-	annotations := buildAnnotations(es, cfg, keystoreResources, getScriptsConfigMapContent(esScripts), policyConfig.PolicyAnnotations)
+	annotations := buildAnnotations(es, cfg, keystoreConfig.Resources, getScriptsConfigMapContent(esScripts), policyConfig.PolicyAnnotations)
 
 	// Attempt to detect if the default data directory is mounted in a volume.
 	// If not, it could be a bug, a misconfiguration, or a custom storage configuration that requires the user to

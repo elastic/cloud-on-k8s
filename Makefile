@@ -194,6 +194,7 @@ run: install-crds install-keystore-uploader-rbac go-run
 install-keystore-uploader-rbac:
 	helm template eck-operator deploy/eck-operator \
 		--namespace=default \
+		--kube-version=1.27.0 \
 		--show-only templates/keystore-uploader-rbac.yaml | kubectl apply -f -
 
 go-run:

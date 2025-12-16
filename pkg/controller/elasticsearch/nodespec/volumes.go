@@ -19,14 +19,28 @@ import (
 	esvolume "github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/volume"
 )
 
-func buildVolumes(
-	esName string,
-	version version.Version,
-	nodeSpec esv1.NodeSet,
-	keystoreResources *keystore.Resources,
-	downwardAPIVolume volume.DownwardAPI,
-	additionalMountsFromPolicy []volume.VolumeLike,
-) ([]corev1.Volume, []corev1.VolumeMount) {
+// BuildVolumesParams contains parameters for building pod volumes.
+type BuildVolumesParams struct {
+	ESName string
+	// Version is the Elasticsearch version.
+	Version version.Version
+	// NodeSpec is the node set specification.
+	NodeSpec esv1.NodeSet
+	// KeystoreResources is the keystore resources for the init container approach (pre-9.3).
+	// This is nil when using the reloadable keystore approach.
+	KeystoreResources *keystore.Resources
+	// KeystoreSecretName is the name of the keystore Secret for the reloadable keystore approach (9.3+).
+	// This is empty when using the init container approach.
+	KeystoreSecretName string
+	// DownwardAPIVolume is the downward API volume for node labels.
+	DownwardAPIVolume volume.DownwardAPI
+	// AdditionalMountsFromPolicy contains additional volume mounts from stack config policy.
+	AdditionalMountsFromPolicy []volume.VolumeLike
+}
+
+func buildVolumes(params BuildVolumesParams) ([]corev1.Volume, []corev1.VolumeMount) {
+	esName := params.ESName
+	nodeSpec := params.NodeSpec
 	configVolume := settings.ConfigSecretVolume(esv1.StatefulSet(esName, nodeSpec.Name))
 	probeSecret := volume.NewSelectiveSecretVolumeWithMountPath(
 		esv1.InternalUsersSecret(esName), esvolume.ProbeUserVolumeName,
@@ -93,11 +107,23 @@ func buildVolumes(
 			httpCertificatesVolume.Volume(),
 			scriptsVolume.Volume(),
 			configVolume.Volume(),
-			downwardAPIVolume.Volume(),
+			params.DownwardAPIVolume.Volume(),
 			tmpVolume.Volume(),
 		)...)
-	if keystoreResources != nil {
-		volumes = append(volumes, keystoreResources.Volume)
+
+	// Add keystore volume: either secure settings for init container (pre-9.3) or keystore secret (9.3+)
+	if params.KeystoreResources != nil {
+		// Init container approach: mount secure settings
+		volumes = append(volumes, params.KeystoreResources.Volume)
+	}
+	if params.KeystoreSecretName != "" {
+		// Reloadable keystore approach: mount the keystore secret
+		keystoreSecretVolume := volume.NewSecretVolumeWithMountPath(
+			params.KeystoreSecretName,
+			esvolume.KeystoreSecretVolumeName,
+			esvolume.KeystoreSecretVolumeMountPath,
+		)
+		volumes = append(volumes, keystoreSecretVolume.Volume())
 	}
 
 	volumeMounts := append(
@@ -111,20 +137,32 @@ func buildVolumes(
 		httpCertificatesVolume.VolumeMount(),
 		scriptsVolume.VolumeMount(),
 		configVolume.VolumeMount(),
-		downwardAPIVolume.VolumeMount(),
+		params.DownwardAPIVolume.VolumeMount(),
 		tmpVolume.VolumeMount(),
 	)
 
+	// Add keystore secret mount for reloadable keystore (9.3+)
+	// Note: we don't mount it to the ES container directly - the prepare-fs init container
+	// creates a symlink from the secret mount to the config directory
+	if params.KeystoreSecretName != "" {
+		keystoreSecretVolume := volume.NewSecretVolumeWithMountPath(
+			params.KeystoreSecretName,
+			esvolume.KeystoreSecretVolumeName,
+			esvolume.KeystoreSecretVolumeMountPath,
+		)
+		volumeMounts = append(volumeMounts, keystoreSecretVolume.VolumeMount())
+	}
+
 	// version gate for the file-based settings volume and volumeMounts
-	if version.GTE(filesettings.FileBasedSettingsMinPreVersion) {
+	if params.Version.GTE(filesettings.FileBasedSettingsMinPreVersion) {
 		volumes = append(volumes, fileSettingsVolume.Volume())
 		volumeMounts = append(volumeMounts, fileSettingsVolume.VolumeMount())
 	}
 
 	// additional volumes from stack config policy
-	for _, volume := range additionalMountsFromPolicy {
-		volumes = append(volumes, volume.Volume())
-		volumeMounts = append(volumeMounts, volume.VolumeMount())
+	for _, vol := range params.AdditionalMountsFromPolicy {
+		volumes = append(volumes, vol.Volume())
+		volumeMounts = append(volumeMounts, vol.VolumeMount())
 	}
 
 	// include the user-provided PodTemplate volumes as the user may have defined the data volume there (e.g.: emptyDir or hostpath volume)

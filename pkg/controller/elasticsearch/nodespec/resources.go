@@ -13,7 +13,6 @@ import (
 
 	commonv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/common/v1"
 	esv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/elasticsearch/v1"
-	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/keystore"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/metadata"
 	sset "github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/statefulset"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/version"
@@ -54,11 +53,12 @@ func (l ResourcesList) ExpectedNodeCount() int32 {
 	return l.StatefulSets().ExpectedNodeCount()
 }
 
+// BuildExpectedResources builds the expected Kubernetes resources for an Elasticsearch cluster.
 func BuildExpectedResources(
 	ctx context.Context,
 	client k8s.Client,
 	es esv1.Elasticsearch,
-	keystoreResources *keystore.Resources,
+	keystoreConfig KeystoreConfig,
 	existingStatefulSets es_sset.StatefulSetList,
 	ipFamily corev1.IPFamily,
 	setDefaultSecurityContext bool,
@@ -89,7 +89,7 @@ func BuildExpectedResources(
 		}
 
 		// build stateful set and associated headless service
-		statefulSet, err := BuildStatefulSet(ctx, client, es, nodeSpec, cfg, keystoreResources, existingStatefulSets, setDefaultSecurityContext, policyConfig, meta)
+		statefulSet, err := BuildStatefulSet(ctx, client, es, nodeSpec, cfg, keystoreConfig, existingStatefulSets, setDefaultSecurityContext, policyConfig, meta)
 		if err != nil {
 			return nil, err
 		}

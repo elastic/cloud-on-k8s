@@ -48,4 +48,12 @@ const (
 
 	TempVolumeName      = "tmp-volume"
 	TempVolumeMountPath = "/tmp"
+
+	// KeystoreSecretVolumeName is the name of the volume for the reloadable keystore secret (9.3+).
+	KeystoreSecretVolumeName = "elastic-internal-keystore"
+	// KeystoreSecretVolumeMountPath is where the keystore secret is mounted.
+	// The prepare-fs init container creates a symlink from here to the config directory.
+	KeystoreSecretVolumeMountPath = "/mnt/elastic-internal/keystore-secret"
+	// KeystoreFileName is the name of the keystore file.
+	KeystoreFileName = "elasticsearch.keystore"
 )

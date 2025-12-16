@@ -115,8 +115,8 @@ func TestReconcileScriptsConfigMap(t *testing.T) {
 			// Setup mock K8s client with initial objects
 			mockClient := k8s.NewFakeClient(tt.initialObjects...)
 
-			// Run the function
-			err := ReconcileScriptsConfigMap(context.Background(), mockClient, es, tt.meta)
+			// Run the function (empty keystoreSecretMountPath for traditional init container approach)
+			err := ReconcileScriptsConfigMap(context.Background(), mockClient, es, tt.meta, "")
 
 			// Check error
 			if tt.wantErr {

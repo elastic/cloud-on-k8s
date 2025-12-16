@@ -46,6 +46,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/keystorejob"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/label"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/license"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/nodespec"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/observer"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/reconcile"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/remotecluster"
@@ -54,6 +55,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/settings"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/stackmon"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/user"
+	esvolume "github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/volume"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/stackconfigpolicy"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/dev"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/k8s"
@@ -139,10 +141,6 @@ func (d *defaultDriver) Reconcile(ctx context.Context) *reconciler.Results {
 
 	// extract the metadata that should be propagated to children
 	meta := metadata.Propagate(&d.ES, metadata.Metadata{Labels: label.NewLabels(k8s.ExtractNamespacedName(&d.ES))})
-
-	if err := configmap.ReconcileScriptsConfigMap(ctx, d.Client, d.ES, meta); err != nil {
-		return results.WithError(err)
-	}
 
 	_, err := common.ReconcileService(ctx, d.Client, services.NewTransportService(d.ES, meta), &d.ES)
 	if err != nil {
@@ -393,7 +391,8 @@ func (d *defaultDriver) Reconcile(ctx context.Context) *reconciler.Results {
 
 	// For Elasticsearch 9.3+, use the job-based reloadable keystore approach instead of init containers.
 	// This avoids pod restarts when secure settings change.
-	var keystoreResourcesForPods *keystore.Resources
+	var keystoreConfig nodespec.KeystoreConfig
+	var keystoreSecretMountPath string
 	if keystorejob.ShouldUseReloadableKeystore(ctx, d.ES, d.Version, keystoreResources, d.OperatorParameters.OperatorImage) {
 		if _, err := d.reconcileKeystoreJob(ctx, keystoreResources, meta); err != nil {
 			return results.WithError(err)
@@ -402,10 +401,21 @@ func (d *defaultDriver) Reconcile(ctx context.Context) *reconciler.Results {
 		// naturally keep new pods pending until the keystore Secret exists (volume mount dependency).
 		// Existing pods continue running with their current keystore until the reload API is called.
 		// Don't include keystore init container in pods - the keystore Secret will be mounted directly.
-		keystoreResourcesForPods = nil
+		keystoreConfig = nodespec.KeystoreConfig{
+			SecretName: esv1.KeystoreSecretName(d.ES.Name),
+		}
+		// Set the mount path so the prepare-fs script creates a symlink to the keystore
+		keystoreSecretMountPath = esvolume.KeystoreSecretVolumeMountPath
 	} else {
 		// Use the traditional init container approach
-		keystoreResourcesForPods = keystoreResources
+		keystoreConfig = nodespec.KeystoreConfig{
+			Resources: keystoreResources,
+		}
+	}
+
+	// Reconcile the scripts ConfigMap (must be after keystore decision to set up symlink correctly)
+	if err := configmap.ReconcileScriptsConfigMap(ctx, d.Client, d.ES, meta, keystoreSecretMountPath); err != nil {
+		return results.WithError(err)
 	}
 
 	// set an annotation with the ClusterUUID, if bootstrapped
@@ -440,7 +450,7 @@ func (d *defaultDriver) Reconcile(ctx context.Context) *reconciler.Results {
 	}
 
 	// reconcile StatefulSets and nodes configuration
-	return results.WithResults(d.reconcileNodeSpecs(ctx, esReachable, esClient, d.ReconcileState, *resourcesState, keystoreResourcesForPods, meta))
+	return results.WithResults(d.reconcileNodeSpecs(ctx, esReachable, esClient, d.ReconcileState, *resourcesState, keystoreConfig, meta))
 }
 
 // maybeReconcileEmptyFileSettingsSecret reconciles an empty file-settings secret for this ES cluster
