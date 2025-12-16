@@ -850,11 +850,6 @@ func asyncTasks(
 	}
 	// - soft-owned secrets
 	garbageCollectSoftOwnedSecrets(gcCtx, mgr.GetClient())
-	// - autoops resources (configmaps, secrets and deployments)
-	if err := autoops.GarbageCollectOrphanedResources(gcCtx, mgr.GetClient(), managedNamespaces); err != nil {
-		log.Error(err, "exiting due to unrecoverable error")
-		os.Exit(1)
-	}
 	tracing.EndContextTransaction(gcCtx)
 }
 
