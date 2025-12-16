@@ -152,6 +152,12 @@ func (r *AgentPolicyReconciler) Reconcile(ctx context.Context, request reconcile
 		return results.WithRequeue().Aggregate()
 	}
 
+	// requeue if not ready (similar to stackconfigpolicy controller)
+	// Check phase after status update to ensure status is persisted
+	if state.status.Phase != autoopsv1alpha1.ReadyPhase {
+		results = results.WithRequeue(defaultRequeue)
+	}
+
 	return results.Aggregate()
 }
 

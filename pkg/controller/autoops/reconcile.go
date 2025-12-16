@@ -167,14 +167,11 @@ func (r *AgentPolicyReconciler) internalReconcile(
 			continue
 		}
 
-		deploymentReady := isDeploymentReady(reconciledDeployment)
-		log.V(1).Info("Deployment status", "es_namespace", es.Namespace, "es_name", es.Name, "deployment_name", reconciledDeployment.Name, "ready", deploymentReady)
-		if deploymentReady {
+		if isDeploymentReady(reconciledDeployment) {
 			readyCount++
 		}
 	}
 
-	log.V(1).Info("Updating status counts", "ready", readyCount, "errors", errorCount, "resources", len(esList.Items))
 	state.UpdateReady(readyCount).
 		UpdateErrors(errorCount)
 
