@@ -240,14 +240,14 @@ func (r *AgentPolicyReconciler) onDelete(ctx context.Context, obj types.Namespac
 			if err := deleteESAPIKeySecret(ctx, r.Client, log,
 				types.NamespacedName{Namespace: obj.Namespace, Name: obj.Name},
 				types.NamespacedName{Namespace: esNamespace, Name: esName}); err != nil {
-				log.Error(err, "Failed to delete API key secret", "es_namespace", esNamespace, "es_name", esName)
+				log.Error(err, "while deleting API key secret", "es_namespace", esNamespace, "es_name", esName)
 			}
 			continue
 		}
 
 		// This cleanup requires communicating with Elasticsearch so we do not attempt this is the previous retrival of the ES cluster fails.
 		if err := cleanupAutoOpsESAPIKey(ctx, r.Client, r.esClientProvider, r.params.Dialer, obj.Namespace, obj.Name, es); err != nil {
-			log.Error(err, "Failed to cleanup API key for Elasticsearch cluster", "es_namespace", esNamespace, "es_name", esName)
+			log.Error(err, "while cleaning up API key for Elasticsearch cluster", "es_namespace", esNamespace, "es_name", esName)
 			continue
 		}
 		log.V(1).Info("Successfully cleaned up API key", "es_namespace", esNamespace, "es_name", esName)

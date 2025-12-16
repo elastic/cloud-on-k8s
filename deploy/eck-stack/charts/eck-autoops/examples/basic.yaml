@@ -3,17 +3,9 @@
 #
 version: 9.3.0-SNAPSHOT
 
-# AutoOps configuration values.
-# These values are required and will be used to create a Kubernetes Secret.
-#
-ccmApiKey: "your-api-key-here"
-autoOpsOTelURL: "https://otel-auto-ops.us-east-2.aws.svc.elastic.cloud"
-autoOpsToken: "your-token-here"
-
-# Secret name for the AutoOps configuration.
-# If not specified, defaults to the fullname of the chart with '-secret' suffix.
-#
-# secretName: ""
+# Reference an existing Kubernetes secret holding the AutoOps configuration.
+autoOpsRef:
+  secretName: autoops-secret
 
 # ResourceSelector is a label selector for the resources to be configured.
 # Any Elasticsearch instances that match the selector will be configured to send data to AutoOps.

@@ -2437,9 +2437,9 @@ spec:
                     description: |-
                       SecretName references a Secret containing connection details for external AutoOps.
                       Required when connecting via Cloud Connect. The secret must contain:
-                      - `ccmApiKey`: Cloud Connected Mode API key
-                      - `autoOpsOTelURL`: AutoOps OpenTelemetry endpoint URL
-                      - `autoOpsToken`: AutoOps authentication token
+                      - `cloud-connected-mode-api-key`: Cloud Connected Mode API key
+                      - `autoops-otel-url`: AutoOps OpenTelemetry endpoint URL
+                      - `autoops-token`: AutoOps authentication token
                       - `cloud-connected-mode-api-url`: (optional) Cloud Connected Mode API URL
                       This field cannot be used in combination with `name`.
                     type: string
@@ -2532,6 +2532,10 @@ spec:
               resources:
                 description: Resources is the number of resources that match the ResourceSelector.
                 type: integer
+            required:
+            - errors
+            - ready
+            - resources
             type: object
         type: object
     served: true

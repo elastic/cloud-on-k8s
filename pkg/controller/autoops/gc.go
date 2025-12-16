@@ -108,7 +108,7 @@ func cleanupOrphanedSecrets(
 			if err := c.Get(ctx, esNN, &es); err == nil {
 				// ES cluster exists, try to clean up API key
 				if err := cleanupAutoOpsESAPIKey(ctx, c, esClientProvider, dialer, policy.Namespace, policy.Name, es); err != nil {
-					log.Error(err, "Failed to cleanup API key for ES cluster, continuing with secret deletion", "es_namespace", esNN.Namespace, "es_name", esNN.Name)
+					log.Error(err, "while cleaning up API key for ES cluster, continuing with secret deletion", "es_namespace", esNN.Namespace, "es_name", esNN.Name)
 				}
 			}
 		}

@@ -344,7 +344,7 @@ func cleanupAutoOpsESAPIKey(
 	// Get Elasticsearch client
 	esClient, err := esClientProvider(ctx, c, dialer, es)
 	if err != nil {
-		return fmt.Errorf("failed to create Elasticsearch client for %s/%s: %w", es.Namespace, es.Name, err)
+		return fmt.Errorf("while creating Elasticsearch client for %s/%s: %w", es.Namespace, es.Name, err)
 	}
 	defer esClient.Close()
 

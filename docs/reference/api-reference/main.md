@@ -310,7 +310,7 @@ AutoOpsRef defines a reference to Elastic AutoOps containing connection details 
 
 | Field | Description |
 | --- | --- |
-| *`secretName`* __string__ | SecretName references a Secret containing connection details for external AutoOps.<br>Required when connecting via Cloud Connect. The secret must contain:<br>- `ccmApiKey`: Cloud Connected Mode API key<br>- `autoOpsOTelURL`: AutoOps OpenTelemetry endpoint URL<br>- `autoOpsToken`: AutoOps authentication token<br>- `cloud-connected-mode-api-url`: (optional) Cloud Connected Mode API URL<br>This field cannot be used in combination with `name`. |
+| *`secretName`* __string__ | SecretName references a Secret containing connection details for external AutoOps.<br>Required when connecting via Cloud Connect. The secret must contain:<br>- `cloud-connected-mode-api-key`: Cloud Connected Mode API key<br>- `autoops-otel-url`: AutoOps OpenTelemetry endpoint URL<br>- `autoops-token`: AutoOps authentication token<br>- `cloud-connected-mode-api-url`: (optional) Cloud Connected Mode API URL<br>This field cannot be used in combination with `name`. |
 
 
 

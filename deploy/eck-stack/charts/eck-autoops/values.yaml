@@ -34,14 +34,14 @@ annotations: {}
 # by selecting the ECK connect wizard and following the instructions.
 #
 # The referenced secret must contain the following:
-# - `ccmApiKey`: the Cloud Connected Mode API key. This is used to register the Agent with Elastic Cloud AutoOps.
-# - `autoOpsOTelURL`: the URL of the AutoOps OTel endpoint. This is used to send Agent data to the AutoOps platform and is region specific.
+# - `cloud-connected-mode-api-key`: the Cloud Connected Mode API key. This is used to register the Agent with Elastic Cloud AutoOps.
+# - `autoops-otel-url`: the URL of the AutoOps OTel endpoint. This is used to send Agent data to the AutoOps platform and is region specific.
 #     Example: "https://otel-auto-ops.us-east-2.aws.svc.elastic.cloud"
-# - `autoOpsToken`: the token to authenticate against the AutoOps platform and is how AutoOps knows how to connect Agent data to the
+# - `autoops-token`: the token to authenticate against the AutoOps platform and is how AutoOps knows how to connect Agent data to the
 #     relevant Elastic Cloud organization
-# - `cloudConnectedModeAPIURL`: the URL of the Cloud Connected Mode API (optional)
+# - `cloud-connected-mode-api-url`: the URL of the Cloud Connected Mode API (optional)
 #
-configRef: {}
+autoOpsRef: {}
   # secretName: ""
 
 # Config holds the AutoOps Agent configuration for Elasticsearch monitoring.

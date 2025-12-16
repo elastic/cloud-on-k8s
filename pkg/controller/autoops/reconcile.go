@@ -71,7 +71,7 @@ func (r *AgentPolicyReconciler) internalReconcile(
 		Namespace: policy.Namespace,
 		Name:      policy.Spec.AutoOpsRef.SecretName,
 	}); err != nil {
-		log.Error(err, "Error validating configuration secret", "namespace", policy.Namespace, "name", policy.Spec.AutoOpsRef.SecretName)
+		log.Error(err, "while validating configuration secret", "namespace", policy.Namespace, "name", policy.Spec.AutoOpsRef.SecretName)
 		state.UpdateInvalidPhaseWithEvent(err.Error())
 		return results.WithError(err)
 	}
@@ -114,7 +114,7 @@ func (r *AgentPolicyReconciler) internalReconcile(
 
 		if es.Spec.HTTP.TLS.Enabled() {
 			if err := r.reconcileAutoOpsESCASecret(ctx, policy, es); err != nil {
-				log.Error(err, "Error reconciling AutoOps ES CA secret", "es_namespace", es.Namespace, "es_name", es.Name)
+				log.Error(err, "while reconciling AutoOps ES CA secret", "es_namespace", es.Namespace, "es_name", es.Name)
 				errorCount++
 				state.UpdateWithPhase(autoopsv1alpha1.ErrorPhase)
 				results.WithError(err)
@@ -124,7 +124,7 @@ func (r *AgentPolicyReconciler) internalReconcile(
 
 		apiKeySecret, err := r.reconcileAutoOpsESAPIKey(ctx, policy, es)
 		if err != nil {
-			log.Error(err, "Error reconciling AutoOps ES API key", "es_namespace", es.Namespace, "es_name", es.Name)
+			log.Error(err, "while reconciling AutoOps ES API key", "es_namespace", es.Namespace, "es_name", es.Name)
 			errorCount++
 			state.UpdateWithPhase(autoopsv1alpha1.ErrorPhase)
 			results.WithError(err)
@@ -133,7 +133,7 @@ func (r *AgentPolicyReconciler) internalReconcile(
 
 		configMap, err := ReconcileAutoOpsESConfigMap(ctx, r.Client, policy, es)
 		if err != nil {
-			log.Error(err, "Error reconciling AutoOps ES config map", "es_namespace", es.Namespace, "es_name", es.Name)
+			log.Error(err, "while reconciling AutoOps ES config map", "es_namespace", es.Namespace, "es_name", es.Name)
 			errorCount++
 			state.UpdateWithPhase(autoopsv1alpha1.ErrorPhase)
 			results.WithError(err)
@@ -142,7 +142,7 @@ func (r *AgentPolicyReconciler) internalReconcile(
 
 		configHash, err := buildConfigHash(ctx, *configMap, *apiKeySecret, r.Client, policy)
 		if err != nil {
-			log.Error(err, "Error building config hash", "es_namespace", es.Namespace, "es_name", es.Name)
+			log.Error(err, "while building config hash", "es_namespace", es.Namespace, "es_name", es.Name)
 			errorCount++
 			state.UpdateWithPhase(autoopsv1alpha1.ErrorPhase)
 			results.WithError(err)
@@ -151,7 +151,7 @@ func (r *AgentPolicyReconciler) internalReconcile(
 
 		deploymentParams, err := r.buildDeployment(configHash, policy, es)
 		if err != nil {
-			log.Error(err, "Error getting deployment params", "es_namespace", es.Namespace, "es_name", es.Name)
+			log.Error(err, "while getting deployment params", "es_namespace", es.Namespace, "es_name", es.Name)
 			errorCount++
 			state.UpdateWithPhase(autoopsv1alpha1.ErrorPhase)
 			results.WithError(err)
@@ -160,24 +160,27 @@ func (r *AgentPolicyReconciler) internalReconcile(
 
 		reconciledDeployment, err := deployment.Reconcile(ctx, r.Client, deploymentParams, &policy)
 		if err != nil {
-			log.Error(err, "Error reconciling deployment", "es_namespace", es.Namespace, "es_name", es.Name)
+			log.Error(err, "while reconciling deployment", "es_namespace", es.Namespace, "es_name", es.Name)
 			errorCount++
 			state.UpdateWithPhase(autoopsv1alpha1.ErrorPhase)
 			results.WithError(err)
 			continue
 		}
 
-		if isDeploymentReady(reconciledDeployment) {
+		deploymentReady := isDeploymentReady(reconciledDeployment)
+		log.V(1).Info("Deployment status", "es_namespace", es.Namespace, "es_name", es.Name, "deployment_name", reconciledDeployment.Name, "ready", deploymentReady)
+		if deploymentReady {
 			readyCount++
 		}
 	}
 
+	log.V(1).Info("Updating status counts", "ready", readyCount, "errors", errorCount, "resources", len(esList.Items))
 	state.UpdateReady(readyCount).
 		UpdateErrors(errorCount)
 
 	// Clean up resources that no longer match the Policy's selector
 	if err := r.cleanupOrphanedResourcesForPolicy(ctx, log, policy, esList.Items); err != nil {
-		log.Error(err, "Error cleaning up orphaned resources", "policy_namespace", policy.Namespace, "policy_name", policy.Name)
+		log.Error(err, "while cleaning up orphaned resources", "policy_namespace", policy.Namespace, "policy_name", policy.Name)
 		// Note: Should we update phase to error, and return error I wonder?
 		state.UpdateWithPhase(autoopsv1alpha1.ErrorPhase)
 		results.WithError(err)
@@ -206,16 +209,16 @@ func (r *AgentPolicyReconciler) cleanupOrphanedResourcesForPolicy(
 	}
 
 	if err := cleanupOrphanedDeployments(ctx, log, r.Client, policy, matchLabels, esMap); err != nil {
-		return fmt.Errorf("failed to cleanup deployments: %w", err)
+		return fmt.Errorf("while cleaning up deployments: %w", err)
 	}
 
 	if err := cleanupOrphanedConfigMaps(ctx, log, r.Client, policy, matchLabels, esMap); err != nil {
-		return fmt.Errorf("failed to cleanup configmaps: %w", err)
+		return fmt.Errorf("while cleaning up configmaps: %w", err)
 	}
 
 	// Cleanup both CA secrets and API Key.
 	if err := cleanupOrphanedSecrets(ctx, log, r.Client, r.esClientProvider, r.params.Dialer, policy, matchLabels, esMap); err != nil {
-		return fmt.Errorf("failed to cleanup secrets: %w", err)
+		return fmt.Errorf("while cleaning up secrets: %w", err)
 	}
 
 	return nil

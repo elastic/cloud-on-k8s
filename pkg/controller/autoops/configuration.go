@@ -41,22 +41,22 @@ func validateConfigSecret(ctx context.Context, client k8s.Client, secretNSN type
 		if apierrors.IsNotFound(err) {
 			return fmt.Errorf("configuration secret %s/%s not found: %w", secretNSN.Namespace, secretNSN.Name, err)
 		}
-		return fmt.Errorf("failed to retrieve configuration secret %s/%s: %w", secretNSN.Namespace, secretNSN.Name, err)
+		return fmt.Errorf("while retrieving configuration secret %s/%s: %w", secretNSN.Namespace, secretNSN.Name, err)
 	}
 
 	return internalValidate(secret)
 }
 
 func internalValidate(secret corev1.Secret) error {
-	if data, exists := secret.Data[ccmAPIKey]; !exists || exists && len(data) == 0 {
+	if data, exists := secret.Data[ccmAPIKey]; !exists || len(data) == 0 {
 		return fmt.Errorf("missing required key %s in configuration secret %s/%s", ccmAPIKey, secret.Namespace, secret.Name)
 	}
 
-	if data, exists := secret.Data[autoOpsOTelURL]; !exists || exists && len(data) == 0 {
+	if data, exists := secret.Data[autoOpsOTelURL]; !exists || len(data) == 0 {
 		return fmt.Errorf("missing required key %s in configuration secret %s/%s", autoOpsOTelURL, secret.Namespace, secret.Name)
 	}
 
-	if data, exists := secret.Data[autoOpsToken]; !exists || exists && len(data) == 0 {
+	if data, exists := secret.Data[autoOpsToken]; !exists || len(data) == 0 {
 		return fmt.Errorf("missing required key %s in configuration secret %s/%s", autoOpsToken, secret.Namespace, secret.Name)
 	}
 

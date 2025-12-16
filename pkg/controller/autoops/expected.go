@@ -178,7 +178,7 @@ func buildConfigHash(ctx context.Context, configMap corev1.ConfigMap, apiKeySecr
 	autoopsSecretNSN := types.NamespacedName{Namespace: policy.Namespace, Name: policy.Spec.AutoOpsRef.SecretName}
 	var autoopsSecret corev1.Secret
 	if err := c.Get(ctx, autoopsSecretNSN, &autoopsSecret); err != nil {
-		return "", fmt.Errorf("failed to get autoops configuration secret %s: %w", autoopsSecretNSN.String(), err)
+		return "", fmt.Errorf("while getting autoops configuration secret %s: %w", autoopsSecretNSN.String(), err)
 	}
 
 	// Hash secret keys, including optional keys. There's no code here to handle missing keys as:
@@ -192,8 +192,8 @@ func buildConfigHash(ctx context.Context, configMap corev1.ConfigMap, apiKeySecr
 		}
 	}
 
-	// // This data may not exist on initial reconciliation, so we don't return an error if it's missing.
-	// // This should resolve itself on the next reconciliation after the API key is created.
+	// This data may not exist on initial reconciliation, so we don't return an error if it's missing.
+	// This should resolve itself on the next reconciliation after the API key is created.
 	if apiKeyData, ok := apiKeySecret.Data[apiKeySecretKey]; ok {
 		_, _ = configHash.Write(apiKeyData)
 	}

@@ -1,10 +1,8 @@
 ---
 eck-autoops:
   enabled: true
-  ccmApiKey: "your-api-key-here"
-  autoOpsOTelURL: "https://otel-auto-ops.us-east-2.aws.svc.elastic.cloud"
-  autoOpsToken: "your-token-here"
-  secretName: "autoops-secret"
+  autoOpsRef:
+    secretName: "autoops-secret"
   resourceSelector:
     matchLabels:
       autoops: enabled

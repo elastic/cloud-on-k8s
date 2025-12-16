@@ -71,9 +71,9 @@ type AutoOpsAgentPolicySpec struct {
 type AutoOpsRef struct {
 	// SecretName references a Secret containing connection details for external AutoOps.
 	// Required when connecting via Cloud Connect. The secret must contain:
-	// - `ccmApiKey`: Cloud Connected Mode API key
-	// - `autoOpsOTelURL`: AutoOps OpenTelemetry endpoint URL
-	// - `autoOpsToken`: AutoOps authentication token
+	// - `cloud-connected-mode-api-key`: Cloud Connected Mode API key
+	// - `autoops-otel-url`: AutoOps OpenTelemetry endpoint URL
+	// - `autoops-token`: AutoOps authentication token
 	// - `cloud-connected-mode-api-url`: (optional) Cloud Connected Mode API URL
 	// This field cannot be used in combination with `name`.
 	// +optional
@@ -82,11 +82,11 @@ type AutoOpsRef struct {
 
 type AutoOpsAgentPolicyStatus struct {
 	// Resources is the number of resources that match the ResourceSelector.
-	Resources int `json:"resources,omitempty"`
+	Resources int `json:"resources"`
 	// Ready is the number of resources that are in a ready state.
-	Ready int `json:"ready,omitempty"`
+	Ready int `json:"ready"`
 	// Errors is the number of resources that are in an error state.
-	Errors int `json:"errors,omitempty"`
+	Errors int `json:"errors"`
 	// Phase is the phase of the AutoOpsAgentPolicy.
 	Phase PolicyPhase `json:"phase,omitempty"`
 	// ObservedGeneration is the most recent generation observed for this AutoOpsAgentPolicy.
