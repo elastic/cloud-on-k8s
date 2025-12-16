@@ -715,6 +715,11 @@ func startOperator(ctx context.Context) error {
 		return err
 	}
 
+	isOpenshift, err := isOpenShift(clientset)
+	if err != nil {
+		log.Info("Failed to detect if running on an OpenShift cluster", "err", err.Error())
+	}
+
 	params := operator.Parameters{
 		Dialer:                           dialer,
 		ElasticsearchObservationInterval: viper.GetDuration(operator.ElasticsearchObservationIntervalFlag),
@@ -732,6 +737,7 @@ func startOperator(ctx context.Context) error {
 			RotateBefore: certRotateBefore,
 		},
 		PasswordHasher:            passwordHasher,
+		IsOpenShift:               isOpenshift,
 		PasswordGenerator:         generator,
 		MaxConcurrentReconciles:   viper.GetInt(operator.MaxConcurrentReconcilesFlag),
 		SetDefaultSecurityContext: setDefaultSecurityContext,

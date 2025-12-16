@@ -65,7 +65,7 @@ func readinessProbe(useTLS bool) corev1.Probe {
 	}
 }
 
-func newPodSpec(epr eprv1alpha1.PackageRegistry, configHash string, meta metadata.Metadata) (corev1.PodTemplateSpec, error) {
+func newPodSpec(epr eprv1alpha1.PackageRegistry, configHash string, meta metadata.Metadata, isOpenShift bool) (corev1.PodTemplateSpec, error) {
 	// ensure the Pod gets rotated on config change
 	podMeta := meta.Merge(metadata.Metadata{Annotations: map[string]string{configHashAnnotationName: configHash}})
 
@@ -88,6 +88,14 @@ func newPodSpec(epr eprv1alpha1.PackageRegistry, configHash string, meta metadat
 		eprVars = append(eprVars, corev1.EnvVar{Name: TLSKeyEnvName, Value: "/mnt/elastic-internal/http-certs/tls.key"})
 		eprVars = append(eprVars, corev1.EnvVar{Name: TLSCertEnvName, Value: "/mnt/elastic-internal/http-certs/tls.crt"})
 	}
+	var runAsUser *int64
+	if !isOpenShift {
+		// Set runAsUser for Kubernetes because the underlying image runs as UID 0 (root),
+		// which conflicts with RunAsNonRoot: true (see https: //github.com/elastic/package-registry/pull/1503).
+		// OpenShift automatically assigns a random UID from the namespace's allocated range, so we leave
+		// it nil to avoid SCC conflicts.
+		runAsUser = ptr.To(int64(1000))
+	}
 
 	builder = builder.
 		WithAnnotations(podMeta.Annotations).
@@ -106,6 +114,7 @@ func newPodSpec(epr eprv1alpha1.PackageRegistry, configHash string, meta metadat
 			Privileged:             ptr.To(false),
 			ReadOnlyRootFilesystem: ptr.To(true),
 			RunAsNonRoot:           ptr.To(true),
+			RunAsUser:              runAsUser,
 			SeccompProfile: &corev1.SeccompProfile{
 				Type: corev1.SeccompProfileTypeRuntimeDefault,
 			},

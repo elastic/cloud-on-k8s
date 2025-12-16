@@ -50,6 +50,8 @@ type Parameters struct {
 	// ValidateStorageClass specifies whether the operator should retrieve storage classes to verify volume expansion support.
 	// Can be disabled if cluster-wide storage class RBAC access is not available.
 	ValidateStorageClass bool
+	// IsOpenShift specifies whether the operator is running on an OpenShift cluster.
+	IsOpenShift bool
 	// Tracer is a shared APM tracer instance or nil
 	Tracer *apm.Tracer
 }
