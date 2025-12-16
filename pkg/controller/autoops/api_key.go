@@ -39,7 +39,7 @@ const (
 	// policyNamespaceLabelKey is the label key for the AutoOpsAgentPolicy namespace.
 	policyNamespaceLabelKey = "autoops.k8s.elastic.co/policy-namespace"
 	// policySecretTypeLabelKey is the label key that identifies the type of secret for the AutoOpsAgentPolicy.
-	policySecretTypeLabelKey = "autoops.k8s.elastic.co/secret-type"
+	policySecretTypeLabelKey = "autoops.k8s.elastic.co/secret-type" //nolint:gosec
 	apiKeySecretKey          = "api_key"
 )
 
