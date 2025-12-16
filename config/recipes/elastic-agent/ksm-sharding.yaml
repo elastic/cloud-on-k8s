@@ -3,7 +3,7 @@ kind: Agent
 metadata:
   name: elastic-agent
 spec:
-  version: 9.2.0
+  version: 9.2.2
   elasticsearchRefs:
   - name: elasticsearch
   statefulSet:
@@ -450,7 +450,7 @@ kind: Elasticsearch
 metadata:
   name: elasticsearch
 spec:
-  version: 9.2.0
+  version: 9.2.2
   nodeSets:
   - name: default
     count: 3
@@ -462,7 +462,7 @@ kind: Kibana
 metadata:
   name: kibana
 spec:
-  version: 9.2.0
+  version: 9.2.2
   count: 1
   elasticsearchRef:
     name: elasticsearch
