@@ -144,8 +144,7 @@ func TestReconcileAutoOpsAgentPolicy_deploymentParams(t *testing.T) {
 			r := &AgentPolicyReconciler{
 				Client: client,
 			}
-			ctx := context.Background()
-			got, err := r.buildDeployment(ctx, configHash, tt.args.autoops, tt.args.es)
+			got, err := r.buildDeployment(configHash, tt.args.autoops, tt.args.es)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("ReconcileAutoOpsAgentPolicy.buildDeployment() error = %v, wantErr %v", err, tt.wantErr)
 				return

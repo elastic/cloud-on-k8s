@@ -148,7 +148,7 @@ func (r *AgentPolicyReconciler) internalReconcile(
 			continue
 		}
 
-		deploymentParams, err := r.buildDeployment(ctx, configHash, policy, es)
+		deploymentParams, err := r.buildDeployment(configHash, policy, es)
 		if err != nil {
 			log.Error(err, "Error getting deployment params", "es_namespace", es.Namespace, "es_name", es.Name)
 			errorCount++
