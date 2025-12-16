@@ -43,6 +43,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/filesettings"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/hints"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/initcontainer"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/keystorejob"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/label"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/license"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/observer"
@@ -390,6 +391,23 @@ func (d *defaultDriver) Reconcile(ctx context.Context) *reconciler.Results {
 		return results.WithError(err)
 	}
 
+	// For Elasticsearch 9.3+, use the job-based reloadable keystore approach instead of init containers.
+	// This avoids pod restarts when secure settings change.
+	var keystoreResourcesForPods *keystore.Resources
+	if keystorejob.ShouldUseReloadableKeystore(d.ES, d.Version, keystoreResources) {
+		if _, err := d.reconcileKeystoreJob(ctx, keystoreResources, meta); err != nil {
+			return results.WithError(err)
+		}
+		// Don't block reconciliation while waiting for the keystore job - Kubernetes will
+		// naturally keep new pods pending until the keystore Secret exists (volume mount dependency).
+		// Existing pods continue running with their current keystore until the reload API is called.
+		// Don't include keystore init container in pods - the keystore Secret will be mounted directly.
+		keystoreResourcesForPods = nil
+	} else {
+		// Use the traditional init container approach
+		keystoreResourcesForPods = keystoreResources
+	}
+
 	// set an annotation with the ClusterUUID, if bootstrapped
 	requeue, err := bootstrap.ReconcileClusterUUID(ctx, d.Client, &d.ES, esClient, esReachable)
 	if err != nil {
@@ -422,7 +440,7 @@ func (d *defaultDriver) Reconcile(ctx context.Context) *reconciler.Results {
 	}
 
 	// reconcile StatefulSets and nodes configuration
-	return results.WithResults(d.reconcileNodeSpecs(ctx, esReachable, esClient, d.ReconcileState, *resourcesState, keystoreResources, meta))
+	return results.WithResults(d.reconcileNodeSpecs(ctx, esReachable, esClient, d.ReconcileState, *resourcesState, keystoreResourcesForPods, meta))
 }
 
 // maybeReconcileEmptyFileSettingsSecret reconciles an empty file-settings secret for this ES cluster
@@ -659,6 +677,41 @@ func warnUnsupportedDistro(pods []corev1.Pod, recorder *events.Recorder) {
 			}
 		}
 	}
+}
+
+// reconcileKeystoreJob reconciles the keystore creation Job for Elasticsearch 9.3+ clusters.
+// It returns true if the keystore Secret is ready (job completed), false if still pending.
+func (d *defaultDriver) reconcileKeystoreJob(ctx context.Context, keystoreResources *keystore.Resources, meta metadata.Metadata) (bool, error) {
+	// Get the Elasticsearch image from the first node set (all should use the same image)
+	esImage := ""
+	if len(d.ES.Spec.NodeSets) > 0 {
+		esImage = d.ES.Spec.Image
+		if esImage == "" {
+			// Use default image based on version
+			esImage = fmt.Sprintf("docker.elastic.co/elasticsearch/elasticsearch:%s", d.ES.Spec.Version)
+		}
+	}
+
+	// Extract pod template params from the first node set for the Job
+	var podTemplateParams keystorejob.JobPodTemplateParams
+	if len(d.ES.Spec.NodeSets) > 0 {
+		podSpec := d.ES.Spec.NodeSets[0].PodTemplate.Spec
+		podTemplateParams = keystorejob.JobPodTemplateParams{
+			ImagePullSecrets:   podSpec.ImagePullSecrets,
+			ServiceAccountName: podSpec.ServiceAccountName,
+			PodSecurityContext: podSpec.SecurityContext,
+		}
+	}
+
+	return keystorejob.ReconcileJob(ctx, keystorejob.Params{
+		ES:                 d.ES,
+		Client:             d.Client,
+		OperatorImage:      d.OperatorParameters.OperatorImage,
+		ElasticsearchImage: esImage,
+		KeystoreResources:  keystoreResources,
+		Meta:               meta,
+		PodTemplate:        podTemplateParams,
+	})
 }
 
 func esReachableConditionMessage(internalService *corev1.Service, isServiceReady bool, isRespondingToRequests bool) string {
