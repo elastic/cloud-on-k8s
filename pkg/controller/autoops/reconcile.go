@@ -6,6 +6,7 @@ package autoops
 
 import (
 	"context"
+	"fmt"
 	"time"
 
 	appsv1 "k8s.io/api/apps/v1"
@@ -18,6 +19,7 @@ import (
 	esv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/elasticsearch/v1"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/deployment"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/reconciler"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/k8s"
 	ulog "github.com/elastic/cloud-on-k8s/v3/pkg/utils/log"
 )
 
@@ -159,7 +161,53 @@ func (r *AgentPolicyReconciler) internalReconcile(
 
 	state.UpdateReady(readyCount).
 		UpdateErrors(errorCount)
+
+	// Clean up resources that no longer match the Policy's selector
+	if err := r.cleanupOrphanedResourcesForPolicy(ctx, policy, esList.Items); err != nil {
+		log.Error(err, "Error cleaning up orphaned resources")
+		// Note: Should we update phase to error, and return error I wonder?
+		state.UpdateWithPhase(autoopsv1alpha1.ErrorPhase)
+		results.WithError(err)
+	}
+
 	return results
+}
+
+// cleanupOrphanedResourcesForPolicy removes resources (Deployments, ConfigMaps, Secrets) for ES clusters
+// that no longer match the Policy's selector.
+func (r *AgentPolicyReconciler) cleanupOrphanedResourcesForPolicy(
+	ctx context.Context,
+	policy autoopsv1alpha1.AutoOpsAgentPolicy,
+	clusterMatchingPolicy []esv1.Elasticsearch,
+) error {
+	log := ulog.FromContext(ctx).WithValues("policy", policy.Name, "namespace", policy.Namespace)
+	log.V(1).Info("Cleaning up orphaned resources for policy")
+
+	// Build a set of ES clusters that should have resources
+	// within the cluster.
+	esMap := make(map[types.NamespacedName]struct{})
+	for _, es := range clusterMatchingPolicy {
+		esMap[k8s.ExtractNamespacedName(&es)] = struct{}{}
+	}
+
+	matchLabels := client.MatchingLabels{
+		autoOpsLabelName: policy.Name,
+	}
+
+	if err := cleanupOrphanedDeployments(ctx, log, r.Client, policy, matchLabels, esMap); err != nil {
+		return fmt.Errorf("failed to cleanup deployments: %w", err)
+	}
+
+	if err := cleanupOrphanedConfigMaps(ctx, log, r.Client, policy, matchLabels, esMap); err != nil {
+		return fmt.Errorf("failed to cleanup configmaps: %w", err)
+	}
+
+	// Cleanup both CA secrets and API Key.
+	if err := cleanupOrphanedSecrets(ctx, log, r.Client, r.esClientProvider, r.params.Dialer, policy, matchLabels, esMap); err != nil {
+		return fmt.Errorf("failed to cleanup secrets: %w", err)
+	}
+
+	return nil
 }
 
 // isDeploymentReady checks if a deployment is ready by verifying that the DeploymentAvailable condition is true.

@@ -20,6 +20,7 @@ import (
 	autoopsv1alpha1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/autoops/v1alpha1"
 	commonv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/common/v1"
 	esv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/elasticsearch/v1"
+	commonapikey "github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/apikey"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/container"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/defaults"
 	common_deployment "github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/deployment"
@@ -32,6 +33,7 @@ import (
 
 const (
 	autoOpsLabelName         = "autoops.k8s.elastic.co/name"
+	autoOpsAgentType         = "autoops-agent"
 	configVolumeName         = "config-volume"
 	configVolumePath         = "/mnt/config"
 	configHashAnnotationName = "autoops.k8s.elastic.co/config-hash"
@@ -62,16 +64,24 @@ func autoOpsConfigurationSecretNamespace(policy autoopsv1alpha1.AutoOpsAgentPoli
 	return policy.GetNamespace()
 }
 
+// resourceLabelsFor returns the standard labels for AutoOps resources (Deployments, ConfigMaps, Secrets)
+// associated with a specific policy and Elasticsearch cluster.
+func resourceLabelsFor(policy autoopsv1alpha1.AutoOpsAgentPolicy, es esv1.Elasticsearch) map[string]string {
+	return map[string]string{
+		commonv1.TypeLabelName:              autoOpsAgentType,
+		autoOpsLabelName:                    policy.Name,
+		commonapikey.MetadataKeyESName:      es.Name,
+		commonapikey.MetadataKeyESNamespace: es.Namespace,
+	}
+}
+
 func (r *AgentPolicyReconciler) deploymentParams(ctx context.Context, policy autoopsv1alpha1.AutoOpsAgentPolicy, es esv1.Elasticsearch) (appsv1.Deployment, error) {
 	v, err := version.Parse(policy.Spec.Version)
 	if err != nil {
 		return appsv1.Deployment{}, err
 	}
 
-	labels := map[string]string{
-		commonv1.TypeLabelName: "autoops-agent",
-		autoOpsLabelName:       policy.Name,
-	}
+	labels := resourceLabelsFor(policy, es)
 
 	// Create ES-specific ConfigMap volume
 	configMapName := autoopsv1alpha1.Config(policy.GetName(), es)
@@ -100,7 +110,7 @@ func (r *AgentPolicyReconciler) deploymentParams(ctx context.Context, policy aut
 
 	annotations := map[string]string{configHashAnnotationName: configHash}
 	meta := metadata.Propagate(&policy, metadata.Metadata{Labels: labels, Annotations: annotations})
-	podTemplateSpec := defaults.NewPodTemplateBuilder(policy.Spec.PodTemplate, "autoops-agent").
+	podTemplateSpec := defaults.NewPodTemplateBuilder(policy.Spec.PodTemplate, autoOpsAgentType).
 		WithArgs("--config", path.Join(configVolumePath, autoOpsESConfigFileName)).
 		WithLabels(meta.Labels).
 		WithAnnotations(meta.Annotations).

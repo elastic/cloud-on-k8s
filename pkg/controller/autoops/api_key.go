@@ -36,9 +36,11 @@ const (
 	// PolicyNameLabelKey is the label key for the AutoOpsAgentPolicy name.
 	// This is exported as its used in the remotecluster controller to identify API keys managed by the autoops controller.
 	PolicyNameLabelKey = "autoops.k8s.elastic.co/policy-name"
-	// policyNamespaceLabelKey is the label key for the AutoOpsAgentPolicy namespace
+	// policyNamespaceLabelKey is the label key for the AutoOpsAgentPolicy namespace.
 	policyNamespaceLabelKey = "autoops.k8s.elastic.co/policy-namespace"
-	apiKeySecretKey         = "api_key"
+	// policySecretTypeLabelKey is the label key that identifies the type of secret for the AutoOpsAgentPolicy.
+	policySecretTypeLabelKey = "autoops.k8s.elastic.co/secret-type"
+	apiKeySecretKey          = "api_key"
 )
 
 // apiKeySpec represents the specification for an autoops API key
@@ -257,8 +259,16 @@ func (r *AgentPolicyReconciler) storeAPIKeyInSecret(
 
 // buildAutoOpsESAPIKeySecret builds the expected Secret for autoops ES API key.
 func buildAutoOpsESAPIKeySecret(policy autoopsv1alpha1.AutoOpsAgentPolicy, es esv1.Elasticsearch, secretName string, encodedKey string, expectedHash string) corev1.Secret {
+	baseLabels := resourceLabelsFor(policy, es)
+	apiKeyLabels := maps.Merge(baseLabels, map[string]string{
+		PolicyNameLabelKey:                 policy.Name,
+		policyNamespaceLabelKey:            policy.Namespace,
+		policySecretTypeLabelKey:           "api-key",
+		commonapikey.MetadataKeyConfigHash: expectedHash,
+	})
+
 	meta := metadata.Propagate(&policy, metadata.Metadata{
-		Labels:      newMetadataFor(&policy, &es, expectedHash),
+		Labels:      apiKeyLabels,
 		Annotations: policy.GetAnnotations(),
 	})
 
@@ -296,7 +306,7 @@ func apiKeyNameFor(policy autoopsv1alpha1.AutoOpsAgentPolicy, es esv1.Elasticsea
 // newMetadataFor returns the metadata to be set in the Elasticsearch API key.
 func newMetadataFor(policy *autoopsv1alpha1.AutoOpsAgentPolicy, es *esv1.Elasticsearch, expectedHash string) map[string]string {
 	return map[string]string{
-		commonv1.TypeLabelName:              "autoops-agent",
+		commonv1.TypeLabelName:              autoOpsAgentType,
 		commonapikey.MetadataKeyConfigHash:  expectedHash,
 		commonapikey.MetadataKeyESName:      es.Name,
 		commonapikey.MetadataKeyESNamespace: es.Namespace,

@@ -60,7 +60,7 @@ func (r *AgentPolicyReconciler) reconcileAutoOpsESCASecret(
 	}
 
 	secretName := autoopsv1alpha1.CASecret(policy.GetName(), es)
-	expected := buildAutoOpsESCASecret(policy, secretName, caCert)
+	expected := buildAutoOpsESCASecret(policy, es, secretName, caCert)
 
 	reconciled := &corev1.Secret{}
 	err := reconciler.ReconcileResource(
@@ -98,13 +98,15 @@ func (r *AgentPolicyReconciler) reconcileAutoOpsESCASecret(
 }
 
 // buildAutoOpsESCASecret builds the expected Secret for autoops ES CA certificate.
-func buildAutoOpsESCASecret(policy autoopsv1alpha1.AutoOpsAgentPolicy, secretName string, caCert []byte) corev1.Secret {
+func buildAutoOpsESCASecret(policy autoopsv1alpha1.AutoOpsAgentPolicy, es esv1.Elasticsearch, secretName string, caCert []byte) corev1.Secret {
 	if len(caCert) == 0 {
 		return corev1.Secret{}
 	}
 
+	labels := resourceLabelsFor(policy, es)
+	labels[policySecretTypeLabelKey] = "ca"
 	meta := metadata.Propagate(&policy, metadata.Metadata{
-		Labels:      policy.GetLabels(),
+		Labels:      maps.Merge(policy.GetLabels(), labels),
 		Annotations: policy.GetAnnotations(),
 	})
 

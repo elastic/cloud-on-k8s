@@ -16,7 +16,6 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	autoopsv1alpha1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/autoops/v1alpha1"
-	commonv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/common/v1"
 	esv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/elasticsearch/v1"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/certificates"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/metadata"
@@ -144,10 +143,7 @@ func ReconcileAutoOpsESConfigMap(ctx context.Context, c k8s.Client, policy autoo
 // buildAutoOpsESConfigMap builds the expected ConfigMap for autoops configuration.
 // SSL is enabled based on the Elasticsearch CRD's spec.http.tls configuration.
 func buildAutoOpsESConfigMap(policy autoopsv1alpha1.AutoOpsAgentPolicy, es esv1.Elasticsearch) (corev1.ConfigMap, error) {
-	labels := map[string]string{
-		commonv1.TypeLabelName: "autoops-agent",
-		autoOpsLabelName:       policy.Name,
-	}
+	labels := resourceLabelsFor(policy, es)
 	meta := metadata.Propagate(&policy, metadata.Metadata{
 		Labels:      maps.Merge(policy.GetLabels(), labels),
 		Annotations: policy.GetAnnotations(),

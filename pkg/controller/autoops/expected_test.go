@@ -167,10 +167,7 @@ func TestReconcileAutoOpsAgentPolicy_deploymentParams(t *testing.T) {
 
 func expectedDeployment(policy autoopsv1alpha1.AutoOpsAgentPolicy, es esv1.Elasticsearch, configHashValue string) appsv1.Deployment {
 	v, _ := version.Parse(policy.Spec.Version)
-	labels := map[string]string{
-		commonv1.TypeLabelName:        "autoops-agent",
-		"autoops.k8s.elastic.co/name": policy.GetName(),
-	}
+	labels := resourceLabelsFor(policy, es)
 
 	annotations := map[string]string{
 		configHashAnnotationName: configHashValue,
@@ -214,7 +211,7 @@ func expectedDeployment(policy autoopsv1alpha1.AutoOpsAgentPolicy, es esv1.Elast
 					AutomountServiceAccountToken: ptr.To(false),
 					Containers: []corev1.Container{
 						{
-							Name:  "autoops-agent",
+							Name:  autoOpsAgentType,
 							Image: fmt.Sprintf("docker.elastic.co/elastic-agent/elastic-otel-collector-wolfi:%s", v.String()),
 							Args: []string{
 								"--config",
