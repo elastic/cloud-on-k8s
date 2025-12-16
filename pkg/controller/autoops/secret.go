@@ -25,6 +25,11 @@ import (
 	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/maps"
 )
 
+const (
+	apiKeySecretType = "api-key"
+	caSecretType     = "ca"
+)
+
 // reconcileAutoOpsESCASecret reconciles the Secret containing the CA certificate
 // for a specific Elasticsearch cluster, copying it from the ES instance's http-ca-internal secret.
 func (r *AgentPolicyReconciler) reconcileAutoOpsESCASecret(
@@ -33,10 +38,10 @@ func (r *AgentPolicyReconciler) reconcileAutoOpsESCASecret(
 	es esv1.Elasticsearch,
 ) error {
 	log := ulog.FromContext(ctx)
-	log.V(1).Info("Reconciling AutoOps ES CA secret", "namespace", policy.Namespace, "es_namespace", es.Namespace, "es_name", es.Name)
+	log.V(1).Info("Reconciling AutoOps ES CA secret", "es_namespace", es.Namespace, "es_name", es.Name)
 
 	if es.Status.Phase != esv1.ElasticsearchReadyPhase {
-		log.V(1).Info("Skipping ES cluster that is not ready", "namespace", es.Namespace, "name", es.Name)
+		log.V(1).Info("Skipping ES cluster that is not ready", "es_namespace", es.Namespace, "es_name", es.Name)
 		return nil
 	}
 
@@ -47,7 +52,7 @@ func (r *AgentPolicyReconciler) reconcileAutoOpsESCASecret(
 	var sourceSecret corev1.Secret
 	if err := r.Client.Get(ctx, sourceSecretKey, &sourceSecret); err != nil {
 		if apierrors.IsNotFound(err) {
-			log.V(1).Info("ES http-ca-internal secret not found, skipping", "namespace", es.Namespace, "name", es.Name)
+			log.V(1).Info("ES http-ca-internal secret not found, skipping", "es_namespace", es.Namespace, "es_name", es.Name)
 			return nil
 		}
 		return fmt.Errorf("while retrieving http-ca-internal secret for ES cluster %s/%s: %w", es.Namespace, es.Name, err)
@@ -55,7 +60,7 @@ func (r *AgentPolicyReconciler) reconcileAutoOpsESCASecret(
 
 	caCert, ok := sourceSecret.Data[certificates.CertFileName]
 	if !ok || len(caCert) == 0 {
-		log.V(1).Info("tls.crt not found in http-ca-internal secret, skipping", "namespace", es.Namespace, "name", es.Name)
+		log.V(1).Info("tls.crt not found in http-ca-internal secret, skipping", "es_namespace", es.Namespace, "es_name", es.Name)
 		return nil
 	}
 
@@ -104,7 +109,7 @@ func buildAutoOpsESCASecret(policy autoopsv1alpha1.AutoOpsAgentPolicy, es esv1.E
 	}
 
 	labels := resourceLabelsFor(policy, es)
-	labels[policySecretTypeLabelKey] = "ca"
+	labels[policySecretTypeLabelKey] = caSecretType
 	meta := metadata.Propagate(&policy, metadata.Metadata{
 		Labels:      maps.Merge(policy.GetLabels(), labels),
 		Annotations: policy.GetAnnotations(),

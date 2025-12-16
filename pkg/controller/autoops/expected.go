@@ -56,15 +56,6 @@ var (
 	}
 )
 
-// autoOpsConfigurationSecretNamespace returns the namespace for the AutoOps configuration secret.
-// If the namespace is specified in AutoOpsRef use it, otherwise default to the policy namespace.
-func autoOpsConfigurationSecretNamespace(policy autoopsv1alpha1.AutoOpsAgentPolicy) string {
-	if policy.Spec.AutoOpsRef.Namespace != "" {
-		return policy.Spec.AutoOpsRef.Namespace
-	}
-	return policy.GetNamespace()
-}
-
 // resourceLabelsFor returns the standard labels for AutoOps resources (Deployments, ConfigMaps, Secrets)
 // associated with a specific policy and Elasticsearch cluster.
 func resourceLabelsFor(policy autoopsv1alpha1.AutoOpsAgentPolicy, es esv1.Elasticsearch) map[string]string {
@@ -76,7 +67,7 @@ func resourceLabelsFor(policy autoopsv1alpha1.AutoOpsAgentPolicy, es esv1.Elasti
 	}
 }
 
-func (r *AgentPolicyReconciler) deploymentParams(ctx context.Context, policy autoopsv1alpha1.AutoOpsAgentPolicy, es esv1.Elasticsearch) (appsv1.Deployment, error) {
+func (r *AgentPolicyReconciler) buildDeployment(ctx context.Context, policy autoopsv1alpha1.AutoOpsAgentPolicy, es esv1.Elasticsearch) (appsv1.Deployment, error) {
 	v, err := version.Parse(policy.Spec.Version)
 	if err != nil {
 		return appsv1.Deployment{}, err
@@ -196,7 +187,7 @@ func buildConfigHash(ctx context.Context, c k8s.Client, policy autoopsv1alpha1.A
 	}
 
 	// Hash secret values from autoops-secret
-	autoopsSecretNSN := types.NamespacedName{Namespace: autoOpsConfigurationSecretNamespace(policy), Name: policy.Spec.AutoOpsRef.SecretName}
+	autoopsSecretNSN := types.NamespacedName{Namespace: policy.Namespace, Name: policy.Spec.AutoOpsRef.SecretName}
 	var autoopsSecret corev1.Secret
 	if err := c.Get(ctx, autoopsSecretNSN, &autoopsSecret); err != nil {
 		return "", fmt.Errorf("failed to get autoops configuration secret %s: %w", autoopsSecretNSN.String(), err)

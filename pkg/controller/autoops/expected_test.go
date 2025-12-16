@@ -33,7 +33,7 @@ func TestReconcileAutoOpsAgentPolicy_deploymentParams(t *testing.T) {
 		},
 		Spec: autoopsv1alpha1.AutoOpsAgentPolicySpec{
 			Version: "9.1.0-SNAPSHOT",
-			AutoOpsRef: commonv1.ObjectSelector{
+			AutoOpsRef: autoopsv1alpha1.AutoOpsRef{
 				SecretName: "autoops-secret",
 			},
 		},
@@ -83,8 +83,8 @@ func TestReconcileAutoOpsAgentPolicy_deploymentParams(t *testing.T) {
 					},
 					Spec: autoopsv1alpha1.AutoOpsAgentPolicySpec{
 						Version: "invalid-version",
-						AutoOpsRef: commonv1.ObjectSelector{
-							Name: "autoops-secret",
+						AutoOpsRef: autoopsv1alpha1.AutoOpsRef{
+							SecretName: "autoops-secret",
 						},
 					},
 				},
@@ -139,9 +139,9 @@ func TestReconcileAutoOpsAgentPolicy_deploymentParams(t *testing.T) {
 				Client: client,
 			}
 			ctx := context.Background()
-			got, err := r.deploymentParams(ctx, tt.args.autoops, tt.args.es)
+			got, err := r.buildDeployment(ctx, tt.args.autoops, tt.args.es)
 			if (err != nil) != tt.wantErr {
-				t.Errorf("ReconcileAutoOpsAgentPolicy.deploymentParams() error = %v, wantErr %v", err, tt.wantErr)
+				t.Errorf("ReconcileAutoOpsAgentPolicy.buildDeployment() error = %v, wantErr %v", err, tt.wantErr)
 				return
 			}
 			if !tt.wantErr {
@@ -382,7 +382,7 @@ func Test_autoopsEnvVars(t *testing.T) {
 					Namespace: "ns-2",
 				},
 				Spec: autoopsv1alpha1.AutoOpsAgentPolicySpec{
-					AutoOpsRef: commonv1.ObjectSelector{
+					AutoOpsRef: autoopsv1alpha1.AutoOpsRef{
 						SecretName: "autoops-secret",
 					},
 				},

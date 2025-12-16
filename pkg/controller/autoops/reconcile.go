@@ -21,6 +21,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/reconciler"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/k8s"
 	ulog "github.com/elastic/cloud-on-k8s/v3/pkg/utils/log"
+	"github.com/go-logr/logr"
 )
 
 func (r *AgentPolicyReconciler) doReconcile(ctx context.Context, policy autoopsv1alpha1.AutoOpsAgentPolicy, state *State) *reconciler.Results {
@@ -66,10 +67,10 @@ func (r *AgentPolicyReconciler) internalReconcile(
 	log.V(1).Info("Internal reconcile AutoOpsAgentPolicy")
 
 	if err := validateConfigSecret(ctx, r.Client, types.NamespacedName{
-		Namespace: autoOpsConfigurationSecretNamespace(policy),
+		Namespace: policy.Namespace,
 		Name:      policy.Spec.AutoOpsRef.SecretName,
 	}); err != nil {
-		log.Error(err, "Error validating configuration secret", "namespace", autoOpsConfigurationSecretNamespace(policy), "name", policy.Spec.AutoOpsRef.SecretName)
+		log.Error(err, "Error validating configuration secret", "namespace", policy.Namespace, "name", policy.Spec.AutoOpsRef.SecretName)
 		state.UpdateInvalidPhaseWithEvent(err.Error())
 		return results.WithError(err)
 	}
@@ -92,7 +93,7 @@ func (r *AgentPolicyReconciler) internalReconcile(
 	}
 
 	if len(esList.Items) == 0 {
-		log.Info("No Elasticsearch resources found for the AutoOpsAgentPolicy", "namespace", policy.Namespace, "name", policy.Name)
+		log.Info("No Elasticsearch resources found for the AutoOpsAgentPolicy", "policy_namespace", policy.Namespace, "policy_name", policy.Name)
 		state.UpdateWithPhase(autoopsv1alpha1.NoResourcesPhase).
 			UpdateResources(len(esList.Items))
 		return results
@@ -104,7 +105,7 @@ func (r *AgentPolicyReconciler) internalReconcile(
 
 	for _, es := range esList.Items {
 		if es.Status.Phase != esv1.ElasticsearchReadyPhase {
-			log.V(1).Info("Skipping ES cluster that is not ready", "namespace", es.Namespace, "name", es.Name)
+			log.V(1).Info("Skipping ES cluster that is not ready", "es_namespace", es.Namespace, "es_name", es.Name)
 			state.UpdateWithPhase(autoopsv1alpha1.ResourcesNotReadyPhase)
 			results = results.WithRequeue(defaultRequeue)
 			continue
@@ -112,7 +113,7 @@ func (r *AgentPolicyReconciler) internalReconcile(
 
 		if es.Spec.HTTP.TLS.Enabled() {
 			if err := r.reconcileAutoOpsESCASecret(ctx, policy, es); err != nil {
-				log.Error(err, "Error reconciling AutoOps ES CA secret", "namespace", es.Namespace, "name", es.Name)
+				log.Error(err, "Error reconciling AutoOps ES CA secret", "es_namespace", es.Namespace, "es_name", es.Name)
 				errorCount++
 				state.UpdateWithPhase(autoopsv1alpha1.ErrorPhase)
 				results.WithError(err)
@@ -121,7 +122,7 @@ func (r *AgentPolicyReconciler) internalReconcile(
 		}
 
 		if err := r.reconcileAutoOpsESAPIKey(ctx, policy, es); err != nil {
-			log.Error(err, "Error reconciling AutoOps ES API key", "namespace", es.Namespace, "name", es.Name)
+			log.Error(err, "Error reconciling AutoOps ES API key", "es_namespace", es.Namespace, "es_name", es.Name)
 			errorCount++
 			state.UpdateWithPhase(autoopsv1alpha1.ErrorPhase)
 			results.WithError(err)
@@ -129,16 +130,16 @@ func (r *AgentPolicyReconciler) internalReconcile(
 		}
 
 		if err := ReconcileAutoOpsESConfigMap(ctx, r.Client, policy, es); err != nil {
-			log.Error(err, "Error reconciling AutoOps ES config map", "namespace", es.Namespace, "name", es.Name)
+			log.Error(err, "Error reconciling AutoOps ES config map", "es_namespace", es.Namespace, "es_name", es.Name)
 			errorCount++
 			state.UpdateWithPhase(autoopsv1alpha1.ErrorPhase)
 			results.WithError(err)
 			continue
 		}
 
-		deploymentParams, err := r.deploymentParams(ctx, policy, es)
+		deploymentParams, err := r.buildDeployment(ctx, policy, es)
 		if err != nil {
-			log.Error(err, "Error getting deployment params", "namespace", es.Namespace, "name", es.Name)
+			log.Error(err, "Error getting deployment params", "es_namespace", es.Namespace, "es_name", es.Name)
 			errorCount++
 			state.UpdateWithPhase(autoopsv1alpha1.ErrorPhase)
 			results.WithError(err)
@@ -147,7 +148,7 @@ func (r *AgentPolicyReconciler) internalReconcile(
 
 		reconciledDeployment, err := deployment.Reconcile(ctx, r.Client, deploymentParams, &policy)
 		if err != nil {
-			log.Error(err, "Error reconciling deployment", "namespace", es.Namespace, "name", es.Name)
+			log.Error(err, "Error reconciling deployment", "es_namespace", es.Namespace, "es_name", es.Name)
 			errorCount++
 			state.UpdateWithPhase(autoopsv1alpha1.ErrorPhase)
 			results.WithError(err)
@@ -163,8 +164,8 @@ func (r *AgentPolicyReconciler) internalReconcile(
 		UpdateErrors(errorCount)
 
 	// Clean up resources that no longer match the Policy's selector
-	if err := r.cleanupOrphanedResourcesForPolicy(ctx, policy, esList.Items); err != nil {
-		log.Error(err, "Error cleaning up orphaned resources")
+	if err := r.cleanupOrphanedResourcesForPolicy(ctx, log, policy, esList.Items); err != nil {
+		log.Error(err, "Error cleaning up orphaned resources", "policy_namespace", policy.Namespace, "policy_name", policy.Name)
 		// Note: Should we update phase to error, and return error I wonder?
 		state.UpdateWithPhase(autoopsv1alpha1.ErrorPhase)
 		results.WithError(err)
@@ -177,12 +178,10 @@ func (r *AgentPolicyReconciler) internalReconcile(
 // that no longer match the Policy's selector.
 func (r *AgentPolicyReconciler) cleanupOrphanedResourcesForPolicy(
 	ctx context.Context,
+	log logr.Logger,
 	policy autoopsv1alpha1.AutoOpsAgentPolicy,
 	clusterMatchingPolicy []esv1.Elasticsearch,
 ) error {
-	log := ulog.FromContext(ctx).WithValues("policy", policy.Name, "namespace", policy.Namespace)
-	log.V(1).Info("Cleaning up orphaned resources for policy")
-
 	// Build a set of ES clusters that should have resources
 	// within the cluster.
 	esMap := make(map[types.NamespacedName]struct{})

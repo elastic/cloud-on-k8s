@@ -293,12 +293,24 @@ AutoOpsAgentPolicy represents an Elastic AutoOps Policy resource in a Kubernetes
 | --- | --- |
 | *`version`* __string__ | Version of the AutoOpsAgentPolicy. |
 | *`resourceSelector`* __[LabelSelector](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.32/#labelselector-v1-meta)__ | ResourceSelector is a label selector for the resources to be configured.<br>Any Elasticsearch instances that match the selector will be configured to send data to AutoOps. |
-| *`config`* __[Config](#config)__ | Config holds the AutoOps agent configuration overrides for Elasticsearch monitoring.<br>This configuration is intended to override parts of the autoops_es.yml configmap.<br>See: https://github.com/elastic/elastic-agent/blob/c6eaa3c903d4357824d345ee2002123fdffbec91/internal/pkg/otel/samples/linux/autoops_es.yml<br><br>This is currently unimplemented. |
-| *`configRef`* __[ConfigSource](#configsource)__ | ConfigRef references a secret holding the AutoOpsAgentPolicy configuration overrides for Elasticsearch monitoring.<br>This configuration is intended to override parts of the autoops_es.yml configmap.<br>See: https://github.com/elastic/elastic-agent/blob/c6eaa3c903d4357824d345ee2002123fdffbec91/internal/pkg/otel/samples/linux/autoops_es.yml<br><br>This is currently unimplemented. |
-| *`autoOpsRef`* __[ObjectSelector](#objectselector)__ | AutoOpsRef is a reference to Elastic AutoOps either running in the same Kubernetes cluster (unimplemented) or<br>connected via (Elastic Cloud Connect)[https://www.elastic.co/docs/deploy-manage/cloud-connect].<br><br>If using Elastic Cloud Connect the contents of the referenced secret requires the following format:<br>  kind: Secret<br>  apiVersion: v1<br>  metadata:<br>    name: autoops-agent-policy-config<br>  stringData:<br>    ccmApiKey: aslkfjsldkjfslkdjflksdjfl<br>    autoOpsOTelURL: https://otel.auto-ops.console.qa.cld.elstc.co<br>    autoOpsToken: skdfjdskjf |
+| *`autoOpsRef`* __[AutoOpsRef](#autoopsref)__ | AutoOpsRef defines a reference to Elastic AutoOps containing connection details for external AutoOps. |
 | *`image`* __string__ | Image is the AutoOps Agent Docker image to deploy. |
 | *`podTemplate`* __[PodTemplateSpec](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.32/#podtemplatespec-v1-core)__ | PodTemplate provides customisation options (labels, annotations, affinity rules, resource requests, and so on) for the Agent pods |
 | *`revisionHistoryLimit`* __integer__ | RevisionHistoryLimit is the number of revisions to retain to allow rollback in the underlying Deployment. |
+
+
+### AutoOpsRef  [#autoopsref]
+
+AutoOpsRef defines a reference to Elastic AutoOps containing connection details for external AutoOps.
+
+:::{admonition} Appears In:
+* [AutoOpsAgentPolicySpec](#autoopsagentpolicyspec)
+
+:::
+
+| Field | Description |
+| --- | --- |
+| *`secretName`* __string__ | SecretName references a Secret containing connection details for external AutoOps.<br>Required when connecting via Cloud Connect. The secret must contain:<br>- `ccmApiKey`: Cloud Connected Mode API key<br>- `autoOpsOTelURL`: AutoOps OpenTelemetry endpoint URL<br>- `autoOpsToken`: AutoOps authentication token<br>- `cloud-connected-mode-api-url`: (optional) Cloud Connected Mode API URL<br>This field cannot be used in combination with `name`. |
 
 
 
@@ -456,7 +468,6 @@ Config represents untyped YAML configuration.
 :::{admonition} Appears In:
 * [AgentSpec](#agentspec)
 * [ApmServerSpec](#apmserverspec)
-* [AutoOpsAgentPolicySpec](#autoopsagentpolicyspec)
 * [BeatSpec](#beatspec)
 * [ElasticsearchConfigPolicySpec](#elasticsearchconfigpolicyspec)
 * [EnterpriseSearchSpec](#enterprisesearchspec)
@@ -493,7 +504,6 @@ ConfigSource references configuration settings.
 
 :::{admonition} Appears In:
 * [AgentSpec](#agentspec)
-* [AutoOpsAgentPolicySpec](#autoopsagentpolicyspec)
 * [BeatSpec](#beatspec)
 * [EnterpriseSearchSpec](#enterprisesearchspec)
 * [EnterpriseSearchSpec](#enterprisesearchspec)
@@ -622,7 +632,6 @@ or a Secret describing an external Elastic resource not managed by the operator.
 :::{admonition} Appears In:
 * [AgentSpec](#agentspec)
 * [ApmServerSpec](#apmserverspec)
-* [AutoOpsAgentPolicySpec](#autoopsagentpolicyspec)
 * [BeatSpec](#beatspec)
 * [ElasticsearchCluster](#elasticsearchcluster)
 * [EnterpriseSearchSpec](#enterprisesearchspec)

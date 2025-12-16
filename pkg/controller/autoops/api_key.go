@@ -263,7 +263,7 @@ func buildAutoOpsESAPIKeySecret(policy autoopsv1alpha1.AutoOpsAgentPolicy, es es
 	apiKeyLabels := maps.Merge(baseLabels, map[string]string{
 		PolicyNameLabelKey:                 policy.Name,
 		policyNamespaceLabelKey:            policy.Namespace,
-		policySecretTypeLabelKey:           "api-key",
+		policySecretTypeLabelKey:           apiKeySecretType,
 		commonapikey.MetadataKeyConfigHash: expectedHash,
 	})
 

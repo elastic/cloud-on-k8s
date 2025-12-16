@@ -114,12 +114,8 @@ type AgentPolicyReconciler struct {
 
 // Reconcile reconciles the AutoOpsAgentPolicy resource ensuring that any resources are created/updated/deleted as needed.
 func (r *AgentPolicyReconciler) Reconcile(ctx context.Context, request reconcile.Request) (reconcile.Result, error) {
-	ctx = common.NewReconciliationContext(ctx, &r.iteration, r.params.Tracer, controllerName, "autoops_name", request)
-	log := ulog.FromContext(ctx).WithValues(
-		"policy_namespace", request.Namespace,
-		"policy_name", request.Name,
-	)
-	defer common.LogReconciliationRun(log)()
+	ctx = common.NewReconciliationContext(ctx, &r.iteration, r.params.Tracer, controllerName, "policy_name", request)
+	defer common.LogReconciliationRun(ulog.FromContext(ctx))()
 	defer tracing.EndContextTransaction(ctx)
 
 	// retrieve the AutoOpsAgentPolicy resource
@@ -137,7 +133,7 @@ func (r *AgentPolicyReconciler) Reconcile(ctx context.Context, request reconcile
 	}
 
 	if common.IsUnmanaged(ctx, &policy) {
-		log.Info("Object is currently not managed by this controller. Skipping reconciliation")
+		ulog.FromContext(ctx).Info("Object is currently not managed by this controller. Skipping reconciliation")
 		return reconcile.Result{}, nil
 	}
 
@@ -185,18 +181,19 @@ func (r *AgentPolicyReconciler) validate(ctx context.Context, policy *autoopsv1a
 func (r *AgentPolicyReconciler) updateStatusFromState(ctx context.Context, state *State) (reconcile.Result, error) {
 	span, ctx := apm.StartSpan(ctx, "update_status", tracing.SpanTypeApp)
 	defer span.End()
+	log := ulog.FromContext(ctx)
 
 	events, policy := state.Apply()
 	for _, evt := range events {
-		ulog.FromContext(ctx).V(1).Info("Recording event", "event", evt)
+		log.V(1).Info("Recording event", "event", evt)
 		r.recorder.Event(&state.policy, evt.EventType, evt.Reason, evt.Message)
 	}
 	if policy == nil {
-		ulog.FromContext(ctx).V(1).Info("Status is up to date", "iteration", atomic.LoadUint64(&r.iteration))
+		log.V(1).Info("Status is up to date", "iteration", atomic.LoadUint64(&r.iteration))
 		return reconcile.Result{}, nil
 	}
 
-	ulog.FromContext(ctx).V(1).Info("Updating status",
+	log.V(1).Info("Updating status",
 		"iteration", atomic.LoadUint64(&r.iteration),
 		"status", policy.Status,
 	)

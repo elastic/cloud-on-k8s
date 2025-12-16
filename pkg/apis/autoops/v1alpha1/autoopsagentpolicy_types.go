@@ -7,8 +7,6 @@ package v1alpha1
 import (
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-
-	commonv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/common/v1"
 )
 
 const (
@@ -53,35 +51,9 @@ type AutoOpsAgentPolicySpec struct {
 	// ResourceSelector is a label selector for the resources to be configured.
 	// Any Elasticsearch instances that match the selector will be configured to send data to AutoOps.
 	ResourceSelector metav1.LabelSelector `json:"resourceSelector,omitempty"`
-	// Config holds the AutoOps agent configuration overrides for Elasticsearch monitoring.
-	// This configuration is intended to override parts of the autoops_es.yml configmap.
-	// See: https://github.com/elastic/elastic-agent/blob/c6eaa3c903d4357824d345ee2002123fdffbec91/internal/pkg/otel/samples/linux/autoops_es.yml
-	//
-	// This is currently unimplemented.
-	//
-	// +kubebuilder:pruning:PreserveUnknownFields
-	Config *commonv1.Config `json:"config,omitempty"`
-	// ConfigRef references a secret holding the AutoOpsAgentPolicy configuration overrides for Elasticsearch monitoring.
-	// This configuration is intended to override parts of the autoops_es.yml configmap.
-	// See: https://github.com/elastic/elastic-agent/blob/c6eaa3c903d4357824d345ee2002123fdffbec91/internal/pkg/otel/samples/linux/autoops_es.yml
-	//
-	// This is currently unimplemented.
-	//
-	ConfigRef commonv1.ConfigSource `json:"configRef,omitempty"`
 
-	// AutoOpsRef is a reference to Elastic AutoOps either running in the same Kubernetes cluster (unimplemented) or
-	// connected via (Elastic Cloud Connect)[https://www.elastic.co/docs/deploy-manage/cloud-connect].
-	//
-	// If using Elastic Cloud Connect the contents of the referenced secret requires the following format:
-	//   kind: Secret
-	//   apiVersion: v1
-	//   metadata:
-	//     name: autoops-agent-policy-config
-	//   stringData:
-	//     ccmApiKey: aslkfjsldkjfslkdjflksdjfl
-	//     autoOpsOTelURL: https://otel.auto-ops.console.qa.cld.elstc.co
-	//     autoOpsToken: skdfjdskjf
-	AutoOpsRef commonv1.ObjectSelector `json:"autoOpsRef,omitempty"`
+	// AutoOpsRef defines a reference to Elastic AutoOps containing connection details for external AutoOps.
+	AutoOpsRef AutoOpsRef `json:"autoOpsRef,omitempty"`
 
 	// Image is the AutoOps Agent Docker image to deploy.
 	Image string `json:"image,omitempty"`
@@ -93,6 +65,19 @@ type AutoOpsAgentPolicySpec struct {
 
 	// RevisionHistoryLimit is the number of revisions to retain to allow rollback in the underlying Deployment.
 	RevisionHistoryLimit *int32 `json:"revisionHistoryLimit,omitempty"`
+}
+
+// AutoOpsRef defines a reference to Elastic AutoOps containing connection details for external AutoOps.
+type AutoOpsRef struct {
+	// SecretName references a Secret containing connection details for external AutoOps.
+	// Required when connecting via Cloud Connect. The secret must contain:
+	// - `ccmApiKey`: Cloud Connected Mode API key
+	// - `autoOpsOTelURL`: AutoOps OpenTelemetry endpoint URL
+	// - `autoOpsToken`: AutoOps authentication token
+	// - `cloud-connected-mode-api-url`: (optional) Cloud Connected Mode API URL
+	// This field cannot be used in combination with `name`.
+	// +optional
+	SecretName string `json:"secretName,omitempty"`
 }
 
 type AutoOpsAgentPolicyStatus struct {

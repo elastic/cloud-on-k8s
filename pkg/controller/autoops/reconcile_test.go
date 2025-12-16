@@ -53,7 +53,7 @@ func TestAutoOpsAgentPolicyReconciler_internalReconcile(t *testing.T) {
 				},
 				Spec: autoopsv1alpha1.AutoOpsAgentPolicySpec{
 					Version: "9.1.0",
-					AutoOpsRef: commonv1.ObjectSelector{
+					AutoOpsRef: autoopsv1alpha1.AutoOpsRef{
 						SecretName: "missing-secret",
 					},
 					ResourceSelector: metav1.LabelSelector{
@@ -76,7 +76,7 @@ func TestAutoOpsAgentPolicyReconciler_internalReconcile(t *testing.T) {
 				},
 				Spec: autoopsv1alpha1.AutoOpsAgentPolicySpec{
 					Version: "9.1.0",
-					AutoOpsRef: commonv1.ObjectSelector{
+					AutoOpsRef: autoopsv1alpha1.AutoOpsRef{
 						SecretName: "invalid-secret",
 					},
 					ResourceSelector: metav1.LabelSelector{
@@ -107,7 +107,7 @@ func TestAutoOpsAgentPolicyReconciler_internalReconcile(t *testing.T) {
 				},
 				Spec: autoopsv1alpha1.AutoOpsAgentPolicySpec{
 					Version: "9.1.0",
-					AutoOpsRef: commonv1.ObjectSelector{
+					AutoOpsRef: autoopsv1alpha1.AutoOpsRef{
 						SecretName: "config-secret",
 					},
 					ResourceSelector: metav1.LabelSelector{
@@ -148,7 +148,7 @@ func TestAutoOpsAgentPolicyReconciler_internalReconcile(t *testing.T) {
 				},
 				Spec: autoopsv1alpha1.AutoOpsAgentPolicySpec{
 					Version: "9.1.0",
-					AutoOpsRef: commonv1.ObjectSelector{
+					AutoOpsRef: autoopsv1alpha1.AutoOpsRef{
 						SecretName: "config-secret",
 					},
 					ResourceSelector: metav1.LabelSelector{
@@ -184,7 +184,7 @@ func TestAutoOpsAgentPolicyReconciler_internalReconcile(t *testing.T) {
 				},
 				Spec: autoopsv1alpha1.AutoOpsAgentPolicySpec{
 					Version: "9.1.0",
-					AutoOpsRef: commonv1.ObjectSelector{
+					AutoOpsRef: autoopsv1alpha1.AutoOpsRef{
 						SecretName: "config-secret",
 					},
 					ResourceSelector: metav1.LabelSelector{
@@ -231,7 +231,7 @@ func TestAutoOpsAgentPolicyReconciler_internalReconcile(t *testing.T) {
 				},
 				Spec: autoopsv1alpha1.AutoOpsAgentPolicySpec{
 					Version: "9.1.0",
-					AutoOpsRef: commonv1.ObjectSelector{
+					AutoOpsRef: autoopsv1alpha1.AutoOpsRef{
 						SecretName: "config-secret",
 					},
 					ResourceSelector: metav1.LabelSelector{
@@ -288,7 +288,7 @@ func TestAutoOpsAgentPolicyReconciler_internalReconcile(t *testing.T) {
 				},
 				Spec: autoopsv1alpha1.AutoOpsAgentPolicySpec{
 					Version: "9.1.0",
-					AutoOpsRef: commonv1.ObjectSelector{
+					AutoOpsRef: autoopsv1alpha1.AutoOpsRef{
 						SecretName: "config-secret",
 					},
 					ResourceSelector: metav1.LabelSelector{
@@ -356,7 +356,7 @@ func TestAutoOpsAgentPolicyReconciler_internalReconcile(t *testing.T) {
 				},
 				Spec: autoopsv1alpha1.AutoOpsAgentPolicySpec{
 					Version: "9.1.0",
-					AutoOpsRef: commonv1.ObjectSelector{
+					AutoOpsRef: autoopsv1alpha1.AutoOpsRef{
 						SecretName: "config-secret",
 					},
 					ResourceSelector: metav1.LabelSelector{
@@ -446,7 +446,7 @@ func TestAutoOpsAgentPolicyReconciler_internalReconcile(t *testing.T) {
 				},
 				Spec: autoopsv1alpha1.AutoOpsAgentPolicySpec{
 					Version: "9.1.0",
-					AutoOpsRef: commonv1.ObjectSelector{
+					AutoOpsRef: autoopsv1alpha1.AutoOpsRef{
 						SecretName: "config-secret",
 					},
 					ResourceSelector: metav1.LabelSelector{
@@ -596,7 +596,7 @@ func TestAutoOpsAgentPolicyReconciler_selectorChangeCleanup(t *testing.T) {
 		},
 		Spec: autoopsv1alpha1.AutoOpsAgentPolicySpec{
 			Version: "9.1.0",
-			AutoOpsRef: commonv1.ObjectSelector{
+			AutoOpsRef: autoopsv1alpha1.AutoOpsRef{
 				SecretName: "config-secret",
 			},
 			ResourceSelector: metav1.LabelSelector{

@@ -22,7 +22,7 @@ metadata:
   name: autoops-sample
 spec:
   version: 9.2.0
-  configRef:
+  autoOpsRef:
     # This secret contains the AutoOps configuration.
     # It must contain the following:
     # - ccmApiKey: the Cloud Connected Mode API key. This is used to register the Agent with Elastic Cloud AutoOps.
