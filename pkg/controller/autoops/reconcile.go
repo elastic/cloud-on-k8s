@@ -67,9 +67,9 @@ func (r *AgentPolicyReconciler) internalReconcile(
 
 	if err := validateConfigSecret(ctx, r.Client, types.NamespacedName{
 		Namespace: autoOpsConfigurationSecretNamespace(policy),
-		Name:      policy.Spec.AutoOpsRef.Name,
+		Name:      policy.Spec.AutoOpsRef.SecretName,
 	}); err != nil {
-		log.Error(err, "Error validating configuration secret", "namespace", autoOpsConfigurationSecretNamespace(policy), "name", policy.Spec.AutoOpsRef.Name)
+		log.Error(err, "Error validating configuration secret", "namespace", autoOpsConfigurationSecretNamespace(policy), "name", policy.Spec.AutoOpsRef.SecretName)
 		state.UpdateWithPhase(autoopsv1alpha1.ErrorPhase)
 		return results.WithError(err)
 	}
