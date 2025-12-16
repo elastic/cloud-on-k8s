@@ -266,7 +266,7 @@ func (r *AgentPolicyReconciler) onDelete(ctx context.Context, obj types.Namespac
 			continue
 		}
 
-		// This cleanup requires communicating with Elasticsearch so we do not attempt this is the previous retrival of the ES cluster fails.
+		// This cleanup requires communicating with Elasticsearch so we do not attempt this if the previous retrieval of the ES cluster fails.
 		if err := cleanupAutoOpsESAPIKey(ctx, r.Client, r.esClientProvider, r.params.Dialer, obj.Namespace, obj.Name, es); err != nil {
 			log.Error(err, "while cleaning up API key for Elasticsearch cluster", "es_namespace", esNamespace, "es_name", esName)
 			continue

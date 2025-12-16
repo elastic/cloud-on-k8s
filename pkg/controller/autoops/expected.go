@@ -93,12 +93,6 @@ func (r *AgentPolicyReconciler) buildDeployment(configHash string, policy autoop
 		volumeMounts = append(volumeMounts, caVolume.VolumeMount())
 	}
 
-	// Build config hash from ConfigMap to trigger pod restart on config changes
-	// configHash, err := buildConfigHash(ctx, r.Client, policy, es)
-	// if err != nil {
-	// 	return appsv1.Deployment{}, err
-	// }
-
 	annotations := map[string]string{configHashAnnotationName: configHash}
 	meta := metadata.Propagate(&policy, metadata.Metadata{Labels: labels, Annotations: annotations})
 	podTemplateSpec := defaults.NewPodTemplateBuilder(policy.Spec.PodTemplate, autoOpsAgentType).

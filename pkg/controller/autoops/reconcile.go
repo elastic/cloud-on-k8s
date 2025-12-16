@@ -96,7 +96,6 @@ func (r *AgentPolicyReconciler) internalReconcile(
 	// Clean up resources that no longer match the Policy's selector
 	if err := r.cleanupOrphanedResourcesForPolicy(ctx, log, policy, esList.Items); err != nil {
 		log.Error(err, "while cleaning up orphaned resources", "policy_namespace", policy.Namespace, "policy_name", policy.Name)
-		// Note: Should we update phase to error, and return error I wonder?
 		state.UpdateWithPhase(autoopsv1alpha1.ErrorPhase)
 		results.WithError(err)
 	}
