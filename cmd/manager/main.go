@@ -314,6 +314,11 @@ func Command() *cobra.Command {
 		"",
 		"Kubernetes namespace the operator runs in",
 	)
+	cmd.Flags().String(
+		operator.OperatorImageFlag,
+		"",
+		"Container image of the operator, used for keystore jobs in ES 9.3+",
+	)
 
 	cmd.Flags().Int(
 		operator.PasswordLengthFlag,
@@ -719,6 +724,7 @@ func startOperator(ctx context.Context) error {
 		ExposedNodeLabels:                exposedNodeLabels,
 		IPFamily:                         ipFamily,
 		OperatorNamespace:                operatorNamespace,
+		OperatorImage:                    viper.GetString(operator.OperatorImageFlag),
 		OperatorInfo:                     operatorInfo,
 		GlobalCA:                         ca,
 		CACertRotation: certificates.RotationParams{

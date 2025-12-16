@@ -8,8 +8,9 @@
 package keystorejob
 
 import (
+	"bytes"
 	"context"
-	"fmt"
+	"text/template"
 
 	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -18,6 +19,7 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/utils/ptr"
 
+	commonv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/common/v1"
 	esv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/elasticsearch/v1"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/keystore"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/metadata"
@@ -38,6 +40,11 @@ const (
 	// KeystoreFileName is the name of the keystore file.
 	KeystoreFileName = "elasticsearch.keystore"
 
+	// KeystoreJobLabelName is the label used to identify keystore job pods.
+	// We use a separate label instead of ClusterNameLabelName to avoid the license
+	// controller picking up job pods when querying for ES pods.
+	KeystoreJobLabelName = "elasticsearch.k8s.elastic.co/keystore-job"
+
 	// Job configuration
 	jobBackoffLimit            = int32(3)
 	jobActiveDeadlineSeconds   = int64(900) // 15 minutes
@@ -49,22 +56,42 @@ const (
 var MinVersion = version.MinFor(9, 3, 0)
 
 // ShouldUseReloadableKeystore returns true if the reloadable keystore feature should be used
-// for the given Elasticsearch cluster. This requires:
+// for the given Elasticsearch cluster.
+//
+// Requirements for the feature to be enabled:
 // - Elasticsearch version 9.3.0 or later
 // - The feature is not explicitly disabled via annotation
 // - Secure settings exist (determined by keystoreResources being non-nil)
+// - The operator image is configured (required for the keystore job)
 //
 // The keystoreResources parameter should come from keystore.ReconcileResources which aggregates
 // all secure settings sources (spec, StackConfigPolicy, remote cluster keys, etc.).
-func ShouldUseReloadableKeystore(es esv1.Elasticsearch, esVersion version.Version, keystoreResources *keystore.Resources) bool {
+//
+// When the feature is not used, the reason is logged at the appropriate level.
+func ShouldUseReloadableKeystore(ctx context.Context, es esv1.Elasticsearch, esVersion version.Version, keystoreResources *keystore.Resources, operatorImage string) bool {
+	log := ulog.FromContext(ctx)
+
 	if es.IsReloadableKeystoreDisabled() {
+		log.V(1).Info("Reloadable keystore disabled via annotation",
+			"namespace", es.Namespace, "es_name", es.Name)
 		return false
 	}
 	if !esVersion.GTE(MinVersion) {
+		// Not logging - this is the normal case for older versions
 		return false
 	}
 	// keystoreResources is nil when there are no secure settings from any source
-	return keystoreResources != nil
+	if keystoreResources == nil {
+		// Not logging - no secure settings means nothing to do
+		return false
+	}
+	// operatorImage is required for the keystore job's uploader container
+	if operatorImage == "" {
+		log.Info("Reloadable keystore feature requires --operator-image flag to be set, falling back to init container approach",
+			"namespace", es.Namespace, "es_name", es.Name)
+		return false
+	}
+	return true
 }
 
 // Params holds the parameters for reconciling the keystore Job.
@@ -134,35 +161,9 @@ func ReconcileJob(ctx context.Context, params Params) (done bool, err error) {
 		return false, err
 	}
 
-	if err == nil {
-		// Job exists - check if it's for the current hash
-		existingJobHash := existingJob.Annotations[esv1.KeystoreHashAnnotation]
-		if existingJobHash == secureSettingsHash {
-			// Job is for the current hash - check its status
-			if isJobComplete(&existingJob) {
-				log.V(1).Info("Keystore job completed successfully")
-				return true, nil
-			}
-			if isJobFailed(&existingJob) {
-				log.Info("Keystore job failed, deleting for retry")
-				if err := params.Client.Delete(ctx, &existingJob); err != nil && !apierrors.IsNotFound(err) {
-					return false, err
-				}
-				// Will recreate on next reconciliation
-				return false, nil
-			}
-			// Job is still running
-			log.V(1).Info("Keystore job still running")
-			return false, nil
-		}
-
-		// Job is for a different hash - delete it
-		log.Info("Deleting stale keystore job", "oldHash", existingJobHash, "newHash", secureSettingsHash)
-		if err := params.Client.Delete(ctx, &existingJob); err != nil && !apierrors.IsNotFound(err) {
-			return false, err
-		}
-		// Will recreate on next reconciliation
-		return false, nil
+	jobExists := err == nil
+	if jobExists {
+		return handleExistingJob(ctx, params, &existingJob, secureSettingsHash)
 	}
 
 	// Create a new Job
@@ -179,15 +180,59 @@ func ReconcileJob(ctx context.Context, params Params) (done bool, err error) {
 	return false, nil
 }
 
+// handleExistingJob handles the case where a keystore Job already exists.
+// It checks if the job is for the current hash and handles completion, failure, or running states.
+func handleExistingJob(ctx context.Context, params Params, existingJob *batchv1.Job, secureSettingsHash string) (bool, error) {
+	log := ulog.FromContext(ctx)
+
+	existingJobHash := existingJob.Annotations[esv1.KeystoreHashAnnotation]
+	if existingJobHash != secureSettingsHash {
+		// Job is for a different hash - delete it
+		log.Info("Deleting stale keystore job", "oldHash", existingJobHash, "newHash", secureSettingsHash)
+		if err := params.Client.Delete(ctx, existingJob); err != nil && !apierrors.IsNotFound(err) {
+			return false, err
+		}
+		// Will recreate on next reconciliation
+		return false, nil
+	}
+
+	// Job is for the current hash - check its status
+	if isJobComplete(existingJob) {
+		log.V(1).Info("Keystore job completed successfully")
+		return true, nil
+	}
+
+	if isJobFailed(existingJob) {
+		log.Info("Keystore job failed, deleting for retry")
+		if err := params.Client.Delete(ctx, existingJob); err != nil && !apierrors.IsNotFound(err) {
+			return false, err
+		}
+		// Will recreate on next reconciliation
+		return false, nil
+	}
+
+	// Job is still running
+	log.V(1).Info("Keystore job still running")
+	return false, nil
+}
+
 // buildJob creates the Job spec for creating the keystore file.
 func buildJob(params Params, secureSettingsHash string) batchv1.Job {
 	es := params.ES
 	jobName := esv1.KeystoreJobName(es.Name)
 	secretName := esv1.KeystoreSecretName(es.Name)
 
+	// Use job-specific labels that don't include ClusterNameLabelName to avoid
+	// the license controller picking up job pods when querying for ES pods.
+	// Owner references handle the association with the ES cluster for cleanup.
+	jobLabels := map[string]string{
+		commonv1.TypeLabelName: label.Type,
+		KeystoreJobLabelName:   es.Name,
+	}
+
 	// Start with propagated metadata and merge in job-specific values
 	jobMeta := params.Meta.Merge(metadata.Metadata{
-		Labels: label.NewLabels(k8s.ExtractNamespacedName(&es)),
+		Labels: jobLabels,
 		Annotations: map[string]string{
 			esv1.KeystoreHashAnnotation: secureSettingsHash,
 		},
@@ -262,37 +307,51 @@ func buildJob(params Params, secureSettingsHash string) batchv1.Job {
 
 // keystoreInitScript is the bash script to create the keystore file.
 // It creates the keystore and adds all entries from the secure settings volume.
+// ES_PATH_CONF is set to the output directory so elasticsearch-keystore creates
+// the keystore file there instead of the default /usr/share/elasticsearch/config.
 const keystoreInitScript = `#!/usr/bin/env bash
 
 set -eux
 
 echo "Initializing keystore."
 
-# create a keystore in the target directory
-%[1]s create -p %[2]s/%[3]s
+# Set ES_PATH_CONF to the output directory so the keystore is created there
+export ES_PATH_CONF={{.OutputDir}}
+
+# create a keystore in the ES_PATH_CONF directory
+{{.KeystoreBin}} create
 
 # add all existing secret entries into it
-for filename in %[4]s/*; do
+for filename in {{.SecureSettingsDir}}/*; do
 	[[ -e "$filename" ]] || continue # glob does not match
 	key=$(basename "$filename")
 	echo "Adding "$key" to the keystore."
-	%[1]s add-file "$key" "$filename" --keystore %[2]s/%[3]s
+	{{.KeystoreBin}} add-file "$key" "$filename"
 done
 
 echo "Keystore initialization successful."
 `
+
+type keystoreScriptParams struct {
+	KeystoreBin       string
+	OutputDir         string
+	SecureSettingsDir string
+}
+
+var keystoreScriptTemplate = template.Must(template.New("keystore-init").Parse(keystoreInitScript))
 
 // buildInitContainer creates the init container that creates the keystore file.
 func buildInitContainer(params Params, _ string) corev1.Container {
 	privileged := false
 
 	// Generate the script with the correct paths
-	script := fmt.Sprintf(keystoreInitScript,
-		initcontainer.KeystoreBinPath,          // %[1]s - keystore binary
-		KeystoreVolumeMountPath,                // %[2]s - output directory
-		KeystoreFileName,                       // %[3]s - keystore filename
-		keystore.SecureSettingsVolumeMountPath, // %[4]s - secure settings mount
-	)
+	var scriptBuf bytes.Buffer
+	_ = keystoreScriptTemplate.Execute(&scriptBuf, keystoreScriptParams{
+		KeystoreBin:       initcontainer.KeystoreBinPath,
+		OutputDir:         KeystoreVolumeMountPath,
+		SecureSettingsDir: keystore.SecureSettingsVolumeMountPath,
+	})
+	script := scriptBuf.String()
 
 	return corev1.Container{
 		Name:            keystore.InitContainerName,

@@ -106,11 +106,11 @@ tests:
           value: my-webhook-server-cert
       - template: statefulset.yaml
         equal:
-          path: spec.template.spec.containers[0].env[2].name
+          path: spec.template.spec.containers[0].env[3].name
           value: WEBHOOK_SECRET
       - template: statefulset.yaml
         equal:
-          path: spec.template.spec.containers[0].env[2].value
+          path: spec.template.spec.containers[0].env[3].value
           value: my-webhook-server-cert
   - it: should set dnsPolicy to ClusterFirstWithHostNet when hostNetwork is enabled
     set:

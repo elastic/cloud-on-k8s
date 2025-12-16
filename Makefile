@@ -204,10 +204,11 @@ go-run:
 				--namespaces=$(MANAGED_NAMESPACES) \
 				--manage-webhook-certs=false \
 				--exposed-node-labels=topology.kubernetes.io/.*,failure-domain.beta.kubernetes.io/.* \
+				--operator-image=$(OPERATOR_IMAGE) \
 				2>&1 | grep -v "dev-portforward" # remove dev-portforward logs from the output
 
 go-debug:
-	@ (cd cmd &&	AUTO_PORT_FORWARD=true dlv debug \
+	@ (cd cmd && AUTO_PORT_FORWARD=true dlv debug \
 		--build-flags="-ldflags '$(GO_LDFLAGS)'" \
 		-- \
 		manager \
@@ -218,7 +219,8 @@ go-debug:
 		--operator-namespace=default \
 		--namespaces=$(MANAGED_NAMESPACES) \
 		--enable-leader-election=false \
-		--manage-webhook-certs=false)
+		--manage-webhook-certs=false \
+		--operator-image=$(OPERATOR_IMAGE))
 
 # if the current k8s cluster is on GKE, GCLOUD_PROJECT must be set
 check-gke:

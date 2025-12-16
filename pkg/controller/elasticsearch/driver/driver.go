@@ -394,7 +394,7 @@ func (d *defaultDriver) Reconcile(ctx context.Context) *reconciler.Results {
 	// For Elasticsearch 9.3+, use the job-based reloadable keystore approach instead of init containers.
 	// This avoids pod restarts when secure settings change.
 	var keystoreResourcesForPods *keystore.Resources
-	if keystorejob.ShouldUseReloadableKeystore(d.ES, d.Version, keystoreResources) {
+	if keystorejob.ShouldUseReloadableKeystore(ctx, d.ES, d.Version, keystoreResources, d.OperatorParameters.OperatorImage) {
 		if _, err := d.reconcileKeystoreJob(ctx, keystoreResources, meta); err != nil {
 			return results.WithError(err)
 		}
