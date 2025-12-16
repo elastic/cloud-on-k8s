@@ -264,7 +264,7 @@ func Test_buildAutoOpsESConfigMap(t *testing.T) {
 					return
 				}
 
-				// Parse both configs for comparison (following Kibana test pattern)
+				// Parse both configs for comparison
 				var gotCfg map[string]any
 				gotParsed, err := uyaml.NewConfig([]byte(configYAML), commonv1.CfgOptions...)
 				require.NoError(t, err)
