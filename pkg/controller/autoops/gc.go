@@ -23,10 +23,6 @@ import (
 	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/net"
 )
 
-const (
-	AllNamespaces = ""
-)
-
 // cleanupOrphanedDeployments removes deployments for ES clusters that no longer match the selector.
 func cleanupOrphanedDeployments(
 	ctx context.Context,
