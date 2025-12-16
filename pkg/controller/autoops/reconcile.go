@@ -121,7 +121,8 @@ func (r *AgentPolicyReconciler) internalReconcile(
 			}
 		}
 
-		if err := r.reconcileAutoOpsESAPIKey(ctx, policy, es); err != nil {
+		apiKeySecret, err := r.reconcileAutoOpsESAPIKey(ctx, policy, es)
+		if err != nil {
 			log.Error(err, "Error reconciling AutoOps ES API key", "es_namespace", es.Namespace, "es_name", es.Name)
 			errorCount++
 			state.UpdateWithPhase(autoopsv1alpha1.ErrorPhase)
@@ -129,7 +130,8 @@ func (r *AgentPolicyReconciler) internalReconcile(
 			continue
 		}
 
-		if err := ReconcileAutoOpsESConfigMap(ctx, r.Client, policy, es); err != nil {
+		configMap, err := ReconcileAutoOpsESConfigMap(ctx, r.Client, policy, es)
+		if err != nil {
 			log.Error(err, "Error reconciling AutoOps ES config map", "es_namespace", es.Namespace, "es_name", es.Name)
 			errorCount++
 			state.UpdateWithPhase(autoopsv1alpha1.ErrorPhase)
@@ -137,7 +139,16 @@ func (r *AgentPolicyReconciler) internalReconcile(
 			continue
 		}
 
-		deploymentParams, err := r.buildDeployment(ctx, policy, es)
+		configHash, err := buildConfigHash(ctx, *configMap, *apiKeySecret, r.Client, policy)
+		if err != nil {
+			log.Error(err, "Error building config hash", "es_namespace", es.Namespace, "es_name", es.Name)
+			errorCount++
+			state.UpdateWithPhase(autoopsv1alpha1.ErrorPhase)
+			results.WithError(err)
+			continue
+		}
+
+		deploymentParams, err := r.buildDeployment(ctx, configHash, policy, es)
 		if err != nil {
 			log.Error(err, "Error getting deployment params", "es_namespace", es.Namespace, "es_name", es.Name)
 			errorCount++

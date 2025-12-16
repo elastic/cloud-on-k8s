@@ -12,7 +12,6 @@ import (
 
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
-	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/resource"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/intstr"
@@ -67,7 +66,7 @@ func resourceLabelsFor(policy autoopsv1alpha1.AutoOpsAgentPolicy, es esv1.Elasti
 	}
 }
 
-func (r *AgentPolicyReconciler) buildDeployment(ctx context.Context, policy autoopsv1alpha1.AutoOpsAgentPolicy, es esv1.Elasticsearch) (appsv1.Deployment, error) {
+func (r *AgentPolicyReconciler) buildDeployment(ctx context.Context, configHash string, policy autoopsv1alpha1.AutoOpsAgentPolicy, es esv1.Elasticsearch) (appsv1.Deployment, error) {
 	v, err := version.Parse(policy.Spec.Version)
 	if err != nil {
 		return appsv1.Deployment{}, err
@@ -95,10 +94,10 @@ func (r *AgentPolicyReconciler) buildDeployment(ctx context.Context, policy auto
 	}
 
 	// Build config hash from ConfigMap to trigger pod restart on config changes
-	configHash, err := buildConfigHash(ctx, r.Client, policy, es)
-	if err != nil {
-		return appsv1.Deployment{}, err
-	}
+	// configHash, err := buildConfigHash(ctx, r.Client, policy, es)
+	// if err != nil {
+	// 	return appsv1.Deployment{}, err
+	// }
 
 	annotations := map[string]string{configHashAnnotationName: configHash}
 	meta := metadata.Propagate(&policy, metadata.Metadata{Labels: labels, Annotations: annotations})
@@ -168,19 +167,8 @@ func readinessProbe() corev1.Probe {
 
 // buildConfigHash builds a hash of the ConfigMap data and secret values
 // to trigger pod restart on config changes
-func buildConfigHash(ctx context.Context, c k8s.Client, policy autoopsv1alpha1.AutoOpsAgentPolicy, es esv1.Elasticsearch) (string, error) {
+func buildConfigHash(ctx context.Context, configMap corev1.ConfigMap, apiKeySecret corev1.Secret, c k8s.Client, policy autoopsv1alpha1.AutoOpsAgentPolicy) (string, error) {
 	configHash := fnv.New32a()
-
-	// Hash ConfigMap data
-	configMapName := autoopsv1alpha1.Config(policy.GetName(), es)
-	var configMap corev1.ConfigMap
-	configMapKey := types.NamespacedName{Namespace: policy.Namespace, Name: configMapName}
-	if err := c.Get(ctx, configMapKey, &configMap); err != nil {
-		if apierrors.IsNotFound(err) {
-			return "", fmt.Errorf("ConfigMap %s not found: %w", configMapName, err)
-		}
-		return "", fmt.Errorf("failed to get ConfigMap %s: %w", configMapName, err)
-	}
 
 	if configData, ok := configMap.Data[autoOpsESConfigFileName]; ok {
 		_, _ = configHash.Write([]byte(configData))
@@ -204,17 +192,9 @@ func buildConfigHash(ctx context.Context, c k8s.Client, policy autoopsv1alpha1.A
 		}
 	}
 
-	// // Hash ES API key secret
-	esAPIKeySecretName := autoopsv1alpha1.APIKeySecret(policy.GetName(), k8s.ExtractNamespacedName(&es))
-	esAPIKeySecretKey := types.NamespacedName{Namespace: policy.Namespace, Name: esAPIKeySecretName}
-	var esAPIKeySecret corev1.Secret
-	if err := c.Get(ctx, esAPIKeySecretKey, &esAPIKeySecret); err != nil {
-		return "", fmt.Errorf("failed to get ES API key secret %s: %w", esAPIKeySecretName, err)
-	}
-
 	// // This data may not exist on initial reconciliation, so we don't return an error if it's missing.
 	// // This should resolve itself on the next reconciliation after the API key is created.
-	if apiKeyData, ok := esAPIKeySecret.Data[apiKeySecretKey]; ok {
+	if apiKeyData, ok := apiKeySecret.Data[apiKeySecretKey]; ok {
 		_, _ = configHash.Write(apiKeyData)
 	}
 

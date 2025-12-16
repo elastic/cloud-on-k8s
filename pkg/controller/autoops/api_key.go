@@ -49,11 +49,13 @@ type apiKeySpec struct {
 }
 
 // reconcileAutoOpsESAPIKey reconciles the API key and secret for a specific Elasticsearch cluster.
+// The secret is returned to the caller to avoid an additional call to the cache to retrieve the secret
+// which delays the initial deployment.
 func (r *AgentPolicyReconciler) reconcileAutoOpsESAPIKey(
 	ctx context.Context,
 	policy autoopsv1alpha1.AutoOpsAgentPolicy,
 	es esv1.Elasticsearch,
-) error {
+) (*corev1.Secret, error) {
 	log := ulog.FromContext(ctx).WithValues(
 		"es_namespace", es.Namespace,
 		"es_name", es.Name,
@@ -62,13 +64,13 @@ func (r *AgentPolicyReconciler) reconcileAutoOpsESAPIKey(
 
 	esClient, err := r.esClientProvider(ctx, r.Client, r.params.Dialer, es)
 	if err != nil {
-		return fmt.Errorf("while creating Elasticsearch client for %s/%s: %w", es.Namespace, es.Name, err)
+		return nil, fmt.Errorf("while creating Elasticsearch client for %s/%s: %w", es.Namespace, es.Name, err)
 	}
 	defer esClient.Close()
 
 	autoOpsUserRole, ok := esuser.PredefinedRoles[esuser.AutoOpsUserRole].(esclient.Role)
 	if !ok {
-		return fmt.Errorf("autoOpsUserRole could not be converted to esclient.Role")
+		return nil, fmt.Errorf("autoOpsUserRole could not be converted to esclient.Role")
 	}
 
 	apiKeySpec := apiKeySpec{
@@ -85,7 +87,7 @@ func (r *AgentPolicyReconciler) reconcileAutoOpsESAPIKey(
 	// Check if API key exists
 	activeAPIKeys, err := esClient.GetAPIKeysByName(ctx, apiKeyName)
 	if err != nil {
-		return fmt.Errorf("while getting API keys by name %s: %w", apiKeyName, err)
+		return nil, fmt.Errorf("while getting API keys by name %s: %w", apiKeyName, err)
 	}
 
 	var activeAPIKey *esclient.APIKey
@@ -113,7 +115,7 @@ func (r *AgentPolicyReconciler) createAPIKey(
 	expectedHash string,
 	policy autoopsv1alpha1.AutoOpsAgentPolicy,
 	es esv1.Elasticsearch,
-) error {
+) (*corev1.Secret, error) {
 	log.Info("Creating API key", "key", apiKeyName)
 
 	metadata := newMetadataFor(&policy, &es, expectedHash)
@@ -132,7 +134,7 @@ func (r *AgentPolicyReconciler) createAPIKey(
 		},
 	})
 	if err != nil {
-		return fmt.Errorf("while creating API key %s: %w", apiKeyName, err)
+		return nil, fmt.Errorf("while creating API key %s: %w", apiKeyName, err)
 	}
 
 	return r.storeAPIKeyInSecret(ctx, policy, es, apiKeyResp.Encoded, expectedHash)
@@ -148,7 +150,7 @@ func (r *AgentPolicyReconciler) maybeUpdateAPIKey(
 	expectedHash string,
 	policy autoopsv1alpha1.AutoOpsAgentPolicy,
 	es esv1.Elasticsearch,
-) error {
+) (*corev1.Secret, error) {
 	// If the key isn't managed by ECK or it's hash is incorrect, invalidate and recreate the api key.
 	if !commonapikey.IsManagedByECK(activeAPIKey.Metadata) || commonapikey.NeedsUpdate(activeAPIKey.Metadata, expectedHash) {
 		return r.invalidateAndCreateAPIKey(ctx, log, activeAPIKey, apiKeyName, apiKeySpec, expectedHash, policy, es)
@@ -167,7 +169,7 @@ func (r *AgentPolicyReconciler) maybeUpdateAPIKey(
 			log.Info("API key secret not found, recreating key", "key", apiKeyName)
 			return r.invalidateAndCreateAPIKey(ctx, log, activeAPIKey, apiKeyName, apiKeySpec, expectedHash, policy, es)
 		}
-		return fmt.Errorf("while retrieving API key secret %s: %w", secretName, err)
+		return nil, fmt.Errorf("while retrieving API key secret %s: %w", secretName, err)
 	}
 
 	// Since the secret exists, we just need to verify the data is correct.
@@ -177,7 +179,7 @@ func (r *AgentPolicyReconciler) maybeUpdateAPIKey(
 	}
 
 	log.V(1).Info("API key is up to date", "key", apiKeyName)
-	return nil
+	return &secret, nil
 }
 
 func (r *AgentPolicyReconciler) invalidateAndCreateAPIKey(
@@ -189,14 +191,14 @@ func (r *AgentPolicyReconciler) invalidateAndCreateAPIKey(
 	expectedHash string,
 	policy autoopsv1alpha1.AutoOpsAgentPolicy,
 	es esv1.Elasticsearch,
-) error {
+) (*corev1.Secret, error) {
 	esClient, err := r.esClientProvider(ctx, r.Client, r.params.Dialer, es)
 	if err != nil {
-		return fmt.Errorf("while creating Elasticsearch client for %s/%s: %w", es.Namespace, es.Name, err)
+		return nil, fmt.Errorf("while creating Elasticsearch client for %s/%s: %w", es.Namespace, es.Name, err)
 	}
 	defer esClient.Close()
 	if err := invalidateAPIKey(ctx, esClient, activeAPIKey.ID); err != nil {
-		return err
+		return nil, err
 	}
 	return r.createAPIKey(ctx, log, esClient, apiKeyName, apiKeySpec, expectedHash, policy, es)
 }
@@ -216,7 +218,7 @@ func (r *AgentPolicyReconciler) storeAPIKeyInSecret(
 	es esv1.Elasticsearch,
 	encodedKey string,
 	expectedHash string,
-) error {
+) (*corev1.Secret, error) {
 	secretName := autoopsv1alpha1.APIKeySecret(policy.GetName(), k8s.ExtractNamespacedName(&es))
 	expected := buildAutoOpsESAPIKeySecret(policy, es, secretName, encodedKey, expectedHash)
 
@@ -243,18 +245,23 @@ func (r *AgentPolicyReconciler) storeAPIKeyInSecret(
 		},
 	)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	watcher := k8s.ExtractNamespacedName(&policy)
 
 	// Add a watch for the AutoOps API key secret
-	return watches.WatchUserProvidedSecrets(
+	err = watches.WatchUserProvidedSecrets(
 		watcher,
 		r.dynamicWatches,
 		secretName,
 		[]string{secretName},
 	)
+	if err != nil {
+		return nil, err
+	}
+
+	return reconciled, nil
 }
 
 // buildAutoOpsESAPIKeySecret builds the expected Secret for autoops ES API key.

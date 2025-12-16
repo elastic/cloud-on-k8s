@@ -11,6 +11,7 @@ import (
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
+	"github.com/stretchr/testify/require"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -97,6 +98,8 @@ func TestReconcileAutoOpsAgentPolicy_deploymentParams(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			// We need a ConfigMap to calculate the config hash for the deployment.
+			// This does not need to be within the k8s cluster itself, we simply
+			// use it to build the config hash.
 			configData := "test-config-data"
 			configMap := &corev1.ConfigMap{
 				ObjectMeta: metav1.ObjectMeta{
@@ -109,6 +112,7 @@ func TestReconcileAutoOpsAgentPolicy_deploymentParams(t *testing.T) {
 			}
 
 			// We need the autoops-secret with all required keys to build the config hash
+			// and this is required to be within the k8s cluster itself.
 			autoopsSecret := &corev1.Secret{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "autoops-secret",
@@ -135,11 +139,13 @@ func TestReconcileAutoOpsAgentPolicy_deploymentParams(t *testing.T) {
 			}
 
 			client := k8s.NewFakeClient(configMap, autoopsSecret, esAPIKeySecret)
+			configHash, err := buildConfigHash(context.Background(), *configMap, *esAPIKeySecret, client, tt.args.autoops)
+			require.NoError(t, err)
 			r := &AgentPolicyReconciler{
 				Client: client,
 			}
 			ctx := context.Background()
-			got, err := r.buildDeployment(ctx, tt.args.autoops, tt.args.es)
+			got, err := r.buildDeployment(ctx, configHash, tt.args.autoops, tt.args.es)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("ReconcileAutoOpsAgentPolicy.buildDeployment() error = %v, wantErr %v", err, tt.wantErr)
 				return

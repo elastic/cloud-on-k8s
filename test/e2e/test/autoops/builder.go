@@ -11,7 +11,6 @@ import (
 	k8sclient "sigs.k8s.io/controller-runtime/pkg/client"
 
 	autoopsv1alpha1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/autoops/v1alpha1"
-	commonv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/common/v1"
 	"github.com/elastic/cloud-on-k8s/v3/test/e2e/cmd/run"
 	"github.com/elastic/cloud-on-k8s/v3/test/e2e/test"
 )
@@ -65,10 +64,8 @@ func NewBuilder(name string) Builder {
 						"autoops": "enabled",
 					},
 				},
-				ConfigRef: commonv1.ConfigSource{
-					SecretRef: commonv1.SecretRef{
-						SecretName: configSecretName,
-					},
+				AutoOpsRef: autoopsv1alpha1.AutoOpsRef{
+					SecretName: configSecretName,
 				},
 			},
 		},

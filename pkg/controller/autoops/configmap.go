@@ -111,15 +111,16 @@ type configTemplateData struct {
 }
 
 // ReconcileAutoOpsESConfigMap reconciles the ConfigMap containing the autoops configuration
-// specific to each ES instance.
-func ReconcileAutoOpsESConfigMap(ctx context.Context, c k8s.Client, policy autoopsv1alpha1.AutoOpsAgentPolicy, es esv1.Elasticsearch) error {
+// specific to each ES instance. This also returns the config hash of the ConfigMap to avoid
+// retrieving it from the cache later and delaying the initial deployment.
+func ReconcileAutoOpsESConfigMap(ctx context.Context, c k8s.Client, policy autoopsv1alpha1.AutoOpsAgentPolicy, es esv1.Elasticsearch) (*corev1.ConfigMap, error) {
 	expected, err := buildAutoOpsESConfigMap(policy, es)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	reconciled := &corev1.ConfigMap{}
-	return reconciler.ReconcileResource(
+	err = reconciler.ReconcileResource(
 		reconciler.Params{
 			Context:    ctx,
 			Client:     c,
@@ -138,6 +139,11 @@ func ReconcileAutoOpsESConfigMap(ctx context.Context, c k8s.Client, policy autoo
 			},
 		},
 	)
+	if err != nil {
+		return nil, err
+	}
+
+	return reconciled, nil
 }
 
 // buildAutoOpsESConfigMap builds the expected ConfigMap for autoops configuration.
