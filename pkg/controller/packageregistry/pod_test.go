@@ -69,7 +69,7 @@ func TestNewPodSpec_CommandOverride(t *testing.T) {
 				Spec:       eprv1alpha1.PackageRegistrySpec{Version: tt.version},
 			}
 
-			podSpec, err := newPodSpec(epr, "test-hash", metadata.Metadata{})
+			podSpec, err := newPodSpec(epr, "test-hash", metadata.Metadata{}, false)
 			require.NoError(t, err)
 
 			// Find the main container
