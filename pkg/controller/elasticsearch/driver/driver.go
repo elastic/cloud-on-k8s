@@ -406,6 +406,18 @@ func (d *defaultDriver) Reconcile(ctx context.Context) *reconciler.Results {
 		}
 		// Set the mount path so the prepare-fs script creates a symlink to the keystore
 		keystoreSecretMountPath = esvolume.KeystoreSecretVolumeMountPath
+
+		// Trigger keystore reload on all ES nodes and check convergence
+		if esReachable {
+			expectedNodeCount := d.ES.Spec.NodeCount()
+			reloadResult, err := keystorejob.ReloadSecureSettings(ctx, d.Client, esClient, d.ES, expectedNodeCount)
+			if err != nil {
+				return results.WithError(err)
+			}
+			if !reloadResult.Converged {
+				results = results.WithReconciliationState(defaultRequeue.WithReason("Keystore reload not yet converged: " + reloadResult.Message))
+			}
+		}
 	} else {
 		// Use the traditional init container approach
 		keystoreConfig = nodespec.KeystoreConfig{
