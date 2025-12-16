@@ -45,7 +45,7 @@ func TestAutoOpsAgentPolicyReconciler_internalReconcile(t *testing.T) {
 		wantResults      reconcile.Result
 	}{
 		{
-			name: "config secret not found sets error phase",
+			name: "config secret not found sets invalid phase",
 			policy: autoopsv1alpha1.AutoOpsAgentPolicy{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "policy-1",
@@ -54,7 +54,7 @@ func TestAutoOpsAgentPolicyReconciler_internalReconcile(t *testing.T) {
 				Spec: autoopsv1alpha1.AutoOpsAgentPolicySpec{
 					Version: "9.1.0",
 					AutoOpsRef: commonv1.ObjectSelector{
-						Name: "missing-secret",
+						SecretName: "missing-secret",
 					},
 					ResourceSelector: metav1.LabelSelector{
 						MatchLabels: map[string]string{"app": "elasticsearch"},
@@ -63,12 +63,12 @@ func TestAutoOpsAgentPolicyReconciler_internalReconcile(t *testing.T) {
 			},
 			initialObjects: []client.Object{},
 			wantStatus: autoopsv1alpha1.AutoOpsAgentPolicyStatus{
-				Phase: autoopsv1alpha1.ErrorPhase,
+				Phase: autoopsv1alpha1.InvalidPhase,
 			},
 			wantResults: reconcile.Result{},
 		},
 		{
-			name: "config secret missing required keys sets error phase",
+			name: "config secret missing required keys sets invalid phase",
 			policy: autoopsv1alpha1.AutoOpsAgentPolicy{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "policy-1",
@@ -77,7 +77,7 @@ func TestAutoOpsAgentPolicyReconciler_internalReconcile(t *testing.T) {
 				Spec: autoopsv1alpha1.AutoOpsAgentPolicySpec{
 					Version: "9.1.0",
 					AutoOpsRef: commonv1.ObjectSelector{
-						Name: "invalid-secret",
+						SecretName: "invalid-secret",
 					},
 					ResourceSelector: metav1.LabelSelector{
 						MatchLabels: map[string]string{"app": "elasticsearch"},
@@ -94,7 +94,7 @@ func TestAutoOpsAgentPolicyReconciler_internalReconcile(t *testing.T) {
 				},
 			},
 			wantStatus: autoopsv1alpha1.AutoOpsAgentPolicyStatus{
-				Phase: autoopsv1alpha1.ErrorPhase,
+				Phase: autoopsv1alpha1.InvalidPhase,
 			},
 			wantResults: reconcile.Result{},
 		},
@@ -108,7 +108,7 @@ func TestAutoOpsAgentPolicyReconciler_internalReconcile(t *testing.T) {
 				Spec: autoopsv1alpha1.AutoOpsAgentPolicySpec{
 					Version: "9.1.0",
 					AutoOpsRef: commonv1.ObjectSelector{
-						Name: "config-secret",
+						SecretName: "config-secret",
 					},
 					ResourceSelector: metav1.LabelSelector{
 						MatchExpressions: []metav1.LabelSelectorRequirement{
@@ -149,7 +149,7 @@ func TestAutoOpsAgentPolicyReconciler_internalReconcile(t *testing.T) {
 				Spec: autoopsv1alpha1.AutoOpsAgentPolicySpec{
 					Version: "9.1.0",
 					AutoOpsRef: commonv1.ObjectSelector{
-						Name: "config-secret",
+						SecretName: "config-secret",
 					},
 					ResourceSelector: metav1.LabelSelector{
 						MatchLabels: map[string]string{"app": "elasticsearch"},
@@ -185,7 +185,7 @@ func TestAutoOpsAgentPolicyReconciler_internalReconcile(t *testing.T) {
 				Spec: autoopsv1alpha1.AutoOpsAgentPolicySpec{
 					Version: "9.1.0",
 					AutoOpsRef: commonv1.ObjectSelector{
-						Name: "config-secret",
+						SecretName: "config-secret",
 					},
 					ResourceSelector: metav1.LabelSelector{
 						MatchLabels: map[string]string{"app": "elasticsearch"},
@@ -232,7 +232,7 @@ func TestAutoOpsAgentPolicyReconciler_internalReconcile(t *testing.T) {
 				Spec: autoopsv1alpha1.AutoOpsAgentPolicySpec{
 					Version: "9.1.0",
 					AutoOpsRef: commonv1.ObjectSelector{
-						Name: "config-secret",
+						SecretName: "config-secret",
 					},
 					ResourceSelector: metav1.LabelSelector{
 						MatchLabels: map[string]string{"app": "elasticsearch"},
@@ -289,7 +289,7 @@ func TestAutoOpsAgentPolicyReconciler_internalReconcile(t *testing.T) {
 				Spec: autoopsv1alpha1.AutoOpsAgentPolicySpec{
 					Version: "9.1.0",
 					AutoOpsRef: commonv1.ObjectSelector{
-						Name: "config-secret",
+						SecretName: "config-secret",
 					},
 					ResourceSelector: metav1.LabelSelector{
 						MatchLabels: map[string]string{"app": "elasticsearch"},
@@ -357,7 +357,7 @@ func TestAutoOpsAgentPolicyReconciler_internalReconcile(t *testing.T) {
 				Spec: autoopsv1alpha1.AutoOpsAgentPolicySpec{
 					Version: "9.1.0",
 					AutoOpsRef: commonv1.ObjectSelector{
-						Name: "config-secret",
+						SecretName: "config-secret",
 					},
 					ResourceSelector: metav1.LabelSelector{
 						MatchLabels: map[string]string{"app": "elasticsearch"},
@@ -447,7 +447,7 @@ func TestAutoOpsAgentPolicyReconciler_internalReconcile(t *testing.T) {
 				Spec: autoopsv1alpha1.AutoOpsAgentPolicySpec{
 					Version: "9.1.0",
 					AutoOpsRef: commonv1.ObjectSelector{
-						Name: "config-secret",
+						SecretName: "config-secret",
 					},
 					ResourceSelector: metav1.LabelSelector{
 						MatchLabels: map[string]string{"app": "elasticsearch"},
@@ -574,7 +574,8 @@ func TestAutoOpsAgentPolicyReconciler_internalReconcile(t *testing.T) {
 			gotResults := r.internalReconcile(ctx, tt.policy, results, state)
 
 			gotResult, gotErr := gotResults.Aggregate()
-			require.Equal(t, tt.wantStatus.Phase == autoopsv1alpha1.ErrorPhase, gotErr != nil)
+			expectError := tt.wantStatus.Phase == autoopsv1alpha1.ErrorPhase || tt.wantStatus.Phase == autoopsv1alpha1.InvalidPhase
+			require.Equal(t, expectError, gotErr != nil)
 
 			if !cmp.Equal(tt.wantStatus, state.status, cmpopts.IgnoreFields(autoopsv1alpha1.AutoOpsAgentPolicyStatus{}, "ObservedGeneration")) {
 				t.Errorf("status mismatch:\n%s", cmp.Diff(tt.wantStatus, state.status, cmpopts.IgnoreFields(autoopsv1alpha1.AutoOpsAgentPolicyStatus{}, "ObservedGeneration")))
@@ -596,7 +597,7 @@ func TestAutoOpsAgentPolicyReconciler_selectorChangeCleanup(t *testing.T) {
 		Spec: autoopsv1alpha1.AutoOpsAgentPolicySpec{
 			Version: "9.1.0",
 			AutoOpsRef: commonv1.ObjectSelector{
-				Name: "config-secret",
+				SecretName: "config-secret",
 			},
 			ResourceSelector: metav1.LabelSelector{
 				MatchLabels: map[string]string{"app": "elasticsearch"},

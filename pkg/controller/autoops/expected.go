@@ -12,6 +12,7 @@ import (
 
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/resource"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/intstr"
@@ -184,7 +185,10 @@ func buildConfigHash(ctx context.Context, c k8s.Client, policy autoopsv1alpha1.A
 	var configMap corev1.ConfigMap
 	configMapKey := types.NamespacedName{Namespace: policy.Namespace, Name: configMapName}
 	if err := c.Get(ctx, configMapKey, &configMap); err != nil {
-		return "", err
+		if apierrors.IsNotFound(err) {
+			return "", fmt.Errorf("ConfigMap %s not found: %w", configMapName, err)
+		}
+		return "", fmt.Errorf("failed to get ConfigMap %s: %w", configMapName, err)
 	}
 
 	if configData, ok := configMap.Data[autoOpsESConfigFileName]; ok {

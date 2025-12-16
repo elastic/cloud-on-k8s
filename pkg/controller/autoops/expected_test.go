@@ -34,7 +34,7 @@ func TestReconcileAutoOpsAgentPolicy_deploymentParams(t *testing.T) {
 		Spec: autoopsv1alpha1.AutoOpsAgentPolicySpec{
 			Version: "9.1.0-SNAPSHOT",
 			AutoOpsRef: commonv1.ObjectSelector{
-				Name: "autoops-secret",
+				SecretName: "autoops-secret",
 			},
 		},
 	}
@@ -383,7 +383,7 @@ func Test_autoopsEnvVars(t *testing.T) {
 				},
 				Spec: autoopsv1alpha1.AutoOpsAgentPolicySpec{
 					AutoOpsRef: commonv1.ObjectSelector{
-						Name: "autoops-secret",
+						SecretName: "autoops-secret",
 					},
 				},
 			},
