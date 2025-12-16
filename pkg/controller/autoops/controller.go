@@ -166,8 +166,23 @@ func updatePhaseFromResults(results *reconciler.Results, state *State) {
 	if isReconciled, message := results.IsReconciled(); !isReconciled {
 		state.UpdateWithPhase(autoopsv1alpha1.ApplyingChangesPhase)
 		state.AddEvent(corev1.EventTypeWarning, events.EventReasonDelayed, message)
-	} else {
+		return
+	}
+
+	// Determine phase based on status counts, in order of priority:
+	// 1. Errors take highest priority
+	// 2. Resources not ready (have resources but none ready)
+	// 3. Ready (have resources and at least one ready)
+	// 4. No resources
+	switch {
+	case state.status.Errors > 0:
+		state.UpdateWithPhase(autoopsv1alpha1.ErrorPhase)
+	case state.status.Resources > 0 && state.status.Ready == 0:
+		state.UpdateWithPhase(autoopsv1alpha1.ResourcesNotReadyPhase)
+	case state.status.Resources > 0 && state.status.Ready > 0:
 		state.UpdateWithPhase(autoopsv1alpha1.ReadyPhase)
+	case state.status.Resources == 0:
+		state.UpdateWithPhase(autoopsv1alpha1.NoResourcesPhase)
 	}
 }
 
