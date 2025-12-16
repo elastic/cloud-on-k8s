@@ -93,6 +93,14 @@ func (r *AgentPolicyReconciler) internalReconcile(
 		return results.WithError(err)
 	}
 
+	// Clean up resources that no longer match the Policy's selector
+	if err := r.cleanupOrphanedResourcesForPolicy(ctx, log, policy, esList.Items); err != nil {
+		log.Error(err, "while cleaning up orphaned resources", "policy_namespace", policy.Namespace, "policy_name", policy.Name)
+		// Note: Should we update phase to error, and return error I wonder?
+		state.UpdateWithPhase(autoopsv1alpha1.ErrorPhase)
+		results.WithError(err)
+	}
+
 	if len(esList.Items) == 0 {
 		log.Info("No Elasticsearch resources found for the AutoOpsAgentPolicy", "policy_namespace", policy.Namespace, "policy_name", policy.Name)
 		state.UpdateWithPhase(autoopsv1alpha1.NoResourcesPhase).
@@ -174,14 +182,6 @@ func (r *AgentPolicyReconciler) internalReconcile(
 
 	state.UpdateReady(readyCount).
 		UpdateErrors(errorCount)
-
-	// Clean up resources that no longer match the Policy's selector
-	if err := r.cleanupOrphanedResourcesForPolicy(ctx, log, policy, esList.Items); err != nil {
-		log.Error(err, "while cleaning up orphaned resources", "policy_namespace", policy.Namespace, "policy_name", policy.Name)
-		// Note: Should we update phase to error, and return error I wonder?
-		state.UpdateWithPhase(autoopsv1alpha1.ErrorPhase)
-		results.WithError(err)
-	}
 
 	return results
 }
