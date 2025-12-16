@@ -190,7 +190,7 @@ func expectedDeployment(policy autoopsv1alpha1.AutoOpsAgentPolicy, es esv1.Elast
 			Replicas: pointer.Int32(1),
 			Selector: &metav1.LabelSelector{
 				MatchLabels: map[string]string{
-					"autoops.k8s.elastic.co/name": policy.GetName(),
+					PolicyNameLabelKey: policy.GetName(),
 				},
 			},
 			Template: corev1.PodTemplateSpec{

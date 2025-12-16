@@ -32,7 +32,6 @@ import (
 )
 
 const (
-	autoOpsLabelName         = "autoops.k8s.elastic.co/name"
 	autoOpsAgentType         = "autoops-agent"
 	configVolumeName         = "config-volume"
 	configVolumePath         = "/mnt/config"
@@ -60,7 +59,8 @@ var (
 func resourceLabelsFor(policy autoopsv1alpha1.AutoOpsAgentPolicy, es esv1.Elasticsearch) map[string]string {
 	return map[string]string{
 		commonv1.TypeLabelName:              autoOpsAgentType,
-		autoOpsLabelName:                    policy.Name,
+		PolicyNameLabelKey:                  policy.Name,
+		policyNamespaceLabelKey:             policy.Namespace,
 		commonapikey.MetadataKeyESName:      es.Name,
 		commonapikey.MetadataKeyESNamespace: es.Namespace,
 	}
@@ -137,7 +137,7 @@ func (r *AgentPolicyReconciler) buildDeployment(configHash string, policy autoop
 		Name:      autoopsv1alpha1.Deployment(policy.GetName(), es),
 		Namespace: policy.GetNamespace(),
 		Selector: map[string]string{
-			autoOpsLabelName: policy.GetName(),
+			PolicyNameLabelKey: policy.GetName(),
 		},
 		Metadata:             meta,
 		PodTemplateSpec:      podTemplateSpec,

@@ -90,7 +90,6 @@ func cleanupOrphanedSecrets(
 	matchLabels client.MatchingLabels,
 	matchingESMap map[types.NamespacedName]struct{},
 ) error {
-	// List all secrets (both CA and API key secrets now use autoOpsLabelName)
 	var secrets corev1.SecretList
 	if err := c.List(ctx, &secrets, client.InNamespace(policy.Namespace), matchLabels); err != nil {
 		return err

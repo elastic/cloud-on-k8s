@@ -693,15 +693,15 @@ func TestAutoOpsAgentPolicyReconciler_selectorChangeCleanup(t *testing.T) {
 
 		// Verify resources were created for es-1, es-2, and es-3 (all match the initial selector)
 		var deployments appsv1.DeploymentList
-		require.NoError(t, k8sClient.List(ctx, &deployments, client.InNamespace("ns-1"), client.MatchingLabels{autoOpsLabelName: "policy-1"}))
+		require.NoError(t, k8sClient.List(ctx, &deployments, client.InNamespace("ns-1"), client.MatchingLabels{PolicyNameLabelKey: "policy-1"}))
 		require.Len(t, deployments.Items, 3, "Expected 3 deployments for es-1, es-2, and es-3")
 
 		var configMaps corev1.ConfigMapList
-		require.NoError(t, k8sClient.List(ctx, &configMaps, client.InNamespace("ns-1"), client.MatchingLabels{autoOpsLabelName: "policy-1"}))
+		require.NoError(t, k8sClient.List(ctx, &configMaps, client.InNamespace("ns-1"), client.MatchingLabels{PolicyNameLabelKey: "policy-1"}))
 		require.Len(t, configMaps.Items, 3, "Expected 3 configmaps for es-1, es-2, and es-3")
 
 		var secrets corev1.SecretList
-		require.NoError(t, k8sClient.List(ctx, &secrets, client.InNamespace("ns-1"), client.MatchingLabels{autoOpsLabelName: "policy-1"}))
+		require.NoError(t, k8sClient.List(ctx, &secrets, client.InNamespace("ns-1"), client.MatchingLabels{PolicyNameLabelKey: "policy-1"}))
 		require.Len(t, secrets.Items, 3, "Expected 3 secrets for es-1, es-2, and es-3")
 	})
 
@@ -775,15 +775,15 @@ func TestAutoOpsAgentPolicyReconciler_selectorChangeCleanup(t *testing.T) {
 
 		// Verify no additional resources were created.
 		var deployments appsv1.DeploymentList
-		require.NoError(t, k8sClient.List(ctx, &deployments, client.InNamespace("ns-1"), client.MatchingLabels{autoOpsLabelName: "policy-1"}))
+		require.NoError(t, k8sClient.List(ctx, &deployments, client.InNamespace("ns-1"), client.MatchingLabels{PolicyNameLabelKey: "policy-1"}))
 		require.Len(t, deployments.Items, 1, "Should have exactly 1 deployment after selector change")
 
 		var configMaps corev1.ConfigMapList
-		require.NoError(t, k8sClient.List(ctx, &configMaps, client.InNamespace("ns-1"), client.MatchingLabels{autoOpsLabelName: "policy-1"}))
+		require.NoError(t, k8sClient.List(ctx, &configMaps, client.InNamespace("ns-1"), client.MatchingLabels{PolicyNameLabelKey: "policy-1"}))
 		require.Len(t, configMaps.Items, 1, "Should have exactly 1 configmap after selector change")
 
 		var secrets corev1.SecretList
-		require.NoError(t, k8sClient.List(ctx, &secrets, client.InNamespace("ns-1"), client.MatchingLabels{autoOpsLabelName: "policy-1"}))
+		require.NoError(t, k8sClient.List(ctx, &secrets, client.InNamespace("ns-1"), client.MatchingLabels{PolicyNameLabelKey: "policy-1"}))
 		require.Len(t, secrets.Items, 1, "Should have exactly 1 secret after selector change")
 	})
 }

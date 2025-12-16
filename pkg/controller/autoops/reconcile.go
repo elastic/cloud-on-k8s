@@ -201,7 +201,7 @@ func (r *AgentPolicyReconciler) cleanupOrphanedResourcesForPolicy(
 	}
 
 	matchLabels := client.MatchingLabels{
-		autoOpsLabelName: policy.Name,
+		PolicyNameLabelKey: policy.Name,
 	}
 
 	if err := cleanupOrphanedDeployments(ctx, log, r.Client, policy, matchLabels, esMap); err != nil {

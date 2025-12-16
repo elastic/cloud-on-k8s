@@ -11,6 +11,7 @@ import (
 	k8sclient "sigs.k8s.io/controller-runtime/pkg/client"
 
 	autoopsv1alpha1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/autoops/v1alpha1"
+	controllerautoops "github.com/elastic/cloud-on-k8s/v3/pkg/controller/autoops"
 	"github.com/elastic/cloud-on-k8s/v3/test/e2e/cmd/run"
 	"github.com/elastic/cloud-on-k8s/v3/test/e2e/test"
 )
@@ -113,7 +114,7 @@ func (b Builder) ListOptions() []k8sclient.ListOption {
 	return []k8sclient.ListOption{
 		k8sclient.InNamespace(b.AutoOpsAgentPolicy.Namespace),
 		k8sclient.MatchingLabels(map[string]string{
-			"autoops.k8s.elastic.co/name": b.AutoOpsAgentPolicy.Name,
+			controllerautoops.PolicyNameLabelKey: b.AutoOpsAgentPolicy.Name,
 		}),
 	}
 }
