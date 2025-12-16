@@ -4,6 +4,10 @@
 
 // Package keystoreuploader provides a subcommand to upload a keystore file to a Kubernetes Secret.
 // This is used by the keystore creation Job for Elasticsearch 9.3+ clusters.
+//
+// The Job runs in the operator namespace and creates a "staging" Secret there.
+// The operator then copies this Secret to the target ES namespace during reconciliation.
+// This design avoids needing per-namespace RBAC for the keystore job.
 package keystoreuploader
 
 import (
@@ -17,7 +21,6 @@ import (
 	"github.com/spf13/cobra"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/kubernetes/scheme"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/config"
@@ -25,7 +28,6 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 
 	esv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/elasticsearch/v1"
-	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/reconciler"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/k8s"
 	ulog "github.com/elastic/cloud-on-k8s/v3/pkg/utils/log"
 )
@@ -45,7 +47,6 @@ func Command() *cobra.Command {
 		secretName   string
 		namespace    string
 		settingsHash string
-		ownerName    string
 		timeout      time.Duration
 	)
 
@@ -55,8 +56,8 @@ func Command() *cobra.Command {
 		Long: `Upload a keystore file to a Kubernetes Secret.
 
 This command is used internally by ECK to upload keystore files created by
-the keystore init container to a Kubernetes Secret. The Secret is then mounted
-into Elasticsearch pods for the reloadable keystore feature (9.3+).`,
+the keystore init container to a staging Secret in the operator namespace.
+The operator then copies this Secret to the target ES namespace.`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			// Set up logging - use production mode (JSON output) for consistency with operator logs
 			logf.SetLogger(zap.New())
@@ -66,33 +67,30 @@ into Elasticsearch pods for the reloadable keystore feature (9.3+).`,
 			defer cancel()
 			ctx = ulog.AddToContext(ctx, log)
 
-			return run(ctx, keystorePath, secretName, namespace, settingsHash, ownerName)
+			return run(ctx, keystorePath, secretName, namespace, settingsHash)
 		},
 	}
 
 	cmd.Flags().StringVar(&keystorePath, "keystore-path", "/keystore/elasticsearch.keystore",
 		"Path to the keystore file to upload")
 	cmd.Flags().StringVar(&secretName, "secret-name", "",
-		"Name of the target Secret")
+		"Name of the staging Secret (in the operator namespace)")
 	cmd.Flags().StringVar(&namespace, "namespace", "",
-		"Namespace of the target Secret")
+		"Namespace where to create the staging Secret (operator namespace)")
 	cmd.Flags().StringVar(&settingsHash, "settings-hash", "",
 		"Hash of the secure settings used to create this keystore")
-	cmd.Flags().StringVar(&ownerName, "owner-name", "",
-		"Name of the Elasticsearch resource that owns this keystore")
 	cmd.Flags().DurationVar(&timeout, "timeout", defaultTimeout,
 		"Timeout for the upload operation")
 
 	_ = cmd.MarkFlagRequired("secret-name")
 	_ = cmd.MarkFlagRequired("namespace")
 	_ = cmd.MarkFlagRequired("settings-hash")
-	_ = cmd.MarkFlagRequired("owner-name")
 
 	return cmd
 }
 
 // run executes the keystore upload logic.
-func run(ctx context.Context, keystorePath, secretName, namespace, settingsHash, ownerName string) error {
+func run(ctx context.Context, keystorePath, secretName, namespace, settingsHash string) error {
 	log := ulog.FromContext(ctx)
 	log.Info("Reading keystore file", "path", keystorePath)
 
@@ -116,19 +114,12 @@ func run(ctx context.Context, keystorePath, secretName, namespace, settingsHash,
 		return fmt.Errorf("failed to create Kubernetes client: %w", err)
 	}
 
-	// Get the owner Elasticsearch resource for setting owner references
-	var owner *esv1.Elasticsearch
-	owner, err = getElasticsearchOwner(ctx, k8sClient, namespace, ownerName)
-	if err != nil {
-		return fmt.Errorf("failed to get Elasticsearch owner: %w", err)
+	// Create or update the staging Secret (no owner reference - operator will copy it)
+	if err := reconcileStagingSecret(ctx, k8sClient, secretName, namespace, keystoreData, settingsHash, digest); err != nil {
+		return fmt.Errorf("failed to reconcile staging secret: %w", err)
 	}
 
-	// Create or update the Secret using the standard reconciler
-	if err := reconcileKeystoreSecret(ctx, k8sClient, secretName, namespace, keystoreData, settingsHash, digest, owner); err != nil {
-		return fmt.Errorf("failed to reconcile keystore secret: %w", err)
-	}
-
-	log.Info("Successfully uploaded keystore to Secret", "namespace", namespace, "secret", secretName)
+	log.Info("Successfully uploaded keystore to staging Secret", "namespace", namespace, "secret", secretName)
 	return nil
 }
 
@@ -139,13 +130,13 @@ func computeDigest(data []byte) string {
 }
 
 // createClient creates a new Kubernetes client using in-cluster config.
-func createClient() (client.Client, error) {
+func createClient() (k8s.Client, error) {
 	cfg, err := config.GetConfig()
 	if err != nil {
 		return nil, fmt.Errorf("failed to get Kubernetes config: %w", err)
 	}
 
-	// Register the Elasticsearch scheme
+	// Register the Elasticsearch scheme (needed for labels/annotations constants)
 	if err := esv1.AddToScheme(scheme.Scheme); err != nil {
 		return nil, fmt.Errorf("failed to add Elasticsearch scheme: %w", err)
 	}
@@ -158,23 +149,15 @@ func createClient() (client.Client, error) {
 	return k8sClient, nil
 }
 
-// getElasticsearchOwner retrieves the Elasticsearch resource to use as the owner reference.
-func getElasticsearchOwner(ctx context.Context, k8sClient client.Client, namespace, name string) (*esv1.Elasticsearch, error) {
-	var es esv1.Elasticsearch
-	if err := k8sClient.Get(ctx, types.NamespacedName{Namespace: namespace, Name: name}, &es); err != nil {
-		return nil, err
-	}
-	return &es, nil
-}
-
-// reconcileKeystoreSecret creates or updates the keystore Secret using the standard reconciler.
-func reconcileKeystoreSecret(
+// reconcileStagingSecret creates or updates the staging Secret in the operator namespace.
+// This Secret has no owner reference since it's in a different namespace than the ES resource.
+// The operator will copy this Secret to the target namespace and set the owner reference there.
+func reconcileStagingSecret(
 	ctx context.Context,
 	k8sClient k8s.Client,
 	secretName, namespace string,
 	keystoreData []byte,
 	settingsHash, digest string,
-	owner *esv1.Elasticsearch,
 ) error {
 	expected := corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
@@ -190,10 +173,30 @@ func reconcileKeystoreSecret(
 		},
 	}
 
-	// Use the standard ReconcileSecret which handles:
-	// - Create vs Update logic
-	// - Owner reference setting
-	// - Preserving existing labels/annotations
-	_, err := reconciler.ReconcileSecret(ctx, k8sClient, expected, owner)
-	return err
+	// Get existing secret if it exists
+	var existing corev1.Secret
+	err := k8sClient.Get(ctx, client.ObjectKeyFromObject(&expected), &existing)
+	if err != nil {
+		if client.IgnoreNotFound(err) != nil {
+			return fmt.Errorf("failed to get existing secret: %w", err)
+		}
+		// Secret doesn't exist, create it
+		if err := k8sClient.Create(ctx, &expected); err != nil {
+			return fmt.Errorf("failed to create secret: %w", err)
+		}
+		return nil
+	}
+
+	// Secret exists, update it
+	existing.Data = expected.Data
+	if existing.Annotations == nil {
+		existing.Annotations = make(map[string]string)
+	}
+	existing.Annotations[esv1.KeystoreHashAnnotation] = settingsHash
+	existing.Annotations[esv1.KeystoreDigestAnnotation] = digest
+
+	if err := k8sClient.Update(ctx, &existing); err != nil {
+		return fmt.Errorf("failed to update secret: %w", err)
+	}
+	return nil
 }

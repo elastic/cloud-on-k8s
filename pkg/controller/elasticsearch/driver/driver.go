@@ -698,7 +698,6 @@ func (d *defaultDriver) reconcileKeystoreJob(ctx context.Context, keystoreResour
 		podSpec := d.ES.Spec.NodeSets[0].PodTemplate.Spec
 		podTemplateParams = keystorejob.JobPodTemplateParams{
 			ImagePullSecrets:   podSpec.ImagePullSecrets,
-			ServiceAccountName: podSpec.ServiceAccountName,
 			PodSecurityContext: podSpec.SecurityContext,
 		}
 	}
@@ -706,6 +705,7 @@ func (d *defaultDriver) reconcileKeystoreJob(ctx context.Context, keystoreResour
 	return keystorejob.ReconcileJob(ctx, keystorejob.Params{
 		ES:                 d.ES,
 		Client:             d.Client,
+		OperatorNamespace:  d.OperatorParameters.OperatorNamespace,
 		OperatorImage:      d.OperatorParameters.OperatorImage,
 		ElasticsearchImage: esImage,
 		KeystoreResources:  keystoreResources,

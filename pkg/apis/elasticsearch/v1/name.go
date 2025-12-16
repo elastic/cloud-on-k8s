@@ -204,9 +204,17 @@ func KeystoreSecretName(esName string) string {
 	return ESNamer.Suffix(esName, keystoreSecretSuffix)
 }
 
+// StagingKeystoreSecretName returns the name of the staging Secret in the operator namespace
+// that temporarily holds the keystore file before it's copied to the ES namespace.
+// The name includes the ES namespace to avoid collisions when multiple ES clusters exist.
+func StagingKeystoreSecretName(esNamespace, esName string) string {
+	return ESNamer.Suffix(esNamespace, esName, keystoreSecretSuffix)
+}
+
 // KeystoreJobName returns the name of the Job that creates the keystore file for 9.3+ clusters.
-func KeystoreJobName(esName string) string {
-	return ESNamer.Suffix(esName, keystoreJobSuffix)
+// The job runs in the operator namespace but the name includes the ES namespace to avoid collisions.
+func KeystoreJobName(esNamespace, esName string) string {
+	return ESNamer.Suffix(esNamespace, esName, keystoreJobSuffix)
 }
 
 func StackConfigElasticsearchConfigSecretName(esName string) string {

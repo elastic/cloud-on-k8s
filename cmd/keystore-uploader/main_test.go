@@ -71,26 +71,16 @@ func TestCommand(t *testing.T) {
 	assert.NotNil(t, flags.Lookup("secret-name"))
 	assert.NotNil(t, flags.Lookup("namespace"))
 	assert.NotNil(t, flags.Lookup("settings-hash"))
-	assert.NotNil(t, flags.Lookup("owner-name"))
 	assert.NotNil(t, flags.Lookup("timeout"))
 }
 
-func TestReconcileKeystoreSecret_Create(t *testing.T) {
+func TestReconcileStagingSecret_Create(t *testing.T) {
 	scheme := runtime.NewScheme()
 	require.NoError(t, esv1.AddToScheme(scheme))
 	require.NoError(t, corev1.AddToScheme(scheme))
 
-	owner := &esv1.Elasticsearch{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      "test-es",
-			Namespace: "default",
-			UID:       "test-uid",
-		},
-	}
-
 	k8sClient := fake.NewClientBuilder().
 		WithScheme(scheme).
-		WithObjects(owner).
 		Build()
 
 	ctx := addDiscardLoggerToContext(context.Background())
@@ -98,38 +88,30 @@ func TestReconcileKeystoreSecret_Create(t *testing.T) {
 	settingsHash := "abc123"
 	digest := computeDigest(keystoreData)
 
-	err := reconcileKeystoreSecret(ctx, k8sClient, "test-secret", "default", keystoreData, settingsHash, digest, owner)
+	err := reconcileStagingSecret(ctx, k8sClient, "test-secret", "elastic-system", keystoreData, settingsHash, digest)
 	require.NoError(t, err)
 
 	// Verify secret was created
 	var secret corev1.Secret
-	err = k8sClient.Get(ctx, types.NamespacedName{Namespace: "default", Name: "test-secret"}, &secret)
+	err = k8sClient.Get(ctx, types.NamespacedName{Namespace: "elastic-system", Name: "test-secret"}, &secret)
 	require.NoError(t, err)
 
 	assert.Equal(t, keystoreData, secret.Data[KeystoreFileName])
 	assert.Equal(t, settingsHash, secret.Annotations[esv1.KeystoreHashAnnotation])
 	assert.Equal(t, digest, secret.Annotations[esv1.KeystoreDigestAnnotation])
-	assert.Len(t, secret.OwnerReferences, 1)
-	assert.Equal(t, "test-es", secret.OwnerReferences[0].Name)
+	// Staging secret has no owner references (cross-namespace)
+	assert.Empty(t, secret.OwnerReferences)
 }
 
-func TestReconcileKeystoreSecret_Update(t *testing.T) {
+func TestReconcileStagingSecret_Update(t *testing.T) {
 	scheme := runtime.NewScheme()
 	require.NoError(t, esv1.AddToScheme(scheme))
 	require.NoError(t, corev1.AddToScheme(scheme))
 
-	owner := &esv1.Elasticsearch{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      "test-es",
-			Namespace: "default",
-			UID:       "test-uid",
-		},
-	}
-
 	existingSecret := &corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "test-secret",
-			Namespace: "default",
+			Namespace: "elastic-system",
 			Annotations: map[string]string{
 				esv1.KeystoreHashAnnotation:   "old-hash",
 				esv1.KeystoreDigestAnnotation: "old-digest",
@@ -142,7 +124,7 @@ func TestReconcileKeystoreSecret_Update(t *testing.T) {
 
 	k8sClient := fake.NewClientBuilder().
 		WithScheme(scheme).
-		WithObjects(owner, existingSecret).
+		WithObjects(existingSecret).
 		Build()
 
 	ctx := addDiscardLoggerToContext(context.Background())
@@ -150,12 +132,12 @@ func TestReconcileKeystoreSecret_Update(t *testing.T) {
 	settingsHash := "new-hash"
 	digest := computeDigest(keystoreData)
 
-	err := reconcileKeystoreSecret(ctx, k8sClient, "test-secret", "default", keystoreData, settingsHash, digest, owner)
+	err := reconcileStagingSecret(ctx, k8sClient, "test-secret", "elastic-system", keystoreData, settingsHash, digest)
 	require.NoError(t, err)
 
 	// Verify secret was updated
 	var secret corev1.Secret
-	err = k8sClient.Get(ctx, types.NamespacedName{Namespace: "default", Name: "test-secret"}, &secret)
+	err = k8sClient.Get(ctx, types.NamespacedName{Namespace: "elastic-system", Name: "test-secret"}, &secret)
 	require.NoError(t, err)
 
 	assert.Equal(t, keystoreData, secret.Data[KeystoreFileName])
@@ -165,7 +147,7 @@ func TestReconcileKeystoreSecret_Update(t *testing.T) {
 
 func TestRun_FileNotFound(t *testing.T) {
 	ctx := context.Background()
-	err := run(ctx, "/nonexistent/path/to/keystore", "secret", "namespace", "hash", "owner")
+	err := run(ctx, "/nonexistent/path/to/keystore", "secret", "namespace", "hash")
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "failed to read keystore file")
 }
@@ -177,7 +159,7 @@ func TestRun_EmptyFile(t *testing.T) {
 	require.NoError(t, os.WriteFile(emptyFile, []byte{}, 0644))
 
 	ctx := context.Background()
-	err := run(ctx, emptyFile, "secret", "namespace", "hash", "owner")
+	err := run(ctx, emptyFile, "secret", "namespace", "hash")
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "keystore file is empty")
 }

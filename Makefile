@@ -46,7 +46,7 @@ REGISTRY_NAMESPACE  ?= eck-dev
 
 export IMAGE_NAME   ?= $(REGISTRY)/$(REGISTRY_NAMESPACE)/eck-operator$(IMAGE_SUFFIX)
 export IMAGE_TAG    ?= $(VERSION)-$(SHA1)
-OPERATOR_IMAGE      ?= $(IMAGE_NAME):$(IMAGE_TAG)
+OPERATOR_IMAGE           ?= $(IMAGE_NAME):$(IMAGE_TAG)
 
 print-%:
 	@ echo $($*)
@@ -187,7 +187,14 @@ install-crds: generate-manifests
 
 # Run locally against the configured Kubernetes cluster, with port-forwarding enabled so that
 # the operator can reach services running in the cluster through k8s port-forward feature
-run: install-crds go-run
+run: install-crds install-keystore-uploader-rbac go-run
+
+# Install RBAC for keystore uploader jobs (used in local dev mode)
+# Generated from Helm chart to avoid duplication
+install-keystore-uploader-rbac:
+	helm template eck-operator deploy/eck-operator \
+		--namespace=default \
+		--show-only templates/keystore-uploader-rbac.yaml | kubectl apply -f -
 
 go-run:
 	@ # Run the operator locally with debug logs and operator image set to latest
