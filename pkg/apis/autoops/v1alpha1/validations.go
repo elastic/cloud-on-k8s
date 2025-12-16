@@ -24,8 +24,8 @@ func checkSupportedVersion(policy *AutoOpsAgentPolicy) field.ErrorList {
 }
 
 func checkConfigSecretName(policy *AutoOpsAgentPolicy) field.ErrorList {
-	if policy.Spec.ConfigRef.SecretName == "" {
-		return field.ErrorList{field.Required(field.NewPath("spec").Child("config").Child("secretName"), "Config secret name must be specified")}
+	if policy.Spec.AutoOpsRef.SecretName == "" {
+		return field.ErrorList{field.Required(field.NewPath("spec").Child("autoopsref").Child("secretName"), "AutoOpsRef secret name must be specified")}
 	}
 	return nil
 }
