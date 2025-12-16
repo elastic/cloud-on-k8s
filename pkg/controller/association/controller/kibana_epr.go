@@ -6,6 +6,7 @@ package controller
 
 import (
 	"context"
+	"errors"
 
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -16,7 +17,6 @@ import (
 	eprv1alpha1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/packageregistry/v1alpha1"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/association"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/operator"
-	ver "github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/version"
 	eprctl "github.com/elastic/cloud-on-k8s/v3/pkg/controller/packageregistry"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/k8s"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/rbac"
@@ -63,36 +63,13 @@ func getEPRExternalURL(c k8s.Client, assoc commonv1.Association) (string, error)
 	return association.ServiceURL(c, nsn, epr.Spec.HTTP.Protocol(), "")
 }
 
-type eprVersionResponse struct {
-	Number string `json:"number"`
-}
-
-func (eprVersionResponse) IsServerless() bool {
-	return false
-}
-
-func (evr eprVersionResponse) GetVersion() (string, error) {
-	if _, err := ver.Parse(evr.Number); err != nil {
-		return "", err
-	}
-	return evr.Number, nil
-}
-
 // referencedEPRStatusVersion returns the currently running version of Package Registry
 // reported in its status.
 func referencedEPRStatusVersion(c k8s.Client, eprAssociation commonv1.Association) (string, bool, error) {
 	eprRef := eprAssociation.AssociationRef()
 	if eprRef.IsExternal() {
-		info, err := association.GetUnmanagedAssociationConnectionInfoFromSecret(c, eprAssociation)
-		if err != nil {
-			return "", false, err
-		}
-		eprVersionResponse := &eprVersionResponse{}
-		ver, isServerless, err := info.Version("/api/epr/v1/internal/version", eprVersionResponse)
-		if err != nil {
-			return "", false, err
-		}
-		return ver, isServerless, nil
+		// this should not happen (look at config/crds/v1/patches/kibana-packageregistry-patch.yaml and pkg/apis/kibana/v1/webhook.go)
+		return "", false, errors.New("external Elastic Package Registry is not supported")
 	}
 
 	var epr eprv1alpha1.PackageRegistry

@@ -1,0 +1,5 @@
+# Remove the secretName field from packageRegistryRef in the Kibana CRD.
+# The secretName field is used to reference external Elastic resources not managed by ECK,
+# but for Elastic Package Registry (EPR) we only support ECK-managed instances running in the same cluster.
+- op: remove
+  path: /spec/versions/0/schema/openAPIV3Schema/properties/spec/properties/packageRegistryRef/properties/secretName
