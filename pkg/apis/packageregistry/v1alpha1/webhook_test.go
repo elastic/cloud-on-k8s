@@ -82,7 +82,7 @@ func TestWebhook(t *testing.T) {
 				return serialize(t, epr)
 			},
 			Check: test.ValidationWebhookFailed(
-				`spec.version: Invalid value: "7.14.0": Unsupported version: version 7.14.0 is lower than the lowest supported version of 7.15.1`,
+				`spec.version: Invalid value: "7.14.0": Unsupported version: version 7.14.0 is lower than the lowest supported version of 7.17.8`,
 			),
 		},
 		{
