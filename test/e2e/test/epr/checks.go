@@ -24,7 +24,6 @@ func CheckSecrets(b Builder, k *test.K8sClient) test.Step {
 				Name: eprName + "-epr-config",
 				Keys: []string{"config.yml"},
 				Labels: map[string]string{
-					"eck.k8s.elastic.co/credentials":      "true",
 					"packageregistry.k8s.elastic.co/name": eprName,
 				},
 			},
