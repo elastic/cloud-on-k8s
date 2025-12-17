@@ -17,10 +17,10 @@ tests:
           path: spec.kibanaRef.name
           value: eck-kibana
       - equal:
-          path: spec.config.[filebeat.inputs][0].type
+          path: spec.config["filebeat.inputs"][0].type
           value: filestream
       - equal:
-          path: spec.config.[filebeat.inputs][0].paths
+          path: spec.config["filebeat.inputs"][0].paths
           value:
           - /var/log/containers/*.log
       - equal:

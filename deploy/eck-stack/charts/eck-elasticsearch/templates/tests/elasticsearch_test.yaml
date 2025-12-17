@@ -222,9 +222,8 @@ tests:
   - it: should render no podDisruptionBudget by default
     set:
     asserts:
-      - equal:
+      - notExists:
           path: spec.podDisruptionBudget
-          value: null
   - it: should render podDisruptionBudget properly
     set:
       podDisruptionBudget:

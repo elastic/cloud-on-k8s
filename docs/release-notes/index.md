@@ -44,6 +44,7 @@ ECK now supports configuring the length of the generated password for the admini
 ### Miscellaneous  [elastic-cloud-kubernetes-320-miscellaneous]
 
 :::{dropdown} Updated dependencies
+- Go 1.24.5 => 1.25.2
 - github.com/gkampitakis/go-snaps v0.5.13 => v0.5.15
 - github.com/hashicorp/vault/api v1.20.0 => v1.22.0
 - github.com/KimMachineGun/automemlimit => v0.7.4

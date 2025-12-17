@@ -51,7 +51,7 @@ kind: Elasticsearch
 metadata:
   name: elasticsearch-sample
 spec:
-  version: 9.2.0
+  version: 9.2.2
   nodeSets:
     - name: master
       count: 3

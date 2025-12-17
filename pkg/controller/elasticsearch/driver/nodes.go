@@ -96,13 +96,11 @@ func (d *defaultDriver) reconcileNodeSpecs(
 		}
 	}
 
-	esState := NewMemoizingESState(ctx, esClient)
 	// Phase 1: apply expected StatefulSets resources and scale up.
 	upscaleCtx := upscaleCtx{
 		parentCtx:            ctx,
 		k8sClient:            d.K8sClient(),
 		es:                   d.ES,
-		esState:              esState,
 		expectations:         d.Expectations,
 		validateStorageClass: d.OperatorParameters.ValidateStorageClass,
 		upscaleReporter:      reconcileState.UpscaleReporter,
@@ -187,6 +185,7 @@ func (d *defaultDriver) reconcileNodeSpecs(
 	if requeue {
 		results.WithReconciliationState(defaultRequeue.WithReason("Cannot clear voting exclusions yet"))
 	}
+	esState := NewMemoizingESState(ctx, esClient)
 	// shutdown logic is dependent on Elasticsearch version
 	nodeShutdowns, err := newShutdownInterface(ctx, d.ES, esClient, esState, reconcileState.StatusReporter)
 	if err != nil {
