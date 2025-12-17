@@ -30,6 +30,6 @@ dependencies:
   - name: eck-enterprise-search
     condition: eck-enterprise-search.enabled
     version: "0.18.0-SNAPSHOT"
-  - name: eck-autoops
-    condition: eck-autoops.enabled
+  - name: eck-autoops-agent-policy
+    condition: eck-autoops-agent-policy.enabled
     version: "0.18.0-SNAPSHOT"
