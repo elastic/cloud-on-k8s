@@ -114,18 +114,12 @@ func (r *AgentPolicyReconciler) createAPIKey(
 	log.Info("Creating API key", "key", apiKeyName)
 
 	metadata := newMetadataFor(&policy, &es, expectedHash)
-	// Unfortunately we need to convert the metadata to a map[string]any to satisfy the APIKeyCreateRequest type.
-	// We return map[string]string because this is also used when storing the API key in a secret.
-	metadataAny := make(map[string]any, len(metadata))
-	for k, v := range metadata {
-		metadataAny[k] = v
-	}
 
 	apiKeyResp, err := esClient.CreateAPIKey(ctx, esclient.APIKeyCreateRequest{
 		Name: apiKeyName,
 		APIKeyUpdateRequest: esclient.APIKeyUpdateRequest{
 			RoleDescriptors: apiKeySpec.roleDescriptors,
-			Metadata:        metadataAny,
+			Metadata:        metadata,
 		},
 	})
 	if err != nil {
@@ -304,8 +298,8 @@ func apiKeyNameFor(policy autoopsv1alpha1.AutoOpsAgentPolicy, es esv1.Elasticsea
 }
 
 // newMetadataFor returns the metadata to be set in the Elasticsearch API key.
-func newMetadataFor(policy *autoopsv1alpha1.AutoOpsAgentPolicy, es *esv1.Elasticsearch, expectedHash string) map[string]string {
-	return map[string]string{
+func newMetadataFor(policy *autoopsv1alpha1.AutoOpsAgentPolicy, es *esv1.Elasticsearch, expectedHash string) map[string]any {
+	return map[string]any{
 		commonv1.TypeLabelName:              autoOpsAgentType,
 		commonapikey.MetadataKeyConfigHash:  expectedHash,
 		commonapikey.MetadataKeyESName:      es.Name,

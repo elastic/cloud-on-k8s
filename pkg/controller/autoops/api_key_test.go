@@ -23,7 +23,7 @@ func Test_newMetadataFor(t *testing.T) {
 		policy       *autoopsv1alpha1.AutoOpsAgentPolicy
 		es           *esv1.Elasticsearch
 		expectedHash string
-		want         map[string]string
+		want         map[string]any
 	}{
 		{
 			name: "happy path",
@@ -40,7 +40,7 @@ func Test_newMetadataFor(t *testing.T) {
 				},
 			},
 			expectedHash: "hash123",
-			want: map[string]string{
+			want: map[string]any{
 				commonapikey.MetadataKeyConfigHash:  "hash123",
 				commonapikey.MetadataKeyESName:      "es-1",
 				commonapikey.MetadataKeyESNamespace: "ns-2",
