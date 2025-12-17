@@ -199,6 +199,18 @@ updating docs/operating-eck/eck-permissions.asciidoc file.
   - patch
   - delete
 - apiGroups:
+  - batch
+  resources:
+  - jobs
+  verbs:
+  - get
+  - list
+  - watch
+  - create
+  - update
+  - patch
+  - delete
+- apiGroups:
   - policy
   resources:
   - poddisruptionbudgets
