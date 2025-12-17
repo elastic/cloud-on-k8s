@@ -31,7 +31,7 @@ const (
 )
 
 // reconcileAutoOpsESCASecret reconciles the Secret containing the CA certificate
-// for a specific Elasticsearch cluster, copying it from the ES instance's http-ca-internal secret.
+// for a specific Elasticsearch cluster, copying it from the ES instance's http-certs-public secret.
 func (r *AgentPolicyReconciler) reconcileAutoOpsESCASecret(
 	ctx context.Context,
 	policy autoopsv1alpha1.AutoOpsAgentPolicy,
@@ -47,20 +47,20 @@ func (r *AgentPolicyReconciler) reconcileAutoOpsESCASecret(
 
 	sourceSecretKey := types.NamespacedName{
 		Namespace: es.Namespace,
-		Name:      certificates.CAInternalSecretName(esv1.ESNamer, es.Name, certificates.HTTPCAType),
+		Name:      certificates.PublicCertsSecretName(esv1.ESNamer, es.Name),
 	}
 	var sourceSecret corev1.Secret
 	if err := r.Client.Get(ctx, sourceSecretKey, &sourceSecret); err != nil {
 		if apierrors.IsNotFound(err) {
-			log.V(1).Info("ES http-ca-internal secret not found, skipping", "es_namespace", es.Namespace, "es_name", es.Name)
+			log.V(1).Info("ES http-certs-public secret not found, skipping", "es_namespace", es.Namespace, "es_name", es.Name)
 			return nil
 		}
-		return fmt.Errorf("while retrieving http-ca-internal secret for ES cluster %s/%s: %w", es.Namespace, es.Name, err)
+		return fmt.Errorf("while retrieving http-certs-public secret for ES cluster %s/%s: %w", es.Namespace, es.Name, err)
 	}
 
 	caCert, ok := sourceSecret.Data[certificates.CertFileName]
 	if !ok || len(caCert) == 0 {
-		log.V(1).Info("tls.crt not found in http-ca-internal secret, skipping", "es_namespace", es.Namespace, "es_name", es.Name)
+		log.V(1).Info("tls.crt not found in http-certs-public secret, skipping", "es_namespace", es.Namespace, "es_name", es.Name)
 		return nil
 	}
 

@@ -96,13 +96,13 @@ func (r *AgentPolicyReconciler) internalReconcile(
 
 	// Clean up resources that no longer match the Policy's selector
 	if err := r.cleanupOrphanedResourcesForPolicy(ctx, log, policy, esList.Items); err != nil {
-		log.Error(err, "while cleaning up orphaned resources", "policy_namespace", policy.Namespace, "policy_name", policy.Name)
+		log.Error(err, "while cleaning up orphaned resources")
 		state.UpdateWithPhase(autoopsv1alpha1.ErrorPhase)
 		results.WithError(err)
 	}
 
 	if len(esList.Items) == 0 {
-		log.Info("No Elasticsearch resources found for the AutoOpsAgentPolicy", "policy_namespace", policy.Namespace, "policy_name", policy.Name)
+		log.Info("No Elasticsearch resources found for the AutoOpsAgentPolicy")
 		state.UpdateWithPhase(autoopsv1alpha1.NoResourcesPhase).
 			UpdateResources(len(esList.Items))
 		return results

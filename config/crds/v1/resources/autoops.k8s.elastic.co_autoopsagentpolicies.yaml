@@ -14,7 +14,7 @@ spec:
     listKind: AutoOpsAgentPolicyList
     plural: autoopsagentpolicies
     shortNames:
-    - autoops
+    - aop
     singular: autoopsagentpolicy
   scope: Namespaced
   versions:

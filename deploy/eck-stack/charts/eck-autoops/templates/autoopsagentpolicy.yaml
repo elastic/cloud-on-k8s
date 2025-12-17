@@ -9,7 +9,7 @@ metadata:
     {{- toYaml . | nindent 4 }}
     {{- end }}
   annotations:
-    eck.k8s.elastic.co/license: basic
+    eck.k8s.elastic.co/license: enterprise
     {{- with .Values.annotations }}
     {{- toYaml . | nindent 4 }}
     {{- end }}
