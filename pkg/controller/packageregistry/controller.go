@@ -35,6 +35,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/reconciler"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/tracing"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/watches"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/packageregistry/label"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/k8s"
 	ulog "github.com/elastic/cloud-on-k8s/v3/pkg/utils/log"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/maps"
@@ -81,7 +82,7 @@ func addWatches(mgr manager.Manager, c controller.Controller, r *ReconcilePackag
 
 	// Watch Pods, to ensure `status.version` and version upgrades are correctly reconciled on any change.
 	// Watching Deployments only may lead to missing some events.
-	if err := watches.WatchPods(mgr, c, NameLabelName); err != nil {
+	if err := watches.WatchPods(mgr, c, label.NameLabelName); err != nil {
 		return err
 	}
 
@@ -339,11 +340,11 @@ func (r *ReconcilePackageRegistry) deploymentParams(epr eprv1alpha1.PackageRegis
 
 func (r *ReconcilePackageRegistry) getStatus(ctx context.Context, epr eprv1alpha1.PackageRegistry, deploy appsv1.Deployment) (eprv1alpha1.PackageRegistryStatus, error) {
 	status := newStatus(epr)
-	pods, err := k8s.PodsMatchingLabels(r.K8sClient(), epr.Namespace, map[string]string{NameLabelName: epr.Name})
+	pods, err := k8s.PodsMatchingLabels(r.K8sClient(), epr.Namespace, map[string]string{label.NameLabelName: epr.Name})
 	if err != nil {
 		return status, err
 	}
-	deploymentStatus, err := common.DeploymentStatus(ctx, epr.Status.DeploymentStatus, deploy, pods, VersionLabelName)
+	deploymentStatus, err := common.DeploymentStatus(ctx, epr.Status.DeploymentStatus, deploy, pods, label.VersionLabelName)
 	if err != nil {
 		return status, err
 	}
@@ -375,4 +376,10 @@ func (r *ReconcilePackageRegistry) onDelete(ctx context.Context, obj types.Names
 	// same for the configRef secret
 	r.dynamicWatches.Secrets.RemoveHandlerForKey(common.ConfigRefWatchName(obj))
 	return reconciler.GarbageCollectSoftOwnedSecrets(ctx, r.Client, obj, eprv1alpha1.Kind)
+}
+
+func versionLabels(epr eprv1alpha1.PackageRegistry) map[string]string {
+	return map[string]string{
+		label.VersionLabelName: epr.Spec.Version,
+	}
 }

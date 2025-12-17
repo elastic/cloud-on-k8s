@@ -6,12 +6,13 @@ package v1alpha1
 
 import (
 	commonv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/common/v1"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/packageregistry/label"
 )
 
 // GetIdentityLabels will return the common Elastic assigned labels for the Elastic Package Registry.
 func (m *PackageRegistry) GetIdentityLabels() map[string]string {
 	return map[string]string{
-		commonv1.TypeLabelName:                "package-registry",
-		"packageregistry.k8s.elastic.co/name": m.Name,
+		commonv1.TypeLabelName: label.Type,
+		label.NameLabelName:    m.Name,
 	}
 }

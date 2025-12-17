@@ -18,6 +18,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/association"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/operator"
 	eprctl "github.com/elastic/cloud-on-k8s/v3/pkg/controller/packageregistry"
+	eprlabels "github.com/elastic/cloud-on-k8s/v3/pkg/controller/packageregistry/label"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/k8s"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/rbac"
 )
@@ -40,8 +41,8 @@ func AddKibanaEPR(mgr manager.Manager, accessReviewer rbac.AccessReviewer, param
 			}
 		},
 		AssociationConfAnnotationNameBase:     commonv1.EPRConfigAnnotationNameBase,
-		AssociationResourceNameLabelName:      eprctl.NameLabelName,
-		AssociationResourceNamespaceLabelName: eprctl.PackageRegistryNamespaceLabelName,
+		AssociationResourceNameLabelName:      eprlabels.NameLabelName,
+		AssociationResourceNamespaceLabelName: eprlabels.PackageRegistryNamespaceLabelName,
 		ElasticsearchUserCreation:             nil, // no dedicated ES user required for Kibana->EPR connection
 	})
 }
