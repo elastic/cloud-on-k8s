@@ -37,11 +37,11 @@ func (r *AgentPolicyReconciler) reconcileAutoOpsESCASecret(
 	policy autoopsv1alpha1.AutoOpsAgentPolicy,
 	es esv1.Elasticsearch,
 ) error {
-	log := ulog.FromContext(ctx)
-	log.V(1).Info("Reconciling AutoOps ES CA secret", "es_namespace", es.Namespace, "es_name", es.Name)
+	log := ulog.FromContext(ctx).WithValues("es_namespace", es.Namespace, "es_name", es.Name)
+	log.V(1).Info("Reconciling AutoOps ES CA secret")
 
 	if es.Status.Phase != esv1.ElasticsearchReadyPhase {
-		log.V(1).Info("Skipping ES cluster that is not ready", "es_namespace", es.Namespace, "es_name", es.Name)
+		log.V(1).Info("Skipping ES cluster that is not ready")
 		return nil
 	}
 
@@ -52,7 +52,7 @@ func (r *AgentPolicyReconciler) reconcileAutoOpsESCASecret(
 	var sourceSecret corev1.Secret
 	if err := r.Client.Get(ctx, sourceSecretKey, &sourceSecret); err != nil {
 		if apierrors.IsNotFound(err) {
-			log.V(1).Info("ES http-certs-public secret not found, skipping", "es_namespace", es.Namespace, "es_name", es.Name)
+			log.V(1).Info("ES http-certs-public secret not found, skipping")
 			return nil
 		}
 		return fmt.Errorf("while retrieving http-certs-public secret for ES cluster %s/%s: %w", es.Namespace, es.Name, err)
@@ -60,7 +60,7 @@ func (r *AgentPolicyReconciler) reconcileAutoOpsESCASecret(
 
 	caCert, ok := sourceSecret.Data[certificates.CertFileName]
 	if !ok || len(caCert) == 0 {
-		log.V(1).Info("tls.crt not found in http-certs-public secret, skipping", "es_namespace", es.Namespace, "es_name", es.Name)
+		log.V(1).Info("tls.crt not found in http-certs-public secret, skipping")
 		return nil
 	}
 

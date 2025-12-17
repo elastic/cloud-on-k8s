@@ -31,11 +31,9 @@ func (b Builder) SkipTest() bool {
 
 func NewBuilder(name string) Builder {
 	suffix := rand.String(4)
-	// This will place the policy in a separate namespace from the Elasticsearch instance
-	namespace := test.Ctx().ManagedNamespace(1)
 	meta := metav1.ObjectMeta{
 		Name:      name,
-		Namespace: namespace,
+		Namespace: test.Ctx().ManagedNamespace(0),
 		Labels:    map[string]string{run.TestNameLabel: name},
 	}
 
@@ -45,7 +43,7 @@ func NewBuilder(name string) Builder {
 	configSecret := corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      configSecretName,
-			Namespace: namespace,
+			Namespace: test.Ctx().ManagedNamespace(0),
 		},
 		StringData: map[string]string{
 			"cloud-connected-mode-api-key": "test-api-key",

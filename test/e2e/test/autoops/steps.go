@@ -287,6 +287,16 @@ func (b Builder) DeletionTestSteps(k *test.K8sClient) test.StepList {
 				}
 				return err
 			}),
+		}).
+		WithStep(test.Step{
+			Name: "Deleting configuration secret should succeed",
+			Test: test.Eventually(func() error {
+				err := k.DeleteSecrets(b.ConfigSecret)
+				if err != nil && !apierrors.IsNotFound(err) {
+					return err
+				}
+				return nil
+			}),
 		})
 }
 
