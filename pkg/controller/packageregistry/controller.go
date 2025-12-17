@@ -217,7 +217,7 @@ func (r *ReconcilePackageRegistry) doReconcile(ctx context.Context, epr eprv1alp
 	}
 
 	// build a hash of various inputs to rotate Pods on any change
-	configHash, err := buildConfigHash(r.K8sClient(), epr, configSecret)
+	configHash, err := buildConfigHash(ctx, r.K8sClient(), epr, configSecret)
 	if err != nil {
 		return results.WithError(fmt.Errorf("build config hash: %w", err)), status
 	}
@@ -275,7 +275,7 @@ func NewService(epr eprv1alpha1.PackageRegistry, meta metadata.Metadata) *corev1
 	return defaults.SetServiceDefaults(&svc, meta, selector, ports)
 }
 
-func buildConfigHash(c k8s.Client, epr eprv1alpha1.PackageRegistry, configSecret corev1.Secret) (string, error) {
+func buildConfigHash(ctx context.Context, c k8s.Client, epr eprv1alpha1.PackageRegistry, configSecret corev1.Secret) (string, error) {
 	// build a hash of various settings to rotate the Pod on any change
 	configHash := fnv.New32a()
 
@@ -286,7 +286,7 @@ func buildConfigHash(c k8s.Client, epr eprv1alpha1.PackageRegistry, configSecret
 	if epr.Spec.HTTP.TLS.Enabled() {
 		var tlsCertSecret corev1.Secret
 		tlsSecretKey := types.NamespacedName{Namespace: epr.Namespace, Name: certificates.InternalCertsSecretName(eprv1alpha1.Namer, epr.Name)}
-		if err := c.Get(context.Background(), tlsSecretKey, &tlsCertSecret); err != nil {
+		if err := c.Get(ctx, tlsSecretKey, &tlsCertSecret); err != nil {
 			return "", err
 		}
 		if certPem, ok := tlsCertSecret.Data[certificates.CertFileName]; ok {

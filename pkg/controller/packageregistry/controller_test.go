@@ -289,7 +289,7 @@ func Test_buildConfigHash(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := buildConfigHash(tt.args.c, tt.args.epr, tt.args.configSecret)
+			got, err := buildConfigHash(t.Context(), tt.args.c, tt.args.epr, tt.args.configSecret)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("buildConfigHash() error = %v, wantErr %v", err, tt.wantErr)
 				return
