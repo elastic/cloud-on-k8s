@@ -248,6 +248,9 @@ func (r *AgentPolicyReconciler) onDelete(ctx context.Context, obj types.Namespac
 
 	// Cleanup API keys for each ES cluster referenced by the secrets
 	for _, secret := range secrets.Items {
+		// Remove dynamic watch registered for this secret (CA or API key)
+		r.dynamicWatches.Secrets.RemoveHandlerForKey(secret.Name)
+
 		esName, hasESName := secret.Labels["elasticsearch.k8s.elastic.co/name"]
 		esNamespace, hasESNamespace := secret.Labels["elasticsearch.k8s.elastic.co/namespace"]
 		if !hasESName || !hasESNamespace {
