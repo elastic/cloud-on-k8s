@@ -134,7 +134,8 @@ func ReconcileJob(ctx context.Context, params Params) (done bool, err error) {
 	es := params.ES
 
 	// Names for resources in the operator namespace (staging area)
-	stagingSecretName := esv1.StagingKeystoreSecretName(es.Namespace, es.Name)
+	stagingKeystoreSecretName := esv1.StagingKeystoreSecretName(es.Namespace, es.Name)
+	stagingSecureSettingsName := esv1.StagingSecureSettingsSecretName(es.Namespace, es.Name)
 	jobName := esv1.KeystoreJobName(es.Namespace, es.Name)
 
 	// Name for the final secret in the ES namespace
@@ -154,23 +155,24 @@ func ReconcileJob(ctx context.Context, params Params) (done bool, err error) {
 		existingHash := finalSecret.Annotations[esv1.KeystoreHashAnnotation]
 		if existingHash == secureSettingsHash {
 			log.V(1).Info("Keystore secret already up to date", "hash", existingHash)
-			// Clean up staging secret if it exists
-			_ = deleteStagingSecret(ctx, params.Client, params.OperatorNamespace, stagingSecretName)
+			// Clean up staging secrets if they exist
+			_ = deleteStagingSecret(ctx, params.Client, params.OperatorNamespace, stagingKeystoreSecretName)
+			_ = deleteStagingSecret(ctx, params.Client, params.OperatorNamespace, stagingSecureSettingsName)
 			return true, nil
 		}
 		log.Info("Keystore secret hash mismatch, need to recreate", "expected", secureSettingsHash, "actual", existingHash)
 	}
 
-	// Check if staging Secret exists (job completed)
+	// Check if staging keystore Secret exists (job completed)
 	var stagingSecret corev1.Secret
-	err = params.Client.Get(ctx, types.NamespacedName{Namespace: params.OperatorNamespace, Name: stagingSecretName}, &stagingSecret)
+	err = params.Client.Get(ctx, types.NamespacedName{Namespace: params.OperatorNamespace, Name: stagingKeystoreSecretName}, &stagingSecret)
 	if err != nil && !apierrors.IsNotFound(err) {
 		return false, err
 	}
 
 	// Handle existing staging secret
 	if err == nil {
-		done, err := handleStagingSecret(ctx, params, &stagingSecret, finalSecretName, secureSettingsHash)
+		done, err := handleStagingSecret(ctx, params, &stagingSecret, finalSecretName, secureSettingsHash, stagingSecureSettingsName)
 		if done || err != nil {
 			return done, err
 		}
@@ -191,8 +193,13 @@ func ReconcileJob(ctx context.Context, params Params) (done bool, err error) {
 		return false, nil
 	}
 
+	// Copy secure settings to operator namespace so the job can mount them
+	if err := copySecureSettingsToOperatorNamespace(ctx, params, stagingSecureSettingsName); err != nil {
+		return false, err
+	}
+
 	// Create a new Job in the operator namespace
-	job := buildJob(params, secureSettingsHash)
+	job := buildJob(params, secureSettingsHash, stagingSecureSettingsName)
 	log.Info("Creating keystore job", "job", jobName, "namespace", params.OperatorNamespace, "hash", secureSettingsHash)
 	if err := params.Client.Create(ctx, &job); err != nil {
 		if apierrors.IsAlreadyExists(err) {
@@ -269,11 +276,69 @@ func deleteStagingSecret(ctx context.Context, client k8s.Client, namespace, name
 	return err
 }
 
+// copySecureSettingsToOperatorNamespace copies the aggregated secure settings secret
+// from the ES namespace to the operator namespace so it can be mounted by the keystore job.
+func copySecureSettingsToOperatorNamespace(ctx context.Context, params Params, stagingName string) error {
+	log := ulog.FromContext(ctx)
+
+	// Get the original secure settings secret from ES namespace
+	originalSecret := params.KeystoreResources.Volume.Secret
+	if originalSecret == nil {
+		return nil // No secure settings to copy
+	}
+
+	var sourceSecret corev1.Secret
+	err := params.Client.Get(ctx, types.NamespacedName{
+		Namespace: params.ES.Namespace,
+		Name:      originalSecret.SecretName,
+	}, &sourceSecret)
+	if err != nil {
+		return err
+	}
+
+	// Create a copy in the operator namespace
+	stagingSecret := corev1.Secret{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      stagingName,
+			Namespace: params.OperatorNamespace,
+			Labels: map[string]string{
+				"app.kubernetes.io/name":       "eck-keystore-job",
+				"app.kubernetes.io/managed-by": "eck-operator",
+			},
+			Annotations: map[string]string{
+				esv1.KeystoreHashAnnotation: params.KeystoreResources.Hash,
+			},
+		},
+		Data: sourceSecret.Data,
+	}
+
+	// Check if it already exists
+	var existing corev1.Secret
+	err = params.Client.Get(ctx, types.NamespacedName{Namespace: params.OperatorNamespace, Name: stagingName}, &existing)
+	if err != nil {
+		if apierrors.IsNotFound(err) {
+			log.V(1).Info("Creating staging secure settings secret", "namespace", params.OperatorNamespace, "secret", stagingName)
+			return params.Client.Create(ctx, &stagingSecret)
+		}
+		return err
+	}
+
+	// Update if hash differs
+	if existing.Annotations[esv1.KeystoreHashAnnotation] != params.KeystoreResources.Hash {
+		log.V(1).Info("Updating staging secure settings secret", "namespace", params.OperatorNamespace, "secret", stagingName)
+		existing.Data = stagingSecret.Data
+		existing.Annotations = stagingSecret.Annotations
+		return params.Client.Update(ctx, &existing)
+	}
+
+	return nil
+}
+
 // handleStagingSecret handles the case where a staging secret exists in the operator namespace.
 // Returns (true, nil) if the secret was successfully copied to the ES namespace.
 // Returns (false, nil) if the secret was deleted due to hash mismatch.
 // Returns (false, err) on error.
-func handleStagingSecret(ctx context.Context, params Params, stagingSecret *corev1.Secret, finalSecretName, secureSettingsHash string) (bool, error) {
+func handleStagingSecret(ctx context.Context, params Params, stagingSecret *corev1.Secret, finalSecretName, secureSettingsHash, stagingSecureSettingsName string) (bool, error) {
 	log := ulog.FromContext(ctx)
 	stagingSecretName := stagingSecret.Name
 
@@ -291,9 +356,13 @@ func handleStagingSecret(ctx context.Context, params Params, stagingSecret *core
 	if err := copyStagingSecretToESNamespace(ctx, params, stagingSecret, finalSecretName); err != nil {
 		return false, err
 	}
-	// Delete staging secret
+	// Delete staging secrets (both keystore and secure settings)
 	if err := deleteStagingSecret(ctx, params.Client, params.OperatorNamespace, stagingSecretName); err != nil {
-		log.Error(err, "Failed to delete staging secret", "secret", stagingSecretName)
+		log.Error(err, "Failed to delete staging keystore secret", "secret", stagingSecretName)
+		// Don't fail - the secret was copied successfully
+	}
+	if err := deleteStagingSecret(ctx, params.Client, params.OperatorNamespace, stagingSecureSettingsName); err != nil {
+		log.Error(err, "Failed to delete staging secure settings secret", "secret", stagingSecureSettingsName)
 		// Don't fail - the secret was copied successfully
 	}
 	return true, nil
@@ -339,12 +408,13 @@ func handleExistingJob(ctx context.Context, params Params, existingJob *batchv1.
 
 // buildJob creates the Job spec for creating the keystore file.
 // The job runs in the operator namespace and creates a staging Secret there.
-func buildJob(params Params, secureSettingsHash string) batchv1.Job {
+// stagingSecureSettingsName is the name of the copied secure settings secret in the operator namespace.
+func buildJob(params Params, secureSettingsHash, stagingSecureSettingsName string) batchv1.Job {
 	es := params.ES
 
 	// Job and staging secret are in the operator namespace, names include ES namespace to avoid collisions
 	jobName := esv1.KeystoreJobName(es.Namespace, es.Name)
-	stagingSecretName := esv1.StagingKeystoreSecretName(es.Namespace, es.Name)
+	stagingKeystoreSecretName := esv1.StagingKeystoreSecretName(es.Namespace, es.Name)
 
 	// Labels for the job - don't use ES labels like cluster-name to avoid
 	// other controllers (e.g. license controller) picking up job pods.
@@ -358,10 +428,10 @@ func buildJob(params Params, secureSettingsHash string) batchv1.Job {
 	}
 
 	// Build init container using the existing keystore init container logic
-	initContainer := buildInitContainer(params, secureSettingsHash)
+	initContainer := buildInitContainer(params)
 
 	// Build main container that uploads the keystore to a staging Secret in operator namespace
-	mainContainer := buildMainContainer(params, stagingSecretName, secureSettingsHash)
+	mainContainer := buildMainContainer(params, stagingKeystoreSecretName, secureSettingsHash)
 
 	return batchv1.Job{
 		ObjectMeta: metav1.ObjectMeta{
@@ -390,8 +460,15 @@ func buildJob(params Params, secureSettingsHash string) batchv1.Job {
 						mainContainer,
 					},
 					Volumes: []corev1.Volume{
-						// SecureSettings volume from user-provided secrets (from keystore.Resources)
-						params.KeystoreResources.Volume,
+						// SecureSettings volume - use the staging copy in the operator namespace
+						{
+							Name: keystore.SecureSettingsVolumeName,
+							VolumeSource: corev1.VolumeSource{
+								Secret: &corev1.SecretVolumeSource{
+									SecretName: stagingSecureSettingsName,
+								},
+							},
+						},
 						// EmptyDir to hold the keystore file
 						{
 							Name: KeystoreVolumeName,
@@ -453,7 +530,7 @@ type keystoreScriptParams struct {
 var keystoreScriptTemplate = template.Must(template.New("keystore-init").Parse(keystoreInitScript))
 
 // buildInitContainer creates the init container that creates the keystore file.
-func buildInitContainer(params Params, _ string) corev1.Container {
+func buildInitContainer(params Params) corev1.Container {
 	privileged := false
 
 	// Generate the script with the correct paths
@@ -474,9 +551,9 @@ func buildInitContainer(params Params, _ string) corev1.Container {
 		},
 		Command: []string{"/usr/bin/env", "bash", "-c", script},
 		VolumeMounts: []corev1.VolumeMount{
-			// Access secure settings - mount the volume from keystore.Resources
+			// Access secure settings from the staging copy in operator namespace
 			{
-				Name:      params.KeystoreResources.Volume.Name,
+				Name:      keystore.SecureSettingsVolumeName,
 				MountPath: keystore.SecureSettingsVolumeMountPath,
 				ReadOnly:  true,
 			},
