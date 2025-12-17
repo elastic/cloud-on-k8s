@@ -68,7 +68,7 @@ func getEPRExternalURL(c k8s.Client, assoc commonv1.Association) (string, error)
 func referencedEPRStatusVersion(c k8s.Client, eprAssociation commonv1.Association) (string, bool, error) {
 	eprRef := eprAssociation.AssociationRef()
 	if eprRef.IsExternal() {
-		// this should not happen (look at config/crds/v1/patches/kibana-packageregistry-patch.yaml and pkg/apis/kibana/v1/webhook.go)
+		// this should not happen (look at pkg/apis/kibana/v1/webhook.go)
 		return "", false, errors.New("external Elastic Package Registry is not supported")
 	}
 
