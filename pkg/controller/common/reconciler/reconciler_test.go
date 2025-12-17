@@ -258,6 +258,44 @@ func TestReconcileResource(t *testing.T) {
 				require.Equal(t, "newOwner", serverState.OwnerReferences[0].Name)
 			},
 		},
+		{
+			name: "Add owner reference to existing resource without owner when NeedsUpdate returns false",
+			args: func() args {
+				return args{
+					Expected:   obj.DeepCopy(),
+					Reconciled: &corev1.Secret{},
+					Owner: &appsv1.Deployment{
+						ObjectMeta: metav1.ObjectMeta{
+							Namespace: objectKey.Namespace,
+							Name:      "test-owner",
+							UID:       "test-uid",
+						},
+					},
+					NeedsUpdate: func() bool {
+						return false
+					},
+					UpdateReconciled: noopModifier,
+				}
+			},
+			initialObjects: []client.Object{
+				&corev1.Secret{
+					ObjectMeta: metav1.ObjectMeta{
+						Namespace: objectKey.Namespace,
+						Name:      objectKey.Name,
+					},
+				},
+			},
+			argAssertion: func(args args) {
+				accessor, err := meta.Accessor(args.Reconciled)
+				require.NoError(t, err)
+				require.Len(t, accessor.GetOwnerReferences(), 1, "owner reference should be added")
+				require.Equal(t, "test-owner", accessor.GetOwnerReferences()[0].Name)
+			},
+			serverStateAssertion: func(serverState corev1.Secret) {
+				require.Len(t, serverState.OwnerReferences, 1, "owner reference should be added on server")
+				require.Equal(t, "test-owner", serverState.OwnerReferences[0].Name)
+			},
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
