@@ -68,14 +68,9 @@ func (r *AgentPolicyReconciler) reconcileAutoOpsESAPIKey(
 	}
 	defer esClient.Close()
 
-	autoOpsUserRole, ok := esuser.PredefinedRoles[esuser.AutoOpsUserRole].(esclient.Role)
-	if !ok {
-		return nil, fmt.Errorf("autoOpsUserRole could not be converted to esclient.Role")
-	}
-
 	apiKeySpec := apiKeySpec{
 		roleDescriptors: map[string]esclient.Role{
-			"eck_autoops_role": autoOpsUserRole,
+			"eck_autoops_role": esuser.AutoOpsUserRole,
 		},
 	}
 

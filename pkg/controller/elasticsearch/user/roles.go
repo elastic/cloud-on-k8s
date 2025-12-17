@@ -46,8 +46,8 @@ const (
 	// ApmAgentUserRole is the name of the role used by APMServer instances to connect to Kibana
 	ApmAgentUserRole = "eck_apm_agent_user_role"
 
-	// AutoOpsUserRole is the name of the role used by the AutoOps agent to connect to Elasticsearch
-	AutoOpsUserRole = "eck_autoops_user_role"
+	// AutoOpsUserRoleName is the name of the role used by the AutoOps agent to connect to Elasticsearch
+	AutoOpsUserRoleName = "eck_autoops_user_role"
 
 	// StackMonitoringMetricsUserRole is the name of the role used by Metricbeat and Filebeat to send metrics and log
 	// data to the monitoring Elasticsearch cluster when Stack Monitoring is enabled
@@ -108,6 +108,21 @@ var (
 			},
 		},
 	}
+
+	AutoOpsUserRole = esclient.Role{
+		Cluster: []string{"monitor", "read_ilm", "read_slm"},
+		Indices: []esclient.IndexRole{
+			{
+				Names:      []string{"*"},
+				Privileges: []string{"monitor", "view_index_metadata"},
+				AllowRestrictedIndices: func() *bool {
+					allow := true
+					return &allow
+				}(),
+			},
+		},
+	}
+
 	// PredefinedRoles to create for internal needs.
 	PredefinedRoles = RolesFileContent{
 		ProbeUserRole:     esclient.Role{Cluster: []string{"monitor"}},
@@ -194,19 +209,7 @@ var (
 				},
 			},
 		},
-		AutoOpsUserRole: esclient.Role{
-			Cluster: []string{"monitor", "read_ilm", "read_slm"},
-			Indices: []esclient.IndexRole{
-				{
-					Names:      []string{"*"},
-					Privileges: []string{"monitor", "view_index_metadata"},
-					AllowRestrictedIndices: func() *bool {
-						allow := true
-						return &allow
-					}(),
-				},
-			},
-		},
+		AutoOpsUserRoleName: AutoOpsUserRole,
 		// StackMonitoringUserRole is a dedicated role for Stack Monitoring with Metricbeat and Filebeat used for the
 		// user sending monitoring data.
 		// See: https://www.elastic.co/guide/en/beats/filebeat/7.14/privileges-to-publish-monitoring.html.
