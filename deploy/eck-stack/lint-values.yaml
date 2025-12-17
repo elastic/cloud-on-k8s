@@ -1,3 +1,3 @@
-eck-autoops:
+eck-autoops-agent-policy:
   configRef:
     secretName: "test-secret"

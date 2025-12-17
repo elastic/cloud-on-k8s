@@ -1,5 +1,5 @@
 ---
-eck-autoops:
+eck-autoops-agent-policy:
   enabled: true
   autoOpsRef:
     secretName: "autoops-secret"

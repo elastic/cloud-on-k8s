@@ -1,10 +1,10 @@
 ---
-# Default values for eck-autoops.
+# Default values for eck-autoops-agent-policy.
 # This is a YAML-formatted file.
 
 # Overridable names of the AutoOps Agent Policy resource.
 # By default, this is the Release name set for the chart,
-# followed by 'eck-autoops'.
+# followed by 'eck-autoops-agent-policy'.
 #
 # nameOverride will override the name of the Chart with the name set here,
 # so nameOverride: quickstart, would convert to '{{ Release.name }}-quickstart'

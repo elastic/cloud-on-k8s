@@ -51,5 +51,5 @@ eck-enterprise-search:
 
 # If enabled, will use the eck-autoops-agent-policy chart and deploy an AutoOps Agent.
 #
-eck-autoops:
+eck-autoops-agent-policy:
   enabled: false
