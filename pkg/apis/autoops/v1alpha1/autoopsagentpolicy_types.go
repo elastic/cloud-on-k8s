@@ -52,7 +52,7 @@ type AutoOpsAgentPolicySpec struct {
 	// Any Elasticsearch instances that match the selector will be configured to send data to AutoOps.
 	ResourceSelector metav1.LabelSelector `json:"resourceSelector,omitempty"`
 
-	// AutoOpsRef defines a reference to Elastic AutoOps containing connection details for external AutoOps.
+	// AutoOpsRef defines a reference to a secret containing connection details for AutoOps via Cloud Connect.
 	AutoOpsRef AutoOpsRef `json:"autoOpsRef,omitempty"`
 
 	// Image is the AutoOps Agent Docker image to deploy.
@@ -67,7 +67,7 @@ type AutoOpsAgentPolicySpec struct {
 	RevisionHistoryLimit *int32 `json:"revisionHistoryLimit,omitempty"`
 }
 
-// AutoOpsRef defines a reference to Elastic AutoOps containing connection details for external AutoOps.
+// AutoOpsRef defines a reference to a secret containing connection details for AutoOps via Cloud Connect.
 type AutoOpsRef struct {
 	// SecretName references a Secret containing connection details for external AutoOps.
 	// Required when connecting via Cloud Connect. The secret must contain:

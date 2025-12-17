@@ -2409,8 +2409,8 @@ spec:
           spec:
             properties:
               autoOpsRef:
-                description: AutoOpsRef defines a reference to Elastic AutoOps containing
-                  connection details for external AutoOps.
+                description: AutoOpsRef defines a reference to a secret containing
+                  connection details for AutoOps via Cloud Connect.
                 properties:
                   secretName:
                     description: |-
