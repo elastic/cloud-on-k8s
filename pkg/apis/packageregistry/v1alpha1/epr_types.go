@@ -60,8 +60,8 @@ type PackageRegistryStatus struct {
 
 	// ObservedGeneration is the most recent generation observed for this Elastic Package Registry.
 	// It corresponds to the metadata generation, which is updated on mutation by the API Server.
-	// If the generation observed in status diverges from the generation in metadata, the Elastic
-	// Agent controller has not yet processed the changes contained in the Elastic Agent specification.
+	// If the generation observed in status diverges from the generation in metadata, the Elastic Package Registry
+	// controller has not yet processed the changes contained in the Elastic Package Registry specification.
 	ObservedGeneration int64 `json:"observedGeneration,omitempty"`
 }
 
@@ -89,7 +89,7 @@ func (m *PackageRegistry) IsMarkedForDeletion() bool {
 	return !m.DeletionTimestamp.IsZero()
 }
 
-// GetObservedGeneration will return the observedGeneration from the Elastic Agent's status.
+// GetObservedGeneration will return the observedGeneration from the Elastic Package Registry status.
 func (m *PackageRegistry) GetObservedGeneration() int64 {
 	return m.Status.ObservedGeneration
 }
