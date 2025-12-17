@@ -137,7 +137,7 @@ func TestReconcilePackageRegistry_Reconcile(t *testing.T) {
 						Generation: 2,
 					},
 					Spec: v1alpha1.PackageRegistrySpec{
-						Version: "7.14.0", // unsupported version - below minimum 7.15.1
+						Version: "7.14.0", // unsupported version - below minimum 7.17.8
 					},
 					Status: v1alpha1.PackageRegistryStatus{
 						ObservedGeneration: 1,
