@@ -104,10 +104,14 @@ func ImageRepository(img Image, ver version.Version) string {
 		suffix += containerSuffix
 	}
 
-	// If the image is for the package registry, we want to always
-	// default to using the 'lite' image.
-	if img.Name() == PackageRegistryImage.Name() {
-		return fmt.Sprintf("%s/%s%s:lite-%s", containerRegistry, image, suffix, ver)
+	if img == PackageRegistryImage {
+		// Package Registry uses by default the 'lite' image variant.
+		// Unlike other stack component images, UBI suffix goes in the
+		// tag (lite-X.Y.Z-ubi) and not at the end of image name.
+		if useUBISuffix {
+			return fmt.Sprintf("%s/%s:lite-%s-ubi", containerRegistry, image, ver)
+		}
+		return fmt.Sprintf("%s/%s%s:lite-%s", containerRegistry, image, containerSuffix, ver)
 	}
 
 	return fmt.Sprintf("%s/%s%s:%s", containerRegistry, image, suffix, ver)

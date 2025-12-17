@@ -182,6 +182,20 @@ func TestImageRepository(t *testing.T) {
 			version: "1.0.0",
 			want:    testRegistry + "/package-registry/distribution:lite-1.0.0",
 		},
+		{
+			name:    "Package registry image -ubi suffix",
+			image:   PackageRegistryImage,
+			version: "1.0.0",
+			suffix:  "-ubi",
+			want:    testRegistry + "/package-registry/distribution:lite-1.0.0-ubi",
+		},
+		{
+			name:    "Package registry image -random suffix",
+			image:   PackageRegistryImage,
+			version: "1.0.0",
+			suffix:  "-random",
+			want:    testRegistry + "/package-registry/distribution-random:lite-1.0.0",
+		},
 	}
 
 	for _, tc := range testCases {

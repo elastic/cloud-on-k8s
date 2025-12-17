@@ -5,6 +5,9 @@
 package packageregistry
 
 import (
+	"fmt"
+	"strings"
+
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	"k8s.io/apimachinery/pkg/util/intstr"
@@ -80,6 +83,11 @@ func newPodSpec(epr eprv1alpha1.PackageRegistry, configHash string, meta metadat
 		return corev1.PodTemplateSpec{}, err // error unlikely and should have been caught during validation
 	}
 
+	defaultImage := container.ImageRepository(container.PackageRegistryImage, v)
+	if err := checkUBISupport(epr.Spec.Image, defaultImage, v); err != nil {
+		return corev1.PodTemplateSpec{}, err
+	}
+
 	eprVars := []corev1.EnvVar{
 		{Name: AddressEnvName, Value: "0.0.0.0:8080"},
 	}
@@ -101,7 +109,7 @@ func newPodSpec(epr eprv1alpha1.PackageRegistry, configHash string, meta metadat
 		WithAnnotations(podMeta.Annotations).
 		WithLabels(podMeta.Labels).
 		WithResources(DefaultResources).
-		WithDockerImage(epr.Spec.Image, container.ImageRepository(container.PackageRegistryImage, v)).
+		WithDockerImage(epr.Spec.Image, defaultImage).
 		WithReadinessProbe(readinessProbe(epr.Spec.HTTP.TLS.Enabled())).
 		WithPorts(defaultContainerPorts).
 		WithInitContainerDefaults().
@@ -136,4 +144,25 @@ func withHTTPCertsVolume(builder *defaults.PodTemplateBuilder, epr eprv1alpha1.P
 	}
 	vol := certificates.HTTPCertSecretVolume(eprv1alpha1.Namer, epr.Name)
 	return builder.WithVolumes(vol.Volume()).WithVolumeMounts(vol.VolumeMount())
+}
+
+// checkUBISupport validates whether the given Package Registry version supports UBI (Universal Base Image) variants.
+// Returns nil if a custom image is provided, if the default image is not UBI based, or if the version supports UBI
+// (8.19.8+, 9.1.8+, 9.2.2+). See container.ImageRepository for more details about the default image of Package Registry.
+func checkUBISupport(customImage string, defaultImage string, v version.Version) error {
+	if customImage != "" {
+		return nil
+	}
+	if !strings.HasSuffix(defaultImage, container.UBISuffix) {
+		return nil
+	}
+	switch {
+	case v.Major == 8 && v.GTE(version.From(8, 19, 8)):
+	case v.Major == 9 && v.Minor == 1 && v.GTE(version.From(9, 1, 8)):
+	case v.Major == 9 && v.GTE(version.From(9, 2, 2)):
+	default:
+		return fmt.Errorf("package registry version %s is not supported with UBI images", v)
+	}
+
+	return nil
 }
