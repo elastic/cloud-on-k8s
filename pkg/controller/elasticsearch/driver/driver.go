@@ -391,38 +391,11 @@ func (d *defaultDriver) Reconcile(ctx context.Context) *reconciler.Results {
 
 	// For Elasticsearch 9.3+, use the job-based reloadable keystore approach instead of init containers.
 	// This avoids pod restarts when secure settings change.
-	var keystoreConfig nodespec.KeystoreConfig
-	var keystoreSecretMountPath string
-	if keystorejob.ShouldUseReloadableKeystore(ctx, d.ES, d.Version, keystoreResources, d.OperatorParameters.OperatorImage) {
-		if _, err := d.reconcileKeystoreJob(ctx, keystoreResources, meta); err != nil {
-			return results.WithError(err)
-		}
-		// Don't block reconciliation while waiting for the keystore job - Kubernetes will
-		// naturally keep new pods pending until the keystore Secret exists (volume mount dependency).
-		// Existing pods continue running with their current keystore until the reload API is called.
-		// Don't include keystore init container in pods - the keystore Secret will be mounted directly.
-		keystoreConfig = nodespec.KeystoreConfig{
-			SecretName: esv1.KeystoreSecretName(d.ES.Name),
-		}
-		// Set the mount path so the prepare-fs script creates a symlink to the keystore
-		keystoreSecretMountPath = esvolume.KeystoreSecretVolumeMountPath
-
-		// Trigger keystore reload on all ES nodes and check convergence
-		if esReachable {
-			expectedNodeCount := d.ES.Spec.NodeCount()
-			reloadResult, err := keystorejob.ReloadSecureSettings(ctx, d.Client, esClient, d.ES, expectedNodeCount)
-			if err != nil {
-				return results.WithError(err)
-			}
-			if !reloadResult.Converged {
-				results = results.WithReconciliationState(defaultRequeue.WithReason("Keystore reload not yet converged: " + reloadResult.Message))
-			}
-		}
-	} else {
-		// Use the traditional init container approach
-		keystoreConfig = nodespec.KeystoreConfig{
-			Resources: keystoreResources,
-		}
+	keystoreConfig, keystoreSecretMountPath, err := d.reconcileReloadableKeystore(
+		ctx, esReachable, esClient, keystoreResources, meta, results,
+	)
+	if err != nil {
+		return results.WithError(err)
 	}
 
 	// Reconcile the scripts ConfigMap (must be after keystore decision to set up symlink correctly)
@@ -699,6 +672,49 @@ func warnUnsupportedDistro(pods []corev1.Pod, recorder *events.Recorder) {
 			}
 		}
 	}
+}
+
+// reconcileReloadableKeystore handles the reloadable keystore feature for Elasticsearch 9.3+.
+// It returns the keystore config, the mount path for the prepare-fs script, and any error.
+func (d *defaultDriver) reconcileReloadableKeystore(
+	ctx context.Context,
+	esReachable bool,
+	esClient esclient.Client,
+	keystoreResources *keystore.Resources,
+	meta metadata.Metadata,
+	results *reconciler.Results,
+) (nodespec.KeystoreConfig, string, error) {
+	if !keystorejob.ShouldUseReloadableKeystore(ctx, d.ES, d.Version, keystoreResources, d.OperatorParameters.OperatorImage) {
+		// Use the traditional init container approach
+		return nodespec.KeystoreConfig{Resources: keystoreResources}, "", nil
+	}
+
+	// Reconcile the keystore job
+	if _, err := d.reconcileKeystoreJob(ctx, keystoreResources, meta); err != nil {
+		return nodespec.KeystoreConfig{}, "", err
+	}
+
+	// Don't block reconciliation while waiting for the keystore job - Kubernetes will
+	// naturally keep new pods pending until the keystore Secret exists (volume mount dependency).
+	// Existing pods continue running with their current keystore until the reload API is called.
+	keystoreConfig := nodespec.KeystoreConfig{
+		SecretName: esv1.KeystoreSecretName(d.ES.Name),
+	}
+	keystoreSecretMountPath := esvolume.KeystoreSecretVolumeMountPath
+
+	// Trigger keystore reload on all ES nodes and check convergence
+	if esReachable {
+		expectedNodeCount := d.ES.Spec.NodeCount()
+		reloadResult, err := keystorejob.ReloadSecureSettings(ctx, d.Client, esClient, d.ES, expectedNodeCount)
+		if err != nil {
+			return nodespec.KeystoreConfig{}, "", err
+		}
+		if !reloadResult.Converged {
+			results.WithReconciliationState(defaultRequeue.WithReason("Keystore reload not yet converged: " + reloadResult.Message))
+		}
+	}
+
+	return keystoreConfig, keystoreSecretMountPath, nil
 }
 
 // reconcileKeystoreJob reconciles the keystore creation Job for Elasticsearch 9.3+ clusters.

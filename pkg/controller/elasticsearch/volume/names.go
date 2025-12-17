@@ -53,7 +53,7 @@ const (
 	KeystoreSecretVolumeName = "elastic-internal-keystore"
 	// KeystoreSecretVolumeMountPath is where the keystore secret is mounted.
 	// The prepare-fs init container creates a symlink from here to the config directory.
-	KeystoreSecretVolumeMountPath = "/mnt/elastic-internal/keystore-secret"
+	KeystoreSecretVolumeMountPath = "/mnt/elastic-internal/keystore-secret" //nolint:gosec
 	// KeystoreFileName is the name of the keystore file.
 	KeystoreFileName = "elasticsearch.keystore"
 )

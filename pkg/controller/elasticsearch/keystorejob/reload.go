@@ -8,6 +8,7 @@ import (
 	"context"
 
 	corev1 "k8s.io/api/core/v1"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/types"
 
 	esv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/elasticsearch/v1"
@@ -41,6 +42,15 @@ func ReloadSecureSettings(
 	keystoreSecretName := esv1.KeystoreSecretName(es.Name)
 	var keystoreSecret corev1.Secret
 	if err := c.Get(ctx, types.NamespacedName{Namespace: es.Namespace, Name: keystoreSecretName}, &keystoreSecret); err != nil {
+		if apierrors.IsNotFound(err) {
+			// Secret doesn't exist yet - job hasn't completed
+			log.V(1).Info("Keystore secret not found, waiting for job to complete",
+				"secret", keystoreSecretName)
+			return ReloadResult{
+				Converged: false,
+				Message:   "keystore secret not yet created",
+			}, nil
+		}
 		return ReloadResult{}, err
 	}
 
