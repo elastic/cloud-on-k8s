@@ -328,13 +328,14 @@ func (r *ReconcilePackageRegistry) deploymentParams(epr eprv1alpha1.PackageRegis
 	podSpec.Labels = maps.MergePreservingExistingKeys(podSpec.Labels, podLabels)
 
 	return deployment.Params{
-		Name:            DeploymentName(epr.Name),
-		Namespace:       epr.Namespace,
-		Replicas:        epr.Spec.Count,
-		Selector:        deploymentLabels,
-		Metadata:        meta,
-		PodTemplateSpec: podSpec,
-		Strategy:        appsv1.DeploymentStrategy{Type: appsv1.RollingUpdateDeploymentStrategyType},
+		Name:                 DeploymentName(epr.Name),
+		Namespace:            epr.Namespace,
+		Replicas:             epr.Spec.Count,
+		Selector:             deploymentLabels,
+		Metadata:             meta,
+		PodTemplateSpec:      podSpec,
+		RevisionHistoryLimit: epr.Spec.RevisionHistoryLimit,
+		Strategy:             appsv1.DeploymentStrategy{Type: appsv1.RollingUpdateDeploymentStrategyType},
 	}, nil
 }
 
