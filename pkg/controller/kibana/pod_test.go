@@ -27,6 +27,21 @@ import (
 	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/k8s"
 )
 
+// assertEnvValue is a helper function that checks if a specific environment variable
+// exists in a container and has the expected value.
+func assertEnvValue(t *testing.T, container *corev1.Container, envName, expectedValue, message string) {
+	t.Helper()
+	var found bool
+	for _, env := range container.Env {
+		if env.Name == envName {
+			assert.Equal(t, expectedValue, env.Value, message)
+			found = true
+			break
+		}
+	}
+	assert.True(t, found, message)
+}
+
 func TestNewPodTemplateSpec(t *testing.T) {
 	tests := []struct {
 		name       string
@@ -53,6 +68,8 @@ func TestNewPodTemplateSpec(t *testing.T) {
 				assert.Equal(t, container.ImageRepository(container.KibanaImage, version.MustParse("7.1.0")), kibanaContainer.Image)
 				assert.NotNil(t, kibanaContainer.ReadinessProbe)
 				assert.NotEmpty(t, kibanaContainer.Ports)
+				// Check that NODE_OPTIONS is set with max-old-space-size
+				assertEnvValue(t, kibanaContainer, EnvNodeOptions, "--max-old-space-size=768", "NODE_OPTIONS environment variable should be set")
 			},
 		},
 		{
@@ -113,11 +130,14 @@ func TestNewPodTemplateSpec(t *testing.T) {
 			}},
 			keystore: nil,
 			assertions: func(pod corev1.PodTemplateSpec) {
+				kibanaContainer := GetKibanaContainer(pod.Spec)
 				assert.Equal(t, corev1.ResourceRequirements{
 					Limits: map[corev1.ResourceName]resource.Quantity{
 						corev1.ResourceMemory: resource.MustParse("3Gi"),
 					},
-				}, GetKibanaContainer(pod.Spec).Resources)
+				}, kibanaContainer.Resources)
+				// Verify NODE_OPTIONS is calculated based on the custom memory limit: 3Gi * 0.75 = 2304MB
+				assertEnvValue(t, kibanaContainer, EnvNodeOptions, "--max-old-space-size=2304", "NODE_OPTIONS should be 75% of 3Gi")
 			},
 		},
 		{
@@ -192,7 +212,62 @@ func TestNewPodTemplateSpec(t *testing.T) {
 				Version: "8.12.0",
 			}},
 			assertions: func(pod corev1.PodTemplateSpec) {
-				assert.Len(t, GetKibanaContainer(pod.Spec).Env, 1)
+				kibanaContainer := GetKibanaContainer(pod.Spec)
+				assert.Len(t, kibanaContainer.Env, 2)
+				// Check that NODE_OPTIONS is set by default
+				assertEnvValue(t, kibanaContainer, EnvNodeOptions, "--max-old-space-size=768", "NODE_OPTIONS should be set by default")
+			},
+		},
+		{
+			name: "with user-provided NODE_OPTIONS containing max-old-space-size",
+			kb: kbv1.Kibana{Spec: kbv1.KibanaSpec{
+				PodTemplate: corev1.PodTemplateSpec{
+					Spec: corev1.PodSpec{
+						Containers: []corev1.Container{
+							{
+								Name: kbv1.KibanaContainerName,
+								Env: []corev1.EnvVar{
+									{
+										Name:  EnvNodeOptions,
+										Value: "--max-old-space-size=2048",
+									},
+								},
+							},
+						},
+					},
+				},
+				Version: "8.12.0",
+			}},
+			assertions: func(pod corev1.PodTemplateSpec) {
+				kibanaContainer := GetKibanaContainer(pod.Spec)
+				// User-provided max-old-space-size should be preserved
+				assertEnvValue(t, kibanaContainer, EnvNodeOptions, "--max-old-space-size=2048", "User-provided max-old-space-size should be preserved")
+			},
+		},
+		{
+			name: "with user-provided NODE_OPTIONS without max-old-space-size",
+			kb: kbv1.Kibana{Spec: kbv1.KibanaSpec{
+				PodTemplate: corev1.PodTemplateSpec{
+					Spec: corev1.PodSpec{
+						Containers: []corev1.Container{
+							{
+								Name: kbv1.KibanaContainerName,
+								Env: []corev1.EnvVar{
+									{
+										Name:  EnvNodeOptions,
+										Value: "--openssl-legacy-provider",
+									},
+								},
+							},
+						},
+					},
+				},
+				Version: "8.12.0",
+			}},
+			assertions: func(pod corev1.PodTemplateSpec) {
+				kibanaContainer := GetKibanaContainer(pod.Spec)
+				// max-old-space-size should be appended to user's NODE_OPTIONS
+				assertEnvValue(t, kibanaContainer, EnvNodeOptions, "--openssl-legacy-provider --max-old-space-size=768", "max-old-space-size should be appended to existing NODE_OPTIONS")
 			},
 		},
 		{
@@ -378,6 +453,156 @@ func TestNewPodTemplateSpec(t *testing.T) {
 			got, err := NewPodTemplateSpec(context.Background(), k8s.NewFakeClient(), tt.kb, tt.keystore, []commonvolume.VolumeLike{}, bp, true, md)
 			assert.NoError(t, err)
 			tt.assertions(got)
+		})
+	}
+}
+
+func Test_calculateMaxOldSpace(t *testing.T) {
+	tests := []struct {
+		name      string
+		resources corev1.ResourceRequirements
+		want      string
+	}{
+		{
+			name: "with 1Gi memory limit",
+			resources: corev1.ResourceRequirements{
+				Limits: map[corev1.ResourceName]resource.Quantity{
+					corev1.ResourceMemory: resource.MustParse("1Gi"),
+				},
+			},
+			want: "--max-old-space-size=768",
+		},
+		{
+			name: "with 2Gi memory limit",
+			resources: corev1.ResourceRequirements{
+				Limits: map[corev1.ResourceName]resource.Quantity{
+					corev1.ResourceMemory: resource.MustParse("2Gi"),
+				},
+			},
+			want: "--max-old-space-size=1536",
+		},
+		{
+			name: "with 512Mi memory limit",
+			resources: corev1.ResourceRequirements{
+				Limits: map[corev1.ResourceName]resource.Quantity{
+					corev1.ResourceMemory: resource.MustParse("512Mi"),
+				},
+			},
+			want: "--max-old-space-size=384",
+		},
+		{
+			name: "with 3Gi memory limit",
+			resources: corev1.ResourceRequirements{
+				Limits: map[corev1.ResourceName]resource.Quantity{
+					corev1.ResourceMemory: resource.MustParse("3Gi"),
+				},
+			},
+			want: "--max-old-space-size=2304",
+		},
+		{
+			name:      "with no memory limit",
+			resources: corev1.ResourceRequirements{},
+			want:      "",
+		},
+		{
+			name: "with zero memory limit",
+			resources: corev1.ResourceRequirements{
+				Limits: map[corev1.ResourceName]resource.Quantity{
+					corev1.ResourceMemory: resource.MustParse("0"),
+				},
+			},
+			want: "",
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := calculateMaxOldSpace(tt.resources)
+			assert.Equal(t, tt.want, got)
+		})
+	}
+}
+
+func Test_mergeNodeOptions(t *testing.T) {
+	tests := []struct {
+		name              string
+		containerEnv      []corev1.EnvVar
+		maxOldSpaceOption string
+		want              []corev1.EnvVar
+	}{
+		{
+			name:              "no existing NODE_OPTIONS",
+			containerEnv:      []corev1.EnvVar{},
+			maxOldSpaceOption: "--max-old-space-size=768",
+			want:              []corev1.EnvVar{{Name: EnvNodeOptions, Value: "--max-old-space-size=768"}},
+		},
+		{
+			name: "existing NODE_OPTIONS without max-old-space-size",
+			containerEnv: []corev1.EnvVar{
+				{Name: EnvNodeOptions, Value: "--openssl-legacy-provider"},
+			},
+			maxOldSpaceOption: "--max-old-space-size=768",
+			want:              []corev1.EnvVar{{Name: EnvNodeOptions, Value: "--openssl-legacy-provider --max-old-space-size=768"}},
+		},
+		{
+			name: "existing NODE_OPTIONS with max-old-space-size",
+			containerEnv: []corev1.EnvVar{
+				{Name: EnvNodeOptions, Value: "--max-old-space-size=2048"},
+			},
+			maxOldSpaceOption: "--max-old-space-size=768",
+			want:              []corev1.EnvVar{{Name: EnvNodeOptions, Value: "--max-old-space-size=2048"}},
+		},
+		{
+			name: "existing NODE_OPTIONS with multiple options including max-old-space-size",
+			containerEnv: []corev1.EnvVar{
+				{Name: EnvNodeOptions, Value: "--openssl-legacy-provider --max-old-space-size=2048"},
+			},
+			maxOldSpaceOption: "--max-old-space-size=768",
+			want:              []corev1.EnvVar{{Name: EnvNodeOptions, Value: "--openssl-legacy-provider --max-old-space-size=2048"}},
+		},
+		{
+			name: "existing empty NODE_OPTIONS",
+			containerEnv: []corev1.EnvVar{
+				{Name: EnvNodeOptions, Value: ""},
+			},
+			maxOldSpaceOption: "--max-old-space-size=768",
+			want:              []corev1.EnvVar{{Name: EnvNodeOptions, Value: "--max-old-space-size=768"}},
+		},
+		{
+			name: "existing NODE_OPTIONS with whitespace",
+			containerEnv: []corev1.EnvVar{
+				{Name: EnvNodeOptions, Value: "  --openssl-legacy-provider  "},
+			},
+			maxOldSpaceOption: "--max-old-space-size=768",
+			want:              []corev1.EnvVar{{Name: EnvNodeOptions, Value: "--openssl-legacy-provider --max-old-space-size=768"}},
+		},
+		{
+			name: "other env vars present, no NODE_OPTIONS",
+			containerEnv: []corev1.EnvVar{
+				{Name: "OTHER_VAR", Value: "some-value"},
+			},
+			maxOldSpaceOption: "--max-old-space-size=768",
+			want: []corev1.EnvVar{
+				{Name: "OTHER_VAR", Value: "some-value"},
+				{Name: EnvNodeOptions, Value: "--max-old-space-size=768"},
+			},
+		},
+		{
+			name: "other env vars preserved when NODE_OPTIONS modified",
+			containerEnv: []corev1.EnvVar{
+				{Name: "OTHER_VAR", Value: "some-value"},
+				{Name: EnvNodeOptions, Value: "--openssl-legacy-provider"},
+			},
+			maxOldSpaceOption: "--max-old-space-size=768",
+			want: []corev1.EnvVar{
+				{Name: "OTHER_VAR", Value: "some-value"},
+				{Name: EnvNodeOptions, Value: "--openssl-legacy-provider --max-old-space-size=768"},
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := mergeNodeOptions(tt.containerEnv, tt.maxOldSpaceOption)
+			assert.Equal(t, tt.want, got)
 		})
 	}
 }
