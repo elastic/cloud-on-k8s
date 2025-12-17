@@ -2038,7 +2038,7 @@ PackageRegistryStatus defines the observed state of Elastic Package Registry
 
 | Field | Description |
 | --- | --- |
-| *`observedGeneration`* __integer__ | ObservedGeneration is the most recent generation observed for this Elastic Package Registry.<br>It corresponds to the metadata generation, which is updated on mutation by the API Server.<br>If the generation observed in status diverges from the generation in metadata, the Elastic<br>Agent controller has not yet processed the changes contained in the Elastic Agent specification. |
+| *`observedGeneration`* __integer__ | ObservedGeneration is the most recent generation observed for this Elastic Package Registry.<br>It corresponds to the metadata generation, which is updated on mutation by the API Server.<br>If the generation observed in status diverges from the generation in metadata, the Elastic Package Registry<br>controller has not yet processed the changes contained in the Elastic Package Registry specification. |
 
 
 
