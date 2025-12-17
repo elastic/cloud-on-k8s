@@ -50,14 +50,3 @@ app.kubernetes.io/name: {{ include "autoops.name" . }}
 app.kubernetes.io/instance: {{ .Release.Name }}
 {{- end }}
 
-{{/*
-Secret name for AutoOps configuration
-*/}}
-{{- define "autoops.secretName" -}}
-{{- if .Values.secretName }}
-{{- .Values.secretName | trunc 63 | trimSuffix "-" }}
-{{- else }}
-{{- printf "%s-secret" (include "autoops.fullname" .) | trunc 63 | trimSuffix "-" }}
-{{- end }}
-{{- end }}
-

@@ -25,9 +25,9 @@ spec:
   autoOpsRef:
     # This secret contains the AutoOps configuration.
     # It must contain the following:
-    # - ccmApiKey: the Cloud Connected Mode API key. This is used to register the Agent with Elastic Cloud AutoOps.
-    # - autoOpsOTelURL: the URL of the AutoOps OTel endpoint. This is used to send Agent data to the AutoOps platform and is region specific.
-    # - autoOpsToken: the token to authenticate against the AutoOps platform and is how AutoOps knows how to connect Agent data to the
+    # - cloud-connect-mode-api-key: the Cloud Connected Mode API key. This is used to register the Agent with Elastic Cloud AutoOps.
+    # - autoops-otel-url: the URL of the AutoOps OTel endpoint. This is used to send Agent data to the AutoOps platform and is region specific.
+    # - autoops-token: the token to authenticate against the AutoOps platform and is how AutoOps knows how to connect Agent data to the
     #     relevant Elastic Cloud organization
     secretName: autoops-sample-secret
   resourceSelector:

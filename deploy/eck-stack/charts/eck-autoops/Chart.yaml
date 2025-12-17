@@ -1,5 +1,5 @@
 apiVersion: v2
-name: eck-autoops
+name: eck-autoops-agent-policy
 description: AutoOps Agent Policy managed by the ECK operator
 kubeVersion: ">= 1.21.0-0"
 type: application

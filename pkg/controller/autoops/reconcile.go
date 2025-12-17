@@ -13,6 +13,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/apimachinery/pkg/util/sets"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/go-logr/logr"
@@ -195,25 +196,25 @@ func (r *AgentPolicyReconciler) cleanupOrphanedResourcesForPolicy(
 ) error {
 	// Build a set of ES clusters that should have resources
 	// within the cluster.
-	esMap := make(map[types.NamespacedName]struct{})
+	esSet := sets.New[types.NamespacedName]()
 	for _, es := range clusterMatchingPolicy {
-		esMap[k8s.ExtractNamespacedName(&es)] = struct{}{}
+		esSet.Insert(k8s.ExtractNamespacedName(&es))
 	}
 
 	matchLabels := client.MatchingLabels{
 		PolicyNameLabelKey: policy.Name,
 	}
 
-	if err := cleanupOrphanedDeployments(ctx, log, r.Client, policy, matchLabels, esMap); err != nil {
+	if err := cleanupOrphanedDeployments(ctx, log, r.Client, policy, matchLabels, esSet); err != nil {
 		return fmt.Errorf("while cleaning up deployments: %w", err)
 	}
 
-	if err := cleanupOrphanedConfigMaps(ctx, log, r.Client, policy, matchLabels, esMap); err != nil {
+	if err := cleanupOrphanedConfigMaps(ctx, log, r.Client, policy, matchLabels, esSet); err != nil {
 		return fmt.Errorf("while cleaning up configmaps: %w", err)
 	}
 
 	// Cleanup both CA secrets and API Key.
-	if err := cleanupOrphanedSecrets(ctx, log, r.Client, r.esClientProvider, r.params.Dialer, policy, matchLabels, esMap); err != nil {
+	if err := cleanupOrphanedSecrets(ctx, log, r.Client, r.esClientProvider, r.params.Dialer, policy, matchLabels, esSet); err != nil {
 		return fmt.Errorf("while cleaning up secrets: %w", err)
 	}
 

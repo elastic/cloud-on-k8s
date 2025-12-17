@@ -13,6 +13,7 @@ import (
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/apimachinery/pkg/util/sets"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	autoopsv1alpha1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/autoops/v1alpha1"
@@ -30,7 +31,7 @@ func cleanupOrphanedDeployments(
 	c k8s.Client,
 	policy autoopsv1alpha1.AutoOpsAgentPolicy,
 	matchLabels client.MatchingLabels,
-	matchingESMap map[types.NamespacedName]struct{},
+	matchingESset sets.Set[types.NamespacedName],
 ) error {
 	var deployments appsv1.DeploymentList
 	if err := c.List(ctx, &deployments, client.InNamespace(policy.Namespace), matchLabels); err != nil {
@@ -39,7 +40,7 @@ func cleanupOrphanedDeployments(
 
 	for i := range deployments.Items {
 		deployment := &deployments.Items[i]
-		esNN, shouldDelete := shouldDeleteResource(deployment, matchingESMap)
+		esNN, shouldDelete := shouldDeleteResource(deployment, matchingESset)
 		if !shouldDelete {
 			continue
 		}
@@ -58,7 +59,7 @@ func cleanupOrphanedConfigMaps(
 	c k8s.Client,
 	policy autoopsv1alpha1.AutoOpsAgentPolicy,
 	matchLabels client.MatchingLabels,
-	matchingESMap map[types.NamespacedName]struct{},
+	matchingESset sets.Set[types.NamespacedName],
 ) error {
 	var configMaps corev1.ConfigMapList
 	if err := c.List(ctx, &configMaps, client.InNamespace(policy.Namespace), matchLabels); err != nil {
@@ -67,7 +68,7 @@ func cleanupOrphanedConfigMaps(
 
 	for i := range configMaps.Items {
 		configMap := &configMaps.Items[i]
-		esNN, shouldDelete := shouldDeleteResource(configMap, matchingESMap)
+		esNN, shouldDelete := shouldDeleteResource(configMap, matchingESset)
 		if !shouldDelete {
 			continue
 		}
@@ -88,7 +89,7 @@ func cleanupOrphanedSecrets(
 	dialer net.Dialer,
 	policy autoopsv1alpha1.AutoOpsAgentPolicy,
 	matchLabels client.MatchingLabels,
-	matchingESMap map[types.NamespacedName]struct{},
+	matchingESset sets.Set[types.NamespacedName],
 ) error {
 	var secrets corev1.SecretList
 	if err := c.List(ctx, &secrets, client.InNamespace(policy.Namespace), matchLabels); err != nil {
@@ -97,7 +98,7 @@ func cleanupOrphanedSecrets(
 
 	for i := range secrets.Items {
 		secret := &secrets.Items[i]
-		esNN, shouldDelete := shouldDeleteResource(secret, matchingESMap)
+		esNN, shouldDelete := shouldDeleteResource(secret, matchingESset)
 		if !shouldDelete {
 			continue
 		}
@@ -125,7 +126,7 @@ func cleanupOrphanedSecrets(
 // matches the current selector. Returns the ES cluster namespaced name and whether to delete.
 func shouldDeleteResource(
 	resource metav1.Object,
-	esMap map[types.NamespacedName]struct{},
+	esSet sets.Set[types.NamespacedName],
 ) (types.NamespacedName, bool) {
 	labels := resource.GetLabels()
 	esName, hasESName := labels[commonapikey.MetadataKeyESName]
@@ -139,7 +140,5 @@ func shouldDeleteResource(
 	esNN := types.NamespacedName{Namespace: esNamespace, Name: esName}
 
 	// If the ES cluster is in the matching list, don't delete
-	_, exists := esMap[esNN]
-
-	return esNN, !exists
+	return esNN, !esSet.Has(esNN)
 }
