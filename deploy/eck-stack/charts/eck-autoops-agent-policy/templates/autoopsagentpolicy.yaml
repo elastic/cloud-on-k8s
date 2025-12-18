@@ -18,6 +18,9 @@ spec:
   {{- with .Values.revisionHistoryLimit }}
   revisionHistoryLimit: {{ . }}
   {{- end }}
+  {{- with .Values.serviceAccountName }}
+  serviceAccountName: {{ . }}
+  {{- end }}
   {{- with .Values.podTemplate }}
   podTemplate:
     {{- toYaml . | nindent 4 }}

@@ -26,6 +26,7 @@ import (
 	esclient "github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/client"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/k8s"
 	netutil "github.com/elastic/cloud-on-k8s/v3/pkg/utils/net"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/rbac"
 )
 
 // fakeESClientProvider provides a fake ES client
@@ -338,6 +339,7 @@ func TestReconcileAutoOpsAgentPolicy_onDelete(t *testing.T) {
 			r := &AgentPolicyReconciler{
 				Client:           k8sClient,
 				esClientProvider: esClientProvider,
+				accessReviewer:   rbac.NewPermissiveAccessReviewer(),
 				params: operator.Parameters{
 					Dialer: &fakeDialer{},
 				},

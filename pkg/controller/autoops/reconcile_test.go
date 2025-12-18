@@ -16,8 +16,8 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/client-go/tools/record"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
@@ -33,15 +33,6 @@ import (
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/watches"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/k8s"
 )
-
-type fakeAccessReviewer struct {
-	allowed bool
-	err     error
-}
-
-func (f *fakeAccessReviewer) AccessAllowed(_ context.Context, _ string, _ string, _ runtime.Object) (bool, error) {
-	return f.allowed, f.err
-}
 
 func TestAutoOpsAgentPolicyReconciler_internalReconcile(t *testing.T) {
 	scheme.SetupScheme()
@@ -817,4 +808,177 @@ func TestAutoOpsAgentPolicyReconciler_selectorChangeCleanup(t *testing.T) {
 			require.Len(t, finalSecrets.Items, tt.expectedSecrets, "Should have exactly %d secret(s) after selector change", tt.expectedSecrets)
 		})
 	}
+}
+
+func TestAutoOpsAgentPolicyReconciler_accessRevokedCleanup(t *testing.T) {
+	scheme.SetupScheme()
+
+	// ES clusters that will be used in the test
+	es1 := esv1.Elasticsearch{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "es-1",
+			Namespace: "ns-1",
+			Labels:    map[string]string{"app": "elasticsearch"},
+		},
+		Spec: esv1.ElasticsearchSpec{
+			Version: "9.1.0",
+			HTTP: commonv1.HTTPConfig{
+				TLS: commonv1.TLSOptions{
+					SelfSignedCertificate: &commonv1.SelfSignedCertificate{
+						Disabled: true,
+					},
+				},
+			},
+		},
+		Status: esv1.ElasticsearchStatus{
+			Phase: esv1.ElasticsearchReadyPhase,
+		},
+	}
+
+	es2 := esv1.Elasticsearch{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "es-2",
+			Namespace: "ns-1",
+			Labels:    map[string]string{"app": "elasticsearch"},
+		},
+		Spec: esv1.ElasticsearchSpec{
+			Version: "9.1.0",
+			HTTP: commonv1.HTTPConfig{
+				TLS: commonv1.TLSOptions{
+					SelfSignedCertificate: &commonv1.SelfSignedCertificate{
+						Disabled: true,
+					},
+				},
+			},
+		},
+		Status: esv1.ElasticsearchStatus{
+			Phase: esv1.ElasticsearchReadyPhase,
+		},
+	}
+
+	configSecret := &corev1.Secret{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "config-secret",
+			Namespace: "ns-1",
+		},
+		Data: map[string][]byte{
+			"cloud-connected-mode-api-key": []byte("test-key"),
+			"autoops-otel-url":             []byte("https://test-url"),
+			"autoops-token":                []byte("test-token"),
+		},
+	}
+
+	policy := autoopsv1alpha1.AutoOpsAgentPolicy{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "policy-1",
+			Namespace: "ns-1",
+		},
+		Spec: autoopsv1alpha1.AutoOpsAgentPolicySpec{
+			Version: "9.1.0",
+			AutoOpsRef: autoopsv1alpha1.AutoOpsRef{
+				SecretName: "config-secret",
+			},
+			ResourceSelector: metav1.LabelSelector{
+				MatchLabels: map[string]string{"app": "elasticsearch"},
+			},
+		},
+	}
+
+	initialObjects := []client.Object{
+		configSecret,
+		&es1,
+		&es2,
+	}
+
+	t.Run("resources are cleaned up when access is revoked", func(t *testing.T) {
+		k8sClient := k8s.NewFakeClient(initialObjects...)
+		esClientProvider := newFakeESClientProvider().Provider
+
+		// Start with access allowed to both clusters
+		accessReviewer := newConfigurableAccessReviewer(true)
+
+		r := &AgentPolicyReconciler{
+			Client:           k8sClient,
+			esClientProvider: esClientProvider,
+			accessReviewer:   accessReviewer,
+			recorder:         record.NewFakeRecorder(10),
+			params: operator.Parameters{
+				Dialer: &fakeDialer{},
+			},
+			dynamicWatches: watches.NewDynamicWatches(),
+			licenseChecker: license.NewLicenseChecker(k8sClient, "test-namespace"),
+		}
+
+		ctx := context.Background()
+
+		// First reconcile with access to both clusters
+		state := newState(policy)
+		results := reconciler.NewResult(ctx)
+		gotResults := r.internalReconcile(ctx, policy, results, state)
+
+		_, gotErr := gotResults.Aggregate()
+		require.NoError(t, gotErr)
+
+		// Verify resources were created for both ES instances
+		var deployments appsv1.DeploymentList
+		require.NoError(t, k8sClient.List(ctx, &deployments, client.InNamespace("ns-1"), client.MatchingLabels{PolicyNameLabelKey: "policy-1"}))
+		require.Len(t, deployments.Items, 2, "Expected 2 deployments for es-1 and es-2")
+
+		var configMaps corev1.ConfigMapList
+		require.NoError(t, k8sClient.List(ctx, &configMaps, client.InNamespace("ns-1"), client.MatchingLabels{PolicyNameLabelKey: "policy-1"}))
+		require.Len(t, configMaps.Items, 2, "Expected 2 configmaps for es-1 and es-2")
+
+		var secrets corev1.SecretList
+		require.NoError(t, k8sClient.List(ctx, &secrets, client.InNamespace("ns-1"), client.MatchingLabels{PolicyNameLabelKey: "policy-1"}))
+		require.Len(t, secrets.Items, 2, "Expected 2 secrets for es-1 and es-2")
+
+		// Now revoke access to es-2
+		accessReviewer.SetAccess("ns-1", "es-2", false)
+
+		// Re-reconcile
+		state = newState(policy)
+		results = reconciler.NewResult(ctx)
+		gotResults = r.internalReconcile(ctx, policy, results, state)
+
+		_, gotErr = gotResults.Aggregate()
+		require.NoError(t, gotErr)
+
+		// Verify resources for es-2 were cleaned up
+		var finalDeployments appsv1.DeploymentList
+		require.NoError(t, k8sClient.List(ctx, &finalDeployments, client.InNamespace("ns-1"), client.MatchingLabels{PolicyNameLabelKey: "policy-1"}))
+		require.Len(t, finalDeployments.Items, 1, "Should have exactly 1 deployment after access revoked")
+
+		var finalConfigMaps corev1.ConfigMapList
+		require.NoError(t, k8sClient.List(ctx, &finalConfigMaps, client.InNamespace("ns-1"), client.MatchingLabels{PolicyNameLabelKey: "policy-1"}))
+		require.Len(t, finalConfigMaps.Items, 1, "Should have exactly 1 configmap after access revoked")
+
+		var finalSecrets corev1.SecretList
+		require.NoError(t, k8sClient.List(ctx, &finalSecrets, client.InNamespace("ns-1"), client.MatchingLabels{PolicyNameLabelKey: "policy-1"}))
+		require.Len(t, finalSecrets.Items, 1, "Should have exactly 1 secret after access revoked")
+
+		// Verify es-1 resources still exist
+		es1DeploymentName := autoopsv1alpha1.Deployment("policy-1", es1)
+		var es1Deployment appsv1.Deployment
+		err := k8sClient.Get(ctx, types.NamespacedName{Namespace: "ns-1", Name: es1DeploymentName}, &es1Deployment)
+		require.NoError(t, err, "deployment for es-1 should still exist")
+
+		// Verify es-2 resources are deleted
+		es2DeploymentName := autoopsv1alpha1.Deployment("policy-1", es2)
+		var es2Deployment appsv1.Deployment
+		err = k8sClient.Get(ctx, types.NamespacedName{Namespace: "ns-1", Name: es2DeploymentName}, &es2Deployment)
+		require.True(t, apierrors.IsNotFound(err), "deployment for es-2 should be deleted after access revoked")
+
+		es2ConfigMapName := autoopsv1alpha1.Config("policy-1", es2)
+		var es2ConfigMap corev1.ConfigMap
+		err = k8sClient.Get(ctx, types.NamespacedName{Namespace: "ns-1", Name: es2ConfigMapName}, &es2ConfigMap)
+		require.True(t, apierrors.IsNotFound(err), "configmap for es-2 should be deleted after access revoked")
+
+		es2APIKeySecretName := autoopsv1alpha1.APIKeySecret("policy-1", types.NamespacedName{Name: es2.Name, Namespace: "ns-1"})
+		var es2APIKeySecret corev1.Secret
+		err = k8sClient.Get(ctx, types.NamespacedName{Namespace: "ns-1", Name: es2APIKeySecretName}, &es2APIKeySecret)
+		require.True(t, apierrors.IsNotFound(err), "API key secret for es-2 should be deleted after access revoked")
+
+		// Verify status reflects only the accessible cluster
+		require.Equal(t, 1, state.status.Resources, "Resources count should be 1 after access revoked")
+	})
 }

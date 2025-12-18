@@ -94,48 +94,45 @@ func (r *AgentPolicyReconciler) internalReconcile(
 		return results.WithError(err)
 	}
 
-	// Clean up resources that no longer match the Policy's selector
-	if err := r.cleanupOrphanedResourcesForPolicy(ctx, log, policy, esList.Items); err != nil {
-		log.Error(err, "while cleaning up orphaned resources")
-		state.UpdateWithPhase(autoopsv1alpha1.ErrorPhase)
-		results.WithError(err)
-	}
-
-	if len(esList.Items) == 0 {
-		log.Info("No Elasticsearch resources found for the AutoOpsAgentPolicy")
-		state.UpdateWithPhase(autoopsv1alpha1.NoResourcesPhase).
-			UpdateResources(len(esList.Items))
-		return results
-	}
-
-	state.UpdateResources(len(esList.Items))
-	readyCount := 0
-	errorCount := 0
-
+	// Filter ES clusters based on RBAC access before cleanup and reconciliation.
+	// This ensures resources are cleaned up when access is revoked.
+	accessibleClusters := make([]esv1.Elasticsearch, 0, len(esList.Items))
 	for _, es := range esList.Items {
-		log := log.WithValues("es_namespace", es.Namespace, "es_name", es.Name)
-
-		// Check if access is allowed via RBAC
-		allowed, err := r.accessReviewer.AccessAllowed(
-			ctx,
-			policy.Spec.ServiceAccountName,
-			policy.Namespace,
-			&es,
-		)
+		accessAllowed, err := isAutoOpsAssociationAllowed(ctx, r.accessReviewer, &policy, &es, r.recorder)
 		if err != nil {
-			log.Error(err, "while checking access to Elasticsearch resource via RBAC")
+			log.Error(err, "while checking access for Elasticsearch cluster", "es_namespace", es.Namespace, "es_name", es.Name)
 			state.UpdateWithPhase(autoopsv1alpha1.ErrorPhase)
 			results.WithError(err)
 			continue
 		}
-		if !allowed {
-			log.V(1).Info("Skipping ES cluster - RBAC denied",
-				"service_account", policy.Spec.ServiceAccountName,
-			)
-			continue
+		if accessAllowed {
+			accessibleClusters = append(accessibleClusters, es)
+		} else {
+			log.V(1).Info("Skipping ES cluster due to access denied", "es_namespace", es.Namespace, "es_name", es.Name)
 		}
+	}
 
-		// Continue if RBAC is allowed and ES cluster is ready.
+	// Clean up resources that no longer match the Policy's selector OR where access was revoked
+	if err := r.cleanupOrphanedResourcesForPolicy(ctx, log, policy, accessibleClusters); err != nil {
+		log.Error(err, "while cleaning up orphaned resources", "policy_namespace", policy.Namespace, "policy_name", policy.Name)
+		state.UpdateWithPhase(autoopsv1alpha1.ErrorPhase)
+		results.WithError(err)
+	}
+
+	if len(accessibleClusters) == 0 {
+		log.Info("No accessible Elasticsearch resources found for the AutoOpsAgentPolicy")
+		state.UpdateWithPhase(autoopsv1alpha1.NoResourcesPhase).
+			UpdateResources(0)
+		return results
+	}
+
+	state.UpdateResources(len(accessibleClusters))
+	readyCount := 0
+	errorCount := 0
+
+	for _, es := range accessibleClusters {
+		log := log.WithValues("es_namespace", es.Namespace, "es_name", es.Name)
+
 		if es.Status.Phase != esv1.ElasticsearchReadyPhase {
 			log.V(1).Info("Skipping ES cluster that is not ready", "es_namespace", es.Namespace, "es_name", es.Name)
 			state.UpdateWithPhase(autoopsv1alpha1.ResourcesNotReadyPhase)
@@ -205,6 +202,14 @@ func (r *AgentPolicyReconciler) internalReconcile(
 
 	state.UpdateReady(readyCount).
 		UpdateErrors(errorCount)
+
+	// Schedule a requeue to periodically re-check RBAC permissions.
+	// Use ReconciliationComplete() to indicate this is a periodic check, not an incomplete reconciliation.
+	if rbacResult := requeueRbacCheck(r.accessReviewer); rbacResult.RequeueAfter > 0 {
+		results = results.WithReconciliationState(
+			reconciler.RequeueAfter(rbacResult.RequeueAfter).ReconciliationComplete(),
+		)
+	}
 
 	return results
 }

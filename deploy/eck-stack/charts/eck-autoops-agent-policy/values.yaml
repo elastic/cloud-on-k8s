@@ -78,3 +78,10 @@ resourceSelector:
   matchLabels:
     autoops: enabled
 
+# ServiceAccountName is used for RBAC checks when accessing Elasticsearch clusters
+# in different namespaces. The policy can only target Elasticsearch clusters that
+# the specified service account has permission to access (via 'get' verb).
+# Defaults to "default" if not specified.
+#
+# serviceAccountName: ""
+
