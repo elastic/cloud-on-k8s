@@ -6,11 +6,9 @@ package autoops
 
 import (
 	"context"
-	"time"
 
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/client-go/tools/record"
-	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
 	autoopsv1alpha1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/autoops/v1alpha1"
 	esv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/elasticsearch/v1"
@@ -64,16 +62,4 @@ func logNotAllowedAssociation(
 		"AutoOps policy not allowed to access Elasticsearch cluster: %s/%s to %s/%s",
 		policy.Namespace, policy.Name, es.Namespace, es.Name,
 	)
-}
-
-// requeueRbacCheck returns a reconcile result depending on the implementation of the AccessReviewer.
-// When using the SubjectAccessReviewer, a next reconcile loop should be triggered later to keep the
-// policy in sync with any RBAC role and binding changes.
-func requeueRbacCheck(accessReviewer rbac.AccessReviewer) reconcile.Result {
-	switch accessReviewer.(type) {
-	case *rbac.SubjectAccessReviewer:
-		return reconcile.Result{RequeueAfter: 15 * time.Minute}
-	default:
-		return reconcile.Result{}
-	}
 }

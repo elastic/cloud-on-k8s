@@ -8,7 +8,6 @@ import (
 	"context"
 	"errors"
 	"testing"
-	"time"
 
 	"github.com/stretchr/testify/require"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -29,7 +28,7 @@ func (f *fakeAccessReviewer) AccessAllowed(_ context.Context, _ string, _ string
 	return f.allowed, f.err
 }
 
-var _ rbac.AccessReviewer = &fakeAccessReviewer{}
+var _ rbac.AccessReviewer = (*configurableAccessReviewer)(nil)
 
 // configurableAccessReviewer allows configuring access per ES cluster for testing.
 type configurableAccessReviewer struct {
@@ -192,37 +191,6 @@ func TestIsAutoOpsAssociationAllowed(t *testing.T) {
 				require.NoError(t, err)
 			}
 			require.Equal(t, tt.wantAllowed, allowed)
-		})
-	}
-}
-
-func TestRequeueRbacCheck(t *testing.T) {
-	tests := []struct {
-		name           string
-		accessReviewer rbac.AccessReviewer
-		wantRequeue    time.Duration
-	}{
-		{
-			name:           "SubjectAccessReviewer triggers requeue",
-			accessReviewer: &rbac.SubjectAccessReviewer{},
-			wantRequeue:    15 * time.Minute,
-		},
-		{
-			name:           "permissive reviewer does not trigger requeue",
-			accessReviewer: rbac.NewPermissiveAccessReviewer(),
-			wantRequeue:    0,
-		},
-		{
-			name:           "other reviewer types do not trigger requeue",
-			accessReviewer: &fakeAccessReviewer{},
-			wantRequeue:    0,
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			result := requeueRbacCheck(tt.accessReviewer)
-			require.Equal(t, tt.wantRequeue, result.RequeueAfter)
 		})
 	}
 }

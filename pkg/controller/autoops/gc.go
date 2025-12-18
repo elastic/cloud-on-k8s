@@ -117,46 +117,49 @@ func (gc *GarbageCollector) cleanupOrphanedSecretsForDeletedPolicies(
 		}
 
 		// Policy doesn't exist, clean up
-		log.Info("Found orphaned AutoOps secret for deleted policy",
-			"secret", secret.Name, "namespace", secret.Namespace,
-			"policy_name", policyNN.Name, "policy_namespace", policyNN.Namespace)
+		log := log.WithValues(
+			"policy_name", policyNN.Name,
+			"policy_namespace", policyNN.Namespace,
+			"secret", secret.Name,
+			"namespace", secret.Namespace,
+		)
+		log.Info("Found orphaned AutoOps secret for deleted policy")
 
 		// If this is an API key secret, try to invalidate the ES API key first.
 		// Only delete the secret if invalidation succeeds, otherwise keep it to retry on next startup.
 		if secretType, exists := secret.Labels[policySecretTypeLabelKey]; exists && secretType == apiKeySecretType {
 			esNN := esFromLabels(secret.Labels)
-			if esNN.Name != "" {
-				var es esv1.Elasticsearch
-				err := gc.client.Get(ctx, esNN, &es)
-				switch {
-				case err == nil:
-					// ES cluster exists, try to clean up API key
-					if err := cleanupAutoOpsESAPIKey(ctx, gc.client, gc.esClientProvider, gc.dialer, policyNN.Namespace, policyNN.Name, es); err != nil {
-						// Keep the secret to retry invalidation on next startup
-						log.Error(err, "Failed to invalidate API key, keeping secret to retry on next startup",
-							"secret", secret.Name, "es_namespace", esNN.Namespace, "es_name", esNN.Name)
-						continue
-					}
-					log.Info("Invalidated orphaned API key in Elasticsearch",
-						"es_namespace", esNN.Namespace, "es_name", esNN.Name)
-				case apierrors.IsNotFound(err):
-					// ES cluster doesn't exist, safe to delete the secret (API key is gone with the cluster)
-					log.Info("ES cluster not found, API key no longer exists",
-						"es_namespace", esNN.Namespace, "es_name", esNN.Name)
-				default:
-					// Unknown error fetching ES cluster, keep secret to retry on next startup
-					log.Error(err, "Failed to get ES cluster, keeping secret to retry on next startup",
-						"secret", secret.Name, "es_namespace", esNN.Namespace, "es_name", esNN.Name)
+			if esNN.Name == "" {
+				continue
+			}
+			log := log.WithValues(
+				"es_name", esNN.Name,
+				"es_namespace", esNN.Namespace,
+			)
+			var es esv1.Elasticsearch
+			switch err := gc.client.Get(ctx, esNN, &es); {
+			case err == nil:
+				// ES cluster exists, try to clean up API key
+				if err := cleanupAutoOpsESAPIKey(ctx, gc.client, gc.esClientProvider, gc.dialer, policyNN.Namespace, policyNN.Name, es); err != nil {
+					// Keep the secret to retry invalidation on next startup
+					log.Error(err, "Failed to invalidate API key, keeping secret to retry on next startup")
 					continue
 				}
+				log.Info("Invalidated orphaned API key in Elasticsearch")
+			case apierrors.IsNotFound(err):
+				// ES cluster doesn't exist, safe to delete the secret (API key is gone with the cluster)
+				log.Info("ES cluster not found, API key no longer exists")
+			default:
+				// Unknown error fetching ES cluster, keep secret to retry on next startup
+				log.Error(err, "Failed to get ES cluster, keeping secret to retry on next startup")
+				continue
 			}
 		}
-
 		// Delete the secret
 		if err := gc.client.Delete(ctx, secret); err != nil && !apierrors.IsNotFound(err) {
 			return err
 		}
-		log.Info("Deleted orphaned AutoOps secret", "secret", secret.Name, "namespace", secret.Namespace)
+		log.Info("Deleted orphaned AutoOps secret")
 	}
 	return nil
 }

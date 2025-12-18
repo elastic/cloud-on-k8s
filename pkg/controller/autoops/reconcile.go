@@ -20,6 +20,7 @@ import (
 
 	autoopsv1alpha1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/autoops/v1alpha1"
 	esv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/elasticsearch/v1"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/association"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/deployment"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/reconciler"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/k8s"
@@ -205,7 +206,7 @@ func (r *AgentPolicyReconciler) internalReconcile(
 
 	// Schedule a requeue to periodically re-check RBAC permissions.
 	// Use ReconciliationComplete() to indicate this is a periodic check, not an incomplete reconciliation.
-	if rbacResult := requeueRbacCheck(r.accessReviewer); rbacResult.RequeueAfter > 0 {
+	if rbacResult := association.RequeueRbacCheck(r.accessReviewer); rbacResult.RequeueAfter > 0 {
 		results = results.WithReconciliationState(
 			reconciler.RequeueAfter(rbacResult.RequeueAfter).ReconciliationComplete(),
 		)
