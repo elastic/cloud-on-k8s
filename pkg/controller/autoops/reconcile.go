@@ -113,6 +113,29 @@ func (r *AgentPolicyReconciler) internalReconcile(
 	errorCount := 0
 
 	for _, es := range esList.Items {
+		log := log.WithValues("es_namespace", es.Namespace, "es_name", es.Name)
+
+		// Check if access is allowed via RBAC
+		allowed, err := r.accessReviewer.AccessAllowed(
+			ctx,
+			policy.Spec.ServiceAccountName,
+			policy.Namespace,
+			&es,
+		)
+		if err != nil {
+			log.Error(err, "while checking access to Elasticsearch resource via RBAC")
+			state.UpdateWithPhase(autoopsv1alpha1.ErrorPhase)
+			results.WithError(err)
+			continue
+		}
+		if !allowed {
+			log.V(1).Info("Skipping ES cluster - RBAC denied",
+				"service_account", policy.Spec.ServiceAccountName,
+			)
+			continue
+		}
+
+		// Continue if RBAC is allowed and ES cluster is ready.
 		if es.Status.Phase != esv1.ElasticsearchReadyPhase {
 			log.V(1).Info("Skipping ES cluster that is not ready", "es_namespace", es.Namespace, "es_name", es.Name)
 			state.UpdateWithPhase(autoopsv1alpha1.ResourcesNotReadyPhase)

@@ -34,6 +34,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/watches"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/k8s"
 	ulog "github.com/elastic/cloud-on-k8s/v3/pkg/utils/log"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/rbac"
 )
 
 const (
@@ -45,8 +46,8 @@ var defaultRequeue = 5 * time.Second
 
 // Add creates a new AutoOpsAgentPolicy controller and adds it to the manager with default RBAC. The manager will set fields on the controller
 // and start it when the manager is started.
-func Add(mgr manager.Manager, params operator.Parameters) error {
-	r := newReconciler(mgr, params)
+func Add(mgr manager.Manager, accessReviewer rbac.AccessReviewer, params operator.Parameters) error {
+	r := newReconciler(mgr, accessReviewer, params)
 	c, err := common.NewController(mgr, controllerName, r, params)
 	if err != nil {
 		return err
@@ -54,7 +55,7 @@ func Add(mgr manager.Manager, params operator.Parameters) error {
 	return addWatches(mgr, c, r)
 }
 
-func newReconciler(mgr manager.Manager, params operator.Parameters) *AgentPolicyReconciler {
+func newReconciler(mgr manager.Manager, accessReviewer rbac.AccessReviewer, params operator.Parameters) *AgentPolicyReconciler {
 	k8sClient := mgr.GetClient()
 	return &AgentPolicyReconciler{
 		Client:           k8sClient,
@@ -103,6 +104,7 @@ var _ reconcile.Reconciler = (*AgentPolicyReconciler)(nil)
 // AgentPolicyReconciler reconciles an AutoOpsAgentPolicy object
 type AgentPolicyReconciler struct {
 	k8s.Client
+	accessReviewer   rbac.AccessReviewer
 	recorder         record.EventRecorder
 	licenseChecker   license.Checker
 	params           operator.Parameters

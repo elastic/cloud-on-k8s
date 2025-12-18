@@ -16,6 +16,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
@@ -32,6 +33,15 @@ import (
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/watches"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/k8s"
 )
+
+type fakeAccessReviewer struct {
+	allowed bool
+	err     error
+}
+
+func (f *fakeAccessReviewer) AccessAllowed(_ context.Context, _ string, _ string, _ runtime.Object) (bool, error) {
+	return f.allowed, f.err
+}
 
 func TestAutoOpsAgentPolicyReconciler_internalReconcile(t *testing.T) {
 	scheme.SetupScheme()
@@ -559,6 +569,7 @@ func TestAutoOpsAgentPolicyReconciler_internalReconcile(t *testing.T) {
 
 			r := &AgentPolicyReconciler{
 				Client:           k8sClient,
+				accessReviewer:   &fakeAccessReviewer{allowed: true},
 				esClientProvider: esClientProvider,
 				params: operator.Parameters{
 					Dialer: &fakeDialer{},
@@ -705,6 +716,7 @@ func TestAutoOpsAgentPolicyReconciler_selectorChangeCleanup(t *testing.T) {
 			esClientProvider := newFakeESClientProvider().Provider
 			r := &AgentPolicyReconciler{
 				Client:           k8sClient,
+				accessReviewer:   &fakeAccessReviewer{allowed: true},
 				esClientProvider: esClientProvider,
 				params: operator.Parameters{
 					Dialer: &fakeDialer{},

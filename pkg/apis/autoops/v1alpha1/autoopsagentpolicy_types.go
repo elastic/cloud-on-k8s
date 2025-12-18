@@ -65,6 +65,13 @@ type AutoOpsAgentPolicySpec struct {
 
 	// RevisionHistoryLimit is the number of revisions to retain to allow rollback in the underlying Deployment.
 	RevisionHistoryLimit *int32 `json:"revisionHistoryLimit,omitempty"`
+
+	// ServiceAccountName is used to check access to Elasticsearch resources in different namespaces.
+	// Can only be used if ECK is enforcing RBAC on references (--enforce-rbac-on-refs flag).
+	// The service account must have "get" permission on elasticsearch.k8s.elastic.co/elasticsearches
+	// in the target namespaces.
+	// +optional
+	ServiceAccountName string `json:"serviceAccountName,omitempty"`
 }
 
 // AutoOpsRef defines a reference to a secret containing connection details for AutoOps via Cloud Connect.
