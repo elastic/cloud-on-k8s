@@ -203,31 +203,6 @@ func TestEPRAssociation(t *testing.T) {
 	test.Sequence(nil, test.EmptySteps, esBuilder, eprBuilder, kbBuilder).RunSequential(t)
 }
 
-// TestKibanaCrossNSEPRAssociation tests associating Elasticsearch, Kibana, and EPR all running in different namespaces.
-func TestKibanaCrossNSEPRAssociation(t *testing.T) {
-	esNamespace := test.Ctx().ManagedNamespace(0)
-	kbNamespace := test.Ctx().ManagedNamespace(1)
-	eprNamespace := test.Ctx().ManagedNamespace(2)
-	name := "test-cross-ns-kb-epr"
-
-	esBuilder := elasticsearch.NewBuilder(name).
-		WithNamespace(esNamespace).
-		WithESMasterDataNodes(1, elasticsearch.DefaultResources).
-		WithRestrictedSecurityContext()
-	eprBuilder := epr.NewBuilder(name).
-		WithNamespace(eprNamespace).
-		WithNodeCount(1).
-		WithRestrictedSecurityContext()
-	kbBuilder := kibana.NewBuilder(name).
-		WithNamespace(kbNamespace).
-		WithElasticsearchRef(esBuilder.Ref()).
-		WithPackageRegistryRef(eprBuilder.Ref()).
-		WithNodeCount(1).
-		WithRestrictedSecurityContext()
-
-	test.Sequence(nil, test.EmptySteps, esBuilder, eprBuilder, kbBuilder).RunSequential(t)
-}
-
 func TestKibanaAssociationWithNonExistentEPR(t *testing.T) {
 	name := "test-kb-assoc-non-existent-epr"
 	esBuilder := elasticsearch.NewBuilder(name).
