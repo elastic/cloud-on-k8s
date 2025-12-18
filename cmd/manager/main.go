@@ -65,6 +65,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/beat"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/certificates"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/container"
+	commonesclient "github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/esclient"
 	commonlicense "github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/license"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/operator"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/password"
@@ -758,7 +759,7 @@ func startOperator(ctx context.Context) error {
 
 	disableTelemetry := viper.GetBool(operator.DisableTelemetryFlag)
 	telemetryInterval := viper.GetDuration(operator.TelemetryIntervalFlag)
-	go asyncTasks(ctx, mgr, cfg, managedNamespaces, operatorNamespace, operatorInfo, disableTelemetry, telemetryInterval, tracer)
+	go asyncTasks(ctx, mgr, cfg, managedNamespaces, operatorNamespace, operatorInfo, disableTelemetry, telemetryInterval, tracer, dialer)
 
 	log.Info("Starting the manager", "uuid", operatorInfo.OperatorUUID,
 		"namespace", operatorNamespace, "version", operatorInfo.BuildInfo.Version,
@@ -817,6 +818,7 @@ func asyncTasks(
 	disableTelemetry bool,
 	telemetryInterval time.Duration,
 	tracer *apm.Tracer,
+	dialer net.Dialer,
 ) {
 	<-mgr.Elected() // wait for this operator instance to be elected
 
@@ -843,6 +845,7 @@ func asyncTasks(
 	// Garbage collect orphaned secrets leftover from deleted resources while the operator was not running
 	// - association user secrets
 	gcCtx := tracing.NewContextTransaction(ctx, tracer, tracing.RunOnceTxType, "garbage-collection", nil)
+	gcCtx = logconf.AddToContext(gcCtx, logf.Log.WithName("garbage-collection"))
 	err := garbageCollectUsers(gcCtx, cfg, managedNamespaces)
 	if err != nil {
 		log.Error(err, "exiting due to unrecoverable error")
@@ -850,6 +853,10 @@ func asyncTasks(
 	}
 	// - soft-owned secrets
 	garbageCollectSoftOwnedSecrets(gcCtx, mgr.GetClient())
+	// - autoops orphaned resources (API key secrets without owner references)
+	if err := garbageCollectAutoOpsResources(gcCtx, mgr.GetClient(), dialer); err != nil {
+		log.Error(err, "AutoOps garbage collection failed, will be attempted again at next operator restart")
+	}
 	tracing.EndContextTransaction(gcCtx)
 }
 
@@ -1006,6 +1013,17 @@ func garbageCollectSoftOwnedSecrets(ctx context.Context, k8sClient k8s.Client) {
 		return
 	}
 	log.Info("Orphan secrets garbage collection complete")
+}
+
+func garbageCollectAutoOpsResources(ctx context.Context, k8sClient k8s.Client, dialer net.Dialer) error {
+	span, ctx := apm.StartSpan(ctx, "gc_autoops_resources", tracing.SpanTypeApp)
+	defer span.End()
+
+	gc := autoops.NewGarbageCollector(k8sClient, commonesclient.NewClient, dialer)
+	if err := gc.DoGarbageCollection(ctx); err != nil {
+		return fmt.Errorf("AutoOps garbage collection failed: %w", err)
+	}
+	return nil
 }
 
 func setupWebhook(
