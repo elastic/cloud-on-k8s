@@ -22,6 +22,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	esv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/elasticsearch/v1"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/hash"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/keystore"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/metadata"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/reconciler"
@@ -181,6 +182,9 @@ func ReconcileJob(ctx context.Context, params Params) (done bool, err error) {
 		}
 	}
 
+	// Build the expected job to get its template hash (for detecting operator upgrades)
+	expectedJob, templateHash := buildJob(params, secureSettingsHash, stagingSecureSettingsName)
+
 	// Check if a Job already exists (in operator namespace)
 	var existingJob batchv1.Job
 	err = params.Client.Get(ctx, types.NamespacedName{Namespace: params.OperatorNamespace, Name: jobName}, &existingJob)
@@ -190,7 +194,7 @@ func ReconcileJob(ctx context.Context, params Params) (done bool, err error) {
 
 	jobExists := err == nil
 	if jobExists {
-		if err := handleExistingJob(ctx, params, &existingJob, secureSettingsHash); err != nil {
+		if err := handleExistingJob(ctx, params, &existingJob, secureSettingsHash, templateHash); err != nil {
 			return false, err
 		}
 		return false, nil
@@ -202,9 +206,8 @@ func ReconcileJob(ctx context.Context, params Params) (done bool, err error) {
 	}
 
 	// Create a new Job in the operator namespace
-	job := buildJob(params, secureSettingsHash, stagingSecureSettingsName)
 	log.Info("Creating keystore job", "job", jobName, "namespace", params.OperatorNamespace, "hash", secureSettingsHash)
-	if err := params.Client.Create(ctx, &job); err != nil {
+	if err := params.Client.Create(ctx, &expectedJob); err != nil {
 		if apierrors.IsAlreadyExists(err) {
 			// Race condition - job was created by another reconciliation
 			return false, nil
@@ -323,7 +326,7 @@ func handleStagingSecret(ctx context.Context, params Params, stagingSecret *core
 	stagingHash := stagingSecret.Annotations[esv1.KeystoreHashAnnotation]
 	if stagingHash != secureSettingsHash {
 		// Staging secret has wrong hash - delete it
-		log.Info("Deleting stale staging secret", "oldHash", stagingHash, "newHash", secureSettingsHash)
+		log.Info("Deleting stale staging secret", "old_settings_hash", stagingHash, "new_settings_hash", secureSettingsHash)
 		if err := deleteStagingSecret(ctx, params.Client, params.OperatorNamespace, stagingSecretName); err != nil {
 			return false, err
 		}
@@ -363,13 +366,18 @@ func deleteJobWithForegroundPropagation(ctx context.Context, c k8s.Client, job *
 
 // handleExistingJob handles the case where a keystore Job already exists in the operator namespace.
 // It checks if the job is for the current hash and handles completion, failure, or running states.
-func handleExistingJob(ctx context.Context, params Params, existingJob *batchv1.Job, secureSettingsHash string) error {
+func handleExistingJob(ctx context.Context, params Params, existingJob *batchv1.Job, secureSettingsHash, expectedTemplateHash string) error {
 	log := ulog.FromContext(ctx)
 
 	existingJobHash := existingJob.Annotations[esv1.KeystoreHashAnnotation]
-	if existingJobHash != secureSettingsHash {
-		// Job is for a different hash - delete it with foreground propagation to clean up pods
-		log.Info("Deleting stale keystore job", "oldHash", existingJobHash, "newHash", secureSettingsHash)
+	existingTemplateHash := hash.GetTemplateHashLabel(existingJob.Labels)
+
+	// Check if job needs to be recreated due to settings change OR spec change (e.g., operator upgrade)
+	if existingJobHash != secureSettingsHash || existingTemplateHash != expectedTemplateHash {
+		// Job is stale - delete it with foreground propagation to clean up pods
+		log.Info("Deleting stale keystore job",
+			"old_settings_hash", existingJobHash, "new_settings_hash", secureSettingsHash,
+			"old_template_hash", existingTemplateHash, "new_template_hash", expectedTemplateHash)
 		if err := deleteJobWithForegroundPropagation(ctx, params.Client, existingJob); err != nil {
 			return err
 		}
@@ -402,12 +410,62 @@ func handleExistingJob(ctx context.Context, params Params, existingJob *batchv1.
 // buildJob creates the Job spec for creating the keystore file.
 // The job runs in the operator namespace and creates a staging Secret there.
 // stagingSecureSettingsName is the name of the copied secure settings secret in the operator namespace.
-func buildJob(params Params, secureSettingsHash, stagingSecureSettingsName string) batchv1.Job {
+// Returns the job and a hash of the job's pod template spec (for detecting operator upgrades).
+func buildJob(params Params, secureSettingsHash, stagingSecureSettingsName string) (batchv1.Job, string) {
 	es := params.ES
 
 	// Job and staging secret are in the operator namespace, names include ES namespace to avoid collisions
 	jobName := esv1.KeystoreJobName(es.Namespace, es.Name)
 	stagingKeystoreSecretName := esv1.StagingKeystoreSecretName(es.Namespace, es.Name)
+
+	// Build init container using the existing keystore init container logic
+	initContainer := buildInitContainer(params)
+
+	// Build main container that uploads the keystore to a staging Secret in operator namespace
+	mainContainer := buildMainContainer(params, stagingKeystoreSecretName, secureSettingsHash)
+
+	// Build the pod spec first so we can hash it for detecting operator upgrades
+	podSpec := corev1.PodSpec{
+		RestartPolicy: corev1.RestartPolicyOnFailure,
+		InitContainers: []corev1.Container{
+			initContainer,
+		},
+		Containers: []corev1.Container{
+			mainContainer,
+		},
+		Volumes: []corev1.Volume{
+			// SecureSettings volume - use the staging copy in the operator namespace
+			{
+				Name: keystore.SecureSettingsVolumeName,
+				VolumeSource: corev1.VolumeSource{
+					Secret: &corev1.SecretVolumeSource{
+						SecretName: stagingSecureSettingsName,
+					},
+				},
+			},
+			// EmptyDir to hold the keystore file
+			{
+				Name: KeystoreVolumeName,
+				VolumeSource: corev1.VolumeSource{
+					EmptyDir: &corev1.EmptyDirVolumeSource{},
+				},
+			},
+		},
+		// Inherit from ES pod template for private registries
+		ImagePullSecrets: params.PodTemplate.ImagePullSecrets,
+		// Use the dedicated keystore uploader service account
+		ServiceAccountName: KeystoreUploaderServiceAccount,
+		// Mount the service account token for API access
+		AutomountServiceAccountToken: ptr.To(true),
+	}
+	// Inherit pod security context if provided
+	if params.PodTemplate.PodSecurityContext != nil {
+		podSpec.SecurityContext = params.PodTemplate.PodSecurityContext
+	}
+
+	// Hash the pod spec to detect changes from operator upgrades
+	// This ensures self-healing when we fix issues with the job spec
+	templateHash := hash.HashObject(podSpec)
 
 	// Labels for the job - include ES cluster info for debugging/identification
 	// since the job/secret names are now hashed and opaque.
@@ -419,15 +477,12 @@ func buildJob(params Params, secureSettingsHash, stagingSecureSettingsName strin
 		label.SourceNamespaceLabelName: es.Namespace,
 		label.SourceClusterLabelName:   es.Name,
 	}
+	// Add template hash for detecting spec changes from operator upgrades
+	hash.SetTemplateHashLabel(labels, podSpec)
+
 	annotations := map[string]string{
 		esv1.KeystoreHashAnnotation: secureSettingsHash,
 	}
-
-	// Build init container using the existing keystore init container logic
-	initContainer := buildInitContainer(params)
-
-	// Build main container that uploads the keystore to a staging Secret in operator namespace
-	mainContainer := buildMainContainer(params, stagingKeystoreSecretName, secureSettingsHash)
 
 	return batchv1.Job{
 		ObjectMeta: metav1.ObjectMeta{
@@ -447,44 +502,10 @@ func buildJob(params Params, secureSettingsHash, stagingSecureSettingsName strin
 					Labels:      labels,
 					Annotations: annotations,
 				},
-				Spec: corev1.PodSpec{
-					RestartPolicy: corev1.RestartPolicyOnFailure,
-					InitContainers: []corev1.Container{
-						initContainer,
-					},
-					Containers: []corev1.Container{
-						mainContainer,
-					},
-					Volumes: []corev1.Volume{
-						// SecureSettings volume - use the staging copy in the operator namespace
-						{
-							Name: keystore.SecureSettingsVolumeName,
-							VolumeSource: corev1.VolumeSource{
-								Secret: &corev1.SecretVolumeSource{
-									SecretName: stagingSecureSettingsName,
-								},
-							},
-						},
-						// EmptyDir to hold the keystore file
-						{
-							Name: KeystoreVolumeName,
-							VolumeSource: corev1.VolumeSource{
-								EmptyDir: &corev1.EmptyDirVolumeSource{},
-							},
-						},
-					},
-					// Inherit from ES pod template for private registries
-					ImagePullSecrets: params.PodTemplate.ImagePullSecrets,
-					// Use the dedicated keystore uploader service account
-					ServiceAccountName: KeystoreUploaderServiceAccount,
-					// Pod security context for PSS compliance
-					SecurityContext: params.PodTemplate.PodSecurityContext,
-					// Mount the service account token for API access
-					AutomountServiceAccountToken: ptr.To(true),
-				},
+				Spec: podSpec,
 			},
 		},
-	}
+	}, templateHash
 }
 
 // keystoreInitScript is the bash script to create the keystore file.
