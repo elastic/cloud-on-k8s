@@ -316,7 +316,7 @@ func (r *ReconcilePackageRegistry) reconcileDeployment(
 }
 
 func (r *ReconcilePackageRegistry) deploymentParams(epr eprv1alpha1.PackageRegistry, configHash string, meta metadata.Metadata) (deployment.Params, error) {
-	podSpec, err := newPodSpec(epr, configHash, meta, r.IsOpenShift)
+	podSpec, err := newPodSpec(epr, configHash, meta)
 	if err != nil {
 		return deployment.Params{}, err
 	}

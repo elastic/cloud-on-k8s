@@ -688,13 +688,7 @@ func startOperator(ctx context.Context) error {
 		return err
 	}
 
-	isOpenshift, err := isOpenShift(clientset)
-	if err != nil {
-		log.Info("Failed to detect if running on an OpenShift cluster", "err", err.Error())
-		return err
-	}
-
-	setDefaultSecurityContext, err := determineSetDefaultSecurityContext(viper.GetString(operator.SetDefaultSecurityContextFlag), isOpenshift)
+	setDefaultSecurityContext, err := determineSetDefaultSecurityContext(viper.GetString(operator.SetDefaultSecurityContextFlag), clientset)
 	if err != nil {
 		log.Error(err, "Failed to determine how to set default security context")
 		return err
@@ -738,7 +732,6 @@ func startOperator(ctx context.Context) error {
 			RotateBefore: certRotateBefore,
 		},
 		PasswordHasher:            passwordHasher,
-		IsOpenShift:               isOpenshift,
 		PasswordGenerator:         generator,
 		MaxConcurrentReconciles:   viper.GetInt(operator.MaxConcurrentReconcilesFlag),
 		SetDefaultSecurityContext: setDefaultSecurityContext,
@@ -862,11 +855,13 @@ func asyncTasks(
 
 // determineSetDefaultSecurityContext determines what settings we need to use for security context by using the following rules:
 //  1. If the setDefaultSecurityContext is explicitly set to either true, or false, use this value.
-//  2. If isOpenShift is true, and since OpenShift automatically sets security context, return false,
+//  2. use OpenShift detection to determine whether or not we are running within an OpenShift cluster.
+//     If we determine we are on an OpenShift cluster, and since OpenShift automatically sets security context, return false,
 //     otherwise, return true as we'll need to set this security context on non-OpenShift clusters.
-func determineSetDefaultSecurityContext(setDefaultSecurityContext string, isOpenShift bool) (bool, error) {
+func determineSetDefaultSecurityContext(setDefaultSecurityContext string, clientset kubernetes.Interface) (bool, error) {
 	if setDefaultSecurityContext == "auto-detect" {
-		return !isOpenShift, nil
+		openshift, err := isOpenShift(clientset)
+		return !openshift, err
 	}
 	return strconv.ParseBool(setDefaultSecurityContext)
 }
