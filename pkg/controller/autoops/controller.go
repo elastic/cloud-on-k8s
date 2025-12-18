@@ -59,6 +59,7 @@ func newReconciler(mgr manager.Manager, accessReviewer rbac.AccessReviewer, para
 	k8sClient := mgr.GetClient()
 	return &AgentPolicyReconciler{
 		Client:           k8sClient,
+		accessReviewer:   accessReviewer,
 		recorder:         mgr.GetEventRecorderFor(controllerName),
 		licenseChecker:   license.NewLicenseChecker(k8sClient, params.OperatorNamespace),
 		params:           params,
