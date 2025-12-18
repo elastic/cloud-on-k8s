@@ -120,9 +120,17 @@ func TestReloadableKeystore(t *testing.T) {
 			test.Step{
 				Name: "Update secure settings secret",
 				Test: test.Eventually(func() error {
+					// Fetch the latest version to get current resourceVersion
+					var current corev1.Secret
+					if err := k.Client.Get(context.Background(), types.NamespacedName{
+						Namespace: secureSettings.Namespace,
+						Name:      secureSettings.Name,
+					}, &current); err != nil {
+						return err
+					}
 					// Add a new key
-					secureSettings.Data[secureBarUserSettingKey] = []byte("bar_user_value")
-					return k.Client.Update(context.Background(), &secureSettings)
+					current.Data[secureBarUserSettingKey] = []byte("bar_user_value")
+					return k.Client.Update(context.Background(), &current)
 				}),
 			},
 

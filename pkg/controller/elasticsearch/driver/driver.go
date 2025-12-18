@@ -691,20 +691,24 @@ func (d *defaultDriver) reconcileReloadableKeystore(
 	}
 
 	// Reconcile the keystore job
-	if _, err := d.reconcileKeystoreJob(ctx, keystoreResources, meta); err != nil {
+	keystoreReady, err := d.reconcileKeystoreJob(ctx, keystoreResources, meta)
+	if err != nil {
 		return nodespec.KeystoreConfig{}, "", err
 	}
 
-	// Don't block reconciliation while waiting for the keystore job - Kubernetes will
-	// naturally keep new pods pending until the keystore Secret exists (volume mount dependency).
-	// Existing pods continue running with their current keystore until the reload API is called.
+	// If the keystore job is still running or the secret isn't ready yet, request a requeue
+	// so we can check again and eventually call the reload API.
+	if !keystoreReady {
+		results.WithReconciliationState(defaultRequeue.WithReason("Keystore job not yet complete"))
+	}
 	keystoreConfig := nodespec.KeystoreConfig{
 		SecretName: esv1.KeystoreSecretName(d.ES.Name),
 	}
 	keystoreSecretMountPath := esvolume.KeystoreSecretVolumeMountPath
 
 	// Trigger keystore reload on all ES nodes and check convergence
-	if esReachable {
+	// Only call reload if the keystore is ready (job completed and secret exists with correct hash)
+	if esReachable && keystoreReady {
 		expectedNodeCount := d.ES.Spec.NodeCount()
 		reloadResult, err := keystorejob.ReloadSecureSettings(ctx, d.Client, esClient, d.ES, expectedNodeCount)
 		if err != nil {
