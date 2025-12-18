@@ -25,6 +25,7 @@ import (
 	policyv1alpha1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/stackconfigpolicy/v1alpha1"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/association"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/container"
 	commondriver "github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/driver"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/events"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/expectations"
@@ -720,14 +721,10 @@ func (d *defaultDriver) reconcileReloadableKeystore(
 // reconcileKeystoreJob reconciles the keystore creation Job for Elasticsearch 9.3+ clusters.
 // It returns true if the keystore Secret is ready (job completed), false if still pending.
 func (d *defaultDriver) reconcileKeystoreJob(ctx context.Context, keystoreResources *keystore.Resources, meta metadata.Metadata) (bool, error) {
-	// Get the Elasticsearch image from the first node set (all should use the same image)
-	esImage := ""
-	if len(d.ES.Spec.NodeSets) > 0 {
-		esImage = d.ES.Spec.Image
-		if esImage == "" {
-			// Use default image based on version
-			esImage = fmt.Sprintf("docker.elastic.co/elasticsearch/elasticsearch:%s", d.ES.Spec.Version)
-		}
+	// Get the Elasticsearch image, preferring spec.image if set, otherwise using the default
+	esImage := d.ES.Spec.Image
+	if esImage == "" {
+		esImage = container.ImageRepository(container.ElasticsearchImage, d.Version)
 	}
 
 	// Extract pod template params from the first node set for the Job

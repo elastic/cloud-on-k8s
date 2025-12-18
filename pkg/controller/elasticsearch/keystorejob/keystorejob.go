@@ -19,10 +19,12 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/utils/ptr"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	esv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/elasticsearch/v1"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/keystore"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/metadata"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/reconciler"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/tracing"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/version"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/initcontainer"
@@ -215,10 +217,9 @@ func ReconcileJob(ctx context.Context, params Params) (done bool, err error) {
 // copyStagingSecretToESNamespace copies the staging secret from the operator namespace
 // to the ES namespace, setting the owner reference to the ES resource.
 func copyStagingSecretToESNamespace(ctx context.Context, params Params, stagingSecret *corev1.Secret, targetName string) error {
-	log := ulog.FromContext(ctx)
 	es := params.ES
 
-	finalSecret := corev1.Secret{
+	expected := corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      targetName,
 			Namespace: es.Namespace,
@@ -227,38 +228,12 @@ func copyStagingSecretToESNamespace(ctx context.Context, params Params, stagingS
 				esv1.KeystoreHashAnnotation:   stagingSecret.Annotations[esv1.KeystoreHashAnnotation],
 				esv1.KeystoreDigestAnnotation: stagingSecret.Annotations[esv1.KeystoreDigestAnnotation],
 			},
-			OwnerReferences: []metav1.OwnerReference{
-				{
-					APIVersion:         esv1.GroupVersion.String(),
-					Kind:               esv1.Kind,
-					Name:               es.Name,
-					UID:                es.UID,
-					Controller:         ptr.To(true),
-					BlockOwnerDeletion: ptr.To(true),
-				},
-			},
 		},
 		Data: stagingSecret.Data,
 	}
 
-	// Check if final secret already exists
-	var existing corev1.Secret
-	err := params.Client.Get(ctx, types.NamespacedName{Namespace: es.Namespace, Name: targetName}, &existing)
-	if err != nil {
-		if apierrors.IsNotFound(err) {
-			// Create new secret
-			log.Info("Creating keystore secret from staging", "namespace", es.Namespace, "secret", targetName)
-			return params.Client.Create(ctx, &finalSecret)
-		}
-		return err
-	}
-
-	// Update existing secret
-	existing.Data = finalSecret.Data
-	existing.Annotations = finalSecret.Annotations
-	existing.OwnerReferences = finalSecret.OwnerReferences
-	log.Info("Updating keystore secret from staging", "namespace", es.Namespace, "secret", targetName)
-	return params.Client.Update(ctx, &existing)
+	_, err := reconciler.ReconcileSecret(ctx, params.Client, expected, &es)
+	return err
 }
 
 // deleteStagingSecret deletes the staging secret from the operator namespace.
@@ -368,6 +343,21 @@ func handleStagingSecret(ctx context.Context, params Params, stagingSecret *core
 	return true, nil
 }
 
+// deleteJobWithForegroundPropagation deletes a job using foreground propagation to ensure
+// pods are cleaned up before the job is removed.
+//
+// If a Job is deleted and quickly recreated with the same name, existing pods will have owner
+// references pointing to the old Job's UID. The garbage collector treats these as "dangling"
+// references (UID mismatch) and may remove them unexpectedly. Using foreground propagation
+// ensures pods are deleted first, avoiding this race condition.
+func deleteJobWithForegroundPropagation(ctx context.Context, c k8s.Client, job *batchv1.Job) error {
+	foreground := metav1.DeletePropagationForeground
+	if err := c.Delete(ctx, job, &client.DeleteOptions{PropagationPolicy: &foreground}); err != nil && !apierrors.IsNotFound(err) {
+		return err
+	}
+	return nil
+}
+
 // handleExistingJob handles the case where a keystore Job already exists in the operator namespace.
 // It checks if the job is for the current hash and handles completion, failure, or running states.
 func handleExistingJob(ctx context.Context, params Params, existingJob *batchv1.Job, secureSettingsHash string) error {
@@ -375,9 +365,9 @@ func handleExistingJob(ctx context.Context, params Params, existingJob *batchv1.
 
 	existingJobHash := existingJob.Annotations[esv1.KeystoreHashAnnotation]
 	if existingJobHash != secureSettingsHash {
-		// Job is for a different hash - delete it
+		// Job is for a different hash - delete it with foreground propagation to clean up pods
 		log.Info("Deleting stale keystore job", "oldHash", existingJobHash, "newHash", secureSettingsHash)
-		if err := params.Client.Delete(ctx, existingJob); err != nil && !apierrors.IsNotFound(err) {
+		if err := deleteJobWithForegroundPropagation(ctx, params.Client, existingJob); err != nil {
 			return err
 		}
 		// Will recreate on next reconciliation
@@ -394,7 +384,7 @@ func handleExistingJob(ctx context.Context, params Params, existingJob *batchv1.
 
 	if isJobFailed(existingJob) {
 		log.Info("Keystore job failed, deleting for retry")
-		if err := params.Client.Delete(ctx, existingJob); err != nil && !apierrors.IsNotFound(err) {
+		if err := deleteJobWithForegroundPropagation(ctx, params.Client, existingJob); err != nil {
 			return err
 		}
 		// Will recreate on next reconciliation
