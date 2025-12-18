@@ -32,7 +32,7 @@ func SetContainerRegistry(registry string) {
 	containerRegistry = registry
 }
 
-// SetContainerRegistry sets a global container repository used to download Elastic stack images.
+// SetContainerRepository sets a global container repository used to download Elastic stack images.
 func SetContainerRepository(repository string) {
 	containerRepository = repository
 }
@@ -105,13 +105,7 @@ func ImageRepository(img Image, ver version.Version) string {
 	}
 
 	if img == PackageRegistryImage {
-		// Package Registry uses by default the 'lite' image variant.
-		// Unlike other stack component images, UBI suffix goes in the
-		// tag (lite-X.Y.Z-ubi) and not at the end of image name.
-		if useUBISuffix {
-			return fmt.Sprintf("%s/%s:lite-%s-ubi", containerRegistry, image, ver)
-		}
-		return fmt.Sprintf("%s/%s%s:lite-%s", containerRegistry, image, containerSuffix, ver)
+		return getPackageRegistryImage(useUBISuffix, suffix, ver)
 	}
 
 	return fmt.Sprintf("%s/%s%s:%s", containerRegistry, image, suffix, ver)
@@ -133,4 +127,30 @@ func getUBISuffix(ver version.Version) string {
 		return OldUBISuffix
 	}
 	return UBISuffix
+}
+
+// getPackageRegistryImage returns the Package Registry image with the appropriate tag.
+// Package Registry uses by default the 'lite' image variant. Unlike other stack component
+// images, UBI suffix goes in the tag (lite-X.Y.Z-ubi) and not at the end of the image name.
+func getPackageRegistryImage(useUBI bool, suffix string, v version.Version) string {
+	if !useUBI {
+		return fmt.Sprintf("%s/%s%s:lite-%s", containerRegistry, PackageRegistryImage, suffix, v)
+	}
+
+	// Since UBI images are only offered from certain versions onwards,
+	// fallback to tested backwards-compatible versions for unsupported releases
+	switch {
+	case v.LT(version.From(8, 19, 8)):
+		// Fallback to 8.19.8-ubi for all versions below 8.19.8
+		return fmt.Sprintf("%s/%s:lite-8.19.8-ubi", containerRegistry, PackageRegistryImage)
+	case v.Major == 9 && v.Minor <= 1 && v.LT(version.From(9, 1, 8)):
+		// Fallback to 9.1.8-ubi for 9.0.x and 9.1.x versions below 9.1.8
+		return fmt.Sprintf("%s/%s:lite-9.1.8-ubi", containerRegistry, PackageRegistryImage)
+	case v.Major == 9 && v.Minor > 1 && v.LT(version.From(9, 2, 2)):
+		// Fallback to 9.2.2-ubi for 9.2.x versions below 9.2.2
+		return fmt.Sprintf("%s/%s:lite-9.2.2-ubi", containerRegistry, PackageRegistryImage)
+	default:
+		// Use the requested version for all other cases (>= 9.2.2 or >= 8.19.8 non-9.x)
+		return fmt.Sprintf("%s/%s%s:lite-%s-ubi", containerRegistry, PackageRegistryImage, suffix, v)
+	}
 }

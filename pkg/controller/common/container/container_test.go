@@ -187,7 +187,7 @@ func TestImageRepository(t *testing.T) {
 			image:   PackageRegistryImage,
 			version: "1.0.0",
 			suffix:  "-ubi",
-			want:    testRegistry + "/package-registry/distribution:lite-1.0.0-ubi",
+			want:    testRegistry + "/package-registry/distribution:lite-8.19.8-ubi",
 		},
 		{
 			name:    "Package registry image -random suffix",
@@ -247,6 +247,157 @@ func TestAgentImageFor(t *testing.T) {
 			if got := AgentImageFor(tt.args.version); got != tt.want {
 				t.Errorf("AgentImageFor() = %v, want %v", got, tt.want)
 			}
+		})
+	}
+}
+
+func Test_getPackageRegistryImage(t *testing.T) {
+	type args struct {
+		useUBI bool
+		v      version.Version
+		suffix string
+	}
+	tests := []struct {
+		name      string
+		args      args
+		wantImage string
+	}{
+		{
+			name: "non-UBI mode with version 8.19.0",
+			args: args{
+				useUBI: false,
+				v:      version.MustParse("8.19.0"),
+			},
+			wantImage: "docker.elastic.co/package-registry/distribution:lite-8.19.0",
+		},
+		{
+			name: "non-UBI mode with version 9.0.0",
+			args: args{
+				useUBI: false,
+				v:      version.MustParse("9.0.0"),
+			},
+			wantImage: "docker.elastic.co/package-registry/distribution:lite-9.0.0",
+		},
+		{
+			name: "non-UBI mode with version 9.2.2",
+			args: args{
+				useUBI: false,
+				v:      version.MustParse("9.2.2"),
+			},
+			wantImage: "docker.elastic.co/package-registry/distribution:lite-9.2.2",
+		},
+		{
+			name: "non-UBI mode with custom suffix",
+			args: args{
+				useUBI: false,
+				v:      version.MustParse("8.19.0"),
+				suffix: "-custom",
+			},
+			wantImage: "docker.elastic.co/package-registry/distribution-custom:lite-8.19.0",
+		},
+		{
+			name: "UBI mode with version 7.17.0 (< 8.19.8)",
+			args: args{
+				useUBI: true,
+				v:      version.MustParse("7.17.0"),
+			},
+			wantImage: "docker.elastic.co/package-registry/distribution:lite-8.19.8-ubi",
+		},
+		{
+			name: "UBI mode with version 8.0.0 (< 8.19.8)",
+			args: args{
+				useUBI: true,
+				v:      version.MustParse("8.0.0"),
+			},
+			wantImage: "docker.elastic.co/package-registry/distribution:lite-8.19.8-ubi",
+		},
+		{
+			name: "UBI mode with version 8.19.7 (< 8.19.8)",
+			args: args{
+				useUBI: true,
+				v:      version.MustParse("8.19.7"),
+			},
+			wantImage: "docker.elastic.co/package-registry/distribution:lite-8.19.8-ubi",
+		},
+		{
+			name: "UBI mode with version 9.0.0 (< 9.1.8)",
+			args: args{
+				useUBI: true,
+				v:      version.MustParse("9.0.0"),
+			},
+			wantImage: "docker.elastic.co/package-registry/distribution:lite-9.1.8-ubi",
+		},
+		{
+			name: "UBI mode with version 9.1.0 (< 9.1.8)",
+			args: args{
+				useUBI: true,
+				v:      version.MustParse("9.1.0"),
+			},
+			wantImage: "docker.elastic.co/package-registry/distribution:lite-9.1.8-ubi",
+		},
+		{
+			name: "UBI mode with version 9.2.0 (< 9.2.2)",
+			args: args{
+				useUBI: true,
+				v:      version.MustParse("9.2.0"),
+			},
+			wantImage: "docker.elastic.co/package-registry/distribution:lite-9.2.2-ubi",
+		},
+		// UBI mode tests - default case (>= 9.2.2 or other versions)
+		{
+			name: "UBI mode with version 8.19.8 (>= 8.19.8, but not 9.x)",
+			args: args{
+				useUBI: true,
+				v:      version.MustParse("8.19.8"),
+			},
+			wantImage: "docker.elastic.co/package-registry/distribution:lite-8.19.8-ubi",
+		},
+		{
+			name: "UBI mode with version 8.20.0 (>= 8.19.8, but not 9.x)",
+			args: args{
+				useUBI: true,
+				v:      version.MustParse("8.20.0"),
+			},
+			wantImage: "docker.elastic.co/package-registry/distribution:lite-8.20.0-ubi",
+		},
+		{
+			name: "UBI mode with version 9.1.8 (>= 9.1.8)",
+			args: args{
+				useUBI: true,
+				v:      version.MustParse("9.1.8"),
+			},
+			wantImage: "docker.elastic.co/package-registry/distribution:lite-9.1.8-ubi",
+		},
+		{
+			name: "UBI mode with version 9.2.2 (>= 9.2.2)",
+			args: args{
+				useUBI: true,
+				v:      version.MustParse("9.2.2"),
+			},
+			wantImage: "docker.elastic.co/package-registry/distribution:lite-9.2.2-ubi",
+		},
+		{
+			name: "UBI mode with version 9.3.0 (>= 9.2.2)",
+			args: args{
+				useUBI: true,
+				v:      version.MustParse("9.3.0"),
+			},
+			wantImage: "docker.elastic.co/package-registry/distribution:lite-9.3.0-ubi",
+		},
+		{
+			name: "UBI mode with version 10.0.0 (>= 9.2.2)",
+			args: args{
+				useUBI: true,
+				v:      version.MustParse("10.0.0"),
+			},
+			wantImage: "docker.elastic.co/package-registry/distribution:lite-10.0.0-ubi",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			image := getPackageRegistryImage(tt.args.useUBI, tt.args.suffix, tt.args.v)
+			assert.Equal(t, tt.wantImage, image)
 		})
 	}
 }
