@@ -917,7 +917,6 @@ func registerControllers(mgr manager.Manager, params operator.Parameters, access
 		{name: "Agent", registerFunc: agent.Add},
 		{name: "Maps", registerFunc: maps.Add},
 		{name: "StackConfigPolicy", registerFunc: stackconfigpolicy.Add},
-		{name: "AutoOpsAgentPolicy", registerFunc: autoops.Add},
 		{name: "Logstash", registerFunc: logstash.Add},
 	}
 
@@ -932,6 +931,9 @@ func registerControllers(mgr manager.Manager, params operator.Parameters, access
 		name         string
 		registerFunc func(manager.Manager, rbac.AccessReviewer, operator.Parameters) error
 	}{
+		// AutoOps isn't technically an association controller, but it's closely related and
+		// it's Add function signature is the same as the association controllers.
+		{name: "AutoOpsAgentPolicy", registerFunc: autoops.Add},
 		{name: "RemoteCA", registerFunc: remotecluster.Add},
 		{name: "APM-ES", registerFunc: associationctl.AddApmES},
 		{name: "APM-KB", registerFunc: associationctl.AddApmKibana},
