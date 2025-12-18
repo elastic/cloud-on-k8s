@@ -28,6 +28,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 
 	esv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/elasticsearch/v1"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/label"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/k8s"
 	ulog "github.com/elastic/cloud-on-k8s/v3/pkg/utils/log"
 )
@@ -43,11 +44,13 @@ const (
 // Command returns the keystore-uploader cobra command.
 func Command() *cobra.Command {
 	var (
-		keystorePath string
-		secretName   string
-		namespace    string
-		settingsHash string
-		timeout      time.Duration
+		keystorePath    string
+		secretName      string
+		namespace       string
+		settingsHash    string
+		sourceNamespace string
+		sourceCluster   string
+		timeout         time.Duration
 	)
 
 	cmd := &cobra.Command{
@@ -67,7 +70,7 @@ The operator then copies this Secret to the target ES namespace.`,
 			defer cancel()
 			ctx = ulog.AddToContext(ctx, log)
 
-			return run(ctx, keystorePath, secretName, namespace, settingsHash)
+			return run(ctx, keystorePath, secretName, namespace, settingsHash, sourceNamespace, sourceCluster)
 		},
 	}
 
@@ -79,6 +82,10 @@ The operator then copies this Secret to the target ES namespace.`,
 		"Namespace where to create the staging Secret (operator namespace)")
 	cmd.Flags().StringVar(&settingsHash, "settings-hash", "",
 		"Hash of the secure settings used to create this keystore")
+	cmd.Flags().StringVar(&sourceNamespace, "source-namespace", "",
+		"Namespace of the source Elasticsearch cluster (for debugging labels)")
+	cmd.Flags().StringVar(&sourceCluster, "source-cluster", "",
+		"Name of the source Elasticsearch cluster (for debugging labels)")
 	cmd.Flags().DurationVar(&timeout, "timeout", defaultTimeout,
 		"Timeout for the upload operation")
 
@@ -90,7 +97,7 @@ The operator then copies this Secret to the target ES namespace.`,
 }
 
 // run executes the keystore upload logic.
-func run(ctx context.Context, keystorePath, secretName, namespace, settingsHash string) error {
+func run(ctx context.Context, keystorePath, secretName, namespace, settingsHash, sourceNamespace, sourceCluster string) error {
 	log := ulog.FromContext(ctx)
 	log.Info("Reading keystore file", "path", keystorePath)
 
@@ -115,7 +122,7 @@ func run(ctx context.Context, keystorePath, secretName, namespace, settingsHash 
 	}
 
 	// Create or update the staging Secret (no owner reference - operator will copy it)
-	if err := reconcileStagingSecret(ctx, k8sClient, secretName, namespace, keystoreData, settingsHash, digest); err != nil {
+	if err := reconcileStagingSecret(ctx, k8sClient, secretName, namespace, keystoreData, settingsHash, digest, sourceNamespace, sourceCluster); err != nil {
 		return fmt.Errorf("failed to reconcile staging secret: %w", err)
 	}
 
@@ -157,12 +164,25 @@ func reconcileStagingSecret(
 	k8sClient k8s.Client,
 	secretName, namespace string,
 	keystoreData []byte,
-	settingsHash, digest string,
+	settingsHash, digest, sourceNamespace, sourceCluster string,
 ) error {
+	// Build labels - include source cluster info for debugging since secret names are hashed
+	labels := map[string]string{
+		"app.kubernetes.io/name":       "eck-keystore-job",
+		"app.kubernetes.io/managed-by": "eck-operator",
+	}
+	if sourceNamespace != "" {
+		labels[label.SourceNamespaceLabelName] = sourceNamespace
+	}
+	if sourceCluster != "" {
+		labels[label.SourceClusterLabelName] = sourceCluster
+	}
+
 	expected := corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      secretName,
 			Namespace: namespace,
+			Labels:    labels,
 			Annotations: map[string]string{
 				esv1.KeystoreHashAnnotation:   settingsHash,
 				esv1.KeystoreDigestAnnotation: digest,
@@ -189,6 +209,7 @@ func reconcileStagingSecret(
 
 	// Secret exists, update it
 	existing.Data = expected.Data
+	existing.Labels = labels
 	if existing.Annotations == nil {
 		existing.Annotations = make(map[string]string)
 	}

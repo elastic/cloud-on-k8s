@@ -206,22 +206,27 @@ func KeystoreSecretName(esName string) string {
 
 // StagingKeystoreSecretName returns the name of the staging Secret in the operator namespace
 // that temporarily holds the keystore file before it's copied to the ES namespace.
-// The name includes the ES namespace to avoid collisions when multiple ES clusters exist.
+// Uses a hash of namespace/name to avoid collisions while keeping the name short.
 func StagingKeystoreSecretName(esNamespace, esName string) string {
-	return ESNamer.Suffix(esNamespace, esName, keystoreSecretSuffix)
+	// Use hash to create a unique, short identifier for the ES cluster
+	// This avoids suffix length issues when esName is long
+	nsNameHash := hash.HashObject(esNamespace + "/" + esName)
+	return "es-keystore-stg-" + nsNameHash
 }
 
 // StagingSecureSettingsSecretName returns the name of the staging Secret in the operator namespace
 // that holds a copy of the aggregated secure settings for the keystore job.
-// The name includes the ES namespace to avoid collisions when multiple ES clusters exist.
+// Uses a hash of namespace/name to avoid collisions while keeping the name short.
 func StagingSecureSettingsSecretName(esNamespace, esName string) string {
-	return ESNamer.Suffix(esNamespace, esName, secureSettingsSecretSuffix)
+	nsNameHash := hash.HashObject(esNamespace + "/" + esName)
+	return "es-secure-stg-" + nsNameHash
 }
 
 // KeystoreJobName returns the name of the Job that creates the keystore file for 9.3+ clusters.
-// The job runs in the operator namespace but the name includes the ES namespace to avoid collisions.
+// The job runs in the operator namespace. Uses a hash of namespace/name to avoid collisions.
 func KeystoreJobName(esNamespace, esName string) string {
-	return ESNamer.Suffix(esNamespace, esName, keystoreJobSuffix)
+	nsNameHash := hash.HashObject(esNamespace + "/" + esName)
+	return "es-keystore-job-" + nsNameHash
 }
 
 func StackConfigElasticsearchConfigSecretName(esName string) string {

@@ -28,6 +28,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/tracing"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/version"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/initcontainer"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/label"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/k8s"
 	ulog "github.com/elastic/cloud-on-k8s/v3/pkg/utils/log"
 )
@@ -271,7 +272,7 @@ func copySecureSettingsToOperatorNamespace(ctx context.Context, params Params, s
 		return err
 	}
 
-	// Create a copy in the operator namespace
+	// Create a copy in the operator namespace with labels for debugging
 	stagingSecret := corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      stagingName,
@@ -279,6 +280,8 @@ func copySecureSettingsToOperatorNamespace(ctx context.Context, params Params, s
 			Labels: map[string]string{
 				"app.kubernetes.io/name":       "eck-keystore-job",
 				"app.kubernetes.io/managed-by": "eck-operator",
+				label.SourceNamespaceLabelName: params.ES.Namespace,
+				label.SourceClusterLabelName:   params.ES.Name,
 			},
 			Annotations: map[string]string{
 				esv1.KeystoreHashAnnotation: params.KeystoreResources.Hash,
@@ -406,12 +409,15 @@ func buildJob(params Params, secureSettingsHash, stagingSecureSettingsName strin
 	jobName := esv1.KeystoreJobName(es.Namespace, es.Name)
 	stagingKeystoreSecretName := esv1.StagingKeystoreSecretName(es.Namespace, es.Name)
 
-	// Labels for the job - don't use ES labels like cluster-name to avoid
-	// other controllers (e.g. license controller) picking up job pods.
-	// The job name already includes the ES namespace and name for identification.
+	// Labels for the job - include ES cluster info for debugging/identification
+	// since the job/secret names are now hashed and opaque.
+	// Note: we don't use label.ClusterNameLabelName to avoid other controllers
+	// (e.g. license controller) picking up job pods.
 	labels := map[string]string{
 		"app.kubernetes.io/name":       "eck-keystore-job",
 		"app.kubernetes.io/managed-by": "eck-operator",
+		label.SourceNamespaceLabelName: es.Namespace,
+		label.SourceClusterLabelName:   es.Name,
 	}
 	annotations := map[string]string{
 		esv1.KeystoreHashAnnotation: secureSettingsHash,
@@ -574,6 +580,8 @@ func buildMainContainer(params Params, stagingSecretName, secureSettingsHash str
 			"--secret-name", stagingSecretName,
 			"--namespace", params.OperatorNamespace, // Staging secret goes to operator namespace
 			"--settings-hash", secureSettingsHash,
+			"--source-namespace", params.ES.Namespace, // For debugging labels on staging secret
+			"--source-cluster", params.ES.Name, // For debugging labels on staging secret
 		},
 		VolumeMounts: []corev1.VolumeMount{
 			{

@@ -49,7 +49,7 @@ func TestReloadableKeystore(t *testing.T) {
 	}
 
 	// Set up a cluster with secure settings
-	b := elasticsearch.NewBuilder("test-reloadable-keystore").
+	b := elasticsearch.NewBuilder("test-reload-ks").
 		WithESMasterDataNodes(1, elasticsearch.DefaultResources).
 		WithESSecureSettings(secureSettings.Name)
 
@@ -198,7 +198,7 @@ func TestReloadableKeystoreDisabled(t *testing.T) {
 	}
 
 	// Set up a cluster with the reloadable keystore feature disabled
-	b := elasticsearch.NewBuilder("test-keystore-disabled").
+	b := elasticsearch.NewBuilder("test-ks-disabled").
 		WithESMasterDataNodes(1, elasticsearch.DefaultResources).
 		WithESSecureSettings(secureSettings.Name).
 		WithAnnotation(esv1.DisableReloadableKeystoreAnnotation, "true")

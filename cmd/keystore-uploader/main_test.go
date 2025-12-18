@@ -20,6 +20,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 
 	esv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/elasticsearch/v1"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/label"
 	ulog "github.com/elastic/cloud-on-k8s/v3/pkg/utils/log"
 )
 
@@ -71,6 +72,8 @@ func TestCommand(t *testing.T) {
 	assert.NotNil(t, flags.Lookup("secret-name"))
 	assert.NotNil(t, flags.Lookup("namespace"))
 	assert.NotNil(t, flags.Lookup("settings-hash"))
+	assert.NotNil(t, flags.Lookup("source-namespace"))
+	assert.NotNil(t, flags.Lookup("source-cluster"))
 	assert.NotNil(t, flags.Lookup("timeout"))
 }
 
@@ -88,7 +91,7 @@ func TestReconcileStagingSecret_Create(t *testing.T) {
 	settingsHash := "abc123"
 	digest := computeDigest(keystoreData)
 
-	err := reconcileStagingSecret(ctx, k8sClient, "test-secret", "elastic-system", keystoreData, settingsHash, digest)
+	err := reconcileStagingSecret(ctx, k8sClient, "test-secret", "elastic-system", keystoreData, settingsHash, digest, "my-namespace", "my-cluster")
 	require.NoError(t, err)
 
 	// Verify secret was created
@@ -99,6 +102,9 @@ func TestReconcileStagingSecret_Create(t *testing.T) {
 	assert.Equal(t, keystoreData, secret.Data[KeystoreFileName])
 	assert.Equal(t, settingsHash, secret.Annotations[esv1.KeystoreHashAnnotation])
 	assert.Equal(t, digest, secret.Annotations[esv1.KeystoreDigestAnnotation])
+	// Verify source labels for debugging
+	assert.Equal(t, "my-namespace", secret.Labels[label.SourceNamespaceLabelName])
+	assert.Equal(t, "my-cluster", secret.Labels[label.SourceClusterLabelName])
 	// Staging secret has no owner references (cross-namespace)
 	assert.Empty(t, secret.OwnerReferences)
 }
@@ -132,7 +138,7 @@ func TestReconcileStagingSecret_Update(t *testing.T) {
 	settingsHash := "new-hash"
 	digest := computeDigest(keystoreData)
 
-	err := reconcileStagingSecret(ctx, k8sClient, "test-secret", "elastic-system", keystoreData, settingsHash, digest)
+	err := reconcileStagingSecret(ctx, k8sClient, "test-secret", "elastic-system", keystoreData, settingsHash, digest, "my-namespace", "my-cluster")
 	require.NoError(t, err)
 
 	// Verify secret was updated
@@ -143,11 +149,14 @@ func TestReconcileStagingSecret_Update(t *testing.T) {
 	assert.Equal(t, keystoreData, secret.Data[KeystoreFileName])
 	assert.Equal(t, settingsHash, secret.Annotations[esv1.KeystoreHashAnnotation])
 	assert.Equal(t, digest, secret.Annotations[esv1.KeystoreDigestAnnotation])
+	// Verify labels were updated
+	assert.Equal(t, "my-namespace", secret.Labels[label.SourceNamespaceLabelName])
+	assert.Equal(t, "my-cluster", secret.Labels[label.SourceClusterLabelName])
 }
 
 func TestRun_FileNotFound(t *testing.T) {
 	ctx := context.Background()
-	err := run(ctx, "/nonexistent/path/to/keystore", "secret", "namespace", "hash")
+	err := run(ctx, "/nonexistent/path/to/keystore", "secret", "namespace", "hash", "source-ns", "source-cluster")
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "failed to read keystore file")
 }
@@ -159,7 +168,7 @@ func TestRun_EmptyFile(t *testing.T) {
 	require.NoError(t, os.WriteFile(emptyFile, []byte{}, 0644))
 
 	ctx := context.Background()
-	err := run(ctx, emptyFile, "secret", "namespace", "hash")
+	err := run(ctx, emptyFile, "secret", "namespace", "hash", "source-ns", "source-cluster")
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "keystore file is empty")
 }
