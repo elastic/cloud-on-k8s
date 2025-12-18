@@ -89,7 +89,7 @@ func newPodSpec(epr eprv1alpha1.PackageRegistry, configHash string, meta metadat
 	}
 
 	eprVars := []corev1.EnvVar{
-		{Name: AddressEnvName, Value: "0.0.0.0:8080"},
+		{Name: AddressEnvName, Value: fmt.Sprintf("0.0.0.0:%d", HTTPPort)},
 	}
 
 	if epr.Spec.HTTP.TLS.Enabled() {
