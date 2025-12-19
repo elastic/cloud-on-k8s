@@ -106,7 +106,7 @@ func (gc *GarbageCollector) cleanupOrphanedSecretsForDeletedPolicies(
 
 	for i := range secrets.Items {
 		secret := &secrets.Items[i]
-		policyNN := policyFromLabels(secret.Labels)
+		policyNN := policyOrDeploymentFromLabels(secret.Labels)
 		if policyNN.Name == "" {
 			continue
 		}
@@ -164,8 +164,8 @@ func (gc *GarbageCollector) cleanupOrphanedSecretsForDeletedPolicies(
 	return nil
 }
 
-// policyFromLabels extracts the policy namespaced name from resource labels.
-func policyFromLabels(labels map[string]string) types.NamespacedName {
+// policyOrDeploymentFromLabels extracts the policy or deploymentnamespaced name from resource labels.
+func policyOrDeploymentFromLabels(labels map[string]string) types.NamespacedName {
 	name, hasName := labels[PolicyNameLabelKey]
 	namespace, hasNamespace := labels[policyNamespaceLabelKey]
 	if !hasName || !hasNamespace {

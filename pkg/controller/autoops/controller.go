@@ -10,6 +10,7 @@ import (
 	"sync/atomic"
 
 	"go.elastic.co/apm/v2"
+	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/types"
@@ -76,7 +77,12 @@ func addWatches(mgr manager.Manager, c controller.Controller, r *AgentPolicyReco
 	}
 
 	// watch dynamically referenced secrets
-	return c.Watch(source.Kind(mgr.GetCache(), &corev1.Secret{}, r.dynamicWatches.Secrets))
+	if err := c.Watch(source.Kind(mgr.GetCache(), &corev1.Secret{}, r.dynamicWatches.Secrets)); err != nil {
+		return err
+	}
+
+	// watch for changes to deployments created by this controller
+	return c.Watch(source.Kind(mgr.GetCache(), &appsv1.Deployment{}, reconcileRequestForAutoOpsPolicyFromDeployment()))
 }
 
 // reconcileRequestForAllAutoOpsPolicies returns the requests to reconcile all AutoOpsAgentPolicy resources.
@@ -85,7 +91,7 @@ func reconcileRequestForAllAutoOpsPolicies(clnt k8s.Client) handler.TypedEventHa
 		var autoOpsAgentPolicyList autoopsv1alpha1.AutoOpsAgentPolicyList
 		err := clnt.List(context.Background(), &autoOpsAgentPolicyList)
 		if err != nil {
-			ulog.Log.Error(err, "Fail to list AutoOpsAgentPolicyList while watching Elasticsearch")
+			ulog.Log.Error(err, "failed to list AutoOpsAgentPolicyList while watching Elasticsearch")
 			return nil
 		}
 		requests := make([]reconcile.Request, 0)
@@ -93,6 +99,24 @@ func reconcileRequestForAllAutoOpsPolicies(clnt k8s.Client) handler.TypedEventHa
 			requests = append(requests, reconcile.Request{NamespacedName: k8s.ExtractNamespacedName(&autoOpsAgentPolicy)})
 		}
 		return requests
+	})
+}
+
+// reconcileRequestForAutoOpsPolicyFromDeployment returns a handler that enqueues the AutoOpsAgentPolicy
+// associated with a deployment based on the deployment's labels.
+func reconcileRequestForAutoOpsPolicyFromDeployment() handler.TypedEventHandler[*appsv1.Deployment, reconcile.Request] {
+	return handler.TypedEnqueueRequestsFromMapFunc(func(ctx context.Context, dep *appsv1.Deployment) []reconcile.Request {
+		deploymentNN := policyOrDeploymentFromLabels(dep.GetLabels())
+
+		if deploymentNN.Name == "" {
+			return nil
+		}
+
+		return []reconcile.Request{
+			{
+				NamespacedName: deploymentNN,
+			},
+		}
 	})
 }
 
@@ -171,12 +195,13 @@ func updatePhaseFromResults(results *reconciler.Results, state *State) {
 	switch {
 	case state.status.Errors > 0:
 		state.UpdateWithPhase(autoopsv1alpha1.ErrorPhase)
-	case state.status.Resources > 0 && state.status.Ready == 0:
-		state.UpdateWithPhase(autoopsv1alpha1.ResourcesNotReadyPhase)
-	case state.status.Resources > 0 && state.status.Ready > 0:
-		state.UpdateWithPhase(autoopsv1alpha1.ReadyPhase)
 	case state.status.Resources == 0:
 		state.UpdateWithPhase(autoopsv1alpha1.NoResourcesPhase)
+	case state.status.Ready == state.status.Resources:
+		state.UpdateWithPhase(autoopsv1alpha1.ReadyPhase)
+	default:
+		// Resources > 0 && Ready < Resources
+		state.UpdateWithPhase(autoopsv1alpha1.ResourcesNotReadyPhase)
 	}
 }
 
