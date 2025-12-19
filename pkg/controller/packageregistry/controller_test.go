@@ -49,9 +49,9 @@ func TestReconcilePackageRegistry_Reconcile(t *testing.T) {
 	timeFixture := metav1.Now()
 
 	assertObservedGeneration := func(r k8s.Client, expected int) {
-		var ems v1alpha1.PackageRegistry
-		require.NoError(t, r.Get(context.Background(), types.NamespacedName{Name: nsnFixture.Name, Namespace: nsnFixture.Namespace}, &ems))
-		require.Equal(t, int64(expected), ems.Status.ObservedGeneration)
+		var epr v1alpha1.PackageRegistry
+		require.NoError(t, r.Get(context.Background(), types.NamespacedName{Name: nsnFixture.Name, Namespace: nsnFixture.Namespace}, &epr))
+		require.Equal(t, int64(expected), epr.Status.ObservedGeneration)
 	}
 	tests := []struct {
 		name             string
