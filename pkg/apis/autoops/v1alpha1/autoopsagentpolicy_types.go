@@ -5,9 +5,10 @@
 package v1alpha1
 
 import (
-	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/set"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+
+	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/set"
 )
 
 const (
