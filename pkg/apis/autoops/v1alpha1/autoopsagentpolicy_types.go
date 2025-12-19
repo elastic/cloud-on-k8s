@@ -5,6 +5,7 @@
 package v1alpha1
 
 import (
+	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/set"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
@@ -109,6 +110,15 @@ const (
 	NoResourcesPhase       PolicyPhase = "NoResources"
 	ResourcesNotReadyPhase PolicyPhase = "ResourcesNotReady"
 	ErrorPhase             PolicyPhase = "Error"
+)
+
+var (
+	// RequeuePhases is a set of phases that require a requeue.
+	RequeuePhases = set.Make(
+		string(ApplyingChangesPhase),
+		string(ResourcesNotReadyPhase),
+		string(ErrorPhase),
+	)
 )
 
 // IsMarkedForDeletion returns true if the AutoOpsAgentPolicy resource is going to be deleted.

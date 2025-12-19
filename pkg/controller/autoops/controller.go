@@ -8,7 +8,6 @@ import (
 	"context"
 	"fmt"
 	"sync/atomic"
-	"time"
 
 	"go.elastic.co/apm/v2"
 	corev1 "k8s.io/api/core/v1"
@@ -40,9 +39,6 @@ import (
 const (
 	controllerName = "autoops-controller"
 )
-
-// defaultRequeue is the default requeue interval for this controller.
-var defaultRequeue = 5 * time.Second
 
 // Add creates a new AutoOpsAgentPolicy controller and adds it to the manager with default RBAC. The manager will set fields on the controller
 // and start it when the manager is started.
@@ -149,16 +145,11 @@ func (r *AgentPolicyReconciler) Reconcile(ctx context.Context, request reconcile
 	updatePhaseFromResults(results, state)
 
 	result, err := r.updateStatusFromState(ctx, state)
-	if err != nil {
-		results.WithError(err)
-	} else if result.RequeueAfter > 0 {
-		return results.WithRequeue().Aggregate()
-	}
+	results = results.WithResult(result).WithError(err)
 
-	// requeue if not ready (similar to stackconfigpolicy controller)
-	// Check phase after status update to ensure status is persisted
-	if state.status.Phase != autoopsv1alpha1.ReadyPhase {
-		results = results.WithRequeue(defaultRequeue)
+	// requeue if the phase is in the set of phases that require a requeue
+	if autoopsv1alpha1.RequeuePhases.Has(string(state.status.Phase)) {
+		return results.WithRequeue(reconciler.DefaultRequeue).Aggregate()
 	}
 
 	return results.Aggregate()
@@ -223,7 +214,7 @@ func (r *AgentPolicyReconciler) updateStatusFromState(ctx context.Context, state
 	)
 	if err := common.UpdateStatus(ctx, r.Client, policy); err != nil {
 		if apierrors.IsConflict(err) {
-			return reconcile.Result{RequeueAfter: defaultRequeue}, nil
+			return reconcile.Result{RequeueAfter: reconciler.DefaultRequeue}, nil
 		}
 		return reconcile.Result{}, tracing.CaptureError(ctx, err)
 	}

@@ -81,7 +81,7 @@ resourceSelector:
 # ServiceAccountName is used for RBAC checks when accessing Elasticsearch clusters
 # in different namespaces. The policy can only target Elasticsearch clusters that
 # the specified service account has permission to access (via 'get' verb).
-# Defaults to "default" if not specified.
+# Defaults to "default" if not specified. Only enforced if operator is running with --enforce-rbac-on-refs.
 #
 # serviceAccountName: ""
 
