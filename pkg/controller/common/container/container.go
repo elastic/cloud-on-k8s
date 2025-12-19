@@ -151,6 +151,6 @@ func getPackageRegistryImage(useUBI bool, suffix string, v version.Version) stri
 		return fmt.Sprintf("%s/%s:lite-9.2.2-ubi", containerRegistry, PackageRegistryImage)
 	default:
 		// Use the requested version for all other cases (>= 9.2.2 or >= 8.19.8 non-9.x)
-		return fmt.Sprintf("%s/%s%s:lite-%s-ubi", containerRegistry, PackageRegistryImage, suffix, v)
+		return fmt.Sprintf("%s/%s:lite-%s-ubi", containerRegistry, PackageRegistryImage, v)
 	}
 }
