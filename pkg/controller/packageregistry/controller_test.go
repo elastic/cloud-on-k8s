@@ -225,13 +225,6 @@ func TestReconcilePackageRegistry_Reconcile(t *testing.T) {
 
 func Test_buildConfigHash(t *testing.T) {
 	epr := *eprFixture.DeepCopy()
-	esTLSCertsSecret := corev1.Secret{
-		ObjectMeta: metav1.ObjectMeta{Namespace: nsnFixture.Namespace, Name: "es-tls-certs"},
-		Data: map[string][]byte{
-			certificates.CertFileName: []byte("es-cert-data"),
-		},
-	}
-
 	eprNoTLS := *epr.DeepCopy()
 	eprNoTLS.Spec.HTTP.TLS = commonv1.TLSOptions{SelfSignedCertificate: &commonv1.SelfSignedCertificate{Disabled: true}}
 
@@ -247,53 +240,46 @@ func Test_buildConfigHash(t *testing.T) {
 		},
 	}
 	type args struct {
-		c            k8s.Client
-		epr          v1alpha1.PackageRegistry
-		configSecret corev1.Secret
+		epr             v1alpha1.PackageRegistry
+		configSecret    corev1.Secret
+		httpCertificate *certificates.CertificatesSecret
 	}
 	tests := []struct {
-		name    string
-		args    args
-		want    string
-		wantErr bool
+		name string
+		args args
+		want string
 	}{
 		{
 			name: "full configuration",
 			args: args{
-				c:            k8s.NewFakeClient(&tlsCertsSecret, &esTLSCertsSecret),
-				epr:          epr,
-				configSecret: cfgFixture,
+				epr:             epr,
+				configSecret:    cfgFixture,
+				httpCertificate: &certificates.CertificatesSecret{Secret: tlsCertsSecret},
 			},
-			want:    "3032871734",
-			wantErr: false,
+			want: "3032871734",
 		},
 		{
 			name: "no TLS",
 			args: args{
-				c:            k8s.NewFakeClient(&esTLSCertsSecret),
-				epr:          eprNoTLS,
-				configSecret: cfgFixture,
+				epr:             eprNoTLS,
+				configSecret:    cfgFixture,
+				httpCertificate: nil,
 			},
-			want:    "2560904737",
-			wantErr: false,
+			want: "2560904737",
 		},
 		{
-			name: "TLS cert not found",
+			name: "TLS but nil http certificate",
 			args: args{
-				c:            k8s.NewFakeClient(),
-				epr:          eprFixture,
-				configSecret: cfgFixture,
+				epr:             eprFixture,
+				configSecret:    cfgFixture,
+				httpCertificate: nil,
 			},
-			wantErr: true,
+			want: "2560904737",
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := buildConfigHash(t.Context(), tt.args.c, tt.args.epr, tt.args.configSecret)
-			if (err != nil) != tt.wantErr {
-				t.Errorf("buildConfigHash() error = %v, wantErr %v", err, tt.wantErr)
-				return
-			}
+			got := buildConfigHash(tt.args.epr, tt.args.configSecret, tt.args.httpCertificate)
 			if got != tt.want {
 				t.Errorf("buildConfigHash() got = %v, want %v", got, tt.want)
 			}

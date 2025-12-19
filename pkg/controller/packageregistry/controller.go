@@ -193,7 +193,8 @@ func (r *ReconcilePackageRegistry) doReconcile(ctx context.Context, epr eprv1alp
 		return results.WithError(err), status
 	}
 
-	_, results = certificates.Reconciler{
+	var httpCertificate *certificates.CertificatesSecret
+	httpCertificate, results = certificates.Reconciler{
 		K8sClient:             r.K8sClient(),
 		DynamicWatches:        r.DynamicWatches(),
 		Owner:                 &epr,
@@ -218,10 +219,7 @@ func (r *ReconcilePackageRegistry) doReconcile(ctx context.Context, epr eprv1alp
 	}
 
 	// build a hash of various inputs to rotate Pods on any change
-	configHash, err := buildConfigHash(ctx, r.K8sClient(), epr, configSecret)
-	if err != nil {
-		return results.WithError(fmt.Errorf("build config hash: %w", err)), status
-	}
+	configHash := buildConfigHash(epr, configSecret, httpCertificate)
 
 	deploy, err := r.reconcileDeployment(ctx, epr, configHash, meta)
 	if err != nil {
@@ -276,7 +274,7 @@ func NewService(epr eprv1alpha1.PackageRegistry, meta metadata.Metadata) *corev1
 	return defaults.SetServiceDefaults(&svc, meta, selector, ports)
 }
 
-func buildConfigHash(ctx context.Context, c k8s.Client, epr eprv1alpha1.PackageRegistry, configSecret corev1.Secret) (string, error) {
+func buildConfigHash(epr eprv1alpha1.PackageRegistry, configSecret corev1.Secret, httpCertificate *certificates.CertificatesSecret) string {
 	// build a hash of various settings to rotate the Pod on any change
 	configHash := fnv.New32a()
 
@@ -284,18 +282,13 @@ func buildConfigHash(ctx context.Context, c k8s.Client, epr eprv1alpha1.PackageR
 	_, _ = configHash.Write(configSecret.Data[ConfigFilename])
 
 	// - in the Elastic Package Registry TLS certificates
-	if epr.Spec.HTTP.TLS.Enabled() {
-		var tlsCertSecret corev1.Secret
-		tlsSecretKey := types.NamespacedName{Namespace: epr.Namespace, Name: certificates.InternalCertsSecretName(eprv1alpha1.Namer, epr.Name)}
-		if err := c.Get(ctx, tlsSecretKey, &tlsCertSecret); err != nil {
-			return "", err
-		}
-		if certPem, ok := tlsCertSecret.Data[certificates.CertFileName]; ok {
+	if epr.Spec.HTTP.TLS.Enabled() && httpCertificate != nil {
+		if certPem, ok := httpCertificate.Data[certificates.CertFileName]; ok {
 			_, _ = configHash.Write(certPem)
 		}
 	}
 
-	return fmt.Sprint(configHash.Sum32()), nil
+	return fmt.Sprint(configHash.Sum32())
 }
 
 func (r *ReconcilePackageRegistry) reconcileDeployment(
