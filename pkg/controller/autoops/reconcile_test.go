@@ -221,7 +221,7 @@ func TestAutoOpsAgentPolicyReconciler_internalReconcile(t *testing.T) {
 				Ready:     0,
 				Phase:     autoopsv1alpha1.ResourcesNotReadyPhase,
 			},
-			wantResults: reconcile.Result{RequeueAfter: 5 * time.Second},
+			wantResults: reconcile.Result{RequeueAfter: 10 * time.Second},
 		},
 		{
 			name: "successful reconciliation with one ready ES",
@@ -346,7 +346,7 @@ func TestAutoOpsAgentPolicyReconciler_internalReconcile(t *testing.T) {
 				Errors:    0,
 				Phase:     autoopsv1alpha1.ResourcesNotReadyPhase, // es-2 is not ready
 			},
-			wantResults: reconcile.Result{RequeueAfter: 5 * time.Second},
+			wantResults: reconcile.Result{RequeueAfter: 10 * time.Second},
 		},
 		{
 			name: "single ES with ready deployment shows ready: 1, resources: 1",
