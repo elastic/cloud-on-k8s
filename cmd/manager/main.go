@@ -53,6 +53,7 @@ import (
 	kbv1beta1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/kibana/v1beta1"
 	logstashv1alpha1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/logstash/v1alpha1"
 	emsv1alpha1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/maps/v1alpha1"
+	eprv1alpha1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/packageregistry/v1alpha1"
 	policyv1alpha1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/stackconfigpolicy/v1alpha1"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/agent"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/apmserver"
@@ -84,6 +85,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/logstash"
 	lsvalidation "github.com/elastic/cloud-on-k8s/v3/pkg/controller/logstash/validation"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/maps"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/packageregistry"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/remotecluster"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/stackconfigpolicy"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/webhook"
@@ -914,6 +916,7 @@ func registerControllers(mgr manager.Manager, params operator.Parameters, access
 		{name: "LicenseTrial", registerFunc: licensetrial.Add},
 		{name: "Agent", registerFunc: agent.Add},
 		{name: "Maps", registerFunc: maps.Add},
+		{name: "PackageRegistry", registerFunc: packageregistry.Add},
 		{name: "StackConfigPolicy", registerFunc: stackconfigpolicy.Add},
 		{name: "Logstash", registerFunc: logstash.Add},
 	}
@@ -934,6 +937,7 @@ func registerControllers(mgr manager.Manager, params operator.Parameters, access
 		{name: "APM-KB", registerFunc: associationctl.AddApmKibana},
 		{name: "KB-ES", registerFunc: associationctl.AddKibanaES},
 		{name: "KB-ENT", registerFunc: associationctl.AddKibanaEnt},
+		{name: "KB-EPR", registerFunc: associationctl.AddKibanaEPR},
 		{name: "ENT-ES", registerFunc: associationctl.AddEntES},
 		{name: "BEAT-ES", registerFunc: associationctl.AddBeatES},
 		{name: "BEAT-KB", registerFunc: associationctl.AddBeatKibana},
@@ -993,6 +997,7 @@ func garbageCollectSoftOwnedSecrets(ctx context.Context, k8sClient k8s.Client) {
 		beatv1beta1.Kind:      &beatv1beta1.Beat{},
 		agentv1alpha1.Kind:    &agentv1alpha1.Agent{},
 		emsv1alpha1.Kind:      &emsv1alpha1.ElasticMapsServer{},
+		eprv1alpha1.Kind:      &eprv1alpha1.PackageRegistry{},
 		policyv1alpha1.Kind:   &policyv1alpha1.StackConfigPolicy{},
 		logstashv1alpha1.Kind: &logstashv1alpha1.Logstash{},
 	}); err != nil {
@@ -1037,6 +1042,7 @@ func setupWebhook(
 		&kbv1.Kibana{},
 		&kbv1beta1.Kibana{},
 		&emsv1alpha1.ElasticMapsServer{},
+		&eprv1alpha1.PackageRegistry{},
 		&policyv1alpha1.StackConfigPolicy{},
 	}
 	for _, obj := range webhookObjects {

@@ -46,6 +46,7 @@ import (
 	kblabel "github.com/elastic/cloud-on-k8s/v3/pkg/controller/kibana/label"
 	lslabels "github.com/elastic/cloud-on-k8s/v3/pkg/controller/logstash/labels"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/maps"
+	eprlabels "github.com/elastic/cloud-on-k8s/v3/pkg/controller/packageregistry/label"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/k8s"
 )
 
@@ -498,6 +499,15 @@ func MapsPodListOptions(emsNS, emsName string) []k8sclient.ListOption {
 	matchLabels := k8sclient.MatchingLabels(map[string]string{
 		commonv1.TypeLabelName: maps.Type,
 		maps.NameLabelName:     emsName,
+	})
+	return []k8sclient.ListOption{ns, matchLabels}
+}
+
+func EPRPodListOptions(eprNS, eprName string) []k8sclient.ListOption {
+	ns := k8sclient.InNamespace(eprNS)
+	matchLabels := k8sclient.MatchingLabels(map[string]string{
+		commonv1.TypeLabelName:  eprlabels.Type,
+		eprlabels.NameLabelName: eprName,
 	})
 	return []k8sclient.ListOption{ns, matchLabels}
 }

@@ -33,6 +33,11 @@ spec:
   enterpriseSearchRef:
   {{- toYaml $entsearchRef | nindent 4 }}
   {{- end }}
+  {{- $eprRef := or ((.Values.spec).packageRegistryRef) (.Values.packageRegistryRef) }}
+  {{- if $eprRef }}
+  packageRegistryRef:
+  {{- toYaml $eprRef | nindent 4 }}
+  {{- end }}
   {{- with or ((.Values.spec).config) (.Values.config) }}
   config:
     {{ toYaml . | nindent 4 }}

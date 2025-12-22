@@ -27,6 +27,7 @@ applies_to:
 * [kibana.k8s.elastic.co/v1beta1](#kibanak8selasticcov1beta1)
 * [logstash.k8s.elastic.co/v1alpha1](#logstashk8selasticcov1alpha1)
 * [maps.k8s.elastic.co/v1alpha1](#mapsk8selasticcov1alpha1)
+* [packageregistry.k8s.elastic.co/v1alpha1](#packageregistryk8selasticcov1alpha1)
 * [stackconfigpolicy.k8s.elastic.co/v1alpha1](#stackconfigpolicyk8selasticcov1alpha1)
 
 
@@ -417,6 +418,7 @@ Config represents untyped YAML configuration.
 * [LogstashSpec](#logstashspec)
 * [MapsSpec](#mapsspec)
 * [NodeSet](#nodeset)
+* [PackageRegistrySpec](#packageregistryspec)
 * [Search](#search)
 
 :::
@@ -448,6 +450,7 @@ ConfigSource references configuration settings.
 * [EnterpriseSearchSpec](#enterprisesearchspec)
 * [LogstashSpec](#logstashspec)
 * [MapsSpec](#mapsspec)
+* [PackageRegistrySpec](#packageregistryspec)
 
 :::
 
@@ -470,6 +473,7 @@ HTTPConfig holds the HTTP layer configuration for resources.
 * [EnterpriseSearchSpec](#enterprisesearchspec)
 * [KibanaSpec](#kibanaspec)
 * [MapsSpec](#mapsspec)
+* [PackageRegistrySpec](#packageregistryspec)
 
 :::
 
@@ -1719,6 +1723,7 @@ KibanaSpec holds the specification of a Kibana instance.
 | *`image`* __string__ | Image is the Kibana Docker image to deploy. |
 | *`count`* __integer__ | Count of Kibana instances to deploy. |
 | *`elasticsearchRef`* __[ObjectSelector](#objectselector)__ | ElasticsearchRef is a reference to an Elasticsearch cluster running in the same Kubernetes cluster. |
+| *`packageRegistryRef`* __[ObjectSelector](#objectselector)__ | PackageRegistryRef is a reference to an Elastic Package Registry running in the same Kubernetes cluster. |
 | *`enterpriseSearchRef`* __[ObjectSelector](#objectselector)__ | EnterpriseSearchRef is a reference to an EnterpriseSearch running in the same Kubernetes cluster.<br>Kibana provides the default Enterprise Search UI starting version 7.14. |
 | *`config`* __[Config](#config)__ | Config holds the Kibana configuration. See: https://www.elastic.co/guide/en/kibana/current/settings.html |
 | *`http`* __[HTTPConfig](#httpconfig)__ | HTTP holds the HTTP layer configuration for Kibana. |
@@ -1955,6 +1960,85 @@ MapsSpec holds the specification of an Elastic Maps Server instance.
 | *`podTemplate`* __[PodTemplateSpec](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.32/#podtemplatespec-v1-core)__ | PodTemplate provides customisation options (labels, annotations, affinity rules, resource requests, and so on) for the Elastic Maps Server pods |
 | *`revisionHistoryLimit`* __integer__ | RevisionHistoryLimit is the number of revisions to retain to allow rollback in the underlying Deployment. |
 | *`serviceAccountName`* __string__ | ServiceAccountName is used to check access from the current resource to a resource (for ex. Elasticsearch) in a different namespace.<br>Can only be used if ECK is enforcing RBAC on references. |
+
+
+
+% TODO add function to crd-ref-docs return anchor used in links docs-v3 does not seem to produce valid markdown anchors
+## packageregistry.k8s.elastic.co/v1alpha1 [#packageregistryk8selasticcov1alpha1]
+
+Package v1alpha1 contains API schema definitions for managing Elastic Package Registry resources.
+
+### Resource Types
+- [PackageRegistry](#packageregistry)
+- [PackageRegistryList](#packageregistrylist)
+
+
+
+### PackageRegistry  [#packageregistry]
+
+PackageRegistry represents an Elastic Package Registry resource in a Kubernetes cluster.
+
+:::{admonition} Appears In:
+* [PackageRegistryList](#packageregistrylist)
+
+:::
+
+| Field | Description |
+| --- | --- |
+| *`apiVersion`* __string__ | `packageregistry.k8s.elastic.co/v1alpha1` |
+| *`kind`* __string__ | `PackageRegistry` | 
+| *`metadata`* __[ObjectMeta](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.32/#objectmeta-v1-meta)__ | Refer to Kubernetes API documentation for fields of `metadata`. |
+| *`spec`* __[PackageRegistrySpec](#packageregistryspec)__ |  |
+| *`status`* __[PackageRegistryStatus](#packageregistrystatus)__ |  |
+
+
+### PackageRegistryList  [#packageregistrylist]
+
+PackageRegistryList contains a list of PackageRegistry
+
+
+
+| Field | Description |
+| --- | --- |
+| *`apiVersion`* __string__ | `packageregistry.k8s.elastic.co/v1alpha1` |
+| *`kind`* __string__ | `PackageRegistryList` | 
+| *`metadata`* __[ListMeta](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.32/#listmeta-v1-meta)__ | Refer to Kubernetes API documentation for fields of `metadata`. |
+| *`items`* __[PackageRegistry](#packageregistry) array__ |  |
+
+
+### PackageRegistrySpec  [#packageregistryspec]
+
+PackageRegistrySpec holds the specification of an Elastic Package Registry instance.
+
+:::{admonition} Appears In:
+* [PackageRegistry](#packageregistry)
+
+:::
+
+| Field | Description |
+| --- | --- |
+| *`version`* __string__ | Version of Elastic Package Registry. |
+| *`image`* __string__ | Image is the Elastic Package Registry Docker image to deploy. |
+| *`count`* __integer__ | Count of Elastic Package Registry instances to deploy. |
+| *`config`* __[Config](#config)__ | Config holds the PackageRegistry configuration. See: https://github.com/elastic/package-registry/blob/main/config.reference.yml |
+| *`configRef`* __[ConfigSource](#configsource)__ | ConfigRef contains a reference to an existing Kubernetes Secret holding the Elastic Package Registry configuration.<br>Configuration settings are merged and have precedence over settings specified in `config`. |
+| *`http`* __[HTTPConfig](#httpconfig)__ | HTTP holds the HTTP layer configuration for Elastic Package Registry. |
+| *`podTemplate`* __[PodTemplateSpec](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.32/#podtemplatespec-v1-core)__ | PodTemplate provides customisation options (labels, annotations, affinity rules, resource requests, and so on) for the Elastic Package Registry pods |
+| *`revisionHistoryLimit`* __integer__ | RevisionHistoryLimit is the number of revisions to retain to allow rollback in the underlying Deployment. |
+
+
+### PackageRegistryStatus  [#packageregistrystatus]
+
+PackageRegistryStatus defines the observed state of Elastic Package Registry
+
+:::{admonition} Appears In:
+* [PackageRegistry](#packageregistry)
+
+:::
+
+| Field | Description |
+| --- | --- |
+| *`observedGeneration`* __integer__ | ObservedGeneration is the most recent generation observed for this Elastic Package Registry.<br>It corresponds to the metadata generation, which is updated on mutation by the API Server.<br>If the generation observed in status diverges from the generation in metadata, the Elastic Package Registry<br>controller has not yet processed the changes contained in the Elastic Package Registry specification. |
 
 
 

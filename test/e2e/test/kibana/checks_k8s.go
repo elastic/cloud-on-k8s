@@ -86,6 +86,19 @@ func CheckSecrets(b Builder, k *test.K8sClient) test.Step {
 				)
 			}
 		}
+		if b.Kibana.Spec.PackageRegistryRef.Name != "" {
+			expected = append(expected,
+				test.ExpectedSecret{
+					Name: kbName + "-kb-epr-ca",
+					Keys: []string{"ca.crt", "tls.crt"},
+					Labels: map[string]string{
+						"packageregistry.k8s.elastic.co/name":        b.Kibana.Spec.PackageRegistryRef.Name,
+						"kibanaassociation.k8s.elastic.co/name":      kbName,
+						"kibanaassociation.k8s.elastic.co/namespace": b.Kibana.Namespace,
+					},
+				},
+			)
+		}
 		if b.Kibana.Spec.HTTP.TLS.Enabled() {
 			expected = append(expected,
 				test.ExpectedSecret{
