@@ -5,6 +5,8 @@
 package epr
 
 import (
+	"strings"
+
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/rand"
@@ -36,20 +38,25 @@ func newBuilder(name, randSuffix string) Builder {
 		Name:      name,
 		Namespace: test.Ctx().ManagedNamespace(0),
 	}
-	return Builder{
+	version := test.Ctx().ElasticStackVersion
+	builder := Builder{
 		EPR: v1alpha1.PackageRegistry{
 			ObjectMeta: meta,
 			Spec: v1alpha1.PackageRegistrySpec{
 				Count: 1,
-				// replace with smaller image
-				Image: "docker.elastic.co/package-registry/distribution:lite",
 			},
 		},
 	}.
-		WithVersion(test.Ctx().ElasticStackVersion).
+		WithVersion(version).
 		WithSuffix(randSuffix).
 		WithLabel(run.TestNameLabel, name).
 		WithPodLabel(run.TestNameLabel, name)
+
+	if strings.HasSuffix(version, "-SNAPSHOT") {
+		// EPR doesn't offer SNAPSHOT images, thus fallback to the equivalent rolling tag
+		builder.EPR.Spec.Image = "docker.elastic.co/package-registry/distribution:lite"
+	}
+	return builder
 }
 
 func (b Builder) WithSuffix(suffix string) Builder {
