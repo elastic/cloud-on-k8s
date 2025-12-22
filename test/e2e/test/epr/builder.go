@@ -95,9 +95,6 @@ func (b Builder) Ref() commonv1.ObjectSelector {
 }
 
 func (b Builder) WithVersion(version string) Builder {
-	if version == "8.8.2" {
-		version = "8.8.1" // 8.8.2 is defective and won't start see: https://github.com/elastic/cloud-on-k8s/pull/7005
-	}
 	b.EPR.Spec.Version = version
 	return b
 }
