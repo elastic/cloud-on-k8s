@@ -139,7 +139,8 @@ var _ driver.Interface = &ReconcilePackageRegistry{}
 // in the PackageRegistry.Spec
 func (r *ReconcilePackageRegistry) Reconcile(ctx context.Context, request reconcile.Request) (reconcile.Result, error) {
 	ctx = common.NewReconciliationContext(ctx, &r.iteration, r.Tracer, controllerName, "epr_name", request)
-	defer common.LogReconciliationRun(ulog.FromContext(ctx))()
+	log := ulog.FromContext(ctx)
+	defer common.LogReconciliationRun(log)()
 	defer tracing.EndContextTransaction(ctx)
 
 	// retrieve the epr object
@@ -156,7 +157,7 @@ func (r *ReconcilePackageRegistry) Reconcile(ctx context.Context, request reconc
 	}
 
 	if common.IsUnmanaged(ctx, &epr) {
-		ulog.FromContext(ctx).Info("Object is currently not managed by this controller. Skipping reconciliation", "namespace", epr.Namespace, "epr_name", epr.Name)
+		log.Info("Object is currently not managed by this controller. Skipping reconciliation", "namespace", epr.Namespace, "epr_name", epr.Name)
 		return reconcile.Result{}, nil
 	}
 
@@ -169,6 +170,7 @@ func (r *ReconcilePackageRegistry) Reconcile(ctx context.Context, request reconc
 	results, status := r.doReconcile(ctx, epr)
 	if err := r.updateStatus(ctx, epr, status); err != nil {
 		if apierrors.IsConflict(err) {
+			log.V(1).Info("Conflict while updating status", "namespace", epr.Namespace, "epr_name", epr.Name)
 			return results.WithRequeue().Aggregate()
 		}
 		results.WithError(err)
@@ -221,15 +223,26 @@ func (r *ReconcilePackageRegistry) doReconcile(ctx context.Context, epr eprv1alp
 	// build a hash of various inputs to rotate Pods on any change
 	configHash := buildConfigHash(epr, configSecret, httpCertificate)
 
-	deploy, err := r.reconcileDeployment(ctx, epr, configHash, meta)
+	deployParams, err := r.deploymentParams(epr, configHash, meta)
 	if err != nil {
-		return results.WithError(fmt.Errorf("reconcile deployment: %w", err)), status
+		return results.WithError(err), status
 	}
 
-	status, err = r.getStatus(ctx, epr, deploy)
+	expectedDp := deployment.New(deployParams)
+	reconciledDp, err := deployment.Reconcile(ctx, r.K8sClient(), expectedDp, &epr)
 	if err != nil {
-		return results.WithError(fmt.Errorf("calculating status: %w", err)), status
+		return results.WithError(err), status
 	}
+
+	pods, err := k8s.PodsMatchingLabels(r.K8sClient(), epr.Namespace, map[string]string{label.NameLabelName: epr.Name})
+	if err != nil {
+		return results.WithError(err), status
+	}
+	deploymentStatus, err := common.DeploymentStatus(ctx, epr.Status.DeploymentStatus, reconciledDp, pods, label.VersionLabelName)
+	if err != nil {
+		return results.WithError(err), status
+	}
+	status.DeploymentStatus = deploymentStatus
 
 	return results, status
 }
@@ -291,23 +304,6 @@ func buildConfigHash(epr eprv1alpha1.PackageRegistry, configSecret corev1.Secret
 	return fmt.Sprint(configHash.Sum32())
 }
 
-func (r *ReconcilePackageRegistry) reconcileDeployment(
-	ctx context.Context,
-	epr eprv1alpha1.PackageRegistry,
-	configHash string,
-	meta metadata.Metadata,
-) (appsv1.Deployment, error) {
-	span, _ := apm.StartSpan(ctx, "reconcile_deployment", tracing.SpanTypeApp)
-	defer span.End()
-
-	deployParams, err := r.deploymentParams(epr, configHash, meta)
-	if err != nil {
-		return appsv1.Deployment{}, err
-	}
-	deploy := deployment.New(deployParams)
-	return deployment.Reconcile(ctx, r.K8sClient(), deploy, &epr)
-}
-
 func (r *ReconcilePackageRegistry) deploymentParams(epr eprv1alpha1.PackageRegistry, configHash string, meta metadata.Metadata) (deployment.Params, error) {
 	podSpec, err := newPodSpec(epr, configHash, meta)
 	if err != nil {
@@ -330,21 +326,6 @@ func (r *ReconcilePackageRegistry) deploymentParams(epr eprv1alpha1.PackageRegis
 		RevisionHistoryLimit: epr.Spec.RevisionHistoryLimit,
 		Strategy:             appsv1.DeploymentStrategy{Type: appsv1.RollingUpdateDeploymentStrategyType},
 	}, nil
-}
-
-func (r *ReconcilePackageRegistry) getStatus(ctx context.Context, epr eprv1alpha1.PackageRegistry, deploy appsv1.Deployment) (eprv1alpha1.PackageRegistryStatus, error) {
-	status := newStatus(epr)
-	pods, err := k8s.PodsMatchingLabels(r.K8sClient(), epr.Namespace, map[string]string{label.NameLabelName: epr.Name})
-	if err != nil {
-		return status, err
-	}
-	deploymentStatus, err := common.DeploymentStatus(ctx, epr.Status.DeploymentStatus, deploy, pods, label.VersionLabelName)
-	if err != nil {
-		return status, err
-	}
-	status.DeploymentStatus = deploymentStatus
-
-	return status, nil
 }
 
 func (r *ReconcilePackageRegistry) updateStatus(ctx context.Context, epr eprv1alpha1.PackageRegistry, status eprv1alpha1.PackageRegistryStatus) error {
