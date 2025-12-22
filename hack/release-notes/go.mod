@@ -1,6 +1,6 @@
 module github.com/elastic/cloud-on-k8s/v3/hack/release-notes
 
-go 1.24.0
+go 1.25.0
 
 toolchain go1.25.5
 
