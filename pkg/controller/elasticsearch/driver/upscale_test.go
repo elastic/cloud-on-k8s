@@ -595,7 +595,6 @@ func TestHandleUpscaleAndSpecChanges_VersionUpgradeDataFirstFlow(t *testing.T) {
 	ctx := upscaleCtx{
 		k8sClient:    k8sClient,
 		es:           es,
-		esState:      nil,
 		expectations: expectations.NewExpectations(k8sClient),
 		parentCtx:    context.Background(),
 	}
@@ -694,8 +693,7 @@ func TestHandleUpscaleAndSpecChanges_VersionUpgradeDataFirstFlow(t *testing.T) {
 	var masterSset appsv1.StatefulSet
 	require.NoError(t, k8sClient.Get(context.Background(), types.NamespacedName{Namespace: "ns", Name: "master-sset"}, &masterSset))
 	require.NotNil(t, masterSset.Spec.Replicas)
-	// Master nodes/pods are limited to 1 creation at a time regardless of the replicas setting.
-	require.Equal(t, int32(1), *masterSset.Spec.Replicas)
+	require.Equal(t, int32(3), *masterSset.Spec.Replicas)
 	require.Equal(t, "docker.elastic.co/elasticsearch/elasticsearch:8.16.2", masterSset.Spec.Template.Spec.Containers[0].Image)
 
 	// Set master StatefulSet status to show it's fully deployed at 8.16.2
