@@ -6,6 +6,7 @@ package kibana
 
 import (
 	"context"
+	"slices"
 	"testing"
 
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/metadata"
@@ -407,26 +408,12 @@ func TestNewPodTemplateSpec(t *testing.T) {
 			assertions: func(pod corev1.PodTemplateSpec) {
 				// Main container should have NODE_EXTRA_CA_CERTS pointing to combined bundle
 				container := GetKibanaContainer(pod.Spec)
-				foundMainEnv := false
-				for _, env := range container.Env {
-					if env.Name == nodeExtraCACerts && env.Value == "/usr/share/kibana/config/combined-ca-bundle.crt" {
-						foundMainEnv = true
-						break
-					}
-				}
-				assert.True(t, foundMainEnv, "Main container should have NODE_EXTRA_CA_CERTS pointing to combined bundle")
+				assertEnvValue(t, container, nodeExtraCACerts, "/usr/share/kibana/config/combined-ca-bundle.crt", "Main container should have NODE_EXTRA_CA_CERTS pointing to combined bundle")
 
 				// Init container should also have NODE_EXTRA_CA_CERTS
 				assert.Len(t, pod.Spec.InitContainers, 1)
 				initContainer := pod.Spec.InitContainers[0]
-				foundInitEnv := false
-				for _, env := range initContainer.Env {
-					if env.Name == nodeExtraCACerts && env.Value == "/custom/user/ca-bundle.crt" {
-						foundInitEnv = true
-						break
-					}
-				}
-				assert.True(t, foundInitEnv, "Init container should have NODE_EXTRA_CA_CERTS for EPR CA appending")
+				assertEnvValue(t, &initContainer, nodeExtraCACerts, "/custom/user/ca-bundle.crt", "Init container should have NODE_EXTRA_CA_CERTS for EPR CA appending")
 			},
 		},
 	}
@@ -462,9 +449,7 @@ func TestWithEPRCertsVolume(t *testing.T) {
 			assertions: func(pod corev1.PodTemplateSpec) {
 				// Should not have NODE_EXTRA_CA_CERTS environment variable
 				container := GetKibanaContainer(pod.Spec)
-				for _, env := range container.Env {
-					assert.NotEqual(t, nodeExtraCACerts, env.Name)
-				}
+				assertEnvNotSet(t, container, nodeExtraCACerts, "Should not have NODE_EXTRA_CA_CERTS environment variable")
 			},
 		},
 		{
@@ -484,9 +469,7 @@ func TestWithEPRCertsVolume(t *testing.T) {
 			assertions: func(pod corev1.PodTemplateSpec) {
 				// Should not have NODE_EXTRA_CA_CERTS since CA is not configured
 				container := GetKibanaContainer(pod.Spec)
-				for _, env := range container.Env {
-					assert.NotEqual(t, nodeExtraCACerts, env.Name)
-				}
+				assertEnvNotSet(t, container, nodeExtraCACerts, "Should not have NODE_EXTRA_CA_CERTS environment variable")
 			},
 		},
 		{
@@ -512,15 +495,7 @@ func TestWithEPRCertsVolume(t *testing.T) {
 			assertions: func(pod corev1.PodTemplateSpec) {
 				// Should have NODE_EXTRA_CA_CERTS environment variable
 				container := GetKibanaContainer(pod.Spec)
-				foundNodeExtraCACerts := false
-				for _, env := range container.Env {
-					if env.Name == nodeExtraCACerts {
-						foundNodeExtraCACerts = true
-						assert.Equal(t, eprCertsVolumeMountPath+"/ca.crt", env.Value)
-						break
-					}
-				}
-				assert.True(t, foundNodeExtraCACerts, "NODE_EXTRA_CA_CERTS environment variable should be set")
+				assertEnvValue(t, container, nodeExtraCACerts, eprCertsVolumeMountPath+"/ca.crt", "NODE_EXTRA_CA_CERTS environment variable should be set")
 			},
 		},
 		{
@@ -561,15 +536,7 @@ func TestWithEPRCertsVolume(t *testing.T) {
 			assertions: func(pod corev1.PodTemplateSpec) {
 				// Should update NODE_EXTRA_CA_CERTS to combined bundle path when user provides their own
 				container := GetKibanaContainer(pod.Spec)
-				foundNodeExtraCACerts := false
-				for _, env := range container.Env {
-					if env.Name == nodeExtraCACerts {
-						foundNodeExtraCACerts = true
-						assert.Equal(t, "/usr/share/kibana/config/combined-ca-bundle.crt", env.Value)
-						break
-					}
-				}
-				assert.True(t, foundNodeExtraCACerts, "NODE_EXTRA_CA_CERTS should point to combined bundle when user provides their own")
+				assertEnvValue(t, container, nodeExtraCACerts, "/custom/ca/bundle.crt", "NODE_EXTRA_CA_CERTS environment variable should be set")
 			},
 		},
 	}
@@ -627,4 +594,25 @@ func Test_getDefaultContainerPorts(t *testing.T) {
 			assert.Equal(t, getDefaultContainerPorts(tc.kb), tc.want)
 		})
 	}
+}
+
+func assertEnvNotSet(t *testing.T, container *corev1.Container, envName string, message string) {
+	t.Helper()
+	contains := slices.ContainsFunc(container.Env, func(env corev1.EnvVar) bool {
+		return env.Name == envName
+	})
+	assert.False(t, contains, message)
+}
+
+func assertEnvValue(t *testing.T, container *corev1.Container, envName, expectedValue, message string) {
+	t.Helper()
+	var found bool
+	for _, env := range container.Env {
+		if env.Name == envName {
+			assert.Equal(t, expectedValue, env.Value, message)
+			found = true
+			break
+		}
+	}
+	assert.True(t, found, message)
 }
