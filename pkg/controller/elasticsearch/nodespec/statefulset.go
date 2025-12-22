@@ -14,7 +14,6 @@ import (
 	esv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/elasticsearch/v1"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/defaults"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/hash"
-	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/keystore"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/metadata"
 	sset "github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/statefulset"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/label"
@@ -72,13 +71,14 @@ func HeadlessService(es *esv1.Elasticsearch, ssetName string, meta metadata.Meta
 	}
 }
 
+// BuildStatefulSet builds a StatefulSet for an Elasticsearch node set.
 func BuildStatefulSet(
 	ctx context.Context,
 	client k8s.Client,
 	es esv1.Elasticsearch,
 	nodeSet esv1.NodeSet,
 	cfg settings.CanonicalConfig,
-	keystoreResources *keystore.Resources,
+	keystoreConfig KeystoreConfig,
 	existingStatefulSets es_sset.StatefulSetList,
 	setDefaultSecurityContext bool,
 	policyConfig PolicyConfig,
@@ -98,7 +98,7 @@ func BuildStatefulSet(
 	)
 
 	// build pod template
-	podTemplate, err := BuildPodTemplateSpec(ctx, client, es, nodeSet, cfg, keystoreResources, setDefaultSecurityContext, policyConfig, meta)
+	podTemplate, err := BuildPodTemplateSpec(ctx, client, es, nodeSet, cfg, keystoreConfig, setDefaultSecurityContext, policyConfig, meta)
 	if err != nil {
 		return appsv1.StatefulSet{}, err
 	}

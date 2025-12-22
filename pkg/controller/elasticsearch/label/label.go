@@ -55,6 +55,13 @@ const (
 
 	HTTPSchemeLabelName = "elasticsearch.k8s.elastic.co/http-scheme"
 
+	// SourceNamespaceLabelName is used on cross-namespace resources (like keystore jobs/secrets in operator namespace)
+	// to identify the source ES cluster's namespace for debugging purposes.
+	SourceNamespaceLabelName = "elasticsearch.k8s.elastic.co/source-namespace"
+	// SourceClusterLabelName is used on cross-namespace resources (like keystore jobs/secrets in operator namespace)
+	// to identify the source ES cluster's name for debugging purposes.
+	SourceClusterLabelName = "elasticsearch.k8s.elastic.co/source-cluster"
+
 	// Type represents the Elasticsearch type
 	Type = "elasticsearch"
 )

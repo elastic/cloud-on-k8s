@@ -26,6 +26,8 @@ type Parameters struct {
 	ExposedNodeLabels esvalidation.NodeLabels
 	// OperatorNamespace is the control plane namespace of the operator.
 	OperatorNamespace string
+	// OperatorImage is the container image of the operator, used for keystore jobs in ES 9.3+.
+	OperatorImage string
 	// OperatorInfo is information about the operator
 	OperatorInfo about.OperatorInfo
 	// Dialer is used to create the Elasticsearch HTTP client.

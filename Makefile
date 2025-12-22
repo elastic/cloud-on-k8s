@@ -46,7 +46,7 @@ REGISTRY_NAMESPACE  ?= eck-dev
 
 export IMAGE_NAME   ?= $(REGISTRY)/$(REGISTRY_NAMESPACE)/eck-operator$(IMAGE_SUFFIX)
 export IMAGE_TAG    ?= $(VERSION)-$(SHA1)
-OPERATOR_IMAGE      ?= $(IMAGE_NAME):$(IMAGE_TAG)
+OPERATOR_IMAGE           ?= $(IMAGE_NAME):$(IMAGE_TAG)
 
 print-%:
 	@ echo $($*)
@@ -187,7 +187,15 @@ install-crds: generate-manifests
 
 # Run locally against the configured Kubernetes cluster, with port-forwarding enabled so that
 # the operator can reach services running in the cluster through k8s port-forward feature
-run: install-crds go-run
+run: install-crds install-keystore-uploader-rbac go-run
+
+# Install RBAC for keystore uploader jobs (used in local dev mode)
+# Generated from Helm chart to avoid duplication
+install-keystore-uploader-rbac:
+	helm template eck-operator deploy/eck-operator \
+		--namespace=default \
+		--kube-version=1.27.0 \
+		--show-only templates/keystore-uploader-rbac.yaml | kubectl apply -f -
 
 go-run:
 	@ # Run the operator locally with debug logs and operator image set to latest
@@ -204,10 +212,11 @@ go-run:
 				--namespaces=$(MANAGED_NAMESPACES) \
 				--manage-webhook-certs=false \
 				--exposed-node-labels=topology.kubernetes.io/.*,failure-domain.beta.kubernetes.io/.* \
+				--operator-image=$(OPERATOR_IMAGE) \
 				2>&1 | grep -v "dev-portforward" # remove dev-portforward logs from the output
 
 go-debug:
-	@ (cd cmd &&	AUTO_PORT_FORWARD=true dlv debug \
+	@ (cd cmd && AUTO_PORT_FORWARD=true dlv debug \
 		--build-flags="-ldflags '$(GO_LDFLAGS)'" \
 		-- \
 		manager \
@@ -218,7 +227,8 @@ go-debug:
 		--operator-namespace=default \
 		--namespaces=$(MANAGED_NAMESPACES) \
 		--enable-leader-election=false \
-		--manage-webhook-certs=false)
+		--manage-webhook-certs=false \
+		--operator-image=$(OPERATOR_IMAGE))
 
 # if the current k8s cluster is on GKE, GCLOUD_PROJECT must be set
 check-gke:
