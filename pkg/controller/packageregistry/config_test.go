@@ -90,17 +90,17 @@ package_paths:
 		{
 			name: "configRef takes precedence",
 			args: args{
-				runtimeObjs: []client.Object{secretWithConfig("cfg", nil)},
+				runtimeObjs: []client.Object{secretWithConfig("cfg", []byte("cache_time:\n  index: 20s"))},
 				epr: eprWithConfigRef("cfg", &commonv1.Config{Data: map[string]interface{}{
 					"cache_time": map[string]interface{}{
-						"index": "11s",
+						"index": "50s",
 					},
 				}}),
 			},
 			want: `cache_time:
     catch_all: 10m
     categories: 10m
-    index: 11s
+    index: 20s
     search: 10m
 package_paths:
     - /packages/package-registry
