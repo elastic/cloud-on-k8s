@@ -5,12 +5,10 @@
 package driver
 
 import (
-	"reflect"
 	"testing"
 
 	"github.com/stretchr/testify/require"
 	appsv1 "k8s.io/api/apps/v1"
-	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/utils/ptr"
 
@@ -34,83 +32,51 @@ func Test_upscaleState_limitNodesCreation(t *testing.T) {
 	}{
 		{
 			name:        "no change on the sset spec",
-			state:       &upscaleState{allowMasterCreation: true, isBootstrapped: true},
+			state:       &upscaleState{},
 			actual:      sset.TestSset{Name: "sset", Replicas: 3, Master: true}.Build(),
 			ssetToApply: sset.TestSset{Name: "sset", Replicas: 3, Master: true}.Build(),
 			wantSset:    sset.TestSset{Name: "sset", Replicas: 3, Master: true}.Build(),
-			wantState:   &upscaleState{allowMasterCreation: true, isBootstrapped: true},
+			wantState:   &upscaleState{},
 		},
 		{
 			name:        "spec change (same replicas)",
-			state:       &upscaleState{allowMasterCreation: true, isBootstrapped: true},
+			state:       &upscaleState{},
 			actual:      sset.TestSset{Name: "sset", Version: "6.8.0", Replicas: 3, Master: true}.Build(),
 			ssetToApply: sset.TestSset{Name: "sset", Version: "7.2.0", Replicas: 3, Master: true}.Build(),
 			wantSset:    sset.TestSset{Name: "sset", Version: "7.2.0", Replicas: 3, Master: true}.Build(),
-			wantState:   &upscaleState{allowMasterCreation: true, isBootstrapped: true},
+			wantState:   &upscaleState{},
 		},
 		{
-			name:        "upscale data nodes from 1 to 3: should go through",
-			state:       &upscaleState{allowMasterCreation: true, isBootstrapped: true, createsAllowed: ptr.To[int32](2)},
+			name:        "upscale nodes from 1 to 3: should go through",
+			state:       &upscaleState{createsAllowed: ptr.To[int32](2)},
 			actual:      sset.TestSset{Name: "sset", Replicas: 1, Master: false}.Build(),
 			ssetToApply: sset.TestSset{Name: "sset", Replicas: 3, Master: false}.Build(),
 			wantSset:    sset.TestSset{Name: "sset", Replicas: 3, Master: false}.Build(),
-			wantState:   &upscaleState{allowMasterCreation: true, isBootstrapped: true, createsAllowed: ptr.To[int32](2), recordedCreates: 2},
+			wantState:   &upscaleState{createsAllowed: ptr.To[int32](2), recordedCreates: 2},
 		},
 		{
-			name:        "upscale data nodes from 1 to 4: should limit to 3",
-			state:       &upscaleState{allowMasterCreation: true, isBootstrapped: true, createsAllowed: ptr.To[int32](2)},
+			name:        "upscale nodes from 1 to 4: should limit to 3",
+			state:       &upscaleState{createsAllowed: ptr.To[int32](2)},
 			actual:      sset.TestSset{Name: "sset", Replicas: 1, Master: false}.Build(),
 			ssetToApply: sset.TestSset{Name: "sset", Replicas: 4, Master: false}.Build(),
 			wantSset:    sset.TestSset{Name: "sset", Replicas: 3, Master: false}.Build(),
-			wantState:   &upscaleState{allowMasterCreation: true, isBootstrapped: true, createsAllowed: ptr.To[int32](2), recordedCreates: 2},
+			wantState:   &upscaleState{createsAllowed: ptr.To[int32](2), recordedCreates: 2},
 		},
 		{
-			name:        "upscale master nodes from 1 to 3: should limit to 2",
-			state:       &upscaleState{allowMasterCreation: true, isBootstrapped: true, createsAllowed: ptr.To[int32](1)},
+			name:        "upscale nodes from 1 to 3 (one allowed by maxSurge): should limit to 2",
+			state:       &upscaleState{createsAllowed: ptr.To[int32](1)},
 			actual:      sset.TestSset{Name: "sset", Replicas: 1, Master: true}.Build(),
 			ssetToApply: sset.TestSset{Name: "sset", Replicas: 3, Master: true}.Build(),
 			wantSset:    sset.TestSset{Name: "sset", Replicas: 2, Master: true}.Build(),
-			wantState:   &upscaleState{allowMasterCreation: false, isBootstrapped: true, createsAllowed: ptr.To[int32](1), recordedCreates: 1},
+			wantState:   &upscaleState{createsAllowed: ptr.To[int32](1), recordedCreates: 1},
 		},
 		{
-			name:        "upscale master nodes from 1 to 3 when cluster not yet bootstrapped: should go through",
-			state:       &upscaleState{allowMasterCreation: true, isBootstrapped: false, createsAllowed: ptr.To[int32](2)},
-			actual:      sset.TestSset{Name: "sset", Replicas: 1, Master: true}.Build(),
-			ssetToApply: sset.TestSset{Name: "sset", Replicas: 3, Master: true}.Build(),
-			wantSset:    sset.TestSset{Name: "sset", Replicas: 3, Master: true}.Build(),
-			wantState:   &upscaleState{allowMasterCreation: true, isBootstrapped: false, createsAllowed: ptr.To[int32](2), recordedCreates: 2},
-		},
-		{
-			name:        "upscale masters from 3 to 4, but no creates allowed: should limit to 0",
-			state:       &upscaleState{allowMasterCreation: true, isBootstrapped: true, createsAllowed: ptr.To[int32](0)},
+			name:        "upscale nodes from 3 to 4, but no creates allowed: should limit to 0",
+			state:       &upscaleState{createsAllowed: ptr.To[int32](0)},
 			actual:      sset.TestSset{Name: "sset", Replicas: 3, Master: true}.Build(),
 			ssetToApply: sset.TestSset{Name: "sset", Replicas: 4, Master: true}.Build(),
 			wantSset:    sset.TestSset{Name: "sset", Replicas: 3, Master: true}.Build(),
-			wantState:   &upscaleState{allowMasterCreation: true, isBootstrapped: true, createsAllowed: ptr.To[int32](0), recordedCreates: 0},
-		},
-		{
-			name:        "upscale data nodes from 3 to 4, but no creates allowed: should limit to 0",
-			state:       &upscaleState{allowMasterCreation: true, isBootstrapped: true, createsAllowed: ptr.To[int32](0)},
-			actual:      sset.TestSset{Name: "sset", Replicas: 3, Master: false}.Build(),
-			ssetToApply: sset.TestSset{Name: "sset", Replicas: 4, Master: false}.Build(),
-			wantSset:    sset.TestSset{Name: "sset", Replicas: 3, Master: false}.Build(),
-			wantState:   &upscaleState{allowMasterCreation: true, isBootstrapped: true, createsAllowed: ptr.To[int32](0), recordedCreates: 0},
-		},
-		{
-			name:        "new StatefulSet with 5 master nodes, cluster isn't bootstrapped yet: should go through",
-			state:       &upscaleState{allowMasterCreation: true, isBootstrapped: false, createsAllowed: ptr.To[int32](3)},
-			actual:      appsv1.StatefulSet{},
-			ssetToApply: sset.TestSset{Name: "sset", Replicas: 3, Master: true}.Build(),
-			wantSset:    sset.TestSset{Name: "sset", Replicas: 3, Master: true}.Build(),
-			wantState:   &upscaleState{allowMasterCreation: true, isBootstrapped: false, createsAllowed: ptr.To[int32](3), recordedCreates: 3},
-		},
-		{
-			name:        "new StatefulSet with 5 master nodes, cluster already bootstrapped: should limit to 1",
-			state:       &upscaleState{allowMasterCreation: true, isBootstrapped: true, createsAllowed: ptr.To[int32](1)},
-			actual:      appsv1.StatefulSet{},
-			ssetToApply: sset.TestSset{Name: "sset", Replicas: 3, Master: true}.Build(),
-			wantSset:    sset.TestSset{Name: "sset", Replicas: 1, Master: true}.Build(),
-			wantState:   &upscaleState{allowMasterCreation: false, isBootstrapped: true, createsAllowed: ptr.To[int32](1), recordedCreates: 1},
+			wantState:   &upscaleState{createsAllowed: ptr.To[int32](0), recordedCreates: 0},
 		},
 	}
 	for _, tt := range tests {
@@ -125,109 +91,16 @@ func Test_upscaleState_limitNodesCreation(t *testing.T) {
 	}
 }
 
-type fakeESState struct {
-	ESState
-}
-
-func (f *fakeESState) NodesInCluster(nodeNames []string) (bool, error) {
-	if nodeNames[0] == "inCluster" {
-		return true, nil
-	}
-	return false, nil
-}
-
-func Test_isMasterNodeJoining(t *testing.T) {
-	tests := []struct {
-		name    string
-		pod     corev1.Pod
-		esState ESState
-		want    bool
-	}{
-		{
-			name: "pod pending",
-			pod:  corev1.Pod{Status: corev1.PodStatus{Phase: corev1.PodPending}},
-			want: true,
-		},
-		{
-			name: "pod running but not ready",
-			pod: corev1.Pod{Status: corev1.PodStatus{
-				Phase: corev1.PodRunning,
-				Conditions: []corev1.PodCondition{
-					{
-						Type:   corev1.ContainersReady,
-						Status: corev1.ConditionFalse,
-					},
-					{
-						Type:   corev1.PodReady,
-						Status: corev1.ConditionFalse,
-					},
-				}}},
-			want: true,
-		},
-		{
-			name: "pod running and ready but not in the cluster yet",
-			pod: corev1.Pod{
-				ObjectMeta: metav1.ObjectMeta{
-					Name: "notInCluster",
-				},
-				Status: corev1.PodStatus{
-					Phase: corev1.PodRunning,
-					Conditions: []corev1.PodCondition{
-						{
-							Type:   corev1.ContainersReady,
-							Status: corev1.ConditionTrue,
-						},
-						{
-							Type:   corev1.PodReady,
-							Status: corev1.ConditionTrue,
-						},
-					}}},
-			esState: &fakeESState{},
-			want:    true,
-		},
-		{
-			name: "pod running and ready and in the cluster",
-			pod: corev1.Pod{
-				ObjectMeta: metav1.ObjectMeta{
-					Name: "inCluster",
-				},
-				Status: corev1.PodStatus{
-					Phase: corev1.PodRunning,
-					Conditions: []corev1.PodCondition{
-						{
-							Type:   corev1.ContainersReady,
-							Status: corev1.ConditionTrue,
-						},
-						{
-							Type:   corev1.PodReady,
-							Status: corev1.ConditionTrue,
-						},
-					}}},
-			esState: &fakeESState{},
-			want:    false,
-		},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			got, err := isMasterNodeJoining(tt.pod, tt.esState)
-			require.NoError(t, err)
-			if got != tt.want {
-				t.Errorf("isMasterNodeJoining() got = %v, want %v", got, tt.want)
-			}
-		})
-	}
-}
-
 func Test_newUpscaleState(t *testing.T) {
-	bootstrappedES := esv1.Elasticsearch{
+	esWithMaxSurge := esv1.Elasticsearch{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:        "cluster",
 			Annotations: map[string]string{bootstrap.ClusterUUIDAnnotationName: "uuid"},
 		},
-		Spec: esv1.ElasticsearchSpec{Version: "7.3.0"},
+		Spec: esv1.ElasticsearchSpec{Version: "7.3.0", UpdateStrategy: esv1.UpdateStrategy{ChangeBudget: esv1.ChangeBudget{MaxSurge: ptr.To[int32](3)}}},
 	}
 
-	notBootstrappedES := esv1.Elasticsearch{
+	esWithoutMaxSurge := esv1.Elasticsearch{
 		ObjectMeta: metav1.ObjectMeta{Name: "cluster"},
 		Spec:       esv1.ElasticsearchSpec{Version: "7.3.0"},
 	}
@@ -242,45 +115,32 @@ func Test_newUpscaleState(t *testing.T) {
 		want *upscaleState
 	}{
 		{
-			name: "cluster not bootstrapped",
-			args: args{ctx: upscaleCtx{es: notBootstrappedES}},
-			want: &upscaleState{allowMasterCreation: true, isBootstrapped: false, createsAllowed: nil},
+			name: "no stateful sets",
+			args: args{ctx: upscaleCtx{es: esWithoutMaxSurge}},
+			want: &upscaleState{createsAllowed: nil},
 		},
 		{
-			name: "bootstrapped, no master node joining",
-			args: args{ctx: upscaleCtx{k8sClient: k8s.NewFakeClient(), es: bootstrappedES}},
-			want: &upscaleState{allowMasterCreation: true, isBootstrapped: true, createsAllowed: nil},
-		},
-		{
-			name: "bootstrapped, a master node is pending",
+			name: "expected stateful sets, no maxSurge",
 			args: args{
-				ctx: upscaleCtx{
-					k8sClient: k8s.NewFakeClient(sset.TestPod{ClusterName: "cluster", Master: true, Phase: corev1.PodPending}.BuildPtr()),
-					es:        bootstrappedES,
-				},
+				ctx:      upscaleCtx{k8sClient: k8s.NewFakeClient(), es: esWithoutMaxSurge},
+				expected: nodespec.ResourcesList{nodespec.Resources{StatefulSet: sset.TestSset{Name: "sset", Replicas: 3, Master: true}.Build()}},
 			},
-			want: &upscaleState{allowMasterCreation: false, isBootstrapped: true, createsAllowed: nil, recordedCreates: 1},
+			want: &upscaleState{createsAllowed: nil},
 		},
 		{
-			name: "bootstrapped, a data node is pending",
+			name: "expected stateful sets, maxSurge",
 			args: args{
-				ctx: upscaleCtx{
-					k8sClient: k8s.NewFakeClient(sset.TestPod{ClusterName: "cluster", Master: false, Data: true, Phase: corev1.PodPending}.BuildPtr()),
-					es:        bootstrappedES,
-				},
+				ctx:      upscaleCtx{k8sClient: k8s.NewFakeClient(), es: esWithMaxSurge},
+				expected: nodespec.ResourcesList{nodespec.Resources{StatefulSet: sset.TestSset{Name: "sset", Replicas: 3, Master: true}.Build()}},
 			},
-			want: &upscaleState{allowMasterCreation: true, isBootstrapped: true, createsAllowed: nil},
+			want: &upscaleState{createsAllowed: ptr.To[int32](6)}, // 3 maxSurge + 3 expected - 0 actual = 6 creates allowed
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			got := newUpscaleState(tt.args.ctx, tt.args.actual, tt.args.expected)
-			require.NoError(t, buildOnce(got))
 			got.ctx = upscaleCtx{}
-			got.once = nil
-			if !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("newUpscaleState() got = %v, want %v", got, tt.want)
-			}
+			require.Equal(t, tt.want, got)
 		})
 	}
 }
@@ -339,11 +199,10 @@ func Test_newUpscaleStateWithChangeBudget(t *testing.T) {
 			},
 			actual:   actualSsets,
 			expected: expectedResources,
-			want:     &upscaleState{allowMasterCreation: true, isBootstrapped: true, createsAllowed: args.createsAllowed},
+			want:     &upscaleState{createsAllowed: args.createsAllowed},
 		}
 	}
 	defaultTest := getTest(args{actual: []int{3}, expected: []int{3}, maxSurge: nil, createsAllowed: nil, name: "5 nodes present, 5 nodes target, n/a maxSurge - unbounded creates allowed"})
-	defaultTest.ctx.es.Spec.UpdateStrategy = esv1.UpdateStrategy{}
 
 	tests := []test{
 		getTest(args{actual: []int{3}, expected: []int{3}, maxSurge: ptr.To[int32](0), createsAllowed: ptr.To[int32](0), name: "3 nodes present, 3 nodes target - no creates allowed"}),
@@ -356,12 +215,8 @@ func Test_newUpscaleStateWithChangeBudget(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			got := newUpscaleState(tt.ctx, tt.actual, tt.expected)
-			require.NoError(t, buildOnce(got))
 			got.ctx = upscaleCtx{}
-			got.once = nil
-			if !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("newUpscaleState() got = %v, want %v", got, tt.want)
-			}
+			require.Equal(t, tt.want, got)
 		})
 	}
 }
@@ -385,9 +240,7 @@ func Test_calculateCreatesAllowed(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			got := calculateCreatesAllowed(tt.maxSurge, tt.actual, tt.expected)
-			if !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("calculateCreatesAllowed() got = %d, want %d", got, tt.want)
-			}
+			require.Equal(t, tt.want, got)
 		})
 	}
 }

@@ -31,7 +31,14 @@ const (
 {{- end}}
 {{- end}}
 {{- end}}
-{{end}}`
+{{end}}
+### Miscellaneous  [elastic-cloud-kubernetes-{{$.Version}}-miscellaneous]
+
+:::{dropdown} Updated dependencies
+{{range $updatedDep := .UpdatedDeps -}}
+- {{$updatedDep}}
+{{end -}}:::
+`
 )
 
 var (
@@ -67,6 +74,8 @@ var (
 		">non-issue":                 {},
 		">refactoring":               {},
 		">test":                      {},
+		">renovate":                  {},
+		"dependencies":               {},
 		":ci":                        {},
 		"backport":                   {},
 		"exclude-from-release-notes": {},
@@ -74,8 +83,8 @@ var (
 )
 
 func main() {
-	if len(os.Args) != 2 {
-		fmt.Printf("Usage: GH_TOKEN=<github token> %s VERSION\n", os.Args[0])
+	if len(os.Args) != 2 && len(os.Args) != 3 {
+		fmt.Printf("Usage: GH_TOKEN=<github token> %s VERSION [PREVIOUS_VERSION]\n", os.Args[0])
 		os.Exit(2)
 	}
 
@@ -93,7 +102,19 @@ func main() {
 	}
 
 	groupedPRs := groupPullRequests(prs)
-	if err := render(version, groupedPRs); err != nil {
+
+	var updatedDeps []string
+	if len(os.Args) > 2 {
+		previousVersion := os.Args[2]
+		updatedDeps = github.GoDiff(repoName, previousVersion, version)
+	} else {
+		_, err := fmt.Fprintln(os.Stderr, "No previous version provided, skipping go.mod diff.")
+		if err != nil {
+			panic(err)
+		}
+	}
+
+	if err := render(version, groupedPRs, updatedDeps); err != nil {
 		log.Printf("Failed to render release notes: %v", err)
 		os.Exit(1)
 	}
@@ -117,7 +138,7 @@ PR_LOOP:
 	return groups
 }
 
-func render(version string, groups map[string][]github.PullRequest) error {
+func render(version string, groups map[string][]github.PullRequest, updatedDeps []string) error {
 	params := struct {
 		Version      string
 		Repo         string
@@ -125,6 +146,7 @@ func render(version string, groups map[string][]github.PullRequest) error {
 		GroupLabels  map[string]string
 		GroupOrder   []string
 		LabelMapping map[string]string
+		UpdatedDeps  []string
 	}{
 		Version:      version,
 		Repo:         repoName,
@@ -132,6 +154,7 @@ func render(version string, groups map[string][]github.PullRequest) error {
 		GroupLabels:  groupLabels,
 		GroupOrder:   groupOrder,
 		LabelMapping: labelMapping,
+		UpdatedDeps:  updatedDeps,
 	}
 
 	funcs := template.FuncMap{

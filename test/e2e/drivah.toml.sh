@@ -49,6 +49,7 @@ build_context = "../../"
 
 [container.image.build_args]
 GO_TAGS = "$GO_TAGS"
+ARCH = "$ARCH"
 END
 }
 

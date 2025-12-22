@@ -107,7 +107,7 @@ type ElasticsearchSpec struct {
 	// The behavior depends on the license level.
 	// With a Basic license or if podDisruptionBudget.spec is not empty:
 	//   The default budget doesn't allow any Pod to be removed in case the cluster is not green or if there is only one node of type `data` or `master`.
-	//   In all other cases the default podDisruptionBudget sets `minUnavailable` equal to the total number of nodes minus 1.
+	//   In all other cases the default podDisruptionBudget sets `minAvailable` equal to the total number of nodes minus 1.
 	// With an Enterprise license and if podDisruptionBudget.spec is empty:
 	//   The default budget is split into multiple budgets, each targeting a specific node role type allowing additional disruptions
 	//   for certain roles according to the health status of the cluster.
@@ -155,6 +155,8 @@ type ElasticsearchSpec struct {
 type RemoteClusterServer struct {
 	// +kubebuilder:validation:Optional
 	Enabled bool `json:"enabled,omitempty"`
+	// Service defines the template for the remote cluster server Service object.
+	Service commonv1.ServiceTemplate `json:"service,omitempty"`
 }
 
 // VolumeClaimDeletePolicy describes the delete policy for handling PersistentVolumeClaims that hold Elasticsearch data.

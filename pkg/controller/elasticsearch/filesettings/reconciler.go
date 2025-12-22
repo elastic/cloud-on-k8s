@@ -29,7 +29,7 @@ var (
 
 	// managedAnnotations are the annotations managed by the operator for the stack config policy related secrets, which means that the operator
 	// will always take precedence to update or remove these annotations.
-	managedAnnotations = []string{commonannotation.SecureSettingsSecretsAnnotationName, commonannotation.SettingsHashAnnotationName, commonannotation.ElasticsearchConfigAndSecretMountsHashAnnotation, commonannotation.KibanaConfigHashAnnotation}
+	managedAnnotations = []string{commonannotation.SecureSettingsSecretsAnnotationName, commonannotation.SettingsHashAnnotationName, commonannotation.ElasticsearchConfigAndSecretMountsHashAnnotation, commonannotation.KibanaConfigHashAnnotation, reconciler.SoftOwnerRefsAnnotation}
 )
 
 // ReconcileEmptyFileSettingsSecret reconciles an empty File settings Secret for the given Elasticsearch only when there is no Secret.
@@ -53,7 +53,7 @@ func ReconcileEmptyFileSettingsSecret(
 	// extract the metadata that should be propagated to children
 	meta := metadata.Propagate(&es, metadata.Metadata{Labels: label.NewLabels(k8s.ExtractNamespacedName(&es))})
 	// no secret, reconcile a new empty file settings
-	expectedSecret, _, err := NewSettingsSecretWithVersion(k8s.ExtractNamespacedName(&es), nil, nil, meta)
+	expectedSecret, _, err := NewSettingsSecretWithVersion(k8s.ExtractNamespacedName(&es), nil, nil, nil, meta)
 	if err != nil {
 		return err
 	}

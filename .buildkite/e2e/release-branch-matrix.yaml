@@ -2,7 +2,7 @@
   fixed:
     E2E_PROVIDER: gke
   mixed:
-    - E2E_STACK_VERSION: "7.17.28"
+    - E2E_STACK_VERSION: "7.17.29"
     - E2E_STACK_VERSION: "8.0.1"
     - E2E_STACK_VERSION: "8.1.3"
     - E2E_STACK_VERSION: "8.2.3"
@@ -18,28 +18,29 @@
     - E2E_STACK_VERSION: "8.12.2"
     - E2E_STACK_VERSION: "8.13.4"
     - E2E_STACK_VERSION: "8.14.3"
-    - E2E_STACK_VERSION: "8.15.4"
+    - E2E_STACK_VERSION: "8.15.5"
     - E2E_STACK_VERSION: "8.16.6"
-    - E2E_STACK_VERSION: "8.17.9"
-    - E2E_STACK_VERSION: "8.18.4"
-    - E2E_STACK_VERSION: "8.19.0"
-    - E2E_STACK_VERSION: "9.0.5"
-    # current stack version 9.1.2 is tested in all other tests no need to test it again
-    - E2E_STACK_VERSION: "8.19.0-SNAPSHOT"
-    - E2E_STACK_VERSION: "9.2.0-SNAPSHOT"
+    - E2E_STACK_VERSION: "8.17.10"
+    - E2E_STACK_VERSION: "8.18.8"
+    - E2E_STACK_VERSION: "8.19.6"
+    - E2E_STACK_VERSION: "9.0.8"
+    - E2E_STACK_VERSION: "9.1.6"
+    # current stack version 9.2.2 is tested in all other tests no need to test it again
+    - E2E_STACK_VERSION: "8.19.7-SNAPSHOT"
+    - E2E_STACK_VERSION: "9.3.0-SNAPSHOT"
 
 - label: kind
   fixed:
     E2E_PROVIDER: kind
   mixed:
-    - DEPLOYER_KIND_NODE_IMAGE: kindest/node:v1.29.14@sha256:8703bd94ee24e51b778d5556ae310c6c0fa67d761fae6379c8e0bb480e6fea29
     - DEPLOYER_KIND_NODE_IMAGE: kindest/node:v1.30.13@sha256:397209b3d947d154f6641f2d0ce8d473732bd91c87d9575ade99049aa33cd648
-    - DEPLOYER_KIND_NODE_IMAGE: kindest/node:v1.31.9@sha256:b94a3a6c06198d17f59cca8c6f486236fa05e2fb359cbd75dabbfc348a10b211
-    - DEPLOYER_KIND_NODE_IMAGE: kindest/node:v1.32.5@sha256:e3b2327e3a5ab8c76f5ece68936e4cafaa82edf58486b769727ab0b3b97a5b0d
+    - DEPLOYER_KIND_NODE_IMAGE: kindest/node:v1.31.12@sha256:0f5cc49c5e73c0c2bb6e2df56e7df189240d83cf94edfa30946482eb08ec57d2
+    - DEPLOYER_KIND_NODE_IMAGE: kindest/node:v1.32.8@sha256:abd489f042d2b644e2d033f5c2d900bc707798d075e8186cb65e3f1367a9d5a1
+    - DEPLOYER_KIND_NODE_IMAGE: kindest/node:v1.33.4@sha256:25a6018e48dfcaee478f4a59af81157a437f15e6e140bf103f85a2e7cd0cbbf2
     # The latest version of kind/k8s needs to be listed twice at the end of this list
     # as it's tested in both ipv4 and ipv6 mode.
-    - DEPLOYER_KIND_NODE_IMAGE: kindest/node:v1.33.1@sha256:050072256b9a903bd914c0b2866828150cb229cea0efe5892e2b644d5dd3b34f
-    - DEPLOYER_KIND_NODE_IMAGE: kindest/node:v1.33.1@sha256:050072256b9a903bd914c0b2866828150cb229cea0efe5892e2b644d5dd3b34f
+    - DEPLOYER_KIND_NODE_IMAGE: kindest/node:v1.34.0@sha256:7416a61b42b1662ca6ca89f02028ac133a309a2a30ba309614e8ec94d976dc5a
+    - DEPLOYER_KIND_NODE_IMAGE: kindest/node:v1.34.0@sha256:7416a61b42b1662ca6ca89f02028ac133a309a2a30ba309614e8ec94d976dc5a
       DEPLOYER_KIND_IP_FAMILY: ipv6
 
 - label: k3d
@@ -64,7 +65,7 @@
   fixed:
     E2E_PROVIDER: ocp
   mixed:
-    - DEPLOYER_CLIENT_VERSION: "4.19.2"
+    - DEPLOYER_CLIENT_VERSION: "4.20.4"
 
 - label: eks-arm
   fixed:

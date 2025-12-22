@@ -17,6 +17,48 @@ Known issues are significant defects or limitations that may impact your impleme
 
 :::
 
+## 3.2.0 [elastic-cloud-kubernetes-320-known-issues]
+
+:::{dropdown} Elastic Agent fails with "cipher: message authentication failed" on ECK 3.2.0 re-upgrade
+
+Elastic Agent fails to start with "cipher: message authentication failed" after re-upgrading to ECK 3.2.0, the CONFIG_PATH for Elastic Agent in Fleet mode was changed to align with the STATE_PATH (tracking [Issue #8819](https://github.com/elastic/cloud-on-k8s/issues/8819)).
+
+If you upgrade to 3.2.0, downgrade to a previous version (like 3.1.0), and then upgrade back to 3.2.0, the Elastic Agent Pods may fail to start. This occurs because the agent, using the new CONFIG_PATH, is unable to decrypt the existing state files encrypted with keys from the old path.
+
+You will see errors in the agent logs similar to one of the following:
+
+`Error: fail to read state store '/usr/share/elastic-agent/state/data/state.enc': failed migrating YAML store JSON store: could not parse YAML `
+`fail to decode bytes: cipher: message authentication failed`
+
+or
+
+`Error: fail to read action store '/usr/share/elastic-agent/state/data/action_store.yml': yaml: input error: fail to decode bytes: cipher: message authentication failed`
+
+For more information, check [PR #8856](https://github.com/elastic/cloud-on-k8s/pull/8856).
+
+**Workaround**
+
+To work around this issue, you must force the Agent to re-enroll. Add the `FLEET_FORCE=true` environment variable to your Agent's podTemplate specification. This will cause the agent to start fresh and re-enroll with Fleet.
+
+This environment variable can be removed once the Agent has successfully started and re-enrolled.
+
+```
+apiVersion: agent.k8s.elastic.co/v1alpha1
+kind: Agent
+metadata:
+  name: eck-agent # Your Agent resource name
+spec:
+  # ... other agent specs
+  podTemplate:
+    spec:
+      containers:
+        - name: agent
+          env:
+            - name: FLEET_FORCE
+              value: "true"
+```
+:::
+
 ## 3.1.0 [elastic-cloud-kubernetes-310-known-issues]
 
 There are no known issues in ECK 3.1

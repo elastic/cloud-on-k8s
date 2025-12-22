@@ -53,6 +53,8 @@ func TestReconcileConfigSecret(t *testing.T) {
 			assertions: func(secrets corev1.SecretList) error {
 				require.Equal(t, 1, len(secrets.Items))
 				assert.NotNil(t, secrets.Items[0].Data[SettingsFilename])
+				// The Kibana config secret previously contained the 'credentials' label. It should now not exist.
+				assert.Empty(t, secrets.Items[0].ObjectMeta.Labels["eck.k8s.elastic.co/credentials"])
 				return nil
 			},
 		},

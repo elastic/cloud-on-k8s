@@ -1,6 +1,6 @@
 name: packetbeat
 type: packetbeat
-version: 9.2.0-SNAPSHOT
+version: 9.3.0-SNAPSHOT
 elasticsearchRef:
   name: eck-elasticsearch
 kibanaRef:

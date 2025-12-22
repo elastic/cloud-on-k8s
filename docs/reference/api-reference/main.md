@@ -671,6 +671,7 @@ ServiceTemplate defines the template for a Kubernetes Service.
 :::{admonition} Appears In:
 * [HTTPConfig](#httpconfig)
 * [LogstashService](#logstashservice)
+* [RemoteClusterServer](#remoteclusterserver)
 * [TransportConfig](#transportconfig)
 
 :::
@@ -1093,7 +1094,7 @@ ElasticsearchSpec holds the specification of an Elasticsearch cluster.
 | *`transport`* __[TransportConfig](#transportconfig)__ | Transport holds transport layer settings for Elasticsearch. |
 | *`nodeSets`* __[NodeSet](#nodeset) array__ | NodeSets allow specifying groups of Elasticsearch nodes sharing the same configuration and Pod templates. |
 | *`updateStrategy`* __[UpdateStrategy](#updatestrategy)__ | UpdateStrategy specifies how updates to the cluster should be performed. |
-| *`podDisruptionBudget`* __[PodDisruptionBudgetTemplate](#poddisruptionbudgettemplate)__ | PodDisruptionBudget provides access to the default Pod disruption budget(s) for the Elasticsearch cluster.<br>The behavior depends on the license level.<br>With a Basic license or if podDisruptionBudget.spec is not empty:<br>  The default budget doesn't allow any Pod to be removed in case the cluster is not green or if there is only one node of type `data` or `master`.<br>  In all other cases the default podDisruptionBudget sets `minUnavailable` equal to the total number of nodes minus 1.<br>With an Enterprise license and if podDisruptionBudget.spec is empty:<br>  The default budget is split into multiple budgets, each targeting a specific node role type allowing additional disruptions<br>  for certain roles according to the health status of the cluster.<br>    Example:<br>      All data roles (excluding frozen): allows disruptions only when the cluster is green.<br>      All other roles: allows disruptions only when the cluster is yellow or green.<br>To disable, set `podDisruptionBudget` to the empty value (`{}` in YAML). |
+| *`podDisruptionBudget`* __[PodDisruptionBudgetTemplate](#poddisruptionbudgettemplate)__ | PodDisruptionBudget provides access to the default Pod disruption budget(s) for the Elasticsearch cluster.<br>The behavior depends on the license level.<br>With a Basic license or if podDisruptionBudget.spec is not empty:<br>  The default budget doesn't allow any Pod to be removed in case the cluster is not green or if there is only one node of type `data` or `master`.<br>  In all other cases the default podDisruptionBudget sets `minAvailable` equal to the total number of nodes minus 1.<br>With an Enterprise license and if podDisruptionBudget.spec is empty:<br>  The default budget is split into multiple budgets, each targeting a specific node role type allowing additional disruptions<br>  for certain roles according to the health status of the cluster.<br>    Example:<br>      All data roles (excluding frozen): allows disruptions only when the cluster is green.<br>      All other roles: allows disruptions only when the cluster is yellow or green.<br>To disable, set `podDisruptionBudget` to the empty value (`{}` in YAML). |
 | *`auth`* __[Auth](#auth)__ | Auth contains user authentication and authorization security settings for Elasticsearch. |
 | *`secureSettings`* __[SecretSource](#secretsource) array__ | SecureSettings is a list of references to Kubernetes secrets containing sensitive configuration options for Elasticsearch. |
 | *`serviceAccountName`* __string__ | ServiceAccountName is used to check access from the current resource to a resource (for ex. a remote Elasticsearch cluster) in a different namespace.<br>Can only be used if ECK is enforcing RBAC on references. |
@@ -1276,6 +1277,7 @@ RemoteClusterAccess models the API key specification as documented in https://ww
 | Field | Description |
 | --- | --- |
 | *`enabled`* __boolean__ |  |
+| *`service`* __[ServiceTemplate](#servicetemplate)__ | Service defines the template for the remote cluster server Service object. |
 
 
 ### Replication  [#replication]
@@ -1989,6 +1991,8 @@ Package v1alpha1 contains API schema definitions for managing StackConfigPolicy 
 | *`secureSettings`* __[SecretSource](#secretsource) array__ | SecureSettings are additional Secrets that contain data to be configured to Elasticsearch's keystore. |
 
 
+
+
 ### IndexTemplates  [#indextemplates]
 
 
@@ -2066,6 +2070,7 @@ StackConfigPolicy represents a StackConfigPolicy resource in a Kubernetes cluste
 | Field | Description |
 | --- | --- |
 | *`resourceSelector`* __[LabelSelector](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.32/#labelselector-v1-meta)__ |  |
+| *`weight`* __integer__ | Weight determines the priority of this policy when multiple policies target the same resource.<br>Lower weight values take precedence. Defaults to 0. |
 | *`secureSettings`* __[SecretSource](#secretsource) array__ | Deprecated: SecureSettings only applies to Elasticsearch and is deprecated. It must be set per application instead. |
 | *`elasticsearch`* __[ElasticsearchConfigPolicySpec](#elasticsearchconfigpolicyspec)__ |  |
 | *`kibana`* __[KibanaConfigPolicySpec](#kibanaconfigpolicyspec)__ |  |
