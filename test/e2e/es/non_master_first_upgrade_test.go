@@ -69,18 +69,6 @@ func newNonMasterFirstUpgradeWatcher(es esv1.Elasticsearch) test.Watcher {
 		})
 }
 
-// runNonMasterFirstUpgradeTest runs the complete test for non-master first upgrade behavior
-func runNonMasterFirstUpgradeTest(t *testing.T, initial, mutated elasticsearch.Builder) {
-	watcher := newNonMasterFirstUpgradeWatcher(initial.Elasticsearch)
-
-	test.RunMutationsWhileWatching(
-		t,
-		[]test.Builder{initial},
-		[]test.Builder{mutated},
-		[]test.Watcher{watcher},
-	)
-}
-
 // TestNonMasterFirstUpgradeComplexTopology tests the non-master first upgrade behavior with a complex topology
 func TestNonMasterFirstUpgradeComplexTopology(t *testing.T) {
 	srcVersion, dstVersion := test.GetUpgradePathTo8x(test.Ctx().ElasticStackVersion)
@@ -95,5 +83,12 @@ func TestNonMasterFirstUpgradeComplexTopology(t *testing.T) {
 
 	mutated := initial.WithVersion(dstVersion).WithMutatedFrom(&initial)
 
-	runNonMasterFirstUpgradeTest(t, initial, mutated)
+	watcher := newNonMasterFirstUpgradeWatcher(initial.Elasticsearch)
+
+	test.RunMutationsWhileWatching(
+		t,
+		[]test.Builder{initial},
+		[]test.Builder{mutated},
+		[]test.Watcher{watcher},
+	)
 }

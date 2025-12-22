@@ -102,8 +102,7 @@ func HandleUpscaleAndSpecChanges(
 	// otherwise you will immediately upscale the masters, and then delete the new node you added to upgrade.
 	if len(nonMasterResources) > 0 {
 		// The only adjustment we want to make to master statefulSets before ensuring that all non-master
-		// statefulSets have been reconciled is to potentially scale up the replicas
-		// which should happen 1 at a time as we adjust the replicas early.
+		// statefulSets have been reconciled is to potentially scale up the replicas.
 		results, err = maybeUpscaleMasterResources(ctx, actualStatefulSets, masterResources)
 		if err != nil {
 			return results, fmt.Errorf("while scaling up master resources: %w", err)
