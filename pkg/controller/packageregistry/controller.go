@@ -105,7 +105,7 @@ func addWatches(mgr manager.Manager, c controller.Controller, r *ReconcilePackag
 		return err
 	}
 
-	// Dynamically watch referenced secrets to connect to Elasticsearch
+	// Dynamically watch referenced secrets
 	return c.Watch(source.Kind(mgr.GetCache(), &corev1.Secret{}, r.dynamicWatches.Secrets))
 }
 
