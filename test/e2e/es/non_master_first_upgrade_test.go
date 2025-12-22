@@ -23,6 +23,9 @@ import (
 // and ensures non-master StatefulSets upgrade before master StatefulSets
 func newNonMasterFirstUpgradeWatcher(es esv1.Elasticsearch) test.Watcher {
 	var violations []string
+	// track if the first run was successful to quickly fail if something is
+	// vastly wrong with the test setup.
+	var firstRunSuccessful bool
 
 	return test.NewWatcher(
 		"watch StatefulSet upgrade order: non-master StatefulSets should upgrade before master StatefulSets",
@@ -30,6 +33,9 @@ func newNonMasterFirstUpgradeWatcher(es esv1.Elasticsearch) test.Watcher {
 		func(k *test.K8sClient, t *testing.T) {
 			statefulSets, err := essset.RetrieveActualStatefulSets(k.Client, k8s.ExtractNamespacedName(&es))
 			if err != nil {
+				if !firstRunSuccessful {
+					t.Errorf("failed to get StatefulSets on first run: %s", err.Error())
+				}
 				t.Logf("failed to get StatefulSets: %s", err.Error())
 				return
 			}
@@ -39,6 +45,9 @@ func newNonMasterFirstUpgradeWatcher(es esv1.Elasticsearch) test.Watcher {
 			for _, sset := range statefulSets {
 				masterSTSVersion, err := essset.GetESVersion(sset)
 				if err != nil {
+					if !firstRunSuccessful {
+						t.Errorf("failed to get StatefulSets on first run: %s", err.Error())
+					}
 					t.Logf("failed to get StatefulSet version: %s", err.Error())
 					continue
 				}
@@ -53,6 +62,9 @@ func newNonMasterFirstUpgradeWatcher(es esv1.Elasticsearch) test.Watcher {
 					}
 					otherSsetVersion, err := essset.GetESVersion(otherSset)
 					if err != nil {
+						if !firstRunSuccessful {
+							t.Errorf("failed to get StatefulSets on first run: %s", err.Error())
+						}
 						t.Logf("failed to get StatefulSet version: %s", err.Error())
 						continue
 					}
@@ -61,6 +73,7 @@ func newNonMasterFirstUpgradeWatcher(es esv1.Elasticsearch) test.Watcher {
 					}
 				}
 			}
+			firstRunSuccessful = true
 		},
 		func(k *test.K8sClient, t *testing.T) {
 			if len(violations) > 0 {
