@@ -106,7 +106,7 @@ func reconcileRequestForAllAutoOpsPolicies(clnt k8s.Client) handler.TypedEventHa
 // associated with a deployment based on the deployment's labels.
 func reconcileRequestForAutoOpsPolicyFromDeployment() handler.TypedEventHandler[*appsv1.Deployment, reconcile.Request] {
 	return handler.TypedEnqueueRequestsFromMapFunc(func(ctx context.Context, dep *appsv1.Deployment) []reconcile.Request {
-		deploymentNN := policyOrDeploymentFromLabels(dep.GetLabels())
+		deploymentNN := policyFromLabels(dep.GetLabels())
 
 		if deploymentNN.Name == "" {
 			return nil
