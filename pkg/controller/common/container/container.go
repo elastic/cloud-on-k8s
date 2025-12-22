@@ -137,8 +137,9 @@ func getPackageRegistryImage(useUBI bool, suffix string, v version.Version) stri
 		return fmt.Sprintf("%s/%s%s:lite-%s", containerRegistry, PackageRegistryImage, suffix, v)
 	}
 
-	// Since UBI images are only offered from certain versions onwards,
-	// fallback to tested backwards-compatible versions for unsupported releases
+	// UBI-based images for package-registry were introduced in https://github.com/elastic/package-registry/pull/1451
+	// The first versions with UBI images are 8.19.8, 9.1.8, and 9.2.2 - previous versions don't have UBI images.
+	// Thus, for earlier versions, fallback to the oldest available UBI image in each major.minor series.
 	switch {
 	case v.LT(version.From(8, 19, 8)):
 		// Fallback to 8.19.8-ubi for all versions below 8.19.8
