@@ -536,7 +536,7 @@ func TestWithEPRCertsVolume(t *testing.T) {
 			assertions: func(pod corev1.PodTemplateSpec) {
 				// Should update NODE_EXTRA_CA_CERTS to combined bundle path when user provides their own
 				container := GetKibanaContainer(pod.Spec)
-				assertEnvValue(t, container, nodeExtraCACerts, "/custom/ca/bundle.crt", "NODE_EXTRA_CA_CERTS environment variable should be set")
+				assertEnvValue(t, container, nodeExtraCACerts, "/usr/share/kibana/config/combined-ca-bundle.crt", "NODE_EXTRA_CA_CERTS environment variable should be set")
 			},
 		},
 	}
