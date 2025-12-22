@@ -2,13 +2,12 @@
 // or more contributor license agreements. Licensed under the Elastic License 2.0;
 // you may not use this file except in compliance with the Elastic License 2.0.
 
-//go:build kb || e2e
-
 package kb
 
 import (
 	"context"
 	"fmt"
+	"strings"
 	"testing"
 
 	"github.com/elastic/cloud-on-k8s/v3/test/e2e/test/enterprisesearch"
@@ -228,7 +227,13 @@ func TestKibanaAssociationWithNonExistentEPR(t *testing.T) {
 			}
 
 			for _, evt := range eventList {
-				if evt.Type == corev1.EventTypeWarning && evt.Reason == events.EventAssociationError {
+				if evt.Type != corev1.EventTypeWarning {
+					continue
+				}
+				if evt.Reason != events.EventAssociationError {
+					continue
+				}
+				if strings.Contains(evt.Message, "package-registry") {
 					return nil
 				}
 			}
