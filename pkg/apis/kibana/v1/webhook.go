@@ -161,5 +161,5 @@ func checkPackageRegistryRefSecret(k *Kibana) field.ErrorList {
 	if k.Spec.PackageRegistryRef.SecretName == "" {
 		return nil
 	}
-	return field.ErrorList{field.Forbidden(field.NewPath("spec").Child("packageRegistryRef").Child("secretName"), "secretName is not allowed")}
+	return field.ErrorList{field.Forbidden(field.NewPath("spec").Child("packageRegistryRef").Child("secretName"), "secretName is not supported")}
 }
