@@ -81,7 +81,9 @@ func CheckStatus(b Builder, k *test.K8sClient) test.Step {
 				return err
 			}
 			epr.Status.Selector = ""
-			epr.Status.ObservedGeneration = 0
+			if epr.Status.ObservedGeneration != epr.Generation {
+				return fmt.Errorf("expected observed generation %d but got %d", epr.Generation, epr.Status.ObservedGeneration)
+			}
 
 			// don't check the association status that may vary across tests
 			expected := v1alpha1.PackageRegistryStatus{
