@@ -66,6 +66,7 @@ const (
 	AgentImage            Image = "elastic-agent/elastic-agent"
 	MapsImage             Image = "elastic-maps-service/elastic-maps-server"
 	LogstashImage         Image = "logstash/logstash"
+	AutoOpsAgentImage     Image = "elastic-agent/elastic-otel-collector-wolfi"
 )
 
 var MinMapsVersionOnARM = version.MinFor(8, 16, 0)

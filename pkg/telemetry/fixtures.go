@@ -56,16 +56,23 @@ const expectedTelemetryTemplate = `eck:
   operator_uuid: 15039433-f873-41bd-b6e7-10ee3665cafa
   stats:
     agents:
+      helm_resource_count: 0
       multiple_refs: 0
       pod_count: 0
       resource_count: 0
     apms:
+      helm_resource_count: 0
+      pod_count: 0
+      resource_count: 0
+    autoopsagentpolicies:
+      helm_resource_count: 0
       pod_count: 0
       resource_count: 0
     beats:
       auditbeat_count: 0
       filebeat_count: 0
       heartbeat_count: 0
+      helm_resource_count: 0
       journalbeat_count: 0
       metricbeat_count: 0
       packetbeat_count: 0
@@ -86,6 +93,7 @@ const expectedTelemetryTemplate = `eck:
       stack_monitoring_logs_count: {{ .ElasticsearchTemplateData.StackMonitoringLogsCount }}
       stack_monitoring_metrics_count: {{ .ElasticsearchTemplateData.StackMonitoringMetricsCount }}
     enterprisesearches:
+      helm_resource_count: 0
       pod_count: 0
       resource_count: 0
     kibanas:
@@ -93,6 +101,7 @@ const expectedTelemetryTemplate = `eck:
       pod_count: 0
       resource_count: 1
     logstashes:
+      helm_resource_count: 0
       pipeline_count: 0
       pipeline_ref_count: 0
       pod_count: 0

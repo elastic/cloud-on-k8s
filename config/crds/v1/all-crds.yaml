@@ -2358,6 +2358,182 @@ kind: CustomResourceDefinition
 metadata:
   annotations:
     controller-gen.kubebuilder.io/version: v0.19.0
+  name: autoopsagentpolicies.autoops.k8s.elastic.co
+spec:
+  group: autoops.k8s.elastic.co
+  names:
+    categories:
+    - elastic
+    kind: AutoOpsAgentPolicy
+    listKind: AutoOpsAgentPolicyList
+    plural: autoopsagentpolicies
+    shortNames:
+    - aop
+    singular: autoopsagentpolicy
+  scope: Namespaced
+  versions:
+  - additionalPrinterColumns:
+    - description: Ready resources
+      jsonPath: .status.ready
+      name: Ready
+      type: string
+    - jsonPath: .status.phase
+      name: Phase
+      type: string
+    - jsonPath: .metadata.creationTimestamp
+      name: Age
+      type: date
+    name: v1alpha1
+    schema:
+      openAPIV3Schema:
+        description: AutoOpsAgentPolicy represents an Elastic AutoOps Policy resource
+          in a Kubernetes cluster.
+        properties:
+          apiVersion:
+            description: |-
+              APIVersion defines the versioned schema of this representation of an object.
+              Servers should convert recognized schemas to the latest internal value, and
+              may reject unrecognized values.
+              More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources
+            type: string
+          kind:
+            description: |-
+              Kind is a string value representing the REST resource this object represents.
+              Servers may infer this from the endpoint the client submits requests to.
+              Cannot be updated.
+              In CamelCase.
+              More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds
+            type: string
+          metadata:
+            type: object
+          spec:
+            properties:
+              autoOpsRef:
+                description: AutoOpsRef defines a reference to a secret containing
+                  connection details for AutoOps via Cloud Connect.
+                properties:
+                  secretName:
+                    description: |-
+                      SecretName references a Secret containing connection details for external AutoOps.
+                      Required when connecting via Cloud Connect. The secret must contain:
+                      - `cloud-connected-mode-api-key`: Cloud Connected Mode API key
+                      - `autoops-otel-url`: AutoOps OpenTelemetry endpoint URL
+                      - `autoops-token`: AutoOps authentication token
+                      - `cloud-connected-mode-api-url`: (optional) Cloud Connected Mode API URL
+                      This field cannot be used in combination with `name`.
+                    type: string
+                type: object
+              image:
+                description: Image is the AutoOps Agent Docker image to deploy.
+                type: string
+              podTemplate:
+                description: PodTemplate provides customisation options (labels, annotations,
+                  affinity rules, resource requests, and so on) for the Agent pods
+                type: object
+                x-kubernetes-preserve-unknown-fields: true
+              resourceSelector:
+                description: |-
+                  ResourceSelector is a label selector for the resources to be configured.
+                  Any Elasticsearch instances that match the selector will be configured to send data to AutoOps.
+                properties:
+                  matchExpressions:
+                    description: matchExpressions is a list of label selector requirements.
+                      The requirements are ANDed.
+                    items:
+                      description: |-
+                        A label selector requirement is a selector that contains values, a key, and an operator that
+                        relates the key and values.
+                      properties:
+                        key:
+                          description: key is the label key that the selector applies
+                            to.
+                          type: string
+                        operator:
+                          description: |-
+                            operator represents a key's relationship to a set of values.
+                            Valid operators are In, NotIn, Exists and DoesNotExist.
+                          type: string
+                        values:
+                          description: |-
+                            values is an array of string values. If the operator is In or NotIn,
+                            the values array must be non-empty. If the operator is Exists or DoesNotExist,
+                            the values array must be empty. This array is replaced during a strategic
+                            merge patch.
+                          items:
+                            type: string
+                          type: array
+                          x-kubernetes-list-type: atomic
+                      required:
+                      - key
+                      - operator
+                      type: object
+                    type: array
+                    x-kubernetes-list-type: atomic
+                  matchLabels:
+                    additionalProperties:
+                      type: string
+                    description: |-
+                      matchLabels is a map of {key,value} pairs. A single {key,value} in the matchLabels
+                      map is equivalent to an element of matchExpressions, whose key field is "key", the
+                      operator is "In", and the values array contains only "value". The requirements are ANDed.
+                    type: object
+                type: object
+                x-kubernetes-map-type: atomic
+              revisionHistoryLimit:
+                description: RevisionHistoryLimit is the number of revisions to retain
+                  to allow rollback in the underlying Deployment.
+                format: int32
+                type: integer
+              serviceAccountName:
+                description: |-
+                  ServiceAccountName is used to check access to Elasticsearch resources in different namespaces.
+                  Can only be used if ECK is enforcing RBAC on references (--enforce-rbac-on-refs flag).
+                  The service account must have "get" permission on elasticsearch.k8s.elastic.co/elasticsearches
+                  in the target namespaces.
+                type: string
+              version:
+                description: Version of the AutoOpsAgentPolicy.
+                type: string
+            required:
+            - version
+            type: object
+          status:
+            properties:
+              errors:
+                description: Errors is the number of resources that are in an error
+                  state.
+                type: integer
+              observedGeneration:
+                description: ObservedGeneration is the most recent generation observed
+                  for this AutoOpsAgentPolicy.
+                format: int64
+                type: integer
+              phase:
+                description: Phase is the phase of the AutoOpsAgentPolicy.
+                type: string
+              ready:
+                description: Ready is the number of resources that are in a ready
+                  state.
+                type: integer
+              resources:
+                description: Resources is the number of resources that match the ResourceSelector.
+                type: integer
+            required:
+            - errors
+            - ready
+            - resources
+            type: object
+        type: object
+    served: true
+    storage: true
+    subresources:
+      status: {}
+---
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  annotations:
+    controller-gen.kubebuilder.io/version: v0.19.0
   name: beats.beat.k8s.elastic.co
 spec:
   group: beat.k8s.elastic.co
