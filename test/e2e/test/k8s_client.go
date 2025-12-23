@@ -35,6 +35,7 @@ import (
 	entv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/enterprisesearch/v1"
 	kbv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/kibana/v1"
 	logstashv1alpha1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/logstash/v1alpha1"
+	eprv1alpha1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/packageregistry/v1alpha1"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/agent"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/apmserver"
 	beatcommon "github.com/elastic/cloud-on-k8s/v3/pkg/controller/beat/common"
@@ -100,6 +101,9 @@ func CreateClient() (k8s.Client, error) {
 		return nil, err
 	}
 	if err := logstashv1alpha1.AddToScheme(scheme.Scheme); err != nil {
+		return nil, err
+	}
+	if err := eprv1alpha1.AddToScheme(scheme.Scheme); err != nil {
 		return nil, err
 	}
 	client, err := k8sclient.New(cfg, k8sclient.Options{Scheme: scheme.Scheme})
