@@ -341,9 +341,11 @@ func (s *StackConfigPolicyStatus) Update() {
 			// Resource status can be for Kibana or Elasticsearch resources
 			resourcePhase := status.Phase
 
-			if resourcePhase == ReadyPhase {
+			//nolint:exhaustive
+			switch resourcePhase {
+			case ReadyPhase:
 				s.Ready++
-			} else if resourcePhase == ErrorPhase {
+			case ErrorPhase:
 				s.Errors++
 			}
 			// update phase if that of the resource status is worse
