@@ -181,6 +181,7 @@ type IndexTemplates struct {
 
 type StackConfigPolicyStatus struct {
 	// ResourcesStatuses holds the status for each resource to be configured.
+	//
 	// Deprecated: Details is used to store the status of resources from ECK 2.11
 	ResourcesStatuses map[string]ResourcePolicyStatus `json:"resourcesStatuses,omitempty"`
 	// Details holds the status details for each resource to be configured.
