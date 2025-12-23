@@ -1,0 +1,72 @@
+# Copyright Elasticsearch B.V. and/or licensed to Elasticsearch B.V. under one
+# or more contributor license agreements. Licensed under the Elastic License 2.0;
+# you may not use this file except in compliance with the Elastic License 2.0.
+
+steps:
+
+  # create k8s cluster and run e2e tests, or just run e2e tests (if RemoteKubeconfig)
+  - label: ":k8s: :go: kind"
+    key: "e2e-kind-wcbi"
+
+    env:
+      BUILD_NUMBER: "0"
+      CLUSTER_NAME: "eck-e2e-kind-wcbi-0"
+      E2E_IMG: "make: Entering directory '/home/mmontgomery/git/cloud-on-k8s'
+
+make: Leaving directory '/home/mmontgomery/git/cloud-on-k8s'"
+      E2E_JSON: "true"
+      E2E_PROVIDER: "kind"
+      GO_TAGS: "release"
+      MONITORING_SECRETS: ""
+      OPERATOR_IMAGE: "make: Entering directory '/home/mmontgomery/git/cloud-on-k8s'
+
+make: Leaving directory '/home/mmontgomery/git/cloud-on-k8s'"
+      PIPELINE: "e2e/kind"
+      TESTS_MATCH: "TestSmoke"
+      TEST_LICENSE: "/home/mmontgomery/git/cloud-on-k8s/.ci/test-license.json"
+      TEST_OPTS: "-race"
+      export LICENSE_PUBKEY: "/home/mmontgomery/git/cloud-on-k8s/.ci/license.key"
+
+    commands:
+      - echo "BUILD_NUMBER=0" >> .env
+      - echo "CLUSTER_NAME=eck-e2e-kind-wcbi-0" >> .env
+      - echo "E2E_IMG=make: Entering directory '/home/mmontgomery/git/cloud-on-k8s'
+
+make: Leaving directory '/home/mmontgomery/git/cloud-on-k8s'" >> .env
+      - echo "E2E_JSON=true" >> .env
+      - echo "E2E_PROVIDER=kind" >> .env
+      - echo "GO_TAGS=release" >> .env
+      - echo "MONITORING_SECRETS=" >> .env
+      - echo "OPERATOR_IMAGE=make: Entering directory '/home/mmontgomery/git/cloud-on-k8s'
+
+make: Leaving directory '/home/mmontgomery/git/cloud-on-k8s'" >> .env
+      - echo "PIPELINE=e2e/kind" >> .env
+      - echo "TESTS_MATCH=TestSmoke" >> .env
+      - echo "TEST_LICENSE=/home/mmontgomery/git/cloud-on-k8s/.ci/test-license.json" >> .env
+      - echo "TEST_OPTS=-race" >> .env
+      - echo "export LICENSE_PUBKEY=/home/mmontgomery/git/cloud-on-k8s/.ci/license.key" >> .env
+
+      - .buildkite/scripts/test/set-deployer-config.sh
+      - make -C .buildkite TARGET="run-deployer e2e-run" ci
+
+    agents:
+      provider: "gcp"
+      image: "family/core-ubuntu-2004"
+      machineType: "n1-standard-16"
+      diskSizeGb: 150
+
+    artifact_paths:
+      - e2e-tests-*.json
+      - "eck-diagnostic*.zip"
+
+  - label: "aggregate tests-results"
+    depends_on:
+      - step: "e2e-kind-wcbi"
+        allow_failure: true
+    command: .buildkite/scripts/test/report-tests-results.sh
+    artifact_paths:
+      - ".buildkite/e2e/reporter/*.md"
+      - ".buildkite/e2e/reporter/*.yml"
+    agents:
+      image: docker.elastic.co/ci-agent-images/cloud-k8s-operator/buildkite-agent:a9130ecd
+      memory: "2G"

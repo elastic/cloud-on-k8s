@@ -76,6 +76,16 @@ steps:
           DRIVAH_AMD_AGENT_MEMORY: "5G"
           RECURSIVE: true
           SIGN_IMAGES: false
+      - label: ":buildkite: upload images digest"
+        commands:
+          - .buildkite/scripts/build/image-signing.sh
+          - buildkite-agent artifact upload hack/deployer/deployer
+        agents:
+          image: docker.elastic.co/ci-agent-images/cloud-k8s-operator/buildkite-agent:6154e14d
+          cpu: "1"
+          memory: "1G"
+      - label: ":key: sign images"
+        trigger: unified-release-container-image-signing
 
   - group: build e2e-tests
     key: "e2e-tests-image-build"
