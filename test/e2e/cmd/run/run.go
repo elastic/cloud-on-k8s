@@ -332,10 +332,7 @@ func (h *helper) createRoles() error {
 func (h *helper) installOperatorUnderTest() error {
 	log.Info("Installing the operator under test")
 
-	installCRDs := false
-	if h.monitoringSecrets == "" {
-		installCRDs = true
-	}
+	installCRDs := h.monitoringSecrets == ""
 
 	manifestFile := filepath.Join(h.scratchDir, "operator-under-test.yaml")
 
