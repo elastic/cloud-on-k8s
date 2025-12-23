@@ -35,6 +35,7 @@ import (
 	entv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/enterprisesearch/v1"
 	kbv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/kibana/v1"
 	logstashv1alpha1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/logstash/v1alpha1"
+	packageregistryv1alpha1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/packageregistry/v1alpha1"
 	beatcommon "github.com/elastic/cloud-on-k8s/v3/pkg/controller/beat/common"
 	"github.com/elastic/cloud-on-k8s/v3/test/e2e/cmd/run"
 	"github.com/elastic/cloud-on-k8s/v3/test/e2e/test"
@@ -43,6 +44,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/v3/test/e2e/test/beat"
 	"github.com/elastic/cloud-on-k8s/v3/test/e2e/test/elasticsearch"
 	"github.com/elastic/cloud-on-k8s/v3/test/e2e/test/enterprisesearch"
+	"github.com/elastic/cloud-on-k8s/v3/test/e2e/test/epr"
 	"github.com/elastic/cloud-on-k8s/v3/test/e2e/test/kibana"
 	"github.com/elastic/cloud-on-k8s/v3/test/e2e/test/logstash"
 )
@@ -68,6 +70,7 @@ func NewYAMLDecoder() *YAMLDecoder {
 	scheme.AddKnownTypes(corev1.SchemeGroupVersion, &corev1.ServiceAccount{}, &corev1.ServiceAccountList{})
 	scheme.AddKnownTypes(corev1.SchemeGroupVersion, &corev1.Service{}, &corev1.ServiceList{})
 	scheme.AddKnownTypes(appsv1.SchemeGroupVersion, &appsv1.DaemonSet{})
+	scheme.AddKnownTypes(packageregistryv1alpha1.GroupVersion, &packageregistryv1alpha1.PackageRegistry{}, &packageregistryv1alpha1.PackageRegistryList{})
 	decoder := serializer.NewCodecFactory(scheme).UniversalDeserializer()
 
 	return &YAMLDecoder{decoder: decoder}
@@ -115,6 +118,10 @@ func (yd *YAMLDecoder) ToBuilders(reader *bufio.Reader, transform BuilderTransfo
 		case *logstashv1alpha1.Logstash:
 			b := logstash.NewBuilderWithoutSuffix(decodedObj.Name)
 			b.Logstash = *decodedObj
+			builder = transform(b)
+		case *packageregistryv1alpha1.PackageRegistry:
+			b := epr.NewBuilder(decodedObj.Name)
+			b.EPR = *decodedObj
 			builder = transform(b)
 		default:
 			return builders, fmt.Errorf("unexpected object type: %t", decodedObj)
