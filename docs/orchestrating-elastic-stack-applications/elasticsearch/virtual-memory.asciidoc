@@ -9,9 +9,11 @@ endif::[]
 = Virtual memory
 
 By default, Elasticsearch uses memory mapping (`mmap`) to efficiently access indices.
-Usually, default values for virtual address space on Linux distributions are too low for Elasticsearch to work properly, which may result in out-of-memory exceptions. This is why link:k8s-quickstart.html[the quickstart example] disables `mmap` through the `node.store.allow_mmap: false` setting. For production workloads, it is strongly recommended to increase the kernel setting `vm.max_map_count` to `262144` and leave `node.store.allow_mmap` unset.
+Default values for virtual address space on Linux distributions can be too low for Elasticsearch to work properly, which may result in out-of-memory exceptions. This is why link:k8s-quickstart.html[the quickstart example] disables `mmap` through the `node.store.allow_mmap: false` setting. For production workloads, we recommend that you increase the kernel setting `vm.max_map_count` to `1048576` and leave `node.store.allow_mmap` unset.
 
-The kernel setting `vm.max_map_count=262144` can be set on the host directly, by a dedicated init container which must be privileged, or a dedicated Daemonset.
+The kernel setting `vm.max_map_count=1048576` can be set on the host directly, by a dedicated init container which must be privileged, or a dedicated Daemonset.
+
+IMPORTANT: For {{es}} version 8.16 and later, set the `vm.max_map_count` kernel setting to `1048576`; for {{es}} version 8.15 and earlier, set `vm.max_map_count` to `262144`.
 
 For more information, check the Elasticsearch documentation on
 link:https://www.elastic.co/guide/en/elasticsearch/reference/current/vm-max-map-count.html[Virtual memory].
