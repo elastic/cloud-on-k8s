@@ -1,113 +1,129 @@
-run:
-  timeout: 420s
-
-linters-settings:
-  exhaustive:
-    default-signifies-exhaustive: true
-
-  goheader:
-    template: |-
-      Copyright Elasticsearch B.V. and/or licensed to Elasticsearch B.V. under one
-      or more contributor license agreements. Licensed under the Elastic License 2.0;
-      you may not use this file except in compliance with the Elastic License 2.0.
-
-  goimports:
-    # put imports beginning with prefix after 3rd-party packages;
-    local-prefixes: github.com/elastic/cloud-on-k8s
-
-  gosec:
-    excludes:
-      - G115 # potential integer overflow when converting between integer types
-
-  nolintlint:
-    allow-leading-space: false
-    allow-unused: false
-    require-specific: true
-
-  predeclared:
-    # comma-separated list of predeclared identifiers to not report on.
-    ignore: "min,max"
-
-  revive:
-    ## Default rules from https://github.com/mgechev/revive/blob/75a8e403f52c9634546fbfe5ec5429560ca74494/defaults.toml
-    enable-all-rules: false
-    rules:
-      - name: blank-imports
-        disabled: false
-      - name: context-as-argument
-        disabled: false
-      - name: context-keys-type
-        disabled: false
-      - name: dot-imports
-        disabled: false
-      - name: empty-block
-        disabled: false
-      - name: error-naming
-        disabled: false
-      - name: error-return
-        disabled: false
-      - name: error-strings
-        disabled: false
-      - name: errorf
-        disabled: false
-      - name: exported
-        disabled: false
-      - name: increment-decrement
-        disabled: false
-      - name: indent-error-flow
-        disabled: false
-      - name: package-comments
-        disabled: false
-      - name: range
-        disabled: false
-      - name: receiver-naming
-        disabled: false
-      - name: redefines-builtin-id
-        disabled: false
-      - name: superfluous-else
-        disabled: false
-      - name: time-naming
-        disabled: false
-      - name: unexported-return
-        disabled: false
-      - name: unreachable-code
-        disabled: false
-      - name: unused-parameter
-        ## Disabled as it generates a lot of rule failures.
-        disabled: true
-      - name: var-declaration
-        disabled: false
-      - name: var-naming
-        disabled: false
-
-# Run `golangci-lint linters` to see the descriptions for the linters. 
+version: "2"
 linters:
-  disable:
-    - cyclop
-    - depguard
-    - dupl
-    - err113
-    - forbidigo
-    - funlen
-    - gci
-    - gochecknoinits
-    - gocognit
-    - goconst
-    - gocyclo
-    - godot
-    - godox
-    - gofmt
-    - gofumpt
-    - gomnd
-    - gomodguard
-    - nlreturn
-    - paralleltest
-    - rowserrcheck
-    - sqlclosecheck
-    - stylecheck
-    - testpackage
-    - wrapcheck
-    - wsl
+  settings:
+    exhaustive:
+      default-signifies-exhaustive: true
+
+    goheader:
+      template: |-
+        Copyright Elasticsearch B.V. and/or licensed to Elasticsearch B.V. under one
+        or more contributor license agreements. Licensed under the Elastic License 2.0;
+        you may not use this file except in compliance with the Elastic License 2.0.
+
+    gosec:
+      excludes:
+        - G115
+
+    nolintlint:
+      require-specific: true
+      allow-unused: false
+
+    predeclared:
+      ignore:
+        - min
+        - max
+
+    revive:
+      enable-all-rules: false
+      rules:
+        - name: blank-imports
+          disabled: false
+        - name: context-as-argument
+          disabled: false
+        - name: context-keys-type
+          disabled: false
+        - name: dot-imports
+          disabled: false
+        - name: empty-block
+          disabled: false
+        - name: error-naming
+          disabled: false
+        - name: error-return
+          disabled: false
+        - name: error-strings
+          disabled: false
+        - name: errorf
+          disabled: false
+        - name: exported
+          disabled: false
+        - name: increment-decrement
+          disabled: false
+        - name: indent-error-flow
+          disabled: false
+        - name: package-comments
+          disabled: false
+        - name: range
+          disabled: false
+        - name: receiver-naming
+          disabled: false
+        - name: redefines-builtin-id
+          disabled: false
+        - name: superfluous-else
+          disabled: false
+        - name: time-naming
+          disabled: false
+        - name: unexported-return
+          disabled: false
+        - name: unreachable-code
+          disabled: false
+        - name: unused-parameter
+          disabled: true
+        - name: var-declaration
+          disabled: false
+        - name: var-naming
+          disabled: false
+
+    # https://golangci-lint.run/docs/linters/configuration/#staticcheck
+    staticcheck:
+      checks:
+        # SAxxxx checks in https://staticcheck.dev/docs/configuration/options/#checks
+        # Default: ["all", "-ST1000", "-ST1003", "-ST1016", "-ST1020", "-ST1021", "-ST1022"]
+        - 'all'
+        - '-ST1000'
+        - '-ST1003'
+        - '-ST1016'
+        - '-ST1020'
+        - '-ST1021'
+        - '-ST1022'
+        # disabled while migrating cloud-on-k8s to v2 to avoid a lot of auto-fixes
+        - '-QF1008'
+        - '-QF1001'
+
+  exclusions:
+    generated: lax
+    presets:
+      - comments
+      - common-false-positives
+      - legacy
+      - std-error-handling
+    rules:
+      - linters:
+          - gosec
+          - unparam
+        path: .*_test\.go
+      - linters:
+          - staticcheck
+        path: pkg/controller/common/tracing/apmclientgo/client.go
+        text: SA1019
+      - linters:
+          - staticcheck
+        # added exclusion until https://github.com/elastic/cloud-on-k8s/issues/8442 is implemented
+        text: 'SA1019: .* is deprecated: Consider CustomValidator instead, this only restores the old ctrl-runtime interface for bwc.'
+      - linters:
+          - staticcheck
+        # added exclusion until ElasticsearchAutoscalingSpecAnnotationName is completely removed
+        text: 'SA1019: .* is deprecated: the autoscaling annotation has been deprecated in favor of the ElasticsearchAutoscaler custom resource.'
+      - linters:
+          - revive
+        # revive naming rules are not that happy with our packages/var names in commont/utils packages
+        path: '.*/(common|utils)/.*.go'
+        text: 'var-naming: avoid (package names that conflict with Go standard library package names|meaningless package names)'
+    paths:
+      - third_party$
+      - builtin$
+      - examples$
+
+  default: none
 
   enable:
     - asciicheck
@@ -120,10 +136,8 @@ linters:
     - forcetypeassert
     - gocritic
     - goheader
-    - goimports
     - goprintffuncname
     - gosec
-    - gosimple
     - govet
     - importas
     - ineffassign
@@ -140,7 +154,6 @@ linters:
     - staticcheck
     - thelper
     - tparallel
-    - typecheck
     - unconvert
     - unparam
     - unused
@@ -148,18 +161,20 @@ linters:
     - whitespace
 
 issues:
+  max-issues-per-linter: 25
+  max-same-issues: 0
   fix: true
 
-  max-issues-per-linter: 25
-
-  max-same-issues: 0
-
-  exclude-rules:
-    - path: .*_test\.go
-      linters:
-        - unparam
-        - gosec
-    - path: pkg/controller/common/tracing/apmclientgo/client.go
-      linters:
-        - staticcheck
-      text: SA1019
+formatters:
+  enable:
+    - goimports
+  settings:
+    goimports:
+      local-prefixes:
+        - github.com/elastic/cloud-on-k8s
+  exclusions:
+    generated: lax
+    paths:
+      - third_party$
+      - builtin$
+      - examples$
