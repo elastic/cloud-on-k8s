@@ -34,7 +34,6 @@ import (
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/watches"
 	esclient "github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/client"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/filesettings"
-	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/label"
 	eslabel "github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/label"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/k8s"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/net"
@@ -102,7 +101,7 @@ func getEsPod(namespace string, annotations map[string]string) *corev1.Pod {
 			Name:      "test-es-default-0",
 			Namespace: namespace,
 			Labels: map[string]string{
-				label.ClusterNameLabelName: "test-es",
+				eslabel.ClusterNameLabelName: "test-es",
 			},
 			Annotations: annotations,
 		},

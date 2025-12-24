@@ -193,7 +193,8 @@ func (c *ApmClient) IntakeV2Events(ctx context.Context, rum bool, payload []byte
 	if rum {
 		path = rumIntakePath
 	}
-	request, err := http.NewRequest(
+	request, err := http.NewRequestWithContext(
+		ctx,
 		http.MethodPost,
 		stringsutil.Concat(c.endpoint, path),
 		bytes.NewBuffer(payload),

@@ -140,7 +140,7 @@ func (c *Command) output() (string, error) {
 	if c.context != nil {
 		cmd = exec.CommandContext(c.context, "/usr/bin/env", "bash", "-c", c.command) // #nosec G204
 	} else {
-		cmd = exec.Command("/usr/bin/env", "bash", "-c", c.command) // #nosec G204
+		cmd = exec.Command("/usr/bin/env", "bash", "-c", c.command) //nolint:gosec,noctx
 	}
 
 	// support .env or similar files to specify environment variables
