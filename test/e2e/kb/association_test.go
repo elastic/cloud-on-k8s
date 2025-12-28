@@ -9,6 +9,7 @@ package kb
 import (
 	"context"
 	"fmt"
+	"strings"
 	"testing"
 
 	"github.com/elastic/cloud-on-k8s/v3/test/e2e/test/enterprisesearch"
@@ -23,6 +24,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/k8s"
 	"github.com/elastic/cloud-on-k8s/v3/test/e2e/test"
 	"github.com/elastic/cloud-on-k8s/v3/test/e2e/test/elasticsearch"
+	"github.com/elastic/cloud-on-k8s/v3/test/e2e/test/epr"
 	"github.com/elastic/cloud-on-k8s/v3/test/e2e/test/kibana"
 )
 
@@ -174,4 +176,75 @@ func TestKibanaAssociationWhenReferencedESDisappears(t *testing.T) {
 	}
 
 	test.RunUnrecoverableFailureScenario(t, failureSteps, kbBuilder, esBuilder)
+}
+
+// TestEPRAssociation tests associating Kibana to both Elasticsearch and Elastic Package Registry.
+// Elasticsearch and Kibana run in the same namespace while EPR runs in a different one.
+func TestEPRAssociation(t *testing.T) {
+	name := "test-kb-epr-assoc"
+
+	esKbNamespace := test.Ctx().ManagedNamespace(0)
+	eprNamespace := test.Ctx().ManagedNamespace(1)
+
+	esBuilder := elasticsearch.NewBuilder(name).
+		WithNamespace(esKbNamespace).
+		WithESMasterDataNodes(1, elasticsearch.DefaultResources).
+		WithRestrictedSecurityContext()
+	eprBuilder := epr.NewBuilder(name).
+		WithNamespace(eprNamespace).
+		WithNodeCount(1).
+		WithRestrictedSecurityContext()
+	kbBuilder := kibana.NewBuilder(name).
+		WithNamespace(esKbNamespace).
+		WithElasticsearchRef(esBuilder.Ref()).
+		WithPackageRegistryRef(eprBuilder.Ref()).
+		WithNodeCount(1).
+		WithRestrictedSecurityContext()
+
+	test.Sequence(nil, test.EmptySteps, esBuilder, eprBuilder, kbBuilder).RunSequential(t)
+}
+
+func TestKibanaAssociationWithNonExistentEPR(t *testing.T) {
+	name := "test-kb-assoc-non-existent-epr"
+	esBuilder := elasticsearch.NewBuilder(name).
+		WithESMasterDataNodes(1, elasticsearch.DefaultResources).
+		WithRestrictedSecurityContext()
+	kbBuilder := kibana.NewBuilder(name).
+		WithElasticsearchRef(esBuilder.Ref()).
+		WithPackageRegistryRef(commonv1.ObjectSelector{Name: "some-epr"}).
+		WithNodeCount(1)
+
+	k := test.NewK8sClientOrFatal()
+	steps := test.StepList{}
+	steps = steps.WithSteps(esBuilder.InitTestSteps(k))
+	steps = steps.WithSteps(esBuilder.CreationTestSteps(k))
+	steps = steps.WithSteps(kbBuilder.InitTestSteps(k))
+	steps = steps.WithSteps(kbBuilder.CreationTestSteps(k))
+	steps = steps.WithStep(test.Step{
+		Name: "Non existent EPR backend should generate event",
+		Test: test.Eventually(func() error {
+			eventList, err := k.GetEvents(test.EventListOptions(kbBuilder.Kibana.Namespace, kbBuilder.Kibana.Name)...)
+			if err != nil {
+				return err
+			}
+
+			for _, evt := range eventList {
+				if evt.Type != corev1.EventTypeWarning {
+					continue
+				}
+				if evt.Reason != events.EventAssociationError {
+					continue
+				}
+				if strings.Contains(evt.Message, "package-registry") {
+					return nil
+				}
+			}
+
+			return fmt.Errorf("event did not fire: %s", events.EventAssociationError)
+		}),
+	})
+	steps = steps.WithSteps(kbBuilder.DeletionTestSteps(k))
+	steps = steps.WithSteps(esBuilder.DeletionTestSteps(k))
+
+	steps.RunSequential(t)
 }

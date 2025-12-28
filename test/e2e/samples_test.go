@@ -23,6 +23,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/v3/test/e2e/test/apmserver"
 	"github.com/elastic/cloud-on-k8s/v3/test/e2e/test/elasticsearch"
 	"github.com/elastic/cloud-on-k8s/v3/test/e2e/test/enterprisesearch"
+	"github.com/elastic/cloud-on-k8s/v3/test/e2e/test/epr"
 	"github.com/elastic/cloud-on-k8s/v3/test/e2e/test/helper"
 	"github.com/elastic/cloud-on-k8s/v3/test/e2e/test/kibana"
 	"github.com/elastic/cloud-on-k8s/v3/test/e2e/test/logstash"
@@ -73,6 +74,7 @@ func createBuilders(t *testing.T, decoder *helper.YAMLDecoder, sampleFile, testN
 				WithSuffix(suffix).
 				WithElasticsearchRef(tweakServiceRef(b.Kibana.Spec.ElasticsearchRef, suffix)).
 				WithEnterpriseSearchRef(tweakServiceRef(b.Kibana.Spec.EnterpriseSearchRef, suffix)).
+				WithPackageRegistryRef(tweakServiceRef(b.Kibana.Spec.PackageRegistryRef, suffix)).
 				WithRestrictedSecurityContext().
 				WithLabel(run.TestNameLabel, fullTestName).
 				WithPodLabel(run.TestNameLabel, fullTestName)
@@ -119,7 +121,12 @@ func createBuilders(t *testing.T, decoder *helper.YAMLDecoder, sampleFile, testN
 				WithLabel(run.TestNameLabel, fullTestName).
 				WithPodLabel(run.TestNameLabel, fullTestName).
 				WithTestStorageClass()
-
+		case epr.Builder:
+			return b.WithNamespace(namespace).
+				WithSuffix(suffix).
+				WithRestrictedSecurityContext().
+				WithLabel(run.TestNameLabel, fullTestName).
+				WithPodLabel(run.TestNameLabel, fullTestName)
 		default:
 			return b
 		}

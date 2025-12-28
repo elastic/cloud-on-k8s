@@ -340,6 +340,21 @@ updating docs/operating-eck/eck-permissions.asciidoc file.
   - create
   - update
   - patch
+- apiGroups:
+  - packageregistry.k8s.elastic.co
+  resources:
+  - packageregistries
+  - packageregistries/status 
+  - packageregistries/finalizers # needed for ownerReferences with blockOwnerDeletion on OCP
+  verbs:
+  - get
+  - list
+  - watch
+  - create
+  - update
+  - patch
+  - delete
+  - deletecollection
 {{- end -}}
 
 {{/*
