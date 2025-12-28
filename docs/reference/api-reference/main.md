@@ -269,7 +269,7 @@ Package v1alpha1 contains API schema definitions for managing AutoOpsAgentPolicy
 
 ### AutoOpsAgentPolicy  [#autoopsagentpolicy]
 
-AutoOpsAgentPolicy represents an AutoOpsAgentPolicy resource in a Kubernetes cluster.
+AutoOpsAgentPolicy represents an Elastic AutoOps Policy resource in a Kubernetes cluster.
 
 
 
@@ -294,7 +294,25 @@ AutoOpsAgentPolicy represents an AutoOpsAgentPolicy resource in a Kubernetes clu
 | --- | --- |
 | *`version`* __string__ | Version of the AutoOpsAgentPolicy. |
 | *`resourceSelector`* __[LabelSelector](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.32/#labelselector-v1-meta)__ | ResourceSelector is a label selector for the resources to be configured.<br>Any Elasticsearch instances that match the selector will be configured to send data to AutoOps. |
-| *`config`* __[ConfigSource](#configsource)__ | Config holds the AutoOpsAgentPolicy configuration.<br>The contents of the referenced secret requires the following format:<br>  kind: Secret<br>  apiVersion: v1<br>  metadata:<br>    name: autoops-agent-policy-config<br>  stringData:<br>    ccmApiKey: aslkfjsldkjfslkdjflksdjfl<br>    tempResourceID: u857abce4-9214-446b-951c-a1644b7d204ao<br>    autoOpsOTelURL: https://otel.auto-ops.console.qa.cld.elstc.co<br>    autoOpsToken: skdfjdskjf |
+| *`autoOpsRef`* __[AutoOpsRef](#autoopsref)__ | AutoOpsRef defines a reference to a secret containing connection details for AutoOps via Cloud Connect. |
+| *`image`* __string__ | Image is the AutoOps Agent Docker image to deploy. |
+| *`podTemplate`* __[PodTemplateSpec](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.32/#podtemplatespec-v1-core)__ | PodTemplate provides customisation options (labels, annotations, affinity rules, resource requests, and so on) for the Agent pods |
+| *`revisionHistoryLimit`* __integer__ | RevisionHistoryLimit is the number of revisions to retain to allow rollback in the underlying Deployment. |
+| *`serviceAccountName`* __string__ | ServiceAccountName is used to check access to Elasticsearch resources in different namespaces.<br>Can only be used if ECK is enforcing RBAC on references (--enforce-rbac-on-refs flag).<br>The service account must have "get" permission on elasticsearch.k8s.elastic.co/elasticsearches<br>in the target namespaces. |
+
+
+### AutoOpsRef  [#autoopsref]
+
+AutoOpsRef defines a reference to a secret containing connection details for AutoOps via Cloud Connect.
+
+:::{admonition} Appears In:
+* [AutoOpsAgentPolicySpec](#autoopsagentpolicyspec)
+
+:::
+
+| Field | Description |
+| --- | --- |
+| *`secretName`* __string__ | SecretName references a Secret containing connection details for external AutoOps.<br>Required when connecting via Cloud Connect. The secret must contain:<br>- `cloud-connected-mode-api-key`: Cloud Connected Mode API key<br>- `autoops-otel-url`: AutoOps OpenTelemetry endpoint URL<br>- `autoops-token`: AutoOps authentication token<br>- `cloud-connected-mode-api-url`: (optional) Cloud Connected Mode API URL<br>This field cannot be used in combination with `name`. |
 
 
 
@@ -489,7 +507,6 @@ ConfigSource references configuration settings.
 
 :::{admonition} Appears In:
 * [AgentSpec](#agentspec)
-* [AutoOpsAgentPolicySpec](#autoopsagentpolicyspec)
 * [BeatSpec](#beatspec)
 * [EnterpriseSearchSpec](#enterprisesearchspec)
 * [EnterpriseSearchSpec](#enterprisesearchspec)

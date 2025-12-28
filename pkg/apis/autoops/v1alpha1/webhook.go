@@ -27,6 +27,7 @@ var (
 		checkNoUnknownFields,
 		checkNameLength,
 		checkSupportedVersion,
+		checkConfigSecretName,
 		validSettings,
 	}
 )
@@ -38,21 +39,21 @@ var _ admission.Validator = &AutoOpsAgentPolicy{}
 // ValidateCreate is called by the validating webhook to validate the create operation.
 // Satisfies the webhook.Validator interface.
 func (p *AutoOpsAgentPolicy) ValidateCreate() (admission.Warnings, error) {
-	validationLog.V(1).Info("Validate create", "name", p.Name)
+	validationLog.V(1).Info("Validate create", "policy_namespace", p.Namespace, "policy_name", p.Name)
 	return p.validate()
 }
 
 // ValidateDelete is called by the validating webhook to validate the delete operation.
 // Satisfies the webhook.Validator interface.
 func (p *AutoOpsAgentPolicy) ValidateDelete() (admission.Warnings, error) {
-	validationLog.V(1).Info("Validate delete", "name", p.Name)
+	validationLog.V(1).Info("Validate delete", "policy_namespace", p.Namespace, "policy_name", p.Name)
 	return nil, nil
 }
 
 // ValidateUpdate is called by the validating webhook to validate the update operation.
 // Satisfies the webhook.Validator interface.
 func (p *AutoOpsAgentPolicy) ValidateUpdate(_ runtime.Object) (admission.Warnings, error) {
-	validationLog.V(1).Info("Validate update", "name", p.Name)
+	validationLog.V(1).Info("Validate update", "policy_namespace", p.Namespace, "policy_name", p.Name)
 	return p.validate()
 }
 
@@ -77,15 +78,8 @@ func (p *AutoOpsAgentPolicy) validate() (admission.Warnings, error) {
 	return nil, nil
 }
 
-func (p *AutoOpsAgentPolicy) GetWarnings() []string {
-	if p == nil {
-		return nil
-	}
-	return nil
-}
-
 func validSettings(policy *AutoOpsAgentPolicy) field.ErrorList {
-	// Validate that ResourceSelector is not empty
+	// Validate that the ResourceSelector is not empty
 	if policy.Spec.ResourceSelector.MatchLabels == nil && len(policy.Spec.ResourceSelector.MatchExpressions) == 0 {
 		return field.ErrorList{field.Required(field.NewPath("spec").Child("resourceSelector"), "ResourceSelector must be specified with either matchLabels or matchExpressions")}
 	}

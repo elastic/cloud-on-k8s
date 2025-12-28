@@ -1,3 +1,7 @@
+// Copyright Elasticsearch B.V. and/or licensed to Elasticsearch B.V. under one
+// or more contributor license agreements. Licensed under the Elastic License 2.0;
+// you may not use this file except in compliance with the Elastic License 2.0.
+
 package v1alpha1
 
 import (
@@ -17,4 +21,11 @@ func checkNameLength(policy *AutoOpsAgentPolicy) field.ErrorList {
 
 func checkSupportedVersion(policy *AutoOpsAgentPolicy) field.ErrorList {
 	return commonv1.CheckSupportedStackVersion(policy.Spec.Version, version.SupportedAutoOpsAgentVersions)
+}
+
+func checkConfigSecretName(policy *AutoOpsAgentPolicy) field.ErrorList {
+	if policy.Spec.AutoOpsRef.SecretName == "" {
+		return field.ErrorList{field.Required(field.NewPath("spec").Child("autoOpsRef").Child("secretName"), "AutoOpsRef secret name must be specified")}
+	}
+	return nil
 }

@@ -5,19 +5,24 @@
 package autoops
 
 import (
+	"context"
 	"fmt"
+	"hash/fnv"
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
+	"github.com/stretchr/testify/require"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/util/intstr"
 	"k8s.io/utils/ptr"
 
 	autoopsv1alpha1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/autoops/v1alpha1"
 	commonv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/common/v1"
 	esv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/elasticsearch/v1"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/version"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/k8s"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/pointer"
 )
 
@@ -29,6 +34,9 @@ func TestReconcileAutoOpsAgentPolicy_deploymentParams(t *testing.T) {
 		},
 		Spec: autoopsv1alpha1.AutoOpsAgentPolicySpec{
 			Version: "9.1.0-SNAPSHOT",
+			AutoOpsRef: autoopsv1alpha1.AutoOpsRef{
+				SecretName: "autoops-secret",
+			},
 		},
 	}
 
@@ -39,6 +47,13 @@ func TestReconcileAutoOpsAgentPolicy_deploymentParams(t *testing.T) {
 		},
 		Spec: esv1.ElasticsearchSpec{
 			Version: "9.1.0",
+			HTTP: commonv1.HTTPConfig{
+				TLS: commonv1.TLSOptions{
+					SelfSignedCertificate: &commonv1.SelfSignedCertificate{
+						Disabled: true,
+					},
+				},
+			},
 		},
 	}
 
@@ -49,7 +64,6 @@ func TestReconcileAutoOpsAgentPolicy_deploymentParams(t *testing.T) {
 	tests := []struct {
 		name    string
 		args    args
-		want    appsv1.Deployment
 		wantErr bool
 	}{
 		{
@@ -58,7 +72,6 @@ func TestReconcileAutoOpsAgentPolicy_deploymentParams(t *testing.T) {
 				autoops: autoopsFixture,
 				es:      esFixture,
 			},
-			want:    expectedDeployment(autoopsFixture, esFixture),
 			wantErr: false,
 		},
 		{
@@ -71,55 +84,119 @@ func TestReconcileAutoOpsAgentPolicy_deploymentParams(t *testing.T) {
 					},
 					Spec: autoopsv1alpha1.AutoOpsAgentPolicySpec{
 						Version: "invalid-version",
+						AutoOpsRef: autoopsv1alpha1.AutoOpsRef{
+							SecretName: "autoops-secret",
+						},
 					},
 				},
 				es: esFixture,
 			},
-			want:    appsv1.Deployment{},
 			wantErr: true,
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			r := &ReconcileAutoOpsAgentPolicy{}
-			got, err := r.deploymentParams(tt.args.autoops, tt.args.es)
+			// We need a ConfigMap to calculate the config hash for the deployment.
+			// This does not need to be within the k8s cluster itself, we simply
+			// use it to build the config hash.
+			configData := "test-config-data"
+			configMap := &corev1.ConfigMap{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      autoopsv1alpha1.Config(tt.args.autoops.Name, tt.args.es),
+					Namespace: tt.args.autoops.Namespace,
+				},
+				Data: map[string]string{
+					autoOpsESConfigFileName: configData,
+				},
+			}
+
+			// We need the autoops-secret with all required keys to build the config hash
+			// and this is required to be within the k8s cluster itself.
+			autoopsSecret := &corev1.Secret{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "autoops-secret",
+					Namespace: tt.args.autoops.Namespace,
+				},
+				Data: map[string][]byte{
+					"autoops-token":                []byte("test-autoops-token"),
+					"autoops-otel-url":             []byte("https://test-otel-url"),
+					"cloud-connected-mode-api-key": []byte("test-ccm-api-key"),
+					"cloud-connected-mode-api-url": []byte("https://test-ccm-api-url"),
+				},
+			}
+
+			// We need the ES API key secret as well to build the config hash
+			esAPIKeySecretName := autoopsv1alpha1.APIKeySecret(tt.args.autoops.Name, k8s.ExtractNamespacedName(&tt.args.es))
+			esAPIKeySecret := &corev1.Secret{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      esAPIKeySecretName,
+					Namespace: tt.args.autoops.Namespace,
+				},
+				Data: map[string][]byte{
+					apiKeySecretKey: []byte("test-es-api-key"),
+				},
+			}
+
+			client := k8s.NewFakeClient(configMap, autoopsSecret, esAPIKeySecret)
+			configHash, err := buildConfigHash(context.Background(), *configMap, *esAPIKeySecret, client, tt.args.autoops)
+			require.NoError(t, err)
+			r := &AgentPolicyReconciler{
+				Client: client,
+			}
+			got, err := r.buildDeployment(configHash, tt.args.autoops, tt.args.es)
 			if (err != nil) != tt.wantErr {
-				t.Errorf("ReconcileAutoOpsAgentPolicy.deploymentParams() error = %v, wantErr %v", err, tt.wantErr)
+				t.Errorf("ReconcileAutoOpsAgentPolicy.buildDeployment() error = %v, wantErr %v", err, tt.wantErr)
 				return
 			}
 			if !tt.wantErr {
-				if !cmp.Equal(got, tt.want) {
-					t.Errorf("ReconcileAutoOpsAgentPolicy.deploymentParams() diff = %v", cmp.Diff(got, tt.want))
+				// Calculate expected config hash to match what buildConfigHash computes
+				expectedConfigHash := fnv.New32a()
+				_, _ = expectedConfigHash.Write([]byte(configData))
+				// Hash autoops-secret values
+				_, _ = expectedConfigHash.Write([]byte("test-autoops-token"))
+				_, _ = expectedConfigHash.Write([]byte("https://test-otel-url"))
+				_, _ = expectedConfigHash.Write([]byte("test-ccm-api-key"))
+				_, _ = expectedConfigHash.Write([]byte("https://test-ccm-api-url"))
+				// Hash ES API key secret value
+				_, _ = expectedConfigHash.Write([]byte("test-es-api-key"))
+				expectedHashStr := fmt.Sprint(expectedConfigHash.Sum32())
+				want := expectedDeployment(tt.args.autoops, tt.args.es, expectedHashStr)
+				if !cmp.Equal(got, want) {
+					t.Errorf("ReconcileAutoOpsAgentPolicy.deploymentParams() diff = %v", cmp.Diff(got, want))
 				}
 			}
 		})
 	}
 }
 
-func expectedDeployment(autoops autoopsv1alpha1.AutoOpsAgentPolicy, es esv1.Elasticsearch) appsv1.Deployment {
-	v, _ := version.Parse(autoops.Spec.Version)
-	labels := map[string]string{
-		commonv1.TypeLabelName:        "autoops-agent",
-		"autoops.k8s.elastic.co/name": autoops.Name,
+func expectedDeployment(policy autoopsv1alpha1.AutoOpsAgentPolicy, es esv1.Elasticsearch, configHashValue string) appsv1.Deployment {
+	v, _ := version.Parse(policy.Spec.Version)
+	labels := resourceLabelsFor(policy, es)
+
+	annotations := map[string]string{
+		configHashAnnotationName: configHashValue,
 	}
 
+	name := autoopsv1alpha1.Deployment(policy.GetName(), es)
 	return appsv1.Deployment{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:   fmt.Sprintf("%s-autoops-deploy", es.Name),
-			Labels: labels,
+			Name:        name,
+			Namespace:   policy.GetNamespace(),
+			Labels:      labels,
+			Annotations: annotations,
 		},
 		Spec: appsv1.DeploymentSpec{
 			Replicas: pointer.Int32(1),
 			Selector: &metav1.LabelSelector{
 				MatchLabels: map[string]string{
-					"autoops.k8s.elastic.co/name": autoops.Name,
+					PolicyNameLabelKey: policy.GetName(),
 				},
 			},
 			Template: corev1.PodTemplateSpec{
 				ObjectMeta: metav1.ObjectMeta{
 					Labels:      labels,
-					Annotations: nil,
+					Annotations: annotations,
 				},
 				Spec: corev1.PodSpec{
 					Volumes: []corev1.Volume{
@@ -128,7 +205,7 @@ func expectedDeployment(autoops autoopsv1alpha1.AutoOpsAgentPolicy, es esv1.Elas
 							VolumeSource: corev1.VolumeSource{
 								ConfigMap: &corev1.ConfigMapVolumeSource{
 									LocalObjectReference: corev1.LocalObjectReference{
-										Name: "autoops-es-config",
+										Name: autoopsv1alpha1.Config(policy.GetName(), es),
 									},
 									DefaultMode: ptr.To(corev1.ConfigMapVolumeSourceDefaultMode),
 									Optional:    ptr.To(false),
@@ -139,17 +216,39 @@ func expectedDeployment(autoops autoopsv1alpha1.AutoOpsAgentPolicy, es esv1.Elas
 					AutomountServiceAccountToken: ptr.To(false),
 					Containers: []corev1.Container{
 						{
-							Name:  "autoops-agent",
+							Name:  autoOpsAgentType,
 							Image: fmt.Sprintf("docker.elastic.co/elastic-agent/elastic-otel-collector-wolfi:%s", v.String()),
 							Args: []string{
 								"--config",
 								"/mnt/config/autoops_es.yml",
+							},
+							Resources: defaultResources,
+							Ports: []corev1.ContainerPort{
+								{
+									Name:          "http",
+									ContainerPort: int32(readinessProbePort),
+									Protocol:      corev1.ProtocolTCP,
+								},
 							},
 							VolumeMounts: []corev1.VolumeMount{
 								{
 									Name:      "config-volume",
 									MountPath: "/mnt/config",
 									ReadOnly:  true,
+								},
+							},
+							ReadinessProbe: &corev1.Probe{
+								FailureThreshold:    3,
+								InitialDelaySeconds: 5,
+								PeriodSeconds:       10,
+								SuccessThreshold:    1,
+								TimeoutSeconds:      5,
+								ProbeHandler: corev1.ProbeHandler{
+									HTTPGet: &corev1.HTTPGetAction{
+										Port:   intstr.FromInt(readinessProbePort),
+										Path:   "/health/status",
+										Scheme: corev1.URISchemeHTTP,
+									},
 								},
 							},
 							Env: []corev1.EnvVar{
@@ -165,26 +264,8 @@ func expectedDeployment(autoops autoopsv1alpha1.AutoOpsAgentPolicy, es esv1.Elas
 									},
 								},
 								{
-									Name: "AUTOOPS_ES_URL",
-									ValueFrom: &corev1.EnvVarSource{
-										SecretKeyRef: &corev1.SecretKeySelector{
-											LocalObjectReference: corev1.LocalObjectReference{
-												Name: "autoops-secret",
-											},
-											Key: "autoops-es-url",
-										},
-									},
-								},
-								{
-									Name: "AUTOOPS_TEMP_RESOURCE_ID",
-									ValueFrom: &corev1.EnvVarSource{
-										SecretKeyRef: &corev1.SecretKeySelector{
-											LocalObjectReference: corev1.LocalObjectReference{
-												Name: "autoops-secret",
-											},
-											Key: "temp-resource-id",
-										},
-									},
+									Name:  "AUTOOPS_ES_URL",
+									Value: "http://es-cluster-es-internal-http.default.svc:9200",
 								},
 								{
 									Name: "AUTOOPS_OTEL_URL",
@@ -198,13 +279,14 @@ func expectedDeployment(autoops autoopsv1alpha1.AutoOpsAgentPolicy, es esv1.Elas
 									},
 								},
 								{
-									Name: "ELASTICSEARCH_READ_API_KEY",
+									Name: "AUTOOPS_ES_API_KEY",
 									ValueFrom: &corev1.EnvVarSource{
 										SecretKeyRef: &corev1.SecretKeySelector{
 											LocalObjectReference: corev1.LocalObjectReference{
-												Name: "autoops-secret",
+												Name: autoopsv1alpha1.APIKeySecret(policy.GetName(), k8s.ExtractNamespacedName(&es)),
 											},
-											Key: "es-api-key",
+											Key:      apiKeySecretKey,
+											Optional: ptr.To(false),
 										},
 									},
 								},
@@ -238,8 +320,7 @@ func expectedDeployment(autoops autoopsv1alpha1.AutoOpsAgentPolicy, es esv1.Elas
 									Drop: []corev1.Capability{"ALL"},
 								},
 								Privileged:             ptr.To(false),
-								ReadOnlyRootFilesystem: ptr.To(true),
-								RunAsNonRoot:           ptr.To(true),
+								ReadOnlyRootFilesystem: ptr.To(false),
 								SeccompProfile: &corev1.SeccompProfile{
 									Type: corev1.SeccompProfileTypeRuntimeDefault,
 								},
@@ -249,5 +330,139 @@ func expectedDeployment(autoops autoopsv1alpha1.AutoOpsAgentPolicy, es esv1.Elas
 				},
 			},
 		},
+	}
+}
+
+func Test_readinessProbe(t *testing.T) {
+	tests := []struct {
+		name string
+		want corev1.Probe
+	}{
+		{
+			name: "readiness probe configuration",
+			want: corev1.Probe{
+				FailureThreshold:    3,
+				InitialDelaySeconds: 5,
+				PeriodSeconds:       10,
+				SuccessThreshold:    1,
+				TimeoutSeconds:      5,
+				ProbeHandler: corev1.ProbeHandler{
+					HTTPGet: &corev1.HTTPGetAction{
+						Port:   intstr.FromInt(readinessProbePort),
+						Path:   "/health/status",
+						Scheme: corev1.URISchemeHTTP,
+					},
+				},
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := readinessProbe()
+			if !cmp.Equal(got, tt.want) {
+				t.Errorf("readinessProbe() diff = %v", cmp.Diff(got, tt.want))
+			}
+		})
+	}
+}
+
+func Test_autoopsEnvVars(t *testing.T) {
+	tests := []struct {
+		name   string
+		es     esv1.Elasticsearch
+		policy autoopsv1alpha1.AutoOpsAgentPolicy
+		want   []corev1.EnvVar
+	}{
+		{
+			name: "Happy path",
+			es: esv1.Elasticsearch{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "es-1",
+					Namespace: "ns-1",
+				},
+			},
+			policy: autoopsv1alpha1.AutoOpsAgentPolicy{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "policy-1",
+					Namespace: "ns-2",
+				},
+				Spec: autoopsv1alpha1.AutoOpsAgentPolicySpec{
+					AutoOpsRef: autoopsv1alpha1.AutoOpsRef{
+						SecretName: "autoops-secret",
+					},
+				},
+			},
+			want: []corev1.EnvVar{
+				{
+					Name: "AUTOOPS_TOKEN",
+					ValueFrom: &corev1.EnvVarSource{
+						SecretKeyRef: &corev1.SecretKeySelector{
+							LocalObjectReference: corev1.LocalObjectReference{
+								Name: "autoops-secret",
+							},
+							Key: "autoops-token",
+						},
+					},
+				},
+				{
+					Name:  "AUTOOPS_ES_URL",
+					Value: "https://es-1-es-internal-http.ns-1.svc:9200",
+				},
+				{
+					Name: "AUTOOPS_OTEL_URL",
+					ValueFrom: &corev1.EnvVarSource{
+						SecretKeyRef: &corev1.SecretKeySelector{
+							LocalObjectReference: corev1.LocalObjectReference{
+								Name: "autoops-secret",
+							},
+							Key: "autoops-otel-url",
+						},
+					},
+				},
+				{
+					Name: "AUTOOPS_ES_API_KEY",
+					ValueFrom: &corev1.EnvVarSource{
+						SecretKeyRef: &corev1.SecretKeySelector{
+							LocalObjectReference: corev1.LocalObjectReference{
+								Name: "policy-1-autoops-apikey-2334712842",
+							},
+							Key:      apiKeySecretKey,
+							Optional: ptr.To(false),
+						},
+					},
+				},
+				{
+					Name: "ELASTIC_CLOUD_CONNECTED_MODE_API_KEY",
+					ValueFrom: &corev1.EnvVarSource{
+						SecretKeyRef: &corev1.SecretKeySelector{
+							LocalObjectReference: corev1.LocalObjectReference{
+								Name: "autoops-secret",
+							},
+							Key: "cloud-connected-mode-api-key",
+						},
+					},
+				},
+				{
+					Name: "ELASTIC_CLOUD_CONNECTED_MODE_API_URL",
+					ValueFrom: &corev1.EnvVarSource{
+						SecretKeyRef: &corev1.SecretKeySelector{
+							LocalObjectReference: corev1.LocalObjectReference{
+								Name: "autoops-secret",
+							},
+							Key:      "cloud-connected-mode-api-url",
+							Optional: ptr.To(true),
+						},
+					},
+				},
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := autoopsEnvVars(tt.policy, tt.es)
+			if !cmp.Equal(got, tt.want) {
+				t.Errorf("autoopsEnvVars() diff = %v", cmp.Diff(got, tt.want))
+			}
+		})
 	}
 }

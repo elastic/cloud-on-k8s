@@ -5,17 +5,16 @@
 package v1alpha1
 
 import (
+	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
-	commonv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/common/v1"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/set"
 )
 
 const (
 	// Kind is inferred from the struct name using reflection in SchemeBuilder.Register()
 	// we duplicate it as a constant here for practical purposes.
 	Kind = "AutoOpsAgentPolicy"
-
-	unknownVersion = 0
 )
 
 func init() {
@@ -24,8 +23,8 @@ func init() {
 
 // +kubebuilder:object:root=true
 
-// AutoOpsAgentPolicy represents an AutoOpsAgentPolicy resource in a Kubernetes cluster.
-// +kubebuilder:resource:categories=elastic,shortName=autoops
+// AutoOpsAgentPolicy represents an Elastic AutoOps Policy resource in a Kubernetes cluster.
+// +kubebuilder:resource:categories=elastic,shortName=aop
 // +kubebuilder:printcolumn:name="Ready",type="string",JSONPath=".status.ready",description="Ready resources"
 // +kubebuilder:printcolumn:name="Phase",type="string",JSONPath=".status.phase"
 // +kubebuilder:printcolumn:name="Age",type="date",JSONPath=".metadata.creationTimestamp"
@@ -54,30 +53,49 @@ type AutoOpsAgentPolicySpec struct {
 	// ResourceSelector is a label selector for the resources to be configured.
 	// Any Elasticsearch instances that match the selector will be configured to send data to AutoOps.
 	ResourceSelector metav1.LabelSelector `json:"resourceSelector,omitempty"`
-	// Config holds the AutoOpsAgentPolicy configuration.
-	// The contents of the referenced secret requires the following format:
-	//   kind: Secret
-	//   apiVersion: v1
-	//   metadata:
-	//     name: autoops-agent-policy-config
-	//   stringData:
-	//     ccmApiKey: aslkfjsldkjfslkdjflksdjfl
-	//     tempResourceID: u857abce4-9214-446b-951c-a1644b7d204ao
-	//     autoOpsOTelURL: https://otel.auto-ops.console.qa.cld.elstc.co
-	//     autoOpsToken: skdfjdskjf
-	Config commonv1.ConfigSource `json:"config,omitempty"`
-	// AutoOpsRef is a reference to an AutoOps instance running in the same Kubernetes cluster.
-	// (TODO) AutoOpsRef is not yet implemented.
-	// AutoOpsRef commonv1.ObjectSelector `json:"autoOpsRef,omitempty"`
+
+	// AutoOpsRef defines a reference to a secret containing connection details for AutoOps via Cloud Connect.
+	AutoOpsRef AutoOpsRef `json:"autoOpsRef,omitempty"`
+
+	// Image is the AutoOps Agent Docker image to deploy.
+	Image string `json:"image,omitempty"`
+
+	// PodTemplate provides customisation options (labels, annotations, affinity rules, resource requests, and so on) for the Agent pods
+	// +kubebuilder:validation:Optional
+	// +kubebuilder:pruning:PreserveUnknownFields
+	PodTemplate corev1.PodTemplateSpec `json:"podTemplate,omitempty"`
+
+	// RevisionHistoryLimit is the number of revisions to retain to allow rollback in the underlying Deployment.
+	RevisionHistoryLimit *int32 `json:"revisionHistoryLimit,omitempty"`
+
+	// ServiceAccountName is used to check access to Elasticsearch resources in different namespaces.
+	// Can only be used if ECK is enforcing RBAC on references (--enforce-rbac-on-refs flag).
+	// The service account must have "get" permission on elasticsearch.k8s.elastic.co/elasticsearches
+	// in the target namespaces.
+	// +optional
+	ServiceAccountName string `json:"serviceAccountName,omitempty"`
+}
+
+// AutoOpsRef defines a reference to a secret containing connection details for AutoOps via Cloud Connect.
+type AutoOpsRef struct {
+	// SecretName references a Secret containing connection details for external AutoOps.
+	// Required when connecting via Cloud Connect. The secret must contain:
+	// - `cloud-connected-mode-api-key`: Cloud Connected Mode API key
+	// - `autoops-otel-url`: AutoOps OpenTelemetry endpoint URL
+	// - `autoops-token`: AutoOps authentication token
+	// - `cloud-connected-mode-api-url`: (optional) Cloud Connected Mode API URL
+	// This field cannot be used in combination with `name`.
+	// +optional
+	SecretName string `json:"secretName,omitempty"`
 }
 
 type AutoOpsAgentPolicyStatus struct {
 	// Resources is the number of resources that match the ResourceSelector.
-	Resources int `json:"resources,omitempty"`
+	Resources int `json:"resources"`
 	// Ready is the number of resources that are in a ready state.
-	Ready int `json:"ready,omitempty"`
+	Ready int `json:"ready"`
 	// Errors is the number of resources that are in an error state.
-	Errors int `json:"errors,omitempty"`
+	Errors int `json:"errors"`
 	// Phase is the phase of the AutoOpsAgentPolicy.
 	Phase PolicyPhase `json:"phase,omitempty"`
 	// ObservedGeneration is the most recent generation observed for this AutoOpsAgentPolicy.
@@ -87,26 +105,22 @@ type AutoOpsAgentPolicyStatus struct {
 type PolicyPhase string
 
 const (
-	UnknownPhase         PolicyPhase = "Unknown"
-	ReadyPhase           PolicyPhase = "Ready"
-	ApplyingChangesPhase PolicyPhase = "ApplyingChanges"
-	InvalidPhase         PolicyPhase = "Invalid"
-	NoResourcesPhase     PolicyPhase = "NoResources"
-	ErrorPhase           PolicyPhase = "Error"
+	ReadyPhase             PolicyPhase = "Ready"
+	ApplyingChangesPhase   PolicyPhase = "ApplyingChanges"
+	InvalidPhase           PolicyPhase = "Invalid"
+	NoResourcesPhase       PolicyPhase = "NoResources"
+	ResourcesNotReadyPhase PolicyPhase = "ResourcesNotReady"
+	ErrorPhase             PolicyPhase = "Error"
 )
 
-func NewStatus(policy AutoOpsAgentPolicy) AutoOpsAgentPolicyStatus {
-	status := AutoOpsAgentPolicyStatus{
-		// Details:            map[ResourceType]map[string]ResourcePolicyStatus{},
-		Phase:              UnknownPhase,
-		ObservedGeneration: policy.Generation,
-	}
-	return status
-}
-
-// Update updates the policy status from its resources statuses.
-func (s *AutoOpsAgentPolicyStatus) Update() {
-}
+var (
+	// RequeuePhases is a set of phases that require a requeue.
+	RequeuePhases = set.Make(
+		string(ApplyingChangesPhase),
+		string(ResourcesNotReadyPhase),
+		string(ErrorPhase),
+	)
+)
 
 // IsMarkedForDeletion returns true if the AutoOpsAgentPolicy resource is going to be deleted.
 func (p *AutoOpsAgentPolicy) IsMarkedForDeletion() bool {
