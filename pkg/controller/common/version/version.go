@@ -34,9 +34,10 @@ var (
 	// picking higher version as minimal supported.
 	SupportedAgentVersions = MinMaxVersion{Min: From(7, 10, 0), Max: From(9, 99, 99)}
 	// Due to bugfixes present in 7.14 that ECK depends on, this is the lowest version we support in Fleet mode.
-	SupportedFleetModeAgentVersions = MinMaxVersion{Min: MustParse("7.14.0-SNAPSHOT"), Max: From(9, 99, 99)}
-	SupportedMapsVersions           = MinMaxVersion{Min: From(7, 11, 0), Max: From(9, 99, 99)}
-	SupportedLogstashVersions       = MinMaxVersion{Min: From(8, 12, 0), Max: From(9, 99, 99)}
+	SupportedFleetModeAgentVersions  = MinMaxVersion{Min: MustParse("7.14.0-SNAPSHOT"), Max: From(9, 99, 99)}
+	SupportedMapsVersions            = MinMaxVersion{Min: From(7, 11, 0), Max: From(9, 99, 99)}
+	SupportedPackageRegistryVersions = MinMaxVersion{Min: From(7, 17, 8), Max: From(9, 99, 99)}
+	SupportedLogstashVersions        = MinMaxVersion{Min: From(8, 12, 0), Max: From(9, 99, 99)}
 
 	// AutoOpsAgent was introduced in 9.1.0 and is supported on all 9.x versions.
 	SupportedAutoOpsAgentVersions = MinMaxVersion{Min: MustParse("9.1.0-SNAPSHOT"), Max: From(9, 99, 99)}

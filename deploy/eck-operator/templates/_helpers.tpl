@@ -79,7 +79,7 @@ Determine effective Kubernetes version
 {{- end -}}
 
 {{/*
-Determine the name for the webhook 
+Determine the name for the webhook
 */}}
 {{- define "eck-operator.webhookName" -}}
 {{- if .Values.global.manifestGen -}}
@@ -91,7 +91,7 @@ elastic-webhook.k8s.elastic.co
 {{- end -}}
 
 {{/*
-Determine the name for the webhook secret 
+Determine the name for the webhook secret
 */}}
 {{- define "eck-operator.webhookSecretName" -}}
 {{- if .Values.global.manifestGen -}}
@@ -105,7 +105,7 @@ elastic-webhook-server-cert
 {{- end -}}
 
 {{/*
-Determine the name for the webhook service 
+Determine the name for the webhook service
 */}}
 {{- define "eck-operator.webhookServiceName" -}}
 {{- if .Values.global.manifestGen -}}
@@ -128,6 +128,8 @@ Determine the metrics port
 0
 {{- end -}}
 {{- end -}}
+
+
 
 {{/*
 RBAC permissions
@@ -338,6 +340,21 @@ updating docs/operating-eck/eck-permissions.asciidoc file.
   - create
   - update
   - patch
+- apiGroups:
+  - packageregistry.k8s.elastic.co
+  resources:
+  - packageregistries
+  - packageregistries/status 
+  - packageregistries/finalizers # needed for ownerReferences with blockOwnerDeletion on OCP
+  verbs:
+  - get
+  - list
+  - watch
+  - create
+  - update
+  - patch
+  - delete
+  - deletecollection
 {{- end -}}
 
 {{/*

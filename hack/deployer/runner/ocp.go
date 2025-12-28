@@ -65,6 +65,9 @@ platform:
   gcp:
     projectID: {{.GCloudProject}}
     region: {{.Region}}
+    userLabels:{{range $key, $value := .UserLabels}}
+    - key: {{$key}}
+      value: {{$value}}{{end}}
 pullSecret: '{{.PullSecret}}'`
 )
 
@@ -170,6 +173,7 @@ func (d *OCPDriver) create() error {
 		"BaseDomain":             d.baseDomain(),
 		"OCPStateBucket":         OCPStateBucket,
 		"PullSecret":             d.plan.Ocp.PullSecret,
+		"UserLabels":             elasticTags,
 	}
 	var tpl bytes.Buffer
 	if err := template.Must(template.New("").Parse(OcpInstallerConfigTemplate)).Execute(&tpl, params); err != nil {

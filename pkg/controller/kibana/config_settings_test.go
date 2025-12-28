@@ -28,7 +28,6 @@ var defaultConfig = []byte(`
 elasticsearch:
 server:
   host: "0.0.0.0"
-  name: "testkb"
   ssl:
     enabled: true
     key: /mnt/elastic-internal/http-certs/tls.key
@@ -48,7 +47,6 @@ var defaultConfig8 = []byte(`
 elasticsearch:
 server:
   host: "0.0.0.0"
-  name: "testkb"
   ssl:
     enabled: true
     key: /mnt/elastic-internal/http-certs/tls.key
@@ -140,9 +138,9 @@ func Test_reuseOrGenerateSecrets(t *testing.T) {
 				// Unpack the configuration to check that some default reusable settings have been generated
 				var r reusableSettings
 				assert.NoError(t, got.Unpack(&r))
-				assert.Equal(t, len(r.EncryptionKey), 64) // key length should be 64
-				assert.Equal(t, len(r.ReportingKey), 64)
-				assert.Equal(t, len(r.SavedObjectsKey), 64)
+				assert.Equal(t, 64, len(r.EncryptionKey)) // key length should be 64
+				assert.Equal(t, 64, len(r.ReportingKey))
+				assert.Equal(t, 64, len(r.SavedObjectsKey))
 			},
 		},
 
@@ -164,9 +162,9 @@ func Test_reuseOrGenerateSecrets(t *testing.T) {
 				// Unpack the configuration to check that some default reusable settings have been generated
 				var r reusableSettings
 				assert.NoError(t, got.Unpack(&r))
-				assert.Equal(t, len(r.EncryptionKey), 64) // key length should be 64
-				assert.Equal(t, len(r.ReportingKey), 64)
-				assert.Equal(t, len(r.SavedObjectsKey), 0) // is only introduced in 7.6.0
+				assert.Equal(t, 64, len(r.EncryptionKey)) // key length should be 64
+				assert.Equal(t, 64, len(r.ReportingKey))
+				assert.Equal(t, 0, len(r.SavedObjectsKey)) // is only introduced in 7.6.0
 			},
 		},
 	}

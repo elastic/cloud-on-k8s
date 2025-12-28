@@ -125,3 +125,190 @@ func TestStackConfigPolicyKibana(t *testing.T) {
 
 	test.Sequence(nil, steps, esWithlicense, kbBuilder).RunSequential(t)
 }
+
+// TestStackConfigPolicyKibanaMultipleWeights tests multiple StackConfigPolicies with different weights for Kibana.
+func TestStackConfigPolicyKibanaMultipleWeights(t *testing.T) {
+	// only execute this test if we have a test license to work with
+	if test.Ctx().TestLicense == "" {
+		t.SkipNow()
+	}
+
+	namespace := test.Ctx().ManagedNamespace(0)
+	// set up a 1-node Kibana deployment
+	name := "test-kb-scp-multi"
+	esBuilder := elasticsearch.NewBuilder(name).
+		WithESMasterDataNodes(1, elasticsearch.DefaultResources)
+	kbBuilder := kibana.NewBuilder(name).
+		WithElasticsearchRef(esBuilder.Ref()).
+		WithNodeCount(1).WithLabel("app", "kibana")
+
+	kbPodListOpts := test.KibanaPodListOptions(kbBuilder.Kibana.Namespace, kbBuilder.Kibana.Name)
+
+	// Policy with weight 20 (lower priority)
+	lowPriorityPolicy := policyv1alpha1.StackConfigPolicy{
+		ObjectMeta: metav1.ObjectMeta{
+			Namespace: namespace,
+			Name:      fmt.Sprintf("low-priority-kb-scp-%s", rand.String(4)),
+		},
+		Spec: policyv1alpha1.StackConfigPolicySpec{
+			Weight: 20,
+			ResourceSelector: metav1.LabelSelector{
+				MatchLabels: map[string]string{"app": "kibana"},
+			},
+			Kibana: policyv1alpha1.KibanaConfigPolicySpec{
+				Config: &commonv1.Config{
+					Data: map[string]interface{}{
+						"server.customResponseHeaders": map[string]interface{}{
+							"priority":    "low",
+							"test-header": "low-priority-value",
+						},
+					},
+				},
+				SecureSettings: []commonv1.SecretSource{
+					{SecretName: fmt.Sprintf("low-priority-secret-%s", rand.String(4))},
+				},
+			},
+		},
+	}
+
+	// Policy with weight 10 (higher priority) - should override lower priority settings
+	highPriorityPolicy := policyv1alpha1.StackConfigPolicy{
+		ObjectMeta: metav1.ObjectMeta{
+			Namespace: namespace,
+			Name:      fmt.Sprintf("high-priority-kb-scp-%s", rand.String(4)),
+		},
+		Spec: policyv1alpha1.StackConfigPolicySpec{
+			Weight: 10,
+			ResourceSelector: metav1.LabelSelector{
+				MatchLabels: map[string]string{"app": "kibana"},
+			},
+			Kibana: policyv1alpha1.KibanaConfigPolicySpec{
+				Config: &commonv1.Config{
+					Data: map[string]interface{}{
+						"server.customResponseHeaders": map[string]interface{}{
+							"priority":    "high",
+							"test-header": "high-priority-value",
+						},
+					},
+				},
+				SecureSettings: []commonv1.SecretSource{
+					{SecretName: fmt.Sprintf("high-priority-secret-%s", rand.String(4))},
+				},
+			},
+		},
+	}
+
+	// Policy with same weight 20 but different selector (should not conflict)
+	nonConflictingPolicy := policyv1alpha1.StackConfigPolicy{
+		ObjectMeta: metav1.ObjectMeta{
+			Namespace: namespace,
+			Name:      fmt.Sprintf("non-conflicting-kb-scp-%s", rand.String(4)),
+		},
+		Spec: policyv1alpha1.StackConfigPolicySpec{
+			Weight: 20,
+			ResourceSelector: metav1.LabelSelector{
+				MatchLabels: map[string]string{"app": "elasticsearch"}, // Different selector
+			},
+			Kibana: policyv1alpha1.KibanaConfigPolicySpec{
+				Config: &commonv1.Config{
+					Data: map[string]interface{}{
+						"server.customResponseHeaders": map[string]interface{}{
+							"priority": "should-not-apply",
+						},
+					},
+				},
+			},
+		},
+	}
+
+	// Create secure settings secrets
+	lowPrioritySecret := corev1.Secret{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      lowPriorityPolicy.Spec.Kibana.SecureSettings[0].SecretName,
+			Namespace: namespace,
+		},
+		Data: map[string][]byte{
+			"elasticsearch.pingTimeout": []byte("30000"),
+		},
+	}
+
+	highPrioritySecret := corev1.Secret{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      highPriorityPolicy.Spec.Kibana.SecureSettings[0].SecretName,
+			Namespace: namespace,
+		},
+		Data: map[string][]byte{
+			"elasticsearch.requestTimeout": []byte("30000"),
+		},
+	}
+
+	esWithlicense := test.LicenseTestBuilder(esBuilder)
+
+	steps := func(k *test.K8sClient) test.StepList {
+		kibanaChecks := kibana.KbChecks{
+			Client: k,
+		}
+		return test.StepList{
+			test.Step{
+				Name: "Create secure settings secrets",
+				Test: test.Eventually(func() error {
+					if err := k.CreateOrUpdate(&lowPrioritySecret); err != nil {
+						return err
+					}
+					return k.CreateOrUpdate(&highPrioritySecret)
+				}),
+			},
+			test.Step{
+				Name: "Create low priority StackConfigPolicy",
+				Test: test.Eventually(func() error {
+					return k.CreateOrUpdate(&lowPriorityPolicy)
+				}),
+			},
+			test.Step{
+				Name: "Create high priority StackConfigPolicy",
+				Test: test.Eventually(func() error {
+					return k.CreateOrUpdate(&highPriorityPolicy)
+				}),
+			},
+			test.Step{
+				Name: "Create non-conflicting StackConfigPolicy",
+				Test: test.Eventually(func() error {
+					return k.CreateOrUpdate(&nonConflictingPolicy)
+				}),
+			},
+			// High priority settings should be applied
+			kibanaChecks.CheckHeaderForKey(kbBuilder, "priority", "high"),
+			kibanaChecks.CheckHeaderForKey(kbBuilder, "test-header", "high-priority-value"),
+			// High priority secure settings should be in keystore
+			test.CheckKeystoreEntries(k, KibanaKeystoreCmd, []string{"elasticsearch.pingTimeout", "elasticsearch.requestTimeout"}, kbPodListOpts...),
+			test.Step{
+				Name: "Delete high priority policy - low priority should take effect",
+				Test: test.Eventually(func() error {
+					return k.Client.Delete(context.Background(), &highPriorityPolicy)
+				}),
+			},
+			// Low priority settings should now be applied
+			kibanaChecks.CheckHeaderForKey(kbBuilder, "priority", "low"),
+			kibanaChecks.CheckHeaderForKey(kbBuilder, "test-header", "low-priority-value"),
+			// Low priority secure settings should be in keystore
+			test.CheckKeystoreEntries(k, KibanaKeystoreCmd, []string{"elasticsearch.pingTimeout"}, kbPodListOpts...),
+			test.Step{
+				Name: "Clean up remaining policies and secrets",
+				Test: test.Eventually(func() error {
+					if err := k.Client.Delete(context.Background(), &lowPriorityPolicy); err != nil {
+						return err
+					}
+					if err := k.Client.Delete(context.Background(), &nonConflictingPolicy); err != nil {
+						return err
+					}
+					if err := k.Client.Delete(context.Background(), &lowPrioritySecret); err != nil {
+						return err
+					}
+					return k.Client.Delete(context.Background(), &highPrioritySecret)
+				}),
+			},
+		}
+	}
+
+	test.Sequence(nil, steps, esWithlicense, kbBuilder).RunSequential(t)
+}

@@ -19,8 +19,8 @@ import (
 	commonv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/common/v1"
 	kbv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/kibana/v1"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/association"
-	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/certificates"
+	commonpassword "github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/password"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/settings"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/tracing"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/version"
@@ -41,6 +41,13 @@ const (
 	esCertsVolumeMountPath = "/usr/share/kibana/config/elasticsearch-certs"
 	// entCertsVolumeMountPath is the directory into which trusted Enterprise Search HTTP CA certs are mounted.
 	entCertsVolumeMountPath = "/usr/share/kibana/config/ent-certs"
+	// eprCertsVolumeMountPath is the directory into which trusted Package Registry CA certs are mounted.
+	eprCertsVolumeMountPath = "/usr/share/kibana/config/epr-certs"
+
+	// EncryptionKeyMinimumBytes is the minimum number of bytes required for the encryption key.
+	// This is in line with the documentation (32 characters) as of 9.0 (unicode characters can use > 1 byte):
+	// https://www.elastic.co/guide/en/kibana/9.0/using-kibana-with-security.html#security-configure-settings
+	EncryptionKeyMinimumBytes = 64
 )
 
 // Constants to use for the Kibana configuration settings.
@@ -54,6 +61,7 @@ const (
 	XpackReportingEncryptionKey                    = "xpack.reporting.encryptionKey"
 	XpackEncryptedSavedObjects                     = "xpack.encryptedSavedObjects"
 	XpackEncryptedSavedObjectsEncryptionKey        = "xpack.encryptedSavedObjects.encryptionKey"
+	XpackFleetRegistryURL                          = "xpack.fleet.registryUrl"
 
 	ElasticsearchSslCertificateAuthorities = "elasticsearch.ssl.certificateAuthorities"
 	ElasticsearchSslVerificationMode       = "elasticsearch.ssl.verificationMode"
@@ -114,6 +122,7 @@ func NewConfigSettings(ctx context.Context, client k8s.Client, kb kbv1.Kibana, v
 	kibanaTLSCfg := settings.MustCanonicalConfig(kibanaTLSSettings(kb))
 	versionSpecificCfg := VersionDefaults(&kb, v)
 	entSearchCfg := settings.MustCanonicalConfig(enterpriseSearchSettings(kb))
+	eprCfg := settings.MustCanonicalConfig(packageRegistrySettings(kb))
 	monitoringCfg, err := settings.NewCanonicalConfigFrom(stackmon.MonitoringConfig(kb).Data)
 	if err != nil {
 		return CanonicalConfig{}, err
@@ -124,7 +133,8 @@ func NewConfigSettings(ctx context.Context, client k8s.Client, kb kbv1.Kibana, v
 		versionSpecificCfg,
 		kibanaTLSCfg,
 		entSearchCfg,
-		monitoringCfg)
+		monitoringCfg,
+		eprCfg)
 	if err != nil {
 		return CanonicalConfig{}, err
 	}
@@ -236,10 +246,22 @@ func getOrCreateReusableSettings(ctx context.Context, c k8s.Client, kb kbv1.Kiba
 		return nil, err
 	}
 	if len(r.EncryptionKey) == 0 {
-		r.EncryptionKey = string(common.RandomBytes(64))
+		// This is generated without symbols to stay in line with Elasticsearch's service accounts
+		// which are UUIDv4 and cannot include symbols.
+		bytes, err := commonpassword.RandomBytesWithoutSymbols(EncryptionKeyMinimumBytes)
+		if err != nil {
+			return nil, err
+		}
+		r.EncryptionKey = string(bytes)
 	}
 	if len(r.ReportingKey) == 0 {
-		r.ReportingKey = string(common.RandomBytes(64))
+		// This is generated without symbols to stay in line with Elasticsearch's service accounts
+		// which are UUIDv4 and cannot include symbols.
+		bytes, err := commonpassword.RandomBytesWithoutSymbols(EncryptionKeyMinimumBytes)
+		if err != nil {
+			return nil, err
+		}
+		r.ReportingKey = string(bytes)
 	}
 
 	kbVer, err := version.Parse(kb.Spec.Version)
@@ -248,7 +270,13 @@ func getOrCreateReusableSettings(ctx context.Context, c k8s.Client, kb kbv1.Kiba
 	}
 	// xpack.encryptedSavedObjects.encryptionKey was only added in 7.6.0 and earlier versions error out
 	if len(r.SavedObjectsKey) == 0 && kbVer.GTE(version.From(7, 6, 0)) {
-		r.SavedObjectsKey = string(common.RandomBytes(64))
+		// This is generated without symbols to stay in line with Elasticsearch's service accounts
+		// which are UUIDv4 and cannot include symbols.
+		bytes, err := commonpassword.RandomBytesWithoutSymbols(EncryptionKeyMinimumBytes)
+		if err != nil {
+			return nil, err
+		}
+		r.SavedObjectsKey = string(bytes)
 	}
 	return settings.MustCanonicalConfig(r), nil
 }
@@ -260,7 +288,6 @@ func baseSettings(kb *kbv1.Kibana, ipFamily corev1.IPFamily) (map[string]interfa
 	}
 
 	conf := map[string]interface{}{
-		ServerName: kb.Name,
 		ServerHost: net.InAddrAnyFor(ipFamily).String(),
 	}
 
@@ -320,6 +347,15 @@ func entCaCertSecretVolume(entAssocConf commonv1.AssociationConf) volume.SecretV
 	)
 }
 
+// eprCaCertSecretVolume returns a SecretVolume to hold the Elastic Package Registry CA certs for the given Kibana resource.
+func eprCaCertSecretVolume(eprAssocConf commonv1.AssociationConf) volume.SecretVolume {
+	return volume.NewSecretVolumeWithMountPath(
+		eprAssocConf.GetCASecretName(),
+		"epr-certs",
+		eprCertsVolumeMountPath,
+	)
+}
+
 func enterpriseSearchSettings(kb kbv1.Kibana) map[string]interface{} {
 	cfg := map[string]interface{}{}
 	assocConf, _ := kb.EntAssociation().AssociationConf()
@@ -332,6 +368,15 @@ func enterpriseSearchSettings(kb kbv1.Kibana) map[string]interface{} {
 		// to connect to Enterprise Search through the k8s-internal service DNS name
 		// even though the user-provided certificate may only specify a public-facing DNS.
 		cfg[EnterpriseSearchSslVerificationMode] = "certificate"
+	}
+	return cfg
+}
+
+func packageRegistrySettings(kb kbv1.Kibana) map[string]interface{} {
+	cfg := map[string]interface{}{}
+	assocConf, _ := kb.EPRAssociation().AssociationConf()
+	if assocConf.URLIsConfigured() {
+		cfg[XpackFleetRegistryURL] = assocConf.GetURL()
 	}
 	return cfg
 }

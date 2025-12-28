@@ -284,6 +284,92 @@ func TestNewTransportService(t *testing.T) {
 	}
 }
 
+func mkRemoteClusterService() corev1.Service {
+	return corev1.Service{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "elasticsearch-test-es-remote-cluster",
+			Namespace: "test",
+			Labels: map[string]string{
+				label.ClusterNameLabelName: "elasticsearch-test",
+				commonv1.TypeLabelName:     label.Type,
+			},
+		},
+		Spec: corev1.ServiceSpec{
+			PublishNotReadyAddresses: true,
+			ClusterIP:                "None",
+			Type:                     corev1.ServiceTypeClusterIP,
+			Ports: []corev1.ServicePort{
+				{
+					Name:     RemoteClusterServicePortName,
+					Protocol: corev1.ProtocolTCP,
+					Port:     network.RemoteClusterPort,
+				},
+			},
+			Selector: map[string]string{
+				label.ClusterNameLabelName: "elasticsearch-test",
+				commonv1.TypeLabelName:     label.Type,
+			},
+		},
+	}
+}
+
+func TestNewRemoteClusterService(t *testing.T) {
+	tests := []struct {
+		name                string
+		remoteClusterServer esv1.RemoteClusterServer
+		want                func() corev1.Service
+	}{
+		{
+			name: "Sets defaults",
+			remoteClusterServer: esv1.RemoteClusterServer{
+				Enabled: true,
+			},
+			want: mkRemoteClusterService,
+		},
+		{
+			name: "Respects user provided template",
+			remoteClusterServer: esv1.RemoteClusterServer{
+				Enabled: true,
+				Service: commonv1.ServiceTemplate{
+					ObjectMeta: metav1.ObjectMeta{
+						Annotations: map[string]string{
+							"my-custom": "annotation",
+						},
+					},
+					Spec: corev1.ServiceSpec{
+						Type: corev1.ServiceTypeLoadBalancer,
+					},
+				},
+			},
+			want: func() corev1.Service {
+				svc := mkRemoteClusterService()
+				svc.ObjectMeta.Annotations = map[string]string{
+					"my-custom": "annotation",
+				}
+				svc.Spec.Type = corev1.ServiceTypeLoadBalancer
+				svc.Spec.ClusterIP = ""
+				return svc
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			es := esv1.Elasticsearch{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "elasticsearch-test",
+					Namespace: "test",
+				},
+				Spec: esv1.ElasticsearchSpec{
+					RemoteClusterServer: tt.remoteClusterServer,
+				},
+			}
+			want := tt.want()
+			got := NewRemoteClusterService(es, metadata.Propagate(&es, metadata.Metadata{Labels: es.GetIdentityLabels()}))
+			require.Nil(t, deep.Equal(*got, want))
+		})
+	}
+}
+
 func Test_urlProvider_PodURL(t *testing.T) {
 	type fields struct {
 		pods   func() ([]corev1.Pod, error)

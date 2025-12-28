@@ -35,6 +35,7 @@ import (
 	entv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/enterprisesearch/v1"
 	kbv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/kibana/v1"
 	logstashv1alpha1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/logstash/v1alpha1"
+	eprv1alpha1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/packageregistry/v1alpha1"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/agent"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/apmserver"
 	beatcommon "github.com/elastic/cloud-on-k8s/v3/pkg/controller/beat/common"
@@ -46,6 +47,7 @@ import (
 	kblabel "github.com/elastic/cloud-on-k8s/v3/pkg/controller/kibana/label"
 	lslabels "github.com/elastic/cloud-on-k8s/v3/pkg/controller/logstash/labels"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/maps"
+	eprlabels "github.com/elastic/cloud-on-k8s/v3/pkg/controller/packageregistry/label"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/k8s"
 )
 
@@ -99,6 +101,9 @@ func CreateClient() (k8s.Client, error) {
 		return nil, err
 	}
 	if err := logstashv1alpha1.AddToScheme(scheme.Scheme); err != nil {
+		return nil, err
+	}
+	if err := eprv1alpha1.AddToScheme(scheme.Scheme); err != nil {
 		return nil, err
 	}
 	client, err := k8sclient.New(cfg, k8sclient.Options{Scheme: scheme.Scheme})
@@ -498,6 +503,15 @@ func MapsPodListOptions(emsNS, emsName string) []k8sclient.ListOption {
 	matchLabels := k8sclient.MatchingLabels(map[string]string{
 		commonv1.TypeLabelName: maps.Type,
 		maps.NameLabelName:     emsName,
+	})
+	return []k8sclient.ListOption{ns, matchLabels}
+}
+
+func EPRPodListOptions(eprNS, eprName string) []k8sclient.ListOption {
+	ns := k8sclient.InNamespace(eprNS)
+	matchLabels := k8sclient.MatchingLabels(map[string]string{
+		commonv1.TypeLabelName:  eprlabels.Type,
+		eprlabels.NameLabelName: eprName,
 	})
 	return []k8sclient.ListOption{ns, matchLabels}
 }

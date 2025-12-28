@@ -21,7 +21,6 @@ import (
 	"github.com/spf13/viper"
 	"go.elastic.co/apm/v2"
 	"go.uber.org/automaxprocs/maxprocs"
-	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
@@ -55,6 +54,7 @@ import (
 	kbv1beta1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/kibana/v1beta1"
 	logstashv1alpha1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/logstash/v1alpha1"
 	emsv1alpha1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/maps/v1alpha1"
+	eprv1alpha1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/packageregistry/v1alpha1"
 	policyv1alpha1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/stackconfigpolicy/v1alpha1"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/agent"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/apmserver"
@@ -68,6 +68,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/container"
 	commonlicense "github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/license"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/operator"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/password"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/reconciler"
 	controllerscheme "github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/scheme"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/tracing"
@@ -86,6 +87,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/logstash"
 	lsvalidation "github.com/elastic/cloud-on-k8s/v3/pkg/controller/logstash/validation"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/maps"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/packageregistry"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/remotecluster"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/stackconfigpolicy"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/webhook"
@@ -315,6 +317,12 @@ func Command() *cobra.Command {
 		operator.OperatorNamespaceFlag,
 		"",
 		"Kubernetes namespace the operator runs in",
+	)
+
+	cmd.Flags().Int(
+		operator.PasswordLengthFlag,
+		24,
+		"Length of generated file-based passwords (enterprise-only feature)",
 	)
 	cmd.Flags().Duration(
 		operator.TelemetryIntervalFlag,
@@ -684,7 +692,7 @@ func startOperator(ctx context.Context) error {
 
 	setDefaultSecurityContext, err := determineSetDefaultSecurityContext(viper.GetString(operator.SetDefaultSecurityContextFlag), clientset)
 	if err != nil {
-		log.Error(err, "failed to determine how to set default security context")
+		log.Error(err, "Failed to determine how to set default security context")
 		return err
 	}
 
@@ -695,7 +703,17 @@ func startOperator(ctx context.Context) error {
 	}
 	passwordHasher, err := cryptutil.NewPasswordHasher(hashCacheSize)
 	if err != nil {
-		log.Error(err, "failed to create hash cache")
+		log.Error(err, "Failed to create password hash cache")
+		return err
+	}
+
+	generator, err := password.NewGenerator(
+		mgr.GetClient(),
+		viper.GetInt(operator.PasswordLengthFlag),
+		operatorNamespace,
+	)
+	if err != nil {
+		log.Error(err, "Failed to create password generator")
 		return err
 	}
 
@@ -716,6 +734,7 @@ func startOperator(ctx context.Context) error {
 			RotateBefore: certRotateBefore,
 		},
 		PasswordHasher:            passwordHasher,
+		PasswordGenerator:         generator,
 		MaxConcurrentReconciles:   viper.GetInt(operator.MaxConcurrentReconcilesFlag),
 		SetDefaultSecurityContext: setDefaultSecurityContext,
 		ValidateStorageClass:      viper.GetBool(operator.ValidateStorageClassFlag),
@@ -836,19 +855,6 @@ func asyncTasks(
 	tracing.EndContextTransaction(gcCtx)
 }
 
-func chooseAndValidateIPFamily(ipFamilyStr string, ipFamilyDefault corev1.IPFamily) (corev1.IPFamily, error) {
-	switch strings.ToLower(ipFamilyStr) {
-	case "":
-		return ipFamilyDefault, nil
-	case "ipv4":
-		return corev1.IPv4Protocol, nil
-	case "ipv6":
-		return corev1.IPv6Protocol, nil
-	default:
-		return ipFamilyDefault, fmt.Errorf("IP family can be one of: IPv4, IPv6 or \"\" to auto-detect, but was %s", ipFamilyStr)
-	}
-}
-
 // determineSetDefaultSecurityContext determines what settings we need to use for security context by using the following rules:
 //  1. If the setDefaultSecurityContext is explicitly set to either true, or false, use this value.
 //  2. use OpenShift detection to determine whether or not we are running within an OpenShift cluster.
@@ -912,6 +918,7 @@ func registerControllers(mgr manager.Manager, params operator.Parameters, access
 		{name: "LicenseTrial", registerFunc: licensetrial.Add},
 		{name: "Agent", registerFunc: agent.Add},
 		{name: "Maps", registerFunc: maps.Add},
+		{name: "PackageRegistry", registerFunc: packageregistry.Add},
 		{name: "StackConfigPolicy", registerFunc: stackconfigpolicy.Add},
 		{name: "AutoOpsAgentPolicy", registerFunc: autoops.Add},
 		{name: "Logstash", registerFunc: logstash.Add},
@@ -933,6 +940,7 @@ func registerControllers(mgr manager.Manager, params operator.Parameters, access
 		{name: "APM-KB", registerFunc: associationctl.AddApmKibana},
 		{name: "KB-ES", registerFunc: associationctl.AddKibanaES},
 		{name: "KB-ENT", registerFunc: associationctl.AddKibanaEnt},
+		{name: "KB-EPR", registerFunc: associationctl.AddKibanaEPR},
 		{name: "ENT-ES", registerFunc: associationctl.AddEntES},
 		{name: "BEAT-ES", registerFunc: associationctl.AddBeatES},
 		{name: "BEAT-KB", registerFunc: associationctl.AddBeatKibana},
@@ -955,17 +963,6 @@ func registerControllers(mgr manager.Manager, params operator.Parameters, access
 	}
 
 	return nil
-}
-
-func validateCertExpirationFlags(validityFlag string, rotateBeforeFlag string) (time.Duration, time.Duration, error) {
-	certValidity := viper.GetDuration(validityFlag)
-	certRotateBefore := viper.GetDuration(rotateBeforeFlag)
-
-	if certRotateBefore > certValidity {
-		return certValidity, certRotateBefore, fmt.Errorf("%s must be larger than %s", validityFlag, rotateBeforeFlag)
-	}
-
-	return certValidity, certRotateBefore, nil
 }
 
 func garbageCollectUsers(ctx context.Context, cfg *rest.Config, managedNamespaces []string) error {
@@ -1003,6 +1000,7 @@ func garbageCollectSoftOwnedSecrets(ctx context.Context, k8sClient k8s.Client) {
 		beatv1beta1.Kind:      &beatv1beta1.Beat{},
 		agentv1alpha1.Kind:    &agentv1alpha1.Agent{},
 		emsv1alpha1.Kind:      &emsv1alpha1.ElasticMapsServer{},
+		eprv1alpha1.Kind:      &eprv1alpha1.PackageRegistry{},
 		policyv1alpha1.Kind:   &policyv1alpha1.StackConfigPolicy{},
 		autoopsv1alpha1.Kind:  &autoopsv1alpha1.AutoOpsAgentPolicy{},
 		logstashv1alpha1.Kind: &logstashv1alpha1.Logstash{},
@@ -1021,7 +1019,8 @@ func setupWebhook(
 	clientset kubernetes.Interface,
 	exposedNodeLabels esvalidation.NodeLabels,
 	managedNamespaces []string,
-	tracer *apm.Tracer) {
+	tracer *apm.Tracer,
+) {
 	manageWebhookCerts := viper.GetBool(operator.ManageWebhookCertsFlag)
 	if manageWebhookCerts {
 		if err := reconcileWebhookCertsAndAddController(ctx, mgr, params.CertRotation, clientset, tracer); err != nil {
@@ -1047,6 +1046,7 @@ func setupWebhook(
 		&kbv1.Kibana{},
 		&kbv1beta1.Kibana{},
 		&emsv1alpha1.ElasticMapsServer{},
+		&eprv1alpha1.PackageRegistry{},
 		&policyv1alpha1.StackConfigPolicy{},
 		&autoopsv1alpha1.AutoOpsAgentPolicy{},
 	}

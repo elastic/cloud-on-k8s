@@ -82,6 +82,10 @@ func Test_amendBuilderForFleetMode(t *testing.T) {
 			wantPodSpec: generatePodSpec(func(ps corev1.PodSpec) corev1.PodSpec {
 				ps.Containers[0].Env = []corev1.EnvVar{
 					{
+						Name:  "STATE_PATH",
+						Value: "/usr/share/elastic-agent/state",
+					},
+					{
 						Name:  "CONFIG_PATH",
 						Value: "/usr/share/elastic-agent",
 					},
@@ -180,8 +184,12 @@ func Test_amendBuilderForFleetMode(t *testing.T) {
 						Value: "https://agent-agent-http.default.svc:8220",
 					},
 					{
+						Name:  "STATE_PATH",
+						Value: "/usr/share/elastic-agent/state",
+					},
+					{
 						Name:  "CONFIG_PATH",
-						Value: "/etc/agent",
+						Value: "/usr/share/elastic-agent/state",
 					},
 				}
 
@@ -275,8 +283,12 @@ func Test_amendBuilderForFleetMode(t *testing.T) {
 						Value: "https://agent-agent-http.default.svc:8220",
 					},
 					{
+						Name:  "STATE_PATH",
+						Value: "/usr/share/elastic-agent/state",
+					},
+					{
 						Name:  "CONFIG_PATH",
-						Value: "/etc/agent",
+						Value: "/usr/share/elastic-agent/state",
 					},
 				}
 
@@ -312,8 +324,12 @@ func Test_amendBuilderForFleetMode(t *testing.T) {
 			wantPodSpec: generatePodSpec(func(ps corev1.PodSpec) corev1.PodSpec {
 				ps.Containers[0].Env = []corev1.EnvVar{
 					{
+						Name:  "STATE_PATH",
+						Value: "/usr/share/elastic-agent/state",
+					},
+					{
 						Name:  "CONFIG_PATH",
-						Value: "/etc/agent",
+						Value: "/usr/share/elastic-agent/state",
 					},
 				}
 
@@ -402,8 +418,12 @@ func Test_amendBuilderForFleetMode(t *testing.T) {
 						Value: "http://agent-agent-http.default.svc:8220",
 					},
 					{
+						Name:  "STATE_PATH",
+						Value: "/usr/share/elastic-agent/state",
+					},
+					{
 						Name:  "CONFIG_PATH",
-						Value: "/etc/agent",
+						Value: "/usr/share/elastic-agent/state",
 					},
 				}
 
@@ -924,7 +944,7 @@ if [[ -f /mnt/elastic-internal/elasticsearch-association/%[1]s/elasticsearch/cer
     /usr/sbin/update-ca-certificates
   fi
 fi
-/usr/bin/tini -- /usr/local/bin/docker-entrypoint -e
+/usr/bin/tini -- /usr/local/bin/docker-entrypoint -e "$@"
 `, ns)}
 	}
 	for _, tt := range []struct {

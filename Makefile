@@ -421,7 +421,7 @@ drivah-build-e2e:
 
 # -- run
 
-E2E_STACK_VERSION          ?= 9.1.2
+E2E_STACK_VERSION          ?= 9.2.2
 # regexp to filter tests to run
 export TESTS_MATCH         ?= "^Test"
 export E2E_JSON            ?= false

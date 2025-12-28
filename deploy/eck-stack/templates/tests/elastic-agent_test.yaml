@@ -18,7 +18,7 @@ tests:
           value: quickstart-eck-agent
       - equal:
           path: spec.version
-          value: 9.2.0-SNAPSHOT
+          value: 9.3.0-SNAPSHOT
   - it: should render agent in custom fleet example properly
     values:
       - ../../examples/agent/fleet-agents.yaml
@@ -32,10 +32,9 @@ tests:
           value: quickstart-eck-agent
       - equal:
           path: spec.version
-          value: 9.2.0-SNAPSHOT
-      - equal:
+          value: 9.3.0-SNAPSHOT
+      - notExists:
           path: spec.elasticsearchRefs
-          value: null
       - equal:
           path: spec.kibanaRef.name
           value: kibana

@@ -5,7 +5,6 @@
 package stackconfigpolicy
 
 import (
-	"context"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -15,7 +14,6 @@ import (
 	commonv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/common/v1"
 	kibanav1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/kibana/v1"
 	policyv1alpha1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/stackconfigpolicy/v1alpha1"
-	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/reconciler"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/k8s"
 )
 
@@ -69,12 +67,11 @@ func Test_newKibanaConfigSecret(t *testing.T) {
 						"kibana.k8s.elastic.co/name":            "test-kb",
 						"common.k8s.elastic.co/type":            "kibana",
 						"eck.k8s.elastic.co/owner-kind":         "StackConfigPolicy",
-						"eck.k8s.elastic.co/owner-name":         "test-policy",
-						"eck.k8s.elastic.co/owner-namespace":    "test-policy-ns",
 					},
 					Annotations: map[string]string{
 						"policy.k8s.elastic.co/kibana-config-hash":      "3077592849",
 						"policy.k8s.elastic.co/secure-settings-secrets": `[{"namespace":"test-policy-ns","secretName":"shared-secret"}]`,
+						"eck.k8s.elastic.co/owner-refs":                 `["test-policy-ns/test-policy"]`,
 					},
 				},
 				Data: map[string][]byte{
@@ -86,7 +83,7 @@ func Test_newKibanaConfigSecret(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := newKibanaConfigSecret(*tt.args.policy, tt.args.kb)
+			got, err := newKibanaConfigSecret(tt.args.policy.Spec.Kibana, tt.args.policy.GetKibanaNamespacedSecureSettings(), tt.args.kb, []policyv1alpha1.StackConfigPolicy{*tt.args.policy})
 			require.NoError(t, err)
 			require.Equal(t, tt.want, got)
 		})
@@ -193,137 +190,9 @@ func Test_kibanaConfigApplied(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := kibanaConfigApplied(tt.args.client, *tt.args.policy, tt.args.kb)
+			got, err := kibanaConfigApplied(tt.args.client, tt.args.policy.Spec.Kibana, tt.args.kb)
 			require.NoError(t, err)
 			require.Equal(t, tt.want, got)
-		})
-	}
-}
-
-func Test_canBeOwned(t *testing.T) {
-	type args struct {
-		kb     kibanav1.Kibana
-		policy *policyv1alpha1.StackConfigPolicy
-		client k8s.Client
-	}
-
-	tests := []struct {
-		name           string
-		args           args
-		wantSecretRef  reconciler.SoftOwnerRef
-		wantCanbeOwned bool
-	}{
-		{
-			name: "secret owned by current policy",
-			args: args{
-				kb: kibanav1.Kibana{
-					ObjectMeta: metav1.ObjectMeta{
-						Name:      "test-kb",
-						Namespace: "test-ns",
-					},
-				},
-				policy: &policyv1alpha1.StackConfigPolicy{
-					TypeMeta: metav1.TypeMeta{
-						Kind: "StackConfigPolicy",
-					},
-					ObjectMeta: metav1.ObjectMeta{
-						Name:      "test-policy",
-						Namespace: "test-policy-ns",
-					},
-					Spec: policyv1alpha1.StackConfigPolicySpec{
-						Kibana: policyv1alpha1.KibanaConfigPolicySpec{
-							Config: &commonv1.Config{
-								Data: map[string]interface{}{
-									"xpack.canvas.enabled": true,
-								},
-							},
-						},
-					},
-				},
-				client: k8s.NewFakeClient(MkKibanaConfigSecret("test-ns", "test-policy", "test-policy-ns", "3077592849")),
-			},
-			wantSecretRef: reconciler.SoftOwnerRef{
-				Namespace: "test-policy-ns",
-				Name:      "test-policy",
-				Kind:      "StackConfigPolicy",
-			},
-			wantCanbeOwned: true,
-		},
-		{
-			name: "secret owned by another policy",
-			args: args{
-				kb: kibanav1.Kibana{
-					ObjectMeta: metav1.ObjectMeta{
-						Name:      "test-kb",
-						Namespace: "test-ns",
-					},
-				},
-				policy: &policyv1alpha1.StackConfigPolicy{
-					TypeMeta: metav1.TypeMeta{
-						Kind: "StackConfigPolicy",
-					},
-					ObjectMeta: metav1.ObjectMeta{
-						Name:      "test-policy",
-						Namespace: "test-policy-ns",
-					},
-					Spec: policyv1alpha1.StackConfigPolicySpec{
-						Kibana: policyv1alpha1.KibanaConfigPolicySpec{
-							Config: &commonv1.Config{
-								Data: map[string]interface{}{
-									"xpack.canvas.enabled": true,
-								},
-							},
-						},
-					},
-				},
-				client: k8s.NewFakeClient(MkKibanaConfigSecret("test-ns", "test-another-policy", "test-policy-ns", "3077592849")),
-			},
-			wantSecretRef: reconciler.SoftOwnerRef{
-				Namespace: "test-policy-ns",
-				Name:      "test-another-policy",
-				Kind:      "StackConfigPolicy",
-			},
-			wantCanbeOwned: false,
-		},
-		{
-			name: "secret does not exist",
-			args: args{
-				kb: kibanav1.Kibana{
-					ObjectMeta: metav1.ObjectMeta{
-						Name:      "test-kb",
-						Namespace: "test-ns",
-					},
-				},
-				policy: &policyv1alpha1.StackConfigPolicy{
-					TypeMeta: metav1.TypeMeta{
-						Kind: "StackConfigPolicy",
-					},
-					ObjectMeta: metav1.ObjectMeta{
-						Name:      "test-policy",
-						Namespace: "test-policy-ns",
-					},
-					Spec: policyv1alpha1.StackConfigPolicySpec{
-						Kibana: policyv1alpha1.KibanaConfigPolicySpec{
-							Config: &commonv1.Config{
-								Data: map[string]interface{}{
-									"xpack.canvas.enabled": true,
-								},
-							},
-						},
-					},
-				},
-				client: k8s.NewFakeClient(),
-			},
-			wantCanbeOwned: true,
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			secretRef, canBeOwned, err := canBeOwned(context.Background(), tt.args.client, *tt.args.policy, tt.args.kb)
-			require.NoError(t, err)
-			require.Equal(t, tt.wantSecretRef, secretRef)
-			require.Equal(t, tt.wantCanbeOwned, canBeOwned)
 		})
 	}
 }
@@ -356,11 +225,10 @@ func MkKibanaConfigSecret(namespace string, owningPolicyName string, owningPolic
 				"kibana.k8s.elastic.co/name":            "test-kb",
 				"common.k8s.elastic.co/type":            "kibana",
 				"eck.k8s.elastic.co/owner-kind":         "StackConfigPolicy",
-				"eck.k8s.elastic.co/owner-name":         owningPolicyName,
-				"eck.k8s.elastic.co/owner-namespace":    owningPolicyNamespace,
 			},
 			Annotations: map[string]string{
 				"policy.k8s.elastic.co/kibana-config-hash": hashValue,
+				"eck.k8s.elastic.co/owner-refs":            `["` + owningPolicyNamespace + `/` + owningPolicyName + `"]`,
 			},
 		},
 		Data: map[string][]byte{

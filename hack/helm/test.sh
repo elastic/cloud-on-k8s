@@ -32,7 +32,7 @@ check() {
     fi
 
     if [[ -d templates/tests ]]; then
-        helm unittest -3 -f 'templates/tests/*.yaml' --with-subchart=false .
+        helm unittest -f 'templates/tests/*.yaml' --with-subchart=false .
     fi
 
     cd -

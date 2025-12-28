@@ -112,6 +112,9 @@ const (
 
 	LogstashMonitoringAssociationType = "ls-monitoring"
 
+	EPRConfigAnnotationNameBase    = "association.k8s.elastic.co/epr-conf"
+	PackageRegistryAssociationType = "package-registry"
+
 	AssociationUnknown     AssociationStatus = ""
 	AssociationPending     AssociationStatus = "Pending"
 	AssociationEstablished AssociationStatus = "Established"

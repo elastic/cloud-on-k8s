@@ -35,6 +35,7 @@ var (
 		checkSupportedVersion,
 		checkMonitoring,
 		checkAssociations,
+		checkPackageRegistryRefSecret,
 	}
 
 	updateChecks = []func(old, curr *Kibana) field.ErrorList{
@@ -152,5 +153,13 @@ func checkAssociations(k *Kibana) field.ErrorList {
 	err2 := commonv1.CheckAssociationRefs(monitoringPath.Child("logs"), k.GetMonitoringLogsRefs()...)
 	err3 := commonv1.CheckAssociationRefs(field.NewPath("spec").Child("elasticsearchRef"), k.Spec.ElasticsearchRef)
 	err4 := commonv1.CheckAssociationRefs(field.NewPath("spec").Child("enterpriseSearchRef"), k.Spec.EnterpriseSearchRef)
-	return append(err1, append(err2, append(err3, err4...)...)...)
+	err5 := commonv1.CheckAssociationRefs(field.NewPath("spec").Child("packageRegistryRef"), k.Spec.PackageRegistryRef)
+	return append(err1, append(err2, append(err3, append(err4, err5...)...)...)...)
+}
+
+func checkPackageRegistryRefSecret(k *Kibana) field.ErrorList {
+	if k.Spec.PackageRegistryRef.SecretName == "" {
+		return nil
+	}
+	return field.ErrorList{field.Forbidden(field.NewPath("spec").Child("packageRegistryRef").Child("secretName"), "secretName is not supported")}
 }

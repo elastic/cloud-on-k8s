@@ -365,11 +365,25 @@ rules:
       - patch
       - delete
       - deletecollection
-  - apiGroups :
+  - apiGroups:
       - logstash.k8s.elastic.co
     resources:
       - logstashes
       - logstashes/status
+    verbs:
+      - get
+      - list
+      - watch
+      - create
+      - update
+      - patch
+      - delete
+      - deletecollection
+  - apiGroups:
+      - packageregistry.k8s.elastic.co
+    resources:
+      - packageregistries
+      - packageregistries/status
     verbs:
       - get
       - list

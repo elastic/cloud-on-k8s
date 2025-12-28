@@ -118,7 +118,9 @@ func TestReconcileEnterpriseSearch_Reconcile_Create_Update_Resources(t *testing.
 		Client:         k8s.NewFakeClient(&sample),
 		dynamicWatches: watches.NewDynamicWatches(),
 		recorder:       record.NewFakeRecorder(10),
-		Parameters:     operator.Parameters{OperatorInfo: about.OperatorInfo{BuildInfo: about.BuildInfo{Version: "1.0.0"}}},
+		Parameters: operator.Parameters{
+			OperatorInfo: about.OperatorInfo{BuildInfo: about.BuildInfo{Version: "1.0.0"}},
+		},
 	}
 
 	checkResources := func() {
@@ -265,7 +267,9 @@ func TestReconcileEnterpriseSearch_doReconcile_AssociationDelaysVersionUpgrade(t
 		Client:         k8s.NewFakeClient(&ent, &es, &esTLSCertsSecret, &esAuthSecret, &entSearchPod),
 		dynamicWatches: watches.NewDynamicWatches(),
 		recorder:       record.NewFakeRecorder(10),
-		Parameters:     operator.Parameters{OperatorInfo: about.OperatorInfo{BuildInfo: about.BuildInfo{Version: "1.0.0"}}},
+		Parameters: operator.Parameters{
+			OperatorInfo: about.OperatorInfo{BuildInfo: about.BuildInfo{Version: "1.0.0"}},
+		},
 	}
 	results, _ := r.doReconcile(context.Background(), ent)
 	_, err := results.Aggregate()

@@ -6,6 +6,7 @@ package kibana
 
 import (
 	"context"
+	"slices"
 	"testing"
 
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/metadata"
@@ -369,6 +370,52 @@ func TestNewPodTemplateSpec(t *testing.T) {
 				assert.Equal(t, kbContainer.ReadinessProbe.ProbeHandler.HTTPGet.Path, "/monitoring/kibana/login")
 			},
 		},
+		{
+			name: "with EPR association and user-provided NODE_EXTRA_CA_CERTS should pass env var to init container",
+			kb: func() kbv1.Kibana {
+				kb := kbv1.Kibana{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "test-kibana",
+						Namespace: "test-ns",
+						Annotations: map[string]string{
+							"association.k8s.elastic.co/epr-conf": `{"authSecretName":"-","authSecretKey":"","caCertProvided":true,"caSecretName":"test-ca","url":"https://test-epr:8080"}`,
+						},
+					},
+					Spec: kbv1.KibanaSpec{
+						Version: "7.1.0",
+						PackageRegistryRef: commonv1.ObjectSelector{
+							Name: "test-epr",
+						},
+						PodTemplate: corev1.PodTemplateSpec{
+							Spec: corev1.PodSpec{
+								Containers: []corev1.Container{
+									{
+										Name: kbv1.KibanaContainerName,
+										Env: []corev1.EnvVar{
+											{
+												Name:  nodeExtraCACerts,
+												Value: "/custom/user/ca-bundle.crt",
+											},
+										},
+									},
+								},
+							},
+						},
+					},
+				}
+				return kb
+			}(),
+			assertions: func(pod corev1.PodTemplateSpec) {
+				// Main container should have NODE_EXTRA_CA_CERTS pointing to combined bundle
+				container := GetKibanaContainer(pod.Spec)
+				assertEnvValue(t, container, nodeExtraCACerts, "/usr/share/kibana/config/combined-ca-bundle.crt", "Main container should have NODE_EXTRA_CA_CERTS pointing to combined bundle")
+
+				// Init container should also have NODE_EXTRA_CA_CERTS
+				assert.Len(t, pod.Spec.InitContainers, 1)
+				initContainer := pod.Spec.InitContainers[0]
+				assertEnvValue(t, &initContainer, nodeExtraCACerts, "/custom/user/ca-bundle.crt", "Init container should have NODE_EXTRA_CA_CERTS for EPR CA appending")
+			},
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -376,6 +423,130 @@ func TestNewPodTemplateSpec(t *testing.T) {
 			require.NoError(t, err)
 			md := metadata.Propagate(&tt.kb, metadata.Metadata{Labels: tt.kb.GetIdentityLabels()})
 			got, err := NewPodTemplateSpec(context.Background(), k8s.NewFakeClient(), tt.kb, tt.keystore, []commonvolume.VolumeLike{}, bp, true, md)
+			assert.NoError(t, err)
+			tt.assertions(got)
+		})
+	}
+}
+
+func TestWithEPRCertsVolume(t *testing.T) {
+	tests := []struct {
+		name       string
+		kb         kbv1.Kibana
+		assertions func(pod corev1.PodTemplateSpec)
+	}{
+		{
+			name: "without EPR association",
+			kb: kbv1.Kibana{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "test-kibana",
+					Namespace: "test-ns",
+				},
+				Spec: kbv1.KibanaSpec{
+					Version: "7.1.0",
+				},
+			},
+			assertions: func(pod corev1.PodTemplateSpec) {
+				// Should not have NODE_EXTRA_CA_CERTS environment variable
+				container := GetKibanaContainer(pod.Spec)
+				assertEnvNotSet(t, container, nodeExtraCACerts, "Should not have NODE_EXTRA_CA_CERTS environment variable")
+			},
+		},
+		{
+			name: "with EPR association but no CA configured",
+			kb: kbv1.Kibana{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "test-kibana",
+					Namespace: "test-ns",
+				},
+				Spec: kbv1.KibanaSpec{
+					Version: "7.1.0",
+					PackageRegistryRef: commonv1.ObjectSelector{
+						Name: "test-epr",
+					},
+				},
+			},
+			assertions: func(pod corev1.PodTemplateSpec) {
+				// Should not have NODE_EXTRA_CA_CERTS since CA is not configured
+				container := GetKibanaContainer(pod.Spec)
+				assertEnvNotSet(t, container, nodeExtraCACerts, "Should not have NODE_EXTRA_CA_CERTS environment variable")
+			},
+		},
+		{
+			name: "with EPR association and CA configured",
+			kb: func() kbv1.Kibana {
+				kb := kbv1.Kibana{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "test-kibana",
+						Namespace: "test-ns",
+						Annotations: map[string]string{
+							"association.k8s.elastic.co/epr-conf": `{"authSecretName":"-","authSecretKey":"","caCertProvided":true,"caSecretName":"test-ca","url":"https://test-epr:8080"}`,
+						},
+					},
+					Spec: kbv1.KibanaSpec{
+						Version: "7.1.0",
+						PackageRegistryRef: commonv1.ObjectSelector{
+							Name: "test-epr",
+						},
+					},
+				}
+				return kb
+			}(),
+			assertions: func(pod corev1.PodTemplateSpec) {
+				// Should have NODE_EXTRA_CA_CERTS environment variable
+				container := GetKibanaContainer(pod.Spec)
+				assertEnvValue(t, container, nodeExtraCACerts, eprCertsVolumeMountPath+"/ca.crt", "NODE_EXTRA_CA_CERTS environment variable should be set")
+			},
+		},
+		{
+			name: "respects user-provided NODE_EXTRA_CA_CERTS",
+			kb: func() kbv1.Kibana {
+				kb := kbv1.Kibana{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "test-kibana",
+						Namespace: "test-ns",
+						Annotations: map[string]string{
+							"association.k8s.elastic.co/epr-conf": `{"authSecretName":"-","authSecretKey":"","caCertProvided":true,"caSecretName":"test-ca","url":"https://test-epr:8080"}`,
+						},
+					},
+					Spec: kbv1.KibanaSpec{
+						Version: "7.1.0",
+						PackageRegistryRef: commonv1.ObjectSelector{
+							Name: "test-epr",
+						},
+						PodTemplate: corev1.PodTemplateSpec{
+							Spec: corev1.PodSpec{
+								Containers: []corev1.Container{
+									{
+										Name: kbv1.KibanaContainerName,
+										Env: []corev1.EnvVar{
+											{
+												Name:  nodeExtraCACerts,
+												Value: "/custom/ca/bundle.crt",
+											},
+										},
+									},
+								},
+							},
+						},
+					},
+				}
+				return kb
+			}(),
+			assertions: func(pod corev1.PodTemplateSpec) {
+				// Should update NODE_EXTRA_CA_CERTS to combined bundle path when user provides their own
+				container := GetKibanaContainer(pod.Spec)
+				assertEnvValue(t, container, nodeExtraCACerts, "/usr/share/kibana/config/combined-ca-bundle.crt", "NODE_EXTRA_CA_CERTS environment variable should be set")
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			bp, err := GetKibanaBasePath(tt.kb)
+			require.NoError(t, err)
+			md := metadata.Propagate(&tt.kb, metadata.Metadata{Labels: tt.kb.GetIdentityLabels()})
+			got, err := NewPodTemplateSpec(context.Background(), k8s.NewFakeClient(), tt.kb, nil, []commonvolume.VolumeLike{}, bp, true, md)
 			assert.NoError(t, err)
 			tt.assertions(got)
 		})
@@ -423,4 +594,25 @@ func Test_getDefaultContainerPorts(t *testing.T) {
 			assert.Equal(t, getDefaultContainerPorts(tc.kb), tc.want)
 		})
 	}
+}
+
+func assertEnvNotSet(t *testing.T, container *corev1.Container, envName string, message string) {
+	t.Helper()
+	contains := slices.ContainsFunc(container.Env, func(env corev1.EnvVar) bool {
+		return env.Name == envName
+	})
+	assert.False(t, contains, message)
+}
+
+func assertEnvValue(t *testing.T, container *corev1.Container, envName, expectedValue, message string) {
+	t.Helper()
+	var found bool
+	for _, env := range container.Env {
+		if env.Name == envName {
+			assert.Equal(t, expectedValue, env.Value, message)
+			found = true
+			break
+		}
+	}
+	assert.True(t, found, message)
 }

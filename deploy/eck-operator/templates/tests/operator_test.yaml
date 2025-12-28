@@ -29,9 +29,8 @@ tests:
         isKind:
           of: ValidatingWebhookConfiguration
       - documentIndex: 0
-        equal:
+        notExists:
           path: webhooks[0].clientConfig.caBundle
-          value: null
 
   - it: should NOT render webhook clientConfig.caBundle when certs are managed by the cert manager
     set:
@@ -44,6 +43,5 @@ tests:
         isKind:
           of: ValidatingWebhookConfiguration
       - documentIndex: 0
-        equal:
+        notExists:
           path: webhooks[0].clientConfig.caBundle
-          value: null

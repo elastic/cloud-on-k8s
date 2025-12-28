@@ -18,11 +18,11 @@
 
 # Version of Kibana.
 #
-version: 9.2.0-SNAPSHOT
+version: 9.3.0-SNAPSHOT
 
 # Kibana Docker image to deploy
 #
-# image: docker.elastic.co/kibana/kibana:9.2.0-SNAPSHOT
+# image: docker.elastic.co/kibana/kibana:9.3.0-SNAPSHOT
 
 # Labels that will be applied to Kibana.
 #
@@ -69,6 +69,10 @@ elasticsearchRef: {}
 # Reference to an EnterpriseSearch running in the same Kubernetes cluster
 #
 # enterpriseSearchRef:
+
+# Reference to an PackageRegistry running in the same Kubernetes cluster
+#
+# packageRegistryRef:
 
 # The Kibana configuration (kibana.yml)
 # ref: https://www.elastic.co/guide/en/kibana/current/settings.html

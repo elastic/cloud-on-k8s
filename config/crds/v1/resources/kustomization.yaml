@@ -7,6 +7,7 @@ resources:
   - beat.k8s.elastic.co_beats.yaml
   - agent.k8s.elastic.co_agents.yaml
   - maps.k8s.elastic.co_elasticmapsservers.yaml
+  - packageregistry.k8s.elastic.co_packageregistries.yaml
   - stackconfigpolicy.k8s.elastic.co_stackconfigpolicies.yaml
   - autoops.k8s.elastic.co_autoopsagentpolicies.yaml
   - logstash.k8s.elastic.co_logstashes.yaml
