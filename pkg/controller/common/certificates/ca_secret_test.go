@@ -5,8 +5,12 @@
 package certificates
 
 import (
+	cryptorand "crypto/rand"
+	"crypto/rsa"
 	"testing"
+	"time"
 
+	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
 )
 
@@ -128,6 +132,66 @@ func TestParseCustomCASecret(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			if _, err := ParseCustomCASecret(tt.s); (err != nil) != tt.wantErr {
 				t.Errorf("ParseCustomCASecret() error = %v, wantErr %v", err, tt.wantErr)
+			}
+		})
+	}
+}
+
+func TestValidateCustomCA(t *testing.T) {
+	tests := []struct {
+		name    string
+		ca      func() *CA
+		wantErr bool
+	}{
+		{
+			name: "valid ca",
+			ca: func() *CA {
+				testCa, err := NewSelfSignedCA(CABuilderOptions{})
+				require.NoError(t, err)
+				return testCa
+			},
+			wantErr: false,
+		},
+		{
+			name: "expired ca",
+			ca: func() *CA {
+				testCa, err := NewSelfSignedCA(CABuilderOptions{})
+				require.NoError(t, err)
+				testCa.Cert.NotAfter = time.Now().Add(-1 * time.Hour)
+				return testCa
+			},
+			wantErr: true,
+		},
+		{
+			name: "not valid yet ca",
+			ca: func() *CA {
+				testCa, err := NewSelfSignedCA(CABuilderOptions{})
+				require.NoError(t, err)
+				testCa.Cert.NotBefore = time.Now().Add(1 * time.Hour)
+				return testCa
+			},
+			wantErr: true,
+		},
+		{
+			name: "cert public key & private key mismatch",
+			ca: func() *CA {
+				testCa, err := NewSelfSignedCA(CABuilderOptions{})
+				require.NoError(t, err)
+				privateKey2, err := rsa.GenerateKey(cryptorand.Reader, 2048)
+				require.NoError(t, err)
+				testCa.PrivateKey = privateKey2
+				return testCa
+			},
+			wantErr: true,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			err := ValidateCustomCA(t.Context(), tt.ca())
+			if tt.wantErr {
+				require.Error(t, err, "expected error but got none")
+			} else {
+				require.NoError(t, err, "expected no err")
 			}
 		})
 	}
