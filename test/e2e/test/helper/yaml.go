@@ -361,6 +361,7 @@ func transformToE2E(namespace, fullTestName, suffix string, transformers []Build
 		case *autoopsv1alpha1.AutoOpsAgentPolicy:
 			// AutoOpsAgentPolicy requires external credentials and is tested separately
 			// in test/e2e/autoops/autoops_test.go. Skip in generic sample tests.
+			continue
 		case *corev1.ServiceAccount:
 			decodedObj.Namespace = namespace
 			decodedObj.Name = decodedObj.Name + "-" + suffix
