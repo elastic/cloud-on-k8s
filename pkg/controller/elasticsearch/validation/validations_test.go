@@ -475,7 +475,7 @@ func Test_validUpgradePath(t *testing.T) {
 		},
 		{
 			name:         "in range accepted",
-			current:      es("6.8.0"),
+			current:      es("7.0.0"),
 			proposed:     es("7.17.0"),
 			expectErrors: false,
 		},
