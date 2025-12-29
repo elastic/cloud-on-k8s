@@ -23,7 +23,6 @@ import (
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/expectations"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/metadata"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/reconciler"
-	controllerscheme "github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/scheme"
 	sset "github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/statefulset"
 	esclient "github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/client"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/label"
@@ -995,107 +994,6 @@ func Test_doDownscale_zen2VotingConfigExclusions(t *testing.T) {
 			// check call to zen2 is the expected one
 			require.Equal(t, tt.wantZen2Called, esClient.AddVotingConfigExclusionsCalled)
 			require.Equal(t, tt.wantZen2CalledWith, esClient.AddVotingConfigExclusionsCalledWith)
-			// check zen1 was not called
-			require.False(t, esClient.SetMinimumMasterNodesCalled)
-		})
-	}
-}
-
-func Test_doDownscale_zen1MinimumMasterNodes(t *testing.T) {
-	controllerscheme.SetupScheme()
-	es := esv1.Elasticsearch{ObjectMeta: metav1.ObjectMeta{Namespace: ssetMaster3Replicas.Namespace, Name: "es"}}
-	ssetMasters := sset.TestSset{Name: "masters", Version: "6.8.0", Replicas: 3, Master: true, Data: false}.Build()
-	masterPods := []corev1.Pod{
-		sset.TestPod{
-			Namespace:       ssetMaster3Replicas.Namespace,
-			Name:            ssetMaster3Replicas.Name + "-0",
-			ClusterName:     es.Name,
-			StatefulSetName: ssetMaster3Replicas.Name,
-			Version:         "6.8.0",
-			Master:          true,
-		}.Build(),
-		sset.TestPod{
-			Namespace:       ssetMaster3Replicas.Namespace,
-			Name:            ssetMaster3Replicas.Name + "-1",
-			ClusterName:     es.Name,
-			StatefulSetName: ssetMaster3Replicas.Name,
-			Version:         "6.8.0",
-			Master:          true,
-		}.Build(),
-		sset.TestPod{
-			Namespace:       ssetMaster3Replicas.Namespace,
-			Name:            ssetMaster3Replicas.Name + "-2",
-			ClusterName:     es.Name,
-			StatefulSetName: ssetMaster3Replicas.Name,
-			Version:         "6.8.0",
-			Master:          true,
-		}.Build(),
-	}
-	ssetData := sset.TestSset{Name: "datas", Version: "6.8.0", Replicas: 3, Master: false, Data: true}.Build()
-	tests := []struct {
-		name               string
-		downscale          ssetDownscale
-		statefulSets       es_sset.StatefulSetList
-		apiserverResources []client.Object
-		wantZen1Called     bool
-		wantZen1CalledWith int
-	}{
-		{
-			name: "3 -> 2 master nodes",
-			downscale: ssetDownscale{
-				statefulSet:     ssetMasters,
-				initialReplicas: 3,
-				targetReplicas:  2,
-			},
-			statefulSets:       es_sset.StatefulSetList{ssetMasters},
-			apiserverResources: []client.Object{&es, &ssetMasters, &masterPods[0], &masterPods[1], &masterPods[2]},
-			wantZen1Called:     false,
-		},
-		{
-			name: "3 -> 2 data nodes",
-			downscale: ssetDownscale{
-				statefulSet:     ssetData,
-				initialReplicas: 3,
-				targetReplicas:  2,
-			},
-			statefulSets:       es_sset.StatefulSetList{ssetMasters, ssetData},
-			apiserverResources: []client.Object{&es, &ssetMasters, &ssetData, &masterPods[0], &masterPods[1], &masterPods[2]},
-			wantZen1Called:     false,
-		},
-		{
-			name: "2 -> 1 master nodes",
-			downscale: ssetDownscale{
-				statefulSet:     ssetMasters,
-				initialReplicas: 2,
-				targetReplicas:  1,
-			},
-			statefulSets: es_sset.StatefulSetList{ssetMasters},
-			// 2 master nodes in the apiserver
-			apiserverResources: []client.Object{&es, &ssetMasters, &masterPods[0], &masterPods[1]},
-			wantZen1Called:     true,
-			wantZen1CalledWith: 1,
-		},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			k8sClient := k8s.NewFakeClient(tt.apiserverResources...)
-			esClient := &fakeESClient{}
-			downscaleCtx := downscaleContext{
-				k8sClient:      k8sClient,
-				expectations:   expectations.NewExpectations(k8sClient),
-				reconcileState: reconcile.MustNewState(esv1.Elasticsearch{}),
-				esClient:       esClient,
-				es:             es,
-				parentCtx:      context.Background(),
-			}
-			// do the downscale
-			err := doDownscale(downscaleCtx, tt.downscale, tt.statefulSets)
-			require.NoError(t, err)
-			// check call to zen1 is the expected one
-			require.Equal(t, tt.wantZen1Called, esClient.SetMinimumMasterNodesCalled)
-			require.Equal(t, tt.wantZen1CalledWith, esClient.SetMinimumMasterNodesCalledWith)
-			// check zen2 was not called
-			require.False(t, esClient.AddVotingConfigExclusionsCalled)
 		})
 	}
 }

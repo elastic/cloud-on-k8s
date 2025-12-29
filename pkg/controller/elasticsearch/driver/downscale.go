@@ -23,10 +23,8 @@ import (
 	esclient "github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/client"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/label"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/nodespec"
-	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/reconcile"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/settings"
 	es_sset "github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/sset"
-	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/version/zen1"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/version/zen2"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/k8s"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/stringsutil"
@@ -293,8 +291,6 @@ func doDownscale(downscaleCtx downscaleContext, downscale ssetDownscale, actualS
 			downscaleCtx.k8sClient,
 			downscaleCtx.esClient,
 			downscaleCtx.es,
-			downscaleCtx.reconcileState,
-			actualStatefulSets,
 			downscale.leavingNodeNames()...,
 		); err != nil {
 			return err
@@ -312,57 +308,15 @@ func doDownscale(downscaleCtx downscaleContext, downscale ssetDownscale, actualS
 	return nil
 }
 
-// updateZenSettingsForDownscale makes sure zen1 and zen2 settings are updated to account for nodes
+// updateZenSettingsForDownscale makes sure zen2 settings are updated to account for nodes
 // that will soon be removed.
 func updateZenSettingsForDownscale(
 	ctx context.Context,
 	c k8s.Client,
 	esClient esclient.Client,
 	es esv1.Elasticsearch,
-	reconcileState *reconcile.State,
-	actualStatefulSets es_sset.StatefulSetList,
 	excludeNodes ...string,
 ) error {
-	// Maybe update zen1 minimum_master_nodes.
-	if err := maybeUpdateZen1ForDownscale(ctx, c, esClient, es, reconcileState, actualStatefulSets); err != nil {
-		return err
-	}
-
-	// Maybe update zen2 settings to exclude leaving master nodes from voting.
+	// Update zen2 settings to exclude leaving master nodes from voting.
 	return zen2.AddToVotingConfigExclusions(ctx, c, esClient, es, excludeNodes)
-}
-
-// maybeUpdateZen1ForDownscale updates zen1 minimum master nodes if we are downscaling from 2 to 1 master node.
-func maybeUpdateZen1ForDownscale(
-	ctx context.Context,
-	c k8s.Client,
-	esClient esclient.Client,
-	es esv1.Elasticsearch,
-	reconcileState *reconcile.State,
-	actualStatefulSets es_sset.StatefulSetList) error {
-	// Check if we have at least one Zen1 compatible pod or StatefulSet in flight.
-	if zen1compatible, err := zen1.AtLeastOneNodeCompatibleWithZen1(ctx, actualStatefulSets, c, es); !zen1compatible || err != nil {
-		return err
-	}
-
-	actualMasters, err := es_sset.GetActualMastersForCluster(c, es)
-	if err != nil {
-		return err
-	}
-	if len(actualMasters) != 2 {
-		// not in the 2->1 situation
-		return nil
-	}
-
-	// We are moving from 2 to 1 master nodes, we need to update minimum_master_nodes before removing
-	// the 2nd node, otherwise the cluster won't be able to form anymore.
-	// This is inherently unsafe (can cause split brains), but there's no alternative.
-	// For other situations (eg. 3 -> 2), it's fine to update minimum_master_nodes after the node is removed
-	// (will be done at next reconciliation, before nodes removal).
-	reconcileState.AddEvent(
-		corev1.EventTypeWarning, events.EventReasonUnhealthy,
-		"Downscaling from 2 to 1 master nodes: unsafe operation",
-	)
-	minimumMasterNodes := 1
-	return zen1.UpdateMinimumMasterNodesTo(ctx, es, esClient, minimumMasterNodes)
 }
