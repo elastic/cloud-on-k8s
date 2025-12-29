@@ -29,6 +29,7 @@ import (
 
 	agentv1alpha1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/agent/v1alpha1"
 	apmv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/apm/v1"
+	autoopsv1alpha1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/autoops/v1alpha1"
 	beatv1beta1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/beat/v1beta1"
 	commonv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/common/v1"
 	esv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/elasticsearch/v1"
@@ -64,6 +65,7 @@ func NewYAMLDecoder() *YAMLDecoder {
 	scheme.AddKnownTypes(beatv1beta1.GroupVersion, &beatv1beta1.Beat{}, &beatv1beta1.BeatList{})
 	scheme.AddKnownTypes(entv1.GroupVersion, &entv1.EnterpriseSearch{}, &entv1.EnterpriseSearchList{})
 	scheme.AddKnownTypes(agentv1alpha1.GroupVersion, &agentv1alpha1.Agent{}, &agentv1alpha1.AgentList{})
+	scheme.AddKnownTypes(autoopsv1alpha1.GroupVersion, &autoopsv1alpha1.AutoOpsAgentPolicy{}, &autoopsv1alpha1.AutoOpsAgentPolicyList{})
 	scheme.AddKnownTypes(logstashv1alpha1.GroupVersion, &logstashv1alpha1.Logstash{}, &logstashv1alpha1.LogstashList{})
 	scheme.AddKnownTypes(rbacv1.SchemeGroupVersion, &rbacv1.ClusterRoleBinding{}, &rbacv1.ClusterRoleBindingList{})
 	scheme.AddKnownTypes(rbacv1.SchemeGroupVersion, &rbacv1.ClusterRole{}, &rbacv1.ClusterRoleList{})
@@ -123,6 +125,10 @@ func (yd *YAMLDecoder) ToBuilders(reader *bufio.Reader, transform BuilderTransfo
 			b := epr.NewBuilder(decodedObj.Name)
 			b.EPR = *decodedObj
 			builder = transform(b)
+		case *autoopsv1alpha1.AutoOpsAgentPolicy:
+			// AutoOpsAgentPolicy requires external credentials and is tested separately
+			// in test/e2e/autoops/autoops_test.go. Skip in generic sample tests.
+			continue
 		default:
 			return builders, fmt.Errorf("unexpected object type: %t", decodedObj)
 		}
@@ -352,6 +358,9 @@ func transformToE2E(namespace, fullTestName, suffix string, transformers []Build
 				WithPodLabel(run.TestNameLabel, fullTestName)
 
 			builder = b
+		case *autoopsv1alpha1.AutoOpsAgentPolicy:
+			// AutoOpsAgentPolicy requires external credentials and is tested separately
+			// in test/e2e/autoops/autoops_test.go. Skip in generic sample tests.
 		case *corev1.ServiceAccount:
 			decodedObj.Namespace = namespace
 			decodedObj.Name = decodedObj.Name + "-" + suffix
