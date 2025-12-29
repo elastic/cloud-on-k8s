@@ -123,6 +123,9 @@ func (d *defaultDriver) reconcileNodeSpecs(
 	if reconcileState.HasPendingNewNodes() {
 		results.WithReconciliationState(defaultRequeue.WithReason("Upscale in progress"))
 	}
+	if reconcileState.HasPendingNonMasterSTSUpgrades() {
+		results.WithReconciliationState(defaultRequeue.WithReason("Non-master StatefulSets are still upgrading"))
+	}
 	actualStatefulSets = upscaleResults.ActualStatefulSets
 
 	// Once all the StatefulSets have been updated we can ensure that the former version of the transport certificates Secret is deleted.
