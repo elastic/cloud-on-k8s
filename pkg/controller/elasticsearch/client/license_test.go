@@ -25,12 +25,12 @@ func TestClient_GetLicense(t *testing.T) {
 		version      version.Version
 	}{
 		{
-			expectedPath: "/_xpack/license",
-			version:      version.MustParse("6.8.0"),
+			expectedPath: "/_license",
+			version:      version.MustParse("7.0.0"),
 		},
 		{
 			expectedPath: "/_license",
-			version:      version.MustParse("7.0.0"),
+			version:      version.MustParse("8.0.0"),
 		},
 	}
 
@@ -64,12 +64,12 @@ func TestClient_UpdateLicense(t *testing.T) {
 		version      version.Version
 	}{
 		{
-			expectedPath: "/_xpack/license",
-			version:      version.MustParse("6.8.0"),
+			expectedPath: "/_license",
+			version:      version.MustParse("7.0.0"),
 		},
 		{
 			expectedPath: "/_license",
-			version:      version.MustParse("7.0.0"),
+			version:      version.MustParse("8.0.0"),
 		},
 	}
 	for _, tt := range tests {
@@ -109,12 +109,12 @@ func TestClient_StartBasic(t *testing.T) {
 		version      version.Version
 	}{
 		{
-			expectedPath: "/_xpack/license/start_basic",
-			version:      version.MustParse("6.8.0"),
+			expectedPath: "/_license/start_basic",
+			version:      version.MustParse("7.0.0"),
 		},
 		{
 			expectedPath: "/_license/start_basic",
-			version:      version.MustParse("7.0.0"),
+			version:      version.MustParse("8.0.0"),
 		},
 	}
 
