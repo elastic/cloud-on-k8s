@@ -62,16 +62,6 @@ func Test_ClearVotingConfigExclusions(t *testing.T) {
 		wantRequeue        bool
 	}{
 		{
-			name: "no v7 nodes",
-			c:    k8s.NewFakeClient(&es),
-			es:   &es,
-			actualStatefulSets: es_sset.StatefulSetList{
-				createStatefulSetWithESVersion("6.8.0"),
-			},
-			wantCall:    false,
-			wantRequeue: false,
-		},
-		{
 			name:               "3/3 nodes there, should clear",
 			c:                  k8s.NewFakeClient(&es, &statefulSet3rep, &pods[0], &pods[1], &pods[2]),
 			es:                 &es,
@@ -127,19 +117,6 @@ func TestAddToVotingConfigExclusions(t *testing.T) {
 		wantAPICalled     bool
 		wantAPICalledWith []string
 	}{
-		{
-			name: "some zen1 masters: do nothing",
-			es:   &es,
-			c: k8s.NewFakeClient(&es, sset.TestPod{
-				Namespace:   "ns",
-				Name:        "pod-name",
-				ClusterName: "es",
-				Version:     "6.8.0",
-				Master:      true,
-			}.BuildPtr()),
-			excludeNodes:  []string{"node1"},
-			wantAPICalled: false,
-		},
 		{
 			name:              "set voting config exclusions",
 			es:                &es,
