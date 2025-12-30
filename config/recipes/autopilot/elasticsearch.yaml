@@ -30,7 +30,7 @@ spec:
           securityContext:
             privileged: true
             runAsUser: 0
-          command: ['/usr/local/bin/bash', '-e', '-c', 'echo 262144 > /proc/sys/vm/max_map_count']
+          command: ['/usr/local/bin/bash', '-e', '-c', 'echo 1048576 > /proc/sys/vm/max_map_count']
       containers:
         - name: sleep
           image: docker.io/bash:5.2.15
@@ -60,7 +60,7 @@ spec:
               cpu: 500m
         initContainers:
         - name: max-map-count-check
-          command: ['sh', '-c', "while true; do mmc=$(cat /proc/sys/vm/max_map_count); if [ ${mmc} -eq 262144 ]; then exit 0; fi; sleep 1; done"]
+          command: ['sh', '-c', "while true; do mmc=$(cat /proc/sys/vm/max_map_count); if [ ${mmc} -eq 1048576 ]; then exit 0; fi; sleep 1; done"]
           resources:
             requests:
               memory: 16Mi
