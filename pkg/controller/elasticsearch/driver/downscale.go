@@ -73,7 +73,7 @@ func HandleDownscale(
 
 	for _, downscale := range downscales {
 		// attempt the StatefulSet downscale (may or may not remove nodes)
-		requeue, err := attemptDownscale(downscaleCtx, downscale, actualStatefulSets)
+		requeue, err := attemptDownscale(downscaleCtx, downscale)
 		if err != nil {
 			return results.WithError(err)
 		}
@@ -180,7 +180,6 @@ func downscaleBudgetFilter(ctx context.Context, state *downscaleState, actualSse
 func attemptDownscale(
 	ctx downscaleContext,
 	downscale ssetDownscale,
-	statefulSets es_sset.StatefulSetList,
 ) (bool, error) {
 	// adjust the theoretical downscale to one we can safely perform
 	performable, err := calculatePerformableDownscale(ctx, downscale)
@@ -193,7 +192,7 @@ func attemptDownscale(
 	}
 	// do performable downscale, and requeue if needed
 	shouldRequeue := performable.targetReplicas != downscale.finalReplicas
-	return shouldRequeue, doDownscale(ctx, performable, statefulSets)
+	return shouldRequeue, doDownscale(ctx, performable)
 }
 
 // deleteStatefulSetResources deletes the given StatefulSet along with the corresponding
@@ -278,7 +277,7 @@ func calculatePerformableDownscale(
 }
 
 // doDownscale schedules nodes removal for the given downscale, and updates zen settings accordingly.
-func doDownscale(downscaleCtx downscaleContext, downscale ssetDownscale, actualStatefulSets es_sset.StatefulSetList) error {
+func doDownscale(downscaleCtx downscaleContext, downscale ssetDownscale) error {
 	ssetLogger(downscaleCtx.parentCtx, downscale.statefulSet).Info(
 		"Scaling replicas down",
 		"from", downscale.initialReplicas,

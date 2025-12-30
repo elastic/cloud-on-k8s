@@ -855,7 +855,7 @@ func Test_attemptDownscale(t *testing.T) {
 				parentCtx:      context.Background(),
 			}
 			// do the downscale
-			_, err := attemptDownscale(downscaleCtx, tt.downscale, tt.statefulSets)
+			_, err := attemptDownscale(downscaleCtx, tt.downscale)
 			require.NoError(t, err)
 			// retrieve statefulsets
 			var ssets appsv1.StatefulSetList
@@ -901,7 +901,7 @@ func Test_doDownscale_updateReplicasAndExpectations(t *testing.T) {
 	require.Len(t, downscaleCtx.expectations.GetGenerations(), 0)
 
 	// do the downscale
-	err := doDownscale(downscaleCtx, downscale, es_sset.StatefulSetList{sset1, sset2})
+	err := doDownscale(downscaleCtx, downscale)
 	require.NoError(t, err)
 
 	// sset resource should be updated
@@ -989,7 +989,7 @@ func Test_doDownscale_zen2VotingConfigExclusions(t *testing.T) {
 				parentCtx:      context.Background(),
 			}
 			// do the downscale
-			err := doDownscale(downscaleCtx, tt.downscale, es_sset.StatefulSetList{ssetMasters, ssetData})
+			err := doDownscale(downscaleCtx, tt.downscale)
 			require.NoError(t, err)
 			// check call to zen2 is the expected one
 			require.Equal(t, tt.wantZen2Called, esClient.AddVotingConfigExclusionsCalled)
