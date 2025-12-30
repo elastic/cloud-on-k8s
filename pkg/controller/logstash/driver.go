@@ -9,8 +9,6 @@ import (
 	"fmt"
 	"hash/fnv"
 
-	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/metadata"
-
 	"github.com/go-logr/logr"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -22,6 +20,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/events"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/expectations"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/keystore"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/metadata"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/operator"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/reconciler"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/statefulset"
@@ -32,7 +31,6 @@ import (
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/logstash/stackmon"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/logstash/volume"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/k8s"
-	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/log"
 	ulog "github.com/elastic/cloud-on-k8s/v3/pkg/utils/log"
 )
 
@@ -80,7 +78,7 @@ func (p *Params) GetPodTemplate() corev1.PodTemplateSpec {
 
 // Logger returns the configured logger for use during reconciliation.
 func (p *Params) Logger() logr.Logger {
-	return log.FromContext(p.Context)
+	return ulog.FromContext(p.Context)
 }
 
 func newStatus(logstash logstashv1alpha1.Logstash) logstashv1alpha1.LogstashStatus {
