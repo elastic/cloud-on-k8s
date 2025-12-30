@@ -113,3 +113,79 @@ services: []
 
 # SecureSettings is a list of references to Kubernetes Secrets containing sensitive configuration options for the Logstash
 secureSettings: []
+
+# Settings for controlling Logstash ingress. Enabling ingress will expose your Logstash instance
+# to the public internet, and as such is disabled by default.
+#
+# Each Cloud Service Provider has different requirements for setting up Ingress. Some links to common documentation are:
+# - AWS: https://docs.aws.amazon.com/eks/latest/userguide/alb-ingress.html
+# - GCP: https://cloud.google.com/kubernetes-engine/docs/concepts/ingress
+# - Azure: https://learn.microsoft.com/en-us/azure/aks/app-routing
+# - Nginx: https://kubernetes.github.io/ingress-nginx/
+#
+ingress:
+  enabled: false
+
+  # Annotations that will be applied to the Ingress resource. Note that some ingress controllers are controlled via annotations.
+  #
+  # Nginx Annotations: https://kubernetes.github.io/ingress-nginx/user-guide/nginx-configuration/annotations/
+  #
+  # Common annotations:
+  #   kubernetes.io/ingress.class: gce          # Configures the Ingress resource to use the GCE ingress controller and create an external Application Load Balancer.
+  #   kubernetes.io/ingress.class: gce-internal # Configures the Ingress resource to use the GCE ingress controller and create an internal Application Load Balancer.
+  #   kubernetes.io/ingress.class: nginx        # Configures the Ingress resource to use the NGINX ingress controller.
+  #
+  annotations: {}
+
+  # Labels that will be applied to the Ingress resource.
+  #
+  labels: {}
+
+  # Some ingress controllers require the use of a specific class name to route traffic to the correct controller, notably AKS and EKS, which
+  # replaces the use of the 'kubernetes.io/ingress.class' annotation.
+  #
+  # className: webapprouting.kubernetes.azure.com | alb
+
+  # Ingress paths are required to have a corresponding path type. Defaults to 'Prefix'.
+  #
+  # There are 3 supported path types:
+  # - ImplementationSpecific
+  # - Prefix
+  # - Exact
+  #
+  # ref: https://kubernetes.io/docs/concepts/services-networking/ingress/#path-types
+  #
+  pathType: Prefix
+
+  # Hosts are a list of hosts included in the Ingress definition, with a corresponding path at which the Logstash HTTP service
+  # will be exposed. Each host in the list should be a fully qualified DNS name that will resolve to the exposed Ingress object.
+  #
+  # ref: https://kubernetes.io/docs/concepts/services-networking/ingress/#name-based-virtual-hosting
+  #
+  hosts:
+    - host: chart-example.local
+      path: /
+      # Additional paths to route to other Logstash services (for example, beats input).
+      # extraPaths:
+      #   - path: /beats
+      #     serviceName: beats
+      #     servicePort: 5044
+
+  # TLS defines whether TLS will be enabled on the Ingress resource.
+  #
+  # *NOTE* Many Cloud Service Providers handle TLS in a custom manner, and as such, it is recommended to consult their documentation.
+  # Notably GKE and Nginx Ingress Controllers seems to respect the Ingress TLS settings, AKS and EKS ignore it.
+  #
+  # - AKS:   https://learn.microsoft.com/en-us/azure/aks/app-routing-dns-ssl
+  # - GKE:   https://cloud.google.com/kubernetes-engine/docs/concepts/ingress#options_for_providing_ssl_certificates
+  # - EKS:   https://aws.amazon.com/blogs/containers/serve-distinct-domains-with-tls-powered-by-acm-on-amazon-eks/
+  # - Nginx: https://kubernetes.github.io/ingress-nginx/user-guide/tls/
+  #
+  # Kubernetes ingress TLS documentation:
+  # ref: https://kubernetes.io/docs/concepts/services-networking/ingress/#tls
+  #
+  tls:
+    enabled: false
+    # Optional Kubernetes secret name that contains a base64 encoded PEM certificate and private key that corresponds to the above 'hosts' definitions.
+    # If tls is enabled, but this field is not set, the self-signed certificate and key created by the ECK operator will be used.
+    # secretName: chart-example-tls
