@@ -351,7 +351,7 @@ func TestGetInfo(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, "af932d24216a4dd69ba47d2fd3214796", info.ClusterName)
 	require.Equal(t, "LGA3VblKTNmzP6Q6SWxfkw", info.ClusterUUID)
-	require.Equal(t, "6.4.1", info.Version.Number) // This is the version reported by the ES API response in the fixture, not the client version
+	require.Equal(t, "7.17.0", info.Version.Number) // This is the version reported by the ES API response in the fixture, not the client version
 }
 
 func TestClient_Equal(t *testing.T) {

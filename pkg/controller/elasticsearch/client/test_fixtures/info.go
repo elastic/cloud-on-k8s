@@ -9,12 +9,12 @@ const (
 	"cluster_name": "af932d24216a4dd69ba47d2fd3214796",
 	"cluster_uuid": "LGA3VblKTNmzP6Q6SWxfkw",
 	"version": {
-	  "build_date": "2018-09-13T22:18:07.696808Z",
-	  "minimum_wire_compatibility_version": "6.5.0",
-	  "build_hash": "e36acdb",
-	  "number": "6.4.1",
-	  "lucene_version": "7.4.0",
-	  "minimum_index_compatibility_version": "5.0.0",
+	  "build_date": "2021-01-13T00:42:12.435326Z",
+	  "minimum_wire_compatibility_version": "6.8.0",
+	  "build_hash": "78722783c38caa25a70982b5b042074cde5d3b3a",
+	  "number": "7.17.0",
+	  "lucene_version": "8.11.1",
+	  "minimum_index_compatibility_version": "6.0.0-beta1",
 	  "build_flavor": "default",
 	  "build_snapshot": false,
 	  "build_type": "tar"

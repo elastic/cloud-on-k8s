@@ -45,8 +45,7 @@ func ReconcileClusterUUID(ctx context.Context, k8sClient k8s.Client, cluster *es
 	clusterUUID, err := getClusterUUID(ctx, esClient)
 	if err != nil {
 		// There was an error while retrieving the UUID of the Elasticsearch cluster.
-		// For example, it could be the case with ES 6.x if the cluster does not have a master yet, in this case an
-		// API call to get the cluster UUID returns a 503 error.
+		// For example, if the cluster does not have a master yet, an API call to get the cluster UUID returns a 503 error.
 		// However we don't want to stop the reconciliation loop here because it could prevent the user to apply
 		// an update to the cluster spec to fix a problem.
 		// Therefore we just log the error and notify the driver that the reconciliation should be eventually re-queued.
