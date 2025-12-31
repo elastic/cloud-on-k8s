@@ -44,6 +44,7 @@ import (
 	agentv1alpha1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/agent/v1alpha1"
 	apmv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/apm/v1"
 	apmv1beta1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/apm/v1beta1"
+	autoopsv1alpha1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/autoops/v1alpha1"
 	beatv1beta1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/beat/v1beta1"
 	esv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/elasticsearch/v1"
 	esv1beta1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/elasticsearch/v1beta1"
@@ -53,16 +54,19 @@ import (
 	kbv1beta1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/kibana/v1beta1"
 	logstashv1alpha1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/logstash/v1alpha1"
 	emsv1alpha1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/maps/v1alpha1"
+	eprv1alpha1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/packageregistry/v1alpha1"
 	policyv1alpha1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/stackconfigpolicy/v1alpha1"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/agent"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/apmserver"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/association"
 	associationctl "github.com/elastic/cloud-on-k8s/v3/pkg/controller/association/controller"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/autoops"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/autoscaling"
 	esavalidation "github.com/elastic/cloud-on-k8s/v3/pkg/controller/autoscaling/elasticsearch/validation"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/beat"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/certificates"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/container"
+	commonesclient "github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/esclient"
 	commonlicense "github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/license"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/operator"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/password"
@@ -84,6 +88,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/logstash"
 	lsvalidation "github.com/elastic/cloud-on-k8s/v3/pkg/controller/logstash/validation"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/maps"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/packageregistry"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/remotecluster"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/stackconfigpolicy"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/webhook"
@@ -756,7 +761,7 @@ func startOperator(ctx context.Context) error {
 
 	disableTelemetry := viper.GetBool(operator.DisableTelemetryFlag)
 	telemetryInterval := viper.GetDuration(operator.TelemetryIntervalFlag)
-	go asyncTasks(ctx, mgr, cfg, managedNamespaces, operatorNamespace, operatorInfo, disableTelemetry, telemetryInterval, tracer)
+	go asyncTasks(ctx, mgr, cfg, managedNamespaces, operatorNamespace, operatorInfo, disableTelemetry, telemetryInterval, tracer, dialer)
 
 	log.Info("Starting the manager", "uuid", operatorInfo.OperatorUUID,
 		"namespace", operatorNamespace, "version", operatorInfo.BuildInfo.Version,
@@ -815,6 +820,7 @@ func asyncTasks(
 	disableTelemetry bool,
 	telemetryInterval time.Duration,
 	tracer *apm.Tracer,
+	dialer net.Dialer,
 ) {
 	<-mgr.Elected() // wait for this operator instance to be elected
 
@@ -841,6 +847,7 @@ func asyncTasks(
 	// Garbage collect orphaned secrets leftover from deleted resources while the operator was not running
 	// - association user secrets
 	gcCtx := tracing.NewContextTransaction(ctx, tracer, tracing.RunOnceTxType, "garbage-collection", nil)
+	gcCtx = logconf.AddToContext(gcCtx, logf.Log.WithName("garbage-collection"))
 	err := garbageCollectUsers(gcCtx, cfg, managedNamespaces)
 	if err != nil {
 		log.Error(err, "exiting due to unrecoverable error")
@@ -848,6 +855,10 @@ func asyncTasks(
 	}
 	// - soft-owned secrets
 	garbageCollectSoftOwnedSecrets(gcCtx, mgr.GetClient())
+	// - autoops orphaned resources (API key secrets without owner references)
+	if err := garbageCollectAutoOpsResources(gcCtx, mgr.GetClient(), dialer); err != nil {
+		log.Error(err, "AutoOps garbage collection failed, will be attempted again at next operator restart")
+	}
 	tracing.EndContextTransaction(gcCtx)
 }
 
@@ -914,6 +925,7 @@ func registerControllers(mgr manager.Manager, params operator.Parameters, access
 		{name: "LicenseTrial", registerFunc: licensetrial.Add},
 		{name: "Agent", registerFunc: agent.Add},
 		{name: "Maps", registerFunc: maps.Add},
+		{name: "PackageRegistry", registerFunc: packageregistry.Add},
 		{name: "StackConfigPolicy", registerFunc: stackconfigpolicy.Add},
 		{name: "Logstash", registerFunc: logstash.Add},
 	}
@@ -929,11 +941,15 @@ func registerControllers(mgr manager.Manager, params operator.Parameters, access
 		name         string
 		registerFunc func(manager.Manager, rbac.AccessReviewer, operator.Parameters) error
 	}{
+		// AutoOps isn't technically an association controller, but it's closely related and
+		// it's Add function signature is the same as the association controllers.
+		{name: "AutoOpsAgentPolicy", registerFunc: autoops.Add},
 		{name: "RemoteCA", registerFunc: remotecluster.Add},
 		{name: "APM-ES", registerFunc: associationctl.AddApmES},
 		{name: "APM-KB", registerFunc: associationctl.AddApmKibana},
 		{name: "KB-ES", registerFunc: associationctl.AddKibanaES},
 		{name: "KB-ENT", registerFunc: associationctl.AddKibanaEnt},
+		{name: "KB-EPR", registerFunc: associationctl.AddKibanaEPR},
 		{name: "ENT-ES", registerFunc: associationctl.AddEntES},
 		{name: "BEAT-ES", registerFunc: associationctl.AddBeatES},
 		{name: "BEAT-KB", registerFunc: associationctl.AddBeatKibana},
@@ -993,13 +1009,26 @@ func garbageCollectSoftOwnedSecrets(ctx context.Context, k8sClient k8s.Client) {
 		beatv1beta1.Kind:      &beatv1beta1.Beat{},
 		agentv1alpha1.Kind:    &agentv1alpha1.Agent{},
 		emsv1alpha1.Kind:      &emsv1alpha1.ElasticMapsServer{},
+		eprv1alpha1.Kind:      &eprv1alpha1.PackageRegistry{},
 		policyv1alpha1.Kind:   &policyv1alpha1.StackConfigPolicy{},
+		autoopsv1alpha1.Kind:  &autoopsv1alpha1.AutoOpsAgentPolicy{},
 		logstashv1alpha1.Kind: &logstashv1alpha1.Logstash{},
 	}); err != nil {
 		log.Error(err, "Orphan secrets garbage collection failed, will be attempted again at next operator restart.")
 		return
 	}
 	log.Info("Orphan secrets garbage collection complete")
+}
+
+func garbageCollectAutoOpsResources(ctx context.Context, k8sClient k8s.Client, dialer net.Dialer) error {
+	span, ctx := apm.StartSpan(ctx, "gc_autoops_resources", tracing.SpanTypeApp)
+	defer span.End()
+
+	gc := autoops.NewGarbageCollector(k8sClient, commonesclient.NewClient, dialer)
+	if err := gc.DoGarbageCollection(ctx); err != nil {
+		return fmt.Errorf("AutoOps garbage collection failed: %w", err)
+	}
+	return nil
 }
 
 func setupWebhook(
@@ -1037,7 +1066,9 @@ func setupWebhook(
 		&kbv1.Kibana{},
 		&kbv1beta1.Kibana{},
 		&emsv1alpha1.ElasticMapsServer{},
+		&eprv1alpha1.PackageRegistry{},
 		&policyv1alpha1.StackConfigPolicy{},
+		&autoopsv1alpha1.AutoOpsAgentPolicy{},
 	}
 	for _, obj := range webhookObjects {
 		commonwebhook.SetupValidatingWebhookWithConfig(&commonwebhook.Config{

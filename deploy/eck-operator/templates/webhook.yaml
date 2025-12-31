@@ -445,6 +445,68 @@ webhooks:
         - UPDATE
       resources:
         - logstashes
+- clientConfig:
+    {{- if and (not .Values.webhook.manageCerts) (not .Values.webhook.certManagerCert) }}
+    caBundle: {{ .Values.webhook.caBundle }}
+    {{- end }}
+    service:
+      name: {{ include "eck-operator.webhookServiceName" . }}
+      namespace: {{ .Release.Namespace }}
+      path: /validate-autoops-k8s-elastic-co-v1alpha1-autoopsagentpolicies
+  failurePolicy: {{ .Values.webhook.failurePolicy }}
+{{- with .Values.webhook.namespaceSelector }}
+  namespaceSelector:
+    {{- toYaml . | nindent 4 }}
+{{- end }}
+{{- with .Values.webhook.objectSelector }}
+  objectSelector:
+    {{- toYaml . | nindent 4 }}
+{{- end }}
+  name: elastic-autoops-validation-v1alpha1.k8s.elastic.co
+  matchPolicy: Exact
+  admissionReviewVersions: [v1]
+  sideEffects: None
+  rules:
+    - apiGroups:
+        - autoops.k8s.elastic.co
+      apiVersions:
+        - v1alpha1
+      operations:
+        - CREATE
+        - UPDATE
+      resources:
+        - autoopsagentpolicies
+- clientConfig:
+    {{- if and (not .Values.webhook.manageCerts) (not .Values.webhook.certManagerCert) }}
+    caBundle: {{ .Values.webhook.caBundle }}
+    {{- end }}
+    service:
+      name: {{ include "eck-operator.webhookServiceName" . }}
+      namespace: {{ .Release.Namespace }}
+      path: /validate-epr-k8s-elastic-co-v1alpha1-elasticpackageregistry
+  failurePolicy: {{ .Values.webhook.failurePolicy }}
+{{- with .Values.webhook.namespaceSelector }}
+  namespaceSelector:
+    {{- toYaml . | nindent 4 }}
+{{- end }}
+{{- with .Values.webhook.objectSelector }}
+  objectSelector:
+    {{- toYaml . | nindent 4 }}
+{{- end }}
+  name: elastic-epr-validation-v1alpha1.k8s.elastic.co
+  matchPolicy: Exact
+  admissionReviewVersions: [v1,v1beta1]
+  sideEffects: None
+  rules:
+    - apiGroups:
+        - packageregistry.k8s.elastic.co
+      apiVersions:
+        - v1alpha1
+      operations:
+        - CREATE
+        - UPDATE
+      resources:
+        - packageregistries
 ---
 apiVersion: v1
 kind: Service

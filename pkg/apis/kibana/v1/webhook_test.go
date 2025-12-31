@@ -331,6 +331,17 @@ func TestWebhook(t *testing.T) {
 				`spec.monitoring.logs: Forbidden: Invalid association reference: serviceName or namespace can only be used in combination with name, not with secretName`,
 			),
 		},
+		{
+			Name:      "simple-epr-ref",
+			Operation: admissionv1.Create,
+			Object: func(t *testing.T, uid string) []byte {
+				t.Helper()
+				ent := mkKibana(uid)
+				ent.Spec.PackageRegistryRef = commonv1.ObjectSelector{Name: "epr", Namespace: "esns"}
+				return serialize(t, ent)
+			},
+			Check: test.ValidationWebhookSucceeded,
+		},
 	}
 
 	validator := &kbv1.Kibana{}

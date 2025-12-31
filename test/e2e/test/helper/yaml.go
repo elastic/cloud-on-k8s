@@ -29,12 +29,14 @@ import (
 
 	agentv1alpha1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/agent/v1alpha1"
 	apmv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/apm/v1"
+	autoopsv1alpha1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/autoops/v1alpha1"
 	beatv1beta1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/beat/v1beta1"
 	commonv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/common/v1"
 	esv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/elasticsearch/v1"
 	entv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/enterprisesearch/v1"
 	kbv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/kibana/v1"
 	logstashv1alpha1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/logstash/v1alpha1"
+	packageregistryv1alpha1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/packageregistry/v1alpha1"
 	beatcommon "github.com/elastic/cloud-on-k8s/v3/pkg/controller/beat/common"
 	"github.com/elastic/cloud-on-k8s/v3/test/e2e/cmd/run"
 	"github.com/elastic/cloud-on-k8s/v3/test/e2e/test"
@@ -43,6 +45,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/v3/test/e2e/test/beat"
 	"github.com/elastic/cloud-on-k8s/v3/test/e2e/test/elasticsearch"
 	"github.com/elastic/cloud-on-k8s/v3/test/e2e/test/enterprisesearch"
+	"github.com/elastic/cloud-on-k8s/v3/test/e2e/test/epr"
 	"github.com/elastic/cloud-on-k8s/v3/test/e2e/test/kibana"
 	"github.com/elastic/cloud-on-k8s/v3/test/e2e/test/logstash"
 )
@@ -62,12 +65,14 @@ func NewYAMLDecoder() *YAMLDecoder {
 	scheme.AddKnownTypes(beatv1beta1.GroupVersion, &beatv1beta1.Beat{}, &beatv1beta1.BeatList{})
 	scheme.AddKnownTypes(entv1.GroupVersion, &entv1.EnterpriseSearch{}, &entv1.EnterpriseSearchList{})
 	scheme.AddKnownTypes(agentv1alpha1.GroupVersion, &agentv1alpha1.Agent{}, &agentv1alpha1.AgentList{})
+	scheme.AddKnownTypes(autoopsv1alpha1.GroupVersion, &autoopsv1alpha1.AutoOpsAgentPolicy{}, &autoopsv1alpha1.AutoOpsAgentPolicyList{})
 	scheme.AddKnownTypes(logstashv1alpha1.GroupVersion, &logstashv1alpha1.Logstash{}, &logstashv1alpha1.LogstashList{})
 	scheme.AddKnownTypes(rbacv1.SchemeGroupVersion, &rbacv1.ClusterRoleBinding{}, &rbacv1.ClusterRoleBindingList{})
 	scheme.AddKnownTypes(rbacv1.SchemeGroupVersion, &rbacv1.ClusterRole{}, &rbacv1.ClusterRoleList{})
 	scheme.AddKnownTypes(corev1.SchemeGroupVersion, &corev1.ServiceAccount{}, &corev1.ServiceAccountList{})
 	scheme.AddKnownTypes(corev1.SchemeGroupVersion, &corev1.Service{}, &corev1.ServiceList{})
 	scheme.AddKnownTypes(appsv1.SchemeGroupVersion, &appsv1.DaemonSet{})
+	scheme.AddKnownTypes(packageregistryv1alpha1.GroupVersion, &packageregistryv1alpha1.PackageRegistry{}, &packageregistryv1alpha1.PackageRegistryList{})
 	decoder := serializer.NewCodecFactory(scheme).UniversalDeserializer()
 
 	return &YAMLDecoder{decoder: decoder}
@@ -116,6 +121,14 @@ func (yd *YAMLDecoder) ToBuilders(reader *bufio.Reader, transform BuilderTransfo
 			b := logstash.NewBuilderWithoutSuffix(decodedObj.Name)
 			b.Logstash = *decodedObj
 			builder = transform(b)
+		case *packageregistryv1alpha1.PackageRegistry:
+			b := epr.NewBuilder(decodedObj.Name)
+			b.EPR = *decodedObj
+			builder = transform(b)
+		case *autoopsv1alpha1.AutoOpsAgentPolicy:
+			// AutoOpsAgentPolicy requires external credentials and is tested separately
+			// in test/e2e/autoops/autoops_test.go. Skip in generic sample tests.
+			continue
 		default:
 			return builders, fmt.Errorf("unexpected object type: %t", decodedObj)
 		}
@@ -345,6 +358,10 @@ func transformToE2E(namespace, fullTestName, suffix string, transformers []Build
 				WithPodLabel(run.TestNameLabel, fullTestName)
 
 			builder = b
+		case *autoopsv1alpha1.AutoOpsAgentPolicy:
+			// AutoOpsAgentPolicy requires external credentials and is tested separately
+			// in test/e2e/autoops/autoops_test.go. Skip in generic sample tests.
+			continue
 		case *corev1.ServiceAccount:
 			decodedObj.Namespace = namespace
 			decodedObj.Name = decodedObj.Name + "-" + suffix

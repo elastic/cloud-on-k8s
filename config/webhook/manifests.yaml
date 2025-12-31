@@ -73,6 +73,27 @@ webhooks:
     service:
       name: webhook-service
       namespace: system
+      path: /validate-autoops-k8s-elastic-co-v1alpha1-autoopsagentpolicies
+  failurePolicy: Ignore
+  matchPolicy: Exact
+  name: elastic-autoops-validation-v1alpha1.k8s.elastic.co
+  rules:
+  - apiGroups:
+    - autoops.k8s.elastic.co
+    apiVersions:
+    - v1alpha1
+    operations:
+    - CREATE
+    - UPDATE
+    resources:
+    - autoopsagentpolicies
+  sideEffects: None
+- admissionReviewVersions:
+  - v1
+  clientConfig:
+    service:
+      name: webhook-service
+      namespace: system
       path: /validate-beat-k8s-elastic-co-v1beta1-beat
   failurePolicy: Ignore
   matchPolicy: Exact
@@ -213,6 +234,27 @@ webhooks:
     - UPDATE
     resources:
     - mapsservers
+  sideEffects: None
+- admissionReviewVersions:
+  - v1
+  clientConfig:
+    service:
+      name: webhook-service
+      namespace: system
+      path: /validate-epr-k8s-elastic-co-v1alpha1-packageregistry
+  failurePolicy: Ignore
+  matchPolicy: Exact
+  name: elastic-epr-validation-v1alpha1.k8s.elastic.co
+  rules:
+  - apiGroups:
+    - packageregistry.k8s.elastic.co
+    apiVersions:
+    - v1alpha1
+    operations:
+    - CREATE
+    - UPDATE
+    resources:
+    - packageregistry
   sideEffects: None
 - admissionReviewVersions:
   - v1

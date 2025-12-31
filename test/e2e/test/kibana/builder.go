@@ -124,6 +124,11 @@ func (b Builder) WithEnterpriseSearchRef(ref commonv1.ObjectSelector) Builder {
 	return b
 }
 
+func (b Builder) WithPackageRegistryRef(ref commonv1.ObjectSelector) Builder {
+	b.Kibana.Spec.PackageRegistryRef = ref
+	return b
+}
+
 func (b Builder) WithExternalElasticsearchRef(ref commonv1.ObjectSelector) Builder {
 	b.ExternalElasticsearchRef = ref
 	return b
