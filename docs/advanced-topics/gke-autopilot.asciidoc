@@ -58,7 +58,7 @@ spec:
         # Do not use this if setting config.node.store.allow_mmap: false
         initContainers:
         - name: max-map-count-check
-          command: ['sh', '-c', "while true; do mmc=$(cat /proc/sys/vm/max_map_count); if [ ${mmc} -eq 1048576 ]; then exit 0; fi; sleep 1; done"]
+          command: ['sh', '-c', "while true; do mmc=$(cat /proc/sys/vm/max_map_count); if [ ${mmc} -eq 262144 ]; then exit 0; fi; sleep 1; done"]
 EOF
 ----
 
