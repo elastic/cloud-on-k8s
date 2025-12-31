@@ -5,7 +5,7 @@ nodeSets:
   config:
     node.roles: ["master"]
     # Comment out when setting the vm.max_map_count via initContainer, as these are mutually exclusive.
-    # For production workloads, it is strongly recommended to increase the kernel setting vm.max_map_count to 262144
+    # For production workloads, it is strongly recommended to increase the kernel setting vm.max_map_count to 1048576
     # and leave node.store.allow_mmap unset.
     # ref: https://www.elastic.co/guide/en/cloud-on-k8s/current/k8s-virtual-memory.html
     #
@@ -54,7 +54,7 @@ nodeSets:
   config:
     node.roles: ["data_hot", "data_content", "ingest"]
     # Comment out when setting the vm.max_map_count via initContainer, as these are mutually exclusive.
-    # For production workloads, it is strongly recommended to increase the kernel setting vm.max_map_count to 262144
+    # For production workloads, it is strongly recommended to increase the kernel setting vm.max_map_count to 1048576
     # and leave node.store.allow_mmap unset.
     # ref: https://www.elastic.co/guide/en/cloud-on-k8s/current/k8s-virtual-memory.html
     #
@@ -103,7 +103,7 @@ nodeSets:
   config:
     node.roles: ["data_warm"]
     # Comment out when setting the vm.max_map_count via initContainer, as these are mutually exclusive.
-    # For production workloads, it is strongly recommended to increase the kernel setting vm.max_map_count to 262144
+    # For production workloads, it is strongly recommended to increase the kernel setting vm.max_map_count to 1048576
     # and leave node.store.allow_mmap unset.
     # ref: https://www.elastic.co/guide/en/cloud-on-k8s/current/k8s-virtual-memory.html
     #
@@ -152,7 +152,7 @@ nodeSets:
   config:
     node.roles: ["data_cold"]
     # Comment out when setting the vm.max_map_count via initContainer, as these are mutually exclusive.
-    # For production workloads, it is strongly recommended to increase the kernel setting vm.max_map_count to 262144
+    # For production workloads, it is strongly recommended to increase the kernel setting vm.max_map_count to 1048576
     # and leave node.store.allow_mmap unset.
     # ref: https://www.elastic.co/guide/en/cloud-on-k8s/current/k8s-virtual-memory.html
     #
