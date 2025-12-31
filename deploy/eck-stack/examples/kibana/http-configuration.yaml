@@ -5,10 +5,11 @@ eck-kibana:
   count: 1
 
   # Reference to ECK-managed Elasticsearch resource, ideally from {{ "elasticsearch.fullname" }}
-  #
-  elasticsearchRef:
-    name: es-quickstart-eck-elasticsearch
-    # namespace: default
+  # Leave commented when using eck-stack with Elasticsearch enabled (chart handles this automatically)
+  # Uncomment only when deploying eck-kibana standalone or eck-stack without Elasticsearch
+  # elasticsearchRef:
+  #   name: <your-elasticsearch-resource-name>
+  #   namespace: default
   http:
     service:
       spec:
