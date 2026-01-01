@@ -94,8 +94,9 @@ type Client interface {
 	// SetMinimumMasterNodes sets the transient and persistent setting of the same name in cluster settings.
 	SetMinimumMasterNodes(ctx context.Context, n int) error
 	// ReloadSecureSettings will decrypt and re-read the entire keystore, on every cluster node,
-	// but only the reloadable secure settings will be applied
-	ReloadSecureSettings(ctx context.Context) error
+	// but only the reloadable secure settings will be applied. The response includes keystore
+	// information for each node; keystore_digest is available in Elasticsearch 9.3+.
+	ReloadSecureSettings(ctx context.Context) (ReloadSecureSettingsResponse, error)
 	// GetNodes calls the _nodes api to return a map(nodeName -> Node)
 	GetNodes(ctx context.Context) (Nodes, error)
 	// GetNodesStats calls the _nodes/stats api to return a map(nodeName -> NodeStats)

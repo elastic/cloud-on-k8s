@@ -14,7 +14,6 @@ import (
 
 	esv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/elasticsearch/v1"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/version"
-	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/volume"
 	esvolume "github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/volume"
 )
 
@@ -90,7 +89,11 @@ func Test_BuildVolumes_DataVolumeMountPath(t *testing.T) {
 
 	for _, tc := range tt {
 		t.Run(tc.name, func(t *testing.T) {
-			_, volumeMounts := buildVolumes("esname", version.MustParse("8.8.0"), tc.nodeSpec, nil, volume.DownwardAPI{}, []volume.VolumeLike{})
+			_, volumeMounts := buildVolumes(BuildVolumesParams{
+				ESName:   "esname",
+				Version:  version.MustParse("8.8.0"),
+				NodeSpec: tc.nodeSpec,
+			})
 			assert.True(t, contains(volumeMounts, "elasticsearch-data", "/usr/share/elasticsearch/data"))
 		})
 	}

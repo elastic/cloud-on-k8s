@@ -120,8 +120,10 @@ func (c *clientV6) SetMinimumMasterNodes(ctx context.Context, n int) error {
 	return c.put(ctx, "/_cluster/settings", &zenSettings, nil)
 }
 
-func (c *clientV6) ReloadSecureSettings(ctx context.Context) error {
-	return c.post(ctx, "/_nodes/reload_secure_settings", nil, nil)
+func (c *clientV6) ReloadSecureSettings(ctx context.Context) (ReloadSecureSettingsResponse, error) {
+	var response ReloadSecureSettingsResponse
+	err := c.post(ctx, "/_nodes/reload_secure_settings", nil, &response)
+	return response, err
 }
 
 func (c *clientV6) GetNodes(ctx context.Context) (Nodes, error) {
