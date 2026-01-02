@@ -16,6 +16,7 @@ import (
 	"strings"
 	"testing"
 
+	computeclassv1 "github.com/googlecloudplatform/compute-class-api/api/cloud.google.com/v1"
 	"github.com/stretchr/testify/require"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -73,6 +74,10 @@ func NewYAMLDecoder() *YAMLDecoder {
 	scheme.AddKnownTypes(corev1.SchemeGroupVersion, &corev1.Service{}, &corev1.ServiceList{})
 	scheme.AddKnownTypes(appsv1.SchemeGroupVersion, &appsv1.DaemonSet{})
 	scheme.AddKnownTypes(packageregistryv1alpha1.GroupVersion, &packageregistryv1alpha1.PackageRegistry{}, &packageregistryv1alpha1.PackageRegistryList{})
+
+	// Register ComputeClass types for Autopilot recipes.
+	scheme.AddKnownTypes(computeclassv1.SchemeGroupVersion, &computeclassv1.ComputeClass{}, &computeclassv1.ComputeClassList{})
+
 	decoder := serializer.NewCodecFactory(scheme).UniversalDeserializer()
 
 	return &YAMLDecoder{decoder: decoder}
