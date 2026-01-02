@@ -164,12 +164,16 @@ ingress:
   #
   hosts:
     - host: chart-example.local
-      path: /
-      # Additional paths to route to other Logstash services (for example, beats input).
-      # extraPaths:
-      #   - path: /beats
-      #     serviceName: beats
-      #     servicePort: 5044
+      path: /beats
+      serviceName: beats
+      servicePort: 5044
+
+      # Additional paths to route to other Logstash services (for example, API, http input).
+      extraPaths: []
+      #  Warning: The API exposes metrics and node info without authentication by default, ref: https://www.elastic.co/docs/deploy-manage/deploy/cloud-on-k8s/securing-logstash-api
+      #  - path: /api
+      #    serviceName: api
+      #    servicePort: 9600
 
   # TLS defines whether TLS will be enabled on the Ingress resource.
   #

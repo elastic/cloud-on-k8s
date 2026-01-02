@@ -41,9 +41,9 @@ spec:
         pathType: {{ $pathType }}
         backend:
           service:
-            name: {{ include "logstash.fullname" $ }}-ls-api
+            name: {{ include "logstash.fullname" $ }}-ls-{{ .serviceName }}
             port:
-              number: 9600
+              number: {{ .servicePort }}
       {{- range .extraPaths }}
       - path: {{ .path | default "/" }}
         pathType: {{ .pathType | default $pathType }}
