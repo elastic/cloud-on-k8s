@@ -4,6 +4,7 @@ kind: ComputeClass
 metadata:
   name: elasticsearch
 spec:
+  whenUnsatisfiable: "DoNotScaleUp" # Default since GKE 1.33
   nodePoolAutoCreation:
     enabled: true
   priorityDefaults:
