@@ -432,40 +432,18 @@ func Test_adjustZenConfig(t *testing.T) {
 		es                        esv1.Elasticsearch
 		statefulSet               sset.TestSset
 		pods                      []client.Object
-		wantMinimumMasterNodesSet bool
 		wantInitialMasterNodesSet bool
 	}{
-		{
-			name:                      "adjust zen1 minimum_master_nodes",
-			es:                        bootstrappedES,
-			statefulSet:               sset.TestSset{Version: "6.8.0", Replicas: 3, Master: true, Data: true},
-			wantMinimumMasterNodesSet: true,
-			wantInitialMasterNodesSet: false,
-		},
-		{
-			name:        "adjust zen1 minimum_master_nodes if some 6.8.x are still in flight",
-			es:          bootstrappedES,
-			statefulSet: sset.TestSset{Name: "masters", Version: "7.2.0", Replicas: 3, Master: true, Data: true},
-			pods: []client.Object{
-				newTestPod("masters-0").withVersion("6.8.0").withRoles(esv1.MasterRole, esv1.DataRole).toPodPtr(),
-				newTestPod("masters-1").withVersion("6.8.0").withRoles(esv1.MasterRole, esv1.DataRole).toPodPtr(),
-				newTestPod("masters-2").withVersion("6.8.0").withRoles(esv1.MasterRole, esv1.DataRole).toPodPtr(),
-			},
-			wantMinimumMasterNodesSet: true,
-			wantInitialMasterNodesSet: false,
-		},
 		{
 			name:                      "adjust zen2 initial master nodes when cluster is not bootstrapped yet",
 			es:                        notBootstrappedES,
 			statefulSet:               sset.TestSset{Version: "7.2.0", Replicas: 3, Master: true, Data: true},
-			wantMinimumMasterNodesSet: false,
 			wantInitialMasterNodesSet: true,
 		},
 		{
 			name:                      "don't adjust zen2 initial master nodes when cluster is already bootstrapped",
 			es:                        bootstrappedES,
 			statefulSet:               sset.TestSset{Version: "7.2.0", Replicas: 3, Master: true, Data: true},
-			wantMinimumMasterNodesSet: false,
 			wantInitialMasterNodesSet: false,
 		},
 	}
@@ -485,8 +463,6 @@ func Test_adjustZenConfig(t *testing.T) {
 			err := adjustZenConfig(context.Background(), client, tt.es, resources)
 			require.NoError(t, err)
 			for _, res := range resources {
-				hasMinimumMasterNodes := len(res.Config.HasKeys([]string{esv1.DiscoveryZenMinimumMasterNodes})) > 0
-				require.Equal(t, tt.wantMinimumMasterNodesSet, hasMinimumMasterNodes)
 				hasInitialMasterNodes := len(res.Config.HasKeys([]string{esv1.ClusterInitialMasterNodes})) > 0
 				require.Equal(t, tt.wantInitialMasterNodesSet, hasInitialMasterNodes)
 			}

@@ -37,13 +37,13 @@ func TestIsCompatibleWithZen2(t *testing.T) {
 		want bool
 	}{
 		{
-			name: "versionCompatibleWithZen2 6.8.0",
-			sset: createStatefulSetWithESVersion("6.8.0"),
-			want: false,
-		},
-		{
 			name: "versionCompatibleWithZen2 7.0.0",
 			sset: createStatefulSetWithESVersion("7.0.0"),
+			want: true,
+		},
+		{
+			name: "versionCompatibleWithZen2 8.0.0",
+			sset: createStatefulSetWithESVersion("8.0.0"),
 			want: true,
 		},
 		{
@@ -83,21 +83,12 @@ func TestAllMastersCompatibleWithZen2(t *testing.T) {
 			want: true,
 		},
 		{
-			name: "only v6 master nodes (with v7 data nodes)",
+			name: "mixed v7/v8 masters",
 			pods: []client.Object{
-				sset.TestPod{Namespace: es.Namespace, Name: "node0", ClusterName: es.Name, Version: "6.8.0", Master: true}.BuildPtr(),
-				sset.TestPod{Namespace: es.Namespace, Name: "node1", ClusterName: es.Name, Version: "6.8.0", Master: true}.BuildPtr(),
-				sset.TestPod{Namespace: es.Namespace, Name: "node2", ClusterName: es.Name, Version: "7.2.0", Data: true}.BuildPtr(),
+				sset.TestPod{Namespace: es.Namespace, Name: "node0", ClusterName: es.Name, Version: "8.0.0", Master: true}.BuildPtr(),
+				sset.TestPod{Namespace: es.Namespace, Name: "node1", ClusterName: es.Name, Version: "7.17.0", Master: true}.BuildPtr(),
 			},
-			want: false,
-		},
-		{
-			name: "mixed v6/v7 masters",
-			pods: []client.Object{
-				sset.TestPod{Namespace: es.Namespace, Name: "node0", ClusterName: es.Name, Version: "7.2.0", Master: true}.BuildPtr(),
-				sset.TestPod{Namespace: es.Namespace, Name: "node1", ClusterName: es.Name, Version: "6.8.0", Master: true}.BuildPtr(),
-			},
-			want: false,
+			want: true,
 		},
 		{
 			name: "no pods",

@@ -168,7 +168,7 @@ const (
 				},
 				"ip": "172.25.98.100",
 				"host": "172.25.98.100",
-				"version": "6.4.1",
+				"version": "7.17.0",
 				"jvm": {
 					"vm_name": "Java HotSpot(TM) 64-Bit Server VM",
 					"vm_version": "25.144-b01",
@@ -402,7 +402,7 @@ const (
 				},
 				"ip": "172.25.137.90",
 				"host": "172.25.137.90",
-				"version": "6.4.1",
+				"version": "7.17.0",
 				"jvm": {
 					"vm_name": "Java HotSpot(TM) 64-Bit Server VM",
 					"vm_version": "25.144-b01",
@@ -639,7 +639,7 @@ const (
 				},
 				"ip": "172.25.133.112",
 				"host": "172.25.133.112",
-				"version": "6.4.1",
+				"version": "7.17.0",
 				"jvm": {
 					"vm_name": "Java HotSpot(TM) 64-Bit Server VM",
 					"vm_version": "25.144-b01",

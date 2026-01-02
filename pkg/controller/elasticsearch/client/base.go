@@ -179,20 +179,17 @@ func (c *baseClient) request(
 
 func versioned(b *baseClient, v version.Version) Client {
 	b.version = v
-	v6 := clientV6{
+	v7 := clientV7{
 		baseClient: *b,
 	}
 	switch v.Major {
-	case 7:
-		return &clientV7{
-			clientV6: v6,
-		}
 	case 8, 9:
 		return &clientV8{
-			clientV7: clientV7{clientV6: v6},
+			clientV7: v7,
 		}
 	default:
-		return &v6
+		// Default to v7 client for version 7.x and any future versions
+		return &v7
 	}
 }
 

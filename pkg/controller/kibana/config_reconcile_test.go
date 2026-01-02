@@ -128,11 +128,6 @@ func TestVersionDefaults(t *testing.T) {
 		want    *settings.CanonicalConfig
 	}{
 		{
-			name:    "6.x",
-			version: "6.8.5",
-			want:    settings.NewCanonicalConfig(),
-		},
-		{
 			name:    "7.x",
 			version: "7.1.0",
 			want:    settings.NewCanonicalConfig(),

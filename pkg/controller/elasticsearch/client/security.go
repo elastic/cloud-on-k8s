@@ -46,10 +46,6 @@ type SecurityClient interface {
 	InvalidateAPIKeys(ctx context.Context, request APIKeysInvalidateRequest) (APIKeysInvalidateResponse, error)
 }
 
-func (c *clientV6) GetServiceAccountCredentials(_ context.Context, _ string) (ServiceAccountCredential, error) {
-	return ServiceAccountCredential{}, errNotSupportedInEs6x
-}
-
 func (c *clientV7) GetServiceAccountCredentials(ctx context.Context, namespacedService string) (ServiceAccountCredential, error) {
 	var serviceAccountCredential ServiceAccountCredential
 	path := fmt.Sprintf("/_security/service/%s/credential", namespacedService)
@@ -57,10 +53,6 @@ func (c *clientV7) GetServiceAccountCredentials(ctx context.Context, namespacedS
 		return serviceAccountCredential, err
 	}
 	return serviceAccountCredential, nil
-}
-
-func (c *clientV6) GetAPIKeysByName(ctx context.Context, name string) (APIKeyList, error) {
-	return APIKeyList{}, errNotSupportedInEs6x
 }
 
 func (c *clientV7) GetAPIKeysByName(ctx context.Context, name string) (APIKeyList, error) {
@@ -81,10 +73,6 @@ func (c *clientV7) GetAPIKeysByName(ctx context.Context, name string) (APIKeyLis
 	return APIKeyList{APIKeys: activeAPIKeys}, nil
 }
 
-func (c *clientV6) CreateAPIKey(ctx context.Context, request APIKeyCreateRequest) (APIKeyCreateResponse, error) {
-	return APIKeyCreateResponse{}, errNotSupportedInEs6x
-}
-
 func (c *clientV7) CreateAPIKey(ctx context.Context, request APIKeyCreateRequest) (APIKeyCreateResponse, error) {
 	var apiKey APIKeyCreateResponse
 	path := "/_security/api_key"
@@ -92,10 +80,6 @@ func (c *clientV7) CreateAPIKey(ctx context.Context, request APIKeyCreateRequest
 		return apiKey, err
 	}
 	return apiKey, nil
-}
-
-func (c *clientV6) InvalidateAPIKeys(ctx context.Context, request APIKeysInvalidateRequest) (APIKeysInvalidateResponse, error) {
-	return APIKeysInvalidateResponse{}, errNotSupportedInEs6x
 }
 
 func (c *clientV7) InvalidateAPIKeys(ctx context.Context, request APIKeysInvalidateRequest) (APIKeysInvalidateResponse, error) {

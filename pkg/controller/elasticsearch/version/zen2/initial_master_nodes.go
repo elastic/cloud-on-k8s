@@ -11,16 +11,13 @@ import (
 	pkgerrors "github.com/pkg/errors"
 
 	esv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/elasticsearch/v1"
-	sset "github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/statefulset"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/version"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/bootstrap"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/client"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/label"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/nodespec"
-	es_sset "github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/sset"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/k8s"
 	ulog "github.com/elastic/cloud-on-k8s/v3/pkg/utils/log"
-	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/set"
 )
 
 const (
@@ -31,8 +28,7 @@ const (
 
 // SetupInitialMasterNodes sets the `cluster.initial_master_nodes` configuration setting on
 // zen2-compatible master nodes from nodeSpecResources if necessary.
-// This is only necessary when bootstrapping a new zen2 cluster, or when upgrading a single zen1 master.
-// Rolling upgrades from eg. v6 to v7 do not need that setting.
+// This is only necessary when bootstrapping a new zen2 cluster.
 // It ensures `cluster.initial_master_nodes` does not vary over time, when this function gets called multiple times.
 func SetupInitialMasterNodes(ctx context.Context, es esv1.Elasticsearch, k8sClient k8s.Client, nodeSpecResources nodespec.ResourcesList) error {
 	// if the cluster is annotated with `cluster.initial_master_nodes` (zen2 bootstrap in progress),
@@ -42,7 +38,7 @@ func SetupInitialMasterNodes(ctx context.Context, es esv1.Elasticsearch, k8sClie
 	}
 
 	// in most cases, `cluster.initial_master_nodes` should not be set
-	shouldSetup, err := shouldSetInitialMasterNodes(es, k8sClient, nodeSpecResources)
+	shouldSetup, err := shouldSetInitialMasterNodes(es)
 	if err != nil {
 		return err
 	}
@@ -67,18 +63,13 @@ func SetupInitialMasterNodes(ctx context.Context, es esv1.Elasticsearch, k8sClie
 	return setInitialMasterNodesAnnotation(ctx, k8sClient, es, initialMasterNodes)
 }
 
-func shouldSetInitialMasterNodes(es esv1.Elasticsearch, k8sClient k8s.Client, nodeSpecResources nodespec.ResourcesList) (bool, error) {
+func shouldSetInitialMasterNodes(es esv1.Elasticsearch) (bool, error) {
 	if v, err := version.Parse(es.Spec.Version); err != nil || !versionCompatibleWithZen2(v) {
 		// we only care about zen2-compatible clusters here
 		return false, err
 	}
-	// we want to set `cluster.initial_master_nodes` if:
-	// - a new cluster is getting created (not already bootstrapped)
-	if !bootstrap.AnnotatedForBootstrap(es) {
-		return true, nil
-	}
-	// - we're upgrading (effectively restarting) a non-HA zen1 cluster to zen2
-	return nonHAZen1MasterUpgrade(k8sClient, es, nodeSpecResources)
+	// Set cluster.initial_master_nodes only when a new cluster is getting created (not already bootstrapped)
+	return !bootstrap.AnnotatedForBootstrap(es), nil
 }
 
 // RemoveZen2BootstrapAnnotation removes the initialMasterNodesAnnotation (if set) once zen2 is bootstrapped
@@ -124,59 +115,6 @@ func patchInitialMasterNodesConfig(ctx context.Context, nodeSpecResources nodesp
 		}
 	}
 	return nil
-}
-
-// nonHAZen1MasterUpgrade returns true if expected nodes in nodeSpecResources will lead to upgrading
-// the one or two zen1-compatible master nodes currently running in the es cluster.
-// As we upgrade all nodes at once in one or two node clusters initial master nodes needs to be set as there is no
-// existing cluster to join once all v6 nodes have been terminated.
-func nonHAZen1MasterUpgrade(c k8s.Client, es esv1.Elasticsearch, nodeSpecResources nodespec.ResourcesList) (bool, error) {
-	// looking for a non-HA master node setup...
-	masters, err := es_sset.GetActualMastersForCluster(c, es)
-	if err != nil {
-		return false, err
-	}
-	if len(masters) > 2 {
-		return false, nil
-	}
-
-	currentMasterNames := set.Make()
-	for _, currentMaster := range masters {
-		currentMasterNames.Add(currentMaster.Name)
-		// ...not compatible with zen2...
-		v, err := label.ExtractVersion(currentMaster.Labels)
-		if err != nil {
-			return false, err
-		}
-		// at least one master is already on Zen 2
-		if versionCompatibleWithZen2(v) {
-			return false, nil
-		}
-	}
-
-	// ...that will be replaced
-	targetMasters := set.Make()
-	for _, res := range nodeSpecResources {
-		if label.IsMasterNodeSet(res.StatefulSet) {
-			targetMasters.MergeWith(set.Make(sset.PodNames(res.StatefulSet)...))
-		}
-	}
-	if targetMasters.Count() == 0 {
-		return false, nil
-	}
-	if targetMasters.Count() > 2 {
-		// Covers the case where the user is upgrading to zen2 + adding more masters simultaneously.
-		// Additional masters will get created before the existing one gets upgraded/restarted.
-		return false, nil
-	}
-
-	if currentMasterNames.Diff(targetMasters).Count() > 0 {
-		// Covers the case where the existing masters are replaced by other masters in a different NodeSet.
-		// The new master will be created before the existing one gets removed.
-		return false, nil
-	}
-	// one or two zen1 masters, will be replaced by a one or two zen2 master with the same name
-	return true, nil
 }
 
 // getInitialMasterNodesAnnotation parses the `cluster.initial_master_nodes` value from

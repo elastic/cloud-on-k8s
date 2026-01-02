@@ -83,23 +83,23 @@ func TestESVersionMatch(t *testing.T) {
 	)
 	require.Equal(t, false,
 		ESVersionMatch(context.Background(), ssetv7, func(v version.Version) bool {
-			return v.Major == 6
+			return v.Major == 8
 		}),
 	)
 }
 
 func TestAtLeastOneESVersionMatch(t *testing.T) {
-	ssetv6 := *ssetv7.DeepCopy()
-	ssetv6.Spec.Template.Labels[label.VersionLabelName] = "6.8.0"
+	ssetv8 := *ssetv7.DeepCopy()
+	ssetv8.Spec.Template.Labels[label.VersionLabelName] = "8.0.0"
 
 	require.Equal(t, true,
-		StatefulSetList{ssetv6, ssetv7}.AtLeastOneESVersionMatch(context.Background(), func(v version.Version) bool {
-			return v.Major == 7
+		StatefulSetList{ssetv7, ssetv8}.AtLeastOneESVersionMatch(context.Background(), func(v version.Version) bool {
+			return v.Major == 8
 		}),
 	)
 	require.Equal(t, false,
-		StatefulSetList{ssetv6, ssetv6}.AtLeastOneESVersionMatch(context.Background(), func(v version.Version) bool {
-			return v.Major == 7
+		StatefulSetList{ssetv7, ssetv7}.AtLeastOneESVersionMatch(context.Background(), func(v version.Version) bool {
+			return v.Major == 8
 		}),
 	)
 }

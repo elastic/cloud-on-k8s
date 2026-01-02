@@ -193,10 +193,6 @@ type ElasticsearchStatus struct {
 	Phase                          ElasticsearchOrchestrationPhase `json:"phase,omitempty"`
 }
 
-type ZenDiscoveryStatus struct {
-	MinimumMasterNodes int `json:"minimumMasterNodes,omitempty"`
-}
-
 // IsDegraded returns true if the current status is worse than the previous.
 func (es ElasticsearchStatus) IsDegraded(prev ElasticsearchStatus) bool {
 	return es.Health.Less(prev.Health)

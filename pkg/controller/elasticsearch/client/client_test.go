@@ -153,14 +153,11 @@ func requestAssertion(test func(req *http.Request)) RoundTripFunc {
 func TestClientErrorHandling(t *testing.T) {
 	// 303 would lead to a redirect to another error response if we would also set the Location header
 	codes := []int{100, 303, 400, 404, 500}
-	testClient := NewMockClient(version.MustParse("6.8.0"), errorResponses(codes))
+	testClient := NewMockClient(version.MustParse("7.17.0"), errorResponses(codes))
 	requests := []func() (string, error){
 		func() (string, error) {
 			_, err := testClient.GetClusterInfo(context.Background())
 			return "GetClusterInfo", err
-		},
-		func() (string, error) {
-			return "SetMinimumMasterNodes", testClient.SetMinimumMasterNodes(context.Background(), 0)
 		},
 	}
 
@@ -173,14 +170,12 @@ func TestClientErrorHandling(t *testing.T) {
 }
 
 func TestClientUsesJsonContentType(t *testing.T) {
-	testClient := NewMockClient(version.MustParse("6.8.0"), requestAssertion(func(req *http.Request) {
+	testClient := NewMockClient(version.MustParse("7.17.0"), requestAssertion(func(req *http.Request) {
 		assert.Equal(t, []string{"application/json; charset=utf-8"}, req.Header["Content-Type"])
 	}))
 
 	_, err := testClient.GetClusterInfo(context.Background())
 	assert.NoError(t, err)
-
-	assert.NoError(t, testClient.SetMinimumMasterNodes(context.Background(), 0))
 }
 
 func TestClientSupportsBasicAuth(t *testing.T) {
@@ -213,7 +208,7 @@ func TestClientSupportsBasicAuth(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		testClient := NewMockClientWithUser(version.MustParse("6.8.0"),
+		testClient := NewMockClientWithUser(version.MustParse("7.17.0"),
 			tt.args,
 			requestAssertion(func(req *http.Request) {
 				username, password, ok := req.BasicAuth()
@@ -224,7 +219,6 @@ func TestClientSupportsBasicAuth(t *testing.T) {
 
 		_, err := testClient.GetClusterInfo(context.Background())
 		assert.NoError(t, err)
-		assert.NoError(t, testClient.SetMinimumMasterNodes(context.Background(), 0))
 	}
 }
 
@@ -308,7 +302,7 @@ func TestAPIError_Error(t *testing.T) {
 
 func TestClientGetNodes(t *testing.T) {
 	expectedPath := "/_nodes/_all/no-metrics"
-	testClient := NewMockClient(version.MustParse("6.8.0"), func(req *http.Request) *http.Response {
+	testClient := NewMockClient(version.MustParse("7.17.0"), func(req *http.Request) *http.Response {
 		require.Equal(t, expectedPath, req.URL.Path)
 		return &http.Response{
 			StatusCode: 200,
@@ -326,7 +320,7 @@ func TestClientGetNodes(t *testing.T) {
 
 func TestClientGetNodesStats(t *testing.T) {
 	expectedPath := "/_nodes/_all/stats/os"
-	testClient := NewMockClient(version.MustParse("6.8.0"), func(req *http.Request) *http.Response {
+	testClient := NewMockClient(version.MustParse("7.17.0"), func(req *http.Request) *http.Response {
 		require.Equal(t, expectedPath, req.URL.Path)
 		return &http.Response{
 			StatusCode: 200,
@@ -344,7 +338,7 @@ func TestClientGetNodesStats(t *testing.T) {
 
 func TestGetInfo(t *testing.T) {
 	expectedPath := "/"
-	testClient := NewMockClient(version.MustParse("6.4.1"), func(req *http.Request) *http.Response {
+	testClient := NewMockClient(version.MustParse("7.17.0"), func(req *http.Request) *http.Response {
 		require.Equal(t, expectedPath, req.URL.Path)
 		return &http.Response{
 			StatusCode: 200,
@@ -357,7 +351,7 @@ func TestGetInfo(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, "af932d24216a4dd69ba47d2fd3214796", info.ClusterName)
 	require.Equal(t, "LGA3VblKTNmzP6Q6SWxfkw", info.ClusterUUID)
-	require.Equal(t, "6.4.1", info.Version.Number)
+	require.Equal(t, "7.17.0", info.Version.Number) // This is the version reported by the ES API response in the fixture, not the client version
 }
 
 func TestClient_Equal(t *testing.T) {
@@ -373,8 +367,8 @@ func TestClient_Equal(t *testing.T) {
 		return ca.Cert
 	}
 	dummyCACerts := []*x509.Certificate{createCert()}
-	v6 := version.MustParse("6.8.0")
-	v7 := version.MustParse("7.0.0")
+	v7 := version.MustParse("7.17.0")
+	v8 := version.MustParse("8.0.0")
 	timeout := Timeout(context.Background(), esv1.Elasticsearch{})
 	x509.NewCertPool()
 	tests := []struct {
@@ -385,61 +379,61 @@ func TestClient_Equal(t *testing.T) {
 	}{
 		{
 			name: "c1 and c2 equals",
-			c1:   NewElasticsearchClient(nil, dummyNamespaceName, dummyEndpoint, dummyUser, v6, dummyCACerts, timeout, false),
-			c2:   NewElasticsearchClient(nil, dummyNamespaceName, dummyEndpoint, dummyUser, v6, dummyCACerts, timeout, false),
+			c1:   NewElasticsearchClient(nil, dummyNamespaceName, dummyEndpoint, dummyUser, v7, dummyCACerts, timeout, false),
+			c2:   NewElasticsearchClient(nil, dummyNamespaceName, dummyEndpoint, dummyUser, v7, dummyCACerts, timeout, false),
 			want: true,
 		},
 		{
 			name: "c2 nil",
-			c1:   NewElasticsearchClient(nil, dummyNamespaceName, dummyEndpoint, dummyUser, v6, dummyCACerts, timeout, false),
+			c1:   NewElasticsearchClient(nil, dummyNamespaceName, dummyEndpoint, dummyUser, v7, dummyCACerts, timeout, false),
 			c2:   nil,
 			want: false,
 		},
 		{
 			name: "different endpoint",
-			c1:   NewElasticsearchClient(nil, dummyNamespaceName, dummyEndpoint, dummyUser, v6, dummyCACerts, timeout, false),
-			c2:   NewElasticsearchClient(nil, dummyNamespaceName, NewStaticURLProvider("another-endpoint"), dummyUser, v6, dummyCACerts, timeout, false),
+			c1:   NewElasticsearchClient(nil, dummyNamespaceName, dummyEndpoint, dummyUser, v7, dummyCACerts, timeout, false),
+			c2:   NewElasticsearchClient(nil, dummyNamespaceName, NewStaticURLProvider("another-endpoint"), dummyUser, v7, dummyCACerts, timeout, false),
 			want: false,
 		},
 		{
 			name: "different user",
-			c1:   NewElasticsearchClient(nil, dummyNamespaceName, dummyEndpoint, dummyUser, v6, dummyCACerts, timeout, false),
-			c2:   NewElasticsearchClient(nil, dummyNamespaceName, dummyEndpoint, BasicAuth{Name: "user", Password: "another-password"}, v6, dummyCACerts, timeout, false),
+			c1:   NewElasticsearchClient(nil, dummyNamespaceName, dummyEndpoint, dummyUser, v7, dummyCACerts, timeout, false),
+			c2:   NewElasticsearchClient(nil, dummyNamespaceName, dummyEndpoint, BasicAuth{Name: "user", Password: "another-password"}, v7, dummyCACerts, timeout, false),
 			want: false,
 		},
 		{
 			name: "different CA cert",
-			c1:   NewElasticsearchClient(nil, dummyNamespaceName, dummyEndpoint, dummyUser, v6, dummyCACerts, timeout, false),
-			c2:   NewElasticsearchClient(nil, dummyNamespaceName, dummyEndpoint, dummyUser, v6, []*x509.Certificate{createCert()}, timeout, false),
+			c1:   NewElasticsearchClient(nil, dummyNamespaceName, dummyEndpoint, dummyUser, v7, dummyCACerts, timeout, false),
+			c2:   NewElasticsearchClient(nil, dummyNamespaceName, dummyEndpoint, dummyUser, v7, []*x509.Certificate{createCert()}, timeout, false),
 			want: false,
 		},
 		{
 			name: "different CA certs length",
-			c1:   NewElasticsearchClient(nil, dummyNamespaceName, dummyEndpoint, dummyUser, v6, dummyCACerts, timeout, false),
-			c2:   NewElasticsearchClient(nil, dummyNamespaceName, dummyEndpoint, dummyUser, v6, []*x509.Certificate{createCert(), createCert()}, timeout, false),
+			c1:   NewElasticsearchClient(nil, dummyNamespaceName, dummyEndpoint, dummyUser, v7, dummyCACerts, timeout, false),
+			c2:   NewElasticsearchClient(nil, dummyNamespaceName, dummyEndpoint, dummyUser, v7, []*x509.Certificate{createCert(), createCert()}, timeout, false),
 			want: false,
 		},
 		{
 			name: "different dialers are not taken into consideration",
-			c1:   NewElasticsearchClient(nil, dummyNamespaceName, dummyEndpoint, dummyUser, v6, dummyCACerts, timeout, false),
-			c2:   NewElasticsearchClient(portforward.NewForwardingDialer(), dummyNamespaceName, dummyEndpoint, dummyUser, v6, dummyCACerts, timeout, false),
+			c1:   NewElasticsearchClient(nil, dummyNamespaceName, dummyEndpoint, dummyUser, v7, dummyCACerts, timeout, false),
+			c2:   NewElasticsearchClient(portforward.NewForwardingDialer(), dummyNamespaceName, dummyEndpoint, dummyUser, v7, dummyCACerts, timeout, false),
 			want: true,
 		},
 		{
 			name: "different versions",
-			c1:   NewElasticsearchClient(nil, dummyNamespaceName, dummyEndpoint, dummyUser, v6, dummyCACerts, timeout, false),
-			c2:   NewElasticsearchClient(nil, dummyNamespaceName, dummyEndpoint, dummyUser, v7, dummyCACerts, timeout, false),
+			c1:   NewElasticsearchClient(nil, dummyNamespaceName, dummyEndpoint, dummyUser, v7, dummyCACerts, timeout, false),
+			c2:   NewElasticsearchClient(nil, dummyNamespaceName, dummyEndpoint, dummyUser, v8, dummyCACerts, timeout, false),
 			want: false,
 		},
 		{
 			name: "same versions",
-			c1:   NewElasticsearchClient(nil, dummyNamespaceName, dummyEndpoint, dummyUser, v7, dummyCACerts, timeout, false),
-			c2:   NewElasticsearchClient(nil, dummyNamespaceName, dummyEndpoint, dummyUser, v7, dummyCACerts, timeout, false),
+			c1:   NewElasticsearchClient(nil, dummyNamespaceName, dummyEndpoint, dummyUser, v8, dummyCACerts, timeout, false),
+			c2:   NewElasticsearchClient(nil, dummyNamespaceName, dummyEndpoint, dummyUser, v8, dummyCACerts, timeout, false),
 			want: true,
 		},
 		{
 			name: "one has a version",
-			c1:   NewElasticsearchClient(nil, dummyNamespaceName, dummyEndpoint, dummyUser, v7, dummyCACerts, timeout, false),
+			c1:   NewElasticsearchClient(nil, dummyNamespaceName, dummyEndpoint, dummyUser, v8, dummyCACerts, timeout, false),
 			c2:   NewElasticsearchClient(nil, dummyNamespaceName, dummyEndpoint, dummyUser, version.Version{}, dummyCACerts, timeout, false),
 			want: false,
 		},
@@ -458,11 +452,6 @@ func TestClient_AddVotingConfigExclusions(t *testing.T) {
 		version       version.Version
 		wantErr       bool
 	}{
-		{
-			expectedPath: "",
-			version:      version.MustParse("6.8.0"),
-			wantErr:      true,
-		},
 		{
 			expectedPath: "/_cluster/voting_config_exclusions/a,b",
 			version:      version.MustParse("7.0.0"),
@@ -505,13 +494,13 @@ func TestClient_DeleteVotingConfigExclusions(t *testing.T) {
 		wantErr      bool
 	}{
 		{
-			expectedPath: "",
-			version:      version.MustParse("6.8.0"),
-			wantErr:      true,
+			expectedPath: "/_cluster/voting_config_exclusions",
+			version:      version.MustParse("7.0.0"),
+			wantErr:      false,
 		},
 		{
 			expectedPath: "/_cluster/voting_config_exclusions",
-			version:      version.MustParse("7.0.0"),
+			version:      version.MustParse("8.0.0"),
 			wantErr:      false,
 		},
 	}
@@ -527,42 +516,6 @@ func TestClient_DeleteVotingConfigExclusions(t *testing.T) {
 		err := client.DeleteVotingConfigExclusions(context.Background(), false)
 		if (err != nil) != tt.wantErr {
 			t.Errorf("Client.DeleteVotingConfigExclusions() error = %v, wantErr %v", err, tt.wantErr)
-		}
-	}
-}
-
-func TestClient_SetMinimumMasterNodes(t *testing.T) {
-	tests := []struct {
-		name         string
-		expectedPath string
-		version      version.Version
-		wantErr      bool
-	}{
-		{
-			name:         "mininum master nodes is essential in v6",
-			expectedPath: "/_cluster/settings",
-			version:      version.MustParse("6.8.0"),
-			wantErr:      false,
-		},
-		{
-			name:         "in v7 it is still supported for bwc but devoid of meaning",
-			expectedPath: "/_cluster/settings",
-			version:      version.MustParse("7.0.0"),
-			wantErr:      false,
-		},
-	}
-
-	for _, tt := range tests {
-		client := NewMockClient(tt.version, func(req *http.Request) *http.Response {
-			require.Equal(t, tt.expectedPath, req.URL.Path)
-			return &http.Response{
-				StatusCode: 200,
-				Body:       io.NopCloser(strings.NewReader("")),
-			}
-		})
-		err := client.SetMinimumMasterNodes(context.Background(), 1)
-		if (err != nil) != tt.wantErr {
-			t.Errorf("Client.SetMinimumMasterNodes() error = %v, wantErr %v", err, tt.wantErr)
 		}
 	}
 }
@@ -636,18 +589,18 @@ func TestClient_ClusterBootstrappedForZen2(t *testing.T) {
 		bootstrappedForZen2, wantErr       bool
 	}{
 		{
-			name:                "6.x master node",
-			expectedPath:        "/_nodes/_master",
-			version:             "6.8.0",
-			apiResponse:         fixtures.MasterNodeForVersion("6.8.0"),
-			bootstrappedForZen2: false,
-			wantErr:             false,
-		},
-		{
 			name:                "7.x master node",
 			expectedPath:        "/_nodes/_master",
 			version:             "7.5.0",
 			apiResponse:         fixtures.MasterNodeForVersion("7.5.0"),
+			bootstrappedForZen2: true,
+			wantErr:             false,
+		},
+		{
+			name:                "8.x master node",
+			expectedPath:        "/_nodes/_master",
+			version:             "8.0.0",
+			apiResponse:         fixtures.MasterNodeForVersion("8.0.0"),
 			bootstrappedForZen2: true,
 			wantErr:             false,
 		},

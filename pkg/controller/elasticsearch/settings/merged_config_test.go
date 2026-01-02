@@ -142,12 +142,11 @@ func TestNewMergedESConfig(t *testing.T) {
 			},
 		},
 		{
-			name:     "starting 7.x, seed hosts settings should be discovery.seed_providers",
+			name:     "seed hosts settings should be discovery.seed_providers",
 			version:  "7.0.0",
 			ipFamily: corev1.IPv4Protocol,
 			cfgData:  map[string]interface{}{},
 			assert: func(cfg CanonicalConfig) {
-				require.Equal(t, 0, len(cfg.HasKeys([]string{esv1.DiscoveryZenHostsProvider})))
 				require.Equal(t, 1, len(cfg.HasKeys([]string{esv1.DiscoverySeedProviders})))
 			},
 		},
