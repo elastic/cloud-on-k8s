@@ -288,7 +288,6 @@ func doDownscale(downscaleCtx downscaleContext, downscale ssetDownscale) error {
 		// Update zen2 settings to exclude leaving master nodes from voting.
 		if err := zen2.AddToVotingConfigExclusions(
 			downscaleCtx.parentCtx,
-			downscaleCtx.k8sClient,
 			downscaleCtx.esClient,
 			downscaleCtx.es,
 			downscale.leavingNodeNames(),

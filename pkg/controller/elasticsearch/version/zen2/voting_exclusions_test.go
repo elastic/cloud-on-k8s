@@ -102,17 +102,9 @@ func Test_ClearVotingConfigExclusions(t *testing.T) {
 
 func TestAddToVotingConfigExclusions(t *testing.T) {
 	es := esv1.Elasticsearch{ObjectMeta: metav1.ObjectMeta{Name: "es", Namespace: "ns"}}
-	masterPod := sset.TestPod{
-		Namespace:   "ns",
-		Name:        "pod-name",
-		ClusterName: "es",
-		Version:     "7.2.0",
-		Master:      true,
-	}.BuildPtr()
 	tests := []struct {
 		name              string
 		es                *esv1.Elasticsearch
-		c                 k8s.Client
 		excludeNodes      []string
 		wantAPICalled     bool
 		wantAPICalledWith []string
@@ -120,7 +112,6 @@ func TestAddToVotingConfigExclusions(t *testing.T) {
 		{
 			name:              "set voting config exclusions",
 			es:                &es,
-			c:                 k8s.NewFakeClient(&es, masterPod),
 			excludeNodes:      []string{"node1", "node2"},
 			wantAPICalled:     true,
 			wantAPICalledWith: []string{"node1", "node2"},
@@ -129,13 +120,10 @@ func TestAddToVotingConfigExclusions(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			clientMock := &fakeVotingConfigExclusionsESClient{}
-			err := AddToVotingConfigExclusions(context.Background(), tt.c, clientMock, *tt.es, tt.excludeNodes)
+			err := AddToVotingConfigExclusions(context.Background(), clientMock, *tt.es, tt.excludeNodes)
 			require.NoError(t, err)
 			require.Equal(t, tt.wantAPICalled, clientMock.called)
 			require.Equal(t, tt.wantAPICalledWith, clientMock.excludedNodes)
-			var retrievedES esv1.Elasticsearch
-			err = tt.c.Get(context.Background(), k8s.ExtractNamespacedName(tt.es), &retrievedES)
-			require.NoError(t, err)
 		})
 	}
 }

@@ -11,11 +11,11 @@ import (
 	pkgerrors "github.com/pkg/errors"
 
 	esv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/elasticsearch/v1"
-	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/version"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/bootstrap"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/client"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/label"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/nodespec"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/settings"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/k8s"
 	ulog "github.com/elastic/cloud-on-k8s/v3/pkg/utils/log"
 )
@@ -34,15 +34,11 @@ func SetupInitialMasterNodes(ctx context.Context, es esv1.Elasticsearch, k8sClie
 	// if the cluster is annotated with `cluster.initial_master_nodes` (zen2 bootstrap in progress),
 	// make sure we reuse that value since it is not supposed to vary over time
 	if initialMasterNodes := getInitialMasterNodesAnnotation(es); initialMasterNodes != nil {
-		return patchInitialMasterNodesConfig(ctx, nodeSpecResources, initialMasterNodes)
+		return patchInitialMasterNodesConfig(nodeSpecResources, initialMasterNodes)
 	}
 
 	// in most cases, `cluster.initial_master_nodes` should not be set
-	shouldSetup, err := shouldSetInitialMasterNodes(es)
-	if err != nil {
-		return err
-	}
-	if !shouldSetup {
+	if !shouldSetInitialMasterNodes(es) {
 		return nil
 	}
 
@@ -56,29 +52,21 @@ func SetupInitialMasterNodes(ctx context.Context, es esv1.Elasticsearch, k8sClie
 		"es_name", es.Name,
 		"cluster.initial_master_nodes", strings.Join(initialMasterNodes, ","),
 	)
-	if err := patchInitialMasterNodesConfig(ctx, nodeSpecResources, initialMasterNodes); err != nil {
+	if err := patchInitialMasterNodesConfig(nodeSpecResources, initialMasterNodes); err != nil {
 		return err
 	}
 	// keep the computed value in an annotation for reuse in subsequent reconciliations
 	return setInitialMasterNodesAnnotation(ctx, k8sClient, es, initialMasterNodes)
 }
 
-func shouldSetInitialMasterNodes(es esv1.Elasticsearch) (bool, error) {
-	if v, err := version.Parse(es.Spec.Version); err != nil || !versionCompatibleWithZen2(v) {
-		// we only care about zen2-compatible clusters here
-		return false, err
-	}
+func shouldSetInitialMasterNodes(es esv1.Elasticsearch) bool {
 	// Set cluster.initial_master_nodes only when a new cluster is getting created (not already bootstrapped)
-	return !bootstrap.AnnotatedForBootstrap(es), nil
+	return !bootstrap.AnnotatedForBootstrap(es)
 }
 
 // RemoveZen2BootstrapAnnotation removes the initialMasterNodesAnnotation (if set) once zen2 is bootstrapped
 // on the corresponding cluster.
 func RemoveZen2BootstrapAnnotation(ctx context.Context, k8sClient k8s.Client, es esv1.Elasticsearch, esClient client.Client) (bool, error) {
-	if v, err := version.Parse(es.Spec.Version); err != nil || !versionCompatibleWithZen2(v) {
-		// we only care about zen2-compatible clusters here
-		return false, err
-	}
 	if getInitialMasterNodesAnnotation(es) == nil {
 		// most common case: no annotation set, nothing to do
 		return false, nil
@@ -102,13 +90,16 @@ func RemoveZen2BootstrapAnnotation(ctx context.Context, k8sClient k8s.Client, es
 	return false, k8sClient.Update(ctx, &es)
 }
 
-// patchInitialMasterNodesConfig mutates the configuration of zen2-compatible master nodes
+// patchInitialMasterNodesConfig mutates the configuration of master nodes
 // to have the given `cluster.initial_master_nodes` setting.
-func patchInitialMasterNodesConfig(ctx context.Context, nodeSpecResources nodespec.ResourcesList, initialMasterNodes []string) error {
+func patchInitialMasterNodesConfig(nodeSpecResources nodespec.ResourcesList, initialMasterNodes []string) error {
 	for i, res := range nodeSpecResources {
-		if !label.IsMasterNodeSet(res.StatefulSet) || !IsCompatibleWithZen2(ctx, res.StatefulSet) {
-			// we only care about updating zen2 masters config here
+		if !label.IsMasterNodeSet(res.StatefulSet) {
 			continue
+		}
+		// Defensively initialize config if nil (should never be the case except for tests)
+		if nodeSpecResources[i].Config.CanonicalConfig == nil {
+			nodeSpecResources[i].Config = settings.NewCanonicalConfig()
 		}
 		if err := nodeSpecResources[i].Config.SetStrings(esv1.ClusterInitialMasterNodes, initialMasterNodes...); err != nil {
 			return err

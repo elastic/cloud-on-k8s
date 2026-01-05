@@ -197,7 +197,6 @@ func (ctx *upgradeCtx) handleMasterScaleChange(pod corev1.Pod) error {
 		// Update zen2 settings to exclude leaving master nodes from voting.
 		if err := zen2.AddToVotingConfigExclusions(
 			ctx.parentCtx,
-			ctx.client,
 			ctx.esClient,
 			ctx.ES,
 			[]string{pod.Name},

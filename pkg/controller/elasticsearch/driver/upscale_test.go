@@ -139,7 +139,7 @@ func TestHandleUpscaleAndSpecChanges(t *testing.T) {
 					Name:      "sset1",
 				},
 			},
-			Config: settings.CanonicalConfig{},
+			Config: settings.NewCanonicalConfig(),
 		},
 		{
 			StatefulSet: appsv1.StatefulSet{
@@ -157,7 +157,7 @@ func TestHandleUpscaleAndSpecChanges(t *testing.T) {
 					Name:      "sset2",
 				},
 			},
-			Config: settings.CanonicalConfig{},
+			Config: settings.NewCanonicalConfig(),
 		},
 	}
 
@@ -293,7 +293,7 @@ func TestHandleUpscaleAndSpecChanges_PVCResize(t *testing.T) {
 					Name:      "sset1",
 				},
 			},
-			Config: settings.CanonicalConfig{},
+			Config: settings.NewCanonicalConfig(),
 		},
 		{
 			StatefulSet: dataResized,
@@ -303,7 +303,7 @@ func TestHandleUpscaleAndSpecChanges_PVCResize(t *testing.T) {
 					Name:      "sset2",
 				},
 			},
-			Config: settings.CanonicalConfig{},
+			Config: settings.NewCanonicalConfig(),
 		},
 	}
 
