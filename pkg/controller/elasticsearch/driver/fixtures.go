@@ -334,11 +334,6 @@ func (t testPod) toPod() corev1.Pod {
 	return pod
 }
 
-func (t testPod) toPodPtr() *corev1.Pod {
-	pod := t.toPod()
-	return &pod
-}
-
 type testESState struct {
 	inCluster []string
 	health    client.Health

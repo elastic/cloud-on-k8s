@@ -41,9 +41,9 @@ func Test_upscaleState_limitNodesCreation(t *testing.T) {
 		{
 			name:        "spec change (same replicas)",
 			state:       &upscaleState{},
-			actual:      sset.TestSset{Name: "sset", Version: "6.8.0", Replicas: 3, Master: true}.Build(),
-			ssetToApply: sset.TestSset{Name: "sset", Version: "7.2.0", Replicas: 3, Master: true}.Build(),
-			wantSset:    sset.TestSset{Name: "sset", Version: "7.2.0", Replicas: 3, Master: true}.Build(),
+			actual:      sset.TestSset{Name: "sset", Version: "7.17.0", Replicas: 3, Master: true}.Build(),
+			ssetToApply: sset.TestSset{Name: "sset", Version: "8.0.0", Replicas: 3, Master: true}.Build(),
+			wantSset:    sset.TestSset{Name: "sset", Version: "8.0.0", Replicas: 3, Master: true}.Build(),
 			wantState:   &upscaleState{},
 		},
 		{

@@ -84,7 +84,7 @@ func TestRemoteCluster(t *testing.T) {
 			test.Step{
 				Name: "Add some data to the first cluster",
 				Test: func(t *testing.T) {
-					// Always enable soft deletes on test index. This is required to create follower indices but disabled by default on 6.x
+					// Always enable soft deletes on test index. This is required to create follower indices.
 					require.NoError(t, elasticsearch.NewDataIntegrityCheck(k, es1Builder).WithSoftDeletesEnabled(true).Init())
 				},
 			},

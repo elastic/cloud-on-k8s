@@ -76,7 +76,7 @@ func TestMutationMoreNodes(t *testing.T) {
 
 // TestMutationLessNodes creates a 3 node cluster,
 // then mutates it to a 1 node cluster.
-// Covers the special case of going from 2 to 1 master node with zen1.
+// Covers the special case of going from 3 (HA) to 1 (non-HA) on a mixed node role cluster.
 func TestMutationLessNodes(t *testing.T) {
 	// create an ES cluster with 3 node
 	b := elasticsearch.NewBuilder("test-mutation-less-nodes").
