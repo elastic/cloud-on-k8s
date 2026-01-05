@@ -699,7 +699,7 @@ func (d *defaultDriver) reconcileReloadableKeystore(
 	// If the keystore job is still running or the secret isn't ready yet, request a requeue
 	// so we can check again and eventually call the reload API.
 	if !keystoreReady {
-		results.WithReconciliationState(defaultRequeue.WithReason("Keystore job not yet complete"))
+		results.WithReconciliationState(defaultRequeue.WithReason("Keystore Job not yet complete"))
 	}
 	keystoreConfig := nodespec.KeystoreConfig{
 		SecretName: esv1.KeystoreSecretName(d.ES.Name),
