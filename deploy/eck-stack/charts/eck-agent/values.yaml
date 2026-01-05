@@ -18,7 +18,7 @@
 
 # Version of Elastic Agent.
 #
-version: 9.3.0-SNAPSHOT
+version: 9.4.0-SNAPSHOT
 
 # Labels that will be applied to Elastic Agent.
 #
@@ -30,7 +30,7 @@ annotations: {}
 
 # Elastic Agent image to deploy.
 #
-# image: docker.elastic.co/beats/elastic-agent:9.3.0-SNAPSHOT
+# image: docker.elastic.co/beats/elastic-agent:9.4.0-SNAPSHOT
 
 # ** Deprecation Notice **
 # The previous versions of this Helm Chart simply used the `spec` field here

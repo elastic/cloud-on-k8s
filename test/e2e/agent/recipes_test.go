@@ -139,7 +139,7 @@ func TestFleetKubernetesNonRootIntegrationRecipe(t *testing.T) {
 
 	if (v.GE(version.MinFor(9, 0, 1)) && v.LE(version.MinFor(9, 0, 4))) ||
 		(v.EQ(version.From(9, 1, 0))) ||
-		(v.EQ(version.MustParse("9.3.0-SNAPSHOT"))) { // TODO remove once https://github.com/elastic/kibana/pull/230211 is backported to 9.3.x
+		(v.EQ(version.MustParse("9.4.0-SNAPSHOT"))) { // TODO remove once https://github.com/elastic/kibana/pull/230211 is backported to 9.3.x
 		t.Skipf("Skipped as version %s is affected by https://github.com/elastic/kibana/pull/230211", v)
 	}
 
