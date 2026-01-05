@@ -16,6 +16,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/label"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/reconcile"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/sset"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/version/zen2"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/k8s"
 	ulog "github.com/elastic/cloud-on-k8s/v3/pkg/utils/log"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/stringsutil"
@@ -193,12 +194,13 @@ func sortCandidates(allPods []corev1.Pod) {
 func (ctx *upgradeCtx) handleMasterScaleChange(pod corev1.Pod) error {
 	masterScaleDown := label.IsMasterNode(pod) && !stringsutil.StringInSlice(pod.Name, ctx.expectedMasters)
 	if masterScaleDown {
-		if err := updateZenSettingsForDownscale(
+		// Update zen2 settings to exclude leaving master nodes from voting.
+		if err := zen2.AddToVotingConfigExclusions(
 			ctx.parentCtx,
 			ctx.client,
 			ctx.esClient,
 			ctx.ES,
-			pod.Name,
+			[]string{pod.Name},
 		); err != nil {
 			return err
 		}

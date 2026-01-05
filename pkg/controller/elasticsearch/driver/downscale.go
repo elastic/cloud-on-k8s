@@ -285,12 +285,13 @@ func doDownscale(downscaleCtx downscaleContext, downscale ssetDownscale) error {
 	)
 
 	if label.IsMasterNodeSet(downscale.statefulSet) {
-		if err := updateZenSettingsForDownscale(
+		// Update zen2 settings to exclude leaving master nodes from voting.
+		if err := zen2.AddToVotingConfigExclusions(
 			downscaleCtx.parentCtx,
 			downscaleCtx.k8sClient,
 			downscaleCtx.esClient,
 			downscaleCtx.es,
-			downscale.leavingNodeNames()...,
+			downscale.leavingNodeNames(),
 		); err != nil {
 			return err
 		}
@@ -305,17 +306,4 @@ func doDownscale(downscaleCtx downscaleContext, downscale ssetDownscale) error {
 	downscaleCtx.expectations.ExpectGeneration(downscale.statefulSet)
 
 	return nil
-}
-
-// updateZenSettingsForDownscale makes sure zen2 settings are updated to account for nodes
-// that will soon be removed.
-func updateZenSettingsForDownscale(
-	ctx context.Context,
-	c k8s.Client,
-	esClient esclient.Client,
-	es esv1.Elasticsearch,
-	excludeNodes ...string,
-) error {
-	// Update zen2 settings to exclude leaving master nodes from voting.
-	return zen2.AddToVotingConfigExclusions(ctx, c, esClient, es, excludeNodes)
 }
