@@ -14,7 +14,6 @@ import (
 
 	esv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/elasticsearch/v1"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/events"
-	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/keystore"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/metadata"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/reconciler"
 	sset "github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/statefulset"
@@ -39,7 +38,7 @@ func (d *defaultDriver) reconcileNodeSpecs(
 	esClient esclient.Client,
 	reconcileState *reconcile.State,
 	resourcesState reconcile.ResourcesState,
-	keystoreResources *keystore.Resources,
+	keystoreConfig nodespec.KeystoreConfig,
 	meta metadata.Metadata,
 ) *reconciler.Results {
 	span, ctx := apm.StartSpan(ctx, "reconcile_node_spec", tracing.SpanTypeApp)
@@ -84,7 +83,7 @@ func (d *defaultDriver) reconcileNodeSpecs(
 		return results.WithError(err)
 	}
 
-	expectedResources, err := nodespec.BuildExpectedResources(ctx, d.Client, d.ES, keystoreResources, actualStatefulSets, d.OperatorParameters.IPFamily, d.OperatorParameters.SetDefaultSecurityContext, meta)
+	expectedResources, err := nodespec.BuildExpectedResources(ctx, d.Client, d.ES, keystoreConfig, actualStatefulSets, d.OperatorParameters.IPFamily, d.OperatorParameters.SetDefaultSecurityContext, meta)
 	if err != nil {
 		return results.WithError(err)
 	}

@@ -25,6 +25,7 @@ import (
 	policyv1alpha1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/stackconfigpolicy/v1alpha1"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/association"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/container"
 	commondriver "github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/driver"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/events"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/expectations"
@@ -43,8 +44,10 @@ import (
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/filesettings"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/hints"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/initcontainer"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/keystorejob"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/label"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/license"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/nodespec"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/observer"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/reconcile"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/remotecluster"
@@ -53,6 +56,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/settings"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/stackmon"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/user"
+	esvolume "github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/volume"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/stackconfigpolicy"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/dev"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/k8s"
@@ -138,10 +142,6 @@ func (d *defaultDriver) Reconcile(ctx context.Context) *reconciler.Results {
 
 	// extract the metadata that should be propagated to children
 	meta := metadata.Propagate(&d.ES, metadata.Metadata{Labels: label.NewLabels(k8s.ExtractNamespacedName(&d.ES))})
-
-	if err := configmap.ReconcileScriptsConfigMap(ctx, d.Client, d.ES, meta); err != nil {
-		return results.WithError(err)
-	}
 
 	_, err := common.ReconcileService(ctx, d.Client, services.NewTransportService(d.ES, meta), &d.ES)
 	if err != nil {
@@ -390,6 +390,20 @@ func (d *defaultDriver) Reconcile(ctx context.Context) *reconciler.Results {
 		return results.WithError(err)
 	}
 
+	// For Elasticsearch 9.3+, use the job-based reloadable keystore approach instead of init containers.
+	// This avoids pod restarts when secure settings change.
+	keystoreConfig, keystoreSecretMountPath, err := d.reconcileReloadableKeystore(
+		ctx, esReachable, esClient, keystoreResources, meta, results,
+	)
+	if err != nil {
+		return results.WithError(err)
+	}
+
+	// Reconcile the scripts ConfigMap (must be after keystore decision to set up symlink correctly)
+	if err := configmap.ReconcileScriptsConfigMap(ctx, d.Client, d.ES, meta, keystoreSecretMountPath); err != nil {
+		return results.WithError(err)
+	}
+
 	// set an annotation with the ClusterUUID, if bootstrapped
 	requeue, err := bootstrap.ReconcileClusterUUID(ctx, d.Client, &d.ES, esClient, esReachable)
 	if err != nil {
@@ -422,7 +436,7 @@ func (d *defaultDriver) Reconcile(ctx context.Context) *reconciler.Results {
 	}
 
 	// reconcile StatefulSets and nodes configuration
-	return results.WithResults(d.reconcileNodeSpecs(ctx, esReachable, esClient, d.ReconcileState, *resourcesState, keystoreResources, meta))
+	return results.WithResults(d.reconcileNodeSpecs(ctx, esReachable, esClient, d.ReconcileState, *resourcesState, keystoreConfig, meta))
 }
 
 // maybeReconcileEmptyFileSettingsSecret reconciles an empty file-settings secret for this ES cluster
@@ -659,6 +673,84 @@ func warnUnsupportedDistro(pods []corev1.Pod, recorder *events.Recorder) {
 			}
 		}
 	}
+}
+
+// reconcileReloadableKeystore handles the reloadable keystore feature for Elasticsearch 9.3+.
+// It returns the keystore config, the mount path for the prepare-fs script, and any error.
+func (d *defaultDriver) reconcileReloadableKeystore(
+	ctx context.Context,
+	esReachable bool,
+	esClient esclient.Client,
+	keystoreResources *keystore.Resources,
+	meta metadata.Metadata,
+	results *reconciler.Results,
+) (nodespec.KeystoreConfig, string, error) {
+	if !keystorejob.ShouldUseReloadableKeystore(ctx, d.ES, d.Version, keystoreResources, d.OperatorParameters.OperatorImage) {
+		// Use the traditional init container approach
+		return nodespec.KeystoreConfig{Resources: keystoreResources}, "", nil
+	}
+
+	// Reconcile the keystore job
+	keystoreReady, err := d.reconcileKeystoreJob(ctx, keystoreResources, meta)
+	if err != nil {
+		return nodespec.KeystoreConfig{}, "", err
+	}
+
+	// If the keystore job is still running or the secret isn't ready yet, request a requeue
+	// so we can check again and eventually call the reload API.
+	if !keystoreReady {
+		results.WithReconciliationState(defaultRequeue.WithReason("Keystore Job not yet complete"))
+	}
+	keystoreConfig := nodespec.KeystoreConfig{
+		SecretName: esv1.KeystoreSecretName(d.ES.Name),
+	}
+	keystoreSecretMountPath := esvolume.KeystoreSecretVolumeMountPath
+
+	// Trigger keystore reload on all ES nodes and check convergence
+	// Only call reload if the keystore is ready (job completed and secret exists with correct hash)
+	if esReachable && keystoreReady {
+		expectedNodeCount := d.ES.Spec.NodeCount()
+		reloadResult, err := keystorejob.ReloadSecureSettings(ctx, d.Client, esClient, d.ES, expectedNodeCount)
+		if err != nil {
+			return nodespec.KeystoreConfig{}, "", err
+		}
+		if !reloadResult.Converged {
+			results.WithReconciliationState(defaultRequeue.WithReason("Keystore reload not yet converged: " + reloadResult.Message))
+		}
+	}
+
+	return keystoreConfig, keystoreSecretMountPath, nil
+}
+
+// reconcileKeystoreJob reconciles the keystore creation Job for Elasticsearch 9.3+ clusters.
+// It returns true if the keystore Secret is ready (job completed), false if still pending.
+func (d *defaultDriver) reconcileKeystoreJob(ctx context.Context, keystoreResources *keystore.Resources, meta metadata.Metadata) (bool, error) {
+	// Get the Elasticsearch image, preferring spec.image if set, otherwise using the default
+	esImage := d.ES.Spec.Image
+	if esImage == "" {
+		esImage = container.ImageRepository(container.ElasticsearchImage, d.Version)
+	}
+
+	// Extract pod template params from the first node set for the Job
+	var podTemplateParams keystorejob.JobPodTemplateParams
+	if len(d.ES.Spec.NodeSets) > 0 {
+		podSpec := d.ES.Spec.NodeSets[0].PodTemplate.Spec
+		podTemplateParams = keystorejob.JobPodTemplateParams{
+			ImagePullSecrets:   podSpec.ImagePullSecrets,
+			PodSecurityContext: podSpec.SecurityContext,
+		}
+	}
+
+	return keystorejob.ReconcileJob(ctx, keystorejob.Params{
+		ES:                 d.ES,
+		Client:             d.Client,
+		OperatorNamespace:  d.OperatorParameters.OperatorNamespace,
+		OperatorImage:      d.OperatorParameters.OperatorImage,
+		ElasticsearchImage: esImage,
+		KeystoreResources:  keystoreResources,
+		Meta:               meta,
+		PodTemplate:        podTemplateParams,
+	})
 }
 
 func esReachableConditionMessage(internalService *corev1.Service, isServiceReady bool, isRespondingToRequests bool) string {
