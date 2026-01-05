@@ -360,7 +360,7 @@ func (c *Client) createPullRequest(repo githubRepository, branchName string) err
 	}
 	if res.StatusCode < 200 || res.StatusCode > 299 {
 		log.Println("ⅹ")
-		if bodyBytes, err := io.ReadAll(res.Body); err == nil {
+		if bodyBytes, err := io.ReadAll(res.Body); err != nil {
 			return fmt.Errorf("while creating draft pr for (%s), body: %s, code: %d", repo.repository, string(bodyBytes), res.StatusCode)
 		}
 		return fmt.Errorf("while creating draft pr for (%s), code: %d", repo.repository, res.StatusCode)
