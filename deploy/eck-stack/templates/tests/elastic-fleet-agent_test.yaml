@@ -19,7 +19,7 @@ tests:
           value: quickstart-eck-fleet-server
       - equal:
           path: spec.version
-          value: 9.3.0-SNAPSHOT
+          value: 9.3.0
   - it: should render fleet server in custom fleet example properly
     values:
       - ../../examples/agent/fleet-agents.yaml
@@ -34,7 +34,7 @@ tests:
       - equal:
           path: spec
           value: 
-            version: 9.3.0-SNAPSHOT
+            version: 9.3.0
             kibanaRef:
               name: kibana
             elasticsearchRefs:

@@ -18,11 +18,11 @@
 
 # Version of Kibana.
 #
-version: 9.3.0-SNAPSHOT
+version: 9.3.0
 
 # Kibana Docker image to deploy
 #
-# image: docker.elastic.co/kibana/kibana:9.3.0-SNAPSHOT
+# image: docker.elastic.co/kibana/kibana:9.3.0
 
 # Labels that will be applied to Kibana.
 #
