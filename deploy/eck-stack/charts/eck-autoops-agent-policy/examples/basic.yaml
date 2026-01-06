@@ -1,7 +1,7 @@
 ---
 # Version of AutoOps Agent Policy.
 #
-version: 9.3.0-SNAPSHOT
+version: 9.3.0
 
 # Reference an existing Kubernetes secret holding the AutoOps configuration.
 autoOpsRef:

@@ -165,7 +165,7 @@ tests:
       - equal:
           path: spec
           value:
-            version: 9.3.0-SNAPSHOT
+            version: 9.3.0
             count: 1
             pipelinesRef:
               secretName: pipelineLogstashSecretName

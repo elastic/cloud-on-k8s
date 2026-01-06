@@ -22,7 +22,7 @@ tests:
           value: quickstart-eck-fleet-server
       - equal:
           path: spec.version
-          value: 9.3.0-SNAPSHOT
+          value: 9.3.0
       - equal:
           path: spec.kibanaRef.name
           value: eck-kibana
@@ -94,7 +94,7 @@ tests:
             fleetServerEnabled: true
             mode: fleet
             policyID: eck-fleet-server
-            version: 9.3.0-SNAPSHOT
+            version: 9.3.0
             deployment: {}
             elasticsearchRefs:
             - name: eck-elasticsearch
@@ -142,7 +142,7 @@ tests:
             fleetServerEnabled: true
             mode: fleet
             policyID: eck-fleet-server
-            version: 9.3.0-SNAPSHOT
+            version: 9.3.0
             deployment: {}
             elasticsearchRefs:
             - name: eck-elasticsearch

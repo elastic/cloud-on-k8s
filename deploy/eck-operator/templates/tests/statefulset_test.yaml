@@ -77,8 +77,8 @@ tests:
             app.kubernetes.io/instance: RELEASE-NAME
             app.kubernetes.io/managed-by: Helm
             app.kubernetes.io/name: elastic-operator
-            app.kubernetes.io/version: 3.3.0-SNAPSHOT
-            helm.sh/chart: eck-operator-3.3.0-SNAPSHOT
+            app.kubernetes.io/version: 3.3.0
+            helm.sh/chart: eck-operator-3.3.0
             key2: value2
       - template: statefulset.yaml
         equal:
@@ -87,8 +87,8 @@ tests:
             app.kubernetes.io/instance: RELEASE-NAME
             app.kubernetes.io/managed-by: Helm
             app.kubernetes.io/name: elastic-operator
-            app.kubernetes.io/version: 3.3.0-SNAPSHOT
-            helm.sh/chart: eck-operator-3.3.0-SNAPSHOT
+            app.kubernetes.io/version: 3.3.0
+            helm.sh/chart: eck-operator-3.3.0
             key3: value3
   - it: should use the specified webhook secret name
     set:

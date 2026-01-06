@@ -18,7 +18,7 @@ tests:
           value: quickstart-eck-agent
       - equal:
           path: spec.version
-          value: 9.3.0-SNAPSHOT
+          value: 9.3.0
   - it: should render agent in custom fleet example properly
     values:
       - ../../examples/agent/fleet-agents.yaml
@@ -32,7 +32,7 @@ tests:
           value: quickstart-eck-agent
       - equal:
           path: spec.version
-          value: 9.3.0-SNAPSHOT
+          value: 9.3.0
       - notExists:
           path: spec.elasticsearchRefs
       - equal:

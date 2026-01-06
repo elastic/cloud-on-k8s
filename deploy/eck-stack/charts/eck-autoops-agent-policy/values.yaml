@@ -18,7 +18,7 @@
 
 # Version of AutoOps Agent Policy.
 #
-version: 9.3.0-SNAPSHOT
+version: 9.3.0
 
 # Labels that will be applied to AutoOps Agent Policy.
 #
@@ -51,7 +51,7 @@ autoOpsRef: {}
 # config: {}
 
 # Image is the AutoOps Agent Docker image to deploy.
-# image: "docker.elastic.co/elastic-agent/elastic-otel-collector-wolfi:9.3.0-SNAPSHOT"
+# image: "docker.elastic.co/elastic-agent/elastic-otel-collector-wolfi:9.3.0"
 
 # RevisionHistoryLimit is the number of revisions to retain to allow rollback in the underlying Deployment.
 # revisionHistoryLimit: 2

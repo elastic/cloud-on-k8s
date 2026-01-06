@@ -18,7 +18,7 @@
 
 # Version of Elastic Fleet Server.
 #
-version: 9.3.0-SNAPSHOT
+version: 9.3.0
 
 # Labels that will be applied to Elastic Fleet Server.
 #
@@ -30,7 +30,7 @@ annotations: {}
 
 # Elastic Fleet Server Agent image to deploy.
 #
-# image: docker.elastic.co/beats/elastic-agent:9.3.0-SNAPSHOT
+# image: docker.elastic.co/beats/elastic-agent:9.3.0
 
 # ** Deprecation Notice **
 # The previous versions of this Helm Chart simply used the `spec` field here

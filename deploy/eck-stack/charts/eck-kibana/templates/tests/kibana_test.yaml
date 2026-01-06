@@ -15,7 +15,7 @@ tests:
           value: quickstart-eck-kibana
       - equal:
           path: spec.version
-          value: 9.3.0-SNAPSHOT
+          value: 9.3.0
       - equal:
           path: spec.count
           value: 1
@@ -84,7 +84,7 @@ tests:
           value: quickstart-eck-kibana
       - equal:
           path: spec.version
-          value: 9.3.0-SNAPSHOT
+          value: 9.3.0
       - equal:
           path: spec.count
           value: 1
@@ -102,7 +102,7 @@ tests:
       spec:
         elasticsearchRef:
           name: eck-elasticsearch
-        image: quay.io/elastic/kibana:9.3.0-SNAPSHOT
+        image: quay.io/elastic/kibana:9.3.0
     release:
       name: quickstart
     asserts:
@@ -110,13 +110,13 @@ tests:
           of: Kibana
       - equal:
           path: spec.image
-          value: quay.io/elastic/kibana:9.3.0-SNAPSHOT
+          value: quay.io/elastic/kibana:9.3.0
   - it: values.image should work properly
     set:
       spec:
         elasticsearchRef:
           name: eck-elasticsearch
-      image: quay.io/elastic/kibana:9.3.0-SNAPSHOT
+      image: quay.io/elastic/kibana:9.3.0
     release:
       name: quickstart
     asserts:
@@ -124,7 +124,7 @@ tests:
           of: Kibana
       - equal:
           path: spec.image
-          value: quay.io/elastic/kibana:9.3.0-SNAPSHOT
+          value: quay.io/elastic/kibana:9.3.0
   - it: not setting elasticsearchRef should fail
     asserts:
       - failedTemplate:
