@@ -11,7 +11,7 @@ spec:
     nodeSystemConfig:
       linuxNodeConfig:
         sysctls:
-          vm.max_map_count: 262144
+          vm.max_map_count: 1048576
   priorities:
     - machineFamily: n2
 ---
