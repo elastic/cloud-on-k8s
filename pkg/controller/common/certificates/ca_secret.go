@@ -47,9 +47,9 @@ func ValidateCustomCA(ctx context.Context, ca *CA) error {
 	case now.After(ca.Cert.NotAfter):
 		return fmt.Errorf("the CA certificate has expired")
 	case !PrivateMatchesPublicKey(ctx, ca.Cert.PublicKey, ca.PrivateKey):
-		return fmt.Errorf("the private key does not match the public one ")
+		return fmt.Errorf("the private key does not match the public one")
 	case now.After(ca.Cert.NotAfter.Add(-DefaultRotateBefore)):
-		log.Info("CA cert expired or soon to expire", "subject", ca.Cert.Subject, "expiration", ca.Cert.NotAfter)
+		log.Info("CA cert will expire soon", "subject", ca.Cert.Subject, "expiration", ca.Cert.NotAfter)
 	}
 	return nil
 }
