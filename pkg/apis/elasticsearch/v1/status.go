@@ -81,6 +81,12 @@ type ElasticsearchStatus struct {
 	// If the generation observed in status diverges from the generation in metadata, the Elasticsearch
 	// controller has not yet processed the changes contained in the Elasticsearch specification.
 	ObservedGeneration int64 `json:"observedGeneration,omitempty"`
+
+	// ObservedKeystoreDigest is the SHA-256 digest of the keystore file that has been
+	// verified as loaded by all nodes via the reload_secure_settings API (ES 9.3+).
+	// When this matches the expected digest from the keystore Secret, reload API calls are skipped.
+	// +optional
+	ObservedKeystoreDigest string `json:"observedKeystoreDigest,omitempty"`
 }
 
 // IsDegraded returns true if the current status is worse than the previous.

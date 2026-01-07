@@ -19,6 +19,7 @@ import (
 const (
 	configSecretSuffix                           = "config"
 	secureSettingsSecretSuffix                   = "secure-settings"
+	keystoreSecretSuffix                         = "keystore"
 	fileSettingsSecretSuffix                     = "file-settings"
 	policyEsConfigSecretSuffix                   = "policy-config" //nolint:gosec
 	httpServiceSuffix                            = "http"
@@ -188,6 +189,11 @@ func RemoteAPIKeysSecretName(esName string) string {
 
 func FileSettingsSecretName(esName string) string {
 	return ESNamer.Suffix(esName, fileSettingsSecretSuffix)
+}
+
+// KeystoreSecretName returns the name of the Secret that contains the pre-built Elasticsearch keystore file.
+func KeystoreSecretName(esName string) string {
+	return ESNamer.Suffix(esName, keystoreSecretSuffix)
 }
 
 func StackConfigElasticsearchConfigSecretName(esName string) string {

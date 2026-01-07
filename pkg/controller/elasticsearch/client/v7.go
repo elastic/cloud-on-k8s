@@ -98,8 +98,10 @@ func (c *clientV7) GetClusterHealthWaitForAllEvents(ctx context.Context) (Health
 	return result, err
 }
 
-func (c *clientV7) ReloadSecureSettings(ctx context.Context) error {
-	return c.post(ctx, "/_nodes/reload_secure_settings", nil, nil)
+func (c *clientV7) ReloadSecureSettings(ctx context.Context) (ReloadSecureSettingsResponse, error) {
+	var response ReloadSecureSettingsResponse
+	err := c.post(ctx, "/_nodes/reload_secure_settings", nil, &response)
+	return response, err
 }
 
 func (c *clientV7) GetNodes(ctx context.Context) (Nodes, error) {

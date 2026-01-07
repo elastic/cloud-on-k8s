@@ -6181,6 +6181,12 @@ spec:
                   controller has not yet processed the changes contained in the Elasticsearch specification.
                 format: int64
                 type: integer
+              observedKeystoreDigest:
+                description: |-
+                  ObservedKeystoreDigest is the SHA-256 digest of the keystore file that has been
+                  verified as loaded by all nodes via the reload_secure_settings API (ES 9.3+).
+                  When this matches the expected digest from the keystore Secret, reload API calls are skipped.
+                type: string
               phase:
                 description: ElasticsearchOrchestrationPhase is the phase Elasticsearch
                   is in from the controller point of view.

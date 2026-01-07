@@ -191,6 +191,14 @@ func (s *State) UpdateOrchestrationHints(hint hints.OrchestrationsHints) {
 	s.hints = s.hints.Merge(hint)
 }
 
+// UpdateObservedKeystoreDigest updates the observed keystore digest in the status.
+// This is used to track when all nodes have converged to a specific keystore digest,
+// allowing us to skip unnecessary reload API calls on subsequent reconciliations.
+func (s *State) UpdateObservedKeystoreDigest(digest string) *State {
+	s.status.ObservedKeystoreDigest = digest
+	return s
+}
+
 // OrchestrationHints returns the current annotation hints as maintained in reconciliation state. Initially these will be
 // populated from the Elasticsearch resource. But after calls to UpdateOrchestrationHints they can deviate from the state
 // stored in the API server.

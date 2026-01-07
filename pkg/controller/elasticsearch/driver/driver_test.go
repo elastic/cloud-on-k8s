@@ -6,9 +6,11 @@ package driver
 
 import (
 	"context"
+	"errors"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -528,3 +530,203 @@ func Test_maybeReconcileEmptyFileSettingsSecret(t *testing.T) {
 		})
 	}
 }
+
+// fakeReloadClient implements the ReloadSecureSettings method for testing.
+type fakeReloadClient struct {
+	esclient.Client // embed to satisfy the interface
+	reloadResponse  esclient.ReloadSecureSettingsResponse
+	reloadErr       error
+}
+
+func (f *fakeReloadClient) ReloadSecureSettings(_ context.Context) (esclient.ReloadSecureSettingsResponse, error) {
+	return f.reloadResponse, f.reloadErr
+}
+
+func Test_reloadSecureSettingsIfNeeded(t *testing.T) {
+	const (
+		esName      = "test-es"
+		esNamespace = "default"
+		digest1     = "abc123digest"
+		digest2     = "def456digest"
+	)
+
+	keystoreSecret := func(digest string) *corev1.Secret {
+		return &corev1.Secret{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      esv1.KeystoreSecretName(esName),
+				Namespace: esNamespace,
+				Annotations: map[string]string{
+					esv1.KeystoreDigestAnnotation: digest,
+				},
+			},
+		}
+	}
+
+	esCluster := func(observedKeystoreDigest string) esv1.Elasticsearch {
+		return esv1.Elasticsearch{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      esName,
+				Namespace: esNamespace,
+			},
+			Spec: esv1.ElasticsearchSpec{
+				NodeSets: []esv1.NodeSet{
+					{Name: "default", Count: 2},
+				},
+			},
+			Status: esv1.ElasticsearchStatus{
+				ObservedKeystoreDigest: observedKeystoreDigest,
+			},
+		}
+	}
+
+	tests := []struct {
+		name           string
+		objects        []client.Object
+		es             esv1.Elasticsearch
+		esClient       *fakeReloadClient
+		wantConverged  bool
+		wantDigest     string
+		wantMessage    string
+		wantAPISkipped bool
+		wantErr        bool
+	}{
+		{
+			name:    "keystore secret not found",
+			objects: nil,
+			es:      esCluster(""),
+			esClient: &fakeReloadClient{
+				reloadResponse: esclient.ReloadSecureSettingsResponse{},
+			},
+			wantConverged: false,
+			wantMessage:   "keystore secret not yet created",
+		},
+		{
+			name: "keystore secret missing digest annotation",
+			objects: []client.Object{
+				&corev1.Secret{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      esv1.KeystoreSecretName(esName),
+						Namespace: esNamespace,
+					},
+				},
+			},
+			es: esCluster(""),
+			esClient: &fakeReloadClient{
+				reloadResponse: esclient.ReloadSecureSettingsResponse{},
+			},
+			wantConverged: false,
+			wantMessage:   "keystore secret missing digest annotation",
+		},
+		{
+			name:    "already converged - skip API call",
+			objects: []client.Object{keystoreSecret(digest1)},
+			es:      esCluster(digest1), // status shows same digest
+			esClient: &fakeReloadClient{
+				reloadResponse: esclient.ReloadSecureSettingsResponse{},
+			},
+			wantConverged:  true,
+			wantDigest:     digest1,
+			wantMessage:    "keystore already converged (cached)",
+			wantAPISkipped: true, // API should not be called
+		},
+		{
+			name:    "not converged - call API - all nodes match",
+			objects: []client.Object{keystoreSecret(digest1)},
+			es:      esCluster(""),
+			esClient: &fakeReloadClient{
+				reloadResponse: esclient.ReloadSecureSettingsResponse{
+					ClusterName: "test-cluster",
+					Nodes: map[string]esclient.ReloadSecureSettingsNode{
+						"node1": {Name: "es-default-0", KeystoreDigest: digest1},
+						"node2": {Name: "es-default-1", KeystoreDigest: digest1},
+					},
+				},
+			},
+			wantConverged: true,
+			wantDigest:    digest1,
+			wantMessage:   "all nodes have expected keystore digest",
+		},
+		{
+			name:    "not converged - call API - some nodes have old digest",
+			objects: []client.Object{keystoreSecret(digest1)},
+			es:      esCluster(""),
+			esClient: &fakeReloadClient{
+				reloadResponse: esclient.ReloadSecureSettingsResponse{
+					ClusterName: "test-cluster",
+					Nodes: map[string]esclient.ReloadSecureSettingsNode{
+						"node1": {Name: "es-default-0", KeystoreDigest: digest1},
+						"node2": {Name: "es-default-1", KeystoreDigest: digest2}, // different digest
+					},
+				},
+			},
+			wantConverged: false,
+			wantMessage:   "waiting for all nodes to reload keystore (1/2)",
+		},
+		{
+			name:    "not enough nodes responded",
+			objects: []client.Object{keystoreSecret(digest1)},
+			es:      esCluster(""),
+			esClient: &fakeReloadClient{
+				reloadResponse: esclient.ReloadSecureSettingsResponse{
+					ClusterName: "test-cluster",
+					Nodes: map[string]esclient.ReloadSecureSettingsNode{
+						"node1": {Name: "es-default-0", KeystoreDigest: digest1},
+						// Only 1 node responded, but we expect 2
+					},
+				},
+			},
+			wantConverged: false,
+			wantMessage:   "not all expected nodes responded (1/2)",
+		},
+		{
+			name:    "status has old digest - should call API",
+			objects: []client.Object{keystoreSecret(digest2)}, // new digest in secret
+			es:      esCluster(digest1),                       // old digest in status
+			esClient: &fakeReloadClient{
+				reloadResponse: esclient.ReloadSecureSettingsResponse{
+					ClusterName: "test-cluster",
+					Nodes: map[string]esclient.ReloadSecureSettingsNode{
+						"node1": {Name: "es-default-0", KeystoreDigest: digest2},
+						"node2": {Name: "es-default-1", KeystoreDigest: digest2},
+					},
+				},
+			},
+			wantConverged: true,
+			wantDigest:    digest2,
+			wantMessage:   "all nodes have expected keystore digest",
+		},
+		{
+			name:    "API error",
+			objects: []client.Object{keystoreSecret(digest1)},
+			es:      esCluster(""),
+			esClient: &fakeReloadClient{
+				reloadErr: errors.New("connection refused"),
+			},
+			wantErr: true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			c := k8s.NewFakeClient(tt.objects...)
+
+			result, err := reloadSecureSettingsIfNeeded(context.Background(), c, tt.esClient, tt.es)
+
+			if tt.wantErr {
+				require.Error(t, err)
+				return
+			}
+			require.NoError(t, err)
+
+			assert.Equal(t, tt.wantConverged, result.Converged, "Converged mismatch")
+			assert.Equal(t, tt.wantMessage, result.Message, "Message mismatch")
+
+			if tt.wantConverged {
+				assert.Equal(t, tt.wantDigest, result.ConvergedDigest, "ConvergedDigest mismatch")
+			}
+		})
+	}
+}
+
+// Ensure fakeReloadClient satisfies esclient.Client.
+var _ esclient.Client = &fakeReloadClient{}

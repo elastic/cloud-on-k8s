@@ -18,7 +18,8 @@ const (
 	SuspendContainerName = "elastic-internal-suspend"
 )
 
-// NewInitContainers creates init containers according to the given parameters
+// NewInitContainers creates init containers according to the given parameters.
+// The keystoreResources parameter is optional and may provide an init container for keystore creation.
 func NewInitContainers(
 	transportCertificatesVolume volume.SecretVolume,
 	keystoreResources *keystore.Resources,
@@ -31,7 +32,8 @@ func NewInitContainers(
 	}
 	containers = append(containers, prepareFsContainer)
 
-	if keystoreResources != nil {
+	// Add keystore init container if needed (for init-container-based keystores)
+	if keystoreResources != nil && keystoreResources.HasInitContainer() {
 		containers = append(containers, keystoreResources.InitContainer)
 	}
 

@@ -43,6 +43,22 @@ const (
 	// TransportCertDisabledAnnotationName is the annotation that indicates that ECK-managed transport certs have been disabled for the Pod.
 	TransportCertDisabledAnnotationName = "elasticsearch.k8s.elastic.co/self-signed-transport-cert-disabled"
 
+	// DisableReloadableKeystoreAnnotation disables the Go-based reloadable keystore feature
+	// for Elasticsearch 9.3+, falling back to the init-container based approach that requires
+	// pod restarts when secure settings change.
+	//
+	// Example:
+	//
+	//	metadata:
+	//	  annotations:
+	//	    eck.k8s.elastic.co/disable-reloadable-keystore: "true"
+	DisableReloadableKeystoreAnnotation = "eck.k8s.elastic.co/disable-reloadable-keystore"
+
+	// KeystoreDigestAnnotation tracks the SHA-256 digest of the keystore file itself.
+	// This is stored on the keystore Secret and used to verify reload convergence via the
+	// Elasticsearch _nodes/reload_secure_settings API response (available in ES 9.3+).
+	KeystoreDigestAnnotation = "elasticsearch.k8s.elastic.co/keystore-digest"
+
 	// Kind is inferred from the struct name using reflection in SchemeBuilder.Register()
 	// we duplicate it as a constant here for practical purposes.
 	Kind = "Elasticsearch"
@@ -474,6 +490,14 @@ func (es Elasticsearch) IsMarkedForDeletion() bool {
 // IsConfiguredToAllowDowngrades returns true if the DisableDowngradeValidation annotation is set to the value of true.
 func (es Elasticsearch) IsConfiguredToAllowDowngrades() bool {
 	return commonv1.IsConfiguredToAllowDowngrades(&es)
+}
+
+// IsReloadableKeystoreDisabled returns true if the reloadable keystore feature has been explicitly
+// disabled via the DisableReloadableKeystoreAnnotation annotation. When disabled, the operator falls
+// back to the init-container based keystore creation that requires pod restarts on secure settings changes.
+func (es Elasticsearch) IsReloadableKeystoreDisabled() bool {
+	val, exists := es.Annotations[DisableReloadableKeystoreAnnotation]
+	return exists && val == "true"
 }
 
 func (es *Elasticsearch) ServiceAccountName() string {

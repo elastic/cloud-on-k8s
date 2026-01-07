@@ -9,6 +9,7 @@ import (
 	"crypto/x509"
 	"fmt"
 	"strings"
+	"time"
 
 	"github.com/pkg/errors"
 
@@ -43,6 +44,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/filesettings"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/hints"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/initcontainer"
+	eskeystore "github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/keystore"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/label"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/license"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/observer"
@@ -63,6 +65,9 @@ import (
 
 var (
 	defaultRequeue = reconciler.ReconciliationState{Result: controller.Result{RequeueAfter: reconciler.DefaultRequeue}}
+	// keystoreReloadRequeue is the requeue time when waiting for keystore reload to converge.
+	// 30 seconds is reasonable given Kubernetes Secret propagation time (kubelet sync ~1 min).
+	keystoreReloadRequeue = reconciler.ReconciliationState{Result: controller.Result{RequeueAfter: 30 * time.Second}}
 )
 
 // Driver orchestrates the reconciliation of an Elasticsearch resource.
@@ -367,27 +372,32 @@ func (d *defaultDriver) Reconcile(ctx context.Context) *reconciler.Results {
 		}
 	}
 
-	keystoreParams := initcontainer.KeystoreParams
-	keystoreSecurityContext := securitycontext.For(d.Version, true)
-	keystoreParams.SecurityContext = &keystoreSecurityContext
-
-	// Set up a keystore with secure settings in an init container, if specified by the user.
+	// Set up a keystore with secure settings.
 	// We are also using the keystore internally for the remote cluster API keys.
 	remoteClusterAPIKeys, err := apiKeyStoreSecretSource(ctx, &d.ES, d.Client)
 	if err != nil {
 		return results.WithError(err)
 	}
-	keystoreResources, err := keystore.ReconcileResources(
-		ctx,
-		d,
-		&d.ES,
-		esv1.ESNamer,
-		meta,
-		keystoreParams,
-		remoteClusterAPIKeys...,
-	)
+
+	// Reconcile keystore - for ES 9.3+, use the Go keystore implementation
+	keystoreResources, reloadNeeded, err := d.reconcileKeystore(ctx, meta, remoteClusterAPIKeys)
 	if err != nil {
 		return results.WithError(err)
+	}
+
+	// For ES 9.3+ with Go keystore, call the reload API if ES is reachable
+	if reloadNeeded && esReachable {
+		reloadResult, err := reloadSecureSettingsIfNeeded(ctx, d.Client, esClient, d.ES)
+		if err != nil {
+			return results.WithError(err)
+		}
+		if reloadResult.Converged {
+			// Update the status with the converged digest so we can skip reload API calls
+			// on subsequent reconciliations until the keystore changes again.
+			d.ReconcileState.UpdateObservedKeystoreDigest(reloadResult.ConvergedDigest)
+		} else {
+			results.WithReconciliationState(keystoreReloadRequeue.WithReason("Keystore reload not yet converged: " + reloadResult.Message))
+		}
 	}
 
 	// set an annotation with the ClusterUUID, if bootstrapped
@@ -670,4 +680,154 @@ func esReachableConditionMessage(internalService *corev1.Service, isServiceReady
 	default:
 		return fmt.Sprintf("Service %s/%s has endpoints", internalService.Namespace, internalService.Name)
 	}
+}
+
+// reconcileKeystore reconciles the keystore for the Elasticsearch cluster.
+// It returns the keystore resources, whether a reload is needed (for ES 9.3+ with Go keystore),
+// and any error.
+func (d *defaultDriver) reconcileKeystore(
+	ctx context.Context,
+	meta metadata.Metadata,
+	remoteClusterAPIKeys []commonv1.NamespacedSecretSource,
+) (*keystore.Resources, bool, error) {
+	if eskeystore.ShouldUseGoKeystore(d.ES, d.Version) {
+		// Use the Go keystore implementation for ES 9.3+
+		esKeystoreResources, err := eskeystore.Reconcile(ctx, d, &d.ES, meta, remoteClusterAPIKeys...)
+		if err != nil {
+			return nil, false, err
+		}
+		// Reload is needed when we have keystore resources
+		return esKeystoreResources, esKeystoreResources != nil, nil
+	}
+
+	// Use the traditional init container approach for older ES versions
+	keystoreParams := initcontainer.KeystoreParams
+	keystoreSecurityContext := securitycontext.For(d.Version, true)
+	keystoreParams.SecurityContext = &keystoreSecurityContext
+
+	commonKeystoreResources, err := keystore.ReconcileResources(
+		ctx,
+		d,
+		&d.ES,
+		esv1.ESNamer,
+		meta,
+		keystoreParams,
+		remoteClusterAPIKeys...,
+	)
+	if err != nil {
+		return nil, false, err
+	}
+	return commonKeystoreResources, false, nil
+}
+
+// ReloadResult represents the result of a keystore reload operation.
+type ReloadResult struct {
+	// Converged is true if all expected nodes have the expected keystore digest.
+	Converged bool
+	// Message provides additional context about the reload status.
+	Message string
+	// ConvergedDigest is the digest that all nodes have converged to.
+	// This is set when Converged is true and should be stored in the ES status.
+	ConvergedDigest string
+}
+
+// reloadSecureSettingsIfNeeded calls the Elasticsearch reload_secure_settings API and checks
+// if all expected nodes have converged to the expected keystore digest.
+// This is used for ES 9.3+ where the reload API returns keystore digests.
+//
+// To avoid unnecessary API calls, this function first checks if the status already shows
+// convergence to the expected digest. If so, the reload API call is skipped.
+func reloadSecureSettingsIfNeeded(
+	ctx context.Context,
+	c k8s.Client,
+	esClient esclient.Client,
+	es esv1.Elasticsearch,
+) (ReloadResult, error) {
+	log := ulog.FromContext(ctx)
+
+	// Get the expected digest from the keystore Secret
+	keystoreSecretName := esv1.KeystoreSecretName(es.Name)
+	var keystoreSecret corev1.Secret
+	if err := c.Get(ctx, types.NamespacedName{Namespace: es.Namespace, Name: keystoreSecretName}, &keystoreSecret); err != nil {
+		if k8serrors.IsNotFound(err) {
+			// Secret doesn't exist yet
+			log.V(1).Info("Keystore secret not found, skipping reload")
+			return ReloadResult{Converged: false, Message: "keystore secret not yet created"}, nil
+		}
+		return ReloadResult{}, err
+	}
+
+	expectedDigest, hasDigest := keystoreSecret.Annotations[esv1.KeystoreDigestAnnotation]
+	if !hasDigest || expectedDigest == "" {
+		log.V(1).Info("Keystore secret missing digest annotation, skipping reload")
+		return ReloadResult{Converged: false, Message: "keystore secret missing digest annotation"}, nil
+	}
+
+	// Optimization: skip the reload API call if the status already shows convergence
+	// to the expected digest. This avoids unnecessary ES API calls on every reconciliation.
+	if es.Status.ObservedKeystoreDigest == expectedDigest {
+		log.V(1).Info("Keystore already converged (from status), skipping reload API call",
+			"digest", expectedDigest)
+		return ReloadResult{
+			Converged:       true,
+			Message:         "keystore already converged (cached)",
+			ConvergedDigest: expectedDigest,
+		}, nil
+	}
+
+	// Call the reload API
+	expectedNodeCount := es.Spec.NodeCount()
+	log.V(1).Info("Calling reload_secure_settings API",
+		"expectedDigest", expectedDigest,
+		"expectedNodeCount", expectedNodeCount)
+	response, err := esClient.ReloadSecureSettings(ctx)
+	if err != nil {
+		return ReloadResult{}, err
+	}
+
+	// Check if all expected nodes responded and have the expected digest
+	respondedNodes := int32(len(response.Nodes))
+	if respondedNodes < expectedNodeCount {
+		log.V(1).Info("Not all expected nodes responded to reload",
+			"responded", respondedNodes,
+			"expected", expectedNodeCount)
+		return ReloadResult{
+			Converged: false,
+			Message:   fmt.Sprintf("not all expected nodes responded (%d/%d)", respondedNodes, expectedNodeCount),
+		}, nil
+	}
+
+	var nodesWithExpectedDigest int32
+	for nodeID, node := range response.Nodes {
+		if node.KeystoreDigest == expectedDigest {
+			nodesWithExpectedDigest++
+		} else {
+			log.V(1).Info("Node has different keystore digest",
+				"node", node.Name,
+				"nodeID", nodeID,
+				"expected", expectedDigest,
+				"actual", node.KeystoreDigest)
+		}
+	}
+
+	if nodesWithExpectedDigest >= expectedNodeCount {
+		log.Info("All expected nodes have reloaded keystore with expected digest",
+			"nodesConverged", nodesWithExpectedDigest,
+			"expectedNodes", expectedNodeCount,
+			"digest", expectedDigest)
+		return ReloadResult{
+			Converged:       true,
+			Message:         "all nodes have expected keystore digest",
+			ConvergedDigest: expectedDigest,
+		}, nil
+	}
+
+	log.Info("Keystore reload not yet converged",
+		"nodesWithExpectedDigest", nodesWithExpectedDigest,
+		"expectedNodeCount", expectedNodeCount,
+		"expectedDigest", expectedDigest)
+	return ReloadResult{
+		Converged: false,
+		Message:   fmt.Sprintf("waiting for all nodes to reload keystore (%d/%d)", nodesWithExpectedDigest, expectedNodeCount),
+	}, nil
 }

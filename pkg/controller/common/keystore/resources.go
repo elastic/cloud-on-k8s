@@ -17,14 +17,38 @@ import (
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/name"
 )
 
-// Resources holds all the resources needed to create a keystore in Kibana or in the APM server.
+// Resources holds all the resources needed to create a keystore in Kibana, APM server, or Elasticsearch.
 type Resources struct {
-	// volume which contains the keystore data as provided by the user
+	// Volume contains the keystore data as provided by the user (for init container approach)
+	// or the pre-built keystore file (for direct mount approach).
 	Volume corev1.Volume
-	// init container used to create the keystore
+	// InitContainer is used to create the keystore from secure settings.
+	// If empty (Name == ""), no init container is needed (pre-built keystore approach).
 	InitContainer corev1.Container
-	// hash of the secret data provided by the user
+	// VolumeMount is the mount for the keystore in the main container.
+	// Used for pre-built keystores that are mounted directly without an init container.
+	VolumeMount corev1.VolumeMount
+	// Hash of the secret data provided by the user.
+	// Used to detect changes and trigger pod restarts (for init container approach)
+	// or left empty for hot-reload approach.
 	Hash string
+}
+
+// HasInitContainer returns true if an init container is needed to create the keystore.
+// This is the case when InitContainer has been configured (has a non-empty name).
+func (r *Resources) HasInitContainer() bool {
+	return r.InitContainer.Name != ""
+}
+
+// HasVolume returns true if a volume is configured for the keystore.
+func (r *Resources) HasVolume() bool {
+	return r.Volume.Name != ""
+}
+
+// HasVolumeMount returns true if a volume mount is configured for the keystore.
+// This is used for pre-built keystores that are mounted directly without an init container.
+func (r *Resources) HasVolumeMount() bool {
+	return r.VolumeMount.Name != ""
 }
 
 // HasKeystore interface represents an Elastic Stack application that offers a keystore which in ECK

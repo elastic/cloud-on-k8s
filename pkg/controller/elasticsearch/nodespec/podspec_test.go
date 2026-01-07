@@ -278,7 +278,7 @@ func TestBuildPodTemplateSpec(t *testing.T) {
 			args: args{
 				client:                    k8s.NewFakeClient(scriptsConfigMap),
 				es:                        sampleES,
-				keystoreResources:         &keystore.Resources{},
+				keystoreResources:         nil, // no keystore for this test
 				setDefaultSecurityContext: false,
 				policyConfig:              policyConfig,
 			},
