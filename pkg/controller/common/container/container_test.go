@@ -183,7 +183,7 @@ func TestImageRepository(t *testing.T) {
 			want:    testRegistry + "/package-registry/distribution:lite-8.15.1",
 		},
 		{
-			name:    "Package registry image from 8.15.1 onwards useslite prefix",
+			name:    "Package registry image from 8.15.1 onwards uses lite prefix",
 			image:   PackageRegistryImage,
 			version: "8.16.0",
 			want:    testRegistry + "/package-registry/distribution:lite-8.16.0",
