@@ -79,6 +79,12 @@ func (r *AgentPolicyReconciler) internalReconcile(
 		return results.WithError(err)
 	}
 
+	namespaces, err := listNamespaces(ctx, r.Client, policy.Spec.NamespaceSelector)
+	if err != nil {
+		state.UpdateWithPhase(autoopsv1alpha1.ErrorPhase)
+		return results.WithError(err)
+	}
+
 	// prepare the selector to find resources.
 	selector, err := metav1.LabelSelectorAsSelector(&metav1.LabelSelector{
 		MatchLabels:      policy.Spec.ResourceSelector.MatchLabels,
@@ -100,6 +106,13 @@ func (r *AgentPolicyReconciler) internalReconcile(
 	// This ensures resources are cleaned up when access is revoked.
 	accessibleClusters := make([]esv1.Elasticsearch, 0, len(esList.Items))
 	for _, es := range esList.Items {
+		// filter by namespace (if set)
+		if len(namespaces) > 0 && !namespaces.Has(es.Namespace) {
+			log.V(1).Info("Skipping ES cluster due to namespace filtering", "es_namespace", es.Namespace, "es_name", es.Name)
+			continue
+		}
+
+		// filter by RBAC (if set)
 		accessAllowed, err := isAutoOpsAssociationAllowed(ctx, r.accessReviewer, &policy, &es, r.recorder)
 		if err != nil {
 			log.Error(err, "while checking access for Elasticsearch cluster", "es_namespace", es.Namespace, "es_name", es.Name)
@@ -274,4 +287,36 @@ func isDeploymentReady(dep appsv1.Deployment) bool {
 		}
 	}
 	return false
+}
+
+// listNamespaces queries the Kubernetes API for namespaces matching the
+// provided label selector and returns their names as a set for efficient
+// lookup operations.
+func listNamespaces(
+	ctx context.Context,
+	k8sClient k8s.Client,
+	ls metav1.LabelSelector,
+) (sets.Set[string], error) {
+	// early return when no namespace is selected.
+	if len(ls.MatchExpressions) == 0 && len(ls.MatchLabels) == 0 {
+		return sets.Set[string]{}, nil
+	}
+
+	// prepare the selector to find namespaces.
+	nsSelector, err := metav1.LabelSelectorAsSelector(&ls)
+	if err != nil {
+		return nil, err
+	}
+
+	var nsList corev1.NamespaceList
+	if err := k8sClient.List(ctx, &nsList, &client.ListOptions{LabelSelector: nsSelector}); err != nil {
+		return nil, err
+	}
+
+	st := sets.New[string]()
+	for _, ns := range nsList.Items {
+		st.Insert(ns.Name)
+	}
+
+	return st, nil
 }
