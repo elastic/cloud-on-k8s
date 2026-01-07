@@ -45,6 +45,8 @@ type Kibana struct {
 	assocConf *commonv1.AssociationConf `json:"-"`
 	// entAssocConf holds the configuration for the Enterprise Search association
 	entAssocConf *commonv1.AssociationConf `json:"-"`
+	// eprAssocConf holds the configuration for the Elastic Package Registry association
+	eprAssocConf *commonv1.AssociationConf `json:"-"`
 	// monitoringAssocConf holds the configuration for the monitoring Elasticsearch clusters association
 	monitoringAssocConfs map[commonv1.ObjectSelector]commonv1.AssociationConf `json:"-"`
 }
@@ -75,6 +77,9 @@ type KibanaSpec struct {
 
 	// ElasticsearchRef is a reference to an Elasticsearch cluster running in the same Kubernetes cluster.
 	ElasticsearchRef commonv1.ObjectSelector `json:"elasticsearchRef,omitempty"`
+
+	// PackageRegistryRef is a reference to an Elastic Package Registry running in the same Kubernetes cluster.
+	PackageRegistryRef commonv1.ObjectSelector `json:"packageRegistryRef,omitempty"`
 
 	// EnterpriseSearchRef is a reference to an EnterpriseSearch running in the same Kubernetes cluster.
 	// Kibana provides the default Enterprise Search UI starting version 7.14.
@@ -121,6 +126,9 @@ type KibanaStatus struct {
 
 	// ElasticsearchAssociationStatus is the status of any auto-linking to Elasticsearch clusters.
 	ElasticsearchAssociationStatus commonv1.AssociationStatus `json:"elasticsearchAssociationStatus,omitempty"`
+
+	// PackageRegistryAssociationStatus is the status of any auto-linking to Elastic Package Registry.
+	PackageRegistryAssociationStatus commonv1.AssociationStatus `json:"packageRegistryAssociationStatus,omitempty"`
 
 	// EnterpriseSearchAssociationStatus is the status of any auto-linking to Enterprise Search.
 	EnterpriseSearchAssociationStatus commonv1.AssociationStatus `json:"enterpriseSearchAssociationStatus,omitempty"`
@@ -171,6 +179,11 @@ func (k *Kibana) GetAssociations() []commonv1.Association {
 			Kibana: k,
 		})
 	}
+	if k.Spec.PackageRegistryRef.IsDefined() {
+		associations = append(associations, &KibanaEPRAssociation{
+			Kibana: k,
+		})
+	}
 	for _, ref := range k.Spec.Monitoring.Metrics.ElasticsearchRefs {
 		if ref.IsDefined() {
 			associations = append(associations, &KbMonitoringAssociation{
@@ -200,6 +213,10 @@ func (k *Kibana) AssociationStatusMap(typ commonv1.AssociationType) commonv1.Ass
 	case commonv1.EntAssociationType:
 		if k.Spec.EnterpriseSearchRef.IsDefined() {
 			return commonv1.NewSingleAssociationStatusMap(k.Status.EnterpriseSearchAssociationStatus)
+		}
+	case commonv1.PackageRegistryAssociationType:
+		if k.Spec.PackageRegistryRef.IsDefined() {
+			return commonv1.NewSingleAssociationStatusMap(k.Status.PackageRegistryAssociationStatus)
 		}
 	case commonv1.KbMonitoringAssociationType:
 		for _, esRef := range k.Spec.Monitoring.Metrics.ElasticsearchRefs {
@@ -235,6 +252,13 @@ func (k *Kibana) SetAssociationStatusMap(typ commonv1.AssociationType, status co
 			return err
 		}
 		k.Status.EnterpriseSearchAssociationStatus = single
+		return nil
+	case commonv1.PackageRegistryAssociationType:
+		single, err := status.Single()
+		if err != nil {
+			return err
+		}
+		k.Status.PackageRegistryAssociationStatus = single
 		return nil
 	case commonv1.KbMonitoringAssociationType:
 		k.Status.MonitoringAssociationStatus = status
@@ -423,6 +447,61 @@ func (kbmon *KbMonitoringAssociation) SupportsAuthAPIKey() bool {
 
 func (kbmon *KbMonitoringAssociation) AssociationID() string {
 	return kbmon.ref.ToID()
+}
+
+// -- association with Elastic Package Registry
+
+func (k *Kibana) EPRAssociation() *KibanaEPRAssociation {
+	return &KibanaEPRAssociation{Kibana: k}
+}
+
+// KibanaEPRAssociation helps to manage the Kibana / Elastic Package Registry association.
+type KibanaEPRAssociation struct {
+	*Kibana
+}
+
+var _ commonv1.Association = &KibanaEPRAssociation{}
+
+func (kbepr *KibanaEPRAssociation) ElasticServiceAccount() (commonv1.ServiceAccountName, error) {
+	return "", nil
+}
+
+func (kbepr *KibanaEPRAssociation) Associated() commonv1.Associated {
+	if kbepr == nil {
+		return nil
+	}
+	if kbepr.Kibana == nil {
+		kbepr.Kibana = &Kibana{}
+	}
+	return kbepr.Kibana
+}
+
+func (kbepr *KibanaEPRAssociation) AssociationConfAnnotationName() string {
+	return commonv1.EPRConfigAnnotationNameBase
+}
+
+func (kbepr *KibanaEPRAssociation) AssociationType() commonv1.AssociationType {
+	return commonv1.PackageRegistryAssociationType
+}
+
+func (kbepr *KibanaEPRAssociation) AssociationRef() commonv1.ObjectSelector {
+	return kbepr.Spec.PackageRegistryRef.WithDefaultNamespace(kbepr.Namespace)
+}
+
+func (kbepr *KibanaEPRAssociation) AssociationConf() (*commonv1.AssociationConf, error) {
+	return commonv1.GetAndSetAssociationConf(kbepr, kbepr.eprAssocConf)
+}
+
+func (kbepr *KibanaEPRAssociation) SetAssociationConf(assocConf *commonv1.AssociationConf) {
+	kbepr.eprAssocConf = assocConf
+}
+
+func (kbepr *KibanaEPRAssociation) SupportsAuthAPIKey() bool {
+	return false
+}
+
+func (kbepr *KibanaEPRAssociation) AssociationID() string {
+	return commonv1.SingletonAssociationID
 }
 
 // -- HasMonitoring methods

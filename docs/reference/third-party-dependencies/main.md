@@ -30,6 +30,7 @@ This page lists the third-party dependencies used to build {{eck}} from the main
 | [github.com/google/go-cmp](https://github.com/google/go-cmp) | v0.7.0 | BSD-3-Clause |
 | [github.com/google/go-containerregistry](https://github.com/google/go-containerregistry) | v0.20.7 | Apache-2.0 |
 | [github.com/google/uuid](https://github.com/google/uuid) | v1.6.0 | BSD-3-Clause |
+| [github.com/googlecloudplatform/compute-class-api](https://github.com/googlecloudplatform/compute-class-api) | v0.0.0-20251208134148-ae2e7936c1f8 | Apache-2.0 |
 | [github.com/hashicorp/go-multierror](https://github.com/hashicorp/go-multierror) | v1.1.1 | MPL-2.0 |
 | [github.com/hashicorp/golang-lru/v2](https://github.com/hashicorp/golang-lru) | v2.0.7 | MPL-2.0 |
 | [github.com/hashicorp/vault/api](https://github.com/hashicorp/vault) | v1.22.0 | MPL-2.0 |
@@ -51,9 +52,9 @@ This page lists the third-party dependencies used to build {{eck}} from the main
 | [golang.org/x/crypto](https://golang.org/x/crypto) | v0.46.0 | BSD-3-Clause |
 | [golang.org/x/exp](https://golang.org/x/exp) | v0.0.0-20240808152545-0cdaa3abc0fa | BSD-3-Clause |
 | [gopkg.in/yaml.v3](https://gopkg.in/yaml.v3) | v3.0.1 | MIT |
-| [k8s.io/api](https://github.com/kubernetes/api) | v0.34.2 | Apache-2.0 |
-| [k8s.io/apimachinery](https://github.com/kubernetes/apimachinery) | v0.34.2 | Apache-2.0 |
-| [k8s.io/client-go](https://github.com/kubernetes/client-go) | v0.34.2 | Apache-2.0 |
+| [k8s.io/api](https://github.com/kubernetes/api) | v0.34.3 | Apache-2.0 |
+| [k8s.io/apimachinery](https://github.com/kubernetes/apimachinery) | v0.34.3 | Apache-2.0 |
+| [k8s.io/client-go](https://github.com/kubernetes/client-go) | v0.34.3 | Apache-2.0 |
 | [k8s.io/klog/v2](https://github.com/kubernetes/klog) | v2.130.1 | Apache-2.0 |
 | [k8s.io/utils](https://github.com/kubernetes/utils) | v0.0.0-20250604170112-4c0f3b243397 | Apache-2.0 |
 | [sigs.k8s.io/controller-runtime](https://sigs.k8s.io/controller-runtime) | v0.22.4 | Apache-2.0 |

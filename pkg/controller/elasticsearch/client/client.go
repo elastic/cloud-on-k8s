@@ -38,7 +38,7 @@ type BasicAuth struct {
 
 type IndexRole struct {
 	Names                  []string `json:"names,omitempty"`
-	Privileges             []string `json:",omitempty"`
+	Privileges             []string `json:"privileges,omitempty"`
 	AllowRestrictedIndices *bool    `json:"allow_restricted_indices,omitempty" yaml:"allow_restricted_indices,omitempty"`
 }
 
@@ -91,8 +91,6 @@ type Client interface {
 	GetClusterHealthWaitForAllEvents(ctx context.Context) (Health, error)
 	// GetClusterState calls the _cluster/state api.
 	GetClusterState(ctx context.Context) (ClusterState, error)
-	// SetMinimumMasterNodes sets the transient and persistent setting of the same name in cluster settings.
-	SetMinimumMasterNodes(ctx context.Context, n int) error
 	// ReloadSecureSettings will decrypt and re-read the entire keystore, on every cluster node,
 	// but only the reloadable secure settings will be applied
 	ReloadSecureSettings(ctx context.Context) error

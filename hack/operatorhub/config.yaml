@@ -32,6 +32,12 @@ crds:
   - name: logstashes.logstash.k8s.elastic.co
     displayName: Logstash
     description: Logstash instance
+  - name: autoopsagentpolicies.autoops.k8s.elastic.co
+    displayName: AutoOps Agent Policy
+    description: AutoOps Agent Policy instance
+  - name: packageregistries.packageregistry.k8s.elastic.co
+    displayName: Elastic Package Registry
+    description: Elastic Package Registry instance
 packages:
   - outputPath: community-operators
     packageName: elastic-cloud-eck

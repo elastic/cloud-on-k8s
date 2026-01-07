@@ -43,12 +43,11 @@ StatefulSets generation expectations.
 ## Give me some concrete examples why this is useful!
 
 Things that could happen without this mechanism in place:
-- create more than one master node at a time
 - delete more than one master node at a time
 - outgrow the changeBudget during upscale and downscales
 - clear shards allocation excludes for a node that is not removed yet
-- update zen1/zen2 minimum_master_nodes/initial_master_nodes based on the wrong number of nodes
-- update zen1/zen2 minimum_master_nodes/initial_master_nodes based on the wrong nodes specification (ignoring master->data upgrades)
+- update zen2 initial_master_nodes based on the wrong number of nodes
+- update zen2 initial_master_nodes based on the wrong nodes specification (ignoring master->data upgrades)
 - clear voting_config_exclusions while a Pod has not finished its restart yet (or maybe just started)
 
 ## What if the operator restarts?
@@ -65,7 +64,7 @@ No. In most situations, it's totally fine to rely on Kubernetes optimistic locki
 * if we delete a resource that does not exist, the operation fails
 
 The only cases where we need it are (so far):
-- when interacting with external systems own orchestration mechanism (Elasticsearch zen1/zen2)
+- when interacting with external systems own orchestration mechanism (Elasticsearch zen2)
 - when trying to control how many creations/deletions/upgrades happen in parallel
 
 ## Where does it come from?
