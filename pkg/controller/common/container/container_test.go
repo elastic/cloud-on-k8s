@@ -177,10 +177,16 @@ func TestImageRepository(t *testing.T) {
 			want:    testRegistry + "/elastic-maps-service/elastic-maps-server-ubi:8.16.0",
 		},
 		{
-			name:    "Package registry image",
+			name:    "Package registry image prior to 8.15.1 has no lite prefix",
 			image:   PackageRegistryImage,
 			version: "1.0.0",
-			want:    testRegistry + "/package-registry/distribution:lite-1.0.0",
+			want:    testRegistry + "/package-registry/distribution:1.0.0",
+		},
+		{
+			name:    "Package registry image after 8.15.1 has lite prefix",
+			image:   PackageRegistryImage,
+			version: "8.16.0",
+			want:    testRegistry + "/package-registry/distribution:lite-8.16.0",
 		},
 		{
 			name:    "Package registry image -ubi suffix",
@@ -194,7 +200,7 @@ func TestImageRepository(t *testing.T) {
 			image:   PackageRegistryImage,
 			version: "1.0.0",
 			suffix:  "-random",
-			want:    testRegistry + "/package-registry/distribution-random:lite-1.0.0",
+			want:    testRegistry + "/package-registry/distribution-random:1.0.0",
 		},
 	}
 
