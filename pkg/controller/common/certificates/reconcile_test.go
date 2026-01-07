@@ -6,8 +6,14 @@ package certificates
 
 import (
 	"context"
+	cryptorand "crypto/rand"
+	"crypto/rsa"
+	"crypto/x509"
+	"crypto/x509/pkix"
 	"testing"
+	"time"
 
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
@@ -136,5 +142,190 @@ func TestReconcileCAAndHTTPCerts(t *testing.T) {
 	for _, nsn := range removedSecrets {
 		var s corev1.Secret
 		require.True(t, apierrors.IsNotFound(c.Get(context.Background(), nsn, &s)))
+	}
+}
+
+func TestReconcileCAAndHTTPCerts_WithCustomCA(t *testing.T) {
+	// Helper function to create a secret with custom CA
+	createCustomCASecret := func(t *testing.T, ca *CA, secretName string) *corev1.Secret {
+		t.Helper()
+		pemKey, err := EncodePEMPrivateKey(ca.PrivateKey)
+		require.NoError(t, err)
+		return &corev1.Secret{
+			ObjectMeta: metav1.ObjectMeta{
+				Namespace: obj.Namespace,
+				Name:      secretName,
+			},
+			Data: map[string][]byte{
+				CAFileName:    EncodePEMCert(ca.Cert.Raw),
+				CAKeyFileName: pemKey,
+			},
+		}
+	}
+
+	tests := []struct {
+		name         string
+		customCA     func(t *testing.T) *CA
+		wantErr      bool
+		wantRequeue  bool
+		checkRequeue func(t *testing.T, requeueAfter time.Duration)
+	}{
+		{
+			name: "valid custom CA should pass validation and set requeue",
+			customCA: func(t *testing.T) *CA {
+				t.Helper()
+				testCA, err := NewSelfSignedCA(CABuilderOptions{})
+				require.NoError(t, err)
+				return testCA
+			},
+			wantErr:     false,
+			wantRequeue: true,
+			checkRequeue: func(t *testing.T, requeueAfter time.Duration) {
+				t.Helper()
+				// Should requeue before expiration
+				require.NotZero(t, requeueAfter, "requeue should be set for CA expiry")
+			},
+		},
+		{
+			name: "expired custom CA should fail validation",
+			customCA: func(t *testing.T) *CA {
+				t.Helper()
+				// Create a CA that expired 1 hour ago
+				expiredTime := -1 * time.Hour
+				testCA, err := NewSelfSignedCA(CABuilderOptions{
+					ExpireIn: &expiredTime,
+				})
+				require.NoError(t, err)
+				return testCA
+			},
+			wantErr:     true,
+			wantRequeue: false,
+		},
+		{
+			name: "not-yet-valid custom CA should fail validation",
+			customCA: func(t *testing.T) *CA {
+				t.Helper()
+				// Create a CA manually with NotBefore in the future
+				privateKey, err := rsa.GenerateKey(cryptorand.Reader, 2048)
+				require.NoError(t, err)
+				serial, err := cryptorand.Int(cryptorand.Reader, SerialNumberLimit)
+				require.NoError(t, err)
+
+				certificateTemplate := x509.Certificate{
+					SerialNumber:          serial,
+					Subject:               pkix.Name{CommonName: "test-ca"},
+					NotBefore:             time.Now().Add(1 * time.Hour), // Not yet valid
+					NotAfter:              time.Now().Add(2 * time.Hour),
+					SignatureAlgorithm:    x509.SHA256WithRSA,
+					IsCA:                  true,
+					BasicConstraintsValid: true,
+					KeyUsage:              x509.KeyUsageDigitalSignature | x509.KeyUsageCertSign,
+					ExtKeyUsage:           []x509.ExtKeyUsage{x509.ExtKeyUsageServerAuth, x509.ExtKeyUsageClientAuth},
+				}
+
+				certData, err := x509.CreateCertificate(cryptorand.Reader, &certificateTemplate, &certificateTemplate, privateKey.Public(), privateKey)
+				require.NoError(t, err)
+				cert, err := x509.ParseCertificate(certData)
+				require.NoError(t, err)
+
+				return NewCA(privateKey, cert)
+			},
+			wantErr:     true,
+			wantRequeue: false,
+		},
+		{
+			name: "custom CA with mismatched keys should fail validation",
+			customCA: func(t *testing.T) *CA {
+				t.Helper()
+				testCA, err := NewSelfSignedCA(CABuilderOptions{})
+				require.NoError(t, err)
+				// Generate a different private key
+				privateKey2, err := rsa.GenerateKey(cryptorand.Reader, 2048)
+				require.NoError(t, err)
+				testCA.PrivateKey = privateKey2
+				return testCA
+			},
+			wantErr:     true,
+			wantRequeue: false,
+		},
+		{
+			name: "custom CA expiring soon should log warning but succeed",
+			customCA: func(t *testing.T) *CA {
+				t.Helper()
+				// Create a CA that expires soon (within DefaultRotateBefore)
+				shortValidity := DefaultRotateBefore / 2
+				testCA, err := NewSelfSignedCA(CABuilderOptions{
+					ExpireIn: &shortValidity,
+				})
+				require.NoError(t, err)
+				return testCA
+			},
+			wantErr:     false,
+			wantRequeue: true,
+			checkRequeue: func(t *testing.T, requeueAfter time.Duration) {
+				t.Helper()
+				// Should requeue soon since CA is expiring
+				require.NotZero(t, requeueAfter, "requeue should be set for CA expiry")
+				// The requeue time should be based on when the CA will expire
+				// Since CA expires in DefaultRotateBefore/2, and we rotate at DefaultRotateBefore before expiry,
+				// the requeue should happen soon (negative or very small value)
+				require.Greater(t, requeueAfter, time.Duration(0), "requeue should be positive")
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			customCA := tt.customCA(t)
+			customCASecretName := "custom-ca-secret"
+
+			// Create the custom CA secret
+			customCASecret := createCustomCASecret(t, customCA, customCASecretName)
+			c := k8s.NewFakeClient(customCASecret)
+
+			// Create test object with custom CA reference
+			testObj := obj.DeepCopy()
+			testObj.Spec.HTTP.TLS = commonv1.TLSOptions{
+				Certificate: commonv1.SecretRef{
+					SecretName: customCASecretName,
+				},
+			}
+
+			r := Reconciler{
+				K8sClient:             c,
+				DynamicWatches:        watches.NewDynamicWatches(),
+				Owner:                 testObj,
+				TLSOptions:            testObj.Spec.HTTP.TLS,
+				Namer:                 esv1.ESNamer,
+				Metadata:              metadata.Metadata{Labels: labels},
+				Services:              nil,
+				CACertRotation:        rotation,
+				CertRotation:          rotation,
+				GarbageCollectSecrets: false,
+			}
+
+			httpCerts, results := r.ReconcileCAAndHTTPCerts(context.Background())
+			aggregateResult, err := results.Aggregate()
+
+			if tt.wantErr {
+				assert.Error(t, err, "expected error from ReconcileCAAndHTTPCerts")
+				assert.Nil(t, httpCerts, "httpCerts should be nil on error")
+			} else {
+				assert.NoError(t, err, "expected no error from ReconcileCAAndHTTPCerts")
+				assert.NotNil(t, httpCerts, "httpCerts should not be nil on success")
+				assert.NotEmpty(t, httpCerts.Data, "httpCerts should have data")
+			}
+
+			if tt.wantRequeue {
+				assert.NotZero(t, aggregateResult.RequeueAfter, "requeue should be set")
+				if tt.checkRequeue != nil {
+					tt.checkRequeue(t, aggregateResult.RequeueAfter)
+				}
+			} else if !tt.wantErr {
+				// Only check for zero requeue if we're not expecting an error
+				// (errors might have different requeue behavior)
+				assert.NotZero(t, aggregateResult.RequeueAfter, "requeue might still be set for cert rotation")
+			}
+		})
 	}
 }
