@@ -9,11 +9,19 @@ package epr
 import (
 	"testing"
 
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/version"
 	"github.com/elastic/cloud-on-k8s/v3/test/e2e/test"
 	"github.com/elastic/cloud-on-k8s/v3/test/e2e/test/epr"
 )
 
 func TestPackageRegistryStandalone(t *testing.T) {
+	v := version.MustParse(test.Ctx().ElasticStackVersion)
+
+	// The `lite-` variant of the package registry image was introduced in 8.15.1.
+	if v.LT(version.MinFor(8, 15, 1)) {
+		t.SkipNow()
+	}
+
 	name := "test-epr-standalone"
 	eprBuilder := epr.NewBuilder(name).
 		WithNodeCount(1).
@@ -23,6 +31,13 @@ func TestPackageRegistryStandalone(t *testing.T) {
 }
 
 func TestPackageRegistryTLSDisabled(t *testing.T) {
+	v := version.MustParse(test.Ctx().ElasticStackVersion)
+
+	// The `lite-` variant of the package registry image was introduced in 8.15.1.
+	if v.LT(version.MinFor(8, 15, 1)) {
+		t.SkipNow()
+	}
+
 	name := "test-epr-tls-disabled"
 	eprBuilder := epr.NewBuilder(name).
 		WithNodeCount(1).
@@ -33,6 +48,13 @@ func TestPackageRegistryTLSDisabled(t *testing.T) {
 }
 
 func TestPackageRegistryVersionUpgradeToLatest8x(t *testing.T) {
+	v := version.MustParse(test.Ctx().ElasticStackVersion)
+
+	// The `lite-` variant of the package registry image was introduced in 8.15.1.
+	if v.LT(version.MinFor(8, 15, 1)) {
+		t.SkipNow()
+	}
+
 	srcVersion, dstVersion := test.GetUpgradePathTo8x(test.Ctx().ElasticStackVersion)
 
 	test.SkipInvalidUpgrade(t, srcVersion, dstVersion)
