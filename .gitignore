@@ -73,3 +73,5 @@ Chart.lock
 # build
 build/dev*
 build/eck*
+
+/.vscode/
