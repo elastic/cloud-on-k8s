@@ -135,9 +135,9 @@ func getUBISuffix(ver version.Version) string {
 // images, UBI suffix goes in the tag (lite-X.Y.Z-ubi) and not at the end of the image name.
 func getPackageRegistryImage(useUBI bool, suffix string, v version.Version) string {
 	if !useUBI {
-		// Before 8.15.1, the package registry image didn't have the 'lite' variant.
-		if v.LT(version.MinFor(8, 15, 1)) {
-			return fmt.Sprintf("%s/%s%s:%s", containerRegistry, PackageRegistryImage, suffix, v)
+		// Before 8.15.1, the package registry image didn't have the 'lite' variant thus fallback always to 8.15.1, this is backwards compatible.
+		if v.LT(version.From(8, 15, 1)) {
+			return fmt.Sprintf("%s/%s%s:lite-8.15.1", containerRegistry, PackageRegistryImage, suffix)
 		}
 		return fmt.Sprintf("%s/%s%s:lite-%s", containerRegistry, PackageRegistryImage, suffix, v)
 	}
