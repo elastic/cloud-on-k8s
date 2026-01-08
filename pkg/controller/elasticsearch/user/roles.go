@@ -32,8 +32,6 @@ const (
 	// DiagnosticsUserRoleV85 is the name of the built-in role for ECK diagnostics use from version 8.5.
 	DiagnosticsUserRoleV85 = "elastic_internal_diagnostics_v85"
 
-	// ApmUserRoleV6 is the name of the role used by 6.8.x APMServer instances to connect to Elasticsearch.
-	ApmUserRoleV6 = "eck_apm_user_role_v6"
 	// ApmUserRoleV7 is the name of the role used by APMServer instances to connect to Elasticsearch from version 7.1 to 7.4 included.
 	ApmUserRoleV7 = "eck_apm_user_role_v7"
 	// ApmUserRoleV75 is the name of the role used by APMServer instances to connect to Elasticsearch from version 7.5
@@ -45,6 +43,9 @@ const (
 
 	// ApmAgentUserRole is the name of the role used by APMServer instances to connect to Kibana
 	ApmAgentUserRole = "eck_apm_agent_user_role"
+
+	// AutoOpsUserRoleName is the name of the role used by the AutoOps agent to connect to Elasticsearch
+	AutoOpsUserRoleName = "eck_autoops_user_role"
 
 	// StackMonitoringMetricsUserRole is the name of the role used by Metricbeat and Filebeat to send metrics and log
 	// data to the monitoring Elasticsearch cluster when Stack Monitoring is enabled
@@ -105,6 +106,21 @@ var (
 			},
 		},
 	}
+
+	AutoOpsUserRole = esclient.Role{
+		Cluster: []string{"monitor", "read_ilm", "read_slm"},
+		Indices: []esclient.IndexRole{
+			{
+				Names:      []string{"*"},
+				Privileges: []string{"monitor", "view_index_metadata"},
+				AllowRestrictedIndices: func() *bool {
+					allow := true
+					return &allow
+				}(),
+			},
+		},
+	}
+
 	// PredefinedRoles to create for internal needs.
 	PredefinedRoles = RolesFileContent{
 		ProbeUserRole:     esclient.Role{Cluster: []string{"monitor"}},
@@ -118,15 +134,6 @@ var (
 			Cluster:      []string{"monitor", "monitor_snapshot", "manage", "read_ilm", "read_security"},
 			Indices:      diagnosticsRoleIndices,
 			Applications: diagnosticsAppsKibanaPrivileges,
-		},
-		ApmUserRoleV6: esclient.Role{
-			Cluster: []string{"monitor", "manage_index_templates"},
-			Indices: []esclient.IndexRole{
-				{
-					Names:      []string{"apm-*"},
-					Privileges: []string{"write", "create_index"},
-				},
-			},
 		},
 		ApmUserRoleV7: esclient.Role{
 			Cluster: []string{"monitor", "manage_ilm", "manage_index_templates"},
@@ -191,6 +198,7 @@ var (
 				},
 			},
 		},
+		AutoOpsUserRoleName: AutoOpsUserRole,
 		// StackMonitoringUserRole is a dedicated role for Stack Monitoring with Metricbeat and Filebeat used for the
 		// user sending monitoring data.
 		// See: https://www.elastic.co/guide/en/beats/filebeat/7.14/privileges-to-publish-monitoring.html.

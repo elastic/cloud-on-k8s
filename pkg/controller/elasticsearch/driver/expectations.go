@@ -17,7 +17,7 @@ import (
 // expectationsSatisfied checks that resources in our local cache match what we expect.
 // If not, it's safer to not move on with StatefulSets and Pods reconciliation.
 // Continuing with the reconciliation at this point may lead to:
-// - calling ES orchestration settings (zen1/zen2/allocation excludes) with wrong assumptions
+// - calling ES orchestration settings (zen2/allocation excludes) with wrong assumptions
 // (eg. incorrect number of nodes or master-eligible nodes topology)
 // - create or delete more than one master node at once
 func (d *defaultDriver) expectationsSatisfied(ctx context.Context) (bool, string, error) {

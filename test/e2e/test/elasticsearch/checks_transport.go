@@ -62,7 +62,7 @@ func CheckTransportCACertificate(es esv1.Elasticsearch, ca *x509.Certificate) er
 		return err
 	}
 	client := tls.Client(conn, &config)
-	// handshake can fail on 6.x versions of Elasticsearch because the test client is not presenting the right certificates
+	// handshake can fail if the test client is not presenting the right certificates
 	// but we are only interested in the peer certificates
 	err = client.Handshake() //nolint:noctx
 	if correctCertsPresented {

@@ -14,6 +14,7 @@ applies_to:
 * [agent.k8s.elastic.co/v1alpha1](#agentk8selasticcov1alpha1)
 * [apm.k8s.elastic.co/v1](#apmk8selasticcov1)
 * [apm.k8s.elastic.co/v1beta1](#apmk8selasticcov1beta1)
+* [autoops.k8s.elastic.co/v1alpha1](#autoopsk8selasticcov1alpha1)
 * [autoscaling.k8s.elastic.co/v1alpha1](#autoscalingk8selasticcov1alpha1)
 * [beat.k8s.elastic.co/v1beta1](#beatk8selasticcov1beta1)
 * [common.k8s.elastic.co/v1](#commonk8selasticcov1)
@@ -253,6 +254,67 @@ ApmServerSpec holds the specification of an APM Server.
 | *`elasticsearchRef`* __[ObjectSelector](#objectselector)__ | ElasticsearchRef is a reference to the output Elasticsearch cluster running in the same Kubernetes cluster. |
 | *`podTemplate`* __[PodTemplateSpec](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.32/#podtemplatespec-v1-core)__ | PodTemplate provides customisation options (labels, annotations, affinity rules, resource requests, and so on) for the APM Server pods. |
 | *`secureSettings`* __[SecretSource](#secretsource) array__ | SecureSettings is a list of references to Kubernetes secrets containing sensitive configuration options for APM Server. |
+
+
+
+% TODO add function to crd-ref-docs return anchor used in links docs-v3 does not seem to produce valid markdown anchors
+## autoops.k8s.elastic.co/v1alpha1 [#autoopsk8selasticcov1alpha1]
+
+Package v1alpha1 contains API schema definitions for managing AutoOpsAgentPolicy resources.
+
+### Resource Types
+- [AutoOpsAgentPolicy](#autoopsagentpolicy)
+
+
+
+### AutoOpsAgentPolicy  [#autoopsagentpolicy]
+
+AutoOpsAgentPolicy represents an Elastic AutoOps Policy resource in a Kubernetes cluster.
+
+
+
+| Field | Description |
+| --- | --- |
+| *`apiVersion`* __string__ | `autoops.k8s.elastic.co/v1alpha1` |
+| *`kind`* __string__ | `AutoOpsAgentPolicy` | 
+| *`metadata`* __[ObjectMeta](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.32/#objectmeta-v1-meta)__ | Refer to Kubernetes API documentation for fields of `metadata`. |
+| *`spec`* __[AutoOpsAgentPolicySpec](#autoopsagentpolicyspec)__ |  |
+
+
+### AutoOpsAgentPolicySpec  [#autoopsagentpolicyspec]
+
+
+
+:::{admonition} Appears In:
+* [AutoOpsAgentPolicy](#autoopsagentpolicy)
+
+:::
+
+| Field | Description |
+| --- | --- |
+| *`version`* __string__ | Version of the AutoOpsAgentPolicy. |
+| *`resourceSelector`* __[LabelSelector](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.32/#labelselector-v1-meta)__ | ResourceSelector is a label selector for the resources to be configured.<br>Any Elasticsearch instances that match the selector will be configured to send data to AutoOps. |
+| *`autoOpsRef`* __[AutoOpsRef](#autoopsref)__ | AutoOpsRef defines a reference to a secret containing connection details for AutoOps via Cloud Connect. |
+| *`image`* __string__ | Image is the AutoOps Agent Docker image to deploy. |
+| *`podTemplate`* __[PodTemplateSpec](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.32/#podtemplatespec-v1-core)__ | PodTemplate provides customisation options (labels, annotations, affinity rules, resource requests, and so on) for the Agent pods |
+| *`revisionHistoryLimit`* __integer__ | RevisionHistoryLimit is the number of revisions to retain to allow rollback in the underlying Deployment. |
+| *`serviceAccountName`* __string__ | ServiceAccountName is used to check access to Elasticsearch resources in different namespaces.<br>Can only be used if ECK is enforcing RBAC on references (--enforce-rbac-on-refs flag).<br>The service account must have "get" permission on elasticsearch.k8s.elastic.co/elasticsearches<br>in the target namespaces. |
+
+
+### AutoOpsRef  [#autoopsref]
+
+AutoOpsRef defines a reference to a secret containing connection details for AutoOps via Cloud Connect.
+
+:::{admonition} Appears In:
+* [AutoOpsAgentPolicySpec](#autoopsagentpolicyspec)
+
+:::
+
+| Field | Description |
+| --- | --- |
+| *`secretName`* __string__ | SecretName references a Secret containing connection details for external AutoOps.<br>Required when connecting via Cloud Connect. The secret must contain:<br>- `cloud-connected-mode-api-key`: Cloud Connected Mode API key<br>- `autoops-otel-url`: AutoOps OpenTelemetry endpoint URL<br>- `autoops-token`: AutoOps authentication token<br>- `cloud-connected-mode-api-url`: (optional) Cloud Connected Mode API URL<br>This field cannot be used in combination with `name`. |
+
+
 
 
 
@@ -1584,8 +1646,6 @@ UpdateStrategy specifies how updates to the cluster should be performed.
 | Field | Description |
 | --- | --- |
 | *`changeBudget`* __[ChangeBudget](#changebudget)__ | ChangeBudget defines the constraints to consider when applying changes to the Elasticsearch cluster. |
-
-
 
 
 

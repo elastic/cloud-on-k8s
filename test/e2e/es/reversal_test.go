@@ -37,10 +37,8 @@ func TestReversalRiskyMasterDownscale(t *testing.T) {
 	b := elasticsearch.NewBuilder("test-non-ha-downscale-reversal").
 		WithESMasterDataNodes(2, elasticsearch.DefaultResources)
 
-	// we then scale it down to 1 node, which for 6.x cluster in particular is a risky operation
-	// after reversing we expect a cluster to re-form. There is some potential for data loss
-	// in case the cluster indeed goes into split-brain.
-	// TODO it might be necessary to accept some data loss for 6.x here
+	// we then scale it down to 1 node.
+	// after reversing we expect a cluster to re-form.
 	down := b.WithNoESTopology().WithESMasterDataNodes(1, elasticsearch.DefaultResources)
 
 	RunESMutationReversal(t, b, down)

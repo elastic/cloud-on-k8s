@@ -248,17 +248,6 @@ type ClusterRoutingAllocation struct {
 	Transient AllocationSettings `json:"transient,omitempty"`
 }
 
-// DiscoveryZen set minimum number of master eligible nodes that must be visible to form a cluster.
-type DiscoveryZen struct {
-	MinimumMasterNodes int `json:"discovery.zen.minimum_master_nodes"`
-}
-
-// DiscoveryZenSettings are cluster settings related to the zen discovery mechanism.
-type DiscoveryZenSettings struct {
-	Transient  DiscoveryZen `json:"transient"`
-	Persistent DiscoveryZen `json:"persistent"`
-}
-
 // ErrorResponse is an Elasticsearch error response.
 type ErrorResponse struct {
 	Status int `json:"status"`

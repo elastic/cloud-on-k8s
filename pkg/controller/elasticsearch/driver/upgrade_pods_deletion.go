@@ -16,6 +16,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/label"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/reconcile"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/sset"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/version/zen2"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/k8s"
 	ulog "github.com/elastic/cloud-on-k8s/v3/pkg/utils/log"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/stringsutil"
@@ -187,22 +188,18 @@ func sortCandidates(allPods []corev1.Pod) {
 
 // handleMasterScaleChange handles Zen updates when a type change results in the addition or the removal of a master:
 // In case of a master scale down it shares the same logic that a "traditional" scale down:
-// * We proactively set m_m_n to the value of 1 if there are 2 Zen1 masters left
 // * We exclude the master for Zen2
 // In case of a master scale up there's nothing else to do:
-// * If there are Zen1 nodes m_m_n is updated prior the update of the StatefulSet in HandleUpscaleAndSpecChanges
 // * Because of the design of Zen2 there's nothing else to do for it.
 func (ctx *upgradeCtx) handleMasterScaleChange(pod corev1.Pod) error {
 	masterScaleDown := label.IsMasterNode(pod) && !stringsutil.StringInSlice(pod.Name, ctx.expectedMasters)
 	if masterScaleDown {
-		if err := updateZenSettingsForDownscale(
+		// Update zen2 settings to exclude leaving master nodes from voting.
+		if err := zen2.AddToVotingConfigExclusions(
 			ctx.parentCtx,
-			ctx.client,
 			ctx.esClient,
 			ctx.ES,
-			ctx.reconcileState,
-			ctx.statefulSets,
-			pod.Name,
+			[]string{pod.Name},
 		); err != nil {
 			return err
 		}
