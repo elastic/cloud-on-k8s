@@ -76,7 +76,7 @@ func TestAutoOpsAgentPolicyReconciler_internalReconcile(t *testing.T) {
 					Namespace: "ns-1",
 				},
 				Spec: autoopsv1alpha1.AutoOpsAgentPolicySpec{
-					Version: "9.1.0",
+					Version: "9.2.1",
 					AutoOpsRef: autoopsv1alpha1.AutoOpsRef{
 						SecretName: "invalid-secret",
 					},
@@ -107,7 +107,7 @@ func TestAutoOpsAgentPolicyReconciler_internalReconcile(t *testing.T) {
 					Namespace: "ns-1",
 				},
 				Spec: autoopsv1alpha1.AutoOpsAgentPolicySpec{
-					Version: "9.1.0",
+					Version: "9.2.1",
 					AutoOpsRef: autoopsv1alpha1.AutoOpsRef{
 						SecretName: "config-secret",
 					},
@@ -148,7 +148,7 @@ func TestAutoOpsAgentPolicyReconciler_internalReconcile(t *testing.T) {
 					Namespace: "ns-1",
 				},
 				Spec: autoopsv1alpha1.AutoOpsAgentPolicySpec{
-					Version: "9.1.0",
+					Version: "9.2.1",
 					AutoOpsRef: autoopsv1alpha1.AutoOpsRef{
 						SecretName: "config-secret",
 					},
@@ -184,7 +184,7 @@ func TestAutoOpsAgentPolicyReconciler_internalReconcile(t *testing.T) {
 					Namespace: "ns-1",
 				},
 				Spec: autoopsv1alpha1.AutoOpsAgentPolicySpec{
-					Version: "9.1.0",
+					Version: "9.2.1",
 					AutoOpsRef: autoopsv1alpha1.AutoOpsRef{
 						SecretName: "config-secret",
 					},
@@ -214,6 +214,9 @@ func TestAutoOpsAgentPolicyReconciler_internalReconcile(t *testing.T) {
 					Status: esv1.ElasticsearchStatus{
 						Phase: esv1.ElasticsearchApplyingChangesPhase,
 					},
+					Spec: esv1.ElasticsearchSpec{
+						Version: "9.1.0",
+					},
 				},
 			},
 			wantStatus: autoopsv1alpha1.AutoOpsAgentPolicyStatus{
@@ -231,7 +234,7 @@ func TestAutoOpsAgentPolicyReconciler_internalReconcile(t *testing.T) {
 					Namespace: "ns-1",
 				},
 				Spec: autoopsv1alpha1.AutoOpsAgentPolicySpec{
-					Version: "9.1.0",
+					Version: "9.2.1",
 					AutoOpsRef: autoopsv1alpha1.AutoOpsRef{
 						SecretName: "config-secret",
 					},
@@ -288,7 +291,7 @@ func TestAutoOpsAgentPolicyReconciler_internalReconcile(t *testing.T) {
 					Namespace: "ns-1",
 				},
 				Spec: autoopsv1alpha1.AutoOpsAgentPolicySpec{
-					Version: "9.1.0",
+					Version: "9.2.1",
 					AutoOpsRef: autoopsv1alpha1.AutoOpsRef{
 						SecretName: "config-secret",
 					},
@@ -335,6 +338,9 @@ func TestAutoOpsAgentPolicyReconciler_internalReconcile(t *testing.T) {
 						Namespace: "ns-1",
 						Labels:    map[string]string{"app": "elasticsearch"},
 					},
+					Spec: esv1.ElasticsearchSpec{
+						Version: "9.1.0",
+					},
 					Status: esv1.ElasticsearchStatus{
 						Phase: esv1.ElasticsearchApplyingChangesPhase,
 					},
@@ -356,7 +362,7 @@ func TestAutoOpsAgentPolicyReconciler_internalReconcile(t *testing.T) {
 					Namespace: "ns-1",
 				},
 				Spec: autoopsv1alpha1.AutoOpsAgentPolicySpec{
-					Version: "9.1.0",
+					Version: "9.2.1",
 					AutoOpsRef: autoopsv1alpha1.AutoOpsRef{
 						SecretName: "config-secret",
 					},
@@ -446,7 +452,7 @@ func TestAutoOpsAgentPolicyReconciler_internalReconcile(t *testing.T) {
 					Namespace: "ns-1",
 				},
 				Spec: autoopsv1alpha1.AutoOpsAgentPolicySpec{
-					Version: "9.1.0",
+					Version: "9.2.1",
 					AutoOpsRef: autoopsv1alpha1.AutoOpsRef{
 						SecretName: "config-secret",
 					},
@@ -548,6 +554,64 @@ func TestAutoOpsAgentPolicyReconciler_internalReconcile(t *testing.T) {
 			},
 			wantResults: reconcile.Result{},
 		},
+		{
+			name: "deprecated ES version is ignored",
+			policy: autoopsv1alpha1.AutoOpsAgentPolicy{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "policy-1",
+					Namespace: "ns-1",
+				},
+				Spec: autoopsv1alpha1.AutoOpsAgentPolicySpec{
+					Version: "9.2.1",
+					AutoOpsRef: autoopsv1alpha1.AutoOpsRef{
+						SecretName: "config-secret",
+					},
+					ResourceSelector: metav1.LabelSelector{
+						MatchLabels: map[string]string{"app": "elasticsearch"},
+					},
+				},
+			},
+			initialObjects: []client.Object{
+				&corev1.Secret{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "config-secret",
+						Namespace: "ns-1",
+					},
+					Data: map[string][]byte{
+						"cloud-connected-mode-api-key": []byte("test-key"),
+						"autoops-otel-url":             []byte("https://test-url"),
+						"autoops-token":                []byte("test-token"),
+					},
+				},
+				&esv1.Elasticsearch{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "es-deprecated",
+						Namespace: "ns-1",
+						Labels:    map[string]string{"app": "elasticsearch"},
+					},
+					Spec: esv1.ElasticsearchSpec{
+						Version: "7.15.0",
+						HTTP: commonv1.HTTPConfig{
+							TLS: commonv1.TLSOptions{
+								SelfSignedCertificate: &commonv1.SelfSignedCertificate{
+									Disabled: true,
+								},
+							},
+						},
+					},
+					Status: esv1.ElasticsearchStatus{
+						Phase: esv1.ElasticsearchReadyPhase,
+					},
+				},
+			},
+			wantStatus: autoopsv1alpha1.AutoOpsAgentPolicyStatus{
+				Resources: 1,
+				Ready:     0,
+				Errors:    0,
+				Phase:     "",
+			},
+			wantResults: reconcile.Result{},
+		},
 	}
 
 	for _, tt := range tests {
@@ -577,7 +641,7 @@ func TestAutoOpsAgentPolicyReconciler_internalReconcile(t *testing.T) {
 
 			gotResult, gotErr := gotResults.Aggregate()
 			expectError := tt.wantStatus.Phase == autoopsv1alpha1.ErrorPhase || tt.wantStatus.Phase == autoopsv1alpha1.InvalidPhase
-			require.Equal(t, expectError, gotErr != nil)
+			require.Equal(t, expectError, gotErr != nil, "expected error: %v, got error: %v", expectError, gotErr)
 
 			if !cmp.Equal(tt.wantStatus, state.status, cmpopts.IgnoreFields(autoopsv1alpha1.AutoOpsAgentPolicyStatus{}, "ObservedGeneration")) {
 				t.Errorf("status mismatch:\n%s", cmp.Diff(tt.wantStatus, state.status, cmpopts.IgnoreFields(autoopsv1alpha1.AutoOpsAgentPolicyStatus{}, "ObservedGeneration")))
@@ -658,7 +722,7 @@ func TestAutoOpsAgentPolicyReconciler_selectorChangeCleanup(t *testing.T) {
 			Namespace: "ns-1",
 		},
 		Spec: autoopsv1alpha1.AutoOpsAgentPolicySpec{
-			Version: "9.1.0",
+			Version: "9.2.1",
 			AutoOpsRef: autoopsv1alpha1.AutoOpsRef{
 				SecretName: "config-secret",
 			},
@@ -874,7 +938,7 @@ func TestAutoOpsAgentPolicyReconciler_accessRevokedCleanup(t *testing.T) {
 			Namespace: "ns-1",
 		},
 		Spec: autoopsv1alpha1.AutoOpsAgentPolicySpec{
-			Version: "9.1.0",
+			Version: "9.2.1",
 			AutoOpsRef: autoopsv1alpha1.AutoOpsRef{
 				SecretName: "config-secret",
 			},
