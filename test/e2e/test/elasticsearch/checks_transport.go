@@ -34,7 +34,7 @@ func CheckTransportCACertificate(es esv1.Elasticsearch, ca *x509.Certificate) er
 	if test.Ctx().AutoPortForwarding {
 		conn, err = portforward.NewForwardingDialer().DialContext(context.Background(), "tcp", host)
 	} else {
-		conn, err = net.Dial("tcp", host)
+		conn, err = net.Dial("tcp", host) //nolint:noctx
 	}
 	if err != nil {
 		return err
@@ -64,7 +64,7 @@ func CheckTransportCACertificate(es esv1.Elasticsearch, ca *x509.Certificate) er
 	client := tls.Client(conn, &config)
 	// handshake can fail if the test client is not presenting the right certificates
 	// but we are only interested in the peer certificates
-	err = client.Handshake()
+	err = client.Handshake() //nolint:noctx
 	if correctCertsPresented {
 		return nil
 	}
