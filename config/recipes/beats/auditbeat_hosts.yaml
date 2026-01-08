@@ -134,4 +134,13 @@ spec:
   count: 1
   elasticsearchRef:
     name: elasticsearch
+  podTemplate:
+    spec:
+      containers:
+      - name: kibana
+        resources:
+          requests:
+            memory: 1500Mi
+          limits:
+            memory: 1500Mi
 ...
