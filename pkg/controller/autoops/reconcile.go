@@ -79,7 +79,8 @@ func (r *AgentPolicyReconciler) internalReconcile(
 		return results.WithError(err)
 	}
 
-	namespaces, err := listNamespaces(ctx, r.Client, policy.Spec.NamespaceSelector)
+	filterByNamespace := (len(policy.Spec.NamespaceSelector.MatchExpressions) > 0 || len(policy.Spec.NamespaceSelector.MatchLabels) > 0)
+	namespaces, err := getNamespaces(ctx, r.Client, policy.Spec.NamespaceSelector)
 	if err != nil {
 		state.UpdateWithPhase(autoopsv1alpha1.ErrorPhase)
 		return results.WithError(err)
@@ -107,7 +108,7 @@ func (r *AgentPolicyReconciler) internalReconcile(
 	accessibleClusters := make([]esv1.Elasticsearch, 0, len(esList.Items))
 	for _, es := range esList.Items {
 		// filter by namespace (if set)
-		if len(namespaces) > 0 && !namespaces.Has(es.Namespace) {
+		if filterByNamespace && !namespaces.Has(es.Namespace) {
 			log.V(1).Info("Skipping ES cluster due to namespace filtering", "es_namespace", es.Namespace, "es_name", es.Name)
 			continue
 		}
@@ -289,15 +290,15 @@ func isDeploymentReady(dep appsv1.Deployment) bool {
 	return false
 }
 
-// listNamespaces queries the Kubernetes API for namespaces matching the
+// getNamespaces queries the Kubernetes API for namespaces matching the
 // provided label selector and returns their names as a set for efficient
 // lookup operations.
-func listNamespaces(
+func getNamespaces(
 	ctx context.Context,
 	k8sClient k8s.Client,
 	ls metav1.LabelSelector,
 ) (sets.Set[string], error) {
-	// early return when no namespace is selected.
+	// early return when selector is empty.
 	if len(ls.MatchExpressions) == 0 && len(ls.MatchLabels) == 0 {
 		return sets.Set[string]{}, nil
 	}

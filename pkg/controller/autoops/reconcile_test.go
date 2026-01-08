@@ -610,6 +610,142 @@ func TestAutoOpsAgentPolicyReconciler_internalReconcile(t *testing.T) {
 				Errors:    0,
 				Phase:     "",
 			},
+		},
+		{
+			name: "two ES instances: filter by namespace shows ready: 1, resources: 1",
+			policy: autoopsv1alpha1.AutoOpsAgentPolicy{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "policy-1",
+					Namespace: "ns-1",
+				},
+				Spec: autoopsv1alpha1.AutoOpsAgentPolicySpec{
+					Version: "9.1.0",
+					AutoOpsRef: autoopsv1alpha1.AutoOpsRef{
+						SecretName: "config-secret",
+					},
+					ResourceSelector: metav1.LabelSelector{
+						MatchLabels: map[string]string{"app": "elasticsearch"},
+					},
+					NamespaceSelector: metav1.LabelSelector{
+						MatchLabels: map[string]string{"kubernetes.io/metadata.name": "ns-1"},
+					},
+				},
+			},
+			initialObjects: []client.Object{
+				&corev1.Namespace{
+					TypeMeta: metav1.TypeMeta{
+						Kind:       "Namespace",
+						APIVersion: "v1",
+					},
+					ObjectMeta: metav1.ObjectMeta{
+						Name: "ns-1",
+						Labels: map[string]string{
+							"kubernetes.io/metadata.name": "ns-1",
+						},
+					},
+				},
+				&corev1.Namespace{
+					TypeMeta: metav1.TypeMeta{
+						Kind:       "Namespace",
+						APIVersion: "v1",
+					},
+					ObjectMeta: metav1.ObjectMeta{
+						Name: "ns-2",
+						Labels: map[string]string{
+							"kubernetes.io/metadata.name": "ns-2",
+						},
+					},
+				},
+				&corev1.Secret{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "config-secret",
+						Namespace: "ns-1",
+					},
+					Data: map[string][]byte{
+						"cloud-connected-mode-api-key": []byte("test-key"),
+						"autoops-otel-url":             []byte("https://test-url"),
+						"autoops-token":                []byte("test-token"),
+					},
+				},
+				&esv1.Elasticsearch{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "es-1",
+						Namespace: "ns-1",
+						Labels:    map[string]string{"app": "elasticsearch"},
+					},
+					Spec: esv1.ElasticsearchSpec{
+						Version: "9.1.0",
+						HTTP: commonv1.HTTPConfig{
+							TLS: commonv1.TLSOptions{
+								SelfSignedCertificate: &commonv1.SelfSignedCertificate{
+									Disabled: true,
+								},
+							},
+						},
+					},
+					Status: esv1.ElasticsearchStatus{
+						Phase: esv1.ElasticsearchReadyPhase,
+					},
+				},
+				&esv1.Elasticsearch{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "es-2",
+						Namespace: "ns-2",
+						Labels:    map[string]string{"app": "elasticsearch"},
+					},
+					Spec: esv1.ElasticsearchSpec{
+						Version: "9.1.0",
+						HTTP: commonv1.HTTPConfig{
+							TLS: commonv1.TLSOptions{
+								SelfSignedCertificate: &commonv1.SelfSignedCertificate{
+									Disabled: true,
+								},
+							},
+						},
+					},
+					Status: esv1.ElasticsearchStatus{
+						Phase: esv1.ElasticsearchReadyPhase,
+					},
+				},
+				&corev1.ConfigMap{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      autoopsv1alpha1.Config("policy-1", esv1.Elasticsearch{ObjectMeta: metav1.ObjectMeta{Name: "es-1", Namespace: "ns-1"}}),
+						Namespace: "ns-1",
+					},
+					Data: map[string]string{
+						autoOpsESConfigFileName: "test-config",
+					},
+				},
+				&corev1.Secret{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      autoopsv1alpha1.APIKeySecret("policy-1", types.NamespacedName{Name: "es-1", Namespace: "ns-1"}),
+						Namespace: "ns-1",
+					},
+					Data: map[string][]byte{
+						apiKeySecretKey: []byte("test-api-key"),
+					},
+				},
+				&appsv1.Deployment{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      autoopsv1alpha1.Deployment("policy-1", esv1.Elasticsearch{ObjectMeta: metav1.ObjectMeta{Name: "es-1", Namespace: "ns-1"}}),
+						Namespace: "ns-1",
+					},
+					Status: appsv1.DeploymentStatus{
+						Conditions: []appsv1.DeploymentCondition{
+							{
+								Type:   appsv1.DeploymentAvailable,
+								Status: corev1.ConditionTrue,
+							},
+						},
+					},
+				},
+			},
+			wantStatus: autoopsv1alpha1.AutoOpsAgentPolicyStatus{
+				Resources: 1,
+				Ready:     1,
+				Errors:    0,
+				Phase:     "", // Ready, or applyingChanges phases are set in the main Reconcile function, not here.
+			},
 			wantResults: reconcile.Result{},
 		},
 	}
