@@ -20,7 +20,11 @@ applies_to:
 ---
 % Generated documentation. Please do not edit.
 
-# Third-party dependencies for Elastic Cloud on Kubernetes[k8s-dependencies]
+{{if eq (TemplateValue "eckVersion") "main" -}}
+# Third-party dependencies for Elastic Cloud on Kubernetes [k8s-dependencies]
+{{- else -}}
+# Third-party dependencies for Elastic Cloud on Kubernetes {{TemplateValue "eckVersionShort"}} [k8s-dependencies]
+{{- end}}
 
 {{if eq (TemplateValue "eckVersion") "main" -}}
 This page lists the third-party dependencies used to build {{`{{eck}}`}} from the main branch.
