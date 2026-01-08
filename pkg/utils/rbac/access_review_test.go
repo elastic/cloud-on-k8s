@@ -56,7 +56,7 @@ func Test_subjectAccessReviewer_AccessAllowed(t *testing.T) {
 			},
 			fields: fields{
 				clientProvider: func() kubernetes.Interface {
-					fakeClient := fake.NewSimpleClientset()
+					fakeClient := fake.NewClientset()
 					fakeClient.PrependReactor(
 						"create",
 						"subjectaccessreviews",
@@ -90,7 +90,7 @@ func Test_subjectAccessReviewer_AccessAllowed(t *testing.T) {
 			},
 			fields: fields{
 				clientProvider: func() kubernetes.Interface {
-					fakeClient := fake.NewSimpleClientset()
+					fakeClient := fake.NewClientset()
 					fakeClient.PrependReactor(
 						"create",
 						"subjectaccessreviews",
@@ -116,7 +116,7 @@ func Test_subjectAccessReviewer_AccessAllowed(t *testing.T) {
 			},
 			fields: fields{
 				clientProvider: func() kubernetes.Interface {
-					fakeClient := fake.NewSimpleClientset()
+					fakeClient := fake.NewClientset()
 					fakeClient.PrependReactor(
 						"create",
 						"subjectaccessreviews",
@@ -142,7 +142,7 @@ func Test_subjectAccessReviewer_AccessAllowed(t *testing.T) {
 			},
 			fields: fields{
 				clientProvider: func() kubernetes.Interface {
-					fakeClient := fake.NewSimpleClientset()
+					fakeClient := fake.NewClientset()
 					fakeClient.PrependReactor(
 						"create",
 						"subjectaccessreviews",
@@ -169,7 +169,7 @@ func Test_subjectAccessReviewer_AccessAllowed(t *testing.T) {
 			},
 			fields: fields{
 				clientProvider: func() kubernetes.Interface {
-					fakeClient := fake.NewSimpleClientset()
+					fakeClient := fake.NewClientset()
 					fakeClient.PrependReactor(
 						"create",
 						"subjectaccessreviews",
@@ -196,7 +196,7 @@ func Test_subjectAccessReviewer_AccessAllowed(t *testing.T) {
 			},
 			fields: fields{
 				clientProvider: func() kubernetes.Interface {
-					return fake.NewSimpleClientset()
+					return fake.NewClientset()
 				},
 			},
 			wantErr: true,
