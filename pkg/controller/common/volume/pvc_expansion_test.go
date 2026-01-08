@@ -16,7 +16,6 @@ import (
 	storagev1 "k8s.io/api/storage/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/client-go/kubernetes/scheme"
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
 	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -481,7 +480,7 @@ func Test_recreateStatefulSets(t *testing.T) {
 		label.StatefulSetNameLabelName: sset1.Name,
 	}}}
 	pod1WithOwnerRef := pod1.DeepCopy()
-	require.NoError(t, controllerutil.SetOwnerReference(es(), pod1WithOwnerRef, scheme.Scheme))
+	require.NoError(t, controllerutil.SetOwnerReference(es(), pod1WithOwnerRef, clientgoscheme.Scheme))
 
 	sset2 := &appsv1.StatefulSet{ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: "sset2", UID: "sset2-uid"}}
 	sset2Bytes, _ := json.Marshal(sset2)
@@ -619,10 +618,10 @@ var (
 
 func init() {
 	controllerscheme.SetupScheme()
-	if err := controllerutil.SetOwnerReference(&sampleEs, &pod1WithOwnerRef, scheme.Scheme); err != nil {
+	if err := controllerutil.SetOwnerReference(&sampleEs, &pod1WithOwnerRef, clientgoscheme.Scheme); err != nil {
 		panic(err)
 	}
-	if err := controllerutil.SetOwnerReference(&sampleEs, &pod2WithOwnerRef, scheme.Scheme); err != nil {
+	if err := controllerutil.SetOwnerReference(&sampleEs, &pod2WithOwnerRef, clientgoscheme.Scheme); err != nil {
 		panic(err)
 	}
 }

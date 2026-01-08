@@ -37,6 +37,7 @@ const (
 	// for debugging purposes.
 	SuspendAnnotation = "eck.k8s.elastic.co/suspend"
 	// ElasticsearchAutoscalingSpecAnnotationName is the name of the annotation used to store the autoscaling specification.
+	//
 	// Deprecated: the autoscaling annotation has been deprecated in favor of the ElasticsearchAutoscaler custom resource.
 	ElasticsearchAutoscalingSpecAnnotationName = "elasticsearch.alpha.elastic.co/autoscaling-spec"
 
@@ -485,6 +486,7 @@ func (es *Elasticsearch) ElasticServiceAccount() (commonv1.ServiceAccountName, e
 }
 
 // IsAutoscalingAnnotationSet returns true if there is an autoscaling configuration in the annotations.
+//
 // Deprecated: the autoscaling annotation has been deprecated in favor of the ElasticsearchAutoscaler custom resource.
 func (es Elasticsearch) IsAutoscalingAnnotationSet() bool {
 	_, ok := es.Annotations[ElasticsearchAutoscalingSpecAnnotationName]
