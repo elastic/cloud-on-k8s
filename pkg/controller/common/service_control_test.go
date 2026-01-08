@@ -300,7 +300,7 @@ func Test_needsRecreate(t *testing.T) {
 }
 
 func Test_applyServerSideValues(t *testing.T) {
-	pointer := func(policyType corev1.ServiceInternalTrafficPolicyType) *corev1.ServiceInternalTrafficPolicyType {
+	pointer := func(policyType corev1.ServiceInternalTrafficPolicy) *corev1.ServiceInternalTrafficPolicy {
 		return &policyType
 	}
 	type args struct {
