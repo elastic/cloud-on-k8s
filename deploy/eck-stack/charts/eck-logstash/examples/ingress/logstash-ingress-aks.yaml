@@ -1,0 +1,52 @@
+﻿---
+# The following is an example of a Logstash resource that is configured to use an Ingress resource in an AKS cluster.
+#
+
+fullnameOverride: logstash
+
+version: 9.2.3
+count: 1
+
+# Reference to ECK-managed Elasticsearch instance, ideally from {{ "elasticsearch.fullname" }}
+#
+elasticsearchRefs:
+  - clusterName: eck
+    name: elasticsearch
+
+pipelines:
+  - pipeline.id: main
+    config.string: |
+      input {
+        beats {
+          port => 5044
+        }
+      }
+      output {
+        elasticsearch {
+          hosts => [ "${ECK_ES_HOSTS}" ]
+          user => "${ECK_ES_USER}"
+          password => "${ECK_ES_PASSWORD}"
+          ssl_certificate_authorities => "${ECK_ES_SSL_CERTIFICATE_AUTHORITY}"
+        }
+      }
+
+services:
+  - name: beats
+    service:
+      spec:
+        type: ClusterIP
+        ports:
+          - name: filebeat
+            port: 5044
+            protocol: TCP
+            targetPort: 5044
+
+ingress:
+  enabled: true
+  className: webapprouting.kubernetes.azure.com
+  pathType: Prefix
+  hosts:
+    - host: "logstash.company.dev"
+      path: "/beats"
+      serviceName: beats
+      servicePort: 5044

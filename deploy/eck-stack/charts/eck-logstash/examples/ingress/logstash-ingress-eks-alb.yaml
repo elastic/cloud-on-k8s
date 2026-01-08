@@ -1,0 +1,67 @@
+﻿---
+# The following is an example of a Logstash resource that is configured to use an Ingress resource in an EKS cluster
+# which provisions an application load balancer.
+#
+
+fullnameOverride: logstash
+
+version: 9.2.3
+count: 1
+
+# Reference to ECK-managed Elasticsearch instance, ideally from {{ "elasticsearch.fullname" }}
+#
+elasticsearchRefs:
+  - clusterName: eck
+    name: elasticsearch
+
+pipelines:
+  - pipeline.id: main
+    config.string: |
+      input {
+        beats {
+          port => 5044
+        }
+      }
+      output {
+        elasticsearch {
+          hosts => [ "${ECK_ES_HOSTS}" ]
+          user => "${ECK_ES_USER}"
+          password => "${ECK_ES_PASSWORD}"
+          ssl_certificate_authorities => "${ECK_ES_SSL_CERTIFICATE_AUTHORITY}"
+        }
+      }
+
+services:
+  - name: beats
+    service:
+      spec:
+        type: ClusterIP
+        ports:
+          - name: filebeat
+            port: 5044
+            protocol: TCP
+            targetPort: 5044
+
+ingress:
+  enabled: true
+  className: alb
+  annotations:
+    alb.ingress.kubernetes.io/scheme: "internet-facing"
+    alb.ingress.kubernetes.io/listen-ports: '[{"HTTPS":443}]'
+    alb.ingress.kubernetes.io/backend-protocol: "TCP"
+    alb.ingress.kubernetes.io/target-type: "ip"
+    # To use an ALB with ECK, you must provide a valid ACM certificate ARN or use certificate discovery.
+    # There are 2 options for EKS:
+    # 1. Create a valid ACM certificate, and uncomment the following annotation and update it to the correct ARN.
+    # 2. Create a valid ACM certificate and ensure that the hosts[0].host matches the certificate's Common Name (CN) and
+    #    certificate discovery *should* find the certificate automatically and use it.
+    #
+    # ref: https://kubernetes-sigs.github.io/aws-load-balancer-controller/v2.8/guide/ingress/cert_discovery/
+    #
+    # alb.ingress.kubernetes.io/certificate-arn: "arn:aws:acm:us-east-1:00000000000:certificate/b65be571-8220-4f2e-8cb1-94194535d877"
+  pathType: Prefix
+  hosts:
+    - host: "logstash.company.dev"
+      path: "/beats"
+      serviceName: beats
+      servicePort: 5044
