@@ -39,7 +39,7 @@ var (
 	SupportedPackageRegistryVersions = MinMaxVersion{Min: From(7, 17, 8), Max: From(9, 99, 99)}
 	SupportedLogstashVersions        = MinMaxVersion{Min: From(8, 12, 0), Max: From(9, 99, 99)}
 
-	// AutoOpsAgent was introduced in 9.1.0, but optimizations from 9.2.1 onwards are preferred.
+	// AutoOpsAgent was introduced in 9.1.0, but 9.2.1 is now required due to performance optimizations.
 	SupportedAutoOpsAgentVersions = MinMaxVersion{Min: MustParse("9.2.1"), Max: From(9, 99, 99)}
 
 	// minPreReleaseVersion is the lowest prerelease identifier as numeric prerelease takes precedence before
