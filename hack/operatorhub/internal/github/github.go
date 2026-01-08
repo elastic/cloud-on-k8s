@@ -7,6 +7,7 @@ package github
 import (
 	"bytes"
 	"context"
+	"encoding/json"
 	"fmt"
 	"io"
 	"log"
@@ -274,6 +275,49 @@ func (c *Client) cloneAndCreate(repo githubRepository) error {
 	return c.createPullRequest(repo, branchName)
 }
 
+// githubPullRequest is the minimal representation of a GitHub PR response.
+type githubPullRequest struct {
+	ID uint `json:"id"`
+}
+
+// pullRequestExists checks if a pull request already exists for the given repository
+// from the configured GitHub user's branch by querying the GitHub Pulls API.
+func (c *Client) pullRequestExists(repo githubRepository, branchName string) (bool, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), 1*time.Minute)
+	defer cancel()
+
+	// Query format: /repos/{owner}/{repo}/pulls?head={user}:{branch}&state=open
+	url := fmt.Sprintf("%s/repos/%s/%s/pulls?head=%s:%s&state=open",
+		githubAPIURL, repo.organization, repo.repository, c.GitHubUsername, branchName)
+
+	req, err := c.createRequest(ctx, http.MethodGet, url, nil)
+	if err != nil {
+		return false, fmt.Errorf("while creating request to check for existing PR: %w", err)
+	}
+
+	res, err := c.HTTPClient.Do(req)
+	if err != nil {
+		return false, fmt.Errorf("while checking for existing PR: %w", err)
+	}
+	defer res.Body.Close()
+
+	bodyBytes, err := io.ReadAll(res.Body)
+	if err != nil {
+		return false, fmt.Errorf("while reading PR check response body: %w", err)
+	}
+
+	if res.StatusCode < 200 || res.StatusCode > 299 {
+		return false, fmt.Errorf("invalid status code while checking for existing PR, code: %d, body: %s", res.StatusCode, string(bodyBytes))
+	}
+
+	var prs []githubPullRequest
+	if err := json.Unmarshal(bodyBytes, &prs); err != nil {
+		return false, fmt.Errorf("while decoding PR check response: %w", err)
+	}
+
+	return len(prs) > 0, nil
+}
+
 // createPullRequest will create a draft pull request for the given github repository
 // unless dry-run is set.
 func (c *Client) createPullRequest(repo githubRepository, branchName string) error {
@@ -281,6 +325,21 @@ func (c *Client) createPullRequest(repo githubRepository, branchName string) err
 		log.Println("Not creating draft pull request as dry-run is set")
 		return nil
 	}
+
+	// Check if a PR already exists for this branch
+	log.Printf("Checking if pull request already exists for (%s) ", repo.repository)
+	exists, err := c.pullRequestExists(repo, branchName)
+	if err != nil {
+		log.Println("ⅹ")
+		return fmt.Errorf("while checking for existing PR for (%s): %w", repo.repository, err)
+	}
+	if exists {
+		log.Println("✓")
+		log.Printf("Pull request for (%s) already exists. Skipping creation.\n", repo.repository)
+		return nil
+	}
+	log.Println("✓")
+
 	log.Printf("Creating draft pull request for (%s) ", repo.repository)
 
 	prBody := fmt.Sprintf("Update the ECK operator to the latest version `%s`.", c.GitTag)
