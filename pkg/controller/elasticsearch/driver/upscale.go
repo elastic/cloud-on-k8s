@@ -24,7 +24,6 @@ import (
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/reconcile"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/settings"
 	es_sset "github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/sset"
-	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/version/zen1"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/version/zen2"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/k8s"
 	ulog "github.com/elastic/cloud-on-k8s/v3/pkg/utils/log"
@@ -228,10 +227,6 @@ func adjustResources(
 }
 
 func adjustZenConfig(ctx context.Context, k8sClient k8s.Client, es esv1.Elasticsearch, resources nodespec.ResourcesList) error {
-	// patch configs to consider zen1 minimum master nodes
-	if err := zen1.SetupMinimumMasterNodesConfig(ctx, k8sClient, es, resources); err != nil {
-		return err
-	}
 	// patch configs to consider zen2 initial master nodes
 	return zen2.SetupInitialMasterNodes(ctx, es, k8sClient, resources)
 }

@@ -1649,8 +1649,6 @@ UpdateStrategy specifies how updates to the cluster should be performed.
 
 
 
-
-
 % TODO add function to crd-ref-docs return anchor used in links docs-v3 does not seem to produce valid markdown anchors
 ## enterprisesearch.k8s.elastic.co/v1 [#enterprisesearchk8selasticcov1]
 

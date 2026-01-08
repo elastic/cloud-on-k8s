@@ -13,12 +13,10 @@ var MinReadinessPortVersion = version.MinFor(8, 2, 0)
 const (
 	ClusterName = "cluster.name"
 
-	DiscoveryZenMinimumMasterNodes = "discovery.zen.minimum_master_nodes"
-	ClusterInitialMasterNodes      = "cluster.initial_master_nodes"
+	ClusterInitialMasterNodes = "cluster.initial_master_nodes"
 
-	DiscoveryZenHostsProvider = "discovery.zen.hosts_provider" // ES < 7.X
-	DiscoverySeedProviders    = "discovery.seed_providers"     // ES >= 7.X
-	DiscoverySeedHosts        = "discovery.seed_hosts"         // ES >= 7.X
+	DiscoverySeedProviders = "discovery.seed_providers"
+	DiscoverySeedHosts     = "discovery.seed_hosts"
 
 	ReadinessPort = "readiness.port" // ES >= 8.2.0
 
@@ -38,12 +36,8 @@ const (
 	ShardAwarenessAttributes = "cluster.routing.allocation.awareness.attributes"
 	NodeAttr                 = "node.attr"
 
-	XPackSecurityAuthcRealmsFileFile1Order     = "xpack.security.authc.realms.file.file1.order"     // 7.x realm syntax
-	XPackSecurityAuthcRealmsFile1Order         = "xpack.security.authc.realms.file1.order"          // 6.x realm syntax
-	XPackSecurityAuthcRealmsFile1Type          = "xpack.security.authc.realms.file1.type"           // 6.x realm syntax
-	XPackSecurityAuthcRealmsNativeNative1Order = "xpack.security.authc.realms.native.native1.order" // 7.x realm syntax
-	XPackSecurityAuthcRealmsNative1Order       = "xpack.security.authc.realms.native1.order"        // 6.x realm syntax
-	XPackSecurityAuthcRealmsNative1Type        = "xpack.security.authc.realms.native1.type"         // 6.x realm syntax
+	XPackSecurityAuthcRealmsFileFile1Order     = "xpack.security.authc.realms.file.file1.order"
+	XPackSecurityAuthcRealmsNativeNative1Order = "xpack.security.authc.realms.native.native1.order"
 
 	XPackSecurityAuthcReservedRealmEnabled          = "xpack.security.authc.reserved_realm.enabled"
 	XPackSecurityEnabled                            = "xpack.security.enabled"
@@ -72,7 +66,6 @@ var UnsupportedSettings = []string{
 	ClusterName,
 	DiscoverySeedHosts,
 	DiscoverySeedProviders,
-	DiscoveryZenMinimumMasterNodes,
 	ClusterInitialMasterNodes,
 	NetworkHost,
 	NetworkPublishHost,

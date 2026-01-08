@@ -1,6 +1,8 @@
 module github.com/elastic/cloud-on-k8s/v3
 
-go 1.24.5
+go 1.25.0
+
+toolchain go1.25.5
 
 require (
 	dario.cat/mergo v1.0.2
@@ -17,6 +19,7 @@ require (
 	github.com/google/go-cmp v0.7.0
 	github.com/google/go-containerregistry v0.20.7
 	github.com/google/uuid v1.6.0
+	github.com/googlecloudplatform/compute-class-api v0.0.0-20251208134148-ae2e7936c1f8
 	github.com/hashicorp/go-multierror v1.1.1
 	github.com/hashicorp/golang-lru/v2 v2.0.7
 	github.com/hashicorp/vault/api v1.22.0

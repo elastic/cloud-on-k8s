@@ -79,16 +79,10 @@ func baseConfig(clusterName string, ver version.Version, ipFamily corev1.IPFamil
 		cfg[esv1.RemoteClusterHost] = "0"
 	}
 
-	// seed hosts setting name changed starting ES 7.X
-	fileProvider := "file"
-	if ver.Major < 7 {
-		cfg[esv1.DiscoveryZenHostsProvider] = fileProvider
-	} else {
-		cfg[esv1.DiscoverySeedProviders] = fileProvider
-		// to avoid misleading error messages about the inability to connect to localhost for discovery despite us using
-		// file based discovery
-		cfg[esv1.DiscoverySeedHosts] = []string{}
-	}
+	cfg[esv1.DiscoverySeedProviders] = "file"
+	// to avoid misleading error messages about the inability to connect to localhost for discovery despite us using
+	// file based discovery
+	cfg[esv1.DiscoverySeedHosts] = []string{}
 
 	if ver.GTE(esv1.MinReadinessPortVersion) {
 		cfg[esv1.ReadinessPort] = "8080"
@@ -153,17 +147,8 @@ func xpackConfig(ver version.Version, httpCfg commonv1.HTTPConfig, remoteCluster
 	}
 
 	// always enable the built-in file and native internal realms for user auth, ordered as first
-	if ver.Major < 7 {
-		// 6.x syntax
-		cfg[esv1.XPackSecurityAuthcRealmsFile1Type] = "file"
-		cfg[esv1.XPackSecurityAuthcRealmsFile1Order] = -100
-		cfg[esv1.XPackSecurityAuthcRealmsNative1Type] = "native"
-		cfg[esv1.XPackSecurityAuthcRealmsNative1Order] = -99
-	} else {
-		// 7.x syntax
-		cfg[esv1.XPackSecurityAuthcRealmsFileFile1Order] = -100
-		cfg[esv1.XPackSecurityAuthcRealmsNativeNative1Order] = -99
-	}
+	cfg[esv1.XPackSecurityAuthcRealmsFileFile1Order] = -100
+	cfg[esv1.XPackSecurityAuthcRealmsNativeNative1Order] = -99
 
 	if ver.GTE(version.MustParse("7.8.1")) {
 		cfg[esv1.XPackLicenseUploadTypes] = []string{
