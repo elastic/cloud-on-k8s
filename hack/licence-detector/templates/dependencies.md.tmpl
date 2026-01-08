@@ -12,10 +12,10 @@ applies_to:
   deployment:
     eck: preview
 {{- else -}}
-navigation_title: {{TemplateValue "eckVersion"}}
+navigation_title: {{TemplateValue "eckVersionShort"}}
 applies_to:
   deployment:
-    eck: ga {{TemplateValue "eckVersion"}}
+    eck: ga {{TemplateValue "eckVersionShort"}}
 {{- end}}
 ---
 % Generated documentation. Please do not edit.
@@ -25,7 +25,7 @@ applies_to:
 {{if eq (TemplateValue "eckVersion") "main" -}}
 This page lists the third-party dependencies used to build {{`{{eck}}`}} from the main branch.
 {{- else -}}
-This page lists the third-party dependencies used to build {{`{{eck}}`}} {{TemplateValue "eckVersion"}}.
+This page lists the third-party dependencies used to build {{`{{eck}}`}} {{TemplateValue "eckVersionShort"}}.
 {{- end}}
 
 ## Direct dependencies [k8s-dependencies-direct]

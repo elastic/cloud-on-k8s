@@ -34,6 +34,8 @@ build_docs() {
 
     local version
     version="$(get_current_version)"
+    local shortVersion
+    shortVersion="$(get_short_version)"
     # Remove dots from the version string for compatibility with the doc web site.
     local outFile="${version//./_}.md"
 
@@ -47,6 +49,7 @@ build_docs() {
             --config="${SCRIPT_DIR}"/config.yaml \
             --renderer=markdown \
             --template-value=eckVersion="${version}" \
+            --template-value=eckVersionShort="${shortVersion}" \
             --templates-dir="${SCRIPT_DIR}"/templates \
             --output-path="${DOCS_DIR}"/reference/api-reference/"${outFile}"
     )

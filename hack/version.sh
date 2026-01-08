@@ -19,3 +19,16 @@ get_current_version() {
     echo "main"
   fi
 }
+
+get_short_version() {
+  local version
+  version="$(get_current_version)"
+  if [[ "$version" == "main" ]]; then
+    echo "main"
+  elif is_version "${version}"; then
+    # Truncate to first two digits (e.g., 3.0.0 -> 3.0)
+    echo "${version%.*}"
+  else
+    echo "${version}"
+  fi
+}
