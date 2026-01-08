@@ -9,15 +9,15 @@ applies_to:
   deployment:
     eck: preview
 {{- else -}}
-navigation_title: {{ markdownTemplateValue "eckVersionShort" }}
+navigation_title: {{ markdownTemplateValue "eckVersion" }}
 applies_to:
   deployment:
-    eck: ga ={{ markdownTemplateValue "eckVersionShort" }}
+    eck: ga ={{ markdownTemplateValue "eckVersion" }}
 {{- end}}
 ---
 % Generated documentation. Please do not edit.
 
-# {{`{{eck}}`}} API Reference for {{ markdownTemplateValue "eckVersionShort" }} [k8s-api-reference-{{ markdownTemplateValue "eckVersionShort" }}]
+# {{`{{eck}}`}} API Reference for {{ markdownTemplateValue "eckVersion" }} [k8s-api-reference-{{ markdownTemplateValue "eckVersion" }}]
 
 ## Packages
 {{- range $groupVersions }}

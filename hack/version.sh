@@ -19,18 +19,3 @@ get_current_version() {
     echo "main"
   fi
 }
-
-get_short_version() {
-  local SCRIPT_DIR
-  SCRIPT_DIR=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )
-  local PROJECT_DIR="${SCRIPT_DIR}/.."
-  local raw_version
-  raw_version="$(<"${PROJECT_DIR}/VERSION")"
-  raw_version="${raw_version//[$'\r\n\t ']/}"
-  local base_version="${raw_version%%-*}"
-  if is_version "${base_version}"; then
-    echo "${base_version%.*}"
-  else
-    echo "main"
-  fi
-}

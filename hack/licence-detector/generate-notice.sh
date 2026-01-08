@@ -26,16 +26,14 @@ get_licence_detector() {
 generate_notice() {
     (
         version="$(get_current_version)"
-        shortVersion="$(get_short_version)"
-        # Remove dots from the short version string for compatibility with the doc web site.
-        outFile="${shortVersion//./_}.md"
+        # Remove dots from the version string for compatibility with the doc web site.
+        outFile="${version//./_}.md"
         echo "Generating notice file and dependency list for version: ${version}, output file: ${outFile}"
         cd "$PROJECT_DIR"
         go mod download
         go list -m -json all | "${TEMP_DIR}"/go-licence-detector \
             -depsTemplate="${SCRIPT_DIR}"/templates/dependencies.md.tmpl \
             -template-value=eckVersion="${version}" \
-            -template-value=eckVersionShort="${shortVersion}" \
             -depsOut="${PROJECT_DIR}"/docs/reference/third-party-dependencies/"${outFile}" \
             -noticeTemplate="${SCRIPT_DIR}"/templates/NOTICE.txt.tmpl \
             -noticeOut="${PROJECT_DIR}"/NOTICE.txt \

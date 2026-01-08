@@ -34,10 +34,8 @@ build_docs() {
 
     local version
     version="$(get_current_version)"
-    local shortVersion
-    shortVersion="$(get_short_version)"
-    # Remove dots from the short version string for compatibility with the doc web site.
-    local outFile="${shortVersion//./_}.md"
+    # Remove dots from the version string for compatibility with the doc web site.
+    local outFile="${version//./_}.md"
 
     (
         echo "Installing crd-ref-docs $REFDOCS_VER to $BIN_DIR"
@@ -49,7 +47,6 @@ build_docs() {
             --config="${SCRIPT_DIR}"/config.yaml \
             --renderer=markdown \
             --template-value=eckVersion="${version}" \
-            --template-value=eckVersionShort="${shortVersion}" \
             --templates-dir="${SCRIPT_DIR}"/templates \
             --output-path="${DOCS_DIR}"/reference/api-reference/"${outFile}"
     )

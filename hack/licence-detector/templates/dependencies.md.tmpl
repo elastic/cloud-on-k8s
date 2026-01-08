@@ -12,10 +12,10 @@ applies_to:
   deployment:
     eck: preview
 {{- else -}}
-navigation_title: {{TemplateValue "eckVersionShort"}}
+navigation_title: {{TemplateValue "eckVersion"}}
 applies_to:
   deployment:
-    eck: ga {{TemplateValue "eckVersionShort"}}
+    eck: ga {{TemplateValue "eckVersion"}}
 {{- end}}
 ---
 % Generated documentation. Please do not edit.
@@ -23,13 +23,13 @@ applies_to:
 {{if eq (TemplateValue "eckVersion") "main" -}}
 # Third-party dependencies for Elastic Cloud on Kubernetes [k8s-dependencies]
 {{- else -}}
-# Third-party dependencies for Elastic Cloud on Kubernetes {{TemplateValue "eckVersionShort"}} [k8s-dependencies]
+# Third-party dependencies for Elastic Cloud on Kubernetes {{TemplateValue "eckVersion"}} [k8s-dependencies]
 {{- end}}
 
 {{if eq (TemplateValue "eckVersion") "main" -}}
 This page lists the third-party dependencies used to build {{`{{eck}}`}} from the main branch.
 {{- else -}}
-This page lists the third-party dependencies used to build {{`{{eck}}`}} {{TemplateValue "eckVersionShort"}}.
+This page lists the third-party dependencies used to build {{`{{eck}}`}} {{TemplateValue "eckVersion"}}.
 {{- end}}
 
 ## Direct dependencies [k8s-dependencies-direct]
