@@ -286,8 +286,8 @@ func (c *Client) pullRequestExists(repo githubRepository, branchName string) (bo
 	ctx, cancel := context.WithTimeout(context.Background(), 1*time.Minute)
 	defer cancel()
 
-	// Query format: /repos/{owner}/{repo}/pulls?head={user}:{branch}
-	url := fmt.Sprintf("%s/repos/%s/%s/pulls?head=%s:%s",
+	// Query format: /repos/{owner}/{repo}/pulls?head={user}:{branch}&state=open
+	url := fmt.Sprintf("%s/repos/%s/%s/pulls?head=%s:%s&state=open",
 		githubAPIURL, repo.organization, repo.repository, c.GitHubUsername, branchName)
 
 	req, err := c.createRequest(ctx, http.MethodGet, url, nil)
