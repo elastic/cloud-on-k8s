@@ -1,0 +1,53 @@
+---
+# The following is an example of a Logstash resource that is configured to deploy a
+# network load balancer (NLB) in an EKS cluster. To provision an NLB for the Beats
+# input, annotations are applied to the service (no Ingress resource is used).
+#
+
+fullnameOverride: logstash
+
+version: 9.2.3
+count: 1
+
+# Reference to ECK-managed Elasticsearch instance, ideally from {{ "elasticsearch.fullname" }}
+#
+elasticsearchRefs:
+  - clusterName: eck
+    name: elasticsearch
+
+pipelines:
+  - pipeline.id: main
+    config.string: |
+      input {
+        beats {
+          port => 5044
+        }
+      }
+      output {
+        elasticsearch {
+          hosts => [ "${ECK_ES_HOSTS}" ]
+          user => "${ECK_ES_USER}"
+          password => "${ECK_ES_PASSWORD}"
+          ssl_certificate_authorities => "${ECK_ES_SSL_CERTIFICATE_AUTHORITY}"
+        }
+      }
+
+services:
+  - name: beats
+    service:
+      metadata:
+        annotations:
+          service.beta.kubernetes.io/aws-load-balancer-type: external
+          service.beta.kubernetes.io/aws-load-balancer-nlb-target-type: ip
+          service.beta.kubernetes.io/aws-load-balancer-scheme: internet-facing
+          service.beta.kubernetes.io/aws-load-balancer-backend-protocol: tcp
+      spec:
+        type: LoadBalancer
+        ports:
+          - name: filebeat
+            port: 5044
+            protocol: TCP
+            targetPort: 5044
+
+ingress:
+  enabled: false

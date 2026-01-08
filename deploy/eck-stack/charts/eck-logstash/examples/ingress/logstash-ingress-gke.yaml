@@ -1,0 +1,57 @@
+﻿---
+# The following is an example of a Logstash resource that is configured to use an Ingress resource in a GKE cluster.
+#
+
+fullnameOverride: logstash
+
+version: 9.2.3
+count: 1
+
+# Reference to ECK-managed Elasticsearch instance, ideally from {{ "elasticsearch.fullname" }}
+#
+elasticsearchRefs:
+  - clusterName: eck
+    name: elasticsearch
+
+pipelines:
+  - pipeline.id: main
+    config.string: |
+      input {
+        beats {
+          port => 5044
+        }
+      }
+      output {
+        elasticsearch {
+          hosts => [ "${ECK_ES_HOSTS}" ]
+          user => "${ECK_ES_USER}"
+          password => "${ECK_ES_PASSWORD}"
+          ssl_certificate_authorities => "${ECK_ES_SSL_CERTIFICATE_AUTHORITY}"
+        }
+      }
+
+services:
+  - name: beats
+    service:
+      metadata:
+        annotations:
+          # This is required for `ClusterIP` services (which are the default ECK service type) to be used with Ingress in GKE clusters.
+          cloud.google.com/neg: '{"ingress": true}'
+          # Inform the GKE Ingress Controller that the backend speaks TCP (Beats).
+          cloud.google.com/app-protocols: '{"filebeat":"TCP"}'
+      spec:
+        type: ClusterIP
+        ports:
+          - name: filebeat
+            port: 5044
+            protocol: TCP
+            targetPort: 5044
+
+ingress:
+  enabled: true
+  pathType: Prefix
+  hosts:
+    - host: "logstash.company.dev"
+      path: "/beats"
+      serviceName: beats
+      servicePort: 5044
