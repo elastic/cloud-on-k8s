@@ -137,6 +137,8 @@ rules:
   - nodes/proxy
   - nodes/stats
   - events
+  - persistentvolumes
+  - persistentvolumeclaims
   verbs:
   - get
   - watch
