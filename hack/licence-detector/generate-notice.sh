@@ -27,8 +27,8 @@ generate_notice() {
     (
         version="$(get_current_version)"
         shortVersion="$(get_short_version)"
-        # Remove dots from the version string for compatibility with the doc web site.
-        outFile="${version//./_}.md"
+        # Remove dots from the short version string for compatibility with the doc web site.
+        outFile="${shortVersion//./_}.md"
         echo "Generating notice file and dependency list for version: ${version}, output file: ${outFile}"
         cd "$PROJECT_DIR"
         go mod download
