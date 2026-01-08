@@ -13,7 +13,7 @@ Default values for virtual address space on Linux distributions can be too low f
 
 The kernel setting `vm.max_map_count=1048576` can be set on the host directly, by a dedicated init container which must be privileged, or a dedicated Daemonset.
 
-IMPORTANT: For {{es}} version 8.16 and later, set the `vm.max_map_count` kernel setting to `1048576`; for {{es}} version 8.15 and earlier, set `vm.max_map_count` to `262144`. The exception is in GKE Autopilot environments, where `vm.max_map_count` must always be set to `262144`. This is because any custom DaemonSet in GKE Autopilot must match the DaemonSet pre-approved by Google.
+IMPORTANT: For {{es}} version 8.16 and later, set the `vm.max_map_count` kernel setting to `1048576`; for {{es}} version 8.15 and earlier, set `vm.max_map_count` to `262144`. The exception is in GKE Autopilot environments, where `vm.max_map_count` must always be set to `262144`. This is because any privileged DaemonSet in GKE Autopilot must match the DaemonSet pre-approved by Google.
 
 For more information, check the Elasticsearch documentation on
 link:https://www.elastic.co/guide/en/elasticsearch/reference/current/vm-max-map-count.html[Virtual memory].
