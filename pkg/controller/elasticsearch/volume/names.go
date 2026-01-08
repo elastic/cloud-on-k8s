@@ -48,4 +48,11 @@ const (
 
 	TempVolumeName      = "tmp-volume"
 	TempVolumeMountPath = "/tmp"
+
+	// KeystoreVolumeName is the name of the volume containing the pre-built keystore.
+	KeystoreVolumeName = "elastic-internal-keystore"
+	// KeystoreVolumeMountPath is where the keystore Secret is mounted (not in config, to allow auto-updates).
+	KeystoreVolumeMountPath = "/mnt/elastic-internal/keystore"
+	// KeystoreFileName is the name of the keystore file.
+	KeystoreFileName = "elasticsearch.keystore"
 )

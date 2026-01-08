@@ -96,7 +96,8 @@ func buildVolumes(
 			downwardAPIVolume.Volume(),
 			tmpVolume.Volume(),
 		)...)
-	if keystoreResources != nil {
+	// Only add keystore volume if it's actually configured
+	if keystoreResources != nil && keystoreResources.HasVolume() {
 		volumes = append(volumes, keystoreResources.Volume)
 	}
 
@@ -119,6 +120,11 @@ func buildVolumes(
 	if version.GTE(filesettings.FileBasedSettingsMinPreVersion) {
 		volumes = append(volumes, fileSettingsVolume.Volume())
 		volumeMounts = append(volumeMounts, fileSettingsVolume.VolumeMount())
+	}
+
+	// Add keystore volume mount if configured
+	if keystoreResources != nil && keystoreResources.HasVolumeMount() {
+		volumeMounts = append(volumeMounts, keystoreResources.VolumeMount)
 	}
 
 	// additional volumes from stack config policy

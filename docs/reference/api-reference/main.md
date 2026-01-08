@@ -1188,6 +1188,7 @@ ElasticsearchStatus represents the observed state of Elasticsearch.
 | *`conditions`* __[Conditions](#conditions)__ | Conditions holds the current service state of an Elasticsearch cluster.<br>**This API is in technical preview and may be changed or removed in a future release.** |
 | *`inProgressOperations`* __[InProgressOperations](#inprogressoperations)__ | InProgressOperations represents changes being applied by the operator to the Elasticsearch cluster.<br>**This API is in technical preview and may be changed or removed in a future release.** |
 | *`observedGeneration`* __integer__ | ObservedGeneration is the most recent generation observed for this Elasticsearch cluster.<br>It corresponds to the metadata generation, which is updated on mutation by the API Server.<br>If the generation observed in status diverges from the generation in metadata, the Elasticsearch<br>controller has not yet processed the changes contained in the Elasticsearch specification. |
+| *`observedKeystoreDigest`* __string__ | ObservedKeystoreDigest is the SHA-256 digest of the keystore file that has been<br>verified as loaded by all nodes via the reload_secure_settings API (ES 9.3+).<br>When this matches the expected digest from the keystore Secret, reload API calls are skipped. |
 
 
 ### FieldSecurity  [#fieldsecurity]

@@ -133,10 +133,17 @@ func NewPrepareFSInitContainer(transportCertificatesVolume volume.SecretVolume, 
 	return container, nil
 }
 
-func RenderPrepareFsScript(expectedAnnotations []string) (string, error) {
+// RenderPrepareFsScript renders the prepare-fs init container script.
+// additionalLinkedFiles can be used to add extra files to be symlinked into the config directory.
+func RenderPrepareFsScript(expectedAnnotations []string, additionalLinkedFiles ...LinkedFile) (string, error) {
+	// Combine static linked files with any additional ones
+	allLinkedFiles := LinkedFilesArray{
+		Array: append(linkedFiles.Array, additionalLinkedFiles...),
+	}
+
 	templateParams := TemplateParams{
 		PluginVolumes: PluginVolumes,
-		LinkedFiles:   linkedFiles,
+		LinkedFiles:   allLinkedFiles,
 		ChownToElasticsearch: []string{
 			esvolume.ElasticsearchDataMountPath,
 			esvolume.ElasticsearchLogsMountPath,
@@ -149,4 +156,12 @@ func RenderPrepareFsScript(expectedAnnotations []string) (string, error) {
 		templateParams.ExpectedAnnotations = &expectedAnnotationsAsString
 	}
 	return RenderScriptTemplate(templateParams)
+}
+
+// KeystoreLinkedFile returns the LinkedFile for symlinking the pre-built keystore into the config directory.
+func KeystoreLinkedFile() LinkedFile {
+	return LinkedFile{
+		Source: stringsutil.Concat(esvolume.KeystoreVolumeMountPath, "/", esvolume.KeystoreFileName),
+		Target: stringsutil.Concat(EsConfigSharedVolume.InitContainerMountPath, "/", esvolume.KeystoreFileName),
+	}
 }

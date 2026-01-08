@@ -526,3 +526,19 @@ type FileSettingsErrors struct {
 	ErrorKind string   `json:"error_kind"`
 	Errors    []string `json:"errors"`
 }
+
+// ReloadSecureSettingsResponse is the response from POST /_nodes/reload_secure_settings.
+// The response includes keystore information for each node. The keystore_digest field
+// is available in Elasticsearch 9.3+ and is used to verify reload convergence.
+type ReloadSecureSettingsResponse struct {
+	ClusterName string                              `json:"cluster_name"`
+	Nodes       map[string]ReloadSecureSettingsNode `json:"nodes"`
+}
+
+// ReloadSecureSettingsNode contains the reload result for a single node.
+type ReloadSecureSettingsNode struct {
+	Name string `json:"name"`
+	// KeystoreDigest is the SHA-256 digest of the keystore file (available in 9.3+).
+	// This is used to verify that all nodes have reloaded the expected keystore.
+	KeystoreDigest string `json:"keystore_digest,omitempty"`
+}

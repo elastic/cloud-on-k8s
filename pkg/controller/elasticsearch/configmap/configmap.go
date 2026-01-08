@@ -9,6 +9,7 @@ import (
 	"reflect"
 
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/reconciler"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/version"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/maps"
 
 	"go.elastic.co/apm/v2"
@@ -20,6 +21,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/metadata"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/tracing"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/initcontainer"
+	eskeystore "github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/keystore"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/nodespec"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/services"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/k8s"
@@ -31,7 +33,14 @@ func ReconcileScriptsConfigMap(ctx context.Context, c k8s.Client, es esv1.Elasti
 	span, ctx := apm.StartSpan(ctx, "reconcile_scripts", tracing.SpanTypeApp)
 	defer span.End()
 
-	fsScript, err := initcontainer.RenderPrepareFsScript(es.DownwardNodeLabels())
+	// Determine if we need to link the pre-built keystore
+	var additionalLinkedFiles []initcontainer.LinkedFile
+	if esVersion, err := version.Parse(es.Spec.Version); err == nil && eskeystore.ShouldUseGoKeystore(es, esVersion) {
+		// For ES 9.3+, use the pre-built keystore with symlink
+		additionalLinkedFiles = append(additionalLinkedFiles, initcontainer.KeystoreLinkedFile())
+	}
+
+	fsScript, err := initcontainer.RenderPrepareFsScript(es.DownwardNodeLabels(), additionalLinkedFiles...)
 	if err != nil {
 		return err
 	}

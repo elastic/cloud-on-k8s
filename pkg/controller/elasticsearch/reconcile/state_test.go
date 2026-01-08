@@ -519,3 +519,46 @@ func TestState_UpdateWithPhase(t *testing.T) {
 		})
 	}
 }
+
+func TestState_UpdateObservedKeystoreDigest(t *testing.T) {
+	tests := []struct {
+		name         string
+		initialState esv1.ElasticsearchStatus
+		digest       string
+		wantDigest   string
+	}{
+		{
+			name:         "set digest on empty status",
+			initialState: esv1.ElasticsearchStatus{},
+			digest:       "abc123",
+			wantDigest:   "abc123",
+		},
+		{
+			name: "update existing digest",
+			initialState: esv1.ElasticsearchStatus{
+				ObservedKeystoreDigest: "old-digest",
+			},
+			digest:     "new-digest",
+			wantDigest: "new-digest",
+		},
+		{
+			name: "clear digest with empty string",
+			initialState: esv1.ElasticsearchStatus{
+				ObservedKeystoreDigest: "some-digest",
+			},
+			digest:     "",
+			wantDigest: "",
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			s := &State{
+				status: tt.initialState,
+			}
+			result := s.UpdateObservedKeystoreDigest(tt.digest)
+			assert.Equal(t, tt.wantDigest, result.status.ObservedKeystoreDigest)
+			// Verify it returns the same state for chaining
+			assert.Same(t, s, result)
+		})
+	}
+}

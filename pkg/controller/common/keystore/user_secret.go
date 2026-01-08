@@ -47,30 +47,7 @@ func secureSettingsVolume(
 	namer name.Namer,
 	additionalSources ...commonv1.NamespacedSecretSource,
 ) (*volume.SecretVolume, string, error) {
-	// setup (or remove) watches for the user-provided secret to reconcile on any change
-	watcher := k8s.ExtractNamespacedName(hasKeystore)
-
-	// user-provided Secrets referenced in the resource
-	secretSources := WatchedSecretNames(hasKeystore)
-	// Additional sources, introduced to load remote cluster keys.
-	secretSources = append(secretSources, additionalSources...)
-	// user-provided Secrets referenced in a StackConfigPolicy that configures the resource
-	policySecretSources, err := stackconfigpolicy.GetSecureSettingsSecretSourcesForResources(ctx, r.K8sClient(), hasKeystore, hasKeystore.GetObjectKind().GroupVersionKind().Kind)
-	if err != nil {
-		return nil, "", pkgerrors.Wrap(err, "fail to get secure settings secret sources")
-	}
-	secretSources = append(secretSources, policySecretSources...)
-
-	if err := watches.WatchUserProvidedNamespacedSecrets(
-		watcher,
-		r.DynamicWatches(),
-		SecureSettingsWatchName(watcher),
-		secretSources,
-	); err != nil {
-		return nil, "", err
-	}
-
-	userSecrets, err := retrieveUserSecrets(ctx, r.K8sClient(), r.Recorder(), hasKeystore, secretSources)
+	userSecrets, err := collectUserSecrets(ctx, r, hasKeystore, additionalSources...)
 	if err != nil {
 		return nil, "", err
 	}
@@ -94,6 +71,40 @@ func secureSettingsVolume(
 	secureSettingsSecretHash := hash.HashObject(secureSettingsSecret.Data)
 
 	return &secureSettingsVolume, secureSettingsSecretHash, nil
+}
+
+// collectUserSecrets gathers all secret sources, sets up watches, and retrieves user secrets.
+// This is the common logic shared between secureSettingsVolume and CollectSecureSettings.
+func collectUserSecrets(
+	ctx context.Context,
+	r driver.Interface,
+	hasKeystore HasKeystore,
+	additionalSources ...commonv1.NamespacedSecretSource,
+) ([]corev1.Secret, error) {
+	// setup (or remove) watches for the user-provided secret to reconcile on any change
+	watcher := k8s.ExtractNamespacedName(hasKeystore)
+
+	// user-provided Secrets referenced in the resource
+	secretSources := WatchedSecretNames(hasKeystore)
+	// Additional sources, introduced to load remote cluster keys.
+	secretSources = append(secretSources, additionalSources...)
+	// user-provided Secrets referenced in a StackConfigPolicy that configures the resource
+	policySecretSources, err := stackconfigpolicy.GetSecureSettingsSecretSourcesForResources(ctx, r.K8sClient(), hasKeystore, hasKeystore.GetObjectKind().GroupVersionKind().Kind)
+	if err != nil {
+		return nil, pkgerrors.Wrap(err, "fail to get secure settings secret sources")
+	}
+	secretSources = append(secretSources, policySecretSources...)
+
+	if err := watches.WatchUserProvidedNamespacedSecrets(
+		watcher,
+		r.DynamicWatches(),
+		SecureSettingsWatchName(watcher),
+		secretSources,
+	); err != nil {
+		return nil, err
+	}
+
+	return retrieveUserSecrets(ctx, r.K8sClient(), r.Recorder(), hasKeystore, secretSources)
 }
 
 func reconcileSecureSettings(
@@ -208,4 +219,30 @@ func secureSettingsSecretName(namer name.Namer, hasKeystore HasKeystore) string 
 // It is unique per APM or Kibana deployment.
 func SecureSettingsWatchName(namespacedName types.NamespacedName) string {
 	return fmt.Sprintf("%s-%s-secure-settings", namespacedName.Namespace, namespacedName.Name)
+}
+
+// CollectSecureSettings retrieves and aggregates all secure settings from user-provided secrets.
+// It sets up watches for all referenced secrets and returns the aggregated key-value pairs.
+// This function can be used by applications that need direct access to secure settings
+// (e.g., to create a pre-built keystore file) without going through the init container approach.
+func CollectSecureSettings(
+	ctx context.Context,
+	r driver.Interface,
+	hasKeystore HasKeystore,
+	additionalSources ...commonv1.NamespacedSecretSource,
+) (map[string][]byte, error) {
+	userSecrets, err := collectUserSecrets(ctx, r, hasKeystore, additionalSources...)
+	if err != nil {
+		return nil, err
+	}
+
+	// Aggregate all secrets into a single map
+	aggregatedData := make(map[string][]byte)
+	for _, s := range userSecrets {
+		for k, v := range s.Data {
+			aggregatedData[k] = v
+		}
+	}
+
+	return aggregatedData, nil
 }
