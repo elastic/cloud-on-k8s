@@ -55,6 +55,15 @@ spec:
           vars:
           - name: host
             value: 0.0.0.0:8200    
+  podTemplate:
+    spec:
+      containers:
+      - name: kibana
+        resources:
+          requests:
+            memory: 1500Mi
+          limits:
+            memory: 1500Mi
 ---
 apiVersion: elasticsearch.k8s.elastic.co/v1
 kind: Elasticsearch
