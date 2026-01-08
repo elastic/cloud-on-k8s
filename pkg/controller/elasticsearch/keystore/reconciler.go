@@ -26,6 +26,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/version"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/volume"
 	esvolume "github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/volume"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/k8s"
 	ulog "github.com/elastic/cloud-on-k8s/v3/pkg/utils/log"
 )
 
@@ -72,6 +73,16 @@ func Reconcile(
 	// The settings map may be empty here - EnsureBootstrapSeed will add the seed.
 	if settings == nil {
 		settings = make(Settings)
+	}
+
+	// Clean up the init-container-based secure-settings Secret if it exists
+	// (in case user switched from init container approach to Go keystore)
+	secureSettingsSecretName := types.NamespacedName{
+		Namespace: es.Namespace,
+		Name:      esv1.SecureSettingsSecret(es.Name),
+	}
+	if err := k8s.DeleteSecretIfExists(ctx, d.K8sClient(), secureSettingsSecretName); err != nil {
+		return nil, fmt.Errorf("failed to delete legacy secure-settings secret: %w", err)
 	}
 
 	// Compute hash of the input settings to detect changes
@@ -194,6 +205,16 @@ func computeSettingsHash(settings Settings) string {
 	}
 
 	return hex.EncodeToString(h.Sum(nil))
+}
+
+// DeleteSecretIfExists deletes the keystore Secret if it exists.
+// This is used to clean up the Go keystore Secret when switching to the init container approach.
+func DeleteSecretIfExists(ctx context.Context, c k8s.Client, es *esv1.Elasticsearch) error {
+	secretName := types.NamespacedName{
+		Namespace: es.Namespace,
+		Name:      esv1.KeystoreSecretName(es.Name),
+	}
+	return k8s.DeleteSecretIfExists(ctx, c, secretName)
 }
 
 // ShouldUseGoKeystore returns true if the Go-based reloadable keystore feature should be used

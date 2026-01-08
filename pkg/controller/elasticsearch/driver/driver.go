@@ -700,7 +700,12 @@ func (d *defaultDriver) reconcileKeystore(
 		return esKeystoreResources, esKeystoreResources != nil, nil
 	}
 
-	// Use the traditional init container approach for older ES versions
+	// Use the traditional init container approach for older ES versions or when Go keystore is disabled.
+	// Clean up the Go keystore Secret if it exists (in case user switched from Go keystore).
+	if err := eskeystore.DeleteSecretIfExists(ctx, d.K8sClient(), &d.ES); err != nil {
+		return nil, false, err
+	}
+
 	keystoreParams := initcontainer.KeystoreParams
 	keystoreSecurityContext := securitycontext.For(d.Version, true)
 	keystoreParams.SecurityContext = &keystoreSecurityContext
