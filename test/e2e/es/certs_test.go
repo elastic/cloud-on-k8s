@@ -343,7 +343,6 @@ func TestCustomTransportCA(t *testing.T) {
 					}),
 				},
 			}
-
 		},
 		PostMutationSteps: func(k *test.K8sClient) test.StepList {
 			return test.StepList{
@@ -427,7 +426,6 @@ func TestCustomTransportCA(t *testing.T) {
 	// 3. reconfigure with correct custom certificates
 	// 4. reconfigure back to self-signed operator provided CA
 	test.RunMutations(t, []test.Builder{withBuiltinCA}, []test.Builder{withBogusCert, withCustomCert, withBuiltinCA})
-
 }
 
 func TestUpdateHTTPCertSAN(t *testing.T) {
@@ -514,7 +512,6 @@ func getCert(k *test.K8sClient, ns string, esName string) ([]byte, error) {
 }
 
 func getPodIP(k *test.K8sClient, ns string, esName string) (string, error) {
-
 	pods, err := k.GetPods(test.ESPodListOptions(ns, esName)...)
 	if err != nil {
 		return "", err
