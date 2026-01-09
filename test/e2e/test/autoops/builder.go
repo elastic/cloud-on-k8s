@@ -101,6 +101,11 @@ func (b Builder) WithResourceSelector(selector metav1.LabelSelector) Builder {
 	return b
 }
 
+func (b Builder) WithNamespaceSelector(selector metav1.LabelSelector) Builder {
+	b.AutoOpsAgentPolicy.Spec.NamespaceSelector = selector
+	return b
+}
+
 func (b Builder) RuntimeObjects() []k8sclient.Object {
 	return []k8sclient.Object{
 		&b.ConfigSecret,
