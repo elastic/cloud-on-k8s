@@ -23,6 +23,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/association"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/deployment"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/reconciler"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/version"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/k8s"
 	ulog "github.com/elastic/cloud-on-k8s/v3/pkg/utils/log"
 )
@@ -134,8 +135,23 @@ func (r *AgentPolicyReconciler) internalReconcile(
 	for _, es := range accessibleClusters {
 		log := log.WithValues("es_namespace", es.Namespace, "es_name", es.Name)
 
+		esVersion, err := version.Parse(es.Spec.Version)
+		if err != nil {
+			log.Error(err, "while parsing ES version")
+			state.UpdateWithPhase(autoopsv1alpha1.ErrorPhase)
+			return results.WithError(err)
+		}
+
+		// No error means the version is within the deprecated range, so we skip the cluster.
+		// We do not adjust the status to indicate this issue at this time, as the status object
+		// does not currently support a status per-cluster.
+		if version.DeprecatedVersions.WithinRange(esVersion) == nil {
+			log.Info("Skipping ES cluster because of deprecated version", "version", es.Spec.Version)
+			continue
+		}
+
 		if es.Status.Phase != esv1.ElasticsearchReadyPhase {
-			log.V(1).Info("Skipping ES cluster that is not ready", "es_namespace", es.Namespace, "es_name", es.Name)
+			log.V(1).Info("Skipping ES cluster that is not ready")
 			state.UpdateWithPhase(autoopsv1alpha1.ResourcesNotReadyPhase)
 			results = results.WithRequeue(reconciler.DefaultRequeue)
 			continue
@@ -143,7 +159,7 @@ func (r *AgentPolicyReconciler) internalReconcile(
 
 		if es.Spec.HTTP.TLS.Enabled() {
 			if err := r.reconcileAutoOpsESCASecret(ctx, policy, es); err != nil {
-				log.Error(err, "while reconciling AutoOps ES CA secret", "es_namespace", es.Namespace, "es_name", es.Name)
+				log.Error(err, "while reconciling AutoOps ES CA secret")
 				errorCount++
 				state.UpdateWithPhase(autoopsv1alpha1.ErrorPhase)
 				results.WithError(err)
@@ -153,7 +169,7 @@ func (r *AgentPolicyReconciler) internalReconcile(
 
 		apiKeySecret, err := r.reconcileAutoOpsESAPIKey(ctx, policy, es)
 		if err != nil {
-			log.Error(err, "while reconciling AutoOps ES API key", "es_namespace", es.Namespace, "es_name", es.Name)
+			log.Error(err, "while reconciling AutoOps ES API key")
 			errorCount++
 			state.UpdateWithPhase(autoopsv1alpha1.ErrorPhase)
 			results.WithError(err)
@@ -162,7 +178,7 @@ func (r *AgentPolicyReconciler) internalReconcile(
 
 		configMap, err := ReconcileAutoOpsESConfigMap(ctx, r.Client, policy, es)
 		if err != nil {
-			log.Error(err, "while reconciling AutoOps ES config map", "es_namespace", es.Namespace, "es_name", es.Name)
+			log.Error(err, "while reconciling AutoOps ES config map")
 			errorCount++
 			state.UpdateWithPhase(autoopsv1alpha1.ErrorPhase)
 			results.WithError(err)
@@ -171,7 +187,7 @@ func (r *AgentPolicyReconciler) internalReconcile(
 
 		configHash, err := buildConfigHash(ctx, *configMap, *apiKeySecret, r.Client, policy)
 		if err != nil {
-			log.Error(err, "while building config hash", "es_namespace", es.Namespace, "es_name", es.Name)
+			log.Error(err, "while building config hash")
 			errorCount++
 			state.UpdateWithPhase(autoopsv1alpha1.ErrorPhase)
 			results.WithError(err)
@@ -180,7 +196,7 @@ func (r *AgentPolicyReconciler) internalReconcile(
 
 		deploymentParams, err := r.buildDeployment(configHash, policy, es)
 		if err != nil {
-			log.Error(err, "while getting deployment params", "es_namespace", es.Namespace, "es_name", es.Name)
+			log.Error(err, "while getting deployment params")
 			errorCount++
 			state.UpdateWithPhase(autoopsv1alpha1.ErrorPhase)
 			results.WithError(err)
@@ -189,7 +205,7 @@ func (r *AgentPolicyReconciler) internalReconcile(
 
 		reconciledDeployment, err := deployment.Reconcile(ctx, r.Client, deploymentParams, &policy)
 		if err != nil {
-			log.Error(err, "while reconciling deployment", "es_namespace", es.Namespace, "es_name", es.Name)
+			log.Error(err, "while reconciling deployment")
 			errorCount++
 			state.UpdateWithPhase(autoopsv1alpha1.ErrorPhase)
 			results.WithError(err)
