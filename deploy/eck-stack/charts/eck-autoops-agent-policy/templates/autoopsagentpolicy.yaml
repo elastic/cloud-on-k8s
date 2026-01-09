@@ -29,4 +29,8 @@ spec:
     secretName: {{ required "autoOpsRef.secretName is required to reference the AutoOps configuration secret" .Values.autoOpsRef.secretName }}
   resourceSelector:
     {{- required "resourceSelector is required" .Values.resourceSelector | toYaml | nindent 4 }}
+  {{- with .Values.namespaceSelector }}
+  namespaceSelector:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
 

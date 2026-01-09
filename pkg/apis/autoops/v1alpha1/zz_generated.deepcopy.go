@@ -75,6 +75,7 @@ func (in *AutoOpsAgentPolicyList) DeepCopyObject() runtime.Object {
 func (in *AutoOpsAgentPolicySpec) DeepCopyInto(out *AutoOpsAgentPolicySpec) {
 	*out = *in
 	in.ResourceSelector.DeepCopyInto(&out.ResourceSelector)
+	in.NamespaceSelector.DeepCopyInto(&out.NamespaceSelector)
 	out.AutoOpsRef = in.AutoOpsRef
 	in.PodTemplate.DeepCopyInto(&out.PodTemplate)
 	if in.RevisionHistoryLimit != nil {
