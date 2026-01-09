@@ -226,7 +226,6 @@ func TestMutationAndReversal(t *testing.T) {
 	reversed := b.DeepCopy().WithMutatedFrom(&mutation)
 
 	test.RunMutations(t, []test.Builder{b}, []test.Builder{mutation, reversed})
-
 }
 
 func TestMutationNodeSetReplacementWithChangeBudget(t *testing.T) {

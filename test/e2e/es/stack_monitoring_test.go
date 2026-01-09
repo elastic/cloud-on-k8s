@@ -149,7 +149,6 @@ func TestExternalESStackMonitoring(t *testing.T) {
 			test.Step{
 				Name: "Create a secret to reference the monitoring cluster",
 				Test: test.Eventually(func() error {
-
 					var monitoringHTTPPublicCertsSecret corev1.Secret
 					key := types.NamespacedName{
 						Namespace: monitoring.Elasticsearch.Namespace,
