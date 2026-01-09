@@ -22,9 +22,6 @@ import (
 type fakeESClient struct { //nolint:maligned
 	esclient.Client
 
-	SetMinimumMasterNodesCalled     bool
-	SetMinimumMasterNodesCalledWith int
-
 	AddVotingConfigExclusionsCalled     bool
 	AddVotingConfigExclusionsCalledWith []string
 
@@ -50,12 +47,6 @@ type fakeESClient struct { //nolint:maligned
 	health                      esclient.Health
 	GetClusterHealthCalledCount int
 	version                     version.Version
-}
-
-func (f *fakeESClient) SetMinimumMasterNodes(_ context.Context, n int) error {
-	f.SetMinimumMasterNodesCalled = true
-	f.SetMinimumMasterNodesCalledWith = n
-	return nil
 }
 
 func (f *fakeESClient) AddVotingConfigExclusions(_ context.Context, nodeNames []string) error {

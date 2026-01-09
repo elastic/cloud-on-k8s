@@ -26,7 +26,6 @@ import (
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/pdb"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/reconcile"
 	es_sset "github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/sset"
-	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/version/zen1"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/version/zen2"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/k8s"
 	ulog "github.com/elastic/cloud-on-k8s/v3/pkg/utils/log"
@@ -123,6 +122,9 @@ func (d *defaultDriver) reconcileNodeSpecs(
 	if reconcileState.HasPendingNewNodes() {
 		results.WithReconciliationState(defaultRequeue.WithReason("Upscale in progress"))
 	}
+	if reconcileState.HasPendingNonMasterSTSUpgrades() {
+		results.WithReconciliationState(defaultRequeue.WithReason("Non-master StatefulSets are still upgrading"))
+	}
 	actualStatefulSets = upscaleResults.ActualStatefulSets
 
 	// Once all the StatefulSets have been updated we can ensure that the former version of the transport certificates Secret is deleted.
@@ -161,16 +163,8 @@ func (d *defaultDriver) reconcileNodeSpecs(
 		return results.WithReconciliationState(defaultRequeue.WithReason(msg))
 	}
 
-	// Maybe update Zen1 minimum master nodes through the API, corresponding to the current nodes we have.
-	requeue, err := zen1.UpdateMinimumMasterNodes(ctx, d.Client, d.ES, esClient, actualStatefulSets)
-	if err != nil {
-		return results.WithError(err)
-	}
-	if requeue {
-		results.WithReconciliationState(defaultRequeue.WithReason("Not enough available masters to update Zen1 settings"))
-	}
 	// Remove the zen2 bootstrap annotation if bootstrap is over.
-	requeue, err = zen2.RemoveZen2BootstrapAnnotation(ctx, d.Client, d.ES, esClient)
+	requeue, err := zen2.RemoveZen2BootstrapAnnotation(ctx, d.Client, d.ES, esClient)
 	if err != nil {
 		return results.WithError(err)
 	}

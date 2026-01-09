@@ -69,7 +69,7 @@ plans:
   operation: create
   clusterName: ci
   provider: aks
-  kubernetesVersion: 1.33.3
+  kubernetesVersion: 1.34.1
   machineType: Standard_D8s_v3
   serviceAccount: true
   enforceSecurityPolicies: true
@@ -82,7 +82,7 @@ plans:
   operation: create
   clusterName: dev
   provider: aks
-  kubernetesVersion: 1.33.3
+  kubernetesVersion: 1.34.1
   machineType: Standard_D8s_v3
   serviceAccount: false
   enforceSecurityPolicies: true
@@ -154,36 +154,36 @@ plans:
   clusterName: eck
   clientVersion: 0.30.0
   provider: kind
-  kubernetesVersion: 1.34.0
+  kubernetesVersion: 1.35.0
   enforceSecurityPolicies: true
   kind:
     nodeCount: 3
-    nodeImage: kindest/node:v1.34.0@sha256:7416a61b42b1662ca6ca89f02028ac133a309a2a30ba309614e8ec94d976dc5a
+    nodeImage: kindest/node:v1.35.0@sha256:452d707d4862f52530247495d180205e029056831160e22870e37e3f6c1ac31f
     ipFamily: ipv4
 - id: kind-ci
   operation: create
   clusterName: kind-ci
   clientVersion: 0.30.0
   provider: kind
-  kubernetesVersion: 1.34.0
+  kubernetesVersion: 1.35.0
   enforceSecurityPolicies: true
   kind:
     nodeCount: 3
-    nodeImage: kindest/node:v1.34.0@sha256:7416a61b42b1662ca6ca89f02028ac133a309a2a30ba309614e8ec94d976dc5a
+    nodeImage: kindest/node:v1.35.0@sha256:452d707d4862f52530247495d180205e029056831160e22870e37e3f6c1ac31f
     ipFamily: ipv4
 - id: k3d-dev
   operation: create
   clusterName: eck
   provider: k3d
-  kubernetesVersion: 1.34.1
+  kubernetesVersion: 1.35.0
   k3d:
     clientImage: ghcr.io/k3d-io/k3d:5.8.3
-    nodeImage: rancher/k3s:v1.34.1-k3s1
+    nodeImage: rancher/k3s:v1.35.0-k3s1
 - id: k3d-ci
   operation: create
   clusterName: k3d-ci
   provider: k3d
-  kubernetesVersion: 1.34.1
+  kubernetesVersion: 1.35.0
   k3d:
     clientImage: ghcr.io/k3d-io/k3d:5.8.3
-    nodeImage: rancher/k3s:v1.34.1-k3s1
+    nodeImage: rancher/k3s:v1.35.0-k3s1
