@@ -351,6 +351,9 @@ func TestDriverDeploymentParams(t *testing.T) {
 				p.PodTemplateSpec.Labels["kibana.k8s.elastic.co/version"] = "7.17.0"
 				p.PodTemplateSpec.Spec.SecurityContext = &corev1.PodSecurityContext{
 					FSGroup: ptr.To[int64](1000),
+					SeccompProfile: &corev1.SeccompProfile{
+						Type: corev1.SeccompProfileTypeRuntimeDefault,
+					},
 				}
 				return p
 			}(),
