@@ -4,11 +4,12 @@ kind: Elasticsearch
 metadata:
   name: elasticsearch
 spec:
-  version: 9.2.2
+  version: 9.2.3
   nodeSets:
     - name: default
       count: 3
       config:
+        # This setting has performance implications. See the README for more details.
         node.store.allow_mmap: false
 ---
 apiVersion: kibana.k8s.elastic.co/v1
@@ -16,7 +17,7 @@ kind: Kibana
 metadata:
   name: kibana
 spec:
-  version: 9.2.2
+  version: 9.2.3
   count: 1
   elasticsearchRef:
     name: elasticsearch
@@ -27,7 +28,7 @@ metadata:
   name: filebeat
 spec:
   type: filebeat
-  version: 9.2.2
+  version: 9.2.3
   config:
     filebeat.inputs:
       - type: filestream
@@ -159,7 +160,7 @@ data:
       if [pipeline_source] == "beats" {
         elasticsearch {
           hosts => ["${ES_HOSTS}"]
-          cacert => "${ES_SSL_CERTIFICATE_AUTHORITY}"
+          ssl_certificate_authorities => ["${ECK_ES_SSL_CERTIFICATE_AUTHORITY}"]
           user => "${OUTPUT_ES_USER}"
           password => "${OUTPUT_ES_PASSWORD}"
           index => "logs-beats-default"
@@ -168,7 +169,7 @@ data:
       else if [pipeline_source] == "kafka" {
         elasticsearch {
           hosts => ["${ES_HOSTS}"]
-          cacert => "${ES_SSL_CERTIFICATE_AUTHORITY}"
+          ssl_certificate_authorities => ["${ECK_ES_SSL_CERTIFICATE_AUTHORITY}"]
           user => "${OUTPUT_ES_USER}"
           password => "${OUTPUT_ES_PASSWORD}"
           index => "logs-kafka-default"
@@ -182,7 +183,7 @@ metadata:
   name: multi-pipeline-logstash
 spec:
   count: 1
-  version: 9.2.2
+  version: 9.2.3
   elasticsearchRefs:
     - name: elasticsearch
       clusterName: eck
@@ -230,12 +231,12 @@ spec:
         - name: KAFKA_BROKER_USER
           valueFrom:
             secretKeyRef:
-              name: kafka-pipeline-secret
+              name: kafka-credentials
               key: kafka_username
         - name: KAFKA_BROKER_PASSWORD
           valueFrom:
             secretKeyRef:
-              name: kafka-pipeline-secret
+              name: kafka-credentials
               key: kafka_password
       volumes:
       - name: vol-beats
