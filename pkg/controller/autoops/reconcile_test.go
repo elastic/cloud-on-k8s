@@ -791,6 +791,31 @@ func TestAutoOpsAgentPolicyReconciler_selectorChangeCleanup(t *testing.T) {
 	scheme.SetupScheme()
 
 	// Common test fixtures
+	ns1 := corev1.Namespace{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "ns-1",
+			Labels: map[string]string{
+				"kubernetes.io/metadata.name": "ns-1",
+			},
+		},
+	}
+	ns2 := corev1.Namespace{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "ns-2",
+			Labels: map[string]string{
+				"kubernetes.io/metadata.name": "ns-2",
+			},
+		},
+	}
+	ns3 := corev1.Namespace{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "ns-3",
+			Labels: map[string]string{
+				"kubernetes.io/metadata.name": "ns-3",
+			},
+		},
+	}
+
 	es1 := esv1.Elasticsearch{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "es-1",
@@ -822,7 +847,7 @@ func TestAutoOpsAgentPolicyReconciler_selectorChangeCleanup(t *testing.T) {
 	es3 := esv1.Elasticsearch{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "es-3",
-			Namespace: "ns-1",
+			Namespace: "ns-2",
 			Labels:    map[string]string{"app": "elasticsearch", "env": "prod"},
 		},
 		Spec: esv1.ElasticsearchSpec{
@@ -847,6 +872,9 @@ func TestAutoOpsAgentPolicyReconciler_selectorChangeCleanup(t *testing.T) {
 
 	initialObjects := []client.Object{
 		configSecret,
+		&ns1,
+		&ns2,
+		&ns3,
 		&es1,
 		&es2,
 		&es3,
@@ -869,17 +897,18 @@ func TestAutoOpsAgentPolicyReconciler_selectorChangeCleanup(t *testing.T) {
 	}
 
 	tests := []struct {
-		name                string
-		updatedSelector     metav1.LabelSelector
-		expectedDeployments int
-		expectedConfigMaps  int
-		expectedSecrets     int
-		shouldExist         []esv1.Elasticsearch
-		shouldNotExist      []esv1.Elasticsearch
+		name                     string
+		updatedResourceSelector  metav1.LabelSelector
+		updatedNamespaceSelector metav1.LabelSelector
+		expectedDeployments      int
+		expectedConfigMaps       int
+		expectedSecrets          int
+		shouldExist              []esv1.Elasticsearch
+		shouldNotExist           []esv1.Elasticsearch
 	}{
 		{
 			name: "selector change from matching 3 instances to matching 1 instance should cleanup 2 instances",
-			updatedSelector: metav1.LabelSelector{
+			updatedResourceSelector: metav1.LabelSelector{
 				MatchLabels: map[string]string{"app": "elasticsearch", "env": "prod"},
 			},
 			expectedDeployments: 1,
@@ -890,8 +919,30 @@ func TestAutoOpsAgentPolicyReconciler_selectorChangeCleanup(t *testing.T) {
 		},
 		{
 			name: "selector change from matching 3 instances to matching none should cleanup all 3 instances",
-			updatedSelector: metav1.LabelSelector{
+			updatedResourceSelector: metav1.LabelSelector{
 				MatchLabels: map[string]string{"app": "nonexistent"},
+			},
+			expectedDeployments: 0,
+			expectedConfigMaps:  0,
+			expectedSecrets:     0,
+			shouldExist:         []esv1.Elasticsearch{},
+			shouldNotExist:      []esv1.Elasticsearch{es1, es2, es3},
+		},
+		{
+			name: "namespace selector change from matching 3 instances to matching 1 instance should cleanup 2 instances",
+			updatedNamespaceSelector: metav1.LabelSelector{
+				MatchLabels: map[string]string{"kubernetes.io/metadata.name": "ns-2"},
+			},
+			expectedDeployments: 1,
+			expectedConfigMaps:  1,
+			expectedSecrets:     1,
+			shouldExist:         []esv1.Elasticsearch{es3},
+			shouldNotExist:      []esv1.Elasticsearch{es1, es2},
+		},
+		{
+			name: "namespace selector change from matching 3 instances to matching none should cleanup all 3 instances",
+			updatedNamespaceSelector: metav1.LabelSelector{
+				MatchLabels: map[string]string{"kubernetes.io/metadata.name": "ns-3"},
 			},
 			expectedDeployments: 0,
 			expectedConfigMaps:  0,
@@ -929,20 +980,25 @@ func TestAutoOpsAgentPolicyReconciler_selectorChangeCleanup(t *testing.T) {
 
 			// Verify resources were created for all ES instances that match the initial selector
 			var deployments appsv1.DeploymentList
-			require.NoError(t, k8sClient.List(ctx, &deployments, client.InNamespace("ns-1"), client.MatchingLabels{PolicyNameLabelKey: "policy-1"}))
+			require.NoError(t, k8sClient.List(ctx, &deployments, client.InNamespace(ns1.Name), client.MatchingLabels{PolicyNameLabelKey: "policy-1"}))
 			require.Len(t, deployments.Items, 3, "Expected 3 deployments for es-1, es-2, and es-3")
 
 			var configMaps corev1.ConfigMapList
-			require.NoError(t, k8sClient.List(ctx, &configMaps, client.InNamespace("ns-1"), client.MatchingLabels{PolicyNameLabelKey: "policy-1"}))
+			require.NoError(t, k8sClient.List(ctx, &configMaps, client.InNamespace(ns1.Name), client.MatchingLabels{PolicyNameLabelKey: "policy-1"}))
 			require.Len(t, configMaps.Items, 3, "Expected 3 configmaps for es-1, es-2, and es-3")
 
 			var secrets corev1.SecretList
-			require.NoError(t, k8sClient.List(ctx, &secrets, client.InNamespace("ns-1"), client.MatchingLabels{PolicyNameLabelKey: "policy-1"}))
+			require.NoError(t, k8sClient.List(ctx, &secrets, client.InNamespace(ns1.Name), client.MatchingLabels{PolicyNameLabelKey: "policy-1"}))
 			require.Len(t, secrets.Items, 3, "Expected 3 secrets for es-1, es-2, and es-3")
 
 			// Update selector and re-reconcile
 			updatedPolicy := initialPolicy.DeepCopy()
-			updatedPolicy.Spec.ResourceSelector = tt.updatedSelector
+			if tt.updatedResourceSelector.Size() > 0 {
+				updatedPolicy.Spec.ResourceSelector = tt.updatedResourceSelector
+			}
+			if tt.updatedNamespaceSelector.Size() > 0 {
+				updatedPolicy.Spec.NamespaceSelector = tt.updatedNamespaceSelector
+			}
 
 			state = newState(*updatedPolicy)
 			results = reconciler.NewResult(ctx)
@@ -956,17 +1012,17 @@ func TestAutoOpsAgentPolicyReconciler_selectorChangeCleanup(t *testing.T) {
 			for _, es := range tt.shouldNotExist {
 				esDeploymentName := autoopsv1alpha1.Deployment("policy-1", es)
 				var esDeployment appsv1.Deployment
-				err := k8sClient.Get(ctx, types.NamespacedName{Namespace: "ns-1", Name: esDeploymentName}, &esDeployment)
+				err := k8sClient.Get(ctx, types.NamespacedName{Namespace: ns1.Name, Name: esDeploymentName}, &esDeployment)
 				require.True(t, apierrors.IsNotFound(err), "deployment for %s should be deleted", es.Name)
 
 				esConfigMapName := autoopsv1alpha1.Config("policy-1", es)
 				var esConfigMap corev1.ConfigMap
-				err = k8sClient.Get(ctx, types.NamespacedName{Namespace: "ns-1", Name: esConfigMapName}, &esConfigMap)
+				err = k8sClient.Get(ctx, types.NamespacedName{Namespace: ns1.Name, Name: esConfigMapName}, &esConfigMap)
 				require.True(t, apierrors.IsNotFound(err), "configmap for %s should be deleted", es.Name)
 
-				esAPIKeySecretName := autoopsv1alpha1.APIKeySecret("policy-1", types.NamespacedName{Name: es.Name, Namespace: "ns-1"})
+				esAPIKeySecretName := autoopsv1alpha1.APIKeySecret("policy-1", types.NamespacedName{Name: es.Name, Namespace: ns1.Name})
 				var esAPIKeySecret corev1.Secret
-				err = k8sClient.Get(ctx, types.NamespacedName{Namespace: "ns-1", Name: esAPIKeySecretName}, &esAPIKeySecret)
+				err = k8sClient.Get(ctx, types.NamespacedName{Namespace: ns1.Name, Name: esAPIKeySecretName}, &esAPIKeySecret)
 				require.True(t, apierrors.IsNotFound(err), "API key secret for %s should be deleted", es.Name)
 			}
 
@@ -974,37 +1030,37 @@ func TestAutoOpsAgentPolicyReconciler_selectorChangeCleanup(t *testing.T) {
 			for _, es := range tt.shouldExist {
 				esDeploymentName := autoopsv1alpha1.Deployment("policy-1", es)
 				var esDeployment appsv1.Deployment
-				err := k8sClient.Get(ctx, types.NamespacedName{Namespace: "ns-1", Name: esDeploymentName}, &esDeployment)
+				err := k8sClient.Get(ctx, types.NamespacedName{Namespace: ns1.Name, Name: esDeploymentName}, &esDeployment)
 				require.NoError(t, err, "deployment for %s should still exist", es.Name)
 				require.Equal(t, es.Name, esDeployment.Labels[commonapikey.MetadataKeyESName])
-				require.Equal(t, "ns-1", esDeployment.Labels[commonapikey.MetadataKeyESNamespace])
+				require.Equal(t, es.Namespace, esDeployment.Labels[commonapikey.MetadataKeyESNamespace])
 
 				esConfigMapName := autoopsv1alpha1.Config("policy-1", es)
 				var esConfigMap corev1.ConfigMap
-				err = k8sClient.Get(ctx, types.NamespacedName{Namespace: "ns-1", Name: esConfigMapName}, &esConfigMap)
+				err = k8sClient.Get(ctx, types.NamespacedName{Namespace: ns1.Name, Name: esConfigMapName}, &esConfigMap)
 				require.NoError(t, err, "configmap for %s should still exist", es.Name)
 				require.Equal(t, es.Name, esConfigMap.Labels[commonapikey.MetadataKeyESName])
-				require.Equal(t, "ns-1", esConfigMap.Labels[commonapikey.MetadataKeyESNamespace])
+				require.Equal(t, es.Namespace, esConfigMap.Labels[commonapikey.MetadataKeyESNamespace])
 
-				esAPIKeySecretName := autoopsv1alpha1.APIKeySecret("policy-1", types.NamespacedName{Name: es.Name, Namespace: "ns-1"})
+				esAPIKeySecretName := autoopsv1alpha1.APIKeySecret("policy-1", types.NamespacedName{Name: es.Name, Namespace: es.Namespace})
 				var esAPIKeySecret corev1.Secret
-				err = k8sClient.Get(ctx, types.NamespacedName{Namespace: "ns-1", Name: esAPIKeySecretName}, &esAPIKeySecret)
+				err = k8sClient.Get(ctx, types.NamespacedName{Namespace: ns1.Name, Name: esAPIKeySecretName}, &esAPIKeySecret)
 				require.NoError(t, err, "API key secret for %s should still exist", es.Name)
 				require.Equal(t, es.Name, esAPIKeySecret.Labels[commonapikey.MetadataKeyESName])
-				require.Equal(t, "ns-1", esAPIKeySecret.Labels[commonapikey.MetadataKeyESNamespace])
+				require.Equal(t, es.Namespace, esAPIKeySecret.Labels[commonapikey.MetadataKeyESNamespace])
 			}
 
 			// Verify eventual expected resource counts
 			var finalDeployments appsv1.DeploymentList
-			require.NoError(t, k8sClient.List(ctx, &finalDeployments, client.InNamespace("ns-1"), client.MatchingLabels{PolicyNameLabelKey: "policy-1"}))
+			require.NoError(t, k8sClient.List(ctx, &finalDeployments, client.InNamespace(ns1.Name), client.MatchingLabels{PolicyNameLabelKey: "policy-1"}))
 			require.Len(t, finalDeployments.Items, tt.expectedDeployments, "Should have exactly %d deployment(s) after selector change", tt.expectedDeployments)
 
 			var finalConfigMaps corev1.ConfigMapList
-			require.NoError(t, k8sClient.List(ctx, &finalConfigMaps, client.InNamespace("ns-1"), client.MatchingLabels{PolicyNameLabelKey: "policy-1"}))
+			require.NoError(t, k8sClient.List(ctx, &finalConfigMaps, client.InNamespace(ns1.Name), client.MatchingLabels{PolicyNameLabelKey: "policy-1"}))
 			require.Len(t, finalConfigMaps.Items, tt.expectedConfigMaps, "Should have exactly %d configmap(s) after selector change", tt.expectedConfigMaps)
 
 			var finalSecrets corev1.SecretList
-			require.NoError(t, k8sClient.List(ctx, &finalSecrets, client.InNamespace("ns-1"), client.MatchingLabels{PolicyNameLabelKey: "policy-1"}))
+			require.NoError(t, k8sClient.List(ctx, &finalSecrets, client.InNamespace(ns1.Name), client.MatchingLabels{PolicyNameLabelKey: "policy-1"}))
 			require.Len(t, finalSecrets.Items, tt.expectedSecrets, "Should have exactly %d secret(s) after selector change", tt.expectedSecrets)
 		})
 	}
