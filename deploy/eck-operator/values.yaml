@@ -17,6 +17,11 @@ installCRDs: true
 # replicaCount is the number of operator pods to run.
 replicaCount: 1
 
+# the strategy what happens with pvc on the statefulset
+persistentVolumeClaimRetentionPolicy:
+  whenDeleted: Delete
+  whenScaled: Delete
+
 image:
   # repository is the container image prefixed by the registry name.
   repository: docker.elastic.co/eck/eck-operator
