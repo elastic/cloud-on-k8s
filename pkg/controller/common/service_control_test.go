@@ -668,6 +668,30 @@ func Test_applyServerSideValues(t *testing.T) {
 				ClusterIP: "1.2.3.4",
 			}},
 		},
+		{
+			name: "Reconciled TrafficDistribution is used if the expected one is nil",
+			args: args{
+				expected: corev1.Service{Spec: corev1.ServiceSpec{}},
+				reconciled: corev1.Service{Spec: corev1.ServiceSpec{
+					TrafficDistribution: ptr.To(corev1.ServiceTrafficDistributionPreferClose),
+				}},
+			},
+			want: corev1.Service{Spec: corev1.ServiceSpec{
+				TrafficDistribution: ptr.To(corev1.ServiceTrafficDistributionPreferClose),
+			}},
+		},
+		{
+			name: "Expected TrafficDistribution is used if not nil",
+			args: args{
+				expected: corev1.Service{Spec: corev1.ServiceSpec{
+					TrafficDistribution: ptr.To(corev1.ServiceTrafficDistributionPreferClose),
+				}},
+				reconciled: corev1.Service{Spec: corev1.ServiceSpec{}},
+			},
+			want: corev1.Service{Spec: corev1.ServiceSpec{
+				TrafficDistribution: ptr.To(corev1.ServiceTrafficDistributionPreferClose),
+			}},
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

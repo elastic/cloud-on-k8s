@@ -162,6 +162,11 @@ func applyServerSideValues(expected, reconciled *corev1.Service) {
 	if expected.Spec.AllocateLoadBalancerNodePorts == nil {
 		expected.Spec.AllocateLoadBalancerNodePorts = reconciled.Spec.AllocateLoadBalancerNodePorts
 	}
+
+	// TrafficDistribution may be defaulted by the API server starting K8s v1.31
+	if expected.Spec.TrafficDistribution == nil {
+		expected.Spec.TrafficDistribution = reconciled.Spec.TrafficDistribution
+	}
 }
 
 // hasNodePort returns for a given service type, if the service ports have a NodePort or not.
