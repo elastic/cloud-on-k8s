@@ -165,11 +165,11 @@ OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
 --------------------------------------------------------------------------------
 Module  : github.com/elastic/go-ucfg
-Version : v0.8.9-0.20251017163010-3520930bed4f
-Time    : 2025-10-17T16:30:10Z
+Version : v0.8.9-0.20260108155023-368693374ae9
+Time    : 2026-01-08T15:50:23Z
 Licence : Apache-2.0
 
-Contents of probable licence file $GOMODCACHE/github.com/elastic/go-ucfg@v0.8.9-0.20251017163010-3520930bed4f/LICENSE:
+Contents of probable licence file $GOMODCACHE/github.com/elastic/go-ucfg@v0.8.9-0.20260108155023-368693374ae9/LICENSE:
 
                                  Apache License
                            Version 2.0, January 2004
