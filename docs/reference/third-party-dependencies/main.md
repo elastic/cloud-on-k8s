@@ -21,7 +21,7 @@ This page lists the third-party dependencies used to build {{eck}} from the main
 | [github.com/Masterminds/sprig/v3](https://github.com/Masterminds/sprig) | v3.3.0 | MIT |
 | [github.com/blang/semver/v4](https://github.com/blang/semver) | v4.0.0 | MIT |
 | [github.com/davecgh/go-spew](https://github.com/davecgh/go-spew) | v1.1.2-0.20180830191138-d8f796af33cc | ISC |
-| [github.com/elastic/go-ucfg](https://github.com/elastic/go-ucfg) | v0.8.9-0.20251017163010-3520930bed4f | Apache-2.0 |
+| [github.com/elastic/go-ucfg](https://github.com/elastic/go-ucfg) | v0.8.9-0.20260108155023-368693374ae9 | Apache-2.0 |
 | [github.com/ghodss/yaml](https://github.com/ghodss/yaml) | v1.0.0 | MIT |
 | [github.com/gkampitakis/go-snaps](https://github.com/gkampitakis/go-snaps) | v0.5.19 | MIT |
 | [github.com/go-logr/logr](https://github.com/go-logr/logr) | v1.4.3 | Apache-2.0 |
