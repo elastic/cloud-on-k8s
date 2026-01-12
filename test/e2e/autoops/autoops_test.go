@@ -44,6 +44,7 @@ func TestAutoOpsAgentPolicy(t *testing.T) {
 
 	policyBuilder := autoops.NewBuilder("autoops-policy").
 		WithNamespace(policyNamespace).
+		WithAgentVersion(test.Ctx().ElasticStackVersion).
 		WithResourceSelector(metav1.LabelSelector{
 			MatchLabels: map[string]string{
 				"autoops": "enabled",

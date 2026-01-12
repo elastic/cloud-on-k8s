@@ -12,6 +12,7 @@ import (
 
 	autoopsv1alpha1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/autoops/v1alpha1"
 	controllerautoops "github.com/elastic/cloud-on-k8s/v3/pkg/controller/autoops"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/version"
 	"github.com/elastic/cloud-on-k8s/v3/test/e2e/cmd/run"
 	"github.com/elastic/cloud-on-k8s/v3/test/e2e/test"
 )
@@ -57,7 +58,8 @@ func NewBuilder(name string) Builder {
 		AutoOpsAgentPolicy: autoopsv1alpha1.AutoOpsAgentPolicy{
 			ObjectMeta: meta,
 			Spec: autoopsv1alpha1.AutoOpsAgentPolicySpec{
-				Version: test.Ctx().ElasticStackVersion,
+				// Default to lowest supported version initially.
+				Version: "9.2.1",
 				ResourceSelector: metav1.LabelSelector{
 					MatchLabels: map[string]string{
 						"autoops": "enabled",
@@ -78,6 +80,17 @@ func NewBuilder(name string) Builder {
 func (b Builder) WithSuffix(suffix string) Builder {
 	if suffix != "" {
 		b.AutoOpsAgentPolicy.ObjectMeta.Name = b.AutoOpsAgentPolicy.ObjectMeta.Name + "-" + suffix
+	}
+	return b
+}
+
+func (b Builder) WithAgentVersion(v string) Builder {
+	b.AutoOpsAgentPolicy.Spec.Version = v
+
+	// If the version is less than the minimum supported version, set it to the minimum supported version.
+	ver := version.MustParse(v)
+	if ver.LT(version.SupportedAutoOpsAgentVersions.Min) {
+		v = version.SupportedAutoOpsAgentVersions.Min.String()
 	}
 	return b
 }

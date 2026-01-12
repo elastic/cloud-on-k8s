@@ -19,6 +19,7 @@ import (
 
 	autoopsv1alpha1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/autoops/v1alpha1"
 	esv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/elasticsearch/v1"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/version"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/k8s"
 	"github.com/elastic/cloud-on-k8s/v3/test/e2e/cmd/run"
 	"github.com/elastic/cloud-on-k8s/v3/test/e2e/test"
@@ -119,7 +120,26 @@ func (b Builder) CreationTestSteps(k *test.K8sClient) test.StepList {
 		})
 }
 
+// hasBeatsReceiverStatusReportingFix checks if the AutoOpsAgentPolicy version has the beats receiver
+// status reporting fix. The fix was introduced in 9.2.4+ and 9.3.0+ (including -SNAPSHOT).
+// For versions with this fix, resources should NOT be ready when the beats receiver is failing internally.
+// See https://github.com/elastic/beats/issues/47848 and https://github.com/elastic/beats/pull/47936 for details.
+func (b Builder) hasBeatsReceiverStatusReportingFix() bool {
+	if b.AutoOpsAgentPolicy.Spec.Version == "" {
+		return false
+	}
+	ver, err := version.Parse(b.AutoOpsAgentPolicy.Spec.Version)
+	if err != nil {
+		return false
+	}
+	// Check if version >= 9.2.4 (including -SNAPSHOT versions of 9.3.0)
+	bugFixVersion := version.MustParse("9.2.4")
+	return ver.GTE(bugFixVersion)
+}
+
 func (b Builder) CheckK8sTestSteps(k *test.K8sClient) test.StepList {
+	hasBeatsReceiverStatusReportingFix := b.hasBeatsReceiverStatusReportingFix()
+
 	return test.StepList{}.
 		WithStep(test.Step{
 			Name: "AutoOpsAgentPolicy status should be ready",
@@ -128,6 +148,14 @@ func (b Builder) CheckK8sTestSteps(k *test.K8sClient) test.StepList {
 				if err := k.Client.Get(context.Background(), k8s.ExtractNamespacedName(&b.AutoOpsAgentPolicy), &policy); err != nil {
 					return err
 				}
+				if hasBeatsReceiverStatusReportingFix {
+					// With the bug fix, policy should NOT be ready
+					if policy.Status.Phase == autoopsv1alpha1.ReadyPhase {
+						return fmt.Errorf("policy should not be ready (bug fix version), but phase is: %s", policy.Status.Phase)
+					}
+					return nil
+				}
+				// Without the bug fix, policy should be ready
 				if policy.Status.Phase != autoopsv1alpha1.ReadyPhase {
 					return fmt.Errorf("policy not ready, phase: %s", policy.Status.Phase)
 				}
@@ -169,9 +197,6 @@ func (b Builder) CheckK8sTestSteps(k *test.K8sClient) test.StepList {
 					}
 
 					// Check if deployment is available.
-					// Eventually this behavior should fail, as the deployment should be not Ready
-					// as the beats receiver failing should never allow the Pod to be in a Ready state.
-					// See https://github.com/elastic/beats/issues/47848 for details.
 					available := false
 					for _, condition := range deployment.Status.Conditions {
 						if condition.Type == appsv1.DeploymentAvailable && condition.Status == corev1.ConditionTrue {
@@ -180,11 +205,22 @@ func (b Builder) CheckK8sTestSteps(k *test.K8sClient) test.StepList {
 						}
 					}
 
-					if !available {
-						return fmt.Errorf("deployment %s not available yet, replicas: %d/%d ready",
-							deploymentName,
-							deployment.Status.ReadyReplicas,
-							deployment.Status.Replicas)
+					if hasBeatsReceiverStatusReportingFix {
+						// With the bug fix, deployment should NOT be available
+						if available {
+							return fmt.Errorf("deployment %s should not be available (bug fix version), but it is available, replicas: %d/%d ready",
+								deploymentName,
+								deployment.Status.ReadyReplicas,
+								deployment.Status.Replicas)
+						}
+					} else {
+						// Without the bug fix, deployment should be available
+						if !available {
+							return fmt.Errorf("deployment %s not available yet, replicas: %d/%d ready",
+								deploymentName,
+								deployment.Status.ReadyReplicas,
+								deployment.Status.Replicas)
+						}
 					}
 				}
 
@@ -194,6 +230,8 @@ func (b Builder) CheckK8sTestSteps(k *test.K8sClient) test.StepList {
 }
 
 func (b Builder) CheckStackTestSteps(k *test.K8sClient) test.StepList {
+	hasBeatsReceiverStatusReportingFix := b.hasBeatsReceiverStatusReportingFix()
+
 	return test.StepList{}.
 		WithStep(test.Step{
 			Name: "AutoOps Agent pods should be ready",
@@ -240,13 +278,22 @@ func (b Builder) CheckStackTestSteps(k *test.K8sClient) test.StepList {
 						return fmt.Errorf("no pods found for deployment %s", deploymentName)
 					}
 
-					// Check all pods are ready
-					for _, pod := range pods.Items {
-						if pod.Status.Phase != corev1.PodRunning {
-							return fmt.Errorf("pod %s not running, phase: %s", pod.Name, pod.Status.Phase)
+					if hasBeatsReceiverStatusReportingFix {
+						// With the bug fix, pods should NOT be ready
+						for _, pod := range pods.Items {
+							if k8s.IsPodReady(pod) {
+								return fmt.Errorf("pod %s should not be ready (bug fix version), but it is ready, phase: %s", pod.Name, pod.Status.Phase)
+							}
 						}
-						if !k8s.IsPodReady(pod) {
-							return fmt.Errorf("pod %s not ready", pod.Name)
+					} else {
+						// Without the bug fix, pods should be ready
+						for _, pod := range pods.Items {
+							if pod.Status.Phase != corev1.PodRunning {
+								return fmt.Errorf("pod %s not running, phase: %s", pod.Name, pod.Status.Phase)
+							}
+							if !k8s.IsPodReady(pod) {
+								return fmt.Errorf("pod %s not ready", pod.Name)
+							}
 						}
 					}
 				}
