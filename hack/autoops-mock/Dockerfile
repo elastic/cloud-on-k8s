@@ -5,6 +5,7 @@ WORKDIR /go/src/github.com/elastic/cloud-on-k8s
 
 # Copy the source
 COPY main.go .
+COPY response.json .
 
 # Build
 RUN CGO_ENABLED=0 GOOS=linux go build -a -o autoops-mock main.go
