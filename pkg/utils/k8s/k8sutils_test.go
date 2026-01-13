@@ -5,6 +5,7 @@
 package k8s
 
 import (
+	"context"
 	"net"
 	"reflect"
 	"testing"
@@ -16,6 +17,7 @@ import (
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/apimachinery/pkg/util/sets"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	netutil "github.com/elastic/cloud-on-k8s/v3/pkg/utils/net"
@@ -358,6 +360,205 @@ func TestGetSecretEntriesCount(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			assert.Equalf(t, tt.want, GetSecretEntriesCount(tt.args.secret, tt.args.keys...), "GetSecretEntriesCount(%v, %v)", tt.args.secret, tt.args.keys)
+		})
+	}
+}
+
+func TestNamespacesSetMatchingSelector(t *testing.T) {
+	type args struct {
+		c        Client
+		selector metav1.LabelSelector
+	}
+	tests := []struct {
+		name    string
+		args    args
+		want    sets.Set[string]
+		wantErr bool
+	}{
+		{
+			name: "empty selector returns empty set",
+			args: args{
+				c: NewFakeClient(
+					&corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: "ns1", Labels: map[string]string{"env": "prod"}}},
+					&corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: "ns2", Labels: map[string]string{"env": "dev"}}},
+				),
+				selector: metav1.LabelSelector{},
+			},
+			want:    sets.Set[string]{},
+			wantErr: false,
+		},
+		{
+			name: "selector with MatchLabels matches namespaces",
+			args: args{
+				c: NewFakeClient(
+					&corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: "ns1", Labels: map[string]string{"env": "prod"}}},
+					&corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: "ns2", Labels: map[string]string{"env": "dev"}}},
+					&corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: "ns3", Labels: map[string]string{"env": "prod"}}},
+				),
+				selector: metav1.LabelSelector{
+					MatchLabels: map[string]string{"env": "prod"},
+				},
+			},
+			want:    sets.New[string]("ns1", "ns3"),
+			wantErr: false,
+		},
+		{
+			name: "selector with MatchExpressions matches namespaces",
+			args: args{
+				c: NewFakeClient(
+					&corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: "ns1", Labels: map[string]string{"env": "prod"}}},
+					&corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: "ns2", Labels: map[string]string{"env": "dev"}}},
+					&corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: "ns3", Labels: map[string]string{"env": "staging"}}},
+				),
+				selector: metav1.LabelSelector{
+					MatchExpressions: []metav1.LabelSelectorRequirement{
+						{
+							Key:      "env",
+							Operator: metav1.LabelSelectorOpIn,
+							Values:   []string{"prod", "staging"},
+						},
+					},
+				},
+			},
+			want:    sets.New[string]("ns1", "ns3"),
+			wantErr: false,
+		},
+		{
+			name: "selector matches no namespaces",
+			args: args{
+				c: NewFakeClient(
+					&corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: "ns1", Labels: map[string]string{"env": "prod"}}},
+					&corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: "ns2", Labels: map[string]string{"env": "dev"}}},
+				),
+				selector: metav1.LabelSelector{
+					MatchLabels: map[string]string{"env": "staging"},
+				},
+			},
+			want:    sets.New[string](),
+			wantErr: false,
+		},
+		{
+			name: "selector with both MatchLabels and MatchExpressions",
+			args: args{
+				c: NewFakeClient(
+					&corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: "ns1", Labels: map[string]string{"env": "prod", "team": "platform"}}},
+					&corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: "ns2", Labels: map[string]string{"env": "prod", "team": "search"}}},
+					&corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: "ns3", Labels: map[string]string{"env": "dev", "team": "platform"}}},
+				),
+				selector: metav1.LabelSelector{
+					MatchLabels: map[string]string{"env": "prod"},
+					MatchExpressions: []metav1.LabelSelectorRequirement{
+						{
+							Key:      "team",
+							Operator: metav1.LabelSelectorOpIn,
+							Values:   []string{"platform"},
+						},
+					},
+				},
+			},
+			want:    sets.New[string]("ns1"),
+			wantErr: false,
+		},
+		{
+			name: "invalid selector returns error",
+			args: args{
+				c: NewFakeClient(),
+				selector: metav1.LabelSelector{
+					MatchExpressions: []metav1.LabelSelectorRequirement{
+						{
+							Key:      "env",
+							Operator: metav1.LabelSelectorOpIn,
+							Values:   []string{}, // In operator requires at least one value
+						},
+					},
+				},
+			},
+			want:    nil,
+			wantErr: true,
+		},
+		{
+			name: "no namespaces in cluster with non-empty selector",
+			args: args{
+				c: NewFakeClient(),
+				selector: metav1.LabelSelector{
+					MatchLabels: map[string]string{"env": "prod"},
+				},
+			},
+			want:    sets.New[string](),
+			wantErr: false,
+		},
+		{
+			name: "selector with NotIn operator",
+			args: args{
+				c: NewFakeClient(
+					&corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: "ns1", Labels: map[string]string{"env": "prod"}}},
+					&corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: "ns2", Labels: map[string]string{"env": "dev"}}},
+					&corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: "ns3", Labels: map[string]string{"env": "staging"}}},
+				),
+				selector: metav1.LabelSelector{
+					MatchExpressions: []metav1.LabelSelectorRequirement{
+						{
+							Key:      "env",
+							Operator: metav1.LabelSelectorOpNotIn,
+							Values:   []string{"prod"},
+						},
+					},
+				},
+			},
+			want:    sets.New[string]("ns2", "ns3"),
+			wantErr: false,
+		},
+		{
+			name: "selector with Exists operator",
+			args: args{
+				c: NewFakeClient(
+					&corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: "ns1", Labels: map[string]string{"env": "prod"}}},
+					&corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: "ns2", Labels: map[string]string{"team": "platform"}}},
+					&corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: "ns3", Labels: map[string]string{"env": "dev"}}},
+				),
+				selector: metav1.LabelSelector{
+					MatchExpressions: []metav1.LabelSelectorRequirement{
+						{
+							Key:      "env",
+							Operator: metav1.LabelSelectorOpExists,
+						},
+					},
+				},
+			},
+			want:    sets.New[string]("ns1", "ns3"),
+			wantErr: false,
+		},
+		{
+			name: "selector with DoesNotExist operator",
+			args: args{
+				c: NewFakeClient(
+					&corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: "ns1", Labels: map[string]string{"env": "prod"}}},
+					&corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: "ns2", Labels: map[string]string{"team": "platform"}}},
+					&corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: "ns3", Labels: map[string]string{"env": "dev"}}},
+				),
+				selector: metav1.LabelSelector{
+					MatchExpressions: []metav1.LabelSelectorRequirement{
+						{
+							Key:      "env",
+							Operator: metav1.LabelSelectorOpDoesNotExist,
+						},
+					},
+				},
+			},
+			want:    sets.New[string]("ns2"),
+			wantErr: false,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, err := NamespacesSetMatchingSelector(context.Background(), tt.args.c, tt.args.selector)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("NamespacesSetMatchingSelector() error = %v, wantErr %v", err, tt.wantErr)
+				return
+			}
+			if !tt.want.Equal(got) {
+				t.Errorf("NamespacesSetMatchingSelector() got = %v, want %v", got, tt.want)
+			}
 		})
 	}
 }
