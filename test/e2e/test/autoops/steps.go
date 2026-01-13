@@ -154,7 +154,7 @@ func (b Builder) CheckK8sTestSteps(k *test.K8sClient) test.StepList {
 				}
 
 				// included namespaces
-				namespacesIncluded, err := k8s.NamespacesSetMatchingSelector(context.Background(), k.Client, b.AutoOpsAgentPolicy.Spec.NamespaceSelector)
+				isNSAccepted, err := k8s.NamespaceFilterFunc(context.Background(), k.Client, b.AutoOpsAgentPolicy.Spec.NamespaceSelector)
 				if err != nil {
 					return err
 				}
@@ -165,8 +165,6 @@ func (b Builder) CheckK8sTestSteps(k *test.K8sClient) test.StepList {
 						continue
 					}
 
-					filterOut := b.AutoOpsAgentPolicy.HasNamespaceSelector() && !namespacesIncluded.Has(es.Namespace)
-
 					deploymentName := autoopsv1alpha1.Deployment(b.AutoOpsAgentPolicy.Name, es)
 					var deployment appsv1.Deployment
 					err := k.Client.Get(context.Background(), types.NamespacedName{
@@ -174,10 +172,12 @@ func (b Builder) CheckK8sTestSteps(k *test.K8sClient) test.StepList {
 						Name:      deploymentName,
 					}, &deployment)
 
-					if filterOut {
+					if !isNSAccepted(es.Namespace) {
 						// if deployment is not present while it should be filtered out, continue (expected behavior).
-						if err != nil {
+						if err != nil && apierrors.IsNotFound(err) {
 							continue
+						} else if err != nil {
+							return err
 						}
 
 						// if deployment is present while it should be filtered out, return error.
@@ -231,18 +231,15 @@ func (b Builder) CheckStackTestSteps(k *test.K8sClient) test.StepList {
 				}
 
 				// included namespaces
-				namespacesIncluded, err := k8s.NamespacesSetMatchingSelector(context.Background(), k.Client, b.AutoOpsAgentPolicy.Spec.NamespaceSelector)
+				isNSAccepted, err := k8s.NamespaceFilterFunc(context.Background(), k.Client, b.AutoOpsAgentPolicy.Spec.NamespaceSelector)
 				if err != nil {
 					return err
 				}
-
 				// Check pods for each ES instance
 				for _, es := range esList.Items {
 					if es.Status.Phase != esv1.ElasticsearchReadyPhase {
 						continue
 					}
-
-					filterOut := b.AutoOpsAgentPolicy.HasNamespaceSelector() && !namespacesIncluded.Has(es.Namespace)
 
 					deploymentName := autoopsv1alpha1.Deployment(b.AutoOpsAgentPolicy.Name, es)
 					var deployment appsv1.Deployment
@@ -251,10 +248,12 @@ func (b Builder) CheckStackTestSteps(k *test.K8sClient) test.StepList {
 						Name:      deploymentName,
 					}, &deployment)
 
-					if filterOut {
+					if !isNSAccepted(es.Namespace) {
 						// if deployment is not present while it should be filtered out, continue (expected behavior).
-						if err != nil {
+						if err != nil && apierrors.IsNotFound(err) {
 							continue
+						} else if err != nil {
+							return err
 						}
 
 						// if deployment is present while it should be filtered out, return error.
