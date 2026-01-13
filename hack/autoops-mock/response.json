@@ -1,0 +1,54 @@
+{
+  "id": "iu0xjx9nz1uhjuvb08qn18qdqs4s0ga3",
+  "name": "my observability cluster",
+  "metadata": {
+    "created_at": "%s",
+    "created_by": "1014289666002276",
+    "organization_id": "198583657190"
+  },
+  "self_managed_cluster": {
+    "id": "string",
+    "name": "observability-cluster-central-2",
+    "version": "8.10.1"
+  },
+  "license": {
+    "type": "trial",
+    "uid": "1234567890abcdef1234567890abcdef"
+  },
+  "services": {
+    "auto_ops": {
+      "enabled": true,
+      "support": {
+        "supported": true,
+        "valid_license_types": ["trial"],
+        "minimum_stack_version": "8.5.0"
+      },
+      "config": {
+        "region_id": "aws-us-east-1"
+      },
+      "metadata": {
+        "documentation_url": "https://www.elastic.co/guide/en/cloud/current/eis.html",
+        "service_url": "https://app.auto-ops.cloud.elastic.co/regions/aws-us-east-1/organizations/198583657190/clusters/iu0xjx9nz1uhjuvb08qn18qdqs4s0ga3/cluster",
+        "connect_url": "https://application.auto-ops.cloud.elastic.co/organizations/198583657190/connect-autoops"
+      },
+      "subscription": {
+        "required": true
+      }
+    },
+    "eis": {
+      "enabled": true,
+      "support": {
+        "supported": true,
+        "valid_license_types": ["trial"],
+        "minimum_stack_version": "8.5.0"
+      },
+      "metadata": {
+        "documentation_url": "https://www.elastic.co/guide/en/cloud/current/eis.html"
+      },
+      "subscription": {
+        "required": true
+      }
+    }
+  },
+  "key": "VXNlci1JRDoxMjM0NTY3ODkwYWJjZGVmMTIzNDU2Nzg5MGFiY2RlZg=="
+}
