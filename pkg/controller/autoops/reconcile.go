@@ -79,7 +79,7 @@ func (r *AgentPolicyReconciler) internalReconcile(
 		return results.WithError(err)
 	}
 
-	namespacesFilter, err := k8s.NamespaceFilterFunc(ctx, r.Client, policy.Spec.NamespaceSelector)
+	nsFilter, err := k8s.NamespaceFilterFunc(ctx, r.Client, policy.Spec.NamespaceSelector)
 	if err != nil {
 		state.UpdateWithPhase(autoopsv1alpha1.ErrorPhase)
 		return results.WithError(err)
@@ -107,7 +107,7 @@ func (r *AgentPolicyReconciler) internalReconcile(
 	accessibleClusters := make([]esv1.Elasticsearch, 0, len(esList.Items))
 	for _, es := range esList.Items {
 		// filter by namespace (if set)
-		if !namespacesFilter(es.Namespace) {
+		if !nsFilter(es.Namespace) {
 			log.V(1).Info("Skipping ES cluster due to namespace filtering", "es_namespace", es.Namespace, "es_name", es.Name)
 			continue
 		}
