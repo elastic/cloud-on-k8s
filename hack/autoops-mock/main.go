@@ -5,7 +5,6 @@
 package main
 
 import (
-	"encoding/json"
 	"fmt"
 	"log"
 	"net/http"
@@ -18,186 +17,79 @@ const (
 	endpoint    = "/api/v1/cloud-connected/clusters"
 )
 
-type SelfManagedCluster struct {
-	ID      string `json:"id"`
-	Name    string `json:"name"`
-	Version string `json:"version"`
-}
-
-type License struct {
-	Type string `json:"type"`
-	UID  string `json:"uid"`
-}
-
-type CreateClusterRequest struct {
-	Name               string             `json:"name"`
-	SelfManagedCluster SelfManagedCluster `json:"self_managed_cluster"`
-	License            License            `json:"license"`
-}
-
-type Metadata struct {
-	CreatedAt      string `json:"created_at"`
-	CreatedBy      string `json:"created_by"`
-	OrganizationID string `json:"organization_id"`
-}
-
-type ServiceSupport struct {
-	Supported           bool     `json:"supported"`
-	ValidLicenseTypes   []string `json:"valid_license_types"`
-	MinimumStackVersion string   `json:"minimum_stack_version"`
-}
-
-type ServiceConfig struct {
-	RegionID string `json:"region_id"`
-}
-
-type ServiceMetadata struct {
-	DocumentationURL string `json:"documentation_url"`
-	ServiceURL       string `json:"service_url,omitempty"`
-	ConnectURL       string `json:"connect_url,omitempty"`
-}
-
-type ServiceSubscription struct {
-	Required bool `json:"required"`
-}
-
-type Service struct {
-	Enabled      bool                `json:"enabled"`
-	Support      ServiceSupport      `json:"support"`
-	Config       *ServiceConfig      `json:"config,omitempty"`
-	Metadata     ServiceMetadata     `json:"metadata"`
-	Subscription ServiceSubscription `json:"subscription"`
-}
-
-type Services struct {
-	AutoOps Service `json:"auto_ops"`
-	EIS     Service `json:"eis"`
-}
-
-type CreateClusterResponse struct {
-	ID                 string             `json:"id"`
-	Name               string             `json:"name"`
-	Metadata           Metadata           `json:"metadata"`
-	SelfManagedCluster SelfManagedCluster `json:"self_managed_cluster"`
-	License            License            `json:"license"`
-	Services           Services           `json:"services"`
-	Key                string             `json:"key,omitempty"`
-}
-
-type ErrorResponse struct {
-	Errors []ErrorDetail `json:"errors"`
-}
-
-type ErrorDetail struct {
-	Message string `json:"message"`
-	Code    string `json:"code"`
-}
-
-func generateClusterID() string {
-	// Simple ID generation - in a real scenario this would be more sophisticated
-	return "iu0xjx9nz1uhjuvb08qn18qdqs4s0ga3"
-}
-
-func generateAPIKey() string {
-	// Base64 encoded example key
-	return "VXNlci1JRDoxMjM0NTY3ODkwYWJjZGVmMTIzNDU2Nzg5MGFiY2RlZg=="
-}
+// Default response JSON
+const defaultResponse = `{
+  "id": "iu0xjx9nz1uhjuvb08qn18qdqs4s0ga3",
+  "name": "my observability cluster",
+  "metadata": {
+    "created_at": "%s",
+    "created_by": "1014289666002276",
+    "organization_id": "198583657190"
+  },
+  "self_managed_cluster": {
+    "id": "string",
+    "name": "observability-cluster-central-2",
+    "version": "8.10.1"
+  },
+  "license": {
+    "type": "trial",
+    "uid": "1234567890abcdef1234567890abcdef"
+  },
+  "services": {
+    "auto_ops": {
+      "enabled": true,
+      "support": {
+        "supported": true,
+        "valid_license_types": ["trial"],
+        "minimum_stack_version": "8.5.0"
+      },
+      "config": {
+        "region_id": "aws-us-east-1"
+      },
+      "metadata": {
+        "documentation_url": "https://www.elastic.co/guide/en/cloud/current/eis.html",
+        "service_url": "https://app.auto-ops.cloud.elastic.co/regions/aws-us-east-1/organizations/198583657190/clusters/iu0xjx9nz1uhjuvb08qn18qdqs4s0ga3/cluster",
+        "connect_url": "https://application.auto-ops.cloud.elastic.co/organizations/198583657190/connect-autoops"
+      },
+      "subscription": {
+        "required": true
+      }
+    },
+    "eis": {
+      "enabled": true,
+      "support": {
+        "supported": true,
+        "valid_license_types": ["trial"],
+        "minimum_stack_version": "8.5.0"
+      },
+      "metadata": {
+        "documentation_url": "https://www.elastic.co/guide/en/cloud/current/eis.html"
+      },
+      "subscription": {
+        "required": true
+      }
+    }
+  },
+  "key": "VXNlci1JRDoxMjM0NTY3ODkwYWJjZGVmMTIzNDU2Nzg5MGFiY2RlZg=="
+}`
 
 func createClusterHandler(w http.ResponseWriter, r *http.Request) {
-	// Parse query parameters
-	createAPIKey := false
-	if r.URL.Query().Get("create_api_key") == "true" {
-		createAPIKey = true
-	}
-
-	// Parse request body
-	var req CreateClusterRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		respondWithError(w, http.StatusBadRequest, "Invalid request body", "invalid.request.body")
-		return
-	}
-
-	// Generate response
+	// Generate response with current timestamp
 	now := time.Now().UTC().Format(time.RFC3339Nano)
-	response := CreateClusterResponse{
-		ID:   generateClusterID(),
-		Name: req.Name,
-		Metadata: Metadata{
-			CreatedAt:      now,
-			CreatedBy:      "1014289666002276",
-			OrganizationID: "198583657190",
-		},
-		SelfManagedCluster: req.SelfManagedCluster,
-		License:            req.License,
-		Services: Services{
-			AutoOps: Service{
-				Enabled: true,
-				Support: ServiceSupport{
-					Supported:           true,
-					ValidLicenseTypes:   []string{"trial", "enterprise"},
-					MinimumStackVersion: "8.5.0",
-				},
-				Config: &ServiceConfig{
-					RegionID: "aws-us-east-1",
-				},
-				Metadata: ServiceMetadata{
-					DocumentationURL: "https://www.elastic.co/guide/en/cloud/current/eis.html",
-					ServiceURL:       fmt.Sprintf("https://app.auto-ops.cloud.elastic.co/regions/aws-us-east-1/organizations/198583657190/clusters/%s/cluster", generateClusterID()),
-					ConnectURL:       "https://application.auto-ops.cloud.elastic.co/organizations/198583657190/connect-autoops",
-				},
-				Subscription: ServiceSubscription{
-					Required: true,
-				},
-			},
-			EIS: Service{
-				Enabled: true,
-				Support: ServiceSupport{
-					Supported:           true,
-					ValidLicenseTypes:   []string{"trial", "enterprise"},
-					MinimumStackVersion: "8.5.0",
-				},
-				Metadata: ServiceMetadata{
-					DocumentationURL: "https://www.elastic.co/guide/en/cloud/current/eis.html",
-				},
-				Subscription: ServiceSubscription{
-					Required: true,
-				},
-			},
-		},
-	}
+	response := fmt.Sprintf(defaultResponse, now)
 
-	// Add API key if requested
-	if createAPIKey {
-		response.Key = generateAPIKey()
-	}
-
-	// Set ETag header
+	// Set headers
 	w.Header().Set("ETag", `"mock-etag-12345"`)
-
-	// Return 201 for new cluster (or 200 if simulating existing)
-	// Default to 201 for new clusters
-	statusCode := http.StatusCreated
 	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(statusCode)
-	if err := json.NewEncoder(w).Encode(response); err != nil {
-		log.Printf("Error encoding response: %v", err)
-	}
+	w.WriteHeader(http.StatusCreated)
+	w.Write([]byte(response))
 }
 
 func respondWithError(w http.ResponseWriter, statusCode int, message, code string) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(statusCode)
-	errorResp := ErrorResponse{
-		Errors: []ErrorDetail{
-			{
-				Message: message,
-				Code:    code,
-			},
-		},
-	}
-	if err := json.NewEncoder(w).Encode(errorResp); err != nil {
-		log.Printf("Error encoding error response: %v", err)
-	}
+	errorResp := fmt.Sprintf(`{"errors":[{"message":"%s","code":"%s"}]}`, message, code)
+	w.Write([]byte(errorResp))
 }
 
 func loggingMiddleware(next http.Handler) http.Handler {
