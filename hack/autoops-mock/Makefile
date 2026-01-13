@@ -3,12 +3,13 @@
 # you may not use this file except in compliance with the Elastic License 2.0.
 
 BINARY_NAME := autoops-mock
-REGISTRY_NAMESPACE ?= mmontg1
+REGISTRY ?= docker.elastic.co
+REGISTRY_NAMESPACE ?= eck-ci
 VERSION ?= $(shell cat ../../VERSION)
 SHA1 ?= $(shell git rev-parse --short=8 --verify HEAD)
 ARCH ?= $(shell uname -m | sed -e "s|x86_|amd|" -e "s|aarch|arm|")
 
-IMAGE_NAME ?= $(REGISTRY_NAMESPACE)/$(BINARY_NAME)
+IMAGE_NAME ?= $(REGISTRY)/$(REGISTRY_NAMESPACE)/$(BINARY_NAME)
 IMAGE_TAG ?= $(VERSION)-$(SHA1)
 DOCKER_IMAGE ?= $(IMAGE_NAME):$(IMAGE_TAG)
 
@@ -34,7 +35,7 @@ docker-build:
 .PHONY: docker-push
 docker-push: docker-build
 	@echo "Pushing Docker image $(DOCKER_IMAGE)..."
-		@docker buildx build \
+	@docker buildx build \
 		-f Dockerfile \
 		--progress=plain \
 		--platform linux/amd64 \

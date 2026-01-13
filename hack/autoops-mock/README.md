@@ -22,10 +22,8 @@ PORT=3000 go run main.go
 
 Creates a Cloud Connected cluster.
 
-**Query Parameters:**
-- `create_api_key` (boolean, optional): If `true`, the response will include an API key.
-
 **Request Body:**
+
 ```json
 {
   "name": "My observability cluster",
@@ -42,17 +40,10 @@ Creates a Cloud Connected cluster.
 ```
 
 **Response:**
+
 - `201 Created`: Returns the created cluster with full details
 - `200 OK`: Returns existing cluster (if simulating existing cluster)
 - `400 Bad Request`: Invalid request body
 - `404 Not Found`: For any other endpoints
 
 All requests are logged to stdout using standard HTTP log format.
-
-## Features
-
-- Uses only Go standard library (no external dependencies)
-- Logs all HTTP requests with standard fields (remote_addr, method, path, status, size, etc.)
-- Returns 404 for unmatched endpoints
-- Supports the `create_api_key` query parameter
-- Returns proper ETag headers
