@@ -127,6 +127,8 @@ rules:
     resources:
       - persistentvolumes
     verbs:
+      - get # for elastic-agent kubernetes integration
+      - watch # for elastic-agent kubernetes integration
       - list # for ECK Diagnostics
   - apiGroups:
       - "security.openshift.io"
