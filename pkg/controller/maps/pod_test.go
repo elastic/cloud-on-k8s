@@ -21,10 +21,11 @@ func TestNewPodSpec_CommandOverride(t *testing.T) {
 	commandOverride := []string{"/bin/sh", "-c", "node app/index.js"}
 
 	tests := []struct {
-		name                string
-		version             string
-		wantCommandOverride bool
-		expectedCommand     []string
+		name                      string
+		version                   string
+		setDefaultSecurityContext bool
+		wantCommandOverride       bool
+		expectedCommand           []string
 	}{
 		// 7.x version tests
 		{
@@ -78,6 +79,12 @@ func TestNewPodSpec_CommandOverride(t *testing.T) {
 			version:             "9.1.0",
 			wantCommandOverride: false,
 		},
+		// Security context tests
+		{
+			name:                      "setDefaultSecurityContext enabled",
+			version:                   "9.1.0",
+			setDefaultSecurityContext: true,
+		},
 	}
 
 	for _, tt := range tests {
@@ -88,7 +95,7 @@ func TestNewPodSpec_CommandOverride(t *testing.T) {
 				Spec:       emsv1alpha1.MapsSpec{Version: tt.version},
 			}
 
-			podSpec, err := newPodSpec(ems, "test-hash", metadata.Metadata{})
+			podSpec, err := newPodSpec(ems, "test-hash", metadata.Metadata{}, tt.setDefaultSecurityContext)
 			require.NoError(t, err)
 
 			// Find the main container
@@ -109,6 +116,14 @@ func TestNewPodSpec_CommandOverride(t *testing.T) {
 				assert.Empty(t, mapsContainer.Command,
 					"Command should not be set for version %s", tt.version)
 			}
+
+			if tt.setDefaultSecurityContext {
+				require.NotNil(t, podSpec.Spec.SecurityContext, "PodSecurityContext should be set")
+				require.NotNil(t, podSpec.Spec.SecurityContext.SeccompProfile, "SeccompProfile should be set")
+				assert.Equal(t, corev1.SeccompProfileTypeRuntimeDefault, podSpec.Spec.SecurityContext.SeccompProfile.Type,
+					"SeccompProfile type should be RuntimeDefault")
+			}
+
 		})
 	}
 }
