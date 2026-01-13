@@ -20,6 +20,7 @@ bin
 *.swp
 *.swo
 *~
+/.vscode/
 
 # ignore vendor/
 vendor/
@@ -73,5 +74,3 @@ Chart.lock
 # build
 build/dev*
 build/eck*
-
-/.vscode/

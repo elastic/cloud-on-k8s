@@ -17,7 +17,6 @@ import (
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
-	"k8s.io/apimachinery/pkg/util/sets"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	netutil "github.com/elastic/cloud-on-k8s/v3/pkg/utils/net"
@@ -364,19 +363,19 @@ func TestGetSecretEntriesCount(t *testing.T) {
 	}
 }
 
-func TestNamespacesSetMatchingSelector(t *testing.T) {
+func TestNamespaceFilterFunc(t *testing.T) {
 	type args struct {
 		c        Client
 		selector metav1.LabelSelector
 	}
 	tests := []struct {
-		name    string
-		args    args
-		want    sets.Set[string]
-		wantErr bool
+		name           string
+		args           args
+		wantErr        bool
+		testNamespaces map[string]bool // namespace -> expected filter result
 	}{
 		{
-			name: "empty selector returns empty set",
+			name: "empty selector accepts all namespaces",
 			args: args{
 				c: NewFakeClient(
 					&corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: "ns1", Labels: map[string]string{"env": "prod"}}},
@@ -384,11 +383,16 @@ func TestNamespacesSetMatchingSelector(t *testing.T) {
 				),
 				selector: metav1.LabelSelector{},
 			},
-			want:    sets.Set[string]{},
 			wantErr: false,
+			testNamespaces: map[string]bool{
+				"ns1":          true,
+				"ns2":          true,
+				"any-ns":       true,
+				"non-existent": true,
+			},
 		},
 		{
-			name: "selector with MatchLabels matches namespaces",
+			name: "selector with MatchLabels filters namespaces",
 			args: args{
 				c: NewFakeClient(
 					&corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: "ns1", Labels: map[string]string{"env": "prod"}}},
@@ -399,11 +403,15 @@ func TestNamespacesSetMatchingSelector(t *testing.T) {
 					MatchLabels: map[string]string{"env": "prod"},
 				},
 			},
-			want:    sets.New[string]("ns1", "ns3"),
 			wantErr: false,
+			testNamespaces: map[string]bool{
+				"ns1": true,
+				"ns2": false,
+				"ns3": true,
+			},
 		},
 		{
-			name: "selector with MatchExpressions matches namespaces",
+			name: "selector with MatchExpressions filters namespaces",
 			args: args{
 				c: NewFakeClient(
 					&corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: "ns1", Labels: map[string]string{"env": "prod"}}},
@@ -420,8 +428,12 @@ func TestNamespacesSetMatchingSelector(t *testing.T) {
 					},
 				},
 			},
-			want:    sets.New[string]("ns1", "ns3"),
 			wantErr: false,
+			testNamespaces: map[string]bool{
+				"ns1": true,
+				"ns2": false,
+				"ns3": true,
+			},
 		},
 		{
 			name: "selector matches no namespaces",
@@ -434,8 +446,11 @@ func TestNamespacesSetMatchingSelector(t *testing.T) {
 					MatchLabels: map[string]string{"env": "staging"},
 				},
 			},
-			want:    sets.New[string](),
 			wantErr: false,
+			testNamespaces: map[string]bool{
+				"ns1": false,
+				"ns2": false,
+			},
 		},
 		{
 			name: "selector with both MatchLabels and MatchExpressions",
@@ -456,8 +471,12 @@ func TestNamespacesSetMatchingSelector(t *testing.T) {
 					},
 				},
 			},
-			want:    sets.New[string]("ns1"),
 			wantErr: false,
+			testNamespaces: map[string]bool{
+				"ns1": true,
+				"ns2": false,
+				"ns3": false,
+			},
 		},
 		{
 			name: "invalid selector returns error",
@@ -473,8 +492,8 @@ func TestNamespacesSetMatchingSelector(t *testing.T) {
 					},
 				},
 			},
-			want:    nil,
-			wantErr: true,
+			wantErr:        true,
+			testNamespaces: nil,
 		},
 		{
 			name: "no namespaces in cluster with non-empty selector",
@@ -484,29 +503,12 @@ func TestNamespacesSetMatchingSelector(t *testing.T) {
 					MatchLabels: map[string]string{"env": "prod"},
 				},
 			},
-			want:    sets.New[string](),
 			wantErr: false,
-		},
-		{
-			name: "selector with NotIn operator",
-			args: args{
-				c: NewFakeClient(
-					&corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: "ns1", Labels: map[string]string{"env": "prod"}}},
-					&corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: "ns2", Labels: map[string]string{"env": "dev"}}},
-					&corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: "ns3", Labels: map[string]string{"env": "staging"}}},
-				),
-				selector: metav1.LabelSelector{
-					MatchExpressions: []metav1.LabelSelectorRequirement{
-						{
-							Key:      "env",
-							Operator: metav1.LabelSelectorOpNotIn,
-							Values:   []string{"prod"},
-						},
-					},
-				},
+			testNamespaces: map[string]bool{
+				"ns1":     false,
+				"any-ns":  false,
+				"default": false,
 			},
-			want:    sets.New[string]("ns2", "ns3"),
-			wantErr: false,
 		},
 		{
 			name: "selector with Exists operator",
@@ -525,39 +527,29 @@ func TestNamespacesSetMatchingSelector(t *testing.T) {
 					},
 				},
 			},
-			want:    sets.New[string]("ns1", "ns3"),
 			wantErr: false,
-		},
-		{
-			name: "selector with DoesNotExist operator",
-			args: args{
-				c: NewFakeClient(
-					&corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: "ns1", Labels: map[string]string{"env": "prod"}}},
-					&corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: "ns2", Labels: map[string]string{"team": "platform"}}},
-					&corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: "ns3", Labels: map[string]string{"env": "dev"}}},
-				),
-				selector: metav1.LabelSelector{
-					MatchExpressions: []metav1.LabelSelectorRequirement{
-						{
-							Key:      "env",
-							Operator: metav1.LabelSelectorOpDoesNotExist,
-						},
-					},
-				},
+			testNamespaces: map[string]bool{
+				"ns1": true,
+				"ns2": false,
+				"ns3": true,
 			},
-			want:    sets.New[string]("ns2"),
-			wantErr: false,
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := NamespacesSetMatchingSelector(context.Background(), tt.args.c, tt.args.selector)
+			filterFunc, err := NamespaceFilterFunc(context.Background(), tt.args.c, tt.args.selector)
 			if (err != nil) != tt.wantErr {
-				t.Errorf("NamespacesSetMatchingSelector() error = %v, wantErr %v", err, tt.wantErr)
+				t.Errorf("NamespaceFilterFunc() error = %v, wantErr %v", err, tt.wantErr)
 				return
 			}
-			if !tt.want.Equal(got) {
-				t.Errorf("NamespacesSetMatchingSelector() got = %v, want %v", got, tt.want)
+			if tt.wantErr {
+				assert.Nil(t, filterFunc)
+				return
+			}
+			require.NotNil(t, filterFunc, "filter function should not be nil when no error")
+			for ns, expectedResult := range tt.testNamespaces {
+				got := filterFunc(ns)
+				assert.Equalf(t, expectedResult, got, "filterFunc(%q) = %v, want %v", ns, got, expectedResult)
 			}
 		})
 	}

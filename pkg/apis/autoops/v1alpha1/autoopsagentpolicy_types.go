@@ -130,8 +130,3 @@ var RequeuePhases = set.Make(
 func (p *AutoOpsAgentPolicy) IsMarkedForDeletion() bool {
 	return !p.DeletionTimestamp.IsZero()
 }
-
-// HasNamespaceSelector returns true if the AutoOpsAgentPolicy has the namespace selector set.
-func (p *AutoOpsAgentPolicy) HasNamespaceSelector() bool {
-	return (len(p.Spec.NamespaceSelector.MatchExpressions) > 0 || len(p.Spec.NamespaceSelector.MatchLabels) > 0)
-}

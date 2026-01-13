@@ -287,20 +287,24 @@ func CompareStorageRequests(initial corev1.VolumeResourceRequirements, updated c
 	}
 }
 
-// NamespacesSetMatchingSelector queries the Kubernetes API for namespaces matching the
-// provided label selector and returns their names as a set for efficient
-// lookup operations.
-func NamespacesSetMatchingSelector(
+// IsLabelSelectorEmpty returns true if the label selector has no match criteria.
+func IsLabelSelectorEmpty(selector metav1.LabelSelector) bool {
+	return len(selector.MatchExpressions) == 0 && len(selector.MatchLabels) == 0
+}
+
+// NamespaceFilterFunc returns a function that checks if a namespace is allowed.
+// If the selector is empty, returns a pass-through filter that accepts all namespaces.
+func NamespaceFilterFunc(
 	ctx context.Context,
 	k8sClient Client,
 	selector metav1.LabelSelector,
-) (sets.Set[string], error) {
-	// early return when selector is empty.
-	if len(selector.MatchExpressions) == 0 && len(selector.MatchLabels) == 0 {
-		return sets.Set[string]{}, nil
+) (func(namespace string) bool, error) {
+	// No selector = pass everything through
+	if IsLabelSelectorEmpty(selector) {
+		return func(string) bool { return true }, nil
 	}
 
-	// prepare the selector to find namespaces.
+	// Build the set of matching namespaces
 	nsSelector, err := metav1.LabelSelectorAsSelector(&selector)
 	if err != nil {
 		return nil, err
@@ -311,10 +315,10 @@ func NamespacesSetMatchingSelector(
 		return nil, err
 	}
 
-	st := sets.New[string]()
+	namespaces := sets.New[string]()
 	for _, ns := range nsList.Items {
-		st.Insert(ns.Name)
+		namespaces.Insert(ns.Name)
 	}
 
-	return st, nil
+	return namespaces.Has, nil // Return the Has method directly
 }
