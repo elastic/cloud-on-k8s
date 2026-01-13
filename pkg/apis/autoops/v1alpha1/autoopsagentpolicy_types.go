@@ -55,7 +55,7 @@ type AutoOpsAgentPolicySpec struct {
 	ResourceSelector metav1.LabelSelector `json:"resourceSelector,omitempty"`
 
 	// NamespaceSelector is a namespace selector for the resources to be configured.
-	// Any Elasticsearch instances that belonging to the selected namespaces will be configured to send data to AutoOps.
+	// Any Elasticsearch instances that belong to the selected namespaces will be configured to send data to AutoOps.
 	// +optional
 	// +kubebuilder:validation:Optional
 	NamespaceSelector metav1.LabelSelector `json:"namespaceSelector,omitempty"`
