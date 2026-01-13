@@ -13,16 +13,20 @@ replicaCount: 1
 
 resources:
   limits:
-    memory: 512Mi
+    memory: 128Mi
   requests:
-    cpu: "100m"
-    memory: 256Mi
+    cpu: "50m"
+    memory: 64Mi
 
 # WireMock configuration
 wiremock:
-  verbose: true
+  verbose: false
   rootDir: /home/wiremock
   globalResponseTemplating: true
+  # Cap request journal entries to limit memory growth (0 = disabled, omit for unlimited)
+  maxRequestJournalEntries: 20
+  # JVM memory settings - keep heap small for simple mock service
+  javaOpts: "-Xms32m -Xmx64m -XX:+UseSerialGC -XX:MaxMetaspaceSize=32m"
 
 # Attribution labels
 attributionLabels:

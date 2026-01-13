@@ -28,6 +28,11 @@ spec:
         - name: wiremock
           image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
           imagePullPolicy: {{ .Values.image.pullPolicy }}
+          {{- if .Values.wiremock.javaOpts }}
+          env:
+            - name: JAVA_OPTS
+              value: "{{ .Values.wiremock.javaOpts }}"
+          {{- end }}
           args:
             - "--port={{ .Values.service.port }}"
             {{- if .Values.wiremock.verbose }}
@@ -35,6 +40,9 @@ spec:
             {{- end }}
             {{- if .Values.wiremock.globalResponseTemplating }}
             - "--global-response-templating"
+            {{- end }}
+            {{- if .Values.wiremock.maxRequestJournalEntries }}
+            - "--max-request-journal-entries={{ .Values.wiremock.maxRequestJournalEntries }}"
             {{- end }}
           ports:
             - name: http
