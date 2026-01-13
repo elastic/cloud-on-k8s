@@ -1,5 +1,5 @@
 # Build the autoops-mock binary
-FROM docker.elastic.co/wolfi/go:1.25.5-r0@sha256:65dbe65914525e55521cbad942c13a87037f2837b5d44605a4b116e6e9d70693 as builder
+FROM docker.elastic.co/wolfi/go:1.25.5-r0@sha256:65dbe65914525e55521cbad942c13a87037f2837b5d44605a4b116e6e9d70693 AS builder
 
 WORKDIR /go/src/github.com/elastic/cloud-on-k8s
 
