@@ -294,7 +294,7 @@ AutoOpsAgentPolicy represents an Elastic AutoOps Policy resource in a Kubernetes
 | --- | --- |
 | *`version`* __string__ | Version of the AutoOpsAgentPolicy. |
 | *`resourceSelector`* __[LabelSelector](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.32/#labelselector-v1-meta)__ | ResourceSelector is a label selector for the resources to be configured.<br>Any Elasticsearch instances that match the selector will be configured to send data to AutoOps. |
-| *`namespaceSelector`* __[LabelSelector](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.32/#labelselector-v1-meta)__ | NamespaceSelector is a namespace selector for the resources to be configured.<br>Any Elasticsearch instances that belonging to the selected namespaces will be configured to send data to AutoOps. |
+| *`namespaceSelector`* __[LabelSelector](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.32/#labelselector-v1-meta)__ | NamespaceSelector is a namespace selector for the resources to be configured.<br>Any Elasticsearch instances that belong to the selected namespaces will be configured to send data to AutoOps. |
 | *`autoOpsRef`* __[AutoOpsRef](#autoopsref)__ | AutoOpsRef defines a reference to a secret containing connection details for AutoOps via Cloud Connect. |
 | *`image`* __string__ | Image is the AutoOps Agent Docker image to deploy. |
 | *`podTemplate`* __[PodTemplateSpec](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.32/#podtemplatespec-v1-core)__ | PodTemplate provides customisation options (labels, annotations, affinity rules, resource requests, and so on) for the Agent pods |

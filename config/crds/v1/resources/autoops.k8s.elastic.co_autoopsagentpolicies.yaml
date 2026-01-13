@@ -75,7 +75,7 @@ spec:
               namespaceSelector:
                 description: |-
                   NamespaceSelector is a namespace selector for the resources to be configured.
-                  Any Elasticsearch instances that belonging to the selected namespaces will be configured to send data to AutoOps.
+                  Any Elasticsearch instances that belong to the selected namespaces will be configured to send data to AutoOps.
                 properties:
                   matchExpressions:
                     description: matchExpressions is a list of label selector requirements.
