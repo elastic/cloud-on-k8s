@@ -11,18 +11,35 @@ import (
 
 const defaultDockerSocket = "/var/run/docker.sock"
 
+var homeDockerSocket = os.ExpandEnv("${HOME}/.docker/run/docker.sock")
+
 func getDockerSocket() (string, error) {
+	if runtime.GOOS == "darwin" {
+		sck, err := followLink(defaultDockerSocket)
+		if err != nil {
+			return followLink(homeDockerSocket)
+		}
+
+		return sck, nil
+	}
+
 	_, err := os.Stat(defaultDockerSocket)
 	if err != nil {
-		if os.IsNotExist(err) {
-			// If we are on macOS and the docker socket does not exist, fall back
-			if runtime.GOOS == "darwin" {
-				return "$HOME/.docker/run/docker.sock", nil
-			}
-		} else {
-			// Handle other errors
-			return "", err
-		}
+		return "", err
 	}
+
 	return defaultDockerSocket, nil
+}
+
+func followLink(path string) (string, error) {
+	info, err := os.Lstat(path)
+	if err != nil {
+		return path, err
+	}
+
+	if isLink := info.Mode()&os.ModeSymlink != 0; !isLink {
+		return path, nil
+	}
+
+	return os.Readlink(path)
 }
