@@ -1,0 +1,75 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "wiremock-cloud-connected-api.fullname" . }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "wiremock-cloud-connected-api.labels" . | nindent 4 }}
+{{- with .Values.attributionLabels }}
+{{ toYaml . | indent 4 }}
+{{- end }}
+spec:
+  replicas: {{ .Values.replicaCount }}
+  selector:
+    matchLabels:
+      {{- include "wiremock-cloud-connected-api.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "wiremock-cloud-connected-api.selectorLabels" . | nindent 8 }}
+{{- with .Values.attributionLabels }}
+{{ toYaml . | indent 8 }}
+{{- end }}
+      annotations:
+        checksum/mappings: {{ include (print $.Template.BasePath "/configmap-mappings.yaml") . | sha256sum }}
+        checksum/files: {{ include (print $.Template.BasePath "/configmap-files.yaml") . | sha256sum }}
+    spec:
+      containers:
+        - name: wiremock
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          args:
+            - "--port={{ .Values.service.port }}"
+            {{- if .Values.wiremock.verbose }}
+            - "--verbose"
+            {{- end }}
+            {{- if .Values.wiremock.globalResponseTemplating }}
+            - "--global-response-templating"
+            {{- end }}
+          ports:
+            - name: http
+              containerPort: {{ .Values.service.port }}
+              protocol: TCP
+          livenessProbe:
+            httpGet:
+              path: /__admin/health
+              port: http
+            initialDelaySeconds: 10
+            periodSeconds: 10
+          readinessProbe:
+            httpGet:
+              path: /__admin/health
+              port: http
+            initialDelaySeconds: 5
+            periodSeconds: 5
+          resources:
+            {{- toYaml .Values.resources | nindent 12 }}
+          volumeMounts:
+            - name: mappings
+              mountPath: {{ .Values.wiremock.rootDir }}/mappings
+              readOnly: true
+            - name: files
+              mountPath: {{ .Values.wiremock.rootDir }}/__files
+              readOnly: true
+          securityContext:
+            allowPrivilegeEscalation: false
+            runAsNonRoot: true
+            runAsUser: 1000
+      volumes:
+        - name: mappings
+          configMap:
+            name: {{ include "wiremock-cloud-connected-api.fullname" . }}-mappings
+        - name: files
+          configMap:
+            name: {{ include "wiremock-cloud-connected-api.fullname" . }}-files
+      terminationGracePeriodSeconds: 10

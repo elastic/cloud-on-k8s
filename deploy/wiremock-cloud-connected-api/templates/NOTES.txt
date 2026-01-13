@@ -1,0 +1,26 @@
+WireMock Cloud Connected API Mock has been deployed.
+
+The mock service is available at:
+  http://{{ include "wiremock-cloud-connected-api.fullname" . }}.{{ .Release.Namespace }}.svc.cluster.local:{{ .Values.service.port }}
+
+Supported endpoint:
+  POST /api/v1/cloud-connected/clusters - Create a cloud-connected cluster
+
+Example request:
+  curl -X POST http://<service-url>/api/v1/cloud-connected/clusters \
+    -H "Content-Type: application/json" \
+    -d '{
+      "name": "My Cluster",
+      "self_managed_cluster": {
+        "id": "my-cluster-id",
+        "name": "my-cluster",
+        "version": "8.12.0"
+      },
+      "license": {
+        "type": "enterprise",
+        "uid": "abc123"
+      }
+    }'
+
+To check WireMock admin status:
+  curl http://<service-url>/__admin/health

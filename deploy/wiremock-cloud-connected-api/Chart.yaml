@@ -1,0 +1,17 @@
+apiVersion: v2
+name: wiremock-cloud-connected-api
+description: "WireMock service that mocks the Elastic Cloud Connected User API for testing purposes."
+type: application
+version: 0.1.0
+appVersion: "3.3.1"
+keywords:
+  - wiremock
+  - mock
+  - elastic
+  - cloud-connected
+  - testing
+home: https://github.com/elastic/cloud-on-k8s
+sources:
+  - https://github.com/elastic/cloud-on-k8s
+maintainers:
+  - name: Elastic
