@@ -470,7 +470,7 @@ e2e-compile: go-generate
 # that can reach ES services running in the k8s cluster through port-forwarding.
 e2e-local: LOCAL_E2E_CTX := /tmp/e2e-local.json
 e2e-local: go-generate
-	go run -tags '$(GO_TAGS)' test/e2e/cmd/main.go run \
+	@go run -tags '$(GO_TAGS)' test/e2e/cmd/main.go run \
 		--test-run-name=e2e \
 		--operator-image=$(OPERATOR_IMAGE) \
 		--test-context-out=$(LOCAL_E2E_CTX) \
