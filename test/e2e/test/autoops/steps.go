@@ -182,11 +182,10 @@ func (b Builder) CheckK8sTestSteps(k *test.K8sClient) test.StepList {
 
 						// if deployment is present while it should be filtered out, return error.
 						return fmt.Errorf("deployment %s should not exist due to namespace selector", deploymentName)
-					} else {
-						// if error occurred while we expect for deployment, return.
-						if err != nil {
-							return err
-						}
+					}
+					// if error occurred while we expect for deployment, return.
+					if err != nil {
+						return err
 					}
 
 					// Check if deployment is available.
@@ -260,11 +259,10 @@ func (b Builder) CheckStackTestSteps(k *test.K8sClient) test.StepList {
 
 						// if deployment is present while it should be filtered out, return error.
 						return fmt.Errorf("deployment %s should not exist due to namespace selector", deploymentName)
-					} else {
-						// if error occurred while we expect for deployment, return.
-						if err != nil {
-							return err
-						}
+					}
+					// if error occurred while we expect for deployment, return.
+					if err != nil {
+						return err
 					}
 
 					var pods corev1.PodList
