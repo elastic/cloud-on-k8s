@@ -4059,11 +4059,11 @@ THE SOFTWARE.
 
 --------------------------------------------------------------------------------
 Module  : golang.org/x/crypto
-Version : v0.46.0
-Time    : 2025-12-08T18:34:26Z
+Version : v0.47.0
+Time    : 2026-01-12T15:56:02Z
 Licence : BSD-3-Clause
 
-Contents of probable licence file $GOMODCACHE/golang.org/x/crypto@v0.46.0/LICENSE:
+Contents of probable licence file $GOMODCACHE/golang.org/x/crypto@v0.47.0/LICENSE:
 
 Copyright 2009 The Go Authors.
 
@@ -19668,11 +19668,11 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 --------------------------------------------------------------------------------
 Module  : golang.org/x/sys
-Version : v0.39.0
-Time    : 2025-11-25T15:35:26Z
+Version : v0.40.0
+Time    : 2025-12-19T16:52:28Z
 Licence : BSD-3-Clause
 
-Contents of probable licence file $GOMODCACHE/golang.org/x/sys@v0.39.0/LICENSE:
+Contents of probable licence file $GOMODCACHE/golang.org/x/sys@v0.40.0/LICENSE:
 
 Copyright 2009 The Go Authors.
 
@@ -19705,11 +19705,11 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 --------------------------------------------------------------------------------
 Module  : golang.org/x/term
-Version : v0.38.0
-Time    : 2025-12-08T16:57:31Z
+Version : v0.39.0
+Time    : 2026-01-09T16:09:29Z
 Licence : BSD-3-Clause
 
-Contents of probable licence file $GOMODCACHE/golang.org/x/term@v0.38.0/LICENSE:
+Contents of probable licence file $GOMODCACHE/golang.org/x/term@v0.39.0/LICENSE:
 
 Copyright 2009 The Go Authors.
 
@@ -19742,11 +19742,11 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 --------------------------------------------------------------------------------
 Module  : golang.org/x/text
-Version : v0.32.0
-Time    : 2025-12-08T16:57:43Z
+Version : v0.33.0
+Time    : 2026-01-09T21:00:41Z
 Licence : BSD-3-Clause
 
-Contents of probable licence file $GOMODCACHE/golang.org/x/text@v0.32.0/LICENSE:
+Contents of probable licence file $GOMODCACHE/golang.org/x/text@v0.33.0/LICENSE:
 
 Copyright 2009 The Go Authors.
 
