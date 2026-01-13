@@ -1,0 +1,9 @@
+apiVersion: v2
+name: autoops-mock
+description: Mock server for Cloud Connected API
+type: application
+version: 0.1.0
+appVersion: "1.0.0"
+kubeVersion: ">=1.21.0-0"
+sources:
+  - https://github.com/elastic/cloud-on-k8s

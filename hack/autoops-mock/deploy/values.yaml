@@ -1,0 +1,81 @@
+# Default values for autoops-mock
+# This is a YAML-formatted file.
+
+# nameOverride will override the name of the Chart with the name set here
+# nameOverride: ""
+
+# fullnameOverride will override both the release name and the chart name
+# fullnameOverride: ""
+
+# Number of replicas
+replicaCount: 1
+
+# Container image configuration
+image:
+  repository: mmontg1/autoops-mock
+  pullPolicy: IfNotPresent
+  tag: ""
+
+# Image pull secrets
+imagePullSecrets: []
+
+# Service account configuration
+serviceAccount:
+  create: true
+  annotations: {}
+  name: ""
+
+# Pod annotations
+podAnnotations: {}
+
+# Pod labels
+podLabels: {}
+
+# Pod security context
+podSecurityContext: {}
+
+# Container security context
+securityContext:
+  allowPrivilegeEscalation: false
+  capabilities:
+    drop:
+      - ALL
+  readOnlyRootFilesystem: true
+  runAsNonRoot: true
+
+# Resource limits and requests
+resources:
+  limits:
+    cpu: 100m
+    memory: 128Mi
+  requests:
+    cpu: 50m
+    memory: 64Mi
+
+# Node selector
+nodeSelector: {}
+
+# Tolerations
+tolerations: []
+
+# Affinity
+affinity: {}
+
+# Service configuration
+service:
+  type: ClusterIP
+  port: 8080
+  targetPort: 8080
+  annotations: {}
+  labels: {}
+
+# Environment variables
+env: []
+  # - name: PORT
+  #   value: "8080"
+
+# Additional volume mounts
+volumeMounts: []
+
+# Additional volumes
+volumes: []
