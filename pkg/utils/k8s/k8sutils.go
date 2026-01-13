@@ -14,6 +14,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/apimachinery/pkg/util/sets"
 	"k8s.io/client-go/tools/record"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
@@ -284,4 +285,36 @@ func CompareStorageRequests(initial corev1.VolumeResourceRequirements, updated c
 	default: // same size
 		return StorageComparison{}
 	}
+}
+
+// NamespacesSetMatchingSelector queries the Kubernetes API for namespaces matching the
+// provided label selector and returns their names as a set for efficient
+// lookup operations.
+func NamespacesSetMatchingSelector(
+	ctx context.Context,
+	k8sClient Client,
+	selector metav1.LabelSelector,
+) (sets.Set[string], error) {
+	// early return when selector is empty.
+	if len(selector.MatchExpressions) == 0 && len(selector.MatchLabels) == 0 {
+		return sets.Set[string]{}, nil
+	}
+
+	// prepare the selector to find namespaces.
+	nsSelector, err := metav1.LabelSelectorAsSelector(&selector)
+	if err != nil {
+		return nil, err
+	}
+
+	var nsList corev1.NamespaceList
+	if err := k8sClient.List(ctx, &nsList, &client.ListOptions{LabelSelector: nsSelector}); err != nil {
+		return nil, err
+	}
+
+	st := sets.New[string]()
+	for _, ns := range nsList.Items {
+		st.Insert(ns.Name)
+	}
+
+	return st, nil
 }

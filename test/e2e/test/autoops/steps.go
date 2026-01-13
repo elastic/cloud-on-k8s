@@ -153,19 +153,40 @@ func (b Builder) CheckK8sTestSteps(k *test.K8sClient) test.StepList {
 					return err
 				}
 
+				// included namespaces
+				namespacesIncluded, err := k8s.NamespacesSetMatchingSelector(context.Background(), k.Client, b.AutoOpsAgentPolicy.Spec.NamespaceSelector)
+				if err != nil {
+					return err
+				}
+
 				// Check deployment for each ES instance
 				for _, es := range esList.Items {
 					if es.Status.Phase != esv1.ElasticsearchReadyPhase {
 						continue
 					}
 
+					filterOut := b.AutoOpsAgentPolicy.HasNamespaceSelector() && !namespacesIncluded.Has(es.Namespace)
+
 					deploymentName := autoopsv1alpha1.Deployment(b.AutoOpsAgentPolicy.Name, es)
 					var deployment appsv1.Deployment
-					if err := k.Client.Get(context.Background(), types.NamespacedName{
+					err := k.Client.Get(context.Background(), types.NamespacedName{
 						Namespace: b.AutoOpsAgentPolicy.Namespace,
 						Name:      deploymentName,
-					}, &deployment); err != nil {
-						return err
+					}, &deployment)
+
+					if filterOut {
+						// if deployment is not present while it should be filtered out, continue (expected behavior).
+						if err != nil {
+							continue
+						}
+
+						// if deployment is present while it should be filtered out, return error.
+						return fmt.Errorf("deployment %s should not exist due to namespace selector", deploymentName)
+					} else {
+						// if error occurred while we expect for deployment, return.
+						if err != nil {
+							return err
+						}
 					}
 
 					// Check if deployment is available.
@@ -210,19 +231,40 @@ func (b Builder) CheckStackTestSteps(k *test.K8sClient) test.StepList {
 					return err
 				}
 
+				// included namespaces
+				namespacesIncluded, err := k8s.NamespacesSetMatchingSelector(context.Background(), k.Client, b.AutoOpsAgentPolicy.Spec.NamespaceSelector)
+				if err != nil {
+					return err
+				}
+
 				// Check pods for each ES instance
 				for _, es := range esList.Items {
 					if es.Status.Phase != esv1.ElasticsearchReadyPhase {
 						continue
 					}
 
+					filterOut := b.AutoOpsAgentPolicy.HasNamespaceSelector() && !namespacesIncluded.Has(es.Namespace)
+
 					deploymentName := autoopsv1alpha1.Deployment(b.AutoOpsAgentPolicy.Name, es)
 					var deployment appsv1.Deployment
-					if err := k.Client.Get(context.Background(), types.NamespacedName{
+					err := k.Client.Get(context.Background(), types.NamespacedName{
 						Namespace: b.AutoOpsAgentPolicy.Namespace,
 						Name:      deploymentName,
-					}, &deployment); err != nil {
-						return err
+					}, &deployment)
+
+					if filterOut {
+						// if deployment is not present while it should be filtered out, continue (expected behavior).
+						if err != nil {
+							continue
+						}
+
+						// if deployment is present while it should be filtered out, return error.
+						return fmt.Errorf("deployment %s should not exist due to namespace selector", deploymentName)
+					} else {
+						// if error occurred while we expect for deployment, return.
+						if err != nil {
+							return err
+						}
 					}
 
 					var pods corev1.PodList

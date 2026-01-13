@@ -79,8 +79,8 @@ func (r *AgentPolicyReconciler) internalReconcile(
 		return results.WithError(err)
 	}
 
-	filterByNamespace := (len(policy.Spec.NamespaceSelector.MatchExpressions) > 0 || len(policy.Spec.NamespaceSelector.MatchLabels) > 0)
-	namespaces, err := getNamespaces(ctx, r.Client, policy.Spec.NamespaceSelector)
+	filterByNamespace := policy.HasNamespaceSelector()
+	namespaces, err := k8s.NamespacesSetMatchingSelector(ctx, r.Client, policy.Spec.NamespaceSelector)
 	if err != nil {
 		state.UpdateWithPhase(autoopsv1alpha1.ErrorPhase)
 		return results.WithError(err)
@@ -288,36 +288,4 @@ func isDeploymentReady(dep appsv1.Deployment) bool {
 		}
 	}
 	return false
-}
-
-// getNamespaces queries the Kubernetes API for namespaces matching the
-// provided label selector and returns their names as a set for efficient
-// lookup operations.
-func getNamespaces(
-	ctx context.Context,
-	k8sClient k8s.Client,
-	ls metav1.LabelSelector,
-) (sets.Set[string], error) {
-	// early return when selector is empty.
-	if len(ls.MatchExpressions) == 0 && len(ls.MatchLabels) == 0 {
-		return sets.Set[string]{}, nil
-	}
-
-	// prepare the selector to find namespaces.
-	nsSelector, err := metav1.LabelSelectorAsSelector(&ls)
-	if err != nil {
-		return nil, err
-	}
-
-	var nsList corev1.NamespaceList
-	if err := k8sClient.List(ctx, &nsList, &client.ListOptions{LabelSelector: nsSelector}); err != nil {
-		return nil, err
-	}
-
-	st := sets.New[string]()
-	for _, ns := range nsList.Items {
-		st.Insert(ns.Name)
-	}
-
-	return st, nil
 }
