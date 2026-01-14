@@ -5,6 +5,7 @@
 package runner
 
 import (
+	"errors"
 	"os"
 	"runtime"
 )
@@ -17,7 +18,12 @@ func getDockerSocket() (string, error) {
 	if runtime.GOOS == "darwin" {
 		sck, err := followLink(defaultDockerSocket)
 		if err != nil {
-			return followLink(homeDockerSocket)
+			hsc, hErr := followLink(homeDockerSocket)
+			if hErr != nil {
+				return "", errors.Join(err, hErr)
+			}
+
+			return hsc, nil
 		}
 
 		return sck, nil
