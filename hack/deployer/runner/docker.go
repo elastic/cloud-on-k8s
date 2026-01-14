@@ -37,7 +37,8 @@ func followLink(path string) (string, error) {
 		return path, err
 	}
 
-	if isLink := info.Mode()&os.ModeSymlink != 0; !isLink {
+	// if the file is not link, return the path.
+	if info.Mode()&os.ModeSymlink == 0 {
 		return path, nil
 	}
 
