@@ -7,7 +7,6 @@ package runner
 import (
 	"errors"
 	"os"
-	"runtime"
 )
 
 const defaultDockerSocket = "/var/run/docker.sock"
@@ -15,26 +14,17 @@ const defaultDockerSocket = "/var/run/docker.sock"
 var homeDockerSocket = os.ExpandEnv("${HOME}/.docker/run/docker.sock")
 
 func getDockerSocket() (string, error) {
-	if runtime.GOOS == "darwin" {
-		sck, err := followLink(defaultDockerSocket)
-		if err != nil {
-			hsc, hErr := followLink(homeDockerSocket)
-			if hErr != nil {
-				return "", errors.Join(err, hErr)
-			}
-
-			return hsc, nil
-		}
-
+	sck, err := followLink(defaultDockerSocket)
+	if err == nil { // if *not* error, return the socket
 		return sck, nil
 	}
 
-	_, err := os.Stat(defaultDockerSocket)
-	if err != nil {
-		return "", err
+	hsc, hErr := followLink(homeDockerSocket)
+	if hErr != nil {
+		return "", errors.Join(err, hErr)
 	}
 
-	return defaultDockerSocket, nil
+	return hsc, nil
 }
 
 func followLink(path string) (string, error) {
