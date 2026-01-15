@@ -292,7 +292,7 @@ spec:
 
     * Elasticsearch, Kibana, APM Server: 8+, 9+
 
-    * Enterprise Search: 7.17+, 8+
+    * Enterprise Search: 7.7+, 8+
 
     * Beats: 8+, 9+
 

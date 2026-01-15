@@ -22,7 +22,7 @@ Supported versions:
 *  Elasticsearch, Kibana, APM Server: 8+, 9+
 *  Enterprise Search: 7.7+, 8+
 *  Beats: 8+, 9+
-*  Elastic Agent: 8+, 9+ (Fleet)
+*  Elastic Agent: 8+, 9+ (Fleet, Standalone)
 *  Elastic Maps Server: 8+, 9+
 *  Logstash 8.12+, 9+
 
