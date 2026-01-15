@@ -40,6 +40,7 @@ ECK now includes support for multiple Stack Config Policies targeting the same {
 - Do not set {{kib}} server.name [#8930](https://github.com/elastic/cloud-on-k8s/pull/8930) (issue: [#8929](https://github.com/elastic/cloud-on-k8s/issues/8929))
 - Do not write `elasticsearch.k8s.elastic.co/managed-remote-clusters` when not necessary [#8932](https://github.com/elastic/cloud-on-k8s/pull/8932) (issue: [#8781](https://github.com/elastic/cloud-on-k8s/issues/8781))
 - Cleanup orphaned secret mounts when removed from StackConfigPolicy [#8937](https://github.com/elastic/cloud-on-k8s/pull/8937) (issue: [#8921](https://github.com/elastic/cloud-on-k8s/issues/8921))
+- Stop logging an error when returning an error when performing a generic GET operation on a GVK [#8957](https://github.com/elastic/cloud-on-k8s/pull/8957)
 
 ### Documentation improvements [elastic-cloud-kubernetes-330-documentation-improvements]
 
@@ -47,9 +48,6 @@ ECK now includes support for multiple Stack Config Policies targeting the same {
 - Fix minUnavailable typo in PDB documentation [#8898](https://github.com/elastic/cloud-on-k8s/pull/8898)
 - Use GKE ComputeClass instead of DaemonSet for GKE AutoPilot [#8982](https://github.com/elastic/cloud-on-k8s/pull/8982)
 - Adjust `vm.max_map_count` to 1048576 in GKE AutoPilot recipes [#8986](https://github.com/elastic/cloud-on-k8s/pull/8986)
-
-
-- Stop logging an error when returning an error when performing a generic GET operation on a GVK [#8957](https://github.com/elastic/cloud-on-k8s/pull/8957)
 
 :::{dropdown} Updated dependencies
 
