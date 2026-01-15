@@ -95,7 +95,7 @@ func (r *AgentPolicyReconciler) buildDeployment(configHash string, policy autoop
 
 	annotations := map[string]string{configHashAnnotationName: configHash}
 	meta := metadata.Propagate(&policy, metadata.Metadata{Labels: labels, Annotations: annotations})
-	podTemplateSpec := defaults.NewPodTemplateBuilder(policy.Spec.PodTemplate, autoOpsAgentType).
+	builder := defaults.NewPodTemplateBuilder(policy.Spec.PodTemplate, autoOpsAgentType).
 		WithArgs("--config", path.Join(configVolumePath, autoOpsESConfigFileName)).
 		WithLabels(meta.Labels).
 		WithAnnotations(meta.Annotations).
@@ -124,8 +124,15 @@ func (r *AgentPolicyReconciler) buildDeployment(configHash string, policy autoop
 			SeccompProfile: &corev1.SeccompProfile{
 				Type: corev1.SeccompProfileTypeRuntimeDefault,
 			},
-		}).
-		PodTemplate
+		})
+
+	if r.params.SetDefaultSecurityContext {
+		builder = builder.WithPodSecurityContext(corev1.PodSecurityContext{
+			SeccompProfile: &corev1.SeccompProfile{
+				Type: corev1.SeccompProfileTypeRuntimeDefault,
+			},
+		})
+	}
 
 	return common_deployment.New(common_deployment.Params{
 		Name:      autoopsv1alpha1.Deployment(policy.GetName(), es),
@@ -134,7 +141,7 @@ func (r *AgentPolicyReconciler) buildDeployment(configHash string, policy autoop
 			PolicyNameLabelKey: policy.GetName(),
 		},
 		Metadata:             meta,
-		PodTemplateSpec:      podTemplateSpec,
+		PodTemplateSpec:      builder.PodTemplate,
 		Replicas:             1,
 		RevisionHistoryLimit: policy.Spec.RevisionHistoryLimit,
 	}), nil
