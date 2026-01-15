@@ -22,7 +22,6 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
 	autoopsv1alpha1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/autoops/v1alpha1"
-	commonv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/common/v1"
 	esv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/elasticsearch/v1"
 	commonapikey "github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/apikey"
 	commonesclient "github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/esclient"
@@ -263,13 +262,6 @@ func TestAutoOpsAgentPolicyReconciler_internalReconcile(t *testing.T) {
 					},
 					Spec: esv1.ElasticsearchSpec{
 						Version: "9.1.0",
-						HTTP: commonv1.HTTPConfig{
-							TLS: commonv1.TLSOptions{
-								SelfSignedCertificate: &commonv1.SelfSignedCertificate{
-									Disabled: true,
-								},
-							},
-						},
 					},
 					Status: esv1.ElasticsearchStatus{
 						Phase: esv1.ElasticsearchReadyPhase,
@@ -320,13 +312,6 @@ func TestAutoOpsAgentPolicyReconciler_internalReconcile(t *testing.T) {
 					},
 					Spec: esv1.ElasticsearchSpec{
 						Version: "9.1.0",
-						HTTP: commonv1.HTTPConfig{
-							TLS: commonv1.TLSOptions{
-								SelfSignedCertificate: &commonv1.SelfSignedCertificate{
-									Disabled: true,
-								},
-							},
-						},
 					},
 					Status: esv1.ElasticsearchStatus{
 						Phase: esv1.ElasticsearchReadyPhase,
@@ -391,13 +376,6 @@ func TestAutoOpsAgentPolicyReconciler_internalReconcile(t *testing.T) {
 					},
 					Spec: esv1.ElasticsearchSpec{
 						Version: "9.1.0",
-						HTTP: commonv1.HTTPConfig{
-							TLS: commonv1.TLSOptions{
-								SelfSignedCertificate: &commonv1.SelfSignedCertificate{
-									Disabled: true,
-								},
-							},
-						},
 					},
 					Status: esv1.ElasticsearchStatus{
 						Phase: esv1.ElasticsearchReadyPhase,
@@ -481,13 +459,6 @@ func TestAutoOpsAgentPolicyReconciler_internalReconcile(t *testing.T) {
 					},
 					Spec: esv1.ElasticsearchSpec{
 						Version: "9.1.0",
-						HTTP: commonv1.HTTPConfig{
-							TLS: commonv1.TLSOptions{
-								SelfSignedCertificate: &commonv1.SelfSignedCertificate{
-									Disabled: true,
-								},
-							},
-						},
 					},
 					Status: esv1.ElasticsearchStatus{
 						Phase: esv1.ElasticsearchReadyPhase,
@@ -501,13 +472,6 @@ func TestAutoOpsAgentPolicyReconciler_internalReconcile(t *testing.T) {
 					},
 					Spec: esv1.ElasticsearchSpec{
 						Version: "9.1.0",
-						HTTP: commonv1.HTTPConfig{
-							TLS: commonv1.TLSOptions{
-								SelfSignedCertificate: &commonv1.SelfSignedCertificate{
-									Disabled: true,
-								},
-							},
-						},
 					},
 					Status: esv1.ElasticsearchStatus{
 						Phase: esv1.ElasticsearchReadyPhase,
@@ -591,13 +555,6 @@ func TestAutoOpsAgentPolicyReconciler_internalReconcile(t *testing.T) {
 					},
 					Spec: esv1.ElasticsearchSpec{
 						Version: "7.15.0",
-						HTTP: commonv1.HTTPConfig{
-							TLS: commonv1.TLSOptions{
-								SelfSignedCertificate: &commonv1.SelfSignedCertificate{
-									Disabled: true,
-								},
-							},
-						},
 					},
 					Status: esv1.ElasticsearchStatus{
 						Phase: esv1.ElasticsearchReadyPhase,
@@ -675,13 +632,6 @@ func TestAutoOpsAgentPolicyReconciler_internalReconcile(t *testing.T) {
 					},
 					Spec: esv1.ElasticsearchSpec{
 						Version: "9.1.0",
-						HTTP: commonv1.HTTPConfig{
-							TLS: commonv1.TLSOptions{
-								SelfSignedCertificate: &commonv1.SelfSignedCertificate{
-									Disabled: true,
-								},
-							},
-						},
 					},
 					Status: esv1.ElasticsearchStatus{
 						Phase: esv1.ElasticsearchReadyPhase,
@@ -695,13 +645,6 @@ func TestAutoOpsAgentPolicyReconciler_internalReconcile(t *testing.T) {
 					},
 					Spec: esv1.ElasticsearchSpec{
 						Version: "9.1.0",
-						HTTP: commonv1.HTTPConfig{
-							TLS: commonv1.TLSOptions{
-								SelfSignedCertificate: &commonv1.SelfSignedCertificate{
-									Disabled: true,
-								},
-							},
-						},
 					},
 					Status: esv1.ElasticsearchStatus{
 						Phase: esv1.ElasticsearchReadyPhase,
@@ -1078,13 +1021,6 @@ func TestAutoOpsAgentPolicyReconciler_accessRevokedCleanup(t *testing.T) {
 		},
 		Spec: esv1.ElasticsearchSpec{
 			Version: "9.1.0",
-			HTTP: commonv1.HTTPConfig{
-				TLS: commonv1.TLSOptions{
-					SelfSignedCertificate: &commonv1.SelfSignedCertificate{
-						Disabled: true,
-					},
-				},
-			},
 		},
 		Status: esv1.ElasticsearchStatus{
 			Phase: esv1.ElasticsearchReadyPhase,
@@ -1099,13 +1035,6 @@ func TestAutoOpsAgentPolicyReconciler_accessRevokedCleanup(t *testing.T) {
 		},
 		Spec: esv1.ElasticsearchSpec{
 			Version: "9.1.0",
-			HTTP: commonv1.HTTPConfig{
-				TLS: commonv1.TLSOptions{
-					SelfSignedCertificate: &commonv1.SelfSignedCertificate{
-						Disabled: true,
-					},
-				},
-			},
 		},
 		Status: esv1.ElasticsearchStatus{
 			Phase: esv1.ElasticsearchReadyPhase,
