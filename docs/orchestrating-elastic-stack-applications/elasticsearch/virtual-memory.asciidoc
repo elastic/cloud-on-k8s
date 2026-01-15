@@ -9,9 +9,11 @@ endif::[]
 = Virtual memory
 
 By default, Elasticsearch uses memory mapping (`mmap`) to efficiently access indices.
-Usually, default values for virtual address space on Linux distributions are too low for Elasticsearch to work properly, which may result in out-of-memory exceptions. This is why link:k8s-quickstart.html[the quickstart example] disables `mmap` through the `node.store.allow_mmap: false` setting. For production workloads, it is strongly recommended to increase the kernel setting `vm.max_map_count` to `262144` and leave `node.store.allow_mmap` unset.
+Default values for virtual address space on Linux distributions can be too low for Elasticsearch to work properly, which may result in out-of-memory exceptions. This is why link:k8s-quickstart.html[the quickstart example] disables `mmap` through the `node.store.allow_mmap: false` setting. For production workloads, we recommend that you increase the kernel setting `vm.max_map_count` to `1048576` and leave `node.store.allow_mmap` unset.
 
-The kernel setting `vm.max_map_count=262144` can be set on the host directly, by a dedicated init container which must be privileged, or a dedicated Daemonset.
+The kernel setting `vm.max_map_count=1048576` can be set on the host directly, by a dedicated init container which must be privileged, or a dedicated Daemonset.
+
+IMPORTANT: For {{es}} version 8.16 and later, set the `vm.max_map_count` kernel setting to `1048576`; for {{es}} version 8.15 and earlier, set `vm.max_map_count` to `262144`. The exception is in GKE Autopilot environments, where `vm.max_map_count` must always be set to `262144`. This is because any privileged DaemonSet in GKE Autopilot must match the DaemonSet pre-approved by Google.
 
 For more information, check the Elasticsearch documentation on
 link:https://www.elastic.co/guide/en/elasticsearch/reference/current/vm-max-map-count.html[Virtual memory].
@@ -32,7 +34,7 @@ spec:
 == Using an Init Container to set virtual memory
 
 To add an init container that changes the host kernel setting before your Elasticsearch container starts, you can use the following example Elasticsearch spec:
-[source,yaml,subs="attributes,+macros"]
+[source,yaml,subs="attributes,+macros,callouts"]
 ----
 cat $$<<$$EOF | kubectl apply -f -
 apiVersion: elasticsearch.k8s.elastic.co/{eck_crd_version}
@@ -51,9 +53,11 @@ spec:
           securityContext:
             privileged: true
             runAsUser: 0
-          command: ['sh', '-c', 'sysctl -w vm.max_map_count=262144']
+          command: ['sh', '-c', 'sysctl -w vm.max_map_count=1048576'] <1>
 EOF
 ----
+
+<1> In GKE Autopilot environments, `vm.max_map_count` must be set to 262144.
 
 Note that this requires the ability to run privileged containers, which is likely not the case on many secure clusters.
 
@@ -61,7 +65,7 @@ Note that this requires the ability to run privileged containers, which is likel
 
 To use a Daemonset that changes the host kernel setting on all nodes:
 
-[source,yaml,subs="attributes,+macros"]
+[source,yaml,subs="attributes,+macros,callouts"]
 ----
 cat $$<<$$EOF | kubectl apply -n elastic-system -f -
 apiVersion: apps/v1
@@ -89,7 +93,7 @@ spec:
           securityContext:
             privileged: true
             runAsUser: 0
-          command: ['/usr/local/bin/bash', '-e', '-c', 'echo 262144 > /proc/sys/vm/max_map_count']
+          command: ['/usr/local/bin/bash', '-e', '-c', 'echo 1048576 > /proc/sys/vm/max_map_count'] <1>
       containers:
         - name: sleep
           image: docker.io/bash:5.2.21
@@ -97,9 +101,11 @@ spec:
 EOF
 ----
 
+<1> In GKE Autopilot environments, `vm.max_map_count` must be set to 262144.
+
 To run an Elasticsearch instance that waits for the kernel setting to be in place:
 
-[source,yaml,subs="attributes,+macros"]
+[source,yaml,subs="attributes,+macros,callouts"]
 ----
 cat $$<<$$'EOF' | kubectl apply -f -
 apiVersion: elasticsearch.k8s.elastic.co/{eck_crd_version}
@@ -121,6 +127,8 @@ spec:
         # Do not use this if setting config.node.store.allow_mmap: false
         initContainers:
         - name: max-map-count-check
-          command: ['sh', '-c', "while true; do mmc=$(cat /proc/sys/vm/max_map_count); if [ ${mmc} -eq 262144 ]; then exit 0; fi; sleep 1; done"]
+          command: ['sh', '-c', "while true; do mmc=$(cat /proc/sys/vm/max_map_count); if [ ${mmc} -eq 1048576 ]; then exit 0; fi; sleep 1; done"] <1>
 EOF
 ----
+
+<1> In GKE Autopilot environments, `vm.max_map_count` must be set to 262144.
