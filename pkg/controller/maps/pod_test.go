@@ -123,7 +123,6 @@ func TestNewPodSpec_CommandOverride(t *testing.T) {
 				assert.Equal(t, corev1.SeccompProfileTypeRuntimeDefault, podSpec.Spec.SecurityContext.SeccompProfile.Type,
 					"SeccompProfile type should be RuntimeDefault")
 			}
-
 		})
 	}
 }
