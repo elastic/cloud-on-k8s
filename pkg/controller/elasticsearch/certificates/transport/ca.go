@@ -6,6 +6,7 @@ package transport
 
 import (
 	"context"
+	"fmt"
 
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
@@ -82,6 +83,14 @@ func ReconcileOrRetrieveCA(
 		// in the time between admission and reading the secret contents so we need to re-run validation here anyway.
 		driver.Recorder().Eventf(&es, corev1.EventTypeWarning, events.EventReasonValidation, err.Error())
 		return nil, err
+	}
+
+	if err := certificates.ValidateCustomCA(ctx, ca); err != nil {
+		// Surface validation errors to the user via an event
+		validationErr := fmt.Errorf("error validating custom CA certificate in %s/%s: %w",
+			customCASecret.GetNamespace(), customCASecret.GetName(), err)
+		driver.Recorder().Eventf(&es, corev1.EventTypeWarning, events.EventReasonValidation, validationErr.Error())
+		return nil, validationErr
 	}
 
 	// Garbage collect the self-signed CA secret which might be left over from an earlier revision on a best effort basis.

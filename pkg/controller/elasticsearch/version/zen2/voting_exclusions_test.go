@@ -62,16 +62,6 @@ func Test_ClearVotingConfigExclusions(t *testing.T) {
 		wantRequeue        bool
 	}{
 		{
-			name: "no v7 nodes",
-			c:    k8s.NewFakeClient(&es),
-			es:   &es,
-			actualStatefulSets: es_sset.StatefulSetList{
-				createStatefulSetWithESVersion("6.8.0"),
-			},
-			wantCall:    false,
-			wantRequeue: false,
-		},
-		{
 			name:               "3/3 nodes there, should clear",
 			c:                  k8s.NewFakeClient(&es, &statefulSet3rep, &pods[0], &pods[1], &pods[2]),
 			es:                 &es,
@@ -112,38 +102,16 @@ func Test_ClearVotingConfigExclusions(t *testing.T) {
 
 func TestAddToVotingConfigExclusions(t *testing.T) {
 	es := esv1.Elasticsearch{ObjectMeta: metav1.ObjectMeta{Name: "es", Namespace: "ns"}}
-	masterPod := sset.TestPod{
-		Namespace:   "ns",
-		Name:        "pod-name",
-		ClusterName: "es",
-		Version:     "7.2.0",
-		Master:      true,
-	}.BuildPtr()
 	tests := []struct {
 		name              string
 		es                *esv1.Elasticsearch
-		c                 k8s.Client
 		excludeNodes      []string
 		wantAPICalled     bool
 		wantAPICalledWith []string
 	}{
 		{
-			name: "some zen1 masters: do nothing",
-			es:   &es,
-			c: k8s.NewFakeClient(&es, sset.TestPod{
-				Namespace:   "ns",
-				Name:        "pod-name",
-				ClusterName: "es",
-				Version:     "6.8.0",
-				Master:      true,
-			}.BuildPtr()),
-			excludeNodes:  []string{"node1"},
-			wantAPICalled: false,
-		},
-		{
 			name:              "set voting config exclusions",
 			es:                &es,
-			c:                 k8s.NewFakeClient(&es, masterPod),
 			excludeNodes:      []string{"node1", "node2"},
 			wantAPICalled:     true,
 			wantAPICalledWith: []string{"node1", "node2"},
@@ -152,13 +120,10 @@ func TestAddToVotingConfigExclusions(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			clientMock := &fakeVotingConfigExclusionsESClient{}
-			err := AddToVotingConfigExclusions(context.Background(), tt.c, clientMock, *tt.es, tt.excludeNodes)
+			err := AddToVotingConfigExclusions(context.Background(), clientMock, *tt.es, tt.excludeNodes)
 			require.NoError(t, err)
 			require.Equal(t, tt.wantAPICalled, clientMock.called)
 			require.Equal(t, tt.wantAPICalledWith, clientMock.excludedNodes)
-			var retrievedES esv1.Elasticsearch
-			err = tt.c.Get(context.Background(), k8s.ExtractNamespacedName(tt.es), &retrievedES)
-			require.NoError(t, err)
 		})
 	}
 }

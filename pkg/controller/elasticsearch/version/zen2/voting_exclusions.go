@@ -15,15 +15,7 @@ import (
 )
 
 // AddToVotingConfigExclusions adds the given node names to exclude from voting config exclusions.
-func AddToVotingConfigExclusions(ctx context.Context, c k8s.Client, esClient client.Client, es esv1.Elasticsearch, excludeNodes []string) error {
-	compatible, err := AllMastersCompatibleWithZen2(c, es)
-	if err != nil {
-		return err
-	}
-	if !compatible {
-		return nil
-	}
-
+func AddToVotingConfigExclusions(ctx context.Context, esClient client.Client, es esv1.Elasticsearch, excludeNodes []string) error {
 	ulog.FromContext(ctx).Info("Setting voting config exclusions", "namespace", es.Namespace, "nodes", excludeNodes)
 	return esClient.AddVotingConfigExclusions(ctx, excludeNodes)
 }
@@ -47,14 +39,6 @@ func canClearVotingConfigExclusions(ctx context.Context, c k8s.Client, actualSta
 // It returns true if this should be retried later (re-queued).
 func ClearVotingConfigExclusions(ctx context.Context, es esv1.Elasticsearch, c k8s.Client, esClient client.Client, actualStatefulSets sset.StatefulSetList) (bool, error) {
 	log := ulog.FromContext(ctx)
-	compatible, err := AllMastersCompatibleWithZen2(c, es)
-	if err != nil {
-		return false, err
-	}
-	if !compatible {
-		// nothing to do
-		return false, nil
-	}
 
 	canClear, err := canClearVotingConfigExclusions(ctx, c, actualStatefulSets)
 	if err != nil {

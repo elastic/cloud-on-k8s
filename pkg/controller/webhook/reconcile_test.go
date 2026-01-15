@@ -35,7 +35,7 @@ func TestParams_ReconcileResources(t *testing.T) {
 	}
 
 	clientset :=
-		fake.NewSimpleClientset(
+		fake.NewClientset(
 			&corev1.Secret{
 				ObjectMeta: metav1.ObjectMeta{
 					Namespace: "elastic-system",
@@ -214,7 +214,7 @@ func TestUpdateOperatorPods(t *testing.T) {
 				assert.NoError(t, err)
 				previousAnnotations[accessor.GetName()] = accessor.GetAnnotations()
 			}
-			clientset := fake.NewSimpleClientset(tt.args.objects...)
+			clientset := fake.NewClientset(tt.args.objects...)
 			// call the tested function
 			updateOperatorPods(context.Background(), clientset, tt.args.operatorNamespace)
 			// Check that expected Pods have been updated
