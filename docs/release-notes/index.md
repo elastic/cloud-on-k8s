@@ -7,7 +7,7 @@ mapped_pages:
 
 # Elastic Cloud on Kubernetes release notes [elastic-cloud-kubernetes-release-notes]
 
-Review the changes, fixes, and more in each release of Elastic Cloud on Kubernetes
+Review the changes, fixes, and more in each release of Elastic Cloud on Kubernetes.
 
 ## 3.3.0 [elastic-cloud-kubernetes-330-release-notes]
 
