@@ -48,7 +48,6 @@ ECK now includes support for multiple Stack Config Policies targeting the same {
 - Use GKE ComputeClass instead of DaemonSet for GKE AutoPilot [#8982](https://github.com/elastic/cloud-on-k8s/pull/8982)
 - Adjust `vm.max_map_count` to 1048576 in GKE AutoPilot recipes [#8986](https://github.com/elastic/cloud-on-k8s/pull/8986)
 
-### Miscellaneous [elastic-cloud-kubernetes-330-miscellaneous]
 
 - Stop logging an error when returning an error when performing a generic GET operation on a GVK [#8957](https://github.com/elastic/cloud-on-k8s/pull/8957)
 
@@ -80,11 +79,11 @@ ECK now includes support for multiple Stack Config Policies targeting the same {
 
 #### Advanced PodDisruptionBudget management (Enterprise feature)
 
-ECK now offers better out-of-the-box PodDisruptionBudgets that automatically keep your cluster available as Pods move across nodes. The new policy calculates the number of Pods per tier that can sustain replacement, and automatically generates a PodDisruptionBudget for each tier. This enables the {{es}} cluster to vacate Kubernetes nodes more quickly, while considering cluster health, without interruption. The documentation about [PodDisruptionBudget](docs-content://deploy-manage/deploy/cloud-on-k8s/pod-disruption-budget.md) has more information and details.
+ECK now offers better out-of-the-box PodDisruptionBudgets that automatically keep your cluster available as Pods move across nodes. The new policy calculates the number of Pods per tier that can sustain replacement, and automatically generates a PodDisruptionBudget for each tier. This enables the Elasticsearch cluster to vacate Kubernetes nodes more quickly, while considering cluster health, without interruption. The documentation about [PodDisruptionBudget](docs-content://deploy-manage/deploy/cloud-on-k8s/pod-disruption-budget.md) has more information and details.
 
 #### User Password Generation (Enterprise feature)
 
-ECK now supports configuring the length of the generated password for the administrative user of each {{es}} cluster. While the default length remains 24 characters, this can now be configured up to a maximum of 72 characters. The password incorporates alphabetic and numeric characters to ensure strong complexity. Refer to the [managed credentials](docs-content://deploy-manage/users-roles/cluster-or-deployment-auth/managed-credentials-eck.md) page for examples and more details.
+ECK now supports configuring the length of the generated password for the administrative user of each Elasticsearch cluster. While the default length remains 24 characters, this can now be configured up to a maximum of 72 characters. The password incorporates alphabetic and numeric characters to ensure strong complexity. Refer to the [managed credentials](docs-content://deploy-manage/users-roles/cluster-or-deployment-auth/managed-credentials-eck.md) page for examples and more details.
 
 ### Features and enhancements  [elastic-cloud-kubernetes-320-features-and-enhancements]
 
