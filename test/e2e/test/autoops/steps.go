@@ -154,7 +154,7 @@ func (b Builder) CheckK8sTestSteps(k *test.K8sClient) test.StepList {
 				}
 
 				// included namespaces
-				nsFilter, err := k8s.NamespaceFilterFunc(context.Background(), k.Client, b.AutoOpsAgentPolicy.Spec.NamespaceSelector)
+				isNamespaceAllowed, err := k8s.NamespaceFilterFunc(context.Background(), k.Client, b.AutoOpsAgentPolicy.Spec.NamespaceSelector)
 				if err != nil {
 					return err
 				}
@@ -172,7 +172,7 @@ func (b Builder) CheckK8sTestSteps(k *test.K8sClient) test.StepList {
 						Name:      deploymentName,
 					}, &deployment)
 
-					if !nsFilter(es.Namespace) {
+					if !isNamespaceAllowed(es.Namespace) {
 						// if deployment is not present while it should be filtered out, continue (expected behavior).
 						if err != nil && apierrors.IsNotFound(err) {
 							continue
@@ -231,7 +231,7 @@ func (b Builder) CheckStackTestSteps(k *test.K8sClient) test.StepList {
 				}
 
 				// included namespaces
-				nsFilter, err := k8s.NamespaceFilterFunc(context.Background(), k.Client, b.AutoOpsAgentPolicy.Spec.NamespaceSelector)
+				isNamespaceAllowed, err := k8s.NamespaceFilterFunc(context.Background(), k.Client, b.AutoOpsAgentPolicy.Spec.NamespaceSelector)
 				if err != nil {
 					return err
 				}
@@ -248,7 +248,7 @@ func (b Builder) CheckStackTestSteps(k *test.K8sClient) test.StepList {
 						Name:      deploymentName,
 					}, &deployment)
 
-					if !nsFilter(es.Namespace) {
+					if !isNamespaceAllowed(es.Namespace) {
 						// if deployment is not present while it should be filtered out, continue (expected behavior).
 						if err != nil && apierrors.IsNotFound(err) {
 							continue
