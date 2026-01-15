@@ -43,6 +43,11 @@ ECK now includes support for multiple StackConfigPolicies (SCPs) targeting the s
 
 ### Documentation improvements  [elastic-cloud-kubernetes-330-documentation-improvements]
 
+- Update Google Cloud LoadBalancer recipe for new requirements [#8843](https://github.com/elastic/cloud-on-k8s/pull/8843)
+- Fix minUnavailable typo in PDB documentation [#8898](https://github.com/elastic/cloud-on-k8s/pull/8898)
+- Use GKE ComputeClass instead of DaemonSet for GKE AutoPilot [#8982](https://github.com/elastic/cloud-on-k8s/pull/8982)
+- Adjust `vm.max_map_count` to 1048576 in GKE AutoPilot recipes [#8986](https://github.com/elastic/cloud-on-k8s/pull/8986)
+
 ### Miscellaneous  [elastic-cloud-kubernetes-330-miscellaneous]
 
 - Stop logging an error when returning an error when performing a generic GET operation on a GVK [#8957](https://github.com/elastic/cloud-on-k8s/pull/8957)
@@ -52,6 +57,20 @@ ECK now includes support for multiple StackConfigPolicies (SCPs) targeting the s
 - Go 1.25.2 => 1.25.5
 - github.com/KimMachineGun/automemlimit v0.7.4 => v0.7.5
 - github.com/elastic/go-ucfg v0.8.9-0.20250307075119-2a22403faaea => v0.8.9-0.20251017163010-3520930bed4f
+- github.com/gkampitakis/go-snaps v0.5.15 => v0.5.19
+- github.com/google/go-containerregistry v0.20.6 => v0.20.7
+- github.com/googlecloudplatform/compute-class-api => v0.0.0-20251208134148-ae2e7936c1f8
+- github.com/prometheus/common v0.67.1 => v0.67.5
+- github.com/spf13/cobra v1.10.1 => v1.10.2
+- go.elastic.co/apm/v2 v2.7.1 => v2.7.2
+- go.uber.org/zap v1.27.0 => v1.27.1
+- golang.org/x/crypto v0.40.0 => v0.46.0
+- k8s.io/api v0.34.1 => v0.35.0
+- k8s.io/apimachinery v0.34.1 => v0.35.0
+- k8s.io/client-go v0.34.1 => v0.35.0
+- k8s.io/utils v0.0.0-20250604170112-4c0f3b243397 => v0.0.0-20251002143259-bc988d571ff4
+- sigs.k8s.io/controller-runtime v0.22.2 => v0.22.4
+- sigs.k8s.io/controller-tools v0.19.0 => v0.20.0
 
 :::
 
