@@ -15,7 +15,7 @@ Review the changes, fixes, and more in each release of Elastic Cloud on Kubernet
 
 #### AutoOps Integration (Enterprise feature)
 
-ECK now offers integration with Elastic AutoOps allowing users to easily integrate one or more {{es}} clusters into the solution to gain insight into common issues. The documentation for [AutoOps](https://www.elastic.co/docs/deploy-manage/monitor/autoops) has more information and details.
+ECK now offers integration with Elastic AutoOps allowing users to easily integrate one or more {{es}} clusters into the solution to gain insight into common issues. The documentation for [AutoOps](https://www.elastic.co/docs/deploy-manage/monitor/autoops) has more information.
 
 #### Elastic Package Registry Integration
 
@@ -23,9 +23,9 @@ ECK now supports deploying and managing Elastic Package Registry (EPR) as a cust
 
 #### Multiple Stack Configuration Policies composition support (Enterprise feature)
 
-ECK now includes support for multiple StackConfigPolicies (SCPs) targeting the same {{es}} cluster or {{kib}} instance, using a weight-based priority system for deterministic policy composition. The [stack config policy documentation](docs-content://deploy-manage/deploy/cloud-on-k8s/elastic-stack-configuration-policies) provides more details.
+ECK now includes support for multiple Stack Config Policies targeting the same {{es}} cluster or {{kib}} instance, using a weight-based priority system for deterministic policy composition. The [stack config policy documentation](docs-content://deploy-manage/deploy/cloud-on-k8s/elastic-stack-configuration-policies) provides more details.
 
-### Features and enhancements  [elastic-cloud-kubernetes-330-features-and-enhancements]
+### Features and enhancements [elastic-cloud-kubernetes-330-features-and-enhancements]
 
 - AutoOpsAgentPolicy support [#8941](https://github.com/elastic/cloud-on-k8s/pull/8941) (issue: [#8789](https://github.com/elastic/cloud-on-k8s/issues/8789))
 - ElasticPackageRegistry support [#8800](https://github.com/elastic/cloud-on-k8s/pull/8800) (issue: [#8925](https://github.com/elastic/cloud-on-k8s/issues/8925))
@@ -33,7 +33,7 @@ ECK now includes support for multiple StackConfigPolicies (SCPs) targeting the s
 - Use standard {{k8s}} labels and Helm labels on the ECK Operator pod [#8840](https://github.com/elastic/cloud-on-k8s/pull/8840) (issue: [#8584](https://github.com/elastic/cloud-on-k8s/issues/8584))
 - Add service customization support for {{es}} remote cluster server [#8892](https://github.com/elastic/cloud-on-k8s/pull/8892)
 
-### Fixes  [elastic-cloud-kubernetes-330-fixes]
+### Fixes [elastic-cloud-kubernetes-330-fixes]
 
 - Upgrade master StatefulSets last when performing a version upgrade of {{es}} [#8871](https://github.com/elastic/cloud-on-k8s/pull/8871) (issue: [8429](https://github.com/elastic/cloud-on-k8s/issues/8429))
 - Fix race condition for pre-existing Stack Config Policy [#8928](https://github.com/elastic/cloud-on-k8s/pull/8928) (issue: [#8912](https://github.com/elastic/cloud-on-k8s/issues/8912))
@@ -41,14 +41,14 @@ ECK now includes support for multiple StackConfigPolicies (SCPs) targeting the s
 - Do not write `elasticsearch.k8s.elastic.co/managed-remote-clusters` when not necessary [#8932](https://github.com/elastic/cloud-on-k8s/pull/8932) (issue: [#8781](https://github.com/elastic/cloud-on-k8s/issues/8781))
 - Cleanup orphaned secret mounts when removed from StackConfigPolicy [#8937](https://github.com/elastic/cloud-on-k8s/pull/8937) (issue: [#8921](https://github.com/elastic/cloud-on-k8s/issues/8921))
 
-### Documentation improvements  [elastic-cloud-kubernetes-330-documentation-improvements]
+### Documentation improvements [elastic-cloud-kubernetes-330-documentation-improvements]
 
 - Update Google Cloud LoadBalancer recipe for new requirements [#8843](https://github.com/elastic/cloud-on-k8s/pull/8843)
 - Fix minUnavailable typo in PDB documentation [#8898](https://github.com/elastic/cloud-on-k8s/pull/8898)
 - Use GKE ComputeClass instead of DaemonSet for GKE AutoPilot [#8982](https://github.com/elastic/cloud-on-k8s/pull/8982)
 - Adjust `vm.max_map_count` to 1048576 in GKE AutoPilot recipes [#8986](https://github.com/elastic/cloud-on-k8s/pull/8986)
 
-### Miscellaneous  [elastic-cloud-kubernetes-330-miscellaneous]
+### Miscellaneous [elastic-cloud-kubernetes-330-miscellaneous]
 
 - Stop logging an error when returning an error when performing a generic GET operation on a GVK [#8957](https://github.com/elastic/cloud-on-k8s/pull/8957)
 
