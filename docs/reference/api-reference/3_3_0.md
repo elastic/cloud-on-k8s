@@ -725,7 +725,7 @@ SelfSignedCertificate holds configuration for the self-signed certificate genera
 | Field | Description |
 | --- | --- |
 | *`subjectAltNames`* __[SubjectAlternativeName](#subjectalternativename) array__ | SubjectAlternativeNames is a list of SANs to include in the generated HTTP TLS certificate. |
-| *`disabled`* __boolean__ | Disabled indicates that the provisioning of the self-signed certifcate should be disabled. |
+| *`disabled`* __boolean__ | Disabled indicates that the provisioning of the self-signed certificate should be disabled. |
 
 
 
