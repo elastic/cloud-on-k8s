@@ -46,7 +46,7 @@ type configPolicy[T any] struct {
 }
 
 // merge processes all provided policies, filters those targeting the given object, and merges them
-// in order of their weight (highest weight first). Policies with the same weight are flagged as conflicts.
+// in order of their weight (lowest weight first). Policies with the same weight are flagged as conflicts.
 // The merge operation is customized through the configPolicy's extractFunc and mergeFunc callbacks.
 func merge[T any](
 	c *configPolicy[T],
