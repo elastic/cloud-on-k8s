@@ -883,10 +883,10 @@ func TestReconcileStackConfigPolicy_MultipleStackConfigPolicies(t *testing.T) {
 	policy1 := policyv1alpha1.StackConfigPolicy{
 		ObjectMeta: metav1.ObjectMeta{
 			Namespace: "ns",
-			Name:      "policy-low",
+			Name:      "policy-high",
 		},
 		Spec: policyv1alpha1.StackConfigPolicySpec{
-			Weight:           10,
+			Weight:           20,
 			ResourceSelector: metav1.LabelSelector{MatchLabels: map[string]string{"env": "prod"}},
 			Elasticsearch: policyv1alpha1.ElasticsearchConfigPolicySpec{
 				ClusterSettings: &commonv1.Config{Data: map[string]interface{}{
@@ -903,10 +903,10 @@ func TestReconcileStackConfigPolicy_MultipleStackConfigPolicies(t *testing.T) {
 	policy2 := policyv1alpha1.StackConfigPolicy{
 		ObjectMeta: metav1.ObjectMeta{
 			Namespace: "ns",
-			Name:      "policy-high",
+			Name:      "policy-low",
 		},
 		Spec: policyv1alpha1.StackConfigPolicySpec{
-			Weight:           20,
+			Weight:           10,
 			ResourceSelector: metav1.LabelSelector{MatchLabels: map[string]string{"env": "prod"}},
 			Elasticsearch: policyv1alpha1.ElasticsearchConfigPolicySpec{
 				ClusterSettings: &commonv1.Config{Data: map[string]interface{}{
@@ -932,7 +932,7 @@ func TestReconcileStackConfigPolicy_MultipleStackConfigPolicies(t *testing.T) {
 			Name:      "policy-conflict",
 		},
 		Spec: policyv1alpha1.StackConfigPolicySpec{
-			Weight:           20, // Same weight as policy2
+			Weight:           10, // Same weight as policy2
 			ResourceSelector: metav1.LabelSelector{MatchLabels: map[string]string{"env": "prod"}},
 			Elasticsearch: policyv1alpha1.ElasticsearchConfigPolicySpec{
 				ClusterSettings: &commonv1.Config{Data: map[string]interface{}{
@@ -983,7 +983,7 @@ func TestReconcileStackConfigPolicy_MultipleStackConfigPolicies(t *testing.T) {
 		{
 			name:             "Multiple policies with different weights merge successfully",
 			policies:         []policyv1alpha1.StackConfigPolicy{policy1, policy2},
-			reconcilePolicy:  "policy-low",
+			reconcilePolicy:  "policy-high",
 			wantResources:    1,
 			wantReady:        0,
 			wantPhase:        policyv1alpha1.ApplyingChangesPhase,
@@ -1032,7 +1032,7 @@ func TestReconcileStackConfigPolicy_MultipleStackConfigPolicies(t *testing.T) {
 		{
 			name:             "Policies with same weight cause conflict",
 			policies:         []policyv1alpha1.StackConfigPolicy{policy2, policy3Conflicting},
-			reconcilePolicy:  "policy-high",
+			reconcilePolicy:  "policy-low",
 			wantResources:    1,
 			wantReady:        0,
 			wantPhase:        policyv1alpha1.ConflictPhase,
@@ -1040,7 +1040,7 @@ func TestReconcileStackConfigPolicy_MultipleStackConfigPolicies(t *testing.T) {
 			wantRequeueAfter: true,
 			validateSettings: func(t *testing.T, r ReconcileStackConfigPolicy) {
 				// Verify policy status shows conflict
-				policy := r.getPolicy(t, types.NamespacedName{Namespace: "ns", Name: "policy-high"})
+				policy := r.getPolicy(t, types.NamespacedName{Namespace: "ns", Name: "policy-low"})
 
 				esStatus := policy.Status.Details["elasticsearch"]["ns/test-es"]
 				assert.Equal(t, policyv1alpha1.ConflictPhase, esStatus.Phase)
@@ -1049,7 +1049,7 @@ func TestReconcileStackConfigPolicy_MultipleStackConfigPolicies(t *testing.T) {
 		{
 			name:             "Reconciling second policy sees merged state",
 			policies:         []policyv1alpha1.StackConfigPolicy{policy1, policy2},
-			reconcilePolicy:  "policy-high",
+			reconcilePolicy:  "policy-low",
 			wantResources:    1,
 			wantReady:        0,
 			wantPhase:        policyv1alpha1.ApplyingChangesPhase,
@@ -1086,7 +1086,7 @@ func TestReconcileStackConfigPolicy_MultipleStackConfigPolicies(t *testing.T) {
 				assert.NoError(t, err)
 				assert.Len(t, owners, 1, "secretMountSecret should be owned by 1 policy")
 				// Verify only policy-high is the owner
-				assert.Contains(t, owners, reconciler.SoftOwnerRef{Namespace: "ns", Name: "policy-high", Kind: policyv1alpha1.Kind}, "policy-high should be an owner of secretMountSecret")
+				assert.Contains(t, owners, reconciler.SoftOwnerRef{Namespace: "ns", Name: "policy-low", Kind: policyv1alpha1.Kind}, "policy-low should be an owner of secretMountSecret")
 			},
 		},
 	}

@@ -2214,7 +2214,7 @@ StackConfigPolicy represents a StackConfigPolicy resource in a Kubernetes cluste
 | Field | Description |
 | --- | --- |
 | *`resourceSelector`* __[LabelSelector](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.32/#labelselector-v1-meta)__ |  |
-| *`weight`* __integer__ | Weight determines the priority of this policy when multiple policies target the same resource.<br>Lower weight values take precedence. Defaults to 0. |
+| *`weight`* __integer__ | Weight determines the priority of this policy when multiple policies target the same resource.<br>Higher weight values take precedence. Defaults to 0. |
 | *`secureSettings`* __[SecretSource](#secretsource) array__ | Deprecated: SecureSettings only applies to Elasticsearch and is deprecated. It must be set per application instead. |
 | *`elasticsearch`* __[ElasticsearchConfigPolicySpec](#elasticsearchconfigpolicyspec)__ |  |
 | *`kibana`* __[KibanaConfigPolicySpec](#kibanaconfigpolicyspec)__ |  |
