@@ -11,6 +11,7 @@ chaos=${CHAOS:-"false"}
 ARTEFACTS_DIR=${ARTEFACTS_DIR:-.}
 CLUSTER_NAME=${CLUSTER_NAME:-local}
 E2E_TAGS=${E2E_TAGS:-e2e}
+E2E_LOCAL=${E2E_LOCAL:-"false"}
 
 run_e2e_tests() {
   if [ "${E2E_JSON}" == "true" ]
@@ -37,10 +38,15 @@ main() {
     mkdir -p "$ARTEFACTS_DIR"
     run_e2e_tests "$@" | tee "$ARTEFACTS_DIR/e2e-tests-$CLUSTER_NAME.json"
   fi
-  touch /tmp/done
-  while true; do
-    sleep 60
-  done
+
+  # In container environments, keep the process alive so logs can be collected.
+  # When running locally, exit immediately after tests complete.
+  if [ "${E2E_LOCAL}" != "true" ]; then
+    touch /tmp/done
+    while true; do
+      sleep 60
+    done
+  fi
 }
 
 main "$@"
