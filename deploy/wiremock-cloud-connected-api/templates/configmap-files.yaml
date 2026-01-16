@@ -31,7 +31,7 @@ data:
           "support": {
             "supported": true,
             "valid_license_types": ["platinum", "enterprise"],
-            "minimum_stack_version": "8.5.0"
+            "minimum_stack_version": "9.2.0"
           },
           "config": {
             "region_id": "{{ .Values.mockConfig.defaultRegion }}"
@@ -49,7 +49,7 @@ data:
           "support": {
             "supported": true,
             "valid_license_types": ["platinum", "enterprise"],
-            "minimum_stack_version": "8.5.0"
+            "minimum_stack_version": "9.2.0"
           },
           "metadata": {
             "documentation_url": "{{ .Values.mockConfig.eis.documentationUrl }}"
