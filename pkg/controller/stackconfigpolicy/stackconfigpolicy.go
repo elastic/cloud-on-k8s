@@ -160,7 +160,7 @@ func mergeElasticsearchSpecs(dst, src *policyv1alpha1.ElasticsearchConfigPolicyS
 
 // getConfigPolicyForKibana builds a merged stack config policy for the given Kibana instance.
 // It processes all provided policies, filtering those that target the Kibana instance, and merges them
-// in order of their weight (highest to lowest), with higher weight values taking precedence as they are
+// in order of their weight (lowest to highest), with higher weight values taking precedence as they are
 // merged last. Policies with the same weight are flagged as conflicts.
 // Returns a configPolicy containing the merged configuration and any error occurred during merging.
 func getConfigPolicyForKibana(kbn *kbv1.Kibana, allPolicies []policyv1alpha1.StackConfigPolicy, params operator.Parameters) (*configPolicy[policyv1alpha1.KibanaConfigPolicySpec], error) {
