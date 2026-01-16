@@ -290,15 +290,15 @@ spec:
 
     * Google Kubernetes Engine (GKE), Azure Kubernetes Service (AKS), and Amazon Elastic Kubernetes Service (EKS)
 
-    * Elasticsearch, Kibana, APM Server: 7.17+, 8+, 9+
+    * Elasticsearch, Kibana, APM Server: 8+, 9+
 
-    * Enterprise Search: 7.17+, 8+
+    * Enterprise Search: 7.7+, 8+
 
-    * Beats: 7.17+, 8+, 9+
+    * Beats: 8+, 9+
 
-    * Elastic Agent: 7.17+, 8+, 9+
+    * Elastic Agent: 8+, 9+
 
-    * Elastic Maps Server: 7.17+, 8+, 9+
+    * Elastic Maps Server: 8+, 9+
 
     * Logstash 8.12+, 9+
 
