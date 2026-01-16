@@ -19,7 +19,7 @@ This chart provides a mock implementation of the Cloud Connected User API's crea
 
 ```bash
 # From the cloud-on-k8s repository root
-helm install cloud-connected-mock deploy/wiremock-cloud-connected-api -n <namespace>
+helm install cloud-connected-mock test/e2e/charts/wiremock-cloud-connected-api -n <namespace>
 ```
 
 ## Configuration
