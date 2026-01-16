@@ -343,9 +343,14 @@ func TestStackConfigPolicyMultipleWeights(t *testing.T) {
 		t.SkipNow()
 	}
 
-	// StackConfigPolicy is supported for ES versions with file-based settings feature
 	stackVersion := version.MustParse(test.Ctx().ElasticStackVersion)
-	if !stackVersion.GTE(filesettings.FileBasedSettingsMinPreVersion) {
+	switch {
+	case stackVersion.LT(filesettings.FileBasedSettingsMinPreVersion):
+		// StackConfigPolicy is supported for ES versions with file-based settings feature
+		t.SkipNow()
+	case stackVersion.LT(version.From(8, 11, 0)):
+		// Before 8.11.0, ES has an issue with loading cluster-settings changes in file-settings
+		// of the same keys as in this test (https://github.com/elastic/elasticsearch/pull/99212)
 		t.SkipNow()
 	}
 

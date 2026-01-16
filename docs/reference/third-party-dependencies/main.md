@@ -21,7 +21,7 @@ This page lists the third-party dependencies used to build {{eck}} from the main
 | [github.com/Masterminds/sprig/v3](https://github.com/Masterminds/sprig) | v3.3.0 | MIT |
 | [github.com/blang/semver/v4](https://github.com/blang/semver) | v4.0.0 | MIT |
 | [github.com/davecgh/go-spew](https://github.com/davecgh/go-spew) | v1.1.2-0.20180830191138-d8f796af33cc | ISC |
-| [github.com/elastic/go-ucfg](https://github.com/elastic/go-ucfg) | v0.8.9-0.20251017163010-3520930bed4f | Apache-2.0 |
+| [github.com/elastic/go-ucfg](https://github.com/elastic/go-ucfg) | v0.8.9-0.20260108155023-368693374ae9 | Apache-2.0 |
 | [github.com/ghodss/yaml](https://github.com/ghodss/yaml) | v1.0.0 | MIT |
 | [github.com/gkampitakis/go-snaps](https://github.com/gkampitakis/go-snaps) | v0.5.19 | MIT |
 | [github.com/go-logr/logr](https://github.com/go-logr/logr) | v1.4.3 | Apache-2.0 |
@@ -49,7 +49,7 @@ This page lists the third-party dependencies used to build {{eck}} from the main
 | [go.elastic.co/apm/v2](https://go.elastic.co/apm/v2) | v2.7.2 | Apache-2.0 |
 | [go.uber.org/automaxprocs](https://go.uber.org/automaxprocs) | v1.6.0 | MIT |
 | [go.uber.org/zap](https://go.uber.org/zap) | v1.27.1 | MIT |
-| [golang.org/x/crypto](https://golang.org/x/crypto) | v0.46.0 | BSD-3-Clause |
+| [golang.org/x/crypto](https://golang.org/x/crypto) | v0.47.0 | BSD-3-Clause |
 | [golang.org/x/exp](https://golang.org/x/exp) | v0.0.0-20240808152545-0cdaa3abc0fa | BSD-3-Clause |
 | [gopkg.in/yaml.v3](https://gopkg.in/yaml.v3) | v3.0.1 | MIT |
 | [k8s.io/api](https://github.com/kubernetes/api) | v0.35.0 | Apache-2.0 |
@@ -184,9 +184,9 @@ This page lists the third-party dependencies used to build {{eck}} from the main
 | [golang.org/x/net](https://golang.org/x/net) | v0.48.0 | BSD-3-Clause |
 | [golang.org/x/oauth2](https://golang.org/x/oauth2) | v0.34.0 | BSD-3-Clause |
 | [golang.org/x/sync](https://golang.org/x/sync) | v0.19.0 | BSD-3-Clause |
-| [golang.org/x/sys](https://golang.org/x/sys) | v0.39.0 | BSD-3-Clause |
-| [golang.org/x/term](https://golang.org/x/term) | v0.38.0 | BSD-3-Clause |
-| [golang.org/x/text](https://golang.org/x/text) | v0.32.0 | BSD-3-Clause |
+| [golang.org/x/sys](https://golang.org/x/sys) | v0.40.0 | BSD-3-Clause |
+| [golang.org/x/term](https://golang.org/x/term) | v0.39.0 | BSD-3-Clause |
+| [golang.org/x/text](https://golang.org/x/text) | v0.33.0 | BSD-3-Clause |
 | [golang.org/x/time](https://golang.org/x/time) | v0.12.0 | BSD-3-Clause |
 | [golang.org/x/tools](https://golang.org/x/tools) | v0.40.0 | BSD-3-Clause |
 | [golang.org/x/tools/go/expect](https://golang.org/x/tools/go/expect) | v0.1.1-deprecated | BSD-3-Clause |

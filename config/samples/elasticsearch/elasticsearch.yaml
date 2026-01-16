@@ -2,7 +2,9 @@
 apiVersion: elasticsearch.k8s.elastic.co/v1
 kind: Elasticsearch
 metadata:
-  # uncomment the lines below to copy the specified node labels as pod annotations and use it as an environment variable in the Pods
+  # Uncomment the lines below to copy the specified node labels as pod annotations and use it as an environment variable in the Pods.
+  # With Kubernetes 1.35 and later, the PodTopologyLabelsAdmission feature is enabled by default. As a result, the labels 'topology.kubernetes.io/region' and 'topology.kubernetes.io/zone'
+  # from the node are automatically propagated as labels on Pods, and using eck.k8s.elastic.co/downward-node-labels may no longer be necessary.
   #annotations:
   #  eck.k8s.elastic.co/downward-node-labels: "topology.kubernetes.io/zone"
   name: elasticsearch-sample
