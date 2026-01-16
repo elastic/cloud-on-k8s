@@ -899,7 +899,7 @@ func TestReconcileStackConfigPolicy_MultipleStackConfigPolicies(t *testing.T) {
 		},
 	}
 
-	// Policy with weight 20 (applied second, overrides policy1)
+	// Policy with weight 10 (applied second, overrides policy1)
 	policy2 := policyv1alpha1.StackConfigPolicy{
 		ObjectMeta: metav1.ObjectMeta{
 			Namespace: "ns",
