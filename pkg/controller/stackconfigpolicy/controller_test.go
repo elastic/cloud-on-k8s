@@ -879,7 +879,7 @@ func TestReconcileStackConfigPolicy_MultipleStackConfigPolicies(t *testing.T) {
 		Spec: esv1.ElasticsearchSpec{Version: "8.6.1"},
 	}
 
-	// Policy with weight 10 (applied first)
+	// Policy with weight 20 (applied first)
 	policy1 := policyv1alpha1.StackConfigPolicy{
 		ObjectMeta: metav1.ObjectMeta{
 			Namespace: "ns",
