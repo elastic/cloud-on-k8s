@@ -96,7 +96,7 @@ func merge[T any](
 
 // getConfigPolicyForElasticsearch builds a merged stack config policy for the given Elasticsearch cluster.
 // It processes all provided policies, filtering those that target the Elasticsearch cluster, and merges them
-// in order of their weight (highest to lowest), with higher weight values taking precedence as they are
+// in order of their weight (lowest to highest), with higher weight values taking precedence as they are
 // merged last. Policies with the same weight are flagged as conflicts.
 // Returns a configPolicy containing the merged configuration and any error occurred during merging.
 func getConfigPolicyForElasticsearch(es *esv1.Elasticsearch, allPolicies []policyv1alpha1.StackConfigPolicy, params operator.Parameters) (*configPolicy[policyv1alpha1.ElasticsearchConfigPolicySpec], error) {
