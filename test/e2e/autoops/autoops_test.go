@@ -19,7 +19,7 @@ import (
 
 func TestAutoOpsAgentPolicy(t *testing.T) {
 	// https://github.com/elastic/cloud-on-k8s/issues/9027
-	t.Skip("Skipping AutoOpsAgentPolicy test")
+	// t.Skip("Skipping AutoOpsAgentPolicy test")
 
 	// only execute this test if we have a test license to work with
 	if test.Ctx().TestLicense == "" {
@@ -52,8 +52,6 @@ func TestAutoOpsAgentPolicy(t *testing.T) {
 		WithVersion(test.Ctx().ElasticStackVersion).
 		WithLabel("autoops", "enabled")
 
-	es2Withlicense := test.LicenseTestBuilder(es2Builder)
-
 	policyBuilder := autoops.NewBuilder("autoops-policy").
 		WithNamespace(policyNamespace).
 		WithResourceSelector(metav1.LabelSelector{
@@ -66,6 +64,6 @@ func TestAutoOpsAgentPolicy(t *testing.T) {
 		},
 	})
 
-	test.Sequence(nil, test.EmptySteps, es1Withlicense, es2Withlicense, policyBuilder).
+	test.Sequence(nil, test.EmptySteps, es1Withlicense, es2Builder, policyBuilder).
 		RunSequential(t)
 }

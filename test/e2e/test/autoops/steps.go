@@ -143,51 +143,7 @@ func (b Builder) CheckK8sTestSteps(k *test.K8sClient) test.StepList {
 		WithStep(test.Step{
 			Name: "AutoOps Agent deployments should be ready",
 			Test: test.Eventually(func() error {
-				// Find all Elasticsearch instances that match the resource selector
-				var esList esv1.ElasticsearchList
-				selector, err := metav1.LabelSelectorAsSelector(&b.AutoOpsAgentPolicy.Spec.ResourceSelector)
-				if err != nil {
-					return err
-				}
-				if err := k.Client.List(context.Background(), &esList, k8sclient.MatchingLabelsSelector{Selector: selector}); err != nil {
-					return err
-				}
-
-				// included namespaces
-				isNamespaceAllowed, err := k8s.NamespaceFilterFunc(context.Background(), k.Client, b.AutoOpsAgentPolicy.Spec.NamespaceSelector)
-				if err != nil {
-					return err
-				}
-
-				// Check deployment for each ES instance
-				for _, es := range esList.Items {
-					if es.Status.Phase != esv1.ElasticsearchReadyPhase {
-						continue
-					}
-
-					deploymentName := autoopsv1alpha1.Deployment(b.AutoOpsAgentPolicy.Name, es)
-					var deployment appsv1.Deployment
-					err := k.Client.Get(context.Background(), types.NamespacedName{
-						Namespace: b.AutoOpsAgentPolicy.Namespace,
-						Name:      deploymentName,
-					}, &deployment)
-
-					if !isNamespaceAllowed(es.Namespace) {
-						// if deployment is not present while it should be filtered out, continue (expected behavior).
-						if err != nil && apierrors.IsNotFound(err) {
-							continue
-						} else if err != nil {
-							return err
-						}
-
-						// if deployment is present while it should be filtered out, return error.
-						return fmt.Errorf("deployment %s should not exist due to namespace selector", deploymentName)
-					}
-					// if error occurred while we expect for deployment, return.
-					if err != nil {
-						return err
-					}
-
+				return b.forEachAutoOpsDeployment(k, func(deployment appsv1.Deployment) error {
 					// Check if deployment is available.
 					// Eventually this behavior should fail, as the deployment should be not Ready
 					// as the beats receiver failing should never allow the Pod to be in a Ready state.
@@ -202,13 +158,13 @@ func (b Builder) CheckK8sTestSteps(k *test.K8sClient) test.StepList {
 
 					if !available {
 						return fmt.Errorf("deployment %s not available yet, replicas: %d/%d ready",
-							deploymentName,
+							deployment.Name,
 							deployment.Status.ReadyReplicas,
 							deployment.Status.Replicas)
 					}
-				}
 
-				return nil
+					return nil
+				})
 			}),
 		})
 }
@@ -218,52 +174,8 @@ func (b Builder) CheckStackTestSteps(k *test.K8sClient) test.StepList {
 		WithStep(test.Step{
 			Name: "AutoOps Agent pods should be ready",
 			Test: test.Eventually(func() error {
-				// Find all Elasticsearch instances that match the resource selector
-				var esList esv1.ElasticsearchList
-				selector, err := metav1.LabelSelectorAsSelector(&b.AutoOpsAgentPolicy.Spec.ResourceSelector)
-				if err != nil {
-					return err
-				}
-				if err := k.Client.List(context.Background(), &esList, &k8sclient.ListOptions{
-					LabelSelector: selector,
-				}); err != nil {
-					return err
-				}
-
-				// included namespaces
-				isNamespaceAllowed, err := k8s.NamespaceFilterFunc(context.Background(), k.Client, b.AutoOpsAgentPolicy.Spec.NamespaceSelector)
-				if err != nil {
-					return err
-				}
-				// Check pods for each ES instance
-				for _, es := range esList.Items {
-					if es.Status.Phase != esv1.ElasticsearchReadyPhase {
-						continue
-					}
-
-					deploymentName := autoopsv1alpha1.Deployment(b.AutoOpsAgentPolicy.Name, es)
-					var deployment appsv1.Deployment
-					err := k.Client.Get(context.Background(), types.NamespacedName{
-						Namespace: b.AutoOpsAgentPolicy.Namespace,
-						Name:      deploymentName,
-					}, &deployment)
-
-					if !isNamespaceAllowed(es.Namespace) {
-						// if deployment is not present while it should be filtered out, continue (expected behavior).
-						if err != nil && apierrors.IsNotFound(err) {
-							continue
-						} else if err != nil {
-							return err
-						}
-
-						// if deployment is present while it should be filtered out, return error.
-						return fmt.Errorf("deployment %s should not exist due to namespace selector", deploymentName)
-					}
-					// if error occurred while we expect for deployment, return.
-					if err != nil {
-						return err
-					}
-
+				return b.forEachAutoOpsDeployment(k, func(deployment appsv1.Deployment) error {
+					// get pods of deployment
 					var pods corev1.PodList
 					podSelector, err := metav1.LabelSelectorAsSelector(&metav1.LabelSelector{
 						MatchLabels: deployment.Spec.Selector.MatchLabels,
@@ -276,7 +188,7 @@ func (b Builder) CheckStackTestSteps(k *test.K8sClient) test.StepList {
 					}
 
 					if len(pods.Items) == 0 {
-						return fmt.Errorf("no pods found for deployment %s", deploymentName)
+						return fmt.Errorf("no pods found for deployment %s", deployment.Name)
 					}
 
 					// Check all pods are ready
@@ -288,11 +200,64 @@ func (b Builder) CheckStackTestSteps(k *test.K8sClient) test.StepList {
 							return fmt.Errorf("pod %s not ready", pod.Name)
 						}
 					}
-				}
 
-				return nil
+					return nil
+				})
 			}),
 		})
+}
+
+func (b Builder) forEachAutoOpsDeployment(k *test.K8sClient, fn func(deployment appsv1.Deployment) error) error {
+	// Find all Elasticsearch instances that match the resource selector
+	var esList esv1.ElasticsearchList
+	selector, err := metav1.LabelSelectorAsSelector(&b.AutoOpsAgentPolicy.Spec.ResourceSelector)
+	if err != nil {
+		return err
+	}
+	if err := k.Client.List(context.Background(), &esList, &k8sclient.ListOptions{
+		LabelSelector: selector,
+	}); err != nil {
+		return err
+	}
+
+	isNamespaceAllowed, err := k8s.NamespaceFilterFunc(context.Background(), k.Client, b.AutoOpsAgentPolicy.Spec.NamespaceSelector)
+	if err != nil {
+		return err
+	}
+
+	// Check pods for each ES instance
+	for _, es := range esList.Items {
+		if es.Status.Phase != esv1.ElasticsearchReadyPhase {
+			continue
+		}
+
+		deploymentName := autoopsv1alpha1.Deployment(b.AutoOpsAgentPolicy.Name, es)
+		var deployment appsv1.Deployment
+		err := k.Client.Get(context.Background(), types.NamespacedName{
+			Namespace: b.AutoOpsAgentPolicy.Namespace,
+			Name:      deploymentName,
+		}, &deployment)
+
+		switch {
+		// if deployment is not present while it should be filtered out, continue (expected behavior).
+		case !isNamespaceAllowed(es.Namespace) && err != nil && apierrors.IsNotFound(err):
+			continue
+
+		// if deployment is present while it should be filtered out, return error.
+		case !isNamespaceAllowed(es.Namespace) && err == nil:
+			return fmt.Errorf("deployment %s should not exist due to namespace selector", deploymentName)
+
+		// on different type of error, fail (no matter the namespace filter).
+		case err != nil:
+			return err
+		}
+
+		if err := fn(deployment); err != nil {
+			return err
+		}
+	}
+
+	return nil
 }
 
 func (b Builder) UpgradeTestSteps(k *test.K8sClient) test.StepList {
