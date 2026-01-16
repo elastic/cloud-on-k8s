@@ -25,6 +25,7 @@ Elasticsearch 9.3 introduces an enhanced `_nodes/reload_secure_settings` API tha
 1. **Go Reimplementation**: Implement the keystore file format directly in Go within the operator
 2. **Job-Based Approach**: Run Kubernetes Jobs using the ES container image to create keystore files via the `elasticsearch-keystore` CLI
 3. **Jobs in ES Namespace**: Run Jobs in the Elasticsearch namespace instead of the operator namespace
+4. **Sidecar Container**: Run a sidecar (restartable init container) that continuously updates the keystore on a shared volume
 
 ## Decision Outcome
 
@@ -83,6 +84,20 @@ Run Jobs in the Elasticsearch namespace using dynamically created ServiceAccount
 * Bad, because it needs additional RBAC for ServiceAccount/RoleBinding creation
 * Bad, because while ValidatingAdmissionPolicy (K8s 1.30+) allows to restrict operator permissions, there is no good mechanism to ship these in all distribution channels e.g. OLM
 * Bad, because in order to leverage ValidatingAdmissinoPolicy we are forced to share a secret between all ES clusters in a namespace
+
+### Option 4: Sidecar Container
+
+Use a sidecar container (Kubernetes 1.28+ restartable init container with `restartPolicy: Always`) that runs alongside Elasticsearch and continuously updates the keystore on a shared `emptyDir` volume. An additional init container waits for the sidecar to create the initial keystore before Elasticsearch starts.
+
+* Good, because it can use the official `elasticsearch-keystore` CLI (format always correct)
+* Good, because format changes in ES are automatically supported
+* Bad, because it adds an extra container per Elasticsearch pod (resource overhead at scale)
+* Bad, because it requires a more complex pod spec (sidecar + coordination init container)
+* Bad, because sidecar image management is unclear (operator image? ES image? busybox?)
+* Bad, because sidecar failures need handling (restart policy, health checks, monitoring)
+* Bad, because user secrets still need to be mounted into the sidecar
+* Bad, because it introduces coordination complexity (init container must wait for sidecar readiness)
+* Bad, because it requires Kubernetes 1.28+ for native sidecar support
 
 ## Format Stability Analysis
 
