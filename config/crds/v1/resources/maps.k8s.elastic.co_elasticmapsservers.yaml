@@ -505,7 +505,7 @@ spec:
                         properties:
                           disabled:
                             description: Disabled indicates that the provisioning
-                              of the self-signed certifcate should be disabled.
+                              of the self-signed certificate should be disabled.
                             type: boolean
                           subjectAltNames:
                             description: SubjectAlternativeNames is a list of SANs
