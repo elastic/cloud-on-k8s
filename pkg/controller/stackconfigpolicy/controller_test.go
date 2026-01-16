@@ -1085,7 +1085,7 @@ func TestReconcileStackConfigPolicy_MultipleStackConfigPolicies(t *testing.T) {
 				owners, err = reconciler.SoftOwnerRefs(&secretMountSecret)
 				assert.NoError(t, err)
 				assert.Len(t, owners, 1, "secretMountSecret should be owned by 1 policy")
-				// Verify only policy-high is the owner
+				// Verify only policy-low is the owner
 				assert.Contains(t, owners, reconciler.SoftOwnerRef{Namespace: "ns", Name: "policy-low", Kind: policyv1alpha1.Kind}, "policy-low should be an owner of secretMountSecret")
 			},
 		},
