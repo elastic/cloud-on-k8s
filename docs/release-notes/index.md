@@ -32,6 +32,7 @@ ECK now includes support for multiple Stack Config Policies targeting the same {
 - Stack Config Policies composition support [#8917](https://github.com/elastic/cloud-on-k8s/pull/8917)
 - Use standard {{k8s}} labels and Helm labels on the ECK Operator pod [#8840](https://github.com/elastic/cloud-on-k8s/pull/8840) (issue: [#8584](https://github.com/elastic/cloud-on-k8s/issues/8584))
 - Add service customization support for {{es}} remote cluster server [#8892](https://github.com/elastic/cloud-on-k8s/pull/8892)
+- Removal of {{es}} 6.x support from codebase [#8979](https://github.com/elastic/cloud-on-k8s/pull/8979)
 
 ### Fixes [elastic-cloud-kubernetes-330-fixes]
 
