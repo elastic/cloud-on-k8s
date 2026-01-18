@@ -41,6 +41,7 @@ ECK now includes support for multiple Stack Config Policies targeting the same {
 - Do not write `elasticsearch.k8s.elastic.co/managed-remote-clusters` when not necessary [#8932](https://github.com/elastic/cloud-on-k8s/pull/8932) (issue: [#8781](https://github.com/elastic/cloud-on-k8s/issues/8781))
 - Cleanup orphaned secret mounts when removed from StackConfigPolicy [#8937](https://github.com/elastic/cloud-on-k8s/pull/8937) (issue: [#8921](https://github.com/elastic/cloud-on-k8s/issues/8921))
 - Stop logging an error when returning an error when performing a generic GET operation on a GVK [#8957](https://github.com/elastic/cloud-on-k8s/pull/8957)
+- Remove single master at a time upscale restriction [#8940](https://github.com/elastic/cloud-on-k8s/pull/8940) (issue: [#8939](https://github.com/elastic/cloud-on-k8s/issues/8939))
 
 ### Documentation improvements [elastic-cloud-kubernetes-330-documentation-improvements]
 
