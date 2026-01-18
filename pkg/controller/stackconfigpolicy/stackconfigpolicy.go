@@ -46,7 +46,7 @@ type configPolicy[T any] struct {
 }
 
 // merge processes all provided policies, filters those targeting the given object, and merges them
-// in order of their weight (highest weight first). Policies with the same weight are flagged as conflicts.
+// in order of their weight (lowest weight first). Policies with the same weight are flagged as conflicts.
 // The merge operation is customized through the configPolicy's extractFunc and mergeFunc callbacks.
 func merge[T any](
 	c *configPolicy[T],
@@ -81,7 +81,7 @@ func merge[T any](
 	}
 
 	slices.SortFunc(c.PolicyRefs, func(p1, p2 policyv1alpha1.StackConfigPolicy) int {
-		return cmp.Compare(p2.Spec.Weight, p1.Spec.Weight)
+		return cmp.Compare(p1.Spec.Weight, p2.Spec.Weight)
 	})
 
 	for _, p := range c.PolicyRefs {
@@ -96,7 +96,7 @@ func merge[T any](
 
 // getConfigPolicyForElasticsearch builds a merged stack config policy for the given Elasticsearch cluster.
 // It processes all provided policies, filtering those that target the Elasticsearch cluster, and merges them
-// in order of their weight (highest to lowest), with lower weight values taking precedence as they are
+// in order of their weight (lowest to highest), with higher weight values taking precedence as they are
 // merged last. Policies with the same weight are flagged as conflicts.
 // Returns a configPolicy containing the merged configuration and any error occurred during merging.
 func getConfigPolicyForElasticsearch(es *esv1.Elasticsearch, allPolicies []policyv1alpha1.StackConfigPolicy, params operator.Parameters) (*configPolicy[policyv1alpha1.ElasticsearchConfigPolicySpec], error) {
@@ -160,7 +160,7 @@ func mergeElasticsearchSpecs(dst, src *policyv1alpha1.ElasticsearchConfigPolicyS
 
 // getConfigPolicyForKibana builds a merged stack config policy for the given Kibana instance.
 // It processes all provided policies, filtering those that target the Kibana instance, and merges them
-// in order of their weight (highest to lowest), with lower weight values taking precedence as they are
+// in order of their weight (lowest to highest), with higher weight values taking precedence as they are
 // merged last. Policies with the same weight are flagged as conflicts.
 // Returns a configPolicy containing the merged configuration and any error occurred during merging.
 func getConfigPolicyForKibana(kbn *kbv1.Kibana, allPolicies []policyv1alpha1.StackConfigPolicy, params operator.Parameters) (*configPolicy[policyv1alpha1.KibanaConfigPolicySpec], error) {
