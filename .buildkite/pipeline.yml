@@ -9,14 +9,14 @@ steps:
       - label: ":go: lint"
         command: "make lint check-local-changes"
         agents:
-          image: docker.elastic.co/ci-agent-images/cloud-k8s-operator/buildkite-agent:94fda33d
+          image: docker.elastic.co/ci-agent-images/cloud-k8s-operator/buildkite-agent:2c27c5a3
           cpu: "6"
           memory: "7G"
 
       - label: ":go: generate"
         command: "make generate check-local-changes"
         agents:
-          image: docker.elastic.co/ci-agent-images/cloud-k8s-operator/buildkite-agent:94fda33d
+          image: docker.elastic.co/ci-agent-images/cloud-k8s-operator/buildkite-agent:2c27c5a3
           cpu: "4"
           memory: "4G"
 
@@ -25,7 +25,7 @@ steps:
           - "make check-license-header check-predicates shellcheck reattach-pv"
           - "make -C hack/helm/release build"
         agents:
-          image: docker.elastic.co/ci-agent-images/cloud-k8s-operator/buildkite-agent:94fda33d
+          image: docker.elastic.co/ci-agent-images/cloud-k8s-operator/buildkite-agent:2c27c5a3
           cpu: "4"
           memory: "4G"
 
@@ -35,28 +35,28 @@ steps:
       - label: ":go: unit-tests"
         command: "make unit-xml"
         agents:
-          image: docker.elastic.co/ci-agent-images/cloud-k8s-operator/buildkite-agent:94fda33d
+          image: docker.elastic.co/ci-agent-images/cloud-k8s-operator/buildkite-agent:2c27c5a3
           cpu: "4"
           memory: "4G"
 
       - label: ":go: integration-tests"
         command: "make integration-xml"
         agents:
-          image: docker.elastic.co/ci-agent-images/cloud-k8s-operator/buildkite-agent:94fda33d
+          image: docker.elastic.co/ci-agent-images/cloud-k8s-operator/buildkite-agent:2c27c5a3
           cpu: "4"
           memory: "4G"
 
       - label: ":go: manifest-gen-tests"
         command: "make manifest-gen-test"
         agents:
-          image: docker.elastic.co/ci-agent-images/cloud-k8s-operator/buildkite-agent:94fda33d
+          image: docker.elastic.co/ci-agent-images/cloud-k8s-operator/buildkite-agent:2c27c5a3
           cpu: "4"
           memory: "2G"
 
       - label: ":go: helm-tests"
         command: "make helm-test"
         agents:
-          image: docker.elastic.co/ci-agent-images/cloud-k8s-operator/buildkite-agent:94fda33d
+          image: docker.elastic.co/ci-agent-images/cloud-k8s-operator/buildkite-agent:2c27c5a3
           cpu: "4"
           memory: "2G"
 
@@ -67,7 +67,7 @@ steps:
     steps:
       - label: ":buildkite:"
         agents:
-          image: "docker.elastic.co/ci-agent-images/serverless-docker-builder:0.10.2@sha256:0031bfb812bb61de5c3d40794eb270da141dcae464de2251697264b46f8c523b"
+          image: "docker.elastic.co/ci-agent-images/serverless-docker-builder:0.10.3@sha256:7d810d7aa5f089b408d6e5076199f5364640907a99b175268fceb8f1f622370a"
         commands: make -C /agent generate-docker-images
         env:
           DOCKER_REGISTRY_VAULT_PATH: secret/ci/elastic-cloud-on-k8s/docker-registry-elastic
@@ -82,7 +82,7 @@ steps:
     steps:
       - label: ":buildkite:"
         agents:
-          image: "docker.elastic.co/ci-agent-images/serverless-docker-builder:0.10.2@sha256:0031bfb812bb61de5c3d40794eb270da141dcae464de2251697264b46f8c523b"
+          image: "docker.elastic.co/ci-agent-images/serverless-docker-builder:0.10.3@sha256:7d810d7aa5f089b408d6e5076199f5364640907a99b175268fceb8f1f622370a"
         commands: make -C /agent generate-docker-images
         env:
           DOCKER_REGISTRY_VAULT_PATH: secret/ci/elastic-cloud-on-k8s/docker-registry-elastic
@@ -112,7 +112,7 @@ steps:
           E2E_SKIP_CLEANUP: true
       DEF
     agents:
-      image: docker.elastic.co/ci-agent-images/cloud-k8s-operator/buildkite-agent:94fda33d
+      image: docker.elastic.co/ci-agent-images/cloud-k8s-operator/buildkite-agent:2c27c5a3
       memory: "2G"
 
   # for PR comment
@@ -125,14 +125,14 @@ steps:
       $$(echo ./pipeline-gen $$GITHUB_PR_COMMENT_VAR_ARGS) \
         | buildkite-agent pipeline upload
     agents:
-      image: docker.elastic.co/ci-agent-images/cloud-k8s-operator/buildkite-agent:94fda33d
+      image: docker.elastic.co/ci-agent-images/cloud-k8s-operator/buildkite-agent:2c27c5a3
       memory: "2G"
 
   # for the main branch (merge and nightly) and tags
   - label: ":buildkite:"
     command: buildkite-agent pipeline upload .buildkite/pipeline-e2e-tests.yml
     agents:
-      image: docker.elastic.co/ci-agent-images/cloud-k8s-operator/buildkite-agent:94fda33d
+      image: docker.elastic.co/ci-agent-images/cloud-k8s-operator/buildkite-agent:2c27c5a3
       memory: "2G"
 
   # ----------
@@ -165,7 +165,7 @@ steps:
         done
       ) | buildkite-agent pipeline upload
     agents:
-      image: docker.elastic.co/ci-agent-images/cloud-k8s-operator/buildkite-agent:94fda33d
+      image: docker.elastic.co/ci-agent-images/cloud-k8s-operator/buildkite-agent:2c27c5a3
       memory: "256Mi"
 
   - label: ":buildkite:"
@@ -173,5 +173,5 @@ steps:
       - "operator-image-build"
     command: buildkite-agent pipeline upload .buildkite/pipeline-release.yml
     agents:
-      image: docker.elastic.co/ci-agent-images/cloud-k8s-operator/buildkite-agent:94fda33d
+      image: docker.elastic.co/ci-agent-images/cloud-k8s-operator/buildkite-agent:2c27c5a3
       memory: "2G"
