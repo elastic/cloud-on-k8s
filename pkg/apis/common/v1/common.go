@@ -232,7 +232,7 @@ func (tls TLSOptions) Enabled() bool {
 type SelfSignedCertificate struct {
 	// SubjectAlternativeNames is a list of SANs to include in the generated HTTP TLS certificate.
 	SubjectAlternativeNames []SubjectAlternativeName `json:"subjectAltNames,omitempty"`
-	// Disabled indicates that the provisioning of the self-signed certifcate should be disabled.
+	// Disabled indicates that the provisioning of the self-signed certificate should be disabled.
 	Disabled bool `json:"disabled,omitempty"`
 }
 
