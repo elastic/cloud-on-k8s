@@ -74,7 +74,7 @@ func newReconciler(mgr manager.Manager, params operator.Parameters) *ReconcileEl
 		esObservers:    observer.NewManager(params.ElasticsearchObservationInterval, params.Tracer),
 
 		dynamicWatches: watches.NewDynamicWatches(),
-		expectations:   expectations.NewClustersExpectations(client),
+		expectations:   expectations.NewClustersExpectations(client, &appsv1.StatefulSet{}),
 
 		Parameters: params,
 	}

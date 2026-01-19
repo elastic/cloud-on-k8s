@@ -8,6 +8,7 @@ import (
 	"sync"
 
 	"k8s.io/apimachinery/pkg/types"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/k8s"
 )
@@ -16,14 +17,18 @@ import (
 // It is thread-safe, but the underlying per-cluster Expectations is not.
 type ClustersExpectation struct {
 	client   k8s.Client
+	object   client.Object
 	clusters map[types.NamespacedName]*Expectations
 	lock     sync.RWMutex
 }
 
 // NewClustersExpectations returns an initialized ClustersExpectation.
-func NewClustersExpectations(client k8s.Client) *ClustersExpectation {
+// The object parameter is the owner of the expected resources. In stateful scenarios, it is typically the
+// StatefulSet controller object. In stateless scenarios, it can be a Deployment.
+func NewClustersExpectations(client k8s.Client, object client.Object) *ClustersExpectation {
 	return &ClustersExpectation{
 		client:   client,
+		object:   object,
 		clusters: map[types.NamespacedName]*Expectations{},
 		lock:     sync.RWMutex{},
 	}
@@ -53,7 +58,7 @@ func (c *ClustersExpectation) get(cluster types.NamespacedName) (*Expectations, 
 }
 
 func (c *ClustersExpectation) create(cluster types.NamespacedName) *Expectations {
-	expectations := NewExpectations(c.client)
+	expectations := NewExpectations(c.client, c.object)
 	c.lock.Lock()
 	defer c.lock.Unlock()
 	c.clusters[cluster] = expectations
