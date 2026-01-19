@@ -488,6 +488,7 @@ func (h *helper) runTestsLocally() error {
 	cmd := exec.Command("test/e2e/run.sh", "-run", os.Getenv("TESTS_MATCH"), "-args", "-testContextPath", h.testContextOutPath) //nolint:gosec,noctx
 	cmd.Stderr = os.Stderr
 	cmd.Stdout = os.Stdout
+	cmd.Env = append(os.Environ(), "E2E_LOCAL=true")
 	// we need to set a process group ID to be able to terminate all child processes and not just the test.sh script later if the timeout is exceeded
 	cmd.SysProcAttr = &syscall.SysProcAttr{Setpgid: true}
 
