@@ -39,14 +39,16 @@ main() {
     run_e2e_tests "$@" | tee "$ARTEFACTS_DIR/e2e-tests-$CLUSTER_NAME.json"
   fi
 
-  # In container environments, keep the process alive so logs can be collected.
   # When running locally, exit immediately after tests complete.
-  if [ "${E2E_LOCAL}" != "true" ]; then
-    touch /tmp/done
-    while true; do
-      sleep 60
-    done
+  if [ "${E2E_LOCAL}" == "true" ]; then
+    return
   fi
+
+  # In container environments, keep the process alive so logs can be collected.
+  touch /tmp/done
+  while true; do
+    sleep 60
+  done
 }
 
 main "$@"
