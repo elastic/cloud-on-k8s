@@ -193,6 +193,7 @@ func GetSecretFromRef(c k8s.Client, owner types.NamespacedName, secretRef common
 
 // validCustomCertificatesOrNil returns the custom certificates to use or nil if there is none specified
 func validCustomCertificatesOrNil(
+	ctx context.Context,
 	c k8s.Client,
 	owner types.NamespacedName,
 	tls commonv1.TLSOptions,
@@ -201,5 +202,20 @@ func validCustomCertificatesOrNil(
 	if err != nil || secret == nil {
 		return nil, err
 	}
-	return NewCertificatesSecret(*secret)
+	certSecret, err := NewCertificatesSecret(*secret)
+	if err != nil {
+		return nil, err
+	}
+
+	if !certSecret.HasCAPrivateKey() {
+		// we don't have user-provided CA cert
+		return certSecret, err
+	}
+
+	// validate user-provided CA cert
+	if err := ValidateCustomCA(ctx, certSecret.CA()); err != nil {
+		return nil, fmt.Errorf("error validating custom CA certificate in %s/%s: %w", secret.Namespace, secret.Name, err)
+	}
+
+	return certSecret, err
 }

@@ -63,7 +63,7 @@ func (r Reconciler) ReconcileCAAndHTTPCerts(ctx context.Context) (*CertificatesS
 	}
 
 	// check for custom certificates first
-	customCerts, err := validCustomCertificatesOrNil(r.K8sClient, k8s.ExtractNamespacedName(r.Owner), r.TLSOptions)
+	customCerts, err := validCustomCertificatesOrNil(ctx, r.K8sClient, k8s.ExtractNamespacedName(r.Owner), r.TLSOptions)
 	if err != nil {
 		return nil, results.WithError(err)
 	}
@@ -73,9 +73,6 @@ func (r Reconciler) ReconcileCAAndHTTPCerts(ctx context.Context) (*CertificatesS
 	case customCerts.HasCAPrivateKey():
 		// if we have user-provided CA cert + key use that
 		httpCa = customCerts.CA()
-		if err := ValidateCustomCA(ctx, httpCa); err != nil {
-			return nil, results.WithError(err)
-		}
 		// handle CA expiry via requeue
 		results.WithReconciliationState(
 			reconciler.
