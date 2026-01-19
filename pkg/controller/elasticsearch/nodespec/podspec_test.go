@@ -205,7 +205,12 @@ func TestBuildPodTemplateSpecWithDefaultSecurityContext(t *testing.T) {
 			version:             version.MustParse("8.0.0"),
 			setDefaultFSGroup:   true,
 			userSecurityContext: nil,
-			wantSecurityContext: &corev1.PodSecurityContext{FSGroup: ptr.To[int64](1000)},
+			wantSecurityContext: &corev1.PodSecurityContext{
+				FSGroup: ptr.To[int64](1000),
+				SeccompProfile: &corev1.SeccompProfile{
+					Type: corev1.SeccompProfileTypeRuntimeDefault,
+				},
+			},
 		},
 		{
 			name:                "8.0+, setting on, user context",

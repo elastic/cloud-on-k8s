@@ -59,6 +59,9 @@ var (
 
 	DefaultSecurityContext = corev1.PodSecurityContext{
 		FSGroup: ptr.To[int64](defaultFsGroup),
+		SeccompProfile: &corev1.SeccompProfile{
+			Type: corev1.SeccompProfileTypeRuntimeDefault,
+		},
 	}
 )
 

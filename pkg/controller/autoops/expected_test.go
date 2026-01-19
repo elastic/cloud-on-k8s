@@ -321,9 +321,6 @@ func expectedDeployment(policy autoopsv1alpha1.AutoOpsAgentPolicy, es esv1.Elast
 								},
 								Privileged:             ptr.To(false),
 								ReadOnlyRootFilesystem: ptr.To(false),
-								SeccompProfile: &corev1.SeccompProfile{
-									Type: corev1.SeccompProfileTypeRuntimeDefault,
-								},
 							},
 						},
 					},
