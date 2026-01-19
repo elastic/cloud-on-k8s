@@ -121,9 +121,6 @@ func (r *AgentPolicyReconciler) buildDeployment(configHash string, policy autoop
 			// Can't currently do this because of:
 			// Error: container has runAsNonRoot and image has non-numeric user (elastic-agent)
 			// RunAsNonRoot:           ptr.To(true),
-			SeccompProfile: &corev1.SeccompProfile{
-				Type: corev1.SeccompProfileTypeRuntimeDefault,
-			},
 		})
 
 	if r.params.SetDefaultSecurityContext {

@@ -106,9 +106,6 @@ func newPodSpec(epr eprv1alpha1.PackageRegistry, configHash string, meta metadat
 				Drop: []corev1.Capability{"ALL"},
 			},
 			Privileged: ptr.To(false),
-			SeccompProfile: &corev1.SeccompProfile{
-				Type: corev1.SeccompProfileTypeRuntimeDefault,
-			},
 		})
 
 	if setDefaultSecurityContext {
