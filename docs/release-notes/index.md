@@ -43,6 +43,9 @@ ECK now includes support for multiple Stack Config Policies targeting the same {
 - Cleanup orphaned secret mounts when removed from StackConfigPolicy [#8937](https://github.com/elastic/cloud-on-k8s/pull/8937) (issue: [#8921](https://github.com/elastic/cloud-on-k8s/issues/8921))
 - Stop logging an error when returning an error when performing a generic GET operation on a GVK [#8957](https://github.com/elastic/cloud-on-k8s/pull/8957)
 - Remove single master at a time upscale restriction [#8940](https://github.com/elastic/cloud-on-k8s/pull/8940) (issue: [#8939](https://github.com/elastic/cloud-on-k8s/issues/8939))
+- AutoOps: Ignore deprecated ES clusters [#9008](https://github.com/elastic/cloud-on-k8s/pull/9008) (issue: [#9000](https://github.com/elastic/cloud-on-k8s/issues/9000))
+- AutoOps: Require 9.2.1 for autoops agent [#9007](https://github.com/elastic/cloud-on-k8s/pull/9007) (issue: [#9000](https://github.com/elastic/cloud-on-k8s/issues/9000))
+- Multi-SCP: Flip weight semantics - higher weight takes precedence [#9046](https://github.com/elastic/cloud-on-k8s/pull/9046)
 
 ### Documentation improvements [elastic-cloud-kubernetes-330-documentation-improvements]
 
@@ -50,6 +53,7 @@ ECK now includes support for multiple Stack Config Policies targeting the same {
 - Fix minUnavailable typo in PDB documentation [#8898](https://github.com/elastic/cloud-on-k8s/pull/8898)
 - Use GKE ComputeClass instead of DaemonSet for GKE AutoPilot [#8982](https://github.com/elastic/cloud-on-k8s/pull/8982)
 - Adjust `vm.max_map_count` to 1048576 in GKE AutoPilot recipes [#8986](https://github.com/elastic/cloud-on-k8s/pull/8986)
+- Remove support for Stack 7.17. [#9038](https://github.com/elastic/cloud-on-k8s/pull/9038)
 
 :::{dropdown} Updated dependencies
 
