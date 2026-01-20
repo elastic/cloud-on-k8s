@@ -364,7 +364,7 @@ func (r *ReconcileMapsServer) reconcileDeployment(
 }
 
 func (r *ReconcileMapsServer) deploymentParams(ems emsv1alpha1.ElasticMapsServer, configHash string, meta metadata.Metadata) (deployment.Params, error) {
-	podSpec, err := newPodSpec(ems, configHash, meta)
+	podSpec, err := newPodSpec(ems, configHash, meta, r.SetDefaultSecurityContext)
 	if err != nil {
 		return deployment.Params{}, err
 	}

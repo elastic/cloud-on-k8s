@@ -98,7 +98,7 @@ type PodSpecParams struct {
 	keystoreResources *keystore.Resources
 }
 
-func newPodSpec(c k8s.Client, as *apmv1.ApmServer, p PodSpecParams, meta metadata.Metadata) (corev1.PodTemplateSpec, error) {
+func newPodSpec(c k8s.Client, as *apmv1.ApmServer, p PodSpecParams, meta metadata.Metadata, setDefaultSecurityContext bool) (corev1.PodTemplateSpec, error) {
 	labels := as.GetIdentityLabels()
 	labels[APMVersionLabelName] = p.Version
 
@@ -160,6 +160,14 @@ func newPodSpec(c k8s.Client, as *apmv1.ApmServer, p PodSpecParams, meta metadat
 		return corev1.PodTemplateSpec{}, err
 	}
 	builder = withHTTPCertsVolume(builder, *as)
+
+	if setDefaultSecurityContext {
+		builder = builder.WithPodSecurityContext(corev1.PodSecurityContext{
+			SeccompProfile: &corev1.SeccompProfile{
+				Type: corev1.SeccompProfileTypeRuntimeDefault,
+			},
+		})
+	}
 
 	return builder.WithInitContainerDefaults().PodTemplate, nil
 }

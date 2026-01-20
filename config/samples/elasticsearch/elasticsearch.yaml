@@ -26,6 +26,9 @@ spec:
           # additional labels for pods
           foo: bar
       spec:
+        # securityContext:
+        #  seccompProfile:
+        #    type: RuntimeDefault
         # this changes the kernel setting on the node to allow ES to use mmap
         # if you uncomment this init container you will likely also want to remove the
         # "node.store.allow_mmap: false" setting above
@@ -34,6 +37,8 @@ spec:
         #   securityContext:
         #     privileged: true
         #     runAsUser: 0
+        #     seccompProfile:
+        #       type: Unconfined  # Override pod-level setting
         #   command: ['sh', '-c', 'sysctl -w vm.max_map_count=262144']
         ###
         # uncomment the line below if you are using a service mesh such as linkerd2 that uses service account tokens for pod identification.
