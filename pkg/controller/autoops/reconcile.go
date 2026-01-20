@@ -79,6 +79,12 @@ func (r *AgentPolicyReconciler) internalReconcile(
 		return results.WithError(err)
 	}
 
+	isNamespaceAllowed, err := k8s.NamespaceFilterFunc(ctx, r.Client, policy.Spec.NamespaceSelector)
+	if err != nil {
+		state.UpdateWithPhase(autoopsv1alpha1.ErrorPhase)
+		return results.WithError(err)
+	}
+
 	// prepare the selector to find resources.
 	selector, err := metav1.LabelSelectorAsSelector(&metav1.LabelSelector{
 		MatchLabels:      policy.Spec.ResourceSelector.MatchLabels,
@@ -100,6 +106,13 @@ func (r *AgentPolicyReconciler) internalReconcile(
 	// This ensures resources are cleaned up when access is revoked.
 	accessibleClusters := make([]esv1.Elasticsearch, 0, len(esList.Items))
 	for _, es := range esList.Items {
+		// filter by namespace (if set)
+		if !isNamespaceAllowed(es.Namespace) {
+			log.V(1).Info("Skipping ES cluster due to namespace filtering", "es_namespace", es.Namespace, "es_name", es.Name)
+			continue
+		}
+
+		// filter by RBAC (if set)
 		accessAllowed, err := isAutoOpsAssociationAllowed(ctx, r.accessReviewer, &policy, &es, r.recorder)
 		if err != nil {
 			log.Error(err, "while checking access for Elasticsearch cluster", "es_namespace", es.Namespace, "es_name", es.Name)

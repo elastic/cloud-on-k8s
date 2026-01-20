@@ -14,6 +14,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/apimachinery/pkg/util/sets"
 	"k8s.io/client-go/tools/record"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
@@ -284,4 +285,40 @@ func CompareStorageRequests(initial corev1.VolumeResourceRequirements, updated c
 	default: // same size
 		return StorageComparison{}
 	}
+}
+
+// IsLabelSelectorEmpty returns true if the label selector has no match criteria.
+func IsLabelSelectorEmpty(selector metav1.LabelSelector) bool {
+	return len(selector.MatchExpressions) == 0 && len(selector.MatchLabels) == 0
+}
+
+// NamespaceFilterFunc returns a function that checks if a namespace is allowed.
+// If the selector is empty, returns a pass-through filter that accepts all namespaces.
+func NamespaceFilterFunc(
+	ctx context.Context,
+	k8sClient Client,
+	selector metav1.LabelSelector,
+) (func(namespace string) bool, error) {
+	// No selector = pass everything through
+	if IsLabelSelectorEmpty(selector) {
+		return func(string) bool { return true }, nil
+	}
+
+	// Build the set of matching namespaces
+	nsSelector, err := metav1.LabelSelectorAsSelector(&selector)
+	if err != nil {
+		return nil, err
+	}
+
+	var nsList corev1.NamespaceList
+	if err := k8sClient.List(ctx, &nsList, &client.ListOptions{LabelSelector: nsSelector}); err != nil {
+		return nil, err
+	}
+
+	namespaces := sets.New[string]()
+	for _, ns := range nsList.Items {
+		namespaces.Insert(ns.Name)
+	}
+
+	return namespaces.Has, nil // Return the Has method directly
 }
