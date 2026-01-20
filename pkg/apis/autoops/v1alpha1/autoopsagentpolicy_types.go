@@ -54,6 +54,12 @@ type AutoOpsAgentPolicySpec struct {
 	// Any Elasticsearch instances that match the selector will be configured to send data to AutoOps.
 	ResourceSelector metav1.LabelSelector `json:"resourceSelector,omitempty"`
 
+	// NamespaceSelector is a namespace selector for the resources to be configured.
+	// Any Elasticsearch instances that belong to the selected namespaces will be configured to send data to AutoOps.
+	// +optional
+	// +kubebuilder:validation:Optional
+	NamespaceSelector metav1.LabelSelector `json:"namespaceSelector,omitempty"`
+
 	// AutoOpsRef defines a reference to a secret containing connection details for AutoOps via Cloud Connect.
 	AutoOpsRef AutoOpsRef `json:"autoOpsRef,omitempty"`
 
@@ -113,13 +119,11 @@ const (
 	ErrorPhase             PolicyPhase = "Error"
 )
 
-var (
-	// RequeuePhases is a set of phases that require a requeue.
-	RequeuePhases = set.Make(
-		string(ApplyingChangesPhase),
-		string(ResourcesNotReadyPhase),
-		string(ErrorPhase),
-	)
+// RequeuePhases is a set of phases that require a requeue.
+var RequeuePhases = set.Make(
+	string(ApplyingChangesPhase),
+	string(ResourcesNotReadyPhase),
+	string(ErrorPhase),
 )
 
 // IsMarkedForDeletion returns true if the AutoOpsAgentPolicy resource is going to be deleted.
