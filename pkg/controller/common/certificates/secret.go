@@ -209,7 +209,7 @@ func validCustomCertificatesOrNil(
 
 	if !certSecret.HasCAPrivateKey() {
 		// we don't have user-provided CA cert
-		return certSecret, err
+		return certSecret, nil
 	}
 
 	// validate user-provided CA cert
