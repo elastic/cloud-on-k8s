@@ -73,12 +73,6 @@ func (r Reconciler) ReconcileCAAndHTTPCerts(ctx context.Context) (*CertificatesS
 	case customCerts.HasCAPrivateKey():
 		// if we have user-provided CA cert + key use that
 		httpCa = customCerts.CA()
-		// handle CA expiry via requeue
-		results.WithReconciliationState(
-			reconciler.
-				RequeueAfter(ShouldRotateIn(time.Now(), httpCa.Cert.NotAfter, r.CACertRotation.RotateBefore)).
-				ReconciliationComplete(), // This reconciliation result should not prevent the reconciliation loop to be considered as completed in the status
-		)
 	case r.GlobalCA != nil:
 		httpCa = r.GlobalCA
 	default:
