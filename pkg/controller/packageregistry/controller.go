@@ -305,7 +305,7 @@ func buildConfigHash(epr eprv1alpha1.PackageRegistry, configSecret corev1.Secret
 }
 
 func (r *ReconcilePackageRegistry) deploymentParams(epr eprv1alpha1.PackageRegistry, configHash string, meta metadata.Metadata) (deployment.Params, error) {
-	podSpec, err := newPodSpec(epr, configHash, meta)
+	podSpec, err := newPodSpec(epr, configHash, meta, r.SetDefaultSecurityContext)
 	if err != nil {
 		return deployment.Params{}, err
 	}

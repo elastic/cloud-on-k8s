@@ -295,7 +295,7 @@ spec:
                 default: 0
                 description: |-
                   Weight determines the priority of this policy when multiple policies target the same resource.
-                  Lower weight values take precedence. Defaults to 0.
+                  Higher weight values take precedence. Defaults to 0.
                 format: int32
                 type: integer
             type: object

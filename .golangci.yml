@@ -114,6 +114,10 @@ linters:
         # added exclusion until ElasticsearchAutoscalingSpecAnnotationName is completely removed
         text: 'SA1019: .* is deprecated: the autoscaling annotation has been deprecated in favor of the ElasticsearchAutoscaler custom resource.'
       - linters:
+          - staticcheck
+        # added exclusion until migration to new events API (events.k8s.io/v1) is completed
+        text: 'SA1019: .*GetEventRecorderFor is deprecated: this uses the old events API'
+      - linters:
           - revive
         # revive naming rules are not that happy with our packages/var names in commont/utils packages
         path: '.*/(common|utils)/.*.go'

@@ -37,6 +37,10 @@ func (fc failingClient) Apply(_ context.Context, _ runtime.ApplyConfiguration, _
 	return fc.err
 }
 
+func (fc failingSubClient) Apply(_ context.Context, _ runtime.ApplyConfiguration, _ ...client.SubResourceApplyOption) error {
+	return fc.err
+}
+
 func (fc failingSubClient) Create(_ context.Context, _ client.Object, _ client.Object, _ ...client.SubResourceCreateOption) error {
 	return fc.err
 }
