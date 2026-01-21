@@ -6,7 +6,7 @@ metadata:
   labels:
     {{- include "wiremock-cloud-connected-api.labels" . | nindent 4 }}
 {{- with .Values.attributionLabels }}
-{{ toYaml . | indent 4 }}
+{{- toYaml . | nindent 4 }}
 {{- end }}
 spec:
   replicas: {{ .Values.replicaCount }}
