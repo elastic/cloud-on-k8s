@@ -55,23 +55,19 @@ func TestAutoOpsAgentPolicy(t *testing.T) {
 		WithVersion(test.Ctx().ElasticStackVersion).
 		WithLabel("autoops", "enabled")
 
-	// Create the policy builder with the wiremock URL for cloud-connected API
+	// Create the policy builder with the wiremock URL for cloud-connected API and OTel
 	policyBuilder := autoops.NewBuilder("autoops-policy").
 		WithNamespace(policyNamespace).
 		WithResourceSelector(metav1.LabelSelector{
 			MatchLabels: map[string]string{
 				"autoops": "enabled",
 			},
-<<<<<<< HEAD
 		}).WithNamespaceSelector(metav1.LabelSelector{
 		MatchLabels: map[string]string{
 			"kubernetes.io/metadata.name": esNamespace,
 		},
-	})
-=======
-		}).
-		WithCloudConnectedAPIURL(test.Ctx().WiremockURL)
->>>>>>> 6dce96357 (install CCM Wiremock as part of the e2e runner and enable autoops test)
+	}).WithCloudConnectedAPIURL(test.Ctx().WiremockURL).
+		WithAutoOpsOTelURL(test.Ctx().WiremockURL)
 
 	test.Sequence(nil, test.EmptySteps, es1Withlicense, es2Builder, policyBuilder).
 		RunSequential(t)

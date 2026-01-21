@@ -190,6 +190,9 @@ spec:
     spec:
       automountServiceAccountToken: false
       securityContext:
+{{ if not .OcpCluster }}
+        runAsUser: 1000
+{{ end }}
         runAsNonRoot: true
         seccompProfile:
           type: RuntimeDefault

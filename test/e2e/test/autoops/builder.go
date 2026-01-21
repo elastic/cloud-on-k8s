@@ -116,6 +116,16 @@ func (b Builder) WithCloudConnectedAPIURL(url string) Builder {
 	return b
 }
 
+// WithAutoOpsOTelURL sets the autoops-otel-url in the config secret.
+// This is used to point to the wiremock service for e2e testing.
+func (b Builder) WithAutoOpsOTelURL(url string) Builder {
+	if b.ConfigSecret.StringData == nil {
+		b.ConfigSecret.StringData = make(map[string]string)
+	}
+	b.ConfigSecret.StringData["autoops-otel-url"] = url
+	return b
+}
+
 func (b Builder) RuntimeObjects() []k8sclient.Object {
 	return []k8sclient.Object{
 		&b.ConfigSecret,

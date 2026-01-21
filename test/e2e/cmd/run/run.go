@@ -64,9 +64,11 @@ func doRun(flags runFlags) error {
 			helper.createScratchDir,
 			helper.initTestContext,
 			helper.installCRDs,
+			helper.createE2ENamespaceAndRoleBindings,
 			helper.createRoles,
 			helper.createManagedNamespaces,
 			helper.deploySecurityConstraints,
+			helper.deployWiremock,
 			helper.runTestsLocally,
 		}
 	} else {
@@ -188,6 +190,7 @@ func (h *helper) initTestContext() error {
 		LogToFile:             h.logToFile,
 		AutopilotCluster:      isAutopilotCluster(h),
 		ArtefactsDir:          artefactsDir,
+		WiremockURL:           wiremockURL(h),
 	}
 
 	for i, ns := range h.managedNamespaces {
@@ -249,6 +252,11 @@ func isAKSCluster(h *helper) bool {
 // isAutopilotCluster convenience function to check the provider value for the string gke-autopilot.
 func isAutopilotCluster(h *helper) bool {
 	return strings.HasPrefix(h.provider, "gke-autopilot")
+}
+
+// wiremockURL returns the deterministic URL for the WireMock service.
+func wiremockURL(h *helper) string {
+	return fmt.Sprintf("http://wiremock-%s.%s-system.svc.cluster.local:8080", h.testRunName, h.testRunName)
 }
 
 func (h *helper) initTestSecrets() error {
@@ -470,10 +478,7 @@ func (h *helper) deployMonitoring() error {
 func (h *helper) deployWiremock() error {
 	log.Info("Deploying wiremock for cloud-connected API mocking")
 
-	// Set the wiremock URL in the test context so tests can use it
-	h.testContext.WiremockURL = fmt.Sprintf("http://wiremock-%s.%s.svc.cluster.local:8080",
-		h.testRunName, h.testContext.E2ENamespace)
-
+	// WiremockURL is already set in initTestContext via wiremockURL(h)
 	return h.kubectlApplyTemplateWithCleanup("config/e2e/wiremock.yaml", h.testContext)
 }
 
