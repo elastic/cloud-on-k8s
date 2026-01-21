@@ -68,6 +68,9 @@ func (s *State) UpdateInvalidPhaseWithEvent(msg string) {
 // UpdateResources updates the Resources count in the status.
 func (s *State) UpdateResources(count int) *State {
 	s.status.Resources = count
+	if count == 0 {
+		s.UpdateWithPhase(autoopsv1alpha1.NoResourcesPhase)
+	}
 	return s
 }
 
@@ -99,26 +102,13 @@ func (s *State) Apply() ([]events.Event, *autoopsv1alpha1.AutoOpsAgentPolicy) {
 
 // CalculateFinalPhase updates the phase of the AutoOpsAgentPolicy status based on the results of the reconciliation.
 func (s *State) CalculateFinalPhase(isReconciled bool, reconciliationMessage string) {
-	if isReconciled {
+	if !isReconciled {
 		s.UpdateWithPhase(autoopsv1alpha1.ApplyingChangesPhase)
 		s.AddEvent(corev1.EventTypeWarning, events.EventReasonDelayed, reconciliationMessage)
 		return
 	}
 
-	// Determine phase based on status counts, in order of priority:
-	// 1. Errors take highest priority
-	// 2. Resources not ready (have resources but none ready)
-	// 3. Ready (have resources and at least one ready)
-	// 4. No resources
-	switch {
-	case s.status.Errors > 0:
-		s.UpdateWithPhase(autoopsv1alpha1.ErrorPhase)
-	case s.status.Resources == 0:
-		s.UpdateWithPhase(autoopsv1alpha1.NoResourcesPhase)
-	case s.status.Ready == s.status.Resources:
+	if s.status.Ready == s.status.Resources {
 		s.UpdateWithPhase(autoopsv1alpha1.ReadyPhase)
-	default:
-		// Resources > 0 && Ready < Resources
-		s.UpdateWithPhase(autoopsv1alpha1.ResourcesNotReadyPhase)
 	}
 }
