@@ -12,7 +12,7 @@ applies_to:
 navigation_title: {{ markdownTemplateValue "eckVersion" }}
 applies_to:
   deployment:
-    eck: ga {{ markdownTemplateValue "eckVersion" }}
+    eck: ga ={{ markdownTemplateValue "eckVersion" }}
 {{- end}}
 ---
 % Generated documentation. Please do not edit.
