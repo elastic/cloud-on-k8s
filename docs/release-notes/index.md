@@ -15,7 +15,7 @@ Review the changes, fixes, and more in each release of Elastic Cloud on Kubernet
 
 #### AutoOps Integration (Enterprise feature)
 
-ECK now supports integration with Elastic AutoOps through a new `AutoOpsAgentPolicy` resource. This allows you to instrument multiple {{es}} clusters at once for automated health monitoring and performance recommendations. The [AutoOps documentation](https://www.elastic.co/docs/deploy-manage/monitor/autoops) provides more details.
+ECK now supports integration with Elastic AutoOps through a new `AutoOpsAgentPolicy` custom resource. This allows you to instrument multiple {{es}} clusters at once for automated health monitoring and performance recommendations. The [AutoOps documentation](https://www.elastic.co/docs/deploy-manage/monitor/autoops) provides more details.
 
 #### Elastic Package Registry Integration
 
@@ -44,7 +44,7 @@ ECK now includes support for multiple Stack Config Policies targeting the same {
 - Avoid duplicate error logging for generate GET operations on a GVK [#8957](https://github.com/elastic/cloud-on-k8s/pull/8957)
 - Remove single master at a time upscale restriction [#8940](https://github.com/elastic/cloud-on-k8s/pull/8940) (issue: [#8939](https://github.com/elastic/cloud-on-k8s/issues/8939))
 - AutoOps: Ignore deprecated ES clusters [#9008](https://github.com/elastic/cloud-on-k8s/pull/9008) (issue: [#9000](https://github.com/elastic/cloud-on-k8s/issues/9000))
-- AutoOps: Require 9.2.1 for autoops agent [#9007](https://github.com/elastic/cloud-on-k8s/pull/9007) (issue: [#9000](https://github.com/elastic/cloud-on-k8s/issues/9000))
+- AutoOps: Require 9.2.1 for AutoOps agent [#9007](https://github.com/elastic/cloud-on-k8s/pull/9007) (issue: [#9000](https://github.com/elastic/cloud-on-k8s/issues/9000))
 - Multi-SCP: Flip weight semantics - higher weight takes precedence [#9046](https://github.com/elastic/cloud-on-k8s/pull/9046)
 
 ### Documentation improvements [elastic-cloud-kubernetes-330-documentation-improvements]
