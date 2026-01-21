@@ -24,7 +24,7 @@
     - E2E_STACK_VERSION: "8.19.6"
     - E2E_STACK_VERSION: "9.0.8"
     - E2E_STACK_VERSION: "9.1.6"
-    # current stack version 9.2.2 is tested in all other tests no need to test it again
+    # current stack version 9.2.4 is tested in all other tests no need to test it again
     - E2E_STACK_VERSION: "8.19.7-SNAPSHOT"
     - E2E_STACK_VERSION: "9.3.0-SNAPSHOT"
 
@@ -65,6 +65,9 @@
     E2E_PROVIDER: ocp
   mixed:
     - DEPLOYER_CLIENT_VERSION: "4.20.4"
+      E2E_STACK_VERSION: "9.2.4"
+    - DEPLOYER_CLIENT_VERSION: "4.20.4"
+      E2E_STACK_VERSION: "9.3.0-SNAPSHOT"
 
 - label: eks-arm
   fixed:
