@@ -24,7 +24,7 @@ spec:
         checksum/mappings: {{ include (print $.Template.BasePath "/configmap-mappings.yaml") . | sha256sum }}
         checksum/files: {{ include (print $.Template.BasePath "/configmap-files.yaml") . | sha256sum }}
     spec:
-       automountServiceAccountToken: false  
+      automountServiceAccountToken: false
       containers:
         - name: wiremock
           image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
