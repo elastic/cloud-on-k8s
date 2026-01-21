@@ -82,6 +82,7 @@ func doRun(flags runFlags) error {
 			helper.deployTestSecrets,
 			helper.deploySecurityConstraints,
 			helper.deployMonitoring,
+			helper.deployWiremock,
 			helper.installOperatorUnderTest,
 			helper.waitForOperatorToBeReady,
 			helper.runTestsRemote,
@@ -464,6 +465,16 @@ func (h *helper) deployMonitoring() error {
 
 	log.Info("Deploying monitoring")
 	return h.kubectlApplyTemplateWithCleanup("config/e2e/monitoring.yaml", h.testContext)
+}
+
+func (h *helper) deployWiremock() error {
+	log.Info("Deploying wiremock for cloud-connected API mocking")
+
+	// Set the wiremock URL in the test context so tests can use it
+	h.testContext.WiremockURL = fmt.Sprintf("http://wiremock-%s.%s.svc.cluster.local:8080",
+		h.testRunName, h.testContext.E2ENamespace)
+
+	return h.kubectlApplyTemplateWithCleanup("config/e2e/wiremock.yaml", h.testContext)
 }
 
 func (h *helper) deployTestSecrets() error {

@@ -106,6 +106,16 @@ func (b Builder) WithNamespaceSelector(selector metav1.LabelSelector) Builder {
 	return b
 }
 
+// WithCloudConnectedAPIURL sets the cloud-connected-mode-api-url in the config secret.
+// This is used to point to the wiremock service for e2e testing.
+func (b Builder) WithCloudConnectedAPIURL(url string) Builder {
+	if b.ConfigSecret.StringData == nil {
+		b.ConfigSecret.StringData = make(map[string]string)
+	}
+	b.ConfigSecret.StringData["cloud-connected-mode-api-url"] = url
+	return b
+}
+
 func (b Builder) RuntimeObjects() []k8sclient.Object {
 	return []k8sclient.Object{
 		&b.ConfigSecret,
