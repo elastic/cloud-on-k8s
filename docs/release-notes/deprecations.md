@@ -19,7 +19,7 @@ Review the deprecated functionality for Elastic Cloud on Kubernetes. While depre
 
 ## 3.3.0 [elastic-cloud-kubernetes-330-deprecations]
 
-7.17.X core stack versions are deprecated as of 15 January 2026 and will be removed in a future release. Please see the [EOL policy](https://www.elastic.co/support/eol) for more details.
+7.17.X Elastic stack versions are deprecated as of 15 January 2026 and will be removed in a future release. Please see the [EOL policy](https://www.elastic.co/support/eol) for more details.
 
 ## 3.2.0 [elastic-cloud-kubernetes-320-deprecations]
 

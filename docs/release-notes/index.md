@@ -15,11 +15,11 @@ Review the changes, fixes, and more in each release of Elastic Cloud on Kubernet
 
 #### AutoOps Integration (Enterprise feature)
 
-ECK now offers integration with Elastic AutoOps allowing users to easily integrate one or more {{es}} clusters into the solution to gain insight into common issues. The documentation for [AutoOps](https://www.elastic.co/docs/deploy-manage/monitor/autoops) has more information.
+ECK now supports integration with Elastic AutoOps through a new `AutoOpsAgentPolicy` resource. This allows you to instrument multiple {{es}} clusters at once for automated health monitoring and performance recommendations. The [AutoOps documentation](https://www.elastic.co/docs/deploy-manage/monitor/autoops) provides more details.
 
 #### Elastic Package Registry Integration
 
-ECK now supports deploying and managing Elastic Package Registry (EPR) as a custom resource. This enables users to run their own package registry for {{product.fleet}}, allowing {{product.kibana}} to reference a self-hosted registry instead of the public registry. The [package registry documentation](docs-content://deploy-manage/deploy/cloud-on-k8s/epr) provide more details.
+ECK now supports deploying and managing Elastic Package Registry (EPR) through a new `PackageRegistry` custom resource. This is particularly useful for air-gapped environments, enabling {{product.kibana}} to reference a self-hosted registry instead of the public one. The [package registry documentation](docs-content://deploy-manage/deploy/cloud-on-k8s/epr) provides more details.
 
 #### Multiple Stack Configuration Policies composition support (Enterprise feature)
 
@@ -41,7 +41,7 @@ ECK now includes support for multiple Stack Config Policies targeting the same {
 - Do not set {{kib}} server.name [#8930](https://github.com/elastic/cloud-on-k8s/pull/8930) (issue: [#8929](https://github.com/elastic/cloud-on-k8s/issues/8929))
 - Do not write `elasticsearch.k8s.elastic.co/managed-remote-clusters` when not necessary [#8932](https://github.com/elastic/cloud-on-k8s/pull/8932) (issue: [#8781](https://github.com/elastic/cloud-on-k8s/issues/8781))
 - Cleanup orphaned secret mounts when removed from StackConfigPolicy [#8937](https://github.com/elastic/cloud-on-k8s/pull/8937) (issue: [#8921](https://github.com/elastic/cloud-on-k8s/issues/8921))
-- Stop logging an error when returning an error when performing a generic GET operation on a GVK [#8957](https://github.com/elastic/cloud-on-k8s/pull/8957)
+- Avoid duplicate error logigng for generate GET operations on a GVK [#8957](https://github.com/elastic/cloud-on-k8s/pull/8957)
 - Remove single master at a time upscale restriction [#8940](https://github.com/elastic/cloud-on-k8s/pull/8940) (issue: [#8939](https://github.com/elastic/cloud-on-k8s/issues/8939))
 - AutoOps: Ignore deprecated ES clusters [#9008](https://github.com/elastic/cloud-on-k8s/pull/9008) (issue: [#9000](https://github.com/elastic/cloud-on-k8s/issues/9000))
 - AutoOps: Require 9.2.1 for autoops agent [#9007](https://github.com/elastic/cloud-on-k8s/pull/9007) (issue: [#9000](https://github.com/elastic/cloud-on-k8s/issues/9000))
