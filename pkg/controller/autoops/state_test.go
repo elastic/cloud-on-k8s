@@ -19,119 +19,102 @@ func TestState_UpdateWithPhase(t *testing.T) {
 		initialPhase  autoopsv1alpha1.PolicyPhase
 		updatePhase   autoopsv1alpha1.PolicyPhase
 		expectedPhase autoopsv1alpha1.PolicyPhase
-		shouldUpdate  bool
 	}{
 		{
 			name:          "empty phase can transition to ReadyPhase",
 			initialPhase:  "",
 			updatePhase:   autoopsv1alpha1.ReadyPhase,
 			expectedPhase: autoopsv1alpha1.ReadyPhase,
-			shouldUpdate:  true,
 		},
 		{
 			name:          "empty phase can transition to ErrorPhase",
 			initialPhase:  "",
 			updatePhase:   autoopsv1alpha1.ErrorPhase,
 			expectedPhase: autoopsv1alpha1.ErrorPhase,
-			shouldUpdate:  true,
 		},
 		{
 			name:          "empty phase can transition to ApplyingChangesPhase",
 			initialPhase:  "",
 			updatePhase:   autoopsv1alpha1.ApplyingChangesPhase,
 			expectedPhase: autoopsv1alpha1.ApplyingChangesPhase,
-			shouldUpdate:  true,
 		},
 		{
 			name:          "empty phase can transition to InvalidPhase",
 			initialPhase:  "",
 			updatePhase:   autoopsv1alpha1.InvalidPhase,
 			expectedPhase: autoopsv1alpha1.InvalidPhase,
-			shouldUpdate:  true,
 		},
 		{
 			name:          "empty phase can transition to NoResourcesPhase",
 			initialPhase:  "",
 			updatePhase:   autoopsv1alpha1.NoResourcesPhase,
 			expectedPhase: autoopsv1alpha1.NoResourcesPhase,
-			shouldUpdate:  true,
 		},
 		{
 			name:          "InvalidPhase should not be overwritten by ReadyPhase",
 			initialPhase:  autoopsv1alpha1.InvalidPhase,
 			updatePhase:   autoopsv1alpha1.ReadyPhase,
 			expectedPhase: autoopsv1alpha1.InvalidPhase,
-			shouldUpdate:  false,
 		},
 		{
 			name:          "InvalidPhase should not be overwritten by ErrorPhase",
 			initialPhase:  autoopsv1alpha1.InvalidPhase,
 			updatePhase:   autoopsv1alpha1.ErrorPhase,
 			expectedPhase: autoopsv1alpha1.InvalidPhase,
-			shouldUpdate:  false,
 		},
 		{
 			name:          "InvalidPhase should not be overwritten by ApplyingChangesPhase",
 			initialPhase:  autoopsv1alpha1.InvalidPhase,
 			updatePhase:   autoopsv1alpha1.ApplyingChangesPhase,
 			expectedPhase: autoopsv1alpha1.InvalidPhase,
-			shouldUpdate:  false,
 		},
 		{
 			name:          "InvalidPhase should not be overwritten by NoResourcesPhase",
 			initialPhase:  autoopsv1alpha1.InvalidPhase,
 			updatePhase:   autoopsv1alpha1.NoResourcesPhase,
 			expectedPhase: autoopsv1alpha1.InvalidPhase,
-			shouldUpdate:  false,
 		},
 		{
 			name:          "ErrorPhase should not be overwritten by ApplyingChangesPhase",
 			initialPhase:  autoopsv1alpha1.ErrorPhase,
 			updatePhase:   autoopsv1alpha1.ApplyingChangesPhase,
 			expectedPhase: autoopsv1alpha1.ErrorPhase,
-			shouldUpdate:  false,
 		},
 		{
 			name:          "NoResourcesPhase should not be overwritten by ApplyingChangesPhase",
 			initialPhase:  autoopsv1alpha1.NoResourcesPhase,
 			updatePhase:   autoopsv1alpha1.ApplyingChangesPhase,
 			expectedPhase: autoopsv1alpha1.NoResourcesPhase,
-			shouldUpdate:  false,
 		},
 		{
 			name:          "ReadyPhase can be overwritten by ApplyingChangesPhase",
 			initialPhase:  autoopsv1alpha1.ReadyPhase,
 			updatePhase:   autoopsv1alpha1.ApplyingChangesPhase,
 			expectedPhase: autoopsv1alpha1.ApplyingChangesPhase,
-			shouldUpdate:  true,
 		},
 		{
 			name:          "ErrorPhase should not be overwritten by ReadyPhase",
 			initialPhase:  autoopsv1alpha1.ErrorPhase,
 			updatePhase:   autoopsv1alpha1.ReadyPhase,
 			expectedPhase: autoopsv1alpha1.ErrorPhase,
-			shouldUpdate:  false,
 		},
 		{
 			name:          "NoResourcesPhase should not be overwritten by ReadyPhase",
 			initialPhase:  autoopsv1alpha1.NoResourcesPhase,
 			updatePhase:   autoopsv1alpha1.ReadyPhase,
 			expectedPhase: autoopsv1alpha1.NoResourcesPhase,
-			shouldUpdate:  false,
 		},
 		{
 			name:          "ApplyingChangesPhase can transition to ReadyPhase",
 			initialPhase:  autoopsv1alpha1.ApplyingChangesPhase,
 			updatePhase:   autoopsv1alpha1.ReadyPhase,
 			expectedPhase: autoopsv1alpha1.ReadyPhase,
-			shouldUpdate:  true,
 		},
 		{
 			name:          "NoResourcesPhase should not be overwritten by ErrorPhase",
 			initialPhase:  autoopsv1alpha1.NoResourcesPhase,
 			updatePhase:   autoopsv1alpha1.ErrorPhase,
 			expectedPhase: autoopsv1alpha1.NoResourcesPhase,
-			shouldUpdate:  false,
 		},
 	}
 

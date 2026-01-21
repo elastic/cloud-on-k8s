@@ -7,8 +7,6 @@ package v1alpha1
 import (
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-
-	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/set"
 )
 
 const (
@@ -119,12 +117,14 @@ const (
 	ErrorPhase             PolicyPhase = "Error"
 )
 
-// RequeuePhases is a set of phases that require a requeue.
-var RequeuePhases = set.Make(
-	string(ApplyingChangesPhase),
-	string(ResourcesNotReadyPhase),
-	string(ErrorPhase),
-)
+func (p PolicyPhase) IsRequeuePhase() bool {
+	switch p {
+	case ApplyingChangesPhase, ResourcesNotReadyPhase, ErrorPhase:
+		return true
+	default:
+		return false
+	}
+}
 
 // IsMarkedForDeletion returns true if the AutoOpsAgentPolicy resource is going to be deleted.
 func (p *AutoOpsAgentPolicy) IsMarkedForDeletion() bool {
