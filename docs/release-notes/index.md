@@ -19,7 +19,7 @@ ECK now supports integration with Elastic AutoOps through a new `AutoOpsAgentPol
 
 #### Elastic Package Registry Integration
 
-ECK now supports deploying and managing Elastic Package Registry (EPR) through a new `PackageRegistry` custom resource. This is particularly useful for air-gapped environments, enabling {{product.kibana}} to reference a self-hosted registry instead of the public one. The [package registry documentation](docs-content://deploy-manage/deploy/cloud-on-k8s/epr) provides more details.
+ECK now supports deploying and managing Elastic Package Registry (EPR) through a new `PackageRegistry` custom resource. This is particularly useful for air-gapped environments, enabling {{product.kibana}} to reference a self-hosted registry instead of the public one. The [package registry documentation](docs-content://deploy-manage/deploy/cloud-on-k8s/package-registry) provides more details.
 
 #### Multiple Stack Configuration Policies composition support (Enterprise feature)
 
@@ -113,6 +113,7 @@ ECK now supports configuring the length of the generated password for the admini
 ### Miscellaneous  [elastic-cloud-kubernetes-320-miscellaneous]
 
 :::{dropdown} Updated dependencies
+
 - Go 1.24.5 => 1.25.2
 - github.com/gkampitakis/go-snaps v0.5.13 => v0.5.15
 - github.com/hashicorp/vault/api v1.20.0 => v1.22.0
@@ -168,6 +169,7 @@ To reduce the attack surface and improve overall security UBI images are now bas
 ### Miscellaneous [elastic-cloud-kubernetes-310-miscellaneous]
 
 :::{dropdown} Updated dependencies
+
 - Update Go version to 1.24.5 [#8745](https://github.com/elastic/cloud-on-k8s/pull/8745)
 - chore(deps): update registry.access.redhat.com/ubi9/ubi-micro docker tag to v9.6-1750858477 [#8711](https://github.com/elastic/cloud-on-k8s/pull/8711)
 - fix(deps): update k8s to v0.33.2 [#8699](https://github.com/elastic/cloud-on-k8s/pull/8699)
@@ -184,9 +186,11 @@ To reduce the attack surface and improve overall security UBI images are now bas
 ## 3.0.0 [elastic-cloud-kubernetes-300-release-notes]
 
 ### Release Highlights
+
 - ECK 3.0.0 adds support for Elastic Stack version 9.0.0. Elastic Stack version 9.0.0 is not supported on ECK operators running versions earlier than 3.0.0.
 
 ### Features and enhancements [elastic-cloud-kubernetes-300-features-enhancements]
+
 - Add support for defining `dnsPolicy` and `dnsConfig` options for the ECK operator StatefulSet [#7999](https://github.com/elastic/cloud-on-k8s/pull/7999)
 - Config: Allow escaping dots in keys via `[unsplit.key]` syntax [#8512](https://github.com/elastic/cloud-on-k8s/pull/8512) (issue: [#8499](https://github.com/elastic/cloud-on-k8s/issues/8499))
 - Enable copying of ECK images to Amazon ECR to make it easier for users to find our own ECK operator in the AWS marketplace [#8427](https://github.com/elastic/cloud-on-k8s/pull/8427)
@@ -200,9 +204,11 @@ To reduce the attack surface and improve overall security UBI images are now bas
 - Validate updates to 9.0 go through 8.18 [#8559](https://github.com/elastic/cloud-on-k8s/pull/8559) (issue: [#8557](https://github.com/elastic/cloud-on-k8s/issues/8557))
 
 ### Fixes [elastic-cloud-kubernetes-300-fixes]
+
 - Correctly parse managed namespaces when specified as an environment variable [#8513](https://github.com/elastic/cloud-on-k8s/pull/8513) (issue: [#7542](https://github.com/elastic/cloud-on-k8s/issues/7542))
 
 ### Documentation improvements [elastic-cloud-kubernetes-300-documentation-improvements]
+
 - [DOCS] Updates release notes title ([#8599](https://github.com/elastic/cloud-on-k8s/pull/8599))
 - Updates for Istio 1.24 ([#8476](https://github.com/elastic/cloud-on-k8s/pull/8476))
 - Fix unresolved attribute in ECK Quickstart ([#8432](https://github.com/elastic/cloud-on-k8s/pull/8432))
@@ -213,6 +219,7 @@ To reduce the attack surface and improve overall security UBI images are now bas
 ### Miscellaneous [elastic-cloud-kubernetes-300-miscellaneous]
 
 :::{dropdown} Updated dependencies
+
 - chore(deps): update dependency go to v1.24.1 ([#8454](https://github.com/elastic/cloud-on-k8s/pull/8454))
 - chore(deps): update docker.elastic.co/wolfi/go docker tag to v1.24 ([#8453](https://github.com/elastic/cloud-on-k8s/pull/8453))
 - chore(deps): update registry.access.redhat.com/ubi9/ubi-minimal docker tag to v9.5-1741850109 ([#8544](https://github.com/elastic/cloud-on-k8s/pull/8544))
@@ -236,3 +243,4 @@ To reduce the attack surface and improve overall security UBI images are now bas
 - fix(deps): update module helm.sh/helm/v3 to v3.17.1 ([#8505](https://github.com/elastic/cloud-on-k8s/pull/8505))
 - Update module github.com/gkampitakis/go-snaps to v0.5.10 ([#8467](https://github.com/elastic/cloud-on-k8s/pull/8467))
 :::
+
