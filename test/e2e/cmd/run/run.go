@@ -479,7 +479,36 @@ func (h *helper) deployWiremock() error {
 	log.Info("Deploying wiremock for cloud-connected API mocking")
 
 	// WiremockURL is already set in initTestContext via wiremockURL(h)
-	return h.kubectlApplyTemplateWithCleanup("config/e2e/wiremock.yaml", h.testContext)
+	if err := h.kubectlApplyTemplateWithCleanup("config/e2e/wiremock.yaml", h.testContext); err != nil {
+		return err
+	}
+
+	// Wait for wiremock pod to be ready
+	log.Info("Waiting for wiremock pod to be ready")
+	client, err := h.createKubeClient()
+	if err != nil {
+		return errors.Wrap(err, "failed to create kubernetes client")
+	}
+
+	deploymentName := fmt.Sprintf("wiremock-%s", h.testRunName)
+	return retry.UntilSuccess(func() error {
+		pods, err := client.CoreV1().Pods(h.testContext.E2ENamespace).List(context.Background(), metav1.ListOptions{
+			LabelSelector: fmt.Sprintf("app.kubernetes.io/instance=%s", deploymentName),
+		})
+		if err != nil {
+			return err
+		}
+		if len(pods.Items) == 0 {
+			return fmt.Errorf("no wiremock pods found")
+		}
+		for _, pod := range pods.Items {
+			if !k8s.IsPodReady(pod) {
+				return fmt.Errorf("wiremock pod `%s` not ready", pod.Name)
+			}
+		}
+		log.Info("Wiremock pod is ready")
+		return nil
+	}, 2*time.Minute, 5*time.Second)
 }
 
 func (h *helper) deployTestSecrets() error {
