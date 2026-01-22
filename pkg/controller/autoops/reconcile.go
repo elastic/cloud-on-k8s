@@ -134,13 +134,11 @@ func (r *AgentPolicyReconciler) internalReconcile(
 		results.WithError(err)
 	}
 
+	state.UpdateResources(len(accessibleClusters))
 	if len(accessibleClusters) == 0 {
 		log.Info("No accessible Elasticsearch resources found for the AutoOpsAgentPolicy")
-		state.UpdateResources(0)
 		return results
 	}
-
-	state.UpdateResources(len(accessibleClusters))
 
 	for _, es := range accessibleClusters {
 		log := log.WithValues("es_namespace", es.Namespace, "es_name", es.Name)
