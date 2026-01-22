@@ -32,6 +32,7 @@ type ResourceGeneration struct {
 }
 
 // NewExpectedGenerations returns an initialized ExpectedGenerations.
+// The object parameter serves as a template for empty object creation, using DeepCopyObject() before retrieving objects from the API server.
 func NewExpectedGenerations(client k8s.Client, object client.Object) *ExpectedGenerations {
 	return &ExpectedGenerations{
 		object:      object,
