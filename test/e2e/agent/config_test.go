@@ -13,6 +13,7 @@ import (
 	"github.com/ghodss/yaml"
 
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	agentv1alpha1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/agent/v1alpha1"
@@ -160,7 +161,17 @@ func TestFleetMode(t *testing.T) {
 			WithOpenShiftRoles(test.UseSCCRole).
 			WithFleetMode().
 			WithKibanaRef(kbBuilder.Ref()).
-			WithFleetServerRef(fleetServerBuilder.Ref())
+			WithFleetServerRef(fleetServerBuilder.Ref()).
+			WithResources(corev1.ResourceRequirements{
+				Requests: corev1.ResourceList{
+					corev1.ResourceCPU:    resource.MustParse("1000m"),
+					corev1.ResourceMemory: resource.MustParse("1Gi"),
+				},
+				Limits: corev1.ResourceList{
+					corev1.ResourceCPU:    resource.MustParse("1000m"),
+					corev1.ResourceMemory: resource.MustParse("1Gi"),
+				},
+			})
 
 		fleetServerBuilder = agent.ApplyYamls(t, fleetServerBuilder, "", E2EAgentFleetModePodTemplate)
 		agentBuilder = agent.ApplyYamls(t, agentBuilder, "", E2EAgentFleetModePodTemplate)
