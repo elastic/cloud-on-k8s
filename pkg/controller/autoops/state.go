@@ -37,12 +37,12 @@ func newState(policy autoopsv1alpha1.AutoOpsAgentPolicy) *State {
 
 // phasePriority maps the phase with it's priority weight.
 var phasePriority = map[autoopsv1alpha1.PolicyPhase]int{
-	autoopsv1alpha1.ApplyingChangesPhase:   1, // ApplyingChangesPhase can be replaced by ReadyPhase
-	autoopsv1alpha1.ReadyPhase:             1, // ... and vice versa.
-	autoopsv1alpha1.ResourcesNotReadyPhase: 2,
-	autoopsv1alpha1.ErrorPhase:             3,
-	autoopsv1alpha1.NoResourcesPhase:       4,
-	autoopsv1alpha1.InvalidPhase:           5, // Worst - terminal
+	autoopsv1alpha1.ApplyingChangesPhase:            1, // ApplyingChangesPhase can be replaced by ReadyPhase
+	autoopsv1alpha1.ReadyPhase:                      1, // ... and vice versa.
+	autoopsv1alpha1.MonitoredResourcesNotReadyPhase: 2,
+	autoopsv1alpha1.ErrorPhase:                      3,
+	autoopsv1alpha1.NoResourcesPhase:                4,
+	autoopsv1alpha1.InvalidPhase:                    5, // Worst - terminal
 }
 
 // UpdateWithPhase updates the phase of the AutoOpsAgentPolicy status.

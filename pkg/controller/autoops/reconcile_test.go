@@ -221,7 +221,7 @@ func TestAutoOpsAgentPolicyReconciler_internalReconcile(t *testing.T) {
 			wantStatus: autoopsv1alpha1.AutoOpsAgentPolicyStatus{
 				Resources: 1,
 				Ready:     0,
-				Phase:     autoopsv1alpha1.ResourcesNotReadyPhase,
+				Phase:     autoopsv1alpha1.MonitoredResourcesNotReadyPhase,
 			},
 			wantResults: reconcile.Result{RequeueAfter: 10 * time.Second},
 		},
@@ -335,7 +335,7 @@ func TestAutoOpsAgentPolicyReconciler_internalReconcile(t *testing.T) {
 				Resources: 2,
 				Ready:     0, // Deployment won't be ready yet.
 				Errors:    0,
-				Phase:     autoopsv1alpha1.ResourcesNotReadyPhase, // es-2 is not ready
+				Phase:     autoopsv1alpha1.MonitoredResourcesNotReadyPhase, // es-2 is not ready
 			},
 			wantResults: reconcile.Result{RequeueAfter: 10 * time.Second},
 		},
