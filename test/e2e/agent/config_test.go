@@ -162,6 +162,8 @@ func TestFleetMode(t *testing.T) {
 			WithFleetMode().
 			WithKibanaRef(kbBuilder.Ref()).
 			WithFleetServerRef(fleetServerBuilder.Ref()).
+			// Override the default resources, as we are seeing instances where 'elastic-agent diagnostics'
+			// is not completing on test failures, which is causing eck-diagnostics to not complete as well.
 			WithResources(corev1.ResourceRequirements{
 				Requests: corev1.ResourceList{
 					corev1.ResourceCPU:    resource.MustParse("1000m"),
