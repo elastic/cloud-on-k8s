@@ -54,7 +54,8 @@ print-%:
 GO_LDFLAGS := -X github.com/elastic/cloud-on-k8s/v3/pkg/about.version=$(VERSION) \
 	-X github.com/elastic/cloud-on-k8s/v3/pkg/about.buildHash=$(SHA1) \
 	-X github.com/elastic/cloud-on-k8s/v3/pkg/about.buildDate=$(shell date -u +'%Y-%m-%dT%H:%M:%SZ') \
-	-X github.com/elastic/cloud-on-k8s/v3/pkg/about.buildSnapshot=$(SNAPSHOT)
+	-X github.com/elastic/cloud-on-k8s/v3/pkg/about.buildSnapshot=$(SNAPSHOT) \
+	-s -w
 
 # options for 'go test'. for instance, set to "-race" to enable the race checker
 TEST_OPTS ?=
