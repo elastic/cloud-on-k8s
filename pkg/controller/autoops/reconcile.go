@@ -162,7 +162,7 @@ func (r *AgentPolicyReconciler) internalReconcile(
 
 		if es.Status.Phase != esv1.ElasticsearchReadyPhase {
 			log.V(1).Info("Skipping ES cluster that is not ready")
-			state.UpdateWithPhase(autoopsv1alpha1.MonitoredResourcesNotReadyPhase)
+			state.UpdateWithPhase(autoopsv1alpha1.ResourcesNotReadyPhase)
 			results = results.WithRequeue(reconciler.DefaultRequeue)
 			continue
 		}

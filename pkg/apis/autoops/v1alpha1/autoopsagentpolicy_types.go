@@ -109,18 +109,18 @@ type AutoOpsAgentPolicyStatus struct {
 type PolicyPhase string
 
 const (
-	ReadyPhase                      PolicyPhase = "Ready"
-	ApplyingChangesPhase            PolicyPhase = "ApplyingChanges"
-	InvalidPhase                    PolicyPhase = "Invalid"
-	NoResourcesPhase                PolicyPhase = "NoResources"
-	MonitoredResourcesNotReadyPhase PolicyPhase = "MonitoredResourcesNotReady"
-	ErrorPhase                      PolicyPhase = "Error"
+	ReadyPhase             PolicyPhase = "Ready"
+	ApplyingChangesPhase   PolicyPhase = "ApplyingChanges"
+	InvalidPhase           PolicyPhase = "Invalid"
+	NoResourcesPhase       PolicyPhase = "NoResources"
+	ResourcesNotReadyPhase PolicyPhase = "ResourcesNotReady"
+	ErrorPhase             PolicyPhase = "Error"
 )
 
 // IsRequeuePhase returns whether the phase requires a requeue.
 func (p PolicyPhase) IsRequeuePhase() bool {
 	switch p {
-	case ApplyingChangesPhase, MonitoredResourcesNotReadyPhase, ErrorPhase:
+	case ApplyingChangesPhase, ResourcesNotReadyPhase, ErrorPhase:
 		return true
 	default:
 		return false
