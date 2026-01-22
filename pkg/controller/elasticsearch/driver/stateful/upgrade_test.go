@@ -559,7 +559,7 @@ func Test_Driver_maybeCompleteNodeUpgrades(t *testing.T) {
 				BaseDriver: driver.BaseDriver{Parameters: driver.Parameters{
 					Client:         client,
 					ES:             tt.es,
-					Expectations:   expectations.NewExpectations(client),
+					Expectations:   expectations.NewExpectations(client, &appsv1.StatefulSet{}),
 					ReconcileState: reconcileState,
 				}},
 			}

@@ -175,7 +175,7 @@ func TestHandleDownscale(t *testing.T) {
 	reconcileState := reconcile.MustNewState(esv1.Elasticsearch{})
 	downscaleCtx := downscaleContext{
 		k8sClient:      k8sClient,
-		expectations:   expectations.NewExpectations(k8sClient),
+		expectations:   expectations.NewExpectations(k8sClient, &appsv1.StatefulSet{}),
 		reconcileState: reconcileState,
 		nodeShutdown:   shutdown.WithObserver(migration.NewShardMigration(es, esClient, shardLister), reconcileState),
 		esClient:       esClient,
@@ -849,7 +849,7 @@ func Test_attemptDownscale(t *testing.T) {
 			esState := reconcile.MustNewState(esv1.Elasticsearch{})
 			downscaleCtx := downscaleContext{
 				k8sClient:      k8sClient,
-				expectations:   expectations.NewExpectations(k8sClient),
+				expectations:   expectations.NewExpectations(k8sClient, &appsv1.StatefulSet{}),
 				reconcileState: reconcile.MustNewState(esv1.Elasticsearch{}),
 				nodeShutdown:   shutdown.WithObserver(migration.NewShardMigration(es, &fakeESClient{}, migration.NewFakeShardLister(esclient.Shards{})), esState),
 				esClient:       &fakeESClient{},
@@ -881,7 +881,7 @@ func Test_doDownscale_updateReplicasAndExpectations(t *testing.T) {
 	k8sClient := k8s.NewFakeClient(&sset1, &sset2)
 	downscaleCtx := downscaleContext{
 		k8sClient:    k8sClient,
-		expectations: expectations.NewExpectations(k8sClient),
+		expectations: expectations.NewExpectations(k8sClient, &appsv1.StatefulSet{}),
 		esClient:     &fakeESClient{},
 		parentCtx:    context.Background(),
 	}
@@ -983,7 +983,7 @@ func Test_doDownscale_zen2VotingConfigExclusions(t *testing.T) {
 			esClient := &fakeESClient{}
 			downscaleCtx := downscaleContext{
 				k8sClient:      k8sClient,
-				expectations:   expectations.NewExpectations(k8sClient),
+				expectations:   expectations.NewExpectations(k8sClient, &appsv1.StatefulSet{}),
 				reconcileState: reconcile.MustNewState(esv1.Elasticsearch{}),
 				esClient:       esClient,
 				es:             es,

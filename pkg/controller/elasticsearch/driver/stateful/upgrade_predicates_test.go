@@ -11,6 +11,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	appsv1 "k8s.io/api/apps/v1"
 	crlog "sigs.k8s.io/controller-runtime/pkg/log"
 
 	esv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/elasticsearch/v1"
@@ -232,7 +233,7 @@ func TestUpgradePodsDeletion_WithNodeTypeMutations(t *testing.T) {
 			esClient:        esClient,
 			shardLister:     migration.NewFakeShardLister(client.Shards{}),
 			esState:         esState,
-			expectations:    expectations.NewExpectations(k8sClient),
+			expectations:    expectations.NewExpectations(k8sClient, &appsv1.StatefulSet{}),
 			reconcileState:  reconcile.MustNewState(esv1.Elasticsearch{}),
 			expectedMasters: tt.fields.upgradeTestPods.toMasters(tt.fields.mutation),
 			podsToUpgrade:   tt.fields.upgradeTestPods.toUpgrade(),
@@ -1151,7 +1152,7 @@ func TestUpgradePodsDeletion_Delete(t *testing.T) {
 				esClient:        esClient,
 				shardLister:     tt.fields.shardLister,
 				esState:         esState,
-				expectations:    expectations.NewExpectations(k8sClient),
+				expectations:    expectations.NewExpectations(k8sClient, &appsv1.StatefulSet{}),
 				expectedMasters: tt.fields.upgradeTestPods.toMasters(noMutation),
 				podsToUpgrade:   tt.fields.upgradeTestPods.toUpgrade(),
 				healthyPods:     tt.fields.upgradeTestPods.toHealthyPods(),

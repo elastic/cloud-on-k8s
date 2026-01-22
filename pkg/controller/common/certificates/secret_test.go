@@ -5,12 +5,25 @@
 package certificates
 
 import (
+	"context"
+	cryptorand "crypto/rand"
+	"crypto/rsa"
+	"crypto/x509"
+	"crypto/x509/pkix"
 	"os"
 	"path/filepath"
 	"reflect"
 	"testing"
+	"time"
 
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	v1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/types"
+
+	commonv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/common/v1"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/k8s"
 )
 
 func TestCertificatesSecret(t *testing.T) {
@@ -258,4 +271,143 @@ func loadFileBytes(fileName string) []byte {
 	}
 
 	return contents
+}
+
+func Test_validCustomCertificatesOrNil_WithCustomCA(t *testing.T) {
+	owner := types.NamespacedName{Namespace: "ns", Name: "es"}
+
+	// Helper function to create a secret with custom CA
+	createCustomCASecret := func(t *testing.T, ca *CA, secretName string) *v1.Secret {
+		t.Helper()
+		pemKey, err := EncodePEMPrivateKey(ca.PrivateKey)
+		require.NoError(t, err)
+		return &v1.Secret{
+			ObjectMeta: metav1.ObjectMeta{
+				Namespace: owner.Namespace,
+				Name:      secretName,
+			},
+			Data: map[string][]byte{
+				CAFileName:    EncodePEMCert(ca.Cert.Raw),
+				CAKeyFileName: pemKey,
+			},
+		}
+	}
+
+	tests := []struct {
+		name     string
+		customCA func(t *testing.T) *CA
+		wantErr  bool
+	}{
+		{
+			name: "valid custom CA should pass validation",
+			customCA: func(t *testing.T) *CA {
+				t.Helper()
+				testCA, err := NewSelfSignedCA(CABuilderOptions{})
+				require.NoError(t, err)
+				return testCA
+			},
+			wantErr: false,
+		},
+		{
+			name: "expired custom CA should fail validation",
+			customCA: func(t *testing.T) *CA {
+				t.Helper()
+				// Create a CA that expired 1 hour ago
+				expiredTime := -1 * time.Hour
+				testCA, err := NewSelfSignedCA(CABuilderOptions{
+					ExpireIn: &expiredTime,
+				})
+				require.NoError(t, err)
+				return testCA
+			},
+			wantErr: true,
+		},
+		{
+			name: "not-yet-valid custom CA should fail validation",
+			customCA: func(t *testing.T) *CA {
+				t.Helper()
+				// Create a CA manually with NotBefore in the future
+				privateKey, err := rsa.GenerateKey(cryptorand.Reader, 2048)
+				require.NoError(t, err)
+				serial, err := cryptorand.Int(cryptorand.Reader, SerialNumberLimit)
+				require.NoError(t, err)
+
+				certificateTemplate := x509.Certificate{
+					SerialNumber:          serial,
+					Subject:               pkix.Name{CommonName: "test-ca"},
+					NotBefore:             time.Now().Add(1 * time.Hour), // Not yet valid
+					NotAfter:              time.Now().Add(2 * time.Hour),
+					SignatureAlgorithm:    x509.SHA256WithRSA,
+					IsCA:                  true,
+					BasicConstraintsValid: true,
+					KeyUsage:              x509.KeyUsageDigitalSignature | x509.KeyUsageCertSign,
+					ExtKeyUsage:           []x509.ExtKeyUsage{x509.ExtKeyUsageServerAuth, x509.ExtKeyUsageClientAuth},
+				}
+
+				certData, err := x509.CreateCertificate(cryptorand.Reader, &certificateTemplate, &certificateTemplate, privateKey.Public(), privateKey)
+				require.NoError(t, err)
+				cert, err := x509.ParseCertificate(certData)
+				require.NoError(t, err)
+
+				return NewCA(privateKey, cert)
+			},
+			wantErr: true,
+		},
+		{
+			name: "custom CA with mismatched keys should fail validation",
+			customCA: func(t *testing.T) *CA {
+				t.Helper()
+				testCA, err := NewSelfSignedCA(CABuilderOptions{})
+				require.NoError(t, err)
+				// Generate a different private key
+				privateKey2, err := rsa.GenerateKey(cryptorand.Reader, 2048)
+				require.NoError(t, err)
+				testCA.PrivateKey = privateKey2
+				return testCA
+			},
+			wantErr: true,
+		},
+		{
+			name: "custom CA expiring soon should log warning but succeed",
+			customCA: func(t *testing.T) *CA {
+				t.Helper()
+				// Create a CA that expires soon (within DefaultRotateBefore)
+				shortValidity := DefaultRotateBefore / 2
+				testCA, err := NewSelfSignedCA(CABuilderOptions{
+					ExpireIn: &shortValidity,
+				})
+				require.NoError(t, err)
+				return testCA
+			},
+			wantErr: false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			customCA := tt.customCA(t)
+			customCASecretName := "custom-ca-secret"
+
+			// Create the custom CA secret
+			customCASecret := createCustomCASecret(t, customCA, customCASecretName)
+			c := k8s.NewFakeClient(customCASecret)
+
+			tlsOptions := commonv1.TLSOptions{
+				Certificate: commonv1.SecretRef{
+					SecretName: customCASecretName,
+				},
+			}
+
+			certSecret, err := validCustomCertificatesOrNil(context.Background(), c, owner, tlsOptions)
+
+			if tt.wantErr {
+				assert.Error(t, err, "expected error from validCustomCertificatesOrNil")
+				assert.Nil(t, certSecret, "certSecret should be nil on error")
+			} else {
+				assert.NoError(t, err, "expected no error from validCustomCertificatesOrNil")
+				assert.NotNil(t, certSecret, "certSecret should not be nil on success")
+				assert.True(t, certSecret.HasCAPrivateKey(), "certSecret should have CA private key")
+			}
+		})
+	}
 }

@@ -20,7 +20,7 @@ Supported versions:
 *  Kubernetes 1.31-1.35
 *  OpenShift 4.16-4.20
 *  Elasticsearch, Kibana, APM Server: 8+, 9+
-*  Enterprise Search: 7.7+, 8+
+*  Enterprise Search: 8+
 *  Beats: 8+, 9+
 *  Elastic Agent: 8+, 9+ (Fleet, Standalone)
 *  Elastic Maps Server: 8+, 9+

@@ -112,7 +112,7 @@ func TestHandleUpscaleAndSpecChanges(t *testing.T) {
 	ctx := upscaleCtx{
 		k8sClient:    k8sClient,
 		es:           es,
-		expectations: expectations.NewExpectations(k8sClient),
+		expectations: expectations.NewExpectations(k8sClient, &appsv1.StatefulSet{}),
 		parentCtx:    context.Background(),
 	}
 	expectedResources := nodespec.ResourcesList{
@@ -313,7 +313,7 @@ func TestHandleUpscaleAndSpecChanges_PVCResize(t *testing.T) {
 	ctx := upscaleCtx{
 		k8sClient:    k8sClient,
 		es:           es,
-		expectations: expectations.NewExpectations(k8sClient),
+		expectations: expectations.NewExpectations(k8sClient, &appsv1.StatefulSet{}),
 		parentCtx:    context.Background(),
 	}
 
@@ -540,7 +540,7 @@ func Test_adjustResources(t *testing.T) {
 				parentCtx:    context.Background(),
 				es:           tt.args.es,
 				k8sClient:    k8sClient,
-				expectations: expectations.NewExpectations(k8sClient),
+				expectations: expectations.NewExpectations(k8sClient, &appsv1.StatefulSet{}),
 			}
 			got, err := adjustResources(ctx, tt.args.actualStatefulSets, tt.args.expectedResources)
 			require.NoError(t, err)
@@ -571,7 +571,7 @@ func TestHandleUpscaleAndSpecChanges_VersionUpgradeDataFirstFlow(t *testing.T) {
 	ctx := upscaleCtx{
 		k8sClient:    k8sClient,
 		es:           es,
-		expectations: expectations.NewExpectations(k8sClient),
+		expectations: expectations.NewExpectations(k8sClient, &appsv1.StatefulSet{}),
 		parentCtx:    context.Background(),
 	}
 
