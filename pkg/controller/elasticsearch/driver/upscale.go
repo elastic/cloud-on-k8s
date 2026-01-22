@@ -311,7 +311,7 @@ func findPendingNonMasterStatefulSetUpgrades(
 	targetVersion version.Version,
 	expectations *expectations.Expectations,
 ) ([]appsv1.StatefulSet, error) {
-	pendingStatefulSets, err := expectations.ExpectedStatefulSetUpdates.PendingGenerations()
+	pendingStatefulSets, err := expectations.PendingGenerations()
 	if err != nil {
 		return nil, err
 	}

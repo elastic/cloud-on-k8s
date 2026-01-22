@@ -9,6 +9,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/require"
+	appsv1 "k8s.io/api/apps/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/utils/ptr"
 
@@ -27,7 +28,7 @@ func Test_defaultDriver_expectationSatisfied(t *testing.T) {
 		},
 	}
 	d := &defaultDriver{DefaultDriverParameters{
-		Expectations: expectations.NewExpectations(client),
+		Expectations: expectations.NewExpectations(client, &appsv1.StatefulSet{}),
 		Client:       client,
 		ES:           es,
 	}}
@@ -42,7 +43,7 @@ func Test_defaultDriver_expectationSatisfied(t *testing.T) {
 	// a sset generation is expected
 	statefulSet := sset.TestSset{Namespace: es.Namespace, Name: "sset", ClusterName: es.Name}.Build()
 	statefulSet.Generation = 123
-	d.Expectations.ExpectGeneration(statefulSet)
+	d.Expectations.ExpectGeneration(&statefulSet)
 	// but not satisfied yet
 	statefulSet.Generation = 122
 	require.NoError(t, client.Create(context.Background(), &statefulSet))

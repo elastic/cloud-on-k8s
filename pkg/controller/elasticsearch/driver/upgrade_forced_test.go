@@ -9,6 +9,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/require"
+	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	crclient "sigs.k8s.io/controller-runtime/pkg/client"
 
@@ -169,7 +170,7 @@ func Test_defaultDriver_maybeForceUpgradePods(t *testing.T) {
 			d := &defaultDriver{
 				DefaultDriverParameters: DefaultDriverParameters{
 					Client:         k8sClient,
-					Expectations:   expectations.NewExpectations(k8sClient),
+					Expectations:   expectations.NewExpectations(k8sClient, &appsv1.StatefulSet{}),
 					ReconcileState: reconcile.MustNewState(esv1.Elasticsearch{}),
 				},
 			}

@@ -558,7 +558,7 @@ func Test_defaultDriver_maybeCompleteNodeUpgrades(t *testing.T) {
 				DefaultDriverParameters: DefaultDriverParameters{
 					Client:         client,
 					ES:             tt.es,
-					Expectations:   expectations.NewExpectations(client),
+					Expectations:   expectations.NewExpectations(client, &appsv1.StatefulSet{}),
 					ReconcileState: reconcileState,
 				},
 			}
