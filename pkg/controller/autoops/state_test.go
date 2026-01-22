@@ -47,8 +47,8 @@ func TestState_UpdateWithPhase(t *testing.T) {
 		{
 			name:          "empty phase can transition to NoResourcesPhase",
 			initialPhase:  "",
-			updatePhase:   autoopsv1alpha1.NoResourcesPhase,
-			expectedPhase: autoopsv1alpha1.NoResourcesPhase,
+			updatePhase:   autoopsv1alpha1.NoMonitoredResourcesPhase,
+			expectedPhase: autoopsv1alpha1.NoMonitoredResourcesPhase,
 		},
 		{
 			name:          "InvalidPhase should not be overwritten by ReadyPhase",
@@ -71,7 +71,7 @@ func TestState_UpdateWithPhase(t *testing.T) {
 		{
 			name:          "InvalidPhase should not be overwritten by NoResourcesPhase",
 			initialPhase:  autoopsv1alpha1.InvalidPhase,
-			updatePhase:   autoopsv1alpha1.NoResourcesPhase,
+			updatePhase:   autoopsv1alpha1.NoMonitoredResourcesPhase,
 			expectedPhase: autoopsv1alpha1.InvalidPhase,
 		},
 		{
@@ -82,9 +82,9 @@ func TestState_UpdateWithPhase(t *testing.T) {
 		},
 		{
 			name:          "NoResourcesPhase should not be overwritten by ApplyingChangesPhase",
-			initialPhase:  autoopsv1alpha1.NoResourcesPhase,
+			initialPhase:  autoopsv1alpha1.NoMonitoredResourcesPhase,
 			updatePhase:   autoopsv1alpha1.ApplyingChangesPhase,
-			expectedPhase: autoopsv1alpha1.NoResourcesPhase,
+			expectedPhase: autoopsv1alpha1.NoMonitoredResourcesPhase,
 		},
 		{
 			name:          "ReadyPhase can be overwritten by ApplyingChangesPhase",
@@ -100,9 +100,9 @@ func TestState_UpdateWithPhase(t *testing.T) {
 		},
 		{
 			name:          "NoResourcesPhase should not be overwritten by ReadyPhase",
-			initialPhase:  autoopsv1alpha1.NoResourcesPhase,
+			initialPhase:  autoopsv1alpha1.NoMonitoredResourcesPhase,
 			updatePhase:   autoopsv1alpha1.ReadyPhase,
-			expectedPhase: autoopsv1alpha1.NoResourcesPhase,
+			expectedPhase: autoopsv1alpha1.NoMonitoredResourcesPhase,
 		},
 		{
 			name:          "ApplyingChangesPhase can transition to ReadyPhase",
@@ -112,9 +112,9 @@ func TestState_UpdateWithPhase(t *testing.T) {
 		},
 		{
 			name:          "NoResourcesPhase should not be overwritten by ErrorPhase",
-			initialPhase:  autoopsv1alpha1.NoResourcesPhase,
+			initialPhase:  autoopsv1alpha1.NoMonitoredResourcesPhase,
 			updatePhase:   autoopsv1alpha1.ErrorPhase,
-			expectedPhase: autoopsv1alpha1.NoResourcesPhase,
+			expectedPhase: autoopsv1alpha1.NoMonitoredResourcesPhase,
 		},
 	}
 
@@ -166,6 +166,16 @@ func TestState_CalculateFinalPhase(t *testing.T) {
 			isReconciled:          true,
 			reconciliationMessage: "",
 			expectedPhase:         autoopsv1alpha1.ReadyPhase,
+			expectEvent:           false,
+		},
+		{
+			name:                  "reconciled with with not all auto ops resources ready",
+			initialPhase:          "",
+			resources:             3,
+			ready:                 2,
+			isReconciled:          true,
+			reconciliationMessage: "",
+			expectedPhase:         autoopsv1alpha1.AutoOpsResourcesNotReadyPhase,
 			expectEvent:           false,
 		},
 		{
@@ -221,15 +231,15 @@ func TestState_CalculateFinalPhase(t *testing.T) {
 func TestState_UpdateResources(t *testing.T) {
 	t.Run("count > 0 sets resources without changing phase", func(t *testing.T) {
 		state := newState(autoopsv1alpha1.AutoOpsAgentPolicy{})
-		state.UpdateResources(5)
+		state.UpdateMonitoredResources(5)
 		assert.Equal(t, 5, state.status.Resources)
 		assert.Equal(t, autoopsv1alpha1.PolicyPhase(""), state.status.Phase)
 	})
 
 	t.Run("count == 0 sets NoResourcesPhase", func(t *testing.T) {
 		state := newState(autoopsv1alpha1.AutoOpsAgentPolicy{})
-		state.UpdateResources(0)
+		state.UpdateMonitoredResources(0)
 		assert.Equal(t, 0, state.status.Resources)
-		assert.Equal(t, autoopsv1alpha1.NoResourcesPhase, state.status.Phase)
+		assert.Equal(t, autoopsv1alpha1.NoMonitoredResourcesPhase, state.status.Phase)
 	})
 }

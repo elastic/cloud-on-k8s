@@ -39,12 +39,13 @@ func newState(policy autoopsv1alpha1.AutoOpsAgentPolicy) *State {
 
 // phasePriority maps the phase with it's priority weight.
 var phasePriority = map[autoopsv1alpha1.PolicyPhase]int{
-	autoopsv1alpha1.ApplyingChangesPhase:   1, // ApplyingChangesPhase can be replaced by ReadyPhase
-	autoopsv1alpha1.ReadyPhase:             1, // ... and vice versa.
-	autoopsv1alpha1.ResourcesNotReadyPhase: 2,
-	autoopsv1alpha1.ErrorPhase:             3,
-	autoopsv1alpha1.NoResourcesPhase:       4,
-	autoopsv1alpha1.InvalidPhase:           5, // Worst - terminal
+	autoopsv1alpha1.ApplyingChangesPhase:            1, // ApplyingChangesPhase can be replaced by ReadyPhase
+	autoopsv1alpha1.ReadyPhase:                      1, // ... and vice versa.
+	autoopsv1alpha1.MonitoredResourcesNotReadyPhase: 2,
+	autoopsv1alpha1.AutoOpsResourcesNotReadyPhase:   2,
+	autoopsv1alpha1.ErrorPhase:                      3,
+	autoopsv1alpha1.NoMonitoredResourcesPhase:       4,
+	autoopsv1alpha1.InvalidPhase:                    5, // Worst - terminal
 }
 
 // UpdateWithPhase updates the phase of the AutoOpsAgentPolicy status.
@@ -67,12 +68,12 @@ func (s *State) UpdateInvalidPhaseWithEvent(msg string) {
 	s.AddEvent(corev1.EventTypeWarning, events.EventReasonValidation, msg)
 }
 
-// UpdateResources updates the Resources count in the status.
-// If the count is zero it will try to apply [autoopsv1alpha1.NoResourcesPhase] and it is solely responsible for applying this phase.
-func (s *State) UpdateResources(count int) *State {
+// UpdateMonitoredResources updates the Resources count in the status.
+// If the count is zero it will try to apply [autoopsv1alpha1.NoMonitoredResourcesPhase] and it is solely responsible for applying this phase.
+func (s *State) UpdateMonitoredResources(count int) *State {
 	s.status.Resources = count
 	if count == 0 {
-		s.UpdateWithPhase(autoopsv1alpha1.NoResourcesPhase)
+		s.UpdateWithPhase(autoopsv1alpha1.NoMonitoredResourcesPhase)
 	}
 	return s
 }
@@ -104,15 +105,15 @@ func (s *State) Apply() ([]events.Event, *autoopsv1alpha1.AutoOpsAgentPolicy) {
 }
 
 // CalculateFinalPhase updates the phase of the AutoOpsAgentPolicy status based on the results of the reconciliation.
-// This method is solely responsible for applying the [autoopsv1alpha1.ApplyingChangesPhase] and [autoopsv1alpha1.ReadyPhase].
+// This method is solely responsible for applying the [autoopsv1alpha1.ApplyingChangesPhase], [autoopsv1alpha1.AutoOpsResourcesNotReadyPhase] and [autoopsv1alpha1.ReadyPhase].
 func (s *State) CalculateFinalPhase(isReconciled bool, reconciliationMessage string) {
-	if !isReconciled {
+	switch {
+	case !isReconciled:
 		s.UpdateWithPhase(autoopsv1alpha1.ApplyingChangesPhase)
 		s.AddEvent(corev1.EventTypeWarning, events.EventReasonDelayed, reconciliationMessage)
-		return
-	}
-
-	if s.status.Ready == s.status.Resources {
+	case s.status.Ready == s.status.Resources:
 		s.UpdateWithPhase(autoopsv1alpha1.ReadyPhase)
+	case s.status.Ready < s.status.Resources:
+		s.UpdateWithPhase(autoopsv1alpha1.AutoOpsResourcesNotReadyPhase)
 	}
 }

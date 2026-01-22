@@ -134,7 +134,7 @@ func (r *AgentPolicyReconciler) internalReconcile(
 		results.WithError(err)
 	}
 
-	state.UpdateResources(len(accessibleClusters))
+	state.UpdateMonitoredResources(len(accessibleClusters))
 	if len(accessibleClusters) == 0 {
 		log.Info("No accessible Elasticsearch resources found for the AutoOpsAgentPolicy")
 		return results
@@ -160,7 +160,7 @@ func (r *AgentPolicyReconciler) internalReconcile(
 
 		if es.Status.Phase != esv1.ElasticsearchReadyPhase {
 			log.V(1).Info("Skipping ES cluster that is not ready")
-			state.UpdateWithPhase(autoopsv1alpha1.ResourcesNotReadyPhase)
+			state.UpdateWithPhase(autoopsv1alpha1.MonitoredResourcesNotReadyPhase)
 			results = results.WithRequeue(reconciler.DefaultRequeue)
 			continue
 		}
