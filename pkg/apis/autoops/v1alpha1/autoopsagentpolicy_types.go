@@ -117,6 +117,7 @@ const (
 	ErrorPhase             PolicyPhase = "Error"
 )
 
+// IsRequeuePhase returns whether the phase requires a requeue.
 func (p PolicyPhase) IsRequeuePhase() bool {
 	switch p {
 	case ApplyingChangesPhase, ResourcesNotReadyPhase, ErrorPhase:

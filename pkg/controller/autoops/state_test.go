@@ -136,3 +136,100 @@ func TestState_UpdateWithPhase(t *testing.T) {
 		})
 	}
 }
+
+func TestState_CalculateFinalPhase(t *testing.T) {
+	tests := []struct {
+		name                  string
+		initialPhase          autoopsv1alpha1.PolicyPhase
+		resources             int
+		ready                 int
+		isReconciled          bool
+		reconciliationMessage string
+		expectedPhase         autoopsv1alpha1.PolicyPhase
+		expectEvent           bool
+	}{
+		{
+			name:                  "not reconciled should set ApplyingChangesPhase and add event",
+			initialPhase:          "",
+			resources:             3,
+			ready:                 2,
+			isReconciled:          false,
+			reconciliationMessage: "waiting for resources",
+			expectedPhase:         autoopsv1alpha1.ApplyingChangesPhase,
+			expectEvent:           true,
+		},
+		{
+			name:                  "reconciled with all resources ready should set ReadyPhase",
+			initialPhase:          "",
+			resources:             3,
+			ready:                 3,
+			isReconciled:          true,
+			reconciliationMessage: "",
+			expectedPhase:         autoopsv1alpha1.ReadyPhase,
+			expectEvent:           false,
+		},
+		{
+			name:                  "reconciled with ErrorPhase should not be overwritten by ReadyPhase",
+			initialPhase:          autoopsv1alpha1.ErrorPhase,
+			resources:             3,
+			ready:                 3,
+			isReconciled:          true,
+			reconciliationMessage: "",
+			expectedPhase:         autoopsv1alpha1.ErrorPhase,
+			expectEvent:           false,
+		},
+		{
+			name:                  "not reconciled with ErrorPhase should not be overwritten by ApplyingChangesPhase",
+			initialPhase:          autoopsv1alpha1.ErrorPhase,
+			resources:             3,
+			ready:                 2,
+			isReconciled:          false,
+			reconciliationMessage: "waiting for resources",
+			expectedPhase:         autoopsv1alpha1.ErrorPhase,
+			expectEvent:           true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			policy := autoopsv1alpha1.AutoOpsAgentPolicy{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "test-policy",
+					Namespace: "default",
+				},
+				Status: autoopsv1alpha1.AutoOpsAgentPolicyStatus{
+					Phase: tt.initialPhase,
+				},
+			}
+			state := newState(policy)
+			state.status.Phase = tt.initialPhase
+			state.status.Resources = tt.resources
+			state.status.Ready = tt.ready
+
+			state.CalculateFinalPhase(tt.isReconciled, tt.reconciliationMessage)
+
+			assert.Equal(t, tt.expectedPhase, state.status.Phase)
+			if tt.expectEvent {
+				assert.Len(t, state.Events(), 1, "expected exactly one event")
+			} else {
+				assert.Empty(t, state.Events(), "expected no events")
+			}
+		})
+	}
+}
+
+func TestState_UpdateResources(t *testing.T) {
+	t.Run("count > 0 sets resources without changing phase", func(t *testing.T) {
+		state := newState(autoopsv1alpha1.AutoOpsAgentPolicy{})
+		state.UpdateResources(5)
+		assert.Equal(t, 5, state.status.Resources)
+		assert.Equal(t, autoopsv1alpha1.PolicyPhase(""), state.status.Phase)
+	})
+
+	t.Run("count == 0 sets NoResourcesPhase", func(t *testing.T) {
+		state := newState(autoopsv1alpha1.AutoOpsAgentPolicy{})
+		state.UpdateResources(0)
+		assert.Equal(t, 0, state.status.Resources)
+		assert.Equal(t, autoopsv1alpha1.NoResourcesPhase, state.status.Phase)
+	})
+}

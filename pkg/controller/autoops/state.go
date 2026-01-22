@@ -66,6 +66,7 @@ func (s *State) UpdateInvalidPhaseWithEvent(msg string) {
 }
 
 // UpdateResources updates the Resources count in the status.
+// If the count is zero it will try to apply [autoopsv1alpha1.NoResourcesPhase] and it is solely responsible for applying this phase.
 func (s *State) UpdateResources(count int) *State {
 	s.status.Resources = count
 	if count == 0 {
@@ -101,6 +102,7 @@ func (s *State) Apply() ([]events.Event, *autoopsv1alpha1.AutoOpsAgentPolicy) {
 }
 
 // CalculateFinalPhase updates the phase of the AutoOpsAgentPolicy status based on the results of the reconciliation.
+// This method is solely responsible for applying the [autoopsv1alpha1.ApplyingChangesPhase] and [autoopsv1alpha1.ReadyPhase].
 func (s *State) CalculateFinalPhase(isReconciled bool, reconciliationMessage string) {
 	if !isReconciled {
 		s.UpdateWithPhase(autoopsv1alpha1.ApplyingChangesPhase)
