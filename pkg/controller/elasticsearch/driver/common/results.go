@@ -11,8 +11,8 @@ import (
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/reconcile"
 )
 
-// ReconcileResult contains all results from shared reconciliation that drivers need.
-type ReconcileResult struct {
+// SharedResult contains all results from shared reconciliation that drivers need.
+type SharedResult struct {
 	// Meta is the metadata that should be propagated to children resources.
 	Meta metadata.Metadata
 

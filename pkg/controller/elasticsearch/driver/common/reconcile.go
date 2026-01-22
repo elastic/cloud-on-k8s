@@ -62,7 +62,7 @@ func ReconcileSharedResources(
 	ctx context.Context,
 	d commondriver.Interface,
 	params driver.Parameters,
-) (*ReconcileResult, *reconciler.Results) {
+) (*SharedResult, *reconciler.Results) {
 	results := reconciler.NewResult(ctx)
 	log := ulog.FromContext(ctx)
 	es := params.ES
@@ -364,7 +364,7 @@ func ReconcileSharedResources(
 		results.WithReconciliationState(DefaultRequeue.WithReason("Some associations are not reconciled"))
 	}
 
-	return &ReconcileResult{
+	return &SharedResult{
 		Meta:              meta,
 		ResourcesState:    resourcesState,
 		ESClient:          esClient,
