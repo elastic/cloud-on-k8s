@@ -18,7 +18,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/tracing"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/version"
 	esclient "github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/client"
-	drivercommon "github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/driver/common"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/driver/shared"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/hints"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/nodespec"
 )
@@ -58,7 +58,7 @@ func (d *Driver) updateDesiredNodes(
 		if esReachable {
 			return results.WithError(esClient.DeleteDesiredNodes(ctx))
 		}
-		return results.WithReconciliationState(drivercommon.DefaultRequeue.WithReason("Desired nodes API must be cleared"))
+		return results.WithReconciliationState(shared.DefaultRequeue.WithReason("Desired nodes API must be cleared"))
 	default:
 		// Unknown error: not nil and not ResourceNotAvailable
 		d.ReconcileState.ReportCondition(
@@ -69,7 +69,7 @@ func (d *Driver) updateDesiredNodes(
 		return results.WithError(err)
 	}
 	if requeue {
-		results.WithReconciliationState(drivercommon.DefaultRequeue.WithReason("Storage capacity is not available in all PVC statuses, requeue to refine the capacity reported in the desired nodes API"))
+		results.WithReconciliationState(shared.DefaultRequeue.WithReason("Storage capacity is not available in all PVC statuses, requeue to refine the capacity reported in the desired nodes API"))
 	}
 	if esReachable {
 		latestDesiredNodes, err := esClient.GetLatestDesiredNodes(ctx)
@@ -93,5 +93,5 @@ func (d *Driver) updateDesiredNodes(
 		}
 		return results.WithError(err)
 	}
-	return results.WithReconciliationState(drivercommon.DefaultRequeue.WithReason("Waiting for Elasticsearch to be available to update the desired nodes API"))
+	return results.WithReconciliationState(shared.DefaultRequeue.WithReason("Waiting for Elasticsearch to be available to update the desired nodes API"))
 }

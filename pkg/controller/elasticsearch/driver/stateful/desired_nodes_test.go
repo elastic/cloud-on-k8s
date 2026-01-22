@@ -38,7 +38,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/version"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/client"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/driver"
-	drivercommon "github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/driver/common"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/driver/shared"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/hints"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/nodespec"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/reconcile"
@@ -239,7 +239,7 @@ func Test_Driver_updateDesiredNodes(t *testing.T) {
 			),
 			want: want{
 				result: wantResult{
-					requeueAfter: drivercommon.DefaultRequeue.RequeueAfter,
+					requeueAfter: shared.DefaultRequeue.RequeueAfter,
 					reason:       "Waiting for Elasticsearch to be available to update the desired nodes API",
 				},
 				condition: &wantCondition{
@@ -285,7 +285,7 @@ func Test_Driver_updateDesiredNodes(t *testing.T) {
 			),
 			want: want{
 				result: wantResult{
-					requeueAfter: drivercommon.DefaultRequeue.RequeueAfter, // requeue is expected to get a more accurate storage capacity from the PVC status later
+					requeueAfter: shared.DefaultRequeue.RequeueAfter, // requeue is expected to get a more accurate storage capacity from the PVC status later
 					reason:       "Storage capacity is not available in all PVC statuses, requeue to refine the capacity reported in the desired nodes API",
 				},
 				testdata: "happy_path.json",
@@ -330,7 +330,7 @@ func Test_Driver_updateDesiredNodes(t *testing.T) {
 			),
 			want: want{
 				result: wantResult{
-					requeueAfter: drivercommon.DefaultRequeue.RequeueAfter, // requeue is expected to get a more accurate storage capacity from the PVC status later
+					requeueAfter: shared.DefaultRequeue.RequeueAfter, // requeue is expected to get a more accurate storage capacity from the PVC status later
 					reason:       "Storage capacity is not available in all PVC statuses, requeue to refine the capacity reported in the desired nodes API",
 				},
 				testdata: "happy_path.json",
@@ -482,7 +482,7 @@ func Test_Driver_updateDesiredNodes(t *testing.T) {
 				),
 			want: want{
 				result: wantResult{
-					requeueAfter: drivercommon.DefaultRequeue.RequeueAfter,
+					requeueAfter: shared.DefaultRequeue.RequeueAfter,
 				},
 				deleteCalled: false, // Elasticsearch is not reachable, client cannot be called
 				condition: &wantCondition{

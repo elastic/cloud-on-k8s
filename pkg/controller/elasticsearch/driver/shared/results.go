@@ -2,7 +2,7 @@
 // or more contributor license agreements. Licensed under the Elastic License 2.0;
 // you may not use this file except in compliance with the Elastic License 2.0.
 
-package common
+package shared
 
 import (
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/keystore"
@@ -11,8 +11,8 @@ import (
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/reconcile"
 )
 
-// SharedResult contains all results from shared reconciliation that drivers need.
-type SharedResult struct {
+// ReconcileState contains all state from shared reconciliation that drivers need.
+type ReconcileState struct {
 	// Meta is the metadata that should be propagated to children resources.
 	Meta metadata.Metadata
 

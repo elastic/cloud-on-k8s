@@ -25,7 +25,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/reconciler"
 	sset "github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/statefulset"
 	esclient "github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/client"
-	drivercommon "github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/driver/common"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/driver/shared"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/label"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/migration"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/nodespec"
@@ -225,7 +225,7 @@ func TestHandleDownscale(t *testing.T) {
 
 	// a requeue should be requested since all nodes were not downscaled
 	// (2 requeues actually: for data migration & master nodes)
-	require.Equal(t, (&reconciler.Results{}).WithReconciliationState(drivercommon.DefaultRequeue.WithReason("Downscale in progress")), results)
+	require.Equal(t, (&reconciler.Results{}).WithReconciliationState(shared.DefaultRequeue.WithReason("Downscale in progress")), results)
 
 	// voting config exclusion should have been added for leaving master
 	require.True(t, esClient.AddVotingConfigExclusionsCalled)
@@ -248,7 +248,7 @@ func TestHandleDownscale(t *testing.T) {
 	// and also requeue since data migration is still not over for data nodes
 	results = HandleDownscale(downscaleCtx, requestedStatefulSets, actual.Items)
 	require.False(t, results.HasError())
-	require.Equal(t, (&reconciler.Results{}).WithReconciliationState(drivercommon.DefaultRequeue.WithReason("Downscale in progress")), results)
+	require.Equal(t, (&reconciler.Results{}).WithReconciliationState(shared.DefaultRequeue.WithReason("Downscale in progress")), results)
 	// status should reflect the in progress operations
 	require.Equal(t,
 		[]esv1.DownscaledNode{
@@ -279,7 +279,7 @@ func TestHandleDownscale(t *testing.T) {
 	// and also requeue since data migration is still not over for data nodes
 	results = HandleDownscale(downscaleCtx, requestedStatefulSets, actual.Items)
 	require.False(t, results.HasError())
-	require.Equal(t, (&reconciler.Results{}).WithReconciliationState(drivercommon.DefaultRequeue.WithReason("Downscale in progress")), results)
+	require.Equal(t, (&reconciler.Results{}).WithReconciliationState(shared.DefaultRequeue.WithReason("Downscale in progress")), results)
 	// status should reflect the in progress operations
 	require.Equal(t,
 		[]esv1.DownscaledNode{

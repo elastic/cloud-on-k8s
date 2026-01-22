@@ -11,7 +11,7 @@ import (
 	commondriver "github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/driver"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/reconciler"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/driver"
-	drivercommon "github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/driver/common"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/driver/shared"
 )
 
 // Driver is the stateless Elasticsearch driver implementation.
@@ -29,7 +29,7 @@ var _ commondriver.Interface = &Driver{}
 // Reconcile fulfills the Driver interface and reconciles the cluster resources.
 func (d *Driver) Reconcile(ctx context.Context) *reconciler.Results {
 	// One call does all shared work
-	shared, results := drivercommon.ReconcileSharedResources(ctx, d, d.Parameters)
+	shared, results := shared.ReconcileSharedResources(ctx, d, d.Parameters)
 	if results.HasError() {
 		return results
 	}

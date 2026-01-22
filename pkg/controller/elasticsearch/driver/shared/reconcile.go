@@ -2,8 +2,8 @@
 // or more contributor license agreements. Licensed under the Elastic License 2.0;
 // you may not use this file except in compliance with the Elastic License 2.0.
 
-// Package common contains shared reconciliation logic for Elasticsearch drivers.
-package common
+// Package shared contains shared reconciliation logic for Elasticsearch drivers.
+package shared
 
 import (
 	"context"
@@ -62,7 +62,7 @@ func ReconcileSharedResources(
 	ctx context.Context,
 	d commondriver.Interface,
 	params driver.Parameters,
-) (*SharedResult, *reconciler.Results) {
+) (*ReconcileState, *reconciler.Results) {
 	results := reconciler.NewResult(ctx)
 	log := ulog.FromContext(ctx)
 	es := params.ES
@@ -364,7 +364,7 @@ func ReconcileSharedResources(
 		results.WithReconciliationState(DefaultRequeue.WithReason("Some associations are not reconciled"))
 	}
 
-	return &SharedResult{
+	return &ReconcileState{
 		Meta:              meta,
 		ResourcesState:    resourcesState,
 		ESClient:          esClient,
