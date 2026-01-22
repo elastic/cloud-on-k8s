@@ -119,8 +119,8 @@ linters:
         text: 'SA1019: .*GetEventRecorderFor is deprecated: this uses the old events API'
       - linters:
           - revive
-        # revive naming rules are not that happy with our packages/var names in commont/utils packages
-        path: '.*/(common|utils)/.*.go'
+        # revive naming rules are not that happy with our packages/var names in common/utils/shared packages
+        path: '.*/(common|utils|shared)/.*.go'
         text: 'var-naming: avoid (package names that conflict with Go standard library package names|meaningless package names)'
     paths:
       - third_party$
