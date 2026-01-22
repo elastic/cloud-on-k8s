@@ -51,11 +51,20 @@ OPERATOR_IMAGE      ?= $(IMAGE_NAME):$(IMAGE_TAG)
 print-%:
 	@ echo $($*)
 
-GO_LDFLAGS := -X github.com/elastic/cloud-on-k8s/v3/pkg/about.version=$(VERSION) \
+# Base flags for version information (used by all builds)
+GO_LDFLAGS_BASE := -X github.com/elastic/cloud-on-k8s/v3/pkg/about.version=$(VERSION) \
 	-X github.com/elastic/cloud-on-k8s/v3/pkg/about.buildHash=$(SHA1) \
 	-X github.com/elastic/cloud-on-k8s/v3/pkg/about.buildDate=$(shell date -u +'%Y-%m-%dT%H:%M:%SZ') \
-	-X github.com/elastic/cloud-on-k8s/v3/pkg/about.buildSnapshot=$(SNAPSHOT) \
-	-s -w
+	-X github.com/elastic/cloud-on-k8s/v3/pkg/about.buildSnapshot=$(SNAPSHOT)
+
+# Production flags: strip symbol table (-s) and DWARF info (-w) for smaller binaries
+GO_LDFLAGS_PROD := $(GO_LDFLAGS_BASE) -s -w
+
+# Development flags: keep debug symbols
+GO_LDFLAGS_DEV := $(GO_LDFLAGS_BASE)
+
+# Default to production flags
+GO_LDFLAGS := $(GO_LDFLAGS_PROD)
 
 # options for 'go test'. for instance, set to "-race" to enable the race checker
 TEST_OPTS ?=
@@ -194,7 +203,7 @@ go-run:
 	@ # Run the operator locally with debug logs and operator image set to latest
 	AUTO_PORT_FORWARD=true \
 		go run \
-			-ldflags "$(GO_LDFLAGS)" \
+			-ldflags "$(GO_LDFLAGS_DEV)" \
 			-tags "$(GO_TAGS)" \
 			./cmd/main.go manager \
 				--development \
@@ -209,7 +218,7 @@ go-run:
 
 go-debug:
 	@ (cd cmd &&	AUTO_PORT_FORWARD=true dlv debug \
-		--build-flags="-ldflags '$(GO_LDFLAGS)'" \
+		--build-flags="-ldflags '$(GO_LDFLAGS_DEV)'" \
 		-- \
 		manager \
 		--development \
