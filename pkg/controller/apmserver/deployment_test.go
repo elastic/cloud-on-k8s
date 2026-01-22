@@ -22,6 +22,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/deployment"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/keystore"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/metadata"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/operator"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/watches"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/k8s"
 )
@@ -79,6 +80,15 @@ func (tp testParams) withInitContainer() testParams {
 			Image:     "docker.elastic.co/apm/apm-server:1.0.0",
 			Env:       defaults.PodDownwardEnvVars(),
 			Resources: DefaultResources, // inherited from main container
+		},
+	}
+	return tp
+}
+
+func (tp testParams) withSecurityContext() testParams {
+	tp.PodTemplateSpec.Spec.SecurityContext = &corev1.PodSecurityContext{
+		SeccompProfile: &corev1.SeccompProfile{
+			Type: corev1.SeccompProfileTypeRuntimeDefault,
 		},
 	}
 	return tp
@@ -248,9 +258,10 @@ func TestReconcileApmServer_deploymentParams(t *testing.T) {
 	}
 
 	type args struct {
-		as             *apmv1.ApmServer
-		podSpecParams  PodSpecParams
-		initialObjects []client.Object
+		as                        *apmv1.ApmServer
+		podSpecParams             PodSpecParams
+		initialObjects            []client.Object
+		setDefaultSecurityContext bool
 	}
 	tests := []struct {
 		name    string
@@ -490,6 +501,23 @@ func TestReconcileApmServer_deploymentParams(t *testing.T) {
 			want:    expectedDeploymentParams().withConfigHash("2166136261"),
 			wantErr: false,
 		},
+		{
+			name: "with default security context",
+			args: args{
+				as:                        apmFixture,
+				podSpecParams:             defaultPodSpecParams,
+				setDefaultSecurityContext: true,
+				initialObjects: []client.Object{
+					&corev1.Secret{
+						ObjectMeta: metav1.ObjectMeta{
+							Name: certSecretName,
+						},
+					},
+				},
+			},
+			want:    expectedDeploymentParams().withSecurityContext(),
+			wantErr: false,
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -499,6 +527,7 @@ func TestReconcileApmServer_deploymentParams(t *testing.T) {
 				Client:         client,
 				recorder:       record.NewFakeRecorder(100),
 				dynamicWatches: w,
+				Parameters:     operator.Parameters{SetDefaultSecurityContext: tt.args.setDefaultSecurityContext},
 			}
 			md := metadata.Propagate(tt.args.as, metadata.Metadata{Labels: tt.args.as.GetIdentityLabels()})
 			got, err := r.deploymentParams(tt.args.as, tt.args.podSpecParams, md)

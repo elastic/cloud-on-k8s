@@ -46,6 +46,12 @@ func withStorageReq(claim corev1.PersistentVolumeClaim, size string) corev1.Pers
 	return *c
 }
 
+func withStorageClass(claim corev1.PersistentVolumeClaim, storageClassName string) corev1.PersistentVolumeClaim {
+	c := claim.DeepCopy()
+	c.Spec.StorageClassName = ptr.To[string](storageClassName)
+	return *c
+}
+
 func Test_validPVCModification(t *testing.T) {
 	es := func(nodeSets []esv1.NodeSet) esv1.Elasticsearch {
 		return esv1.Elasticsearch{
@@ -188,6 +194,30 @@ func Test_validPVCModification(t *testing.T) {
 				validateStorageClass: true,
 			},
 			wantErr: false,
+		},
+		{
+			// https://github.com/elastic/cloud-on-k8s/issues/6796
+			name: "reusing nodeSet name while StatefulSet still exists (quick rename back scenario): error",
+			args: args{
+				// Current state: nodeSet was renamed from "default" to "default-new" with different storageClass
+				current: es([]esv1.NodeSet{
+					{Name: "default-new", VolumeClaimTemplates: []corev1.PersistentVolumeClaim{withStorageClass(sampleClaim, "invalid")}},
+				}),
+				// Proposed state: trying to rename back to "default" while old StatefulSet still exists
+				proposed: es([]esv1.NodeSet{
+					{Name: "default", VolumeClaimTemplates: []corev1.PersistentVolumeClaim{sampleClaim}},
+				}),
+				// The old StatefulSet "cluster-es-default" still exists with the original storageClass
+				k8sClient: k8s.NewFakeClient(
+					&appsv1.StatefulSet{
+						ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: "cluster-es-default"},
+						Spec: appsv1.StatefulSetSpec{VolumeClaimTemplates: []corev1.PersistentVolumeClaim{
+							sampleClaim, // original storageClass "sample-sc"
+						}},
+					}),
+				validateStorageClass: true,
+			},
+			wantErr: true,
 		},
 	}
 	for _, tt := range tests {

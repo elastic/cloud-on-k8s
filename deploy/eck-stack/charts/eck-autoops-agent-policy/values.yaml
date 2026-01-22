@@ -78,6 +78,14 @@ resourceSelector:
   matchLabels:
     autoops: enabled
 
+# NamespaceSelector is a namespace selector for the resources to be configured.
+# Any Elasticsearch instances belonging to the selected namespaces will be configured to send data to AutoOps.
+# If not specified, all namespaces are selected.
+#
+# namespaceSelector:
+#   matchLabels:
+#     kubernetes.io/metadata.name: team-a
+
 # ServiceAccountName is used for RBAC checks when accessing Elasticsearch clusters
 # in different namespaces. The policy can only target Elasticsearch clusters that
 # the specified service account has permission to access (via 'get' verb).
