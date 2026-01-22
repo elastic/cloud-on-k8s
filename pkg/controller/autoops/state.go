@@ -28,6 +28,8 @@ func newState(policy autoopsv1alpha1.AutoOpsAgentPolicy) *State {
 	// Similar to ES, we initially set the phase to an empty string so that we do not report an outdated phase
 	// given that certain phases are stickier than others (eg. invalid)
 	status.Phase = ""
+	status.Errors = 0
+	status.Ready = 0
 	return &State{
 		Recorder: events.NewRecorder(),
 		policy:   policy,
