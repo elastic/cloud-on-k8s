@@ -63,6 +63,6 @@ func maybeRunECKDiagnostics(ctx context.Context, testName string, step Step) {
 		"-r", strings.Join(otherNS, ","),
 		// NOTE: Temporarily disable this as it is causing eck-diagnostics to exceed the 20 minutes threshold of context
 		// which results in corrupted diagnostics archives
-		//"--run-agent-diagnostics",
+		// "--run-agent-diagnostics",
 	)
 }
