@@ -33,7 +33,7 @@ func TestReconcileAutoOpsAgentPolicy_deploymentParams(t *testing.T) {
 			Namespace: "default",
 		},
 		Spec: autoopsv1alpha1.AutoOpsAgentPolicySpec{
-			Version: "9.1.0-SNAPSHOT",
+			Version: "9.2.1",
 			AutoOpsRef: autoopsv1alpha1.AutoOpsRef{
 				SecretName: "autoops-secret",
 			},
@@ -321,9 +321,6 @@ func expectedDeployment(policy autoopsv1alpha1.AutoOpsAgentPolicy, es esv1.Elast
 								},
 								Privileged:             ptr.To(false),
 								ReadOnlyRootFilesystem: ptr.To(false),
-								SeccompProfile: &corev1.SeccompProfile{
-									Type: corev1.SeccompProfileTypeRuntimeDefault,
-								},
 							},
 						},
 					},

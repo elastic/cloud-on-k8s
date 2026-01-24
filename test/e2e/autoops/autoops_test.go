@@ -18,6 +18,9 @@ import (
 )
 
 func TestAutoOpsAgentPolicy(t *testing.T) {
+	// https://github.com/elastic/cloud-on-k8s/issues/9027
+	t.Skip("Skipping AutoOpsAgentPolicy test")
+
 	// only execute this test if we have a test license to work with
 	if test.Ctx().TestLicense == "" {
 		t.SkipNow()
@@ -34,13 +37,20 @@ func TestAutoOpsAgentPolicy(t *testing.T) {
 	policyNamespace := test.Ctx().ManagedNamespace(1)
 
 	esName := "es"
-	esBuilder := elasticsearch.NewBuilderWithoutSuffix(esName).
+	es1Builder := elasticsearch.NewBuilderWithoutSuffix(esName).
 		WithESMasterDataNodes(3, elasticsearch.DefaultResources).
 		WithNamespace(esNamespace).
 		WithVersion(test.Ctx().ElasticStackVersion).
 		WithLabel("autoops", "enabled")
 
-	esWithlicense := test.LicenseTestBuilder(esBuilder)
+	es1Withlicense := test.LicenseTestBuilder(es1Builder)
+
+	// 2nd elasticsearch cluster that should be omitted from autoops based on namespace
+	es2Builder := elasticsearch.NewBuilder("ex-es").
+		WithESMasterDataNodes(3, elasticsearch.DefaultResources).
+		WithNamespace(policyNamespace).
+		WithVersion(test.Ctx().ElasticStackVersion).
+		WithLabel("autoops", "enabled")
 
 	policyBuilder := autoops.NewBuilder("autoops-policy").
 		WithNamespace(policyNamespace).
@@ -48,8 +58,12 @@ func TestAutoOpsAgentPolicy(t *testing.T) {
 			MatchLabels: map[string]string{
 				"autoops": "enabled",
 			},
-		})
+		}).WithNamespaceSelector(metav1.LabelSelector{
+		MatchLabels: map[string]string{
+			"kubernetes.io/metadata.name": esNamespace,
+		},
+	})
 
-	test.Sequence(nil, test.EmptySteps, esWithlicense, policyBuilder).
+	test.Sequence(nil, test.EmptySteps, es1Withlicense, es2Builder, policyBuilder).
 		RunSequential(t)
 }

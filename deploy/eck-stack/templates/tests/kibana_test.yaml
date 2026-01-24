@@ -13,7 +13,7 @@ tests:
           value: quickstart-eck-kibana
       - equal:
           path: spec.version
-          value: 9.3.0-SNAPSHOT
+          value: 9.4.0-SNAPSHOT
   - it: name override should work properly
     set:
       eck-kibana.nameOverride: override
@@ -51,7 +51,7 @@ tests:
           value: quickstart
       - equal:
           path: spec.version
-          value: 9.3.0-SNAPSHOT
+          value: 9.4.0-SNAPSHOT
       - equal:
           path: spec.count
           value: 1

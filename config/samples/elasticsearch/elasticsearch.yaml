@@ -2,7 +2,9 @@
 apiVersion: elasticsearch.k8s.elastic.co/v1
 kind: Elasticsearch
 metadata:
-  # uncomment the lines below to copy the specified node labels as pod annotations and use it as an environment variable in the Pods
+  # Uncomment the lines below to copy the specified node labels as pod annotations and use it as an environment variable in the Pods.
+  # With Kubernetes 1.35 and later, the PodTopologyLabelsAdmission feature is enabled by default. As a result, the labels 'topology.kubernetes.io/region' and 'topology.kubernetes.io/zone'
+  # from the node are automatically propagated as labels on Pods, and using eck.k8s.elastic.co/downward-node-labels may no longer be necessary.
   #annotations:
   #  eck.k8s.elastic.co/downward-node-labels: "topology.kubernetes.io/zone"
   name: elasticsearch-sample
@@ -24,6 +26,9 @@ spec:
           # additional labels for pods
           foo: bar
       spec:
+        # securityContext:
+        #  seccompProfile:
+        #    type: RuntimeDefault
         # this changes the kernel setting on the node to allow ES to use mmap
         # if you uncomment this init container you will likely also want to remove the
         # "node.store.allow_mmap: false" setting above
@@ -32,6 +37,8 @@ spec:
         #   securityContext:
         #     privileged: true
         #     runAsUser: 0
+        #     seccompProfile:
+        #       type: Unconfined  # Override pod-level setting
         #   command: ['sh', '-c', 'sysctl -w vm.max_map_count=262144']
         ###
         # uncomment the line below if you are using a service mesh such as linkerd2 that uses service account tokens for pod identification.
