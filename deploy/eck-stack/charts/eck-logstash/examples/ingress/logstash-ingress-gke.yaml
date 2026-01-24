@@ -4,7 +4,7 @@
 
 fullnameOverride: logstash
 
-version: 9.2.3
+version: 9.2.4
 count: 1
 
 # Reference to ECK-managed Elasticsearch instance, ideally from {{ "elasticsearch.fullname" }}
@@ -17,8 +17,8 @@ pipelines:
   - pipeline.id: main
     config.string: |
       input {
-        beats {
-          port => 5044
+        http {
+          port => 8080
         }
       }
       output {
@@ -31,27 +31,29 @@ pipelines:
       }
 
 services:
-  - name: beats
+  - name: fluentd
     service:
       metadata:
         annotations:
           # This is required for `ClusterIP` services (which are the default ECK service type) to be used with Ingress in GKE clusters.
           cloud.google.com/neg: '{"ingress": true}'
-          # Inform the GKE Ingress Controller that the backend speaks TCP (Beats).
-          cloud.google.com/app-protocols: '{"filebeat":"TCP"}'
+          # This is required to enable the GKE Ingress Controller to use HTTPS as the backend protocol.
+          cloud.google.com/app-protocols: '{"https":"HTTPS"}'
       spec:
         type: ClusterIP
         ports:
-          - name: filebeat
-            port: 5044
+          - name: fluentd
+            port: 8080
             protocol: TCP
-            targetPort: 5044
+            targetPort: 8080
 
 ingress:
   enabled: true
   pathType: Prefix
   hosts:
     - host: "logstash.company.dev"
-      path: "/beats"
-      serviceName: beats
-      servicePort: 5044
+      path: "/fluentd"
+      serviceName: fluentd
+      servicePort: 8080
+  tls:
+    enabled: true

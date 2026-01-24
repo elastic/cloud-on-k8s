@@ -4,7 +4,7 @@
 
 fullnameOverride: logstash
 
-version: 9.2.3
+version: 9.2.4
 count: 1
 
 # Reference to ECK-managed Elasticsearch instance, ideally from {{ "elasticsearch.fullname" }}
@@ -17,8 +17,8 @@ pipelines:
   - pipeline.id: main
     config.string: |
       input {
-        beats {
-          port => 5044
+        http {
+          port => 8080
         }
       }
       output {
@@ -31,22 +31,28 @@ pipelines:
       }
 
 services:
-  - name: beats
+  - name: fluentd
     service:
       spec:
         type: ClusterIP
         ports:
-          - name: filebeat
-            port: 5044
+          - name: fluentd
+            port: 8080
             protocol: TCP
-            targetPort: 5044
+            targetPort: 8080
 
 ingress:
   enabled: true
   className: webapprouting.kubernetes.azure.com
   pathType: Prefix
+  annotations:
+    # This is required for AKS Loadbalancing to understand that it's communicating with
+    # an HTTPS backend.
+    nginx.ingress.kubernetes.io/backend-protocol: "HTTPS"
   hosts:
     - host: "logstash.company.dev"
-      path: "/beats"
-      serviceName: beats
-      servicePort: 5044
+      path: "/fluentd"
+      serviceName: fluentd
+      servicePort: 8080
+  tls:
+    enabled: true

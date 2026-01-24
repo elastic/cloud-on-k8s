@@ -6,7 +6,7 @@
 
 fullnameOverride: logstash
 
-version: 9.2.3
+version: 9.2.4
 count: 1
 
 # Reference to ECK-managed Elasticsearch instance, ideally from {{ "elasticsearch.fullname" }}

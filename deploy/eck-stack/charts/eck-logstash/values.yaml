@@ -164,11 +164,11 @@ ingress:
   #
   hosts:
     - host: chart-example.local
-      path: /beats
-      serviceName: beats
-      servicePort: 5044
+      path: /fluentd
+      serviceName: fluentd
+      servicePort: 8080
 
-      # Additional paths to route to other Logstash services (for example, API, http input).
+      # Additional paths to route to other Logstash services (for example, API, other inputs).
       extraPaths: []
       #  Warning: The API exposes metrics and node info without authentication by default, ref: https://www.elastic.co/docs/deploy-manage/deploy/cloud-on-k8s/securing-logstash-api
       #  - path: /api

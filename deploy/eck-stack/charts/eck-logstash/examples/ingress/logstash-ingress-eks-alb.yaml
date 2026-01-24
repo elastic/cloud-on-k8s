@@ -5,7 +5,7 @@
 
 fullnameOverride: logstash
 
-version: 9.2.3
+version: 9.2.4
 count: 1
 
 # Reference to ECK-managed Elasticsearch instance, ideally from {{ "elasticsearch.fullname" }}
@@ -18,8 +18,8 @@ pipelines:
   - pipeline.id: main
     config.string: |
       input {
-        beats {
-          port => 5044
+        http {
+          port => 8080
         }
       }
       output {
@@ -32,15 +32,15 @@ pipelines:
       }
 
 services:
-  - name: beats
+  - name: fluentd
     service:
       spec:
         type: ClusterIP
         ports:
-          - name: filebeat
-            port: 5044
+          - name: fluentd
+            port: 8080
             protocol: TCP
-            targetPort: 5044
+            targetPort: 8080
 
 ingress:
   enabled: true
@@ -48,7 +48,7 @@ ingress:
   annotations:
     alb.ingress.kubernetes.io/scheme: "internet-facing"
     alb.ingress.kubernetes.io/listen-ports: '[{"HTTPS":443}]'
-    alb.ingress.kubernetes.io/backend-protocol: "TCP"
+    alb.ingress.kubernetes.io/backend-protocol: "HTTPS"
     alb.ingress.kubernetes.io/target-type: "ip"
     # To use an ALB with ECK, you must provide a valid ACM certificate ARN or use certificate discovery.
     # There are 2 options for EKS:
@@ -62,6 +62,8 @@ ingress:
   pathType: Prefix
   hosts:
     - host: "logstash.company.dev"
-      path: "/beats"
-      serviceName: beats
-      servicePort: 5044
+      path: "/fluentd"
+      serviceName: fluentd
+      servicePort: 8080
+  tls:
+    enabled: true
