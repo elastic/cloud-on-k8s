@@ -369,6 +369,22 @@ serviceMonitor:
   #   - caSecret
   insecureSkipVerify: true
 
+# extraObjects allows injecting additional Kubernetes resources into the chart.
+# These resources will be created/deleted alongside the chart release.
+# The value is a list of strings, each string is a YAML manifest.
+# Helm templating is supported within each manifest.
+# Example:
+# extraObjects:
+#   - |
+#     apiVersion: v1
+#     kind: ConfigMap
+#     metadata:
+#       name: {{ include "eck-operator.fullname" . }}-extra-config
+#       namespace: {{ .Release.Namespace }}
+#     data:
+#       key: value
+extraObjects: []
+
 # Globals meant for internal use only
 global:
   # manifestGen specifies whether the chart is running under manifest generator.
