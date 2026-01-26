@@ -476,6 +476,12 @@ func (h *helper) deployMonitoring() error {
 }
 
 func (h *helper) deployWiremock() error {
+	// Only deploy if running autoops or full e2e tests
+	if !strings.Contains(h.e2eTags, "autoops") && h.e2eTags != "e2e" {
+		log.Info("Skipping wiremock deployment (not needed for current test run")
+		return nil
+	}
+
 	log.Info("Deploying wiremock for cloud-connected API mocking")
 
 	// WiremockURL is already set in initTestContext via wiremockURL(h)
