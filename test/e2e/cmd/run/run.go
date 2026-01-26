@@ -259,6 +259,21 @@ func wiremockURL(h *helper) string {
 	return fmt.Sprintf("http://wiremock-%s.%s-system.svc.cluster.local:8080", h.testRunName, h.testRunName)
 }
 
+// shouldDeployWiremock returns true if wiremock should be deployed for the current test run.
+// Wiremock is needed for autoops tests (by tag, test regex, or TESTS_MATCH env var) or when running the full e2e suite.
+func shouldDeployWiremock(h *helper) bool {
+	// Check if autoops tests are being run via e2e tags, test regex, or TESTS_MATCH env var
+	testsMatch := os.Getenv("TESTS_MATCH")
+	isAutoOpsTest := strings.Contains(h.e2eTags, "autoops") ||
+		strings.Contains(strings.ToLower(h.testRegex), "autoops") ||
+		strings.Contains(strings.ToLower(testsMatch), "autoops")
+
+	// Full e2e suite runs all tests including autoops (e2eTags contains "e2e", e.g., "e2e" or "release,e2e")
+	isFullE2E := strings.Contains(h.e2eTags, "e2e") && h.testRegex == "" && testsMatch == ""
+
+	return isAutoOpsTest || isFullE2E
+}
+
 func (h *helper) initTestSecrets() error {
 	h.testSecrets = map[string]string{}
 
@@ -476,9 +491,8 @@ func (h *helper) deployMonitoring() error {
 }
 
 func (h *helper) deployWiremock() error {
-	// Only deploy if running autoops or full e2e tests
-	if !strings.Contains(h.e2eTags, "autoops") && h.e2eTags != "e2e" {
-		log.Info("Skipping wiremock deployment (not needed for current test run")
+	if !shouldDeployWiremock(h) {
+		log.Info("Skipping wiremock deployment (not needed for current test run)")
 		return nil
 	}
 
