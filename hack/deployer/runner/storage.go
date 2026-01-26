@@ -46,6 +46,9 @@ func createStorageClass() error {
 
 	sc = strings.ReplaceAll(sc, fmt.Sprintf("name: %s", defaultName), "name: e2e-default")
 	sc = strings.ReplaceAll(sc, "volumeBindingMode: Immediate", "volumeBindingMode: WaitForFirstConsumer")
+	// https://github.com/elastic/cloud-on-k8s/issues/9074
+	// Seeing iowait issues with e2e tests on ocp.
+	sc = strings.ReplaceAll(sc, "type: pd-standard", "type: pd-ssd")
 
 	// Some providers (AKS) don't allow changing the default. To avoid having two defaults, set newly created storage
 	// class to be non-default. Depending on k8s version, a different annotation is needed. To avoid parsing version
