@@ -1,4 +1,7 @@
 ---
+# This example only applies to Elastic Agent versions < v8.16.0.
+# Since Elastic Agent v8.16.0, the `runAsUser: 0` is not needed
+# as Agent changes the ownership of the volumes mounts to the container user id.
 apiVersion: apps/v1
 kind: DaemonSet
 metadata:
