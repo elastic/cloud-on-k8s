@@ -7,8 +7,6 @@ package v1alpha1
 import (
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-
-	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/set"
 )
 
 const (
@@ -111,20 +109,24 @@ type AutoOpsAgentPolicyStatus struct {
 type PolicyPhase string
 
 const (
-	ReadyPhase             PolicyPhase = "Ready"
-	ApplyingChangesPhase   PolicyPhase = "ApplyingChanges"
-	InvalidPhase           PolicyPhase = "Invalid"
-	NoResourcesPhase       PolicyPhase = "NoResources"
-	ResourcesNotReadyPhase PolicyPhase = "ResourcesNotReady"
-	ErrorPhase             PolicyPhase = "Error"
+	ReadyPhase                      PolicyPhase = "Ready"
+	ApplyingChangesPhase            PolicyPhase = "ApplyingChanges"
+	InvalidPhase                    PolicyPhase = "Invalid"
+	NoMonitoredResourcesPhase       PolicyPhase = "NoMonitoredResources"
+	MonitoredResourcesNotReadyPhase PolicyPhase = "MonitoredResourcesNotReady"
+	AutoOpsResourcesNotReadyPhase   PolicyPhase = "AutoOpsResourcesNotReady"
+	ErrorPhase                      PolicyPhase = "Error"
 )
 
-// RequeuePhases is a set of phases that require a requeue.
-var RequeuePhases = set.Make(
-	string(ApplyingChangesPhase),
-	string(ResourcesNotReadyPhase),
-	string(ErrorPhase),
-)
+// IsRequeuePhase returns whether the phase requires a requeue.
+func (p PolicyPhase) IsRequeuePhase() bool {
+	switch p {
+	case ApplyingChangesPhase, MonitoredResourcesNotReadyPhase, ErrorPhase:
+		return true
+	default:
+		return false
+	}
+}
 
 // IsMarkedForDeletion returns true if the AutoOpsAgentPolicy resource is going to be deleted.
 func (p *AutoOpsAgentPolicy) IsMarkedForDeletion() bool {
