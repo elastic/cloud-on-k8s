@@ -66,6 +66,7 @@ steps:
     key: "operator-image-build"
     steps:
       - label: ":buildkite:"
+        key: "operator-image-build-step"
         agents:
           image: "docker.elastic.co/ci-agent-images/serverless-docker-builder:0.10.3@sha256:7d810d7aa5f089b408d6e5076199f5364640907a99b175268fceb8f1f622370a"
         commands: make -C /agent generate-docker-images
@@ -77,6 +78,9 @@ steps:
           RECURSIVE: true
           SIGN_IMAGES: false
       - label: ":buildkite: upload images digest"
+        key: "operator-image-upload-digest-step"
+        depends_on:
+          - "operator-image-build-step"
         commands:
           - .buildkite/scripts/build/image-signing.sh
           - buildkite-agent artifact upload eck-container-images-digest.txt
@@ -85,6 +89,8 @@ steps:
           cpu: "1"
           memory: "1G"
       - label: ":key: sign images"
+        depends_on:
+          - "operator-image-upload-digest-step"
         trigger: unified-release-container-image-signing
 
   - group: build e2e-tests
