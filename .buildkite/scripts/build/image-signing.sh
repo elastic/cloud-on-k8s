@@ -21,24 +21,17 @@ get_image_digest() {
         return 1
     fi
 
-    local manifest_output
-    if ! manifest_output=$(docker manifest inspect "$image_ref" 2>&1); then
+    if ! digest=$(docker manifest inspect "$image_ref" 2>&1 | jq -r '.manifests[0].digest'); then
         echo "Error: docker manifest inspect failed for $image_ref" >&2
-        echo "$manifest_output" >&2
         return 1
     fi
 
-    # Extract digest from manifest (look for "digest" field)
-    digest=$(echo "$manifest_output" | grep -oE '"digest"[[:space:]]*:[[:space:]]*"sha256:[a-f0-9]+"' | \
-        head -1 | grep -oE 'sha256:[a-f0-9]+' || echo "")
-    if [[ -n "$digest" ]]; then
-        echo "$digest"
-        return 0
+    if [[ -z "$digest" || "$digest" == "null" ]]; then
+        echo "Error: could not extract digest from manifest for $image_ref" >&2
+        return 1
     fi
 
-    echo "Error: could not extract digest from manifest for $image_ref" >&2
-
-    return 1
+    echo "$digest"
 }
 
 main() {
