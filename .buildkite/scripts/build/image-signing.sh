@@ -68,14 +68,10 @@ main() {
     while IFS= read -r image_ref; do
         [[ -z "$image_ref" ]] && continue
 
-        # Extract base image name without tag
-        local base_image="${image_ref%%:*}"
-
         echo -n "Getting digest for $image_ref ... "
         local digest
         if digest=$(get_image_digest "$image_ref"); then
-            local image_with_digest="${base_image}@${digest}"
-            echo "$image_with_digest" >> "$output_file"
+            echo "${image_ref}@${digest}" >> "$output_file"
             echo "OK"
         else
             echo "FAILED"

@@ -79,7 +79,7 @@ steps:
       - label: ":buildkite: upload images digest"
         commands:
           - .buildkite/scripts/build/image-signing.sh
-          - buildkite-agent artifact upload hack/deployer/deployer
+          - buildkite-agent artifact upload /tmp/eck-container-images-digest.txt
         agents:
           image: docker.elastic.co/ci-agent-images/cloud-k8s-operator/buildkite-agent:6154e14d
           cpu: "1"
