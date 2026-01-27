@@ -86,6 +86,8 @@ steps:
           memory: "1G"
       - label: ":key: sign images"
         trigger: unified-release-container-image-signing
+        env:
+          IMAGES_TAG: "$${IMAGE_TAG}"
 
   - group: build e2e-tests
     key: "e2e-tests-image-build"
