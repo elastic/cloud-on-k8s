@@ -57,7 +57,7 @@ ECK now includes support for multiple Stack Config Policies targeting the same {
 
 :::{dropdown} Updated dependencies
 
-- Go 1.25.2 => 1.25.5
+- Go 1.25.2 => 1.25.6
 - github.com/KimMachineGun/automemlimit v0.7.4 => v0.7.5
 - github.com/elastic/go-ucfg v0.8.9-0.20250307075119-2a22403faaea => v0.8.9-0.20251017163010-3520930bed4f
 - github.com/gkampitakis/go-snaps v0.5.15 => v0.5.19
