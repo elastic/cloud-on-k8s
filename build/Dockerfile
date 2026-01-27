@@ -1,5 +1,5 @@
 # Build the operator binary
-FROM docker.elastic.co/wolfi/go:1.25.5-r0@sha256:0ea7bf3561c70122cd0fb30fafbce3cc38d1a185751e72f557b51eca9d10f3fd as builder
+FROM docker.elastic.co/wolfi/go:1.25.5-r0@sha256:8dd06d6e5de640aac12a318c77e486381ee122a7a281887c6f7ddf4ff1b4d56f as builder
 
 ARG VERSION
 ARG SHA1
