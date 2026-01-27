@@ -42,7 +42,7 @@ get_image_digest() {
 }
 
 main() {
-    local output_file="/tmp/eck-container-images-digest.txt"
+    local output_file="eck-container-images-digest.txt"
 
     # Initialize output file
     true > "$output_file"
