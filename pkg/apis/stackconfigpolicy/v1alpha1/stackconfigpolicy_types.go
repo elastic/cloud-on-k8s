@@ -57,7 +57,7 @@ type StackConfigPolicyList struct {
 type StackConfigPolicySpec struct {
 	ResourceSelector metav1.LabelSelector `json:"resourceSelector,omitempty"`
 	// Weight determines the priority of this policy when multiple policies target the same resource.
-	// Lower weight values take precedence. Defaults to 0.
+	// Higher weight values take precedence. Defaults to 0.
 	// +kubebuilder:default=0
 	Weight int32 `json:"weight,omitempty"`
 	// Deprecated: SecureSettings only applies to Elasticsearch and is deprecated. It must be set per application instead.
@@ -181,6 +181,7 @@ type IndexTemplates struct {
 
 type StackConfigPolicyStatus struct {
 	// ResourcesStatuses holds the status for each resource to be configured.
+	//
 	// Deprecated: Details is used to store the status of resources from ECK 2.11
 	ResourcesStatuses map[string]ResourcePolicyStatus `json:"resourcesStatuses,omitempty"`
 	// Details holds the status details for each resource to be configured.
@@ -341,9 +342,11 @@ func (s *StackConfigPolicyStatus) Update() {
 			// Resource status can be for Kibana or Elasticsearch resources
 			resourcePhase := status.Phase
 
-			if resourcePhase == ReadyPhase {
+			//nolint:exhaustive
+			switch resourcePhase {
+			case ReadyPhase:
 				s.Ready++
-			} else if resourcePhase == ErrorPhase {
+			case ErrorPhase:
 				s.Errors++
 			}
 			// update phase if that of the resource status is worse

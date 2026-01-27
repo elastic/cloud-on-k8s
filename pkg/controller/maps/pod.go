@@ -58,7 +58,7 @@ func readinessProbe(useTLS bool) corev1.Probe {
 	}
 }
 
-func newPodSpec(ems emsv1alpha1.ElasticMapsServer, configHash string, meta metadata.Metadata) (corev1.PodTemplateSpec, error) {
+func newPodSpec(ems emsv1alpha1.ElasticMapsServer, configHash string, meta metadata.Metadata, setDefaultSecurityContext bool) (corev1.PodTemplateSpec, error) {
 	// ensure the Pod gets rotated on config change
 	podMeta := meta.Merge(metadata.Metadata{Annotations: map[string]string{configHashAnnotationName: configHash}})
 
@@ -84,6 +84,14 @@ func newPodSpec(ems emsv1alpha1.ElasticMapsServer, configHash string, meta metad
 		WithVolumes(cfgVolume.Volume(), logsVolume.Volume()).
 		WithVolumeMounts(cfgVolume.VolumeMount(), logsVolume.VolumeMount()).
 		WithInitContainerDefaults()
+
+	if setDefaultSecurityContext {
+		builder = builder.WithPodSecurityContext(corev1.PodSecurityContext{
+			SeccompProfile: &corev1.SeccompProfile{
+				Type: corev1.SeccompProfileTypeRuntimeDefault,
+			},
+		})
+	}
 
 	// Add command override for affected versions to fix OpenShift permission issue
 	// See issue #8655: container create fails with "open executable: Operation not permitted"

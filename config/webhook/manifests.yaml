@@ -73,6 +73,27 @@ webhooks:
     service:
       name: webhook-service
       namespace: system
+      path: /validate-autoops-k8s-elastic-co-v1alpha1-autoopsagentpolicies
+  failurePolicy: Ignore
+  matchPolicy: Exact
+  name: elastic-autoops-validation-v1alpha1.k8s.elastic.co
+  rules:
+  - apiGroups:
+    - autoops.k8s.elastic.co
+    apiVersions:
+    - v1alpha1
+    operations:
+    - CREATE
+    - UPDATE
+    resources:
+    - autoopsagentpolicies
+  sideEffects: None
+- admissionReviewVersions:
+  - v1
+  clientConfig:
+    service:
+      name: webhook-service
+      namespace: system
       path: /validate-beat-k8s-elastic-co-v1beta1-beat
   failurePolicy: Ignore
   matchPolicy: Exact
@@ -94,20 +115,20 @@ webhooks:
     service:
       name: webhook-service
       namespace: system
-      path: /validate-elasticsearch-k8s-elastic-co-v1beta1-elasticsearch
+      path: /validate-ems-k8s-elastic-co-v1alpha1-mapsservers
   failurePolicy: Ignore
   matchPolicy: Exact
-  name: elastic-es-validation-v1beta1.k8s.elastic.co
+  name: elastic-ems-validation-v1alpha1.k8s.elastic.co
   rules:
   - apiGroups:
-    - elasticsearch.k8s.elastic.co
+    - maps.k8s.elastic.co
     apiVersions:
-    - v1beta1
+    - v1alpha1
     operations:
     - CREATE
     - UPDATE
     resources:
-    - elasticsearches
+    - mapsservers
   sideEffects: None
 - admissionReviewVersions:
   - v1
@@ -157,6 +178,90 @@ webhooks:
     service:
       name: webhook-service
       namespace: system
+      path: /validate-epr-k8s-elastic-co-v1alpha1-packageregistry
+  failurePolicy: Ignore
+  matchPolicy: Exact
+  name: elastic-epr-validation-v1alpha1.k8s.elastic.co
+  rules:
+  - apiGroups:
+    - packageregistry.k8s.elastic.co
+    apiVersions:
+    - v1alpha1
+    operations:
+    - CREATE
+    - UPDATE
+    resources:
+    - packageregistry
+  sideEffects: None
+- admissionReviewVersions:
+  - v1
+  clientConfig:
+    service:
+      name: webhook-service
+      namespace: system
+      path: /validate-elasticsearch-k8s-elastic-co-v1-elasticsearch
+  failurePolicy: Ignore
+  matchPolicy: Exact
+  name: elastic-es-validation-v1.k8s.elastic.co
+  rules:
+  - apiGroups:
+    - elasticsearch.k8s.elastic.co
+    apiVersions:
+    - v1
+    operations:
+    - CREATE
+    - UPDATE
+    resources:
+    - elasticsearches
+  sideEffects: None
+- admissionReviewVersions:
+  - v1
+  clientConfig:
+    service:
+      name: webhook-service
+      namespace: system
+      path: /validate-elasticsearch-k8s-elastic-co-v1beta1-elasticsearch
+  failurePolicy: Ignore
+  matchPolicy: Exact
+  name: elastic-es-validation-v1beta1.k8s.elastic.co
+  rules:
+  - apiGroups:
+    - elasticsearch.k8s.elastic.co
+    apiVersions:
+    - v1beta1
+    operations:
+    - CREATE
+    - UPDATE
+    resources:
+    - elasticsearches
+  sideEffects: None
+- admissionReviewVersions:
+  - v1
+  clientConfig:
+    service:
+      name: webhook-service
+      namespace: system
+      path: /validate-autoscaling-k8s-elastic-co-v1alpha1-elasticsearchautoscaler
+  failurePolicy: Ignore
+  matchPolicy: Exact
+  name: elastic-esa-validation-v1alpha1.k8s.elastic.co
+  rules:
+  - apiGroups:
+    - autoscaling.k8s.elastic.co
+    apiVersions:
+    - v1alpha1
+    operations:
+    - CREATE
+    - UPDATE
+    resources:
+    - elasticsearchautoscalers
+  sideEffects: None
+- admissionReviewVersions:
+  - v1
+  clientConfig:
+    service:
+      name: webhook-service
+      namespace: system
       path: /validate-kibana-k8s-elastic-co-v1-kibana
   failurePolicy: Ignore
   matchPolicy: Exact
@@ -199,41 +304,20 @@ webhooks:
     service:
       name: webhook-service
       namespace: system
-      path: /validate-ems-k8s-elastic-co-v1alpha1-mapsservers
+      path: /validate-logstash-k8s-elastic-co-v1alpha1-logstash
   failurePolicy: Ignore
   matchPolicy: Exact
-  name: elastic-ems-validation-v1alpha1.k8s.elastic.co
+  name: elastic-logstash-validation-v1alpha1.k8s.elastic.co
   rules:
   - apiGroups:
-    - maps.k8s.elastic.co
+    - logstash.k8s.elastic.co
     apiVersions:
     - v1alpha1
     operations:
     - CREATE
     - UPDATE
     resources:
-    - mapsservers
-  sideEffects: None
-- admissionReviewVersions:
-  - v1
-  clientConfig:
-    service:
-      name: webhook-service
-      namespace: system
-      path: /validate-epr-k8s-elastic-co-v1alpha1-packageregistry
-  failurePolicy: Ignore
-  matchPolicy: Exact
-  name: elastic-epr-validation-v1alpha1.k8s.elastic.co
-  rules:
-  - apiGroups:
-    - packageregistry.k8s.elastic.co
-    apiVersions:
-    - v1alpha1
-    operations:
-    - CREATE
-    - UPDATE
-    resources:
-    - packageregistry
+    - logstashes
   sideEffects: None
 - admissionReviewVersions:
   - v1
@@ -255,67 +339,4 @@ webhooks:
     - UPDATE
     resources:
     - stackconfigpolicies
-  sideEffects: None
-- admissionReviewVersions:
-  - v1
-  clientConfig:
-    service:
-      name: webhook-service
-      namespace: system
-      path: /validate-elasticsearch-k8s-elastic-co-v1-elasticsearch
-  failurePolicy: Ignore
-  matchPolicy: Exact
-  name: elastic-es-validation-v1.k8s.elastic.co
-  rules:
-  - apiGroups:
-    - elasticsearch.k8s.elastic.co
-    apiVersions:
-    - v1
-    operations:
-    - CREATE
-    - UPDATE
-    resources:
-    - elasticsearches
-  sideEffects: None
-- admissionReviewVersions:
-  - v1
-  clientConfig:
-    service:
-      name: webhook-service
-      namespace: system
-      path: /validate-autoscaling-k8s-elastic-co-v1alpha1-elasticsearchautoscaler
-  failurePolicy: Ignore
-  matchPolicy: Exact
-  name: elastic-esa-validation-v1alpha1.k8s.elastic.co
-  rules:
-  - apiGroups:
-    - autoscaling.k8s.elastic.co
-    apiVersions:
-    - v1alpha1
-    operations:
-    - CREATE
-    - UPDATE
-    resources:
-    - elasticsearchautoscalers
-  sideEffects: None
-- admissionReviewVersions:
-  - v1
-  clientConfig:
-    service:
-      name: webhook-service
-      namespace: system
-      path: /validate-logstash-k8s-elastic-co-v1alpha1-logstash
-  failurePolicy: Ignore
-  matchPolicy: Exact
-  name: elastic-logstash-validation-v1alpha1.k8s.elastic.co
-  rules:
-  - apiGroups:
-    - logstash.k8s.elastic.co
-    apiVersions:
-    - v1alpha1
-    operations:
-    - CREATE
-    - UPDATE
-    resources:
-    - logstashes
   sideEffects: None

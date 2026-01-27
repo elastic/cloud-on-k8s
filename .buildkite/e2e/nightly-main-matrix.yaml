@@ -5,7 +5,7 @@
   mixed:
     - E2E_STACK_VERSION: "8.19.6"
     - E2E_STACK_VERSION: "9.1.6"
-    # current stack version 9.2.2 is tested in all other tests no need to test it again
+    # current stack version 9.2.4 is tested in all other tests no need to test it again
     - E2E_STACK_VERSION: "8.19.7-SNAPSHOT"
     - E2E_STACK_VERSION: "9.3.0-SNAPSHOT"
 
@@ -14,7 +14,7 @@
     E2E_PROVIDER: ocp
   mixed:
     ## Test the current stack version.
-    - E2E_STACK_VERSION: "9.2.2"
+    - E2E_STACK_VERSION: "9.2.4"
     ## Also test the next stack version to detect any change in the images that might not be compatible with the CRI-O runtime.
     - E2E_STACK_VERSION: "9.3.0-SNAPSHOT"
 
@@ -22,14 +22,14 @@
   fixed:
     E2E_PROVIDER: kind
   mixed:
-    - DEPLOYER_KIND_NODE_IMAGE: kindest/node:v1.30.13@sha256:397209b3d947d154f6641f2d0ce8d473732bd91c87d9575ade99049aa33cd648
     - DEPLOYER_KIND_NODE_IMAGE: kindest/node:v1.31.12@sha256:0f5cc49c5e73c0c2bb6e2df56e7df189240d83cf94edfa30946482eb08ec57d2
     - DEPLOYER_KIND_NODE_IMAGE: kindest/node:v1.32.8@sha256:abd489f042d2b644e2d033f5c2d900bc707798d075e8186cb65e3f1367a9d5a1
     - DEPLOYER_KIND_NODE_IMAGE: kindest/node:v1.33.4@sha256:25a6018e48dfcaee478f4a59af81157a437f15e6e140bf103f85a2e7cd0cbbf2
+    - DEPLOYER_KIND_NODE_IMAGE: kindest/node:v1.34.0@sha256:7416a61b42b1662ca6ca89f02028ac133a309a2a30ba309614e8ec94d976dc5a
     # The latest version of kind/k8s needs to be listed twice at the end of this list
     # as it's tested in both ipv4 and ipv6 mode.
-    - DEPLOYER_KIND_NODE_IMAGE: kindest/node:v1.34.0@sha256:7416a61b42b1662ca6ca89f02028ac133a309a2a30ba309614e8ec94d976dc5a
-    - DEPLOYER_KIND_NODE_IMAGE: kindest/node:v1.34.0@sha256:7416a61b42b1662ca6ca89f02028ac133a309a2a30ba309614e8ec94d976dc5a
+    - DEPLOYER_KIND_NODE_IMAGE: kindest/node:v1.35.0@sha256:452d707d4862f52530247495d180205e029056831160e22870e37e3f6c1ac31f
+    - DEPLOYER_KIND_NODE_IMAGE: kindest/node:v1.35.0@sha256:452d707d4862f52530247495d180205e029056831160e22870e37e3f6c1ac31f
       DEPLOYER_KIND_IP_FAMILY: ipv6
 
 - label: gke

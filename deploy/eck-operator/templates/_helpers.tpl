@@ -341,6 +341,19 @@ updating docs/operating-eck/eck-permissions.asciidoc file.
   - update
   - patch
 - apiGroups:
+  - autoops.k8s.elastic.co
+  resources:
+  - autoopsagentpolicies
+  - autoopsagentpolicies/status
+  - autoopsagentpolicies/finalizers # needed for ownerReferences with blockOwnerDeletion on OCP
+  verbs:
+  - get
+  - list
+  - watch
+  - create
+  - update
+  - patch
+- apiGroups:
   - packageregistry.k8s.elastic.co
   resources:
   - packageregistries
@@ -361,6 +374,13 @@ updating docs/operating-eck/eck-permissions.asciidoc file.
 RBAC permissions on non-namespaced resources
 */}}
 {{- define "eck-operator.clusterWideRbacRules" -}}
+- apiGroups: [""]
+  resources:
+  - namespaces
+  verbs:
+  - get
+  - list
+  - watch
 - apiGroups:
   - storage.k8s.io
   resources:

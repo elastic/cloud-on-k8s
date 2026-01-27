@@ -120,7 +120,7 @@ func TestReconcileStatefulSet(t *testing.T) {
 			client := tt.client()
 			expected := tt.expected()
 			want := tt.want()
-			exp := expectations.NewExpectations(client)
+			exp := expectations.NewExpectations(client, &appsv1.StatefulSet{})
 
 			returned, err := ReconcileStatefulSet(context.Background(), client, es, expected, exp)
 			require.NoError(t, err)

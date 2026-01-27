@@ -39,6 +39,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/watches"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/certificates/transport"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/driver"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/driver/stateful"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/label"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/observer"
 	esreconcile "github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/reconcile"
@@ -74,7 +75,7 @@ func newReconciler(mgr manager.Manager, params operator.Parameters) *ReconcileEl
 		esObservers:    observer.NewManager(params.ElasticsearchObservationInterval, params.Tracer),
 
 		dynamicWatches: watches.NewDynamicWatches(),
-		expectations:   expectations.NewClustersExpectations(client),
+		expectations:   expectations.NewClustersExpectations(client, &appsv1.StatefulSet{}),
 
 		Parameters: params,
 	}
@@ -290,7 +291,7 @@ func (r *ReconcileElasticsearch) internalReconcile(
 		return results.WithError(pkgerrors.Errorf("unsupported version: %s", ver))
 	}
 
-	return driver.NewDefaultDriver(driver.DefaultDriverParameters{
+	return stateful.NewDriver(driver.Parameters{
 		OperatorParameters: r.Parameters,
 		ES:                 es,
 		ReconcileState:     reconcileState,

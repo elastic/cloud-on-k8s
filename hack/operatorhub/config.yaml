@@ -1,6 +1,6 @@
-newVersion: 3.3.0-SNAPSHOT
-prevVersion: 3.2.0
-stackVersion: 9.3.0-SNAPSHOT
+newVersion: 3.4.0-SNAPSHOT
+prevVersion: 3.3.0
+stackVersion: 9.4.0-SNAPSHOT
 crds:
   - name: elasticsearches.elasticsearch.k8s.elastic.co
     displayName: Elasticsearch Cluster
@@ -32,6 +32,9 @@ crds:
   - name: logstashes.logstash.k8s.elastic.co
     displayName: Logstash
     description: Logstash instance
+  - name: autoopsagentpolicies.autoops.k8s.elastic.co
+    displayName: AutoOps Agent Policy
+    description: AutoOps Agent Policy instance
   - name: packageregistries.packageregistry.k8s.elastic.co
     displayName: Elastic Package Registry
     description: Elastic Package Registry instance

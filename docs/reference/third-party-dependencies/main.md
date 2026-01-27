@@ -8,7 +8,7 @@ applies_to:
 ---
 % Generated documentation. Please do not edit.
 
-# Third-party dependencies for Elastic Cloud on Kubernetes[k8s-dependencies]
+# Third-party dependencies for Elastic Cloud on Kubernetes [k8s-dependencies]
 
 This page lists the third-party dependencies used to build {{eck}} from the main branch.
 
@@ -21,15 +21,16 @@ This page lists the third-party dependencies used to build {{eck}} from the main
 | [github.com/Masterminds/sprig/v3](https://github.com/Masterminds/sprig) | v3.3.0 | MIT |
 | [github.com/blang/semver/v4](https://github.com/blang/semver) | v4.0.0 | MIT |
 | [github.com/davecgh/go-spew](https://github.com/davecgh/go-spew) | v1.1.2-0.20180830191138-d8f796af33cc | ISC |
-| [github.com/elastic/go-ucfg](https://github.com/elastic/go-ucfg) | v0.8.9-0.20251017163010-3520930bed4f | Apache-2.0 |
+| [github.com/elastic/go-ucfg](https://github.com/elastic/go-ucfg) | v0.8.9-0.20260108155023-368693374ae9 | Apache-2.0 |
 | [github.com/ghodss/yaml](https://github.com/ghodss/yaml) | v1.0.0 | MIT |
-| [github.com/gkampitakis/go-snaps](https://github.com/gkampitakis/go-snaps) | v0.5.18 | MIT |
+| [github.com/gkampitakis/go-snaps](https://github.com/gkampitakis/go-snaps) | v0.5.19 | MIT |
 | [github.com/go-logr/logr](https://github.com/go-logr/logr) | v1.4.3 | Apache-2.0 |
 | [github.com/go-test/deep](https://github.com/go-test/deep) | v1.1.1 | MIT |
 | [github.com/gobuffalo/flect](https://github.com/gobuffalo/flect) | v1.0.3 | MIT |
 | [github.com/google/go-cmp](https://github.com/google/go-cmp) | v0.7.0 | BSD-3-Clause |
 | [github.com/google/go-containerregistry](https://github.com/google/go-containerregistry) | v0.20.7 | Apache-2.0 |
 | [github.com/google/uuid](https://github.com/google/uuid) | v1.6.0 | BSD-3-Clause |
+| [github.com/googlecloudplatform/compute-class-api](https://github.com/googlecloudplatform/compute-class-api) | v0.0.0-20251208134148-ae2e7936c1f8 | Apache-2.0 |
 | [github.com/hashicorp/go-multierror](https://github.com/hashicorp/go-multierror) | v1.1.1 | MPL-2.0 |
 | [github.com/hashicorp/golang-lru/v2](https://github.com/hashicorp/golang-lru) | v2.0.7 | MPL-2.0 |
 | [github.com/hashicorp/vault/api](https://github.com/hashicorp/vault) | v1.22.0 | MPL-2.0 |
@@ -37,7 +38,7 @@ This page lists the third-party dependencies used to build {{eck}} from the main
 | [github.com/pkg/errors](https://github.com/pkg/errors) | v0.9.1 | BSD-2-Clause |
 | [github.com/pmezard/go-difflib](https://github.com/pmezard/go-difflib) | v1.0.1-0.20181226105442-5d4384ee4fb2 | BSD-3-Clause |
 | [github.com/prometheus/client_golang](https://github.com/prometheus/client_golang) | v1.23.2 | Apache-2.0 |
-| [github.com/prometheus/common](https://github.com/prometheus/common) | v0.67.4 | Apache-2.0 |
+| [github.com/prometheus/common](https://github.com/prometheus/common) | v0.67.5 | Apache-2.0 |
 | [github.com/spf13/cobra](https://github.com/spf13/cobra) | v1.10.2 | Apache-2.0 |
 | [github.com/spf13/pflag](https://github.com/spf13/pflag) | v1.0.10 | BSD-3-Clause |
 | [github.com/spf13/viper](https://github.com/spf13/viper) | v1.21.0 | MIT |
@@ -48,16 +49,16 @@ This page lists the third-party dependencies used to build {{eck}} from the main
 | [go.elastic.co/apm/v2](https://go.elastic.co/apm/v2) | v2.7.2 | Apache-2.0 |
 | [go.uber.org/automaxprocs](https://go.uber.org/automaxprocs) | v1.6.0 | MIT |
 | [go.uber.org/zap](https://go.uber.org/zap) | v1.27.1 | MIT |
-| [golang.org/x/crypto](https://golang.org/x/crypto) | v0.46.0 | BSD-3-Clause |
+| [golang.org/x/crypto](https://golang.org/x/crypto) | v0.47.0 | BSD-3-Clause |
 | [golang.org/x/exp](https://golang.org/x/exp) | v0.0.0-20240808152545-0cdaa3abc0fa | BSD-3-Clause |
 | [gopkg.in/yaml.v3](https://gopkg.in/yaml.v3) | v3.0.1 | MIT |
-| [k8s.io/api](https://github.com/kubernetes/api) | v0.34.3 | Apache-2.0 |
-| [k8s.io/apimachinery](https://github.com/kubernetes/apimachinery) | v0.34.3 | Apache-2.0 |
-| [k8s.io/client-go](https://github.com/kubernetes/client-go) | v0.34.3 | Apache-2.0 |
+| [k8s.io/api](https://github.com/kubernetes/api) | v0.35.0 | Apache-2.0 |
+| [k8s.io/apimachinery](https://github.com/kubernetes/apimachinery) | v0.35.0 | Apache-2.0 |
+| [k8s.io/client-go](https://github.com/kubernetes/client-go) | v0.35.0 | Apache-2.0 |
 | [k8s.io/klog/v2](https://github.com/kubernetes/klog) | v2.130.1 | Apache-2.0 |
-| [k8s.io/utils](https://github.com/kubernetes/utils) | v0.0.0-20250604170112-4c0f3b243397 | Apache-2.0 |
-| [sigs.k8s.io/controller-runtime](https://sigs.k8s.io/controller-runtime) | v0.22.4 | Apache-2.0 |
-| [sigs.k8s.io/controller-tools](https://sigs.k8s.io/controller-tools) | v0.19.0 | Apache-2.0 |
+| [k8s.io/utils](https://github.com/kubernetes/utils) | v0.0.0-20251002143259-bc988d571ff4 | Apache-2.0 |
+| [sigs.k8s.io/controller-runtime](https://sigs.k8s.io/controller-runtime) | v0.23.0 | Apache-2.0 |
+| [sigs.k8s.io/controller-tools](https://sigs.k8s.io/controller-tools) | v0.20.0 | Apache-2.0 |
 
 
 ##  Indirect dependencies [k8s-dependencies-indirect]
@@ -66,7 +67,7 @@ This page lists the third-party dependencies used to build {{eck}} from the main
 | --- | --- | --- |
 | [cel.dev/expr](https://cel.dev/expr) | v0.24.0 | Apache-2.0 |
 | [github.com/Masterminds/goutils](https://github.com/Masterminds/goutils) | v1.1.1 | Apache-2.0 |
-| [github.com/Masterminds/semver/v3](https://github.com/Masterminds/semver) | v3.3.0 | MIT |
+| [github.com/Masterminds/semver/v3](https://github.com/Masterminds/semver) | v3.4.0 | MIT |
 | [github.com/antlr4-go/antlr/v4](https://github.com/antlr4-go/antlr) | v4.13.0 | BSD-3-Clause |
 | [github.com/armon/go-radix](https://github.com/armon/go-radix) | v1.0.0 | MIT |
 | [github.com/armon/go-socks5](https://github.com/armon/go-socks5) | v0.0.0-20160902184237-e75332964ef5 | MIT |
@@ -97,13 +98,12 @@ This page lists the third-party dependencies used to build {{eck}} from the main
 | [github.com/go-task/slim-sprig/v3](https://github.com/go-task/slim-sprig) | v3.0.0 | MIT |
 | [github.com/go-viper/mapstructure/v2](https://github.com/go-viper/mapstructure) | v2.4.0 | MIT |
 | [github.com/goccy/go-yaml](https://github.com/goccy/go-yaml) | v1.18.0 | MIT |
-| [github.com/gogo/protobuf](https://github.com/gogo/protobuf) | v1.3.2 | BSD-3-Clause |
 | [github.com/golang/protobuf](https://github.com/golang/protobuf) | v1.5.4 | BSD-3-Clause |
 | [github.com/google/btree](https://github.com/google/btree) | v1.1.3 | Apache-2.0 |
 | [github.com/google/cel-go](https://github.com/google/cel-go) | v0.26.0 | Apache-2.0 |
 | [github.com/google/gnostic-models](https://github.com/google/gnostic-models) | v0.7.0 | Apache-2.0 |
 | [github.com/google/gofuzz](https://github.com/google/gofuzz) | v1.2.0 | Apache-2.0 |
-| [github.com/google/pprof](https://github.com/google/pprof) | v0.0.0-20241029153458-d1b30febd7db | Apache-2.0 |
+| [github.com/google/pprof](https://github.com/google/pprof) | v0.0.0-20250403155104-27863c87afa6 | Apache-2.0 |
 | [github.com/gorilla/websocket](https://github.com/gorilla/websocket) | v1.5.4-0.20250319132907-e064f32e3674 | BSD-2-Clause |
 | [github.com/grpc-ecosystem/grpc-gateway/v2](https://github.com/grpc-ecosystem/grpc-gateway) | v2.26.3 | BSD-3-Clause |
 | [github.com/hashicorp/errwrap](https://github.com/hashicorp/errwrap) | v1.1.0 | MPL-2.0 |
@@ -138,8 +138,8 @@ This page lists the third-party dependencies used to build {{eck}} from the main
 | [github.com/mxk/go-flowrate](https://github.com/mxk/go-flowrate) | v0.0.0-20140419014527-cca7078d478f | BSD-3-Clause |
 | [github.com/nxadm/tail](https://github.com/nxadm/tail) | v1.4.8 | MIT |
 | [github.com/onsi/ginkgo](https://github.com/onsi/ginkgo) | v1.16.5 | MIT |
-| [github.com/onsi/ginkgo/v2](https://github.com/onsi/ginkgo) | v2.22.0 | MIT |
-| [github.com/onsi/gomega](https://github.com/onsi/gomega) | v1.38.1 | MIT |
+| [github.com/onsi/ginkgo/v2](https://github.com/onsi/ginkgo) | v2.27.2 | MIT |
+| [github.com/onsi/gomega](https://github.com/onsi/gomega) | v1.38.3 | MIT |
 | [github.com/opencontainers/go-digest](https://github.com/opencontainers/go-digest) | v1.0.0 | Apache-2.0 |
 | [github.com/opencontainers/image-spec](https://github.com/opencontainers/image-spec) | v1.1.1 | Apache-2.0 |
 | [github.com/pbnjay/memory](https://github.com/pbnjay/memory) | v0.0.0-20210728143218-7b4eea64cf58 | BSD-3-Clause |
@@ -147,7 +147,7 @@ This page lists the third-party dependencies used to build {{eck}} from the main
 | [github.com/prashantv/gostub](https://github.com/prashantv/gostub) | v1.1.0 | MIT |
 | [github.com/prometheus/client_model](https://github.com/prometheus/client_model) | v0.6.2 | Apache-2.0 |
 | [github.com/prometheus/procfs](https://github.com/prometheus/procfs) | v0.16.1 | Apache-2.0 |
-| [github.com/rogpeppe/go-internal](https://github.com/rogpeppe/go-internal) | v1.13.1 | BSD-3-Clause |
+| [github.com/rogpeppe/go-internal](https://github.com/rogpeppe/go-internal) | v1.14.1 | BSD-3-Clause |
 | [github.com/ryanuber/go-glob](https://github.com/ryanuber/go-glob) | v1.0.0 | MIT |
 | [github.com/sagikazarmark/locafero](https://github.com/sagikazarmark/locafero) | v0.11.0 | MIT |
 | [github.com/sergi/go-diff](https://github.com/sergi/go-diff) | v1.4.0 | MIT |
@@ -180,37 +180,37 @@ This page lists the third-party dependencies used to build {{eck}} from the main
 | [go.uber.org/multierr](https://go.uber.org/multierr) | v1.11.0 | MIT |
 | [go.yaml.in/yaml/v2](https://go.yaml.in/yaml/v2) | v2.4.3 | Apache-2.0 |
 | [go.yaml.in/yaml/v3](https://go.yaml.in/yaml/v3) | v3.0.4 | MIT |
-| [golang.org/x/mod](https://golang.org/x/mod) | v0.30.0 | BSD-3-Clause |
-| [golang.org/x/net](https://golang.org/x/net) | v0.47.0 | BSD-3-Clause |
-| [golang.org/x/oauth2](https://golang.org/x/oauth2) | v0.33.0 | BSD-3-Clause |
+| [golang.org/x/mod](https://golang.org/x/mod) | v0.31.0 | BSD-3-Clause |
+| [golang.org/x/net](https://golang.org/x/net) | v0.48.0 | BSD-3-Clause |
+| [golang.org/x/oauth2](https://golang.org/x/oauth2) | v0.34.0 | BSD-3-Clause |
 | [golang.org/x/sync](https://golang.org/x/sync) | v0.19.0 | BSD-3-Clause |
-| [golang.org/x/sys](https://golang.org/x/sys) | v0.39.0 | BSD-3-Clause |
-| [golang.org/x/term](https://golang.org/x/term) | v0.38.0 | BSD-3-Clause |
-| [golang.org/x/text](https://golang.org/x/text) | v0.32.0 | BSD-3-Clause |
+| [golang.org/x/sys](https://golang.org/x/sys) | v0.40.0 | BSD-3-Clause |
+| [golang.org/x/term](https://golang.org/x/term) | v0.39.0 | BSD-3-Clause |
+| [golang.org/x/text](https://golang.org/x/text) | v0.33.0 | BSD-3-Clause |
 | [golang.org/x/time](https://golang.org/x/time) | v0.12.0 | BSD-3-Clause |
-| [golang.org/x/tools](https://golang.org/x/tools) | v0.39.0 | BSD-3-Clause |
-| [golang.org/x/tools/go/expect](https://golang.org/x/tools/go/expect) | v0.1.0-deprecated | BSD-3-Clause |
+| [golang.org/x/tools](https://golang.org/x/tools) | v0.40.0 | BSD-3-Clause |
+| [golang.org/x/tools/go/expect](https://golang.org/x/tools/go/expect) | v0.1.1-deprecated | BSD-3-Clause |
 | [golang.org/x/tools/go/packages/packagestest](https://golang.org/x/tools/go/packages/packagestest) | v0.1.1-deprecated | BSD-3-Clause |
 | [gomodules.xyz/jsonpatch/v2](https://gomodules.xyz/jsonpatch/v2) | v2.4.0 | Apache-2.0 |
 | [google.golang.org/genproto/googleapis/api](https://google.golang.org/genproto/googleapis/api) | v0.0.0-20250303144028-a0af3efb3deb | Apache-2.0 |
-| [google.golang.org/genproto/googleapis/rpc](https://google.golang.org/genproto/googleapis/rpc) | v0.0.0-20250303144028-a0af3efb3deb | Apache-2.0 |
-| [google.golang.org/grpc](https://google.golang.org/grpc) | v1.72.1 | Apache-2.0 |
-| [google.golang.org/protobuf](https://google.golang.org/protobuf) | v1.36.10 | BSD-3-Clause |
+| [google.golang.org/genproto/googleapis/rpc](https://google.golang.org/genproto/googleapis/rpc) | v0.0.0-20250528174236-200df99c418a | Apache-2.0 |
+| [google.golang.org/grpc](https://google.golang.org/grpc) | v1.72.2 | Apache-2.0 |
+| [google.golang.org/protobuf](https://google.golang.org/protobuf) | v1.36.11 | BSD-3-Clause |
 | [gopkg.in/check.v1](https://gopkg.in/check.v1) | v1.0.0-20201130134442-10cb98267c6c | BSD-2-Clause |
-| [gopkg.in/evanphx/json-patch.v4](https://gopkg.in/evanphx/json-patch.v4) | v4.12.0 | BSD-3-Clause |
+| [gopkg.in/evanphx/json-patch.v4](https://gopkg.in/evanphx/json-patch.v4) | v4.13.0 | BSD-3-Clause |
 | [gopkg.in/inf.v0](https://gopkg.in/inf.v0) | v0.9.1 | BSD-3-Clause |
 | [gopkg.in/tomb.v1](https://gopkg.in/tomb.v1) | v1.0.0-20141024135613-dd632973f1e7 | BSD-3-Clause |
 | [gopkg.in/yaml.v2](https://gopkg.in/yaml.v2) | v2.4.0 | Apache-2.0 |
 | [gotest.tools/v3](https://gotest.tools/v3) | v3.0.3 | Apache-2.0 |
 | [howett.net/plist](https://gitlab.howett.net/go/plist) | v1.0.1 | BSD-2-Clause |
-| [k8s.io/apiextensions-apiserver](https://github.com/kubernetes/apiextensions-apiserver) | v0.34.1 | Apache-2.0 |
-| [k8s.io/apiserver](https://github.com/kubernetes/apiserver) | v0.34.1 | Apache-2.0 |
-| [k8s.io/code-generator](https://github.com/kubernetes/code-generator) | v0.34.1 | Apache-2.0 |
-| [k8s.io/component-base](https://github.com/kubernetes/component-base) | v0.34.1 | Apache-2.0 |
-| [k8s.io/gengo/v2](https://github.com/kubernetes/gengo) | v2.0.0-20250604051438-85fd79dbfd9f | Apache-2.0 |
-| [k8s.io/kube-openapi](https://github.com/kubernetes/kube-openapi) | v0.0.0-20250710124328-f3f2b991d03b | Apache-2.0 |
+| [k8s.io/apiextensions-apiserver](https://github.com/kubernetes/apiextensions-apiserver) | v0.35.0 | Apache-2.0 |
+| [k8s.io/apiserver](https://github.com/kubernetes/apiserver) | v0.35.0 | Apache-2.0 |
+| [k8s.io/code-generator](https://github.com/kubernetes/code-generator) | v0.35.0 | Apache-2.0 |
+| [k8s.io/component-base](https://github.com/kubernetes/component-base) | v0.35.0 | Apache-2.0 |
+| [k8s.io/gengo/v2](https://github.com/kubernetes/gengo) | v2.0.0-20250922181213-ec3ebc5fd46b | Apache-2.0 |
+| [k8s.io/kube-openapi](https://github.com/kubernetes/kube-openapi) | v0.0.0-20250910181357-589584f1c912 | Apache-2.0 |
 | [sigs.k8s.io/apiserver-network-proxy/konnectivity-client](https://sigs.k8s.io/apiserver-network-proxy/konnectivity-client) | v0.31.2 | Apache-2.0 |
-| [sigs.k8s.io/json](https://sigs.k8s.io/json) | v0.0.0-20241014173422-cfa47c3a1cc8 | Apache-2.0 |
+| [sigs.k8s.io/json](https://sigs.k8s.io/json) | v0.0.0-20250730193827-2d320260d730 | Apache-2.0 |
 | [sigs.k8s.io/randfill](https://sigs.k8s.io/randfill) | v1.0.0 | Apache-2.0 |
 | [sigs.k8s.io/structured-merge-diff/v6](https://sigs.k8s.io/structured-merge-diff/v6) | v6.3.0 | Apache-2.0 |
 | [sigs.k8s.io/yaml](https://sigs.k8s.io/yaml) | v1.6.0 | Apache-2.0 |

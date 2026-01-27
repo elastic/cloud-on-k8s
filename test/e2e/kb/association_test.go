@@ -218,6 +218,8 @@ func TestKibanaAssociationWithNonExistentEPR(t *testing.T) {
 	steps := test.StepList{}
 	steps = steps.WithSteps(esBuilder.InitTestSteps(k))
 	steps = steps.WithSteps(esBuilder.CreationTestSteps(k))
+	steps = steps.WithSteps(esBuilder.CheckK8sTestSteps(k))
+	steps = steps.WithSteps(esBuilder.CheckStackTestSteps(k))
 	steps = steps.WithSteps(kbBuilder.InitTestSteps(k))
 	steps = steps.WithSteps(kbBuilder.CreationTestSteps(k))
 	steps = steps.WithStep(test.Step{

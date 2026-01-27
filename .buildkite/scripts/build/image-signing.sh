@@ -10,6 +10,10 @@
 
 set -euo pipefail
 
+ROOT="$(cd "$(dirname "$0")"; pwd)/../../.."
+
+retry() { "$ROOT/hack/retry.sh" 5 "$@"; }
+
 # Get image digest from registry
 get_image_digest() {
     local image_ref="$1"
@@ -21,7 +25,7 @@ get_image_digest() {
         return 1
     fi
 
-    if ! digest=$(docker manifest inspect "$image_ref" 2>&1 | jq -r '.manifests[0].digest'); then
+    if ! digest=$(retry docker manifest inspect "$image_ref" 2>&1 | jq -r '.manifests[0].digest'); then
         echo "Error: docker manifest inspect failed for $image_ref" >&2
         return 1
     fi

@@ -66,7 +66,7 @@ func TestGetOperatorInfo(t *testing.T) {
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			fakeClientset := k8sfake.NewSimpleClientset(test.initObjs...)
+			fakeClientset := k8sfake.NewClientset(test.initObjs...)
 
 			// retrieve operator info a first time
 			operatorInfo, err := GetOperatorInfo(fakeClientset, fakeOperatorNs, fakeDistributionChannel)
@@ -111,7 +111,7 @@ func TestGetOperatorInfo_DistributionChannel(t *testing.T) {
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			fakeClientset := k8sfake.NewSimpleClientset()
+			fakeClientset := k8sfake.NewClientset()
 
 			operatorInfo, err := GetOperatorInfo(fakeClientset, fakeOperatorNs, test.distributionChannelParam)
 			require.NoError(t, err)
