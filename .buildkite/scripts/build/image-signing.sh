@@ -10,6 +10,10 @@
 
 set -euo pipefail
 
+ROOT="$(cd "$(dirname "$0")"; pwd)/../../.."
+
+retry() { "$ROOT/hack/retry.sh" 5 "$@"; }
+
 # Get image digest from registry
 get_image_digest() {
     local image_ref="$1"
@@ -63,7 +67,7 @@ main() {
 
         echo -n "Getting digest for $image_ref ... "
         local digest
-        if digest=$(get_image_digest "$image_ref"); then
+        if digest=$(retry get_image_digest "$image_ref"); then
             echo "${image_ref}@${digest}" >> "$output_file"
             echo "OK"
         else
