@@ -92,9 +92,9 @@ steps:
         depends_on:
           - "operator-image-upload-digest-step"
         trigger: unified-release-container-image-signing
-          build:
-            env:
-              IMAGES_TAG: "$${BUILDKITE_TAG#v}"
+        build:
+          env:
+            IMAGES_TAG: "$${BUILDKITE_TAG#v}"
 
   - group: build e2e-tests
     key: "e2e-tests-image-build"
