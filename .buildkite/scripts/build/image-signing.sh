@@ -25,7 +25,7 @@ get_image_digest() {
         return 1
     fi
 
-    if ! digest=$(docker manifest inspect "$image_ref" 2>&1 | jq -r '.manifests[0].digest'); then
+    if ! digest=$(retry docker manifest inspect "$image_ref" 2>&1 | jq -r '.manifests[0].digest'); then
         echo "Error: docker manifest inspect failed for $image_ref" >&2
         return 1
     fi
@@ -67,7 +67,7 @@ main() {
 
         echo -n "Getting digest for $image_ref ... "
         local digest
-        if digest=$(retry get_image_digest "$image_ref"); then
+        if digest=$(get_image_digest "$image_ref"); then
             echo "${image_ref}@${digest}" >> "$output_file"
             echo "OK"
         else
