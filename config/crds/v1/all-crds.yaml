@@ -2,7 +2,7 @@ apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
   annotations:
-    controller-gen.kubebuilder.io/version: v0.19.0
+    controller-gen.kubebuilder.io/version: v0.20.0
   name: agents.agent.k8s.elastic.co
 spec:
   group: agent.k8s.elastic.co
@@ -676,7 +676,7 @@ spec:
                         properties:
                           disabled:
                             description: Disabled indicates that the provisioning
-                              of the self-signed certifcate should be disabled.
+                              of the self-signed certificate should be disabled.
                             type: boolean
                           subjectAltNames:
                             description: SubjectAlternativeNames is a list of SANs
@@ -967,7 +967,7 @@ spec:
                             resources:
                               description: |-
                                 resources represents the minimum resources the volume should have.
-                                If RecoverVolumeExpansionFailure feature is enabled users are allowed to specify resource requirements
+                                Users are allowed to specify resource requirements
                                 that are lower than previous value but must still be higher than capacity recorded in the
                                 status field of the claim.
                                 More info: https://kubernetes.io/docs/concepts/storage/persistent-volumes#resources
@@ -1130,7 +1130,7 @@ apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
   annotations:
-    controller-gen.kubebuilder.io/version: v0.19.0
+    controller-gen.kubebuilder.io/version: v0.20.0
   name: apmservers.apm.k8s.elastic.co
 spec:
   group: apm.k8s.elastic.co
@@ -1620,7 +1620,7 @@ spec:
                         properties:
                           disabled:
                             description: Disabled indicates that the provisioning
-                              of the self-signed certifcate should be disabled.
+                              of the self-signed certificate should be disabled.
                             type: boolean
                           subjectAltNames:
                             description: SubjectAlternativeNames is a list of SANs
@@ -2357,7 +2357,231 @@ apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
   annotations:
-    controller-gen.kubebuilder.io/version: v0.19.0
+    controller-gen.kubebuilder.io/version: v0.20.0
+  name: autoopsagentpolicies.autoops.k8s.elastic.co
+spec:
+  group: autoops.k8s.elastic.co
+  names:
+    categories:
+    - elastic
+    kind: AutoOpsAgentPolicy
+    listKind: AutoOpsAgentPolicyList
+    plural: autoopsagentpolicies
+    shortNames:
+    - aop
+    singular: autoopsagentpolicy
+  scope: Namespaced
+  versions:
+  - additionalPrinterColumns:
+    - description: Ready resources
+      jsonPath: .status.ready
+      name: Ready
+      type: string
+    - jsonPath: .status.phase
+      name: Phase
+      type: string
+    - jsonPath: .metadata.creationTimestamp
+      name: Age
+      type: date
+    name: v1alpha1
+    schema:
+      openAPIV3Schema:
+        description: AutoOpsAgentPolicy represents an Elastic AutoOps Policy resource
+          in a Kubernetes cluster.
+        properties:
+          apiVersion:
+            description: |-
+              APIVersion defines the versioned schema of this representation of an object.
+              Servers should convert recognized schemas to the latest internal value, and
+              may reject unrecognized values.
+              More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources
+            type: string
+          kind:
+            description: |-
+              Kind is a string value representing the REST resource this object represents.
+              Servers may infer this from the endpoint the client submits requests to.
+              Cannot be updated.
+              In CamelCase.
+              More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds
+            type: string
+          metadata:
+            type: object
+          spec:
+            properties:
+              autoOpsRef:
+                description: AutoOpsRef defines a reference to a secret containing
+                  connection details for AutoOps via Cloud Connect.
+                properties:
+                  secretName:
+                    description: |-
+                      SecretName references a Secret containing connection details for external AutoOps.
+                      Required when connecting via Cloud Connect. The secret must contain:
+                      - `cloud-connected-mode-api-key`: Cloud Connected Mode API key
+                      - `autoops-otel-url`: AutoOps OpenTelemetry endpoint URL
+                      - `autoops-token`: AutoOps authentication token
+                      - `cloud-connected-mode-api-url`: (optional) Cloud Connected Mode API URL
+                      This field cannot be used in combination with `name`.
+                    type: string
+                type: object
+              image:
+                description: Image is the AutoOps Agent Docker image to deploy.
+                type: string
+              namespaceSelector:
+                description: |-
+                  NamespaceSelector is a namespace selector for the resources to be configured.
+                  Any Elasticsearch instances that belong to the selected namespaces will be configured to send data to AutoOps.
+                properties:
+                  matchExpressions:
+                    description: matchExpressions is a list of label selector requirements.
+                      The requirements are ANDed.
+                    items:
+                      description: |-
+                        A label selector requirement is a selector that contains values, a key, and an operator that
+                        relates the key and values.
+                      properties:
+                        key:
+                          description: key is the label key that the selector applies
+                            to.
+                          type: string
+                        operator:
+                          description: |-
+                            operator represents a key's relationship to a set of values.
+                            Valid operators are In, NotIn, Exists and DoesNotExist.
+                          type: string
+                        values:
+                          description: |-
+                            values is an array of string values. If the operator is In or NotIn,
+                            the values array must be non-empty. If the operator is Exists or DoesNotExist,
+                            the values array must be empty. This array is replaced during a strategic
+                            merge patch.
+                          items:
+                            type: string
+                          type: array
+                          x-kubernetes-list-type: atomic
+                      required:
+                      - key
+                      - operator
+                      type: object
+                    type: array
+                    x-kubernetes-list-type: atomic
+                  matchLabels:
+                    additionalProperties:
+                      type: string
+                    description: |-
+                      matchLabels is a map of {key,value} pairs. A single {key,value} in the matchLabels
+                      map is equivalent to an element of matchExpressions, whose key field is "key", the
+                      operator is "In", and the values array contains only "value". The requirements are ANDed.
+                    type: object
+                type: object
+                x-kubernetes-map-type: atomic
+              podTemplate:
+                description: PodTemplate provides customisation options (labels, annotations,
+                  affinity rules, resource requests, and so on) for the Agent pods
+                type: object
+                x-kubernetes-preserve-unknown-fields: true
+              resourceSelector:
+                description: |-
+                  ResourceSelector is a label selector for the resources to be configured.
+                  Any Elasticsearch instances that match the selector will be configured to send data to AutoOps.
+                properties:
+                  matchExpressions:
+                    description: matchExpressions is a list of label selector requirements.
+                      The requirements are ANDed.
+                    items:
+                      description: |-
+                        A label selector requirement is a selector that contains values, a key, and an operator that
+                        relates the key and values.
+                      properties:
+                        key:
+                          description: key is the label key that the selector applies
+                            to.
+                          type: string
+                        operator:
+                          description: |-
+                            operator represents a key's relationship to a set of values.
+                            Valid operators are In, NotIn, Exists and DoesNotExist.
+                          type: string
+                        values:
+                          description: |-
+                            values is an array of string values. If the operator is In or NotIn,
+                            the values array must be non-empty. If the operator is Exists or DoesNotExist,
+                            the values array must be empty. This array is replaced during a strategic
+                            merge patch.
+                          items:
+                            type: string
+                          type: array
+                          x-kubernetes-list-type: atomic
+                      required:
+                      - key
+                      - operator
+                      type: object
+                    type: array
+                    x-kubernetes-list-type: atomic
+                  matchLabels:
+                    additionalProperties:
+                      type: string
+                    description: |-
+                      matchLabels is a map of {key,value} pairs. A single {key,value} in the matchLabels
+                      map is equivalent to an element of matchExpressions, whose key field is "key", the
+                      operator is "In", and the values array contains only "value". The requirements are ANDed.
+                    type: object
+                type: object
+                x-kubernetes-map-type: atomic
+              revisionHistoryLimit:
+                description: RevisionHistoryLimit is the number of revisions to retain
+                  to allow rollback in the underlying Deployment.
+                format: int32
+                type: integer
+              serviceAccountName:
+                description: |-
+                  ServiceAccountName is used to check access to Elasticsearch resources in different namespaces.
+                  Can only be used if ECK is enforcing RBAC on references (--enforce-rbac-on-refs flag).
+                  The service account must have "get" permission on elasticsearch.k8s.elastic.co/elasticsearches
+                  in the target namespaces.
+                type: string
+              version:
+                description: Version of the AutoOpsAgentPolicy.
+                type: string
+            required:
+            - version
+            type: object
+          status:
+            properties:
+              errors:
+                description: Errors is the number of resources that are in an error
+                  state.
+                type: integer
+              observedGeneration:
+                description: ObservedGeneration is the most recent generation observed
+                  for this AutoOpsAgentPolicy.
+                format: int64
+                type: integer
+              phase:
+                description: Phase is the phase of the AutoOpsAgentPolicy.
+                type: string
+              ready:
+                description: Ready is the number of resources that are in a ready
+                  state.
+                type: integer
+              resources:
+                description: Resources is the number of resources that match the ResourceSelector.
+                type: integer
+            required:
+            - errors
+            - ready
+            - resources
+            type: object
+        type: object
+    served: true
+    storage: true
+    subresources:
+      status: {}
+---
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  annotations:
+    controller-gen.kubebuilder.io/version: v0.20.0
   name: beats.beat.k8s.elastic.co
 spec:
   group: beat.k8s.elastic.co
@@ -2835,7 +3059,7 @@ apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
   annotations:
-    controller-gen.kubebuilder.io/version: v0.19.0
+    controller-gen.kubebuilder.io/version: v0.20.0
   name: elasticmapsservers.maps.k8s.elastic.co
 spec:
   group: maps.k8s.elastic.co
@@ -3337,7 +3561,7 @@ spec:
                         properties:
                           disabled:
                             description: Disabled indicates that the provisioning
-                              of the self-signed certifcate should be disabled.
+                              of the self-signed certificate should be disabled.
                             type: boolean
                           subjectAltNames:
                             description: SubjectAlternativeNames is a list of SANs
@@ -3432,7 +3656,7 @@ apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
   annotations:
-    controller-gen.kubebuilder.io/version: v0.19.0
+    controller-gen.kubebuilder.io/version: v0.20.0
   name: elasticsearchautoscalers.autoscaling.k8s.elastic.co
 spec:
   group: autoscaling.k8s.elastic.co
@@ -3783,7 +4007,7 @@ apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
   annotations:
-    controller-gen.kubebuilder.io/version: v0.19.0
+    controller-gen.kubebuilder.io/version: v0.20.0
   name: elasticsearches.elasticsearch.k8s.elastic.co
 spec:
   group: elasticsearch.k8s.elastic.co
@@ -4269,7 +4493,7 @@ spec:
                         properties:
                           disabled:
                             description: Disabled indicates that the provisioning
-                              of the self-signed certifcate should be disabled.
+                              of the self-signed certificate should be disabled.
                             type: boolean
                           subjectAltNames:
                             description: SubjectAlternativeNames is a list of SANs
@@ -4555,7 +4779,7 @@ spec:
                               resources:
                                 description: |-
                                   resources represents the minimum resources the volume should have.
-                                  If RecoverVolumeExpansionFailure feature is enabled users are allowed to specify resource requirements
+                                  Users are allowed to specify resource requirements
                                   that are lower than previous value but must still be higher than capacity recorded in the
                                   status field of the claim.
                                   More info: https://kubernetes.io/docs/concepts/storage/persistent-volumes#resources
@@ -6602,7 +6826,7 @@ spec:
                               resources:
                                 description: |-
                                   resources represents the minimum resources the volume should have.
-                                  If RecoverVolumeExpansionFailure feature is enabled users are allowed to specify resource requirements
+                                  Users are allowed to specify resource requirements
                                   that are lower than previous value but must still be higher than capacity recorded in the
                                   status field of the claim.
                                   More info: https://kubernetes.io/docs/concepts/storage/persistent-volumes#resources
@@ -6943,7 +7167,7 @@ apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
   annotations:
-    controller-gen.kubebuilder.io/version: v0.19.0
+    controller-gen.kubebuilder.io/version: v0.20.0
   name: enterprisesearches.enterprisesearch.k8s.elastic.co
 spec:
   group: enterprisesearch.k8s.elastic.co
@@ -7444,7 +7668,7 @@ spec:
                         properties:
                           disabled:
                             description: Disabled indicates that the provisioning
-                              of the self-signed certifcate should be disabled.
+                              of the self-signed certificate should be disabled.
                             type: boolean
                           subjectAltNames:
                             description: SubjectAlternativeNames is a list of SANs
@@ -8023,7 +8247,7 @@ spec:
                         properties:
                           disabled:
                             description: Disabled indicates that the provisioning
-                              of the self-signed certifcate should be disabled.
+                              of the self-signed certificate should be disabled.
                             type: boolean
                           subjectAltNames:
                             description: SubjectAlternativeNames is a list of SANs
@@ -8104,7 +8328,7 @@ apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
   annotations:
-    controller-gen.kubebuilder.io/version: v0.19.0
+    controller-gen.kubebuilder.io/version: v0.20.0
   name: kibanas.kibana.k8s.elastic.co
 spec:
   group: kibana.k8s.elastic.co
@@ -8625,7 +8849,7 @@ spec:
                         properties:
                           disabled:
                             description: Disabled indicates that the provisioning
-                              of the self-signed certifcate should be disabled.
+                              of the self-signed certificate should be disabled.
                             type: boolean
                           subjectAltNames:
                             description: SubjectAlternativeNames is a list of SANs
@@ -9448,7 +9672,7 @@ apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
   annotations:
-    controller-gen.kubebuilder.io/version: v0.19.0
+    controller-gen.kubebuilder.io/version: v0.20.0
   name: logstashes.logstash.k8s.elastic.co
 spec:
   group: logstash.k8s.elastic.co
@@ -10134,7 +10358,7 @@ spec:
                           properties:
                             disabled:
                               description: Disabled indicates that the provisioning
-                                of the self-signed certifcate should be disabled.
+                                of the self-signed certificate should be disabled.
                               type: boolean
                             subjectAltNames:
                               description: SubjectAlternativeNames is a list of SANs
@@ -10171,10 +10395,10 @@ spec:
                           The maximum number of pods that can be unavailable during the update.
                           Value can be an absolute number (ex: 5) or a percentage of desired pods (ex: 10%).
                           Absolute number is calculated from percentage by rounding up. This can not be 0.
-                          Defaults to 1. This field is alpha-level and is only honored by servers that enable the
-                          MaxUnavailableStatefulSet feature. The field applies to all pods in the range 0 to
+                          Defaults to 1. This field is beta-level and is enabled by default. The field applies to all pods in the range 0 to
                           Replicas-1. That means if there is any unavailable pod in the range 0 to Replicas-1, it
                           will be counted towards MaxUnavailable.
+                          This setting might not be effective for the OrderedReady podManagementPolicy. That policy ensures pods are created and become ready one at a time.
                         x-kubernetes-int-or-string: true
                       partition:
                         description: |-
@@ -10332,7 +10556,7 @@ spec:
                         resources:
                           description: |-
                             resources represents the minimum resources the volume should have.
-                            If RecoverVolumeExpansionFailure feature is enabled users are allowed to specify resource requirements
+                            Users are allowed to specify resource requirements
                             that are lower than previous value but must still be higher than capacity recorded in the
                             status field of the claim.
                             More info: https://kubernetes.io/docs/concepts/storage/persistent-volumes#resources
@@ -10490,9 +10714,7 @@ spec:
                             ignore the update for the purpose it was designed. For
                             example - a controller that\nonly is responsible for resizing
                             capacity of the volume, should ignore PVC updates that
-                            change other valid\nresources associated with PVC.\n\nThis
-                            is an alpha field and requires enabling RecoverVolumeExpansionFailure
-                            feature."
+                            change other valid\nresources associated with PVC."
                           type: object
                           x-kubernetes-map-type: granular
                         allocatedResources:
@@ -10523,9 +10745,7 @@ spec:
                             the update for the purpose it was designed. For example
                             - a controller that\nonly is responsible for resizing
                             capacity of the volume, should ignore PVC updates that
-                            change other valid\nresources associated with PVC.\n\nThis
-                            is an alpha field and requires enabling RecoverVolumeExpansionFailure
-                            feature."
+                            change other valid\nresources associated with PVC."
                           type: object
                         capacity:
                           additionalProperties:
@@ -10682,7 +10902,7 @@ apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
   annotations:
-    controller-gen.kubebuilder.io/version: v0.19.0
+    controller-gen.kubebuilder.io/version: v0.20.0
   name: packageregistries.packageregistry.k8s.elastic.co
 spec:
   group: packageregistry.k8s.elastic.co
@@ -11153,7 +11373,7 @@ spec:
                         properties:
                           disabled:
                             description: Disabled indicates that the provisioning
-                              of the self-signed certifcate should be disabled.
+                              of the self-signed certificate should be disabled.
                             type: boolean
                           subjectAltNames:
                             description: SubjectAlternativeNames is a list of SANs
@@ -11242,7 +11462,7 @@ apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
   annotations:
-    controller-gen.kubebuilder.io/version: v0.19.0
+    controller-gen.kubebuilder.io/version: v0.20.0
   name: stackconfigpolicies.stackconfigpolicy.k8s.elastic.co
 spec:
   group: stackconfigpolicy.k8s.elastic.co
@@ -11534,7 +11754,7 @@ spec:
                 default: 0
                 description: |-
                   Weight determines the priority of this policy when multiple policies target the same resource.
-                  Lower weight values take precedence. Defaults to 0.
+                  Higher weight values take precedence. Defaults to 0.
                 format: int32
                 type: integer
             type: object
@@ -11625,6 +11845,7 @@ spec:
                   type: object
                 description: |-
                   ResourcesStatuses holds the status for each resource to be configured.
+
                   Deprecated: Details is used to store the status of resources from ECK 2.11
                 type: object
             type: object

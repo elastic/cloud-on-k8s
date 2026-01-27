@@ -185,6 +185,8 @@ rules:
   - events
   - services
   - configmaps
+  - persistentvolumes
+  - persistentvolumeclaims
   verbs:
   - get
   - watch

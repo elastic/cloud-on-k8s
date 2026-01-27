@@ -3,7 +3,7 @@ apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
   annotations:
-    controller-gen.kubebuilder.io/version: v0.19.0
+    controller-gen.kubebuilder.io/version: v0.20.0
   name: stackconfigpolicies.stackconfigpolicy.k8s.elastic.co
 spec:
   group: stackconfigpolicy.k8s.elastic.co
@@ -295,7 +295,7 @@ spec:
                 default: 0
                 description: |-
                   Weight determines the priority of this policy when multiple policies target the same resource.
-                  Lower weight values take precedence. Defaults to 0.
+                  Higher weight values take precedence. Defaults to 0.
                 format: int32
                 type: integer
             type: object
@@ -386,6 +386,7 @@ spec:
                   type: object
                 description: |-
                   ResourcesStatuses holds the status for each resource to be configured.
+
                   Deprecated: Details is used to store the status of resources from ECK 2.11
                 type: object
             type: object

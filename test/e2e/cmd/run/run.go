@@ -332,10 +332,7 @@ func (h *helper) createRoles() error {
 func (h *helper) installOperatorUnderTest() error {
 	log.Info("Installing the operator under test")
 
-	installCRDs := false
-	if h.monitoringSecrets == "" {
-		installCRDs = true
-	}
+	installCRDs := h.monitoringSecrets == ""
 
 	manifestFile := filepath.Join(h.scratchDir, "operator-under-test.yaml")
 
@@ -488,9 +485,10 @@ func (h *helper) runTestsLocally() error {
 	log.Info("Running local test script", "timeout", h.testTimeout.String())
 	ctx, cancelFunc := context.WithTimeout(context.Background(), h.testTimeout)
 
-	cmd := exec.Command("test/e2e/run.sh", "-run", os.Getenv("TESTS_MATCH"), "-args", "-testContextPath", h.testContextOutPath) //nolint:gosec
+	cmd := exec.Command("test/e2e/run.sh", "-run", os.Getenv("TESTS_MATCH"), "-args", "-testContextPath", h.testContextOutPath) //nolint:gosec,noctx
 	cmd.Stderr = os.Stderr
 	cmd.Stdout = os.Stdout
+	cmd.Env = append(os.Environ(), "E2E_LOCAL=true")
 	// we need to set a process group ID to be able to terminate all child processes and not just the test.sh script later if the timeout is exceeded
 	cmd.SysProcAttr = &syscall.SysProcAttr{Setpgid: true}
 
@@ -834,7 +832,7 @@ func (h *helper) runECKDiagnostics() {
 	operatorNS := h.testContext.Operator.Namespace
 	// include the default namespace to have diagnostics on the local disk provisioner used in some environments
 	otherNS := append([]string{h.testContext.E2ENamespace, "default"}, h.testContext.Operator.ManagedNamespaces...)
-	cmd := exec.Command("eck-diagnostics", "-o", operatorNS, "-r", strings.Join(otherNS, ","), "--run-agent-diagnostics")
+	cmd := exec.Command("eck-diagnostics", "-o", operatorNS, "-r", strings.Join(otherNS, ","), "--run-agent-diagnostics") //nolint:noctx
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
 	if err := cmd.Run(); err != nil {

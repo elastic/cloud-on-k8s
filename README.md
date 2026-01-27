@@ -17,13 +17,13 @@ Current features:
 
 Supported versions:
 
-*  Kubernetes 1.30-1.34
-*  OpenShift 4.15-4.20
-*  Elasticsearch, Kibana, APM Server: 7.17+, 8+, 9+
-*  Enterprise Search: 7.7+, 8+
-*  Beats: 7.17+, 8+, 9+
-*  Elastic Agent: 7.17+ (standalone), 7.17+, 8+, 9+ (Fleet)
-*  Elastic Maps Server: 7.17+, 8+, 9+
+*  Kubernetes 1.31-1.35
+*  OpenShift 4.16-4.20
+*  Elasticsearch, Kibana, APM Server: 8+, 9+
+*  Enterprise Search: 8+
+*  Beats: 8+, 9+
+*  Elastic Agent: 8+, 9+ (Fleet, Standalone)
+*  Elastic Maps Server: 8+, 9+
 *  Logstash 8.12+, 9+
 
 Check the [Quickstart](https://www.elastic.co/guide/en/cloud-on-k8s/current/k8s-quickstart.html) to deploy your first cluster with ECK.

@@ -146,7 +146,7 @@ func TestNewPodSpec(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := newPodSpec(k8s.NewFakeClient(&testHTTPCertsInternalSecret), &tt.as, tt.p, metadata.Metadata{})
+			got, err := newPodSpec(k8s.NewFakeClient(&testHTTPCertsInternalSecret), &tt.as, tt.p, metadata.Metadata{}, false)
 			assert.NoError(t, err)
 			diff := deep.Equal(tt.want, got)
 			assert.Empty(t, diff)
@@ -234,7 +234,7 @@ func Test_newPodSpec_withInitContainers(t *testing.T) {
 				CustomImageName: tt.as.Spec.Image,
 				PodTemplate:     tt.as.Spec.PodTemplate,
 			}
-			got, err := newPodSpec(k8s.NewFakeClient(&testHTTPCertsInternalSecret), &tt.as, params, metadata.Metadata{})
+			got, err := newPodSpec(k8s.NewFakeClient(&testHTTPCertsInternalSecret), &tt.as, params, metadata.Metadata{}, false)
 			assert.NoError(t, err)
 			tt.assertions(got)
 		})

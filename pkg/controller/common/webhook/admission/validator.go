@@ -14,6 +14,7 @@ type Warnings []string
 // Validator defines functions for validating an operation.
 // The custom resource kind which implements this interface can validate itself.
 // To validate the custom resource with another specific struct, use CustomValidator instead.
+//
 // Deprecated: Consider CustomValidator instead, this only restores the old ctrl-runtime interface for bwc.
 type Validator interface {
 	runtime.Object

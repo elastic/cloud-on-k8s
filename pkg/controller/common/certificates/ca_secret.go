@@ -5,10 +5,14 @@
 package certificates
 
 import (
+	"context"
 	"fmt"
+	"time"
 
 	pkgerrors "github.com/pkg/errors"
 	corev1 "k8s.io/api/core/v1"
+
+	ulog "github.com/elastic/cloud-on-k8s/v3/pkg/utils/log"
 )
 
 // ParseCustomCASecret checks that mandatory fields are present and returns a CA struct.
@@ -30,6 +34,24 @@ func ParseCustomCASecret(s corev1.Secret) (*CA, error) {
 		crtFileName = CertFileName
 	}
 	return parseCAFromSecret(s, keyFileName, crtFileName)
+}
+
+// ValidateCustomCA validates the time-bounds of the given CA certificate and checks that the public key matches the
+// private one. It returns nil if the CA is valid and an error otherwise.
+func ValidateCustomCA(ctx context.Context, ca *CA) error {
+	now := time.Now()
+	log := ulog.FromContext(ctx)
+	switch {
+	case now.Before(ca.Cert.NotBefore):
+		return fmt.Errorf("the CA certificate is not yet valid")
+	case now.After(ca.Cert.NotAfter):
+		return fmt.Errorf("the CA certificate has expired")
+	case !PrivateMatchesPublicKey(ctx, ca.Cert.PublicKey, ca.PrivateKey):
+		return fmt.Errorf("the private key does not match the public one")
+	case now.After(ca.Cert.NotAfter.Add(-DefaultRotateBefore)):
+		log.Info("CA cert will expire soon", "subject", ca.Cert.Subject, "expiration", ca.Cert.NotAfter)
+	}
+	return nil
 }
 
 // parseCAFromSecret internal helper func to retrieve and parse a CA stored at the given keys in a Secret.

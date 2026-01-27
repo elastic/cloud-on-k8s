@@ -5,24 +5,38 @@
 package runner
 
 import (
+	"errors"
 	"os"
-	"runtime"
 )
 
 const defaultDockerSocket = "/var/run/docker.sock"
 
+var homeDockerSocket = os.ExpandEnv("${HOME}/.docker/run/docker.sock")
+
 func getDockerSocket() (string, error) {
-	_, err := os.Stat(defaultDockerSocket)
-	if err != nil {
-		if os.IsNotExist(err) {
-			// If we are on macOS and the docker socket does not exist, fall back
-			if runtime.GOOS == "darwin" {
-				return "$HOME/.docker/run/docker.sock", nil
-			}
-		} else {
-			// Handle other errors
-			return "", err
-		}
+	sck, err := followLink(defaultDockerSocket)
+	if err == nil { // if *not* error, return the socket
+		return sck, nil
 	}
-	return defaultDockerSocket, nil
+
+	hsc, hErr := followLink(homeDockerSocket)
+	if hErr != nil {
+		return "", errors.Join(err, hErr)
+	}
+
+	return hsc, nil
+}
+
+func followLink(path string) (string, error) {
+	info, err := os.Lstat(path)
+	if err != nil {
+		return path, err
+	}
+
+	// if the file is not link, return the path.
+	if info.Mode()&os.ModeSymlink == 0 {
+		return path, nil
+	}
+
+	return os.Readlink(path)
 }

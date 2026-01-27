@@ -127,6 +127,8 @@ rules:
     resources:
       - persistentvolumes
     verbs:
+      - get # for elastic-agent kubernetes integration
+      - watch # for elastic-agent kubernetes integration
       - list # for ECK Diagnostics
   - apiGroups:
       - "security.openshift.io"
@@ -400,6 +402,34 @@ rules:
     verbs:
       - get
       - list
+  - apiGroups:
+      - autoops.k8s.elastic.co
+    resources:
+      - autoopsagentpolicies
+      - autoopsagentpolicies/status
+    verbs:
+      - get
+      - list
+      - watch
+      - create
+      - update
+      - patch
+      - delete
+      - deletecollection
+  # to manage GKE ComputeClasses used in recipes
+  - apiGroups:
+      - cloud.google.com
+    resources:
+      - computeclasses
+    verbs:
+      - get
+      - list
+      - watch
+      - create
+      - update
+      - patch
+      - delete
+      - deletecollection
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding

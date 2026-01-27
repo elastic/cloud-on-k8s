@@ -67,7 +67,7 @@ func readinessProbe(useTLS bool) corev1.Probe {
 	}
 }
 
-func newPodSpec(epr eprv1alpha1.PackageRegistry, configHash string, meta metadata.Metadata) (corev1.PodTemplateSpec, error) {
+func newPodSpec(epr eprv1alpha1.PackageRegistry, configHash string, meta metadata.Metadata, setDefaultSecurityContext bool) (corev1.PodTemplateSpec, error) {
 	// ensure the Pod gets rotated on config change
 	podMeta := meta.Merge(metadata.Metadata{Annotations: map[string]string{configHashAnnotationName: configHash}})
 
@@ -106,10 +106,15 @@ func newPodSpec(epr eprv1alpha1.PackageRegistry, configHash string, meta metadat
 				Drop: []corev1.Capability{"ALL"},
 			},
 			Privileged: ptr.To(false),
+		})
+
+	if setDefaultSecurityContext {
+		builder = builder.WithPodSecurityContext(corev1.PodSecurityContext{
 			SeccompProfile: &corev1.SeccompProfile{
 				Type: corev1.SeccompProfileTypeRuntimeDefault,
 			},
 		})
+	}
 
 	// Add configuration volume
 	configVolume := configSecretVolume(epr)

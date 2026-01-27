@@ -8,6 +8,7 @@ import (
 	"reflect"
 	"sort"
 
+	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/utils/ptr"
@@ -60,6 +61,8 @@ func (s *StatusReporter) ReportCondition(
 type UpscaleReporter struct {
 	// Expected nodes to be upscaled
 	nodes map[string]esv1.NewNode
+	// Number of non-master StatefulSets that are still upgrading
+	nonMasterSTSUpgrades int
 }
 
 // RecordNewNodes records pending node creations.
@@ -101,6 +104,19 @@ func (u *UpscaleReporter) HasPendingNewNodes() bool {
 		return false
 	}
 	return len(u.nodes) > 0
+}
+
+// HasPendingNonMasterSTSUpgrades returns true if at least one non-master StatefulSet is still upgrading.
+func (u *UpscaleReporter) HasPendingNonMasterSTSUpgrades() bool {
+	return u.nonMasterSTSUpgrades > 0
+}
+
+// RecordPendingNonMasterSTSUpgrades records the number of non-master StatefulSets that have upgrades pending.
+func (u *UpscaleReporter) RecordPendingNonMasterSTSUpgrades(pendingNonMasterSTS []appsv1.StatefulSet) {
+	if u == nil {
+		return
+	}
+	u.nonMasterSTSUpgrades = len(pendingNonMasterSTS)
 }
 
 // Merge creates a new upscale status using the reported upscale status and an existing upscale status.
