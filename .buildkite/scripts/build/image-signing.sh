@@ -6,7 +6,7 @@
 
 # Script to generate the list of container image digests for signing.
 # Reads the list of images from buildkite metadata (set by gen-drivah.toml.sh)
-# and outputs the digests to /tmp/eck-container-images-digest.txt.
+# and outputs the digests to eck-container-images-digest.txt.
 
 set -euo pipefail
 
