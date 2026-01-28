@@ -62,7 +62,7 @@ var (
 	// readOnlyRootFilesystem set to true.
 	TempVolume = volume.NewEmptyDirVolume(kbvolume.TempVolumeName, kbvolume.TempVolumeMountPath)
 
-	DefaultMemoryLimits = resource.MustParse("1Gi")
+	DefaultMemoryLimits = resource.MustParse("2Gi")
 	DefaultResources    = corev1.ResourceRequirements{
 		Requests: map[corev1.ResourceName]resource.Quantity{
 			corev1.ResourceMemory: DefaultMemoryLimits,
