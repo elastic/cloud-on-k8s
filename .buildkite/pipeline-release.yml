@@ -48,7 +48,7 @@ steps:
   - group: sign images
     steps:
       - label: ":buildkite: upload images digest"
-        if: build.tag =~ /^v[0-9]+\.[0-9]+\.[0-9]+\$/
+        if: build.tag != null
         key: "operator-image-upload-digest-step"
         commands:
           - .buildkite/scripts/build/image-signing.sh
@@ -58,7 +58,7 @@ steps:
           cpu: "1"
           memory: "1G"
       - label: ":key: sign images"
-        if: build.tag =~ /^v[0-9]+\.[0-9]+\.[0-9]+\$/
+        if: build.tag != null
         depends_on:
           - "operator-image-upload-digest-step"
         command: |
