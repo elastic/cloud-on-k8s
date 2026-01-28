@@ -91,6 +91,30 @@ func newPodSpec(epr eprv1alpha1.PackageRegistry, configHash string, meta metadat
 		eprVars = append(eprVars, corev1.EnvVar{Name: TLSCertEnvName, Value: "/mnt/elastic-internal/http-certs/tls.crt"})
 	}
 
+	// https://github.com/elastic/package-registry/pull/1503 introduced the ability to run as non-root.
+	// Available in: 9.3.0+, 9.2.4+, 9.1.10+, 8.19.10+
+	var runAsNonRoot *bool
+	switch {
+	case v.Major > 9:
+		// version 10.x.x+
+		runAsNonRoot = ptr.To(true)
+	case v.Major == 9 && v.Minor >= 3:
+		// version 9.3.0+
+		runAsNonRoot = ptr.To(true)
+	case v.Major == 9 && v.Minor == 2 && v.Patch >= 4:
+		// version 9.2.4+
+		runAsNonRoot = ptr.To(true)
+	case v.Major == 9 && v.Minor == 1 && v.Patch >= 10:
+		// version 9.1.10+
+		runAsNonRoot = ptr.To(true)
+	case v.Major == 8 && v.Minor >= 20:
+		// version 8.20+
+		runAsNonRoot = ptr.To(true)
+	case v.Major == 8 && v.Minor == 19 && v.Patch >= 10:
+		// version 8.19.10+
+		runAsNonRoot = ptr.To(true)
+	}
+
 	builder = builder.
 		WithAnnotations(podMeta.Annotations).
 		WithLabels(podMeta.Labels).
@@ -105,7 +129,8 @@ func newPodSpec(epr eprv1alpha1.PackageRegistry, configHash string, meta metadat
 			Capabilities: &corev1.Capabilities{
 				Drop: []corev1.Capability{"ALL"},
 			},
-			Privileged: ptr.To(false),
+			RunAsNonRoot: runAsNonRoot,
+			Privileged:   ptr.To(false),
 		})
 
 	if setDefaultSecurityContext {
