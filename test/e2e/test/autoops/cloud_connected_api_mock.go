@@ -147,7 +147,7 @@ func waitForCloudConnectedAPIMockReady(ctx context.Context, k *test.K8sClient, n
 
 	for _, pod := range pods.Items {
 		if !k8s.IsPodReady(pod) {
-			return fmt.Errorf("Cloud Connected API mock pod %s not ready", pod.Name)
+			return fmt.Errorf("cloud connected API mock pod %s not ready", pod.Name)
 		}
 	}
 
