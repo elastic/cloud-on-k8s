@@ -18,18 +18,21 @@ import (
 )
 
 func TestAutoOpsAgentPolicy(t *testing.T) {
-	// https://github.com/elastic/cloud-on-k8s/issues/9027
-	t.Skip("Skipping AutoOpsAgentPolicy test")
+	// Skip if wiremock URL is not configured (should be deployed automatically)
+	if test.Ctx().WiremockURL == "" {
+		t.Skip("Skipping test: wiremock URL not configured")
+	}
 
 	// only execute this test if we have a test license to work with
 	if test.Ctx().TestLicense == "" {
-		t.SkipNow()
+		t.Skip("Skipping test: no test license provided")
 	}
 
 	// only execute this test with supported AutoOps versions
 	v := version.MustParse(test.Ctx().ElasticStackVersion)
 	if v.LT(version.SupportedAutoOpsAgentVersions.Min) {
-		t.SkipNow()
+		t.Skipf("Skipping test: Elastic Stack version %s is below minimum supported version %s",
+			test.Ctx().ElasticStackVersion, version.SupportedAutoOpsAgentVersions.Min)
 	}
 
 	// Use separate namespaces for ES and policy
@@ -52,6 +55,7 @@ func TestAutoOpsAgentPolicy(t *testing.T) {
 		WithVersion(test.Ctx().ElasticStackVersion).
 		WithLabel("autoops", "enabled")
 
+	// Create the policy builder with the wiremock URL for cloud-connected API and OTel
 	policyBuilder := autoops.NewBuilder("autoops-policy").
 		WithNamespace(policyNamespace).
 		WithResourceSelector(metav1.LabelSelector{
@@ -62,7 +66,8 @@ func TestAutoOpsAgentPolicy(t *testing.T) {
 		MatchLabels: map[string]string{
 			"kubernetes.io/metadata.name": esNamespace,
 		},
-	})
+	}).WithCloudConnectedAPIURL(test.Ctx().WiremockURL).
+		WithAutoOpsOTelURL(test.Ctx().WiremockURL)
 
 	test.Sequence(nil, test.EmptySteps, es1Withlicense, es2Builder, policyBuilder).
 		RunSequential(t)

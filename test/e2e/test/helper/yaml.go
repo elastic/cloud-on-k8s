@@ -72,7 +72,9 @@ func NewYAMLDecoder() *YAMLDecoder {
 	scheme.AddKnownTypes(rbacv1.SchemeGroupVersion, &rbacv1.ClusterRole{}, &rbacv1.ClusterRoleList{})
 	scheme.AddKnownTypes(corev1.SchemeGroupVersion, &corev1.ServiceAccount{}, &corev1.ServiceAccountList{})
 	scheme.AddKnownTypes(corev1.SchemeGroupVersion, &corev1.Service{}, &corev1.ServiceList{})
+	scheme.AddKnownTypes(corev1.SchemeGroupVersion, &corev1.ConfigMap{}, &corev1.ConfigMapList{})
 	scheme.AddKnownTypes(appsv1.SchemeGroupVersion, &appsv1.DaemonSet{})
+	scheme.AddKnownTypes(appsv1.SchemeGroupVersion, &appsv1.Deployment{}, &appsv1.DeploymentList{})
 	scheme.AddKnownTypes(packageregistryv1alpha1.GroupVersion, &packageregistryv1alpha1.PackageRegistry{}, &packageregistryv1alpha1.PackageRegistryList{})
 
 	// Register ComputeClass types for Autopilot recipes.
