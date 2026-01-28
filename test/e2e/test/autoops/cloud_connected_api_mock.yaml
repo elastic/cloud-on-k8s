@@ -1,5 +1,5 @@
 ---
-# WireMock Cloud Connected API Mock for E2E tests
+# Cloud Connected API Mock for E2E tests
 # This file contains all resources needed to deploy WireMock as a mock for the Cloud Connected API
 apiVersion: v1
 kind: ConfigMap

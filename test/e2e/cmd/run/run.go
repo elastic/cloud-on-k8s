@@ -68,7 +68,6 @@ func doRun(flags runFlags) error {
 			helper.createRoles,
 			helper.createManagedNamespaces,
 			helper.deploySecurityConstraints,
-			helper.deployWiremock,
 			helper.runTestsLocally,
 		}
 	} else {
@@ -84,7 +83,6 @@ func doRun(flags runFlags) error {
 			helper.deployTestSecrets,
 			helper.deploySecurityConstraints,
 			helper.deployMonitoring,
-			helper.deployWiremock,
 			helper.installOperatorUnderTest,
 			helper.waitForOperatorToBeReady,
 			helper.runTestsRemote,
@@ -257,21 +255,6 @@ func isAutopilotCluster(h *helper) bool {
 // wiremockURL returns the deterministic URL for the WireMock service.
 func wiremockURL(h *helper) string {
 	return fmt.Sprintf("http://wiremock-%s.%s-system.svc.cluster.local:8080", h.testRunName, h.testRunName)
-}
-
-// shouldDeployWiremock returns true if wiremock should be deployed for the current test run.
-// Wiremock is needed for autoops tests (by tag, test regex, or TESTS_MATCH env var) or when running the full e2e suite.
-func shouldDeployWiremock(h *helper) bool {
-	// Check if autoops tests are being run via e2e tags, test regex, or TESTS_MATCH env var
-	testsMatch := os.Getenv("TESTS_MATCH")
-	isAutoOpsTest := strings.Contains(h.e2eTags, "autoops") ||
-		strings.Contains(strings.ToLower(h.testRegex), "autoops") ||
-		strings.Contains(strings.ToLower(testsMatch), "autoops")
-
-	// Full e2e suite runs all tests including autoops (e2eTags contains "e2e", e.g., "e2e" or "release,e2e")
-	isFullE2E := strings.Contains(h.e2eTags, "e2e") && h.testRegex == "" && testsMatch == ""
-
-	return isAutoOpsTest || isFullE2E
 }
 
 func (h *helper) initTestSecrets() error {
@@ -488,47 +471,6 @@ func (h *helper) deployMonitoring() error {
 
 	log.Info("Deploying monitoring")
 	return h.kubectlApplyTemplateWithCleanup("config/e2e/monitoring.yaml", h.testContext)
-}
-
-func (h *helper) deployWiremock() error {
-	if !shouldDeployWiremock(h) {
-		log.Info("Skipping wiremock deployment (not needed for current test run)")
-		return nil
-	}
-
-	log.Info("Deploying wiremock for cloud-connected API mocking")
-
-	// WiremockURL is already set in initTestContext via wiremockURL(h)
-	if err := h.kubectlApplyTemplateWithCleanup("config/e2e/wiremock.yaml", h.testContext); err != nil {
-		return err
-	}
-
-	// Wait for wiremock pod to be ready
-	log.Info("Waiting for wiremock pod to be ready")
-	client, err := h.createKubeClient()
-	if err != nil {
-		return errors.Wrap(err, "failed to create kubernetes client")
-	}
-
-	deploymentName := fmt.Sprintf("wiremock-%s", h.testRunName)
-	return retry.UntilSuccess(func() error {
-		pods, err := client.CoreV1().Pods(h.testContext.E2ENamespace).List(context.Background(), metav1.ListOptions{
-			LabelSelector: fmt.Sprintf("app.kubernetes.io/instance=%s", deploymentName),
-		})
-		if err != nil {
-			return err
-		}
-		if len(pods.Items) == 0 {
-			return fmt.Errorf("no wiremock pods found")
-		}
-		for _, pod := range pods.Items {
-			if !k8s.IsPodReady(pod) {
-				return fmt.Errorf("wiremock pod `%s` not ready", pod.Name)
-			}
-		}
-		log.Info("Wiremock pod is ready")
-		return nil
-	}, 2*time.Minute, 5*time.Second)
 }
 
 func (h *helper) deployTestSecrets() error {

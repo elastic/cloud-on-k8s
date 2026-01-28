@@ -34,6 +34,15 @@ func (b Builder) InitTestSteps(k *test.K8sClient) test.StepList {
 			}),
 		},
 		{
+			Name: "Deploy Cloud Connected API mock",
+			Test: test.Eventually(func() error {
+				return deployCloudConnectedAPIMock(k)
+			}),
+			Skip: func() bool {
+				return test.Ctx().WiremockURL == ""
+			},
+		},
+		{
 			Name: "Label test pods",
 			Test: test.Eventually(func() error {
 				return test.LabelTestPods(
@@ -301,6 +310,15 @@ func (b Builder) DeletionTestSteps(k *test.K8sClient) test.StepList {
 				}
 				return nil
 			}),
+		}).
+		WithStep(test.Step{
+			Name: "Deleting Cloud Connected API mock should succeed",
+			Test: test.Eventually(func() error {
+				return deleteCloudConnectedAPIMock(k)
+			}),
+			Skip: func() bool {
+				return test.Ctx().WiremockURL == ""
+			},
 		})
 }
 
