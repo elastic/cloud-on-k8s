@@ -302,6 +302,14 @@ func baseSettings(kb *kbv1.Kibana, ipFamily corev1.IPFamily) (map[string]interfa
 		conf[ElasticsearchHosts] = []string{assocConf.GetURL()}
 	}
 
+	conf["logging.root.level"] = "debug"
+	conf["logging.loggers"] = []map[string]any{
+		{
+			"name":  "plugins.fleet",
+			"level": "debug",
+		},
+	}
+
 	return conf, nil
 }
 
