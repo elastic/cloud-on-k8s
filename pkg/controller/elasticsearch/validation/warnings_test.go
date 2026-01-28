@@ -31,7 +31,7 @@ func Test_noUnsupportedSettings(t *testing.T) {
 					NodeSets: []esv1.NodeSet{
 						{
 							Config: &commonv1.Config{
-								Data: map[string]interface{}{
+								Data: map[string]any{
 									esv1.ClusterInitialMasterNodes: "foo",
 								},
 							},
@@ -50,14 +50,14 @@ func Test_noUnsupportedSettings(t *testing.T) {
 					NodeSets: []esv1.NodeSet{
 						{
 							Config: &commonv1.Config{
-								Data: map[string]interface{}{
+								Data: map[string]any{
 									esv1.ClusterInitialMasterNodes: "foo",
 								},
 							},
 						},
 						{
 							Config: &commonv1.Config{
-								Data: map[string]interface{}{
+								Data: map[string]any{
 									esv1.XPackSecurityTransportSslVerificationMode: "bar",
 								},
 							},
@@ -75,7 +75,7 @@ func Test_noUnsupportedSettings(t *testing.T) {
 					NodeSets: []esv1.NodeSet{
 						{
 							Config: &commonv1.Config{
-								Data: map[string]interface{}{
+								Data: map[string]any{
 									"node.attr.box_type": "foo",
 								},
 							},
@@ -93,7 +93,7 @@ func Test_noUnsupportedSettings(t *testing.T) {
 					NodeSets: []esv1.NodeSet{
 						{
 							Config: &commonv1.Config{
-								Data: map[string]interface{}{
+								Data: map[string]any{
 									esv1.XPackSecurityTransportSslCertificateAuthorities: "foo",
 								},
 							},
@@ -111,8 +111,8 @@ func Test_noUnsupportedSettings(t *testing.T) {
 					NodeSets: []esv1.NodeSet{
 						{
 							Config: &commonv1.Config{
-								Data: map[string]interface{}{
-									"cluster": map[string]interface{}{
+								Data: map[string]any{
+									"cluster": map[string]any{
 										"initial_master_nodes": []string{"foo", "bar"},
 									},
 									"node.attr.box_type": "foo",
@@ -132,7 +132,7 @@ func Test_noUnsupportedSettings(t *testing.T) {
 					NodeSets: []esv1.NodeSet{
 						{
 							Config: &commonv1.Config{
-								Data: map[string]interface{}{
+								Data: map[string]any{
 									esv1.XPackSecurityHttpSslClientAuthentication: "optional",
 								},
 							},
@@ -150,7 +150,7 @@ func Test_noUnsupportedSettings(t *testing.T) {
 					NodeSets: []esv1.NodeSet{
 						{
 							Config: &commonv1.Config{
-								Data: map[string]interface{}{
+								Data: map[string]any{
 									esv1.XPackSecurityHttpSslClientAuthentication: "required",
 								},
 							},

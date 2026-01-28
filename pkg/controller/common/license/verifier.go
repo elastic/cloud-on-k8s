@@ -243,7 +243,7 @@ func (l EnterpriseLicense) SignableContentBytes() ([]byte, error) {
 
 // unescapedJSONMarshal is a custom JSON encoder that turns off Go json's default behaviour of escaping > < and &
 // which is problematic and would lead to failed signature checks as our license signing does not escape those characters.
-func unescapedJSONMarshal(t interface{}) ([]byte, error) {
+func unescapedJSONMarshal(t any) ([]byte, error) {
 	buffer := &bytes.Buffer{}
 	encoder := json.NewEncoder(buffer)
 	encoder.SetEscapeHTML(false)

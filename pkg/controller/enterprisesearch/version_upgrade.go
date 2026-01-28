@@ -225,7 +225,7 @@ func (r *VersionUpgrade) readOnlyModeRequest(ctx context.Context, enabled bool) 
 
 	url := stringsutil.Concat(r.serviceURL(), ReadOnlyModeAPIPath)
 
-	body := bytes.NewBuffer([]byte(fmt.Sprintf("{\"enabled\": %t}", enabled)))
+	body := bytes.NewBuffer(fmt.Appendf(nil, "{\"enabled\": %t}", enabled))
 
 	req, err := http.NewRequest(http.MethodPut, url, body) //nolint:noctx
 	if err != nil {

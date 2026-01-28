@@ -48,7 +48,7 @@ func getPolicyConfig(ctx context.Context, client k8s.Client, es esv1.Elasticsear
 	}
 
 	// Parse Elasticsearch config from the stack config policy secret.
-	var esConfigFromStackConfigPolicy map[string]interface{}
+	var esConfigFromStackConfigPolicy map[string]any
 	if string(stackConfigPolicyConfigSecret.Data[stackconfigpolicy.ElasticSearchConfigKey]) != "" {
 		err = json.Unmarshal(stackConfigPolicyConfigSecret.Data[stackconfigpolicy.ElasticSearchConfigKey], &esConfigFromStackConfigPolicy)
 		if err != nil {

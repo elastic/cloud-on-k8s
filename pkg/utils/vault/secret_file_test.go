@@ -171,7 +171,7 @@ func Test_SecretFile_FormatJson(t *testing.T) {
 }
 
 type mockClient struct {
-	data      map[string]interface{}
+	data      map[string]any
 	readCount int
 }
 
@@ -182,7 +182,7 @@ func newMockClient(t *testing.T, data ...string) ClientProvider {
 		t.Fatal("length of data must be an even number")
 	}
 
-	dataMap := map[string]interface{}{}
+	dataMap := map[string]any{}
 	for i := 0; i < len(data); i += 2 {
 		dataMap[data[i]] = data[i+1]
 	}

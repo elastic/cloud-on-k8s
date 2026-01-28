@@ -107,12 +107,12 @@ func (jm *JobsManager) Start() {
 	}()
 
 	_, _ = jm.AddEventHandler(cache.ResourceEventHandlerFuncs{
-		AddFunc: func(obj interface{}) {
+		AddFunc: func(obj any) {
 			if pod, ok := obj.(*corev1.Pod); ok {
 				log.Info("Pod added", "name", pod.Name)
 			}
 		},
-		UpdateFunc: func(oldObj, newObj interface{}) {
+		UpdateFunc: func(oldObj, newObj any) {
 			newPod, ok := newObj.(*corev1.Pod)
 			if !ok {
 				return
@@ -161,7 +161,7 @@ func (jm *JobsManager) Start() {
 				log.Info("Waiting for pod to be ready", "name", newPod.Name, "status", newPod.Status.Phase)
 			}
 		},
-		DeleteFunc: func(obj interface{}) {
+		DeleteFunc: func(obj any) {
 			if pod, ok := obj.(*corev1.Pod); ok {
 				log.Info("Pod deleted", "name", pod.Name)
 				jm.Stop()

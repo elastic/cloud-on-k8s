@@ -1,0 +1,9 @@
+#!/usr/bin/env bash
+
+GO_MODERNIZE="go run golang.org/x/tools/go/analysis/passes/modernize/cmd/modernize@latest -fix -test ./..."
+
+find . -name "go.mod" -type f | while read -r modfile; do
+  dir=$(dirname "${modfile}")
+  echo -e "running for \e[0;35m${dir}\e[0m"
+  (cd "${dir}" && ${GO_MODERNIZE})
+done

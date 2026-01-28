@@ -83,8 +83,8 @@ func buildConfig(params Params) ([]byte, error) {
 	// the default one. We want to avoid config file replacement by agents which will not work
 	// with config files mounted read-only from a secret.
 	if params.Agent.Spec.FleetModeEnabled() {
-		if err := cfg.MergeWith(settings.MustCanonicalConfig(map[string]interface{}{
-			"fleet": map[string]interface{}{
+		if err := cfg.MergeWith(settings.MustCanonicalConfig(map[string]any{
+			"fleet": map[string]any{
 				"enabled": true,
 			}})); err != nil {
 			return nil, err
@@ -113,7 +113,7 @@ func buildOutputConfig(params Params) (*settings.CanonicalConfig, error) {
 		}
 	}
 
-	outputs := map[string]interface{}{}
+	outputs := map[string]any{}
 	for i, assoc := range esAssociations {
 		assocConf, err := assoc.AssociationConf()
 		if err != nil {
@@ -128,7 +128,7 @@ func buildOutputConfig(params Params) (*settings.CanonicalConfig, error) {
 			return settings.NewCanonicalConfig(), err
 		}
 
-		output := map[string]interface{}{
+		output := map[string]any{
 			"type":  "elasticsearch",
 			"hosts": []string{assocConf.GetURL()},
 		}
@@ -157,7 +157,7 @@ func buildOutputConfig(params Params) (*settings.CanonicalConfig, error) {
 		outputs[outputName] = output
 	}
 
-	return settings.NewCanonicalConfigFrom(map[string]interface{}{
+	return settings.NewCanonicalConfigFrom(map[string]any{
 		"outputs": outputs,
 	})
 }

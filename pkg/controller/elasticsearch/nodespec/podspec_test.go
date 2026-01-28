@@ -8,6 +8,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"maps"
 	"testing"
 
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/metadata"
@@ -34,7 +35,7 @@ import (
 )
 
 type esSampleBuilder struct {
-	userConfig              map[string]interface{}
+	userConfig              map[string]any
 	esAdditionalAnnotations map[string]string
 	keystoreResources       *keystore.Resources
 	transportCertsDisabled  bool
@@ -47,9 +48,7 @@ func newEsSampleBuilder() *esSampleBuilder {
 
 func (esb *esSampleBuilder) build() esv1.Elasticsearch {
 	es := sampleES.DeepCopy()
-	for k, v := range esb.esAdditionalAnnotations {
-		es.Annotations[k] = v
-	}
+	maps.Copy(es.Annotations, esb.esAdditionalAnnotations)
 	if esb.userConfig != nil {
 		es.Spec.NodeSets[0].Config = &commonv1.Config{Data: esb.userConfig}
 	}
@@ -65,7 +64,7 @@ func (esb *esSampleBuilder) withVersion(version string) *esSampleBuilder {
 	return esb
 }
 
-func (esb *esSampleBuilder) withUserConfig(userConfig map[string]interface{}) *esSampleBuilder {
+func (esb *esSampleBuilder) withUserConfig(userConfig map[string]any) *esSampleBuilder {
 	esb.userConfig = userConfig
 	return esb
 }
@@ -103,7 +102,7 @@ var sampleES = esv1.Elasticsearch{
 				Name:  "nodeset-1",
 				Count: 2,
 				Config: &commonv1.Config{
-					Data: map[string]interface{}{
+					Data: map[string]any{
 						"node.attr.foo": "bar",
 						"node.master":   "true",
 						"node.data":     "false",
@@ -246,14 +245,14 @@ func TestBuildPodTemplateSpecWithDefaultSecurityContext(t *testing.T) {
 func TestBuildPodTemplateSpec(t *testing.T) {
 	// 7.20 fixtures
 	sampleES := newEsSampleBuilder().build()
-	policyEsConfig := common.MustCanonicalConfig(map[string]interface{}{
+	policyEsConfig := common.MustCanonicalConfig(map[string]any{
 		"logger.org.elasticsearch.discovery": "DEBUG",
 	})
 	secretMounts := []policyv1alpha1.SecretMount{{
 		SecretName: "test-es-secretname",
 		MountPath:  "/usr/test",
 	}}
-	elasticsearchConfigAndMountsHash := hash.HashObject([]interface{}{policyEsConfig, secretMounts})
+	elasticsearchConfigAndMountsHash := hash.HashObject([]any{policyEsConfig, secretMounts})
 	policyConfig := PolicyConfig{
 		ElasticsearchConfig: policyEsConfig,
 		AdditionalVolumes: []volume.VolumeLike{
@@ -333,7 +332,7 @@ func TestBuildPodTemplateSpec(t *testing.T) {
 
 func Test_buildAnnotations(t *testing.T) {
 	type args struct {
-		cfg                    map[string]interface{}
+		cfg                    map[string]any
 		esAnnotations          map[string]string
 		keystoreResources      *keystore.Resources
 		scriptsContent         string
@@ -355,7 +354,7 @@ func Test_buildAnnotations(t *testing.T) {
 		{
 			name: "Updated configuration",
 			args: args{
-				cfg: map[string]interface{}{
+				cfg: map[string]any{
 					"node.attr.foo": "bar",
 					"node.master":   "false",
 					"node.data":     "true",

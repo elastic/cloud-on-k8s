@@ -6,6 +6,7 @@ package kibana
 
 import (
 	"fmt"
+	"maps"
 
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
@@ -237,8 +238,8 @@ func (b Builder) WithAPMIntegration() Builder {
 		return b
 	}
 
-	config := map[string]interface{}{
-		"xpack.fleet.packages": []map[string]interface{}{
+	config := map[string]any{
+		"xpack.fleet.packages": []map[string]any{
 			{
 				"name":    "apm",
 				"version": "latest",
@@ -252,15 +253,13 @@ func (b Builder) WithAPMIntegration() Builder {
 	return b.WithConfig(config)
 }
 
-func (b Builder) WithConfig(config map[string]interface{}) Builder {
+func (b Builder) WithConfig(config map[string]any) Builder {
 	if b.Kibana.Spec.Config == nil || b.Kibana.Spec.Config.Data == nil {
 		b.Kibana.Spec.Config = &commonv1.Config{
 			Data: config,
 		}
 	} else {
-		for k, v := range config {
-			b.Kibana.Spec.Config.Data[k] = v
-		}
+		maps.Copy(b.Kibana.Spec.Config.Data, config)
 	}
 	return b
 }
@@ -332,7 +331,7 @@ func (b Builder) Kind() string {
 	return kbv1.Kind
 }
 
-func (b Builder) Spec() interface{} {
+func (b Builder) Spec() any {
 	return b.Kibana.Spec
 }
 

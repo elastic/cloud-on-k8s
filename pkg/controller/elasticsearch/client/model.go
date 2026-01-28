@@ -218,19 +218,19 @@ func (s Shard) Key() string {
 
 // AllocationSettings model a subset of the supported attributes for dynamic Elasticsearch cluster settings.
 type AllocationSettings struct {
-	Cluster ClusterRoutingSettings `json:"cluster,omitempty"`
+	Cluster ClusterRoutingSettings `json:"cluster"`
 } // TODO awareness settings
 
 type ClusterRoutingSettings struct {
-	Routing RoutingSettings `json:"routing,omitempty"`
+	Routing RoutingSettings `json:"routing"`
 }
 
 type RoutingSettings struct {
-	Allocation RoutingAllocationSettings `json:"allocation,omitempty"`
+	Allocation RoutingAllocationSettings `json:"allocation"`
 }
 
 type RoutingAllocationSettings struct {
-	Exclude AllocationExclude `json:"exclude,omitempty"`
+	Exclude AllocationExclude `json:"exclude"`
 	Enable  string            `json:"enable,omitempty"`
 }
 
@@ -245,7 +245,7 @@ func (s AllocationSettings) IsShardsAllocationEnabled() bool {
 
 // ClusterRoutingAllocation models a subset of transient allocation settings for an Elasticsearch cluster.
 type ClusterRoutingAllocation struct {
-	Transient AllocationSettings `json:"transient,omitempty"`
+	Transient AllocationSettings `json:"transient"`
 }
 
 // ErrorResponse is an Elasticsearch error response.
@@ -369,11 +369,11 @@ type StartBasicResponse struct {
 
 // Hit represents a single search hit.
 type Hit struct {
-	Index  string                 `json:"_index"`
-	Type   string                 `json:"_type"`
-	ID     string                 `json:"_id"`
-	Score  float64                `json:"_score"`
-	Source map[string]interface{} `json:"_source"`
+	Index  string         `json:"_index"`
+	Type   string         `json:"_type"`
+	ID     string         `json:"_id"`
+	Score  float64        `json:"_score"`
+	Source map[string]any `json:"_source"`
 }
 
 // Hits are the collections of search hits.

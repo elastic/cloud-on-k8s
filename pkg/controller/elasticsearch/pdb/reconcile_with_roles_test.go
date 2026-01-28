@@ -1352,7 +1352,7 @@ func TestGroupBySharedRoles(t *testing.T) {
 				assert.Equal(t, len(expectedSsets), len(gotSsets), "Group %s has wrong size", role)
 
 				// Check if all StatefulSets in the group match
-				for i := 0; i < len(expectedSsets); i++ {
+				for i := range expectedSsets {
 					if i >= len(gotSsets) {
 						t.Errorf("Missing StatefulSet at index %d in group %s", i, role)
 						continue

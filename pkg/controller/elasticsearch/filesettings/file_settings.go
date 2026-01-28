@@ -67,15 +67,15 @@ func NewEmptySettings(version int64) Settings {
 // newEmptySettingsState returns an empty new Settings state.
 func newEmptySettingsState() SettingsState {
 	return SettingsState{
-		ClusterSettings:        &commonv1.Config{Data: map[string]interface{}{}},
-		SnapshotRepositories:   &commonv1.Config{Data: map[string]interface{}{}},
-		SLM:                    &commonv1.Config{Data: map[string]interface{}{}},
-		RoleMappings:           &commonv1.Config{Data: map[string]interface{}{}},
-		IndexLifecyclePolicies: &commonv1.Config{Data: map[string]interface{}{}},
-		IngestPipelines:        &commonv1.Config{Data: map[string]interface{}{}},
+		ClusterSettings:        &commonv1.Config{Data: map[string]any{}},
+		SnapshotRepositories:   &commonv1.Config{Data: map[string]any{}},
+		SLM:                    &commonv1.Config{Data: map[string]any{}},
+		RoleMappings:           &commonv1.Config{Data: map[string]any{}},
+		IndexLifecyclePolicies: &commonv1.Config{Data: map[string]any{}},
+		IngestPipelines:        &commonv1.Config{Data: map[string]any{}},
 		IndexTemplates: &IndexTemplates{
-			ComponentTemplates:       &commonv1.Config{Data: map[string]interface{}{}},
-			ComposableIndexTemplates: &commonv1.Config{Data: map[string]interface{}{}},
+			ComponentTemplates:       &commonv1.Config{Data: map[string]any{}},
+			ComposableIndexTemplates: &commonv1.Config{Data: map[string]any{}},
 		},
 	}
 }
@@ -87,7 +87,7 @@ func (s *Settings) updateState(es types.NamespacedName, esConfigPolicy policyv1a
 	// mutate Snapshot Repositories
 	if esConfigPolicy.SnapshotRepositories != nil {
 		for name, untypedDefinition := range esConfigPolicy.SnapshotRepositories.Data {
-			definition, ok := untypedDefinition.(map[string]interface{})
+			definition, ok := untypedDefinition.(map[string]any)
 			if !ok {
 				return fmt.Errorf(`invalid type (%T) for definition of snapshot repository %q of Elasticsearch "%s/%s"`, untypedDefinition, name, es.Namespace, es.Name)
 			}
@@ -132,14 +132,14 @@ func (s *Settings) updateState(es types.NamespacedName, esConfigPolicy policyv1a
 // - "hdfs": `<namespace>-<esName>` is appended to the `path` property
 // - "url": nothing is done, the repository is read-only
 // - "source": nothing is done, the repository is an indirection to another repository
-func mutateSnapshotRepositorySettings(snapshotRepository map[string]interface{}, esNs string, esName string) (map[string]interface{}, error) {
+func mutateSnapshotRepositorySettings(snapshotRepository map[string]any, esNs string, esName string) (map[string]any, error) {
 	untypedSettings := snapshotRepository["settings"]
 	if untypedSettings == nil {
-		untypedSettings = map[string]interface{}{}
+		untypedSettings = map[string]any{}
 	}
 
 	uniqSuffix := fmt.Sprintf("%s-%s", esNs, esName)
-	settings, ok := untypedSettings.(map[string]interface{})
+	settings, ok := untypedSettings.(map[string]any)
 	if !ok {
 		return nil, fmt.Errorf("invalid type (%T) for snapshot repository settings", untypedSettings)
 	}

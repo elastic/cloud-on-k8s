@@ -51,10 +51,7 @@ func calculateCreatesAllowed(maxSurge *int32, actual, expected int32) *int32 {
 		return nil
 	}
 
-	createsAllowed := *maxSurge + expected - actual
-	if createsAllowed < 0 {
-		createsAllowed = 0
-	}
+	createsAllowed := max(*maxSurge+expected-actual, 0)
 
 	return &createsAllowed
 }
