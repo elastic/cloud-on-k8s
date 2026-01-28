@@ -26,7 +26,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/set"
 )
 
-func asJSON(obj interface{}) []byte {
+func asJSON(obj any) []byte {
 	data, err := json.Marshal(obj)
 	if err != nil {
 		panic(err)

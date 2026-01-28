@@ -343,9 +343,8 @@ func (c *Client) createPullRequest(repo githubRepository, branchName string) err
 	log.Printf("Creating draft pull request for (%s) ", repo.repository)
 
 	prBody := fmt.Sprintf("Update the ECK operator to the latest version `%s`.", c.GitTag)
-	var body = []byte(
-		fmt.Sprintf(`{"title": "operator %s (%s)", "head": "%s:%s", "base": "%s", "draft": true, "body": "%s"}`,
-			repo.directoryName, c.GitTag, c.GitHubUsername, branchName, repo.mainBranchName, prBody))
+	var body = fmt.Appendf(nil, `{"title": "operator %s (%s)", "head": "%s:%s", "base": "%s", "draft": true, "body": "%s"}`,
+		repo.directoryName, c.GitTag, c.GitHubUsername, branchName, repo.mainBranchName, prBody)
 	ctx, cancel := context.WithTimeout(context.Background(), 1*time.Minute)
 	defer cancel()
 	req, err := c.createRequest(ctx, http.MethodPost, fmt.Sprintf("%s/repos/%s/%s/pulls", githubAPIURL, repo.organization, repo.repository), bytes.NewBuffer(body))

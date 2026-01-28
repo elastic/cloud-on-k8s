@@ -71,7 +71,7 @@ func Test_buildPodTemplate(t *testing.T) {
 			},
 		},
 	)
-	httpPortCfg := &commonv1.Config{Data: map[string]interface{}{"http.port": 3033}}
+	httpPortCfg := &commonv1.Config{Data: map[string]any{"http.port": 3033}}
 	beatWithMonitoring := beatv1beta1.Beat{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "beat-name",

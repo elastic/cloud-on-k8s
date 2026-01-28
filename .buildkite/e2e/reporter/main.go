@@ -113,7 +113,7 @@ func main() {
 	if err != nil {
 		exitWith(err)
 	}
-	err = tpl.Execute(os.Stdout, map[string]interface{}{
+	err = tpl.Execute(os.Stdout, map[string]any{
 		"TestsMap":                 testsMap,
 		"FailuresCount":            failuresCount,
 		"ShortFailures":            flatShortFailures,

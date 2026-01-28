@@ -250,7 +250,6 @@ func pvcPrefix(clusterName string) string {
 // to reference the claim.
 func createAndBindClaims(c k8s.Client, volumeClaims []MatchingVolumeClaim, dryRun bool) error {
 	for _, match := range volumeClaims {
-		match := match
 		fmt.Printf("Creating claim %s\n", match.claim.Name)
 		if !dryRun {
 			if err := c.Create(context.Background(), &match.claim); err != nil {

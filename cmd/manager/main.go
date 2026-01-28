@@ -448,7 +448,7 @@ func startOperator(ctx context.Context) error {
 	log.V(1).Info("Effective configuration", "values", viper.AllSettings())
 
 	// update GOMAXPROCS to container cpu limit if necessary
-	_, err := maxprocs.Set(maxprocs.Logger(func(s string, i ...interface{}) {
+	_, err := maxprocs.Set(maxprocs.Logger(func(s string, i ...any) {
 		// maxprocs needs an sprintf format string with args, but our logger needs a string with optional key value pairs,
 		// so we need to do this translation
 		log.Info(fmt.Sprintf(s, i...))

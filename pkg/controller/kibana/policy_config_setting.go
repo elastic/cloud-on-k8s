@@ -49,7 +49,7 @@ func getPolicyConfig(ctx context.Context, client k8s.Client, kibana kibanav1.Kib
 	}
 
 	// Parse Kibana config from the stack config policy secret.
-	var kbConfigFromStackConfigPolicy map[string]interface{}
+	var kbConfigFromStackConfigPolicy map[string]any
 	if string(stackConfigPolicyConfigSecret.Data[stackconfigpolicy.KibanaConfigKey]) != "" {
 		if err = json.Unmarshal(stackConfigPolicyConfigSecret.Data[stackconfigpolicy.KibanaConfigKey], &kbConfigFromStackConfigPolicy); err != nil {
 			return policyConfig, err

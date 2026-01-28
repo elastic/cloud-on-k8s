@@ -13,7 +13,7 @@ import (
 type Subject interface {
 	NSN() types.NamespacedName
 	Kind() string
-	Spec() interface{}
+	Spec() any
 	Count() int32
 	ServiceName() string
 	ListOptions() []k8sclient.ListOption

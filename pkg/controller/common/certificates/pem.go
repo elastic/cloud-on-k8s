@@ -74,7 +74,7 @@ func EncodePEMPrivateKey(privateKey crypto.Signer) ([]byte, error) {
 	return pem.EncodeToMemory(pemBlock), nil
 }
 
-func pemBlockForKey(privateKey interface{}) (*pem.Block, error) {
+func pemBlockForKey(privateKey any) (*pem.Block, error) {
 	switch k := privateKey.(type) {
 	case *rsa.PrivateKey:
 		return &pem.Block{Type: pkcs1PrivateKeyType, Bytes: x509.MarshalPKCS1PrivateKey(k)}, nil

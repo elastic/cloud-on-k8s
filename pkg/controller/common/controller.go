@@ -44,7 +44,7 @@ func NewReconciliationContext(
 		map[string]string{"iteration": itString, "name": request.Name, "namespace": request.Namespace})
 
 	// operator specific fields
-	logFields := []interface{}{
+	logFields := []any{
 		"iteration", itString,
 		"namespace", request.Namespace,
 		nameField, request.Name,

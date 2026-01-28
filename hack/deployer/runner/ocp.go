@@ -161,7 +161,7 @@ func (d *OCPDriver) Execute() error {
 
 func (d *OCPDriver) create() error {
 	log.Println("Creating cluster...")
-	params := map[string]interface{}{
+	params := map[string]any{
 		GoogleCloudProjectCtxKey: d.plan.Ocp.GCloudProject,
 		"ClusterName":            d.plan.ClusterName,
 		"Region":                 d.plan.Ocp.Region,
@@ -420,8 +420,8 @@ func (d *OCPDriver) removeKubeconfig() error {
 	return removeKubeconfig("admin", "admin", "admin")
 }
 
-func (d *OCPDriver) bucketParams() map[string]interface{} {
-	return map[string]interface{}{
+func (d *OCPDriver) bucketParams() map[string]any {
+	return map[string]any{
 		"OCPStateBucket":  OCPStateBucket,
 		"ClusterName":     d.plan.ClusterName,
 		"ClusterStateDir": d.runtimeState.ClusterStateDir,
@@ -429,7 +429,7 @@ func (d *OCPDriver) bucketParams() map[string]interface{} {
 }
 
 func (d *OCPDriver) runInstallerCommand(action string) error {
-	params := map[string]interface{}{
+	params := map[string]any{
 		"ClusterStateDirBase": filepath.Base(d.runtimeState.ClusterStateDir),
 		"SharedVolume":        env.SharedVolumeName(),
 		"GCloudCredsPath":     filepath.Join("/home", GCPDir, ServiceAccountFilename),

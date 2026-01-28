@@ -58,7 +58,7 @@ config:
 			args: args{
 				runtimeObjs: nil,
 				logstash: v1alpha1.Logstash{
-					Spec: v1alpha1.LogstashSpec{Config: &commonv1.Config{Data: map[string]interface{}{
+					Spec: v1alpha1.LogstashSpec{Config: &commonv1.Config{Data: map[string]any{
 						"log.level":                 "debug",
 						"api.ssl.keystore.password": "Str0ngP@ssw0rd",
 					}}},
@@ -106,7 +106,7 @@ log:
 			name: "config takes precedence",
 			args: args{
 				runtimeObjs: []client.Object{secretWithConfig("cfg", []byte("log.level: debug"))},
-				logstash: logstashWithConfigRef("cfg", &commonv1.Config{Data: map[string]interface{}{
+				logstash: logstashWithConfigRef("cfg", &commonv1.Config{Data: map[string]any{
 					"log.level": "warn",
 				}}),
 			},
@@ -139,7 +139,7 @@ log:
 				runtimeObjs: nil,
 				logstash: v1alpha1.Logstash{
 					Spec: v1alpha1.LogstashSpec{
-						Config: &commonv1.Config{Data: map[string]interface{}{
+						Config: &commonv1.Config{Data: map[string]any{
 							"api.ssl.enabled": "false",
 						}},
 						Services: []v1alpha1.LogstashService{{
@@ -323,7 +323,7 @@ func Test_resolveAPIServerConfig(t *testing.T) {
 		},
 	}
 
-	config := &commonv1.Config{Data: map[string]interface{}{
+	config := &commonv1.Config{Data: map[string]any{
 		"api.ssl.enabled":           "${SSL_ENABLED}",
 		"api.ssl.keystore.password": "${SSL_KEYSTORE_PASSWORD}",
 		"api.auth.type":             "${API_AUTH_TYPE}",
@@ -347,7 +347,7 @@ func Test_resolveAPIServerConfig(t *testing.T) {
 				runtimeObjs: nil,
 				logstash: v1alpha1.Logstash{
 					Spec: v1alpha1.LogstashSpec{
-						Config: &commonv1.Config{Data: map[string]interface{}{}},
+						Config: &commonv1.Config{Data: map[string]any{}},
 					},
 				},
 			},

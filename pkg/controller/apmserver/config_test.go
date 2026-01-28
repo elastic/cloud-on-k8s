@@ -23,33 +23,33 @@ import (
 func TestNewConfigFromSpec(t *testing.T) {
 	testCases := []struct {
 		name            string
-		configOverrides map[string]interface{}
+		configOverrides map[string]any
 		esAssocConf     *commonv1.AssociationConf
 		kbAssocConf     *commonv1.AssociationConf
 		version         version.Version
-		wantConf        map[string]interface{}
+		wantConf        map[string]any
 		wantErr         bool
 	}{
 		{
 			name:    "default config",
 			version: version.MinFor(8, 0, 0),
-			wantConf: map[string]interface{}{
+			wantConf: map[string]any{
 				"apm-server.auth.secret_token": "${SECRET_TOKEN}",
 			},
 		},
 		{
 			name:    "default config pre 8.0",
 			version: version.MinFor(7, 0, 0),
-			wantConf: map[string]interface{}{
+			wantConf: map[string]any{
 				"apm-server.secret_token": "${SECRET_TOKEN}",
 			},
 		},
 		{
 			name: "with overridden config",
-			configOverrides: map[string]interface{}{
+			configOverrides: map[string]any{
 				"apm-server.secret_token": "MYSECRET",
 			},
-			wantConf: map[string]interface{}{
+			wantConf: map[string]any{
 				"apm-server.secret_token": "MYSECRET",
 			},
 			version: version.MinFor(7, 0, 0),
@@ -63,7 +63,7 @@ func TestNewConfigFromSpec(t *testing.T) {
 				CACertProvided: false,
 				URL:            "https://test-es-http.default.svc:9200",
 			},
-			wantConf: map[string]interface{}{
+			wantConf: map[string]any{
 				// version specific auth token
 				"apm-server.auth.secret_token":  "${SECRET_TOKEN}",
 				"output.elasticsearch.hosts":    []string{"https://test-es-http.default.svc:9200"},
@@ -81,7 +81,7 @@ func TestNewConfigFromSpec(t *testing.T) {
 				CACertProvided: true,
 				URL:            "https://test-es-http.default.svc:9200",
 			},
-			wantConf: map[string]interface{}{
+			wantConf: map[string]any{
 				"apm-server.auth.secret_token":                     "${SECRET_TOKEN}",
 				"output.elasticsearch.hosts":                       []string{"https://test-es-http.default.svc:9200"},
 				"output.elasticsearch.username":                    "elastic",
@@ -118,7 +118,7 @@ func TestNewConfigFromSpec(t *testing.T) {
 				CACertProvided: true,
 				URL:            "https://test-kb-http.default.svc:9200",
 			},
-			wantConf: map[string]interface{}{
+			wantConf: map[string]any{
 				// Elasticsearch configuration
 				"output.elasticsearch.hosts":                       []string{"https://test-es-http.default.svc:9200"},
 				"output.elasticsearch.username":                    "elastic",
@@ -151,7 +151,7 @@ func TestNewConfigFromSpec(t *testing.T) {
 				CACertProvided: false,
 				URL:            "https://test-kb-http.default.svc:9200",
 			},
-			wantConf: map[string]interface{}{
+			wantConf: map[string]any{
 				// Elasticsearch configuration
 				"output.elasticsearch.hosts":                       []string{"https://test-es-http.default.svc:9200"},
 				"output.elasticsearch.username":                    "elastic",
@@ -220,9 +220,9 @@ func mkAuthSecrets() []client.Object {
 	}
 }
 
-func mkConf(t *testing.T, overrides map[string]interface{}) *settings.CanonicalConfig {
+func mkConf(t *testing.T, overrides map[string]any) *settings.CanonicalConfig {
 	t.Helper()
-	cfg, err := settings.NewCanonicalConfigFrom(map[string]interface{}{
+	cfg, err := settings.NewCanonicalConfigFrom(map[string]any{
 		"apm-server.host":            ":8200",
 		"apm-server.ssl.certificate": "/mnt/elastic-internal/http-certs/tls.crt",
 		"apm-server.ssl.enabled":     true,

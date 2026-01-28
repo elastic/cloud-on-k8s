@@ -157,7 +157,7 @@ func main() {
 	tpl, err := template.New("pipeline.yaml").Parse(pipelineTemplate)
 	handleErr("Failed to parse template", err)
 
-	err = tpl.Execute(os.Stdout, map[string]interface{}{
+	err = tpl.Execute(os.Stdout, map[string]any{
 		"Cleanup":                cleanup,
 		"Tests":                  tests,
 		"K8sInDockerMachineType": K8sInDockerMachineType,

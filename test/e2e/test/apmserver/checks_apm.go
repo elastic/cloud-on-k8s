@@ -222,7 +222,7 @@ func (c *apmClusterChecks) checkEventsAPI(apm apmv1.ApmServer) error {
 	return nil
 }
 
-func assertHTTP403(t assert.TestingT, err error, msgAndArgs ...interface{}) bool {
+func assertHTTP403(t assert.TestingT, err error, msgAndArgs ...any) bool {
 	if !commonhttp.IsForbidden(err) {
 		return assert.Fail(t, fmt.Sprintf("expected HTTP 403 but was %+v", err), msgAndArgs)
 	}

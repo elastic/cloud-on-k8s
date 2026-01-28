@@ -55,7 +55,7 @@ func NewMergedESConfig(
 
 // baseConfig returns the base ES configuration to apply for the given cluster
 func baseConfig(clusterName string, ver version.Version, ipFamily corev1.IPFamily, remoteClusterServerEnabled bool) *CanonicalConfig {
-	cfg := map[string]interface{}{
+	cfg := map[string]any{
 		// derive node name dynamically from the pod name, injected as env var
 		esv1.NodeName:    "${" + EnvPodName + "}",
 		esv1.ClusterName: clusterName,
@@ -94,7 +94,7 @@ func baseConfig(clusterName string, ver version.Version, ipFamily corev1.IPFamil
 // xpackConfig returns the configuration bit related to XPack settings
 func xpackConfig(ver version.Version, httpCfg commonv1.HTTPConfig, remoteClusterServerEnabled, remoteClusterClientEnabled bool) *CanonicalConfig {
 	// enable x-pack security, including TLS
-	cfg := map[string]interface{}{
+	cfg := map[string]any{
 		// x-pack security general settings
 		esv1.XPackSecurityEnabled:                      "true",
 		esv1.XPackSecurityAuthcReservedRealmEnabled:    "false",
