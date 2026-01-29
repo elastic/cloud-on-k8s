@@ -168,7 +168,7 @@ func (r *AgentPolicyReconciler) internalReconcile(
 		if es.Spec.HTTP.TLS.Enabled() {
 			if err := r.reconcileAutoOpsESCASecret(ctx, policy, es); err != nil {
 				log.Error(err, "while reconciling AutoOps ES CA secret")
-				state.IncreaseResourcesErrorsCount()
+				state.MarkResourceError()
 				results.WithError(err)
 				continue
 			}
@@ -177,7 +177,7 @@ func (r *AgentPolicyReconciler) internalReconcile(
 		apiKeySecret, err := r.reconcileAutoOpsESAPIKey(ctx, policy, es)
 		if err != nil {
 			log.Error(err, "while reconciling AutoOps ES API key")
-			state.IncreaseResourcesErrorsCount()
+			state.MarkResourceError()
 			results.WithError(err)
 			continue
 		}
@@ -185,7 +185,7 @@ func (r *AgentPolicyReconciler) internalReconcile(
 		configMap, err := ReconcileAutoOpsESConfigMap(ctx, r.Client, policy, es)
 		if err != nil {
 			log.Error(err, "while reconciling AutoOps ES config map")
-			state.IncreaseResourcesErrorsCount()
+			state.MarkResourceError()
 			results.WithError(err)
 			continue
 		}
@@ -193,7 +193,7 @@ func (r *AgentPolicyReconciler) internalReconcile(
 		configHash, err := buildConfigHash(ctx, *configMap, *apiKeySecret, r.Client, policy)
 		if err != nil {
 			log.Error(err, "while building config hash")
-			state.IncreaseResourcesErrorsCount()
+			state.MarkResourceError()
 			results.WithError(err)
 			continue
 		}
@@ -201,7 +201,7 @@ func (r *AgentPolicyReconciler) internalReconcile(
 		deploymentParams, err := r.buildDeployment(configHash, policy, es)
 		if err != nil {
 			log.Error(err, "while getting deployment params")
-			state.IncreaseResourcesErrorsCount()
+			state.MarkResourceError()
 			results.WithError(err)
 			continue
 		}
@@ -209,13 +209,13 @@ func (r *AgentPolicyReconciler) internalReconcile(
 		reconciledDeployment, err := deployment.Reconcile(ctx, r.Client, deploymentParams, &policy)
 		if err != nil {
 			log.Error(err, "while reconciling deployment")
-			state.IncreaseResourcesErrorsCount()
+			state.MarkResourceError()
 			results.WithError(err)
 			continue
 		}
 
 		if isDeploymentReady(reconciledDeployment) {
-			state.IncreaseResourcesReadyCount()
+			state.MarkResourceReady()
 		}
 	}
 

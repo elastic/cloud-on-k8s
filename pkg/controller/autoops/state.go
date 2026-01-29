@@ -68,14 +68,14 @@ func (s *State) UpdateMonitoredResources(count int) *State {
 	return s
 }
 
-// IncrementResourcesReadyCount increases the Ready count in the status.
-func (s *State) IncreaseResourcesReadyCount() *State {
+// MarkResourceReady increases the Ready count in the status.
+func (s *State) MarkResourceReady() *State {
 	s.status.Ready++
 	return s
 }
 
-// IncreaseResourcesErrorsCount increases the Errors count in the status.
-func (s *State) IncreaseResourcesErrorsCount() *State {
+// MarkResourceError increases the Errors count in the status.
+func (s *State) MarkResourceError() *State {
 	s.status.Errors++
 	s.UpdateWithPhase(autoopsv1alpha1.ErrorPhase)
 	return s
@@ -95,7 +95,7 @@ func (s *State) Apply() ([]events.Event, *autoopsv1alpha1.AutoOpsAgentPolicy) {
 }
 
 // CalculateFinalPhase updates the phase of the AutoOpsAgentPolicy status based on the results of the reconciliation.
-// This method is solely responsible for applying the [autoopsv1alpha1.ApplyingChangesPhase], [autoopsv1alpha1.AutoOpsResourcesNotReadyPhase] and [autoopsv1alpha1.ReadyPhase].
+// This method is solely responsible for applying the [autoopsv1alpha1.ApplyingChangesPhase], [autoopsv1alpha1.AutoOpsAgentsNotReadyPhase] and [autoopsv1alpha1.ReadyPhase].
 func (s *State) CalculateFinalPhase(isReconciled bool, reconciliationMessage string) {
 	switch {
 	case !isReconciled:
@@ -104,6 +104,6 @@ func (s *State) CalculateFinalPhase(isReconciled bool, reconciliationMessage str
 	case s.status.Ready == s.status.Resources:
 		s.UpdateWithPhase(autoopsv1alpha1.ReadyPhase)
 	case s.status.Ready < s.status.Resources:
-		s.UpdateWithPhase(autoopsv1alpha1.AutoOpsResourcesNotReadyPhase)
+		s.UpdateWithPhase(autoopsv1alpha1.AutoOpsAgentsNotReadyPhase)
 	}
 }

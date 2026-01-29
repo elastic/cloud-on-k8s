@@ -120,8 +120,8 @@ const (
 	NoMonitoredResourcesPhase PolicyPhase = "NoMonitoredResources"
 	// MonitoredResourcesNotReadyPhase indicates that one or more monitored Elasticsearch resources are not in a ready state.
 	MonitoredResourcesNotReadyPhase PolicyPhase = "MonitoredResourcesNotReady"
-	// AutoOpsResourcesNotReadyPhase indicates that the AutoOps agent resources are not ready.
-	AutoOpsResourcesNotReadyPhase PolicyPhase = "AutoOpsResourcesNotReady"
+	// AutoOpsAgentsNotReadyPhase indicates that the AutoOps agent resources are not ready.
+	AutoOpsAgentsNotReadyPhase PolicyPhase = "AutoOpsAgentsNotReady"
 	// ErrorPhase indicates that an error occurred while reconciling the AutoOpsAgentPolicy.
 	ErrorPhase PolicyPhase = "Error"
 )
@@ -129,7 +129,7 @@ const (
 // NeedsRequeue returns whether the phase requires a requeue.
 func (p PolicyPhase) NeedsRequeue() bool {
 	switch p {
-	case ApplyingChangesPhase, MonitoredResourcesNotReadyPhase, AutoOpsResourcesNotReadyPhase, ErrorPhase:
+	case ApplyingChangesPhase, MonitoredResourcesNotReadyPhase, AutoOpsAgentsNotReadyPhase, ErrorPhase:
 		return true
 	default:
 		return false
@@ -140,7 +140,7 @@ func (p PolicyPhase) Priority() int {
 	switch p {
 	case ApplyingChangesPhase, ReadyPhase:
 		return 1
-	case MonitoredResourcesNotReadyPhase, AutoOpsResourcesNotReadyPhase:
+	case MonitoredResourcesNotReadyPhase, AutoOpsAgentsNotReadyPhase:
 		return 2
 	case ErrorPhase:
 		return 3
