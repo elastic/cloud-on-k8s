@@ -106,16 +106,24 @@ type AutoOpsAgentPolicyStatus struct {
 	ObservedGeneration int64 `json:"observedGeneration,omitempty"`
 }
 
+// PolicyPhase represents the current lifecycle phase of an AutoOpsAgentPolicy.
 type PolicyPhase string
 
 const (
-	ReadyPhase                      PolicyPhase = "Ready"
-	ApplyingChangesPhase            PolicyPhase = "ApplyingChanges"
-	InvalidPhase                    PolicyPhase = "Invalid"
-	NoMonitoredResourcesPhase       PolicyPhase = "NoMonitoredResources"
+	// ReadyPhase indicates that all monitored resources are configured and operating correctly and AutoOps agent resources are deployed correctly.
+	ReadyPhase PolicyPhase = "Ready"
+	// ApplyingChangesPhase indicates that configuration changes are currently being applied to AutoOps agent resources.
+	ApplyingChangesPhase PolicyPhase = "ApplyingChanges"
+	// InvalidPhase indicates that the AutoOpsAgentPolicy specification is invalid and cannot be processed.
+	InvalidPhase PolicyPhase = "Invalid"
+	// NoMonitoredResourcesPhase indicates that no Elasticsearch resources match the configured resource selector and (the optional) namespace selector.
+	NoMonitoredResourcesPhase PolicyPhase = "NoMonitoredResources"
+	// MonitoredResourcesNotReadyPhase indicates that one or more monitored Elasticsearch resources are not in a ready state.
 	MonitoredResourcesNotReadyPhase PolicyPhase = "MonitoredResourcesNotReady"
-	AutoOpsResourcesNotReadyPhase   PolicyPhase = "AutoOpsResourcesNotReady"
-	ErrorPhase                      PolicyPhase = "Error"
+	// AutoOpsResourcesNotReadyPhase indicates that the AutoOps agent resources are not ready.
+	AutoOpsResourcesNotReadyPhase PolicyPhase = "AutoOpsResourcesNotReady"
+	// ErrorPhase indicates that an error occurred while reconciling the AutoOpsAgentPolicy.
+	ErrorPhase PolicyPhase = "Error"
 )
 
 // NeedsRequeue returns whether the phase requires a requeue.
