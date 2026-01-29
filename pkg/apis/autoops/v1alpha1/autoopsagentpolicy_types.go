@@ -136,6 +136,23 @@ func (p PolicyPhase) NeedsRequeue() bool {
 	}
 }
 
+func (p PolicyPhase) Priority() int {
+	switch p {
+	case ApplyingChangesPhase, ReadyPhase:
+		return 1
+	case MonitoredResourcesNotReadyPhase, AutoOpsResourcesNotReadyPhase:
+		return 2
+	case ErrorPhase:
+		return 3
+	case NoMonitoredResourcesPhase:
+		return 4
+	case InvalidPhase:
+		return 5 // Terminal - never changes
+	default:
+		return 0 // Unknown phases have lowest priority
+	}
+}
+
 // IsMarkedForDeletion returns true if the AutoOpsAgentPolicy resource is going to be deleted.
 func (p *AutoOpsAgentPolicy) IsMarkedForDeletion() bool {
 	return !p.DeletionTimestamp.IsZero()
