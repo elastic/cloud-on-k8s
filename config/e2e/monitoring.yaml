@@ -81,9 +81,9 @@ spec:
   config:
     agent:
       monitoring:
-        enabled: false
+        enabled: true
         use_output: default
-        logs: true
+        logs: false
         metrics: true
     providers.kubernetes:
       node: ${NODE_NAME}
