@@ -65,9 +65,11 @@ var (
 	DefaultMemoryLimits = resource.MustParse("2Gi")
 	DefaultResources    = corev1.ResourceRequirements{
 		Requests: map[corev1.ResourceName]resource.Quantity{
+			corev1.ResourceCPU:    resource.MustParse("2000m"),
 			corev1.ResourceMemory: DefaultMemoryLimits,
 		},
 		Limits: map[corev1.ResourceName]resource.Quantity{
+			corev1.ResourceCPU:    resource.MustParse("2000m"),
 			corev1.ResourceMemory: DefaultMemoryLimits,
 		},
 	}
