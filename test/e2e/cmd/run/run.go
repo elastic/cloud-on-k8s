@@ -188,7 +188,6 @@ func (h *helper) initTestContext() error {
 		LogToFile:             h.logToFile,
 		AutopilotCluster:      isAutopilotCluster(h),
 		ArtefactsDir:          artefactsDir,
-		WiremockURL:           wiremockURL(h),
 	}
 
 	for i, ns := range h.managedNamespaces {
@@ -250,11 +249,6 @@ func isAKSCluster(h *helper) bool {
 // isAutopilotCluster convenience function to check the provider value for the string gke-autopilot.
 func isAutopilotCluster(h *helper) bool {
 	return strings.HasPrefix(h.provider, "gke-autopilot")
-}
-
-// wiremockURL returns the deterministic URL for the WireMock service.
-func wiremockURL(h *helper) string {
-	return fmt.Sprintf("http://wiremock-%s.%s-system.svc.cluster.local:8080", h.testRunName, h.testRunName)
 }
 
 func (h *helper) initTestSecrets() error {

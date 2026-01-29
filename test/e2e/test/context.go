@@ -126,7 +126,6 @@ type Context struct {
 	E2ETags               string            `json:"e2e_tags"`
 	LogToFile             bool              `json:"log_to_file"`
 	ArtefactsDir          string            `json:"artefacts_dir"`
-	WiremockURL           string            `json:"wiremock_url"`
 }
 
 // ManagedNamespace returns the nth managed namespace.

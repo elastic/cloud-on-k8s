@@ -38,9 +38,6 @@ func (b Builder) InitTestSteps(k *test.K8sClient) test.StepList {
 			Test: test.Eventually(func() error {
 				return deployCloudConnectedAPIMock(k)
 			}),
-			Skip: func() bool {
-				return test.Ctx().WiremockURL == ""
-			},
 		},
 		{
 			Name: "Label test pods",
@@ -316,9 +313,6 @@ func (b Builder) DeletionTestSteps(k *test.K8sClient) test.StepList {
 			Test: test.Eventually(func() error {
 				return deleteCloudConnectedAPIMock(k)
 			}),
-			Skip: func() bool {
-				return test.Ctx().WiremockURL == ""
-			},
 		})
 }
 

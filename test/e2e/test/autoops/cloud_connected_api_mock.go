@@ -42,6 +42,11 @@ func cloudConnectedAPIMockSelectorLabels() map[string]string {
 	}
 }
 
+// CloudConnectedAPIMockURL returns the URL for the Cloud Connected API mock service.
+func CloudConnectedAPIMockURL() string {
+	return fmt.Sprintf("http://%s.%s.svc.cluster.local:8080", cloudConnectedAPIMockName(), test.Ctx().E2ENamespace)
+}
+
 // deployCloudConnectedAPIMock deploys the mock service for Cloud Connected API using the YAML template.
 func deployCloudConnectedAPIMock(k *test.K8sClient) error {
 	ctx := context.Background()
