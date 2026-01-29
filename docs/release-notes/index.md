@@ -23,7 +23,7 @@ ECK now supports deploying and managing Elastic Package Registry (EPR) through a
 
 #### Multiple Stack Configuration Policies composition support (Enterprise feature)
 
-ECK now includes support for multiple Stack Config Policies targeting the same {{es}} cluster or {{product.kibana}} instance, using a weight-based priority system for deterministic policy composition. The [stack config policy documentation](docs-content://deploy-manage/deploy/cloud-on-k8s/elastic-stack-configuration-policies) provides more details.
+ECK now includes support for multiple Stack Config Policies targeting the same {{es}} cluster or {{product.kibana}} instance, using a weight-based priority system for deterministic policy composition. The [Stack Config Policy documentation](docs-content://deploy-manage/deploy/cloud-on-k8s/elastic-stack-configuration-policies) provides more details.
 
 ### Features and enhancements [elastic-cloud-kubernetes-330-features-and-enhancements]
 
@@ -43,9 +43,7 @@ ECK now includes support for multiple Stack Config Policies targeting the same {
 - Cleanup orphaned secret mounts when removed from StackConfigPolicy [#8937](https://github.com/elastic/cloud-on-k8s/pull/8937) (issue: [#8921](https://github.com/elastic/cloud-on-k8s/issues/8921))
 - Avoid duplicate error logging for generate GET operations on a GVK [#8957](https://github.com/elastic/cloud-on-k8s/pull/8957)
 - Remove single master at a time upscale restriction [#8940](https://github.com/elastic/cloud-on-k8s/pull/8940) (issue: [#8939](https://github.com/elastic/cloud-on-k8s/issues/8939))
-- AutoOps: Ignore deprecated ES clusters [#9008](https://github.com/elastic/cloud-on-k8s/pull/9008) (issue: [#9000](https://github.com/elastic/cloud-on-k8s/issues/9000))
-- AutoOps: Require 9.2.1 for AutoOps agent [#9007](https://github.com/elastic/cloud-on-k8s/pull/9007) (issue: [#9000](https://github.com/elastic/cloud-on-k8s/issues/9000))
-- Multi-SCP: Flip weight semantics - higher weight takes precedence [#9046](https://github.com/elastic/cloud-on-k8s/pull/9046)
+
 
 ### Documentation improvements [elastic-cloud-kubernetes-330-documentation-improvements]
 

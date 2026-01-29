@@ -23,7 +23,7 @@ Known issues are significant defects or limitations that may impact your impleme
 
 {{es}} versions prior to 8.11.0 contain a bug where updates to file-based cluster settings may not be reloaded correctly when the file changes. This is caused by an {{es}} issue where new keys in file-settings are incorrectly deleted during file monitoring and reload operations.
 
-When using Stack Config Policies with affected versions, updated settings may not appear correctly when querying the `_cluster/settings` endpoint, even though the Stack Config Policy has been updated. Making an additional manual update to the Stack Config Policy may trigger the settings to reload correctly.
+When using Stack Config Policies with affected {{es}} versions, updated settings may not appear correctly when querying the `_cluster/settings` endpoint, even though the Stack Config Policy has been updated. Making an additional manual update to the Stack Config Policy may trigger the settings to reload correctly.
 
 This issue was fixed in {{es}} 8.11.0 via [elasticsearch#99212](https://github.com/elastic/elasticsearch/pull/99212).
 
