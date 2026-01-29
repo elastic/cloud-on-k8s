@@ -5242,11 +5242,11 @@ Contents of probable licence file $GOMODCACHE/k8s.io/utils@v0.0.0-20251002143259
 
 --------------------------------------------------------------------------------
 Module  : sigs.k8s.io/controller-runtime
-Version : v0.23.0
-Time    : 2026-01-19T14:13:14Z
+Version : v0.23.1
+Time    : 2026-01-26T17:45:50Z
 Licence : Apache-2.0
 
-Contents of probable licence file $GOMODCACHE/sigs.k8s.io/controller-runtime@v0.23.0/LICENSE:
+Contents of probable licence file $GOMODCACHE/sigs.k8s.io/controller-runtime@v0.23.1/LICENSE:
 
                                  Apache License
                            Version 2.0, January 2004
@@ -23204,11 +23204,11 @@ Contents of probable licence file $GOMODCACHE/sigs.k8s.io/randfill@v1.0.0/LICENS
 
 --------------------------------------------------------------------------------
 Module  : sigs.k8s.io/structured-merge-diff/v6
-Version : v6.3.0
-Time    : 2025-07-16T20:34:24Z
+Version : v6.3.2-0.20260122202528-d9cc6641c482
+Time    : 2026-01-22T20:25:28Z
 Licence : Apache-2.0
 
-Contents of probable licence file $GOMODCACHE/sigs.k8s.io/structured-merge-diff/v6@v6.3.0/LICENSE:
+Contents of probable licence file $GOMODCACHE/sigs.k8s.io/structured-merge-diff/v6@v6.3.2-0.20260122202528-d9cc6641c482/LICENSE:
 
                                  Apache License
                            Version 2.0, January 2004
