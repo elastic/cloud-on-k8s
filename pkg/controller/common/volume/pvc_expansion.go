@@ -182,7 +182,6 @@ func RecreateStatefulSets(ctx context.Context, k8sClient k8s.Client, owner clien
 	recreations := len(recreateList)
 
 	for annotation, toRecreate := range recreateList {
-
 		namespacedName := namespacedNameFromObject(owner)
 
 		var existing appsv1.StatefulSet
