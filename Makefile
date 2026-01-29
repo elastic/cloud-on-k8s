@@ -169,6 +169,9 @@ integration-xml: clean
 lint:
 	GOGC=40 golangci-lint run --verbose
 
+go-modernize:
+	@hack/go-modernize
+
 manifest-gen-test:
 	hack/manifest-gen/test.sh
 
