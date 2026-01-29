@@ -137,7 +137,7 @@ func uploadCharts(ctx context.Context, conf ReleaseConfig, tempDir string, chart
 		// package the chart into a chart archive
 		chartPackage := action.NewPackage()
 		chartPackage.Destination = filepath.Join(tempDir, chart.Name)
-		chartPackagePath, err := chartPackage.Run(tempChartDirPath, map[string]interface{}{})
+		chartPackagePath, err := chartPackage.Run(tempChartDirPath, map[string]any{})
 		if err != nil {
 			return fmt.Errorf("while packaging helm chart (%s): %w", chart.Name, err)
 		}

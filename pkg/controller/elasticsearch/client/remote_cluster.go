@@ -42,7 +42,7 @@ type CrossClusterAPIKeyCreateRequest struct {
 
 type CrossClusterAPIKeyUpdateRequest struct {
 	esv1.RemoteClusterAPIKey
-	Metadata map[string]interface{} `json:"metadata,omitempty"`
+	Metadata map[string]any `json:"metadata,omitempty"`
 }
 
 type CrossClusterAPIKeyCreateResponse struct {
@@ -113,9 +113,9 @@ func (cl *CrossClusterAPIKeyList) ForCluster(namespace string, name string) (*Cr
 }
 
 type CrossClusterAPIKey struct {
-	ID       string                 `json:"id,omitempty"`
-	Name     string                 `json:"name,omitempty"`
-	Metadata map[string]interface{} `json:"metadata,omitempty"`
+	ID       string         `json:"id,omitempty"`
+	Name     string         `json:"name,omitempty"`
+	Metadata map[string]any `json:"metadata,omitempty"`
 }
 
 // GetElasticsearchName returns the name of the client cluster for which this key has been created.

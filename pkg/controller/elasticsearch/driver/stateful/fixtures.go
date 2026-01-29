@@ -217,10 +217,10 @@ func (u upgradeTestPods) toResourcesList(t *testing.T) nodespec.ResourcesList {
 				},
 			},
 			HeadlessService: corev1.Service{},
-			Config:          settings.CanonicalConfig{CanonicalConfig: common.MustCanonicalConfig(map[string]interface{}{})},
+			Config:          settings.CanonicalConfig{CanonicalConfig: common.MustCanonicalConfig(map[string]any{})},
 		}
 		if p.roles != nil {
-			resources.Config = settings.CanonicalConfig{CanonicalConfig: common.MustCanonicalConfig(map[string]interface{}{"node.roles": p.roles})}
+			resources.Config = settings.CanonicalConfig{CanonicalConfig: common.MustCanonicalConfig(map[string]any{"node.roles": p.roles})}
 		}
 		resourcesByStatefulSet[statefulSetName] = resources
 	}

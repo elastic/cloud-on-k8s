@@ -80,7 +80,7 @@ func choosePlan(plans []Plan, id string) (Plan, error) {
 	return Plan{}, fmt.Errorf("no plan with id %s found", id)
 }
 
-func merge(base Plan, overrides map[string]interface{}) (Plan, error) {
+func merge(base Plan, overrides map[string]any) (Plan, error) {
 	// mergo will not override with empty values which is inconvenient for booleans, hence custom transformer
 	err := mergo.Map(&base, overrides, mergo.WithOverride, mergo.WithTransformers(boolTransformer{}))
 	return base, err

@@ -44,8 +44,8 @@ func TestDoLoadPullRequests(t *testing.T) {
 
 	ts := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		var req struct {
-			Query     string                 `json:"query"`
-			Variables map[string]interface{} `json:"variables"`
+			Query     string         `json:"query"`
+			Variables map[string]any `json:"variables"`
 		}
 
 		reqBytes, err := io.ReadAll(r.Body)

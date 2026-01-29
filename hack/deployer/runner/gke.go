@@ -49,7 +49,7 @@ type GKEDriverFactory struct {
 
 type GKEDriver struct {
 	plan        Plan
-	ctx         map[string]interface{}
+	ctx         map[string]any
 	vaultClient vault.Client
 }
 
@@ -76,7 +76,7 @@ func (gdf *GKEDriverFactory) Create(plan Plan) (Driver, error) {
 
 	return &GKEDriver{
 		plan: plan,
-		ctx: map[string]interface{}{
+		ctx: map[string]any{
 			GoogleCloudProjectCtxKey: plan.Gke.GCloudProject,
 			"ClusterName":            plan.ClusterName,
 			"PVCPrefix":              pvcPrefix,
@@ -447,7 +447,7 @@ func (d *GKEDriver) deleteDisks(disks []string) error {
 		name, zone := nameZone[0], nameZone[1]
 		cmd := `gcloud compute disks delete {{.Name}} --project {{.GCloudProject}} --zone {{.Zone}} --quiet`
 		err := exec.NewCommand(cmd).
-			AsTemplate(map[string]interface{}{
+			AsTemplate(map[string]any{
 				GoogleCloudProjectCtxKey: d.plan.Gke.GCloudProject,
 				"Name":                   name,
 				"Zone":                   zone,

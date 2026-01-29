@@ -30,7 +30,7 @@ func Test_noUnsupportedSettings(t *testing.T) {
 					NodeSets: []NodeSet{
 						{
 							Config: &common.Config{
-								Data: map[string]interface{}{
+								Data: map[string]any{
 									ClusterInitialMasterNodes: "foo",
 								},
 							},
@@ -49,14 +49,14 @@ func Test_noUnsupportedSettings(t *testing.T) {
 					NodeSets: []NodeSet{
 						{
 							Config: &common.Config{
-								Data: map[string]interface{}{
+								Data: map[string]any{
 									ClusterInitialMasterNodes: "foo",
 								},
 							},
 						},
 						{
 							Config: &common.Config{
-								Data: map[string]interface{}{
+								Data: map[string]any{
 									XPackSecurityTransportSslVerificationMode: "bar",
 								},
 							},
@@ -74,7 +74,7 @@ func Test_noUnsupportedSettings(t *testing.T) {
 					NodeSets: []NodeSet{
 						{
 							Config: &common.Config{
-								Data: map[string]interface{}{
+								Data: map[string]any{
 									"node.attr.box_type": "foo",
 								},
 							},
@@ -92,7 +92,7 @@ func Test_noUnsupportedSettings(t *testing.T) {
 					NodeSets: []NodeSet{
 						{
 							Config: &common.Config{
-								Data: map[string]interface{}{
+								Data: map[string]any{
 									XPackSecurityTransportSslCertificateAuthorities: "foo",
 								},
 							},
@@ -110,8 +110,8 @@ func Test_noUnsupportedSettings(t *testing.T) {
 					NodeSets: []NodeSet{
 						{
 							Config: &common.Config{
-								Data: map[string]interface{}{
-									"cluster": map[string]interface{}{
+								Data: map[string]any{
+									"cluster": map[string]any{
 										"initial_master_nodes": []string{"foo", "bar"},
 									},
 									"node.attr.box_type": "foo",

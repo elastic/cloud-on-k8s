@@ -21,7 +21,7 @@ import (
 )
 
 func Test_getPolicyConfig(t *testing.T) {
-	canonicalConfig := common.MustCanonicalConfig(map[string]interface{}{
+	canonicalConfig := common.MustCanonicalConfig(map[string]any{
 		"logger.org.elasticsearch.discovery": "DEBUG",
 	})
 	for _, tt := range []struct {
@@ -59,7 +59,7 @@ func Test_getPolicyConfig(t *testing.T) {
 				},
 			},
 			want: PolicyConfig{
-				ElasticsearchConfig: common.MustCanonicalConfig(map[string]interface{}{}),
+				ElasticsearchConfig: common.MustCanonicalConfig(map[string]any{}),
 				PolicyAnnotations: map[string]string{
 					"policy.k8s.elastic.co/elasticsearch-config-mounts-hash": "",
 				},

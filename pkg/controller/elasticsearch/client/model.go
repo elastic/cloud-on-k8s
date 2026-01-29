@@ -369,11 +369,11 @@ type StartBasicResponse struct {
 
 // Hit represents a single search hit.
 type Hit struct {
-	Index  string                 `json:"_index"`
-	Type   string                 `json:"_type"`
-	ID     string                 `json:"_id"`
-	Score  float64                `json:"_score"`
-	Source map[string]interface{} `json:"_source"`
+	Index  string         `json:"_index"`
+	Type   string         `json:"_type"`
+	ID     string         `json:"_id"`
+	Score  float64        `json:"_score"`
+	Source map[string]any `json:"_source"`
 }
 
 // Hits are the collections of search hits.

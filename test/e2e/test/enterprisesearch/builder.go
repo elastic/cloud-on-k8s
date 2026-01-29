@@ -96,7 +96,7 @@ func newBuilder(name, randSuffix string) Builder {
 
 	// this is mandatory setting starting with 8.x
 	if version.MustParse(test.Ctx().ElasticStackVersion).GTE(version.MinFor(8, 0, 0)) {
-		b = b.WithConfig(map[string]interface{}{"kibana.host": "https://localhost:5601"})
+		b = b.WithConfig(map[string]any{"kibana.host": "https://localhost:5601"})
 	}
 
 	return b
@@ -155,7 +155,7 @@ func (b Builder) WithGlobalCA(v bool) Builder {
 	return b
 }
 
-func (b Builder) WithConfig(cfg map[string]interface{}) Builder {
+func (b Builder) WithConfig(cfg map[string]any) Builder {
 	if b.EnterpriseSearch.Spec.Config == nil || b.EnterpriseSearch.Spec.Config.Data == nil {
 		b.EnterpriseSearch.Spec.Config = &commonv1.Config{
 			Data: cfg,
@@ -226,7 +226,7 @@ func (b Builder) NSN() types.NamespacedName {
 	return k8s.ExtractNamespacedName(&b.EnterpriseSearch)
 }
 
-func (b Builder) Spec() interface{} {
+func (b Builder) Spec() any {
 	return b.EnterpriseSearch.Spec
 }
 

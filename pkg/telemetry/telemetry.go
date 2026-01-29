@@ -51,11 +51,11 @@ type ECKTelemetry struct {
 
 type ECK struct {
 	about.OperatorInfo
-	Stats   map[string]interface{} `json:"stats"`
-	License map[string]string      `json:"license"`
+	Stats   map[string]any    `json:"stats"`
+	License map[string]string `json:"license"`
 }
 
-type getStatsFn func(k8s.Client, []string) (string, interface{}, error)
+type getStatsFn func(k8s.Client, []string) (string, any, error)
 
 func NewReporter(
 	info about.OperatorInfo,
@@ -97,7 +97,7 @@ func (r *Reporter) Start(ctx context.Context) {
 	}
 }
 
-func marshalTelemetry(ctx context.Context, info about.OperatorInfo, stats map[string]interface{}, license map[string]string) ([]byte, error) {
+func marshalTelemetry(ctx context.Context, info about.OperatorInfo, stats map[string]any, license map[string]string) ([]byte, error) {
 	span, _ := apm.StartSpan(ctx, "marshal_telemetry", tracing.SpanTypeApp)
 	defer span.End()
 
@@ -110,11 +110,11 @@ func marshalTelemetry(ctx context.Context, info about.OperatorInfo, stats map[st
 	})
 }
 
-func (r *Reporter) getResourceStats(ctx context.Context) (map[string]interface{}, error) {
+func (r *Reporter) getResourceStats(ctx context.Context) (map[string]any, error) {
 	span, _ := apm.StartSpan(ctx, "get_resource_stats", tracing.SpanTypeApp)
 	defer span.End()
 
-	stats := map[string]interface{}{}
+	stats := map[string]any{}
 	for _, f := range []getStatsFn{
 		esStats,
 		kbStats,
@@ -226,7 +226,7 @@ type downwardNodeLabelsStats struct {
 	DistinctNodeLabelsCount int32 `json:"distinct_node_labels_count"`
 }
 
-func esStats(k8sClient k8s.Client, managedNamespaces []string) (string, interface{}, error) {
+func esStats(k8sClient k8s.Client, managedNamespaces []string) (string, any, error) {
 	stats := struct {
 		ResourceCount               int32                    `json:"resource_count"`
 		HelmManagedResourceCount    int32                    `json:"helm_resource_count"`
@@ -307,7 +307,7 @@ func isManagedByHelm(labels map[string]string) bool {
 	return false
 }
 
-func kbStats(k8sClient k8s.Client, managedNamespaces []string) (string, interface{}, error) {
+func kbStats(k8sClient k8s.Client, managedNamespaces []string) (string, any, error) {
 	stats := map[string]int32{resourceCount: 0, podCount: 0, helmManagedResourceCount: 0}
 
 	var kbList kbv1.KibanaList
@@ -328,7 +328,7 @@ func kbStats(k8sClient k8s.Client, managedNamespaces []string) (string, interfac
 	return "kibanas", stats, nil
 }
 
-func apmStats(k8sClient k8s.Client, managedNamespaces []string) (string, interface{}, error) {
+func apmStats(k8sClient k8s.Client, managedNamespaces []string) (string, any, error) {
 	stats := map[string]int32{
 		resourceCount:            0,
 		podCount:                 0,
@@ -351,7 +351,7 @@ func apmStats(k8sClient k8s.Client, managedNamespaces []string) (string, interfa
 	return "apms", stats, nil
 }
 
-func beatStats(k8sClient k8s.Client, managedNamespaces []string) (string, interface{}, error) {
+func beatStats(k8sClient k8s.Client, managedNamespaces []string) (string, any, error) {
 	typeToName := func(typ string) string { return fmt.Sprintf("%s_count", typ) }
 
 	stats := map[string]int32{
@@ -381,7 +381,7 @@ func beatStats(k8sClient k8s.Client, managedNamespaces []string) (string, interf
 	return "beats", stats, nil
 }
 
-func entStats(k8sClient k8s.Client, managedNamespaces []string) (string, interface{}, error) {
+func entStats(k8sClient k8s.Client, managedNamespaces []string) (string, any, error) {
 	stats := map[string]int32{
 		resourceCount:            0,
 		podCount:                 0,
@@ -404,7 +404,7 @@ func entStats(k8sClient k8s.Client, managedNamespaces []string) (string, interfa
 	return "enterprisesearches", stats, nil
 }
 
-func agentStats(k8sClient k8s.Client, managedNamespaces []string) (string, interface{}, error) {
+func agentStats(k8sClient k8s.Client, managedNamespaces []string) (string, any, error) {
 	multipleRefsKey := "multiple_refs"
 	fleetModeKey := "fleet_mode"
 	fleetServerKey := "fleet_server"
@@ -440,7 +440,7 @@ func agentStats(k8sClient k8s.Client, managedNamespaces []string) (string, inter
 	return "agents", stats, nil
 }
 
-func logstashStats(k8sClient k8s.Client, managedNamespaces []string) (string, interface{}, error) {
+func logstashStats(k8sClient k8s.Client, managedNamespaces []string) (string, any, error) {
 	const (
 		pipelineCount               = "pipeline_count"
 		pipelineRefCount            = "pipeline_ref_count"
@@ -487,7 +487,7 @@ func logstashStats(k8sClient k8s.Client, managedNamespaces []string) (string, in
 	return "logstashes", stats, nil
 }
 
-func mapsStats(k8sClient k8s.Client, managedNamespaces []string) (string, interface{}, error) {
+func mapsStats(k8sClient k8s.Client, managedNamespaces []string) (string, any, error) {
 	stats := map[string]int32{resourceCount: 0, podCount: 0}
 
 	var mapsList mapsv1alpha1.ElasticMapsServerList
@@ -520,7 +520,7 @@ type stackConfigPolicyStats struct {
 	} `json:"settings"`
 }
 
-func scpStats(k8sClient k8s.Client, managedNamespaces []string) (string, interface{}, error) {
+func scpStats(k8sClient k8s.Client, managedNamespaces []string) (string, any, error) {
 	stats := stackConfigPolicyStats{}
 	for _, ns := range managedNamespaces {
 		var scpList policyv1alpha1.StackConfigPolicyList
@@ -570,7 +570,7 @@ type autoopsAgentPolicyStats struct {
 	HelmManagedResourceCount int32 `json:"helm_resource_count"`
 }
 
-func aopStats(k8sClient k8s.Client, managedNamespaces []string) (string, interface{}, error) {
+func aopStats(k8sClient k8s.Client, managedNamespaces []string) (string, any, error) {
 	stats := autoopsAgentPolicyStats{}
 	for _, ns := range managedNamespaces {
 		var autoopsAgentPolicyList autoopsv1alpha1.AutoOpsAgentPolicyList

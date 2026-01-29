@@ -150,7 +150,7 @@ func (a AppSearchClient) GetAPIKey() (string, error) {
 }
 
 type Results struct {
-	Results []map[string]interface{} `json:"results"`
+	Results []map[string]any `json:"results"`
 }
 
 func (a AppSearchClient) GetEngines() (Results, error) {

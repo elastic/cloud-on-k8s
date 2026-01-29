@@ -22,7 +22,7 @@ type Command struct {
 	command      string
 	context      context.Context
 	logPrefix    string
-	params       map[string]interface{}
+	params       map[string]any
 	variablesSrc string
 	variables    []string
 	stream       bool
@@ -33,7 +33,7 @@ func NewCommand(command string) *Command {
 	return &Command{command: command, stream: true, stderr: true}
 }
 
-func (c *Command) AsTemplate(params map[string]interface{}) *Command {
+func (c *Command) AsTemplate(params map[string]any) *Command {
 	c.params = params
 	return c
 }

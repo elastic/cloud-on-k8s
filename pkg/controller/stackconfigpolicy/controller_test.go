@@ -126,7 +126,7 @@ func TestReconcileStackConfigPolicy_Reconcile(t *testing.T) {
 				},
 			},
 			Elasticsearch: policyv1alpha1.ElasticsearchConfigPolicySpec{
-				ClusterSettings: &commonv1.Config{Data: map[string]interface{}{
+				ClusterSettings: &commonv1.Config{Data: map[string]any{
 					"indices.recovery.max_bytes_per_sec": "42mb",
 				}},
 				SecretMounts: []policyv1alpha1.SecretMount{
@@ -141,14 +141,14 @@ func TestReconcileStackConfigPolicy_Reconcile(t *testing.T) {
 					},
 				},
 				Config: &commonv1.Config{
-					Data: map[string]interface{}{
+					Data: map[string]any{
 						"logger.org.elasticsearch.discovery": "DEBUG",
 					},
 				},
 			},
 			Kibana: policyv1alpha1.KibanaConfigPolicySpec{
 				Config: &commonv1.Config{
-					Data: map[string]interface{}{
+					Data: map[string]any{
 						"xpack.canvas.enabled": true,
 					},
 				},
@@ -217,7 +217,7 @@ func TestReconcileStackConfigPolicy_Reconcile(t *testing.T) {
 	orphanSecretMountsSecretFixture := getSecretMountSecret(t, esv1.ESNamer.Suffix("another-es", "test-secret-mount"), "ns", "test-policy", "ns", "delete")
 
 	updatedPolicyFixture := policyFixture.DeepCopy()
-	updatedPolicyFixture.Spec.Elasticsearch.ClusterSettings = &commonv1.Config{Data: map[string]interface{}{
+	updatedPolicyFixture.Spec.Elasticsearch.ClusterSettings = &commonv1.Config{Data: map[string]any{
 		"indices.recovery.max_bytes_per_sec": "43mb",
 	}}
 
@@ -889,10 +889,10 @@ func TestReconcileStackConfigPolicy_MultipleStackConfigPolicies(t *testing.T) {
 			Weight:           20,
 			ResourceSelector: metav1.LabelSelector{MatchLabels: map[string]string{"env": "prod"}},
 			Elasticsearch: policyv1alpha1.ElasticsearchConfigPolicySpec{
-				ClusterSettings: &commonv1.Config{Data: map[string]interface{}{
+				ClusterSettings: &commonv1.Config{Data: map[string]any{
 					"indices.recovery.max_bytes_per_sec": "40mb",
 				}},
-				Config: &commonv1.Config{Data: map[string]interface{}{
+				Config: &commonv1.Config{Data: map[string]any{
 					"logger.org.elasticsearch.discovery": "INFO",
 				}},
 			},
@@ -909,10 +909,10 @@ func TestReconcileStackConfigPolicy_MultipleStackConfigPolicies(t *testing.T) {
 			Weight:           10,
 			ResourceSelector: metav1.LabelSelector{MatchLabels: map[string]string{"env": "prod"}},
 			Elasticsearch: policyv1alpha1.ElasticsearchConfigPolicySpec{
-				ClusterSettings: &commonv1.Config{Data: map[string]interface{}{
+				ClusterSettings: &commonv1.Config{Data: map[string]any{
 					"indices.recovery.max_bytes_per_sec": "50mb", // Overrides policy1
 				}},
-				Config: &commonv1.Config{Data: map[string]interface{}{
+				Config: &commonv1.Config{Data: map[string]any{
 					"logger.org.elasticsearch.gateway": "DEBUG", // Additional setting
 				}},
 				SecretMounts: []policyv1alpha1.SecretMount{
@@ -935,7 +935,7 @@ func TestReconcileStackConfigPolicy_MultipleStackConfigPolicies(t *testing.T) {
 			Weight:           10, // Same weight as policy2
 			ResourceSelector: metav1.LabelSelector{MatchLabels: map[string]string{"env": "prod"}},
 			Elasticsearch: policyv1alpha1.ElasticsearchConfigPolicySpec{
-				ClusterSettings: &commonv1.Config{Data: map[string]interface{}{
+				ClusterSettings: &commonv1.Config{Data: map[string]any{
 					"indices.recovery.max_bytes_per_sec": "60mb",
 				}},
 			},

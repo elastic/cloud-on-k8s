@@ -348,7 +348,7 @@ func BeatKibanaRoleName(version, beatType string) string {
 
 // RolesFileContent is a map {role name -> yaml role spec}.
 // We care about the role names here, but consider the roles spec as a yaml blob we don't need to access.
-type RolesFileContent map[string]interface{}
+type RolesFileContent map[string]any
 
 // parseRolesFileContent returns a RolesFileContent from the given data.
 // Since rolesFileContent already corresponds to a deserialized yaml representation of the roles files,

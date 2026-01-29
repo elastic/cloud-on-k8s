@@ -153,7 +153,7 @@ func (k *KindDriver) inContainerName(file *os.File) string {
 }
 
 func kubectl(arg ...string) error {
-	output, err := exec.NewCommand(`kubectl {{Join .Args " "}}`).AsTemplate(map[string]interface{}{"Args": arg}).Output()
+	output, err := exec.NewCommand(`kubectl {{Join .Args " "}}`).AsTemplate(map[string]any{"Args": arg}).Output()
 	if err != nil && strings.Contains(output, "Error from server (NotFound)") {
 		log.Printf("Ignoring NotFound error for command: %v\n", arg)
 		return nil // ignore not found errors
@@ -205,7 +205,7 @@ func (k *KindDriver) workerNames() []string {
 }
 
 func (k *KindDriver) cmd(args ...string) *exec.Command {
-	params := map[string]interface{}{
+	params := map[string]any{
 		"SharedVolume":    env.SharedVolumeName(),
 		"KindClientImage": k.clientImage,
 		"ClusterName":     k.plan.ClusterName,

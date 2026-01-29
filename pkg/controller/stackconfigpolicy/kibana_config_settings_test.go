@@ -45,7 +45,7 @@ func Test_newKibanaConfigSecret(t *testing.T) {
 					Spec: policyv1alpha1.StackConfigPolicySpec{
 						Kibana: policyv1alpha1.KibanaConfigPolicySpec{
 							Config: &commonv1.Config{
-								Data: map[string]interface{}{
+								Data: map[string]any{
 									"xpack.canvas.enabled": true,
 								},
 							},
@@ -119,7 +119,7 @@ func Test_kibanaConfigApplied(t *testing.T) {
 					Spec: policyv1alpha1.StackConfigPolicySpec{
 						Kibana: policyv1alpha1.KibanaConfigPolicySpec{
 							Config: &commonv1.Config{
-								Data: map[string]interface{}{
+								Data: map[string]any{
 									"xpack.canvas.enabled": true,
 								},
 							},
@@ -147,7 +147,7 @@ func Test_kibanaConfigApplied(t *testing.T) {
 					Spec: policyv1alpha1.StackConfigPolicySpec{
 						Kibana: policyv1alpha1.KibanaConfigPolicySpec{
 							Config: &commonv1.Config{
-								Data: map[string]interface{}{
+								Data: map[string]any{
 									"xpack.canvas.enabled": true,
 								},
 							},
@@ -175,7 +175,7 @@ func Test_kibanaConfigApplied(t *testing.T) {
 					Spec: policyv1alpha1.StackConfigPolicySpec{
 						Kibana: policyv1alpha1.KibanaConfigPolicySpec{
 							Config: &commonv1.Config{
-								Data: map[string]interface{}{
+								Data: map[string]any{
 									"xpack.canvas.enabled": true,
 								},
 							},

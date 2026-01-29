@@ -96,7 +96,7 @@ func inlineUserConfig(cfg *commonv1.Config) (*settings.CanonicalConfig, error) {
 }
 
 func defaultConfig(ipFamily corev1.IPFamily) *settings.CanonicalConfig {
-	return settings.MustCanonicalConfig(map[string]interface{}{
+	return settings.MustCanonicalConfig(map[string]any{
 		"host": net.InAddrAnyFor(ipFamily).String(),
 	})
 }
@@ -105,7 +105,7 @@ func tlsConfig(ems emsv1alpha1.ElasticMapsServer) *settings.CanonicalConfig {
 	if !ems.Spec.HTTP.TLS.Enabled() {
 		return settings.NewCanonicalConfig()
 	}
-	return settings.MustCanonicalConfig(map[string]interface{}{
+	return settings.MustCanonicalConfig(map[string]any{
 		"ssl.enabled":     true,
 		"ssl.certificate": path.Join(certificates.HTTPCertificatesSecretVolumeMountPath, certificates.CertFileName),
 		"ssl.key":         path.Join(certificates.HTTPCertificatesSecretVolumeMountPath, certificates.KeyFileName),
@@ -134,7 +134,7 @@ func associationConfig(ctx context.Context, c k8s.Client, ems emsv1alpha1.Elasti
 	}
 
 	if assocConf.GetCACertProvided() {
-		if err := cfg.MergeWith(settings.MustCanonicalConfig(map[string]interface{}{
+		if err := cfg.MergeWith(settings.MustCanonicalConfig(map[string]any{
 			"elasticsearch.ssl.verificationMode":       "certificate",
 			"elasticsearch.ssl.certificateAuthorities": filepath.Join(ESCertsPath, certificates.CAFileName),
 		})); err != nil {
