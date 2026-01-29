@@ -81,7 +81,7 @@ spec:
   config:
     agent:
       monitoring:
-        enabled: true
+        enabled: false
         use_output: default
         logs: true
         metrics: true
