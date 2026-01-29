@@ -75,7 +75,7 @@ func (c *Command) Run() error {
 
 func (c *Command) RunWithRetries(numAttempts int, timeout time.Duration) error {
 	var err error
-	for i := 0; i < numAttempts; i++ {
+	for range numAttempts {
 		ctx, cancelFunc := context.WithTimeout(context.Background(), timeout)
 		err = c.WithContext(ctx).Run()
 		cancelFunc()
@@ -112,7 +112,7 @@ func (c *Command) OutputList() (list []string, err error) {
 		return nil, err
 	}
 
-	for _, item := range strings.Split(out, "\n") {
+	for item := range strings.SplitSeq(out, "\n") {
 		if item != "" {
 			list = append(list, item)
 		}

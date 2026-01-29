@@ -245,9 +245,7 @@ func getEnvKeyValues(params Params, c *corev1.Container, data map[string]string)
 				return err
 			}
 
-			for key, value := range configMap.Data {
-				data[key] = value
-			}
+			maps.Copy(data, configMap.Data)
 		}
 
 		// from Secret

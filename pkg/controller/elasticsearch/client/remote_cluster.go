@@ -149,7 +149,7 @@ type RemoteClustersSettings struct {
 
 // SettingsGroup is a group of persistent settings.
 type SettingsGroup struct {
-	Cluster RemoteClusters `json:"cluster,omitempty"`
+	Cluster RemoteClusters `json:"cluster"`
 }
 
 // RemoteClusters models the configuration of the remote clusters.

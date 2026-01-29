@@ -371,7 +371,7 @@ func doOperationForImage(image *Image, c CommonConfig, newTag string, operation 
 	defer cancel()
 	log.Printf("operation %s for image (%s), tag %s: ", operation, image.ID, newTag)
 	url := fmt.Sprintf(imagePublishURL, catalogAPIURL, c.ProjectID)
-	var body = []byte(fmt.Sprintf(`{"image_id": "%s", "operation": "%s"}`, image.ID, operation))
+	var body = fmt.Appendf(nil, `{"image_id": "%s", "operation": "%s"}`, image.ID, operation)
 	req, err := http.NewRequestWithContext(ctx, http.MethodPost, url, bytes.NewBuffer(body))
 	if err != nil {
 		log.Println("ⅹ")

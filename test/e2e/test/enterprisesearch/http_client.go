@@ -170,7 +170,7 @@ func (a AppSearchClient) GetEngines() (Results, error) {
 
 func (a AppSearchClient) CreateEngine(name string) error {
 	url := a.endpoint + "/api/as/v1/engines"
-	body := []byte(fmt.Sprintf(`{"name": "%s"}`, name))
+	body := fmt.Appendf(nil, `{"name": "%s"}`, name)
 
 	req, err := http.NewRequest(http.MethodPost, url, bytes.NewBuffer(body)) //nolint:noctx
 	if err != nil {

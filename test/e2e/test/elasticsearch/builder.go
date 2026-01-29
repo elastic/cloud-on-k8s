@@ -6,6 +6,7 @@ package elasticsearch
 
 import (
 	"fmt"
+	"maps"
 	"reflect"
 	"strings"
 
@@ -439,9 +440,7 @@ func (b Builder) WithAdditionalConfig(nodeSetCfg map[string]map[string]any) Buil
 	for _, n := range b.Elasticsearch.Spec.NodeSets {
 		if cfg, exists := nodeSetCfg[n.Name]; exists {
 			newCfg := n.Config.DeepCopy()
-			for k, v := range cfg {
-				newCfg.Data[k] = v
-			}
+			maps.Copy(newCfg.Data, cfg)
 			n.Config = newCfg
 		}
 		newNodeSets = append(newNodeSets, n)

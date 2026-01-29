@@ -70,8 +70,8 @@ type AutoscalingPolicyResult struct {
 
 // AutoscalingCapacityInfo models capacity information as received by the autoscaling Elasticsearch API.
 type AutoscalingCapacityInfo struct {
-	Node  AutoscalingResources `yaml:"node" json:"node,omitempty"`
-	Total AutoscalingResources `yaml:"total" json:"total,omitempty"`
+	Node  AutoscalingResources `yaml:"node" json:"node"`
+	Total AutoscalingResources `yaml:"total" json:"total"`
 }
 
 type AutoscalingNodeInfo struct {

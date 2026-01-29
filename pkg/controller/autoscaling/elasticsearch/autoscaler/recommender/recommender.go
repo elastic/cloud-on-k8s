@@ -109,18 +109,13 @@ func getResourceValue(
 	}
 
 	// Try to round up to the next GiB value
-	nodeResource = math.RoundUp(nodeResource, v1alpha1.GiB)
+	nodeResource = min(
+		// Always ensure that the calculated resource quantity is at least equal to the min. limit provided by the user.
+		// Resource has been rounded up or scaled up to meet the tier requirements. We need to check that those operations
+		// do not result in a resource quantity which is greater than the max. limit set by the user.
+		max(
 
-	// Always ensure that the calculated resource quantity is at least equal to the min. limit provided by the user.
-	if nodeResource < quantityRange.Min.Value() {
-		nodeResource = quantityRange.Min.Value()
-	}
-
-	// Resource has been rounded up or scaled up to meet the tier requirements. We need to check that those operations
-	// do not result in a resource quantity which is greater than the max. limit set by the user.
-	if nodeResource > maxCapacity {
-		nodeResource = maxCapacity
-	}
+			math.RoundUp(nodeResource, v1alpha1.GiB), quantityRange.Min.Value()), maxCapacity)
 
 	return v1alpha1.ResourceToQuantity(nodeResource)
 }

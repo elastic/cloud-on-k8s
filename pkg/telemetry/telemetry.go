@@ -247,7 +247,6 @@ func esStats(k8sClient k8s.Client, managedNamespaces []string) (string, any, err
 		}
 
 		for _, es := range esList.Items {
-			es := es
 			stats.ResourceCount++
 			stats.PodCount += es.Status.AvailableNodes
 
@@ -465,7 +464,6 @@ func logstashStats(k8sClient k8s.Client, managedNamespaces []string) (string, an
 		}
 
 		for _, ls := range logstashList.Items {
-			ls := ls
 			stats[resourceCount]++
 			stats[serviceCount] += int32(len(ls.Spec.Services))
 			stats[podCount] += ls.Status.AvailableNodes

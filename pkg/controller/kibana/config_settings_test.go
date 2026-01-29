@@ -609,7 +609,7 @@ func TestNewConfigSettingsExistingEncryptionKey(t *testing.T) {
 			Namespace: kb.Namespace,
 		},
 		Data: map[string][]byte{
-			SettingsFilename: []byte(fmt.Sprintf("%s: %s\n%s: %s\n%s: %s", XpackSecurityEncryptionKey, securityKey, XpackReportingEncryptionKey, reportKey, XpackEncryptedSavedObjectsEncryptionKey, savedObjsKey)),
+			SettingsFilename: fmt.Appendf(nil, "%s: %s\n%s: %s\n%s: %s", XpackSecurityEncryptionKey, securityKey, XpackReportingEncryptionKey, reportKey, XpackEncryptedSavedObjectsEncryptionKey, savedObjsKey),
 		},
 	}
 	client := k8s.NewFakeClient(existingSecret)

@@ -19,7 +19,7 @@ func ReadAtMostEvents(t *testing.T, minEventCount int, recorder *record.FakeReco
 	}
 	gotEvents := make([]string, 0, minEventCount)
 	gotEventCount := 0
-	for i := 0; i < minEventCount; i++ {
+	for range minEventCount {
 		select {
 		case e := <-recorder.Events:
 			gotEvents = append(gotEvents, e)

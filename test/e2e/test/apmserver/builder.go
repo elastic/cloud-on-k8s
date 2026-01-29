@@ -5,6 +5,8 @@
 package apmserver
 
 import (
+	"maps"
+
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
@@ -129,9 +131,7 @@ func (b Builder) WithConfig(cfg map[string]any) Builder {
 
 	newBuilder := b.DeepCopy()
 
-	for k, v := range cfg {
-		newBuilder.ApmServer.Spec.Config.Data[k] = v
-	}
+	maps.Copy(newBuilder.ApmServer.Spec.Config.Data, cfg)
 	return *newBuilder
 }
 

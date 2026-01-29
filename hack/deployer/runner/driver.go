@@ -90,8 +90,7 @@ type boolTransformer struct {
 }
 
 func (bt boolTransformer) Transformer(typ reflect.Type) func(dst, src reflect.Value) error {
-	var b bool
-	if typ == reflect.TypeOf(b) {
+	if typ == reflect.TypeFor[bool]() {
 		return func(dst, src reflect.Value) error {
 			if dst.CanSet() {
 				dst.SetBool(src.Interface().(bool)) //nolint:forcetypeassert

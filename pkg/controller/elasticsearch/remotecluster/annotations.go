@@ -27,7 +27,7 @@ func getRemoteClustersInAnnotation(es esv1.Elasticsearch) map[string]struct{} {
 	if !ok || strings.TrimSpace(serializedRemoteClusters) == "" {
 		return remoteClusters
 	}
-	for _, remoteClusterInAnnotation := range strings.Split(serializedRemoteClusters, ",") {
+	for remoteClusterInAnnotation := range strings.SplitSeq(serializedRemoteClusters, ",") {
 		remoteClusters[remoteClusterInAnnotation] = struct{}{}
 	}
 	return remoteClusters

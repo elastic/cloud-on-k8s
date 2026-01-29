@@ -5,6 +5,7 @@
 package stateful
 
 import (
+	"slices"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -342,10 +343,8 @@ func (t *testESState) Health() (client.Health, error) {
 
 func (t *testESState) NodesInCluster(nodeNames []string) (bool, error) {
 	for _, nodeName := range nodeNames {
-		for _, inClusterPods := range t.inCluster {
-			if nodeName == inClusterPods {
-				return true, nil
-			}
+		if slices.Contains(t.inCluster, nodeName) {
+			return true, nil
 		}
 	}
 	return false, nil

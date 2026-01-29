@@ -6,6 +6,7 @@ package kibana
 
 import (
 	"fmt"
+	"maps"
 
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
@@ -258,9 +259,7 @@ func (b Builder) WithConfig(config map[string]any) Builder {
 			Data: config,
 		}
 	} else {
-		for k, v := range config {
-			b.Kibana.Spec.Config.Data[k] = v
-		}
+		maps.Copy(b.Kibana.Spec.Config.Data, config)
 	}
 	return b
 }

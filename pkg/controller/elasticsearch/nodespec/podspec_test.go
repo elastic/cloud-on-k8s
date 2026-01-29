@@ -8,6 +8,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"maps"
 	"testing"
 
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/metadata"
@@ -47,9 +48,7 @@ func newEsSampleBuilder() *esSampleBuilder {
 
 func (esb *esSampleBuilder) build() esv1.Elasticsearch {
 	es := sampleES.DeepCopy()
-	for k, v := range esb.esAdditionalAnnotations {
-		es.Annotations[k] = v
-	}
+	maps.Copy(es.Annotations, esb.esAdditionalAnnotations)
 	if esb.userConfig != nil {
 		es.Spec.NodeSets[0].Config = &commonv1.Config{Data: esb.userConfig}
 	}

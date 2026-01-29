@@ -5,6 +5,8 @@
 package enterprisesearch
 
 import (
+	"maps"
+
 	"github.com/blang/semver/v4"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -162,9 +164,7 @@ func (b Builder) WithConfig(cfg map[string]any) Builder {
 		}
 		return b
 	}
-	for k, v := range cfg {
-		b.EnterpriseSearch.Spec.Config.Data[k] = v
-	}
+	maps.Copy(b.EnterpriseSearch.Spec.Config.Data, cfg)
 	return b
 }
 

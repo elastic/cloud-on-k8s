@@ -61,10 +61,10 @@ func BenchmarkParseSANGeneralNames3WithDNS3(b *testing.B) {
 //nolint:thelper
 func benchmarkParseSANGeneralNames(b *testing.B, otherNames, dnsNames int) {
 	var generalNames []GeneralName
-	for i := 0; i < otherNames; i++ {
+	for range otherNames {
 		generalNames = append(generalNames, GeneralName{OtherName: helloOtherName})
 	}
-	for i := 0; i < dnsNames; i++ {
+	for range dnsNames {
 		generalNames = append(generalNames, dnsName)
 	}
 

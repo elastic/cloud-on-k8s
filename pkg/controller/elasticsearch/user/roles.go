@@ -6,6 +6,7 @@ package user
 
 import (
 	"fmt"
+	"maps"
 
 	"gopkg.in/yaml.v3"
 	"k8s.io/utils/ptr"
@@ -369,11 +370,7 @@ func (r RolesFileContent) FileBytes() ([]byte, error) {
 // mergeWith merges multiple rolesFileContent, giving priority to other returning a new RolesFileContent.
 func (r RolesFileContent) MergeWith(other RolesFileContent) RolesFileContent {
 	result := make(RolesFileContent)
-	for roleName, roleSpec := range r {
-		result[roleName] = roleSpec
-	}
-	for roleName, roleSpec := range other {
-		result[roleName] = roleSpec
-	}
+	maps.Copy(result, r)
+	maps.Copy(result, other)
 	return result
 }
