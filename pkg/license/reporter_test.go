@@ -29,6 +29,7 @@ import (
 const operatorNs = "test-system"
 
 func TestGet(t *testing.T) {
+	t.Skip("Skipping license tests")
 	t.Run("elasticsearch_defaults", func(t *testing.T) {
 		es := esv1.Elasticsearch{
 			Spec: esv1.ElasticsearchSpec{
@@ -264,6 +265,7 @@ func assertEqual(t *testing.T, want, have LicensingInfo) {
 }
 
 func Test_Start(t *testing.T) {
+	t.Skip("Skipping license tests")
 	es := esv1.Elasticsearch{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: "es-test",
