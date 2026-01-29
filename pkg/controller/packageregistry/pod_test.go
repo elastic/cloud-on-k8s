@@ -119,6 +119,29 @@ func TestNewPodSpec(t *testing.T) {
 			epr:                getEprWithVersion("8.20.0"),
 			expectRunAsNonRoot: true,
 		},
+		// Pre-release versions (SNAPSHOT, rc, etc.) at or above the threshold SHOULD have the feature
+		// because SNAPSHOT/pre-release builds include the merged feature code
+		{
+			name:               "version 8.19.10-SNAPSHOT should have runAsNonRoot set to true",
+			epr:                getEprWithVersion("8.19.10-SNAPSHOT"),
+			expectRunAsNonRoot: true,
+		},
+		{
+			name:               "version 9.3.0-SNAPSHOT should have runAsNonRoot set to true",
+			epr:                getEprWithVersion("9.3.0-SNAPSHOT"),
+			expectRunAsNonRoot: true,
+		},
+		// Pre-release versions BELOW the threshold should NOT have the feature
+		{
+			name:               "version 8.19.9-SNAPSHOT should have runAsNonRoot set to nil",
+			epr:                getEprWithVersion("8.19.9-SNAPSHOT"),
+			expectRunAsNonRoot: false,
+		},
+		{
+			name:               "version 9.2.3-SNAPSHOT should have runAsNonRoot set to nil",
+			epr:                getEprWithVersion("9.2.3-SNAPSHOT"),
+			expectRunAsNonRoot: false,
+		},
 	}
 
 	for _, tt := range tests {
