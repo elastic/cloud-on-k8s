@@ -91,27 +91,8 @@ func newPodSpec(epr eprv1alpha1.PackageRegistry, configHash string, meta metadat
 		eprVars = append(eprVars, corev1.EnvVar{Name: TLSCertEnvName, Value: "/mnt/elastic-internal/http-certs/tls.crt"})
 	}
 
-	// https://github.com/elastic/package-registry/pull/1503 introduced the ability to run as non-root.
-	// Available in: 9.3.0+, 9.2.4+, 9.1.10+, 8.19.10+
 	var runAsNonRoot *bool
-	switch {
-	case v.Major > 9:
-		// version 10.x.x+
-		runAsNonRoot = ptr.To(true)
-	case v.Major == 9 && v.Minor >= 3:
-		// version 9.3.0+
-		runAsNonRoot = ptr.To(true)
-	case v.Major == 9 && v.Minor == 2 && v.Patch >= 4:
-		// version 9.2.4+
-		runAsNonRoot = ptr.To(true)
-	case v.Major == 9 && v.Minor == 1 && v.Patch >= 10:
-		// version 9.1.10+
-		runAsNonRoot = ptr.To(true)
-	case v.Major == 8 && v.Minor >= 20:
-		// version 8.20+
-		runAsNonRoot = ptr.To(true)
-	case v.Major == 8 && v.Minor == 19 && v.Patch >= 10:
-		// version 8.19.10+
+	if supportsRunAsNonRoot(v) {
 		runAsNonRoot = ptr.To(true)
 	}
 
@@ -157,4 +138,30 @@ func withHTTPCertsVolume(builder *defaults.PodTemplateBuilder, epr eprv1alpha1.P
 	}
 	vol := certificates.HTTPCertSecretVolume(eprv1alpha1.Namer, epr.Name)
 	return builder.WithVolumes(vol.Volume()).WithVolumeMounts(vol.VolumeMount())
+}
+
+// supportsRunAsNonRoot returns true if the given version supports running as non-root.
+// See https://github.com/elastic/package-registry/pull/1503
+func supportsRunAsNonRoot(v version.Version) bool {
+	// Strip pre-release suffix (e.g., -SNAPSHOT) for comparison since
+	// SNAPSHOT builds of a version include the feature if the release does.
+	v = version.WithoutPre(v)
+
+	// 9.3.0+ (including 9.4+, 10+, etc.)
+	if v.GTE(version.From(9, 3, 0)) {
+		return true
+	}
+	// 9.2.4+ (backport to 9.2.x line)
+	if v.GTE(version.From(9, 2, 4)) && v.LT(version.From(9, 3, 0)) {
+		return true
+	}
+	// 9.1.10+ (backport to 9.1.x line)
+	if v.GTE(version.From(9, 1, 10)) && v.LT(version.From(9, 2, 0)) {
+		return true
+	}
+	// 8.19.10+ (backport to 8.19.x and 8.20+ lines)
+	if v.GTE(version.From(8, 19, 10)) && v.LT(version.From(9, 0, 0)) {
+		return true
+	}
+	return false
 }
