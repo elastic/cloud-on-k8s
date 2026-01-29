@@ -116,6 +116,24 @@ func TestState_UpdateWithPhase(t *testing.T) {
 			updatePhase:   autoopsv1alpha1.ErrorPhase,
 			expectedPhase: autoopsv1alpha1.NoMonitoredResourcesPhase,
 		},
+		{
+			name:          "AutoOpsResourcesNotReadyPhase should not be overwritten by ReadyPhase",
+			initialPhase:  autoopsv1alpha1.AutoOpsResourcesNotReadyPhase,
+			updatePhase:   autoopsv1alpha1.ReadyPhase,
+			expectedPhase: autoopsv1alpha1.AutoOpsResourcesNotReadyPhase,
+		},
+		{
+			name:          "MonitoredResourcesNotReadyPhase should be overwritten by AutoOpsResourcesNotReadyPhase",
+			initialPhase:  autoopsv1alpha1.MonitoredResourcesNotReadyPhase,
+			updatePhase:   autoopsv1alpha1.AutoOpsResourcesNotReadyPhase,
+			expectedPhase: autoopsv1alpha1.AutoOpsResourcesNotReadyPhase,
+		},
+		{
+			name:          "AutoOpsResourcesNotReadyPhase should be overwritten by MonitoredResourcesNotReadyPhase",
+			initialPhase:  autoopsv1alpha1.AutoOpsResourcesNotReadyPhase,
+			updatePhase:   autoopsv1alpha1.MonitoredResourcesNotReadyPhase,
+			expectedPhase: autoopsv1alpha1.MonitoredResourcesNotReadyPhase,
+		},
 	}
 
 	for _, tt := range tests {
