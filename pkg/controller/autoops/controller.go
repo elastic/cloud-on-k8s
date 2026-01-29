@@ -172,7 +172,7 @@ func (r *AgentPolicyReconciler) Reconcile(ctx context.Context, request reconcile
 	results = results.WithResult(result).WithError(err)
 
 	// requeue if the phase is in the set of phases that require a requeue
-	if state.status.Phase.IsRequeuePhase() {
+	if state.status.Phase.NeedsRequeue() {
 		return results.WithRequeue(reconciler.DefaultRequeue).Aggregate()
 	}
 

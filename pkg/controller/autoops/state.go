@@ -30,6 +30,7 @@ func newState(policy autoopsv1alpha1.AutoOpsAgentPolicy) *State {
 	status.Phase = ""
 	status.Errors = 0
 	status.Ready = 0
+	status.Resources = 0
 	return &State{
 		Recorder: events.NewRecorder(),
 		policy:   policy,
@@ -37,7 +38,7 @@ func newState(policy autoopsv1alpha1.AutoOpsAgentPolicy) *State {
 	}
 }
 
-// phasePriority maps the phase with it's priority weight.
+// phasePriority maps the phase with its priority weight.
 var phasePriority = map[autoopsv1alpha1.PolicyPhase]int{
 	autoopsv1alpha1.ApplyingChangesPhase:            1, // ApplyingChangesPhase can be replaced by ReadyPhase
 	autoopsv1alpha1.ReadyPhase:                      1, // ... and vice versa.

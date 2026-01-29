@@ -118,10 +118,10 @@ const (
 	ErrorPhase                      PolicyPhase = "Error"
 )
 
-// IsRequeuePhase returns whether the phase requires a requeue.
-func (p PolicyPhase) IsRequeuePhase() bool {
+// NeedsRequeue returns whether the phase requires a requeue.
+func (p PolicyPhase) NeedsRequeue() bool {
 	switch p {
-	case ApplyingChangesPhase, MonitoredResourcesNotReadyPhase, ErrorPhase:
+	case ApplyingChangesPhase, MonitoredResourcesNotReadyPhase, AutoOpsResourcesNotReadyPhase, ErrorPhase:
 		return true
 	default:
 		return false
