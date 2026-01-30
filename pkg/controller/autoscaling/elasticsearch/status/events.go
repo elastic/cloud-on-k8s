@@ -23,7 +23,7 @@ func EmitEvents(elasticsearch esv1.Elasticsearch, recorder record.EventRecorder,
 
 func emitEventForAutoscalingPolicy(elasticsearch esv1.Elasticsearch, recorder record.EventRecorder, status v1alpha1.AutoscalingPolicyStatus) {
 	for _, event := range status.PolicyStates {
-		switch event.Type { //nolint:exhaustive
+		switch event.Type { //nolint:exhaustive // ignore exhaustive
 		case v1alpha1.VerticalScalingLimitReached, v1alpha1.HorizontalScalingLimitReached, v1alpha1.MemoryRequired, v1alpha1.StorageRequired, v1alpha1.UnexpectedNodeStorageCapacity:
 			recorder.Event(&elasticsearch, corev1.EventTypeWarning, string(event.Type), strings.Join(event.Messages, ". "))
 		}

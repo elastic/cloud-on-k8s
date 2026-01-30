@@ -85,7 +85,7 @@ func benchmarkParseSANGeneralNames(b *testing.B, otherNames, dnsNames int) {
 }
 
 func BenchmarkOtherName_ToUTF8StringValuedOtherName(b *testing.B) {
-	for n := 0; n < b.N; n++ {
+	for b.Loop() {
 		_, err := helloOtherName.ToUTF8StringValuedOtherName()
 		require.NoError(b, err)
 	}

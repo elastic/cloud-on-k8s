@@ -103,7 +103,7 @@ func ParsePEMPrivateKey(pemData []byte) (crypto.Signer, error) {
 	}
 
 	switch {
-	case x509.IsEncryptedPEMBlock(block): //nolint:staticcheck
+	case x509.IsEncryptedPEMBlock(block): //nolint:staticcheck // ignore deprecation
 		// Private key is encrypted, do not attempt to parse it
 		return nil, ErrEncryptedPrivateKey
 	case block.Type == pkcs8PrivateKeyType:
