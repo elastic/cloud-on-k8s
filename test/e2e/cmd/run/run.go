@@ -64,6 +64,7 @@ func doRun(flags runFlags) error {
 			helper.createScratchDir,
 			helper.initTestContext,
 			helper.installCRDs,
+			helper.createE2ENamespaceAndRoleBindings,
 			helper.createRoles,
 			helper.createManagedNamespaces,
 			helper.deploySecurityConstraints,
