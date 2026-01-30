@@ -180,6 +180,8 @@ steps:
   - group: sign images
     steps:
       - label: ":buildkite: upload images digest"
+        depends_on:
+          - "operator-image-build"
         key: "operator-image-upload-digest-step"
         commands:
           - .buildkite/scripts/build/image-signing.sh
