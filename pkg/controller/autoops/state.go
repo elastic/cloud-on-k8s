@@ -11,7 +11,6 @@ import (
 
 	autoopsv1alpha1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/autoops/v1alpha1"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/events"
-	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/set"
 )
 
 // State holds the accumulated state during the reconcile loop including the response and a copy of the
@@ -29,6 +28,9 @@ func newState(policy autoopsv1alpha1.AutoOpsAgentPolicy) *State {
 	// Similar to ES, we initially set the phase to an empty string so that we do not report an outdated phase
 	// given that certain phases are stickier than others (eg. invalid)
 	status.Phase = ""
+	status.Errors = 0
+	status.Ready = 0
+	status.Resources = 0
 	return &State{
 		Recorder: events.NewRecorder(),
 		policy:   policy,
@@ -40,51 +42,42 @@ func newState(policy autoopsv1alpha1.AutoOpsAgentPolicy) *State {
 // It respects phase stickiness - InvalidPhase and NoResourcesPhase will not be overwritten,
 // and ApplyingChangesPhase and ReadyPhase will not overwrite other non-ready phases.
 func (s *State) UpdateWithPhase(phase autoopsv1alpha1.PolicyPhase) *State {
-	nonReadyPhases := set.Make(
-		string(autoopsv1alpha1.ErrorPhase),
-		string(autoopsv1alpha1.NoResourcesPhase),
-		string(autoopsv1alpha1.ResourcesNotReadyPhase),
-	)
-	switch {
-	// do not overwrite the Invalid phase
-	case s.status.Phase == autoopsv1alpha1.InvalidPhase:
-		return s
-	// do not overwrite the NoResources phase
-	case s.status.Phase == autoopsv1alpha1.NoResourcesPhase:
-		return s
-	// do not overwrite non-ready phases with ApplyingChangesPhase
-	case phase == autoopsv1alpha1.ApplyingChangesPhase && nonReadyPhases.Has(string(s.status.Phase)):
-		return s
-	// do not overwrite non-ready phases with ReadyPhase
-	case phase == autoopsv1alpha1.ReadyPhase && nonReadyPhases.Has(string(s.status.Phase)):
-		return s
+	// Only update if new phase is "worse" (higher priority number)
+	// InvalidPhase is terminal and never changes
+	if phase.Priority() >= s.status.Phase.Priority() {
+		s.status.Phase = phase
 	}
-	s.status.Phase = phase
+
 	return s
 }
 
 // UpdateInvalidPhaseWithEvent is a convenient method to set the phase to InvalidPhase
 // and generate an event at the same time.
 func (s *State) UpdateInvalidPhaseWithEvent(msg string) {
-	s.status.Phase = autoopsv1alpha1.InvalidPhase
+	s.UpdateWithPhase(autoopsv1alpha1.InvalidPhase)
 	s.AddEvent(corev1.EventTypeWarning, events.EventReasonValidation, msg)
 }
 
-// UpdateResources updates the Resources count in the status.
-func (s *State) UpdateResources(count int) *State {
+// UpdateMonitoredResources updates the Resources count in the status.
+// If the count is zero it will try to apply [autoopsv1alpha1.NoMonitoredResourcesPhase] and it is solely responsible for applying this phase.
+func (s *State) UpdateMonitoredResources(count int) *State {
 	s.status.Resources = count
+	if count == 0 {
+		s.UpdateWithPhase(autoopsv1alpha1.NoMonitoredResourcesPhase)
+	}
 	return s
 }
 
-// UpdateReady updates the Ready count in the status.
-func (s *State) UpdateReady(count int) *State {
-	s.status.Ready = count
+// MarkResourceReady increases the Ready count in the status.
+func (s *State) MarkResourceReady() *State {
+	s.status.Ready++
 	return s
 }
 
-// UpdateErrors updates the Errors count in the status.
-func (s *State) UpdateErrors(count int) *State {
-	s.status.Errors = count
+// MarkResourceError increases the Errors count in the status.
+func (s *State) MarkResourceError() *State {
+	s.status.Errors++
+	s.UpdateWithPhase(autoopsv1alpha1.ErrorPhase)
 	return s
 }
 
@@ -99,4 +92,18 @@ func (s *State) Apply() ([]events.Event, *autoopsv1alpha1.AutoOpsAgentPolicy) {
 	}
 	s.policy.Status = current
 	return s.Events(), &s.policy
+}
+
+// CalculateFinalPhase updates the phase of the AutoOpsAgentPolicy status based on the results of the reconciliation.
+// This method is solely responsible for applying the [autoopsv1alpha1.ApplyingChangesPhase], [autoopsv1alpha1.AutoOpsAgentsNotReadyPhase] and [autoopsv1alpha1.ReadyPhase].
+func (s *State) CalculateFinalPhase(isReconciled bool, reconciliationMessage string) {
+	switch {
+	case !isReconciled:
+		s.UpdateWithPhase(autoopsv1alpha1.ApplyingChangesPhase)
+		s.AddEvent(corev1.EventTypeWarning, events.EventReasonDelayed, reconciliationMessage)
+	case s.status.Ready == s.status.Resources:
+		s.UpdateWithPhase(autoopsv1alpha1.ReadyPhase)
+	case s.status.Ready < s.status.Resources:
+		s.UpdateWithPhase(autoopsv1alpha1.AutoOpsAgentsNotReadyPhase)
+	}
 }

@@ -7,8 +7,6 @@ package v1alpha1
 import (
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-
-	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/set"
 )
 
 const (
@@ -108,23 +106,52 @@ type AutoOpsAgentPolicyStatus struct {
 	ObservedGeneration int64 `json:"observedGeneration,omitempty"`
 }
 
+// PolicyPhase represents the current lifecycle phase of an AutoOpsAgentPolicy.
 type PolicyPhase string
 
 const (
-	ReadyPhase             PolicyPhase = "Ready"
-	ApplyingChangesPhase   PolicyPhase = "ApplyingChanges"
-	InvalidPhase           PolicyPhase = "Invalid"
-	NoResourcesPhase       PolicyPhase = "NoResources"
-	ResourcesNotReadyPhase PolicyPhase = "ResourcesNotReady"
-	ErrorPhase             PolicyPhase = "Error"
+	// ReadyPhase indicates that all monitored resources are configured and operating correctly and AutoOps agent resources are deployed correctly.
+	ReadyPhase PolicyPhase = "Ready"
+	// ApplyingChangesPhase indicates that configuration changes are currently being applied to AutoOps agent resources.
+	ApplyingChangesPhase PolicyPhase = "ApplyingChanges"
+	// InvalidPhase indicates that the AutoOpsAgentPolicy specification is invalid and cannot be processed.
+	InvalidPhase PolicyPhase = "Invalid"
+	// NoMonitoredResourcesPhase indicates that no Elasticsearch resources match the configured resource selector and (the optional) namespace selector.
+	NoMonitoredResourcesPhase PolicyPhase = "NoMonitoredResources"
+	// MonitoredResourcesNotReadyPhase indicates that one or more monitored Elasticsearch resources are not in a ready state.
+	MonitoredResourcesNotReadyPhase PolicyPhase = "MonitoredResourcesNotReady"
+	// AutoOpsAgentsNotReadyPhase indicates that the AutoOps agent resources are not ready.
+	AutoOpsAgentsNotReadyPhase PolicyPhase = "AutoOpsAgentsNotReady"
+	// ErrorPhase indicates that an error occurred while reconciling the AutoOpsAgentPolicy.
+	ErrorPhase PolicyPhase = "Error"
 )
 
-// RequeuePhases is a set of phases that require a requeue.
-var RequeuePhases = set.Make(
-	string(ApplyingChangesPhase),
-	string(ResourcesNotReadyPhase),
-	string(ErrorPhase),
-)
+// NeedsRequeue returns whether the phase requires a requeue.
+func (p PolicyPhase) NeedsRequeue() bool {
+	switch p {
+	case ApplyingChangesPhase, MonitoredResourcesNotReadyPhase, AutoOpsAgentsNotReadyPhase, ErrorPhase:
+		return true
+	default:
+		return false
+	}
+}
+
+func (p PolicyPhase) Priority() int {
+	switch p {
+	case ApplyingChangesPhase, ReadyPhase:
+		return 1
+	case MonitoredResourcesNotReadyPhase, AutoOpsAgentsNotReadyPhase:
+		return 2
+	case ErrorPhase:
+		return 3
+	case NoMonitoredResourcesPhase:
+		return 4
+	case InvalidPhase:
+		return 5 // Terminal - never changes
+	default:
+		return 0 // Unknown phases have lowest priority
+	}
+}
 
 // IsMarkedForDeletion returns true if the AutoOpsAgentPolicy resource is going to be deleted.
 func (p *AutoOpsAgentPolicy) IsMarkedForDeletion() bool {
