@@ -176,3 +176,31 @@ steps:
     agents:
       image: docker.elastic.co/ci-agent-images/cloud-k8s-operator/buildkite-agent:d977326c
       memory: "2G"
+
+  - group: sign images
+    steps:
+      - label: ":buildkite: upload images digest"
+        key: "operator-image-upload-digest-step"
+        commands:
+          - .buildkite/scripts/build/image-signing.sh
+          - buildkite-agent artifact upload eck-container-images-digest.txt
+        agents:
+          image: docker.elastic.co/ci-agent-images/cloud-k8s-operator/buildkite-agent:6154e14d
+          cpu: "1"
+          memory: "1G"
+      - label: ":key: sign images"
+        depends_on:
+          - "operator-image-upload-digest-step"
+        command: |
+          if [[ -n "$${BUILDKITE_TAG}" ]]; then
+            IMAGES_TAG_VALUE="$${BUILDKITE_TAG#v}"
+          else
+            IMAGES_TAG_VALUE="$$(cat VERSION)"
+          fi
+          cat <<- YAML | buildkite-agent pipeline upload
+          steps:
+            - trigger: unified-release-container-image-signing
+              build:
+                env:
+                  IMAGES_TAG: "$${IMAGES_TAG_VALUE}"
+          YAML
