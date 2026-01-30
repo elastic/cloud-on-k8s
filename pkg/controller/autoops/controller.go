@@ -166,43 +166,17 @@ func (r *AgentPolicyReconciler) Reconcile(ctx context.Context, request reconcile
 	}
 
 	results := r.doReconcile(ctx, policy, state)
-	updatePhaseFromResults(results, state)
+	state.CalculateFinalPhase(results.IsReconciled())
 
 	result, err := r.updateStatusFromState(ctx, state)
 	results = results.WithResult(result).WithError(err)
 
 	// requeue if the phase is in the set of phases that require a requeue
-	if autoopsv1alpha1.RequeuePhases.Has(string(state.status.Phase)) {
+	if state.status.Phase.NeedsRequeue() {
 		return results.WithRequeue(reconciler.DefaultRequeue).Aggregate()
 	}
 
 	return results.Aggregate()
-}
-
-// updatePhaseFromResults updates the phase of the AutoOpsAgentPolicy status based on the results of the reconciliation
-func updatePhaseFromResults(results *reconciler.Results, state *State) {
-	if isReconciled, message := results.IsReconciled(); !isReconciled {
-		state.UpdateWithPhase(autoopsv1alpha1.ApplyingChangesPhase)
-		state.AddEvent(corev1.EventTypeWarning, events.EventReasonDelayed, message)
-		return
-	}
-
-	// Determine phase based on status counts, in order of priority:
-	// 1. Errors take highest priority
-	// 2. Resources not ready (have resources but none ready)
-	// 3. Ready (have resources and at least one ready)
-	// 4. No resources
-	switch {
-	case state.status.Errors > 0:
-		state.UpdateWithPhase(autoopsv1alpha1.ErrorPhase)
-	case state.status.Resources == 0:
-		state.UpdateWithPhase(autoopsv1alpha1.NoResourcesPhase)
-	case state.status.Ready == state.status.Resources:
-		state.UpdateWithPhase(autoopsv1alpha1.ReadyPhase)
-	default:
-		// Resources > 0 && Ready < Resources
-		state.UpdateWithPhase(autoopsv1alpha1.ResourcesNotReadyPhase)
-	}
 }
 
 func (r *AgentPolicyReconciler) validate(ctx context.Context, policy *autoopsv1alpha1.AutoOpsAgentPolicy) error {
