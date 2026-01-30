@@ -30,8 +30,8 @@ func NoUnknownFields(dest runtime.Object, meta metav1.ObjectMeta) field.ErrorLis
 		if err := d.Decode(dest.DeepCopyObject()); err != nil {
 			errString := err.Error()
 			unknownPrefix := "json: unknown field "
-			if strings.HasPrefix(errString, unknownPrefix) {
-				fld := strings.TrimPrefix(errString, unknownPrefix)
+			if after, exists := strings.CutPrefix(errString, unknownPrefix); exists {
+				fld := after
 				if len(fld) >= 2 {
 					fld = fld[1 : len(fld)-1] // removes quotes from fld
 				}

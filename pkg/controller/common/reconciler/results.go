@@ -99,7 +99,9 @@ func (r *Results) HasRequeue() bool {
 	if r == nil {
 		return false
 	}
-	return r.currResult.Result.Requeue || r.currResult.Result.RequeueAfter > 0 //nolint:staticcheck // keep supporting Requeue as long as the field is still in the struct
+
+	//nolint:staticcheck // keep supporting Requeue as long as the field is still in the struct
+	return r.currResult.Result.Requeue || r.currResult.Result.RequeueAfter > 0
 }
 
 // WithResults appends the results and error from the other Results.

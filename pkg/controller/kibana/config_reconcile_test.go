@@ -135,7 +135,7 @@ func TestVersionDefaults(t *testing.T) {
 		{
 			name:    "7.6.0",
 			version: "7.6.0",
-			want: settings.MustCanonicalConfig(map[string]interface{}{
+			want: settings.MustCanonicalConfig(map[string]any{
 				XpackLicenseManagementUIEnabled: false,
 			}),
 		},
@@ -147,10 +147,10 @@ func TestVersionDefaults(t *testing.T) {
 			v := version.MustParse(tc.version)
 
 			defaults := VersionDefaults(kb, v)
-			var have map[string]interface{}
+			var have map[string]any
 			require.NoError(t, defaults.Unpack(&have))
 
-			var want map[string]interface{}
+			var want map[string]any
 			require.NoError(t, tc.want.Unpack(&want))
 
 			require.Equal(t, want, have)

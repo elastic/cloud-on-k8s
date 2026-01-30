@@ -12,7 +12,7 @@ import (
 )
 
 // JSONEqual compares the JSON representation of two objects to ensure they are equal.
-func JSONEqual(t *testing.T, want, have interface{}) {
+func JSONEqual(t *testing.T, want, have any) {
 	t.Helper()
 
 	w, err := json.Marshal(want)

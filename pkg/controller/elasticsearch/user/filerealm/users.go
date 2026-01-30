@@ -7,6 +7,7 @@ package filerealm
 import (
 	"bytes"
 	"fmt"
+	"maps"
 	"strings"
 
 	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/stringsutil"
@@ -20,9 +21,7 @@ func (u usersPasswordHashes) mergeWith(other usersPasswordHashes) usersPasswordH
 	if len(u) == 0 {
 		return other
 	}
-	for user, hash := range other {
-		u[user] = hash
-	}
+	maps.Copy(u, other)
 	return u
 }
 

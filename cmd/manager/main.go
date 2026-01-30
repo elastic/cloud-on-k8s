@@ -448,7 +448,7 @@ func startOperator(ctx context.Context) error {
 	log.V(1).Info("Effective configuration", "values", viper.AllSettings())
 
 	// update GOMAXPROCS to container cpu limit if necessary
-	_, err := maxprocs.Set(maxprocs.Logger(func(s string, i ...interface{}) {
+	_, err := maxprocs.Set(maxprocs.Logger(func(s string, i ...any) {
 		// maxprocs needs an sprintf format string with args, but our logger needs a string with optional key value pairs,
 		// so we need to do this translation
 		log.Info(fmt.Sprintf(s, i...))
@@ -1090,7 +1090,7 @@ func setupWebhook(
 	timeout := time.Second * 30
 	keyPath := filepath.Join(webhookCertDir, certificates.CertFileName)
 	log.Info("Polling for the webhook certificate to be available", "path", keyPath)
-	//nolint:staticcheck
+	//nolint:staticcheck // keep
 	err := wait.PollImmediateWithContext(ctx, interval, timeout, func(_ context.Context) (bool, error) {
 		_, err := os.Stat(keyPath)
 		// err could be that the file does not exist, but also that permission was denied or something else

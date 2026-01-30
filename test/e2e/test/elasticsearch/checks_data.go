@@ -28,7 +28,7 @@ type DataIntegrityCheck struct {
 	clientFactory       func() (client.Client, error) // recreate clients for cases where we switch scheme in tests
 	indexName           string
 	createIndexSettings createIndexSettings
-	sampleData          map[string]interface{}
+	sampleData          map[string]any
 	docCount            int
 }
 
@@ -38,7 +38,7 @@ func NewDataIntegrityCheck(k *test.K8sClient, b Builder) *DataIntegrityCheck {
 			return NewElasticsearchClient(b.Elasticsearch, k)
 		},
 		indexName: DataIntegrityIndex,
-		sampleData: map[string]interface{}{
+		sampleData: map[string]any{
 			"foo": "bar",
 		},
 		docCount: 5,

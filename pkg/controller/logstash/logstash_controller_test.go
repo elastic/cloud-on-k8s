@@ -6,6 +6,7 @@ package logstash
 
 import (
 	"context"
+	"maps"
 	"reflect"
 	"testing"
 
@@ -822,9 +823,7 @@ func createLogstash(capacity string, storageClassName string) logstashv1alpha1.L
 
 func addLabel(labels map[string]string, key, value string) map[string]string {
 	newLabels := make(map[string]string, len(labels))
-	for k, v := range labels {
-		newLabels[k] = v
-	}
+	maps.Copy(newLabels, labels)
 	newLabels[key] = value
 	return newLabels
 }

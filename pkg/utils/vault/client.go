@@ -77,7 +77,7 @@ func auth(c *api.Client) error {
 		return nil
 	}
 
-	var data map[string]interface{}
+	var data map[string]any
 	var method string
 
 	roleID := os.Getenv(roleIDEnvVar)
@@ -87,10 +87,10 @@ func auth(c *api.Client) error {
 	switch {
 	case roleID != "" && secretID != "":
 		method = "approle"
-		data = map[string]interface{}{"role_id": roleID, "secret_id": secretID}
+		data = map[string]any{"role_id": roleID, "secret_id": secretID}
 	case ghToken != "":
 		method = "github"
-		data = map[string]interface{}{"token": ghToken}
+		data = map[string]any{"token": ghToken}
 	default:
 		var err error
 		token, err = readCachedToken()

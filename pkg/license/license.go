@@ -7,6 +7,7 @@ package license
 import (
 	"context"
 	"fmt"
+	"maps"
 	"math"
 	"reflect"
 	"strconv"
@@ -192,12 +193,8 @@ func (r LicensingResolver) Save(ctx context.Context, info LicensingInfo) error {
 		NeedsUpdate: func() bool {
 			// do not compare timestamp, as it will always change
 			expectedData, reconciledData := map[string]string{}, map[string]string{}
-			for k, v := range expected.Data {
-				expectedData[k] = v
-			}
-			for k, v := range reconciled.Data {
-				reconciledData[k] = v
-			}
+			maps.Copy(expectedData, expected.Data)
+			maps.Copy(reconciledData, reconciled.Data)
 			delete(expectedData, "timestamp")
 			delete(reconciledData, "timestamp")
 			return !reflect.DeepEqual(expectedData, reconciledData)

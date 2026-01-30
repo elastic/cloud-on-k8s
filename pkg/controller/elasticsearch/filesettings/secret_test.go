@@ -31,7 +31,7 @@ func Test_NewSettingsSecret(t *testing.T) {
 		},
 		Spec: policyv1alpha1.StackConfigPolicySpec{
 			Elasticsearch: policyv1alpha1.ElasticsearchConfigPolicySpec{
-				ClusterSettings: &commonv1.Config{Data: map[string]interface{}{"a": "b"}},
+				ClusterSettings: &commonv1.Config{Data: map[string]any{"a": "b"}},
 			},
 		},
 	}
@@ -71,7 +71,7 @@ func Test_SettingsSecret_hasChanged(t *testing.T) {
 		},
 		Spec: policyv1alpha1.StackConfigPolicySpec{
 			Elasticsearch: policyv1alpha1.ElasticsearchConfigPolicySpec{
-				ClusterSettings: &commonv1.Config{Data: map[string]interface{}{"a": "b"}},
+				ClusterSettings: &commonv1.Config{Data: map[string]any{"a": "b"}},
 			},
 		}}
 

@@ -59,8 +59,8 @@ func newBeatConfig(
 	if err != nil {
 		return beatConfig{}, err
 	}
-	outputConfig := map[string]interface{}{
-		"output": map[string]interface{}{
+	outputConfig := map[string]any{
+		"output": map[string]any{
 			"elasticsearch": outputCfg,
 		},
 	}
@@ -115,7 +115,7 @@ func newBeatConfig(
 	}, err
 }
 
-func buildOutputConfig(ctx context.Context, client k8s.Client, assoc commonv1.Association, imageVersion string) (map[string]interface{}, volume.VolumeLike, error) {
+func buildOutputConfig(ctx context.Context, client k8s.Client, assoc commonv1.Association, imageVersion string) (map[string]any, volume.VolumeLike, error) {
 	credentials, err := association.ElasticsearchAuthSettings(ctx, client, assoc)
 	if err != nil {
 		return nil, volume.SecretVolume{}, err
@@ -125,7 +125,7 @@ func buildOutputConfig(ctx context.Context, client k8s.Client, assoc commonv1.As
 	if err != nil {
 		return nil, nil, err
 	}
-	outputConfig := map[string]interface{}{
+	outputConfig := map[string]any{
 		"username": credentials.Username,
 		"password": credentials.Password,
 		"hosts":    []string{assocConf.GetURL()},
@@ -142,7 +142,7 @@ func buildOutputConfig(ctx context.Context, client k8s.Client, assoc commonv1.As
 	// Reloading of certificates is only supported for Beats >= 8.8.0.
 	if v.GE(version.MinFor(8, 8, 0)) {
 		// Allow beats to reload when the ssl certificate changes (renewals)
-		outputConfig["ssl.restart_on_cert_change"] = map[string]interface{}{
+		outputConfig["ssl.restart_on_cert_change"] = map[string]any{
 			"enabled": true,
 			"period":  "1m",
 		}
@@ -166,7 +166,7 @@ func buildOutputConfig(ctx context.Context, client k8s.Client, assoc commonv1.As
 	return outputConfig, caVolume, nil
 }
 
-func mergeConfig(rawConfig string, config map[string]interface{}) ([]byte, error) {
+func mergeConfig(rawConfig string, config map[string]any) ([]byte, error) {
 	cfg, err := settings.ParseConfig([]byte(rawConfig))
 	if err != nil {
 		return nil, err

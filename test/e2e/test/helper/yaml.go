@@ -301,7 +301,7 @@ func transformToE2E(namespace, fullTestName, suffix string, transformers []Build
 				WithSuffix(suffix).
 				WithElasticsearchRef(tweakServiceRef(b.ApmServer.Spec.ElasticsearchRef, suffix)).
 				WithKibanaRef(tweakServiceRef(b.ApmServer.Spec.KibanaRef, suffix)).
-				WithConfig(map[string]interface{}{"apm-server.ilm.enabled": false}).
+				WithConfig(map[string]any{"apm-server.ilm.enabled": false}).
 				WithRestrictedSecurityContext().
 				WithLabel(run.TestNameLabel, fullTestName).
 				WithPodLabel(run.TestNameLabel, fullTestName)
@@ -485,16 +485,16 @@ func tweakOutputRefs(outputs []agentv1alpha1.Output, suffix string) (results []a
 	return results
 }
 
-func tweakConfigLiterals(config *commonv1.Config, suffix string, namespace string) map[string]interface{} {
+func tweakConfigLiterals(config *commonv1.Config, suffix string, namespace string) map[string]any {
 	if config == nil {
-		return map[string]interface{}{}
+		return map[string]any{}
 	}
 
 	data := config.Data
 
 	elasticsearchHostsKey := "xpack.fleet.agents.elasticsearch.hosts"
 	if untypedHosts, ok := data[elasticsearchHostsKey]; ok {
-		if untypedHostsSlice, ok := untypedHosts.([]interface{}); ok {
+		if untypedHostsSlice, ok := untypedHosts.([]any); ok {
 			for i, untypedHost := range untypedHostsSlice {
 				if host, ok := untypedHost.(string); ok {
 					untypedHostsSlice[i] = strings.ReplaceAll(
@@ -509,7 +509,7 @@ func tweakConfigLiterals(config *commonv1.Config, suffix string, namespace strin
 
 	fleetServerHostsKey := "xpack.fleet.agents.fleet_server.hosts"
 	if untypedHosts, ok := data[fleetServerHostsKey]; ok {
-		if untypedHostsSlice, ok := untypedHosts.([]interface{}); ok {
+		if untypedHostsSlice, ok := untypedHosts.([]any); ok {
 			for i, untypedHost := range untypedHostsSlice {
 				if host, ok := untypedHost.(string); ok {
 					untypedHostsSlice[i] = strings.ReplaceAll(
@@ -530,11 +530,11 @@ func tweakConfigLiterals(config *commonv1.Config, suffix string, namespace strin
 	// 1. Point to the valid Elasticsearch instance with suffix + namespace being random
 	// 2. Point to the valid mounted Elasticsearch CA with a random suffix + namespace in the mount path.
 	if untypedOutputs, ok := data[fleetOutputsKey]; ok { //nolint:nestif
-		if untypedXpackOutputsSlice, ok := untypedOutputs.([]interface{}); ok {
+		if untypedXpackOutputsSlice, ok := untypedOutputs.([]any); ok {
 			for _, untypedOutputMap := range untypedXpackOutputsSlice {
-				if outputMap, ok := untypedOutputMap.(map[string]interface{}); ok {
+				if outputMap, ok := untypedOutputMap.(map[string]any); ok {
 					if outputMap["id"] == "eck-fleet-agent-output-elasticsearch" {
-						if outputSlice, ok := outputMap["hosts"].([]interface{}); ok {
+						if outputSlice, ok := outputMap["hosts"].([]any); ok {
 							for j, untypedHost := range outputSlice {
 								if host, ok := untypedHost.(string); ok {
 									outputSlice[j] = strings.ReplaceAll(
@@ -545,8 +545,8 @@ func tweakConfigLiterals(config *commonv1.Config, suffix string, namespace strin
 								}
 							}
 						}
-						if untypedSSL, ok := outputMap["ssl"].(map[string]interface{}); ok {
-							if untypedCAs, ok := untypedSSL["certificate_authorities"].([]interface{}); ok {
+						if untypedSSL, ok := outputMap["ssl"].(map[string]any); ok {
+							if untypedCAs, ok := untypedSSL["certificate_authorities"].([]any); ok {
 								for k, untypedCA := range untypedCAs {
 									if ca, ok := untypedCA.(string); ok {
 										untypedCAs[k] = strings.ReplaceAll(

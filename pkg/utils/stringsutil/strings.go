@@ -5,6 +5,7 @@
 package stringsutil
 
 import (
+	"slices"
 	"sort"
 	"strings"
 )
@@ -22,12 +23,7 @@ func Concat(args ...string) string {
 
 // StringInSlice returns true if the given string is found in the provided slice, else returns false
 func StringInSlice(str string, list []string) bool {
-	for _, s := range list {
-		if s == str {
-			return true
-		}
-	}
-	return false
+	return slices.Contains(list, str)
 }
 
 // StringsInSlice returns true if the given strings are found in the provided slice, else returns false

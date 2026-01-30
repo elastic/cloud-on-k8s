@@ -111,7 +111,6 @@ func TestMetadataPropagation(t *testing.T) {
 						children = append(children, expectedChildren...)
 					}
 					for _, c := range children {
-						c := c
 						t.Run(c.identifier(), func(t *testing.T) {
 							t.Parallel()
 							have := c.metadata(t, k)

@@ -150,7 +150,7 @@ func (e *esClusterChecks) CheckDesiredNodesAPI(k *test.K8sClient) test.Step {
 }
 
 type PathDataSetting struct {
-	PathData interface{} `config:"path.data"`
+	PathData any `config:"path.data"`
 }
 
 // expectDesiredNodesAPI attempts to detect when the desired nodes state is expected to be set.

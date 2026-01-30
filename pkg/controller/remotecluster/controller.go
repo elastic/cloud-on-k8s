@@ -375,7 +375,6 @@ func getExpectedRemoteClientsFor(
 
 	// Seek for Elasticsearch resources where this cluster is declared as a remote cluster
 	for _, es := range list.Items {
-		es := es
 		for _, remoteCluster := range es.Spec.RemoteClusters {
 			if !remoteCluster.ElasticsearchRef.IsDefined() {
 				continue

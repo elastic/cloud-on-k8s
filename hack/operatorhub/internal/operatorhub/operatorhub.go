@@ -22,7 +22,6 @@ import (
 	"time"
 
 	"github.com/Masterminds/sprig/v3"
-	"github.com/elastic/cloud-on-k8s/v3/hack/operatorhub/cmd/flags"
 	gyaml "github.com/ghodss/yaml"
 	admissionv1 "k8s.io/api/admissionregistration/v1"
 	rbacv1 "k8s.io/api/rbac/v1"
@@ -30,6 +29,8 @@ import (
 	apiextv1beta1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1beta1"
 	"k8s.io/apimachinery/pkg/util/yaml"
 	"k8s.io/kubectl/pkg/scheme"
+
+	"github.com/elastic/cloud-on-k8s/v3/hack/operatorhub/cmd/flags"
 )
 
 const (

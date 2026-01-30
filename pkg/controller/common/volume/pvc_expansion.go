@@ -87,7 +87,6 @@ func resizePVCs(
 			continue
 		}
 		for _, pvc := range pvcs {
-			pvc := pvc
 			storageCmp := k8s.CompareStorageRequests(pvc.Spec.Resources, expectedClaim.Spec.Resources)
 			if !storageCmp.Increase {
 				// not an increase, nothing to do
@@ -183,8 +182,6 @@ func RecreateStatefulSets(ctx context.Context, k8sClient k8s.Client, owner clien
 	recreations := len(recreateList)
 
 	for annotation, toRecreate := range recreateList {
-		toRecreate := toRecreate
-
 		namespacedName := namespacedNameFromObject(owner)
 
 		var existing appsv1.StatefulSet

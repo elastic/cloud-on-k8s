@@ -139,7 +139,7 @@ func (b Builder) Kind() string {
 	return v1alpha1.Kind
 }
 
-func (b Builder) Spec() interface{} {
+func (b Builder) Spec() any {
 	return b.EMS.Spec
 }
 

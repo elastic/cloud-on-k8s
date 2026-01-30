@@ -172,7 +172,7 @@ func Test_reuseOrGenerateSecrets(t *testing.T) {
 			},
 			assertion: func(t *testing.T, got *settings.CanonicalConfig, err error) {
 				t.Helper()
-				expectedSettings := settings.MustCanonicalConfig(map[string]interface{}{
+				expectedSettings := settings.MustCanonicalConfig(map[string]any{
 					SecretSessionSetting: "alreadysetsessionkey",
 					// we don't want "user-provided-encryption-key" here
 					EncryptionKeysSetting: []string{"operator-managed-encryption-key"},
@@ -419,7 +419,7 @@ func TestReconcileConfig(t *testing.T) {
 				},
 				Spec: entv1.EnterpriseSearchSpec{
 					Version: "7.9.1",
-					Config: &commonv1.Config{Data: map[string]interface{}{
+					Config: &commonv1.Config{Data: map[string]any{
 						"foo":                     "bar",                    // new setting
 						"ent_search.external_url": "https://my.own.dns.com", // override existing setting
 					}},
@@ -488,7 +488,7 @@ func TestReconcileConfig(t *testing.T) {
 				},
 				Spec: entv1.EnterpriseSearchSpec{
 					Version: "7.10.0",
-					Config: &commonv1.Config{Data: map[string]interface{}{
+					Config: &commonv1.Config{Data: map[string]any{
 						"ent_search.auth.native1.source.": "elasticsearch-native", // customized auth
 					}},
 				},
@@ -537,7 +537,7 @@ func TestReconcileConfig(t *testing.T) {
 				},
 				Spec: entv1.EnterpriseSearchSpec{
 					Version: "7.9.1",
-					Config: &commonv1.Config{Data: map[string]interface{}{
+					Config: &commonv1.Config{Data: map[string]any{
 						"foo":                     "bar",                    // new setting
 						"ent_search.external_url": "https://my.own.dns.com", // override existing setting
 					}},
@@ -638,8 +638,8 @@ func TestReconcileConfig_UserProvidedEncryptionKeys(t *testing.T) {
 				},
 				Spec: entv1.EnterpriseSearchSpec{
 					Version: "7.9.1",
-					Config: &commonv1.Config{Data: map[string]interface{}{
-						"secret_management": map[string]interface{}{
+					Config: &commonv1.Config{Data: map[string]any{
+						"secret_management": map[string]any{
 							"encryption_keys": []string{
 								"user-provided-key-1",
 								"user-provided-key-2",
@@ -666,8 +666,8 @@ func TestReconcileConfig_UserProvidedEncryptionKeys(t *testing.T) {
 				},
 				Spec: entv1.EnterpriseSearchSpec{
 					Version: "7.9.1",
-					Config: &commonv1.Config{Data: map[string]interface{}{
-						"secret_management": map[string]interface{}{
+					Config: &commonv1.Config{Data: map[string]any{
+						"secret_management": map[string]any{
 							"encryption_keys": []string{
 								"user-provided-key-1",
 								"user-provided-key-2",
@@ -710,8 +710,8 @@ secret_session_key: alreadysetsessionkey
 				},
 				Spec: entv1.EnterpriseSearchSpec{
 					Version: "7.9.1",
-					Config: &commonv1.Config{Data: map[string]interface{}{
-						"secret_management": map[string]interface{}{
+					Config: &commonv1.Config{Data: map[string]any{
+						"secret_management": map[string]any{
 							"encryption_keys": []string{
 								"user-provided-key-1", // already exists in the secret
 								"user-provided-key-2", // already exists in the secret

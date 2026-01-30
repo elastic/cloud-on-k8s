@@ -99,7 +99,7 @@ func Test_hasMaster(t *testing.T) {
 					NodeSets: []NodeSet{
 						{
 							Config: &common.Config{
-								Data: map[string]interface{}{
+								Data: map[string]any{
 									NodeMaster: "false",
 									NodeData:   "false",
 									NodeIngest: "false",
@@ -120,7 +120,7 @@ func Test_hasMaster(t *testing.T) {
 					NodeSets: []NodeSet{
 						{
 							Config: &common.Config{
-								Data: map[string]interface{}{
+								Data: map[string]any{
 									NodeMaster: "true",
 									NodeData:   "false",
 									NodeIngest: "false",
@@ -141,7 +141,7 @@ func Test_hasMaster(t *testing.T) {
 					NodeSets: []NodeSet{
 						{
 							Config: &common.Config{
-								Data: map[string]interface{}{
+								Data: map[string]any{
 									NodeMaster: "false",
 									NodeData:   "true",
 									NodeIngest: "false",
@@ -153,7 +153,7 @@ func Test_hasMaster(t *testing.T) {
 
 						{
 							Config: &common.Config{
-								Data: map[string]interface{}{
+								Data: map[string]any{
 									NodeMaster: "true",
 									NodeData:   "false",
 									NodeIngest: "false",

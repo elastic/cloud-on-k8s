@@ -61,10 +61,10 @@ func trialStatusSecretSample(t *testing.T, state licensing.TrialState) *corev1.S
 }
 
 func trialLicenseBytes() []byte {
-	return []byte(fmt.Sprintf(
+	return fmt.Appendf(nil,
 		`{"license": {"uid": "x", "type": "enterprise_trial", "issue_date_in_millis": 1, "expiry_date_in_millis": %d, "issued_to": "x", "issuer": "Elastic k8s operator", "start_date_in_millis": 1, "cluster_licenses": null, "Version": 0}}`,
 		chrono.ToMillis(time.Now().Add(24*time.Hour)), // simulate a license still valid for 24 hours
-	))
+	)
 }
 
 func trialStateSample(t *testing.T) licensing.TrialState {
