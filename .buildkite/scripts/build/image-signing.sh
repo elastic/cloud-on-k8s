@@ -19,7 +19,8 @@ get_image_digest() {
     local image_ref="$1"
     local digest
 
-    # Attempt to get the digest from the multi-arch manifest using docker manifest inspect (works with remote images)
+    # Attempt to get the digest from the multi-arch manifest using docker manifest inspect which
+    # works with remote images without needing to pull the image.
     if ! command -v docker >/dev/null 2>&1; then
         echo "Error: docker command not found" >&2
         return 1
