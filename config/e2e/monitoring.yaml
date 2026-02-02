@@ -81,9 +81,16 @@ spec:
   config:
     agent:
       monitoring:
-        enabled: true
         use_output: default
+        {{ if .OcpCluster }}
+        # disable agent self-monitoring for ocp https://github.com/elastic/elastic-agent/issues/7488
+        # to prevent e2e tests flakiness https://github.com/elastic/cloud-on-k8s/issues/9074
+        enabled: false
+        logs: false
+        {{ else }}
+        enabled: true
         logs: true
+        {{ end }}
         metrics: true
     providers.kubernetes:
       node: ${NODE_NAME}
