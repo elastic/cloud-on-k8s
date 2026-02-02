@@ -206,4 +206,5 @@ steps:
               build:
                 env:
                   IMAGES_TAG: "$${IMAGES_TAG_VALUE}"
+                  UPLOAD_SIGNATURE="true"
           YAML
