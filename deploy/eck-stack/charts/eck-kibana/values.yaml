@@ -192,3 +192,16 @@ ingress:
     # Optional Kubernetes secret name that contains a base64 encoded PEM certificate and private key that corresponds to the above 'hosts' definitions.
     # If tls is enabled, but this field is not set, the self-signed certificate and key created by the ECK operator will be used.
     # secretName: chart-example-tls
+
+# Create dynamic manifests via values.
+# Example:
+# extraObjects:
+#   - |
+#     apiVersion: v1
+#     kind: ConfigMap
+#     metadata:
+#       name: {{ include "kibana.fullname" . }}-extra-config
+#       namespace: {{ .Release.Namespace }}
+#     data:
+#       key: value
+extraObjects: []

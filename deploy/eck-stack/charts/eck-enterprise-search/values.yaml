@@ -106,3 +106,16 @@ podTemplate: {}
 #
 configRef: {}
   # secretName: enterprise-search-config
+
+# Create dynamic manifests via values.
+# Example:
+# extraObjects:
+#   - |
+#     apiVersion: v1
+#     kind: ConfigMap
+#     metadata:
+#       name: {{ include "eck-enterprise-search.fullname" . }}-extra-config
+#       namespace: {{ .Release.Namespace }}
+#     data:
+#       key: value
+extraObjects: []

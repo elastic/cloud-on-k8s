@@ -179,3 +179,16 @@ clusterRole: {}
 #    - get
 #    - watch
 #    - list
+
+# Create dynamic manifests via values.
+# Example:
+# extraObjects:
+#   - |
+#     apiVersion: v1
+#     kind: ConfigMap
+#     metadata:
+#       name: {{ include "beat.fullname" . }}-extra-config
+#       namespace: {{ .Release.Namespace }}
+#     data:
+#       key: value
+extraObjects: []
