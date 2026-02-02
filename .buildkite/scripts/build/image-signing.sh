@@ -28,7 +28,7 @@ get_image_digest() {
 
     # Get raw manifest and compute its digest. We must take this approach as the docker build is a multi-arch build which contains manifests for both the amd64 and arm64 architectures.
     local manifest
-    if ! manifest=$(docker buildx imagetools inspect "$image_ref" --raw 2>/dev/null); then
+    if ! manifest=$(retry docker buildx imagetools inspect "$image_ref" --raw 2>/dev/null); then
         echo "Error: failed to inspect $image_ref" >&2
         return 1
     fi
