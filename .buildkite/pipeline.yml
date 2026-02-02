@@ -202,8 +202,8 @@ steps:
           cat <<- YAML | buildkite-agent pipeline upload
           steps:
             - trigger: unified-release-container-image-signing
-              branch: fix-sign-container-service
               build:
+                branch: fix-sign-container-service
                 env:
                   IMAGES_TAG: "$${IMAGES_TAG_VALUE}"
                   UPLOAD_SIGNATURE="true"
