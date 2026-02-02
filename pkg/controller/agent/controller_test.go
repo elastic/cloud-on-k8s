@@ -7,7 +7,6 @@ package agent
 import (
 	"context"
 	"reflect"
-	"slices"
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
@@ -364,7 +363,7 @@ func TestReconcileAgent_OnDelete_GarbageCollectsSoftOwnedSecrets(t *testing.T) {
 			require.NoError(t, err)
 
 			remainingNames := make([]string, 0, len(secrets.Items))
-			for s := range slices.Values(secrets.Items) {
+			for _, s := range secrets.Items {
 				remainingNames = append(remainingNames, s.Name)
 			}
 
