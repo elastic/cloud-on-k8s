@@ -7,9 +7,11 @@ package agent
 import (
 	"context"
 	"reflect"
+	"slices"
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
+	"github.com/stretchr/testify/require"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -23,6 +25,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/comparison"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/hash"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/reconciler"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/watches"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/k8s"
 )
@@ -235,4 +238,138 @@ func addLabel(labels map[string]string, key, value string) map[string]string {
 	}
 	newLabels[key] = value
 	return newLabels
+}
+
+// softOwnedSecret creates a secret with soft owner labels pointing to the given owner.
+func softOwnedSecret(namespace, name, ownerNamespace, ownerName, ownerKind string) *corev1.Secret {
+	return &corev1.Secret{
+		ObjectMeta: metav1.ObjectMeta{
+			Namespace: namespace,
+			Name:      name,
+			Labels: map[string]string{
+				reconciler.SoftOwnerNamespaceLabel: ownerNamespace,
+				reconciler.SoftOwnerNameLabel:      ownerName,
+				reconciler.SoftOwnerKindLabel:      ownerKind,
+			},
+		},
+	}
+}
+
+func TestReconcileAgent_OnDelete_GarbageCollectsSoftOwnedSecrets(t *testing.T) {
+	tests := []struct {
+		name                 string
+		objs                 []client.Object
+		request              reconcile.Request
+		wantRemainingSecrets []string
+		wantDeletedSecrets   []string
+	}{
+		{
+			name: "agent not found: soft-owned secrets are garbage collected",
+			objs: []client.Object{
+				// No agent exists, simulating deletion
+				softOwnedSecret("test", "test-agent-http-certs-public", "test", "test-agent", agentv1alpha1.Kind),
+				softOwnedSecret("test", "test-agent-http-certs-internal", "test", "test-agent", agentv1alpha1.Kind),
+			},
+			request: reconcile.Request{
+				NamespacedName: types.NamespacedName{
+					Namespace: "test",
+					Name:      "test-agent",
+				},
+			},
+			wantRemainingSecrets: []string{},
+			wantDeletedSecrets:   []string{"test-agent-http-certs-public", "test-agent-http-certs-internal"},
+		},
+		{
+			name: "agent marked for deletion: soft-owned secrets are garbage collected",
+			objs: []client.Object{
+				&agentv1alpha1.Agent{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:              "test-agent",
+						Namespace:         "test",
+						DeletionTimestamp: &metav1.Time{Time: metav1.Now().Time},
+						Finalizers:        []string{"finalizer.agent.k8s.elastic.co"},
+					},
+					Spec: agentv1alpha1.AgentSpec{
+						Version:    "8.0.1",
+						Deployment: &agentv1alpha1.DeploymentSpec{},
+					},
+				},
+				softOwnedSecret("test", "test-agent-http-certs-public", "test", "test-agent", agentv1alpha1.Kind),
+			},
+			request: reconcile.Request{
+				NamespacedName: types.NamespacedName{
+					Namespace: "test",
+					Name:      "test-agent",
+				},
+			},
+			wantRemainingSecrets: []string{},
+			wantDeletedSecrets:   []string{"test-agent-http-certs-public"},
+		},
+		{
+			name: "agent not found: secrets owned by other agents are not deleted",
+			objs: []client.Object{
+				softOwnedSecret("test", "test-agent-http-certs-public", "test", "test-agent", agentv1alpha1.Kind),
+				softOwnedSecret("test", "other-agent-http-certs-public", "test", "other-agent", agentv1alpha1.Kind),
+			},
+			request: reconcile.Request{
+				NamespacedName: types.NamespacedName{
+					Namespace: "test",
+					Name:      "test-agent",
+				},
+			},
+			wantRemainingSecrets: []string{"other-agent-http-certs-public"},
+			wantDeletedSecrets:   []string{"test-agent-http-certs-public"},
+		},
+		{
+			name: "agent not found: secrets owned by different kinds are not deleted",
+			objs: []client.Object{
+				softOwnedSecret("test", "test-agent-http-certs-public", "test", "test-agent", agentv1alpha1.Kind),
+				softOwnedSecret("test", "test-agent-es-secret", "test", "test-agent", "Elasticsearch"),
+			},
+			request: reconcile.Request{
+				NamespacedName: types.NamespacedName{
+					Namespace: "test",
+					Name:      "test-agent",
+				},
+			},
+			wantRemainingSecrets: []string{"test-agent-es-secret"},
+			wantDeletedSecrets:   []string{"test-agent-http-certs-public"},
+		},
+		{
+			name: "agent not found: secrets in different namespace with same name are not deleted",
+			objs: []client.Object{
+				softOwnedSecret("test", "test-agent-http-certs-public", "test", "test-agent", agentv1alpha1.Kind),
+				softOwnedSecret("other-ns", "test-agent-http-certs-public", "other-ns", "test-agent", agentv1alpha1.Kind),
+			},
+			request: reconcile.Request{
+				NamespacedName: types.NamespacedName{
+					Namespace: "test",
+					Name:      "test-agent",
+				},
+			},
+			wantRemainingSecrets: []string{"test-agent-http-certs-public"},
+			wantDeletedSecrets:   []string{"test-agent-http-certs-public"},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			r := newReconcileAgent(tt.objs...)
+			_, err := r.Reconcile(context.Background(), tt.request)
+			require.NoError(t, err)
+
+			// Verify remaining secrets
+			var secrets corev1.SecretList
+			err = r.Client.List(context.Background(), &secrets)
+			require.NoError(t, err)
+
+			remainingNames := make([]string, 0, len(secrets.Items))
+			for s := range slices.Values(secrets.Items) {
+				remainingNames = append(remainingNames, s.Name)
+			}
+
+			require.ElementsMatch(t, tt.wantRemainingSecrets, remainingNames,
+				"remaining secrets mismatch: got %v, want %v", remainingNames, tt.wantRemainingSecrets)
+		})
+	}
 }

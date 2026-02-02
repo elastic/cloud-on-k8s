@@ -149,8 +149,7 @@ func (r *ReconcileAgent) Reconcile(ctx context.Context, request reconcile.Reques
 	agent := &agentv1alpha1.Agent{}
 	if err := r.Client.Get(ctx, request.NamespacedName, agent); err != nil {
 		if apierrors.IsNotFound(err) {
-			r.onDelete(request.NamespacedName)
-			return reconcile.Result{}, nil
+			return reconcile.Result{}, r.onDelete(ctx, request.NamespacedName)
 		}
 		return reconcile.Result{}, tracing.CaptureError(ctx, err)
 	}
@@ -161,7 +160,7 @@ func (r *ReconcileAgent) Reconcile(ctx context.Context, request reconcile.Reques
 	}
 
 	if agent.IsMarkedForDeletion() {
-		return reconcile.Result{}, nil
+		return reconcile.Result{}, r.onDelete(ctx, request.NamespacedName)
 	}
 
 	results, status := r.doReconcile(ctx, *agent)
@@ -230,7 +229,8 @@ func (r *ReconcileAgent) validate(ctx context.Context, agent agentv1alpha1.Agent
 	return nil
 }
 
-func (r *ReconcileAgent) onDelete(obj types.NamespacedName) {
+func (r *ReconcileAgent) onDelete(ctx context.Context, obj types.NamespacedName) error {
 	r.dynamicWatches.Secrets.RemoveHandlerForKey(keystore.SecureSettingsWatchName(obj))
 	r.dynamicWatches.Secrets.RemoveHandlerForKey(common.ConfigRefWatchName(obj))
+	return reconciler.GarbageCollectSoftOwnedSecrets(ctx, r.Client, obj, agentv1alpha1.Kind)
 }
