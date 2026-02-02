@@ -26,17 +26,19 @@ get_image_digest() {
         return 1
     fi
 
-    if ! digest=$(retry docker manifest inspect "$image_ref" 2>&1 | jq -r '.manifests[0].digest'); then
-        echo "Error: docker manifest inspect failed for $image_ref" >&2
+    # Get raw manifest and compute its digest. We must take this approach as the docker build is a multi-arch build which contains manifests for both the amd64 and arm64 architectures.
+    local manifest
+    if ! manifest=$(docker buildx imagetools inspect "$image_ref" --raw 2>/dev/null); then
+        echo "Error: failed to inspect $image_ref" >&2
         return 1
     fi
 
-    if [[ -z "$digest" || "$digest" == "null" ]]; then
-        echo "Error: could not extract digest from manifest for $image_ref" >&2
+    if [[ -z "$manifest" || "$manifest" == "null" ]]; then
+        echo "Error: could not extract manifest from $image_ref" >&2
         return 1
     fi
 
-    echo "$digest"
+    echo "sha256:$(echo -n "$manifest" | sha256sum | cut -d' ' -f1)"
 }
 
 main() {
@@ -54,7 +56,7 @@ main() {
     fi
 
     if [[ -z "$images_list" ]]; then
-        echo "Error: images-to-sign builtekite metadata is empty" >&2
+        echo "Error: images-to-sign buildkite metadata is empty" >&2
         exit 1
     fi
 
