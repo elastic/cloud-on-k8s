@@ -206,5 +206,5 @@ steps:
                 branch: fix-sign-container-service
                 env:
                   IMAGES_TAG: "$${IMAGES_TAG_VALUE}"
-                  UPLOAD_SIGNATURE="true"
+                  UPLOAD_SIGNATURE: "true"
           YAML
