@@ -103,7 +103,7 @@ func (r *AgentPolicyReconciler) internalReconcile(
 		accessAllowed, err := isAutoOpsAssociationAllowed(ctx, r.accessReviewer, &policy, &es, r.recorder)
 		if err != nil {
 			log.Error(err, "while checking access for Elasticsearch cluster", "es_namespace", es.Namespace, "es_name", es.Name)
-			state.UpdateWithPhase(autoopsv1alpha1.ErrorPhase)
+			state.ResourceRBACError(es)
 			results.WithError(err)
 			continue
 		}
@@ -155,7 +155,7 @@ func (r *AgentPolicyReconciler) internalReconcile(
 		if es.Spec.HTTP.TLS.Enabled() {
 			if err := r.reconcileAutoOpsESCASecret(ctx, policy, es); err != nil {
 				log.Error(err, "while reconciling AutoOps ES CA secret")
-				state.MarkResourceError()
+				state.ResourceError(es, "Failed to create AutoOps ES CA secret", err)
 				results.WithError(err)
 				continue
 			}
@@ -164,7 +164,7 @@ func (r *AgentPolicyReconciler) internalReconcile(
 		apiKeySecret, err := r.reconcileAutoOpsESAPIKey(ctx, policy, es)
 		if err != nil {
 			log.Error(err, "while reconciling AutoOps ES API key")
-			state.MarkResourceError()
+			state.ResourceError(es, "Failed to create AutoOps ES API key", err)
 			results.WithError(err)
 			continue
 		}
@@ -172,7 +172,7 @@ func (r *AgentPolicyReconciler) internalReconcile(
 		configMap, err := ReconcileAutoOpsESConfigMap(ctx, r.Client, policy, es)
 		if err != nil {
 			log.Error(err, "while reconciling AutoOps ES config map")
-			state.MarkResourceError()
+			state.ResourceError(es, "Failed to create AutoOps ES config map", err)
 			results.WithError(err)
 			continue
 		}
@@ -180,7 +180,7 @@ func (r *AgentPolicyReconciler) internalReconcile(
 		configHash, err := buildConfigHash(ctx, *configMap, *apiKeySecret, r.Client, policy)
 		if err != nil {
 			log.Error(err, "while building config hash")
-			state.MarkResourceError()
+			state.ResourceError(es, "Failed to prepare AutoOps agent deployment", err)
 			results.WithError(err)
 			continue
 		}
@@ -188,7 +188,7 @@ func (r *AgentPolicyReconciler) internalReconcile(
 		deploymentParams, err := r.buildDeployment(configHash, policy, es)
 		if err != nil {
 			log.Error(err, "while getting deployment params")
-			state.MarkResourceError()
+			state.ResourceError(es, "Failed to build AutoOps agent deployment", err)
 			results.WithError(err)
 			continue
 		}
@@ -196,7 +196,7 @@ func (r *AgentPolicyReconciler) internalReconcile(
 		reconciledDeployment, err := deployment.Reconcile(ctx, r.Client, deploymentParams, &policy)
 		if err != nil {
 			log.Error(err, "while reconciling deployment")
-			state.MarkResourceError()
+			state.ResourceError(es, "Failed to reconcile AutoOps agent deployment", err)
 			results.WithError(err)
 			continue
 		}

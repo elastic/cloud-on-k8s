@@ -23,8 +23,9 @@ func init() {
 
 // AutoOpsAgentPolicy represents an Elastic AutoOps Policy resource in a Kubernetes cluster.
 // +kubebuilder:resource:categories=elastic,shortName=aop
-// +kubebuilder:printcolumn:name="Ready",type="string",JSONPath=".status.ready",description="Ready resources"
+// +kubebuilder:printcolumn:name="Ready",type="string",JSONPath=".status.readyCount",description="Ready resources"
 // +kubebuilder:printcolumn:name="Phase",type="string",JSONPath=".status.phase"
+// +kubebuilder:printcolumn:name="Message",type="string",JSONPath=".status.message"
 // +kubebuilder:printcolumn:name="Age",type="date",JSONPath=".metadata.creationTimestamp"
 // +kubebuilder:subresource:status
 // +kubebuilder:storageversion
@@ -100,10 +101,40 @@ type AutoOpsAgentPolicyStatus struct {
 	Ready int `json:"ready"`
 	// Errors is the number of resources that are in an error state.
 	Errors int `json:"errors"`
+	// Skipped is the number of resources that are skipped from monitoring due to rbac permissions.
+	Skipped int `json:"skipped,omitempty"`
+	// ReadyCount is a human readable string of ready monitored resources vs all monitored resources, Ready/Resources.
+	ReadyCount string `json:"readyCount,omitempty"`
+
 	// Phase is the phase of the AutoOpsAgentPolicy.
 	Phase PolicyPhase `json:"phase,omitempty"`
 	// ObservedGeneration is the most recent generation observed for this AutoOpsAgentPolicy.
 	ObservedGeneration int64 `json:"observedGeneration,omitempty"`
+
+	// Message is a human-readable summary of the status.
+	Message string `json:"message,omitempty"`
+
+	// Details contains lightweight per-resource details.
+	Details map[string]AutoOpsResourceStatus `json:"details,omitempty"`
+}
+
+// AutoOpsResourceStatus represents the status of an individual Elasticsearch resource
+// monitored by an AutoOpsAgentPolicy. It is used in the Details map of AutoOpsAgentPolicyStatus
+// to provide lightweight per-resource status information. Only resources that are not in a
+// ready state are included in the Details map; ready resources, and resources that were skipped by resource selector and namespace selector,
+// are omitted to reduce status size.
+type AutoOpsResourceStatus struct {
+	// Phase indicates the current state of the monitored resource.
+	// Possible values are "Error" (resource encountered an error) or "Skipped"
+	// (resource was skipped due to RBAC permissions).
+	Phase ResourcePhase `json:"phase"`
+	// Message provides a human-readable explanation of the current phase.
+	// Only populated for non-ready states to provide context about why
+	// the resource is not ready.
+	Message string `json:"message,omitempty"`
+	// Error contains the error message when the resource is in an error state.
+	// Only populated when Phase is "Error".
+	Error string `json:"error,omitempty"`
 }
 
 // PolicyPhase represents the current lifecycle phase of an AutoOpsAgentPolicy.
@@ -157,3 +188,15 @@ func (p PolicyPhase) Priority() int {
 func (p *AutoOpsAgentPolicy) IsMarkedForDeletion() bool {
 	return !p.DeletionTimestamp.IsZero()
 }
+
+// ResourcePhase represents the current state of an individual Elasticsearch resource
+// monitored by an AutoOpsAgentPolicy. It is used in [AutoOpsResourceStatus] to indicate
+// why a resource appears in the Details map.
+type ResourcePhase string
+
+const (
+	// ErrorResourcePhase indicates that the resource encountered an error during monitoring setup or operation.
+	ErrorResourcePhase ResourcePhase = "Error"
+	// SkippedResourcePhase indicates that the resource was skipped due to insufficient RBAC permissions.
+	SkippedResourcePhase ResourcePhase = "Skipped"
+)
