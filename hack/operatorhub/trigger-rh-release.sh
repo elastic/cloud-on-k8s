@@ -21,7 +21,7 @@ branch=$(sed -r "s|v([0-9]*\.[0-9]*)\..*|\1|" <<< "$ECK_VERSION")
 curl "https://api.buildkite.com/v2/organizations/elastic/pipelines/cloud-on-k8s-operator-redhat-release/builds" -XPOST \
     -H "Authorization: Bearer $BK_TOKEN" -d '
 {
-    "commit": "92d356d253323e283c58319db1de89053780924a",
+    "commit": "'"$ECK_VERSION"'",
     "branch": "'"$branch"'",
     "message": "release ECK '"$ECK_VERSION"' for OperatoHub/RedHat",
     "env": {
