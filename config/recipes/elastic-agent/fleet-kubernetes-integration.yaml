@@ -5,30 +5,11 @@ metadata:
 spec:
   version: 9.2.2
   count: 1
-  http:
-    tls:
-      selfSignedCertificate:
-        disabled: true
-    service:
-      spec:
-        type: NodePort
-        ports:
-        - port: 5601
-          targetPort: 5601
-          name: http
   elasticsearchRef:
     name: elasticsearch
   config:
-    xpack.fleet.agents.fleet_server.hosts: ["https://fleet-server-agent-http.elastic.svc:8220"]
-    xpack.fleet.outputs:
-    - id: eck-fleet-agent-output-elasticsearch
-      is_default: true
-      name: eck-elasticsearch
-      type: elasticsearch
-      hosts:
-      - "https://elasticsearch-es-http.elastic.svc:9200"
-      ssl:
-        certificate_authorities: ["/mnt/elastic-internal/elasticsearch-association/elastic/elasticsearch/certs/ca.crt"]
+    xpack.fleet.agents.elasticsearch.hosts: ["https://elasticsearch-es-http.default.svc:9200"]
+    xpack.fleet.agents.fleet_server.hosts: ["https://fleet-server-agent-http.default.svc:8220"]
     xpack.fleet.packages:
     - name: system
       version: latest
@@ -99,6 +80,8 @@ spec:
       spec:
         serviceAccountName: fleet-server
         automountServiceAccountToken: true
+        securityContext:
+          runAsUser: 0
 ---
 apiVersion: agent.k8s.elastic.co/v1alpha1
 kind: Agent
@@ -131,6 +114,8 @@ spec:
         hostNetwork: true
         dnsPolicy: ClusterFirstWithHostNet
         automountServiceAccountToken: true
+        securityContext:
+          runAsUser: 0
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
@@ -172,7 +157,7 @@ apiVersion: v1
 kind: ServiceAccount
 metadata:
   name: fleet-server
-  namespace: elastic
+  namespace: default
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding
@@ -181,7 +166,7 @@ metadata:
 subjects:
 - kind: ServiceAccount
   name: fleet-server
-  namespace: elastic
+  namespace: default
 roleRef:
   kind: ClusterRole
   name: fleet-server
@@ -267,7 +252,7 @@ apiVersion: v1
 kind: ServiceAccount
 metadata:
   name: elastic-agent
-  namespace: elastic
+  namespace: default
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding
@@ -276,7 +261,7 @@ metadata:
 subjects:
 - kind: ServiceAccount
   name: elastic-agent
-  namespace: elastic
+  namespace: default
 roleRef:
   kind: ClusterRole
   name: elastic-agent
