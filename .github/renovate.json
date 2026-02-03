@@ -60,7 +60,6 @@
         "digest"
       ],
       "enabled": true,
-      "automerge": true,
       "postUpdateOptions": [
         "gomodTidy"
       ],
@@ -74,7 +73,6 @@
         "major"
       ],
       "enabled": true,
-      "automerge": false,
       "postUpdateOptions": [
         "gomodTidy"
       ],
@@ -89,7 +87,6 @@
         "pin"
       ],
       "enabled": true,
-      "automerge": true,
       "postUpdateOptions": [
         "gomodTidy"
       ],
@@ -132,7 +129,5 @@
       "groupName": "go"
     }
   ],
-  "automergeStrategy": "squash",
-  "automergeType": "branch",
   "separateMajorMinor": true
 }
