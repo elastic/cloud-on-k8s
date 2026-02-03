@@ -19,31 +19,23 @@ get_image_digest() {
     local image_ref="$1"
     local digest
 
-    # Attempt to get the digest from the multi-arch manifest using docker manifest inspect which
-    # works with remote images without needing to pull the image.
-    if ! command -v docker >/dev/null 2>&1; then
-        echo "Error: docker command not found" >&2
+    # Get the multi-arch manifest list digest directly with crane.
+    if ! command -v crane >/dev/null 2>&1; then
+        echo "Error: crane command not found" >&2
         return 1
     fi
 
-    # Get raw manifest and compute its digest. We must take this approach as the docker build is a multi-arch build which contains manifests for both the amd64 and arm64 architectures.
-    local manifest
-    local stderr_file
-    stderr_file=$(mktemp)
-    if ! manifest=$(retry docker buildx imagetools inspect "$image_ref" --raw 2>"$stderr_file"); then
-        echo "Error: failed to inspect $image_ref" >&2
-        cat "$stderr_file" >&2
-        rm -f "$stderr_file"
-        return 1
-    fi
-    rm -f "$stderr_file"
-
-    if [[ -z "$manifest" || "$manifest" == "null" ]]; then
-        echo "Error: could not extract manifest from $image_ref" >&2
+    if ! digest=$(retry crane digest "$image_ref" 2>&1); then
+        echo "Error: failed to get digest for $image_ref" >&2
         return 1
     fi
 
-    echo "sha256:$(echo -n "$manifest" | sha256sum | cut -d' ' -f1)"
+    if [[ -z "$digest" || "$digest" == "null" ]]; then
+        echo "Error: could not extract digest from $image_ref" >&2
+        return 1
+    fi
+
+    echo "$digest"
 }
 
 main() {
