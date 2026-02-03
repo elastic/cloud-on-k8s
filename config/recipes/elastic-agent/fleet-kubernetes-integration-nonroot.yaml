@@ -1,71 +1,71 @@
 ---
-apiVersion: apps/v1
-kind: DaemonSet
-metadata:
-  name: manage-agent-hostpath-permissions
-spec:
-  selector:
-    matchLabels:
-      name: manage-agent-hostpath-permissions
-  template:
-    metadata:
-      labels:
-        name: manage-agent-hostpath-permissions
-    spec:
-      # This is only required when running in an SELinux-enabled/OpenShift environment.
-      # Ensure this user has been added to the privileged scc in the correct namespace.
-      # oc adm policy add-scc-to-user privileged -z elastic-agent -n elastic-apps
-      # serviceAccountName: elastic-agent
-      volumes:
-        - hostPath:
-            path: /var/lib/elastic-agent
-            type: DirectoryOrCreate
-          name: "agent-data"
-      initContainers:
-        - name: manage-agent-hostpath-permissions
-          # UBI is only required when needing the `chcon` binary when running
-          # in an SELinux-enabled/OpenShift environment. If that
-          # is not required then the following smaller image can be used instead:
-          # image: registry.access.redhat.com/ubi9/ubi-minimal:latest
-          image: docker.io/bash:5.2.15
-          resources:
-            limits:
-              cpu: 100m
-              memory: 32Mi
-          securityContext:
-            # privileged is only required when running in an SELinux-enabled/OpenShift environment.
-            # privileged: true
-            runAsUser: 0
-          volumeMounts:
-            - mountPath: /var/lib/elastic-agent
-              name: agent-data
-          command:
-          - 'bash'
-          - '-e'
-          - '-c'
-          - |-
-            # Adjust this be /var/lib/elastic-agent/YOUR-NAMESPACE/YOUR-AGENT-NAME/state
-            # Multiple directories are supported for the fleet-server + agent use case.
-            dirs=(
-              "/var/lib/elastic-agent/default/elastic-agent/state"
-              "/var/lib/elastic-agent/default/fleet-server/state"
-              )
-            for dir in ${dirs[@]}; do
-              mkdir -p "${dir}"
-              # chcon is only required when running an SELinux-enabled/OpenShift environment.
-              # chcon -Rt svirt_sandbox_file_t "${dir}"
-              chmod g+rw "${dir}"
-              chgrp 1000 "${dir}"
-              if [ -n "$(ls -A ${dir} 2>/dev/null)" ]
-              then
-                chgrp 1000 "${dir}"/*
-                chmod g+rw "${dir}"/*
-              fi
-            done
-      containers:
-        - name: pause
-          image: gcr.io/google-containers/pause-amd64:3.1
----
+# apiVersion: apps/v1
+# kind: DaemonSet
+# metadata:
+#   name: manage-agent-hostpath-permissions
+# spec:
+#   selector:
+#     matchLabels:
+#       name: manage-agent-hostpath-permissions
+#   template:
+#     metadata:
+#       labels:
+#         name: manage-agent-hostpath-permissions
+#     spec:
+#       # This is only required when running in an SELinux-enabled/OpenShift environment.
+#       # Ensure this user has been added to the privileged scc in the correct namespace.
+#       # oc adm policy add-scc-to-user privileged -z elastic-agent -n elastic-apps
+#       # serviceAccountName: elastic-agent
+#       volumes:
+#         - hostPath:
+#             path: /var/lib/elastic-agent
+#             type: DirectoryOrCreate
+#           name: "agent-data"
+#       initContainers:
+#         - name: manage-agent-hostpath-permissions
+#           # UBI is only required when needing the `chcon` binary when running
+#           # in an SELinux-enabled/OpenShift environment. If that
+#           # is not required then the following smaller image can be used instead:
+#           # image: registry.access.redhat.com/ubi9/ubi-minimal:latest
+#           image: docker.io/bash:5.2.15
+#           resources:
+#             limits:
+#               cpu: 100m
+#               memory: 32Mi
+#           securityContext:
+#             # privileged is only required when running in an SELinux-enabled/OpenShift environment.
+#             # privileged: true
+#             runAsUser: 0
+#           volumeMounts:
+#             - mountPath: /var/lib/elastic-agent
+#               name: agent-data
+#           command:
+#           - 'bash'
+#           - '-e'
+#           - '-c'
+#           - |-
+#             # Adjust this be /var/lib/elastic-agent/YOUR-NAMESPACE/YOUR-AGENT-NAME/state
+#             # Multiple directories are supported for the fleet-server + agent use case.
+#             dirs=(
+#               "/var/lib/elastic-agent/default/elastic-agent/state"
+#               "/var/lib/elastic-agent/default/fleet-server/state"
+#               )
+#             for dir in ${dirs[@]}; do
+#               mkdir -p "${dir}"
+#               # chcon is only required when running an SELinux-enabled/OpenShift environment.
+#               # chcon -Rt svirt_sandbox_file_t "${dir}"
+#               chmod g+rw "${dir}"
+#               chgrp 1000 "${dir}"
+#               if [ -n "$(ls -A ${dir} 2>/dev/null)" ]
+#               then
+#                 chgrp 1000 "${dir}"/*
+#                 chmod g+rw "${dir}"/*
+#               fi
+#             done
+#       containers:
+#         - name: pause
+#           image: gcr.io/google-containers/pause-amd64:3.1
+# ---
 apiVersion: kibana.k8s.elastic.co/v1
 kind: Kibana
 metadata:
@@ -76,15 +76,15 @@ spec:
   elasticsearchRef:
     name: elasticsearch
   config:
-    xpack.fleet.agents.fleet_server.hosts: ["https://fleet-server-agent-http.default.svc:8220"]
+    xpack.fleet.agents.fleet_server.hosts: ["https://fleet-server-agent-http.elastic.svc:8220"]
     xpack.fleet.outputs:
     - id: eck-fleet-agent-output-elasticsearch
       is_default: true
       name: eck-elasticsearch
       type: elasticsearch
-      hosts: ["https://elasticsearch-es-http.default.svc:9200"]
+      hosts: ["https://elasticsearch-es-http.elastic.svc:9200"]
       ssl:
-        certificate_authorities: ["/mnt/elastic-internal/elasticsearch-association/default/elasticsearch/certs/ca.crt"]
+        certificate_authorities: ["/mnt/elastic-internal/elasticsearch-association/elastic/elasticsearch/certs/ca.crt"]
     xpack.fleet.packages:
     - name: system
       version: latest
@@ -155,6 +155,17 @@ spec:
       spec:
         serviceAccountName: fleet-server
         automountServiceAccountToken: true
+        containers:
+        - name: agent
+          securityContext:
+            runAsNonRoot: true
+            capabilities:
+              drop:
+              - ALL
+              add:
+              - CHOWN
+              - DAC_READ_SEARCH
+              - SETPCAP
 ---
 apiVersion: agent.k8s.elastic.co/v1alpha1
 kind: Agent
@@ -175,6 +186,17 @@ spec:
         dnsPolicy: ClusterFirstWithHostNet
         serviceAccountName: elastic-agent
         automountServiceAccountToken: true
+        containers:
+        - name: agent
+          securityContext:
+            runAsNonRoot: true
+            capabilities:
+              drop:
+              - ALL
+              add:
+              - CHOWN
+              - DAC_READ_SEARCH
+              - SETPCAP
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
@@ -224,7 +246,7 @@ metadata:
 subjects:
 - kind: ServiceAccount
   name: fleet-server
-  namespace: default
+  namespace: elastic
 roleRef:
   kind: ClusterRole
   name: fleet-server
@@ -310,7 +332,7 @@ apiVersion: v1
 kind: ServiceAccount
 metadata:
   name: elastic-agent
-  namespace: default
+  namespace: elastic
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding
@@ -319,7 +341,7 @@ metadata:
 subjects:
 - kind: ServiceAccount
   name: elastic-agent
-  namespace: default
+  namespace: elastic
 roleRef:
   kind: ClusterRole
   name: elastic-agent

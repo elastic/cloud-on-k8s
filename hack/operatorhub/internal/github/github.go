@@ -161,6 +161,11 @@ func (c *Client) cloneAndCreate(repo githubRepository) error {
 		Auth: &git_http.BasicAuth{
 			Username: c.GitHubToken,
 		},
+		// See https://github.com/go-git/go-git/issues/315
+		// This is adding some optimizations to attempt to reduce memory usage.
+		ReferenceName: plumbing.NewBranchReferenceName(repo.mainBranchName),
+		SingleBranch:  true,
+		Tags:          git.NoTags,
 	})
 	if err != nil {
 		return fmt.Errorf("cloning (%s): %w", orgRepo, err)
