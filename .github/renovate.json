@@ -8,6 +8,12 @@
   "schedule": [
     "after 1am on monday"
   ],
+  "postUpgradeTasks": {
+    "commands": [
+      "make generate"
+    ],
+    "executionMode": "branch"
+  },
   "packageRules": [
     {
       "groupName": "k8s",
