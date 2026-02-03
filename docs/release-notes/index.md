@@ -15,15 +15,15 @@ Review the changes, fixes, and more in each release of Elastic Cloud on Kubernet
 
 #### AutoOps Integration (Enterprise feature)
 
-ECK now supports integration with Elastic AutoOps through a new `AutoOpsAgentPolicy` custom resource. This allows you to instrument multiple {{es}} clusters at once for automated health monitoring and performance recommendations. The [AutoOps documentation](https://www.elastic.co/docs/deploy-manage/monitor/autoops) provides more details.
+ECK now supports integration with Elastic AutoOps through a new `AutoOpsAgentPolicy` custom resource. This allows you to instrument multiple {{es}} clusters at once for automated health monitoring and performance recommendations. The [AutoOps documentation](https://www.elastic.co/docs/deploy-manage/monitor/autoops.md) provides more details.
 
 #### Elastic Package Registry Integration
 
-ECK now supports deploying and managing Elastic Package Registry (EPR) through a new `PackageRegistry` custom resource. This is particularly useful for air-gapped environments, enabling {{product.kibana}} to reference a self-hosted registry instead of the public one. The [package registry documentation](docs-content://deploy-manage/deploy/cloud-on-k8s/package-registry) provides more details.
+ECK now supports deploying and managing Elastic Package Registry (EPR) through a new `PackageRegistry` custom resource. This is particularly useful for air-gapped environments, enabling {{product.kibana}} to reference a self-hosted registry instead of the public one. The [package registry documentation](docs-content://deploy-manage/deploy/cloud-on-k8s/package-registry.md) provides more details.
 
 #### Multiple Stack Configuration Policies composition support (Enterprise feature)
 
-ECK now includes support for multiple Stack Config Policies targeting the same {{es}} cluster or {{product.kibana}} instance, using a weight-based priority system for deterministic policy composition. The [Stack Config Policy documentation](docs-content://deploy-manage/deploy/cloud-on-k8s/elastic-stack-configuration-policies) provides more details.
+ECK now includes support for multiple Stack Config Policies targeting the same {{es}} cluster or {{product.kibana}} instance, using a weight-based priority system for deterministic policy composition. The [Stack Config Policy documentation](docs-content://deploy-manage/deploy/cloud-on-k8s/elastic-stack-configuration-policies.md) provides more details.
 
 ### Features and enhancements [elastic-cloud-kubernetes-330-features-and-enhancements]
 
