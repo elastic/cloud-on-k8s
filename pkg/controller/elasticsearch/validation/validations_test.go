@@ -84,7 +84,7 @@ func Test_checkNodeSetNameUniqueness(t *testing.T) {
 }
 
 func Test_hasCorrectNodeRoles(t *testing.T) {
-	type m map[string]interface{}
+	type m map[string]any
 
 	esWithRoles := func(version string, count int32, nodeSetRoles ...m) esv1.Elasticsearch {
 		x := es(version)

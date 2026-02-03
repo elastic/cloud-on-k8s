@@ -36,13 +36,13 @@ var (
 func MonitoringConfig(kb kbv1.Kibana) commonv1.Config {
 	cfg := commonv1.Config{}
 	if monitoring.IsMetricsDefined(&kb) {
-		cfg.Data = map[string]interface{}{
+		cfg.Data = map[string]any{
 			MonitoringKibanaCollectionEnabled: false,
 		}
 	}
 	if monitoring.IsLogsDefined(&kb) {
 		if cfg.Data == nil {
-			cfg.Data = map[string]interface{}{}
+			cfg.Data = map[string]any{}
 		}
 		// configure the main Kibana log to be written to disk and stdout
 		cfg.Data[LoggingAppendersJSONFileAppenderType] = "rolling-file"

@@ -32,7 +32,6 @@ func reconcilePVCOwnerRefs(ctx context.Context, c k8s.Client, es esv1.Elasticsea
 	}
 
 	for _, pvc := range pvcs.Items {
-		pvc := pvc
 		hasOwner := k8s.HasOwner(&pvc, &es)
 		switch es.Spec.VolumeClaimDeletePolicyOrDefault() {
 		case esv1.DeleteOnScaledownOnlyPolicy:

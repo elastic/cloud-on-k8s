@@ -85,7 +85,7 @@ func Test_Driver_updateDesiredNodes(t *testing.T) {
 						withCPU("2222m", "3141m").
 						withMemory("2333Mi", "2333Mi").
 						withStorage("1Gi", "1Gi").pvcCreated(true).
-						withNodeCfg(map[string]interface{}{
+						withNodeCfg(map[string]any{
 							"node.roles":              []string{"master"},
 							"node.name":               "${POD_NAME}",
 							"path.data":               "/usr/share/elasticsearch/data",
@@ -98,7 +98,7 @@ func Test_Driver_updateDesiredNodes(t *testing.T) {
 					withCPU("", "1"). // Setting only limits is also fine.
 					withMemory("", "4Gi").
 					withStorage("10Gi", "50Gi").pvcCreated(true).
-					withNodeCfg(map[string]interface{}{
+					withNodeCfg(map[string]any{
 						"node.roles":              []string{"data", "ingest"},
 						"node.name":               "${POD_NAME}",
 						"path.data":               "/usr/share/elasticsearch/data",
@@ -131,7 +131,7 @@ func Test_Driver_updateDesiredNodes(t *testing.T) {
 						withCPU("2222m", "3141m").
 						withMemory("2333Mi", "2333Mi").
 						withStorage("1Gi", "1Gi").pvcCreated(true).
-						withNodeCfg(map[string]interface{}{
+						withNodeCfg(map[string]any{
 							"node.roles":              []string{"master"},
 							"node.name":               "${POD_NAME}",
 							"path.data":               "/usr/share/elasticsearch/data",
@@ -144,7 +144,7 @@ func Test_Driver_updateDesiredNodes(t *testing.T) {
 					withCPU("", "1"). // Setting only limits is also fine.
 					withMemory("", "4Gi").
 					withStorage("10Gi", "50Gi").pvcCreated(true).
-					withNodeCfg(map[string]interface{}{
+					withNodeCfg(map[string]any{
 						"node.roles":              []string{"data", "ingest"},
 						"node.name":               "${POD_NAME}",
 						"path.data":               "/usr/share/elasticsearch/data",
@@ -173,7 +173,7 @@ func Test_Driver_updateDesiredNodes(t *testing.T) {
 						withCPU("2222m", "3141m").
 						withMemory("2333Mi", "2333Mi").
 						withStorage("1Gi", "1Gi").pvcCreated(true).
-						withNodeCfg(map[string]interface{}{
+						withNodeCfg(map[string]any{
 							"node.roles":              []string{"master"},
 							"node.name":               "${POD_NAME}",
 							"path.data":               "/usr/share/elasticsearch/data",
@@ -186,7 +186,7 @@ func Test_Driver_updateDesiredNodes(t *testing.T) {
 					withCPU("", "1"). // Setting only limits is also fine.
 					withMemory("", "4Gi").
 					withStorage("10Gi", "50Gi").pvcCreated(true).
-					withNodeCfg(map[string]interface{}{
+					withNodeCfg(map[string]any{
 						"node.roles":              []string{"data", "ingest"},
 						"node.name":               "${POD_NAME}",
 						"path.data":               "/usr/share/elasticsearch/data",
@@ -215,7 +215,7 @@ func Test_Driver_updateDesiredNodes(t *testing.T) {
 						withCPU("2222m", "3141m").
 						withMemory("2333Mi", "2333Mi").
 						withStorage("1Gi", "1Gi").pvcCreated(true).
-						withNodeCfg(map[string]interface{}{
+						withNodeCfg(map[string]any{
 							"node.roles":              []string{"master"},
 							"node.name":               "${POD_NAME}",
 							"path.data":               "/usr/share/elasticsearch/data",
@@ -228,7 +228,7 @@ func Test_Driver_updateDesiredNodes(t *testing.T) {
 					withCPU("", "1").
 					withMemory("", "4Gi").
 					withStorage("10Gi", "50Gi").pvcCreated(true).
-					withNodeCfg(map[string]interface{}{
+					withNodeCfg(map[string]any{
 						"node.roles":              []string{"data", "ingest"},
 						"node.name":               "${POD_NAME}",
 						"path.data":               "/usr/share/elasticsearch/data",
@@ -260,7 +260,7 @@ func Test_Driver_updateDesiredNodes(t *testing.T) {
 						withMemory("2333Mi", "2333Mi").
 						withStorage("1Gi", "").
 						pvcCreated(false). // PVC does not exist yet
-						withNodeCfg(map[string]interface{}{
+						withNodeCfg(map[string]any{
 							"node.roles":              []string{"master"},
 							"node.name":               "${POD_NAME}",
 							"path.data":               "/usr/share/elasticsearch/data",
@@ -274,7 +274,7 @@ func Test_Driver_updateDesiredNodes(t *testing.T) {
 					withMemory("", "4Gi").
 					withStorage("50Gi", "").
 					pvcCreated(false). // PVC does not exist yet
-					withNodeCfg(map[string]interface{}{
+					withNodeCfg(map[string]any{
 						"node.roles":              []string{"data", "ingest"},
 						"node.name":               "${POD_NAME}",
 						"path.data":               "/usr/share/elasticsearch/data",
@@ -306,7 +306,7 @@ func Test_Driver_updateDesiredNodes(t *testing.T) {
 						withCPU("2222m", "3141m").
 						withMemory("2333Mi", "2333Mi").
 						withStorage("1Gi", "" /* No capacity in PVC status */).pvcCreated(true).
-						withNodeCfg(map[string]interface{}{
+						withNodeCfg(map[string]any{
 							"node.roles":              []string{"master"},
 							"node.name":               "${POD_NAME}",
 							"path.data":               "/usr/share/elasticsearch/data",
@@ -319,7 +319,7 @@ func Test_Driver_updateDesiredNodes(t *testing.T) {
 					withCPU("", "1").
 					withMemory("", "4Gi").
 					withStorage("50Gi", "" /* No capacity in PVC status */).pvcCreated(true).
-					withNodeCfg(map[string]interface{}{
+					withNodeCfg(map[string]any{
 						"node.roles":              []string{"data", "ingest"},
 						"node.name":               "${POD_NAME}",
 						"path.data":               "/usr/share/elasticsearch/data",
@@ -351,7 +351,7 @@ func Test_Driver_updateDesiredNodes(t *testing.T) {
 						withCPU("2", "4").
 						withMemory("2Gi", "2Gi").
 						withStorage("1Gi", "1Gi").
-						withNodeCfg(map[string]interface{}{
+						withNodeCfg(map[string]any{
 							"path.data": []string{"/usr/share/elasticsearch/data1", "/usr/share/elasticsearch/data2"},
 						}),
 				),
@@ -377,7 +377,7 @@ func Test_Driver_updateDesiredNodes(t *testing.T) {
 						withMemory("2Gi", "2Gi").
 						withStorage("1Gi", "1Gi").
 						pvcCreated(true).
-						withNodeCfg(map[string]interface{}{
+						withNodeCfg(map[string]any{
 							"path.data": "/usr/share/elasticsearch/data",
 						}),
 				),
@@ -405,7 +405,7 @@ func Test_Driver_updateDesiredNodes(t *testing.T) {
 						withMemory("2Gi", "2Gi").
 						withStorage("1Gi", "1Gi").
 						pvcCreated(true).
-						withNodeCfg(map[string]interface{}{
+						withNodeCfg(map[string]any{
 							"path.data": "/usr/share/elasticsearch/data",
 						}),
 				),
@@ -431,7 +431,7 @@ func Test_Driver_updateDesiredNodes(t *testing.T) {
 						withCPU("0", "").
 						withMemory("0", "0").
 						withStorage("1Gi", "1Gi").
-						withNodeCfg(map[string]interface{}{
+						withNodeCfg(map[string]any{
 							"path.data": "/usr/share/elasticsearch/data",
 						}),
 				),
@@ -702,7 +702,7 @@ func (esb esBuilder) withNodeSet(fn fakeNodeSet) esBuilder {
 type fakeNodeSet struct {
 	name                       string
 	count                      int32
-	nodeConfig                 map[string]interface{}
+	nodeConfig                 map[string]any
 	cpuRequest, cpuLimit       *resource.Quantity
 	memoryRequest, memoryLimit *resource.Quantity
 
@@ -755,7 +755,7 @@ func nodeSet(name string, count int32) fakeNodeSet {
 	}
 }
 
-func (fn fakeNodeSet) withNodeCfg(cfg map[string]interface{}) fakeNodeSet {
+func (fn fakeNodeSet) withNodeCfg(cfg map[string]any) fakeNodeSet {
 	fn.nodeConfig = cfg
 	return fn
 }

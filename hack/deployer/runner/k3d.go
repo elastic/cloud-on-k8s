@@ -131,7 +131,7 @@ func (k *K3dDriver) delete() error {
 }
 
 func (k *K3dDriver) cmd(args ...string) *exec.Command {
-	params := map[string]interface{}{
+	params := map[string]any{
 		"ClusterName":    k.plan.ClusterName,
 		"SharedVolume":   env.SharedVolumeName(),
 		"K3dClientImage": k.clientImage,

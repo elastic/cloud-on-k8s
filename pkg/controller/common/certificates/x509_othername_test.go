@@ -60,11 +60,11 @@ func BenchmarkParseSANGeneralNames3WithDNS3(b *testing.B) {
 
 //nolint:thelper
 func benchmarkParseSANGeneralNames(b *testing.B, otherNames, dnsNames int) {
-	var generalNames []GeneralName
-	for i := 0; i < otherNames; i++ {
+	generalNames := make([]GeneralName, 0, otherNames+dnsNames)
+	for range otherNames {
 		generalNames = append(generalNames, GeneralName{OtherName: helloOtherName})
 	}
-	for i := 0; i < dnsNames; i++ {
+	for range dnsNames {
 		generalNames = append(generalNames, dnsName)
 	}
 
@@ -85,7 +85,7 @@ func benchmarkParseSANGeneralNames(b *testing.B, otherNames, dnsNames int) {
 }
 
 func BenchmarkOtherName_ToUTF8StringValuedOtherName(b *testing.B) {
-	for n := 0; n < b.N; n++ {
+	for b.Loop() {
 		_, err := helloOtherName.ToUTF8StringValuedOtherName()
 		require.NoError(b, err)
 	}
@@ -93,7 +93,6 @@ func BenchmarkOtherName_ToUTF8StringValuedOtherName(b *testing.B) {
 
 func ExampleMarshalToSubjectAlternativeNamesData() {
 	otherName, err := (&UTF8StringValuedOtherName{OID: CommonNameObjectIdentifier, Value: "foo"}).ToOtherName()
-
 	if err != nil {
 		panic(err)
 	}

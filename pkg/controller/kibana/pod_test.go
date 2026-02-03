@@ -232,8 +232,8 @@ func TestNewPodTemplateSpec(t *testing.T) {
 			name: "with user-provided basePath in spec config",
 			kb: kbv1.Kibana{Spec: kbv1.KibanaSpec{
 				Config: &commonv1.Config{
-					Data: map[string]interface{}{
-						"server": map[string]interface{}{
+					Data: map[string]any{
+						"server": map[string]any{
 							"basePath":        "/monitoring/kibana",
 							"rewriteBasePath": true,
 						},
@@ -250,7 +250,7 @@ func TestNewPodTemplateSpec(t *testing.T) {
 			name: "with user-provided basePath in spec config flattened",
 			kb: kbv1.Kibana{Spec: kbv1.KibanaSpec{
 				Config: &commonv1.Config{
-					Data: map[string]interface{}{
+					Data: map[string]any{
 						"server.basePath":        "/monitoring/kibana",
 						"server.rewriteBasePath": true,
 					},
@@ -295,8 +295,8 @@ func TestNewPodTemplateSpec(t *testing.T) {
 			name: "with user-provided basePath in spec config but rewriteBasePath not set",
 			kb: kbv1.Kibana{Spec: kbv1.KibanaSpec{
 				Config: &commonv1.Config{
-					Data: map[string]interface{}{
-						"server": map[string]interface{}{
+					Data: map[string]any{
+						"server": map[string]any{
 							"basePath": "/monitoring/kibana",
 						},
 					},
@@ -337,8 +337,8 @@ func TestNewPodTemplateSpec(t *testing.T) {
 			name: "with user-provided basePath in spec pod template and spec config, env var in pod template should take precedence",
 			kb: kbv1.Kibana{Spec: kbv1.KibanaSpec{
 				Config: &commonv1.Config{
-					Data: map[string]interface{}{
-						"server": map[string]interface{}{
+					Data: map[string]any{
+						"server": map[string]any{
 							"basePath":        "/monitoring/kibana/spec",
 							"rewriteBasePath": true,
 						},

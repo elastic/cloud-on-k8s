@@ -40,7 +40,6 @@ func GarbageCollectPVCs(
 		return err
 	}
 	for _, pvc := range pvcsToRemove(pvcs.Items, actualStatefulSets, expectedStatefulSets) {
-		pvc := pvc
 		ulog.FromContext(ctx).Info("Deleting PVC", "namespace", pvc.Namespace, "pvc_name", pvc.Name)
 		if err := k8sClient.Delete(ctx, &pvc); err != nil {
 			return err

@@ -147,6 +147,7 @@ linters:
     - ineffassign
     - makezero
     - misspell
+    - modernize
     - nakedret
     - nestif
     - nilerr

@@ -199,7 +199,7 @@ func (b Builder) GetMetricsIndexPattern() string {
 	return ".monitoring-logstash-8-mb"
 }
 
-func (b Builder) WithConfig(config map[string]interface{}) Builder {
+func (b Builder) WithConfig(config map[string]any) Builder {
 	b.Logstash.Spec.Config = &commonv1.Config{
 		Data: config,
 	}
@@ -254,7 +254,7 @@ func (b Builder) Kind() string {
 	return logstashv1alpha1.Kind
 }
 
-func (b Builder) Spec() interface{} {
+func (b Builder) Spec() any {
 	return b.Logstash.Spec
 }
 

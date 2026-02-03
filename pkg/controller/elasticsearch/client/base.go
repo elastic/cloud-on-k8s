@@ -90,15 +90,15 @@ func (c *baseClient) doRequest(context context.Context, request *http.Request) (
 	return response, nil
 }
 
-func (c *baseClient) get(ctx context.Context, pathWithQuery string, out interface{}) error {
+func (c *baseClient) get(ctx context.Context, pathWithQuery string, out any) error {
 	return c.request(ctx, http.MethodGet, pathWithQuery, nil, out, nil)
 }
 
-func (c *baseClient) put(ctx context.Context, pathWithQuery string, in, out interface{}) error {
+func (c *baseClient) put(ctx context.Context, pathWithQuery string, in, out any) error {
 	return c.request(ctx, http.MethodPut, pathWithQuery, in, out, nil)
 }
 
-func (c *baseClient) post(ctx context.Context, pathWithQuery string, in, out interface{}) error {
+func (c *baseClient) post(ctx context.Context, pathWithQuery string, in, out any) error {
 	return c.request(ctx, http.MethodPost, pathWithQuery, in, out, nil)
 }
 
@@ -106,7 +106,7 @@ func (c *baseClient) delete(ctx context.Context, pathWithQuery string) error {
 	return c.request(ctx, http.MethodDelete, pathWithQuery, nil, nil, nil)
 }
 
-func (c *baseClient) deleteWithObjects(ctx context.Context, pathWithQuery string, in, out interface{}) error {
+func (c *baseClient) deleteWithObjects(ctx context.Context, pathWithQuery string, in, out any) error {
 	return c.request(ctx, http.MethodDelete, pathWithQuery, in, out, nil)
 }
 
@@ -120,7 +120,7 @@ func (c *baseClient) request(
 	method string,
 	pathWithQuery string,
 	requestObj,
-	responseObj interface{},
+	responseObj any,
 	skipErrFunc func(error) bool,
 ) error {
 	var body io.Reader = http.NoBody

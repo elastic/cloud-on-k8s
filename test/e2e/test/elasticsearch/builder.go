@@ -6,6 +6,7 @@ package elasticsearch
 
 import (
 	"fmt"
+	"maps"
 	"reflect"
 	"strings"
 
@@ -277,7 +278,7 @@ func (b Builder) WithESMasterDataNodes(count int, resources corev1.ResourceRequi
 }
 
 func (b Builder) WithESCoordinatingNodes(count int, resources corev1.ResourceRequirements) Builder {
-	cfg := map[string]interface{}{}
+	cfg := map[string]any{}
 	v := version.MustParse(b.Elasticsearch.Spec.Version)
 
 	if v.GTE(version.From(7, 9, 0)) {
@@ -321,7 +322,7 @@ func (b Builder) WithNodeSet(nodeSet esv1.NodeSet) Builder {
 	// Make sure the config specifies "node.store.allow_mmap: false".
 	// We disable mmap to avoid having to set the vm.max_map_count sysctl on test k8s nodes.
 	if nodeSet.Config == nil {
-		nodeSet.Config = &commonv1.Config{Data: map[string]interface{}{}}
+		nodeSet.Config = &commonv1.Config{Data: map[string]any{}}
 	}
 	nodeSet.Config.Data["node.store.allow_mmap"] = false
 	// helpful to debug test failures with red cluster health
@@ -434,14 +435,12 @@ func (b Builder) WithPodTemplate(pt corev1.PodTemplateSpec) Builder {
 	return b
 }
 
-func (b Builder) WithAdditionalConfig(nodeSetCfg map[string]map[string]interface{}) Builder {
+func (b Builder) WithAdditionalConfig(nodeSetCfg map[string]map[string]any) Builder {
 	newNodeSets := make([]esv1.NodeSet, 0, len(b.Elasticsearch.Spec.NodeSets))
 	for _, n := range b.Elasticsearch.Spec.NodeSets {
 		if cfg, exists := nodeSetCfg[n.Name]; exists {
 			newCfg := n.Config.DeepCopy()
-			for k, v := range cfg {
-				newCfg.Data[k] = v
-			}
+			maps.Copy(newCfg.Data, cfg)
 			n.Config = newCfg
 		}
 		newNodeSets = append(newNodeSets, n)
@@ -595,31 +594,31 @@ func (b Builder) TriggersRollingUpgrade() bool {
 	return false
 }
 
-func MixedRolesCfg(ver string) map[string]interface{} {
+func MixedRolesCfg(ver string) map[string]any {
 	return roleCfg(ver, []esv1.NodeRole{esv1.MasterRole, esv1.DataRole}, map[string]bool{
 		esv1.NodeMaster: true,
 		esv1.NodeData:   true,
 	})
 }
 
-func DataRoleCfg(ver string) map[string]interface{} {
+func DataRoleCfg(ver string) map[string]any {
 	return roleCfg(ver, []esv1.NodeRole{esv1.DataRole}, map[string]bool{
 		esv1.NodeMaster: false,
 		esv1.NodeData:   true,
 	})
 }
 
-func MasterRoleCfg(ver string) map[string]interface{} {
+func MasterRoleCfg(ver string) map[string]any {
 	return roleCfg(ver, []esv1.NodeRole{esv1.MasterRole}, map[string]bool{
 		esv1.NodeMaster: true,
 		esv1.NodeData:   false,
 	})
 }
 
-func roleCfg(ver string, post78roles []esv1.NodeRole, pre79roles map[string]bool) map[string]interface{} {
+func roleCfg(ver string, post78roles []esv1.NodeRole, pre79roles map[string]bool) map[string]any {
 	v := version.MustParse(ver)
 
-	cfg := map[string]interface{}{}
+	cfg := map[string]any{}
 	if v.GTE(version.From(7, 9, 0)) {
 		cfg[esv1.NodeRoles] = post78roles
 	} else {

@@ -47,17 +47,17 @@ func newEventLogger(client *kubernetes.Clientset, testCtx test.Context, logFileP
 	}
 
 	_, _ = el.eventInformer.AddEventHandler(cache.ResourceEventHandlerFuncs{
-		AddFunc: func(obj interface{}) {
+		AddFunc: func(obj any) {
 			if key, err := cache.MetaNamespaceKeyFunc(obj); err == nil {
 				el.eventQueue.Add(key)
 			}
 		},
-		DeleteFunc: func(obj interface{}) {
+		DeleteFunc: func(obj any) {
 			if key, err := cache.DeletionHandlingMetaNamespaceKeyFunc(obj); err == nil {
 				el.eventQueue.Add(key)
 			}
 		},
-		UpdateFunc: func(oldObj, newObj interface{}) {
+		UpdateFunc: func(oldObj, newObj any) {
 			if key, err := cache.MetaNamespaceKeyFunc(newObj); err == nil {
 				el.eventQueue.Add(key)
 			}

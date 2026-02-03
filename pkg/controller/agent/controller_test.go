@@ -6,6 +6,7 @@ package agent
 
 import (
 	"context"
+	"maps"
 	"reflect"
 	"testing"
 
@@ -232,9 +233,7 @@ func TestReconcileAgent_Reconcile(t *testing.T) {
 
 func addLabel(labels map[string]string, key, value string) map[string]string {
 	newLabels := make(map[string]string, len(labels))
-	for k, v := range labels {
-		newLabels[k] = v
-	}
+	maps.Copy(newLabels, labels)
 	newLabels[key] = value
 	return newLabels
 }

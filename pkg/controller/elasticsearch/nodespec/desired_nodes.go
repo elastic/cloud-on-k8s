@@ -257,7 +257,7 @@ func (l ResourcesList) ToDesiredNodes(
 				envNamespace, sts.Namespace,
 				envHeadlessServiceName, resources.HeadlessService.Name,
 			)
-			var settings map[string]interface{}
+			var settings map[string]any
 			if err := resources.Config.CanonicalConfig.Unpack(&settings); err != nil {
 				return nil, false, err
 			}
@@ -280,9 +280,9 @@ func (l ResourcesList) ToDesiredNodes(
 }
 
 // visit recursively visits a map holding a tree structure and apply a function to nodes that hold a string.
-func visit(keys []string, m map[string]interface{}, apply func(string) string) {
+func visit(keys []string, m map[string]any, apply func(string) string) {
 	for k, v := range m {
-		if childMap, isMap := v.(map[string]interface{}); isMap {
+		if childMap, isMap := v.(map[string]any); isMap {
 			visit(append(keys, k), childMap, apply)
 		}
 		if value, isString := v.(string); isString {
@@ -310,5 +310,5 @@ func getClaimedStorage(claim corev1.PersistentVolumeClaim) *int64 {
 
 // pathSetting captures secrets settings in the Elasticsearch configuration that we want to reuse.
 type pathSetting struct {
-	PathData interface{} `config:"path.data"`
+	PathData any `config:"path.data"`
 }
