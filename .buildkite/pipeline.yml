@@ -203,8 +203,6 @@ steps:
           steps:
             - trigger: unified-release-container-image-signing
               build:
-                # TODO: remove this once the fix is merged
-                branch: fix-sign-container-service
                 env:
                   IMAGES_TAG: "$${IMAGES_TAG_VALUE}"
                   UPLOAD_SIGNATURE: "true"
