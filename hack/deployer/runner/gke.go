@@ -426,8 +426,7 @@ func (d *GKEDriver) waitForClusterOperations() error {
 func (d *GKEDriver) delete() error {
 	// Retry deletion up to 3 times to handle transient failures. GKE cluster deletion can fail
 	// due to race conditions where new operations start between our check and delete attempt,
-	// or due to temporary API errors. A 30-second delay between retries allows time for
-	// short-lived operations to complete.
+	// or due to temporary API errors.
 	const maxDeleteAttempts = 3
 	var lastErr error
 
