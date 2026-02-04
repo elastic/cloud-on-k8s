@@ -219,9 +219,8 @@ func (k *KindDriver) cmd(args ...string) *exec.Command {
 		-v {{.SharedVolume}}:/home \
 		-v /var/run/docker.sock:` + k.dockerSocket + ` \
 		-e HOME=/home \
-		-e PATH=/ \
 		{{.KindClientImage}} \
-		/kind {{Join .Args " "}} --name {{.ClusterName}}`)
+		kind {{Join .Args " "}} --name {{.ClusterName}}`)
 	return cmd.AsTemplate(params)
 }
 
