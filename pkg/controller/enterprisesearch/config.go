@@ -292,7 +292,7 @@ func inAddrAnyFor(ipFamily corev1.IPFamily) string {
 }
 
 func defaultConfig(ent entv1.EnterpriseSearch, ipFamily corev1.IPFamily) (*settings.CanonicalConfig, error) {
-	settingsMap := map[string]interface{}{
+	settingsMap := map[string]any{
 		"ent_search.external_url":        fmt.Sprintf("%s://localhost:%d", ent.Spec.HTTP.Protocol(), HTTPPort),
 		"ent_search.listen_host":         inAddrAnyFor(ipFamily),
 		"filebeat_log_directory":         LogVolumeMountPath,
@@ -347,7 +347,7 @@ func associationConfig(ctx context.Context, c k8s.Client, ent entv1.EnterpriseSe
 	}
 
 	if entAssocConf.GetCACertProvided() {
-		if err := cfg.MergeWith(settings.MustCanonicalConfig(map[string]interface{}{
+		if err := cfg.MergeWith(settings.MustCanonicalConfig(map[string]any{
 			"elasticsearch.ssl.enabled":               true,
 			"elasticsearch.ssl.certificate_authority": filepath.Join(ESCertsPath, certificates.CAFileName),
 		})); err != nil {
@@ -362,7 +362,7 @@ func tlsConfig(ent entv1.EnterpriseSearch) *settings.CanonicalConfig {
 		return settings.NewCanonicalConfig()
 	}
 	certsDir := certificates.HTTPCertSecretVolume(entv1.Namer, ent.Name).VolumeMount().MountPath
-	return settings.MustCanonicalConfig(map[string]interface{}{
+	return settings.MustCanonicalConfig(map[string]any{
 		"ent_search.ssl.enabled":                 true,
 		"ent_search.ssl.certificate":             filepath.Join(certsDir, certificates.CertFileName),
 		"ent_search.ssl.key":                     filepath.Join(certsDir, certificates.KeyFileName),

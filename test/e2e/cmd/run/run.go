@@ -64,6 +64,7 @@ func doRun(flags runFlags) error {
 			helper.createScratchDir,
 			helper.initTestContext,
 			helper.installCRDs,
+			helper.createE2ENamespaceAndRoleBindings,
 			helper.createRoles,
 			helper.createManagedNamespaces,
 			helper.deploySecurityConstraints,
@@ -719,7 +720,7 @@ func stdTimestampParser(line []byte) (time.Time, error) {
 	return timestamp, nil
 }
 
-func (h *helper) kubectlApplyTemplate(templatePath string, templateParam interface{}) (string, error) {
+func (h *helper) kubectlApplyTemplate(templatePath string, templateParam any) (string, error) {
 	outFilePath, err := h.renderTemplate(templatePath, templateParam)
 	if err != nil {
 		return "", err
@@ -729,7 +730,7 @@ func (h *helper) kubectlApplyTemplate(templatePath string, templateParam interfa
 	return outFilePath, err
 }
 
-func (h *helper) kubectlApplyTemplateWithCleanup(templatePath string, templateParam interface{}) error {
+func (h *helper) kubectlApplyTemplateWithCleanup(templatePath string, templateParam any) error {
 	resourceFile, err := h.kubectlApplyTemplate(templatePath, templateParam)
 	if err != nil {
 		return err
@@ -769,7 +770,7 @@ func (h *helper) exec(cmd *command.Command) (string, string, error) {
 	return outString, string(stdErr), nil
 }
 
-func (h *helper) renderTemplate(templatePath string, param interface{}) (string, error) {
+func (h *helper) renderTemplate(templatePath string, param any) (string, error) {
 	tmpl, err := template.New(filepath.Base(templatePath)).Funcs(sprig.TxtFuncMap()).ParseFiles(templatePath)
 	if err != nil {
 		return "", errors.Wrapf(err, "failed to parse template at %s", templatePath)

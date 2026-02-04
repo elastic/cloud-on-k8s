@@ -60,7 +60,7 @@ func ExistsCmd(cmd *exec.Command) (bool, error) {
 }
 
 func Cmd(args ...string) *exec.Command {
-	params := map[string]interface{}{
+	params := map[string]any{
 		"SharedVolume": env.SharedVolumeName(),
 		"ClientImage":  azureClientImage,
 		"Args":         args,

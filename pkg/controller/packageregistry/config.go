@@ -83,9 +83,9 @@ func inlineUserConfig(cfg *commonv1.Config) (*settings.CanonicalConfig, error) {
 }
 
 func defaultConfig() *settings.CanonicalConfig {
-	return settings.MustCanonicalConfig(map[string]interface{}{
+	return settings.MustCanonicalConfig(map[string]any{
 		"package_paths": []string{"/packages/package-registry", "/packages/package-storage"},
-		"cache_time": map[string]interface{}{
+		"cache_time": map[string]any{
 			"index":      "10s",
 			"search":     "10m",
 			"categories": "10m",

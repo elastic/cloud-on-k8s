@@ -50,7 +50,7 @@ func NewCanonicalConfigFrom(data untypedDict) (*CanonicalConfig, error) {
 
 // MustCanonicalConfig creates a new config and panics on errors.
 // Use for testing only.
-func MustCanonicalConfig(cfg interface{}) *CanonicalConfig {
+func MustCanonicalConfig(cfg any) *CanonicalConfig {
 	config, err := ucfg.NewFrom(cfg, Options...)
 	if err != nil {
 		panic(err)
@@ -124,7 +124,7 @@ func (c *CanonicalConfig) String(key string) (string, error) {
 }
 
 // Unpack returns a typed config given a struct pointer.
-func (c *CanonicalConfig) Unpack(cfg interface{}) error {
+func (c *CanonicalConfig) Unpack(cfg any) error {
 	if reflect.ValueOf(cfg).Kind() != reflect.Ptr {
 		panic("Unpack expects a struct pointer as argument")
 	}
@@ -184,7 +184,7 @@ func (c *CanonicalConfig) Render() ([]byte, error) {
 	return yaml.Marshal(out)
 }
 
-type untypedDict = map[string]interface{}
+type untypedDict = map[string]any
 
 // Diff returns the flattened keys where c and c2 differ.
 func (c *CanonicalConfig) Diff(c2 *CanonicalConfig, ignore []string) []string {
@@ -259,7 +259,7 @@ func diffMap(c1, c2 untypedDict, key string) []string {
 				diff = append(diff, newKey)
 			}
 			diff = append(diff, diffMap(l, r, newKey)...)
-		case []interface{}:
+		case []any:
 			l, r, err := asUntypedSlice(v, v2)
 			if err != nil {
 				diff = append(diff, newKey)
@@ -274,7 +274,7 @@ func diffMap(c1, c2 untypedDict, key string) []string {
 	return diff
 }
 
-func diffSlice(s, s2 []interface{}, key string) []string {
+func diffSlice(s, s2 []any, key string) []string {
 	// invariant: keys match
 	// invariant: s,s2 are json-style arrays/slices i.e no structs no pointers
 	if len(s) != len(s2) {
@@ -291,7 +291,7 @@ func diffSlice(s, s2 []interface{}, key string) []string {
 				diff = append(diff, newKey)
 			}
 			diff = append(diff, diffMap(l, r, newKey)...)
-		case []interface{}:
+		case []any:
 			l, r, err := asUntypedSlice(v, v2)
 			if err != nil {
 				diff = append(diff, newKey)
@@ -306,7 +306,7 @@ func diffSlice(s, s2 []interface{}, key string) []string {
 	return diff
 }
 
-func asUntypedDict(l, r interface{}) (untypedDict, untypedDict, error) {
+func asUntypedDict(l, r any) (untypedDict, untypedDict, error) {
 	lhs, ok := l.(untypedDict)
 	rhs, ok2 := r.(untypedDict)
 	if !ok || !ok2 {
@@ -315,9 +315,9 @@ func asUntypedDict(l, r interface{}) (untypedDict, untypedDict, error) {
 	return lhs, rhs, nil
 }
 
-func asUntypedSlice(l, r interface{}) ([]interface{}, []interface{}, error) {
-	lhs, ok := l.([]interface{})
-	rhs, ok2 := r.([]interface{})
+func asUntypedSlice(l, r any) ([]any, []any, error) {
+	lhs, ok := l.([]any)
+	rhs, ok2 := r.([]any)
 	if !ok || !ok2 {
 		return nil, nil, errors.Errorf("slice assertion failed for l: %t r: %t", ok, ok2)
 	}

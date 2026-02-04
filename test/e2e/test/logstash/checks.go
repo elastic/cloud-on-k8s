@@ -219,7 +219,7 @@ func (b Builder) CheckMetricsRequest(k *test.K8sClient, req Request, want Want) 
 				return err
 			}
 
-			var response map[string]interface{}
+			var response map[string]any
 			err = json.Unmarshal(bytes, &response)
 			if err != nil {
 				return err

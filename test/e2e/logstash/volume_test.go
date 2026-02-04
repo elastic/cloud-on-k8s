@@ -25,7 +25,6 @@ import (
 	"github.com/elastic/cloud-on-k8s/v3/test/e2e/test/logstash"
 )
 
-
 // TestVolumeExpansion resizes an existing pvc and ensures Logstash
 // correctly reports the resized filesystem.
 func TestVolumeExpansionLogstash(t *testing.T) {
@@ -42,7 +41,6 @@ func TestVolumeExpansionLogstash(t *testing.T) {
 	patchStorageClasses(&b.Logstash, storageClass)
 
 	ssetName := lsv1.Name(b.Logstash.Name)
-
 
 	// resize the volume with an additional 1Gi after the cluster is up
 	initialStorageSize := b.Logstash.Spec.VolumeClaimTemplates[0].Spec.Resources.Requests.Storage()

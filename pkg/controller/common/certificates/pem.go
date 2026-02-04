@@ -74,7 +74,7 @@ func EncodePEMPrivateKey(privateKey crypto.Signer) ([]byte, error) {
 	return pem.EncodeToMemory(pemBlock), nil
 }
 
-func pemBlockForKey(privateKey interface{}) (*pem.Block, error) {
+func pemBlockForKey(privateKey any) (*pem.Block, error) {
 	switch k := privateKey.(type) {
 	case *rsa.PrivateKey:
 		return &pem.Block{Type: pkcs1PrivateKeyType, Bytes: x509.MarshalPKCS1PrivateKey(k)}, nil
@@ -103,7 +103,7 @@ func ParsePEMPrivateKey(pemData []byte) (crypto.Signer, error) {
 	}
 
 	switch {
-	case x509.IsEncryptedPEMBlock(block): //nolint:staticcheck
+	case x509.IsEncryptedPEMBlock(block): //nolint:staticcheck // ignore deprecation
 		// Private key is encrypted, do not attempt to parse it
 		return nil, ErrEncryptedPrivateKey
 	case block.Type == pkcs8PrivateKeyType:

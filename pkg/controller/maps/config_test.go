@@ -52,7 +52,7 @@ ssl:
 			args: args{
 				runtimeObjs: nil,
 				ems: v1alpha1.ElasticMapsServer{
-					Spec: v1alpha1.MapsSpec{Config: &commonv1.Config{Data: map[string]interface{}{
+					Spec: v1alpha1.MapsSpec{Config: &commonv1.Config{Data: map[string]any{
 						"ui": false,
 					}}},
 				},
@@ -87,7 +87,7 @@ ui: false
 			name: "configRef takes precedence",
 			args: args{
 				runtimeObjs: []client.Object{secretWithConfig("cfg", []byte("ui: true"))},
-				ems: emsWithConfigRef("cfg", &commonv1.Config{Data: map[string]interface{}{
+				ems: emsWithConfigRef("cfg", &commonv1.Config{Data: map[string]any{
 					"ui": false,
 				}}),
 				ipFamily: corev1.IPv4Protocol,

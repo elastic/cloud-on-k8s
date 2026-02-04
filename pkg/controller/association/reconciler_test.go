@@ -1360,7 +1360,6 @@ func checkSecrets(t *testing.T, client k8s.Client, expected bool, withOwnerRefs 
 	t.Helper()
 	for _, expectedSecrets := range secrets {
 		for _, expectedSecret := range expectedSecrets {
-			expectedSecret := expectedSecret
 			var got corev1.Secret
 			err := client.Get(context.Background(), k8s.ExtractNamespacedName(&expectedSecret), &got)
 			if !expected {

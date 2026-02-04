@@ -73,10 +73,7 @@ func calculateRemovalsAllowed(nodesReady, desiredNodes int32, maxUnavailable *in
 	}
 
 	minAvailable := desiredNodes - *maxUnavailable
-	removalsAllowed := nodesReady - minAvailable
-	if removalsAllowed < 0 {
-		removalsAllowed = 0
-	}
+	removalsAllowed := max(nodesReady-minAvailable, 0)
 
 	return &removalsAllowed
 }

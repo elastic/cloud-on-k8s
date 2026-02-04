@@ -12,12 +12,12 @@ import (
 )
 
 func TestCanonicalConfig_Render(t *testing.T) {
-	config := MustCanonicalConfig(map[string]interface{}{
-		"[escaped.key]": map[string]interface{}{"[another.escaped.key]": "value"},
+	config := MustCanonicalConfig(map[string]any{
+		"[escaped.key]": map[string]any{"[another.escaped.key]": "value"},
 		"aaa":           "aa  a",
 		"bbb":           "b  bb",
 		"aab":           "a a a",
-		"key":           map[string]interface{}{"emptyarray": []string{}},
+		"key":           map[string]any{"emptyarray": []string{}},
 		"withquotes":    "aa\"bb\"aa",
 		"zz":            "zzz  z z z",
 	})
@@ -85,9 +85,9 @@ func TestCanonicalConfig_MergeWith(t *testing.T) {
 			// Merge mutates c
 			require.NoError(t, tt.c.MergeWith(tt.c2))
 			if diff := tt.c.Diff(tt.want, nil); diff != nil {
-				var wantMap map[string]interface{}
+				var wantMap map[string]any
 				require.NoError(t, tt.want.Unpack(&wantMap))
-				var gotMap map[string]interface{}
+				var gotMap map[string]any
 				require.NoError(t, tt.c.Unpack(&gotMap))
 				t.Errorf("CanonicalConfig.MergeWith() = %v, want %+v, got %+v ", diff, wantMap, gotMap)
 			}
@@ -169,7 +169,7 @@ func TestParseConfig(t *testing.T) {
 		{
 			name:    "invalid entry among valid entries (is valid YAML)",
 			input:   "a: b\n  not key value \n c:d",
-			want:    MustCanonicalConfig(map[string]interface{}{"a": "b not key value c:d"}),
+			want:    MustCanonicalConfig(map[string]any{"a": "b not key value c:d"}),
 			wantErr: false,
 		},
 	}
@@ -217,7 +217,7 @@ func TestCanonicalConfig_Diff(t *testing.T) {
 			name: "lhs nil",
 			c:    nil,
 			args: args{
-				c2: MustCanonicalConfig(map[string]interface{}{
+				c2: MustCanonicalConfig(map[string]any{
 					"a": 1,
 				}),
 				ignore: nil,
@@ -226,7 +226,7 @@ func TestCanonicalConfig_Diff(t *testing.T) {
 		},
 		{
 			name: "rhs nil",
-			c: MustCanonicalConfig(map[string]interface{}{
+			c: MustCanonicalConfig(map[string]any{
 				"a": 2,
 			}),
 			args: args{},
@@ -234,13 +234,13 @@ func TestCanonicalConfig_Diff(t *testing.T) {
 		},
 		{
 			name: "flags up key difference",
-			c: MustCanonicalConfig(map[string]interface{}{
+			c: MustCanonicalConfig(map[string]any{
 				"a": map[string]string{
 					"b": "foo",
 				},
 			}),
 			args: args{
-				c2: MustCanonicalConfig(map[string]interface{}{
+				c2: MustCanonicalConfig(map[string]any{
 					"a": map[string]string{
 						"b": "foo",
 						"c": "bar",
@@ -251,13 +251,13 @@ func TestCanonicalConfig_Diff(t *testing.T) {
 		},
 		{
 			name: "flags up value difference",
-			c: MustCanonicalConfig(map[string]interface{}{
+			c: MustCanonicalConfig(map[string]any{
 				"a": map[string]string{
 					"b": "foo",
 				},
 			}),
 			args: args{
-				c2: MustCanonicalConfig(map[string]interface{}{
+				c2: MustCanonicalConfig(map[string]any{
 					"a": map[string]int{
 						"b": 1,
 					},
@@ -267,15 +267,15 @@ func TestCanonicalConfig_Diff(t *testing.T) {
 		},
 		{
 			name: "respects ignore list",
-			c: MustCanonicalConfig(map[string]interface{}{
-				"a": map[string]interface{}{
+			c: MustCanonicalConfig(map[string]any{
+				"a": map[string]any{
 					"b": "foo",
 					"c": []int{1, 2, 3},
 				},
 			}),
 			args: args{
-				c2: MustCanonicalConfig(map[string]interface{}{
-					"a": map[string]interface{}{
+				c2: MustCanonicalConfig(map[string]any{
+					"a": map[string]any{
 						"b": 1,
 						"c": []int{1, 24},
 					},
@@ -286,14 +286,14 @@ func TestCanonicalConfig_Diff(t *testing.T) {
 		},
 		{
 			name: "respects list order",
-			c: MustCanonicalConfig(map[string]interface{}{
-				"a": map[string]interface{}{
+			c: MustCanonicalConfig(map[string]any{
+				"a": map[string]any{
 					"b": []int{1, 2, 3},
 				},
 			}),
 			args: args{
-				c2: MustCanonicalConfig(map[string]interface{}{
-					"a": map[string]interface{}{
+				c2: MustCanonicalConfig(map[string]any{
+					"a": map[string]any{
 						"b": []int{1, 3, 2},
 					},
 				}),
@@ -302,13 +302,13 @@ func TestCanonicalConfig_Diff(t *testing.T) {
 		},
 		{
 			name: "respects primitive types",
-			c: MustCanonicalConfig(map[string]interface{}{
+			c: MustCanonicalConfig(map[string]any{
 				"a": 1,
 				"b": 1.0,
 				"c": "true",
 			}),
 			args: args{
-				c2: MustCanonicalConfig(map[string]interface{}{
+				c2: MustCanonicalConfig(map[string]any{
 					"a": 1.0,
 					"b": 1.0,
 					"c": true,
@@ -318,11 +318,11 @@ func TestCanonicalConfig_Diff(t *testing.T) {
 		},
 		{
 			name: "handles comparison of different types correctly",
-			c: MustCanonicalConfig(map[string]interface{}{
+			c: MustCanonicalConfig(map[string]any{
 				"a": []string{"x", "y"},
 			}),
 			args: args{
-				c2:     MustCanonicalConfig(map[string]interface{}{}),
+				c2:     MustCanonicalConfig(map[string]any{}),
 				ignore: []string{"a"},
 			},
 			want: nil,
@@ -390,7 +390,7 @@ func TestCanonicalConfig_SetStrings(t *testing.T) {
 		},
 		{
 			name: "already set",
-			c: MustCanonicalConfig(map[string]interface{}{
+			c: MustCanonicalConfig(map[string]any{
 				"a": []string{"foo", "bar", "baz"},
 			}),
 			args: args{
@@ -426,7 +426,7 @@ func TestCanonicalConfig_String(t *testing.T) {
 	}{
 		{
 			name: "gets a string value",
-			c: MustCanonicalConfig(map[string]interface{}{
+			c: MustCanonicalConfig(map[string]any{
 				"foo": map[string]string{
 					"bar": "baz",
 				},
@@ -437,7 +437,7 @@ func TestCanonicalConfig_String(t *testing.T) {
 		},
 		{
 			name: "when value is not convertible to a string",
-			c: MustCanonicalConfig(map[string]interface{}{
+			c: MustCanonicalConfig(map[string]any{
 				"foo": []string{"bar"},
 			}),
 			key:     "foo",
@@ -470,12 +470,12 @@ func TestNewCanonicalConfigFrom(t *testing.T) {
 		{
 			name: "should normalize numeric types",
 			args: args{
-				data: map[string]interface{}{
+				data: map[string]any{
 					"a": float64(1), // after json round trip or deep copy typically a float
 					"b": 1.2,
 				},
 			},
-			want: MustCanonicalConfig(map[string]interface{}{
+			want: MustCanonicalConfig(map[string]any{
 				"a": 1,
 				"b": 1.2,
 			}),
@@ -511,13 +511,13 @@ func TestCanonicalConfig_HasChildConfig(t *testing.T) {
 		},
 		{
 			name: "empty config",
-			c:    MustCanonicalConfig(map[string]interface{}{}),
+			c:    MustCanonicalConfig(map[string]any{}),
 			key:  "x",
 			want: false,
 		},
 		{
 			name: "valid top-level key but not a child config",
-			c: MustCanonicalConfig(map[string]interface{}{
+			c: MustCanonicalConfig(map[string]any{
 				"x": "y",
 			}),
 			key:  "x",
@@ -525,8 +525,8 @@ func TestCanonicalConfig_HasChildConfig(t *testing.T) {
 		},
 		{
 			name: "valid top level key",
-			c: MustCanonicalConfig(map[string]interface{}{
-				"x": map[string]interface{}{
+			c: MustCanonicalConfig(map[string]any{
+				"x": map[string]any{
 					"y": "1",
 					"z": "2",
 				},
@@ -536,9 +536,9 @@ func TestCanonicalConfig_HasChildConfig(t *testing.T) {
 		},
 		{
 			name: "valid nested  key",
-			c: MustCanonicalConfig(map[string]interface{}{
-				"x": map[string]interface{}{
-					"y": map[string]interface{}{},
+			c: MustCanonicalConfig(map[string]any{
+				"x": map[string]any{
+					"y": map[string]any{},
 					"z": "2",
 				},
 			}),
@@ -547,7 +547,7 @@ func TestCanonicalConfig_HasChildConfig(t *testing.T) {
 		},
 		{
 			name: "absent key",
-			c: MustCanonicalConfig(map[string]interface{}{
+			c: MustCanonicalConfig(map[string]any{
 				"x": "y",
 			}),
 			key:  "z",

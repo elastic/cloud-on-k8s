@@ -67,7 +67,7 @@ type EKSDriverFactory struct {
 func (e EKSDriverFactory) Create(plan Plan) (Driver, error) {
 	return &EKSDriver{
 		plan: plan,
-		ctx: map[string]interface{}{
+		ctx: map[string]any{
 			"ClusterName":       plan.ClusterName,
 			"Region":            plan.Eks.Region,
 			"KubernetesVersion": plan.KubernetesVersion,
@@ -85,7 +85,7 @@ var _ DriverFactory = &EKSDriverFactory{}
 type EKSDriver struct {
 	plan    Plan
 	cleanUp []func()
-	ctx     map[string]interface{}
+	ctx     map[string]any
 }
 
 func (e *EKSDriver) newCmd(cmd string) *exec.Command {

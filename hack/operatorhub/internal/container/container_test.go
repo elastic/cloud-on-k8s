@@ -42,7 +42,7 @@ func (s *syncTestManager) createHTTPHandler(getImagesResponse []byte) http.Handl
 			return
 		}
 		w.WriteHeader(http.StatusBadRequest)
-		w.Write([]byte(fmt.Sprintf(`{"error": "invalid path: '%s'}`, r.URL.Path)))
+		w.Write(fmt.Appendf(nil, `{"error": "invalid path: '%s'}`, r.URL.Path))
 	})
 }
 

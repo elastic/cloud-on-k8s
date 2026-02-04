@@ -4,6 +4,8 @@
 
 package maps
 
+import "maps"
+
 // IsSubset compares two maps to determine if one of them is fully contained in the other.
 func IsSubset(toCheck, fullSet map[string]string) bool {
 	if len(toCheck) > len(fullSet) {
@@ -38,9 +40,7 @@ func Merge(dest, src map[string]string) map[string]string {
 		dest = make(map[string]string, len(src))
 	}
 
-	for k, v := range src {
-		dest[k] = v
-	}
+	maps.Copy(dest, src)
 
 	return dest
 }
