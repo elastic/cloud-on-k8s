@@ -13,6 +13,7 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"time"
 
@@ -155,22 +156,32 @@ func (c *Client) cloneAndCreate(repo githubRepository) error {
 	orgRepo := fmt.Sprintf("%s/%s", repo.organization, repo.repository)
 	localTempDir := filepath.Join(repo.tempDir, repo.repository)
 
+	// Use git CLI for cloning to reduce memory usage compared to go-git.
+	// See https://github.com/go-git/go-git/issues/1673
+	// Using --depth 1 for shallow clone, --single-branch to only fetch the main branch,
+	// and --no-tags to skip fetching tags.
 	log.Printf("Cloning (%s) repository to temporary directory ", repo.url)
-	r, err := git.PlainClone(localTempDir, false, &git.CloneOptions{
-		URL: repo.url,
-		Auth: &git_http.BasicAuth{
-			Username: c.GitHubToken,
-		},
-		// See https://github.com/go-git/go-git/issues/315
-		// This is adding some optimizations to attempt to reduce memory usage.
-		ReferenceName: plumbing.NewBranchReferenceName(repo.mainBranchName),
-		SingleBranch:  true,
-		Tags:          git.NoTags,
-	})
-	if err != nil {
+	cloneURL := fmt.Sprintf("https://%s@github.com/%s.git", c.GitHubToken, orgRepo)
+	cmd := exec.Command("git", "clone",
+		"--depth", "1",
+		"--single-branch",
+		"--branch", repo.mainBranchName,
+		"--no-tags",
+		cloneURL,
+		localTempDir,
+	)
+	cmd.Stdout = io.Discard
+	cmd.Stderr = os.Stderr
+	if err := cmd.Run(); err != nil {
 		return fmt.Errorf("cloning (%s): %w", orgRepo, err)
 	}
 	log.Println("✓")
+
+	// Open the cloned repository with go-git for subsequent operations
+	r, err := git.PlainOpen(localTempDir)
+	if err != nil {
+		return fmt.Errorf("opening cloned repository (%s): %w", orgRepo, err)
+	}
 
 	log.Printf("Ensuring that (%s) repository has been forked ", orgRepo)
 	err = c.ensureFork(orgRepo)
