@@ -400,16 +400,67 @@ func (d *GKEDriver) GetCredentials() error {
 	return exec.NewCommand(cmd).AsTemplate(d.ctx).Run()
 }
 
+// waitForClusterOperations waits for any running GKE cluster operations to complete.
+// GKE does not allow cluster deletion while operations like auto-upgrades, auto-repairs,
+// or node pool modifications are in progress. Attempting to delete during such operations
+// results in: "Cluster is running incompatible operation" error.
+func (d *GKEDriver) waitForClusterOperations() error {
+	log.Println("Checking for running cluster operations...")
+	cmd := `gcloud container operations list --project {{.GCloudProject}} --region {{.Region}} --filter="targetLink~{{.ClusterName}} AND status=RUNNING" --format="value(name)"`
+	operations, err := exec.NewCommand(cmd).AsTemplate(d.ctx).WithoutStreaming().OutputList()
+	if err != nil {
+		return fmt.Errorf("while listing cluster operations: %w", err)
+	}
+
+	for _, op := range operations {
+		log.Printf("Waiting for operation %s to complete...", op)
+		waitCmd := fmt.Sprintf(`gcloud container operations wait %s --project {{.GCloudProject}} --region {{.Region}}`, op)
+		if err := exec.NewCommand(waitCmd).AsTemplate(d.ctx).Run(); err != nil {
+			return fmt.Errorf("while waiting for operation %s: %w", op, err)
+		}
+	}
+
+	return nil
+}
+
 func (d *GKEDriver) delete() error {
-	log.Println("Deleting cluster...")
-	cmd := "gcloud beta --quiet --project {{.GCloudProject}} container clusters delete {{.ClusterName}} --region {{.Region}}"
-	if err := exec.NewCommand(cmd).AsTemplate(d.ctx).Run(); err != nil {
-		return err
+	// Retry deletion up to 3 times to handle transient failures. GKE cluster deletion can fail
+	// due to race conditions where new operations start between our check and delete attempt,
+	// or due to temporary API errors.
+	const maxDeleteAttempts = 3
+	var lastErr error
+
+	for attempt := 1; attempt <= maxDeleteAttempts; attempt++ {
+		if attempt > 1 {
+			log.Printf("Retrying cluster deletion (attempt %d/%d)...", attempt, maxDeleteAttempts)
+		}
+
+		if err := d.waitForClusterOperations(); err != nil {
+			lastErr = err
+			log.Printf("Error waiting for cluster operations: %v", err)
+			continue
+		}
+
+		log.Println("Deleting cluster...")
+		cmd := "gcloud beta --quiet --project {{.GCloudProject}} container clusters delete {{.ClusterName}} --region {{.Region}}"
+		if err := exec.NewCommand(cmd).AsTemplate(d.ctx).Run(); err != nil {
+			lastErr = err
+			log.Printf("Error deleting cluster: %v", err)
+			continue
+		}
+
+		// Deletion succeeded, break out of retry loop
+		lastErr = nil
+		break
+	}
+
+	if lastErr != nil {
+		return fmt.Errorf("failed to delete cluster after %d attempts: %w", maxDeleteAttempts, lastErr)
 	}
 
 	// Deleting clusters in GKE does not delete associated disks, we have to delete them manually.
-	cmd = `gcloud compute disks list --filter='labels.cluster_name={{.ClusterName}} AND labels.region={{.Region}} AND -users:*' --format="value[separator=','](name,zone)" --project {{.GCloudProject}}`
-	disks, err := exec.NewCommand(cmd).AsTemplate(d.ctx).StdoutOnly().OutputList()
+	diskCmd := `gcloud compute disks list --filter='labels.cluster_name={{.ClusterName}} AND labels.region={{.Region}} AND -users:*' --format="value[separator=','](name,zone)" --project {{.GCloudProject}}`
+	disks, err := exec.NewCommand(diskCmd).AsTemplate(d.ctx).StdoutOnly().OutputList()
 	if err != nil {
 		return err
 	}
@@ -419,8 +470,8 @@ func (d *GKEDriver) delete() error {
 	deletedDisks := len(disks)
 
 	// This is the "legacy" way to detect orphaned disks. Keep using it while all disks do not have labels.
-	cmd = `gcloud compute disks list --filter="name~^gke-{{.PVCPrefix}}.*-pvc-.+" --format="value[separator=','](name,zone)" --project {{.GCloudProject}}`
-	disks, err = exec.NewCommand(cmd).AsTemplate(d.ctx).StdoutOnly().OutputList()
+	diskCmd = `gcloud compute disks list --filter="name~^gke-{{.PVCPrefix}}.*-pvc-.+" --format="value[separator=','](name,zone)" --project {{.GCloudProject}}`
+	disks, err = exec.NewCommand(diskCmd).AsTemplate(d.ctx).StdoutOnly().OutputList()
 	if err != nil {
 		return err
 	}
