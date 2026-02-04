@@ -204,7 +204,7 @@ func (c *Client) cloneAndCreate(repo githubRepository) error {
 	}
 	log.Println("✓")
 
-	err = c.syncFork(orgRepo, r, remote)
+	err = c.syncFork(r)
 	if err != nil {
 		return fmt.Errorf("while syncing fork with upstream: %w", err)
 	}
@@ -233,6 +233,7 @@ func (c *Client) cloneAndCreate(repo githubRepository) error {
 	err = w.Checkout(&git.CheckoutOptions{
 		Branch: plumbing.NewBranchReferenceName(branchName),
 		Create: true,
+		Force:  true, // allow checkout with dirty worktree (e.g. after shallow clone)
 	})
 	if err != nil {
 		log.Println("ⅹ")
