@@ -187,7 +187,7 @@ steps:
           - .buildkite/scripts/build/image-signing.sh
           - buildkite-agent artifact upload eck-container-images-digest.txt
         agents:
-          image: docker.elastic.co/ci-agent-images/cloud-k8s-operator/buildkite-agent:6154e14d
+          image: docker.elastic.co/ci-agent-images/cloud-k8s-operator/buildkite-agent:8eb8aeab
           cpu: "1"
           memory: "1G"
       - label: ":key: sign images"
