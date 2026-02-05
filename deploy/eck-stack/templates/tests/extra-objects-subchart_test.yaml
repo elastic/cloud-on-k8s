@@ -1,0 +1,47 @@
+suite: test subchart extra objects passthrough
+templates:
+  - charts/eck-elasticsearch/templates/extra-objects.yaml
+tests:
+  - it: should render no extra objects for subchart by default
+    asserts:
+      - hasDocuments:
+          count: 0
+  - it: should render subchart extra objects when defined through umbrella values
+    set:
+      eck-elasticsearch.extraObjects:
+        - |
+          apiVersion: v1
+          kind: ConfigMap
+          metadata:
+            name: test-es-extra-cm
+          data:
+            key: es-value
+    asserts:
+      - hasDocuments:
+          count: 1
+      - isKind:
+          of: ConfigMap
+      - equal:
+          path: metadata.name
+          value: test-es-extra-cm
+  - it: should support helm templating with subchart named templates
+    set:
+      eck-elasticsearch.extraObjects:
+        - |
+          apiVersion: v1
+          kind: ConfigMap
+          metadata:
+            name: {{ include "elasticsearch.fullname" . }}-extra-config
+            namespace: {{ .Release.Namespace }}
+          data:
+            key: value
+    release:
+      name: quickstart
+    asserts:
+      - hasDocuments:
+          count: 1
+      - isKind:
+          of: ConfigMap
+      - equal:
+          path: metadata.name
+          value: elasticsearch-extra-config

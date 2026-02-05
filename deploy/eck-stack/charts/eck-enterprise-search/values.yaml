@@ -107,7 +107,10 @@ podTemplate: {}
 configRef: {}
   # secretName: enterprise-search-config
 
-# Create dynamic manifests via values.
+# extraObjects allows injecting additional Kubernetes resources into the chart.
+# These resources will be created/deleted alongside the chart release.
+# The value is a list of strings, each string is a YAML manifest.
+# Helm templating is supported within each manifest.
 # Example:
 # extraObjects:
 #   - |
