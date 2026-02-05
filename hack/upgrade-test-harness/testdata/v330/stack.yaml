@@ -85,3 +85,11 @@ spec:
             password => "${PRODUCTION_ES_PASSWORD}"
           } 
         }
+---
+apiVersion: packageregistry.k8s.elastic.co/v1alpha1
+kind: PackageRegistry
+metadata:
+  name: registry
+spec:
+  version: 9.3.0
+  count: 1
