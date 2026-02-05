@@ -4,7 +4,7 @@ kind: PackageRegistry
 metadata:
   name: registry
 spec:
-  version: 9.2.2
+  version: 9.3.0
   count: 1
   config:
     package_paths:
@@ -26,7 +26,7 @@ kind: Kibana
 metadata:
   name: kibana
 spec:
-  version: 9.2.2
+  version: 9.3.0
   count: 1
   elasticsearchRef:
     name: elasticsearch
@@ -62,7 +62,7 @@ kind: Elasticsearch
 metadata:
   name: elasticsearch
 spec:
-  version: 9.2.2
+  version: 9.3.0
   nodeSets:
   - name: default
     count: 1
@@ -74,7 +74,7 @@ kind: Agent
 metadata:
   name: fleet-server
 spec:
-  version: 9.2.2
+  version: 9.3.0
   kibanaRef:
     name: kibana
   elasticsearchRefs:
