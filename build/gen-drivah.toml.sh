@@ -76,8 +76,9 @@ main() {
     # delete only dirs
     find "$HERE" -maxdepth 1 -mindepth 1 -type d -exec rm -rf '{}' \;
 
-    # initialize file to share list of images for CVE scan
+    # initialize file to share list of images for CVE scan and signing
     true > images-to-scan.txt
+    true > images-to-sign.txt
 
     IFS=","; for flavor in $BUILD_FLAVORS; do
 
@@ -116,6 +117,9 @@ main() {
             echo "$name:$(latest_stable_tag)" >> images-to-scan.txt
         fi
 
+        # write the image name for signing (using the multi-arch manifest)
+        echo "$name:${tag}" >> images-to-sign.txt
+
         # fetch public license key
         if [[ ! -f "$HERE/$license_pubkey" ]]; then
             prefix="${BUILD_LICENSE_PUBKEY:+$BUILD_LICENSE_PUBKEY-}" # add "-" suffix
@@ -133,6 +137,7 @@ main() {
 
     if [[ "${CI:-}" == true ]]; then
         buildkite-agent meta-data set images-to-scan "$(cat images-to-scan.txt)"
+        buildkite-agent meta-data set images-to-sign "$(cat images-to-sign.txt)"
     fi
 }
 
