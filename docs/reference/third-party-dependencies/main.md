@@ -43,10 +43,10 @@ This page lists the third-party dependencies used to build {{eck}} from the main
 | [github.com/spf13/pflag](https://github.com/spf13/pflag) | v1.0.10 | BSD-3-Clause |
 | [github.com/spf13/viper](https://github.com/spf13/viper) | v1.21.0 | MIT |
 | [github.com/stretchr/testify](https://github.com/stretchr/testify) | v1.11.1 | MIT |
-| [go.elastic.co/apm/module/apmelasticsearch/v2](https://go.elastic.co/apm/module/apmelasticsearch/v2) | v2.7.2 | Apache-2.0 |
-| [go.elastic.co/apm/module/apmhttp/v2](https://go.elastic.co/apm/module/apmhttp/v2) | v2.7.2 | Apache-2.0 |
-| [go.elastic.co/apm/module/apmzap/v2](https://go.elastic.co/apm/module/apmzap/v2) | v2.7.2 | Apache-2.0 |
-| [go.elastic.co/apm/v2](https://go.elastic.co/apm/v2) | v2.7.2 | Apache-2.0 |
+| [go.elastic.co/apm/module/apmelasticsearch/v2](https://go.elastic.co/apm/module/apmelasticsearch/v2) | v2.7.3 | Apache-2.0 |
+| [go.elastic.co/apm/module/apmhttp/v2](https://go.elastic.co/apm/module/apmhttp/v2) | v2.7.3 | Apache-2.0 |
+| [go.elastic.co/apm/module/apmzap/v2](https://go.elastic.co/apm/module/apmzap/v2) | v2.7.3 | Apache-2.0 |
+| [go.elastic.co/apm/v2](https://go.elastic.co/apm/v2) | v2.7.3 | Apache-2.0 |
 | [go.uber.org/automaxprocs](https://go.uber.org/automaxprocs) | v1.6.0 | MIT |
 | [go.uber.org/zap](https://go.uber.org/zap) | v1.27.1 | MIT |
 | [golang.org/x/crypto](https://golang.org/x/crypto) | v0.47.0 | BSD-3-Clause |
