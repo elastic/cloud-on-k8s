@@ -8,12 +8,7 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/remotecluster/keystore"
-
-	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/label"
-
 	corev1 "k8s.io/api/core/v1"
-	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
 	"sigs.k8s.io/controller-runtime/pkg/handler"
@@ -26,6 +21,8 @@ import (
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/watches"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/certificates/remoteca"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/certificates/transport"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/label"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/remotecluster/keystore"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/maps"
 )
 
@@ -59,14 +56,14 @@ func addWatches(mgr manager.Manager, c controller.Controller, r *ReconcileRemote
 	//  * Remote certificate authorities managed by this controller.
 	//  * API keys
 	if err := c.Watch(
-		source.Kind(mgr.GetCache(), &v1.Secret{},
-			handler.TypedEnqueueRequestsFromMapFunc[*v1.Secret, reconcile.Request](newRequestsFromMatchedLabels()),
+		source.Kind(mgr.GetCache(), &corev1.Secret{},
+			handler.TypedEnqueueRequestsFromMapFunc[*corev1.Secret, reconcile.Request](newRequestsFromMatchedLabels()),
 		)); err != nil {
 		return err
 	}
 
 	// Dynamically watches the certificate authorities involved in a cluster relationship
-	if err := c.Watch(source.Kind(mgr.GetCache(), &v1.Secret{}, r.watches.Secrets)); err != nil {
+	if err := c.Watch(source.Kind(mgr.GetCache(), &corev1.Secret{}, r.watches.Secrets)); err != nil {
 		return err
 	}
 
@@ -82,8 +79,8 @@ func addWatches(mgr manager.Manager, c controller.Controller, r *ReconcileRemote
 
 // newRequestsFromMatchedLabels creates a watch handler function that creates reconcile requests based on the
 // labels set on a Secret which contains the remote CA.
-func newRequestsFromMatchedLabels() handler.TypedMapFunc[*v1.Secret, reconcile.Request] {
-	return func(ctx context.Context, obj *v1.Secret) []reconcile.Request {
+func newRequestsFromMatchedLabels() handler.TypedMapFunc[*corev1.Secret, reconcile.Request] {
+	return func(ctx context.Context, obj *corev1.Secret) []reconcile.Request {
 		labels := obj.GetLabels()
 		if maps.ContainsKeys(labels, RemoteClusterNameLabelName, RemoteClusterNamespaceLabelName, commonv1.TypeLabelName) {
 			// Remote cluster CA

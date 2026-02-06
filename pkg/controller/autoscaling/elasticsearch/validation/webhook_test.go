@@ -631,9 +631,9 @@ func es(
 		Spec: esv1.ElasticsearchSpec{Version: version},
 	}
 	for nodeSetName, roles := range nodeSets {
-		cfg := commonv1.NewConfig(map[string]interface{}{})
+		cfg := commonv1.NewConfig(map[string]any{})
 		if roles != nil {
-			cfg = commonv1.NewConfig(map[string]interface{}{"node.roles": roles})
+			cfg = commonv1.NewConfig(map[string]any{"node.roles": roles})
 		}
 		volumeClaimTemplates := volumeClaimTemplates(volumeClaims)
 		nodeSet := esv1.NodeSet{

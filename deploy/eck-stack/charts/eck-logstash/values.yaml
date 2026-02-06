@@ -18,7 +18,7 @@
 
 # Version of Logstash.
 #
-version: 9.3.0-SNAPSHOT
+version: 9.4.0-SNAPSHOT
 
 # Logstash Docker image to deploy
 #
@@ -43,7 +43,7 @@ annotations: {}
 # revisionHistoryLimit: 2
 
 # Controlling the number of pods.
-# ref: https://www.elastic.co/guide/en/cloud-on-k8s/current/k8s-logstash-scaling-logstash.html
+# ref: https://www.elastic.co/docs/deploy-manage/deploy/cloud-on-k8s/logstash-plugins#k8s-logstash-working-with-plugins-scaling
 #
 count: 1
 
@@ -51,23 +51,23 @@ count: 1
 #
 # NOTE: The `config` and `configRef` fields are mutually exclusive. Only one of them should be defined at a time,
 # as using both may cause conflicts.
-# ref: https://www.elastic.co/guide/en/cloud-on-k8s/current/k8s-logstash-configuration.html#k8s-logstash-configuring-logstash
+# ref: https://www.elastic.co/docs/deploy-manage/deploy/cloud-on-k8s/configuration-logstash#k8s-logstash-configuring-logstash
 #
 config: {}
 
 # Reference a configuration in a Secret.
-# ref: https://www.elastic.co/guide/en/cloud-on-k8s/current/k8s-logstash-configuration.html#k8s-logstash-configuring-logstash
+# ref: https://www.elastic.co/docs/deploy-manage/deploy/cloud-on-k8s/configuration-logstash#k8s-logstash-configuring-logstash
 #
 # configRef:
 #   secretName: ''
 
 # Set podTemplate to customize the pod used by Logstash
-# ref: https://www.elastic.co/guide/en/cloud-on-k8s/current/k8s-customize-pods.html
+# ref: https://www.elastic.co/docs/deploy-manage/deploy/cloud-on-k8s/customize-pods
 #
 podTemplate: {}
 
 # Settings for configuring stack monitoring.
-# ref: https://www.elastic.co/guide/en/cloud-on-k8s/current/k8s-stack-monitoring.html
+# ref: https://www.elastic.co/docs/deploy-manage/monitor/stack-monitoring/eck-stack-monitoring
 #
 monitoring: {}
   # metrics:
@@ -83,24 +83,24 @@ monitoring: {}
 #
 # NOTE: The `pipelines` and `pipelinesRef` fields are mutually exclusive. Only one of them should be defined at a time,
 # as using both may cause conflicts.
-# ref: https://www.elastic.co/guide/en/cloud-on-k8s/current/k8s-logstash-configuration.html#k8s-logstash-pipelines
+# ref: https://www.elastic.co/docs/deploy-manage/deploy/cloud-on-k8s/configuration-logstash#k8s-logstash-pipelines
 #
 pipelines: []
 
 # Reference a pipelines configuration in a Secret.
-# ref: https://www.elastic.co/guide/en/cloud-on-k8s/current/k8s-logstash-configuration.html#k8s-logstash-pipelines
+# ref: https://www.elastic.co/docs/deploy-manage/deploy/cloud-on-k8s/configuration-logstash#k8s-logstash-pipelines
 #
 # pipelinesRef:
 #   secretName: ''
 
 # volumeClaimTemplates
-# ref: https://www.elastic.co/guide/en/cloud-on-k8s/current/k8s-logstash-configuration.html#k8s-volume-claim-settings
+# ref: https://www.elastic.co/docs/deploy-manage/deploy/cloud-on-k8s/configuration-logstash#k8s-volume-claim-settings
 #
 volumeClaimTemplates: []
 
 # ElasticsearchRefs are references to Elasticsearch clusters running in the same Kubernetes cluster.
 # Ensure that the 'clusterName' field matches what is referenced in the pipeline.
-# ref: https://www.elastic.co/guide/en/cloud-on-k8s/current/k8s-logstash-configuration.html#k8s-logstash-pipelines-es
+# ref: https://www.elastic.co/docs/deploy-manage/deploy/cloud-on-k8s/configuration-logstash#k8s-logstash-pipelines-es
 #
 elasticsearchRefs: []
 #  - namespace: ''
@@ -113,3 +113,19 @@ services: []
 
 # SecureSettings is a list of references to Kubernetes Secrets containing sensitive configuration options for the Logstash
 secureSettings: []
+
+# extraObjects allows injecting additional Kubernetes resources into the chart.
+# These resources will be created/deleted alongside the chart release.
+# The value is a list of strings, each string is a YAML manifest.
+# Helm templating is supported within each manifest.
+# Example:
+# extraObjects:
+#   - |
+#     apiVersion: v1
+#     kind: ConfigMap
+#     metadata:
+#       name: {{ include "logstash.fullname" . }}-extra-config
+#       namespace: {{ .Release.Namespace }}
+#     data:
+#       key: value
+extraObjects: []

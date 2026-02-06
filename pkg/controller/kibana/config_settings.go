@@ -41,6 +41,8 @@ const (
 	esCertsVolumeMountPath = "/usr/share/kibana/config/elasticsearch-certs"
 	// entCertsVolumeMountPath is the directory into which trusted Enterprise Search HTTP CA certs are mounted.
 	entCertsVolumeMountPath = "/usr/share/kibana/config/ent-certs"
+	// eprCertsVolumeMountPath is the directory into which trusted Package Registry CA certs are mounted.
+	eprCertsVolumeMountPath = "/usr/share/kibana/config/epr-certs"
 
 	// EncryptionKeyMinimumBytes is the minimum number of bytes required for the encryption key.
 	// This is in line with the documentation (32 characters) as of 9.0 (unicode characters can use > 1 byte):
@@ -59,6 +61,7 @@ const (
 	XpackReportingEncryptionKey                    = "xpack.reporting.encryptionKey"
 	XpackEncryptedSavedObjects                     = "xpack.encryptedSavedObjects"
 	XpackEncryptedSavedObjectsEncryptionKey        = "xpack.encryptedSavedObjects.encryptionKey"
+	XpackFleetRegistryURL                          = "xpack.fleet.registryUrl"
 
 	ElasticsearchSslCertificateAuthorities = "elasticsearch.ssl.certificateAuthorities"
 	ElasticsearchSslVerificationMode       = "elasticsearch.ssl.verificationMode"
@@ -119,6 +122,7 @@ func NewConfigSettings(ctx context.Context, client k8s.Client, kb kbv1.Kibana, v
 	kibanaTLSCfg := settings.MustCanonicalConfig(kibanaTLSSettings(kb))
 	versionSpecificCfg := VersionDefaults(&kb, v)
 	entSearchCfg := settings.MustCanonicalConfig(enterpriseSearchSettings(kb))
+	eprCfg := settings.MustCanonicalConfig(packageRegistrySettings(kb))
 	monitoringCfg, err := settings.NewCanonicalConfigFrom(stackmon.MonitoringConfig(kb).Data)
 	if err != nil {
 		return CanonicalConfig{}, err
@@ -129,7 +133,8 @@ func NewConfigSettings(ctx context.Context, client k8s.Client, kb kbv1.Kibana, v
 		versionSpecificCfg,
 		kibanaTLSCfg,
 		entSearchCfg,
-		monitoringCfg)
+		monitoringCfg,
+		eprCfg)
 	if err != nil {
 		return CanonicalConfig{}, err
 	}
@@ -144,13 +149,13 @@ func NewConfigSettings(ctx context.Context, client k8s.Client, kb kbv1.Kibana, v
 		if err != nil {
 			return CanonicalConfig{}, err
 		}
-		var esCreds map[string]interface{}
+		var esCreds map[string]any
 		if credentials.HasServiceAccountToken() {
-			esCreds = map[string]interface{}{
+			esCreds = map[string]any{
 				ElasticsearchServiceAccountToken: credentials.ServiceAccountToken,
 			}
 		} else {
-			esCreds = map[string]interface{}{
+			esCreds = map[string]any{
 				ElasticsearchUsername: credentials.Username,
 				ElasticsearchPassword: credentials.Password,
 			}
@@ -187,7 +192,7 @@ func filterConfigSettings(kb kbv1.Kibana, cfg *settings.CanonicalConfig) error {
 func VersionDefaults(_ *kbv1.Kibana, v version.Version) *settings.CanonicalConfig {
 	if v.GTE(version.From(7, 6, 0)) {
 		// setting exists only as of 7.6.0
-		return settings.MustCanonicalConfig(map[string]interface{}{XpackLicenseManagementUIEnabled: false})
+		return settings.MustCanonicalConfig(map[string]any{XpackLicenseManagementUIEnabled: false})
 	}
 
 	return settings.NewCanonicalConfig()
@@ -276,14 +281,13 @@ func getOrCreateReusableSettings(ctx context.Context, c k8s.Client, kb kbv1.Kiba
 	return settings.MustCanonicalConfig(r), nil
 }
 
-func baseSettings(kb *kbv1.Kibana, ipFamily corev1.IPFamily) (map[string]interface{}, error) {
+func baseSettings(kb *kbv1.Kibana, ipFamily corev1.IPFamily) (map[string]any, error) {
 	ver, err := version.Parse(kb.Spec.Version)
 	if err != nil {
 		return nil, err
 	}
 
-	conf := map[string]interface{}{
-		ServerName: kb.Name,
+	conf := map[string]any{
 		ServerHost: net.InAddrAnyFor(ipFamily).String(),
 	}
 
@@ -301,19 +305,19 @@ func baseSettings(kb *kbv1.Kibana, ipFamily corev1.IPFamily) (map[string]interfa
 	return conf, nil
 }
 
-func kibanaTLSSettings(kb kbv1.Kibana) map[string]interface{} {
+func kibanaTLSSettings(kb kbv1.Kibana) map[string]any {
 	if !kb.Spec.HTTP.TLS.Enabled() {
 		return nil
 	}
-	return map[string]interface{}{
+	return map[string]any{
 		ServerSSLEnabled:     true,
 		ServerSSLCertificate: path.Join(certificates.HTTPCertificatesSecretVolumeMountPath, certificates.CertFileName),
 		ServerSSLKey:         path.Join(certificates.HTTPCertificatesSecretVolumeMountPath, certificates.KeyFileName),
 	}
 }
 
-func elasticsearchTLSSettings(esAssocConf commonv1.AssociationConf) map[string]interface{} {
-	cfg := map[string]interface{}{
+func elasticsearchTLSSettings(esAssocConf commonv1.AssociationConf) map[string]any {
+	cfg := map[string]any{
 		ElasticsearchSslVerificationMode: "certificate",
 	}
 
@@ -343,8 +347,17 @@ func entCaCertSecretVolume(entAssocConf commonv1.AssociationConf) volume.SecretV
 	)
 }
 
-func enterpriseSearchSettings(kb kbv1.Kibana) map[string]interface{} {
-	cfg := map[string]interface{}{}
+// eprCaCertSecretVolume returns a SecretVolume to hold the Elastic Package Registry CA certs for the given Kibana resource.
+func eprCaCertSecretVolume(eprAssocConf commonv1.AssociationConf) volume.SecretVolume {
+	return volume.NewSecretVolumeWithMountPath(
+		eprAssocConf.GetCASecretName(),
+		"epr-certs",
+		eprCertsVolumeMountPath,
+	)
+}
+
+func enterpriseSearchSettings(kb kbv1.Kibana) map[string]any {
+	cfg := map[string]any{}
 	assocConf, _ := kb.EntAssociation().AssociationConf()
 	if assocConf.URLIsConfigured() {
 		cfg[EnterpriseSearchHost] = assocConf.GetURL()
@@ -355,6 +368,15 @@ func enterpriseSearchSettings(kb kbv1.Kibana) map[string]interface{} {
 		// to connect to Enterprise Search through the k8s-internal service DNS name
 		// even though the user-provided certificate may only specify a public-facing DNS.
 		cfg[EnterpriseSearchSslVerificationMode] = "certificate"
+	}
+	return cfg
+}
+
+func packageRegistrySettings(kb kbv1.Kibana) map[string]any {
+	cfg := map[string]any{}
+	assocConf, _ := kb.EPRAssociation().AssociationConf()
+	if assocConf.URLIsConfigured() {
+		cfg[XpackFleetRegistryURL] = assocConf.GetURL()
 	}
 	return cfg
 }

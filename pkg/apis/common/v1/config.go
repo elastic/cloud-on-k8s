@@ -18,11 +18,11 @@ var CfgOptions = []ucfg.Option{ucfg.PathSep(".")}
 type Config struct {
 	// Data holds the configuration keys and values.
 	// This field exists to work around https://github.com/kubernetes-sigs/kubebuilder/issues/528
-	Data map[string]interface{} `json:"-"`
+	Data map[string]any `json:"-"`
 }
 
 // NewConfig constructs a Config with the given unstructured configuration data.
-func NewConfig(cfg map[string]interface{}) Config {
+func NewConfig(cfg map[string]any) Config {
 	return Config{Data: cfg}
 }
 
@@ -33,7 +33,7 @@ func (c Config) MarshalJSON() ([]byte, error) {
 
 // UnmarshalJSON implements the Unmarshaler interface.
 func (c *Config) UnmarshalJSON(data []byte) error {
-	var out map[string]interface{}
+	var out map[string]any
 	err := json.Unmarshal(data, &out)
 	if err != nil {
 		return err
@@ -51,7 +51,7 @@ func (c *Config) DeepCopyInto(out *Config) {
 		// created in the API server
 		panic(err)
 	}
-	var clone map[string]interface{}
+	var clone map[string]any
 	err = json.Unmarshal(bytes, &clone)
 	if err != nil {
 		// we assume again optimistically because we just marshalled that the round trip works as well

@@ -35,7 +35,7 @@ main() {
 
     vault read -format=json -field=data "$VAULT_ROOT_PATH/operatorhub-release-preflight" > "$tmpDir/auth.json"
     
-    preflight check container "quay.io/redhat-isv-containers/$PROJECT_ID:$ECK_VERSION" --pyxis-api-token="$API_KEY" --certification-project-id="$PROJECT_ID" --submit -d "$tmpDir/auth.json"
+    preflight check container "quay.io/redhat-isv-containers/$PROJECT_ID:$ECK_VERSION" --pyxis-api-token="$API_KEY" --certification-component-id="$PROJECT_ID" --submit -d "$tmpDir/auth.json"
     
     echo "Preflight submitted ✅"
 }

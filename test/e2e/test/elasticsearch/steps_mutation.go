@@ -8,6 +8,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"maps"
 	"strings"
 	"testing"
 	"time"
@@ -64,9 +65,7 @@ func (b Builder) UpgradeTestSteps(k *test.K8sClient) test.StepList {
 				if curEs.Annotations == nil {
 					curEs.Annotations = make(map[string]string)
 				}
-				for k, v := range b.Elasticsearch.Annotations {
-					curEs.Annotations[k] = v
-				}
+				maps.Copy(curEs.Annotations, b.Elasticsearch.Annotations)
 				// defensive copy as the spec struct contains nested objects like ucfg.Config that don't marshal/unmarshal
 				// without losing type information making later comparisons with deepEqual fail.
 				curEs.Spec = *b.Elasticsearch.Spec.DeepCopy()
@@ -99,7 +98,6 @@ func (b Builder) MutationTestSteps(k *test.K8sClient) test.StepList {
 	if !isNonHAUpgrade {
 		watchers = append(watchers,
 			NewChangeBudgetWatcher(mutatedFrom.Elasticsearch.Spec, b.Elasticsearch),
-			NewMasterChangeBudgetWatcher(b.Elasticsearch),
 		)
 	}
 

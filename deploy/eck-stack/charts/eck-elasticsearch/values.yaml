@@ -18,7 +18,7 @@
 
 # Version of Elasticsearch.
 #
-version: 9.3.0-SNAPSHOT
+version: 9.4.0-SNAPSHOT
 
 # Elasticsearch Docker image to deploy
 #
@@ -133,7 +133,7 @@ volumeClaimDeletePolicy: ""
 
 # Settings to limit the disruption when pods need to be rescheduled for some reason such as upgrades or routine maintenance.
 # By default, if not set, the operator sets a budget that doesn't allow any pod to be removed in case the cluster is not green or if there is only one node of type `data` or `master`.
-# In all other cases the default PodDisruptionBudget sets `minUnavailable` equal to the total number of nodes minus 1.
+# In all other cases the default PodDisruptionBudget sets `minAvailable` equal to the total number of nodes minus 1.
 # To completely disable the pod disruption budget set `disabled` to true.
 #
 # podDisruptionBudget:
@@ -391,3 +391,19 @@ ingress:
     # Optional Kubernetes secret name that contains a base64 encoded PEM certificate and private key that corresponds to the above 'hosts' definitions.
     # If tls is enabled, but this field is not set, the self-signed certificate and key created by the ECK operator will be used.
     # secretName: chart-example-tls
+
+# extraObjects allows injecting additional Kubernetes resources into the chart.
+# These resources will be created/deleted alongside the chart release.
+# The value is a list of strings, each string is a YAML manifest.
+# Helm templating is supported within each manifest.
+# Example:
+# extraObjects:
+#   - |
+#     apiVersion: v1
+#     kind: ConfigMap
+#     metadata:
+#       name: {{ include "elasticsearch.fullname" . }}-extra-config
+#       namespace: {{ .Release.Namespace }}
+#     data:
+#       key: value
+extraObjects: []

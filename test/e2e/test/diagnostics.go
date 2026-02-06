@@ -61,5 +61,6 @@ func maybeRunECKDiagnostics(ctx context.Context, testName string, step Step) {
 		"-n", fmt.Sprintf("eck-diagnostics-%s.zip", normalizedTestName),
 		"-o", testCtx.Operator.Namespace,
 		"-r", strings.Join(otherNS, ","),
-		"--run-agent-diagnostics")
+		"--run-agent-diagnostics",
+	)
 }

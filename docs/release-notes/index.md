@@ -6,7 +6,74 @@ mapped_pages:
 ---
 
 # Elastic Cloud on Kubernetes release notes [elastic-cloud-kubernetes-release-notes]
+
 Review the changes, fixes, and more in each release of Elastic Cloud on Kubernetes.
+
+## 3.3.0 [elastic-cloud-kubernetes-330-release-notes]
+
+### Release Highlights
+
+#### AutoOps Integration (Enterprise feature)
+
+ECK now supports integration with Elastic AutoOps through a new `AutoOpsAgentPolicy` custom resource. This allows you to instrument multiple {{es}} clusters at once for automated health monitoring and performance recommendations. The [AutoOps documentation](https://www.elastic.co/docs/deploy-manage/monitor/autoops.md) provides more details.
+
+#### Elastic Package Registry Integration
+
+ECK now supports deploying and managing Elastic Package Registry (EPR) through a new `PackageRegistry` custom resource. This is particularly useful for air-gapped environments, enabling {{product.kibana}} to reference a self-hosted registry instead of the public one. The [package registry documentation](docs-content://deploy-manage/deploy/cloud-on-k8s/package-registry.md) provides more details.
+
+#### Multiple Stack Configuration Policies composition support (Enterprise feature)
+
+ECK now includes support for multiple Stack Config Policies targeting the same {{es}} cluster or {{product.kibana}} instance, using a weight-based priority system for deterministic policy composition. The [Stack Config Policy documentation](docs-content://deploy-manage/deploy/cloud-on-k8s/elastic-stack-configuration-policies.md) provides more details.
+
+### Features and enhancements [elastic-cloud-kubernetes-330-features-and-enhancements]
+
+- AutoOpsAgentPolicy support [#8941](https://github.com/elastic/cloud-on-k8s/pull/8941) (issue: [#8789](https://github.com/elastic/cloud-on-k8s/issues/8789))
+- ElasticPackageRegistry support [#8800](https://github.com/elastic/cloud-on-k8s/pull/8800) (issue: [#8925](https://github.com/elastic/cloud-on-k8s/issues/8925))
+- Stack Config Policies composition support [#8917](https://github.com/elastic/cloud-on-k8s/pull/8917)
+- Use standard {{product.kibana}} labels and Helm labels on the ECK Operator pod [#8840](https://github.com/elastic/cloud-on-k8s/pull/8840) (issue: [#8584](https://github.com/elastic/cloud-on-k8s/issues/8584))
+- Add service customization support for {{es}} remote cluster server [#8892](https://github.com/elastic/cloud-on-k8s/pull/8892)
+- Removal of {{es}} 6.x support from codebase [#8979](https://github.com/elastic/cloud-on-k8s/pull/8979)
+
+### Fixes [elastic-cloud-kubernetes-330-fixes]
+
+- Upgrade master StatefulSets last when performing a version upgrade of {{es}} [#8871](https://github.com/elastic/cloud-on-k8s/pull/8871) (issue: [#8429](https://github.com/elastic/cloud-on-k8s/issues/8429))
+- Fix race condition for pre-existing Stack Config Policy [#8928](https://github.com/elastic/cloud-on-k8s/pull/8928) (issue: [#8912](https://github.com/elastic/cloud-on-k8s/issues/8912))
+- Do not set {{product.kibana}} server.name [#8930](https://github.com/elastic/cloud-on-k8s/pull/8930) (issue: [#8929](https://github.com/elastic/cloud-on-k8s/issues/8929))
+- Do not write `elasticsearch.k8s.elastic.co/managed-remote-clusters` when not necessary [#8932](https://github.com/elastic/cloud-on-k8s/pull/8932) (issue: [#8781](https://github.com/elastic/cloud-on-k8s/issues/8781))
+- Cleanup orphaned secret mounts when removed from StackConfigPolicy [#8937](https://github.com/elastic/cloud-on-k8s/pull/8937) (issue: [#8921](https://github.com/elastic/cloud-on-k8s/issues/8921))
+- Avoid duplicate error logging for generate GET operations on a GVK [#8957](https://github.com/elastic/cloud-on-k8s/pull/8957)
+- Remove single master at a time upscale restriction [#8940](https://github.com/elastic/cloud-on-k8s/pull/8940) (issue: [#8939](https://github.com/elastic/cloud-on-k8s/issues/8939))
+
+
+### Documentation improvements [elastic-cloud-kubernetes-330-documentation-improvements]
+
+- Update Google Cloud LoadBalancer recipe for new requirements [#8843](https://github.com/elastic/cloud-on-k8s/pull/8843)
+- Fix minUnavailable typo in PDB documentation [#8898](https://github.com/elastic/cloud-on-k8s/pull/8898)
+- Use GKE ComputeClass instead of DaemonSet for GKE AutoPilot [#8982](https://github.com/elastic/cloud-on-k8s/pull/8982)
+- Adjust `vm.max_map_count` to 1048576 in GKE AutoPilot recipes [#8986](https://github.com/elastic/cloud-on-k8s/pull/8986)
+- Remove support for Stack 7.17. [#9038](https://github.com/elastic/cloud-on-k8s/pull/9038)
+
+:::{dropdown} Updated dependencies
+
+- Go 1.25.2 => 1.25.6
+- github.com/KimMachineGun/automemlimit v0.7.4 => v0.7.5
+- github.com/elastic/go-ucfg v0.8.9-0.20250307075119-2a22403faaea => v0.8.9-0.20251017163010-3520930bed4f
+- github.com/gkampitakis/go-snaps v0.5.15 => v0.5.19
+- github.com/google/go-containerregistry v0.20.6 => v0.20.7
+- github.com/googlecloudplatform/compute-class-api => v0.0.0-20251208134148-ae2e7936c1f8
+- github.com/prometheus/common v0.67.1 => v0.67.5
+- github.com/spf13/cobra v1.10.1 => v1.10.2
+- go.elastic.co/apm/v2 v2.7.1 => v2.7.2
+- go.uber.org/zap v1.27.0 => v1.27.1
+- golang.org/x/crypto v0.40.0 => v0.46.0
+- k8s.io/api v0.34.1 => v0.35.0
+- k8s.io/apimachinery v0.34.1 => v0.35.0
+- k8s.io/client-go v0.34.1 => v0.35.0
+- k8s.io/utils v0.0.0-20250604170112-4c0f3b243397 => v0.0.0-20251002143259-bc988d571ff4
+- sigs.k8s.io/controller-runtime v0.22.2 => v0.22.4
+- sigs.k8s.io/controller-tools v0.19.0 => v0.20.0
+
+:::
 
 ## 3.2.0 [elastic-cloud-kubernetes-320-release-notes]
 
@@ -44,6 +111,7 @@ ECK now supports configuring the length of the generated password for the admini
 ### Miscellaneous  [elastic-cloud-kubernetes-320-miscellaneous]
 
 :::{dropdown} Updated dependencies
+
 - Go 1.24.5 => 1.25.2
 - github.com/gkampitakis/go-snaps v0.5.13 => v0.5.15
 - github.com/hashicorp/vault/api v1.20.0 => v1.22.0
@@ -99,6 +167,7 @@ To reduce the attack surface and improve overall security UBI images are now bas
 ### Miscellaneous [elastic-cloud-kubernetes-310-miscellaneous]
 
 :::{dropdown} Updated dependencies
+
 - Update Go version to 1.24.5 [#8745](https://github.com/elastic/cloud-on-k8s/pull/8745)
 - chore(deps): update registry.access.redhat.com/ubi9/ubi-micro docker tag to v9.6-1750858477 [#8711](https://github.com/elastic/cloud-on-k8s/pull/8711)
 - fix(deps): update k8s to v0.33.2 [#8699](https://github.com/elastic/cloud-on-k8s/pull/8699)
@@ -115,9 +184,11 @@ To reduce the attack surface and improve overall security UBI images are now bas
 ## 3.0.0 [elastic-cloud-kubernetes-300-release-notes]
 
 ### Release Highlights
+
 - ECK 3.0.0 adds support for Elastic Stack version 9.0.0. Elastic Stack version 9.0.0 is not supported on ECK operators running versions earlier than 3.0.0.
 
 ### Features and enhancements [elastic-cloud-kubernetes-300-features-enhancements]
+
 - Add support for defining `dnsPolicy` and `dnsConfig` options for the ECK operator StatefulSet [#7999](https://github.com/elastic/cloud-on-k8s/pull/7999)
 - Config: Allow escaping dots in keys via `[unsplit.key]` syntax [#8512](https://github.com/elastic/cloud-on-k8s/pull/8512) (issue: [#8499](https://github.com/elastic/cloud-on-k8s/issues/8499))
 - Enable copying of ECK images to Amazon ECR to make it easier for users to find our own ECK operator in the AWS marketplace [#8427](https://github.com/elastic/cloud-on-k8s/pull/8427)
@@ -131,9 +202,11 @@ To reduce the attack surface and improve overall security UBI images are now bas
 - Validate updates to 9.0 go through 8.18 [#8559](https://github.com/elastic/cloud-on-k8s/pull/8559) (issue: [#8557](https://github.com/elastic/cloud-on-k8s/issues/8557))
 
 ### Fixes [elastic-cloud-kubernetes-300-fixes]
+
 - Correctly parse managed namespaces when specified as an environment variable [#8513](https://github.com/elastic/cloud-on-k8s/pull/8513) (issue: [#7542](https://github.com/elastic/cloud-on-k8s/issues/7542))
 
 ### Documentation improvements [elastic-cloud-kubernetes-300-documentation-improvements]
+
 - [DOCS] Updates release notes title ([#8599](https://github.com/elastic/cloud-on-k8s/pull/8599))
 - Updates for Istio 1.24 ([#8476](https://github.com/elastic/cloud-on-k8s/pull/8476))
 - Fix unresolved attribute in ECK Quickstart ([#8432](https://github.com/elastic/cloud-on-k8s/pull/8432))
@@ -144,6 +217,7 @@ To reduce the attack surface and improve overall security UBI images are now bas
 ### Miscellaneous [elastic-cloud-kubernetes-300-miscellaneous]
 
 :::{dropdown} Updated dependencies
+
 - chore(deps): update dependency go to v1.24.1 ([#8454](https://github.com/elastic/cloud-on-k8s/pull/8454))
 - chore(deps): update docker.elastic.co/wolfi/go docker tag to v1.24 ([#8453](https://github.com/elastic/cloud-on-k8s/pull/8453))
 - chore(deps): update registry.access.redhat.com/ubi9/ubi-minimal docker tag to v9.5-1741850109 ([#8544](https://github.com/elastic/cloud-on-k8s/pull/8544))
@@ -167,3 +241,4 @@ To reduce the attack surface and improve overall security UBI images are now bas
 - fix(deps): update module helm.sh/helm/v3 to v3.17.1 ([#8505](https://github.com/elastic/cloud-on-k8s/pull/8505))
 - Update module github.com/gkampitakis/go-snaps to v0.5.10 ([#8467](https://github.com/elastic/cloud-on-k8s/pull/8467))
 :::
+

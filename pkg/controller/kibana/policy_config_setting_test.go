@@ -18,7 +18,7 @@ import (
 )
 
 func Test_getPolicyConfig(t *testing.T) {
-	canonicalConfig := common.MustCanonicalConfig(map[string]interface{}{
+	canonicalConfig := common.MustCanonicalConfig(map[string]any{
 		"xpack.canvas.enabled": true,
 	})
 	for _, tt := range []struct {

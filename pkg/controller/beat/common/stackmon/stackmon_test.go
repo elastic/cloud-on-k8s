@@ -238,7 +238,7 @@ output:
 			ElasticsearchRef: commonv1.ObjectSelector{Name: "es", Namespace: "test"},
 			Deployment:       &v1beta1.DeploymentSpec{},
 			Config: &commonv1.Config{
-				Data: map[string]interface{}{},
+				Data: map[string]any{},
 			},
 			Monitoring: commonv1.Monitoring{
 				Metrics: commonv1.MetricsMonitoring{
@@ -378,7 +378,7 @@ output:
 				client: k8s.NewFakeClient(),
 				beat: func() *v1beta1.Beat {
 					beat := beatFixture.DeepCopy()
-					beat.Spec.Config.Data = map[string]interface{}{"http.port": "invalid"}
+					beat.Spec.Config.Data = map[string]any{"http.port": "invalid"}
 					return beat
 				},
 			},

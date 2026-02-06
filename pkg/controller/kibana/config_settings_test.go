@@ -28,7 +28,6 @@ var defaultConfig = []byte(`
 elasticsearch:
 server:
   host: "0.0.0.0"
-  name: "testkb"
   ssl:
     enabled: true
     key: /mnt/elastic-internal/http-certs/tls.key
@@ -48,7 +47,6 @@ var defaultConfig8 = []byte(`
 elasticsearch:
 server:
   host: "0.0.0.0"
-  name: "testkb"
   ssl:
     enabled: true
     key: /mnt/elastic-internal/http-certs/tls.key
@@ -114,7 +112,7 @@ func Test_reuseOrGenerateSecrets(t *testing.T) {
 			},
 			assertion: func(t *testing.T, got *settings.CanonicalConfig, err error) {
 				t.Helper()
-				expectedSettings := settings.MustCanonicalConfig(map[string]interface{}{
+				expectedSettings := settings.MustCanonicalConfig(map[string]any{
 					XpackSecurityEncryptionKey:              "thisismyencryptionkey",
 					XpackReportingEncryptionKey:             "thisismyreportingkey",
 					XpackEncryptedSavedObjectsEncryptionKey: "thisismyobjectkey",
@@ -486,7 +484,7 @@ func TestNewConfigSettings(t *testing.T) {
 				kb: func() kbv1.Kibana {
 					kb := mkKibana()
 					kb.Spec.Config = &commonv1.Config{
-						Data: map[string]interface{}{
+						Data: map[string]any{
 							"foo": "bar",
 						},
 					}
@@ -503,14 +501,14 @@ func TestNewConfigSettings(t *testing.T) {
 				kb: func() kbv1.Kibana {
 					kb := mkKibana()
 					kb.Spec.Config = &commonv1.Config{
-						Data: map[string]interface{}{
+						Data: map[string]any{
 							"foo": "bar",
 						},
 					}
 					return kb
 				},
 				ipFamily:               corev1.IPv4Protocol,
-				kibanaConfigFromPolicy: settings.MustCanonicalConfig(map[string]interface{}{"foo": "bars"}),
+				kibanaConfigFromPolicy: settings.MustCanonicalConfig(map[string]any{"foo": "bars"}),
 			},
 			want: append(defaultConfig, []byte(`foo: bars`)...),
 		},
@@ -529,7 +527,7 @@ func TestNewConfigSettings(t *testing.T) {
 				kb: func() kbv1.Kibana {
 					kb := mkKibana()
 					kb.Spec.Config = &commonv1.Config{
-						Data: map[string]interface{}{
+						Data: map[string]any{
 							"logging.verbose": false,
 						},
 					}
@@ -571,13 +569,13 @@ func TestNewConfigSettings(t *testing.T) {
 			require.NoError(t, err)
 
 			// convert "got" into something comparable
-			var gotCfg map[string]interface{}
+			var gotCfg map[string]any
 			require.NoError(t, got.Unpack(&gotCfg))
 
 			// convert "want" into something comparable
 			cfg, err := uyaml.NewConfig(tt.want, commonv1.CfgOptions...)
 			require.NoError(t, err)
-			var wantCfg map[string]interface{}
+			var wantCfg map[string]any
 			require.NoError(t, cfg.Unpack(&wantCfg))
 
 			assert.Empty(t, deep.Equal(wantCfg, gotCfg))
@@ -611,14 +609,14 @@ func TestNewConfigSettingsExistingEncryptionKey(t *testing.T) {
 			Namespace: kb.Namespace,
 		},
 		Data: map[string][]byte{
-			SettingsFilename: []byte(fmt.Sprintf("%s: %s\n%s: %s\n%s: %s", XpackSecurityEncryptionKey, securityKey, XpackReportingEncryptionKey, reportKey, XpackEncryptedSavedObjectsEncryptionKey, savedObjsKey)),
+			SettingsFilename: fmt.Appendf(nil, "%s: %s\n%s: %s\n%s: %s", XpackSecurityEncryptionKey, securityKey, XpackReportingEncryptionKey, reportKey, XpackEncryptedSavedObjectsEncryptionKey, savedObjsKey),
 		},
 	}
 	client := k8s.NewFakeClient(existingSecret)
 	v := version.MustParse(kb.Spec.Version)
 	got, err := NewConfigSettings(context.Background(), client, kb, v, corev1.IPv4Protocol, nil)
 	require.NoError(t, err)
-	var gotCfg map[string]interface{}
+	var gotCfg map[string]any
 	require.NoError(t, got.Unpack(&gotCfg))
 
 	val, err := (*ucfg.Config)(got.CanonicalConfig).String(XpackSecurityEncryptionKey, -1, settings.Options...)
@@ -639,7 +637,7 @@ func TestNewConfigSettingsExistingEncryptionKey(t *testing.T) {
 func TestNewConfigSettingsExplicitEncryptionKey(t *testing.T) {
 	kb := mkKibana()
 	key := "thisismyencryptionkey"
-	cfg := commonv1.NewConfig(map[string]interface{}{
+	cfg := commonv1.NewConfig(map[string]any{
 		XpackSecurityEncryptionKey: key,
 	})
 	kb.Spec.Config = &cfg

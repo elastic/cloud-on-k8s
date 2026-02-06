@@ -336,6 +336,232 @@ func TestStackConfigPolicy(t *testing.T) {
 	test.Sequence(nil, steps, esWithlicense).RunSequential(t)
 }
 
+// TestStackConfigPolicyMultipleWeights tests multiple StackConfigPolicies with different weights.
+func TestStackConfigPolicyMultipleWeights(t *testing.T) {
+	// only execute this test if we have a test license to work with
+	if test.Ctx().TestLicense == "" {
+		t.SkipNow()
+	}
+
+	stackVersion := version.MustParse(test.Ctx().ElasticStackVersion)
+	switch {
+	case stackVersion.LT(filesettings.FileBasedSettingsMinPreVersion):
+		// StackConfigPolicy is supported for ES versions with file-based settings feature
+		t.SkipNow()
+	case stackVersion.LT(version.From(8, 11, 0)):
+		// Before 8.11.0, ES has an issue with loading cluster-settings changes in file-settings
+		// of the same keys as in this test (https://github.com/elastic/elasticsearch/pull/99212)
+		t.SkipNow()
+	}
+
+	es := elasticsearch.NewBuilder("test-es-scp-multi").
+		WithESMasterDataNodes(1, elasticsearch.DefaultResources).
+		WithLabel("app", "elasticsearch")
+
+	namespace := test.Ctx().ManagedNamespace(0)
+
+	// Policy with weight 10 (lower priority) - sets cluster.name
+	lowPriorityPolicy := policyv1alpha1.StackConfigPolicy{
+		ObjectMeta: metav1.ObjectMeta{
+			Namespace: namespace,
+			Name:      fmt.Sprintf("low-priority-scp-%s", rand.String(4)),
+		},
+		Spec: policyv1alpha1.StackConfigPolicySpec{
+			Weight: 10,
+			ResourceSelector: metav1.LabelSelector{
+				MatchLabels: map[string]string{"app": "elasticsearch"},
+			},
+			Elasticsearch: policyv1alpha1.ElasticsearchConfigPolicySpec{
+				Config: &commonv1.Config{
+					Data: map[string]interface{}{
+						"cluster.name": "low-priority-cluster",
+					},
+				},
+				ClusterSettings: &commonv1.Config{
+					Data: map[string]interface{}{
+						"indices": map[string]interface{}{
+							"recovery.max_bytes_per_sec": "50mb",
+						},
+					},
+				},
+			},
+		},
+	}
+
+	// Policy with weight 20 (higher priority) - should override cluster.name and settings
+	highPriorityPolicy := policyv1alpha1.StackConfigPolicy{
+		ObjectMeta: metav1.ObjectMeta{
+			Namespace: namespace,
+			Name:      fmt.Sprintf("high-priority-scp-%s", rand.String(4)),
+		},
+		Spec: policyv1alpha1.StackConfigPolicySpec{
+			Weight: 20,
+			ResourceSelector: metav1.LabelSelector{
+				MatchLabels: map[string]string{"app": "elasticsearch"},
+			},
+			Elasticsearch: policyv1alpha1.ElasticsearchConfigPolicySpec{
+				Config: &commonv1.Config{
+					Data: map[string]interface{}{
+						"cluster": map[string]interface{}{
+							"name": "high-priority-cluster",
+						},
+					},
+				},
+				ClusterSettings: &commonv1.Config{
+					Data: map[string]interface{}{
+						"indices": map[string]interface{}{
+							"recovery": map[string]interface{}{
+								"max_bytes_per_sec": "200mb",
+							},
+						},
+					},
+				},
+			},
+		},
+	}
+
+	// Policy with same weight 10 but different selector (should not conflict)
+	nonConflictingPolicy := policyv1alpha1.StackConfigPolicy{
+		ObjectMeta: metav1.ObjectMeta{
+			Namespace: namespace,
+			Name:      fmt.Sprintf("non-conflicting-scp-%s", rand.String(4)),
+		},
+		Spec: policyv1alpha1.StackConfigPolicySpec{
+			Weight: 10,
+			ResourceSelector: metav1.LabelSelector{
+				MatchLabels: map[string]string{"app": "kibana"}, // Different selector
+			},
+			Elasticsearch: policyv1alpha1.ElasticsearchConfigPolicySpec{
+				Config: &commonv1.Config{
+					Data: map[string]interface{}{
+						"cluster.name": "should-not-apply",
+					},
+				},
+			},
+		},
+	}
+
+	esWithlicense := test.LicenseTestBuilder(es)
+
+	steps := func(k *test.K8sClient) test.StepList {
+		return test.StepList{
+			test.Step{
+				Name: "Create low priority StackConfigPolicy",
+				Test: test.Eventually(func() error {
+					return k.CreateOrUpdate(&lowPriorityPolicy)
+				}),
+			},
+			test.Step{
+				Name: "Create high priority StackConfigPolicy",
+				Test: test.Eventually(func() error {
+					return k.CreateOrUpdate(&highPriorityPolicy)
+				}),
+			},
+			test.Step{
+				Name: "Create non-conflicting StackConfigPolicy",
+				Test: test.Eventually(func() error {
+					return k.CreateOrUpdate(&nonConflictingPolicy)
+				}),
+			},
+			test.Step{
+				Name: "High priority cluster name should be applied",
+				Test: test.Eventually(func() error {
+					esClient, err := elasticsearch.NewElasticsearchClient(es.Elasticsearch, k)
+					if err != nil {
+						return err
+					}
+
+					var apiResponse ClusterInfoResponse
+					if _, _, err = request(esClient, http.MethodGet, "/", nil, &apiResponse); err != nil {
+						return err
+					}
+
+					if apiResponse.ClusterName != "high-priority-cluster" {
+						return fmt.Errorf("expected cluster name 'high-priority-cluster', got '%s'", apiResponse.ClusterName)
+					}
+					return nil
+				}),
+			},
+			test.Step{
+				Name: "High priority cluster settings should be applied",
+				Test: test.Eventually(func() error {
+					esClient, err := elasticsearch.NewElasticsearchClient(es.Elasticsearch, k)
+					if err != nil {
+						return err
+					}
+
+					var settings ClusterSettings
+					_, _, err = request(esClient, http.MethodGet, "/_cluster/settings", nil, &settings)
+					if err != nil {
+						return err
+					}
+
+					if settings.Persistent.Indices.Recovery.MaxBytesPerSec != "200mb" {
+						return fmt.Errorf("expected max_bytes_per_sec '200mb', got '%s'", settings.Persistent.Indices.Recovery.MaxBytesPerSec)
+					}
+					return nil
+				}),
+			},
+			test.Step{
+				Name: "Delete high priority policy - low priority should take effect",
+				Test: test.Eventually(func() error {
+					return k.Client.Delete(context.Background(), &highPriorityPolicy)
+				}),
+			},
+			test.Step{
+				Name: "Low priority cluster name should now be applied",
+				Test: test.Eventually(func() error {
+					esClient, err := elasticsearch.NewElasticsearchClient(es.Elasticsearch, k)
+					if err != nil {
+						return err
+					}
+
+					var apiResponse ClusterInfoResponse
+					if _, _, err = request(esClient, http.MethodGet, "/", nil, &apiResponse); err != nil {
+						return err
+					}
+
+					if apiResponse.ClusterName != "low-priority-cluster" {
+						return fmt.Errorf("expected cluster name 'low-priority-cluster', got '%s'", apiResponse.ClusterName)
+					}
+					return nil
+				}),
+			},
+			test.Step{
+				Name: "Low priority cluster settings should now be applied",
+				Test: test.Eventually(func() error {
+					esClient, err := elasticsearch.NewElasticsearchClient(es.Elasticsearch, k)
+					if err != nil {
+						return err
+					}
+
+					var settings ClusterSettings
+					_, _, err = request(esClient, http.MethodGet, "/_cluster/settings", nil, &settings)
+					if err != nil {
+						return err
+					}
+
+					if settings.Persistent.Indices.Recovery.MaxBytesPerSec != "50mb" {
+						return fmt.Errorf("expected max_bytes_per_sec '50mb', got '%s'", settings.Persistent.Indices.Recovery.MaxBytesPerSec)
+					}
+					return nil
+				}),
+			},
+			test.Step{
+				Name: "Clean up remaining policies",
+				Test: test.Eventually(func() error {
+					if err := k.Client.Delete(context.Background(), &lowPriorityPolicy); err != nil {
+						return err
+					}
+					return k.Client.Delete(context.Background(), &nonConflictingPolicy)
+				}),
+			},
+		}
+	}
+
+	test.Sequence(nil, steps, esWithlicense).RunSequential(t)
+}
+
 func checkAPIStatusCode(esClient client.Client, url string, expectedStatusCode int) error {
 	var items map[string]interface{}
 	_, actualStatusCode, _ := request(esClient, http.MethodGet, url, nil, &items)

@@ -10,7 +10,7 @@ import (
 
 // GetRandomPort returns a random port chosen by the OS by binding to :0 and checking what port was bound.
 func GetRandomPort() (string, error) {
-	listener, err := net.Listen("tcp", "127.0.0.1:0")
+	listener, err := net.Listen("tcp", "127.0.0.1:0") //nolint:noctx
 	if err != nil {
 		return "", err
 	}

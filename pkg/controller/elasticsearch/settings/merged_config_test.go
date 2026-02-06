@@ -35,7 +35,7 @@ func TestNewMergedESConfig(t *testing.T) {
 		} `yaml:"network"`
 	}
 
-	policyCfg := common.MustCanonicalConfig(map[string]interface{}{
+	policyCfg := common.MustCanonicalConfig(map[string]any{
 		esv1.DiscoverySeedProviders: "policy-override",
 	})
 
@@ -45,7 +45,7 @@ func TestNewMergedESConfig(t *testing.T) {
 		ipFamily                   corev1.IPFamily
 		remoteClusterServerEnabled bool
 		remoteClusterClientEnabled bool
-		cfgData                    map[string]interface{}
+		cfgData                    map[string]any
 		policyCfgData              *common.CanonicalConfig
 		assert                     func(cfg CanonicalConfig)
 	}{
@@ -53,7 +53,7 @@ func TestNewMergedESConfig(t *testing.T) {
 			name:     "No remote cluster client or server by default",
 			version:  "8.15.0",
 			ipFamily: corev1.IPv4Protocol,
-			cfgData:  map[string]interface{}{},
+			cfgData:  map[string]any{},
 			assert: func(cfg CanonicalConfig) {
 				// Remote cluster client configuration.
 				require.Equal(t, 0, len(cfg.HasKeys([]string{"xpack.security.remote_cluster_client.ssl.enabled"})))
@@ -69,7 +69,7 @@ func TestNewMergedESConfig(t *testing.T) {
 			version:                    "8.15.0",
 			ipFamily:                   corev1.IPv4Protocol,
 			remoteClusterClientEnabled: true,
-			cfgData:                    map[string]interface{}{},
+			cfgData:                    map[string]any{},
 			assert: func(cfg CanonicalConfig) {
 				// Remote cluster client configuration.
 				require.Equal(t, 1, len(cfg.HasKeys([]string{"xpack.security.remote_cluster_client.ssl.enabled"})))
@@ -85,7 +85,7 @@ func TestNewMergedESConfig(t *testing.T) {
 			version:                    "8.15.0",
 			ipFamily:                   corev1.IPv4Protocol,
 			remoteClusterServerEnabled: true,
-			cfgData:                    map[string]interface{}{},
+			cfgData:                    map[string]any{},
 			assert: func(cfg CanonicalConfig) {
 				// Remote cluster client configuration.
 				require.Equal(t, 0, len(cfg.HasKeys([]string{"xpack.security.remote_cluster_client.ssl.enabled"})))
@@ -104,7 +104,7 @@ func TestNewMergedESConfig(t *testing.T) {
 			name:     "in 7.x, empty config should have the default file and native realm settings configured",
 			version:  "7.3.0",
 			ipFamily: corev1.IPv4Protocol,
-			cfgData:  map[string]interface{}{},
+			cfgData:  map[string]any{},
 			assert: func(cfg CanonicalConfig) {
 				require.Equal(t, 0, len(cfg.HasKeys([]string{nodeML})))
 				require.Equal(t, 1, len(cfg.HasKeys([]string{esv1.XPackSecurityAuthcRealmsFileFile1Order})))
@@ -117,7 +117,7 @@ func TestNewMergedESConfig(t *testing.T) {
 			name:     "in 7.x, sample config should have the default file and native realm settings configured",
 			version:  "7.3.0",
 			ipFamily: corev1.IPv4Protocol,
-			cfgData: map[string]interface{}{
+			cfgData: map[string]any{
 				nodeML: true,
 			},
 			assert: func(cfg CanonicalConfig) {
@@ -130,7 +130,7 @@ func TestNewMergedESConfig(t *testing.T) {
 			name:     "in 7.x, active_directory realm settings should be merged with the default file and native realm settings",
 			version:  "7.3.0",
 			ipFamily: corev1.IPv4Protocol,
-			cfgData: map[string]interface{}{
+			cfgData: map[string]any{
 				nodeML: true,
 				xPackSecurityAuthcRealmsActiveDirectoryAD1Order: 0,
 			},
@@ -142,12 +142,11 @@ func TestNewMergedESConfig(t *testing.T) {
 			},
 		},
 		{
-			name:     "starting 7.x, seed hosts settings should be discovery.seed_providers",
+			name:     "seed hosts settings should be discovery.seed_providers",
 			version:  "7.0.0",
 			ipFamily: corev1.IPv4Protocol,
-			cfgData:  map[string]interface{}{},
+			cfgData:  map[string]any{},
 			assert: func(cfg CanonicalConfig) {
-				require.Equal(t, 0, len(cfg.HasKeys([]string{esv1.DiscoveryZenHostsProvider})))
 				require.Equal(t, 1, len(cfg.HasKeys([]string{esv1.DiscoverySeedProviders})))
 			},
 		},
@@ -155,7 +154,7 @@ func TestNewMergedESConfig(t *testing.T) {
 			name:     "prior to 7.8.1, we should not set allowed license upload types",
 			version:  "7.5.0",
 			ipFamily: corev1.IPv4Protocol,
-			cfgData:  map[string]interface{}{},
+			cfgData:  map[string]any{},
 			assert: func(cfg CanonicalConfig) {
 				require.Equal(t, 0, len(cfg.HasKeys([]string{esv1.XPackLicenseUploadTypes})))
 			},
@@ -164,7 +163,7 @@ func TestNewMergedESConfig(t *testing.T) {
 			name:     "starting 7.8.1, we should set allowed license upload types",
 			version:  "7.8.1",
 			ipFamily: corev1.IPv4Protocol,
-			cfgData:  map[string]interface{}{},
+			cfgData:  map[string]any{},
 			assert: func(cfg CanonicalConfig) {
 				require.Equal(t, 1, len(cfg.HasKeys([]string{esv1.XPackLicenseUploadTypes})))
 			},
@@ -173,7 +172,7 @@ func TestNewMergedESConfig(t *testing.T) {
 			name:     "prior to 8.2.0 we should not enable the readiness.port",
 			version:  "8.1.0",
 			ipFamily: corev1.IPv4Protocol,
-			cfgData:  map[string]interface{}{},
+			cfgData:  map[string]any{},
 			assert: func(cfg CanonicalConfig) {
 				require.Equal(t, 0, len(cfg.HasKeys([]string{esv1.ReadinessPort})))
 			},
@@ -182,7 +181,7 @@ func TestNewMergedESConfig(t *testing.T) {
 			name:     "starting 8.2.0 we should enable the readiness.port",
 			version:  "8.2.0",
 			ipFamily: corev1.IPv4Protocol,
-			cfgData:  map[string]interface{}{},
+			cfgData:  map[string]any{},
 			assert: func(cfg CanonicalConfig) {
 				require.Equal(t, 1, len(cfg.HasKeys([]string{esv1.ReadinessPort})))
 			},
@@ -191,7 +190,7 @@ func TestNewMergedESConfig(t *testing.T) {
 			name:     "user-provided Elasticsearch config overrides should have precedence over ECK config",
 			version:  "7.6.0",
 			ipFamily: corev1.IPv4Protocol,
-			cfgData: map[string]interface{}{
+			cfgData: map[string]any{
 				esv1.DiscoverySeedProviders: "something-else",
 			},
 			assert: func(cfg CanonicalConfig) {
@@ -211,7 +210,7 @@ func TestNewMergedESConfig(t *testing.T) {
 			name:     "Elasticsearch config overrides from policy should have precedence over default config",
 			version:  "7.6.0",
 			ipFamily: corev1.IPv4Protocol,
-			cfgData: map[string]interface{}{
+			cfgData: map[string]any{
 				esv1.DiscoverySeedProviders: "something-else",
 			},
 			policyCfgData: policyCfg,
@@ -232,7 +231,7 @@ func TestNewMergedESConfig(t *testing.T) {
 			name:     "configuration is adjusted for IP family",
 			version:  "7.6.0",
 			ipFamily: corev1.IPv6Protocol,
-			cfgData:  map[string]interface{}{},
+			cfgData:  map[string]any{},
 			assert: func(cfg CanonicalConfig) {
 				cfgBytes, err := cfg.Render()
 				require.NoError(t, err)

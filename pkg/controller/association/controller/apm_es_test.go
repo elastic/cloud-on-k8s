@@ -22,22 +22,13 @@ func Test_getAPMElasticsearchRoles(t *testing.T) {
 		wantErr bool
 	}{
 		{
-			name: "Test roles for APM Server v6.8.0",
+			name: "Test roles for APM Server v7.0.0",
 			args: args{
 				associated: &apmv1.ApmServer{
-					Spec: apmv1.ApmServerSpec{Version: "6.8.0"},
+					Spec: apmv1.ApmServerSpec{Version: "7.0.0"},
 				},
 			},
-			want: "eck_apm_user_role_v6,apm_system",
-		},
-		{
-			name: "Test roles for APM Server v6.8.99",
-			args: args{
-				associated: &apmv1.ApmServer{
-					Spec: apmv1.ApmServerSpec{Version: "6.8.99"},
-				},
-			},
-			want: "eck_apm_user_role_v6,apm_system",
+			want: "eck_apm_user_role_v7,ingest_admin,apm_system",
 		},
 		{
 			name: "Test roles for APM Server v7.1.0",

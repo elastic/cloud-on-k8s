@@ -1,0 +1,7 @@
+
+1. Check AutoOps Agent Policy status
+  $ kubectl get autoops {{ include "autoops.fullname" . }} -n {{ .Release.Namespace }}
+
+2. Check AutoOps Agent Policy details
+  $ kubectl describe autoops {{ include "autoops.fullname" . }} -n {{ .Release.Namespace }}
+

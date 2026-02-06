@@ -1,0 +1,158 @@
+---
+apiVersion: packageregistry.k8s.elastic.co/v1alpha1
+kind: PackageRegistry
+metadata:
+  name: registry
+spec:
+  version: 9.3.0
+  count: 1
+---
+apiVersion: kibana.k8s.elastic.co/v1
+kind: Kibana
+metadata:
+  name: kibana
+spec:
+  version: 9.3.0
+  count: 1
+  elasticsearchRef:
+    name: elasticsearch
+  packageRegistryRef:
+    name: registry
+  config:
+    xpack.fleet.agents.elasticsearch.hosts: ["https://elasticsearch-es-http.default.svc:9200"]
+    xpack.fleet.agents.fleet_server.hosts: ["https://fleet-server-agent-http.default.svc:8220"]
+    xpack.fleet.packages:
+    - name: system
+      version: latest
+    - name: elastic_agent
+      version: latest
+    - name: fleet_server
+      version: latest
+    xpack.fleet.agentPolicies:
+    - name: Fleet Server on ECK policy
+      id: eck-fleet-server
+      namespace: default
+      is_managed: true
+      monitoring_enabled:
+      - logs
+      - metrics
+      unenroll_timeout: 900
+      package_policies:
+      - name: fleet_server-1
+        id: fleet_server-1
+        package:
+          name: fleet_server
+  podTemplate:
+    spec:
+      containers:
+      - name: kibana
+        env:
+        - name: NODE_EXTRA_CA_CERTS
+          value: /custom/user/ca-bundle.crt
+        volumeMounts:
+        - name: custom-ca
+          mountPath: /custom/user
+          readOnly: true
+      volumes:
+      - name: custom-ca
+        secret:
+          secretName: user-custom-ca-secret
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: user-custom-ca-secret
+  namespace: default
+type: Opaque
+data:
+  ca-bundle.crt: LS0tLS1CRUdJTiBDRVJUSUZJQ0FURS0tLS0tCk1JSUZtVENDQTRHZ0F3SUJBZ0lVYjVrK2d6V3A5YjljWTV4bkhUcWZNdHFHUXIwd0RRWUpLb1pJaHZjTkFRRUwKQlFBd1hERUxNQWtHQTFVRUJoTUNXRmd4RlRBVEJnTlZCQWNNREVSbFptRjFiSFFnUTJsMGVURWNNQm9HQTFVRQpDZ3dUUkdWbVlYVnNkQ0JEYjIxd1lXNTVJRXgwWkRFWU1CWUdBMVVFQXd3UGRHVnpkQzVsYkdGemRHbGpMbU52Ck1CNFhEVEkxTURneU1ERTRNakl3T0ZvWERUTTFNRGd4T0RFNE1qSXdPRm93WERFTE1Ba0dBMVVFQmhNQ1dGZ3gKRlRBVEJnTlZCQWNNREVSbFptRjFiSFFnUTJsMGVURWNNQm9HQTFVRUNnd1RSR1ZtWVhWc2RDQkRiMjF3WVc1NQpJRXgwWkRFWU1CWUdBMVVFQXd3UGRHVnpkQzVsYkdGemRHbGpMbU52TUlJQ0lqQU5CZ2txaGtpRzl3MEJBUUVGCkFBT0NBZzhBTUlJQ0NnS0NBZ0VBMHljTGVySWR3LzdpbGlKMzVBUEZ4bUx6TFRnNWRhUStWSUttS2lNbStlTTYKanJOY3lnbGphNVFEbHYvMStGUm5hamhrRTBobHoycXEzTjk0U1pYN3M2eHBnQUVzMGVQQ3VaZVBNU2VUYlYyRgp0YlIxNnFuM0JjenVxN3laOXZwdHR3MmJRdkJkY3JzZFU4T2RYUWhGNFd4QUFwODRKYWlMNmkzMlA2K2VPODBwCmh3Z1kwS0F1bzZoZC8zaFpNME14M2MwRmJmU0JHaTUyOHZKODYzUDRXZlEwMWdtUUxVbGl0UlhhTUhiaDRXSm0KOU45c0psUXpnbkNuQjZ6YkZjZ2gweWxrakd0UzBIZEo3eSs3dmE0Q1BqdkxlWGpwTnZuQzRjTmlocnp4Wmw5bQphM0ZVdVpiU0lRekE2ZFlkdkdrT2V3OTJEek1BaTdldU14UDdyYVhRejZmc1N6U1V4N1RjQWl5M2E5VU9Fdi9rCk5NV3VTbDlUMHRRSkhJSzJMc0t0MlVKWVVHWk4wOWU2SUVSTlJOL0FIUjVDbTlhcVQ1Q2ZyQW9JVVhNdUg2S1oKN1JCZFFockRxL2xEQk54bWs5dW44V2lic0NSVnkvVXRJQ3lOSytxbGpGUWZEd01hNkRkd3BjcnpnTWZnU3RTawpLek1LRUJla2N0Q0Q4dHNmTjZYem5USmNBYUJETzFlQWZyT0Z2NG1PTXJqVG90OEYvK3pxN0dXNTlqWTRvdFhMCkY3TnpadFl0eWsvbDRvb2hUZUFuM1ptd1BDMGJFQ1FkTmpTVkZ6ZXJCamE4ZjhacGpKRzNjUllyVmh6YUNsRWMKRU5wbFRHcldVaUVwRDdnTnNlNWNDSnZpQU12NHdwait2QTVVNlA3Z0MxUUtKV2hWS3BVYWcvTmtTSUFCRmtrQwpBd0VBQWFOVE1GRXdIUVlEVlIwT0JCWUVGTWdldEVJajZtRWdsZURGNkVNdUY4NXVnYzdZTUI4R0ExVWRJd1FZCk1CYUFGTWdldEVJajZtRWdsZURGNkVNdUY4NXVnYzdZTUE4R0ExVWRFd0VCL3dRRk1BTUJBZjh3RFFZSktvWkkKaHZjTkFRRUxCUUFEZ2dJQkFEOFU3dm1yWmhHTUZiV2YzRDZlNy84TUwzWEhLRk5TNy9UeWF3U2tvdGVSTVdFbgp1RWhQK2dmbkdUT2ZITFlQeHl5eEJ4U041T29sZHRJclo5dnhBc2dlYWJzSkJaenhQVHpxU09VN3h3b09LcTlRCmdKRUYxL0ZmemFlR1V5dVE2S1ZaZ0QvZ1JPSW42Ri9OUGlzM1pvbUpPOStuVWdTTnNiUm9RYmdPUGdPV3Q3Z1gKVEhuOHJpdUp2OXRPNFBRN09Sa3pubDJYbERlcE9xNVpwSUtkcVl0Rm5MUjF3SllyREZESmt0Q3h6MzFob0FrZwpSVjlSU1BSMFFxZ1JQeFNpNGpXdkNGUk5XTUFJc0NadGJsWExRRUljWGI1YnlsWXV2a3psTTJ4dHlHK3FaRFhMCnFoZDVNeFZIUkpqTzE1VEdpZXFRcUpMVkZyVElhTHFoaXZpQ1pUbDJoVkYxVlpPVG05MU5aeE53M25RL3JyeDgKK2VQV2xTWlZKWXc3SDRkWkx5WTFjRUxLT0YrZDJybVNSZ2pWaHZycUZ3R1M3MUQzYkV4Y0dSakNrOHNQWEZyRwpsOFRzY05RMXBPSGVuNlJhOFhVdGtxU1doZllFb3owZjBEem4wYmt4c2VWaCttS1BHV3QxcHdlemVFTFVwaHE3CmwwSVRLeis1b1lqYWVHTDRia25kcWlpemwzWkc2N0lYL3VyR0dQVUxkLzU1NEtRMFFPMS92S3Y2dE1YMWc0dVMKWHdWc0pzQjlrTUIwRFFxbDhRYmg0UEJ2ZW9RRTZvL3BycXRtWjR1RWdDMCt1cm5paDlCY1FweFNKOUljR1kxTQpBQzRBcG5Pem1CYTFhUVBMcDRaRFIxQXpFK1hXWDd2WWNWYUxleUJxRzRja3dwbUtOUnhpcnJjS2NaMkYKLS0tLS1FTkQgQ0VSVElGSUNBVEUtLS0tLQo=
+---
+apiVersion: elasticsearch.k8s.elastic.co/v1
+kind: Elasticsearch
+metadata:
+  name: elasticsearch
+spec:
+  version: 9.3.0
+  nodeSets:
+  - name: default
+    count: 1
+    config:
+      node.store.allow_mmap: false
+---
+apiVersion: agent.k8s.elastic.co/v1alpha1
+kind: Agent
+metadata:
+  name: fleet-server
+spec:
+  version: 9.3.0
+  kibanaRef:
+    name: kibana
+  elasticsearchRefs:
+  - name: elasticsearch
+  mode: fleet
+  fleetServerEnabled: true
+  policyID: eck-fleet-server
+  deployment:
+    replicas: 1
+    podTemplate:
+      spec:
+        serviceAccountName: fleet-server
+        automountServiceAccountToken: true
+        securityContext:
+          runAsUser: 0
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: fleet-server
+rules:
+- apiGroups: [""]
+  resources:
+  - pods
+  - namespaces
+  - nodes
+  verbs:
+  - get
+  - watch
+  - list
+- apiGroups: ["apps"]
+  resources:
+    - replicasets
+  verbs:
+    - get
+    - watch
+    - list
+- apiGroups: ["batch"]
+  resources:
+    - jobs
+  verbs:
+    - get
+    - watch
+    - list
+- apiGroups: ["coordination.k8s.io"]
+  resources:
+  - leases
+  verbs:
+  - get
+  - create
+  - update
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: fleet-server
+  namespace: default
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: fleet-server
+subjects:
+- kind: ServiceAccount
+  name: fleet-server
+  namespace: default
+roleRef:
+  kind: ClusterRole
+  name: fleet-server
+  apiGroup: rbac.authorization.k8s.io
+

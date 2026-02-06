@@ -21,7 +21,6 @@ import (
 	commonannotation "github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/annotation"
 	commonlabel "github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/labels"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/metadata"
-	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/reconciler"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/k8s"
 )
 
@@ -34,18 +33,18 @@ const (
 // The Settings version is updated using the current timestamp only when the Settings have changed.
 // If the new settings from the policy changed compared to the actual from the secret, the settings version is
 // updated
-func NewSettingsSecretWithVersion(es types.NamespacedName, currentSecret *corev1.Secret, policy *policyv1alpha1.StackConfigPolicy, meta metadata.Metadata) (corev1.Secret, int64, error) {
+func NewSettingsSecretWithVersion(es types.NamespacedName, currentSecret *corev1.Secret, esConfigPolicy *policyv1alpha1.ElasticsearchConfigPolicySpec, namespacedSecretSources []commonv1.NamespacedSecretSource, meta metadata.Metadata) (corev1.Secret, int64, error) {
 	newVersion := time.Now().UnixNano()
-	return newSettingsSecret(newVersion, es, currentSecret, policy, meta)
+	return newSettingsSecret(newVersion, es, currentSecret, esConfigPolicy, namespacedSecretSources, meta)
 }
 
 // NewSettingsSecret returns a new SettingsSecret for a given Elasticsearch and StackConfigPolicy.
-func newSettingsSecret(version int64, es types.NamespacedName, currentSecret *corev1.Secret, policy *policyv1alpha1.StackConfigPolicy, meta metadata.Metadata) (corev1.Secret, int64, error) {
+func newSettingsSecret(version int64, es types.NamespacedName, currentSecret *corev1.Secret, esConfigPolicy *policyv1alpha1.ElasticsearchConfigPolicySpec, namespacedSecretSources []commonv1.NamespacedSecretSource, meta metadata.Metadata) (corev1.Secret, int64, error) {
 	settings := NewEmptySettings(version)
 
 	// update the settings according to the config policy
-	if policy != nil {
-		err := settings.updateState(es, *policy)
+	if esConfigPolicy != nil {
+		err := settings.updateState(es, *esConfigPolicy)
 		if err != nil {
 			return corev1.Secret{}, 0, err
 		}
@@ -84,14 +83,9 @@ func newSettingsSecret(version int64, es types.NamespacedName, currentSecret *co
 		},
 	}
 
-	if policy != nil {
-		// set this policy as soft owner of this Secret
-		SetSoftOwner(settingsSecret, *policy)
-
-		// add the Secure Settings Secret sources to the Settings Secret
-		if err := setSecureSettings(settingsSecret, *policy); err != nil {
-			return corev1.Secret{}, 0, err
-		}
+	// add the Secure Settings Secret sources to the Settings Secret
+	if err := setSecureSettings(settingsSecret, namespacedSecretSources); err != nil {
+		return corev1.Secret{}, 0, err
 	}
 
 	// Add a label to reset secret on deletion of the stack config policy
@@ -123,33 +117,10 @@ func hasChanged(settingsSecret corev1.Secret, newSettings Settings) bool {
 	return settingsSecret.Annotations[commonannotation.SettingsHashAnnotationName] != newSettings.hash()
 }
 
-// SetSoftOwner sets the given StackConfigPolicy as soft owner of the Settings Secret using the "softOwned" labels.
-func SetSoftOwner(settingsSecret *corev1.Secret, policy policyv1alpha1.StackConfigPolicy) {
-	if settingsSecret.Labels == nil {
-		settingsSecret.Labels = map[string]string{}
-	}
-	settingsSecret.Labels[reconciler.SoftOwnerNamespaceLabel] = policy.GetNamespace()
-	settingsSecret.Labels[reconciler.SoftOwnerNameLabel] = policy.GetName()
-	settingsSecret.Labels[reconciler.SoftOwnerKindLabel] = policyv1alpha1.Kind
-}
-
 // setSecureSettings stores the SecureSettings Secret sources referenced in the given StackConfigPolicy in the annotation of the Settings Secret.
-func setSecureSettings(settingsSecret *corev1.Secret, policy policyv1alpha1.StackConfigPolicy) error {
-	//nolint:staticcheck
-	if len(policy.Spec.SecureSettings) == 0 && len(policy.Spec.Elasticsearch.SecureSettings) == 0 {
+func setSecureSettings(settingsSecret *corev1.Secret, secretSources []commonv1.NamespacedSecretSource) error {
+	if len(secretSources) == 0 {
 		return nil
-	}
-
-	var secretSources []commonv1.NamespacedSecretSource //nolint:prealloc
-	// Common secureSettings field, this is mainly there to maintain backwards compatibility
-	//nolint:staticcheck
-	for _, src := range policy.Spec.SecureSettings {
-		secretSources = append(secretSources, commonv1.NamespacedSecretSource{Namespace: policy.GetNamespace(), SecretName: src.SecretName, Entries: src.Entries})
-	}
-
-	// SecureSettings field under Elasticsearch in the StackConfigPolicy
-	for _, src := range policy.Spec.Elasticsearch.SecureSettings {
-		secretSources = append(secretSources, commonv1.NamespacedSecretSource{Namespace: policy.GetNamespace(), SecretName: src.SecretName, Entries: src.Entries})
 	}
 
 	bytes, err := json.Marshal(secretSources)
@@ -158,19 +129,6 @@ func setSecureSettings(settingsSecret *corev1.Secret, policy policyv1alpha1.Stac
 	}
 	settingsSecret.Annotations[commonannotation.SecureSettingsSecretsAnnotationName] = string(bytes)
 	return nil
-}
-
-// CanBeOwnedBy return true if the Settings Secret can be owned by the given StackConfigPolicy, either because the Secret
-// belongs to no one or because it already belongs to the given policy.
-func CanBeOwnedBy(settingsSecret corev1.Secret, policy policyv1alpha1.StackConfigPolicy) (reconciler.SoftOwnerRef, bool) {
-	currentOwner, referenced := reconciler.SoftOwnerRefFromLabels(settingsSecret.Labels)
-	// either there is no soft owner
-	if !referenced {
-		return reconciler.SoftOwnerRef{}, true
-	}
-	// or the owner is already the given policy
-	canBeOwned := currentOwner.Kind == policyv1alpha1.Kind && currentOwner.Namespace == policy.Namespace && currentOwner.Name == policy.Name
-	return currentOwner, canBeOwned
 }
 
 // getSecureSettings returns the SecureSettings Secret sources stores in an annotation of the given file settings Secret.

@@ -3,7 +3,7 @@ kind: Agent
 metadata:
   name: elastic-agent
 spec:
-  version: 9.2.0
+  version: 9.3.0
   elasticsearchRefs:
   - name: elasticsearch
   daemonSet:
@@ -137,6 +137,8 @@ rules:
   - nodes/proxy
   - nodes/stats
   - events
+  - persistentvolumes
+  - persistentvolumeclaims
   verbs:
   - get
   - watch
@@ -213,7 +215,7 @@ kind: Elasticsearch
 metadata:
   name: elasticsearch
 spec:
-  version: 9.2.0
+  version: 9.3.0
   nodeSets:
   - name: default
     count: 3
@@ -225,7 +227,7 @@ kind: Kibana
 metadata:
   name: kibana
 spec:
-  version: 9.2.0
+  version: 9.3.0
   count: 1
   elasticsearchRef:
     name: elasticsearch

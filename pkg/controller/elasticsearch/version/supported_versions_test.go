@@ -29,12 +29,12 @@ func TestSupportedVersions(t *testing.T) {
 				v: version.MustParse("7.1.0"),
 			},
 			supported: []version.Version{
-				version.MustParse("6.8.0"), // wire compat
+				version.MustParse("7.0.0"),
 				version.MustParse("7.2.0"),
 				version.MustParse("7.99.99"),
 			},
 			unsupported: []version.Version{
-				version.MustParse("6.6.0"),
+				version.MustParse("6.8.0"),
 				version.MustParse("8.0.0"),
 			},
 		},
@@ -82,7 +82,7 @@ func Test_supportedVersionsWithMinimum(t *testing.T) {
 				min: version.Version{},
 			},
 			want: &version.MinMaxVersion{
-				Min: version.MustParse("6.8.0"),
+				Min: version.MustParse("7.0.0"),
 				Max: version.MustParse("7.99.99"),
 			},
 		},
@@ -93,7 +93,7 @@ func Test_supportedVersionsWithMinimum(t *testing.T) {
 				min: version.MustParse("7.10.0"),
 			},
 			want: &version.MinMaxVersion{
-				Min: version.MustParse("6.8.0"),
+				Min: version.MustParse("7.0.0"),
 				Max: version.MustParse("7.99.99"),
 			},
 		},

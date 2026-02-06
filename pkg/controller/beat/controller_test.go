@@ -6,6 +6,7 @@ package beat
 
 import (
 	"context"
+	"maps"
 	"reflect"
 	"testing"
 
@@ -198,9 +199,7 @@ func withAnnotations(beat beatv1beta1.Beat, annotations map[string]string) *beat
 		beat.ObjectMeta.Annotations = annotations
 		return &beat
 	}
-	for k, v := range annotations {
-		beat.ObjectMeta.Annotations[k] = v
-	}
+	maps.Copy(beat.ObjectMeta.Annotations, annotations)
 	return &beat
 }
 

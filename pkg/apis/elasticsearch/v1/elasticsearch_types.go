@@ -37,6 +37,7 @@ const (
 	// for debugging purposes.
 	SuspendAnnotation = "eck.k8s.elastic.co/suspend"
 	// ElasticsearchAutoscalingSpecAnnotationName is the name of the annotation used to store the autoscaling specification.
+	//
 	// Deprecated: the autoscaling annotation has been deprecated in favor of the ElasticsearchAutoscaler custom resource.
 	ElasticsearchAutoscalingSpecAnnotationName = "elasticsearch.alpha.elastic.co/autoscaling-spec"
 
@@ -107,7 +108,7 @@ type ElasticsearchSpec struct {
 	// The behavior depends on the license level.
 	// With a Basic license or if podDisruptionBudget.spec is not empty:
 	//   The default budget doesn't allow any Pod to be removed in case the cluster is not green or if there is only one node of type `data` or `master`.
-	//   In all other cases the default podDisruptionBudget sets `minUnavailable` equal to the total number of nodes minus 1.
+	//   In all other cases the default podDisruptionBudget sets `minAvailable` equal to the total number of nodes minus 1.
 	// With an Enterprise license and if podDisruptionBudget.spec is empty:
 	//   The default budget is split into multiple budgets, each targeting a specific node role type allowing additional disruptions
 	//   for certain roles according to the health status of the cluster.
@@ -485,6 +486,7 @@ func (es *Elasticsearch) ElasticServiceAccount() (commonv1.ServiceAccountName, e
 }
 
 // IsAutoscalingAnnotationSet returns true if there is an autoscaling configuration in the annotations.
+//
 // Deprecated: the autoscaling annotation has been deprecated in favor of the ElasticsearchAutoscaler custom resource.
 func (es Elasticsearch) IsAutoscalingAnnotationSet() bool {
 	_, ok := es.Annotations[ElasticsearchAutoscalingSpecAnnotationName]

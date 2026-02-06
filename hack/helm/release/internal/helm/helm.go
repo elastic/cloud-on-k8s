@@ -20,9 +20,9 @@ import (
 	"cloud.google.com/go/storage"
 	"google.golang.org/api/googleapi"
 	"gopkg.in/yaml.v3"
-	"helm.sh/helm/v3/pkg/action"
-	"helm.sh/helm/v3/pkg/downloader"
-	"helm.sh/helm/v3/pkg/repo"
+	"helm.sh/helm/v4/pkg/action"
+	"helm.sh/helm/v4/pkg/downloader"
+	"helm.sh/helm/v4/pkg/repo/v1"
 )
 
 const (
@@ -137,7 +137,7 @@ func uploadCharts(ctx context.Context, conf ReleaseConfig, tempDir string, chart
 		// package the chart into a chart archive
 		chartPackage := action.NewPackage()
 		chartPackage.Destination = filepath.Join(tempDir, chart.Name)
-		chartPackagePath, err := chartPackage.Run(tempChartDirPath, map[string]interface{}{})
+		chartPackagePath, err := chartPackage.Run(tempChartDirPath, map[string]any{})
 		if err != nil {
 			return fmt.Errorf("while packaging helm chart (%s): %w", chart.Name, err)
 		}

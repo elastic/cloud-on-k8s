@@ -69,9 +69,9 @@ func TestResourcePolicies_Validate(t *testing.T) {
 				},
 			}
 			for nodeSetName, roles := range map[string][]string{"nodeset-data-1": {"data"}, "nodeset-data-2": {"data"}, "nodeset-ml": {"ml"}} {
-				cfg := commonv1.NewConfig(map[string]interface{}{})
+				cfg := commonv1.NewConfig(map[string]any{})
 				if roles != nil {
-					cfg = commonv1.NewConfig(map[string]interface{}{"node.roles": roles})
+					cfg = commonv1.NewConfig(map[string]any{"node.roles": roles})
 				}
 				nodeSet := esv1.NodeSet{
 					Name:                 nodeSetName,

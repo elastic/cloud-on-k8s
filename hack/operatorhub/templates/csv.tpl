@@ -7,7 +7,7 @@ metadata:
     certified: 'false'
     containerImage: {{ .OperatorRepo }}{{ .Tag }}
     createdAt: {{ now | date "2006-01-02 15:04:05" }}
-    description: Run Elasticsearch, Kibana, APM Server, Beats, Enterprise Search, Elastic Agent, Elastic Maps Server and Logstash on Kubernetes and OpenShift
+    description: Run Elasticsearch, Kibana, APM Server, Beats, Enterprise Search, Elastic Agent, Elastic Maps Server, Logstash, Elastic AutoOps Agent and Elastic Package Registry on Kubernetes and OpenShift
     repository: https://github.com/elastic/cloud-on-k8s
     support: elastic.co
     operators.openshift.io/valid-subscription: "Elastic Basic license"
@@ -261,14 +261,14 @@ spec:
       version: {{ .Version }}
     {{- end }}
   description: 'Elastic Cloud on Kubernetes (ECK) is the official operator by Elastic for automating the deployment, provisioning,
-    management, and orchestration of Elasticsearch, Kibana, APM Server, Beats, Enterprise Search, Elastic Agent, Elastic Maps Server,
-    and Logstash on Kubernetes.
+    management, and orchestration of Elasticsearch, Kibana, APM Server, Beats, Enterprise Search, Elastic Agent, Elastic Maps Server, Logstash, Elastic AutoOps Agent,
+    Elastic Package Registry on Kubernetes.
 
 
     Current features:
 
 
-    *  Elasticsearch, Kibana, APM Server, Enterprise Search, Beats, Elastic Agent, Elastic Maps Server, and Logstash deployments
+    *  Elasticsearch, Kibana, APM Server, Enterprise Search, Beats, Elastic Agent, Elastic Maps Server, Elastic AutoOps Agent, Elastic Package Registry and Logstash deployments
 
     *  TLS Certificates management
 
@@ -284,23 +284,27 @@ spec:
     Supported versions:
 
 
-    * Kubernetes 1.30-1.34
+    * Kubernetes 1.31-1.35
 
-    * OpenShift 4.15-4.20
+    * OpenShift 4.16-4.20
 
     * Google Kubernetes Engine (GKE), Azure Kubernetes Service (AKS), and Amazon Elastic Kubernetes Service (EKS)
 
-    * Elasticsearch, Kibana, APM Server: 7.17+, 8+, 9+
+    * Elasticsearch, Kibana, APM Server: 8+, 9+
 
-    * Enterprise Search: 7.17+, 8+
+    * Enterprise Search: 8+
 
-    * Beats: 7.17+, 8+, 9+
+    * Beats: 8+, 9+
 
-    * Elastic Agent: 7.17+, 8+, 9+
+    * Elastic Agent: 8+, 9+
 
-    * Elastic Maps Server: 7.17+, 8+, 9+
+    * Elastic Maps Server: 8+, 9+
 
     * Logstash 8.12+, 9+
+
+    * Elastic AutoOps Agent: 9.2.1+
+
+    * Elastic Package Registry: 8+
 
 
     ECK should work with all conformant installers as listed in these [FAQs](https://github.com/cncf/k8s-conformance/blob/master/faq.md#what-is-a-distribution-hosted-platform-and-an-installer). Distributions include source patches and so may not work as-is with ECK.

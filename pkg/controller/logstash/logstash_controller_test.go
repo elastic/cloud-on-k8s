@@ -6,6 +6,7 @@ package logstash
 
 import (
 	"context"
+	"maps"
 	"reflect"
 	"testing"
 
@@ -56,7 +57,7 @@ func newReconcileLogstash(objs ...client.Object) *ReconcileLogstash {
 		Client:         client,
 		recorder:       record.NewFakeRecorder(100),
 		dynamicWatches: watches.NewDynamicWatches(),
-		expectations:   expectations.NewClustersExpectations(client),
+		expectations:   expectations.NewClustersExpectations(client, &appsv1.StatefulSet{}),
 	}
 	return r
 }
@@ -822,9 +823,7 @@ func createLogstash(capacity string, storageClassName string) logstashv1alpha1.L
 
 func addLabel(labels map[string]string, key, value string) map[string]string {
 	newLabels := make(map[string]string, len(labels))
-	for k, v := range labels {
-		newLabels[k] = v
-	}
+	maps.Copy(newLabels, labels)
 	newLabels[key] = value
 	return newLabels
 }

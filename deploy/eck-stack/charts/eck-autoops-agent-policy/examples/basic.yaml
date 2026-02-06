@@ -1,0 +1,16 @@
+---
+# Version of AutoOps Agent Policy.
+#
+version: 9.4.0-SNAPSHOT
+
+# Reference an existing Kubernetes secret holding the AutoOps configuration.
+autoOpsRef:
+  secretName: autoops-secret
+
+# ResourceSelector is a label selector for the resources to be configured.
+# Any Elasticsearch instances that match the selector will be configured to send data to AutoOps.
+#
+resourceSelector:
+  matchLabels:
+    autoops: enabled
+

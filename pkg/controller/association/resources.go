@@ -43,7 +43,6 @@ func deleteOrphanedResources(
 	}
 
 	for _, secret := range secrets.Items {
-		secret := secret
 		for _, association := range associations {
 			if isSecretForAssociation(info, secret, association) {
 				goto nextSecret

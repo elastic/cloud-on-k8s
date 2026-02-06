@@ -157,7 +157,7 @@ type VersionPattern interface {
 
 // Request performs an HTTP GET request to the unmanaged Elastic resource at the given path and returns a string extracted
 // from the returned result using the given json path.
-func (r UnmanagedAssociationConnectionInfo) Request(path string, out interface{}) error {
+func (r UnmanagedAssociationConnectionInfo) Request(path string, out any) error {
 	url := r.URL + path
 	req, err := http.NewRequest("GET", url, nil) //nolint:noctx
 	if err != nil {

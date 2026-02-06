@@ -21,6 +21,7 @@ import (
 	commonv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/common/v1"
 	esv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/elasticsearch/v1"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/association"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/autoops"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common"
 	commonesclient "github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/esclient"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/license"
@@ -265,11 +266,15 @@ func doReconcile(
 		results.WithResults(reconcileAPIKeys(ctx, r.Client, activeAPIKeys, remoteServer, remoteClient, remoteClusterRefs, esClient, r.keystoreProvider))
 	}
 
-	if remoteServerSupportsClusterAPIKeys.IsTrue() {
+	if remoteServerSupportsClusterAPIKeys.IsTrue() { //nolint:nestif
 		// **************************************************************
 		// Delete orphaned API keys from clusters which have been deleted
 		// **************************************************************
 		for _, activeAPIKey := range activeAPIKeys.APIKeys {
+			// Skip API keys managed by the autoops controller.
+			if autoops.IsManagedByAutoOps(activeAPIKey.Metadata) {
+				continue
+			}
 			clientCluster, err := activeAPIKey.GetElasticsearchName()
 			if err != nil {
 				results.WithError(err)
@@ -370,7 +375,6 @@ func getExpectedRemoteClientsFor(
 
 	// Seek for Elasticsearch resources where this cluster is declared as a remote cluster
 	for _, es := range list.Items {
-		es := es
 		for _, remoteCluster := range es.Spec.RemoteClusters {
 			if !remoteCluster.ElasticsearchRef.IsDefined() {
 				continue

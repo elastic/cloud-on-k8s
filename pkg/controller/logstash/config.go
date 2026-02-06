@@ -110,7 +110,7 @@ func getUserConfig(params Params) (*settings.CanonicalConfig, error) {
 }
 
 func defaultConfig() *settings.CanonicalConfig {
-	settingsMap := map[string]interface{}{
+	settingsMap := map[string]any{
 		// Set 'api.http.host' by default to `0.0.0.0` for readiness probe to work.
 		"api.http.host": "0.0.0.0",
 		// Set `config.reload.automatic` to `true` to enable pipeline reloads by default
@@ -122,11 +122,11 @@ func defaultConfig() *settings.CanonicalConfig {
 
 func tlsConfig(useTLS bool) *settings.CanonicalConfig {
 	if !useTLS {
-		return settings.MustCanonicalConfig(map[string]interface{}{
+		return settings.MustCanonicalConfig(map[string]any{
 			"api.ssl.enabled": false,
 		})
 	}
-	return settings.MustCanonicalConfig(map[string]interface{}{
+	return settings.MustCanonicalConfig(map[string]any{
 		"api.ssl.enabled":           true,
 		"api.ssl.keystore.path":     APIKeystorePath,
 		"api.ssl.keystore.password": APIKeystoreDefaultPass,
@@ -245,9 +245,7 @@ func getEnvKeyValues(params Params, c *corev1.Container, data map[string]string)
 				return err
 			}
 
-			for key, value := range configMap.Data {
-				data[key] = value
-			}
+			maps.Copy(data, configMap.Data)
 		}
 
 		// from Secret

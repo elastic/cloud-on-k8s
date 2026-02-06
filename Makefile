@@ -421,7 +421,7 @@ drivah-build-e2e:
 
 # -- run
 
-E2E_STACK_VERSION          ?= 9.2.0
+E2E_STACK_VERSION          ?= 9.3.0
 # regexp to filter tests to run
 export TESTS_MATCH         ?= "^Test"
 export E2E_JSON            ?= false
@@ -501,7 +501,7 @@ check-local-changes:
 
 # Check if the predicate names in upgrade_predicates.go, are equal to the predicate names
 # defined in the user documentation in upgrade-predicates.md.
-check-predicates: CODE = pkg/controller/elasticsearch/driver/upgrade_predicates.go
+check-predicates: CODE = pkg/controller/elasticsearch/driver/stateful/upgrade_predicates.go
 check-predicates: DOC = docs/reference/upgrade-predicates.md
 check-predicates: PREDICATE_PATTERN = [a-z]*_[A-Za-z_]*
 check-predicates:

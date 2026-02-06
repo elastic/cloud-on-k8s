@@ -222,7 +222,7 @@ func (c *apmClusterChecks) checkEventsAPI(apm apmv1.ApmServer) error {
 	return nil
 }
 
-func assertHTTP403(t assert.TestingT, err error, msgAndArgs ...interface{}) bool {
+func assertHTTP403(t assert.TestingT, err error, msgAndArgs ...any) bool {
 	if !commonhttp.IsForbidden(err) {
 		return assert.Fail(t, fmt.Sprintf("expected HTTP 403 but was %+v", err), msgAndArgs)
 	}
@@ -300,17 +300,15 @@ func getIndexNames(apm apmv1.ApmServer) (string, string, error) {
 	}
 
 	// Check that the metric and error have been stored
-	// default to indices names from 6.x
-	metricIndex = fmt.Sprintf("apm-%s-2017.05.30", apm.EffectiveVersion())
-	errorIndex = fmt.Sprintf("apm-%s-2018.08.09", apm.EffectiveVersion())
 	switch v.Major {
-	case 7:
-		metricIndex = fmt.Sprintf("apm-%s-metric-2017.05.30", apm.EffectiveVersion())
-		errorIndex = fmt.Sprintf("apm-%s-error-2018.08.09", apm.EffectiveVersion())
 	case 8, 9:
 		// these are datastreams and not indices, but can be searched/counted in the same way
 		metricIndex = "metrics-apm.app.1234_service_12a3-default"
 		errorIndex = "logs-apm.error-default"
+	default:
+		// 7.x index naming
+		metricIndex = fmt.Sprintf("apm-%s-metric-2017.05.30", apm.EffectiveVersion())
+		errorIndex = fmt.Sprintf("apm-%s-error-2018.08.09", apm.EffectiveVersion())
 	}
 
 	return metricIndex, errorIndex, nil

@@ -150,7 +150,7 @@ func (e *esClusterChecks) CheckDesiredNodesAPI(k *test.K8sClient) test.Step {
 }
 
 type PathDataSetting struct {
-	PathData interface{} `config:"path.data"`
+	PathData any `config:"path.data"`
 }
 
 // expectDesiredNodesAPI attempts to detect when the desired nodes state is expected to be set.
@@ -359,7 +359,7 @@ func canCompareCgroupLimits(nodeStats client.NodeStats, nodeVersion string) (boo
 		return false, nil
 	}
 	// nok: cgroup is nil but we are on a version that should correctly be able to parse the cgroup data
-	return false, fmt.Errorf("Unexpected: no cgroup information in node stats response")
+	return false, fmt.Errorf("unexpected: no cgroup information in node stats response")
 }
 
 // compareCgroupMemoryLimit compares the memory limit specified in a nodeSet with the limit set in the memory control group at the OS level

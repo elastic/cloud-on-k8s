@@ -18,7 +18,7 @@
 
 # Version of Elastic Beats.
 #
-version: 9.3.0-SNAPSHOT
+version: 9.4.0-SNAPSHOT
 
 # Labels that will be applied to Elastic Beats.
 #
@@ -46,7 +46,7 @@ type: ""
 
 # Beats image to deploy.
 #
-# image: docker.elastic.co/beats/metricbeat:9.3.0-SNAPSHOT
+# image: docker.elastic.co/beats/metricbeat:9.4.0-SNAPSHOT
 
 # Referenced resources are below and depending on the setup, at least elasticsearchRef is required for a functional Beat.
 # ref: https://www.elastic.co/guide/en/cloud-on-k8s/current/k8s-beat-configuration.html#k8s-beat-connect-es
@@ -179,3 +179,19 @@ clusterRole: {}
 #    - get
 #    - watch
 #    - list
+
+# extraObjects allows injecting additional Kubernetes resources into the chart.
+# These resources will be created/deleted alongside the chart release.
+# The value is a list of strings, each string is a YAML manifest.
+# Helm templating is supported within each manifest.
+# Example:
+# extraObjects:
+#   - |
+#     apiVersion: v1
+#     kind: ConfigMap
+#     metadata:
+#       name: {{ include "beat.fullname" . }}-extra-config
+#       namespace: {{ .Release.Namespace }}
+#     data:
+#       key: value
+extraObjects: []

@@ -64,6 +64,7 @@ func doRun(flags runFlags) error {
 			helper.createScratchDir,
 			helper.initTestContext,
 			helper.installCRDs,
+			helper.createE2ENamespaceAndRoleBindings,
 			helper.createRoles,
 			helper.createManagedNamespaces,
 			helper.deploySecurityConstraints,
@@ -332,10 +333,7 @@ func (h *helper) createRoles() error {
 func (h *helper) installOperatorUnderTest() error {
 	log.Info("Installing the operator under test")
 
-	installCRDs := false
-	if h.monitoringSecrets == "" {
-		installCRDs = true
-	}
+	installCRDs := h.monitoringSecrets == ""
 
 	manifestFile := filepath.Join(h.scratchDir, "operator-under-test.yaml")
 
@@ -488,9 +486,10 @@ func (h *helper) runTestsLocally() error {
 	log.Info("Running local test script", "timeout", h.testTimeout.String())
 	ctx, cancelFunc := context.WithTimeout(context.Background(), h.testTimeout)
 
-	cmd := exec.Command("test/e2e/run.sh", "-run", os.Getenv("TESTS_MATCH"), "-args", "-testContextPath", h.testContextOutPath) //nolint:gosec
+	cmd := exec.Command("test/e2e/run.sh", "-run", os.Getenv("TESTS_MATCH"), "-args", "-testContextPath", h.testContextOutPath) //nolint:gosec,noctx
 	cmd.Stderr = os.Stderr
 	cmd.Stdout = os.Stdout
+	cmd.Env = append(os.Environ(), "E2E_LOCAL=true")
 	// we need to set a process group ID to be able to terminate all child processes and not just the test.sh script later if the timeout is exceeded
 	cmd.SysProcAttr = &syscall.SysProcAttr{Setpgid: true}
 
@@ -721,7 +720,7 @@ func stdTimestampParser(line []byte) (time.Time, error) {
 	return timestamp, nil
 }
 
-func (h *helper) kubectlApplyTemplate(templatePath string, templateParam interface{}) (string, error) {
+func (h *helper) kubectlApplyTemplate(templatePath string, templateParam any) (string, error) {
 	outFilePath, err := h.renderTemplate(templatePath, templateParam)
 	if err != nil {
 		return "", err
@@ -731,7 +730,7 @@ func (h *helper) kubectlApplyTemplate(templatePath string, templateParam interfa
 	return outFilePath, err
 }
 
-func (h *helper) kubectlApplyTemplateWithCleanup(templatePath string, templateParam interface{}) error {
+func (h *helper) kubectlApplyTemplateWithCleanup(templatePath string, templateParam any) error {
 	resourceFile, err := h.kubectlApplyTemplate(templatePath, templateParam)
 	if err != nil {
 		return err
@@ -771,7 +770,7 @@ func (h *helper) exec(cmd *command.Command) (string, string, error) {
 	return outString, string(stdErr), nil
 }
 
-func (h *helper) renderTemplate(templatePath string, param interface{}) (string, error) {
+func (h *helper) renderTemplate(templatePath string, param any) (string, error) {
 	tmpl, err := template.New(filepath.Base(templatePath)).Funcs(sprig.TxtFuncMap()).ParseFiles(templatePath)
 	if err != nil {
 		return "", errors.Wrapf(err, "failed to parse template at %s", templatePath)
@@ -834,7 +833,7 @@ func (h *helper) runECKDiagnostics() {
 	operatorNS := h.testContext.Operator.Namespace
 	// include the default namespace to have diagnostics on the local disk provisioner used in some environments
 	otherNS := append([]string{h.testContext.E2ENamespace, "default"}, h.testContext.Operator.ManagedNamespaces...)
-	cmd := exec.Command("eck-diagnostics", "-o", operatorNS, "-r", strings.Join(otherNS, ","), "--run-agent-diagnostics")
+	cmd := exec.Command("eck-diagnostics", "-o", operatorNS, "-r", strings.Join(otherNS, ","), "--run-agent-diagnostics") //nolint:noctx
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
 	if err := cmd.Run(); err != nil {

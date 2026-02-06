@@ -101,7 +101,7 @@ func (f fleetAPI) request(
 	ctx context.Context,
 	method string,
 	pathWithQuery string,
-	requestObj, responseObj interface{}) error {
+	requestObj, responseObj any) error {
 	var body io.Reader = http.NoBody
 	if requestObj != nil {
 		outData, err := json.Marshal(requestObj)

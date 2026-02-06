@@ -35,7 +35,7 @@ type AKSDriverFactory struct {
 
 type AKSDriver struct {
 	plan        Plan
-	ctx         map[string]interface{}
+	ctx         map[string]any
 	vaultClient vault.Client
 }
 
@@ -60,7 +60,7 @@ func (gdf *AKSDriverFactory) Create(plan Plan) (Driver, error) {
 
 	return &AKSDriver{
 		plan: plan,
-		ctx: map[string]interface{}{
+		ctx: map[string]any{
 			"ResourceGroup":     plan.Aks.ResourceGroup,
 			"ClusterName":       plan.ClusterName,
 			"NodeCount":         plan.Aks.NodeCount,

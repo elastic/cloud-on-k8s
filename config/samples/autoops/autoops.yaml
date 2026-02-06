@@ -1,0 +1,36 @@
+---
+apiVersion: elasticsearch.k8s.elastic.co/v1
+kind: Elasticsearch
+metadata:
+  name: elasticsearch-sample
+  labels:
+    autoops: enabled
+spec:
+  version: 9.2.0
+  nodeSets:
+  - name: default
+    count: 3
+    config:
+      # most Elasticsearch configuration parameters are possible to set, e.g: node.attr.attr_name: attr_value
+      node.roles: ["master", "data", "ingest", "ml"]
+      # this allows ES to run on nodes even if their vm.max_map_count has not been increased, at a performance cost
+      node.store.allow_mmap: false
+---
+apiVersion: autoops.k8s.elastic.co/v1alpha1
+kind: AutoOpsAgentPolicy
+metadata:
+  name: autoops-sample
+spec:
+  version: 9.2.0
+  autoOpsRef:
+    # This secret contains the AutoOps configuration.
+    # It must contain the following:
+    # - cloud-connect-mode-api-key: the Cloud Connected Mode API key. This is used to register the Agent with Elastic Cloud AutoOps.
+    # - autoops-otel-url: the URL of the AutoOps OTel endpoint. This is used to send Agent data to the AutoOps platform and is region specific.
+    # - autoops-token: the token to authenticate against the AutoOps platform and is how AutoOps knows how to connect Agent data to the
+    #     relevant Elastic Cloud organization
+    secretName: autoops-sample-secret
+  resourceSelector:
+    matchLabels:
+      # This label is used to select the Elasticsearch instance for AutoOps integration.
+      autoops: enabled

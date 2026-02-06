@@ -142,7 +142,7 @@ func TestNextReconciliation(t *testing.T) {
 	}{
 		{
 			name:                "Schedule a requeue if there's some access control",
-			args:                args{accessReviewer: rbac.NewSubjectAccessReviewer(fake.NewSimpleClientset())},
+			args:                args{accessReviewer: rbac.NewSubjectAccessReviewer(fake.NewClientset())},
 			wantNonZeroDuration: true,
 		},
 		{

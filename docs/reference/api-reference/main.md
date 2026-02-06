@@ -14,6 +14,7 @@ applies_to:
 * [agent.k8s.elastic.co/v1alpha1](#agentk8selasticcov1alpha1)
 * [apm.k8s.elastic.co/v1](#apmk8selasticcov1)
 * [apm.k8s.elastic.co/v1beta1](#apmk8selasticcov1beta1)
+* [autoops.k8s.elastic.co/v1alpha1](#autoopsk8selasticcov1alpha1)
 * [autoscaling.k8s.elastic.co/v1alpha1](#autoscalingk8selasticcov1alpha1)
 * [beat.k8s.elastic.co/v1beta1](#beatk8selasticcov1beta1)
 * [common.k8s.elastic.co/v1](#commonk8selasticcov1)
@@ -27,6 +28,7 @@ applies_to:
 * [kibana.k8s.elastic.co/v1beta1](#kibanak8selasticcov1beta1)
 * [logstash.k8s.elastic.co/v1alpha1](#logstashk8selasticcov1alpha1)
 * [maps.k8s.elastic.co/v1alpha1](#mapsk8selasticcov1alpha1)
+* [packageregistry.k8s.elastic.co/v1alpha1](#packageregistryk8selasticcov1alpha1)
 * [stackconfigpolicy.k8s.elastic.co/v1alpha1](#stackconfigpolicyk8selasticcov1alpha1)
 
 
@@ -256,6 +258,68 @@ ApmServerSpec holds the specification of an APM Server.
 
 
 % TODO add function to crd-ref-docs return anchor used in links docs-v3 does not seem to produce valid markdown anchors
+## autoops.k8s.elastic.co/v1alpha1 [#autoopsk8selasticcov1alpha1]
+
+Package v1alpha1 contains API schema definitions for managing AutoOpsAgentPolicy resources.
+
+### Resource Types
+- [AutoOpsAgentPolicy](#autoopsagentpolicy)
+
+
+
+### AutoOpsAgentPolicy  [#autoopsagentpolicy]
+
+AutoOpsAgentPolicy represents an Elastic AutoOps Policy resource in a Kubernetes cluster.
+
+
+
+| Field | Description |
+| --- | --- |
+| *`apiVersion`* __string__ | `autoops.k8s.elastic.co/v1alpha1` |
+| *`kind`* __string__ | `AutoOpsAgentPolicy` | 
+| *`metadata`* __[ObjectMeta](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.32/#objectmeta-v1-meta)__ | Refer to Kubernetes API documentation for fields of `metadata`. |
+| *`spec`* __[AutoOpsAgentPolicySpec](#autoopsagentpolicyspec)__ |  |
+
+
+### AutoOpsAgentPolicySpec  [#autoopsagentpolicyspec]
+
+
+
+:::{admonition} Appears In:
+* [AutoOpsAgentPolicy](#autoopsagentpolicy)
+
+:::
+
+| Field | Description |
+| --- | --- |
+| *`version`* __string__ | Version of the AutoOpsAgentPolicy. |
+| *`resourceSelector`* __[LabelSelector](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.32/#labelselector-v1-meta)__ | ResourceSelector is a label selector for the resources to be configured.<br>Any Elasticsearch instances that match the selector will be configured to send data to AutoOps. |
+| *`namespaceSelector`* __[LabelSelector](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.32/#labelselector-v1-meta)__ | NamespaceSelector is a namespace selector for the resources to be configured.<br>Any Elasticsearch instances that belong to the selected namespaces will be configured to send data to AutoOps. |
+| *`autoOpsRef`* __[AutoOpsRef](#autoopsref)__ | AutoOpsRef defines a reference to a secret containing connection details for AutoOps via Cloud Connect. |
+| *`image`* __string__ | Image is the AutoOps Agent Docker image to deploy. |
+| *`podTemplate`* __[PodTemplateSpec](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.32/#podtemplatespec-v1-core)__ | PodTemplate provides customisation options (labels, annotations, affinity rules, resource requests, and so on) for the Agent pods |
+| *`revisionHistoryLimit`* __integer__ | RevisionHistoryLimit is the number of revisions to retain to allow rollback in the underlying Deployment. |
+| *`serviceAccountName`* __string__ | ServiceAccountName is used to check access to Elasticsearch resources in different namespaces.<br>Can only be used if ECK is enforcing RBAC on references (--enforce-rbac-on-refs flag).<br>The service account must have "get" permission on elasticsearch.k8s.elastic.co/elasticsearches<br>in the target namespaces. |
+
+
+### AutoOpsRef  [#autoopsref]
+
+AutoOpsRef defines a reference to a secret containing connection details for AutoOps via Cloud Connect.
+
+:::{admonition} Appears In:
+* [AutoOpsAgentPolicySpec](#autoopsagentpolicyspec)
+
+:::
+
+| Field | Description |
+| --- | --- |
+| *`secretName`* __string__ | SecretName references a Secret containing connection details for external AutoOps.<br>Required when connecting via Cloud Connect. The secret must contain:<br>- `cloud-connected-mode-api-key`: Cloud Connected Mode API key<br>- `autoops-otel-url`: AutoOps OpenTelemetry endpoint URL<br>- `autoops-token`: AutoOps authentication token<br>- `cloud-connected-mode-api-url`: (optional) Cloud Connected Mode API URL<br>This field cannot be used in combination with `name`. |
+
+
+
+
+
+% TODO add function to crd-ref-docs return anchor used in links docs-v3 does not seem to produce valid markdown anchors
 ## autoscaling.k8s.elastic.co/v1alpha1 [#autoscalingk8selasticcov1alpha1]
 
 Package v1alpha1 contains API schema definitions for managing ElasticsearchAutoscaler resources.
@@ -417,6 +481,7 @@ Config represents untyped YAML configuration.
 * [LogstashSpec](#logstashspec)
 * [MapsSpec](#mapsspec)
 * [NodeSet](#nodeset)
+* [PackageRegistrySpec](#packageregistryspec)
 * [Search](#search)
 
 :::
@@ -448,6 +513,7 @@ ConfigSource references configuration settings.
 * [EnterpriseSearchSpec](#enterprisesearchspec)
 * [LogstashSpec](#logstashspec)
 * [MapsSpec](#mapsspec)
+* [PackageRegistrySpec](#packageregistryspec)
 
 :::
 
@@ -470,6 +536,7 @@ HTTPConfig holds the HTTP layer configuration for resources.
 * [EnterpriseSearchSpec](#enterprisesearchspec)
 * [KibanaSpec](#kibanaspec)
 * [MapsSpec](#mapsspec)
+* [PackageRegistrySpec](#packageregistryspec)
 
 :::
 
@@ -659,7 +726,7 @@ SelfSignedCertificate holds configuration for the self-signed certificate genera
 | Field | Description |
 | --- | --- |
 | *`subjectAltNames`* __[SubjectAlternativeName](#subjectalternativename) array__ | SubjectAlternativeNames is a list of SANs to include in the generated HTTP TLS certificate. |
-| *`disabled`* __boolean__ | Disabled indicates that the provisioning of the self-signed certifcate should be disabled. |
+| *`disabled`* __boolean__ | Disabled indicates that the provisioning of the self-signed certificate should be disabled. |
 
 
 
@@ -1094,7 +1161,7 @@ ElasticsearchSpec holds the specification of an Elasticsearch cluster.
 | *`transport`* __[TransportConfig](#transportconfig)__ | Transport holds transport layer settings for Elasticsearch. |
 | *`nodeSets`* __[NodeSet](#nodeset) array__ | NodeSets allow specifying groups of Elasticsearch nodes sharing the same configuration and Pod templates. |
 | *`updateStrategy`* __[UpdateStrategy](#updatestrategy)__ | UpdateStrategy specifies how updates to the cluster should be performed. |
-| *`podDisruptionBudget`* __[PodDisruptionBudgetTemplate](#poddisruptionbudgettemplate)__ | PodDisruptionBudget provides access to the default Pod disruption budget(s) for the Elasticsearch cluster.<br>The behavior depends on the license level.<br>With a Basic license or if podDisruptionBudget.spec is not empty:<br>  The default budget doesn't allow any Pod to be removed in case the cluster is not green or if there is only one node of type `data` or `master`.<br>  In all other cases the default podDisruptionBudget sets `minUnavailable` equal to the total number of nodes minus 1.<br>With an Enterprise license and if podDisruptionBudget.spec is empty:<br>  The default budget is split into multiple budgets, each targeting a specific node role type allowing additional disruptions<br>  for certain roles according to the health status of the cluster.<br>    Example:<br>      All data roles (excluding frozen): allows disruptions only when the cluster is green.<br>      All other roles: allows disruptions only when the cluster is yellow or green.<br>To disable, set `podDisruptionBudget` to the empty value (`{}` in YAML). |
+| *`podDisruptionBudget`* __[PodDisruptionBudgetTemplate](#poddisruptionbudgettemplate)__ | PodDisruptionBudget provides access to the default Pod disruption budget(s) for the Elasticsearch cluster.<br>The behavior depends on the license level.<br>With a Basic license or if podDisruptionBudget.spec is not empty:<br>  The default budget doesn't allow any Pod to be removed in case the cluster is not green or if there is only one node of type `data` or `master`.<br>  In all other cases the default podDisruptionBudget sets `minAvailable` equal to the total number of nodes minus 1.<br>With an Enterprise license and if podDisruptionBudget.spec is empty:<br>  The default budget is split into multiple budgets, each targeting a specific node role type allowing additional disruptions<br>  for certain roles according to the health status of the cluster.<br>    Example:<br>      All data roles (excluding frozen): allows disruptions only when the cluster is green.<br>      All other roles: allows disruptions only when the cluster is yellow or green.<br>To disable, set `podDisruptionBudget` to the empty value (`{}` in YAML). |
 | *`auth`* __[Auth](#auth)__ | Auth contains user authentication and authorization security settings for Elasticsearch. |
 | *`secureSettings`* __[SecretSource](#secretsource) array__ | SecureSettings is a list of references to Kubernetes secrets containing sensitive configuration options for Elasticsearch. |
 | *`serviceAccountName`* __string__ | ServiceAccountName is used to check access from the current resource to a resource (for ex. a remote Elasticsearch cluster) in a different namespace.<br>Can only be used if ECK is enforcing RBAC on references. |
@@ -1583,8 +1650,6 @@ UpdateStrategy specifies how updates to the cluster should be performed.
 
 
 
-
-
 % TODO add function to crd-ref-docs return anchor used in links docs-v3 does not seem to produce valid markdown anchors
 ## enterprisesearch.k8s.elastic.co/v1 [#enterprisesearchk8selasticcov1]
 
@@ -1719,6 +1784,7 @@ KibanaSpec holds the specification of a Kibana instance.
 | *`image`* __string__ | Image is the Kibana Docker image to deploy. |
 | *`count`* __integer__ | Count of Kibana instances to deploy. |
 | *`elasticsearchRef`* __[ObjectSelector](#objectselector)__ | ElasticsearchRef is a reference to an Elasticsearch cluster running in the same Kubernetes cluster. |
+| *`packageRegistryRef`* __[ObjectSelector](#objectselector)__ | PackageRegistryRef is a reference to an Elastic Package Registry running in the same Kubernetes cluster. |
 | *`enterpriseSearchRef`* __[ObjectSelector](#objectselector)__ | EnterpriseSearchRef is a reference to an EnterpriseSearch running in the same Kubernetes cluster.<br>Kibana provides the default Enterprise Search UI starting version 7.14. |
 | *`config`* __[Config](#config)__ | Config holds the Kibana configuration. See: https://www.elastic.co/guide/en/kibana/current/settings.html |
 | *`http`* __[HTTPConfig](#httpconfig)__ | HTTP holds the HTTP layer configuration for Kibana. |
@@ -1959,6 +2025,85 @@ MapsSpec holds the specification of an Elastic Maps Server instance.
 
 
 % TODO add function to crd-ref-docs return anchor used in links docs-v3 does not seem to produce valid markdown anchors
+## packageregistry.k8s.elastic.co/v1alpha1 [#packageregistryk8selasticcov1alpha1]
+
+Package v1alpha1 contains API schema definitions for managing Elastic Package Registry resources.
+
+### Resource Types
+- [PackageRegistry](#packageregistry)
+- [PackageRegistryList](#packageregistrylist)
+
+
+
+### PackageRegistry  [#packageregistry]
+
+PackageRegistry represents an Elastic Package Registry resource in a Kubernetes cluster.
+
+:::{admonition} Appears In:
+* [PackageRegistryList](#packageregistrylist)
+
+:::
+
+| Field | Description |
+| --- | --- |
+| *`apiVersion`* __string__ | `packageregistry.k8s.elastic.co/v1alpha1` |
+| *`kind`* __string__ | `PackageRegistry` | 
+| *`metadata`* __[ObjectMeta](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.32/#objectmeta-v1-meta)__ | Refer to Kubernetes API documentation for fields of `metadata`. |
+| *`spec`* __[PackageRegistrySpec](#packageregistryspec)__ |  |
+| *`status`* __[PackageRegistryStatus](#packageregistrystatus)__ |  |
+
+
+### PackageRegistryList  [#packageregistrylist]
+
+PackageRegistryList contains a list of PackageRegistry
+
+
+
+| Field | Description |
+| --- | --- |
+| *`apiVersion`* __string__ | `packageregistry.k8s.elastic.co/v1alpha1` |
+| *`kind`* __string__ | `PackageRegistryList` | 
+| *`metadata`* __[ListMeta](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.32/#listmeta-v1-meta)__ | Refer to Kubernetes API documentation for fields of `metadata`. |
+| *`items`* __[PackageRegistry](#packageregistry) array__ |  |
+
+
+### PackageRegistrySpec  [#packageregistryspec]
+
+PackageRegistrySpec holds the specification of an Elastic Package Registry instance.
+
+:::{admonition} Appears In:
+* [PackageRegistry](#packageregistry)
+
+:::
+
+| Field | Description |
+| --- | --- |
+| *`version`* __string__ | Version of Elastic Package Registry. |
+| *`image`* __string__ | Image is the Elastic Package Registry Docker image to deploy. |
+| *`count`* __integer__ | Count of Elastic Package Registry instances to deploy. |
+| *`config`* __[Config](#config)__ | Config holds the PackageRegistry configuration. See: https://github.com/elastic/package-registry/blob/main/config.reference.yml |
+| *`configRef`* __[ConfigSource](#configsource)__ | ConfigRef contains a reference to an existing Kubernetes Secret holding the Elastic Package Registry configuration.<br>Configuration settings are merged and have precedence over settings specified in `config`. |
+| *`http`* __[HTTPConfig](#httpconfig)__ | HTTP holds the HTTP layer configuration for Elastic Package Registry. |
+| *`podTemplate`* __[PodTemplateSpec](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.32/#podtemplatespec-v1-core)__ | PodTemplate provides customisation options (labels, annotations, affinity rules, resource requests, and so on) for the Elastic Package Registry pods |
+| *`revisionHistoryLimit`* __integer__ | RevisionHistoryLimit is the number of revisions to retain to allow rollback in the underlying Deployment. |
+
+
+### PackageRegistryStatus  [#packageregistrystatus]
+
+PackageRegistryStatus defines the observed state of Elastic Package Registry
+
+:::{admonition} Appears In:
+* [PackageRegistry](#packageregistry)
+
+:::
+
+| Field | Description |
+| --- | --- |
+| *`observedGeneration`* __integer__ | ObservedGeneration is the most recent generation observed for this Elastic Package Registry.<br>It corresponds to the metadata generation, which is updated on mutation by the API Server.<br>If the generation observed in status diverges from the generation in metadata, the Elastic Package Registry<br>controller has not yet processed the changes contained in the Elastic Package Registry specification. |
+
+
+
+% TODO add function to crd-ref-docs return anchor used in links docs-v3 does not seem to produce valid markdown anchors
 ## stackconfigpolicy.k8s.elastic.co/v1alpha1 [#stackconfigpolicyk8selasticcov1alpha1]
 
 Package v1alpha1 contains API schema definitions for managing StackConfigPolicy resources.
@@ -1989,6 +2134,8 @@ Package v1alpha1 contains API schema definitions for managing StackConfigPolicy 
 | *`config`* __[Config](#config)__ | Config holds the settings that go into elasticsearch.yml. |
 | *`secretMounts`* __[SecretMount](#secretmount) array__ | SecretMounts are additional Secrets that need to be mounted into the Elasticsearch pods. |
 | *`secureSettings`* __[SecretSource](#secretsource) array__ | SecureSettings are additional Secrets that contain data to be configured to Elasticsearch's keystore. |
+
+
 
 
 ### IndexTemplates  [#indextemplates]
@@ -2068,6 +2215,7 @@ StackConfigPolicy represents a StackConfigPolicy resource in a Kubernetes cluste
 | Field | Description |
 | --- | --- |
 | *`resourceSelector`* __[LabelSelector](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.32/#labelselector-v1-meta)__ |  |
+| *`weight`* __integer__ | Weight determines the priority of this policy when multiple policies target the same resource.<br>Higher weight values take precedence. Defaults to 0. |
 | *`secureSettings`* __[SecretSource](#secretsource) array__ | Deprecated: SecureSettings only applies to Elasticsearch and is deprecated. It must be set per application instead. |
 | *`elasticsearch`* __[ElasticsearchConfigPolicySpec](#elasticsearchconfigpolicyspec)__ |  |
 | *`kibana`* __[KibanaConfigPolicySpec](#kibanaconfigpolicyspec)__ |  |

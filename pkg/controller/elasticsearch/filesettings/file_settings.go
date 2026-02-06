@@ -67,27 +67,27 @@ func NewEmptySettings(version int64) Settings {
 // newEmptySettingsState returns an empty new Settings state.
 func newEmptySettingsState() SettingsState {
 	return SettingsState{
-		ClusterSettings:        &commonv1.Config{Data: map[string]interface{}{}},
-		SnapshotRepositories:   &commonv1.Config{Data: map[string]interface{}{}},
-		SLM:                    &commonv1.Config{Data: map[string]interface{}{}},
-		RoleMappings:           &commonv1.Config{Data: map[string]interface{}{}},
-		IndexLifecyclePolicies: &commonv1.Config{Data: map[string]interface{}{}},
-		IngestPipelines:        &commonv1.Config{Data: map[string]interface{}{}},
+		ClusterSettings:        &commonv1.Config{Data: map[string]any{}},
+		SnapshotRepositories:   &commonv1.Config{Data: map[string]any{}},
+		SLM:                    &commonv1.Config{Data: map[string]any{}},
+		RoleMappings:           &commonv1.Config{Data: map[string]any{}},
+		IndexLifecyclePolicies: &commonv1.Config{Data: map[string]any{}},
+		IngestPipelines:        &commonv1.Config{Data: map[string]any{}},
 		IndexTemplates: &IndexTemplates{
-			ComponentTemplates:       &commonv1.Config{Data: map[string]interface{}{}},
-			ComposableIndexTemplates: &commonv1.Config{Data: map[string]interface{}{}},
+			ComponentTemplates:       &commonv1.Config{Data: map[string]any{}},
+			ComposableIndexTemplates: &commonv1.Config{Data: map[string]any{}},
 		},
 	}
 }
 
 // updateState updates the Settings state from a StackConfigPolicy for a given Elasticsearch.
-func (s *Settings) updateState(es types.NamespacedName, policy policyv1alpha1.StackConfigPolicy) error {
-	p := policy.DeepCopy() // be sure to not mutate the original policy
+func (s *Settings) updateState(es types.NamespacedName, esConfigPolicy policyv1alpha1.ElasticsearchConfigPolicySpec) error {
+	esConfigPolicy = *esConfigPolicy.DeepCopy() // be sure to not mutate the original es config policy
 	state := newEmptySettingsState()
 	// mutate Snapshot Repositories
-	if p.Spec.Elasticsearch.SnapshotRepositories != nil {
-		for name, untypedDefinition := range p.Spec.Elasticsearch.SnapshotRepositories.Data {
-			definition, ok := untypedDefinition.(map[string]interface{})
+	if esConfigPolicy.SnapshotRepositories != nil {
+		for name, untypedDefinition := range esConfigPolicy.SnapshotRepositories.Data {
+			definition, ok := untypedDefinition.(map[string]any)
 			if !ok {
 				return fmt.Errorf(`invalid type (%T) for definition of snapshot repository %q of Elasticsearch "%s/%s"`, untypedDefinition, name, es.Namespace, es.Name)
 			}
@@ -95,31 +95,31 @@ func (s *Settings) updateState(es types.NamespacedName, policy policyv1alpha1.St
 			if err != nil {
 				return err
 			}
-			p.Spec.Elasticsearch.SnapshotRepositories.Data[name] = repoSettings
+			esConfigPolicy.SnapshotRepositories.Data[name] = repoSettings
 		}
-		state.SnapshotRepositories = p.Spec.Elasticsearch.SnapshotRepositories
+		state.SnapshotRepositories = esConfigPolicy.SnapshotRepositories
 	}
 	// just copy other settings
-	if p.Spec.Elasticsearch.ClusterSettings != nil {
-		state.ClusterSettings = p.Spec.Elasticsearch.ClusterSettings
+	if esConfigPolicy.ClusterSettings != nil {
+		state.ClusterSettings = esConfigPolicy.ClusterSettings
 	}
-	if p.Spec.Elasticsearch.SnapshotLifecyclePolicies != nil {
-		state.SLM = p.Spec.Elasticsearch.SnapshotLifecyclePolicies
+	if esConfigPolicy.SnapshotLifecyclePolicies != nil {
+		state.SLM = esConfigPolicy.SnapshotLifecyclePolicies
 	}
-	if p.Spec.Elasticsearch.SecurityRoleMappings != nil {
-		state.RoleMappings = p.Spec.Elasticsearch.SecurityRoleMappings
+	if esConfigPolicy.SecurityRoleMappings != nil {
+		state.RoleMappings = esConfigPolicy.SecurityRoleMappings
 	}
-	if p.Spec.Elasticsearch.IndexLifecyclePolicies != nil {
-		state.IndexLifecyclePolicies = p.Spec.Elasticsearch.IndexLifecyclePolicies
+	if esConfigPolicy.IndexLifecyclePolicies != nil {
+		state.IndexLifecyclePolicies = esConfigPolicy.IndexLifecyclePolicies
 	}
-	if p.Spec.Elasticsearch.IngestPipelines != nil {
-		state.IngestPipelines = p.Spec.Elasticsearch.IngestPipelines
+	if esConfigPolicy.IngestPipelines != nil {
+		state.IngestPipelines = esConfigPolicy.IngestPipelines
 	}
-	if p.Spec.Elasticsearch.IndexTemplates.ComposableIndexTemplates != nil {
-		state.IndexTemplates.ComposableIndexTemplates = p.Spec.Elasticsearch.IndexTemplates.ComposableIndexTemplates
+	if esConfigPolicy.IndexTemplates.ComposableIndexTemplates != nil {
+		state.IndexTemplates.ComposableIndexTemplates = esConfigPolicy.IndexTemplates.ComposableIndexTemplates
 	}
-	if p.Spec.Elasticsearch.IndexTemplates.ComponentTemplates != nil {
-		state.IndexTemplates.ComponentTemplates = p.Spec.Elasticsearch.IndexTemplates.ComponentTemplates
+	if esConfigPolicy.IndexTemplates.ComponentTemplates != nil {
+		state.IndexTemplates.ComponentTemplates = esConfigPolicy.IndexTemplates.ComponentTemplates
 	}
 	s.State = state
 	return nil
@@ -132,14 +132,14 @@ func (s *Settings) updateState(es types.NamespacedName, policy policyv1alpha1.St
 // - "hdfs": `<namespace>-<esName>` is appended to the `path` property
 // - "url": nothing is done, the repository is read-only
 // - "source": nothing is done, the repository is an indirection to another repository
-func mutateSnapshotRepositorySettings(snapshotRepository map[string]interface{}, esNs string, esName string) (map[string]interface{}, error) {
+func mutateSnapshotRepositorySettings(snapshotRepository map[string]any, esNs string, esName string) (map[string]any, error) {
 	untypedSettings := snapshotRepository["settings"]
 	if untypedSettings == nil {
-		untypedSettings = map[string]interface{}{}
+		untypedSettings = map[string]any{}
 	}
 
 	uniqSuffix := fmt.Sprintf("%s-%s", esNs, esName)
-	settings, ok := untypedSettings.(map[string]interface{})
+	settings, ok := untypedSettings.(map[string]any)
 	if !ok {
 		return nil, fmt.Errorf("invalid type (%T) for snapshot repository settings", untypedSettings)
 	}

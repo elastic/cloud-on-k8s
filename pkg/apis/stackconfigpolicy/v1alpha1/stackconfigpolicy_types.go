@@ -34,6 +34,7 @@ func init() {
 // +kubebuilder:printcolumn:name="Ready",type="string",JSONPath=".status.readyCount",description="Resources configured"
 // +kubebuilder:printcolumn:name="Phase",type="string",JSONPath=".status.phase"
 // +kubebuilder:printcolumn:name="Age",type="date",JSONPath=".metadata.creationTimestamp"
+// +kubebuilder:printcolumn:name="Weight",type="integer",JSONPath=".spec.weight"
 // +kubebuilder:subresource:status
 // +kubebuilder:storageversion
 type StackConfigPolicy struct {
@@ -55,6 +56,10 @@ type StackConfigPolicyList struct {
 
 type StackConfigPolicySpec struct {
 	ResourceSelector metav1.LabelSelector `json:"resourceSelector,omitempty"`
+	// Weight determines the priority of this policy when multiple policies target the same resource.
+	// Higher weight values take precedence. Defaults to 0.
+	// +kubebuilder:default=0
+	Weight int32 `json:"weight,omitempty"`
 	// Deprecated: SecureSettings only applies to Elasticsearch and is deprecated. It must be set per application instead.
 	SecureSettings []commonv1.SecretSource       `json:"secureSettings,omitempty"`
 	Elasticsearch  ElasticsearchConfigPolicySpec `json:"elasticsearch,omitempty"`
@@ -94,6 +99,53 @@ type ElasticsearchConfigPolicySpec struct {
 	SecureSettings []commonv1.SecretSource `json:"secureSettings,omitempty"`
 }
 
+// GetElasticsearchNamespacedSecureSettings returns the Elasticsearch secure settings from this policy
+// as NamespacedSecretSources, with each secret source namespaced to the policy's namespace.
+// Returns nil if the policy is nil or has no Elasticsearch secure settings defined.
+func (p *StackConfigPolicy) GetElasticsearchNamespacedSecureSettings() []commonv1.NamespacedSecretSource {
+	if p == nil {
+		return nil
+	}
+	return toNamespacedSecretSources(&p.Spec.Elasticsearch, p.Namespace)
+}
+
+// GetKibanaNamespacedSecureSettings returns the Kibana secure settings from this policy
+// as NamespacedSecretSources, with each secret source namespaced to the policy's namespace.
+// Returns nil if the policy is nil or has no Kibana secure settings defined.
+func (p *StackConfigPolicy) GetKibanaNamespacedSecureSettings() []commonv1.NamespacedSecretSource {
+	if p == nil {
+		return nil
+	}
+	return toNamespacedSecretSources(&p.Spec.Kibana, p.Namespace)
+}
+
+// HasSecureSettings represents a ConfigPolicySpec that has secure settings.
+// +kubebuilder:object:generate=false
+type HasSecureSettings interface {
+	GetSecureSettings() []commonv1.SecretSource
+}
+
+func toNamespacedSecretSources(hasSecureSettings HasSecureSettings, inNamespace string) []commonv1.NamespacedSecretSource {
+	secureSettings := hasSecureSettings.GetSecureSettings()
+	namespacedSecretSources := make([]commonv1.NamespacedSecretSource, len(secureSettings))
+	for i, s := range secureSettings {
+		namespacedSecretSources[i] = commonv1.NamespacedSecretSource{
+			Namespace:  inNamespace,
+			SecretName: s.SecretName,
+			Entries:    s.Entries,
+		}
+	}
+	return namespacedSecretSources
+}
+
+// GetSecureSettings returns the secure settings of the ElasticsearchConfigPolicySpec.
+func (e *ElasticsearchConfigPolicySpec) GetSecureSettings() []commonv1.SecretSource {
+	if e == nil {
+		return nil
+	}
+	return e.SecureSettings
+}
+
 type KibanaConfigPolicySpec struct {
 	// Config holds the settings that go into kibana.yml.
 	// +kubebuilder:pruning:PreserveUnknownFields
@@ -101,6 +153,14 @@ type KibanaConfigPolicySpec struct {
 	// SecureSettings are additional Secrets that contain data to be configured to Kibana's keystore.
 	// +kubebuilder:pruning:PreserveUnknownFields
 	SecureSettings []commonv1.SecretSource `json:"secureSettings,omitempty"`
+}
+
+// GetSecureSettings returns the secure settings of the KibanaConfigPolicySpec.
+func (k *KibanaConfigPolicySpec) GetSecureSettings() []commonv1.SecretSource {
+	if k == nil {
+		return nil
+	}
+	return k.SecureSettings
 }
 
 type ResourceType string
@@ -121,6 +181,7 @@ type IndexTemplates struct {
 
 type StackConfigPolicyStatus struct {
 	// ResourcesStatuses holds the status for each resource to be configured.
+	//
 	// Deprecated: Details is used to store the status of resources from ECK 2.11
 	ResourcesStatuses map[string]ResourcePolicyStatus `json:"resourcesStatuses,omitempty"`
 	// Details holds the status details for each resource to be configured.
@@ -281,9 +342,11 @@ func (s *StackConfigPolicyStatus) Update() {
 			// Resource status can be for Kibana or Elasticsearch resources
 			resourcePhase := status.Phase
 
-			if resourcePhase == ReadyPhase {
+			//nolint:exhaustive
+			switch resourcePhase {
+			case ReadyPhase:
 				s.Ready++
-			} else if resourcePhase == ErrorPhase {
+			case ErrorPhase:
 				s.Errors++
 			}
 			// update phase if that of the resource status is worse

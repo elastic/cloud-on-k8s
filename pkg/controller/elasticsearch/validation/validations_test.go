@@ -84,7 +84,7 @@ func Test_checkNodeSetNameUniqueness(t *testing.T) {
 }
 
 func Test_hasCorrectNodeRoles(t *testing.T) {
-	type m map[string]interface{}
+	type m map[string]any
 
 	esWithRoles := func(version string, count int32, nodeSetRoles ...m) esv1.Elasticsearch {
 		x := es(version)
@@ -111,7 +111,7 @@ func Test_hasCorrectNodeRoles(t *testing.T) {
 	}{
 		{
 			name:         "no topology",
-			es:           esWithRoles("6.8.0", 1),
+			es:           esWithRoles("7.0.0", 1),
 			expectErrors: true,
 		},
 		{
@@ -475,7 +475,7 @@ func Test_validUpgradePath(t *testing.T) {
 		},
 		{
 			name:         "in range accepted",
-			current:      es("6.8.0"),
+			current:      es("7.0.0"),
 			proposed:     es("7.17.0"),
 			expectErrors: false,
 		},

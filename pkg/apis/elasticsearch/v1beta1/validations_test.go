@@ -88,7 +88,7 @@ func Test_hasMaster(t *testing.T) {
 	}{
 		{
 			name:         "no topology",
-			es:           es("6.8.0"),
+			es:           es("7.17.0"),
 			expectErrors: true,
 		},
 		{
@@ -99,7 +99,7 @@ func Test_hasMaster(t *testing.T) {
 					NodeSets: []NodeSet{
 						{
 							Config: &common.Config{
-								Data: map[string]interface{}{
+								Data: map[string]any{
 									NodeMaster: "false",
 									NodeData:   "false",
 									NodeIngest: "false",
@@ -120,7 +120,7 @@ func Test_hasMaster(t *testing.T) {
 					NodeSets: []NodeSet{
 						{
 							Config: &common.Config{
-								Data: map[string]interface{}{
+								Data: map[string]any{
 									NodeMaster: "true",
 									NodeData:   "false",
 									NodeIngest: "false",
@@ -141,7 +141,7 @@ func Test_hasMaster(t *testing.T) {
 					NodeSets: []NodeSet{
 						{
 							Config: &common.Config{
-								Data: map[string]interface{}{
+								Data: map[string]any{
 									NodeMaster: "false",
 									NodeData:   "true",
 									NodeIngest: "false",
@@ -153,7 +153,7 @@ func Test_hasMaster(t *testing.T) {
 
 						{
 							Config: &common.Config{
-								Data: map[string]interface{}{
+								Data: map[string]any{
 									NodeMaster: "true",
 									NodeData:   "false",
 									NodeIngest: "false",
@@ -543,7 +543,7 @@ func TestValidation_noDowngrades(t *testing.T) {
 		{
 			name:         "no validation on create",
 			current:      nil,
-			proposed:     es("6.8.0"),
+			proposed:     es("7.17.0"),
 			expectErrors: false,
 		},
 		{
@@ -604,7 +604,7 @@ func Test_validUpgradePath(t *testing.T) {
 		},
 		{
 			name:         "in range accepted",
-			current:      es("6.8.0"),
+			current:      es("7.0.0"),
 			proposed:     es("7.17.0"),
 			expectErrors: false,
 		},

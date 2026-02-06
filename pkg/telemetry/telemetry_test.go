@@ -18,6 +18,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/v3/pkg/about"
 	agentv1alpha1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/agent/v1alpha1"
 	apmv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/apm/v1"
+	autoopsv1alpha1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/autoops/v1alpha1"
 	esav1alpha1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/autoscaling/v1alpha1"
 	beatv1beta1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/beat/v1beta1"
 	commonv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/common/v1"
@@ -62,7 +63,7 @@ func TestMarshalTelemetry(t *testing.T) {
 	for _, tt := range []struct {
 		name    string
 		info    about.OperatorInfo
-		stats   map[string]interface{}
+		stats   map[string]any
 		license map[string]string
 		want    string
 	}{
@@ -87,8 +88,8 @@ func TestMarshalTelemetry(t *testing.T) {
 		{
 			name: "not empty",
 			info: testOperatorInfo,
-			stats: map[string]interface{}{
-				"apms": map[string]interface{}{
+			stats: map[string]any{
+				"apms": map[string]any{
 					"pod_count":      2,
 					"resource_count": 1,
 				},
@@ -210,6 +211,7 @@ func TestNewReporter(t *testing.T) {
 		&apmv1.ApmServer{
 			ObjectMeta: metav1.ObjectMeta{
 				Namespace: "ns1",
+				Labels:    map[string]string{"helm.sh/chart": "eck-apm-server-0.1.0"},
 			},
 			Status: apmv1.ApmServerStatus{
 				DeploymentStatus: commonv1.DeploymentStatus{
@@ -220,6 +222,7 @@ func TestNewReporter(t *testing.T) {
 		&entv1.EnterpriseSearch{
 			ObjectMeta: metav1.ObjectMeta{
 				Namespace: "ns1",
+				Labels:    map[string]string{"helm.sh/chart": "eck-enterprise-search-0.1.0"},
 			},
 			Status: entv1.EnterpriseSearchStatus{
 				DeploymentStatus: commonv1.DeploymentStatus{
@@ -230,6 +233,7 @@ func TestNewReporter(t *testing.T) {
 		&logstashv1alpha1.Logstash{
 			ObjectMeta: metav1.ObjectMeta{
 				Namespace: "ns1",
+				Labels:    map[string]string{"helm.sh/chart": "eck-logstash-0.1.0"},
 			},
 			Spec: logstashv1alpha1.LogstashSpec{
 				Count: 3,
@@ -238,7 +242,7 @@ func TestNewReporter(t *testing.T) {
 					Metrics: commonv1.MetricsMonitoring{ElasticsearchRefs: []commonv1.ObjectSelector{{Name: "monitoring"}}},
 				},
 				Pipelines: []commonv1.Config{
-					{Data: map[string]interface{}{"pipeline.id": "main"}},
+					{Data: map[string]any{"pipeline.id": "main"}},
 				},
 				Services: []logstashv1alpha1.LogstashService{
 					{
@@ -294,6 +298,7 @@ func TestNewReporter(t *testing.T) {
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      "beat1",
 				Namespace: "ns1",
+				Labels:    map[string]string{"helm.sh/chart": "eck-beats-0.1.0"},
 			},
 			Spec: beatv1beta1.BeatSpec{
 				Type: "filebeat",
@@ -330,6 +335,7 @@ func TestNewReporter(t *testing.T) {
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      "agent1",
 				Namespace: "ns2",
+				Labels:    map[string]string{"helm.sh/chart": "eck-fleet-server-0.1.0"},
 			},
 			Status: agentv1alpha1.AgentStatus{
 				AvailableNodes: 10,
@@ -339,6 +345,7 @@ func TestNewReporter(t *testing.T) {
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      "agent2",
 				Namespace: "ns2",
+				Labels:    map[string]string{"helm.sh/chart": "eck-agent-0.1.0"},
 			},
 			Spec: agentv1alpha1.AgentSpec{
 				ElasticsearchRefs: []agentv1alpha1.Output{{}, {}}, // two outputs
@@ -391,13 +398,13 @@ func TestNewReporter(t *testing.T) {
 			},
 			Spec: policyv1alpha1.StackConfigPolicySpec{
 				Elasticsearch: policyv1alpha1.ElasticsearchConfigPolicySpec{
-					ClusterSettings: &commonv1.Config{Data: map[string]interface{}{
+					ClusterSettings: &commonv1.Config{Data: map[string]any{
 						"indices.recovery.max_bytes_per_sec": "100mb",
 					}},
-					SnapshotRepositories: &commonv1.Config{Data: map[string]interface{}{
+					SnapshotRepositories: &commonv1.Config{Data: map[string]any{
 						"repo1": "settings...",
 					}},
-					SnapshotLifecyclePolicies: &commonv1.Config{Data: map[string]interface{}{
+					SnapshotLifecyclePolicies: &commonv1.Config{Data: map[string]any{
 						"slm1": "settings...",
 						"slm2": "settings...",
 					}},
@@ -414,16 +421,26 @@ func TestNewReporter(t *testing.T) {
 			},
 			Spec: policyv1alpha1.StackConfigPolicySpec{
 				Elasticsearch: policyv1alpha1.ElasticsearchConfigPolicySpec{
-					SnapshotRepositories: &commonv1.Config{Data: map[string]interface{}{
+					SnapshotRepositories: &commonv1.Config{Data: map[string]any{
 						"repo1": "settings...",
 					}},
-					SnapshotLifecyclePolicies: &commonv1.Config{Data: map[string]interface{}{
+					SnapshotLifecyclePolicies: &commonv1.Config{Data: map[string]any{
 						"slm1": "settings...",
 					}},
 				},
 			},
 			Status: policyv1alpha1.StackConfigPolicyStatus{
 				Resources: 5,
+			},
+		},
+		&autoopsv1alpha1.AutoOpsAgentPolicy{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "aop1",
+				Namespace: "ns1",
+				Labels:    map[string]string{"helm.sh/chart": "eck-autoops-agent-policy-0.1.0"},
+			},
+			Status: autoopsv1alpha1.AutoOpsAgentPolicyStatus{
+				Resources: 2,
 			},
 		},
 	)
@@ -451,16 +468,23 @@ func TestNewReporter(t *testing.T) {
     agents:
       fleet_mode: 2
       fleet_server: 1
+      helm_resource_count: 2
       multiple_refs: 1
       pod_count: 24
       resource_count: 4
     apms:
+      helm_resource_count: 1
+      pod_count: 2
+      resource_count: 1
+    autoopsagentpolicies:
+      helm_resource_count: 1
       pod_count: 2
       resource_count: 1
     beats:
       auditbeat_count: 0
       filebeat_count: 1
       heartbeat_count: 0
+      helm_resource_count: 1
       journalbeat_count: 0
       metricbeat_count: 1
       packetbeat_count: 0
@@ -476,6 +500,7 @@ func TestNewReporter(t *testing.T) {
       stack_monitoring_logs_count: 1
       stack_monitoring_metrics_count: 1
     enterprisesearches:
+      helm_resource_count: 1
       pod_count: 3
       resource_count: 1
     kibanas:
@@ -483,6 +508,7 @@ func TestNewReporter(t *testing.T) {
       pod_count: 0
       resource_count: 3
     logstashes:
+      helm_resource_count: 1
       pipeline_count: 1
       pipeline_ref_count: 0
       pod_count: 4

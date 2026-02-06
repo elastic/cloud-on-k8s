@@ -3,5 +3,5 @@ kind: ElasticMapsServer
 metadata:
   name: ems-sample
 spec:
-  version: 9.2.0
+  version: 9.3.0
   count: 1

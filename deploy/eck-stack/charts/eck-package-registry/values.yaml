@@ -1,0 +1,73 @@
+---
+# Default values for eck-package-registry.
+# This is a YAML-formatted file.
+
+# Overridable names of the PackageRegistry resource.
+# By default, this is the Release name set for the chart,
+# followed by 'eck-epr'.
+#
+# nameOverride will override the name of the Chart with the name set here,
+# so nameOverride: quickstart, would convert to '{{ Release.name }}-quickstart'
+#
+# nameOverride: "quickstart"
+#
+# fullnameOverride will override both the release name, and the chart name,
+# and will name the PackageRegistry resource exactly as specified.
+#
+# fullnameOverride: "quickstart"
+
+# Version of Package Registry.
+#
+version: 9.2.2
+
+# Elastic Package Registry Docker image to deploy
+#
+# image: docker.elastic.co/package-registry/distribution:lite-9.2.2
+
+# Labels that will be applied to Package Registry.
+#
+labels: {}
+
+# Annotations that will be applied to Package Registry.
+#
+annotations: {}
+
+
+# Count of Package Registry replicas to create.
+#
+count: 1
+
+# The Package Registry configuration (config.yml)
+# ref: https://github.com/elastic/package-registry/blob/main/config.reference.yml
+#
+config: null
+
+# The HTTP layer configuration for Package Registry.
+#
+# http:
+
+# PodTemplate provides customisation options (labels, annotations, affinity rules,
+# resource requests, and so on) for the EPR pods
+#
+# podTemplate:
+
+# Number of revisions to retain to allow rollback in the underlying deployment.
+# By default, if not set, Kubernetes sets 10.
+#
+# revisionHistoryLimit: 2
+
+# extraObjects allows injecting additional Kubernetes resources into the chart.
+# These resources will be created/deleted alongside the chart release.
+# The value is a list of strings, each string is a YAML manifest.
+# Helm templating is supported within each manifest.
+# Example:
+# extraObjects:
+#   - |
+#     apiVersion: v1
+#     kind: ConfigMap
+#     metadata:
+#       name: {{ include "epr.fullname" . }}-extra-config
+#       namespace: {{ .Release.Namespace }}
+#     data:
+#       key: value
+extraObjects: []

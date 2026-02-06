@@ -31,14 +31,14 @@ func Test_NewSettingsSecret(t *testing.T) {
 		},
 		Spec: policyv1alpha1.StackConfigPolicySpec{
 			Elasticsearch: policyv1alpha1.ElasticsearchConfigPolicySpec{
-				ClusterSettings: &commonv1.Config{Data: map[string]interface{}{"a": "b"}},
+				ClusterSettings: &commonv1.Config{Data: map[string]any{"a": "b"}},
 			},
 		},
 	}
 
 	// no policy
 	expectedVersion := int64(1)
-	secret, reconciledVersion, err := newSettingsSecret(expectedVersion, es, nil, nil, metadata.Metadata{})
+	secret, reconciledVersion, err := newSettingsSecret(expectedVersion, es, nil, nil, nil, metadata.Metadata{})
 	assert.NoError(t, err)
 	assert.Equal(t, "esNs", secret.Namespace)
 	assert.Equal(t, "esName-es-file-settings", secret.Name)
@@ -47,7 +47,7 @@ func Test_NewSettingsSecret(t *testing.T) {
 
 	// policy
 	expectedVersion = int64(2)
-	secret, reconciledVersion, err = newSettingsSecret(expectedVersion, es, &secret, &policy, metadata.Metadata{})
+	secret, reconciledVersion, err = newSettingsSecret(expectedVersion, es, &secret, &policy.Spec.Elasticsearch, policy.GetElasticsearchNamespacedSecureSettings(), metadata.Metadata{})
 	assert.NoError(t, err)
 	assert.Equal(t, "esNs", secret.Namespace)
 	assert.Equal(t, "esName-es-file-settings", secret.Name)
@@ -71,7 +71,7 @@ func Test_SettingsSecret_hasChanged(t *testing.T) {
 		},
 		Spec: policyv1alpha1.StackConfigPolicySpec{
 			Elasticsearch: policyv1alpha1.ElasticsearchConfigPolicySpec{
-				ClusterSettings: &commonv1.Config{Data: map[string]interface{}{"a": "b"}},
+				ClusterSettings: &commonv1.Config{Data: map[string]any{"a": "b"}},
 			},
 		}}
 
@@ -79,14 +79,14 @@ func Test_SettingsSecret_hasChanged(t *testing.T) {
 	expectedEmptySettings := NewEmptySettings(expectedVersion)
 
 	// no policy -> emptySettings
-	secret, reconciledVersion, err := newSettingsSecret(expectedVersion, es, nil, nil, metadata.Metadata{})
+	secret, reconciledVersion, err := newSettingsSecret(expectedVersion, es, nil, nil, nil, metadata.Metadata{})
 	assert.NoError(t, err)
 	assert.Equal(t, false, hasChanged(secret, expectedEmptySettings))
 	assert.Equal(t, expectedVersion, reconciledVersion)
 
 	// policy without settings -> emptySettings
 	sameSettings := NewEmptySettings(expectedVersion)
-	err = sameSettings.updateState(es, policy)
+	err = sameSettings.updateState(es, policy.Spec.Elasticsearch)
 	assert.NoError(t, err)
 	assert.Equal(t, false, hasChanged(secret, sameSettings))
 	assert.Equal(t, strconv.FormatInt(expectedVersion, 10), sameSettings.Metadata.Version)
@@ -95,57 +95,10 @@ func Test_SettingsSecret_hasChanged(t *testing.T) {
 	newVersion := int64(2)
 	newSettings := NewEmptySettings(newVersion)
 
-	err = newSettings.updateState(es, otherPolicy)
+	err = newSettings.updateState(es, otherPolicy.Spec.Elasticsearch)
 	assert.NoError(t, err)
 	assert.Equal(t, true, hasChanged(secret, newSettings))
 	assert.Equal(t, strconv.FormatInt(newVersion, 10), newSettings.Metadata.Version)
-}
-
-func Test_SettingsSecret_setSoftOwner_canBeOwnedBy(t *testing.T) {
-	es := types.NamespacedName{
-		Namespace: "esNs",
-		Name:      "esName",
-	}
-	policy := policyv1alpha1.StackConfigPolicy{
-		TypeMeta: metav1.TypeMeta{
-			Kind: policyv1alpha1.Kind,
-		},
-		ObjectMeta: metav1.ObjectMeta{
-			Namespace: "policyNs",
-			Name:      "policyName",
-		},
-	}
-	otherPolicy := policyv1alpha1.StackConfigPolicy{
-		TypeMeta: metav1.TypeMeta{
-			Kind: policyv1alpha1.Kind,
-		},
-		ObjectMeta: metav1.ObjectMeta{
-			Namespace: "otherPolicyNs",
-			Name:      "otherPolicyName",
-		},
-	}
-
-	// empty settings can be owned by any policy
-	secret, _, err := NewSettingsSecretWithVersion(es, nil, nil, metadata.Metadata{})
-	assert.NoError(t, err)
-	_, canBeOwned := CanBeOwnedBy(secret, policy)
-	assert.Equal(t, true, canBeOwned)
-	_, canBeOwned = CanBeOwnedBy(secret, otherPolicy)
-	assert.Equal(t, true, canBeOwned)
-
-	// set a policy soft owner
-	SetSoftOwner(&secret, policy)
-	_, canBeOwned = CanBeOwnedBy(secret, policy)
-	assert.Equal(t, true, canBeOwned)
-	_, canBeOwned = CanBeOwnedBy(secret, otherPolicy)
-	assert.Equal(t, false, canBeOwned)
-
-	// update the policy soft owner
-	SetSoftOwner(&secret, otherPolicy)
-	_, canBeOwned = CanBeOwnedBy(secret, policy)
-	assert.Equal(t, false, canBeOwned)
-	_, canBeOwned = CanBeOwnedBy(secret, otherPolicy)
-	assert.Equal(t, true, canBeOwned)
 }
 
 func Test_SettingsSecret_setSecureSettings_getSecureSettings(t *testing.T) {
@@ -159,7 +112,9 @@ func Test_SettingsSecret_setSecureSettings_getSecureSettings(t *testing.T) {
 			Name:      "policyName",
 		},
 		Spec: policyv1alpha1.StackConfigPolicySpec{
-			SecureSettings: nil,
+			Elasticsearch: policyv1alpha1.ElasticsearchConfigPolicySpec{
+				SecureSettings: nil,
+			},
 		}}
 	otherPolicy := policyv1alpha1.StackConfigPolicy{
 		ObjectMeta: metav1.ObjectMeta{
@@ -167,23 +122,25 @@ func Test_SettingsSecret_setSecureSettings_getSecureSettings(t *testing.T) {
 			Name:      "otherPolicyName",
 		},
 		Spec: policyv1alpha1.StackConfigPolicySpec{
-			SecureSettings: []commonv1.SecretSource{{SecretName: "secure-settings-secret"}},
+			Elasticsearch: policyv1alpha1.ElasticsearchConfigPolicySpec{
+				SecureSettings: []commonv1.SecretSource{{SecretName: "secure-settings-secret"}},
+			},
 		}}
 
-	secret, _, err := NewSettingsSecretWithVersion(es, nil, nil, metadata.Metadata{})
+	secret, _, err := NewSettingsSecretWithVersion(es, nil, nil, nil, metadata.Metadata{})
 	assert.NoError(t, err)
 
 	secureSettings, err := getSecureSettings(secret)
 	assert.NoError(t, err)
 	assert.Equal(t, []commonv1.NamespacedSecretSource{}, secureSettings)
 
-	err = setSecureSettings(&secret, policy)
+	err = setSecureSettings(&secret, policy.GetElasticsearchNamespacedSecureSettings())
 	assert.NoError(t, err)
 	secureSettings, err = getSecureSettings(secret)
 	assert.NoError(t, err)
 	assert.Equal(t, []commonv1.NamespacedSecretSource{}, secureSettings)
 
-	err = setSecureSettings(&secret, otherPolicy)
+	err = setSecureSettings(&secret, otherPolicy.GetElasticsearchNamespacedSecureSettings())
 	assert.NoError(t, err)
 	secureSettings, err = getSecureSettings(secret)
 	assert.NoError(t, err)

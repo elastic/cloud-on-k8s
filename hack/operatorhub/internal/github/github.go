@@ -7,11 +7,13 @@ package github
 import (
 	"bytes"
 	"context"
+	"encoding/json"
 	"fmt"
 	"io"
 	"log"
 	"net/http"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"time"
 
@@ -154,17 +156,32 @@ func (c *Client) cloneAndCreate(repo githubRepository) error {
 	orgRepo := fmt.Sprintf("%s/%s", repo.organization, repo.repository)
 	localTempDir := filepath.Join(repo.tempDir, repo.repository)
 
+	// Use git CLI for cloning to reduce memory usage compared to go-git.
+	// See https://github.com/go-git/go-git/issues/1673
+	// Using --depth 1 for shallow clone, --single-branch to only fetch the main branch,
+	// and --no-tags to skip fetching tags.
 	log.Printf("Cloning (%s) repository to temporary directory ", repo.url)
-	r, err := git.PlainClone(localTempDir, false, &git.CloneOptions{
-		URL: repo.url,
-		Auth: &git_http.BasicAuth{
-			Username: c.GitHubToken,
-		},
-	})
-	if err != nil {
+	cloneURL := fmt.Sprintf("https://%s@github.com/%s.git", c.GitHubToken, orgRepo)
+	cmd := exec.Command("git", "clone",
+		"--depth", "1",
+		"--single-branch",
+		"--branch", repo.mainBranchName,
+		"--no-tags",
+		cloneURL,
+		localTempDir,
+	)
+	cmd.Stdout = io.Discard
+	cmd.Stderr = os.Stderr
+	if err := cmd.Run(); err != nil {
 		return fmt.Errorf("cloning (%s): %w", orgRepo, err)
 	}
 	log.Println("✓")
+
+	// Open the cloned repository with go-git for subsequent operations
+	r, err := git.PlainOpen(localTempDir)
+	if err != nil {
+		return fmt.Errorf("opening cloned repository (%s): %w", orgRepo, err)
+	}
 
 	log.Printf("Ensuring that (%s) repository has been forked ", orgRepo)
 	err = c.ensureFork(orgRepo)
@@ -187,7 +204,7 @@ func (c *Client) cloneAndCreate(repo githubRepository) error {
 	}
 	log.Println("✓")
 
-	err = c.syncFork(orgRepo, r, remote)
+	err = c.syncFork(r)
 	if err != nil {
 		return fmt.Errorf("while syncing fork with upstream: %w", err)
 	}
@@ -216,6 +233,7 @@ func (c *Client) cloneAndCreate(repo githubRepository) error {
 	err = w.Checkout(&git.CheckoutOptions{
 		Branch: plumbing.NewBranchReferenceName(branchName),
 		Create: true,
+		Force:  true, // allow checkout with dirty worktree (e.g. after shallow clone)
 	})
 	if err != nil {
 		log.Println("ⅹ")
@@ -274,6 +292,49 @@ func (c *Client) cloneAndCreate(repo githubRepository) error {
 	return c.createPullRequest(repo, branchName)
 }
 
+// githubPullRequest is the minimal representation of a GitHub PR response.
+type githubPullRequest struct {
+	ID uint `json:"id"`
+}
+
+// pullRequestExists checks if a pull request already exists for the given repository
+// from the configured GitHub user's branch by querying the GitHub Pulls API.
+func (c *Client) pullRequestExists(repo githubRepository, branchName string) (bool, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), 1*time.Minute)
+	defer cancel()
+
+	// Query format: /repos/{owner}/{repo}/pulls?head={user}:{branch}&state=open
+	url := fmt.Sprintf("%s/repos/%s/%s/pulls?head=%s:%s&state=open",
+		githubAPIURL, repo.organization, repo.repository, c.GitHubUsername, branchName)
+
+	req, err := c.createRequest(ctx, http.MethodGet, url, nil)
+	if err != nil {
+		return false, fmt.Errorf("while creating request to check for existing PR: %w", err)
+	}
+
+	res, err := c.HTTPClient.Do(req)
+	if err != nil {
+		return false, fmt.Errorf("while checking for existing PR: %w", err)
+	}
+	defer res.Body.Close()
+
+	bodyBytes, err := io.ReadAll(res.Body)
+	if err != nil {
+		return false, fmt.Errorf("while reading PR check response body: %w", err)
+	}
+
+	if res.StatusCode < 200 || res.StatusCode > 299 {
+		return false, fmt.Errorf("invalid status code while checking for existing PR, code: %d, body: %s", res.StatusCode, string(bodyBytes))
+	}
+
+	var prs []githubPullRequest
+	if err := json.Unmarshal(bodyBytes, &prs); err != nil {
+		return false, fmt.Errorf("while decoding PR check response: %w", err)
+	}
+
+	return len(prs) > 0, nil
+}
+
 // createPullRequest will create a draft pull request for the given github repository
 // unless dry-run is set.
 func (c *Client) createPullRequest(repo githubRepository, branchName string) error {
@@ -281,12 +342,26 @@ func (c *Client) createPullRequest(repo githubRepository, branchName string) err
 		log.Println("Not creating draft pull request as dry-run is set")
 		return nil
 	}
+
+	// Check if a PR already exists for this branch
+	log.Printf("Checking if pull request already exists for (%s) ", repo.repository)
+	exists, err := c.pullRequestExists(repo, branchName)
+	if err != nil {
+		log.Println("ⅹ")
+		return fmt.Errorf("while checking for existing PR for (%s): %w", repo.repository, err)
+	}
+	if exists {
+		log.Println("✓")
+		log.Printf("Pull request for (%s) already exists. Skipping creation.\n", repo.repository)
+		return nil
+	}
+	log.Println("✓")
+
 	log.Printf("Creating draft pull request for (%s) ", repo.repository)
 
 	prBody := fmt.Sprintf("Update the ECK operator to the latest version `%s`.", c.GitTag)
-	var body = []byte(
-		fmt.Sprintf(`{"title": "operator %s (%s)", "head": "%s:%s", "base": "%s", "draft": true, "body": "%s"}`,
-			repo.directoryName, c.GitTag, c.GitHubUsername, branchName, repo.mainBranchName, prBody))
+	var body = fmt.Appendf(nil, `{"title": "operator %s (%s)", "head": "%s:%s", "base": "%s", "draft": true, "body": "%s"}`,
+		repo.directoryName, c.GitTag, c.GitHubUsername, branchName, repo.mainBranchName, prBody)
 	ctx, cancel := context.WithTimeout(context.Background(), 1*time.Minute)
 	defer cancel()
 	req, err := c.createRequest(ctx, http.MethodPost, fmt.Sprintf("%s/repos/%s/%s/pulls", githubAPIURL, repo.organization, repo.repository), bytes.NewBuffer(body))

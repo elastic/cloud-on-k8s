@@ -22,7 +22,7 @@ type Command struct {
 	command      string
 	context      context.Context
 	logPrefix    string
-	params       map[string]interface{}
+	params       map[string]any
 	variablesSrc string
 	variables    []string
 	stream       bool
@@ -33,7 +33,7 @@ func NewCommand(command string) *Command {
 	return &Command{command: command, stream: true, stderr: true}
 }
 
-func (c *Command) AsTemplate(params map[string]interface{}) *Command {
+func (c *Command) AsTemplate(params map[string]any) *Command {
 	c.params = params
 	return c
 }
@@ -75,7 +75,7 @@ func (c *Command) Run() error {
 
 func (c *Command) RunWithRetries(numAttempts int, timeout time.Duration) error {
 	var err error
-	for i := 0; i < numAttempts; i++ {
+	for range numAttempts {
 		ctx, cancelFunc := context.WithTimeout(context.Background(), timeout)
 		err = c.WithContext(ctx).Run()
 		cancelFunc()
@@ -112,7 +112,7 @@ func (c *Command) OutputList() (list []string, err error) {
 		return nil, err
 	}
 
-	for _, item := range strings.Split(out, "\n") {
+	for item := range strings.SplitSeq(out, "\n") {
 		if item != "" {
 			list = append(list, item)
 		}
@@ -140,7 +140,7 @@ func (c *Command) output() (string, error) {
 	if c.context != nil {
 		cmd = exec.CommandContext(c.context, "/usr/bin/env", "bash", "-c", c.command) // #nosec G204
 	} else {
-		cmd = exec.Command("/usr/bin/env", "bash", "-c", c.command) // #nosec G204
+		cmd = exec.Command("/usr/bin/env", "bash", "-c", c.command) //nolint:gosec,noctx
 	}
 
 	// support .env or similar files to specify environment variables

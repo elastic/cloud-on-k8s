@@ -1,0 +1,111 @@
+---
+# Default values for eck-autoops-agent-policy.
+# This is a YAML-formatted file.
+
+# Overridable names of the AutoOps Agent Policy resource.
+# By default, this is the Release name set for the chart,
+# followed by 'eck-autoops-agent-policy'.
+#
+# nameOverride will override the name of the Chart with the name set here,
+# so nameOverride: quickstart, would convert to '{{ Release.name }}-quickstart'
+#
+# nameOverride: "quickstart"
+#
+# fullnameOverride will override both the release name, and the chart name,
+# and will name the AutoOps Agent Policy resource exactly as specified.
+#
+# fullnameOverride: "quickstart"
+
+# Version of AutoOps Agent Policy.
+#
+version: 9.4.0-SNAPSHOT
+
+# Labels that will be applied to AutoOps Agent Policy.
+#
+labels: {}
+
+# Annotations that will be applied to AutoOps Agent Policy.
+#
+annotations: {}
+
+# Reference an existing Kubernetes secret holding the AutoOps configuration.
+#
+# All of the following items can be obtained the Elastic Cloud Console (https://cloud.elastic.co/connect-cluster-services-portal)
+# by selecting the ECK connect wizard and following the instructions.
+#
+# The referenced secret must contain the following:
+# - `cloud-connected-mode-api-key`: the Cloud Connected Mode API key. This is used to register the Agent with Elastic Cloud AutoOps.
+# - `autoops-otel-url`: the URL of the AutoOps OTel endpoint. This is used to send Agent data to the AutoOps platform and is region specific.
+#     Example: "https://otel-auto-ops.us-east-2.aws.svc.elastic.cloud"
+# - `autoops-token`: the token to authenticate against the AutoOps platform and is how AutoOps knows how to connect Agent data to the
+#     relevant Elastic Cloud organization
+# - `cloud-connected-mode-api-url`: the URL of the Cloud Connected Mode API (optional)
+#
+autoOpsRef: {}
+  # secretName: ""
+
+# Config holds the AutoOps Agent configuration for Elasticsearch monitoring.
+# This configuration is intended to override parts of the autoops_es.yml configmap.
+# See: https://github.com/elastic/elastic-agent/blob/c6eaa3c903d4357824d345ee2002123fdffbec91/internal/pkg/otel/samples/linux/autoops_es.yml
+# +kubebuilder:pruning:PreserveUnknownFields
+# config: {}
+
+# Image is the AutoOps Agent Docker image to deploy.
+# image: "docker.elastic.co/elastic-agent/elastic-otel-collector-wolfi:9.3.0-SNAPSHOT"
+
+# RevisionHistoryLimit is the number of revisions to retain to allow rollback in the underlying Deployment.
+# revisionHistoryLimit: 2
+
+# PodTemplate provides customisation options (labels, annotations, affinity rules, resource requests, and so on) for the Agent pods
+# +kubebuilder:validation:Optional
+# +kubebuilder:pruning:PreserveUnknownFields
+# podTemplate:
+#   spec:
+#     containers:
+#       - name: autoops-agent
+#         resources:
+#           limits:
+#             memory: 400Mi
+#             cpu: 200m
+#           requests:
+#             memory: 400Mi
+#             cpu: 200m
+
+# ResourceSelector is a label selector for the resources to be configured.
+# Any Elasticsearch instances that match the selector will be configured to send data to AutoOps.
+#
+resourceSelector:
+  matchLabels:
+    autoops: enabled
+
+# NamespaceSelector is a namespace selector for the resources to be configured.
+# Any Elasticsearch instances belonging to the selected namespaces will be configured to send data to AutoOps.
+# If not specified, all namespaces are selected.
+#
+# namespaceSelector:
+#   matchLabels:
+#     kubernetes.io/metadata.name: team-a
+
+# ServiceAccountName is used for RBAC checks when accessing Elasticsearch clusters
+# in different namespaces. The policy can only target Elasticsearch clusters that
+# the specified service account has permission to access (via 'get' verb).
+# Defaults to "default" if not specified. Only enforced if operator is running with --enforce-rbac-on-refs.
+#
+# serviceAccountName: ""
+
+
+# extraObjects allows injecting additional Kubernetes resources into the chart.
+# These resources will be created/deleted alongside the chart release.
+# The value is a list of strings, each string is a YAML manifest.
+# Helm templating is supported within each manifest.
+# Example:
+# extraObjects:
+#   - |
+#     apiVersion: v1
+#     kind: ConfigMap
+#     metadata:
+#       name: {{ include "autoops.fullname" . }}-extra-config
+#       namespace: {{ .Release.Namespace }}
+#     data:
+#       key: value
+extraObjects: []

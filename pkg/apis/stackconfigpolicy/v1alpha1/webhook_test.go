@@ -50,7 +50,7 @@ func TestWebhook(t *testing.T) {
 				m := mkStackConfigPolicy(uid)
 				m.Spec.Elasticsearch = policyv1alpha1.ElasticsearchConfigPolicySpec{}
 				m.Spec.Kibana = policyv1alpha1.KibanaConfigPolicySpec{
-					Config: &commonv1.Config{Data: map[string]interface{}{"a": "b"}},
+					Config: &commonv1.Config{Data: map[string]any{"a": "b"}},
 				}
 				return serialize(t, m)
 			},
@@ -96,7 +96,7 @@ func TestWebhook(t *testing.T) {
 				m.Spec.Elasticsearch = policyv1alpha1.ElasticsearchConfigPolicySpec{
 					SnapshotRepositories:      nil,
 					SnapshotLifecyclePolicies: &commonv1.Config{Data: nil},
-					ClusterSettings:           &commonv1.Config{Data: map[string]interface{}{}},
+					ClusterSettings:           &commonv1.Config{Data: map[string]any{}},
 				}
 				return serialize(t, m)
 			},
@@ -141,7 +141,7 @@ func mkStackConfigPolicy(uid string) *policyv1alpha1.StackConfigPolicy {
 		},
 		Spec: policyv1alpha1.StackConfigPolicySpec{
 			Elasticsearch: policyv1alpha1.ElasticsearchConfigPolicySpec{
-				ClusterSettings: &commonv1.Config{Data: map[string]interface{}{"a": "b"}},
+				ClusterSettings: &commonv1.Config{Data: map[string]any{"a": "b"}},
 			},
 		},
 	}

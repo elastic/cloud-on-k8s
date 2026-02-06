@@ -127,7 +127,7 @@ type CredentialsCollection struct {
 func (a AppSearchClient) GetAPIKey() (string, error) {
 	url := a.endpoint + "/as/credentials/collection"
 
-	req, err := http.NewRequest(http.MethodGet, url, nil)
+	req, err := http.NewRequest(http.MethodGet, url, nil) //nolint:noctx
 	if err != nil {
 		return "", err
 	}
@@ -150,7 +150,7 @@ func (a AppSearchClient) GetAPIKey() (string, error) {
 }
 
 type Results struct {
-	Results []map[string]interface{} `json:"results"`
+	Results []map[string]any `json:"results"`
 }
 
 func (a AppSearchClient) GetEngines() (Results, error) {
@@ -170,9 +170,9 @@ func (a AppSearchClient) GetEngines() (Results, error) {
 
 func (a AppSearchClient) CreateEngine(name string) error {
 	url := a.endpoint + "/api/as/v1/engines"
-	body := []byte(fmt.Sprintf(`{"name": "%s"}`, name))
+	body := fmt.Appendf(nil, `{"name": "%s"}`, name)
 
-	req, err := http.NewRequest(http.MethodPost, url, bytes.NewBuffer(body))
+	req, err := http.NewRequest(http.MethodPost, url, bytes.NewBuffer(body)) //nolint:noctx
 	if err != nil {
 		return err
 	}

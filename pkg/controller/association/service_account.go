@@ -254,7 +254,7 @@ func newApplicationToken(serviceAccountName commonv1.ServiceAccountName, tokenNa
 	}
 
 	fullyQualifiedName := fmt.Sprintf("%s/%s", Namespace, serviceAccountName)
-	suffix := []byte(fmt.Sprintf("%s/%s:%s", fullyQualifiedName, tokenName, secret))
+	suffix := fmt.Appendf(nil, "%s/%s:%s", fullyQualifiedName, tokenName, secret)
 	token := base64.StdEncoding.EncodeToString(append(prefix[:], suffix...))
 
 	return &Token{

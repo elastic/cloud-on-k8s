@@ -18,11 +18,11 @@
 
 # Version of Kibana.
 #
-version: 9.3.0-SNAPSHOT
+version: 9.4.0-SNAPSHOT
 
 # Kibana Docker image to deploy
 #
-# image: docker.elastic.co/kibana/kibana:9.3.0-SNAPSHOT
+# image: docker.elastic.co/kibana/kibana:9.4.0-SNAPSHOT
 
 # Labels that will be applied to Kibana.
 #
@@ -69,6 +69,10 @@ elasticsearchRef: {}
 # Reference to an EnterpriseSearch running in the same Kubernetes cluster
 #
 # enterpriseSearchRef:
+
+# Reference to an PackageRegistry running in the same Kubernetes cluster
+#
+# packageRegistryRef:
 
 # The Kibana configuration (kibana.yml)
 # ref: https://www.elastic.co/guide/en/kibana/current/settings.html
@@ -188,3 +192,19 @@ ingress:
     # Optional Kubernetes secret name that contains a base64 encoded PEM certificate and private key that corresponds to the above 'hosts' definitions.
     # If tls is enabled, but this field is not set, the self-signed certificate and key created by the ECK operator will be used.
     # secretName: chart-example-tls
+
+# extraObjects allows injecting additional Kubernetes resources into the chart.
+# These resources will be created/deleted alongside the chart release.
+# The value is a list of strings, each string is a YAML manifest.
+# Helm templating is supported within each manifest.
+# Example:
+# extraObjects:
+#   - |
+#     apiVersion: v1
+#     kind: ConfigMap
+#     metadata:
+#       name: {{ include "kibana.fullname" . }}-extra-config
+#       namespace: {{ .Release.Namespace }}
+#     data:
+#       key: value
+extraObjects: []
