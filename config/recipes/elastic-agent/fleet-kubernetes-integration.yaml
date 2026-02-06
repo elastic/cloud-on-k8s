@@ -84,6 +84,7 @@ spec:
         # as Agent changes ownership of the data directory to the container user id.
         # For persisted state on hostPath, rootless operation requires privilege escalation
         # and CAP_CHOWN (CAP_SETPCAP helps Elastic Agent pass capabilities to child processes).
+        # These are defaults in most runtimes, but if you set drop: ["ALL"], add them back.
         # securityContext:
         #   allowPrivilegeEscalation: true
         #   capabilities:
@@ -127,6 +128,7 @@ spec:
         # as Agent changes ownership of the data directory to the container user id.
         # For persisted state on hostPath, rootless operation requires privilege escalation
         # and CAP_CHOWN (CAP_SETPCAP helps Elastic Agent pass capabilities to child processes).
+        # These are defaults in most runtimes, but if you set drop: ["ALL"], add them back.
         # securityContext:
         #   allowPrivilegeEscalation: true
         #   capabilities:
