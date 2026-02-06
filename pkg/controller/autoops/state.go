@@ -5,11 +5,14 @@
 package autoops
 
 import (
+	"fmt"
 	"reflect"
+	"strings"
 
 	corev1 "k8s.io/api/core/v1"
 
 	autoopsv1alpha1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/autoops/v1alpha1"
+	esv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/elasticsearch/v1"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/events"
 )
 
@@ -31,6 +34,9 @@ func newState(policy autoopsv1alpha1.AutoOpsAgentPolicy) *State {
 	status.Errors = 0
 	status.Ready = 0
 	status.Resources = 0
+	status.Skipped = 0
+	// Initialize Details map to avoid nil map assignment panics
+	status.Details = make(map[string]autoopsv1alpha1.AutoOpsResourceStatus)
 	return &State{
 		Recorder: events.NewRecorder(),
 		policy:   policy,
@@ -94,9 +100,31 @@ func (s *State) Apply() ([]events.Event, *autoopsv1alpha1.AutoOpsAgentPolicy) {
 	return s.Events(), &s.policy
 }
 
-// CalculateFinalPhase updates the phase of the AutoOpsAgentPolicy status based on the results of the reconciliation.
+func (s *State) ResourceRBACError(es esv1.Elasticsearch) {
+	s.UpdateWithPhase(autoopsv1alpha1.ErrorPhase)
+	s.status.Skipped++
+	s.status.Details[s.esResourceID(es)] = autoopsv1alpha1.AutoOpsResourceStatus{
+		Phase:   autoopsv1alpha1.SkippedResourcePhase,
+		Message: fmt.Sprintf("RBAC access denied for service account %s", s.policy.Spec.ServiceAccountName),
+	}
+}
+
+func (s *State) ResourceError(es esv1.Elasticsearch, message string, err error) {
+	s.UpdateWithPhase(autoopsv1alpha1.ErrorPhase)
+	s.status.Errors++
+	s.status.Details[s.esResourceID(es)] = autoopsv1alpha1.AutoOpsResourceStatus{
+		Phase: autoopsv1alpha1.ErrorResourcePhase,
+		Error: fmt.Sprintf("%s: %s", message, err),
+	}
+}
+
+func (s *State) esResourceID(es esv1.Elasticsearch) string {
+	return fmt.Sprintf("%s/%s", es.Namespace, es.Name)
+}
+
+// Finalize updates the phase of the AutoOpsAgentPolicy status based on the results of the reconciliation and sets the status message and the ready count.
 // This method is solely responsible for applying the [autoopsv1alpha1.ApplyingChangesPhase], [autoopsv1alpha1.AutoOpsAgentsNotReadyPhase] and [autoopsv1alpha1.ReadyPhase].
-func (s *State) CalculateFinalPhase(isReconciled bool, reconciliationMessage string) {
+func (s *State) Finalize(isReconciled bool, reconciliationMessage string) {
 	switch {
 	case !isReconciled:
 		s.UpdateWithPhase(autoopsv1alpha1.ApplyingChangesPhase)
@@ -106,4 +134,18 @@ func (s *State) CalculateFinalPhase(isReconciled bool, reconciliationMessage str
 	case s.status.Ready < s.status.Resources:
 		s.UpdateWithPhase(autoopsv1alpha1.AutoOpsAgentsNotReadyPhase)
 	}
+
+	parts := make([]string, 0, 3)
+	if s.status.Ready > 0 {
+		parts = append(parts, fmt.Sprintf("%d resource ready", s.status.Ready))
+	}
+	if s.status.Errors > 0 {
+		parts = append(parts, fmt.Sprintf("%d error", s.status.Errors))
+	}
+	if s.status.Skipped > 0 {
+		parts = append(parts, fmt.Sprintf("%d skipped due to RBAC", s.status.Skipped))
+	}
+
+	s.status.Message = strings.Join(parts, ", ")
+	s.status.ReadyCount = fmt.Sprintf("%d/%d", s.status.Ready, s.status.Resources)
 }

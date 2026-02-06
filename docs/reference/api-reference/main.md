@@ -319,6 +319,21 @@ AutoOpsRef defines a reference to a secret containing connection details for Aut
 
 
 
+
+### ResourcePhase (string)  [#resourcephase]
+
+ResourcePhase represents the current state of an individual Elasticsearch resource
+monitored by an AutoOpsAgentPolicy. It is used in [AutoOpsResourceStatus] to indicate
+why a resource appears in the Details map.
+
+:::{admonition} Appears In:
+* [AutoOpsResourceStatus](#autoopsresourcestatus)
+
+:::
+
+
+
+
 % TODO add function to crd-ref-docs return anchor used in links docs-v3 does not seem to produce valid markdown anchors
 ## autoscaling.k8s.elastic.co/v1alpha1 [#autoscalingk8selasticcov1alpha1]
 
