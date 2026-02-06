@@ -33,7 +33,9 @@ Deploys Elastic Agent as a DaemonSet in Fleet mode with System and Kubernetes in
 
 ===== System and Kubernetes integrations running as non-root - `fleet-kubernetes-integration-nonroot.yaml`
 
-The provided example is functionally identical to the previous section but runs the Elastic Agent processes (both the Elastic Agent running as the Fleet server and the Elastic Agent connected to Fleet) as a non-root user by utilizing a DaemonSet to ensure directory and file permissions. *Note* This is only required when Elastic Agent is < 8.16.0. Also the DaemonSet itself must run as root to set up permissions and ECK >= 2.10.0 is required.
+The provided example is functionally identical to the previous section but runs the Elastic Agent processes (both the Elastic Agent running as the Fleet server and the Elastic Agent connected to Fleet) as a non-root user by using a DaemonSet to ensure directory and file permissions. The init-container approach remains useful for security-conscious users who want to keep `securityContext.allowPrivilegeEscalation: false` in the main Agent pods and avoid granting additional Linux capabilities. This approach is also required when Elastic Agent is < 8.16.0. The DaemonSet itself must run as root to set up permissions and ECK >= 2.10.0 is required.
+
+Starting with Elastic Agent 8.16.0, another rootless approach is available without the init container: set `securityContext.allowPrivilegeEscalation: true` and grant `CAP_CHOWN` when the agent state is persisted on hostPath. `CAP_SETPCAP` is recommended so Elastic Agent can propagate needed capabilities to its child processes. If you are using `emptyDir` for state and your Agent components do not need extra capabilities, you can run rootless with privilege escalation disabled and all capabilities dropped.
 
 ===== Custom logs integration with autodiscover - `fleet-custom-logs-integration.yaml`
 

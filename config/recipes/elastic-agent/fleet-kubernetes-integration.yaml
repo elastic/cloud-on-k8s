@@ -82,6 +82,13 @@ spec:
         automountServiceAccountToken: true
         # Since Elastic Agent v8.16.0, the runAsUser: 0 is not needed
         # as Agent changes ownership of the data directory to the container user id.
+        # For persisted state on hostPath, rootless operation requires privilege escalation
+        # and CAP_CHOWN (CAP_SETPCAP helps Elastic Agent pass capabilities to child processes).
+        # securityContext:
+        #   allowPrivilegeEscalation: true
+        #   capabilities:
+        #     add: ["CHOWN", "SETPCAP"]
+        # If legacy behavior is required:
         # securityContext:
         #   runAsUser: 0
 ---
@@ -118,6 +125,13 @@ spec:
         automountServiceAccountToken: true
         # Since Elastic Agent v8.16.0, the runAsUser: 0 is not needed
         # as Agent changes ownership of the data directory to the container user id.
+        # For persisted state on hostPath, rootless operation requires privilege escalation
+        # and CAP_CHOWN (CAP_SETPCAP helps Elastic Agent pass capabilities to child processes).
+        # securityContext:
+        #   allowPrivilegeEscalation: true
+        #   capabilities:
+        #     add: ["CHOWN", "SETPCAP"]
+        # If legacy behavior is required:
         # securityContext:
         #   runAsUser: 0
 ---

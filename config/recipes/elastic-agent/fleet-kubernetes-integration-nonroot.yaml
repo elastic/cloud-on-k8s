@@ -1,7 +1,8 @@
 ---
-# This example only applies to Elastic Agent versions < v8.16.0.
-# Since Elastic Agent v8.16.0, the `runAsUser: 0` is not needed
-# as Agent changes the ownership of the volumes mounts to the container user id.
+# This example uses an init container to adjust hostPath permissions so Agent can run as non-root.
+# Use this when you want `allowPrivilegeEscalation: false` in the main Agent pods or when
+# running Elastic Agent versions < v8.16.0. For the 8.16+ rootless alternative without an
+# init container, see fleet-kubernetes-integration.yaml (requires allowPrivilegeEscalation and CAP_CHOWN).
 apiVersion: apps/v1
 kind: DaemonSet
 metadata:
