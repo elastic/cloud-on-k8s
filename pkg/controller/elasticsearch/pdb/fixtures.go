@@ -167,7 +167,7 @@ func (b Builder) BuildResourcesList() (nodespec.ResourcesList, error) {
 
 	for i, sset := range b.StatefulSets {
 		// Create config based on the nodeset if available
-		config := &v1.Config{Data: map[string]interface{}{}}
+		config := &v1.Config{Data: map[string]any{}}
 		if i < len(b.Elasticsearch.Spec.NodeSets) {
 			config = b.Elasticsearch.Spec.NodeSets[i].Config
 		}

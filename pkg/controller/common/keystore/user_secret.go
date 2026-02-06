@@ -7,6 +7,7 @@ package keystore
 import (
 	"context"
 	"fmt"
+	"maps"
 
 	pkgerrors "github.com/pkg/errors"
 	corev1 "k8s.io/api/core/v1"
@@ -106,9 +107,7 @@ func reconcileSecureSettings(
 	aggregatedData := map[string][]byte{}
 
 	for _, s := range userSecrets {
-		for k, v := range s.Data {
-			aggregatedData[k] = v
-		}
+		maps.Copy(aggregatedData, s.Data)
 	}
 
 	// reconcile our managed secret with the user-provided secret content

@@ -36,7 +36,7 @@ func Test_buildPipeline(t *testing.T) {
 		{
 			name: "pipeline populated",
 			pipelines: []commonv1.Config{
-				{Data: map[string]interface{}{"pipeline.id": "main"}},
+				{Data: map[string]any{"pipeline.id": "main"}},
 			},
 			want: pipelines.MustParse([]byte(`- "pipeline.id": "main"`)),
 		},

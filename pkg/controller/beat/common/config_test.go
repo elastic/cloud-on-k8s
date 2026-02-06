@@ -48,7 +48,7 @@ func Test_buildBeatConfig(t *testing.T) {
 	)
 
 	managedCfg := settings.MustParseConfig([]byte("setup.kibana: true"))
-	userCfg := &commonv1.Config{Data: map[string]interface{}{"user": "true"}}
+	userCfg := &commonv1.Config{Data: map[string]any{"user": "true"}}
 	userCanonicalCfg := settings.MustCanonicalConfig(userCfg.Data)
 	outputCAYaml := settings.MustParseConfig([]byte(`output.elasticsearch.ssl.certificate_authorities:
    - /mnt/elastic-internal/elasticsearch-certs/ca.crt`))
@@ -202,14 +202,14 @@ func Test_buildBeatConfig(t *testing.T) {
 					},
 				},
 			},
-			want: merge(userCanonicalCfg, settings.MustCanonicalConfig(map[string]interface{}{
-				"http": map[string]interface{}{
+			want: merge(userCanonicalCfg, settings.MustCanonicalConfig(map[string]any{
+				"http": map[string]any{
 					"enabled": true,
 					"host":    "unix:///var/shared/filebeat-test-beat.sock",
 					"port":    nil,
 				},
 				"monitoring.enabled": false,
-				"logging": map[string]interface{}{
+				"logging": map[string]any{
 					"files": map[string]string{
 						"path": "/usr/share/filebeat/logs",
 					},
@@ -363,7 +363,7 @@ func Test_getUserConfig(t *testing.T) {
 		},
 		{
 			name:   "config populated",
-			config: &commonv1.Config{Data: map[string]interface{}{"config": "true"}},
+			config: &commonv1.Config{Data: map[string]any{"config": "true"}},
 			want:   settings.MustParseConfig([]byte(`config: "true"`)),
 		},
 		{

@@ -142,7 +142,6 @@ func reconcileRequestForAllPolicies(clnt k8s.Client) handler.TypedEventHandler[c
 		}
 		requests := make([]reconcile.Request, 0)
 		for _, stackConfig := range stackConfigList.Items {
-			stackConfig := stackConfig
 			requests = append(requests, reconcile.Request{NamespacedName: k8s.ExtractNamespacedName(&stackConfig)})
 		}
 		return requests
@@ -527,7 +526,7 @@ var (
 func cleanStackTrace(errors []string) string {
 	for i, e := range errors {
 		var msg []string
-		for _, line := range strings.Split(e, "\n") {
+		for line := range strings.SplitSeq(e, "\n") {
 			if matchTabsAtSpaces.MatchString(line) || matchTripleDotsNumberMore.MatchString(line) {
 				continue
 			}

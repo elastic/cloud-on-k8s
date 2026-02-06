@@ -143,7 +143,6 @@ func TestReconcileTransportCertsPublicSecret(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			client := tt.client(t)
 			md := metadata.Propagate(owner, metadata.Metadata{Labels: owner.GetIdentityLabels()})

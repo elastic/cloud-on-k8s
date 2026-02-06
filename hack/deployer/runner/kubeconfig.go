@@ -38,7 +38,7 @@ func mergeKubeconfig(kubeConfig string) error {
 }
 
 func removeKubeconfig(context, clusterName, userName string) error {
-	params := map[string]interface{}{
+	params := map[string]any{
 		"Context": context,
 	}
 	if err := exec.NewCommand("kubectl config get-contexts {{.Context}}").
@@ -53,13 +53,13 @@ func removeKubeconfig(context, clusterName, userName string) error {
 		return err
 	}
 	if err := exec.NewCommand("kubectl config unset users.{{.User}}").
-		AsTemplate(map[string]interface{}{
+		AsTemplate(map[string]any{
 			"User": userName,
 		}).Run(); err != nil {
 		return err
 	}
 	return exec.NewCommand("kubectl config delete-cluster {{.ClusterName}}").
-		AsTemplate(map[string]interface{}{"ClusterName": clusterName}).
+		AsTemplate(map[string]any{"ClusterName": clusterName}).
 		Run()
 }
 

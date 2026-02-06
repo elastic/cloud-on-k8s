@@ -10,8 +10,8 @@ import (
 
 // forEachRow applies f to each newline-separated row in the given data.
 func forEachRow(data []byte, f func(row []byte) error) error {
-	rows := bytes.Split(data, []byte("\n"))
-	for _, row := range rows {
+	rows := bytes.SplitSeq(data, []byte("\n"))
+	for row := range rows {
 		if len(row) == 0 {
 			continue
 		}

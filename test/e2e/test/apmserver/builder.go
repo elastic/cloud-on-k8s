@@ -5,6 +5,8 @@
 package apmserver
 
 import (
+	"maps"
+
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
@@ -54,7 +56,7 @@ func newBuilder(name, randSuffix string) Builder {
 				Count:   1,
 				Version: test.Ctx().ElasticStackVersion,
 				Config: &commonv1.Config{
-					Data: map[string]interface{}{
+					Data: map[string]any{
 						"apm-server.ilm.enabled": false,
 					},
 				},
@@ -119,7 +121,7 @@ func (b Builder) DeepCopy() *Builder {
 	return &builderCopy
 }
 
-func (b Builder) WithConfig(cfg map[string]interface{}) Builder {
+func (b Builder) WithConfig(cfg map[string]any) Builder {
 	if b.ApmServer.Spec.Config == nil || b.ApmServer.Spec.Config.Data == nil {
 		b.ApmServer.Spec.Config = &commonv1.Config{
 			Data: cfg,
@@ -129,14 +131,12 @@ func (b Builder) WithConfig(cfg map[string]interface{}) Builder {
 
 	newBuilder := b.DeepCopy()
 
-	for k, v := range cfg {
-		newBuilder.ApmServer.Spec.Config.Data[k] = v
-	}
+	maps.Copy(newBuilder.ApmServer.Spec.Config.Data, cfg)
 	return *newBuilder
 }
 
 func (b Builder) WithRUM(enabled bool) Builder {
-	return b.WithConfig(map[string]interface{}{"apm-server.rum.enabled": enabled})
+	return b.WithConfig(map[string]any{"apm-server.rum.enabled": enabled})
 }
 
 func (b Builder) WithHTTPCfg(cfg commonv1.HTTPConfig) Builder {
@@ -175,7 +175,7 @@ func (b Builder) WithoutIntegrationCheck() Builder {
 		return b
 	}
 
-	return b.WithConfig(map[string]interface{}{
+	return b.WithConfig(map[string]any{
 		"apm-server.data_streams.wait_for_integration": false,
 	})
 }
@@ -193,7 +193,7 @@ func (b Builder) Kind() string {
 	return apmv1.Kind
 }
 
-func (b Builder) Spec() interface{} {
+func (b Builder) Spec() any {
 	return b.ApmServer.Spec
 }
 

@@ -80,7 +80,7 @@ func choosePlan(plans []Plan, id string) (Plan, error) {
 	return Plan{}, fmt.Errorf("no plan with id %s found", id)
 }
 
-func merge(base Plan, overrides map[string]interface{}) (Plan, error) {
+func merge(base Plan, overrides map[string]any) (Plan, error) {
 	// mergo will not override with empty values which is inconvenient for booleans, hence custom transformer
 	err := mergo.Map(&base, overrides, mergo.WithOverride, mergo.WithTransformers(boolTransformer{}))
 	return base, err
@@ -90,8 +90,7 @@ type boolTransformer struct {
 }
 
 func (bt boolTransformer) Transformer(typ reflect.Type) func(dst, src reflect.Value) error {
-	var b bool
-	if typ == reflect.TypeOf(b) {
+	if typ == reflect.TypeFor[bool]() {
 		return func(dst, src reflect.Value) error {
 			if dst.CanSet() {
 				dst.SetBool(src.Interface().(bool)) //nolint:forcetypeassert

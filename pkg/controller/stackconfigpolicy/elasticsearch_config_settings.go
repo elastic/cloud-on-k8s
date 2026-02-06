@@ -170,7 +170,7 @@ func cleanupOrphanedSecretMounts(ctx context.Context, c k8s.Client, es esv1.Elas
 
 func getElasticsearchConfigAndMountsHash(elasticsearchConfig *commonv1.Config, secretMounts []policyv1alpha1.SecretMount) string {
 	if elasticsearchConfig != nil {
-		return hash.HashObject([]interface{}{elasticsearchConfig, secretMounts})
+		return hash.HashObject([]any{elasticsearchConfig, secretMounts})
 	}
 	return hash.HashObject(secretMounts)
 }

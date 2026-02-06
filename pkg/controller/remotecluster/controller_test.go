@@ -164,7 +164,7 @@ func TestRemoteCluster_Reconcile(t *testing.T) {
 						// ns1/es1 is expected to create an API key for ns1/es2
 						Name: "eck-ns1-es2-generated-alias-from-ns1-es2-to-ns1-es1-with-api-key",
 						CrossClusterAPIKeyUpdateRequest: esclient.CrossClusterAPIKeyUpdateRequest{
-							Metadata: map[string]interface{}{
+							Metadata: map[string]any{
 								"elasticsearch.k8s.elastic.co/config-hash": "1384987056",
 								"elasticsearch.k8s.elastic.co/managed-by":  "eck",
 								"elasticsearch.k8s.elastic.co/name":        "es2",
@@ -318,7 +318,7 @@ func TestRemoteCluster_Reconcile(t *testing.T) {
 						{
 							ID:   "generated-id-from-fake-es-client-eck-ns4-es4-generated-alias-from-ns4-es4-to-ns1-es1-with-api-key",
 							Name: "eck-ns4-es4-generated-alias-from-ns4-es4-to-ns1-es1-with-api-key",
-							Metadata: map[string]interface{}{
+							Metadata: map[string]any{
 								"elasticsearch.k8s.elastic.co/config-hash": "unexpected-hash",
 								"elasticsearch.k8s.elastic.co/managed-by":  "eck",
 								"elasticsearch.k8s.elastic.co/name":        "es4",
@@ -330,7 +330,7 @@ func TestRemoteCluster_Reconcile(t *testing.T) {
 						{
 							ID:   "apikey-from-es5-to-es1",
 							Name: "eck-ns5-es5-generated-ns1-es1-0-with-api-key",
-							Metadata: map[string]interface{}{
+							Metadata: map[string]any{
 								"elasticsearch.k8s.elastic.co/config-hash": "1384987056",
 								"elasticsearch.k8s.elastic.co/managed-by":  "eck",
 								"elasticsearch.k8s.elastic.co/name":        "es5",
@@ -342,7 +342,7 @@ func TestRemoteCluster_Reconcile(t *testing.T) {
 						{
 							ID:   "apikey-from-es4-to-es1-old-alias",
 							Name: "eck-ns4-es4-to-ns1-es1-0-old-alias",
-							Metadata: map[string]interface{}{
+							Metadata: map[string]any{
 								"elasticsearch.k8s.elastic.co/config-hash": "unexpected-hash",
 								"elasticsearch.k8s.elastic.co/managed-by":  "eck",
 								"elasticsearch.k8s.elastic.co/name":        "es4",
@@ -373,7 +373,7 @@ func TestRemoteCluster_Reconcile(t *testing.T) {
 					{
 						Name: "eck-ns2-es2-generated-alias-from-ns2-es2-to-ns1-es1-with-api-key",
 						CrossClusterAPIKeyUpdateRequest: esclient.CrossClusterAPIKeyUpdateRequest{
-							Metadata: map[string]interface{}{
+							Metadata: map[string]any{
 								"elasticsearch.k8s.elastic.co/config-hash": "1384987056",
 								"elasticsearch.k8s.elastic.co/managed-by":  "eck",
 								"elasticsearch.k8s.elastic.co/name":        "es2",
@@ -385,7 +385,7 @@ func TestRemoteCluster_Reconcile(t *testing.T) {
 					{
 						Name: "eck-ns3-es3-generated-alias-from-ns3-es3-to-ns1-es1-with-api-key",
 						CrossClusterAPIKeyUpdateRequest: esclient.CrossClusterAPIKeyUpdateRequest{
-							Metadata: map[string]interface{}{
+							Metadata: map[string]any{
 								"elasticsearch.k8s.elastic.co/config-hash": "1384987056",
 								"elasticsearch.k8s.elastic.co/managed-by":  "eck",
 								"elasticsearch.k8s.elastic.co/name":        "es3",
@@ -589,7 +589,7 @@ func TestRemoteCluster_Reconcile(t *testing.T) {
 						{
 							ID:   "apikey-from-es4-to-es1",
 							Name: "eck-ns4-es4-generated-ns1-es1-0-with-api-key",
-							Metadata: map[string]interface{}{
+							Metadata: map[string]any{
 								"elasticsearch.k8s.elastic.co/config-hash": "unexpected-hash",
 								"elasticsearch.k8s.elastic.co/managed-by":  "eck",
 								"elasticsearch.k8s.elastic.co/name":        "es4",
@@ -601,7 +601,7 @@ func TestRemoteCluster_Reconcile(t *testing.T) {
 						{
 							ID:   "apikey-from-es5-to-es1",
 							Name: "eck-ns5-es5-generated-ns1-es1-0-with-api-key",
-							Metadata: map[string]interface{}{
+							Metadata: map[string]any{
 								"elasticsearch.k8s.elastic.co/config-hash": "1384987056",
 								"elasticsearch.k8s.elastic.co/managed-by":  "eck",
 								"elasticsearch.k8s.elastic.co/name":        "es5",
@@ -613,7 +613,7 @@ func TestRemoteCluster_Reconcile(t *testing.T) {
 						{
 							ID:   "apikey-from-es4-to-es1-old-alias",
 							Name: "eck-ns4-es4-to-ns1-es1-0-old-alias",
-							Metadata: map[string]interface{}{
+							Metadata: map[string]any{
 								"elasticsearch.k8s.elastic.co/config-hash": "unexpected-hash",
 								"elasticsearch.k8s.elastic.co/managed-by":  "eck",
 								"elasticsearch.k8s.elastic.co/name":        "es4",

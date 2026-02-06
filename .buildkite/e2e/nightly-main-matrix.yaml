@@ -3,20 +3,20 @@
   fixed:
     E2E_PROVIDER: gke
   mixed:
-    - E2E_STACK_VERSION: "8.19.6"
-    - E2E_STACK_VERSION: "9.1.6"
-    # current stack version 9.2.4 is tested in all other tests no need to test it again
-    - E2E_STACK_VERSION: "8.19.7-SNAPSHOT"
-    - E2E_STACK_VERSION: "9.3.0-SNAPSHOT"
+    - E2E_STACK_VERSION: "8.19.11"
+    - E2E_STACK_VERSION: "9.2.5"
+    # current stack version 9.3.0 is tested in all other tests no need to test it again
+    - E2E_STACK_VERSION: "8.19.12-SNAPSHOT"
+    - E2E_STACK_VERSION: "9.4.0-SNAPSHOT"
 
 - label: ocp
   fixed:
     E2E_PROVIDER: ocp
   mixed:
     ## Test the current stack version.
-    - E2E_STACK_VERSION: "9.2.4"
+    - E2E_STACK_VERSION: "9.3.0"
     ## Also test the next stack version to detect any change in the images that might not be compatible with the CRI-O runtime.
-    - E2E_STACK_VERSION: "9.3.0-SNAPSHOT"
+    - E2E_STACK_VERSION: "9.4.0-SNAPSHOT"
 
 - label: kind
   fixed:

@@ -94,8 +94,8 @@ type K3dSettings struct {
 
 // RunConfig encapsulates Id used to choose a plan and a map of overrides to apply to the plan, expected to map to a file
 type RunConfig struct {
-	Id        string                 `yaml:"id"` //nolint:revive
-	Overrides map[string]interface{} `yaml:"overrides"`
+	Id        string         `yaml:"id"` //nolint:revive
+	Overrides map[string]any `yaml:"overrides"`
 }
 
 func ParseFiles(plansFile, runConfigFile string) (Plans, RunConfig, error) {

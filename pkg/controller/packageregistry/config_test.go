@@ -52,8 +52,8 @@ package_paths:
 			args: args{
 				runtimeObjs: nil,
 				epr: v1alpha1.PackageRegistry{
-					Spec: v1alpha1.PackageRegistrySpec{Config: &commonv1.Config{Data: map[string]interface{}{
-						"cache_time": map[string]interface{}{
+					Spec: v1alpha1.PackageRegistrySpec{Config: &commonv1.Config{Data: map[string]any{
+						"cache_time": map[string]any{
 							"index": "11s",
 						},
 					}}},
@@ -91,8 +91,8 @@ package_paths:
 			name: "configRef takes precedence",
 			args: args{
 				runtimeObjs: []client.Object{secretWithConfig("cfg", []byte("cache_time:\n  index: 20s"))},
-				epr: eprWithConfigRef("cfg", &commonv1.Config{Data: map[string]interface{}{
-					"cache_time": map[string]interface{}{
+				epr: eprWithConfigRef("cfg", &commonv1.Config{Data: map[string]any{
+					"cache_time": map[string]any{
 						"index": "50s",
 					},
 				}}),

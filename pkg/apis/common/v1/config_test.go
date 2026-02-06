@@ -13,29 +13,29 @@ import (
 )
 
 var testFixture = Config{
-	Data: map[string]interface{}{
-		"a": map[string]interface{}{
-			"b": map[string]interface{}{
+	Data: map[string]any{
+		"a": map[string]any{
+			"b": map[string]any{
 				"c": 1.0,
 			},
 			"d": 1,
 		},
 		"a.b.foo": "bar",
-		"e":       []interface{}{1, 2, 3},
+		"e":       []any{1, 2, 3},
 		"f":       true,
 	},
 }
 
 var expectedJSONized = Config{
-	Data: map[string]interface{}{
-		"a": map[string]interface{}{
-			"b": map[string]interface{}{
+	Data: map[string]any{
+		"a": map[string]any{
+			"b": map[string]any{
 				"c": 1.0,
 			},
 			"d": float64(1),
 		},
 		"a.b.foo": "bar",
-		"e":       []interface{}{float64(1), float64(2), float64(3)},
+		"e":       []any{float64(1), float64(2), float64(3)},
 		"f":       true,
 	},
 }
@@ -86,7 +86,7 @@ func TestConfig_DeepCopy(t *testing.T) {
 
 func TestConfig_JSONMarshal(t *testing.T) {
 	expectedJSON := "{\"foo\":\"bar\"}"
-	cfg := NewConfig(map[string]interface{}{
+	cfg := NewConfig(map[string]any{
 		"foo": "bar",
 	})
 	cfgAsJSON, err := json.Marshal(cfg)
@@ -101,7 +101,7 @@ func TestConfig_JSONMarshal(t *testing.T) {
 
 func TestConfig_JSONUnmarshal(t *testing.T) {
 	bytesCfg := []byte("{\"foo\":\"bar\"}")
-	expectedCfg := NewConfig(map[string]interface{}{
+	expectedCfg := NewConfig(map[string]any{
 		"foo": "bar",
 	})
 	var cfg Config

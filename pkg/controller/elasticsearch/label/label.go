@@ -5,6 +5,8 @@
 package label
 
 import (
+	"maps"
+
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -189,9 +191,7 @@ func NewPodLabels(
 	labels[HTTPSchemeLabelName] = scheme
 
 	// apply stateful set label selector
-	for k, v := range NewStatefulSetLabels(es, ssetName) {
-		labels[k] = v
-	}
+	maps.Copy(labels, NewStatefulSetLabels(es, ssetName))
 
 	return labels
 }
