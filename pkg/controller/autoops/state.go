@@ -79,13 +79,6 @@ func (s *State) MarkResourceReady() *State {
 	return s
 }
 
-// MarkResourceError increases the Errors count in the status.
-func (s *State) MarkResourceError() *State {
-	s.status.Errors++
-	s.UpdateWithPhase(autoopsv1alpha1.ErrorPhase)
-	return s
-}
-
 // Apply takes the current AutoOpsAgentPolicy status, compares it to the previous status, and updates the status accordingly.
 // It returns the events to emit and an updated version of the AutoOpsAgentPolicy resource with
 // the current status applied to its status sub-resource.
@@ -99,8 +92,7 @@ func (s *State) Apply() ([]events.Event, *autoopsv1alpha1.AutoOpsAgentPolicy) {
 	return s.Events(), &s.policy
 }
 
-func (s *State) ResourceRBACError(es esv1.Elasticsearch) {
-	s.UpdateWithPhase(autoopsv1alpha1.ErrorPhase)
+func (s *State) ResourceSkipped(es esv1.Elasticsearch) {
 	s.status.Skipped++
 	s.status.Details[s.esResourceID(es)] = autoopsv1alpha1.AutoOpsResourceStatus{
 		Phase:   autoopsv1alpha1.SkippedResourcePhase,

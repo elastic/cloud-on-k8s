@@ -796,6 +796,62 @@ func TestAutoOpsAgentPolicyReconciler_internalReconcileResourceErrors(t *testing
 			accessReviewer: &fakeAccessReviewer{err: errors.New("access review failed")},
 			wantErr:        true,
 			wantStatus: autoopsv1alpha1.AutoOpsAgentPolicyStatus{
+				Errors: 1,
+				Details: map[string]autoopsv1alpha1.AutoOpsResourceStatus{
+					"ns-1/es-1": {
+						Phase: autoopsv1alpha1.ErrorResourcePhase,
+						Error: "Failed trying to perform RBAC check: access review failed",
+					},
+				},
+			},
+		},
+		{
+			name: "rbac not allowed sets correct status Details",
+			policy: autoopsv1alpha1.AutoOpsAgentPolicy{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "policy-1",
+					Namespace: "ns-1",
+				},
+				Spec: autoopsv1alpha1.AutoOpsAgentPolicySpec{
+					Version:            "9.2.1",
+					ServiceAccountName: "test-sa",
+					AutoOpsRef: autoopsv1alpha1.AutoOpsRef{
+						SecretName: "config-secret",
+					},
+					ResourceSelector: metav1.LabelSelector{
+						MatchLabels: map[string]string{"app": "elasticsearch"},
+					},
+				},
+			},
+			initialObjects: []client.Object{
+				&corev1.Secret{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "config-secret",
+						Namespace: "ns-1",
+					},
+					Data: map[string][]byte{
+						"cloud-connected-mode-api-key": []byte("test-key"),
+						"autoops-otel-url":             []byte("https://test-url"),
+						"autoops-token":                []byte("test-token"),
+					},
+				},
+				&esv1.Elasticsearch{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "es-1",
+						Namespace: "ns-1",
+						Labels:    map[string]string{"app": "elasticsearch"},
+					},
+					Spec: esv1.ElasticsearchSpec{
+						Version: "9.1.0",
+					},
+					Status: esv1.ElasticsearchStatus{
+						Phase: esv1.ElasticsearchReadyPhase,
+					},
+				},
+			},
+			accessReviewer: &fakeAccessReviewer{allowed: false},
+			wantErr:        false,
+			wantStatus: autoopsv1alpha1.AutoOpsAgentPolicyStatus{
 				Skipped: 1,
 				Details: map[string]autoopsv1alpha1.AutoOpsResourceStatus{
 					"ns-1/es-1": {

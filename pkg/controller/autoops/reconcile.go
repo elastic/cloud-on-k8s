@@ -103,13 +103,14 @@ func (r *AgentPolicyReconciler) internalReconcile(
 		accessAllowed, err := isAutoOpsAssociationAllowed(ctx, r.accessReviewer, &policy, &es, r.recorder)
 		if err != nil {
 			log.Error(err, "while checking access for Elasticsearch cluster", "es_namespace", es.Namespace, "es_name", es.Name)
-			state.ResourceRBACError(es)
+			state.ResourceError(es, "Failed trying to perform RBAC check", err)
 			results.WithError(err)
 			continue
 		}
 		if accessAllowed {
 			accessibleClusters = append(accessibleClusters, es)
 		} else {
+			state.ResourceSkipped(es)
 			log.V(1).Info("Skipping ES cluster due to access denied", "es_namespace", es.Namespace, "es_name", es.Name)
 		}
 	}
