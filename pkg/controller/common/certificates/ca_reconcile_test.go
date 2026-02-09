@@ -149,7 +149,7 @@ func Test_canReuseCA(t *testing.T) {
 func privateKeysEqual(t *testing.T, actual, expected crypto.Signer) {
 	t.Helper()
 	if reflect.TypeOf(actual) != reflect.TypeOf(expected) {
-		t.Errorf("unexpected RSA private key, got %T, want %T", actual, expected)
+		t.Fatalf("unexpected RSA private key, got %T, want %T", actual, expected)
 	}
 	switch epk := expected.(type) {
 	case *rsa.PrivateKey:
@@ -157,7 +157,7 @@ func privateKeysEqual(t *testing.T, actual, expected crypto.Signer) {
 	case *ecdsa.PrivateKey:
 		require.True(t, epk.Equal(actual), "private keys should match")
 	default:
-		t.Errorf("unexpected RSA private key, got %T, want %T", actual, expected)
+		t.Fatalf("unexpected RSA private key, got %T, want %T", actual, expected)
 	}
 }
 
