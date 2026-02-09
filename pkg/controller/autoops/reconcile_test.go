@@ -48,21 +48,9 @@ func TestAutoOpsAgentPolicyReconciler_internalReconcile(t *testing.T) {
 	}{
 		{
 			name: "config secret not found sets invalid phase",
-			policy: autoopsv1alpha1.AutoOpsAgentPolicy{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      "policy-1",
-					Namespace: "ns-1",
-				},
-				Spec: autoopsv1alpha1.AutoOpsAgentPolicySpec{
-					Version: "9.1.0",
-					AutoOpsRef: autoopsv1alpha1.AutoOpsRef{
-						SecretName: "missing-secret",
-					},
-					ResourceSelector: metav1.LabelSelector{
-						MatchLabels: map[string]string{"app": "elasticsearch"},
-					},
-				},
-			},
+			policy: newAutoOpsAgentPolicy(func(a *autoopsv1alpha1.AutoOpsAgentPolicy) {
+				a.Spec.AutoOpsRef.SecretName = "missing-secret"
+			}),
 			initialObjects: []client.Object{},
 			wantStatus: autoopsv1alpha1.AutoOpsAgentPolicyStatus{
 				Phase: autoopsv1alpha1.InvalidPhase,
@@ -71,21 +59,9 @@ func TestAutoOpsAgentPolicyReconciler_internalReconcile(t *testing.T) {
 		},
 		{
 			name: "config secret missing required keys sets invalid phase",
-			policy: autoopsv1alpha1.AutoOpsAgentPolicy{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      "policy-1",
-					Namespace: "ns-1",
-				},
-				Spec: autoopsv1alpha1.AutoOpsAgentPolicySpec{
-					Version: "9.2.1",
-					AutoOpsRef: autoopsv1alpha1.AutoOpsRef{
-						SecretName: "invalid-secret",
-					},
-					ResourceSelector: metav1.LabelSelector{
-						MatchLabels: map[string]string{"app": "elasticsearch"},
-					},
-				},
-			},
+			policy: newAutoOpsAgentPolicy(func(a *autoopsv1alpha1.AutoOpsAgentPolicy) {
+				a.Spec.AutoOpsRef.SecretName = "invalid-secret"
+			}),
 			initialObjects: []client.Object{
 				&corev1.Secret{
 					ObjectMeta: metav1.ObjectMeta{
@@ -102,39 +78,19 @@ func TestAutoOpsAgentPolicyReconciler_internalReconcile(t *testing.T) {
 		},
 		{
 			name: "invalid label selector sets error phase",
-			policy: autoopsv1alpha1.AutoOpsAgentPolicy{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      "policy-1",
-					Namespace: "ns-1",
-				},
-				Spec: autoopsv1alpha1.AutoOpsAgentPolicySpec{
-					Version: "9.2.1",
-					AutoOpsRef: autoopsv1alpha1.AutoOpsRef{
-						SecretName: "config-secret",
-					},
-					ResourceSelector: metav1.LabelSelector{
-						MatchExpressions: []metav1.LabelSelectorRequirement{
-							{
-								Key:      "app",
-								Operator: "InvalidOperator",
-								Values:   []string{"elasticsearch"},
-							},
+			policy: newAutoOpsAgentPolicy(func(a *autoopsv1alpha1.AutoOpsAgentPolicy) {
+				a.Spec.ResourceSelector = metav1.LabelSelector{
+					MatchExpressions: []metav1.LabelSelectorRequirement{
+						{
+							Key:      "app",
+							Operator: "InvalidOperator",
+							Values:   []string{"elasticsearch"},
 						},
 					},
-				},
-			},
+				}
+			}),
 			initialObjects: []client.Object{
-				&corev1.Secret{
-					ObjectMeta: metav1.ObjectMeta{
-						Name:      "config-secret",
-						Namespace: "ns-1",
-					},
-					Data: map[string][]byte{
-						"cloud-connected-mode-api-key": []byte("test-key"),
-						"autoops-otel-url":             []byte("https://test-url"),
-						"autoops-token":                []byte("test-token"),
-					},
-				},
+				newSecret(),
 			},
 			wantStatus: autoopsv1alpha1.AutoOpsAgentPolicyStatus{
 				Phase: autoopsv1alpha1.ErrorPhase,
@@ -142,34 +98,10 @@ func TestAutoOpsAgentPolicyReconciler_internalReconcile(t *testing.T) {
 			wantResults: reconcile.Result{},
 		},
 		{
-			name: "no ES resources found sets no monitored resources phase",
-			policy: autoopsv1alpha1.AutoOpsAgentPolicy{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      "policy-1",
-					Namespace: "ns-1",
-				},
-				Spec: autoopsv1alpha1.AutoOpsAgentPolicySpec{
-					Version: "9.2.1",
-					AutoOpsRef: autoopsv1alpha1.AutoOpsRef{
-						SecretName: "config-secret",
-					},
-					ResourceSelector: metav1.LabelSelector{
-						MatchLabels: map[string]string{"app": "elasticsearch"},
-					},
-				},
-			},
+			name:   "no ES resources found sets no monitored resources phase",
+			policy: newAutoOpsAgentPolicy(),
 			initialObjects: []client.Object{
-				&corev1.Secret{
-					ObjectMeta: metav1.ObjectMeta{
-						Name:      "config-secret",
-						Namespace: "ns-1",
-					},
-					Data: map[string][]byte{
-						"cloud-connected-mode-api-key": []byte("test-key"),
-						"autoops-otel-url":             []byte("https://test-url"),
-						"autoops-token":                []byte("test-token"),
-					},
-				},
+				newSecret(),
 			},
 			wantStatus: autoopsv1alpha1.AutoOpsAgentPolicyStatus{
 				Phase:     autoopsv1alpha1.NoMonitoredResourcesPhase,
@@ -178,47 +110,11 @@ func TestAutoOpsAgentPolicyReconciler_internalReconcile(t *testing.T) {
 			wantResults: reconcile.Result{},
 		},
 		{
-			name: "ES resource not ready",
-			policy: autoopsv1alpha1.AutoOpsAgentPolicy{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      "policy-1",
-					Namespace: "ns-1",
-				},
-				Spec: autoopsv1alpha1.AutoOpsAgentPolicySpec{
-					Version: "9.2.1",
-					AutoOpsRef: autoopsv1alpha1.AutoOpsRef{
-						SecretName: "config-secret",
-					},
-					ResourceSelector: metav1.LabelSelector{
-						MatchLabels: map[string]string{"app": "elasticsearch"},
-					},
-				},
-			},
+			name:   "ES resource not ready",
+			policy: newAutoOpsAgentPolicy(),
 			initialObjects: []client.Object{
-				&corev1.Secret{
-					ObjectMeta: metav1.ObjectMeta{
-						Name:      "config-secret",
-						Namespace: "ns-1",
-					},
-					Data: map[string][]byte{
-						"cloud-connected-mode-api-key": []byte("test-key"),
-						"autoops-otel-url":             []byte("https://test-url"),
-						"autoops-token":                []byte("test-token"),
-					},
-				},
-				&esv1.Elasticsearch{
-					ObjectMeta: metav1.ObjectMeta{
-						Name:      "es-1",
-						Namespace: "ns-1",
-						Labels:    map[string]string{"app": "elasticsearch"},
-					},
-					Status: esv1.ElasticsearchStatus{
-						Phase: esv1.ElasticsearchApplyingChangesPhase,
-					},
-					Spec: esv1.ElasticsearchSpec{
-						Version: "9.1.0",
-					},
-				},
+				newSecret(),
+				newElasticsearch(func(e *esv1.Elasticsearch) { e.Status.Phase = esv1.ElasticsearchApplyingChangesPhase }),
 			},
 			wantStatus: autoopsv1alpha1.AutoOpsAgentPolicyStatus{
 				Resources: 1,
@@ -228,47 +124,11 @@ func TestAutoOpsAgentPolicyReconciler_internalReconcile(t *testing.T) {
 			wantResults: reconcile.Result{RequeueAfter: 10 * time.Second},
 		},
 		{
-			name: "successful reconciliation with one ready ES",
-			policy: autoopsv1alpha1.AutoOpsAgentPolicy{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      "policy-1",
-					Namespace: "ns-1",
-				},
-				Spec: autoopsv1alpha1.AutoOpsAgentPolicySpec{
-					Version: "9.2.1",
-					AutoOpsRef: autoopsv1alpha1.AutoOpsRef{
-						SecretName: "config-secret",
-					},
-					ResourceSelector: metav1.LabelSelector{
-						MatchLabels: map[string]string{"app": "elasticsearch"},
-					},
-				},
-			},
+			name:   "successful reconciliation with one ready ES",
+			policy: newAutoOpsAgentPolicy(),
 			initialObjects: []client.Object{
-				&corev1.Secret{
-					ObjectMeta: metav1.ObjectMeta{
-						Name:      "config-secret",
-						Namespace: "ns-1",
-					},
-					Data: map[string][]byte{
-						"cloud-connected-mode-api-key": []byte("test-key"),
-						"autoops-otel-url":             []byte("https://test-url"),
-						"autoops-token":                []byte("test-token"),
-					},
-				},
-				&esv1.Elasticsearch{
-					ObjectMeta: metav1.ObjectMeta{
-						Name:      "es-1",
-						Namespace: "ns-1",
-						Labels:    map[string]string{"app": "elasticsearch"},
-					},
-					Spec: esv1.ElasticsearchSpec{
-						Version: "9.1.0",
-					},
-					Status: esv1.ElasticsearchStatus{
-						Phase: esv1.ElasticsearchReadyPhase,
-					},
-				},
+				newSecret(),
+				newElasticsearch(),
 			},
 			wantStatus: autoopsv1alpha1.AutoOpsAgentPolicyStatus{
 				Resources: 1,
@@ -278,60 +138,15 @@ func TestAutoOpsAgentPolicyReconciler_internalReconcile(t *testing.T) {
 			wantResults: reconcile.Result{},
 		},
 		{
-			name: "multiple ES resources with mixed states",
-			policy: autoopsv1alpha1.AutoOpsAgentPolicy{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      "policy-1",
-					Namespace: "ns-1",
-				},
-				Spec: autoopsv1alpha1.AutoOpsAgentPolicySpec{
-					Version: "9.2.1",
-					AutoOpsRef: autoopsv1alpha1.AutoOpsRef{
-						SecretName: "config-secret",
-					},
-					ResourceSelector: metav1.LabelSelector{
-						MatchLabels: map[string]string{"app": "elasticsearch"},
-					},
-				},
-			},
+			name:   "multiple ES resources with mixed states",
+			policy: newAutoOpsAgentPolicy(),
 			initialObjects: []client.Object{
-				&corev1.Secret{
-					ObjectMeta: metav1.ObjectMeta{
-						Name:      "config-secret",
-						Namespace: "ns-1",
-					},
-					Data: map[string][]byte{
-						"cloud-connected-mode-api-key": []byte("test-key"),
-						"autoops-otel-url":             []byte("https://test-url"),
-						"autoops-token":                []byte("test-token"),
-					},
-				},
-				&esv1.Elasticsearch{
-					ObjectMeta: metav1.ObjectMeta{
-						Name:      "es-1",
-						Namespace: "ns-1",
-						Labels:    map[string]string{"app": "elasticsearch"},
-					},
-					Spec: esv1.ElasticsearchSpec{
-						Version: "9.1.0",
-					},
-					Status: esv1.ElasticsearchStatus{
-						Phase: esv1.ElasticsearchReadyPhase,
-					},
-				},
-				&esv1.Elasticsearch{
-					ObjectMeta: metav1.ObjectMeta{
-						Name:      "es-2",
-						Namespace: "ns-1",
-						Labels:    map[string]string{"app": "elasticsearch"},
-					},
-					Spec: esv1.ElasticsearchSpec{
-						Version: "9.1.0",
-					},
-					Status: esv1.ElasticsearchStatus{
-						Phase: esv1.ElasticsearchApplyingChangesPhase,
-					},
-				},
+				newSecret(),
+				newElasticsearch(),
+				newElasticsearch(func(e *esv1.Elasticsearch) {
+					e.ObjectMeta.Name = "es-2"
+					e.Status.Phase = esv1.ElasticsearchApplyingChangesPhase
+				}),
 			},
 			wantStatus: autoopsv1alpha1.AutoOpsAgentPolicyStatus{
 				Resources: 2,
@@ -342,47 +157,11 @@ func TestAutoOpsAgentPolicyReconciler_internalReconcile(t *testing.T) {
 			wantResults: reconcile.Result{RequeueAfter: 10 * time.Second},
 		},
 		{
-			name: "single ES with ready deployment shows ready: 1, resources: 1",
-			policy: autoopsv1alpha1.AutoOpsAgentPolicy{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      "policy-1",
-					Namespace: "ns-1",
-				},
-				Spec: autoopsv1alpha1.AutoOpsAgentPolicySpec{
-					Version: "9.2.1",
-					AutoOpsRef: autoopsv1alpha1.AutoOpsRef{
-						SecretName: "config-secret",
-					},
-					ResourceSelector: metav1.LabelSelector{
-						MatchLabels: map[string]string{"app": "elasticsearch"},
-					},
-				},
-			},
+			name:   "single ES with ready deployment shows ready: 1, resources: 1",
+			policy: newAutoOpsAgentPolicy(),
 			initialObjects: []client.Object{
-				&corev1.Secret{
-					ObjectMeta: metav1.ObjectMeta{
-						Name:      "config-secret",
-						Namespace: "ns-1",
-					},
-					Data: map[string][]byte{
-						"cloud-connected-mode-api-key": []byte("test-key"),
-						"autoops-otel-url":             []byte("https://test-url"),
-						"autoops-token":                []byte("test-token"),
-					},
-				},
-				&esv1.Elasticsearch{
-					ObjectMeta: metav1.ObjectMeta{
-						Name:      "es-1",
-						Namespace: "ns-1",
-						Labels:    map[string]string{"app": "elasticsearch"},
-					},
-					Spec: esv1.ElasticsearchSpec{
-						Version: "9.1.0",
-					},
-					Status: esv1.ElasticsearchStatus{
-						Phase: esv1.ElasticsearchReadyPhase,
-					},
-				},
+				newSecret(),
+				newElasticsearch(),
 				&corev1.ConfigMap{
 					ObjectMeta: metav1.ObjectMeta{
 						Name:      autoopsv1alpha1.Config("policy-1", esv1.Elasticsearch{ObjectMeta: metav1.ObjectMeta{Name: "es-1", Namespace: "ns-1"}}),
@@ -425,60 +204,12 @@ func TestAutoOpsAgentPolicyReconciler_internalReconcile(t *testing.T) {
 			wantResults: reconcile.Result{},
 		},
 		{
-			name: "two ES instances: one with ready deployment, one without shows ready: 1, resources: 2",
-			policy: autoopsv1alpha1.AutoOpsAgentPolicy{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      "policy-1",
-					Namespace: "ns-1",
-				},
-				Spec: autoopsv1alpha1.AutoOpsAgentPolicySpec{
-					Version: "9.2.1",
-					AutoOpsRef: autoopsv1alpha1.AutoOpsRef{
-						SecretName: "config-secret",
-					},
-					ResourceSelector: metav1.LabelSelector{
-						MatchLabels: map[string]string{"app": "elasticsearch"},
-					},
-				},
-			},
+			name:   "two ES instances: one with ready deployment, one without shows ready: 1, resources: 2",
+			policy: newAutoOpsAgentPolicy(),
 			initialObjects: []client.Object{
-				&corev1.Secret{
-					ObjectMeta: metav1.ObjectMeta{
-						Name:      "config-secret",
-						Namespace: "ns-1",
-					},
-					Data: map[string][]byte{
-						"cloud-connected-mode-api-key": []byte("test-key"),
-						"autoops-otel-url":             []byte("https://test-url"),
-						"autoops-token":                []byte("test-token"),
-					},
-				},
-				&esv1.Elasticsearch{
-					ObjectMeta: metav1.ObjectMeta{
-						Name:      "es-1",
-						Namespace: "ns-1",
-						Labels:    map[string]string{"app": "elasticsearch"},
-					},
-					Spec: esv1.ElasticsearchSpec{
-						Version: "9.1.0",
-					},
-					Status: esv1.ElasticsearchStatus{
-						Phase: esv1.ElasticsearchReadyPhase,
-					},
-				},
-				&esv1.Elasticsearch{
-					ObjectMeta: metav1.ObjectMeta{
-						Name:      "es-2",
-						Namespace: "ns-1",
-						Labels:    map[string]string{"app": "elasticsearch"},
-					},
-					Spec: esv1.ElasticsearchSpec{
-						Version: "9.1.0",
-					},
-					Status: esv1.ElasticsearchStatus{
-						Phase: esv1.ElasticsearchReadyPhase,
-					},
-				},
+				newSecret(),
+				newElasticsearch(),
+				newElasticsearch(func(e *esv1.Elasticsearch) { e.ObjectMeta.Name = "es-2" }),
 				&corev1.ConfigMap{
 					ObjectMeta: metav1.ObjectMeta{
 						Name:      autoopsv1alpha1.Config("policy-1", esv1.Elasticsearch{ObjectMeta: metav1.ObjectMeta{Name: "es-1", Namespace: "ns-1"}}),
@@ -521,47 +252,14 @@ func TestAutoOpsAgentPolicyReconciler_internalReconcile(t *testing.T) {
 			wantResults: reconcile.Result{},
 		},
 		{
-			name: "deprecated ES version is ignored",
-			policy: autoopsv1alpha1.AutoOpsAgentPolicy{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      "policy-1",
-					Namespace: "ns-1",
-				},
-				Spec: autoopsv1alpha1.AutoOpsAgentPolicySpec{
-					Version: "9.2.1",
-					AutoOpsRef: autoopsv1alpha1.AutoOpsRef{
-						SecretName: "config-secret",
-					},
-					ResourceSelector: metav1.LabelSelector{
-						MatchLabels: map[string]string{"app": "elasticsearch"},
-					},
-				},
-			},
+			name:   "deprecated ES version is ignored",
+			policy: newAutoOpsAgentPolicy(),
 			initialObjects: []client.Object{
-				&corev1.Secret{
-					ObjectMeta: metav1.ObjectMeta{
-						Name:      "config-secret",
-						Namespace: "ns-1",
-					},
-					Data: map[string][]byte{
-						"cloud-connected-mode-api-key": []byte("test-key"),
-						"autoops-otel-url":             []byte("https://test-url"),
-						"autoops-token":                []byte("test-token"),
-					},
-				},
-				&esv1.Elasticsearch{
-					ObjectMeta: metav1.ObjectMeta{
-						Name:      "es-deprecated",
-						Namespace: "ns-1",
-						Labels:    map[string]string{"app": "elasticsearch"},
-					},
-					Spec: esv1.ElasticsearchSpec{
-						Version: "7.15.0",
-					},
-					Status: esv1.ElasticsearchStatus{
-						Phase: esv1.ElasticsearchReadyPhase,
-					},
-				},
+				newSecret(),
+				newElasticsearch(func(e *esv1.Elasticsearch) {
+					e.ObjectMeta.Name = "es-deprecated"
+					e.Spec.Version = "7.15.0"
+				}),
 			},
 			wantStatus: autoopsv1alpha1.AutoOpsAgentPolicyStatus{
 				Resources: 1,
@@ -572,24 +270,11 @@ func TestAutoOpsAgentPolicyReconciler_internalReconcile(t *testing.T) {
 		},
 		{
 			name: "two ES instances: filter by namespace shows ready: 1, resources: 1",
-			policy: autoopsv1alpha1.AutoOpsAgentPolicy{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      "policy-1",
-					Namespace: "ns-1",
-				},
-				Spec: autoopsv1alpha1.AutoOpsAgentPolicySpec{
-					Version: "9.1.0",
-					AutoOpsRef: autoopsv1alpha1.AutoOpsRef{
-						SecretName: "config-secret",
-					},
-					ResourceSelector: metav1.LabelSelector{
-						MatchLabels: map[string]string{"app": "elasticsearch"},
-					},
-					NamespaceSelector: metav1.LabelSelector{
-						MatchLabels: map[string]string{"kubernetes.io/metadata.name": "ns-1"},
-					},
-				},
-			},
+			policy: newAutoOpsAgentPolicy(func(a *autoopsv1alpha1.AutoOpsAgentPolicy) {
+				a.Spec.NamespaceSelector = metav1.LabelSelector{
+					MatchLabels: map[string]string{"kubernetes.io/metadata.name": "ns-1"},
+				}
+			}),
 			initialObjects: []client.Object{
 				&corev1.Namespace{
 					TypeMeta: metav1.TypeMeta{
@@ -615,30 +300,8 @@ func TestAutoOpsAgentPolicyReconciler_internalReconcile(t *testing.T) {
 						},
 					},
 				},
-				&corev1.Secret{
-					ObjectMeta: metav1.ObjectMeta{
-						Name:      "config-secret",
-						Namespace: "ns-1",
-					},
-					Data: map[string][]byte{
-						"cloud-connected-mode-api-key": []byte("test-key"),
-						"autoops-otel-url":             []byte("https://test-url"),
-						"autoops-token":                []byte("test-token"),
-					},
-				},
-				&esv1.Elasticsearch{
-					ObjectMeta: metav1.ObjectMeta{
-						Name:      "es-1",
-						Namespace: "ns-1",
-						Labels:    map[string]string{"app": "elasticsearch"},
-					},
-					Spec: esv1.ElasticsearchSpec{
-						Version: "9.1.0",
-					},
-					Status: esv1.ElasticsearchStatus{
-						Phase: esv1.ElasticsearchReadyPhase,
-					},
-				},
+				newSecret(),
+				newElasticsearch(),
 				&esv1.Elasticsearch{
 					ObjectMeta: metav1.ObjectMeta{
 						Name:      "es-2",
@@ -736,7 +399,7 @@ func TestAutoOpsAgentPolicyReconciler_internalReconcile(t *testing.T) {
 	}
 }
 
-func TestAutoOpsAgentPolicyReconciler_internalReconcileResourceErrors(t *testing.T) {
+func TestAutoOpsAgentPolicyReconciler_internalReconcileResourceErrorsAndSkipped(t *testing.T) {
 	scheme.SetupScheme()
 
 	tests := []struct {
@@ -750,48 +413,11 @@ func TestAutoOpsAgentPolicyReconciler_internalReconcileResourceErrors(t *testing
 		wantStatus       autoopsv1alpha1.AutoOpsAgentPolicyStatus
 	}{
 		{
-			name: "accessReviewer error sets correct status Details",
-			policy: autoopsv1alpha1.AutoOpsAgentPolicy{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      "policy-1",
-					Namespace: "ns-1",
-				},
-				Spec: autoopsv1alpha1.AutoOpsAgentPolicySpec{
-					Version:            "9.2.1",
-					ServiceAccountName: "test-sa",
-					AutoOpsRef: autoopsv1alpha1.AutoOpsRef{
-						SecretName: "config-secret",
-					},
-					ResourceSelector: metav1.LabelSelector{
-						MatchLabels: map[string]string{"app": "elasticsearch"},
-					},
-				},
-			},
+			name:   "accessReviewer error sets correct status Details",
+			policy: newAutoOpsAgentPolicy(),
 			initialObjects: []client.Object{
-				&corev1.Secret{
-					ObjectMeta: metav1.ObjectMeta{
-						Name:      "config-secret",
-						Namespace: "ns-1",
-					},
-					Data: map[string][]byte{
-						"cloud-connected-mode-api-key": []byte("test-key"),
-						"autoops-otel-url":             []byte("https://test-url"),
-						"autoops-token":                []byte("test-token"),
-					},
-				},
-				&esv1.Elasticsearch{
-					ObjectMeta: metav1.ObjectMeta{
-						Name:      "es-1",
-						Namespace: "ns-1",
-						Labels:    map[string]string{"app": "elasticsearch"},
-					},
-					Spec: esv1.ElasticsearchSpec{
-						Version: "9.1.0",
-					},
-					Status: esv1.ElasticsearchStatus{
-						Phase: esv1.ElasticsearchReadyPhase,
-					},
-				},
+				newSecret(),
+				newElasticsearch(),
 			},
 			accessReviewer: &fakeAccessReviewer{err: errors.New("access review failed")},
 			wantErr:        true,
@@ -807,47 +433,12 @@ func TestAutoOpsAgentPolicyReconciler_internalReconcileResourceErrors(t *testing
 		},
 		{
 			name: "rbac not allowed sets correct status Details",
-			policy: autoopsv1alpha1.AutoOpsAgentPolicy{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      "policy-1",
-					Namespace: "ns-1",
-				},
-				Spec: autoopsv1alpha1.AutoOpsAgentPolicySpec{
-					Version:            "9.2.1",
-					ServiceAccountName: "test-sa",
-					AutoOpsRef: autoopsv1alpha1.AutoOpsRef{
-						SecretName: "config-secret",
-					},
-					ResourceSelector: metav1.LabelSelector{
-						MatchLabels: map[string]string{"app": "elasticsearch"},
-					},
-				},
-			},
+			policy: newAutoOpsAgentPolicy(func(a *autoopsv1alpha1.AutoOpsAgentPolicy) {
+				a.Spec.ServiceAccountName = "test-sa"
+			}),
 			initialObjects: []client.Object{
-				&corev1.Secret{
-					ObjectMeta: metav1.ObjectMeta{
-						Name:      "config-secret",
-						Namespace: "ns-1",
-					},
-					Data: map[string][]byte{
-						"cloud-connected-mode-api-key": []byte("test-key"),
-						"autoops-otel-url":             []byte("https://test-url"),
-						"autoops-token":                []byte("test-token"),
-					},
-				},
-				&esv1.Elasticsearch{
-					ObjectMeta: metav1.ObjectMeta{
-						Name:      "es-1",
-						Namespace: "ns-1",
-						Labels:    map[string]string{"app": "elasticsearch"},
-					},
-					Spec: esv1.ElasticsearchSpec{
-						Version: "9.1.0",
-					},
-					Status: esv1.ElasticsearchStatus{
-						Phase: esv1.ElasticsearchReadyPhase,
-					},
-				},
+				newSecret(),
+				newElasticsearch(),
 			},
 			accessReviewer: &fakeAccessReviewer{allowed: false},
 			wantErr:        false,
@@ -862,48 +453,11 @@ func TestAutoOpsAgentPolicyReconciler_internalReconcileResourceErrors(t *testing
 			},
 		},
 		{
-			name: "reconcileAutoOpsESCASecret failure sets correct status Details",
-			policy: autoopsv1alpha1.AutoOpsAgentPolicy{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      "policy-1",
-					Namespace: "ns-1",
-				},
-				Spec: autoopsv1alpha1.AutoOpsAgentPolicySpec{
-					Version: "9.2.1",
-					AutoOpsRef: autoopsv1alpha1.AutoOpsRef{
-						SecretName: "config-secret",
-					},
-					ResourceSelector: metav1.LabelSelector{
-						MatchLabels: map[string]string{"app": "elasticsearch"},
-					},
-				},
-			},
+			name:   "reconcileAutoOpsESCASecret failure sets correct status Details",
+			policy: newAutoOpsAgentPolicy(),
 			initialObjects: []client.Object{
-				&corev1.Secret{
-					ObjectMeta: metav1.ObjectMeta{
-						Name:      "config-secret",
-						Namespace: "ns-1",
-					},
-					Data: map[string][]byte{
-						"cloud-connected-mode-api-key": []byte("test-key"),
-						"autoops-otel-url":             []byte("https://test-url"),
-						"autoops-token":                []byte("test-token"),
-					},
-				},
-				&esv1.Elasticsearch{
-					ObjectMeta: metav1.ObjectMeta{
-						Name:      "es-1",
-						Namespace: "ns-1",
-						Labels:    map[string]string{"app": "elasticsearch"},
-					},
-					Spec: esv1.ElasticsearchSpec{
-						Version: "9.1.0",
-						// TLS is enabled by default (SelfSignedCertificate is nil)
-					},
-					Status: esv1.ElasticsearchStatus{
-						Phase: esv1.ElasticsearchReadyPhase,
-					},
-				},
+				newSecret(),
+				newElasticsearch(),
 				// The ES http-certs-public secret that contains the CA certificate
 				&corev1.Secret{
 					ObjectMeta: metav1.ObjectMeta{
@@ -937,47 +491,11 @@ func TestAutoOpsAgentPolicyReconciler_internalReconcileResourceErrors(t *testing
 			},
 		},
 		{
-			name: "reconcileAutoOpsESAPIKey failure sets correct status Details",
-			policy: autoopsv1alpha1.AutoOpsAgentPolicy{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      "policy-1",
-					Namespace: "ns-1",
-				},
-				Spec: autoopsv1alpha1.AutoOpsAgentPolicySpec{
-					Version: "9.2.1",
-					AutoOpsRef: autoopsv1alpha1.AutoOpsRef{
-						SecretName: "config-secret",
-					},
-					ResourceSelector: metav1.LabelSelector{
-						MatchLabels: map[string]string{"app": "elasticsearch"},
-					},
-				},
-			},
+			name:   "reconcileAutoOpsESAPIKey failure sets correct status Details",
+			policy: newAutoOpsAgentPolicy(),
 			initialObjects: []client.Object{
-				&corev1.Secret{
-					ObjectMeta: metav1.ObjectMeta{
-						Name:      "config-secret",
-						Namespace: "ns-1",
-					},
-					Data: map[string][]byte{
-						"cloud-connected-mode-api-key": []byte("test-key"),
-						"autoops-otel-url":             []byte("https://test-url"),
-						"autoops-token":                []byte("test-token"),
-					},
-				},
-				&esv1.Elasticsearch{
-					ObjectMeta: metav1.ObjectMeta{
-						Name:      "es-1",
-						Namespace: "ns-1",
-						Labels:    map[string]string{"app": "elasticsearch"},
-					},
-					Spec: esv1.ElasticsearchSpec{
-						Version: "9.1.0",
-					},
-					Status: esv1.ElasticsearchStatus{
-						Phase: esv1.ElasticsearchReadyPhase,
-					},
-				},
+				newSecret(),
+				newElasticsearch(),
 			},
 			accessReviewer: &fakeAccessReviewer{allowed: true},
 			esClientProvider: newFakeESClientProviderWithClient(&fakeESClient{
@@ -995,47 +513,11 @@ func TestAutoOpsAgentPolicyReconciler_internalReconcileResourceErrors(t *testing
 			},
 		},
 		{
-			name: "ReconcileAutoOpsESConfigMap failure sets correct status Details",
-			policy: autoopsv1alpha1.AutoOpsAgentPolicy{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      "policy-1",
-					Namespace: "ns-1",
-				},
-				Spec: autoopsv1alpha1.AutoOpsAgentPolicySpec{
-					Version: "9.2.1",
-					AutoOpsRef: autoopsv1alpha1.AutoOpsRef{
-						SecretName: "config-secret",
-					},
-					ResourceSelector: metav1.LabelSelector{
-						MatchLabels: map[string]string{"app": "elasticsearch"},
-					},
-				},
-			},
+			name:   "ReconcileAutoOpsESConfigMap failure sets correct status Details",
+			policy: newAutoOpsAgentPolicy(),
 			initialObjects: []client.Object{
-				&corev1.Secret{
-					ObjectMeta: metav1.ObjectMeta{
-						Name:      "config-secret",
-						Namespace: "ns-1",
-					},
-					Data: map[string][]byte{
-						"cloud-connected-mode-api-key": []byte("test-key"),
-						"autoops-otel-url":             []byte("https://test-url"),
-						"autoops-token":                []byte("test-token"),
-					},
-				},
-				&esv1.Elasticsearch{
-					ObjectMeta: metav1.ObjectMeta{
-						Name:      "es-1",
-						Namespace: "ns-1",
-						Labels:    map[string]string{"app": "elasticsearch"},
-					},
-					Spec: esv1.ElasticsearchSpec{
-						Version: "9.1.0",
-					},
-					Status: esv1.ElasticsearchStatus{
-						Phase: esv1.ElasticsearchReadyPhase,
-					},
-				},
+				newSecret(),
+				newElasticsearch(),
 			},
 			accessReviewer: &fakeAccessReviewer{allowed: true},
 			interceptorFuncs: &interceptor.Funcs{
@@ -1058,47 +540,11 @@ func TestAutoOpsAgentPolicyReconciler_internalReconcileResourceErrors(t *testing
 			},
 		},
 		{
-			name: "buildConfigHash failure sets correct status Details",
-			policy: autoopsv1alpha1.AutoOpsAgentPolicy{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      "policy-1",
-					Namespace: "ns-1",
-				},
-				Spec: autoopsv1alpha1.AutoOpsAgentPolicySpec{
-					Version: "9.2.1",
-					AutoOpsRef: autoopsv1alpha1.AutoOpsRef{
-						SecretName: "config-secret",
-					},
-					ResourceSelector: metav1.LabelSelector{
-						MatchLabels: map[string]string{"app": "elasticsearch"},
-					},
-				},
-			},
+			name:   "buildConfigHash failure sets correct status Details",
+			policy: newAutoOpsAgentPolicy(),
 			initialObjects: []client.Object{
-				&corev1.Secret{
-					ObjectMeta: metav1.ObjectMeta{
-						Name:      "config-secret",
-						Namespace: "ns-1",
-					},
-					Data: map[string][]byte{
-						"cloud-connected-mode-api-key": []byte("test-key"),
-						"autoops-otel-url":             []byte("https://test-url"),
-						"autoops-token":                []byte("test-token"),
-					},
-				},
-				&esv1.Elasticsearch{
-					ObjectMeta: metav1.ObjectMeta{
-						Name:      "es-1",
-						Namespace: "ns-1",
-						Labels:    map[string]string{"app": "elasticsearch"},
-					},
-					Spec: esv1.ElasticsearchSpec{
-						Version: "9.1.0",
-					},
-					Status: esv1.ElasticsearchStatus{
-						Phase: esv1.ElasticsearchReadyPhase,
-					},
-				},
+				newSecret(),
+				newElasticsearch(),
 			},
 			accessReviewer: &fakeAccessReviewer{allowed: true},
 			interceptorFuncs: func() *interceptor.Funcs {
@@ -1131,46 +577,12 @@ func TestAutoOpsAgentPolicyReconciler_internalReconcileResourceErrors(t *testing
 		},
 		{
 			name: "buildDeployment failure sets correct status Details",
-			policy: autoopsv1alpha1.AutoOpsAgentPolicy{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      "policy-1",
-					Namespace: "ns-1",
-				},
-				Spec: autoopsv1alpha1.AutoOpsAgentPolicySpec{
-					Version: "invalid-version", // Invalid version will cause buildDeployment to fail
-					AutoOpsRef: autoopsv1alpha1.AutoOpsRef{
-						SecretName: "config-secret",
-					},
-					ResourceSelector: metav1.LabelSelector{
-						MatchLabels: map[string]string{"app": "elasticsearch"},
-					},
-				},
-			},
+			policy: newAutoOpsAgentPolicy(func(a *autoopsv1alpha1.AutoOpsAgentPolicy) {
+				a.Spec.Version = "invalid-version" // Invalid version will cause buildDeployment to fail
+			}),
 			initialObjects: []client.Object{
-				&corev1.Secret{
-					ObjectMeta: metav1.ObjectMeta{
-						Name:      "config-secret",
-						Namespace: "ns-1",
-					},
-					Data: map[string][]byte{
-						"cloud-connected-mode-api-key": []byte("test-key"),
-						"autoops-otel-url":             []byte("https://test-url"),
-						"autoops-token":                []byte("test-token"),
-					},
-				},
-				&esv1.Elasticsearch{
-					ObjectMeta: metav1.ObjectMeta{
-						Name:      "es-1",
-						Namespace: "ns-1",
-						Labels:    map[string]string{"app": "elasticsearch"},
-					},
-					Spec: esv1.ElasticsearchSpec{
-						Version: "9.1.0",
-					},
-					Status: esv1.ElasticsearchStatus{
-						Phase: esv1.ElasticsearchReadyPhase,
-					},
-				},
+				newSecret(),
+				newElasticsearch(),
 			},
 			accessReviewer: &fakeAccessReviewer{allowed: true},
 			wantErr:        true,
@@ -1185,47 +597,11 @@ func TestAutoOpsAgentPolicyReconciler_internalReconcileResourceErrors(t *testing
 			},
 		},
 		{
-			name: "deployment.Reconcile failure sets correct status Details",
-			policy: autoopsv1alpha1.AutoOpsAgentPolicy{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      "policy-1",
-					Namespace: "ns-1",
-				},
-				Spec: autoopsv1alpha1.AutoOpsAgentPolicySpec{
-					Version: "9.2.1",
-					AutoOpsRef: autoopsv1alpha1.AutoOpsRef{
-						SecretName: "config-secret",
-					},
-					ResourceSelector: metav1.LabelSelector{
-						MatchLabels: map[string]string{"app": "elasticsearch"},
-					},
-				},
-			},
+			name:   "deployment.Reconcile failure sets correct status Details",
+			policy: newAutoOpsAgentPolicy(),
 			initialObjects: []client.Object{
-				&corev1.Secret{
-					ObjectMeta: metav1.ObjectMeta{
-						Name:      "config-secret",
-						Namespace: "ns-1",
-					},
-					Data: map[string][]byte{
-						"cloud-connected-mode-api-key": []byte("test-key"),
-						"autoops-otel-url":             []byte("https://test-url"),
-						"autoops-token":                []byte("test-token"),
-					},
-				},
-				&esv1.Elasticsearch{
-					ObjectMeta: metav1.ObjectMeta{
-						Name:      "es-1",
-						Namespace: "ns-1",
-						Labels:    map[string]string{"app": "elasticsearch"},
-					},
-					Spec: esv1.ElasticsearchSpec{
-						Version: "9.1.0",
-					},
-					Status: esv1.ElasticsearchStatus{
-						Phase: esv1.ElasticsearchReadyPhase,
-					},
-				},
+				newSecret(),
+				newElasticsearch(),
 			},
 			accessReviewer: &fakeAccessReviewer{allowed: true},
 			interceptorFuncs: &interceptor.Funcs{
@@ -1277,7 +653,7 @@ func TestAutoOpsAgentPolicyReconciler_internalReconcileResourceErrors(t *testing
 				licenseChecker: license.NewLicenseChecker(k8sClient, "test-namespace"),
 			}
 
-			ctx := context.Background()
+			ctx := t.Context()
 			state := newState(tt.policy)
 			results := reconciler.NewResult(ctx)
 			gotResults := r.internalReconcile(ctx, tt.policy, results, state)
