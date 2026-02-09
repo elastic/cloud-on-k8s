@@ -412,8 +412,12 @@ func Test_buildCAFromSecret(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			ca := BuildCAFromSecret(context.Background(), tt.internalSecret)
-			if !reflect.DeepEqual(ca, tt.wantCa) {
-				t.Errorf("CaFromSecrets() got = %v, want %v", ca, tt.wantCa)
+			if tt.wantCa == nil {
+				assert.Nil(t, ca)
+			} else {
+				assert.NotNil(t, ca)
+				assert.True(t, ca.Cert.Equal(tt.wantCa.Cert), "certificates should be equal")
+				privateKeysEqual(t, ca.PrivateKey, tt.wantCa.PrivateKey)
 			}
 		})
 	}
