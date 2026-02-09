@@ -153,9 +153,9 @@ func privateKeysEqual(t *testing.T, actual, expected crypto.Signer) {
 	}
 	switch epk := expected.(type) {
 	case *rsa.PrivateKey:
-		require.True(t, epk.Equal(expected))
+		require.True(t, epk.Equal(actual), "private keys should match")
 	case *ecdsa.PrivateKey:
-		require.True(t, epk.Equal(expected))
+		require.True(t, epk.Equal(actual), "private keys should match")
 	default:
 		t.Errorf("unexpected RSA private key, got %T, want %T", actual, expected)
 	}
@@ -413,9 +413,9 @@ func Test_buildCAFromSecret(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			ca := BuildCAFromSecret(context.Background(), tt.internalSecret)
 			if tt.wantCa == nil {
-				assert.Nil(t, ca)
+				require.Nil(t, ca)
 			} else {
-				assert.NotNil(t, ca)
+				require.NotNil(t, ca)
 				assert.True(t, ca.Cert.Equal(tt.wantCa.Cert), "certificates should be equal")
 				privateKeysEqual(t, ca.PrivateKey, tt.wantCa.PrivateKey)
 			}
