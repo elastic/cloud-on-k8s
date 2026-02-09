@@ -149,15 +149,15 @@ func Test_canReuseCA(t *testing.T) {
 func privateKeysEqual(t *testing.T, actual, expected crypto.Signer) {
 	t.Helper()
 	if reflect.TypeOf(actual) != reflect.TypeOf(expected) {
-		t.Errorf("unexpected RSA private key, got %T, want %T", actual, expected)
+		t.Fatalf("unexpected RSA private key, got %T, want %T", actual, expected)
 	}
 	switch epk := expected.(type) {
 	case *rsa.PrivateKey:
-		require.True(t, epk.Equal(expected))
+		require.True(t, epk.Equal(actual), "private keys should match")
 	case *ecdsa.PrivateKey:
-		require.True(t, epk.Equal(expected))
+		require.True(t, epk.Equal(actual), "private keys should match")
 	default:
-		t.Errorf("unexpected RSA private key, got %T, want %T", actual, expected)
+		t.Fatalf("unexpected RSA private key, got %T, want %T", actual, expected)
 	}
 }
 
@@ -412,8 +412,12 @@ func Test_buildCAFromSecret(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			ca := BuildCAFromSecret(context.Background(), tt.internalSecret)
-			if !reflect.DeepEqual(ca, tt.wantCa) {
-				t.Errorf("CaFromSecrets() got = %v, want %v", ca, tt.wantCa)
+			if tt.wantCa == nil {
+				require.Nil(t, ca)
+			} else {
+				require.NotNil(t, ca)
+				assert.True(t, ca.Cert.Equal(tt.wantCa.Cert), "certificates should be equal")
+				privateKeysEqual(t, ca.PrivateKey, tt.wantCa.PrivateKey)
 			}
 		})
 	}
