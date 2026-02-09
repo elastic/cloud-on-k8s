@@ -57,10 +57,10 @@ func Generate(opts *GenerateFlags) error {
 	valueFiles = append(valueFiles, opts.ValueFiles...)
 
 	// set manifestGen flag
-	valueFlags := append(opts.Values, "global.manifestGen=true")
+	opts.Values = append(opts.Values, "global.manifestGen=true")
 
 	valueOpts := &values.Options{
-		Values:     valueFlags,
+		Values:     opts.Values,
 		ValueFiles: valueFiles,
 	}
 
