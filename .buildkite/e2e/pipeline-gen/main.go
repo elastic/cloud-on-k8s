@@ -97,7 +97,6 @@ func main() {
 
 	// no stdin
 	if stat.Mode()&os.ModeCharDevice != 0 {
-
 		fixedEnv, err := stringListToEnv(fixed)
 		handleErr("Failed to read fixed variables", err)
 
@@ -108,7 +107,6 @@ func main() {
 			Fixed: fixedEnv,
 			Mixed: mixedEnv,
 		}}
-
 	} else {
 		if fixed != "" {
 			handleErr("Failed to read stdin", errors.New("incompatible with the --fixed flag"))
@@ -195,7 +193,6 @@ func stringListToEnvs(str string) ([]Env, error) {
 				return nil, fmt.Errorf("no environment variable found in format `k=v` for %s", kvStr)
 			}
 			mixedEnv[kv[0]] = kv[1]
-
 		}
 		envs = append(envs, mixedEnv)
 	}
@@ -324,7 +321,6 @@ func getName(groupLabel, provider string, mixedLen int, mixed Env) string {
 	}
 
 	return fmt.Sprintf("%s-%s", name, strings.Join(suffixes, "-"))
-
 }
 
 func getSlugName(name string) string {

@@ -76,7 +76,7 @@ func Generate(opts *GenerateFlags) error {
 	// because Helm doesn't connect to a real K8S API server (clientOnly = true).
 	fakeKubeVersion, err := common.ParseKubeVersion("v9.99.99")
 	if err != nil {
-		return fmt.Errorf("invalid fake kube version %q: %s", fakeKubeVersion, err)
+		return fmt.Errorf("invalid fake kube version %q: %w", fakeKubeVersion, err)
 	}
 	client.KubeVersion = fakeKubeVersion
 
