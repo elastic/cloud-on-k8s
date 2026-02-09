@@ -1298,18 +1298,6 @@ func TestAutoOpsAgentPolicyReconciler_internalReconcileResourceErrors(t *testing
 			// Verify Details field
 			require.Len(t, state.status.Details, len(tt.wantStatus.Details))
 			require.Equal(t, tt.wantStatus.Details, state.status.Details)
-			// for resourceID, expectedStatus := range tt.wantStatus.Details {
-			// 	require.Contains(t, state.status.Details, resourceID, "expected Details to contain resource %s", resourceID)
-			// 	actualStatus := state.status.Details[resourceID]
-			// 	require.Equal(t, expectedStatus.Phase, actualStatus.Phase, "Phase mismatch for resource %s", resourceID)
-			// 	// Check either Message or Error field depending on which one is set in expected
-			// 	if expectedStatus.Message != "" {
-			// 		require.Contains(t, actualStatus.Message, expectedStatus.Message, "Message mismatch for resource %s", resourceID)
-			// 	}
-			// 	if expectedStatus.Error != "" {
-			// 		require.Contains(t, actualStatus.Error, expectedStatus.Error, "Error mismatch for resource %s", resourceID)
-			// 	}
-			// }
 		})
 	}
 }
