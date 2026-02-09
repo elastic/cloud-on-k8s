@@ -17,6 +17,7 @@ import (
 	"time"
 
 	"github.com/elastic/cloud-on-k8s/v3/hack/deployer/exec"
+	"github.com/elastic/cloud-on-k8s/v3/hack/deployer/runner/bucket"
 	"github.com/elastic/cloud-on-k8s/v3/hack/deployer/runner/env"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/vault"
 )
@@ -132,6 +133,11 @@ func (d *OCPDriver) Execute() error {
 
 	switch d.plan.Operation {
 	case DeleteAction:
+		if d.plan.Bucket != nil {
+			if err := d.deleteBucket(); err != nil {
+				log.Printf("warning: bucket deletion failed: %v", err)
+			}
+		}
 		if clusterStatus != NotFound {
 			// always attempt a deletion
 			return d.delete()
@@ -148,11 +154,19 @@ func (d *OCPDriver) Execute() error {
 			return err
 		}
 
-		return run([]func() error{
+		if err := run([]func() error{
 			d.copyKubeconfig,
 			d.setupDisks,
 			createStorageClass,
-		})
+		}); err != nil {
+			return err
+		}
+		if d.plan.Bucket != nil {
+			if err := d.createBucket(); err != nil {
+				return err
+			}
+		}
+		return nil
 	default:
 		return fmt.Errorf("unknown operation %s", d.plan.Operation)
 	}
@@ -466,6 +480,34 @@ func (d *OCPDriver) baseDomain() string {
 		baseDomain = "eck-ocp.elastic.dev"
 	}
 	return baseDomain
+}
+
+func (d *OCPDriver) newBucketManager() (*bucket.GCSManager, error) {
+	ctx := map[string]any{
+		"ClusterName": d.plan.ClusterName,
+		"PlanId":      d.plan.Id,
+	}
+	cfg, err := newBucketConfig(d.plan, ctx, d.plan.Ocp.Region)
+	if err != nil {
+		return nil, err
+	}
+	return bucket.NewGCSManager(cfg, d.plan.Ocp.GCloudProject), nil
+}
+
+func (d *OCPDriver) createBucket() error {
+	mgr, err := d.newBucketManager()
+	if err != nil {
+		return err
+	}
+	return mgr.Create()
+}
+
+func (d *OCPDriver) deleteBucket() error {
+	mgr, err := d.newBucketManager()
+	if err != nil {
+		return err
+	}
+	return mgr.Delete()
 }
 
 func (d *OCPDriver) Cleanup(prefix string, olderThan time.Duration) error {

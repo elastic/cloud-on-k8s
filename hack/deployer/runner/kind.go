@@ -18,6 +18,7 @@ import (
 	"github.com/blang/semver/v4"
 
 	"github.com/elastic/cloud-on-k8s/v3/hack/deployer/exec"
+	"github.com/elastic/cloud-on-k8s/v3/hack/deployer/runner/bucket"
 	"github.com/elastic/cloud-on-k8s/v3/hack/deployer/runner/env"
 	"github.com/elastic/cloud-on-k8s/v3/hack/deployer/runner/kyverno"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/vault"
@@ -94,8 +95,21 @@ func (k *KindDriver) Execute() error {
 
 	switch k.plan.Operation {
 	case CreateAction:
-		return k.create()
+		if err := k.create(); err != nil {
+			return err
+		}
+		if k.plan.Bucket != nil {
+			if err := k.createBucket(); err != nil {
+				return err
+			}
+		}
+		return nil
 	case DeleteAction:
+		if k.plan.Bucket != nil {
+			if err := k.deleteBucket(); err != nil {
+				log.Printf("warning: bucket deletion failed: %v", err)
+			}
+		}
 		return k.delete()
 	}
 	return nil
@@ -279,6 +293,44 @@ func (k *KindDriver) ensureClientImage() error {
 	}
 	k.clientImage = image
 	return nil
+}
+
+func (k *KindDriver) newBucketManager() (*bucket.GCSManager, error) {
+	ctx := map[string]any{
+		"ClusterName": k.plan.ClusterName,
+		"PlanId":      k.plan.Id,
+	}
+	// Get the GCP project from gcloud config
+	project, err := exec.NewCommand(`gcloud config get-value project`).WithoutStreaming().Output()
+	if err != nil {
+		return nil, fmt.Errorf("while getting GCP project for bucket: %w (ensure gcloud is authenticated)", err)
+	}
+	project = strings.TrimSpace(project)
+	if project == "" {
+		return nil, fmt.Errorf("no GCP project configured; run 'gcloud config set project <PROJECT>' first")
+	}
+
+	cfg, err := newBucketConfig(k.plan, ctx, "us-central1")
+	if err != nil {
+		return nil, err
+	}
+	return bucket.NewGCSManager(cfg, project), nil
+}
+
+func (k *KindDriver) createBucket() error {
+	mgr, err := k.newBucketManager()
+	if err != nil {
+		return err
+	}
+	return mgr.Create()
+}
+
+func (k *KindDriver) deleteBucket() error {
+	mgr, err := k.newBucketManager()
+	if err != nil {
+		return err
+	}
+	return mgr.Delete()
 }
 
 func (k *KindDriver) Cleanup(string, time.Duration) error {

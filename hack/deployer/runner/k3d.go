@@ -7,6 +7,7 @@ package runner
 import (
 	"fmt"
 	"io/fs"
+	"log"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -14,6 +15,7 @@ import (
 	"time"
 
 	"github.com/elastic/cloud-on-k8s/v3/hack/deployer/exec"
+	"github.com/elastic/cloud-on-k8s/v3/hack/deployer/runner/bucket"
 	"github.com/elastic/cloud-on-k8s/v3/hack/deployer/runner/env"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/vault"
 )
@@ -60,8 +62,21 @@ type K3dDriver struct {
 func (k *K3dDriver) Execute() error {
 	switch k.plan.Operation {
 	case CreateAction:
-		return k.create()
+		if err := k.create(); err != nil {
+			return err
+		}
+		if k.plan.Bucket != nil {
+			if err := k.createBucket(); err != nil {
+				return err
+			}
+		}
+		return nil
 	case DeleteAction:
+		if k.plan.Bucket != nil {
+			if err := k.deleteBucket(); err != nil {
+				log.Printf("warning: bucket deletion failed: %v", err)
+			}
+		}
 		return k.delete()
 	}
 	return nil
@@ -190,6 +205,44 @@ func (k *K3dDriver) createTmpStorageClass() (string, error) {
 	tmpFile := filepath.Join(os.TempDir(), storageClassFileName)
 	err := os.WriteFile(tmpFile, []byte(storageClass), fs.ModePerm)
 	return tmpFile, err
+}
+
+func (k *K3dDriver) newBucketManager() (*bucket.GCSManager, error) {
+	ctx := map[string]any{
+		"ClusterName": k.plan.ClusterName,
+		"PlanId":      k.plan.Id,
+	}
+	// Get the GCP project from gcloud config
+	project, err := exec.NewCommand(`gcloud config get-value project`).WithoutStreaming().Output()
+	if err != nil {
+		return nil, fmt.Errorf("while getting GCP project for bucket: %w (ensure gcloud is authenticated)", err)
+	}
+	project = strings.TrimSpace(project)
+	if project == "" {
+		return nil, fmt.Errorf("no GCP project configured; run 'gcloud config set project <PROJECT>' first")
+	}
+
+	cfg, err := newBucketConfig(k.plan, ctx, "us-central1")
+	if err != nil {
+		return nil, err
+	}
+	return bucket.NewGCSManager(cfg, project), nil
+}
+
+func (k *K3dDriver) createBucket() error {
+	mgr, err := k.newBucketManager()
+	if err != nil {
+		return err
+	}
+	return mgr.Create()
+}
+
+func (k *K3dDriver) deleteBucket() error {
+	mgr, err := k.newBucketManager()
+	if err != nil {
+		return err
+	}
+	return mgr.Delete()
 }
 
 func (k *K3dDriver) Cleanup(string, time.Duration) error {

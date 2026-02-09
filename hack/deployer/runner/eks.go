@@ -14,6 +14,7 @@ import (
 	"time"
 
 	"github.com/elastic/cloud-on-k8s/v3/hack/deployer/exec"
+	"github.com/elastic/cloud-on-k8s/v3/hack/deployer/runner/bucket"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/vault"
 )
 
@@ -103,6 +104,11 @@ func (e *EKSDriver) Execute() error {
 	}
 	switch e.plan.Operation {
 	case DeleteAction:
+		if e.plan.Bucket != nil {
+			if err := e.deleteBucket(); err != nil {
+				log.Printf("warning: bucket deletion failed: %v", err)
+			}
+		}
 		if exists {
 			if err = e.delete(); err != nil {
 				return err
@@ -128,17 +134,26 @@ func (e *EKSDriver) Execute() error {
 			if err := e.newCmd(`eksctl create cluster -v 1 -f {{.CreateCfgFile}}`).Run(); err != nil {
 				return err
 			}
-			if err := e.GetCredentials(); err != nil {
-				return err
-			}
 		} else {
 			log.Printf("Not creating cluster as it already exists")
+		}
+
+		// Always get credentials so kubectl targets the right cluster.
+		if err := e.GetCredentials(); err != nil {
+			return err
 		}
 
 		if err := setupDisks(e.plan); err != nil {
 			return err
 		}
-		return createStorageClass()
+		if err := createStorageClass(); err != nil {
+			return err
+		}
+		if e.plan.Bucket != nil {
+			if err := e.createBucket(); err != nil {
+				return err
+			}
+		}
 	}
 	return nil
 }
@@ -242,6 +257,30 @@ func (e *EKSDriver) writeAWSCredentials() error {
 	log.Printf("Writing aws credentials")
 	fileContents := fmt.Sprintf(awsAuthTemplate, awsAccessKeyID, e.ctx[awsAccessKeyID], awsSecretAccessKey, e.ctx[awsSecretAccessKey])
 	return os.WriteFile(file, []byte(fileContents), 0o600)
+}
+
+func (e *EKSDriver) newBucketManager() (*bucket.S3Manager, error) {
+	cfg, err := newBucketConfig(e.plan, e.ctx, e.plan.Eks.Region)
+	if err != nil {
+		return nil, err
+	}
+	return bucket.NewS3Manager(cfg), nil
+}
+
+func (e *EKSDriver) createBucket() error {
+	mgr, err := e.newBucketManager()
+	if err != nil {
+		return err
+	}
+	return mgr.Create()
+}
+
+func (e *EKSDriver) deleteBucket() error {
+	mgr, err := e.newBucketManager()
+	if err != nil {
+		return err
+	}
+	return mgr.Delete()
 }
 
 func (e *EKSDriver) Cleanup(prefix string, olderThan time.Duration) error {
