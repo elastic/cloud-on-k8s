@@ -32,8 +32,7 @@ applies_to:
 * [stackconfigpolicy.k8s.elastic.co/v1alpha1](#stackconfigpolicy-k8s-elastic-co-v1alpha1)
 
 
-% TODO add function to crd-ref-docs return anchor used in links docs-v3 does not seem to produce valid markdown anchors
-## agent.k8s.elastic.co/v1alpha1 [#agentk8selasticcov1alpha1]
+## agent.k8s.elastic.co/v1alpha1 [#agent-k8s-elastic-co-v1alpha1]
 
 Package v1alpha1 contains API Schema definitions for the agent v1alpha1 API group
 
@@ -42,7 +41,7 @@ Package v1alpha1 contains API Schema definitions for the agent v1alpha1 API grou
 
 
 
-### Agent  [#agent]
+### Agent  [#github-com-elastic-cloud-on-k8s-v3-pkg-apis-agent-v1alpha1-agent]
 
 Agent is the Schema for the Agents API.
 
@@ -56,7 +55,7 @@ Agent is the Schema for the Agents API.
 | *`spec`* __[AgentSpec](#github-com-elastic-cloud-on-k8s-v3-pkg-apis-agent-v1alpha1-agentspec)__ |  |
 
 
-### AgentMode (string)  [#agentmode]
+### AgentMode (string)  [#github-com-elastic-cloud-on-k8s-v3-pkg-apis-agent-v1alpha1-agentmode]
 
 
 
@@ -67,7 +66,7 @@ Agent is the Schema for the Agents API.
 
 
 
-### AgentSpec  [#agentspec]
+### AgentSpec  [#github-com-elastic-cloud-on-k8s-v3-pkg-apis-agent-v1alpha1-agentspec]
 
 AgentSpec defines the desired state of the Agent
 
@@ -97,7 +96,7 @@ AgentSpec defines the desired state of the Agent
 | *`fleetServerRef`* __[ObjectSelector](#github-com-elastic-cloud-on-k8s-v3-pkg-apis-common-v1-objectselector)__ | FleetServerRef is a reference to Fleet Server that this Agent should connect to to obtain it's configuration.<br>Don't set unless `mode` is set to `fleet`.<br>References to Fleet servers running outside the Kubernetes cluster via the `secretName` attribute are not supported. |
 
 
-### DaemonSetSpec  [#daemonsetspec]
+### DaemonSetSpec  [#github-com-elastic-cloud-on-k8s-v3-pkg-apis-agent-v1alpha1-daemonsetspec]
 
 
 
@@ -112,7 +111,7 @@ AgentSpec defines the desired state of the Agent
 | *`updateStrategy`* __[DaemonSetUpdateStrategy](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.32/#daemonsetupdatestrategy-v1-apps)__ |  |
 
 
-### DeploymentSpec  [#deploymentspec]
+### DeploymentSpec  [#github-com-elastic-cloud-on-k8s-v3-pkg-apis-agent-v1alpha1-deploymentspec]
 
 
 
@@ -128,7 +127,7 @@ AgentSpec defines the desired state of the Agent
 | *`strategy`* __[DeploymentStrategy](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.32/#deploymentstrategy-v1-apps)__ |  |
 
 
-### Output  [#output]
+### Output  [#github-com-elastic-cloud-on-k8s-v3-pkg-apis-agent-v1alpha1-output]
 
 
 
@@ -143,7 +142,7 @@ AgentSpec defines the desired state of the Agent
 | *`outputName`* __string__ |  |
 
 
-### StatefulSetSpec  [#statefulsetspec]
+### StatefulSetSpec  [#github-com-elastic-cloud-on-k8s-v3-pkg-apis-agent-v1alpha1-statefulsetspec]
 
 
 
@@ -162,8 +161,7 @@ AgentSpec defines the desired state of the Agent
 
 
 
-% TODO add function to crd-ref-docs return anchor used in links docs-v3 does not seem to produce valid markdown anchors
-## apm.k8s.elastic.co/v1 [#apmk8selasticcov1]
+## apm.k8s.elastic.co/v1 [#apm-k8s-elastic-co-v1]
 
 Package v1 contains API schema definitions for managing APM Server resources.
 
@@ -172,7 +170,7 @@ Package v1 contains API schema definitions for managing APM Server resources.
 
 
 
-### ApmServer  [#apmserver]
+### ApmServer  [#github-com-elastic-cloud-on-k8s-v3-pkg-apis-apm-v1-apmserver]
 
 ApmServer represents an APM Server resource in a Kubernetes cluster.
 
@@ -186,7 +184,7 @@ ApmServer represents an APM Server resource in a Kubernetes cluster.
 | *`spec`* __[ApmServerSpec](#github-com-elastic-cloud-on-k8s-v3-pkg-apis-apm-v1-apmserverspec)__ |  |
 
 
-### ApmServerSpec  [#apmserverspec]
+### ApmServerSpec  [#github-com-elastic-cloud-on-k8s-v3-pkg-apis-apm-v1-apmserverspec]
 
 ApmServerSpec holds the specification of an APM Server.
 
@@ -211,8 +209,7 @@ ApmServerSpec holds the specification of an APM Server.
 
 
 
-% TODO add function to crd-ref-docs return anchor used in links docs-v3 does not seem to produce valid markdown anchors
-## apm.k8s.elastic.co/v1beta1 [#apmk8selasticcov1beta1]
+## apm.k8s.elastic.co/v1beta1 [#apm-k8s-elastic-co-v1beta1]
 
 Package v1beta1 contains API schema definitions for managing APM Server resources.
 
@@ -221,7 +218,7 @@ Package v1beta1 contains API schema definitions for managing APM Server resource
 
 
 
-### ApmServer  [#apmserver]
+### ApmServer  [#github-com-elastic-cloud-on-k8s-v3-pkg-apis-apm-v1beta1-apmserver]
 
 ApmServer represents an APM Server resource in a Kubernetes cluster.
 
@@ -235,7 +232,7 @@ ApmServer represents an APM Server resource in a Kubernetes cluster.
 | *`spec`* __[ApmServerSpec](#github-com-elastic-cloud-on-k8s-v3-pkg-apis-apm-v1beta1-apmserverspec)__ |  |
 
 
-### ApmServerSpec  [#apmserverspec]
+### ApmServerSpec  [#github-com-elastic-cloud-on-k8s-v3-pkg-apis-apm-v1beta1-apmserverspec]
 
 ApmServerSpec holds the specification of an APM Server.
 
@@ -257,8 +254,7 @@ ApmServerSpec holds the specification of an APM Server.
 
 
 
-% TODO add function to crd-ref-docs return anchor used in links docs-v3 does not seem to produce valid markdown anchors
-## autoops.k8s.elastic.co/v1alpha1 [#autoopsk8selasticcov1alpha1]
+## autoops.k8s.elastic.co/v1alpha1 [#autoops-k8s-elastic-co-v1alpha1]
 
 Package v1alpha1 contains API schema definitions for managing AutoOpsAgentPolicy resources.
 
@@ -267,7 +263,7 @@ Package v1alpha1 contains API schema definitions for managing AutoOpsAgentPolicy
 
 
 
-### AutoOpsAgentPolicy  [#autoopsagentpolicy]
+### AutoOpsAgentPolicy  [#github-com-elastic-cloud-on-k8s-v3-pkg-apis-autoops-v1alpha1-autoopsagentpolicy]
 
 AutoOpsAgentPolicy represents an Elastic AutoOps Policy resource in a Kubernetes cluster.
 
@@ -281,7 +277,7 @@ AutoOpsAgentPolicy represents an Elastic AutoOps Policy resource in a Kubernetes
 | *`spec`* __[AutoOpsAgentPolicySpec](#github-com-elastic-cloud-on-k8s-v3-pkg-apis-autoops-v1alpha1-autoopsagentpolicyspec)__ |  |
 
 
-### AutoOpsAgentPolicySpec  [#autoopsagentpolicyspec]
+### AutoOpsAgentPolicySpec  [#github-com-elastic-cloud-on-k8s-v3-pkg-apis-autoops-v1alpha1-autoopsagentpolicyspec]
 
 
 
@@ -302,7 +298,7 @@ AutoOpsAgentPolicy represents an Elastic AutoOps Policy resource in a Kubernetes
 | *`serviceAccountName`* __string__ | ServiceAccountName is used to check access to Elasticsearch resources in different namespaces.<br>Can only be used if ECK is enforcing RBAC on references (--enforce-rbac-on-refs flag).<br>The service account must have "get" permission on elasticsearch.k8s.elastic.co/elasticsearches<br>in the target namespaces. |
 
 
-### AutoOpsRef  [#autoopsref]
+### AutoOpsRef  [#github-com-elastic-cloud-on-k8s-v3-pkg-apis-autoops-v1alpha1-autoopsref]
 
 AutoOpsRef defines a reference to a secret containing connection details for AutoOps via Cloud Connect.
 
@@ -319,8 +315,7 @@ AutoOpsRef defines a reference to a secret containing connection details for Aut
 
 
 
-% TODO add function to crd-ref-docs return anchor used in links docs-v3 does not seem to produce valid markdown anchors
-## autoscaling.k8s.elastic.co/v1alpha1 [#autoscalingk8selasticcov1alpha1]
+## autoscaling.k8s.elastic.co/v1alpha1 [#autoscaling-k8s-elastic-co-v1alpha1]
 
 Package v1alpha1 contains API schema definitions for managing ElasticsearchAutoscaler resources.
 
@@ -329,7 +324,7 @@ Package v1alpha1 contains API schema definitions for managing ElasticsearchAutos
 
 
 
-### ElasticsearchAutoscaler  [#elasticsearchautoscaler]
+### ElasticsearchAutoscaler  [#github-com-elastic-cloud-on-k8s-v3-pkg-apis-autoscaling-v1alpha1-elasticsearchautoscaler]
 
 ElasticsearchAutoscaler represents an ElasticsearchAutoscaler resource in a Kubernetes cluster.
 
@@ -343,7 +338,7 @@ ElasticsearchAutoscaler represents an ElasticsearchAutoscaler resource in a Kube
 | *`spec`* __[ElasticsearchAutoscalerSpec](#github-com-elastic-cloud-on-k8s-v3-pkg-apis-autoscaling-v1alpha1-elasticsearchautoscalerspec)__ |  |
 
 
-### ElasticsearchAutoscalerSpec  [#elasticsearchautoscalerspec]
+### ElasticsearchAutoscalerSpec  [#github-com-elastic-cloud-on-k8s-v3-pkg-apis-autoscaling-v1alpha1-elasticsearchautoscalerspec]
 
 ElasticsearchAutoscalerSpec holds the specification of an Elasticsearch autoscaler resource.
 
@@ -358,7 +353,7 @@ ElasticsearchAutoscalerSpec holds the specification of an Elasticsearch autoscal
 | *`pollingPeriod`* __[Duration](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.32/#duration-v1-meta)__ | PollingPeriod is the period at which to synchronize with the Elasticsearch autoscaling API. |
 
 
-### ElasticsearchRef  [#elasticsearchref]
+### ElasticsearchRef  [#github-com-elastic-cloud-on-k8s-v3-pkg-apis-autoscaling-v1alpha1-elasticsearchref]
 
 ElasticsearchRef is a reference to an Elasticsearch cluster that exists in the same namespace.
 
@@ -373,8 +368,7 @@ ElasticsearchRef is a reference to an Elasticsearch cluster that exists in the s
 
 
 
-% TODO add function to crd-ref-docs return anchor used in links docs-v3 does not seem to produce valid markdown anchors
-## beat.k8s.elastic.co/v1beta1 [#beatk8selasticcov1beta1]
+## beat.k8s.elastic.co/v1beta1 [#beat-k8s-elastic-co-v1beta1]
 
 Package v1beta1 contains API Schema definitions for the beat v1beta1 API group
 
@@ -383,7 +377,7 @@ Package v1beta1 contains API Schema definitions for the beat v1beta1 API group
 
 
 
-### Beat  [#beat]
+### Beat  [#github-com-elastic-cloud-on-k8s-v3-pkg-apis-beat-v1beta1-beat]
 
 Beat is the Schema for the Beats API.
 
@@ -397,7 +391,7 @@ Beat is the Schema for the Beats API.
 | *`spec`* __[BeatSpec](#github-com-elastic-cloud-on-k8s-v3-pkg-apis-beat-v1beta1-beatspec)__ |  |
 
 
-### BeatSpec  [#beatspec]
+### BeatSpec  [#github-com-elastic-cloud-on-k8s-v3-pkg-apis-beat-v1beta1-beatspec]
 
 BeatSpec defines the desired state of a Beat.
 
@@ -423,7 +417,7 @@ BeatSpec defines the desired state of a Beat.
 | *`revisionHistoryLimit`* __integer__ | RevisionHistoryLimit is the number of revisions to retain to allow rollback in the underlying DaemonSet or Deployment. |
 
 
-### DaemonSetSpec  [#daemonsetspec]
+### DaemonSetSpec  [#github-com-elastic-cloud-on-k8s-v3-pkg-apis-beat-v1beta1-daemonsetspec]
 
 
 
@@ -438,7 +432,7 @@ BeatSpec defines the desired state of a Beat.
 | *`updateStrategy`* __[DaemonSetUpdateStrategy](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.32/#daemonsetupdatestrategy-v1-apps)__ |  |
 
 
-### DeploymentSpec  [#deploymentspec]
+### DeploymentSpec  [#github-com-elastic-cloud-on-k8s-v3-pkg-apis-beat-v1beta1-deploymentspec]
 
 
 
@@ -455,8 +449,7 @@ BeatSpec defines the desired state of a Beat.
 
 
 
-% TODO add function to crd-ref-docs return anchor used in links docs-v3 does not seem to produce valid markdown anchors
-## common.k8s.elastic.co/v1 [#commonk8selasticcov1]
+## common.k8s.elastic.co/v1 [#common-k8s-elastic-co-v1]
 
 Package v1 contains API schema definitions for common types used by all resources.
 
@@ -464,7 +457,7 @@ Package v1 contains API schema definitions for common types used by all resource
 
 
 
-### Config  [#config]
+### Config  [#github-com-elastic-cloud-on-k8s-v3-pkg-apis-common-v1-config]
 
 Config represents untyped YAML configuration.
 
@@ -488,7 +481,7 @@ Config represents untyped YAML configuration.
 
 
 
-### ConfigMapRef  [#configmapref]
+### ConfigMapRef  [#github-com-elastic-cloud-on-k8s-v3-pkg-apis-common-v1-configmapref]
 
 ConfigMapRef is a reference to a config map that exists in the same namespace as the referring resource.
 
@@ -502,7 +495,7 @@ ConfigMapRef is a reference to a config map that exists in the same namespace as
 | *`configMapName`* __string__ |  |
 
 
-### ConfigSource  [#configsource]
+### ConfigSource  [#github-com-elastic-cloud-on-k8s-v3-pkg-apis-common-v1-configsource]
 
 ConfigSource references configuration settings.
 
@@ -524,7 +517,7 @@ ConfigSource references configuration settings.
 
 
 
-### HTTPConfig  [#httpconfig]
+### HTTPConfig  [#github-com-elastic-cloud-on-k8s-v3-pkg-apis-common-v1-httpconfig]
 
 HTTPConfig holds the HTTP layer configuration for resources.
 
@@ -550,7 +543,7 @@ HTTPConfig holds the HTTP layer configuration for resources.
 
 
 
-### KeyToPath  [#keytopath]
+### KeyToPath  [#github-com-elastic-cloud-on-k8s-v3-pkg-apis-common-v1-keytopath]
 
 KeyToPath defines how to map a key in a Secret object to a filesystem path.
 
@@ -565,7 +558,7 @@ KeyToPath defines how to map a key in a Secret object to a filesystem path.
 | *`path`* __string__ | Path is the relative file path to map the key to.<br>Path must not be an absolute file path and must not contain any ".." components. |
 
 
-### LocalObjectSelector  [#localobjectselector]
+### LocalObjectSelector  [#github-com-elastic-cloud-on-k8s-v3-pkg-apis-common-v1-localobjectselector]
 
 LocalObjectSelector defines a reference to a Kubernetes object corresponding to an Elastic resource managed by the operator
 
@@ -581,7 +574,7 @@ LocalObjectSelector defines a reference to a Kubernetes object corresponding to 
 | *`serviceName`* __string__ | ServiceName is the name of an existing Kubernetes service which is used to make requests to the referenced<br>object. It has to be in the same namespace as the referenced resource. If left empty, the default HTTP service of<br>the referenced resource is used. |
 
 
-### LogsMonitoring  [#logsmonitoring]
+### LogsMonitoring  [#github-com-elastic-cloud-on-k8s-v3-pkg-apis-common-v1-logsmonitoring]
 
 LogsMonitoring holds a list of Elasticsearch clusters which receive logs data from
 associated resources.
@@ -596,7 +589,7 @@ associated resources.
 | *`elasticsearchRefs`* __[ObjectSelector](#github-com-elastic-cloud-on-k8s-v3-pkg-apis-common-v1-objectselector) array__ | ElasticsearchRefs is a reference to a list of monitoring Elasticsearch clusters running in the same Kubernetes cluster.<br>Due to existing limitations, only a single Elasticsearch cluster is currently supported. |
 
 
-### MetricsMonitoring  [#metricsmonitoring]
+### MetricsMonitoring  [#github-com-elastic-cloud-on-k8s-v3-pkg-apis-common-v1-metricsmonitoring]
 
 MetricsMonitoring holds a list of Elasticsearch clusters which receive monitoring data from
 associated resources.
@@ -611,7 +604,7 @@ associated resources.
 | *`elasticsearchRefs`* __[ObjectSelector](#github-com-elastic-cloud-on-k8s-v3-pkg-apis-common-v1-objectselector) array__ | ElasticsearchRefs is a reference to a list of monitoring Elasticsearch clusters running in the same Kubernetes cluster.<br>Due to existing limitations, only a single Elasticsearch cluster is currently supported. |
 
 
-### Monitoring  [#monitoring]
+### Monitoring  [#github-com-elastic-cloud-on-k8s-v3-pkg-apis-common-v1-monitoring]
 
 Monitoring holds references to both the metrics, and logs Elasticsearch clusters for
 configuring stack monitoring.
@@ -630,7 +623,7 @@ configuring stack monitoring.
 | *`logs`* __[LogsMonitoring](#github-com-elastic-cloud-on-k8s-v3-pkg-apis-common-v1-logsmonitoring)__ | Logs holds references to Elasticsearch clusters which receive log data from an associated resource. |
 
 
-### ObjectSelector  [#objectselector]
+### ObjectSelector  [#github-com-elastic-cloud-on-k8s-v3-pkg-apis-common-v1-objectselector]
 
 ObjectSelector defines a reference to a Kubernetes object which can be an Elastic resource managed by the operator
 or a Secret describing an external Elastic resource not managed by the operator.
@@ -658,7 +651,7 @@ or a Secret describing an external Elastic resource not managed by the operator.
 | *`secretName`* __string__ | SecretName is the name of an existing Kubernetes secret that contains connection information for associating an<br>Elastic resource not managed by the operator.<br>The referenced secret must contain the following:<br>- `url`: the URL to reach the Elastic resource<br>- `username`: the username of the user to be authenticated to the Elastic resource<br>- `password`: the password of the user to be authenticated to the Elastic resource<br>- `ca.crt`: the CA certificate in PEM format (optional)<br>- `api-key`: the key to authenticate against the Elastic resource instead of a username and password (supported only for `elasticsearchRefs` in AgentSpec and in BeatSpec)<br>This field cannot be used in combination with the other fields name, namespace or serviceName. |
 
 
-### PodDisruptionBudgetTemplate  [#poddisruptionbudgettemplate]
+### PodDisruptionBudgetTemplate  [#github-com-elastic-cloud-on-k8s-v3-pkg-apis-common-v1-poddisruptionbudgettemplate]
 
 PodDisruptionBudgetTemplate defines the template for creating a PodDisruptionBudget.
 
@@ -673,7 +666,7 @@ PodDisruptionBudgetTemplate defines the template for creating a PodDisruptionBud
 | *`spec`* __[PodDisruptionBudgetSpec](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.32/#poddisruptionbudgetspec-v1-policy)__ | Spec is the specification of the PDB. |
 
 
-### SecretRef  [#secretref]
+### SecretRef  [#github-com-elastic-cloud-on-k8s-v3-pkg-apis-common-v1-secretref]
 
 SecretRef is a reference to a secret that exists in the same namespace.
 
@@ -691,7 +684,7 @@ SecretRef is a reference to a secret that exists in the same namespace.
 | *`secretName`* __string__ | SecretName is the name of the secret. |
 
 
-### SecretSource  [#secretsource]
+### SecretSource  [#github-com-elastic-cloud-on-k8s-v3-pkg-apis-common-v1-secretsource]
 
 SecretSource defines a data source based on a Kubernetes Secret.
 
@@ -714,7 +707,7 @@ SecretSource defines a data source based on a Kubernetes Secret.
 | *`entries`* __[KeyToPath](#github-com-elastic-cloud-on-k8s-v3-pkg-apis-common-v1-keytopath) array__ | Entries define how to project each key-value pair in the secret to filesystem paths.<br>If not defined, all keys will be projected to similarly named paths in the filesystem.<br>If defined, only the specified keys will be projected to the corresponding paths. |
 
 
-### SelfSignedCertificate  [#selfsignedcertificate]
+### SelfSignedCertificate  [#github-com-elastic-cloud-on-k8s-v3-pkg-apis-common-v1-selfsignedcertificate]
 
 SelfSignedCertificate holds configuration for the self-signed certificate generated by the operator.
 
@@ -731,7 +724,7 @@ SelfSignedCertificate holds configuration for the self-signed certificate genera
 
 
 
-### ServiceTemplate  [#servicetemplate]
+### ServiceTemplate  [#github-com-elastic-cloud-on-k8s-v3-pkg-apis-common-v1-servicetemplate]
 
 ServiceTemplate defines the template for a Kubernetes Service.
 
@@ -749,7 +742,7 @@ ServiceTemplate defines the template for a Kubernetes Service.
 | *`spec`* __[ServiceSpec](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.32/#servicespec-v1-core)__ | Spec is the specification of the service. |
 
 
-### SubjectAlternativeName  [#subjectalternativename]
+### SubjectAlternativeName  [#github-com-elastic-cloud-on-k8s-v3-pkg-apis-common-v1-subjectalternativename]
 
 SubjectAlternativeName represents a SAN entry in a x509 certificate.
 
@@ -765,7 +758,7 @@ SubjectAlternativeName represents a SAN entry in a x509 certificate.
 | *`ip`* __string__ | IP is the IP address of the subject. |
 
 
-### TLSOptions  [#tlsoptions]
+### TLSOptions  [#github-com-elastic-cloud-on-k8s-v3-pkg-apis-common-v1-tlsoptions]
 
 TLSOptions holds TLS configuration options.
 
@@ -782,14 +775,13 @@ TLSOptions holds TLS configuration options.
 
 
 
-% TODO add function to crd-ref-docs return anchor used in links docs-v3 does not seem to produce valid markdown anchors
-## common.k8s.elastic.co/v1alpha1 [#commonk8selasticcov1alpha1]
+## common.k8s.elastic.co/v1alpha1 [#common-k8s-elastic-co-v1alpha1]
 
 Package v1alpha1 contains API schema definitions for common types used by all resources.
 
 
 
-### Condition  [#condition]
+### Condition  [#github-com-elastic-cloud-on-k8s-v3-pkg-apis-common-v1alpha1-condition]
 
 Condition represents Elasticsearch resource's condition.
 **This API is in technical preview and may be changed or removed in a future release.**
@@ -807,7 +799,7 @@ Condition represents Elasticsearch resource's condition.
 | *`message`* __string__ |  |
 
 
-### ConditionType (string)  [#conditiontype]
+### ConditionType (string)  [#github-com-elastic-cloud-on-k8s-v3-pkg-apis-common-v1alpha1-conditiontype]
 
 ConditionType defines the condition of an Elasticsearch resource.
 
@@ -818,7 +810,7 @@ ConditionType defines the condition of an Elasticsearch resource.
 
 
 
-### Conditions ([Condition](#github-com-elastic-cloud-on-k8s-v3-pkg-apis-common-v1alpha1-condition))  [#conditions]
+### Conditions ([Condition](#github-com-elastic-cloud-on-k8s-v3-pkg-apis-common-v1alpha1-condition))  [#github-com-elastic-cloud-on-k8s-v3-pkg-apis-common-v1alpha1-conditions]
 
 
 
@@ -850,8 +842,7 @@ ConditionType defines the condition of an Elasticsearch resource.
 
 
 
-% TODO add function to crd-ref-docs return anchor used in links docs-v3 does not seem to produce valid markdown anchors
-## common.k8s.elastic.co/v1beta1 [#commonk8selasticcov1beta1]
+## common.k8s.elastic.co/v1beta1 [#common-k8s-elastic-co-v1beta1]
 
 Package v1beta1 contains API schema definitions for common types used by all resources.
 
@@ -859,7 +850,7 @@ Package v1beta1 contains API schema definitions for common types used by all res
 
 
 
-### Config  [#config]
+### Config  [#github-com-elastic-cloud-on-k8s-v3-pkg-apis-common-v1beta1-config]
 
 Config represents untyped YAML configuration.
 
@@ -872,7 +863,7 @@ Config represents untyped YAML configuration.
 
 
 
-### HTTPConfig  [#httpconfig]
+### HTTPConfig  [#github-com-elastic-cloud-on-k8s-v3-pkg-apis-common-v1beta1-httpconfig]
 
 HTTPConfig holds the HTTP layer configuration for resources.
 
@@ -889,7 +880,7 @@ HTTPConfig holds the HTTP layer configuration for resources.
 | *`tls`* __[TLSOptions](#github-com-elastic-cloud-on-k8s-v3-pkg-apis-common-v1beta1-tlsoptions)__ | TLS defines options for configuring TLS for HTTP. |
 
 
-### KeyToPath  [#keytopath]
+### KeyToPath  [#github-com-elastic-cloud-on-k8s-v3-pkg-apis-common-v1beta1-keytopath]
 
 KeyToPath defines how to map a key in a Secret object to a filesystem path.
 
@@ -904,7 +895,7 @@ KeyToPath defines how to map a key in a Secret object to a filesystem path.
 | *`path`* __string__ | Path is the relative file path to map the key to.<br>Path must not be an absolute file path and must not contain any ".." components. |
 
 
-### ObjectSelector  [#objectselector]
+### ObjectSelector  [#github-com-elastic-cloud-on-k8s-v3-pkg-apis-common-v1beta1-objectselector]
 
 ObjectSelector defines a reference to a Kubernetes object.
 
@@ -920,7 +911,7 @@ ObjectSelector defines a reference to a Kubernetes object.
 | *`namespace`* __string__ | Namespace of the Kubernetes object. If empty, defaults to the current namespace. |
 
 
-### PodDisruptionBudgetTemplate  [#poddisruptionbudgettemplate]
+### PodDisruptionBudgetTemplate  [#github-com-elastic-cloud-on-k8s-v3-pkg-apis-common-v1beta1-poddisruptionbudgettemplate]
 
 PodDisruptionBudgetTemplate defines the template for creating a PodDisruptionBudget.
 
@@ -935,7 +926,7 @@ PodDisruptionBudgetTemplate defines the template for creating a PodDisruptionBud
 | *`spec`* __[PodDisruptionBudgetSpec](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.32/#poddisruptionbudgetspec-v1beta1-policy)__ | Spec is the specification of the PDB. |
 
 
-### SecretRef  [#secretref]
+### SecretRef  [#github-com-elastic-cloud-on-k8s-v3-pkg-apis-common-v1beta1-secretref]
 
 SecretRef is a reference to a secret that exists in the same namespace.
 
@@ -949,7 +940,7 @@ SecretRef is a reference to a secret that exists in the same namespace.
 | *`secretName`* __string__ | SecretName is the name of the secret. |
 
 
-### SecretSource  [#secretsource]
+### SecretSource  [#github-com-elastic-cloud-on-k8s-v3-pkg-apis-common-v1beta1-secretsource]
 
 SecretSource defines a data source based on a Kubernetes Secret.
 
@@ -966,7 +957,7 @@ SecretSource defines a data source based on a Kubernetes Secret.
 | *`entries`* __[KeyToPath](#github-com-elastic-cloud-on-k8s-v3-pkg-apis-common-v1beta1-keytopath) array__ | Entries define how to project each key-value pair in the secret to filesystem paths.<br>If not defined, all keys will be projected to similarly named paths in the filesystem.<br>If defined, only the specified keys will be projected to the corresponding paths. |
 
 
-### SelfSignedCertificate  [#selfsignedcertificate]
+### SelfSignedCertificate  [#github-com-elastic-cloud-on-k8s-v3-pkg-apis-common-v1beta1-selfsignedcertificate]
 
 SelfSignedCertificate holds configuration for the self-signed certificate generated by the operator.
 
@@ -981,7 +972,7 @@ SelfSignedCertificate holds configuration for the self-signed certificate genera
 | *`disabled`* __boolean__ | Disabled indicates that the provisioning of the self-signed certifcate should be disabled. |
 
 
-### ServiceTemplate  [#servicetemplate]
+### ServiceTemplate  [#github-com-elastic-cloud-on-k8s-v3-pkg-apis-common-v1beta1-servicetemplate]
 
 ServiceTemplate defines the template for a Kubernetes Service.
 
@@ -996,7 +987,7 @@ ServiceTemplate defines the template for a Kubernetes Service.
 | *`spec`* __[ServiceSpec](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.32/#servicespec-v1-core)__ | Spec is the specification of the service. |
 
 
-### SubjectAlternativeName  [#subjectalternativename]
+### SubjectAlternativeName  [#github-com-elastic-cloud-on-k8s-v3-pkg-apis-common-v1beta1-subjectalternativename]
 
 SubjectAlternativeName represents a SAN entry in a x509 certificate.
 
@@ -1011,7 +1002,7 @@ SubjectAlternativeName represents a SAN entry in a x509 certificate.
 | *`ip`* __string__ | IP is the IP address of the subject. |
 
 
-### TLSOptions  [#tlsoptions]
+### TLSOptions  [#github-com-elastic-cloud-on-k8s-v3-pkg-apis-common-v1beta1-tlsoptions]
 
 TLSOptions holds TLS configuration options.
 
@@ -1027,8 +1018,7 @@ TLSOptions holds TLS configuration options.
 
 
 
-% TODO add function to crd-ref-docs return anchor used in links docs-v3 does not seem to produce valid markdown anchors
-## elasticsearch.k8s.elastic.co/v1 [#elasticsearchk8selasticcov1]
+## elasticsearch.k8s.elastic.co/v1 [#elasticsearch-k8s-elastic-co-v1]
 
 Package v1 contains API schema definitions for managing Elasticsearch resources.
 
@@ -1037,7 +1027,7 @@ Package v1 contains API schema definitions for managing Elasticsearch resources.
 
 
 
-### Auth  [#auth]
+### Auth  [#github-com-elastic-cloud-on-k8s-v3-pkg-apis-elasticsearch-v1-auth]
 
 Auth contains user authentication and authorization security settings for Elasticsearch.
 
@@ -1055,7 +1045,7 @@ Auth contains user authentication and authorization security settings for Elasti
 
 
 
-### ChangeBudget  [#changebudget]
+### ChangeBudget  [#github-com-elastic-cloud-on-k8s-v3-pkg-apis-elasticsearch-v1-changebudget]
 
 ChangeBudget defines the constraints to consider when applying changes to the Elasticsearch cluster.
 
@@ -1072,7 +1062,7 @@ ChangeBudget defines the constraints to consider when applying changes to the El
 
 
 
-### DownscaleOperation  [#downscaleoperation]
+### DownscaleOperation  [#github-com-elastic-cloud-on-k8s-v3-pkg-apis-elasticsearch-v1-downscaleoperation]
 
 DownscaleOperation provides details about in progress downscale operations.
 **This API is in technical preview and may be changed or removed in a future release.**
@@ -1089,7 +1079,7 @@ DownscaleOperation provides details about in progress downscale operations.
 | *`stalled`* __boolean__ | Stalled represents a state where no progress can be made.<br>It is only available for clusters managed with the Elasticsearch shutdown API. |
 
 
-### DownscaledNode  [#downscalednode]
+### DownscaledNode  [#github-com-elastic-cloud-on-k8s-v3-pkg-apis-elasticsearch-v1-downscalednode]
 
 DownscaledNode provides an overview of in progress changes applied by the operator to remove Elasticsearch nodes from the cluster.
 **This API is in technical preview and may be changed or removed in a future release.**
@@ -1106,7 +1096,7 @@ DownscaledNode provides an overview of in progress changes applied by the operat
 | *`explanation`* __string__ | Explanation provides details about an in progress node shutdown. It is only available for clusters managed with the<br>Elasticsearch shutdown API. |
 
 
-### Elasticsearch  [#elasticsearch]
+### Elasticsearch  [#github-com-elastic-cloud-on-k8s-v3-pkg-apis-elasticsearch-v1-elasticsearch]
 
 Elasticsearch represents an Elasticsearch resource in a Kubernetes cluster.
 
@@ -1121,7 +1111,7 @@ Elasticsearch represents an Elasticsearch resource in a Kubernetes cluster.
 | *`status`* __[ElasticsearchStatus](#github-com-elastic-cloud-on-k8s-v3-pkg-apis-elasticsearch-v1-elasticsearchstatus)__ |  |
 
 
-### ElasticsearchHealth (string)  [#elasticsearchhealth]
+### ElasticsearchHealth (string)  [#github-com-elastic-cloud-on-k8s-v3-pkg-apis-elasticsearch-v1-elasticsearchhealth]
 
 ElasticsearchHealth is the health of the cluster as returned by the health API.
 
@@ -1132,7 +1122,7 @@ ElasticsearchHealth is the health of the cluster as returned by the health API.
 
 
 
-### ElasticsearchOrchestrationPhase (string)  [#elasticsearchorchestrationphase]
+### ElasticsearchOrchestrationPhase (string)  [#github-com-elastic-cloud-on-k8s-v3-pkg-apis-elasticsearch-v1-elasticsearchorchestrationphase]
 
 ElasticsearchOrchestrationPhase is the phase Elasticsearch is in from the controller point of view.
 
@@ -1143,7 +1133,7 @@ ElasticsearchOrchestrationPhase is the phase Elasticsearch is in from the contro
 
 
 
-### ElasticsearchSpec  [#elasticsearchspec]
+### ElasticsearchSpec  [#github-com-elastic-cloud-on-k8s-v3-pkg-apis-elasticsearch-v1-elasticsearchspec]
 
 ElasticsearchSpec holds the specification of an Elasticsearch cluster.
 
@@ -1171,7 +1161,7 @@ ElasticsearchSpec holds the specification of an Elasticsearch cluster.
 | *`revisionHistoryLimit`* __integer__ | RevisionHistoryLimit is the number of revisions to retain to allow rollback in the underlying StatefulSets. |
 
 
-### ElasticsearchStatus  [#elasticsearchstatus]
+### ElasticsearchStatus  [#github-com-elastic-cloud-on-k8s-v3-pkg-apis-elasticsearch-v1-elasticsearchstatus]
 
 ElasticsearchStatus represents the observed state of Elasticsearch.
 
@@ -1191,7 +1181,7 @@ ElasticsearchStatus represents the observed state of Elasticsearch.
 | *`observedGeneration`* __integer__ | ObservedGeneration is the most recent generation observed for this Elasticsearch cluster.<br>It corresponds to the metadata generation, which is updated on mutation by the API Server.<br>If the generation observed in status diverges from the generation in metadata, the Elasticsearch<br>controller has not yet processed the changes contained in the Elasticsearch specification. |
 
 
-### FieldSecurity  [#fieldsecurity]
+### FieldSecurity  [#github-com-elastic-cloud-on-k8s-v3-pkg-apis-elasticsearch-v1-fieldsecurity]
 
 
 
@@ -1206,7 +1196,7 @@ ElasticsearchStatus represents the observed state of Elasticsearch.
 | *`except`* __string array__ |  |
 
 
-### FileRealmSource  [#filerealmsource]
+### FileRealmSource  [#github-com-elastic-cloud-on-k8s-v3-pkg-apis-elasticsearch-v1-filerealmsource]
 
 FileRealmSource references users to create in the Elasticsearch cluster.
 
@@ -1220,7 +1210,7 @@ FileRealmSource references users to create in the Elasticsearch cluster.
 | *`secretName`* __string__ | SecretName is the name of the secret. |
 
 
-### InProgressOperations  [#inprogressoperations]
+### InProgressOperations  [#github-com-elastic-cloud-on-k8s-v3-pkg-apis-elasticsearch-v1-inprogressoperations]
 
 InProgressOperations provides details about in progress changes applied by the operator on the Elasticsearch cluster.
 **This API is in technical preview and may be changed or removed in a future release.**
@@ -1237,7 +1227,7 @@ InProgressOperations provides details about in progress changes applied by the o
 | *`upscale`* __[UpscaleOperation](#github-com-elastic-cloud-on-k8s-v3-pkg-apis-elasticsearch-v1-upscaleoperation)__ |  |
 
 
-### NewNode  [#newnode]
+### NewNode  [#github-com-elastic-cloud-on-k8s-v3-pkg-apis-elasticsearch-v1-newnode]
 
 
 
@@ -1253,7 +1243,7 @@ InProgressOperations provides details about in progress changes applied by the o
 | *`message`* __string__ | Optional message to explain why a node may not be immediately added. |
 
 
-### NewNodeStatus (string)  [#newnodestatus]
+### NewNodeStatus (string)  [#github-com-elastic-cloud-on-k8s-v3-pkg-apis-elasticsearch-v1-newnodestatus]
 
 NewNodeStatus provides details about the status of nodes which are expected to be created and added to the Elasticsearch cluster.
 **This API is in technical preview and may be changed or removed in a future release.**
@@ -1269,7 +1259,7 @@ NewNodeStatus provides details about the status of nodes which are expected to b
 
 
 
-### NodeSet  [#nodeset]
+### NodeSet  [#github-com-elastic-cloud-on-k8s-v3-pkg-apis-elasticsearch-v1-nodeset]
 
 NodeSet is the specification for a group of Elasticsearch nodes sharing the same configuration and a Pod template.
 
@@ -1287,7 +1277,7 @@ NodeSet is the specification for a group of Elasticsearch nodes sharing the same
 | *`volumeClaimTemplates`* __[PersistentVolumeClaim](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.32/#persistentvolumeclaim-v1-core) array__ | VolumeClaimTemplates is a list of persistent volume claims to be used by each Pod in this NodeSet.<br>Every claim in this list must have a matching volumeMount in one of the containers defined in the PodTemplate.<br>Items defined here take precedence over any default claims added by the operator with the same name. |
 
 
-### RemoteCluster  [#remotecluster]
+### RemoteCluster  [#github-com-elastic-cloud-on-k8s-v3-pkg-apis-elasticsearch-v1-remotecluster]
 
 RemoteCluster declares a remote Elasticsearch cluster connection.
 
@@ -1303,7 +1293,7 @@ RemoteCluster declares a remote Elasticsearch cluster connection.
 | *`apiKey`* __[RemoteClusterAPIKey](#github-com-elastic-cloud-on-k8s-v3-pkg-apis-elasticsearch-v1-remoteclusterapikey)__ | APIKey can be used to enable remote cluster access using Cross-Cluster API keys: https://www.elastic.co/guide/en/elasticsearch/reference/current/security-api-create-cross-cluster-api-key.html |
 
 
-### RemoteClusterAPIKey  [#remoteclusterapikey]
+### RemoteClusterAPIKey  [#github-com-elastic-cloud-on-k8s-v3-pkg-apis-elasticsearch-v1-remoteclusterapikey]
 
 RemoteClusterAPIKey defines a remote cluster API Key.
 
@@ -1317,7 +1307,7 @@ RemoteClusterAPIKey defines a remote cluster API Key.
 | *`access`* __[RemoteClusterAccess](#github-com-elastic-cloud-on-k8s-v3-pkg-apis-elasticsearch-v1-remoteclusteraccess)__ | Access is the name of the API Key. It is automatically generated if not set or empty. |
 
 
-### RemoteClusterAccess  [#remoteclusteraccess]
+### RemoteClusterAccess  [#github-com-elastic-cloud-on-k8s-v3-pkg-apis-elasticsearch-v1-remoteclusteraccess]
 
 RemoteClusterAccess models the API key specification as documented in https://www.elastic.co/guide/en/elasticsearch/reference/current/security-api-create-cross-cluster-api-key.html
 
@@ -1332,7 +1322,7 @@ RemoteClusterAccess models the API key specification as documented in https://ww
 | *`replication`* __[Replication](#github-com-elastic-cloud-on-k8s-v3-pkg-apis-elasticsearch-v1-replication)__ |  |
 
 
-### RemoteClusterServer  [#remoteclusterserver]
+### RemoteClusterServer  [#github-com-elastic-cloud-on-k8s-v3-pkg-apis-elasticsearch-v1-remoteclusterserver]
 
 
 
@@ -1347,7 +1337,7 @@ RemoteClusterAccess models the API key specification as documented in https://ww
 | *`service`* __[ServiceTemplate](#github-com-elastic-cloud-on-k8s-v3-pkg-apis-common-v1-servicetemplate)__ | Service defines the template for the remote cluster server Service object. |
 
 
-### Replication  [#replication]
+### Replication  [#github-com-elastic-cloud-on-k8s-v3-pkg-apis-elasticsearch-v1-replication]
 
 
 
@@ -1361,7 +1351,7 @@ RemoteClusterAccess models the API key specification as documented in https://ww
 | *`names`* __string array__ |  |
 
 
-### RoleSource  [#rolesource]
+### RoleSource  [#github-com-elastic-cloud-on-k8s-v3-pkg-apis-elasticsearch-v1-rolesource]
 
 RoleSource references roles to create in the Elasticsearch cluster.
 
@@ -1375,7 +1365,7 @@ RoleSource references roles to create in the Elasticsearch cluster.
 | *`secretName`* __string__ | SecretName is the name of the secret. |
 
 
-### Search  [#search]
+### Search  [#github-com-elastic-cloud-on-k8s-v3-pkg-apis-elasticsearch-v1-search]
 
 
 
@@ -1392,7 +1382,7 @@ RoleSource references roles to create in the Elasticsearch cluster.
 | *`allow_restricted_indices`* __boolean__ |  |
 
 
-### SelfSignedTransportCertificates  [#selfsignedtransportcertificates]
+### SelfSignedTransportCertificates  [#github-com-elastic-cloud-on-k8s-v3-pkg-apis-elasticsearch-v1-selfsignedtransportcertificates]
 
 SelfSignedTransportCertificates holds configuration for the self-signed certificates generated by the operator.
 
@@ -1406,7 +1396,7 @@ SelfSignedTransportCertificates holds configuration for the self-signed certific
 | *`disabled`* __boolean__ | Disabled indicates that provisioning of the self-signed certificates should be disabled. |
 
 
-### TransportConfig  [#transportconfig]
+### TransportConfig  [#github-com-elastic-cloud-on-k8s-v3-pkg-apis-elasticsearch-v1-transportconfig]
 
 TransportConfig holds the transport layer settings for Elasticsearch.
 
@@ -1421,7 +1411,7 @@ TransportConfig holds the transport layer settings for Elasticsearch.
 | *`tls`* __[TransportTLSOptions](#github-com-elastic-cloud-on-k8s-v3-pkg-apis-elasticsearch-v1-transporttlsoptions)__ | TLS defines options for configuring TLS on the transport layer. |
 
 
-### TransportTLSOptions  [#transporttlsoptions]
+### TransportTLSOptions  [#github-com-elastic-cloud-on-k8s-v3-pkg-apis-elasticsearch-v1-transporttlsoptions]
 
 
 
@@ -1439,7 +1429,7 @@ TransportConfig holds the transport layer settings for Elasticsearch.
 | *`selfSignedCertificates`* __[SelfSignedTransportCertificates](#github-com-elastic-cloud-on-k8s-v3-pkg-apis-elasticsearch-v1-selfsignedtransportcertificates)__ | SelfSignedCertificates allows configuring the self-signed certificate generated by the operator. |
 
 
-### UpdateStrategy  [#updatestrategy]
+### UpdateStrategy  [#github-com-elastic-cloud-on-k8s-v3-pkg-apis-elasticsearch-v1-updatestrategy]
 
 UpdateStrategy specifies how updates to the cluster should be performed.
 
@@ -1453,7 +1443,7 @@ UpdateStrategy specifies how updates to the cluster should be performed.
 | *`changeBudget`* __[ChangeBudget](#github-com-elastic-cloud-on-k8s-v3-pkg-apis-elasticsearch-v1-changebudget)__ | ChangeBudget defines the constraints to consider when applying changes to the Elasticsearch cluster. |
 
 
-### UpgradeOperation  [#upgradeoperation]
+### UpgradeOperation  [#github-com-elastic-cloud-on-k8s-v3-pkg-apis-elasticsearch-v1-upgradeoperation]
 
 UpgradeOperation provides an overview of the pending or in progress changes applied by the operator to update the Elasticsearch nodes in the cluster.
 **This API is in technical preview and may be changed or removed in a future release.**
@@ -1469,7 +1459,7 @@ UpgradeOperation provides an overview of the pending or in progress changes appl
 | *`nodes`* __[UpgradedNode](#github-com-elastic-cloud-on-k8s-v3-pkg-apis-elasticsearch-v1-upgradednode) array__ | Nodes that must be restarted for upgrade. |
 
 
-### UpgradedNode  [#upgradednode]
+### UpgradedNode  [#github-com-elastic-cloud-on-k8s-v3-pkg-apis-elasticsearch-v1-upgradednode]
 
 UpgradedNode provides details about the status of nodes which are expected to be updated.
 **This API is in technical preview and may be changed or removed in a future release.**
@@ -1487,7 +1477,7 @@ UpgradedNode provides details about the status of nodes which are expected to be
 | *`predicate`* __string__ | Predicate is the name of the predicate currently preventing this node from being deleted for an upgrade. |
 
 
-### UpscaleOperation  [#upscaleoperation]
+### UpscaleOperation  [#github-com-elastic-cloud-on-k8s-v3-pkg-apis-elasticsearch-v1-upscaleoperation]
 
 UpscaleOperation provides an overview of in progress changes applied by the operator to add Elasticsearch nodes to the cluster.
 **This API is in technical preview and may be changed or removed in a future release.**
@@ -1503,7 +1493,7 @@ UpscaleOperation provides an overview of in progress changes applied by the oper
 | *`nodes`* __[NewNode](#github-com-elastic-cloud-on-k8s-v3-pkg-apis-elasticsearch-v1-newnode) array__ | Nodes expected to be added by the operator. |
 
 
-### VolumeClaimDeletePolicy (string)  [#volumeclaimdeletepolicy]
+### VolumeClaimDeletePolicy (string)  [#github-com-elastic-cloud-on-k8s-v3-pkg-apis-elasticsearch-v1-volumeclaimdeletepolicy]
 
 VolumeClaimDeletePolicy describes the delete policy for handling PersistentVolumeClaims that hold Elasticsearch data.
 Inspired by https://github.com/kubernetes/enhancements/pull/2440
@@ -1516,8 +1506,7 @@ Inspired by https://github.com/kubernetes/enhancements/pull/2440
 
 
 
-% TODO add function to crd-ref-docs return anchor used in links docs-v3 does not seem to produce valid markdown anchors
-## elasticsearch.k8s.elastic.co/v1beta1 [#elasticsearchk8selasticcov1beta1]
+## elasticsearch.k8s.elastic.co/v1beta1 [#elasticsearch-k8s-elastic-co-v1beta1]
 
 Package v1beta1 contains API schema definitions for managing Elasticsearch resources.
 
@@ -1526,7 +1515,7 @@ Package v1beta1 contains API schema definitions for managing Elasticsearch resou
 
 
 
-### ChangeBudget  [#changebudget]
+### ChangeBudget  [#github-com-elastic-cloud-on-k8s-v3-pkg-apis-elasticsearch-v1beta1-changebudget]
 
 ChangeBudget defines the constraints to consider when applying changes to the Elasticsearch cluster.
 
@@ -1543,7 +1532,7 @@ ChangeBudget defines the constraints to consider when applying changes to the El
 
 
 
-### Elasticsearch  [#elasticsearch]
+### Elasticsearch  [#github-com-elastic-cloud-on-k8s-v3-pkg-apis-elasticsearch-v1beta1-elasticsearch]
 
 Elasticsearch represents an Elasticsearch resource in a Kubernetes cluster.
 
@@ -1558,7 +1547,7 @@ Elasticsearch represents an Elasticsearch resource in a Kubernetes cluster.
 | *`status`* __[ElasticsearchStatus](#github-com-elastic-cloud-on-k8s-v3-pkg-apis-elasticsearch-v1beta1-elasticsearchstatus)__ |  |
 
 
-### ElasticsearchHealth (string)  [#elasticsearchhealth]
+### ElasticsearchHealth (string)  [#github-com-elastic-cloud-on-k8s-v3-pkg-apis-elasticsearch-v1beta1-elasticsearchhealth]
 
 ElasticsearchHealth is the health of the cluster as returned by the health API.
 
@@ -1569,7 +1558,7 @@ ElasticsearchHealth is the health of the cluster as returned by the health API.
 
 
 
-### ElasticsearchOrchestrationPhase (string)  [#elasticsearchorchestrationphase]
+### ElasticsearchOrchestrationPhase (string)  [#github-com-elastic-cloud-on-k8s-v3-pkg-apis-elasticsearch-v1beta1-elasticsearchorchestrationphase]
 
 ElasticsearchOrchestrationPhase is the phase Elasticsearch is in from the controller point of view.
 
@@ -1580,7 +1569,7 @@ ElasticsearchOrchestrationPhase is the phase Elasticsearch is in from the contro
 
 
 
-### ElasticsearchSpec  [#elasticsearchspec]
+### ElasticsearchSpec  [#github-com-elastic-cloud-on-k8s-v3-pkg-apis-elasticsearch-v1beta1-elasticsearchspec]
 
 ElasticsearchSpec holds the specification of an Elasticsearch cluster.
 
@@ -1600,7 +1589,7 @@ ElasticsearchSpec holds the specification of an Elasticsearch cluster.
 | *`secureSettings`* __[SecretSource](#github-com-elastic-cloud-on-k8s-v3-pkg-apis-common-v1beta1-secretsource) array__ | SecureSettings is a list of references to Kubernetes secrets containing sensitive configuration options for Elasticsearch. |
 
 
-### ElasticsearchStatus  [#elasticsearchstatus]
+### ElasticsearchStatus  [#github-com-elastic-cloud-on-k8s-v3-pkg-apis-elasticsearch-v1beta1-elasticsearchstatus]
 
 ElasticsearchStatus defines the observed state of Elasticsearch
 
@@ -1617,7 +1606,7 @@ ElasticsearchStatus defines the observed state of Elasticsearch
 
 
 
-### NodeSet  [#nodeset]
+### NodeSet  [#github-com-elastic-cloud-on-k8s-v3-pkg-apis-elasticsearch-v1beta1-nodeset]
 
 NodeSet is the specification for a group of Elasticsearch nodes sharing the same configuration and a Pod template.
 
@@ -1635,7 +1624,7 @@ NodeSet is the specification for a group of Elasticsearch nodes sharing the same
 | *`volumeClaimTemplates`* __[PersistentVolumeClaim](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.32/#persistentvolumeclaim-v1-core) array__ | VolumeClaimTemplates is a list of persistent volume claims to be used by each Pod in this NodeSet.<br>Every claim in this list must have a matching volumeMount in one of the containers defined in the PodTemplate.<br>Items defined here take precedence over any default claims added by the operator with the same name. |
 
 
-### UpdateStrategy  [#updatestrategy]
+### UpdateStrategy  [#github-com-elastic-cloud-on-k8s-v3-pkg-apis-elasticsearch-v1beta1-updatestrategy]
 
 UpdateStrategy specifies how updates to the cluster should be performed.
 
@@ -1650,8 +1639,7 @@ UpdateStrategy specifies how updates to the cluster should be performed.
 
 
 
-% TODO add function to crd-ref-docs return anchor used in links docs-v3 does not seem to produce valid markdown anchors
-## enterprisesearch.k8s.elastic.co/v1 [#enterprisesearchk8selasticcov1]
+## enterprisesearch.k8s.elastic.co/v1 [#enterprisesearch-k8s-elastic-co-v1]
 
 Package v1beta1 contains API schema definitions for managing Enterprise Search resources.
 
@@ -1660,7 +1648,7 @@ Package v1beta1 contains API schema definitions for managing Enterprise Search r
 
 
 
-### EnterpriseSearch  [#enterprisesearch]
+### EnterpriseSearch  [#github-com-elastic-cloud-on-k8s-v3-pkg-apis-enterprisesearch-v1-enterprisesearch]
 
 EnterpriseSearch is a Kubernetes CRD to represent Enterprise Search.
 
@@ -1674,7 +1662,7 @@ EnterpriseSearch is a Kubernetes CRD to represent Enterprise Search.
 | *`spec`* __[EnterpriseSearchSpec](#github-com-elastic-cloud-on-k8s-v3-pkg-apis-enterprisesearch-v1-enterprisesearchspec)__ |  |
 
 
-### EnterpriseSearchSpec  [#enterprisesearchspec]
+### EnterpriseSearchSpec  [#github-com-elastic-cloud-on-k8s-v3-pkg-apis-enterprisesearch-v1-enterprisesearchspec]
 
 EnterpriseSearchSpec holds the specification of an Enterprise Search resource.
 
@@ -1698,8 +1686,7 @@ EnterpriseSearchSpec holds the specification of an Enterprise Search resource.
 
 
 
-% TODO add function to crd-ref-docs return anchor used in links docs-v3 does not seem to produce valid markdown anchors
-## enterprisesearch.k8s.elastic.co/v1beta1 [#enterprisesearchk8selasticcov1beta1]
+## enterprisesearch.k8s.elastic.co/v1beta1 [#enterprisesearch-k8s-elastic-co-v1beta1]
 
 Package v1beta1 contains API schema definitions for managing Enterprise Search resources.
 
@@ -1708,7 +1695,7 @@ Package v1beta1 contains API schema definitions for managing Enterprise Search r
 
 
 
-### EnterpriseSearch  [#enterprisesearch]
+### EnterpriseSearch  [#github-com-elastic-cloud-on-k8s-v3-pkg-apis-enterprisesearch-v1beta1-enterprisesearch]
 
 EnterpriseSearch is a Kubernetes CRD to represent Enterprise Search.
 
@@ -1722,7 +1709,7 @@ EnterpriseSearch is a Kubernetes CRD to represent Enterprise Search.
 | *`spec`* __[EnterpriseSearchSpec](#github-com-elastic-cloud-on-k8s-v3-pkg-apis-enterprisesearch-v1beta1-enterprisesearchspec)__ |  |
 
 
-### EnterpriseSearchSpec  [#enterprisesearchspec]
+### EnterpriseSearchSpec  [#github-com-elastic-cloud-on-k8s-v3-pkg-apis-enterprisesearch-v1beta1-enterprisesearchspec]
 
 EnterpriseSearchSpec holds the specification of an Enterprise Search resource.
 
@@ -1745,8 +1732,7 @@ EnterpriseSearchSpec holds the specification of an Enterprise Search resource.
 
 
 
-% TODO add function to crd-ref-docs return anchor used in links docs-v3 does not seem to produce valid markdown anchors
-## kibana.k8s.elastic.co/v1 [#kibanak8selasticcov1]
+## kibana.k8s.elastic.co/v1 [#kibana-k8s-elastic-co-v1]
 
 Package v1 contains API schema definitions for managing Kibana resources.
 
@@ -1755,7 +1741,7 @@ Package v1 contains API schema definitions for managing Kibana resources.
 
 
 
-### Kibana  [#kibana]
+### Kibana  [#github-com-elastic-cloud-on-k8s-v3-pkg-apis-kibana-v1-kibana]
 
 Kibana represents a Kibana resource in a Kubernetes cluster.
 
@@ -1769,7 +1755,7 @@ Kibana represents a Kibana resource in a Kubernetes cluster.
 | *`spec`* __[KibanaSpec](#github-com-elastic-cloud-on-k8s-v3-pkg-apis-kibana-v1-kibanaspec)__ |  |
 
 
-### KibanaSpec  [#kibanaspec]
+### KibanaSpec  [#github-com-elastic-cloud-on-k8s-v3-pkg-apis-kibana-v1-kibanaspec]
 
 KibanaSpec holds the specification of a Kibana instance.
 
@@ -1796,8 +1782,7 @@ KibanaSpec holds the specification of a Kibana instance.
 
 
 
-% TODO add function to crd-ref-docs return anchor used in links docs-v3 does not seem to produce valid markdown anchors
-## kibana.k8s.elastic.co/v1beta1 [#kibanak8selasticcov1beta1]
+## kibana.k8s.elastic.co/v1beta1 [#kibana-k8s-elastic-co-v1beta1]
 
 Package v1beta1 contains API schema definitions for managing Kibana resources.
 
@@ -1806,7 +1791,7 @@ Package v1beta1 contains API schema definitions for managing Kibana resources.
 
 
 
-### Kibana  [#kibana]
+### Kibana  [#github-com-elastic-cloud-on-k8s-v3-pkg-apis-kibana-v1beta1-kibana]
 
 Kibana represents a Kibana resource in a Kubernetes cluster.
 
@@ -1820,7 +1805,7 @@ Kibana represents a Kibana resource in a Kubernetes cluster.
 | *`spec`* __[KibanaSpec](#github-com-elastic-cloud-on-k8s-v3-pkg-apis-kibana-v1beta1-kibanaspec)__ |  |
 
 
-### KibanaSpec  [#kibanaspec]
+### KibanaSpec  [#github-com-elastic-cloud-on-k8s-v3-pkg-apis-kibana-v1beta1-kibanaspec]
 
 KibanaSpec holds the specification of a Kibana instance.
 
@@ -1842,8 +1827,7 @@ KibanaSpec holds the specification of a Kibana instance.
 
 
 
-% TODO add function to crd-ref-docs return anchor used in links docs-v3 does not seem to produce valid markdown anchors
-## logstash.k8s.elastic.co/v1alpha1 [#logstashk8selasticcov1alpha1]
+## logstash.k8s.elastic.co/v1alpha1 [#logstash-k8s-elastic-co-v1alpha1]
 
 Package v1alpha1 contains API Schema definitions for the logstash v1alpha1 API group
 
@@ -1852,7 +1836,7 @@ Package v1alpha1 contains API Schema definitions for the logstash v1alpha1 API g
 
 
 
-### ElasticsearchCluster  [#elasticsearchcluster]
+### ElasticsearchCluster  [#github-com-elastic-cloud-on-k8s-v3-pkg-apis-logstash-v1alpha1-elasticsearchcluster]
 
 ElasticsearchCluster is a named reference to an Elasticsearch cluster which can be used in a Logstash pipeline.
 
@@ -1867,7 +1851,7 @@ ElasticsearchCluster is a named reference to an Elasticsearch cluster which can 
 | *`clusterName`* __string__ | ClusterName is an alias for the cluster to be used to refer to the Elasticsearch cluster in Logstash<br>configuration files, and will be used to identify "named clusters" in Logstash |
 
 
-### Logstash  [#logstash]
+### Logstash  [#github-com-elastic-cloud-on-k8s-v3-pkg-apis-logstash-v1alpha1-logstash]
 
 Logstash is the Schema for the logstashes API
 
@@ -1882,7 +1866,7 @@ Logstash is the Schema for the logstashes API
 | *`status`* __[LogstashStatus](#github-com-elastic-cloud-on-k8s-v3-pkg-apis-logstash-v1alpha1-logstashstatus)__ |  |
 
 
-### LogstashHealth (string)  [#logstashhealth]
+### LogstashHealth (string)  [#github-com-elastic-cloud-on-k8s-v3-pkg-apis-logstash-v1alpha1-logstashhealth]
 
 
 
@@ -1893,7 +1877,7 @@ Logstash is the Schema for the logstashes API
 
 
 
-### LogstashService  [#logstashservice]
+### LogstashService  [#github-com-elastic-cloud-on-k8s-v3-pkg-apis-logstash-v1alpha1-logstashservice]
 
 
 
@@ -1909,7 +1893,7 @@ Logstash is the Schema for the logstashes API
 | *`tls`* __[TLSOptions](#github-com-elastic-cloud-on-k8s-v3-pkg-apis-common-v1-tlsoptions)__ | TLS defines options for configuring TLS for HTTP. |
 
 
-### LogstashSpec  [#logstashspec]
+### LogstashSpec  [#github-com-elastic-cloud-on-k8s-v3-pkg-apis-logstash-v1alpha1-logstashspec]
 
 LogstashSpec defines the desired state of Logstash
 
@@ -1938,7 +1922,7 @@ LogstashSpec defines the desired state of Logstash
 | *`volumeClaimTemplates`* __[PersistentVolumeClaim](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.32/#persistentvolumeclaim-v1-core) array__ | VolumeClaimTemplates is a list of persistent volume claims to be used by each Pod.<br>Every claim in this list must have a matching volumeMount in one of the containers defined in the PodTemplate.<br>Items defined here take precedence over any default claims added by the operator with the same name. |
 
 
-### LogstashStatus  [#logstashstatus]
+### LogstashStatus  [#github-com-elastic-cloud-on-k8s-v3-pkg-apis-logstash-v1alpha1-logstashstatus]
 
 LogstashStatus defines the observed state of Logstash
 
@@ -1958,8 +1942,7 @@ LogstashStatus defines the observed state of Logstash
 
 
 
-% TODO add function to crd-ref-docs return anchor used in links docs-v3 does not seem to produce valid markdown anchors
-## maps.k8s.elastic.co/v1alpha1 [#mapsk8selasticcov1alpha1]
+## maps.k8s.elastic.co/v1alpha1 [#maps-k8s-elastic-co-v1alpha1]
 
 Package v1alpha1 contains API schema definitions for managing Elastic Maps Server resources.
 
@@ -1969,7 +1952,7 @@ Package v1alpha1 contains API schema definitions for managing Elastic Maps Serve
 
 
 
-### ElasticMapsServer  [#elasticmapsserver]
+### ElasticMapsServer  [#github-com-elastic-cloud-on-k8s-v3-pkg-apis-maps-v1alpha1-elasticmapsserver]
 
 ElasticMapsServer represents an Elastic Map Server resource in a Kubernetes cluster.
 
@@ -1986,7 +1969,7 @@ ElasticMapsServer represents an Elastic Map Server resource in a Kubernetes clus
 | *`spec`* __[MapsSpec](#github-com-elastic-cloud-on-k8s-v3-pkg-apis-maps-v1alpha1-mapsspec)__ |  |
 
 
-### ElasticMapsServerList  [#elasticmapsserverlist]
+### ElasticMapsServerList  [#github-com-elastic-cloud-on-k8s-v3-pkg-apis-maps-v1alpha1-elasticmapsserverlist]
 
 ElasticMapsServerList contains a list of ElasticMapsServer
 
@@ -2000,7 +1983,7 @@ ElasticMapsServerList contains a list of ElasticMapsServer
 | *`items`* __[ElasticMapsServer](#github-com-elastic-cloud-on-k8s-v3-pkg-apis-maps-v1alpha1-elasticmapsserver) array__ |  |
 
 
-### MapsSpec  [#mapsspec]
+### MapsSpec  [#github-com-elastic-cloud-on-k8s-v3-pkg-apis-maps-v1alpha1-mapsspec]
 
 MapsSpec holds the specification of an Elastic Maps Server instance.
 
@@ -2024,8 +2007,7 @@ MapsSpec holds the specification of an Elastic Maps Server instance.
 
 
 
-% TODO add function to crd-ref-docs return anchor used in links docs-v3 does not seem to produce valid markdown anchors
-## packageregistry.k8s.elastic.co/v1alpha1 [#packageregistryk8selasticcov1alpha1]
+## packageregistry.k8s.elastic.co/v1alpha1 [#packageregistry-k8s-elastic-co-v1alpha1]
 
 Package v1alpha1 contains API schema definitions for managing Elastic Package Registry resources.
 
@@ -2035,7 +2017,7 @@ Package v1alpha1 contains API schema definitions for managing Elastic Package Re
 
 
 
-### PackageRegistry  [#packageregistry]
+### PackageRegistry  [#github-com-elastic-cloud-on-k8s-v3-pkg-apis-packageregistry-v1alpha1-packageregistry]
 
 PackageRegistry represents an Elastic Package Registry resource in a Kubernetes cluster.
 
@@ -2053,7 +2035,7 @@ PackageRegistry represents an Elastic Package Registry resource in a Kubernetes 
 | *`status`* __[PackageRegistryStatus](#github-com-elastic-cloud-on-k8s-v3-pkg-apis-packageregistry-v1alpha1-packageregistrystatus)__ |  |
 
 
-### PackageRegistryList  [#packageregistrylist]
+### PackageRegistryList  [#github-com-elastic-cloud-on-k8s-v3-pkg-apis-packageregistry-v1alpha1-packageregistrylist]
 
 PackageRegistryList contains a list of PackageRegistry
 
@@ -2067,7 +2049,7 @@ PackageRegistryList contains a list of PackageRegistry
 | *`items`* __[PackageRegistry](#github-com-elastic-cloud-on-k8s-v3-pkg-apis-packageregistry-v1alpha1-packageregistry) array__ |  |
 
 
-### PackageRegistrySpec  [#packageregistryspec]
+### PackageRegistrySpec  [#github-com-elastic-cloud-on-k8s-v3-pkg-apis-packageregistry-v1alpha1-packageregistryspec]
 
 PackageRegistrySpec holds the specification of an Elastic Package Registry instance.
 
@@ -2088,7 +2070,7 @@ PackageRegistrySpec holds the specification of an Elastic Package Registry insta
 | *`revisionHistoryLimit`* __integer__ | RevisionHistoryLimit is the number of revisions to retain to allow rollback in the underlying Deployment. |
 
 
-### PackageRegistryStatus  [#packageregistrystatus]
+### PackageRegistryStatus  [#github-com-elastic-cloud-on-k8s-v3-pkg-apis-packageregistry-v1alpha1-packageregistrystatus]
 
 PackageRegistryStatus defines the observed state of Elastic Package Registry
 
@@ -2103,8 +2085,7 @@ PackageRegistryStatus defines the observed state of Elastic Package Registry
 
 
 
-% TODO add function to crd-ref-docs return anchor used in links docs-v3 does not seem to produce valid markdown anchors
-## stackconfigpolicy.k8s.elastic.co/v1alpha1 [#stackconfigpolicyk8selasticcov1alpha1]
+## stackconfigpolicy.k8s.elastic.co/v1alpha1 [#stackconfigpolicy-k8s-elastic-co-v1alpha1]
 
 Package v1alpha1 contains API schema definitions for managing StackConfigPolicy resources.
 
@@ -2113,7 +2094,7 @@ Package v1alpha1 contains API schema definitions for managing StackConfigPolicy 
 
 
 
-### ElasticsearchConfigPolicySpec  [#elasticsearchconfigpolicyspec]
+### ElasticsearchConfigPolicySpec  [#github-com-elastic-cloud-on-k8s-v3-pkg-apis-stackconfigpolicy-v1alpha1-elasticsearchconfigpolicyspec]
 
 
 
@@ -2138,7 +2119,7 @@ Package v1alpha1 contains API schema definitions for managing StackConfigPolicy 
 
 
 
-### IndexTemplates  [#indextemplates]
+### IndexTemplates  [#github-com-elastic-cloud-on-k8s-v3-pkg-apis-stackconfigpolicy-v1alpha1-indextemplates]
 
 
 
@@ -2153,7 +2134,7 @@ Package v1alpha1 contains API schema definitions for managing StackConfigPolicy 
 | *`composableIndexTemplates`* __[Config](#github-com-elastic-cloud-on-k8s-v3-pkg-apis-common-v1-config)__ | ComposableIndexTemplates holds the Index Templates settings (/_index_template) |
 
 
-### KibanaConfigPolicySpec  [#kibanaconfigpolicyspec]
+### KibanaConfigPolicySpec  [#github-com-elastic-cloud-on-k8s-v3-pkg-apis-stackconfigpolicy-v1alpha1-kibanaconfigpolicyspec]
 
 
 
@@ -2174,7 +2155,7 @@ Package v1alpha1 contains API schema definitions for managing StackConfigPolicy 
 
 
 
-### SecretMount  [#secretmount]
+### SecretMount  [#github-com-elastic-cloud-on-k8s-v3-pkg-apis-stackconfigpolicy-v1alpha1-secretmount]
 
 SecretMount contains information about additional secrets to be mounted to the elasticsearch pods
 
@@ -2189,7 +2170,7 @@ SecretMount contains information about additional secrets to be mounted to the e
 | *`mountPath`* __string__ | MountPath denotes the path to which the secret should be mounted to inside the elasticsearch pod |
 
 
-### StackConfigPolicy  [#stackconfigpolicy]
+### StackConfigPolicy  [#github-com-elastic-cloud-on-k8s-v3-pkg-apis-stackconfigpolicy-v1alpha1-stackconfigpolicy]
 
 StackConfigPolicy represents a StackConfigPolicy resource in a Kubernetes cluster.
 
@@ -2203,7 +2184,7 @@ StackConfigPolicy represents a StackConfigPolicy resource in a Kubernetes cluste
 | *`spec`* __[StackConfigPolicySpec](#github-com-elastic-cloud-on-k8s-v3-pkg-apis-stackconfigpolicy-v1alpha1-stackconfigpolicyspec)__ |  |
 
 
-### StackConfigPolicySpec  [#stackconfigpolicyspec]
+### StackConfigPolicySpec  [#github-com-elastic-cloud-on-k8s-v3-pkg-apis-stackconfigpolicy-v1alpha1-stackconfigpolicyspec]
 
 
 
