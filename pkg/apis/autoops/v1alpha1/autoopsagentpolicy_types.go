@@ -25,7 +25,6 @@ func init() {
 // +kubebuilder:resource:categories=elastic,shortName=aop
 // +kubebuilder:printcolumn:name="Ready",type="string",JSONPath=".status.readyCount",description="Ready resources"
 // +kubebuilder:printcolumn:name="Phase",type="string",JSONPath=".status.phase"
-// +kubebuilder:printcolumn:name="Message",type="string",JSONPath=".status.message"
 // +kubebuilder:printcolumn:name="Age",type="date",JSONPath=".metadata.creationTimestamp"
 // +kubebuilder:subresource:status
 // +kubebuilder:storageversion
@@ -110,9 +109,6 @@ type AutoOpsAgentPolicyStatus struct {
 	Phase PolicyPhase `json:"phase,omitempty"`
 	// ObservedGeneration is the most recent generation observed for this AutoOpsAgentPolicy.
 	ObservedGeneration int64 `json:"observedGeneration,omitempty"`
-
-	// Message is a human-readable summary of the status.
-	Message string `json:"message,omitempty"`
 
 	// Details contains lightweight per-resource details.
 	Details map[string]AutoOpsResourceStatus `json:"details,omitempty"`

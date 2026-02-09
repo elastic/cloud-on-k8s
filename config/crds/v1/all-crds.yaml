@@ -2380,9 +2380,6 @@ spec:
     - jsonPath: .status.phase
       name: Phase
       type: string
-    - jsonPath: .status.message
-      name: Message
-      type: string
     - jsonPath: .metadata.creationTimestamp
       name: Age
       type: date
@@ -2585,9 +2582,6 @@ spec:
                 description: Errors is the number of resources that are in an error
                   state.
                 type: integer
-              message:
-                description: Message is a human-readable summary of the status.
-                type: string
               observedGeneration:
                 description: ObservedGeneration is the most recent generation observed
                   for this AutoOpsAgentPolicy.

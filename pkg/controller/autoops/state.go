@@ -7,7 +7,6 @@ package autoops
 import (
 	"fmt"
 	"reflect"
-	"strings"
 
 	corev1 "k8s.io/api/core/v1"
 
@@ -135,17 +134,5 @@ func (s *State) Finalize(isReconciled bool, reconciliationMessage string) {
 		s.UpdateWithPhase(autoopsv1alpha1.AutoOpsAgentsNotReadyPhase)
 	}
 
-	parts := make([]string, 0, 3)
-	if s.status.Ready > 0 {
-		parts = append(parts, fmt.Sprintf("%d resource ready", s.status.Ready))
-	}
-	if s.status.Errors > 0 {
-		parts = append(parts, fmt.Sprintf("%d error", s.status.Errors))
-	}
-	if s.status.Skipped > 0 {
-		parts = append(parts, fmt.Sprintf("%d skipped due to RBAC", s.status.Skipped))
-	}
-
-	s.status.Message = strings.Join(parts, ", ")
 	s.status.ReadyCount = fmt.Sprintf("%d/%d", s.status.Ready, s.status.Resources)
 }

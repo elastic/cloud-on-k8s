@@ -166,7 +166,6 @@ func TestState_Finalize(t *testing.T) {
 		isReconciled          bool
 		reconciliationMessage string
 		expectedPhase         autoopsv1alpha1.PolicyPhase
-		expectedMessage       string
 		expectedReadyCount    string
 		expectEvent           bool
 	}{
@@ -180,7 +179,6 @@ func TestState_Finalize(t *testing.T) {
 			isReconciled:          false,
 			reconciliationMessage: "waiting for resources",
 			expectedPhase:         autoopsv1alpha1.ApplyingChangesPhase,
-			expectedMessage:       "2 resource ready",
 			expectedReadyCount:    "2/3",
 			expectEvent:           true,
 		},
@@ -194,7 +192,6 @@ func TestState_Finalize(t *testing.T) {
 			isReconciled:          true,
 			reconciliationMessage: "",
 			expectedPhase:         autoopsv1alpha1.ReadyPhase,
-			expectedMessage:       "3 resource ready",
 			expectedReadyCount:    "3/3",
 			expectEvent:           false,
 		},
@@ -208,7 +205,6 @@ func TestState_Finalize(t *testing.T) {
 			isReconciled:          true,
 			reconciliationMessage: "",
 			expectedPhase:         autoopsv1alpha1.AutoOpsAgentsNotReadyPhase,
-			expectedMessage:       "2 resource ready",
 			expectedReadyCount:    "2/3",
 			expectEvent:           false,
 		},
@@ -222,7 +218,6 @@ func TestState_Finalize(t *testing.T) {
 			isReconciled:          true,
 			reconciliationMessage: "",
 			expectedPhase:         autoopsv1alpha1.ErrorPhase,
-			expectedMessage:       "3 resource ready",
 			expectedReadyCount:    "3/3",
 			expectEvent:           false,
 		},
@@ -236,7 +231,6 @@ func TestState_Finalize(t *testing.T) {
 			isReconciled:          false,
 			reconciliationMessage: "waiting for resources",
 			expectedPhase:         autoopsv1alpha1.ErrorPhase,
-			expectedMessage:       "2 resource ready",
 			expectedReadyCount:    "2/3",
 			expectEvent:           true,
 		},
@@ -250,7 +244,6 @@ func TestState_Finalize(t *testing.T) {
 			isReconciled:          false,
 			reconciliationMessage: "waiting for resources",
 			expectedPhase:         autoopsv1alpha1.ErrorPhase,
-			expectedMessage:       "1 resource ready, 1 error, 1 skipped due to RBAC",
 			expectedReadyCount:    "1/3",
 			expectEvent:           true,
 		},
@@ -264,7 +257,6 @@ func TestState_Finalize(t *testing.T) {
 			isReconciled:          false,
 			reconciliationMessage: "waiting for resources",
 			expectedPhase:         autoopsv1alpha1.ErrorPhase,
-			expectedMessage:       "1 resource ready, 2 skipped due to RBAC",
 			expectedReadyCount:    "1/3",
 			expectEvent:           true,
 		},
@@ -278,7 +270,6 @@ func TestState_Finalize(t *testing.T) {
 			isReconciled:          false,
 			reconciliationMessage: "waiting for resources",
 			expectedPhase:         autoopsv1alpha1.ErrorPhase,
-			expectedMessage:       "1 resource ready, 2 error",
 			expectedReadyCount:    "1/3",
 			expectEvent:           true,
 		},
@@ -311,7 +302,6 @@ func TestState_Finalize(t *testing.T) {
 				assert.Empty(t, state.Events(), "expected no events")
 			}
 
-			assert.Equal(t, tt.expectedMessage, state.status.Message)
 			assert.Equal(t, tt.expectedReadyCount, state.status.ReadyCount)
 		})
 	}
