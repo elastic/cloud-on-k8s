@@ -1,41 +1,75 @@
-# Namespace Filtering met Label Selectors
+# 5. Namespace Filtering with Label Selectors
 
-Deze ECK operator ondersteunt namespace filtering op basis van label selectors, waardoor je meerdere ECK operators kunt draaien die verschillende sets van namespaces beheren.
+## Context and Problem Statement
 
-## Inleiding
+In Kubernetes, it is often necessary to limit the scope of an operator to a subset of namespaces. The ECK operator previously supported only two modes: cluster-wide (all namespaces) or a static list of namespaces. Both approaches have limitations in dynamic environments with frequent namespace changes.
 
-Namespace filtering is een krachtige functie die je in staat stelt om de reikwijdte van je ECK operator te beperken tot specifieke namespaces binnen je Kubernetes cluster. Dit wordt bereikt door het toepassen van label selectors, die fungeren als een filtermechanisme om alleen die namespaces te selecteren die voldoen aan bepaalde criteria.
+## Considered Options
 
-## Hoe het Werkt
+### Option 1: Dynamically update --namespaces flag
 
-De ECK operator maakt gebruik van Kubernetes label selectors om namespaces te filteren. Een label selector is een uitdrukking die bepaalt welke labels overeenkomen met de gespecificeerde criteria. Door deze selectors te gebruiken, kun je de ECK operator configureren om alleen die namespaces te beheren die de juiste labels hebben.
+Run the operator with the `--namespaces` flag, updating it dynamically to include only the desired namespaces.
 
-Bijvoorbeeld, als je een label selector hebt gedefinieerd als `environment: production`, dan zal de ECK operator alleen van toepassing zijn op die namespaces die het label `environment` hebben met de waarde `production`.
+**Drawback:** Not maintainable in dynamic environments with frequent namespace changes.
 
-## Voordelen van Namespace Filtering
+### Option 2: One operator per namespace
 
-- **Gerichte Toepassingen**: Je kunt de ECK operator richten op specifieke namespaces, wat handig is in omgevingen waar meerdere teams of projecten dezelfde Kubernetes cluster delen.
-- **Resource Optimalisatie**: Door de reikwijdte van de operator te beperken, worden de resources efficiënter gebruikt en wordt de kans op conflicten tussen verschillende toepassingen verminderd.
-- **Veiligheid en Isolatie**: Namespace filtering helpt bij het handhaven van veiligheid en isolatie tussen verschillende delen van je applicatie of tussen verschillende applicaties die op dezelfde cluster draaien.
+Deploy a separate operator instance for each namespace to achieve strict separation.
 
-## Configuratie Voorbeeld
+**Drawback:** Higher resource usage and operational overhead, with little benefit for most use cases.
 
-Hier is een voorbeeld van hoe je namespace filtering kunt configureren met behulp van label selectors in je ECK operator manifest:
+### Option 3: Use a label selector (chosen)
 
-```yaml
-apiVersion: operator.elastic.co/v1
-kind: Elasticsearch
-metadata:
-  name: mijn-elk-cluster
-  namespace: mijn-namespace
-  labels:
-    environment: production
-spec:
-  ...
+Extend the operator to support a label selector for namespaces. The operator manages only namespaces matching the selector.
+
+**Advantage:** Flexible, scalable, and easy to maintain in dynamic environments.
+
+### Option 4: One operator per cluster
+Deploy a separate Kubernetes cluster for each environment, with one operator per cluster. This provides strong isolation between environments.
+
+**Drawbacks:**
+- Significantly higher resource usage and operational overhead.
+- Elasticsearch clusters must be exposed via ingress or other networking solutions for cross-cluster communication, increasing complexity and potential security risks.
+
+## Decision Outcome
+
+Option 3 was chosen. The ECK operator now supports namespace filtering using label selectors. This allows multiple ECK operators to manage different sets of namespaces in the same Kubernetes cluster.
+
+## How It Works
+
+The ECK operator uses Kubernetes label selectors to filter namespaces. A label selector specifies which labels must match. Only namespaces with the required labels are managed by the operator.
+
+For example, with a label selector `environment: production`, the operator will only manage namespaces labeled with `environment: production`.
+
+## Benefits
+
+- **Targeted Management**: The operator can be limited to specific namespaces, useful in shared clusters.
+- **Resource Optimization**: Limiting the operator's scope improves resource usage and reduces conflicts.
+- **Security and Isolation**: Namespace filtering helps enforce isolation between applications or teams.
+
+## Configuration Example
+
+To enable namespace filtering, start the ECK operator with the `--namespace-label-selector` flag. For example:
+
+```sh
+manager --namespace-label-selector=environment=production
 ```
 
-In dit voorbeeld zal de ECK operator alleen van toepassing zijn op de namespace `mijn-namespace` als deze het label `environment: production` heeft.
+This instructs the operator to manage only those namespaces that have the label `environment=production`.
 
-## Conclusie
+Example namespace manifest:
 
-Namespace filtering met label selectors biedt een flexibele en krachtige manier om de reikwijdte van je ECK operator te beheren. Door gebruik te maken van deze functie, kun je efficiënter werken met meerdere namespaces binnen je Kubernetes cluster en tegelijkertijd een hoge mate van isolatie en veiligheid handhaven.
+```yaml
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: my-namespace
+  labels:
+    environment: production
+```
+
+Any resources (such as Elasticsearch, Kibana, etc.) in `my-namespace` will only be managed by the operator if the namespace itself has the correct label.
+
+## Conclusion
+
+Namespace filtering with label selectors provides a flexible way to control the scope of the ECK operator. This enables efficient management of multiple namespaces and improves isolation and security.
