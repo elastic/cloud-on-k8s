@@ -181,8 +181,8 @@ spec:
     # generates automatically from the elasticsearchRefs association.
     outputs:
       default:
-        ssl.certificate: /usr/share/elastic-agent/config/client-certs/tls.crt
-        ssl.key: /usr/share/elastic-agent/config/client-certs/tls.key
+        ssl.certificate: /etc/pki/client-certs/tls.crt
+        ssl.key: /etc/pki/client-certs/tls.key
     inputs:
     - id: 4917ade0-3634-11eb-8208-57893829af4e
       name: system-1
@@ -243,7 +243,7 @@ spec:
             runAsUser: 0
           volumeMounts:
           - name: client-certs
-            mountPath: /usr/share/elastic-agent/config/client-certs
+            mountPath: /etc/pki/client-certs
             readOnly: true
         volumes:
         - name: client-certs

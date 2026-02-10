@@ -204,8 +204,8 @@ spec:
     # These settings are merged into the output that ECK generates
     # automatically from the elasticsearchRef association.
     output.elasticsearch:
-      ssl.certificate: /usr/share/metricbeat/config/client-certs/tls.crt
-      ssl.key: /usr/share/metricbeat/config/client-certs/tls.key
+      ssl.certificate: /etc/pki/client-certs/tls.crt
+      ssl.key: /etc/pki/client-certs/tls.key
     processors:
     - add_cloud_metadata: {}
     - add_host_metadata: {}
@@ -228,7 +228,7 @@ spec:
             name: dockersock
           - mountPath: /hostfs/proc
             name: proc
-          - mountPath: /usr/share/metricbeat/config/client-certs
+          - mountPath: /etc/pki/client-certs
             name: client-certs
             readOnly: true
           env:

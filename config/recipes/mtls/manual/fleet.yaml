@@ -196,9 +196,9 @@ spec:
       type: elasticsearch
       hosts: ["https://elasticsearch-es-http.default.svc:9200"]
       ssl:
-        certificate_authorities: ["/usr/share/elastic-agent/config/client-certs/ca.crt"]
-        certificate: "/usr/share/elastic-agent/config/client-certs/tls.crt"
-        key: "/usr/share/elastic-agent/config/client-certs/tls.key"
+        certificate_authorities: ["/etc/pki/client-certs/ca.crt"]
+        certificate: "/etc/pki/client-certs/tls.crt"
+        key: "/etc/pki/client-certs/tls.key"
 
     xpack.fleet.packages:
     - name: system
@@ -265,7 +265,7 @@ spec:
         volumes:
         # mTLS: mount the Fleet Server HTTP cert at the agent-expected path so the
         # Fleet output (configured in Kibana) can find ca.crt, tls.crt and tls.key
-        # at /usr/share/elastic-agent/config/client-certs/ for Fleet Server's own
+        # at /etc/pki/client-certs/ for Fleet Server's own
         # monitoring agent.
         - name: fleet-server-client-certs
           secret:
@@ -291,7 +291,7 @@ spec:
             value: /usr/share/fleet-server/config/http-certs/tls.key
           volumeMounts:
           - name: fleet-server-client-certs
-            mountPath: /usr/share/elastic-agent/config/client-certs
+            mountPath: /etc/pki/client-certs
             readOnly: true
 ---
 # =============================================================================
@@ -327,12 +327,12 @@ spec:
           # mTLS: Agent -> Fleet Server (present client cert during enrollment/check-ins)
           # Agent -> Elasticsearch client cert paths are set via the Fleet output in Kibana.
           - name: ELASTIC_AGENT_CERT
-            value: /usr/share/elastic-agent/config/client-certs/tls.crt
+            value: /etc/pki/client-certs/tls.crt
           - name: ELASTIC_AGENT_CERT_KEY
-            value: /usr/share/elastic-agent/config/client-certs/tls.key
+            value: /etc/pki/client-certs/tls.key
           volumeMounts:
           - name: agent-client-certs
-            mountPath: /usr/share/elastic-agent/config/client-certs
+            mountPath: /etc/pki/client-certs
             readOnly: true
 ---
 # =============================================================================

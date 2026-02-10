@@ -73,7 +73,7 @@ Deploys Elasticsearch, Kibana, Fleet Server and a Fleet-managed Elastic Agent, a
 
 ==== Kibana Fleet output
 
-In addition to presenting its own client cert to Elasticsearch (see <<Kibana>> above), Kibana pre-configures the default Fleet output via `xpack.fleet.outputs`. This output is pushed to all enrolled agents and includes `ssl.certificate`, `ssl.key` and `ssl.certificate_authorities` pointing to where the agent's client cert will be mounted (`/usr/share/elastic-agent/config/client-certs/`). This is a preconfigured (immutable) output -- it cannot be changed via the Fleet API, only through the Kibana config. It applies to ALL agents, including Fleet Server's own monitoring agent.
+In addition to presenting its own client cert to Elasticsearch (see <<Kibana>> above), Kibana pre-configures the default Fleet output via `xpack.fleet.outputs`. This output is pushed to all enrolled agents and includes `ssl.certificate`, `ssl.key` and `ssl.certificate_authorities` pointing to where the agent's client cert will be mounted (`/etc/pki/client-certs/`). This is a preconfigured (immutable) output -- it cannot be changed via the Fleet API, only through the Kibana config. It applies to ALL agents, including Fleet Server's own monitoring agent.
 
 ==== Fleet Server
 
@@ -85,15 +85,15 @@ Fleet Server has three mTLS roles, each configured via environment variables:
 
 3. **Self-enrollment**: Fleet Server runs an internal elastic-agent process that enrolls with its own HTTPS listener. When `FLEET_SERVER_CLIENT_AUTH=required`, this internal agent must also present a client cert. `ELASTIC_AGENT_CERT` and `ELASTIC_AGENT_CERT_KEY` point to the HTTP cert (which has "client auth" usage) so self-enrollment succeeds.
 
-Additionally, the Fleet output (configured in Kibana) specifies cert paths at `/usr/share/elastic-agent/config/client-certs/`. Fleet Server's own monitoring agent uses this output too, but Fleet Server's certs live at a different path (`/usr/share/fleet-server/config/http-certs/`). To solve this path mismatch, the same HTTP cert secret is mounted a second time at the agent-expected path via the `fleet-server-client-certs` volume.
+Additionally, the Fleet output (configured in Kibana) specifies cert paths at `/etc/pki/client-certs/`. Fleet Server's own monitoring agent uses this output too, but Fleet Server's certs live at a different path (`/usr/share/fleet-server/config/http-certs/`). To solve this path mismatch, the same HTTP cert secret is mounted a second time at the agent-expected path via the `fleet-server-client-certs` volume.
 
 ==== Elastic Agent
 
-The agent's client certificate (`elastic-agent-client-certs-cm`) is mounted at `/usr/share/elastic-agent/config/client-certs/`. It is used in two places:
+The agent's client certificate (`elastic-agent-client-certs-cm`) is mounted at `/etc/pki/client-certs/`. It is used in two places:
 
 1. **Agent -> Fleet Server**: `ELASTIC_AGENT_CERT` and `ELASTIC_AGENT_CERT_KEY` env vars tell the agent to present this cert during enrollment and check-ins with Fleet Server (which requires it via `FLEET_SERVER_CLIENT_AUTH=required`).
 
-2. **Agent -> Elasticsearch**: After enrollment, the agent receives its policy from Fleet. The default output (preconfigured in `xpack.fleet.outputs`) includes `ssl.certificate`, `ssl.key` and `ssl.certificate_authorities` pointing to the same `/usr/share/elastic-agent/config/client-certs/` path, ensuring the agent presents the client cert when shipping data to Elasticsearch.
+2. **Agent -> Elasticsearch**: After enrollment, the agent receives its policy from Fleet. The default output (preconfigured in `xpack.fleet.outputs`) includes `ssl.certificate`, `ssl.key` and `ssl.certificate_authorities` pointing to the same `/etc/pki/client-certs/` path, ensuring the agent presents the client cert when shipping data to Elasticsearch.
 
 ==== Validating Fleet Server mTLS enforcement
 
@@ -108,8 +108,8 @@ kubectl exec $AGENT_POD -- curl -svk https://fleet-server-agent-http:8220/api/st
 
 # With a client certificate -- should SUCCEED with HTTP 200
 kubectl exec $AGENT_POD -- curl -svk \
-  --cert /usr/share/elastic-agent/config/client-certs/tls.crt \
-  --key /usr/share/elastic-agent/config/client-certs/tls.key \
+  --cert /etc/pki/client-certs/tls.crt \
+  --key /etc/pki/client-certs/tls.key \
   https://fleet-server-agent-http:8220/api/status
 ----
 
@@ -124,7 +124,7 @@ kubectl apply -f standalone-agent.yaml
 
 Deploys Elasticsearch, Kibana and a standalone Elastic Agent (without Fleet) with mTLS enabled between all components and Elasticsearch.
 
-Because there is no Fleet Server, the setup is simpler than the Fleet-managed recipe. Only three certificates are needed: the Elasticsearch server cert, the Kibana server+client cert and the agent's client cert. Kibana presents its HTTP certificate as a client cert to Elasticsearch. The agent's client certificate is mounted at `/usr/share/elastic-agent/config/client-certs/` and referenced via `outputs.default.ssl.certificate` and `outputs.default.ssl.key` in `spec.config`, which ECK merges on top of the auto-generated output (see <<Config merge for standalone components (Agents and Beats)>> above).
+Because there is no Fleet Server, the setup is simpler than the Fleet-managed recipe. Only three certificates are needed: the Elasticsearch server cert, the Kibana server+client cert and the agent's client cert. Kibana presents its HTTP certificate as a client cert to Elasticsearch. The agent's client certificate is mounted at `/etc/pki/client-certs/` and referenced via `outputs.default.ssl.certificate` and `outputs.default.ssl.key` in `spec.config`, which ECK merges on top of the auto-generated output (see <<Config merge for standalone components (Agents and Beats)>> above).
 
 === Standalone Beats - `beats.yaml`
 
@@ -133,6 +133,6 @@ Because there is no Fleet Server, the setup is simpler than the Fleet-managed re
 kubectl apply -f beats.yaml
 ----
 
-Deploys Elasticsearch, Kibana and a Metricbeat DaemonSet with mTLS enabled between all components and Elasticsearch. Kibana presents its HTTP certificate as a client cert to Elasticsearch. Metricbeat's client certificate is mounted at `/usr/share/metricbeat/config/client-certs/` and referenced via `output.elasticsearch.ssl.certificate` and `output.elasticsearch.ssl.key` in `spec.config`, which ECK merges on top of the auto-generated output (see <<Config merge for standalone components (Agents and Beats)>> above).
+Deploys Elasticsearch, Kibana and a Metricbeat DaemonSet with mTLS enabled between all components and Elasticsearch. Kibana presents its HTTP certificate as a client cert to Elasticsearch. Metricbeat's client certificate is mounted at `/etc/pki/client-certs/` and referenced via `output.elasticsearch.ssl.certificate` and `output.elasticsearch.ssl.key` in `spec.config`, which ECK merges on top of the auto-generated output (see <<Config merge for standalone components (Agents and Beats)>> above).
 
 This pattern applies to any Beat type (Filebeat, Heartbeat, Auditbeat, etc.) -- replace the Beat-specific module configuration and adjust the mount path accordingly.
