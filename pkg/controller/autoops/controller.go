@@ -27,7 +27,6 @@ import (
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common"
 	commonesclient "github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/esclient"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/events"
-	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/license"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/operator"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/reconciler"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/tracing"
@@ -126,7 +125,6 @@ type AgentPolicyReconciler struct {
 	k8s.Client
 	accessReviewer   rbac.AccessReviewer
 	recorder         record.EventRecorder
-	licenseChecker   license.Checker
 	params           operator.Parameters
 	dynamicWatches   watches.DynamicWatches
 	esClientProvider commonesclient.Provider
