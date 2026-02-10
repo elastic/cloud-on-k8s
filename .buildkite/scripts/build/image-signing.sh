@@ -48,17 +48,21 @@ get_image_digest() {
 
 main() {
     local output_file="eck-container-images-digest.txt"
+    local metadata_output
 
     # Initialize output file
     true > "$output_file"
 
     # Get list of images to sign from buildkite metadata
     local images_list
-    if ! images_list=$(buildkite-agent meta-data get images-to-sign 2>&1); then
+    if ! metadata_output=$(buildkite-agent meta-data get images-to-sign 2>&1); then
         echo "Error: Failed to get images-to-sign metadata. Was gen-drivah.toml.sh run?" >&2
-        echo "$images_list" >&2
+        if [[ -n "$metadata_output" ]]; then
+            echo "$metadata_output" >&2
+        fi
         exit 1
     fi
+    images_list="$metadata_output"
 
     if [[ -z "$images_list" ]]; then
         echo "Error: images-to-sign buildkite metadata is empty" >&2
