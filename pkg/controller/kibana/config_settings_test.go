@@ -914,9 +914,6 @@ func Test_maybeConfigureFleetOutputs(t *testing.T) {
 			wantMap: map[string]any{
 				"xpack": map[string]any{
 					"fleet": map[string]any{
-						"agents": map[string]any{
-							"elasticsearch": nil,
-						},
 						"packages": []any{map[string]any{"name": "fleet_server"}},
 						"outputs": []any{
 							map[string]any{

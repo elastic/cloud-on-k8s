@@ -64,6 +64,8 @@ const (
 	XpackFleetRegistryURL                          = "xpack.fleet.registryUrl"
 	XpackFleetPackages                             = "xpack.fleet.packages"
 	XpackFleetOutputs                              = "xpack.fleet.outputs"
+	XpackFleetAgents                               = "xpack.fleet.agents"
+	XpackFleetAgentsElasticsearch                  = "xpack.fleet.agents.elasticsearch"
 	XpackFleetAgentsElasticsearchHosts             = "xpack.fleet.agents.elasticsearch.hosts"
 	ECKFleetOutputID                               = "eck-fleet-agent-output-elasticsearch"
 	ECKFleetOutputName                             = "eck-elasticsearch"
@@ -194,7 +196,7 @@ func maybeConfigureFleetOutputs(cfg *settings.CanonicalConfig, esAssocConf *comm
 	}
 
 	if len(fleetCfg.Outputs) > 0 {
-		return cfg.Remove(XpackFleetAgentsElasticsearchHosts)
+		return removeLegacyFleetAgentsElasticsearch(cfg)
 	}
 
 	if len(fleetCfg.Outputs) == 0 {
@@ -202,10 +204,28 @@ func maybeConfigureFleetOutputs(cfg *settings.CanonicalConfig, esAssocConf *comm
 			if err := cfg.MergeWith(defaultFleetOutputsConfig(*esAssocConf, esAssoc)); err != nil {
 				return err
 			}
-			return cfg.Remove(XpackFleetAgentsElasticsearchHosts)
+			return removeLegacyFleetAgentsElasticsearch(cfg)
 		}
 	}
 
+	return nil
+}
+
+// removeLegacyFleetAgentsElasticsearch removes xpack.fleet.agents.elasticsearch and
+// prunes xpack.fleet.agents when it becomes empty to avoid serializing null values.
+func removeLegacyFleetAgentsElasticsearch(cfg *settings.CanonicalConfig) error {
+	if err := cfg.Remove(XpackFleetAgentsElasticsearch); err != nil {
+		return err
+	}
+	var fleetCfg struct {
+		Agents any `config:"xpack.fleet.agents"`
+	}
+	if err := cfg.Unpack(&fleetCfg); err != nil {
+		return err
+	}
+	if fleetCfg.Agents == nil {
+		return cfg.Remove(XpackFleetAgents)
+	}
 	return nil
 }
 
