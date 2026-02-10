@@ -1009,7 +1009,7 @@ func Test_applyRelatedEsAssoc(t *testing.T) {
 	} {
 		t.Run(tt.name, func(t *testing.T) {
 			builder := generateBuilder()
-			gotBuilder, gotErr := applyRelatedEsAssoc(tt.agent, tt.assoc, builder)
+			gotBuilder, gotErr := applyRelatedEsAssoc(tt.assoc, builder)
 			require.Equal(t, tt.wantErr, gotErr != nil)
 			if !tt.wantErr {
 				require.Nil(t, gotErr)

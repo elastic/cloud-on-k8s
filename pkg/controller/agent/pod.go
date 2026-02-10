@@ -209,7 +209,7 @@ func amendBuilderForFleetMode(params Params, fleetCerts *certificates.Certificat
 		return nil, err
 	}
 
-	builder, err = applyRelatedEsAssoc(params.Agent, esAssociation, builder)
+	builder, err = applyRelatedEsAssoc(esAssociation, builder)
 	if err != nil {
 		return nil, err
 	}
@@ -339,7 +339,7 @@ func getRelatedEsAssoc(params Params) (commonv1.Association, error) {
 	return esAssociation, nil
 }
 
-func applyRelatedEsAssoc(agent agentv1alpha1.Agent, esAssociation commonv1.Association, builder *defaults.PodTemplateBuilder) (*defaults.PodTemplateBuilder, error) {
+func applyRelatedEsAssoc(esAssociation commonv1.Association, builder *defaults.PodTemplateBuilder) (*defaults.PodTemplateBuilder, error) {
 	if esAssociation == nil {
 		return builder, nil
 	}

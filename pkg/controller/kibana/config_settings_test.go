@@ -791,7 +791,8 @@ func TestNewConfigSettingsFleetOutputsInjection(t *testing.T) {
 			require.True(t, found)
 			require.NotEmpty(t, outputs)
 
-			firstOutput := outputs[0].(map[string]any)
+			firstOutput, ok := outputs[0].(map[string]any)
+			require.True(t, ok)
 			hosts, ok := firstOutput["hosts"].([]any)
 			require.True(t, ok)
 			require.Len(t, hosts, len(tc.wantOutputHosts))
@@ -869,13 +870,16 @@ func Test_defaultFleetOutputsConfig(t *testing.T) {
 			require.NoError(t, cfg.Unpack(&fleetCfg))
 			outputs := fleetCfg.Outputs
 			require.Len(t, outputs, 1)
-			entry := outputs[0].(map[string]any)
+			entry, ok := outputs[0].(map[string]any)
+			require.True(t, ok)
 			require.Equal(t, ECKFleetOutputID, entry["id"])
 			require.Equal(t, ECKFleetOutputName, entry["name"])
 			require.Equal(t, "elasticsearch", entry["type"])
 			require.Equal(t, tt.wantSSL, entry["ssl"] != nil)
 			if tt.wantSSL {
-				require.Equal(t, tt.wantCA, entry["ssl"].(map[string]any)["certificate_authorities"])
+				sslCfg, ok := entry["ssl"].(map[string]any)
+				require.True(t, ok)
+				require.Equal(t, tt.wantCA, sslCfg["certificate_authorities"])
 			}
 		})
 	}
