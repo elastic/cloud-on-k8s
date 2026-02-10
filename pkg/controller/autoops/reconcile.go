@@ -7,7 +7,6 @@ package autoops
 import (
 	"context"
 	"fmt"
-	"time"
 
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -33,18 +32,6 @@ func (r *AgentPolicyReconciler) doReconcile(ctx context.Context, policy autoopsv
 	log.V(1).Info("Reconcile AutoOpsAgentPolicy")
 
 	results := reconciler.NewResult(ctx)
-
-	// Enterprise license check
-	enabled, err := r.licenseChecker.EnterpriseFeaturesEnabled(ctx)
-	if err != nil {
-		return results.WithError(err)
-	}
-	if !enabled {
-		msg := "AutoOpsAgentPolicy is an enterprise feature. Enterprise features are disabled"
-		log.Info(msg)
-		state.UpdateInvalidPhaseWithEvent(msg)
-		return results.WithRequeue(5 * time.Minute)
-	}
 
 	// run validation in case the webhook is disabled
 	if err := r.validate(ctx, &policy); err != nil {
