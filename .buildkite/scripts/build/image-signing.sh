@@ -18,7 +18,7 @@ retry() { "$ROOT/hack/retry.sh" 5 "$@"; }
 get_image_digest() {
     local image_ref="$1"
     local digest
-    local crane_output
+    local stderr_file
 
     # Get the multi-arch manifest list digest directly with crane.
     if ! command -v crane >/dev/null 2>&1; then
@@ -26,28 +26,33 @@ get_image_digest() {
         return 1
     fi
 
-    if ! crane_output=$(retry crane digest "$image_ref" 2>&1); then
+    stderr_file="$(mktemp)"
+    if ! digest=$(retry crane digest "$image_ref" 2>"$stderr_file"); then
         echo "Error: failed to get digest for $image_ref" >&2
-        if [[ -n "$crane_output" ]]; then
-            echo "$crane_output" >&2
+        if [[ -s "$stderr_file" ]]; then
+            cat "$stderr_file" >&2
         fi
+        rm -f "$stderr_file"
         return 1
     fi
-    digest="$crane_output"
 
     if [[ -z "$digest" || "$digest" == "null" ]]; then
         echo "Error: could not extract digest from $image_ref" >&2
-        if [[ -n "$crane_output" ]]; then
-            echo "crane output: $crane_output" >&2
+        if [[ -s "$stderr_file" ]]; then
+            echo "crane stderr output:" >&2
+            cat "$stderr_file" >&2
         fi
+        rm -f "$stderr_file"
         return 1
     fi
 
+    rm -f "$stderr_file"
     echo "$digest"
 }
 
 main() {
     local output_file="eck-container-images-digest.txt"
+    local stderr_file
     local metadata_output
 
     # Initialize output file
@@ -55,13 +60,16 @@ main() {
 
     # Get list of images to sign from buildkite metadata
     local images_list
-    if ! metadata_output=$(buildkite-agent meta-data get images-to-sign 2>&1); then
+    stderr_file="$(mktemp)"
+    if ! metadata_output=$(buildkite-agent meta-data get images-to-sign 2>"$stderr_file"); then
         echo "Error: Failed to get images-to-sign metadata. Was gen-drivah.toml.sh run?" >&2
-        if [[ -n "$metadata_output" ]]; then
-            echo "$metadata_output" >&2
+        if [[ -s "$stderr_file" ]]; then
+            cat "$stderr_file" >&2
         fi
+        rm -f "$stderr_file"
         exit 1
     fi
+    rm -f "$stderr_file"
     images_list="$metadata_output"
 
     if [[ -z "$images_list" ]]; then
