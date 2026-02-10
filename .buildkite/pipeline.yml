@@ -178,6 +178,10 @@ steps:
       memory: "2G"
 
   - group: sign images
+    if: |  # merge-xyz, tag-bc, tag-final, but not nightly-main
+      build.branch =~ /^[0-9]*\.[0-9]*\$/
+      || build.tag != null
+      || build.branch == "main"
     steps:
       - label: ":buildkite: upload images digest"
         depends_on:

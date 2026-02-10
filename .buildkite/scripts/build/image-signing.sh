@@ -18,6 +18,7 @@ retry() { "$ROOT/hack/retry.sh" 5 "$@"; }
 get_image_digest() {
     local image_ref="$1"
     local digest
+    local crane_output
 
     # Get the multi-arch manifest list digest directly with crane.
     if ! command -v crane >/dev/null 2>&1; then
@@ -25,13 +26,20 @@ get_image_digest() {
         return 1
     fi
 
-    if ! digest=$(retry crane digest "$image_ref" 2>&1); then
+    if ! crane_output=$(retry crane digest "$image_ref" 2>&1); then
         echo "Error: failed to get digest for $image_ref" >&2
+        if [[ -n "$crane_output" ]]; then
+            echo "$crane_output" >&2
+        fi
         return 1
     fi
+    digest="$crane_output"
 
     if [[ -z "$digest" || "$digest" == "null" ]]; then
         echo "Error: could not extract digest from $image_ref" >&2
+        if [[ -n "$crane_output" ]]; then
+            echo "crane output: $crane_output" >&2
+        fi
         return 1
     fi
 
