@@ -9,7 +9,6 @@ import (
 	"path"
 	"path/filepath"
 
-	"github.com/elastic/go-ucfg"
 	"github.com/pkg/errors"
 	"go.elastic.co/apm/v2"
 	corev1 "k8s.io/api/core/v1"
@@ -19,6 +18,7 @@ import (
 	commonv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/common/v1"
 	kbv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/kibana/v1"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/association"
+	commonassociation "github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/association"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/certificates"
 	commonpassword "github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/password"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/settings"
@@ -62,6 +62,11 @@ const (
 	XpackEncryptedSavedObjects                     = "xpack.encryptedSavedObjects"
 	XpackEncryptedSavedObjectsEncryptionKey        = "xpack.encryptedSavedObjects.encryptionKey"
 	XpackFleetRegistryURL                          = "xpack.fleet.registryUrl"
+	XpackFleetPackages                             = "xpack.fleet.packages"
+	XpackFleetOutputs                              = "xpack.fleet.outputs"
+	XpackFleetAgentsElasticsearchHosts             = "xpack.fleet.agents.elasticsearch.hosts"
+	ECKFleetOutputID                               = "eck-fleet-agent-output-elasticsearch"
+	ECKFleetOutputName                             = "eck-elasticsearch"
 
 	ElasticsearchSslCertificateAuthorities = "elasticsearch.ssl.certificateAuthorities"
 	ElasticsearchSslVerificationMode       = "elasticsearch.ssl.verificationMode"
@@ -171,8 +176,62 @@ func NewConfigSettings(ctx context.Context, client k8s.Client, kb kbv1.Kibana, v
 	if err = cfg.MergeWith(userSettings, kibanaConfigFromPolicy); err != nil {
 		return CanonicalConfig{}, err
 	}
+	if err = maybeConfigureFleetOutputs(cfg, esAssocConf, kb.EsAssociation()); err != nil {
+		return CanonicalConfig{}, err
+	}
 
 	return CanonicalConfig{cfg}, nil
+}
+
+// maybeConfigureFleetOutputs applies Fleet output defaults and removes legacy Fleet hosts
+// with a single read of xpack.fleet.outputs state.
+func maybeConfigureFleetOutputs(cfg *settings.CanonicalConfig, esAssocConf *commonv1.AssociationConf, esAssoc commonv1.Association) error {
+	var fleetCfg struct {
+		Outputs []any `config:"xpack.fleet.outputs"`
+	}
+	if err := cfg.Unpack(&fleetCfg); err != nil {
+		return err
+	}
+
+	if len(fleetCfg.Outputs) > 0 {
+		return cfg.Remove(XpackFleetAgentsElasticsearchHosts)
+	}
+
+	if len(fleetCfg.Outputs) == 0 {
+		if esAssocConf != nil && esAssocConf.IsConfigured() && hasFleetPackages(cfg) {
+			if err := cfg.MergeWith(defaultFleetOutputsConfig(*esAssocConf, esAssoc)); err != nil {
+				return err
+			}
+			return cfg.Remove(XpackFleetAgentsElasticsearchHosts)
+		}
+	}
+
+	return nil
+}
+
+// hasFleetPackages returns true if xpack.fleet.packages is present in the effective config.
+func hasFleetPackages(cfg *settings.CanonicalConfig) bool {
+	return len(cfg.HasKeys([]string{XpackFleetPackages})) > 0
+}
+
+// defaultFleetOutputsConfig builds the default xpack.fleet.outputs block from an ES association.
+func defaultFleetOutputsConfig(esAssocConf commonv1.AssociationConf, esAssoc commonv1.Association) *settings.CanonicalConfig {
+	output := map[string]any{
+		"id":         ECKFleetOutputID,
+		"is_default": true,
+		"name":       ECKFleetOutputName,
+		"type":       "elasticsearch",
+		"hosts":      []string{esAssocConf.GetURL()},
+	}
+	if esAssocConf.GetCACertProvided() {
+		esCertsPath := path.Join(commonassociation.CertificatesDir(esAssoc), certificates.CAFileName)
+		output["ssl"] = map[string]any{
+			"certificate_authorities": []string{esCertsPath},
+		}
+	}
+	return settings.MustCanonicalConfig(map[string]any{
+		XpackFleetOutputs: []any{output},
+	})
 }
 
 // Some previously-unsupported keys cause Kibana to error out even if the values are empty. ucfg cannot ignore fields easily so this is necessary to
@@ -183,7 +242,7 @@ func filterConfigSettings(kb kbv1.Kibana, cfg *settings.CanonicalConfig) error {
 		return err
 	}
 	if !ver.GTE(version.From(7, 6, 0)) {
-		_, err = (*ucfg.Config)(cfg).Remove(XpackEncryptedSavedObjects, -1, settings.Options...)
+		err = cfg.Remove(XpackEncryptedSavedObjects)
 	}
 	return err
 }

@@ -661,6 +661,316 @@ func TestNewConfigSettingsPre760(t *testing.T) {
 	assert.Equal(t, 0, len(got.CanonicalConfig.HasKeys([]string{XpackEncryptedSavedObjects})))
 }
 
+func TestNewConfigSettingsFleetOutputsInjection(t *testing.T) {
+	baseKibana := func(configData map[string]any) kbv1.Kibana {
+		kb := mkKibana()
+		kb.Spec.ElasticsearchRef = commonv1.ObjectSelector{Name: "test-es"}
+		kb.EsAssociation().SetAssociationConf(&commonv1.AssociationConf{
+			AuthSecretName: "auth-secret",
+			AuthSecretKey:  "elastic",
+			CASecretName:   "ca-secret",
+			CACertProvided: true,
+			URL:            "https://es-url:9200",
+		})
+		if configData != nil {
+			kb.Spec.Config = &commonv1.Config{Data: configData}
+		}
+		return kb
+	}
+
+	clientForKibana := func(kb kbv1.Kibana) k8s.Client {
+		return k8s.NewFakeClient(
+			&corev1.Secret{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      kbv1.ConfigSecret(kb.Name),
+					Namespace: kb.Namespace,
+				},
+				Data: map[string][]byte{
+					SettingsFilename: []byte("xpack.security.encryptionKey: thisismyencryptionkey\nxpack.reporting.encryptionKey: thisismyreportingkey\nxpack.encryptedSavedObjects.encryptionKey: thisismyobjectkey"),
+				},
+			},
+			&corev1.Secret{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "auth-secret",
+					Namespace: kb.Namespace,
+				},
+				Data: map[string][]byte{
+					"elastic": []byte("password"),
+				},
+			},
+			&corev1.Secret{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "ca-secret",
+				},
+				Data: map[string][]byte{
+					"ca.crt": []byte("certificate"),
+				},
+			},
+		)
+	}
+
+	testCases := []struct {
+		name                string
+		configData          map[string]any
+		wantInjectedDefault bool
+		wantOutputHosts     []string
+		wantHostsPresent    bool
+	}{
+		{
+			name: "injects outputs when packages configured and outputs missing",
+			configData: map[string]any{
+				XpackFleetPackages:                 []any{map[string]any{"name": "fleet_server", "version": "latest"}},
+				XpackFleetAgentsElasticsearchHosts: []any{"https://elasticsearch-es-http.default.svc:9200"},
+			},
+			wantInjectedDefault: true,
+			wantOutputHosts:     []string{"https://es-url:9200"},
+			wantHostsPresent:    false,
+		},
+		{
+			name: "injects outputs when packages configured and outputs empty",
+			configData: map[string]any{
+				XpackFleetPackages:                 []any{map[string]any{"name": "fleet_server", "version": "latest"}},
+				XpackFleetOutputs:                  []any{},
+				XpackFleetAgentsElasticsearchHosts: []any{"https://elasticsearch-es-http.default.svc:9200"},
+			},
+			wantInjectedDefault: true,
+			wantOutputHosts:     []string{"https://es-url:9200"},
+			wantHostsPresent:    false,
+		},
+		{
+			name: "does not override existing outputs when packages configured",
+			configData: map[string]any{
+				XpackFleetPackages:                 []any{map[string]any{"name": "fleet_server", "version": "latest"}},
+				XpackFleetAgentsElasticsearchHosts: []any{"https://elasticsearch-es-http.default.svc:9200"},
+				XpackFleetOutputs: []any{
+					map[string]any{
+						"id":         "custom-output",
+						"is_default": true,
+						"name":       "custom",
+						"type":       "elasticsearch",
+						"hosts":      []any{"https://custom-es:9200"},
+					},
+				},
+			},
+			wantInjectedDefault: false,
+			wantOutputHosts:     []string{"https://custom-es:9200"},
+			wantHostsPresent:    false,
+		},
+		{
+			name: "does not inject outputs when packages are absent",
+			configData: map[string]any{
+				XpackFleetAgentsElasticsearchHosts:      []any{"https://elasticsearch-es-http.default.svc:9200"},
+				"xpack.fleet.agents.fleet_server.hosts": []any{"https://fleet-server-agent-http.default.svc:8220"},
+			},
+			wantInjectedDefault: false,
+			wantOutputHosts:     nil,
+			wantHostsPresent:    true,
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			kb := baseKibana(tc.configData)
+			v := version.MustParse(kb.Spec.Version)
+			got, err := NewConfigSettings(context.Background(), clientForKibana(kb), kb, v, corev1.IPv4Protocol, nil)
+			require.NoError(t, err)
+
+			var fleetCfg struct {
+				Outputs []any `config:"xpack.fleet.outputs"`
+			}
+			require.NoError(t, got.CanonicalConfig.Unpack(&fleetCfg))
+			outputs := fleetCfg.Outputs
+			require.NoError(t, err)
+			found := len(got.CanonicalConfig.HasKeys([]string{XpackFleetOutputs})) > 0
+			hostsFound := len(got.CanonicalConfig.HasKeys([]string{XpackFleetAgentsElasticsearchHosts})) > 0
+			require.Equal(t, tc.wantHostsPresent, hostsFound)
+			if tc.wantOutputHosts == nil {
+				require.False(t, found)
+				return
+			}
+			require.True(t, found)
+			require.NotEmpty(t, outputs)
+
+			firstOutput := outputs[0].(map[string]any)
+			hosts, ok := firstOutput["hosts"].([]any)
+			require.True(t, ok)
+			require.Len(t, hosts, len(tc.wantOutputHosts))
+			for i, expectedHost := range tc.wantOutputHosts {
+				require.Equal(t, expectedHost, hosts[i])
+			}
+			if tc.wantInjectedDefault {
+				require.Equal(t, ECKFleetOutputID, firstOutput["id"])
+			}
+		})
+	}
+}
+
+func Test_defaultFleetOutputsConfig(t *testing.T) {
+	withCA := commonv1.AssociationConf{
+		URL:            "https://es-url:9200",
+		CACertProvided: true,
+		CASecretName:   "ca-secret",
+	}
+	withoutCA := commonv1.AssociationConf{
+		URL:            "https://es-url:9200",
+		CACertProvided: false,
+	}
+
+	tests := []struct {
+		name      string
+		assocConf commonv1.AssociationConf
+		kb        kbv1.Kibana
+		wantSSL   bool
+		wantCA    []any
+	}{
+		{
+			name:      "with CA",
+			assocConf: withCA,
+			kb: kbv1.Kibana{
+				ObjectMeta: metav1.ObjectMeta{Namespace: "default"},
+				Spec:       kbv1.KibanaSpec{ElasticsearchRef: commonv1.ObjectSelector{Name: "elasticsearch"}},
+			},
+			wantSSL: true,
+			wantCA:  []any{"/mnt/elastic-internal/elasticsearch-association/default/elasticsearch/certs/ca.crt"},
+		},
+		{
+			name:      "without CA",
+			assocConf: withoutCA,
+			kb: kbv1.Kibana{
+				ObjectMeta: metav1.ObjectMeta{Namespace: "default"},
+				Spec:       kbv1.KibanaSpec{ElasticsearchRef: commonv1.ObjectSelector{Name: "elasticsearch"}},
+			},
+			wantSSL: false,
+			wantCA:  nil,
+		},
+		{
+			name:      "with CA and explicit es namespace",
+			assocConf: withCA,
+			kb: kbv1.Kibana{
+				ObjectMeta: metav1.ObjectMeta{Namespace: "kibana-ns"},
+				Spec: kbv1.KibanaSpec{
+					ElasticsearchRef: commonv1.ObjectSelector{
+						Name:      "prod-es",
+						Namespace: "observability",
+					},
+				},
+			},
+			wantSSL: true,
+			wantCA:  []any{"/mnt/elastic-internal/elasticsearch-association/observability/prod-es/certs/ca.crt"},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			cfg := defaultFleetOutputsConfig(tt.assocConf, tt.kb.EsAssociation())
+			var fleetCfg struct {
+				Outputs []any `config:"xpack.fleet.outputs"`
+			}
+			require.NoError(t, cfg.Unpack(&fleetCfg))
+			outputs := fleetCfg.Outputs
+			require.Len(t, outputs, 1)
+			entry := outputs[0].(map[string]any)
+			require.Equal(t, ECKFleetOutputID, entry["id"])
+			require.Equal(t, ECKFleetOutputName, entry["name"])
+			require.Equal(t, "elasticsearch", entry["type"])
+			require.Equal(t, tt.wantSSL, entry["ssl"] != nil)
+			if tt.wantSSL {
+				require.Equal(t, tt.wantCA, entry["ssl"].(map[string]any)["certificate_authorities"])
+			}
+		})
+	}
+}
+
+func Test_maybeConfigureFleetOutputs(t *testing.T) {
+	tests := []struct {
+		name    string
+		cfg     *settings.CanonicalConfig
+		esAssoc *commonv1.AssociationConf
+		kb      kbv1.Kibana
+		wantMap map[string]any
+		wantErr bool
+	}{
+		{
+			name: "injects outputs and removes legacy hosts",
+			cfg: settings.MustCanonicalConfig(map[string]any{
+				XpackFleetPackages:                 []any{map[string]any{"name": "fleet_server"}},
+				XpackFleetAgentsElasticsearchHosts: []any{"https://legacy-es:9200"},
+			}),
+			esAssoc: &commonv1.AssociationConf{
+				URL:            "https://es-url:9200",
+				AuthSecretName: "auth-secret",
+				AuthSecretKey:  "elastic",
+				CACertProvided: true,
+				CASecretName:   "ca-secret",
+			},
+			kb: kbv1.Kibana{
+				ObjectMeta: metav1.ObjectMeta{Namespace: "default"},
+				Spec:       kbv1.KibanaSpec{ElasticsearchRef: commonv1.ObjectSelector{Name: "elasticsearch"}},
+			},
+			wantMap: map[string]any{
+				"xpack": map[string]any{
+					"fleet": map[string]any{
+						"agents": map[string]any{
+							"elasticsearch": nil,
+						},
+						"packages": []any{map[string]any{"name": "fleet_server"}},
+						"outputs": []any{
+							map[string]any{
+								"id":         ECKFleetOutputID,
+								"is_default": true,
+								"name":       ECKFleetOutputName,
+								"type":       "elasticsearch",
+								"hosts":      []any{"https://es-url:9200"},
+								"ssl": map[string]any{
+									"certificate_authorities": []any{"/mnt/elastic-internal/elasticsearch-association/default/elasticsearch/certs/ca.crt"},
+								},
+							},
+						},
+					},
+				},
+			},
+			wantErr: false,
+		},
+		{
+			name: "keeps legacy hosts when outputs are absent",
+			cfg: settings.MustCanonicalConfig(map[string]any{
+				XpackFleetAgentsElasticsearchHosts: []any{"https://legacy-es:9200"},
+			}),
+			esAssoc: nil,
+			kb: kbv1.Kibana{
+				ObjectMeta: metav1.ObjectMeta{Namespace: "default"},
+				Spec:       kbv1.KibanaSpec{ElasticsearchRef: commonv1.ObjectSelector{Name: "elasticsearch"}},
+			},
+			wantMap: map[string]any{
+				"xpack": map[string]any{
+					"fleet": map[string]any{
+						"agents": map[string]any{
+							"elasticsearch": map[string]any{
+								"hosts": []any{"https://legacy-es:9200"},
+							},
+						},
+					},
+				},
+			},
+			wantErr: false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			err := maybeConfigureFleetOutputs(tt.cfg, tt.esAssoc, tt.kb.EsAssociation())
+			require.Equal(t, tt.wantErr, err != nil)
+			if tt.wantErr {
+				return
+			}
+
+			var got map[string]any
+			require.NoError(t, tt.cfg.Unpack(&got))
+			require.Empty(t, deep.Equal(tt.wantMap, got))
+		})
+	}
+}
+
 func mkKibana() kbv1.Kibana {
 	kb := kbv1.Kibana{
 		ObjectMeta: metav1.ObjectMeta{

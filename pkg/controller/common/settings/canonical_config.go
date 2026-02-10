@@ -123,6 +123,12 @@ func (c *CanonicalConfig) String(key string) (string, error) {
 	return c.asUCfg().String(key, -1, Options...)
 }
 
+// Remove removes the value for the given dotted key path.
+func (c *CanonicalConfig) Remove(key string) error {
+	_, err := c.asUCfg().Remove(key, -1, Options...)
+	return err
+}
+
 // Unpack returns a typed config given a struct pointer.
 func (c *CanonicalConfig) Unpack(cfg any) error {
 	if reflect.ValueOf(cfg).Kind() != reflect.Ptr {

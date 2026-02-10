@@ -87,11 +87,6 @@ const (
 	FleetServerElasticsearchCA       = "FLEET_SERVER_ELASTICSEARCH_CA"
 	FleetServerPolicyID              = "FLEET_SERVER_POLICY_ID"
 	FleetServerServiceToken          = "FLEET_SERVER_SERVICE_TOKEN" //nolint:gosec
-
-	ubiSharedCAPath    = "/etc/pki/ca-trust/source/anchors/"
-	ubiUpdateCmd       = "/usr/bin/update-ca-trust"
-	debianSharedCAPath = "/usr/local/share/ca-certificates/"
-	debianUpdateCmd    = "/usr/sbin/update-ca-certificates"
 )
 
 var (
@@ -360,50 +355,10 @@ func applyRelatedEsAssoc(agent agentv1alpha1.Agent, esAssociation commonv1.Assoc
 	builder = builder.WithVolumeLikes(volume.NewSecretVolumeWithMountPath(
 		assocConf.GetCASecretName(),
 		fmt.Sprintf("%s-certs", esAssociation.AssociationType()),
-		certificatesDir(esAssociation),
+		commonassociation.CertificatesDir(esAssociation),
 	))
 
-	// If agent is set to run as root, then we will add the Elasticsearch CA to the
-	// pod's trusted CA store as both FLEET_CA and ELASTICSEARCH_CA environment variables
-	// are not respected by Agent in fleet mode. If we're not running as root, then we'll document the procedure
-	// to add the Elasticsearch CA to the Kibana's xpack output configuration pertaining to Fleet.
-	//
-	// For historic purposes (https://github.com/elastic/beats/pull/26529). Agent didn't respect
-	// FLEET_CA until 7.14.0, which is the lowest valid version we support of Agent + Fleet.
-	if runningAsRoot(agent) {
-		cmd := trustCAScript(path.Join(certificatesDir(esAssociation), CAFileName))
-		return builder.WithCommand([]string{"/usr/bin/env", "bash", "-c", cmd}), nil
-	}
 	return builder, nil
-}
-
-func runningAsRoot(agent agentv1alpha1.Agent) bool {
-	switch {
-	case agent.Spec.DaemonSet != nil:
-		return runningContainerAsRoot(agent.Spec.DaemonSet.PodTemplate)
-	case agent.Spec.Deployment != nil:
-		return runningContainerAsRoot(agent.Spec.Deployment.PodTemplate)
-	case agent.Spec.StatefulSet != nil:
-		return runningContainerAsRoot(agent.Spec.StatefulSet.PodTemplate)
-	default:
-		return false
-	}
-}
-
-func runningContainerAsRoot(podTemplate corev1.PodTemplateSpec) bool {
-	if podTemplate.Spec.SecurityContext != nil &&
-		podTemplate.Spec.SecurityContext.RunAsUser != nil &&
-		*podTemplate.Spec.SecurityContext.RunAsUser == 0 {
-		return true
-	}
-	for _, podContainer := range podTemplate.Spec.Containers {
-		if podContainer.SecurityContext != nil && podContainer.SecurityContext.RunAsUser != nil {
-			if *podContainer.SecurityContext.RunAsUser == 0 {
-				return true
-			}
-		}
-	}
-	return false
 }
 
 func writeEsAssocToConfigHash(params Params, esAssociation commonv1.Association, configHash hash.Hash) error {
@@ -443,26 +398,10 @@ func getVolumesFromAssociations(associations []commonv1.Association) ([]volume.V
 		vols = append(vols, volume.NewSecretVolumeWithMountPath(
 			caSecretName,
 			fmt.Sprintf("%s-certs-%d", assoc.AssociationType(), i),
-			certificatesDir(assoc),
+			commonassociation.CertificatesDir(assoc),
 		))
 	}
 	return vols, nil
-}
-
-func trustCAScript(caPath string) string {
-	return fmt.Sprintf(`#!/usr/bin/env bash
-set -e
-if [[ -f %[1]s ]]; then
-  if [[ -f %[3]s ]]; then
-    cp %[1]s %[2]s
-    %[3]s
-  elif [[ -f %[5]s ]]; then
-    cp %[1]s %[4]s
-    %[5]s
-  fi
-fi
-/usr/bin/tini -- /usr/local/bin/docker-entrypoint -e "$@"
-`, caPath, ubiSharedCAPath, ubiUpdateCmd, debianSharedCAPath, debianUpdateCmd)
 }
 
 func createDataVolume(params Params) volume.VolumeLike {
@@ -474,16 +413,6 @@ func createDataVolume(params Params) volume.VolumeLike {
 		DataMountPath,
 		false,
 		corev1.HostPathDirectoryOrCreate)
-}
-
-func certificatesDir(association commonv1.Association) string {
-	ref := association.AssociationRef()
-	return fmt.Sprintf(
-		"/mnt/elastic-internal/%s-association/%s/%s/certs",
-		association.AssociationType(),
-		ref.Namespace,
-		ref.NameOrSecretName(),
-	)
 }
 
 func getFleetModeEnvVars(
@@ -577,7 +506,7 @@ func getFleetSetupFleetEnvVars(client k8s.Client, fleetToken EnrollmentAPIKey, f
 			}
 
 			if assocConf.GetCACertProvided() {
-				fleetCfg[FleetCA] = path.Join(certificatesDir(assoc), CAFileName)
+				fleetCfg[FleetCA] = path.Join(commonassociation.CertificatesDir(assoc), CAFileName)
 			}
 		}
 
