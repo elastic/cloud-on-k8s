@@ -1,0 +1,253 @@
+---
+# =============================================================================
+# cert-manager CA infrastructure
+# =============================================================================
+
+# Self-signed issuer — only used to bootstrap the CA certificate.
+apiVersion: cert-manager.io/v1
+kind: Issuer
+metadata:
+  name: elastic-stack-selfsigned-issuer
+spec:
+  selfSigned: {}
+---
+# CA certificate — the single root of trust for the entire stack.
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: elastic-stack-ca
+spec:
+  isCA: true
+  commonName: elastic-stack-ca
+  secretName: elastic-stack-ca-secret
+  duration: 87600h   # 10 years
+  renewBefore: 8760h  # 1 year
+  issuerRef:
+    name: elastic-stack-selfsigned-issuer
+    kind: Issuer
+---
+# CA issuer — signs every component certificate in the stack.
+apiVersion: cert-manager.io/v1
+kind: Issuer
+metadata:
+  name: elastic-stack-ca-issuer
+spec:
+  ca:
+    secretName: elastic-stack-ca-secret
+---
+# =============================================================================
+# Component certificates
+# =============================================================================
+
+# Elasticsearch HTTP certificate (server auth only)
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: elasticsearch-es-http-certs
+spec:
+  secretName: elasticsearch-es-http-certs-cm
+  issuerRef:
+    name: elastic-stack-ca-issuer
+    kind: Issuer
+  duration: 8760h
+  renewBefore: 720h
+  commonName: elasticsearch-es-http
+  dnsNames:
+  - elasticsearch-es-http
+  - elasticsearch-es-http.default
+  - elasticsearch-es-http.default.svc
+  - elasticsearch-es-http.default.svc.cluster.local
+  - elasticsearch-es-internal-http
+  - elasticsearch-es-internal-http.default
+  - elasticsearch-es-internal-http.default.svc
+  - elasticsearch-es-internal-http.default.svc.cluster.local
+  - localhost
+  ipAddresses:
+  - 127.0.0.1
+  usages:
+  - server auth
+  - digital signature
+  - key encipherment
+---
+# Kibana HTTP certificate (server + client auth)
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: kibana-kb-http-certs
+spec:
+  secretName: kibana-kb-http-certs-cm
+  issuerRef:
+    name: elastic-stack-ca-issuer
+    kind: Issuer
+  duration: 8760h
+  renewBefore: 720h
+  commonName: kibana-kb-http
+  dnsNames:
+  - kibana-kb-http
+  - kibana-kb-http.default
+  - kibana-kb-http.default.svc
+  - kibana-kb-http.default.svc.cluster.local
+  - localhost
+  ipAddresses:
+  - 127.0.0.1
+  usages:
+  - server auth
+  - client auth
+  - digital signature
+  - key encipherment
+---
+# Elastic Agent client certificate (client auth only)
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: elastic-agent-client-certs
+spec:
+  secretName: elastic-agent-client-certs-cm
+  issuerRef:
+    name: elastic-stack-ca-issuer
+    kind: Issuer
+  duration: 8760h
+  renewBefore: 720h
+  commonName: elastic-agent
+  usages:
+  - client auth
+  - digital signature
+  - key encipherment
+---
+# =============================================================================
+# Elasticsearch
+# =============================================================================
+apiVersion: elasticsearch.k8s.elastic.co/v1
+kind: Elasticsearch
+metadata:
+  name: elasticsearch
+spec:
+  version: 9.3.0
+  http:
+    tls:
+      certificate:
+        secretName: elasticsearch-es-http-certs-cm
+  nodeSets:
+  - name: default
+    count: 1
+    config:
+      node.store.allow_mmap: false
+      xpack.security.http.ssl.client_authentication: optional
+---
+# =============================================================================
+# Kibana
+# =============================================================================
+apiVersion: kibana.k8s.elastic.co/v1
+kind: Kibana
+metadata:
+  name: kibana
+spec:
+  version: 9.3.0
+  count: 1
+  elasticsearchRef:
+    name: elasticsearch
+  http:
+    tls:
+      certificate:
+        secretName: kibana-kb-http-certs-cm
+  config:
+    # mTLS: present Kibana's own HTTP cert as a client certificate to Elasticsearch.
+    # ECK mounts the HTTP cert at /mnt/elastic-internal/http-certs/.
+    elasticsearch.ssl.certificate: /mnt/elastic-internal/http-certs/tls.crt
+    elasticsearch.ssl.key: /mnt/elastic-internal/http-certs/tls.key
+---
+# =============================================================================
+# Elastic Agent (standalone mode with mTLS)
+# =============================================================================
+apiVersion: agent.k8s.elastic.co/v1alpha1
+kind: Agent
+metadata:
+  name: elastic-agent
+spec:
+  version: 9.3.0
+  elasticsearchRefs:
+  - name: elasticsearch
+  config:
+    id: 488e0b80-3634-11eb-8208-57893829af4e
+    revision: 2
+    agent:
+      monitoring:
+        enabled: true
+        use_output: default
+        logs: true
+        metrics: true
+    # mTLS: present a client certificate to Elasticsearch.
+    # These settings are merged into the "default" output that ECK
+    # generates automatically from the elasticsearchRefs association.
+    outputs:
+      default:
+        ssl.certificate: /usr/share/elastic-agent/config/client-certs/tls.crt
+        ssl.key: /usr/share/elastic-agent/config/client-certs/tls.key
+    inputs:
+    - id: 4917ade0-3634-11eb-8208-57893829af4e
+      name: system-1
+      revision: 1
+      type: system/metrics
+      use_output: default
+      meta:
+        package:
+          name: system
+          version: 9.3.0
+      data_stream:
+        namespace: default
+      streams:
+      - id: system/metrics-system.cpu
+        data_stream:
+          dataset: system.cpu
+          type: metrics
+        metricsets:
+        - cpu
+        cpu.metrics:
+        - percentages
+        - normalized_percentages
+        period: 10s
+      - id: system/metrics-system.memory
+        data_stream:
+          dataset: system.memory
+          type: metrics
+        metricsets:
+        - memory
+        period: 10s
+      - id: system/metrics-system.load
+        data_stream:
+          dataset: system.load
+          type: metrics
+        metricsets:
+        - load
+        period: 10s
+      - id: system/metrics-system.process_summary
+        data_stream:
+          dataset: system.process_summary
+          type: metrics
+        metricsets:
+        - process_summary
+        period: 10s
+      - id: system/metrics-system.uptime
+        data_stream:
+          dataset: system.uptime
+          type: metrics
+        metricsets:
+        - uptime
+        period: 10s
+  daemonSet:
+    podTemplate:
+      spec:
+        containers:
+        - name: agent
+          securityContext:
+            runAsUser: 0
+          volumeMounts:
+          - name: client-certs
+            mountPath: /usr/share/elastic-agent/config/client-certs
+            readOnly: true
+        volumes:
+        - name: client-certs
+          secret:
+            secretName: elastic-agent-client-certs-cm
+            optional: true
+...

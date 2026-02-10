@@ -1,0 +1,482 @@
+---
+# =============================================================================
+# cert-manager CA infrastructure
+# =============================================================================
+
+# Self-signed issuer — only used to bootstrap the CA certificate.
+apiVersion: cert-manager.io/v1
+kind: Issuer
+metadata:
+  name: elastic-stack-selfsigned-issuer
+spec:
+  selfSigned: {}
+---
+# CA certificate — the single root of trust for the entire stack.
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: elastic-stack-ca
+spec:
+  isCA: true
+  commonName: elastic-stack-ca
+  secretName: elastic-stack-ca-secret
+  duration: 87600h   # 10 years
+  renewBefore: 8760h  # 1 year
+  issuerRef:
+    name: elastic-stack-selfsigned-issuer
+    kind: Issuer
+---
+# CA issuer — signs every component certificate in the stack.
+apiVersion: cert-manager.io/v1
+kind: Issuer
+metadata:
+  name: elastic-stack-ca-issuer
+spec:
+  ca:
+    secretName: elastic-stack-ca-secret
+---
+# =============================================================================
+# Component certificates
+# =============================================================================
+
+# Elasticsearch HTTP certificate (server auth only)
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: elasticsearch-es-http-certs
+spec:
+  secretName: elasticsearch-es-http-certs-cm
+  issuerRef:
+    name: elastic-stack-ca-issuer
+    kind: Issuer
+  duration: 8760h
+  renewBefore: 720h
+  commonName: elasticsearch-es-http
+  dnsNames:
+  - elasticsearch-es-http
+  - elasticsearch-es-http.default
+  - elasticsearch-es-http.default.svc
+  - elasticsearch-es-http.default.svc.cluster.local
+  - elasticsearch-es-internal-http
+  - elasticsearch-es-internal-http.default
+  - elasticsearch-es-internal-http.default.svc
+  - elasticsearch-es-internal-http.default.svc.cluster.local
+  - localhost
+  ipAddresses:
+  - 127.0.0.1
+  usages:
+  - server auth
+  - digital signature
+  - key encipherment
+---
+# Kibana HTTP certificate (server + client auth)
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: kibana-kb-http-certs
+spec:
+  secretName: kibana-kb-http-certs-cm
+  issuerRef:
+    name: elastic-stack-ca-issuer
+    kind: Issuer
+  duration: 8760h
+  renewBefore: 720h
+  commonName: kibana-kb-http
+  dnsNames:
+  - kibana-kb-http
+  - kibana-kb-http.default
+  - kibana-kb-http.default.svc
+  - kibana-kb-http.default.svc.cluster.local
+  - localhost
+  ipAddresses:
+  - 127.0.0.1
+  usages:
+  - server auth
+  - client auth
+  - digital signature
+  - key encipherment
+---
+# Fleet Server HTTP certificate (server + client auth)
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: fleet-server-agent-http-certs
+spec:
+  secretName: fleet-server-agent-http-certs-cm
+  issuerRef:
+    name: elastic-stack-ca-issuer
+    kind: Issuer
+  duration: 8760h
+  renewBefore: 720h
+  commonName: fleet-server-agent-http
+  dnsNames:
+  - fleet-server-agent-http
+  - fleet-server-agent-http.default
+  - fleet-server-agent-http.default.svc
+  - fleet-server-agent-http.default.svc.cluster.local
+  - localhost
+  ipAddresses:
+  - 127.0.0.1
+  usages:
+  - server auth
+  - client auth
+  - digital signature
+  - key encipherment
+---
+# Elastic Agent client certificate (client auth only)
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: elastic-agent-client-certs
+spec:
+  secretName: elastic-agent-client-certs-cm
+  issuerRef:
+    name: elastic-stack-ca-issuer
+    kind: Issuer
+  duration: 8760h
+  renewBefore: 720h
+  commonName: elastic-agent
+  usages:
+  - client auth
+  - digital signature
+  - key encipherment
+---
+# =============================================================================
+# Elasticsearch
+# =============================================================================
+apiVersion: elasticsearch.k8s.elastic.co/v1
+kind: Elasticsearch
+metadata:
+  name: elasticsearch
+spec:
+  version: 9.3.0
+  http:
+    tls:
+      certificate:
+        secretName: elasticsearch-es-http-certs-cm
+  nodeSets:
+  - name: default
+    count: 1
+    config:
+      node.store.allow_mmap: false
+      xpack.security.http.ssl.client_authentication: optional
+---
+# =============================================================================
+# Kibana
+# =============================================================================
+apiVersion: kibana.k8s.elastic.co/v1
+kind: Kibana
+metadata:
+  name: kibana
+spec:
+  version: 9.3.0
+  count: 1
+  elasticsearchRef:
+    name: elasticsearch
+  http:
+    tls:
+      certificate:
+        secretName: kibana-kb-http-certs-cm
+  config:
+    # mTLS: present Kibana's own HTTP cert as a client certificate to Elasticsearch.
+    # ECK mounts the HTTP cert at /mnt/elastic-internal/http-certs/.
+    elasticsearch.ssl.certificate: /mnt/elastic-internal/http-certs/tls.crt
+    elasticsearch.ssl.key: /mnt/elastic-internal/http-certs/tls.key
+
+    xpack.fleet.agents.fleet_server.hosts: ["https://fleet-server-agent-http.default.svc:8220"]
+
+    # mTLS: pre-configure the default Fleet output with client certificate paths.
+    # These paths correspond to where the agent's client cert is mounted in agent pods.
+    # This is an immutable output — it cannot be changed via the Fleet API.
+    xpack.fleet.outputs:
+    - id: eck-fleet-agent-output-elasticsearch
+      is_default: true
+      is_default_monitoring: true
+      name: eck-elasticsearch
+      type: elasticsearch
+      hosts: ["https://elasticsearch-es-http.default.svc:9200"]
+      ssl:
+        certificate_authorities: ["/usr/share/elastic-agent/config/client-certs/ca.crt"]
+        certificate: "/usr/share/elastic-agent/config/client-certs/tls.crt"
+        key: "/usr/share/elastic-agent/config/client-certs/tls.key"
+
+    xpack.fleet.packages:
+    - name: system
+      version: latest
+    - name: elastic_agent
+      version: latest
+    - name: fleet_server
+      version: latest
+    xpack.fleet.agentPolicies:
+    - name: Fleet Server on ECK policy
+      id: eck-fleet-server
+      namespace: default
+      is_managed: true
+      monitoring_enabled:
+      - logs
+      - metrics
+      unenroll_timeout: 900
+      package_policies:
+      - name: fleet_server-1
+        id: fleet_server-1
+        package:
+          name: fleet_server
+    - name: Elastic Agent on ECK policy
+      id: eck-agent
+      namespace: default
+      is_managed: true
+      monitoring_enabled:
+      - logs
+      - metrics
+      unenroll_timeout: 900
+      package_policies:
+      - package:
+          name: system
+        name: system-1
+---
+# =============================================================================
+# Fleet Server
+# =============================================================================
+apiVersion: agent.k8s.elastic.co/v1alpha1
+kind: Agent
+metadata:
+  name: fleet-server
+spec:
+  version: 9.3.0
+  kibanaRef:
+    name: kibana
+  elasticsearchRefs:
+  - name: elasticsearch
+  mode: fleet
+  fleetServerEnabled: true
+  policyID: eck-fleet-server
+  http:
+    tls:
+      certificate:
+        secretName: fleet-server-agent-http-certs-cm
+  deployment:
+    replicas: 1
+    podTemplate:
+      spec:
+        serviceAccountName: fleet-server
+        automountServiceAccountToken: true
+        securityContext:
+          runAsUser: 0
+        volumes:
+        # mTLS: mount the Fleet Server HTTP cert at the agent-expected path so the
+        # Fleet output (configured in Kibana) can find ca.crt, tls.crt and tls.key
+        # at /usr/share/elastic-agent/config/client-certs/ for Fleet Server's own
+        # monitoring agent.
+        - name: fleet-server-client-certs
+          secret:
+            secretName: fleet-server-agent-http-certs-cm
+            optional: true
+        containers:
+        - name: agent
+          env:
+          # mTLS: Fleet Server -> Elasticsearch (present HTTP cert as client cert)
+          - name: FLEET_SERVER_ES_CERT
+            value: /usr/share/fleet-server/config/http-certs/tls.crt
+          - name: FLEET_SERVER_ES_CERT_KEY
+            value: /usr/share/fleet-server/config/http-certs/tls.key
+          # mTLS: Fleet Server <- Agents (require client certs from connecting agents)
+          - name: FLEET_SERVER_CLIENT_AUTH
+            value: required
+          - name: CERTIFICATE_AUTHORITIES
+            value: /usr/share/fleet-server/config/http-certs/ca.crt
+          # mTLS: self-enrollment (internal agent presents cert to its own listener)
+          - name: ELASTIC_AGENT_CERT
+            value: /usr/share/fleet-server/config/http-certs/tls.crt
+          - name: ELASTIC_AGENT_CERT_KEY
+            value: /usr/share/fleet-server/config/http-certs/tls.key
+          volumeMounts:
+          - name: fleet-server-client-certs
+            mountPath: /usr/share/elastic-agent/config/client-certs
+            readOnly: true
+---
+# =============================================================================
+# Elastic Agent (Fleet-managed)
+# =============================================================================
+apiVersion: agent.k8s.elastic.co/v1alpha1
+kind: Agent
+metadata:
+  name: elastic-agent
+spec:
+  version: 9.3.0
+  kibanaRef:
+    name: kibana
+  fleetServerRef:
+    name: fleet-server
+  mode: fleet
+  policyID: eck-agent
+  daemonSet:
+    podTemplate:
+      spec:
+        serviceAccountName: elastic-agent
+        automountServiceAccountToken: true
+        securityContext:
+          runAsUser: 0
+        volumes:
+        - name: agent-client-certs
+          secret:
+            secretName: elastic-agent-client-certs-cm
+            optional: true
+        containers:
+        - name: agent
+          env:
+          # mTLS: Agent -> Fleet Server (present client cert during enrollment/check-ins)
+          # Agent -> Elasticsearch client cert paths are set via the Fleet output in Kibana.
+          - name: ELASTIC_AGENT_CERT
+            value: /usr/share/elastic-agent/config/client-certs/tls.crt
+          - name: ELASTIC_AGENT_CERT_KEY
+            value: /usr/share/elastic-agent/config/client-certs/tls.key
+          volumeMounts:
+          - name: agent-client-certs
+            mountPath: /usr/share/elastic-agent/config/client-certs
+            readOnly: true
+---
+# =============================================================================
+# RBAC
+# =============================================================================
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: fleet-server
+rules:
+- apiGroups: [""]
+  resources:
+  - pods
+  - namespaces
+  - nodes
+  verbs:
+  - get
+  - watch
+  - list
+- apiGroups: ["apps"]
+  resources:
+  - replicasets
+  verbs:
+  - get
+  - watch
+  - list
+- apiGroups: ["batch"]
+  resources:
+  - jobs
+  verbs:
+  - get
+  - watch
+  - list
+- apiGroups: ["coordination.k8s.io"]
+  resources:
+  - leases
+  verbs:
+  - get
+  - create
+  - update
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: fleet-server
+  namespace: default
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: fleet-server
+subjects:
+- kind: ServiceAccount
+  name: fleet-server
+  namespace: default
+roleRef:
+  kind: ClusterRole
+  name: fleet-server
+  apiGroup: rbac.authorization.k8s.io
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: elastic-agent
+rules:
+- apiGroups: [""]
+  resources:
+  - pods
+  - nodes
+  - namespaces
+  - events
+  - services
+  - configmaps
+  - persistentvolumes
+  - persistentvolumeclaims
+  verbs:
+  - get
+  - watch
+  - list
+- apiGroups: ["coordination.k8s.io"]
+  resources:
+  - leases
+  verbs:
+  - get
+  - create
+  - update
+- nonResourceURLs:
+  - "/metrics"
+  verbs:
+  - get
+- apiGroups: ["extensions"]
+  resources:
+  - replicasets
+  verbs:
+  - get
+  - list
+  - watch
+- apiGroups: ["apps"]
+  resources:
+  - statefulsets
+  - deployments
+  - replicasets
+  - daemonsets
+  verbs:
+  - get
+  - list
+  - watch
+- apiGroups: [""]
+  resources:
+  - nodes/stats
+  verbs:
+  - get
+- apiGroups: ["batch"]
+  resources:
+  - jobs
+  - cronjobs
+  verbs:
+  - get
+  - list
+  - watch
+- apiGroups: ["storage.k8s.io"]
+  resources:
+  - storageclasses
+  verbs:
+  - get
+  - list
+  - watch
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: elastic-agent
+  namespace: default
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: elastic-agent
+subjects:
+- kind: ServiceAccount
+  name: elastic-agent
+  namespace: default
+roleRef:
+  kind: ClusterRole
+  name: elastic-agent
+  apiGroup: rbac.authorization.k8s.io
+...
