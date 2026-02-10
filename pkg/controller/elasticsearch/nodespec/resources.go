@@ -65,6 +65,7 @@ func BuildExpectedResources(
 	meta metadata.Metadata,
 ) (ResourcesList, error) {
 	nodesResources := make(ResourcesList, 0, len(es.Spec.NodeSets))
+	clusterHasZoneAwareness := hasZoneAwareness(es.Spec.NodeSets)
 
 	ver, err := version.Parse(es.Spec.Version)
 	if err != nil {
@@ -83,7 +84,18 @@ func BuildExpectedResources(
 		if nodeSpec.Config != nil {
 			userCfg = *nodeSpec.Config
 		}
-		cfg, err := settings.NewMergedESConfig(es.Name, ver, ipFamily, es.Spec.HTTP, userCfg, policyConfig.ElasticsearchConfig, es.Spec.RemoteClusterServer.Enabled, es.HasRemoteClusterAPIKey())
+		cfg, err := settings.NewMergedESConfig(
+			es.Name,
+			ver,
+			ipFamily,
+			es.Spec.HTTP,
+			userCfg,
+			policyConfig.ElasticsearchConfig,
+			es.Spec.RemoteClusterServer.Enabled,
+			es.HasRemoteClusterAPIKey(),
+			clusterHasZoneAwareness,
+			nodeSpec.ZoneAwareness,
+		)
 		if err != nil {
 			return nil, err
 		}
@@ -104,6 +116,19 @@ func BuildExpectedResources(
 	}
 
 	return nodesResources, nil
+}
+
+// hasZoneAwareness returns true when any NodeSet enables zone awareness.
+// This allows us to ensure consistency and that each nodeSet has the
+// allocation awareness setting in place.
+// (cluster.routing.allocation.awareness.attributes)
+func hasZoneAwareness(nodeSets []esv1.NodeSet) bool {
+	for _, nodeSet := range nodeSets {
+		if nodeSet.ZoneAwareness != nil {
+			return true
+		}
+	}
+	return false
 }
 
 // MasterNodesNames returns the names of the master nodes for this ResourcesList.

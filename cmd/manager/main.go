@@ -252,8 +252,8 @@ func Command() *cobra.Command {
 	)
 	cmd.Flags().StringSlice(
 		operator.ExposedNodeLabels,
-		[]string{},
-		"Comma separated list of node labels which are allowed to be copied as annotations on Elasticsearch Pods, empty by default",
+		[]string{"topology.kubernetes.io/.*", "failure-domain.beta.kubernetes.io/.*"},
+		"Comma separated list of node labels which are allowed to be copied as annotations on Elasticsearch Pods",
 	)
 	cmd.Flags().Int(
 		operator.PasswordHashCacheSize,

@@ -14,6 +14,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/metadata"
 
 	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/utils/ptr"
 
@@ -101,6 +102,8 @@ func BuildPodTemplateSpec(
 	}
 
 	headlessServiceName := HeadlessServiceName(esv1.StatefulSet(es.Name, nodeSet.Name))
+	ssetName := esv1.StatefulSet(es.Name, nodeSet.Name)
+	clusterHasZoneAwareness := hasZoneAwareness(es.Spec.NodeSets)
 
 	// We retrieve the ConfigMap that holds the scripts to trigger a Pod restart if it is updated.
 	esScripts := &corev1.ConfigMap{}
@@ -131,7 +134,7 @@ func BuildPodTemplateSpec(
 		WithPorts(defaultContainerPorts).
 		WithReadinessProbe(*NewReadinessProbe(ver)).
 		WithAffinity(DefaultAffinity(es.Name)).
-		WithEnv(DefaultEnvVars(ver, es.Spec.HTTP, headlessServiceName)...).
+		WithEnv(append(DefaultEnvVars(ver, es.Spec.HTTP, headlessServiceName), zoneAwarenessEnv(nodeSet, clusterHasZoneAwareness)...)...).
 		WithVolumes(volumes...).
 		WithVolumeMounts(volumeMounts...).
 		WithInitContainers(initContainers...).
@@ -140,6 +143,8 @@ func BuildPodTemplateSpec(
 		// set a default security context for both the Containers and the InitContainers
 		WithContainersSecurityContext(securitycontext.For(ver, enableReadOnlyRootFilesystem)).
 		WithPreStopHook(*NewPreStopHook())
+
+	applyZoneAwarenessScheduling(builder, nodeSet, es.Name, ssetName)
 
 	builder, err = stackmon.WithMonitoring(ctx, client, builder, es, meta)
 	if err != nil {
@@ -215,7 +220,7 @@ func buildAnnotations(
 
 	if es.HasDownwardNodeLabels() {
 		// list of node labels expected on the pod to rotate the pod when the list is updated
-		_, _ = configHash.Write([]byte(es.Annotations[esv1.DownwardNodeLabelsAnnotation]))
+		_, _ = configHash.Write([]byte(strings.Join(es.DownwardNodeLabels(), ",")))
 	}
 
 	if keystoreResources != nil {
@@ -234,6 +239,139 @@ func buildAnnotations(
 	maps.Merge(annotations, policyAnnotations)
 
 	return annotations
+}
+
+// zoneAwarenessEnv returns the zone environment variable when zone awareness is enabled
+// at either cluster or NodeSet level, using the NodeSet topology key when configured.
+func zoneAwarenessEnv(nodeSet esv1.NodeSet, clusterHasZoneAwareness bool) []corev1.EnvVar {
+	if !clusterHasZoneAwareness {
+		return nil
+	}
+
+	topologyKey := esv1.DefaultZoneAwarenessTopologyKey
+	if za := nodeSet.ZoneAwareness; za != nil {
+		topologyKey = za.TopologyKeyOrDefault()
+	}
+
+	return []corev1.EnvVar{
+		{
+			Name: settings.EnvZone,
+			ValueFrom: &corev1.EnvVarSource{
+				FieldRef: &corev1.ObjectFieldSelector{
+					APIVersion: "v1",
+					FieldPath:  fmt.Sprintf("metadata.annotations['%s']", topologyKey),
+				},
+			},
+		},
+	}
+}
+
+// applyZoneAwarenessScheduling updates the builder pod spec with topology spread constraints
+// and required node affinity derived from the NodeSet zone awareness configuration.
+func applyZoneAwarenessScheduling(builder *defaults.PodTemplateBuilder, nodeSet esv1.NodeSet, clusterName, statefulSetName string) {
+	if nodeSet.ZoneAwareness == nil {
+		return
+	}
+
+	podSpec := &builder.PodTemplate.Spec
+	topologyKey := nodeSet.ZoneAwareness.TopologyKeyOrDefault()
+	if !hasTopologySpreadConstraintForKey(podSpec.TopologySpreadConstraints, topologyKey) {
+		podSpec.TopologySpreadConstraints = append(
+			podSpec.TopologySpreadConstraints,
+			corev1.TopologySpreadConstraint{
+				MaxSkew:           zoneAwarenessMaxSkew(nodeSet.ZoneAwareness),
+				TopologyKey:       topologyKey,
+				WhenUnsatisfiable: zoneAwarenessWhenUnsatisfiable(nodeSet.ZoneAwareness),
+				LabelSelector: &metav1.LabelSelector{
+					MatchLabels: map[string]string{
+						label.ClusterNameLabelName:     clusterName,
+						label.StatefulSetNameLabelName: statefulSetName,
+					},
+				},
+			},
+		)
+	}
+
+	if len(nodeSet.ZoneAwareness.Zones) > 0 {
+		mergeRequiredNodeAffinityForTopology(podSpec, topologyKey, nodeSet.ZoneAwareness.Zones)
+	}
+}
+
+// hasTopologySpreadConstraintForKey returns true when a spread constraint already exists
+// for the provided topology key.
+func hasTopologySpreadConstraintForKey(constraints []corev1.TopologySpreadConstraint, topologyKey string) bool {
+	for _, constraint := range constraints {
+		if constraint.TopologyKey == topologyKey {
+			return true
+		}
+	}
+	return false
+}
+
+// zoneAwarenessMaxSkew returns the configured maxSkew or the default value when unset.
+func zoneAwarenessMaxSkew(zoneAwareness *esv1.ZoneAwareness) int32 {
+	if zoneAwareness.MaxSkew != nil {
+		return *zoneAwareness.MaxSkew
+	}
+	return 1
+}
+
+// zoneAwarenessWhenUnsatisfiable returns the configured unsatisfiable action or the default.
+func zoneAwarenessWhenUnsatisfiable(zoneAwareness *esv1.ZoneAwareness) corev1.UnsatisfiableConstraintAction {
+	if zoneAwareness.WhenUnsatisfiable != nil {
+		return *zoneAwareness.WhenUnsatisfiable
+	}
+	return corev1.DoNotSchedule
+}
+
+// mergeRequiredNodeAffinityForTopology ensures all required node selector terms include
+// a topology requirement for the provided key and values.
+func mergeRequiredNodeAffinityForTopology(podSpec *corev1.PodSpec, topologyKey string, topologyValues []string) {
+	requirement := corev1.NodeSelectorRequirement{
+		Key:      topologyKey,
+		Operator: corev1.NodeSelectorOpIn,
+		Values:   append([]string(nil), topologyValues...),
+	}
+
+	nodeSelector := ensureRequiredNodeSelector(podSpec)
+	// An empty required selector here means we can just add the requirement to a new term and return.
+	if len(nodeSelector.NodeSelectorTerms) == 0 {
+		nodeSelector.NodeSelectorTerms = []corev1.NodeSelectorTerm{{MatchExpressions: []corev1.NodeSelectorRequirement{requirement}}}
+		return
+	}
+
+	// Otherwise we need to iterate over all of the terms and add the requirement to the first term that doesn't already constrain the topology key.
+	for i := range nodeSelector.NodeSelectorTerms {
+		if hasNodeSelectorRequirementKey(nodeSelector.NodeSelectorTerms[i], topologyKey) {
+			continue
+		}
+		nodeSelector.NodeSelectorTerms[i].MatchExpressions = append(nodeSelector.NodeSelectorTerms[i].MatchExpressions, requirement)
+	}
+}
+
+// ensureRequiredNodeSelector initializes and returns required node affinity selector.
+func ensureRequiredNodeSelector(podSpec *corev1.PodSpec) *corev1.NodeSelector {
+	if podSpec.Affinity == nil {
+		podSpec.Affinity = &corev1.Affinity{}
+	}
+	if podSpec.Affinity.NodeAffinity == nil {
+		podSpec.Affinity.NodeAffinity = &corev1.NodeAffinity{}
+	}
+	if podSpec.Affinity.NodeAffinity.RequiredDuringSchedulingIgnoredDuringExecution == nil {
+		podSpec.Affinity.NodeAffinity.RequiredDuringSchedulingIgnoredDuringExecution = &corev1.NodeSelector{}
+	}
+	return podSpec.Affinity.NodeAffinity.RequiredDuringSchedulingIgnoredDuringExecution
+}
+
+// hasNodeSelectorRequirementKey returns true when the selector term already contains
+// a match expression for the provided key.
+func hasNodeSelectorRequirementKey(term corev1.NodeSelectorTerm, key string) bool {
+	for _, expression := range term.MatchExpressions {
+		if expression.Key == key {
+			return true
+		}
+	}
+	return false
 }
 
 // enableLog4JFormatMsgNoLookups prepends the JVM parameter `-Dlog4j2.formatMsgNoLookups=true` to the environment variable `ES_JAVA_OPTS`

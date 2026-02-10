@@ -2,24 +2,22 @@
 apiVersion: elasticsearch.k8s.elastic.co/v1
 kind: Elasticsearch
 metadata:
-  # Uncomment the lines below to copy the specified node labels as pod annotations and use it as an environment variable in the Pods.
-  # With Kubernetes 1.35 and later, the PodTopologyLabelsAdmission feature is enabled by default. As a result, the labels 'topology.kubernetes.io/region' and 'topology.kubernetes.io/zone'
-  # from the node are automatically propagated as labels on Pods, and using eck.k8s.elastic.co/downward-node-labels may no longer be necessary.
-  #annotations:
-  #  eck.k8s.elastic.co/downward-node-labels: "topology.kubernetes.io/zone"
   name: elasticsearch-sample
 spec:
   version: 9.3.0
   nodeSets:
   - name: default
+    # Uncomment zoneAwareness to spread this NodeSet across zones.
+    # zoneAwareness:
+    #   topologyKey: topology.kubernetes.io/zone
+    #   zones: ["us-east-1a", "us-east-1b", "us-east-1c"] # optional
+    #   maxSkew: 1 # optional, defaults to 1
+    #   whenUnsatisfiable: DoNotSchedule # optional, defaults to DoNotSchedule
     config:
       # most Elasticsearch configuration parameters are possible to set, e.g: node.attr.attr_name: attr_value
       node.roles: ["master", "data", "ingest", "ml"]
       # this allows ES to run on nodes even if their vm.max_map_count has not been increased, at a performance cost
       node.store.allow_mmap: false
-      # uncomment the lines below to use the zone attribute from the node labels
-      #cluster.routing.allocation.awareness.attributes: k8s_node_name,zone
-      #node.attr.zone: ${ZONE}
     podTemplate:
       metadata:
         labels:
@@ -50,26 +48,12 @@ spec:
             limits:
               memory: 4Gi
               cpu: 1
-          env:
-          # uncomment the lines below to make the topology.kubernetes.io/zone annotation available as an environment variable and
-          # use it as a cluster routing allocation attribute.
-          #- name: ZONE
-          #  valueFrom:
-          #    fieldRef:
-          #      fieldPath: metadata.annotations['topology.kubernetes.io/zone']
+          # env:
           # Starting from version 7.11, Elasticsearch automatically sizes JVM heap based on a node’s roles and total memory.
           # If you want to override the default heap size, uncomment the line below and manually set the desired heap size.
           # Refer to https://www.elastic.co/docs/deploy-manage/deploy/cloud-on-k8s/manage-compute-resources#k8s-elasticsearch-memory for more details.
           #- name: ES_JAVA_OPTS
           #  value: "-Xms2g -Xmx2g"
-        #topologySpreadConstraints:
-        #  - maxSkew: 1
-        #    topologyKey: topology.kubernetes.io/zone
-        #    whenUnsatisfiable: DoNotSchedule
-        #    labelSelector:
-        #      matchLabels:
-        #        elasticsearch.k8s.elastic.co/cluster-name: elasticsearch-sample
-        #        elasticsearch.k8s.elastic.co/statefulset-name: elasticsearch-sample-es-default
     count: 3
   #   # request 2Gi of persistent data storage for pods in this topology element
   #   volumeClaimTemplates:

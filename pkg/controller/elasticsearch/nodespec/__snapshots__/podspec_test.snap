@@ -1846,3 +1846,2555 @@
  }
 }
 ---
+
+[TestBuildPodTemplateSpec_ZoneAwarenessScenarios/zones_add_spread_constraint_and_affinity - 1]
+{
+ "metadata": {
+  "annotations": {
+   "co.elastic.logs/module": "elasticsearch",
+   "elasticsearch.k8s.elastic.co/config-hash": "2643367862",
+   "pod-template-annotation-name": "pod-template-annotation-value"
+  },
+  "labels": {
+   "common.k8s.elastic.co/type": "elasticsearch",
+   "elasticsearch.k8s.elastic.co/cluster-name": "name",
+   "elasticsearch.k8s.elastic.co/http-scheme": "https",
+   "elasticsearch.k8s.elastic.co/node-data": "false",
+   "elasticsearch.k8s.elastic.co/node-data_cold": "false",
+   "elasticsearch.k8s.elastic.co/node-data_content": "false",
+   "elasticsearch.k8s.elastic.co/node-data_frozen": "false",
+   "elasticsearch.k8s.elastic.co/node-data_hot": "false",
+   "elasticsearch.k8s.elastic.co/node-data_warm": "false",
+   "elasticsearch.k8s.elastic.co/node-ingest": "true",
+   "elasticsearch.k8s.elastic.co/node-master": "true",
+   "elasticsearch.k8s.elastic.co/node-ml": "true",
+   "elasticsearch.k8s.elastic.co/node-remote_cluster_client": "true",
+   "elasticsearch.k8s.elastic.co/node-transform": "false",
+   "elasticsearch.k8s.elastic.co/node-voting_only": "false",
+   "elasticsearch.k8s.elastic.co/statefulset-name": "name-es-nodeset-1",
+   "elasticsearch.k8s.elastic.co/version": "8.14.0",
+   "pod-template-label-name": "pod-template-label-value"
+  }
+ },
+ "spec": {
+  "affinity": {
+   "nodeAffinity": {
+    "requiredDuringSchedulingIgnoredDuringExecution": {
+     "nodeSelectorTerms": [
+      {
+       "matchExpressions": [
+        {
+         "key": "topology.kubernetes.io/zone",
+         "operator": "In",
+         "values": [
+          "us-east-1a",
+          "us-east-1b"
+         ]
+        }
+       ]
+      }
+     ]
+    }
+   },
+   "podAntiAffinity": {
+    "preferredDuringSchedulingIgnoredDuringExecution": [
+     {
+      "podAffinityTerm": {
+       "labelSelector": {
+        "matchLabels": {
+         "elasticsearch.k8s.elastic.co/cluster-name": "name"
+        }
+       },
+       "topologyKey": "kubernetes.io/hostname"
+      },
+      "weight": 100
+     }
+    ]
+   }
+  },
+  "automountServiceAccountToken": false,
+  "containers": [
+   {
+    "name": "additional-container",
+    "resources": {},
+    "securityContext": {
+     "allowPrivilegeEscalation": false,
+     "capabilities": {
+      "drop": [
+       "ALL"
+      ]
+     },
+     "privileged": false,
+     "readOnlyRootFilesystem": false,
+     "runAsNonRoot": true
+    }
+   },
+   {
+    "env": [
+     {
+      "name": "my-env",
+      "value": "my-value"
+     },
+     {
+      "name": "POD_IP",
+      "valueFrom": {
+       "fieldRef": {
+        "apiVersion": "v1",
+        "fieldPath": "status.podIP"
+       }
+      }
+     },
+     {
+      "name": "POD_NAME",
+      "valueFrom": {
+       "fieldRef": {
+        "apiVersion": "v1",
+        "fieldPath": "metadata.name"
+       }
+      }
+     },
+     {
+      "name": "NODE_NAME",
+      "valueFrom": {
+       "fieldRef": {
+        "apiVersion": "v1",
+        "fieldPath": "spec.nodeName"
+       }
+      }
+     },
+     {
+      "name": "NAMESPACE",
+      "valueFrom": {
+       "fieldRef": {
+        "apiVersion": "v1",
+        "fieldPath": "metadata.namespace"
+       }
+      }
+     },
+     {
+      "name": "HEADLESS_SERVICE_NAME",
+      "value": "name-es-nodeset-1"
+     },
+     {
+      "name": "PROBE_PASSWORD_PATH",
+      "value": "/mnt/elastic-internal/pod-mounted-users/elastic-internal-probe"
+     },
+     {
+      "name": "PROBE_USERNAME",
+      "value": "elastic-internal-probe"
+     },
+     {
+      "name": "READINESS_PROBE_PROTOCOL",
+      "value": "https"
+     },
+     {
+      "name": "NSS_SDB_USE_CACHE",
+      "value": "no"
+     },
+     {
+      "name": "ZONE",
+      "valueFrom": {
+       "fieldRef": {
+        "apiVersion": "v1",
+        "fieldPath": "metadata.annotations['topology.kubernetes.io/zone']"
+       }
+      }
+     }
+    ],
+    "image": "docker.elastic.co/elasticsearch/elasticsearch:8.14.0",
+    "lifecycle": {
+     "preStop": {
+      "exec": {
+       "command": [
+        "bash",
+        "-c",
+        "/mnt/elastic-internal/scripts/pre-stop-hook-script.sh"
+       ]
+      }
+     }
+    },
+    "name": "elasticsearch",
+    "ports": [
+     {
+      "containerPort": 9200,
+      "name": "https",
+      "protocol": "TCP"
+     },
+     {
+      "containerPort": 9300,
+      "name": "transport",
+      "protocol": "TCP"
+     }
+    ],
+    "readinessProbe": {
+     "exec": {
+      "command": [
+       "bash",
+       "-c",
+       "/mnt/elastic-internal/scripts/readiness-port-script.sh"
+      ]
+     },
+     "failureThreshold": 3,
+     "initialDelaySeconds": 10,
+     "periodSeconds": 5,
+     "successThreshold": 1,
+     "timeoutSeconds": 5
+    },
+    "resources": {
+     "limits": {
+      "memory": "2Gi"
+     },
+     "requests": {
+      "memory": "2Gi"
+     }
+    },
+    "securityContext": {
+     "allowPrivilegeEscalation": false,
+     "capabilities": {
+      "drop": [
+       "ALL"
+      ]
+     },
+     "privileged": false,
+     "readOnlyRootFilesystem": false,
+     "runAsNonRoot": true
+    },
+    "volumeMounts": [
+     {
+      "mountPath": "/mnt/elastic-internal/downward-api",
+      "name": "downward-api",
+      "readOnly": true
+     },
+     {
+      "mountPath": "/usr/share/elasticsearch/bin",
+      "name": "elastic-internal-elasticsearch-bin-local"
+     },
+     {
+      "mountPath": "/mnt/elastic-internal/elasticsearch-config",
+      "name": "elastic-internal-elasticsearch-config",
+      "readOnly": true
+     },
+     {
+      "mountPath": "/usr/share/elasticsearch/config",
+      "name": "elastic-internal-elasticsearch-config-local"
+     },
+     {
+      "mountPath": "/usr/share/elasticsearch/plugins",
+      "name": "elastic-internal-elasticsearch-plugins-local"
+     },
+     {
+      "mountPath": "/usr/share/elasticsearch/config/http-certs",
+      "name": "elastic-internal-http-certificates",
+      "readOnly": true
+     },
+     {
+      "mountPath": "/mnt/elastic-internal/pod-mounted-users",
+      "name": "elastic-internal-probe-user",
+      "readOnly": true
+     },
+     {
+      "mountPath": "/usr/share/elasticsearch/config/transport-remote-certs/",
+      "name": "elastic-internal-remote-certificate-authorities",
+      "readOnly": true
+     },
+     {
+      "mountPath": "/mnt/elastic-internal/scripts",
+      "name": "elastic-internal-scripts",
+      "readOnly": true
+     },
+     {
+      "mountPath": "/usr/share/elasticsearch/config/transport-certs",
+      "name": "elastic-internal-transport-certificates",
+      "readOnly": true
+     },
+     {
+      "mountPath": "/mnt/elastic-internal/unicast-hosts",
+      "name": "elastic-internal-unicast-hosts",
+      "readOnly": true
+     },
+     {
+      "mountPath": "/mnt/elastic-internal/xpack-file-realm",
+      "name": "elastic-internal-xpack-file-realm",
+      "readOnly": true
+     },
+     {
+      "mountPath": "/usr/share/elasticsearch/logs",
+      "name": "elasticsearch-logs"
+     },
+     {
+      "mountPath": "/usr/share/elasticsearch/config/operator",
+      "name": "file-settings",
+      "readOnly": true
+     },
+     {
+      "mountPath": "/tmp",
+      "name": "tmp-volume"
+     }
+    ]
+   }
+  ],
+  "initContainers": [
+   {
+    "command": [
+     "bash",
+     "-c",
+     "/mnt/elastic-internal/scripts/prepare-fs.sh"
+    ],
+    "env": [
+     {
+      "name": "POD_IP",
+      "valueFrom": {
+       "fieldRef": {
+        "apiVersion": "v1",
+        "fieldPath": "status.podIP"
+       }
+      }
+     },
+     {
+      "name": "POD_NAME",
+      "valueFrom": {
+       "fieldRef": {
+        "apiVersion": "v1",
+        "fieldPath": "metadata.name"
+       }
+      }
+     },
+     {
+      "name": "NODE_NAME",
+      "valueFrom": {
+       "fieldRef": {
+        "apiVersion": "v1",
+        "fieldPath": "spec.nodeName"
+       }
+      }
+     },
+     {
+      "name": "NAMESPACE",
+      "valueFrom": {
+       "fieldRef": {
+        "apiVersion": "v1",
+        "fieldPath": "metadata.namespace"
+       }
+      }
+     },
+     {
+      "name": "my-env",
+      "value": "my-value"
+     },
+     {
+      "name": "HEADLESS_SERVICE_NAME",
+      "value": "name-es-nodeset-1"
+     },
+     {
+      "name": "PROBE_PASSWORD_PATH",
+      "value": "/mnt/elastic-internal/pod-mounted-users/elastic-internal-probe"
+     },
+     {
+      "name": "PROBE_USERNAME",
+      "value": "elastic-internal-probe"
+     },
+     {
+      "name": "READINESS_PROBE_PROTOCOL",
+      "value": "https"
+     },
+     {
+      "name": "NSS_SDB_USE_CACHE",
+      "value": "no"
+     },
+     {
+      "name": "ZONE",
+      "valueFrom": {
+       "fieldRef": {
+        "apiVersion": "v1",
+        "fieldPath": "metadata.annotations['topology.kubernetes.io/zone']"
+       }
+      }
+     }
+    ],
+    "image": "docker.elastic.co/elasticsearch/elasticsearch:8.14.0",
+    "imagePullPolicy": "IfNotPresent",
+    "name": "elastic-internal-init-filesystem",
+    "resources": {
+     "limits": {
+      "cpu": "100m",
+      "memory": "50Mi"
+     },
+     "requests": {
+      "cpu": "100m",
+      "memory": "50Mi"
+     }
+    },
+    "securityContext": {
+     "allowPrivilegeEscalation": false,
+     "capabilities": {
+      "drop": [
+       "ALL"
+      ]
+     },
+     "privileged": false,
+     "readOnlyRootFilesystem": false,
+     "runAsNonRoot": true
+    },
+    "volumeMounts": [
+     {
+      "mountPath": "/mnt/elastic-internal/downward-api",
+      "name": "downward-api",
+      "readOnly": true
+     },
+     {
+      "mountPath": "/mnt/elastic-internal/elasticsearch-bin-local",
+      "name": "elastic-internal-elasticsearch-bin-local"
+     },
+     {
+      "mountPath": "/mnt/elastic-internal/elasticsearch-config",
+      "name": "elastic-internal-elasticsearch-config",
+      "readOnly": true
+     },
+     {
+      "mountPath": "/mnt/elastic-internal/elasticsearch-config-local",
+      "name": "elastic-internal-elasticsearch-config-local"
+     },
+     {
+      "mountPath": "/mnt/elastic-internal/elasticsearch-plugins-local",
+      "name": "elastic-internal-elasticsearch-plugins-local"
+     },
+     {
+      "mountPath": "/usr/share/elasticsearch/config/http-certs",
+      "name": "elastic-internal-http-certificates",
+      "readOnly": true
+     },
+     {
+      "mountPath": "/mnt/elastic-internal/pod-mounted-users",
+      "name": "elastic-internal-probe-user",
+      "readOnly": true
+     },
+     {
+      "mountPath": "/usr/share/elasticsearch/config/transport-remote-certs/",
+      "name": "elastic-internal-remote-certificate-authorities",
+      "readOnly": true
+     },
+     {
+      "mountPath": "/mnt/elastic-internal/scripts",
+      "name": "elastic-internal-scripts",
+      "readOnly": true
+     },
+     {
+      "mountPath": "/mnt/elastic-internal/transport-certificates",
+      "name": "elastic-internal-transport-certificates",
+      "readOnly": true
+     },
+     {
+      "mountPath": "/mnt/elastic-internal/unicast-hosts",
+      "name": "elastic-internal-unicast-hosts",
+      "readOnly": true
+     },
+     {
+      "mountPath": "/mnt/elastic-internal/xpack-file-realm",
+      "name": "elastic-internal-xpack-file-realm",
+      "readOnly": true
+     },
+     {
+      "mountPath": "/usr/share/elasticsearch/logs",
+      "name": "elasticsearch-logs"
+     },
+     {
+      "mountPath": "/usr/share/elasticsearch/config/operator",
+      "name": "file-settings",
+      "readOnly": true
+     },
+     {
+      "mountPath": "/tmp",
+      "name": "tmp-volume"
+     }
+    ]
+   },
+   {
+    "command": [
+     "bash",
+     "-c",
+     "/mnt/elastic-internal/scripts/suspend.sh"
+    ],
+    "env": [
+     {
+      "name": "POD_IP",
+      "valueFrom": {
+       "fieldRef": {
+        "apiVersion": "v1",
+        "fieldPath": "status.podIP"
+       }
+      }
+     },
+     {
+      "name": "POD_NAME",
+      "valueFrom": {
+       "fieldRef": {
+        "apiVersion": "v1",
+        "fieldPath": "metadata.name"
+       }
+      }
+     },
+     {
+      "name": "NODE_NAME",
+      "valueFrom": {
+       "fieldRef": {
+        "apiVersion": "v1",
+        "fieldPath": "spec.nodeName"
+       }
+      }
+     },
+     {
+      "name": "NAMESPACE",
+      "valueFrom": {
+       "fieldRef": {
+        "apiVersion": "v1",
+        "fieldPath": "metadata.namespace"
+       }
+      }
+     },
+     {
+      "name": "my-env",
+      "value": "my-value"
+     },
+     {
+      "name": "HEADLESS_SERVICE_NAME",
+      "value": "name-es-nodeset-1"
+     },
+     {
+      "name": "PROBE_PASSWORD_PATH",
+      "value": "/mnt/elastic-internal/pod-mounted-users/elastic-internal-probe"
+     },
+     {
+      "name": "PROBE_USERNAME",
+      "value": "elastic-internal-probe"
+     },
+     {
+      "name": "READINESS_PROBE_PROTOCOL",
+      "value": "https"
+     },
+     {
+      "name": "NSS_SDB_USE_CACHE",
+      "value": "no"
+     },
+     {
+      "name": "ZONE",
+      "valueFrom": {
+       "fieldRef": {
+        "apiVersion": "v1",
+        "fieldPath": "metadata.annotations['topology.kubernetes.io/zone']"
+       }
+      }
+     }
+    ],
+    "image": "docker.elastic.co/elasticsearch/elasticsearch:8.14.0",
+    "imagePullPolicy": "IfNotPresent",
+    "name": "elastic-internal-suspend",
+    "resources": {
+     "limits": {
+      "memory": "2Gi"
+     },
+     "requests": {
+      "memory": "2Gi"
+     }
+    },
+    "securityContext": {
+     "allowPrivilegeEscalation": false,
+     "capabilities": {
+      "drop": [
+       "ALL"
+      ]
+     },
+     "privileged": false,
+     "readOnlyRootFilesystem": false,
+     "runAsNonRoot": true
+    },
+    "volumeMounts": [
+     {
+      "mountPath": "/mnt/elastic-internal/downward-api",
+      "name": "downward-api",
+      "readOnly": true
+     },
+     {
+      "mountPath": "/usr/share/elasticsearch/bin",
+      "name": "elastic-internal-elasticsearch-bin-local"
+     },
+     {
+      "mountPath": "/mnt/elastic-internal/elasticsearch-config",
+      "name": "elastic-internal-elasticsearch-config",
+      "readOnly": true
+     },
+     {
+      "mountPath": "/usr/share/elasticsearch/config",
+      "name": "elastic-internal-elasticsearch-config-local"
+     },
+     {
+      "mountPath": "/usr/share/elasticsearch/plugins",
+      "name": "elastic-internal-elasticsearch-plugins-local"
+     },
+     {
+      "mountPath": "/usr/share/elasticsearch/config/http-certs",
+      "name": "elastic-internal-http-certificates",
+      "readOnly": true
+     },
+     {
+      "mountPath": "/mnt/elastic-internal/pod-mounted-users",
+      "name": "elastic-internal-probe-user",
+      "readOnly": true
+     },
+     {
+      "mountPath": "/usr/share/elasticsearch/config/transport-remote-certs/",
+      "name": "elastic-internal-remote-certificate-authorities",
+      "readOnly": true
+     },
+     {
+      "mountPath": "/mnt/elastic-internal/scripts",
+      "name": "elastic-internal-scripts",
+      "readOnly": true
+     },
+     {
+      "mountPath": "/usr/share/elasticsearch/config/transport-certs",
+      "name": "elastic-internal-transport-certificates",
+      "readOnly": true
+     },
+     {
+      "mountPath": "/mnt/elastic-internal/unicast-hosts",
+      "name": "elastic-internal-unicast-hosts",
+      "readOnly": true
+     },
+     {
+      "mountPath": "/mnt/elastic-internal/xpack-file-realm",
+      "name": "elastic-internal-xpack-file-realm",
+      "readOnly": true
+     },
+     {
+      "mountPath": "/usr/share/elasticsearch/logs",
+      "name": "elasticsearch-logs"
+     },
+     {
+      "mountPath": "/usr/share/elasticsearch/config/operator",
+      "name": "file-settings",
+      "readOnly": true
+     },
+     {
+      "mountPath": "/tmp",
+      "name": "tmp-volume"
+     }
+    ]
+   },
+   {
+    "env": [
+     {
+      "name": "POD_IP",
+      "valueFrom": {
+       "fieldRef": {
+        "apiVersion": "v1",
+        "fieldPath": "status.podIP"
+       }
+      }
+     },
+     {
+      "name": "POD_NAME",
+      "valueFrom": {
+       "fieldRef": {
+        "apiVersion": "v1",
+        "fieldPath": "metadata.name"
+       }
+      }
+     },
+     {
+      "name": "NODE_NAME",
+      "valueFrom": {
+       "fieldRef": {
+        "apiVersion": "v1",
+        "fieldPath": "spec.nodeName"
+       }
+      }
+     },
+     {
+      "name": "NAMESPACE",
+      "valueFrom": {
+       "fieldRef": {
+        "apiVersion": "v1",
+        "fieldPath": "metadata.namespace"
+       }
+      }
+     },
+     {
+      "name": "my-env",
+      "value": "my-value"
+     },
+     {
+      "name": "HEADLESS_SERVICE_NAME",
+      "value": "name-es-nodeset-1"
+     },
+     {
+      "name": "PROBE_PASSWORD_PATH",
+      "value": "/mnt/elastic-internal/pod-mounted-users/elastic-internal-probe"
+     },
+     {
+      "name": "PROBE_USERNAME",
+      "value": "elastic-internal-probe"
+     },
+     {
+      "name": "READINESS_PROBE_PROTOCOL",
+      "value": "https"
+     },
+     {
+      "name": "NSS_SDB_USE_CACHE",
+      "value": "no"
+     },
+     {
+      "name": "ZONE",
+      "valueFrom": {
+       "fieldRef": {
+        "apiVersion": "v1",
+        "fieldPath": "metadata.annotations['topology.kubernetes.io/zone']"
+       }
+      }
+     }
+    ],
+    "image": "docker.elastic.co/elasticsearch/elasticsearch:8.14.0",
+    "name": "additional-init-container",
+    "resources": {
+     "limits": {
+      "memory": "2Gi"
+     },
+     "requests": {
+      "memory": "2Gi"
+     }
+    },
+    "securityContext": {
+     "allowPrivilegeEscalation": false,
+     "capabilities": {
+      "drop": [
+       "ALL"
+      ]
+     },
+     "privileged": false,
+     "readOnlyRootFilesystem": false,
+     "runAsNonRoot": true
+    },
+    "volumeMounts": [
+     {
+      "mountPath": "/mnt/elastic-internal/downward-api",
+      "name": "downward-api",
+      "readOnly": true
+     },
+     {
+      "mountPath": "/usr/share/elasticsearch/bin",
+      "name": "elastic-internal-elasticsearch-bin-local"
+     },
+     {
+      "mountPath": "/mnt/elastic-internal/elasticsearch-config",
+      "name": "elastic-internal-elasticsearch-config",
+      "readOnly": true
+     },
+     {
+      "mountPath": "/usr/share/elasticsearch/config",
+      "name": "elastic-internal-elasticsearch-config-local"
+     },
+     {
+      "mountPath": "/usr/share/elasticsearch/plugins",
+      "name": "elastic-internal-elasticsearch-plugins-local"
+     },
+     {
+      "mountPath": "/usr/share/elasticsearch/config/http-certs",
+      "name": "elastic-internal-http-certificates",
+      "readOnly": true
+     },
+     {
+      "mountPath": "/mnt/elastic-internal/pod-mounted-users",
+      "name": "elastic-internal-probe-user",
+      "readOnly": true
+     },
+     {
+      "mountPath": "/usr/share/elasticsearch/config/transport-remote-certs/",
+      "name": "elastic-internal-remote-certificate-authorities",
+      "readOnly": true
+     },
+     {
+      "mountPath": "/mnt/elastic-internal/scripts",
+      "name": "elastic-internal-scripts",
+      "readOnly": true
+     },
+     {
+      "mountPath": "/usr/share/elasticsearch/config/transport-certs",
+      "name": "elastic-internal-transport-certificates",
+      "readOnly": true
+     },
+     {
+      "mountPath": "/mnt/elastic-internal/unicast-hosts",
+      "name": "elastic-internal-unicast-hosts",
+      "readOnly": true
+     },
+     {
+      "mountPath": "/mnt/elastic-internal/xpack-file-realm",
+      "name": "elastic-internal-xpack-file-realm",
+      "readOnly": true
+     },
+     {
+      "mountPath": "/usr/share/elasticsearch/logs",
+      "name": "elasticsearch-logs"
+     },
+     {
+      "mountPath": "/usr/share/elasticsearch/config/operator",
+      "name": "file-settings",
+      "readOnly": true
+     },
+     {
+      "mountPath": "/tmp",
+      "name": "tmp-volume"
+     }
+    ]
+   }
+  ],
+  "terminationGracePeriodSeconds": 180,
+  "topologySpreadConstraints": [
+   {
+    "labelSelector": {
+     "matchLabels": {
+      "elasticsearch.k8s.elastic.co/cluster-name": "name",
+      "elasticsearch.k8s.elastic.co/statefulset-name": "name-es-nodeset-1"
+     }
+    },
+    "maxSkew": 1,
+    "topologyKey": "topology.kubernetes.io/zone",
+    "whenUnsatisfiable": "DoNotSchedule"
+   }
+  ],
+  "volumes": [
+   {
+    "downwardAPI": {
+     "items": [
+      {
+       "fieldRef": {
+        "fieldPath": "metadata.labels"
+       },
+       "path": "labels"
+      },
+      {
+       "fieldRef": {
+        "fieldPath": "metadata.annotations"
+       },
+       "path": "annotations"
+      }
+     ]
+    },
+    "name": "downward-api"
+   },
+   {
+    "emptyDir": {},
+    "name": "elastic-internal-elasticsearch-bin-local"
+   },
+   {
+    "name": "elastic-internal-elasticsearch-config",
+    "secret": {
+     "optional": false,
+     "secretName": "name-es-nodeset-1-es-config"
+    }
+   },
+   {
+    "emptyDir": {},
+    "name": "elastic-internal-elasticsearch-config-local"
+   },
+   {
+    "emptyDir": {},
+    "name": "elastic-internal-elasticsearch-plugins-local"
+   },
+   {
+    "name": "elastic-internal-http-certificates",
+    "secret": {
+     "optional": false,
+     "secretName": "name-es-http-certs-internal"
+    }
+   },
+   {
+    "name": "elastic-internal-probe-user",
+    "secret": {
+     "items": [
+      {
+       "key": "elastic-internal-probe",
+       "path": "elastic-internal-probe"
+      },
+      {
+       "key": "elastic-internal-pre-stop",
+       "path": "elastic-internal-pre-stop"
+      }
+     ],
+     "optional": false,
+     "secretName": "name-es-internal-users"
+    }
+   },
+   {
+    "name": "elastic-internal-remote-certificate-authorities",
+    "secret": {
+     "optional": false,
+     "secretName": "name-es-remote-ca"
+    }
+   },
+   {
+    "configMap": {
+     "defaultMode": 493,
+     "name": "name-es-scripts",
+     "optional": false
+    },
+    "name": "elastic-internal-scripts"
+   },
+   {
+    "name": "elastic-internal-transport-certificates",
+    "secret": {
+     "optional": false,
+     "secretName": "name-es-nodeset-1-es-transport-certs"
+    }
+   },
+   {
+    "configMap": {
+     "defaultMode": 420,
+     "name": "name-es-unicast-hosts",
+     "optional": false
+    },
+    "name": "elastic-internal-unicast-hosts"
+   },
+   {
+    "name": "elastic-internal-xpack-file-realm",
+    "secret": {
+     "optional": false,
+     "secretName": "name-es-xpack-file-realm"
+    }
+   },
+   {
+    "emptyDir": {},
+    "name": "elasticsearch-logs"
+   },
+   {
+    "name": "file-settings",
+    "secret": {
+     "optional": false,
+     "secretName": "name-es-file-settings"
+    }
+   },
+   {
+    "emptyDir": {},
+    "name": "tmp-volume"
+   }
+  ]
+ }
+}
+---
+
+[TestBuildPodTemplateSpec_ZoneAwarenessScenarios/existing_user_spread_constraint_is_preserved - 1]
+{
+ "metadata": {
+  "annotations": {
+   "co.elastic.logs/module": "elasticsearch",
+   "elasticsearch.k8s.elastic.co/config-hash": "2643367862",
+   "pod-template-annotation-name": "pod-template-annotation-value"
+  },
+  "labels": {
+   "common.k8s.elastic.co/type": "elasticsearch",
+   "elasticsearch.k8s.elastic.co/cluster-name": "name",
+   "elasticsearch.k8s.elastic.co/http-scheme": "https",
+   "elasticsearch.k8s.elastic.co/node-data": "false",
+   "elasticsearch.k8s.elastic.co/node-data_cold": "false",
+   "elasticsearch.k8s.elastic.co/node-data_content": "false",
+   "elasticsearch.k8s.elastic.co/node-data_frozen": "false",
+   "elasticsearch.k8s.elastic.co/node-data_hot": "false",
+   "elasticsearch.k8s.elastic.co/node-data_warm": "false",
+   "elasticsearch.k8s.elastic.co/node-ingest": "true",
+   "elasticsearch.k8s.elastic.co/node-master": "true",
+   "elasticsearch.k8s.elastic.co/node-ml": "true",
+   "elasticsearch.k8s.elastic.co/node-remote_cluster_client": "true",
+   "elasticsearch.k8s.elastic.co/node-transform": "false",
+   "elasticsearch.k8s.elastic.co/node-voting_only": "false",
+   "elasticsearch.k8s.elastic.co/statefulset-name": "name-es-nodeset-1",
+   "elasticsearch.k8s.elastic.co/version": "8.14.0",
+   "pod-template-label-name": "pod-template-label-value"
+  }
+ },
+ "spec": {
+  "affinity": {
+   "podAntiAffinity": {
+    "preferredDuringSchedulingIgnoredDuringExecution": [
+     {
+      "podAffinityTerm": {
+       "labelSelector": {
+        "matchLabels": {
+         "elasticsearch.k8s.elastic.co/cluster-name": "name"
+        }
+       },
+       "topologyKey": "kubernetes.io/hostname"
+      },
+      "weight": 100
+     }
+    ]
+   }
+  },
+  "automountServiceAccountToken": false,
+  "containers": [
+   {
+    "name": "additional-container",
+    "resources": {},
+    "securityContext": {
+     "allowPrivilegeEscalation": false,
+     "capabilities": {
+      "drop": [
+       "ALL"
+      ]
+     },
+     "privileged": false,
+     "readOnlyRootFilesystem": false,
+     "runAsNonRoot": true
+    }
+   },
+   {
+    "env": [
+     {
+      "name": "my-env",
+      "value": "my-value"
+     },
+     {
+      "name": "POD_IP",
+      "valueFrom": {
+       "fieldRef": {
+        "apiVersion": "v1",
+        "fieldPath": "status.podIP"
+       }
+      }
+     },
+     {
+      "name": "POD_NAME",
+      "valueFrom": {
+       "fieldRef": {
+        "apiVersion": "v1",
+        "fieldPath": "metadata.name"
+       }
+      }
+     },
+     {
+      "name": "NODE_NAME",
+      "valueFrom": {
+       "fieldRef": {
+        "apiVersion": "v1",
+        "fieldPath": "spec.nodeName"
+       }
+      }
+     },
+     {
+      "name": "NAMESPACE",
+      "valueFrom": {
+       "fieldRef": {
+        "apiVersion": "v1",
+        "fieldPath": "metadata.namespace"
+       }
+      }
+     },
+     {
+      "name": "HEADLESS_SERVICE_NAME",
+      "value": "name-es-nodeset-1"
+     },
+     {
+      "name": "PROBE_PASSWORD_PATH",
+      "value": "/mnt/elastic-internal/pod-mounted-users/elastic-internal-probe"
+     },
+     {
+      "name": "PROBE_USERNAME",
+      "value": "elastic-internal-probe"
+     },
+     {
+      "name": "READINESS_PROBE_PROTOCOL",
+      "value": "https"
+     },
+     {
+      "name": "NSS_SDB_USE_CACHE",
+      "value": "no"
+     },
+     {
+      "name": "ZONE",
+      "valueFrom": {
+       "fieldRef": {
+        "apiVersion": "v1",
+        "fieldPath": "metadata.annotations['topology.kubernetes.io/zone']"
+       }
+      }
+     }
+    ],
+    "image": "docker.elastic.co/elasticsearch/elasticsearch:8.14.0",
+    "lifecycle": {
+     "preStop": {
+      "exec": {
+       "command": [
+        "bash",
+        "-c",
+        "/mnt/elastic-internal/scripts/pre-stop-hook-script.sh"
+       ]
+      }
+     }
+    },
+    "name": "elasticsearch",
+    "ports": [
+     {
+      "containerPort": 9200,
+      "name": "https",
+      "protocol": "TCP"
+     },
+     {
+      "containerPort": 9300,
+      "name": "transport",
+      "protocol": "TCP"
+     }
+    ],
+    "readinessProbe": {
+     "exec": {
+      "command": [
+       "bash",
+       "-c",
+       "/mnt/elastic-internal/scripts/readiness-port-script.sh"
+      ]
+     },
+     "failureThreshold": 3,
+     "initialDelaySeconds": 10,
+     "periodSeconds": 5,
+     "successThreshold": 1,
+     "timeoutSeconds": 5
+    },
+    "resources": {
+     "limits": {
+      "memory": "2Gi"
+     },
+     "requests": {
+      "memory": "2Gi"
+     }
+    },
+    "securityContext": {
+     "allowPrivilegeEscalation": false,
+     "capabilities": {
+      "drop": [
+       "ALL"
+      ]
+     },
+     "privileged": false,
+     "readOnlyRootFilesystem": false,
+     "runAsNonRoot": true
+    },
+    "volumeMounts": [
+     {
+      "mountPath": "/mnt/elastic-internal/downward-api",
+      "name": "downward-api",
+      "readOnly": true
+     },
+     {
+      "mountPath": "/usr/share/elasticsearch/bin",
+      "name": "elastic-internal-elasticsearch-bin-local"
+     },
+     {
+      "mountPath": "/mnt/elastic-internal/elasticsearch-config",
+      "name": "elastic-internal-elasticsearch-config",
+      "readOnly": true
+     },
+     {
+      "mountPath": "/usr/share/elasticsearch/config",
+      "name": "elastic-internal-elasticsearch-config-local"
+     },
+     {
+      "mountPath": "/usr/share/elasticsearch/plugins",
+      "name": "elastic-internal-elasticsearch-plugins-local"
+     },
+     {
+      "mountPath": "/usr/share/elasticsearch/config/http-certs",
+      "name": "elastic-internal-http-certificates",
+      "readOnly": true
+     },
+     {
+      "mountPath": "/mnt/elastic-internal/pod-mounted-users",
+      "name": "elastic-internal-probe-user",
+      "readOnly": true
+     },
+     {
+      "mountPath": "/usr/share/elasticsearch/config/transport-remote-certs/",
+      "name": "elastic-internal-remote-certificate-authorities",
+      "readOnly": true
+     },
+     {
+      "mountPath": "/mnt/elastic-internal/scripts",
+      "name": "elastic-internal-scripts",
+      "readOnly": true
+     },
+     {
+      "mountPath": "/usr/share/elasticsearch/config/transport-certs",
+      "name": "elastic-internal-transport-certificates",
+      "readOnly": true
+     },
+     {
+      "mountPath": "/mnt/elastic-internal/unicast-hosts",
+      "name": "elastic-internal-unicast-hosts",
+      "readOnly": true
+     },
+     {
+      "mountPath": "/mnt/elastic-internal/xpack-file-realm",
+      "name": "elastic-internal-xpack-file-realm",
+      "readOnly": true
+     },
+     {
+      "mountPath": "/usr/share/elasticsearch/logs",
+      "name": "elasticsearch-logs"
+     },
+     {
+      "mountPath": "/usr/share/elasticsearch/config/operator",
+      "name": "file-settings",
+      "readOnly": true
+     },
+     {
+      "mountPath": "/tmp",
+      "name": "tmp-volume"
+     }
+    ]
+   }
+  ],
+  "initContainers": [
+   {
+    "command": [
+     "bash",
+     "-c",
+     "/mnt/elastic-internal/scripts/prepare-fs.sh"
+    ],
+    "env": [
+     {
+      "name": "POD_IP",
+      "valueFrom": {
+       "fieldRef": {
+        "apiVersion": "v1",
+        "fieldPath": "status.podIP"
+       }
+      }
+     },
+     {
+      "name": "POD_NAME",
+      "valueFrom": {
+       "fieldRef": {
+        "apiVersion": "v1",
+        "fieldPath": "metadata.name"
+       }
+      }
+     },
+     {
+      "name": "NODE_NAME",
+      "valueFrom": {
+       "fieldRef": {
+        "apiVersion": "v1",
+        "fieldPath": "spec.nodeName"
+       }
+      }
+     },
+     {
+      "name": "NAMESPACE",
+      "valueFrom": {
+       "fieldRef": {
+        "apiVersion": "v1",
+        "fieldPath": "metadata.namespace"
+       }
+      }
+     },
+     {
+      "name": "my-env",
+      "value": "my-value"
+     },
+     {
+      "name": "HEADLESS_SERVICE_NAME",
+      "value": "name-es-nodeset-1"
+     },
+     {
+      "name": "PROBE_PASSWORD_PATH",
+      "value": "/mnt/elastic-internal/pod-mounted-users/elastic-internal-probe"
+     },
+     {
+      "name": "PROBE_USERNAME",
+      "value": "elastic-internal-probe"
+     },
+     {
+      "name": "READINESS_PROBE_PROTOCOL",
+      "value": "https"
+     },
+     {
+      "name": "NSS_SDB_USE_CACHE",
+      "value": "no"
+     },
+     {
+      "name": "ZONE",
+      "valueFrom": {
+       "fieldRef": {
+        "apiVersion": "v1",
+        "fieldPath": "metadata.annotations['topology.kubernetes.io/zone']"
+       }
+      }
+     }
+    ],
+    "image": "docker.elastic.co/elasticsearch/elasticsearch:8.14.0",
+    "imagePullPolicy": "IfNotPresent",
+    "name": "elastic-internal-init-filesystem",
+    "resources": {
+     "limits": {
+      "cpu": "100m",
+      "memory": "50Mi"
+     },
+     "requests": {
+      "cpu": "100m",
+      "memory": "50Mi"
+     }
+    },
+    "securityContext": {
+     "allowPrivilegeEscalation": false,
+     "capabilities": {
+      "drop": [
+       "ALL"
+      ]
+     },
+     "privileged": false,
+     "readOnlyRootFilesystem": false,
+     "runAsNonRoot": true
+    },
+    "volumeMounts": [
+     {
+      "mountPath": "/mnt/elastic-internal/downward-api",
+      "name": "downward-api",
+      "readOnly": true
+     },
+     {
+      "mountPath": "/mnt/elastic-internal/elasticsearch-bin-local",
+      "name": "elastic-internal-elasticsearch-bin-local"
+     },
+     {
+      "mountPath": "/mnt/elastic-internal/elasticsearch-config",
+      "name": "elastic-internal-elasticsearch-config",
+      "readOnly": true
+     },
+     {
+      "mountPath": "/mnt/elastic-internal/elasticsearch-config-local",
+      "name": "elastic-internal-elasticsearch-config-local"
+     },
+     {
+      "mountPath": "/mnt/elastic-internal/elasticsearch-plugins-local",
+      "name": "elastic-internal-elasticsearch-plugins-local"
+     },
+     {
+      "mountPath": "/usr/share/elasticsearch/config/http-certs",
+      "name": "elastic-internal-http-certificates",
+      "readOnly": true
+     },
+     {
+      "mountPath": "/mnt/elastic-internal/pod-mounted-users",
+      "name": "elastic-internal-probe-user",
+      "readOnly": true
+     },
+     {
+      "mountPath": "/usr/share/elasticsearch/config/transport-remote-certs/",
+      "name": "elastic-internal-remote-certificate-authorities",
+      "readOnly": true
+     },
+     {
+      "mountPath": "/mnt/elastic-internal/scripts",
+      "name": "elastic-internal-scripts",
+      "readOnly": true
+     },
+     {
+      "mountPath": "/mnt/elastic-internal/transport-certificates",
+      "name": "elastic-internal-transport-certificates",
+      "readOnly": true
+     },
+     {
+      "mountPath": "/mnt/elastic-internal/unicast-hosts",
+      "name": "elastic-internal-unicast-hosts",
+      "readOnly": true
+     },
+     {
+      "mountPath": "/mnt/elastic-internal/xpack-file-realm",
+      "name": "elastic-internal-xpack-file-realm",
+      "readOnly": true
+     },
+     {
+      "mountPath": "/usr/share/elasticsearch/logs",
+      "name": "elasticsearch-logs"
+     },
+     {
+      "mountPath": "/usr/share/elasticsearch/config/operator",
+      "name": "file-settings",
+      "readOnly": true
+     },
+     {
+      "mountPath": "/tmp",
+      "name": "tmp-volume"
+     }
+    ]
+   },
+   {
+    "command": [
+     "bash",
+     "-c",
+     "/mnt/elastic-internal/scripts/suspend.sh"
+    ],
+    "env": [
+     {
+      "name": "POD_IP",
+      "valueFrom": {
+       "fieldRef": {
+        "apiVersion": "v1",
+        "fieldPath": "status.podIP"
+       }
+      }
+     },
+     {
+      "name": "POD_NAME",
+      "valueFrom": {
+       "fieldRef": {
+        "apiVersion": "v1",
+        "fieldPath": "metadata.name"
+       }
+      }
+     },
+     {
+      "name": "NODE_NAME",
+      "valueFrom": {
+       "fieldRef": {
+        "apiVersion": "v1",
+        "fieldPath": "spec.nodeName"
+       }
+      }
+     },
+     {
+      "name": "NAMESPACE",
+      "valueFrom": {
+       "fieldRef": {
+        "apiVersion": "v1",
+        "fieldPath": "metadata.namespace"
+       }
+      }
+     },
+     {
+      "name": "my-env",
+      "value": "my-value"
+     },
+     {
+      "name": "HEADLESS_SERVICE_NAME",
+      "value": "name-es-nodeset-1"
+     },
+     {
+      "name": "PROBE_PASSWORD_PATH",
+      "value": "/mnt/elastic-internal/pod-mounted-users/elastic-internal-probe"
+     },
+     {
+      "name": "PROBE_USERNAME",
+      "value": "elastic-internal-probe"
+     },
+     {
+      "name": "READINESS_PROBE_PROTOCOL",
+      "value": "https"
+     },
+     {
+      "name": "NSS_SDB_USE_CACHE",
+      "value": "no"
+     },
+     {
+      "name": "ZONE",
+      "valueFrom": {
+       "fieldRef": {
+        "apiVersion": "v1",
+        "fieldPath": "metadata.annotations['topology.kubernetes.io/zone']"
+       }
+      }
+     }
+    ],
+    "image": "docker.elastic.co/elasticsearch/elasticsearch:8.14.0",
+    "imagePullPolicy": "IfNotPresent",
+    "name": "elastic-internal-suspend",
+    "resources": {
+     "limits": {
+      "memory": "2Gi"
+     },
+     "requests": {
+      "memory": "2Gi"
+     }
+    },
+    "securityContext": {
+     "allowPrivilegeEscalation": false,
+     "capabilities": {
+      "drop": [
+       "ALL"
+      ]
+     },
+     "privileged": false,
+     "readOnlyRootFilesystem": false,
+     "runAsNonRoot": true
+    },
+    "volumeMounts": [
+     {
+      "mountPath": "/mnt/elastic-internal/downward-api",
+      "name": "downward-api",
+      "readOnly": true
+     },
+     {
+      "mountPath": "/usr/share/elasticsearch/bin",
+      "name": "elastic-internal-elasticsearch-bin-local"
+     },
+     {
+      "mountPath": "/mnt/elastic-internal/elasticsearch-config",
+      "name": "elastic-internal-elasticsearch-config",
+      "readOnly": true
+     },
+     {
+      "mountPath": "/usr/share/elasticsearch/config",
+      "name": "elastic-internal-elasticsearch-config-local"
+     },
+     {
+      "mountPath": "/usr/share/elasticsearch/plugins",
+      "name": "elastic-internal-elasticsearch-plugins-local"
+     },
+     {
+      "mountPath": "/usr/share/elasticsearch/config/http-certs",
+      "name": "elastic-internal-http-certificates",
+      "readOnly": true
+     },
+     {
+      "mountPath": "/mnt/elastic-internal/pod-mounted-users",
+      "name": "elastic-internal-probe-user",
+      "readOnly": true
+     },
+     {
+      "mountPath": "/usr/share/elasticsearch/config/transport-remote-certs/",
+      "name": "elastic-internal-remote-certificate-authorities",
+      "readOnly": true
+     },
+     {
+      "mountPath": "/mnt/elastic-internal/scripts",
+      "name": "elastic-internal-scripts",
+      "readOnly": true
+     },
+     {
+      "mountPath": "/usr/share/elasticsearch/config/transport-certs",
+      "name": "elastic-internal-transport-certificates",
+      "readOnly": true
+     },
+     {
+      "mountPath": "/mnt/elastic-internal/unicast-hosts",
+      "name": "elastic-internal-unicast-hosts",
+      "readOnly": true
+     },
+     {
+      "mountPath": "/mnt/elastic-internal/xpack-file-realm",
+      "name": "elastic-internal-xpack-file-realm",
+      "readOnly": true
+     },
+     {
+      "mountPath": "/usr/share/elasticsearch/logs",
+      "name": "elasticsearch-logs"
+     },
+     {
+      "mountPath": "/usr/share/elasticsearch/config/operator",
+      "name": "file-settings",
+      "readOnly": true
+     },
+     {
+      "mountPath": "/tmp",
+      "name": "tmp-volume"
+     }
+    ]
+   },
+   {
+    "env": [
+     {
+      "name": "POD_IP",
+      "valueFrom": {
+       "fieldRef": {
+        "apiVersion": "v1",
+        "fieldPath": "status.podIP"
+       }
+      }
+     },
+     {
+      "name": "POD_NAME",
+      "valueFrom": {
+       "fieldRef": {
+        "apiVersion": "v1",
+        "fieldPath": "metadata.name"
+       }
+      }
+     },
+     {
+      "name": "NODE_NAME",
+      "valueFrom": {
+       "fieldRef": {
+        "apiVersion": "v1",
+        "fieldPath": "spec.nodeName"
+       }
+      }
+     },
+     {
+      "name": "NAMESPACE",
+      "valueFrom": {
+       "fieldRef": {
+        "apiVersion": "v1",
+        "fieldPath": "metadata.namespace"
+       }
+      }
+     },
+     {
+      "name": "my-env",
+      "value": "my-value"
+     },
+     {
+      "name": "HEADLESS_SERVICE_NAME",
+      "value": "name-es-nodeset-1"
+     },
+     {
+      "name": "PROBE_PASSWORD_PATH",
+      "value": "/mnt/elastic-internal/pod-mounted-users/elastic-internal-probe"
+     },
+     {
+      "name": "PROBE_USERNAME",
+      "value": "elastic-internal-probe"
+     },
+     {
+      "name": "READINESS_PROBE_PROTOCOL",
+      "value": "https"
+     },
+     {
+      "name": "NSS_SDB_USE_CACHE",
+      "value": "no"
+     },
+     {
+      "name": "ZONE",
+      "valueFrom": {
+       "fieldRef": {
+        "apiVersion": "v1",
+        "fieldPath": "metadata.annotations['topology.kubernetes.io/zone']"
+       }
+      }
+     }
+    ],
+    "image": "docker.elastic.co/elasticsearch/elasticsearch:8.14.0",
+    "name": "additional-init-container",
+    "resources": {
+     "limits": {
+      "memory": "2Gi"
+     },
+     "requests": {
+      "memory": "2Gi"
+     }
+    },
+    "securityContext": {
+     "allowPrivilegeEscalation": false,
+     "capabilities": {
+      "drop": [
+       "ALL"
+      ]
+     },
+     "privileged": false,
+     "readOnlyRootFilesystem": false,
+     "runAsNonRoot": true
+    },
+    "volumeMounts": [
+     {
+      "mountPath": "/mnt/elastic-internal/downward-api",
+      "name": "downward-api",
+      "readOnly": true
+     },
+     {
+      "mountPath": "/usr/share/elasticsearch/bin",
+      "name": "elastic-internal-elasticsearch-bin-local"
+     },
+     {
+      "mountPath": "/mnt/elastic-internal/elasticsearch-config",
+      "name": "elastic-internal-elasticsearch-config",
+      "readOnly": true
+     },
+     {
+      "mountPath": "/usr/share/elasticsearch/config",
+      "name": "elastic-internal-elasticsearch-config-local"
+     },
+     {
+      "mountPath": "/usr/share/elasticsearch/plugins",
+      "name": "elastic-internal-elasticsearch-plugins-local"
+     },
+     {
+      "mountPath": "/usr/share/elasticsearch/config/http-certs",
+      "name": "elastic-internal-http-certificates",
+      "readOnly": true
+     },
+     {
+      "mountPath": "/mnt/elastic-internal/pod-mounted-users",
+      "name": "elastic-internal-probe-user",
+      "readOnly": true
+     },
+     {
+      "mountPath": "/usr/share/elasticsearch/config/transport-remote-certs/",
+      "name": "elastic-internal-remote-certificate-authorities",
+      "readOnly": true
+     },
+     {
+      "mountPath": "/mnt/elastic-internal/scripts",
+      "name": "elastic-internal-scripts",
+      "readOnly": true
+     },
+     {
+      "mountPath": "/usr/share/elasticsearch/config/transport-certs",
+      "name": "elastic-internal-transport-certificates",
+      "readOnly": true
+     },
+     {
+      "mountPath": "/mnt/elastic-internal/unicast-hosts",
+      "name": "elastic-internal-unicast-hosts",
+      "readOnly": true
+     },
+     {
+      "mountPath": "/mnt/elastic-internal/xpack-file-realm",
+      "name": "elastic-internal-xpack-file-realm",
+      "readOnly": true
+     },
+     {
+      "mountPath": "/usr/share/elasticsearch/logs",
+      "name": "elasticsearch-logs"
+     },
+     {
+      "mountPath": "/usr/share/elasticsearch/config/operator",
+      "name": "file-settings",
+      "readOnly": true
+     },
+     {
+      "mountPath": "/tmp",
+      "name": "tmp-volume"
+     }
+    ]
+   }
+  ],
+  "terminationGracePeriodSeconds": 180,
+  "topologySpreadConstraints": [
+   {
+    "maxSkew": 9,
+    "topologyKey": "topology.kubernetes.io/zone",
+    "whenUnsatisfiable": "DoNotSchedule"
+   }
+  ],
+  "volumes": [
+   {
+    "downwardAPI": {
+     "items": [
+      {
+       "fieldRef": {
+        "fieldPath": "metadata.labels"
+       },
+       "path": "labels"
+      },
+      {
+       "fieldRef": {
+        "fieldPath": "metadata.annotations"
+       },
+       "path": "annotations"
+      }
+     ]
+    },
+    "name": "downward-api"
+   },
+   {
+    "emptyDir": {},
+    "name": "elastic-internal-elasticsearch-bin-local"
+   },
+   {
+    "name": "elastic-internal-elasticsearch-config",
+    "secret": {
+     "optional": false,
+     "secretName": "name-es-nodeset-1-es-config"
+    }
+   },
+   {
+    "emptyDir": {},
+    "name": "elastic-internal-elasticsearch-config-local"
+   },
+   {
+    "emptyDir": {},
+    "name": "elastic-internal-elasticsearch-plugins-local"
+   },
+   {
+    "name": "elastic-internal-http-certificates",
+    "secret": {
+     "optional": false,
+     "secretName": "name-es-http-certs-internal"
+    }
+   },
+   {
+    "name": "elastic-internal-probe-user",
+    "secret": {
+     "items": [
+      {
+       "key": "elastic-internal-probe",
+       "path": "elastic-internal-probe"
+      },
+      {
+       "key": "elastic-internal-pre-stop",
+       "path": "elastic-internal-pre-stop"
+      }
+     ],
+     "optional": false,
+     "secretName": "name-es-internal-users"
+    }
+   },
+   {
+    "name": "elastic-internal-remote-certificate-authorities",
+    "secret": {
+     "optional": false,
+     "secretName": "name-es-remote-ca"
+    }
+   },
+   {
+    "configMap": {
+     "defaultMode": 493,
+     "name": "name-es-scripts",
+     "optional": false
+    },
+    "name": "elastic-internal-scripts"
+   },
+   {
+    "name": "elastic-internal-transport-certificates",
+    "secret": {
+     "optional": false,
+     "secretName": "name-es-nodeset-1-es-transport-certs"
+    }
+   },
+   {
+    "configMap": {
+     "defaultMode": 420,
+     "name": "name-es-unicast-hosts",
+     "optional": false
+    },
+    "name": "elastic-internal-unicast-hosts"
+   },
+   {
+    "name": "elastic-internal-xpack-file-realm",
+    "secret": {
+     "optional": false,
+     "secretName": "name-es-xpack-file-realm"
+    }
+   },
+   {
+    "emptyDir": {},
+    "name": "elasticsearch-logs"
+   },
+   {
+    "name": "file-settings",
+    "secret": {
+     "optional": false,
+     "secretName": "name-es-file-settings"
+    }
+   },
+   {
+    "emptyDir": {},
+    "name": "tmp-volume"
+   }
+  ]
+ }
+}
+---
+
+[TestBuildPodTemplateSpec_ZoneAwarenessScenarios/cluster_level_zone_awareness_injects_env_for_nodeset_without_zone_awareness - 1]
+{
+ "metadata": {
+  "annotations": {
+   "co.elastic.logs/module": "elasticsearch",
+   "elasticsearch.k8s.elastic.co/config-hash": "3385793073"
+  },
+  "labels": {
+   "common.k8s.elastic.co/type": "elasticsearch",
+   "elasticsearch.k8s.elastic.co/cluster-name": "name",
+   "elasticsearch.k8s.elastic.co/http-scheme": "https",
+   "elasticsearch.k8s.elastic.co/node-data": "false",
+   "elasticsearch.k8s.elastic.co/node-data_cold": "false",
+   "elasticsearch.k8s.elastic.co/node-data_content": "false",
+   "elasticsearch.k8s.elastic.co/node-data_frozen": "false",
+   "elasticsearch.k8s.elastic.co/node-data_hot": "false",
+   "elasticsearch.k8s.elastic.co/node-data_warm": "false",
+   "elasticsearch.k8s.elastic.co/node-ingest": "false",
+   "elasticsearch.k8s.elastic.co/node-master": "true",
+   "elasticsearch.k8s.elastic.co/node-ml": "false",
+   "elasticsearch.k8s.elastic.co/node-remote_cluster_client": "false",
+   "elasticsearch.k8s.elastic.co/node-transform": "false",
+   "elasticsearch.k8s.elastic.co/node-voting_only": "false",
+   "elasticsearch.k8s.elastic.co/statefulset-name": "name-es-without-za",
+   "elasticsearch.k8s.elastic.co/version": "8.14.0"
+  }
+ },
+ "spec": {
+  "affinity": {
+   "podAntiAffinity": {
+    "preferredDuringSchedulingIgnoredDuringExecution": [
+     {
+      "podAffinityTerm": {
+       "labelSelector": {
+        "matchLabels": {
+         "elasticsearch.k8s.elastic.co/cluster-name": "name"
+        }
+       },
+       "topologyKey": "kubernetes.io/hostname"
+      },
+      "weight": 100
+     }
+    ]
+   }
+  },
+  "automountServiceAccountToken": false,
+  "containers": [
+   {
+    "env": [
+     {
+      "name": "POD_IP",
+      "valueFrom": {
+       "fieldRef": {
+        "apiVersion": "v1",
+        "fieldPath": "status.podIP"
+       }
+      }
+     },
+     {
+      "name": "POD_NAME",
+      "valueFrom": {
+       "fieldRef": {
+        "apiVersion": "v1",
+        "fieldPath": "metadata.name"
+       }
+      }
+     },
+     {
+      "name": "NODE_NAME",
+      "valueFrom": {
+       "fieldRef": {
+        "apiVersion": "v1",
+        "fieldPath": "spec.nodeName"
+       }
+      }
+     },
+     {
+      "name": "NAMESPACE",
+      "valueFrom": {
+       "fieldRef": {
+        "apiVersion": "v1",
+        "fieldPath": "metadata.namespace"
+       }
+      }
+     },
+     {
+      "name": "HEADLESS_SERVICE_NAME",
+      "value": "name-es-without-za"
+     },
+     {
+      "name": "PROBE_PASSWORD_PATH",
+      "value": "/mnt/elastic-internal/pod-mounted-users/elastic-internal-probe"
+     },
+     {
+      "name": "PROBE_USERNAME",
+      "value": "elastic-internal-probe"
+     },
+     {
+      "name": "READINESS_PROBE_PROTOCOL",
+      "value": "https"
+     },
+     {
+      "name": "NSS_SDB_USE_CACHE",
+      "value": "no"
+     },
+     {
+      "name": "ZONE",
+      "valueFrom": {
+       "fieldRef": {
+        "apiVersion": "v1",
+        "fieldPath": "metadata.annotations['topology.kubernetes.io/zone']"
+       }
+      }
+     }
+    ],
+    "image": "docker.elastic.co/elasticsearch/elasticsearch:8.14.0",
+    "lifecycle": {
+     "preStop": {
+      "exec": {
+       "command": [
+        "bash",
+        "-c",
+        "/mnt/elastic-internal/scripts/pre-stop-hook-script.sh"
+       ]
+      }
+     }
+    },
+    "name": "elasticsearch",
+    "ports": [
+     {
+      "containerPort": 9200,
+      "name": "https",
+      "protocol": "TCP"
+     },
+     {
+      "containerPort": 9300,
+      "name": "transport",
+      "protocol": "TCP"
+     }
+    ],
+    "readinessProbe": {
+     "exec": {
+      "command": [
+       "bash",
+       "-c",
+       "/mnt/elastic-internal/scripts/readiness-port-script.sh"
+      ]
+     },
+     "failureThreshold": 3,
+     "initialDelaySeconds": 10,
+     "periodSeconds": 5,
+     "successThreshold": 1,
+     "timeoutSeconds": 5
+    },
+    "resources": {
+     "limits": {
+      "memory": "2Gi"
+     },
+     "requests": {
+      "memory": "2Gi"
+     }
+    },
+    "securityContext": {
+     "allowPrivilegeEscalation": false,
+     "capabilities": {
+      "drop": [
+       "ALL"
+      ]
+     },
+     "privileged": false,
+     "readOnlyRootFilesystem": false,
+     "runAsNonRoot": true
+    },
+    "volumeMounts": [
+     {
+      "mountPath": "/mnt/elastic-internal/downward-api",
+      "name": "downward-api",
+      "readOnly": true
+     },
+     {
+      "mountPath": "/usr/share/elasticsearch/bin",
+      "name": "elastic-internal-elasticsearch-bin-local"
+     },
+     {
+      "mountPath": "/mnt/elastic-internal/elasticsearch-config",
+      "name": "elastic-internal-elasticsearch-config",
+      "readOnly": true
+     },
+     {
+      "mountPath": "/usr/share/elasticsearch/config",
+      "name": "elastic-internal-elasticsearch-config-local"
+     },
+     {
+      "mountPath": "/usr/share/elasticsearch/plugins",
+      "name": "elastic-internal-elasticsearch-plugins-local"
+     },
+     {
+      "mountPath": "/usr/share/elasticsearch/config/http-certs",
+      "name": "elastic-internal-http-certificates",
+      "readOnly": true
+     },
+     {
+      "mountPath": "/mnt/elastic-internal/pod-mounted-users",
+      "name": "elastic-internal-probe-user",
+      "readOnly": true
+     },
+     {
+      "mountPath": "/usr/share/elasticsearch/config/transport-remote-certs/",
+      "name": "elastic-internal-remote-certificate-authorities",
+      "readOnly": true
+     },
+     {
+      "mountPath": "/mnt/elastic-internal/scripts",
+      "name": "elastic-internal-scripts",
+      "readOnly": true
+     },
+     {
+      "mountPath": "/usr/share/elasticsearch/config/transport-certs",
+      "name": "elastic-internal-transport-certificates",
+      "readOnly": true
+     },
+     {
+      "mountPath": "/mnt/elastic-internal/unicast-hosts",
+      "name": "elastic-internal-unicast-hosts",
+      "readOnly": true
+     },
+     {
+      "mountPath": "/mnt/elastic-internal/xpack-file-realm",
+      "name": "elastic-internal-xpack-file-realm",
+      "readOnly": true
+     },
+     {
+      "mountPath": "/usr/share/elasticsearch/logs",
+      "name": "elasticsearch-logs"
+     },
+     {
+      "mountPath": "/usr/share/elasticsearch/config/operator",
+      "name": "file-settings",
+      "readOnly": true
+     },
+     {
+      "mountPath": "/tmp",
+      "name": "tmp-volume"
+     }
+    ]
+   }
+  ],
+  "initContainers": [
+   {
+    "command": [
+     "bash",
+     "-c",
+     "/mnt/elastic-internal/scripts/prepare-fs.sh"
+    ],
+    "env": [
+     {
+      "name": "POD_IP",
+      "valueFrom": {
+       "fieldRef": {
+        "apiVersion": "v1",
+        "fieldPath": "status.podIP"
+       }
+      }
+     },
+     {
+      "name": "POD_NAME",
+      "valueFrom": {
+       "fieldRef": {
+        "apiVersion": "v1",
+        "fieldPath": "metadata.name"
+       }
+      }
+     },
+     {
+      "name": "NODE_NAME",
+      "valueFrom": {
+       "fieldRef": {
+        "apiVersion": "v1",
+        "fieldPath": "spec.nodeName"
+       }
+      }
+     },
+     {
+      "name": "NAMESPACE",
+      "valueFrom": {
+       "fieldRef": {
+        "apiVersion": "v1",
+        "fieldPath": "metadata.namespace"
+       }
+      }
+     },
+     {
+      "name": "HEADLESS_SERVICE_NAME",
+      "value": "name-es-without-za"
+     },
+     {
+      "name": "PROBE_PASSWORD_PATH",
+      "value": "/mnt/elastic-internal/pod-mounted-users/elastic-internal-probe"
+     },
+     {
+      "name": "PROBE_USERNAME",
+      "value": "elastic-internal-probe"
+     },
+     {
+      "name": "READINESS_PROBE_PROTOCOL",
+      "value": "https"
+     },
+     {
+      "name": "NSS_SDB_USE_CACHE",
+      "value": "no"
+     },
+     {
+      "name": "ZONE",
+      "valueFrom": {
+       "fieldRef": {
+        "apiVersion": "v1",
+        "fieldPath": "metadata.annotations['topology.kubernetes.io/zone']"
+       }
+      }
+     }
+    ],
+    "image": "docker.elastic.co/elasticsearch/elasticsearch:8.14.0",
+    "imagePullPolicy": "IfNotPresent",
+    "name": "elastic-internal-init-filesystem",
+    "resources": {
+     "limits": {
+      "cpu": "100m",
+      "memory": "50Mi"
+     },
+     "requests": {
+      "cpu": "100m",
+      "memory": "50Mi"
+     }
+    },
+    "securityContext": {
+     "allowPrivilegeEscalation": false,
+     "capabilities": {
+      "drop": [
+       "ALL"
+      ]
+     },
+     "privileged": false,
+     "readOnlyRootFilesystem": false,
+     "runAsNonRoot": true
+    },
+    "volumeMounts": [
+     {
+      "mountPath": "/mnt/elastic-internal/downward-api",
+      "name": "downward-api",
+      "readOnly": true
+     },
+     {
+      "mountPath": "/mnt/elastic-internal/elasticsearch-bin-local",
+      "name": "elastic-internal-elasticsearch-bin-local"
+     },
+     {
+      "mountPath": "/mnt/elastic-internal/elasticsearch-config",
+      "name": "elastic-internal-elasticsearch-config",
+      "readOnly": true
+     },
+     {
+      "mountPath": "/mnt/elastic-internal/elasticsearch-config-local",
+      "name": "elastic-internal-elasticsearch-config-local"
+     },
+     {
+      "mountPath": "/mnt/elastic-internal/elasticsearch-plugins-local",
+      "name": "elastic-internal-elasticsearch-plugins-local"
+     },
+     {
+      "mountPath": "/usr/share/elasticsearch/config/http-certs",
+      "name": "elastic-internal-http-certificates",
+      "readOnly": true
+     },
+     {
+      "mountPath": "/mnt/elastic-internal/pod-mounted-users",
+      "name": "elastic-internal-probe-user",
+      "readOnly": true
+     },
+     {
+      "mountPath": "/usr/share/elasticsearch/config/transport-remote-certs/",
+      "name": "elastic-internal-remote-certificate-authorities",
+      "readOnly": true
+     },
+     {
+      "mountPath": "/mnt/elastic-internal/scripts",
+      "name": "elastic-internal-scripts",
+      "readOnly": true
+     },
+     {
+      "mountPath": "/mnt/elastic-internal/transport-certificates",
+      "name": "elastic-internal-transport-certificates",
+      "readOnly": true
+     },
+     {
+      "mountPath": "/mnt/elastic-internal/unicast-hosts",
+      "name": "elastic-internal-unicast-hosts",
+      "readOnly": true
+     },
+     {
+      "mountPath": "/mnt/elastic-internal/xpack-file-realm",
+      "name": "elastic-internal-xpack-file-realm",
+      "readOnly": true
+     },
+     {
+      "mountPath": "/usr/share/elasticsearch/logs",
+      "name": "elasticsearch-logs"
+     },
+     {
+      "mountPath": "/usr/share/elasticsearch/config/operator",
+      "name": "file-settings",
+      "readOnly": true
+     },
+     {
+      "mountPath": "/tmp",
+      "name": "tmp-volume"
+     }
+    ]
+   },
+   {
+    "command": [
+     "bash",
+     "-c",
+     "/mnt/elastic-internal/scripts/suspend.sh"
+    ],
+    "env": [
+     {
+      "name": "POD_IP",
+      "valueFrom": {
+       "fieldRef": {
+        "apiVersion": "v1",
+        "fieldPath": "status.podIP"
+       }
+      }
+     },
+     {
+      "name": "POD_NAME",
+      "valueFrom": {
+       "fieldRef": {
+        "apiVersion": "v1",
+        "fieldPath": "metadata.name"
+       }
+      }
+     },
+     {
+      "name": "NODE_NAME",
+      "valueFrom": {
+       "fieldRef": {
+        "apiVersion": "v1",
+        "fieldPath": "spec.nodeName"
+       }
+      }
+     },
+     {
+      "name": "NAMESPACE",
+      "valueFrom": {
+       "fieldRef": {
+        "apiVersion": "v1",
+        "fieldPath": "metadata.namespace"
+       }
+      }
+     },
+     {
+      "name": "HEADLESS_SERVICE_NAME",
+      "value": "name-es-without-za"
+     },
+     {
+      "name": "PROBE_PASSWORD_PATH",
+      "value": "/mnt/elastic-internal/pod-mounted-users/elastic-internal-probe"
+     },
+     {
+      "name": "PROBE_USERNAME",
+      "value": "elastic-internal-probe"
+     },
+     {
+      "name": "READINESS_PROBE_PROTOCOL",
+      "value": "https"
+     },
+     {
+      "name": "NSS_SDB_USE_CACHE",
+      "value": "no"
+     },
+     {
+      "name": "ZONE",
+      "valueFrom": {
+       "fieldRef": {
+        "apiVersion": "v1",
+        "fieldPath": "metadata.annotations['topology.kubernetes.io/zone']"
+       }
+      }
+     }
+    ],
+    "image": "docker.elastic.co/elasticsearch/elasticsearch:8.14.0",
+    "imagePullPolicy": "IfNotPresent",
+    "name": "elastic-internal-suspend",
+    "resources": {
+     "limits": {
+      "memory": "2Gi"
+     },
+     "requests": {
+      "memory": "2Gi"
+     }
+    },
+    "securityContext": {
+     "allowPrivilegeEscalation": false,
+     "capabilities": {
+      "drop": [
+       "ALL"
+      ]
+     },
+     "privileged": false,
+     "readOnlyRootFilesystem": false,
+     "runAsNonRoot": true
+    },
+    "volumeMounts": [
+     {
+      "mountPath": "/mnt/elastic-internal/downward-api",
+      "name": "downward-api",
+      "readOnly": true
+     },
+     {
+      "mountPath": "/usr/share/elasticsearch/bin",
+      "name": "elastic-internal-elasticsearch-bin-local"
+     },
+     {
+      "mountPath": "/mnt/elastic-internal/elasticsearch-config",
+      "name": "elastic-internal-elasticsearch-config",
+      "readOnly": true
+     },
+     {
+      "mountPath": "/usr/share/elasticsearch/config",
+      "name": "elastic-internal-elasticsearch-config-local"
+     },
+     {
+      "mountPath": "/usr/share/elasticsearch/plugins",
+      "name": "elastic-internal-elasticsearch-plugins-local"
+     },
+     {
+      "mountPath": "/usr/share/elasticsearch/config/http-certs",
+      "name": "elastic-internal-http-certificates",
+      "readOnly": true
+     },
+     {
+      "mountPath": "/mnt/elastic-internal/pod-mounted-users",
+      "name": "elastic-internal-probe-user",
+      "readOnly": true
+     },
+     {
+      "mountPath": "/usr/share/elasticsearch/config/transport-remote-certs/",
+      "name": "elastic-internal-remote-certificate-authorities",
+      "readOnly": true
+     },
+     {
+      "mountPath": "/mnt/elastic-internal/scripts",
+      "name": "elastic-internal-scripts",
+      "readOnly": true
+     },
+     {
+      "mountPath": "/usr/share/elasticsearch/config/transport-certs",
+      "name": "elastic-internal-transport-certificates",
+      "readOnly": true
+     },
+     {
+      "mountPath": "/mnt/elastic-internal/unicast-hosts",
+      "name": "elastic-internal-unicast-hosts",
+      "readOnly": true
+     },
+     {
+      "mountPath": "/mnt/elastic-internal/xpack-file-realm",
+      "name": "elastic-internal-xpack-file-realm",
+      "readOnly": true
+     },
+     {
+      "mountPath": "/usr/share/elasticsearch/logs",
+      "name": "elasticsearch-logs"
+     },
+     {
+      "mountPath": "/usr/share/elasticsearch/config/operator",
+      "name": "file-settings",
+      "readOnly": true
+     },
+     {
+      "mountPath": "/tmp",
+      "name": "tmp-volume"
+     }
+    ]
+   }
+  ],
+  "terminationGracePeriodSeconds": 180,
+  "volumes": [
+   {
+    "downwardAPI": {
+     "items": [
+      {
+       "fieldRef": {
+        "fieldPath": "metadata.labels"
+       },
+       "path": "labels"
+      },
+      {
+       "fieldRef": {
+        "fieldPath": "metadata.annotations"
+       },
+       "path": "annotations"
+      }
+     ]
+    },
+    "name": "downward-api"
+   },
+   {
+    "emptyDir": {},
+    "name": "elastic-internal-elasticsearch-bin-local"
+   },
+   {
+    "name": "elastic-internal-elasticsearch-config",
+    "secret": {
+     "optional": false,
+     "secretName": "name-es-without-za-es-config"
+    }
+   },
+   {
+    "emptyDir": {},
+    "name": "elastic-internal-elasticsearch-config-local"
+   },
+   {
+    "emptyDir": {},
+    "name": "elastic-internal-elasticsearch-plugins-local"
+   },
+   {
+    "name": "elastic-internal-http-certificates",
+    "secret": {
+     "optional": false,
+     "secretName": "name-es-http-certs-internal"
+    }
+   },
+   {
+    "name": "elastic-internal-probe-user",
+    "secret": {
+     "items": [
+      {
+       "key": "elastic-internal-probe",
+       "path": "elastic-internal-probe"
+      },
+      {
+       "key": "elastic-internal-pre-stop",
+       "path": "elastic-internal-pre-stop"
+      }
+     ],
+     "optional": false,
+     "secretName": "name-es-internal-users"
+    }
+   },
+   {
+    "name": "elastic-internal-remote-certificate-authorities",
+    "secret": {
+     "optional": false,
+     "secretName": "name-es-remote-ca"
+    }
+   },
+   {
+    "configMap": {
+     "defaultMode": 493,
+     "name": "name-es-scripts",
+     "optional": false
+    },
+    "name": "elastic-internal-scripts"
+   },
+   {
+    "name": "elastic-internal-transport-certificates",
+    "secret": {
+     "optional": false,
+     "secretName": "name-es-without-za-es-transport-certs"
+    }
+   },
+   {
+    "configMap": {
+     "defaultMode": 420,
+     "name": "name-es-unicast-hosts",
+     "optional": false
+    },
+    "name": "elastic-internal-unicast-hosts"
+   },
+   {
+    "name": "elastic-internal-xpack-file-realm",
+    "secret": {
+     "optional": false,
+     "secretName": "name-es-xpack-file-realm"
+    }
+   },
+   {
+    "emptyDir": {},
+    "name": "elasticsearch-logs"
+   },
+   {
+    "name": "file-settings",
+    "secret": {
+     "optional": false,
+     "secretName": "name-es-file-settings"
+    }
+   },
+   {
+    "emptyDir": {},
+    "name": "tmp-volume"
+   }
+  ]
+ }
+}
+---

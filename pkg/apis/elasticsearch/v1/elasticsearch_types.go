@@ -341,6 +341,10 @@ type NodeSet struct {
 	// +kubebuilder:validation:Optional
 	Count int32 `json:"count"`
 
+	// ZoneAwareness enables automatic topology-aware scheduling and shard-awareness configuration.
+	// +kubebuilder:validation:Optional
+	ZoneAwareness *ZoneAwareness `json:"zoneAwareness,omitempty"`
+
 	// PodTemplate provides customisation options (labels, annotations, affinity rules, resource requests, and so on) for the Pods belonging to this NodeSet.
 	// +kubebuilder:validation:Optional
 	// +kubebuilder:pruning:PreserveUnknownFields
@@ -351,6 +355,46 @@ type NodeSet struct {
 	// Items defined here take precedence over any default claims added by the operator with the same name.
 	// +kubebuilder:validation:Optional
 	VolumeClaimTemplates []corev1.PersistentVolumeClaim `json:"volumeClaimTemplates,omitempty"`
+}
+
+const (
+	// DefaultZoneAwarenessTopologyKey is used when topologyKey is not specified.
+	DefaultZoneAwarenessTopologyKey = "topology.kubernetes.io/zone"
+)
+
+// ZoneAwareness configures topology-aware scheduling and shard-awareness defaults for a NodeSet.
+type ZoneAwareness struct {
+	// TopologyKey is the node label key used for spreading Pods and deriving the zone annotation.
+	// Defaults to topology.kubernetes.io/zone when not set.
+	// +kubebuilder:validation:Optional
+	// +kubebuilder:validation:MinLength=1
+	TopologyKey string `json:"topologyKey,omitempty"`
+
+	// Zones optionally restrict scheduling to the listed topology values.
+	// If empty, Pods can be scheduled in any topology value for the selected topologyKey.
+	// +kubebuilder:validation:Optional
+	// +kubebuilder:validation:MinItems=1
+	// +kubebuilder:validation:UniqueItems=true
+	Zones []string `json:"zones,omitempty"`
+
+	// MaxSkew controls how unevenly Pods may be distributed across topology domains.
+	// Defaults to 1 when not set.
+	// +kubebuilder:validation:Optional
+	// +kubebuilder:validation:Minimum=1
+	MaxSkew *int32 `json:"maxSkew,omitempty"`
+
+	// WhenUnsatisfiable configures how to handle unsatisfied spread constraints.
+	// Defaults to DoNotSchedule when not set.
+	// +kubebuilder:validation:Optional
+	// +kubebuilder:validation:Enum=DoNotSchedule;ScheduleAnyway
+	WhenUnsatisfiable *corev1.UnsatisfiableConstraintAction `json:"whenUnsatisfiable,omitempty"`
+}
+
+func (za ZoneAwareness) TopologyKeyOrDefault() string {
+	if strings.TrimSpace(za.TopologyKey) == "" {
+		return DefaultZoneAwarenessTopologyKey
+	}
+	return za.TopologyKey
 }
 
 // +kubebuilder:object:generate=false
@@ -454,12 +498,28 @@ type Elasticsearch struct {
 
 // DownwardNodeLabels returns the set of expected node labels to be copied as annotations on the Elasticsearch Pods.
 func (es Elasticsearch) DownwardNodeLabels() []string {
-	expectedAnnotations, exist := es.Annotations[DownwardNodeLabelsAnnotation]
-	expectedAnnotations = strings.TrimSpace(expectedAnnotations)
-	if !exist || expectedAnnotations == "" {
+	expectedAnnotations := set.Make()
+	if annotationValue, exists := es.Annotations[DownwardNodeLabelsAnnotation]; exists {
+		for _, label := range strings.Split(annotationValue, ",") {
+			label = strings.TrimSpace(label)
+			if label == "" {
+				continue
+			}
+			expectedAnnotations.Add(label)
+		}
+	}
+
+	for _, nodeSet := range es.Spec.NodeSets {
+		if nodeSet.ZoneAwareness == nil {
+			continue
+		}
+		expectedAnnotations.Add(nodeSet.ZoneAwareness.TopologyKeyOrDefault())
+	}
+
+	if expectedAnnotations.Count() == 0 {
 		return nil
 	}
-	return strings.Split(expectedAnnotations, ",")
+	return expectedAnnotations.AsSortedSlice()
 }
 
 // HasDownwardNodeLabels returns true if some node labels are expected on the Elasticsearch Pods.

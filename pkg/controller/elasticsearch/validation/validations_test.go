@@ -595,6 +595,41 @@ func Test_validNodeLabels(t *testing.T) {
 				exposedNodeLabels: []string{"topology.kubernetes.io/*", "failure-domain.beta.kubernetes.io/*"},
 			},
 		},
+		{
+			name: "Zone awareness default topology key is allowed",
+			args: args{
+				proposed: esv1.Elasticsearch{
+					Spec: esv1.ElasticsearchSpec{
+						NodeSets: []esv1.NodeSet{
+							{
+								Name:          "default",
+								ZoneAwareness: &esv1.ZoneAwareness{},
+							},
+						},
+					},
+				},
+				exposedNodeLabels: []string{"topology.kubernetes.io/*"},
+			},
+		},
+		{
+			name: "Zone awareness custom topology key must be exposed",
+			args: args{
+				proposed: esv1.Elasticsearch{
+					Spec: esv1.ElasticsearchSpec{
+						NodeSets: []esv1.NodeSet{
+							{
+								Name: "default",
+								ZoneAwareness: &esv1.ZoneAwareness{
+									TopologyKey: "custom.io/rack",
+								},
+							},
+						},
+					},
+				},
+				exposedNodeLabels: []string{"topology.kubernetes.io/*"},
+			},
+			expectErrors: true,
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

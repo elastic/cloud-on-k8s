@@ -1283,6 +1283,7 @@ NodeSet is the specification for a group of Elasticsearch nodes sharing the same
 | *`name`* __string__ | Name of this set of nodes. Becomes a part of the Elasticsearch node.name setting. |
 | *`config`* __[Config](#config)__ | Config holds the Elasticsearch configuration. |
 | *`count`* __integer__ | Count of Elasticsearch nodes to deploy.<br>If the node set is managed by an autoscaling policy the initial value is automatically set by the autoscaling controller. |
+| *`zoneAwareness`* __[ZoneAwareness](#zoneawareness)__ | ZoneAwareness enables automatic topology-aware scheduling and shard-awareness configuration. |
 | *`podTemplate`* __[PodTemplateSpec](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.32/#podtemplatespec-v1-core)__ | PodTemplate provides customisation options (labels, annotations, affinity rules, resource requests, and so on) for the Pods belonging to this NodeSet. |
 | *`volumeClaimTemplates`* __[PersistentVolumeClaim](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.32/#persistentvolumeclaim-v1-core) array__ | VolumeClaimTemplates is a list of persistent volume claims to be used by each Pod in this NodeSet.<br>Every claim in this list must have a matching volumeMount in one of the containers defined in the PodTemplate.<br>Items defined here take precedence over any default claims added by the operator with the same name. |
 
@@ -1513,6 +1514,23 @@ Inspired by https://github.com/kubernetes/enhancements/pull/2440
 
 :::
 
+
+
+### ZoneAwareness  [#zoneawareness]
+
+ZoneAwareness configures topology-aware scheduling and shard-awareness defaults for a NodeSet.
+
+:::{admonition} Appears In:
+* [NodeSet](#nodeset)
+
+:::
+
+| Field | Description |
+| --- | --- |
+| *`topologyKey`* __string__ | TopologyKey is the node label key used for spreading Pods and deriving the zone annotation.<br>Defaults to topology.kubernetes.io/zone when not set. |
+| *`zones`* __string array__ | Zones optionally restrict scheduling to the listed topology values.<br>If empty, Pods can be scheduled in any topology value for the selected topologyKey. |
+| *`maxSkew`* __integer__ | MaxSkew controls how unevenly Pods may be distributed across topology domains.<br>Defaults to 1 when not set. |
+| *`whenUnsatisfiable`* __[UnsatisfiableConstraintAction](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.32/#unsatisfiableconstraintaction-v1-core)__ | WhenUnsatisfiable configures how to handle unsatisfied spread constraints.<br>Defaults to DoNotSchedule when not set. |
 
 
 

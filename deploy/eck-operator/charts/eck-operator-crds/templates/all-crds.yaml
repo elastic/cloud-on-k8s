@@ -4936,6 +4936,41 @@ spec:
                             type: object
                         type: object
                       type: array
+                    zoneAwareness:
+                      description: ZoneAwareness enables automatic topology-aware
+                        scheduling and shard-awareness configuration.
+                      properties:
+                        maxSkew:
+                          description: |-
+                            MaxSkew controls how unevenly Pods may be distributed across topology domains.
+                            Defaults to 1 when not set.
+                          format: int32
+                          minimum: 1
+                          type: integer
+                        topologyKey:
+                          description: |-
+                            TopologyKey is the node label key used for spreading Pods and deriving the zone annotation.
+                            Defaults to topology.kubernetes.io/zone when not set.
+                          minLength: 1
+                          type: string
+                        whenUnsatisfiable:
+                          description: |-
+                            WhenUnsatisfiable configures how to handle unsatisfied spread constraints.
+                            Defaults to DoNotSchedule when not set.
+                          enum:
+                          - DoNotSchedule
+                          - ScheduleAnyway
+                          type: string
+                        zones:
+                          description: |-
+                            Zones optionally restrict scheduling to the listed topology values.
+                            If empty, Pods can be scheduled in any topology value for the selected topologyKey.
+                          items:
+                            type: string
+                          minItems: 1
+                          type: array
+                          uniqueItems: true
+                      type: object
                   required:
                   - name
                   type: object
