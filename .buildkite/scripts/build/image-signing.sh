@@ -51,7 +51,7 @@ get_image_digest() {
 }
 
 main() {
-    local output_file="eck-container-images-digest.txt"
+    local output_file="$ROOT/eck-container-images-digest.txt"
     local stderr_file
     local metadata_output
 
@@ -91,8 +91,8 @@ main() {
             echo "${image_ref}@${digest}" >> "$output_file"
             echo "OK"
         else
-            echo "FAILED"
-            echo "Warning: Could not get digest for $image_ref" >&2
+            echo "Error: Failed to get digest for $image_ref" >&2
+            exit 1
         fi
     done <<< "$images_list"
 
@@ -101,7 +101,7 @@ main() {
     if [[ -s "$output_file" ]]; then
         cat "$output_file"
     else
-        echo "Warning: No image digests found." >&2
+        echo "Error: No image digests found." >&2
         exit 1
     fi
 }
