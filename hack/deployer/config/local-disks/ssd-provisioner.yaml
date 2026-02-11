@@ -77,9 +77,14 @@ data:
     # free (e.g. 110Gi for default 10x11Gi). No runtime check is performed; use instance types
     # with sufficient NVMe capacity (e.g. c5d.2xlarge has 200GB).
     # PV_SIZE_GB is the backing file size; usable space is ~10Gi after ext4 metadata (default 11G).
+    # IMPORTANT: truncate creates sparse files: they report size PV_SIZE_GB but do not allocate that much
+    # on disk upfront. Actual disk usage grows only as data is written (via the loop-mounted
+    # ext4). So e.g. 10×11G can fit on a 64G volume (e.g. Azure temp disk) until usage grows.
     set -e
     PV_SIZE_GB="${PV_SIZE_GB:-11}"
     PV_COUNT="${PV_COUNT:-10}"
+    # When format.sh is skipped (GKE/AKS kustomize overlay), ssd0 does not exist; pvs is created by the loop.
+    mkdir -p /mnt/disks/ssd0
     for i in $(seq 1 $PV_COUNT); do
       img="/mnt/disks/ssd0/disk-$i.img"
       mount_point="/mnt/disks/pvs/pv-$i"
