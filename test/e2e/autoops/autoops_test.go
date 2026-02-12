@@ -18,13 +18,6 @@ import (
 )
 
 func TestAutoOpsAgentPolicy(t *testing.T) {
-	// https://github.com/elastic/cloud-on-k8s/issues/9027
-	t.Skip("Skipping AutoOpsAgentPolicy test")
-
-	// only execute this test if we have a test license to work with
-	if test.Ctx().TestLicense == "" {
-		t.SkipNow()
-	}
 
 	// only execute this test with supported AutoOps versions
 	v := version.MustParse(test.Ctx().ElasticStackVersion)

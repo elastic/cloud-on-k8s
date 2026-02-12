@@ -26,7 +26,6 @@ import (
 	esv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/elasticsearch/v1"
 	commonapikey "github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/apikey"
 	commonesclient "github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/esclient"
-	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/license"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/operator"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/reconciler"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/scheme"
@@ -630,7 +629,6 @@ func TestAutoOpsAgentPolicyReconciler_internalReconcile(t *testing.T) {
 					Dialer: &fakeDialer{},
 				},
 				dynamicWatches: watches.NewDynamicWatches(),
-				licenseChecker: license.NewLicenseChecker(k8sClient, "test-namespace"),
 			}
 
 			ctx := context.Background()
@@ -777,7 +775,6 @@ func TestAutoOpsAgentPolicyReconciler_selectorChangeCleanup(t *testing.T) {
 					Dialer: &fakeDialer{},
 				},
 				dynamicWatches: watches.NewDynamicWatches(),
-				licenseChecker: license.NewLicenseChecker(k8sClient, "test-namespace"),
 			}
 
 			ctx := context.Background()
@@ -970,7 +967,6 @@ func TestAutoOpsAgentPolicyReconciler_accessRevokedCleanup(t *testing.T) {
 				Dialer: &fakeDialer{},
 			},
 			dynamicWatches: watches.NewDynamicWatches(),
-			licenseChecker: license.NewLicenseChecker(k8sClient, "test-namespace"),
 		}
 
 		ctx := context.Background()
