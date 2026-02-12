@@ -206,6 +206,11 @@ spec:
     output.elasticsearch:
       ssl.certificate: /etc/pki/client-certs/tls.crt
       ssl.key: /etc/pki/client-certs/tls.key
+      # Automatically restart the Beat when certificate files change on disk
+      # (e.g. after cert-manager renews the certificate).
+      ssl.restart_on_cert_change:
+        enabled: true
+        period: 1m
     processors:
     - add_cloud_metadata: {}
     - add_host_metadata: {}

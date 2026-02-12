@@ -53,6 +53,7 @@ For standalone agents, the output key is `outputs.default.ssl.*`. For Beats, it 
 - Stack monitoring sidecars (Metricbeat/Filebeat injected by ECK) use username/password authentication only. The sidecar configuration is fully managed by ECK and has no mechanism to specify client certificates (`ssl.certificate`/`ssl.key`). They work with `client_authentication: optional` but do not participate in mTLS.
 - Preconfigured Fleet outputs cannot be changed via the Fleet API. They must be updated in the Kibana resource's `xpack.fleet.outputs` configuration.
 - On first deploy, cert-manager must issue certificates before ECK can configure components. Brief reconciliation errors are expected and resolve automatically.
+- Elasticsearch automatically reloads SSL certificates when the files change on disk. Kibana, Fleet Server, and Elastic Agent do not -- their pods must be restarted to pick up renewed certificates. For Beats, the `ssl.restart_on_cert_change` setting can be enabled to automatically restart the Beat process when certificate files change on disk (see the `beats.yaml` recipe for an example).
 
 == Recipes
 
@@ -95,6 +96,10 @@ The agent's client certificate (`elastic-agent-client-certs-cm`) is mounted at `
 
 2. **Agent -> Elasticsearch**: After enrollment, the agent receives its policy from Fleet. The default output (preconfigured in `xpack.fleet.outputs`) includes `ssl.certificate`, `ssl.key` and `ssl.certificate_authorities` pointing to the same `/etc/pki/client-certs/` path, ensuring the agent presents the client cert when shipping data to Elasticsearch.
 
+==== Certificate rotation
+
+Kibana, Fleet Server, and Elastic Agent load TLS certificates once at startup and do not watch for file changes on disk. When cert-manager renews certificates, the updated secrets are projected into the pods by the kubelet, but the processes will not pick them up automatically. To apply renewed certificates, restart the affected pods (e.g. `kubectl rollout restart deployment kibana-kb`, `kubectl rollout restart deployment fleet-server-agent`, and `kubectl rollout restart daemonset elastic-agent-agent`).
+
 ==== Validating Fleet Server mTLS enforcement
 
 Once all pods are running, you can verify that Fleet Server rejects connections without a client certificate and accepts connections with one. Exec into the elastic-agent pod and use `curl`:
@@ -124,6 +129,8 @@ kubectl apply -f standalone-agent.yaml
 
 Deploys Elasticsearch, Kibana and a standalone Elastic Agent (without Fleet) with mTLS enabled on all connections to Elasticsearch.
 
+Kibana and the standalone Elastic Agent load TLS certificates once at startup and do not watch for file changes on disk. When cert-manager renews certificates, restart the affected pods to pick up the new certificates (e.g. `kubectl rollout restart deployment kibana-kb` and `kubectl rollout restart daemonset elastic-agent-agent`).
+
 Because there is no Fleet Server, the setup is simpler than the Fleet-managed recipe. Only three certificates are needed: the Elasticsearch server cert, the Kibana server/client cert and the agent's client cert. Kibana presents its HTTP certificate as a client cert to Elasticsearch. The agent's client certificate is mounted at `/etc/pki/client-certs/` and referenced via `outputs.default.ssl.certificate` and `outputs.default.ssl.key` in `spec.config`, which ECK merges on top of the auto-generated output (see <<Config merge for standalone components (Agents and Beats)>> above).
 
 === Standalone Beats - `beats.yaml`
@@ -134,5 +141,7 @@ kubectl apply -f beats.yaml
 ----
 
 Deploys Elasticsearch, Kibana and a Metricbeat DaemonSet with mTLS enabled on all connections to Elasticsearch. Kibana presents its HTTP certificate as a client cert to Elasticsearch. Metricbeat's client certificate is mounted at `/etc/pki/client-certs/` and referenced via `output.elasticsearch.ssl.certificate` and `output.elasticsearch.ssl.key` in `spec.config`, which ECK merges on top of the auto-generated output (see <<Config merge for standalone components (Agents and Beats)>> above).
+
+Kibana loads TLS certificates once at startup and does not watch for file changes on disk. When cert-manager renews certificates, restart the Kibana pods to pick up the new certificates (e.g. `kubectl rollout restart deployment kibana-kb`). Beats, on the other hand, support automatic restart on certificate file changes via the `output.elasticsearch.ssl.restart_on_cert_change` setting. When enabled, the Beat process watches the configured certificate, key, and CA files for changes and restarts itself (via `exec`) when any file is modified. This recipe enables this setting with a polling period of one minute, so renewed certificates are picked up automatically without manual pod restarts.
 
 This pattern applies to any Beat type (Filebeat, Heartbeat, Auditbeat, etc.) -- replace the Beat-specific module configuration and adjust the mount path accordingly.
