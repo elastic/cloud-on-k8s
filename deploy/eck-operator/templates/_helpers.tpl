@@ -374,6 +374,13 @@ updating docs/operating-eck/eck-permissions.asciidoc file.
 RBAC permissions on non-namespaced resources
 */}}
 {{- define "eck-operator.clusterWideRbacRules" -}}
+- apiGroups: [""]
+  resources:
+  - namespaces
+  verbs:
+  - get
+  - list
+  - watch
 - apiGroups:
   - storage.k8s.io
   resources:
