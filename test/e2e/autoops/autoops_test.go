@@ -41,8 +41,6 @@ func TestAutoOpsAgentPolicy(t *testing.T) {
 		WithVersion(test.Ctx().ElasticStackVersion).
 		WithLabel("autoops", "enabled")
 
-	es1Withlicense := test.LicenseTestBuilder(es1Builder)
-
 	// 2nd elasticsearch cluster that should be omitted from autoops based on namespace
 	es2Builder := elasticsearch.NewBuilder("ex-es").
 		WithESMasterDataNodes(3, elasticsearch.DefaultResources).
@@ -65,6 +63,6 @@ func TestAutoOpsAgentPolicy(t *testing.T) {
 	}).WithCloudConnectedAPIURL(mockURL).
 		WithAutoOpsOTelURL(mockURL)
 
-	test.Sequence(nil, test.EmptySteps, es1Withlicense, es2Builder, policyBuilder).
+	test.Sequence(nil, test.EmptySteps, es1Builder, es2Builder, policyBuilder).
 		RunSequential(t)
 }
