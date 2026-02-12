@@ -18,11 +18,6 @@ import (
 )
 
 func TestAutoOpsAgentPolicy(t *testing.T) {
-	// only execute this test if we have a test license to work with
-	if test.Ctx().TestLicense == "" {
-		t.Skip("Skipping test: no test license provided")
-	}
-
 	// only execute this test with supported AutoOps versions
 	v := version.MustParse(test.Ctx().ElasticStackVersion)
 	if v.LT(version.SupportedAutoOpsAgentVersions.Min) {
