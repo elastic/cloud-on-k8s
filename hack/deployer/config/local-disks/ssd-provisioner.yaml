@@ -83,6 +83,11 @@ data:
     set -e
     PV_SIZE_GB="${PV_SIZE_GB:-11}"
     PV_COUNT="${PV_COUNT:-10}"
+    loop=""
+    # On mkfs or mount failure (set -e), detach the current loop device so a DaemonSet pod restart
+    # does not see a stale attachment. We set loop= before each losetup; the trap runs when a
+    # command fails (shell ERR) and runs losetup -d on that device if it is still a block device.
+    trap 'if [ -n "$loop" ] && [ -b "$loop" ]; then losetup -d "$loop" 2>/dev/null || true; fi' ERR
     # When format.sh is skipped (GKE/AKS kustomize overlay), ssd0 does not exist; pvs is created by the loop.
     mkdir -p /mnt/disks/ssd0
     for i in $(seq 1 $PV_COUNT); do
