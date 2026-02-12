@@ -66,6 +66,7 @@ steps:
     key: "operator-image-build"
     steps:
       - label: ":buildkite:"
+        key: "operator-image-build-step"
         agents:
           image: "docker.elastic.co/ci-agent-images/serverless-docker-builder:0.10.3@sha256:7d810d7aa5f089b408d6e5076199f5364640907a99b175268fceb8f1f622370a"
         commands: make -C /agent generate-docker-images
@@ -175,3 +176,38 @@ steps:
     agents:
       image: docker.elastic.co/ci-agent-images/cloud-k8s-operator/buildkite-agent:cad6aedb
       memory: "2G"
+
+  - group: sign images
+    if: |  # merge-xyz, tag-bc, tag-final, but not nightly-main
+      build.branch =~ /^[0-9]*\.[0-9]*\$/
+      || build.tag != null
+      || (build.branch == "main" && build.source != "schedule")
+    steps:
+      - label: ":buildkite: upload images digest"
+        depends_on:
+          - "operator-image-build"
+        key: "operator-image-upload-digest-step"
+        commands:
+          - .buildkite/scripts/build/image-signing.sh
+          - buildkite-agent artifact upload eck-container-images-digest.txt
+        agents:
+          image: docker.elastic.co/ci-agent-images/cloud-k8s-operator/buildkite-agent:8eb8aeab
+          cpu: "1"
+          memory: "1G"
+      - label: ":key: sign images"
+        depends_on:
+          - "operator-image-upload-digest-step"
+        command: |
+          if [[ -n "$${BUILDKITE_TAG}" ]]; then
+            IMAGES_TAG_VALUE="$${BUILDKITE_TAG#v}"
+          else
+            IMAGES_TAG_VALUE="$$(cat VERSION)"
+          fi
+          cat <<- YAML | buildkite-agent pipeline upload
+          steps:
+            - trigger: unified-release-container-image-signing
+              build:
+                env:
+                  IMAGES_TAG: "$${IMAGES_TAG_VALUE}"
+                  UPLOAD_SIGNATURE: "true"
+          YAML
