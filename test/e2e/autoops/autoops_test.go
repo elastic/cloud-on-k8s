@@ -18,11 +18,6 @@ import (
 )
 
 func TestAutoOpsAgentPolicy(t *testing.T) {
-	// only execute this test if we have a test license to work with
-	if test.Ctx().TestLicense == "" {
-		t.Skip("Skipping test: no test license provided")
-	}
-
 	// only execute this test with supported AutoOps versions
 	v := version.MustParse(test.Ctx().ElasticStackVersion)
 	if v.LT(version.SupportedAutoOpsAgentVersions.Min) {
@@ -40,8 +35,6 @@ func TestAutoOpsAgentPolicy(t *testing.T) {
 		WithNamespace(esNamespace).
 		WithVersion(test.Ctx().ElasticStackVersion).
 		WithLabel("autoops", "enabled")
-
-	es1Withlicense := test.LicenseTestBuilder(es1Builder)
 
 	// 2nd elasticsearch cluster that should be omitted from autoops based on namespace
 	es2Builder := elasticsearch.NewBuilder("ex-es").
@@ -65,6 +58,6 @@ func TestAutoOpsAgentPolicy(t *testing.T) {
 	}).WithCloudConnectedAPIURL(mockURL).
 		WithAutoOpsOTelURL(mockURL)
 
-	test.Sequence(nil, test.EmptySteps, es1Withlicense, es2Builder, policyBuilder).
+	test.Sequence(nil, test.EmptySteps, es1Builder, es2Builder, policyBuilder).
 		RunSequential(t)
 }
