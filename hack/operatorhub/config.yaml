@@ -1,5 +1,5 @@
-newVersion: 3.3.0
-prevVersion: 3.2.0
+newVersion: 3.3.1
+prevVersion: 3.3.0
 stackVersion: 9.3.0
 crds:
   - name: elasticsearches.elasticsearch.k8s.elastic.co
