@@ -1,4 +1,4 @@
-# AKS: fewer, larger PVs (6×10 GiB) so we fit on the temp disk without over-provisioning.
+# AKS: fewer PVs (6×10 GiB) so we fit on the temp disk without over-provisioning.
 apiVersion: apps/v1
 kind: DaemonSet
 metadata:
