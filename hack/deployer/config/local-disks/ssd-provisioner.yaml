@@ -155,7 +155,6 @@ spec:
         - |
           apk update \
             && apk add e2fsprogs losetup mount util-linux \
-            && apk --purge del apk-tools wolfi-base \
             && /bin/entrypoint.sh
         env:
         - name: PV_SIZE_GB
