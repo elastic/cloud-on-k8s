@@ -1,6 +1,6 @@
 # Deployer
 
-Deployer is the provisioning tool that aims to be the interface to multiple Kubernetes providers. Currently, it supports GKE and AKS.
+Deployer is the provisioning tool that aims to be the interface to multiple Kubernetes providers. It supports GKE, AKS, EKS, OCP, Kind, and K3d.
 
 ## Typical usage
 
@@ -84,3 +84,64 @@ You can run deployer directly (not via Makefile in repo root). For details run:
 ```bash
 ./deployer help
 ```
+
+## Bucket Provisioning
+
+Deployer can optionally create a cloud storage bucket alongside the Kubernetes cluster. The bucket credentials are stored in a Kubernetes Secret, ready for use by applications like Elasticsearch Stateless.
+
+To enable bucket provisioning, add a `bucket` section to your plan or deployer config:
+
+```yaml
+bucket:
+  name: "{{ .ClusterName }}-development"
+  storageClass: standard
+  secret:
+    name: "{{ .ClusterName }}-bucket-secret"
+    namespace: default
+```
+
+The `name` and `secret.name`/`secret.namespace` fields support Go template variables (e.g., `{{ .ClusterName }}`).
+
+### Provider-specific behavior
+
+**GKE / OCP (Google Cloud Storage)**
+
+Creates a GCS bucket and a service account with `roles/storage.objectAdmin` scoped to that bucket. The Secret contains:
+- `gcs.client.default.credentials_file` — the service account JSON key
+
+OCP clusters run on GCP, so they use the same GCS bucket provisioning as GKE.
+
+**AKS (Azure Blob Storage)**
+
+Creates an Azure Storage account and a blob container named `data`. The Secret contains:
+- `azure.client.default.account` — the storage account name
+- `azure.client.default.sas_token` — a SAS token valid for 1 year
+
+**EKS (Amazon S3)**
+
+Creates an S3 bucket and an IAM user with access keys. The Secret contains:
+- `access-key-id` — the IAM access key ID
+- `secret-access-key` — the IAM secret access key
+- `bucket` — the bucket name
+- `region` — the AWS region
+
+For EKS, additional S3-specific settings are required to specify the IAM path and managed policy:
+
+```yaml
+bucket:
+  name: "{{ .ClusterName }}-development"
+  storageClass: STANDARD
+  secret:
+    name: "{{ .ClusterName }}-bucket-secret"
+    namespace: default
+  s3:
+    iamUserPath: "/path/to/iam/users/"
+    managedPolicyARN: "arn:aws:iam::123456789012:policy/path/to/policy"
+```
+
+- `iamUserPath` — the IAM path under which the storage user is created (must match your IAM policy constraints)
+- `managedPolicyARN` — the ARN of a pre-existing managed policy that grants S3 access to the bucket
+
+### Cleanup
+
+Buckets and their associated cloud resources (IAM users, service accounts, storage accounts) are automatically deleted when running `make delete-cloud`. The Kubernetes Secret is deleted along with the cluster.
