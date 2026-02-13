@@ -6,6 +6,7 @@ package name
 
 import (
 	"fmt"
+	"os"
 	"strings"
 	"unicode/utf8"
 
@@ -69,8 +70,11 @@ func (n Namer) WithDefaultSuffixes(defaultSuffixes ...string) Namer {
 
 // Suffix generates a resource name by appending the specified suffixes.
 func (n Namer) Suffix(ownerName string, suffixes ...string) string {
-	suffixedName, _ := n.SafeSuffix(ownerName, suffixes...)
-	// we should never encounter an error at this point because the names should have been validated
+	suffixedName, err := n.SafeSuffix(ownerName, suffixes...)
+	// we should never encounter an error at this point because the names should have been validated.
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Invalid name. This could prevent the operator from functioning correctly. ownerName: %s, suffixedName: %s, error: %s", ownerName, suffixedName, err.Error())
+	}
 
 	return suffixedName
 }

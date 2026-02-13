@@ -38,6 +38,8 @@ var (
 	addToSchemeV1beta1 sync.Once
 )
 
+var CommonV1 = &scheme.Builder{GroupVersion: schema.GroupVersion{Group: commonv1.Group, Version: commonv1.Version}}
+
 func mustAddSchemeOnce(once *sync.Once, schemes []func(scheme *runtime.Scheme) error) {
 	once.Do(func() {
 		for _, s := range schemes {
@@ -87,5 +89,3 @@ func SetupV1beta1Scheme() {
 	}
 	mustAddSchemeOnce(&addToSchemeV1beta1, schemes)
 }
-
-var CommonV1 = &scheme.Builder{GroupVersion: schema.GroupVersion{Group: commonv1.Group, Version: commonv1.Version}}
