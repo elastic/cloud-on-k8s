@@ -73,6 +73,7 @@ This page lists the third-party dependencies used to build {{eck}} from the main
 | [github.com/armon/go-socks5](https://github.com/armon/go-socks5) | v0.0.0-20160902184237-e75332964ef5 | MIT |
 | [github.com/beorn7/perks](https://github.com/beorn7/perks) | v1.0.1 | MIT |
 | [github.com/cenkalti/backoff/v4](https://github.com/cenkalti/backoff) | v4.3.0 | MIT |
+| [github.com/cenkalti/backoff/v5](https://github.com/cenkalti/backoff) | v5.0.3 | MIT |
 | [github.com/cespare/xxhash/v2](https://github.com/cespare/xxhash) | v2.3.0 | MIT |
 | [github.com/containerd/stargz-snapshotter/estargz](https://github.com/containerd/stargz-snapshotter) | v0.18.1 | Apache-2.0 |
 | [github.com/docker/cli](https://github.com/docker/cli) | v29.0.3+incompatible | Apache-2.0 |
@@ -89,7 +90,7 @@ This page lists the third-party dependencies used to build {{eck}} from the main
 | [github.com/fsnotify/fsnotify](https://github.com/fsnotify/fsnotify) | v1.9.0 | BSD-3-Clause |
 | [github.com/fxamacker/cbor/v2](https://github.com/fxamacker/cbor) | v2.9.0 | MIT |
 | [github.com/gkampitakis/ciinfo](https://github.com/gkampitakis/ciinfo) | v0.3.2 | MIT |
-| [github.com/go-jose/go-jose/v4](https://github.com/go-jose/go-jose) | v4.1.1 | Apache-2.0 |
+| [github.com/go-jose/go-jose/v4](https://github.com/go-jose/go-jose) | v4.1.3 | Apache-2.0 |
 | [github.com/go-logr/stdr](https://github.com/go-logr/stdr) | v1.2.2 | Apache-2.0 |
 | [github.com/go-logr/zapr](https://github.com/go-logr/zapr) | v1.3.0 | Apache-2.0 |
 | [github.com/go-openapi/jsonpointer](https://github.com/go-openapi/jsonpointer) | v0.21.0 | Apache-2.0 |
@@ -105,7 +106,7 @@ This page lists the third-party dependencies used to build {{eck}} from the main
 | [github.com/google/gofuzz](https://github.com/google/gofuzz) | v1.2.0 | Apache-2.0 |
 | [github.com/google/pprof](https://github.com/google/pprof) | v0.0.0-20250403155104-27863c87afa6 | Apache-2.0 |
 | [github.com/gorilla/websocket](https://github.com/gorilla/websocket) | v1.5.4-0.20250319132907-e064f32e3674 | BSD-2-Clause |
-| [github.com/grpc-ecosystem/grpc-gateway/v2](https://github.com/grpc-ecosystem/grpc-gateway) | v2.26.3 | BSD-3-Clause |
+| [github.com/grpc-ecosystem/grpc-gateway/v2](https://github.com/grpc-ecosystem/grpc-gateway) | v2.27.7 | BSD-3-Clause |
 | [github.com/hashicorp/errwrap](https://github.com/hashicorp/errwrap) | v1.1.0 | MPL-2.0 |
 | [github.com/hashicorp/go-cleanhttp](https://github.com/hashicorp/go-cleanhttp) | v0.5.2 | MPL-2.0 |
 | [github.com/hashicorp/go-hclog](https://github.com/hashicorp/go-hclog) | v1.6.3 | MIT |
@@ -169,13 +170,13 @@ This page lists the third-party dependencies used to build {{eck}} from the main
 | [go.opentelemetry.io/auto/sdk](https://go.opentelemetry.io/auto/sdk) | v1.2.1 | Apache-2.0 |
 | [go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp](https://go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp) | v0.61.0 | Apache-2.0 |
 | [go.opentelemetry.io/otel](https://go.opentelemetry.io/otel) | v1.40.0 | Apache-2.0 |
-| [go.opentelemetry.io/otel/exporters/otlp/otlptrace](https://go.opentelemetry.io/otel/exporters/otlp/otlptrace) | v1.34.0 | Apache-2.0 |
-| [go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracegrpc](https://go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracegrpc) | v1.34.0 | Apache-2.0 |
+| [go.opentelemetry.io/otel/exporters/otlp/otlptrace](https://go.opentelemetry.io/otel/exporters/otlp/otlptrace) | v1.40.0 | Apache-2.0 |
+| [go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracegrpc](https://go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracegrpc) | v1.40.0 | Apache-2.0 |
 | [go.opentelemetry.io/otel/metric](https://go.opentelemetry.io/otel/metric) | v1.40.0 | Apache-2.0 |
 | [go.opentelemetry.io/otel/sdk](https://go.opentelemetry.io/otel/sdk) | v1.40.0 | Apache-2.0 |
 | [go.opentelemetry.io/otel/sdk/metric](https://go.opentelemetry.io/otel/sdk/metric) | v1.40.0 | Apache-2.0 |
 | [go.opentelemetry.io/otel/trace](https://go.opentelemetry.io/otel/trace) | v1.40.0 | Apache-2.0 |
-| [go.opentelemetry.io/proto/otlp](https://go.opentelemetry.io/proto/otlp) | v1.5.0 | Apache-2.0 |
+| [go.opentelemetry.io/proto/otlp](https://go.opentelemetry.io/proto/otlp) | v1.9.0 | Apache-2.0 |
 | [go.uber.org/goleak](https://go.uber.org/goleak) | v1.3.0 | MIT |
 | [go.uber.org/multierr](https://go.uber.org/multierr) | v1.11.0 | MIT |
 | [go.yaml.in/yaml/v2](https://go.yaml.in/yaml/v2) | v2.4.3 | Apache-2.0 |
@@ -192,9 +193,10 @@ This page lists the third-party dependencies used to build {{eck}} from the main
 | [golang.org/x/tools/go/expect](https://golang.org/x/tools/go/expect) | v0.1.1-deprecated | BSD-3-Clause |
 | [golang.org/x/tools/go/packages/packagestest](https://golang.org/x/tools/go/packages/packagestest) | v0.1.1-deprecated | BSD-3-Clause |
 | [gomodules.xyz/jsonpatch/v2](https://gomodules.xyz/jsonpatch/v2) | v2.4.0 | Apache-2.0 |
-| [google.golang.org/genproto/googleapis/api](https://google.golang.org/genproto/googleapis/api) | v0.0.0-20250303144028-a0af3efb3deb | Apache-2.0 |
-| [google.golang.org/genproto/googleapis/rpc](https://google.golang.org/genproto/googleapis/rpc) | v0.0.0-20250528174236-200df99c418a | Apache-2.0 |
-| [google.golang.org/grpc](https://google.golang.org/grpc) | v1.72.2 | Apache-2.0 |
+| [gonum.org/v1/gonum](https://github.com/gonum/gonum) | v0.16.0 | BSD-3-Clause |
+| [google.golang.org/genproto/googleapis/api](https://google.golang.org/genproto/googleapis/api) | v0.0.0-20260128011058-8636f8732409 | Apache-2.0 |
+| [google.golang.org/genproto/googleapis/rpc](https://google.golang.org/genproto/googleapis/rpc) | v0.0.0-20260128011058-8636f8732409 | Apache-2.0 |
+| [google.golang.org/grpc](https://google.golang.org/grpc) | v1.78.0 | Apache-2.0 |
 | [google.golang.org/protobuf](https://google.golang.org/protobuf) | v1.36.11 | BSD-3-Clause |
 | [gopkg.in/check.v1](https://gopkg.in/check.v1) | v1.0.0-20201130134442-10cb98267c6c | BSD-2-Clause |
 | [gopkg.in/evanphx/json-patch.v4](https://gopkg.in/evanphx/json-patch.v4) | v4.13.0 | BSD-3-Clause |
