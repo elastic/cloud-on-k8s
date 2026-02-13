@@ -137,7 +137,7 @@ func addWatches(mgr manager.Manager, c controller.Controller, r *ReconcileElasti
 	return c.Watch(observer.WatchClusterHealthChange(r.esObservers))
 }
 
-var _ reconcile.Reconciler = &ReconcileElasticsearch{}
+var _ reconcile.Reconciler = (*ReconcileElasticsearch)(nil)
 
 // ReconcileElasticsearch reconciles an Elasticsearch object
 type ReconcileElasticsearch struct {

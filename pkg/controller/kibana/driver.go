@@ -66,7 +66,7 @@ func (d *driver) Recorder() record.EventRecorder {
 	return d.recorder
 }
 
-var _ driver2.Interface = &driver{}
+var _ driver2.Interface = (*driver)(nil)
 
 func newDriver(
 	client k8s.Client,

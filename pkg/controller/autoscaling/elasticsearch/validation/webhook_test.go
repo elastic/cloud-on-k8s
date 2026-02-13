@@ -690,4 +690,4 @@ func (f fakeChecker) ValidOperatorLicenseKeyType(_ context.Context) (license.Ope
 	return f.operatorLicenseType, nil
 }
 
-var _ license.Checker = &fakeChecker{}
+var _ license.Checker = (*fakeChecker)(nil)

@@ -148,7 +148,7 @@ func reconcileRequestForAllPolicies(clnt k8s.Client) handler.TypedEventHandler[c
 	})
 }
 
-var _ reconcile.Reconciler = &ReconcileStackConfigPolicy{}
+var _ reconcile.Reconciler = (*ReconcileStackConfigPolicy)(nil)
 
 // ReconcileStackConfigPolicy reconciles a StackConfigPolicy object
 type ReconcileStackConfigPolicy struct {

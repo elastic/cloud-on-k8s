@@ -43,7 +43,7 @@ func (w *Params) NewAdmissionControllerInterface(ctx context.Context, clientset 
 
 // - admissionregistration.k8s.io/v1 implementation
 
-var _ AdmissionControllerInterface = &v1webhookHandler{}
+var _ AdmissionControllerInterface = (*v1webhookHandler)(nil)
 
 type v1webhookHandler struct {
 	clientset            kubernetes.Interface
