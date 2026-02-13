@@ -8,8 +8,10 @@ import (
 	"sync"
 
 	logstashv1alpha1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/logstash/v1alpha1"
+	"sigs.k8s.io/controller-runtime/pkg/scheme"
 
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/runtime/schema"
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
 
 	agentv1alpha1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/agent/v1alpha1"
@@ -31,8 +33,10 @@ import (
 	policyv1alpha1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/stackconfigpolicy/v1alpha1"
 )
 
-var addToScheme sync.Once
-var addToSchemeV1beta1 sync.Once
+var (
+	addToScheme        sync.Once
+	addToSchemeV1beta1 sync.Once
+)
 
 func mustAddSchemeOnce(once *sync.Once, schemes []func(scheme *runtime.Scheme) error) {
 	once.Do(func() {
@@ -50,7 +54,7 @@ func SetupScheme() {
 	schemes := []func(scheme *runtime.Scheme) error{
 		clientgoscheme.AddToScheme,
 		apmv1.AddToScheme,
-		commonv1.AddToScheme,
+		CommonV1.AddToScheme,
 		esv1.AddToScheme,
 		easv1alpha1.AddToScheme,
 		kbv1.AddToScheme,
@@ -83,3 +87,5 @@ func SetupV1beta1Scheme() {
 	}
 	mustAddSchemeOnce(&addToSchemeV1beta1, schemes)
 }
+
+var CommonV1 = &scheme.Builder{GroupVersion: schema.GroupVersion{Group: commonv1.Group, Version: commonv1.Version}}
