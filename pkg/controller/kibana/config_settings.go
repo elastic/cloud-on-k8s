@@ -218,12 +218,12 @@ func removeLegacyFleetAgentsElasticsearch(cfg *settings.CanonicalConfig) error {
 		return err
 	}
 	var fleetCfg struct {
-		Agents any `config:"xpack.fleet.agents"`
+		Agents map[string]any `config:"xpack.fleet.agents"`
 	}
 	if err := cfg.Unpack(&fleetCfg); err != nil {
 		return err
 	}
-	if fleetCfg.Agents == nil {
+	if len(fleetCfg.Agents) == 0 {
 		return cfg.Remove(XpackFleetAgents)
 	}
 	return nil

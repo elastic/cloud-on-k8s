@@ -955,11 +955,103 @@ func Test_maybeConfigureFleetOutputs(t *testing.T) {
 			},
 			wantErr: false,
 		},
+		{
+			name: "keeps outputs and succeeds when es.hosts, and agents.hosts are missing",
+			cfg: settings.MustCanonicalConfig(map[string]any{
+				XpackFleetOutputs: []any{
+					map[string]any{
+						"id":         "custom-output",
+						"is_default": true,
+						"name":       "custom",
+						"type":       "elasticsearch",
+						"hosts":      []any{"https://custom-es:9200"},
+					},
+				},
+			}),
+			esAssoc: nil,
+			kb: kbv1.Kibana{
+				ObjectMeta: metav1.ObjectMeta{Namespace: "default"},
+				Spec:       kbv1.KibanaSpec{ElasticsearchRef: commonv1.ObjectSelector{Name: "elasticsearch"}},
+			},
+			wantMap: map[string]any{
+				"xpack": map[string]any{
+					"fleet": map[string]any{
+						"outputs": []any{
+							map[string]any{
+								"id":         "custom-output",
+								"is_default": true,
+								"name":       "custom",
+								"type":       "elasticsearch",
+								"hosts":      []any{"https://custom-es:9200"},
+							},
+						},
+					},
+				},
+			},
+			wantErr: false,
+		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			err := maybeConfigureFleetOutputs(tt.cfg, tt.esAssoc, tt.kb.EsAssociation())
+			require.Equal(t, tt.wantErr, err != nil)
+			if tt.wantErr {
+				return
+			}
+
+			var got map[string]any
+			require.NoError(t, tt.cfg.Unpack(&got))
+			require.Empty(t, deep.Equal(tt.wantMap, got))
+		})
+	}
+}
+
+func Test_removeLegacyFleetAgentsElasticsearch(t *testing.T) {
+	tests := []struct {
+		name    string
+		cfg     *settings.CanonicalConfig
+		wantMap map[string]any
+		wantErr bool
+	}{
+		{
+			name: "prunes elasticsearch.hosts key properly",
+			cfg: settings.MustCanonicalConfig(map[string]any{
+				XpackFleetAgentsElasticsearchHosts: []any{"https://legacy-es:9200"},
+			}),
+			wantMap: map[string]any{
+				"xpack": map[string]any{
+					"fleet": nil,
+				},
+			},
+			wantErr: false,
+		},
+		{
+			name: "keeps fleet agents and prunes es.hosts",
+			cfg: settings.MustCanonicalConfig(map[string]any{
+				XpackFleetAgentsElasticsearchHosts: []any{"https://legacy-es:9200"},
+				"xpack.fleet.agents.fleet_server.hosts": []any{
+					"https://fleet-server:8220",
+				},
+			}),
+			wantMap: map[string]any{
+				"xpack": map[string]any{
+					"fleet": map[string]any{
+						"agents": map[string]any{
+							"fleet_server": map[string]any{
+								"hosts": []any{"https://fleet-server:8220"},
+							},
+						},
+					},
+				},
+			},
+			wantErr: false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			err := removeLegacyFleetAgentsElasticsearch(tt.cfg)
 			require.Equal(t, tt.wantErr, err != nil)
 			if tt.wantErr {
 				return
