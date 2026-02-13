@@ -70,7 +70,7 @@ func NewReconciler(mgr manager.Manager, accessReviewer rbac.AccessReviewer, para
 	}
 }
 
-var _ reconcile.Reconciler = &ReconcileRemoteClusters{}
+var _ reconcile.Reconciler = (*ReconcileRemoteClusters)(nil)
 
 // ReconcileRemoteClusters reconciles remote clusters Secrets and API Keys.
 type ReconcileRemoteClusters struct {

@@ -33,7 +33,7 @@ func init() {
 
 type K3dDriverFactory struct{}
 
-var _ DriverFactory = &K3dDriverFactory{}
+var _ DriverFactory = (*K3dDriverFactory)(nil)
 
 func (k K3dDriverFactory) Create(plan Plan) (Driver, error) {
 	dockerSocket, err := getDockerSocket()
@@ -196,4 +196,4 @@ func (k *K3dDriver) Cleanup(string, time.Duration) error {
 	return fmt.Errorf("unimplemented")
 }
 
-var _ Driver = &K3dDriver{}
+var _ Driver = (*K3dDriver)(nil)

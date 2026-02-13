@@ -34,7 +34,7 @@ type ElasticsearchAutoscaler struct {
 	Status v1alpha1.ElasticsearchAutoscalerStatus `json:"status,omitempty"`
 }
 
-var _ v1alpha1.AutoscalingResource = &ElasticsearchAutoscaler{}
+var _ v1alpha1.AutoscalingResource = (*ElasticsearchAutoscaler)(nil)
 
 // ElasticsearchAutoscalerSpec holds the specification of an Elasticsearch autoscaler resource.
 type ElasticsearchAutoscalerSpec struct {

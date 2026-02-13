@@ -210,7 +210,7 @@ type ApmEsAssociation struct {
 	*ApmServer
 }
 
-var _ commonv1.Association = &ApmEsAssociation{}
+var _ commonv1.Association = (*ApmEsAssociation)(nil)
 
 func NewApmEsAssociation(as *ApmServer) *ApmEsAssociation {
 	return &ApmEsAssociation{ApmServer: as}
@@ -254,7 +254,7 @@ func (aes *ApmEsAssociation) AssociationID() string {
 	return commonv1.SingletonAssociationID
 }
 
-var _ commonv1.Association = &ApmKibanaAssociation{}
+var _ commonv1.Association = (*ApmKibanaAssociation)(nil)
 
 // ApmServer / Kibana association helper
 type ApmKibanaAssociation struct {
@@ -307,4 +307,4 @@ func (akb *ApmKibanaAssociation) AssociationID() string {
 	return commonv1.SingletonAssociationID
 }
 
-var _ commonv1.Associated = &ApmServer{}
+var _ commonv1.Associated = (*ApmServer)(nil)

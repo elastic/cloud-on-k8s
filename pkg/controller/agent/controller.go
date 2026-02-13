@@ -127,7 +127,7 @@ func addWatches(mgr manager.Manager, c controller.Controller, r *ReconcileAgent)
 		))
 }
 
-var _ reconcile.Reconciler = &ReconcileAgent{}
+var _ reconcile.Reconciler = (*ReconcileAgent)(nil)
 
 // ReconcileAgent reconciles an Agent object
 type ReconcileAgent struct {

@@ -27,7 +27,7 @@ type NamedWatch[T client.Object] struct {
 	Watcher types.NamespacedName
 }
 
-var _ handler.EventHandler = &NamedWatch[client.Object]{}
+var _ handler.EventHandler = (*NamedWatch[client.Object])(nil)
 
 func (w NamedWatch[T]) Create(_ context.Context, evt event.TypedCreateEvent[T], q workqueue.TypedRateLimitingInterface[reconcile.Request]) {
 	for _, req := range w.toReconcileRequest(evt.Object) {
@@ -79,4 +79,4 @@ func (w NamedWatch[T]) toReconcileRequest(object metav1.Object) []reconcile.Requ
 	return nil
 }
 
-var _ HandlerRegistration[client.Object] = &NamedWatch[client.Object]{}
+var _ HandlerRegistration[client.Object] = (*NamedWatch[client.Object])(nil)

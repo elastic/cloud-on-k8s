@@ -25,7 +25,7 @@ const (
 
 var eslog = ulog.Log.WithName("es-validation")
 
-var _ admission.Validator = &Elasticsearch{}
+var _ admission.Validator = (*Elasticsearch)(nil)
 
 // ValidateCreate is called by the validating webhook to validate the create operation.
 // Satisfies the webhook.Validator interface.

@@ -113,7 +113,7 @@ func addWatches(mgr manager.Manager, c controller.Controller, r *ReconcileKibana
 	return c.Watch(source.Kind(mgr.GetCache(), &corev1.Secret{}, r.dynamicWatches.Secrets))
 }
 
-var _ reconcile.Reconciler = &ReconcileKibana{}
+var _ reconcile.Reconciler = (*ReconcileKibana)(nil)
 
 // ReconcileKibana reconciles a Kibana object
 type ReconcileKibana struct {
