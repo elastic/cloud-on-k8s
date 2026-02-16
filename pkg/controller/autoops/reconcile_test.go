@@ -253,27 +253,6 @@ func TestAutoOpsAgentPolicyReconciler_internalReconcile(t *testing.T) {
 			wantResults: reconcile.Result{},
 		},
 		{
-			name:   "deprecated ES version is ignored",
-			policy: newAutoOpsAgentPolicy(),
-			initialObjects: []client.Object{
-				newSecret(),
-				newElasticsearch(func(e *esv1.Elasticsearch) {
-					e.ObjectMeta.Name = "es-deprecated"
-					e.Spec.Version = "7.15.0"
-				}),
-			},
-			wantStatus: autoopsv1alpha1.AutoOpsAgentPolicyStatus{
-				Resources: 0,
-				Ready:     0,
-				Errors:    0,
-				Skipped:   1,
-				Phase:     "NoMonitoredResources",
-				Details: map[string]v1alpha1.AutoOpsResourceStatus{
-					"ns-1/es-deprecated": {Phase: "Skipped", Message: "ES cluster is in deprecated version 7.15.0"},
-				},
-			},
-		},
-		{
 			name: "two ES instances: filter by namespace shows ready: 1, resources: 1",
 			policy: newAutoOpsAgentPolicy(func(a *autoopsv1alpha1.AutoOpsAgentPolicy) {
 				a.Spec.NamespaceSelector = metav1.LabelSelector{
@@ -625,6 +604,30 @@ func TestAutoOpsAgentPolicyReconciler_internalReconcileResourceErrorsAndSkipped(
 						Phase: autoopsv1alpha1.ErrorResourcePhase,
 						Error: "Failed to reconcile AutoOps agent deployment: deployment creation failed",
 					},
+				},
+			},
+		},
+		{
+			name:   "deprecated ES version is ignored",
+			policy: newAutoOpsAgentPolicy(),
+			initialObjects: []client.Object{
+				newSecret(),
+				newElasticsearch(func(e *esv1.Elasticsearch) {
+					e.ObjectMeta.Name = "es-deprecated"
+					e.Spec.Version = "7.15.0"
+				}),
+			},
+			accessReviewer:   &fakeAccessReviewer{allowed: true},
+			interceptorFuncs: nil,
+			wantErr:          false,
+			wantStatus: autoopsv1alpha1.AutoOpsAgentPolicyStatus{
+				Resources: 0,
+				Ready:     0,
+				Errors:    0,
+				Skipped:   1,
+				Phase:     "NoMonitoredResources",
+				Details: map[string]v1alpha1.AutoOpsResourceStatus{
+					"ns-1/es-deprecated": {Phase: "Skipped", Message: "ES cluster is in deprecated version 7.15.0"},
 				},
 			},
 		},
