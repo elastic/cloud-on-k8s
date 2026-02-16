@@ -24,7 +24,6 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client/interceptor"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
-	"github.com/elastic/cloud-on-k8s/v3/pkg/apis/autoops/v1alpha1"
 	autoopsv1alpha1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/autoops/v1alpha1"
 	esv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/elasticsearch/v1"
 	commonapikey "github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/apikey"
@@ -626,7 +625,7 @@ func TestAutoOpsAgentPolicyReconciler_internalReconcileResourceErrorsAndSkipped(
 				Errors:    0,
 				Skipped:   1,
 				Phase:     "NoMonitoredResources",
-				Details: map[string]v1alpha1.AutoOpsResourceStatus{
+				Details: map[string]autoopsv1alpha1.AutoOpsResourceStatus{
 					"ns-1/es-deprecated": {Phase: "Skipped", Message: "ES cluster is in deprecated version 7.15.0"},
 				},
 			},
@@ -658,7 +657,6 @@ func TestAutoOpsAgentPolicyReconciler_internalReconcileResourceErrorsAndSkipped(
 					Dialer: &fakeDialer{},
 				},
 				dynamicWatches: watches.NewDynamicWatches(),
-				licenseChecker: license.NewLicenseChecker(k8sClient, "test-namespace"),
 			}
 
 			ctx := t.Context()
