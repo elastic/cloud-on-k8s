@@ -73,7 +73,7 @@ func (n Namer) Suffix(ownerName string, suffixes ...string) string {
 	suffixedName, err := n.SafeSuffix(ownerName, suffixes...)
 	// we should never encounter an error at this point because the names should have been validated.
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "Invalid name. This could prevent the operator from functioning correctly. ownerName: %s, suffixedName: %s, error: %s", ownerName, suffixedName, err.Error())
+		fmt.Fprintf(os.Stderr, "Invalid name. This could prevent the operator from functioning correctly. ownerName: %s, suffixedName: %s, error: %s\n", ownerName, suffixedName, err.Error())
 	}
 
 	return suffixedName
