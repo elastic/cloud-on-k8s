@@ -156,7 +156,7 @@ func (r *AgentPolicyReconciler) internalReconcile(
 		if es.Spec.HTTP.TLS.Enabled() {
 			if err := r.reconcileAutoOpsESCASecret(ctx, policy, es); err != nil {
 				log.Error(err, "while reconciling AutoOps ES CA secret")
-				state.ResourceError(es, "Failed to create AutoOps ES CA secret", err)
+				state.ResourceError(es, "Failed to reconcile AutoOps ES CA secret", err)
 				results.WithError(err)
 				continue
 			}
@@ -165,7 +165,7 @@ func (r *AgentPolicyReconciler) internalReconcile(
 		apiKeySecret, err := r.reconcileAutoOpsESAPIKey(ctx, policy, es)
 		if err != nil {
 			log.Error(err, "while reconciling AutoOps ES API key")
-			state.ResourceError(es, "Failed to create AutoOps ES API key", err)
+			state.ResourceError(es, "Failed to reconcile AutoOps ES API key", err)
 			results.WithError(err)
 			continue
 		}
@@ -173,7 +173,7 @@ func (r *AgentPolicyReconciler) internalReconcile(
 		configMap, err := ReconcileAutoOpsESConfigMap(ctx, r.Client, policy, es)
 		if err != nil {
 			log.Error(err, "while reconciling AutoOps ES config map")
-			state.ResourceError(es, "Failed to create AutoOps ES config map", err)
+			state.ResourceError(es, "Failed to reconcile AutoOps ES config map", err)
 			results.WithError(err)
 			continue
 		}
