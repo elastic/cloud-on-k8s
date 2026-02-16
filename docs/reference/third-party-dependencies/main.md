@@ -52,13 +52,13 @@ This page lists the third-party dependencies used to build {{eck}} from the main
 | [golang.org/x/crypto](https://golang.org/x/crypto) | v0.48.0 | BSD-3-Clause |
 | [golang.org/x/exp](https://golang.org/x/exp) | v0.0.0-20240808152545-0cdaa3abc0fa | BSD-3-Clause |
 | [gopkg.in/yaml.v3](https://gopkg.in/yaml.v3) | v3.0.1 | MIT |
-| [k8s.io/api](https://github.com/kubernetes/api) | v0.35.0 | Apache-2.0 |
-| [k8s.io/apimachinery](https://github.com/kubernetes/apimachinery) | v0.35.0 | Apache-2.0 |
-| [k8s.io/client-go](https://github.com/kubernetes/client-go) | v0.35.0 | Apache-2.0 |
+| [k8s.io/api](https://github.com/kubernetes/api) | v0.35.1 | Apache-2.0 |
+| [k8s.io/apimachinery](https://github.com/kubernetes/apimachinery) | v0.35.1 | Apache-2.0 |
+| [k8s.io/client-go](https://github.com/kubernetes/client-go) | v0.35.1 | Apache-2.0 |
 | [k8s.io/klog/v2](https://github.com/kubernetes/klog) | v2.130.1 | Apache-2.0 |
 | [k8s.io/utils](https://github.com/kubernetes/utils) | v0.0.0-20251002143259-bc988d571ff4 | Apache-2.0 |
 | [sigs.k8s.io/controller-runtime](https://sigs.k8s.io/controller-runtime) | v0.23.1 | Apache-2.0 |
-| [sigs.k8s.io/controller-tools](https://sigs.k8s.io/controller-tools) | v0.20.0 | Apache-2.0 |
+| [sigs.k8s.io/controller-tools](https://sigs.k8s.io/controller-tools) | v0.20.1 | Apache-2.0 |
 
 
 ##  Indirect dependencies [k8s-dependencies-indirect]
