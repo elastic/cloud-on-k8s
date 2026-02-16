@@ -2,7 +2,7 @@
 {{- $type := . -}}
 {{- if markdownShouldRenderType $type -}}
 
-### {{ $type.Name  }} {{ if $type.IsAlias }}({{ markdownRenderTypeLink $type.UnderlyingType  }}) {{ end }} [#{{ $type.Name | lower }}]
+### {{ $type.Name  }} {{ if $type.IsAlias }}({{ markdownRenderTypeLink $type.UnderlyingType  }}) {{ end }} [#{{ markdownTypeID $type }}]
 
 {{ $type.Doc }}
 
