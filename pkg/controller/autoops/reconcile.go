@@ -107,12 +107,27 @@ func (r *AgentPolicyReconciler) internalReconcile(
 			results.WithError(err)
 			continue
 		}
-		if accessAllowed {
-			accessibleClusters = append(accessibleClusters, es)
-		} else {
-			state.ResourceSkipped(es)
+		if !accessAllowed {
+			state.ResourceSkippedDueToRBAC(es)
 			log.V(1).Info("Skipping ES cluster due to access denied", "es_namespace", es.Namespace, "es_name", es.Name)
+			continue
 		}
+
+		// check for deprecated version clusters.
+		esVersion, err := version.Parse(es.Spec.Version)
+		if err != nil {
+			log.Error(err, "while parsing ES version")
+			state.ResourceError(es, "Failed trying to parse cluster version", err)
+			results.WithError(err)
+			continue
+		}
+		if version.DeprecatedVersions.WithinRange(esVersion) == nil {
+			log.Info("Skipping ES cluster because of deprecated version", "version", es.Spec.Version)
+			state.ResourceSkippedDueToVersion(es)
+			continue
+		}
+
+		accessibleClusters = append(accessibleClusters, es)
 	}
 
 	// Clean up resources that no longer match the Policy's selector OR where access was revoked
@@ -130,21 +145,6 @@ func (r *AgentPolicyReconciler) internalReconcile(
 
 	for _, es := range accessibleClusters {
 		log := log.WithValues("es_namespace", es.Namespace, "es_name", es.Name)
-
-		esVersion, err := version.Parse(es.Spec.Version)
-		if err != nil {
-			log.Error(err, "while parsing ES version")
-			state.UpdateWithPhase(autoopsv1alpha1.ErrorPhase)
-			return results.WithError(err)
-		}
-
-		// No error means the version is within the deprecated range, so we skip the cluster.
-		// We do not adjust the status to indicate this issue at this time, as the status object
-		// does not currently support a status per-cluster.
-		if version.DeprecatedVersions.WithinRange(esVersion) == nil {
-			log.Info("Skipping ES cluster because of deprecated version", "version", es.Spec.Version)
-			continue
-		}
 
 		if es.Status.Phase != esv1.ElasticsearchReadyPhase {
 			log.V(1).Info("Skipping ES cluster that is not ready")

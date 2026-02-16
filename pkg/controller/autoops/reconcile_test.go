@@ -24,6 +24,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client/interceptor"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
+	"github.com/elastic/cloud-on-k8s/v3/pkg/apis/autoops/v1alpha1"
 	autoopsv1alpha1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/autoops/v1alpha1"
 	esv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/elasticsearch/v1"
 	commonapikey "github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/apikey"
@@ -262,10 +263,14 @@ func TestAutoOpsAgentPolicyReconciler_internalReconcile(t *testing.T) {
 				}),
 			},
 			wantStatus: autoopsv1alpha1.AutoOpsAgentPolicyStatus{
-				Resources: 1,
+				Resources: 0,
 				Ready:     0,
 				Errors:    0,
-				Phase:     "",
+				Skipped:   1,
+				Phase:     "NoMonitoredResources",
+				Details: map[string]v1alpha1.AutoOpsResourceStatus{
+					"ns-1/es-deprecated": {Phase: "Skipped", Message: "ES cluster is in deprecated version 7.15.0"},
+				},
 			},
 		},
 		{
@@ -485,7 +490,7 @@ func TestAutoOpsAgentPolicyReconciler_internalReconcileResourceErrorsAndSkipped(
 				Details: map[string]autoopsv1alpha1.AutoOpsResourceStatus{
 					"ns-1/es-1": {
 						Phase: autoopsv1alpha1.ErrorResourcePhase,
-						Error: "Failed to create AutoOps ES CA secret: secret creation failed",
+						Error: "Failed to reconcile AutoOps ES CA secret: secret creation failed",
 					},
 				},
 			},
@@ -507,7 +512,7 @@ func TestAutoOpsAgentPolicyReconciler_internalReconcileResourceErrorsAndSkipped(
 				Details: map[string]autoopsv1alpha1.AutoOpsResourceStatus{
 					"ns-1/es-1": {
 						Phase: autoopsv1alpha1.ErrorResourcePhase,
-						Error: "Failed to create AutoOps ES API key: while getting API keys by name autoops-ns-1-policy-1-ns-1-es-1: elasticsearch API error",
+						Error: "Failed to reconcile AutoOps ES API key: while getting API keys by name autoops-ns-1-policy-1-ns-1-es-1: elasticsearch API error",
 					},
 				},
 			},
@@ -534,7 +539,7 @@ func TestAutoOpsAgentPolicyReconciler_internalReconcileResourceErrorsAndSkipped(
 				Details: map[string]autoopsv1alpha1.AutoOpsResourceStatus{
 					"ns-1/es-1": {
 						Phase: autoopsv1alpha1.ErrorResourcePhase,
-						Error: "Failed to create AutoOps ES config map: configmap creation failed",
+						Error: "Failed to reconcile AutoOps ES config map: configmap creation failed",
 					},
 				},
 			},

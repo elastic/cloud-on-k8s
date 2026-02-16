@@ -92,11 +92,19 @@ func (s *State) Apply() ([]events.Event, *autoopsv1alpha1.AutoOpsAgentPolicy) {
 	return s.Events(), &s.policy
 }
 
-func (s *State) ResourceSkipped(es esv1.Elasticsearch) {
+func (s *State) ResourceSkippedDueToRBAC(es esv1.Elasticsearch) {
+	s.ResourceSkipped(es, fmt.Sprintf("RBAC access denied for service account %s", s.policy.Spec.ServiceAccountName))
+}
+
+func (s *State) ResourceSkippedDueToVersion(es esv1.Elasticsearch) {
+	s.ResourceSkipped(es, fmt.Sprintf("ES cluster is in deprecated version %s", es.Spec.Version))
+}
+
+func (s *State) ResourceSkipped(es esv1.Elasticsearch, message string) {
 	s.status.Skipped++
 	s.status.Details[s.esResourceID(es)] = autoopsv1alpha1.AutoOpsResourceStatus{
 		Phase:   autoopsv1alpha1.SkippedResourcePhase,
-		Message: fmt.Sprintf("RBAC access denied for service account %s", s.policy.Spec.ServiceAccountName),
+		Message: message,
 	}
 }
 
