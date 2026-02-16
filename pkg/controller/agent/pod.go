@@ -424,7 +424,7 @@ func writeEsAssocToConfigHash(params Params, esAssociation commonv1.Association,
 }
 
 func getVolumesFromAssociations(associations []commonv1.Association) ([]volume.VolumeLike, error) {
-	var vols []volume.VolumeLike //nolint:prealloc
+	var vols []volume.VolumeLike
 	for i, assoc := range associations {
 		// the Kibana association is only used by the operator to interact with the Kibana Fleet API but
 		// not by the individual Elastic Agent Pods. There is therefore no need to mount the Kibana certificate secret.
