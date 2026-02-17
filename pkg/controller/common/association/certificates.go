@@ -11,6 +11,7 @@ import (
 )
 
 const (
+	// CertificatesPath is the path to the certificates for the given association.
 	CertificatesPath = "/mnt/elastic-internal/%s-association/%s/%s/certs"
 )
 
