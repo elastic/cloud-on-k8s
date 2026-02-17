@@ -163,7 +163,7 @@ func (r *AgentPolicyReconciler) Reconcile(ctx context.Context, request reconcile
 	}
 
 	results := r.doReconcile(ctx, policy, state)
-	state.CalculateFinalPhase(results.IsReconciled())
+	state.Finalize(results.IsReconciled())
 
 	result, err := r.updateStatusFromState(ctx, state)
 	results = results.WithResult(result).WithError(err)
