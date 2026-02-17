@@ -17,6 +17,10 @@ Review the deprecated functionality for Elastic Cloud on Kubernetes. While depre
 % **Action**<br> Steps for mitigating deprecation impact.
 % ::::
 
+## 3.3.1 [elastic-cloud-kubernetes-331-deprecations]
+
+There are no deprecations for ECK 3.3.1
+
 ## 3.3.0 [elastic-cloud-kubernetes-330-deprecations]
 
 7.17.X Elastic stack versions are deprecated as of 15 January 2026 and will be removed in a future release. Please see the [EOL policy](https://www.elastic.co/support/eol) for more details.
