@@ -94,6 +94,31 @@ type CanonicalConfig struct {
 	*settings.CanonicalConfig
 }
 
+// fleetOutputSSL represents the ssl configuration for an xpack Fleet output.
+type fleetOutputSSL struct {
+	CertificateAuthorities []string `config:"certificate_authorities"`
+}
+
+// fleetOutput represents an xpack Fleet output configuration.
+type fleetOutput struct {
+	ID        string          `config:"id"`
+	IsDefault bool            `config:"is_default"`
+	Name      string          `config:"name"`
+	Type      string          `config:"type"`
+	Hosts     []string        `config:"hosts"`
+	SSL       *fleetOutputSSL `config:"ssl,omitempty"`
+}
+
+// fleetOutputsConfig represents the xpack.fleet.outputs configuration.
+type fleetOutputsConfig struct {
+	Outputs []fleetOutput `config:"xpack.fleet.outputs"`
+}
+
+// fleetAgentsConfig represents the xpack.fleet.agents configuration.
+type fleetAgentsConfig struct {
+	Agents map[string]any `config:"xpack.fleet.agents"`
+}
+
 // NewConfigSettings returns the Kibana configuration settings for the given Kibana resource.
 func NewConfigSettings(ctx context.Context, client k8s.Client, kb kbv1.Kibana, v version.Version, ipFamily corev1.IPFamily, kibanaConfigFromPolicy *settings.CanonicalConfig) (CanonicalConfig, error) {
 	span, _ := apm.StartSpan(ctx, "new_config_settings", tracing.SpanTypeApp)
@@ -188,38 +213,34 @@ func NewConfigSettings(ctx context.Context, client k8s.Client, kb kbv1.Kibana, v
 // maybeConfigureFleetOutputs applies Fleet output defaults and removes legacy Fleet hosts
 // with a single read of xpack.fleet.outputs state.
 func maybeConfigureFleetOutputs(cfg *settings.CanonicalConfig, esAssocConf *commonv1.AssociationConf, esAssoc commonv1.Association) error {
-	var fleetCfg struct {
-		Outputs []any `config:"xpack.fleet.outputs"`
-	}
+	var fleetCfg fleetOutputsConfig
 	if err := cfg.Unpack(&fleetCfg); err != nil {
 		return err
 	}
 
 	if len(fleetCfg.Outputs) > 0 {
-		return removeLegacyFleetAgentsElasticsearch(cfg)
+		return removeXPackFleetAgentsElasticsearch(cfg)
 	}
 
 	if len(fleetCfg.Outputs) == 0 {
-		if esAssocConf != nil && esAssocConf.IsConfigured() && hasFleetPackages(cfg) {
+		if esAssocConf != nil && esAssocConf.IsConfigured() && hasFleetConfigured(cfg) {
 			if err := cfg.MergeWith(defaultFleetOutputsConfig(*esAssocConf, esAssoc)); err != nil {
 				return err
 			}
-			return removeLegacyFleetAgentsElasticsearch(cfg)
+			return removeXPackFleetAgentsElasticsearch(cfg)
 		}
 	}
 
 	return nil
 }
 
-// removeLegacyFleetAgentsElasticsearch removes xpack.fleet.agents.elasticsearch and
-// prunes xpack.fleet.agents when it becomes empty to avoid serializing null values.
-func removeLegacyFleetAgentsElasticsearch(cfg *settings.CanonicalConfig) error {
+// removeXPackFleetAgentsElasticsearch removes xpack.fleet.agents.elasticsearch and
+// prunes xpack.fleet.agents when it becomes empty avoiding null entries. (xpack.fleet.agents: null)
+func removeXPackFleetAgentsElasticsearch(cfg *settings.CanonicalConfig) error {
 	if err := cfg.Remove(XpackFleetAgentsElasticsearch); err != nil {
 		return err
 	}
-	var fleetCfg struct {
-		Agents map[string]any `config:"xpack.fleet.agents"`
-	}
+	var fleetCfg fleetAgentsConfig
 	if err := cfg.Unpack(&fleetCfg); err != nil {
 		return err
 	}
@@ -229,29 +250,30 @@ func removeLegacyFleetAgentsElasticsearch(cfg *settings.CanonicalConfig) error {
 	return nil
 }
 
-// hasFleetPackages returns true if xpack.fleet.packages is present in the effective config.
-func hasFleetPackages(cfg *settings.CanonicalConfig) bool {
-	return len(cfg.HasKeys([]string{XpackFleetPackages})) > 0
+// hasFleetConfigured returns true when any xpack.fleet.* setting are present in the effective config.
+func hasFleetConfigured(cfg *settings.CanonicalConfig) bool {
+	return cfg.HasChildConfig("xpack.fleet")
 }
 
 // defaultFleetOutputsConfig builds the default xpack.fleet.outputs block from an ES association.
 func defaultFleetOutputsConfig(esAssocConf commonv1.AssociationConf, esAssoc commonv1.Association) *settings.CanonicalConfig {
-	output := map[string]any{
-		"id":         ECKFleetOutputID,
-		"is_default": true,
-		"name":       ECKFleetOutputName,
-		"type":       "elasticsearch",
-		"hosts":      []string{esAssocConf.GetURL()},
+	output := fleetOutput{
+		ID:        ECKFleetOutputID,
+		IsDefault: true,
+		Name:      ECKFleetOutputName,
+		Type:      "elasticsearch",
+		Hosts:     []string{esAssocConf.GetURL()},
 	}
 	if esAssocConf.GetCACertProvided() {
 		esCertsPath := path.Join(commonassociation.CertificatesDir(esAssoc), certificates.CAFileName)
-		output["ssl"] = map[string]any{
-			"certificate_authorities": []string{esCertsPath},
+		output.SSL = &fleetOutputSSL{
+			CertificateAuthorities: []string{esCertsPath},
 		}
 	}
-	return settings.MustCanonicalConfig(map[string]any{
-		XpackFleetOutputs: []any{output},
-	})
+	var fleetCfg fleetOutputsConfig
+	fleetCfg.Outputs = []fleetOutput{output}
+
+	return settings.MustCanonicalConfig(fleetCfg)
 }
 
 // Some previously-unsupported keys cause Kibana to error out even if the values are empty. ucfg cannot ignore fields easily so this is necessary to

@@ -757,14 +757,14 @@ func TestNewConfigSettingsFleetOutputsInjection(t *testing.T) {
 			wantHostsPresent:    false,
 		},
 		{
-			name: "does not inject outputs when packages are absent",
+			name: "injects outputs when legacy fleet agents settings are present",
 			configData: map[string]any{
 				XpackFleetAgentsElasticsearchHosts:      []any{"https://elasticsearch-es-http.default.svc:9200"},
 				"xpack.fleet.agents.fleet_server.hosts": []any{"https://fleet-server-agent-http.default.svc:8220"},
 			},
-			wantInjectedDefault: false,
-			wantOutputHosts:     nil,
-			wantHostsPresent:    true,
+			wantInjectedDefault: true,
+			wantOutputHosts:     []string{"https://es-url:9200"},
+			wantHostsPresent:    false,
 		},
 	}
 
@@ -776,7 +776,7 @@ func TestNewConfigSettingsFleetOutputsInjection(t *testing.T) {
 			require.NoError(t, err)
 
 			var fleetCfg struct {
-				Outputs []any `config:"xpack.fleet.outputs"`
+				Outputs []fleetOutput `config:"xpack.fleet.outputs"`
 			}
 			require.NoError(t, got.CanonicalConfig.Unpack(&fleetCfg))
 			outputs := fleetCfg.Outputs
@@ -791,16 +791,13 @@ func TestNewConfigSettingsFleetOutputsInjection(t *testing.T) {
 			require.True(t, found)
 			require.NotEmpty(t, outputs)
 
-			firstOutput, ok := outputs[0].(map[string]any)
-			require.True(t, ok)
-			hosts, ok := firstOutput["hosts"].([]any)
-			require.True(t, ok)
-			require.Len(t, hosts, len(tc.wantOutputHosts))
+			firstOutput := outputs[0]
+			require.Len(t, firstOutput.Hosts, len(tc.wantOutputHosts))
 			for i, expectedHost := range tc.wantOutputHosts {
-				require.Equal(t, expectedHost, hosts[i])
+				require.Equal(t, expectedHost, firstOutput.Hosts[i])
 			}
 			if tc.wantInjectedDefault {
-				require.Equal(t, ECKFleetOutputID, firstOutput["id"])
+				require.Equal(t, ECKFleetOutputID, firstOutput.ID)
 			}
 		})
 	}
@@ -822,7 +819,7 @@ func Test_defaultFleetOutputsConfig(t *testing.T) {
 		assocConf commonv1.AssociationConf
 		kb        kbv1.Kibana
 		wantSSL   bool
-		wantCA    []any
+		wantCA    []string
 	}{
 		{
 			name:      "with CA",
@@ -832,7 +829,7 @@ func Test_defaultFleetOutputsConfig(t *testing.T) {
 				Spec:       kbv1.KibanaSpec{ElasticsearchRef: commonv1.ObjectSelector{Name: "elasticsearch"}},
 			},
 			wantSSL: true,
-			wantCA:  []any{"/mnt/elastic-internal/elasticsearch-association/default/elasticsearch/certs/ca.crt"},
+			wantCA:  []string{"/mnt/elastic-internal/elasticsearch-association/default/elasticsearch/certs/ca.crt"},
 		},
 		{
 			name:      "without CA",
@@ -857,7 +854,7 @@ func Test_defaultFleetOutputsConfig(t *testing.T) {
 				},
 			},
 			wantSSL: true,
-			wantCA:  []any{"/mnt/elastic-internal/elasticsearch-association/observability/prod-es/certs/ca.crt"},
+			wantCA:  []string{"/mnt/elastic-internal/elasticsearch-association/observability/prod-es/certs/ca.crt"},
 		},
 	}
 
@@ -865,21 +862,19 @@ func Test_defaultFleetOutputsConfig(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			cfg := defaultFleetOutputsConfig(tt.assocConf, tt.kb.EsAssociation())
 			var fleetCfg struct {
-				Outputs []any `config:"xpack.fleet.outputs"`
+				Outputs []fleetOutput `config:"xpack.fleet.outputs"`
 			}
 			require.NoError(t, cfg.Unpack(&fleetCfg))
 			outputs := fleetCfg.Outputs
 			require.Len(t, outputs, 1)
-			entry, ok := outputs[0].(map[string]any)
-			require.True(t, ok)
-			require.Equal(t, ECKFleetOutputID, entry["id"])
-			require.Equal(t, ECKFleetOutputName, entry["name"])
-			require.Equal(t, "elasticsearch", entry["type"])
-			require.Equal(t, tt.wantSSL, entry["ssl"] != nil)
+			entry := outputs[0]
+			require.Equal(t, ECKFleetOutputID, entry.ID)
+			require.Equal(t, ECKFleetOutputName, entry.Name)
+			require.Equal(t, "elasticsearch", entry.Type)
+			require.Equal(t, tt.wantSSL, entry.SSL != nil)
 			if tt.wantSSL {
-				sslCfg, ok := entry["ssl"].(map[string]any)
-				require.True(t, ok)
-				require.Equal(t, tt.wantCA, sslCfg["certificate_authorities"])
+				require.NotNil(t, entry.SSL)
+				require.Equal(t, tt.wantCA, entry.SSL.CertificateAuthorities)
 			}
 		})
 	}
@@ -1060,6 +1055,64 @@ func Test_removeLegacyFleetAgentsElasticsearch(t *testing.T) {
 			var got map[string]any
 			require.NoError(t, tt.cfg.Unpack(&got))
 			require.Empty(t, deep.Equal(tt.wantMap, got))
+		})
+	}
+}
+
+func Test_hasFleetConfigured(t *testing.T) {
+	tests := []struct {
+		name   string
+		data   map[string]any
+		expect bool
+	}{
+		{
+			name:   "returns false when config is empty",
+			data:   map[string]any{},
+			expect: false,
+		},
+		{
+			name: "returns true when xpack.fleet.agents.elasticsearch.hosts is present",
+			data: map[string]any{
+				XpackFleetAgentsElasticsearchHosts: []any{"https://elasticsearch-es-http.default.svc:9200"},
+			},
+			expect: true,
+		},
+		{
+			name: "returns true for xpack.fleet.packages key",
+			data: map[string]any{
+				XpackFleetPackages: []any{map[string]any{"name": "system", "version": "latest"}},
+			},
+			expect: true,
+		},
+		{
+			name: "returns true for xpack.fleet.outputs key",
+			data: map[string]any{
+				XpackFleetOutputs: []any{},
+			},
+			expect: true,
+		},
+		{
+			name: "returns true when xpack.fleet exists as nested map",
+			data: map[string]any{
+				"xpack": map[string]any{
+					"fleet": map[string]any{},
+				},
+			},
+			expect: true,
+		},
+		{
+			name: "returns false for unrelated xpack key",
+			data: map[string]any{
+				"xpack.security.enabled": true,
+			},
+			expect: false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			cfg := settings.MustCanonicalConfig(tt.data)
+			require.Equal(t, tt.expect, hasFleetConfigured(cfg))
 		})
 	}
 }
