@@ -757,7 +757,7 @@ func TestNewConfigSettingsFleetOutputsInjection(t *testing.T) {
 			wantHostsPresent:    false,
 		},
 		{
-			name: "injects outputs when legacy fleet agents settings are present",
+			name: "injects outputs when xpack.fleet.agents.elasticsearch.hosts are present",
 			configData: map[string]any{
 				XpackFleetAgentsElasticsearchHosts:      []any{"https://elasticsearch-es-http.default.svc:9200"},
 				"xpack.fleet.agents.fleet_server.hosts": []any{"https://fleet-server-agent-http.default.svc:8220"},
@@ -890,10 +890,10 @@ func Test_maybeConfigureFleetOutputs(t *testing.T) {
 		wantErr bool
 	}{
 		{
-			name: "injects outputs and removes legacy hosts",
+			name: "injects outputs and removes xpack.fleet.agents.elasticsearch.hosts",
 			cfg: settings.MustCanonicalConfig(map[string]any{
 				XpackFleetPackages:                 []any{map[string]any{"name": "fleet_server"}},
-				XpackFleetAgentsElasticsearchHosts: []any{"https://legacy-es:9200"},
+				XpackFleetAgentsElasticsearchHosts: []any{"https://es-url:9200"},
 			}),
 			esAssoc: &commonv1.AssociationConf{
 				URL:            "https://es-url:9200",
@@ -928,9 +928,9 @@ func Test_maybeConfigureFleetOutputs(t *testing.T) {
 			wantErr: false,
 		},
 		{
-			name: "keeps legacy hosts when outputs are absent",
+			name: "keeps xpack.fleet.agents.elasticsearch.hosts when outputs are absent",
 			cfg: settings.MustCanonicalConfig(map[string]any{
-				XpackFleetAgentsElasticsearchHosts: []any{"https://legacy-es:9200"},
+				XpackFleetAgentsElasticsearchHosts: []any{"https://es-url:9200"},
 			}),
 			esAssoc: nil,
 			kb: kbv1.Kibana{
@@ -942,7 +942,7 @@ func Test_maybeConfigureFleetOutputs(t *testing.T) {
 					"fleet": map[string]any{
 						"agents": map[string]any{
 							"elasticsearch": map[string]any{
-								"hosts": []any{"https://legacy-es:9200"},
+								"hosts": []any{"https://es-url:9200"},
 							},
 						},
 					},
@@ -985,6 +985,47 @@ func Test_maybeConfigureFleetOutputs(t *testing.T) {
 			},
 			wantErr: false,
 		},
+		{
+			name: "keeps xpack.fleet.agents.elasticsearch.hosts when only logstash outputs are configured",
+			cfg: settings.MustCanonicalConfig(map[string]any{
+				XpackFleetOutputs: []any{
+					map[string]any{
+						"id":         "logstash-output",
+						"is_default": true,
+						"name":       "logstash",
+						"type":       "logstash",
+						"hosts":      []any{"https://logstash:5044"},
+					},
+				},
+				XpackFleetAgentsElasticsearchHosts: []any{"https://es-url:9200"},
+			}),
+			esAssoc: nil,
+			kb: kbv1.Kibana{
+				ObjectMeta: metav1.ObjectMeta{Namespace: "default"},
+				Spec:       kbv1.KibanaSpec{ElasticsearchRef: commonv1.ObjectSelector{Name: "elasticsearch"}},
+			},
+			wantMap: map[string]any{
+				"xpack": map[string]any{
+					"fleet": map[string]any{
+						"outputs": []any{
+							map[string]any{
+								"id":         "logstash-output",
+								"is_default": true,
+								"name":       "logstash",
+								"type":       "logstash",
+								"hosts":      []any{"https://logstash:5044"},
+							},
+						},
+						"agents": map[string]any{
+							"elasticsearch": map[string]any{
+								"hosts": []any{"https://es-url:9200"},
+							},
+						},
+					},
+				},
+			},
+			wantErr: false,
+		},
 	}
 
 	for _, tt := range tests {
@@ -1002,7 +1043,7 @@ func Test_maybeConfigureFleetOutputs(t *testing.T) {
 	}
 }
 
-func Test_removeLegacyFleetAgentsElasticsearch(t *testing.T) {
+func Test_removeXPackFleetAgentsElasticsearch(t *testing.T) {
 	tests := []struct {
 		name    string
 		cfg     *settings.CanonicalConfig
@@ -1012,7 +1053,7 @@ func Test_removeLegacyFleetAgentsElasticsearch(t *testing.T) {
 		{
 			name: "prunes elasticsearch.hosts key properly",
 			cfg: settings.MustCanonicalConfig(map[string]any{
-				XpackFleetAgentsElasticsearchHosts: []any{"https://legacy-es:9200"},
+				XpackFleetAgentsElasticsearchHosts: []any{"https://es-url:9200"},
 			}),
 			wantMap: map[string]any{
 				"xpack": map[string]any{
@@ -1024,7 +1065,7 @@ func Test_removeLegacyFleetAgentsElasticsearch(t *testing.T) {
 		{
 			name: "keeps fleet agents and prunes es.hosts",
 			cfg: settings.MustCanonicalConfig(map[string]any{
-				XpackFleetAgentsElasticsearchHosts: []any{"https://legacy-es:9200"},
+				XpackFleetAgentsElasticsearchHosts: []any{"https://es-url:9200"},
 				"xpack.fleet.agents.fleet_server.hosts": []any{
 					"https://fleet-server:8220",
 				},

@@ -459,11 +459,11 @@ func TestCanonicalConfig_String(t *testing.T) {
 
 func TestCanonicalConfig_Remove(t *testing.T) {
 	tests := []struct {
-		name       string
-		cfg        *CanonicalConfig
-		key        string
-		wantErr    bool
-		wantHasKey bool
+		name    string
+		cfg     *CanonicalConfig
+		key     string
+		wantErr bool
+		want    *CanonicalConfig
 	}{
 		{
 			name: "removes existing key",
@@ -474,18 +474,24 @@ func TestCanonicalConfig_Remove(t *testing.T) {
 					},
 				},
 			}),
-			key:        "xpack.fleet.outputs",
-			wantErr:    false,
-			wantHasKey: false,
+			key:     "xpack.fleet.outputs",
+			wantErr: false,
+			want: MustCanonicalConfig(map[string]any{
+				"xpack": map[string]any{
+					"fleet": map[string]any{},
+				},
+			}),
 		},
 		{
 			name: "removing missing key is not an error",
 			cfg: MustCanonicalConfig(map[string]any{
 				"foo": "bar",
 			}),
-			key:        "xpack.fleet.outputs",
-			wantErr:    false,
-			wantHasKey: false,
+			key:     "xpack.fleet.outputs",
+			wantErr: false,
+			want: MustCanonicalConfig(map[string]any{
+				"foo": "bar",
+			}),
 		},
 	}
 
@@ -495,8 +501,7 @@ func TestCanonicalConfig_Remove(t *testing.T) {
 			if (err != nil) != tt.wantErr {
 				t.Errorf("CanonicalConfig.Remove() error = %v, wantErr %v", err, tt.wantErr)
 			}
-			hasKey := len(tt.cfg.HasKeys([]string{tt.key})) > 0
-			require.Equal(t, tt.wantHasKey, hasKey)
+			require.Empty(t, tt.cfg.Diff(tt.want, nil))
 		})
 	}
 }

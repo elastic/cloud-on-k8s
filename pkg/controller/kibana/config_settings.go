@@ -69,6 +69,8 @@ const (
 	XpackFleetAgentsElasticsearchHosts             = "xpack.fleet.agents.elasticsearch.hosts"
 	ECKFleetOutputID                               = "eck-fleet-agent-output-elasticsearch"
 	ECKFleetOutputName                             = "eck-elasticsearch"
+	fleetOutputTypeElasticsearch                   = "elasticsearch"
+	fleetOutputTypeRemoteElasticsearch             = "remote_elasticsearch"
 
 	ElasticsearchSslCertificateAuthorities = "elasticsearch.ssl.certificateAuthorities"
 	ElasticsearchSslVerificationMode       = "elasticsearch.ssl.verificationMode"
@@ -210,27 +212,41 @@ func NewConfigSettings(ctx context.Context, client k8s.Client, kb kbv1.Kibana, v
 	return CanonicalConfig{cfg}, nil
 }
 
-// maybeConfigureFleetOutputs potentially adds a default xpack.fleet.outputs block when no outputs are configured and ensure xpack.fleet.agents.elasticsearch is removed when no agents are configured.
+// maybeConfigureFleetOutputs potentially adds a default xpack.fleet.outputs block when no outputs are configured and ensures xpack.fleet.agents.elasticsearch key is removed when no agents are configured.
 func maybeConfigureFleetOutputs(cfg *settings.CanonicalConfig, esAssocConf *commonv1.AssociationConf, esAssoc commonv1.Association) error {
 	var fleetCfg fleetOutputsConfig
 	if err := cfg.Unpack(&fleetCfg); err != nil {
 		return err
 	}
 
-	if len(fleetCfg.Outputs) > 0 {
+	// See https://www.elastic.co/docs/reference/kibana/configuration-reference/fleet-settings
+	// It states "We recommend not enabling the xpack.fleet.agents.elasticsearch.host settings when using xpack.fleet.outputs."
+	// In that case, should we adjust this check to juse be len(fleetCfg.Outputs) > 0?
+	shouldRemoveXPackFleetAgentsES := hasElasticsearchFleetOutput(fleetCfg.Outputs)
+	if !shouldRemoveXPackFleetAgentsES && esAssocConf.IsConfigured() && hasFleetConfigured(cfg) {
+		if err := cfg.MergeWith(defaultFleetOutputsConfig(*esAssocConf, esAssoc)); err != nil {
+			return err
+		}
+		// if there are no existing outputs, and there's an ES association and Fleet is configured, then
+		// we should remove the xpack.fleet.agents.elasticsearch key.
+		shouldRemoveXPackFleetAgentsES = true
+	}
+
+	if shouldRemoveXPackFleetAgentsES {
 		return removeXPackFleetAgentsElasticsearch(cfg)
 	}
 
-	if len(fleetCfg.Outputs) == 0 {
-		if esAssocConf != nil && esAssocConf.IsConfigured() && hasFleetConfigured(cfg) {
-			if err := cfg.MergeWith(defaultFleetOutputsConfig(*esAssocConf, esAssoc)); err != nil {
-				return err
-			}
-			return removeXPackFleetAgentsElasticsearch(cfg)
+	return nil
+}
+
+// hasElasticsearchFleetOutput returns true when any output is of type elasticsearch or remote_elasticsearch.
+func hasElasticsearchFleetOutput(outputs []fleetOutput) bool {
+	for _, output := range outputs {
+		if output.Type == fleetOutputTypeElasticsearch || output.Type == fleetOutputTypeRemoteElasticsearch {
+			return true
 		}
 	}
-
-	return nil
+	return false
 }
 
 // removeXPackFleetAgentsElasticsearch removes xpack.fleet.agents.elasticsearch and
@@ -260,7 +276,7 @@ func defaultFleetOutputsConfig(esAssocConf commonv1.AssociationConf, esAssoc com
 		ID:        ECKFleetOutputID,
 		IsDefault: true,
 		Name:      ECKFleetOutputName,
-		Type:      "elasticsearch",
+		Type:      fleetOutputTypeElasticsearch,
 		Hosts:     []string{esAssocConf.GetURL()},
 	}
 	if esAssocConf.GetCACertProvided() {
