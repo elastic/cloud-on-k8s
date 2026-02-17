@@ -210,8 +210,7 @@ func NewConfigSettings(ctx context.Context, client k8s.Client, kb kbv1.Kibana, v
 	return CanonicalConfig{cfg}, nil
 }
 
-// maybeConfigureFleetOutputs applies Fleet output defaults and removes legacy Fleet hosts
-// with a single read of xpack.fleet.outputs state.
+// maybeConfigureFleetOutputs potentially adds a default xpack.fleet.outputs block when no outputs are configured and ensure xpack.fleet.agents.elasticsearch is removed when no agents are configured.
 func maybeConfigureFleetOutputs(cfg *settings.CanonicalConfig, esAssocConf *commonv1.AssociationConf, esAssoc commonv1.Association) error {
 	var fleetCfg fleetOutputsConfig
 	if err := cfg.Unpack(&fleetCfg); err != nil {

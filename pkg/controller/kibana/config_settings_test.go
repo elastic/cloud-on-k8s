@@ -1046,7 +1046,7 @@ func Test_removeLegacyFleetAgentsElasticsearch(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			err := removeLegacyFleetAgentsElasticsearch(tt.cfg)
+			err := removeXPackFleetAgentsElasticsearch(tt.cfg)
 			require.Equal(t, tt.wantErr, err != nil)
 			if tt.wantErr {
 				return
