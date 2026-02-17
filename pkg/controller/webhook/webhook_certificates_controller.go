@@ -33,7 +33,7 @@ const (
 	ControllerName = "webhook-certificates-controller"
 )
 
-var _ reconcile.Reconciler = &ReconcileWebhookResources{}
+var _ reconcile.Reconciler = (*ReconcileWebhookResources)(nil)
 
 // ReconcileWebhookResources reconciles the certificates used by the webhook server.
 type ReconcileWebhookResources struct {

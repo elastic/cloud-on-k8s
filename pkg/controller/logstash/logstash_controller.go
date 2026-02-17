@@ -110,7 +110,7 @@ func addWatches(mgr manager.Manager, c controller.Controller, r *ReconcileLogsta
 	return c.Watch(source.Kind(mgr.GetCache(), &corev1.Secret{}, r.dynamicWatches.Secrets))
 }
 
-var _ reconcile.Reconciler = &ReconcileLogstash{}
+var _ reconcile.Reconciler = (*ReconcileLogstash)(nil)
 
 // ReconcileLogstash reconciles a Logstash object
 type ReconcileLogstash struct {

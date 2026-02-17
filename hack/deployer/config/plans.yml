@@ -73,7 +73,8 @@ plans:
   machineType: Standard_D8s_v3
   serviceAccount: true
   enforceSecurityPolicies: true
-  diskSetup: kubectl apply -k hack/deployer/config/local-disks
+  # AKS overlay: local-disks tuned for AKS temp disk.
+  diskSetup: kubectl apply -k hack/deployer/config/local-disks-aks
   aks:
     nodeCount: 3
     location: westeurope

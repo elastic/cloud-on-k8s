@@ -41,4 +41,4 @@ func (t TestDriver) Recorder() record.EventRecorder {
 	return t.FakeRecorder
 }
 
-var _ Interface = &TestDriver{}
+var _ Interface = (*TestDriver)(nil)

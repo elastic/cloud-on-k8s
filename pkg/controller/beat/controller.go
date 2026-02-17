@@ -110,7 +110,7 @@ func addWatches(mgr manager.Manager, c controller.Controller, r *ReconcileBeat) 
 	return c.Watch(source.Kind(mgr.GetCache(), &corev1.Secret{}, r.dynamicWatches.Secrets))
 }
 
-var _ reconcile.Reconciler = &ReconcileBeat{}
+var _ reconcile.Reconciler = (*ReconcileBeat)(nil)
 
 // ReconcileBeat reconciles a Beat object.
 type ReconcileBeat struct {

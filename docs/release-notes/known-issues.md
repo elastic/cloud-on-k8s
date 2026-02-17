@@ -12,10 +12,14 @@ Known issues are significant defects or limitations that may impact your impleme
 % Applicable versions for the known issue and the version for when the known issue was fixed % On [Month Day, Year], a known issue was discovered that [description of known issue]. 
 % For more information, check [Issue #](Issue link).
 
-% Workaround 
+% Workaround
 % Workaround description.
 
 :::
+
+## 3.3.1 [elastic-cloud-kubernetes-331-known-issues]
+
+There are no known issues in ECK 3.3.1
 
 ## 3.3.0 [elastic-cloud-kubernetes-330-known-issues]
 

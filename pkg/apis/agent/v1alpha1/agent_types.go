@@ -259,7 +259,7 @@ type Agent struct {
 
 // +kubebuilder:object:root=true
 
-var _ commonv1.Associated = &Agent{}
+var _ commonv1.Associated = (*Agent)(nil)
 
 var FleetServerServiceAccountMinVersion = semver.MustParse("7.17.0")
 
@@ -360,7 +360,7 @@ type AgentESAssociation struct {
 	ref commonv1.ObjectSelector
 }
 
-var _ commonv1.Association = &AgentESAssociation{}
+var _ commonv1.Association = (*AgentESAssociation)(nil)
 
 func (aea *AgentESAssociation) ElasticServiceAccount() (commonv1.ServiceAccountName, error) {
 	if !aea.Spec.FleetServerEnabled {
@@ -423,7 +423,7 @@ type AgentKibanaAssociation struct {
 	*Agent
 }
 
-var _ commonv1.Association = &AgentKibanaAssociation{}
+var _ commonv1.Association = (*AgentKibanaAssociation)(nil)
 
 func (a *AgentKibanaAssociation) ElasticServiceAccount() (commonv1.ServiceAccountName, error) {
 	return "", nil
@@ -471,7 +471,7 @@ type AgentFleetServerAssociation struct {
 	*Agent
 }
 
-var _ commonv1.Association = &AgentFleetServerAssociation{}
+var _ commonv1.Association = (*AgentFleetServerAssociation)(nil)
 
 func (a *AgentFleetServerAssociation) ElasticServiceAccount() (commonv1.ServiceAccountName, error) {
 	return "", nil
@@ -515,7 +515,7 @@ func (a *AgentFleetServerAssociation) AssociationID() string {
 	return commonv1.SingletonAssociationID
 }
 
-var _ commonv1.Associated = &Agent{}
+var _ commonv1.Associated = (*Agent)(nil)
 
 // +kubebuilder:object:root=true
 

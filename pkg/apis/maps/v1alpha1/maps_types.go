@@ -153,8 +153,8 @@ func (m *ElasticMapsServer) AssociationID() string {
 	return commonv1.SingletonAssociationID
 }
 
-var _ commonv1.Associated = &ElasticMapsServer{}
-var _ commonv1.Association = &ElasticMapsServer{}
+var _ commonv1.Associated = (*ElasticMapsServer)(nil)
+var _ commonv1.Association = (*ElasticMapsServer)(nil)
 
 // GetObservedGeneration will return the observed generation from the Elastic Maps status.
 func (m *ElasticMapsServer) GetObservedGeneration() int64 {
