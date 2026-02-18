@@ -82,7 +82,7 @@ func IsPodRunning(pod corev1.Pod) bool {
 
 // TerminatingPods filters pods for Pods that are in the process of (graceful) termination.
 func TerminatingPods(pods []corev1.Pod) []corev1.Pod {
-	var terminating []corev1.Pod //nolint:prealloc
+	var terminating []corev1.Pod
 	for _, p := range pods {
 		if p.DeletionTimestamp.IsZero() {
 			continue
