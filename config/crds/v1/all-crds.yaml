@@ -4920,7 +4920,7 @@ spec:
                             type: string
                           minItems: 1
                           type: array
-                          uniqueItems: true
+                          x-kubernetes-list-type: set
                       type: object
                   required:
                   - name

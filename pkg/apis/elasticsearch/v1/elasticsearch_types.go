@@ -374,7 +374,7 @@ type ZoneAwareness struct {
 	// If empty, Pods can be scheduled in any topology value for the selected topologyKey.
 	// +kubebuilder:validation:Optional
 	// +kubebuilder:validation:MinItems=1
-	// +kubebuilder:validation:UniqueItems=true
+	// +listType=set
 	Zones []string `json:"zones,omitempty"`
 
 	// MaxSkew controls how unevenly Pods may be distributed across topology domains.
