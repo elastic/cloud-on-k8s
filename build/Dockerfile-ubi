@@ -27,7 +27,7 @@ RUN --mount=type=cache,mode=0755,target=/go/pkg/mod \
 
 # ---------------------------------------------
 # Copy the operator binary into a lighter image
-FROM registry.access.redhat.com/ubi9/ubi-micro:9.7-1766049073
+FROM registry.access.redhat.com/ubi9/ubi-micro:9.7-1771346390
 
 ARG VERSION
 
