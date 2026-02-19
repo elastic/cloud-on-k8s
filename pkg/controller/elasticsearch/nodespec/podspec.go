@@ -363,42 +363,40 @@ func zoneAwarenessWhenUnsatisfiableOrDefault(zoneAwareness *esv1.ZoneAwareness) 
 }
 
 // mergeRequiredNodeAffinityForTopology ensures all required node selector terms include
-// a topology requirement for the provided key and values.
+// an In requirement for the provided topology key and values.
+//
+// Example: if terms are [(nodepool=hot), (instance=m6g)] and topologyKey is
+// "topology.kubernetes.io/zone" with values ["us-east-1a","us-east-1b"],
+// it becomes:
+// [(nodepool=hot AND zone In [us-east-1a,us-east-1b]), (instance=m6g AND zone In [us-east-1a,us-east-1b])].
 func mergeRequiredNodeAffinityForTopology(podSpec *corev1.PodSpec, topologyKey string, topologyValues []string) {
 	requirement := corev1.NodeSelectorRequirement{
 		Key:      topologyKey,
 		Operator: corev1.NodeSelectorOpIn,
 		Values:   append([]string(nil), topologyValues...),
 	}
-
-	nodeSelector := ensureRequiredNodeSelector(podSpec)
-	// An empty required selector here means we can just add the requirement to a new term and return.
-	if len(nodeSelector.NodeSelectorTerms) == 0 {
-		nodeSelector.NodeSelectorTerms = []corev1.NodeSelectorTerm{{MatchExpressions: []corev1.NodeSelectorRequirement{requirement}}}
-		return
-	}
-
-	// Otherwise we need to iterate over all of the terms and add the requirement to the first term that doesn't already constrain the topology key.
-	for i := range nodeSelector.NodeSelectorTerms {
-		if hasNodeSelectorRequirementKey(nodeSelector.NodeSelectorTerms[i], topologyKey) {
-			continue
-		}
-		nodeSelector.NodeSelectorTerms[i].MatchExpressions = append(nodeSelector.NodeSelectorTerms[i].MatchExpressions, requirement)
-	}
+	mergeRequiredNodeAffinityForRequirement(podSpec, requirement)
 }
 
 // mergeRequiredNodeAffinityForTopologyExists ensures all required node selector terms include
 // an Exists requirement for the provided topology key.
 //
 // Example: if terms are [(nodepool=hot), (instance=m6g)] and topologyKey is
-// "topology.custom.io/rack", it becomes [(nodepool=hot AND rack Exists), (instance=m6g AND rack Exists)].
+// "topology.custom.io/rack", it becomes:
+// [(nodepool=hot AND rack Exists), (instance=m6g AND rack Exists)].
 func mergeRequiredNodeAffinityForTopologyExists(podSpec *corev1.PodSpec, topologyKey string) {
 	requirement := corev1.NodeSelectorRequirement{
 		Key:      topologyKey,
 		Operator: corev1.NodeSelectorOpExists,
 	}
+	mergeRequiredNodeAffinityForRequirement(podSpec, requirement)
+}
 
+// mergeRequiredNodeAffinityForRequirement ensures each required selector term includes
+// a requirement for requirement.Key, without duplicating existing key constraints.
+func mergeRequiredNodeAffinityForRequirement(podSpec *corev1.PodSpec, requirement corev1.NodeSelectorRequirement) {
 	nodeSelector := ensureRequiredNodeSelector(podSpec)
+	topologyKey := requirement.Key
 	if len(nodeSelector.NodeSelectorTerms) == 0 {
 		nodeSelector.NodeSelectorTerms = []corev1.NodeSelectorTerm{{MatchExpressions: []corev1.NodeSelectorRequirement{requirement}}}
 		return

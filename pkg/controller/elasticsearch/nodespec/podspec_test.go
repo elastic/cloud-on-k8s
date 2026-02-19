@@ -507,7 +507,6 @@ func Test_getDefaultContainerPorts(t *testing.T) {
 }
 
 func TestBuildPodTemplateSpec_ZoneAwarenessScenarios(t *testing.T) {
-
 	tests := []struct {
 		name         string
 		buildES      func() esv1.Elasticsearch
