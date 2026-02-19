@@ -493,9 +493,9 @@ func (ns NodeShutdown) Is(t ShutdownType) bool {
 
 // ShutdownRequest is the body of a node shutdown request.
 type ShutdownRequest struct {
-	Type            ShutdownType  `json:"type"`
-	Reason          string        `json:"reason"`
-	AllocationDelay time.Duration `json:"allocation_delay,omitempty"`
+	Type            ShutdownType `json:"type"`
+	Reason          string       `json:"reason"`
+	AllocationDelay *Duration    `json:"allocation_delay,omitempty"`
 }
 
 // ShutdownResponse is the response wrapper for retrieving the status of ongoing node shutdowns from Elasticsearch.
@@ -525,4 +525,24 @@ type FileSettingsErrors struct {
 	Version   int64    `json:"version"`
 	ErrorKind string   `json:"error_kind"`
 	Errors    []string `json:"errors"`
+}
+
+// Duration wraps time.Duration to support JSON serialization as a Go duration string (e.g. "5m0s").
+type Duration time.Duration
+
+func (d Duration) MarshalJSON() ([]byte, error) {
+	return json.Marshal(time.Duration(d).String())
+}
+
+func (d *Duration) UnmarshalJSON(b []byte) error {
+	var s string
+	if err := json.Unmarshal(b, &s); err != nil {
+		return err
+	}
+	parsed, err := time.ParseDuration(s)
+	if err != nil {
+		return err
+	}
+	*d = Duration(parsed)
+	return nil
 }

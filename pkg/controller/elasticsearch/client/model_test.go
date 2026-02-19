@@ -7,6 +7,7 @@ package client
 import (
 	"encoding/json"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -162,6 +163,147 @@ func TestLicenseUpdateResponse_IsSuccess(t *testing.T) {
 	}
 }
 
+func TestDuration_MarshalJSON(t *testing.T) {
+	tests := []struct {
+		name string
+		d    Duration
+		want string
+	}{
+		{
+			name: "zero duration",
+			d:    Duration(0),
+			want: `"0s"`,
+		},
+		{
+			name: "5 minutes",
+			d:    Duration(5 * time.Minute),
+			want: `"5m0s"`,
+		},
+		{
+			name: "1 hour 30 minutes",
+			d:    Duration(1*time.Hour + 30*time.Minute),
+			want: `"1h30m0s"`,
+		},
+		{
+			name: "500 milliseconds",
+			d:    Duration(500 * time.Millisecond),
+			want: `"500ms"`,
+		},
+		{
+			name: "negative duration",
+			d:    Duration(-10 * time.Second),
+			want: `"-10s"`,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, err := json.Marshal(tt.d)
+			require.NoError(t, err)
+			assert.Equal(t, tt.want, string(got))
+		})
+	}
+}
+
+func TestDuration_UnmarshalJSON(t *testing.T) {
+	tests := []struct {
+		name    string
+		input   string
+		want    Duration
+		wantErr bool
+	}{
+		{
+			name:  "zero duration",
+			input: `"0s"`,
+			want:  Duration(0),
+		},
+		{
+			name:  "5 minutes",
+			input: `"5m0s"`,
+			want:  Duration(5 * time.Minute),
+		},
+		{
+			name:  "5 minutes no seconds",
+			input: `"5m"`,
+			want:  Duration(5 * time.Minute),
+		},
+		{
+			name:  "1 hour 30 minutes",
+			input: `"1h30m0s"`,
+			want:  Duration(1*time.Hour + 30*time.Minute),
+		},
+		{
+			name:  "500 milliseconds",
+			input: `"500ms"`,
+			want:  Duration(500 * time.Millisecond),
+		},
+		{
+			name:  "negative duration",
+			input: `"-10s"`,
+			want:  Duration(-10 * time.Second),
+		},
+		{
+			name:    "invalid duration string",
+			input:   `"not_a_duration"`,
+			wantErr: true,
+		},
+		{
+			name:    "not a string",
+			input:   `12345`,
+			wantErr: true,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			var got Duration
+			err := json.Unmarshal([]byte(tt.input), &got)
+			if tt.wantErr {
+				require.Error(t, err)
+				return
+			}
+			require.NoError(t, err)
+			assert.Equal(t, tt.want, got)
+		})
+	}
+}
+
+func TestDuration_ShutdownRequest(t *testing.T) {
+	tests := []struct {
+		name         string
+		request      ShutdownRequest
+		expectedJSON string
+	}{
+		{
+			name: "non empty",
+			request: ShutdownRequest{
+				Type:            Restart,
+				Reason:          "rolling upgrade",
+				AllocationDelay: ptr(Duration(20 * time.Minute)),
+			},
+			expectedJSON: `{"type":"restart","reason":"rolling upgrade","allocation_delay":"20m0s"}`,
+		},
+		{
+			name: "empty",
+			request: ShutdownRequest{
+				Type:   Remove,
+				Reason: "decommission",
+			},
+			expectedJSON: `{"type":"remove","reason":"decommission"}`,
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			data, err := json.Marshal(tc.request)
+			require.NoError(t, err)
+			assert.JSONEq(t, tc.expectedJSON, string(data))
+
+			var restored ShutdownRequest
+			require.NoError(t, json.Unmarshal(data, &restored))
+			assert.Equal(t, tc.request, restored)
+		})
+	}
+}
+
 func TestShutdownResponse(t *testing.T) {
 	nodeShudownSample := `{
 	"nodes": [{
@@ -182,29 +324,32 @@ func TestShutdownResponse(t *testing.T) {
 		}
 	}]
 }`
-	expected := ShutdownResponse{Nodes: []NodeShutdown{
-		{
-			NodeID:                "PQKHA4xCQd2xErO2fUK-hg",
-			Type:                  "REMOVE",
-			Reason:                "2331481",
-			ShutdownStartedMillis: 1643648932189,
-			Status:                ShutdownInProgress,
-			ShardMigration: ShardMigration{
-				Status:                   ShutdownInProgress,
-				ShardMigrationsRemaining: 1,
-				Explanation:              "",
-			},
-			PersistentTasks: PersistentTasks{
-				Status: ShutdownComplete,
-			},
-			Plugins: Plugins{
-				Status: ShutdownComplete,
+	expected := ShutdownResponse{
+		Nodes: []NodeShutdown{
+			{
+				NodeID:                "PQKHA4xCQd2xErO2fUK-hg",
+				Type:                  "REMOVE",
+				Reason:                "2331481",
+				ShutdownStartedMillis: 1643648932189,
+				Status:                ShutdownInProgress,
+				ShardMigration: ShardMigration{
+					Status:                   ShutdownInProgress,
+					ShardMigrationsRemaining: 1,
+					Explanation:              "",
+				},
+				PersistentTasks: PersistentTasks{
+					Status: ShutdownComplete,
+				},
+				Plugins: Plugins{
+					Status: ShutdownComplete,
+				},
 			},
 		},
-	},
 	}
 
 	var actual ShutdownResponse
 	require.NoError(t, json.Unmarshal([]byte(nodeShudownSample), &actual))
 	require.Equal(t, expected, actual)
 }
+
+func ptr[T any](t T) *T { return &t }
