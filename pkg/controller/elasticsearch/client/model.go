@@ -10,7 +10,6 @@ import (
 	"strconv"
 	"strings"
 	"time"
-	"unicode"
 
 	"github.com/pkg/errors"
 
@@ -599,26 +598,26 @@ func ParseTimeValue(s string) (time.Duration, error) {
 		isNegative = -1
 	}
 
-	digitStart := 0
+	sep := 0
 	for i, c := range s {
-		digitStart = i
-		if !unicode.IsDigit(c) { // as long as it is digit, continue
+		sep = i
+		if c < '0' || c > '9' {
 			break
 		}
 	}
-	if digitStart == len(s) {
+	if sep == len(s) {
 		return 0, fmt.Errorf("invalid elasticsearch duration: %q", orig)
 	}
 
 	// extract number part
-	num, err := strconv.ParseInt(s[:digitStart], 10, 64)
+	num, err := strconv.ParseInt(s[:sep], 10, 64)
 	if err != nil {
 		return 0, fmt.Errorf("invalid elasticsearch duration: %q: %w", orig, err)
 	}
 
 	// extract unit part
 	var multiplier int64
-	switch s[digitStart:] {
+	switch s[sep:] {
 	case "d":
 		multiplier = dayDur
 	case "h":
@@ -634,7 +633,7 @@ func ParseTimeValue(s string) (time.Duration, error) {
 	case "nanos":
 		multiplier = 1
 	default:
-		return 0, fmt.Errorf("unknown elasticsearch duration unit %q in %q", s[digitStart:], orig)
+		return 0, fmt.Errorf("unknown elasticsearch duration unit %q in %q", s[sep:], orig)
 	}
 
 	return time.Duration(num * multiplier * isNegative), nil
