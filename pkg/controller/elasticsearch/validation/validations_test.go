@@ -644,6 +644,102 @@ func Test_validNodeLabels(t *testing.T) {
 	}
 }
 
+func Test_validZoneAwarenessTopologyKeys(t *testing.T) {
+	tests := []struct {
+		name         string
+		es           esv1.Elasticsearch
+		expectErrors bool
+	}{
+		{
+			name: "no zone awareness configured",
+			es: esv1.Elasticsearch{
+				Spec: esv1.ElasticsearchSpec{
+					NodeSets: []esv1.NodeSet{
+						{Name: "a"},
+						{Name: "b"},
+					},
+				},
+			},
+		},
+		{
+			name: "default topology key is consistent across nodesets",
+			es: esv1.Elasticsearch{
+				Spec: esv1.ElasticsearchSpec{
+					NodeSets: []esv1.NodeSet{
+						{Name: "a", ZoneAwareness: &esv1.ZoneAwareness{}},
+						{Name: "b", ZoneAwareness: &esv1.ZoneAwareness{TopologyKey: esv1.DefaultZoneAwarenessTopologyKey}},
+					},
+				},
+			},
+		},
+		{
+			name: "custom topology key is consistent across nodesets",
+			es: esv1.Elasticsearch{
+				Spec: esv1.ElasticsearchSpec{
+					NodeSets: []esv1.NodeSet{
+						{Name: "a", ZoneAwareness: &esv1.ZoneAwareness{TopologyKey: "custom.io/rack"}},
+						{Name: "b", ZoneAwareness: &esv1.ZoneAwareness{TopologyKey: "custom.io/rack"}},
+					},
+				},
+			},
+		},
+		{
+			name: "mixed default and custom topology keys are allowed when all nodesets are explicit",
+			es: esv1.Elasticsearch{
+				Spec: esv1.ElasticsearchSpec{
+					NodeSets: []esv1.NodeSet{
+						{Name: "a", ZoneAwareness: &esv1.ZoneAwareness{}},
+						{Name: "b", ZoneAwareness: &esv1.ZoneAwareness{TopologyKey: "custom.io/rack"}},
+					},
+				},
+			},
+		},
+		{
+			name: "mixed custom topology keys are allowed when all nodesets are explicit",
+			es: esv1.Elasticsearch{
+				Spec: esv1.ElasticsearchSpec{
+					NodeSets: []esv1.NodeSet{
+						{Name: "a", ZoneAwareness: &esv1.ZoneAwareness{TopologyKey: "custom.io/room"}},
+						{Name: "b", ZoneAwareness: &esv1.ZoneAwareness{TopologyKey: "custom.io/rack"}},
+					},
+				},
+			},
+		},
+		{
+			name: "single topology key with non-zoneAware nodeset is allowed",
+			es: esv1.Elasticsearch{
+				Spec: esv1.ElasticsearchSpec{
+					NodeSets: []esv1.NodeSet{
+						{Name: "a", ZoneAwareness: &esv1.ZoneAwareness{TopologyKey: "custom.io/rack"}},
+						{Name: "b"},
+					},
+				},
+			},
+		},
+		{
+			name: "ambiguous mixed topology keys are rejected when at least one nodeset is non-zoneAware",
+			es: esv1.Elasticsearch{
+				Spec: esv1.ElasticsearchSpec{
+					NodeSets: []esv1.NodeSet{
+						{Name: "a", ZoneAwareness: &esv1.ZoneAwareness{TopologyKey: "custom.io/rack"}},
+						{Name: "b", ZoneAwareness: &esv1.ZoneAwareness{TopologyKey: "custom.io/room"}},
+						{Name: "c"},
+					},
+				},
+			},
+			expectErrors: true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			errs := validZoneAwarenessTopologyKeys(tt.es)
+			hasErrors := len(errs) > 0
+			assert.Equal(t, tt.expectErrors, hasErrors)
+		})
+	}
+}
+
 func Test_validAssociations(t *testing.T) {
 	type args struct {
 		name         string

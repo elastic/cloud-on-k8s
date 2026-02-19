@@ -104,6 +104,7 @@ func BuildPodTemplateSpec(
 	headlessServiceName := HeadlessServiceName(esv1.StatefulSet(es.Name, nodeSet.Name))
 	ssetName := esv1.StatefulSet(es.Name, nodeSet.Name)
 	clusterHasZoneAwareness := hasZoneAwareness(es.Spec.NodeSets)
+	clusterZoneAwarenessTopologyKey := zoneAwarenessTopologyKey(es.Spec.NodeSets)
 
 	// We retrieve the ConfigMap that holds the scripts to trigger a Pod restart if it is updated.
 	esScripts := &corev1.ConfigMap{}
@@ -134,7 +135,7 @@ func BuildPodTemplateSpec(
 		WithPorts(defaultContainerPorts).
 		WithReadinessProbe(*NewReadinessProbe(ver)).
 		WithAffinity(DefaultAffinity(es.Name)).
-		WithEnv(append(DefaultEnvVars(ver, es.Spec.HTTP, headlessServiceName), zoneAwarenessEnv(nodeSet, clusterHasZoneAwareness)...)...).
+		WithEnv(append(DefaultEnvVars(ver, es.Spec.HTTP, headlessServiceName), zoneAwarenessEnv(nodeSet, clusterHasZoneAwareness, clusterZoneAwarenessTopologyKey)...)...).
 		WithVolumes(volumes...).
 		WithVolumeMounts(volumeMounts...).
 		WithInitContainers(initContainers...).
@@ -144,7 +145,7 @@ func BuildPodTemplateSpec(
 		WithContainersSecurityContext(securitycontext.For(ver, enableReadOnlyRootFilesystem)).
 		WithPreStopHook(*NewPreStopHook())
 
-	applyZoneAwarenessScheduling(builder, nodeSet, es.Name, ssetName)
+	applyZoneAwarenessToPodSpec(builder, nodeSet, es.Name, ssetName, clusterHasZoneAwareness, clusterZoneAwarenessTopologyKey)
 
 	builder, err = stackmon.WithMonitoring(ctx, client, builder, es, meta)
 	if err != nil {
@@ -241,14 +242,35 @@ func buildAnnotations(
 	return annotations
 }
 
+// zoneAwarenessTopologyKey returns the cluster-wide topology key to use for NodeSets
+// without zone awareness when cluster-wide awareness is enabled.
+func zoneAwarenessTopologyKey(nodeSets []esv1.NodeSet) string {
+	for _, nodeSet := range nodeSets {
+		if nodeSet.ZoneAwareness == nil {
+			continue
+		}
+		return nodeSet.ZoneAwareness.TopologyKeyOrDefault()
+	}
+	return esv1.DefaultZoneAwarenessTopologyKey
+}
+
+// topologyKeyOrDefault returns the provided key or the default zone topology key
+// when the provided value is empty.
+func topologyKeyOrDefault(topologyKey string) string {
+	if topologyKey == "" {
+		return esv1.DefaultZoneAwarenessTopologyKey
+	}
+	return topologyKey
+}
+
 // zoneAwarenessEnv returns the zone environment variable when zone awareness is enabled
-// at either cluster or NodeSet level, using the NodeSet topology key when configured.
-func zoneAwarenessEnv(nodeSet esv1.NodeSet, clusterHasZoneAwareness bool) []corev1.EnvVar {
+// at either cluster or NodeSet level. NodeSet-level configuration takes precedence.
+func zoneAwarenessEnv(nodeSet esv1.NodeSet, clusterHasZoneAwareness bool, clusterTopologyKey string) []corev1.EnvVar {
 	if !clusterHasZoneAwareness {
 		return nil
 	}
 
-	topologyKey := esv1.DefaultZoneAwarenessTopologyKey
+	topologyKey := topologyKeyOrDefault(clusterTopologyKey)
 	if za := nodeSet.ZoneAwareness; za != nil {
 		topologyKey = za.TopologyKeyOrDefault()
 	}
@@ -266,22 +288,36 @@ func zoneAwarenessEnv(nodeSet esv1.NodeSet, clusterHasZoneAwareness bool) []core
 	}
 }
 
-// applyZoneAwarenessScheduling updates the builder pod spec with topology spread constraints
-// and required node affinity derived from the NodeSet zone awareness configuration.
-func applyZoneAwarenessScheduling(builder *defaults.PodTemplateBuilder, nodeSet esv1.NodeSet, clusterName, statefulSetName string) {
+// applyZoneAwarenessToPodSpec updates the builder pod spec with topology spread constraints
+// and potentially nodeaffinity derived from the NodeSet zone awareness configuration.
+func applyZoneAwarenessToPodSpec(
+	builder *defaults.PodTemplateBuilder,
+	nodeSet esv1.NodeSet,
+	clusterName,
+	statefulSetName string,
+	clusterHasZoneAwareness bool,
+	clusterTopologyKey string,
+) {
+	podSpec := &builder.PodTemplate.Spec
+	if nodeSet.ZoneAwareness == nil && clusterHasZoneAwareness {
+		clusterTopologyKey = topologyKeyOrDefault(clusterTopologyKey)
+		// We want to ensure that the nodeSet is only scheduled on nodes that have the cluster topology key
+		// when a nodeSet has no configured zone awareness but another nodeSet has zone awareness.
+		mergeRequiredNodeAffinityForTopologyExists(podSpec, clusterTopologyKey)
+		return
+	}
 	if nodeSet.ZoneAwareness == nil {
 		return
 	}
 
-	podSpec := &builder.PodTemplate.Spec
 	topologyKey := nodeSet.ZoneAwareness.TopologyKeyOrDefault()
 	if !hasTopologySpreadConstraintForKey(podSpec.TopologySpreadConstraints, topologyKey) {
 		podSpec.TopologySpreadConstraints = append(
 			podSpec.TopologySpreadConstraints,
 			corev1.TopologySpreadConstraint{
-				MaxSkew:           zoneAwarenessMaxSkew(nodeSet.ZoneAwareness),
+				MaxSkew:           zoneAwarenessMaxSkewOrDefault(nodeSet.ZoneAwareness),
 				TopologyKey:       topologyKey,
-				WhenUnsatisfiable: zoneAwarenessWhenUnsatisfiable(nodeSet.ZoneAwareness),
+				WhenUnsatisfiable: zoneAwarenessWhenUnsatisfiableOrDefault(nodeSet.ZoneAwareness),
 				LabelSelector: &metav1.LabelSelector{
 					MatchLabels: map[string]string{
 						label.ClusterNameLabelName:     clusterName,
@@ -292,6 +328,8 @@ func applyZoneAwarenessScheduling(builder *defaults.PodTemplateBuilder, nodeSet 
 		)
 	}
 
+	// If the nodeSet has zone awareness and zones are configured, we want to ensure
+	// that the nodeSet is only scheduled on nodes that have the zone values.
 	if len(nodeSet.ZoneAwareness.Zones) > 0 {
 		mergeRequiredNodeAffinityForTopology(podSpec, topologyKey, nodeSet.ZoneAwareness.Zones)
 	}
@@ -308,16 +346,16 @@ func hasTopologySpreadConstraintForKey(constraints []corev1.TopologySpreadConstr
 	return false
 }
 
-// zoneAwarenessMaxSkew returns the configured maxSkew or the default value when unset.
-func zoneAwarenessMaxSkew(zoneAwareness *esv1.ZoneAwareness) int32 {
+// zoneAwarenessMaxSkewOrDefault returns the configured maxSkew or the default value when unset.
+func zoneAwarenessMaxSkewOrDefault(zoneAwareness *esv1.ZoneAwareness) int32 {
 	if zoneAwareness.MaxSkew != nil {
 		return *zoneAwareness.MaxSkew
 	}
 	return 1
 }
 
-// zoneAwarenessWhenUnsatisfiable returns the configured unsatisfiable action or the default.
-func zoneAwarenessWhenUnsatisfiable(zoneAwareness *esv1.ZoneAwareness) corev1.UnsatisfiableConstraintAction {
+// zoneAwarenessWhenUnsatisfiableOrDefault returns the configured unsatisfiable action or the default.
+func zoneAwarenessWhenUnsatisfiableOrDefault(zoneAwareness *esv1.ZoneAwareness) corev1.UnsatisfiableConstraintAction {
 	if zoneAwareness.WhenUnsatisfiable != nil {
 		return *zoneAwareness.WhenUnsatisfiable
 	}
@@ -341,6 +379,31 @@ func mergeRequiredNodeAffinityForTopology(podSpec *corev1.PodSpec, topologyKey s
 	}
 
 	// Otherwise we need to iterate over all of the terms and add the requirement to the first term that doesn't already constrain the topology key.
+	for i := range nodeSelector.NodeSelectorTerms {
+		if hasNodeSelectorRequirementKey(nodeSelector.NodeSelectorTerms[i], topologyKey) {
+			continue
+		}
+		nodeSelector.NodeSelectorTerms[i].MatchExpressions = append(nodeSelector.NodeSelectorTerms[i].MatchExpressions, requirement)
+	}
+}
+
+// mergeRequiredNodeAffinityForTopologyExists ensures all required node selector terms include
+// an Exists requirement for the provided topology key.
+//
+// Example: if terms are [(nodepool=hot), (instance=m6g)] and topologyKey is
+// "topology.custom.io/rack", it becomes [(nodepool=hot AND rack Exists), (instance=m6g AND rack Exists)].
+func mergeRequiredNodeAffinityForTopologyExists(podSpec *corev1.PodSpec, topologyKey string) {
+	requirement := corev1.NodeSelectorRequirement{
+		Key:      topologyKey,
+		Operator: corev1.NodeSelectorOpExists,
+	}
+
+	nodeSelector := ensureRequiredNodeSelector(podSpec)
+	if len(nodeSelector.NodeSelectorTerms) == 0 {
+		nodeSelector.NodeSelectorTerms = []corev1.NodeSelectorTerm{{MatchExpressions: []corev1.NodeSelectorRequirement{requirement}}}
+		return
+	}
+
 	for i := range nodeSelector.NodeSelectorTerms {
 		if hasNodeSelectorRequirementKey(nodeSelector.NodeSelectorTerms[i], topologyKey) {
 			continue
