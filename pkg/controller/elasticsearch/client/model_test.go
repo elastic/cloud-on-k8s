@@ -177,17 +177,17 @@ func TestDuration_MarshalJSON(t *testing.T) {
 		{
 			name: "5 minutes",
 			d:    Duration(5 * time.Minute),
-			want: `"5m0s"`,
+			want: `"300s"`,
 		},
 		{
 			name: "1 hour 30 minutes",
 			d:    Duration(1*time.Hour + 30*time.Minute),
-			want: `"1h30m0s"`,
+			want: `"5400s"`,
 		},
 		{
 			name: "500 milliseconds",
 			d:    Duration(500 * time.Millisecond),
-			want: `"500ms"`,
+			want: `"1s"`,
 		},
 		{
 			name: "negative duration",
@@ -279,7 +279,7 @@ func TestDuration_ShutdownRequest(t *testing.T) {
 				Reason:          "rolling upgrade",
 				AllocationDelay: ptr(Duration(20 * time.Minute)),
 			},
-			expectedJSON: `{"type":"restart","reason":"rolling upgrade","allocation_delay":"20m0s"}`,
+			expectedJSON: `{"type":"restart","reason":"rolling upgrade","allocation_delay":"1200s"}`,
 		},
 		{
 			name: "empty",

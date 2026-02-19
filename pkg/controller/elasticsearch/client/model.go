@@ -531,7 +531,7 @@ type FileSettingsErrors struct {
 type Duration time.Duration
 
 func (d Duration) MarshalJSON() ([]byte, error) {
-	return json.Marshal(time.Duration(d).String())
+	return json.Marshal(formatAsSeconds(time.Duration(d)))
 }
 
 func (d *Duration) UnmarshalJSON(b []byte) error {
