@@ -508,8 +508,8 @@ func Test_getDefaultContainerPorts(t *testing.T) {
 
 func TestBuildPodTemplateSpec_ZoneAwarenessScenarios(t *testing.T) {
 	tests := []struct {
-		name         string
-		buildES      func() esv1.Elasticsearch
+		name    string
+		buildES func() esv1.Elasticsearch
 	}{
 		{
 			name: "zones add spread constraint and affinity",
