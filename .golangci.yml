@@ -120,7 +120,7 @@ linters:
       - linters:
           - revive
         # revive naming rules are not that happy with our packages/var names in common/utils/shared packages
-        path: '.*/(common|utils|shared)/.*.go'
+        path: '.*/(common|utils|shared|test)/.*.go|pkg/controller/(maps|elasticsearch/driver|elasticsearch/user|elasticsearch/version).*.go|hack/deployer/exec/.*.go'
         text: 'var-naming: avoid (package names that conflict with Go standard library package names|meaningless package names)'
     paths:
       - third_party$

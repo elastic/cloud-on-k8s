@@ -19,7 +19,7 @@ import (
 )
 
 func buildEnv(params Params, esAssociations []commonv1.Association) ([]corev1.EnvVar, error) {
-	var envs []corev1.EnvVar //nolint:prealloc
+	var envs []corev1.EnvVar
 	for _, assoc := range esAssociations {
 		assocConf, err := assoc.AssociationConf()
 		if err != nil {

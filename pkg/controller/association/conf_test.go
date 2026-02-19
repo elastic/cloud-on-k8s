@@ -643,7 +643,7 @@ func TestRemoveObsoleteAssociationConfs(t *testing.T) {
 			var got agentv1alpha1.Agent
 			require.NoError(t, client.Get(context.Background(), k8s.ExtractNamespacedName(tt.associated), &got))
 
-			gotAnnotations := make([]string, 0)
+			gotAnnotations := make([]string, 0, len(got.Annotations))
 			for key := range got.Annotations {
 				gotAnnotations = append(gotAnnotations, key)
 			}
