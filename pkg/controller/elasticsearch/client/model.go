@@ -589,6 +589,8 @@ func FormatTimeValue(d time.Duration) string {
 // It is the inverse of FormatAsElasticsearchDuration.
 // https://www.elastic.co/docs/reference/elasticsearch/rest-apis/api-conventions#time-units
 func ParseTimeValue(s string) (time.Duration, error) {
+	orig := s
+
 	// Locate the boundary between the numeric value and the unit suffix.
 	// An optional leading '-' is part of the number.
 	isNegative := int64(1)
@@ -605,13 +607,13 @@ func ParseTimeValue(s string) (time.Duration, error) {
 		}
 	}
 	if digitStart == len(s) {
-		return 0, fmt.Errorf("invalid elasticsearch duration: %q", s)
+		return 0, fmt.Errorf("invalid elasticsearch duration: %q", orig)
 	}
 
 	// extract number part
 	num, err := strconv.ParseInt(s[:digitStart], 10, 64)
 	if err != nil {
-		return 0, fmt.Errorf("invalid elasticsearch duration: %q: %w", s, err)
+		return 0, fmt.Errorf("invalid elasticsearch duration: %q: %w", orig, err)
 	}
 
 	// extract unit part
@@ -632,7 +634,7 @@ func ParseTimeValue(s string) (time.Duration, error) {
 	case "nanos":
 		multiplier = 1
 	default:
-		return 0, fmt.Errorf("unknown elasticsearch duration unit %q in %q", s[digitStart:], s)
+		return 0, fmt.Errorf("unknown elasticsearch duration unit %q in %q", s[digitStart:], orig)
 	}
 
 	return time.Duration(num * multiplier * isNegative), nil
