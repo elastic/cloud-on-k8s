@@ -7,8 +7,10 @@ package client
 import (
 	"encoding/json"
 	"fmt"
+	"strconv"
 	"strings"
 	"time"
+	"unicode"
 
 	"github.com/pkg/errors"
 
@@ -531,7 +533,7 @@ type FileSettingsErrors struct {
 type Duration time.Duration
 
 func (d Duration) MarshalJSON() ([]byte, error) {
-	return json.Marshal(formatAsSeconds(time.Duration(d)))
+	return json.Marshal(FormatTimeValue(time.Duration(d)))
 }
 
 func (d *Duration) UnmarshalJSON(b []byte) error {
@@ -539,10 +541,99 @@ func (d *Duration) UnmarshalJSON(b []byte) error {
 	if err := json.Unmarshal(b, &s); err != nil {
 		return err
 	}
-	parsed, err := time.ParseDuration(s)
+	parsed, err := ParseTimeValue(s)
 	if err != nil {
 		return err
 	}
 	*d = Duration(parsed)
 	return nil
+}
+
+const dayDur = 24 * int64(time.Hour)
+
+// FormatTimeValue formats a time.Duration using Elasticsearch time unit conventions.
+// It selects the largest unit (d, h, m, s, ms, micros, nanos) that represents the duration
+// without a fractional component. For example, 2*time.Hour returns "2h".
+// https://www.elastic.co/docs/reference/elasticsearch/rest-apis/api-conventions#time-units
+func FormatTimeValue(d time.Duration) string {
+	ns := int64(d)
+	unit := "nanos"
+	switch {
+	case ns == 0:
+		return "0s"
+	case ns%dayDur == 0:
+		ns = ns / dayDur
+		unit = "d"
+	case ns%int64(time.Hour) == 0:
+		ns = ns / int64(time.Hour)
+		unit = "h"
+	case ns%int64(time.Minute) == 0:
+		ns = ns / int64(time.Minute)
+		unit = "m"
+	case ns%int64(time.Second) == 0:
+		ns = ns / int64(time.Second)
+		unit = "s"
+	case ns%int64(time.Millisecond) == 0:
+		ns = ns / int64(time.Millisecond)
+		unit = "ms"
+	case ns%int64(time.Microsecond) == 0:
+		ns = ns / int64(time.Microsecond)
+		unit = "micros"
+	}
+
+	return strconv.FormatInt(ns, 10) + unit
+}
+
+// ParseTimeValue parses a duration string using Elasticsearch time unit conventions
+// (d, h, m, s, ms, micros, nanos) and returns the equivalent time.Duration.
+// It is the inverse of FormatAsElasticsearchDuration.
+// https://www.elastic.co/docs/reference/elasticsearch/rest-apis/api-conventions#time-units
+func ParseTimeValue(s string) (time.Duration, error) {
+	// Locate the boundary between the numeric value and the unit suffix.
+	// An optional leading '-' is part of the number.
+	isNegative := int64(1)
+	if len(s) > 0 && s[0] == '-' {
+		s = s[1:]
+		isNegative = -1
+	}
+
+	digitStart := 0
+	for i, c := range s {
+		digitStart = i
+		if !unicode.IsDigit(c) { // as long as it is digit, continue
+			break
+		}
+	}
+	if digitStart == len(s) {
+		return 0, fmt.Errorf("invalid elasticsearch duration: %q", s)
+	}
+
+	// extract number part
+	num, err := strconv.ParseInt(s[:digitStart], 10, 64)
+	if err != nil {
+		return 0, fmt.Errorf("invalid elasticsearch duration: %q: %w", s, err)
+	}
+
+	// extract unit part
+	var multiplier int64
+	switch s[digitStart:] {
+	case "d":
+		multiplier = dayDur
+	case "h":
+		multiplier = int64(time.Hour)
+	case "m":
+		multiplier = int64(time.Minute)
+	case "s":
+		multiplier = int64(time.Second)
+	case "ms":
+		multiplier = int64(time.Millisecond)
+	case "micros":
+		multiplier = int64(time.Microsecond)
+	case "nanos":
+		multiplier = 1
+	default:
+		return 0, fmt.Errorf("unknown elasticsearch duration unit %q in %q", s[digitStart:], s)
+	}
+
+	return time.Duration(num * multiplier * isNegative), nil
 }
