@@ -557,30 +557,31 @@ const dayDur = 24 * int64(time.Hour)
 func FormatTimeValue(d time.Duration) string {
 	ns := int64(d)
 	unit := "nanos"
+	n := ns
 	switch {
 	case ns == 0:
 		return "0s"
 	case ns%dayDur == 0:
-		ns = ns / dayDur
+		n = ns / dayDur
 		unit = "d"
 	case ns%int64(time.Hour) == 0:
-		ns = ns / int64(time.Hour)
+		n = ns / int64(time.Hour)
 		unit = "h"
 	case ns%int64(time.Minute) == 0:
-		ns = ns / int64(time.Minute)
+		n = ns / int64(time.Minute)
 		unit = "m"
 	case ns%int64(time.Second) == 0:
-		ns = ns / int64(time.Second)
+		n = ns / int64(time.Second)
 		unit = "s"
 	case ns%int64(time.Millisecond) == 0:
-		ns = ns / int64(time.Millisecond)
+		n = ns / int64(time.Millisecond)
 		unit = "ms"
 	case ns%int64(time.Microsecond) == 0:
-		ns = ns / int64(time.Microsecond)
+		n = ns / int64(time.Microsecond)
 		unit = "micros"
 	}
 
-	return strconv.FormatInt(ns, 10) + unit
+	return strconv.FormatInt(n, 10) + unit
 }
 
 // ParseTimeValue parses a duration string using Elasticsearch time unit conventions
