@@ -510,7 +510,6 @@ func TestBuildPodTemplateSpec_ZoneAwarenessScenarios(t *testing.T) {
 	tests := []struct {
 		name         string
 		buildES      func() esv1.Elasticsearch
-		nodeSetIndex int
 	}{
 		{
 			name: "zones add spread constraint and affinity",
@@ -521,7 +520,6 @@ func TestBuildPodTemplateSpec_ZoneAwarenessScenarios(t *testing.T) {
 				}
 				return es
 			},
-			nodeSetIndex: 0,
 		},
 		{
 			name: "existing user spread constraint is preserved",
@@ -540,13 +538,21 @@ func TestBuildPodTemplateSpec_ZoneAwarenessScenarios(t *testing.T) {
 				}
 				return es
 			},
-			nodeSetIndex: 0,
 		},
 		{
 			name: "cluster level zone awareness injects env for nodeset without zone awareness",
 			buildES: func() esv1.Elasticsearch {
 				es := newEsSampleBuilder().withVersion("8.14.0").build()
 				es.Spec.NodeSets = []esv1.NodeSet{
+					{
+						Name:  "without-za",
+						Count: 1,
+						Config: &commonv1.Config{
+							Data: map[string]any{
+								"node.roles": []esv1.NodeRole{esv1.MasterRole},
+							},
+						},
+					},
 					{
 						Name:          "with-za",
 						Count:         1,
@@ -557,6 +563,15 @@ func TestBuildPodTemplateSpec_ZoneAwarenessScenarios(t *testing.T) {
 							},
 						},
 					},
+				}
+				return es
+			},
+		},
+		{
+			name: "cluster level custom topology key injects env for nodeset without zone awareness",
+			buildES: func() esv1.Elasticsearch {
+				es := newEsSampleBuilder().withVersion("8.14.0").build()
+				es.Spec.NodeSets = []esv1.NodeSet{
 					{
 						Name:  "without-za",
 						Count: 1,
@@ -566,16 +581,6 @@ func TestBuildPodTemplateSpec_ZoneAwarenessScenarios(t *testing.T) {
 							},
 						},
 					},
-				}
-				return es
-			},
-			nodeSetIndex: 1,
-		},
-		{
-			name: "cluster level custom topology key injects env for nodeset without zone awareness",
-			buildES: func() esv1.Elasticsearch {
-				es := newEsSampleBuilder().withVersion("8.14.0").build()
-				es.Spec.NodeSets = []esv1.NodeSet{
 					{
 						Name:  "with-za",
 						Count: 1,
@@ -588,26 +593,16 @@ func TestBuildPodTemplateSpec_ZoneAwarenessScenarios(t *testing.T) {
 							},
 						},
 					},
-					{
-						Name:  "without-za",
-						Count: 1,
-						Config: &commonv1.Config{
-							Data: map[string]any{
-								"node.roles": []esv1.NodeRole{esv1.MasterRole},
-							},
-						},
-					},
 				}
 				return es
 			},
-			nodeSetIndex: 1,
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			es := tt.buildES()
-			nodeSet := es.Spec.NodeSets[tt.nodeSetIndex]
+			nodeSet := es.Spec.NodeSets[0]
 
 			ver, err := version.Parse(es.Spec.Version)
 			require.NoError(t, err)
