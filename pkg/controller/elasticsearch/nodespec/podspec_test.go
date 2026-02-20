@@ -24,7 +24,6 @@ import (
 	esv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/elasticsearch/v1"
 	policyv1alpha1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/stackconfigpolicy/v1alpha1"
 	commonannotation "github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/annotation"
-	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/defaults"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/hash"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/keystore"
 	common "github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/settings"
@@ -381,7 +380,7 @@ func Test_buildAnnotations(t *testing.T) {
 				esAnnotations: map[string]string{"eck.k8s.elastic.co/downward-node-labels": "topology.kubernetes.io/zone,topology.kubernetes.io/region"},
 			},
 			expectedAnnotations: map[string]string{
-				"elasticsearch.k8s.elastic.co/config-hash": "3356455586",
+				"elasticsearch.k8s.elastic.co/config-hash": "909392898",
 			},
 		},
 		{
@@ -461,6 +460,67 @@ func Test_buildAnnotations(t *testing.T) {
 				assert.True(t, exists, "expected annotation: %s", expectedAnnotation)
 				assert.Equal(t, expectedValue, actualValue, "expected value for annotation %s: %s, got %s", expectedAnnotation, expectedValue, actualValue)
 			}
+		})
+	}
+}
+
+func Test_downwardNodeLabelsHashInput(t *testing.T) {
+	tests := []struct {
+		name string
+		es   esv1.Elasticsearch
+		want string
+	}{
+		{
+			name: "preserves annotation order and formatting",
+			es: esv1.Elasticsearch{
+				ObjectMeta: metav1.ObjectMeta{
+					Annotations: map[string]string{
+						esv1.DownwardNodeLabelsAnnotation: "topology.kubernetes.io/zone, topology.kubernetes.io/region",
+					},
+				},
+			},
+			want: "topology.kubernetes.io/zone, topology.kubernetes.io/region",
+		},
+		{
+			name: "appends zone awareness label when not in annotation",
+			es: esv1.Elasticsearch{
+				ObjectMeta: metav1.ObjectMeta{
+					Annotations: map[string]string{
+						esv1.DownwardNodeLabelsAnnotation: "topology.kubernetes.io/region",
+					},
+				},
+				Spec: esv1.ElasticsearchSpec{
+					NodeSets: []esv1.NodeSet{
+						{
+							Name:          "with-za",
+							ZoneAwareness: &esv1.ZoneAwareness{},
+						},
+					},
+				},
+			},
+			want: "topology.kubernetes.io/region,topology.kubernetes.io/zone",
+		},
+		{
+			name: "uses derived labels when annotation is absent",
+			es: esv1.Elasticsearch{
+				Spec: esv1.ElasticsearchSpec{
+					NodeSets: []esv1.NodeSet{
+						{
+							Name: "with-za",
+							ZoneAwareness: &esv1.ZoneAwareness{
+								TopologyKey: "topology.custom.io/rack",
+							},
+						},
+					},
+				},
+			},
+			want: "topology.custom.io/rack",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			assert.Equal(t, tt.want, downwardNodeLabelsHashInput(tt.es))
 		})
 	}
 }
@@ -777,182 +837,27 @@ func Test_zoneAwarenessTopologyKey(t *testing.T) {
 	}
 }
 
-func Test_mergeRequiredNodeAffinityForTopology(t *testing.T) {
-	tests := []struct {
-		name             string
-		podSpec          corev1.PodSpec
-		topologyKey      string
-		topologyValues   []string
-		expectedAffinity *corev1.Affinity
-	}{
-		{
-			name: "adds expression to each existing term",
-			podSpec: corev1.PodSpec{
-				Affinity: &corev1.Affinity{
-					NodeAffinity: &corev1.NodeAffinity{
-						RequiredDuringSchedulingIgnoredDuringExecution: &corev1.NodeSelector{
-							NodeSelectorTerms: []corev1.NodeSelectorTerm{
-								{
-									MatchExpressions: []corev1.NodeSelectorRequirement{
-										{Key: "nodepool", Operator: corev1.NodeSelectorOpIn, Values: []string{"hot"}},
-									},
-								},
-								{
-									MatchExpressions: []corev1.NodeSelectorRequirement{
-										{Key: "instance", Operator: corev1.NodeSelectorOpIn, Values: []string{"m6g"}},
-									},
-								},
-							},
-						},
-					},
-				},
-			},
-			topologyKey:    "topology.kubernetes.io/zone",
-			topologyValues: []string{"us-east-1a", "us-east-1b"},
-			expectedAffinity: &corev1.Affinity{
-				NodeAffinity: &corev1.NodeAffinity{
-					RequiredDuringSchedulingIgnoredDuringExecution: &corev1.NodeSelector{
-						NodeSelectorTerms: []corev1.NodeSelectorTerm{
-							{
-								MatchExpressions: []corev1.NodeSelectorRequirement{
-									{Key: "nodepool", Operator: corev1.NodeSelectorOpIn, Values: []string{"hot"}},
-									{Key: "topology.kubernetes.io/zone", Operator: corev1.NodeSelectorOpIn, Values: []string{"us-east-1a", "us-east-1b"}},
-								},
-							},
-							{
-								MatchExpressions: []corev1.NodeSelectorRequirement{
-									{Key: "instance", Operator: corev1.NodeSelectorOpIn, Values: []string{"m6g"}},
-									{Key: "topology.kubernetes.io/zone", Operator: corev1.NodeSelectorOpIn, Values: []string{"us-east-1a", "us-east-1b"}},
-								},
-							},
-						},
-					},
-				},
-			},
-		},
-		{
-			name:           "creates required node affinity and adds topology requirement when affinity is nil",
-			podSpec:        corev1.PodSpec{},
-			topologyKey:    "topology.kubernetes.io/zone",
-			topologyValues: []string{"us-east-1a"},
-			expectedAffinity: &corev1.Affinity{
-				NodeAffinity: &corev1.NodeAffinity{
-					RequiredDuringSchedulingIgnoredDuringExecution: &corev1.NodeSelector{
-						NodeSelectorTerms: []corev1.NodeSelectorTerm{
-							{
-								MatchExpressions: []corev1.NodeSelectorRequirement{
-									{Key: "topology.kubernetes.io/zone", Operator: corev1.NodeSelectorOpIn, Values: []string{"us-east-1a"}},
-								},
-							},
-						},
-					},
-				},
-			},
-		},
-		{
-			name: "initializes empty selector terms",
-			podSpec: corev1.PodSpec{
-				Affinity: &corev1.Affinity{
-					NodeAffinity: &corev1.NodeAffinity{
-						RequiredDuringSchedulingIgnoredDuringExecution: &corev1.NodeSelector{},
-					},
-				},
-			},
-			topologyKey:    "topology.kubernetes.io/zone",
-			topologyValues: []string{"us-east-1a"},
-			expectedAffinity: &corev1.Affinity{
-				NodeAffinity: &corev1.NodeAffinity{
-					RequiredDuringSchedulingIgnoredDuringExecution: &corev1.NodeSelector{
-						NodeSelectorTerms: []corev1.NodeSelectorTerm{
-							{
-								MatchExpressions: []corev1.NodeSelectorRequirement{
-									{Key: "topology.kubernetes.io/zone", Operator: corev1.NodeSelectorOpIn, Values: []string{"us-east-1a"}},
-								},
-							},
-						},
-					},
-				},
-			},
-		},
-		{
-			name: "does not duplicate existing zone expression",
-			podSpec: corev1.PodSpec{
-				Affinity: &corev1.Affinity{
-					NodeAffinity: &corev1.NodeAffinity{
-						RequiredDuringSchedulingIgnoredDuringExecution: &corev1.NodeSelector{
-							NodeSelectorTerms: []corev1.NodeSelectorTerm{
-								{
-									MatchExpressions: []corev1.NodeSelectorRequirement{
-										{Key: "topology.kubernetes.io/zone", Operator: corev1.NodeSelectorOpIn, Values: []string{"us-east-1a"}},
-										{Key: "nodepool", Operator: corev1.NodeSelectorOpIn, Values: []string{"hot"}},
-									},
-								},
-							},
-						},
-					},
-				},
-			},
-			topologyKey:    "topology.kubernetes.io/zone",
-			topologyValues: []string{"us-east-1b"},
-			expectedAffinity: &corev1.Affinity{
-				NodeAffinity: &corev1.NodeAffinity{
-					RequiredDuringSchedulingIgnoredDuringExecution: &corev1.NodeSelector{
-						NodeSelectorTerms: []corev1.NodeSelectorTerm{
-							{
-								MatchExpressions: []corev1.NodeSelectorRequirement{
-									{Key: "topology.kubernetes.io/zone", Operator: corev1.NodeSelectorOpIn, Values: []string{"us-east-1a"}},
-									{Key: "nodepool", Operator: corev1.NodeSelectorOpIn, Values: []string{"hot"}},
-								},
-							},
-						},
-					},
-				},
-			},
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			mergeRequiredNodeAffinityForTopology(&tt.podSpec, tt.topologyKey, tt.topologyValues)
-			assert.Equal(t, tt.expectedAffinity, tt.podSpec.Affinity)
-		})
-	}
-}
-
-func Test_applyZoneAwarenessToPodSpec(t *testing.T) {
+func Test_zoneAwarenessSchedulingDirectives(t *testing.T) {
 	tests := []struct {
 		name                    string
-		podTemplate             corev1.PodTemplateSpec
 		nodeSet                 esv1.NodeSet
 		clusterHasZoneAwareness bool
 		clusterTopologyKey      string
-		expectedPodSpec         corev1.PodSpec
+		expectedSpread          *corev1.TopologySpreadConstraint
+		expectedMatchExpression *corev1.NodeSelectorRequirement
 	}{
 		{
-			name:                    "no-op when nodeset has no zone awareness and cluster awareness is disabled",
+			name:                    "returns no directives when nodeset has no zone awareness and cluster awareness is disabled",
 			nodeSet:                 esv1.NodeSet{},
 			clusterHasZoneAwareness: false,
-			expectedPodSpec:         corev1.PodSpec{},
 		},
 		{
 			name:                    "adds fallback topology exists affinity for non-zoneAware nodeset when cluster awareness is enabled",
 			nodeSet:                 esv1.NodeSet{},
 			clusterHasZoneAwareness: true,
 			clusterTopologyKey:      "custom.io/rack",
-			expectedPodSpec: corev1.PodSpec{
-				Affinity: &corev1.Affinity{
-					NodeAffinity: &corev1.NodeAffinity{
-						RequiredDuringSchedulingIgnoredDuringExecution: &corev1.NodeSelector{
-							NodeSelectorTerms: []corev1.NodeSelectorTerm{
-								{
-									MatchExpressions: []corev1.NodeSelectorRequirement{
-										{Key: "custom.io/rack", Operator: corev1.NodeSelectorOpExists},
-									},
-								},
-							},
-						},
-					},
-				},
+			expectedMatchExpression: &corev1.NodeSelectorRequirement{
+				Key: "custom.io/rack", Operator: corev1.NodeSelectorOpExists,
 			},
 		},
 		{
@@ -963,128 +868,36 @@ func Test_applyZoneAwarenessToPodSpec(t *testing.T) {
 				},
 			},
 			clusterHasZoneAwareness: true,
-			expectedPodSpec: corev1.PodSpec{
-				TopologySpreadConstraints: []corev1.TopologySpreadConstraint{
-					{
-						MaxSkew:           1,
-						TopologyKey:       esv1.DefaultZoneAwarenessTopologyKey,
-						WhenUnsatisfiable: corev1.DoNotSchedule,
-						LabelSelector: &metav1.LabelSelector{
-							MatchLabels: map[string]string{
-								label.ClusterNameLabelName:     "cluster",
-								label.StatefulSetNameLabelName: "sset",
-							},
-						},
-					},
-				},
-				Affinity: &corev1.Affinity{
-					NodeAffinity: &corev1.NodeAffinity{
-						RequiredDuringSchedulingIgnoredDuringExecution: &corev1.NodeSelector{
-							NodeSelectorTerms: []corev1.NodeSelectorTerm{
-								{
-									MatchExpressions: []corev1.NodeSelectorRequirement{
-										{
-											Key:      esv1.DefaultZoneAwarenessTopologyKey,
-											Operator: corev1.NodeSelectorOpIn,
-											Values:   []string{"us-east-1a", "us-east-1b"},
-										},
-									},
-								},
-							},
-						},
+			expectedSpread: &corev1.TopologySpreadConstraint{
+				MaxSkew:           1,
+				TopologyKey:       esv1.DefaultZoneAwarenessTopologyKey,
+				WhenUnsatisfiable: corev1.DoNotSchedule,
+				LabelSelector: &metav1.LabelSelector{
+					MatchLabels: map[string]string{
+						label.ClusterNameLabelName:     "cluster",
+						label.StatefulSetNameLabelName: "sset",
 					},
 				},
 			},
-		},
-		{
-			name: "respects existing spread constraint for key",
-			podTemplate: corev1.PodTemplateSpec{
-				Spec: corev1.PodSpec{
-					TopologySpreadConstraints: []corev1.TopologySpreadConstraint{
-						{
-							TopologyKey:       esv1.DefaultZoneAwarenessTopologyKey,
-							MaxSkew:           9,
-							WhenUnsatisfiable: corev1.ScheduleAnyway,
-						},
-					},
-				},
-			},
-			nodeSet: esv1.NodeSet{
-				ZoneAwareness: &esv1.ZoneAwareness{
-					Zones: []string{"us-east-1a"},
-				},
-			},
-			clusterHasZoneAwareness: true,
-			expectedPodSpec: corev1.PodSpec{
-				TopologySpreadConstraints: []corev1.TopologySpreadConstraint{
-					{
-						TopologyKey:       esv1.DefaultZoneAwarenessTopologyKey,
-						MaxSkew:           9,
-						WhenUnsatisfiable: corev1.ScheduleAnyway,
-					},
-				},
-				Affinity: &corev1.Affinity{
-					NodeAffinity: &corev1.NodeAffinity{
-						RequiredDuringSchedulingIgnoredDuringExecution: &corev1.NodeSelector{
-							NodeSelectorTerms: []corev1.NodeSelectorTerm{
-								{
-									MatchExpressions: []corev1.NodeSelectorRequirement{
-										{
-											Key:      esv1.DefaultZoneAwarenessTopologyKey,
-											Operator: corev1.NodeSelectorOpIn,
-											Values:   []string{"us-east-1a"},
-										},
-									},
-								},
-							},
-						},
-					},
-				},
+			expectedMatchExpression: &corev1.NodeSelectorRequirement{
+				Key:      esv1.DefaultZoneAwarenessTopologyKey,
+				Operator: corev1.NodeSelectorOpIn,
+				Values:   []string{"us-east-1a", "us-east-1b"},
 			},
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			builder := defaults.NewPodTemplateBuilder(tt.podTemplate, esv1.ElasticsearchContainerName)
-			applyZoneAwarenessToPodSpec(builder, tt.nodeSet, "cluster", "sset", tt.clusterHasZoneAwareness, tt.clusterTopologyKey)
-			actualPodSpec := corev1.PodSpec{
-				TopologySpreadConstraints: builder.PodTemplate.Spec.TopologySpreadConstraints,
-				Affinity:                  builder.PodTemplate.Spec.Affinity,
-			}
-			assert.Equal(t, tt.expectedPodSpec, actualPodSpec)
-		})
-	}
-}
-
-func Test_hasTopologySpreadConstraintForKey(t *testing.T) {
-	tests := []struct {
-		name        string
-		constraints []corev1.TopologySpreadConstraint
-		topologyKey string
-		expected    bool
-	}{
-		{
-			name: "returns true when key exists",
-			constraints: []corev1.TopologySpreadConstraint{
-				{TopologyKey: "topology.kubernetes.io/zone"},
-			},
-			topologyKey: "topology.kubernetes.io/zone",
-			expected:    true,
-		},
-		{
-			name: "returns false when key missing",
-			constraints: []corev1.TopologySpreadConstraint{
-				{TopologyKey: "topology.kubernetes.io/region"},
-			},
-			topologyKey: "topology.kubernetes.io/zone",
-			expected:    false,
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			assert.Equal(t, tt.expected, hasTopologySpreadConstraintForKey(tt.constraints, tt.topologyKey))
+			gotSpread, gotMatchExpression := zoneAwarenessSchedulingDirectives(
+				tt.nodeSet,
+				"cluster",
+				"sset",
+				tt.clusterHasZoneAwareness,
+				tt.clusterTopologyKey,
+			)
+			assert.Equal(t, tt.expectedSpread, gotSpread)
+			assert.Equal(t, tt.expectedMatchExpression, gotMatchExpression)
 		})
 	}
 }
@@ -1139,42 +952,6 @@ func Test_zoneAwarenessWhenUnsatisfiable(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			assert.Equal(t, tt.expected, zoneAwarenessWhenUnsatisfiableOrDefault(tt.zoneAwareness))
-		})
-	}
-}
-
-func Test_hasNodeSelectorRequirementKey(t *testing.T) {
-	tests := []struct {
-		name     string
-		term     corev1.NodeSelectorTerm
-		key      string
-		expected bool
-	}{
-		{
-			name: "returns true when expression key exists",
-			term: corev1.NodeSelectorTerm{
-				MatchExpressions: []corev1.NodeSelectorRequirement{
-					{Key: "topology.kubernetes.io/zone", Operator: corev1.NodeSelectorOpIn},
-				},
-			},
-			key:      "topology.kubernetes.io/zone",
-			expected: true,
-		},
-		{
-			name: "returns false when expression key missing",
-			term: corev1.NodeSelectorTerm{
-				MatchExpressions: []corev1.NodeSelectorRequirement{
-					{Key: "nodepool", Operator: corev1.NodeSelectorOpIn},
-				},
-			},
-			key:      "topology.kubernetes.io/zone",
-			expected: false,
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			assert.Equal(t, tt.expected, hasNodeSelectorRequirementKey(tt.term, tt.key))
 		})
 	}
 }

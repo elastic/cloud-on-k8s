@@ -8,7 +8,6 @@ import (
 	"context"
 	"fmt"
 	"hash/fnv"
-	"slices"
 	"sort"
 	"strings"
 
@@ -146,7 +145,19 @@ func BuildPodTemplateSpec(
 		WithContainersSecurityContext(securitycontext.For(ver, enableReadOnlyRootFilesystem)).
 		WithPreStopHook(*NewPreStopHook())
 
-	applyZoneAwarenessToPodSpec(builder, nodeSet, es.Name, ssetName, clusterHasZoneAwareness, clusterZoneAwarenessTopologyKey)
+	spreadConstraint, requiredMatchExpression := zoneAwarenessSchedulingDirectives(
+		nodeSet,
+		es.Name,
+		ssetName,
+		clusterHasZoneAwareness,
+		clusterZoneAwarenessTopologyKey,
+	)
+	if spreadConstraint != nil {
+		builder.WithTopologySpreadConstraints(*spreadConstraint)
+	}
+	if requiredMatchExpression != nil {
+		builder.WithRequiredNodeAffinityMatchExpressions(*requiredMatchExpression)
+	}
 
 	builder, err = stackmon.WithMonitoring(ctx, client, builder, es, meta)
 	if err != nil {
@@ -221,8 +232,9 @@ func buildAnnotations(
 	_, _ = configHash.Write([]byte(scriptsContent))
 
 	if es.HasDownwardNodeLabels() {
-		// list of node labels expected on the pod to rotate the pod when the list is updated
-		_, _ = configHash.Write([]byte(strings.Join(es.DownwardNodeLabels(), ",")))
+		// Hash user-provided labels in their original annotation order for backward compatibility,
+		// then append any zone-awareness-derived labels that were not explicitly listed.
+		_, _ = configHash.Write([]byte(downwardNodeLabelsHashInput(es)))
 	}
 
 	if keystoreResources != nil {
@@ -243,6 +255,45 @@ func buildAnnotations(
 	return annotations
 }
 
+// downwardNodeLabelsHashInput returns the hash input for downward node labels.
+// It preserves the exact annotation value when present (legacy behavior) and
+// appends any additional labels injected via zone awareness.
+func downwardNodeLabelsHashInput(es esv1.Elasticsearch) string {
+	annotationValue := ""
+	if es.Annotations != nil {
+		annotationValue = es.Annotations[esv1.DownwardNodeLabelsAnnotation]
+	}
+
+	// Keep the old hashing style for user-provided annotation values.
+	hashInput := annotationValue
+
+	// Track normalized annotation labels so we only append zone-awareness-derived
+	// labels that were not explicitly configured in the annotation.
+	annotationLabels := map[string]struct{}{}
+	for label := range strings.SplitSeq(annotationValue, ",") {
+		trimmed := strings.TrimSpace(label)
+		if trimmed == "" {
+			continue
+		}
+		annotationLabels[trimmed] = struct{}{}
+	}
+
+	var derived []string
+	for _, label := range es.DownwardNodeLabels() {
+		if _, exists := annotationLabels[label]; exists {
+			continue
+		}
+		derived = append(derived, label)
+	}
+	if len(derived) == 0 {
+		return hashInput
+	}
+	if hashInput != "" {
+		hashInput += ","
+	}
+	return hashInput + strings.Join(derived, ",")
+}
+
 // zoneAwarenessTopologyKey returns the cluster-wide topology key to use for NodeSets
 // without zone awareness when cluster-wide awareness is enabled.
 func zoneAwarenessTopologyKey(nodeSets []esv1.NodeSet) string {
@@ -258,7 +309,7 @@ func zoneAwarenessTopologyKey(nodeSets []esv1.NodeSet) string {
 // topologyKeyOrDefault returns the provided key or the default zone topology key
 // when the provided value is empty.
 func topologyKeyOrDefault(topologyKey string) string {
-	if topologyKey == "" {
+	if strings.TrimSpace(topologyKey) == "" {
 		return esv1.DefaultZoneAwarenessTopologyKey
 	}
 	return topologyKey
@@ -289,59 +340,55 @@ func zoneAwarenessEnv(nodeSet esv1.NodeSet, clusterHasZoneAwareness bool, cluste
 	}
 }
 
-// applyZoneAwarenessToPodSpec updates the builder pod spec with topology spread constraints
-// and potentially nodeaffinity derived from the NodeSet zone awareness configuration.
-func applyZoneAwarenessToPodSpec(
-	builder *defaults.PodTemplateBuilder,
+// zoneAwarenessSchedulingDirectives returns topology spread constraints and required
+// node affinity expressions derived from NodeSet and cluster zone-awareness settings.
+func zoneAwarenessSchedulingDirectives(
 	nodeSet esv1.NodeSet,
 	clusterName,
 	statefulSetName string,
 	clusterHasZoneAwareness bool,
 	clusterTopologyKey string,
-) {
-	podSpec := &builder.PodTemplate.Spec
+) (*corev1.TopologySpreadConstraint, *corev1.NodeSelectorRequirement) {
+	var spreadConstraint *corev1.TopologySpreadConstraint
+	var requiredMatchExpression *corev1.NodeSelectorRequirement
+
 	if nodeSet.ZoneAwareness == nil && clusterHasZoneAwareness {
 		clusterTopologyKey = topologyKeyOrDefault(clusterTopologyKey)
 		// We want to ensure that the nodeSet is only scheduled on nodes that have the cluster topology key
 		// when a nodeSet has no configured zone awareness but another nodeSet has zone awareness.
-		mergeRequiredNodeAffinityForTopologyExists(podSpec, clusterTopologyKey)
-		return
+		requiredMatchExpression = &corev1.NodeSelectorRequirement{
+			Key:      clusterTopologyKey,
+			Operator: corev1.NodeSelectorOpExists,
+		}
+		return spreadConstraint, requiredMatchExpression
 	}
 	if nodeSet.ZoneAwareness == nil {
-		return
+		return spreadConstraint, requiredMatchExpression
 	}
 
 	topologyKey := nodeSet.ZoneAwareness.TopologyKeyOrDefault()
-	if !hasTopologySpreadConstraintForKey(podSpec.TopologySpreadConstraints, topologyKey) {
-		podSpec.TopologySpreadConstraints = append(
-			podSpec.TopologySpreadConstraints,
-			corev1.TopologySpreadConstraint{
-				MaxSkew:           zoneAwarenessMaxSkewOrDefault(nodeSet.ZoneAwareness),
-				TopologyKey:       topologyKey,
-				WhenUnsatisfiable: zoneAwarenessWhenUnsatisfiableOrDefault(nodeSet.ZoneAwareness),
-				LabelSelector: &metav1.LabelSelector{
-					MatchLabels: map[string]string{
-						label.ClusterNameLabelName:     clusterName,
-						label.StatefulSetNameLabelName: statefulSetName,
-					},
-				},
+	spreadConstraint = &corev1.TopologySpreadConstraint{
+		MaxSkew:           zoneAwarenessMaxSkewOrDefault(nodeSet.ZoneAwareness),
+		TopologyKey:       topologyKey,
+		WhenUnsatisfiable: zoneAwarenessWhenUnsatisfiableOrDefault(nodeSet.ZoneAwareness),
+		LabelSelector: &metav1.LabelSelector{
+			MatchLabels: map[string]string{
+				label.ClusterNameLabelName:     clusterName,
+				label.StatefulSetNameLabelName: statefulSetName,
 			},
-		)
+		},
 	}
 
 	// If the nodeSet has zone awareness and zones are configured, we want to ensure
 	// that the nodeSet is only scheduled on nodes that have the zone values.
 	if len(nodeSet.ZoneAwareness.Zones) > 0 {
-		mergeRequiredNodeAffinityForTopology(podSpec, topologyKey, nodeSet.ZoneAwareness.Zones)
+		requiredMatchExpression = &corev1.NodeSelectorRequirement{
+			Key:      topologyKey,
+			Operator: corev1.NodeSelectorOpIn,
+			Values:   append([]string(nil), nodeSet.ZoneAwareness.Zones...),
+		}
 	}
-}
-
-// hasTopologySpreadConstraintForKey returns true when a spread constraint already exists
-// for the provided topology key.
-func hasTopologySpreadConstraintForKey(constraints []corev1.TopologySpreadConstraint, topologyKey string) bool {
-	return slices.ContainsFunc(constraints, func(constraint corev1.TopologySpreadConstraint) bool {
-		return constraint.TopologyKey == topologyKey
-	})
+	return spreadConstraint, requiredMatchExpression
 }
 
 // zoneAwarenessMaxSkewOrDefault returns the configured maxSkew or the default value when unset.
@@ -358,79 +405,6 @@ func zoneAwarenessWhenUnsatisfiableOrDefault(zoneAwareness *esv1.ZoneAwareness) 
 		return *zoneAwareness.WhenUnsatisfiable
 	}
 	return corev1.DoNotSchedule
-}
-
-// mergeRequiredNodeAffinityForTopology ensures all required node selector terms include
-// an In requirement for the provided topology key and values.
-//
-// Example: if terms are [(nodepool=hot), (instance=m6g)] and topologyKey is
-// "topology.kubernetes.io/zone" with values ["us-east-1a","us-east-1b"],
-// it becomes:
-// [(nodepool=hot AND zone In [us-east-1a,us-east-1b]), (instance=m6g AND zone In [us-east-1a,us-east-1b])].
-func mergeRequiredNodeAffinityForTopology(podSpec *corev1.PodSpec, topologyKey string, topologyValues []string) {
-	requirement := corev1.NodeSelectorRequirement{
-		Key:      topologyKey,
-		Operator: corev1.NodeSelectorOpIn,
-		Values:   append([]string(nil), topologyValues...),
-	}
-	mergeRequiredNodeAffinityForRequirement(podSpec, requirement)
-}
-
-// mergeRequiredNodeAffinityForTopologyExists ensures all required node selector terms include
-// an Exists requirement for the provided topology key.
-//
-// Example: if terms are [(nodepool=hot), (instance=m6g)] and topologyKey is
-// "topology.custom.io/rack", it becomes:
-// [(nodepool=hot AND rack Exists), (instance=m6g AND rack Exists)].
-func mergeRequiredNodeAffinityForTopologyExists(podSpec *corev1.PodSpec, topologyKey string) {
-	requirement := corev1.NodeSelectorRequirement{
-		Key:      topologyKey,
-		Operator: corev1.NodeSelectorOpExists,
-	}
-	mergeRequiredNodeAffinityForRequirement(podSpec, requirement)
-}
-
-// mergeRequiredNodeAffinityForRequirement ensures each required selector term includes
-// a requirement for requirement.Key, without duplicating existing key constraints.
-func mergeRequiredNodeAffinityForRequirement(podSpec *corev1.PodSpec, requirement corev1.NodeSelectorRequirement) {
-	nodeSelector := ensureRequiredNodeSelector(podSpec)
-	topologyKey := requirement.Key
-	if len(nodeSelector.NodeSelectorTerms) == 0 {
-		nodeSelector.NodeSelectorTerms = []corev1.NodeSelectorTerm{{MatchExpressions: []corev1.NodeSelectorRequirement{requirement}}}
-		return
-	}
-
-	for i := range nodeSelector.NodeSelectorTerms {
-		if hasNodeSelectorRequirementKey(nodeSelector.NodeSelectorTerms[i], topologyKey) {
-			continue
-		}
-		nodeSelector.NodeSelectorTerms[i].MatchExpressions = append(nodeSelector.NodeSelectorTerms[i].MatchExpressions, requirement)
-	}
-}
-
-// ensureRequiredNodeSelector initializes and returns required node affinity selector.
-func ensureRequiredNodeSelector(podSpec *corev1.PodSpec) *corev1.NodeSelector {
-	if podSpec.Affinity == nil {
-		podSpec.Affinity = &corev1.Affinity{}
-	}
-	if podSpec.Affinity.NodeAffinity == nil {
-		podSpec.Affinity.NodeAffinity = &corev1.NodeAffinity{}
-	}
-	if podSpec.Affinity.NodeAffinity.RequiredDuringSchedulingIgnoredDuringExecution == nil {
-		podSpec.Affinity.NodeAffinity.RequiredDuringSchedulingIgnoredDuringExecution = &corev1.NodeSelector{}
-	}
-	return podSpec.Affinity.NodeAffinity.RequiredDuringSchedulingIgnoredDuringExecution
-}
-
-// hasNodeSelectorRequirementKey returns true when the selector term already contains
-// a match expression for the provided key.
-func hasNodeSelectorRequirementKey(term corev1.NodeSelectorTerm, key string) bool {
-	for _, expression := range term.MatchExpressions {
-		if expression.Key == key {
-			return true
-		}
-	}
-	return false
 }
 
 // enableLog4JFormatMsgNoLookups prepends the JVM parameter `-Dlog4j2.formatMsgNoLookups=true` to the environment variable `ES_JAVA_OPTS`
