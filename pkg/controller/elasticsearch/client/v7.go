@@ -11,6 +11,7 @@ import (
 	"net/url"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/pkg/errors"
 
@@ -187,11 +188,13 @@ func (c *clientV7) GetShutdown(ctx context.Context, nodeID *string) (ShutdownRes
 	return r, err
 }
 
-func (c *clientV7) PutShutdown(ctx context.Context, nodeID string, shutdownType ShutdownType, reason string) error {
+func (c *clientV7) PutShutdown(ctx context.Context, nodeID string, shutdownType ShutdownType, reason string, allocationDelay *time.Duration) error {
 	request := ShutdownRequest{
-		Type:   shutdownType,
-		Reason: reason,
+		Type:            shutdownType,
+		Reason:          reason,
+		AllocationDelay: (*Duration)(allocationDelay),
 	}
+
 	return c.put(ctx, fmt.Sprintf("/_nodes/%s/shutdown", nodeID), request, nil)
 }
 

@@ -100,7 +100,7 @@ func (ns *NodeShutdown) ReconcileShutdowns(ctx context.Context, leavingNodes []s
 		ns.log.V(1).Info("Requesting shutdown", "type", ns.typ, "node", node, "node_id", nodeID)
 		// in case of type=restart we are relying on the default allocation_delay of 5 min see
 		// https://www.elastic.co/guide/en/elasticsearch/reference/7.15/put-shutdown.html
-		if err := ns.c.PutShutdown(ctx, nodeID, ns.typ, ns.reason); err != nil {
+		if err := ns.c.PutShutdown(ctx, nodeID, ns.typ, ns.reason, nil); err != nil {
 			return fmt.Errorf("on put shutdown (type: %s) for node %s: %w", ns.typ, node, err)
 		}
 		// update the internal cache with the information about the new shutdown

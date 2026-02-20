@@ -7,6 +7,7 @@ package stateful
 import (
 	"context"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/require"
 
@@ -101,7 +102,7 @@ func (f *fakeESClient) GetClusterHealthWaitForAllEvents(_ context.Context) (escl
 	return f.health, nil
 }
 
-func (f *fakeESClient) PutShutdown(_ context.Context, _ string, _ esclient.ShutdownType, _ string) error {
+func (f *fakeESClient) PutShutdown(_ context.Context, _ string, _ esclient.ShutdownType, _ string, _ *time.Duration) error {
 	return nil
 }
 
