@@ -269,7 +269,7 @@ func (c *Client) cloneAndCreate(repo githubRepository) error {
 	})
 	if err != nil {
 		log.Println("ⅹ")
-		return fmt.Errorf("while commiting changes to git working tree: %w", err)
+		return fmt.Errorf("while committing changes to git working tree: %w", err)
 	}
 	log.Println("✓")
 

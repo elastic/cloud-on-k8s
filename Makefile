@@ -167,7 +167,7 @@ integration-xml: clean
 	done
 
 lint:
-	GOGC=40 golangci-lint run --verbose
+	@./hack/foreach-gomod.sh GOGC=40 golangci-lint run --verbose
 
 manifest-gen-test:
 	hack/manifest-gen/test.sh

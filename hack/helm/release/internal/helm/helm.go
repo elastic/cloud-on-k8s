@@ -6,6 +6,7 @@ package helm
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -151,7 +152,7 @@ func uploadCharts(ctx context.Context, conf ReleaseConfig, tempDir string, chart
 
 // copy copies a given source to a given destination.
 func copy(source, destination string) error {
-	var err error = filepath.Walk(source, func(path string, info os.FileInfo, err error) error {
+	var err = filepath.Walk(source, func(path string, info os.FileInfo, err error) error {
 		relPath := strings.Replace(path, source, "", 1)
 		if relPath == "" {
 			return nil
@@ -216,14 +217,17 @@ func copyChartToGCSBucket(ctx context.Context, conf ReleaseConfig, chart chart, 
 		return fmt.Errorf("while copying data to bucket: %w", err)
 	}
 	if err := chartArchiveWriter.Close(); err != nil {
-		switch errType := err.(type) {
-		case *googleapi.Error:
-			if errType.Code == http.StatusPreconditionFailed && shouldNotOverwrite {
-				return fmt.Errorf("file %s already exists in remote bucket; manually remove for this operation to succeed", chartPackagePath)
+		{
+			var errType *googleapi.Error
+			switch {
+			case errors.As(err, &errType):
+				if errType.Code == http.StatusPreconditionFailed && shouldNotOverwrite {
+					return fmt.Errorf("file %s already exists in remote bucket; manually remove for this operation to succeed", chartPackagePath)
+				}
+				return fmt.Errorf("while writing data to bucket: %w", err)
+			default:
+				return fmt.Errorf("while writing data to bucket: %w", err)
 			}
-			return fmt.Errorf("while writing data to bucket: %w", err)
-		default:
-			return fmt.Errorf("while writing data to bucket: %w", err)
 		}
 	}
 

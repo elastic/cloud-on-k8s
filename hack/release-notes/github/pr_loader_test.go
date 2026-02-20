@@ -77,7 +77,7 @@ func TestDoLoadPullRequests(t *testing.T) {
 		prp:         newPRProcessor("elastic/cloud-on-k8s", ignoredLabels),
 	}
 
-	have, err := loader.loadPullRequests(ts.Client())
+	have, err := loader.loadPullRequests(t.Context(), ts.Client())
 	require.NoError(t, err)
 	require.Equal(t, want, have)
 }
