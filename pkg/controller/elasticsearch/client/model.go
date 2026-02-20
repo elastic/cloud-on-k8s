@@ -528,7 +528,7 @@ type FileSettingsErrors struct {
 	Errors    []string `json:"errors"`
 }
 
-// Duration wraps time.Duration to support JSON serialization as a Go duration string (e.g. "5m0s").
+// Duration wraps time.Duration to support JSON serialization as an elasticsearch time value string (e.g. "5m").
 type Duration time.Duration
 
 func (d Duration) MarshalJSON() ([]byte, error) {
@@ -586,7 +586,7 @@ func FormatTimeValue(d time.Duration) string {
 
 // ParseTimeValue parses a duration string using Elasticsearch time unit conventions
 // (d, h, m, s, ms, micros, nanos) and returns the equivalent time.Duration.
-// It is the inverse of FormatAsElasticsearchDuration.
+// It is the inverse of FormatTimeValue.
 // https://www.elastic.co/docs/reference/elasticsearch/rest-apis/api-conventions#time-units
 func ParseTimeValue(s string) (time.Duration, error) {
 	orig := s

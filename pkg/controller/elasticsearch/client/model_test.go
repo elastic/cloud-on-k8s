@@ -593,7 +593,7 @@ func TestParseTimeValue(t *testing.T) {
 	}
 }
 
-func BenchmarkParseElasticsearchDuration(b *testing.B) {
+func BenchmarkParseTimeValue(b *testing.B) {
 	inputs := []string{"0s", "3d", "5h", "15m", "42s", "750ms", "300micros", "123nanos", "-10s"}
 	b.ResetTimer()
 	for b.Loop() {
@@ -603,7 +603,7 @@ func BenchmarkParseElasticsearchDuration(b *testing.B) {
 	}
 }
 
-func BenchmarkFormatAsElasticsearchDuration(b *testing.B) {
+func BenchmarkFormatTimeValue(b *testing.B) {
 	inputs := []time.Duration{
 		0,
 		3 * 24 * time.Hour,
