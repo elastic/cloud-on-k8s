@@ -606,7 +606,7 @@ func ParseTimeValue(s string) (time.Duration, error) {
 			break
 		}
 	}
-	if sep == len(s) {
+	if sep == 0 || sep == len(s) {
 		return 0, fmt.Errorf("invalid elasticsearch duration: %q", orig)
 	}
 

@@ -545,6 +545,11 @@ func TestParseTimeValue(t *testing.T) {
 			wantErr: true,
 		},
 		{
+			name:    "just numbers",
+			input:   "123",
+			wantErr: true,
+		},
+		{
 			name:    "no unit",
 			input:   "42",
 			wantErr: true,
@@ -590,36 +595,6 @@ func TestParseTimeValue(t *testing.T) {
 			require.NoError(t, err)
 			assert.Equal(t, tt.want, got)
 		})
-	}
-}
-
-func BenchmarkParseTimeValue(b *testing.B) {
-	inputs := []string{"0s", "3d", "5h", "15m", "42s", "750ms", "300micros", "123nanos", "-10s"}
-	b.ResetTimer()
-	for b.Loop() {
-		for _, s := range inputs {
-			_, _ = ParseTimeValue(s)
-		}
-	}
-}
-
-func BenchmarkFormatTimeValue(b *testing.B) {
-	inputs := []time.Duration{
-		0,
-		3 * 24 * time.Hour,
-		5 * time.Hour,
-		15 * time.Minute,
-		42 * time.Second,
-		750 * time.Millisecond,
-		300 * time.Microsecond,
-		123 * time.Nanosecond,
-		-10 * time.Second,
-	}
-	b.ResetTimer()
-	for b.Loop() {
-		for _, d := range inputs {
-			_ = FormatTimeValue(d)
-		}
 	}
 }
 
