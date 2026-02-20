@@ -49,7 +49,7 @@ type PodForwarder struct {
 	dialerFunc dialerFunc
 }
 
-var _ Forwarder = &PodForwarder{}
+var _ Forwarder = (*PodForwarder)(nil)
 
 // PortForwarderFactory is a factory for port forwarders
 type PortForwarderFactory func(

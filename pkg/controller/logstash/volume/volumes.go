@@ -84,7 +84,7 @@ func CertificatesDir(association commonv1.Association) string {
 }
 
 func getVolumesFromAssociations(associations []commonv1.Association) ([]volume.VolumeLike, error) {
-	var vols []volume.VolumeLike //nolint:prealloc
+	var vols []volume.VolumeLike
 	for i, assoc := range associations {
 		assocConf, err := assoc.AssociationConf()
 		if err != nil {

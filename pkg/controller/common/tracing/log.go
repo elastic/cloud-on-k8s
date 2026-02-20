@@ -35,4 +35,4 @@ func (l *logAdapter) Debugf(format string, args ...any) {
 	l.log.V(1).Info(fmt.Sprintf(format, args...))
 }
 
-var _ apm.Logger = &logAdapter{}
+var _ apm.Logger = (*logAdapter)(nil)

@@ -112,7 +112,7 @@ func addWatches(mgr manager.Manager, c controller.Controller, r *ReconcileEnterp
 	return c.Watch(source.Kind(mgr.GetCache(), &corev1.Secret{}, r.dynamicWatches.Secrets))
 }
 
-var _ reconcile.Reconciler = &ReconcileEnterpriseSearch{}
+var _ reconcile.Reconciler = (*ReconcileEnterpriseSearch)(nil)
 
 // ReconcileEnterpriseSearch reconciles an ApmServer object
 type ReconcileEnterpriseSearch struct {
@@ -136,7 +136,7 @@ func (r *ReconcileEnterpriseSearch) Recorder() record.EventRecorder {
 	return r.recorder
 }
 
-var _ driver.Interface = &ReconcileEnterpriseSearch{}
+var _ driver.Interface = (*ReconcileEnterpriseSearch)(nil)
 
 // Reconcile reads that state of the cluster for an EnterpriseSearch object and makes changes based on the state read
 // and what is in the EnterpriseSearch.Spec.

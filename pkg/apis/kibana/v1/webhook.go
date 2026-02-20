@@ -45,7 +45,7 @@ var (
 
 // +kubebuilder:webhook:path=/validate-kibana-k8s-elastic-co-v1-kibana,mutating=false,failurePolicy=ignore,groups=kibana.k8s.elastic.co,resources=kibanas,verbs=create;update,versions=v1,name=elastic-kb-validation-v1.k8s.elastic.co,sideEffects=None,admissionReviewVersions=v1,matchPolicy=Exact
 
-var _ admission.Validator = &Kibana{}
+var _ admission.Validator = (*Kibana)(nil)
 
 // ValidateCreate is called by the validating webhook to validate the create operation.
 // Satisfies the webhook.Validator interface.

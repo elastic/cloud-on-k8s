@@ -102,7 +102,7 @@ func TestMetadataPropagation(t *testing.T) {
 				Test: func(t *testing.T) {
 					t.Helper()
 
-					var children []child
+					children := make([]child, 0, len(builders))
 					for _, b := range builders {
 						expectedChildren, err := expectedChildren(b, c)
 						if err != nil {

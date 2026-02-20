@@ -109,7 +109,7 @@ func addWatches(mgr manager.Manager, c controller.Controller, r *ReconcilePackag
 	return c.Watch(source.Kind(mgr.GetCache(), &corev1.Secret{}, r.dynamicWatches.Secrets))
 }
 
-var _ reconcile.Reconciler = &ReconcilePackageRegistry{}
+var _ reconcile.Reconciler = (*ReconcilePackageRegistry)(nil)
 
 // ReconcilePackageRegistry reconciles a PackageRegistry object
 type ReconcilePackageRegistry struct {
@@ -133,7 +133,7 @@ func (r *ReconcilePackageRegistry) Recorder() record.EventRecorder {
 	return r.recorder
 }
 
-var _ driver.Interface = &ReconcilePackageRegistry{}
+var _ driver.Interface = (*ReconcilePackageRegistry)(nil)
 
 // Reconcile reads that state of the cluster for a PackageRegistry object and makes changes based on the state read and what is
 // in the PackageRegistry.Spec

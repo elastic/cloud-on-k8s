@@ -34,7 +34,7 @@ var (
 
 // +kubebuilder:webhook:path=/validate-epr-k8s-elastic-co-v1alpha1-packageregistry,mutating=false,failurePolicy=ignore,groups=packageregistry.k8s.elastic.co,resources=packageregistry,verbs=create;update,versions=v1alpha1,name=elastic-epr-validation-v1alpha1.k8s.elastic.co,sideEffects=None,admissionReviewVersions=v1,matchPolicy=Exact
 
-var _ admission.Validator = &PackageRegistry{}
+var _ admission.Validator = (*PackageRegistry)(nil)
 
 // ValidateCreate is called by the validating webhook to validate the create operation.
 // Satisfies the webhook.Validator interface.

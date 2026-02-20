@@ -218,7 +218,7 @@ func (b *Beat) SetAssociationStatusMap(typ commonv1.AssociationType, status comm
 	}
 }
 
-var _ commonv1.Associated = &Beat{}
+var _ commonv1.Associated = (*Beat)(nil)
 
 func (b *Beat) ElasticServiceAccount() (commonv1.ServiceAccountName, error) {
 	return "", nil
@@ -285,7 +285,7 @@ type BeatESAssociation struct {
 	*Beat
 }
 
-var _ commonv1.Association = &BeatESAssociation{}
+var _ commonv1.Association = (*BeatESAssociation)(nil)
 
 func (b *BeatESAssociation) Associated() commonv1.Associated {
 	if b == nil {
@@ -329,7 +329,7 @@ type BeatKibanaAssociation struct {
 	*Beat
 }
 
-var _ commonv1.Association = &BeatKibanaAssociation{}
+var _ commonv1.Association = (*BeatKibanaAssociation)(nil)
 
 func (b *BeatKibanaAssociation) AssociationConf() (*commonv1.AssociationConf, error) {
 	return commonv1.GetAndSetAssociationConf(b, b.kbAssocConf)
@@ -373,7 +373,7 @@ func (b *Beat) SecureSettings() []commonv1.SecretSource {
 	return b.Spec.SecureSettings
 }
 
-var _ commonv1.Associated = &Beat{}
+var _ commonv1.Associated = (*Beat)(nil)
 
 // +kubebuilder:object:root=true
 
@@ -398,7 +398,7 @@ type BeatMonitoringAssociation struct {
 	ref commonv1.ObjectSelector
 }
 
-var _ commonv1.Association = &BeatMonitoringAssociation{}
+var _ commonv1.Association = (*BeatMonitoringAssociation)(nil)
 
 func (beatmon *BeatMonitoringAssociation) ElasticServiceAccount() (commonv1.ServiceAccountName, error) {
 	return "", nil
