@@ -500,7 +500,7 @@ type Elasticsearch struct {
 func (es Elasticsearch) DownwardNodeLabels() []string {
 	expectedAnnotations := set.Make()
 	if annotationValue, exists := es.Annotations[DownwardNodeLabelsAnnotation]; exists {
-		for _, label := range strings.Split(annotationValue, ",") {
+		for label := range strings.SplitSeq(annotationValue, ",") {
 			label = strings.TrimSpace(label)
 			if label == "" {
 				continue
