@@ -26,7 +26,7 @@ type NodeShutdown struct {
 	log         logr.Logger
 }
 
-var _ Interface = &NodeShutdown{}
+var _ Interface = (*NodeShutdown)(nil)
 
 // NewNodeShutdown creates a new NodeShutdown struct restricted to one type of shutdown (typ); podToNodeID is mapping from
 // K8s Pod name to Elasticsearch node ID; reason is an arbitrary bit of metadata that will be attached to each node shutdown

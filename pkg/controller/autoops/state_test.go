@@ -155,15 +155,18 @@ func TestState_UpdateWithPhase(t *testing.T) {
 	}
 }
 
-func TestState_CalculateFinalPhase(t *testing.T) {
+func TestState_Finalize(t *testing.T) {
 	tests := []struct {
 		name                  string
 		initialPhase          autoopsv1alpha1.PolicyPhase
 		resources             int
 		ready                 int
+		errors                int
+		skipped               int
 		isReconciled          bool
 		reconciliationMessage string
 		expectedPhase         autoopsv1alpha1.PolicyPhase
+		expectedReadyCount    string
 		expectEvent           bool
 	}{
 		{
@@ -171,9 +174,12 @@ func TestState_CalculateFinalPhase(t *testing.T) {
 			initialPhase:          "",
 			resources:             3,
 			ready:                 2,
+			errors:                0,
+			skipped:               0,
 			isReconciled:          false,
 			reconciliationMessage: "waiting for resources",
 			expectedPhase:         autoopsv1alpha1.ApplyingChangesPhase,
+			expectedReadyCount:    "2/3",
 			expectEvent:           true,
 		},
 		{
@@ -181,9 +187,12 @@ func TestState_CalculateFinalPhase(t *testing.T) {
 			initialPhase:          "",
 			resources:             3,
 			ready:                 3,
+			errors:                0,
+			skipped:               0,
 			isReconciled:          true,
 			reconciliationMessage: "",
 			expectedPhase:         autoopsv1alpha1.ReadyPhase,
+			expectedReadyCount:    "3/3",
 			expectEvent:           false,
 		},
 		{
@@ -191,9 +200,12 @@ func TestState_CalculateFinalPhase(t *testing.T) {
 			initialPhase:          "",
 			resources:             3,
 			ready:                 2,
+			errors:                0,
+			skipped:               0,
 			isReconciled:          true,
 			reconciliationMessage: "",
 			expectedPhase:         autoopsv1alpha1.AutoOpsAgentsNotReadyPhase,
+			expectedReadyCount:    "2/3",
 			expectEvent:           false,
 		},
 		{
@@ -201,9 +213,12 @@ func TestState_CalculateFinalPhase(t *testing.T) {
 			initialPhase:          autoopsv1alpha1.ErrorPhase,
 			resources:             3,
 			ready:                 3,
+			errors:                0,
+			skipped:               0,
 			isReconciled:          true,
 			reconciliationMessage: "",
 			expectedPhase:         autoopsv1alpha1.ErrorPhase,
+			expectedReadyCount:    "3/3",
 			expectEvent:           false,
 		},
 		{
@@ -211,9 +226,51 @@ func TestState_CalculateFinalPhase(t *testing.T) {
 			initialPhase:          autoopsv1alpha1.ErrorPhase,
 			resources:             3,
 			ready:                 2,
+			errors:                0,
+			skipped:               0,
 			isReconciled:          false,
 			reconciliationMessage: "waiting for resources",
 			expectedPhase:         autoopsv1alpha1.ErrorPhase,
+			expectedReadyCount:    "2/3",
+			expectEvent:           true,
+		},
+		{
+			name:                  "errors and skipped",
+			initialPhase:          autoopsv1alpha1.ErrorPhase,
+			resources:             3,
+			ready:                 1,
+			errors:                1,
+			skipped:               1,
+			isReconciled:          false,
+			reconciliationMessage: "waiting for resources",
+			expectedPhase:         autoopsv1alpha1.ErrorPhase,
+			expectedReadyCount:    "1/3",
+			expectEvent:           true,
+		},
+		{
+			name:                  "skipped",
+			initialPhase:          autoopsv1alpha1.ErrorPhase,
+			resources:             3,
+			ready:                 1,
+			errors:                0,
+			skipped:               2,
+			isReconciled:          false,
+			reconciliationMessage: "waiting for resources",
+			expectedPhase:         autoopsv1alpha1.ErrorPhase,
+			expectedReadyCount:    "1/3",
+			expectEvent:           true,
+		},
+		{
+			name:                  "error",
+			initialPhase:          autoopsv1alpha1.ErrorPhase,
+			resources:             3,
+			ready:                 1,
+			errors:                2,
+			skipped:               0,
+			isReconciled:          false,
+			reconciliationMessage: "waiting for resources",
+			expectedPhase:         autoopsv1alpha1.ErrorPhase,
+			expectedReadyCount:    "1/3",
 			expectEvent:           true,
 		},
 	}
@@ -233,8 +290,10 @@ func TestState_CalculateFinalPhase(t *testing.T) {
 			state.status.Phase = tt.initialPhase
 			state.status.Resources = tt.resources
 			state.status.Ready = tt.ready
+			state.status.Errors = tt.errors
+			state.status.Skipped = tt.skipped
 
-			state.CalculateFinalPhase(tt.isReconciled, tt.reconciliationMessage)
+			state.Finalize(tt.isReconciled, tt.reconciliationMessage)
 
 			assert.Equal(t, tt.expectedPhase, state.status.Phase)
 			if tt.expectEvent {
@@ -242,6 +301,8 @@ func TestState_CalculateFinalPhase(t *testing.T) {
 			} else {
 				assert.Empty(t, state.Events(), "expected no events")
 			}
+
+			assert.Equal(t, tt.expectedReadyCount, state.status.ReadyCount)
 		})
 	}
 }

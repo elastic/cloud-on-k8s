@@ -1,5 +1,5 @@
 # Build the operator binary
-FROM docker.elastic.co/wolfi/go:1.25.7-r0@sha256:23734b230b4ff5407980a72a3c35fe14995af39646ea413788f2a0a629684f96 as builder
+FROM docker.elastic.co/wolfi/go:1.26.0-r0@sha256:c27ce38190ffb76f410d7c67a28862a4d207d082b3c85047485428cbcb7dde2e AS builder
 
 ARG VERSION
 ARG SHA1
@@ -27,7 +27,7 @@ RUN --mount=type=cache,mode=0755,target=/go/pkg/mod \
 
 # ---------------------------------------------
 # Copy the operator binary into a lighter image
-FROM registry.access.redhat.com/ubi9/ubi-micro:9.7-1766049073
+FROM registry.access.redhat.com/ubi9/ubi-micro:9.7-1771346390
 
 ARG VERSION
 

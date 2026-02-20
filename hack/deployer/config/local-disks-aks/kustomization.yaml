@@ -1,0 +1,10 @@
+# AKS: same as local-disks (non-AWS patch) plus smaller PV_SIZE_GB for AKS temp disk.
+resources:
+  - ../local-disks
+patches:
+  - target:
+      group: apps
+      version: v1
+      kind: DaemonSet
+      name: local-volume-provisioner
+    path: aks-pv-size-patch.yaml

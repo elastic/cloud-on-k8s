@@ -9,6 +9,31 @@ mapped_pages:
 
 Review the changes, fixes, and more in each release of Elastic Cloud on Kubernetes.
 
+## 3.3.1 [elastic-cloud-kubernetes-331-release-notes]
+
+### Release Highlights
+
+#### Removing Enterprise requirement for Elastic AutoOps
+
+ECK 3.3.1 has removed the enterprise requirement for AutoOpsAgentPolicy. AutoOps can now be used by on premises users without the need for an enterprise license.
+
+### Features and enhancements [elastic-cloud-kubernetes-331-features-and-enhancements]
+
+- Removing enterprise requirement for AutoOpsAgentPolicy [#9125](https://github.com/elastic/cloud-on-k8s/pull/9125)
+- Add Namespace Selector to AutoOpsAgentPolicy [#8991](https://github.com/elastic/cloud-on-k8s/pull/8991)
+
+:::{dropdown} Updated dependencies
+
+- Go 1.25.6 => 1.25.7
+- github.com/elastic/go-ucfg v0.8.9-0.20251017163010-3520930bed4f -> v0.8.9-0.20260108155023-368693374ae9
+- go.elastic.co/apm/v2 v2.7.2 -> v2.7.3
+- golang.org/x/crypto v0.46.0 -> v0.48.0
+- k8s.io/api v0.35.0 -> v0.35.1
+- k8s.io/apimachinery v0.35.0 -> v0.35.1
+- k8s.io/client-go v0.35.0 -> v0.35.1
+
+:::
+
 ## 3.3.0 [elastic-cloud-kubernetes-330-release-notes]
 
 ### Release Highlights

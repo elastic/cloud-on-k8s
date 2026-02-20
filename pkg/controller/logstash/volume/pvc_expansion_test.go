@@ -58,7 +58,7 @@ func Test_handleVolumeExpansion(t *testing.T) {
 	resizedSset := *sset.DeepCopy()
 	resizedSset.Spec.VolumeClaimTemplates[0].Spec.Resources.Requests[corev1.ResourceStorage] = resource.MustParse("3Gi")
 	pvcsWithSize := func(size ...string) []corev1.PersistentVolumeClaim {
-		var pvcs []corev1.PersistentVolumeClaim
+		pvcs := make([]corev1.PersistentVolumeClaim, 0, len(size))
 		for i, s := range size {
 			pvcs = append(pvcs, withStorageReq(corev1.PersistentVolumeClaim{
 				ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: fmt.Sprintf("sample-claim-sample-sset-%d", i)},
@@ -68,7 +68,7 @@ func Test_handleVolumeExpansion(t *testing.T) {
 		return pvcs
 	}
 	pvcPtrs := func(pvcs []corev1.PersistentVolumeClaim) []client.Object {
-		var ptrs []client.Object
+		ptrs := make([]client.Object, 0, len(pvcs))
 		for i := range pvcs {
 			ptrs = append(ptrs, &pvcs[i])
 		}

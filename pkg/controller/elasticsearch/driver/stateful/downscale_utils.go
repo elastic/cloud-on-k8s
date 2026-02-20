@@ -81,7 +81,7 @@ func (d ssetDownscale) leavingNodeNames() []string {
 
 // leavingNodeNames returns the names of all nodes that should leave the cluster (across StatefulSets).
 func leavingNodeNames(downscales []ssetDownscale) []string {
-	leavingNodes := []string{}
+	leavingNodes := make([]string, 0, len(downscales))
 	for _, d := range downscales {
 		leavingNodes = append(leavingNodes, d.leavingNodeNames()...)
 	}

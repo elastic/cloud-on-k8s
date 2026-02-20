@@ -582,7 +582,7 @@ func setFromAnnotations(annotationKey string, annotations map[string]string) set
 
 // -- associations
 
-var _ commonv1.Associated = &Elasticsearch{}
+var _ commonv1.Associated = (*Elasticsearch)(nil)
 
 func (es *Elasticsearch) GetAssociations() []commonv1.Association {
 	associations := make([]commonv1.Association, 0)
@@ -615,7 +615,7 @@ type EsMonitoringAssociation struct {
 	ref commonv1.ObjectSelector
 }
 
-var _ commonv1.Association = &EsMonitoringAssociation{}
+var _ commonv1.Association = (*EsMonitoringAssociation)(nil)
 
 func (ema *EsMonitoringAssociation) Associated() commonv1.Associated {
 	if ema == nil {

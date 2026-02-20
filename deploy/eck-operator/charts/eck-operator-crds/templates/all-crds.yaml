@@ -2,7 +2,7 @@ apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
   annotations:
-    controller-gen.kubebuilder.io/version: v0.20.0
+    controller-gen.kubebuilder.io/version: v0.20.1
     helm.sh/resource-policy: keep
   labels:
     app.kubernetes.io/instance: '{{ .Release.Name }}'
@@ -1137,7 +1137,7 @@ apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
   annotations:
-    controller-gen.kubebuilder.io/version: v0.20.0
+    controller-gen.kubebuilder.io/version: v0.20.1
     helm.sh/resource-policy: keep
   labels:
     app.kubernetes.io/instance: '{{ .Release.Name }}'
@@ -2371,7 +2371,7 @@ apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
   annotations:
-    controller-gen.kubebuilder.io/version: v0.20.0
+    controller-gen.kubebuilder.io/version: v0.20.1
     helm.sh/resource-policy: keep
   labels:
     app.kubernetes.io/instance: '{{ .Release.Name }}'
@@ -2395,7 +2395,7 @@ spec:
   versions:
   - additionalPrinterColumns:
     - description: Ready resources
-      jsonPath: .status.ready
+      jsonPath: .status.readyCount
       name: Ready
       type: string
     - jsonPath: .status.phase
@@ -2568,6 +2568,37 @@ spec:
             type: object
           status:
             properties:
+              details:
+                additionalProperties:
+                  description: |-
+                    AutoOpsResourceStatus represents the status of an individual Elasticsearch resource
+                    monitored by an AutoOpsAgentPolicy. It is used in the Details map of AutoOpsAgentPolicyStatus
+                    to provide lightweight per-resource status information. Only resources that are not in a
+                    ready state are included in the Details map; ready resources, and resources that were skipped by resource selector and namespace selector,
+                    are omitted to reduce status size.
+                  properties:
+                    error:
+                      description: |-
+                        Error contains the error message when the resource is in an error state.
+                        Only populated when Phase is "Error".
+                      type: string
+                    message:
+                      description: |-
+                        Message provides a human-readable explanation of the current phase.
+                        Only populated for non-ready states to provide context about why
+                        the resource is not ready.
+                      type: string
+                    phase:
+                      description: |-
+                        Phase indicates the current state of the monitored resource.
+                        Possible values are "Error" (resource encountered an error) or "Skipped"
+                        (resource was skipped due to RBAC permissions).
+                      type: string
+                  required:
+                  - phase
+                  type: object
+                description: Details contains lightweight per-resource details.
+                type: object
               errors:
                 description: Errors is the number of resources that are in an error
                   state.
@@ -2584,8 +2615,16 @@ spec:
                 description: Ready is the number of resources that are in a ready
                   state.
                 type: integer
+              readyCount:
+                description: ReadyCount is a human readable string of ready monitored
+                  resources vs all monitored resources, Ready/Resources.
+                type: string
               resources:
                 description: Resources is the number of resources that match the ResourceSelector.
+                type: integer
+              skipped:
+                description: Skipped is the number of resources that are skipped from
+                  monitoring due to rbac permissions.
                 type: integer
             required:
             - errors
@@ -2602,7 +2641,7 @@ apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
   annotations:
-    controller-gen.kubebuilder.io/version: v0.20.0
+    controller-gen.kubebuilder.io/version: v0.20.1
     helm.sh/resource-policy: keep
   labels:
     app.kubernetes.io/instance: '{{ .Release.Name }}'
@@ -3087,7 +3126,7 @@ apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
   annotations:
-    controller-gen.kubebuilder.io/version: v0.20.0
+    controller-gen.kubebuilder.io/version: v0.20.1
     helm.sh/resource-policy: keep
   labels:
     app.kubernetes.io/instance: '{{ .Release.Name }}'
@@ -3691,7 +3730,7 @@ apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
   annotations:
-    controller-gen.kubebuilder.io/version: v0.20.0
+    controller-gen.kubebuilder.io/version: v0.20.1
     helm.sh/resource-policy: keep
   labels:
     app.kubernetes.io/instance: '{{ .Release.Name }}'
@@ -4049,7 +4088,7 @@ apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
   annotations:
-    controller-gen.kubebuilder.io/version: v0.20.0
+    controller-gen.kubebuilder.io/version: v0.20.1
     helm.sh/resource-policy: keep
   labels:
     app.kubernetes.io/instance: '{{ .Release.Name }}'
@@ -7251,7 +7290,7 @@ apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
   annotations:
-    controller-gen.kubebuilder.io/version: v0.20.0
+    controller-gen.kubebuilder.io/version: v0.20.1
     helm.sh/resource-policy: keep
   labels:
     app.kubernetes.io/instance: '{{ .Release.Name }}'
@@ -8419,7 +8458,7 @@ apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
   annotations:
-    controller-gen.kubebuilder.io/version: v0.20.0
+    controller-gen.kubebuilder.io/version: v0.20.1
     helm.sh/resource-policy: keep
   labels:
     app.kubernetes.io/instance: '{{ .Release.Name }}'
@@ -9770,7 +9809,7 @@ apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
   annotations:
-    controller-gen.kubebuilder.io/version: v0.20.0
+    controller-gen.kubebuilder.io/version: v0.20.1
     helm.sh/resource-policy: keep
   labels:
     app.kubernetes.io/instance: '{{ .Release.Name }}'
@@ -11007,7 +11046,7 @@ apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
   annotations:
-    controller-gen.kubebuilder.io/version: v0.20.0
+    controller-gen.kubebuilder.io/version: v0.20.1
     helm.sh/resource-policy: keep
   labels:
     app.kubernetes.io/instance: '{{ .Release.Name }}'
@@ -11574,7 +11613,7 @@ apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
   annotations:
-    controller-gen.kubebuilder.io/version: v0.20.0
+    controller-gen.kubebuilder.io/version: v0.20.1
     helm.sh/resource-policy: keep
   labels:
     app.kubernetes.io/instance: '{{ .Release.Name }}'

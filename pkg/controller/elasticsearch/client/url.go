@@ -43,4 +43,4 @@ func (s *staticURLProvider) HasEndpoints() bool {
 	return true
 }
 
-var _ URLProvider = &staticURLProvider{}
+var _ URLProvider = (*staticURLProvider)(nil)
