@@ -10,6 +10,7 @@ import (
 	"net"
 	"strings"
 
+	"k8s.io/apimachinery/pkg/util/sets"
 	"k8s.io/apimachinery/pkg/util/validation/field"
 
 	commonv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/common/v1"
@@ -28,6 +29,7 @@ const (
 	duplicateNodeSets                      = "NodeSet names must be unique"
 	invalidNamesErrMsg                     = "Elasticsearch configuration would generate resources with invalid names"
 	invalidSanIPErrMsg                     = "Invalid SAN IP address. Must be a valid IPv4 address"
+	ambiguousZoneAwarenessTopologyKey      = "Mixed topologyKey values with partial zoneAwareness are ambiguous; set zoneAwareness on all nodeSets or use one topologyKey for fallback"
 	masterRequiredMsg                      = "Elasticsearch needs to have at least one master node"
 	mixedRoleConfigMsg                     = "Detected a combination of node.roles and %s. Use only node.roles"
 	noDowngradesMsg                        = "Downgrades are not supported"
@@ -64,6 +66,7 @@ func validations(ctx context.Context, checker license.Checker, exposedNodeLabels
 		func(proposed esv1.Elasticsearch) field.ErrorList {
 			return validNodeLabels(proposed, exposedNodeLabels)
 		},
+		validZoneAwarenessTopologyKeys,
 		noUnknownFields,
 		validName,
 		hasCorrectNodeRoles,
@@ -92,6 +95,46 @@ func validNodeLabels(proposed esv1.Elasticsearch, exposedNodeLabels NodeLabels) 
 				field.NewPath("metadata").Child("annotations", esv1.DownwardNodeLabelsAnnotation),
 				nodeLabel,
 				notAllowedNodesLabelMsg,
+			),
+		)
+	}
+	return errs
+}
+
+// validZoneAwarenessTopologyKeys rejects only this configuration:
+//
+//	multiple differing topology keys across zone-aware NodeSets
+//	and at least one NodeSet fails to have zone awareness configured.
+//
+// In that case, the non-zoneAware NodeSet needs a fallback topology key, but with
+// multiple candidate keys there is no clear choice.
+func validZoneAwarenessTopologyKeys(es esv1.Elasticsearch) field.ErrorList {
+	var errs field.ErrorList
+	topologyKeys := sets.New[string]()
+	hasNodeSetWithoutZoneAwareness := false
+
+	for _, nodeSet := range es.Spec.NodeSets {
+		if nodeSet.ZoneAwareness == nil {
+			hasNodeSetWithoutZoneAwareness = true
+			continue
+		}
+		topologyKeys.Insert(nodeSet.ZoneAwareness.TopologyKeyOrDefault())
+	}
+
+	if !hasNodeSetWithoutZoneAwareness || topologyKeys.Len() <= 1 {
+		return errs
+	}
+
+	for i, nodeSet := range es.Spec.NodeSets {
+		if nodeSet.ZoneAwareness != nil {
+			continue
+		}
+		errs = append(
+			errs,
+			field.Invalid(
+				field.NewPath("spec").Child("nodeSets").Index(i).Child("zoneAwareness"),
+				nil,
+				ambiguousZoneAwarenessTopologyKey,
 			),
 		)
 	}

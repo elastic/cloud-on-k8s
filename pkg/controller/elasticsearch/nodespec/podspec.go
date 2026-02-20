@@ -14,6 +14,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/metadata"
 
 	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/utils/ptr"
 
@@ -101,6 +102,9 @@ func BuildPodTemplateSpec(
 	}
 
 	headlessServiceName := HeadlessServiceName(esv1.StatefulSet(es.Name, nodeSet.Name))
+	ssetName := esv1.StatefulSet(es.Name, nodeSet.Name)
+	clusterHasZoneAwareness := hasZoneAwareness(es.Spec.NodeSets)
+	clusterZoneAwarenessTopologyKey := zoneAwarenessTopologyKey(es.Spec.NodeSets)
 
 	// We retrieve the ConfigMap that holds the scripts to trigger a Pod restart if it is updated.
 	esScripts := &corev1.ConfigMap{}
@@ -131,7 +135,7 @@ func BuildPodTemplateSpec(
 		WithPorts(defaultContainerPorts).
 		WithReadinessProbe(*NewReadinessProbe(ver)).
 		WithAffinity(DefaultAffinity(es.Name)).
-		WithEnv(DefaultEnvVars(ver, es.Spec.HTTP, headlessServiceName)...).
+		WithEnv(append(DefaultEnvVars(ver, es.Spec.HTTP, headlessServiceName), zoneAwarenessEnv(nodeSet, clusterHasZoneAwareness, clusterZoneAwarenessTopologyKey)...)...).
 		WithVolumes(volumes...).
 		WithVolumeMounts(volumeMounts...).
 		WithInitContainers(initContainers...).
@@ -140,6 +144,20 @@ func BuildPodTemplateSpec(
 		// set a default security context for both the Containers and the InitContainers
 		WithContainersSecurityContext(securitycontext.For(ver, enableReadOnlyRootFilesystem)).
 		WithPreStopHook(*NewPreStopHook())
+
+	spreadConstraint, requiredMatchExpression := zoneAwarenessSchedulingDirectives(
+		nodeSet,
+		es.Name,
+		ssetName,
+		clusterHasZoneAwareness,
+		clusterZoneAwarenessTopologyKey,
+	)
+	if spreadConstraint != nil {
+		builder.WithTopologySpreadConstraints(*spreadConstraint)
+	}
+	if requiredMatchExpression != nil {
+		builder.WithRequiredNodeAffinityMatchExpressions(*requiredMatchExpression)
+	}
 
 	builder, err = stackmon.WithMonitoring(ctx, client, builder, es, meta)
 	if err != nil {
@@ -214,8 +232,9 @@ func buildAnnotations(
 	_, _ = configHash.Write([]byte(scriptsContent))
 
 	if es.HasDownwardNodeLabels() {
-		// list of node labels expected on the pod to rotate the pod when the list is updated
-		_, _ = configHash.Write([]byte(es.Annotations[esv1.DownwardNodeLabelsAnnotation]))
+		// Hash user-provided labels in their original annotation order for backward compatibility,
+		// then append any zone-awareness-derived labels that were not explicitly listed.
+		_, _ = configHash.Write([]byte(downwardNodeLabelsHashInput(es)))
 	}
 
 	if keystoreResources != nil {
@@ -234,6 +253,158 @@ func buildAnnotations(
 	maps.Merge(annotations, policyAnnotations)
 
 	return annotations
+}
+
+// downwardNodeLabelsHashInput returns the hash input for downward node labels.
+// It preserves the exact annotation value when present (legacy behavior) and
+// appends any additional labels injected via zone awareness.
+func downwardNodeLabelsHashInput(es esv1.Elasticsearch) string {
+	annotationValue := ""
+	if es.Annotations != nil {
+		annotationValue = es.Annotations[esv1.DownwardNodeLabelsAnnotation]
+	}
+
+	// Keep the old hashing style for user-provided annotation values.
+	hashInput := annotationValue
+
+	// Track normalized annotation labels so we only append zone-awareness-derived
+	// labels that were not explicitly configured in the annotation.
+	annotationLabels := map[string]struct{}{}
+	for label := range strings.SplitSeq(annotationValue, ",") {
+		trimmed := strings.TrimSpace(label)
+		if trimmed == "" {
+			continue
+		}
+		annotationLabels[trimmed] = struct{}{}
+	}
+
+	var derived []string
+	for _, label := range es.DownwardNodeLabels() {
+		if _, exists := annotationLabels[label]; exists {
+			continue
+		}
+		derived = append(derived, label)
+	}
+	if len(derived) == 0 {
+		return hashInput
+	}
+	if hashInput != "" {
+		hashInput += ","
+	}
+	return hashInput + strings.Join(derived, ",")
+}
+
+// zoneAwarenessTopologyKey returns the cluster-wide topology key to use for NodeSets
+// without zone awareness when cluster-wide awareness is enabled.
+func zoneAwarenessTopologyKey(nodeSets []esv1.NodeSet) string {
+	for _, nodeSet := range nodeSets {
+		if nodeSet.ZoneAwareness == nil {
+			continue
+		}
+		return nodeSet.ZoneAwareness.TopologyKeyOrDefault()
+	}
+	return esv1.DefaultZoneAwarenessTopologyKey
+}
+
+// topologyKeyOrDefault returns the provided key or the default zone topology key
+// when the provided value is empty.
+func topologyKeyOrDefault(topologyKey string) string {
+	if strings.TrimSpace(topologyKey) == "" {
+		return esv1.DefaultZoneAwarenessTopologyKey
+	}
+	return topologyKey
+}
+
+// zoneAwarenessEnv returns the zone environment variable when zone awareness is enabled
+// at either cluster or NodeSet level. NodeSet-level configuration takes precedence.
+func zoneAwarenessEnv(nodeSet esv1.NodeSet, clusterHasZoneAwareness bool, clusterTopologyKey string) []corev1.EnvVar {
+	if !clusterHasZoneAwareness {
+		return nil
+	}
+
+	topologyKey := topologyKeyOrDefault(clusterTopologyKey)
+	if za := nodeSet.ZoneAwareness; za != nil {
+		topologyKey = za.TopologyKeyOrDefault()
+	}
+
+	return []corev1.EnvVar{
+		{
+			Name: settings.EnvZone,
+			ValueFrom: &corev1.EnvVarSource{
+				FieldRef: &corev1.ObjectFieldSelector{
+					APIVersion: "v1",
+					FieldPath:  fmt.Sprintf("metadata.annotations['%s']", topologyKey),
+				},
+			},
+		},
+	}
+}
+
+// zoneAwarenessSchedulingDirectives returns topology spread constraints and required
+// node affinity expressions derived from NodeSet and cluster zone-awareness settings.
+func zoneAwarenessSchedulingDirectives(
+	nodeSet esv1.NodeSet,
+	clusterName,
+	statefulSetName string,
+	clusterHasZoneAwareness bool,
+	clusterTopologyKey string,
+) (*corev1.TopologySpreadConstraint, *corev1.NodeSelectorRequirement) {
+	var spreadConstraint *corev1.TopologySpreadConstraint
+	var requiredMatchExpression *corev1.NodeSelectorRequirement
+
+	if nodeSet.ZoneAwareness == nil && clusterHasZoneAwareness {
+		clusterTopologyKey = topologyKeyOrDefault(clusterTopologyKey)
+		// We want to ensure that the nodeSet is only scheduled on nodes that have the cluster topology key
+		// when a nodeSet has no configured zone awareness but another nodeSet has zone awareness.
+		requiredMatchExpression = &corev1.NodeSelectorRequirement{
+			Key:      clusterTopologyKey,
+			Operator: corev1.NodeSelectorOpExists,
+		}
+		return spreadConstraint, requiredMatchExpression
+	}
+	if nodeSet.ZoneAwareness == nil {
+		return spreadConstraint, requiredMatchExpression
+	}
+
+	topologyKey := nodeSet.ZoneAwareness.TopologyKeyOrDefault()
+	spreadConstraint = &corev1.TopologySpreadConstraint{
+		MaxSkew:           zoneAwarenessMaxSkewOrDefault(nodeSet.ZoneAwareness),
+		TopologyKey:       topologyKey,
+		WhenUnsatisfiable: zoneAwarenessWhenUnsatisfiableOrDefault(nodeSet.ZoneAwareness),
+		LabelSelector: &metav1.LabelSelector{
+			MatchLabels: map[string]string{
+				label.ClusterNameLabelName:     clusterName,
+				label.StatefulSetNameLabelName: statefulSetName,
+			},
+		},
+	}
+
+	// If the nodeSet has zone awareness and zones are configured, we want to ensure
+	// that the nodeSet is only scheduled on nodes that have the zone values.
+	if len(nodeSet.ZoneAwareness.Zones) > 0 {
+		requiredMatchExpression = &corev1.NodeSelectorRequirement{
+			Key:      topologyKey,
+			Operator: corev1.NodeSelectorOpIn,
+			Values:   append([]string(nil), nodeSet.ZoneAwareness.Zones...),
+		}
+	}
+	return spreadConstraint, requiredMatchExpression
+}
+
+// zoneAwarenessMaxSkewOrDefault returns the configured maxSkew or the default value when unset.
+func zoneAwarenessMaxSkewOrDefault(zoneAwareness *esv1.ZoneAwareness) int32 {
+	if zoneAwareness.MaxSkew != nil {
+		return *zoneAwareness.MaxSkew
+	}
+	return 1
+}
+
+// zoneAwarenessWhenUnsatisfiableOrDefault returns the configured unsatisfiable action or the default.
+func zoneAwarenessWhenUnsatisfiableOrDefault(zoneAwareness *esv1.ZoneAwareness) corev1.UnsatisfiableConstraintAction {
+	if zoneAwareness.WhenUnsatisfiable != nil {
+		return *zoneAwareness.WhenUnsatisfiable
+	}
+	return corev1.DoNotSchedule
 }
 
 // enableLog4JFormatMsgNoLookups prepends the JVM parameter `-Dlog4j2.formatMsgNoLookups=true` to the environment variable `ES_JAVA_OPTS`

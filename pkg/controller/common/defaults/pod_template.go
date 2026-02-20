@@ -142,6 +142,56 @@ func (b *PodTemplateBuilder) WithAffinity(affinity *corev1.Affinity) *PodTemplat
 	return b
 }
 
+// WithTopologySpreadConstraints appends the provided constraints when no
+// constraint already exists for their topology keys.
+func (b *PodTemplateBuilder) WithTopologySpreadConstraints(constraints ...corev1.TopologySpreadConstraint) *PodTemplateBuilder {
+	for _, constraint := range constraints {
+		if hasTopologySpreadConstraintForKey(b.PodTemplate.Spec.TopologySpreadConstraints, constraint.TopologyKey) {
+			continue
+		}
+		b.PodTemplate.Spec.TopologySpreadConstraints = append(b.PodTemplate.Spec.TopologySpreadConstraints, constraint)
+	}
+	return b
+}
+
+// WithRequiredNodeAffinityMatchExpressions ensures all required node selector
+// terms include the provided match expressions by key without duplicating keys.
+func (b *PodTemplateBuilder) WithRequiredNodeAffinityMatchExpressions(requirements ...corev1.NodeSelectorRequirement) *PodTemplateBuilder {
+	if len(requirements) == 0 {
+		return b
+	}
+
+	nodeSelector := ensureRequiredNodeSelector(&b.PodTemplate.Spec)
+	copiedRequirements := make([]corev1.NodeSelectorRequirement, 0, len(requirements))
+	for _, requirement := range requirements {
+		copied := corev1.NodeSelectorRequirement{
+			Key:      requirement.Key,
+			Operator: requirement.Operator,
+			Values:   append([]string(nil), requirement.Values...),
+		}
+		copiedRequirements = append(copiedRequirements, copied)
+	}
+
+	if len(nodeSelector.NodeSelectorTerms) == 0 {
+		nodeSelector.NodeSelectorTerms = []corev1.NodeSelectorTerm{
+			{
+				MatchExpressions: copiedRequirements,
+			},
+		}
+		return b
+	}
+
+	for i := range nodeSelector.NodeSelectorTerms {
+		for _, requirement := range copiedRequirements {
+			if hasNodeSelectorRequirementKey(nodeSelector.NodeSelectorTerms[i], requirement.Key) {
+				continue
+			}
+			nodeSelector.NodeSelectorTerms[i].MatchExpressions = append(nodeSelector.NodeSelectorTerms[i].MatchExpressions, requirement)
+		}
+	}
+	return b
+}
+
 // WithPorts appends the given ports to the Container ports, unless already provided in the template.
 func (b *PodTemplateBuilder) WithPorts(ports []corev1.ContainerPort) *PodTemplateBuilder {
 	b.containerDefaulter.WithPorts(ports)
@@ -377,4 +427,35 @@ func (b *PodTemplateBuilder) WithAutomountServiceAccountToken() *PodTemplateBuil
 		b.PodTemplate.Spec.AutomountServiceAccountToken = &t
 	}
 	return b
+}
+
+func hasTopologySpreadConstraintForKey(constraints []corev1.TopologySpreadConstraint, topologyKey string) bool {
+	for _, constraint := range constraints {
+		if constraint.TopologyKey == topologyKey {
+			return true
+		}
+	}
+	return false
+}
+
+func ensureRequiredNodeSelector(podSpec *corev1.PodSpec) *corev1.NodeSelector {
+	if podSpec.Affinity == nil {
+		podSpec.Affinity = &corev1.Affinity{}
+	}
+	if podSpec.Affinity.NodeAffinity == nil {
+		podSpec.Affinity.NodeAffinity = &corev1.NodeAffinity{}
+	}
+	if podSpec.Affinity.NodeAffinity.RequiredDuringSchedulingIgnoredDuringExecution == nil {
+		podSpec.Affinity.NodeAffinity.RequiredDuringSchedulingIgnoredDuringExecution = &corev1.NodeSelector{}
+	}
+	return podSpec.Affinity.NodeAffinity.RequiredDuringSchedulingIgnoredDuringExecution
+}
+
+func hasNodeSelectorRequirementKey(term corev1.NodeSelectorTerm, key string) bool {
+	for _, expression := range term.MatchExpressions {
+		if expression.Key == key {
+			return true
+		}
+	}
+	return false
 }
