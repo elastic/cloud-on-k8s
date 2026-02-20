@@ -8,6 +8,7 @@ import (
 	"context"
 	"fmt"
 	"hash/fnv"
+	"slices"
 	"sort"
 	"strings"
 
@@ -338,12 +339,9 @@ func applyZoneAwarenessToPodSpec(
 // hasTopologySpreadConstraintForKey returns true when a spread constraint already exists
 // for the provided topology key.
 func hasTopologySpreadConstraintForKey(constraints []corev1.TopologySpreadConstraint, topologyKey string) bool {
-	for _, constraint := range constraints {
-		if constraint.TopologyKey == topologyKey {
-			return true
-		}
-	}
-	return false
+	return slices.ContainsFunc(constraints, func(constraint corev1.TopologySpreadConstraint) bool {
+		return constraint.TopologyKey == topologyKey
+	})
 }
 
 // zoneAwarenessMaxSkewOrDefault returns the configured maxSkew or the default value when unset.
