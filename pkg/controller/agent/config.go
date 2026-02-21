@@ -22,6 +22,7 @@ import (
 	commonv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/common/v1"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/association"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common"
+	commonassociation "github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/association"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/certificates"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/labels"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/reconciler"
@@ -144,7 +145,7 @@ func buildOutputConfig(params Params) (*settings.CanonicalConfig, error) {
 			output["password"] = credentials.Password
 		}
 		if assocConf.GetCACertProvided() {
-			output["ssl.certificate_authorities"] = []string{path.Join(certificatesDir(assoc), CAFileName)}
+			output["ssl.certificate_authorities"] = []string{path.Join(commonassociation.CertificatesDir(assoc), CAFileName)}
 		}
 
 		outputName := params.Agent.Spec.ElasticsearchRefs[i].OutputName
@@ -202,7 +203,7 @@ func extractPodConnectionSettings(
 
 	ca := ""
 	if assocConf.GetCACertProvided() {
-		ca = path.Join(certificatesDir(assoc), CAFileName)
+		ca = path.Join(commonassociation.CertificatesDir(assoc), CAFileName)
 	}
 
 	return connectionSettings{
