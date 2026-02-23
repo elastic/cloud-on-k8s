@@ -48,7 +48,7 @@ func checkSupportedVersion(ctx context.Context, policy *autoopsv1alpha1.AutoOpsA
 	enabled, err := checker.EnterpriseFeaturesEnabled(ctx)
 	if err != nil {
 		// In the case of failure while checking enterprise features during version validation, we log
-		// the error and return the error to retry the reconciliation.
+		// the error and return the error.
 		ulog.FromContext(ctx).Error(err, "while checking enterprise features during version validation")
 		return field.ErrorList{field.InternalError(field.NewPath("spec").Child("version"), err)}
 	}
