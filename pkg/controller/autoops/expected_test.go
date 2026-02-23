@@ -33,7 +33,7 @@ func TestReconcileAutoOpsAgentPolicy_deploymentParams(t *testing.T) {
 			Namespace: "default",
 		},
 		Spec: autoopsv1alpha1.AutoOpsAgentPolicySpec{
-			Version: "9.2.1",
+			Version: "9.2.4",
 			AutoOpsRef: autoopsv1alpha1.AutoOpsRef{
 				SecretName: "autoops-secret",
 			},
