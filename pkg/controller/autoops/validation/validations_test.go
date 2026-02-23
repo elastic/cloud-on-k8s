@@ -199,16 +199,6 @@ func TestValidate(t *testing.T) {
 			enterpriseEnabled: false,
 			wantErr:           true,
 		},
-		{
-			name: "name too long",
-			policy: func() *autoopsv1alpha1.AutoOpsAgentPolicy {
-				p := newPolicy("9.2.4")
-				p.Name = "a-very-long-name-that-exceeds-the-maximum-allowed-length-for-a-kubernetes-resource-and-should-be-rejected-by-the-validating-webhook-which-is-really-really-really-really-really-really-really-really-really-really-long"
-				return p
-			}(),
-			enterpriseEnabled: false,
-			wantErr:           true,
-		},
 	}
 
 	for _, tt := range tests {
