@@ -62,6 +62,15 @@ func NewMergedESConfig(
 	return CanonicalConfig{config}, nil
 }
 
+// zoneAwarenessConfig returns the ES configuration related to zone awareness.
+// *Note* in the case of zone awareness being enabled for nodeSets within the cluster, but one or more nodeSets
+// do not have the zoneAwareness field configured, we will still add the following configuration for consistency:
+//
+// - node.attr.zone: ${ZONE}
+// - cluster.routing.allocation.awareness.attributes: k8s_node_name,zone
+//
+// In this case, ${ZONE} will be set to the either the first topology key defined for other nodeSets, or fallback
+// to the default topology key [topology.kubernetes.io/zone].
 func zoneAwarenessConfig(clusterHasZoneAwareness bool, zoneAwareness *esv1.ZoneAwareness) *CanonicalConfig {
 	if !clusterHasZoneAwareness && zoneAwareness == nil {
 		cfg := NewCanonicalConfig()
