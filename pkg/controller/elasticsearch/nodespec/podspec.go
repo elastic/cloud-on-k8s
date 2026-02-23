@@ -255,8 +255,8 @@ func buildAnnotations(
 	return annotations
 }
 
-// zoneAwarenessTopologyKey returns the cluster-wide topology key to use for NodeSets
-// without zone awareness when cluster-wide awareness is enabled.
+// zoneAwarenessTopologyKey returns the topology key from the first zone-aware NodeSet,
+// used as a fallback for non-zone-aware NodeSets in the same cluster.
 func zoneAwarenessTopologyKey(nodeSets []esv1.NodeSet) string {
 	for _, nodeSet := range nodeSets {
 		if nodeSet.ZoneAwareness == nil {
