@@ -18,12 +18,28 @@ import (
 )
 
 func TestAutoOpsAgentPolicy(t *testing.T) {
+	runAutoOpsAgentPolicyTest(t, false)
+}
 
-	// only execute this test with supported AutoOps versions
+func TestAutoOpsAgentPolicyEnterprise(t *testing.T) {
+	if test.Ctx().TestLicense == "" {
+		t.Skip("Skipping enterprise AutoOps test: no enterprise test license configured")
+	}
+	runAutoOpsAgentPolicyTest(t, true)
+}
+
+func runAutoOpsAgentPolicyTest(t *testing.T, useEnterpriseLicense bool) {
+	t.Helper()
+
+	minSupportedVersion := version.SupportedAutoOpsAgentNonEnterpriseVersions.Min
+	if useEnterpriseLicense {
+		minSupportedVersion = version.SupportedAutoOpsAgentEnterpriseVersions.Min
+	}
+
 	v := version.MustParse(test.Ctx().ElasticStackVersion)
-	if v.LT(version.SupportedAutoOpsAgentEnterpriseVersions.Min) {
+	if v.LT(minSupportedVersion) {
 		t.Skipf("Skipping test: Elastic Stack version %s is below minimum supported version %s",
-			test.Ctx().ElasticStackVersion, version.SupportedAutoOpsAgentEnterpriseVersions.Min)
+			test.Ctx().ElasticStackVersion, minSupportedVersion)
 	}
 
 	// Use separate namespaces for ES and policy
@@ -59,6 +75,25 @@ func TestAutoOpsAgentPolicy(t *testing.T) {
 	}).WithCloudConnectedAPIURL(mockURL).
 		WithAutoOpsOTelURL(mockURL)
 
-	test.Sequence(nil, test.EmptySteps, es1Builder, es2Builder, policyBuilder).
+	var policyTestBuilder test.Builder = policyBuilder
+	if useEnterpriseLicense {
+		policyTestBuilder = test.LicenseTestBuilder(policyBuilder)
+	}
+
+	before := test.EmptySteps
+	if !useEnterpriseLicense {
+		before = func(k *test.K8sClient) test.StepList {
+			return test.StepList{
+				{
+					Name: "Remove enterprise license secrets for non-enterprise scenario",
+					Test: func(t *testing.T) {
+						test.DeleteAllEnterpriseLicenseSecrets(t, k)
+					},
+				},
+			}
+		}
+	}
+
+	test.Sequence(before, test.EmptySteps, es1Builder, es2Builder, policyTestBuilder).
 		RunSequential(t)
 }
