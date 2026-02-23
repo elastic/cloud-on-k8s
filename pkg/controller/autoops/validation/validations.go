@@ -29,9 +29,6 @@ func validations(ctx context.Context, checker license.Checker) []validation {
 		},
 		checkConfigSecretName,
 		checkResourceSelector,
-		func(policy *autoopsv1alpha1.AutoOpsAgentPolicy) field.ErrorList {
-			return checkLicenseLevel(ctx, policy, checker)
-		},
 	}
 }
 
@@ -71,24 +68,6 @@ func checkConfigSecretName(policy *autoopsv1alpha1.AutoOpsAgentPolicy) field.Err
 func checkResourceSelector(policy *autoopsv1alpha1.AutoOpsAgentPolicy) field.ErrorList {
 	if policy.Spec.ResourceSelector.MatchLabels == nil && len(policy.Spec.ResourceSelector.MatchExpressions) == 0 {
 		return field.ErrorList{field.Required(field.NewPath("spec").Child("resourceSelector"), "ResourceSelector must be specified with either matchLabels or matchExpressions")}
-	}
-	return nil
-}
-
-// checkLicenseLevel validates that the operator has the requested license level
-// as indicated by the eck.k8s.elastic.co/license annotation.
-func checkLicenseLevel(ctx context.Context, policy *autoopsv1alpha1.AutoOpsAgentPolicy, checker license.Checker) field.ErrorList {
-	ok, err := license.HasRequestedLicenseLevel(ctx, policy.Annotations, checker)
-	if err != nil {
-		ulog.FromContext(ctx).Error(err, "while checking license level during validation")
-		return nil
-	}
-	if !ok {
-		return field.ErrorList{field.Invalid(
-			field.NewPath("metadata").Child("annotations").Child(license.Annotation),
-			"enterprise",
-			"Enterprise license required but ECK operator is running on a Basic license",
-		)}
 	}
 	return nil
 }
