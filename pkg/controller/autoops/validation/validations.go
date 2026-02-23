@@ -48,7 +48,14 @@ func checkNameLength(policy *autoopsv1alpha1.AutoOpsAgentPolicy) field.ErrorList
 // users must use 9.2.4 or later.
 func checkSupportedVersion(ctx context.Context, policy *autoopsv1alpha1.AutoOpsAgentPolicy, checker license.Checker) field.ErrorList {
 	supported := version.SupportedAutoOpsAgentVersions
-	if enabled, err := checker.EnterpriseFeaturesEnabled(ctx); err == nil && enabled {
+	enabled, err := checker.EnterpriseFeaturesEnabled(ctx)
+	if err != nil {
+		// In the case of failure while checking enterprise features during version validation, we log
+		// the error and return the error to retry the reconciliation.
+		ulog.FromContext(ctx).Error(err, "while checking enterprise features during version validation")
+		return field.ErrorList{field.InternalError(field.NewPath("spec").Child("version"), err)}
+	}
+	if enabled {
 		supported = version.SupportedAutoOpsAgentEnterpriseVersions
 	}
 	return commonv1.CheckSupportedStackVersion(policy.Spec.Version, supported)
