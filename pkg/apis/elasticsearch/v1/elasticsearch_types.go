@@ -359,7 +359,7 @@ type NodeSet struct {
 
 const (
 	// DefaultZoneAwarenessTopologyKey is used when topologyKey is not specified.
-	DefaultZoneAwarenessTopologyKey = "topology.kubernetes.io/zone"
+	DefaultZoneAwarenessTopologyKey = corev1.LabelTopologyZone
 )
 
 // ZoneAwareness configures topology-aware scheduling and shard-awareness defaults for a NodeSet.
