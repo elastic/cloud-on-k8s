@@ -47,7 +47,7 @@ func checkNameLength(policy *autoopsv1alpha1.AutoOpsAgentPolicy) field.ErrorList
 // Enterprise license holders may use versions starting from 9.2.1, while non-enterprise
 // users must use 9.2.4 or later.
 func checkSupportedVersion(ctx context.Context, policy *autoopsv1alpha1.AutoOpsAgentPolicy, checker license.Checker) field.ErrorList {
-	supported := version.SupportedAutoOpsAgentVersions
+	supported := version.SupportedAutoOpsAgentNonEnterpriseVersions
 	enabled, err := checker.EnterpriseFeaturesEnabled(ctx)
 	if err != nil {
 		// In the case of failure while checking enterprise features during version validation, we log

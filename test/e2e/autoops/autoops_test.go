@@ -21,9 +21,9 @@ func TestAutoOpsAgentPolicy(t *testing.T) {
 
 	// only execute this test with supported AutoOps versions
 	v := version.MustParse(test.Ctx().ElasticStackVersion)
-	if v.LT(version.SupportedAutoOpsAgentVersions.Min) {
+	if v.LT(version.SupportedAutoOpsAgentEnterpriseVersions.Min) {
 		t.Skipf("Skipping test: Elastic Stack version %s is below minimum supported version %s",
-			test.Ctx().ElasticStackVersion, version.SupportedAutoOpsAgentVersions.Min)
+			test.Ctx().ElasticStackVersion, version.SupportedAutoOpsAgentEnterpriseVersions.Min)
 	}
 
 	// Use separate namespaces for ES and policy

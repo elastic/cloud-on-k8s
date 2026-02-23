@@ -43,8 +43,8 @@ var (
 	// performance optimizations and the lack of the healthcheckv2 extension in earlier versions. 9.2.4 is
 	// required in the case of a user with a non-enterprise license due to the removal
 	// of enterprise licensing requirements. Enterprise license holders may use versions starting from 9.2.1.
-	SupportedAutoOpsAgentVersions           = MinMaxVersion{Min: MustParse("9.2.4"), Max: From(9, 99, 99)}
-	SupportedAutoOpsAgentEnterpriseVersions = MinMaxVersion{Min: MustParse("9.2.1"), Max: From(9, 99, 99)}
+	SupportedAutoOpsAgentNonEnterpriseVersions = MinMaxVersion{Min: MustParse("9.2.4"), Max: From(9, 99, 99)}
+	SupportedAutoOpsAgentEnterpriseVersions    = MinMaxVersion{Min: MustParse("9.2.1"), Max: From(9, 99, 99)}
 
 	// minPreReleaseVersion is the lowest prerelease identifier as numeric prerelease takes precedence before
 	// alphanumeric ones and it can't have leading zeros.
