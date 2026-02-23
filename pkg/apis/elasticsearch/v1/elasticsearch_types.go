@@ -496,18 +496,30 @@ type Elasticsearch struct {
 	AssocConfs map[commonv1.ObjectSelector]commonv1.AssociationConf `json:"-"`
 }
 
+// downwardNodeLabelsAnnotationValue returns the raw downward node labels annotation value.
+func (es Elasticsearch) downwardNodeLabelsAnnotationValue() string {
+	if es.Annotations == nil {
+		return ""
+	}
+	return es.Annotations[DownwardNodeLabelsAnnotation]
+}
+
+// parseDownwardNodeLabels normalizes a comma-separated node labels annotation value.
+func parseDownwardNodeLabels(annotationValue string) set.StringSet {
+	labels := set.Make()
+	for label := range strings.SplitSeq(annotationValue, ",") {
+		label = strings.TrimSpace(label)
+		if label == "" {
+			continue
+		}
+		labels.Add(label)
+	}
+	return labels
+}
+
 // DownwardNodeLabels returns the set of expected node labels to be copied as annotations on the Elasticsearch Pods.
 func (es Elasticsearch) DownwardNodeLabels() []string {
-	expectedAnnotations := set.Make()
-	if annotationValue, exists := es.Annotations[DownwardNodeLabelsAnnotation]; exists {
-		for label := range strings.SplitSeq(annotationValue, ",") {
-			label = strings.TrimSpace(label)
-			if label == "" {
-				continue
-			}
-			expectedAnnotations.Add(label)
-		}
-	}
+	expectedAnnotations := parseDownwardNodeLabels(es.downwardNodeLabelsAnnotationValue())
 
 	for _, nodeSet := range es.Spec.NodeSets {
 		if nodeSet.ZoneAwareness == nil {
@@ -520,6 +532,30 @@ func (es Elasticsearch) DownwardNodeLabels() []string {
 		return nil
 	}
 	return expectedAnnotations.AsSortedSlice()
+}
+
+// DownwardNodeLabelsHashInput returns the pod-template hash input for downward node labels.
+// It preserves the exact annotation value when present and appends zone-awareness-derived
+// labels that were not explicitly configured in the annotation.
+func (es Elasticsearch) DownwardNodeLabelsHashInput() string {
+	annotationValue := es.downwardNodeLabelsAnnotationValue()
+	hashInput := annotationValue
+
+	annotationLabels := parseDownwardNodeLabels(annotationValue)
+	var derived []string
+	for _, label := range es.DownwardNodeLabels() {
+		if annotationLabels.Has(label) {
+			continue
+		}
+		derived = append(derived, label)
+	}
+	if len(derived) == 0 {
+		return hashInput
+	}
+	if hashInput != "" {
+		hashInput += ","
+	}
+	return hashInput + strings.Join(derived, ",")
 }
 
 // HasDownwardNodeLabels returns true if some node labels are expected on the Elasticsearch Pods.

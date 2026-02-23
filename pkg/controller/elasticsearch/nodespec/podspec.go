@@ -234,7 +234,7 @@ func buildAnnotations(
 	if es.HasDownwardNodeLabels() {
 		// Hash user-provided labels in their original annotation order for backward compatibility,
 		// then append any zone-awareness-derived labels that were not explicitly listed.
-		_, _ = configHash.Write([]byte(downwardNodeLabelsHashInput(es)))
+		_, _ = configHash.Write([]byte(es.DownwardNodeLabelsHashInput()))
 	}
 
 	if keystoreResources != nil {
@@ -253,45 +253,6 @@ func buildAnnotations(
 	maps.Merge(annotations, policyAnnotations)
 
 	return annotations
-}
-
-// downwardNodeLabelsHashInput returns the hash input for downward node labels.
-// It preserves the exact annotation value when present (legacy behavior) and
-// appends any additional labels injected via zone awareness.
-func downwardNodeLabelsHashInput(es esv1.Elasticsearch) string {
-	annotationValue := ""
-	if es.Annotations != nil {
-		annotationValue = es.Annotations[esv1.DownwardNodeLabelsAnnotation]
-	}
-
-	// Keep the old hashing style for user-provided annotation values.
-	hashInput := annotationValue
-
-	// Track normalized annotation labels so we only append zone-awareness-derived
-	// labels that were not explicitly configured in the annotation.
-	annotationLabels := map[string]struct{}{}
-	for label := range strings.SplitSeq(annotationValue, ",") {
-		trimmed := strings.TrimSpace(label)
-		if trimmed == "" {
-			continue
-		}
-		annotationLabels[trimmed] = struct{}{}
-	}
-
-	var derived []string
-	for _, label := range es.DownwardNodeLabels() {
-		if _, exists := annotationLabels[label]; exists {
-			continue
-		}
-		derived = append(derived, label)
-	}
-	if len(derived) == 0 {
-		return hashInput
-	}
-	if hashInput != "" {
-		hashInput += ","
-	}
-	return hashInput + strings.Join(derived, ",")
 }
 
 // zoneAwarenessTopologyKey returns the cluster-wide topology key to use for NodeSets

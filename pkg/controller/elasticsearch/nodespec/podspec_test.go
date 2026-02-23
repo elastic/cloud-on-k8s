@@ -464,7 +464,7 @@ func Test_buildAnnotations(t *testing.T) {
 	}
 }
 
-func Test_downwardNodeLabelsHashInput(t *testing.T) {
+func TestElasticsearch_DownwardNodeLabelsHashInput(t *testing.T) {
 	tests := []struct {
 		name string
 		es   esv1.Elasticsearch
@@ -522,7 +522,7 @@ func Test_downwardNodeLabelsHashInput(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			assert.Equal(t, tt.want, downwardNodeLabelsHashInput(tt.es))
+			assert.Equal(t, tt.want, tt.es.DownwardNodeLabelsHashInput())
 		})
 	}
 }
