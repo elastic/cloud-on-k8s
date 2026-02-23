@@ -902,60 +902,6 @@ func Test_zoneAwarenessSchedulingDirectives(t *testing.T) {
 	}
 }
 
-func Test_zoneAwarenessMaxSkew(t *testing.T) {
-	tests := []struct {
-		name          string
-		zoneAwareness *esv1.ZoneAwareness
-		expected      int32
-	}{
-		{
-			name:          "returns default when unset",
-			zoneAwareness: &esv1.ZoneAwareness{},
-			expected:      1,
-		},
-		{
-			name: "returns configured max skew",
-			zoneAwareness: &esv1.ZoneAwareness{
-				MaxSkew: ptr.To[int32](3),
-			},
-			expected: 3,
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			assert.Equal(t, tt.expected, zoneAwarenessMaxSkewOrDefault(tt.zoneAwareness))
-		})
-	}
-}
-
-func Test_zoneAwarenessWhenUnsatisfiable(t *testing.T) {
-	tests := []struct {
-		name          string
-		zoneAwareness *esv1.ZoneAwareness
-		expected      corev1.UnsatisfiableConstraintAction
-	}{
-		{
-			name:          "returns default when unset",
-			zoneAwareness: &esv1.ZoneAwareness{},
-			expected:      corev1.DoNotSchedule,
-		},
-		{
-			name: "returns configured action",
-			zoneAwareness: &esv1.ZoneAwareness{
-				WhenUnsatisfiable: ptr.To(corev1.ScheduleAnyway),
-			},
-			expected: corev1.ScheduleAnyway,
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			assert.Equal(t, tt.expected, zoneAwarenessWhenUnsatisfiableOrDefault(tt.zoneAwareness))
-		})
-	}
-}
-
 func Test_enableLog4JFormatMsgNoLookups(t *testing.T) {
 	tt := []struct {
 		name                       string

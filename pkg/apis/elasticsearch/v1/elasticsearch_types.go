@@ -397,6 +397,22 @@ func (za ZoneAwareness) TopologyKeyOrDefault() string {
 	return za.TopologyKey
 }
 
+// MaxSkewOrDefault returns the configured max skew or the default value when unset.
+func (za ZoneAwareness) MaxSkewOrDefault() int32 {
+	if za.MaxSkew != nil {
+		return *za.MaxSkew
+	}
+	return 1
+}
+
+// WhenUnsatisfiableOrDefault returns the configured unsatisfiable action or the default.
+func (za ZoneAwareness) WhenUnsatisfiableOrDefault() corev1.UnsatisfiableConstraintAction {
+	if za.WhenUnsatisfiable != nil {
+		return *za.WhenUnsatisfiable
+	}
+	return corev1.DoNotSchedule
+}
+
 // +kubebuilder:object:generate=false
 type NodeSetList []NodeSet
 

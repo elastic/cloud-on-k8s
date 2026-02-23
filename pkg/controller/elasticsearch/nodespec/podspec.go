@@ -368,9 +368,9 @@ func zoneAwarenessSchedulingDirectives(
 
 	topologyKey := nodeSet.ZoneAwareness.TopologyKeyOrDefault()
 	spreadConstraint = &corev1.TopologySpreadConstraint{
-		MaxSkew:           zoneAwarenessMaxSkewOrDefault(nodeSet.ZoneAwareness),
+		MaxSkew:           nodeSet.ZoneAwareness.MaxSkewOrDefault(),
 		TopologyKey:       topologyKey,
-		WhenUnsatisfiable: zoneAwarenessWhenUnsatisfiableOrDefault(nodeSet.ZoneAwareness),
+		WhenUnsatisfiable: nodeSet.ZoneAwareness.WhenUnsatisfiableOrDefault(),
 		LabelSelector: &metav1.LabelSelector{
 			MatchLabels: map[string]string{
 				label.ClusterNameLabelName:     clusterName,
@@ -389,22 +389,6 @@ func zoneAwarenessSchedulingDirectives(
 		}
 	}
 	return spreadConstraint, requiredMatchExpression
-}
-
-// zoneAwarenessMaxSkewOrDefault returns the configured maxSkew or the default value when unset.
-func zoneAwarenessMaxSkewOrDefault(zoneAwareness *esv1.ZoneAwareness) int32 {
-	if zoneAwareness.MaxSkew != nil {
-		return *zoneAwareness.MaxSkew
-	}
-	return 1
-}
-
-// zoneAwarenessWhenUnsatisfiableOrDefault returns the configured unsatisfiable action or the default.
-func zoneAwarenessWhenUnsatisfiableOrDefault(zoneAwareness *esv1.ZoneAwareness) corev1.UnsatisfiableConstraintAction {
-	if zoneAwareness.WhenUnsatisfiable != nil {
-		return *zoneAwareness.WhenUnsatisfiable
-	}
-	return corev1.DoNotSchedule
 }
 
 // enableLog4JFormatMsgNoLookups prepends the JVM parameter `-Dlog4j2.formatMsgNoLookups=true` to the environment variable `ES_JAVA_OPTS`
