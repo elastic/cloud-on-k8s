@@ -6,6 +6,7 @@ package validation
 
 import (
 	"context"
+	"errors"
 	"net/http"
 
 	admissionv1 "k8s.io/api/admission/v1"
@@ -18,6 +19,7 @@ import (
 
 	autoopsv1alpha1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/autoops/v1alpha1"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/license"
+	commonwebhook "github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/webhook"
 	ulog "github.com/elastic/cloud-on-k8s/v3/pkg/utils/log"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/set"
 )
@@ -62,6 +64,10 @@ func (wh *validatingWebhook) Handle(ctx context.Context, req admission.Request) 
 
 	if req.Operation == admissionv1.Create || req.Operation == admissionv1.Update {
 		if err := Validate(ctx, policy, wh.licenseChecker); err != nil {
+			var apiStatus apierrors.APIStatus
+			if errors.As(err, &apiStatus) {
+				return commonwebhook.DenyResponseFromStatus(apiStatus.Status())
+			}
 			return admission.Denied(err.Error())
 		}
 	}
