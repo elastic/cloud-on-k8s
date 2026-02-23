@@ -267,15 +267,6 @@ func zoneAwarenessTopologyKey(nodeSets []esv1.NodeSet) string {
 	return esv1.DefaultZoneAwarenessTopologyKey
 }
 
-// topologyKeyOrDefault returns the provided key or the default zone topology key
-// when the provided value is empty.
-func topologyKeyOrDefault(topologyKey string) string {
-	if strings.TrimSpace(topologyKey) == "" {
-		return esv1.DefaultZoneAwarenessTopologyKey
-	}
-	return topologyKey
-}
-
 // zoneAwarenessEnv returns the zone environment variable when zone awareness is enabled
 // at either cluster or NodeSet level. NodeSet-level configuration takes precedence.
 func zoneAwarenessEnv(nodeSet esv1.NodeSet, clusterHasZoneAwareness bool, clusterTopologyKey string) []corev1.EnvVar {
@@ -283,7 +274,7 @@ func zoneAwarenessEnv(nodeSet esv1.NodeSet, clusterHasZoneAwareness bool, cluste
 		return nil
 	}
 
-	topologyKey := topologyKeyOrDefault(clusterTopologyKey)
+	topologyKey := clusterTopologyKey
 	if za := nodeSet.ZoneAwareness; za != nil {
 		topologyKey = za.TopologyKeyOrDefault()
 	}
@@ -314,7 +305,6 @@ func zoneAwarenessSchedulingDirectives(
 	var requiredMatchExpression *corev1.NodeSelectorRequirement
 
 	if nodeSet.ZoneAwareness == nil && clusterHasZoneAwareness {
-		clusterTopologyKey = topologyKeyOrDefault(clusterTopologyKey)
 		// We want to ensure that the nodeSet is only scheduled on nodes that have the cluster topology key
 		// when a nodeSet has no configured zone awareness but another nodeSet has zone awareness.
 		requiredMatchExpression = &corev1.NodeSelectorRequirement{
