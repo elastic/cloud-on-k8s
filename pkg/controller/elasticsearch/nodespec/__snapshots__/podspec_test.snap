@@ -3566,6 +3566,12 @@
   "terminationGracePeriodSeconds": 180,
   "topologySpreadConstraints": [
    {
+    "labelSelector": {
+     "matchLabels": {
+      "elasticsearch.k8s.elastic.co/cluster-name": "name",
+      "elasticsearch.k8s.elastic.co/statefulset-name": "name-es-nodeset-1"
+     }
+    },
     "maxSkew": 9,
     "topologyKey": "topology.kubernetes.io/zone",
     "whenUnsatisfiable": "DoNotSchedule"

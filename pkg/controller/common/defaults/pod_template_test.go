@@ -1460,6 +1460,74 @@ func TestPodTemplateBuilder_WithTopologySpreadConstraints(t *testing.T) {
 				{TopologyKey: "topology.kubernetes.io/hostname", MaxSkew: 2},
 			},
 		},
+		{
+			name: "fills missing label selector from default constraint",
+			podTemplate: corev1.PodTemplateSpec{
+				Spec: corev1.PodSpec{
+					TopologySpreadConstraints: []corev1.TopologySpreadConstraint{
+						{TopologyKey: "topology.kubernetes.io/zone", MaxSkew: 9},
+					},
+				},
+			},
+			constraints: []corev1.TopologySpreadConstraint{
+				{
+					TopologyKey: "topology.kubernetes.io/zone",
+					LabelSelector: &metav1.LabelSelector{
+						MatchLabels: map[string]string{
+							"cluster": "es",
+						},
+					},
+				},
+			},
+			want: []corev1.TopologySpreadConstraint{
+				{
+					TopologyKey: "topology.kubernetes.io/zone",
+					MaxSkew:     9,
+					LabelSelector: &metav1.LabelSelector{
+						MatchLabels: map[string]string{
+							"cluster": "es",
+						},
+					},
+				},
+			},
+		},
+		{
+			name: "preserves existing label selector when already set",
+			podTemplate: corev1.PodTemplateSpec{
+				Spec: corev1.PodSpec{
+					TopologySpreadConstraints: []corev1.TopologySpreadConstraint{
+						{
+							TopologyKey: "topology.kubernetes.io/zone",
+							LabelSelector: &metav1.LabelSelector{
+								MatchLabels: map[string]string{
+									"cluster": "user",
+								},
+							},
+						},
+					},
+				},
+			},
+			constraints: []corev1.TopologySpreadConstraint{
+				{
+					TopologyKey: "topology.kubernetes.io/zone",
+					LabelSelector: &metav1.LabelSelector{
+						MatchLabels: map[string]string{
+							"cluster": "default",
+						},
+					},
+				},
+			},
+			want: []corev1.TopologySpreadConstraint{
+				{
+					TopologyKey: "topology.kubernetes.io/zone",
+					LabelSelector: &metav1.LabelSelector{
+						MatchLabels: map[string]string{
+							"cluster": "user",
+						},
+					},
+				},
+			},
+		},
 	}
 
 	for _, tt := range tests {

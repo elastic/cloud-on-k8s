@@ -12,6 +12,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/container"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/volume"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/settings"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/k8s"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/maps"
 )
 
@@ -143,13 +144,23 @@ func (b *PodTemplateBuilder) WithAffinity(affinity *corev1.Affinity) *PodTemplat
 }
 
 // WithTopologySpreadConstraints appends the provided constraints when no
-// constraint already exists for their topology keys.
+// constraint already exists for their topology keys. If a constraint for a
+// topology key already exists and has no label selector, it is filled from the
+// provided constraint when one is available.
 func (b *PodTemplateBuilder) WithTopologySpreadConstraints(constraints ...corev1.TopologySpreadConstraint) *PodTemplateBuilder {
 	for _, constraint := range constraints {
-		if hasTopologySpreadConstraintForKey(b.PodTemplate.Spec.TopologySpreadConstraints, constraint.TopologyKey) {
-			continue
+		for i, existing := range b.PodTemplate.Spec.TopologySpreadConstraints {
+			if existing.TopologyKey != constraint.TopologyKey {
+				continue
+			}
+			if (existing.LabelSelector == nil || k8s.IsLabelSelectorEmpty(*existing.LabelSelector)) &&
+				constraint.LabelSelector != nil && !k8s.IsLabelSelectorEmpty(*constraint.LabelSelector) {
+				b.PodTemplate.Spec.TopologySpreadConstraints[i].LabelSelector = constraint.LabelSelector.DeepCopy()
+			}
+			goto next
 		}
 		b.PodTemplate.Spec.TopologySpreadConstraints = append(b.PodTemplate.Spec.TopologySpreadConstraints, constraint)
+	next:
 	}
 	return b
 }
@@ -427,15 +438,6 @@ func (b *PodTemplateBuilder) WithAutomountServiceAccountToken() *PodTemplateBuil
 		b.PodTemplate.Spec.AutomountServiceAccountToken = &t
 	}
 	return b
-}
-
-func hasTopologySpreadConstraintForKey(constraints []corev1.TopologySpreadConstraint, topologyKey string) bool {
-	for _, constraint := range constraints {
-		if constraint.TopologyKey == topologyKey {
-			return true
-		}
-	}
-	return false
 }
 
 func ensureRequiredNodeSelector(podSpec *corev1.PodSpec) *corev1.NodeSelector {

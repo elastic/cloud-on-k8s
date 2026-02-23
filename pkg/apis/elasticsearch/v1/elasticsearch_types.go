@@ -364,11 +364,7 @@ const (
 
 // ZoneAwareness configures topology-aware scheduling and shard-awareness defaults for a NodeSet.
 type ZoneAwareness struct {
-	// TopologyKey is the node label key used for spreading Pods and deriving the zone annotation.
-	// Defaults to topology.kubernetes.io/zone when not set.
-	// +kubebuilder:validation:Optional
-	// +kubebuilder:validation:MinLength=1
-	TopologyKey string `json:"topologyKey,omitempty"`
+	corev1.TopologySpreadConstraint `json:",inline"`
 
 	// Zones optionally restrict scheduling to the listed topology values.
 	// If empty, Pods can be scheduled in any topology value for the selected topologyKey.
@@ -376,18 +372,6 @@ type ZoneAwareness struct {
 	// +kubebuilder:validation:MinItems=1
 	// +listType=set
 	Zones []string `json:"zones,omitempty"`
-
-	// MaxSkew controls how unevenly Pods may be distributed across topology domains.
-	// Defaults to 1 when not set.
-	// +kubebuilder:validation:Optional
-	// +kubebuilder:validation:Minimum=1
-	MaxSkew *int32 `json:"maxSkew,omitempty"`
-
-	// WhenUnsatisfiable configures how to handle unsatisfied spread constraints.
-	// Defaults to DoNotSchedule when not set.
-	// +kubebuilder:validation:Optional
-	// +kubebuilder:validation:Enum=DoNotSchedule;ScheduleAnyway
-	WhenUnsatisfiable *corev1.UnsatisfiableConstraintAction `json:"whenUnsatisfiable,omitempty"`
 }
 
 func (za ZoneAwareness) TopologyKeyOrDefault() string {
@@ -399,16 +383,16 @@ func (za ZoneAwareness) TopologyKeyOrDefault() string {
 
 // MaxSkewOrDefault returns the configured max skew or the default value when unset.
 func (za ZoneAwareness) MaxSkewOrDefault() int32 {
-	if za.MaxSkew != nil {
-		return *za.MaxSkew
+	if za.MaxSkew > 0 {
+		return za.MaxSkew
 	}
 	return 1
 }
 
 // WhenUnsatisfiableOrDefault returns the configured unsatisfiable action or the default.
 func (za ZoneAwareness) WhenUnsatisfiableOrDefault() corev1.UnsatisfiableConstraintAction {
-	if za.WhenUnsatisfiable != nil {
-		return *za.WhenUnsatisfiable
+	if za.WhenUnsatisfiable != "" {
+		return za.WhenUnsatisfiable
 	}
 	return corev1.DoNotSchedule
 }

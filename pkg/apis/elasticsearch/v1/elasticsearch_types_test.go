@@ -319,7 +319,9 @@ func TestElasticsearch_DownwardNodeLabels(t *testing.T) {
 						{
 							Name: "default",
 							ZoneAwareness: &ZoneAwareness{
-								TopologyKey: "  ",
+								TopologySpreadConstraint: corev1.TopologySpreadConstraint{
+									TopologyKey: "  ",
+								},
 							},
 						},
 					},
@@ -340,12 +342,18 @@ func TestElasticsearch_DownwardNodeLabels(t *testing.T) {
 						{
 							Name: "default",
 							ZoneAwareness: &ZoneAwareness{
-								TopologyKey: "custom.io/rack",
+								TopologySpreadConstraint: corev1.TopologySpreadConstraint{
+									TopologyKey: "custom.io/rack",
+								},
 							},
 						},
 						{
-							Name:          "za-default",
-							ZoneAwareness: &ZoneAwareness{},
+							Name: "za-default",
+							ZoneAwareness: &ZoneAwareness{
+								TopologySpreadConstraint: corev1.TopologySpreadConstraint{
+									TopologyKey: DefaultZoneAwarenessTopologyKey,
+								},
+							},
 						},
 					},
 				},
@@ -375,7 +383,9 @@ func TestZoneAwareness_MaxSkewOrDefault(t *testing.T) {
 		{
 			name: "returns configured max skew",
 			za: ZoneAwareness{
-				MaxSkew: ptr.To[int32](3),
+				TopologySpreadConstraint: corev1.TopologySpreadConstraint{
+					MaxSkew: 3,
+				},
 			},
 			want: 3,
 		},
@@ -402,7 +412,9 @@ func TestZoneAwareness_WhenUnsatisfiableOrDefault(t *testing.T) {
 		{
 			name: "returns configured action",
 			za: ZoneAwareness{
-				WhenUnsatisfiable: ptr.To(corev1.ScheduleAnyway),
+				TopologySpreadConstraint: corev1.TopologySpreadConstraint{
+					WhenUnsatisfiable: corev1.ScheduleAnyway,
+				},
 			},
 			want: corev1.ScheduleAnyway,
 		},
