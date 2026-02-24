@@ -46,7 +46,6 @@ func TestNewMergedESConfig(t *testing.T) {
 		remoteClusterServerEnabled bool
 		remoteClusterClientEnabled bool
 		clusterHasZoneAwareness    bool
-		zoneAwareness              *esv1.ZoneAwareness
 		cfgData                    map[string]any
 		policyCfgData              *common.CanonicalConfig
 		assert                     func(cfg CanonicalConfig)
@@ -107,7 +106,6 @@ func TestNewMergedESConfig(t *testing.T) {
 			version:                 "8.15.0",
 			ipFamily:                corev1.IPv4Protocol,
 			clusterHasZoneAwareness: true,
-			zoneAwareness:           &esv1.ZoneAwareness{},
 			cfgData:                 map[string]any{},
 			assert: func(cfg CanonicalConfig) {
 				require.Equal(t, 1, len(cfg.HasKeys([]string{"node.attr.zone"})))
@@ -148,7 +146,6 @@ func TestNewMergedESConfig(t *testing.T) {
 			version:                 "8.15.0",
 			ipFamily:                corev1.IPv4Protocol,
 			clusterHasZoneAwareness: true,
-			zoneAwareness:           &esv1.ZoneAwareness{},
 			cfgData:                 map[string]any{},
 			policyCfgData: common.MustCanonicalConfig(map[string]any{
 				esv1.ShardAwarenessAttributes: "rack_id",
@@ -306,7 +303,7 @@ func TestNewMergedESConfig(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			ver, err := version.Parse(tt.version)
 			require.NoError(t, err)
-			cfg, err := NewMergedESConfig("clusterName", ver, tt.ipFamily, commonv1.HTTPConfig{}, commonv1.Config{Data: tt.cfgData}, tt.policyCfgData, tt.remoteClusterServerEnabled, tt.remoteClusterClientEnabled, tt.clusterHasZoneAwareness, tt.zoneAwareness)
+			cfg, err := NewMergedESConfig("clusterName", ver, tt.ipFamily, commonv1.HTTPConfig{}, commonv1.Config{Data: tt.cfgData}, tt.policyCfgData, tt.remoteClusterServerEnabled, tt.remoteClusterClientEnabled, tt.clusterHasZoneAwareness)
 			require.NoError(t, err)
 			tt.assert(cfg)
 		})

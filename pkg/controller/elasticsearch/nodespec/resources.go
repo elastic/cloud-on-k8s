@@ -94,7 +94,6 @@ func BuildExpectedResources(
 			es.Spec.RemoteClusterServer.Enabled,
 			es.HasRemoteClusterAPIKey(),
 			clusterHasZoneAwareness,
-			nodeSpec.ZoneAwareness,
 		)
 		if err != nil {
 			return nil, err

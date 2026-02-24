@@ -42,7 +42,6 @@ func NewMergedESConfig(
 	esConfigFromStackConfigPolicy *common.CanonicalConfig,
 	remoteClusterServerEnabled, remoteClusterClientEnabled bool,
 	clusterHasZoneAwareness bool,
-	zoneAwareness *esv1.ZoneAwareness,
 ) (CanonicalConfig, error) {
 	userCfg, err := common.NewCanonicalConfigFrom(userConfig.Data)
 	if err != nil {
@@ -51,7 +50,7 @@ func NewMergedESConfig(
 
 	config := baseConfig(clusterName, ver, ipFamily, remoteClusterServerEnabled).CanonicalConfig
 	err = config.MergeWith(
-		zoneAwarenessConfig(clusterHasZoneAwareness, zoneAwareness).CanonicalConfig,
+		zoneAwarenessConfig(clusterHasZoneAwareness).CanonicalConfig,
 		xpackConfig(ver, httpConfig, remoteClusterServerEnabled, remoteClusterClientEnabled).CanonicalConfig,
 		userCfg,
 		esConfigFromStackConfigPolicy,
@@ -71,8 +70,8 @@ func NewMergedESConfig(
 //
 // In this case, ${ZONE} will be set to the either the first topology key defined for other nodeSets, or fallback
 // to the default topology key [topology.kubernetes.io/zone].
-func zoneAwarenessConfig(clusterHasZoneAwareness bool, zoneAwareness *esv1.ZoneAwareness) *CanonicalConfig {
-	if !clusterHasZoneAwareness && zoneAwareness == nil {
+func zoneAwarenessConfig(clusterHasZoneAwareness bool) *CanonicalConfig {
+	if !clusterHasZoneAwareness {
 		cfg := NewCanonicalConfig()
 		return &cfg
 	}
