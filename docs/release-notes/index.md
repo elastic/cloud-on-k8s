@@ -21,6 +21,7 @@ ECK 3.3.1 has removed the enterprise requirement for AutoOpsAgentPolicy. AutoOps
 
 - Removing enterprise requirement for AutoOpsAgentPolicy [#9125](https://github.com/elastic/cloud-on-k8s/pull/9125)
 - Add Namespace Selector to AutoOpsAgentPolicy [#8991](https://github.com/elastic/cloud-on-k8s/pull/8991)
+- Update minimum AutoOps Agent to 9.2.4 when Basic license is used [#9157](https://github.com/elastic/cloud-on-k8s/pull/9157)
 
 :::{dropdown} Updated dependencies
 
