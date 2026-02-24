@@ -10,9 +10,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/require"
-	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/util/validation/field"
 
 	autoopsv1alpha1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/autoops/v1alpha1"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/license"
@@ -141,11 +139,38 @@ func TestCheckSupportedVersion(t *testing.T) {
 }
 
 func TestCheckSupportedVersion_LicenseCheckerError(t *testing.T) {
-	checker := errorLicenseChecker{err: errors.New("connection refused")}
-	errs := checkSupportedVersion(context.Background(), newPolicy("9.2.4"), checker)
-	require.Len(t, errs, 1)
-	require.Equal(t, field.ErrorTypeInternal, errs[0].Type)
-	require.Equal(t, "spec.version", errs[0].Field)
+	tests := []struct {
+		name    string
+		version string
+		wantErr bool
+	}{
+		{
+			name:    "falls back to enterprise range, version within range passes",
+			version: "9.2.4",
+			wantErr: false,
+		},
+		{
+			name:    "falls back to enterprise range, enterprise min passes",
+			version: "9.2.1",
+			wantErr: false,
+		},
+		{
+			name:    "falls back to enterprise range, version below enterprise min rejected",
+			version: "9.2.0",
+			wantErr: true,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			checker := errorLicenseChecker{err: errors.New("connection refused")}
+			errs := checkSupportedVersion(context.Background(), newPolicy(tt.version), checker)
+			if tt.wantErr {
+				require.NotEmpty(t, errs)
+			} else {
+				require.Empty(t, errs)
+			}
+		})
+	}
 }
 
 func TestValidate(t *testing.T) {
@@ -212,17 +237,4 @@ func TestValidate(t *testing.T) {
 			}
 		})
 	}
-}
-
-func TestValidate_LicenseCheckerError(t *testing.T) {
-	checker := errorLicenseChecker{err: errors.New("connection refused")}
-	err := Validate(context.Background(), newPolicy("9.2.4"), checker)
-	require.Error(t, err)
-
-	var statusErr *apierrors.StatusError
-	require.True(t, errors.As(err, &statusErr), "expected a StatusError")
-	causes := statusErr.Status().Details.Causes
-	require.Len(t, causes, 1)
-	require.Equal(t, metav1.CauseType("InternalError"), causes[0].Type)
-	require.Equal(t, "spec.version", causes[0].Field)
 }
