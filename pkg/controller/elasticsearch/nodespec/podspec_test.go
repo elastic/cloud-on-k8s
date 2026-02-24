@@ -501,6 +501,25 @@ func TestElasticsearch_DownwardNodeLabelsHashInput(t *testing.T) {
 			want: "topology.kubernetes.io/region,topology.kubernetes.io/zone",
 		},
 		{
+			name: "zone awareness key matching annotation does not change hash",
+			es: esv1.Elasticsearch{
+				ObjectMeta: metav1.ObjectMeta{
+					Annotations: map[string]string{
+						esv1.DownwardNodeLabelsAnnotation: "topology.kubernetes.io/zone",
+					},
+				},
+				Spec: esv1.ElasticsearchSpec{
+					NodeSets: []esv1.NodeSet{
+						{
+							Name:          "default",
+							ZoneAwareness: &esv1.ZoneAwareness{},
+						},
+					},
+				},
+			},
+			want: "topology.kubernetes.io/zone",
+		},
+		{
 			name: "uses derived labels when annotation is absent",
 			es: esv1.Elasticsearch{
 				Spec: esv1.ElasticsearchSpec{
@@ -681,7 +700,7 @@ func TestBuildPodTemplateSpec_ZoneAwarenessScenarios(t *testing.T) {
 				nil,
 				false,
 				false,
-				hasZoneAwareness(es.Spec.NodeSets),
+				esv1.NodeSetList(es.Spec.NodeSets).HasZoneAwareness(),
 			)
 			require.NoError(t, err)
 
@@ -807,7 +826,7 @@ func Test_zoneAwarenessEnv(t *testing.T) {
 	}
 }
 
-func Test_zoneAwarenessTopologyKey(t *testing.T) {
+func TestNodeSetListZoneAwarenessTopologyKey(t *testing.T) {
 	tests := []struct {
 		name     string
 		nodeSets []esv1.NodeSet
@@ -845,7 +864,7 @@ func Test_zoneAwarenessTopologyKey(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			assert.Equal(t, tt.expected, zoneAwarenessTopologyKey(tt.nodeSets))
+			assert.Equal(t, tt.expected, esv1.NodeSetList(tt.nodeSets).ZoneAwarenessTopologyKey())
 		})
 	}
 }

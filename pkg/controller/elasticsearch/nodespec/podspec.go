@@ -103,8 +103,9 @@ func BuildPodTemplateSpec(
 
 	headlessServiceName := HeadlessServiceName(esv1.StatefulSet(es.Name, nodeSet.Name))
 	ssetName := esv1.StatefulSet(es.Name, nodeSet.Name)
-	clusterHasZoneAwareness := hasZoneAwareness(es.Spec.NodeSets)
-	clusterZoneAwarenessTopologyKey := zoneAwarenessTopologyKey(es.Spec.NodeSets)
+	nodeSets := esv1.NodeSetList(es.Spec.NodeSets)
+	clusterHasZoneAwareness := nodeSets.HasZoneAwareness()
+	clusterZoneAwarenessTopologyKey := nodeSets.ZoneAwarenessTopologyKey()
 
 	// We retrieve the ConfigMap that holds the scripts to trigger a Pod restart if it is updated.
 	esScripts := &corev1.ConfigMap{}
@@ -251,18 +252,6 @@ func buildAnnotations(
 	maps.Merge(annotations, policyAnnotations)
 
 	return annotations
-}
-
-// zoneAwarenessTopologyKey returns the topology key from the first zone-aware NodeSet,
-// used as a fallback for non-zone-aware NodeSets in the same cluster.
-func zoneAwarenessTopologyKey(nodeSets []esv1.NodeSet) string {
-	for _, nodeSet := range nodeSets {
-		if nodeSet.ZoneAwareness == nil {
-			continue
-		}
-		return nodeSet.ZoneAwareness.TopologyKeyOrDefault()
-	}
-	return esv1.DefaultZoneAwarenessTopologyKey
 }
 
 // zoneAwarenessEnv returns the zone environment variable when zone awareness is enabled

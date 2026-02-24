@@ -408,6 +408,28 @@ func (nsl NodeSetList) Names() []string {
 	return names
 }
 
+// HasZoneAwareness returns true when any NodeSet enables zone awareness.
+func (nsl NodeSetList) HasZoneAwareness() bool {
+	for _, nodeSet := range nsl {
+		if nodeSet.ZoneAwareness != nil {
+			return true
+		}
+	}
+	return false
+}
+
+// ZoneAwarenessTopologyKey returns the topology key from the first zone-aware NodeSet,
+// used as a fallback for non-zone-aware NodeSets in the same cluster.
+func (nsl NodeSetList) ZoneAwarenessTopologyKey() string {
+	for _, nodeSet := range nsl {
+		if nodeSet.ZoneAwareness == nil {
+			continue
+		}
+		return nodeSet.ZoneAwareness.TopologyKeyOrDefault()
+	}
+	return DefaultZoneAwarenessTopologyKey
+}
+
 // GetESContainerTemplate returns the Elasticsearch container (if set) from the NodeSet's PodTemplate
 func (n NodeSet) GetESContainerTemplate() *corev1.Container {
 	for _, c := range n.PodTemplate.Spec.Containers {

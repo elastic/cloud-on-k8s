@@ -45,7 +45,7 @@ func TestResourcesList_MasterNodesNames(t *testing.T) {
 	}
 }
 
-func TestHasZoneAwareness(t *testing.T) {
+func TestNodeSetListHasZoneAwareness(t *testing.T) {
 	tests := []struct {
 		name     string
 		nodeSets []esv1.NodeSet
@@ -76,9 +76,9 @@ func TestHasZoneAwareness(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got := hasZoneAwareness(tt.nodeSets)
+			got := esv1.NodeSetList(tt.nodeSets).HasZoneAwareness()
 			if got != tt.want {
-				t.Errorf("hasZoneAwareness() = %v, want %v", got, tt.want)
+				t.Errorf("NodeSetList.HasZoneAwareness() = %v, want %v", got, tt.want)
 			}
 		})
 	}

@@ -65,7 +65,7 @@ func BuildExpectedResources(
 	meta metadata.Metadata,
 ) (ResourcesList, error) {
 	nodesResources := make(ResourcesList, 0, len(es.Spec.NodeSets))
-	clusterHasZoneAwareness := hasZoneAwareness(es.Spec.NodeSets)
+	clusterHasZoneAwareness := esv1.NodeSetList(es.Spec.NodeSets).HasZoneAwareness()
 
 	ver, err := version.Parse(es.Spec.Version)
 	if err != nil {
@@ -121,15 +121,6 @@ func BuildExpectedResources(
 // This allows us to ensure consistency and that each nodeSet has the
 // allocation awareness setting in place.
 // (cluster.routing.allocation.awareness.attributes)
-func hasZoneAwareness(nodeSets []esv1.NodeSet) bool {
-	for _, nodeSet := range nodeSets {
-		if nodeSet.ZoneAwareness != nil {
-			return true
-		}
-	}
-	return false
-}
-
 // MasterNodesNames returns the names of the master nodes for this ResourcesList.
 func (l ResourcesList) MasterNodesNames() []string {
 	var masters []string
