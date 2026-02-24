@@ -27,10 +27,6 @@ In clusters running AutoOps Agent versions earlier than 9.2.4, an Enterprise lic
 
 Renew or restore the Enterprise license so that the AutoOps policy can be validated again. To prevent this issue in the future, upgrade the AutoOps Agent to version 9.2.4 or later.
 
-**Workaround**
-
-Renew the Enterprise license or upgrade the AutoOps Agent to 9.2.4 or later.
-
 :::
 
 ## 3.3.0 [elastic-cloud-kubernetes-330-known-issues]
