@@ -131,7 +131,7 @@ data:
           "enabled": false,
           "support": {
             "supported": true,
-            "valid_license_types": ["platinum", "enterprise"],
+            "valid_license_types": ["basic", "platinum", "enterprise"],
             "minimum_stack_version": "9.2.0"
           },
           "config": {
@@ -149,7 +149,7 @@ data:
           "enabled": false,
           "support": {
             "supported": true,
-            "valid_license_types": ["platinum", "enterprise"],
+            "valid_license_types": ["basic", "platinum", "enterprise"],
             "minimum_stack_version": "9.2.0"
           },
           "metadata": {
