@@ -40,8 +40,8 @@ github.com/docker/docker-credential-helpers v0.9.3 h1:gAm/VtF9wgqJMoxzT3Gj5p4AqI
 github.com/docker/docker-credential-helpers v0.9.3/go.mod h1:x+4Gbw9aGmChi3qTLZj8Dfn0TD20M/fuWy0E5+WDeCo=
 github.com/elastic/go-sysinfo v1.15.2 h1:rgUFj4xRnxdAaxh4IhuGzHINWT8WrwUe5D338LLRC0s=
 github.com/elastic/go-sysinfo v1.15.2/go.mod h1:jPSuTgXG+dhhh0GKIyI2Cso+w5lPJ5PvVqKlL8LV/Hk=
-github.com/elastic/go-ucfg v0.8.9-0.20260108155023-368693374ae9 h1:At3AerzMMG6Qwvvo8GH4xRmGb9Ude/Dh8ifmgohVc10=
-github.com/elastic/go-ucfg v0.8.9-0.20260108155023-368693374ae9/go.mod h1:6Z66LNkFK5xAlWg3Ny7qgtrvBUadaAcor+kYxw2pXBk=
+github.com/elastic/go-ucfg v0.9.0 h1:QRO2O8rv6oORD6N1gDc27bj2jgSdlPFW+t+Uf3MJkik=
+github.com/elastic/go-ucfg v0.9.0/go.mod h1:6Z66LNkFK5xAlWg3Ny7qgtrvBUadaAcor+kYxw2pXBk=
 github.com/elastic/go-windows v1.0.2 h1:yoLLsAsV5cfg9FLhZ9EXZ2n2sQFKeDYrHenkcivY4vI=
 github.com/elastic/go-windows v1.0.2/go.mod h1:bGcDpBzXgYSqM0Gx3DM4+UxFj300SZLixie9u9ixLM8=
 github.com/emicklei/go-restful/v3 v3.12.2 h1:DhwDP0vY3k8ZzE0RunuJy8GhNpPL6zqLkDf9B/a0/xU=
