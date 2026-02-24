@@ -31,7 +31,7 @@ func TestAutoOpsAgentPolicyEnterprise(t *testing.T) {
 func runAutoOpsAgentPolicyTest(t *testing.T, useEnterpriseLicense bool) {
 	t.Helper()
 
-	minSupportedVersion := version.SupportedAutoOpsAgentNonEnterpriseVersions.Min
+	minSupportedVersion := version.SupportedAutoOpsAgentBasicVersions.Min
 	if useEnterpriseLicense {
 		minSupportedVersion = version.SupportedAutoOpsAgentEnterpriseVersions.Min
 	}

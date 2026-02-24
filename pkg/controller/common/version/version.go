@@ -40,11 +40,11 @@ var (
 	SupportedLogstashVersions        = MinMaxVersion{Min: From(8, 12, 0), Max: From(9, 99, 99)}
 
 	// AutoOpsAgent was introduced in 9.1.0, but 9.2.1 is now required due to
-	// performance optimizations and the lack of the healthcheckv2 extension in earlier versions. 9.2.4 is
-	// required in the case of a user with a non-enterprise license due to the removal
-	// of enterprise licensing requirements. Enterprise license holders may use versions starting from 9.2.1.
-	SupportedAutoOpsAgentNonEnterpriseVersions = MinMaxVersion{Min: MustParse("9.2.4"), Max: From(9, 99, 99)}
-	SupportedAutoOpsAgentEnterpriseVersions    = MinMaxVersion{Min: MustParse("9.2.1"), Max: From(9, 99, 99)}
+	// performance optimizations and the lack of the healthcheckv2 extension in earlier versions.
+	// For Basic users, 9.2.4 is the minimum supported version as earlier versions require an
+	// Enterprise license to function correctly.
+	SupportedAutoOpsAgentBasicVersions      = MinMaxVersion{Min: MustParse("9.2.4"), Max: From(9, 99, 99)}
+	SupportedAutoOpsAgentEnterpriseVersions = MinMaxVersion{Min: MustParse("9.2.1"), Max: From(9, 99, 99)}
 
 	// minPreReleaseVersion is the lowest prerelease identifier as numeric prerelease takes precedence before
 	// alphanumeric ones and it can't have leading zeros.
