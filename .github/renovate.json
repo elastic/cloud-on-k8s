@@ -5,6 +5,15 @@
   "labels": [
     ">renovate"
   ],
+  "ignorePaths": [
+    "**/node_modules/**",
+    "**/bower_components/**",
+    "**/vendor/**",
+    "**/examples/**",
+    "**/__tests__/**",
+    "**/tests/**",
+    "**/__fixtures__/**"
+  ],
   "schedule": [
     "after 1am on monday"
   ],
