@@ -78,9 +78,7 @@ func zoneAwarenessConfig(clusterHasZoneAwareness bool) *CanonicalConfig {
 	cfg := map[string]any{}
 	zoneEnvVarRef := fmt.Sprintf(envVarReferenceFormat, EnvZone)
 	cfg[nodeAttrZoneName] = zoneEnvVarRef
-	if clusterHasZoneAwareness {
-		cfg[esv1.ShardAwarenessAttributes] = fmt.Sprintf("%s,%s", nodeAttrK8sNodeName, nodeAttrZone)
-	}
+	cfg[esv1.ShardAwarenessAttributes] = fmt.Sprintf("%s,%s", nodeAttrK8sNodeName, nodeAttrZone)
 	return &CanonicalConfig{common.MustCanonicalConfig(cfg)}
 }
 
