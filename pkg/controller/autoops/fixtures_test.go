@@ -19,7 +19,7 @@ func newAutoOpsAgentPolicy(modifiers ...func(*autoopsv1alpha1.AutoOpsAgentPolicy
 			Namespace: "ns-1",
 		},
 		Spec: autoopsv1alpha1.AutoOpsAgentPolicySpec{
-			Version: "9.2.1",
+			Version: "9.2.4",
 			AutoOpsRef: autoopsv1alpha1.AutoOpsRef{
 				SecretName: "config-secret",
 			},
@@ -67,7 +67,7 @@ func newElasticsearch(modifiers ...func(*esv1.Elasticsearch)) *esv1.Elasticsearc
 			Phase: esv1.ElasticsearchReadyPhase,
 		},
 		Spec: esv1.ElasticsearchSpec{
-			Version: "9.2.1",
+			Version: "9.2.4",
 		},
 	}
 

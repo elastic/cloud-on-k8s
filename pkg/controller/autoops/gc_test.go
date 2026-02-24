@@ -89,7 +89,7 @@ func TestGarbageCollector_DoGarbageCollection(t *testing.T) {
 				Namespace: namespace,
 			},
 			Spec: autoopsv1alpha1.AutoOpsAgentPolicySpec{
-				Version: "9.2.1",
+				Version: "9.2.4",
 			},
 		}
 	}

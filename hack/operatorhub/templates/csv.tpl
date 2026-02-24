@@ -302,7 +302,7 @@ spec:
 
     * Logstash 8.12+, 9+
 
-    * Elastic AutoOps Agent: 9.2.1+
+    * Elastic AutoOps Agent: 9.2.1+ (Enterprise), 9.2.4+ (Basic)
 
     * Elastic Package Registry: 8+
 
