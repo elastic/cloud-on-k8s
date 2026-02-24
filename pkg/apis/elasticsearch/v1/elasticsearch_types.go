@@ -504,8 +504,8 @@ func (es Elasticsearch) downwardNodeLabelsAnnotationValue() string {
 	return es.Annotations[DownwardNodeLabelsAnnotation]
 }
 
-// parseDownwardNodeLabels normalizes a comma-separated node labels annotation value.
-func parseDownwardNodeLabels(annotationValue string) set.StringSet {
+// ParseDownwardNodeLabels normalizes a comma-separated node labels annotation value.
+func ParseDownwardNodeLabels(annotationValue string) set.StringSet {
 	labels := set.Make()
 	for label := range strings.SplitSeq(annotationValue, ",") {
 		label = strings.TrimSpace(label)
@@ -519,7 +519,7 @@ func parseDownwardNodeLabels(annotationValue string) set.StringSet {
 
 // DownwardNodeLabels returns the set of expected node labels to be copied as annotations on the Elasticsearch Pods.
 func (es Elasticsearch) DownwardNodeLabels() []string {
-	expectedAnnotations := parseDownwardNodeLabels(es.downwardNodeLabelsAnnotationValue())
+	expectedAnnotations := ParseDownwardNodeLabels(es.downwardNodeLabelsAnnotationValue())
 
 	for _, nodeSet := range es.Spec.NodeSets {
 		if nodeSet.ZoneAwareness == nil {
@@ -541,7 +541,7 @@ func (es Elasticsearch) DownwardNodeLabelsHashInput() string {
 	annotationValue := es.downwardNodeLabelsAnnotationValue()
 	hashInput := annotationValue
 
-	annotationLabels := parseDownwardNodeLabels(annotationValue)
+	annotationLabels := ParseDownwardNodeLabels(annotationValue)
 	var derived []string
 	for _, label := range es.DownwardNodeLabels() {
 		if annotationLabels.Has(label) {

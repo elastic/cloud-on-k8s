@@ -10,6 +10,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/util/validation/field"
 
 	commonv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/common/v1"
 	esv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/elasticsearch/v1"
@@ -568,9 +569,9 @@ func Test_validNodeLabels(t *testing.T) {
 		exposedNodeLabels []string
 	}
 	tests := []struct {
-		name         string
-		args         args
-		expectErrors bool
+		name           string
+		args           args
+		expectedFields []string
 	}{
 		{
 			name: "Invalid node label",
@@ -582,7 +583,9 @@ func Test_validNodeLabels(t *testing.T) {
 				},
 				exposedNodeLabels: []string{"topology.kubernetes.io/*"},
 			},
-			expectErrors: true, // "failure-domain.beta.kubernetes.io/zone" does not match "topology.kubernetes.io/*"
+			expectedFields: []string{
+				field.NewPath("metadata").Child("annotations", esv1.DownwardNodeLabelsAnnotation).String(),
+			},
 		},
 		{
 			name: "Valid node label",
@@ -630,7 +633,9 @@ func Test_validNodeLabels(t *testing.T) {
 				},
 				exposedNodeLabels: []string{"topology.kubernetes.io/*"},
 			},
-			expectErrors: true,
+			expectedFields: []string{
+				field.NewPath("spec").Child("nodeSets").Index(0).Child("zoneAwareness", "topologyKey").String(),
+			},
 		},
 	}
 	for _, tt := range tests {
@@ -638,10 +643,11 @@ func Test_validNodeLabels(t *testing.T) {
 			exposedNodeLabels, err := NewExposedNodeLabels(tt.args.exposedNodeLabels)
 			assert.NoError(t, err)
 			actual := validNodeLabels(tt.args.proposed, exposedNodeLabels)
-			actualErrors := len(actual) > 0
-			if tt.expectErrors != actualErrors {
-				t.Errorf("failed validNodeLabels(), actual %v, wanted: %v", actualErrors, tt.expectErrors)
+			actualFields := make([]string, len(actual))
+			for i, err := range actual {
+				actualFields[i] = err.Field
 			}
+			assert.ElementsMatch(t, tt.expectedFields, actualFields)
 		})
 	}
 }
