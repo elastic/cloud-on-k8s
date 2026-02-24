@@ -19,7 +19,15 @@ Known issues are significant defects or limitations that may impact your impleme
 
 ## 3.3.1 [elastic-cloud-kubernetes-331-known-issues]
 
-There are no known issues in ECK 3.3.1
+:::{dropdown} AutoOps Enterprise license expiring may cause policy to be set to `InvalidPhase`
+
+AutoOps Enterprise license expiring may cause policy to be set to `InvalidPhase` if the license is not renewed prior to expiry. This will cause the AutoOps Agent to stop sending data to AutoOps.
+
+**Workaround**
+
+Renew the Enterprise license or upgrade the AutoOps Agent to 9.2.4 or later.
+
+:::
 
 ## 3.3.0 [elastic-cloud-kubernetes-330-known-issues]
 
