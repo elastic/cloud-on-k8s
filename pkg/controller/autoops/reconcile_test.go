@@ -827,7 +827,7 @@ func TestAutoOpsAgentPolicyReconciler_selectorChangeCleanup(t *testing.T) {
 			Namespace: "ns-1",
 		},
 		Spec: autoopsv1alpha1.AutoOpsAgentPolicySpec{
-			Version: "9.2.1",
+			Version: "9.2.4",
 			AutoOpsRef: autoopsv1alpha1.AutoOpsRef{
 				SecretName: "config-secret",
 			},
@@ -1056,7 +1056,7 @@ func TestAutoOpsAgentPolicyReconciler_accessRevokedCleanup(t *testing.T) {
 			Namespace: "ns-1",
 		},
 		Spec: autoopsv1alpha1.AutoOpsAgentPolicySpec{
-			Version: "9.2.1",
+			Version: "9.2.4",
 			AutoOpsRef: autoopsv1alpha1.AutoOpsRef{
 				SecretName: "config-secret",
 			},

@@ -302,6 +302,10 @@ spec:
 
     * Logstash 8.12+, 9+
 
+    * Elastic AutoOps Agent: 9.2.1+ (Enterprise), 9.2.4+ (Basic)
+
+    * Elastic Package Registry: 8+
+
 
     ECK should work with all conformant installers as listed in these [FAQs](https://github.com/cncf/k8s-conformance/blob/master/faq.md#what-is-a-distribution-hosted-platform-and-an-installer). Distributions include source patches and so may not work as-is with ECK.
 
