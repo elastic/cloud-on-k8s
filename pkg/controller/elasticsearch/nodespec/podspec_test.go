@@ -853,12 +853,13 @@ func Test_zoneAwarenessTopologyKey(t *testing.T) {
 
 func Test_zoneAwarenessSchedulingDirectives(t *testing.T) {
 	tests := []struct {
-		name                    string
-		nodeSet                 esv1.NodeSet
-		clusterHasZoneAwareness bool
-		clusterTopologyKey      string
-		expectedSpread          *corev1.TopologySpreadConstraint
-		expectedMatchExpression *corev1.NodeSelectorRequirement
+		name                     string
+		nodeSet                  esv1.NodeSet
+		clusterHasZoneAwareness  bool
+		clusterTopologyKey       string
+		expectedSpreads          []corev1.TopologySpreadConstraint
+		expectedMatchExpressions []corev1.NodeSelectorRequirement
+		expectedPreferredMatches []corev1.NodeSelectorRequirement
 	}{
 		{
 			name:                    "returns no directives when nodeset has no zone awareness and cluster awareness is disabled",
@@ -870,8 +871,10 @@ func Test_zoneAwarenessSchedulingDirectives(t *testing.T) {
 			nodeSet:                 esv1.NodeSet{},
 			clusterHasZoneAwareness: true,
 			clusterTopologyKey:      "custom.io/rack",
-			expectedMatchExpression: &corev1.NodeSelectorRequirement{
-				Key: "custom.io/rack", Operator: corev1.NodeSelectorOpExists,
+			expectedPreferredMatches: []corev1.NodeSelectorRequirement{
+				{
+					Key: "custom.io/rack", Operator: corev1.NodeSelectorOpExists,
+				},
 			},
 		},
 		{
@@ -882,36 +885,41 @@ func Test_zoneAwarenessSchedulingDirectives(t *testing.T) {
 				},
 			},
 			clusterHasZoneAwareness: true,
-			expectedSpread: &corev1.TopologySpreadConstraint{
-				MaxSkew:           1,
-				TopologyKey:       esv1.DefaultZoneAwarenessTopologyKey,
-				WhenUnsatisfiable: corev1.DoNotSchedule,
-				LabelSelector: &metav1.LabelSelector{
-					MatchLabels: map[string]string{
-						label.ClusterNameLabelName:     "cluster",
-						label.StatefulSetNameLabelName: "sset",
+			expectedSpreads: []corev1.TopologySpreadConstraint{
+				{
+					MaxSkew:           1,
+					TopologyKey:       esv1.DefaultZoneAwarenessTopologyKey,
+					WhenUnsatisfiable: corev1.DoNotSchedule,
+					LabelSelector: &metav1.LabelSelector{
+						MatchLabels: map[string]string{
+							label.ClusterNameLabelName:     "cluster",
+							label.StatefulSetNameLabelName: "sset",
+						},
 					},
 				},
 			},
-			expectedMatchExpression: &corev1.NodeSelectorRequirement{
-				Key:      esv1.DefaultZoneAwarenessTopologyKey,
-				Operator: corev1.NodeSelectorOpIn,
-				Values:   []string{"us-east-1a", "us-east-1b"},
+			expectedMatchExpressions: []corev1.NodeSelectorRequirement{
+				{
+					Key:      esv1.DefaultZoneAwarenessTopologyKey,
+					Operator: corev1.NodeSelectorOpIn,
+					Values:   []string{"us-east-1a", "us-east-1b"},
+				},
 			},
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			gotSpread, gotMatchExpression := zoneAwarenessSchedulingDirectives(
+			gotSpreads, gotMatchExpressions, gotPreferredMatches := zoneAwarenessSchedulingDirectives(
 				tt.nodeSet,
 				"cluster",
 				"sset",
 				tt.clusterHasZoneAwareness,
 				tt.clusterTopologyKey,
 			)
-			assert.Equal(t, tt.expectedSpread, gotSpread)
-			assert.Equal(t, tt.expectedMatchExpression, gotMatchExpression)
+			assert.Equal(t, tt.expectedSpreads, gotSpreads)
+			assert.Equal(t, tt.expectedMatchExpressions, gotMatchExpressions)
+			assert.Equal(t, tt.expectedPreferredMatches, gotPreferredMatches)
 		})
 	}
 }

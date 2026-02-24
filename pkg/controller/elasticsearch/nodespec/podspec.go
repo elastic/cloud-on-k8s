@@ -145,19 +145,17 @@ func BuildPodTemplateSpec(
 		WithContainersSecurityContext(securitycontext.For(ver, enableReadOnlyRootFilesystem)).
 		WithPreStopHook(*NewPreStopHook())
 
-	spreadConstraint, requiredMatchExpression := zoneAwarenessSchedulingDirectives(
+	spreadConstraints, requiredMatchExpressions, preferredMatchExpressions := zoneAwarenessSchedulingDirectives(
 		nodeSet,
 		es.Name,
 		ssetName,
 		clusterHasZoneAwareness,
 		clusterZoneAwarenessTopologyKey,
 	)
-	if spreadConstraint != nil {
-		builder.WithTopologySpreadConstraints(*spreadConstraint)
-	}
-	if requiredMatchExpression != nil {
-		builder.WithRequiredNodeAffinityMatchExpressions(*requiredMatchExpression)
-	}
+	builder = builder.
+		WithTopologySpreadConstraints(spreadConstraints...).
+		WithRequiredNodeAffinityMatchExpressions(requiredMatchExpressions...).
+		WithPreferredNodeAffinityMatchExpressions(preferredMatchExpressions...)
 
 	builder, err = stackmon.WithMonitoring(ctx, client, builder, es, meta)
 	if err != nil {
@@ -292,7 +290,7 @@ func zoneAwarenessEnv(nodeSet esv1.NodeSet, clusterHasZoneAwareness bool, cluste
 	}
 }
 
-// zoneAwarenessSchedulingDirectives returns topology spread constraints and required
+// zoneAwarenessSchedulingDirectives returns topology spread constraints, required and preferred
 // node affinity expressions derived from NodeSet and cluster zone-awareness settings.
 func zoneAwarenessSchedulingDirectives(
 	nodeSet esv1.NodeSet,
@@ -300,46 +298,49 @@ func zoneAwarenessSchedulingDirectives(
 	statefulSetName string,
 	clusterHasZoneAwareness bool,
 	clusterTopologyKey string,
-) (*corev1.TopologySpreadConstraint, *corev1.NodeSelectorRequirement) {
-	var spreadConstraint *corev1.TopologySpreadConstraint
-	var requiredMatchExpression *corev1.NodeSelectorRequirement
-
+) ([]corev1.TopologySpreadConstraint, []corev1.NodeSelectorRequirement, []corev1.NodeSelectorRequirement) {
 	if nodeSet.ZoneAwareness == nil && clusterHasZoneAwareness {
-		// We want to ensure that the nodeSet is only scheduled on nodes that have the cluster topology key
-		// when a nodeSet has no configured zone awareness but another nodeSet has zone awareness.
-		requiredMatchExpression = &corev1.NodeSelectorRequirement{
-			Key:      clusterTopologyKey,
-			Operator: corev1.NodeSelectorOpExists,
+		// Prefer scheduling this nodeSet onto nodes that have the cluster topology key when
+		// a nodeSet has no configured zone awareness but another nodeSet has zone awareness.
+		return nil, nil, []corev1.NodeSelectorRequirement{
+			{
+				Key:      clusterTopologyKey,
+				Operator: corev1.NodeSelectorOpExists,
+			},
 		}
-		return spreadConstraint, requiredMatchExpression
 	}
 	if nodeSet.ZoneAwareness == nil {
-		return spreadConstraint, requiredMatchExpression
+		return nil, nil, nil
 	}
 
 	topologyKey := nodeSet.ZoneAwareness.TopologyKeyOrDefault()
-	spreadConstraint = &corev1.TopologySpreadConstraint{
-		MaxSkew:           nodeSet.ZoneAwareness.MaxSkewOrDefault(),
-		TopologyKey:       topologyKey,
-		WhenUnsatisfiable: nodeSet.ZoneAwareness.WhenUnsatisfiableOrDefault(),
-		LabelSelector: &metav1.LabelSelector{
-			MatchLabels: map[string]string{
-				label.ClusterNameLabelName:     clusterName,
-				label.StatefulSetNameLabelName: statefulSetName,
+	spreadConstraints := []corev1.TopologySpreadConstraint{
+		{
+			MaxSkew:           nodeSet.ZoneAwareness.MaxSkewOrDefault(),
+			TopologyKey:       topologyKey,
+			WhenUnsatisfiable: nodeSet.ZoneAwareness.WhenUnsatisfiableOrDefault(),
+			LabelSelector: &metav1.LabelSelector{
+				MatchLabels: map[string]string{
+					label.ClusterNameLabelName:     clusterName,
+					label.StatefulSetNameLabelName: statefulSetName,
+				},
 			},
 		},
 	}
 
 	// If the nodeSet has zone awareness and zones are configured, we want to ensure
 	// that the nodeSet is only scheduled on nodes that have the zone values.
+	var requiredMatchExpressions []corev1.NodeSelectorRequirement
 	if len(nodeSet.ZoneAwareness.Zones) > 0 {
-		requiredMatchExpression = &corev1.NodeSelectorRequirement{
-			Key:      topologyKey,
-			Operator: corev1.NodeSelectorOpIn,
-			Values:   append([]string(nil), nodeSet.ZoneAwareness.Zones...),
+		requiredMatchExpressions = []corev1.NodeSelectorRequirement{
+			{
+				Key:      topologyKey,
+				Operator: corev1.NodeSelectorOpIn,
+				Values:   append([]string(nil), nodeSet.ZoneAwareness.Zones...),
+			},
 		}
 	}
-	return spreadConstraint, requiredMatchExpression
+	return spreadConstraints, requiredMatchExpressions, nil
 }
 
 // enableLog4JFormatMsgNoLookups prepends the JVM parameter `-Dlog4j2.formatMsgNoLookups=true` to the environment variable `ES_JAVA_OPTS`

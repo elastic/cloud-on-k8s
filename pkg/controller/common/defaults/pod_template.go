@@ -165,6 +165,8 @@ func (b *PodTemplateBuilder) WithTopologySpreadConstraints(constraints ...corev1
 	return b
 }
 
+const preferredNodeAffinityWeight int32 = 100
+
 // WithRequiredNodeAffinityMatchExpressions ensures all required node selector
 // terms include the provided match expressions by key without duplicating keys.
 func (b *PodTemplateBuilder) WithRequiredNodeAffinityMatchExpressions(requirements ...corev1.NodeSelectorRequirement) *PodTemplateBuilder {
@@ -200,6 +202,38 @@ func (b *PodTemplateBuilder) WithRequiredNodeAffinityMatchExpressions(requiremen
 			nodeSelector.NodeSelectorTerms[i].MatchExpressions = append(nodeSelector.NodeSelectorTerms[i].MatchExpressions, requirement)
 		}
 	}
+	return b
+}
+
+// WithPreferredNodeAffinityMatchExpressions appends preferred nodeSelector terms for the
+// provided match expressions when the key is not already constrained by a preferred term.
+func (b *PodTemplateBuilder) WithPreferredNodeAffinityMatchExpressions(requirements ...corev1.NodeSelectorRequirement) *PodTemplateBuilder {
+	if len(requirements) == 0 {
+		return b
+	}
+
+	nodeAffinity := ensureNodeAffinity(&b.PodTemplate.Spec)
+	for _, requirement := range requirements {
+		// Copying as values is a slice.
+		copied := corev1.NodeSelectorRequirement{
+			Key:      requirement.Key,
+			Operator: requirement.Operator,
+			Values:   append([]string(nil), requirement.Values...),
+		}
+		if hasPreferredNodeAffinityKey(nodeAffinity.PreferredDuringSchedulingIgnoredDuringExecution, copied.Key) {
+			continue
+		}
+		nodeAffinity.PreferredDuringSchedulingIgnoredDuringExecution = append(
+			nodeAffinity.PreferredDuringSchedulingIgnoredDuringExecution,
+			corev1.PreferredSchedulingTerm{
+				Weight: preferredNodeAffinityWeight,
+				Preference: corev1.NodeSelectorTerm{
+					MatchExpressions: []corev1.NodeSelectorRequirement{copied},
+				},
+			},
+		)
+	}
+
 	return b
 }
 
@@ -440,17 +474,35 @@ func (b *PodTemplateBuilder) WithAutomountServiceAccountToken() *PodTemplateBuil
 	return b
 }
 
+// ensureRequiredNodeSelector initializes and returns required node affinity selector.
 func ensureRequiredNodeSelector(podSpec *corev1.PodSpec) *corev1.NodeSelector {
+	nodeAffinity := ensureNodeAffinity(podSpec)
+	if nodeAffinity.RequiredDuringSchedulingIgnoredDuringExecution == nil {
+		nodeAffinity.RequiredDuringSchedulingIgnoredDuringExecution = &corev1.NodeSelector{}
+	}
+	return nodeAffinity.RequiredDuringSchedulingIgnoredDuringExecution
+}
+
+// ensureNodeAffinity initializes and returns the node affinity section.
+func ensureNodeAffinity(podSpec *corev1.PodSpec) *corev1.NodeAffinity {
 	if podSpec.Affinity == nil {
 		podSpec.Affinity = &corev1.Affinity{}
 	}
 	if podSpec.Affinity.NodeAffinity == nil {
 		podSpec.Affinity.NodeAffinity = &corev1.NodeAffinity{}
 	}
-	if podSpec.Affinity.NodeAffinity.RequiredDuringSchedulingIgnoredDuringExecution == nil {
-		podSpec.Affinity.NodeAffinity.RequiredDuringSchedulingIgnoredDuringExecution = &corev1.NodeSelector{}
+	return podSpec.Affinity.NodeAffinity
+}
+
+// hasPreferredNodeAffinityKey returns true if any preferred term already
+// constrains the provided key.
+func hasPreferredNodeAffinityKey(terms []corev1.PreferredSchedulingTerm, key string) bool {
+	for _, term := range terms {
+		if hasNodeSelectorRequirementKey(term.Preference, key) {
+			return true
+		}
 	}
-	return podSpec.Affinity.NodeAffinity.RequiredDuringSchedulingIgnoredDuringExecution
+	return false
 }
 
 func hasNodeSelectorRequirementKey(term corev1.NodeSelectorTerm, key string) bool {
