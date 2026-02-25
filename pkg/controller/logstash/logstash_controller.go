@@ -143,7 +143,11 @@ func (r *ReconcileLogstash) Reconcile(ctx context.Context, request reconcile.Req
 		return reconcile.Result{}, tracing.CaptureError(ctx, err)
 	}
 
-	if common.IsUnmanagedOrFiltered(ctx, r.Client, logstash, r.Parameters) {
+	unmanagedOrFiltered, err := common.IsUnmanagedOrFiltered(ctx, r.Client, logstash, r.Parameters)
+	if err != nil {
+		return reconcile.Result{}, tracing.CaptureError(ctx, err)
+	}
+	if unmanagedOrFiltered {
 		ulog.FromContext(ctx).Info("Object is currently not managed by this controller or namespace is filtered. Skipping reconciliation", "namespace", logstash.Namespace, "logstash_name", logstash.Name)
 		return reconcile.Result{}, nil
 	}
@@ -155,7 +159,7 @@ func (r *ReconcileLogstash) Reconcile(ctx context.Context, request reconcile.Req
 	results, status := r.doReconcile(ctx, *logstash)
 	logger := ulog.FromContext(ctx)
 
-	err := updateStatus(ctx, *logstash, r.Client, status)
+	err = updateStatus(ctx, *logstash, r.Client, status)
 	if err != nil {
 		if apierrors.IsConflict(err) {
 			logger.V(1).Info("Conflict while updating status. Requeueing", "namespace", logstash.Namespace, "ls_name", logstash.Name)

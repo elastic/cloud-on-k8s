@@ -105,7 +105,11 @@ func (r *ReconcileRemoteClusters) Reconcile(ctx context.Context, request reconci
 		return reconcile.Result{}, err
 	}
 
-	if common.IsUnmanagedOrFiltered(ctx, r.Client, &es, r.Parameters) {
+	unmanagedOrFiltered, err := common.IsUnmanagedOrFiltered(ctx, r.Client, &es, r.Parameters)
+	if err != nil {
+		return reconcile.Result{}, err
+	}
+	if unmanagedOrFiltered {
 		ulog.FromContext(ctx).Info("Object is currently not managed by this controller or namespace is filtered. Skipping reconciliation", "namespace", es.Namespace, "es_name", es.Name)
 		return reconcile.Result{}, nil
 	}

@@ -149,7 +149,11 @@ func (r *ReconcileKibana) Reconcile(ctx context.Context, request reconcile.Reque
 		return reconcile.Result{}, tracing.CaptureError(ctx, err)
 	}
 
-	if common.IsUnmanagedOrFiltered(ctx, r.Client, &kb, r.params) {
+	unmanagedOrFiltered, err := common.IsUnmanagedOrFiltered(ctx, r.Client, &kb, r.params)
+	if err != nil {
+		return reconcile.Result{}, tracing.CaptureError(ctx, err)
+	}
+	if unmanagedOrFiltered {
 		ulog.FromContext(ctx).Info("Object is currently not managed by this controller or namespace is filtered. Skipping reconciliation", "namespace", kb.Namespace, "kibana_name", kb.Name)
 		return reconcile.Result{}, nil
 	}

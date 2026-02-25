@@ -162,7 +162,11 @@ func (r *ReconcileMapsServer) Reconcile(ctx context.Context, request reconcile.R
 		return reconcile.Result{}, tracing.CaptureError(ctx, err)
 	}
 
-	if common.IsUnmanagedOrFiltered(ctx, r.Client, &ems, r.Parameters) {
+	unmanagedOrFiltered, err := common.IsUnmanagedOrFiltered(ctx, r.Client, &ems, r.Parameters)
+	if err != nil {
+		return reconcile.Result{}, tracing.CaptureError(ctx, err)
+	}
+	if unmanagedOrFiltered {
 		ulog.FromContext(ctx).Info("Object is currently not managed by this controller or namespace is filtered. Skipping reconciliation", "namespace", ems.Namespace, "maps_name", ems.Name)
 		return reconcile.Result{}, nil
 	}

@@ -37,26 +37,24 @@ func IsUnmanaged(ctx context.Context, object metav1.Object) bool {
 
 // IsUnmanagedOrFiltered checks if a given resource is currently unmanaged or if its namespace
 // should not be managed based on the operator's namespace label selector configuration.
-func IsUnmanagedOrFiltered(ctx context.Context, c client.Client, object metav1.Object, params operator.Parameters) bool {
+func IsUnmanagedOrFiltered(ctx context.Context, c client.Client, object metav1.Object, params operator.Parameters) (bool, error) {
 	log := ulog.FromContext(ctx)
 
 	// First check if the resource is explicitly unmanaged
 	if IsUnmanaged(ctx, object) {
-		return true
+		return true, nil
 	}
 
 	// Then check namespace filtering
 	shouldManage, err := params.ShouldManageNamespace(ctx, c, object.GetNamespace())
 	if err != nil {
-		log.Error(err, "Failed to check namespace management status", "namespace", object.GetNamespace(), "name", object.GetName())
-		// In case of error, default to not managing to be safe
-		return true
+		return false, err
 	}
 
 	if !shouldManage {
 		log.V(1).Info("Namespace is excluded by namespace label selector", "namespace", object.GetNamespace(), "name", object.GetName())
-		return true
+		return true, nil
 	}
 
-	return false
+	return false, nil
 }

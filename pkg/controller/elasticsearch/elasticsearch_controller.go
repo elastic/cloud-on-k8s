@@ -173,7 +173,11 @@ func (r *ReconcileElasticsearch) Reconcile(ctx context.Context, request reconcil
 		return reconcile.Result{}, tracing.CaptureError(ctx, err)
 	}
 
-	if common.IsUnmanagedOrFiltered(ctx, r.Client, &es, r.Parameters) {
+	unmanagedOrFiltered, err := common.IsUnmanagedOrFiltered(ctx, r.Client, &es, r.Parameters)
+	if err != nil {
+		return reconcile.Result{}, tracing.CaptureError(ctx, err)
+	}
+	if unmanagedOrFiltered {
 		log.Info("Object is currently not managed by this controller or namespace is filtered. Skipping reconciliation", "namespace", es.Namespace, "es_name", es.Name)
 		return reconcile.Result{}, nil
 	}

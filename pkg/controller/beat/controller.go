@@ -141,7 +141,11 @@ func (r *ReconcileBeat) Reconcile(ctx context.Context, request reconcile.Request
 		return reconcile.Result{}, tracing.CaptureError(ctx, err)
 	}
 
-	if common.IsUnmanagedOrFiltered(ctx, r.Client, &beat, r.Parameters) {
+	unmanagedOrFiltered, err := common.IsUnmanagedOrFiltered(ctx, r.Client, &beat, r.Parameters)
+	if err != nil {
+		return reconcile.Result{}, tracing.CaptureError(ctx, err)
+	}
+	if unmanagedOrFiltered {
 		ulog.FromContext(ctx).Info("Object is currently not managed by this controller or namespace is filtered. Skipping reconciliation", "namespace", beat.Namespace, "beat_name", beat.Name)
 		return reconcile.Result{}, nil
 	}
