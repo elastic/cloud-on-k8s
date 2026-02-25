@@ -3,36 +3,36 @@ name: eck-stack
 description: Elastic Stack managed by the ECK Operator
 kubeVersion: ">= 1.21.0-0"
 type: application
-version: 0.18.0
+version: 0.18.1
 
 dependencies:
   - name: eck-elasticsearch
     condition: eck-elasticsearch.enabled
-    version: "0.18.0"
+    version: "0.18.1"
   - name: eck-kibana
     condition: eck-kibana.enabled
-    version: "0.18.0"
+    version: "0.18.1"
   - name: eck-agent
     condition: eck-agent.enabled
-    version: "0.18.0"
+    version: "0.18.1"
   - name: eck-fleet-server
     condition: eck-fleet-server.enabled
-    version: "0.18.0"
+    version: "0.18.1"
   - name: eck-beats
     condition: eck-beats.enabled
-    version: "0.18.0"
+    version: "0.18.1"
   - name: eck-logstash
     condition: eck-logstash.enabled
-    version: "0.18.0"
+    version: "0.18.1"
   - name: eck-apm-server
     condition: eck-apm-server.enabled
-    version: "0.18.0"
+    version: "0.18.1"
   - name: eck-enterprise-search
     condition: eck-enterprise-search.enabled
-    version: "0.18.0"
+    version: "0.18.1"
   - name: eck-autoops-agent-policy
     condition: eck-autoops-agent-policy.enabled
-    version: "0.18.0"
+    version: "0.18.1"
   - name: eck-package-registry
     condition: eck-package-registry.enabled
-    version: "0.18.0"
+    version: "0.18.1"

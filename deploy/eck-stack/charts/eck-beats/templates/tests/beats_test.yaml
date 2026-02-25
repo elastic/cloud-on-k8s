@@ -63,7 +63,7 @@ tests:
             app.kubernetes.io/instance: quickstart
             app.kubernetes.io/managed-by: Helm
             app.kubernetes.io/name: eck-beats
-            helm.sh/chart: eck-beats-0.18.0
+            helm.sh/chart: eck-beats-0.18.1
       - equal:
           path: spec
           value:
@@ -136,7 +136,7 @@ tests:
             app.kubernetes.io/instance: quickstart
             app.kubernetes.io/managed-by: Helm
             app.kubernetes.io/name: eck-beats
-            helm.sh/chart: eck-beats-0.18.0
+            helm.sh/chart: eck-beats-0.18.1
       - equal:
           path: spec
           value:
