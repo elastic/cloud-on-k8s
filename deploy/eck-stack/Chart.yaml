@@ -3,7 +3,7 @@ name: eck-stack
 description: Elastic Stack managed by the ECK Operator
 kubeVersion: ">= 1.21.0-0"
 type: application
-version: 0.18.0
+version: 0.18.1
 
 dependencies:
   - name: eck-elasticsearch
@@ -32,7 +32,7 @@ dependencies:
     version: "0.18.0"
   - name: eck-autoops-agent-policy
     condition: eck-autoops-agent-policy.enabled
-    version: "0.18.0"
+    version: "0.18.1"
   - name: eck-package-registry
     condition: eck-package-registry.enabled
     version: "0.18.0"
