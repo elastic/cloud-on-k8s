@@ -100,16 +100,16 @@ bucket:
     namespace: default
 ```
 
-The `name` and `secret.name`/`secret.namespace` fields support Go template variables (e.g., `{{ .ClusterName }}`).
+The `name` and `secret.name`/`secret.namespace` fields support Go template variables (for example, `{{ .ClusterName }}`).
 
 ### Provider-specific behavior
 
-**GKE / OCP (Google Cloud Storage)**
+**GKE / OCP / Kind / K3D (Google Cloud Storage)**
 
 Creates a GCS bucket and a service account with `roles/storage.objectAdmin` scoped to that bucket. The Secret contains:
 - `gcs.client.default.credentials_file` — the service account JSON key
 
-OCP clusters run on GCP, so they use the same GCS bucket provisioning as GKE.
+OCP clusters run on GCP, so they use the same GCS bucket provisioning as GKE. Kind and K3D also use GCS buckets.
 
 **AKS (Azure Blob Storage)**
 

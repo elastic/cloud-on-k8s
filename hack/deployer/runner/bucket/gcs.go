@@ -273,5 +273,3 @@ func retry(cmd string, maxAttempts int, sleep time.Duration) error {
 	}
 	return err
 }
-
-}
