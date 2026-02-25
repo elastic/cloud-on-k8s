@@ -6,6 +6,7 @@ package runner
 
 import (
 	"fmt"
+	"maps"
 
 	"github.com/elastic/cloud-on-k8s/v3/hack/deployer/runner/bucket"
 )
@@ -33,9 +34,7 @@ func newBucketConfig(plan Plan, ctx map[string]any, region string) (bucket.Confi
 	}
 
 	labels := make(map[string]string)
-	for k, v := range elasticTags {
-		labels[k] = v
-	}
+	maps.Copy(labels, elasticTags)
 	labels["cluster_name"] = plan.ClusterName
 	labels["plan_id"] = plan.Id
 	labels["managed_by"] = "eck-deployer"

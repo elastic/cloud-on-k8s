@@ -231,7 +231,7 @@ func (s *S3Manager) deleteIAMUser() error {
 	listKeysCmd := fmt.Sprintf(`aws iam list-access-keys --user-name %s --query "AccessKeyMetadata[].AccessKeyId" --output text`, userName)
 	keysOutput, err := exec.NewCommand(listKeysCmd).WithoutStreaming().Output()
 	if err == nil {
-		for _, keyID := range strings.Fields(strings.TrimSpace(keysOutput)) {
+		for keyID := range strings.FieldsSeq(strings.TrimSpace(keysOutput)) {
 			delKeyCmd := fmt.Sprintf("aws iam delete-access-key --user-name %s --access-key-id %s", userName, keyID)
 			if err := exec.NewCommand(delKeyCmd).WithoutStreaming().Run(); err != nil {
 				log.Printf("warning: failed to delete access key %s: %v", keyID, err)

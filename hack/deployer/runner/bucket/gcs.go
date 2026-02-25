@@ -110,12 +110,12 @@ func (g *GCSManager) createBucket() error {
 // labelBucket applies resource labels to the GCS bucket. This is a separate call because
 // gcloud storage buckets create does not support the --labels flag.
 func (g *GCSManager) labelBucket() error {
-	var labelParts []string
+	if len(g.cfg.Labels) == 0 {
+		return nil
+	}
+	labelParts := make([]string, 0, len(g.cfg.Labels))
 	for k, v := range g.cfg.Labels {
 		labelParts = append(labelParts, fmt.Sprintf("%s=%s", k, v))
-	}
-	if len(labelParts) == 0 {
-		return nil
 	}
 
 	log.Printf("Labeling GCS bucket %s...", g.cfg.Name)
@@ -262,7 +262,7 @@ func (g *GCSManager) deleteBucket() error {
 // This is useful when a GCP resource was just created and may not have propagated yet.
 func retry(cmd string, maxAttempts int, sleep time.Duration) error {
 	var err error
-	for i := 0; i < maxAttempts; i++ {
+	for i := range maxAttempts {
 		if err = exec.NewCommand(cmd).Run(); err == nil {
 			return nil
 		}

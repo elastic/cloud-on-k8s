@@ -97,9 +97,9 @@ func createK8sSecret(secretName, secretNamespace string, data map[string]string)
 	}
 
 	// Build the Secret YAML with the label included at creation time
-	var dataEntries string
+	var dataEntries strings.Builder
 	for k, v := range data {
-		dataEntries += fmt.Sprintf("  %s: %s\n", k, base64.StdEncoding.EncodeToString([]byte(v)))
+		dataEntries.WriteString(fmt.Sprintf("  %s: %s\n", k, base64.StdEncoding.EncodeToString([]byte(v))))
 	}
 
 	secretYAML := fmt.Sprintf(`apiVersion: v1
@@ -111,7 +111,7 @@ metadata:
     managed-by: eck-deployer
 type: Opaque
 data:
-%s`, secretName, secretNamespace, dataEntries)
+%s`, secretName, secretNamespace, dataEntries.String())
 
 	cmd := fmt.Sprintf(`cat <<'EOF' | kubectl apply -f -
 %s
@@ -122,4 +122,3 @@ EOF`, secretYAML)
 	}
 	return nil
 }
-
