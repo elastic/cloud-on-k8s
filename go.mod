@@ -10,7 +10,7 @@ require (
 	github.com/Masterminds/sprig/v3 v3.3.0
 	github.com/blang/semver/v4 v4.0.0
 	github.com/davecgh/go-spew v1.1.2-0.20180830191138-d8f796af33cc
-	github.com/elastic/go-ucfg v0.8.9-0.20260108155023-368693374ae9
+	github.com/elastic/go-ucfg v0.9.0
 	github.com/ghodss/yaml v1.0.0
 	github.com/gkampitakis/go-snaps v0.5.19
 	github.com/go-logr/logr v1.4.3
