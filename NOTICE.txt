@@ -777,11 +777,11 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 --------------------------------------------------------------------------------
 Module  : github.com/google/go-containerregistry
-Version : v0.20.7
-Time    : 2025-11-24T22:20:20Z
+Version : v0.21.1
+Time    : 2026-02-24T03:15:29Z
 Licence : Apache-2.0
 
-Contents of probable licence file $GOMODCACHE/github.com/google/go-containerregistry@v0.20.7/LICENSE:
+Contents of probable licence file $GOMODCACHE/github.com/google/go-containerregistry@v0.21.1/LICENSE:
 
 
                                  Apache License
@@ -6313,11 +6313,11 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 --------------------------------------------------------------------------------
 Module  : github.com/containerd/stargz-snapshotter/estargz
-Version : v0.18.1
-Time    : 2025-11-06T04:31:34Z
+Version : v0.18.2
+Time    : 2026-01-21T14:16:27Z
 Licence : Apache-2.0
 
-Contents of probable licence file $GOMODCACHE/github.com/containerd/stargz-snapshotter/estargz@v0.18.1/LICENSE:
+Contents of probable licence file $GOMODCACHE/github.com/containerd/stargz-snapshotter/estargz@v0.18.2/LICENSE:
 
 
                                  Apache License
@@ -6525,11 +6525,11 @@ Contents of probable licence file $GOMODCACHE/github.com/containerd/stargz-snaps
 
 --------------------------------------------------------------------------------
 Module  : github.com/docker/cli
-Version : v29.0.3+incompatible
-Time    : 2025-11-20T16:31:07Z
+Version : v29.2.1+incompatible
+Time    : 2026-02-02T16:33:58Z
 Licence : Apache-2.0
 
-Contents of probable licence file $GOMODCACHE/github.com/docker/cli@v29.0.3+incompatible/LICENSE:
+Contents of probable licence file $GOMODCACHE/github.com/docker/cli@v29.2.1+incompatible/LICENSE:
 
 
                                  Apache License
@@ -13555,11 +13555,11 @@ SOFTWARE.
 
 --------------------------------------------------------------------------------
 Module  : github.com/klauspost/compress
-Version : v1.18.1
-Time    : 2025-10-02T12:00:22Z
+Version : v1.18.4
+Time    : 2026-02-05T15:29:14Z
 Licence : Apache-2.0
 
-Contents of probable licence file $GOMODCACHE/github.com/klauspost/compress@v1.18.1/LICENSE:
+Contents of probable licence file $GOMODCACHE/github.com/klauspost/compress@v1.18.4/LICENSE:
 
 Copyright (c) 2012 The Go Authors. All rights reserved.
 Copyright (c) 2019 Klaus Post. All rights reserved.
@@ -19520,11 +19520,11 @@ limitations under the License.
 
 --------------------------------------------------------------------------------
 Module  : golang.org/x/mod
-Version : v0.32.0
-Time    : 2026-01-09T16:07:51Z
+Version : v0.33.0
+Time    : 2026-02-09T16:11:19Z
 Licence : BSD-3-Clause
 
-Contents of probable licence file $GOMODCACHE/golang.org/x/mod@v0.32.0/LICENSE:
+Contents of probable licence file $GOMODCACHE/golang.org/x/mod@v0.33.0/LICENSE:
 
 Copyright 2009 The Go Authors.
 
@@ -19557,11 +19557,11 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 --------------------------------------------------------------------------------
 Module  : golang.org/x/net
-Version : v0.49.0
-Time    : 2026-01-12T16:15:11Z
+Version : v0.50.0
+Time    : 2026-02-09T17:11:27Z
 Licence : BSD-3-Clause
 
-Contents of probable licence file $GOMODCACHE/golang.org/x/net@v0.49.0/LICENSE:
+Contents of probable licence file $GOMODCACHE/golang.org/x/net@v0.50.0/LICENSE:
 
 Copyright 2009 The Go Authors.
 
@@ -19594,11 +19594,11 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 --------------------------------------------------------------------------------
 Module  : golang.org/x/oauth2
-Version : v0.34.0
-Time    : 2025-12-01T17:43:47Z
+Version : v0.35.0
+Time    : 2026-01-12T19:50:33Z
 Licence : BSD-3-Clause
 
-Contents of probable licence file $GOMODCACHE/golang.org/x/oauth2@v0.34.0/LICENSE:
+Contents of probable licence file $GOMODCACHE/golang.org/x/oauth2@v0.35.0/LICENSE:
 
 Copyright 2009 The Go Authors.
 
@@ -19816,11 +19816,11 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 --------------------------------------------------------------------------------
 Module  : golang.org/x/tools
-Version : v0.41.0
-Time    : 2026-01-12T17:22:29Z
+Version : v0.42.0
+Time    : 2026-02-09T18:28:22Z
 Licence : BSD-3-Clause
 
-Contents of probable licence file $GOMODCACHE/golang.org/x/tools@v0.41.0/LICENSE:
+Contents of probable licence file $GOMODCACHE/golang.org/x/tools@v0.42.0/LICENSE:
 
 Copyright 2009 The Go Authors.
 
