@@ -25,11 +25,13 @@ Extend the operator to support a label selector for namespaces. The operator man
 **Advantage:** Flexible, scalable, and easy to maintain in dynamic environments.
 
 ### Option 4: One operator per cluster
+
 Deploy a separate Kubernetes cluster for each environment, with one operator per cluster. This provides strong isolation between environments.
 
 **Drawbacks:**
+
 - Significantly higher resource usage and operational overhead.
-- Elasticsearch clusters must be exposed via ingress or other networking solutions for cross-cluster communication, increasing complexity and potential security risks.
+- Elasticsearch clusters must be exposed using ingress or other networking solutions for cross-cluster communication, increasing complexity and potential security risks.
 
 ## Decision Outcome
 
@@ -68,7 +70,7 @@ metadata:
     environment: production
 ```
 
-Any resources (such as Elasticsearch, Kibana, etc.) in `my-namespace` will only be managed by the operator if the namespace itself has the correct label.
+Any resources (such as Elasticsearch, Kibana, and so on) in `my-namespace` will only be managed by the operator if the namespace itself has the correct label.
 
 ## Conclusion
 
