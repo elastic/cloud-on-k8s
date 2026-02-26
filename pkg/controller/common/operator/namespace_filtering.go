@@ -18,6 +18,10 @@ import (
 // ShouldManageNamespace determines if the operator should manage resources in the given namespace
 // based on the configured namespace label selector.
 func (p Parameters) ShouldManageNamespace(ctx context.Context, c client.Client, namespace string) (bool, error) {
+	if p.NamespaceFilter != nil {
+		return p.NamespaceFilter.ShouldManage(namespace), nil
+	}
+
 	// If no namespace label selector is configured, manage all namespaces (backwards compatibility)
 	if p.NamespaceLabelSelector == nil {
 		return true, nil

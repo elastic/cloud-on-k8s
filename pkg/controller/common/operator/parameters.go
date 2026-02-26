@@ -55,4 +55,6 @@ type Parameters struct {
 	Tracer *apm.Tracer
 	// NamespaceLabelSelector optionally filters namespaces by labels
 	NamespaceLabelSelector *metav1.LabelSelector
+	// NamespaceFilter caches managed namespaces and can be updated dynamically by namespace events
+	NamespaceFilter *NamespaceFilter
 }
