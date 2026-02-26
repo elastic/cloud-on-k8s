@@ -305,9 +305,9 @@ func zoneAwarenessSchedulingDirectives(
 	topologyKey := nodeSet.ZoneAwareness.TopologyKeyOrDefault()
 	spreadConstraints := []corev1.TopologySpreadConstraint{
 		{
-			MaxSkew:           nodeSet.ZoneAwareness.MaxSkewOrDefault(),
+			MaxSkew:           1,
 			TopologyKey:       topologyKey,
-			WhenUnsatisfiable: nodeSet.ZoneAwareness.WhenUnsatisfiableOrDefault(),
+			WhenUnsatisfiable: corev1.DoNotSchedule,
 			LabelSelector: &metav1.LabelSelector{
 				MatchLabels: map[string]string{
 					label.ClusterNameLabelName:     clusterName,

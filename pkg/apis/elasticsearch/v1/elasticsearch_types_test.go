@@ -13,7 +13,6 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/utils/ptr"
 
@@ -319,9 +318,7 @@ func TestElasticsearch_DownwardNodeLabels(t *testing.T) {
 						{
 							Name: "default",
 							ZoneAwareness: &ZoneAwareness{
-								TopologySpreadConstraint: corev1.TopologySpreadConstraint{
-									TopologyKey: "  ",
-								},
+								TopologyKey: "  ",
 							},
 						},
 					},
@@ -342,17 +339,13 @@ func TestElasticsearch_DownwardNodeLabels(t *testing.T) {
 						{
 							Name: "default",
 							ZoneAwareness: &ZoneAwareness{
-								TopologySpreadConstraint: corev1.TopologySpreadConstraint{
-									TopologyKey: "custom.io/rack",
-								},
+								TopologyKey: "custom.io/rack",
 							},
 						},
 						{
 							Name: "za-default",
 							ZoneAwareness: &ZoneAwareness{
-								TopologySpreadConstraint: corev1.TopologySpreadConstraint{
-									TopologyKey: DefaultZoneAwarenessTopologyKey,
-								},
+								TopologyKey: DefaultZoneAwarenessTopologyKey,
 							},
 						},
 					},
@@ -365,64 +358,6 @@ func TestElasticsearch_DownwardNodeLabels(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			assert.Equal(t, tt.want, tt.es.DownwardNodeLabels())
-		})
-	}
-}
-
-func TestZoneAwareness_MaxSkewOrDefault(t *testing.T) {
-	tests := []struct {
-		name string
-		za   ZoneAwareness
-		want int32
-	}{
-		{
-			name: "returns default when unset",
-			za:   ZoneAwareness{},
-			want: 1,
-		},
-		{
-			name: "returns configured max skew",
-			za: ZoneAwareness{
-				TopologySpreadConstraint: corev1.TopologySpreadConstraint{
-					MaxSkew: 3,
-				},
-			},
-			want: 3,
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			assert.Equal(t, tt.want, tt.za.MaxSkewOrDefault())
-		})
-	}
-}
-
-func TestZoneAwareness_WhenUnsatisfiableOrDefault(t *testing.T) {
-	tests := []struct {
-		name string
-		za   ZoneAwareness
-		want corev1.UnsatisfiableConstraintAction
-	}{
-		{
-			name: "returns default when unset",
-			za:   ZoneAwareness{},
-			want: corev1.DoNotSchedule,
-		},
-		{
-			name: "returns configured action",
-			za: ZoneAwareness{
-				TopologySpreadConstraint: corev1.TopologySpreadConstraint{
-					WhenUnsatisfiable: corev1.ScheduleAnyway,
-				},
-			},
-			want: corev1.ScheduleAnyway,
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			assert.Equal(t, tt.want, tt.za.WhenUnsatisfiableOrDefault())
 		})
 	}
 }

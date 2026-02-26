@@ -622,9 +622,7 @@ func Test_validNodeLabels(t *testing.T) {
 							{
 								Name: "default",
 								ZoneAwareness: &esv1.ZoneAwareness{
-									TopologySpreadConstraint: corev1.TopologySpreadConstraint{
-										TopologyKey: "custom.io/rack",
-									},
+									TopologyKey: "custom.io/rack",
 								},
 							},
 						},
@@ -670,7 +668,7 @@ func Test_validZoneAwarenessTopologyKeys(t *testing.T) {
 				Spec: esv1.ElasticsearchSpec{
 					NodeSets: []esv1.NodeSet{
 						{Name: "a", ZoneAwareness: &esv1.ZoneAwareness{}},
-						{Name: "b", ZoneAwareness: &esv1.ZoneAwareness{TopologySpreadConstraint: corev1.TopologySpreadConstraint{TopologyKey: esv1.DefaultZoneAwarenessTopologyKey}}},
+						{Name: "b", ZoneAwareness: &esv1.ZoneAwareness{TopologyKey: esv1.DefaultZoneAwarenessTopologyKey}},
 					},
 				},
 			},
@@ -680,8 +678,8 @@ func Test_validZoneAwarenessTopologyKeys(t *testing.T) {
 			es: esv1.Elasticsearch{
 				Spec: esv1.ElasticsearchSpec{
 					NodeSets: []esv1.NodeSet{
-						{Name: "a", ZoneAwareness: &esv1.ZoneAwareness{TopologySpreadConstraint: corev1.TopologySpreadConstraint{TopologyKey: "custom.io/rack"}}},
-						{Name: "b", ZoneAwareness: &esv1.ZoneAwareness{TopologySpreadConstraint: corev1.TopologySpreadConstraint{TopologyKey: "custom.io/rack"}}},
+						{Name: "a", ZoneAwareness: &esv1.ZoneAwareness{TopologyKey: "custom.io/rack"}},
+						{Name: "b", ZoneAwareness: &esv1.ZoneAwareness{TopologyKey: "custom.io/rack"}},
 					},
 				},
 			},
@@ -692,7 +690,7 @@ func Test_validZoneAwarenessTopologyKeys(t *testing.T) {
 				Spec: esv1.ElasticsearchSpec{
 					NodeSets: []esv1.NodeSet{
 						{Name: "a", ZoneAwareness: &esv1.ZoneAwareness{}},
-						{Name: "b", ZoneAwareness: &esv1.ZoneAwareness{TopologySpreadConstraint: corev1.TopologySpreadConstraint{TopologyKey: "custom.io/rack"}}},
+						{Name: "b", ZoneAwareness: &esv1.ZoneAwareness{TopologyKey: "custom.io/rack"}},
 					},
 				},
 			},
@@ -702,8 +700,8 @@ func Test_validZoneAwarenessTopologyKeys(t *testing.T) {
 			es: esv1.Elasticsearch{
 				Spec: esv1.ElasticsearchSpec{
 					NodeSets: []esv1.NodeSet{
-						{Name: "a", ZoneAwareness: &esv1.ZoneAwareness{TopologySpreadConstraint: corev1.TopologySpreadConstraint{TopologyKey: "custom.io/room"}}},
-						{Name: "b", ZoneAwareness: &esv1.ZoneAwareness{TopologySpreadConstraint: corev1.TopologySpreadConstraint{TopologyKey: "custom.io/rack"}}},
+						{Name: "a", ZoneAwareness: &esv1.ZoneAwareness{TopologyKey: "custom.io/room"}},
+						{Name: "b", ZoneAwareness: &esv1.ZoneAwareness{TopologyKey: "custom.io/rack"}},
 					},
 				},
 			},
@@ -713,7 +711,7 @@ func Test_validZoneAwarenessTopologyKeys(t *testing.T) {
 			es: esv1.Elasticsearch{
 				Spec: esv1.ElasticsearchSpec{
 					NodeSets: []esv1.NodeSet{
-						{Name: "a", ZoneAwareness: &esv1.ZoneAwareness{TopologySpreadConstraint: corev1.TopologySpreadConstraint{TopologyKey: "custom.io/rack"}}},
+						{Name: "a", ZoneAwareness: &esv1.ZoneAwareness{TopologyKey: "custom.io/rack"}},
 						{Name: "b"},
 					},
 				},
@@ -724,8 +722,8 @@ func Test_validZoneAwarenessTopologyKeys(t *testing.T) {
 			es: esv1.Elasticsearch{
 				Spec: esv1.ElasticsearchSpec{
 					NodeSets: []esv1.NodeSet{
-						{Name: "a", ZoneAwareness: &esv1.ZoneAwareness{TopologySpreadConstraint: corev1.TopologySpreadConstraint{TopologyKey: "custom.io/rack"}}},
-						{Name: "b", ZoneAwareness: &esv1.ZoneAwareness{TopologySpreadConstraint: corev1.TopologySpreadConstraint{TopologyKey: "custom.io/room"}}},
+						{Name: "a", ZoneAwareness: &esv1.ZoneAwareness{TopologyKey: "custom.io/rack"}},
+						{Name: "b", ZoneAwareness: &esv1.ZoneAwareness{TopologyKey: "custom.io/room"}},
 						{Name: "c"},
 					},
 				},

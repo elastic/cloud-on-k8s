@@ -363,8 +363,14 @@ const (
 )
 
 // ZoneAwareness configures topology-aware scheduling and shard-awareness defaults for a NodeSet.
+// The operator provides sensible defaults for topology spread constraints (maxSkew=1,
+// whenUnsatisfiable=DoNotSchedule). To customize these, provide a matching topology spread
+// constraint via podTemplate.spec.topologySpreadConstraints with the same topologyKey.
 type ZoneAwareness struct {
-	corev1.TopologySpreadConstraint `json:",inline"`
+	// TopologyKey is the key of node labels used for zone-aware placement.
+	// Defaults to "topology.kubernetes.io/zone".
+	// +kubebuilder:validation:Optional
+	TopologyKey string `json:"topologyKey,omitempty"`
 
 	// Zones optionally restrict scheduling to the listed topology values.
 	// If empty, Pods can be scheduled in any topology value for the selected topologyKey.
@@ -374,27 +380,12 @@ type ZoneAwareness struct {
 	Zones []string `json:"zones,omitempty"`
 }
 
+// TopologyKeyOrDefault returns the configured topology key or the default.
 func (za ZoneAwareness) TopologyKeyOrDefault() string {
 	if strings.TrimSpace(za.TopologyKey) == "" {
 		return DefaultZoneAwarenessTopologyKey
 	}
 	return za.TopologyKey
-}
-
-// MaxSkewOrDefault returns the configured max skew or the default value when unset.
-func (za ZoneAwareness) MaxSkewOrDefault() int32 {
-	if za.MaxSkew > 0 {
-		return za.MaxSkew
-	}
-	return 1
-}
-
-// WhenUnsatisfiableOrDefault returns the configured unsatisfiable action or the default.
-func (za ZoneAwareness) WhenUnsatisfiableOrDefault() corev1.UnsatisfiableConstraintAction {
-	if za.WhenUnsatisfiable != "" {
-		return za.WhenUnsatisfiable
-	}
-	return corev1.DoNotSchedule
 }
 
 // +kubebuilder:object:generate=false
@@ -420,6 +411,8 @@ func (nsl NodeSetList) HasZoneAwareness() bool {
 
 // ZoneAwarenessTopologyKey returns the topology key from the first zone-aware NodeSet,
 // used as a fallback for non-zone-aware NodeSets in the same cluster.
+// When a non-zone-aware NodeSet exists, validation guarantees all zone-aware
+// NodeSets share the same topology key, so iteration order is irrelevant.
 func (nsl NodeSetList) ZoneAwarenessTopologyKey() string {
 	for _, nodeSet := range nsl {
 		if nodeSet.ZoneAwareness == nil {

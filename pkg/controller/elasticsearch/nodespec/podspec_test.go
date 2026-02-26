@@ -527,9 +527,7 @@ func TestElasticsearch_DownwardNodeLabelsHashInput(t *testing.T) {
 						{
 							Name: "with-za",
 							ZoneAwareness: &esv1.ZoneAwareness{
-								TopologySpreadConstraint: corev1.TopologySpreadConstraint{
-									TopologyKey: "topology.custom.io/rack",
-								},
+								TopologyKey: "topology.custom.io/rack",
 							},
 						},
 					},
@@ -606,12 +604,7 @@ func TestBuildPodTemplateSpec_ZoneAwarenessScenarios(t *testing.T) {
 			name: "existing user spread constraint is preserved",
 			buildES: func() esv1.Elasticsearch {
 				es := newEsSampleBuilder().withVersion("8.14.0").build()
-				es.Spec.NodeSets[0].ZoneAwareness = &esv1.ZoneAwareness{
-					TopologySpreadConstraint: corev1.TopologySpreadConstraint{
-						MaxSkew:           3,
-						WhenUnsatisfiable: corev1.ScheduleAnyway,
-					},
-				}
+				es.Spec.NodeSets[0].ZoneAwareness = &esv1.ZoneAwareness{}
 				es.Spec.NodeSets[0].PodTemplate.Spec.TopologySpreadConstraints = []corev1.TopologySpreadConstraint{
 					{
 						MaxSkew:           9,
@@ -668,9 +661,7 @@ func TestBuildPodTemplateSpec_ZoneAwarenessScenarios(t *testing.T) {
 						Name:  "with-za",
 						Count: 1,
 						ZoneAwareness: &esv1.ZoneAwareness{
-							TopologySpreadConstraint: corev1.TopologySpreadConstraint{
-								TopologyKey: "topology.custom.io/rack",
-							},
+							TopologyKey: "topology.custom.io/rack",
 						},
 						Config: &commonv1.Config{
 							Data: map[string]any{
@@ -733,9 +724,7 @@ func Test_zoneAwarenessEnv(t *testing.T) {
 			name: "returns nil when cluster has no zone awareness even if nodeset has zone awareness",
 			nodeSet: esv1.NodeSet{
 				ZoneAwareness: &esv1.ZoneAwareness{
-					TopologySpreadConstraint: corev1.TopologySpreadConstraint{
-						TopologyKey: "topology.custom.io/rack",
-					},
+					TopologyKey: "topology.custom.io/rack",
 				},
 			},
 			clusterHasZoneAwareness: false,
@@ -781,9 +770,7 @@ func Test_zoneAwarenessEnv(t *testing.T) {
 			name: "uses custom topology key when provided in nodeset zone awareness",
 			nodeSet: esv1.NodeSet{
 				ZoneAwareness: &esv1.ZoneAwareness{
-					TopologySpreadConstraint: corev1.TopologySpreadConstraint{
-						TopologyKey: "topology.custom.io/rack",
-					},
+					TopologyKey: "topology.custom.io/rack",
 				},
 			},
 			clusterHasZoneAwareness: true,
@@ -844,17 +831,13 @@ func TestNodeSetListZoneAwarenessTopologyKey(t *testing.T) {
 				{
 					Name: "b",
 					ZoneAwareness: &esv1.ZoneAwareness{
-						TopologySpreadConstraint: corev1.TopologySpreadConstraint{
-							TopologyKey: "topology.custom.io/rack",
-						},
+						TopologyKey: "topology.custom.io/rack",
 					},
 				},
 				{
 					Name: "c",
 					ZoneAwareness: &esv1.ZoneAwareness{
-						TopologySpreadConstraint: corev1.TopologySpreadConstraint{
-							TopologyKey: "topology.custom.io/rack",
-						},
+						TopologyKey: "topology.custom.io/rack",
 					},
 				},
 			},
