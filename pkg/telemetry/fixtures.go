@@ -40,7 +40,7 @@ func renderExpectedTemplate(t *testing.T, data TemplateData) []byte {
 	return tplBuffer.Bytes()
 }
 
-// When change are made to this template, ensure that the index field
+// When changes/additions are made to this template, ensure that the index field
 // mappings are also updated to allow these new fields to be indexed.
 // (see internal telemetry documentation)
 const expectedTelemetryTemplate = `eck:

@@ -2,6 +2,9 @@
 // or more contributor license agreements. Licensed under the Elastic License 2.0;
 // you may not use this file except in compliance with the Elastic License 2.0.
 
+// When changes/additions are made to the following code, ensure that the index field
+// mappings are also updated to allow these new fields to be indexed.
+// (see internal telemetry documentation)
 package telemetry
 
 import (
@@ -331,7 +334,8 @@ func apmStats(k8sClient k8s.Client, managedNamespaces []string) (string, any, er
 	stats := map[string]int32{
 		resourceCount:            0,
 		podCount:                 0,
-		helmManagedResourceCount: 0}
+		helmManagedResourceCount: 0,
+	}
 
 	var apmList apmv1.ApmServerList
 	for _, ns := range managedNamespaces {
@@ -356,7 +360,8 @@ func beatStats(k8sClient k8s.Client, managedNamespaces []string) (string, any, e
 	stats := map[string]int32{
 		resourceCount:            0,
 		podCount:                 0,
-		helmManagedResourceCount: 0}
+		helmManagedResourceCount: 0,
+	}
 	for typ := range beatv1beta1.KnownTypes {
 		stats[typeToName(typ)] = 0
 	}
@@ -384,7 +389,8 @@ func entStats(k8sClient k8s.Client, managedNamespaces []string) (string, any, er
 	stats := map[string]int32{
 		resourceCount:            0,
 		podCount:                 0,
-		helmManagedResourceCount: 0}
+		helmManagedResourceCount: 0,
+	}
 
 	var entList entv1.EnterpriseSearchList
 	for _, ns := range managedNamespaces {
@@ -411,7 +417,8 @@ func agentStats(k8sClient k8s.Client, managedNamespaces []string) (string, any, 
 		resourceCount:            0,
 		podCount:                 0,
 		multipleRefsKey:          0,
-		helmManagedResourceCount: 0}
+		helmManagedResourceCount: 0,
+	}
 
 	var agentList agentv1alpha1.AgentList
 	for _, ns := range managedNamespaces {
@@ -455,7 +462,8 @@ func logstashStats(k8sClient k8s.Client, managedNamespaces []string) (string, an
 		serviceCount:                0,
 		pipelineCount:               0,
 		pipelineRefCount:            0,
-		helmManagedResourceCount:    0}
+		helmManagedResourceCount:    0,
+	}
 
 	var logstashList logstashv1alpha1.LogstashList
 	for _, ns := range managedNamespaces {
