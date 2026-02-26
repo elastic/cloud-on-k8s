@@ -71,6 +71,9 @@ testParams:
   - name: v330
     operatorVersion: 3.3.0
     stackVersion: 9.3.0
+  - name: v331
+    operatorVersion: 3.3.1
+    stackVersion: 9.3.0
   - name: upcoming
     operatorVersion: 3.4.0-SNAPSHOT
     stackVersion: 9.4.0-SNAPSHOT
