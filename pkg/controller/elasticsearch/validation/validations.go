@@ -104,26 +104,6 @@ func validNodeLabels(proposed esv1.Elasticsearch, exposedNodeLabels NodeLabels) 
 		)
 	}
 
-	for i, nodeSet := range proposed.Spec.NodeSets {
-		if nodeSet.ZoneAwareness == nil {
-			continue
-		}
-		topologyKey := nodeSet.ZoneAwareness.TopologyKeyOrDefault()
-		if annotationLabels.Has(topologyKey) {
-			continue
-		}
-		if exposedNodeLabels.IsAllowed(topologyKey) {
-			continue
-		}
-		errs = append(
-			errs,
-			field.Invalid(
-				field.NewPath("spec").Child("nodeSets").Index(i).Child("zoneAwareness", "topologyKey"),
-				topologyKey,
-				notAllowedNodesLabelMsg,
-			),
-		)
-	}
 	return errs
 }
 

@@ -252,7 +252,7 @@ func Command() *cobra.Command {
 	)
 	cmd.Flags().StringSlice(
 		operator.ExposedNodeLabels,
-		[]string{"topology.kubernetes.io/.*", "failure-domain.beta.kubernetes.io/.*"},
+		[]string{},
 		"Comma separated list of node labels which are allowed to be copied as annotations on Elasticsearch Pods",
 	)
 	cmd.Flags().Int(

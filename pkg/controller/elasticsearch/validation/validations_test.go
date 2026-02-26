@@ -599,7 +599,7 @@ func Test_validNodeLabels(t *testing.T) {
 			},
 		},
 		{
-			name: "Zone awareness default topology key is allowed",
+			name: "Zone awareness default topology key allowed without exposed-node-labels",
 			args: args{
 				proposed: esv1.Elasticsearch{
 					Spec: esv1.ElasticsearchSpec{
@@ -611,11 +611,10 @@ func Test_validNodeLabels(t *testing.T) {
 						},
 					},
 				},
-				exposedNodeLabels: []string{"topology.kubernetes.io/*"},
 			},
 		},
 		{
-			name: "Zone awareness custom topology key must be exposed",
+			name: "Zone awareness custom topology key allowed without exposed-node-labels",
 			args: args{
 				proposed: esv1.Elasticsearch{
 					Spec: esv1.ElasticsearchSpec{
@@ -631,10 +630,6 @@ func Test_validNodeLabels(t *testing.T) {
 						},
 					},
 				},
-				exposedNodeLabels: []string{"topology.kubernetes.io/*"},
-			},
-			expectedFields: []string{
-				field.NewPath("spec").Child("nodeSets").Index(0).Child("zoneAwareness", "topologyKey").String(),
 			},
 		},
 	}
