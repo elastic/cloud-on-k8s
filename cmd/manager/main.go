@@ -91,8 +91,8 @@ import (
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/logstash"
 	lsvalidation "github.com/elastic/cloud-on-k8s/v3/pkg/controller/logstash/validation"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/maps"
-	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/packageregistry"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/namespacefilter"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/packageregistry"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/remotecluster"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/stackconfigpolicy"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/webhook"
@@ -609,22 +609,16 @@ func startOperator(ctx context.Context) error {
 
 	namespaceLabelSelectorStr := viper.GetString(operator.NamespaceLabelSelectorFlag)
 	configuredNamespaces := managedNamespaces
-	managedNamespaces, namespaceLabelSelector, err := resolveManagedNamespaces(ctx, clientset, configuredNamespaces, namespaceLabelSelectorStr)
+	managedNamespaces, namespaceLabelSelector, namespaceFilter, restrictedScope, err := initializeNamespaceScoping(ctx, clientset, configuredNamespaces, namespaceLabelSelectorStr)
 	if err != nil {
-		log.Error(err, "Failed to resolve managed namespaces from selector", "selector", namespaceLabelSelectorStr)
+		log.Error(err, "Failed to initialize namespace scoping", "selector", namespaceLabelSelectorStr)
 		return err
 	}
 
-	var namespaceFilter *operator.NamespaceFilter
-	if namespaceLabelSelector != nil {
-		namespaceFilter, err = operator.NewNamespaceFilter(namespaceLabelSelector, configuredNamespaces, managedNamespaces)
-		if err != nil {
-			log.Error(err, "Failed to initialize namespace filter")
-			return err
-		}
+	if restrictedScope && namespaceLabelSelectorStr != "" {
+		log.Info("Ignoring namespace label selector in restricted scope", "selector", namespaceLabelSelectorStr, "configured_namespaces", configuredNamespaces)
 	}
 
-	restrictedScope := len(configuredNamespaces) > 0
 	if !restrictedScope {
 		if namespaceLabelSelector == nil {
 			log.Info("Operator configured to manage all namespaces")
@@ -638,16 +632,10 @@ func startOperator(ctx context.Context) error {
 		sort.Strings(managedNamespaces)
 
 		switch {
-		case namespaceLabelSelector != nil && len(managedNamespaces) == 1 && managedNamespaces[0] == operatorNamespace:
-			log.Info("No managed namespaces configured; limiting cache to operator namespace", "operator_namespace", operatorNamespace, "selector", namespaceLabelSelectorStr)
 		case len(managedNamespaces) == 1:
 			log.Info("Operator configured to manage a single namespace", "namespace", managedNamespaces[0], "operator_namespace", operatorNamespace)
 		default:
 			log.Info("Operator configured to manage multiple namespaces", "namespaces", managedNamespaces, "operator_namespace", operatorNamespace)
-		}
-
-		if namespaceLabelSelector != nil {
-			log.Info("Namespace label selector configured", "selector", namespaceLabelSelector)
 		}
 	}
 
@@ -897,6 +885,34 @@ func resolveManagedNamespaces(
 	}
 
 	return filteredNamespaces, namespaceLabelSelector, nil
+}
+
+func initializeNamespaceScoping(
+	ctx context.Context,
+	clientset kubernetes.Interface,
+	configuredNamespaces []string,
+	namespaceLabelSelectorStr string,
+) ([]string, *metav1.LabelSelector, *operator.NamespaceFilter, bool, error) {
+	restrictedScope := len(configuredNamespaces) > 0
+	if restrictedScope {
+		return configuredNamespaces, nil, nil, true, nil
+	}
+
+	managedNamespaces, namespaceLabelSelector, err := resolveManagedNamespaces(ctx, clientset, configuredNamespaces, namespaceLabelSelectorStr)
+	if err != nil {
+		return nil, nil, nil, false, err
+	}
+
+	if namespaceLabelSelector == nil {
+		return managedNamespaces, nil, nil, false, nil
+	}
+
+	namespaceFilter, err := operator.NewNamespaceFilter(namespaceLabelSelector, configuredNamespaces, managedNamespaces)
+	if err != nil {
+		return nil, nil, nil, false, err
+	}
+
+	return managedNamespaces, namespaceLabelSelector, namespaceFilter, false, nil
 }
 
 func appendIfMissing(namespaces []string, namespace string) []string {
