@@ -162,7 +162,7 @@ func (r *ReconcilePackageRegistry) Reconcile(ctx context.Context, request reconc
 	}
 
 	if unmanagedOrFiltered {
-		log.Info("Object is currently not managed by this controller. Skipping reconciliation", "namespace", epr.Namespace, "epr_name", epr.Name)
+		log.Info("Object is currently not managed by this controller or namespace is filtered. Skipping reconciliation", "namespace", epr.Namespace, "epr_name", epr.Name)
 		return reconcile.Result{}, nil
 	}
 

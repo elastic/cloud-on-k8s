@@ -162,7 +162,7 @@ func (r *AgentPolicyReconciler) Reconcile(ctx context.Context, request reconcile
 	}
 
 	if unmanagedOrFiltered {
-		ulog.FromContext(ctx).Info("Object is currently not managed by this controller. Skipping reconciliation")
+		ulog.FromContext(ctx).Info("Object is currently not managed by this controller or namespace is filtered. Skipping reconciliation")
 		return reconcile.Result{}, nil
 	}
 
