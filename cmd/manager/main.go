@@ -846,11 +846,10 @@ func readOptionalCA(caDir string) (*certificates.CA, error) {
 func resolveManagedNamespaces(
 	ctx context.Context,
 	clientset kubernetes.Interface,
-	configuredNamespaces []string,
 	namespaceLabelSelectorStr string,
 ) ([]string, *metav1.LabelSelector, error) {
 	if namespaceLabelSelectorStr == "" {
-		return configuredNamespaces, nil, nil
+		return nil, nil, nil
 	}
 
 	namespaceLabelSelector, err := metav1.ParseToLabelSelector(namespaceLabelSelectorStr)
@@ -868,23 +867,7 @@ func resolveManagedNamespaces(
 		selectorNamespaces = append(selectorNamespaces, namespace.Name)
 	}
 
-	if len(configuredNamespaces) == 0 {
-		return selectorNamespaces, namespaceLabelSelector, nil
-	}
-
-	selectorNamespacesSet := make(map[string]struct{}, len(selectorNamespaces))
-	for _, namespace := range selectorNamespaces {
-		selectorNamespacesSet[namespace] = struct{}{}
-	}
-
-	filteredNamespaces := make([]string, 0, len(configuredNamespaces))
-	for _, namespace := range configuredNamespaces {
-		if _, exists := selectorNamespacesSet[namespace]; exists {
-			filteredNamespaces = append(filteredNamespaces, namespace)
-		}
-	}
-
-	return filteredNamespaces, namespaceLabelSelector, nil
+	return selectorNamespaces, namespaceLabelSelector, nil
 }
 
 func initializeNamespaceScoping(
@@ -898,7 +881,7 @@ func initializeNamespaceScoping(
 		return configuredNamespaces, nil, nil, true, nil
 	}
 
-	managedNamespaces, namespaceLabelSelector, err := resolveManagedNamespaces(ctx, clientset, configuredNamespaces, namespaceLabelSelectorStr)
+	managedNamespaces, namespaceLabelSelector, err := resolveManagedNamespaces(ctx, clientset, namespaceLabelSelectorStr)
 	if err != nil {
 		return nil, nil, nil, false, err
 	}

@@ -349,42 +349,31 @@ func Test_resolveManagedNamespaces(t *testing.T) {
 	)
 
 	tests := []struct {
-		name                 string
-		configuredNamespaces []string
-		selector             string
-		expectedNamespaces   []string
-		expectedSelectorNil  bool
-		expectErr            bool
+		name                string
+		selector            string
+		expectedNamespaces  []string
+		expectedSelectorNil bool
+		expectErr           bool
 	}{
 		{
-			name:                 "no selector returns configured namespaces",
-			configuredNamespaces: []string{"prod-a", "dev-a"},
-			selector:             "",
-			expectedNamespaces:   []string{"prod-a", "dev-a"},
-			expectedSelectorNil:  true,
-			expectErr:            false,
+			name:                "no selector returns all namespaces (nil scope)",
+			selector:            "",
+			expectedNamespaces:  nil,
+			expectedSelectorNil: true,
+			expectErr:           false,
 		},
 		{
-			name:                 "selector resolves namespaces when none configured",
-			configuredNamespaces: nil,
-			selector:             "env=prod",
-			expectedNamespaces:   []string{"prod-a", "prod-b"},
-			expectedSelectorNil:  false,
-			expectErr:            false,
-		},
-		{
-			name:                 "selector filters configured namespaces by intersection",
-			configuredNamespaces: []string{"dev-a", "prod-b"},
-			selector:             "env=prod",
-			expectedNamespaces:   []string{"prod-b"},
-			expectedSelectorNil:  false,
-			expectErr:            false,
+			name:                "selector resolves namespaces",
+			selector:            "env=prod",
+			expectedNamespaces:  []string{"prod-a", "prod-b"},
+			expectedSelectorNil: false,
+			expectErr:           false,
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			namespaces, selector, err := resolveManagedNamespaces(context.Background(), fakeClientset, tt.configuredNamespaces, tt.selector)
+			namespaces, selector, err := resolveManagedNamespaces(context.Background(), fakeClientset, tt.selector)
 
 			if tt.expectErr {
 				require.Error(t, err)
