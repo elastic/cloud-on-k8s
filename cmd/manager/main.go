@@ -639,7 +639,7 @@ func startOperator(ctx context.Context) error {
 
 		switch {
 		case namespaceLabelSelector != nil && len(managedNamespaces) == 1 && managedNamespaces[0] == operatorNamespace:
-			log.Info("Namespace label selector matched no namespaces; limiting cache to operator namespace", "operator_namespace", operatorNamespace, "selector", namespaceLabelSelectorStr)
+			log.Info("No managed namespaces configured; limiting cache to operator namespace", "operator_namespace", operatorNamespace, "selector", namespaceLabelSelectorStr)
 		case len(managedNamespaces) == 1:
 			log.Info("Operator configured to manage a single namespace", "namespace", managedNamespaces[0], "operator_namespace", operatorNamespace)
 		default:
