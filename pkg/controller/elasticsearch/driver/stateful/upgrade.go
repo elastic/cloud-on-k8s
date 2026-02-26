@@ -7,7 +7,9 @@ package stateful
 import (
 	"context"
 	"fmt"
+	"time"
 
+	"github.com/go-logr/logr"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/types"
@@ -69,7 +71,8 @@ func (d *Driver) handleUpgrades(
 		results.WithError(err)
 	}
 	logger := log.WithValues("namespace", d.ES.Namespace, "es_name", d.ES.Name)
-	nodeShutdown := shutdown.NewNodeShutdown(esClient, nodeNameToID, esclient.Restart, d.ES.ResourceVersion, logger)
+	shutdownReason, allocationDelay := shutdownReasonAndAllocationDelay(d.ES, logger)
+	nodeShutdown := shutdown.NewNodeShutdown(esClient, nodeNameToID, esclient.Restart, shutdownReason, allocationDelay, logger)
 
 	// Maybe re-enable shards allocation and delete shutdowns if upgraded nodes are back into the cluster.
 	if results.WithResults(d.maybeCompleteNodeUpgrades(ctx, esClient, esState, nodeShutdown)).HasError() {
@@ -471,4 +474,27 @@ func (ctx *upgradeCtx) prepareClusterForNodeRestart(podsToUpgrade []corev1.Pod) 
 
 	// Request a flush to optimize indices recovery when the node restarts.
 	return doFlush(ctx.parentCtx, ctx.ES, ctx.esClient)
+}
+
+// shutdownReasonAndAllocationDelay resolves the shutdown reason and allocation delay from
+// the Elasticsearch resource annotations. If the restart-trigger annotation is set, it is
+// used as the reason; otherwise the resource version is used. The allocation delay is parsed
+// from the restart-allocation-delay annotation; parse errors are logged and ignored.
+func shutdownReasonAndAllocationDelay(es esv1.Elasticsearch, log logr.Logger) (string, *time.Duration) {
+	reason := es.ResourceVersion // todo: if spec has no differences
+	if v, ok := es.Annotations[esv1.RestartTriggerAnnotation]; ok && v != "" {
+		reason = v
+	}
+
+	var allocationDelay *time.Duration
+	if v, ok := es.Annotations[esv1.RestartAllocationDelayAnnotation]; ok && v != "" {
+		d, err := time.ParseDuration(v)
+		if err != nil {
+			log.Error(err, "Failed to parse restart-allocation-delay annotation, ignoring", "value", v)
+		} else {
+			allocationDelay = &d
+		}
+	}
+
+	return reason, allocationDelay
 }

@@ -30,7 +30,7 @@ func newShutdownInterface(
 			return nil, err
 		}
 		logger := ulog.FromContext(ctx).WithValues("namespace", es.Namespace, "es_name", es.Name)
-		shutdownService = shutdown.NewNodeShutdown(client, idLookup, esclient.Remove, es.ResourceVersion, logger)
+		shutdownService = shutdown.NewNodeShutdown(client, idLookup, esclient.Remove, es.ResourceVersion, nil, logger)
 	} else {
 		shutdownService = migration.NewShardMigration(es, client, client)
 	}

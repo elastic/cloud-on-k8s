@@ -227,6 +227,10 @@ func buildAnnotations(
 		annotations[esv1.TransportCertDisabledAnnotationName] = "true"
 	}
 
+	if v, ok := es.Annotations[esv1.RestartTriggerAnnotation]; ok && v != "" {
+		annotations[esv1.RestartTriggerAnnotation] = v
+	}
+
 	// set the annotation in place
 	annotations[configHashAnnotationName] = fmt.Sprint(configHash.Sum32())
 

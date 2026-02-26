@@ -340,10 +340,11 @@ func Test_buildAnnotations(t *testing.T) {
 		transportCertsDisabled bool
 	}
 	tests := []struct {
-		name                string
-		args                args
-		expectedAnnotations map[string]string
-		wantErr             bool
+		name                    string
+		args                    args
+		expectedAnnotations     map[string]string
+		notExpectedAnnotations  []string
+		wantErr                 bool
 	}{
 		{
 			name: "Sample Elasticsearch resource",
@@ -439,6 +440,31 @@ func Test_buildAnnotations(t *testing.T) {
 			},
 			wantErr: false,
 		},
+		{
+			name: "with restart-trigger annotation",
+			args: args{
+				esAnnotations: map[string]string{esv1.RestartTriggerAnnotation: "2026-01-14T12:00:00Z"},
+			},
+			expectedAnnotations: map[string]string{
+				esv1.RestartTriggerAnnotation: "2026-01-14T12:00:00Z",
+			},
+		},
+		{
+			name: "restart-trigger annotation not set",
+			args: args{
+				esAnnotations: map[string]string{},
+			},
+			expectedAnnotations:    map[string]string{},
+			notExpectedAnnotations: []string{esv1.RestartTriggerAnnotation},
+		},
+		{
+			name: "restart-trigger annotation set to empty string",
+			args: args{
+				esAnnotations: map[string]string{esv1.RestartTriggerAnnotation: ""},
+			},
+			expectedAnnotations:    map[string]string{},
+			notExpectedAnnotations: []string{esv1.RestartTriggerAnnotation},
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -458,6 +484,10 @@ func Test_buildAnnotations(t *testing.T) {
 				actualValue, exists := got[expectedAnnotation]
 				assert.True(t, exists, "expected annotation: %s", expectedAnnotation)
 				assert.Equal(t, expectedValue, actualValue, "expected value for annotation %s: %s, got %s", expectedAnnotation, expectedValue, actualValue)
+			}
+			for _, notExpected := range tt.notExpectedAnnotations {
+				_, exists := got[notExpected]
+				assert.False(t, exists, "annotation should not be present: %s", notExpected)
 			}
 		})
 	}
