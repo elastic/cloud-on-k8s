@@ -169,6 +169,11 @@ const preferredNodeAffinityWeight int32 = 100
 
 // WithRequiredNodeAffinityMatchExpressions ensures all required node selector
 // terms include the provided match expressions by key without duplicating keys.
+// When the injected requirement uses the Exists operator, it is only skipped if
+// an existing expression on the same key already guarantees label existence
+// (In, Exists, Gt, Lt). Operators like NotIn or DoesNotExist do not guarantee
+// the label is present, so the Exists requirement is still appended to prevent
+// pods from landing on nodes that lack the label.
 func (b *PodTemplateBuilder) WithRequiredNodeAffinityMatchExpressions(requirements ...corev1.NodeSelectorRequirement) *PodTemplateBuilder {
 	if len(requirements) == 0 {
 		return b
@@ -196,8 +201,14 @@ func (b *PodTemplateBuilder) WithRequiredNodeAffinityMatchExpressions(requiremen
 
 	for i := range nodeSelector.NodeSelectorTerms {
 		for _, requirement := range copiedRequirements {
-			if hasNodeSelectorRequirementKey(nodeSelector.NodeSelectorTerms[i], requirement.Key) {
-				continue
+			if requirement.Operator == corev1.NodeSelectorOpExists {
+				if nodeSelectorTermGuaranteesKeyExistence(nodeSelector.NodeSelectorTerms[i], requirement.Key) {
+					continue
+				}
+			} else {
+				if hasNodeSelectorRequirementKey(nodeSelector.NodeSelectorTerms[i], requirement.Key) {
+					continue
+				}
 			}
 			nodeSelector.NodeSelectorTerms[i].MatchExpressions = append(nodeSelector.NodeSelectorTerms[i].MatchExpressions, requirement)
 		}
@@ -508,6 +519,24 @@ func hasPreferredNodeAffinityKey(terms []corev1.PreferredSchedulingTerm, key str
 func hasNodeSelectorRequirementKey(term corev1.NodeSelectorTerm, key string) bool {
 	for _, expression := range term.MatchExpressions {
 		if expression.Key == key {
+			return true
+		}
+	}
+	return false
+}
+
+// nodeSelectorTermGuaranteesKeyExistence returns true when the term already
+// contains an expression on the given key whose operator implies the label
+// must be present on the node (In, Exists, Gt, Lt). NotIn and DoesNotExist
+// match nodes where the label is absent, so they do not guarantee existence.
+func nodeSelectorTermGuaranteesKeyExistence(term corev1.NodeSelectorTerm, key string) bool {
+	for _, expression := range term.MatchExpressions {
+		if expression.Key != key {
+			continue
+		}
+		switch expression.Operator {
+		case corev1.NodeSelectorOpExists, corev1.NodeSelectorOpIn,
+			corev1.NodeSelectorOpGt, corev1.NodeSelectorOpLt:
 			return true
 		}
 	}

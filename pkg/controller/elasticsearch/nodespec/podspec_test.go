@@ -399,7 +399,7 @@ func Test_buildAnnotations(t *testing.T) {
 				}(),
 			},
 			expectedAnnotations: map[string]string{
-				"elasticsearch.k8s.elastic.co/config-hash": "4284646610",
+				"elasticsearch.k8s.elastic.co/config-hash": "3933275242",
 			},
 		},
 		{
@@ -922,6 +922,26 @@ func Test_zoneAwarenessSchedulingDirectives(t *testing.T) {
 					Key:      esv1.DefaultZoneAwarenessTopologyKey,
 					Operator: corev1.NodeSelectorOpIn,
 					Values:   []string{"us-east-1a", "us-east-1b"},
+				},
+			},
+		},
+		{
+			name: "zone-aware nodeset without zones only adds spread constraint",
+			nodeSet: esv1.NodeSet{
+				ZoneAwareness: &esv1.ZoneAwareness{},
+			},
+			clusterHasZoneAwareness: true,
+			expectedSpreads: []corev1.TopologySpreadConstraint{
+				{
+					MaxSkew:           1,
+					TopologyKey:       esv1.DefaultZoneAwarenessTopologyKey,
+					WhenUnsatisfiable: corev1.DoNotSchedule,
+					LabelSelector: &metav1.LabelSelector{
+						MatchLabels: map[string]string{
+							label.ClusterNameLabelName:     "cluster",
+							label.StatefulSetNameLabelName: "sset",
+						},
+					},
 				},
 			},
 		},

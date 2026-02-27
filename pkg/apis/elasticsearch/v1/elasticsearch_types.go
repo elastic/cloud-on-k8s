@@ -530,39 +530,32 @@ func ParseDownwardNodeLabels(annotationValue string) set.StringSet {
 }
 
 // DownwardNodeLabels returns the expected node labels to be copied as annotations on the Elasticsearch Pods.
-// The annotation-provided labels are returned in their original order (trimmed and deduplicated),
-// followed by any zone-awareness-derived labels not already present. Preserving the original order
-// is critical to avoid changing the rendered init script content on operator upgrade, which would
-// alter the config hash and trigger a full rolling restart.
+// The result is sorted alphabetically and deduplicated for two reasons: it matches the ordering used
+// by the pre-zone-awareness code path (set.Make().AsSortedSlice()), keeping the rendered init script
+// content stable across operator upgrades; and it guarantees a deterministic order regardless of
+// annotation formatting or NodeSet ordering in the spec.
 func (es Elasticsearch) DownwardNodeLabels() []string {
 	annotationValue := es.downwardNodeLabelsAnnotationValue()
 
-	seen := set.Make()
-	var labels []string
+	labels := set.Make()
 	for label := range strings.SplitSeq(annotationValue, ",") {
 		label = strings.TrimSpace(label)
-		if label == "" || seen.Has(label) {
-			continue
+		if label != "" {
+			labels.Add(label)
 		}
-		seen.Add(label)
-		labels = append(labels, label)
 	}
 
 	for _, nodeSet := range es.Spec.NodeSets {
 		if nodeSet.ZoneAwareness == nil {
 			continue
 		}
-		topologyKey := nodeSet.ZoneAwareness.TopologyKeyOrDefault()
-		if !seen.Has(topologyKey) {
-			seen.Add(topologyKey)
-			labels = append(labels, topologyKey)
-		}
+		labels.Add(nodeSet.ZoneAwareness.TopologyKeyOrDefault())
 	}
 
-	if len(labels) == 0 {
+	if labels.Count() == 0 {
 		return nil
 	}
-	return labels
+	return labels.AsSortedSlice()
 }
 
 // DownwardNodeLabelsHashInput returns the pod-template hash input for downward node labels.
@@ -590,6 +583,9 @@ func (es Elasticsearch) DownwardNodeLabelsHashInput() string {
 }
 
 // HasDownwardNodeLabels returns true if some node labels are expected on the Elasticsearch Pods.
+// This includes labels derived from zone-awareness configuration, not only those explicitly set via
+// the downward-node-labels annotation. Callers that need to distinguish between annotation-provided
+// and zone-awareness-derived labels should inspect DownwardNodeLabels() directly.
 func (es Elasticsearch) HasDownwardNodeLabels() bool {
 	return len(es.DownwardNodeLabels()) > 0
 }
