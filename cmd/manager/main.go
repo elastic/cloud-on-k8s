@@ -12,6 +12,7 @@ import (
 	"net/http/pprof"
 	"os"
 	"path/filepath"
+	"sort"
 	"strconv"
 	"strings"
 	"time"
@@ -22,6 +23,7 @@ import (
 	"go.elastic.co/apm/v2"
 	"go.uber.org/automaxprocs/maxprocs"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/util/wait"
@@ -89,6 +91,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/logstash"
 	lsvalidation "github.com/elastic/cloud-on-k8s/v3/pkg/controller/logstash/validation"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/maps"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/namespacefilter"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/packageregistry"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/remotecluster"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/stackconfigpolicy"
@@ -314,6 +317,11 @@ func Command() *cobra.Command {
 		operator.NamespacesFlag,
 		nil,
 		"Comma-separated list of namespaces in which this operator should manage resources (defaults to all namespaces)",
+	)
+	cmd.Flags().String(
+		operator.NamespaceLabelSelectorFlag,
+		"",
+		"Label selector to filter namespaces that this operator should manage (in addition to namespace list). Format: key1=value1,key2=value2 or key1!=value1,key2!=value2. Empty means all namespaces.",
 	)
 	cmd.Flags().String(
 		operator.OperatorNamespaceFlag,
@@ -574,6 +582,13 @@ func startOperator(ctx context.Context) error {
 	// also set up the v1beta1 scheme, used by the v1beta1 webhook
 	controllerscheme.SetupV1beta1Scheme()
 
+	// Setup a client to query namespaces and set operator uuid config map.
+	clientset, err := kubernetes.NewForConfig(cfg)
+	if err != nil {
+		log.Error(err, "Failed to create Kubernetes client")
+		return err
+	}
+
 	// Create a new Cmd to provide shared dependencies and start components
 	opts := ctrl.Options{
 		Scheme:                     clientgoscheme.Scheme,
@@ -591,22 +606,45 @@ func startOperator(ctx context.Context) error {
 		log.Error(err, "Failed to parse managed namespaces flag")
 		return err
 	}
-	switch {
-	case len(managedNamespaces) == 0:
-		log.Info("Operator configured to manage all namespaces")
-	case len(managedNamespaces) == 1 && managedNamespaces[0] == operatorNamespace:
-		log.Info("Operator configured to manage a single namespace", "namespace", managedNamespaces[0], "operator_namespace", operatorNamespace)
 
-	default:
-		log.Info("Operator configured to manage multiple namespaces", "namespaces", managedNamespaces, "operator_namespace", operatorNamespace)
-		// The managed cache should always include the operator namespace so that we can work with operator-internal resources.
-		managedNamespaces = append(managedNamespaces, operatorNamespace)
+	namespaceLabelSelectorStr := viper.GetString(operator.NamespaceLabelSelectorFlag)
+	configuredNamespaces := managedNamespaces
+	managedNamespaces, namespaceLabelSelector, namespaceFilter, restrictedScope, err := initializeNamespaceScoping(ctx, clientset, configuredNamespaces, namespaceLabelSelectorStr)
+	if err != nil {
+		log.Error(err, "Failed to initialize namespace scoping", "selector", namespaceLabelSelectorStr)
+		return err
 	}
 
-	// implicitly allows watching cluster-scoped resources (e.g. storage classes)
-	opts.Cache = cache.Options{DefaultNamespaces: map[string]cache.Config{}}
-	for _, ns := range managedNamespaces {
-		opts.Cache.DefaultNamespaces[ns] = cache.Config{}
+	if restrictedScope && namespaceLabelSelectorStr != "" {
+		log.Info("Ignoring namespace label selector in restricted scope", "selector", namespaceLabelSelectorStr, "configured_namespaces", configuredNamespaces)
+	}
+
+	if !restrictedScope {
+		if namespaceLabelSelector == nil {
+			log.Info("Operator configured to manage all namespaces")
+		} else {
+			log.Info("Operator configured for dynamic namespace label filtering", "selector", namespaceLabelSelector, "initial_managed_namespaces", managedNamespaces)
+		}
+	} else {
+		// The managed cache should always include the operator namespace so that we can work with operator-internal resources.
+		managedNamespaces = appendIfMissing(configuredNamespaces, operatorNamespace)
+		managedNamespaces = uniqueNamespaces(managedNamespaces)
+		sort.Strings(managedNamespaces)
+
+		switch {
+		case len(managedNamespaces) == 1:
+			log.Info("Operator configured to manage a single namespace", "namespace", managedNamespaces[0], "operator_namespace", operatorNamespace)
+		default:
+			log.Info("Operator configured to manage multiple namespaces", "namespaces", managedNamespaces, "operator_namespace", operatorNamespace)
+		}
+	}
+
+	if restrictedScope {
+		// implicitly allows watching cluster-scoped resources (e.g. storage classes)
+		opts.Cache = cache.Options{DefaultNamespaces: map[string]cache.Config{}}
+		for _, ns := range managedNamespaces {
+			opts.Cache.DefaultNamespaces[ns] = cache.Config{}
+		}
 	}
 
 	// only expose prometheus metrics if provided a non-zero port
@@ -667,13 +705,6 @@ func startOperator(ctx context.Context) error {
 	ipFamily, err := chooseAndValidateIPFamily(viper.GetString(operator.IPFamilyFlag), net.ToIPFamily(os.Getenv(settings.EnvPodIP)))
 	if err != nil {
 		log.Error(err, "Invalid IP family parameter")
-		return err
-	}
-
-	// Setup a client to set the operator uuid config map
-	clientset, err := kubernetes.NewForConfig(cfg)
-	if err != nil {
-		log.Error(err, "Failed to create Kubernetes client")
 		return err
 	}
 
@@ -741,6 +772,8 @@ func startOperator(ctx context.Context) error {
 		SetDefaultSecurityContext: setDefaultSecurityContext,
 		ValidateStorageClass:      viper.GetBool(operator.ValidateStorageClassFlag),
 		Tracer:                    tracer,
+		NamespaceLabelSelector:    namespaceLabelSelector,
+		NamespaceFilter:           namespaceFilter,
 	}
 
 	if viper.GetBool(operator.EnableWebhookFlag) {
@@ -808,6 +841,86 @@ func readOptionalCA(caDir string) (*certificates.CA, error) {
 		return nil, nil
 	}
 	return certificates.BuildCAFromFile(caDir)
+}
+
+func resolveManagedNamespaces(
+	ctx context.Context,
+	clientset kubernetes.Interface,
+	namespaceLabelSelectorStr string,
+) ([]string, *metav1.LabelSelector, error) {
+	if namespaceLabelSelectorStr == "" {
+		return nil, nil, nil
+	}
+
+	namespaceLabelSelector, err := metav1.ParseToLabelSelector(namespaceLabelSelectorStr)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	namespaceList, err := clientset.CoreV1().Namespaces().List(ctx, metav1.ListOptions{LabelSelector: namespaceLabelSelectorStr})
+	if err != nil {
+		return nil, nil, err
+	}
+
+	selectorNamespaces := make([]string, 0, len(namespaceList.Items))
+	for _, namespace := range namespaceList.Items {
+		selectorNamespaces = append(selectorNamespaces, namespace.Name)
+	}
+
+	return selectorNamespaces, namespaceLabelSelector, nil
+}
+
+func initializeNamespaceScoping(
+	ctx context.Context,
+	clientset kubernetes.Interface,
+	configuredNamespaces []string,
+	namespaceLabelSelectorStr string,
+) ([]string, *metav1.LabelSelector, *operator.NamespaceFilter, bool, error) {
+	restrictedScope := len(configuredNamespaces) > 0
+	if restrictedScope {
+		return configuredNamespaces, nil, nil, true, nil
+	}
+
+	managedNamespaces, namespaceLabelSelector, err := resolveManagedNamespaces(ctx, clientset, namespaceLabelSelectorStr)
+	if err != nil {
+		return nil, nil, nil, false, err
+	}
+
+	if namespaceLabelSelector == nil {
+		return managedNamespaces, nil, nil, false, nil
+	}
+
+	namespaceFilter, err := operator.NewNamespaceFilter(namespaceLabelSelector, configuredNamespaces, managedNamespaces)
+	if err != nil {
+		return nil, nil, nil, false, err
+	}
+
+	return managedNamespaces, namespaceLabelSelector, namespaceFilter, false, nil
+}
+
+func appendIfMissing(namespaces []string, namespace string) []string {
+	for _, existing := range namespaces {
+		if existing == namespace {
+			return namespaces
+		}
+	}
+	return append(namespaces, namespace)
+}
+
+func uniqueNamespaces(namespaces []string) []string {
+	unique := make([]string, 0, len(namespaces))
+	seen := make(map[string]struct{}, len(namespaces))
+	for _, namespace := range namespaces {
+		if namespace == "" {
+			continue
+		}
+		if _, alreadySeen := seen[namespace]; alreadySeen {
+			continue
+		}
+		seen[namespace] = struct{}{}
+		unique = append(unique, namespace)
+	}
+	return unique
 }
 
 // asyncTasks schedules some tasks to be started when this instance of the operator is elected
@@ -916,6 +1029,7 @@ func registerControllers(mgr manager.Manager, params operator.Parameters, access
 		name         string
 		registerFunc func(manager.Manager, operator.Parameters) error
 	}{
+		{name: "NamespaceFilter", registerFunc: namespacefilter.Add},
 		{name: "APMServer", registerFunc: apmserver.Add},
 		{name: "Elasticsearch", registerFunc: elasticsearch.Add},
 		{name: "ElasticsearchAutoscaling", registerFunc: autoscaling.Add},

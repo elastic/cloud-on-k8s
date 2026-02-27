@@ -182,9 +182,13 @@ func (r *ReconcileStackConfigPolicy) Reconcile(ctx context.Context, request reco
 		return reconcile.Result{}, tracing.CaptureError(ctx, err)
 	}
 
-	// skip unmanaged resources
-	if common.IsUnmanaged(ctx, &policy) {
-		ulog.FromContext(ctx).Info("Object is currently not managed by this controller. Skipping reconciliation")
+	// skip unmanaged resources and namespace filtering
+	unmanagedOrFiltered, err := common.IsUnmanagedOrFiltered(ctx, r.Client, &policy, r.params)
+	if err != nil {
+		return reconcile.Result{}, tracing.CaptureError(ctx, err)
+	}
+	if unmanagedOrFiltered {
+		ulog.FromContext(ctx).Info("Object is currently not managed by this controller or namespace is filtered. Skipping reconciliation")
 		return reconcile.Result{}, nil
 	}
 

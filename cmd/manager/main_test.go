@@ -13,10 +13,13 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/discovery"
 	"k8s.io/client-go/kubernetes"
+	"k8s.io/client-go/kubernetes/fake"
+	k8stesting "k8s.io/client-go/testing"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 
@@ -336,4 +339,101 @@ func newFakeK8sClientsetWithDiscovery(resources []*metav1.APIResourceList, disco
 		discovery: discoveryClient,
 	}
 	return client
+}
+
+func Test_resolveManagedNamespaces(t *testing.T) {
+	fakeClientset := fake.NewSimpleClientset(
+		&corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: "prod-a", Labels: map[string]string{"env": "prod"}}},
+		&corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: "dev-a", Labels: map[string]string{"env": "dev"}}},
+		&corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: "prod-b", Labels: map[string]string{"env": "prod"}}},
+	)
+
+	tests := []struct {
+		name                string
+		selector            string
+		expectedNamespaces  []string
+		expectedSelectorNil bool
+		expectErr           bool
+	}{
+		{
+			name:                "no selector returns all namespaces (nil scope)",
+			selector:            "",
+			expectedNamespaces:  nil,
+			expectedSelectorNil: true,
+			expectErr:           false,
+		},
+		{
+			name:                "selector resolves namespaces",
+			selector:            "env=prod",
+			expectedNamespaces:  []string{"prod-a", "prod-b"},
+			expectedSelectorNil: false,
+			expectErr:           false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			namespaces, selector, err := resolveManagedNamespaces(context.Background(), fakeClientset, tt.selector)
+
+			if tt.expectErr {
+				require.Error(t, err)
+				return
+			}
+
+			require.NoError(t, err)
+			require.Equal(t, tt.expectedNamespaces, namespaces)
+			if tt.expectedSelectorNil {
+				require.Nil(t, selector)
+			} else {
+				require.NotNil(t, selector)
+			}
+		})
+	}
+}
+
+func Test_initializeNamespaceScoping(t *testing.T) {
+	t.Run("restricted scope ignores selector and does not list namespaces", func(t *testing.T) {
+		configuredNamespaces := []string{"team-a", "team-b"}
+		selector := "managed-by=global"
+
+		fakeClientset := fake.NewSimpleClientset(
+			&corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: "team-a", Labels: map[string]string{"managed-by": "global"}}},
+		)
+		fakeClientset.PrependReactor("list", "namespaces", func(action k8stesting.Action) (handled bool, ret runtime.Object, err error) {
+			return true, nil, fmt.Errorf("namespace list must not be called in restricted scope")
+		})
+
+		managedNamespaces, namespaceLabelSelector, namespaceFilter, restrictedScope, err := initializeNamespaceScoping(
+			context.Background(),
+			fakeClientset,
+			configuredNamespaces,
+			selector,
+		)
+
+		require.NoError(t, err)
+		require.True(t, restrictedScope)
+		require.Equal(t, configuredNamespaces, managedNamespaces)
+		require.Nil(t, namespaceLabelSelector)
+		require.Nil(t, namespaceFilter)
+	})
+
+	t.Run("unrestricted scope resolves selector and initializes namespace filter", func(t *testing.T) {
+		fakeClientset := fake.NewSimpleClientset(
+			&corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: "observed-a", Labels: map[string]string{"managed-by": "global"}}},
+			&corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: "ignored-a", Labels: map[string]string{"managed-by": "local"}}},
+		)
+
+		managedNamespaces, namespaceLabelSelector, namespaceFilter, restrictedScope, err := initializeNamespaceScoping(
+			context.Background(),
+			fakeClientset,
+			nil,
+			"managed-by=global",
+		)
+
+		require.NoError(t, err)
+		require.False(t, restrictedScope)
+		require.Equal(t, []string{"observed-a"}, managedNamespaces)
+		require.NotNil(t, namespaceLabelSelector)
+		require.NotNil(t, namespaceFilter)
+	})
 }
