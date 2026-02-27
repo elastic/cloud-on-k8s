@@ -538,6 +538,9 @@ func nodeSelectorTermGuaranteesKeyExistence(term corev1.NodeSelectorTerm, key st
 		case corev1.NodeSelectorOpExists, corev1.NodeSelectorOpIn,
 			corev1.NodeSelectorOpGt, corev1.NodeSelectorOpLt:
 			return true
+		case corev1.NodeSelectorOpNotIn, corev1.NodeSelectorOpDoesNotExist:
+			// These operators match nodes where the label is absent,
+			// so they do not guarantee the key exists.
 		}
 	}
 	return false
