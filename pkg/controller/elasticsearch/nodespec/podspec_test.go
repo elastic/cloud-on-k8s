@@ -879,7 +879,6 @@ func Test_zoneAwarenessSchedulingDirectives(t *testing.T) {
 		clusterTopologyKey       string
 		expectedSpreads          []corev1.TopologySpreadConstraint
 		expectedMatchExpressions []corev1.NodeSelectorRequirement
-		expectedPreferredMatches []corev1.NodeSelectorRequirement
 	}{
 		{
 			name:                    "returns no directives when nodeset has no zone awareness and cluster awareness is disabled",
@@ -930,7 +929,7 @@ func Test_zoneAwarenessSchedulingDirectives(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			gotSpreads, gotMatchExpressions, gotPreferredMatches := zoneAwarenessSchedulingDirectives(
+			gotSpreads, gotMatchExpressions := zoneAwarenessSchedulingDirectives(
 				tt.nodeSet,
 				"cluster",
 				"sset",
@@ -939,7 +938,6 @@ func Test_zoneAwarenessSchedulingDirectives(t *testing.T) {
 			)
 			assert.Equal(t, tt.expectedSpreads, gotSpreads)
 			assert.Equal(t, tt.expectedMatchExpressions, gotMatchExpressions)
-			assert.Equal(t, tt.expectedPreferredMatches, gotPreferredMatches)
 		})
 	}
 }

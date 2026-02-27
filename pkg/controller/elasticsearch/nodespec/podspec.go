@@ -146,7 +146,7 @@ func BuildPodTemplateSpec(
 		WithContainersSecurityContext(securitycontext.For(ver, enableReadOnlyRootFilesystem)).
 		WithPreStopHook(*NewPreStopHook())
 
-	spreadConstraints, requiredMatchExpressions, preferredMatchExpressions := zoneAwarenessSchedulingDirectives(
+	spreadConstraints, requiredMatchExpressions := zoneAwarenessSchedulingDirectives(
 		nodeSet,
 		es.Name,
 		ssetName,
@@ -155,8 +155,7 @@ func BuildPodTemplateSpec(
 	)
 	builder = builder.
 		WithTopologySpreadConstraints(spreadConstraints...).
-		WithRequiredNodeAffinityMatchExpressions(requiredMatchExpressions...).
-		WithPreferredNodeAffinityMatchExpressions(preferredMatchExpressions...)
+		WithRequiredNodeAffinityMatchExpressions(requiredMatchExpressions...)
 
 	builder, err = stackmon.WithMonitoring(ctx, client, builder, es, meta)
 	if err != nil {
@@ -279,7 +278,7 @@ func zoneAwarenessEnv(nodeSet esv1.NodeSet, clusterHasZoneAwareness bool, cluste
 	}
 }
 
-// zoneAwarenessSchedulingDirectives returns topology spread constraints, required and preferred
+// zoneAwarenessSchedulingDirectives returns topology spread constraints and required
 // node affinity expressions derived from NodeSet and cluster zone-awareness settings.
 func zoneAwarenessSchedulingDirectives(
 	nodeSet esv1.NodeSet,
@@ -287,7 +286,7 @@ func zoneAwarenessSchedulingDirectives(
 	statefulSetName string,
 	clusterHasZoneAwareness bool,
 	clusterTopologyKey string,
-) ([]corev1.TopologySpreadConstraint, []corev1.NodeSelectorRequirement, []corev1.NodeSelectorRequirement) {
+) ([]corev1.TopologySpreadConstraint, []corev1.NodeSelectorRequirement) {
 	if nodeSet.ZoneAwareness == nil && clusterHasZoneAwareness {
 		// Require nodes that carry the cluster topology key label. The shared init script
 		// waits for the corresponding annotation (set by the operator from the node label),
@@ -298,10 +297,10 @@ func zoneAwarenessSchedulingDirectives(
 				Key:      clusterTopologyKey,
 				Operator: corev1.NodeSelectorOpExists,
 			},
-		}, nil
+		}
 	}
 	if nodeSet.ZoneAwareness == nil {
-		return nil, nil, nil
+		return nil, nil
 	}
 
 	topologyKey := nodeSet.ZoneAwareness.TopologyKeyOrDefault()
@@ -331,7 +330,7 @@ func zoneAwarenessSchedulingDirectives(
 			},
 		}
 	}
-	return spreadConstraints, requiredMatchExpressions, nil
+	return spreadConstraints, requiredMatchExpressions
 }
 
 // enableLog4JFormatMsgNoLookups prepends the JVM parameter `-Dlog4j2.formatMsgNoLookups=true` to the environment variable `ES_JAVA_OPTS`
