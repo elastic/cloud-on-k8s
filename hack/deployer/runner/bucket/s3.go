@@ -6,6 +6,7 @@ package bucket
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"log"
 	"strings"
@@ -68,13 +69,12 @@ func (s *S3Manager) Create() error {
 }
 
 // Delete removes the S3 bucket, its contents, and the associated IAM user.
-// The bucket is deleted first so that a failure leaves the IAM user intact for retry.
+// Both deletions are attempted even if one fails to avoid leaking cloud resources.
 // Each sub-function verifies ownership before deleting (IAM path and naming convention for the user, managed_by tag for the bucket).
 func (s *S3Manager) Delete() error {
-	if err := s.deleteBucket(); err != nil {
-		return err
-	}
-	return s.deleteIAMUser()
+	bucketErr := s.deleteBucket()
+	iamErr := s.deleteIAMUser()
+	return errors.Join(bucketErr, iamErr)
 }
 
 func (s *S3Manager) createBucket() error {

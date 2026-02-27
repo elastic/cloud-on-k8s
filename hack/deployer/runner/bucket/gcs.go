@@ -5,6 +5,7 @@
 package bucket
 
 import (
+	"errors"
 	"fmt"
 	"log"
 	"os"
@@ -71,13 +72,12 @@ func (g *GCSManager) Create() error {
 }
 
 // Delete removes the GCS bucket, its contents, and the associated service account.
-// The bucket is deleted first so that a failure leaves the service account intact for retry.
+// Both deletions are attempted even if one fails to avoid leaking cloud resources.
 // Each sub-function verifies ownership before deleting (display name for the service account, managed_by label for the bucket).
 func (g *GCSManager) Delete() error {
-	if err := g.deleteBucket(); err != nil {
-		return err
-	}
-	return g.deleteServiceAccount()
+	bucketErr := g.deleteBucket()
+	saErr := g.deleteServiceAccount()
+	return errors.Join(bucketErr, saErr)
 }
 
 func (g *GCSManager) createBucket() error {
