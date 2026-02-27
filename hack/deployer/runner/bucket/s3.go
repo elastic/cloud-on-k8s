@@ -68,12 +68,13 @@ func (s *S3Manager) Create() error {
 }
 
 // Delete removes the S3 bucket, its contents, and the associated IAM user.
+// The bucket is deleted first so that a failure leaves the IAM user intact for retry.
 // Each sub-function verifies ownership before deleting (IAM path and naming convention for the user, managed_by tag for the bucket).
 func (s *S3Manager) Delete() error {
-	if err := s.deleteIAMUser(); err != nil {
+	if err := s.deleteBucket(); err != nil {
 		return err
 	}
-	return s.deleteBucket()
+	return s.deleteIAMUser()
 }
 
 func (s *S3Manager) createBucket() error {
