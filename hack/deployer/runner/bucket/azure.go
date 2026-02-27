@@ -6,12 +6,20 @@ package bucket
 
 import (
 	"fmt"
+	"hash/fnv"
 	"log"
 	"strings"
 	"time"
 
 	"github.com/elastic/cloud-on-k8s/v3/hack/deployer/exec"
 )
+
+// fnv32 returns the FNV-1a 32-bit hash of s.
+func fnv32(s string) uint32 {
+	h := fnv.New32a()
+	h.Write([]byte(s))
+	return h.Sum32()
+}
 
 // AzureManager manages Azure Blob Storage containers.
 type AzureManager struct {
@@ -31,9 +39,14 @@ func NewAzureManager(cfg Config, resourceGroup string) *AzureManager {
 
 // storageAccountName returns a valid Azure storage account name.
 // Storage account names must be 3-24 characters, lowercase alphanumeric only.
-// The name is prefixed with "eckbkt" (alphanumeric form of "eck-bkt") to identify it as managed by the deployer.
+// The name is prefixed with "eckbkt" to identify it as managed by the deployer,
+// and suffixed with a short hash of the original bucket name to avoid collisions
+// when non-alphanumeric characters are stripped (e.g. "my-bucket" vs "my.bucket").
 func (a *AzureManager) storageAccountName() string {
-	// Remove non-alphanumeric characters and lowercase
+	// Hash the original name for a collision-resistant suffix.
+	hash := fmt.Sprintf("%08x", fnv32(a.cfg.Name))
+
+	// Remove non-alphanumeric characters and lowercase for the readable portion.
 	raw := strings.ToLower(a.cfg.Name)
 	var cleaned []byte
 	for _, c := range []byte(raw) {
@@ -41,11 +54,14 @@ func (a *AzureManager) storageAccountName() string {
 			cleaned = append(cleaned, c)
 		}
 	}
-	name := "eckbkt" + string(cleaned)
-	if len(name) > 24 {
-		name = name[:24]
+
+	// Layout: "eckbkt" (6) + readable (up to 10) + hash (8) = 24 max
+	const prefix = "eckbkt"
+	maxReadable := 24 - len(prefix) - len(hash)
+	if len(cleaned) > maxReadable {
+		cleaned = cleaned[:maxReadable]
 	}
-	return name
+	return prefix + string(cleaned) + hash
 }
 
 // containerName returns the name for the blob container within the storage account.

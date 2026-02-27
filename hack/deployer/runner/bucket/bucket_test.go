@@ -62,6 +62,37 @@ func Test_isNotFound(t *testing.T) {
 	}
 }
 
+func TestAzureManager_storageAccountName(t *testing.T) {
+	tests := []struct {
+		name       string
+		bucketName string
+	}{
+		{name: "short name", bucketName: "my-bucket"},
+		{name: "long name truncated", bucketName: "this-is-a-very-long-bucket-name-that-exceeds-limits"},
+		{name: "with dots", bucketName: "my.bucket.name"},
+		{name: "with underscores", bucketName: "my_bucket_name"},
+		{name: "no collision: hyphen vs dot", bucketName: "my-bucket"},
+		{name: "no collision: dot variant", bucketName: "my.bucket"},
+	}
+
+	seen := map[string]string{} // account name -> bucket name
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			a := &AzureManager{cfg: Config{Name: tt.bucketName}}
+			got := a.storageAccountName()
+			assert.LessOrEqual(t, len(got), 24, "must be at most 24 characters")
+			assert.GreaterOrEqual(t, len(got), 3, "must be at least 3 characters")
+			assert.Regexp(t, `^[a-z0-9]+$`, got, "must be lowercase alphanumeric only")
+			assert.True(t, strings.HasPrefix(got, "eckbkt"), "must start with eckbkt prefix")
+
+			if prev, exists := seen[got]; exists && prev != tt.bucketName {
+				t.Errorf("collision: bucket names %q and %q both map to storage account %q", prev, tt.bucketName, got)
+			}
+			seen[got] = tt.bucketName
+		})
+	}
+}
+
 func TestValidateName(t *testing.T) {
 	tests := []struct {
 		name    string
