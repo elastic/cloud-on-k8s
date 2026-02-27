@@ -221,7 +221,7 @@ func getInstallManifestStream(conf *flags.Config, manifestPaths []string) (io.Re
 func installManifestFromWeb(version string) (io.Reader, error) {
 	// try the legacy all-in-one first for older releases
 	buf, err := makeRequest(fmt.Sprintf(allInOneURL, version))
-	if err == errNotFound {
+	if errors.Is(err, errNotFound) {
 		// if not found load the separate manifests for CRDs and operator (version >= 1.7.0)
 		crds, err := makeRequest(fmt.Sprintf(crdManifestURL, version))
 		if err != nil {
@@ -543,7 +543,7 @@ func renderAnnotationsFile(params *RenderParams, templatesDir, outDir string) er
 func renderTemplate(params *RenderParams, templatePath, outPath string) error {
 	// ensure NewVersion is never prefixed with 'v' when rendering template
 	// as we use the 'v' prefix in the `name:` field, but the `version:` field
-	// cannnot have the 'v' prefix, as the certified operator automation
+	// cannot have the 'v' prefix, as the certified operator automation
 	// refused to accept this field with a 'v' prefix.
 	params.NewVersion = strings.TrimPrefix(params.NewVersion, "v")
 

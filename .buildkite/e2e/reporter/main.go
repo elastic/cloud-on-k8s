@@ -1,3 +1,7 @@
+// Copyright Elasticsearch B.V. and/or licensed to Elasticsearch B.V. under one
+// or more contributor license agreements. Licensed under the Elastic License 2.0;
+// you may not use this file except in compliance with the Elastic License 2.0.
+
 package main
 
 import (
@@ -168,7 +172,6 @@ func sortTests(suites []junit.Suite) sortedTests {
 				shortTest := test
 				shortTest.Name = strings.Split(test.Name, "/")[0]
 				shortFailedTestsMap[shortTest.Name] = shortTest
-
 			} else {
 				// on test success
 				if !strings.Contains(test.Name, "/") {

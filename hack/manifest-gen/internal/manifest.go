@@ -57,10 +57,10 @@ func Generate(opts *GenerateFlags) error {
 	valueFiles = append(valueFiles, opts.ValueFiles...)
 
 	// set manifestGen flag
-	valueFlags := append(opts.Values, "global.manifestGen=true")
+	opts.Values = append(opts.Values, "global.manifestGen=true")
 
 	valueOpts := &values.Options{
-		Values:     valueFlags,
+		Values:     opts.Values,
 		ValueFiles: valueFiles,
 	}
 
@@ -76,7 +76,7 @@ func Generate(opts *GenerateFlags) error {
 	// because Helm doesn't connect to a real K8S API server (clientOnly = true).
 	fakeKubeVersion, err := common.ParseKubeVersion("v9.99.99")
 	if err != nil {
-		return fmt.Errorf("invalid fake kube version %q: %s", fakeKubeVersion, err)
+		return fmt.Errorf("invalid fake kube version %q: %w", fakeKubeVersion, err)
 	}
 	client.KubeVersion = fakeKubeVersion
 
