@@ -167,7 +167,7 @@ func (s *S3Manager) createIAMUserAndKeys() (string, string, error) {
 		if checkErr := exec.NewCommand(checkCmd).WithoutStreaming().Run(); checkErr != nil {
 			return "", "", fmt.Errorf("while creating IAM user: %w", err)
 		}
-		log.Printf("IAM user %s already exists", userName)
+		log.Printf("IAM user %s already exists, skipping creation", userName)
 	}
 
 	// Attach the pre-existing managed policy that grants S3 access to buckets
