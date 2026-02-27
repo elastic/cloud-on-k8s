@@ -9,6 +9,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func Test_isNotFound(t *testing.T) {
@@ -120,6 +121,95 @@ func TestValidateName(t *testing.T) {
 			} else {
 				assert.NoError(t, err)
 			}
+		})
+	}
+}
+
+func TestResolveName(t *testing.T) {
+	tests := []struct {
+		name     string
+		template string
+		ctx      map[string]any
+		want     string
+		wantErr  bool
+	}{
+		{
+			name:     "simple variable",
+			template: "{{ .ClusterName }}-bucket",
+			ctx:      map[string]any{"ClusterName": "my-cluster"},
+			want:     "my-cluster-bucket",
+		},
+		{
+			name:     "multiple variables",
+			template: "{{ .ClusterName }}-{{ .PlanId }}-dev",
+			ctx:      map[string]any{"ClusterName": "cluster", "PlanId": "plan1"},
+			want:     "cluster-plan1-dev",
+		},
+		{
+			name:     "no variables",
+			template: "static-bucket-name",
+			ctx:      map[string]any{},
+			want:     "static-bucket-name",
+		},
+		{
+			name:     "missing variable produces no value",
+			template: "{{ .Missing }}-bucket",
+			ctx:      map[string]any{},
+			want:     "<no value>-bucket",
+		},
+		{
+			name:     "invalid template syntax",
+			template: "{{ .Broken",
+			ctx:      map[string]any{},
+			wantErr:  true,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, err := ResolveName(tt.template, tt.ctx)
+			if tt.wantErr {
+				require.Error(t, err)
+				return
+			}
+			require.NoError(t, err)
+			assert.Equal(t, tt.want, got)
+		})
+	}
+}
+
+func TestGCSManager_serviceAccountName(t *testing.T) {
+	tests := []struct {
+		name       string
+		bucketName string
+		want       string
+	}{
+		{
+			name:       "short name",
+			bucketName: "my-bucket",
+			want:       "eck-bkt-my-bucket",
+		},
+		{
+			name:       "exactly at 30 char limit",
+			bucketName: strings.Repeat("a", 22), // "eck-bkt-" (8) + 22 = 30
+			want:       "eck-bkt-" + strings.Repeat("a", 22),
+		},
+		{
+			name:       "truncated to 30 chars",
+			bucketName: strings.Repeat("a", 30), // "eck-bkt-" (8) + 30 = 38 → truncated
+			want:       "eck-bkt-" + strings.Repeat("a", 22),
+		},
+		{
+			name:       "trailing hyphens removed after truncation",
+			bucketName: strings.Repeat("a", 21) + "-x", // "eck-bkt-" + 21*a + "-x" = 31 → truncated to "eck-bkt-" + 21*a + "-" → trailing hyphen removed
+			want:       "eck-bkt-" + strings.Repeat("a", 21),
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			g := &GCSManager{cfg: Config{Name: tt.bucketName}}
+			got := g.serviceAccountName()
+			assert.Equal(t, tt.want, got)
+			assert.LessOrEqual(t, len(got), 30, "GCP service account names must be at most 30 characters")
 		})
 	}
 }
