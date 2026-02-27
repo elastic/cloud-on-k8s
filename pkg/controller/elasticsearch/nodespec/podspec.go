@@ -14,6 +14,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/metadata"
 
 	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/utils/ptr"
 
@@ -101,10 +102,14 @@ func BuildPodTemplateSpec(
 	}
 
 	headlessServiceName := HeadlessServiceName(esv1.StatefulSet(es.Name, nodeSet.Name))
+	ssetName := esv1.StatefulSet(es.Name, nodeSet.Name)
+	nodeSets := esv1.NodeSetList(es.Spec.NodeSets)
+	clusterHasZoneAwareness := nodeSets.HasZoneAwareness()
+	clusterZoneAwarenessTopologyKey := nodeSets.ZoneAwarenessTopologyKey()
 
 	// We retrieve the ConfigMap that holds the scripts to trigger a Pod restart if it is updated.
 	esScripts := &corev1.ConfigMap{}
-	if err := client.Get(context.Background(), types.NamespacedName{Namespace: es.Namespace, Name: esv1.ScriptsConfigMap(es.Name)}, esScripts); err != nil {
+	if err := client.Get(ctx, types.NamespacedName{Namespace: es.Namespace, Name: esv1.ScriptsConfigMap(es.Name)}, esScripts); err != nil {
 		return corev1.PodTemplateSpec{}, err
 	}
 	annotations := buildAnnotations(es, cfg, keystoreResources, getScriptsConfigMapContent(esScripts), policyConfig.PolicyAnnotations)
@@ -131,7 +136,7 @@ func BuildPodTemplateSpec(
 		WithPorts(defaultContainerPorts).
 		WithReadinessProbe(*NewReadinessProbe(ver)).
 		WithAffinity(DefaultAffinity(es.Name)).
-		WithEnv(DefaultEnvVars(ver, es.Spec.HTTP, headlessServiceName)...).
+		WithEnv(append(DefaultEnvVars(ver, es.Spec.HTTP, headlessServiceName), zoneAwarenessEnv(nodeSet, clusterHasZoneAwareness, clusterZoneAwarenessTopologyKey)...)...).
 		WithVolumes(volumes...).
 		WithVolumeMounts(volumeMounts...).
 		WithInitContainers(initContainers...).
@@ -140,6 +145,17 @@ func BuildPodTemplateSpec(
 		// set a default security context for both the Containers and the InitContainers
 		WithContainersSecurityContext(securitycontext.For(ver, enableReadOnlyRootFilesystem)).
 		WithPreStopHook(*NewPreStopHook())
+
+	spreadConstraints, requiredMatchExpressions := zoneAwarenessSchedulingDirectives(
+		nodeSet,
+		es.Name,
+		ssetName,
+		clusterHasZoneAwareness,
+		clusterZoneAwarenessTopologyKey,
+	)
+	builder = builder.
+		WithTopologySpreadConstraints(spreadConstraints...).
+		WithRequiredNodeAffinityMatchExpressions(requiredMatchExpressions...)
 
 	builder, err = stackmon.WithMonitoring(ctx, client, builder, es, meta)
 	if err != nil {
@@ -214,8 +230,9 @@ func buildAnnotations(
 	_, _ = configHash.Write([]byte(scriptsContent))
 
 	if es.HasDownwardNodeLabels() {
-		// list of node labels expected on the pod to rotate the pod when the list is updated
-		_, _ = configHash.Write([]byte(es.Annotations[esv1.DownwardNodeLabelsAnnotation]))
+		// Hash user-provided labels in their original annotation order for backward compatibility,
+		// then append any zone-awareness-derived labels that were not explicitly listed.
+		_, _ = configHash.Write([]byte(es.DownwardNodeLabelsHashInput()))
 	}
 
 	if keystoreResources != nil {
@@ -234,6 +251,86 @@ func buildAnnotations(
 	maps.Merge(annotations, policyAnnotations)
 
 	return annotations
+}
+
+// zoneAwarenessEnv returns the zone environment variable when zone awareness is enabled
+// at either cluster or NodeSet level. NodeSet-level configuration takes precedence.
+func zoneAwarenessEnv(nodeSet esv1.NodeSet, clusterHasZoneAwareness bool, clusterTopologyKey string) []corev1.EnvVar {
+	if !clusterHasZoneAwareness {
+		return nil
+	}
+
+	topologyKey := clusterTopologyKey
+	if za := nodeSet.ZoneAwareness; za != nil {
+		topologyKey = za.TopologyKeyOrDefault()
+	}
+
+	return []corev1.EnvVar{
+		{
+			Name: settings.EnvZone,
+			ValueFrom: &corev1.EnvVarSource{
+				FieldRef: &corev1.ObjectFieldSelector{
+					APIVersion: "v1",
+					FieldPath:  fmt.Sprintf("metadata.annotations['%s']", topologyKey),
+				},
+			},
+		},
+	}
+}
+
+// zoneAwarenessSchedulingDirectives returns topology spread constraints and required
+// node affinity expressions derived from NodeSet and cluster zone-awareness settings.
+func zoneAwarenessSchedulingDirectives(
+	nodeSet esv1.NodeSet,
+	clusterName,
+	statefulSetName string,
+	clusterHasZoneAwareness bool,
+	clusterTopologyKey string,
+) ([]corev1.TopologySpreadConstraint, []corev1.NodeSelectorRequirement) {
+	if nodeSet.ZoneAwareness == nil && clusterHasZoneAwareness {
+		// Require nodes that carry the cluster topology key label. The shared init script
+		// waits for the corresponding annotation (set by the operator from the node label),
+		// so pods must not land on nodes where the label is absent or the init container
+		// will deadlock.
+		return nil, []corev1.NodeSelectorRequirement{
+			{
+				Key:      clusterTopologyKey,
+				Operator: corev1.NodeSelectorOpExists,
+			},
+		}
+	}
+	if nodeSet.ZoneAwareness == nil {
+		return nil, nil
+	}
+
+	topologyKey := nodeSet.ZoneAwareness.TopologyKeyOrDefault()
+	spreadConstraints := []corev1.TopologySpreadConstraint{
+		{
+			MaxSkew:           1,
+			TopologyKey:       topologyKey,
+			WhenUnsatisfiable: corev1.DoNotSchedule,
+			LabelSelector: &metav1.LabelSelector{
+				MatchLabels: map[string]string{
+					label.ClusterNameLabelName:     clusterName,
+					label.StatefulSetNameLabelName: statefulSetName,
+				},
+			},
+		},
+	}
+
+	// If the nodeSet has zone awareness and zones are configured, we want to ensure
+	// that the nodeSet is only scheduled on nodes that have the zone values.
+	var requiredMatchExpressions []corev1.NodeSelectorRequirement
+	if len(nodeSet.ZoneAwareness.Zones) > 0 {
+		requiredMatchExpressions = []corev1.NodeSelectorRequirement{
+			{
+				Key:      topologyKey,
+				Operator: corev1.NodeSelectorOpIn,
+				Values:   append([]string(nil), nodeSet.ZoneAwareness.Zones...),
+			},
+		}
+	}
+	return spreadConstraints, requiredMatchExpressions
 }
 
 // enableLog4JFormatMsgNoLookups prepends the JVM parameter `-Dlog4j2.formatMsgNoLookups=true` to the environment variable `ES_JAVA_OPTS`

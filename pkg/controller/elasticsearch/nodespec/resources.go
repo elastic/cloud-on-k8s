@@ -65,6 +65,7 @@ func BuildExpectedResources(
 	meta metadata.Metadata,
 ) (ResourcesList, error) {
 	nodesResources := make(ResourcesList, 0, len(es.Spec.NodeSets))
+	clusterHasZoneAwareness := esv1.NodeSetList(es.Spec.NodeSets).HasZoneAwareness()
 
 	ver, err := version.Parse(es.Spec.Version)
 	if err != nil {
@@ -83,7 +84,17 @@ func BuildExpectedResources(
 		if nodeSpec.Config != nil {
 			userCfg = *nodeSpec.Config
 		}
-		cfg, err := settings.NewMergedESConfig(es.Name, ver, ipFamily, es.Spec.HTTP, userCfg, policyConfig.ElasticsearchConfig, es.Spec.RemoteClusterServer.Enabled, es.HasRemoteClusterAPIKey())
+		cfg, err := settings.NewMergedESConfig(
+			es.Name,
+			ver,
+			ipFamily,
+			es.Spec.HTTP,
+			userCfg,
+			policyConfig.ElasticsearchConfig,
+			es.Spec.RemoteClusterServer.Enabled,
+			es.HasRemoteClusterAPIKey(),
+			clusterHasZoneAwareness,
+		)
 		if err != nil {
 			return nil, err
 		}

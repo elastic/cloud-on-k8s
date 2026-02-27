@@ -259,6 +259,128 @@ func TestElasticsearch_SuspendedPodNames(t *testing.T) {
 	}
 }
 
+func TestElasticsearch_DownwardNodeLabels(t *testing.T) {
+	tests := []struct {
+		name string
+		es   Elasticsearch
+		want []string
+	}{
+		{
+			name: "no annotations and no zone awareness",
+			es: Elasticsearch{
+				ObjectMeta: metav1.ObjectMeta{
+					Annotations: nil,
+				},
+			},
+			want: nil,
+		},
+		{
+			name: "annotation with only empty entries",
+			es: Elasticsearch{
+				ObjectMeta: metav1.ObjectMeta{
+					Annotations: map[string]string{
+						DownwardNodeLabelsAnnotation: " , , ",
+					},
+				},
+			},
+			want: nil,
+		},
+		{
+			name: "annotation labels are trimmed deduplicated and sorted",
+			es: Elasticsearch{
+				ObjectMeta: metav1.ObjectMeta{
+					Annotations: map[string]string{
+						DownwardNodeLabelsAnnotation: " zeta.io/rack ,alpha.io/zone,alpha.io/zone, ",
+					},
+				},
+			},
+			want: []string{"alpha.io/zone", "zeta.io/rack"},
+		},
+		{
+			name: "zone awareness adds default topology key",
+			es: Elasticsearch{
+				Spec: ElasticsearchSpec{
+					NodeSets: []NodeSet{
+						{
+							Name:          "default",
+							ZoneAwareness: &ZoneAwareness{},
+						},
+					},
+				},
+			},
+			want: []string{DefaultZoneAwarenessTopologyKey},
+		},
+		{
+			name: "zone awareness with blank topology key falls back to default",
+			es: Elasticsearch{
+				Spec: ElasticsearchSpec{
+					NodeSets: []NodeSet{
+						{
+							Name: "default",
+							ZoneAwareness: &ZoneAwareness{
+								TopologyKey: "  ",
+							},
+						},
+					},
+				},
+			},
+			want: []string{DefaultZoneAwarenessTopologyKey},
+		},
+		{
+			name: "annotation and zone awareness are merged deduplicated and sorted",
+			es: Elasticsearch{
+				ObjectMeta: metav1.ObjectMeta{
+					Annotations: map[string]string{
+						DownwardNodeLabelsAnnotation: "custom.io/rack,topology.kubernetes.io/zone",
+					},
+				},
+				Spec: ElasticsearchSpec{
+					NodeSets: []NodeSet{
+						{
+							Name: "default",
+							ZoneAwareness: &ZoneAwareness{
+								TopologyKey: "custom.io/rack",
+							},
+						},
+						{
+							Name: "za-default",
+							ZoneAwareness: &ZoneAwareness{
+								TopologyKey: DefaultZoneAwarenessTopologyKey,
+							},
+						},
+					},
+				},
+			},
+			want: []string{"custom.io/rack", "topology.kubernetes.io/zone"},
+		},
+		{
+			name: "single key from annotation and zone awareness is deduplicated",
+			es: Elasticsearch{
+				ObjectMeta: metav1.ObjectMeta{
+					Annotations: map[string]string{
+						DownwardNodeLabelsAnnotation: DefaultZoneAwarenessTopologyKey,
+					},
+				},
+				Spec: ElasticsearchSpec{
+					NodeSets: []NodeSet{
+						{
+							Name:          "default",
+							ZoneAwareness: &ZoneAwareness{},
+						},
+					},
+				},
+			},
+			want: []string{DefaultZoneAwarenessTopologyKey},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			assert.Equal(t, tt.want, tt.es.DownwardNodeLabels())
+		})
+	}
+}
+
 func TestElasticsearch_DisabledPredicates(t *testing.T) {
 	tests := []struct {
 		name string

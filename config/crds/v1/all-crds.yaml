@@ -4926,6 +4926,25 @@ spec:
                             type: object
                         type: object
                       type: array
+                    zoneAwareness:
+                      description: ZoneAwareness enables automatic topology-aware
+                        scheduling and shard-awareness configuration.
+                      properties:
+                        topologyKey:
+                          description: |-
+                            TopologyKey is the key of node labels used for zone-aware placement.
+                            Defaults to "topology.kubernetes.io/zone".
+                          type: string
+                        zones:
+                          description: |-
+                            Zones optionally restrict scheduling to the listed topology values.
+                            If empty, Pods can be scheduled in any topology value for the selected topologyKey.
+                          items:
+                            type: string
+                          minItems: 1
+                          type: array
+                          x-kubernetes-list-type: set
+                      type: object
                   required:
                   - name
                   type: object

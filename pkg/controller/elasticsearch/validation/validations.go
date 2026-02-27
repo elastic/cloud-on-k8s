@@ -10,6 +10,7 @@ import (
 	"net"
 	"strings"
 
+	"k8s.io/apimachinery/pkg/util/sets"
 	"k8s.io/apimachinery/pkg/util/validation/field"
 
 	commonv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/common/v1"
@@ -28,6 +29,7 @@ const (
 	duplicateNodeSets                      = "NodeSet names must be unique"
 	invalidNamesErrMsg                     = "Elasticsearch configuration would generate resources with invalid names"
 	invalidSanIPErrMsg                     = "Invalid SAN IP address. Must be a valid IPv4 address"
+	conflictingZoneAwarenessTopologyKeys   = "All zone-aware NodeSets must use the same topologyKey"
 	masterRequiredMsg                      = "Elasticsearch needs to have at least one master node"
 	mixedRoleConfigMsg                     = "Detected a combination of node.roles and %s. Use only node.roles"
 	noDowngradesMsg                        = "Downgrades are not supported"
@@ -64,6 +66,7 @@ func validations(ctx context.Context, checker license.Checker, exposedNodeLabels
 		func(proposed esv1.Elasticsearch) field.ErrorList {
 			return validNodeLabels(proposed, exposedNodeLabels)
 		},
+		validZoneAwarenessTopologyKeys,
 		noUnknownFields,
 		validName,
 		hasCorrectNodeRoles,
@@ -80,9 +83,19 @@ func validations(ctx context.Context, checker license.Checker, exposedNodeLabels
 	}
 }
 
+// validNodeLabels checks that all node labels requested via the downward-node-labels annotation
+// and all zone-awareness-derived topology keys are permitted by the operator's exposed-node-labels policy.
+// Zone-awareness topology keys are only validated when the policy is configured (non-empty), so that
+// zone awareness works out of the box when no exposed-node-labels restriction is in place.
 func validNodeLabels(proposed esv1.Elasticsearch, exposedNodeLabels NodeLabels) field.ErrorList {
 	var errs field.ErrorList
-	for _, nodeLabel := range proposed.DownwardNodeLabels() {
+	annotationValue := ""
+	if proposed.Annotations != nil {
+		annotationValue = proposed.Annotations[esv1.DownwardNodeLabelsAnnotation]
+	}
+	// firstly validate the downward-node-labels annotations
+	annotationLabels := esv1.ParseDownwardNodeLabels(annotationValue)
+	for nodeLabel := range annotationLabels {
 		if exposedNodeLabels.IsAllowed(nodeLabel) {
 			continue
 		}
@@ -92,6 +105,63 @@ func validNodeLabels(proposed esv1.Elasticsearch, exposedNodeLabels NodeLabels) 
 				field.NewPath("metadata").Child("annotations", esv1.DownwardNodeLabelsAnnotation),
 				nodeLabel,
 				notAllowedNodesLabelMsg,
+			),
+		)
+	}
+
+	// then validate the zone-awareness-derived topology keys
+	if len(exposedNodeLabels) > 0 {
+		for i, nodeSet := range proposed.Spec.NodeSets {
+			if nodeSet.ZoneAwareness == nil {
+				continue
+			}
+			topologyKey := nodeSet.ZoneAwareness.TopologyKeyOrDefault()
+			if exposedNodeLabels.IsAllowed(topologyKey) {
+				continue
+			}
+			errs = append(
+				errs,
+				field.Invalid(
+					field.NewPath("spec").Child("nodeSets").Index(i).Child("zoneAwareness", "topologyKey"),
+					topologyKey,
+					notAllowedNodesLabelMsg,
+				),
+			)
+		}
+	}
+
+	return errs
+}
+
+// validZoneAwarenessTopologyKeys rejects configurations where zone-aware NodeSets
+// use different topology keys. Since the operator generates a single init script for all nodeSets
+// that waits for all topology keys to be present, all zone-aware NodeSets must use the same topology key.
+func validZoneAwarenessTopologyKeys(es esv1.Elasticsearch) field.ErrorList {
+	var errs field.ErrorList
+	topologyKeys := sets.New[string]()
+
+	for _, nodeSet := range es.Spec.NodeSets {
+		if nodeSet.ZoneAwareness == nil {
+			continue
+		}
+		topologyKeys.Insert(nodeSet.ZoneAwareness.TopologyKeyOrDefault())
+	}
+
+	if topologyKeys.Len() <= 1 {
+		return nil
+	}
+
+	// If we end up here, we have multiple zone-aware NodeSets with different topology keys.
+	for i, nodeSet := range es.Spec.NodeSets {
+		if nodeSet.ZoneAwareness == nil {
+			continue
+		}
+		errs = append(
+			errs,
+			field.Invalid(
+				field.NewPath("spec").Child("nodeSets").Index(i).Child("zoneAwareness", "topologyKey"),
+				nodeSet.ZoneAwareness.TopologyKeyOrDefault(),
+				conflictingZoneAwarenessTopologyKeys,
 			),
 		)
 	}

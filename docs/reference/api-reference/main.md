@@ -1285,6 +1285,7 @@ NodeSet is the specification for a group of Elasticsearch nodes sharing the same
 | *`name`* __string__ | Name of this set of nodes. Becomes a part of the Elasticsearch node.name setting. |
 | *`config`* __[Config](#config)__ | Config holds the Elasticsearch configuration. |
 | *`count`* __integer__ | Count of Elasticsearch nodes to deploy.<br>If the node set is managed by an autoscaling policy the initial value is automatically set by the autoscaling controller. |
+| *`zoneAwareness`* __[ZoneAwareness](#zoneawareness)__ | ZoneAwareness enables automatic topology-aware scheduling and shard-awareness configuration. |
 | *`podTemplate`* __[PodTemplateSpec](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.32/#podtemplatespec-v1-core)__ | PodTemplate provides customisation options (labels, annotations, affinity rules, resource requests, and so on) for the Pods belonging to this NodeSet. |
 | *`volumeClaimTemplates`* __[PersistentVolumeClaim](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.32/#persistentvolumeclaim-v1-core) array__ | VolumeClaimTemplates is a list of persistent volume claims to be used by each Pod in this NodeSet.<br>Every claim in this list must have a matching volumeMount in one of the containers defined in the PodTemplate.<br>Items defined here take precedence over any default claims added by the operator with the same name. |
 
@@ -1515,6 +1516,24 @@ Inspired by https://github.com/kubernetes/enhancements/pull/2440
 
 :::
 
+
+
+### ZoneAwareness  [#zoneawareness]
+
+ZoneAwareness configures topology-aware scheduling and shard-awareness defaults for a NodeSet.
+The operator provides sensible defaults for topology spread constraints (maxSkew=1,
+whenUnsatisfiable=DoNotSchedule). To customize these, provide a matching topology spread
+constraint via podTemplate.spec.topologySpreadConstraints with the same topologyKey.
+
+:::{admonition} Appears In:
+* [NodeSet](#nodeset)
+
+:::
+
+| Field | Description |
+| --- | --- |
+| *`topologyKey`* __string__ | TopologyKey is the key of node labels used for zone-aware placement.<br>Defaults to "topology.kubernetes.io/zone". |
+| *`zones`* __string array__ | Zones optionally restrict scheduling to the listed topology values.<br>If empty, Pods can be scheduled in any topology value for the selected topologyKey. |
 
 
 
