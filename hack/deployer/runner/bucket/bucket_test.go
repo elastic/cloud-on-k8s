@@ -62,6 +62,37 @@ func Test_isNotFound(t *testing.T) {
 	}
 }
 
+func TestValidateName(t *testing.T) {
+	tests := []struct {
+		name    string
+		input   string
+		wantErr bool
+	}{
+		{name: "valid lowercase", input: "my-bucket-123"},
+		{name: "valid with dots", input: "my.bucket.name"},
+		{name: "valid with underscores", input: "my_bucket_name"},
+		{name: "valid mixed", input: "cluster-1.dev_snapshot"},
+		{name: "empty", input: "", wantErr: true},
+		{name: "uppercase", input: "My-Bucket", wantErr: true},
+		{name: "spaces", input: "my bucket", wantErr: true},
+		{name: "semicolon injection", input: "bucket; rm -rf /", wantErr: true},
+		{name: "dollar sign", input: "bucket-$HOME", wantErr: true},
+		{name: "backtick injection", input: "bucket-`whoami`", wantErr: true},
+		{name: "single quotes", input: "bucket'name", wantErr: true},
+		{name: "newline", input: "bucket\nname", wantErr: true},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			err := ValidateName(tt.input, "test field")
+			if tt.wantErr {
+				assert.Error(t, err)
+			} else {
+				assert.NoError(t, err)
+			}
+		})
+	}
+}
+
 func Test_S3Manager_iamUserName(t *testing.T) {
 	tests := []struct {
 		name       string

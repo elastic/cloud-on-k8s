@@ -24,15 +24,24 @@ func newBucketConfig(plan Plan, ctx map[string]any, region string) (bucket.Confi
 	if err != nil {
 		return bucket.Config{}, fmt.Errorf("while resolving bucket name: %w", err)
 	}
+	if err := bucket.ValidateName(name, "bucket name"); err != nil {
+		return bucket.Config{}, err
+	}
 
 	secretName, err := bucket.ResolveName(plan.Bucket.Secret.Name, ctx)
 	if err != nil {
 		return bucket.Config{}, fmt.Errorf("while resolving secret name: %w", err)
 	}
+	if err := bucket.ValidateName(secretName, "secret name"); err != nil {
+		return bucket.Config{}, err
+	}
 
 	secretNamespace, err := bucket.ResolveName(plan.Bucket.Secret.Namespace, ctx)
 	if err != nil {
 		return bucket.Config{}, fmt.Errorf("while resolving secret namespace: %w", err)
+	}
+	if err := bucket.ValidateName(secretNamespace, "secret namespace"); err != nil {
+		return bucket.Config{}, err
 	}
 
 	labels := make(map[string]string)

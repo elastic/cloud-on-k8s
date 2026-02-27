@@ -9,6 +9,7 @@ import (
 	"encoding/base64"
 	"fmt"
 	"log"
+	"regexp"
 	"strings"
 	"text/template"
 
@@ -66,6 +67,22 @@ func isNotFound(cmdOutput string, indicators ...string) bool {
 		}
 	}
 	return false
+}
+
+// safeNameRe matches names that are safe to interpolate into shell commands and YAML.
+// Allows lowercase alphanumeric, digits, hyphens, underscores, and periods — the
+// intersection of characters valid in S3/GCS/Azure bucket names and K8s resource names.
+var safeNameRe = regexp.MustCompile(`^[a-z0-9._-]+$`)
+
+// ValidateName checks that a resolved name is safe for use in shell commands and YAML.
+func ValidateName(name, field string) error {
+	if name == "" {
+		return fmt.Errorf("%s must not be empty", field)
+	}
+	if !safeNameRe.MatchString(name) {
+		return fmt.Errorf("%s %q contains invalid characters: only lowercase alphanumeric, hyphens, underscores, and periods are allowed", field, name)
+	}
+	return nil
 }
 
 // ResolveName resolves template variables in a bucket name using the provided context.
