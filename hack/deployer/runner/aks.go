@@ -5,6 +5,7 @@
 package runner
 
 import (
+	"errors"
 	"fmt"
 	"log"
 	"strings"
@@ -12,6 +13,7 @@ import (
 
 	"github.com/elastic/cloud-on-k8s/v3/hack/deployer/exec"
 	"github.com/elastic/cloud-on-k8s/v3/hack/deployer/runner/azure"
+	"github.com/elastic/cloud-on-k8s/v3/hack/deployer/runner/bucket"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/vault"
 )
 
@@ -85,12 +87,23 @@ func (d *AKSDriver) Execute() error {
 
 	switch d.plan.Operation {
 	case DeleteAction:
+		// Track bucket deletion errors separately: cluster deletion should proceed even if bucket
+		// deletion fails, but the error must still be returned so the exit code is non-zero.
+		var bucketErr error
+		if d.plan.Bucket != nil {
+			if bucketErr = d.deleteBucket(); bucketErr != nil {
+				log.Printf("warning: bucket deletion failed, will continue with cluster deletion: %v", bucketErr)
+			}
+		}
 		if exists {
 			if err := d.delete(); err != nil {
-				return err
+				return errors.Join(err, bucketErr)
 			}
 		} else {
 			log.Printf("not deleting as cluster doesn't exist")
+		}
+		if bucketErr != nil {
+			return bucketErr
 		}
 	case CreateAction:
 		if exists {
@@ -108,6 +121,11 @@ func (d *AKSDriver) Execute() error {
 		}
 		if err := createStorageClass(); err != nil {
 			return err
+		}
+		if d.plan.Bucket != nil {
+			if err := d.createBucket(); err != nil {
+				return err
+			}
 		}
 	default:
 		return fmt.Errorf("unknown operation %s", d.plan.Operation)
@@ -191,6 +209,30 @@ func (d *AKSDriver) delete() error {
 		"--name", d.plan.ClusterName,
 		"--resource-group", d.plan.Aks.ResourceGroup).
 		Run()
+}
+
+func (d *AKSDriver) newBucketManager() (*bucket.AzureManager, error) {
+	cfg, err := newBucketConfig(d.plan, d.ctx, d.plan.Aks.Location)
+	if err != nil {
+		return nil, err
+	}
+	return bucket.NewAzureManager(cfg, d.plan.Aks.ResourceGroup), nil
+}
+
+func (d *AKSDriver) createBucket() error {
+	mgr, err := d.newBucketManager()
+	if err != nil {
+		return err
+	}
+	return mgr.Create()
+}
+
+func (d *AKSDriver) deleteBucket() error {
+	mgr, err := d.newBucketManager()
+	if err != nil {
+		return err
+	}
+	return mgr.Delete()
 }
 
 func (d *AKSDriver) Cleanup(prefix string, olderThan time.Duration) error {

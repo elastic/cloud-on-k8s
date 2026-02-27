@@ -6,6 +6,7 @@ package runner
 
 import (
 	"bytes"
+	"errors"
 	"fmt"
 	"log"
 	"os"
@@ -14,6 +15,7 @@ import (
 	"time"
 
 	"github.com/elastic/cloud-on-k8s/v3/hack/deployer/exec"
+	"github.com/elastic/cloud-on-k8s/v3/hack/deployer/runner/bucket"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/vault"
 )
 
@@ -103,12 +105,24 @@ func (e *EKSDriver) Execute() error {
 	}
 	switch e.plan.Operation {
 	case DeleteAction:
-		if exists {
-			if err = e.delete(); err != nil {
-				return err
+		// Track bucket deletion errors separately: cluster deletion should proceed even if bucket
+		// deletion fails, but the error must still be returned so the exit code is non-zero.
+		var bucketErr error
+		if e.plan.Bucket != nil {
+			if bucketErr = e.deleteBucket(); bucketErr != nil {
+				log.Printf("warning: bucket deletion failed, will continue with cluster deletion: %v", bucketErr)
 			}
 		}
-		log.Printf("Not deleting cluster as it does not exist")
+		if exists {
+			if err = e.delete(); err != nil {
+				return errors.Join(err, bucketErr)
+			}
+		} else {
+			log.Printf("Not deleting cluster as it does not exist")
+		}
+		if bucketErr != nil {
+			return bucketErr
+		}
 	case CreateAction:
 		//nolint:nestif
 		if !exists {
@@ -128,17 +142,26 @@ func (e *EKSDriver) Execute() error {
 			if err := e.newCmd(`eksctl create cluster -v 1 -f {{.CreateCfgFile}}`).Run(); err != nil {
 				return err
 			}
-			if err := e.GetCredentials(); err != nil {
-				return err
-			}
 		} else {
 			log.Printf("Not creating cluster as it already exists")
+		}
+
+		// Always get credentials so kubectl targets the right cluster.
+		if err := e.GetCredentials(); err != nil {
+			return err
 		}
 
 		if err := setupDisks(e.plan); err != nil {
 			return err
 		}
-		return createStorageClass()
+		if err := createStorageClass(); err != nil {
+			return err
+		}
+		if e.plan.Bucket != nil {
+			if err := e.createBucket(); err != nil {
+				return err
+			}
+		}
 	}
 	return nil
 }
@@ -242,6 +265,43 @@ func (e *EKSDriver) writeAWSCredentials() error {
 	log.Printf("Writing aws credentials")
 	fileContents := fmt.Sprintf(awsAuthTemplate, awsAccessKeyID, e.ctx[awsAccessKeyID], awsSecretAccessKey, e.ctx[awsSecretAccessKey])
 	return os.WriteFile(file, []byte(fileContents), 0o600)
+}
+
+func (e *EKSDriver) newBucketManager() (*bucket.S3Manager, error) {
+	cfg, err := newBucketConfig(e.plan, e.ctx, e.plan.Eks.Region)
+	if err != nil {
+		return nil, err
+	}
+	if e.plan.Bucket.S3 == nil {
+		return nil, fmt.Errorf("bucket.s3 configuration is required for EKS")
+	}
+	s3 := bucket.S3Config{
+		IAMUserPath:      e.plan.Bucket.S3.IamUserPath,
+		ManagedPolicyARN: e.plan.Bucket.S3.ManagedPolicyARN,
+	}
+	if s3.IAMUserPath == "" {
+		return nil, fmt.Errorf("bucket.s3.iamUserPath must not be empty")
+	}
+	if s3.ManagedPolicyARN == "" {
+		return nil, fmt.Errorf("bucket.s3.managedPolicyARN must not be empty")
+	}
+	return bucket.NewS3Manager(cfg, s3), nil
+}
+
+func (e *EKSDriver) createBucket() error {
+	mgr, err := e.newBucketManager()
+	if err != nil {
+		return err
+	}
+	return mgr.Create()
+}
+
+func (e *EKSDriver) deleteBucket() error {
+	mgr, err := e.newBucketManager()
+	if err != nil {
+		return err
+	}
+	return mgr.Delete()
 }
 
 func (e *EKSDriver) Cleanup(prefix string, olderThan time.Duration) error {

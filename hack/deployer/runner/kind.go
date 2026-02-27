@@ -5,6 +5,7 @@
 package runner
 
 import (
+	"errors"
 	"fmt"
 	"io/fs"
 	"log"
@@ -94,9 +95,30 @@ func (k *KindDriver) Execute() error {
 
 	switch k.plan.Operation {
 	case CreateAction:
-		return k.create()
+		if err := k.create(); err != nil {
+			return err
+		}
+		if k.plan.Bucket != nil {
+			if err := k.createBucket(); err != nil {
+				return err
+			}
+		}
+		return nil
 	case DeleteAction:
-		return k.delete()
+		// Track bucket deletion errors separately: cluster deletion should proceed even if bucket
+		// deletion fails, but the error must still be returned so the exit code is non-zero.
+		var bucketErr error
+		if k.plan.Bucket != nil {
+			if bucketErr = k.deleteBucket(); bucketErr != nil {
+				log.Printf("warning: bucket deletion failed, will continue with cluster deletion: %v", bucketErr)
+			}
+		}
+		if err := k.delete(); err != nil {
+			return errors.Join(err, bucketErr)
+		}
+		if bucketErr != nil {
+			return bucketErr
+		}
 	}
 	return nil
 }
@@ -279,6 +301,22 @@ func (k *KindDriver) ensureClientImage() error {
 	}
 	k.clientImage = image
 	return nil
+}
+
+func (k *KindDriver) createBucket() error {
+	mgr, err := newLocalGCSBucketManager(k.plan)
+	if err != nil {
+		return err
+	}
+	return mgr.Create()
+}
+
+func (k *KindDriver) deleteBucket() error {
+	mgr, err := newLocalGCSBucketManager(k.plan)
+	if err != nil {
+		return err
+	}
+	return mgr.Delete()
 }
 
 func (k *KindDriver) Cleanup(string, time.Duration) error {

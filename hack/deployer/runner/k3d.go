@@ -5,8 +5,10 @@
 package runner
 
 import (
+	"errors"
 	"fmt"
 	"io/fs"
+	"log"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -60,9 +62,30 @@ type K3dDriver struct {
 func (k *K3dDriver) Execute() error {
 	switch k.plan.Operation {
 	case CreateAction:
-		return k.create()
+		if err := k.create(); err != nil {
+			return err
+		}
+		if k.plan.Bucket != nil {
+			if err := k.createBucket(); err != nil {
+				return err
+			}
+		}
+		return nil
 	case DeleteAction:
-		return k.delete()
+		// Track bucket deletion errors separately: cluster deletion should proceed even if bucket
+		// deletion fails, but the error must still be returned so the exit code is non-zero.
+		var bucketErr error
+		if k.plan.Bucket != nil {
+			if bucketErr = k.deleteBucket(); bucketErr != nil {
+				log.Printf("warning: bucket deletion failed, will continue with cluster deletion: %v", bucketErr)
+			}
+		}
+		if err := k.delete(); err != nil {
+			return errors.Join(err, bucketErr)
+		}
+		if bucketErr != nil {
+			return bucketErr
+		}
 	}
 	return nil
 }
@@ -190,6 +213,22 @@ func (k *K3dDriver) createTmpStorageClass() (string, error) {
 	tmpFile := filepath.Join(os.TempDir(), storageClassFileName)
 	err := os.WriteFile(tmpFile, []byte(storageClass), fs.ModePerm)
 	return tmpFile, err
+}
+
+func (k *K3dDriver) createBucket() error {
+	mgr, err := newLocalGCSBucketManager(k.plan)
+	if err != nil {
+		return err
+	}
+	return mgr.Create()
+}
+
+func (k *K3dDriver) deleteBucket() error {
+	mgr, err := newLocalGCSBucketManager(k.plan)
+	if err != nil {
+		return err
+	}
+	return mgr.Delete()
 }
 
 func (k *K3dDriver) Cleanup(string, time.Duration) error {

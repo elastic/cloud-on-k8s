@@ -27,15 +27,46 @@ type Plan struct {
 	MachineType       string `yaml:"machineType"`
 	// Abbreviations not all-caps to allow merging with mergo in  `merge` as mergo does not understand struct tags and
 	// we use lowercase in the YAML
-	Gke                     *GKESettings  `yaml:"gke,omitempty"`
-	Aks                     *AKSSettings  `yaml:"aks,omitempty"`
-	Ocp                     *OCPSettings  `yaml:"ocp,omitempty"`
-	Eks                     *EKSSettings  `yaml:"eks,omitempty"`
-	Kind                    *KindSettings `yaml:"kind,omitempty"`
-	K3d                     *K3dSettings  `yaml:"k3d,omitempty"`
-	ServiceAccount          bool          `yaml:"serviceAccount"`
-	EnforceSecurityPolicies bool          `yaml:"enforceSecurityPolicies"`
-	DiskSetup               string        `yaml:"diskSetup"`
+	Gke                     *GKESettings    `yaml:"gke,omitempty"`
+	Aks                     *AKSSettings    `yaml:"aks,omitempty"`
+	Ocp                     *OCPSettings    `yaml:"ocp,omitempty"`
+	Eks                     *EKSSettings    `yaml:"eks,omitempty"`
+	Kind                    *KindSettings   `yaml:"kind,omitempty"`
+	K3d                     *K3dSettings    `yaml:"k3d,omitempty"`
+	Bucket                  *BucketSettings `yaml:"bucket,omitempty"`
+	ServiceAccount          bool            `yaml:"serviceAccount"`
+	EnforceSecurityPolicies bool            `yaml:"enforceSecurityPolicies"`
+	DiskSetup               string          `yaml:"diskSetup"`
+}
+
+// BucketSettings encapsulates settings for cloud storage bucket provisioning.
+type BucketSettings struct {
+	// Name is the bucket name. Supports template variables (e.g. "{{ .ClusterName }}-development").
+	Name string `yaml:"name"`
+	// Region is the cloud region for the bucket. For cloud providers (GKE, EKS, AKS) this is
+	// overridden by the provider-specific region. For local clusters (Kind, K3D) it defaults to us-central1.
+	Region string `yaml:"region,omitempty"`
+	// StorageClass is the cloud storage class (e.g. "standard" for GCS, "STANDARD" for S3).
+	StorageClass string `yaml:"storageClass"`
+	// Secret is the K8s Secret where the bucket credentials will be stored.
+	Secret BucketSecretSettings `yaml:"secret"`
+	// S3 holds AWS S3-specific configuration. Only used when the provider is EKS.
+	S3 *S3BucketSettings `yaml:"s3,omitempty"`
+}
+
+// S3BucketSettings holds AWS-specific configuration for S3 bucket provisioning.
+type S3BucketSettings struct {
+	// IamUserPath is the IAM path under which storage users should be created.
+	// "Iam" (not "IAM") so mergo maps the YAML key "iamUserPath" correctly.
+	IamUserPath string `yaml:"iamUserPath"`
+	// ManagedPolicyARN is the ARN of the pre-existing managed policy to attach to IAM users.
+	ManagedPolicyARN string `yaml:"managedPolicyARN"`
+}
+
+// BucketSecretSettings defines the Kubernetes Secret where bucket credentials are stored.
+type BucketSecretSettings struct {
+	Name      string `yaml:"name"`
+	Namespace string `yaml:"namespace"`
 }
 
 // GKESettings encapsulates settings specific to GKE

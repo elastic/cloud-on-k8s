@@ -5,6 +5,7 @@
 package runner
 
 import (
+	"errors"
 	"fmt"
 	"log"
 	"strings"
@@ -14,6 +15,7 @@ import (
 	storagev1 "k8s.io/api/storage/v1"
 
 	"github.com/elastic/cloud-on-k8s/v3/hack/deployer/exec"
+	"github.com/elastic/cloud-on-k8s/v3/hack/deployer/runner/bucket"
 	"github.com/elastic/cloud-on-k8s/v3/hack/deployer/runner/kyverno"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/vault"
 )
@@ -109,11 +111,20 @@ func (d *GKEDriver) Execute() error {
 
 	switch d.plan.Operation {
 	case DeleteAction:
+		// Track bucket deletion errors separately: cluster deletion should proceed even if bucket
+		// deletion fails, but the error must still be returned so the exit code is non-zero.
+		var bucketErr error
+		if d.plan.Bucket != nil {
+			if bucketErr = d.deleteBucket(); bucketErr != nil {
+				log.Printf("warning: bucket deletion failed, will continue with cluster deletion: %v", bucketErr)
+			}
+		}
 		if exists {
 			err = d.delete()
 		} else {
 			log.Printf("not deleting as cluster doesn't exist")
 		}
+		err = errors.Join(err, bucketErr)
 	case CreateAction:
 		if exists {
 			log.Printf("not creating as cluster exists")
@@ -163,6 +174,11 @@ func (d *GKEDriver) Execute() error {
 			}
 			// apply extra policies to prevent use of unlabeled storage classes which might escape garbage collection in CI
 			if err := apply(kyverno.GKEPolicies); err != nil {
+				return err
+			}
+		}
+		if d.plan.Bucket != nil {
+			if err := d.createBucket(); err != nil {
 				return err
 			}
 		}
@@ -509,6 +525,30 @@ func (d *GKEDriver) deleteDisks(disks []string) error {
 		}
 	}
 	return nil
+}
+
+func (d *GKEDriver) newBucketManager() (*bucket.GCSManager, error) {
+	cfg, err := newBucketConfig(d.plan, d.ctx, d.plan.Gke.Region)
+	if err != nil {
+		return nil, err
+	}
+	return bucket.NewGCSManager(cfg, d.plan.Gke.GCloudProject), nil
+}
+
+func (d *GKEDriver) createBucket() error {
+	mgr, err := d.newBucketManager()
+	if err != nil {
+		return err
+	}
+	return mgr.Create()
+}
+
+func (d *GKEDriver) deleteBucket() error {
+	mgr, err := d.newBucketManager()
+	if err != nil {
+		return err
+	}
+	return mgr.Delete()
 }
 
 func (d *GKEDriver) Cleanup(prefix string, olderThan time.Duration) error {
