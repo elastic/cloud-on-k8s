@@ -165,8 +165,6 @@ func (b *PodTemplateBuilder) WithTopologySpreadConstraints(constraints ...corev1
 	return b
 }
 
-const preferredNodeAffinityWeight int32 = 100
-
 // WithRequiredNodeAffinityMatchExpressions ensures all required node selector
 // terms include the provided match expressions by key without duplicating keys.
 // When the injected requirement uses the Exists operator, it is only skipped if
@@ -213,38 +211,6 @@ func (b *PodTemplateBuilder) WithRequiredNodeAffinityMatchExpressions(requiremen
 			nodeSelector.NodeSelectorTerms[i].MatchExpressions = append(nodeSelector.NodeSelectorTerms[i].MatchExpressions, requirement)
 		}
 	}
-	return b
-}
-
-// WithPreferredNodeAffinityMatchExpressions appends preferred nodeSelector terms for the
-// provided match expressions when the key is not already constrained by a preferred term.
-func (b *PodTemplateBuilder) WithPreferredNodeAffinityMatchExpressions(requirements ...corev1.NodeSelectorRequirement) *PodTemplateBuilder {
-	if len(requirements) == 0 {
-		return b
-	}
-
-	nodeAffinity := ensureNodeAffinity(&b.PodTemplate.Spec)
-	for _, requirement := range requirements {
-		// Copying as values is a slice.
-		copied := corev1.NodeSelectorRequirement{
-			Key:      requirement.Key,
-			Operator: requirement.Operator,
-			Values:   append([]string(nil), requirement.Values...),
-		}
-		if hasPreferredNodeAffinityKey(nodeAffinity.PreferredDuringSchedulingIgnoredDuringExecution, copied.Key) {
-			continue
-		}
-		nodeAffinity.PreferredDuringSchedulingIgnoredDuringExecution = append(
-			nodeAffinity.PreferredDuringSchedulingIgnoredDuringExecution,
-			corev1.PreferredSchedulingTerm{
-				Weight: preferredNodeAffinityWeight,
-				Preference: corev1.NodeSelectorTerm{
-					MatchExpressions: []corev1.NodeSelectorRequirement{copied},
-				},
-			},
-		)
-	}
-
 	return b
 }
 
@@ -503,17 +469,6 @@ func ensureNodeAffinity(podSpec *corev1.PodSpec) *corev1.NodeAffinity {
 		podSpec.Affinity.NodeAffinity = &corev1.NodeAffinity{}
 	}
 	return podSpec.Affinity.NodeAffinity
-}
-
-// hasPreferredNodeAffinityKey returns true if any preferred term already
-// constrains the provided key.
-func hasPreferredNodeAffinityKey(terms []corev1.PreferredSchedulingTerm, key string) bool {
-	for _, term := range terms {
-		if hasNodeSelectorRequirementKey(term.Preference, key) {
-			return true
-		}
-	}
-	return false
 }
 
 func hasNodeSelectorRequirementKey(term corev1.NodeSelectorTerm, key string) bool {
