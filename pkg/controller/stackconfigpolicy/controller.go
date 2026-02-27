@@ -111,25 +111,31 @@ func addWatches(mgr manager.Manager, c controller.Controller, r *ReconcileStackC
 
 func reconcileRequestForSoftOwnerPolicy() handler.TypedEventHandler[*corev1.Secret, reconcile.Request] {
 	return handler.TypedEnqueueRequestsFromMapFunc[*corev1.Secret](func(ctx context.Context, secret *corev1.Secret) []reconcile.Request {
-		softOwners, err := reconciler.SoftOwnerRefs(secret)
-		if err != nil {
-			ulog.Log.Error(err, "Fail to get soft-owner policies of secret", "secret_name", secret.GetName(), "secret_namespace", secret.GetNamespace())
-			return nil
-		}
-
-		if len(softOwners) == 0 {
-			return nil
-		}
-
-		requests := make([]reconcile.Request, len(softOwners))
-		for idx, nsn := range softOwners {
-			if nsn.Kind != policyv1alpha1.Kind {
-				continue
-			}
-			requests[idx] = reconcile.Request{NamespacedName: types.NamespacedName{Namespace: nsn.Namespace, Name: nsn.Name}}
-		}
-		return requests
+		return toReconcileRequests(secret)
 	})
+}
+
+// toReconcileRequests returns reconcile requests for StackConfigPolicy owners of the given secret.
+// Returns nil if the secret has no soft owners or if none of the owners are StackConfigPolicy resources.
+func toReconcileRequests(secret *corev1.Secret) []reconcile.Request {
+	softOwners, err := reconciler.SoftOwnerRefs(secret)
+	if err != nil {
+		ulog.Log.Error(err, "Fail to get soft-owner policies of secret", "secret_name", secret.GetName(), "secret_namespace", secret.GetNamespace())
+		return nil
+	}
+
+	if len(softOwners) == 0 {
+		return nil
+	}
+
+	var requests []reconcile.Request
+	for _, nsn := range softOwners {
+		if nsn.Kind != policyv1alpha1.Kind {
+			continue
+		}
+		requests = append(requests, reconcile.Request{NamespacedName: types.NamespacedName{Namespace: nsn.Namespace, Name: nsn.Name}})
+	}
+	return requests
 }
 
 // requestsAllStackConfigPolicies returns the requests to reconcile all StackConfigPolicy resources.
