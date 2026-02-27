@@ -269,9 +269,17 @@ func (s *S3Manager) deleteBucket() error {
 	)
 	output, err := exec.NewCommand(tagCmd).WithoutStreaming().Output()
 	if err != nil {
-		if isNotFound(output, "NoSuchBucket", "NoSuchTagSet") {
-			log.Printf("Bucket %s not found or has no tags, skipping deletion", s.cfg.Name)
+		if isNotFound(output, "NoSuchBucket") {
+			log.Printf("Bucket %s not found, skipping deletion", s.cfg.Name)
 			return nil
+		}
+		// NoSuchTagSet means the bucket exists but has no tags — likely the tagging step
+		// failed during creation. Surface this as an error so the bucket is not silently orphaned.
+		if isNotFound(output, "NoSuchTagSet") {
+			return fmt.Errorf(
+				"bucket %s exists but has no tags (tagging may have failed during creation); delete it manually or re-tag it with %s=%s",
+				s.cfg.Name, ManagedByTag, ManagedByValue,
+			)
 		}
 		return fmt.Errorf("while checking S3 bucket %s tags: %w", s.cfg.Name, err)
 	}
