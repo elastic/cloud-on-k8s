@@ -685,7 +685,7 @@ func Test_validZoneAwarenessTopologyKeys(t *testing.T) {
 			},
 		},
 		{
-			name: "mixed default and custom topology keys are allowed when all nodesets are explicit",
+			name: "mixed default and custom topology keys are rejected even when all nodesets are explicit",
 			es: esv1.Elasticsearch{
 				Spec: esv1.ElasticsearchSpec{
 					NodeSets: []esv1.NodeSet{
@@ -694,9 +694,10 @@ func Test_validZoneAwarenessTopologyKeys(t *testing.T) {
 					},
 				},
 			},
+			expectErrors: true,
 		},
 		{
-			name: "mixed custom topology keys are allowed when all nodesets are explicit",
+			name: "mixed custom topology keys are rejected even when all nodesets are explicit",
 			es: esv1.Elasticsearch{
 				Spec: esv1.ElasticsearchSpec{
 					NodeSets: []esv1.NodeSet{
@@ -705,6 +706,7 @@ func Test_validZoneAwarenessTopologyKeys(t *testing.T) {
 					},
 				},
 			},
+			expectErrors: true,
 		},
 		{
 			name: "single topology key with non-zoneAware nodeset is allowed",

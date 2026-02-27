@@ -9,10 +9,9 @@ spec:
   - name: default
     # Uncomment zoneAwareness to spread this NodeSet across zones.
     # zoneAwareness:
-    #   topologyKey: topology.kubernetes.io/zone
+    #   topologyKey: topology.kubernetes.io/zone  # optional, this is the default
     #   zones: ["us-east-1a", "us-east-1b", "us-east-1c"] # optional
-    #   maxSkew: 1 # optional, defaults to 1
-    #   whenUnsatisfiable: DoNotSchedule # optional, defaults to DoNotSchedule
+    # To further customize zone awareness, use a podTemplate within each nodeSet.
     config:
       # most Elasticsearch configuration parameters are possible to set, e.g: node.attr.attr_name: attr_value
       node.roles: ["master", "data", "ingest", "ml"]

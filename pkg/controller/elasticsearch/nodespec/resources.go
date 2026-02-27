@@ -117,10 +117,6 @@ func BuildExpectedResources(
 	return nodesResources, nil
 }
 
-// hasZoneAwareness returns true when any NodeSet enables zone awareness.
-// This allows us to ensure consistency and that each nodeSet has the
-// allocation awareness setting in place.
-// (cluster.routing.allocation.awareness.attributes)
 // MasterNodesNames returns the names of the master nodes for this ResourcesList.
 func (l ResourcesList) MasterNodesNames() []string {
 	var masters []string

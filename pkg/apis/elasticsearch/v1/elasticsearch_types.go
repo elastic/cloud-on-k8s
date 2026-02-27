@@ -513,9 +513,6 @@ type Elasticsearch struct {
 
 // downwardNodeLabelsAnnotationValue returns the raw downward node labels annotation value.
 func (es Elasticsearch) downwardNodeLabelsAnnotationValue() string {
-	if es.Annotations == nil {
-		return ""
-	}
 	return es.Annotations[DownwardNodeLabelsAnnotation]
 }
 
