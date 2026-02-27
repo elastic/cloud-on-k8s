@@ -69,7 +69,12 @@ func newLocalGCSBucketManager(plan Plan) (*bucket.GCSManager, error) {
 		return nil, fmt.Errorf("no GCP project configured; run 'gcloud config set project <PROJECT>' first")
 	}
 
-	cfg, err := newBucketConfig(plan, ctx, "us-central1")
+	region := plan.Bucket.Region
+	if region == "" {
+		region = "us-central1"
+	}
+
+	cfg, err := newBucketConfig(plan, ctx, region)
 	if err != nil {
 		return nil, err
 	}

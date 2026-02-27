@@ -43,6 +43,9 @@ type Plan struct {
 type BucketSettings struct {
 	// Name is the bucket name. Supports template variables (e.g. "{{ .ClusterName }}-development").
 	Name string `yaml:"name"`
+	// Region is the cloud region for the bucket. For cloud providers (GKE, EKS, AKS) this is
+	// overridden by the provider-specific region. For local clusters (Kind, K3D) it defaults to us-central1.
+	Region string `yaml:"region,omitempty"`
 	// StorageClass is the cloud storage class (e.g. "standard" for GCS, "STANDARD" for S3).
 	StorageClass string `yaml:"storageClass"`
 	// Secret is the K8s Secret where the bucket credentials will be stored.
