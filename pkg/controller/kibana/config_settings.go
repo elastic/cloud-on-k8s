@@ -9,7 +9,6 @@ import (
 	"path"
 	"path/filepath"
 
-	"github.com/elastic/go-ucfg"
 	"github.com/pkg/errors"
 	"go.elastic.co/apm/v2"
 	corev1 "k8s.io/api/core/v1"
@@ -19,6 +18,7 @@ import (
 	commonv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/common/v1"
 	kbv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/kibana/v1"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/association"
+	commonassociation "github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/association"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/certificates"
 	commonpassword "github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/password"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/settings"
@@ -62,6 +62,15 @@ const (
 	XpackEncryptedSavedObjects                     = "xpack.encryptedSavedObjects"
 	XpackEncryptedSavedObjectsEncryptionKey        = "xpack.encryptedSavedObjects.encryptionKey"
 	XpackFleetRegistryURL                          = "xpack.fleet.registryUrl"
+	XpackFleetPackages                             = "xpack.fleet.packages"
+	XpackFleetOutputs                              = "xpack.fleet.outputs"
+	XpackFleetAgents                               = "xpack.fleet.agents"
+	XpackFleetAgentsElasticsearch                  = "xpack.fleet.agents.elasticsearch"
+	XpackFleetAgentsElasticsearchHosts             = "xpack.fleet.agents.elasticsearch.hosts"
+	ECKFleetOutputID                               = "eck-fleet-agent-output-elasticsearch"
+	ECKFleetOutputName                             = "eck-elasticsearch"
+	fleetOutputTypeElasticsearch                   = "elasticsearch"
+	fleetOutputTypeRemoteElasticsearch             = "remote_elasticsearch"
 
 	ElasticsearchSslCertificateAuthorities = "elasticsearch.ssl.certificateAuthorities"
 	ElasticsearchSslVerificationMode       = "elasticsearch.ssl.verificationMode"
@@ -85,6 +94,31 @@ const (
 // as a hierarchical key-value configuration.
 type CanonicalConfig struct {
 	*settings.CanonicalConfig
+}
+
+// fleetOutputSSL represents the ssl configuration for an xpack Fleet output.
+type fleetOutputSSL struct {
+	CertificateAuthorities []string `config:"certificate_authorities"`
+}
+
+// fleetOutput represents an xpack Fleet output configuration.
+type fleetOutput struct {
+	ID        string          `config:"id"`
+	IsDefault bool            `config:"is_default"`
+	Name      string          `config:"name"`
+	Type      string          `config:"type"`
+	Hosts     []string        `config:"hosts"`
+	SSL       *fleetOutputSSL `config:"ssl,omitempty"`
+}
+
+// fleetOutputsConfig represents the xpack.fleet.outputs configuration.
+type fleetOutputsConfig struct {
+	Outputs []fleetOutput `config:"xpack.fleet.outputs"`
+}
+
+// fleetAgentsConfig represents the xpack.fleet.agents configuration.
+type fleetAgentsConfig struct {
+	Agents map[string]any `config:"xpack.fleet.agents"`
 }
 
 // NewConfigSettings returns the Kibana configuration settings for the given Kibana resource.
@@ -171,8 +205,90 @@ func NewConfigSettings(ctx context.Context, client k8s.Client, kb kbv1.Kibana, v
 	if err = cfg.MergeWith(userSettings, kibanaConfigFromPolicy); err != nil {
 		return CanonicalConfig{}, err
 	}
+	if err = maybeConfigureFleetOutputs(cfg, esAssocConf, kb.EsAssociation()); err != nil {
+		return CanonicalConfig{}, err
+	}
 
 	return CanonicalConfig{cfg}, nil
+}
+
+// maybeConfigureFleetOutputs potentially adds a default xpack.fleet.outputs block when no outputs are configured and ensures xpack.fleet.agents.elasticsearch key is removed when no agents are configured.
+func maybeConfigureFleetOutputs(cfg *settings.CanonicalConfig, esAssocConf *commonv1.AssociationConf, esAssoc commonv1.Association) error {
+	var fleetCfg fleetOutputsConfig
+	if err := cfg.Unpack(&fleetCfg); err != nil {
+		return err
+	}
+
+	// See https://www.elastic.co/docs/reference/kibana/configuration-reference/fleet-settings
+	// It states "We recommend not enabling the xpack.fleet.agents.elasticsearch.host settings when using xpack.fleet.outputs."
+	// In that case, should we adjust this check to juse be len(fleetCfg.Outputs) > 0?
+	shouldRemoveXPackFleetAgentsES := hasElasticsearchFleetOutput(fleetCfg.Outputs)
+	if !shouldRemoveXPackFleetAgentsES && esAssocConf.IsConfigured() && hasFleetConfigured(cfg) {
+		if err := cfg.MergeWith(defaultFleetOutputsConfig(*esAssocConf, esAssoc)); err != nil {
+			return err
+		}
+		// if there are no existing outputs, and there's an ES association and Fleet is configured, then
+		// we should remove the xpack.fleet.agents.elasticsearch key.
+		shouldRemoveXPackFleetAgentsES = true
+	}
+
+	if shouldRemoveXPackFleetAgentsES {
+		return removeXPackFleetAgentsElasticsearch(cfg)
+	}
+
+	return nil
+}
+
+// hasElasticsearchFleetOutput returns true when any output is of type elasticsearch or remote_elasticsearch.
+func hasElasticsearchFleetOutput(outputs []fleetOutput) bool {
+	for _, output := range outputs {
+		if output.Type == fleetOutputTypeElasticsearch || output.Type == fleetOutputTypeRemoteElasticsearch {
+			return true
+		}
+	}
+	return false
+}
+
+// removeXPackFleetAgentsElasticsearch removes xpack.fleet.agents.elasticsearch and
+// prunes xpack.fleet.agents when it becomes empty avoiding null entries. (xpack.fleet.agents: null)
+func removeXPackFleetAgentsElasticsearch(cfg *settings.CanonicalConfig) error {
+	if err := cfg.Remove(XpackFleetAgentsElasticsearch); err != nil {
+		return err
+	}
+	var fleetCfg fleetAgentsConfig
+	if err := cfg.Unpack(&fleetCfg); err != nil {
+		return err
+	}
+	if len(fleetCfg.Agents) == 0 {
+		return cfg.Remove(XpackFleetAgents)
+	}
+	return nil
+}
+
+// hasFleetConfigured returns true when any xpack.fleet.* setting are present in the effective config.
+func hasFleetConfigured(cfg *settings.CanonicalConfig) bool {
+	return cfg.HasChildConfig("xpack.fleet")
+}
+
+// defaultFleetOutputsConfig builds the default xpack.fleet.outputs block from an ES association.
+func defaultFleetOutputsConfig(esAssocConf commonv1.AssociationConf, esAssoc commonv1.Association) *settings.CanonicalConfig {
+	output := fleetOutput{
+		ID:        ECKFleetOutputID,
+		IsDefault: true,
+		Name:      ECKFleetOutputName,
+		Type:      fleetOutputTypeElasticsearch,
+		Hosts:     []string{esAssocConf.GetURL()},
+	}
+	if esAssocConf.GetCACertProvided() {
+		esCertsPath := path.Join(commonassociation.CertificatesDir(esAssoc), certificates.CAFileName)
+		output.SSL = &fleetOutputSSL{
+			CertificateAuthorities: []string{esCertsPath},
+		}
+	}
+	var fleetCfg fleetOutputsConfig
+	fleetCfg.Outputs = []fleetOutput{output}
+
+	return settings.MustCanonicalConfig(fleetCfg)
 }
 
 // Some previously-unsupported keys cause Kibana to error out even if the values are empty. ucfg cannot ignore fields easily so this is necessary to
@@ -183,7 +299,7 @@ func filterConfigSettings(kb kbv1.Kibana, cfg *settings.CanonicalConfig) error {
 		return err
 	}
 	if !ver.GTE(version.From(7, 6, 0)) {
-		_, err = (*ucfg.Config)(cfg).Remove(XpackEncryptedSavedObjects, -1, settings.Options...)
+		err = cfg.Remove(XpackEncryptedSavedObjects)
 	}
 	return err
 }

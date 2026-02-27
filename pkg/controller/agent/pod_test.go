@@ -18,7 +18,6 @@ import (
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
-	"k8s.io/utils/ptr"
 
 	agentv1alpha1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/agent/v1alpha1"
 	commonv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/common/v1"
@@ -932,21 +931,6 @@ func Test_applyRelatedEsAssoc(t *testing.T) {
 			},
 		}
 	}
-	expectedCmdFunc := func(ns string) []string {
-		return []string{"/usr/bin/env", "bash", "-c", fmt.Sprintf(`#!/usr/bin/env bash
-set -e
-if [[ -f /mnt/elastic-internal/elasticsearch-association/%[1]s/elasticsearch/certs/ca.crt ]]; then
-  if [[ -f /usr/bin/update-ca-trust ]]; then
-    cp /mnt/elastic-internal/elasticsearch-association/%[1]s/elasticsearch/certs/ca.crt /etc/pki/ca-trust/source/anchors/
-    /usr/bin/update-ca-trust
-  elif [[ -f /usr/sbin/update-ca-certificates ]]; then
-    cp /mnt/elastic-internal/elasticsearch-association/%[1]s/elasticsearch/certs/ca.crt /usr/local/share/ca-certificates/
-    /usr/sbin/update-ca-certificates
-  fi
-fi
-/usr/bin/tini -- /usr/local/bin/docker-entrypoint -e "$@"
-`, ns)}
-	}
 	for _, tt := range []struct {
 		name        string
 		agent       agentv1alpha1.Agent
@@ -969,20 +953,6 @@ fi
 				Spec: agentv1alpha1.AgentSpec{
 					Version:            "7.16.2",
 					FleetServerEnabled: false,
-					DaemonSet: &agentv1alpha1.DaemonSetSpec{
-						PodTemplate: corev1.PodTemplateSpec{
-							Spec: corev1.PodSpec{
-								Containers: []corev1.Container{
-									{
-										Name: "agent",
-										SecurityContext: &corev1.SecurityContext{
-											RunAsUser: ptr.To[int64](0),
-										},
-									},
-								},
-							},
-						},
-					},
 				},
 			},
 			assoc:   assocToSameNs,
@@ -990,12 +960,12 @@ fi
 			wantPodSpec: generatePodSpec(func(ps corev1.PodSpec) corev1.PodSpec {
 				ps.Volumes = expectedCAVolume
 				ps.Containers[0].VolumeMounts = expectedCAVolumeMountFunc(agentNs)
-				ps.Containers[0].Command = expectedCmdFunc(agentNs)
+				ps.Containers[0].Command = nil
 				return ps
 			}),
 		},
 		{
-			name: "fleet server enabled 8x has volumes and volumeMount but no ca-init command",
+			name: "fleet server enabled 8x has volumes and volumeMount",
 			agent: agentv1alpha1.Agent{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "agent",
@@ -1025,20 +995,6 @@ fi
 				Spec: agentv1alpha1.AgentSpec{
 					Version:            "7.16.2",
 					FleetServerEnabled: false,
-					DaemonSet: &agentv1alpha1.DaemonSetSpec{
-						PodTemplate: corev1.PodTemplateSpec{
-							Spec: corev1.PodSpec{
-								Containers: []corev1.Container{
-									{
-										Name: "agent",
-										SecurityContext: &corev1.SecurityContext{
-											RunAsUser: ptr.To[int64](0),
-										},
-									},
-								},
-							},
-						},
-					},
 				},
 			},
 			assoc:   assocToOtherNs,
@@ -1046,14 +1002,14 @@ fi
 			wantPodSpec: generatePodSpec(func(ps corev1.PodSpec) corev1.PodSpec {
 				ps.Volumes = expectedCAVolume
 				ps.Containers[0].VolumeMounts = expectedCAVolumeMountFunc("elasticsearch-ns")
-				ps.Containers[0].Command = expectedCmdFunc("elasticsearch-ns")
+				ps.Containers[0].Command = nil
 				return ps
 			}),
 		},
 	} {
 		t.Run(tt.name, func(t *testing.T) {
 			builder := generateBuilder()
-			gotBuilder, gotErr := applyRelatedEsAssoc(tt.agent, tt.assoc, builder)
+			gotBuilder, gotErr := applyRelatedEsAssoc(tt.assoc, builder)
 			require.Equal(t, tt.wantErr, gotErr != nil)
 			if !tt.wantErr {
 				require.Nil(t, gotErr)
