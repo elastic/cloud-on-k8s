@@ -6,6 +6,7 @@ package runner
 
 import (
 	"bytes"
+	"errors"
 	"fmt"
 	"log"
 	"os"
@@ -104,17 +105,24 @@ func (e *EKSDriver) Execute() error {
 	}
 	switch e.plan.Operation {
 	case DeleteAction:
+		// Track bucket deletion errors separately: cluster deletion should proceed even if bucket
+		// deletion fails, but the error must still be returned so the exit code is non-zero.
+		var bucketErr error
 		if e.plan.Bucket != nil {
-			if err := e.deleteBucket(); err != nil {
-				log.Printf("warning: bucket deletion failed: %v", err)
+			if bucketErr = e.deleteBucket(); bucketErr != nil {
+				log.Printf("warning: bucket deletion failed, will continue with cluster deletion: %v", bucketErr)
 			}
 		}
 		if exists {
 			if err = e.delete(); err != nil {
-				return err
+				return errors.Join(err, bucketErr)
 			}
+		} else {
+			log.Printf("Not deleting cluster as it does not exist")
 		}
-		log.Printf("Not deleting cluster as it does not exist")
+		if bucketErr != nil {
+			return bucketErr
+		}
 	case CreateAction:
 		//nolint:nestif
 		if !exists {

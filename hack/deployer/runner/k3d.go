@@ -5,6 +5,7 @@
 package runner
 
 import (
+	"errors"
 	"fmt"
 	"io/fs"
 	"log"
@@ -71,12 +72,20 @@ func (k *K3dDriver) Execute() error {
 		}
 		return nil
 	case DeleteAction:
+		// Track bucket deletion errors separately: cluster deletion should proceed even if bucket
+		// deletion fails, but the error must still be returned so the exit code is non-zero.
+		var bucketErr error
 		if k.plan.Bucket != nil {
-			if err := k.deleteBucket(); err != nil {
-				log.Printf("warning: bucket deletion failed: %v", err)
+			if bucketErr = k.deleteBucket(); bucketErr != nil {
+				log.Printf("warning: bucket deletion failed, will continue with cluster deletion: %v", bucketErr)
 			}
 		}
-		return k.delete()
+		if err := k.delete(); err != nil {
+			return errors.Join(err, bucketErr)
+		}
+		if bucketErr != nil {
+			return bucketErr
+		}
 	}
 	return nil
 }

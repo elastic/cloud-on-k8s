@@ -5,6 +5,7 @@
 package runner
 
 import (
+	"errors"
 	"fmt"
 	"log"
 	"strings"
@@ -110,9 +111,12 @@ func (d *GKEDriver) Execute() error {
 
 	switch d.plan.Operation {
 	case DeleteAction:
+		// Track bucket deletion errors separately: cluster deletion should proceed even if bucket
+		// deletion fails, but the error must still be returned so the exit code is non-zero.
+		var bucketErr error
 		if d.plan.Bucket != nil {
-			if err := d.deleteBucket(); err != nil {
-				log.Printf("warning: bucket deletion failed: %v", err)
+			if bucketErr = d.deleteBucket(); bucketErr != nil {
+				log.Printf("warning: bucket deletion failed, will continue with cluster deletion: %v", bucketErr)
 			}
 		}
 		if exists {
@@ -120,6 +124,7 @@ func (d *GKEDriver) Execute() error {
 		} else {
 			log.Printf("not deleting as cluster doesn't exist")
 		}
+		err = errors.Join(err, bucketErr)
 	case CreateAction:
 		if exists {
 			log.Printf("not creating as cluster exists")

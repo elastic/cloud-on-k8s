@@ -5,6 +5,7 @@
 package runner
 
 import (
+	"errors"
 	"fmt"
 	"log"
 	"strings"
@@ -86,17 +87,23 @@ func (d *AKSDriver) Execute() error {
 
 	switch d.plan.Operation {
 	case DeleteAction:
+		// Track bucket deletion errors separately: cluster deletion should proceed even if bucket
+		// deletion fails, but the error must still be returned so the exit code is non-zero.
+		var bucketErr error
 		if d.plan.Bucket != nil {
-			if err := d.deleteBucket(); err != nil {
-				log.Printf("warning: bucket deletion failed: %v", err)
+			if bucketErr = d.deleteBucket(); bucketErr != nil {
+				log.Printf("warning: bucket deletion failed, will continue with cluster deletion: %v", bucketErr)
 			}
 		}
 		if exists {
 			if err := d.delete(); err != nil {
-				return err
+				return errors.Join(err, bucketErr)
 			}
 		} else {
 			log.Printf("not deleting as cluster doesn't exist")
+		}
+		if bucketErr != nil {
+			return bucketErr
 		}
 	case CreateAction:
 		if exists {
