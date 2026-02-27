@@ -5,6 +5,7 @@
 package defaults
 
 import (
+	"slices"
 	"sort"
 
 	corev1 "k8s.io/api/core/v1"
@@ -149,18 +150,17 @@ func (b *PodTemplateBuilder) WithAffinity(affinity *corev1.Affinity) *PodTemplat
 // provided constraint when one is available.
 func (b *PodTemplateBuilder) WithTopologySpreadConstraints(constraints ...corev1.TopologySpreadConstraint) *PodTemplateBuilder {
 	for _, constraint := range constraints {
-		for i, existing := range b.PodTemplate.Spec.TopologySpreadConstraints {
-			if existing.TopologyKey != constraint.TopologyKey {
-				continue
-			}
+		if idx := slices.IndexFunc(b.PodTemplate.Spec.TopologySpreadConstraints, func(c corev1.TopologySpreadConstraint) bool {
+			return c.TopologyKey == constraint.TopologyKey
+		}); idx >= 0 {
+			existing := &b.PodTemplate.Spec.TopologySpreadConstraints[idx]
 			if (existing.LabelSelector == nil || k8s.IsLabelSelectorEmpty(*existing.LabelSelector)) &&
 				constraint.LabelSelector != nil && !k8s.IsLabelSelectorEmpty(*constraint.LabelSelector) {
-				b.PodTemplate.Spec.TopologySpreadConstraints[i].LabelSelector = constraint.LabelSelector.DeepCopy()
+				existing.LabelSelector = constraint.LabelSelector.DeepCopy()
 			}
-			goto next
+			continue
 		}
 		b.PodTemplate.Spec.TopologySpreadConstraints = append(b.PodTemplate.Spec.TopologySpreadConstraints, constraint)
-	next:
 	}
 	return b
 }
