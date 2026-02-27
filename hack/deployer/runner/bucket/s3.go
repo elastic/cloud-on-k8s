@@ -16,14 +16,18 @@ import (
 // S3Manager manages Amazon S3 buckets.
 type S3Manager struct {
 	cfg Config
+	s3  S3Config
 }
 
 var _ Manager = &S3Manager{}
 
 // NewS3Manager creates a new S3 bucket manager.
-func NewS3Manager(cfg Config) *S3Manager {
+// The S3-specific configuration (IAM path, managed policy ARN) is passed separately
+// from the common Config to make the dependency explicit.
+func NewS3Manager(cfg Config, s3 S3Config) *S3Manager {
 	return &S3Manager{
 		cfg: cfg,
+		s3:  s3,
 	}
 }
 
@@ -152,10 +156,10 @@ type accessKeyOutput struct {
 func (s *S3Manager) createIAMUserAndKeys() (string, string, error) {
 	userName := s.iamUserName()
 
-	log.Printf("Creating IAM user %s under path %s...", userName, s.cfg.S3.IAMUserPath)
+	log.Printf("Creating IAM user %s under path %s...", userName, s.s3.IAMUserPath)
 
 	// Create IAM user
-	createCmd := fmt.Sprintf("aws iam create-user --user-name %s --path %s", userName, s.cfg.S3.IAMUserPath)
+	createCmd := fmt.Sprintf("aws iam create-user --user-name %s --path %s", userName, s.s3.IAMUserPath)
 	if err := exec.NewCommand(createCmd).WithoutStreaming().Run(); err != nil {
 		// Check if user already exists
 		checkCmd := fmt.Sprintf("aws iam get-user --user-name %s", userName)
@@ -167,10 +171,10 @@ func (s *S3Manager) createIAMUserAndKeys() (string, string, error) {
 
 	// Attach the pre-existing managed policy that grants S3 access to buckets
 	// ending with -snapshot-repo, -logs, or -development.
-	log.Printf("Attaching managed policy %s to IAM user %s...", s.cfg.S3.ManagedPolicyARN, userName)
+	log.Printf("Attaching managed policy %s to IAM user %s...", s.s3.ManagedPolicyARN, userName)
 	attachCmd := fmt.Sprintf(
 		"aws iam attach-user-policy --user-name %s --policy-arn %s",
-		userName, s.cfg.S3.ManagedPolicyARN,
+		userName, s.s3.ManagedPolicyARN,
 	)
 	if err := exec.NewCommand(attachCmd).WithoutStreaming().Run(); err != nil {
 		return "", "", fmt.Errorf("while attaching managed policy to IAM user: %w", err)
@@ -220,10 +224,10 @@ func (s *S3Manager) deleteIAMUser() error {
 	if err := json.Unmarshal([]byte(output), &getUserOutput); err != nil {
 		return fmt.Errorf("while parsing IAM user %s: %w", userName, err)
 	}
-	if getUserOutput.User.Path != s.cfg.S3.IAMUserPath {
+	if getUserOutput.User.Path != s.s3.IAMUserPath {
 		return fmt.Errorf(
 			"refusing to delete IAM user %s: expected path %s but found %q. Delete it manually",
-			userName, s.cfg.S3.IAMUserPath, getUserOutput.User.Path,
+			userName, s.s3.IAMUserPath, getUserOutput.User.Path,
 		)
 	}
 	if !strings.HasSuffix(getUserOutput.User.UserName, "-storage") {
@@ -249,7 +253,7 @@ func (s *S3Manager) deleteIAMUser() error {
 	}
 
 	// Detach managed policy — must succeed before the user can be deleted.
-	detachCmd := fmt.Sprintf("aws iam detach-user-policy --user-name %s --policy-arn %s", userName, s.cfg.S3.ManagedPolicyARN)
+	detachCmd := fmt.Sprintf("aws iam detach-user-policy --user-name %s --policy-arn %s", userName, s.s3.ManagedPolicyARN)
 	if err := exec.NewCommand(detachCmd).WithoutStreaming().Run(); err != nil {
 		return fmt.Errorf("while detaching policy from IAM user %s: %w", userName, err)
 	}

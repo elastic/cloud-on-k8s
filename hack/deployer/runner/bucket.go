@@ -48,19 +48,5 @@ func newBucketConfig(plan Plan, ctx map[string]any, region string) (bucket.Confi
 		SecretNamespace: secretNamespace,
 	}
 
-	// Wire provider-specific settings
-	if plan.Bucket.S3 != nil {
-		if plan.Bucket.S3.IamUserPath == "" {
-			return bucket.Config{}, fmt.Errorf("bucket.s3.iamUserPath must not be empty")
-		}
-		if plan.Bucket.S3.ManagedPolicyARN == "" {
-			return bucket.Config{}, fmt.Errorf("bucket.s3.managedPolicyARN must not be empty")
-		}
-		cfg.S3 = bucket.S3Config{
-			IAMUserPath:      plan.Bucket.S3.IamUserPath,
-			ManagedPolicyARN: plan.Bucket.S3.ManagedPolicyARN,
-		}
-	}
-
 	return cfg, nil
 }

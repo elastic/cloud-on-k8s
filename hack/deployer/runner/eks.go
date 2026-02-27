@@ -264,7 +264,20 @@ func (e *EKSDriver) newBucketManager() (*bucket.S3Manager, error) {
 	if err != nil {
 		return nil, err
 	}
-	return bucket.NewS3Manager(cfg), nil
+	if e.plan.Bucket.S3 == nil {
+		return nil, fmt.Errorf("bucket.s3 configuration is required for EKS")
+	}
+	s3 := bucket.S3Config{
+		IAMUserPath:      e.plan.Bucket.S3.IamUserPath,
+		ManagedPolicyARN: e.plan.Bucket.S3.ManagedPolicyARN,
+	}
+	if s3.IAMUserPath == "" {
+		return nil, fmt.Errorf("bucket.s3.iamUserPath must not be empty")
+	}
+	if s3.ManagedPolicyARN == "" {
+		return nil, fmt.Errorf("bucket.s3.managedPolicyARN must not be empty")
+	}
+	return bucket.NewS3Manager(cfg, s3), nil
 }
 
 func (e *EKSDriver) createBucket() error {

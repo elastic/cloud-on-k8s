@@ -45,8 +45,6 @@ type Config struct {
 	SecretName string
 	// SecretNamespace is the namespace for the Kubernetes Secret.
 	SecretNamespace string
-	// S3 holds AWS S3-specific configuration. Only set when using the S3 provider.
-	S3 S3Config
 }
 
 // S3Config holds AWS S3-specific configuration for IAM user provisioning.
