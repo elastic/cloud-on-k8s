@@ -77,9 +77,14 @@ func (s *S3Manager) createBucket() error {
 
 	// Check if bucket already exists
 	checkCmd := fmt.Sprintf("aws s3api head-bucket --bucket %s --region %s", s.cfg.Name, s.cfg.Region)
-	if err := exec.NewCommand(checkCmd).WithoutStreaming().Run(); err == nil {
+	output, err := exec.NewCommand(checkCmd).WithoutStreaming().Output()
+	if err == nil {
 		log.Printf("Bucket %s already exists, skipping creation", s.cfg.Name)
 		return nil
+	}
+	// head-bucket returns 404 for non-existent buckets; any other error (auth, network) should surface.
+	if !isNotFound(output, "404", "Not Found", "NoSuchBucket") {
+		return fmt.Errorf("while checking if bucket %s exists: %w", s.cfg.Name, err)
 	}
 
 	// us-east-1 does not accept LocationConstraint

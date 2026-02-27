@@ -11,6 +11,57 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
+func Test_isNotFound(t *testing.T) {
+	tests := []struct {
+		name       string
+		cmdOutput  string
+		indicators []string
+		want       bool
+	}{
+		{
+			name:       "matches single indicator",
+			cmdOutput:  "ERROR: (gcloud.storage.buckets.describe) NOT_FOUND: 404",
+			indicators: []string{"NOT_FOUND"},
+			want:       true,
+		},
+		{
+			name:       "matches second indicator",
+			cmdOutput:  "BucketNotFoundException: 404 gs://my-bucket",
+			indicators: []string{"NOT_FOUND", "BucketNotFoundException"},
+			want:       true,
+		},
+		{
+			name:       "no match on permission error",
+			cmdOutput:  "ERROR: permission denied for bucket my-bucket",
+			indicators: []string{"NOT_FOUND", "BucketNotFoundException"},
+			want:       false,
+		},
+		{
+			name:       "empty output",
+			cmdOutput:  "",
+			indicators: []string{"NOT_FOUND"},
+			want:       false,
+		},
+		{
+			name:       "no indicators",
+			cmdOutput:  "some output",
+			indicators: nil,
+			want:       false,
+		},
+		{
+			name:       "case sensitive",
+			cmdOutput:  "not_found",
+			indicators: []string{"NOT_FOUND"},
+			want:       false,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			assert.Equal(t, tt.want, isNotFound(tt.cmdOutput, tt.indicators...))
+		})
+	}
+}
+
 func Test_S3Manager_iamUserName(t *testing.T) {
 	tests := []struct {
 		name       string

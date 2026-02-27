@@ -84,10 +84,13 @@ func (g *GCSManager) createBucket() error {
 
 	// Check if bucket already exists
 	checkCmd := fmt.Sprintf("gcloud storage buckets describe gs://%s --project %s", g.cfg.Name, g.project)
-	_, err := exec.NewCommand(checkCmd).WithoutStreaming().Output()
+	output, err := exec.NewCommand(checkCmd).WithoutStreaming().Output()
 	if err == nil {
 		log.Printf("Bucket %s already exists, skipping creation", g.cfg.Name)
 		return nil
+	}
+	if !isNotFound(output, "NOT_FOUND", "BucketNotFoundException") {
+		return fmt.Errorf("while checking if bucket %s exists: %w", g.cfg.Name, err)
 	}
 
 	storageClassArg := ""
@@ -146,8 +149,10 @@ func (g *GCSManager) createServiceAccountAndKey() (string, error) {
 
 	// Check if service account already exists
 	checkCmd := fmt.Sprintf("gcloud iam service-accounts describe %s --project %s", saEmail, g.project)
-	_, err := exec.NewCommand(checkCmd).WithoutStreaming().Output()
-	if err != nil {
+	output, err := exec.NewCommand(checkCmd).WithoutStreaming().Output()
+	if err == nil {
+		log.Printf("Service account %s already exists, skipping creation", saName)
+	} else if isNotFound(output, "NOT_FOUND") {
 		// Create service account
 		createCmd := fmt.Sprintf(
 			`gcloud iam service-accounts create %s --display-name="Bucket SA for %s" --project %s`,
@@ -157,7 +162,7 @@ func (g *GCSManager) createServiceAccountAndKey() (string, error) {
 			return "", fmt.Errorf("while creating service account: %w", err)
 		}
 	} else {
-		log.Printf("Service account %s already exists, skipping creation", saName)
+		return "", fmt.Errorf("while checking if service account %s exists: %w", saEmail, err)
 	}
 
 	// Grant objectAdmin role scoped to the bucket.

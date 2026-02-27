@@ -87,9 +87,13 @@ func (a *AzureManager) createStorageAccount() error {
 		"az storage account show --name %s --resource-group %s",
 		accountName, a.resourceGroup,
 	)
-	if err := exec.NewCommand(checkCmd).WithoutStreaming().Run(); err == nil {
+	output, err := exec.NewCommand(checkCmd).WithoutStreaming().Output()
+	if err == nil {
 		log.Printf("Storage account %s already exists, skipping creation", accountName)
 		return nil
+	}
+	if !isNotFound(output, "ResourceNotFound", "was not found") {
+		return fmt.Errorf("while checking if storage account %s exists: %w", accountName, err)
 	}
 
 	// Build tags string
