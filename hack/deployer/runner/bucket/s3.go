@@ -235,22 +235,23 @@ func (s *S3Manager) deleteIAMUser() error {
 
 	log.Printf("Deleting IAM user %s and associated resources...", userName)
 
-	// List and delete access keys
+	// List and delete access keys — must succeed before the user can be deleted.
 	listKeysCmd := fmt.Sprintf(`aws iam list-access-keys --user-name %s --query "AccessKeyMetadata[].AccessKeyId" --output text`, userName)
 	keysOutput, err := exec.NewCommand(listKeysCmd).WithoutStreaming().Output()
-	if err == nil {
-		for keyID := range strings.FieldsSeq(strings.TrimSpace(keysOutput)) {
-			delKeyCmd := fmt.Sprintf("aws iam delete-access-key --user-name %s --access-key-id %s", userName, keyID)
-			if err := exec.NewCommand(delKeyCmd).WithoutStreaming().Run(); err != nil {
-				log.Printf("warning: failed to delete access key %s: %v", keyID, err)
-			}
+	if err != nil {
+		return fmt.Errorf("while listing access keys for IAM user %s: %w", userName, err)
+	}
+	for keyID := range strings.FieldsSeq(strings.TrimSpace(keysOutput)) {
+		delKeyCmd := fmt.Sprintf("aws iam delete-access-key --user-name %s --access-key-id %s", userName, keyID)
+		if err := exec.NewCommand(delKeyCmd).WithoutStreaming().Run(); err != nil {
+			return fmt.Errorf("while deleting access key %s for IAM user %s: %w", keyID, userName, err)
 		}
 	}
 
-	// Detach managed policy
+	// Detach managed policy — must succeed before the user can be deleted.
 	detachCmd := fmt.Sprintf("aws iam detach-user-policy --user-name %s --policy-arn %s", userName, s.cfg.S3.ManagedPolicyARN)
 	if err := exec.NewCommand(detachCmd).WithoutStreaming().Run(); err != nil {
-		log.Printf("warning: failed to detach managed policy from IAM user %s: %v", userName, err)
+		return fmt.Errorf("while detaching policy from IAM user %s: %w", userName, err)
 	}
 
 	// Delete the user
