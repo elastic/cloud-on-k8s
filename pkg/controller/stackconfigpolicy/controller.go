@@ -121,12 +121,12 @@ func reconcileRequestForSoftOwnerPolicy() handler.TypedEventHandler[*corev1.Secr
 			return nil
 		}
 
-		requests := make([]reconcile.Request, len(softOwners))
-		for idx, nsn := range softOwners {
+		var requests []reconcile.Request
+		for _, nsn := range softOwners {
 			if nsn.Kind != policyv1alpha1.Kind {
 				continue
 			}
-			requests[idx] = reconcile.Request{NamespacedName: types.NamespacedName{Namespace: nsn.Namespace, Name: nsn.Name}}
+			requests = append(requests, reconcile.Request{NamespacedName: types.NamespacedName{Namespace: nsn.Namespace, Name: nsn.Name}})
 		}
 		return requests
 	})
