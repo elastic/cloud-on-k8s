@@ -7,6 +7,7 @@ package stateful
 import (
 	"context"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -570,9 +571,87 @@ func Test_Driver_maybeCompleteNodeUpgrades(t *testing.T) {
 			nodeNameToID, err := esState.NodeNameToID()
 			require.NoError(t, err)
 
-			n := shutdown.NewNodeShutdown(esClient, nodeNameToID, esclient.Restart, "", crlog.Log)
+			n := shutdown.NewNodeShutdown(esClient, nodeNameToID, esclient.Restart, "", nil, crlog.Log)
 			results := d.maybeCompleteNodeUpgrades(context.Background(), esClient, esState, n)
 			tt.assertions(results, esClient)
 		})
 	}
+}
+
+func Test_shutdownReasonAndAllocationDelay(t *testing.T) {
+	tests := []struct {
+		name            string
+		annotations     map[string]string
+		resourceVersion string
+		wantReason      string
+		wantDelay       *time.Duration
+	}{
+		{
+			name:            "no annotations, uses resource version",
+			annotations:     nil,
+			resourceVersion: "12345",
+			wantReason:      "12345",
+			wantDelay:       nil,
+		},
+		{
+			name:            "restart-trigger set, used as reason",
+			annotations:     map[string]string{esv1.RestartTriggerAnnotation: "2026-01-14T12:00:00Z"},
+			resourceVersion: "12345",
+			wantReason:      "2026-01-14T12:00:00Z",
+			wantDelay:       nil,
+		},
+		{
+			name:            "restart-trigger empty, falls back to resource version",
+			annotations:     map[string]string{esv1.RestartTriggerAnnotation: ""},
+			resourceVersion: "99",
+			wantReason:      "99",
+			wantDelay:       nil,
+		},
+		{
+			name:            "allocation delay set",
+			annotations:     map[string]string{esv1.RestartAllocationDelayAnnotation: "10m"},
+			resourceVersion: "42",
+			wantReason:      "42",
+			wantDelay:       durationPtr(10 * time.Minute),
+		},
+		{
+			name:            "allocation delay invalid, ignored",
+			annotations:     map[string]string{esv1.RestartAllocationDelayAnnotation: "not-a-duration"},
+			resourceVersion: "42",
+			wantReason:      "42",
+			wantDelay:       nil,
+		},
+		{
+			name: "both annotations set",
+			annotations: map[string]string{
+				esv1.RestartTriggerAnnotation:         "trigger-value",
+				esv1.RestartAllocationDelayAnnotation: "5m",
+			},
+			resourceVersion: "42",
+			wantReason:      "trigger-value",
+			wantDelay:       durationPtr(5 * time.Minute),
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			es := esv1.Elasticsearch{
+				ObjectMeta: metav1.ObjectMeta{
+					ResourceVersion: tt.resourceVersion,
+					Annotations:     tt.annotations,
+				},
+			}
+			reason, delay := shutdownReasonAndAllocationDelay(es, crlog.Log)
+			assert.Equal(t, tt.wantReason, reason)
+			if tt.wantDelay == nil {
+				assert.Nil(t, delay)
+			} else {
+				require.NotNil(t, delay)
+				assert.Equal(t, *tt.wantDelay, *delay)
+			}
+		})
+	}
+}
+
+func durationPtr(d time.Duration) *time.Duration {
+	return &d
 }

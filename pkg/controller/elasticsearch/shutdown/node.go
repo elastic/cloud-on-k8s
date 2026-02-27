@@ -8,6 +8,7 @@ import (
 	"context"
 	"fmt"
 	"sync"
+	"time"
 
 	"github.com/go-logr/logr"
 
@@ -17,28 +18,31 @@ import (
 // NodeShutdown implements the shutdown.Interface with the Elasticsearch node shutdown API. It is not safe to call methods
 // on this struct concurrently from multiple go-routines.
 type NodeShutdown struct {
-	c           esclient.Client
-	typ         esclient.ShutdownType
-	reason      string
-	podToNodeID map[string]string
-	shutdowns   map[string]esclient.NodeShutdown
-	once        sync.Once
-	log         logr.Logger
+	c               esclient.Client
+	typ             esclient.ShutdownType
+	reason          string
+	allocationDelay *time.Duration
+	podToNodeID     map[string]string
+	shutdowns       map[string]esclient.NodeShutdown
+	once            sync.Once
+	log             logr.Logger
 }
 
 var _ Interface = (*NodeShutdown)(nil)
 
 // NewNodeShutdown creates a new NodeShutdown struct restricted to one type of shutdown (typ); podToNodeID is mapping from
 // K8s Pod name to Elasticsearch node ID; reason is an arbitrary bit of metadata that will be attached to each node shutdown
-// request in Elasticsearch and can help to track and audit shutdown requests.
-func NewNodeShutdown(c esclient.Client, podToNodeID map[string]string, typ esclient.ShutdownType, reason string, l logr.Logger) *NodeShutdown {
+// request in Elasticsearch and can help to track and audit shutdown requests. allocationDelay, if non-nil, is passed to the
+// Elasticsearch node shutdown API to override the default allocation delay.
+func NewNodeShutdown(c esclient.Client, podToNodeID map[string]string, typ esclient.ShutdownType, reason string, allocationDelay *time.Duration, l logr.Logger) *NodeShutdown {
 	return &NodeShutdown{
-		c:           c,
-		typ:         typ,
-		podToNodeID: podToNodeID,
-		reason:      reason,
-		shutdowns:   make(map[string]esclient.NodeShutdown),
-		log:         l,
+		c:               c,
+		typ:             typ,
+		podToNodeID:     podToNodeID,
+		reason:          reason,
+		allocationDelay: allocationDelay,
+		shutdowns:       make(map[string]esclient.NodeShutdown),
+		log:             l,
 	}
 }
 
@@ -97,10 +101,8 @@ func (ns *NodeShutdown) ReconcileShutdowns(ctx context.Context, leavingNodes []s
 		if shutdown, exists := ns.shutdowns[nodeID]; exists && shutdown.Is(ns.typ) {
 			continue
 		}
-		ns.log.V(1).Info("Requesting shutdown", "type", ns.typ, "node", node, "node_id", nodeID)
-		// in case of type=restart we are relying on the default allocation_delay of 5 min see
-		// https://www.elastic.co/guide/en/elasticsearch/reference/7.15/put-shutdown.html
-		if err := ns.c.PutShutdown(ctx, nodeID, ns.typ, ns.reason, nil); err != nil {
+		ns.log.V(1).Info("Requesting shutdown", "type", ns.typ, "node", node, "node_id", nodeID, "allocation_delay", ns.allocationDelay)
+		if err := ns.c.PutShutdown(ctx, nodeID, ns.typ, ns.reason, ns.allocationDelay); err != nil {
 			return fmt.Errorf("on put shutdown (type: %s) for node %s: %w", ns.typ, node, err)
 		}
 		// update the internal cache with the information about the new shutdown

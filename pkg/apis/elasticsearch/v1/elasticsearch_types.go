@@ -44,6 +44,14 @@ const (
 	// TransportCertDisabledAnnotationName is the annotation that indicates that ECK-managed transport certs have been disabled for the Pod.
 	TransportCertDisabledAnnotationName = "elasticsearch.k8s.elastic.co/self-signed-transport-cert-disabled"
 
+	// RestartTriggerAnnotation allows users to trigger a graceful rolling restart by setting or changing this
+	// annotation value on the Elasticsearch resource. The value is propagated to pod annotations, causing the
+	// StatefulSet template hash to change and all pods to become upgrade candidates.
+	RestartTriggerAnnotation = "eck.k8s.elastic.co/restart-trigger"
+	// RestartAllocationDelayAnnotation configures the allocation_delay passed to the Elasticsearch node shutdown
+	// API during rolling restarts and upgrades. The value must be a valid Go duration string (e.g. "5m", "1h").
+	RestartAllocationDelayAnnotation = "eck.k8s.elastic.co/restart-allocation-delay"
+
 	// Kind is inferred from the struct name using reflection in SchemeBuilder.Register()
 	// we duplicate it as a constant here for practical purposes.
 	Kind = "Elasticsearch"
