@@ -7,7 +7,9 @@ package runner
 import (
 	"fmt"
 	"maps"
+	"strings"
 
+	"github.com/elastic/cloud-on-k8s/v3/hack/deployer/exec"
 	"github.com/elastic/cloud-on-k8s/v3/hack/deployer/runner/bucket"
 )
 
@@ -49,4 +51,27 @@ func newBucketConfig(plan Plan, ctx map[string]any, region string) (bucket.Confi
 	}
 
 	return cfg, nil
+}
+
+// newLocalGCSBucketManager creates a GCS bucket manager for local drivers (Kind, K3D)
+// that don't have a GCP project in their plan configuration.
+func newLocalGCSBucketManager(plan Plan) (*bucket.GCSManager, error) {
+	ctx := map[string]any{
+		"ClusterName": plan.ClusterName,
+		"PlanId":      plan.Id,
+	}
+	project, err := exec.NewCommand(`gcloud config get-value project`).WithoutStreaming().Output()
+	if err != nil {
+		return nil, fmt.Errorf("while getting GCP project for bucket: %w (ensure gcloud is authenticated)", err)
+	}
+	project = strings.TrimSpace(project)
+	if project == "" {
+		return nil, fmt.Errorf("no GCP project configured; run 'gcloud config set project <PROJECT>' first")
+	}
+
+	cfg, err := newBucketConfig(plan, ctx, "us-central1")
+	if err != nil {
+		return nil, err
+	}
+	return bucket.NewGCSManager(cfg, project), nil
 }
