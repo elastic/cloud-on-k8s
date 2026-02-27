@@ -1769,6 +1769,30 @@ func TestPodTemplateBuilder_WithRequiredNodeAffinityMatchExpressions(t *testing.
 				},
 			},
 		},
+		{
+			name: "injects into user-provided empty Affinity",
+			podTemplate: corev1.PodTemplateSpec{
+				Spec: corev1.PodSpec{
+					Affinity: &corev1.Affinity{},
+				},
+			},
+			requirements: []corev1.NodeSelectorRequirement{
+				{Key: "topology.kubernetes.io/zone", Operator: corev1.NodeSelectorOpExists},
+			},
+			wantAffinity: &corev1.Affinity{
+				NodeAffinity: &corev1.NodeAffinity{
+					RequiredDuringSchedulingIgnoredDuringExecution: &corev1.NodeSelector{
+						NodeSelectorTerms: []corev1.NodeSelectorTerm{
+							{
+								MatchExpressions: []corev1.NodeSelectorRequirement{
+									{Key: "topology.kubernetes.io/zone", Operator: corev1.NodeSelectorOpExists},
+								},
+							},
+						},
+					},
+				},
+			},
+		},
 	}
 
 	for _, tt := range tests {

@@ -353,6 +353,25 @@ func TestElasticsearch_DownwardNodeLabels(t *testing.T) {
 			},
 			want: []string{"custom.io/rack", "topology.kubernetes.io/zone"},
 		},
+		{
+			name: "single key from annotation and zone awareness is deduplicated",
+			es: Elasticsearch{
+				ObjectMeta: metav1.ObjectMeta{
+					Annotations: map[string]string{
+						DownwardNodeLabelsAnnotation: DefaultZoneAwarenessTopologyKey,
+					},
+				},
+				Spec: ElasticsearchSpec{
+					NodeSets: []NodeSet{
+						{
+							Name:          "default",
+							ZoneAwareness: &ZoneAwareness{},
+						},
+					},
+				},
+			},
+			want: []string{DefaultZoneAwarenessTopologyKey},
+		},
 	}
 
 	for _, tt := range tests {

@@ -535,15 +535,7 @@ func ParseDownwardNodeLabels(annotationValue string) set.StringSet {
 // content stable across operator upgrades; and it guarantees a deterministic order regardless of
 // annotation formatting or NodeSet ordering in the spec.
 func (es Elasticsearch) DownwardNodeLabels() []string {
-	annotationValue := es.downwardNodeLabelsAnnotationValue()
-
-	labels := set.Make()
-	for label := range strings.SplitSeq(annotationValue, ",") {
-		label = strings.TrimSpace(label)
-		if label != "" {
-			labels.Add(label)
-		}
-	}
+	labels := ParseDownwardNodeLabels(es.downwardNodeLabelsAnnotationValue())
 
 	for _, nodeSet := range es.Spec.NodeSets {
 		if nodeSet.ZoneAwareness == nil {

@@ -109,7 +109,7 @@ func BuildPodTemplateSpec(
 
 	// We retrieve the ConfigMap that holds the scripts to trigger a Pod restart if it is updated.
 	esScripts := &corev1.ConfigMap{}
-	if err := client.Get(context.Background(), types.NamespacedName{Namespace: es.Namespace, Name: esv1.ScriptsConfigMap(es.Name)}, esScripts); err != nil {
+	if err := client.Get(ctx, types.NamespacedName{Namespace: es.Namespace, Name: esv1.ScriptsConfigMap(es.Name)}, esScripts); err != nil {
 		return corev1.PodTemplateSpec{}, err
 	}
 	annotations := buildAnnotations(es, cfg, keystoreResources, getScriptsConfigMapContent(esScripts), policyConfig.PolicyAnnotations)
