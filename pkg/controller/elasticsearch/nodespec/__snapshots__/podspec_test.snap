@@ -3727,19 +3727,18 @@
  "spec": {
   "affinity": {
    "nodeAffinity": {
-    "preferredDuringSchedulingIgnoredDuringExecution": [
-     {
-      "preference": {
+    "requiredDuringSchedulingIgnoredDuringExecution": {
+     "nodeSelectorTerms": [
+      {
        "matchExpressions": [
         {
          "key": "topology.kubernetes.io/zone",
          "operator": "Exists"
         }
        ]
-      },
-      "weight": 100
-     }
-    ]
+      }
+     ]
+    }
    },
    "podAntiAffinity": {
     "preferredDuringSchedulingIgnoredDuringExecution": [
@@ -4450,19 +4449,18 @@
  "spec": {
   "affinity": {
    "nodeAffinity": {
-    "preferredDuringSchedulingIgnoredDuringExecution": [
-     {
-      "preference": {
+    "requiredDuringSchedulingIgnoredDuringExecution": {
+     "nodeSelectorTerms": [
+      {
        "matchExpressions": [
         {
          "key": "topology.custom.io/rack",
          "operator": "Exists"
         }
        ]
-      },
-      "weight": 100
-     }
-    ]
+      }
+     ]
+    }
    },
    "podAntiAffinity": {
     "preferredDuringSchedulingIgnoredDuringExecution": [

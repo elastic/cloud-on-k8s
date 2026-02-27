@@ -289,14 +289,16 @@ func zoneAwarenessSchedulingDirectives(
 	clusterTopologyKey string,
 ) ([]corev1.TopologySpreadConstraint, []corev1.NodeSelectorRequirement, []corev1.NodeSelectorRequirement) {
 	if nodeSet.ZoneAwareness == nil && clusterHasZoneAwareness {
-		// Prefer scheduling this nodeSet onto nodes that have the cluster topology key when
-		// a nodeSet has no configured zone awareness but another nodeSet has zone awareness.
-		return nil, nil, []corev1.NodeSelectorRequirement{
+		// Require nodes that carry the cluster topology key label. The shared init script
+		// waits for the corresponding annotation (set by the operator from the node label),
+		// so pods must not land on nodes where the label is absent or the init container
+		// will deadlock.
+		return nil, []corev1.NodeSelectorRequirement{
 			{
 				Key:      clusterTopologyKey,
 				Operator: corev1.NodeSelectorOpExists,
 			},
-		}
+		}, nil
 	}
 	if nodeSet.ZoneAwareness == nil {
 		return nil, nil, nil

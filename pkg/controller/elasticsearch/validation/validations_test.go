@@ -630,6 +630,61 @@ func Test_validNodeLabels(t *testing.T) {
 				},
 			},
 		},
+		{
+			name: "Zone awareness custom topology key rejected when not in exposed-node-labels",
+			args: args{
+				proposed: esv1.Elasticsearch{
+					Spec: esv1.ElasticsearchSpec{
+						NodeSets: []esv1.NodeSet{
+							{
+								Name: "default",
+								ZoneAwareness: &esv1.ZoneAwareness{
+									TopologyKey: "custom.io/rack",
+								},
+							},
+						},
+					},
+				},
+				exposedNodeLabels: []string{"topology.kubernetes.io/.*"},
+			},
+			expectedFields: []string{
+				field.NewPath("spec").Child("nodeSets").Index(0).Child("zoneAwareness", "topologyKey").String(),
+			},
+		},
+		{
+			name: "Zone awareness default topology key allowed when in exposed-node-labels",
+			args: args{
+				proposed: esv1.Elasticsearch{
+					Spec: esv1.ElasticsearchSpec{
+						NodeSets: []esv1.NodeSet{
+							{
+								Name:          "default",
+								ZoneAwareness: &esv1.ZoneAwareness{},
+							},
+						},
+					},
+				},
+				exposedNodeLabels: []string{"topology.kubernetes.io/.*"},
+			},
+		},
+		{
+			name: "Zone awareness custom topology key allowed when in exposed-node-labels",
+			args: args{
+				proposed: esv1.Elasticsearch{
+					Spec: esv1.ElasticsearchSpec{
+						NodeSets: []esv1.NodeSet{
+							{
+								Name: "default",
+								ZoneAwareness: &esv1.ZoneAwareness{
+									TopologyKey: "custom.io/rack",
+								},
+							},
+						},
+					},
+				},
+				exposedNodeLabels: []string{"custom.io/.*"},
+			},
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

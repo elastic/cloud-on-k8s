@@ -286,15 +286,15 @@ func TestElasticsearch_DownwardNodeLabels(t *testing.T) {
 			want: nil,
 		},
 		{
-			name: "annotation labels are trimmed deduplicated and sorted",
-			es: Elasticsearch{
-				ObjectMeta: metav1.ObjectMeta{
-					Annotations: map[string]string{
-						DownwardNodeLabelsAnnotation: " zeta.io/rack ,alpha.io/zone,alpha.io/zone, ",
-					},
+		name: "annotation labels are trimmed and deduplicated preserving order",
+		es: Elasticsearch{
+			ObjectMeta: metav1.ObjectMeta{
+				Annotations: map[string]string{
+					DownwardNodeLabelsAnnotation: " zeta.io/rack ,alpha.io/zone,alpha.io/zone, ",
 				},
 			},
-			want: []string{"alpha.io/zone", "zeta.io/rack"},
+		},
+		want: []string{"zeta.io/rack", "alpha.io/zone"},
 		},
 		{
 			name: "zone awareness adds default topology key",
@@ -327,7 +327,7 @@ func TestElasticsearch_DownwardNodeLabels(t *testing.T) {
 			want: []string{DefaultZoneAwarenessTopologyKey},
 		},
 		{
-			name: "annotation and zone awareness are merged deduplicated and sorted",
+			name: "annotation and zone awareness are merged and deduplicated preserving order",
 			es: Elasticsearch{
 				ObjectMeta: metav1.ObjectMeta{
 					Annotations: map[string]string{

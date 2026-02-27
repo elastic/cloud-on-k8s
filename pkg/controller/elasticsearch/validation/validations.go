@@ -83,12 +83,17 @@ func validations(ctx context.Context, checker license.Checker, exposedNodeLabels
 	}
 }
 
+// validNodeLabels checks that all node labels requested via the downward-node-labels annotation
+// and all zone-awareness-derived topology keys are permitted by the operator's exposed-node-labels policy.
+// Zone-awareness topology keys are only validated when the policy is configured (non-empty), so that
+// zone awareness works out of the box when no exposed-node-labels restriction is in place.
 func validNodeLabels(proposed esv1.Elasticsearch, exposedNodeLabels NodeLabels) field.ErrorList {
 	var errs field.ErrorList
 	annotationValue := ""
 	if proposed.Annotations != nil {
 		annotationValue = proposed.Annotations[esv1.DownwardNodeLabelsAnnotation]
 	}
+	// firstly validate the downward-node-labels annotations
 	annotationLabels := esv1.ParseDownwardNodeLabels(annotationValue)
 	for nodeLabel := range annotationLabels {
 		if exposedNodeLabels.IsAllowed(nodeLabel) {
@@ -102,6 +107,27 @@ func validNodeLabels(proposed esv1.Elasticsearch, exposedNodeLabels NodeLabels) 
 				notAllowedNodesLabelMsg,
 			),
 		)
+	}
+
+	// then validate the zone-awareness-derived topology keys
+	if len(exposedNodeLabels) > 0 {
+		for i, nodeSet := range proposed.Spec.NodeSets {
+			if nodeSet.ZoneAwareness == nil {
+				continue
+			}
+			topologyKey := nodeSet.ZoneAwareness.TopologyKeyOrDefault()
+			if exposedNodeLabels.IsAllowed(topologyKey) {
+				continue
+			}
+			errs = append(
+				errs,
+				field.Invalid(
+					field.NewPath("spec").Child("nodeSets").Index(i).Child("zoneAwareness", "topologyKey"),
+					topologyKey,
+					notAllowedNodesLabelMsg,
+				),
+			)
+		}
 	}
 
 	return errs

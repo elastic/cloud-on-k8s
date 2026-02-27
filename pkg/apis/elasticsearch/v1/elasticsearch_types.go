@@ -529,21 +529,40 @@ func ParseDownwardNodeLabels(annotationValue string) set.StringSet {
 	return labels
 }
 
-// DownwardNodeLabels returns the set of expected node labels to be copied as annotations on the Elasticsearch Pods.
+// DownwardNodeLabels returns the expected node labels to be copied as annotations on the Elasticsearch Pods.
+// The annotation-provided labels are returned in their original order (trimmed and deduplicated),
+// followed by any zone-awareness-derived labels not already present. Preserving the original order
+// is critical to avoid changing the rendered init script content on operator upgrade, which would
+// alter the config hash and trigger a full rolling restart.
 func (es Elasticsearch) DownwardNodeLabels() []string {
-	expectedAnnotations := ParseDownwardNodeLabels(es.downwardNodeLabelsAnnotationValue())
+	annotationValue := es.downwardNodeLabelsAnnotationValue()
+
+	seen := set.Make()
+	var labels []string
+	for label := range strings.SplitSeq(annotationValue, ",") {
+		label = strings.TrimSpace(label)
+		if label == "" || seen.Has(label) {
+			continue
+		}
+		seen.Add(label)
+		labels = append(labels, label)
+	}
 
 	for _, nodeSet := range es.Spec.NodeSets {
 		if nodeSet.ZoneAwareness == nil {
 			continue
 		}
-		expectedAnnotations.Add(nodeSet.ZoneAwareness.TopologyKeyOrDefault())
+		topologyKey := nodeSet.ZoneAwareness.TopologyKeyOrDefault()
+		if !seen.Has(topologyKey) {
+			seen.Add(topologyKey)
+			labels = append(labels, topologyKey)
+		}
 	}
 
-	if expectedAnnotations.Count() == 0 {
+	if len(labels) == 0 {
 		return nil
 	}
-	return expectedAnnotations.AsSortedSlice()
+	return labels
 }
 
 // DownwardNodeLabelsHashInput returns the pod-template hash input for downward node labels.

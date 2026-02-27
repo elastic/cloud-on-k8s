@@ -384,6 +384,25 @@ func Test_buildAnnotations(t *testing.T) {
 			},
 		},
 		{
+			name: "hash stable with rendered script and non-alphabetical downward node labels",
+			args: args{
+				esAnnotations: map[string]string{"eck.k8s.elastic.co/downward-node-labels": "topology.kubernetes.io/zone,topology.kubernetes.io/region"},
+				scriptsContent: func() string {
+					es := newEsSampleBuilder().addEsAnnotations(map[string]string{
+						"eck.k8s.elastic.co/downward-node-labels": "topology.kubernetes.io/zone,topology.kubernetes.io/region",
+					}).build()
+					script, err := initcontainer.RenderPrepareFsScript(es.DownwardNodeLabels())
+					if err != nil {
+						panic(err)
+					}
+					return script
+				}(),
+			},
+			expectedAnnotations: map[string]string{
+				"elasticsearch.k8s.elastic.co/config-hash": "4284646610",
+			},
+		},
+		{
 			name: "With keystore and scripts content",
 			args: args{
 				keystoreResources: &keystore.Resources{
@@ -868,11 +887,11 @@ func Test_zoneAwarenessSchedulingDirectives(t *testing.T) {
 			clusterHasZoneAwareness: false,
 		},
 		{
-			name:                    "adds fallback topology exists affinity for non-zoneAware nodeset when cluster awareness is enabled",
+			name:                    "adds required topology exists affinity for non-zoneAware nodeset when cluster awareness is enabled",
 			nodeSet:                 esv1.NodeSet{},
 			clusterHasZoneAwareness: true,
 			clusterTopologyKey:      "custom.io/rack",
-			expectedPreferredMatches: []corev1.NodeSelectorRequirement{
+			expectedMatchExpressions: []corev1.NodeSelectorRequirement{
 				{
 					Key: "custom.io/rack", Operator: corev1.NodeSelectorOpExists,
 				},
