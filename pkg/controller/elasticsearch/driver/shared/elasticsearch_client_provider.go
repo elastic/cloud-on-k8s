@@ -6,6 +6,7 @@ package shared
 
 import (
 	"context"
+	"crypto/tls"
 	"crypto/x509"
 
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/version"
@@ -15,7 +16,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/k8s"
 )
 
-// newElasticsearchClient creates a new Elasticsearch HTTP client for this cluster using the provided user
+// newElasticsearchClient creates a new Elasticsearch HTTP client for this cluster using the provided user.
 func newElasticsearchClient(
 	ctx context.Context,
 	params driver.Parameters,
@@ -23,6 +24,7 @@ func newElasticsearchClient(
 	user esclient.BasicAuth,
 	v version.Version,
 	caCerts []*x509.Certificate,
+	clientCert *tls.Certificate,
 ) esclient.Client {
 	return esclient.NewElasticsearchClient(
 		params.OperatorParameters.Dialer,
@@ -31,6 +33,7 @@ func newElasticsearchClient(
 		user,
 		v,
 		caCerts,
+		clientCert,
 		esclient.Timeout(ctx, params.ES),
 		dev.Enabled,
 	)
@@ -43,11 +46,12 @@ func elasticsearchClientProvider(
 	user esclient.BasicAuth,
 	v version.Version,
 	caCerts []*x509.Certificate,
+	clientCert *tls.Certificate,
 ) func(existingEsClient esclient.Client) esclient.Client {
 	return func(existingEsClient esclient.Client) esclient.Client {
-		if existingEsClient != nil && existingEsClient.HasProperties(v, user, urlProvider, caCerts) {
+		if existingEsClient != nil && existingEsClient.HasProperties(v, user, urlProvider, caCerts, clientCert) {
 			return existingEsClient
 		}
-		return newElasticsearchClient(ctx, params, urlProvider, user, v, caCerts)
+		return newElasticsearchClient(ctx, params, urlProvider, user, v, caCerts, clientCert)
 	}
 }

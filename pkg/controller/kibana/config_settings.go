@@ -43,6 +43,8 @@ const (
 	entCertsVolumeMountPath = "/usr/share/kibana/config/ent-certs"
 	// eprCertsVolumeMountPath is the directory into which trusted Package Registry CA certs are mounted.
 	eprCertsVolumeMountPath = "/usr/share/kibana/config/epr-certs"
+	// esClientCertVolumeMountPath is the directory containing client certificate for Elasticsearch.
+	esClientCertVolumeMountPath = "/usr/share/kibana/config/elasticsearch-client-certs"
 
 	// EncryptionKeyMinimumBytes is the minimum number of bytes required for the encryption key.
 	// This is in line with the documentation (32 characters) as of 9.0 (unicode characters can use > 1 byte):
@@ -63,8 +65,11 @@ const (
 	XpackEncryptedSavedObjectsEncryptionKey        = "xpack.encryptedSavedObjects.encryptionKey"
 	XpackFleetRegistryURL                          = "xpack.fleet.registryUrl"
 
-	ElasticsearchSslCertificateAuthorities = "elasticsearch.ssl.certificateAuthorities"
-	ElasticsearchSslVerificationMode       = "elasticsearch.ssl.verificationMode"
+	ElasticsearchSslCertificateAuthorities   = "elasticsearch.ssl.certificateAuthorities"
+	ElasticsearchSslVerificationMode         = "elasticsearch.ssl.verificationMode"
+	ElasticsearchSslCertificate              = "elasticsearch.ssl.certificate"
+	ElasticsearchSslKey                      = "elasticsearch.ssl.key"
+	ElasticsearchSslAlwaysPresentCertificate = "elasticsearch.ssl.alwaysPresentCertificate"
 
 	ElasticsearchUsername            = "elasticsearch.username"
 	ElasticsearchPassword            = "elasticsearch.password"
@@ -326,6 +331,13 @@ func elasticsearchTLSSettings(esAssocConf commonv1.AssociationConf) map[string]a
 		cfg[ElasticsearchSslCertificateAuthorities] = path.Join(esCertsVolumeMountPath, certificates.CAFileName)
 	}
 
+	if esAssocConf.ClientCertIsConfigured() {
+		clientCertMountPath := esClientCertSecretVolume(esAssocConf).VolumeMount().MountPath
+		cfg[ElasticsearchSslCertificate] = path.Join(clientCertMountPath, certificates.CertFileName)
+		cfg[ElasticsearchSslKey] = path.Join(clientCertMountPath, certificates.KeyFileName)
+		cfg[ElasticsearchSslAlwaysPresentCertificate] = true
+	}
+
 	return cfg
 }
 
@@ -335,6 +347,15 @@ func esCaCertSecretVolume(esAssocConf commonv1.AssociationConf) volume.SecretVol
 		esAssocConf.GetCASecretName(),
 		"elasticsearch-certs",
 		esCertsVolumeMountPath,
+	)
+}
+
+// esClientCertSecretVolume returns a SecretVolume to hold the client certificate for Elasticsearch.
+func esClientCertSecretVolume(esAssocConf commonv1.AssociationConf) volume.SecretVolume {
+	return volume.NewSecretVolumeWithMountPath(
+		esAssocConf.GetClientCertSecretName(),
+		"elasticsearch-client-certs",
+		esClientCertVolumeMountPath,
 	)
 }
 

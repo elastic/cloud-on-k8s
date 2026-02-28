@@ -7,6 +7,7 @@ package client
 import (
 	"bytes"
 	"context"
+	"crypto/tls"
 	"crypto/x509"
 	"encoding/json"
 	"io"
@@ -27,6 +28,7 @@ type baseClient struct {
 	URLProvider URLProvider
 	es          types.NamespacedName
 	caCerts     []*x509.Certificate
+	clientCert  *tls.Certificate // client certificate for client cert validation, may be nil
 	version     version.Version
 	debug       bool
 }
@@ -57,6 +59,10 @@ func (c *baseClient) equal(c2 *baseClient) bool {
 			return false
 		}
 	}
+	// compare client certs
+	if !clientCertsEqual(c.clientCert, c2.clientCert) {
+		return false
+	}
 	// compare endpoint svc url and user creds. Service URL acts purely as an identifier here.
 	return c.URLProvider.Equals(c2.URLProvider) &&
 		c.User == c2.User
@@ -76,6 +82,7 @@ func (c *baseClient) doRequest(context context.Context, request *http.Request) (
 		"url", request.URL.Redacted(),
 		"namespace", c.es.Namespace,
 		"es_name", c.es.Name,
+		"client_cert", c.clientCert != nil,
 	)
 	response, err := c.HTTP.Do(withContext)
 	if err != nil {
@@ -193,7 +200,7 @@ func versioned(b *baseClient, v version.Version) Client {
 	}
 }
 
-func (c *baseClient) HasProperties(version version.Version, user BasicAuth, url URLProvider, caCerts []*x509.Certificate) bool {
+func (c *baseClient) HasProperties(version version.Version, user BasicAuth, url URLProvider, caCerts []*x509.Certificate, clientCert *tls.Certificate) bool {
 	if len(c.caCerts) != len(caCerts) {
 		return false
 	}
@@ -202,5 +209,30 @@ func (c *baseClient) HasProperties(version version.Version, user BasicAuth, url 
 			return false
 		}
 	}
+	// Check client certificate equality - both nil or both have same leaf certificate.
+	if !clientCertsEqual(c.clientCert, clientCert) {
+		return false
+	}
 	return c.version.Equals(version) && c.User == user && c.URLProvider.Equals(url)
+}
+
+// clientCertsEqual checks if two client certificates are equivalent.
+// Returns true if both are nil, or both have identical certificate chains
+// (same length and matching bytes for each certificate in the chain).
+func clientCertsEqual(a, b *tls.Certificate) bool {
+	if a == nil && b == nil {
+		return true
+	}
+	if a == nil || b == nil {
+		return false
+	}
+	if len(a.Certificate) != len(b.Certificate) {
+		return false
+	}
+	for i := range a.Certificate {
+		if !bytes.Equal(a.Certificate[i], b.Certificate[i]) {
+			return false
+		}
+	}
+	return true
 }

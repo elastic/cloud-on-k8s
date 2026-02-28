@@ -765,3 +765,32 @@ func Test_getExistingConfig(t *testing.T) {
 		})
 	}
 }
+
+func Test_elasticsearchTLSSettings(t *testing.T) {
+	t.Run("without client cert", func(t *testing.T) {
+		conf := commonv1.AssociationConf{
+			CACertProvided: true,
+			CASecretName:   "es-ca",
+		}
+		cfg := elasticsearchTLSSettings(conf)
+		require.Equal(t, "certificate", cfg[ElasticsearchSslVerificationMode])
+		require.Contains(t, cfg, ElasticsearchSslCertificateAuthorities)
+		require.NotContains(t, cfg, ElasticsearchSslCertificate)
+		require.NotContains(t, cfg, ElasticsearchSslKey)
+		require.NotContains(t, cfg, ElasticsearchSslAlwaysPresentCertificate)
+	})
+
+	t.Run("with client cert", func(t *testing.T) {
+		conf := commonv1.AssociationConf{
+			CACertProvided:       true,
+			CASecretName:         "es-ca",
+			ClientCertSecretName: "client-cert",
+		}
+		cfg := elasticsearchTLSSettings(conf)
+		require.Equal(t, "certificate", cfg[ElasticsearchSslVerificationMode])
+		require.Contains(t, cfg, ElasticsearchSslCertificateAuthorities)
+		require.Equal(t, esClientCertVolumeMountPath+"/tls.crt", cfg[ElasticsearchSslCertificate])
+		require.Equal(t, esClientCertVolumeMountPath+"/tls.key", cfg[ElasticsearchSslKey])
+		require.Equal(t, true, cfg[ElasticsearchSslAlwaysPresentCertificate])
+	})
+}

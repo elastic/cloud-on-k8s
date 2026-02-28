@@ -220,6 +220,10 @@ type AssociationConf struct {
 	Version string `json:"version"`
 	// Serverless is true when the referenced resource is a serverless project.
 	Serverless bool `json:"serverless,omitempty"`
+	// ClientCertSecretName is the name of the Kubernetes secret containing the client certificate
+	// and private key for client authentication. This secret is created in the associated resource's
+	// namespace and should be mounted into the associated resource's pods.
+	ClientCertSecretName string `json:"clientCertSecretName,omitempty"`
 }
 
 // IsConfigured returns true if all the fields are set.
@@ -297,6 +301,22 @@ func (ac *AssociationConf) GetURL() string {
 		return ""
 	}
 	return ac.URL
+}
+
+// GetClientCertSecretName returns the name of the client certificate secret.
+func (ac *AssociationConf) GetClientCertSecretName() string {
+	if ac == nil {
+		return ""
+	}
+	return ac.ClientCertSecretName
+}
+
+// ClientCertIsConfigured returns true if the client certificate secret name is set.
+func (ac *AssociationConf) ClientCertIsConfigured() bool {
+	if ac == nil {
+		return false
+	}
+	return ac.ClientCertSecretName != ""
 }
 
 func ElasticsearchConfigAnnotationName(o ObjectSelector) string {

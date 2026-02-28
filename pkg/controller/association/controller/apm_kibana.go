@@ -33,6 +33,7 @@ func AddApmKibana(mgr manager.Manager, accessReviewer rbac.AccessReviewer, param
 		ExternalServiceURL:        getKibanaExternalURL,
 		ReferencedResourceVersion: referencedKibanaStatusVersion,
 		ReferencedResourceNamer:   kbv1.KBNamer,
+		ReferencedResourceKind:    kbv1.Kind,
 		AssociationName:           "apm-kibana",
 		AssociationType:           commonv1.KibanaAssociationType,
 		Labels: func(associated types.NamespacedName) map[string]string {

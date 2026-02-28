@@ -125,7 +125,7 @@ func Test_noUnsupportedSettings(t *testing.T) {
 			expectErrors: true,
 		},
 		{
-			name: "supported client auth setting and value combination OK",
+			name: "client auth setting optional OK",
 			es: esv1.Elasticsearch{
 				Spec: esv1.ElasticsearchSpec{
 					Version: "7.0.0",
@@ -143,7 +143,7 @@ func Test_noUnsupportedSettings(t *testing.T) {
 			expectErrors: false,
 		},
 		{
-			name: "unsupported client auth setting and value combination",
+			name: "client auth setting required OK (client cert validation supported)",
 			es: esv1.Elasticsearch{
 				Spec: esv1.ElasticsearchSpec{
 					Version: "7.0.0",
@@ -158,7 +158,7 @@ func Test_noUnsupportedSettings(t *testing.T) {
 					},
 				},
 			},
-			expectErrors: true,
+			expectErrors: false,
 		},
 	}
 	for _, tt := range tests {

@@ -39,7 +39,6 @@ const (
 	unsupportedUpgradeMsg                  = "Unsupported version upgrade path. Check the Elasticsearch documentation for supported upgrade paths."
 	unsupportedVersionMsg                  = "Unsupported version"
 	notAllowedNodesLabelMsg                = "Node label not in the exposed node labels list"
-	unsupportedClientAuthenticationMsg     = "Mandatory client authentication is not supported"
 	autoscalingAnnotationUnsupportedErrMsg = "autoscaling annotation is no longer supported"
 )
 

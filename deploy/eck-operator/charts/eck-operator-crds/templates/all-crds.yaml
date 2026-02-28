@@ -220,6 +220,14 @@ spec:
                   Due to existing limitations, only a single ES cluster is currently supported.
                 items:
                   properties:
+                    clientCertificateSecretName:
+                      description: |-
+                        ClientCertificateSecretName is the name of an existing Kubernetes secret containing a client certificate
+                        (tls.crt) and private key (tls.key) for client authentication to the referenced resource.
+                        If not specified and the referenced resource requires client authentication, ECK will auto-generate
+                        a client certificate. This field cannot be used in combination with secretName and currently is effective
+                        only for Elasticsearch association types (elasticsearchRef).
+                      type: string
                     name:
                       description: Name of an existing Kubernetes object corresponding
                         to an Elastic resource managed by ECK.
@@ -260,6 +268,14 @@ spec:
                   Don't set unless `mode` is set to `fleet`.
                   References to Fleet servers running outside the Kubernetes cluster via the `secretName` attribute are not supported.
                 properties:
+                  clientCertificateSecretName:
+                    description: |-
+                      ClientCertificateSecretName is the name of an existing Kubernetes secret containing a client certificate
+                      (tls.crt) and private key (tls.key) for client authentication to the referenced resource.
+                      If not specified and the referenced resource requires client authentication, ECK will auto-generate
+                      a client certificate. This field cannot be used in combination with secretName and currently is effective
+                      only for Elasticsearch association types (elasticsearchRef).
+                    type: string
                   name:
                     description: Name of an existing Kubernetes object corresponding
                       to an Elastic resource managed by ECK.
@@ -712,6 +728,14 @@ spec:
                   KibanaRef is a reference to Kibana where Fleet should be set up and this Agent should be enrolled. Don't set
                   unless `mode` is set to `fleet`.
                 properties:
+                  clientCertificateSecretName:
+                    description: |-
+                      ClientCertificateSecretName is the name of an existing Kubernetes secret containing a client certificate
+                      (tls.crt) and private key (tls.key) for client authentication to the referenced resource.
+                      If not specified and the referenced resource requires client authentication, ECK will auto-generate
+                      a client certificate. This field cannot be used in combination with secretName and currently is effective
+                      only for Elasticsearch association types (elasticsearchRef).
+                    type: string
                   name:
                     description: Name of an existing Kubernetes object corresponding
                       to an Elastic resource managed by ECK.
@@ -1211,6 +1235,14 @@ spec:
                 description: ElasticsearchRef is a reference to the output Elasticsearch
                   cluster running in the same Kubernetes cluster.
                 properties:
+                  clientCertificateSecretName:
+                    description: |-
+                      ClientCertificateSecretName is the name of an existing Kubernetes secret containing a client certificate
+                      (tls.crt) and private key (tls.key) for client authentication to the referenced resource.
+                      If not specified and the referenced resource requires client authentication, ECK will auto-generate
+                      a client certificate. This field cannot be used in combination with secretName and currently is effective
+                      only for Elasticsearch association types (elasticsearchRef).
+                    type: string
                   name:
                     description: Name of an existing Kubernetes object corresponding
                       to an Elastic resource managed by ECK.
@@ -1662,6 +1694,14 @@ spec:
                   KibanaRef is a reference to a Kibana instance running in the same Kubernetes cluster.
                   It allows APM agent central configuration management in Kibana.
                 properties:
+                  clientCertificateSecretName:
+                    description: |-
+                      ClientCertificateSecretName is the name of an existing Kubernetes secret containing a client certificate
+                      (tls.crt) and private key (tls.key) for client authentication to the referenced resource.
+                      If not specified and the referenced resource requires client authentication, ECK will auto-generate
+                      a client certificate. This field cannot be used in combination with secretName and currently is effective
+                      only for Elasticsearch association types (elasticsearchRef).
+                    type: string
                   name:
                     description: Name of an existing Kubernetes object corresponding
                       to an Elastic resource managed by ECK.
@@ -2861,6 +2901,14 @@ spec:
                 description: ElasticsearchRef is a reference to an Elasticsearch cluster
                   running in the same Kubernetes cluster.
                 properties:
+                  clientCertificateSecretName:
+                    description: |-
+                      ClientCertificateSecretName is the name of an existing Kubernetes secret containing a client certificate
+                      (tls.crt) and private key (tls.key) for client authentication to the referenced resource.
+                      If not specified and the referenced resource requires client authentication, ECK will auto-generate
+                      a client certificate. This field cannot be used in combination with secretName and currently is effective
+                      only for Elasticsearch association types (elasticsearchRef).
+                    type: string
                   name:
                     description: Name of an existing Kubernetes object corresponding
                       to an Elastic resource managed by ECK.
@@ -2897,6 +2945,14 @@ spec:
                   KibanaRef is a reference to a Kibana instance running in the same Kubernetes cluster.
                   It allows automatic setup of dashboards and visualizations.
                 properties:
+                  clientCertificateSecretName:
+                    description: |-
+                      ClientCertificateSecretName is the name of an existing Kubernetes secret containing a client certificate
+                      (tls.crt) and private key (tls.key) for client authentication to the referenced resource.
+                      If not specified and the referenced resource requires client authentication, ECK will auto-generate
+                      a client certificate. This field cannot be used in combination with secretName and currently is effective
+                      only for Elasticsearch association types (elasticsearchRef).
+                    type: string
                   name:
                     description: Name of an existing Kubernetes object corresponding
                       to an Elastic resource managed by ECK.
@@ -2943,6 +2999,14 @@ spec:
                             ObjectSelector defines a reference to a Kubernetes object which can be an Elastic resource managed by the operator
                             or a Secret describing an external Elastic resource not managed by the operator.
                           properties:
+                            clientCertificateSecretName:
+                              description: |-
+                                ClientCertificateSecretName is the name of an existing Kubernetes secret containing a client certificate
+                                (tls.crt) and private key (tls.key) for client authentication to the referenced resource.
+                                If not specified and the referenced resource requires client authentication, ECK will auto-generate
+                                a client certificate. This field cannot be used in combination with secretName and currently is effective
+                                only for Elasticsearch association types (elasticsearchRef).
+                              type: string
                             name:
                               description: Name of an existing Kubernetes object corresponding
                                 to an Elastic resource managed by ECK.
@@ -2985,6 +3049,14 @@ spec:
                             ObjectSelector defines a reference to a Kubernetes object which can be an Elastic resource managed by the operator
                             or a Secret describing an external Elastic resource not managed by the operator.
                           properties:
+                            clientCertificateSecretName:
+                              description: |-
+                                ClientCertificateSecretName is the name of an existing Kubernetes secret containing a client certificate
+                                (tls.crt) and private key (tls.key) for client authentication to the referenced resource.
+                                If not specified and the referenced resource requires client authentication, ECK will auto-generate
+                                a client certificate. This field cannot be used in combination with secretName and currently is effective
+                                only for Elasticsearch association types (elasticsearchRef).
+                              type: string
                             name:
                               description: Name of an existing Kubernetes object corresponding
                                 to an Elastic resource managed by ECK.
@@ -3212,6 +3284,14 @@ spec:
                 description: ElasticsearchRef is a reference to an Elasticsearch cluster
                   running in the same Kubernetes cluster.
                 properties:
+                  clientCertificateSecretName:
+                    description: |-
+                      ClientCertificateSecretName is the name of an existing Kubernetes secret containing a client certificate
+                      (tls.crt) and private key (tls.key) for client authentication to the referenced resource.
+                      If not specified and the referenced resource requires client authentication, ECK will auto-generate
+                      a client certificate. This field cannot be used in combination with secretName and currently is effective
+                      only for Elasticsearch association types (elasticsearchRef).
+                    type: string
                   name:
                     description: Name of an existing Kubernetes object corresponding
                       to an Elastic resource managed by ECK.
@@ -4575,6 +4655,13 @@ spec:
                             description: SecretName is the name of the secret.
                             type: string
                         type: object
+                      client:
+                        description: Client holds client configuration options.
+                        properties:
+                          authentication:
+                            description: Authentication enables client authentication.
+                            type: boolean
+                        type: object
                       selfSignedCertificate:
                         description: SelfSignedCertificate allows configuring the
                           self-signed certificate generated by the operator.
@@ -4624,6 +4711,14 @@ spec:
                             ObjectSelector defines a reference to a Kubernetes object which can be an Elastic resource managed by the operator
                             or a Secret describing an external Elastic resource not managed by the operator.
                           properties:
+                            clientCertificateSecretName:
+                              description: |-
+                                ClientCertificateSecretName is the name of an existing Kubernetes secret containing a client certificate
+                                (tls.crt) and private key (tls.key) for client authentication to the referenced resource.
+                                If not specified and the referenced resource requires client authentication, ECK will auto-generate
+                                a client certificate. This field cannot be used in combination with secretName and currently is effective
+                                only for Elasticsearch association types (elasticsearchRef).
+                              type: string
                             name:
                               description: Name of an existing Kubernetes object corresponding
                                 to an Elastic resource managed by ECK.
@@ -4666,6 +4761,14 @@ spec:
                             ObjectSelector defines a reference to a Kubernetes object which can be an Elastic resource managed by the operator
                             or a Secret describing an external Elastic resource not managed by the operator.
                           properties:
+                            clientCertificateSecretName:
+                              description: |-
+                                ClientCertificateSecretName is the name of an existing Kubernetes secret containing a client certificate
+                                (tls.crt) and private key (tls.key) for client authentication to the referenced resource.
+                                If not specified and the referenced resource requires client authentication, ECK will auto-generate
+                                a client certificate. This field cannot be used in combination with secretName and currently is effective
+                                only for Elasticsearch association types (elasticsearchRef).
+                              type: string
                             name:
                               description: Name of an existing Kubernetes object corresponding
                                 to an Elastic resource managed by ECK.
@@ -7340,6 +7443,14 @@ spec:
                 description: ElasticsearchRef is a reference to the Elasticsearch
                   cluster running in the same Kubernetes cluster.
                 properties:
+                  clientCertificateSecretName:
+                    description: |-
+                      ClientCertificateSecretName is the name of an existing Kubernetes secret containing a client certificate
+                      (tls.crt) and private key (tls.key) for client authentication to the referenced resource.
+                      If not specified and the referenced resource requires client authentication, ECK will auto-generate
+                      a client certificate. This field cannot be used in combination with secretName and currently is effective
+                      only for Elasticsearch association types (elasticsearchRef).
+                    type: string
                   name:
                     description: Name of an existing Kubernetes object corresponding
                       to an Elastic resource managed by ECK.
@@ -7919,6 +8030,14 @@ spec:
                 description: ElasticsearchRef is a reference to the Elasticsearch
                   cluster running in the same Kubernetes cluster.
                 properties:
+                  clientCertificateSecretName:
+                    description: |-
+                      ClientCertificateSecretName is the name of an existing Kubernetes secret containing a client certificate
+                      (tls.crt) and private key (tls.key) for client authentication to the referenced resource.
+                      If not specified and the referenced resource requires client authentication, ECK will auto-generate
+                      a client certificate. This field cannot be used in combination with secretName and currently is effective
+                      only for Elasticsearch association types (elasticsearchRef).
+                    type: string
                   name:
                     description: Name of an existing Kubernetes object corresponding
                       to an Elastic resource managed by ECK.
@@ -8497,6 +8616,14 @@ spec:
                 description: ElasticsearchRef is a reference to an Elasticsearch cluster
                   running in the same Kubernetes cluster.
                 properties:
+                  clientCertificateSecretName:
+                    description: |-
+                      ClientCertificateSecretName is the name of an existing Kubernetes secret containing a client certificate
+                      (tls.crt) and private key (tls.key) for client authentication to the referenced resource.
+                      If not specified and the referenced resource requires client authentication, ECK will auto-generate
+                      a client certificate. This field cannot be used in combination with secretName and currently is effective
+                      only for Elasticsearch association types (elasticsearchRef).
+                    type: string
                   name:
                     description: Name of an existing Kubernetes object corresponding
                       to an Elastic resource managed by ECK.
@@ -8529,6 +8656,14 @@ spec:
                   EnterpriseSearchRef is a reference to an EnterpriseSearch running in the same Kubernetes cluster.
                   Kibana provides the default Enterprise Search UI starting version 7.14.
                 properties:
+                  clientCertificateSecretName:
+                    description: |-
+                      ClientCertificateSecretName is the name of an existing Kubernetes secret containing a client certificate
+                      (tls.crt) and private key (tls.key) for client authentication to the referenced resource.
+                      If not specified and the referenced resource requires client authentication, ECK will auto-generate
+                      a client certificate. This field cannot be used in combination with secretName and currently is effective
+                      only for Elasticsearch association types (elasticsearchRef).
+                    type: string
                   name:
                     description: Name of an existing Kubernetes object corresponding
                       to an Elastic resource managed by ECK.
@@ -8994,6 +9129,14 @@ spec:
                             ObjectSelector defines a reference to a Kubernetes object which can be an Elastic resource managed by the operator
                             or a Secret describing an external Elastic resource not managed by the operator.
                           properties:
+                            clientCertificateSecretName:
+                              description: |-
+                                ClientCertificateSecretName is the name of an existing Kubernetes secret containing a client certificate
+                                (tls.crt) and private key (tls.key) for client authentication to the referenced resource.
+                                If not specified and the referenced resource requires client authentication, ECK will auto-generate
+                                a client certificate. This field cannot be used in combination with secretName and currently is effective
+                                only for Elasticsearch association types (elasticsearchRef).
+                              type: string
                             name:
                               description: Name of an existing Kubernetes object corresponding
                                 to an Elastic resource managed by ECK.
@@ -9036,6 +9179,14 @@ spec:
                             ObjectSelector defines a reference to a Kubernetes object which can be an Elastic resource managed by the operator
                             or a Secret describing an external Elastic resource not managed by the operator.
                           properties:
+                            clientCertificateSecretName:
+                              description: |-
+                                ClientCertificateSecretName is the name of an existing Kubernetes secret containing a client certificate
+                                (tls.crt) and private key (tls.key) for client authentication to the referenced resource.
+                                If not specified and the referenced resource requires client authentication, ECK will auto-generate
+                                a client certificate. This field cannot be used in combination with secretName and currently is effective
+                                only for Elasticsearch association types (elasticsearchRef).
+                              type: string
                             name:
                               description: Name of an existing Kubernetes object corresponding
                                 to an Elastic resource managed by ECK.
@@ -9070,6 +9221,14 @@ spec:
                 description: PackageRegistryRef is a reference to an Elastic Package
                   Registry running in the same Kubernetes cluster.
                 properties:
+                  clientCertificateSecretName:
+                    description: |-
+                      ClientCertificateSecretName is the name of an existing Kubernetes secret containing a client certificate
+                      (tls.crt) and private key (tls.key) for client authentication to the referenced resource.
+                      If not specified and the referenced resource requires client authentication, ECK will auto-generate
+                      a client certificate. This field cannot be used in combination with secretName and currently is effective
+                      only for Elasticsearch association types (elasticsearchRef).
+                    type: string
                   name:
                     description: Name of an existing Kubernetes object corresponding
                       to an Elastic resource managed by ECK.
@@ -9866,6 +10025,14 @@ spec:
                   description: ElasticsearchCluster is a named reference to an Elasticsearch
                     cluster which can be used in a Logstash pipeline.
                   properties:
+                    clientCertificateSecretName:
+                      description: |-
+                        ClientCertificateSecretName is the name of an existing Kubernetes secret containing a client certificate
+                        (tls.crt) and private key (tls.key) for client authentication to the referenced resource.
+                        If not specified and the referenced resource requires client authentication, ECK will auto-generate
+                        a client certificate. This field cannot be used in combination with secretName and currently is effective
+                        only for Elasticsearch association types (elasticsearchRef).
+                      type: string
                     clusterName:
                       description: |-
                         ClusterName is an alias for the cluster to be used to refer to the Elasticsearch cluster in Logstash
@@ -9925,6 +10092,14 @@ spec:
                             ObjectSelector defines a reference to a Kubernetes object which can be an Elastic resource managed by the operator
                             or a Secret describing an external Elastic resource not managed by the operator.
                           properties:
+                            clientCertificateSecretName:
+                              description: |-
+                                ClientCertificateSecretName is the name of an existing Kubernetes secret containing a client certificate
+                                (tls.crt) and private key (tls.key) for client authentication to the referenced resource.
+                                If not specified and the referenced resource requires client authentication, ECK will auto-generate
+                                a client certificate. This field cannot be used in combination with secretName and currently is effective
+                                only for Elasticsearch association types (elasticsearchRef).
+                              type: string
                             name:
                               description: Name of an existing Kubernetes object corresponding
                                 to an Elastic resource managed by ECK.
@@ -9967,6 +10142,14 @@ spec:
                             ObjectSelector defines a reference to a Kubernetes object which can be an Elastic resource managed by the operator
                             or a Secret describing an external Elastic resource not managed by the operator.
                           properties:
+                            clientCertificateSecretName:
+                              description: |-
+                                ClientCertificateSecretName is the name of an existing Kubernetes secret containing a client certificate
+                                (tls.crt) and private key (tls.key) for client authentication to the referenced resource.
+                                If not specified and the referenced resource requires client authentication, ECK will auto-generate
+                                a client certificate. This field cannot be used in combination with secretName and currently is effective
+                                only for Elasticsearch association types (elasticsearchRef).
+                              type: string
                             name:
                               description: Name of an existing Kubernetes object corresponding
                                 to an Elastic resource managed by ECK.

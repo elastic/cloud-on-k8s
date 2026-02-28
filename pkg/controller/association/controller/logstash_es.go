@@ -40,6 +40,7 @@ func AddLogstashES(mgr manager.Manager, accessReviewer rbac.AccessReviewer, para
 		ReferencedResourceVersion: referencedElasticsearchStatusVersion,
 		ExternalServiceURL:        getElasticsearchExternalURL,
 		ReferencedResourceNamer:   esv1.ESNamer,
+		ReferencedResourceKind:    esv1.Kind,
 		AssociationName:           "logstash-es",
 		AssociatedShortName:       "logstash",
 		Labels: func(associated types.NamespacedName) map[string]string {

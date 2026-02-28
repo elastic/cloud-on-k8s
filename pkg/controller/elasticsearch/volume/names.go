@@ -48,4 +48,7 @@ const (
 
 	TempVolumeName      = "tmp-volume"
 	TempVolumeMountPath = "/tmp"
+
+	ClientCertificatesTrustBundleVolumeName = "elastic-internal-client-cas"
+	ClientCertificatesTrustBundleMountPath  = "/usr/share/elasticsearch/config/client-cas"
 )

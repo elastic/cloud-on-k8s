@@ -28,6 +28,7 @@ func AddAgentKibana(mgr manager.Manager, accessReviewer rbac.AccessReviewer, par
 		ExternalServiceURL:        getKibanaExternalURL,
 		ReferencedResourceVersion: referencedKibanaStatusVersion,
 		ReferencedResourceNamer:   kbv1.KBNamer,
+		ReferencedResourceKind:    kbv1.Kind,
 		AssociationName:           "agent-kibana",
 		AssociatedShortName:       "agent",
 		AssociationType:           commonv1.KibanaAssociationType,

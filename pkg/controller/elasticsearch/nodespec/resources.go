@@ -11,12 +11,10 @@ import (
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 
-	commonv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/common/v1"
 	esv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/elasticsearch/v1"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/keystore"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/metadata"
 	sset "github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/statefulset"
-	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/version"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/label"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/settings"
 	es_sset "github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/sset"
@@ -54,42 +52,37 @@ func (l ResourcesList) ExpectedNodeCount() int32 {
 	return l.StatefulSets().ExpectedNodeCount()
 }
 
+// NodeSetConfig holds the pre-computed merged configuration for a single NodeSet.
+type NodeSetConfig struct {
+	NodeSetName string
+	Config      settings.CanonicalConfig
+}
+
+// BuildExpectedResources builds the expected Kubernetes resources for all NodeSets.
+// It uses pre-computed configs from nodeSetConfigs (computed early in reconciliation)
+// to avoid duplicate config computation.
 func BuildExpectedResources(
 	ctx context.Context,
 	client k8s.Client,
 	es esv1.Elasticsearch,
 	keystoreResources *keystore.Resources,
 	existingStatefulSets es_sset.StatefulSetList,
-	ipFamily corev1.IPFamily,
 	setDefaultSecurityContext bool,
 	meta metadata.Metadata,
+	nodeSetConfigs []NodeSetConfig,
+	clientAuthenticationRequired bool,
+	policyConfig PolicyConfig,
 ) (ResourcesList, error) {
 	nodesResources := make(ResourcesList, 0, len(es.Spec.NodeSets))
 
-	ver, err := version.Parse(es.Spec.Version)
-	if err != nil {
-		return nil, err
-	}
-
-	// Get policy config from StackConfigPolicy
-	policyConfig, err := getPolicyConfig(ctx, client, es)
-	if err != nil {
-		return nil, err
-	}
-
-	for _, nodeSpec := range es.Spec.NodeSets {
-		// build es config
-		userCfg := commonv1.Config{}
-		if nodeSpec.Config != nil {
-			userCfg = *nodeSpec.Config
+	for i, nodeSpec := range es.Spec.NodeSets {
+		// Get the pre-computed config for this NodeSet
+		if i >= len(nodeSetConfigs) || nodeSetConfigs[i].NodeSetName != nodeSpec.Name {
+			return nil, fmt.Errorf("nodeSetConfigs mismatch: expected config for %s at index %d", nodeSpec.Name, i)
 		}
-		cfg, err := settings.NewMergedESConfig(es.Name, ver, ipFamily, es.Spec.HTTP, userCfg, policyConfig.ElasticsearchConfig, es.Spec.RemoteClusterServer.Enabled, es.HasRemoteClusterAPIKey())
-		if err != nil {
-			return nil, err
-		}
+		cfg := nodeSetConfigs[i].Config
 
-		// build stateful set and associated headless service
-		statefulSet, err := BuildStatefulSet(ctx, client, es, nodeSpec, cfg, keystoreResources, existingStatefulSets, setDefaultSecurityContext, policyConfig, meta)
+		statefulSet, err := BuildStatefulSet(ctx, client, es, nodeSpec, cfg, keystoreResources, existingStatefulSets, setDefaultSecurityContext, policyConfig, meta, clientAuthenticationRequired)
 		if err != nil {
 			return nil, err
 		}

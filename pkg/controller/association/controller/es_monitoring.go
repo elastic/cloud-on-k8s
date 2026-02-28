@@ -46,6 +46,7 @@ func esMonitoringAssociationInfo() association.AssociationInfo {
 		ExternalServiceURL:        getElasticsearchExternalURL,
 		AssociationType:           commonv1.EsMonitoringAssociationType,
 		ReferencedResourceNamer:   esv1.ESNamer,
+		ReferencedResourceKind:    esv1.Kind,
 		AssociationName:           "es-monitoring",
 		AssociatedShortName:       "es-mon",
 		Labels: func(associated types.NamespacedName) map[string]string {

@@ -90,10 +90,37 @@ func Test_BuildVolumes_DataVolumeMountPath(t *testing.T) {
 
 	for _, tc := range tt {
 		t.Run(tc.name, func(t *testing.T) {
-			_, volumeMounts := buildVolumes("esname", version.MustParse("8.8.0"), tc.nodeSpec, nil, volume.DownwardAPI{}, []volume.VolumeLike{})
+			_, volumeMounts := buildVolumes("esname", version.MustParse("8.8.0"), tc.nodeSpec, nil, volume.DownwardAPI{}, []volume.VolumeLike{}, false)
 			assert.True(t, contains(volumeMounts, "elasticsearch-data", "/usr/share/elasticsearch/data"))
 		})
 	}
+}
+
+func Test_BuildVolumes_ClientAuthTrustBundle(t *testing.T) {
+	nodeSpec := esv1.NodeSet{
+		VolumeClaimTemplates: esvolume.DefaultVolumeClaimTemplates,
+	}
+
+	t.Run("trust bundle volume present when client auth required", func(t *testing.T) {
+		volumes, volumeMounts := buildVolumes("esname", version.MustParse("8.15.0"), nodeSpec, nil, volume.DownwardAPI{}, []volume.VolumeLike{}, true)
+		assert.True(t, contains(volumeMounts, esvolume.ClientCertificatesTrustBundleVolumeName, esvolume.ClientCertificatesTrustBundleMountPath))
+		found := false
+		for _, v := range volumes {
+			if v.Name == esvolume.ClientCertificatesTrustBundleVolumeName {
+				found = true
+				break
+			}
+		}
+		assert.True(t, found, "trust bundle volume should be present")
+	})
+
+	t.Run("trust bundle volume absent when client auth not required", func(t *testing.T) {
+		volumes, volumeMounts := buildVolumes("esname", version.MustParse("8.15.0"), nodeSpec, nil, volume.DownwardAPI{}, []volume.VolumeLike{}, false)
+		assert.False(t, contains(volumeMounts, esvolume.ClientCertificatesTrustBundleVolumeName, esvolume.ClientCertificatesTrustBundleMountPath))
+		for _, v := range volumes {
+			assert.NotEqual(t, esvolume.ClientCertificatesTrustBundleVolumeName, v.Name, "trust bundle volume should not be present")
+		}
+	})
 }
 
 func contains(volumeMounts []corev1.VolumeMount, volumeMountName, volumeMountPath string) bool {

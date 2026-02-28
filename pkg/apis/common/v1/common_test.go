@@ -311,6 +311,22 @@ func TestObjectSelector_IsValid(t *testing.T) {
 			},
 			wantErr: true,
 		},
+		{
+			name: "clientCertificateSecretName with name: OK",
+			objectSelector: ObjectSelector{
+				Name:                        "a",
+				ClientCertificateSecretName: "cc",
+			},
+			wantErr: false,
+		},
+		{
+			name: "clientCertificateSecretName with secretName: KO",
+			objectSelector: ObjectSelector{
+				SecretName:                  "s",
+				ClientCertificateSecretName: "cc",
+			},
+			wantErr: true,
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

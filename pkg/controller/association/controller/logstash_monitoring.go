@@ -31,6 +31,7 @@ func AddLogstashMonitoring(mgr manager.Manager, accessReviewer rbac.AccessReview
 		ExternalServiceURL:        getElasticsearchExternalURL,
 		AssociationType:           commonv1.LogstashMonitoringAssociationType,
 		ReferencedResourceNamer:   esv1.ESNamer,
+		ReferencedResourceKind:    esv1.Kind,
 		AssociationName:           "ls-monitoring",
 		AssociatedShortName:       "ls-mon",
 		Labels: func(associated types.NamespacedName) map[string]string {

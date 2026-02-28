@@ -211,16 +211,30 @@ func DeleteSecretMatching(ctx context.Context, c Client, opts ...client.ListOpti
 	return nil
 }
 
+// GetSecretIfExists returns the secret identified by key, or nil if it does not exist.
+func GetSecretIfExists(ctx context.Context, c Client, key types.NamespacedName) (*corev1.Secret, error) {
+	secret := &corev1.Secret{}
+	err := c.Get(ctx, key, secret)
+	if err != nil && apierrors.IsNotFound(err) {
+		return nil, nil
+	} else if err != nil {
+		return nil, err
+	}
+
+	return secret, nil
+}
+
 // DeleteSecretIfExists deletes the secret identified by key if exists.
 func DeleteSecretIfExists(ctx context.Context, c Client, key types.NamespacedName) error {
-	var secret corev1.Secret
-	err := c.Get(ctx, key, &secret)
-	if err != nil && apierrors.IsNotFound(err) {
-		return nil
-	} else if err != nil {
+	secret, err := GetSecretIfExists(ctx, c, key)
+	if err != nil {
 		return err
 	}
-	err = c.Delete(ctx, &secret)
+	if secret == nil {
+		return nil
+	}
+
+	err = c.Delete(ctx, secret)
 	if err != nil && apierrors.IsNotFound(err) {
 		return nil
 	}

@@ -5,18 +5,21 @@
 package shared
 
 import (
+	"context"
 	"testing"
 
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
-	"github.com/stretchr/testify/assert"
-
 	esv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/elasticsearch/v1"
 	policyv1alpha1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/stackconfigpolicy/v1alpha1"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/annotation"
+	commoncerts "github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/certificates"
 	commonlicense "github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/license"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/k8s"
 )
@@ -374,4 +377,57 @@ func Test_maybeReconcileEmptyFileSettingsSecret(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestDeleteClientCertResources(t *testing.T) {
+	ctx := context.Background()
+	esName := "my-es"
+	esNS := "my-ns"
+
+	operatorCertSecretName := commoncerts.OperatorClientCertSecretName(esv1.ESNamer, esName)
+	trustBundleSecretName := commoncerts.ClientCertTrustBundleSecretName(esv1.ESNamer, esName)
+
+	t.Run("deletes annotation, operator cert secret, and trust bundle secret", func(t *testing.T) {
+		es := &esv1.Elasticsearch{
+			ObjectMeta: metav1.ObjectMeta{
+				Namespace:   esNS,
+				Name:        esName,
+				Annotations: map[string]string{annotation.ClientAuthenticationRequiredAnnotation: "true"},
+			},
+		}
+		operatorCertSecret := &corev1.Secret{
+			ObjectMeta: metav1.ObjectMeta{Namespace: esNS, Name: operatorCertSecretName},
+		}
+		trustBundleSecret := &corev1.Secret{
+			ObjectMeta: metav1.ObjectMeta{Namespace: esNS, Name: trustBundleSecretName},
+		}
+
+		c := k8s.NewFakeClient(es, operatorCertSecret, trustBundleSecret)
+		require.NoError(t, DeleteClientCertResources(ctx, c, es))
+
+		// annotation removed
+		var updatedES esv1.Elasticsearch
+		require.NoError(t, c.Get(ctx, types.NamespacedName{Namespace: esNS, Name: esName}, &updatedES))
+		require.False(t, annotation.HasClientAuthenticationRequired(&updatedES))
+
+		// operator cert secret deleted
+		var s corev1.Secret
+		err := c.Get(ctx, types.NamespacedName{Namespace: esNS, Name: operatorCertSecretName}, &s)
+		require.True(t, apierrors.IsNotFound(err))
+
+		// trust bundle secret deleted
+		err = c.Get(ctx, types.NamespacedName{Namespace: esNS, Name: trustBundleSecretName}, &s)
+		require.True(t, apierrors.IsNotFound(err))
+	})
+
+	t.Run("no-op when resources already absent", func(t *testing.T) {
+		es := &esv1.Elasticsearch{
+			ObjectMeta: metav1.ObjectMeta{
+				Namespace: esNS,
+				Name:      esName,
+			},
+		}
+		c := k8s.NewFakeClient(es)
+		require.NoError(t, DeleteClientCertResources(ctx, c, es))
+	})
 }

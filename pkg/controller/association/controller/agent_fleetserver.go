@@ -29,6 +29,7 @@ func AddAgentFleetServer(mgr manager.Manager, accessReviewer rbac.AccessReviewer
 		ExternalServiceURL:        getFleetServerExternalURL,
 		ReferencedResourceVersion: referencedFleetServerStatusVersion,
 		ReferencedResourceNamer:   agent.Namer,
+		ReferencedResourceKind:    agentv1alpha1.Kind,
 		AssociationName:           "agent-fleetserver",
 		AssociatedShortName:       "agent",
 		AssociationType:           commonv1.FleetServerAssociationType,

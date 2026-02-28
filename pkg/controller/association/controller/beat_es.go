@@ -45,6 +45,7 @@ func AddBeatES(mgr manager.Manager, accessReviewer rbac.AccessReviewer, params o
 		ReferencedResourceVersion: referencedElasticsearchStatusVersion,
 		ExternalServiceURL:        getElasticsearchExternalURL,
 		ReferencedResourceNamer:   esv1.ESNamer,
+		ReferencedResourceKind:    esv1.Kind,
 		AssociationName:           "beat-es",
 		AssociatedShortName:       "beat",
 		Labels: func(associated types.NamespacedName) map[string]string {

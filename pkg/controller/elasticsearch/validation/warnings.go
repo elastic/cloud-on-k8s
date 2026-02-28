@@ -27,7 +27,6 @@ func noUnsupportedSettings(es esv1.Elasticsearch) field.ErrorList {
 			continue
 		}
 		errs = append(errs, validateSettings(config, i)...)
-		errs = append(errs, validateClientAuthentication(config, i)...)
 	}
 	return errs
 }
@@ -37,21 +36,6 @@ func validateSettings(config *common.CanonicalConfig, index int) field.ErrorList
 	unsupported := config.HasKeys(esv1.UnsupportedSettings)
 	for _, setting := range unsupported {
 		errs = append(errs, field.Forbidden(field.NewPath("spec").Child("nodeSets").Index(index).Child("config").Child(setting), unsupportedConfigErrMsg))
-	}
-	return errs
-}
-
-func validateClientAuthentication(config *common.CanonicalConfig, index int) field.ErrorList {
-	forbiddenValue := "required" // we allow 'none' and 'optional' but 'required' is not supported
-
-	var errs field.ErrorList
-	value, err := config.String(esv1.XPackSecurityHttpSslClientAuthentication)
-	if err != nil {
-		return errs
-	}
-	if value == forbiddenValue {
-		errs = append(errs, field.Invalid(field.NewPath("spec").Child("nodeSets").Index(index).Child("config").Child(esv1.XPackSecurityHttpSslClientAuthentication),
-			value, unsupportedClientAuthenticationMsg))
 	}
 	return errs
 }

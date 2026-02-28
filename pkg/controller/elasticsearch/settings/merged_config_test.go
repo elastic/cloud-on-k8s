@@ -6,16 +6,21 @@ package settings
 
 import (
 	"bytes"
+	"path"
+	"reflect"
 	"testing"
 
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"gopkg.in/yaml.v3"
 	corev1 "k8s.io/api/core/v1"
 
 	commonv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/common/v1"
 	esv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/elasticsearch/v1"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/certificates"
 	common "github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/settings"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/version"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/volume"
 )
 
 func TestNewMergedESConfig(t *testing.T) {
@@ -39,15 +44,19 @@ func TestNewMergedESConfig(t *testing.T) {
 		esv1.DiscoverySeedProviders: "policy-override",
 	})
 
+	trustBundlePath := path.Join(volume.ClientCertificatesTrustBundleMountPath, certificates.ClientCertificatesTrustBundleFileName)
+
 	tests := []struct {
-		name                       string
-		version                    string
-		ipFamily                   corev1.IPFamily
-		remoteClusterServerEnabled bool
-		remoteClusterClientEnabled bool
-		cfgData                    map[string]any
-		policyCfgData              *common.CanonicalConfig
-		assert                     func(cfg CanonicalConfig)
+		name                         string
+		version                      string
+		ipFamily                     corev1.IPFamily
+		httpConfig                   commonv1.HTTPConfigWithClientOptions
+		remoteClusterServerEnabled   bool
+		remoteClusterClientEnabled   bool
+		clientAuthenticationRequired bool
+		cfgData                      map[string]any
+		policyCfgData                *common.CanonicalConfig
+		assert                       func(cfg CanonicalConfig)
 	}{
 		{
 			name:     "No remote cluster client or server by default",
@@ -228,6 +237,111 @@ func TestNewMergedESConfig(t *testing.T) {
 			},
 		},
 		{
+			name:     "client authentication default is injected from spec field",
+			version:  "8.15.0",
+			ipFamily: corev1.IPv4Protocol,
+			httpConfig: commonv1.HTTPConfigWithClientOptions{
+				TLS: commonv1.TLSWithClientOptions{
+					Client: commonv1.ClientOptions{Authentication: true},
+				},
+			},
+			cfgData: map[string]any{},
+			assert: func(cfg CanonicalConfig) {
+				val, err := cfg.String(esv1.XPackSecurityHttpSslClientAuthentication)
+				require.NoError(t, err)
+				require.Equal(t, "required", val)
+			},
+		},
+		{
+			name:     "user config overrides spec-injected client authentication default",
+			version:  "8.15.0",
+			ipFamily: corev1.IPv4Protocol,
+			httpConfig: commonv1.HTTPConfigWithClientOptions{
+				TLS: commonv1.TLSWithClientOptions{
+					Client: commonv1.ClientOptions{Authentication: true},
+				},
+			},
+			cfgData: map[string]any{
+				esv1.XPackSecurityHttpSslClientAuthentication: "optional",
+			},
+			assert: func(cfg CanonicalConfig) {
+				val, err := cfg.String(esv1.XPackSecurityHttpSslClientAuthentication)
+				require.NoError(t, err)
+				require.Equal(t, "optional", val)
+			},
+		},
+		{
+			name:     "stack config policy overrides spec-injected client authentication default",
+			version:  "8.15.0",
+			ipFamily: corev1.IPv4Protocol,
+			httpConfig: commonv1.HTTPConfigWithClientOptions{
+				TLS: commonv1.TLSWithClientOptions{
+					Client: commonv1.ClientOptions{Authentication: true},
+				},
+			},
+			cfgData: map[string]any{},
+			policyCfgData: common.MustCanonicalConfig(map[string]any{
+				esv1.XPackSecurityHttpSslClientAuthentication: "optional",
+			}),
+			assert: func(cfg CanonicalConfig) {
+				val, err := cfg.String(esv1.XPackSecurityHttpSslClientAuthentication)
+				require.NoError(t, err)
+				require.Equal(t, "optional", val)
+			},
+		},
+		{
+			name:     "trust bundle appended when client authentication required",
+			version:  "8.15.0",
+			ipFamily: corev1.IPv4Protocol,
+			httpConfig: commonv1.HTTPConfigWithClientOptions{
+				TLS: commonv1.TLSWithClientOptions{
+					Client: commonv1.ClientOptions{Authentication: true},
+				},
+			},
+			clientAuthenticationRequired: true,
+			cfgData:                      map[string]any{},
+			assert: func(cfg CanonicalConfig) {
+				rendered, err := cfg.Render()
+				require.NoError(t, err)
+				require.Contains(t, string(rendered), trustBundlePath)
+			},
+		},
+		{
+			name:     "trust bundle appended alongside user-specified CAs",
+			version:  "8.15.0",
+			ipFamily: corev1.IPv4Protocol,
+			httpConfig: commonv1.HTTPConfigWithClientOptions{
+				TLS: commonv1.TLSWithClientOptions{
+					Client: commonv1.ClientOptions{Authentication: true},
+				},
+			},
+			clientAuthenticationRequired: true,
+			cfgData: map[string]any{
+				esv1.XPackSecurityHttpSslCertificateAuthorities: []string{
+					"/usr/share/elasticsearch/config/http-certs/ca.crt",
+					"/custom/ca.crt",
+				},
+			},
+			assert: func(cfg CanonicalConfig) {
+				rendered, err := cfg.Render()
+				require.NoError(t, err)
+				renderedStr := string(rendered)
+				require.Contains(t, renderedStr, "/custom/ca.crt")
+				require.Contains(t, renderedStr, trustBundlePath)
+			},
+		},
+		{
+			name:     "trust bundle not appended when client authentication not required",
+			version:  "8.15.0",
+			ipFamily: corev1.IPv4Protocol,
+			cfgData:  map[string]any{},
+			assert: func(cfg CanonicalConfig) {
+				rendered, err := cfg.Render()
+				require.NoError(t, err)
+				require.NotContains(t, string(rendered), trustBundlePath)
+			},
+		},
+		{
 			name:     "configuration is adjusted for IP family",
 			version:  "7.6.0",
 			ipFamily: corev1.IPv6Protocol,
@@ -246,9 +360,159 @@ func TestNewMergedESConfig(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			ver, err := version.Parse(tt.version)
 			require.NoError(t, err)
-			cfg, err := NewMergedESConfig("clusterName", ver, tt.ipFamily, commonv1.HTTPConfig{}, commonv1.Config{Data: tt.cfgData}, tt.policyCfgData, tt.remoteClusterServerEnabled, tt.remoteClusterClientEnabled)
+			cfg, err := NewMergedESConfig("clusterName", ver, tt.ipFamily, tt.httpConfig, commonv1.Config{Data: tt.cfgData}, tt.policyCfgData, tt.remoteClusterServerEnabled, tt.remoteClusterClientEnabled, tt.clientAuthenticationRequired)
 			require.NoError(t, err)
 			tt.assert(cfg)
+		})
+	}
+}
+
+func Test_appendClientTrustBundle(t *testing.T) {
+	clientTrustBundle := path.Join(volume.ClientCertificatesTrustBundleMountPath, certificates.ClientCertificatesTrustBundleFileName)
+	tests := []struct {
+		name        string
+		cfg         map[string]any
+		expectedCAs any
+		wantErr     bool
+	}{
+		{
+			name: "pre-populated certificate_authorities as string",
+			cfg: map[string]any{
+				esv1.XPackSecurityHttpSslCertificateAuthorities: "/valid/path.crt",
+			},
+			expectedCAs: []string{
+				"/valid/path.crt",
+				clientTrustBundle,
+			},
+		},
+		{
+			name: "pre-populated certificate_authorities as string with client trust bundle",
+			cfg: map[string]any{
+				esv1.XPackSecurityHttpSslCertificateAuthorities: clientTrustBundle,
+			},
+			expectedCAs: clientTrustBundle,
+		},
+		{
+			name: "pre-populated certificate_authorities as slice",
+			cfg: map[string]any{
+				esv1.XPackSecurityHttpSslCertificateAuthorities: []any{
+					"/valid/path.crt",
+				},
+			},
+			expectedCAs: []string{
+				"/valid/path.crt",
+				clientTrustBundle,
+			},
+		},
+		{
+			name: "pre-populated certificate_authorities with client trust bundle",
+			cfg: map[string]any{
+				esv1.XPackSecurityHttpSslCertificateAuthorities: []any{
+					clientTrustBundle,
+				},
+			},
+			expectedCAs: []string{
+				clientTrustBundle,
+			},
+		},
+		{
+			name: "invalid certificate_authorities entries",
+			cfg: map[string]any{
+				esv1.XPackSecurityHttpSslCertificateAuthorities: []any{
+					clientTrustBundle,
+					1234, // invalid
+				},
+			},
+			wantErr: true,
+		},
+		{
+			name: "invalid certificate_authorities type",
+			cfg: map[string]any{
+				esv1.XPackSecurityHttpSslCertificateAuthorities: map[string]any{
+					"invalid": "invalid",
+				},
+			},
+			wantErr: true,
+		},
+		{
+			name: "nil certificate_authorities",
+			cfg: map[string]any{
+				esv1.XPackSecurityHttpSslCertificateAuthorities: nil,
+			},
+			expectedCAs: []string{
+				clientTrustBundle,
+			},
+		},
+		{
+			name: "empty certificate_authorities",
+			cfg: map[string]any{
+				esv1.XPackSecurityHttpSslCertificateAuthorities: []string{},
+			},
+			expectedCAs: []string{
+				clientTrustBundle,
+			},
+		},
+		{
+			name: "non-existing certificate_authorities",
+			cfg:  map[string]any{},
+			expectedCAs: []string{
+				clientTrustBundle,
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			cfg := common.MustCanonicalConfig(tt.cfg)
+			err := appendClientTrustBundle(cfg)
+			if tt.wantErr {
+				require.Error(t, err)
+				return
+			}
+			require.NoError(t, err)
+			var cfgMap map[string]any
+			require.NoError(t, cfg.Unpack(&cfgMap))
+			cas, _ := getNestedValue(cfgMap, esv1.XPackSecurityHttpSslCertificateAuthorities)
+			kind := reflect.TypeOf(cas).Kind()
+			if kind != reflect.Array && kind != reflect.Slice {
+				assert.EqualValues(t, tt.expectedCAs, cas)
+			} else {
+				assert.ElementsMatch(t, tt.expectedCAs, cas)
+			}
+		})
+	}
+}
+
+func TestHasClientAuthenticationRequired(t *testing.T) {
+	for _, tt := range []struct {
+		name string
+		cfg  map[string]any
+		want bool
+	}{
+		{
+			name: "required returns true",
+			cfg:  map[string]any{esv1.XPackSecurityHttpSslClientAuthentication: "required"},
+			want: true,
+		},
+		{
+			name: "optional returns false",
+			cfg:  map[string]any{esv1.XPackSecurityHttpSslClientAuthentication: "optional"},
+			want: false,
+		},
+		{
+			name: "none returns false",
+			cfg:  map[string]any{esv1.XPackSecurityHttpSslClientAuthentication: "none"},
+			want: false,
+		},
+		{
+			name: "key absent returns false",
+			cfg:  map[string]any{},
+			want: false,
+		},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			cfg := CanonicalConfig{common.MustCanonicalConfig(tt.cfg)}
+			require.Equal(t, tt.want, HasClientAuthenticationRequired(cfg))
 		})
 	}
 }

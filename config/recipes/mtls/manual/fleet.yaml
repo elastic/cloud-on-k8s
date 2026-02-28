@@ -159,7 +159,7 @@ spec:
     count: 1
     config:
       node.store.allow_mmap: false
-      xpack.security.http.ssl.client_authentication: optional
+      xpack.security.http.ssl.client_authentication: required
 ---
 # =============================================================================
 # Kibana
@@ -184,7 +184,7 @@ spec:
     elasticsearch.ssl.key: /mnt/elastic-internal/http-certs/tls.key
 
     xpack.fleet.agents.fleet_server.hosts: ["https://fleet-server-agent-http.default.svc:8220"]
-
+    elasticsearch.ssl.alwaysPresentCertificate: true
     # mTLS: pre-configure the default Fleet output with client certificate paths.
     # These paths correspond to where the agent's client cert is mounted in agent pods.
     # This is an immutable output — it cannot be changed via the Fleet API.
