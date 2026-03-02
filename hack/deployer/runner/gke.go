@@ -113,11 +113,9 @@ func (d *GKEDriver) Execute() error {
 	case DeleteAction:
 		// Track bucket deletion errors separately: cluster deletion should proceed even if bucket
 		// deletion fails, but the error must still be returned so the exit code is non-zero.
-		var bucketErr error
-		if d.plan.Bucket != nil {
-			if bucketErr = d.deleteBucket(); bucketErr != nil {
-				log.Printf("warning: bucket deletion failed, will continue with cluster deletion: %v", bucketErr)
-			}
+		bucketErr := deleteBucketIfConfigured(d.plan, d.newBucketManager)
+		if bucketErr != nil {
+			log.Printf("warning: bucket deletion failed, will continue with cluster deletion: %v", bucketErr)
 		}
 		if exists {
 			err = d.delete()
@@ -177,10 +175,8 @@ func (d *GKEDriver) Execute() error {
 				return err
 			}
 		}
-		if d.plan.Bucket != nil {
-			if err := d.createBucket(); err != nil {
-				return err
-			}
+		if err := createBucketIfConfigured(d.plan, d.newBucketManager); err != nil {
+			return err
 		}
 	default:
 		err = fmt.Errorf("unknown operation %s", d.plan.Operation)
@@ -527,28 +523,12 @@ func (d *GKEDriver) deleteDisks(disks []string) error {
 	return nil
 }
 
-func (d *GKEDriver) newBucketManager() (*bucket.GCSManager, error) {
+func (d *GKEDriver) newBucketManager() (bucket.Manager, error) {
 	cfg, err := newBucketConfig(d.plan, d.ctx, d.plan.Gke.Region)
 	if err != nil {
 		return nil, err
 	}
 	return bucket.NewGCSManager(cfg, d.plan.Gke.GCloudProject, d.plan.Bucket.StorageClass), nil
-}
-
-func (d *GKEDriver) createBucket() error {
-	mgr, err := d.newBucketManager()
-	if err != nil {
-		return err
-	}
-	return mgr.Create()
-}
-
-func (d *GKEDriver) deleteBucket() error {
-	mgr, err := d.newBucketManager()
-	if err != nil {
-		return err
-	}
-	return mgr.Delete()
 }
 
 func (d *GKEDriver) Cleanup(prefix string, olderThan time.Duration) error {
@@ -579,10 +559,8 @@ func (d *GKEDriver) Cleanup(prefix string, olderThan time.Duration) error {
 
 	for _, cluster := range clusters {
 		d.ctx["ClusterName"] = cluster
-		if d.plan.Bucket != nil {
-			if err := d.deleteBucket(); err != nil {
-				log.Printf("warning: bucket deletion failed for cluster %s, will continue: %v", cluster, err)
-			}
+		if err := deleteBucketIfConfigured(d.plan, d.newBucketManager); err != nil {
+			log.Printf("warning: bucket deletion failed for cluster %s, will continue: %v", cluster, err)
 		}
 		if err = d.delete(); err != nil {
 			log.Printf("while deleting cluster %s: %v", cluster, err.Error())

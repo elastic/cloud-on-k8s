@@ -16,6 +16,7 @@ import (
 	"time"
 
 	"github.com/elastic/cloud-on-k8s/v3/hack/deployer/exec"
+	"github.com/elastic/cloud-on-k8s/v3/hack/deployer/runner/bucket"
 	"github.com/elastic/cloud-on-k8s/v3/hack/deployer/runner/env"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/vault"
 )
@@ -65,20 +66,16 @@ func (k *K3dDriver) Execute() error {
 		if err := k.create(); err != nil {
 			return err
 		}
-		if k.plan.Bucket != nil {
-			if err := k.createBucket(); err != nil {
-				return err
-			}
+		if err := createBucketIfConfigured(k.plan, k.newBucketManager); err != nil {
+			return err
 		}
 		return nil
 	case DeleteAction:
 		// Track bucket deletion errors separately: cluster deletion should proceed even if bucket
 		// deletion fails, but the error must still be returned so the exit code is non-zero.
-		var bucketErr error
-		if k.plan.Bucket != nil {
-			if bucketErr = k.deleteBucket(); bucketErr != nil {
-				log.Printf("warning: bucket deletion failed, will continue with cluster deletion: %v", bucketErr)
-			}
+		bucketErr := deleteBucketIfConfigured(k.plan, k.newBucketManager)
+		if bucketErr != nil {
+			log.Printf("warning: bucket deletion failed, will continue with cluster deletion: %v", bucketErr)
 		}
 		if err := k.delete(); err != nil {
 			return errors.Join(err, bucketErr)
@@ -215,20 +212,8 @@ func (k *K3dDriver) createTmpStorageClass() (string, error) {
 	return tmpFile, err
 }
 
-func (k *K3dDriver) createBucket() error {
-	mgr, err := newLocalGCSBucketManager(k.plan)
-	if err != nil {
-		return err
-	}
-	return mgr.Create()
-}
-
-func (k *K3dDriver) deleteBucket() error {
-	mgr, err := newLocalGCSBucketManager(k.plan)
-	if err != nil {
-		return err
-	}
-	return mgr.Delete()
+func (k *K3dDriver) newBucketManager() (bucket.Manager, error) {
+	return newLocalGCSBucketManager(k.plan)
 }
 
 func (k *K3dDriver) Cleanup(string, time.Duration) error {

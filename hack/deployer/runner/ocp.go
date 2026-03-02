@@ -135,11 +135,9 @@ func (d *OCPDriver) Execute() error {
 	case DeleteAction:
 		// Track bucket deletion errors separately: cluster deletion should proceed even if bucket
 		// deletion fails, but the error must still be returned so the exit code is non-zero.
-		var bucketErr error
-		if d.plan.Bucket != nil {
-			if bucketErr = d.deleteBucket(); bucketErr != nil {
-				log.Printf("warning: bucket deletion failed, will continue with cluster deletion: %v", bucketErr)
-			}
+		bucketErr := deleteBucketIfConfigured(d.plan, d.newBucketManager)
+		if bucketErr != nil {
+			log.Printf("warning: bucket deletion failed, will continue with cluster deletion: %v", bucketErr)
 		}
 		if clusterStatus != NotFound {
 			// always attempt a deletion
@@ -170,10 +168,8 @@ func (d *OCPDriver) Execute() error {
 		}); err != nil {
 			return err
 		}
-		if d.plan.Bucket != nil {
-			if err := d.createBucket(); err != nil {
-				return err
-			}
+		if err := createBucketIfConfigured(d.plan, d.newBucketManager); err != nil {
+			return err
 		}
 		return nil
 	default:
@@ -491,7 +487,7 @@ func (d *OCPDriver) baseDomain() string {
 	return baseDomain
 }
 
-func (d *OCPDriver) newBucketManager() (*bucket.GCSManager, error) {
+func (d *OCPDriver) newBucketManager() (bucket.Manager, error) {
 	ctx := map[string]any{
 		"ClusterName": d.plan.ClusterName,
 		"PlanId":      d.plan.Id,
@@ -501,22 +497,6 @@ func (d *OCPDriver) newBucketManager() (*bucket.GCSManager, error) {
 		return nil, err
 	}
 	return bucket.NewGCSManager(cfg, d.plan.Ocp.GCloudProject, d.plan.Bucket.StorageClass), nil
-}
-
-func (d *OCPDriver) createBucket() error {
-	mgr, err := d.newBucketManager()
-	if err != nil {
-		return err
-	}
-	return mgr.Create()
-}
-
-func (d *OCPDriver) deleteBucket() error {
-	mgr, err := d.newBucketManager()
-	if err != nil {
-		return err
-	}
-	return mgr.Delete()
 }
 
 func (d *OCPDriver) Cleanup(prefix string, olderThan time.Duration) error {

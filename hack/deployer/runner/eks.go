@@ -107,11 +107,9 @@ func (e *EKSDriver) Execute() error {
 	case DeleteAction:
 		// Track bucket deletion errors separately: cluster deletion should proceed even if bucket
 		// deletion fails, but the error must still be returned so the exit code is non-zero.
-		var bucketErr error
-		if e.plan.Bucket != nil {
-			if bucketErr = e.deleteBucket(); bucketErr != nil {
-				log.Printf("warning: bucket deletion failed, will continue with cluster deletion: %v", bucketErr)
-			}
+		bucketErr := deleteBucketIfConfigured(e.plan, e.newBucketManager)
+		if bucketErr != nil {
+			log.Printf("warning: bucket deletion failed, will continue with cluster deletion: %v", bucketErr)
 		}
 		if exists {
 			if err = e.delete(); err != nil {
@@ -157,10 +155,8 @@ func (e *EKSDriver) Execute() error {
 		if err := createStorageClass(); err != nil {
 			return err
 		}
-		if e.plan.Bucket != nil {
-			if err := e.createBucket(); err != nil {
-				return err
-			}
+		if err := createBucketIfConfigured(e.plan, e.newBucketManager); err != nil {
+			return err
 		}
 	}
 	return nil
@@ -267,7 +263,7 @@ func (e *EKSDriver) writeAWSCredentials() error {
 	return os.WriteFile(file, []byte(fileContents), 0o600)
 }
 
-func (e *EKSDriver) newBucketManager() (*bucket.S3Manager, error) {
+func (e *EKSDriver) newBucketManager() (bucket.Manager, error) {
 	cfg, err := newBucketConfig(e.plan, e.ctx, e.plan.Eks.Region)
 	if err != nil {
 		return nil, err
@@ -286,22 +282,6 @@ func (e *EKSDriver) newBucketManager() (*bucket.S3Manager, error) {
 		return nil, fmt.Errorf("bucket.s3.managedPolicyARN must not be empty")
 	}
 	return bucket.NewS3Manager(cfg, s3), nil
-}
-
-func (e *EKSDriver) createBucket() error {
-	mgr, err := e.newBucketManager()
-	if err != nil {
-		return err
-	}
-	return mgr.Create()
-}
-
-func (e *EKSDriver) deleteBucket() error {
-	mgr, err := e.newBucketManager()
-	if err != nil {
-		return err
-	}
-	return mgr.Delete()
 }
 
 func (e *EKSDriver) Cleanup(prefix string, olderThan time.Duration) error {
@@ -328,10 +308,8 @@ func (e *EKSDriver) Cleanup(prefix string, olderThan time.Duration) error {
 			return fmt.Errorf("while describing cluster %s: %w", cluster, err)
 		}
 		if clustersToDelete != "" {
-			if e.plan.Bucket != nil {
-				if err := e.deleteBucket(); err != nil {
-					log.Printf("warning: bucket deletion failed for cluster %s, will continue: %v", cluster, err)
-				}
+			if err := deleteBucketIfConfigured(e.plan, e.newBucketManager); err != nil {
+				log.Printf("warning: bucket deletion failed for cluster %s, will continue: %v", cluster, err)
 			}
 			if err = e.delete(); err != nil {
 				log.Printf("while deleting cluster %s: %v", cluster, err.Error())

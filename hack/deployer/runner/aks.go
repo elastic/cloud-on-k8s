@@ -89,11 +89,9 @@ func (d *AKSDriver) Execute() error {
 	case DeleteAction:
 		// Track bucket deletion errors separately: cluster deletion should proceed even if bucket
 		// deletion fails, but the error must still be returned so the exit code is non-zero.
-		var bucketErr error
-		if d.plan.Bucket != nil {
-			if bucketErr = d.deleteBucket(); bucketErr != nil {
-				log.Printf("warning: bucket deletion failed, will continue with cluster deletion: %v", bucketErr)
-			}
+		bucketErr := deleteBucketIfConfigured(d.plan, d.newBucketManager)
+		if bucketErr != nil {
+			log.Printf("warning: bucket deletion failed, will continue with cluster deletion: %v", bucketErr)
 		}
 		if exists {
 			if err := d.delete(); err != nil {
@@ -122,10 +120,8 @@ func (d *AKSDriver) Execute() error {
 		if err := createStorageClass(); err != nil {
 			return err
 		}
-		if d.plan.Bucket != nil {
-			if err := d.createBucket(); err != nil {
-				return err
-			}
+		if err := createBucketIfConfigured(d.plan, d.newBucketManager); err != nil {
+			return err
 		}
 	default:
 		return fmt.Errorf("unknown operation %s", d.plan.Operation)
@@ -211,28 +207,12 @@ func (d *AKSDriver) delete() error {
 		Run()
 }
 
-func (d *AKSDriver) newBucketManager() (*bucket.AzureManager, error) {
+func (d *AKSDriver) newBucketManager() (bucket.Manager, error) {
 	cfg, err := newBucketConfig(d.plan, d.ctx, d.plan.Aks.Location)
 	if err != nil {
 		return nil, err
 	}
 	return bucket.NewAzureManager(cfg, d.plan.Aks.ResourceGroup), nil
-}
-
-func (d *AKSDriver) createBucket() error {
-	mgr, err := d.newBucketManager()
-	if err != nil {
-		return err
-	}
-	return mgr.Create()
-}
-
-func (d *AKSDriver) deleteBucket() error {
-	mgr, err := d.newBucketManager()
-	if err != nil {
-		return err
-	}
-	return mgr.Delete()
 }
 
 func (d *AKSDriver) Cleanup(prefix string, olderThan time.Duration) error {
@@ -255,11 +235,9 @@ func (d *AKSDriver) Cleanup(prefix string, olderThan time.Duration) error {
 
 	for _, cluster := range clustersToDelete {
 		d.plan.ClusterName = cluster
-		d.ctx["ClusterName"] = cluster // deleteBucket->newBucketConfig resolves bucket name from ctx, not plan
-		if d.plan.Bucket != nil {
-			if err := d.deleteBucket(); err != nil {
-				log.Printf("warning: bucket deletion failed for cluster %s, will continue: %v", cluster, err)
-			}
+		d.ctx["ClusterName"] = cluster // newBucketManager->newBucketConfig resolves bucket name from ctx, not plan
+		if err := deleteBucketIfConfigured(d.plan, d.newBucketManager); err != nil {
+			log.Printf("warning: bucket deletion failed for cluster %s, will continue: %v", cluster, err)
 		}
 		if d.plan.Aks.ResourceGroup == "" {
 			c, err := vault.NewClient()

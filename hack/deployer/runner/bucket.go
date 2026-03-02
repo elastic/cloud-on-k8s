@@ -13,6 +13,28 @@ import (
 	"github.com/elastic/cloud-on-k8s/v3/hack/deployer/runner/bucket"
 )
 
+func createBucketIfConfigured(plan Plan, newManager func() (bucket.Manager, error)) error {
+	if plan.Bucket == nil {
+		return nil
+	}
+	mgr, err := newManager()
+	if err != nil {
+		return err
+	}
+	return mgr.Create()
+}
+
+func deleteBucketIfConfigured(plan Plan, newManager func() (bucket.Manager, error)) error {
+	if plan.Bucket == nil {
+		return nil
+	}
+	mgr, err := newManager()
+	if err != nil {
+		return err
+	}
+	return mgr.Delete()
+}
+
 // newBucketConfig builds a bucket.Config from a plan and driver context.
 // The bucket name and secret name/namespace are resolved from template variables.
 func newBucketConfig(plan Plan, ctx map[string]any, region string) (bucket.Config, error) {
