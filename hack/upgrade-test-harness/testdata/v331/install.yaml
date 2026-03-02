@@ -502,7 +502,7 @@ spec:
       securityContext:
         runAsNonRoot: true
       containers:
-      - image: "docker.elastic.co/eck-dev/eck-operator-mmontgomery:3.3.1-d2450229"
+      - image: "docker.elastic.co/eck/eck-operator:3.3.1"
         imagePullPolicy: IfNotPresent
         name: manager
         args:
