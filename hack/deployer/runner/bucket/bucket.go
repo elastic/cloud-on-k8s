@@ -37,6 +37,7 @@ type Manager interface {
 	// The caller must ensure the current kubectl context points to the correct cluster.
 	Create() error
 	// Delete removes the cloud bucket, its contents, and associated cloud credentials (IAM user, service account, etc.).
+	// It does not delete the Kubernetes Secret, which is expected to be cleaned up when the cluster is destroyed.
 	Delete() error
 }
 
@@ -58,7 +59,7 @@ type Config struct {
 type S3Config struct {
 	// IAMUserPath is the IAM path under which storage users are created.
 	IAMUserPath string
-	// ManagedPolicyARN is the ARN of a pre-existing managed policy to should be attached to IAM users.
+	// ManagedPolicyARN is the ARN of a pre-existing managed policy that is attached to IAM users.
 	ManagedPolicyARN string
 }
 
@@ -76,11 +77,11 @@ func isNotFound(cmdOutput string, indicators ...string) bool {
 }
 
 // safeNameRe matches names that are safe to interpolate into shell commands and YAML.
-// Allows lowercase alphanumeric, digits, hyphens, underscores, and periods — the
+// Allows lowercase letters, digits, hyphens, underscores, and periods — the
 // intersection of characters valid in S3/GCS/Azure bucket names and K8s resource names.
 var safeNameRe = regexp.MustCompile(`^[a-z0-9._-]+$`)
 
-// ValidateName checks that a resolved name contains only lowercase alphanumeric characters,
+// ValidateName checks that a resolved name contains only lowercase letters, digits,
 // hyphens, underscores, and periods. Use this for bucket names, K8s resource names, GCP labels,
 // cluster names, and plan IDs — all of which require lowercase.
 // See also ValidateShellArg for a broader check that permits uppercase, colons, and slashes.
@@ -137,7 +138,7 @@ func k8sSecretExists(secretName, secretNamespace string) bool {
 // Returns the annotation value (may be empty) and any error from kubectl.
 func k8sSecretAnnotation(secretName, secretNamespace, annotation string) (string, error) {
 	cmd := fmt.Sprintf(
-		`kubectl get secret %s -n %s -o jsonpath='{.metadata.annotations.%s}'`,
+		`kubectl get secret %s -n %s -o jsonpath='{.metadata.annotations["%s"]}'`,
 		secretName, secretNamespace, annotation,
 	)
 	output, err := exec.NewCommand(cmd).WithoutStreaming().Output()
