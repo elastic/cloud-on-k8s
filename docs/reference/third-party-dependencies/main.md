@@ -23,7 +23,7 @@ This page lists the third-party dependencies used to build {{eck}} from the main
 | [github.com/davecgh/go-spew](https://github.com/davecgh/go-spew) | v1.1.2-0.20180830191138-d8f796af33cc | ISC |
 | [github.com/elastic/go-ucfg](https://github.com/elastic/go-ucfg) | v0.9.0 | Apache-2.0 |
 | [github.com/ghodss/yaml](https://github.com/ghodss/yaml) | v1.0.0 | MIT |
-| [github.com/gkampitakis/go-snaps](https://github.com/gkampitakis/go-snaps) | v0.5.19 | MIT |
+| [github.com/gkampitakis/go-snaps](https://github.com/gkampitakis/go-snaps) | v0.5.20 | MIT |
 | [github.com/go-logr/logr](https://github.com/go-logr/logr) | v1.4.3 | Apache-2.0 |
 | [github.com/go-test/deep](https://github.com/go-test/deep) | v1.1.1 | MIT |
 | [github.com/gobuffalo/flect](https://github.com/gobuffalo/flect) | v1.0.3 | MIT |
@@ -52,9 +52,9 @@ This page lists the third-party dependencies used to build {{eck}} from the main
 | [golang.org/x/crypto](https://golang.org/x/crypto) | v0.48.0 | BSD-3-Clause |
 | [golang.org/x/exp](https://golang.org/x/exp) | v0.0.0-20240808152545-0cdaa3abc0fa | BSD-3-Clause |
 | [gopkg.in/yaml.v3](https://gopkg.in/yaml.v3) | v3.0.1 | MIT |
-| [k8s.io/api](https://github.com/kubernetes/api) | v0.35.1 | Apache-2.0 |
-| [k8s.io/apimachinery](https://github.com/kubernetes/apimachinery) | v0.35.1 | Apache-2.0 |
-| [k8s.io/client-go](https://github.com/kubernetes/client-go) | v0.35.1 | Apache-2.0 |
+| [k8s.io/api](https://github.com/kubernetes/api) | v0.35.2 | Apache-2.0 |
+| [k8s.io/apimachinery](https://github.com/kubernetes/apimachinery) | v0.35.2 | Apache-2.0 |
+| [k8s.io/client-go](https://github.com/kubernetes/client-go) | v0.35.2 | Apache-2.0 |
 | [k8s.io/klog/v2](https://github.com/kubernetes/klog) | v2.130.1 | Apache-2.0 |
 | [k8s.io/utils](https://github.com/kubernetes/utils) | v0.0.0-20251002143259-bc988d571ff4 | Apache-2.0 |
 | [sigs.k8s.io/controller-runtime](https://sigs.k8s.io/controller-runtime) | v0.23.1 | Apache-2.0 |
