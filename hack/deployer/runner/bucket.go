@@ -97,6 +97,9 @@ func newBucketConfig(plan Plan, ctx map[string]any, region string) (bucket.Confi
 // newLocalGCSBucketManager creates a GCS bucket manager for local drivers (Kind, K3D)
 // that don't have a GCP project in their plan configuration.
 func newLocalGCSBucketManager(plan Plan) (*bucket.GCSManager, error) {
+	if plan.Bucket == nil {
+		return nil, fmt.Errorf("no bucket configuration in plan")
+	}
 	ctx := map[string]any{
 		"ClusterName": plan.ClusterName,
 		"PlanId":      plan.Id,

@@ -302,6 +302,7 @@ func (e *EKSDriver) Cleanup(prefix string, olderThan time.Duration) error {
 	describeClusterCmd := `aws eks describe-cluster --name "{{.ClusterName}}" --region "{{.Region}}" | jq -r --arg d "{{.Date}}" 'select(.cluster.createdAt | . <= $d) | .cluster.name'`
 
 	for _, cluster := range allClusters {
+		e.plan.ClusterName = cluster
 		e.ctx["ClusterName"] = cluster
 		clustersToDelete, err := exec.NewCommand(describeClusterCmd).AsTemplate(e.ctx).WithoutStreaming().Output()
 		if err != nil {
