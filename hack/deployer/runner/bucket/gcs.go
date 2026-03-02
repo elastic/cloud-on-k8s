@@ -285,7 +285,9 @@ func (g *GCSManager) createServiceAccountAndKey() (string, error) {
 		"gcloud iam service-accounts keys create %s --iam-account=%s --project %s",
 		keyFile.Name(), saEmail, g.project,
 	)
-	if err := exec.NewCommand(keyCmd).Run(); err != nil {
+	// WithoutStreaming: the key is written to the file, not stdout. Suppress streaming
+	// to avoid leaking verbose gcloud output (e.g. when CLOUDSDK_CORE_LOG_HTTP is set).
+	if err := exec.NewCommand(keyCmd).WithoutStreaming().Run(); err != nil {
 		os.Remove(filepath.Clean(keyFile.Name()))
 		return "", fmt.Errorf("while creating service account key: %w", err)
 	}

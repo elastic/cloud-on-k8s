@@ -201,9 +201,12 @@ func (s *S3Manager) createIAMUserAndKeys() (string, string, error) {
 	// Create access key
 	log.Printf("Creating access key for IAM user %s...", userName)
 	keyCmd := fmt.Sprintf("aws iam create-access-key --user-name %s", userName)
+	// Use WithoutStreaming().Output() to capture the JSON response containing the SecretAccessKey.
+	// On error, return a sanitized message (not the raw output) because the exec package embeds
+	// command output in the error, and that output may contain the SecretAccessKey.
 	output, err := exec.NewCommand(keyCmd).WithoutStreaming().Output()
 	if err != nil {
-		return "", "", fmt.Errorf("while creating access key: %w", err)
+		return "", "", fmt.Errorf("while creating access key for IAM user %s: command failed", userName)
 	}
 
 	var keyOutput accessKeyOutput

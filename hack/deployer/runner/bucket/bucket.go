@@ -10,6 +10,8 @@ import (
 	"fmt"
 	"hash/fnv"
 	"log"
+	"os"
+	"path/filepath"
 	"regexp"
 	"strings"
 	"text/template"
@@ -197,11 +199,20 @@ data:
 		return fmt.Errorf("while deleting existing Secret %s/%s: %w", secretNamespace, secretName, err)
 	}
 
-	cmd := fmt.Sprintf(`cat <<'EOF' | kubectl create -f -
-%s
-EOF`, secretYAML)
+	tmpFile, err := os.CreateTemp("", "k8s-secret-*.yaml")
+	if err != nil {
+		return fmt.Errorf("while creating temp file for Secret YAML: %w", err)
+	}
+	defer os.Remove(filepath.Clean(tmpFile.Name()))
 
-	if err := exec.NewCommand(cmd).Run(); err != nil {
+	if _, err := tmpFile.WriteString(secretYAML); err != nil {
+		tmpFile.Close()
+		return fmt.Errorf("while writing Secret YAML to temp file: %w", err)
+	}
+	tmpFile.Close()
+
+	cmd := fmt.Sprintf("kubectl create -f %s", tmpFile.Name())
+	if err := exec.NewCommand(cmd).WithoutStreaming().Run(); err != nil {
 		return fmt.Errorf("while creating Kubernetes Secret %s/%s: %w", secretNamespace, secretName, err)
 	}
 	return nil
