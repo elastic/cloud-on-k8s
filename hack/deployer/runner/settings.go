@@ -46,7 +46,7 @@ type BucketSettings struct {
 	// Region is the cloud region for the bucket. For cloud providers (GKE, EKS, AKS) this is
 	// overridden by the provider-specific region. For local clusters (Kind, K3D) it defaults to us-central1.
 	Region string `yaml:"region,omitempty"`
-	// StorageClass is the cloud storage class (e.g. "standard" for GCS, "STANDARD" for S3).
+	// StorageClass is the GCS default storage class (e.g. "STANDARD", "NEARLINE"). Only used by GCS-backed providers (GKE, OCP, Kind, K3D).
 	StorageClass string `yaml:"storageClass"`
 	// Secret is the K8s Secret where the bucket credentials will be stored.
 	Secret BucketSecretSettings `yaml:"secret"`

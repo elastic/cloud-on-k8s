@@ -6,20 +6,12 @@ package bucket
 
 import (
 	"fmt"
-	"hash/fnv"
 	"log"
 	"strings"
 	"time"
 
 	"github.com/elastic/cloud-on-k8s/v3/hack/deployer/exec"
 )
-
-// fnv32 returns the FNV-1a 32-bit hash of s.
-func fnv32(s string) uint32 {
-	h := fnv.New32a()
-	h.Write([]byte(s))
-	return h.Sum32()
-}
 
 // AzureManager manages Azure Blob Storage containers.
 type AzureManager struct {

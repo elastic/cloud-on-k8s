@@ -30,7 +30,6 @@ func Test_newBucketConfig(t *testing.T) {
 	cfg, err := newBucketConfig(plan, ctx, "eu-west-2")
 	require.NoError(t, err)
 	assert.Equal(t, "my-cluster-dev", cfg.Name)
-	assert.Equal(t, "STANDARD", cfg.StorageClass)
 	assert.Equal(t, "eu-west-2", cfg.Region)
 	assert.Equal(t, "my-secret", cfg.SecretName)
 	assert.Equal(t, "default", cfg.SecretNamespace)

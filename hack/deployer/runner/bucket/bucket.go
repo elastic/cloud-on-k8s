@@ -8,6 +8,7 @@ import (
 	"bytes"
 	"encoding/base64"
 	"fmt"
+	"hash/fnv"
 	"log"
 	"regexp"
 	"strings"
@@ -15,6 +16,13 @@ import (
 
 	"github.com/elastic/cloud-on-k8s/v3/hack/deployer/exec"
 )
+
+// fnv32 returns the FNV-1a 32-bit hash of s.
+func fnv32(s string) uint32 {
+	h := fnv.New32a()
+	h.Write([]byte(s))
+	return h.Sum32()
+}
 
 const (
 	// ManagedByTag is the cloud resource tag/label key (underscore for GCP compatibility).
@@ -36,8 +44,6 @@ type Manager interface {
 type Config struct {
 	// Name is the bucket name (already resolved from template).
 	Name string
-	// StorageClass is the cloud storage class (e.g. "standard", "STANDARD").
-	StorageClass string
 	// Labels are resource labels/tags for cost tracking and governance.
 	Labels map[string]string
 	// Region is the cloud region where the bucket should be created.
@@ -87,7 +93,7 @@ func ValidateName(name, field string) error {
 
 // ResolveName resolves template variables in a bucket name using the provided context.
 func ResolveName(nameTemplate string, ctx map[string]any) (string, error) {
-	tmpl, err := template.New("bucket-name").Parse(nameTemplate)
+	tmpl, err := template.New("bucket-name").Option("missingkey=error").Parse(nameTemplate)
 	if err != nil {
 		return "", fmt.Errorf("while parsing bucket name template: %w", err)
 	}

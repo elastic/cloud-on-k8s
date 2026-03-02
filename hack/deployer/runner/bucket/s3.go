@@ -33,15 +33,19 @@ func NewS3Manager(cfg Config, s3 S3Config) *S3Manager {
 }
 
 func (s *S3Manager) iamUserName() string {
-	// IAM user names can be up to 64 chars. Reserve space for the prefix and suffix
-	// so that the "-storage" suffix is always preserved — deleteIAMUser relies on it
+	// IAM user names can be up to 64 chars. The name includes a hash suffix to avoid
+	// collisions when long names are truncated, matching AzureManager.storageAccountName().
+	// The "-storage" suffix is always preserved — deleteIAMUser relies on it
 	// as an ownership check before deletion.
+	hash := fmt.Sprintf("%08x", fnv32(s.cfg.Name))
+
+	// Layout: "eck-bkt-" (8) + readable (up to 40) + hash (8) + "-storage" (8) = 64 max
 	const prefix, suffix = "eck-bkt-", "-storage"
 	bucketName := s.cfg.Name
-	if maxBucketLen := 64 - len(prefix) - len(suffix); len(bucketName) > maxBucketLen {
+	if maxBucketLen := 64 - len(prefix) - len(hash) - len(suffix); len(bucketName) > maxBucketLen {
 		bucketName = bucketName[:maxBucketLen]
 	}
-	return prefix + bucketName + suffix
+	return prefix + bucketName + hash + suffix
 }
 
 // Create creates an S3 bucket, a scoped IAM user with access keys, and a Kubernetes Secret.

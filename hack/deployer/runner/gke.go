@@ -532,7 +532,7 @@ func (d *GKEDriver) newBucketManager() (*bucket.GCSManager, error) {
 	if err != nil {
 		return nil, err
 	}
-	return bucket.NewGCSManager(cfg, d.plan.Gke.GCloudProject), nil
+	return bucket.NewGCSManager(cfg, d.plan.Gke.GCloudProject, d.plan.Bucket.StorageClass), nil
 }
 
 func (d *GKEDriver) createBucket() error {

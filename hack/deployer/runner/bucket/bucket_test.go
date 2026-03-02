@@ -152,10 +152,10 @@ func TestResolveName(t *testing.T) {
 			want:     "static-bucket-name",
 		},
 		{
-			name:     "missing variable produces no value",
+			name:     "missing variable returns error",
 			template: "{{ .Missing }}-bucket",
 			ctx:      map[string]any{},
-			want:     "<no value>-bucket",
+			wantErr:  true,
 		},
 		{
 			name:     "invalid template syntax",
@@ -181,35 +181,29 @@ func TestGCSManager_serviceAccountName(t *testing.T) {
 	tests := []struct {
 		name       string
 		bucketName string
-		want       string
 	}{
-		{
-			name:       "short name",
-			bucketName: "my-bucket",
-			want:       "eck-bkt-my-bucket",
-		},
-		{
-			name:       "exactly at 30 char limit",
-			bucketName: strings.Repeat("a", 22), // "eck-bkt-" (8) + 22 = 30
-			want:       "eck-bkt-" + strings.Repeat("a", 22),
-		},
-		{
-			name:       "truncated to 30 chars",
-			bucketName: strings.Repeat("a", 30), // "eck-bkt-" (8) + 30 = 38 → truncated
-			want:       "eck-bkt-" + strings.Repeat("a", 22),
-		},
-		{
-			name:       "trailing hyphens removed after truncation",
-			bucketName: strings.Repeat("a", 21) + "-x", // "eck-bkt-" + 21*a + "-x" = 31 → truncated to "eck-bkt-" + 21*a + "-" → trailing hyphen removed
-			want:       "eck-bkt-" + strings.Repeat("a", 21),
-		},
+		{name: "short name", bucketName: "my-bucket"},
+		{name: "long name truncated", bucketName: "this-is-a-very-long-bucket-name-that-exceeds-limits"},
+		{name: "with dots", bucketName: "my.bucket.name"},
+		{name: "with underscores", bucketName: "my_bucket_name"},
+		{name: "no collision: hyphen vs dot", bucketName: "my-bucket"},
+		{name: "no collision: dot variant", bucketName: "my.bucket"},
 	}
+
+	seen := map[string]string{} // SA name -> bucket name
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			g := &GCSManager{cfg: Config{Name: tt.bucketName}}
 			got := g.serviceAccountName()
-			assert.Equal(t, tt.want, got)
 			assert.LessOrEqual(t, len(got), 30, "GCP service account names must be at most 30 characters")
+			assert.GreaterOrEqual(t, len(got), 6, "GCP service account names must be at least 6 characters")
+			assert.Regexp(t, `^[a-z][a-z0-9-]*[a-z0-9]$`, got, "must match GCP SA naming rules")
+			assert.True(t, strings.HasPrefix(got, "eck-bkt-"), "must start with eck-bkt- prefix")
+
+			if prev, exists := seen[got]; exists && prev != tt.bucketName {
+				t.Errorf("collision: bucket names %q and %q both map to SA %q", prev, tt.bucketName, got)
+			}
+			seen[got] = tt.bucketName
 		})
 	}
 }
@@ -218,41 +212,28 @@ func Test_S3Manager_iamUserName(t *testing.T) {
 	tests := []struct {
 		name       string
 		bucketName string
-		want       string
 	}{
-		{
-			name:       "short name",
-			bucketName: "my-bucket",
-			want:       "eck-bkt-my-bucket-storage",
-		},
-		{
-			name:       "exactly at 64 char limit",
-			bucketName: strings.Repeat("a", 48), // "eck-bkt-" (8) + 48 + "-storage" (8) = 64
-			want:       "eck-bkt-" + strings.Repeat("a", 48) + "-storage",
-		},
-		{
-			name:       "truncated preserves suffix",
-			bucketName: strings.Repeat("a", 60), // would be 76 without truncation
-			want:       "eck-bkt-" + strings.Repeat("a", 48) + "-storage",
-		},
-		{
-			name:       "very long name still has suffix",
-			bucketName: strings.Repeat("x", 200),
-			want:       "eck-bkt-" + strings.Repeat("x", 48) + "-storage",
-		},
-		{
-			name:       "empty bucket name",
-			bucketName: "",
-			want:       "eck-bkt--storage",
-		},
+		{name: "short name", bucketName: "my-bucket"},
+		{name: "long name truncated", bucketName: strings.Repeat("a", 60)},
+		{name: "very long name", bucketName: strings.Repeat("x", 200)},
+		{name: "empty bucket name", bucketName: ""},
+		{name: "no collision: hyphen vs dot", bucketName: "my-bucket-name"},
+		{name: "no collision: dot variant", bucketName: "my.bucket.name"},
 	}
+
+	seen := map[string]string{} // IAM name -> bucket name
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			s := &S3Manager{cfg: Config{Name: tt.bucketName}}
 			got := s.iamUserName()
-			assert.Equal(t, tt.want, got)
 			assert.LessOrEqual(t, len(got), 64, "IAM user names must be at most 64 characters")
+			assert.True(t, strings.HasPrefix(got, "eck-bkt-"), "IAM user name must start with eck-bkt- prefix")
 			assert.True(t, strings.HasSuffix(got, "-storage"), "IAM user name must end with -storage for ownership verification")
+
+			if prev, exists := seen[got]; exists && prev != tt.bucketName {
+				t.Errorf("collision: bucket names %q and %q both map to IAM user %q", prev, tt.bucketName, got)
+			}
+			seen[got] = tt.bucketName
 		})
 	}
 }

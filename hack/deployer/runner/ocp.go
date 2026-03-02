@@ -500,7 +500,7 @@ func (d *OCPDriver) newBucketManager() (*bucket.GCSManager, error) {
 	if err != nil {
 		return nil, err
 	}
-	return bucket.NewGCSManager(cfg, d.plan.Ocp.GCloudProject), nil
+	return bucket.NewGCSManager(cfg, d.plan.Ocp.GCloudProject, d.plan.Bucket.StorageClass), nil
 }
 
 func (d *OCPDriver) createBucket() error {

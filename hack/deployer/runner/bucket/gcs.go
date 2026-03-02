@@ -18,28 +18,44 @@ import (
 
 // GCSManager manages Google Cloud Storage buckets.
 type GCSManager struct {
-	cfg     Config
-	project string
+	cfg          Config
+	project      string
+	storageClass string
 }
 
 var _ Manager = &GCSManager{}
 
-// NewGCSManager creates a new GCS bucket manager.
-func NewGCSManager(cfg Config, project string) *GCSManager {
+// NewGCSManager creates a new GCS bucket manager. The storageClass parameter is
+// GCS-specific (e.g. "STANDARD", "NEARLINE") and not part of the shared Config.
+func NewGCSManager(cfg Config, project, storageClass string) *GCSManager {
 	return &GCSManager{
-		cfg:     cfg,
-		project: project,
+		cfg:          cfg,
+		project:      project,
+		storageClass: storageClass,
 	}
 }
 
 func (g *GCSManager) serviceAccountName() string {
-	// GCP service account names must be 6-30 characters, lowercase, and match [a-z][a-z0-9-]*[a-z0-9]
-	name := fmt.Sprintf("eck-bkt-%s", g.cfg.Name)
-	// Truncate to 30 chars
-	if len(name) > 30 {
-		name = name[:30]
+	// GCP service account names must be 6-30 characters, lowercase, and match [a-z][a-z0-9-]*[a-z0-9].
+	// The name includes a hash suffix to avoid collisions when long names are truncated,
+	// matching the approach used by AzureManager.storageAccountName().
+	hash := fmt.Sprintf("%08x", fnv32(g.cfg.Name))
+
+	// Strip characters not allowed in GCP service account names.
+	var cleaned []byte
+	for _, c := range []byte(strings.ToLower(g.cfg.Name)) {
+		if (c >= 'a' && c <= 'z') || (c >= '0' && c <= '9') || c == '-' {
+			cleaned = append(cleaned, c)
+		}
 	}
-	// Remove trailing hyphens
+
+	// Layout: "eck-bkt-" (8) + readable (up to 14) + hash (8) = 30 max
+	const prefix = "eck-bkt-"
+	if maxReadable := 30 - len(prefix) - len(hash); len(cleaned) > maxReadable {
+		cleaned = cleaned[:maxReadable]
+	}
+	name := prefix + string(cleaned) + hash
+	// Remove trailing hyphens (can happen if truncation lands on one)
 	name = strings.TrimRight(name, "-")
 	return name
 }
@@ -112,8 +128,8 @@ func (g *GCSManager) createBucket() error {
 	}
 
 	storageClassArg := ""
-	if g.cfg.StorageClass != "" {
-		storageClassArg = fmt.Sprintf(" --default-storage-class=%s", g.cfg.StorageClass)
+	if g.storageClass != "" {
+		storageClassArg = fmt.Sprintf(" --default-storage-class=%s", g.storageClass)
 	}
 
 	createCmd := fmt.Sprintf(

@@ -52,7 +52,6 @@ func newBucketConfig(plan Plan, ctx map[string]any, region string) (bucket.Confi
 
 	cfg := bucket.Config{
 		Name:            name,
-		StorageClass:    plan.Bucket.StorageClass,
 		Labels:          labels,
 		Region:          region,
 		SecretName:      secretName,
@@ -87,5 +86,5 @@ func newLocalGCSBucketManager(plan Plan) (*bucket.GCSManager, error) {
 	if err != nil {
 		return nil, err
 	}
-	return bucket.NewGCSManager(cfg, project), nil
+	return bucket.NewGCSManager(cfg, project, plan.Bucket.StorageClass), nil
 }
