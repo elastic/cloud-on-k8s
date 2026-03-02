@@ -275,11 +275,11 @@ func (e *EKSDriver) newBucketManager() (bucket.Manager, error) {
 		IAMUserPath:      e.plan.Bucket.S3.IamUserPath,
 		ManagedPolicyARN: e.plan.Bucket.S3.ManagedPolicyARN,
 	}
-	if s3.IAMUserPath == "" {
-		return nil, fmt.Errorf("bucket.s3.iamUserPath must not be empty")
+	if err := bucket.ValidateShellArg(s3.IAMUserPath, "IAM user path"); err != nil {
+		return nil, err
 	}
-	if s3.ManagedPolicyARN == "" {
-		return nil, fmt.Errorf("bucket.s3.managedPolicyARN must not be empty")
+	if err := bucket.ValidateShellArg(s3.ManagedPolicyARN, "managed policy ARN"); err != nil {
+		return nil, err
 	}
 	return bucket.NewS3Manager(cfg, s3), nil
 }

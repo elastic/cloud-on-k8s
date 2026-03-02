@@ -524,6 +524,14 @@ func (d *GKEDriver) deleteDisks(disks []string) error {
 }
 
 func (d *GKEDriver) newBucketManager() (bucket.Manager, error) {
+	if err := bucket.ValidateShellArg(d.plan.Gke.GCloudProject, "GCP project"); err != nil {
+		return nil, err
+	}
+	if d.plan.Bucket.StorageClass != "" {
+		if err := bucket.ValidateShellArg(d.plan.Bucket.StorageClass, "storage class"); err != nil {
+			return nil, err
+		}
+	}
 	cfg, err := newBucketConfig(d.plan, d.ctx, d.plan.Gke.Region)
 	if err != nil {
 		return nil, err

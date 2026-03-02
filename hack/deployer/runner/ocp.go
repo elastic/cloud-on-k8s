@@ -488,6 +488,14 @@ func (d *OCPDriver) baseDomain() string {
 }
 
 func (d *OCPDriver) newBucketManager() (bucket.Manager, error) {
+	if err := bucket.ValidateShellArg(d.plan.Ocp.GCloudProject, "GCP project"); err != nil {
+		return nil, err
+	}
+	if d.plan.Bucket.StorageClass != "" {
+		if err := bucket.ValidateShellArg(d.plan.Bucket.StorageClass, "storage class"); err != nil {
+			return nil, err
+		}
+	}
 	ctx := map[string]any{
 		"ClusterName": d.plan.ClusterName,
 		"PlanId":      d.plan.Id,

@@ -125,6 +125,40 @@ func TestValidateName(t *testing.T) {
 	}
 }
 
+func TestValidateShellArg(t *testing.T) {
+	tests := []struct {
+		name    string
+		input   string
+		wantErr bool
+	}{
+		{name: "lowercase", input: "us-east-1"},
+		{name: "uppercase storage class", input: "STANDARD"},
+		{name: "GCP project", input: "elastic-cloud-dev"},
+		{name: "IAM path", input: "/eck-deployer/"},
+		{name: "ARN", input: "arn:aws:iam::123456789012:policy/ECKBucketAccess"},
+		{name: "mixed case", input: "My-Resource.Group_1"},
+		{name: "empty", input: "", wantErr: true},
+		{name: "spaces", input: "my project", wantErr: true},
+		{name: "semicolon injection", input: "STANDARD; rm -rf /", wantErr: true},
+		{name: "dollar sign", input: "project-$HOME", wantErr: true},
+		{name: "backtick injection", input: "project-`whoami`", wantErr: true},
+		{name: "pipe", input: "val|cat /etc/passwd", wantErr: true},
+		{name: "ampersand", input: "val&bg", wantErr: true},
+		{name: "single quote breakout", input: "val'$(evil)'", wantErr: true},
+		{name: "newline", input: "val\ncmd", wantErr: true},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			err := ValidateShellArg(tt.input, "test field")
+			if tt.wantErr {
+				assert.Error(t, err)
+			} else {
+				assert.NoError(t, err)
+			}
+		})
+	}
+}
+
 func TestResolveName(t *testing.T) {
 	tests := []struct {
 		name     string

@@ -66,6 +66,17 @@ func newBucketConfig(plan Plan, ctx map[string]any, region string) (bucket.Confi
 		return bucket.Config{}, err
 	}
 
+	// Validate label values that will be interpolated into shell commands (cloud CLI --labels/--tags flags).
+	if err := bucket.ValidateName(plan.ClusterName, "cluster name"); err != nil {
+		return bucket.Config{}, err
+	}
+	if err := bucket.ValidateName(plan.Id, "plan ID"); err != nil {
+		return bucket.Config{}, err
+	}
+	if err := bucket.ValidateName(region, "region"); err != nil {
+		return bucket.Config{}, err
+	}
+
 	labels := make(map[string]string)
 	maps.Copy(labels, elasticTags)
 	labels["cluster_name"] = plan.ClusterName
@@ -98,10 +109,19 @@ func newLocalGCSBucketManager(plan Plan) (*bucket.GCSManager, error) {
 	if project == "" {
 		return nil, fmt.Errorf("no GCP project configured; run 'gcloud config set project <PROJECT>' first")
 	}
+	if err := bucket.ValidateShellArg(project, "GCP project"); err != nil {
+		return nil, err
+	}
 
 	region := plan.Bucket.Region
 	if region == "" {
 		region = "us-central1"
+	}
+
+	if plan.Bucket.StorageClass != "" {
+		if err := bucket.ValidateShellArg(plan.Bucket.StorageClass, "storage class"); err != nil {
+			return nil, err
+		}
 	}
 
 	cfg, err := newBucketConfig(plan, ctx, region)

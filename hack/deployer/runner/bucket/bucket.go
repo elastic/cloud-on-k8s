@@ -91,6 +91,24 @@ func ValidateName(name, field string) error {
 	return nil
 }
 
+// shellSafeRe matches values that are safe to interpolate into shell commands.
+// Broader than safeNameRe: allows uppercase letters, colons, and slashes needed by
+// GCS storage classes (STANDARD), IAM paths (/eck-deployer/), and ARNs (arn:aws:...).
+var shellSafeRe = regexp.MustCompile(`^[a-zA-Z0-9_.:/-]+$`)
+
+// ValidateShellArg checks that a value is safe for interpolation into shell commands.
+// Use this for provider-specific fields (projects, storage classes, ARNs, etc.) that
+// may contain uppercase letters, colons, or slashes but must not contain shell metacharacters.
+func ValidateShellArg(value, field string) error {
+	if value == "" {
+		return fmt.Errorf("%s must not be empty", field)
+	}
+	if !shellSafeRe.MatchString(value) {
+		return fmt.Errorf("%s %q contains invalid characters: only alphanumeric, hyphens, underscores, periods, colons, and slashes are allowed", field, value)
+	}
+	return nil
+}
+
 // ResolveName resolves template variables in a bucket name using the provided context.
 func ResolveName(nameTemplate string, ctx map[string]any) (string, error) {
 	tmpl, err := template.New("bucket-name").Option("missingkey=error").Parse(nameTemplate)

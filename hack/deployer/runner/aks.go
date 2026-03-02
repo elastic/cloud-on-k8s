@@ -208,6 +208,9 @@ func (d *AKSDriver) delete() error {
 }
 
 func (d *AKSDriver) newBucketManager() (bucket.Manager, error) {
+	if err := bucket.ValidateShellArg(d.plan.Aks.ResourceGroup, "resource group"); err != nil {
+		return nil, err
+	}
 	cfg, err := newBucketConfig(d.plan, d.ctx, d.plan.Aks.Location)
 	if err != nil {
 		return nil, err
