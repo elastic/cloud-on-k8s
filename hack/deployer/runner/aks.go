@@ -255,6 +255,12 @@ func (d *AKSDriver) Cleanup(prefix string, olderThan time.Duration) error {
 
 	for _, cluster := range clustersToDelete {
 		d.plan.ClusterName = cluster
+		d.ctx["ClusterName"] = cluster // deleteBucket->newBucketConfig resolves bucket name from ctx, not plan
+		if d.plan.Bucket != nil {
+			if err := d.deleteBucket(); err != nil {
+				log.Printf("warning: bucket deletion failed for cluster %s, will continue: %v", cluster, err)
+			}
+		}
 		if d.plan.Aks.ResourceGroup == "" {
 			c, err := vault.NewClient()
 			if err != nil {

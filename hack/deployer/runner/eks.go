@@ -328,6 +328,11 @@ func (e *EKSDriver) Cleanup(prefix string, olderThan time.Duration) error {
 			return fmt.Errorf("while describing cluster %s: %w", cluster, err)
 		}
 		if clustersToDelete != "" {
+			if e.plan.Bucket != nil {
+				if err := e.deleteBucket(); err != nil {
+					log.Printf("warning: bucket deletion failed for cluster %s, will continue: %v", cluster, err)
+				}
+			}
 			if err = e.delete(); err != nil {
 				log.Printf("while deleting cluster %s: %v", cluster, err.Error())
 				continue

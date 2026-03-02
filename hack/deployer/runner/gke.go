@@ -579,6 +579,11 @@ func (d *GKEDriver) Cleanup(prefix string, olderThan time.Duration) error {
 
 	for _, cluster := range clusters {
 		d.ctx["ClusterName"] = cluster
+		if d.plan.Bucket != nil {
+			if err := d.deleteBucket(); err != nil {
+				log.Printf("warning: bucket deletion failed for cluster %s, will continue: %v", cluster, err)
+			}
+		}
 		if err = d.delete(); err != nil {
 			log.Printf("while deleting cluster %s: %v", cluster, err.Error())
 			continue
