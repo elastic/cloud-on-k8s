@@ -120,10 +120,10 @@ Creates an Azure Storage account and a blob container named `data`. The Secret c
 **EKS (Amazon S3)**
 
 Creates an S3 bucket and an IAM user with access keys. The Secret contains:
-- `access-key-id` — the IAM access key ID
-- `secret-access-key` — the IAM secret access key
-- `bucket` — the bucket name
-- `region` — the AWS region
+- `s3.client.default.access_key` — the IAM access key ID
+- `s3.client.default.secret_key` — the IAM secret access key
+
+The bucket name and region are stored as annotations (`eck-deployer/bucket`, `eck-deployer/region`) rather than Secret data.
 
 For EKS, additional S3-specific settings are required to specify the IAM path and managed policy:
 

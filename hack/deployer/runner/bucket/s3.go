@@ -69,13 +69,13 @@ func (s *S3Manager) Create() error {
 	}
 
 	return createK8sSecret(s.cfg.SecretName, s.cfg.SecretNamespace, map[string]string{
-		"access-key-id":     accessKeyID,
-		"secret-access-key": secretAccessKey,
-		"bucket":            s.cfg.Name,
-		"region":            s.cfg.Region,
+		"s3.client.default.access_key": accessKeyID,
+		"s3.client.default.secret_key": secretAccessKey,
 	}, map[string]string{
 		"eck-deployer/iam-user":      s.iamUserName(),
 		"eck-deployer/access-key-id": accessKeyID,
+		"eck-deployer/bucket":        s.cfg.Name,
+		"eck-deployer/region":        s.cfg.Region,
 	})
 }
 
