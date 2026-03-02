@@ -211,7 +211,7 @@ func (s *S3Manager) createIAMUserAndKeys() (string, string, error) {
 
 	var keyOutput accessKeyOutput
 	if err := json.Unmarshal([]byte(output), &keyOutput); err != nil {
-		return "", "", fmt.Errorf("while parsing access key output: %w", err)
+		return "", "", fmt.Errorf("while parsing access key output for IAM user %s: invalid JSON response", userName)
 	}
 
 	return keyOutput.AccessKey.AccessKeyID, keyOutput.AccessKey.SecretAccessKey, nil

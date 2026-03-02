@@ -139,7 +139,7 @@ func (g *GCSManager) Create() error {
 		PrivateKeyID string `json:"private_key_id"`
 	}
 	if err := json.Unmarshal(keyData, &keyJSON); err != nil {
-		return fmt.Errorf("while parsing service account key JSON: %w", err)
+		return fmt.Errorf("while parsing service account key JSON from %s: invalid JSON", keyFile)
 	}
 
 	return createK8sSecret(g.cfg.SecretName, g.cfg.SecretNamespace, map[string]string{
@@ -240,8 +240,8 @@ func (g *GCSManager) createServiceAccountAndKey() (string, error) {
 		// lacks iam.serviceAccounts.get and the service account doesn't exist.
 		// Create service account
 		createCmd := fmt.Sprintf(
-			`gcloud iam service-accounts create %s --display-name="Bucket SA for %s" --project %s`,
-			saName, g.cfg.Name, g.project,
+			`gcloud iam service-accounts create %s --display-name="Bucket SA for %s" --description="Managed by eck-deployer. Bucket: %s" --project %s`,
+			saName, g.cfg.Name, g.cfg.Name, g.project,
 		)
 		if err := exec.NewCommand(createCmd).Run(); err != nil {
 			return "", fmt.Errorf("while creating service account: %w", err)

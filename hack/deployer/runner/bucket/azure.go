@@ -147,9 +147,11 @@ func (a *AzureManager) getAccountKey() (string, error) {
 		`az storage account keys list --account-name %s --resource-group %s --query "[0].value" --output tsv`,
 		accountName, a.resourceGroup,
 	)
+	// Sanitize the error: do not wrap %w because the exec package embeds command output
+	// (the account key itself) in the error string on failure.
 	output, err := exec.NewCommand(cmd).WithoutStreaming().Output()
 	if err != nil {
-		return "", fmt.Errorf("while retrieving account key for %s: %w", accountName, err)
+		return "", fmt.Errorf("while retrieving account key for %s: command failed", accountName)
 	}
 	key := strings.TrimSpace(output)
 	if key == "" {
@@ -179,9 +181,11 @@ func (a *AzureManager) generateSASToken() (string, error) {
 		`az storage account generate-sas --account-name %s --account-key "$AZURE_STORAGE_KEY" --services b --resource-types sco --permissions rwdlacup --expiry %s --https-only --output tsv`,
 		accountName, expiry,
 	)
+	// Sanitize the error: do not wrap %w because the exec package embeds command output
+	// (the SAS token) in the error string on failure.
 	output, err := exec.NewCommand(cmd).WithVariable("AZURE_STORAGE_KEY", accountKey).WithoutStreaming().Output()
 	if err != nil {
-		return "", fmt.Errorf("while generating SAS token: %w", err)
+		return "", fmt.Errorf("while generating SAS token for %s: command failed", accountName)
 	}
 	token := strings.TrimSpace(output)
 	if token == "" {
