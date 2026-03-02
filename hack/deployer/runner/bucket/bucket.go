@@ -80,7 +80,10 @@ func isNotFound(cmdOutput string, indicators ...string) bool {
 // intersection of characters valid in S3/GCS/Azure bucket names and K8s resource names.
 var safeNameRe = regexp.MustCompile(`^[a-z0-9._-]+$`)
 
-// ValidateName checks that a resolved name is safe for use in shell commands and YAML.
+// ValidateName checks that a resolved name contains only lowercase alphanumeric characters,
+// hyphens, underscores, and periods. Use this for bucket names, K8s resource names, GCP labels,
+// cluster names, and plan IDs — all of which require lowercase.
+// See also ValidateShellArg for a broader check that permits uppercase, colons, and slashes.
 func ValidateName(name, field string) error {
 	if name == "" {
 		return fmt.Errorf("%s must not be empty", field)
@@ -91,14 +94,16 @@ func ValidateName(name, field string) error {
 	return nil
 }
 
-// shellSafeRe matches values that are safe to interpolate into shell commands.
-// Broader than safeNameRe: allows uppercase letters, colons, and slashes needed by
-// GCS storage classes (STANDARD), IAM paths (/eck-deployer/), and ARNs (arn:aws:...).
+// shellSafeRe is broader than safeNameRe: it additionally allows uppercase letters, colons,
+// and slashes needed by GCS storage classes (STANDARD), IAM paths (/eck-deployer/), and
+// ARNs (arn:aws:iam::123456789012:policy/Name).
 var shellSafeRe = regexp.MustCompile(`^[a-zA-Z0-9_.:/-]+$`)
 
 // ValidateShellArg checks that a value is safe for interpolation into shell commands.
-// Use this for provider-specific fields (projects, storage classes, ARNs, etc.) that
-// may contain uppercase letters, colons, or slashes but must not contain shell metacharacters.
+// Use this for provider-specific fields (GCP projects, storage classes, IAM paths, ARNs,
+// resource groups) that may contain uppercase letters, colons, or slashes but must not
+// contain shell metacharacters.
+// See also ValidateName for a stricter lowercase-only check used for bucket and K8s names.
 func ValidateShellArg(value, field string) error {
 	if value == "" {
 		return fmt.Errorf("%s must not be empty", field)
@@ -126,6 +131,20 @@ func ResolveName(nameTemplate string, ctx map[string]any) (string, error) {
 func k8sSecretExists(secretName, secretNamespace string) bool {
 	cmd := fmt.Sprintf("kubectl get secret %s -n %s", secretName, secretNamespace)
 	return exec.NewCommand(cmd).WithoutStreaming().Run() == nil
+}
+
+// k8sSecretAnnotation reads a single annotation value from a Kubernetes Secret.
+// Returns the annotation value (may be empty) and any error from kubectl.
+func k8sSecretAnnotation(secretName, secretNamespace, annotation string) (string, error) {
+	cmd := fmt.Sprintf(
+		`kubectl get secret %s -n %s -o jsonpath='{.metadata.annotations.%s}'`,
+		secretName, secretNamespace, annotation,
+	)
+	output, err := exec.NewCommand(cmd).WithoutStreaming().Output()
+	if err != nil {
+		return "", fmt.Errorf("while reading annotation %s from Secret %s/%s: %w", annotation, secretNamespace, secretName, err)
+	}
+	return strings.TrimSpace(output), nil
 }
 
 // createK8sSecret creates a Kubernetes Secret with the provided data map.

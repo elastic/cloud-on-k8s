@@ -64,6 +64,50 @@ func (g *GCSManager) serviceAccountEmail() string {
 	return fmt.Sprintf("%s@%s.iam.gserviceaccount.com", g.serviceAccountName(), g.project)
 }
 
+// isKeyValid checks whether the service account key referenced by the K8s Secret annotation
+// is still present on the GCP service account and has not expired. Returns false (triggering
+// credential rotation) on any error — missing annotation, command failure, or parse failure.
+func (g *GCSManager) isKeyValid() bool {
+	keyID, err := k8sSecretAnnotation(g.cfg.SecretName, g.cfg.SecretNamespace, "eck-deployer/key-id")
+	if err != nil || keyID == "" {
+		log.Printf("Warning: could not read key-id annotation from Secret %s/%s: %v", g.cfg.SecretNamespace, g.cfg.SecretName, err)
+		return false
+	}
+
+	listCmd := fmt.Sprintf(
+		`gcloud iam service-accounts keys list --iam-account=%s --project %s --managed-by=user --format="value(name,validBeforeTime)"`,
+		g.serviceAccountEmail(), g.project,
+	)
+	output, err := exec.NewCommand(listCmd).WithoutStreaming().Output()
+	if err != nil {
+		log.Printf("Warning: could not list keys for service account %s: %v", g.serviceAccountEmail(), err)
+		return false
+	}
+
+	for line := range strings.SplitSeq(strings.TrimSpace(output), "\n") {
+		parts := strings.Fields(line)
+		if len(parts) < 2 {
+			continue
+		}
+		if parts[0] != keyID {
+			continue
+		}
+		expiry, err := time.Parse(time.RFC3339, parts[1])
+		if err != nil {
+			log.Printf("Warning: could not parse validBeforeTime %q for key %s: %v", parts[1], keyID, err)
+			return false
+		}
+		if time.Now().After(expiry) {
+			log.Printf("Key %s expired at %s", keyID, expiry.Format(time.RFC3339))
+			return false
+		}
+		return true
+	}
+
+	log.Printf("Key %s not found on service account %s", keyID, g.serviceAccountEmail())
+	return false
+}
+
 // Create creates a GCS bucket, a scoped service account, and a Kubernetes Secret with the credentials.
 func (g *GCSManager) Create() error {
 	if err := g.createBucket(); err != nil {
@@ -73,8 +117,11 @@ func (g *GCSManager) Create() error {
 		return err
 	}
 	if k8sSecretExists(g.cfg.SecretName, g.cfg.SecretNamespace) {
-		log.Printf("Secret %s/%s already exists, skipping credential creation", g.cfg.SecretNamespace, g.cfg.SecretName)
-		return nil
+		if g.isKeyValid() {
+			log.Printf("Secret %s/%s already exists with a valid key, skipping credential creation", g.cfg.SecretNamespace, g.cfg.SecretName)
+			return nil
+		}
+		log.Printf("Secret %s/%s exists but key has expired or is missing, rotating credentials...", g.cfg.SecretNamespace, g.cfg.SecretName)
 	}
 	keyFile, err := g.createServiceAccountAndKey()
 	if err != nil {
@@ -226,6 +273,11 @@ func (g *GCSManager) createServiceAccountAndKey() (string, error) {
 	}
 	keyFile.Close()
 
+	// Keys are created without an explicit --valid-before flag; GCP assigns a default expiration
+	// (up to 10 years, or shorter if the organization has a constraints/iam.serviceAccountKeyExpiryHours policy).
+	// This is acceptable for E2E test infrastructure: keys are deleted during bucket cleanup and
+	// the default expiration acts as a safety net for leaked keys. In contrast, Azure SAS tokens
+	// use an explicit 1-year expiry, and AWS access keys have no built-in expiration.
 	log.Printf("Creating service account key...")
 	keyCmd := fmt.Sprintf(
 		"gcloud iam service-accounts keys create %s --iam-account=%s --project %s",
