@@ -52,11 +52,11 @@ func (f *fakeBucketManager) Delete() error { f.deleted = true; return nil }
 
 func Test_createBucketIfConfigured(t *testing.T) {
 	tests := []struct {
-		name          string
-		plan          Plan
-		managerErr    error
-		wantErr       string
-		wantCreated   bool
+		name           string
+		plan           Plan
+		managerErr     error
+		wantErr        string
+		wantCreated    bool
 		wantFactoryHit bool
 	}{
 		{
@@ -102,11 +102,11 @@ func Test_createBucketIfConfigured(t *testing.T) {
 
 func Test_deleteBucketIfConfigured(t *testing.T) {
 	tests := []struct {
-		name          string
-		plan          Plan
-		managerErr    error
-		wantErr       string
-		wantDeleted   bool
+		name           string
+		plan           Plan
+		managerErr     error
+		wantErr        string
+		wantDeleted    bool
 		wantFactoryHit bool
 	}{
 		{

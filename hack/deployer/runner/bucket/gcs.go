@@ -10,6 +10,7 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"path/filepath"
 	"strings"
 	"time"
 
@@ -231,9 +232,10 @@ func (g *GCSManager) createServiceAccountAndKey() (string, error) {
 	// Check if service account already exists
 	checkCmd := fmt.Sprintf("gcloud iam service-accounts describe %s --project %s", saEmail, g.project)
 	output, err := exec.NewCommand(checkCmd).WithoutStreaming().Output()
-	if err == nil {
+	switch {
+	case err == nil:
 		log.Printf("Service account %s already exists, skipping creation", saName)
-	} else if isNotFound(output, "NOT_FOUND", "PERMISSION_DENIED") {
+	case isNotFound(output, "NOT_FOUND", "PERMISSION_DENIED"):
 		// GCP returns PERMISSION_DENIED instead of NOT_FOUND when the caller
 		// lacks iam.serviceAccounts.get and the service account doesn't exist.
 		// Create service account
@@ -244,7 +246,7 @@ func (g *GCSManager) createServiceAccountAndKey() (string, error) {
 		if err := exec.NewCommand(createCmd).Run(); err != nil {
 			return "", fmt.Errorf("while creating service account: %w", err)
 		}
-	} else {
+	default:
 		return "", fmt.Errorf("while checking if service account %s exists: %w", saEmail, err)
 	}
 
@@ -284,7 +286,7 @@ func (g *GCSManager) createServiceAccountAndKey() (string, error) {
 		keyFile.Name(), saEmail, g.project,
 	)
 	if err := exec.NewCommand(keyCmd).Run(); err != nil {
-		os.Remove(keyFile.Name())
+		os.Remove(filepath.Clean(keyFile.Name()))
 		return "", fmt.Errorf("while creating service account key: %w", err)
 	}
 

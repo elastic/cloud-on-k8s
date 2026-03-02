@@ -163,12 +163,12 @@ func createK8sSecret(secretName, secretNamespace string, data map[string]string,
 	// Build the Secret YAML with the label included at creation time
 	var dataEntries strings.Builder
 	for k, v := range data {
-		dataEntries.WriteString(fmt.Sprintf("  %s: %s\n", k, base64.StdEncoding.EncodeToString([]byte(v))))
+		fmt.Fprintf(&dataEntries, "  %s: %s\n", k, base64.StdEncoding.EncodeToString([]byte(v)))
 	}
 
 	var annotationEntries strings.Builder
 	for k, v := range annotations {
-		annotationEntries.WriteString(fmt.Sprintf("    %s: %s\n", k, v))
+		fmt.Fprintf(&annotationEntries, "    %s: %s\n", k, v)
 	}
 
 	annotationsBlock := ""
