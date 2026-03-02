@@ -46,16 +46,21 @@ type Health struct {
 	ActiveShardsPercentAsNumber float32                  `json:"active_shards_percent_as_number"`
 }
 
-// HasShardActivity indicates that there is some shard activity in the cluster.
-// It can be the case if some shards are being fetched, relocated or initialized.
+// HasShardActivity indicates that there is some shard activity in the cluster that
+// could affect data safety during rolling upgrades.
 // It's only reliable if Health result was created with wait_for_events=languid
 // so that there are no pending initialisations in the task queue.
 // It returns true if the status request has timed out.
+//
+// Note: in this safety model, INITIALIZING shards are considered not yet in-sync and
+// therefore unsafe for upgrades, so their presence is treated as blocking activity.
+// RELOCATING shards, on the other hand, are NOT considered blocking activity because
+// the source shard is already in-sync; the shard lifecycle is:
+// UNASSIGNED -> INITIALIZING -> STARTED -> RELOCATING.
 func (h Health) HasShardActivity() bool {
-	return h.TimedOut || // make sure request did not time out (i.e. no pending events)
-		h.NumberOfInFlightFetch > 0 || // no shards being fetched
-		h.InitializingShards > 0 || // no shards initializing
-		h.RelocatingShards > 0 // no shards relocating
+	return h.TimedOut || // timed-out health responses are treated as shard activity (not safe to proceed)
+		h.NumberOfInFlightFetch > 0 || // shards being fetched
+		h.InitializingShards > 0 // shards initializing (not yet in-sync)
 }
 
 type ShardState string

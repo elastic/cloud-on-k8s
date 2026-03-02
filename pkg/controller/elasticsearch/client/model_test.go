@@ -11,6 +11,8 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	esv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/elasticsearch/v1"
 )
 
 func TestModel_RemoteCluster(t *testing.T) {
@@ -101,6 +103,71 @@ func TestModel_License(t *testing.T) {
 			json, err := json.Marshal(tt.license)
 			assert.NoError(t, err)
 			assert.Equal(t, tt.want, string(json))
+		})
+	}
+}
+
+func TestHealth_HasShardActivity(t *testing.T) {
+	tests := []struct {
+		name   string
+		health Health
+		want   bool
+	}{
+		{
+			name:   "no activity",
+			health: Health{},
+			want:   false,
+		},
+		{
+			name:   "timed out",
+			health: Health{TimedOut: true},
+			want:   true,
+		},
+		{
+			name:   "in-flight fetch",
+			health: Health{NumberOfInFlightFetch: 1},
+			want:   true,
+		},
+		{
+			name:   "initializing shards",
+			health: Health{InitializingShards: 1},
+			want:   true,
+		},
+		{
+			name:   "relocating shards only - not considered blocking activity",
+			health: Health{RelocatingShards: 5},
+			want:   false,
+		},
+		{
+			name:   "initializing and relocating shards",
+			health: Health{InitializingShards: 1, RelocatingShards: 2},
+			want:   true,
+		},
+		{
+			name:   "all activity flags set",
+			health: Health{TimedOut: true, NumberOfInFlightFetch: 1, InitializingShards: 2, RelocatingShards: 3},
+			want:   true,
+		},
+		{
+			name:   "green cluster with relocating shards - not blocking",
+			health: Health{Status: esv1.ElasticsearchGreenHealth, RelocatingShards: 2},
+			want:   false,
+		},
+		{
+			name:   "yellow cluster with only relocating shards - not blocking",
+			health: Health{Status: esv1.ElasticsearchYellowHealth, RelocatingShards: 1},
+			want:   false,
+		},
+		{
+			name:   "yellow cluster with initializing shards - blocking",
+			health: Health{Status: esv1.ElasticsearchYellowHealth, InitializingShards: 1},
+			want:   true,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := tt.health.HasShardActivity()
+			assert.Equal(t, tt.want, got, "HasShardActivity() = %v, want %v", got, tt.want)
 		})
 	}
 }

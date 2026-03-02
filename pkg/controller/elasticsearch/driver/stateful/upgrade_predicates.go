@@ -365,6 +365,11 @@ var predicates = [...]Predicate{
 			if err != nil {
 				return false, err
 			}
+			// If the cluster health is reported as GREEN, consider it sufficiently healthy
+			// to skip the additional per-shard replica checks in this predicate.
+			if health.Status == esv1.ElasticsearchGreenHealth {
+				return true, nil
+			}
 			_, healthyNode := context.healthyPods[candidate.Name]
 			if len(context.currentPods) == 1 && health.Status == esv1.ElasticsearchYellowHealth && healthyNode {
 				// If the cluster is a healthy single node cluster, replicas can not be started, allow the upgrade
@@ -376,8 +381,11 @@ var predicates = [...]Predicate{
 			}
 			// We maintain two data structures to record:
 			// * The total number of replicas for a shard
-			// * How many of them are STARTED
-			startedReplicas := make(map[string]int)
+			// * How many of them are STARTED or RELOCATING (both are considered in-sync here)
+			// Shard lifecycle (general): UNASSIGNED -> INITIALIZING -> STARTED -> RELOCATING
+			// In this predicate a shard is only considered in-sync once it reaches STARTED, and it
+			// remains in-sync while in the RELOCATING state.
+			inSyncReplicas := make(map[string]int)
 			replicas := make(map[string]int)
 			for _, shard := range allShards {
 				if shard.NodeName == candidate.Name {
@@ -385,12 +393,13 @@ var predicates = [...]Predicate{
 				}
 				shardKey := shard.Key()
 				replicas[shardKey]++
-				if shard.State == client.STARTED {
-					startedReplicas[shardKey]++
+				// STARTED and RELOCATING shards are both in-sync and safe
+				if shard.State == client.STARTED || shard.State == client.RELOCATING {
+					inSyncReplicas[shardKey]++
 				}
 			}
 
-			// Do not delete a node with a Primary if there is not at least one STARTED replica
+			// Do not delete a node with a Primary if there is not at least one in-sync replica
 			shardsByNode := allShards.GetShardsByNode()
 			shardsOnCandidate := shardsByNode[candidate.Name]
 			for _, shard := range shardsOnCandidate {
@@ -399,9 +408,9 @@ var predicates = [...]Predicate{
 				}
 				shardKey := shard.Key()
 				numReplicas := replicas[shardKey]
-				assignedReplica := startedReplicas[shardKey]
+				inSyncReplicaCount := inSyncReplicas[shardKey]
 				// We accept here that there will be some unavailability if an index is configured with zero replicas
-				if numReplicas > 0 && assignedReplica == 0 {
+				if numReplicas > 0 && inSyncReplicaCount == 0 {
 					// If this node is deleted there will be no more shards available
 					return false, nil
 				}
