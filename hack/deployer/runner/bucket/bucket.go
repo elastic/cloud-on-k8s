@@ -98,11 +98,17 @@ func ResolveName(nameTemplate string, ctx map[string]any) (string, error) {
 	return buf.String(), nil
 }
 
+// k8sSecretExists returns true if a Kubernetes Secret with the given name exists in the given namespace.
+func k8sSecretExists(secretName, secretNamespace string) bool {
+	cmd := fmt.Sprintf("kubectl get secret %s -n %s", secretName, secretNamespace)
+	return exec.NewCommand(cmd).WithoutStreaming().Run() == nil
+}
+
 // createK8sSecret creates a Kubernetes Secret with the provided data map.
 // The managed-by=eck-deployer label is included in the Secret at creation time.
 // The caller (driver) must ensure the current kubectl context points to the correct cluster
 // by calling GetCredentials() before any bucket operations.
-func createK8sSecret(secretName, secretNamespace string, data map[string]string) error {
+func createK8sSecret(secretName, secretNamespace string, data map[string]string, annotations map[string]string) error {
 	log.Printf("Creating Kubernetes Secret %s/%s for bucket credentials...", secretNamespace, secretName)
 
 	// Ensure namespace exists
@@ -117,18 +123,37 @@ func createK8sSecret(secretName, secretNamespace string, data map[string]string)
 		dataEntries.WriteString(fmt.Sprintf("  %s: %s\n", k, base64.StdEncoding.EncodeToString([]byte(v))))
 	}
 
+	var annotationEntries strings.Builder
+	for k, v := range annotations {
+		annotationEntries.WriteString(fmt.Sprintf("    %s: %s\n", k, v))
+	}
+
+	annotationsBlock := ""
+	if annotationEntries.Len() > 0 {
+		annotationsBlock = fmt.Sprintf("  annotations:\n%s", annotationEntries.String())
+	}
+
 	secretYAML := fmt.Sprintf(`apiVersion: v1
 kind: Secret
 metadata:
   name: %s
   namespace: %s
-  labels:
+%s  labels:
     managed-by: eck-deployer
 type: Opaque
 data:
-%s`, secretName, secretNamespace, dataEntries.String())
+%s`, secretName, secretNamespace, annotationsBlock, dataEntries.String())
 
-	cmd := fmt.Sprintf(`cat <<'EOF' | kubectl apply -f -
+	// Delete any existing Secret before creating, so that this function can be used
+	// for both initial creation and credential rotation.
+	// We use "kubectl create" instead of "kubectl apply" to avoid storing credentials
+	// in the kubectl.kubernetes.io/last-applied-configuration annotation.
+	deleteCmd := fmt.Sprintf("kubectl delete secret %s -n %s --ignore-not-found", secretName, secretNamespace)
+	if err := exec.NewCommand(deleteCmd).WithoutStreaming().Run(); err != nil {
+		return fmt.Errorf("while deleting existing Secret %s/%s: %w", secretNamespace, secretName, err)
+	}
+
+	cmd := fmt.Sprintf(`cat <<'EOF' | kubectl create -f -
 %s
 EOF`, secretYAML)
 

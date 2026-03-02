@@ -142,6 +142,24 @@ bucket:
 - `iamUserPath` — the IAM path under which the storage user is created (must match your IAM policy constraints)
 - `managedPolicyARN` — the ARN of a pre-existing managed policy that grants S3 access to the bucket
 
+### Credential re-creation
+
+If the Kubernetes Secret is deleted and `create` is run again, the deployer deletes any existing credential keys before creating new ones. This prevents orphaned keys that are still valid but unrecoverable, and avoids hitting the AWS 2-key-per-IAM-user limit.
+
+- **S3**: All existing IAM access keys are deleted before a new one is created.
+- **GCS**: All existing user-managed service account keys are deleted before a new one is created (system-managed keys are left untouched).
+- **Azure**: Not affected — SAS tokens are derived from the storage account key, not stored as separate credentials.
+
+### Secret annotations
+
+Each Kubernetes Secret is annotated with the cloud identity that owns the credentials, making it easy to trace a Secret back to its cloud resource:
+
+| Provider | Annotation | Example value |
+|----------|-----------|---------------|
+| S3 (EKS) | `eck-deployer/iam-user` | `eck-bkt-my-cluster-dev-storage` |
+| GCS (GKE, OCP, Kind, K3D) | `eck-deployer/service-account` | `eck-bkt-my-cluster@project.iam.gserviceaccount.com` |
+| Azure (AKS) | `eck-deployer/storage-account` | `eckbktmycluster1a2b3c4d` |
+
 ### Cleanup
 
 Buckets and their associated cloud resources (IAM users, service accounts, storage accounts) are automatically deleted when running `make delete-cloud`. The Kubernetes Secret is deleted along with the cluster.

@@ -5,6 +5,7 @@
 package bucket
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
 	"log"
@@ -55,6 +56,10 @@ func (g *GCSManager) Create() error {
 	if err := g.blockPublicAccess(); err != nil {
 		return err
 	}
+	if k8sSecretExists(g.cfg.SecretName, g.cfg.SecretNamespace) {
+		log.Printf("Secret %s/%s already exists, skipping credential creation", g.cfg.SecretNamespace, g.cfg.SecretName)
+		return nil
+	}
 	keyFile, err := g.createServiceAccountAndKey()
 	if err != nil {
 		return err
@@ -66,8 +71,18 @@ func (g *GCSManager) Create() error {
 		return fmt.Errorf("while reading service account key: %w", err)
 	}
 
+	var keyJSON struct {
+		PrivateKeyID string `json:"private_key_id"`
+	}
+	if err := json.Unmarshal(keyData, &keyJSON); err != nil {
+		return fmt.Errorf("while parsing service account key JSON: %w", err)
+	}
+
 	return createK8sSecret(g.cfg.SecretName, g.cfg.SecretNamespace, map[string]string{
 		"gcs.client.default.credentials_file": string(keyData),
+	}, map[string]string{
+		"eck-deployer/service-account": g.serviceAccountEmail(),
+		"eck-deployer/key-id":          keyJSON.PrivateKeyID,
 	})
 }
 
@@ -90,7 +105,9 @@ func (g *GCSManager) createBucket() error {
 		log.Printf("Bucket %s already exists, skipping creation", g.cfg.Name)
 		return nil
 	}
-	if !isNotFound(output, "NOT_FOUND", "BucketNotFoundException") {
+	// "NOT_FOUND" is the GCP API error code, "not found" is the human-readable
+	// message used by newer gcloud CLI versions (e.g. "gs://bucket not found: 404").
+	if !isNotFound(output, "NOT_FOUND", "BucketNotFoundException", "not found") {
 		return fmt.Errorf("while checking if bucket %s exists: %w", g.cfg.Name, err)
 	}
 
@@ -153,7 +170,9 @@ func (g *GCSManager) createServiceAccountAndKey() (string, error) {
 	output, err := exec.NewCommand(checkCmd).WithoutStreaming().Output()
 	if err == nil {
 		log.Printf("Service account %s already exists, skipping creation", saName)
-	} else if isNotFound(output, "NOT_FOUND") {
+	} else if isNotFound(output, "NOT_FOUND", "PERMISSION_DENIED") {
+		// GCP returns PERMISSION_DENIED instead of NOT_FOUND when the caller
+		// lacks iam.serviceAccounts.get and the service account doesn't exist.
 		// Create service account
 		createCmd := fmt.Sprintf(
 			`gcloud iam service-accounts create %s --display-name="Bucket SA for %s" --project %s`,
@@ -178,6 +197,12 @@ func (g *GCSManager) createServiceAccountAndKey() (string, error) {
 		return "", fmt.Errorf("while granting bucket IAM binding: %w", err)
 	}
 
+	// Delete any existing user-managed keys to prevent orphaned keys
+	// when a K8s Secret is deleted and recreated.
+	if err := g.deleteExistingKeys(); err != nil {
+		return "", err
+	}
+
 	// Generate JSON key
 	keyFile, err := os.CreateTemp("", "gcs-sa-key-*.json")
 	if err != nil {
@@ -198,6 +223,29 @@ func (g *GCSManager) createServiceAccountAndKey() (string, error) {
 	return keyFile.Name(), nil
 }
 
+func (g *GCSManager) deleteExistingKeys() error {
+	saEmail := g.serviceAccountEmail()
+	listCmd := fmt.Sprintf(
+		`gcloud iam service-accounts keys list --iam-account=%s --project %s --managed-by=user --format="value(name)"`,
+		saEmail, g.project,
+	)
+	output, err := exec.NewCommand(listCmd).WithoutStreaming().Output()
+	if err != nil {
+		return fmt.Errorf("while listing keys for service account %s: %w", saEmail, err)
+	}
+	for keyID := range strings.FieldsSeq(strings.TrimSpace(output)) {
+		log.Printf("Deleting existing key %s for service account %s...", keyID, saEmail)
+		delCmd := fmt.Sprintf(
+			"gcloud iam service-accounts keys delete %s --iam-account=%s --project %s --quiet",
+			keyID, saEmail, g.project,
+		)
+		if err := exec.NewCommand(delCmd).WithoutStreaming().Run(); err != nil {
+			return fmt.Errorf("while deleting key %s for service account %s: %w", keyID, saEmail, err)
+		}
+	}
+	return nil
+}
+
 func (g *GCSManager) deleteServiceAccount() error {
 	saEmail := g.serviceAccountEmail()
 	log.Printf("Verifying GCS service account %s is managed by eck-deployer...", saEmail)
@@ -210,7 +258,9 @@ func (g *GCSManager) deleteServiceAccount() error {
 	)
 	output, err := exec.NewCommand(descCmd).WithoutStreaming().Output()
 	if err != nil {
-		if isNotFound(output, "NOT_FOUND") {
+		if isNotFound(output, "NOT_FOUND", "PERMISSION_DENIED") {
+			// GCP returns PERMISSION_DENIED instead of NOT_FOUND when the caller
+			// lacks iam.serviceAccounts.get and the service account doesn't exist.
 			log.Printf("Service account %s not found, skipping deletion", saEmail)
 			return nil
 		}
@@ -241,7 +291,9 @@ func (g *GCSManager) deleteBucket() error {
 	)
 	output, err := exec.NewCommand(descCmd).WithoutStreaming().Output()
 	if err != nil {
-		if isNotFound(output, "NOT_FOUND", "BucketNotFoundException") {
+		// "NOT_FOUND" is the GCP API error code, "not found" is the human-readable
+		// message used by newer gcloud CLI versions (e.g. "gs://bucket not found: 404").
+		if isNotFound(output, "NOT_FOUND", "BucketNotFoundException", "not found") {
 			log.Printf("Bucket %s not found, skipping deletion", g.cfg.Name)
 			return nil
 		}

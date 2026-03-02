@@ -78,6 +78,10 @@ func (a *AzureManager) Create() error {
 	if err := a.createContainer(); err != nil {
 		return err
 	}
+	if k8sSecretExists(a.cfg.SecretName, a.cfg.SecretNamespace) {
+		log.Printf("Secret %s/%s already exists, skipping credential creation", a.cfg.SecretNamespace, a.cfg.SecretName)
+		return nil
+	}
 	sasToken, err := a.generateSASToken()
 	if err != nil {
 		return err
@@ -86,6 +90,8 @@ func (a *AzureManager) Create() error {
 	return createK8sSecret(a.cfg.SecretName, a.cfg.SecretNamespace, map[string]string{
 		"azure.client.default.account":   a.storageAccountName(),
 		"azure.client.default.sas_token": sasToken,
+	}, map[string]string{
+		"eck-deployer/storage-account": a.storageAccountName(),
 	})
 }
 

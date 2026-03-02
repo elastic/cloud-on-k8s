@@ -55,6 +55,10 @@ func (s *S3Manager) Create() error {
 	if err := s.blockPublicAccess(); err != nil {
 		return err
 	}
+	if k8sSecretExists(s.cfg.SecretName, s.cfg.SecretNamespace) {
+		log.Printf("Secret %s/%s already exists, skipping credential creation", s.cfg.SecretNamespace, s.cfg.SecretName)
+		return nil
+	}
 	accessKeyID, secretAccessKey, err := s.createIAMUserAndKeys()
 	if err != nil {
 		return err
@@ -65,6 +69,9 @@ func (s *S3Manager) Create() error {
 		"secret-access-key": secretAccessKey,
 		"bucket":            s.cfg.Name,
 		"region":            s.cfg.Region,
+	}, map[string]string{
+		"eck-deployer/iam-user":      s.iamUserName(),
+		"eck-deployer/access-key-id": accessKeyID,
 	})
 }
 
@@ -181,6 +188,12 @@ func (s *S3Manager) createIAMUserAndKeys() (string, string, error) {
 		return "", "", fmt.Errorf("while attaching managed policy to IAM user: %w", err)
 	}
 
+	// Delete any existing access keys to avoid hitting the 2-key-per-user limit
+	// and to prevent orphaned keys when a K8s Secret is deleted and recreated.
+	if err := s.deleteExistingAccessKeys(); err != nil {
+		return "", "", err
+	}
+
 	// Create access key
 	log.Printf("Creating access key for IAM user %s...", userName)
 	keyCmd := fmt.Sprintf("aws iam create-access-key --user-name %s", userName)
@@ -195,6 +208,23 @@ func (s *S3Manager) createIAMUserAndKeys() (string, string, error) {
 	}
 
 	return keyOutput.AccessKey.AccessKeyID, keyOutput.AccessKey.SecretAccessKey, nil
+}
+
+func (s *S3Manager) deleteExistingAccessKeys() error {
+	userName := s.iamUserName()
+	listKeysCmd := fmt.Sprintf(`aws iam list-access-keys --user-name %s --query "AccessKeyMetadata[].AccessKeyId" --output text`, userName)
+	keysOutput, err := exec.NewCommand(listKeysCmd).WithoutStreaming().Output()
+	if err != nil {
+		return fmt.Errorf("while listing access keys for IAM user %s: %w", userName, err)
+	}
+	for keyID := range strings.FieldsSeq(strings.TrimSpace(keysOutput)) {
+		log.Printf("Deleting existing access key %s for IAM user %s...", keyID, userName)
+		delKeyCmd := fmt.Sprintf("aws iam delete-access-key --user-name %s --access-key-id %s", userName, keyID)
+		if err := exec.NewCommand(delKeyCmd).WithoutStreaming().Run(); err != nil {
+			return fmt.Errorf("while deleting access key %s for IAM user %s: %w", keyID, userName, err)
+		}
+	}
+	return nil
 }
 
 // iamGetUserOutput matches the AWS CLI output for iam get-user.
@@ -240,17 +270,9 @@ func (s *S3Manager) deleteIAMUser() error {
 
 	log.Printf("Deleting IAM user %s and associated resources...", userName)
 
-	// List and delete access keys — must succeed before the user can be deleted.
-	listKeysCmd := fmt.Sprintf(`aws iam list-access-keys --user-name %s --query "AccessKeyMetadata[].AccessKeyId" --output text`, userName)
-	keysOutput, err := exec.NewCommand(listKeysCmd).WithoutStreaming().Output()
-	if err != nil {
-		return fmt.Errorf("while listing access keys for IAM user %s: %w", userName, err)
-	}
-	for keyID := range strings.FieldsSeq(strings.TrimSpace(keysOutput)) {
-		delKeyCmd := fmt.Sprintf("aws iam delete-access-key --user-name %s --access-key-id %s", userName, keyID)
-		if err := exec.NewCommand(delKeyCmd).WithoutStreaming().Run(); err != nil {
-			return fmt.Errorf("while deleting access key %s for IAM user %s: %w", keyID, userName, err)
-		}
+	// Delete access keys — must succeed before the user can be deleted.
+	if err := s.deleteExistingAccessKeys(); err != nil {
+		return err
 	}
 
 	// Detach managed policy — must succeed before the user can be deleted.
