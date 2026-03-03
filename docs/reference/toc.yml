@@ -4,20 +4,22 @@ toc:
   - folder: api-reference
     children:
       - file: index.md
-      - file: main.md
       - file: 3_3_1.md
       - file: 3_3_0.md
       - file: 3_2_0.md
       - file: 3_1_0.md
       - file: 3_0_0.md
+    exclude:
+      - main.md
   - folder: third-party-dependencies
     children:
       - file: index.md
-      - file: main.md
       - file: 3_3_1.md
       - file: 3_3_0.md
       - file: 3_2_0.md
       - file: 3_1_0.md
       - file: 3_0_0.md
+    exclude:
+      - main.md
   - file: eck-configuration-flags.md
   - file: upgrade-predicates.md
