@@ -14,7 +14,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/types"
-	"k8s.io/client-go/tools/record"
+	toolsevents "k8s.io/client-go/tools/events"
 
 	esv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/elasticsearch/v1"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/events"
@@ -47,7 +47,7 @@ func reconcileUserProvidedFileRealm(
 	es esv1.Elasticsearch,
 	existing filerealm.Realm,
 	watched watches.DynamicWatches,
-	recorder record.EventRecorder,
+	recorder toolsevents.EventRecorder,
 	passwordHasher cryptutil.PasswordHasher,
 ) (filerealm.Realm, error) {
 	esKey := k8s.ExtractNamespacedName(&es)
@@ -76,7 +76,7 @@ func reconcileUserProvidedRoles(
 	c k8s.Client,
 	es esv1.Elasticsearch,
 	watched watches.DynamicWatches,
-	recorder record.EventRecorder,
+	recorder toolsevents.EventRecorder,
 ) (RolesFileContent, error) {
 	esKey := k8s.ExtractNamespacedName(&es)
 	secretNames := make([]string, 0, len(es.Spec.Auth.Roles))
@@ -102,7 +102,7 @@ func retrieveUserProvidedRoles(
 	ctx context.Context,
 	c k8s.Client,
 	es esv1.Elasticsearch,
-	recorder record.EventRecorder,
+	recorder toolsevents.EventRecorder,
 ) (RolesFileContent, error) {
 	log := ulog.FromContext(ctx)
 	roles := make(RolesFileContent)
@@ -115,7 +115,7 @@ func retrieveUserProvidedRoles(
 		err := c.Get(context.Background(), secretRef, &secret)
 		if err != nil {
 			if apierrors.IsNotFound(err) {
-				handleSecretNotFound(log, recorder, es, roleSource.SecretName)
+				handleSecretNotFound(log, recorder, es, roleSource.SecretName, events.EventActionConfiguration)
 				continue
 			}
 			return RolesFileContent{}, err
@@ -123,7 +123,7 @@ func retrieveUserProvidedRoles(
 
 		parsed, err := parseRolesFileContent(k8s.GetSecretEntry(secret, RolesFile))
 		if err != nil {
-			handleInvalidSecretData(log, recorder, es, roleSource.SecretName, err)
+			handleInvalidSecretData(log, recorder, es, roleSource.SecretName, err, events.EventActionConfiguration)
 			continue
 		}
 		roles = roles.MergeWith(parsed)
@@ -137,7 +137,7 @@ func retrieveUserProvidedFileRealm(
 	c k8s.Client,
 	es esv1.Elasticsearch,
 	existing filerealm.Realm,
-	recorder record.EventRecorder,
+	recorder toolsevents.EventRecorder,
 	passwordHasher cryptutil.PasswordHasher,
 ) (filerealm.Realm, error) {
 	log := ulog.FromContext(ctx)
@@ -149,7 +149,7 @@ func retrieveUserProvidedFileRealm(
 		var secret corev1.Secret
 		if err := c.Get(context.Background(), types.NamespacedName{Namespace: es.Namespace, Name: fileRealmSource.SecretName}, &secret); err != nil {
 			if apierrors.IsNotFound(err) {
-				handleSecretNotFound(log, recorder, es, fileRealmSource.SecretName)
+				handleSecretNotFound(log, recorder, es, fileRealmSource.SecretName, events.EventActionConfiguration)
 				continue
 			}
 			return filerealm.Realm{}, err
@@ -168,7 +168,7 @@ func retrieveUserProvidedFileRealm(
 			realm, err = filerealm.FromSecret(secret)
 		}
 		if err != nil {
-			handleInvalidSecretData(log, recorder, es, fileRealmSource.SecretName, err)
+			handleInvalidSecretData(log, recorder, es, fileRealmSource.SecretName, err, events.EventActionConfiguration)
 			continue
 		}
 		aggregated = aggregated.MergeWith(realm)
@@ -213,19 +213,19 @@ func realmFromBasicAuthSecret(secret corev1.Secret, existing filerealm.Realm, pa
 	return user.fileRealm(), nil
 }
 
-func handleSecretNotFound(log logr.Logger, recorder record.EventRecorder, es esv1.Elasticsearch, secretName string) {
+func handleSecretNotFound(log logr.Logger, recorder toolsevents.EventRecorder, es esv1.Elasticsearch, secretName string, action string) {
 	msg := "referenced secret not found"
 	// logging with info level since this may be expected if the secret is not in the cache yet
 	log.Info(msg, "namespace", es.Namespace, "es_name", es.Name, "secret_name", secretName)
-	recorder.Event(&es, corev1.EventTypeWarning, events.EventReasonUnexpected, msg+": "+secretName)
+	recorder.Eventf(&es, nil, corev1.EventTypeWarning, events.EventReasonUnexpected, action, msg+": "+secretName)
 }
 
-func handleInvalidSecretData(log logr.Logger, recorder record.EventRecorder, es esv1.Elasticsearch, secretName string, err error) {
+func handleInvalidSecretData(log logr.Logger, recorder toolsevents.EventRecorder, es esv1.Elasticsearch, secretName string, err error, action string) {
 	msg := "invalid data in secret"
 	log.Error(err, msg, "namespace", es.Namespace, "es_name", es.Name, "secret_name", secretName)
-	recorder.Event(&es, corev1.EventTypeWarning, events.EventReasonUnexpected, fmt.Sprintf("%s %s/%s: %s", msg, es.Namespace, secretName, err.Error()))
+	recorder.Eventf(&es, nil, corev1.EventTypeWarning, events.EventReasonUnexpected, action, fmt.Sprintf("%s %s/%s: %s", msg, es.Namespace, secretName, err.Error()))
 }
-func handlePotentialMisconfiguration(log logr.Logger, recorder record.EventRecorder, es esv1.Elasticsearch, secret corev1.Secret) {
+func handlePotentialMisconfiguration(log logr.Logger, recorder toolsevents.EventRecorder, es esv1.Elasticsearch, secret corev1.Secret) {
 	keys := make([]string, 0, len(secret.Data))
 	for k := range secret.Data {
 		keys = append(keys, k)
@@ -233,5 +233,5 @@ func handlePotentialMisconfiguration(log logr.Logger, recorder record.EventRecor
 	sort.Strings(keys)
 	msg := fmt.Sprintf("potential misconfigured custom user in secret %s/%s: found keys %s expected keys %s", secret.Namespace, secret.Name, keys, basicAuthSecretKeys)
 	log.Info(msg, "namespace", es.Namespace, "es_name", es.Name)
-	recorder.Event(&es, corev1.EventTypeWarning, events.EventReasonUnexpected, msg)
+	recorder.Eventf(&es, nil, corev1.EventTypeWarning, events.EventReasonUnexpected, events.EventActionConfiguration, msg)
 }

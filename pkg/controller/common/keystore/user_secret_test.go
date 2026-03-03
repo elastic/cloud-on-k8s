@@ -13,7 +13,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
-	"k8s.io/client-go/tools/record"
+	toolsevents "k8s.io/client-go/tools/events"
 
 	commonv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/common/v1"
 	kbv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/kibana/v1"
@@ -101,7 +101,7 @@ func Test_secureSettingsVolume(t *testing.T) {
 			testDriver := driver.TestDriver{
 				Client:       tt.c,
 				Watches:      tt.w,
-				FakeRecorder: record.NewFakeRecorder(1000),
+				FakeRecorder: toolsevents.NewFakeRecorder(1000),
 			}
 			vol, hash, err := secureSettingsVolume(context.Background(), testDriver, &tt.kb, metadata.Metadata{}, kbNamer)
 			require.NoError(t, err)
@@ -422,7 +422,7 @@ func Test_retrieveUserSecrets(t *testing.T) {
 		},
 	}
 
-	recorder := record.NewFakeRecorder(100)
+	recorder := toolsevents.NewFakeRecorder(100)
 	client := k8s.NewFakeClient(&testSecret)
 	hasKeystore := testKibana
 

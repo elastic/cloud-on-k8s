@@ -14,7 +14,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/types"
-	"k8s.io/client-go/tools/record"
+	toolsevents "k8s.io/client-go/tools/events"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
 	"sigs.k8s.io/controller-runtime/pkg/handler"
@@ -58,7 +58,7 @@ func newReconciler(mgr manager.Manager, accessReviewer rbac.AccessReviewer, para
 	return &AgentPolicyReconciler{
 		Client:           k8sClient,
 		accessReviewer:   accessReviewer,
-		recorder:         mgr.GetEventRecorderFor(controllerName),
+		recorder:         mgr.GetEventRecorder(controllerName),
 		params:           params,
 		dynamicWatches:   watches.NewDynamicWatches(),
 		esClientProvider: commonesclient.NewClient,
@@ -127,7 +127,7 @@ var _ reconcile.Reconciler = (*AgentPolicyReconciler)(nil)
 type AgentPolicyReconciler struct {
 	k8s.Client
 	accessReviewer   rbac.AccessReviewer
-	recorder         record.EventRecorder
+	recorder         toolsevents.EventRecorder
 	params           operator.Parameters
 	dynamicWatches   watches.DynamicWatches
 	esClientProvider commonesclient.Provider
@@ -186,7 +186,7 @@ func (r *AgentPolicyReconciler) validate(ctx context.Context, policy *autoopsv1a
 
 	if err := autoopsvalidation.Validate(ctx, policy, r.licenseChecker); err != nil {
 		ulog.FromContext(ctx).Error(err, "Validation failed")
-		k8s.MaybeEmitErrorEvent(r.recorder, err, policy, events.EventReasonValidation, err.Error())
+		k8s.MaybeEmitErrorEvent(r.recorder, err, policy, events.EventReasonValidation, events.EventActionValidation, err.Error())
 		return tracing.CaptureError(ctx, err)
 	}
 
@@ -201,7 +201,7 @@ func (r *AgentPolicyReconciler) updateStatusFromState(ctx context.Context, state
 	events, policy := state.Apply()
 	for _, evt := range events {
 		log.V(1).Info("Recording event", "event", evt)
-		r.recorder.Event(&state.policy, evt.EventType, evt.Reason, evt.Message)
+		r.recorder.Eventf(&state.policy, nil, evt.EventType, evt.Reason, evt.Action, evt.Message)
 	}
 	if policy == nil {
 		log.V(1).Info("Status is up to date", "iteration", atomic.LoadUint64(&r.iteration))

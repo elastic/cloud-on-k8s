@@ -14,7 +14,7 @@ import (
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/types"
-	"k8s.io/client-go/tools/record"
+	toolsevents "k8s.io/client-go/tools/events"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	kbv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/kibana/v1"
@@ -49,7 +49,7 @@ var minSupportedVersion = version.From(7, 0, 0)
 type driver struct {
 	client         k8s.Client
 	dynamicWatches watches.DynamicWatches
-	recorder       record.EventRecorder
+	recorder       toolsevents.EventRecorder
 	version        version.Version
 	ipFamily       corev1.IPFamily
 }
@@ -62,7 +62,7 @@ func (d *driver) K8sClient() k8s.Client {
 	return d.client
 }
 
-func (d *driver) Recorder() record.EventRecorder {
+func (d *driver) Recorder() toolsevents.EventRecorder {
 	return d.recorder
 }
 
@@ -71,7 +71,7 @@ var _ driver2.Interface = (*driver)(nil)
 func newDriver(
 	client k8s.Client,
 	watches watches.DynamicWatches,
-	recorder record.EventRecorder,
+	recorder toolsevents.EventRecorder,
 	kb *kbv1.Kibana,
 	ipFamily corev1.IPFamily,
 ) (*driver, error) {
@@ -83,7 +83,7 @@ func newDriver(
 
 	if !ver.GTE(minSupportedVersion) {
 		err := pkgerrors.Errorf("unsupported Kibana version: %s", ver)
-		k8s.MaybeEmitErrorEvent(recorder, err, kb, events.EventReasonValidation, "Unsupported Kibana version")
+		k8s.MaybeEmitErrorEvent(recorder, err, kb, events.EventReasonValidation, events.EventActionVersionCheck, "Unsupported Kibana version")
 		return nil, err
 	}
 
@@ -148,7 +148,7 @@ func (d *driver) Reconcile(
 	}.ReconcileCAAndHTTPCerts(ctx)
 	if results.HasError() {
 		_, err := results.Aggregate()
-		k8s.MaybeEmitErrorEvent(d.Recorder(), err, kb, events.EventReconciliationError, "Certificate reconciliation error: %v", err)
+		k8s.MaybeEmitErrorEvent(d.Recorder(), err, kb, events.EventReconciliationError, events.EventActionCertificateReconciliation, "Certificate reconciliation error: %v", err)
 		return results
 	}
 

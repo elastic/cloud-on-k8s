@@ -10,8 +10,6 @@ import (
 	"reflect"
 	"testing"
 
-	"k8s.io/apimachinery/pkg/util/uuid"
-
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"k8s.io/apimachinery/pkg/util/intstr"
@@ -22,7 +20,8 @@ import (
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
-	"k8s.io/client-go/tools/record"
+	"k8s.io/apimachinery/pkg/util/uuid"
+	toolsevents "k8s.io/client-go/tools/events"
 	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
@@ -55,7 +54,7 @@ func newReconcileLogstash(objs ...client.Object) *ReconcileLogstash {
 	client := k8s.NewFakeClient(objs...)
 	r := &ReconcileLogstash{
 		Client:         client,
-		recorder:       record.NewFakeRecorder(100),
+		recorder:       toolsevents.NewFakeRecorder(100),
 		dynamicWatches: watches.NewDynamicWatches(),
 		expectations:   expectations.NewClustersExpectations(client, &appsv1.StatefulSet{}),
 	}
