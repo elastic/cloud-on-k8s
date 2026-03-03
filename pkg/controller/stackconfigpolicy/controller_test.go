@@ -1182,3 +1182,91 @@ func assertKibanaConfigSecret(t *testing.T, c client.Client, kibanaName string, 
 	require.Equal(t, expectedKibanaSecret.Annotations, kibanaSecret.Annotations)
 	require.Equal(t, expectedKibanaSecret.Data, kibanaSecret.Data)
 }
+
+func Test_reconcileRequestForSoftOwnerPolicy(t *testing.T) {
+	tests := []struct {
+		name     string
+		secret   *corev1.Secret
+		wantReqs []reconcile.Request
+	}{
+		{
+			name: "Secret without soft-owner labels returns no requests",
+			secret: &corev1.Secret{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "test-secret",
+					Namespace: "ns",
+				},
+			},
+			wantReqs: nil,
+		},
+		{
+			name: "Secret soft-owned by Elasticsearch returns no requests",
+			secret: &corev1.Secret{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "test-secret",
+					Namespace: "ns",
+					Labels: map[string]string{
+						reconciler.SoftOwnerKindLabel:      esv1.Kind,
+						reconciler.SoftOwnerNameLabel:      "my-es",
+						reconciler.SoftOwnerNamespaceLabel: "ns",
+					},
+				},
+			},
+			wantReqs: nil,
+		},
+		{
+			name: "Secret soft-owned by StackConfigPolicy returns request for that policy",
+			secret: &corev1.Secret{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "test-secret",
+					Namespace: "ns",
+					Labels: map[string]string{
+						reconciler.SoftOwnerKindLabel:      policyv1alpha1.Kind,
+						reconciler.SoftOwnerNameLabel:      "my-policy",
+						reconciler.SoftOwnerNamespaceLabel: "policy-ns",
+					},
+				},
+			},
+			wantReqs: []reconcile.Request{
+				{NamespacedName: types.NamespacedName{Namespace: "policy-ns", Name: "my-policy"}},
+			},
+		},
+		{
+			name: "Secret with multiple soft-owners via annotation returns only StackConfigPolicy requests",
+			secret: &corev1.Secret{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "test-secret",
+					Namespace: "ns",
+					Labels: map[string]string{
+						reconciler.SoftOwnerKindLabel: policyv1alpha1.Kind,
+					},
+					Annotations: map[string]string{
+						reconciler.SoftOwnerRefsAnnotation: `["ns1/policy1","ns2/policy2"]`,
+					},
+				},
+			},
+			wantReqs: []reconcile.Request{
+				{NamespacedName: types.NamespacedName{Namespace: "ns1", Name: "policy1"}},
+				{NamespacedName: types.NamespacedName{Namespace: "ns2", Name: "policy2"}},
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			gotReqs := toReconcileRequests(tt.secret)
+
+			if tt.wantReqs == nil {
+				assert.Empty(t, gotReqs)
+			} else {
+				assert.Equal(t, tt.wantReqs, gotReqs)
+			}
+
+			// Verify no zero-value requests are returned
+			for _, req := range gotReqs {
+				assert.NotEmpty(t, req.Namespace, "reconcile request should not have empty namespace")
+				assert.NotEmpty(t, req.Name, "reconcile request should not have empty name")
+			}
+		})
+	}
+}
