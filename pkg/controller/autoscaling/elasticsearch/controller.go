@@ -127,8 +127,12 @@ func (r *ReconcileElasticsearchAutoscaler) Reconcile(ctx context.Context, reques
 		return reconcile.Result{}, tracing.CaptureError(ctx, err)
 	}
 
-	if common.IsUnmanaged(ctx, &esa) {
-		msg := "Object is currently not managed by this controller. Skipping reconciliation"
+	unmanagedOrFiltered, err := common.IsUnmanagedOrFiltered(ctx, r.Client, &esa, r.Parameters)
+	if err != nil {
+		return reconcile.Result{}, tracing.CaptureError(ctx, err)
+	}
+	if unmanagedOrFiltered {
+		msg := "Object is currently not managed by this controller or namespace is filtered. Skipping reconciliation"
 		log.Info(msg, "namespace", request.Namespace, "esa_name", request.Name)
 		return r.reportAsInactive(ctx, log, esa, msg)
 	}

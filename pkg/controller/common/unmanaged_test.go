@@ -11,6 +11,9 @@ import (
 	"github.com/stretchr/testify/assert"
 	corev1 "k8s.io/api/core/v1"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/operator"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/k8s"
 )
 
 type testcase struct {
@@ -89,4 +92,49 @@ func TestUnmanagedCondition(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestIsUnmanagedOrFiltered(t *testing.T) {
+	testNamespace := &corev1.Namespace{ObjectMeta: v1.ObjectMeta{Name: "test-ns", Labels: map[string]string{"env": "prod"}}}
+	devNamespace := &corev1.Namespace{ObjectMeta: v1.ObjectMeta{Name: "dev-ns", Labels: map[string]string{"env": "dev"}}}
+	fakeClient := k8s.NewFakeClient(testNamespace, devNamespace)
+
+	t.Run("returns unmanaged when annotation is set", func(t *testing.T) {
+		obj := &corev1.Secret{ObjectMeta: v1.ObjectMeta{Name: "s1", Namespace: "test-ns", Annotations: map[string]string{ManagedAnnotation: "false"}}}
+
+		unmanagedOrFiltered, err := IsUnmanagedOrFiltered(context.Background(), fakeClient, obj, operator.Parameters{})
+
+		assert.NoError(t, err)
+		assert.True(t, unmanagedOrFiltered)
+	})
+
+	t.Run("returns filtered when namespace does not match selector", func(t *testing.T) {
+		obj := &corev1.Secret{ObjectMeta: v1.ObjectMeta{Name: "s2", Namespace: "dev-ns"}}
+		params := operator.Parameters{NamespaceLabelSelector: &v1.LabelSelector{MatchLabels: map[string]string{"env": "prod"}}}
+
+		unmanagedOrFiltered, err := IsUnmanagedOrFiltered(context.Background(), fakeClient, obj, params)
+
+		assert.NoError(t, err)
+		assert.True(t, unmanagedOrFiltered)
+	})
+
+	t.Run("returns managed when namespace matches selector", func(t *testing.T) {
+		obj := &corev1.Secret{ObjectMeta: v1.ObjectMeta{Name: "s3", Namespace: "test-ns"}}
+		params := operator.Parameters{NamespaceLabelSelector: &v1.LabelSelector{MatchLabels: map[string]string{"env": "prod"}}}
+
+		unmanagedOrFiltered, err := IsUnmanagedOrFiltered(context.Background(), fakeClient, obj, params)
+
+		assert.NoError(t, err)
+		assert.False(t, unmanagedOrFiltered)
+	})
+
+	t.Run("returns error when namespace lookup fails", func(t *testing.T) {
+		obj := &corev1.Secret{ObjectMeta: v1.ObjectMeta{Name: "s4", Namespace: "missing-ns"}}
+		params := operator.Parameters{NamespaceLabelSelector: &v1.LabelSelector{MatchLabels: map[string]string{"env": "prod"}}}
+
+		unmanagedOrFiltered, err := IsUnmanagedOrFiltered(context.Background(), fakeClient, obj, params)
+
+		assert.Error(t, err)
+		assert.False(t, unmanagedOrFiltered)
+	})
 }
