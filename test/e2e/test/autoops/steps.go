@@ -22,6 +22,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/k8s"
 	"github.com/elastic/cloud-on-k8s/v3/test/e2e/cmd/run"
 	"github.com/elastic/cloud-on-k8s/v3/test/e2e/test"
+	"github.com/elastic/cloud-on-k8s/v3/test/e2e/test/elasticsearch"
 )
 
 func (b Builder) InitTestSteps(k *test.K8sClient) test.StepList {
@@ -89,6 +90,19 @@ func (b Builder) InitTestSteps(k *test.K8sClient) test.StepList {
 
 func (b Builder) CreationTestSteps(k *test.K8sClient) test.StepList {
 	return test.StepList{}.
+		WithStep(test.Step{
+			// Wait for all ES clusters matching the policy selector to be reachable before creating the
+			// AutoOpsAgentPolicy. The autoops-agent (elastic-otel-collector) initialises its metricbeat
+			// receiver immediately on startup and does not retry on a failed initial connection. If ES is
+			// not yet accepting connections at that point the receiver stays in a failed state, the
+			// OTel health-check endpoint returns HTTP 500, and the pod readiness probe never passes.
+			// This step guards against that race between ECK marking ES Ready and the ES HTTP endpoint
+			// being truly accessible.
+			Name: "ES clusters matching selector should be reachable before creating AutoOpsAgentPolicy",
+			Test: test.Eventually(func() error {
+				return b.checkMatchingESClustersReachable(k)
+			}),
+		}).
 		WithStep(test.Step{
 			Name: "Creating configuration secret should succeed",
 			Test: func(t *testing.T) {
@@ -318,4 +332,45 @@ func (b Builder) DeletionTestSteps(k *test.K8sClient) test.StepList {
 
 func (b Builder) MutationTestSteps(k *test.K8sClient) test.StepList {
 	return test.StepList{}
+}
+
+// checkMatchingESClustersReachable verifies that every ES cluster that this policy will monitor has
+// a reachable and healthy HTTP endpoint. It mirrors the filtering logic used by the operator so that
+// only clusters which will actually receive an autoops-agent deployment are checked.
+func (b Builder) checkMatchingESClustersReachable(k *test.K8sClient) error {
+	selector, err := metav1.LabelSelectorAsSelector(&b.AutoOpsAgentPolicy.Spec.ResourceSelector)
+	if err != nil {
+		return fmt.Errorf("parsing resource selector: %w", err)
+	}
+
+	var esList esv1.ElasticsearchList
+	if err := k.Client.List(context.Background(), &esList, &k8sclient.ListOptions{LabelSelector: selector}); err != nil {
+		return fmt.Errorf("listing ES clusters: %w", err)
+	}
+
+	isNamespaceAllowed, err := k8s.NamespaceFilterFunc(context.Background(), k.Client, b.AutoOpsAgentPolicy.Spec.NamespaceSelector)
+	if err != nil {
+		return fmt.Errorf("building namespace filter: %w", err)
+	}
+
+	for _, es := range esList.Items {
+		if !isNamespaceAllowed(es.Namespace) {
+			continue
+		}
+		if es.Status.Phase != esv1.ElasticsearchReadyPhase {
+			return fmt.Errorf("ES cluster %s/%s is not ready yet (phase: %s)", es.Namespace, es.Name, es.Status.Phase)
+		}
+		esClient, err := elasticsearch.NewElasticsearchClient(es, k)
+		if err != nil {
+			return fmt.Errorf("creating ES client for %s/%s: %w", es.Namespace, es.Name, err)
+		}
+		health, err := esClient.GetClusterHealth(context.Background())
+		if err != nil {
+			return fmt.Errorf("ES cluster %s/%s not reachable: %w", es.Namespace, es.Name, err)
+		}
+		if health.Status == esv1.ElasticsearchRedHealth {
+			return fmt.Errorf("ES cluster %s/%s health is red", es.Namespace, es.Name)
+		}
+	}
+	return nil
 }
