@@ -184,8 +184,8 @@ func ReconcileSharedResources(
 
 	// Always update the Elasticsearch state bits with the latest observed state.
 	params.ReconcileState.
-		UpdateClusterHealth(observedState()). // Elasticsearch cluster health
-		UpdateAvailableNodes(*resourcesState). // Available nodes
+		UpdateClusterHealth(observedState()).         // Elasticsearch cluster health
+		UpdateAvailableNodes(*resourcesState).        // Available nodes
 		UpdateMinRunningVersion(ctx, *resourcesState) // Min running version
 
 	// Reconcile transport certificates
