@@ -184,8 +184,8 @@ func ReconcileSharedResources(
 
 	// Always update the Elasticsearch state bits with the latest observed state.
 	params.ReconcileState.
-		UpdateClusterHealth(observedState()).         // Elasticsearch cluster health
-		UpdateAvailableNodes(*resourcesState).        // Available nodes
+		UpdateClusterHealth(observedState()). // Elasticsearch cluster health
+		UpdateAvailableNodes(*resourcesState). // Available nodes
 		UpdateMinRunningVersion(ctx, *resourcesState) // Min running version
 
 	// Reconcile transport certificates
@@ -283,7 +283,7 @@ func ReconcileSharedResources(
 		msg := "Could not update remote clusters in Elasticsearch settings, re-queuing"
 		if err != nil {
 			log.Info(msg, "err", err, "namespace", es.Namespace, "es_name", es.Name)
-			params.ReconcileState.AddEvent(corev1.EventTypeWarning, events.EventReasonUnexpected, "RemoteClusterUpdateSettings", msg)
+			params.ReconcileState.AddEvent(corev1.EventTypeWarning, events.EventReasonUnexpected, "RemoteClusterConfiguration", msg)
 			results.WithError(err)
 		}
 		if requeue {

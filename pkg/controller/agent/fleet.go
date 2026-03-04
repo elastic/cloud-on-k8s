@@ -271,7 +271,7 @@ func maybeReconcileFleetEnrollment(params Params, result *reconciler.Results) En
 		message := "ECK cannot setup Fleet enrollment. Waiting for Kibana credentials. This should be a transient issue."
 		log.V(1).Info(err.Error())
 		log.Info(message)
-		params.EventRecorder.Eventf(&params.Agent, nil, corev1.EventTypeWarning, events.EventReasonDelayed, events.EventActionAuthorization, "%s", message)
+		params.EventRecorder.Eventf(&params.Agent, nil, corev1.EventTypeWarning, events.EventReasonDelayed, "AssociationPreconditionCheck", "%s", message)
 		result.WithRequeue()
 	case commonhttp.IsNotFound(err):
 		message := fmt.Sprintf("ECK cannot setup Fleet enrollment. This is likely a mis-configuration. %s", err.Error())

@@ -280,7 +280,7 @@ func (r *ReconcileElasticsearch) internalReconcile(
 			"namespace", es.Namespace,
 			"es_name", es.Name,
 		)
-		reconcileState.AddEvent(corev1.EventTypeWarning, events.EventReasonValidation, "WarningCheck", err.Error())
+		reconcileState.AddEvent(corev1.EventTypeWarning, events.EventReasonValidation, events.EventActionValidation, err.Error())
 	}
 
 	ver, err := commonversion.Parse(es.Spec.Version)

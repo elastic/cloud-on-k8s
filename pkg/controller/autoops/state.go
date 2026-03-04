@@ -127,7 +127,7 @@ func (s *State) Finalize(isReconciled bool, reconciliationMessage string) {
 	switch {
 	case !isReconciled:
 		s.UpdateWithPhase(autoopsv1alpha1.ApplyingChangesPhase)
-		s.AddEvent(corev1.EventTypeWarning, events.EventReasonDelayed, "Finalize", reconciliationMessage)
+		s.AddEvent(corev1.EventTypeWarning, events.EventReasonDelayed, "AutoOpsReconciliation", reconciliationMessage)
 	case s.status.Ready == s.status.Resources:
 		s.UpdateWithPhase(autoopsv1alpha1.ReadyPhase)
 	case s.status.Ready < s.status.Resources:
