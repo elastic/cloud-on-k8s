@@ -165,8 +165,8 @@ func (ent *EnterpriseSearch) AssociationStatusMap(typ commonv1.AssociationType) 
 	return commonv1.AssociationStatusMap{}
 }
 
-var _ commonv1.Associated = &EnterpriseSearch{}
-var _ commonv1.Association = &EnterpriseSearch{}
+var _ commonv1.Associated = (*EnterpriseSearch)(nil)
+var _ commonv1.Association = (*EnterpriseSearch)(nil)
 
 // GetObservedGeneration will return the observedGeneration from the EnterpriseSearch's status.
 func (ent *EnterpriseSearch) GetObservedGeneration() int64 {

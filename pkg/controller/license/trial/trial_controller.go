@@ -274,4 +274,4 @@ func Add(mgr manager.Manager, params operator.Parameters) error {
 	return addWatches(mgr, c)
 }
 
-var _ reconcile.Reconciler = &ReconcileTrials{}
+var _ reconcile.Reconciler = (*ReconcileTrials)(nil)

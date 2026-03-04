@@ -95,4 +95,4 @@ func (w WrappedBuilder) SkipTest() bool {
 	return w.BuildingThis.SkipTest()
 }
 
-var _ Builder = &WrappedBuilder{}
+var _ Builder = (*WrappedBuilder)(nil)

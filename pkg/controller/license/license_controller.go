@@ -132,7 +132,7 @@ func addWatches(mgr manager.Manager, c controller.Controller, k8sClient k8s.Clie
 	return nil
 }
 
-var _ reconcile.Reconciler = &ReconcileLicenses{}
+var _ reconcile.Reconciler = (*ReconcileLicenses)(nil)
 
 // ReconcileLicenses reconciles EnterpriseLicenses with existing Elasticsearch clusters and creates ClusterLicenses for them.
 type ReconcileLicenses struct {

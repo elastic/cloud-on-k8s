@@ -126,7 +126,7 @@ func (v *validatingWebhook) Handle(ctx context.Context, req admission.Request) a
 	if err != nil {
 		var apiStatus apierrors.APIStatus
 		if errors.As(err, &apiStatus) {
-			return denyResponseFromStatus(apiStatus.Status()).WithWarnings(warnings...)
+			return DenyResponseFromStatus(apiStatus.Status()).WithWarnings(warnings...)
 		}
 		return admission.Denied(err.Error()).WithWarnings(warnings...)
 	}
@@ -134,8 +134,8 @@ func (v *validatingWebhook) Handle(ctx context.Context, req admission.Request) a
 	return admission.Allowed("").WithWarnings(warnings...)
 }
 
-// denyResponseFromStatus returns a response for denying a request with details from the provided Status object.
-func denyResponseFromStatus(status metav1.Status) admission.Response {
+// DenyResponseFromStatus returns a response for denying a request with details from the provided Status object.
+func DenyResponseFromStatus(status metav1.Status) admission.Response {
 	resp := admission.Response{
 		AdmissionResponse: admissionv1.AdmissionResponse{
 			Allowed: false,

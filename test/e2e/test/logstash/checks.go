@@ -43,7 +43,7 @@ func CheckSecrets(b Builder, k *test.K8sClient) test.Step {
 			// If TLS is not enabled, the API keystore password is not set.
 			lsConfigKeys = []string{"logstash.yml"}
 		}
-		expected := []test.ExpectedSecret{
+		expected := []test.ExpectedSecret{ //nolint:prealloc
 			{
 				Name: logstashName + "-ls-config",
 				Keys: lsConfigKeys,

@@ -46,7 +46,7 @@ var customResourceLimits = corev1.ResourceRequirements{
 func Test_getStrategyType(t *testing.T) {
 	// creates `count` of pods belonging to `kbName` Kibana and to `rs-kbName-version` ReplicaSet
 	getPods := func(kbName string, podCount int, version string) []client.Object {
-		var result []client.Object
+		result := make([]client.Object, 0, podCount)
 		for i := range podCount {
 			result = append(result, &corev1.Pod{
 				ObjectMeta: metav1.ObjectMeta{

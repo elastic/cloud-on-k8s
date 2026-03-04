@@ -61,8 +61,7 @@ func init() {
 	drivers[EKSDriverID] = &EKSDriverFactory{}
 }
 
-type EKSDriverFactory struct {
-}
+type EKSDriverFactory struct{}
 
 func (e EKSDriverFactory) Create(plan Plan) (Driver, error) {
 	return &EKSDriver{
@@ -80,7 +79,7 @@ func (e EKSDriverFactory) Create(plan Plan) (Driver, error) {
 	}, nil
 }
 
-var _ DriverFactory = &EKSDriverFactory{}
+var _ DriverFactory = (*EKSDriverFactory)(nil)
 
 type EKSDriver struct {
 	plan    Plan
@@ -123,7 +122,7 @@ func (e *EKSDriver) Execute() error {
 			}
 			createCfgFile := filepath.Join(e.ctx["WorkDir"].(string), "cluster.yaml") //nolint:forcetypeassert
 			e.ctx["CreateCfgFile"] = createCfgFile
-			if err := os.WriteFile(createCfgFile, createCfg.Bytes(), 0600); err != nil {
+			if err := os.WriteFile(createCfgFile, createCfg.Bytes(), 0o600); err != nil {
 				return fmt.Errorf("while writing create cfg %w", err)
 			}
 			if err := e.newCmd(`eksctl create cluster -v 1 -f {{.CreateCfgFile}}`).Run(); err != nil {
@@ -231,7 +230,7 @@ func (e *EKSDriver) writeAWSCredentials() error {
 	}
 	path := filepath.Join(dir, ".aws")
 	if _, err := os.Stat(path); os.IsNotExist(err) {
-		if err = os.Mkdir(path, 0600); err != nil {
+		if err = os.Mkdir(path, 0o600); err != nil {
 			return err
 		}
 	}
@@ -242,7 +241,7 @@ func (e *EKSDriver) writeAWSCredentials() error {
 	}
 	log.Printf("Writing aws credentials")
 	fileContents := fmt.Sprintf(awsAuthTemplate, awsAccessKeyID, e.ctx[awsAccessKeyID], awsSecretAccessKey, e.ctx[awsSecretAccessKey])
-	return os.WriteFile(file, []byte(fileContents), 0600)
+	return os.WriteFile(file, []byte(fileContents), 0o600)
 }
 
 func (e *EKSDriver) Cleanup(prefix string, olderThan time.Duration) error {
@@ -286,4 +285,4 @@ func (e *EKSDriver) delete() error {
 	return e.newCmd("eksctl delete cluster -v 1 --name {{.ClusterName}} --region {{.Region}} --wait --disable-nodegroup-eviction").Run()
 }
 
-var _ Driver = &EKSDriver{}
+var _ Driver = (*EKSDriver)(nil)

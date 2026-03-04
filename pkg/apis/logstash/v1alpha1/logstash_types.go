@@ -297,7 +297,7 @@ type LogstashESAssociation struct {
 	ElasticsearchCluster
 }
 
-var _ commonv1.Association = &LogstashESAssociation{}
+var _ commonv1.Association = (*LogstashESAssociation)(nil)
 
 func (lses *LogstashESAssociation) ElasticServiceAccount() (commonv1.ServiceAccountName, error) {
 	return "", nil
@@ -353,7 +353,7 @@ type LogstashMonitoringAssociation struct {
 	ref commonv1.ObjectSelector
 }
 
-var _ commonv1.Association = &LogstashMonitoringAssociation{}
+var _ commonv1.Association = (*LogstashMonitoringAssociation)(nil)
 
 func (lsmon *LogstashMonitoringAssociation) ElasticServiceAccount() (commonv1.ServiceAccountName, error) {
 	return "", nil

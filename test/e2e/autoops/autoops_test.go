@@ -18,47 +18,68 @@ import (
 )
 
 func TestAutoOpsAgentPolicy(t *testing.T) {
-
-	// only execute this test with supported AutoOps versions
 	v := version.MustParse(test.Ctx().ElasticStackVersion)
-	if v.LT(version.SupportedAutoOpsAgentVersions.Min) {
-		t.Skipf("Skipping test: Elastic Stack version %s is below minimum supported version %s",
-			test.Ctx().ElasticStackVersion, version.SupportedAutoOpsAgentVersions.Min)
+	if v.LT(version.SupportedAutoOpsAgentBasicVersions.Min) {
+		t.Skipf("Skipping test: version %s below minimum %s",
+			test.Ctx().ElasticStackVersion, version.SupportedAutoOpsAgentBasicVersions.Min)
 	}
 
-	// Use separate namespaces for ES and policy
+	es1Builder, es2Builder, policyBuilder := autoOpsBuilders(t)
+
+	before := func(k *test.K8sClient) test.StepList {
+		return test.StepList{{
+			Name: "Remove enterprise license secrets for non-enterprise scenario",
+			Test: func(t *testing.T) { test.DeleteAllEnterpriseLicenseSecrets(t, k) },
+		}}
+	}
+
+	test.Sequence(before, test.EmptySteps, es1Builder, es2Builder, policyBuilder).
+		RunSequential(t)
+}
+
+func TestAutoOpsAgentPolicyEnterprise(t *testing.T) {
+	if test.Ctx().TestLicense == "" {
+		t.Skip("Skipping enterprise AutoOps test: no enterprise test license configured")
+	}
+
+	v := version.MustParse(test.Ctx().ElasticStackVersion)
+	if v.LT(version.SupportedAutoOpsAgentEnterpriseVersions.Min) {
+		t.Skipf("Skipping test: version %s below minimum %s",
+			test.Ctx().ElasticStackVersion, version.SupportedAutoOpsAgentEnterpriseVersions.Min)
+	}
+
+	es1Builder, es2Builder, policyBuilder := autoOpsBuilders(t)
+
+	test.Sequence(nil, test.EmptySteps, es1Builder, es2Builder, test.LicenseTestBuilder(policyBuilder)).
+		RunSequential(t)
+}
+
+func autoOpsBuilders(t *testing.T) (elasticsearch.Builder, elasticsearch.Builder, autoops.Builder) {
+	t.Helper()
 	esNamespace := test.Ctx().ManagedNamespace(0)
 	policyNamespace := test.Ctx().ManagedNamespace(1)
+	mockURL := autoops.CloudConnectedAPIMockURL()
 
-	esName := "es"
-	es1Builder := elasticsearch.NewBuilderWithoutSuffix(esName).
+	es1 := elasticsearch.NewBuilderWithoutSuffix("es").
 		WithESMasterDataNodes(3, elasticsearch.DefaultResources).
 		WithNamespace(esNamespace).
 		WithVersion(test.Ctx().ElasticStackVersion).
 		WithLabel("autoops", "enabled")
 
-	// 2nd elasticsearch cluster that should be omitted from autoops based on namespace
-	es2Builder := elasticsearch.NewBuilder("ex-es").
+	es2 := elasticsearch.NewBuilder("ex-es").
 		WithESMasterDataNodes(3, elasticsearch.DefaultResources).
 		WithNamespace(policyNamespace).
 		WithVersion(test.Ctx().ElasticStackVersion).
 		WithLabel("autoops", "enabled")
 
-	// Create the policy builder with the mock URL for cloud-connected API and OTel
-	mockURL := autoops.CloudConnectedAPIMockURL()
-	policyBuilder := autoops.NewBuilder("autoops-policy").
+	policy := autoops.NewBuilder("autoops-policy").
 		WithNamespace(policyNamespace).
 		WithResourceSelector(metav1.LabelSelector{
-			MatchLabels: map[string]string{
-				"autoops": "enabled",
-			},
+			MatchLabels: map[string]string{"autoops": "enabled"},
 		}).WithNamespaceSelector(metav1.LabelSelector{
-		MatchLabels: map[string]string{
-			"kubernetes.io/metadata.name": esNamespace,
-		},
+		MatchLabels: map[string]string{"kubernetes.io/metadata.name": esNamespace},
 	}).WithCloudConnectedAPIURL(mockURL).
 		WithAutoOpsOTelURL(mockURL)
 
-	test.Sequence(nil, test.EmptySteps, es1Builder, es2Builder, policyBuilder).
-		RunSequential(t)
+	return es1, es2, policy
 }

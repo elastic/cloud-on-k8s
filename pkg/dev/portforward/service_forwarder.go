@@ -37,7 +37,7 @@ type ServiceForwarder struct {
 	podForwarderFactory ForwarderFactory
 }
 
-var _ Forwarder = &ServiceForwarder{}
+var _ Forwarder = (*ServiceForwarder)(nil)
 
 // defaultPodForwarderFactory is the default pod forwarder factory used outside of tests
 var defaultPodForwarderFactory = ForwarderFactory(func(ctx context.Context, network, addr string) (Forwarder, error) {

@@ -112,7 +112,7 @@ type fakeSecurityClient struct {
 	apiKeys                   map[string]esclient.APIKey
 }
 
-var _ esclient.SecurityClient = &fakeSecurityClient{}
+var _ esclient.SecurityClient = (*fakeSecurityClient)(nil)
 
 func (f *fakeSecurityClient) GetServiceAccountCredentials(_ context.Context, namespacedService string) (esclient.ServiceAccountCredential, error) {
 	serviceAccountCredential := f.serviceAccountCredentials[namespacedService]

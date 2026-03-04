@@ -153,4 +153,4 @@ func (m MockLicenseChecker) ValidOperatorLicenseKeyType(_ context.Context) (Oper
 	return LicenseTypeEnterprise, nil
 }
 
-var _ Checker = &MockLicenseChecker{}
+var _ Checker = (*MockLicenseChecker)(nil)

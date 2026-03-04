@@ -41,7 +41,7 @@ import (
 var (
 	fetchEvents = func(recorder *record.FakeRecorder) []string {
 		close(recorder.Events)
-		events := make([]string, 0)
+		events := make([]string, 0, len(recorder.Events))
 		for event := range recorder.Events {
 			events = append(events, event)
 		}

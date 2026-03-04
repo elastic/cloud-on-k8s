@@ -33,7 +33,7 @@ type SubjectAccessReviewer struct {
 	client kubernetes.Interface
 }
 
-var _ AccessReviewer = &SubjectAccessReviewer{}
+var _ AccessReviewer = (*SubjectAccessReviewer)(nil)
 
 func NewSubjectAccessReviewer(client kubernetes.Interface) AccessReviewer {
 	return &SubjectAccessReviewer{
@@ -110,7 +110,7 @@ func newSubjectAccessReview(
 
 type permissiveAccessReviewer struct{}
 
-var _ AccessReviewer = &permissiveAccessReviewer{}
+var _ AccessReviewer = (*permissiveAccessReviewer)(nil)
 
 func (s *permissiveAccessReviewer) AccessAllowed(_ context.Context, _ string, _ string, _ runtime.Object) (bool, error) {
 	return true, nil

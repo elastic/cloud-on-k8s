@@ -340,7 +340,7 @@ func TestReconcileAgent_OnDelete_GarbageCollectsSoftOwnedSecrets(t *testing.T) {
 			err = r.Client.List(context.Background(), &secrets)
 			require.NoError(t, err)
 
-			var remaining []types.NamespacedName
+			remaining := make([]types.NamespacedName, 0, len(secrets.Items))
 			for _, s := range secrets.Items {
 				remaining = append(remaining, types.NamespacedName{Namespace: s.Namespace, Name: s.Name})
 			}

@@ -58,9 +58,13 @@ func (c *ClustersExpectation) get(cluster types.NamespacedName) (*Expectations, 
 }
 
 func (c *ClustersExpectation) create(cluster types.NamespacedName) *Expectations {
-	expectations := NewExpectations(c.client, c.object)
 	c.lock.Lock()
 	defer c.lock.Unlock()
+	// Check again in case another goroutine created it while we were waiting for the lock.
+	if expectations, ok := c.clusters[cluster]; ok {
+		return expectations
+	}
+	expectations := NewExpectations(c.client, c.object)
 	c.clusters[cluster] = expectations
 	return expectations
 }

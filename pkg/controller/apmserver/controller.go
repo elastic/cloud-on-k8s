@@ -148,7 +148,7 @@ func addWatches(mgr manager.Manager, c controller.Controller, r *ReconcileApmSer
 	return c.Watch(source.Kind(mgr.GetCache(), &corev1.Secret{}, r.dynamicWatches.Secrets))
 }
 
-var _ reconcile.Reconciler = &ReconcileApmServer{}
+var _ reconcile.Reconciler = (*ReconcileApmServer)(nil)
 
 // ReconcileApmServer reconciles an ApmServer object
 type ReconcileApmServer struct {
@@ -176,7 +176,7 @@ func (r *ReconcileApmServer) Recorder() record.EventRecorder {
 	return r.recorder
 }
 
-var _ driver.Interface = &ReconcileApmServer{}
+var _ driver.Interface = (*ReconcileApmServer)(nil)
 
 // Reconcile reads that state of the cluster for a ApmServer object and makes changes based on the state read
 // and what is in the ApmServer.Spec

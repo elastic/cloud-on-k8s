@@ -319,6 +319,8 @@ AutoOpsRef defines a reference to a secret containing connection details for Aut
 
 
 
+
+
 % TODO add function to crd-ref-docs return anchor used in links docs-v3 does not seem to produce valid markdown anchors
 ## autoscaling.k8s.elastic.co/v1alpha1 [#autoscalingk8selasticcov1alpha1]
 

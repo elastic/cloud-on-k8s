@@ -160,7 +160,7 @@ var KibanaServiceAccountMinVersion = semver.MustParse("7.17.0")
 
 // -- associations
 
-var _ commonv1.Associated = &Kibana{}
+var _ commonv1.Associated = (*Kibana)(nil)
 
 func (k *Kibana) Associated() commonv1.Associated {
 	return k
@@ -284,7 +284,7 @@ type KibanaEsAssociation struct {
 	*Kibana
 }
 
-var _ commonv1.Association = &KibanaEsAssociation{}
+var _ commonv1.Association = (*KibanaEsAssociation)(nil)
 
 func (kbes *KibanaEsAssociation) ElasticServiceAccount() (commonv1.ServiceAccountName, error) {
 	v, err := version.Parse(kbes.Spec.Version)
@@ -346,7 +346,7 @@ type KibanaEntAssociation struct {
 	*Kibana
 }
 
-var _ commonv1.Association = &KibanaEntAssociation{}
+var _ commonv1.Association = (*KibanaEntAssociation)(nil)
 
 func (kbent *KibanaEntAssociation) ElasticServiceAccount() (commonv1.ServiceAccountName, error) {
 	return "", nil
@@ -400,7 +400,7 @@ type KbMonitoringAssociation struct {
 	ref commonv1.ObjectSelector
 }
 
-var _ commonv1.Association = &KbMonitoringAssociation{}
+var _ commonv1.Association = (*KbMonitoringAssociation)(nil)
 
 func (kbmon *KbMonitoringAssociation) ElasticServiceAccount() (commonv1.ServiceAccountName, error) {
 	return "", nil
@@ -460,7 +460,7 @@ type KibanaEPRAssociation struct {
 	*Kibana
 }
 
-var _ commonv1.Association = &KibanaEPRAssociation{}
+var _ commonv1.Association = (*KibanaEPRAssociation)(nil)
 
 func (kbepr *KibanaEPRAssociation) ElasticServiceAccount() (commonv1.ServiceAccountName, error) {
 	return "", nil

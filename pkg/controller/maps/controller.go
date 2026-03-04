@@ -115,7 +115,7 @@ func addWatches(mgr manager.Manager, c controller.Controller, r *ReconcileMapsSe
 	return c.Watch(source.Kind(mgr.GetCache(), &corev1.Secret{}, r.dynamicWatches.Secrets))
 }
 
-var _ reconcile.Reconciler = &ReconcileMapsServer{}
+var _ reconcile.Reconciler = (*ReconcileMapsServer)(nil)
 
 // ReconcileMapsServer reconciles a MapsServer object
 type ReconcileMapsServer struct {
@@ -140,7 +140,7 @@ func (r *ReconcileMapsServer) Recorder() record.EventRecorder {
 	return r.recorder
 }
 
-var _ driver.Interface = &ReconcileMapsServer{}
+var _ driver.Interface = (*ReconcileMapsServer)(nil)
 
 // Reconcile reads that state of the cluster for a MapsServer object and makes changes based on the state read and what is
 // in the MapsServer.Spec

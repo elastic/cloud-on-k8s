@@ -63,4 +63,4 @@ func (o *observed) ShutdownStatus(ctx context.Context, podName string) (NodeShut
 	return nodeShutdownStatus, err
 }
 
-var _ Interface = &observed{}
+var _ Interface = (*observed)(nil)

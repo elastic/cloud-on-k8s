@@ -434,7 +434,7 @@ func (ctx *upgradeCtx) readyToDelete(pod corev1.Pod) (bool, error) {
 }
 
 func (ctx *upgradeCtx) requestNodeRestarts(podsToRestart []corev1.Pod) error {
-	var podNames []string //nolint:prealloc
+	var podNames []string
 	for _, p := range podsToRestart {
 		if !k8s.IsPodReady(p) {
 			// There is no point in trying to shut down a Pod that is not running.

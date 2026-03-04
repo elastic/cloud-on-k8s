@@ -166,7 +166,7 @@ func mkPolicy() autoopsv1alpha1.AutoOpsAgentPolicy {
 			Namespace: "default",
 		},
 		Spec: autoopsv1alpha1.AutoOpsAgentPolicySpec{
-			Version: "9.2.1",
+			Version: "9.2.4",
 		},
 	}
 }

@@ -61,7 +61,7 @@ func (c *configurableAccessReviewer) AccessAllowed(_ context.Context, _ string, 
 	return c.defaultAllow, nil
 }
 
-var _ rbac.AccessReviewer = &configurableAccessReviewer{}
+var _ rbac.AccessReviewer = (*configurableAccessReviewer)(nil)
 
 func TestIsAutoOpsAssociationAllowed(t *testing.T) {
 	tests := []struct {

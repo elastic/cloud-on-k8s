@@ -375,7 +375,7 @@ func createValidatedHTTPCertificateTemplate(
 ) *ValidatedCertificateTemplate {
 	defaultSuffixes := strings.Join(namer.DefaultSuffixes, "-")
 	shortName := owner.Name + "-" + defaultSuffixes + "-" + string(HTTPCAType)
-	cnNameParts := []string{
+	cnNameParts := []string{ //nolint:prealloc
 		shortName,
 		owner.Namespace,
 	}

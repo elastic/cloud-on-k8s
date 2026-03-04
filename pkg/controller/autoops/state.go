@@ -5,11 +5,13 @@
 package autoops
 
 import (
+	"fmt"
 	"reflect"
 
 	corev1 "k8s.io/api/core/v1"
 
 	autoopsv1alpha1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/autoops/v1alpha1"
+	esv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/elasticsearch/v1"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/events"
 )
 
@@ -31,6 +33,9 @@ func newState(policy autoopsv1alpha1.AutoOpsAgentPolicy) *State {
 	status.Errors = 0
 	status.Ready = 0
 	status.Resources = 0
+	status.Skipped = 0
+	// Initialize Details map to avoid nil map assignment panics
+	status.Details = make(map[string]autoopsv1alpha1.AutoOpsResourceStatus)
 	return &State{
 		Recorder: events.NewRecorder(),
 		policy:   policy,
@@ -74,13 +79,6 @@ func (s *State) MarkResourceReady() *State {
 	return s
 }
 
-// MarkResourceError increases the Errors count in the status.
-func (s *State) MarkResourceError() *State {
-	s.status.Errors++
-	s.UpdateWithPhase(autoopsv1alpha1.ErrorPhase)
-	return s
-}
-
 // Apply takes the current AutoOpsAgentPolicy status, compares it to the previous status, and updates the status accordingly.
 // It returns the events to emit and an updated version of the AutoOpsAgentPolicy resource with
 // the current status applied to its status sub-resource.
@@ -94,9 +92,38 @@ func (s *State) Apply() ([]events.Event, *autoopsv1alpha1.AutoOpsAgentPolicy) {
 	return s.Events(), &s.policy
 }
 
-// CalculateFinalPhase updates the phase of the AutoOpsAgentPolicy status based on the results of the reconciliation.
+func (s *State) ResourceSkippedDueToRBAC(es esv1.Elasticsearch) {
+	s.ResourceSkipped(es, fmt.Sprintf("RBAC access denied for service account %s", s.policy.Spec.ServiceAccountName))
+}
+
+func (s *State) ResourceSkippedDueToVersion(es esv1.Elasticsearch) {
+	s.ResourceSkipped(es, fmt.Sprintf("ES cluster is in deprecated version %s", es.Spec.Version))
+}
+
+func (s *State) ResourceSkipped(es esv1.Elasticsearch, message string) {
+	s.status.Skipped++
+	s.status.Details[s.esResourceID(es)] = autoopsv1alpha1.AutoOpsResourceStatus{
+		Phase:   autoopsv1alpha1.SkippedResourcePhase,
+		Message: message,
+	}
+}
+
+func (s *State) ResourceError(es esv1.Elasticsearch, message string, err error) {
+	s.UpdateWithPhase(autoopsv1alpha1.ErrorPhase)
+	s.status.Errors++
+	s.status.Details[s.esResourceID(es)] = autoopsv1alpha1.AutoOpsResourceStatus{
+		Phase: autoopsv1alpha1.ErrorResourcePhase,
+		Error: fmt.Sprintf("%s: %s", message, err),
+	}
+}
+
+func (s *State) esResourceID(es esv1.Elasticsearch) string {
+	return fmt.Sprintf("%s/%s", es.Namespace, es.Name)
+}
+
+// Finalize updates the phase of the AutoOpsAgentPolicy status based on the results of the reconciliation and sets the status message and the ready count.
 // This method is solely responsible for applying the [autoopsv1alpha1.ApplyingChangesPhase], [autoopsv1alpha1.AutoOpsAgentsNotReadyPhase] and [autoopsv1alpha1.ReadyPhase].
-func (s *State) CalculateFinalPhase(isReconciled bool, reconciliationMessage string) {
+func (s *State) Finalize(isReconciled bool, reconciliationMessage string) {
 	switch {
 	case !isReconciled:
 		s.UpdateWithPhase(autoopsv1alpha1.ApplyingChangesPhase)
@@ -106,4 +133,6 @@ func (s *State) CalculateFinalPhase(isReconciled bool, reconciliationMessage str
 	case s.status.Ready < s.status.Resources:
 		s.UpdateWithPhase(autoopsv1alpha1.AutoOpsAgentsNotReadyPhase)
 	}
+
+	s.status.ReadyCount = fmt.Sprintf("%d/%d", s.status.Ready, s.status.Resources)
 }

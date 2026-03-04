@@ -6,13 +6,13 @@ package name
 
 import (
 	"fmt"
+	"os"
 	"strings"
 	"unicode/utf8"
 
 	"github.com/hashicorp/go-multierror"
 	"k8s.io/apimachinery/pkg/util/validation"
 
-	ulog "github.com/elastic/cloud-on-k8s/v3/pkg/utils/log"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/stringsutil"
 )
 
@@ -23,8 +23,6 @@ const (
 	// MaxSuffixLength is the max allowed suffix length that will keep a name within K8S label length restrictions.
 	MaxSuffixLength = validation.LabelValueMaxLength - MaxResourceNameLength
 )
-
-var log = ulog.Log.WithName("name")
 
 // nameLengthError is an error type for names exceeding the allowed length.
 type nameLengthError struct {
@@ -73,9 +71,9 @@ func (n Namer) WithDefaultSuffixes(defaultSuffixes ...string) Namer {
 // Suffix generates a resource name by appending the specified suffixes.
 func (n Namer) Suffix(ownerName string, suffixes ...string) string {
 	suffixedName, err := n.SafeSuffix(ownerName, suffixes...)
+	// we should never encounter an error at this point because the names should have been validated.
 	if err != nil {
-		// we should never encounter an error at this point because the names should have been validated
-		log.Error(err, "Invalid name. This could prevent the operator from functioning correctly", "name", suffixedName)
+		fmt.Fprintf(os.Stderr, "Invalid name. This could prevent the operator from functioning correctly. ownerName: %s, suffixedName: %s, error: %s\n", ownerName, suffixedName, err.Error())
 	}
 
 	return suffixedName

@@ -24,7 +24,7 @@ func NewDriver(parameters driver.Parameters) driver.Driver {
 	return &Driver{BaseDriver: driver.BaseDriver{Parameters: parameters}}
 }
 
-var _ commondriver.Interface = &Driver{}
+var _ commondriver.Interface = (*Driver)(nil)
 
 // Reconcile fulfills the Driver interface and reconciles the cluster resources.
 func (d *Driver) Reconcile(ctx context.Context) *reconciler.Results {

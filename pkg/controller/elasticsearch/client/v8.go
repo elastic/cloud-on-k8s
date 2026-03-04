@@ -66,4 +66,4 @@ func (c *clientV8) Equal(c2 Client) bool {
 	return c.baseClient.equal(&other.baseClient)
 }
 
-var _ Client = &clientV8{}
+var _ Client = (*clientV8)(nil)
