@@ -922,7 +922,7 @@ func TestUpgradePodsDeletion_Delete(t *testing.T) {
 					newTestPod("masters-2").withRoles(esv1.MasterRole, esv1.DataRole).isHealthy(true).needsUpgrade(false).isInCluster(true).withVersion("7.5.0"),
 				),
 				maxUnavailable: 1,
-				health:         client.Health{Status: esv1.ElasticsearchYellowHealth, RelocatingShards: 1},
+				health:         client.Health{Status: esv1.ElasticsearchYellowHealth},
 				shardLister: migration.NewFakeShardLister(client.Shards{
 					client.Shard{
 						Index:    "index_a",
@@ -968,7 +968,7 @@ func TestUpgradePodsDeletion_Delete(t *testing.T) {
 					newTestPod("masters-1").withRoles(esv1.MasterRole, esv1.DataRole).isHealthy(true).needsUpgrade(false).isInCluster(true).withVersion("7.5.0"),
 				),
 				maxUnavailable: 1,
-				health:         client.Health{Status: esv1.ElasticsearchYellowHealth, RelocatingShards: 1},
+				health:         client.Health{Status: esv1.ElasticsearchYellowHealth},
 				shardLister: migration.NewFakeShardLister(client.Shards{
 					// Shard on masters-0 has its only replica on masters-1, which is relocating.
 					client.Shard{
@@ -1010,7 +1010,7 @@ func TestUpgradePodsDeletion_Delete(t *testing.T) {
 					newTestPod("masters-2").withRoles(esv1.MasterRole, esv1.DataRole).isHealthy(true).needsUpgrade(false).isInCluster(true).withVersion("7.5.0"),
 				),
 				maxUnavailable: 1,
-				health:         client.Health{Status: esv1.ElasticsearchGreenHealth, RelocatingShards: 2},
+				health:         client.Health{Status: esv1.ElasticsearchGreenHealth},
 				shardLister: migration.NewFakeShardLister(client.Shards{
 					client.Shard{
 						Index:    "index_a",

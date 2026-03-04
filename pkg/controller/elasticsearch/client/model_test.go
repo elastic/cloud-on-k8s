@@ -134,34 +134,24 @@ func TestHealth_HasShardActivity(t *testing.T) {
 			want:   true,
 		},
 		{
-			name:   "relocating shards only - not considered blocking activity",
-			health: Health{RelocatingShards: 5},
-			want:   false,
-		},
-		{
-			name:   "initializing and relocating shards",
-			health: Health{InitializingShards: 1, RelocatingShards: 2},
-			want:   true,
-		},
-		{
 			name:   "all activity flags set",
-			health: Health{TimedOut: true, NumberOfInFlightFetch: 1, InitializingShards: 2, RelocatingShards: 3},
+			health: Health{TimedOut: true, NumberOfInFlightFetch: 1, InitializingShards: 2},
 			want:   true,
 		},
 		{
-			name:   "green cluster with relocating shards - not blocking",
-			health: Health{Status: esv1.ElasticsearchGreenHealth, RelocatingShards: 2},
-			want:   false,
-		},
-		{
-			name:   "yellow cluster with only relocating shards - not blocking",
-			health: Health{Status: esv1.ElasticsearchYellowHealth, RelocatingShards: 1},
+			name:   "green cluster - not blocking",
+			health: Health{Status: esv1.ElasticsearchGreenHealth},
 			want:   false,
 		},
 		{
 			name:   "yellow cluster with initializing shards - blocking",
 			health: Health{Status: esv1.ElasticsearchYellowHealth, InitializingShards: 1},
 			want:   true,
+		},
+		{
+			name:   "yellow cluster without initializing shards - not blocking",
+			health: Health{Status: esv1.ElasticsearchYellowHealth},
+			want:   false,
 		},
 	}
 	for _, tt := range tests {

@@ -36,7 +36,6 @@ type Health struct {
 	NumberOfDataNodes           int                      `json:"number_of_data_nodes"`
 	ActivePrimaryShards         int                      `json:"active_primary_shards"`
 	ActiveShards                int                      `json:"active_shards"`
-	RelocatingShards            int                      `json:"relocating_shards"`
 	InitializingShards          int                      `json:"initializing_shards"`
 	UnassignedShards            int                      `json:"unassigned_shards"`
 	DelayedUnassignedShards     int                      `json:"delayed_unassigned_shards"`
