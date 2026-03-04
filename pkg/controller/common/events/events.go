@@ -71,6 +71,20 @@ const (
 	EventActionConfiguration = "Configuration"
 	// EventActionVersionUpgrade describes the version upgrade step the controller was taking when the event was triggered
 	EventActionVersionUpgrade = "VersionUpgrade"
+	// EventActionAuthorization describes the authorization step the controller was taking when the event was triggered
+	EventActionAuthorization = "Authorization"
+	// EventActionEnrollment describes the enrollment step the controller was taking when the event was triggered
+	EventActionEnrollment = "Enrollment"
+	// EventActionPolicyRetrieval describes the policy retrieval step the controller was taking when the event was triggered
+	EventActionPolicyRetrieval = "PolicyRetrieval"
+	// EventActionAssociationConfiguration describes the association configuration step the controller was taking when the event was triggered
+	EventActionAssociationConfiguration = "AssociationConfiguration"
+	// EventActionGetExpectedConfig describes the get expected config step the controller was taking when the event was triggered
+	EventActionGetExpectedConfig = "GetExpectedConfig"
+	// EventActionElasticsearchRetrieval describes the Elasticsearch retrieval step the controller was taking when the event was triggered
+	EventActionElasticsearchRetrieval = "ElasticsearchRetrieval"
+	// EventActionAnnotateResource describes the annotation step the controller was taking when the event was triggered
+	EventActionAnnotateResource = "AnnotateResource"
 )
 
 // Event is a k8s event that can be recorded via an event recorder.

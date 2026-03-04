@@ -6,6 +6,7 @@ package association
 
 import (
 	"context"
+	"fmt"
 	"time"
 
 	corev1 "k8s.io/api/core/v1"
@@ -57,8 +58,9 @@ func CheckAndUnbind(
 			corev1.EventTypeWarning,
 			events.EventAssociationError,
 			events.EventActionAccessCheck,
-			"Association not allowed: %s/%s to %s/%s",
-			association.GetNamespace(), association.GetName(), metaObject.GetNamespace(), metaObject.GetName(),
+			"%s",
+			fmt.Sprintf("Association not allowed: %s/%s to %s/%s",
+				association.GetNamespace(), association.GetName(), metaObject.GetNamespace(), metaObject.GetName()),
 		)
 		return false, unbinder.Unbind(ctx, association)
 	}

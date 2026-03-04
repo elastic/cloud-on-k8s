@@ -51,7 +51,8 @@ func IsConfiguredIfSet(ctx context.Context, association commonv1.Association, r 
 			nil,
 			corev1.EventTypeWarning,
 			events.EventAssociationError,
-			"AssociationConfiguration",
+			events.EventActionAssociationConfiguration,
+			"%s",
 			fmt.Sprintf("Association backend for %s is not configured", association.AssociationType()),
 		)
 		ulog.FromContext(ctx).Info("Association not established: skipping association resource reconciliation",
@@ -165,7 +166,7 @@ func AllowVersion(resourceVersion version.Version, associated commonv1.Associate
 			logger.Info("Delaying version deployment since a referenced resource is not upgraded yet",
 				"version", resourceVersion, "ref_version", refVer,
 				"ref_type", assoc.AssociationType(), "ref_namespace", assocRef.Namespace, "ref_name", assocRef.NameOrSecretName())
-			recorder.Eventf(associated, nil, corev1.EventTypeWarning, events.EventReasonDelayed, events.EventActionVersionCheck,
+			recorder.Eventf(associated, nil, corev1.EventTypeWarning, events.EventReasonDelayed, events.EventActionVersionCheck, "%s",
 				fmt.Sprintf("Delaying deployment of version %s since the referenced %s is not upgraded yet", resourceVersion, assoc.AssociationType()))
 			return false, nil
 		}

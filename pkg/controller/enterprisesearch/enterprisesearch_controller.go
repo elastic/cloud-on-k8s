@@ -220,7 +220,7 @@ func (r *ReconcileEnterpriseSearch) doReconcile(ctx context.Context, ent entv1.E
 	}.ReconcileCAAndHTTPCerts(ctx)
 	if results.HasError() {
 		_, err := results.Aggregate()
-		k8s.MaybeEmitErrorEvent(r.recorder, err, &ent, events.EventReconciliationError, events.EventActionCertificateReconciliation, "Certificate reconciliation error: %v", err)
+		k8s.MaybeEmitErrorEvent(r.recorder, err, &ent, events.EventReconciliationError, events.EventActionCertificateReconciliation, fmt.Sprintf("Certificate reconciliation error: %v", err))
 		return results, status
 	}
 
@@ -307,7 +307,7 @@ func (r *ReconcileEnterpriseSearch) updateStatus(ctx context.Context, ent entv1.
 		return nil // nothing to do
 	}
 	if status.IsDegraded(ent.Status.DeploymentStatus) {
-		r.recorder.Eventf(&ent, nil, corev1.EventTypeWarning, events.EventReasonUnhealthy, events.EventActionStatusUpdate, "Enterprise Search health degraded")
+		r.recorder.Eventf(&ent, nil, corev1.EventTypeWarning, events.EventReasonUnhealthy, events.EventActionStatusUpdate, "%s", "Enterprise Search health degraded")
 	}
 	ulog.FromContext(ctx).V(1).Info("Updating status",
 		"iteration", atomic.LoadUint64(&r.iteration),

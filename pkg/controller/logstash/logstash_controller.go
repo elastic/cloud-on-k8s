@@ -6,6 +6,7 @@ package logstash
 
 import (
 	"context"
+	"fmt"
 
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -160,7 +161,7 @@ func (r *ReconcileLogstash) Reconcile(ctx context.Context, request reconcile.Req
 			logger.V(1).Info("Conflict while updating status. Requeueing", "namespace", logstash.Namespace, "ls_name", logstash.Name)
 			return results.WithRequeue().Aggregate()
 		}
-		k8s.MaybeEmitErrorEvent(r.recorder, err, logstash, events.EventReconciliationError, events.EventActionStatusUpdate, "Reconciliation error: %v", err)
+		k8s.MaybeEmitErrorEvent(r.recorder, err, logstash, events.EventReconciliationError, events.EventActionStatusUpdate, fmt.Sprintf("Reconciliation error: %v", err))
 	}
 	return results.WithError(err).Aggregate()
 }

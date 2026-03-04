@@ -140,7 +140,7 @@ func (r *ReconcileElasticsearchAutoscaler) Reconcile(ctx context.Context, reques
 	}
 	if !enabled {
 		log.Info(enterpriseFeaturesDisabledMsg)
-		r.recorder.Eventf(&esa, nil, corev1.EventTypeWarning, license.EventInvalidLicense, events.EventActionLicenseCheck, enterpriseFeaturesDisabledMsg)
+		r.recorder.Eventf(&esa, nil, corev1.EventTypeWarning, license.EventInvalidLicense, events.EventActionLicenseCheck, "%s", enterpriseFeaturesDisabledMsg)
 		_, err := r.reportAsInactive(ctx, log, esa, enterpriseFeaturesDisabledMsg)
 		// We still schedule a reconciliation in case a valid license is applied later
 		return licenseCheckRequeue, err

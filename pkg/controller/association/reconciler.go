@@ -250,7 +250,7 @@ func (r *Reconciler) reconcileAssociation(ctx context.Context, association commo
 		// external reference, update association conf to associate the unmanaged resource
 		expectedAssocConf, err := r.ExpectedConfigFromUnmanagedAssociation(association)
 		if err != nil {
-			r.recorder.Eventf(association.Associated(), nil, corev1.EventTypeWarning, events.EventAssociationError, "GetExpectedConfig", "Failed to reconcile external resource %q: %v", assocRef.NameOrSecretName(), err.Error())
+			r.recorder.Eventf(association.Associated(), nil, corev1.EventTypeWarning, events.EventAssociationError, events.EventActionGetExpectedConfig, "%s", fmt.Sprintf("Failed to reconcile external resource %q: %v", assocRef.NameOrSecretName(), err.Error()))
 			return commonv1.AssociationFailed, err
 		}
 		return r.updateAssocConf(ctx, &expectedAssocConf, association)
@@ -430,8 +430,8 @@ func (r *Reconciler) getElasticsearch(
 	var es esv1.Elasticsearch
 	err := r.Get(ctx, elasticsearchRef.NamespacedName(), &es)
 	if err != nil {
-		k8s.MaybeEmitErrorEvent(r.recorder, err, association, events.EventAssociationError, "ElasticsearchRetrieval",
-			"Failed to find referenced backend %s: %v", elasticsearchRef.NamespacedName(), err)
+		k8s.MaybeEmitErrorEvent(r.recorder, err, association, events.EventAssociationError, events.EventActionElasticsearchRetrieval,
+			fmt.Sprintf("Failed to find referenced backend %s: %v", elasticsearchRef.NamespacedName(), err))
 		if apierrors.IsNotFound(err) {
 			// ES is not found, remove any existing backend configuration and retry in a bit.
 			if err := RemoveAssociationConf(ctx, r.Client, association); err != nil && !apierrors.IsConflict(err) {
@@ -518,7 +518,8 @@ func (r *Reconciler) updateStatus(ctx context.Context, associated commonv1.Assoc
 			corev1.EventTypeNormal,
 			events.EventAssociationStatusChange,
 			events.EventActionStatusUpdate,
-			"Association status changed from [%s] to [%s]", oldStatus, newStatus)
+			"%s",
+			fmt.Sprintf("Association status changed from [%s] to [%s]", oldStatus, newStatus))
 	}
 	return nil
 }

@@ -6,6 +6,7 @@ package kibana
 
 import (
 	"context"
+	"fmt"
 	"reflect"
 	"sync/atomic"
 
@@ -203,7 +204,7 @@ func (r *ReconcileKibana) doReconcile(ctx context.Context, request reconcile.Req
 	results := driver.Reconcile(ctx, &state, kb, r.params)
 
 	result, err = results.WithError(err).Aggregate()
-	k8s.MaybeEmitErrorEvent(r.recorder, err, kb, events.EventReconciliationError, events.EventActionAggregation, "Reconciliation error: %v", err)
+	k8s.MaybeEmitErrorEvent(r.recorder, err, kb, events.EventReconciliationError, events.EventActionAggregation, fmt.Sprintf("Reconciliation error: %v", err))
 	return result, err
 }
 
@@ -229,7 +230,7 @@ func (r *ReconcileKibana) updateStatus(ctx context.Context, state State) error {
 		return nil
 	}
 	if state.Kibana.Status.DeploymentStatus.IsDegraded(current.Status.DeploymentStatus) {
-		r.recorder.Eventf(current, nil, corev1.EventTypeWarning, events.EventReasonUnhealthy, events.EventActionStatusUpdate, "Kibana health degraded")
+		r.recorder.Eventf(current, nil, corev1.EventTypeWarning, events.EventReasonUnhealthy, events.EventActionStatusUpdate, "%s", "Kibana health degraded")
 	}
 	ulog.FromContext(ctx).V(1).Info("Updating status",
 		"iteration", atomic.LoadUint64(&r.iteration),

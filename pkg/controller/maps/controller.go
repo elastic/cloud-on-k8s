@@ -196,7 +196,7 @@ func (r *ReconcileMapsServer) doReconcile(ctx context.Context, ems emsv1alpha1.E
 	if !enabled {
 		msg := "Elastic Maps Server is an enterprise feature. Enterprise features are disabled"
 		log.Info(msg, "namespace", ems.Namespace, "maps_name", ems.Name)
-		r.recorder.Eventf(&ems, nil, corev1.EventTypeWarning, events.EventReconciliationError, events.EventActionLicenseCheck, msg)
+		r.recorder.Eventf(&ems, nil, corev1.EventTypeWarning, events.EventReconciliationError, events.EventActionLicenseCheck, "%s", msg)
 		// we don't have a good way of watching for the license level to change so just requeue with a reasonably long delay
 		return results.WithRequeue(5 * time.Minute), status
 	}
@@ -237,7 +237,7 @@ func (r *ReconcileMapsServer) doReconcile(ctx context.Context, ems emsv1alpha1.E
 	}.ReconcileCAAndHTTPCerts(ctx)
 	if results.HasError() {
 		_, err := results.Aggregate()
-		k8s.MaybeEmitErrorEvent(r.recorder, err, &ems, events.EventReconciliationError, events.EventActionCertificateReconciliation, "Certificate reconciliation error: %v", err)
+		k8s.MaybeEmitErrorEvent(r.recorder, err, &ems, events.EventReconciliationError, events.EventActionCertificateReconciliation, fmt.Sprintf("Certificate reconciliation error: %v", err))
 		return results, status
 	}
 
@@ -407,7 +407,7 @@ func (r *ReconcileMapsServer) updateStatus(ctx context.Context, ems emsv1alpha1.
 		return nil // nothing to do
 	}
 	if status.IsDegraded(ems.Status.DeploymentStatus) {
-		r.recorder.Eventf(&ems, nil, corev1.EventTypeWarning, events.EventReasonUnhealthy, events.EventActionStatusUpdate, "Elastic Maps Server health degraded")
+		r.recorder.Eventf(&ems, nil, corev1.EventTypeWarning, events.EventReasonUnhealthy, events.EventActionStatusUpdate, "%s", "Elastic Maps Server health degraded")
 	}
 	ulog.FromContext(ctx).V(1).Info("Updating status",
 		"iteration", atomic.LoadUint64(&r.iteration),

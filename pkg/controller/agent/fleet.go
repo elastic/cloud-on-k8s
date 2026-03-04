@@ -248,7 +248,7 @@ func maybeReconcileFleetEnrollment(params Params, result *reconciler.Results) En
 		// we requeue if Kibana is unavailable: surface this condition to the user
 		message := "Delaying deployment of Elastic Agent in Fleet Mode as Kibana is not available yet"
 		log.Info(message)
-		params.EventRecorder.Eventf(&params.Agent, nil, corev1.EventTypeWarning, events.EventReasonDelayed, events.EventActionAccessCheck, message)
+		params.EventRecorder.Eventf(&params.Agent, nil, corev1.EventTypeWarning, events.EventReasonDelayed, events.EventActionAccessCheck, "%s", message)
 		result.WithRequeue()
 		return EnrollmentAPIKey{}
 	}
@@ -271,12 +271,12 @@ func maybeReconcileFleetEnrollment(params Params, result *reconciler.Results) En
 		message := "ECK cannot setup Fleet enrollment. Waiting for Kibana credentials. This should be a transient issue."
 		log.V(1).Info(err.Error())
 		log.Info(message)
-		params.EventRecorder.Eventf(&params.Agent, nil, corev1.EventTypeWarning, events.EventReasonDelayed, "Authorization", message)
+		params.EventRecorder.Eventf(&params.Agent, nil, corev1.EventTypeWarning, events.EventReasonDelayed, events.EventActionAuthorization, "%s", message)
 		result.WithRequeue()
 	case commonhttp.IsNotFound(err):
 		message := fmt.Sprintf("ECK cannot setup Fleet enrollment. This is likely a mis-configuration. %s", err.Error())
 		log.Info(message)
-		params.EventRecorder.Eventf(&params.Agent, nil, corev1.EventTypeWarning, events.EventReasonUnexpected, "Enrollment", message)
+		params.EventRecorder.Eventf(&params.Agent, nil, corev1.EventTypeWarning, events.EventReasonUnexpected, events.EventActionEnrollment, "%s", message)
 		result.WithRequeue()
 	case err != nil:
 		result.WithError(err)
@@ -358,7 +358,7 @@ func findPolicyID(ctx context.Context, recorder toolsevents.EventRecorder, agent
 	if agent.Spec.PolicyID != "" {
 		return agent.Spec.PolicyID, nil
 	}
-	recorder.Eventf(&agent, nil, corev1.EventTypeWarning, events.EventReasonValidation, "PolicyRetrieval", agentv1alpha1.MissingPolicyIDMessage)
+	recorder.Eventf(&agent, nil, corev1.EventTypeWarning, events.EventReasonValidation, events.EventActionPolicyRetrieval, "%s", agentv1alpha1.MissingPolicyIDMessage)
 	ulog.FromContext(ctx).Info(agentv1alpha1.MissingPolicyIDMessage)
 	if agent.Spec.FleetServerEnabled {
 		return api.defaultFleetServerPolicyID(ctx)

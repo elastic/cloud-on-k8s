@@ -25,7 +25,7 @@ func emitEventForAutoscalingPolicy(elasticsearch esv1.Elasticsearch, recorder to
 	for _, event := range status.PolicyStates {
 		switch event.Type { //nolint:exhaustive // ignore exhaustive
 		case v1alpha1.VerticalScalingLimitReached, v1alpha1.HorizontalScalingLimitReached, v1alpha1.MemoryRequired, v1alpha1.StorageRequired, v1alpha1.UnexpectedNodeStorageCapacity:
-			recorder.Eventf(&elasticsearch, nil, corev1.EventTypeWarning, string(event.Type), action, strings.Join(event.Messages, ". "))
+			recorder.Eventf(&elasticsearch, nil, corev1.EventTypeWarning, string(event.Type), action, "%s", strings.Join(event.Messages, ". "))
 		}
 	}
 }

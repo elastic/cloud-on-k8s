@@ -78,7 +78,7 @@ func (r *VersionUpgrade) Handle(ctx context.Context) error {
 		msg := "Detected version upgrade with no association to Elasticsearch, " +
 			"please toggle read-only mode manually, otherwise the new version will crash at startup."
 		log.Info(msg, "namespace", r.ent.Namespace, "ent_name", r.ent.Name)
-		r.recorder.Eventf(&r.ent, nil, corev1.EventTypeWarning, events.EventReasonUpgraded, events.EventActionVersionUpgrade, msg)
+		r.recorder.Eventf(&r.ent, nil, corev1.EventTypeWarning, events.EventReasonUpgraded, events.EventActionVersionUpgrade, "%s", msg)
 		return nil
 	}
 
@@ -92,7 +92,7 @@ func (r *VersionUpgrade) Handle(ctx context.Context) error {
 			msg := "a version upgrade is scheduled, but no Pod in the prior version is running:" +
 				"waiting for at least one Pod in the prior version to be running in order to enable read-only mode"
 			log.Info(msg, "namespace", r.ent.Namespace, "ent_name", r.ent.Name)
-			r.recorder.Eventf(&r.ent, nil, corev1.EventTypeWarning, events.EventReasonDelayed, events.EventActionVersionUpgrade, msg)
+			r.recorder.Eventf(&r.ent, nil, corev1.EventTypeWarning, events.EventReasonDelayed, events.EventActionVersionUpgrade, "%s", msg)
 			// surface this as an error, since rather unexpected, and abort reconciliation
 			return errors.New(msg)
 		}

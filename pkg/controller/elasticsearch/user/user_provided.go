@@ -217,13 +217,13 @@ func handleSecretNotFound(log logr.Logger, recorder toolsevents.EventRecorder, e
 	msg := "referenced secret not found"
 	// logging with info level since this may be expected if the secret is not in the cache yet
 	log.Info(msg, "namespace", es.Namespace, "es_name", es.Name, "secret_name", secretName)
-	recorder.Eventf(&es, nil, corev1.EventTypeWarning, events.EventReasonUnexpected, action, msg+": "+secretName)
+	recorder.Eventf(&es, nil, corev1.EventTypeWarning, events.EventReasonUnexpected, action, "%s", msg+": "+secretName)
 }
 
 func handleInvalidSecretData(log logr.Logger, recorder toolsevents.EventRecorder, es esv1.Elasticsearch, secretName string, err error, action string) {
 	msg := "invalid data in secret"
 	log.Error(err, msg, "namespace", es.Namespace, "es_name", es.Name, "secret_name", secretName)
-	recorder.Eventf(&es, nil, corev1.EventTypeWarning, events.EventReasonUnexpected, action, fmt.Sprintf("%s %s/%s: %s", msg, es.Namespace, secretName, err.Error()))
+	recorder.Eventf(&es, nil, corev1.EventTypeWarning, events.EventReasonUnexpected, action, "%s", fmt.Sprintf("%s %s/%s: %s", msg, es.Namespace, secretName, err.Error()))
 }
 func handlePotentialMisconfiguration(log logr.Logger, recorder toolsevents.EventRecorder, es esv1.Elasticsearch, secret corev1.Secret) {
 	keys := make([]string, 0, len(secret.Data))
@@ -233,5 +233,5 @@ func handlePotentialMisconfiguration(log logr.Logger, recorder toolsevents.Event
 	sort.Strings(keys)
 	msg := fmt.Sprintf("potential misconfigured custom user in secret %s/%s: found keys %s expected keys %s", secret.Namespace, secret.Name, keys, basicAuthSecretKeys)
 	log.Info(msg, "namespace", es.Namespace, "es_name", es.Name)
-	recorder.Eventf(&es, nil, corev1.EventTypeWarning, events.EventReasonUnexpected, events.EventActionConfiguration, msg)
+	recorder.Eventf(&es, nil, corev1.EventTypeWarning, events.EventReasonUnexpected, events.EventActionConfiguration, "%s", msg)
 }

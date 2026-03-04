@@ -96,7 +96,7 @@ func copyCertificateAuthority(
 			"local_namespace", source.Namespace,
 			"local_name", source.Namespace,
 		)
-		r.recorder.Eventf(source, nil, corev1.EventTypeWarning, EventReasonClusterCaCertNotFound, events.EventActionGetSecret, caCertMissingError(sourceKey))
+		r.recorder.Eventf(source, nil, corev1.EventTypeWarning, EventReasonClusterCaCertNotFound, events.EventActionGetSecret, "%s", caCertMissingError(sourceKey))
 		// CA secrets are watched, we don't need to requeue.
 		// If CA is created later it will trigger a new reconciliation.
 		return nil

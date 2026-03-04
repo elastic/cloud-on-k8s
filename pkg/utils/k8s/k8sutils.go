@@ -161,13 +161,13 @@ func GetServiceIPAddresses(svc corev1.Service) []net.IP {
 }
 
 // MaybeEmitErrorEvent emits an event if the error is report-worthy
-func MaybeEmitErrorEvent(r toolsevents.EventRecorder, err error, obj runtime.Object, reason, action, message string, args ...any) {
+func MaybeEmitErrorEvent(r toolsevents.EventRecorder, err error, obj runtime.Object, reason, action, message string) {
 	// ignore nil errors and conflict issues
 	if err == nil || apierrors.IsConflict(err) {
 		return
 	}
 
-	r.Eventf(obj, nil, corev1.EventTypeWarning, reason, action, message, args...)
+	r.Eventf(obj, nil, corev1.EventTypeWarning, reason, action, "%s", message)
 }
 
 // GetSecretEntry returns the value of the secret data for the given key, or nil.

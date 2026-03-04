@@ -6,6 +6,7 @@ package autoops
 
 import (
 	"context"
+	"fmt"
 
 	corev1 "k8s.io/api/core/v1"
 	toolsevents "k8s.io/client-go/tools/events"
@@ -61,7 +62,8 @@ func logNotAllowedAssociation(
 		corev1.EventTypeWarning,
 		events.EventAssociationError,
 		events.EventActionAccessCheck,
-		"AutoOps policy not allowed to access Elasticsearch cluster: %s/%s to %s/%s",
-		policy.Namespace, policy.Name, es.Namespace, es.Name,
+		"%s",
+		fmt.Sprintf("AutoOps policy not allowed to access Elasticsearch cluster: %s/%s to %s/%s",
+			policy.Namespace, policy.Name, es.Namespace, es.Name),
 	)
 }

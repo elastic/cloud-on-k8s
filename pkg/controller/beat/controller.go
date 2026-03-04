@@ -6,6 +6,7 @@ package beat
 
 import (
 	"context"
+	"fmt"
 
 	"go.elastic.co/apm/v2"
 	appsv1 "k8s.io/api/apps/v1"
@@ -160,7 +161,7 @@ func (r *ReconcileBeat) Reconcile(ctx context.Context, request reconcile.Request
 	}
 
 	res, err := results.Aggregate()
-	k8s.MaybeEmitErrorEvent(r.recorder, err, &beat, events.EventReconciliationError, events.EventActionAggregation, "Reconciliation error: %v", err)
+	k8s.MaybeEmitErrorEvent(r.recorder, err, &beat, events.EventReconciliationError, events.EventActionAggregation, fmt.Sprintf("Reconciliation error: %v", err))
 
 	return res, err
 }

@@ -6,6 +6,7 @@ package apmserver
 
 import (
 	"context"
+	"fmt"
 	"maps"
 	"path/filepath"
 	"reflect"
@@ -256,7 +257,7 @@ func (r *ReconcileApmServer) doReconcile(ctx context.Context, as *apmv1.ApmServe
 	}.ReconcileCAAndHTTPCerts(ctx)
 	if results.HasError() {
 		_, err := results.Aggregate()
-		k8s.MaybeEmitErrorEvent(r.recorder, err, as, events.EventReconciliationError, events.EventActionCertificateReconciliation, "Certificate reconciliation error: %v", err)
+		k8s.MaybeEmitErrorEvent(r.recorder, err, as, events.EventReconciliationError, events.EventActionCertificateReconciliation, fmt.Sprintf("Certificate reconciliation error: %v", err))
 		return results, state
 	}
 
@@ -279,14 +280,14 @@ func (r *ReconcileApmServer) doReconcile(ctx context.Context, as *apmv1.ApmServe
 			log.V(1).Info("Conflict while updating status")
 			return results.WithRequeue(), state
 		}
-		k8s.MaybeEmitErrorEvent(r.recorder, err, as, events.EventReconciliationError, "DeploymentReconciliation", "Deployment reconciliation error: %v", err)
+		k8s.MaybeEmitErrorEvent(r.recorder, err, as, events.EventReconciliationError, "DeploymentReconciliation", fmt.Sprintf("Deployment reconciliation error: %v", err))
 		return results.WithError(tracing.CaptureError(ctx, err)), state
 	}
 
 	state.UpdateApmServerExternalService(*svc)
 
 	_, err = results.WithError(err).Aggregate()
-	k8s.MaybeEmitErrorEvent(r.recorder, err, as, events.EventReconciliationError, events.EventActionAggregation, "Reconciliation error: %v", err)
+	k8s.MaybeEmitErrorEvent(r.recorder, err, as, events.EventReconciliationError, events.EventActionAggregation, fmt.Sprintf("Reconciliation error: %v", err))
 	return results, state
 }
 
@@ -355,7 +356,7 @@ func (r *ReconcileApmServer) updateStatus(ctx context.Context, state State) erro
 		return nil
 	}
 	if state.ApmServer.Status.IsDegraded(original.Status.DeploymentStatus) {
-		r.recorder.Eventf(original, nil, corev1.EventTypeWarning, events.EventReasonUnhealthy, events.EventActionStatusUpdate, "Apm Server health degraded")
+		r.recorder.Eventf(original, nil, corev1.EventTypeWarning, events.EventReasonUnhealthy, events.EventActionStatusUpdate, "%s", "Apm Server health degraded")
 	}
 	log.V(1).Info("Updating status",
 		"iteration", atomic.LoadUint64(&r.iteration),

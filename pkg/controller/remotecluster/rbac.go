@@ -6,6 +6,7 @@ package remotecluster
 
 import (
 	"context"
+	"fmt"
 
 	corev1 "k8s.io/api/core/v1"
 	toolsevents "k8s.io/client-go/tools/events"
@@ -56,7 +57,8 @@ func logNotAllowedAssociation(ctx context.Context, localEs, remoteEs *esv1.Elast
 		corev1.EventTypeWarning,
 		events.EventAssociationError,
 		"RemoteClusterAssociation",
-		"Remote cluster association not allowed: %s/%s to %s/%s",
-		localEs.Namespace, localEs.Name, remoteEs.Namespace, remoteEs.Name,
+		"%s",
+		fmt.Sprintf("Remote cluster association not allowed: %s/%s to %s/%s",
+			localEs.Namespace, localEs.Name, remoteEs.Namespace, remoteEs.Name),
 	)
 }
