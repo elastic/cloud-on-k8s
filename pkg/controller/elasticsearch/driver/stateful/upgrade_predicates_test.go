@@ -881,29 +881,23 @@ func TestUpgradePodsDeletion_Delete(t *testing.T) {
 			wantShardsAllocationDisabled: true,
 		},
 		{
-			name: "Do not allow deletion if yellow and primary has only initializing replica (not yet in-sync)",
+			name: "Do not allow deletion if yellow if a shard is relocating",
 			fields: fields{
 				esVersion: "7.5.0",
 				upgradeTestPods: newUpgradeTestPods(
 					newTestPod("masters-0").withRoles(esv1.MasterRole, esv1.DataRole).isHealthy(true).needsUpgrade(true).isInCluster(true).withVersion("7.4.0"),
-					newTestPod("masters-1").withRoles(esv1.MasterRole, esv1.DataRole).isHealthy(true).needsUpgrade(false).isInCluster(true).withVersion("7.5.0"),
+					newTestPod("masters-1").withRoles(esv1.MasterRole, esv1.DataRole).isHealthy(true).needsUpgrade(true).isInCluster(true).withVersion("7.4.0"),
+					newTestPod("masters-2").withRoles(esv1.MasterRole, esv1.DataRole).isHealthy(true).needsUpgrade(false).isInCluster(true).withVersion("7.5.0"),
 				),
 				maxUnavailable: 1,
-				health:         client.Health{Status: esv1.ElasticsearchYellowHealth},
+				health:         client.Health{Status: esv1.ElasticsearchYellowHealth, RelocatingShards: 1},
 				shardLister: migration.NewFakeShardLister(client.Shards{
 					client.Shard{
 						Index:    "index_a",
 						Shard:    "0",
-						State:    "STARTED",
-						NodeName: "masters-0",
+						State:    "RELOCATING",
+						NodeName: "masters-2",
 						Type:     "p",
-					},
-					client.Shard{
-						Index:    "index_a",
-						Shard:    "0",
-						State:    "INITIALIZING",
-						NodeName: "masters-1",
-						Type:     "r",
 					},
 				}),
 				podFilter: nothing,
@@ -913,7 +907,7 @@ func TestUpgradePodsDeletion_Delete(t *testing.T) {
 			wantShardsAllocationDisabled: false,
 		},
 		{
-			name: "Allow deletion if yellow and primary has a relocating replica (relocating means in-sync)",
+			name: "Allow deletion if green even if shards are relocating (early return for green)",
 			fields: fields{
 				esVersion: "7.5.0",
 				upgradeTestPods: newUpgradeTestPods(
@@ -922,127 +916,21 @@ func TestUpgradePodsDeletion_Delete(t *testing.T) {
 					newTestPod("masters-2").withRoles(esv1.MasterRole, esv1.DataRole).isHealthy(true).needsUpgrade(false).isInCluster(true).withVersion("7.5.0"),
 				),
 				maxUnavailable: 1,
-				health:         client.Health{Status: esv1.ElasticsearchYellowHealth},
+				// GREEN cluster - should skip per-shard checks and allow deletion
+				health: client.Health{Status: esv1.ElasticsearchGreenHealth, RelocatingShards: 1},
 				shardLister: migration.NewFakeShardLister(client.Shards{
-					client.Shard{
-						Index:    "index_a",
-						Shard:    "0",
-						State:    "STARTED",
-						NodeName: "masters-0",
-						Type:     "p",
-					},
+					// Same shard setup as yellow test above - but with GREEN status, deletion should be allowed
 					client.Shard{
 						Index:    "index_a",
 						Shard:    "0",
 						State:    "RELOCATING",
-						NodeName: "masters-1",
-						Type:     "r",
-					},
-					client.Shard{
-						Index:    "index_b",
-						Shard:    "0",
-						State:    "STARTED",
-						NodeName: "masters-1",
-						Type:     "p",
-					},
-					client.Shard{
-						Index:    "index_b",
-						Shard:    "0",
-						State:    "STARTED",
 						NodeName: "masters-2",
-						Type:     "r",
-					},
-				}),
-				podFilter: nothing,
-			},
-			deleted:                      []string{"masters-1"},
-			wantErr:                      false,
-			wantShardsAllocationDisabled: true,
-		},
-		{
-			name: "Allow deletion if yellow when only replica is relocating",
-			fields: fields{
-				esVersion: "7.5.0",
-				upgradeTestPods: newUpgradeTestPods(
-					newTestPod("masters-0").withRoles(esv1.MasterRole, esv1.DataRole).isHealthy(true).needsUpgrade(true).isInCluster(true).withVersion("7.4.0"),
-					newTestPod("masters-1").withRoles(esv1.MasterRole, esv1.DataRole).isHealthy(true).needsUpgrade(false).isInCluster(true).withVersion("7.5.0"),
-				),
-				maxUnavailable: 1,
-				health:         client.Health{Status: esv1.ElasticsearchYellowHealth},
-				shardLister: migration.NewFakeShardLister(client.Shards{
-					// Shard on masters-0 has its only replica on masters-1, which is relocating.
-					client.Shard{
-						Index:    "index_a",
-						Shard:    "0",
-						State:    "STARTED",
-						NodeName: "masters-0",
-						Type:     "p",
-					},
-					client.Shard{
-						Index:    "index_a",
-						Shard:    "0",
-						State:    "RELOCATING",
-						NodeName: "masters-1",
-						Type:     "r",
-					},
-					// index_b has no replica, making the cluster YELLOW.
-					client.Shard{
-						Index:    "index_b",
-						Shard:    "0",
-						State:    "STARTED",
-						NodeName: "masters-1",
 						Type:     "p",
 					},
 				}),
 				podFilter: nothing,
 			},
-			deleted:                      []string{"masters-0"},
-			wantErr:                      false,
-			wantShardsAllocationDisabled: true,
-		},
-		{
-			name: "Allow deletion if green even if shards are relocating",
-			fields: fields{
-				esVersion: "7.5.0",
-				upgradeTestPods: newUpgradeTestPods(
-					newTestPod("masters-0").withRoles(esv1.MasterRole, esv1.DataRole).isHealthy(true).needsUpgrade(true).isInCluster(true).withVersion("7.4.0"),
-					newTestPod("masters-1").withRoles(esv1.MasterRole, esv1.DataRole).isHealthy(true).needsUpgrade(true).isInCluster(true).withVersion("7.4.0"),
-					newTestPod("masters-2").withRoles(esv1.MasterRole, esv1.DataRole).isHealthy(true).needsUpgrade(false).isInCluster(true).withVersion("7.5.0"),
-				),
-				maxUnavailable: 1,
-				health:         client.Health{Status: esv1.ElasticsearchGreenHealth},
-				shardLister: migration.NewFakeShardLister(client.Shards{
-					client.Shard{
-						Index:    "index_a",
-						Shard:    "0",
-						State:    "STARTED",
-						NodeName: "masters-0",
-						Type:     "p",
-					},
-					client.Shard{
-						Index:    "index_a",
-						Shard:    "0",
-						State:    "RELOCATING",
-						NodeName: "masters-1",
-						Type:     "r",
-					},
-					client.Shard{
-						Index:    "index_b",
-						Shard:    "0",
-						State:    "RELOCATING",
-						NodeName: "masters-0",
-						Type:     "p",
-					},
-					client.Shard{
-						Index:    "index_b",
-						Shard:    "0",
-						State:    "STARTED",
-						NodeName: "masters-2",
-						Type:     "r",
-					},
-				}),
-				podFilter: nothing,
-			},
+			// With GREEN status, the require_started_replica predicate returns early and allows deletion
 			deleted:                      []string{"masters-1"},
 			wantErr:                      false,
 			wantShardsAllocationDisabled: true,
