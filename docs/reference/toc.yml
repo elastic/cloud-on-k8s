@@ -2,9 +2,9 @@ toc:
   - file: index.md
   - file: api-docs.md
   - folder: api-reference
+    hidden: main.md
     children:
       - file: index.md
-      - file: main.md
       - file: 3_3_1.md
       - file: 3_3_0.md
       - file: 3_2_0.md
@@ -13,9 +13,9 @@ toc:
     exclude:
       - main.md
   - folder: third-party-dependencies
+    hidden: main.md
     children:
       - file: index.md
-      - file: main.md
       - file: 3_3_1.md
       - file: 3_3_0.md
       - file: 3_2_0.md
