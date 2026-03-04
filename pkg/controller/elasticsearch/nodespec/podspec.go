@@ -30,7 +30,6 @@ import (
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/network"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/securitycontext"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/settings"
-	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/sset"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/stackmon"
 	esvolume "github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/volume"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/k8s"
@@ -64,6 +63,7 @@ func BuildPodTemplateSpec(
 	setDefaultSecurityContext bool,
 	policyConfig PolicyConfig,
 	meta metadata.Metadata,
+	podsRestartTriggerAnnotation string,
 ) (corev1.PodTemplateSpec, error) {
 	ver, err := version.Parse(es.Spec.Version)
 	if err != nil {
@@ -108,12 +108,7 @@ func BuildPodTemplateSpec(
 	if err := client.Get(context.Background(), types.NamespacedName{Namespace: es.Namespace, Name: esv1.ScriptsConfigMap(es.Name)}, esScripts); err != nil {
 		return corev1.PodTemplateSpec{}, err
 	}
-	// we retrieve the pods to check the previous restart trigger annotation.
-	pods, err := sset.GetActualPodsForCluster(client, es)
-	if err != nil {
-		return corev1.PodTemplateSpec{}, err
-	}
-	annotations := buildAnnotations(es, cfg, keystoreResources, getScriptsConfigMapContent(esScripts), policyConfig.PolicyAnnotations, pods)
+	annotations := buildAnnotations(es, cfg, keystoreResources, getScriptsConfigMapContent(esScripts), policyConfig.PolicyAnnotations, podsRestartTriggerAnnotation)
 
 	// Attempt to detect if the default data directory is mounted in a volume.
 	// If not, it could be a bug, a misconfiguration, or a custom storage configuration that requires the user to
@@ -207,7 +202,7 @@ func buildAnnotations(
 	keystoreResources *keystore.Resources,
 	scriptsContent string,
 	policyAnnotations map[string]string,
-	currentPods []corev1.Pod,
+	podsRestartTriggerAnnotation string,
 ) map[string]string {
 	// start from our defaults
 	annotations := map[string]string{
@@ -239,12 +234,8 @@ func buildAnnotations(
 	if restartTrigger == "" {
 		// if restart annotation is missing but it was previously present on pods,
 		// keep the old one, to avoid restarting when the annotation is deleted by user.
-		for _, pod := range currentPods {
-			// we intentionally use the first non-empty value to avoid triggering another restart when the annotation is cleared.
-			if v, ok := pod.Annotations[esv1.RestartTriggerAnnotation]; ok && v != "" {
-				restartTrigger = v
-				break
-			}
+		if podsRestartTriggerAnnotation != "" {
+			restartTrigger = podsRestartTriggerAnnotation
 		}
 	}
 	if restartTrigger != "" {

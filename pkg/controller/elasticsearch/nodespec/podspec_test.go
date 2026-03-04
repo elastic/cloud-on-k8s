@@ -235,7 +235,7 @@ func TestBuildPodTemplateSpecWithDefaultSecurityContext(t *testing.T) {
 			require.NoError(t, err)
 
 			client := k8s.NewFakeClient(&corev1.ConfigMap{ObjectMeta: metav1.ObjectMeta{Namespace: es.Namespace, Name: esv1.ScriptsConfigMap(es.Name)}})
-			actual, err := BuildPodTemplateSpec(context.Background(), client, es, es.Spec.NodeSets[0], cfg, nil, tt.setDefaultFSGroup, PolicyConfig{}, metadata.Metadata{})
+			actual, err := BuildPodTemplateSpec(context.Background(), client, es, es.Spec.NodeSets[0], cfg, nil, tt.setDefaultFSGroup, PolicyConfig{}, metadata.Metadata{}, "")
 			require.NoError(t, err)
 			require.Equal(t, tt.wantSecurityContext, actual.Spec.SecurityContext)
 		})
@@ -317,7 +317,7 @@ func TestBuildPodTemplateSpec(t *testing.T) {
 			cfg, err := settings.NewMergedESConfig(es.Name, ver, corev1.IPv4Protocol, es.Spec.HTTP, *nodeSet.Config, tt.args.policyConfig.ElasticsearchConfig, false, false)
 			require.NoError(t, err)
 
-			actual, err := BuildPodTemplateSpec(context.Background(), tt.args.client, es, es.Spec.NodeSets[0], cfg, tt.args.keystoreResources, tt.args.setDefaultSecurityContext, tt.args.policyConfig, metadata.Metadata{})
+			actual, err := BuildPodTemplateSpec(context.Background(), tt.args.client, es, es.Spec.NodeSets[0], cfg, tt.args.keystoreResources, tt.args.setDefaultSecurityContext, tt.args.policyConfig, metadata.Metadata{}, "")
 			if (err != nil) != tt.wantErr {
 				t.Errorf("BuildPodTemplateSpec wantErr %v got %v", tt.wantErr, err)
 			}
@@ -332,13 +332,13 @@ func TestBuildPodTemplateSpec(t *testing.T) {
 
 func Test_buildAnnotations(t *testing.T) {
 	type args struct {
-		cfg                    map[string]any
-		esAnnotations          map[string]string
-		keystoreResources      *keystore.Resources
-		scriptsContent         string
-		policyAnnotations      map[string]string
-		transportCertsDisabled bool
-		currentPods            []corev1.Pod
+		cfg                          map[string]any
+		esAnnotations                map[string]string
+		keystoreResources            *keystore.Resources
+		scriptsContent               string
+		policyAnnotations            map[string]string
+		transportCertsDisabled       bool
+		podsRestartTriggerAnnotation string
 	}
 	tests := []struct {
 		name                   string
@@ -469,14 +469,8 @@ func Test_buildAnnotations(t *testing.T) {
 		{
 			name: "restart-trigger preserved from currentPods when missing on ES",
 			args: args{
-				esAnnotations: map[string]string{},
-				currentPods: []corev1.Pod{
-					{
-						ObjectMeta: metav1.ObjectMeta{
-							Annotations: map[string]string{esv1.RestartTriggerAnnotation: "2026-01-14T12:00:00Z"},
-						},
-					},
-				},
+				esAnnotations:                map[string]string{},
+				podsRestartTriggerAnnotation: "2026-01-14T12:00:00Z",
 			},
 			expectedAnnotations: map[string]string{
 				esv1.RestartTriggerAnnotation: "2026-01-14T12:00:00Z",
@@ -485,14 +479,8 @@ func Test_buildAnnotations(t *testing.T) {
 		{
 			name: "restart-trigger preserved from currentPods when empty on ES",
 			args: args{
-				esAnnotations: map[string]string{esv1.RestartTriggerAnnotation: ""},
-				currentPods: []corev1.Pod{
-					{
-						ObjectMeta: metav1.ObjectMeta{
-							Annotations: map[string]string{esv1.RestartTriggerAnnotation: "preserved-from-pod"},
-						},
-					},
-				},
+				esAnnotations:                map[string]string{esv1.RestartTriggerAnnotation: ""},
+				podsRestartTriggerAnnotation: "preserved-from-pod",
 			},
 			expectedAnnotations: map[string]string{
 				esv1.RestartTriggerAnnotation: "preserved-from-pod",
@@ -501,14 +489,8 @@ func Test_buildAnnotations(t *testing.T) {
 		{
 			name: "restart-trigger from ES takes precedence over currentPods",
 			args: args{
-				esAnnotations: map[string]string{esv1.RestartTriggerAnnotation: "from-es"},
-				currentPods: []corev1.Pod{
-					{
-						ObjectMeta: metav1.ObjectMeta{
-							Annotations: map[string]string{esv1.RestartTriggerAnnotation: "from-pod"},
-						},
-					},
-				},
+				esAnnotations:                map[string]string{esv1.RestartTriggerAnnotation: "from-es"},
+				podsRestartTriggerAnnotation: "from-pod",
 			},
 			expectedAnnotations: map[string]string{
 				esv1.RestartTriggerAnnotation: "from-es",
@@ -527,7 +509,7 @@ func Test_buildAnnotations(t *testing.T) {
 			require.NoError(t, err)
 			cfg, err := settings.NewMergedESConfig(es.Name, ver, corev1.IPv4Protocol, es.Spec.HTTP, *es.Spec.NodeSets[0].Config, nil, false, false)
 			require.NoError(t, err)
-			got := buildAnnotations(es, cfg, tt.args.keystoreResources, tt.args.scriptsContent, tt.args.policyAnnotations, tt.args.currentPods)
+			got := buildAnnotations(es, cfg, tt.args.keystoreResources, tt.args.scriptsContent, tt.args.policyAnnotations, tt.args.podsRestartTriggerAnnotation)
 
 			for expectedAnnotation, expectedValue := range tt.expectedAnnotations {
 				actualValue, exists := got[expectedAnnotation]
@@ -629,7 +611,7 @@ func Test_enableLog4JFormatMsgNoLookups(t *testing.T) {
 			cfg, err := settings.NewMergedESConfig(sampleES.Name, ver, corev1.IPv4Protocol, sampleES.Spec.HTTP, *sampleES.Spec.NodeSets[0].Config, nil, false, false)
 			require.NoError(t, err)
 			client := k8s.NewFakeClient(&corev1.ConfigMap{ObjectMeta: metav1.ObjectMeta{Namespace: sampleES.Namespace, Name: esv1.ScriptsConfigMap(sampleES.Name)}})
-			actual, err := BuildPodTemplateSpec(context.Background(), client, sampleES, sampleES.Spec.NodeSets[0], cfg, nil, false, PolicyConfig{}, metadata.Metadata{})
+			actual, err := BuildPodTemplateSpec(context.Background(), client, sampleES, sampleES.Spec.NodeSets[0], cfg, nil, false, PolicyConfig{}, metadata.Metadata{}, "")
 			require.NoError(t, err)
 
 			env := actual.Spec.Containers[1].Env
