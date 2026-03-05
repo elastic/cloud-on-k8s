@@ -104,6 +104,7 @@ func ensureTransportCertificatesSecretContentsForPod(
 // - certificate is invalid or expired
 // - certificate has no SAN extra extension
 // - certificate SAN and IP does not match pod SAN and IP
+// - CA certificate in the chain does not match the current CA
 func shouldIssueNewCertificate(
 	ctx context.Context,
 	es esv1.Elasticsearch,
@@ -123,8 +124,16 @@ func shouldIssueNewCertificate(
 		return true
 	}
 
-	cert := extractTransportCert(ctx, secret, pod, certCommonName)
+	cert, caCertInChain := extractTransportCertAndCA(ctx, secret, pod, certCommonName)
 	if cert == nil {
+		return true
+	}
+
+	if !caCertInChain.Equal(ca.Cert) {
+		log.Info("CA certificate in chain is missing or does not match current CA, should issue new certificate",
+			"namespace", pod.Namespace,
+			"pod_name", pod.Name,
+		)
 		return true
 	}
 
@@ -194,39 +203,46 @@ func shouldIssueNewCertificate(
 	return false
 }
 
-// extractTransportCert extracts the transport certificate for the pod with the commonName from the Secret
-func extractTransportCert(ctx context.Context, secret corev1.Secret, pod corev1.Pod, commonName string) *x509.Certificate {
+// extractTransportCertAndCA extracts the transport certificate and CA certificate for the pod with the commonName from the Secret
+func extractTransportCertAndCA(ctx context.Context, secret corev1.Secret, pod corev1.Pod, commonName string) (*x509.Certificate, *x509.Certificate) {
 	log := ulog.FromContext(ctx)
 	certData, ok := secret.Data[PodCertFileName(pod.Name)]
 	if !ok {
 		log.Info("No tls certificate found in secret",
 			"namespace", pod.Namespace, "pod_name", pod.Name)
-		return nil
+		return nil, nil
 	}
 
 	certs, err := certificates.ParsePEMCerts(certData)
 	if err != nil {
 		log.Error(err, "Invalid certificate data found",
 			"namespace", pod.Namespace, "pod_name", pod.Name)
-		return nil
+		return nil, nil
 	}
 
-	// look for the certificate based on the CommonName
+	var leafCert, caCert *x509.Certificate
 	names := make([]string, 0, len(certs))
 	for _, c := range certs {
-		if c.Subject.CommonName == commonName {
-			return c
+		switch {
+		case leafCert != nil && caCert != nil:
+			return leafCert, caCert
+		case leafCert == nil && c.Subject.CommonName == commonName:
+			leafCert = c
+		case caCert == nil && c.IsCA:
+			caCert = c
 		}
 		names = append(names, c.Subject.CommonName)
 	}
 
-	log.Info(
-		"Did not find a certificate with the expected common name",
-		"namespace", pod.Namespace,
-		"pod_name", pod.Name,
-		"expected_name", commonName,
-		"actual_name", names,
-	)
+	if leafCert == nil {
+		log.Info(
+			"Did not find a certificate with the expected common name",
+			"namespace", pod.Namespace,
+			"pod_name", pod.Name,
+			"expected_name", commonName,
+			"actual_name", names,
+		)
+	}
 
-	return nil
+	return leafCert, caCert
 }

@@ -277,10 +277,10 @@ func TestReconcileInternalHTTPCerts(t *testing.T) {
 		wantErr bool
 	}{
 		{
-			name: "should update CA in es-http-certs-public",
+			name: "should reissue certificate when CA rotates with same private key",
 			args: args{
 				initialObjects: []client.Object{
-					// es-http-ca-internal uses a new CA
+					// es-http-ca-internal uses a new CA (rotated with same private key)
 					&corev1.Secret{
 						ObjectMeta: metav1.ObjectMeta{
 							Name:      testES.Name + "-es-http-ca-internal",
@@ -291,7 +291,7 @@ func TestReconcileInternalHTTPCerts(t *testing.T) {
 							"tls.crt": EncodePEMCert(testCA2.Cert.Raw), // new CA
 						},
 					},
-					// es-http-certs-internal holds the old CA
+					// es-http-certs-internal holds cert signed by old CA
 					&corev1.Secret{
 						ObjectMeta: metav1.ObjectMeta{
 							Name:      testES.Name + "-es-http-certs-internal",
@@ -299,21 +299,37 @@ func TestReconcileInternalHTTPCerts(t *testing.T) {
 						},
 						Data: map[string][]byte{
 							"tls.key": testPrivateKey,
-							"tls.crt": pemTLS, // PEM TLS with the OLD CA
+							"tls.crt": pemTLS, // PEM TLS with the OLD CA in chain
 						},
 					},
 				},
 				es:       testES,
-				ca:       testCA2, // es-http-certs-internal should be updated with the new CA
+				ca:       testCA2, // new CA - certificate should be reissued
 				services: []corev1.Service{testSvc},
 			},
 			want: func(t *testing.T, c k8s.Client, cs *CertificatesSecret) {
 				t.Helper()
 				assert.NotNil(t, cs)
 				if cs != nil {
+					// Private key should remain the same
 					assert.Equal(t, testPrivateKey, cs.Data["tls.key"], "Private key should not have been updated")
-					assert.Equal(t, EncodePEMCert(cert, testCA2.Cert.Raw), cs.Data["tls.crt"], "Unexpected tls.crt content in *-es-http-certs-public")
+					// CA certificate should be the new CA
 					assert.Equal(t, EncodePEMCert(testCA2.Cert.Raw), cs.Data["ca.crt"], "Unexpected CA certificate in *-es-http-certs-public")
+					// Certificate should have been reissued (new cert with new CA in chain)
+					// We can't assert exact content since it's newly generated, but we can verify
+					// the certificate chain contains the new CA
+					certs, err := ParsePEMCerts(cs.Data["tls.crt"])
+					assert.NoError(t, err)
+					assert.GreaterOrEqual(t, len(certs), 1, "Should have at least one certificate")
+					// Find the CA in the chain
+					var foundCA bool
+					for _, c := range certs {
+						if c.IsCA && c.Equal(testCA2.Cert) {
+							foundCA = true
+							break
+						}
+					}
+					assert.True(t, foundCA, "New CA should be in the certificate chain")
 				}
 			},
 		},

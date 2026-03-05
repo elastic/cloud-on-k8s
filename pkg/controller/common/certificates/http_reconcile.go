@@ -281,6 +281,7 @@ func ensureInternalSelfSignedCertificateSecretContents(
 //   - certificate has the wrong format
 //   - certificate is invalid according to the CA or expired
 //   - certificate SAN and IP does not match the expected ones
+//   - CA certificate in the chain does not match the current CA
 func getHTTPCertificate(
 	ctx context.Context,
 	owner types.NamespacedName,
@@ -298,8 +299,6 @@ func getHTTPCertificate(
 		owner, namer, tls, controllerSANs, svcs, &x509.CertificateRequest{}, certReconcileBefore,
 	)
 
-	var certificate *x509.Certificate
-
 	certData, ok := secret.Data[CertFileName]
 	if !ok {
 		return nil
@@ -310,15 +309,28 @@ func getHTTPCertificate(
 		return nil
 	}
 
-	// look for the certificate based on the CommonName
+	var certificate, caCertInChain *x509.Certificate
+	// look for the certificate based on the CommonName and extract the CA from the chain
 	for _, c := range certs {
-		if c.Subject.CommonName == validatedTemplate.Subject.CommonName {
+		if certificate == nil && c.Subject.CommonName == validatedTemplate.Subject.CommonName {
 			certificate = c
+		} else if caCertInChain == nil && c.IsCA {
+			caCertInChain = c
+		}
+		if certificate != nil && caCertInChain != nil {
 			break
 		}
 	}
 
 	if certificate == nil {
+		return nil
+	}
+
+	if !caCertInChain.Equal(ca.Cert) {
+		log.Info("CA certificate in chain is missing or does not match current CA, should issue new certificate",
+			"namespace", secret.Namespace,
+			"secret_name", secret.Name,
+		)
 		return nil
 	}
 

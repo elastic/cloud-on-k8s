@@ -6,6 +6,10 @@ package transport
 
 import (
 	"context"
+	cryptorand "crypto/rand"
+	"crypto/rsa"
+	"crypto/x509"
+	"crypto/x509/pkix"
 	"testing"
 	"time"
 
@@ -105,6 +109,79 @@ func Test_shouldIssueNewCertificate(t *testing.T) {
 			}
 		})
 	}
+}
+
+func Test_shouldIssueNewCertificate_WhenCARotatedWithSamePrivateKey(t *testing.T) {
+	// This test verifies that when the CA is renewed using the same private key,
+	// certificates signed by the old CA are correctly detected as needing reissuance.
+	// Go's x509.Verify() alone would pass because both CAs share the same key pair,
+	// but we now also check that the CA certificate in the chain matches the current CA.
+
+	// Create the original CA
+	originalCA, err := certificates.NewSelfSignedCA(certificates.CABuilderOptions{
+		Subject:    pkix.Name{CommonName: "test-ca", OrganizationalUnit: []string{"test"}},
+		PrivateKey: testRSAPrivateKey,
+	})
+	require.NoError(t, err)
+
+	// Create a pod certificate signed by the original CA
+	podPrivateKey, err := rsa.GenerateKey(cryptorand.Reader, 2048)
+	require.NoError(t, err)
+
+	podCSRBytes, err := x509.CreateCertificateRequest(cryptorand.Reader, &x509.CertificateRequest{}, podPrivateKey)
+	require.NoError(t, err)
+	podCSR, err := x509.ParseCertificateRequest(podCSRBytes)
+	require.NoError(t, err)
+
+	podCertTemplate, err := createValidatedCertificateTemplate(testPod, testES, podCSR, certificates.DefaultCertValidity)
+	require.NoError(t, err)
+
+	podCertData, err := originalCA.CreateCertificate(*podCertTemplate)
+	require.NoError(t, err)
+
+	// The pod's tls.crt contains both the leaf cert AND the CA cert (chain)
+	podCertWithChain := certificates.EncodePEMCert(podCertData, originalCA.Cert.Raw)
+
+	// Now simulate CA rotation: create a NEW CA with the SAME private key
+	// This is what ECK does when the CA is expiring
+	rotatedCA, err := certificates.NewSelfSignedCA(certificates.CABuilderOptions{
+		Subject:    pkix.Name{CommonName: "test-ca", OrganizationalUnit: []string{"test"}},
+		PrivateKey: testRSAPrivateKey, // Same private key!
+	})
+	require.NoError(t, err)
+
+	// Verify the CAs have the same public key but different certificates
+	require.Equal(t, originalCA.Cert.PublicKey, rotatedCA.Cert.PublicKey, "CAs should have same public key")
+	require.NotEqual(t, originalCA.Cert.Raw, rotatedCA.Cert.Raw, "CA certificates should be different")
+	require.NotEqual(t, originalCA.Cert.SerialNumber, rotatedCA.Cert.SerialNumber, "CA serial numbers should be different")
+
+	secret := corev1.Secret{
+		Data: map[string][]byte{
+			PodCertFileName(testPod.Name): podCertWithChain,
+			PodKeyFileName(testPod.Name):  mustEncodePEMPrivateKey(t, podPrivateKey),
+		},
+	}
+
+	// shouldIssueNewCertificate should detect that the CA in the chain doesn't match
+	// the current CA and trigger reissuance
+	result := shouldIssueNewCertificate(
+		context.Background(),
+		testES,
+		secret,
+		testPod,
+		podPrivateKey,
+		rotatedCA, // Using the ROTATED CA
+		certificates.DefaultRotateBefore,
+	)
+
+	assert.True(t, result, "Should issue new certificate when CA has rotated, even if same key")
+}
+
+func mustEncodePEMPrivateKey(t *testing.T, key *rsa.PrivateKey) []byte {
+	t.Helper()
+	data, err := certificates.EncodePEMPrivateKey(key)
+	require.NoError(t, err)
+	return data
 }
 
 func Test_ensureTransportCertificatesSecretContentsForPod(t *testing.T) {
