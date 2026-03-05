@@ -170,8 +170,13 @@ func Test_checkIfVersionDeprecated(t *testing.T) {
 		want    string
 	}{
 		{
-			name:    "not deprecated",
-			version: "7.17.0",
+			name:    "not deprecated - greater than max deprecated version",
+			version: "8.0.1",
+			want:    "",
+		},
+		{
+			name:    "not deprecated - equal to max deprecated version",
+			version: "8.0.0",
 			want:    "",
 		},
 		{
