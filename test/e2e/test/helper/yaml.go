@@ -522,48 +522,6 @@ func tweakConfigLiterals(config *commonv1.Config, suffix string, namespace strin
 		}
 	}
 
-	fleetOutputsKey := "xpack.fleet.outputs"
-
-	// This is only used when testing Agent+Fleet running as non-root. (config/recipes/elastic-agent/fleet-kubernetes-integration-nonroot.yaml)
-	//
-	// Adjust the Kibana's spec.config.xpack.fleet.outputs section to both
-	// 1. Point to the valid Elasticsearch instance with suffix + namespace being random
-	// 2. Point to the valid mounted Elasticsearch CA with a random suffix + namespace in the mount path.
-	if untypedOutputs, ok := data[fleetOutputsKey]; ok { //nolint:nestif
-		if untypedXpackOutputsSlice, ok := untypedOutputs.([]any); ok {
-			for _, untypedOutputMap := range untypedXpackOutputsSlice {
-				if outputMap, ok := untypedOutputMap.(map[string]any); ok {
-					if outputMap["id"] == "eck-fleet-agent-output-elasticsearch" {
-						if outputSlice, ok := outputMap["hosts"].([]any); ok {
-							for j, untypedHost := range outputSlice {
-								if host, ok := untypedHost.(string); ok {
-									outputSlice[j] = strings.ReplaceAll(
-										host,
-										"elasticsearch-es-http.default",
-										fmt.Sprintf("elasticsearch-%s-es-http.%s", suffix, namespace),
-									)
-								}
-							}
-						}
-						if untypedSSL, ok := outputMap["ssl"].(map[string]any); ok {
-							if untypedCAs, ok := untypedSSL["certificate_authorities"].([]any); ok {
-								for k, untypedCA := range untypedCAs {
-									if ca, ok := untypedCA.(string); ok {
-										untypedCAs[k] = strings.ReplaceAll(
-											ca,
-											"elasticsearch-association/default/elasticsearch/",
-											fmt.Sprintf("elasticsearch-association/%s/elasticsearch-%s/", namespace, suffix),
-										)
-									}
-								}
-							}
-						}
-					}
-				}
-			}
-		}
-	}
-
 	return data
 }
 
