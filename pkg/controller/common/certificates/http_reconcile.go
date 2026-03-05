@@ -254,21 +254,6 @@ func ensureInternalSelfSignedCertificateSecretContents(
 		secret.Data[CertFileName] = EncodePEMCert(certificate, ca.Cert.Raw)
 	}
 
-	// Ensure that the CA certificate is up-to-date.
-	expectedCaPem := EncodePEMCert(ca.Cert.Raw)
-	expectedCertPem := EncodePEMCert(certificate, ca.Cert.Raw)
-	if !reflect.DeepEqual(secret.Data[CAFileName], expectedCaPem) || !reflect.DeepEqual(secret.Data[CertFileName], expectedCertPem) {
-		log.Info(
-			"Updating CA certificate",
-			"secret_name", secret.Name,
-			"namespace", secret.Namespace,
-			"owner_name", owner.Name,
-		)
-		secretWasChanged = true
-		secret.Data[CAFileName] = expectedCaPem
-		secret.Data[CertFileName] = expectedCertPem
-	}
-
 	return secretWasChanged, nil
 }
 
@@ -281,7 +266,7 @@ func ensureInternalSelfSignedCertificateSecretContents(
 //   - certificate has the wrong format
 //   - certificate is invalid according to the CA or expired
 //   - certificate SAN and IP does not match the expected ones
-//   - CA certificate in the chain does not match the current CA
+//   - CA certificate in the chain does not match the current CA (compared via Subject Key Identifier)
 func getHTTPCertificate(
 	ctx context.Context,
 	owner types.NamespacedName,
@@ -326,7 +311,7 @@ func getHTTPCertificate(
 		return nil
 	}
 
-	if !caCertInChain.Equal(ca.Cert) {
+	if !CAMatch(caCertInChain, ca.Cert) {
 		log.Info("CA certificate in chain is missing or does not match current CA, should issue new certificate",
 			"namespace", secret.Namespace,
 			"secret_name", secret.Name,

@@ -15,8 +15,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/metadata"
-
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
@@ -25,6 +23,7 @@ import (
 	"k8s.io/apimachinery/pkg/util/validation"
 
 	esv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/elasticsearch/v1"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/metadata"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/name"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/k8s"
 )
@@ -350,6 +349,75 @@ func Test_internalSecretForCA(t *testing.T) {
 	assert.Equal(t, labels, internalSecret.Labels)
 }
 
+func Test_renewCAFromExisting_PreservesSubjectKeyId(t *testing.T) {
+	// This test verifies that when a CA is renewed using the same private key,
+	// the Subject Key Identifier (SKI) is preserved.
+
+	// Create an initial CA with a specific private key
+	initialCa, err := NewSelfSignedCA(CABuilderOptions{})
+	require.NoError(t, err)
+	require.NotEmpty(t, initialCa.Cert.SubjectKeyId, "Initial CA should have a SubjectKeyID")
+
+	// Store it in a secret
+	internalCASecret, err := internalSecretForCA(initialCa, testNamer, &testCluster, metadata.Metadata{}, TransportCAType)
+	require.NoError(t, err)
+
+	client := k8s.NewFakeClient(&internalCASecret)
+
+	// Simulate CA renewal by calling renewCAFromExisting
+	newExpiry := 24 * time.Hour
+	renewedCa, err := renewCAFromExisting(
+		context.Background(),
+		client,
+		testNamer,
+		&testCluster,
+		metadata.Metadata{},
+		newExpiry,
+		TransportCAType,
+		initialCa,
+	)
+	require.NoError(t, err)
+	require.NotNil(t, renewedCa)
+
+	// Verify that the SKI is preserved
+	assert.Equal(t, initialCa.Cert.SubjectKeyId, renewedCa.Cert.SubjectKeyId,
+		"Subject Key Identifier should be preserved during CA renewal")
+
+	// Verify that other properties are as expected
+	assert.NotEqual(t, initialCa.Cert.SerialNumber, renewedCa.Cert.SerialNumber,
+		"Serial number should be different for renewed CA")
+	assert.Greater(t, initialCa.Cert.NotAfter, renewedCa.Cert.NotAfter,
+		"Expiration should be different for renewed CA")
+
+	// Verify private key is the same
+	privateKeysEqual(t, renewedCa.PrivateKey, initialCa.PrivateKey)
+}
+
+func Test_NewSelfSignedCA_WithSubjectKeyId(t *testing.T) {
+	// Test that providing a SubjectKeyID in options results in that SKI being used
+	customSKI := []byte{0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x09, 0x0a,
+		0x0b, 0x0c, 0x0d, 0x0e, 0x0f, 0x10, 0x11, 0x12, 0x13, 0x14}
+
+	ca, err := NewSelfSignedCA(CABuilderOptions{
+		SubjectKeyID: customSKI,
+	})
+	require.NoError(t, err)
+	require.NotNil(t, ca)
+
+	assert.Equal(t, customSKI, ca.Cert.SubjectKeyId,
+		"CA should use the provided SubjectKeyID")
+}
+
+func Test_NewSelfSignedCA_WithoutSubjectKeyId(t *testing.T) {
+	// Test that not providing a SubjectKeyID results in Go auto-generating one
+	ca, err := NewSelfSignedCA(CABuilderOptions{})
+	require.NoError(t, err)
+	require.NotNil(t, ca)
+
+	assert.NotEmpty(t, ca.Cert.SubjectKeyId,
+		"CA should have an auto-generated SubjectKeyID when none provided")
+}
+
 func Test_buildCAFromSecret(t *testing.T) {
 	testCa, err := NewSelfSignedCA(CABuilderOptions{})
 	require.NoError(t, err)
@@ -419,6 +487,85 @@ func Test_buildCAFromSecret(t *testing.T) {
 				assert.True(t, ca.Cert.Equal(tt.wantCa.Cert), "certificates should be equal")
 				privateKeysEqual(t, ca.PrivateKey, tt.wantCa.PrivateKey)
 			}
+		})
+	}
+}
+
+func TestCAMatch(t *testing.T) {
+	// Generate a test private key
+	testKey, err := rsa.GenerateKey(cryptorand.Reader, 2048)
+	require.NoError(t, err)
+
+	// Create a CA with a known SKI
+	ca1, err := NewSelfSignedCA(CABuilderOptions{
+		PrivateKey: testKey,
+	})
+	require.NoError(t, err)
+
+	// Create a CA with the same SKI (simulating SKI pinning during ECK-managed rotation)
+	ca2SameSKI, err := NewSelfSignedCA(CABuilderOptions{
+		PrivateKey:   testKey,
+		SubjectKeyID: ca1.Cert.SubjectKeyId, // Same SKI
+	})
+	require.NoError(t, err)
+
+	// Create a CA with a different SKI (simulating custom CA or cross-Go-version scenarios)
+	differentSKI := []byte{0xDE, 0xAD, 0xBE, 0xEF, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06,
+		0x07, 0x08, 0x09, 0x0A, 0x0B, 0x0C, 0x0D, 0x0E, 0x0F, 0x10}
+	ca3DifferentSKI, err := NewSelfSignedCA(CABuilderOptions{
+		PrivateKey:   testKey,
+		SubjectKeyID: differentSKI, // Different SKI
+	})
+	require.NoError(t, err)
+
+	tests := []struct {
+		name          string
+		caCertInChain *x509.Certificate
+		currentCA     *x509.Certificate
+		want          bool
+	}{
+		{
+			name:          "both nil",
+			caCertInChain: nil,
+			currentCA:     nil,
+			want:          false,
+		},
+		{
+			name:          "caCertInChain nil",
+			caCertInChain: nil,
+			currentCA:     ca1.Cert,
+			want:          false,
+		},
+		{
+			name:          "currentCA nil",
+			caCertInChain: ca1.Cert,
+			currentCA:     nil,
+			want:          false,
+		},
+		{
+			name:          "same certificate",
+			caCertInChain: ca1.Cert,
+			currentCA:     ca1.Cert,
+			want:          true,
+		},
+		{
+			name:          "different certificates but same SKI (ECK-managed rotation with pinning)",
+			caCertInChain: ca1.Cert,
+			currentCA:     ca2SameSKI.Cert,
+			want:          true, // SKI match means valid chain
+		},
+		{
+			name:          "different certificates with different SKI (custom CA or cross-Go-version)",
+			caCertInChain: ca1.Cert,
+			currentCA:     ca3DifferentSKI.Cert,
+			want:          false, // Different SKI means invalid chain
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := CAMatch(tt.caCertInChain, tt.currentCA)
+			assert.Equal(t, tt.want, got)
 		})
 	}
 }

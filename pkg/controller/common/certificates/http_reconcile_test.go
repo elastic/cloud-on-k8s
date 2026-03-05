@@ -245,11 +245,23 @@ func TestReconcilePublicHTTPCerts(t *testing.T) {
 func TestReconcileInternalHTTPCerts(t *testing.T) {
 	tls := loadFileBytes("tls.crt")
 	key := loadFileBytes("tls.key")
-	testCA2, err := NewSelfSignedCA(CABuilderOptions{
-		Subject:    pkix.Name{CommonName: "test-common-name"},
-		PrivateKey: testRSAPrivateKey,
+	// Create a CA with a DIFFERENT SKI to simulate custom CA rotation or cross-Go-version scenarios
+	// where the SKI changes even though the private key is the same
+	differentSKI := []byte{0xDE, 0xAD, 0xBE, 0xEF, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06,
+		0x07, 0x08, 0x09, 0x0A, 0x0B, 0x0C, 0x0D, 0x0E, 0x0F, 0x10}
+	testCAWithDifferentSKI, err := NewSelfSignedCA(CABuilderOptions{
+		Subject:      pkix.Name{CommonName: "test-common-name"},
+		PrivateKey:   testRSAPrivateKey,
+		SubjectKeyID: differentSKI, // Force a different SKI
 	})
-	assert.NoError(t, err, "Failed to create new self signed CA")
+	assert.NoError(t, err, "Failed to create new self signed CA with different SKI")
+	// Create a CA with the SAME SKI to simulate ECK-managed CA rotation with SKI pinning
+	testCAWithSameSKI, err := NewSelfSignedCA(CABuilderOptions{
+		Subject:      pkix.Name{CommonName: "test-common-name"},
+		PrivateKey:   testRSAPrivateKey,
+		SubjectKeyID: testCA.Cert.SubjectKeyId, // Same SKI as original
+	})
+	assert.NoError(t, err, "Failed to create new self signed CA with same SKI")
 	testPrivateKey, err := EncodePEMPrivateKey(testRSAPrivateKey)
 	assert.NoError(t, err, "Failed to encode private key")
 
@@ -277,10 +289,10 @@ func TestReconcileInternalHTTPCerts(t *testing.T) {
 		wantErr bool
 	}{
 		{
-			name: "should reissue certificate when CA rotates with same private key",
+			name: "should reissue certificate when CA rotates with different SKI",
 			args: args{
 				initialObjects: []client.Object{
-					// es-http-ca-internal uses a new CA (rotated with same private key)
+					// es-http-ca-internal uses a new CA (rotated with same private key but different SKI)
 					&corev1.Secret{
 						ObjectMeta: metav1.ObjectMeta{
 							Name:      testES.Name + "-es-http-ca-internal",
@@ -288,7 +300,7 @@ func TestReconcileInternalHTTPCerts(t *testing.T) {
 						},
 						Data: map[string][]byte{
 							"tls.key": testPrivateKey,
-							"tls.crt": EncodePEMCert(testCA2.Cert.Raw), // new CA
+							"tls.crt": EncodePEMCert(testCAWithDifferentSKI.Cert.Raw), // new CA with different SKI
 						},
 					},
 					// es-http-certs-internal holds cert signed by old CA
@@ -304,7 +316,7 @@ func TestReconcileInternalHTTPCerts(t *testing.T) {
 					},
 				},
 				es:       testES,
-				ca:       testCA2, // new CA - certificate should be reissued
+				ca:       testCAWithDifferentSKI, // new CA with different SKI - certificate should be reissued
 				services: []corev1.Service{testSvc},
 			},
 			want: func(t *testing.T, c k8s.Client, cs *CertificatesSecret) {
@@ -314,22 +326,62 @@ func TestReconcileInternalHTTPCerts(t *testing.T) {
 					// Private key should remain the same
 					assert.Equal(t, testPrivateKey, cs.Data["tls.key"], "Private key should not have been updated")
 					// CA certificate should be the new CA
-					assert.Equal(t, EncodePEMCert(testCA2.Cert.Raw), cs.Data["ca.crt"], "Unexpected CA certificate in *-es-http-certs-public")
+					assert.Equal(t, EncodePEMCert(testCAWithDifferentSKI.Cert.Raw), cs.Data["ca.crt"], "Unexpected CA certificate in *-es-http-certs-public")
 					// Certificate should have been reissued (new cert with new CA in chain)
-					// We can't assert exact content since it's newly generated, but we can verify
-					// the certificate chain contains the new CA
 					certs, err := ParsePEMCerts(cs.Data["tls.crt"])
 					assert.NoError(t, err)
 					assert.GreaterOrEqual(t, len(certs), 1, "Should have at least one certificate")
 					// Find the CA in the chain
 					var foundCA bool
 					for _, c := range certs {
-						if c.IsCA && c.Equal(testCA2.Cert) {
+						if c.IsCA && c.Equal(testCAWithDifferentSKI.Cert) {
 							foundCA = true
 							break
 						}
 					}
 					assert.True(t, foundCA, "New CA should be in the certificate chain")
+				}
+			},
+		},
+		{
+			name: "should NOT reissue leaf certificate when CA rotates with same SKI",
+			args: args{
+				initialObjects: []client.Object{
+					// es-http-ca-internal uses a new CA (rotated with same private key AND same SKI)
+					&corev1.Secret{
+						ObjectMeta: metav1.ObjectMeta{
+							Name:      testES.Name + "-es-http-ca-internal",
+							Namespace: testES.Namespace,
+						},
+						Data: map[string][]byte{
+							"tls.key": testPrivateKey,
+							"tls.crt": EncodePEMCert(testCAWithSameSKI.Cert.Raw), // new CA with same SKI
+						},
+					},
+					// es-http-certs-internal holds cert signed by old CA (but same SKI)
+					&corev1.Secret{
+						ObjectMeta: metav1.ObjectMeta{
+							Name:      testES.Name + "-es-http-certs-internal",
+							Namespace: testES.Namespace,
+						},
+						Data: map[string][]byte{
+							"tls.key": testPrivateKey,
+							"tls.crt": pemTLS, // PEM TLS with the OLD CA in chain (same SKI)
+						},
+					},
+				},
+				es:       testES,
+				ca:       testCAWithSameSKI, // new CA with same SKI - leaf certificate should NOT be reissued
+				services: []corev1.Service{testSvc},
+			},
+			want: func(t *testing.T, c k8s.Client, cs *CertificatesSecret) {
+				t.Helper()
+				assert.NotNil(t, cs)
+				if cs != nil {
+					// Private key should remain the same
+					assert.Equal(t, testPrivateKey, cs.Data["tls.key"], "Private key should not have been updated")
+					// tls.crt should remain unchanged (no byte-swap, no reissuance)
+					assert.Equal(t, pemTLS, cs.Data["tls.crt"], "tls.crt should not have been updated")
 				}
 			},
 		},

@@ -99,12 +99,12 @@ func ensureTransportCertificatesSecretContentsForPod(
 // shouldIssueNewCertificate returns true if we should issue a new certificate.
 //
 // Reasons for reissuing a certificate:
-// - no certificate yet
-// - certificate has the wrong format
-// - certificate is invalid or expired
-// - certificate has no SAN extra extension
-// - certificate SAN and IP does not match pod SAN and IP
-// - CA certificate in the chain does not match the current CA
+//   - no certificate yet
+//   - certificate has the wrong format
+//   - certificate is invalid or expired
+//   - certificate has no SAN extra extension
+//   - certificate SAN and IP does not match pod SAN and IP
+//   - CA certificate in the chain does not match the current CA (compared via certificates.CAMatch)
 func shouldIssueNewCertificate(
 	ctx context.Context,
 	es esv1.Elasticsearch,
@@ -129,7 +129,7 @@ func shouldIssueNewCertificate(
 		return true
 	}
 
-	if !caCertInChain.Equal(ca.Cert) {
+	if !certificates.CAMatch(caCertInChain, ca.Cert) {
 		log.Info("CA certificate in chain is missing or does not match current CA, should issue new certificate",
 			"namespace", pod.Namespace,
 			"pod_name", pod.Name,

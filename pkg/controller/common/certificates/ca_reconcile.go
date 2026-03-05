@@ -6,7 +6,6 @@ package certificates
 
 import (
 	"context"
-	"crypto"
 	"crypto/rsa"
 	"crypto/x509"
 	"crypto/x509/pkix"
@@ -93,7 +92,7 @@ func ReconcileCAForOwner(
 	if !CanReuseCA(ctx, ca, rotationParams.RotateBefore) {
 		if ca.PrivateKey != nil && certExpiring(time.Now(), *ca.Cert, rotationParams.RotateBefore) {
 			log.Info("Existing CA is expiring, creating a new one from existing private key", "owner_namespace", owner.GetNamespace(), "owner_name", owner.GetName(), "ca_type", caType)
-			return renewCAFromExisting(ctx, cl, namer, owner, meta, rotationParams.Validity, caType, ca.PrivateKey)
+			return renewCAFromExisting(ctx, cl, namer, owner, meta, rotationParams.Validity, caType, ca)
 		}
 		log.Info("Cannot reuse existing CA, creating a new one", "owner_namespace", owner.GetNamespace(), "owner_name", owner.GetName(), "ca_type", caType)
 		return renewCA(ctx, cl, namer, owner, meta, rotationParams.Validity, caType)
@@ -105,9 +104,8 @@ func ReconcileCAForOwner(
 
 // renewCAFromExisting will attempt to renew, or rather create a new CA using the existing
 // private key from the existing CA, using the same options as the previous CA. There are 2
-// scenarios where this will fail back to the existing behavior of creating a new CA with
-// a newly created private key and those are:
-// 1. The given CA is nil
+// scenarios where this will fall back to creating a new CA with a new private key:
+// 1. The given CA or its certificate is nil
 // 2. The CA's private key interface type cannot be asserted to be a *rsa.PrivateKey
 func renewCAFromExisting(
 	ctx context.Context,
@@ -117,23 +115,32 @@ func renewCAFromExisting(
 	meta metadata.Metadata,
 	expireIn time.Duration,
 	caType CAType,
-	signer crypto.Signer,
+	existingCA *CA,
 ) (*CA, error) {
 	log := ulog.FromContext(ctx)
-	privateKey, ok := signer.(*rsa.PrivateKey)
+	if existingCA == nil || existingCA.Cert == nil {
+		log.Info(
+			"Existing CA or certificate is nil, creating a new CA with a new private key",
+			"namespace", owner.GetNamespace(),
+			"name", owner.GetName(),
+			"ca_type", caType,
+		)
+		return renewCA(ctx, client, namer, owner, meta, expireIn, caType)
+	}
+	privateKey, ok := existingCA.PrivateKey.(*rsa.PrivateKey)
 	if !ok {
 		log.Error(
 			errors.New("cannot cast ca.PrivateKey into *rsa.PrivateKey"),
 			"Failed to cast the operator generated CA private key into a RSA private key",
 			"namespace", owner.GetNamespace(),
 			"name", owner.GetName(),
-			"type", fmt.Sprintf("%T", signer),
+			"type", fmt.Sprintf("%T", existingCA.PrivateKey),
 		)
 		return renewCA(ctx, client, namer, owner, meta, expireIn, caType)
 	}
 
 	log.Info(
-		"Attempting to renew CA certificate with existing private key",
+		"Attempting to renew CA certificate with existing private key and Subject Key Identifier",
 		"namespace", owner.GetNamespace(),
 		"name", owner.GetName(),
 	)
@@ -142,8 +149,9 @@ func renewCAFromExisting(
 			CommonName:         owner.GetName() + "-" + string(caType),
 			OrganizationalUnit: []string{owner.GetName()},
 		},
-		ExpireIn:   &expireIn,
-		PrivateKey: privateKey,
+		ExpireIn:     &expireIn,
+		PrivateKey:   privateKey,
+		SubjectKeyID: existingCA.Cert.SubjectKeyId,
 	})
 }
 
