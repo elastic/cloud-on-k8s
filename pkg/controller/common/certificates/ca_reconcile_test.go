@@ -11,6 +11,8 @@ import (
 	cryptorand "crypto/rand"
 	"crypto/rsa"
 	"crypto/x509"
+	"crypto/x509/pkix"
+	"math/big"
 	"reflect"
 	"testing"
 	"time"
@@ -491,20 +493,22 @@ func Test_buildCAFromSecret(t *testing.T) {
 	}
 }
 
-func TestCAMatch(t *testing.T) {
-	// Generate a test private key
-	testKey, err := rsa.GenerateKey(cryptorand.Reader, 2048)
+func TestCertIsSignedByCA(t *testing.T) {
+	// Generate test private keys
+	caKey, err := rsa.GenerateKey(cryptorand.Reader, 2048)
+	require.NoError(t, err)
+	leafKey, err := rsa.GenerateKey(cryptorand.Reader, 2048)
 	require.NoError(t, err)
 
 	// Create a CA with a known SKI
 	ca1, err := NewSelfSignedCA(CABuilderOptions{
-		PrivateKey: testKey,
+		PrivateKey: caKey,
 	})
 	require.NoError(t, err)
 
 	// Create a CA with the same SKI (simulating SKI pinning during ECK-managed rotation)
 	ca2SameSKI, err := NewSelfSignedCA(CABuilderOptions{
-		PrivateKey:   testKey,
+		PrivateKey:   caKey,
 		SubjectKeyID: ca1.Cert.SubjectKeyId, // Same SKI
 	})
 	require.NoError(t, err)
@@ -513,58 +517,138 @@ func TestCAMatch(t *testing.T) {
 	differentSKI := []byte{0xDE, 0xAD, 0xBE, 0xEF, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06,
 		0x07, 0x08, 0x09, 0x0A, 0x0B, 0x0C, 0x0D, 0x0E, 0x0F, 0x10}
 	ca3DifferentSKI, err := NewSelfSignedCA(CABuilderOptions{
-		PrivateKey:   testKey,
+		PrivateKey:   caKey,
 		SubjectKeyID: differentSKI, // Different SKI
 	})
 	require.NoError(t, err)
 
+	// Create a completely different CA (different private key) to test signature verification
+	differentCAKey, err := rsa.GenerateKey(cryptorand.Reader, 2048)
+	require.NoError(t, err)
+	differentCA, err := NewSelfSignedCA(CABuilderOptions{
+		PrivateKey: differentCAKey,
+	})
+	require.NoError(t, err)
+
+	// Create a leaf certificate signed by ca1 (AKI will match ca1's SKI)
+	leafTemplate := ValidatedCertificateTemplate{
+		Subject: pkix.Name{
+			CommonName: "test-leaf",
+		},
+		NotBefore:             time.Now().Add(-1 * time.Hour),
+		NotAfter:              time.Now().Add(24 * time.Hour),
+		PublicKeyAlgorithm:    x509.RSA,
+		SignatureAlgorithm:    x509.SHA256WithRSA,
+		SerialNumber:          big.NewInt(1),
+		KeyUsage:              x509.KeyUsageDigitalSignature,
+		BasicConstraintsValid: true,
+		IsCA:                  false,
+		PublicKey:             leafKey.Public(),
+	}
+
+	// Sign leaf with ca1 - the leaf's AKI will be set to ca1's SKI
+	leafCertDER, err := ca1.CreateCertificate(leafTemplate)
+	require.NoError(t, err)
+	leafCert, err := x509.ParseCertificate(leafCertDER)
+	require.NoError(t, err)
+	require.Equal(t, ca1.Cert.SubjectKeyId, leafCert.AuthorityKeyId, "leaf AKI should match CA SKI")
+
+	// Create a leaf certificate with no AKI (legacy cert simulation)
+	leafNoAKITemplate := x509.Certificate{
+		Subject: pkix.Name{
+			CommonName: "test-leaf-no-aki",
+		},
+		NotBefore:             time.Now().Add(-1 * time.Hour),
+		NotAfter:              time.Now().Add(24 * time.Hour),
+		PublicKeyAlgorithm:    x509.RSA,
+		SignatureAlgorithm:    x509.SHA256WithRSA,
+		SerialNumber:          big.NewInt(2),
+		KeyUsage:              x509.KeyUsageDigitalSignature,
+		BasicConstraintsValid: true,
+		IsCA:                  false,
+		// AuthorityKeyId intentionally not set
+	}
+	leafNoAKIDER, err := x509.CreateCertificate(cryptorand.Reader, &leafNoAKITemplate, &leafNoAKITemplate, leafKey.Public(), leafKey)
+	require.NoError(t, err)
+	leafNoAKI, err := x509.ParseCertificate(leafNoAKIDER)
+	require.NoError(t, err)
+	require.Empty(t, leafNoAKI.AuthorityKeyId, "leaf should have no AKI")
+
 	tests := []struct {
-		name          string
-		caCertInChain *x509.Certificate
-		currentCA     *x509.Certificate
-		want          bool
+		name      string
+		leafCert  *x509.Certificate
+		currentCA *x509.Certificate
+		want      bool
 	}{
 		{
-			name:          "both nil",
-			caCertInChain: nil,
-			currentCA:     nil,
-			want:          false,
+			name:      "both nil",
+			leafCert:  nil,
+			currentCA: nil,
+			want:      false,
 		},
 		{
-			name:          "caCertInChain nil",
-			caCertInChain: nil,
-			currentCA:     ca1.Cert,
-			want:          false,
+			name:      "leaf nil",
+			leafCert:  nil,
+			currentCA: ca1.Cert,
+			want:      false,
 		},
 		{
-			name:          "currentCA nil",
-			caCertInChain: ca1.Cert,
-			currentCA:     nil,
-			want:          false,
+			name:      "currentCA nil",
+			leafCert:  leafCert,
+			currentCA: nil,
+			want:      false,
 		},
 		{
-			name:          "same certificate",
-			caCertInChain: ca1.Cert,
-			currentCA:     ca1.Cert,
-			want:          true,
+			name:      "leaf AKI matches CA SKI (same CA)",
+			leafCert:  leafCert,
+			currentCA: ca1.Cert,
+			want:      true,
 		},
 		{
-			name:          "different certificates but same SKI (ECK-managed rotation with pinning)",
-			caCertInChain: ca1.Cert,
-			currentCA:     ca2SameSKI.Cert,
-			want:          true, // SKI match means valid chain
+			name:      "leaf AKI matches CA SKI (rotated CA with same SKI)",
+			leafCert:  leafCert,
+			currentCA: ca2SameSKI.Cert,
+			want:      true, // AKI→SKI match, PKIX validation will pass
 		},
 		{
-			name:          "different certificates with different SKI (custom CA or cross-Go-version)",
-			caCertInChain: ca1.Cert,
-			currentCA:     ca3DifferentSKI.Cert,
-			want:          false, // Different SKI means invalid chain
+			name:      "leaf AKI does NOT match CA SKI (different SKI - byte-swapped)",
+			leafCert:  leafCert,
+			currentCA: ca3DifferentSKI.Cert,
+			want:      false, // AKI→SKI mismatch, PKIX validation would fail
+		},
+		{
+			name:      "leaf without AKI but CA has SKI - triggers reissuance",
+			leafCert:  leafNoAKI,
+			currentCA: ca1.Cert,
+			want:      false, // CA has SKI, so we require leaf to have AKI - triggers reissuance
+		},
+		{
+			name:      "signature verification fails (different CA)",
+			leafCert:  leafCert,
+			currentCA: differentCA.Cert,
+			want:      false, // Signature doesn't match - different private key
+		},
+		{
+			name:     "CA without SKI but leaf has AKI - inconsistent state",
+			leafCert: leafCert, // Has AKI pointing to ca1's SKI
+			currentCA: &x509.Certificate{
+				// Mock a CA without SKI but with same public key for signature verification
+				PublicKey:               ca1.Cert.PublicKey,
+				SubjectKeyId:            nil, // No SKI
+				RawTBSCertificate:       ca1.Cert.RawTBSCertificate,
+				Signature:               ca1.Cert.Signature,
+				SignatureAlgorithm:      ca1.Cert.SignatureAlgorithm,
+				PublicKeyAlgorithm:      ca1.Cert.PublicKeyAlgorithm,
+				Raw:                     ca1.Cert.Raw,
+				RawSubjectPublicKeyInfo: ca1.Cert.RawSubjectPublicKeyInfo,
+			},
+			want: false, // Leaf has AKI but CA has no SKI - triggers reissuance
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got := CAMatch(tt.caCertInChain, tt.currentCA)
+			got := CertIsSignedByCA(tt.leafCert, tt.currentCA)
 			assert.Equal(t, tt.want, got)
 		})
 	}

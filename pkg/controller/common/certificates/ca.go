@@ -153,16 +153,39 @@ func PublicCertsHasCACert(client k8s.Client, namer name.Namer, namespace string,
 	return ok, nil
 }
 
-// CAMatch checks if the CA certificate in the chain matches the current CA by comparing
-// Subject Key Identifiers (SKI). If SKIs match, the chain is considered valid because the
-// AKI→SKI relationship is preserved, which satisfies PKIX validation requirements.
-// Falls back to full certificate equality if SKI is not available on either certificate.
-func CAMatch(caCertInChain, currentCA *x509.Certificate) bool {
-	if caCertInChain == nil || currentCA == nil {
+// CertIsSignedByCA checks if the leaf certificate was signed by the current CA.
+// It validates both the cryptographic signature and the AKI→SKI chain relationship
+// (required by PKIX validation, e.g., Java).
+//
+// Returns true if:
+//   - The leaf certificate's signature is valid against the current CA, AND
+//   - The AKI→SKI relationship is valid (AKI matches SKI, or both are empty)
+//
+// Returns false if:
+//   - Either certificate is nil
+//   - The signature verification fails
+//   - The CA has SKI but leaf has no AKI (PKIX validation requires AKI→SKI chain)
+//   - The CA has no SKI but leaf has AKI (leaf was signed by a different CA)
+//   - The AKI and SKI don't match (e.g., after a CA rotation where SKI changed)
+func CertIsSignedByCA(leafCert, currentCA *x509.Certificate) bool {
+	if leafCert == nil || currentCA == nil {
 		return false
 	}
-	if len(caCertInChain.SubjectKeyId) > 0 && len(currentCA.SubjectKeyId) > 0 {
-		return bytes.Equal(caCertInChain.SubjectKeyId, currentCA.SubjectKeyId)
+	// Always verify the cryptographic signature first
+	if err := leafCert.CheckSignatureFrom(currentCA); err != nil {
+		return false
 	}
-	return caCertInChain.Equal(currentCA)
+	// If CA has no SKI, we can't verify the AKI→SKI chain, but signature is valid.
+	// PKIX validators allow certificates without AKI when the CA has no SKI - they fall
+	// back to issuer name matching and signature verification.
+	// However, if the leaf has an AKI, it was signed by a CA that had SKI - which isn't
+	// the current CA (since it has no SKI). This inconsistency should trigger reissuance.
+	if len(currentCA.SubjectKeyId) == 0 {
+		return len(leafCert.AuthorityKeyId) == 0
+	}
+	// CA has SKI - require leaf to have matching AKI
+	if len(leafCert.AuthorityKeyId) == 0 {
+		return false
+	}
+	return bytes.Equal(leafCert.AuthorityKeyId, currentCA.SubjectKeyId)
 }

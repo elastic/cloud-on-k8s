@@ -9,6 +9,7 @@ import (
 	cryptorand "crypto/rand"
 	"crypto/x509"
 	"crypto/x509/pkix"
+	"fmt"
 	"net"
 	"reflect"
 	"strings"
@@ -266,7 +267,7 @@ func ensureInternalSelfSignedCertificateSecretContents(
 //   - certificate has the wrong format
 //   - certificate is invalid according to the CA or expired
 //   - certificate SAN and IP does not match the expected ones
-//   - CA certificate in the chain does not match the current CA (compared via Subject Key Identifier)
+//   - leaf certificate's AKI does not match the current CA's SKI (AKI→SKI chain broken)
 func getHTTPCertificate(
 	ctx context.Context,
 	owner types.NamespacedName,
@@ -284,6 +285,8 @@ func getHTTPCertificate(
 		owner, namer, tls, controllerSANs, svcs, &x509.CertificateRequest{}, certReconcileBefore,
 	)
 
+	var certificate *x509.Certificate
+
 	certData, ok := secret.Data[CertFileName]
 	if !ok {
 		return nil
@@ -294,15 +297,10 @@ func getHTTPCertificate(
 		return nil
 	}
 
-	var certificate, caCertInChain *x509.Certificate
-	// look for the certificate based on the CommonName and extract the CA from the chain
+	// look for the certificate based on the CommonName
 	for _, c := range certs {
-		if certificate == nil && c.Subject.CommonName == validatedTemplate.Subject.CommonName {
+		if c.Subject.CommonName == validatedTemplate.Subject.CommonName {
 			certificate = c
-		} else if caCertInChain == nil && c.IsCA {
-			caCertInChain = c
-		}
-		if certificate != nil && caCertInChain != nil {
 			break
 		}
 	}
@@ -311,10 +309,12 @@ func getHTTPCertificate(
 		return nil
 	}
 
-	if !CAMatch(caCertInChain, ca.Cert) {
-		log.Info("CA certificate in chain is missing or does not match current CA, should issue new certificate",
+	if !CertIsSignedByCA(certificate, ca.Cert) {
+		log.Info("Certificate AKI does not match current CA SKI (AKI→SKI chain broken), should issue new certificate",
 			"namespace", secret.Namespace,
 			"secret_name", secret.Name,
+			"cert_aki", fmt.Sprintf("%x", certificate.AuthorityKeyId),
+			"ca_ski", fmt.Sprintf("%x", ca.Cert.SubjectKeyId),
 		)
 		return nil
 	}

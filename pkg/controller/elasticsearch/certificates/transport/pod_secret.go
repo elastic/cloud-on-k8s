@@ -99,12 +99,12 @@ func ensureTransportCertificatesSecretContentsForPod(
 // shouldIssueNewCertificate returns true if we should issue a new certificate.
 //
 // Reasons for reissuing a certificate:
-//   - no certificate yet
-//   - certificate has the wrong format
-//   - certificate is invalid or expired
-//   - certificate has no SAN extra extension
-//   - certificate SAN and IP does not match pod SAN and IP
-//   - CA certificate in the chain does not match the current CA (compared via certificates.CAMatch)
+// - no certificate yet
+// - certificate has the wrong format
+// - certificate is invalid or expired
+// - certificate has no SAN extra extension
+// - certificate SAN and IP does not match pod SAN and IP
+// - leaf certificate's AKI does not match the current CA's SKI (AKI→SKI chain broken)
 func shouldIssueNewCertificate(
 	ctx context.Context,
 	es esv1.Elasticsearch,
@@ -124,15 +124,17 @@ func shouldIssueNewCertificate(
 		return true
 	}
 
-	cert, caCertInChain := extractTransportCertAndCA(ctx, secret, pod, certCommonName)
+	cert := extractTransportCert(ctx, secret, pod, certCommonName)
 	if cert == nil {
 		return true
 	}
 
-	if !certificates.CAMatch(caCertInChain, ca.Cert) {
-		log.Info("CA certificate in chain is missing or does not match current CA, should issue new certificate",
+	if !certificates.CertIsSignedByCA(cert, ca.Cert) {
+		log.Info("Certificate AKI does not match current CA SKI (AKI→SKI chain broken), should issue new certificate",
 			"namespace", pod.Namespace,
 			"pod_name", pod.Name,
+			"cert_aki", fmt.Sprintf("%x", cert.AuthorityKeyId),
+			"ca_ski", fmt.Sprintf("%x", ca.Cert.SubjectKeyId),
 		)
 		return true
 	}
@@ -203,46 +205,39 @@ func shouldIssueNewCertificate(
 	return false
 }
 
-// extractTransportCertAndCA extracts the transport certificate and CA certificate for the pod with the commonName from the Secret
-func extractTransportCertAndCA(ctx context.Context, secret corev1.Secret, pod corev1.Pod, commonName string) (*x509.Certificate, *x509.Certificate) {
+// extractTransportCert extracts the transport certificate for the pod with the commonName from the Secret
+func extractTransportCert(ctx context.Context, secret corev1.Secret, pod corev1.Pod, commonName string) *x509.Certificate {
 	log := ulog.FromContext(ctx)
 	certData, ok := secret.Data[PodCertFileName(pod.Name)]
 	if !ok {
 		log.Info("No tls certificate found in secret",
 			"namespace", pod.Namespace, "pod_name", pod.Name)
-		return nil, nil
+		return nil
 	}
 
 	certs, err := certificates.ParsePEMCerts(certData)
 	if err != nil {
 		log.Error(err, "Invalid certificate data found",
 			"namespace", pod.Namespace, "pod_name", pod.Name)
-		return nil, nil
+		return nil
 	}
 
-	var leafCert, caCert *x509.Certificate
+	// look for the certificate based on the CommonName
 	names := make([]string, 0, len(certs))
 	for _, c := range certs {
-		switch {
-		case leafCert != nil && caCert != nil:
-			return leafCert, caCert
-		case leafCert == nil && c.Subject.CommonName == commonName:
-			leafCert = c
-		case caCert == nil && c.IsCA:
-			caCert = c
+		if c.Subject.CommonName == commonName {
+			return c
 		}
 		names = append(names, c.Subject.CommonName)
 	}
 
-	if leafCert == nil {
-		log.Info(
-			"Did not find a certificate with the expected common name",
-			"namespace", pod.Namespace,
-			"pod_name", pod.Name,
-			"expected_name", commonName,
-			"actual_name", names,
-		)
-	}
+	log.Info(
+		"Did not find a certificate with the expected common name",
+		"namespace", pod.Namespace,
+		"pod_name", pod.Name,
+		"expected_name", commonName,
+		"actual_name", names,
+	)
 
-	return leafCert, caCert
+	return nil
 }

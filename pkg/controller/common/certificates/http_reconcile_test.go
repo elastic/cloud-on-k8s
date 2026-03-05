@@ -245,7 +245,7 @@ func TestReconcilePublicHTTPCerts(t *testing.T) {
 func TestReconcileInternalHTTPCerts(t *testing.T) {
 	tls := loadFileBytes("tls.crt")
 	key := loadFileBytes("tls.key")
-	// Create a CA with a DIFFERENT SKI to simulate custom CA rotation or cross-Go-version scenarios
+	// Create a CA with a DIFFERENT SKI to simulate custom CA rotation
 	// where the SKI changes even though the private key is the same
 	differentSKI := []byte{0xDE, 0xAD, 0xBE, 0xEF, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06,
 		0x07, 0x08, 0x09, 0x0A, 0x0B, 0x0C, 0x0D, 0x0E, 0x0F, 0x10}
