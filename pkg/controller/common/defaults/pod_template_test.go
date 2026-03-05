@@ -1409,3 +1409,399 @@ func TestPodTemplateBuilder_WithContainers(t *testing.T) {
 		})
 	}
 }
+
+func TestPodTemplateBuilder_WithTopologySpreadConstraints(t *testing.T) {
+	tests := []struct {
+		name        string
+		podTemplate corev1.PodTemplateSpec
+		constraints []corev1.TopologySpreadConstraint
+		want        []corev1.TopologySpreadConstraint
+	}{
+		{
+			name:        "adds constraint when key is missing",
+			podTemplate: corev1.PodTemplateSpec{},
+			constraints: []corev1.TopologySpreadConstraint{
+				{TopologyKey: "topology.kubernetes.io/zone", MaxSkew: 1},
+			},
+			want: []corev1.TopologySpreadConstraint{
+				{TopologyKey: "topology.kubernetes.io/zone", MaxSkew: 1},
+			},
+		},
+		{
+			name: "does not override existing constraint for same key",
+			podTemplate: corev1.PodTemplateSpec{
+				Spec: corev1.PodSpec{
+					TopologySpreadConstraints: []corev1.TopologySpreadConstraint{
+						{TopologyKey: "topology.kubernetes.io/zone", MaxSkew: 9},
+					},
+				},
+			},
+			constraints: []corev1.TopologySpreadConstraint{
+				{TopologyKey: "topology.kubernetes.io/zone", MaxSkew: 1},
+			},
+			want: []corev1.TopologySpreadConstraint{
+				{TopologyKey: "topology.kubernetes.io/zone", MaxSkew: 9},
+			},
+		},
+		{
+			name: "appends constraint for different key",
+			podTemplate: corev1.PodTemplateSpec{
+				Spec: corev1.PodSpec{
+					TopologySpreadConstraints: []corev1.TopologySpreadConstraint{
+						{TopologyKey: "topology.kubernetes.io/zone", MaxSkew: 1},
+					},
+				},
+			},
+			constraints: []corev1.TopologySpreadConstraint{
+				{TopologyKey: "topology.kubernetes.io/hostname", MaxSkew: 2},
+			},
+			want: []corev1.TopologySpreadConstraint{
+				{TopologyKey: "topology.kubernetes.io/zone", MaxSkew: 1},
+				{TopologyKey: "topology.kubernetes.io/hostname", MaxSkew: 2},
+			},
+		},
+		{
+			name: "fills missing label selector from default constraint",
+			podTemplate: corev1.PodTemplateSpec{
+				Spec: corev1.PodSpec{
+					TopologySpreadConstraints: []corev1.TopologySpreadConstraint{
+						{TopologyKey: "topology.kubernetes.io/zone", MaxSkew: 9},
+					},
+				},
+			},
+			constraints: []corev1.TopologySpreadConstraint{
+				{
+					TopologyKey: "topology.kubernetes.io/zone",
+					LabelSelector: &metav1.LabelSelector{
+						MatchLabels: map[string]string{
+							"cluster": "es",
+						},
+					},
+				},
+			},
+			want: []corev1.TopologySpreadConstraint{
+				{
+					TopologyKey: "topology.kubernetes.io/zone",
+					MaxSkew:     9,
+					LabelSelector: &metav1.LabelSelector{
+						MatchLabels: map[string]string{
+							"cluster": "es",
+						},
+					},
+				},
+			},
+		},
+		{
+			name: "preserves existing label selector when already set",
+			podTemplate: corev1.PodTemplateSpec{
+				Spec: corev1.PodSpec{
+					TopologySpreadConstraints: []corev1.TopologySpreadConstraint{
+						{
+							TopologyKey: "topology.kubernetes.io/zone",
+							LabelSelector: &metav1.LabelSelector{
+								MatchLabels: map[string]string{
+									"cluster": "user",
+								},
+							},
+						},
+					},
+				},
+			},
+			constraints: []corev1.TopologySpreadConstraint{
+				{
+					TopologyKey: "topology.kubernetes.io/zone",
+					LabelSelector: &metav1.LabelSelector{
+						MatchLabels: map[string]string{
+							"cluster": "default",
+						},
+					},
+				},
+			},
+			want: []corev1.TopologySpreadConstraint{
+				{
+					TopologyKey: "topology.kubernetes.io/zone",
+					LabelSelector: &metav1.LabelSelector{
+						MatchLabels: map[string]string{
+							"cluster": "user",
+						},
+					},
+				},
+			},
+		},
+		{
+			name: "fills explicitly empty label selector from default constraint",
+			podTemplate: corev1.PodTemplateSpec{
+				Spec: corev1.PodSpec{
+					TopologySpreadConstraints: []corev1.TopologySpreadConstraint{
+						{
+							TopologyKey:   "topology.kubernetes.io/zone",
+							MaxSkew:       3,
+							LabelSelector: &metav1.LabelSelector{},
+						},
+					},
+				},
+			},
+			constraints: []corev1.TopologySpreadConstraint{
+				{
+					TopologyKey: "topology.kubernetes.io/zone",
+					LabelSelector: &metav1.LabelSelector{
+						MatchLabels: map[string]string{
+							"cluster": "es",
+						},
+					},
+				},
+			},
+			want: []corev1.TopologySpreadConstraint{
+				{
+					TopologyKey: "topology.kubernetes.io/zone",
+					MaxSkew:     3,
+					LabelSelector: &metav1.LabelSelector{
+						MatchLabels: map[string]string{
+							"cluster": "es",
+						},
+					},
+				},
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			builder := NewPodTemplateBuilder(tt.podTemplate, "elasticsearch")
+			got := builder.WithTopologySpreadConstraints(tt.constraints...).PodTemplate.Spec.TopologySpreadConstraints
+			if !reflect.DeepEqual(tt.want, got) {
+				t.Errorf("PodTemplateBuilder.WithTopologySpreadConstraints() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+func TestPodTemplateBuilder_WithRequiredNodeAffinityMatchExpressions(t *testing.T) {
+	tests := []struct {
+		name         string
+		podTemplate  corev1.PodTemplateSpec
+		requirements []corev1.NodeSelectorRequirement
+		wantAffinity *corev1.Affinity
+	}{
+		{
+			name:        "creates required node affinity when absent",
+			podTemplate: corev1.PodTemplateSpec{},
+			requirements: []corev1.NodeSelectorRequirement{
+				{Key: "topology.kubernetes.io/zone", Operator: corev1.NodeSelectorOpExists},
+			},
+			wantAffinity: &corev1.Affinity{
+				NodeAffinity: &corev1.NodeAffinity{
+					RequiredDuringSchedulingIgnoredDuringExecution: &corev1.NodeSelector{
+						NodeSelectorTerms: []corev1.NodeSelectorTerm{
+							{
+								MatchExpressions: []corev1.NodeSelectorRequirement{
+									{Key: "topology.kubernetes.io/zone", Operator: corev1.NodeSelectorOpExists},
+								},
+							},
+						},
+					},
+				},
+			},
+		},
+		{
+			name: "adds missing key requirement to each existing term",
+			podTemplate: corev1.PodTemplateSpec{
+				Spec: corev1.PodSpec{
+					Affinity: &corev1.Affinity{
+						NodeAffinity: &corev1.NodeAffinity{
+							RequiredDuringSchedulingIgnoredDuringExecution: &corev1.NodeSelector{
+								NodeSelectorTerms: []corev1.NodeSelectorTerm{
+									{MatchExpressions: []corev1.NodeSelectorRequirement{{Key: "nodepool", Operator: corev1.NodeSelectorOpIn, Values: []string{"hot"}}}},
+									{MatchExpressions: []corev1.NodeSelectorRequirement{{Key: "instance", Operator: corev1.NodeSelectorOpIn, Values: []string{"m6g"}}}},
+								},
+							},
+						},
+					},
+				},
+			},
+			requirements: []corev1.NodeSelectorRequirement{
+				{Key: "topology.kubernetes.io/zone", Operator: corev1.NodeSelectorOpExists},
+			},
+			wantAffinity: &corev1.Affinity{
+				NodeAffinity: &corev1.NodeAffinity{
+					RequiredDuringSchedulingIgnoredDuringExecution: &corev1.NodeSelector{
+						NodeSelectorTerms: []corev1.NodeSelectorTerm{
+							{MatchExpressions: []corev1.NodeSelectorRequirement{
+								{Key: "nodepool", Operator: corev1.NodeSelectorOpIn, Values: []string{"hot"}},
+								{Key: "topology.kubernetes.io/zone", Operator: corev1.NodeSelectorOpExists},
+							}},
+							{MatchExpressions: []corev1.NodeSelectorRequirement{
+								{Key: "instance", Operator: corev1.NodeSelectorOpIn, Values: []string{"m6g"}},
+								{Key: "topology.kubernetes.io/zone", Operator: corev1.NodeSelectorOpExists},
+							}},
+						},
+					},
+				},
+			},
+		},
+		{
+			name: "skips Exists when In for same key already guarantees label existence",
+			podTemplate: corev1.PodTemplateSpec{
+				Spec: corev1.PodSpec{
+					Affinity: &corev1.Affinity{
+						NodeAffinity: &corev1.NodeAffinity{
+							RequiredDuringSchedulingIgnoredDuringExecution: &corev1.NodeSelector{
+								NodeSelectorTerms: []corev1.NodeSelectorTerm{
+									{MatchExpressions: []corev1.NodeSelectorRequirement{
+										{Key: "topology.kubernetes.io/zone", Operator: corev1.NodeSelectorOpIn, Values: []string{"a"}},
+									}},
+								},
+							},
+						},
+					},
+				},
+			},
+			requirements: []corev1.NodeSelectorRequirement{
+				{Key: "topology.kubernetes.io/zone", Operator: corev1.NodeSelectorOpExists},
+			},
+			wantAffinity: &corev1.Affinity{
+				NodeAffinity: &corev1.NodeAffinity{
+					RequiredDuringSchedulingIgnoredDuringExecution: &corev1.NodeSelector{
+						NodeSelectorTerms: []corev1.NodeSelectorTerm{
+							{MatchExpressions: []corev1.NodeSelectorRequirement{
+								{Key: "topology.kubernetes.io/zone", Operator: corev1.NodeSelectorOpIn, Values: []string{"a"}},
+							}},
+						},
+					},
+				},
+			},
+		},
+		{
+			name: "adds Exists when DoesNotExist for same key does not guarantee label existence",
+			podTemplate: corev1.PodTemplateSpec{
+				Spec: corev1.PodSpec{
+					Affinity: &corev1.Affinity{
+						NodeAffinity: &corev1.NodeAffinity{
+							RequiredDuringSchedulingIgnoredDuringExecution: &corev1.NodeSelector{
+								NodeSelectorTerms: []corev1.NodeSelectorTerm{
+									{MatchExpressions: []corev1.NodeSelectorRequirement{
+										{Key: "topology.kubernetes.io/zone", Operator: corev1.NodeSelectorOpDoesNotExist},
+									}},
+								},
+							},
+						},
+					},
+				},
+			},
+			requirements: []corev1.NodeSelectorRequirement{
+				{Key: "topology.kubernetes.io/zone", Operator: corev1.NodeSelectorOpExists},
+			},
+			wantAffinity: &corev1.Affinity{
+				NodeAffinity: &corev1.NodeAffinity{
+					RequiredDuringSchedulingIgnoredDuringExecution: &corev1.NodeSelector{
+						NodeSelectorTerms: []corev1.NodeSelectorTerm{
+							{MatchExpressions: []corev1.NodeSelectorRequirement{
+								{Key: "topology.kubernetes.io/zone", Operator: corev1.NodeSelectorOpDoesNotExist},
+								{Key: "topology.kubernetes.io/zone", Operator: corev1.NodeSelectorOpExists},
+							}},
+						},
+					},
+				},
+			},
+		},
+		{
+			name: "adds Exists when NotIn for same key does not guarantee label existence",
+			podTemplate: corev1.PodTemplateSpec{
+				Spec: corev1.PodSpec{
+					Affinity: &corev1.Affinity{
+						NodeAffinity: &corev1.NodeAffinity{
+							RequiredDuringSchedulingIgnoredDuringExecution: &corev1.NodeSelector{
+								NodeSelectorTerms: []corev1.NodeSelectorTerm{
+									{MatchExpressions: []corev1.NodeSelectorRequirement{
+										{Key: "topology.kubernetes.io/zone", Operator: corev1.NodeSelectorOpNotIn, Values: []string{"a"}},
+									}},
+								},
+							},
+						},
+					},
+				},
+			},
+			requirements: []corev1.NodeSelectorRequirement{
+				{Key: "topology.kubernetes.io/zone", Operator: corev1.NodeSelectorOpExists},
+			},
+			wantAffinity: &corev1.Affinity{
+				NodeAffinity: &corev1.NodeAffinity{
+					RequiredDuringSchedulingIgnoredDuringExecution: &corev1.NodeSelector{
+						NodeSelectorTerms: []corev1.NodeSelectorTerm{
+							{MatchExpressions: []corev1.NodeSelectorRequirement{
+								{Key: "topology.kubernetes.io/zone", Operator: corev1.NodeSelectorOpNotIn, Values: []string{"a"}},
+								{Key: "topology.kubernetes.io/zone", Operator: corev1.NodeSelectorOpExists},
+							}},
+						},
+					},
+				},
+			},
+		},
+		{
+			name: "does not duplicate non-Exists requirement when key already exists",
+			podTemplate: corev1.PodTemplateSpec{
+				Spec: corev1.PodSpec{
+					Affinity: &corev1.Affinity{
+						NodeAffinity: &corev1.NodeAffinity{
+							RequiredDuringSchedulingIgnoredDuringExecution: &corev1.NodeSelector{
+								NodeSelectorTerms: []corev1.NodeSelectorTerm{
+									{MatchExpressions: []corev1.NodeSelectorRequirement{
+										{Key: "topology.kubernetes.io/zone", Operator: corev1.NodeSelectorOpDoesNotExist},
+									}},
+								},
+							},
+						},
+					},
+				},
+			},
+			requirements: []corev1.NodeSelectorRequirement{
+				{Key: "topology.kubernetes.io/zone", Operator: corev1.NodeSelectorOpIn, Values: []string{"a", "b"}},
+			},
+			wantAffinity: &corev1.Affinity{
+				NodeAffinity: &corev1.NodeAffinity{
+					RequiredDuringSchedulingIgnoredDuringExecution: &corev1.NodeSelector{
+						NodeSelectorTerms: []corev1.NodeSelectorTerm{
+							{MatchExpressions: []corev1.NodeSelectorRequirement{
+								{Key: "topology.kubernetes.io/zone", Operator: corev1.NodeSelectorOpDoesNotExist},
+							}},
+						},
+					},
+				},
+			},
+		},
+		{
+			name: "injects into user-provided empty Affinity",
+			podTemplate: corev1.PodTemplateSpec{
+				Spec: corev1.PodSpec{
+					Affinity: &corev1.Affinity{},
+				},
+			},
+			requirements: []corev1.NodeSelectorRequirement{
+				{Key: "topology.kubernetes.io/zone", Operator: corev1.NodeSelectorOpExists},
+			},
+			wantAffinity: &corev1.Affinity{
+				NodeAffinity: &corev1.NodeAffinity{
+					RequiredDuringSchedulingIgnoredDuringExecution: &corev1.NodeSelector{
+						NodeSelectorTerms: []corev1.NodeSelectorTerm{
+							{
+								MatchExpressions: []corev1.NodeSelectorRequirement{
+									{Key: "topology.kubernetes.io/zone", Operator: corev1.NodeSelectorOpExists},
+								},
+							},
+						},
+					},
+				},
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			builder := NewPodTemplateBuilder(tt.podTemplate, "elasticsearch")
+			got := builder.WithRequiredNodeAffinityMatchExpressions(tt.requirements...).PodTemplate.Spec.Affinity
+			if !reflect.DeepEqual(tt.wantAffinity, got) {
+				t.Errorf("PodTemplateBuilder.WithRequiredNodeAffinityMatchExpressions() = %v, want %v", got, tt.wantAffinity)
+			}
+		})
+	}
+}

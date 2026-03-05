@@ -30,6 +30,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/version"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/volume"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/initcontainer"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/label"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/settings"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/k8s"
 )
@@ -231,7 +232,7 @@ func TestBuildPodTemplateSpecWithDefaultSecurityContext(t *testing.T) {
 			es.Spec.Version = tt.version.String()
 			es.Spec.NodeSets[0].PodTemplate.Spec.SecurityContext = tt.userSecurityContext
 
-			cfg, err := settings.NewMergedESConfig(es.Name, tt.version, corev1.IPv4Protocol, es.Spec.HTTP, *es.Spec.NodeSets[0].Config, nil, false, false)
+			cfg, err := settings.NewMergedESConfig(es.Name, tt.version, corev1.IPv4Protocol, es.Spec.HTTP, *es.Spec.NodeSets[0].Config, nil, false, false, false)
 			require.NoError(t, err)
 
 			client := k8s.NewFakeClient(&corev1.ConfigMap{ObjectMeta: metav1.ObjectMeta{Namespace: es.Namespace, Name: esv1.ScriptsConfigMap(es.Name)}})
@@ -314,7 +315,7 @@ func TestBuildPodTemplateSpec(t *testing.T) {
 			ver, err := version.Parse(es.Spec.Version)
 			require.NoError(t, err)
 
-			cfg, err := settings.NewMergedESConfig(es.Name, ver, corev1.IPv4Protocol, es.Spec.HTTP, *nodeSet.Config, tt.args.policyConfig.ElasticsearchConfig, false, false)
+			cfg, err := settings.NewMergedESConfig(es.Name, ver, corev1.IPv4Protocol, es.Spec.HTTP, *nodeSet.Config, tt.args.policyConfig.ElasticsearchConfig, false, false, nodeSet.ZoneAwareness != nil)
 			require.NoError(t, err)
 
 			actual, err := BuildPodTemplateSpec(context.Background(), tt.args.client, es, es.Spec.NodeSets[0], cfg, tt.args.keystoreResources, tt.args.setDefaultSecurityContext, tt.args.policyConfig, metadata.Metadata{})
@@ -380,6 +381,25 @@ func Test_buildAnnotations(t *testing.T) {
 			},
 			expectedAnnotations: map[string]string{
 				"elasticsearch.k8s.elastic.co/config-hash": "909392898",
+			},
+		},
+		{
+			name: "hash stable with rendered script and non-alphabetical downward node labels",
+			args: args{
+				esAnnotations: map[string]string{"eck.k8s.elastic.co/downward-node-labels": "topology.kubernetes.io/zone,topology.kubernetes.io/region"},
+				scriptsContent: func() string {
+					es := newEsSampleBuilder().addEsAnnotations(map[string]string{
+						"eck.k8s.elastic.co/downward-node-labels": "topology.kubernetes.io/zone,topology.kubernetes.io/region",
+					}).build()
+					script, err := initcontainer.RenderPrepareFsScript(es.DownwardNodeLabels())
+					if err != nil {
+						panic(err)
+					}
+					return script
+				}(),
+			},
+			expectedAnnotations: map[string]string{
+				"elasticsearch.k8s.elastic.co/config-hash": "3933275242",
 			},
 		},
 		{
@@ -450,7 +470,7 @@ func Test_buildAnnotations(t *testing.T) {
 				build()
 			ver, err := version.Parse(sampleES.Spec.Version)
 			require.NoError(t, err)
-			cfg, err := settings.NewMergedESConfig(es.Name, ver, corev1.IPv4Protocol, es.Spec.HTTP, *es.Spec.NodeSets[0].Config, nil, false, false)
+			cfg, err := settings.NewMergedESConfig(es.Name, ver, corev1.IPv4Protocol, es.Spec.HTTP, *es.Spec.NodeSets[0].Config, nil, false, false, es.Spec.NodeSets[0].ZoneAwareness != nil)
 			require.NoError(t, err)
 			got := buildAnnotations(es, cfg, tt.args.keystoreResources, tt.args.scriptsContent, tt.args.policyAnnotations)
 
@@ -459,6 +479,86 @@ func Test_buildAnnotations(t *testing.T) {
 				assert.True(t, exists, "expected annotation: %s", expectedAnnotation)
 				assert.Equal(t, expectedValue, actualValue, "expected value for annotation %s: %s, got %s", expectedAnnotation, expectedValue, actualValue)
 			}
+		})
+	}
+}
+
+func TestElasticsearch_DownwardNodeLabelsHashInput(t *testing.T) {
+	tests := []struct {
+		name string
+		es   esv1.Elasticsearch
+		want string
+	}{
+		{
+			name: "preserves annotation order and formatting",
+			es: esv1.Elasticsearch{
+				ObjectMeta: metav1.ObjectMeta{
+					Annotations: map[string]string{
+						esv1.DownwardNodeLabelsAnnotation: "topology.kubernetes.io/zone, topology.kubernetes.io/region",
+					},
+				},
+			},
+			want: "topology.kubernetes.io/zone, topology.kubernetes.io/region",
+		},
+		{
+			name: "appends zone awareness label when not in annotation",
+			es: esv1.Elasticsearch{
+				ObjectMeta: metav1.ObjectMeta{
+					Annotations: map[string]string{
+						esv1.DownwardNodeLabelsAnnotation: "topology.kubernetes.io/region",
+					},
+				},
+				Spec: esv1.ElasticsearchSpec{
+					NodeSets: []esv1.NodeSet{
+						{
+							Name:          "with-za",
+							ZoneAwareness: &esv1.ZoneAwareness{},
+						},
+					},
+				},
+			},
+			want: "topology.kubernetes.io/region,topology.kubernetes.io/zone",
+		},
+		{
+			name: "zone awareness key matching annotation does not change hash",
+			es: esv1.Elasticsearch{
+				ObjectMeta: metav1.ObjectMeta{
+					Annotations: map[string]string{
+						esv1.DownwardNodeLabelsAnnotation: "topology.kubernetes.io/zone",
+					},
+				},
+				Spec: esv1.ElasticsearchSpec{
+					NodeSets: []esv1.NodeSet{
+						{
+							Name:          "default",
+							ZoneAwareness: &esv1.ZoneAwareness{},
+						},
+					},
+				},
+			},
+			want: "topology.kubernetes.io/zone",
+		},
+		{
+			name: "uses derived labels when annotation is absent",
+			es: esv1.Elasticsearch{
+				Spec: esv1.ElasticsearchSpec{
+					NodeSets: []esv1.NodeSet{
+						{
+							Name: "with-za",
+							ZoneAwareness: &esv1.ZoneAwareness{
+								TopologyKey: "topology.custom.io/rack",
+							},
+						},
+					},
+				},
+			},
+			want: "topology.custom.io/rack",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			assert.Equal(t, tt.want, tt.es.DownwardNodeLabelsHashInput())
 		})
 	}
 }
@@ -500,6 +600,364 @@ func Test_getDefaultContainerPorts(t *testing.T) {
 	for _, tc := range tt {
 		t.Run(tc.name, func(t *testing.T) {
 			assert.Equal(t, getDefaultContainerPorts(tc.es), tc.want)
+		})
+	}
+}
+
+func TestBuildPodTemplateSpec_ZoneAwarenessScenarios(t *testing.T) {
+	tests := []struct {
+		name    string
+		buildES func() esv1.Elasticsearch
+	}{
+		{
+			name: "zones add spread constraint and affinity",
+			buildES: func() esv1.Elasticsearch {
+				es := newEsSampleBuilder().withVersion("8.14.0").build()
+				es.Spec.NodeSets[0].ZoneAwareness = &esv1.ZoneAwareness{
+					Zones: []string{"us-east-1a", "us-east-1b"},
+				}
+				return es
+			},
+		},
+		{
+			name: "existing user spread constraint is preserved",
+			buildES: func() esv1.Elasticsearch {
+				es := newEsSampleBuilder().withVersion("8.14.0").build()
+				es.Spec.NodeSets[0].ZoneAwareness = &esv1.ZoneAwareness{}
+				es.Spec.NodeSets[0].PodTemplate.Spec.TopologySpreadConstraints = []corev1.TopologySpreadConstraint{
+					{
+						MaxSkew:           9,
+						TopologyKey:       "topology.kubernetes.io/zone",
+						WhenUnsatisfiable: corev1.DoNotSchedule,
+					},
+				}
+				return es
+			},
+		},
+		{
+			name: "cluster level zone awareness injects env for nodeset without zone awareness",
+			buildES: func() esv1.Elasticsearch {
+				es := newEsSampleBuilder().withVersion("8.14.0").build()
+				es.Spec.NodeSets = []esv1.NodeSet{
+					{
+						Name:  "without-za",
+						Count: 1,
+						Config: &commonv1.Config{
+							Data: map[string]any{
+								"node.roles": []esv1.NodeRole{esv1.MasterRole},
+							},
+						},
+					},
+					{
+						Name:          "with-za",
+						Count:         1,
+						ZoneAwareness: &esv1.ZoneAwareness{},
+						Config: &commonv1.Config{
+							Data: map[string]any{
+								"node.roles": []esv1.NodeRole{esv1.DataRole},
+							},
+						},
+					},
+				}
+				return es
+			},
+		},
+		{
+			name: "cluster level custom topology key injects env for nodeset without zone awareness",
+			buildES: func() esv1.Elasticsearch {
+				es := newEsSampleBuilder().withVersion("8.14.0").build()
+				es.Spec.NodeSets = []esv1.NodeSet{
+					{
+						Name:  "without-za",
+						Count: 1,
+						Config: &commonv1.Config{
+							Data: map[string]any{
+								"node.roles": []esv1.NodeRole{esv1.MasterRole},
+							},
+						},
+					},
+					{
+						Name:  "with-za",
+						Count: 1,
+						ZoneAwareness: &esv1.ZoneAwareness{
+							TopologyKey: "topology.custom.io/rack",
+						},
+						Config: &commonv1.Config{
+							Data: map[string]any{
+								"node.roles": []esv1.NodeRole{esv1.DataRole},
+							},
+						},
+					},
+				}
+				return es
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			es := tt.buildES()
+			nodeSet := es.Spec.NodeSets[0]
+
+			ver, err := version.Parse(es.Spec.Version)
+			require.NoError(t, err)
+			cfg, err := settings.NewMergedESConfig(
+				es.Name,
+				ver,
+				corev1.IPv4Protocol,
+				es.Spec.HTTP,
+				*nodeSet.Config,
+				nil,
+				false,
+				false,
+				esv1.NodeSetList(es.Spec.NodeSets).HasZoneAwareness(),
+			)
+			require.NoError(t, err)
+
+			client := k8s.NewFakeClient(&corev1.ConfigMap{ObjectMeta: metav1.ObjectMeta{Namespace: es.Namespace, Name: esv1.ScriptsConfigMap(es.Name)}})
+			actual, err := BuildPodTemplateSpec(context.Background(), client, es, nodeSet, cfg, nil, false, PolicyConfig{}, metadata.Metadata{})
+			require.NoError(t, err)
+
+			gotJSON, err := json.MarshalIndent(&actual, " ", " ")
+			require.NoError(t, err)
+			snaps.MatchJSON(t, gotJSON)
+		})
+	}
+}
+
+func Test_zoneAwarenessEnv(t *testing.T) {
+	tests := []struct {
+		name                    string
+		nodeSet                 esv1.NodeSet
+		clusterHasZoneAwareness bool
+		clusterTopologyKey      string
+		expectedEnv             []corev1.EnvVar
+	}{
+		{
+			name:                    "returns nil when cluster has no zone awareness",
+			clusterHasZoneAwareness: false,
+			clusterTopologyKey:      "",
+			expectedEnv:             nil,
+		},
+		{
+			name: "returns nil when cluster has no zone awareness even if nodeset has zone awareness",
+			nodeSet: esv1.NodeSet{
+				ZoneAwareness: &esv1.ZoneAwareness{
+					TopologyKey: "topology.custom.io/rack",
+				},
+			},
+			clusterHasZoneAwareness: false,
+			clusterTopologyKey:      "",
+			expectedEnv:             nil,
+		},
+		{
+			name:                    "uses default topology key when cluster has zone awareness and nodeset has none",
+			clusterHasZoneAwareness: true,
+			clusterTopologyKey:      esv1.DefaultZoneAwarenessTopologyKey,
+			expectedEnv: []corev1.EnvVar{
+				{
+					Name: settings.EnvZone,
+					ValueFrom: &corev1.EnvVarSource{
+						FieldRef: &corev1.ObjectFieldSelector{
+							APIVersion: "v1",
+							FieldPath:  "metadata.annotations['topology.kubernetes.io/zone']",
+						},
+					},
+				},
+			},
+		},
+		{
+			name: "uses default topology key when nodeset zone awareness has empty topology key",
+			nodeSet: esv1.NodeSet{
+				ZoneAwareness: &esv1.ZoneAwareness{},
+			},
+			clusterHasZoneAwareness: true,
+			clusterTopologyKey:      esv1.DefaultZoneAwarenessTopologyKey,
+			expectedEnv: []corev1.EnvVar{
+				{
+					Name: settings.EnvZone,
+					ValueFrom: &corev1.EnvVarSource{
+						FieldRef: &corev1.ObjectFieldSelector{
+							APIVersion: "v1",
+							FieldPath:  "metadata.annotations['topology.kubernetes.io/zone']",
+						},
+					},
+				},
+			},
+		},
+		{
+			name: "uses custom topology key when provided in nodeset zone awareness",
+			nodeSet: esv1.NodeSet{
+				ZoneAwareness: &esv1.ZoneAwareness{
+					TopologyKey: "topology.custom.io/rack",
+				},
+			},
+			clusterHasZoneAwareness: true,
+			clusterTopologyKey:      esv1.DefaultZoneAwarenessTopologyKey,
+			expectedEnv: []corev1.EnvVar{
+				{
+					Name: settings.EnvZone,
+					ValueFrom: &corev1.EnvVarSource{
+						FieldRef: &corev1.ObjectFieldSelector{
+							APIVersion: "v1",
+							FieldPath:  "metadata.annotations['topology.custom.io/rack']",
+						},
+					},
+				},
+			},
+		},
+		{
+			name:                    "uses cluster topology key when nodeset has no zone awareness",
+			clusterHasZoneAwareness: true,
+			clusterTopologyKey:      "topology.custom.io/rack",
+			expectedEnv: []corev1.EnvVar{
+				{
+					Name: settings.EnvZone,
+					ValueFrom: &corev1.EnvVarSource{
+						FieldRef: &corev1.ObjectFieldSelector{
+							APIVersion: "v1",
+							FieldPath:  "metadata.annotations['topology.custom.io/rack']",
+						},
+					},
+				},
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			env := zoneAwarenessEnv(tt.nodeSet, tt.clusterHasZoneAwareness, tt.clusterTopologyKey)
+			assert.Equal(t, tt.expectedEnv, env)
+		})
+	}
+}
+
+func TestNodeSetListZoneAwarenessTopologyKey(t *testing.T) {
+	tests := []struct {
+		name     string
+		nodeSets []esv1.NodeSet
+		expected string
+	}{
+		{
+			name:     "defaults when no nodeset has zone awareness",
+			nodeSets: []esv1.NodeSet{{Name: "default"}},
+			expected: esv1.DefaultZoneAwarenessTopologyKey,
+		},
+		{
+			name: "returns topology key from first nodeset enabling zone awareness",
+			nodeSets: []esv1.NodeSet{
+				{Name: "a"},
+				{
+					Name: "b",
+					ZoneAwareness: &esv1.ZoneAwareness{
+						TopologyKey: "topology.custom.io/rack",
+					},
+				},
+				{
+					Name: "c",
+					ZoneAwareness: &esv1.ZoneAwareness{
+						TopologyKey: "topology.custom.io/rack",
+					},
+				},
+			},
+			expected: "topology.custom.io/rack",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			assert.Equal(t, tt.expected, esv1.NodeSetList(tt.nodeSets).ZoneAwarenessTopologyKey())
+		})
+	}
+}
+
+func Test_zoneAwarenessSchedulingDirectives(t *testing.T) {
+	tests := []struct {
+		name                     string
+		nodeSet                  esv1.NodeSet
+		clusterHasZoneAwareness  bool
+		clusterTopologyKey       string
+		expectedSpreads          []corev1.TopologySpreadConstraint
+		expectedMatchExpressions []corev1.NodeSelectorRequirement
+	}{
+		{
+			name:                    "returns no directives when nodeset has no zone awareness and cluster awareness is disabled",
+			nodeSet:                 esv1.NodeSet{},
+			clusterHasZoneAwareness: false,
+		},
+		{
+			name:                    "adds required topology exists affinity for non-zoneAware nodeset when cluster awareness is enabled",
+			nodeSet:                 esv1.NodeSet{},
+			clusterHasZoneAwareness: true,
+			clusterTopologyKey:      "custom.io/rack",
+			expectedMatchExpressions: []corev1.NodeSelectorRequirement{
+				{
+					Key: "custom.io/rack", Operator: corev1.NodeSelectorOpExists,
+				},
+			},
+		},
+		{
+			name: "adds spread and affinity from zone awareness",
+			nodeSet: esv1.NodeSet{
+				ZoneAwareness: &esv1.ZoneAwareness{
+					Zones: []string{"us-east-1a", "us-east-1b"},
+				},
+			},
+			clusterHasZoneAwareness: true,
+			expectedSpreads: []corev1.TopologySpreadConstraint{
+				{
+					MaxSkew:           1,
+					TopologyKey:       esv1.DefaultZoneAwarenessTopologyKey,
+					WhenUnsatisfiable: corev1.DoNotSchedule,
+					LabelSelector: &metav1.LabelSelector{
+						MatchLabels: map[string]string{
+							label.ClusterNameLabelName:     "cluster",
+							label.StatefulSetNameLabelName: "sset",
+						},
+					},
+				},
+			},
+			expectedMatchExpressions: []corev1.NodeSelectorRequirement{
+				{
+					Key:      esv1.DefaultZoneAwarenessTopologyKey,
+					Operator: corev1.NodeSelectorOpIn,
+					Values:   []string{"us-east-1a", "us-east-1b"},
+				},
+			},
+		},
+		{
+			name: "zone-aware nodeset without zones only adds spread constraint",
+			nodeSet: esv1.NodeSet{
+				ZoneAwareness: &esv1.ZoneAwareness{},
+			},
+			clusterHasZoneAwareness: true,
+			expectedSpreads: []corev1.TopologySpreadConstraint{
+				{
+					MaxSkew:           1,
+					TopologyKey:       esv1.DefaultZoneAwarenessTopologyKey,
+					WhenUnsatisfiable: corev1.DoNotSchedule,
+					LabelSelector: &metav1.LabelSelector{
+						MatchLabels: map[string]string{
+							label.ClusterNameLabelName:     "cluster",
+							label.StatefulSetNameLabelName: "sset",
+						},
+					},
+				},
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			gotSpreads, gotMatchExpressions := zoneAwarenessSchedulingDirectives(
+				tt.nodeSet,
+				"cluster",
+				"sset",
+				tt.clusterHasZoneAwareness,
+				tt.clusterTopologyKey,
+			)
+			assert.Equal(t, tt.expectedSpreads, gotSpreads)
+			assert.Equal(t, tt.expectedMatchExpressions, gotMatchExpressions)
 		})
 	}
 }
@@ -547,7 +1005,7 @@ func Test_enableLog4JFormatMsgNoLookups(t *testing.T) {
 
 			ver, err := version.Parse(sampleES.Spec.Version)
 			require.NoError(t, err)
-			cfg, err := settings.NewMergedESConfig(sampleES.Name, ver, corev1.IPv4Protocol, sampleES.Spec.HTTP, *sampleES.Spec.NodeSets[0].Config, nil, false, false)
+			cfg, err := settings.NewMergedESConfig(sampleES.Name, ver, corev1.IPv4Protocol, sampleES.Spec.HTTP, *sampleES.Spec.NodeSets[0].Config, nil, false, false, sampleES.Spec.NodeSets[0].ZoneAwareness != nil)
 			require.NoError(t, err)
 			client := k8s.NewFakeClient(&corev1.ConfigMap{ObjectMeta: metav1.ObjectMeta{Namespace: sampleES.Namespace, Name: esv1.ScriptsConfigMap(sampleES.Name)}})
 			actual, err := BuildPodTemplateSpec(context.Background(), client, sampleES, sampleES.Spec.NodeSets[0], cfg, nil, false, PolicyConfig{}, metadata.Metadata{})

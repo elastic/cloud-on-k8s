@@ -341,6 +341,10 @@ type NodeSet struct {
 	// +kubebuilder:validation:Optional
 	Count int32 `json:"count"`
 
+	// ZoneAwareness enables automatic topology-aware scheduling and shard-awareness configuration.
+	// +kubebuilder:validation:Optional
+	ZoneAwareness *ZoneAwareness `json:"zoneAwareness,omitempty"`
+
 	// PodTemplate provides customisation options (labels, annotations, affinity rules, resource requests, and so on) for the Pods belonging to this NodeSet.
 	// +kubebuilder:validation:Optional
 	// +kubebuilder:pruning:PreserveUnknownFields
@@ -353,6 +357,37 @@ type NodeSet struct {
 	VolumeClaimTemplates []corev1.PersistentVolumeClaim `json:"volumeClaimTemplates,omitempty"`
 }
 
+const (
+	// DefaultZoneAwarenessTopologyKey is used when topologyKey is not specified.
+	DefaultZoneAwarenessTopologyKey = corev1.LabelTopologyZone
+)
+
+// ZoneAwareness configures topology-aware scheduling and shard-awareness defaults for a NodeSet.
+// The operator provides sensible defaults for topology spread constraints (maxSkew=1,
+// whenUnsatisfiable=DoNotSchedule). To customize these, provide a matching topology spread
+// constraint via podTemplate.spec.topologySpreadConstraints with the same topologyKey.
+type ZoneAwareness struct {
+	// TopologyKey is the key of node labels used for zone-aware placement.
+	// Defaults to "topology.kubernetes.io/zone".
+	// +kubebuilder:validation:Optional
+	TopologyKey string `json:"topologyKey,omitempty"`
+
+	// Zones optionally restrict scheduling to the listed topology values.
+	// If empty, Pods can be scheduled in any topology value for the selected topologyKey.
+	// +kubebuilder:validation:Optional
+	// +kubebuilder:validation:MinItems=1
+	// +listType=set
+	Zones []string `json:"zones,omitempty"`
+}
+
+// TopologyKeyOrDefault returns the configured topology key or the default.
+func (za ZoneAwareness) TopologyKeyOrDefault() string {
+	if strings.TrimSpace(za.TopologyKey) == "" {
+		return DefaultZoneAwarenessTopologyKey
+	}
+	return za.TopologyKey
+}
+
 // +kubebuilder:object:generate=false
 type NodeSetList []NodeSet
 
@@ -362,6 +397,30 @@ func (nsl NodeSetList) Names() []string {
 		names[i] = nsl[i].Name
 	}
 	return names
+}
+
+// HasZoneAwareness returns true when any NodeSet enables zone awareness.
+func (nsl NodeSetList) HasZoneAwareness() bool {
+	for _, nodeSet := range nsl {
+		if nodeSet.ZoneAwareness != nil {
+			return true
+		}
+	}
+	return false
+}
+
+// ZoneAwarenessTopologyKey returns the topology key from the first zone-aware NodeSet,
+// used as a fallback for non-zone-aware NodeSets in the same cluster.
+// When a non-zone-aware NodeSet exists, validation guarantees all zone-aware
+// NodeSets share the same topology key, so iteration order is irrelevant.
+func (nsl NodeSetList) ZoneAwarenessTopologyKey() string {
+	for _, nodeSet := range nsl {
+		if nodeSet.ZoneAwareness == nil {
+			continue
+		}
+		return nodeSet.ZoneAwareness.TopologyKeyOrDefault()
+	}
+	return DefaultZoneAwarenessTopologyKey
 }
 
 // GetESContainerTemplate returns the Elasticsearch container (if set) from the NodeSet's PodTemplate
@@ -452,17 +511,73 @@ type Elasticsearch struct {
 	AssocConfs map[commonv1.ObjectSelector]commonv1.AssociationConf `json:"-"`
 }
 
-// DownwardNodeLabels returns the set of expected node labels to be copied as annotations on the Elasticsearch Pods.
+// downwardNodeLabelsAnnotationValue returns the raw downward node labels annotation value.
+func (es Elasticsearch) downwardNodeLabelsAnnotationValue() string {
+	return es.Annotations[DownwardNodeLabelsAnnotation]
+}
+
+// ParseDownwardNodeLabels normalizes a comma-separated node labels annotation value.
+func ParseDownwardNodeLabels(annotationValue string) set.StringSet {
+	labels := set.Make()
+	for label := range strings.SplitSeq(annotationValue, ",") {
+		label = strings.TrimSpace(label)
+		if label == "" {
+			continue
+		}
+		labels.Add(label)
+	}
+	return labels
+}
+
+// DownwardNodeLabels returns the expected node labels to be copied as annotations on the Elasticsearch Pods.
+// The result is sorted alphabetically and deduplicated for two reasons: it matches the ordering used
+// by the pre-zone-awareness code path (set.Make().AsSortedSlice()), keeping the rendered init script
+// content stable across operator upgrades; and it guarantees a deterministic order regardless of
+// annotation formatting or NodeSet ordering in the spec.
 func (es Elasticsearch) DownwardNodeLabels() []string {
-	expectedAnnotations, exist := es.Annotations[DownwardNodeLabelsAnnotation]
-	expectedAnnotations = strings.TrimSpace(expectedAnnotations)
-	if !exist || expectedAnnotations == "" {
+	labels := ParseDownwardNodeLabels(es.downwardNodeLabelsAnnotationValue())
+
+	for _, nodeSet := range es.Spec.NodeSets {
+		if nodeSet.ZoneAwareness == nil {
+			continue
+		}
+		labels.Add(nodeSet.ZoneAwareness.TopologyKeyOrDefault())
+	}
+
+	if labels.Count() == 0 {
 		return nil
 	}
-	return strings.Split(expectedAnnotations, ",")
+	return labels.AsSortedSlice()
+}
+
+// DownwardNodeLabelsHashInput returns the pod-template hash input for downward node labels.
+// It preserves the exact annotation value when present and appends zone-awareness-derived
+// labels that were not explicitly configured in the annotation.
+func (es Elasticsearch) DownwardNodeLabelsHashInput() string {
+	annotationValue := es.downwardNodeLabelsAnnotationValue()
+	hashInput := annotationValue
+
+	annotationLabels := ParseDownwardNodeLabels(annotationValue)
+	var derived []string
+	for _, label := range es.DownwardNodeLabels() {
+		if annotationLabels.Has(label) {
+			continue
+		}
+		derived = append(derived, label)
+	}
+	if len(derived) == 0 {
+		return hashInput
+	}
+	if hashInput != "" {
+		hashInput += ","
+	}
+	return hashInput + strings.Join(derived, ",")
 }
 
 // HasDownwardNodeLabels returns true if some node labels are expected on the Elasticsearch Pods.
+// This includes labels derived from zone-awareness configuration, not only those explicitly set via
+// the downward-node-labels annotation. Callers that need to distinguish between annotation-provided
+// and zone-awareness-derived labels should inspect DownwardNodeLabels() directly.
 func (es Elasticsearch) HasDownwardNodeLabels() bool {
 	return len(es.DownwardNodeLabels()) > 0
 }

@@ -5,6 +5,7 @@
 package defaults
 
 import (
+	"slices"
 	"sort"
 
 	corev1 "k8s.io/api/core/v1"
@@ -12,6 +13,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/container"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/volume"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/settings"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/k8s"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/maps"
 )
 
@@ -138,6 +140,76 @@ func (b *PodTemplateBuilder) WithStartupProbe(startupProbe corev1.Probe) *PodTem
 func (b *PodTemplateBuilder) WithAffinity(affinity *corev1.Affinity) *PodTemplateBuilder {
 	if b.PodTemplate.Spec.Affinity == nil {
 		b.PodTemplate.Spec.Affinity = affinity
+	}
+	return b
+}
+
+// WithTopologySpreadConstraints appends the provided constraints when no
+// constraint already exists for their topology keys. If a constraint for a
+// topology key already exists and has no label selector, it is filled from the
+// provided constraint when one is available.
+func (b *PodTemplateBuilder) WithTopologySpreadConstraints(constraints ...corev1.TopologySpreadConstraint) *PodTemplateBuilder {
+	for _, constraint := range constraints {
+		if idx := slices.IndexFunc(b.PodTemplate.Spec.TopologySpreadConstraints, func(c corev1.TopologySpreadConstraint) bool {
+			return c.TopologyKey == constraint.TopologyKey
+		}); idx >= 0 {
+			existing := &b.PodTemplate.Spec.TopologySpreadConstraints[idx]
+			if (existing.LabelSelector == nil || k8s.IsLabelSelectorEmpty(*existing.LabelSelector)) &&
+				constraint.LabelSelector != nil && !k8s.IsLabelSelectorEmpty(*constraint.LabelSelector) {
+				existing.LabelSelector = constraint.LabelSelector.DeepCopy()
+			}
+			continue
+		}
+		b.PodTemplate.Spec.TopologySpreadConstraints = append(b.PodTemplate.Spec.TopologySpreadConstraints, constraint)
+	}
+	return b
+}
+
+// WithRequiredNodeAffinityMatchExpressions ensures all required node selector
+// terms include the provided match expressions by key without duplicating keys.
+// When the injected requirement uses the Exists operator, it is only skipped if
+// an existing expression on the same key already guarantees label existence
+// (In, Exists, Gt, Lt). Operators like NotIn or DoesNotExist do not guarantee
+// the label is present, so the Exists requirement is still appended to prevent
+// pods from landing on nodes that lack the label.
+func (b *PodTemplateBuilder) WithRequiredNodeAffinityMatchExpressions(requirements ...corev1.NodeSelectorRequirement) *PodTemplateBuilder {
+	if len(requirements) == 0 {
+		return b
+	}
+
+	nodeSelector := ensureRequiredNodeSelector(&b.PodTemplate.Spec)
+	copiedRequirements := make([]corev1.NodeSelectorRequirement, 0, len(requirements))
+	for _, requirement := range requirements {
+		copied := corev1.NodeSelectorRequirement{
+			Key:      requirement.Key,
+			Operator: requirement.Operator,
+			Values:   append([]string(nil), requirement.Values...),
+		}
+		copiedRequirements = append(copiedRequirements, copied)
+	}
+
+	if len(nodeSelector.NodeSelectorTerms) == 0 {
+		nodeSelector.NodeSelectorTerms = []corev1.NodeSelectorTerm{
+			{
+				MatchExpressions: copiedRequirements,
+			},
+		}
+		return b
+	}
+
+	for i := range nodeSelector.NodeSelectorTerms {
+		for _, requirement := range copiedRequirements {
+			if requirement.Operator == corev1.NodeSelectorOpExists {
+				if nodeSelectorTermGuaranteesKeyExistence(nodeSelector.NodeSelectorTerms[i], requirement.Key) {
+					continue
+				}
+			} else {
+				if hasNodeSelectorRequirementKey(nodeSelector.NodeSelectorTerms[i], requirement.Key) {
+					continue
+				}
+			}
+			nodeSelector.NodeSelectorTerms[i].MatchExpressions = append(nodeSelector.NodeSelectorTerms[i].MatchExpressions, requirement)
+		}
 	}
 	return b
 }
@@ -377,4 +449,54 @@ func (b *PodTemplateBuilder) WithAutomountServiceAccountToken() *PodTemplateBuil
 		b.PodTemplate.Spec.AutomountServiceAccountToken = &t
 	}
 	return b
+}
+
+// ensureRequiredNodeSelector initializes and returns required node affinity selector.
+func ensureRequiredNodeSelector(podSpec *corev1.PodSpec) *corev1.NodeSelector {
+	nodeAffinity := ensureNodeAffinity(podSpec)
+	if nodeAffinity.RequiredDuringSchedulingIgnoredDuringExecution == nil {
+		nodeAffinity.RequiredDuringSchedulingIgnoredDuringExecution = &corev1.NodeSelector{}
+	}
+	return nodeAffinity.RequiredDuringSchedulingIgnoredDuringExecution
+}
+
+// ensureNodeAffinity initializes and returns the node affinity section.
+func ensureNodeAffinity(podSpec *corev1.PodSpec) *corev1.NodeAffinity {
+	if podSpec.Affinity == nil {
+		podSpec.Affinity = &corev1.Affinity{}
+	}
+	if podSpec.Affinity.NodeAffinity == nil {
+		podSpec.Affinity.NodeAffinity = &corev1.NodeAffinity{}
+	}
+	return podSpec.Affinity.NodeAffinity
+}
+
+func hasNodeSelectorRequirementKey(term corev1.NodeSelectorTerm, key string) bool {
+	for _, expression := range term.MatchExpressions {
+		if expression.Key == key {
+			return true
+		}
+	}
+	return false
+}
+
+// nodeSelectorTermGuaranteesKeyExistence returns true when the term already
+// contains an expression on the given key whose operator implies the label
+// must be present on the node (In, Exists, Gt, Lt). NotIn and DoesNotExist
+// match nodes where the label is absent, so they do not guarantee existence.
+func nodeSelectorTermGuaranteesKeyExistence(term corev1.NodeSelectorTerm, key string) bool {
+	for _, expression := range term.MatchExpressions {
+		if expression.Key != key {
+			continue
+		}
+		switch expression.Operator {
+		case corev1.NodeSelectorOpExists, corev1.NodeSelectorOpIn,
+			corev1.NodeSelectorOpGt, corev1.NodeSelectorOpLt:
+			return true
+		case corev1.NodeSelectorOpNotIn, corev1.NodeSelectorOpDoesNotExist:
+			// These operators match nodes where the label is absent,
+			// so they do not guarantee the key exists.
+		}
+	}
+	return false
 }
