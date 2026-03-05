@@ -11,8 +11,6 @@ toc:
       - file: 3_2_0.md
       - file: 3_1_0.md
       - file: 3_0_0.md
-    exclude:
-      - main.md
   - folder: third-party-dependencies
     hidden: main.md
     children:
@@ -23,7 +21,5 @@ toc:
       - file: 3_2_0.md
       - file: 3_1_0.md
       - file: 3_0_0.md
-    exclude:
-      - main.md
   - file: eck-configuration-flags.md
   - file: upgrade-predicates.md
