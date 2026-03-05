@@ -6,6 +6,7 @@ package runner
 
 import (
 	"bytes"
+	"errors"
 	"fmt"
 	"log"
 	"os"
@@ -14,6 +15,7 @@ import (
 	"time"
 
 	"github.com/elastic/cloud-on-k8s/v3/hack/deployer/exec"
+	"github.com/elastic/cloud-on-k8s/v3/hack/deployer/runner/bucket"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/vault"
 )
 
@@ -103,12 +105,22 @@ func (e *EKSDriver) Execute() error {
 	}
 	switch e.plan.Operation {
 	case DeleteAction:
+		// Track bucket deletion errors separately: cluster deletion should proceed even if bucket
+		// deletion fails, but the error must still be returned so the exit code is non-zero.
+		bucketErr := deleteBucketIfConfigured(e.plan, e.newBucketManager)
+		if bucketErr != nil {
+			log.Printf("warning: bucket deletion failed, will continue with cluster deletion: %v", bucketErr)
+		}
 		if exists {
 			if err = e.delete(); err != nil {
-				return err
+				return errors.Join(err, bucketErr)
 			}
+		} else {
+			log.Printf("Not deleting cluster as it does not exist")
 		}
-		log.Printf("Not deleting cluster as it does not exist")
+		if bucketErr != nil {
+			return bucketErr
+		}
 	case CreateAction:
 		//nolint:nestif
 		if !exists {
@@ -128,17 +140,24 @@ func (e *EKSDriver) Execute() error {
 			if err := e.newCmd(`eksctl create cluster -v 1 -f {{.CreateCfgFile}}`).Run(); err != nil {
 				return err
 			}
-			if err := e.GetCredentials(); err != nil {
-				return err
-			}
 		} else {
 			log.Printf("Not creating cluster as it already exists")
+		}
+
+		// Always get credentials so kubectl targets the right cluster.
+		if err := e.GetCredentials(); err != nil {
+			return err
 		}
 
 		if err := setupDisks(e.plan); err != nil {
 			return err
 		}
-		return createStorageClass()
+		if err := createStorageClass(); err != nil {
+			return err
+		}
+		if err := createBucketIfConfigured(e.plan, e.newBucketManager); err != nil {
+			return err
+		}
 	}
 	return nil
 }
@@ -244,6 +263,27 @@ func (e *EKSDriver) writeAWSCredentials() error {
 	return os.WriteFile(file, []byte(fileContents), 0o600)
 }
 
+func (e *EKSDriver) newBucketManager() (bucket.Manager, error) {
+	cfg, err := newBucketConfig(e.plan, e.ctx, e.plan.Eks.Region)
+	if err != nil {
+		return nil, err
+	}
+	if e.plan.Bucket.S3 == nil {
+		return nil, fmt.Errorf("bucket.s3 configuration is required for EKS")
+	}
+	s3 := bucket.S3Config{
+		IAMUserPath:      e.plan.Bucket.S3.IamUserPath,
+		ManagedPolicyARN: e.plan.Bucket.S3.ManagedPolicyARN,
+	}
+	if err := bucket.ValidateShellArg(s3.IAMUserPath, "IAM user path"); err != nil {
+		return nil, err
+	}
+	if err := bucket.ValidateShellArg(s3.ManagedPolicyARN, "managed policy ARN"); err != nil {
+		return nil, err
+	}
+	return bucket.NewS3Manager(cfg, s3), nil
+}
+
 func (e *EKSDriver) Cleanup(prefix string, olderThan time.Duration) error {
 	if err := e.auth(); err != nil {
 		return err
@@ -262,12 +302,16 @@ func (e *EKSDriver) Cleanup(prefix string, olderThan time.Duration) error {
 	describeClusterCmd := `aws eks describe-cluster --name "{{.ClusterName}}" --region "{{.Region}}" | jq -r --arg d "{{.Date}}" 'select(.cluster.createdAt | . <= $d) | .cluster.name'`
 
 	for _, cluster := range allClusters {
+		e.plan.ClusterName = cluster
 		e.ctx["ClusterName"] = cluster
 		clustersToDelete, err := exec.NewCommand(describeClusterCmd).AsTemplate(e.ctx).WithoutStreaming().Output()
 		if err != nil {
 			return fmt.Errorf("while describing cluster %s: %w", cluster, err)
 		}
 		if clustersToDelete != "" {
+			if err := deleteBucketIfConfigured(e.plan, e.newBucketManager); err != nil {
+				log.Printf("warning: bucket deletion failed for cluster %s, will continue: %v", cluster, err)
+			}
 			if err = e.delete(); err != nil {
 				log.Printf("while deleting cluster %s: %v", cluster, err.Error())
 				continue
