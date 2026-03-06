@@ -368,7 +368,7 @@ func (d *OCPDriver) uploadClusterState() error {
 	bucketNotFound, err := exec.NewCommand("gcloud storage ls gs://{{.OCPStateBucket}}").
 		AsTemplate(d.bucketParams()).
 		WithoutStreaming().
-		OutputContainsAny("BucketNotFoundException")
+		OutputContainsAny("BucketNotFoundException", "Did not find existing container")
 	if err != nil {
 		return fmt.Errorf("while checking state bucket existence %w", err)
 	}
@@ -396,7 +396,7 @@ func (d *OCPDriver) downloadClusterState() error {
 		AsTemplate(d.bucketParams()).
 		WithLog("Synching cluster state").
 		WithoutStreaming().
-		OutputContainsAny("BucketNotFoundException", "does not name a directory, bucket, or bucket subdir")
+		OutputContainsAny("BucketNotFoundException", "does not name a directory, bucket, or bucket subdir", "Did not find existing container")
 	if doesNotExist {
 		log.Printf("No remote cluster state found")
 		return nil // swallow this error as it is expected if no cluster has been created yet
