@@ -204,7 +204,7 @@ func (d *OCPDriver) delete() error {
 	}
 
 	// No need to check whether this `rm` command succeeds
-	_ = exec.NewCommand("gsutil rm -r gs://{{.OCPStateBucket}}/{{.ClusterName}}").AsTemplate(d.bucketParams()).WithoutStreaming().Run()
+	_ = exec.NewCommand("gcloud storage rm -r gs://{{.OCPStateBucket}}/{{.ClusterName}}").AsTemplate(d.bucketParams()).WithoutStreaming().Run()
 	d.runtimeState.SafeToDeleteWorkdir = true
 	return d.removeKubeconfig()
 }
@@ -365,21 +365,21 @@ func (d *OCPDriver) uploadClusterState() error {
 		return nil
 	}
 
-	bucketNotFound, err := exec.NewCommand("gsutil ls gs://{{.OCPStateBucket}}").
+	bucketNotFound, err := exec.NewCommand("gcloud storage ls gs://{{.OCPStateBucket}}").
 		AsTemplate(d.bucketParams()).
 		WithoutStreaming().
-		OutputContainsAny("BucketNotFoundException")
+		OutputContainsAny("BucketNotFoundException", "Did not find existing container")
 	if err != nil {
 		return fmt.Errorf("while checking state bucket existence %w", err)
 	}
 	if bucketNotFound {
-		if err := exec.NewCommand("gsutil mb gs://{{.OCPStateBucket}}").AsTemplate(d.bucketParams()).Run(); err != nil {
+		if err := exec.NewCommand("gcloud storage buckets create gs://{{.OCPStateBucket}}").AsTemplate(d.bucketParams()).Run(); err != nil {
 			return fmt.Errorf("while creating storage bucket: %w", err)
 		}
 	}
 
 	// rsync seems to get stuck at least in local mode every now and then let's retry a few times
-	err = exec.NewCommand("gsutil rsync -r -d {{.ClusterStateDir}} gs://{{.OCPStateBucket}}/{{.ClusterName}}").
+	err = exec.NewCommand("gcloud storage rsync {{.ClusterStateDir}} gs://{{.OCPStateBucket}}/{{.ClusterName}} -r --delete-unmatched-destination-objects").
 		WithLog("Uploading cluster state").
 		AsTemplate(d.bucketParams()).
 		WithoutStreaming().
@@ -391,12 +391,12 @@ func (d *OCPDriver) uploadClusterState() error {
 }
 
 func (d *OCPDriver) downloadClusterState() error {
-	cmd := "gsutil rsync -r -d gs://{{.OCPStateBucket}}/{{.ClusterName}} {{.ClusterStateDir}}"
+	cmd := "gcloud storage rsync gs://{{.OCPStateBucket}}/{{.ClusterName}} {{.ClusterStateDir}} -r --delete-unmatched-destination-objects"
 	doesNotExist, err := exec.NewCommand(cmd).
 		AsTemplate(d.bucketParams()).
 		WithLog("Synching cluster state").
 		WithoutStreaming().
-		OutputContainsAny("BucketNotFoundException", "does not name a directory, bucket, or bucket subdir")
+		OutputContainsAny("BucketNotFoundException", "does not name a directory, bucket, or bucket subdir", "Did not find existing container")
 	if doesNotExist {
 		log.Printf("No remote cluster state found")
 		return nil // swallow this error as it is expected if no cluster has been created yet
