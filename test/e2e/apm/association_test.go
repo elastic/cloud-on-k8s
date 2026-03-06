@@ -9,13 +9,13 @@ package apm
 import (
 	"context"
 	"fmt"
+	"strings"
 	"testing"
 
 	corev1 "k8s.io/api/core/v1"
 
 	apmv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/apm/v1"
 	commonv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/common/v1"
-	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/annotation"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/events"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/version"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/k8s"
@@ -213,13 +213,14 @@ func TestAPMAssociationWhenReferencedESDisappears(t *testing.T) {
 						case evt.Type == corev1.EventTypeNormal && evt.Reason == events.EventAssociationStatusChange:
 							// build expected string and use it for comparisons with actual
 							establishedString := commonv1.NewSingleAssociationStatusMap(commonv1.AssociationEstablished).String()
-							prevStatusString, currStatusString := annotation.ExtractAssociationStatusStrings(evt.ObjectMeta)
 
-							if prevStatusString == establishedString && currStatusString != prevStatusString {
+							// evt.Message defined as fmt.Sprintf("Association status changed from [%s] to [%s]")
+							statusIndex := strings.Index(evt.Message, establishedString)
+							if statusIndex == 32 {
 								assocLostEventSeen = true
 							}
 
-							if currStatusString == establishedString {
+							if statusIndex > 32 {
 								assocEstablishedEventSeen = true
 							}
 						case evt.Type == corev1.EventTypeWarning && evt.Reason == events.EventAssociationError:

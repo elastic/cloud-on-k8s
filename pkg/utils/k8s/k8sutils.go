@@ -15,7 +15,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/sets"
-	"k8s.io/client-go/tools/record"
+	toolsevents "k8s.io/client-go/tools/events"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	netutil "github.com/elastic/cloud-on-k8s/v3/pkg/utils/net"
@@ -161,13 +161,13 @@ func GetServiceIPAddresses(svc corev1.Service) []net.IP {
 }
 
 // MaybeEmitErrorEvent emits an event if the error is report-worthy
-func MaybeEmitErrorEvent(r record.EventRecorder, err error, obj runtime.Object, reason, message string, args ...any) {
+func MaybeEmitErrorEvent(r toolsevents.EventRecorder, err error, obj runtime.Object, reason, action, message string) {
 	// ignore nil errors and conflict issues
 	if err == nil || apierrors.IsConflict(err) {
 		return
 	}
 
-	r.Eventf(obj, corev1.EventTypeWarning, reason, message, args...)
+	r.Eventf(obj, nil, corev1.EventTypeWarning, reason, action, "%s", message)
 }
 
 // GetSecretEntry returns the value of the secret data for the given key, or nil.

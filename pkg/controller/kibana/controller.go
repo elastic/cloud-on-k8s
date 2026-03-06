@@ -6,6 +6,7 @@ package kibana
 
 import (
 	"context"
+	"fmt"
 	"reflect"
 	"sync/atomic"
 
@@ -15,7 +16,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/types"
-	"k8s.io/client-go/tools/record"
+	toolsevents "k8s.io/client-go/tools/events"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
 	"sigs.k8s.io/controller-runtime/pkg/handler"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
@@ -57,7 +58,7 @@ func Add(mgr manager.Manager, params operator.Parameters) error {
 func newReconciler(mgr manager.Manager, params operator.Parameters) *ReconcileKibana {
 	return &ReconcileKibana{
 		Client:         mgr.GetClient(),
-		recorder:       mgr.GetEventRecorderFor(controllerName),
+		recorder:       mgr.GetEventRecorder(controllerName),
 		dynamicWatches: watches.NewDynamicWatches(),
 		params:         params,
 	}
@@ -118,7 +119,7 @@ var _ reconcile.Reconciler = (*ReconcileKibana)(nil)
 // ReconcileKibana reconciles a Kibana object
 type ReconcileKibana struct {
 	k8s.Client
-	recorder record.EventRecorder
+	recorder toolsevents.EventRecorder
 
 	dynamicWatches watches.DynamicWatches
 
@@ -203,7 +204,7 @@ func (r *ReconcileKibana) doReconcile(ctx context.Context, request reconcile.Req
 	results := driver.Reconcile(ctx, &state, kb, r.params)
 
 	result, err = results.WithError(err).Aggregate()
-	k8s.MaybeEmitErrorEvent(r.recorder, err, kb, events.EventReconciliationError, "Reconciliation error: %v", err)
+	k8s.MaybeEmitErrorEvent(r.recorder, err, kb, events.EventReconciliationError, events.EventActionAggregation, fmt.Sprintf("Reconciliation error: %v", err))
 	return result, err
 }
 
@@ -213,7 +214,7 @@ func (r *ReconcileKibana) validate(ctx context.Context, kb *kbv1.Kibana) error {
 
 	if _, err := kb.ValidateCreate(); err != nil {
 		ulog.FromContext(ctx).Error(err, "Validation failed")
-		k8s.MaybeEmitErrorEvent(r.recorder, err, kb, events.EventReasonValidation, err.Error())
+		k8s.MaybeEmitErrorEvent(r.recorder, err, kb, events.EventReasonValidation, events.EventActionValidation, err.Error())
 		return tracing.CaptureError(vctx, err)
 	}
 
@@ -229,7 +230,7 @@ func (r *ReconcileKibana) updateStatus(ctx context.Context, state State) error {
 		return nil
 	}
 	if state.Kibana.Status.DeploymentStatus.IsDegraded(current.Status.DeploymentStatus) {
-		r.recorder.Event(current, corev1.EventTypeWarning, events.EventReasonUnhealthy, "Kibana health degraded")
+		r.recorder.Eventf(current, nil, corev1.EventTypeWarning, events.EventReasonUnhealthy, events.EventActionStatusUpdate, "%s", "Kibana health degraded")
 	}
 	ulog.FromContext(ctx).V(1).Info("Updating status",
 		"iteration", atomic.LoadUint64(&r.iteration),

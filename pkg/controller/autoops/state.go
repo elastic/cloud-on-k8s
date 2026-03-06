@@ -58,9 +58,9 @@ func (s *State) UpdateWithPhase(phase autoopsv1alpha1.PolicyPhase) *State {
 
 // UpdateInvalidPhaseWithEvent is a convenient method to set the phase to InvalidPhase
 // and generate an event at the same time.
-func (s *State) UpdateInvalidPhaseWithEvent(msg string) {
+func (s *State) UpdateInvalidPhaseWithEvent(action, msg string) {
 	s.UpdateWithPhase(autoopsv1alpha1.InvalidPhase)
-	s.AddEvent(corev1.EventTypeWarning, events.EventReasonValidation, msg)
+	s.AddEvent(corev1.EventTypeWarning, events.EventReasonValidation, action, msg)
 }
 
 // UpdateMonitoredResources updates the Resources count in the status.
@@ -127,7 +127,7 @@ func (s *State) Finalize(isReconciled bool, reconciliationMessage string) {
 	switch {
 	case !isReconciled:
 		s.UpdateWithPhase(autoopsv1alpha1.ApplyingChangesPhase)
-		s.AddEvent(corev1.EventTypeWarning, events.EventReasonDelayed, reconciliationMessage)
+		s.AddEvent(corev1.EventTypeWarning, events.EventReasonDelayed, "AutoOpsReconciliation", reconciliationMessage)
 	case s.status.Ready == s.status.Resources:
 		s.UpdateWithPhase(autoopsv1alpha1.ReadyPhase)
 	case s.status.Ready < s.status.Resources:

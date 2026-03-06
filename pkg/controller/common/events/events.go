@@ -42,10 +42,52 @@ const (
 	EventReconciliationError = "ReconciliationError"
 )
 
+// Event actions for common controller actions
+const (
+	// EventActionValidation describes the validation step the controller was taking when the event was triggered
+	EventActionValidation = "Validation"
+	// EventActionAggregation describes the aggregation step the controller was taking when the event was triggered
+	EventActionAggregation = "Aggregation"
+	// EventActionCertificateReconciliation describes the certificate reconciliation step the controller was taking
+	// when the event was triggered
+	EventActionCertificateReconciliation = "CertificateReconciliation"
+	// EventActionStatusUpdate describes the status update step the controller was taking when the event was triggered
+	EventActionStatusUpdate = "StatusUpdate"
+	// EventActionVersionCheck describes the version check step the controller was taking when the event was triggered
+	EventActionVersionCheck = "VersionCheck"
+	// EventActionAccessCheck describes the access check step the controller was taking when the event was triggered
+	EventActionAccessCheck = "AccessCheck"
+	// EventActionLicenseCheck describes the license check step the controller was taking when the event was triggered
+	EventActionLicenseCheck = "LicenseCheck"
+	// EventActionGetSecret describes the get secret step the controller was taking when the event was triggered
+	EventActionGetSecret = "GetSecret"
+	// EventActionParseSecret describes the parse secret step the controller was taking when the event was triggered
+	EventActionParseSecret = "ParseSecret"
+	// EventActionShutdown describes the shutdown step the controller was taking when the event was triggered
+	EventActionShutdown = "Shutdown"
+	// EventActionUpscale describes the upscale step the controller was taking when the event was triggered
+	EventActionUpscale = "Upscale"
+	// EventActionConfiguration describes the configuration step the controller was taking when the event was triggered
+	EventActionConfiguration = "Configuration"
+	// EventActionVersionUpgrade describes the version upgrade step the controller was taking when the event was triggered
+	EventActionVersionUpgrade = "VersionUpgrade"
+	// EventActionEnrollment describes the enrollment step the controller was taking when the event was triggered
+	EventActionEnrollment = "Enrollment"
+	// EventActionPolicyRetrieval describes the policy retrieval step the controller was taking when the event was triggered
+	EventActionPolicyRetrieval = "PolicyRetrieval"
+	// EventActionAssociationConfiguration describes the association configuration step the controller was taking when the event was triggered
+	EventActionAssociationConfiguration = "AssociationConfiguration"
+	// EventActionElasticsearchRetrieval describes the Elasticsearch retrieval step the controller was taking when the event was triggered
+	EventActionElasticsearchRetrieval = "ElasticsearchRetrieval"
+	// EventActionAnnotateResource describes the annotation step the controller was taking when the event was triggered
+	EventActionAnnotateResource = "AnnotateResource"
+)
+
 // Event is a k8s event that can be recorded via an event recorder.
 type Event struct {
 	EventType string
 	Reason    string
+	Action    string
 	Message   string
 }
 
@@ -60,14 +102,15 @@ func NewRecorder() *Recorder {
 }
 
 // AddEvent records the intent to emit a k8s event with the given attributes.
-func (r *Recorder) AddEvent(eventType, reason, message string) {
+func (r *Recorder) AddEvent(eventType, reason, action, message string) {
 	if r.events == nil {
 		r.events = []Event{}
 	}
 	r.events = append(r.events, Event{
-		eventType,
-		reason,
-		message,
+		EventType: eventType,
+		Reason:    reason,
+		Action:    action,
+		Message:   message,
 	})
 }
 

@@ -189,7 +189,7 @@ func TestState_Apply(t *testing.T) {
 			effects: func(s *State) {
 				s.UpdateWithPhase(esv1.ElasticsearchApplyingChangesPhase).UpdateClusterHealth(esv1.ElasticsearchRedHealth)
 			},
-			wantEvents: []events.Event{{EventType: corev1.EventTypeWarning, Reason: events.EventReasonUnhealthy, Message: "Elasticsearch cluster health degraded"}},
+			wantEvents: []events.Event{{EventType: corev1.EventTypeWarning, Action: events.EventActionStatusUpdate, Reason: events.EventReasonUnhealthy, Message: "Elasticsearch cluster health degraded"}},
 			wantStatus: &esv1.ElasticsearchStatus{
 				AvailableNodes: 0,
 				Health:         esv1.ElasticsearchRedHealth,

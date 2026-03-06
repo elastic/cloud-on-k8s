@@ -18,7 +18,6 @@ import (
 
 	commonv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/common/v1"
 	kbv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/kibana/v1"
-	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/annotation"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/events"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/version"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/k8s"
@@ -150,13 +149,14 @@ func TestKibanaAssociationWhenReferencedESDisappears(t *testing.T) {
 						case evt.Type == corev1.EventTypeNormal && evt.Reason == events.EventAssociationStatusChange:
 							// build expected string and use it for comparisons with actual
 							establishedString := commonv1.NewSingleAssociationStatusMap(commonv1.AssociationEstablished).String()
-							prevStatus, currStatus := annotation.ExtractAssociationStatusStrings(evt.ObjectMeta)
 
-							if prevStatus == establishedString && currStatus != prevStatus {
+							// evt.Message defined as fmt.Sprintf("Association status changed from [%s] to [%s]")
+							statusIndex := strings.Index(evt.Message, establishedString)
+							if statusIndex == 32 {
 								assocLostEventSeen = true
 							}
 
-							if currStatus == establishedString {
+							if statusIndex > 32 {
 								assocEstablishedEventSeen = true
 							}
 						case evt.Type == corev1.EventTypeWarning && evt.Reason == events.EventAssociationError:

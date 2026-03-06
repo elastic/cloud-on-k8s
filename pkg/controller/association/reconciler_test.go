@@ -16,7 +16,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
-	"k8s.io/client-go/tools/record"
+	toolsevents "k8s.io/client-go/tools/events"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
@@ -269,7 +269,7 @@ func testReconciler(runtimeObjs ...client.Object) Reconciler {
 		Client:          k8s.NewFakeClient(runtimeObjs...),
 		accessReviewer:  rbac.NewPermissiveAccessReviewer(),
 		watches:         watches.NewDynamicWatches(),
-		recorder:        record.NewFakeRecorder(10),
+		recorder:        toolsevents.NewFakeRecorder(10),
 		Parameters: operator.Parameters{
 			OperatorInfo: about.OperatorInfo{
 				BuildInfo: about.BuildInfo{
@@ -582,7 +582,7 @@ func TestReconciler_Reconcile_noESAuth(t *testing.T) {
 		),
 		accessReviewer: rbac.NewPermissiveAccessReviewer(),
 		watches:        watches.NewDynamicWatches(),
-		recorder:       record.NewFakeRecorder(10),
+		recorder:       toolsevents.NewFakeRecorder(10),
 		Parameters: operator.Parameters{
 			OperatorInfo: about.OperatorInfo{
 				BuildInfo: about.BuildInfo{
@@ -787,7 +787,7 @@ func TestReconciler_getElasticsearch(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			c := k8s.NewFakeClient(tt.runtimeObjects...)
-			r := &Reconciler{Client: c, recorder: record.NewFakeRecorder(10)}
+			r := &Reconciler{Client: c, recorder: toolsevents.NewFakeRecorder(10)}
 			es, status, err := r.getElasticsearch(context.Background(), tt.associated, tt.esRef)
 			require.NoError(t, err)
 			require.Equal(t, tt.wantStatus, status)
@@ -924,7 +924,7 @@ func TestReconciler_Reconcile_MultiRef(t *testing.T) {
 		),
 		accessReviewer: rbac.NewPermissiveAccessReviewer(),
 		watches:        watches.NewDynamicWatches(),
-		recorder:       record.NewFakeRecorder(10),
+		recorder:       toolsevents.NewFakeRecorder(10),
 		Parameters: operator.Parameters{
 			OperatorInfo: about.OperatorInfo{
 				BuildInfo: about.BuildInfo{
@@ -1289,7 +1289,7 @@ func TestReconciler_Reconcile_Transitive_Associations(t *testing.T) {
 		),
 		accessReviewer: rbac.NewPermissiveAccessReviewer(),
 		watches:        watches.NewDynamicWatches(),
-		recorder:       record.NewFakeRecorder(10),
+		recorder:       toolsevents.NewFakeRecorder(10),
 		Parameters: operator.Parameters{
 			OperatorInfo: about.OperatorInfo{
 				BuildInfo: about.BuildInfo{

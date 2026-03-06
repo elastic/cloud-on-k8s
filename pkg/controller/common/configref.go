@@ -82,8 +82,8 @@ func ParseConfigRefToConfig(
 	}
 	data, exists := secret.Data[secretKey]
 	if !exists {
-		msg := fmt.Sprintf("unable to parse configRef secret %s/%s: missing key %s", namespace, configRef.SecretName, secretKey)
-		driver.Recorder().Event(resource, corev1.EventTypeWarning, events.EventReasonUnexpected, msg)
+		msg := fmt.Sprintf("unable to retrieve configRef secret %s/%s: missing key %s", namespace, configRef.SecretName, secretKey)
+		driver.Recorder().Eventf(resource, nil, corev1.EventTypeWarning, events.EventReasonUnexpected, events.EventActionGetSecret, "%s", msg)
 		return nil, errors.New(msg)
 	}
 
@@ -91,7 +91,7 @@ func ParseConfigRefToConfig(
 
 	if err != nil {
 		msg := fmt.Sprintf("unable to parse %s in configRef secret %s/%s", secretKey, namespace, configRef.SecretName)
-		driver.Recorder().Event(resource, corev1.EventTypeWarning, events.EventReasonUnexpected, msg)
+		driver.Recorder().Eventf(resource, nil, corev1.EventTypeWarning, events.EventReasonUnexpected, events.EventActionParseSecret, "%s", msg)
 		return nil, errors.Wrap(err, msg)
 	}
 	return parsed, nil

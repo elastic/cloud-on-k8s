@@ -52,7 +52,7 @@ func ReconcileOrRetrieveCA(
 	customCASecret, err := certificates.GetSecretFromRef(driver.K8sClient(), esNSN, es.Spec.Transport.TLS.Certificate)
 	if err != nil {
 		// error should already contain enough context including the name of the secret
-		driver.Recorder().Eventf(&es, corev1.EventTypeWarning, events.EventReasonUnexpected, err.Error())
+		driver.Recorder().Eventf(&es, nil, corev1.EventTypeWarning, events.EventReasonUnexpected, events.EventActionGetSecret, "%s", err.Error())
 		return nil, err
 	}
 	// 1. No custom certs are specified, reconcile our internal self-signed CA instead (probably the common case)
@@ -81,7 +81,7 @@ func ReconcileOrRetrieveCA(
 		// Surface validation/parsing errors to the user via an event otherwise they might be hard to spot
 		// validation at admission would also be an alternative but seems quite costly and secret contents might change
 		// in the time between admission and reading the secret contents so we need to re-run validation here anyway.
-		driver.Recorder().Eventf(&es, corev1.EventTypeWarning, events.EventReasonValidation, err.Error())
+		driver.Recorder().Eventf(&es, nil, corev1.EventTypeWarning, events.EventReasonValidation, events.EventActionParseSecret, "%s", err.Error())
 		return nil, err
 	}
 
@@ -89,7 +89,7 @@ func ReconcileOrRetrieveCA(
 		// Surface validation errors to the user via an event
 		validationErr := fmt.Errorf("error validating custom CA certificate in %s/%s: %w",
 			customCASecret.GetNamespace(), customCASecret.GetName(), err)
-		driver.Recorder().Eventf(&es, corev1.EventTypeWarning, events.EventReasonValidation, validationErr.Error())
+		driver.Recorder().Eventf(&es, nil, corev1.EventTypeWarning, events.EventReasonValidation, events.EventActionValidation, "%s", validationErr.Error())
 		return nil, validationErr
 	}
 

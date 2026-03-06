@@ -6,6 +6,7 @@ package apmserver
 
 import (
 	"context"
+	"fmt"
 	"maps"
 	"path/filepath"
 	"reflect"
@@ -18,7 +19,7 @@ import (
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
-	"k8s.io/client-go/tools/record"
+	toolsevents "k8s.io/client-go/tools/events"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
 	"sigs.k8s.io/controller-runtime/pkg/handler"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
@@ -98,7 +99,7 @@ func Add(mgr manager.Manager, params operator.Parameters) error {
 func newReconciler(mgr manager.Manager, params operator.Parameters) *ReconcileApmServer {
 	return &ReconcileApmServer{
 		Client:         mgr.GetClient(),
-		recorder:       mgr.GetEventRecorderFor(controllerName),
+		recorder:       mgr.GetEventRecorder(controllerName),
 		dynamicWatches: watches.NewDynamicWatches(),
 		Parameters:     params,
 	}
@@ -153,7 +154,7 @@ var _ reconcile.Reconciler = (*ReconcileApmServer)(nil)
 // ReconcileApmServer reconciles an ApmServer object
 type ReconcileApmServer struct {
 	k8s.Client
-	recorder       record.EventRecorder
+	recorder       toolsevents.EventRecorder
 	dynamicWatches watches.DynamicWatches
 	operator.Parameters
 	// iteration is the number of times this controller has run its reconcile method
@@ -172,7 +173,7 @@ func (r *ReconcileApmServer) DynamicWatches() watches.DynamicWatches {
 
 // Recorder returns the Kubernetes recorder that is responsible for recording and reporting
 // events from the APM Server reconciler.
-func (r *ReconcileApmServer) Recorder() record.EventRecorder {
+func (r *ReconcileApmServer) Recorder() toolsevents.EventRecorder {
 	return r.recorder
 }
 
@@ -256,7 +257,7 @@ func (r *ReconcileApmServer) doReconcile(ctx context.Context, as *apmv1.ApmServe
 	}.ReconcileCAAndHTTPCerts(ctx)
 	if results.HasError() {
 		_, err := results.Aggregate()
-		k8s.MaybeEmitErrorEvent(r.recorder, err, as, events.EventReconciliationError, "Certificate reconciliation error: %v", err)
+		k8s.MaybeEmitErrorEvent(r.recorder, err, as, events.EventReconciliationError, events.EventActionCertificateReconciliation, fmt.Sprintf("Certificate reconciliation error: %v", err))
 		return results, state
 	}
 
@@ -279,14 +280,14 @@ func (r *ReconcileApmServer) doReconcile(ctx context.Context, as *apmv1.ApmServe
 			log.V(1).Info("Conflict while updating status")
 			return results.WithRequeue(), state
 		}
-		k8s.MaybeEmitErrorEvent(r.recorder, err, as, events.EventReconciliationError, "Deployment reconciliation error: %v", err)
+		k8s.MaybeEmitErrorEvent(r.recorder, err, as, events.EventReconciliationError, "DeploymentReconciliation", fmt.Sprintf("Deployment reconciliation error: %v", err))
 		return results.WithError(tracing.CaptureError(ctx, err)), state
 	}
 
 	state.UpdateApmServerExternalService(*svc)
 
 	_, err = results.WithError(err).Aggregate()
-	k8s.MaybeEmitErrorEvent(r.recorder, err, as, events.EventReconciliationError, "Reconciliation error: %v", err)
+	k8s.MaybeEmitErrorEvent(r.recorder, err, as, events.EventReconciliationError, events.EventActionAggregation, fmt.Sprintf("Reconciliation error: %v", err))
 	return results, state
 }
 
@@ -296,7 +297,7 @@ func (r *ReconcileApmServer) validate(ctx context.Context, as *apmv1.ApmServer) 
 
 	if _, err := as.ValidateCreate(); err != nil {
 		log.Error(err, "Validation failed")
-		k8s.MaybeEmitErrorEvent(r.recorder, err, as, events.EventReasonValidation, err.Error())
+		k8s.MaybeEmitErrorEvent(r.recorder, err, as, events.EventReasonValidation, events.EventActionValidation, err.Error())
 		return tracing.CaptureError(vctx, err)
 	}
 
@@ -355,7 +356,7 @@ func (r *ReconcileApmServer) updateStatus(ctx context.Context, state State) erro
 		return nil
 	}
 	if state.ApmServer.Status.IsDegraded(original.Status.DeploymentStatus) {
-		r.recorder.Event(original, corev1.EventTypeWarning, events.EventReasonUnhealthy, "Apm Server health degraded")
+		r.recorder.Eventf(original, nil, corev1.EventTypeWarning, events.EventReasonUnhealthy, events.EventActionStatusUpdate, "%s", "Apm Server health degraded")
 	}
 	log.V(1).Info("Updating status",
 		"iteration", atomic.LoadUint64(&r.iteration),

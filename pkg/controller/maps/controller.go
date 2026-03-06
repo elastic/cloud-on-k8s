@@ -17,7 +17,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/types"
-	"k8s.io/client-go/tools/record"
+	toolsevents "k8s.io/client-go/tools/events"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
 	"sigs.k8s.io/controller-runtime/pkg/handler"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
@@ -65,7 +65,7 @@ func newReconciler(mgr manager.Manager, params operator.Parameters) *ReconcileMa
 	client := mgr.GetClient()
 	return &ReconcileMapsServer{
 		Client:         client,
-		recorder:       mgr.GetEventRecorderFor(controllerName),
+		recorder:       mgr.GetEventRecorder(controllerName),
 		dynamicWatches: watches.NewDynamicWatches(),
 		licenseChecker: license.NewLicenseChecker(client, params.OperatorNamespace),
 		Parameters:     params,
@@ -121,7 +121,7 @@ var _ reconcile.Reconciler = (*ReconcileMapsServer)(nil)
 type ReconcileMapsServer struct {
 	k8s.Client
 	operator.Parameters
-	recorder       record.EventRecorder
+	recorder       toolsevents.EventRecorder
 	dynamicWatches watches.DynamicWatches
 	licenseChecker license.Checker
 	// iteration is the number of times this controller has run its Reconcile method
@@ -136,7 +136,7 @@ func (r *ReconcileMapsServer) DynamicWatches() watches.DynamicWatches {
 	return r.dynamicWatches
 }
 
-func (r *ReconcileMapsServer) Recorder() record.EventRecorder {
+func (r *ReconcileMapsServer) Recorder() toolsevents.EventRecorder {
 	return r.recorder
 }
 
@@ -196,7 +196,7 @@ func (r *ReconcileMapsServer) doReconcile(ctx context.Context, ems emsv1alpha1.E
 	if !enabled {
 		msg := "Elastic Maps Server is an enterprise feature. Enterprise features are disabled"
 		log.Info(msg, "namespace", ems.Namespace, "maps_name", ems.Name)
-		r.recorder.Eventf(&ems, corev1.EventTypeWarning, events.EventReconciliationError, msg)
+		r.recorder.Eventf(&ems, nil, corev1.EventTypeWarning, events.EventReconciliationError, events.EventActionLicenseCheck, "%s", msg)
 		// we don't have a good way of watching for the license level to change so just requeue with a reasonably long delay
 		return results.WithRequeue(5 * time.Minute), status
 	}
@@ -237,7 +237,7 @@ func (r *ReconcileMapsServer) doReconcile(ctx context.Context, ems emsv1alpha1.E
 	}.ReconcileCAAndHTTPCerts(ctx)
 	if results.HasError() {
 		_, err := results.Aggregate()
-		k8s.MaybeEmitErrorEvent(r.recorder, err, &ems, events.EventReconciliationError, "Certificate reconciliation error: %v", err)
+		k8s.MaybeEmitErrorEvent(r.recorder, err, &ems, events.EventReconciliationError, events.EventActionCertificateReconciliation, fmt.Sprintf("Certificate reconciliation error: %v", err))
 		return results, status
 	}
 
@@ -291,7 +291,7 @@ func (r *ReconcileMapsServer) validate(ctx context.Context, ems emsv1alpha1.Elas
 
 	if _, err := ems.ValidateCreate(); err != nil {
 		ulog.FromContext(ctx).Error(err, "Validation failed")
-		k8s.MaybeEmitErrorEvent(r.recorder, err, &ems, events.EventReasonValidation, err.Error())
+		k8s.MaybeEmitErrorEvent(r.recorder, err, &ems, events.EventReasonValidation, events.EventActionValidation, err.Error())
 		return tracing.CaptureError(vctx, err)
 	}
 
@@ -407,7 +407,7 @@ func (r *ReconcileMapsServer) updateStatus(ctx context.Context, ems emsv1alpha1.
 		return nil // nothing to do
 	}
 	if status.IsDegraded(ems.Status.DeploymentStatus) {
-		r.recorder.Event(&ems, corev1.EventTypeWarning, events.EventReasonUnhealthy, "Elastic Maps Server health degraded")
+		r.recorder.Eventf(&ems, nil, corev1.EventTypeWarning, events.EventReasonUnhealthy, events.EventActionStatusUpdate, "%s", "Elastic Maps Server health degraded")
 	}
 	ulog.FromContext(ctx).V(1).Info("Updating status",
 		"iteration", atomic.LoadUint64(&r.iteration),

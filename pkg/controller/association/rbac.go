@@ -6,12 +6,13 @@ package association
 
 import (
 	"context"
+	"fmt"
 	"time"
 
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/meta"
 	"k8s.io/apimachinery/pkg/runtime"
-	"k8s.io/client-go/tools/record"
+	toolsevents "k8s.io/client-go/tools/events"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
 	commonv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/common/v1"
@@ -31,7 +32,7 @@ func CheckAndUnbind(
 	association commonv1.Association,
 	referencedObject runtime.Object,
 	unbinder Unbinder,
-	eventRecorder record.EventRecorder,
+	eventRecorder toolsevents.EventRecorder,
 ) (bool, error) {
 	allowed, err := accessReviewer.AccessAllowed(ctx, association.ServiceAccountName(), association.GetNamespace(), referencedObject)
 	if err != nil {
@@ -53,10 +54,13 @@ func CheckAndUnbind(
 		)
 		eventRecorder.Eventf(
 			association,
+			nil,
 			corev1.EventTypeWarning,
 			events.EventAssociationError,
-			"Association not allowed: %s/%s to %s/%s",
-			association.GetNamespace(), association.GetName(), metaObject.GetNamespace(), metaObject.GetName(),
+			events.EventActionAccessCheck,
+			"%s",
+			fmt.Sprintf("Association not allowed: %s/%s to %s/%s",
+				association.GetNamespace(), association.GetName(), metaObject.GetNamespace(), metaObject.GetName()),
 		)
 		return false, unbinder.Unbind(ctx, association)
 	}

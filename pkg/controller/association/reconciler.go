@@ -18,7 +18,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/types"
-	"k8s.io/client-go/tools/record"
+	toolsevents "k8s.io/client-go/tools/events"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
@@ -26,7 +26,6 @@ import (
 	commonv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/common/v1"
 	esv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/elasticsearch/v1"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common"
-	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/annotation"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/events"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/name"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/operator"
@@ -137,7 +136,7 @@ type Reconciler struct {
 
 	k8s.Client
 	accessReviewer rbac.AccessReviewer
-	recorder       record.EventRecorder
+	recorder       toolsevents.EventRecorder
 	watches        watches.DynamicWatches
 	operator.Parameters
 	// iteration is the number of times this controller has run its Reconcile method
@@ -251,7 +250,7 @@ func (r *Reconciler) reconcileAssociation(ctx context.Context, association commo
 		// external reference, update association conf to associate the unmanaged resource
 		expectedAssocConf, err := r.ExpectedConfigFromUnmanagedAssociation(association)
 		if err != nil {
-			r.recorder.Eventf(association.Associated(), corev1.EventTypeWarning, events.EventAssociationError, "Failed to reconcile external resource %q: %v", assocRef.NameOrSecretName(), err.Error())
+			r.recorder.Eventf(association.Associated(), nil, corev1.EventTypeWarning, events.EventAssociationError, "AssociationReconciliation", "%s", fmt.Sprintf("Failed to reconcile external resource %q: %v", assocRef.NameOrSecretName(), err.Error()))
 			return commonv1.AssociationFailed, err
 		}
 		return r.updateAssocConf(ctx, &expectedAssocConf, association)
@@ -431,8 +430,8 @@ func (r *Reconciler) getElasticsearch(
 	var es esv1.Elasticsearch
 	err := r.Get(ctx, elasticsearchRef.NamespacedName(), &es)
 	if err != nil {
-		k8s.MaybeEmitErrorEvent(r.recorder, err, association, events.EventAssociationError,
-			"Failed to find referenced backend %s: %v", elasticsearchRef.NamespacedName(), err)
+		k8s.MaybeEmitErrorEvent(r.recorder, err, association, events.EventAssociationError, events.EventActionElasticsearchRetrieval,
+			fmt.Sprintf("Failed to find referenced backend %s: %v", elasticsearchRef.NamespacedName(), err))
 		if apierrors.IsNotFound(err) {
 			// ES is not found, remove any existing backend configuration and retry in a bit.
 			if err := RemoveAssociationConf(ctx, r.Client, association); err != nil && !apierrors.IsConflict(err) {
@@ -513,16 +512,14 @@ func (r *Reconciler) updateStatus(ctx context.Context, associated commonv1.Assoc
 		if err := r.Status().Update(ctx, associated); err != nil {
 			return err
 		}
-		annotations, err := annotation.ForAssociationStatusChange(oldStatus, newStatus)
-		if err != nil {
-			return err
-		}
-		r.recorder.AnnotatedEventf(
+		r.recorder.Eventf(
 			associated,
-			annotations,
+			nil,
 			corev1.EventTypeNormal,
 			events.EventAssociationStatusChange,
-			"Association status changed from [%s] to [%s]", oldStatus, newStatus)
+			events.EventActionStatusUpdate,
+			"%s",
+			fmt.Sprintf("Association status changed from [%s] to [%s]", oldStatus, newStatus))
 	}
 	return nil
 }
@@ -554,7 +551,7 @@ func NewTestAssociationReconciler(assocInfo AssociationInfo, runtimeObjs ...clie
 		Client:          k8s.NewFakeClient(runtimeObjs...),
 		accessReviewer:  rbac.NewPermissiveAccessReviewer(),
 		watches:         watches.NewDynamicWatches(),
-		recorder:        record.NewFakeRecorder(10),
+		recorder:        toolsevents.NewFakeRecorder(10),
 		Parameters: operator.Parameters{
 			OperatorInfo: about.OperatorInfo{
 				BuildInfo: about.BuildInfo{

@@ -15,7 +15,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/errors"
-	"k8s.io/client-go/tools/record"
+	toolsevents "k8s.io/client-go/tools/events"
 	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
@@ -28,6 +28,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/autoscaling/elasticsearch/validation"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common"
 	commonesclient "github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/esclient"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/events"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/license"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/operator"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/reconciler"
@@ -61,14 +62,14 @@ type baseReconcileAutoscaling struct {
 	k8s.Client
 	operator.Parameters
 	esClientProvider EsClientProvider
-	recorder         record.EventRecorder
+	recorder         toolsevents.EventRecorder
 	licenseChecker   license.Checker
 
 	// iteration is the number of times this controller has run its Reconcile method
 	iteration uint64 //nolint:structcheck
 }
 
-func (r baseReconcileAutoscaling) withRecorder(recorder record.EventRecorder) baseReconcileAutoscaling {
+func (r baseReconcileAutoscaling) withRecorder(recorder toolsevents.EventRecorder) baseReconcileAutoscaling {
 	r.recorder = recorder
 	return r
 }
@@ -87,11 +88,11 @@ func NewReconciler(mgr manager.Manager, params operator.Parameters) *ReconcileEl
 		Client:           c,
 		Parameters:       params,
 		esClientProvider: commonesclient.NewClient,
-		recorder:         mgr.GetEventRecorderFor(ControllerName),
+		recorder:         mgr.GetEventRecorder(ControllerName),
 		licenseChecker:   license.NewLicenseChecker(c, params.OperatorNamespace),
 	}
 	return &ReconcileElasticsearchAutoscaler{
-		baseReconcileAutoscaling: reconcileAutoscaling.withRecorder(mgr.GetEventRecorderFor(ControllerName)),
+		baseReconcileAutoscaling: reconcileAutoscaling.withRecorder(mgr.GetEventRecorder(ControllerName)),
 		Watches:                  watches.NewDynamicWatches(),
 	}
 }
@@ -139,7 +140,7 @@ func (r *ReconcileElasticsearchAutoscaler) Reconcile(ctx context.Context, reques
 	}
 	if !enabled {
 		log.Info(enterpriseFeaturesDisabledMsg)
-		r.recorder.Eventf(&esa, corev1.EventTypeWarning, license.EventInvalidLicense, enterpriseFeaturesDisabledMsg)
+		r.recorder.Eventf(&esa, nil, corev1.EventTypeWarning, license.EventInvalidLicense, events.EventActionLicenseCheck, "%s", enterpriseFeaturesDisabledMsg)
 		_, err := r.reportAsInactive(ctx, log, esa, enterpriseFeaturesDisabledMsg)
 		// We still schedule a reconciliation in case a valid license is applied later
 		return licenseCheckRequeue, err

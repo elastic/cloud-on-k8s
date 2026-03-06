@@ -19,7 +19,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/types"
-	"k8s.io/client-go/tools/record"
+	toolsevents "k8s.io/client-go/tools/events"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	entv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/enterprisesearch/v1"
@@ -47,7 +47,7 @@ const (
 // VersionUpgrade toggles read-only mode on Enterprise Search during version upgrades.
 type VersionUpgrade struct {
 	k8sClient  k8s.Client
-	recorder   record.EventRecorder
+	recorder   toolsevents.EventRecorder
 	ent        entv1.EnterpriseSearch
 	dialer     net.Dialer   // optional custom dialer for the http client
 	httpClient *http.Client // custom http client, will be created if nil
@@ -78,7 +78,7 @@ func (r *VersionUpgrade) Handle(ctx context.Context) error {
 		msg := "Detected version upgrade with no association to Elasticsearch, " +
 			"please toggle read-only mode manually, otherwise the new version will crash at startup."
 		log.Info(msg, "namespace", r.ent.Namespace, "ent_name", r.ent.Name)
-		r.recorder.Event(&r.ent, corev1.EventTypeWarning, events.EventReasonUpgraded, msg)
+		r.recorder.Eventf(&r.ent, nil, corev1.EventTypeWarning, events.EventReasonUpgraded, events.EventActionVersionUpgrade, "%s", msg)
 		return nil
 	}
 
@@ -92,7 +92,7 @@ func (r *VersionUpgrade) Handle(ctx context.Context) error {
 			msg := "a version upgrade is scheduled, but no Pod in the prior version is running:" +
 				"waiting for at least one Pod in the prior version to be running in order to enable read-only mode"
 			log.Info(msg, "namespace", r.ent.Namespace, "ent_name", r.ent.Name)
-			r.recorder.Event(&r.ent, corev1.EventTypeWarning, events.EventReasonDelayed, msg)
+			r.recorder.Eventf(&r.ent, nil, corev1.EventTypeWarning, events.EventReasonDelayed, events.EventActionVersionUpgrade, "%s", msg)
 			// surface this as an error, since rather unexpected, and abort reconciliation
 			return errors.New(msg)
 		}
