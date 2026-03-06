@@ -151,23 +151,21 @@ func (b Builder) WithRestrictedSecurityContext() Builder {
 }
 
 func (b Builder) WithRemoteCluster(remoteEs Builder) Builder {
-	b.Elasticsearch.Spec.RemoteClusters =
-		append(b.Elasticsearch.Spec.RemoteClusters,
-			esv1.RemoteCluster{
-				Name:             remoteEs.Ref().Name,
-				ElasticsearchRef: remoteEs.LocalRef(),
-			})
+	b.Elasticsearch.Spec.RemoteClusters = append(b.Elasticsearch.Spec.RemoteClusters,
+		esv1.RemoteCluster{
+			Name:             remoteEs.Ref().Name,
+			ElasticsearchRef: remoteEs.LocalRef(),
+		})
 	return b
 }
 
 func (b Builder) WithRemoteClusterAPIKey(remoteEs Builder, apiKey *esv1.RemoteClusterAPIKey) Builder {
-	b.Elasticsearch.Spec.RemoteClusters =
-		append(b.Elasticsearch.Spec.RemoteClusters,
-			esv1.RemoteCluster{
-				Name:             remoteEs.Ref().Name,
-				ElasticsearchRef: remoteEs.LocalRef(),
-				APIKey:           apiKey,
-			})
+	b.Elasticsearch.Spec.RemoteClusters = append(b.Elasticsearch.Spec.RemoteClusters,
+		esv1.RemoteCluster{
+			Name:             remoteEs.Ref().Name,
+			ElasticsearchRef: remoteEs.LocalRef(),
+			APIKey:           apiKey,
+		})
 	return b
 }
 
@@ -592,6 +590,17 @@ func (b Builder) TriggersRollingUpgrade() bool {
 		}
 	}
 	return false
+}
+
+func (b Builder) TriggersRollingRestart() bool {
+	if b.MutatedFrom == nil {
+		return false
+	}
+
+	oldV := b.MutatedFrom.Elasticsearch.Annotations[esv1.RestartTriggerAnnotation]
+	v, ok := b.Elasticsearch.Annotations[esv1.RestartTriggerAnnotation]
+
+	return ok && v != "" && v != oldV
 }
 
 func MixedRolesCfg(ver string) map[string]any {

@@ -7,7 +7,9 @@ package stateful
 import (
 	"context"
 	"fmt"
+	"time"
 
+	"github.com/go-logr/logr"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/types"
@@ -64,12 +66,15 @@ func (d *Driver) handleUpgrades(
 		return results.WithError(err)
 	}
 
+	triggeredRestart := isAnnotationTriggeredRestart(d.ES, expectedResources, podsToUpgrade)
+
 	nodeNameToID, err := esState.NodeNameToID()
 	if err != nil {
 		results.WithError(err)
 	}
 	logger := log.WithValues("namespace", d.ES.Namespace, "es_name", d.ES.Name)
-	nodeShutdown := shutdown.NewNodeShutdown(esClient, nodeNameToID, esclient.Restart, d.ES.ResourceVersion, logger)
+	shutdownReason, allocationDelay := shutdownReasonAndAllocationDelay(d.ES, triggeredRestart, logger)
+	nodeShutdown := shutdown.NewNodeShutdown(esClient, nodeNameToID, esclient.Restart, shutdownReason, allocationDelay, logger)
 
 	// Maybe re-enable shards allocation and delete shutdowns if upgraded nodes are back into the cluster.
 	if results.WithResults(d.maybeCompleteNodeUpgrades(ctx, esClient, esState, nodeShutdown)).HasError() {
@@ -97,6 +102,7 @@ func (d *Driver) handleUpgrades(
 		podsToUpgrade,
 		healthyPods,
 		currentPods,
+		triggeredRestart,
 	)
 
 	var deletedPods []corev1.Pod
@@ -128,21 +134,22 @@ func (d *Driver) handleUpgrades(
 }
 
 type upgradeCtx struct {
-	parentCtx       context.Context
-	client          k8s.Client
-	ES              esv1.Elasticsearch
-	resourcesList   nodespec.ResourcesList
-	statefulSets    es_sset.StatefulSetList
-	esClient        esclient.Client
-	shardLister     esclient.ShardLister
-	nodeShutdown    *shutdown.NodeShutdown
-	esState         ESState
-	expectations    *expectations.Expectations
-	reconcileState  *reconcile.State
-	expectedMasters []string
-	podsToUpgrade   []corev1.Pod
-	healthyPods     map[string]corev1.Pod
-	currentPods     []corev1.Pod
+	parentCtx                    context.Context
+	client                       k8s.Client
+	ES                           esv1.Elasticsearch
+	resourcesList                nodespec.ResourcesList
+	statefulSets                 es_sset.StatefulSetList
+	esClient                     esclient.Client
+	shardLister                  esclient.ShardLister
+	nodeShutdown                 *shutdown.NodeShutdown
+	esState                      ESState
+	expectations                 *expectations.Expectations
+	reconcileState               *reconcile.State
+	expectedMasters              []string
+	podsToUpgrade                []corev1.Pod
+	healthyPods                  map[string]corev1.Pod
+	currentPods                  []corev1.Pod
+	isAnnotationTriggeredRestart bool
 }
 
 func newUpgrade(
@@ -157,23 +164,25 @@ func newUpgrade(
 	podsToUpgrade []corev1.Pod,
 	healthyPods map[string]corev1.Pod,
 	currentPods []corev1.Pod,
+	isAnnotationTriggeredRestart bool,
 ) upgradeCtx {
 	return upgradeCtx{
-		parentCtx:       ctx,
-		client:          d.Client,
-		ES:              d.ES,
-		statefulSets:    statefulSets,
-		resourcesList:   resourcesList,
-		esClient:        esClient,
-		shardLister:     esClient,
-		nodeShutdown:    nodeShutdown,
-		esState:         esState,
-		expectations:    d.Expectations,
-		reconcileState:  d.ReconcileState,
-		expectedMasters: expectedMaster,
-		podsToUpgrade:   podsToUpgrade,
-		healthyPods:     healthyPods,
-		currentPods:     currentPods,
+		parentCtx:                    ctx,
+		client:                       d.Client,
+		ES:                           d.ES,
+		statefulSets:                 statefulSets,
+		resourcesList:                resourcesList,
+		esClient:                     esClient,
+		shardLister:                  esClient,
+		nodeShutdown:                 nodeShutdown,
+		esState:                      esState,
+		expectations:                 d.Expectations,
+		reconcileState:               d.ReconcileState,
+		expectedMasters:              expectedMaster,
+		podsToUpgrade:                podsToUpgrade,
+		healthyPods:                  healthyPods,
+		currentPods:                  currentPods,
+		isAnnotationTriggeredRestart: isAnnotationTriggeredRestart,
 	}
 }
 
@@ -471,4 +480,63 @@ func (ctx *upgradeCtx) prepareClusterForNodeRestart(podsToUpgrade []corev1.Pod) 
 
 	// Request a flush to optimize indices recovery when the node restarts.
 	return doFlush(ctx.parentCtx, ctx.ES, ctx.esClient)
+}
+
+func isAnnotationTriggeredRestart(es esv1.Elasticsearch, resourcesList nodespec.ResourcesList, podsToUpgrade []corev1.Pod) bool {
+	annotationInSpec := es.Annotations[esv1.RestartTriggerAnnotation]
+	if annotationInSpec == "" {
+		return false
+	}
+
+	// Build expected config-hash per StatefulSet from the expected resources.
+	expectedConfigHashBySset := make(map[string]string)
+	for _, r := range resourcesList {
+		if h, ok := r.StatefulSet.Spec.Template.Annotations[nodespec.ConfigHashAnnotationName]; ok {
+			expectedConfigHashBySset[r.StatefulSet.Name] = h
+		}
+	}
+
+	// If any pod has a different config-hash than expected, this is a spec change, not annotation-only.
+	for _, pod := range podsToUpgrade {
+		ssetName := pod.Labels[label.StatefulSetNameLabelName]
+		expectedHash := expectedConfigHashBySset[ssetName]
+		if pod.Annotations[nodespec.ConfigHashAnnotationName] != expectedHash {
+			return false
+		}
+	}
+
+	// No spec differences; check if any pod has not yet received the current restart-trigger value.
+	for _, p := range podsToUpgrade {
+		if p.Annotations[esv1.RestartTriggerAnnotation] != annotationInSpec {
+			return true
+		}
+	}
+
+	return false
+}
+
+// shutdownReasonAndAllocationDelay resolves the shutdown reason and allocation delay from
+// the Elasticsearch resource annotations. If the restart-trigger annotation is set, it is
+// used as the reason; otherwise the resource version is used. The allocation delay is parsed
+// from the restart-allocation-delay annotation; parse errors are logged and ignored.
+func shutdownReasonAndAllocationDelay(es esv1.Elasticsearch, isAnnotationTriggeredRestart bool, log logr.Logger) (string, *time.Duration) {
+	reason := es.ResourceVersion
+	if v := es.Annotations[esv1.RestartTriggerAnnotation]; v != "" && isAnnotationTriggeredRestart {
+		reason = v
+	}
+
+	var allocationDelay *time.Duration
+	if v, ok := es.Annotations[esv1.RestartAllocationDelayAnnotation]; ok && v != "" {
+		d, err := time.ParseDuration(v)
+		switch {
+		case err != nil:
+			log.Error(err, "Failed to parse restart-allocation-delay annotation, ignoring", "value", v)
+		case d < 0:
+			log.V(1).Info("Negative restart-allocation-delay annotation, ignoring", "value", v)
+		default:
+			allocationDelay = &d
+		}
+	}
+
+	return reason, allocationDelay
 }

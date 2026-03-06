@@ -7,12 +7,14 @@ package stateful
 import (
 	"context"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	crlog "sigs.k8s.io/controller-runtime/pkg/log"
 
@@ -24,6 +26,8 @@ import (
 	esclient "github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/client"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/driver"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/hints"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/label"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/nodespec"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/reconcile"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/shutdown"
 	es_sset "github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/sset"
@@ -570,9 +574,280 @@ func Test_Driver_maybeCompleteNodeUpgrades(t *testing.T) {
 			nodeNameToID, err := esState.NodeNameToID()
 			require.NoError(t, err)
 
-			n := shutdown.NewNodeShutdown(esClient, nodeNameToID, esclient.Restart, "", crlog.Log)
+			n := shutdown.NewNodeShutdown(esClient, nodeNameToID, esclient.Restart, "", nil, crlog.Log)
 			results := d.maybeCompleteNodeUpgrades(context.Background(), esClient, esState, n)
 			tt.assertions(results, esClient)
+		})
+	}
+}
+
+func Test_shutdownReasonAndAllocationDelay(t *testing.T) {
+	tests := []struct {
+		name                         string
+		annotations                  map[string]string
+		resourceVersion              string
+		isAnnotationTriggeredRestart bool
+		wantReason                   string
+		wantDelay                    *time.Duration
+	}{
+		{
+			name:                         "no annotations, uses resource version",
+			annotations:                  nil,
+			resourceVersion:              "12345",
+			isAnnotationTriggeredRestart: false,
+			wantReason:                   "12345",
+			wantDelay:                    nil,
+		},
+		{
+			name:                         "restart-trigger set and used as reason",
+			annotations:                  map[string]string{esv1.RestartTriggerAnnotation: "2026-01-14T12:00:00Z"},
+			resourceVersion:              "12345",
+			isAnnotationTriggeredRestart: true,
+			wantReason:                   "2026-01-14T12:00:00Z",
+			wantDelay:                    nil,
+		},
+		{
+			name:                         "restart-trigger set but not used as reason",
+			annotations:                  map[string]string{esv1.RestartTriggerAnnotation: "2026-01-14T12:00:00Z"},
+			resourceVersion:              "12345",
+			isAnnotationTriggeredRestart: false,
+			wantReason:                   "12345",
+			wantDelay:                    nil,
+		},
+		{
+			name:                         "restart-trigger empty, falls back to resource version",
+			annotations:                  map[string]string{esv1.RestartTriggerAnnotation: ""},
+			resourceVersion:              "99",
+			isAnnotationTriggeredRestart: true,
+			wantReason:                   "99",
+			wantDelay:                    nil,
+		},
+		{
+			name:                         "allocation delay set",
+			annotations:                  map[string]string{esv1.RestartAllocationDelayAnnotation: "10m"},
+			resourceVersion:              "42",
+			isAnnotationTriggeredRestart: false,
+			wantReason:                   "42",
+			wantDelay:                    ptr.To(10 * time.Minute),
+		},
+		{
+			name:                         "allocation delay set to negative",
+			annotations:                  map[string]string{esv1.RestartAllocationDelayAnnotation: "-10m"},
+			resourceVersion:              "42",
+			isAnnotationTriggeredRestart: false,
+			wantReason:                   "42",
+			wantDelay:                    nil,
+		},
+		{
+			name:                         "allocation delay invalid, ignored",
+			annotations:                  map[string]string{esv1.RestartAllocationDelayAnnotation: "not-a-duration"},
+			resourceVersion:              "42",
+			isAnnotationTriggeredRestart: false,
+			wantReason:                   "42",
+			wantDelay:                    nil,
+		},
+		{
+			name: "both annotations set",
+			annotations: map[string]string{
+				esv1.RestartTriggerAnnotation:         "trigger-value",
+				esv1.RestartAllocationDelayAnnotation: "5m",
+			},
+			resourceVersion:              "42",
+			isAnnotationTriggeredRestart: true,
+			wantReason:                   "trigger-value",
+			wantDelay:                    ptr.To(5 * time.Minute),
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			es := esv1.Elasticsearch{
+				ObjectMeta: metav1.ObjectMeta{
+					ResourceVersion: tt.resourceVersion,
+					Annotations:     tt.annotations,
+				},
+			}
+			reason, delay := shutdownReasonAndAllocationDelay(es, tt.isAnnotationTriggeredRestart, crlog.Log)
+			assert.Equal(t, tt.wantReason, reason)
+			if tt.wantDelay == nil {
+				assert.Nil(t, delay)
+			} else {
+				require.NotNil(t, delay)
+				assert.Equal(t, *tt.wantDelay, *delay)
+			}
+		})
+	}
+}
+
+func Test_isAnnotationTriggeredRestart(t *testing.T) {
+	// Helper to build a StatefulSet with config-hash annotation on the template.
+	stsWithHash := func(name, configHash string) appsv1.StatefulSet {
+		sts := sset.TestSset{Name: name, Namespace: "ns", Replicas: 1}.Build()
+		if sts.Spec.Template.Annotations == nil {
+			sts.Spec.Template.Annotations = make(map[string]string)
+		}
+		sts.Spec.Template.Annotations[nodespec.ConfigHashAnnotationName] = configHash
+		return sts
+	}
+	// Helper to build ResourcesList from StatefulSets.
+	resourcesList := func(sts ...appsv1.StatefulSet) nodespec.ResourcesList {
+		out := make(nodespec.ResourcesList, len(sts))
+		for i, s := range sts {
+			out[i] = nodespec.Resources{StatefulSet: s}
+		}
+		return out
+	}
+	// Helper to build a pod with labels and annotations.
+	pod := func(name, ssetName, configHash, restartTrigger string) corev1.Pod {
+		p := sset.TestPod{Name: name, Namespace: "ns", StatefulSetName: ssetName}.Build()
+		p.Labels[label.StatefulSetNameLabelName] = ssetName
+		p.Annotations = make(map[string]string)
+		if configHash != "" {
+			p.Annotations[nodespec.ConfigHashAnnotationName] = configHash
+		}
+		if restartTrigger != "" {
+			p.Annotations[esv1.RestartTriggerAnnotation] = restartTrigger
+		}
+		return p
+	}
+
+	tests := []struct {
+		name          string
+		es            esv1.Elasticsearch
+		resourcesList nodespec.ResourcesList
+		podsToUpgrade []corev1.Pod
+		want          bool
+	}{
+		{
+			name: "no restart annotation on ES",
+			es: esv1.Elasticsearch{
+				ObjectMeta: metav1.ObjectMeta{Annotations: nil},
+			},
+			resourcesList: resourcesList(stsWithHash("masters", "hash1")),
+			podsToUpgrade: []corev1.Pod{pod("masters-0", "masters", "hash1", "old")},
+			want:          false,
+		},
+		{
+			name: "empty restart annotation on ES",
+			es: esv1.Elasticsearch{
+				ObjectMeta: metav1.ObjectMeta{
+					Annotations: map[string]string{esv1.RestartTriggerAnnotation: ""},
+				},
+			},
+			resourcesList: resourcesList(stsWithHash("masters", "hash1")),
+			podsToUpgrade: []corev1.Pod{pod("masters-0", "masters", "hash1", "")},
+			want:          false,
+		},
+		{
+			name: "pod config-hash differs from expected (spec change)",
+			es: esv1.Elasticsearch{
+				ObjectMeta: metav1.ObjectMeta{
+					Annotations: map[string]string{esv1.RestartTriggerAnnotation: "trigger-v1"},
+				},
+			},
+			resourcesList: resourcesList(stsWithHash("masters", "expected-hash")),
+			podsToUpgrade: []corev1.Pod{pod("masters-0", "masters", "different-hash", "old-trigger")},
+			want:          false,
+		},
+		{
+			name: "config hashes match, one pod has old restart-trigger",
+			es: esv1.Elasticsearch{
+				ObjectMeta: metav1.ObjectMeta{
+					Annotations: map[string]string{esv1.RestartTriggerAnnotation: "trigger-v2"},
+				},
+			},
+			resourcesList: resourcesList(stsWithHash("masters", "hash1")),
+			podsToUpgrade: []corev1.Pod{
+				pod("masters-0", "masters", "hash1", "trigger-v1"),
+				pod("masters-1", "masters", "hash1", "trigger-v2"),
+			},
+			want: true,
+		},
+		{
+			name: "config hashes match, all pods have current restart-trigger",
+			es: esv1.Elasticsearch{
+				ObjectMeta: metav1.ObjectMeta{
+					Annotations: map[string]string{esv1.RestartTriggerAnnotation: "trigger-v2"},
+				},
+			},
+			resourcesList: resourcesList(stsWithHash("masters", "hash1")),
+			podsToUpgrade: []corev1.Pod{
+				pod("masters-0", "masters", "hash1", "trigger-v2"),
+				pod("masters-1", "masters", "hash1", "trigger-v2"),
+			},
+			want: false,
+		},
+		{
+			name: "config hashes match, pod missing restart-trigger annotation",
+			es: esv1.Elasticsearch{
+				ObjectMeta: metav1.ObjectMeta{
+					Annotations: map[string]string{esv1.RestartTriggerAnnotation: "trigger-v2"},
+				},
+			},
+			resourcesList: resourcesList(stsWithHash("masters", "hash1")),
+			podsToUpgrade: []corev1.Pod{pod("masters-0", "masters", "hash1", "")},
+			want:          true,
+		},
+		{
+			name: "multiple StatefulSets, one pod has different config-hash",
+			es: esv1.Elasticsearch{
+				ObjectMeta: metav1.ObjectMeta{
+					Annotations: map[string]string{esv1.RestartTriggerAnnotation: "trigger-v1"},
+				},
+			},
+			resourcesList: resourcesList(
+				stsWithHash("masters", "hash-m"),
+				stsWithHash("data", "hash-d"),
+			),
+			podsToUpgrade: []corev1.Pod{
+				pod("masters-0", "masters", "hash-m", "old"),
+				pod("data-0", "data", "wrong-hash", "old"),
+			},
+			want: false,
+		},
+		{
+			name: "multiple StatefulSets, config hashes match, one pod needs restart",
+			es: esv1.Elasticsearch{
+				ObjectMeta: metav1.ObjectMeta{
+					Annotations: map[string]string{esv1.RestartTriggerAnnotation: "trigger-v2"},
+				},
+			},
+			resourcesList: resourcesList(
+				stsWithHash("masters", "hash-m"),
+				stsWithHash("data", "hash-d"),
+			),
+			podsToUpgrade: []corev1.Pod{
+				pod("masters-0", "masters", "hash-m", "trigger-v2"),
+				pod("data-0", "data", "hash-d", "trigger-v1"),
+			},
+			want: true,
+		},
+		{
+			name: "empty podsToUpgrade with restart annotation set",
+			es: esv1.Elasticsearch{
+				ObjectMeta: metav1.ObjectMeta{
+					Annotations: map[string]string{esv1.RestartTriggerAnnotation: "trigger-v1"},
+				},
+			},
+			resourcesList: resourcesList(stsWithHash("masters", "hash1")),
+			podsToUpgrade: nil,
+			want:          false,
+		},
+		{
+			name: "StatefulSet without config-hash in template: pod with different hash still triggers spec-change false",
+			es: esv1.Elasticsearch{
+				ObjectMeta: metav1.ObjectMeta{
+					Annotations: map[string]string{esv1.RestartTriggerAnnotation: "trigger-v1"},
+				},
+			},
+			resourcesList: resourcesList(sset.TestSset{Name: "masters", Namespace: "ns", Replicas: 1}.Build()),
+			podsToUpgrade: []corev1.Pod{pod("masters-0", "masters", "some-hash", "old")},
+			want:          false,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := isAnnotationTriggeredRestart(tt.es, tt.resourcesList, tt.podsToUpgrade)
+			assert.Equalf(t, tt.want, got, "isAnnotationTriggeredRestart() = %v, want %v", got, tt.want)
 		})
 	}
 }
