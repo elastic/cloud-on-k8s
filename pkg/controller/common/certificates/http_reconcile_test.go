@@ -380,8 +380,12 @@ func TestReconcileInternalHTTPCerts(t *testing.T) {
 				if cs != nil {
 					// Private key should remain the same
 					assert.Equal(t, testPrivateKey, cs.Data["tls.key"], "Private key should not have been updated")
-					// tls.crt should remain unchanged (no byte-swap, no reissuance)
-					assert.Equal(t, pemTLS, cs.Data["tls.crt"], "tls.crt should not have been updated")
+					// Leaf cert should NOT be reissued (same cert bytes)
+					// but tls.crt should be updated to include the new CA in the chain
+					expectedTLSCrt := EncodePEMCert(cert, testCAWithSameSKI.Cert.Raw)
+					assert.Equal(t, expectedTLSCrt, cs.Data["tls.crt"], "tls.crt should have updated CA in chain but same leaf cert")
+					// ca.crt should be updated to the new CA
+					assert.Equal(t, EncodePEMCert(testCAWithSameSKI.Cert.Raw), cs.Data["ca.crt"], "ca.crt should be updated to new CA")
 				}
 			},
 		},
@@ -737,4 +741,65 @@ func Test_getHTTPCertificate(t *testing.T) {
 			}
 		})
 	}
+}
+
+func Test_ensureInternalSelfSignedCertificateSecretContents_UpdatesCAChainWhenLeafIsReused(t *testing.T) {
+	// Build a rotated CA that keeps the same private key + same SKI.
+	// In this setup the existing leaf can still be considered valid by AKI->SKI checks,
+	// so reconcile may decide to reuse the leaf certificate bytes.
+	rotatedCA, err := NewSelfSignedCA(CABuilderOptions{
+		Subject:      pkix.Name{CommonName: "test-common-name"},
+		PrivateKey:   testRSAPrivateKey,
+		SubjectKeyID: testCA.Cert.SubjectKeyId,
+	})
+	require.NoError(t, err)
+	require.False(t, testCA.Cert.Equal(rotatedCA.Cert), "rotated CA should be a different certificate")
+	assert.Equal(t, testCA.Cert.SubjectKeyId, rotatedCA.Cert.SubjectKeyId, "rotated CA should preserve SKI")
+
+	privateKey, err := EncodePEMPrivateKey(testRSAPrivateKey)
+	require.NoError(t, err)
+
+	// Seed the secret with OLD CA material:
+	// - ca.crt points to old CA
+	// - tls.crt contains a leaf signed by old CA and old CA in chain
+	secret := &corev1.Secret{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      InternalCertsSecretName(esv1.ESNamer, testES.Name),
+			Namespace: testES.Namespace,
+		},
+		Data: map[string][]byte{
+			KeyFileName:  privateKey,
+			CAFileName:   EncodePEMCert(testCA.Cert.Raw),
+			CertFileName: pemTLS, // leaf signed by testCA with testCA in chain
+		},
+	}
+
+	// Reconcile against the rotated CA.
+	// Expected behavior:
+	// - leaf may be reused (same key + same SKI path is still valid),
+	// - but CA material in secret should still be refreshed to rotated CA.
+	changed, err := ensureInternalSelfSignedCertificateSecretContents(
+		context.Background(),
+		secret,
+		k8s.ExtractNamespacedName(&testES),
+		esv1.ESNamer,
+		testES.Spec.HTTP.TLS,
+		nil,
+		[]corev1.Service{testSvc},
+		rotatedCA,
+		RotationParams{
+			Validity:     DefaultCertValidity,
+			RotateBefore: DefaultRotateBefore,
+		},
+	)
+	require.NoError(t, err)
+
+	// ca.crt and tls.crt chain should be rewritten with the current CA.
+	assert.True(t, changed, "CA data should be refreshed even when leaf certificate is reused")
+	assert.Equal(t, EncodePEMCert(rotatedCA.Cert.Raw), secret.Data[CAFileName], "ca.crt should be updated to rotated CA")
+
+	chain, err := ParsePEMCerts(secret.Data[CertFileName])
+	require.NoError(t, err)
+	require.GreaterOrEqual(t, len(chain), 2, "tls.crt should include leaf + CA chain")
+	assert.True(t, chain[1].Equal(rotatedCA.Cert), "tls.crt chain should include rotated CA")
 }
