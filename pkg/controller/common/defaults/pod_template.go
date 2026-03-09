@@ -166,23 +166,26 @@ func (b *PodTemplateBuilder) WithTopologySpreadConstraints(constraints ...corev1
 }
 
 // WithRequiredNodeAffinityMatchExpressions ensures all required node selector
-// terms include the provided match expressions by key without duplicating keys.
+// terms include the provided match expressions.
 // When the injected requirement uses the Exists operator, it is only skipped if
 // an existing expression on the same key already guarantees label existence
 // (In, Exists, Gt, Lt). Operators like NotIn or DoesNotExist do not guarantee
 // the label is present, so the Exists requirement is still appended to prevent
 // pods from landing on nodes that lack the label.
+// For non-Exists operators, only exact duplicate requirements are skipped.
 func (b *PodTemplateBuilder) WithRequiredNodeAffinityMatchExpressions(requirements ...corev1.NodeSelectorRequirement) *PodTemplateBuilder {
 	if len(requirements) == 0 {
 		return b
 	}
 
 	nodeSelector := ensureRequiredNodeSelector(&b.PodTemplate.Spec)
+	// avoid mutating the original requirements slice
 	copiedRequirements := make([]corev1.NodeSelectorRequirement, 0, len(requirements))
 	for i := range requirements {
 		copiedRequirements = append(copiedRequirements, *requirements[i].DeepCopy())
 	}
 
+	// When no user-provided terms exist, create a single term containing all requirements.
 	if len(nodeSelector.NodeSelectorTerms) == 0 {
 		nodeSelector.NodeSelectorTerms = []corev1.NodeSelectorTerm{
 			{
@@ -192,14 +195,23 @@ func (b *PodTemplateBuilder) WithRequiredNodeAffinityMatchExpressions(requiremen
 		return b
 	}
 
+	// Append each requirement into every existing term (terms are OR'd by Kubernetes,
+	// expressions within a term are AND'd). This ensures the requirement is enforced
+	// regardless of which term the scheduler selects.
 	for i := range nodeSelector.NodeSelectorTerms {
 		for _, requirement := range copiedRequirements {
 			if requirement.Operator == corev1.NodeSelectorOpExists {
+				// For Exists: skip only when the term already contains an expression
+				// on the same key that implies the label must be present (In, Exists,
+				// Gt, Lt). Operators like NotIn or DoesNotExist match nodes where the
+				// label is absent, so they don't satisfy the existence guarantee.
 				if nodeSelectorTermGuaranteesKeyExistence(nodeSelector.NodeSelectorTerms[i], requirement.Key) {
 					continue
 				}
 			} else {
-				if hasNodeSelectorRequirementKey(nodeSelector.NodeSelectorTerms[i], requirement.Key) {
+				// For all other operators: skip only when an exact duplicate
+				// (same key, operator, and values) already exists in the term.
+				if hasNodeSelectorRequirement(nodeSelector.NodeSelectorTerms[i], requirement) {
 					continue
 				}
 			}
@@ -466,9 +478,11 @@ func ensureNodeAffinity(podSpec *corev1.PodSpec) *corev1.NodeAffinity {
 	return podSpec.Affinity.NodeAffinity
 }
 
-func hasNodeSelectorRequirementKey(term corev1.NodeSelectorTerm, key string) bool {
+func hasNodeSelectorRequirement(term corev1.NodeSelectorTerm, requirement corev1.NodeSelectorRequirement) bool {
 	for _, expression := range term.MatchExpressions {
-		if expression.Key == key {
+		if expression.Key == requirement.Key &&
+			expression.Operator == requirement.Operator &&
+			slices.Equal(expression.Values, requirement.Values) {
 			return true
 		}
 	}

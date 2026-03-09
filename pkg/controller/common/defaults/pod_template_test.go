@@ -1738,7 +1738,7 @@ func TestPodTemplateBuilder_WithRequiredNodeAffinityMatchExpressions(t *testing.
 			},
 		},
 		{
-			name: "does not duplicate non-Exists requirement when key already exists",
+			name: "adds non-Exists requirement when same key has incompatible operator",
 			podTemplate: corev1.PodTemplateSpec{
 				Spec: corev1.PodSpec{
 					Affinity: &corev1.Affinity{
@@ -1763,6 +1763,41 @@ func TestPodTemplateBuilder_WithRequiredNodeAffinityMatchExpressions(t *testing.
 						NodeSelectorTerms: []corev1.NodeSelectorTerm{
 							{MatchExpressions: []corev1.NodeSelectorRequirement{
 								{Key: "topology.kubernetes.io/zone", Operator: corev1.NodeSelectorOpDoesNotExist},
+								{Key: "topology.kubernetes.io/zone", Operator: corev1.NodeSelectorOpIn, Values: []string{"a", "b"}},
+							}},
+						},
+					},
+				},
+			},
+		},
+		{
+			name: "does not duplicate non-Exists requirement when requirement already exists",
+			podTemplate: corev1.PodTemplateSpec{
+				Spec: corev1.PodSpec{
+					Affinity: &corev1.Affinity{
+						NodeAffinity: &corev1.NodeAffinity{
+							RequiredDuringSchedulingIgnoredDuringExecution: &corev1.NodeSelector{
+								NodeSelectorTerms: []corev1.NodeSelectorTerm{
+									{MatchExpressions: []corev1.NodeSelectorRequirement{
+										{Key: "topology.kubernetes.io/zone", Operator: corev1.NodeSelectorOpDoesNotExist},
+										{Key: "topology.kubernetes.io/zone", Operator: corev1.NodeSelectorOpIn, Values: []string{"a", "b"}},
+									}},
+								},
+							},
+						},
+					},
+				},
+			},
+			requirements: []corev1.NodeSelectorRequirement{
+				{Key: "topology.kubernetes.io/zone", Operator: corev1.NodeSelectorOpIn, Values: []string{"a", "b"}},
+			},
+			wantAffinity: &corev1.Affinity{
+				NodeAffinity: &corev1.NodeAffinity{
+					RequiredDuringSchedulingIgnoredDuringExecution: &corev1.NodeSelector{
+						NodeSelectorTerms: []corev1.NodeSelectorTerm{
+							{MatchExpressions: []corev1.NodeSelectorRequirement{
+								{Key: "topology.kubernetes.io/zone", Operator: corev1.NodeSelectorOpDoesNotExist},
+								{Key: "topology.kubernetes.io/zone", Operator: corev1.NodeSelectorOpIn, Values: []string{"a", "b"}},
 							}},
 						},
 					},

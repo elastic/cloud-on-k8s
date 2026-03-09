@@ -798,6 +798,193 @@ func Test_validZoneAwarenessTopologyKeys(t *testing.T) {
 	}
 }
 
+func Test_validZoneAwarenessAffinityInCompatibility(t *testing.T) {
+	requiredAffinityWithInExpression := func(key string, values []string) *corev1.Affinity {
+		return &corev1.Affinity{
+			NodeAffinity: &corev1.NodeAffinity{
+				RequiredDuringSchedulingIgnoredDuringExecution: &corev1.NodeSelector{
+					NodeSelectorTerms: []corev1.NodeSelectorTerm{
+						{
+							MatchExpressions: []corev1.NodeSelectorRequirement{
+								{Key: key, Operator: corev1.NodeSelectorOpIn, Values: values},
+							},
+						},
+					},
+				},
+			},
+		}
+	}
+
+	topologyExprPath := func(nodeSetIndex int) string {
+		return field.NewPath("spec").Child("nodeSets").Index(nodeSetIndex).Child("podTemplate", "spec", "affinity", "nodeAffinity", "requiredDuringSchedulingIgnoredDuringExecution", "nodeSelectorTerms").Index(0).Child("matchExpressions").Index(0).String()
+	}
+
+	tests := []struct {
+		name           string
+		es             esv1.Elasticsearch
+		expectedFields []string
+	}{
+		{
+			name: "rejects In with no intersection with configured zones",
+			es: esv1.Elasticsearch{
+				Spec: esv1.ElasticsearchSpec{
+					NodeSets: []esv1.NodeSet{
+						{
+							Name:          "za",
+							ZoneAwareness: &esv1.ZoneAwareness{Zones: []string{"us-east-1a", "us-east-1b"}},
+							PodTemplate: corev1.PodTemplateSpec{
+								Spec: corev1.PodSpec{
+									Affinity: requiredAffinityWithInExpression(esv1.DefaultZoneAwarenessTopologyKey, []string{"us-east-1c"}),
+								},
+							},
+						},
+					},
+				},
+			},
+			expectedFields: []string{topologyExprPath(0)},
+		},
+		{
+			name: "rejects In with no intersection on custom topology key",
+			es: esv1.Elasticsearch{
+				Spec: esv1.ElasticsearchSpec{
+					NodeSets: []esv1.NodeSet{
+						{
+							Name: "za",
+							ZoneAwareness: &esv1.ZoneAwareness{
+								TopologyKey: "custom.io/rack",
+								Zones:       []string{"rack-1", "rack-2"},
+							},
+							PodTemplate: corev1.PodTemplateSpec{
+								Spec: corev1.PodSpec{
+									Affinity: requiredAffinityWithInExpression("custom.io/rack", []string{"rack-3", "rack-4"}),
+								},
+							},
+						},
+					},
+				},
+			},
+			expectedFields: []string{topologyExprPath(0)},
+		},
+		{
+			name: "allows In with partial intersection (user restricts to subset of zones)",
+			es: esv1.Elasticsearch{
+				Spec: esv1.ElasticsearchSpec{
+					NodeSets: []esv1.NodeSet{
+						{
+							Name:          "za",
+							ZoneAwareness: &esv1.ZoneAwareness{Zones: []string{"us-east-1a", "us-east-1b", "us-east-1c"}},
+							PodTemplate: corev1.PodTemplateSpec{
+								Spec: corev1.PodSpec{
+									Affinity: requiredAffinityWithInExpression(esv1.DefaultZoneAwarenessTopologyKey, []string{"us-east-1a"}),
+								},
+							},
+						},
+					},
+				},
+			},
+		},
+		{
+			name: "allows In with exact match of zones",
+			es: esv1.Elasticsearch{
+				Spec: esv1.ElasticsearchSpec{
+					NodeSets: []esv1.NodeSet{
+						{
+							Name:          "za",
+							ZoneAwareness: &esv1.ZoneAwareness{Zones: []string{"us-east-1a", "us-east-1b"}},
+							PodTemplate: corev1.PodTemplateSpec{
+								Spec: corev1.PodSpec{
+									Affinity: requiredAffinityWithInExpression(esv1.DefaultZoneAwarenessTopologyKey, []string{"us-east-1a", "us-east-1b"}),
+								},
+							},
+						},
+					},
+				},
+			},
+		},
+		{
+			name: "allows In on unrelated key",
+			es: esv1.Elasticsearch{
+				Spec: esv1.ElasticsearchSpec{
+					NodeSets: []esv1.NodeSet{
+						{
+							Name:          "za",
+							ZoneAwareness: &esv1.ZoneAwareness{Zones: []string{"us-east-1a"}},
+							PodTemplate: corev1.PodTemplateSpec{
+								Spec: corev1.PodSpec{
+									Affinity: requiredAffinityWithInExpression("nodepool", []string{"pool-x"}),
+								},
+							},
+						},
+					},
+				},
+			},
+		},
+		{
+			name: "skips nodesets without explicit zones (operator injects Exists, not In)",
+			es: esv1.Elasticsearch{
+				Spec: esv1.ElasticsearchSpec{
+					NodeSets: []esv1.NodeSet{
+						{
+							Name:          "za-no-zones",
+							ZoneAwareness: &esv1.ZoneAwareness{},
+							PodTemplate: corev1.PodTemplateSpec{
+								Spec: corev1.PodSpec{
+									Affinity: requiredAffinityWithInExpression(esv1.DefaultZoneAwarenessTopologyKey, []string{"us-east-1c"}),
+								},
+							},
+						},
+					},
+				},
+			},
+		},
+		{
+			name: "skips non-zone-aware nodesets even in zone-aware cluster",
+			es: esv1.Elasticsearch{
+				Spec: esv1.ElasticsearchSpec{
+					NodeSets: []esv1.NodeSet{
+						{
+							Name:          "za",
+							ZoneAwareness: &esv1.ZoneAwareness{Zones: []string{"us-east-1a"}},
+						},
+						{
+							Name: "plain",
+							PodTemplate: corev1.PodTemplateSpec{
+								Spec: corev1.PodSpec{
+									Affinity: requiredAffinityWithInExpression(esv1.DefaultZoneAwarenessTopologyKey, []string{"us-east-1c"}),
+								},
+							},
+						},
+					},
+				},
+			},
+		},
+		{
+			name: "no affinity configured",
+			es: esv1.Elasticsearch{
+				Spec: esv1.ElasticsearchSpec{
+					NodeSets: []esv1.NodeSet{
+						{
+							Name:          "za",
+							ZoneAwareness: &esv1.ZoneAwareness{Zones: []string{"us-east-1a"}},
+						},
+					},
+				},
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			errs := validZoneAwarenessAffinityInCompatibility(tt.es)
+			actualFields := make([]string, len(errs))
+			for i, err := range errs {
+				actualFields[i] = err.Field
+			}
+			assert.ElementsMatch(t, tt.expectedFields, actualFields)
+		})
+	}
+}
+
 func Test_validAssociations(t *testing.T) {
 	type args struct {
 		name         string
