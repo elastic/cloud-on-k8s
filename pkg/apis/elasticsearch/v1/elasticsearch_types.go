@@ -382,10 +382,11 @@ type ZoneAwareness struct {
 
 // TopologyKeyOrDefault returns the configured topology key or the default.
 func (za ZoneAwareness) TopologyKeyOrDefault() string {
-	if strings.TrimSpace(za.TopologyKey) == "" {
+	topologyKey := strings.TrimSpace(za.TopologyKey)
+	if topologyKey == "" {
 		return DefaultZoneAwarenessTopologyKey
 	}
-	return za.TopologyKey
+	return topologyKey
 }
 
 // +kubebuilder:object:generate=false

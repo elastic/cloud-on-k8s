@@ -154,9 +154,9 @@ func (b *PodTemplateBuilder) WithTopologySpreadConstraints(constraints ...corev1
 			return c.TopologyKey == constraint.TopologyKey
 		}); idx >= 0 {
 			existing := &b.PodTemplate.Spec.TopologySpreadConstraints[idx]
-			if (existing.LabelSelector == nil || k8s.IsLabelSelectorEmpty(*existing.LabelSelector)) &&
-				constraint.LabelSelector != nil && !k8s.IsLabelSelectorEmpty(*constraint.LabelSelector) {
-				existing.LabelSelector = constraint.LabelSelector.DeepCopy()
+			if k8s.IsLabelSelectorEmpty(existing.LabelSelector) &&
+				!k8s.IsLabelSelectorEmpty(constraint.LabelSelector) {
+				existing.LabelSelector = constraint.LabelSelector
 			}
 			continue
 		}
@@ -179,13 +179,8 @@ func (b *PodTemplateBuilder) WithRequiredNodeAffinityMatchExpressions(requiremen
 
 	nodeSelector := ensureRequiredNodeSelector(&b.PodTemplate.Spec)
 	copiedRequirements := make([]corev1.NodeSelectorRequirement, 0, len(requirements))
-	for _, requirement := range requirements {
-		copied := corev1.NodeSelectorRequirement{
-			Key:      requirement.Key,
-			Operator: requirement.Operator,
-			Values:   append([]string(nil), requirement.Values...),
-		}
-		copiedRequirements = append(copiedRequirements, copied)
+	for i := range requirements {
+		copiedRequirements = append(copiedRequirements, *requirements[i].DeepCopy())
 	}
 
 	if len(nodeSelector.NodeSelectorTerms) == 0 {
