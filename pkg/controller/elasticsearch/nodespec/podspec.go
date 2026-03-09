@@ -320,16 +320,15 @@ func zoneAwarenessSchedulingDirectives(
 
 	// If the nodeSet has zone awareness and zones are configured, we want to ensure
 	// that the nodeSet is only scheduled on nodes that have the zone values.
-	var requiredMatchExpressions []corev1.NodeSelectorRequirement
+	// When zones are not explicitly listed, still require the topology key to exist:
+	// the prepare-fs init script waits for a pod annotation derived from this node
+	// label, and topology spread constraints alone do not enforce label existence.
+	req := corev1.NodeSelectorRequirement{Key: topologyKey, Operator: corev1.NodeSelectorOpExists}
 	if len(nodeSet.ZoneAwareness.Zones) > 0 {
-		requiredMatchExpressions = []corev1.NodeSelectorRequirement{
-			{
-				Key:      topologyKey,
-				Operator: corev1.NodeSelectorOpIn,
-				Values:   append([]string(nil), nodeSet.ZoneAwareness.Zones...),
-			},
-		}
+		req.Operator = corev1.NodeSelectorOpIn
+		req.Values = append([]string(nil), nodeSet.ZoneAwareness.Zones...)
 	}
+	requiredMatchExpressions := []corev1.NodeSelectorRequirement{req}
 	return spreadConstraints, requiredMatchExpressions
 }
 

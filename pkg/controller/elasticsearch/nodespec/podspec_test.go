@@ -926,7 +926,7 @@ func Test_zoneAwarenessSchedulingDirectives(t *testing.T) {
 			},
 		},
 		{
-			name: "zone-aware nodeset without zones only adds spread constraint",
+			name: "zone-aware nodeset without zones adds spread and required topology exists affinity",
 			nodeSet: esv1.NodeSet{
 				ZoneAwareness: &esv1.ZoneAwareness{},
 			},
@@ -942,6 +942,40 @@ func Test_zoneAwarenessSchedulingDirectives(t *testing.T) {
 							label.StatefulSetNameLabelName: "sset",
 						},
 					},
+				},
+			},
+			expectedMatchExpressions: []corev1.NodeSelectorRequirement{
+				{
+					Key:      esv1.DefaultZoneAwarenessTopologyKey,
+					Operator: corev1.NodeSelectorOpExists,
+				},
+			},
+		},
+		{
+			name: "zone-aware nodeset with custom topology key and no zones adds exists affinity for custom key",
+			nodeSet: esv1.NodeSet{
+				ZoneAwareness: &esv1.ZoneAwareness{
+					TopologyKey: "topology.custom.io/rack",
+				},
+			},
+			clusterHasZoneAwareness: true,
+			expectedSpreads: []corev1.TopologySpreadConstraint{
+				{
+					MaxSkew:           1,
+					TopologyKey:       "topology.custom.io/rack",
+					WhenUnsatisfiable: corev1.DoNotSchedule,
+					LabelSelector: &metav1.LabelSelector{
+						MatchLabels: map[string]string{
+							label.ClusterNameLabelName:     "cluster",
+							label.StatefulSetNameLabelName: "sset",
+						},
+					},
+				},
+			},
+			expectedMatchExpressions: []corev1.NodeSelectorRequirement{
+				{
+					Key:      "topology.custom.io/rack",
+					Operator: corev1.NodeSelectorOpExists,
 				},
 			},
 		},
