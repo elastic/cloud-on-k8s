@@ -2,28 +2,22 @@ toc:
   - file: index.md
   - file: api-docs.md
   - folder: api-reference
-    hidden: main.md
     children:
       - file: index.md
-      - file: main.md
+      - hidden: main.md
       - file: 3_3_1.md
       - file: 3_3_0.md
       - file: 3_2_0.md
       - file: 3_1_0.md
       - file: 3_0_0.md
-    exclude:
-      - main.md
   - folder: third-party-dependencies
-    hidden: main.md
     children:
       - file: index.md
-      - file: main.md
+      - hidden: main.md
       - file: 3_3_1.md
       - file: 3_3_0.md
       - file: 3_2_0.md
       - file: 3_1_0.md
       - file: 3_0_0.md
-    exclude:
-      - main.md
   - file: eck-configuration-flags.md
   - file: upgrade-predicates.md
