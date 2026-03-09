@@ -434,7 +434,7 @@ func TestCustomTransportCA(t *testing.T) {
 // without requiring reissuance of all transport certificates. This is the expected behavior because:
 // 1. The cryptographic signature remains valid (same private key)
 // 2. The SKI/AKI chain validation passes (same SKI)
-// 3. ECK's CAMatch function recognizes that the SKI matches and doesn't trigger unnecessary reissuance
+// 3. ECK's certificates.CertIsSignedByCA function recognizes that the SKI matches and doesn't trigger unnecessary reissuance
 func TestCustomTransportCARotationWithSameSKI(t *testing.T) {
 	esName := "test-ca-rotation-ski"
 
