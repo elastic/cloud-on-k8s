@@ -118,15 +118,6 @@ func renewCAFromExisting(
 	existingCA *CA,
 ) (*CA, error) {
 	log := ulog.FromContext(ctx)
-	if existingCA == nil || existingCA.Cert == nil {
-		log.Info(
-			"Existing CA or certificate is nil, creating a new CA with a new private key",
-			"namespace", owner.GetNamespace(),
-			"name", owner.GetName(),
-			"ca_type", caType,
-		)
-		return renewCA(ctx, client, namer, owner, meta, expireIn, caType)
-	}
 	privateKey, ok := existingCA.PrivateKey.(*rsa.PrivateKey)
 	if !ok {
 		log.Error(
