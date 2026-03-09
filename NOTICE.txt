@@ -777,11 +777,11 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 --------------------------------------------------------------------------------
 Module  : github.com/google/go-containerregistry
-Version : v0.21.1
-Time    : 2026-02-24T03:15:29Z
+Version : v0.21.2
+Time    : 2026-03-02T22:05:02Z
 Licence : Apache-2.0
 
-Contents of probable licence file $GOMODCACHE/github.com/google/go-containerregistry@v0.21.1/LICENSE:
+Contents of probable licence file $GOMODCACHE/github.com/google/go-containerregistry@v0.21.2/LICENSE:
 
 
                                  Apache License
@@ -4829,11 +4829,11 @@ Contents of probable licence file $GOMODCACHE/k8s.io/client-go@v0.35.2/LICENSE:
 
 --------------------------------------------------------------------------------
 Module  : k8s.io/klog/v2
-Version : v2.130.1
-Time    : 2024-06-20T00:51:19Z
+Version : v2.140.0
+Time    : 2026-03-03T11:17:23Z
 Licence : Apache-2.0
 
-Contents of probable licence file $GOMODCACHE/k8s.io/klog/v2@v2.130.1/LICENSE:
+Contents of probable licence file $GOMODCACHE/k8s.io/klog/v2@v2.140.0/LICENSE:
 
 Apache License
 Version 2.0, January 2004
@@ -5242,11 +5242,11 @@ Contents of probable licence file $GOMODCACHE/k8s.io/utils@v0.0.0-20251002143259
 
 --------------------------------------------------------------------------------
 Module  : sigs.k8s.io/controller-runtime
-Version : v0.23.1
-Time    : 2026-01-26T17:45:50Z
+Version : v0.23.3
+Time    : 2026-03-05T14:20:21Z
 Licence : Apache-2.0
 
-Contents of probable licence file $GOMODCACHE/sigs.k8s.io/controller-runtime@v0.23.1/LICENSE:
+Contents of probable licence file $GOMODCACHE/sigs.k8s.io/controller-runtime@v0.23.3/LICENSE:
 
                                  Apache License
                            Version 2.0, January 2004
