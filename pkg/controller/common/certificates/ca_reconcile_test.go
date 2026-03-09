@@ -553,27 +553,6 @@ func TestCertIsSignedByCA(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, ca1.Cert.SubjectKeyId, leafCert.AuthorityKeyId, "leaf AKI should match CA SKI")
 
-	// Create a leaf certificate with no AKI (legacy cert simulation)
-	leafNoAKITemplate := x509.Certificate{
-		Subject: pkix.Name{
-			CommonName: "test-leaf-no-aki",
-		},
-		NotBefore:             time.Now().Add(-1 * time.Hour),
-		NotAfter:              time.Now().Add(24 * time.Hour),
-		PublicKeyAlgorithm:    x509.RSA,
-		SignatureAlgorithm:    x509.SHA256WithRSA,
-		SerialNumber:          big.NewInt(2),
-		KeyUsage:              x509.KeyUsageDigitalSignature,
-		BasicConstraintsValid: true,
-		IsCA:                  false,
-		// AuthorityKeyId intentionally not set
-	}
-	leafNoAKIDER, err := x509.CreateCertificate(cryptorand.Reader, &leafNoAKITemplate, &leafNoAKITemplate, leafKey.Public(), leafKey)
-	require.NoError(t, err)
-	leafNoAKI, err := x509.ParseCertificate(leafNoAKIDER)
-	require.NoError(t, err)
-	require.Empty(t, leafNoAKI.AuthorityKeyId, "leaf should have no AKI")
-
 	tests := []struct {
 		name      string
 		leafCert  *x509.Certificate
@@ -617,8 +596,18 @@ func TestCertIsSignedByCA(t *testing.T) {
 			want:      false, // AKI→SKI mismatch, PKIX validation would fail
 		},
 		{
-			name:      "leaf without AKI but CA has SKI - triggers reissuance",
-			leafCert:  leafNoAKI,
+			name: "leaf without AKI but CA has SKI - triggers reissuance",
+			leafCert: &x509.Certificate{
+				// Mock a leaf without AKI but with valid signature fields from leafCert
+				PublicKey:               leafCert.PublicKey,
+				AuthorityKeyId:          nil, // No AKI
+				RawTBSCertificate:       leafCert.RawTBSCertificate,
+				Signature:               leafCert.Signature,
+				SignatureAlgorithm:      leafCert.SignatureAlgorithm,
+				PublicKeyAlgorithm:      leafCert.PublicKeyAlgorithm,
+				Raw:                     leafCert.Raw,
+				RawSubjectPublicKeyInfo: leafCert.RawSubjectPublicKeyInfo,
+			},
 			currentCA: ca1.Cert,
 			want:      false, // CA has SKI, so we require leaf to have AKI - triggers reissuance
 		},
@@ -641,6 +630,10 @@ func TestCertIsSignedByCA(t *testing.T) {
 				PublicKeyAlgorithm:      ca1.Cert.PublicKeyAlgorithm,
 				Raw:                     ca1.Cert.Raw,
 				RawSubjectPublicKeyInfo: ca1.Cert.RawSubjectPublicKeyInfo,
+				Version:                 3,
+				IsCA:                    true,
+				BasicConstraintsValid:   true,
+				KeyUsage:                x509.KeyUsageCertSign,
 			},
 			want: false, // Leaf has AKI but CA has no SKI - triggers reissuance
 		},
