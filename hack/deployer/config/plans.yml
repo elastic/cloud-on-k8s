@@ -35,6 +35,15 @@ plans:
   machineType: n1-standard-8
   serviceAccount: false
   enforceSecurityPolicies: true
+  ## Bucket configuration, used for stateless. If provided, the bucket will be created and the credentials will be stored in the K8s clusters.
+  bucket:
+    # Bucket name, created in the same region as the cluster.
+    name: "{{ .ClusterName }}-development"
+    storageClass: standard
+    # Secret is the K8s Secret where the credentials will be stored.
+    secret:
+      name: "{{ .ClusterName }}-secret"
+      namespace: "{{ .ClusterName }}-namespace"
   gke:
     region: europe-west1
     localSsdCount: 1
