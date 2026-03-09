@@ -130,7 +130,7 @@ func shouldIssueNewCertificate(
 	}
 
 	if !certificates.CertIsSignedByCA(cert, ca.Cert) {
-		log.Info("Certificate AKI does not match current CA SKI (AKI→SKI chain broken), should issue new certificate",
+		log.Info("Certificate is not valid for current CA, should issue new certificate",
 			"namespace", pod.Namespace,
 			"pod_name", pod.Name,
 			"cert_aki", fmt.Sprintf("%x", cert.AuthorityKeyId),

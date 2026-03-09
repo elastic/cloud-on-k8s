@@ -325,7 +325,7 @@ func getHTTPCertificate(
 	}
 
 	if !CertIsSignedByCA(certificate, ca.Cert) {
-		log.Info("Certificate AKI does not match current CA SKI (AKI→SKI chain broken), should issue new certificate",
+		log.Info("Certificate is not valid for current CA, should issue new certificate",
 			"namespace", secret.Namespace,
 			"secret_name", secret.Name,
 			"cert_aki", fmt.Sprintf("%x", certificate.AuthorityKeyId),
