@@ -15,6 +15,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"sigs.k8s.io/controller-runtime/pkg/webhook/admission"
 
+	commonv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/common/v1"
 	esv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/elasticsearch/v1"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/k8s"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/set"
@@ -38,10 +39,11 @@ func Test_validatingWebhook_Handle(t *testing.T) {
 		req admission.Request
 	}
 	tests := []struct {
-		name   string
-		fields fields
-		args   args
-		want   admission.Response
+		name                string
+		fields              fields
+		args                args
+		want                admission.Response
+		wantWarningContains string
 	}{
 		{
 			name: "accept valid creation",
@@ -209,7 +211,33 @@ func Test_validatingWebhook_Handle(t *testing.T) {
 					}},
 				},
 			},
-			want: admission.Allowed("Version 7.9.0 is EOL and support for it will be removed in a future release of the ECK operator"),
+			want:                admission.Allowed("Version 7.9.0 is EOL and support for it will be removed in a future release of the ECK operator"),
+			wantWarningContains: "Version 7.9.0 is EOL and support for it will be removed in a future release of the ECK operator",
+		},
+		{
+			name: "accept valid creation with warning due to mixed fips nodesets",
+			fields: fields{
+				client: k8s.NewFakeClient(),
+			},
+			args: args{
+				req: admission.Request{AdmissionRequest: admissionv1.AdmissionRequest{
+					Operation: admissionv1.Create,
+					Object: runtime.RawExtension{
+						Raw: asJSON(&esv1.Elasticsearch{
+							ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: "name"},
+							Spec: esv1.ElasticsearchSpec{
+								Version: "8.9.0",
+								NodeSets: []esv1.NodeSet{
+									{Name: "set1", Count: 1, Config: &commonv1.Config{Data: map[string]any{"xpack.security.fips_mode.enabled": true}}},
+									{Name: "set2", Count: 1, Config: &commonv1.Config{Data: map[string]any{"xpack.security.fips_mode.enabled": false}}},
+								},
+							},
+						}),
+					}},
+				},
+			},
+			want:                admission.Allowed(inconsistentFIPSModeWarningMsg),
+			wantWarningContains: inconsistentFIPSModeWarningMsg,
 		},
 	}
 	for _, tt := range tests {
@@ -224,6 +252,10 @@ func Test_validatingWebhook_Handle(t *testing.T) {
 			require.Equal(t, tt.want.Allowed, got.Allowed)
 			if !got.Allowed {
 				require.Contains(t, got.Result.Reason, tt.want.Result.Reason)
+			}
+			if tt.wantWarningContains != "" {
+				require.NotEmpty(t, got.Warnings)
+				require.Contains(t, got.Warnings[0], tt.wantWarningContains)
 			}
 		})
 	}

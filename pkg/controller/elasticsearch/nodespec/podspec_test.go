@@ -419,6 +419,32 @@ func Test_buildAnnotations(t *testing.T) {
 			},
 		},
 		{
+			name: "With FIPS keystore password secret resource version",
+			args: args{
+				keystoreResources: &keystore.Resources{
+					Hash: "42",
+					FIPSKeystorePasswordSecretResourceVersion: "100",
+				},
+				scriptsContent: "scripts content",
+			},
+			expectedAnnotations: map[string]string{
+				"elasticsearch.k8s.elastic.co/config-hash": "2418629362",
+			},
+		},
+		{
+			name: "With another FIPS keystore password secret resource version",
+			args: args{
+				keystoreResources: &keystore.Resources{
+					Hash: "42",
+					FIPSKeystorePasswordSecretResourceVersion: "101",
+				},
+				scriptsContent: "scripts content",
+			},
+			expectedAnnotations: map[string]string{
+				"elasticsearch.k8s.elastic.co/config-hash": "2435406981",
+			},
+		},
+		{
 			name: "With policy annotations",
 			args: args{
 				policyAnnotations: map[string]string{

@@ -37,9 +37,11 @@ import (
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/configmap"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/driver"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/filesettings"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/fips"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/initcontainer"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/label"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/license"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/nodespec"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/reconcile"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/remotecluster"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/securitycontext"
@@ -318,6 +320,38 @@ func ReconcileSharedResources(
 	keystoreSecurityContext := securitycontext.For(params.Version, true)
 	keystoreParams.SecurityContext = &keystoreSecurityContext
 
+	policyConfig, err := nodespec.GetPolicyConfig(ctx, client, es)
+	if err != nil {
+		esClient.Close()
+		return nil, results.WithError(err)
+	}
+	mergedConfigs, err := mergedNodeSetConfigs(es, params.OperatorParameters.IPFamily, policyConfig)
+	if err != nil {
+		esClient.Close()
+		return nil, results.WithError(err)
+	}
+	fipsEnabled := settings.AnyNodeSetFIPSEnabled(mergedConfigs)
+	userOverride, err := settings.AnyNodeSetHasUserProvidedKeystorePassword(ctx, client, es.Namespace, es.Spec.NodeSets)
+	if err != nil {
+		esClient.Close()
+		return nil, results.WithError(err)
+	}
+
+	var fipsKeystorePasswordSecret *corev1.Secret
+	if fipsEnabled && !userOverride {
+		fipsKeystorePasswordSecret, err = fips.ReconcileKeystorePasswordSecret(ctx, client, es, meta)
+		if err != nil {
+			esClient.Close()
+			return nil, results.WithError(err)
+		}
+		keystoreParams.FIPSKeystorePasswordPath = fips.PasswordFile
+	} else if !fipsEnabled {
+		if err := fips.DeleteKeystorePasswordSecret(ctx, client, es); err != nil {
+			esClient.Close()
+			return nil, results.WithError(err)
+		}
+	}
+
 	remoteClusterAPIKeys, err := apiKeyStoreSecretSource(ctx, &es, client)
 	if err != nil {
 		esClient.Close()
@@ -335,6 +369,10 @@ func ReconcileSharedResources(
 	if err != nil {
 		esClient.Close()
 		return nil, results.WithError(err)
+	}
+	if keystoreResources != nil && fipsKeystorePasswordSecret != nil {
+		keystoreResources.FIPSKeystorePasswordSecretName = fipsKeystorePasswordSecret.Name
+		keystoreResources.FIPSKeystorePasswordSecretResourceVersion = fipsKeystorePasswordSecret.ResourceVersion
 	}
 
 	// Cluster UUID
@@ -449,6 +487,37 @@ func apiKeyStoreSecretSource(ctx context.Context, es *esv1.Elasticsearch, c k8s.
 			SecretName: secretName.Name,
 		},
 	}, nil
+}
+
+// mergedNodeSetConfigs returns the merged Elasticsearch config for each NodeSet.
+func mergedNodeSetConfigs(es esv1.Elasticsearch, ipFamily corev1.IPFamily, policyConfig nodespec.PolicyConfig) ([]settings.CanonicalConfig, error) {
+	ver, err := version.Parse(es.Spec.Version)
+	if err != nil {
+		return nil, err
+	}
+
+	configs := make([]settings.CanonicalConfig, 0, len(es.Spec.NodeSets))
+	for _, nodeSet := range es.Spec.NodeSets {
+		userCfg := commonv1.Config{}
+		if nodeSet.Config != nil {
+			userCfg = *nodeSet.Config
+		}
+		cfg, err := settings.NewMergedESConfig(
+			es.Name,
+			ver,
+			ipFamily,
+			es.Spec.HTTP,
+			userCfg,
+			policyConfig.ElasticsearchConfig,
+			es.Spec.RemoteClusterServer.Enabled,
+			es.HasRemoteClusterAPIKey(),
+		)
+		if err != nil {
+			return nil, err
+		}
+		configs = append(configs, cfg)
+	}
+	return configs, nil
 }
 
 // esReachableConditionMessage returns a message describing the Elasticsearch reachability condition.

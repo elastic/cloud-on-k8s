@@ -52,7 +52,7 @@ func TestReconcileKeystorePasswordSecret(t *testing.T) {
 			},
 		},
 		{
-			name: "existing non-empty password is reused",
+			name: "existing non-empty password is reused and metadata is reconciled",
 			initialSecret: &corev1.Secret{
 				ObjectMeta: metav1.ObjectMeta{
 					Namespace: secretNN.Namespace,
@@ -65,7 +65,12 @@ func TestReconcileKeystorePasswordSecret(t *testing.T) {
 			assert: func(t *testing.T, secret *corev1.Secret) {
 				t.Helper()
 				require.Equal(t, []byte("already-there"), secret.Data[KeystorePasswordKey])
-				require.Empty(t, secret.OwnerReferences)
+				require.Len(t, secret.OwnerReferences, 1)
+				require.Equal(t, es.Name, secret.OwnerReferences[0].Name)
+				require.Equal(t, label.Type, secret.Labels[commonv1.TypeLabelName])
+				require.Equal(t, es.Name, secret.Labels[label.ClusterNameLabelName])
+				require.Equal(t, "label", secret.Labels["custom"])
+				require.Equal(t, "annotation", secret.Annotations["custom-annotation"])
 			},
 		},
 		{

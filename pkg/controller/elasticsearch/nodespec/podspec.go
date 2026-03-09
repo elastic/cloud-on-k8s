@@ -25,6 +25,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/keystore"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/version"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/volume"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/fips"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/initcontainer"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/label"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/network"
@@ -141,6 +142,10 @@ func BuildPodTemplateSpec(
 		WithContainersSecurityContext(securitycontext.For(ver, enableReadOnlyRootFilesystem)).
 		WithPreStopHook(*NewPreStopHook())
 
+	if keystoreResources != nil && keystoreResources.FIPSKeystorePasswordSecretName != "" {
+		builder = fips.InjectKeystorePassword(builder, keystoreResources.FIPSKeystorePasswordSecretName)
+	}
+
 	builder, err = stackmon.WithMonitoring(ctx, client, builder, es, meta)
 	if err != nil {
 		return corev1.PodTemplateSpec{}, err
@@ -221,6 +226,9 @@ func buildAnnotations(
 	if keystoreResources != nil {
 		// resource version of the secure settings secret to rotate the pod on secure settings change
 		_, _ = configHash.Write([]byte(keystoreResources.Hash))
+		if keystoreResources.FIPSKeystorePasswordSecretResourceVersion != "" {
+			_, _ = configHash.Write([]byte(keystoreResources.FIPSKeystorePasswordSecretResourceVersion))
+		}
 	}
 
 	if !es.Spec.Transport.TLS.SelfSignedEnabled() {

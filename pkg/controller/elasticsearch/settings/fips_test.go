@@ -5,13 +5,17 @@
 package settings
 
 import (
+	"context"
 	"testing"
 
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	esv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/elasticsearch/v1"
 	common "github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/settings"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/k8s"
 )
 
 func TestIsFIPSEnabled(t *testing.T) {
@@ -109,10 +113,14 @@ func TestAnyNodeSetFIPSEnabled(t *testing.T) {
 }
 
 func TestHasUserProvidedKeystorePassword(t *testing.T) {
+	const namespace = "ns"
+
 	tests := []struct {
 		name        string
+		objects     []client.Object
 		podTemplate corev1.PodTemplateSpec
 		want        bool
+		wantErr     bool
 	}{
 		{
 			name: "contains KEYSTORE_PASSWORD",
@@ -170,11 +178,271 @@ func TestHasUserProvidedKeystorePassword(t *testing.T) {
 			},
 			want: false,
 		},
+		{
+			name: "envFrom ConfigMap containing KEYSTORE_PASSWORD",
+			objects: []client.Object{
+				&corev1.ConfigMap{
+					ObjectMeta: metav1.ObjectMeta{Namespace: namespace, Name: "my-configmap"},
+					Data:       map[string]string{"KEYSTORE_PASSWORD": "from-cm"},
+				},
+			},
+			podTemplate: corev1.PodTemplateSpec{
+				Spec: corev1.PodSpec{
+					Containers: []corev1.Container{
+						{
+							Name: esv1.ElasticsearchContainerName,
+							EnvFrom: []corev1.EnvFromSource{
+								{ConfigMapRef: &corev1.ConfigMapEnvSource{
+									LocalObjectReference: corev1.LocalObjectReference{Name: "my-configmap"},
+								}},
+							},
+						},
+					},
+				},
+			},
+			want: true,
+		},
+		{
+			name: "envFrom Secret containing ES_KEYSTORE_PASSPHRASE_FILE",
+			objects: []client.Object{
+				&corev1.Secret{
+					ObjectMeta: metav1.ObjectMeta{Namespace: namespace, Name: "my-secret"},
+					Data:       map[string][]byte{"ES_KEYSTORE_PASSPHRASE_FILE": []byte("/tmp/pw")},
+				},
+			},
+			podTemplate: corev1.PodTemplateSpec{
+				Spec: corev1.PodSpec{
+					Containers: []corev1.Container{
+						{
+							Name: esv1.ElasticsearchContainerName,
+							EnvFrom: []corev1.EnvFromSource{
+								{SecretRef: &corev1.SecretEnvSource{
+									LocalObjectReference: corev1.LocalObjectReference{Name: "my-secret"},
+								}},
+							},
+						},
+					},
+				},
+			},
+			want: true,
+		},
+		{
+			name: "envFrom ConfigMap without keystore vars",
+			objects: []client.Object{
+				&corev1.ConfigMap{
+					ObjectMeta: metav1.ObjectMeta{Namespace: namespace, Name: "unrelated-cm"},
+					Data:       map[string]string{"SOME_OTHER_VAR": "val"},
+				},
+			},
+			podTemplate: corev1.PodTemplateSpec{
+				Spec: corev1.PodSpec{
+					Containers: []corev1.Container{
+						{
+							Name: esv1.ElasticsearchContainerName,
+							EnvFrom: []corev1.EnvFromSource{
+								{ConfigMapRef: &corev1.ConfigMapEnvSource{
+									LocalObjectReference: corev1.LocalObjectReference{Name: "unrelated-cm"},
+								}},
+							},
+						},
+					},
+				},
+			},
+			want: false,
+		},
+		{
+			name: "envFrom prefix causes key to match",
+			objects: []client.Object{
+				&corev1.Secret{
+					ObjectMeta: metav1.ObjectMeta{Namespace: namespace, Name: "prefixed-secret"},
+					Data:       map[string][]byte{"PASSWORD": []byte("val")},
+				},
+			},
+			podTemplate: corev1.PodTemplateSpec{
+				Spec: corev1.PodSpec{
+					Containers: []corev1.Container{
+						{
+							Name: esv1.ElasticsearchContainerName,
+							EnvFrom: []corev1.EnvFromSource{
+								{
+									Prefix: "KEYSTORE_",
+									SecretRef: &corev1.SecretEnvSource{
+										LocalObjectReference: corev1.LocalObjectReference{Name: "prefixed-secret"},
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+			want: true,
+		},
+		{
+			name: "envFrom prefix prevents match",
+			objects: []client.Object{
+				&corev1.ConfigMap{
+					ObjectMeta: metav1.ObjectMeta{Namespace: namespace, Name: "prefixed-cm"},
+					Data:       map[string]string{"KEYSTORE_PASSWORD": "val"},
+				},
+			},
+			podTemplate: corev1.PodTemplateSpec{
+				Spec: corev1.PodSpec{
+					Containers: []corev1.Container{
+						{
+							Name: esv1.ElasticsearchContainerName,
+							EnvFrom: []corev1.EnvFromSource{
+								{
+									Prefix: "MY_",
+									ConfigMapRef: &corev1.ConfigMapEnvSource{
+										LocalObjectReference: corev1.LocalObjectReference{Name: "prefixed-cm"},
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+			want: false,
+		},
+		{
+			name: "envFrom references missing ConfigMap",
+			podTemplate: corev1.PodTemplateSpec{
+				Spec: corev1.PodSpec{
+					Containers: []corev1.Container{
+						{
+							Name: esv1.ElasticsearchContainerName,
+							EnvFrom: []corev1.EnvFromSource{
+								{ConfigMapRef: &corev1.ConfigMapEnvSource{
+									LocalObjectReference: corev1.LocalObjectReference{Name: "does-not-exist"},
+								}},
+							},
+						},
+					},
+				},
+			},
+			wantErr: true,
+		},
+		{
+			name: "optional missing envFrom ConfigMap does not error",
+			podTemplate: corev1.PodTemplateSpec{
+				Spec: corev1.PodSpec{
+					Containers: []corev1.Container{
+						{
+							Name: esv1.ElasticsearchContainerName,
+							EnvFrom: []corev1.EnvFromSource{
+								{ConfigMapRef: &corev1.ConfigMapEnvSource{
+									LocalObjectReference: corev1.LocalObjectReference{Name: "does-not-exist"},
+									Optional:             boolPtr(true),
+								}},
+							},
+						},
+					},
+				},
+			},
+			want: false,
+		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			require.Equal(t, tt.want, HasUserProvidedKeystorePassword(tt.podTemplate))
+			c := k8s.NewFakeClient(tt.objects...)
+			got, err := HasUserProvidedKeystorePassword(context.Background(), c, namespace, tt.podTemplate)
+			if tt.wantErr {
+				require.Error(t, err)
+				return
+			}
+			require.NoError(t, err)
+			require.Equal(t, tt.want, got)
 		})
 	}
+}
+
+func TestAnyNodeSetHasUserProvidedKeystorePassword(t *testing.T) {
+	const namespace = "ns"
+	tests := []struct {
+		name     string
+		objects  []client.Object
+		nodeSets []esv1.NodeSet
+		want     bool
+		wantErr  bool
+	}{
+		{
+			name: "at least one nodeset has override",
+			nodeSets: []esv1.NodeSet{
+				{
+					PodTemplate: corev1.PodTemplateSpec{
+						Spec: corev1.PodSpec{
+							Containers: []corev1.Container{
+								{Name: esv1.ElasticsearchContainerName},
+							},
+						},
+					},
+				},
+				{
+					PodTemplate: corev1.PodTemplateSpec{
+						Spec: corev1.PodSpec{
+							Containers: []corev1.Container{
+								{Name: esv1.ElasticsearchContainerName, Env: []corev1.EnvVar{{Name: "KEYSTORE_PASSWORD", Value: "pw"}}},
+							},
+						},
+					},
+				},
+			},
+			want: true,
+		},
+		{
+			name: "missing envFrom object in any nodeset returns error",
+			nodeSets: []esv1.NodeSet{
+				{
+					PodTemplate: corev1.PodTemplateSpec{
+						Spec: corev1.PodSpec{
+							Containers: []corev1.Container{
+								{
+									Name: esv1.ElasticsearchContainerName,
+									EnvFrom: []corev1.EnvFromSource{
+										{ConfigMapRef: &corev1.ConfigMapEnvSource{
+											LocalObjectReference: corev1.LocalObjectReference{Name: "missing"},
+										}},
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+			wantErr: true,
+		},
+		{
+			name: "no nodeset override",
+			nodeSets: []esv1.NodeSet{
+				{
+					PodTemplate: corev1.PodTemplateSpec{
+						Spec: corev1.PodSpec{
+							Containers: []corev1.Container{
+								{Name: esv1.ElasticsearchContainerName, Env: []corev1.EnvVar{{Name: "SOME_VAR", Value: "x"}}},
+							},
+						},
+					},
+				},
+			},
+			want: false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			c := k8s.NewFakeClient(tt.objects...)
+			got, err := AnyNodeSetHasUserProvidedKeystorePassword(context.Background(), c, namespace, tt.nodeSets)
+			if tt.wantErr {
+				require.Error(t, err)
+				return
+			}
+			require.NoError(t, err)
+			require.Equal(t, tt.want, got)
+		})
+	}
+}
+
+func boolPtr(v bool) *bool {
+	return &v
 }

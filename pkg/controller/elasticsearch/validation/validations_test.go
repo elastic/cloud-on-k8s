@@ -797,6 +797,57 @@ func Test_validAssociations(t *testing.T) {
 	}
 }
 
+func Test_fipsModeConsistencyWarning(t *testing.T) {
+	tests := []struct {
+		name string
+		es   esv1.Elasticsearch
+		want string
+	}{
+		{
+			name: "all nodesets with fips enabled has no warning",
+			es: esv1.Elasticsearch{
+				Spec: esv1.ElasticsearchSpec{
+					NodeSets: []esv1.NodeSet{
+						{Config: &commonv1.Config{Data: map[string]any{"xpack.security.fips_mode.enabled": true}}},
+						{Config: &commonv1.Config{Data: map[string]any{"xpack.security.fips_mode.enabled": "true"}}},
+					},
+				},
+			},
+			want: "",
+		},
+		{
+			name: "all nodesets without fips has no warning",
+			es: esv1.Elasticsearch{
+				Spec: esv1.ElasticsearchSpec{
+					NodeSets: []esv1.NodeSet{
+						{Config: &commonv1.Config{Data: map[string]any{"node.attr.rack": "rack-a"}}},
+						{Config: &commonv1.Config{Data: map[string]any{"xpack.security.fips_mode.enabled": false}}},
+					},
+				},
+			},
+			want: "",
+		},
+		{
+			name: "mixed fips settings emits warning",
+			es: esv1.Elasticsearch{
+				Spec: esv1.ElasticsearchSpec{
+					NodeSets: []esv1.NodeSet{
+						{Config: &commonv1.Config{Data: map[string]any{"xpack.security.fips_mode.enabled": true}}},
+						{Config: &commonv1.Config{Data: map[string]any{"xpack.security.fips_mode.enabled": false}}},
+					},
+				},
+			},
+			want: inconsistentFIPSModeWarningMsg,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			assert.Equal(t, tt.want, fipsModeConsistencyWarning(tt.es))
+		})
+	}
+}
+
 // es returns an es fixture at a given version
 func es(v string) esv1.Elasticsearch {
 	return esv1.Elasticsearch{

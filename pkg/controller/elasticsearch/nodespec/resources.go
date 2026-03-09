@@ -72,7 +72,7 @@ func BuildExpectedResources(
 	}
 
 	// Get policy config from StackConfigPolicy
-	policyConfig, err := getPolicyConfig(ctx, client, es)
+	policyConfig, err := GetPolicyConfig(ctx, client, es)
 	if err != nil {
 		return nil, err
 	}

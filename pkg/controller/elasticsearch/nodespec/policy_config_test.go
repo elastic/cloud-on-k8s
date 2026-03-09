@@ -20,7 +20,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/k8s"
 )
 
-func Test_getPolicyConfig(t *testing.T) {
+func TestGetPolicyConfig(t *testing.T) {
 	canonicalConfig := common.MustCanonicalConfig(map[string]any{
 		"logger.org.elasticsearch.discovery": "DEBUG",
 	})
@@ -87,7 +87,7 @@ func Test_getPolicyConfig(t *testing.T) {
 	} {
 		t.Run(tt.name, func(t *testing.T) {
 			client := k8s.NewFakeClient(&tt.configSecret)
-			got, err := getPolicyConfig(context.Background(), client, tt.es)
+			got, err := GetPolicyConfig(context.Background(), client, tt.es)
 			if !tt.wantErr {
 				require.NoError(t, err)
 			} else {

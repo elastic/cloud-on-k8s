@@ -31,8 +31,10 @@ const (
 )
 
 // ReconcileKeystorePasswordSecret ensures the FIPS keystore password Secret
-// exists. If the Secret already exists with a non-empty password, the existing
-// password is preserved.
+// exists with up-to-date metadata. If the Secret already exists with a
+// non-empty password, the existing password is preserved; otherwise a new
+// password is generated. Metadata (labels, annotations, owner references) is
+// always reconciled via reconciler.ReconcileSecret.
 func ReconcileKeystorePasswordSecret(
 	ctx context.Context,
 	c k8s.Client,
@@ -46,16 +48,16 @@ func ReconcileKeystorePasswordSecret(
 
 	var existingSecret corev1.Secret
 	err := c.Get(ctx, secretName, &existingSecret)
-	if err == nil && len(existingSecret.Data[KeystorePasswordKey]) > 0 {
-		return &existingSecret, nil
-	}
 	if err != nil && !apierrors.IsNotFound(err) {
 		return nil, err
 	}
 
-	passwordBytes, err := password.RandomBytesWithoutSymbols(generatedPasswordLength)
-	if err != nil {
-		return nil, fmt.Errorf("while generating fips keystore password: %w", err)
+	passwordBytes := existingSecret.Data[KeystorePasswordKey]
+	if len(passwordBytes) == 0 {
+		passwordBytes, err = password.RandomBytesWithoutSymbols(generatedPasswordLength)
+		if err != nil {
+			return nil, fmt.Errorf("while generating fips keystore password: %w", err)
+		}
 	}
 
 	expected := corev1.Secret{
