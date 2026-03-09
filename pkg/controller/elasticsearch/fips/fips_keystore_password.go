@@ -77,9 +77,9 @@ func ReconcileKeystorePasswordSecret(
 	return &reconciled, nil
 }
 
-// DeleteKeystorePasswordSecretIfExists deletes the FIPS keystore password
+// DeleteKeystorePasswordSecret deletes the FIPS keystore password
 // secret, if present.
-func DeleteKeystorePasswordSecretIfExists(ctx context.Context, c k8s.Client, es esv1.Elasticsearch) error {
+func DeleteKeystorePasswordSecret(ctx context.Context, c k8s.Client, es esv1.Elasticsearch) error {
 	return client.IgnoreNotFound(c.Delete(ctx, &corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
 			Namespace: es.Namespace,

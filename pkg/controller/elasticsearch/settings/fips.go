@@ -24,6 +24,8 @@ func IsFIPSEnabled(cfg CanonicalConfig) bool {
 	if err != nil {
 		return false
 	}
+	// these are normalized from all casing types by the YAML parser
+	// prior to this check, so handling different casing types is not needed.
 	return val == "true"
 }
 

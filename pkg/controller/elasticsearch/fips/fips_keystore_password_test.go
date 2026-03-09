@@ -121,7 +121,7 @@ func TestReconcileKeystorePasswordSecret(t *testing.T) {
 	}
 }
 
-func TestDeleteKeystorePasswordSecretIfExists(t *testing.T) {
+func TestDeleteKeystorePasswordSecret(t *testing.T) {
 	es := esv1.Elasticsearch{
 		ObjectMeta: metav1.ObjectMeta{
 			Namespace: "ns",
@@ -141,11 +141,11 @@ func TestDeleteKeystorePasswordSecretIfExists(t *testing.T) {
 	}
 	c := k8s.NewFakeClient(secret)
 
-	require.NoError(t, DeleteKeystorePasswordSecretIfExists(context.Background(), c, es))
+	require.NoError(t, DeleteKeystorePasswordSecret(context.Background(), c, es))
 
 	var deleted corev1.Secret
 	err := c.Get(context.Background(), secretNN, &deleted)
 	require.True(t, apierrors.IsNotFound(err))
 
-	require.NoError(t, DeleteKeystorePasswordSecretIfExists(context.Background(), c, es))
+	require.NoError(t, DeleteKeystorePasswordSecret(context.Background(), c, es))
 }
