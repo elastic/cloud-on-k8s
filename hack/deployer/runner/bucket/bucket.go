@@ -10,9 +10,11 @@ import (
 	"fmt"
 	"hash/fnv"
 	"log"
+	"maps"
 	"os"
 	"path/filepath"
 	"regexp"
+	"slices"
 	"strings"
 	"text/template"
 
@@ -27,10 +29,10 @@ func fnv32(s string) uint32 {
 }
 
 const (
-	// ManagedByTag is the cloud resource tag/label key (underscore for GCP compatibility).
-	ManagedByTag = "managed_by"
-	// ManagedByValue is the expected value for the managed-by label/tag.
-	ManagedByValue = "eck-deployer"
+	// managedByTag is the cloud resource tag/label key (underscore for GCP compatibility).
+	managedByTag = "managed_by"
+	// managedByValue is the expected value for the managed-by label/tag.
+	managedByValue = "eck-deployer"
 )
 
 // Manager defines the interface for cloud storage bucket lifecycle operations.
@@ -163,15 +165,16 @@ func createK8sSecret(secretName, secretNamespace string, data map[string]string,
 		return fmt.Errorf("while ensuring namespace %s: %w", secretNamespace, err)
 	}
 
-	// Build the Secret YAML with the label included at creation time
+	// Build the Secret YAML with the label included at creation time.
+	// Keys are sorted for deterministic output.
 	var dataEntries strings.Builder
-	for k, v := range data {
-		fmt.Fprintf(&dataEntries, "  %s: %s\n", k, base64.StdEncoding.EncodeToString([]byte(v)))
+	for _, k := range slices.Sorted(maps.Keys(data)) {
+		fmt.Fprintf(&dataEntries, "  %s: %s\n", k, base64.StdEncoding.EncodeToString([]byte(data[k])))
 	}
 
 	var annotationEntries strings.Builder
-	for k, v := range annotations {
-		fmt.Fprintf(&annotationEntries, "    %s: %s\n", k, v)
+	for _, k := range slices.Sorted(maps.Keys(annotations)) {
+		fmt.Fprintf(&annotationEntries, "    %s: %s\n", k, annotations[k])
 	}
 
 	annotationsBlock := ""

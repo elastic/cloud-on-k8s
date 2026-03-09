@@ -300,7 +300,7 @@ func (s *S3Manager) deleteBucket() error {
 	log.Printf("Verifying S3 bucket %s is managed by eck-deployer...", s.cfg.Name)
 	tagCmd := fmt.Sprintf(
 		`aws s3api get-bucket-tagging --bucket %s --region %s --query "TagSet[?Key=='%s'].Value" --output text`,
-		s.cfg.Name, s.cfg.Region, ManagedByTag,
+		s.cfg.Name, s.cfg.Region, managedByTag,
 	)
 	output, err := exec.NewCommand(tagCmd).WithoutStreaming().Output()
 	if err != nil {
@@ -313,16 +313,16 @@ func (s *S3Manager) deleteBucket() error {
 		if isNotFound(output, "NoSuchTagSet") {
 			return fmt.Errorf(
 				"bucket %s exists but has no tags (tagging may have failed during creation); delete it manually or re-tag it with %s=%s",
-				s.cfg.Name, ManagedByTag, ManagedByValue,
+				s.cfg.Name, managedByTag, managedByValue,
 			)
 		}
 		return fmt.Errorf("while checking S3 bucket %s tags: %w", s.cfg.Name, err)
 	}
 	value := strings.TrimSpace(output)
-	if value != ManagedByValue {
+	if value != managedByValue {
 		return fmt.Errorf(
 			"refusing to delete S3 bucket %s: missing tag %s=%s (found %q). Delete it manually",
-			s.cfg.Name, ManagedByTag, ManagedByValue, value,
+			s.cfg.Name, managedByTag, managedByValue, value,
 		)
 	}
 

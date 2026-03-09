@@ -13,6 +13,11 @@ import (
 	"github.com/elastic/cloud-on-k8s/v3/hack/deployer/exec"
 )
 
+const (
+	// azureContainerName is the blob container name within the storage account.
+	azureContainerName = "data"
+)
+
 // AzureManager manages Azure Blob Storage containers.
 type AzureManager struct {
 	cfg           Config
@@ -58,7 +63,7 @@ func (a *AzureManager) storageAccountName() string {
 
 // containerName returns the name for the blob container within the storage account.
 func (a *AzureManager) containerName() string {
-	return "data"
+	return azureContainerName
 }
 
 // Create creates an Azure Storage account and blob container, then stores the account name
@@ -201,7 +206,7 @@ func (a *AzureManager) deleteStorageAccount() error {
 	// Check the managed_by tag on the storage account
 	tagCmd := fmt.Sprintf(
 		`az storage account show --name %s --resource-group %s --query "tags.%s" --output tsv`,
-		accountName, a.resourceGroup, ManagedByTag,
+		accountName, a.resourceGroup, managedByTag,
 	)
 	output, err := exec.NewCommand(tagCmd).WithoutStreaming().Output()
 	if err != nil {
@@ -212,10 +217,10 @@ func (a *AzureManager) deleteStorageAccount() error {
 		return fmt.Errorf("while checking storage account %s: %w", accountName, err)
 	}
 	value := strings.TrimSpace(output)
-	if value != ManagedByValue {
+	if value != managedByValue {
 		return fmt.Errorf(
 			"refusing to delete Azure Storage account %s: missing tag %s=%s (found %q). Delete it manually",
-			accountName, ManagedByTag, ManagedByValue, value,
+			accountName, managedByTag, managedByValue, value,
 		)
 	}
 

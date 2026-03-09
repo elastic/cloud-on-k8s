@@ -359,7 +359,7 @@ func (g *GCSManager) deleteBucket() error {
 	log.Printf("Verifying GCS bucket %s is managed by eck-deployer...", g.cfg.Name)
 	descCmd := fmt.Sprintf(
 		`gcloud storage buckets describe gs://%s --project %s --format="value(labels.%s)"`,
-		g.cfg.Name, g.project, ManagedByTag,
+		g.cfg.Name, g.project, managedByTag,
 	)
 	output, err := exec.NewCommand(descCmd).WithoutStreaming().Output()
 	if err != nil {
@@ -372,10 +372,10 @@ func (g *GCSManager) deleteBucket() error {
 		return fmt.Errorf("while checking bucket %s: %w", g.cfg.Name, err)
 	}
 	value := strings.TrimSpace(output)
-	if value != ManagedByValue {
+	if value != managedByValue {
 		return fmt.Errorf(
 			"refusing to delete GCS bucket %s: missing label %s=%s (found %q). Delete it manually",
-			g.cfg.Name, ManagedByTag, ManagedByValue, value,
+			g.cfg.Name, managedByTag, managedByValue, value,
 		)
 	}
 
