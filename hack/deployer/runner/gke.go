@@ -5,6 +5,7 @@
 package runner
 
 import (
+	"errors"
 	"fmt"
 	"log"
 	"strings"
@@ -14,6 +15,7 @@ import (
 	storagev1 "k8s.io/api/storage/v1"
 
 	"github.com/elastic/cloud-on-k8s/v3/hack/deployer/exec"
+	"github.com/elastic/cloud-on-k8s/v3/hack/deployer/runner/bucket"
 	"github.com/elastic/cloud-on-k8s/v3/hack/deployer/runner/kyverno"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/vault"
 )
@@ -109,11 +111,18 @@ func (d *GKEDriver) Execute() error {
 
 	switch d.plan.Operation {
 	case DeleteAction:
+		// Track bucket deletion errors separately: cluster deletion should proceed even if bucket
+		// deletion fails, but the error must still be returned so the exit code is non-zero.
+		bucketErr := deleteBucketIfConfigured(d.plan, d.newBucketManager)
+		if bucketErr != nil {
+			log.Printf("warning: bucket deletion failed, will continue with cluster deletion: %v", bucketErr)
+		}
 		if exists {
 			err = d.delete()
 		} else {
 			log.Printf("not deleting as cluster doesn't exist")
 		}
+		err = errors.Join(err, bucketErr)
 	case CreateAction:
 		if exists {
 			log.Printf("not creating as cluster exists")
@@ -165,6 +174,9 @@ func (d *GKEDriver) Execute() error {
 			if err := apply(kyverno.GKEPolicies); err != nil {
 				return err
 			}
+		}
+		if err := createBucketIfConfigured(d.plan, d.newBucketManager); err != nil {
+			return err
 		}
 	default:
 		err = fmt.Errorf("unknown operation %s", d.plan.Operation)
@@ -511,6 +523,22 @@ func (d *GKEDriver) deleteDisks(disks []string) error {
 	return nil
 }
 
+func (d *GKEDriver) newBucketManager() (bucket.Manager, error) {
+	if err := bucket.ValidateShellArg(d.plan.Gke.GCloudProject, "GCP project"); err != nil {
+		return nil, err
+	}
+	if d.plan.Bucket.StorageClass != "" {
+		if err := bucket.ValidateShellArg(d.plan.Bucket.StorageClass, "storage class"); err != nil {
+			return nil, err
+		}
+	}
+	cfg, err := newBucketConfig(d.plan, d.ctx, d.plan.Gke.Region)
+	if err != nil {
+		return nil, err
+	}
+	return bucket.NewGCSManager(cfg, d.plan.Gke.GCloudProject, d.plan.Bucket.StorageClass), nil
+}
+
 func (d *GKEDriver) Cleanup(prefix string, olderThan time.Duration) error {
 	if d.ctx[GoogleCloudProjectCtxKey] == "" {
 		gCloudProject, err := vault.Get(d.vaultClient, GKEVaultPath, GKEProjectVaultFieldName)
@@ -538,7 +566,11 @@ func (d *GKEDriver) Cleanup(prefix string, olderThan time.Duration) error {
 	}
 
 	for _, cluster := range clusters {
+		d.plan.ClusterName = cluster
 		d.ctx["ClusterName"] = cluster
+		if err := deleteBucketIfConfigured(d.plan, d.newBucketManager); err != nil {
+			log.Printf("warning: bucket deletion failed for cluster %s, will continue: %v", cluster, err)
+		}
 		if err = d.delete(); err != nil {
 			log.Printf("while deleting cluster %s: %v", cluster, err.Error())
 			continue

@@ -17,6 +17,7 @@ import (
 	"time"
 
 	"github.com/elastic/cloud-on-k8s/v3/hack/deployer/exec"
+	"github.com/elastic/cloud-on-k8s/v3/hack/deployer/runner/bucket"
 	"github.com/elastic/cloud-on-k8s/v3/hack/deployer/runner/env"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/vault"
 )
@@ -132,11 +133,23 @@ func (d *OCPDriver) Execute() error {
 
 	switch d.plan.Operation {
 	case DeleteAction:
+		// Track bucket deletion errors separately: cluster deletion should proceed even if bucket
+		// deletion fails, but the error must still be returned so the exit code is non-zero.
+		bucketErr := deleteBucketIfConfigured(d.plan, d.newBucketManager)
+		if bucketErr != nil {
+			log.Printf("warning: bucket deletion failed, will continue with cluster deletion: %v", bucketErr)
+		}
 		if clusterStatus != NotFound {
 			// always attempt a deletion
-			return d.delete()
+			if err := d.delete(); err != nil {
+				return errors.Join(err, bucketErr)
+			}
+		} else {
+			log.Printf("Not deleting as cluster doesn't exist")
 		}
-		log.Printf("Not deleting as cluster doesn't exist")
+		if bucketErr != nil {
+			return bucketErr
+		}
 	case CreateAction:
 		if clusterStatus == Running {
 			log.Printf("Not creating as cluster exists")
@@ -148,11 +161,17 @@ func (d *OCPDriver) Execute() error {
 			return err
 		}
 
-		return run([]func() error{
+		if err := run([]func() error{
 			d.copyKubeconfig,
 			d.setupDisks,
 			createStorageClass,
-		})
+		}); err != nil {
+			return err
+		}
+		if err := createBucketIfConfigured(d.plan, d.newBucketManager); err != nil {
+			return err
+		}
+		return nil
 	default:
 		return fmt.Errorf("unknown operation %s", d.plan.Operation)
 	}
@@ -466,6 +485,26 @@ func (d *OCPDriver) baseDomain() string {
 		baseDomain = "eck-ocp.elastic.dev"
 	}
 	return baseDomain
+}
+
+func (d *OCPDriver) newBucketManager() (bucket.Manager, error) {
+	if err := bucket.ValidateShellArg(d.plan.Ocp.GCloudProject, "GCP project"); err != nil {
+		return nil, err
+	}
+	if d.plan.Bucket.StorageClass != "" {
+		if err := bucket.ValidateShellArg(d.plan.Bucket.StorageClass, "storage class"); err != nil {
+			return nil, err
+		}
+	}
+	ctx := map[string]any{
+		"ClusterName": d.plan.ClusterName,
+		"PlanId":      d.plan.Id,
+	}
+	cfg, err := newBucketConfig(d.plan, ctx, d.plan.Ocp.Region)
+	if err != nil {
+		return nil, err
+	}
+	return bucket.NewGCSManager(cfg, d.plan.Ocp.GCloudProject, d.plan.Bucket.StorageClass), nil
 }
 
 func (d *OCPDriver) Cleanup(prefix string, olderThan time.Duration) error {
