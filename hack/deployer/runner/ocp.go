@@ -368,7 +368,7 @@ func (d *OCPDriver) uploadClusterState() error {
 	bucketNotFound, err := exec.NewCommand("gcloud storage ls gs://{{.OCPStateBucket}}").
 		AsTemplate(d.bucketParams()).
 		WithoutStreaming().
-		OutputContainsAny("BucketNotFoundException", "Did not find existing container")
+		OutputContainsAny("BucketNotFoundException", "not found: 404")
 	if err != nil {
 		return fmt.Errorf("while checking state bucket existence %w", err)
 	}
