@@ -7,13 +7,13 @@ package settings
 import (
 	"context"
 	"fmt"
-	"slices"
 
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/types"
 
 	esv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/elasticsearch/v1"
+	common "github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/settings"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/k8s"
 )
 
@@ -22,22 +22,40 @@ const (
 	keystorePassphraseFileEnvVar = "ES_KEYSTORE_PASSPHRASE_FILE" //nolint:gosec // Environment variable name, not a secret value.
 )
 
-// IsFIPSEnabled returns true when the merged Elasticsearch config contains
+// IsFIPSEnabled returns true when the given config contains
 // xpack.security.fips_mode.enabled: true.
-func IsFIPSEnabled(cfg CanonicalConfig) bool {
+func IsFIPSEnabled(cfg *common.CanonicalConfig) bool {
+	if cfg == nil {
+		return false
+	}
 	val, err := cfg.String("xpack.security.fips_mode.enabled")
 	if err != nil {
 		return false
 	}
-	// these are normalized from all casing types by the YAML parser
-	// prior to this check, so handling different casing types is not needed.
 	return val == "true"
 }
 
-// AnyNodeSetFIPSEnabled returns true if any of the provided per-NodeSet
-// configs has xpack.security.fips_mode.enabled: true.
-func AnyNodeSetFIPSEnabled(configs []CanonicalConfig) bool {
-	return slices.ContainsFunc(configs, IsFIPSEnabled)
+// AnyNodeSetFIPSEnabled returns true if any NodeSet's user-supplied config or
+// the StackConfigPolicy config has xpack.security.fips_mode.enabled: true.
+// It inspects the raw config layers directly rather than performing a full
+// merged config computation.
+func AnyNodeSetFIPSEnabled(nodeSets []esv1.NodeSet, policyConfig *common.CanonicalConfig) (bool, error) {
+	if IsFIPSEnabled(policyConfig) {
+		return true, nil
+	}
+	for i := range nodeSets {
+		if nodeSets[i].Config == nil {
+			continue
+		}
+		cfg, err := common.NewCanonicalConfigFrom(nodeSets[i].Config.Data)
+		if err != nil {
+			return false, fmt.Errorf("parsing config for NodeSet %s: %w", nodeSets[i].Name, err)
+		}
+		if IsFIPSEnabled(cfg) {
+			return true, nil
+		}
+	}
+	return false, nil
 }
 
 // HasUserProvidedKeystorePassword returns true if the user has set

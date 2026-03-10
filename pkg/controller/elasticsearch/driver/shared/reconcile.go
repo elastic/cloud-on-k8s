@@ -325,31 +325,13 @@ func ReconcileSharedResources(
 		esClient.Close()
 		return nil, results.WithError(err)
 	}
-	mergedConfigs, err := mergedNodeSetConfigs(es, params.OperatorParameters.IPFamily, policyConfig)
+	fipsKeystorePasswordSecret, err := reconcileFIPSKeystoreSecret(ctx, client, es, meta, policyConfig)
 	if err != nil {
 		esClient.Close()
 		return nil, results.WithError(err)
 	}
-	fipsEnabled := settings.AnyNodeSetFIPSEnabled(mergedConfigs)
-	userOverride, err := settings.AnyNodeSetHasUserProvidedKeystorePassword(ctx, client, es.Namespace, es.Spec.NodeSets)
-	if err != nil {
-		esClient.Close()
-		return nil, results.WithError(err)
-	}
-
-	var fipsKeystorePasswordSecret *corev1.Secret
-	if fipsEnabled && !userOverride {
-		fipsKeystorePasswordSecret, err = fips.ReconcileKeystorePasswordSecret(ctx, client, es, meta)
-		if err != nil {
-			esClient.Close()
-			return nil, results.WithError(err)
-		}
+	if fipsKeystorePasswordSecret != nil {
 		keystoreParams.FIPSKeystorePasswordPath = fips.PasswordFile
-	} else if !fipsEnabled {
-		if err := fips.DeleteKeystorePasswordSecret(ctx, client, es); err != nil {
-			esClient.Close()
-			return nil, results.WithError(err)
-		}
 	}
 
 	remoteClusterAPIKeys, err := apiKeyStoreSecretSource(ctx, &es, client)
@@ -489,35 +471,29 @@ func apiKeyStoreSecretSource(ctx context.Context, es *esv1.Elasticsearch, c k8s.
 	}, nil
 }
 
-// mergedNodeSetConfigs returns the merged Elasticsearch config for each NodeSet.
-func mergedNodeSetConfigs(es esv1.Elasticsearch, ipFamily corev1.IPFamily, policyConfig nodespec.PolicyConfig) ([]settings.CanonicalConfig, error) {
-	ver, err := version.Parse(es.Spec.Version)
+// reconcileFIPSKeystoreSecret reconciles or cleans up the FIPS keystore
+// password secret based on whether any NodeSet or StackConfigPolicy enables
+// FIPS mode. It returns the secret when FIPS is enabled and no user-provided
+// password override exists.
+func reconcileFIPSKeystoreSecret(
+	ctx context.Context,
+	client k8s.Client,
+	es esv1.Elasticsearch,
+	meta metadata.Metadata,
+	policyConfig nodespec.PolicyConfig,
+) (*corev1.Secret, error) {
+	fipsEnabled, err := settings.AnyNodeSetFIPSEnabled(es.Spec.NodeSets, policyConfig.ElasticsearchConfig)
 	if err != nil {
 		return nil, err
 	}
-
-	configs := make([]settings.CanonicalConfig, 0, len(es.Spec.NodeSets))
-	for _, nodeSet := range es.Spec.NodeSets {
-		userCfg := commonv1.Config{}
-		if nodeSet.Config != nil {
-			userCfg = *nodeSet.Config
-		}
-		cfg, err := settings.NewMergedESConfig(
-			es.Name,
-			ver,
-			ipFamily,
-			es.Spec.HTTP,
-			userCfg,
-			policyConfig.ElasticsearchConfig,
-			es.Spec.RemoteClusterServer.Enabled,
-			es.HasRemoteClusterAPIKey(),
-		)
-		if err != nil {
-			return nil, err
-		}
-		configs = append(configs, cfg)
+	if !fipsEnabled {
+		return nil, fips.DeleteKeystorePasswordSecret(ctx, client, es)
 	}
-	return configs, nil
+	userOverride, err := settings.AnyNodeSetHasUserProvidedKeystorePassword(ctx, client, es.Namespace, es.Spec.NodeSets)
+	if err != nil || userOverride {
+		return nil, err
+	}
+	return fips.ReconcileKeystorePasswordSecret(ctx, client, es, meta)
 }
 
 // esReachableConditionMessage returns a message describing the Elasticsearch reachability condition.

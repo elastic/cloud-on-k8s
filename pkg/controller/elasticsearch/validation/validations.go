@@ -144,7 +144,7 @@ func fipsModeConsistencyWarning(es esv1.Elasticsearch) string {
 			// Configuration parsing errors are handled by validation errors elsewhere.
 			continue
 		}
-		fipsEnabled := essettings.IsFIPSEnabled(essettings.CanonicalConfig{CanonicalConfig: canonicalConfig})
+		fipsEnabled := essettings.IsFIPSEnabled(canonicalConfig)
 		if fipsEnabled {
 			someFIPS = true
 		} else {

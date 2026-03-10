@@ -13,101 +13,85 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
+	commonv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/common/v1"
 	esv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/elasticsearch/v1"
 	common "github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/settings"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/k8s"
 )
 
-func TestIsFIPSEnabled(t *testing.T) {
-	tests := []struct {
-		name string
-		cfg  CanonicalConfig
-		want bool
-	}{
-		{
-			name: "fips enabled",
-			cfg: CanonicalConfig{
-				CanonicalConfig: common.MustCanonicalConfig(map[string]any{
-					"xpack.security.fips_mode.enabled": "true",
-				}),
-			},
-			want: true,
-		},
-		{
-			name: "fips enabled as boolean",
-			cfg: CanonicalConfig{
-				CanonicalConfig: common.MustCanonicalConfig(map[string]any{
-					"xpack.security.fips_mode.enabled": true,
-				}),
-			},
-			want: true,
-		},
-		{
-			name: "fips disabled",
-			cfg: CanonicalConfig{
-				CanonicalConfig: common.MustCanonicalConfig(map[string]any{
-					"xpack.security.fips_mode.enabled": "false",
-				}),
-			},
-			want: false,
-		},
-		{
-			name: "fips setting missing",
-			cfg: CanonicalConfig{
-				CanonicalConfig: common.MustCanonicalConfig(map[string]any{}),
-			},
-			want: false,
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			require.Equal(t, tt.want, IsFIPSEnabled(tt.cfg))
-		})
-	}
-}
-
 func TestAnyNodeSetFIPSEnabled(t *testing.T) {
+	fipsConfig := commonv1.NewConfig(map[string]any{
+		"xpack.security.fips_mode.enabled": true,
+	})
+	nonFIPSConfig := commonv1.NewConfig(map[string]any{
+		"xpack.security.fips_mode.enabled": false,
+	})
+
 	tests := []struct {
-		name    string
-		configs []CanonicalConfig
-		want    bool
+		name         string
+		nodeSets     []esv1.NodeSet
+		policyConfig *common.CanonicalConfig
+		want         bool
 	}{
 		{
-			name: "mixed configs include fips enabled",
-			configs: []CanonicalConfig{
-				{
-					CanonicalConfig: common.MustCanonicalConfig(map[string]any{
-						"xpack.security.fips_mode.enabled": "false",
-					}),
-				},
-				{
-					CanonicalConfig: common.MustCanonicalConfig(map[string]any{
-						"xpack.security.fips_mode.enabled": "true",
-					}),
-				},
+			name:     "fips enabled in nodeset config as boolean",
+			nodeSets: []esv1.NodeSet{{Name: "data", Config: &fipsConfig}},
+			want:     true,
+		},
+		{
+			name: "fips enabled in nodeset config as string",
+			nodeSets: []esv1.NodeSet{{
+				Name: "data",
+				Config: func() *commonv1.Config {
+					c := commonv1.NewConfig(map[string]any{"xpack.security.fips_mode.enabled": "true"})
+					return &c
+				}(),
+			}},
+			want: true,
+		},
+		{
+			name:     "fips disabled in nodeset config",
+			nodeSets: []esv1.NodeSet{{Name: "data", Config: &nonFIPSConfig}},
+			want:     false,
+		},
+		{
+			name:     "fips setting missing from nodeset config",
+			nodeSets: []esv1.NodeSet{{Name: "data"}},
+			want:     false,
+		},
+		{
+			name: "mixed nodesets, one fips enabled",
+			nodeSets: []esv1.NodeSet{
+				{Name: "master", Config: &nonFIPSConfig},
+				{Name: "data", Config: &fipsConfig},
 			},
 			want: true,
 		},
 		{
-			name: "all configs non-fips",
-			configs: []CanonicalConfig{
-				{
-					CanonicalConfig: common.MustCanonicalConfig(map[string]any{
-						"xpack.security.fips_mode.enabled": "false",
-					}),
-				},
-				{
-					CanonicalConfig: common.MustCanonicalConfig(map[string]any{}),
-				},
-			},
-			want: false,
+			name:         "fips enabled via policy config only",
+			nodeSets:     []esv1.NodeSet{{Name: "data"}},
+			policyConfig: common.MustCanonicalConfig(map[string]any{"xpack.security.fips_mode.enabled": true}),
+			want:         true,
+		},
+		{
+			name:         "policy config without fips, nodeset without fips",
+			nodeSets:     []esv1.NodeSet{{Name: "data", Config: &nonFIPSConfig}},
+			policyConfig: common.MustCanonicalConfig(map[string]any{}),
+			want:         false,
+		},
+		{
+			name:         "nil policy config, no nodesets",
+			nodeSets:     nil,
+			policyConfig: nil,
+			want:         false,
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			require.Equal(t, tt.want, AnyNodeSetFIPSEnabled(tt.configs))
+			got, err := AnyNodeSetFIPSEnabled(tt.nodeSets, tt.policyConfig)
+			require.NoError(t, err)
+			require.Equal(t, tt.want, got)
 		})
 	}
 }
