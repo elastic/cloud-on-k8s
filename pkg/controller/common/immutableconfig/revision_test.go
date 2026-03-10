@@ -42,6 +42,7 @@ func configMapVolumeClassifier(volumeNames ...string) MapClassifier {
 }
 
 func testRevisions(t *testing.T, c client.Client, owner client.Object) Revisions {
+	t.Helper()
 	revisions, err := NewRevisions(c, owner, "default").
 		WithConfigResourceSelector(testResourceSelector).
 		WithPodTemplateSource(NewReplicaSetExtractor(testRSLabels)).

@@ -5,11 +5,11 @@
 package immutableconfig
 
 import (
-	"maps"
-	"slices"
 	"context"
 	"errors"
 	"fmt"
+	"maps"
+	"slices"
 
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
@@ -266,7 +266,12 @@ func (r *Revision) Reconcile(ctx context.Context, obj client.Object) (string, er
 	}
 
 	key := types.NamespacedName{Namespace: obj.GetNamespace(), Name: obj.GetName()}
-	existing := obj.DeepCopyObject().(client.Object)
+	// DeepCopyObject returns runtime.Object; assert to client.Object for the client.Get call.
+	// This is unlikely to fail since obj is already a client.Object.
+	existing, ok := obj.DeepCopyObject().(client.Object)
+	if !ok {
+		return "", errors.New("failed to convert deep copy to client.Object")
+	}
 	err := r.client.Get(ctx, key, existing)
 	if err == nil {
 		r.reconciled.Insert(obj.GetName())
