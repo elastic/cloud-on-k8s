@@ -9,6 +9,7 @@ package es
 import (
 	"context"
 	"fmt"
+	"slices"
 	"strings"
 	"testing"
 
@@ -219,10 +220,18 @@ func checkFIPSPodTemplateInjectedStep(k *test.K8sClient, es esv1.Elasticsearch, 
 				return err
 			}
 
-			hasFIPSVolume := hasVolumeByName(sset.Spec.Template.Spec.Volumes, esfips.VolumeName)
-			mainHasFIPSMount := hasVolumeMount(*esContainer, esfips.VolumeName, esfips.MountPath)
-			initHasFIPSMount := hasVolumeMount(*keystoreInitContainer, esfips.VolumeName, esfips.MountPath)
-			mainHasPassphraseEnv := hasEnvVar(*esContainer, "ES_KEYSTORE_PASSPHRASE_FILE", esfips.PasswordFile)
+			hasFIPSVolume := slices.ContainsFunc(sset.Spec.Template.Spec.Volumes, func(v corev1.Volume) bool {
+				return v.Name == esfips.VolumeName
+			})
+			mainHasFIPSMount := slices.ContainsFunc(esContainer.VolumeMounts, func(vm corev1.VolumeMount) bool {
+				return vm.Name == esfips.VolumeName && vm.MountPath == esfips.MountPath
+			})
+			initHasFIPSMount := slices.ContainsFunc(keystoreInitContainer.VolumeMounts, func(vm corev1.VolumeMount) bool {
+				return vm.Name == esfips.VolumeName && vm.MountPath == esfips.MountPath
+			})
+			mainHasPassphraseEnv := slices.ContainsFunc(esContainer.Env, func(e corev1.EnvVar) bool {
+				return e.Name == "ES_KEYSTORE_PASSPHRASE_FILE" && e.Value == esfips.PasswordFile
+			})
 			script := strings.Join(keystoreInitContainer.Command, " ")
 			scriptHasFIPS := strings.Contains(script, "create -p") && strings.Contains(script, `KEYSTORE_PASSWORD=$(cat "`)
 
@@ -230,7 +239,7 @@ func checkFIPSPodTemplateInjectedStep(k *test.K8sClient, es esv1.Elasticsearch, 
 				if hasFIPSVolume || mainHasFIPSMount || initHasFIPSMount || scriptHasFIPS {
 					return fmt.Errorf("operator-managed FIPS wiring unexpectedly present in pod template")
 				}
-				if !hasEnvVarName(*esContainer, "ES_KEYSTORE_PASSPHRASE_FILE") {
+				if !slices.ContainsFunc(esContainer.Env, func(e corev1.EnvVar) bool { return e.Name == "ES_KEYSTORE_PASSPHRASE_FILE" }) {
 					return fmt.Errorf("expected user-provided ES_KEYSTORE_PASSPHRASE_FILE env var to be present")
 				}
 				return nil
@@ -263,40 +272,4 @@ func findContainerByName(containers []corev1.Container, name string) (*corev1.Co
 		}
 	}
 	return nil, fmt.Errorf("container %q not found", name)
-}
-
-func hasVolumeByName(volumes []corev1.Volume, volumeName string) bool {
-	for _, volume := range volumes {
-		if volume.Name == volumeName {
-			return true
-		}
-	}
-	return false
-}
-
-func hasVolumeMount(container corev1.Container, volumeName string, mountPath string) bool {
-	for _, volumeMount := range container.VolumeMounts {
-		if volumeMount.Name == volumeName && volumeMount.MountPath == mountPath {
-			return true
-		}
-	}
-	return false
-}
-
-func hasEnvVar(container corev1.Container, name string, value string) bool {
-	for _, env := range container.Env {
-		if env.Name == name && env.Value == value {
-			return true
-		}
-	}
-	return false
-}
-
-func hasEnvVarName(container corev1.Container, name string) bool {
-	for _, env := range container.Env {
-		if env.Name == name {
-			return true
-		}
-	}
-	return false
 }

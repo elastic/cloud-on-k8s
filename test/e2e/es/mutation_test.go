@@ -171,7 +171,7 @@ func TestMutationSecondMasterSetDown(t *testing.T) {
 
 	// added to debug https://github.com/elastic/cloud-on-k8s/issues/5865 can be removed once stable
 	if version.MustParse(b.Elasticsearch.Spec.Version).GTE(version.MinFor(7, 7, 0)) {
-		b = b.WithAdditionalConfig(map[string]map[string]any{
+		b = b.WithAdditionalConfig(map[string]map[string]interface{}{
 			"masterdata": {
 				"logger.org.elasticsearch.http.HttpTracer": "TRACE",
 				"http.tracer.include":                      []string{"*_cluster/health*"},
@@ -182,7 +182,7 @@ func TestMutationSecondMasterSetDown(t *testing.T) {
 			},
 		})
 
-		mutated = mutated.WithAdditionalConfig(map[string]map[string]any{
+		mutated = mutated.WithAdditionalConfig(map[string]map[string]interface{}{
 			"masterdata": {
 				"logger.org.elasticsearch.http.HttpTracer": "TRACE",
 				"http.tracer.include":                      []string{"*_cluster/health*"},
@@ -203,7 +203,7 @@ func TestMutationRollingDownscaleCombination(t *testing.T) {
 		WithESMasterNodes(1, elasticsearch.DefaultResources).
 		WithNamedESDataNodes(2, "data-1", elasticsearch.DefaultResources).
 		WithNamedESDataNodes(1, "data-2", elasticsearch.DefaultResources). // scaling down data-2
-		WithAdditionalConfig(map[string]map[string]any{
+		WithAdditionalConfig(map[string]map[string]interface{}{
 			"data-1": {
 				"node.attr.important": "attribute", // triggers the rolling update on data-1
 			},
@@ -216,7 +216,7 @@ func TestMutationAndReversal(t *testing.T) {
 		WithESMasterDataNodes(3, elasticsearch.DefaultResources)
 
 	mutation := b.DeepCopy().
-		WithAdditionalConfig(map[string]map[string]any{
+		WithAdditionalConfig(map[string]map[string]interface{}{
 			"masterdata": {
 				"node.attr.box_type": "mixed",
 			},
@@ -251,7 +251,7 @@ func TestMutationWithLargerMaxUnavailable(t *testing.T) {
 	mutated := b.WithNoESTopology().
 		WithESMasterNodes(1, elasticsearch.DefaultResources).
 		WithNamedESDataNodes(2, "data1", elasticsearch.DefaultResources).
-		WithAdditionalConfig(map[string]map[string]any{
+		WithAdditionalConfig(map[string]map[string]interface{}{
 			"data1": {
 				"node.attr.value": "this-is-fine",
 			},
