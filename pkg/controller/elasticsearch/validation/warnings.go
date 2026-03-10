@@ -9,6 +9,7 @@ import (
 
 	esv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/elasticsearch/v1"
 	common "github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/settings"
+	essettings "github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/settings"
 )
 
 var warnings = []validation{
@@ -54,6 +55,31 @@ func validateClientAuthentication(config *common.CanonicalConfig, index int) fie
 			value, unsupportedClientAuthenticationMsg))
 	}
 	return errs
+}
+
+// fipsModeConsistencyWarning returns a warning message if FIPS mode is
+// inconsistently configured across NodeSets. It returns an empty string when
+// all NodeSets agree.
+func fipsModeConsistencyWarning(es esv1.Elasticsearch) string {
+	var fipsCount, total int
+	for _, nodeSet := range es.Spec.NodeSets {
+		userConfig := map[string]any{}
+		if nodeSet.Config != nil {
+			userConfig = nodeSet.Config.Data
+		}
+		canonicalConfig, err := common.NewCanonicalConfigFrom(userConfig)
+		if err != nil {
+			continue
+		}
+		total++
+		if essettings.IsFIPSEnabled(canonicalConfig) {
+			fipsCount++
+		}
+	}
+	if fipsCount > 0 && fipsCount < total {
+		return inconsistentFIPSModeWarningMsg
+	}
+	return ""
 }
 
 func CheckForWarnings(es esv1.Elasticsearch) error {

@@ -128,6 +128,7 @@ func envFromContainsKeystorePassword(ctx context.Context, c k8s.Client, namespac
 				}
 				return false, err
 			}
+			// secret.Data is map[string][]byte; extract keys only to match envFromKeyMatches signature.
 			stringData := make(map[string]string, len(secret.Data))
 			for k := range secret.Data {
 				stringData[k] = ""

@@ -15,10 +15,8 @@ import (
 	commonv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/common/v1"
 	esv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/elasticsearch/v1"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/license"
-	commonsettings "github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/settings"
 	stackmon "github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/stackmon/validations"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/version"
-	essettings "github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/settings"
 	esversion "github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/version"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/k8s"
 	ulog "github.com/elastic/cloud-on-k8s/v3/pkg/utils/log"
@@ -109,53 +107,16 @@ func check(es esv1.Elasticsearch, validations []validation) (string, field.Error
 		}
 	}
 
-	// check if Elasticsearch version is deprecated
-	warnings, deprecatedErrors := commonv1.CheckDeprecatedStackVersion(es.Spec.Version)
-	if len(deprecatedErrors) > 0 {
+	// collect non-blocking warnings (shown as admission warnings, not denials)
+	var warningParts []string
+	if msg, deprecatedErrors := commonv1.CheckDeprecatedStackVersion(es.Spec.Version); msg != "" {
+		warningParts = append(warningParts, msg)
 		errs = append(errs, deprecatedErrors...)
 	}
-	warnings = appendWarning(warnings, fipsModeConsistencyWarning(es))
-	return warnings, errs
-}
-
-func appendWarning(existing string, warning string) string {
-	if warning == "" {
-		return existing
+	if msg := fipsModeConsistencyWarning(es); msg != "" {
+		warningParts = append(warningParts, msg)
 	}
-	if existing == "" {
-		return warning
-	}
-	return existing + "; " + warning
-}
-
-// fipsModeConsistencyWarning returns a warning if FIPS mode is inconsistently
-// configured across NodeSets.
-func fipsModeConsistencyWarning(es esv1.Elasticsearch) string {
-	someFIPS := false
-	allFIPS := true
-
-	for _, nodeSet := range es.Spec.NodeSets {
-		userConfig := map[string]any{}
-		if nodeSet.Config != nil {
-			userConfig = nodeSet.Config.Data
-		}
-		canonicalConfig, err := commonsettings.NewCanonicalConfigFrom(userConfig)
-		if err != nil {
-			// Configuration parsing errors are handled by validation errors elsewhere.
-			continue
-		}
-		fipsEnabled := essettings.IsFIPSEnabled(canonicalConfig)
-		if fipsEnabled {
-			someFIPS = true
-		} else {
-			allFIPS = false
-		}
-	}
-
-	if someFIPS && !allFIPS {
-		return inconsistentFIPSModeWarningMsg
-	}
-	return ""
+	return strings.Join(warningParts, "; "), errs
 }
 
 // noUnknownFields checks whether the last applied config annotation contains json with unknown fields.
