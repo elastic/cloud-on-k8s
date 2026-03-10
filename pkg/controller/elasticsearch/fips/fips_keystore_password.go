@@ -9,7 +9,6 @@ import (
 	"fmt"
 
 	corev1 "k8s.io/api/core/v1"
-	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -47,13 +46,13 @@ func ReconcileKeystorePasswordSecret(
 	}
 
 	var existingSecret corev1.Secret
-	err := c.Get(ctx, secretName, &existingSecret)
-	if err != nil && !apierrors.IsNotFound(err) {
+	if err := client.IgnoreNotFound(c.Get(ctx, secretName, &existingSecret)); err != nil {
 		return nil, err
 	}
 
 	passwordBytes := existingSecret.Data[KeystorePasswordKey]
 	if len(passwordBytes) == 0 {
+		var err error
 		passwordBytes, err = password.RandomBytesWithoutSymbols(generatedPasswordLength)
 		if err != nil {
 			return nil, fmt.Errorf("while generating fips keystore password: %w", err)
