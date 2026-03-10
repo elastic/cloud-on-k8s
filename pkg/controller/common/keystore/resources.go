@@ -85,7 +85,7 @@ func ReconcileResources(
 		secureSettingsMount.ReadOnly = true
 		initContainer, err := initContainer(secureSettingsMount, initContainerParams)
 		if err != nil {
-			return nil, fmt.Errorf("build keystore init container: %w", err)
+			return nil, fmt.Errorf("while building keystore init container: %w", err)
 		}
 		return &Resources{
 			Volume:        emptySecureSettingsVolume.Volume(),
