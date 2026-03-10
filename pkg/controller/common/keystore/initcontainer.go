@@ -9,8 +9,6 @@ import (
 	"text/template"
 
 	corev1 "k8s.io/api/core/v1"
-
-	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/volume"
 )
 
 const (
@@ -96,18 +94,9 @@ echo "Keystore initialization successful."
 
 var scriptTemplate = template.Must(template.New("").Parse(script))
 
-// initContainer returns an init container that executes a bash script
-// to load secure settings in a Keystore.
+// initContainer returns an init container that executes a bash script to load
+// secure settings in a keystore from a given volume mount.
 func initContainer(
-	secureSettingsSecret volume.SecretVolume,
-	parameters InitContainerParameters,
-) (corev1.Container, error) {
-	return initContainerWithVolumeMount(secureSettingsSecret.VolumeMount(), parameters)
-}
-
-// initContainerWithVolumeMount returns an init container that executes a bash
-// script to load secure settings in a keystore from a given volume mount.
-func initContainerWithVolumeMount(
 	secureSettingsVolumeMount corev1.VolumeMount,
 	parameters InitContainerParameters,
 ) (corev1.Container, error) {

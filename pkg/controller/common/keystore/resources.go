@@ -6,6 +6,7 @@ package keystore
 
 import (
 	"context"
+	"fmt"
 
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -82,9 +83,9 @@ func ReconcileResources(
 		emptySecureSettingsVolume := volume.NewEmptyDirVolume(SecureSettingsVolumeName, SecureSettingsVolumeMountPath)
 		secureSettingsMount := emptySecureSettingsVolume.VolumeMount()
 		secureSettingsMount.ReadOnly = true
-		initContainer, err := initContainerWithVolumeMount(secureSettingsMount, initContainerParams)
+		initContainer, err := initContainer(secureSettingsMount, initContainerParams)
 		if err != nil {
-			return nil, err
+			return nil, fmt.Errorf("build keystore init container: %w", err)
 		}
 		return &Resources{
 			Volume:        emptySecureSettingsVolume.Volume(),
@@ -94,7 +95,7 @@ func ReconcileResources(
 	}
 
 	// build an init container to create the keystore from the secure settings volume
-	initContainer, err := initContainer(*secretVolume, initContainerParams)
+	initContainer, err := initContainer(secretVolume.VolumeMount(), initContainerParams)
 	if err != nil {
 		return nil, err
 	}
