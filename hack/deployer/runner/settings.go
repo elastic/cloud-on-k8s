@@ -42,6 +42,7 @@ type Plan struct {
 // BucketSettings encapsulates settings for cloud storage bucket provisioning.
 type BucketSettings struct {
 	// Name is the bucket name. Supports template variables (e.g. "{{ .ClusterName }}-development").
+	// Not required when FromVault is set (bucket name comes from Vault).
 	Name string `yaml:"name"`
 	// Region is the cloud region for the bucket. For cloud providers (GKE, EKS, AKS) this is
 	// overridden by the provider-specific region. For local clusters (Kind, K3D) it defaults to us-central1.
@@ -52,6 +53,10 @@ type BucketSettings struct {
 	Secret BucketSecretSettings `yaml:"secret"`
 	// S3 holds AWS S3-specific configuration. Only used when the provider is EKS.
 	S3 *S3BucketSettings `yaml:"s3,omitempty"`
+	// FromVault indicates that bucket credentials should be read from Vault instead of creating a new bucket.
+	// When true, the deployer reads credentials from a pre-provisioned bucket stored in Vault.
+	// The Vault path is determined by the provider (gke→gcs, eks→s3, eks-arm→s3-arm, aks→azure).
+	FromVault bool `yaml:"fromVault,omitempty"`
 }
 
 // S3BucketSettings holds AWS-specific configuration for S3 bucket provisioning.

@@ -524,6 +524,12 @@ func (d *GKEDriver) deleteDisks(disks []string) error {
 }
 
 func (d *GKEDriver) newBucketManager() (bucket.Manager, error) {
+	// Use VaultManager for pre-provisioned buckets
+	if d.plan.Bucket.FromVault {
+		return newVaultBucketManager(GKEDriverID, d.vaultClient)
+	}
+
+	// Use GCSManager for dynamic bucket creation
 	if err := bucket.ValidateShellArg(d.plan.Gke.GCloudProject, "GCP project"); err != nil {
 		return nil, err
 	}

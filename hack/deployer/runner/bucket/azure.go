@@ -84,11 +84,16 @@ func (a *AzureManager) Create() error {
 		return err
 	}
 
+	// Annotations provide bucket configuration for the E2E test framework.
+	// These are consistent with VaultManager.readAzureCredentials() to ensure the same
+	// bucket information is available regardless of credential source.
 	return createK8sSecret(a.cfg.SecretName, a.cfg.SecretNamespace, map[string]string{
 		"azure.client.default.account":   a.storageAccountName(),
 		"azure.client.default.sas_token": sasToken,
 	}, map[string]string{
-		"eck-deployer/storage-account": a.storageAccountName(),
+		AnnotationProvider:       ProviderAzure,
+		AnnotationStorageAccount: a.storageAccountName(),
+		AnnotationContainer:      a.containerName(),
 	})
 }
 

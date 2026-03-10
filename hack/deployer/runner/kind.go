@@ -301,6 +301,16 @@ func (k *KindDriver) ensureClientImage() error {
 }
 
 func (k *KindDriver) newBucketManager() (bucket.Manager, error) {
+	// Use VaultManager for pre-provisioned buckets
+	if k.plan.Bucket != nil && k.plan.Bucket.FromVault {
+		c, err := k.vaultClient()
+		if err != nil {
+			return nil, err
+		}
+		return newVaultBucketManager(KindDriverID, c)
+	}
+
+	// Use GCSManager for dynamic bucket creation
 	return newLocalGCSBucketManager(k.plan)
 }
 

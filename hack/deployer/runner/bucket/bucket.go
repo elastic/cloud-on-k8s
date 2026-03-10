@@ -35,6 +35,33 @@ const (
 	managedByValue = "eck-deployer"
 )
 
+// Secret annotation keys for bucket metadata.
+// These annotations provide bucket configuration to the E2E test framework.
+// All bucket managers (GCS, S3, Azure, Vault) must set these consistently.
+const (
+	// AnnotationProvider identifies the cloud storage provider (gcs, s3, azure).
+	AnnotationProvider = "eck-deployer/provider"
+	// AnnotationBucket is the bucket name (GCS, S3).
+	AnnotationBucket = "eck-deployer/bucket"
+	// AnnotationRegion is the cloud region (S3).
+	AnnotationRegion = "eck-deployer/region"
+	// AnnotationProject is the GCP project (GCS).
+	AnnotationProject = "eck-deployer/project"
+	// AnnotationStorageAccount is the Azure storage account name.
+	AnnotationStorageAccount = "eck-deployer/storage-account"
+	// AnnotationContainer is the Azure blob container name.
+	AnnotationContainer = "eck-deployer/container"
+	// AnnotationSource indicates the credential source (e.g., "vault" for pre-provisioned).
+	AnnotationSource = "eck-deployer/source"
+)
+
+// Provider values for AnnotationProvider.
+const (
+	ProviderGCS   = "gcs"
+	ProviderS3    = "s3"
+	ProviderAzure = "azure"
+)
+
 // Manager defines the interface for cloud storage bucket lifecycle operations.
 type Manager interface {
 	// Create creates a bucket, scoped credentials, and a Kubernetes Secret with those credentials.

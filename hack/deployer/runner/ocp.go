@@ -488,6 +488,12 @@ func (d *OCPDriver) baseDomain() string {
 }
 
 func (d *OCPDriver) newBucketManager() (bucket.Manager, error) {
+	// Use VaultManager for pre-provisioned buckets
+	if d.plan.Bucket.FromVault {
+		return newVaultBucketManager(OCPDriverID, d.vaultClient)
+	}
+
+	// Use GCSManager for dynamic bucket creation
 	if err := bucket.ValidateShellArg(d.plan.Ocp.GCloudProject, "GCP project"); err != nil {
 		return nil, err
 	}
