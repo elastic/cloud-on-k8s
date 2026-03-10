@@ -79,6 +79,26 @@ func TestAppendDefaultPVCs(t *testing.T) {
 			want: nil,
 		},
 		{
+			name: "skip only the default pvc whose name collides with a user-provided pvc volume",
+			args: args{
+				existing: nil,
+				podSpec: v1.PodSpec{
+					Volumes: []v1.Volume{
+						{
+							Name: foo.Name,
+							VolumeSource: v1.VolumeSource{
+								PersistentVolumeClaim: &v1.PersistentVolumeClaimVolumeSource{
+									ClaimName: "my-pre-existing-pvc",
+								},
+							},
+						},
+					},
+				},
+				defaults: []v1.PersistentVolumeClaim{foo, bar},
+			},
+			want: []v1.PersistentVolumeClaim{bar},
+		},
+		{
 			name: "do not add a default pvc when volumeClaimTemplates is empty and user provides own pvc volume",
 			args: args{
 				existing: []v1.PersistentVolumeClaim{},
