@@ -67,6 +67,7 @@ func doRun(flags runFlags) error {
 			helper.createE2ENamespaceAndRoleBindings,
 			helper.createRoles,
 			helper.createManagedNamespaces,
+			helper.copyStatelessBucketSecret,
 			helper.deploySecurityConstraints,
 			helper.runTestsLocally,
 		}
@@ -80,6 +81,7 @@ func doRun(flags runFlags) error {
 			helper.createRoles,
 			helper.createOperatorNamespaces,
 			helper.createManagedNamespaces,
+			helper.copyStatelessBucketSecret,
 			helper.deployTestSecrets,
 			helper.deploySecurityConstraints,
 			helper.deployMonitoring,
@@ -188,6 +190,18 @@ func (h *helper) initTestContext() error {
 		LogToFile:             h.logToFile,
 		AutopilotCluster:      isAutopilotCluster(h),
 		ArtefactsDir:          artefactsDir,
+		DatePrefix:            time.Now().UTC().Format("20060102"),
+	}
+
+	// Initialize stateless config if enabled (reads bucket config from Secret annotations).
+	if h.statelessEnabled {
+		h.testContext.Stateless = &test.StatelessConfig{
+			SecretName:      h.statelessSecretName,
+			SecretNamespace: h.statelessSecretNamespace,
+		}
+		if err := h.initStatelessConfig(); err != nil {
+			return err
+		}
 	}
 
 	for i, ns := range h.managedNamespaces {
