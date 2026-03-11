@@ -97,6 +97,7 @@ func TestNewInitContainer(t *testing.T) {
 					},
 				},
 				Resources: defaultResources,
+				SecurityContext: getDefaultSecurityContext(),
 			},
 			wantErr: false,
 		},
@@ -159,6 +160,7 @@ func TestNewInitContainer(t *testing.T) {
 					},
 				},
 				Resources: defaultResources,
+				SecurityContext: getDefaultSecurityContext(),
 			},
 			wantErr: false,
 		},
@@ -174,5 +176,13 @@ func TestNewInitContainer(t *testing.T) {
 				t.Errorf("NewInitContainer() diff = %s", cmp.Diff(got, tt.want))
 			}
 		})
+	}
+}
+
+func getDefaultSecurityContext() *corev1.SecurityContext {
+	return  &corev1.SecurityContext{
+		SeccompProfile: &corev1.SeccompProfile{
+			Type: corev1.SeccompProfileTypeRuntimeDefault,
+		},
 	}
 }

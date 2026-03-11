@@ -82,6 +82,14 @@ func NewInitContainer(kb kbv1.Kibana, setDefaultSecurityContext bool) (corev1.Co
 		Resources: defaultResources,
 	}
 
+	if setDefaultSecurityContext {
+		container.SecurityContext = &corev1.SecurityContext{
+			SeccompProfile: &corev1.SeccompProfile{
+				Type: corev1.SeccompProfileTypeRuntimeDefault,
+			},
+		}
+	}
+
 	return container, nil
 }
 
