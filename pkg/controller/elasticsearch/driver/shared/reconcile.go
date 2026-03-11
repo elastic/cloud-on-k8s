@@ -283,7 +283,7 @@ func ReconcileSharedResources(
 		msg := "Could not update remote clusters in Elasticsearch settings, re-queuing"
 		if err != nil {
 			log.Info(msg, "err", err, "namespace", es.Namespace, "es_name", es.Name)
-			params.ReconcileState.AddEvent(corev1.EventTypeWarning, events.EventReasonUnexpected, "RemoteClusterConfiguration", msg)
+			params.ReconcileState.AddEvent(corev1.EventTypeWarning, events.EventReasonUnexpected, events.EventActionRemoteClusterConfiguration, msg)
 			results.WithError(err)
 		}
 		if requeue {

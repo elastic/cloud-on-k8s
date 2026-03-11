@@ -81,6 +81,16 @@ const (
 	EventActionElasticsearchRetrieval = "ElasticsearchRetrieval"
 	// EventActionAnnotateResource describes the annotation step the controller was taking when the event was triggered
 	EventActionAnnotateResource = "AnnotateResource"
+	// EventActionDeploymentReconciliation describes the deployment reconciliation step the controller was taking when the event was triggered
+	EventActionDeploymentReconciliation = "DeploymentReconciliation"
+	// EventActionAssociationReconciliation describes the association reconciliation step the controller was taking when the event was triggered
+	EventActionAssociationReconciliation = "AssociationReconciliation"
+	// EventActionAutoOpsReconciliation = "AutoOpsReconciliation"
+	EventActionAutoOpsReconciliation = "AutoOpsReconciliation"
+	// EventActionRemoteClusterConfiguration describes the remote cluster configuration step the controller was taking when the event was triggered
+	EventActionRemoteClusterConfiguration = "RemoteClusterConfiguration"
+	// EventActionRemoteClusterAssociation describes the remote cluster association step the controller was taking when the event was triggered
+	EventActionRemoteClusterAssociation = "RemoteClusterAssociation"
 )
 
 // Event is a k8s event that can be recorded via an event recorder.

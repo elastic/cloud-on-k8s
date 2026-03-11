@@ -280,7 +280,7 @@ func (r *ReconcileApmServer) doReconcile(ctx context.Context, as *apmv1.ApmServe
 			log.V(1).Info("Conflict while updating status")
 			return results.WithRequeue(), state
 		}
-		k8s.MaybeEmitErrorEvent(r.recorder, err, as, events.EventReconciliationError, "DeploymentReconciliation", fmt.Sprintf("Deployment reconciliation error: %v", err))
+		k8s.MaybeEmitErrorEvent(r.recorder, err, as, events.EventReconciliationError, events.EventActionDeploymentReconciliation, fmt.Sprintf("Deployment reconciliation error: %v", err))
 		return results.WithError(tracing.CaptureError(ctx, err)), state
 	}
 

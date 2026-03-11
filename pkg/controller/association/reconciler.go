@@ -250,7 +250,7 @@ func (r *Reconciler) reconcileAssociation(ctx context.Context, association commo
 		// external reference, update association conf to associate the unmanaged resource
 		expectedAssocConf, err := r.ExpectedConfigFromUnmanagedAssociation(association)
 		if err != nil {
-			r.recorder.Eventf(association.Associated(), nil, corev1.EventTypeWarning, events.EventAssociationError, "AssociationReconciliation", "%s", fmt.Sprintf("Failed to reconcile external resource %q: %v", assocRef.NameOrSecretName(), err.Error()))
+			r.recorder.Eventf(association.Associated(), nil, corev1.EventTypeWarning, events.EventAssociationError, events.EventActionAssociationReconciliation, "%s", fmt.Sprintf("Failed to reconcile external resource %q: %v", assocRef.NameOrSecretName(), err.Error()))
 			return commonv1.AssociationFailed, err
 		}
 		return r.updateAssocConf(ctx, &expectedAssocConf, association)

@@ -56,7 +56,7 @@ func logNotAllowedAssociation(ctx context.Context, localEs, remoteEs *esv1.Elast
 		nil,
 		corev1.EventTypeWarning,
 		events.EventAssociationError,
-		"RemoteClusterAssociation",
+		events.EventActionRemoteClusterAssociation,
 		"%s",
 		fmt.Sprintf("Remote cluster association not allowed: %s/%s to %s/%s",
 			localEs.Namespace, localEs.Name, remoteEs.Namespace, remoteEs.Name),
