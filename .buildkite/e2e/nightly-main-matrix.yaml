@@ -60,3 +60,19 @@
 - label: aks
   fixed:
     E2E_PROVIDER: aks
+
+# Stateless Elasticsearch tests
+#- label: gke-stateless
+#  fixed:
+#    E2E_PROVIDER: gke
+#    STATELESS: "true"
+#
+#- label: eks-stateless
+#  fixed:
+#    E2E_PROVIDER: eks
+#    STATELESS: "true"
+#
+#- label: aks-stateless
+#  fixed:
+#    E2E_PROVIDER: aks
+#    STATELESS: "true"
