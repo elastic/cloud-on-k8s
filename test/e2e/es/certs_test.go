@@ -11,6 +11,7 @@ import (
 	"crypto/ecdsa"
 	"crypto/elliptic"
 	cryptorand "crypto/rand"
+	"crypto/rsa"
 	"crypto/tls"
 	"crypto/x509"
 	"crypto/x509/pkix"
@@ -426,6 +427,153 @@ func TestCustomTransportCA(t *testing.T) {
 	// 3. reconfigure with correct custom certificates
 	// 4. reconfigure back to self-signed operator provided CA
 	test.RunMutations(t, []test.Builder{withBuiltinCA}, []test.Builder{withBogusCert, withCustomCert, withBuiltinCA})
+}
+
+// TestCustomTransportCARotationWithSameSKI tests that when a user rotates their custom transport CA
+// while keeping the same private key and Subject Key Identifier (SKI), the cluster remains healthy
+// without requiring reissuance of all transport certificates. This is the expected behavior because:
+// 1. The cryptographic signature remains valid (same private key)
+// 2. The SKI/AKI chain validation passes (same SKI)
+// 3. ECK's certificates.CertIsSignedByCA function recognizes that the SKI matches and doesn't trigger unnecessary reissuance
+func TestCustomTransportCARotationWithSameSKI(t *testing.T) {
+	esName := "test-ca-rotation-ski"
+
+	// Create a multi-node cluster so we have inter-node communication
+	initialCluster := elasticsearch.NewBuilder(esName).
+		WithESMasterDataNodes(3, elasticsearch.DefaultResources)
+
+	// Reference to the custom CA - we'll rotate this while keeping the same private key and SKI
+	var originalCA *certificates.CA
+	var rotatedCA *certificates.CA
+
+	// Start with a custom transport CA
+	withCustomCA := test.WrappedBuilder{
+		BuildingThis: initialCluster.
+			WithCustomTransportCA(caSecretName).
+			WithMutatedFrom(&initialCluster),
+
+		PreMutationSteps: func(k *test.K8sClient) test.StepList {
+			return test.StepList{
+				{
+					Name: "Create initial custom CA secret",
+					Test: test.Eventually(func() error {
+						var err error
+						originalCA, err = certificates.NewSelfSignedCA(certificates.CABuilderOptions{
+							Subject: pkix.Name{
+								CommonName:         "eck-e2e-test-custom-ca-rotation",
+								OrganizationalUnit: []string{"eck-e2e"},
+							},
+						})
+						if err != nil {
+							return err
+						}
+
+						privateKey, err := certificates.EncodePEMPrivateKey(originalCA.PrivateKey)
+						if err != nil {
+							return err
+						}
+						caSecret := mkCertSecret(
+							certificates.EncodePEMCert(originalCA.Cert.Raw),
+							privateKey,
+						)
+						_, err = reconciler.ReconcileSecret(context.Background(), k.Client, caSecret, nil)
+						return err
+					}),
+				},
+			}
+		},
+		PostMutationSteps: func(k *test.K8sClient) test.StepList {
+			return test.StepList{
+				{
+					Name: "Check initial custom CA is in use",
+					Test: test.Eventually(func() error {
+						return elasticsearch.CheckTransportCACertificate(initialCluster.Elasticsearch, originalCA.Cert)
+					}),
+				},
+			}
+		},
+	}
+
+	// Rotate the CA while keeping the same private key and SKI
+	withRotatedCA := test.WrappedBuilder{
+		BuildingThis: initialCluster.
+			WithCustomTransportCA(caSecretName).
+			WithMutatedFrom(&initialCluster),
+
+		PreMutationSteps: func(k *test.K8sClient) test.StepList {
+			return test.StepList{
+				{
+					Name: "Rotate custom CA with same private key and SKI",
+					Test: test.Eventually(func() error {
+						var err error
+						// Create a new CA certificate with the same private key AND same SKI
+						// This simulates what a user would do when rotating their CA cert
+						rotatedCA, err = certificates.NewSelfSignedCA(certificates.CABuilderOptions{
+							Subject: pkix.Name{
+								CommonName:         "eck-e2e-test-custom-ca-rotation-renewed",
+								OrganizationalUnit: []string{"eck-e2e"},
+							},
+							PrivateKey:   originalCA.PrivateKey.(*rsa.PrivateKey), // Same private key
+							SubjectKeyID: originalCA.Cert.SubjectKeyId,            // Same SKI
+						})
+						if err != nil {
+							return err
+						}
+
+						// Verify the rotation setup is correct
+						if rotatedCA.Cert.Equal(originalCA.Cert) {
+							return errors.New("rotated CA should be different from original CA")
+						}
+						if string(rotatedCA.Cert.SubjectKeyId) != string(originalCA.Cert.SubjectKeyId) {
+							return errors.New("rotated CA should have same SKI as original CA")
+						}
+
+						privateKey, err := certificates.EncodePEMPrivateKey(rotatedCA.PrivateKey)
+						if err != nil {
+							return err
+						}
+						caSecret := mkCertSecret(
+							certificates.EncodePEMCert(rotatedCA.Cert.Raw),
+							privateKey,
+						)
+						_, err = reconciler.ReconcileSecret(context.Background(), k.Client, caSecret, nil)
+						return err
+					}),
+				},
+			}
+		},
+		PostMutationSteps: func(k *test.K8sClient) test.StepList {
+			return test.StepList{
+				{
+					Name: "Cluster should remain healthy after CA rotation with same SKI",
+					Test: test.Eventually(func() error {
+						// The rotated CA should be trusted since it has the same SKI
+						// and the transport certificates should still be valid
+						return elasticsearch.CheckTransportCACertificate(initialCluster.Elasticsearch, rotatedCA.Cert)
+					}),
+				},
+			}
+		},
+
+		PreDeletionSteps: func(k *test.K8sClient) test.StepList {
+			return test.StepList{
+				{
+					Name: "Clean up custom CA secret",
+					Test: func(t *testing.T) {
+						toDelete := mkCertSecret(nil, nil)
+						_ = k.Client.Delete(context.Background(), &toDelete)
+					},
+				},
+			}
+		},
+	}
+
+	// Test sequence:
+	// 1. Create cluster with built-in CA
+	// 2. Switch to custom CA
+	// 3. Rotate custom CA (same private key and SKI) - cluster should remain healthy
+	// 4. Delete cluster
+	test.RunMutations(t, []test.Builder{initialCluster}, []test.Builder{withCustomCA, withRotatedCA})
 }
 
 func TestUpdateHTTPCertSAN(t *testing.T) {

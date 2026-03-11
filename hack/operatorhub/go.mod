@@ -2,13 +2,13 @@ module github.com/elastic/cloud-on-k8s/v3/hack/operatorhub
 
 go 1.25.6
 
-toolchain go1.26.0
+toolchain go1.26.1
 
 require (
 	github.com/Masterminds/sprig/v3 v3.3.0
 	github.com/ghodss/yaml v1.0.0
 	github.com/go-git/go-git/v5 v5.17.0
-	github.com/google/go-containerregistry v0.21.1
+	github.com/google/go-containerregistry v0.21.2
 	github.com/hashicorp/vault/api v1.22.0
 	github.com/otiai10/copy v1.14.1
 	github.com/spf13/cobra v1.10.2

@@ -2,7 +2,7 @@ module github.com/elastic/cloud-on-k8s/v3
 
 go 1.25.6
 
-toolchain go1.26.0
+toolchain go1.26.1
 
 require (
 	dario.cat/mergo v1.0.2
@@ -10,14 +10,14 @@ require (
 	github.com/Masterminds/sprig/v3 v3.3.0
 	github.com/blang/semver/v4 v4.0.0
 	github.com/davecgh/go-spew v1.1.2-0.20180830191138-d8f796af33cc
-	github.com/elastic/go-ucfg v0.9.0
+	github.com/elastic/go-ucfg v0.9.1
 	github.com/ghodss/yaml v1.0.0
 	github.com/gkampitakis/go-snaps v0.5.20
 	github.com/go-logr/logr v1.4.3
 	github.com/go-test/deep v1.1.1
 	github.com/gobuffalo/flect v1.0.3
 	github.com/google/go-cmp v0.7.0
-	github.com/google/go-containerregistry v0.21.1
+	github.com/google/go-containerregistry v0.21.2
 	github.com/google/uuid v1.6.0
 	github.com/googlecloudplatform/compute-class-api v0.0.0-20251208134148-ae2e7936c1f8
 	github.com/hashicorp/go-multierror v1.1.1
@@ -44,9 +44,9 @@ require (
 	k8s.io/api v0.35.2
 	k8s.io/apimachinery v0.35.2
 	k8s.io/client-go v0.35.2
-	k8s.io/klog/v2 v2.130.1
+	k8s.io/klog/v2 v2.140.0
 	k8s.io/utils v0.0.0-20251002143259-bc988d571ff4
-	sigs.k8s.io/controller-runtime v0.23.1
+	sigs.k8s.io/controller-runtime v0.23.3
 	sigs.k8s.io/controller-tools v0.20.1
 )
 
