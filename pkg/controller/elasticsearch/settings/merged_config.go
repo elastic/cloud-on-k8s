@@ -20,16 +20,19 @@ import (
 	netutil "github.com/elastic/cloud-on-k8s/v3/pkg/utils/net"
 )
 
-// the name of the ES attribute indicating the pod's current k8s node
-const nodeAttrK8sNodeName = "k8s_node_name"
+const (
+	// the name of the ES attribute indicating the pod's current k8s node
+	nodeAttrK8sNodeName = "k8s_node_name"
+	// the name of the ES attribute indicating the pod's current zone
+	nodeAttrZone = "zone"
+	// the format of the environment variable reference
+	envVarReferenceFormat = "${%s}"
+)
 
-var nodeAttrNodeName = fmt.Sprintf("%s.%s", esv1.NodeAttr, nodeAttrK8sNodeName)
-
-const nodeAttrZone = "zone"
-
-var nodeAttrZoneName = fmt.Sprintf("%s.%s", esv1.NodeAttr, nodeAttrZone)
-
-const envVarReferenceFormat = "${%s}"
+var (
+	nodeAttrNodeName = fmt.Sprintf("%s.%s", esv1.NodeAttr, nodeAttrK8sNodeName)
+	nodeAttrZoneName = fmt.Sprintf("%s.%s", esv1.NodeAttr, nodeAttrZone)
+)
 
 // NewMergedESConfig merges user provided Elasticsearch configuration with configuration derived from the given
 // parameters. The user provided config overrides have precedence over the ECK config.
