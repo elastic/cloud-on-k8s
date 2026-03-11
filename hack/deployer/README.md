@@ -1,6 +1,6 @@
 # Deployer
 
-Deployer is the provisioning tool that aims to be the interface to multiple Kubernetes providers. Currently, it supports GKE and AKS.
+Deployer is the provisioning tool that aims to be the interface to multiple Kubernetes providers. It supports GKE, AKS, EKS, OCP, Kind, and K3d.
 
 ## Typical usage
 
@@ -84,3 +84,82 @@ You can run deployer directly (not via Makefile in repo root). For details run:
 ```bash
 ./deployer help
 ```
+
+## Bucket Provisioning
+
+Deployer can optionally create a cloud storage bucket alongside the Kubernetes cluster. The bucket credentials are stored in a Kubernetes Secret, ready for use by applications like Elasticsearch Stateless.
+
+To enable bucket provisioning, add a `bucket` section to your plan or deployer config:
+
+```yaml
+bucket:
+  name: "{{ .ClusterName }}-development"
+  storageClass: standard
+  secret:
+    name: "{{ .ClusterName }}-bucket-secret"
+    namespace: default
+```
+
+The `name` and `secret.name`/`secret.namespace` fields support Go template variables (for example, `{{ .ClusterName }}`).
+
+### Provider-specific behavior
+
+**GKE / OCP / Kind / K3D (Google Cloud Storage)**
+
+Creates a GCS bucket and a service account with `roles/storage.objectAdmin` scoped to that bucket. The Secret contains:
+- `gcs.client.default.credentials_file` — the service account JSON key
+
+OCP clusters run on GCP, so they use the same GCS bucket provisioning as GKE. Kind and K3D also use GCS buckets.
+
+**AKS (Azure Blob Storage)**
+
+Creates an Azure Storage account and a blob container named `data`. The Secret contains:
+- `azure.client.default.account` — the storage account name
+- `azure.client.default.sas_token` — a SAS token valid for 1 year
+
+**EKS (Amazon S3)**
+
+Creates an S3 bucket and an IAM user with access keys. The Secret contains:
+- `s3.client.default.access_key` — the IAM access key ID
+- `s3.client.default.secret_key` — the IAM secret access key
+
+The bucket name and region are stored as annotations (`eck-deployer/bucket`, `eck-deployer/region`) rather than Secret data.
+
+For EKS, additional S3-specific settings are required to specify the IAM path and managed policy:
+
+```yaml
+bucket:
+  name: "{{ .ClusterName }}-development"
+  storageClass: STANDARD
+  secret:
+    name: "{{ .ClusterName }}-bucket-secret"
+    namespace: default
+  s3:
+    iamUserPath: "/path/to/iam/users/"
+    managedPolicyARN: "arn:aws:iam::123456789012:policy/path/to/policy"
+```
+
+- `iamUserPath` — the IAM path under which the storage user is created (must match your IAM policy constraints)
+- `managedPolicyARN` — the ARN of a pre-existing managed policy that grants S3 access to the bucket
+
+### Credential re-creation
+
+If the Kubernetes Secret is deleted and `create` is run again, the deployer deletes any existing credential keys before creating new ones. This prevents orphaned keys that are still valid but unrecoverable, and avoids hitting the AWS 2-key-per-IAM-user limit.
+
+- **S3**: All existing IAM access keys are deleted before a new one is created.
+- **GCS**: All existing user-managed service account keys are deleted before a new one is created (system-managed keys are left untouched).
+- **Azure**: Not affected — SAS tokens are derived from the storage account key, not stored as separate credentials.
+
+### Secret annotations
+
+Each Kubernetes Secret is annotated with the cloud identity that owns the credentials, making it easy to trace a Secret back to its cloud resource:
+
+| Provider | Annotation | Example value |
+|----------|-----------|---------------|
+| S3 (EKS) | `eck-deployer/iam-user` | `eck-bkt-my-cluster-dev-storage` |
+| GCS (GKE, OCP, Kind, K3D) | `eck-deployer/service-account` | `eck-bkt-my-cluster@project.iam.gserviceaccount.com` |
+| Azure (AKS) | `eck-deployer/storage-account` | `eckbktmycluster1a2b3c4d` |
+
+### Cleanup
+
+Buckets and their associated cloud resources (IAM users, service accounts, storage accounts) are automatically deleted when running `make delete-cloud`. The Kubernetes Secret is deleted along with the cluster.

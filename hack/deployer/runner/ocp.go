@@ -17,6 +17,7 @@ import (
 	"time"
 
 	"github.com/elastic/cloud-on-k8s/v3/hack/deployer/exec"
+	"github.com/elastic/cloud-on-k8s/v3/hack/deployer/runner/bucket"
 	"github.com/elastic/cloud-on-k8s/v3/hack/deployer/runner/env"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/vault"
 )
@@ -132,11 +133,23 @@ func (d *OCPDriver) Execute() error {
 
 	switch d.plan.Operation {
 	case DeleteAction:
+		// Track bucket deletion errors separately: cluster deletion should proceed even if bucket
+		// deletion fails, but the error must still be returned so the exit code is non-zero.
+		bucketErr := deleteBucketIfConfigured(d.plan, d.newBucketManager)
+		if bucketErr != nil {
+			log.Printf("warning: bucket deletion failed, will continue with cluster deletion: %v", bucketErr)
+		}
 		if clusterStatus != NotFound {
 			// always attempt a deletion
-			return d.delete()
+			if err := d.delete(); err != nil {
+				return errors.Join(err, bucketErr)
+			}
+		} else {
+			log.Printf("Not deleting as cluster doesn't exist")
 		}
-		log.Printf("Not deleting as cluster doesn't exist")
+		if bucketErr != nil {
+			return bucketErr
+		}
 	case CreateAction:
 		if clusterStatus == Running {
 			log.Printf("Not creating as cluster exists")
@@ -148,11 +161,17 @@ func (d *OCPDriver) Execute() error {
 			return err
 		}
 
-		return run([]func() error{
+		if err := run([]func() error{
 			d.copyKubeconfig,
 			d.setupDisks,
 			createStorageClass,
-		})
+		}); err != nil {
+			return err
+		}
+		if err := createBucketIfConfigured(d.plan, d.newBucketManager); err != nil {
+			return err
+		}
+		return nil
 	default:
 		return fmt.Errorf("unknown operation %s", d.plan.Operation)
 	}
@@ -204,7 +223,7 @@ func (d *OCPDriver) delete() error {
 	}
 
 	// No need to check whether this `rm` command succeeds
-	_ = exec.NewCommand("gsutil rm -r gs://{{.OCPStateBucket}}/{{.ClusterName}}").AsTemplate(d.bucketParams()).WithoutStreaming().Run()
+	_ = exec.NewCommand("gcloud storage rm -r gs://{{.OCPStateBucket}}/{{.ClusterName}}").AsTemplate(d.bucketParams()).WithoutStreaming().Run()
 	d.runtimeState.SafeToDeleteWorkdir = true
 	return d.removeKubeconfig()
 }
@@ -365,21 +384,21 @@ func (d *OCPDriver) uploadClusterState() error {
 		return nil
 	}
 
-	bucketNotFound, err := exec.NewCommand("gsutil ls gs://{{.OCPStateBucket}}").
+	bucketNotFound, err := exec.NewCommand("gcloud storage ls gs://{{.OCPStateBucket}}").
 		AsTemplate(d.bucketParams()).
 		WithoutStreaming().
-		OutputContainsAny("BucketNotFoundException")
+		OutputContainsAny("BucketNotFoundException", "not found: 404")
 	if err != nil {
 		return fmt.Errorf("while checking state bucket existence %w", err)
 	}
 	if bucketNotFound {
-		if err := exec.NewCommand("gsutil mb gs://{{.OCPStateBucket}}").AsTemplate(d.bucketParams()).Run(); err != nil {
+		if err := exec.NewCommand("gcloud storage buckets create gs://{{.OCPStateBucket}}").AsTemplate(d.bucketParams()).Run(); err != nil {
 			return fmt.Errorf("while creating storage bucket: %w", err)
 		}
 	}
 
 	// rsync seems to get stuck at least in local mode every now and then let's retry a few times
-	err = exec.NewCommand("gsutil rsync -r -d {{.ClusterStateDir}} gs://{{.OCPStateBucket}}/{{.ClusterName}}").
+	err = exec.NewCommand("gcloud storage rsync {{.ClusterStateDir}} gs://{{.OCPStateBucket}}/{{.ClusterName}} -r --delete-unmatched-destination-objects").
 		WithLog("Uploading cluster state").
 		AsTemplate(d.bucketParams()).
 		WithoutStreaming().
@@ -391,12 +410,12 @@ func (d *OCPDriver) uploadClusterState() error {
 }
 
 func (d *OCPDriver) downloadClusterState() error {
-	cmd := "gsutil rsync -r -d gs://{{.OCPStateBucket}}/{{.ClusterName}} {{.ClusterStateDir}}"
+	cmd := "gcloud storage rsync gs://{{.OCPStateBucket}}/{{.ClusterName}} {{.ClusterStateDir}} -r --delete-unmatched-destination-objects"
 	doesNotExist, err := exec.NewCommand(cmd).
 		AsTemplate(d.bucketParams()).
 		WithLog("Synching cluster state").
 		WithoutStreaming().
-		OutputContainsAny("BucketNotFoundException", "does not name a directory, bucket, or bucket subdir")
+		OutputContainsAny("BucketNotFoundException", "does not name a directory, bucket, or bucket subdir", "Did not find existing container")
 	if doesNotExist {
 		log.Printf("No remote cluster state found")
 		return nil // swallow this error as it is expected if no cluster has been created yet
@@ -466,6 +485,26 @@ func (d *OCPDriver) baseDomain() string {
 		baseDomain = "eck-ocp.elastic.dev"
 	}
 	return baseDomain
+}
+
+func (d *OCPDriver) newBucketManager() (bucket.Manager, error) {
+	if err := bucket.ValidateShellArg(d.plan.Ocp.GCloudProject, "GCP project"); err != nil {
+		return nil, err
+	}
+	if d.plan.Bucket.StorageClass != "" {
+		if err := bucket.ValidateShellArg(d.plan.Bucket.StorageClass, "storage class"); err != nil {
+			return nil, err
+		}
+	}
+	ctx := map[string]any{
+		"ClusterName": d.plan.ClusterName,
+		"PlanId":      d.plan.Id,
+	}
+	cfg, err := newBucketConfig(d.plan, ctx, d.plan.Ocp.Region)
+	if err != nil {
+		return nil, err
+	}
+	return bucket.NewGCSManager(cfg, d.plan.Ocp.GCloudProject, d.plan.Bucket.StorageClass), nil
 }
 
 func (d *OCPDriver) Cleanup(prefix string, olderThan time.Duration) error {

@@ -11,11 +11,11 @@ import (
 	cryptorand "crypto/rand"
 	"crypto/rsa"
 	"crypto/x509"
+	"crypto/x509/pkix"
+	"math/big"
 	"reflect"
 	"testing"
 	"time"
-
-	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/metadata"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -25,6 +25,7 @@ import (
 	"k8s.io/apimachinery/pkg/util/validation"
 
 	esv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/elasticsearch/v1"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/metadata"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/name"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/k8s"
 )
@@ -350,6 +351,75 @@ func Test_internalSecretForCA(t *testing.T) {
 	assert.Equal(t, labels, internalSecret.Labels)
 }
 
+func Test_renewCAFromExisting_PreservesSubjectKeyId(t *testing.T) {
+	// This test verifies that when a CA is renewed using the same private key,
+	// the Subject Key Identifier (SKI) is preserved.
+
+	// Create an initial CA with a specific private key
+	initialCa, err := NewSelfSignedCA(CABuilderOptions{})
+	require.NoError(t, err)
+	require.NotEmpty(t, initialCa.Cert.SubjectKeyId, "Initial CA should have a SubjectKeyID")
+
+	// Store it in a secret
+	internalCASecret, err := internalSecretForCA(initialCa, testNamer, &testCluster, metadata.Metadata{}, TransportCAType)
+	require.NoError(t, err)
+
+	client := k8s.NewFakeClient(&internalCASecret)
+
+	// Simulate CA renewal by calling renewCAFromExisting
+	newExpiry := 24 * time.Hour
+	renewedCa, err := renewCAFromExisting(
+		context.Background(),
+		client,
+		testNamer,
+		&testCluster,
+		metadata.Metadata{},
+		newExpiry,
+		TransportCAType,
+		initialCa,
+	)
+	require.NoError(t, err)
+	require.NotNil(t, renewedCa)
+
+	// Verify that the SKI is preserved
+	assert.Equal(t, initialCa.Cert.SubjectKeyId, renewedCa.Cert.SubjectKeyId,
+		"Subject Key Identifier should be preserved during CA renewal")
+
+	// Verify that other properties are as expected
+	assert.NotEqual(t, initialCa.Cert.SerialNumber, renewedCa.Cert.SerialNumber,
+		"Serial number should be different for renewed CA")
+	assert.Greater(t, initialCa.Cert.NotAfter, renewedCa.Cert.NotAfter,
+		"Expiration should be different for renewed CA")
+
+	// Verify private key is the same
+	privateKeysEqual(t, renewedCa.PrivateKey, initialCa.PrivateKey)
+}
+
+func Test_NewSelfSignedCA_WithSubjectKeyId(t *testing.T) {
+	// Test that providing a SubjectKeyID in options results in that SKI being used
+	customSKI := []byte{0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x09, 0x0a,
+		0x0b, 0x0c, 0x0d, 0x0e, 0x0f, 0x10, 0x11, 0x12, 0x13, 0x14}
+
+	ca, err := NewSelfSignedCA(CABuilderOptions{
+		SubjectKeyID: customSKI,
+	})
+	require.NoError(t, err)
+	require.NotNil(t, ca)
+
+	assert.Equal(t, customSKI, ca.Cert.SubjectKeyId,
+		"CA should use the provided SubjectKeyID")
+}
+
+func Test_NewSelfSignedCA_WithoutSubjectKeyId(t *testing.T) {
+	// Test that not providing a SubjectKeyID results in Go auto-generating one
+	ca, err := NewSelfSignedCA(CABuilderOptions{})
+	require.NoError(t, err)
+	require.NotNil(t, ca)
+
+	assert.NotEmpty(t, ca.Cert.SubjectKeyId,
+		"CA should have an auto-generated SubjectKeyID when none provided")
+}
+
 func Test_buildCAFromSecret(t *testing.T) {
 	testCa, err := NewSelfSignedCA(CABuilderOptions{})
 	require.NoError(t, err)
@@ -419,6 +489,160 @@ func Test_buildCAFromSecret(t *testing.T) {
 				assert.True(t, ca.Cert.Equal(tt.wantCa.Cert), "certificates should be equal")
 				privateKeysEqual(t, ca.PrivateKey, tt.wantCa.PrivateKey)
 			}
+		})
+	}
+}
+
+func TestCertIsSignedByCA(t *testing.T) {
+	// Generate test private keys
+	caKey, err := rsa.GenerateKey(cryptorand.Reader, 2048)
+	require.NoError(t, err)
+	leafKey, err := rsa.GenerateKey(cryptorand.Reader, 2048)
+	require.NoError(t, err)
+
+	// Create a CA with a known SKI
+	ca1, err := NewSelfSignedCA(CABuilderOptions{
+		PrivateKey: caKey,
+	})
+	require.NoError(t, err)
+
+	// Create a CA with the same SKI (simulating SKI pinning during ECK-managed rotation)
+	ca2SameSKI, err := NewSelfSignedCA(CABuilderOptions{
+		PrivateKey:   caKey,
+		SubjectKeyID: ca1.Cert.SubjectKeyId, // Same SKI
+	})
+	require.NoError(t, err)
+
+	// Create a CA with a different SKI (simulating custom CA or cross-Go-version scenarios)
+	differentSKI := []byte{0xDE, 0xAD, 0xBE, 0xEF, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06,
+		0x07, 0x08, 0x09, 0x0A, 0x0B, 0x0C, 0x0D, 0x0E, 0x0F, 0x10}
+	ca3DifferentSKI, err := NewSelfSignedCA(CABuilderOptions{
+		PrivateKey:   caKey,
+		SubjectKeyID: differentSKI, // Different SKI
+	})
+	require.NoError(t, err)
+
+	// Create a completely different CA (different private key) to test signature verification
+	differentCAKey, err := rsa.GenerateKey(cryptorand.Reader, 2048)
+	require.NoError(t, err)
+	differentCA, err := NewSelfSignedCA(CABuilderOptions{
+		PrivateKey: differentCAKey,
+	})
+	require.NoError(t, err)
+
+	// Create a leaf certificate signed by ca1 (AKI will match ca1's SKI)
+	leafTemplate := ValidatedCertificateTemplate{
+		Subject: pkix.Name{
+			CommonName: "test-leaf",
+		},
+		NotBefore:             time.Now().Add(-1 * time.Hour),
+		NotAfter:              time.Now().Add(24 * time.Hour),
+		PublicKeyAlgorithm:    x509.RSA,
+		SignatureAlgorithm:    x509.SHA256WithRSA,
+		SerialNumber:          big.NewInt(1),
+		KeyUsage:              x509.KeyUsageDigitalSignature,
+		BasicConstraintsValid: true,
+		IsCA:                  false,
+		PublicKey:             leafKey.Public(),
+	}
+
+	// Sign leaf with ca1 - the leaf's AKI will be set to ca1's SKI
+	leafCertDER, err := ca1.CreateCertificate(leafTemplate)
+	require.NoError(t, err)
+	leafCert, err := x509.ParseCertificate(leafCertDER)
+	require.NoError(t, err)
+	require.Equal(t, ca1.Cert.SubjectKeyId, leafCert.AuthorityKeyId, "leaf AKI should match CA SKI")
+
+	tests := []struct {
+		name      string
+		leafCert  *x509.Certificate
+		currentCA *x509.Certificate
+		want      bool
+	}{
+		{
+			name:      "both nil",
+			leafCert:  nil,
+			currentCA: nil,
+			want:      false,
+		},
+		{
+			name:      "leaf nil",
+			leafCert:  nil,
+			currentCA: ca1.Cert,
+			want:      false,
+		},
+		{
+			name:      "currentCA nil",
+			leafCert:  leafCert,
+			currentCA: nil,
+			want:      false,
+		},
+		{
+			name:      "leaf AKI matches CA SKI (same CA)",
+			leafCert:  leafCert,
+			currentCA: ca1.Cert,
+			want:      true,
+		},
+		{
+			name:      "leaf AKI matches CA SKI (rotated CA with same SKI)",
+			leafCert:  leafCert,
+			currentCA: ca2SameSKI.Cert,
+			want:      true, // AKI→SKI match, PKIX validation will pass
+		},
+		{
+			name:      "leaf AKI does NOT match CA SKI (different SKI - byte-swapped)",
+			leafCert:  leafCert,
+			currentCA: ca3DifferentSKI.Cert,
+			want:      false, // AKI→SKI mismatch, PKIX validation would fail
+		},
+		{
+			name: "leaf without AKI but CA has SKI - triggers reissuance",
+			leafCert: &x509.Certificate{
+				// Mock a leaf without AKI but with valid signature fields from leafCert
+				PublicKey:               leafCert.PublicKey,
+				AuthorityKeyId:          nil, // No AKI
+				RawTBSCertificate:       leafCert.RawTBSCertificate,
+				Signature:               leafCert.Signature,
+				SignatureAlgorithm:      leafCert.SignatureAlgorithm,
+				PublicKeyAlgorithm:      leafCert.PublicKeyAlgorithm,
+				Raw:                     leafCert.Raw,
+				RawSubjectPublicKeyInfo: leafCert.RawSubjectPublicKeyInfo,
+			},
+			currentCA: ca1.Cert,
+			want:      false, // CA has SKI, so we require leaf to have AKI - triggers reissuance
+		},
+		{
+			name:      "signature verification fails (different CA)",
+			leafCert:  leafCert,
+			currentCA: differentCA.Cert,
+			want:      false, // Signature doesn't match - different private key
+		},
+		{
+			name:     "CA without SKI but leaf has AKI - inconsistent state",
+			leafCert: leafCert, // Has AKI pointing to ca1's SKI
+			currentCA: &x509.Certificate{
+				// Mock a CA without SKI but with same public key for signature verification
+				PublicKey:               ca1.Cert.PublicKey,
+				SubjectKeyId:            nil, // No SKI
+				RawTBSCertificate:       ca1.Cert.RawTBSCertificate,
+				Signature:               ca1.Cert.Signature,
+				SignatureAlgorithm:      ca1.Cert.SignatureAlgorithm,
+				PublicKeyAlgorithm:      ca1.Cert.PublicKeyAlgorithm,
+				Raw:                     ca1.Cert.Raw,
+				RawSubjectPublicKeyInfo: ca1.Cert.RawSubjectPublicKeyInfo,
+				Version:                 3,
+				IsCA:                    true,
+				BasicConstraintsValid:   true,
+				KeyUsage:                x509.KeyUsageCertSign,
+			},
+			want: false, // Leaf has AKI but CA has no SKI - triggers reissuance
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := CertIsSignedByCA(tt.leafCert, tt.currentCA)
+			assert.Equal(t, tt.want, got)
 		})
 	}
 }

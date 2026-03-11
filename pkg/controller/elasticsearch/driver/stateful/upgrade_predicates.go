@@ -365,6 +365,11 @@ var predicates = [...]Predicate{
 			if err != nil {
 				return false, err
 			}
+			// If the cluster health is reported as GREEN, consider it sufficiently healthy
+			// to skip the additional per-shard replica checks in this predicate.
+			if health.Status == esv1.ElasticsearchGreenHealth {
+				return true, nil
+			}
 			_, healthyNode := context.healthyPods[candidate.Name]
 			if len(context.currentPods) == 1 && health.Status == esv1.ElasticsearchYellowHealth && healthyNode {
 				// If the cluster is a healthy single node cluster, replicas can not be started, allow the upgrade
