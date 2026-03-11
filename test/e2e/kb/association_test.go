@@ -211,7 +211,7 @@ func TestKibanaAssociationWithNonExistentEPR(t *testing.T) {
 		WithRestrictedSecurityContext()
 	kbBuilder := kibana.NewBuilder(name).
 		WithElasticsearchRef(esBuilder.Ref()).
-		WithPackageRegistryRef(commonv1.ObjectSelector{Name: "some-epr"}).
+		WithPackageRegistryRef(commonv1.LocalObjectSelector{Name: "some-epr"}).
 		WithNodeCount(1)
 
 	k := test.NewK8sClientOrFatal()

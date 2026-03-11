@@ -52,10 +52,10 @@ func getEntExternalURL(c k8s.Client, assoc commonv1.Association) (string, error)
 		return "", nil
 	}
 	ent := entv1.EnterpriseSearch{}
-	if err := c.Get(context.Background(), entRef.NamespacedName(), &ent); err != nil {
+	if err := c.Get(context.Background(), entRef.GetNamespacedName(), &ent); err != nil {
 		return "", err
 	}
-	serviceName := entRef.ServiceName
+	serviceName := entRef.GetServiceName()
 	if serviceName == "" {
 		serviceName = entctl.HTTPServiceName(ent.Name)
 	}
@@ -96,7 +96,7 @@ func referencedEntStatusVersion(c k8s.Client, entAssociation commonv1.Associatio
 	}
 
 	var ent entv1.EnterpriseSearch
-	err := c.Get(context.Background(), entRef.NamespacedName(), &ent)
+	err := c.Get(context.Background(), entRef.GetNamespacedName(), &ent)
 	if err != nil {
 		return "", false, err
 	}

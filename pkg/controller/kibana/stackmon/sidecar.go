@@ -41,7 +41,7 @@ func Metricbeat(ctx context.Context, client k8s.Client, kb kbv1.Kibana, basePath
 		// should never happen because of the pre-creation validation
 		return stackmon.BeatSidecar{}, errors.New(validations.InvalidKibanaElasticsearchRefForStackMonitoringMsg) //nolint:staticcheck
 	}
-	associatedEsNsn := kb.Spec.ElasticsearchRef.NamespacedName()
+	associatedEsNsn := kb.Spec.ElasticsearchRef.GetNamespacedName()
 	if associatedEsNsn.Namespace == "" {
 		associatedEsNsn.Namespace = kb.Namespace
 	}

@@ -114,7 +114,7 @@ func checkESRefsNamed(a *Agent) field.ErrorList {
 	var notNamed []string
 	for _, o := range a.Spec.ElasticsearchRefs {
 		if o.OutputName == "" {
-			notNamed = append(notNamed, o.NamespacedName().String())
+			notNamed = append(notNamed, o.GetNamespacedName().String())
 		}
 	}
 	if len(notNamed) > 0 {

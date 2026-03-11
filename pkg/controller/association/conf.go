@@ -45,7 +45,7 @@ func IsConfiguredIfSet(ctx context.Context, association commonv1.Association, r 
 	if err != nil {
 		return false, err
 	}
-	if (&ref).IsDefined() && !assocConf.IsConfigured() {
+	if ref.IsDefined() && !assocConf.IsConfigured() {
 		r.Event(
 			association,
 			corev1.EventTypeWarning,
@@ -56,8 +56,8 @@ func IsConfiguredIfSet(ctx context.Context, association commonv1.Association, r 
 			"kind", association.GetObjectKind().GroupVersionKind().Kind,
 			"namespace", association.GetNamespace(),
 			"name", association.GetName(),
-			"ref_namespace", ref.Namespace,
-			"ref_name", ref.NameOrSecretName(),
+			"ref_namespace", ref.GetNamespace(),
+			"ref_name", ref.GetNameOrSecretName(),
 		)
 		return false, nil
 	}
@@ -112,7 +112,7 @@ func ElasticsearchAuthSettings(ctx context.Context, c k8s.Client, assoc commonv1
 	// if direct or transitive unmanaged ES, the auth secret points to an unmanaged Secret where the username key exists
 	if providedUsername, exists := secret.Data[authUsernameUnmanagedSecretKey]; exists {
 		ulog.FromContext(ctx).V(1).Info("Association with a transitive unmanaged Elasticsearch, read unmanaged auth Secret",
-			"name", assoc.Associated().GetName(), "ref_name", assoc.AssociationRef().NameOrSecretName())
+			"name", assoc.Associated().GetName(), "ref_name", assoc.AssociationRef().GetNameOrSecretName())
 		username = string(providedUsername)
 	}
 
@@ -140,7 +140,7 @@ func AllowVersion(resourceVersion version.Version, associated commonv1.Associate
 		if assocConf == nil || assocConf.Version == "" {
 			// no conf reported yet, this may be the initial resource creation
 			logger.Info("Delaying version deployment since the version of an associated resource is not reported yet",
-				"version", resourceVersion, "ref_namespace", assocRef.Namespace, "ref_name", assocRef.NameOrSecretName())
+				"version", resourceVersion, "ref_namespace", assocRef.GetNamespace(), "ref_name", assocRef.GetNameOrSecretName())
 			return false, nil
 		}
 		if assocConf.Version == UnknownVersion {
@@ -162,7 +162,7 @@ func AllowVersion(resourceVersion version.Version, associated commonv1.Associate
 			// the desired version of the reconciled resource (example: Kibana)
 			logger.Info("Delaying version deployment since a referenced resource is not upgraded yet",
 				"version", resourceVersion, "ref_version", refVer,
-				"ref_type", assoc.AssociationType(), "ref_namespace", assocRef.Namespace, "ref_name", assocRef.NameOrSecretName())
+				"ref_type", assoc.AssociationType(), "ref_namespace", assocRef.GetNamespace(), "ref_name", assocRef.GetNameOrSecretName())
 			recorder.Event(associated, corev1.EventTypeWarning, events.EventReasonDelayed,
 				fmt.Sprintf("Delaying deployment of version %s since the referenced %s is not upgraded yet", resourceVersion, assoc.AssociationType()))
 			return false, nil

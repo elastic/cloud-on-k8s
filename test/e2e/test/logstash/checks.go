@@ -68,7 +68,7 @@ func CheckSecrets(b Builder, k *test.K8sClient) test.Step {
 		lsNamespace := nn.Namespace
 
 		for _, ref := range b.Logstash.Spec.ElasticsearchRefs {
-			esNamespace := ref.WithDefaultNamespace(lsNamespace).Namespace
+			esNamespace := ref.WithDefaultNamespace(lsNamespace).GetNamespace()
 			expected = append(expected,
 				test.ExpectedSecret{
 					Name: fmt.Sprintf("%s-logstash-es-%s-%s-ca", lsName, esNamespace, ref.Name),

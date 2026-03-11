@@ -377,7 +377,7 @@ func (aea *AgentESAssociation) ElasticServiceAccount() (commonv1.ServiceAccountN
 }
 
 func (aea *AgentESAssociation) AssociationID() string {
-	return fmt.Sprintf("%s-%s", aea.ref.Namespace, aea.ref.NameOrSecretName())
+	return fmt.Sprintf("%s-%s", aea.ref.Namespace, aea.ref.GetNameOrSecretName())
 }
 
 func (aea *AgentESAssociation) Associated() commonv1.Associated {
@@ -394,7 +394,7 @@ func (aea *AgentESAssociation) AssociationType() commonv1.AssociationType {
 	return commonv1.ElasticsearchAssociationType
 }
 
-func (aea *AgentESAssociation) AssociationRef() commonv1.ObjectSelector {
+func (aea *AgentESAssociation) AssociationRef() commonv1.AssociationRef {
 	return aea.ref
 }
 
@@ -451,7 +451,7 @@ func (a *AgentKibanaAssociation) AssociationType() commonv1.AssociationType {
 	return commonv1.KibanaAssociationType
 }
 
-func (a *AgentKibanaAssociation) AssociationRef() commonv1.ObjectSelector {
+func (a *AgentKibanaAssociation) AssociationRef() commonv1.AssociationRef {
 	return a.Spec.KibanaRef.WithDefaultNamespace(a.Namespace)
 }
 
@@ -499,7 +499,7 @@ func (a *AgentFleetServerAssociation) AssociationType() commonv1.AssociationType
 	return commonv1.FleetServerAssociationType
 }
 
-func (a *AgentFleetServerAssociation) AssociationRef() commonv1.ObjectSelector {
+func (a *AgentFleetServerAssociation) AssociationRef() commonv1.AssociationRef {
 	return a.Spec.FleetServerRef.WithDefaultNamespace(a.Namespace)
 }
 

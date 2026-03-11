@@ -294,7 +294,7 @@ func (l *Logstash) SetAssociationStatusMap(typ commonv1.AssociationType, status 
 type LogstashESAssociation struct {
 	// The associated Logstash
 	*Logstash
-	ElasticsearchCluster
+	ElasticsearchCluster ElasticsearchCluster
 }
 
 var _ commonv1.Association = (*LogstashESAssociation)(nil)
@@ -317,7 +317,7 @@ func (lses *LogstashESAssociation) AssociationType() commonv1.AssociationType {
 	return commonv1.ElasticsearchAssociationType
 }
 
-func (lses *LogstashESAssociation) AssociationRef() commonv1.ObjectSelector {
+func (lses *LogstashESAssociation) AssociationRef() commonv1.AssociationRef {
 	return lses.ElasticsearchCluster.ObjectSelector
 }
 
@@ -343,7 +343,7 @@ func (lses *LogstashESAssociation) SupportsAuthAPIKey() bool {
 }
 
 func (lses *LogstashESAssociation) AssociationID() string {
-	return fmt.Sprintf("%s-%s", lses.ElasticsearchCluster.ObjectSelector.Namespace, lses.ElasticsearchCluster.ObjectSelector.NameOrSecretName())
+	return fmt.Sprintf("%s-%s", lses.ElasticsearchCluster.ObjectSelector.Namespace, lses.ElasticsearchCluster.ObjectSelector.GetNameOrSecretName())
 }
 
 type LogstashMonitoringAssociation struct {
@@ -378,7 +378,7 @@ func (lsmon *LogstashMonitoringAssociation) AssociationType() commonv1.Associati
 	return commonv1.LogstashMonitoringAssociationType
 }
 
-func (lsmon *LogstashMonitoringAssociation) AssociationRef() commonv1.ObjectSelector {
+func (lsmon *LogstashMonitoringAssociation) AssociationRef() commonv1.AssociationRef {
 	return lsmon.ref
 }
 

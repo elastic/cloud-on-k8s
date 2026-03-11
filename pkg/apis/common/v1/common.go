@@ -86,18 +86,59 @@ func (o LocalObjectSelector) WithDefaultNamespace(defaultNamespace string) Local
 	}
 }
 
-// NamespacedName is a convenience method to turn an LocalObjectSelector into a NamespacedName.
-func (o LocalObjectSelector) NamespacedName() types.NamespacedName {
+// GetNamespacedName is a convenience method to turn an LocalObjectSelector into a NamespacedName.
+func (o LocalObjectSelector) GetNamespacedName() types.NamespacedName {
 	return types.NamespacedName{
 		Name:      o.Name,
 		Namespace: o.Namespace,
 	}
 }
 
-// IsDefined checks if the local object selector is not nil and has a name.
+// IsDefined checks if the local object selector has a name.
 // Namespace is not mandatory as it may be inherited by the parent object.
-func (o *LocalObjectSelector) IsDefined() bool {
-	return o != nil && o.Name != ""
+func (o LocalObjectSelector) IsDefined() bool {
+	return o.Name != ""
+}
+
+// GetNameOrSecretName returns the name. LocalObjectSelector does not support external references.
+func (o LocalObjectSelector) GetNameOrSecretName() string {
+	return o.Name
+}
+
+// IsExternal always returns false as LocalObjectSelector does not support external references.
+func (o LocalObjectSelector) IsExternal() bool {
+	return false
+}
+
+// GetName returns the name of the LocalObjectSelector.
+func (o LocalObjectSelector) GetName() string {
+	return o.Name
+}
+
+// GetNamespace returns the namespace of the LocalObjectSelector.
+func (o LocalObjectSelector) GetNamespace() string {
+	return o.Namespace
+}
+
+// GetSecretName always returns empty string as LocalObjectSelector does not support external references.
+func (o LocalObjectSelector) GetSecretName() string {
+	return ""
+}
+
+// GetServiceName returns the service name of the LocalObjectSelector.
+func (o LocalObjectSelector) GetServiceName() string {
+	return o.ServiceName
+}
+
+// IsValid validates the LocalObjectSelector.
+func (o LocalObjectSelector) IsValid() error {
+	if o.Name == "" && o.ServiceName != "" {
+		return errors.New("serviceName can only be used in combination with name")
+	}
+	if o.Name == "" && o.Namespace != "" {
+		return errors.New("namespace can only be used in combination with name")
+	}
+	return nil
 }
 
 // ObjectSelector defines a reference to a Kubernetes object which can be an Elastic resource managed by the operator
@@ -139,33 +180,53 @@ func (o ObjectSelector) WithDefaultNamespace(defaultNamespace string) ObjectSele
 	}
 }
 
-// NameOrSecretName returns the name or the secret name of the ObjectSelector.
+// GetNameOrSecretName returns the name or the secret name of the ObjectSelector.
 // Name or secret name are mutually exclusive. Validation rules ensure that exactly one of the two is set.
-func (o ObjectSelector) NameOrSecretName() string {
+func (o ObjectSelector) GetNameOrSecretName() string {
 	if o.SecretName != "" {
 		return o.SecretName
 	}
 	return o.Name
 }
 
-// NamespacedName is a convenience method to turn an ObjectSelector into a NamespacedName.
-func (o ObjectSelector) NamespacedName() types.NamespacedName {
+// GetNamespacedName is a convenience method to turn an ObjectSelector into a NamespacedName.
+func (o ObjectSelector) GetNamespacedName() types.NamespacedName {
 	return types.NamespacedName{
-		Name:      o.NameOrSecretName(),
+		Name:      o.GetNameOrSecretName(),
 		Namespace: o.Namespace,
 	}
 }
 
-// IsDefined checks if the object selector is not nil and has a name or a secret name.
+// IsDefined checks if the object selector has a name or a secret name set.
 // Namespace is not mandatory as it may be inherited by the parent object.
-func (o *ObjectSelector) IsDefined() bool {
-	return o != nil && o.NameOrSecretName() != ""
+func (o ObjectSelector) IsDefined() bool {
+	return o.GetNameOrSecretName() != ""
 }
 
 // IsExternal returns true when the object selector references a Kubernetes secret describing an external
 // referenced object not managed by the operator.
 func (o ObjectSelector) IsExternal() bool {
 	return o.IsDefined() && o.SecretName != ""
+}
+
+// GetName returns the name of the ObjectSelector.
+func (o ObjectSelector) GetName() string {
+	return o.Name
+}
+
+// GetNamespace returns the namespace of the ObjectSelector.
+func (o ObjectSelector) GetNamespace() string {
+	return o.Namespace
+}
+
+// GetSecretName returns the secret name of the ObjectSelector.
+func (o ObjectSelector) GetSecretName() string {
+	return o.SecretName
+}
+
+// GetServiceName returns the service name of the ObjectSelector.
+func (o ObjectSelector) GetServiceName() string {
+	return o.ServiceName
 }
 
 func (o ObjectSelector) IsValid() error {
@@ -187,9 +248,9 @@ func (o ObjectSelector) IsValid() error {
 // ToID returns a string representing the object selector that can be used as a unique identifier.
 func (o ObjectSelector) ToID() string {
 	if o.Namespace != "" {
-		return fmt.Sprintf("%s-%s", o.Namespace, o.NameOrSecretName())
+		return fmt.Sprintf("%s-%s", o.Namespace, o.GetNameOrSecretName())
 	}
-	return o.NameOrSecretName()
+	return o.GetNameOrSecretName()
 }
 
 // HTTPConfig holds the HTTP layer configuration for resources.

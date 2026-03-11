@@ -945,7 +945,7 @@ func TestDriver_buildVolumes(t *testing.T) {
 					},
 					Spec: kbv1.KibanaSpec{
 						Version: "7.10.0",
-						PackageRegistryRef: commonv1.ObjectSelector{
+						PackageRegistryRef: commonv1.LocalObjectSelector{
 							Name: "test-epr",
 						},
 					},
@@ -987,7 +987,7 @@ func TestDriver_buildVolumes(t *testing.T) {
 						ElasticsearchRef: commonv1.ObjectSelector{
 							Name: "test-es",
 						},
-						PackageRegistryRef: commonv1.ObjectSelector{
+						PackageRegistryRef: commonv1.LocalObjectSelector{
 							Name: "test-epr",
 						},
 					},

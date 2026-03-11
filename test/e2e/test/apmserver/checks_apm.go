@@ -371,11 +371,11 @@ func (c *apmClusterChecks) CheckAgentConfiguration(apm apmv1.ApmServer, k *test.
 			Name: "Create the default Agent Configuration in Kibana",
 			Test: test.Eventually(func() error {
 				kb := kbv1.Kibana{}
-				if err := k.Client.Get(context.Background(), apm.Spec.KibanaRef.WithDefaultNamespace(apm.Namespace).NamespacedName(), &kb); err != nil {
+				if err := k.Client.Get(context.Background(), apm.Spec.KibanaRef.WithDefaultNamespace(apm.Namespace).GetNamespacedName(), &kb); err != nil {
 					return err
 				}
 
-				password, err := k.GetElasticPassword(apm.Spec.ElasticsearchRef.WithDefaultNamespace(apm.Namespace).NamespacedName())
+				password, err := k.GetElasticPassword(apm.Spec.ElasticsearchRef.WithDefaultNamespace(apm.Namespace).GetNamespacedName())
 				if err != nil {
 					return err
 				}

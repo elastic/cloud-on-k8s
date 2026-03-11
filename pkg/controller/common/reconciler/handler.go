@@ -14,7 +14,7 @@ import (
 )
 
 // GenericEventHandler returns an EventHandler that enqueues a reconciliation request
-// from the generic event NamespacedName.
+// from the generic event GetNamespacedName.
 func GenericEventHandler() handler.EventHandler {
 	return handler.EnqueueRequestsFromMapFunc(func(ctx context.Context, obj client.Object) []reconcile.Request {
 		return []reconcile.Request{

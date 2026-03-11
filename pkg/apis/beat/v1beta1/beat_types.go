@@ -301,7 +301,7 @@ func (b *BeatESAssociation) AssociationType() commonv1.AssociationType {
 	return commonv1.ElasticsearchAssociationType
 }
 
-func (b *BeatESAssociation) AssociationRef() commonv1.ObjectSelector {
+func (b *BeatESAssociation) AssociationRef() commonv1.AssociationRef {
 	return b.Spec.ElasticsearchRef.WithDefaultNamespace(b.Namespace)
 }
 
@@ -353,7 +353,7 @@ func (b *BeatKibanaAssociation) AssociationType() commonv1.AssociationType {
 	return commonv1.KibanaAssociationType
 }
 
-func (b *BeatKibanaAssociation) AssociationRef() commonv1.ObjectSelector {
+func (b *BeatKibanaAssociation) AssociationRef() commonv1.AssociationRef {
 	return b.Spec.KibanaRef.WithDefaultNamespace(b.Namespace)
 }
 
@@ -422,7 +422,7 @@ func (beatmon *BeatMonitoringAssociation) AssociationType() commonv1.Association
 	return commonv1.BeatMonitoringAssociationType
 }
 
-func (beatmon *BeatMonitoringAssociation) AssociationRef() commonv1.ObjectSelector {
+func (beatmon *BeatMonitoringAssociation) AssociationRef() commonv1.AssociationRef {
 	return beatmon.ref
 }
 

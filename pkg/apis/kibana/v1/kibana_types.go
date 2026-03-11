@@ -79,7 +79,7 @@ type KibanaSpec struct {
 	ElasticsearchRef commonv1.ObjectSelector `json:"elasticsearchRef,omitempty"`
 
 	// PackageRegistryRef is a reference to an Elastic Package Registry running in the same Kubernetes cluster.
-	PackageRegistryRef commonv1.ObjectSelector `json:"packageRegistryRef,omitempty"`
+	PackageRegistryRef commonv1.LocalObjectSelector `json:"packageRegistryRef,omitempty"`
 
 	// EnterpriseSearchRef is a reference to an EnterpriseSearch running in the same Kubernetes cluster.
 	// Kibana provides the default Enterprise Search UI starting version 7.14.
@@ -315,7 +315,7 @@ func (kbes *KibanaEsAssociation) AssociationType() commonv1.AssociationType {
 	return commonv1.ElasticsearchAssociationType
 }
 
-func (kbes *KibanaEsAssociation) AssociationRef() commonv1.ObjectSelector {
+func (kbes *KibanaEsAssociation) AssociationRef() commonv1.AssociationRef {
 	return kbes.Spec.ElasticsearchRef.WithDefaultNamespace(kbes.Namespace)
 }
 
@@ -370,7 +370,7 @@ func (kbent *KibanaEntAssociation) AssociationType() commonv1.AssociationType {
 	return commonv1.EntAssociationType
 }
 
-func (kbent *KibanaEntAssociation) AssociationRef() commonv1.ObjectSelector {
+func (kbent *KibanaEntAssociation) AssociationRef() commonv1.AssociationRef {
 	return kbent.Spec.EnterpriseSearchRef.WithDefaultNamespace(kbent.Namespace)
 }
 
@@ -424,7 +424,7 @@ func (kbmon *KbMonitoringAssociation) AssociationType() commonv1.AssociationType
 	return commonv1.KbMonitoringAssociationType
 }
 
-func (kbmon *KbMonitoringAssociation) AssociationRef() commonv1.ObjectSelector {
+func (kbmon *KbMonitoringAssociation) AssociationRef() commonv1.AssociationRef {
 	return kbmon.ref
 }
 
@@ -484,7 +484,7 @@ func (kbepr *KibanaEPRAssociation) AssociationType() commonv1.AssociationType {
 	return commonv1.PackageRegistryAssociationType
 }
 
-func (kbepr *KibanaEPRAssociation) AssociationRef() commonv1.ObjectSelector {
+func (kbepr *KibanaEPRAssociation) AssociationRef() commonv1.AssociationRef {
 	return kbepr.Spec.PackageRegistryRef.WithDefaultNamespace(kbepr.Namespace)
 }
 

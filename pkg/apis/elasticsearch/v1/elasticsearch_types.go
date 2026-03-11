@@ -575,7 +575,7 @@ func (ema *EsMonitoringAssociation) AssociationType() commonv1.AssociationType {
 	return commonv1.EsMonitoringAssociationType
 }
 
-func (ema *EsMonitoringAssociation) AssociationRef() commonv1.ObjectSelector {
+func (ema *EsMonitoringAssociation) AssociationRef() commonv1.AssociationRef {
 	return ema.ref
 }
 

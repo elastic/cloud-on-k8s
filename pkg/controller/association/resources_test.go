@@ -308,7 +308,7 @@ func Test_deleteOrphanedResources(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			c := k8s.NewFakeClient(tt.initialObjects...)
-			if err := deleteOrphanedResources(context.Background(), c, info, tt.kibana.EsAssociation().AssociationRef().WithDefaultNamespace(tt.kibana.Namespace).NamespacedName(), tt.kibana.GetAssociations()); (err != nil) != tt.wantErr {
+			if err := deleteOrphanedResources(context.Background(), c, info, tt.kibana.Spec.ElasticsearchRef.WithDefaultNamespace(tt.kibana.Namespace).GetNamespacedName(), tt.kibana.GetAssociations()); (err != nil) != tt.wantErr {
 				t.Errorf("deleteOrphanedResources() error = %v, wantErr %v", err, tt.wantErr)
 			}
 			if tt.postCondition != nil {

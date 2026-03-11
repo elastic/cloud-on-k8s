@@ -110,7 +110,7 @@ func checkESRefsNamed(l *lsv1alpha1.Logstash) field.ErrorList {
 				errorList,
 				field.Required(
 					field.NewPath("spec").Child("elasticsearchRefs").Index(i).Child("clusterName"),
-					fmt.Sprintf("clusterName is a mandatory field - missing on %v", esRef.NamespacedName())),
+					fmt.Sprintf("clusterName is a mandatory field - missing on %v", esRef.GetNamespacedName())),
 			)
 		}
 	}

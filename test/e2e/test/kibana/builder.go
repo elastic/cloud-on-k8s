@@ -125,7 +125,7 @@ func (b Builder) WithEnterpriseSearchRef(ref commonv1.ObjectSelector) Builder {
 	return b
 }
 
-func (b Builder) WithPackageRegistryRef(ref commonv1.ObjectSelector) Builder {
+func (b Builder) WithPackageRegistryRef(ref commonv1.LocalObjectSelector) Builder {
 	b.Kibana.Spec.PackageRegistryRef = ref
 	return b
 }
@@ -309,7 +309,7 @@ func (b Builder) GetLogsCluster() *types.NamespacedName {
 	if len(b.Kibana.Spec.Monitoring.Logs.ElasticsearchRefs) == 0 {
 		return nil
 	}
-	logsCluster := b.Kibana.Spec.Monitoring.Logs.ElasticsearchRefs[0].NamespacedName()
+	logsCluster := b.Kibana.Spec.Monitoring.Logs.ElasticsearchRefs[0].GetNamespacedName()
 	return &logsCluster
 }
 
@@ -317,7 +317,7 @@ func (b Builder) GetMetricsCluster() *types.NamespacedName {
 	if len(b.Kibana.Spec.Monitoring.Metrics.ElasticsearchRefs) == 0 {
 		return nil
 	}
-	metricsCluster := b.Kibana.Spec.Monitoring.Metrics.ElasticsearchRefs[0].NamespacedName()
+	metricsCluster := b.Kibana.Spec.Monitoring.Metrics.ElasticsearchRefs[0].GetNamespacedName()
 	return &metricsCluster
 }
 
@@ -353,7 +353,7 @@ func (b Builder) RuntimeObjects() []client.Object {
 	return []client.Object{&b.Kibana}
 }
 
-func (b Builder) ElasticsearchRef() commonv1.ObjectSelector {
+func (b Builder) ElasticsearchRef() commonv1.AssociationRef {
 	if b.ExternalElasticsearchRef.IsDefined() {
 		return b.ExternalElasticsearchRef
 	}

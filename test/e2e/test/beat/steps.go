@@ -165,7 +165,7 @@ func (b Builder) CheckStackTestSteps(k *test.K8sClient) test.StepList {
 		test.Step{
 			Name: "ES data should pass validations",
 			Test: test.Eventually(func() error {
-				esNsName := b.Beat.ElasticsearchRef().WithDefaultNamespace(b.Beat.Namespace).NamespacedName()
+				esNsName := b.Beat.ElasticsearchRef().WithDefaultNamespace(b.Beat.Namespace).GetNamespacedName()
 				var es esv1.Elasticsearch
 				if err := k.Client.Get(context.Background(), esNsName, &es); err != nil {
 					return err

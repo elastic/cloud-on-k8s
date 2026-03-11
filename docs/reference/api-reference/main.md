@@ -572,6 +572,7 @@ KeyToPath defines how to map a key in a Secret object to a filesystem path.
 LocalObjectSelector defines a reference to a Kubernetes object corresponding to an Elastic resource managed by the operator
 
 :::{admonition} Appears In:
+* [KibanaSpec](#kibanaspec)
 * [RemoteCluster](#remotecluster)
 
 :::
@@ -1786,7 +1787,7 @@ KibanaSpec holds the specification of a Kibana instance.
 | *`image`* __string__ | Image is the Kibana Docker image to deploy. |
 | *`count`* __integer__ | Count of Kibana instances to deploy. |
 | *`elasticsearchRef`* __[ObjectSelector](#objectselector)__ | ElasticsearchRef is a reference to an Elasticsearch cluster running in the same Kubernetes cluster. |
-| *`packageRegistryRef`* __[ObjectSelector](#objectselector)__ | PackageRegistryRef is a reference to an Elastic Package Registry running in the same Kubernetes cluster. |
+| *`packageRegistryRef`* __[LocalObjectSelector](#localobjectselector)__ | PackageRegistryRef is a reference to an Elastic Package Registry running in the same Kubernetes cluster. |
 | *`enterpriseSearchRef`* __[ObjectSelector](#objectselector)__ | EnterpriseSearchRef is a reference to an EnterpriseSearch running in the same Kubernetes cluster.<br>Kibana provides the default Enterprise Search UI starting version 7.14. |
 | *`config`* __[Config](#config)__ | Config holds the Kibana configuration. See: https://www.elastic.co/guide/en/kibana/current/settings.html |
 | *`http`* __[HTTPConfig](#httpconfig)__ | HTTP holds the HTTP layer configuration for Kibana. |

@@ -90,7 +90,7 @@ func (m *ElasticMapsServer) AssociationType() commonv1.AssociationType {
 	return commonv1.ElasticsearchAssociationType
 }
 
-func (m *ElasticMapsServer) AssociationRef() commonv1.ObjectSelector {
+func (m *ElasticMapsServer) AssociationRef() commonv1.AssociationRef {
 	return m.Spec.ElasticsearchRef.WithDefaultNamespace(m.Namespace)
 }
 

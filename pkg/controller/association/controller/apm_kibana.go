@@ -62,10 +62,10 @@ func getKibanaExternalURL(c k8s.Client, assoc commonv1.Association) (string, err
 		return "", nil
 	}
 	kb := kbv1.Kibana{}
-	if err := c.Get(context.Background(), kibanaRef.NamespacedName(), &kb); err != nil {
+	if err := c.Get(context.Background(), kibanaRef.GetNamespacedName(), &kb); err != nil {
 		return "", err
 	}
-	serviceName := kibanaRef.ServiceName
+	serviceName := kibanaRef.GetServiceName()
 	if serviceName == "" {
 		serviceName = kbv1.HTTPService(kb.Name)
 	}
@@ -116,7 +116,7 @@ func referencedKibanaStatusVersion(c k8s.Client, kbAssociation commonv1.Associat
 	}
 
 	var kb kbv1.Kibana
-	err := c.Get(context.Background(), kbRef.NamespacedName(), &kb)
+	err := c.Get(context.Background(), kbRef.GetNamespacedName(), &kb)
 	if err != nil {
 		return "", false, err
 	}
@@ -124,14 +124,14 @@ func referencedKibanaStatusVersion(c k8s.Client, kbAssociation commonv1.Associat
 }
 
 // getElasticsearchFromKibana returns the Elasticsearch reference in which the user must be created for this association.
-func getElasticsearchFromKibana(c k8s.Client, association commonv1.Association) (bool, commonv1.ObjectSelector, error) {
+func getElasticsearchFromKibana(c k8s.Client, association commonv1.Association) (bool, commonv1.AssociationRef, error) {
 	kibanaRef := association.AssociationRef()
 	if !kibanaRef.IsDefined() {
 		return false, commonv1.ObjectSelector{}, nil
 	}
 
 	kb := kbv1.Kibana{}
-	err := c.Get(context.Background(), kibanaRef.NamespacedName(), &kb)
+	err := c.Get(context.Background(), kibanaRef.GetNamespacedName(), &kb)
 	if errors.IsNotFound(err) {
 		return false, commonv1.ObjectSelector{}, nil
 	}

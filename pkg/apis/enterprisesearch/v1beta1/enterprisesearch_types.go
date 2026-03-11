@@ -91,7 +91,7 @@ func (ent *EnterpriseSearch) AssociationType() commonv1.AssociationType {
 	return commonv1.ElasticsearchAssociationType
 }
 
-func (ent *EnterpriseSearch) AssociationRef() commonv1.ObjectSelector {
+func (ent *EnterpriseSearch) AssociationRef() commonv1.AssociationRef {
 	return ent.Spec.ElasticsearchRef.WithDefaultNamespace(ent.Namespace)
 }
 

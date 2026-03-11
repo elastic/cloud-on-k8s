@@ -227,7 +227,7 @@ func NewLabelSelectorForStatefulSetName(clusterName, ssetName string) client.Mat
 	})
 }
 
-// ClusterFromResourceLabels returns the NamespacedName of the Elasticsearch associated
+// ClusterFromResourceLabels returns the GetNamespacedName of the Elasticsearch associated
 // to the given resource, by retrieving its name from the resource labels.
 // It does implicitly consider the cluster and the resource to be in the same namespace.
 func ClusterFromResourceLabels(metaObject metav1.Object) (types.NamespacedName, bool) {

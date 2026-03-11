@@ -234,7 +234,7 @@ func (aes *ApmEsAssociation) AssociationType() commonv1.AssociationType {
 	return commonv1.ElasticsearchAssociationType
 }
 
-func (aes *ApmEsAssociation) AssociationRef() commonv1.ObjectSelector {
+func (aes *ApmEsAssociation) AssociationRef() commonv1.AssociationRef {
 	return aes.Spec.ElasticsearchRef.WithDefaultNamespace(aes.Namespace)
 }
 
@@ -283,7 +283,7 @@ func (akb *ApmKibanaAssociation) AssociationType() commonv1.AssociationType {
 	return commonv1.KibanaAssociationType
 }
 
-func (akb *ApmKibanaAssociation) AssociationRef() commonv1.ObjectSelector {
+func (akb *ApmKibanaAssociation) AssociationRef() commonv1.AssociationRef {
 	return akb.Spec.KibanaRef.WithDefaultNamespace(akb.Namespace)
 }
 

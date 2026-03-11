@@ -58,7 +58,7 @@ func AddApmES(mgr manager.Manager, accessReviewer rbac.AccessReviewer, params op
 		AssociationResourceNamespaceLabelName: eslabel.ClusterNamespaceLabelName,
 
 		ElasticsearchUserCreation: &association.ElasticsearchUserCreation{
-			ElasticsearchRef: func(c k8s.Client, association commonv1.Association) (bool, commonv1.ObjectSelector, error) {
+			ElasticsearchRef: func(c k8s.Client, association commonv1.Association) (bool, commonv1.AssociationRef, error) {
 				return true, association.AssociationRef(), nil
 			},
 			UserSecretSuffix: "apm-user",
@@ -73,10 +73,10 @@ func getElasticsearchExternalURL(c k8s.Client, assoc commonv1.Association) (stri
 		return "", nil
 	}
 	es := esv1.Elasticsearch{}
-	if err := c.Get(context.Background(), esRef.NamespacedName(), &es); err != nil {
+	if err := c.Get(context.Background(), esRef.GetNamespacedName(), &es); err != nil {
 		return "", err
 	}
-	serviceName := esRef.ServiceName
+	serviceName := esRef.GetServiceName()
 	if serviceName == "" {
 		serviceName = services.ExternalServiceName(es.Name)
 	}
