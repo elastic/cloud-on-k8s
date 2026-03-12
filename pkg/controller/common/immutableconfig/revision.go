@@ -100,10 +100,10 @@ var configMapOps = resourceOps{
 	kind:    "ConfigMap",
 }
 
-// Revision manages the lifecycle of immutable content-addressed resources (Secrets or ConfigMaps):
+// RevisionManager manages the lifecycle of immutable content-addressed resources (Secrets or ConfigMaps):
 // create-only reconciliation with owner references, volume patching, and
 // garbage collection that protects resources referenced by existing pod templates.
-type Revision struct {
+type RevisionManager struct {
 	client           client.Client
 	owner            client.Object
 	namespace        string
@@ -216,13 +216,13 @@ func (b RevisionsBuilder) Build() (Revisions, error) {
 	}, nil
 }
 
-// ForSecretVolumes creates a Revision for an immutable Secret using a classifier to determine
+// ForSecretVolumes creates a RevisionManager for an immutable Secret using a classifier to determine
 // which volumes are immutable. The classifier is the single source of truth: volumes classified
 // as Immutable will be patched by PatchVolumes and protected during GC.
-// The classifier should contain at least one Immutable entry; otherwise the Revision
+// The classifier should contain at least one Immutable entry; otherwise the RevisionManager
 // will patch nothing and protect nothing during GC.
-func (b Revisions) ForSecretVolumes(classifier MapClassifier) *Revision {
-	return &Revision{
+func (b Revisions) ForSecretVolumes(classifier MapClassifier) *RevisionManager {
+	return &RevisionManager{
 		client:               b.client,
 		owner:                b.owner,
 		namespace:            b.namespace,
@@ -234,13 +234,13 @@ func (b Revisions) ForSecretVolumes(classifier MapClassifier) *Revision {
 	}
 }
 
-// ForConfigMapVolumes creates a Revision for an immutable ConfigMap using a classifier to determine
+// ForConfigMapVolumes creates a RevisionManager for an immutable ConfigMap using a classifier to determine
 // which volumes are immutable. The classifier is the single source of truth: volumes classified
 // as Immutable will be patched by PatchVolumes and protected during GC.
-// The classifier should contain at least one Immutable entry; otherwise the Revision
+// The classifier should contain at least one Immutable entry; otherwise the RevisionManager
 // will patch nothing and protect nothing during GC.
-func (b Revisions) ForConfigMapVolumes(classifier MapClassifier) *Revision {
-	return &Revision{
+func (b Revisions) ForConfigMapVolumes(classifier MapClassifier) *RevisionManager {
+	return &RevisionManager{
 		client:               b.client,
 		owner:                b.owner,
 		namespace:            b.namespace,
@@ -254,10 +254,10 @@ func (b Revisions) ForConfigMapVolumes(classifier MapClassifier) *Revision {
 
 // Reconcile creates the immutable resource if it does not already exist, sets the owner
 // reference, and tracks the name for GC protection. Returns the content-addressed name.
-// The object's namespace must match the Revision's namespace to ensure GC can find it.
-func (r *Revision) Reconcile(ctx context.Context, obj client.Object) (string, error) {
+// The object's namespace must match the RevisionManager's namespace to ensure GC can find it.
+func (r *RevisionManager) Reconcile(ctx context.Context, obj client.Object) (string, error) {
 	if obj.GetNamespace() != r.namespace {
-		return "", fmt.Errorf("object namespace %q does not match Revision namespace %q", obj.GetNamespace(), r.namespace)
+		return "", fmt.Errorf("object namespace %q does not match RevisionManager namespace %q", obj.GetNamespace(), r.namespace)
 	}
 	if r.owner != nil {
 		if err := controllerutil.SetControllerReference(r.owner, obj, scheme.Scheme); err != nil {
@@ -288,8 +288,8 @@ func (r *Revision) Reconcile(ctx context.Context, obj client.Object) (string, er
 }
 
 // PatchVolumes updates volume references in-place to point to the given immutable resource name.
-// Only volumes matching any of the Revision's volume names are patched.
-func (r *Revision) PatchVolumes(volumes []corev1.Volume, name string) {
+// Only volumes matching any of the RevisionManager's volume names are patched.
+func (r *RevisionManager) PatchVolumes(volumes []corev1.Volume, name string) {
 	for i := range volumes {
 		if slices.Contains(r.volumeNames, volumes[i].Name) {
 			r.ops.patchVolRef(&volumes[i], name)
@@ -299,7 +299,7 @@ func (r *Revision) PatchVolumes(volumes []corev1.Volume, name string) {
 
 // GC deletes immutable resources that are no longer referenced by any pod template
 // and were not reconciled in the current cycle.
-func (r *Revision) GC(ctx context.Context) error {
+func (r *RevisionManager) GC(ctx context.Context) error {
 	log := crlog.FromContext(ctx)
 
 	// Collect names that must not be deleted: anything reconciled this cycle,
@@ -335,7 +335,7 @@ func (r *Revision) GC(ctx context.Context) error {
 // This is safe because listNames only returns resources matching resourceSelector
 // (which Build() ensures includes config-type=immutable),
 // so a dynamic name in the set simply won't match any deletion candidate.
-func (r *Revision) collectReferencedNames(volumes []corev1.Volume, names sets.Set[string]) {
+func (r *RevisionManager) collectReferencedNames(volumes []corev1.Volume, names sets.Set[string]) {
 	for _, vol := range volumes {
 		if !slices.Contains(r.volumeNames, vol.Name) {
 			continue
@@ -346,8 +346,8 @@ func (r *Revision) collectReferencedNames(volumes []corev1.Volume, names sets.Se
 	}
 }
 
-// GCAll runs garbage collection on all provided Revisions, collecting any errors.
-func GCAll(ctx context.Context, revisions ...*Revision) error {
+// GCAll runs garbage collection on all provided RevisionManagers, collecting any errors.
+func GCAll(ctx context.Context, revisions ...*RevisionManager) error {
 	errs := make([]error, len(revisions))
 	for i, r := range revisions {
 		errs[i] = r.GC(ctx)

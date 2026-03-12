@@ -147,7 +147,7 @@ func TestSecretRevision_Reconcile(t *testing.T) {
 
 		secret := BuildImmutableSecret("cfg", "other-namespace", map[string][]byte{"a": []byte("1")}, nil)
 		_, err := rev.Reconcile(ctx, &secret)
-		require.EqualError(t, err, `object namespace "other-namespace" does not match Revision namespace "default"`)
+		require.EqualError(t, err, `object namespace "other-namespace" does not match RevisionManager namespace "default"`)
 	})
 }
 
