@@ -93,6 +93,14 @@ const (
 	EventActionRemoteClusterAssociation = "RemoteClusterAssociation"
 	// EventActionAssociationPreconditionCheck describes the association precondition check step the controller was taking when the event was triggered
 	EventActionAssociationPreconditionCheck = "AssociationPreconditionCheck"
+	// EventActionConfigSecretValidation describes the config secret validation step the controller was taking when the event was triggered
+	EventActionConfigSecretValidation = "ConfigSecretValidation"
+	// EventActionOnlineReconciliation describes the online reconciliation step the controller was taking when the event was triggered
+	EventActionOnlineReconciliation = "OnlineReconciliation"
+	// EventActionOfflineReconciliation describes the offline reconciliation step the controller was taking when the event was triggered
+	EventActionOfflineReconciliation = "OfflineReconciliation"
+	// EventActionDistributionCheck describes the distribution check step the controller was taking when the event was triggered
+	EventActionDistributionCheck = "DistributionCheck"
 )
 
 // Event is a k8s event that can be recorded via an event recorder.

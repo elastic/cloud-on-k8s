@@ -63,7 +63,7 @@ func (r *AgentPolicyReconciler) internalReconcile(
 		Name:      policy.Spec.AutoOpsRef.SecretName,
 	}); err != nil {
 		log.Error(err, "while validating configuration secret", "namespace", policy.Namespace, "name", policy.Spec.AutoOpsRef.SecretName)
-		state.UpdateInvalidPhaseWithEvent("ConfigSecretValidation", err.Error())
+		state.UpdateInvalidPhaseWithEvent(events.EventActionConfigSecretValidation, err.Error())
 		return results.WithError(err)
 	}
 
