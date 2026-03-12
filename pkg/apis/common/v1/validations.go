@@ -83,7 +83,7 @@ func CheckDeprecatedStackVersion(ver string) (string, field.ErrorList) {
 		return "", err
 	}
 
-	if v.GTE(version.DeprecatedVersions.Min) && v.LT(version.DeprecatedVersions.Max) {
+	if err := version.DeprecatedVersions.WithinRange(*v); err == nil {
 		return fmt.Sprintf("Version %s is EOL and support for it will be removed in a future release of the ECK operator", ver), nil
 	}
 
