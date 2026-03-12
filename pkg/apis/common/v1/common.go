@@ -86,7 +86,7 @@ func (o LocalObjectSelector) WithDefaultNamespace(defaultNamespace string) Local
 	}
 }
 
-// GetNamespacedName is a convenience method to turn an LocalObjectSelector into a NamespacedName.
+// GetNamespacedName is a convenience method to turn a LocalObjectSelector into a NamespacedName.
 func (o LocalObjectSelector) GetNamespacedName() types.NamespacedName {
 	return types.NamespacedName{
 		Name:      o.Name,

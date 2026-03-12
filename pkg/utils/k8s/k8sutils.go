@@ -35,7 +35,7 @@ func DeepCopyObject(obj client.Object) client.Object {
 	return nil
 }
 
-// ToObjectMeta returns an ObjectMeta based on the given GetNamespacedName.
+// ToObjectMeta returns an ObjectMeta based on the given NamespacedName.
 func ToObjectMeta(namespacedName types.NamespacedName) metav1.ObjectMeta {
 	return metav1.ObjectMeta{
 		Namespace: namespacedName.Namespace,
@@ -43,7 +43,7 @@ func ToObjectMeta(namespacedName types.NamespacedName) metav1.ObjectMeta {
 	}
 }
 
-// ExtractNamespacedName returns an GetNamespacedName based on the given Object.
+// ExtractNamespacedName returns an NamespacedName based on the given Object.
 func ExtractNamespacedName(object metav1.Object) types.NamespacedName {
 	return types.NamespacedName{
 		Namespace: object.GetNamespace(),

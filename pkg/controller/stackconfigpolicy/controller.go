@@ -217,7 +217,7 @@ func (r *ReconcileStackConfigPolicy) Reconcile(ctx context.Context, request reco
 // clusters configured by a StackConfigPolicy.
 type esMap map[types.NamespacedName]esv1.Elasticsearch
 
-// kbMap is a type alias for a Map of Kibana indexed by GetNamespacedName useful to manipulate the Kibana
+// kbMap is a type alias for a Map of Kibana indexed by NamespacedName useful to manipulate the Kibana
 // instances configured by a StackConfigPolicy.
 type kbMap map[types.NamespacedName]kibanav1.Kibana
 
