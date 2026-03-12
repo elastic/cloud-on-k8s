@@ -7,7 +7,6 @@ package certificates
 import (
 	"context"
 	"crypto/x509"
-	"fmt"
 	"time"
 
 	"go.elastic.co/apm/v2"
@@ -70,7 +69,7 @@ func ReconcileHTTP(
 	}.ReconcileCAAndHTTPCerts(ctx)
 	if results.HasError() {
 		_, err := results.Aggregate()
-		k8s.MaybeEmitErrorEvent(driver.Recorder(), err, &es, events.EventReconciliationError, events.EventActionCertificateReconciliation, fmt.Sprintf("Certificate reconciliation error: %v", err))
+		k8s.MaybeEmitErrorEvent(driver.Recorder(), err, &es, events.EventReconciliationError, events.EventActionCertificateReconciliation, "Certificate reconciliation error: %v", err)
 		return nil, results
 	}
 

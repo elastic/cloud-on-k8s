@@ -549,7 +549,7 @@ func (r *ReconcileStackConfigPolicy) validate(ctx context.Context, policy *polic
 
 	if _, err := policy.ValidateCreate(); err != nil {
 		ulog.FromContext(ctx).Error(err, "Validation failed")
-		k8s.MaybeEmitErrorEvent(r.recorder, err, policy, events.EventReasonValidation, events.EventActionValidation, err.Error())
+		k8s.MaybeEmitErrorEvent(r.recorder, err, policy, events.EventReasonValidation, events.EventActionValidation, "%s", err.Error())
 		return tracing.CaptureError(vctx, err)
 	}
 

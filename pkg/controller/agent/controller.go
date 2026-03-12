@@ -6,7 +6,6 @@ package agent
 
 import (
 	"context"
-	"fmt"
 
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/metadata"
 
@@ -174,7 +173,7 @@ func (r *ReconcileAgent) Reconcile(ctx context.Context, request reconcile.Reques
 	}
 
 	result, err := results.Aggregate()
-	k8s.MaybeEmitErrorEvent(r.recorder, err, agent, events.EventReconciliationError, events.EventActionAggregation, fmt.Sprintf("Reconciliation error: %v", err))
+	k8s.MaybeEmitErrorEvent(r.recorder, err, agent, events.EventReconciliationError, events.EventActionAggregation, "Reconciliation error: %v", err)
 
 	return result, err
 }
@@ -224,7 +223,7 @@ func (r *ReconcileAgent) validate(ctx context.Context, agent agentv1alpha1.Agent
 	// Run create validations only as update validations require old object which we don't have here.
 	if _, err := agent.ValidateCreate(); err != nil {
 		logconf.FromContext(ctx).Error(err, "Validation failed")
-		k8s.MaybeEmitErrorEvent(r.recorder, err, &agent, events.EventReasonValidation, events.EventActionValidation, err.Error())
+		k8s.MaybeEmitErrorEvent(r.recorder, err, &agent, events.EventReasonValidation, events.EventActionValidation, "%s", err.Error())
 		return tracing.CaptureError(ctx, err)
 	}
 	return nil

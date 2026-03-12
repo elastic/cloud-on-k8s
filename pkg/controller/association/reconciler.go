@@ -431,7 +431,7 @@ func (r *Reconciler) getElasticsearch(
 	err := r.Get(ctx, elasticsearchRef.NamespacedName(), &es)
 	if err != nil {
 		k8s.MaybeEmitErrorEvent(r.recorder, err, association, events.EventAssociationError, events.EventActionElasticsearchRetrieval,
-			fmt.Sprintf("Failed to find referenced backend %s: %v", elasticsearchRef.NamespacedName(), err))
+			"Failed to find referenced backend %s: %v", elasticsearchRef.NamespacedName(), err)
 		if apierrors.IsNotFound(err) {
 			// ES is not found, remove any existing backend configuration and retry in a bit.
 			if err := RemoveAssociationConf(ctx, r.Client, association); err != nil && !apierrors.IsConflict(err) {

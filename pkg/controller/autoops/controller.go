@@ -186,7 +186,7 @@ func (r *AgentPolicyReconciler) validate(ctx context.Context, policy *autoopsv1a
 
 	if err := autoopsvalidation.Validate(ctx, policy, r.licenseChecker); err != nil {
 		ulog.FromContext(ctx).Error(err, "Validation failed")
-		k8s.MaybeEmitErrorEvent(r.recorder, err, policy, events.EventReasonValidation, events.EventActionValidation, err.Error())
+		k8s.MaybeEmitErrorEvent(r.recorder, err, policy, events.EventReasonValidation, events.EventActionValidation, "%s", err.Error())
 		return tracing.CaptureError(ctx, err)
 	}
 

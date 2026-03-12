@@ -77,7 +77,7 @@ func newDriver(
 ) (*driver, error) {
 	ver, err := version.Parse(kb.Spec.Version)
 	if err != nil {
-		k8s.MaybeEmitErrorEvent(recorder, err, kb, events.EventReasonValidation, events.EventActionValidation, fmt.Sprintf("Invalid version '%s': %v", kb.Spec.Version, err))
+		k8s.MaybeEmitErrorEvent(recorder, err, kb, events.EventReasonValidation, events.EventActionValidation, "Invalid version '%s': %v", kb.Spec.Version, err)
 		return nil, err
 	}
 
@@ -148,7 +148,7 @@ func (d *driver) Reconcile(
 	}.ReconcileCAAndHTTPCerts(ctx)
 	if results.HasError() {
 		_, err := results.Aggregate()
-		k8s.MaybeEmitErrorEvent(d.Recorder(), err, kb, events.EventReconciliationError, events.EventActionCertificateReconciliation, fmt.Sprintf("Certificate reconciliation error: %v", err))
+		k8s.MaybeEmitErrorEvent(d.Recorder(), err, kb, events.EventReconciliationError, events.EventActionCertificateReconciliation, "Certificate reconciliation error: %v", err)
 		return results
 	}
 

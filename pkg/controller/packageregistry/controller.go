@@ -211,7 +211,7 @@ func (r *ReconcilePackageRegistry) doReconcile(ctx context.Context, epr eprv1alp
 	}.ReconcileCAAndHTTPCerts(ctx)
 	if results.HasError() {
 		_, err := results.Aggregate()
-		k8s.MaybeEmitErrorEvent(r.recorder, err, &epr, events.EventReconciliationError, events.EventActionCertificateReconciliation, fmt.Sprintf("Certificate reconciliation error: %v", err))
+		k8s.MaybeEmitErrorEvent(r.recorder, err, &epr, events.EventReconciliationError, events.EventActionCertificateReconciliation, "Certificate reconciliation error: %v", err)
 		return results, status
 	}
 
@@ -259,7 +259,7 @@ func (r *ReconcilePackageRegistry) validate(ctx context.Context, epr eprv1alpha1
 
 	if _, err := epr.ValidateCreate(); err != nil {
 		ulog.FromContext(ctx).Error(err, "Validation failed")
-		k8s.MaybeEmitErrorEvent(r.recorder, err, &epr, events.EventReasonValidation, events.EventActionValidation, err.Error())
+		k8s.MaybeEmitErrorEvent(r.recorder, err, &epr, events.EventReasonValidation, events.EventActionValidation, "%s", err.Error())
 		return tracing.CaptureError(vctx, err)
 	}
 

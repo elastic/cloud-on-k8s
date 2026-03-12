@@ -119,7 +119,7 @@ func internalReconcile(params Params) (*reconciler.Results, logstashv1alpha1.Log
 	}.ReconcileCAAndHTTPCerts(params.Context)
 	if results.HasError() {
 		_, err := results.Aggregate()
-		k8s.MaybeEmitErrorEvent(params.Recorder(), err, &params.Logstash, events.EventReconciliationError, events.EventActionCertificateReconciliation, fmt.Sprintf("Certificate reconciliation error: %v", err))
+		k8s.MaybeEmitErrorEvent(params.Recorder(), err, &params.Logstash, events.EventReconciliationError, events.EventActionCertificateReconciliation, "Certificate reconciliation error: %v", err)
 		return results, params.Status
 	}
 
