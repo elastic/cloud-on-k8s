@@ -5,10 +5,10 @@
 package immutableconfig
 
 import (
+	"maps"
+
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-
-	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/maps"
 )
 
 const (
@@ -34,10 +34,10 @@ func BuildImmutableSecret(baseName, namespace string, data map[string][]byte, la
 	fullHash := ComputeContentHash(data)
 	name := ImmutableName(baseName, fullHash)
 
-	secretLabels := maps.Merge(labels, map[string]string{
-		ConfigTypeLabelName: ConfigTypeImmutable,
-		ConfigHashLabelName: ShortHash(fullHash, hashLabelLen),
-	})
+	secretLabels := make(map[string]string, len(labels)+2)
+	maps.Copy(secretLabels, labels)
+	secretLabels[ConfigTypeLabelName] = ConfigTypeImmutable
+	secretLabels[ConfigHashLabelName] = ShortHash(fullHash, hashLabelLen)
 
 	immutable := true
 	return corev1.Secret{
@@ -61,10 +61,10 @@ func BuildImmutableConfigMap(baseName, namespace string, data map[string]string,
 	fullHash := ComputeStringContentHash(data)
 	name := ImmutableName(baseName, fullHash)
 
-	cmLabels := maps.Merge(labels, map[string]string{
-		ConfigTypeLabelName: ConfigTypeImmutable,
-		ConfigHashLabelName: ShortHash(fullHash, hashLabelLen),
-	})
+	cmLabels := make(map[string]string, len(labels)+2)
+	maps.Copy(cmLabels, labels)
+	cmLabels[ConfigTypeLabelName] = ConfigTypeImmutable
+	cmLabels[ConfigHashLabelName] = ShortHash(fullHash, hashLabelLen)
 
 	immutable := true
 	return corev1.ConfigMap{
@@ -80,7 +80,8 @@ func BuildImmutableConfigMap(baseName, namespace string, data map[string]string,
 
 // BuildDynamicSecretLabels returns labels for a dynamic (hot-reloadable) config secret.
 func BuildDynamicSecretLabels(labels map[string]string) map[string]string {
-	return maps.Merge(labels, map[string]string{
-		ConfigTypeLabelName: ConfigTypeDynamic,
-	})
+	result := make(map[string]string, len(labels)+1)
+	maps.Copy(result, labels)
+	result[ConfigTypeLabelName] = ConfigTypeDynamic
+	return result
 }

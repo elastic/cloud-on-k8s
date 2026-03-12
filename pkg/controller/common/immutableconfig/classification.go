@@ -28,10 +28,7 @@ type MapClassifier map[string]Classification
 
 // Classify returns the classification for the given filename.
 func (m MapClassifier) Classify(filename string) Classification {
-	if c, ok := m[filename]; ok {
-		return c
-	}
-	return Unclassified
+	return m[filename]
 }
 
 // NamesWithClassification returns all names in the classifier that have the given classification.
