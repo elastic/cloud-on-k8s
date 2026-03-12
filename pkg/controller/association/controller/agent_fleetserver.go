@@ -61,7 +61,7 @@ func additionalSecrets(ctx context.Context, c k8s.Client, assoc commonv1.Associa
 		return nil, nil
 	}
 	fleetServer := agentv1alpha1.Agent{}
-	if err := c.Get(ctx, fleetServerRef.GetNamespacedName(), &fleetServer); err != nil {
+	if err := c.Get(ctx, fleetServerRef.NamespacedName(), &fleetServer); err != nil {
 		return nil, err
 	}
 
@@ -96,7 +96,7 @@ func getFleetServerExternalURL(c k8s.Client, assoc commonv1.Association) (string
 		return "", nil
 	}
 	fleetServer := agentv1alpha1.Agent{}
-	if err := c.Get(context.Background(), fleetServerRef.GetNamespacedName(), &fleetServer); err != nil {
+	if err := c.Get(context.Background(), fleetServerRef.NamespacedName(), &fleetServer); err != nil {
 		return "", err
 	}
 	serviceName := fleetServerRef.GetServiceName()
@@ -146,7 +146,7 @@ func referencedFleetServerStatusVersion(c k8s.Client, fsAssociation commonv1.Ass
 	}
 
 	var fleetServer agentv1alpha1.Agent
-	err := c.Get(context.Background(), fsRef.GetNamespacedName(), &fleetServer)
+	err := c.Get(context.Background(), fsRef.NamespacedName(), &fleetServer)
 	if err != nil {
 		return "", false, err
 	}

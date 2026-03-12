@@ -377,7 +377,7 @@ func (aea *AgentESAssociation) ElasticServiceAccount() (commonv1.ServiceAccountN
 }
 
 func (aea *AgentESAssociation) AssociationID() string {
-	return fmt.Sprintf("%s-%s", aea.ref.Namespace, aea.ref.GetNameOrSecretName())
+	return fmt.Sprintf("%s-%s", aea.ref.Namespace, aea.ref.NameOrSecretName())
 }
 
 func (aea *AgentESAssociation) Associated() commonv1.Associated {

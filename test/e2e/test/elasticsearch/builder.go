@@ -546,7 +546,7 @@ func (b Builder) GetLogsCluster() *types.NamespacedName {
 	if len(b.Elasticsearch.Spec.Monitoring.Logs.ElasticsearchRefs) == 0 {
 		return nil
 	}
-	logsCluster := b.Elasticsearch.Spec.Monitoring.Logs.ElasticsearchRefs[0].GetNamespacedName()
+	logsCluster := b.Elasticsearch.Spec.Monitoring.Logs.ElasticsearchRefs[0].NamespacedName()
 	return &logsCluster
 }
 
@@ -554,7 +554,7 @@ func (b Builder) GetMetricsCluster() *types.NamespacedName {
 	if len(b.Elasticsearch.Spec.Monitoring.Metrics.ElasticsearchRefs) == 0 {
 		return nil
 	}
-	metricsCluster := b.Elasticsearch.Spec.Monitoring.Metrics.ElasticsearchRefs[0].GetNamespacedName()
+	metricsCluster := b.Elasticsearch.Spec.Monitoring.Metrics.ElasticsearchRefs[0].NamespacedName()
 	return &metricsCluster
 }
 

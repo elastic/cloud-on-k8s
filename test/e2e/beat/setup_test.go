@@ -138,7 +138,7 @@ func getDashboardCheck(esBuilder elasticsearch.Builder, kbBuilder kibana.Builder
 			{
 				Name: "Verify dashboards installed",
 				Test: test.Eventually(func() error {
-					password, err := client.GetElasticPassword(esBuilder.Ref().GetNamespacedName())
+					password, err := client.GetElasticPassword(esBuilder.Ref().NamespacedName())
 					if err != nil {
 						return err
 					}

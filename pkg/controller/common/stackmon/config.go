@@ -150,7 +150,7 @@ func buildOutputConfig(ctx context.Context, client k8s.Client, assoc commonv1.As
 
 	caDirPath := fmt.Sprintf(
 		"/mnt/elastic-internal/%s-association/%s/%s/certs",
-		assoc.AssociationType(), assoc.AssociationRef().GetNamespace(), assoc.AssociationRef().GetNameOrSecretName(),
+		assoc.AssociationType(), assoc.AssociationRef().GetNamespace(), assoc.AssociationRef().NameOrSecretName(),
 	)
 
 	var caVolume volume.VolumeLike

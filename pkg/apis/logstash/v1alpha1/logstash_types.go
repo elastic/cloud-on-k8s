@@ -343,7 +343,7 @@ func (lses *LogstashESAssociation) SupportsAuthAPIKey() bool {
 }
 
 func (lses *LogstashESAssociation) AssociationID() string {
-	return fmt.Sprintf("%s-%s", lses.ElasticsearchCluster.ObjectSelector.Namespace, lses.ElasticsearchCluster.ObjectSelector.GetNameOrSecretName())
+	return fmt.Sprintf("%s-%s", lses.ElasticsearchCluster.ObjectSelector.Namespace, lses.ElasticsearchCluster.ObjectSelector.NameOrSecretName())
 }
 
 type LogstashMonitoringAssociation struct {

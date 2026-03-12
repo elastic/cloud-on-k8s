@@ -99,7 +99,7 @@ func (b Builder) CreationTestSteps(k *test.K8sClient) test.StepList {
 				Test: test.UntilSuccess(func() error {
 					for _, ref := range b.Agent.Spec.ElasticsearchRefs {
 						var es esv1.Elasticsearch
-						if err := k.Client.Get(context.Background(), ref.WithDefaultNamespace(b.Agent.Namespace).GetNamespacedName(), &es); err != nil {
+						if err := k.Client.Get(context.Background(), ref.WithDefaultNamespace(b.Agent.Namespace).NamespacedName(), &es); err != nil {
 							return err
 						}
 						if es.Status.Health != esv1.ElasticsearchGreenHealth {
@@ -205,7 +205,7 @@ func (b Builder) CheckStackTestSteps(k *test.K8sClient) test.StepList {
 					for _, output := range b.Agent.Spec.ElasticsearchRefs {
 						if output.OutputName == expectedOutputName ||
 							output.OutputName == "" && len(b.Agent.Spec.ElasticsearchRefs) == 1 {
-							esNsName = output.WithDefaultNamespace(b.Agent.Namespace).GetNamespacedName()
+							esNsName = output.WithDefaultNamespace(b.Agent.Namespace).NamespacedName()
 							break
 						}
 					}

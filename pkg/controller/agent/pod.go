@@ -332,7 +332,7 @@ func getRelatedEsAssoc(params Params) (commonv1.Association, error) {
 		}
 
 		fs := agentv1alpha1.Agent{}
-		if err := params.Client.Get(params.Context, fsRef.GetNamespacedName(), &fs); err != nil {
+		if err := params.Client.Get(params.Context, fsRef.NamespacedName(), &fs); err != nil {
 			return nil, pkgerrors.Wrap(err, "while fetching associated fleet server")
 		}
 
@@ -482,7 +482,7 @@ func certificatesDir(association commonv1.Association) string {
 		"/mnt/elastic-internal/%s-association/%s/%s/certs",
 		association.AssociationType(),
 		ref.GetNamespace(),
-		ref.GetNameOrSecretName(),
+		ref.NameOrSecretName(),
 	)
 }
 

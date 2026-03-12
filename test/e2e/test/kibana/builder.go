@@ -309,7 +309,7 @@ func (b Builder) GetLogsCluster() *types.NamespacedName {
 	if len(b.Kibana.Spec.Monitoring.Logs.ElasticsearchRefs) == 0 {
 		return nil
 	}
-	logsCluster := b.Kibana.Spec.Monitoring.Logs.ElasticsearchRefs[0].GetNamespacedName()
+	logsCluster := b.Kibana.Spec.Monitoring.Logs.ElasticsearchRefs[0].NamespacedName()
 	return &logsCluster
 }
 
@@ -317,7 +317,7 @@ func (b Builder) GetMetricsCluster() *types.NamespacedName {
 	if len(b.Kibana.Spec.Monitoring.Metrics.ElasticsearchRefs) == 0 {
 		return nil
 	}
-	metricsCluster := b.Kibana.Spec.Monitoring.Metrics.ElasticsearchRefs[0].GetNamespacedName()
+	metricsCluster := b.Kibana.Spec.Monitoring.Metrics.ElasticsearchRefs[0].NamespacedName()
 	return &metricsCluster
 }
 

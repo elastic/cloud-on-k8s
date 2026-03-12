@@ -109,7 +109,7 @@ func referencedElasticsearchStatusVersion(c k8s.Client, esAssociation commonv1.A
 	}
 
 	var es esv1.Elasticsearch
-	err := c.Get(context.Background(), esRef.GetNamespacedName(), &es)
+	err := c.Get(context.Background(), esRef.NamespacedName(), &es)
 	if err != nil {
 		return "", false, err
 	}

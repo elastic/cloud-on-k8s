@@ -239,7 +239,7 @@ func maybeReconcileFleetEnrollment(params Params, result *reconciler.Results) En
 
 	log := params.Logger()
 
-	reachable, err := isKibanaReachable(params.Context, params.Client, params.Agent.Spec.KibanaRef.WithDefaultNamespace(params.Agent.Namespace).GetNamespacedName())
+	reachable, err := isKibanaReachable(params.Context, params.Client, params.Agent.Spec.KibanaRef.WithDefaultNamespace(params.Agent.Namespace).NamespacedName())
 	if err != nil {
 		result.WithError(err)
 		return EnrollmentAPIKey{}

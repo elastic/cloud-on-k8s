@@ -58,13 +58,13 @@ func (r *Reconciler) reconcileWatches(ctx context.Context, associated types.Name
 	// we have 2 modes (exclusive) for the referenced resource: managed or not managed by ECK and referencedResourceWatchName is shared between both.
 	// either watch the referenced resource managed by ECK
 	if err := ReconcileWatch(associated, managedElasticRef, r.watches.ReferencedResources, referencedResourceWatchName(associated), func(association commonv1.Association) types.NamespacedName {
-		return association.AssociationRef().GetNamespacedName()
+		return association.AssociationRef().NamespacedName()
 	}); err != nil {
 		return err
 	}
 	// or watch the custom user secret that describes how to connect to the referenced resource not managed by ECK
 	if err := ReconcileWatch(associated, unmanagedElasticRef, r.watches.Secrets, referencedResourceWatchName(associated), func(association commonv1.Association) types.NamespacedName {
-		return association.AssociationRef().GetNamespacedName()
+		return association.AssociationRef().NamespacedName()
 	}); err != nil {
 		return err
 	}
@@ -73,7 +73,7 @@ func (r *Reconciler) reconcileWatches(ctx context.Context, associated types.Name
 	if err := ReconcileWatch(associated, managedElasticRef, r.watches.Secrets, referencedResourceCASecretWatchName(associated), func(association commonv1.Association) types.NamespacedName {
 		ref := association.AssociationRef()
 		return types.NamespacedName{
-			Name:      certificates.PublicCertsSecretName(r.AssociationInfo.ReferencedResourceNamer, ref.GetNameOrSecretName()),
+			Name:      certificates.PublicCertsSecretName(r.AssociationInfo.ReferencedResourceNamer, ref.NameOrSecretName()),
 			Namespace: ref.GetNamespace(),
 		}
 	}); err != nil {

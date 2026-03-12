@@ -179,7 +179,7 @@ func TestReconcileAssociation_reconcileCASecret(t *testing.T) {
 
 			// re-use the one used for ES association, but it could be anything else
 			caSecretServiceLabelName := "elasticsearch.k8s.elastic.co/cluster-name"
-			assocMeta := metadata.Propagate(&tt.kibana, metadata.Metadata{Labels: r.AssociationResourceLabels(k8s.ExtractNamespacedName(&tt.kibana), tt.kibana.EsAssociation().AssociationRef().GetNamespacedName())})
+			assocMeta := metadata.Propagate(&tt.kibana, metadata.Metadata{Labels: r.AssociationResourceLabels(k8s.ExtractNamespacedName(&tt.kibana), tt.kibana.EsAssociation().AssociationRef().NamespacedName())})
 			got, err := r.ReconcileCASecret(
 				context.Background(),
 				tt.kibana.EsAssociation(),

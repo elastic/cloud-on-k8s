@@ -127,7 +127,7 @@ func associatedESUUID(ctx context.Context, client k8s.Client, beat *v1beta1.Beat
 		return clusterUUIDResponse.ClusterUUID, nil
 	}
 	var es esv1.Elasticsearch
-	if err := client.Get(ctx, esRef.GetNamespacedName(), &es); err != nil {
+	if err := client.Get(ctx, esRef.NamespacedName(), &es); err != nil {
 		return "", err
 	}
 	uuid, ok := es.Annotations[bootstrap.ClusterUUIDAnnotationName]

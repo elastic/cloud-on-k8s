@@ -53,7 +53,7 @@ var (
 		ExternalServiceURL: func(c k8s.Client, association commonv1.Association) (string, error) {
 			esRef := association.AssociationRef()
 			es := esv1.Elasticsearch{}
-			if err := c.Get(context.Background(), esRef.GetNamespacedName(), &es); err != nil {
+			if err := c.Get(context.Background(), esRef.NamespacedName(), &es); err != nil {
 				return "", err
 			}
 			serviceName := esRef.GetServiceName()
@@ -83,7 +83,7 @@ var (
 			}
 
 			var es esv1.Elasticsearch
-			err := c.Get(context.Background(), esRef.GetNamespacedName(), &es)
+			err := c.Get(context.Background(), esRef.NamespacedName(), &es)
 			if err != nil {
 				return "", false, err
 			}
@@ -536,7 +536,7 @@ func TestReconciler_Reconcile_noESAuth(t *testing.T) {
 				return "", nil
 			}
 			ent := entv1.EnterpriseSearch{}
-			if err := c.Get(context.Background(), entRef.GetNamespacedName(), &ent); err != nil {
+			if err := c.Get(context.Background(), entRef.NamespacedName(), &ent); err != nil {
 				return "", err
 			}
 			serviceName := entRef.GetServiceName()
@@ -549,7 +549,7 @@ func TestReconciler_Reconcile_noESAuth(t *testing.T) {
 		ReferencedResourceVersion: func(c k8s.Client, association commonv1.Association) (string, bool, error) {
 			entRef := association.AssociationRef()
 			var ent entv1.EnterpriseSearch
-			err := c.Get(context.Background(), entRef.GetNamespacedName(), &ent)
+			err := c.Get(context.Background(), entRef.NamespacedName(), &ent)
 			if err != nil {
 				return "", false, err
 			}
@@ -821,7 +821,7 @@ func TestReconciler_Reconcile_MultiRef(t *testing.T) {
 		ReferencedResourceVersion: func(c k8s.Client, association commonv1.Association) (string, bool, error) {
 			esRef := association.AssociationRef()
 			var es esv1.Elasticsearch
-			if err := c.Get(context.Background(), esRef.GetNamespacedName(), &es); err != nil {
+			if err := c.Get(context.Background(), esRef.NamespacedName(), &es); err != nil {
 				return "", false, err
 			}
 			return es.Status.Version, false, nil
@@ -832,7 +832,7 @@ func TestReconciler_Reconcile_MultiRef(t *testing.T) {
 				return "", nil
 			}
 			es := esv1.Elasticsearch{}
-			if err := c.Get(context.Background(), esRef.GetNamespacedName(), &es); err != nil {
+			if err := c.Get(context.Background(), esRef.NamespacedName(), &es); err != nil {
 				return "", err
 			}
 			return services.ExternalServiceURL(es), nil
@@ -1080,7 +1080,7 @@ func TestReconciler_Reconcile_Transitive_Associations(t *testing.T) {
 		ReferencedResourceVersion: func(c k8s.Client, association commonv1.Association) (string, bool, error) {
 			fleetRef := association.AssociationRef()
 			var fleetServer agentv1alpha1.Agent
-			err := c.Get(context.Background(), fleetRef.GetNamespacedName(), &fleetServer)
+			err := c.Get(context.Background(), fleetRef.NamespacedName(), &fleetServer)
 			if err != nil {
 				return "", false, err
 			}
@@ -1092,7 +1092,7 @@ func TestReconciler_Reconcile_Transitive_Associations(t *testing.T) {
 				return "", nil
 			}
 			fleetServer := agentv1alpha1.Agent{}
-			if err := c.Get(context.Background(), fleetServerRef.GetNamespacedName(), &fleetServer); err != nil {
+			if err := c.Get(context.Background(), fleetServerRef.NamespacedName(), &fleetServer); err != nil {
 				return "", err
 			}
 			serviceName := fleetServerRef.GetServiceName()
@@ -1132,7 +1132,7 @@ func TestReconciler_Reconcile_Transitive_Associations(t *testing.T) {
 				return nil, nil
 			}
 			var fleetServer agentv1alpha1.Agent
-			if err := c.Get(context.Background(), fleetServerRef.GetNamespacedName(), &fleetServer); err != nil {
+			if err := c.Get(context.Background(), fleetServerRef.NamespacedName(), &fleetServer); err != nil {
 				return nil, err
 			}
 

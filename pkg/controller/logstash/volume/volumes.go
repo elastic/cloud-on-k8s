@@ -79,7 +79,7 @@ func CertificatesDir(association commonv1.Association) string {
 		"/mnt/elastic-internal/%s-association/%s/%s/certs",
 		association.AssociationType(),
 		ref.GetNamespace(),
-		ref.GetNameOrSecretName(),
+		ref.NameOrSecretName(),
 	)
 }
 

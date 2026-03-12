@@ -98,7 +98,7 @@ type UnmanagedAssociation interface {
 func GetUnmanagedAssociationConnectionInfoFromSecret(c k8s.Client, association UnmanagedAssociation) (*UnmanagedAssociationConnectionInfo, error) {
 	var secretRef corev1.Secret
 	assocRef := association.AssociationRef()
-	secretRefKey := assocRef.GetNamespacedName()
+	secretRefKey := assocRef.NamespacedName()
 	if err := c.Get(context.Background(), secretRefKey, &secretRef); err != nil {
 		return nil, err
 	}

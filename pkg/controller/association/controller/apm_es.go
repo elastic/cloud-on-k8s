@@ -73,7 +73,7 @@ func getElasticsearchExternalURL(c k8s.Client, assoc commonv1.Association) (stri
 		return "", nil
 	}
 	es := esv1.Elasticsearch{}
-	if err := c.Get(context.Background(), esRef.GetNamespacedName(), &es); err != nil {
+	if err := c.Get(context.Background(), esRef.NamespacedName(), &es); err != nil {
 		return "", err
 	}
 	serviceName := esRef.GetServiceName()

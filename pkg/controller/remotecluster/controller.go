@@ -329,7 +329,7 @@ func expectedAliases(
 ) sets.Set[string] {
 	aliases := sets.New[string]()
 	for _, remoteCluster := range localCluster.Spec.RemoteClusters {
-		clientClusterNamespacedName := remoteCluster.ElasticsearchRef.WithDefaultNamespace(localCluster.Namespace).GetNamespacedName()
+		clientClusterNamespacedName := remoteCluster.ElasticsearchRef.WithDefaultNamespace(localCluster.Namespace).NamespacedName()
 		if _, ok := expectedRemoteCluster[clientClusterNamespacedName]; !ok {
 			// Not expected, might have been filtered by RBAC rules
 			continue
@@ -365,7 +365,7 @@ func getExpectedRemoteClientsFor(
 			continue
 		}
 		esRef := remoteCluster.ElasticsearchRef.WithDefaultNamespace(associatedEs.Namespace)
-		expectedRemoteClusters[esRef.GetNamespacedName()] = nil
+		expectedRemoteClusters[esRef.NamespacedName()] = nil
 	}
 
 	var list esv1.ElasticsearchList

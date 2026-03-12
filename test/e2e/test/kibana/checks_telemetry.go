@@ -20,7 +20,7 @@ func MakeTelemetryRequest(kbBuilder Builder, k *test.K8sClient) (StackStats, err
 	kbVersion := version.MustParse(kbBuilder.Kibana.Spec.Version)
 	apiVersion, payload := apiVersionAndTelemetryRequestBody(kbVersion)
 	uri := telemetryAPIURI(kbVersion, apiVersion)
-	password, err := k.GetElasticPassword(kbBuilder.ElasticsearchRef().GetNamespacedName())
+	password, err := k.GetElasticPassword(kbBuilder.ElasticsearchRef().NamespacedName())
 	if err != nil {
 		return StackStats{}, err
 	}

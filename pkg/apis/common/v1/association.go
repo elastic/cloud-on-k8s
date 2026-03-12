@@ -166,10 +166,10 @@ type AssociationRef interface {
 	GetSecretName() string
 	// GetServiceName returns the service name of the referenced resource.
 	GetServiceName() string
-	// GetNamespacedName returns the NamespacedName of the referenced resource.
-	GetNamespacedName() types.NamespacedName
-	// GetNameOrSecretName returns the name or the secret name of the reference.
-	GetNameOrSecretName() string
+	// NamespacedName returns the NamespacedName of the referenced resource.
+	NamespacedName() types.NamespacedName
+	// NameOrSecretName returns the name or the secret name of the reference.
+	NameOrSecretName() string
 }
 
 // Association interface helps to manage the Spec fields involved in an association.

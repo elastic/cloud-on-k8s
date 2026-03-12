@@ -53,7 +53,7 @@ func getEPRExternalURL(c k8s.Client, assoc commonv1.Association) (string, error)
 		return "", nil
 	}
 	epr := eprv1alpha1.PackageRegistry{}
-	if err := c.Get(context.Background(), eprRef.GetNamespacedName(), &epr); err != nil {
+	if err := c.Get(context.Background(), eprRef.NamespacedName(), &epr); err != nil {
 		return "", err
 	}
 	serviceName := eprRef.GetServiceName()
@@ -74,7 +74,7 @@ func referencedEPRStatusVersion(c k8s.Client, eprAssociation commonv1.Associatio
 	}
 
 	var epr eprv1alpha1.PackageRegistry
-	err := c.Get(context.Background(), eprRef.GetNamespacedName(), &epr)
+	err := c.Get(context.Background(), eprRef.NamespacedName(), &epr)
 	if err != nil {
 		return "", false, err
 	}

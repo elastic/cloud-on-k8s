@@ -207,7 +207,7 @@ func (r *Reconciler) Reconcile(ctx context.Context, request reconcile.Request) (
 			results.WithError(err)
 		}
 
-		newStatusMap[association.AssociationRef().GetNamespacedName().String()] = newStatus
+		newStatusMap[association.AssociationRef().NamespacedName().String()] = newStatus
 	}
 
 	// we want to attempt a status update even in the presence of errors
@@ -237,7 +237,7 @@ func (r *Reconciler) reconcileAssociation(ctx context.Context, association commo
 	}
 
 	// check if the referenced object exists
-	exists, err := k8s.ObjectExists(r.Client, assocRef.GetNamespacedName(), referencedObj)
+	exists, err := k8s.ObjectExists(r.Client, assocRef.NamespacedName(), referencedObj)
 	if err != nil {
 		return commonv1.AssociationFailed, err
 	}
@@ -247,23 +247,23 @@ func (r *Reconciler) reconcileAssociation(ctx context.Context, association commo
 	}
 
 	if assocRef.IsExternal() {
-		log.V(1).Info("Association with an unmanaged resource", "name", association.Associated().GetName(), "ref_name", assocRef.GetNameOrSecretName())
+		log.V(1).Info("Association with an unmanaged resource", "name", association.Associated().GetName(), "ref_name", assocRef.NameOrSecretName())
 		// external reference, update association conf to associate the unmanaged resource
 		expectedAssocConf, err := r.ExpectedConfigFromUnmanagedAssociation(association)
 		if err != nil {
-			r.recorder.Eventf(association.Associated(), corev1.EventTypeWarning, events.EventAssociationError, "Failed to reconcile external resource %q: %v", assocRef.GetNameOrSecretName(), err.Error())
+			r.recorder.Eventf(association.Associated(), corev1.EventTypeWarning, events.EventAssociationError, "Failed to reconcile external resource %q: %v", assocRef.NameOrSecretName(), err.Error())
 			return commonv1.AssociationFailed, err
 		}
 		return r.updateAssocConf(ctx, &expectedAssocConf, association)
 	}
 
 	// metadata to propagate to children
-	assocMeta := metadata.Propagate(association, metadata.Metadata{Labels: r.AssociationResourceLabels(k8s.ExtractNamespacedName(association), association.AssociationRef().GetNamespacedName())})
+	assocMeta := metadata.Propagate(association, metadata.Metadata{Labels: r.AssociationResourceLabels(k8s.ExtractNamespacedName(association), association.AssociationRef().NamespacedName())})
 	caSecret, err := r.ReconcileCASecret(
 		ctx,
 		association,
 		r.AssociationInfo.ReferencedResourceNamer,
-		assocRef.GetNamespacedName(),
+		assocRef.NamespacedName(),
 		assocMeta,
 	)
 	if err != nil {
@@ -288,7 +288,7 @@ func (r *Reconciler) reconcileAssociation(ctx context.Context, association commo
 	if err != nil {
 		// the Service may not have been created by the resource controller yet
 		if apierrors.IsNotFound(err) {
-			log.Info("Associated resource Service is not available yet", "error", err, "name", association.Associated().GetName(), "ref_name", assocRef.GetNameOrSecretName())
+			log.Info("Associated resource Service is not available yet", "error", err, "name", association.Associated().GetName(), "ref_name", assocRef.NameOrSecretName())
 			return commonv1.AssociationPending, nil
 		}
 		return commonv1.AssociationPending, err
@@ -332,7 +332,7 @@ func (r *Reconciler) reconcileAssociation(ctx context.Context, association commo
 
 	if esAssocRef.IsExternal() {
 		log.V(1).Info("Association with a transitive unmanaged Elasticsearch, skip user creation",
-			"name", association.Associated().GetName(), "ref_name", assocRef.GetNameOrSecretName(), "es_ref_name", esAssocRef.GetNameOrSecretName())
+			"name", association.Associated().GetName(), "ref_name", assocRef.NameOrSecretName(), "es_ref_name", esAssocRef.NameOrSecretName())
 		// this a transitive unmanaged Elasticsearch, no user creation, update the association conf as such
 		expectedAssocConf.AuthSecretName = esAssocRef.GetSecretName()
 		expectedAssocConf.AuthSecretKey = authPasswordUnmanagedSecretKey
@@ -429,10 +429,10 @@ func (r *Reconciler) getElasticsearch(
 	defer span.End()
 
 	var es esv1.Elasticsearch
-	err := r.Get(ctx, elasticsearchRef.GetNamespacedName(), &es)
+	err := r.Get(ctx, elasticsearchRef.NamespacedName(), &es)
 	if err != nil {
 		k8s.MaybeEmitErrorEvent(r.recorder, err, association, events.EventAssociationError,
-			"Failed to find referenced backend %s: %v", elasticsearchRef.GetNamespacedName(), err)
+			"Failed to find referenced backend %s: %v", elasticsearchRef.NamespacedName(), err)
 		if apierrors.IsNotFound(err) {
 			// ES is not found, remove any existing backend configuration and retry in a bit.
 			if err := RemoveAssociationConf(ctx, r.Client, association); err != nil && !apierrors.IsConflict(err) {
@@ -454,7 +454,7 @@ func (r *Reconciler) Unbind(ctx context.Context, association commonv1.Associatio
 		r.Client,
 		r.userLabelSelector(
 			k8s.ExtractNamespacedName(association),
-			association.AssociationRef().GetNamespacedName(),
+			association.AssociationRef().NamespacedName(),
 		)); err != nil {
 		return err
 	}

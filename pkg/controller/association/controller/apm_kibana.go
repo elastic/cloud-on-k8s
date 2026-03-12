@@ -62,7 +62,7 @@ func getKibanaExternalURL(c k8s.Client, assoc commonv1.Association) (string, err
 		return "", nil
 	}
 	kb := kbv1.Kibana{}
-	if err := c.Get(context.Background(), kibanaRef.GetNamespacedName(), &kb); err != nil {
+	if err := c.Get(context.Background(), kibanaRef.NamespacedName(), &kb); err != nil {
 		return "", err
 	}
 	serviceName := kibanaRef.GetServiceName()
@@ -116,7 +116,7 @@ func referencedKibanaStatusVersion(c k8s.Client, kbAssociation commonv1.Associat
 	}
 
 	var kb kbv1.Kibana
-	err := c.Get(context.Background(), kbRef.GetNamespacedName(), &kb)
+	err := c.Get(context.Background(), kbRef.NamespacedName(), &kb)
 	if err != nil {
 		return "", false, err
 	}
@@ -131,7 +131,7 @@ func getElasticsearchFromKibana(c k8s.Client, association commonv1.Association) 
 	}
 
 	kb := kbv1.Kibana{}
-	err := c.Get(context.Background(), kibanaRef.GetNamespacedName(), &kb)
+	err := c.Get(context.Background(), kibanaRef.NamespacedName(), &kb)
 	if errors.IsNotFound(err) {
 		return false, commonv1.ObjectSelector{}, nil
 	}

@@ -51,7 +51,7 @@ func (check *KbChecks) CheckKbStatusHealthy(b Builder) test.Step {
 	return test.Step{
 		Name: "Kibana should be able to connect to Elasticsearch",
 		Test: test.Eventually(func() error {
-			password, err := check.Client.GetElasticPassword(b.ElasticsearchRef().GetNamespacedName())
+			password, err := check.Client.GetElasticPassword(b.ElasticsearchRef().NamespacedName())
 			if err != nil {
 				return errors.Wrap(err, "while getting elastic password")
 			}
@@ -84,7 +84,7 @@ func (check *KbChecks) CheckEntSearchAccess(b Builder) test.Step {
 	return test.Step{
 		Name: "The Enterprise Search UI should be available in Kibana",
 		Test: test.Eventually(func() error {
-			password, err := check.Client.GetElasticPassword(b.ElasticsearchRef().GetNamespacedName())
+			password, err := check.Client.GetElasticPassword(b.ElasticsearchRef().NamespacedName())
 			if err != nil {
 				return errors.Wrap(err, "while getting elastic password")
 			}
@@ -105,7 +105,7 @@ func (check *KbChecks) CheckHeaderForKey(b Builder, key string, value string) te
 	return test.Step{
 		Name: "The expected key and value should exist in the response header from Kibana",
 		Test: test.Eventually(func() error {
-			password, err := check.Client.GetElasticPassword(b.ElasticsearchRef().GetNamespacedName())
+			password, err := check.Client.GetElasticPassword(b.ElasticsearchRef().NamespacedName())
 			if err != nil {
 				return errors.Wrap(err, "while getting elastic password")
 			}
