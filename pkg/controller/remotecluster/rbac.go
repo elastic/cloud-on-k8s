@@ -6,13 +6,13 @@ package remotecluster
 
 import (
 	"context"
-	"fmt"
 
 	corev1 "k8s.io/api/core/v1"
 	toolsevents "k8s.io/client-go/tools/events"
 
 	esv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/elasticsearch/v1"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/events"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/k8s"
 	ulog "github.com/elastic/cloud-on-k8s/v3/pkg/utils/log"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/rbac"
 )
@@ -51,14 +51,13 @@ func logNotAllowedAssociation(ctx context.Context, localEs, remoteEs *esv1.Elast
 		"remote_namespace", remoteEs.GetNamespace(),
 		"remote_name", remoteEs.GetName(),
 	)
-	eventRecorder.Eventf(
+	k8s.EmitEvent(
+		eventRecorder,
 		localEs,
-		nil,
 		corev1.EventTypeWarning,
 		events.EventAssociationError,
 		events.EventActionRemoteClusterAssociation,
-		"%s",
-		fmt.Sprintf("Remote cluster association not allowed: %s/%s to %s/%s",
-			localEs.Namespace, localEs.Name, remoteEs.Namespace, remoteEs.Name),
+		"Remote cluster association not allowed: %s/%s to %s/%s",
+		localEs.Namespace, localEs.Name, remoteEs.Namespace, remoteEs.Name,
 	)
 }

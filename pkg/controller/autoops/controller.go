@@ -201,7 +201,7 @@ func (r *AgentPolicyReconciler) updateStatusFromState(ctx context.Context, state
 	events, policy := state.Apply()
 	for _, evt := range events {
 		log.V(1).Info("Recording event", "event", evt)
-		r.recorder.Eventf(&state.policy, nil, evt.EventType, evt.Reason, evt.Action, "%s", evt.Message)
+		k8s.EmitEvent(r.recorder, &state.policy, evt.EventType, evt.Reason, evt.Action, "%s", evt.Message)
 	}
 	if policy == nil {
 		log.V(1).Info("Status is up to date", "iteration", atomic.LoadUint64(&r.iteration))

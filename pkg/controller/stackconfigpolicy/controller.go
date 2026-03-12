@@ -235,16 +235,16 @@ func (r *ReconcileStackConfigPolicy) doReconcile(ctx context.Context, reconcilin
 		return results.WithError(err), status
 	}
 	if !enabled {
-		msg := "StackConfigPolicy is an enterprise feature. Enterprise features are disabled"
+		const msg = "StackConfigPolicy is an enterprise feature. Enterprise features are disabled"
 		log.Info(msg)
-		r.recorder.Eventf(&reconcilingPolicy, nil, corev1.EventTypeWarning, events.EventReconciliationError, events.EventActionLicenseCheck, "%s", msg)
+		k8s.EmitEvent(r.recorder, &reconcilingPolicy, corev1.EventTypeWarning, events.EventReconciliationError, events.EventActionLicenseCheck, msg)
 		// we don't have a good way of watching for the license level to change so just requeue with a reasonably long delay
 		return results.WithRequeue(5 * time.Minute), status
 	}
 	// run validation in case the webhook is disabled
 	if err := r.validate(ctx, &reconcilingPolicy); err != nil {
 		status.Phase = policyv1alpha1.InvalidPhase
-		r.recorder.Eventf(&reconcilingPolicy, nil, corev1.EventTypeWarning, events.EventReasonValidation, events.EventActionValidation, "%s", err.Error())
+		k8s.EmitEvent(r.recorder, &reconcilingPolicy, corev1.EventTypeWarning, events.EventReasonValidation, events.EventActionValidation, "%s", err.Error())
 		return results.WithError(err), status
 	}
 
@@ -315,7 +315,7 @@ func (r *ReconcileStackConfigPolicy) reconcileElasticsearchResources(ctx context
 		}
 		if v.LT(filesettings.FileBasedSettingsMinPreVersion) {
 			err = fmt.Errorf("invalid version to configure resource Elasticsearch %s/%s: actual %s, expected >= %s", es.Namespace, es.Name, v, filesettings.FileBasedSettingsMinVersion)
-			r.recorder.Eventf(&reconcilingPolicy, nil, corev1.EventTypeWarning, events.EventReasonUnexpected, events.EventActionVersionCheck, "%s", err.Error())
+			k8s.EmitEvent(r.recorder, &reconcilingPolicy, corev1.EventTypeWarning, events.EventReasonUnexpected, events.EventActionVersionCheck, "%s", err.Error())
 			results.WithError(err)
 			err = status.AddPolicyErrorFor(esNsn, policyv1alpha1.ErrorPhase, err.Error(), policyv1alpha1.ElasticsearchResourceType)
 			if err != nil {
@@ -564,7 +564,7 @@ func (r *ReconcileStackConfigPolicy) updateStatus(ctx context.Context, scp polic
 		return nil // nothing to do
 	}
 	if status.IsDegraded(scp.Status) {
-		r.recorder.Eventf(&scp, nil, corev1.EventTypeWarning, events.EventReasonUnhealthy, events.EventActionStatusUpdate, "%s", "StackConfigPolicy health degraded")
+		k8s.EmitEvent(r.recorder, &scp, corev1.EventTypeWarning, events.EventReasonUnhealthy, events.EventActionStatusUpdate, "StackConfigPolicy health degraded")
 	}
 	ulog.FromContext(ctx).V(1).Info("Updating status",
 		"iteration", atomic.LoadUint64(&r.iteration),

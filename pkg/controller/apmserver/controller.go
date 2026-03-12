@@ -355,7 +355,7 @@ func (r *ReconcileApmServer) updateStatus(ctx context.Context, state State) erro
 		return nil
 	}
 	if state.ApmServer.Status.IsDegraded(original.Status.DeploymentStatus) {
-		r.recorder.Eventf(original, nil, corev1.EventTypeWarning, events.EventReasonUnhealthy, events.EventActionStatusUpdate, "%s", "Apm Server health degraded")
+		k8s.EmitEvent(r.recorder, original, corev1.EventTypeWarning, events.EventReasonUnhealthy, events.EventActionStatusUpdate, "Apm Server health degraded")
 	}
 	log.V(1).Info("Updating status",
 		"iteration", atomic.LoadUint64(&r.iteration),

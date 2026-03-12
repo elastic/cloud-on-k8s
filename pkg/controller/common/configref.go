@@ -22,6 +22,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/events"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/settings"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/watches"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/k8s"
 )
 
 // ConfigRefWatchName returns the name of the watch registered on the secret referenced in `configRef`.
@@ -83,7 +84,7 @@ func ParseConfigRefToConfig(
 	data, exists := secret.Data[secretKey]
 	if !exists {
 		msg := fmt.Sprintf("unable to retrieve configRef secret %s/%s: missing key %s", namespace, configRef.SecretName, secretKey)
-		driver.Recorder().Eventf(resource, nil, corev1.EventTypeWarning, events.EventReasonUnexpected, events.EventActionGetSecret, "%s", msg)
+		k8s.EmitEvent(driver.Recorder(), resource, corev1.EventTypeWarning, events.EventReasonUnexpected, events.EventActionGetSecret, "%s", msg)
 		return nil, errors.New(msg)
 	}
 
@@ -91,7 +92,7 @@ func ParseConfigRefToConfig(
 
 	if err != nil {
 		msg := fmt.Sprintf("unable to parse %s in configRef secret %s/%s", secretKey, namespace, configRef.SecretName)
-		driver.Recorder().Eventf(resource, nil, corev1.EventTypeWarning, events.EventReasonUnexpected, events.EventActionParseSecret, "%s", msg)
+		k8s.EmitEvent(driver.Recorder(), resource, corev1.EventTypeWarning, events.EventReasonUnexpected, events.EventActionParseSecret, "%s", msg)
 		return nil, errors.Wrap(err, msg)
 	}
 	return parsed, nil

@@ -158,7 +158,7 @@ func retrieveUserSecret(ctx context.Context, c k8s.Client, recorder toolsevents.
 	if err != nil && apierrors.IsNotFound(err) {
 		msg := "Secure settings secret not found"
 		ulog.FromContext(ctx).Info(msg, "namespace", secretNamespace, "secret_name", secretName)
-		recorder.Eventf(hasKeystore, nil, corev1.EventTypeWarning, events.EventReasonUnexpected, events.EventActionGetSecret, "%s", fmt.Sprintf("%s: %s/%s", msg, secretNamespace, secretName))
+		k8s.EmitEvent(recorder, hasKeystore, corev1.EventTypeWarning, events.EventReasonUnexpected, events.EventActionGetSecret, "%s: %s/%s", msg, secretNamespace, secretName)
 		return nil, false, nil
 	} else if err != nil {
 		return nil, false, err

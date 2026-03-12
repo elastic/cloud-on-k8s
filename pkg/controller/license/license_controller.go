@@ -161,7 +161,7 @@ func recordInvalidLicenseEvents(errs []error, recorder toolsevents.EventRecorder
 	for _, err := range errs {
 		var licenseErr *license.Error
 		if errors.As(err, &licenseErr) {
-			recorder.Eventf(licenseErr.Source, nil, corev1.EventTypeWarning, events.EventReasonInvalidLicense, events.EventActionLicenseCheck, "%s", err.Error())
+			k8s.EmitEvent(recorder, licenseErr.Source, corev1.EventTypeWarning, events.EventReasonInvalidLicense, events.EventActionLicenseCheck, "%s", err.Error())
 		}
 	}
 }

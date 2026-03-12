@@ -250,7 +250,7 @@ func (r *Reconciler) reconcileAssociation(ctx context.Context, association commo
 		// external reference, update association conf to associate the unmanaged resource
 		expectedAssocConf, err := r.ExpectedConfigFromUnmanagedAssociation(association)
 		if err != nil {
-			r.recorder.Eventf(association.Associated(), nil, corev1.EventTypeWarning, events.EventAssociationError, events.EventActionAssociationReconciliation, "%s", fmt.Sprintf("Failed to reconcile external resource %q: %v", assocRef.NameOrSecretName(), err.Error()))
+			k8s.EmitEvent(r.recorder, association.Associated(), corev1.EventTypeWarning, events.EventAssociationError, events.EventActionAssociationReconciliation, "Failed to reconcile external resource %q: %v", assocRef.NameOrSecretName(), err.Error())
 			return commonv1.AssociationFailed, err
 		}
 		return r.updateAssocConf(ctx, &expectedAssocConf, association)
@@ -512,14 +512,13 @@ func (r *Reconciler) updateStatus(ctx context.Context, associated commonv1.Assoc
 		if err := r.Status().Update(ctx, associated); err != nil {
 			return err
 		}
-		r.recorder.Eventf(
+		k8s.EmitEvent(
+			r.recorder,
 			associated,
-			nil,
 			corev1.EventTypeNormal,
 			events.EventAssociationStatusChange,
 			events.EventActionStatusUpdate,
-			"%s",
-			fmt.Sprintf("Association status changed from [%s] to [%s]", oldStatus, newStatus))
+			"Association status changed from [%s] to [%s]", oldStatus, newStatus)
 	}
 	return nil
 }

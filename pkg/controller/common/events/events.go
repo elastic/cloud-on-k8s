@@ -91,6 +91,8 @@ const (
 	EventActionRemoteClusterConfiguration = "RemoteClusterConfiguration"
 	// EventActionRemoteClusterAssociation describes the remote cluster association step the controller was taking when the event was triggered
 	EventActionRemoteClusterAssociation = "RemoteClusterAssociation"
+	// EventActionAssociationPreconditionCheck describes the association precondition check step the controller was taking when the event was triggered
+	EventActionAssociationPreconditionCheck = "AssociationPreconditionCheck"
 )
 
 // Event is a k8s event that can be recorded via an event recorder.

@@ -333,7 +333,7 @@ func (r *ReconcilePackageRegistry) updateStatus(ctx context.Context, epr eprv1al
 		return nil // nothing to do
 	}
 	if status.IsDegraded(epr.Status.DeploymentStatus) {
-		r.recorder.Eventf(&epr, nil, corev1.EventTypeWarning, events.EventReasonUnhealthy, events.EventActionStatusUpdate, "%s", "Elastic Package Registry health degraded")
+		k8s.EmitEvent(r.recorder, &epr, corev1.EventTypeWarning, events.EventReasonUnhealthy, events.EventActionStatusUpdate, "Elastic Package Registry health degraded")
 	}
 	ulog.FromContext(ctx).V(1).Info("Updating status",
 		"iteration", atomic.LoadUint64(&r.iteration),

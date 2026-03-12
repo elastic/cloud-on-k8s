@@ -171,8 +171,8 @@ func MaybeEmitErrorEvent(r toolsevents.EventRecorder, err error, obj runtime.Obj
 }
 
 // EmitEvent emits an event with the given parameters
-func EmitEvent(r toolsevents.EventRecorder, obj runtime.Object, reason, action, message string, args ...any) {
-	r.Eventf(obj, nil, corev1.EventTypeWarning, reason, action, "%s", fmt.Sprintf(message, args...))
+func EmitEvent(r toolsevents.EventRecorder, obj runtime.Object, eventType, reason, action, message string, args ...any) {
+	r.Eventf(obj, nil, eventType, reason, action, "%s", fmt.Sprintf(message, args...))
 }
 
 // GetSecretEntry returns the value of the secret data for the given key, or nil.

@@ -100,7 +100,7 @@ func ReconcileTransport(
 	// They will be concatenated with the ECK issued CA and distributed through the same transport secrets.
 	additionalCAs, err := transport.ReconcileAdditionalCAs(ctx, driver.K8sClient(), es, driver.DynamicWatches())
 	if err != nil {
-		driver.Recorder().Eventf(&es, nil, corev1.EventTypeWarning, events.EventReasonUnexpected, events.EventActionGetSecret, "%s", err.Error())
+		k8s.EmitEvent(driver.Recorder(), &es, corev1.EventTypeWarning, events.EventReasonUnexpected, events.EventActionGetSecret, "%s", err.Error())
 		return results.WithError(err)
 	}
 

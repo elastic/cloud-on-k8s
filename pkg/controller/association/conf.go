@@ -46,14 +46,13 @@ func IsConfiguredIfSet(ctx context.Context, association commonv1.Association, r 
 		return false, err
 	}
 	if (&ref).IsDefined() && !assocConf.IsConfigured() {
-		r.Eventf(
+		k8s.EmitEvent(
+			r,
 			association,
-			nil,
 			corev1.EventTypeWarning,
 			events.EventAssociationError,
 			events.EventActionAssociationConfiguration,
-			"%s",
-			fmt.Sprintf("Association backend for %s is not configured", association.AssociationType()),
+			"Association backend for %s is not configured", association.AssociationType(),
 		)
 		ulog.FromContext(ctx).Info("Association not established: skipping association resource reconciliation",
 			"kind", association.GetObjectKind().GroupVersionKind().Kind,
@@ -166,8 +165,8 @@ func AllowVersion(resourceVersion version.Version, associated commonv1.Associate
 			logger.Info("Delaying version deployment since a referenced resource is not upgraded yet",
 				"version", resourceVersion, "ref_version", refVer,
 				"ref_type", assoc.AssociationType(), "ref_namespace", assocRef.Namespace, "ref_name", assocRef.NameOrSecretName())
-			recorder.Eventf(associated, nil, corev1.EventTypeWarning, events.EventReasonDelayed, events.EventActionVersionCheck, "%s",
-				fmt.Sprintf("Delaying deployment of version %s since the referenced %s is not upgraded yet", resourceVersion, assoc.AssociationType()))
+			k8s.EmitEvent(recorder, associated, corev1.EventTypeWarning, events.EventReasonDelayed, events.EventActionVersionCheck,
+				"Delaying deployment of version %s since the referenced %s is not upgraded yet", resourceVersion, assoc.AssociationType())
 			return false, nil
 		}
 	}

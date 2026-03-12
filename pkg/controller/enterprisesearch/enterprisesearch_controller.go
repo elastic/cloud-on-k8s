@@ -307,7 +307,7 @@ func (r *ReconcileEnterpriseSearch) updateStatus(ctx context.Context, ent entv1.
 		return nil // nothing to do
 	}
 	if status.IsDegraded(ent.Status.DeploymentStatus) {
-		r.recorder.Eventf(&ent, nil, corev1.EventTypeWarning, events.EventReasonUnhealthy, events.EventActionStatusUpdate, "%s", "Enterprise Search health degraded")
+		k8s.EmitEvent(r.recorder, &ent, corev1.EventTypeWarning, events.EventReasonUnhealthy, events.EventActionStatusUpdate, "Enterprise Search health degraded")
 	}
 	ulog.FromContext(ctx).V(1).Info("Updating status",
 		"iteration", atomic.LoadUint64(&r.iteration),

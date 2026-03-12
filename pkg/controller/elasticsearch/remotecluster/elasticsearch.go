@@ -57,7 +57,7 @@ func UpdateSettings(
 			enterpriseFeaturesDisabledMsg,
 			"namespace", es.Namespace, "es_name", es.Name,
 		)
-		eventRecorder.Eventf(&es, nil, corev1.EventTypeWarning, events.EventAssociationError, events.EventActionLicenseCheck, "%s", enterpriseFeaturesDisabledMsg)
+		k8s.EmitEvent(eventRecorder, &es, corev1.EventTypeWarning, events.EventAssociationError, events.EventActionLicenseCheck, enterpriseFeaturesDisabledMsg)
 		return false, nil
 	}
 

@@ -317,7 +317,7 @@ func (r *ReconcileElasticsearch) updateStatus(
 	events, cluster := reconcileState.Apply()
 	for _, evt := range events {
 		log.V(1).Info("Recording event", "event", evt)
-		r.recorder.Eventf(&es, nil, evt.EventType, evt.Reason, evt.Action, "%s", evt.Message)
+		k8s.EmitEvent(r.recorder, &es, evt.EventType, evt.Reason, evt.Action, "%s", evt.Message)
 	}
 	if cluster == nil {
 		return nil

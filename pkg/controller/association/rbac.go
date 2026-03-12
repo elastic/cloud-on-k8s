@@ -6,7 +6,6 @@ package association
 
 import (
 	"context"
-	"fmt"
 	"time"
 
 	corev1 "k8s.io/api/core/v1"
@@ -17,6 +16,7 @@ import (
 
 	commonv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/common/v1"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/events"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/k8s"
 	ulog "github.com/elastic/cloud-on-k8s/v3/pkg/utils/log"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/rbac"
 )
@@ -52,15 +52,14 @@ func CheckAndUnbind(
 			"remote_namespace", metaObject.GetNamespace(),
 			"remote_name", metaObject.GetName(),
 		)
-		eventRecorder.Eventf(
+		k8s.EmitEvent(
+			eventRecorder,
 			association,
-			nil,
 			corev1.EventTypeWarning,
 			events.EventAssociationError,
 			events.EventActionAccessCheck,
-			"%s",
-			fmt.Sprintf("Association not allowed: %s/%s to %s/%s",
-				association.GetNamespace(), association.GetName(), metaObject.GetNamespace(), metaObject.GetName()),
+			"Association not allowed: %s/%s to %s/%s",
+			association.GetNamespace(), association.GetName(), metaObject.GetNamespace(), metaObject.GetName(),
 		)
 		return false, unbinder.Unbind(ctx, association)
 	}

@@ -75,10 +75,10 @@ func (r *VersionUpgrade) Handle(ctx context.Context) error {
 		// A version upgrade is scheduled, but we don't know how to reach the Enterprise Search API
 		// since we don't have any Elasticsearch user available.
 		// Move on with the upgrade: this will cause the Pod in the new version to crash at startup with explicit logs.
-		msg := "Detected version upgrade with no association to Elasticsearch, " +
+		const msg = "Detected version upgrade with no association to Elasticsearch, " +
 			"please toggle read-only mode manually, otherwise the new version will crash at startup."
 		log.Info(msg, "namespace", r.ent.Namespace, "ent_name", r.ent.Name)
-		r.recorder.Eventf(&r.ent, nil, corev1.EventTypeWarning, events.EventReasonUpgraded, events.EventActionVersionUpgrade, "%s", msg)
+		k8s.EmitEvent(r.recorder, &r.ent, corev1.EventTypeWarning, events.EventReasonUpgraded, events.EventActionVersionUpgrade, msg)
 		return nil
 	}
 
@@ -89,10 +89,10 @@ func (r *VersionUpgrade) Handle(ctx context.Context) error {
 
 	if upgradeRequested {
 		if len(actualPods) == 0 {
-			msg := "a version upgrade is scheduled, but no Pod in the prior version is running:" +
+			const msg = "a version upgrade is scheduled, but no Pod in the prior version is running:" +
 				"waiting for at least one Pod in the prior version to be running in order to enable read-only mode"
 			log.Info(msg, "namespace", r.ent.Namespace, "ent_name", r.ent.Name)
-			r.recorder.Eventf(&r.ent, nil, corev1.EventTypeWarning, events.EventReasonDelayed, events.EventActionVersionUpgrade, "%s", msg)
+			k8s.EmitEvent(r.recorder, &r.ent, corev1.EventTypeWarning, events.EventReasonDelayed, events.EventActionVersionUpgrade, msg)
 			// surface this as an error, since rather unexpected, and abort reconciliation
 			return errors.New(msg)
 		}

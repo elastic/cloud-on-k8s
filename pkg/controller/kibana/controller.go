@@ -229,7 +229,7 @@ func (r *ReconcileKibana) updateStatus(ctx context.Context, state State) error {
 		return nil
 	}
 	if state.Kibana.Status.DeploymentStatus.IsDegraded(current.Status.DeploymentStatus) {
-		r.recorder.Eventf(current, nil, corev1.EventTypeWarning, events.EventReasonUnhealthy, events.EventActionStatusUpdate, "%s", "Kibana health degraded")
+		k8s.EmitEvent(r.recorder, current, corev1.EventTypeWarning, events.EventReasonUnhealthy, events.EventActionStatusUpdate, "Kibana health degraded")
 	}
 	ulog.FromContext(ctx).V(1).Info("Updating status",
 		"iteration", atomic.LoadUint64(&r.iteration),

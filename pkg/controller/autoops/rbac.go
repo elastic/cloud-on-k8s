@@ -6,7 +6,6 @@ package autoops
 
 import (
 	"context"
-	"fmt"
 
 	corev1 "k8s.io/api/core/v1"
 	toolsevents "k8s.io/client-go/tools/events"
@@ -14,6 +13,7 @@ import (
 	autoopsv1alpha1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/autoops/v1alpha1"
 	esv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/elasticsearch/v1"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/events"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/k8s"
 	ulog "github.com/elastic/cloud-on-k8s/v3/pkg/utils/log"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/rbac"
 )
@@ -56,14 +56,13 @@ func logNotAllowedAssociation(
 		"es_namespace", es.GetNamespace(),
 		"es_name", es.GetName(),
 	)
-	eventRecorder.Eventf(
+	k8s.EmitEvent(
+		eventRecorder,
 		policy,
-		nil,
 		corev1.EventTypeWarning,
 		events.EventAssociationError,
 		events.EventActionAccessCheck,
-		"%s",
-		fmt.Sprintf("AutoOps policy not allowed to access Elasticsearch cluster: %s/%s to %s/%s",
-			policy.Namespace, policy.Name, es.Namespace, es.Name),
+		"AutoOps policy not allowed to access Elasticsearch cluster: %s/%s to %s/%s",
+		policy.Namespace, policy.Name, es.Namespace, es.Name,
 	)
 }
