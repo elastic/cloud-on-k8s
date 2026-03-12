@@ -171,7 +171,7 @@ func getRemoteClustersInElasticsearch(ctx context.Context, esClient esclient.Cli
 func getRemoteClustersInSpec(es esv1.Elasticsearch) map[string]esv1.RemoteCluster {
 	remoteClusters := make(map[string]esv1.RemoteCluster)
 	for _, remoteCluster := range es.Spec.RemoteClusters {
-		if !remoteCluster.ElasticsearchRef.IsDefined() {
+		if !remoteCluster.ElasticsearchRef.IsSet() {
 			continue
 		}
 		remoteCluster.ElasticsearchRef = remoteCluster.ElasticsearchRef.WithDefaultNamespace(es.Namespace)

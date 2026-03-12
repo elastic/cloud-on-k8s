@@ -230,7 +230,7 @@ func checkFleetServerOnlyInFleetMode(a *Agent) field.ErrorList {
 }
 
 func checkFleetServerOrFleetServerRef(a *Agent) field.ErrorList {
-	if a.Spec.FleetServerEnabled && a.Spec.FleetServerRef.IsDefined() {
+	if a.Spec.FleetServerEnabled && a.Spec.FleetServerRef.IsSet() {
 		return field.ErrorList{
 			field.Invalid(
 				field.NewPath("spec"),
@@ -258,7 +258,7 @@ func checkHTTPConfigOnlyForFleetServer(a *Agent) field.ErrorList {
 func checkReferenceSetForMode(a *Agent) field.ErrorList {
 	var errors field.ErrorList
 	if a.Spec.StandaloneModeEnabled() {
-		if a.Spec.FleetServerRef.IsDefined() {
+		if a.Spec.FleetServerRef.IsSet() {
 			errors = append(errors, field.Invalid(
 				field.NewPath("spec").Child("fleetServerRef"),
 				a.Spec.FleetServerRef,
@@ -266,7 +266,7 @@ func checkReferenceSetForMode(a *Agent) field.ErrorList {
 			))
 		}
 
-		if a.Spec.KibanaRef.IsDefined() {
+		if a.Spec.KibanaRef.IsSet() {
 			errors = append(errors, field.Invalid(
 				field.NewPath("spec").Child("kibanaRef"),
 				a.Spec.KibanaRef,

@@ -49,7 +49,7 @@ func AddKibanaEPR(mgr manager.Manager, accessReviewer rbac.AccessReviewer, param
 
 func getEPRExternalURL(c k8s.Client, assoc commonv1.Association) (string, error) {
 	eprRef := assoc.AssociationRef()
-	if !eprRef.IsDefined() {
+	if !eprRef.IsSet() {
 		return "", nil
 	}
 	epr := eprv1alpha1.PackageRegistry{}

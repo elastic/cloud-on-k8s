@@ -48,7 +48,7 @@ func AddKibanaEnt(mgr manager.Manager, accessReviewer rbac.AccessReviewer, param
 
 func getEntExternalURL(c k8s.Client, assoc commonv1.Association) (string, error) {
 	entRef := assoc.AssociationRef()
-	if !entRef.IsDefined() {
+	if !entRef.IsSet() {
 		return "", nil
 	}
 	ent := entv1.EnterpriseSearch{}

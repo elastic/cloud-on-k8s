@@ -272,13 +272,13 @@ func (a *Agent) GetAssociations() []commonv1.Association {
 		})
 	}
 
-	if a.Spec.KibanaRef.IsDefined() {
+	if a.Spec.KibanaRef.IsSet() {
 		associations = append(associations, &AgentKibanaAssociation{
 			Agent: a,
 		})
 	}
 
-	if a.Spec.FleetServerRef.IsDefined() {
+	if a.Spec.FleetServerRef.IsSet() {
 		associations = append(associations, &AgentFleetServerAssociation{
 			Agent: a,
 		})
@@ -309,11 +309,11 @@ func (a *Agent) AssociationStatusMap(typ commonv1.AssociationType) commonv1.Asso
 	case commonv1.ElasticsearchAssociationType:
 		return a.Status.ElasticsearchAssociationsStatus
 	case commonv1.KibanaAssociationType:
-		if a.Spec.KibanaRef.IsDefined() {
+		if a.Spec.KibanaRef.IsSet() {
 			return commonv1.NewSingleAssociationStatusMap(a.Status.KibanaAssociationStatus)
 		}
 	case commonv1.FleetServerAssociationType:
-		if a.Spec.FleetServerRef.IsDefined() {
+		if a.Spec.FleetServerRef.IsSet() {
 			return commonv1.NewSingleAssociationStatusMap(a.Status.FleetServerAssociationStatus)
 		}
 	}

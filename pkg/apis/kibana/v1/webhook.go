@@ -139,7 +139,7 @@ func checkNoDowngrade(prev, curr *Kibana) field.ErrorList {
 func checkMonitoring(k *Kibana) field.ErrorList {
 	errs := validations.Validate(k, k.Spec.Version, validations.MinStackVersion)
 	// Kibana must be associated to an Elasticsearch when monitoring metrics are enabled
-	if monitoring.IsMetricsDefined(k) && !k.Spec.ElasticsearchRef.IsDefined() {
+	if monitoring.IsMetricsDefined(k) && !k.Spec.ElasticsearchRef.IsSet() {
 		errs = append(errs, field.Invalid(field.NewPath("spec").Child("elasticsearchRef"), k.Spec.ElasticsearchRef,
 			validations.InvalidKibanaElasticsearchRefForStackMonitoringMsg))
 	}

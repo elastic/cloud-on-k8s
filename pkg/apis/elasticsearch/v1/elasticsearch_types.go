@@ -527,7 +527,7 @@ var _ commonv1.Associated = (*Elasticsearch)(nil)
 func (es *Elasticsearch) GetAssociations() []commonv1.Association {
 	associations := make([]commonv1.Association, 0)
 	for _, ref := range es.Spec.Monitoring.Metrics.ElasticsearchRefs {
-		if ref.IsDefined() {
+		if ref.IsSet() {
 			associations = append(associations, &EsMonitoringAssociation{
 				Elasticsearch: es,
 				ref:           ref.WithDefaultNamespace(es.Namespace),
@@ -535,7 +535,7 @@ func (es *Elasticsearch) GetAssociations() []commonv1.Association {
 		}
 	}
 	for _, ref := range es.Spec.Monitoring.Logs.ElasticsearchRefs {
-		if ref.IsDefined() {
+		if ref.IsSet() {
 			associations = append(associations, &EsMonitoringAssociation{
 				Elasticsearch: es,
 				ref:           ref.WithDefaultNamespace(es.Namespace),

@@ -57,7 +57,7 @@ func additionalSecrets(ctx context.Context, c k8s.Client, assoc commonv1.Associa
 		return nil, err
 	}
 	fleetServerRef := assoc.AssociationRef()
-	if !fleetServerRef.IsDefined() {
+	if !fleetServerRef.IsSet() {
 		return nil, nil
 	}
 	fleetServer := agentv1alpha1.Agent{}
@@ -92,7 +92,7 @@ func additionalSecrets(ctx context.Context, c k8s.Client, assoc commonv1.Associa
 
 func getFleetServerExternalURL(c k8s.Client, assoc commonv1.Association) (string, error) {
 	fleetServerRef := assoc.AssociationRef()
-	if !fleetServerRef.IsDefined() {
+	if !fleetServerRef.IsSet() {
 		return "", nil
 	}
 	fleetServer := agentv1alpha1.Agent{}

@@ -45,7 +45,7 @@ func IsConfiguredIfSet(ctx context.Context, association commonv1.Association, r 
 	if err != nil {
 		return false, err
 	}
-	if ref.IsDefined() && !assocConf.IsConfigured() {
+	if ref.IsSet() && !assocConf.IsConfigured() {
 		r.Event(
 			association,
 			corev1.EventTypeWarning,
@@ -129,7 +129,7 @@ const UnknownVersion = "unknown_version"
 func AllowVersion(resourceVersion version.Version, associated commonv1.Associated, logger logr.Logger, recorder record.EventRecorder) (bool, error) {
 	for _, assoc := range associated.GetAssociations() {
 		assocRef := assoc.AssociationRef()
-		if !assocRef.IsDefined() {
+		if !assocRef.IsSet() {
 			// no association specified, move on
 			continue
 		}

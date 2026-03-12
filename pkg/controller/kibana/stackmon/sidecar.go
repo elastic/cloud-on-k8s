@@ -37,7 +37,7 @@ const (
 )
 
 func Metricbeat(ctx context.Context, client k8s.Client, kb kbv1.Kibana, basePath string, meta metadata.Metadata) (stackmon.BeatSidecar, error) {
-	if !kb.Spec.ElasticsearchRef.IsDefined() {
+	if !kb.Spec.ElasticsearchRef.IsSet() {
 		// should never happen because of the pre-creation validation
 		return stackmon.BeatSidecar{}, errors.New(validations.InvalidKibanaElasticsearchRefForStackMonitoringMsg) //nolint:staticcheck
 	}

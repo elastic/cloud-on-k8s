@@ -201,9 +201,9 @@ func TestObjectSelector_WithDefaultNamespace(t *testing.T) {
 }
 
 func TestObjectSelector_IsDefined(t *testing.T) {
-	assert.Equal(t, true, (&ObjectSelector{Name: "n"}).IsDefined())
-	assert.Equal(t, true, (&ObjectSelector{SecretName: "s"}).IsDefined())
-	assert.Equal(t, false, (&ObjectSelector{}).IsDefined())
+	assert.Equal(t, true, (&ObjectSelector{Name: "n"}).IsSet())
+	assert.Equal(t, true, (&ObjectSelector{SecretName: "s"}).IsSet())
+	assert.Equal(t, false, (&ObjectSelector{}).IsSet())
 }
 
 func TestObjectSelector_IsExternal(t *testing.T) {

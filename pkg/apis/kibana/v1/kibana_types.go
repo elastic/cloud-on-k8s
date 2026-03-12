@@ -169,23 +169,23 @@ func (k *Kibana) Associated() commonv1.Associated {
 func (k *Kibana) GetAssociations() []commonv1.Association {
 	associations := make([]commonv1.Association, 0)
 
-	if k.Spec.ElasticsearchRef.IsDefined() {
+	if k.Spec.ElasticsearchRef.IsSet() {
 		associations = append(associations, &KibanaEsAssociation{
 			Kibana: k,
 		})
 	}
-	if k.Spec.EnterpriseSearchRef.IsDefined() {
+	if k.Spec.EnterpriseSearchRef.IsSet() {
 		associations = append(associations, &KibanaEntAssociation{
 			Kibana: k,
 		})
 	}
-	if k.Spec.PackageRegistryRef.IsDefined() {
+	if k.Spec.PackageRegistryRef.IsSet() {
 		associations = append(associations, &KibanaEPRAssociation{
 			Kibana: k,
 		})
 	}
 	for _, ref := range k.Spec.Monitoring.Metrics.ElasticsearchRefs {
-		if ref.IsDefined() {
+		if ref.IsSet() {
 			associations = append(associations, &KbMonitoringAssociation{
 				Kibana: k,
 				ref:    ref.WithDefaultNamespace(k.Namespace),
@@ -193,7 +193,7 @@ func (k *Kibana) GetAssociations() []commonv1.Association {
 		}
 	}
 	for _, ref := range k.Spec.Monitoring.Logs.ElasticsearchRefs {
-		if ref.IsDefined() {
+		if ref.IsSet() {
 			associations = append(associations, &KbMonitoringAssociation{
 				Kibana: k,
 				ref:    ref.WithDefaultNamespace(k.Namespace),
@@ -207,25 +207,25 @@ func (k *Kibana) GetAssociations() []commonv1.Association {
 func (k *Kibana) AssociationStatusMap(typ commonv1.AssociationType) commonv1.AssociationStatusMap {
 	switch typ {
 	case commonv1.ElasticsearchAssociationType:
-		if k.Spec.ElasticsearchRef.IsDefined() {
+		if k.Spec.ElasticsearchRef.IsSet() {
 			return commonv1.NewSingleAssociationStatusMap(k.Status.ElasticsearchAssociationStatus)
 		}
 	case commonv1.EntAssociationType:
-		if k.Spec.EnterpriseSearchRef.IsDefined() {
+		if k.Spec.EnterpriseSearchRef.IsSet() {
 			return commonv1.NewSingleAssociationStatusMap(k.Status.EnterpriseSearchAssociationStatus)
 		}
 	case commonv1.PackageRegistryAssociationType:
-		if k.Spec.PackageRegistryRef.IsDefined() {
+		if k.Spec.PackageRegistryRef.IsSet() {
 			return commonv1.NewSingleAssociationStatusMap(k.Status.PackageRegistryAssociationStatus)
 		}
 	case commonv1.KbMonitoringAssociationType:
 		for _, esRef := range k.Spec.Monitoring.Metrics.ElasticsearchRefs {
-			if esRef.IsDefined() {
+			if esRef.IsSet() {
 				return k.Status.MonitoringAssociationStatus
 			}
 		}
 		for _, esRef := range k.Spec.Monitoring.Logs.ElasticsearchRefs {
-			if esRef.IsDefined() {
+			if esRef.IsSet() {
 				return k.Status.MonitoringAssociationStatus
 			}
 		}

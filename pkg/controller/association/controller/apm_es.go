@@ -69,7 +69,7 @@ func AddApmES(mgr manager.Manager, accessReviewer rbac.AccessReviewer, params op
 
 func getElasticsearchExternalURL(c k8s.Client, assoc commonv1.Association) (string, error) {
 	esRef := assoc.AssociationRef()
-	if !esRef.IsDefined() {
+	if !esRef.IsSet() {
 		return "", nil
 	}
 	es := esv1.Elasticsearch{}

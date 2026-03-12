@@ -361,7 +361,7 @@ func getExpectedRemoteClientsFor(
 
 	// AddKey remote clusters declared in the Spec
 	for _, remoteCluster := range associatedEs.Spec.RemoteClusters {
-		if !remoteCluster.ElasticsearchRef.IsDefined() {
+		if !remoteCluster.ElasticsearchRef.IsSet() {
 			continue
 		}
 		esRef := remoteCluster.ElasticsearchRef.WithDefaultNamespace(associatedEs.Namespace)
@@ -376,7 +376,7 @@ func getExpectedRemoteClientsFor(
 	// Seek for Elasticsearch resources where this cluster is declared as a remote cluster
 	for _, es := range list.Items {
 		for _, remoteCluster := range es.Spec.RemoteClusters {
-			if !remoteCluster.ElasticsearchRef.IsDefined() {
+			if !remoteCluster.ElasticsearchRef.IsSet() {
 				continue
 			}
 			esRef := remoteCluster.ElasticsearchRef.WithDefaultNamespace(es.Namespace)

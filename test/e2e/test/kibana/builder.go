@@ -354,7 +354,7 @@ func (b Builder) RuntimeObjects() []client.Object {
 }
 
 func (b Builder) ElasticsearchRef() commonv1.AssociationRef {
-	if b.ExternalElasticsearchRef.IsDefined() {
+	if b.ExternalElasticsearchRef.IsSet() {
 		return b.ExternalElasticsearchRef
 	}
 	// if no external Elasticsearch cluster is defined, use the ElasticsearchRef

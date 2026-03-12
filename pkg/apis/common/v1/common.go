@@ -94,9 +94,15 @@ func (o LocalObjectSelector) NamespacedName() types.NamespacedName {
 	}
 }
 
-// IsDefined checks if the local object selector has a name.
+// IsDefined checks if the local object selector is not nil and has a name.
 // Namespace is not mandatory as it may be inherited by the parent object.
-func (o LocalObjectSelector) IsDefined() bool {
+func (o *LocalObjectSelector) IsDefined() bool {
+	return o != nil && o.Name != ""
+}
+
+// IsSet checks if the local object selector has a name.
+// Namespace is not mandatory as it may be inherited by the parent object.
+func (o LocalObjectSelector) IsSet() bool {
 	return o.Name != ""
 }
 
@@ -197,16 +203,21 @@ func (o ObjectSelector) NamespacedName() types.NamespacedName {
 	}
 }
 
-// IsDefined checks if the object selector has a name or a secret name set.
+// IsDefined checks if the object selector is not nil and has a name or a secret name.
 // Namespace is not mandatory as it may be inherited by the parent object.
-func (o ObjectSelector) IsDefined() bool {
-	return o.NameOrSecretName() != ""
+func (o *ObjectSelector) IsDefined() bool {
+	return o != nil && o.NameOrSecretName() != ""
 }
 
 // IsExternal returns true when the object selector references a Kubernetes secret describing an external
 // referenced object not managed by the operator.
 func (o ObjectSelector) IsExternal() bool {
-	return o.IsDefined() && o.SecretName != ""
+	return o.IsSet() && o.SecretName != ""
+}
+
+// IsSet checks if the object selector has a name or a secret name set.
+func (o ObjectSelector) IsSet() bool {
+	return o.NameOrSecretName() != ""
 }
 
 // GetName returns the name of the ObjectSelector.

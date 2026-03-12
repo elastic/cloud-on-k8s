@@ -104,7 +104,7 @@ func (ent *EnterpriseSearch) SetAssociationConf(assocConf *commonv1.AssociationC
 }
 
 func (ent *EnterpriseSearch) RequiresAssociation() bool {
-	return ent.Spec.ElasticsearchRef.IsDefined()
+	return ent.Spec.ElasticsearchRef.IsSet()
 }
 
 func (ent *EnterpriseSearch) ElasticServiceAccount() (commonv1.ServiceAccountName, error) {
@@ -113,7 +113,7 @@ func (ent *EnterpriseSearch) ElasticServiceAccount() (commonv1.ServiceAccountNam
 
 func (ent *EnterpriseSearch) GetAssociations() []commonv1.Association {
 	associations := make([]commonv1.Association, 0)
-	if ent.Spec.ElasticsearchRef.IsDefined() {
+	if ent.Spec.ElasticsearchRef.IsSet() {
 		associations = append(associations, ent)
 	}
 	return associations
@@ -142,7 +142,7 @@ func (ent *EnterpriseSearch) SetAssociationStatusMap(typ commonv1.AssociationTyp
 }
 
 func (ent *EnterpriseSearch) AssociationStatusMap(typ commonv1.AssociationType) commonv1.AssociationStatusMap {
-	if typ == commonv1.ElasticsearchAssociationType && ent.Spec.ElasticsearchRef.IsDefined() {
+	if typ == commonv1.ElasticsearchAssociationType && ent.Spec.ElasticsearchRef.IsSet() {
 		return commonv1.NewSingleAssociationStatusMap(ent.Status.Association)
 	}
 

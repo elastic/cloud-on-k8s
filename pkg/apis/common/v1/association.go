@@ -156,8 +156,8 @@ type Associated interface {
 type AssociationRef interface {
 	// IsExternal returns true when the reference points to an external resource not managed by the operator.
 	IsExternal() bool
-	// IsDefined returns true if the reference has a name or secret name set.
-	IsDefined() bool
+	// IsSet returns true if the reference has a name or secret name set.
+	IsSet() bool
 	// GetName returns the name of the referenced resource.
 	GetName() string
 	// GetNamespace returns the namespace of the referenced resource.
