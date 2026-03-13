@@ -536,8 +536,8 @@ func OperatorPodListOptions(opNs string) []k8sclient.ListOption {
 func EventListOptions(namespace, name string) []k8sclient.ListOption {
 	ns := k8sclient.InNamespace(namespace)
 	matchFields := k8sclient.MatchingFields(map[string]string{
-		"involvedObject.name":      name,
-		"involvedObject.namespace": namespace,
+		"regarding.name":      name,
+		"regarding.namespace": namespace,
 	})
 	return []k8sclient.ListOption{ns, matchFields}
 }

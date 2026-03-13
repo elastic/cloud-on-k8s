@@ -93,9 +93,9 @@ func TestCustomHTTPCA(t *testing.T) {
 					for _, evt := range eventList {
 						if evt.Type == corev1.EventTypeWarning &&
 							evt.Reason == events.EventReconciliationError &&
-							evt.InvolvedObject.Namespace == withCustomCA.Elasticsearch.Namespace &&
-							evt.InvolvedObject.Name == withCustomCA.Elasticsearch.Name &&
-							strings.Contains(evt.Message, "can't parse") {
+							evt.Regarding.Namespace == withCustomCA.Elasticsearch.Namespace &&
+							evt.Regarding.Name == withCustomCA.Elasticsearch.Name &&
+							strings.Contains(evt.Note, "can't parse") {
 							return nil
 						}
 					}
@@ -357,7 +357,7 @@ func TestCustomTransportCA(t *testing.T) {
 						for _, evt := range eventList {
 							if evt.Type == corev1.EventTypeWarning &&
 								evt.Reason == events.EventReasonValidation &&
-								strings.Contains(evt.Message, "can't parse") {
+								strings.Contains(evt.Note, "can't parse") {
 								return nil
 							}
 						}

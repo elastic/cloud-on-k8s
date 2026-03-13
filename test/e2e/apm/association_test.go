@@ -215,7 +215,7 @@ func TestAPMAssociationWhenReferencedESDisappears(t *testing.T) {
 							establishedString := commonv1.NewSingleAssociationStatusMap(commonv1.AssociationEstablished).String()
 
 							// evt.Message defined as fmt.Sprintf("Association status changed from [%s] to [%s]")
-							statusIndex := strings.Index(evt.Message, establishedString)
+							statusIndex := strings.Index(evt.Note, establishedString)
 							if statusIndex == 32 {
 								assocLostEventSeen = true
 							}
