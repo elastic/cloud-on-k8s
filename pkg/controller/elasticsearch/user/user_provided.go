@@ -115,7 +115,7 @@ func retrieveUserProvidedRoles(
 		err := c.Get(context.Background(), secretRef, &secret)
 		if err != nil {
 			if apierrors.IsNotFound(err) {
-				handleSecretNotFound(log, recorder, es, roleSource.SecretName, events.EventActionConfiguration)
+				handleSecretNotFound(log, recorder, es, roleSource.SecretName)
 				continue
 			}
 			return RolesFileContent{}, err
@@ -123,7 +123,7 @@ func retrieveUserProvidedRoles(
 
 		parsed, err := parseRolesFileContent(k8s.GetSecretEntry(secret, RolesFile))
 		if err != nil {
-			handleInvalidSecretData(log, recorder, es, roleSource.SecretName, err, events.EventActionConfiguration)
+			handleInvalidSecretData(log, recorder, es, roleSource.SecretName, err)
 			continue
 		}
 		roles = roles.MergeWith(parsed)
@@ -149,7 +149,7 @@ func retrieveUserProvidedFileRealm(
 		var secret corev1.Secret
 		if err := c.Get(context.Background(), types.NamespacedName{Namespace: es.Namespace, Name: fileRealmSource.SecretName}, &secret); err != nil {
 			if apierrors.IsNotFound(err) {
-				handleSecretNotFound(log, recorder, es, fileRealmSource.SecretName, events.EventActionConfiguration)
+				handleSecretNotFound(log, recorder, es, fileRealmSource.SecretName)
 				continue
 			}
 			return filerealm.Realm{}, err
@@ -168,7 +168,7 @@ func retrieveUserProvidedFileRealm(
 			realm, err = filerealm.FromSecret(secret)
 		}
 		if err != nil {
-			handleInvalidSecretData(log, recorder, es, fileRealmSource.SecretName, err, events.EventActionConfiguration)
+			handleInvalidSecretData(log, recorder, es, fileRealmSource.SecretName, err)
 			continue
 		}
 		aggregated = aggregated.MergeWith(realm)
@@ -213,17 +213,17 @@ func realmFromBasicAuthSecret(secret corev1.Secret, existing filerealm.Realm, pa
 	return user.fileRealm(), nil
 }
 
-func handleSecretNotFound(log logr.Logger, recorder toolsevents.EventRecorder, es esv1.Elasticsearch, secretName string, action string) {
+func handleSecretNotFound(log logr.Logger, recorder toolsevents.EventRecorder, es esv1.Elasticsearch, secretName string) {
 	msg := "referenced secret not found"
 	// logging with info level since this may be expected if the secret is not in the cache yet
 	log.Info(msg, "namespace", es.Namespace, "es_name", es.Name, "secret_name", secretName)
-	k8s.EmitEvent(recorder, &es, corev1.EventTypeWarning, events.EventReasonUnexpected, action, "%s: %s", msg, secretName)
+	k8s.EmitEvent(recorder, &es, corev1.EventTypeWarning, events.EventReasonUnexpected, events.EventActionConfiguration, "%s: %s", msg, secretName)
 }
 
-func handleInvalidSecretData(log logr.Logger, recorder toolsevents.EventRecorder, es esv1.Elasticsearch, secretName string, err error, action string) {
+func handleInvalidSecretData(log logr.Logger, recorder toolsevents.EventRecorder, es esv1.Elasticsearch, secretName string, err error) {
 	msg := "invalid data in secret"
 	log.Error(err, msg, "namespace", es.Namespace, "es_name", es.Name, "secret_name", secretName)
-	k8s.EmitEvent(recorder, &es, corev1.EventTypeWarning, events.EventReasonUnexpected, action, "%s %s/%s: %s", msg, es.Namespace, secretName, err.Error())
+	k8s.EmitEvent(recorder, &es, corev1.EventTypeWarning, events.EventReasonUnexpected, events.EventActionConfiguration, "%s %s/%s: %s", msg, es.Namespace, secretName, err.Error())
 }
 func handlePotentialMisconfiguration(log logr.Logger, recorder toolsevents.EventRecorder, es esv1.Elasticsearch, secret corev1.Secret) {
 	keys := make([]string, 0, len(secret.Data))

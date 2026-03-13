@@ -106,7 +106,6 @@ rules:
       - secrets
       - persistentvolumeclaims
       - configmaps
-      - events
       - serviceaccounts
       # to create resources defined in recipes
       - namespaces
@@ -402,6 +401,18 @@ rules:
     verbs:
       - get
       - list
+  - apiGroups:
+      - events.k8s.io
+    resources:
+      - events
+    verbs:
+      - get
+      - list
+      - watch
+      - create
+      - update
+      - patch
+      - delete
   - apiGroups:
       - autoops.k8s.elastic.co
     resources:

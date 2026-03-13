@@ -44,62 +44,62 @@ const (
 
 // Event actions for common controller actions
 const (
-	// EventActionValidation describes the validation step the controller was taking when the event was triggered
+	// EventActionValidation describes the validation step the controller was taking when the event was triggered.
 	EventActionValidation = "Validation"
-	// EventActionAggregation describes the aggregation step the controller was taking when the event was triggered
+	// EventActionAggregation describes the aggregation step the controller was taking when the event was triggered.
 	EventActionAggregation = "Aggregation"
-	// EventActionCertificateReconciliation describes the certificate reconciliation step the controller was taking
+	// EventActionCertificateReconciliation describes the certificate reconciliation step the controller was taking.
 	// when the event was triggered
 	EventActionCertificateReconciliation = "CertificateReconciliation"
-	// EventActionStatusUpdate describes the status update step the controller was taking when the event was triggered
+	// EventActionStatusUpdate describes the status update step the controller was taking when the event was triggered.
 	EventActionStatusUpdate = "StatusUpdate"
-	// EventActionVersionCheck describes the version check step the controller was taking when the event was triggered
+	// EventActionVersionCheck describes the version check step the controller was taking when the event was triggered.
 	EventActionVersionCheck = "VersionCheck"
-	// EventActionAccessCheck describes the access check step the controller was taking when the event was triggered
+	// EventActionAccessCheck describes the access check step the controller was taking when the event was triggered.
 	EventActionAccessCheck = "AccessCheck"
-	// EventActionLicenseCheck describes the license check step the controller was taking when the event was triggered
+	// EventActionLicenseCheck describes the license check step the controller was taking when the event was triggered.
 	EventActionLicenseCheck = "LicenseCheck"
-	// EventActionGetSecret describes the get secret step the controller was taking when the event was triggered
+	// EventActionGetSecret describes the get secret step the controller was taking when the event was triggered.
 	EventActionGetSecret = "GetSecret"
-	// EventActionParseSecret describes the parse secret step the controller was taking when the event was triggered
+	// EventActionParseSecret describes the parse secret step the controller was taking when the event was triggered.
 	EventActionParseSecret = "ParseSecret"
-	// EventActionShutdown describes the shutdown step the controller was taking when the event was triggered
+	// EventActionShutdown describes the shutdown step the controller was taking when the event was triggered.
 	EventActionShutdown = "Shutdown"
-	// EventActionUpscale describes the upscale step the controller was taking when the event was triggered
+	// EventActionUpscale describes the upscale step the controller was taking when the event was triggered.
 	EventActionUpscale = "Upscale"
-	// EventActionConfiguration describes the configuration step the controller was taking when the event was triggered
+	// EventActionConfiguration describes the configuration step the controller was taking when the event was triggered.
 	EventActionConfiguration = "Configuration"
-	// EventActionVersionUpgrade describes the version upgrade step the controller was taking when the event was triggered
+	// EventActionVersionUpgrade describes the version upgrade step the controller was taking when the event was triggered.
 	EventActionVersionUpgrade = "VersionUpgrade"
-	// EventActionEnrollment describes the enrollment step the controller was taking when the event was triggered
+	// EventActionEnrollment describes the enrollment step the controller was taking when the event was triggered.
 	EventActionEnrollment = "Enrollment"
-	// EventActionPolicyRetrieval describes the policy retrieval step the controller was taking when the event was triggered
+	// EventActionPolicyRetrieval describes the policy retrieval step the controller was taking when the event was triggered.
 	EventActionPolicyRetrieval = "PolicyRetrieval"
-	// EventActionAssociationConfiguration describes the association configuration step the controller was taking when the event was triggered
+	// EventActionAssociationConfiguration describes the association configuration step the controller was taking when the event was triggered.
 	EventActionAssociationConfiguration = "AssociationConfiguration"
-	// EventActionElasticsearchRetrieval describes the Elasticsearch retrieval step the controller was taking when the event was triggered
+	// EventActionElasticsearchRetrieval describes the Elasticsearch retrieval step the controller was taking when the event was triggered.
 	EventActionElasticsearchRetrieval = "ElasticsearchRetrieval"
-	// EventActionAnnotateResource describes the annotation step the controller was taking when the event was triggered
+	// EventActionAnnotateResource describes the annotation step the controller was taking when the event was triggered.
 	EventActionAnnotateResource = "AnnotateResource"
-	// EventActionDeploymentReconciliation describes the deployment reconciliation step the controller was taking when the event was triggered
+	// EventActionDeploymentReconciliation describes the deployment reconciliation step the controller was taking when the event was triggered.
 	EventActionDeploymentReconciliation = "DeploymentReconciliation"
-	// EventActionAssociationReconciliation describes the association reconciliation step the controller was taking when the event was triggered
+	// EventActionAssociationReconciliation describes the association reconciliation step the controller was taking when the event was triggered.
 	EventActionAssociationReconciliation = "AssociationReconciliation"
-	// EventActionAutoOpsReconciliation = "AutoOpsReconciliation"
+	// EventActionAutoOpsReconciliation describes the AutoOps reconciliation step the controller was taking when the event was triggered.
 	EventActionAutoOpsReconciliation = "AutoOpsReconciliation"
-	// EventActionRemoteClusterConfiguration describes the remote cluster configuration step the controller was taking when the event was triggered
+	// EventActionRemoteClusterConfiguration describes the remote cluster configuration step the controller was taking when the event was triggered.
 	EventActionRemoteClusterConfiguration = "RemoteClusterConfiguration"
-	// EventActionRemoteClusterAssociation describes the remote cluster association step the controller was taking when the event was triggered
+	// EventActionRemoteClusterAssociation describes the remote cluster association step the controller was taking when the event was triggered.
 	EventActionRemoteClusterAssociation = "RemoteClusterAssociation"
-	// EventActionAssociationPreconditionCheck describes the association precondition check step the controller was taking when the event was triggered
+	// EventActionAssociationPreconditionCheck describes the association precondition check step the controller was taking when the event was triggered.
 	EventActionAssociationPreconditionCheck = "AssociationPreconditionCheck"
-	// EventActionConfigSecretValidation describes the config secret validation step the controller was taking when the event was triggered
+	// EventActionConfigSecretValidation describes the config secret validation step the controller was taking when the event was triggered.
 	EventActionConfigSecretValidation = "ConfigSecretValidation"
-	// EventActionOnlineReconciliation describes the online reconciliation step the controller was taking when the event was triggered
+	// EventActionOnlineReconciliation describes the online reconciliation step the controller was taking when the event was triggered.
 	EventActionOnlineReconciliation = "OnlineReconciliation"
-	// EventActionOfflineReconciliation describes the offline reconciliation step the controller was taking when the event was triggered
+	// EventActionOfflineReconciliation describes the offline reconciliation step the controller was taking when the event was triggered.
 	EventActionOfflineReconciliation = "OfflineReconciliation"
-	// EventActionDistributionCheck describes the distribution check step the controller was taking when the event was triggered
+	// EventActionDistributionCheck describes the distribution check step the controller was taking when the event was triggered.
 	EventActionDistributionCheck = "DistributionCheck"
 )
 

@@ -16,6 +16,7 @@ import (
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	discoveryv1 "k8s.io/api/discovery/v1"
+	eventsv1 "k8s.io/api/events/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -227,8 +228,8 @@ func endpointSliceMatches(slice discoveryv1.EndpointSlice, filters ...func(slice
 	return true
 }
 
-func (k *K8sClient) GetEvents(opts ...k8sclient.ListOption) ([]corev1.Event, error) {
-	var eventList corev1.EventList
+func (k *K8sClient) GetEvents(opts ...k8sclient.ListOption) ([]eventsv1.Event, error) {
+	var eventList eventsv1.EventList
 	if err := k.Client.List(context.Background(), &eventList, opts...); err != nil {
 		return nil, err
 	}
