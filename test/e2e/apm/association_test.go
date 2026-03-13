@@ -9,7 +9,7 @@ package apm
 import (
 	"context"
 	"fmt"
-	"strings"
+	"regexp"
 	"testing"
 
 	corev1 "k8s.io/api/core/v1"
@@ -24,6 +24,8 @@ import (
 	"github.com/elastic/cloud-on-k8s/v3/test/e2e/test/elasticsearch"
 	"github.com/elastic/cloud-on-k8s/v3/test/e2e/test/kibana"
 )
+
+var associationEventRegex = regexp.MustCompile(`Association status changed from \[(.+?)] to \[(.+?)]`)
 
 // TestCrossNSAssociation tests associating Elasticsearch and an APM Server running in different namespaces.
 func TestCrossNSAssociation(t *testing.T) {
@@ -214,14 +216,14 @@ func TestAPMAssociationWhenReferencedESDisappears(t *testing.T) {
 							// build expected string and use it for comparisons with actual
 							establishedString := commonv1.NewSingleAssociationStatusMap(commonv1.AssociationEstablished).String()
 
-							// evt.Message defined as fmt.Sprintf("Association status changed from [%s] to [%s]")
-							statusIndex := strings.Index(evt.Note, establishedString)
-							if statusIndex == 32 {
-								assocLostEventSeen = true
-							}
-
-							if statusIndex > 32 {
-								assocEstablishedEventSeen = true
+							m := associationEventRegex.FindStringSubmatch(evt.Note)
+							if m != nil {
+								if m[1] == establishedString && m[2] != establishedString {
+									assocLostEventSeen = true
+								}
+								if m[2] == establishedString {
+									assocEstablishedEventSeen = true
+								}
 							}
 						case evt.Type == corev1.EventTypeWarning && evt.Reason == events.EventAssociationError:
 							noBackendEventSeen = true
