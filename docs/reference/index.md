@@ -14,4 +14,3 @@ This section contains reference information for {{eck}}, including:
 * [Third-party dependencies](./third-party-dependencies/index.md)
 * [ECK configuration flags](./eck-configuration-flags.md)
 * [ECK upgrade predicates](./upgrade-predicates.md)
-* [Elasticsearch rolling restart](./rolling-restart.md)
