@@ -171,10 +171,16 @@ clusterRole: {}
 #  rules:
 #  - apiGroups: [""]
 #    resources:
-#    - events
 #    - pods
 #    - namespaces
 #    - nodes
+#    verbs:
+#    - get
+#    - watch
+#    - list
+#  - apiGroups: ["events.k8s.io"]
+#    resources:
+#    - events
 #    verbs:
 #    - get
 #    - watch

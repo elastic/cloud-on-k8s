@@ -397,6 +397,12 @@ rules:
   - nodes/proxy
   - nodes/stats
   - services
+  verbs:
+  - get
+  - watch
+  - list
+- apiGroups: ["events.k8s.io"]
+  resources:
   - events
   verbs:
   - get

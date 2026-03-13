@@ -22,7 +22,6 @@ tests:
           - pods
           - nodes
           - namespaces
-          - events
           - services
           - configmaps
       - equal:
@@ -33,13 +32,26 @@ tests:
           - list
       - equal:
           path: rules[1].apiGroups[0]
-          value: coordination.k8s.io
+          value: events.k8s.io
       - equal:
           path: rules[1].resources
           value:
-          - leases
+          - events
       - equal:
           path: rules[1].verbs
+          value:
+          - get
+          - watch
+          - list
+      - equal:
+          path: rules[2].apiGroups[0]
+          value: coordination.k8s.io
+      - equal:
+          path: rules[2].resources
+          value:
+          - leases
+      - equal:
+          path: rules[2].verbs
           value:
           - get
           - create
@@ -54,36 +66,20 @@ tests:
           path: metadata.name
           value: elastic-agent
       - equal:
-          path: rules[2].nonResourceURLs
+          path: rules[3].nonResourceURLs
           value:
           - "/metrics"
-      - equal:
-          path: rules[2].verbs
-          value:
-          - get
-      - equal:
-          path: rules[3].apiGroups[0]
-          value: "extensions"
-      - equal:
-          path: rules[3].resources
-          value:
-          - replicasets
       - equal:
           path: rules[3].verbs
           value:
           - get
-          - list
-          - watch
       - equal:
           path: rules[4].apiGroups[0]
-          value: apps
+          value: "extensions"
       - equal:
           path: rules[4].resources
           value:
-          - statefulsets
-          - deployments
           - replicasets
-          - daemonsets
       - equal:
           path: rules[4].verbs
           value:
@@ -92,25 +88,41 @@ tests:
           - watch
       - equal:
           path: rules[5].apiGroups[0]
-          value: ""
+          value: apps
       - equal:
           path: rules[5].resources
           value:
-          - nodes/stats
+          - statefulsets
+          - deployments
+          - replicasets
+          - daemonsets
       - equal:
           path: rules[5].verbs
           value:
           - get
+          - list
+          - watch
       - equal:
-          path: rules[7].apiGroups[0]
+          path: rules[6].apiGroups[0]
+          value: ""
+      - equal:
+          path: rules[6].resources
+          value:
+          - nodes/stats
+      - equal:
+          path: rules[6].verbs
+          value:
+          - get
+      - equal:
+          path: rules[8].apiGroups[0]
           value: batch
       - equal:
-          path: rules[7].resources
+          path: rules[8].resources
           value:
           - jobs
           - cronjobs
       - equal:
-          path: rules[7].verbs
+          path: rules[8].verbs
           value:
           - get
           - list

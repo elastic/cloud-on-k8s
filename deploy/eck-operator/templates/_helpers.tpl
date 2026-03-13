@@ -171,11 +171,22 @@ updating docs/operating-eck/eck-permissions.asciidoc file.
   - ""
   resources:
   - pods
-  - events
   - persistentvolumeclaims
   - secrets
   - services
   - configmaps
+  verbs:
+  - get
+  - list
+  - watch
+  - create
+  - update
+  - patch
+  - delete
+- apiGroups:
+  - events.k8s.io
+  resources:
+  - events
   verbs:
   - get
   - list

@@ -192,9 +192,15 @@ clusterRole:
     - pods
     - nodes
     - namespaces
-    - events
     - services
     - configmaps
+    verbs:
+    - get
+    - watch
+    - list
+  - apiGroups: ["events.k8s.io"]
+    resources:
+    - events
     verbs:
     - get
     - watch

@@ -34,8 +34,15 @@ rules:
   resources:
   - nodes
   - namespaces
-  - events
   - pods
+  verbs:
+  - get
+  - list
+  - watch
+- apiGroups:
+  - events.k8s.io
+  resources:
+  - events
   verbs:
   - get
   - list
@@ -111,6 +118,13 @@ rules:
   - nodes/metrics
   - nodes/proxy
   - nodes/stats
+  verbs:
+  - get
+  - watch
+  - list
+- apiGroups:
+  - events.k8s.io
+  resources:
   - events
   verbs:
   - get
