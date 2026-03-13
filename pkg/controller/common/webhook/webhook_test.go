@@ -17,7 +17,6 @@ import (
 	"github.com/go-test/deep"
 
 	agentv1alpha1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/agent/v1alpha1"
-	eckadmission "github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/webhook/admission"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/k8s"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/set"
 )
@@ -30,10 +29,11 @@ func asJSON(obj any) []byte {
 	return data
 }
 
-func Test_validatingWebhook_Handle(t *testing.T) {
+func Test_ResourceValidator_Handle(t *testing.T) {
+	scheme := k8s.Scheme()
+
 	type fields struct {
 		managedNamespaces set.StringSet
-		validator         eckadmission.Validator
 	}
 	tests := []struct {
 		name   string
@@ -45,7 +45,6 @@ func Test_validatingWebhook_Handle(t *testing.T) {
 			name: "create properly validates valid agent, and returns allowed.",
 			fields: fields{
 				set.Make("elastic"),
-				&agentv1alpha1.Agent{},
 			},
 			req: admission.Request{
 				AdmissionRequest: admissionv1.AdmissionRequest{
@@ -74,7 +73,6 @@ func Test_validatingWebhook_Handle(t *testing.T) {
 			name: "no policy id when agent running in standalone mode should not return a warning",
 			fields: fields{
 				set.Make("elastic"),
-				&agentv1alpha1.Agent{},
 			},
 			req: admission.Request{
 				AdmissionRequest: admissionv1.AdmissionRequest{
@@ -102,7 +100,6 @@ func Test_validatingWebhook_Handle(t *testing.T) {
 			name: "no policy id is allowed when agent running in fleet mode but it should return a warning",
 			fields: fields{
 				set.Make("elastic"),
-				&agentv1alpha1.Agent{},
 			},
 			req: admission.Request{
 				AdmissionRequest: admissionv1.AdmissionRequest{
@@ -131,7 +128,6 @@ func Test_validatingWebhook_Handle(t *testing.T) {
 			name: "create agent is denied because of invalid version, and returns denied.",
 			fields: fields{
 				set.Make("elastic"),
-				&agentv1alpha1.Agent{},
 			},
 			req: admission.Request{
 				AdmissionRequest: admissionv1.AdmissionRequest{
@@ -183,12 +179,11 @@ func Test_validatingWebhook_Handle(t *testing.T) {
 			name: "delete agent is always allowed",
 			fields: fields{
 				set.Make("elastic"),
-				&agentv1alpha1.Agent{},
 			},
 			req: admission.Request{
 				AdmissionRequest: admissionv1.AdmissionRequest{
 					Operation: admissionv1.Delete,
-					Object: runtime.RawExtension{
+					OldObject: runtime.RawExtension{
 						Raw: asJSON(&agentv1alpha1.Agent{
 							ObjectMeta: metav1.ObjectMeta{
 								Name:      "testAgent",
@@ -212,12 +207,11 @@ func Test_validatingWebhook_Handle(t *testing.T) {
 			name: "request from un-managed namespace is ignored, and just accepted",
 			fields: fields{
 				set.Make("elastic"),
-				&agentv1alpha1.Agent{},
 			},
 			req: admission.Request{
 				AdmissionRequest: admissionv1.AdmissionRequest{
 					Operation: admissionv1.Delete,
-					Object: runtime.RawExtension{
+					OldObject: runtime.RawExtension{
 						Raw: asJSON(&agentv1alpha1.Agent{
 							ObjectMeta: metav1.ObjectMeta{
 								Name:      "testAgent",
@@ -240,7 +234,6 @@ func Test_validatingWebhook_Handle(t *testing.T) {
 			name: "update agent is allowed when label is updated",
 			fields: fields{
 				set.Make("elastic"),
-				&agentv1alpha1.Agent{},
 			},
 			req: admission.Request{
 				AdmissionRequest: admissionv1.AdmissionRequest{
@@ -285,7 +278,6 @@ func Test_validatingWebhook_Handle(t *testing.T) {
 			name: "update agent is denied when version downgrade is attempted",
 			fields: fields{
 				set.Make("elastic"),
-				&agentv1alpha1.Agent{},
 			},
 			req: admission.Request{
 				AdmissionRequest: admissionv1.AdmissionRequest{
@@ -352,14 +344,9 @@ func Test_validatingWebhook_Handle(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			ctx := context.Background()
-			decoder := admission.NewDecoder(k8s.Scheme())
-			v := &validatingWebhook{
-				decoder:           decoder,
-				managedNamespaces: tt.fields.managedNamespaces,
-				validator:         tt.fields.validator,
-			}
-			got := v.Handle(ctx, tt.req)
+			validator := NewResourceFuncValidator[*agentv1alpha1.Agent](nil, tt.fields.managedNamespaces.AsSlice(), agentv1alpha1.Validate)
+			wh := admission.WithValidator[*agentv1alpha1.Agent](scheme, validator)
+			got := wh.Handler.Handle(context.Background(), tt.req)
 			if diff := deep.Equal(got, tt.want); diff != nil {
 				t.Error(diff)
 			}

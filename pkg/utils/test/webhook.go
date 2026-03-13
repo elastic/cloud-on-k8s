@@ -27,7 +27,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/license"
 	controllerscheme "github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/scheme"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/webhook"
-	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/webhook/admission"
+	"sigs.k8s.io/controller-runtime/pkg/webhook/admission"
 )
 
 // ValidationWebhookTestCase represents a test case for testing a validation webhook
@@ -94,16 +94,22 @@ func ValidationWebhookSucceededWithWarnings(warningsRegexes ...string) func(*tes
 	}
 }
 
-// RunValidationWebhookTests runs a series of ValidationWebhookTestCases
+// NewValidationWebhookHandler creates an http.Handler for validation webhook tests
+// using the upstream admission.Validator[T] interface.
+func NewValidationWebhookHandler[T runtime.Object](validate webhook.ValidateFunc[T]) http.Handler {
+	controllerscheme.SetupScheme()
+	validator := webhook.NewResourceFuncValidator[T](license.MockLicenseChecker{}, nil, validate)
+	return admission.WithValidator[T](clientgoscheme.Scheme, validator)
+}
+
+// RunValidationWebhookTests runs a series of ValidationWebhookTestCases against an http.Handler.
 //
 //nolint:thelper
-func RunValidationWebhookTests(t *testing.T, gvk metav1.GroupVersionKind, validator admission.Validator, tests ...ValidationWebhookTestCase) {
+func RunValidationWebhookTests(t *testing.T, gvk metav1.GroupVersionKind, handler http.Handler, tests ...ValidationWebhookTestCase) {
 	controllerscheme.SetupScheme()
 	decoder := serializer.NewCodecFactory(clientgoscheme.Scheme).UniversalDeserializer()
 
-	webhook := webhook.ValidatingWebhookFor(clientgoscheme.Scheme, validator, license.MockLicenseChecker{}, nil)
-
-	server := httptest.NewServer(webhook)
+	server := httptest.NewServer(handler)
 	defer server.Close()
 
 	client := server.Client()

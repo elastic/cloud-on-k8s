@@ -6,22 +6,17 @@ package validation
 
 import (
 	"context"
-	"errors"
-	"net/http"
 
-	admissionv1 "k8s.io/api/admission/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/util/validation/field"
 	ctrl "sigs.k8s.io/controller-runtime"
-	"sigs.k8s.io/controller-runtime/pkg/webhook"
 	"sigs.k8s.io/controller-runtime/pkg/webhook/admission"
 
 	autoopsv1alpha1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/autoops/v1alpha1"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/license"
 	commonwebhook "github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/webhook"
 	ulog "github.com/elastic/cloud-on-k8s/v3/pkg/utils/log"
-	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/set"
 )
 
 // +kubebuilder:webhook:path=/validate-autoops-k8s-elastic-co-v1alpha1-autoopsagentpolicies,mutating=false,failurePolicy=ignore,groups=autoops.k8s.elastic.co,resources=autoopsagentpolicies,verbs=create;update,versions=v1alpha1,name=elastic-autoops-validation-v1alpha1.k8s.elastic.co,sideEffects=None,admissionReviewVersions=v1,matchPolicy=Exact
@@ -34,45 +29,33 @@ var autoopslog = ulog.Log.WithName("autoops-validation")
 
 // RegisterWebhook registers the AutoOpsAgentPolicy validating webhook with the manager.
 func RegisterWebhook(mgr ctrl.Manager, licenseChecker license.Checker, managedNamespaces []string) {
-	wh := &validatingWebhook{
-		decoder:           admission.NewDecoder(mgr.GetScheme()),
-		licenseChecker:    licenseChecker,
-		managedNamespaces: set.Make(managedNamespaces...),
+	inner := &validator{
+		licenseChecker: licenseChecker,
 	}
+	v := commonwebhook.NewResourceValidator[*autoopsv1alpha1.AutoOpsAgentPolicy](nil, managedNamespaces, inner)
 	autoopslog.Info("Registering AutoOpsAgentPolicy validating webhook", "path", webhookPath)
-	mgr.GetWebhookServer().Register(webhookPath, &webhook.Admission{Handler: wh})
+	wh := admission.WithValidator[*autoopsv1alpha1.AutoOpsAgentPolicy](mgr.GetScheme(), v)
+	mgr.GetWebhookServer().Register(webhookPath, wh)
 }
 
-type validatingWebhook struct {
-	decoder           admission.Decoder
-	licenseChecker    license.Checker
-	managedNamespaces set.StringSet
+type validator struct {
+	licenseChecker license.Checker
 }
 
-// Handle satisfies the admission.Handler interface.
-func (wh *validatingWebhook) Handle(ctx context.Context, req admission.Request) admission.Response {
-	policy := &autoopsv1alpha1.AutoOpsAgentPolicy{}
-	err := wh.decoder.DecodeRaw(req.Object, policy)
-	if err != nil {
-		return admission.Errored(http.StatusBadRequest, err)
-	}
+func (v *validator) validate(ctx context.Context, policy *autoopsv1alpha1.AutoOpsAgentPolicy) (admission.Warnings, error) {
+	return nil, Validate(ctx, policy, v.licenseChecker)
+}
 
-	if wh.managedNamespaces.Count() > 0 && !wh.managedNamespaces.Has(policy.Namespace) {
-		autoopslog.V(1).Info("Skip AutoOpsAgentPolicy resource validation", "name", policy.Name, "namespace", policy.Namespace)
-		return admission.Allowed("")
-	}
+func (v *validator) ValidateCreate(ctx context.Context, policy *autoopsv1alpha1.AutoOpsAgentPolicy) (admission.Warnings, error) {
+	return v.validate(ctx, policy)
+}
 
-	if req.Operation == admissionv1.Create || req.Operation == admissionv1.Update {
-		if err := Validate(ctx, policy, wh.licenseChecker); err != nil {
-			var apiStatus apierrors.APIStatus
-			if errors.As(err, &apiStatus) {
-				return commonwebhook.DenyResponseFromStatus(apiStatus.Status())
-			}
-			return admission.Denied(err.Error())
-		}
-	}
+func (v *validator) ValidateUpdate(ctx context.Context, _, newObj *autoopsv1alpha1.AutoOpsAgentPolicy) (admission.Warnings, error) {
+	return v.validate(ctx, newObj)
+}
 
-	return admission.Allowed("")
+func (v *validator) ValidateDelete(_ context.Context, _ *autoopsv1alpha1.AutoOpsAgentPolicy) (admission.Warnings, error) {
+	return nil, nil
 }
 
 // Validate runs all validations against the policy, including license-aware checks.

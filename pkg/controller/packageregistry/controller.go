@@ -257,7 +257,7 @@ func (r *ReconcilePackageRegistry) validate(ctx context.Context, epr eprv1alpha1
 	span, vctx := apm.StartSpan(ctx, "validate", tracing.SpanTypeApp)
 	defer span.End()
 
-	if _, err := epr.ValidateCreate(); err != nil {
+	if _, err := eprv1alpha1.Validate(&epr, nil); err != nil {
 		ulog.FromContext(ctx).Error(err, "Validation failed")
 		k8s.MaybeEmitErrorEvent(r.recorder, err, &epr, events.EventReasonValidation, err.Error())
 		return tracing.CaptureError(vctx, err)

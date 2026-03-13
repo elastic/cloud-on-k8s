@@ -22,7 +22,6 @@ import (
 	"go.elastic.co/apm/v2"
 	"go.uber.org/automaxprocs/maxprocs"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
-	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/client-go/discovery"
@@ -77,7 +76,6 @@ import (
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/tracing/apmclientgo"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/version"
 	commonwebhook "github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/webhook"
-	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/webhook/admission"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch"
 	esclient "github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/client"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/settings"
@@ -1052,33 +1050,18 @@ func setupWebhook(
 
 	checker := commonlicense.NewLicenseChecker(mgr.GetClient(), params.OperatorNamespace)
 	// setup webhooks for supported types
-	webhookObjects := []interface {
-		runtime.Object
-		admission.Validator
-		WebhookPath() string
-	}{
-		&agentv1alpha1.Agent{},
-		&apmv1.ApmServer{},
-		&apmv1beta1.ApmServer{},
-		&beatv1beta1.Beat{},
-		&entv1.EnterpriseSearch{},
-		&entv1beta1.EnterpriseSearch{},
-		&esv1beta1.Elasticsearch{},
-		&kbv1.Kibana{},
-		&kbv1beta1.Kibana{},
-		&emsv1alpha1.ElasticMapsServer{},
-		&eprv1alpha1.PackageRegistry{},
-		&policyv1alpha1.StackConfigPolicy{},
-	}
-	for _, obj := range webhookObjects {
-		commonwebhook.SetupValidatingWebhookWithConfig(&commonwebhook.Config{
-			Manager:          mgr,
-			WebhookPath:      obj.WebhookPath(),
-			ManagedNamespace: managedNamespaces,
-			Validator:        obj,
-			LicenseChecker:   checker,
-		})
-	}
+	commonwebhook.RegisterResourceWebhook(mgr, agentv1alpha1.WebhookPath, checker, managedNamespaces, agentv1alpha1.Validate)
+	commonwebhook.RegisterResourceWebhook(mgr, apmv1.WebhookPath, checker, managedNamespaces, apmv1.Validate)
+	commonwebhook.RegisterResourceWebhook(mgr, apmv1beta1.WebhookPath, checker, managedNamespaces, apmv1beta1.Validate)
+	commonwebhook.RegisterResourceWebhook(mgr, beatv1beta1.WebhookPath, checker, managedNamespaces, beatv1beta1.Validate)
+	commonwebhook.RegisterResourceWebhook(mgr, entv1.WebhookPath, checker, managedNamespaces, entv1.Validate)
+	commonwebhook.RegisterResourceWebhook(mgr, entv1beta1.WebhookPath, checker, managedNamespaces, entv1beta1.Validate)
+	commonwebhook.RegisterResourceWebhook(mgr, esv1beta1.WebhookPath, checker, managedNamespaces, esv1beta1.Validate)
+	commonwebhook.RegisterResourceWebhook(mgr, kbv1.WebhookPath, checker, managedNamespaces, kbv1.Validate)
+	commonwebhook.RegisterResourceWebhook(mgr, kbv1beta1.WebhookPath, checker, managedNamespaces, kbv1beta1.Validate)
+	commonwebhook.RegisterResourceWebhook(mgr, emsv1alpha1.WebhookPath, checker, managedNamespaces, emsv1alpha1.Validate)
+	commonwebhook.RegisterResourceWebhook(mgr, eprv1alpha1.WebhookPath, checker, managedNamespaces, eprv1alpha1.Validate)
+	commonwebhook.RegisterResourceWebhook(mgr, policyv1alpha1.WebhookPath, checker, managedNamespaces, policyv1alpha1.Validate)
 
 	// Logstash, Elasticsearch, ElasticsearchAutoscaling, and AutoOps validating webhooks are wired up
 	// differently in order to access the k8s client or license checker directly.

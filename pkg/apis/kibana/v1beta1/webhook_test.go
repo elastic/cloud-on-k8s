@@ -170,9 +170,9 @@ func TestWebhook(t *testing.T) {
 		},
 	}
 
-	validator := &kbv1beta1.Kibana{}
+	handler := test.NewValidationWebhookHandler(kbv1beta1.Validate)
 	gvk := metav1.GroupVersionKind{Group: kbv1beta1.GroupVersion.Group, Version: kbv1beta1.GroupVersion.Version, Kind: "Kibana"}
-	test.RunValidationWebhookTests(t, gvk, validator, testCases...)
+	test.RunValidationWebhookTests(t, gvk, handler, testCases...)
 }
 
 func mkKibana(uid string) *kbv1beta1.Kibana {

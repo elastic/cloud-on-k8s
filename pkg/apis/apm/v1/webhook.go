@@ -5,23 +5,21 @@
 package v1
 
 import (
-	"errors"
 	"fmt"
 
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
-	runtime "k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/util/validation/field"
+	"sigs.k8s.io/controller-runtime/pkg/webhook/admission"
 
 	commonv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/common/v1"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/version"
-	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/webhook/admission"
 	ulog "github.com/elastic/cloud-on-k8s/v3/pkg/utils/log"
 )
 
 const (
-	// webhookPath is the HTTP path for the APM Server validating webhook.
-	webhookPath = "/validate-apm-k8s-elastic-co-v1-apmserver"
+	// WebhookPath is the HTTP path for the APM Server validating webhook.
+	WebhookPath = "/validate-apm-k8s-elastic-co-v1-apmserver"
 )
 
 var (
@@ -46,37 +44,9 @@ var (
 
 // +kubebuilder:webhook:path=/validate-apm-k8s-elastic-co-v1-apmserver,mutating=false,failurePolicy=ignore,groups=apm.k8s.elastic.co,resources=apmservers,verbs=create;update,versions=v1,name=elastic-apm-validation-v1.k8s.elastic.co,sideEffects=None,admissionReviewVersions=v1,matchPolicy=Exact
 
-var _ admission.Validator = (*ApmServer)(nil)
-
-// ValidateCreate is called by the validating webhook to validate the create operation.
-// Satisfies the webhook.Validator interface.
-func (as *ApmServer) ValidateCreate() (admission.Warnings, error) {
-	validationLog.V(1).Info("Validate create", "name", as.Name)
-	return as.validate(nil)
-}
-
-// ValidateDelete is called by the validating webhook to validate the delete operation.
-// Satisfies the webhook.Validator interface.
-func (as *ApmServer) ValidateDelete() (admission.Warnings, error) {
-	validationLog.V(1).Info("Validate delete", "name", as.Name)
-	return nil, nil
-}
-
-// ValidateUpdate is called by the validating webhook to validate the update operation.
-// Satisfies the webhook.Validator interface.
-func (as *ApmServer) ValidateUpdate(old runtime.Object) (admission.Warnings, error) {
-	validationLog.V(1).Info("Validate update", "name", as.Name)
-	oldObj, ok := old.(*ApmServer)
-	if !ok {
-		return nil, errors.New("cannot cast old object to ApmServer type")
-	}
-
-	return as.validate(oldObj)
-}
-
-// WebhookPath returns the HTTP path used by the validating webhook.
-func (as *ApmServer) WebhookPath() string {
-	return webhookPath
+// Validate is called by the validating webhook to validate the create or update operation.
+func Validate(as *ApmServer, old *ApmServer) (admission.Warnings, error) {
+	return as.validate(old)
 }
 
 func (as *ApmServer) validate(old *ApmServer) (admission.Warnings, error) {

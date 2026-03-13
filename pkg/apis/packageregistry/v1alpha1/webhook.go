@@ -6,19 +6,18 @@ package v1alpha1
 
 import (
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
-	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/util/validation/field"
+	"sigs.k8s.io/controller-runtime/pkg/webhook/admission"
 
 	commonv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/common/v1"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/version"
-	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/webhook/admission"
 	ulog "github.com/elastic/cloud-on-k8s/v3/pkg/utils/log"
 )
 
 const (
-	// webhookPath is the HTTP path for the Elastic Package Registry validating webhook.
-	webhookPath = "/validate-epr-k8s-elastic-co-v1alpha1-packageregistry"
+	// WebhookPath is the HTTP path for the Elastic Package Registry validating webhook.
+	WebhookPath = "/validate-epr-k8s-elastic-co-v1alpha1-packageregistry"
 )
 
 var (
@@ -34,32 +33,10 @@ var (
 
 // +kubebuilder:webhook:path=/validate-epr-k8s-elastic-co-v1alpha1-packageregistry,mutating=false,failurePolicy=ignore,groups=packageregistry.k8s.elastic.co,resources=packageregistry,verbs=create;update,versions=v1alpha1,name=elastic-epr-validation-v1alpha1.k8s.elastic.co,sideEffects=None,admissionReviewVersions=v1,matchPolicy=Exact
 
-var _ admission.Validator = (*PackageRegistry)(nil)
-
-// ValidateCreate is called by the validating webhook to validate the create operation.
-// Satisfies the webhook.Validator interface.
-func (m *PackageRegistry) ValidateCreate() (admission.Warnings, error) {
-	validationLog.V(1).Info("Validate create", "name", m.Name)
+// Validate is called to validate a PackageRegistry resource.
+func Validate(m *PackageRegistry, old *PackageRegistry) (admission.Warnings, error) {
+	validationLog.V(1).Info("Validate", "name", m.Name)
 	return m.validate()
-}
-
-// ValidateDelete is called by the validating webhook to validate the delete operation.
-// Satisfies the webhook.Validator interface.
-func (m *PackageRegistry) ValidateDelete() (admission.Warnings, error) {
-	validationLog.V(1).Info("Validate delete", "name", m.Name)
-	return nil, nil
-}
-
-// ValidateUpdate is called by the validating webhook to validate the update operation.
-// Satisfies the webhook.Validator interface.
-func (m *PackageRegistry) ValidateUpdate(_ runtime.Object) (admission.Warnings, error) {
-	validationLog.V(1).Info("Validate update", "name", m.Name)
-	return m.validate()
-}
-
-// WebhookPath returns the HTTP path used by the validating webhook.
-func (m *PackageRegistry) WebhookPath() string {
-	return webhookPath
 }
 
 func (m *PackageRegistry) validate() (admission.Warnings, error) {

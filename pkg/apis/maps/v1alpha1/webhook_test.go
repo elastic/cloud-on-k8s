@@ -166,9 +166,9 @@ func TestWebhook(t *testing.T) {
 		},
 	}
 
-	validator := &emsv1alpha1.ElasticMapsServer{}
+	handler := test.NewValidationWebhookHandler(emsv1alpha1.Validate)
 	gvk := metav1.GroupVersionKind{Group: emsv1alpha1.GroupVersion.Group, Version: emsv1alpha1.GroupVersion.Version, Kind: emsv1alpha1.Kind}
-	test.RunValidationWebhookTests(t, gvk, validator, testCases...)
+	test.RunValidationWebhookTests(t, gvk, handler, testCases...)
 }
 
 func mkMaps(uid string) *emsv1alpha1.ElasticMapsServer {

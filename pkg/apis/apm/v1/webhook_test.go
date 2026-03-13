@@ -234,9 +234,9 @@ func TestWebhook(t *testing.T) {
 		},
 	}
 
-	validator := &apmv1.ApmServer{}
+	handler := test.NewValidationWebhookHandler(apmv1.Validate)
 	gvk := metav1.GroupVersionKind{Group: apmv1.GroupVersion.Group, Version: apmv1.GroupVersion.Version, Kind: apmv1.Kind}
-	test.RunValidationWebhookTests(t, gvk, validator, testCases...)
+	test.RunValidationWebhookTests(t, gvk, handler, testCases...)
 }
 
 func mkApmServer(uid string) *apmv1.ApmServer {

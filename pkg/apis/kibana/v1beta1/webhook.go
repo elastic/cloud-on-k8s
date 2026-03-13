@@ -5,22 +5,19 @@
 package v1beta1
 
 import (
-	"errors"
-
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
-	runtime "k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/util/validation/field"
+	"sigs.k8s.io/controller-runtime/pkg/webhook/admission"
 
 	commonv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/common/v1"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/version"
-	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/webhook/admission"
 	ulog "github.com/elastic/cloud-on-k8s/v3/pkg/utils/log"
 )
 
 const (
-	// webhookPath is the HTTP path for the Kibana validating webhook.
-	webhookPath = "/validate-kibana-k8s-elastic-co-v1beta1-kibana"
+	// WebhookPath is the HTTP path for the Kibana validating webhook.
+	WebhookPath = "/validate-kibana-k8s-elastic-co-v1beta1-kibana"
 )
 
 var (
@@ -40,37 +37,9 @@ var (
 
 // +kubebuilder:webhook:path=/validate-kibana-k8s-elastic-co-v1beta1-kibana,mutating=false,failurePolicy=ignore,groups=kibana.k8s.elastic.co,resources=kibanas,verbs=create;update,versions=v1beta1,name=elastic-kb-validation-v1beta1.k8s.elastic.co,sideEffects=None,admissionReviewVersions=v1,matchPolicy=Exact
 
-var _ admission.Validator = (*Kibana)(nil)
-
-// ValidateCreate is called by the validating webhook to validate the create operation.
-// Satisfies the webhook.Validator interface.
-func (k *Kibana) ValidateCreate() (admission.Warnings, error) {
-	validationLog.V(1).Info("Validate create", "name", k.Name)
-	return k.validate(nil)
-}
-
-// ValidateDelete is called by the validating webhook to validate the delete operation.
-// Satisfies the webhook.Validator interface.
-func (k *Kibana) ValidateDelete() (admission.Warnings, error) {
-	validationLog.V(1).Info("Validate delete", "name", k.Name)
-	return nil, nil
-}
-
-// ValidateUpdate is called by the validating webhook to validate the update operation.
-// Satisfies the webhook.Validator interface.
-func (k *Kibana) ValidateUpdate(old runtime.Object) (admission.Warnings, error) {
-	validationLog.V(1).Info("Validate update", "name", k.Name)
-	oldObj, ok := old.(*Kibana)
-	if !ok {
-		return nil, errors.New("cannot cast old object to Kibana type")
-	}
-
-	return k.validate(oldObj)
-}
-
-// WebhookPath returns the HTTP path used by the validating webhook.
-func (k *Kibana) WebhookPath() string {
-	return webhookPath
+// Validate validates a Kibana resource, with an optional old object for update validation.
+func Validate(k *Kibana, old *Kibana) (admission.Warnings, error) {
+	return k.validate(old)
 }
 
 func (k *Kibana) validate(old *Kibana) (admission.Warnings, error) {

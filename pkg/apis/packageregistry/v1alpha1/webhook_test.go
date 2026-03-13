@@ -113,9 +113,9 @@ func TestWebhook(t *testing.T) {
 		},
 	}
 
-	validator := &eprv1alpha1.PackageRegistry{}
+	handler := test.NewValidationWebhookHandler(eprv1alpha1.Validate)
 	gvk := metav1.GroupVersionKind{Group: eprv1alpha1.GroupVersion.Group, Version: eprv1alpha1.GroupVersion.Version, Kind: eprv1alpha1.Kind}
-	test.RunValidationWebhookTests(t, gvk, validator, testCases...)
+	test.RunValidationWebhookTests(t, gvk, handler, testCases...)
 }
 
 func mkEPR(uid string) *eprv1alpha1.PackageRegistry {

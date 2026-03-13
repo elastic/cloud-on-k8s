@@ -5,22 +5,19 @@
 package v1
 
 import (
-	"errors"
-
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
-	runtime "k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/util/validation/field"
+	"sigs.k8s.io/controller-runtime/pkg/webhook/admission"
 
 	commonv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/common/v1"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/version"
-	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/webhook/admission"
 	ulog "github.com/elastic/cloud-on-k8s/v3/pkg/utils/log"
 )
 
 const (
-	// webhookPath is the HTTP path for the Enterprise Search validating webhook.
-	webhookPath = "/validate-enterprisesearch-k8s-elastic-co-v1-enterprisesearch"
+	// WebhookPath is the HTTP path for the Enterprise Search validating webhook.
+	WebhookPath = "/validate-enterprisesearch-k8s-elastic-co-v1-enterprisesearch"
 )
 
 var (
@@ -41,37 +38,9 @@ var (
 
 // +kubebuilder:webhook:path=/validate-enterprisesearch-k8s-elastic-co-v1-enterprisesearch,mutating=false,failurePolicy=ignore,groups=enterprisesearch.k8s.elastic.co,resources=enterprisesearches,verbs=create;update,versions=v1,name=elastic-ent-validation-v1.k8s.elastic.co,sideEffects=None,admissionReviewVersions=v1,matchPolicy=Exact
 
-var _ admission.Validator = (*EnterpriseSearch)(nil)
-
-// ValidateCreate is called by the validating webhook to validate the create operation.
-// Satisfies the webhook.Validator interface.
-func (ent *EnterpriseSearch) ValidateCreate() (admission.Warnings, error) {
-	validationLog.V(1).Info("Validate create", "name", ent.Name)
-	return ent.validate(nil)
-}
-
-// ValidateDelete is called by the validating webhook to validate the delete operation.
-// Satisfies the webhook.Validator interface.
-func (ent *EnterpriseSearch) ValidateDelete() (admission.Warnings, error) {
-	validationLog.V(1).Info("Validate delete", "name", ent.Name)
-	return nil, nil
-}
-
-// ValidateUpdate is called by the validating webhook to validate the update operation.
-// Satisfies the webhook.Validator interface.
-func (ent *EnterpriseSearch) ValidateUpdate(old runtime.Object) (admission.Warnings, error) {
-	validationLog.V(1).Info("Validate update", "name", ent.Name)
-	oldObj, ok := old.(*EnterpriseSearch)
-	if !ok {
-		return nil, errors.New("cannot cast old object to EnterpriseSearch type")
-	}
-
-	return ent.validate(oldObj)
-}
-
-// WebhookPath returns the HTTP path used by the validating webhook.
-func (ent *EnterpriseSearch) WebhookPath() string {
-	return webhookPath
+// Validate validates an EnterpriseSearch resource, taking the old object for update validation.
+func Validate(ent *EnterpriseSearch, old *EnterpriseSearch) (admission.Warnings, error) {
+	return ent.validate(old)
 }
 
 func (ent *EnterpriseSearch) validate(old *EnterpriseSearch) (admission.Warnings, error) {

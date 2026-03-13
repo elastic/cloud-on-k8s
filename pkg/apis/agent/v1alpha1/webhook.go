@@ -5,21 +5,19 @@
 package v1alpha1
 
 import (
-	"errors"
 	"fmt"
 
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
-	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/util/validation/field"
+	"sigs.k8s.io/controller-runtime/pkg/webhook/admission"
 
-	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/webhook/admission"
 	ulog "github.com/elastic/cloud-on-k8s/v3/pkg/utils/log"
 )
 
 const (
-	// webhookPath is the HTTP path for the Elastic Agent validating webhook.
-	webhookPath = "/validate-agent-k8s-elastic-co-v1alpha1-agent"
+	// WebhookPath is the HTTP path for the Elastic Agent validating webhook.
+	WebhookPath = "/validate-agent-k8s-elastic-co-v1alpha1-agent"
 
 	MissingPolicyIDMessage = "spec.PolicyID is empty, spec.PolicyID will become mandatory in a future release"
 )
@@ -31,7 +29,10 @@ var (
 
 // +kubebuilder:webhook:path=/validate-agent-k8s-elastic-co-v1alpha1-agent,mutating=false,failurePolicy=ignore,groups=agent.k8s.elastic.co,resources=agents,verbs=create;update,versions=v1alpha1,name=elastic-agent-validation-v1alpha1.k8s.elastic.co,sideEffects=None,admissionReviewVersions=v1,matchPolicy=Exact
 
-var _ admission.Validator = (*Agent)(nil)
+// Validate validates an Agent resource, given an optional old Agent for update checks.
+func Validate(a *Agent, old *Agent) (admission.Warnings, error) {
+	return a.validate(old)
+}
 
 func (a *Agent) warnings() []string {
 	if a == nil {
@@ -41,37 +42,6 @@ func (a *Agent) warnings() []string {
 		return []string{fmt.Sprintf("%s %s/%s: %s", Kind, a.Namespace, a.Name, MissingPolicyIDMessage)}
 	}
 	return nil
-}
-
-// ValidateCreate is called by the validating webhook to validate the create operation.
-// Satisfies the webhook.Validator interface.
-func (a *Agent) ValidateCreate() (admission.Warnings, error) {
-	validationLog.V(1).Info("Validate create", "name", a.Name)
-	return a.validate(nil)
-}
-
-// ValidateDelete is called by the validating webhook to validate the delete operation.
-// Satisfies the webhook.Validator interface.
-func (a *Agent) ValidateDelete() (admission.Warnings, error) {
-	validationLog.V(1).Info("Validate delete", "name", a.Name)
-	return nil, nil
-}
-
-// ValidateUpdate is called by the validating webhook to validate the update operation.
-// Satisfies the webhook.Validator interface.
-func (a *Agent) ValidateUpdate(old runtime.Object) (admission.Warnings, error) {
-	validationLog.V(1).Info("Validate update", "name", a.Name)
-	oldObj, ok := old.(*Agent)
-	if !ok {
-		return nil, errors.New("cannot cast old object to Agent type")
-	}
-
-	return a.validate(oldObj)
-}
-
-// WebhookPath returns the HTTP path used by the validating webhook.
-func (a *Agent) WebhookPath() string {
-	return webhookPath
 }
 
 func (a *Agent) validate(old *Agent) (admission.Warnings, error) {
