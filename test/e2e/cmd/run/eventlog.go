@@ -39,7 +39,7 @@ type eventLogger struct {
 }
 
 func newEventLogger(client *kubernetes.Clientset, testCtx test.Context, logFilePath string) *eventLogger {
-	eventWatch := cache.NewListWatchFromClient(client.CoreV1().RESTClient(), "events", metav1.NamespaceAll, fields.Everything())
+	eventWatch := cache.NewListWatchFromClient(client.EventsV1().RESTClient(), "events", metav1.NamespaceAll, fields.Everything())
 	el := &eventLogger{
 		eventInformer:         cache.NewSharedIndexInformer(eventWatch, &eventsv1.Event{}, kubePollInterval, cache.Indexers{}),
 		eventQueue:            workqueue.NewTypedRateLimitingQueueWithConfig[string](workqueue.DefaultTypedControllerRateLimiter[string](), workqueue.TypedRateLimitingQueueConfig[string]{Name: "eck_e2e_events"}),
