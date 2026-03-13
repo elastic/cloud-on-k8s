@@ -48,9 +48,17 @@ func GetActualPodsRestartTriggerAnnotationForCluster(c k8s.Client, es esv1.Elast
 		return "", err
 	}
 
+	return GetActualPodsRestartTriggerAnnotationFromPods(pods), nil
+}
+
+// GetActualPodsRestartTriggerAnnotationFromPods returns the restart-trigger annotation value from the given
+// Elasticsearch pods. When pods have different values (e.g. during a partially completed rolling restart),
+// it returns the lexicographically largest one so that reconciliation consistently picks a single value
+// and avoids unnecessary re-triggering. Returns an empty string if no pod has the annotation.
+func GetActualPodsRestartTriggerAnnotationFromPods(elasticsearchPods []corev1.Pod) string {
 	var annotation string
 
-	for _, p := range pods {
+	for _, p := range elasticsearchPods {
 		v := p.Annotations[esv1.RestartTriggerAnnotation]
 		// If pods have different restart-trigger values (for example, during a partially completed restart that was interrupted,
 		// and then the annotation was removed), different reconciliation loops could pick different values.
@@ -61,7 +69,7 @@ func GetActualPodsRestartTriggerAnnotationForCluster(c k8s.Client, es esv1.Elast
 		}
 	}
 
-	return annotation, nil
+	return annotation
 }
 
 // GetActualMastersForCluster returns the list of existing master-eligible pods for the cluster.

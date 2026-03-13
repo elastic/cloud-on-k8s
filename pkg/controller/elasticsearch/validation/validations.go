@@ -19,6 +19,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/license"
 	stackmon "github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/stackmon/validations"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/version"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/sset"
 	esversion "github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/version"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/k8s"
 	ulog "github.com/elastic/cloud-on-k8s/v3/pkg/utils/log"
@@ -45,6 +46,8 @@ const (
 	notAllowedNodesLabelMsg                  = "Node label not in the exposed node labels list"
 	unsupportedClientAuthenticationMsg       = "Mandatory client authentication is not supported"
 	autoscalingAnnotationUnsupportedErrMsg   = "autoscaling annotation is no longer supported"
+	restartTriggerRemovedWarningMsg          = "Removing the restart-trigger annotation does not cancel an in-progress rolling restart; pods not yet restarted will still be restarted with the previous trigger value."
+	restartTriggerUnchangedWarningMsg        = "Restart-trigger value unchanged; no new rolling restart will be triggered if pods already have this value."
 )
 
 type validation func(esv1.Elasticsearch) field.ErrorList
@@ -548,4 +551,48 @@ func validLicenseLevel(ctx context.Context, es esv1.Elasticsearch, checker licen
 		errs = append(errs, field.Invalid(field.NewPath("metadata").Child("annotations").Child(license.Annotation), "enterprise", "Enterprise license required but ECK operator is running on a Basic license"))
 	}
 	return errs
+}
+
+func validateRestartTriggerWarnings(ctx context.Context, k8sClient k8s.Client, oldCR, newCR esv1.Elasticsearch) string {
+	oldRestartTrigger := oldCR.Annotations[esv1.RestartTriggerAnnotation]
+	newRestartTrigger := newCR.Annotations[esv1.RestartTriggerAnnotation]
+
+	// No warning check is needed when:
+	//   1. No change: old and new values are the same.
+	//   2. Transition: both are set but different (user is explicitly changing the trigger);
+	//      a new rolling restart will be triggered as expected.
+	if oldRestartTrigger == newRestartTrigger || (newRestartTrigger != "" && oldRestartTrigger != "") {
+		return ""
+	}
+
+	log := ulog.FromContext(ctx)
+
+	pods, err := sset.GetActualPodsForCluster(k8sClient, oldCR)
+	if err != nil {
+		log.Error(err, "while fetching pods for restart trigger validation")
+		return ""
+	}
+
+	// check if restart is in already progress
+	restartInProgress := false
+	for _, p := range pods {
+		if p.Annotations[esv1.RestartTriggerAnnotation] != oldRestartTrigger {
+			restartInProgress = true
+		}
+	}
+
+	// Warning 1: user has removed the restart annotation (while rolling restart in-progress);
+	// Restart will not be stopped.
+	if newRestartTrigger == "" && restartInProgress {
+		return restartTriggerRemovedWarningMsg
+	}
+
+	// Warning 2: user is setting the annotation (that was previously unset) to a value that pods already
+	// have from previous restart trigger that was removed.
+	// No new rolling restart will be triggered.
+	if oldRestartTrigger == "" && newRestartTrigger == sset.GetActualPodsRestartTriggerAnnotationFromPods(pods) {
+		return restartTriggerUnchangedWarningMsg
+	}
+
+	return ""
 }

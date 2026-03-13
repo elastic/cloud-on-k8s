@@ -5,6 +5,7 @@
 package validation
 
 import (
+	"context"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -14,6 +15,9 @@ import (
 
 	commonv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/common/v1"
 	esv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/elasticsearch/v1"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/label"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/k8s"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 func Test_checkNodeSetNameUniqueness(t *testing.T) {
@@ -1169,6 +1173,145 @@ func Test_validAssociations(t *testing.T) {
 			if tt.expectErrors != actualErrors {
 				t.Errorf("failed validAssociations(). Name: %v, actual %v, wanted: %v", tt.name, actual, tt.expectErrors)
 			}
+		})
+	}
+}
+
+func Test_validateRestartTriggerWarnings(t *testing.T) {
+	const clusterName = "foo"
+	const clusterNamespace = "default"
+
+	esCR := func(triggerValue string) esv1.Elasticsearch {
+		cr := esv1.Elasticsearch{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      clusterName,
+				Namespace: clusterNamespace,
+			},
+		}
+		if triggerValue != "" {
+			cr.Annotations = map[string]string{
+				esv1.RestartTriggerAnnotation: triggerValue,
+			}
+		}
+		return cr
+	}
+
+	pod := func(name, triggerValue string) *corev1.Pod {
+		p := &corev1.Pod{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      name,
+				Namespace: clusterNamespace,
+				Labels: map[string]string{
+					label.ClusterNameLabelName: clusterName,
+				},
+			},
+		}
+		if triggerValue != "" {
+			p.Annotations = map[string]string{
+				esv1.RestartTriggerAnnotation: triggerValue,
+			}
+		}
+		return p
+	}
+
+	tests := []struct {
+		name        string
+		oldCR       esv1.Elasticsearch
+		newCR       esv1.Elasticsearch
+		pods        []client.Object
+		wantWarning string
+	}{
+		{
+			name:        "no annotation on old or new: no warning",
+			oldCR:       esCR(""),
+			newCR:       esCR(""),
+			wantWarning: "",
+		},
+		{
+			name:        "annotation unchanged (same value): no warning",
+			oldCR:       esCR("v1"),
+			newCR:       esCR("v1"),
+			wantWarning: "",
+		},
+		{
+			name:        "annotation changed to a new value (both set): no warning",
+			oldCR:       esCR("v1"),
+			newCR:       esCR("v2"),
+			wantWarning: "",
+		},
+		{
+			name:        "annotation removed, no restart in progress: no warning",
+			oldCR:       esCR("v1"),
+			newCR:       esCR(""),
+			pods:        []client.Object{pod("pod-0", "v1"), pod("pod-1", "v1")},
+			wantWarning: "",
+		},
+		{
+			name:        "annotation removed while restart in progress: removal warning",
+			oldCR:       esCR("v1"),
+			newCR:       esCR(""),
+			pods:        []client.Object{pod("pod-0", "v1"), pod("pod-1", "old-value")},
+			wantWarning: restartTriggerRemovedWarningMsg,
+		},
+		{
+			name:        "annotation removed, no pods have the old value: restart in progress, removal warning",
+			oldCR:       esCR("v1"),
+			newCR:       esCR(""),
+			pods:        []client.Object{pod("pod-0", "v0"), pod("pod-1", "v0")},
+			wantWarning: restartTriggerRemovedWarningMsg,
+		},
+		{
+			name:        "annotation set for the first time, pods have no annotation: no warning",
+			oldCR:       esCR(""),
+			newCR:       esCR("v1"),
+			pods:        []client.Object{pod("pod-0", ""), pod("pod-1", "")},
+			wantWarning: "",
+		},
+		{
+			name:        "annotation re-added with value pods already have: unchanged warning",
+			oldCR:       esCR(""),
+			newCR:       esCR("v1"),
+			pods:        []client.Object{pod("pod-0", "v1"), pod("pod-1", "v1")},
+			wantWarning: restartTriggerUnchangedWarningMsg,
+		},
+		{
+			name:        "annotation set from empty to value different from pods: no warning",
+			oldCR:       esCR(""),
+			newCR:       esCR("v2"),
+			pods:        []client.Object{pod("pod-0", "v1"), pod("pod-1", "v1")},
+			wantWarning: "",
+		},
+		{
+			name:        "annotation re-added matches lexicographically largest pod value: unchanged warning",
+			oldCR:       esCR(""),
+			newCR:       esCR("v2"),
+			pods:        []client.Object{pod("pod-0", "v1"), pod("pod-1", "v2")},
+			wantWarning: restartTriggerUnchangedWarningMsg,
+		},
+		{
+			name:        "annotation removed, no pods in cluster: no warning",
+			oldCR:       esCR("v1"),
+			newCR:       esCR(""),
+			pods:        nil,
+			wantWarning: "",
+		},
+		{
+			name:        "annotation set from empty, no pods in cluster: no warning",
+			oldCR:       esCR(""),
+			newCR:       esCR("v1"),
+			pods:        nil,
+			wantWarning: "",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			objs := make([]client.Object, len(tt.pods))
+			copy(objs, tt.pods)
+			client := k8s.NewFakeClient(objs...)
+
+			got := validateRestartTriggerWarnings(context.Background(), client, tt.oldCR, tt.newCR)
+			assert.Equal(t, tt.wantWarning, got)
 		})
 	}
 }

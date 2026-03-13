@@ -18,7 +18,7 @@ Set these annotations on the Elasticsearch resource:
 | `eck.k8s.elastic.co/restart-trigger` | **Required to trigger.** Set or change this value (for example to a timestamp) to start a rolling restart. The value is propagated to pod annotations and is visible in Elasticsearch's node shutdown API as the shutdown reason. |
 | `eck.k8s.elastic.co/restart-allocation-delay` | Optional. Duration string (for example `"5m"`, `"20m"`) used as `allocation_delay` for the node shutdown API during rolling restarts and upgrades. If unset, Elasticsearch's default (for example 5m) is used. Invalid values or negative values, are logged and ignored. |
 
-To trigger another rolling restart later, update the `restart-trigger` value (for example to a new timestamp). Removing the annotation does **not** trigger a new restart; the operator retains the last trigger value on the pod template.
+To trigger another rolling restart later, update the `restart-trigger` value (for example to a new timestamp). Removing the annotation does **not** trigger a new restart; the operator retains the last trigger value on the pod template. Removing the annotation also does **not** cancel an in-progress rolling restart—pods not yet restarted will still be restarted with the previous trigger value. The operator may emit an admission webhook warning (non-blocking) when you remove the annotation. Re-applying the same `restart-trigger` value (for example after removing it and setting it again) may not trigger a new rolling restart if all pods already have that value; the operator may emit an admission webhook warning when the value is unchanged.
 
 ## Example
 
