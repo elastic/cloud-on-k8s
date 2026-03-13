@@ -14,6 +14,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	"github.com/elastic/cloud-on-k8s/v3/test/e2e/test"
+	"github.com/elastic/cloud-on-k8s/v3/test/e2e/test/bucket"
 )
 
 // Annotation keys set by the deployer's bucket managers.
@@ -21,6 +22,7 @@ import (
 const (
 	bucketAnnotationProvider       = "eck-deployer/provider"
 	bucketAnnotationBucket         = "eck-deployer/bucket"
+	bucketAnnotationRegion         = "eck-deployer/region"
 	bucketAnnotationStorageAccount = "eck-deployer/storage-account"
 	bucketAnnotationContainer      = "eck-deployer/container"
 )
@@ -61,7 +63,8 @@ func (h *helper) initStatelessConfig() error {
 	return nil
 }
 
-// copyStatelessBucketSecret copies the bucket credentials Secret to all managed namespaces.
+// copyStatelessBucketSecret copies the bucket credentials Secret to all managed namespaces
+// and registers cleanup to delete the test run's bucket path at the end of the session.
 func (h *helper) copyStatelessBucketSecret() error {
 	if h.testContext.Stateless == nil {
 		return nil
@@ -111,6 +114,10 @@ func (h *helper) copyStatelessBucketSecret() error {
 		}
 	}
 
+	// Register cleanup to delete the test run's bucket path at end of session.
+	// The path format is {DatePrefix}/{TestRun} which includes all test data for this run.
+	h.registerBucketCleanup(sourceSecret)
+
 	return nil
 }
 
@@ -131,8 +138,13 @@ func extractBucketConfig(annotations map[string]string, cfg *test.StatelessConfi
 		if bucket == "" {
 			return fmt.Errorf("missing %s annotation for S3 provider", bucketAnnotationBucket)
 		}
+		region := annotations[bucketAnnotationRegion]
+		if region == "" {
+			return fmt.Errorf("missing %s annotation for S3 provider", bucketAnnotationRegion)
+		}
 		cfg.Provider = provider
 		cfg.Bucket = bucket
+		cfg.Region = region
 	case "azure":
 		storageAccount := annotations[bucketAnnotationStorageAccount]
 		container := annotations[bucketAnnotationContainer]
@@ -149,4 +161,40 @@ func extractBucketConfig(annotations map[string]string, cfg *test.StatelessConfi
 		return fmt.Errorf("unknown provider %q in %s annotation", provider, bucketAnnotationProvider)
 	}
 	return nil
+}
+
+// registerBucketCleanup registers a cleanup function to delete the test run's bucket path.
+// This runs at end of session and deletes all objects under {DatePrefix}/{TestRun}.
+func (h *helper) registerBucketCleanup(secret *corev1.Secret) {
+	cfg := h.testContext.Stateless
+	basePath := fmt.Sprintf("%s/%s", h.testContext.DatePrefix, h.testContext.TestRun)
+
+	log.Info("Registering bucket cleanup",
+		"provider", cfg.Provider,
+		"bucket", cfg.Bucket,
+		"path", basePath)
+
+	h.addCleanupFunc(func() {
+		log.Info("Cleaning up bucket path",
+			"provider", cfg.Provider,
+			"bucket", cfg.Bucket,
+			"path", basePath)
+
+		creds, err := bucket.CredentialsFromSecretData(
+			cfg.Provider,
+			cfg.Bucket,
+			cfg.Region,
+			secret.Data,
+		)
+		if err != nil {
+			log.Error(err, "Failed to extract bucket credentials for cleanup")
+			return
+		}
+
+		if err := bucket.DeletePath(context.Background(), creds, basePath); err != nil {
+			log.Error(err, "Failed to clean up bucket path",
+				"bucket", cfg.Bucket,
+				"path", basePath)
+		}
+	})
 }

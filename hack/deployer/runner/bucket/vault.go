@@ -14,10 +14,10 @@ import (
 // Vault paths for pre-provisioned stateless bucket credentials.
 // Uses flat naming convention: stateless-bucket-{provider}
 const (
-	StatelessGCSVaultPath   = "stateless-bucket-gcs"       // GCS bucket for GKE
-	StatelessS3VaultPath    = "stateless-bucket-s3"        // S3 bucket for EKS
-	StatelessS3ARMVaultPath = "stateless-bucket-s3-arm"    // S3 bucket for EKS ARM (different region)
-	StatelessAzureVaultPath = "stateless-bucket-azure"     // Azure Blob for AKS
+	StatelessGCSVaultPath   = "stateless-bucket-gcs"    // GCS bucket for GKE
+	StatelessS3VaultPath    = "stateless-bucket-s3"     // S3 bucket for EKS
+	StatelessS3ARMVaultPath = "stateless-bucket-s3-arm" // S3 bucket for EKS ARM (different region)
+	StatelessAzureVaultPath = "stateless-bucket-azure"  // Azure Blob for AKS
 
 	// StatelessSecretName is the name of the K8s Secret containing bucket credentials.
 	StatelessSecretName = "elasticsearch-object-store"

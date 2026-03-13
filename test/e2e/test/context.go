@@ -128,7 +128,7 @@ type Context struct {
 	ArtefactsDir          string            `json:"artefacts_dir"`
 	// DatePrefix is the date prefix for bucket paths (YYYYMMDD format).
 	// Set once at context initialization to ensure consistency across a test run.
-	DatePrefix            string            `json:"date_prefix"`
+	DatePrefix string `json:"date_prefix"`
 	// Stateless holds configuration for stateless Elasticsearch tests.
 	// If nil, stateless mode is disabled.
 	Stateless *StatelessConfig `json:"stateless,omitempty"`
@@ -140,6 +140,8 @@ type StatelessConfig struct {
 	Provider string `json:"provider"`
 	// Bucket is the bucket name (GCS/S3) or container name (Azure).
 	Bucket string `json:"bucket"`
+	// Region is the cloud region (S3 only).
+	Region string `json:"region,omitempty"`
 	// StorageAccount is the Azure storage account name (only set for Azure provider).
 	StorageAccount string `json:"storage_account,omitempty"`
 	// SecretName is the name of the K8s Secret containing bucket credentials.
