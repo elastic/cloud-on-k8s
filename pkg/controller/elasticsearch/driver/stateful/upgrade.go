@@ -66,14 +66,14 @@ func (d *Driver) handleUpgrades(
 		return results.WithError(err)
 	}
 
-	triggeredRestart := isAnnotationTriggeredRestart(d.ES, expectedResources, podsToUpgrade)
+	isTriggeredRestart := isAnnotationTriggeredRestart(d.ES, expectedResources, podsToUpgrade)
 
 	nodeNameToID, err := esState.NodeNameToID()
 	if err != nil {
 		results.WithError(err)
 	}
 	logger := log.WithValues("namespace", d.ES.Namespace, "es_name", d.ES.Name)
-	shutdownReason, allocationDelay := shutdownReasonAndAllocationDelay(d.ES, triggeredRestart, logger)
+	shutdownReason, allocationDelay := shutdownReasonAndAllocationDelay(d.ES, isTriggeredRestart, logger)
 	nodeShutdown := shutdown.NewNodeShutdown(esClient, nodeNameToID, esclient.Restart, shutdownReason, allocationDelay, logger)
 
 	// Maybe re-enable shards allocation and delete shutdowns if upgraded nodes are back into the cluster.

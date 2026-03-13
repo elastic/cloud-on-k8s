@@ -64,7 +64,7 @@ func BuildPodTemplateSpec(
 	setDefaultSecurityContext bool,
 	policyConfig PolicyConfig,
 	meta metadata.Metadata,
-	podsRestartTriggerAnnotation string,
+	actualPodsRestartTriggerAnnotationValue string,
 ) (corev1.PodTemplateSpec, error) {
 	ver, err := version.Parse(es.Spec.Version)
 	if err != nil {
@@ -113,7 +113,7 @@ func BuildPodTemplateSpec(
 	if err := client.Get(ctx, types.NamespacedName{Namespace: es.Namespace, Name: esv1.ScriptsConfigMap(es.Name)}, esScripts); err != nil {
 		return corev1.PodTemplateSpec{}, err
 	}
-	annotations := buildAnnotations(es, cfg, keystoreResources, getScriptsConfigMapContent(esScripts), policyConfig.PolicyAnnotations, podsRestartTriggerAnnotation)
+	annotations := buildAnnotations(es, cfg, keystoreResources, getScriptsConfigMapContent(esScripts), policyConfig.PolicyAnnotations, actualPodsRestartTriggerAnnotationValue)
 
 	// Attempt to detect if the default data directory is mounted in a volume.
 	// If not, it could be a bug, a misconfiguration, or a custom storage configuration that requires the user to
@@ -218,7 +218,7 @@ func buildAnnotations(
 	keystoreResources *keystore.Resources,
 	scriptsContent string,
 	policyAnnotations map[string]string,
-	podsRestartTriggerAnnotation string,
+	actualPodsRestartTriggerAnnotationValue string,
 ) map[string]string {
 	// start from our defaults
 	annotations := map[string]string{
@@ -251,8 +251,8 @@ func buildAnnotations(
 	if restartTrigger == "" {
 		// if restart annotation is missing but it was previously present on pods,
 		// keep the old one, to avoid restarting when the annotation is deleted by user.
-		if podsRestartTriggerAnnotation != "" {
-			restartTrigger = podsRestartTriggerAnnotation
+		if actualPodsRestartTriggerAnnotationValue != "" {
+			restartTrigger = actualPodsRestartTriggerAnnotationValue
 		}
 	}
 	if restartTrigger != "" {
