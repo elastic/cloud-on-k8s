@@ -69,7 +69,7 @@ func ReconcileHTTP(
 	}.ReconcileCAAndHTTPCerts(ctx)
 	if results.HasError() {
 		_, err := results.Aggregate()
-		k8s.MaybeEmitErrorEvent(driver.Recorder(), err, &es, events.EventReconciliationError, events.EventActionCertificateReconciliation, "Certificate reconciliation error: %v", err)
+		k8s.MaybeEmitErrorEventf(driver.Recorder(), err, &es, events.EventReconciliationError, events.EventActionCertificateReconciliation, "Certificate reconciliation error: %v", err)
 		return nil, results
 	}
 
@@ -100,7 +100,7 @@ func ReconcileTransport(
 	// They will be concatenated with the ECK issued CA and distributed through the same transport secrets.
 	additionalCAs, err := transport.ReconcileAdditionalCAs(ctx, driver.K8sClient(), es, driver.DynamicWatches())
 	if err != nil {
-		k8s.EmitEvent(driver.Recorder(), &es, corev1.EventTypeWarning, events.EventReasonUnexpected, events.EventActionGetSecret, "%s", err.Error())
+		k8s.EmitEvent(driver.Recorder(), &es, corev1.EventTypeWarning, events.EventReasonUnexpected, events.EventActionGetSecret, err.Error())
 		return results.WithError(err)
 	}
 

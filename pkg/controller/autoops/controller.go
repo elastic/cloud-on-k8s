@@ -186,7 +186,7 @@ func (r *AgentPolicyReconciler) validate(ctx context.Context, policy *autoopsv1a
 
 	if err := autoopsvalidation.Validate(ctx, policy, r.licenseChecker); err != nil {
 		ulog.FromContext(ctx).Error(err, "Validation failed")
-		k8s.MaybeEmitErrorEvent(r.recorder, err, policy, events.EventReasonValidation, events.EventActionValidation, "%s", err.Error())
+		k8s.MaybeEmitErrorEvent(r.recorder, err, policy, events.EventReasonValidation, events.EventActionValidation, err.Error())
 		return tracing.CaptureError(ctx, err)
 	}
 
@@ -201,7 +201,7 @@ func (r *AgentPolicyReconciler) updateStatusFromState(ctx context.Context, state
 	events, policy := state.Apply()
 	for _, evt := range events {
 		log.V(1).Info("Recording event", "event", evt)
-		k8s.EmitEvent(r.recorder, &state.policy, evt.EventType, evt.Reason, evt.Action, "%s", evt.Message)
+		k8s.EmitEvent(r.recorder, &state.policy, evt.EventType, evt.Reason, evt.Action, evt.Message)
 	}
 	if policy == nil {
 		log.V(1).Info("Status is up to date", "iteration", atomic.LoadUint64(&r.iteration))

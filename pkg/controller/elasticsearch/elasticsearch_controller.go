@@ -201,7 +201,7 @@ func (r *ReconcileElasticsearch) Reconcile(ctx context.Context, request reconcil
 		} else {
 			log.Error(err, "Error while updating annotations", "namespace", es.Namespace, "es_name", es.Name)
 			results.WithError(err)
-			k8s.MaybeEmitErrorEvent(r.recorder, err, &es, events.EventReconciliationError, events.EventActionAnnotateResource, "Reconciliation error: %v", err)
+			k8s.MaybeEmitErrorEventf(r.recorder, err, &es, events.EventReconciliationError, events.EventActionAnnotateResource, "Reconciliation error: %v", err)
 		}
 	}
 
@@ -219,7 +219,7 @@ func (r *ReconcileElasticsearch) Reconcile(ctx context.Context, request reconcil
 			log.V(1).Info("Conflict while updating status", "namespace", es.Namespace, "es_name", es.Name)
 			return reconcile.Result{RequeueAfter: reconciler.DefaultRequeue}, nil
 		}
-		k8s.MaybeEmitErrorEvent(r.recorder, err, &es, events.EventReconciliationError, events.EventActionStatusUpdate, "Reconciliation error: %v", err)
+		k8s.MaybeEmitErrorEventf(r.recorder, err, &es, events.EventReconciliationError, events.EventActionStatusUpdate, "Reconciliation error: %v", err)
 	}
 	return results.WithError(err).Aggregate()
 }
@@ -317,7 +317,7 @@ func (r *ReconcileElasticsearch) updateStatus(
 	events, cluster := reconcileState.Apply()
 	for _, evt := range events {
 		log.V(1).Info("Recording event", "event", evt)
-		k8s.EmitEvent(r.recorder, &es, evt.EventType, evt.Reason, evt.Action, "%s", evt.Message)
+		k8s.EmitEvent(r.recorder, &es, evt.EventType, evt.Reason, evt.Action, evt.Message)
 	}
 	if cluster == nil {
 		return nil

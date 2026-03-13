@@ -276,7 +276,7 @@ func maybeReconcileFleetEnrollment(params Params, result *reconciler.Results) En
 	case commonhttp.IsNotFound(err):
 		message := fmt.Sprintf("ECK cannot setup Fleet enrollment. This is likely a mis-configuration. %s", err.Error())
 		log.Info(message)
-		k8s.EmitEvent(params.EventRecorder, &params.Agent, corev1.EventTypeWarning, events.EventReasonUnexpected, events.EventActionEnrollment, "%s", message)
+		k8s.EmitEvent(params.EventRecorder, &params.Agent, corev1.EventTypeWarning, events.EventReasonUnexpected, events.EventActionEnrollment, message)
 		result.WithRequeue()
 	case err != nil:
 		result.WithError(err)

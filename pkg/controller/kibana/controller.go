@@ -203,7 +203,7 @@ func (r *ReconcileKibana) doReconcile(ctx context.Context, request reconcile.Req
 	results := driver.Reconcile(ctx, &state, kb, r.params)
 
 	result, err = results.WithError(err).Aggregate()
-	k8s.MaybeEmitErrorEvent(r.recorder, err, kb, events.EventReconciliationError, events.EventActionAggregation, "Reconciliation error: %v", err)
+	k8s.MaybeEmitErrorEventf(r.recorder, err, kb, events.EventReconciliationError, events.EventActionAggregation, "Reconciliation error: %v", err)
 	return result, err
 }
 
@@ -213,7 +213,7 @@ func (r *ReconcileKibana) validate(ctx context.Context, kb *kbv1.Kibana) error {
 
 	if _, err := kb.ValidateCreate(); err != nil {
 		ulog.FromContext(ctx).Error(err, "Validation failed")
-		k8s.MaybeEmitErrorEvent(r.recorder, err, kb, events.EventReasonValidation, events.EventActionValidation, "%s", err.Error())
+		k8s.MaybeEmitErrorEvent(r.recorder, err, kb, events.EventReasonValidation, events.EventActionValidation, err.Error())
 		return tracing.CaptureError(vctx, err)
 	}
 

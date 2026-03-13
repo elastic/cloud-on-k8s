@@ -160,7 +160,7 @@ func (r *ReconcileLogstash) Reconcile(ctx context.Context, request reconcile.Req
 			logger.V(1).Info("Conflict while updating status. Requeueing", "namespace", logstash.Namespace, "ls_name", logstash.Name)
 			return results.WithRequeue().Aggregate()
 		}
-		k8s.MaybeEmitErrorEvent(r.recorder, err, logstash, events.EventReconciliationError, events.EventActionStatusUpdate, "Reconciliation error: %v", err)
+		k8s.MaybeEmitErrorEventf(r.recorder, err, logstash, events.EventReconciliationError, events.EventActionStatusUpdate, "Reconciliation error: %v", err)
 	}
 	return results.WithError(err).Aggregate()
 }
@@ -216,7 +216,7 @@ func (r *ReconcileLogstash) validate(ctx context.Context, logstash logstashv1alp
 	// Run create validations only as update validations require old object which we don't have here.
 	if err := validation.ValidateLogstash(&logstash); err != nil {
 		ulog.FromContext(ctx).Error(err, "Validation failed")
-		k8s.MaybeEmitErrorEvent(r.recorder, err, &logstash, events.EventReasonValidation, events.EventActionValidation, "%s", err.Error())
+		k8s.MaybeEmitErrorEvent(r.recorder, err, &logstash, events.EventReasonValidation, events.EventActionValidation, err.Error())
 		return tracing.CaptureError(ctx, err)
 	}
 	return nil

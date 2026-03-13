@@ -256,7 +256,7 @@ func (r *ReconcileApmServer) doReconcile(ctx context.Context, as *apmv1.ApmServe
 	}.ReconcileCAAndHTTPCerts(ctx)
 	if results.HasError() {
 		_, err := results.Aggregate()
-		k8s.MaybeEmitErrorEvent(r.recorder, err, as, events.EventReconciliationError, events.EventActionCertificateReconciliation, "Certificate reconciliation error: %v", err)
+		k8s.MaybeEmitErrorEventf(r.recorder, err, as, events.EventReconciliationError, events.EventActionCertificateReconciliation, "Certificate reconciliation error: %v", err)
 		return results, state
 	}
 
@@ -279,14 +279,14 @@ func (r *ReconcileApmServer) doReconcile(ctx context.Context, as *apmv1.ApmServe
 			log.V(1).Info("Conflict while updating status")
 			return results.WithRequeue(), state
 		}
-		k8s.MaybeEmitErrorEvent(r.recorder, err, as, events.EventReconciliationError, events.EventActionDeploymentReconciliation, "Deployment reconciliation error: %v", err)
+		k8s.MaybeEmitErrorEventf(r.recorder, err, as, events.EventReconciliationError, events.EventActionDeploymentReconciliation, "Deployment reconciliation error: %v", err)
 		return results.WithError(tracing.CaptureError(ctx, err)), state
 	}
 
 	state.UpdateApmServerExternalService(*svc)
 
 	_, err = results.WithError(err).Aggregate()
-	k8s.MaybeEmitErrorEvent(r.recorder, err, as, events.EventReconciliationError, events.EventActionAggregation, "Reconciliation error: %v", err)
+	k8s.MaybeEmitErrorEventf(r.recorder, err, as, events.EventReconciliationError, events.EventActionAggregation, "Reconciliation error: %v", err)
 	return results, state
 }
 
@@ -296,7 +296,7 @@ func (r *ReconcileApmServer) validate(ctx context.Context, as *apmv1.ApmServer) 
 
 	if _, err := as.ValidateCreate(); err != nil {
 		log.Error(err, "Validation failed")
-		k8s.MaybeEmitErrorEvent(r.recorder, err, as, events.EventReasonValidation, events.EventActionValidation, "%s", err.Error())
+		k8s.MaybeEmitErrorEvent(r.recorder, err, as, events.EventReasonValidation, events.EventActionValidation, err.Error())
 		return tracing.CaptureError(vctx, err)
 	}
 

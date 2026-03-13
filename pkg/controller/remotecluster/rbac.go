@@ -51,7 +51,7 @@ func logNotAllowedAssociation(ctx context.Context, localEs, remoteEs *esv1.Elast
 		"remote_namespace", remoteEs.GetNamespace(),
 		"remote_name", remoteEs.GetName(),
 	)
-	k8s.EmitEvent(
+	k8s.EmitEventf(
 		eventRecorder,
 		localEs,
 		corev1.EventTypeWarning,

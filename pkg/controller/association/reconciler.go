@@ -250,7 +250,7 @@ func (r *Reconciler) reconcileAssociation(ctx context.Context, association commo
 		// external reference, update association conf to associate the unmanaged resource
 		expectedAssocConf, err := r.ExpectedConfigFromUnmanagedAssociation(association)
 		if err != nil {
-			k8s.EmitEvent(r.recorder, association.Associated(), corev1.EventTypeWarning, events.EventAssociationError, events.EventActionAssociationReconciliation, "Failed to reconcile external resource %q: %v", assocRef.NameOrSecretName(), err.Error())
+			k8s.EmitEventf(r.recorder, association.Associated(), corev1.EventTypeWarning, events.EventAssociationError, events.EventActionAssociationReconciliation, "Failed to reconcile external resource %q: %v", assocRef.NameOrSecretName(), err.Error())
 			return commonv1.AssociationFailed, err
 		}
 		return r.updateAssocConf(ctx, &expectedAssocConf, association)
@@ -430,7 +430,7 @@ func (r *Reconciler) getElasticsearch(
 	var es esv1.Elasticsearch
 	err := r.Get(ctx, elasticsearchRef.NamespacedName(), &es)
 	if err != nil {
-		k8s.MaybeEmitErrorEvent(r.recorder, err, association, events.EventAssociationError, events.EventActionElasticsearchRetrieval,
+		k8s.MaybeEmitErrorEventf(r.recorder, err, association, events.EventAssociationError, events.EventActionElasticsearchRetrieval,
 			"Failed to find referenced backend %s: %v", elasticsearchRef.NamespacedName(), err)
 		if apierrors.IsNotFound(err) {
 			// ES is not found, remove any existing backend configuration and retry in a bit.
@@ -512,7 +512,7 @@ func (r *Reconciler) updateStatus(ctx context.Context, associated commonv1.Assoc
 		if err := r.Status().Update(ctx, associated); err != nil {
 			return err
 		}
-		k8s.EmitEvent(
+		k8s.EmitEventf(
 			r.recorder,
 			associated,
 			corev1.EventTypeNormal,

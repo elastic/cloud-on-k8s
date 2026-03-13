@@ -161,7 +161,12 @@ func GetServiceIPAddresses(svc corev1.Service) []net.IP {
 }
 
 // MaybeEmitErrorEvent emits an event if the error is report-worthy
-func MaybeEmitErrorEvent(r toolsevents.EventRecorder, err error, obj runtime.Object, reason, action, message string, args ...any) {
+func MaybeEmitErrorEvent(r toolsevents.EventRecorder, err error, obj runtime.Object, reason, action, message string) {
+	MaybeEmitErrorEventf(r, err, obj, reason, action, "%s", message)
+}
+
+// MaybeEmitErrorEventf emits an event if the error is report-worthy with a format string and args
+func MaybeEmitErrorEventf(r toolsevents.EventRecorder, err error, obj runtime.Object, reason, action, message string, args ...any) {
 	// ignore nil errors and conflict issues
 	if err == nil || apierrors.IsConflict(err) {
 		return
@@ -171,7 +176,12 @@ func MaybeEmitErrorEvent(r toolsevents.EventRecorder, err error, obj runtime.Obj
 }
 
 // EmitEvent emits an event with the given parameters
-func EmitEvent(r toolsevents.EventRecorder, obj runtime.Object, eventType, reason, action, message string, args ...any) {
+func EmitEvent(r toolsevents.EventRecorder, obj runtime.Object, eventType, reason, action, message string) {
+	EmitEventf(r, obj, eventType, reason, action, "%s", message)
+}
+
+// EmitEventf emits an event with the given parameters
+func EmitEventf(r toolsevents.EventRecorder, obj runtime.Object, eventType, reason, action, message string, args ...any) {
 	r.Eventf(obj, nil, eventType, reason, action, "%s", fmt.Sprintf(message, args...))
 }
 

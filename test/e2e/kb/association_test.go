@@ -151,7 +151,7 @@ func TestKibanaAssociationWhenReferencedESDisappears(t *testing.T) {
 							establishedString := commonv1.NewSingleAssociationStatusMap(commonv1.AssociationEstablished).String()
 
 							// evt.Message defined as fmt.Sprintf("Association status changed from [%s] to [%s]")
-							statusIndex := strings.Index(evt.Message, establishedString)
+							statusIndex := strings.Index(evt.Note, establishedString)
 							if statusIndex == 32 {
 								assocLostEventSeen = true
 							}
@@ -237,7 +237,7 @@ func TestKibanaAssociationWithNonExistentEPR(t *testing.T) {
 				if evt.Reason != events.EventAssociationError {
 					continue
 				}
-				if strings.Contains(evt.Message, "package-registry") {
+				if strings.Contains(evt.Note, "package-registry") {
 					return nil
 				}
 			}

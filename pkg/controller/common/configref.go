@@ -84,7 +84,7 @@ func ParseConfigRefToConfig(
 	data, exists := secret.Data[secretKey]
 	if !exists {
 		msg := fmt.Sprintf("unable to retrieve configRef secret %s/%s: missing key %s", namespace, configRef.SecretName, secretKey)
-		k8s.EmitEvent(driver.Recorder(), resource, corev1.EventTypeWarning, events.EventReasonUnexpected, events.EventActionGetSecret, "%s", msg)
+		k8s.EmitEvent(driver.Recorder(), resource, corev1.EventTypeWarning, events.EventReasonUnexpected, events.EventActionGetSecret, msg)
 		return nil, errors.New(msg)
 	}
 
@@ -92,7 +92,7 @@ func ParseConfigRefToConfig(
 
 	if err != nil {
 		msg := fmt.Sprintf("unable to parse %s in configRef secret %s/%s", secretKey, namespace, configRef.SecretName)
-		k8s.EmitEvent(driver.Recorder(), resource, corev1.EventTypeWarning, events.EventReasonUnexpected, events.EventActionParseSecret, "%s", msg)
+		k8s.EmitEvent(driver.Recorder(), resource, corev1.EventTypeWarning, events.EventReasonUnexpected, events.EventActionParseSecret, msg)
 		return nil, errors.Wrap(err, msg)
 	}
 	return parsed, nil

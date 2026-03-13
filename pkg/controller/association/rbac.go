@@ -52,7 +52,7 @@ func CheckAndUnbind(
 			"remote_namespace", metaObject.GetNamespace(),
 			"remote_name", metaObject.GetName(),
 		)
-		k8s.EmitEvent(
+		k8s.EmitEventf(
 			eventRecorder,
 			association,
 			corev1.EventTypeWarning,

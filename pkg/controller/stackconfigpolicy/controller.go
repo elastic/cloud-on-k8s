@@ -244,7 +244,7 @@ func (r *ReconcileStackConfigPolicy) doReconcile(ctx context.Context, reconcilin
 	// run validation in case the webhook is disabled
 	if err := r.validate(ctx, &reconcilingPolicy); err != nil {
 		status.Phase = policyv1alpha1.InvalidPhase
-		k8s.EmitEvent(r.recorder, &reconcilingPolicy, corev1.EventTypeWarning, events.EventReasonValidation, events.EventActionValidation, "%s", err.Error())
+		k8s.EmitEvent(r.recorder, &reconcilingPolicy, corev1.EventTypeWarning, events.EventReasonValidation, events.EventActionValidation, err.Error())
 		return results.WithError(err), status
 	}
 
@@ -315,7 +315,7 @@ func (r *ReconcileStackConfigPolicy) reconcileElasticsearchResources(ctx context
 		}
 		if v.LT(filesettings.FileBasedSettingsMinPreVersion) {
 			err = fmt.Errorf("invalid version to configure resource Elasticsearch %s/%s: actual %s, expected >= %s", es.Namespace, es.Name, v, filesettings.FileBasedSettingsMinVersion)
-			k8s.EmitEvent(r.recorder, &reconcilingPolicy, corev1.EventTypeWarning, events.EventReasonUnexpected, events.EventActionVersionCheck, "%s", err.Error())
+			k8s.EmitEvent(r.recorder, &reconcilingPolicy, corev1.EventTypeWarning, events.EventReasonUnexpected, events.EventActionVersionCheck, err.Error())
 			results.WithError(err)
 			err = status.AddPolicyErrorFor(esNsn, policyv1alpha1.ErrorPhase, err.Error(), policyv1alpha1.ElasticsearchResourceType)
 			if err != nil {
@@ -549,7 +549,7 @@ func (r *ReconcileStackConfigPolicy) validate(ctx context.Context, policy *polic
 
 	if _, err := policy.ValidateCreate(); err != nil {
 		ulog.FromContext(ctx).Error(err, "Validation failed")
-		k8s.MaybeEmitErrorEvent(r.recorder, err, policy, events.EventReasonValidation, events.EventActionValidation, "%s", err.Error())
+		k8s.MaybeEmitErrorEvent(r.recorder, err, policy, events.EventReasonValidation, events.EventActionValidation, err.Error())
 		return tracing.CaptureError(vctx, err)
 	}
 

@@ -56,7 +56,7 @@ func logNotAllowedAssociation(
 		"es_namespace", es.GetNamespace(),
 		"es_name", es.GetName(),
 	)
-	k8s.EmitEvent(
+	k8s.EmitEventf(
 		eventRecorder,
 		policy,
 		corev1.EventTypeWarning,
