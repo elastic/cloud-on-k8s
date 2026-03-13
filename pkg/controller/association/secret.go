@@ -183,7 +183,7 @@ func (r UnmanagedAssociationConnectionInfo) Request(path string, out any) error 
 		for _, c := range caCerts {
 			certPool.AddCert(c)
 		}
-		httpClient.Transport = &http.Transport{TLSClientConfig: &tls.Config{RootCAs: certPool}}
+		httpClient.Transport = &http.Transport{TLSClientConfig: &tls.Config{RootCAs: certPool}} //nolint:gosec
 	}
 
 	resp, err := httpClient.Do(req)
