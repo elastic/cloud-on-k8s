@@ -102,7 +102,7 @@ func (d *Driver) handleUpgrades(
 		podsToUpgrade,
 		healthyPods,
 		currentPods,
-		triggeredRestart,
+		isTriggeredRestart,
 	)
 
 	var deletedPods []corev1.Pod
