@@ -30,6 +30,7 @@ func AddBeatMonitoring(mgr manager.Manager, accessReviewer rbac.AccessReviewer, 
 		ExternalServiceURL:        getElasticsearchExternalURL,
 		AssociationType:           commonv1.BeatMonitoringAssociationType,
 		ReferencedResourceNamer:   esv1.ESNamer,
+		ReferencedResourceKind:    esv1.Kind,
 		AssociationName:           "beat-monitoring",
 		AssociatedShortName:       "beat-mon",
 		Labels: func(associated types.NamespacedName) map[string]string {

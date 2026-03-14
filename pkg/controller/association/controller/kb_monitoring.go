@@ -31,6 +31,7 @@ func AddKbMonitoring(mgr manager.Manager, accessReviewer rbac.AccessReviewer, pa
 		ExternalServiceURL:        getElasticsearchExternalURL,
 		AssociationType:           commonv1.KbMonitoringAssociationType,
 		ReferencedResourceNamer:   esv1.ESNamer,
+		ReferencedResourceKind:    esv1.Kind,
 		AssociationName:           "kb-monitoring",
 		AssociatedShortName:       "kb-mon",
 		Labels: func(associated types.NamespacedName) map[string]string {

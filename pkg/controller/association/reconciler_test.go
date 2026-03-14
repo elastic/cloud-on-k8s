@@ -90,6 +90,7 @@ var (
 			return es.Status.Version, false, nil
 		},
 		AssociationType:                       "elasticsearch",
+		ReferencedResourceKind:                esv1.Kind,
 		AssociationConfAnnotationNameBase:     "association.k8s.elastic.co/es-conf",
 		AssociationResourceNameLabelName:      "elasticsearch.k8s.elastic.co/cluster-name",
 		AssociationResourceNamespaceLabelName: "elasticsearch.k8s.elastic.co/cluster-namespace",
@@ -122,7 +123,9 @@ var (
 	sampleKibanaWithESRef = func() kbv1.Kibana {
 		sample := sampleKibanaNoEsRef()
 		kb := (&sample).DeepCopy()
-		kb.Spec = kbv1.KibanaSpec{Version: "7.7.0", ElasticsearchRef: commonv1.ObjectSelector{Name: sampleES.Name, Namespace: sampleES.Namespace}}
+		kb.Spec = kbv1.KibanaSpec{Version: "7.7.0", ElasticsearchRef: commonv1.ElasticsearchSelector{
+			ObjectSelector: commonv1.ObjectSelector{Name: sampleES.Name, Namespace: sampleES.Namespace},
+		}}
 		return *kb
 	}
 	sampleAssociatedKibana = func(customSvc ...string) kbv1.Kibana {
@@ -748,7 +751,9 @@ func TestReconciler_getElasticsearch(t *testing.T) {
 				"association.k8s.elastic.co/es-conf": "association-conf-data", // we don't care about the data here
 			},
 		},
-		Spec: kbv1.KibanaSpec{ElasticsearchRef: commonv1.ObjectSelector{Name: "es", Namespace: "ns"}},
+		Spec: kbv1.KibanaSpec{ElasticsearchRef: commonv1.ElasticsearchSelector{
+			ObjectSelector: commonv1.ObjectSelector{Name: "es", Namespace: "ns"},
+		}},
 	}
 	tests := []struct {
 		name              string
@@ -780,7 +785,9 @@ func TestReconciler_getElasticsearch(t *testing.T) {
 					Namespace: "ns",
 					Name:      "kb",
 				},
-				Spec: kbv1.KibanaSpec{ElasticsearchRef: commonv1.ObjectSelector{Name: "es", Namespace: "ns"}},
+				Spec: kbv1.KibanaSpec{ElasticsearchRef: commonv1.ElasticsearchSelector{
+					ObjectSelector: commonv1.ObjectSelector{Name: "es", Namespace: "ns"},
+				}},
 			},
 		},
 	}
@@ -1487,7 +1494,9 @@ func equalKeys(t *testing.T, a map[string][]byte, b map[string][]byte) {
 func TestReconciler_ReconcileSecretRef(t *testing.T) {
 	// Kibana references ES with a custom secret, but neither the secret nor association conf exist yet
 	kb := sampleKibanaNoEsRef()
-	kb.Spec = kbv1.KibanaSpec{ElasticsearchRef: commonv1.ObjectSelector{SecretName: "sample-es-ref-secret"}}
+	kb.Spec = kbv1.KibanaSpec{ElasticsearchRef: commonv1.ElasticsearchSelector{
+		ObjectSelector: commonv1.ObjectSelector{SecretName: "sample-es-ref-secret"},
+	}}
 
 	require.Empty(t, kb.Annotations[kb.EsAssociation().AssociationConfAnnotationName()])
 	r := testReconciler(&kb, &sampleES, &esHTTPPublicCertsSecret)

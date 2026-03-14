@@ -29,9 +29,12 @@ func Test_AssociationConf(t *testing.T) {
 			},
 		},
 		Spec: KibanaSpec{
-			ElasticsearchRef: commonv1.ObjectSelector{
-				Name:      "es",
-				Namespace: "default"},
+			ElasticsearchRef: commonv1.ElasticsearchSelector{
+				ObjectSelector: commonv1.ObjectSelector{
+					Name:      "es",
+					Namespace: "default",
+				},
+			},
 		},
 	}
 

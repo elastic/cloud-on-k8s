@@ -48,9 +48,8 @@ var (
 		},
 		Spec: kbv1.KibanaSpec{
 			Count: 1,
-			ElasticsearchRef: commonv1.ObjectSelector{
-				Name:      "elasticsearch-sample",
-				Namespace: "e2e-mercury",
+			ElasticsearchRef: commonv1.ElasticsearchSelector{
+				ObjectSelector: commonv1.ObjectSelector{Name: "elasticsearch-sample", Namespace: "e2e-mercury"},
 			},
 		},
 	}

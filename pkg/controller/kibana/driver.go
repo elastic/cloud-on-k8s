@@ -337,6 +337,10 @@ func (d *driver) buildVolumes(kb *kbv1.Kibana) ([]commonvolume.VolumeLike, error
 		esCertsVolume := esCaCertSecretVolume(*esAssocConf)
 		volumes = append(volumes, esCertsVolume)
 	}
+	if esAssocConf.ClientCertIsConfigured() {
+		esClientCertVolume := esClientCertSecretVolume(*esAssocConf)
+		volumes = append(volumes, esClientCertVolume)
+	}
 
 	entAssocConf, err := kb.EntAssociation().AssociationConf()
 	if err != nil {

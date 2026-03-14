@@ -43,6 +43,11 @@ func additionalSecretWatchName(associated types.NamespacedName) string {
 	return fmt.Sprintf("%s-%s-secrets-watch", associated.Namespace, associated.Name)
 }
 
+// userProvidedClientCertWatchName returns the name of the watch on user-provided client certificate secrets.
+func userProvidedClientCertWatchName(associated types.NamespacedName) string {
+	return fmt.Sprintf("%s-%s-user-client-cert-watch", associated.Namespace, associated.Name)
+}
+
 // reconcileWatches sets up dynamic watches for:
 // * the referenced resource(s) managed or not by ECK (e.g. Elasticsearch for Kibana -> Elasticsearch associations)
 // * the CA secret of the referenced resource in the referenced resource namespace
@@ -99,6 +104,16 @@ func (r *Reconciler) reconcileWatches(ctx context.Context, associated types.Name
 		}); err != nil {
 			return err
 		}
+	}
+
+	// watch user-provided client certificate secrets
+	if err := ReconcileWatch(associated, filterWithUserProvidedClientCert(associations), r.watches.Secrets, userProvidedClientCertWatchName(associated), func(association commonv1.Association) types.NamespacedName {
+		return types.NamespacedName{
+			Name:      association.AssociationRef().GetClientCertificateSecretName(),
+			Namespace: association.GetNamespace(),
+		}
+	}); err != nil {
+		return err
 	}
 
 	if r.AdditionalSecrets != nil {
@@ -191,4 +206,6 @@ func (r *Reconciler) removeWatches(associated types.NamespacedName) {
 	RemoveWatch(r.watches.Secrets, esUserWatchName(associated))
 	// - Additional secrets (typically in the case of Agent -> Fleet Server -> Elasticsearch)
 	RemoveWatch(r.watches.Secrets, additionalSecretWatchName(associated))
+	// - User-provided client certificate secret
+	RemoveWatch(r.watches.Secrets, userProvidedClientCertWatchName(associated))
 }

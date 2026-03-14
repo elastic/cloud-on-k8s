@@ -22,7 +22,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/v3/test/e2e/test"
 )
 
-func CheckHTTPConnectivityWithCA(es esv1.Elasticsearch, k *test.K8sClient, caCert []*x509.Certificate) error {
+func CheckHTTPConnectivityWithCA(es esv1.Elasticsearch, k *test.K8sClient, caCerts []*x509.Certificate) error {
 	password, err := k.GetElasticPassword(k8s.ExtractNamespacedName(&es))
 	if err != nil {
 		return err
@@ -42,7 +42,7 @@ func CheckHTTPConnectivityWithCA(es esv1.Elasticsearch, k *test.K8sClient, caCer
 		return err
 	}
 
-	// Load operator client certificate if it exists (needed when client authentication is required).
+	// Try to get operator client certificate if it exists
 	clientCert, err := certificates.LoadOperatorClientCertIfExists(context.Background(), k.Client, esv1.ESNamer, es.Namespace, es.Name)
 	if err != nil {
 		return err
@@ -56,7 +56,7 @@ func CheckHTTPConnectivityWithCA(es esv1.Elasticsearch, k *test.K8sClient, caCer
 			client.NewStaticURLProvider(url),
 			user,
 			v,
-			caCert,
+			caCerts,
 			clientCert,
 			client.Timeout(context.Background(), es),
 			true,
