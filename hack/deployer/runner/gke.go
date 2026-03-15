@@ -282,7 +282,7 @@ func (d *GKEDriver) resourcesLabels() (string, error) {
 func (d *GKEDriver) clusterExists() (bool, error) {
 	log.Println("Checking if cluster exists...")
 
-	cmd := "gcloud beta container clusters --project {{.GCloudProject}} describe {{.ClusterName}} --region {{.Region}}"
+	cmd := "gcloud container clusters --project {{.GCloudProject}} describe {{.ClusterName}} --region {{.Region}}"
 	contains, err := exec.NewCommand(cmd).AsTemplate(d.ctx).WithoutStreaming().OutputContainsAny("Not found")
 	if contains {
 		return false, nil
@@ -317,7 +317,7 @@ func (d *GKEDriver) create() error {
 
 	var createGKEClusterCommand string
 	if !d.plan.Gke.Autopilot {
-		createGKEClusterCommand = `gcloud beta container --quiet --project {{.GCloudProject}} clusters create {{.ClusterName}} ` +
+		createGKEClusterCommand = `gcloud container --quiet --project {{.GCloudProject}} clusters create {{.ClusterName}} ` +
 			`--labels "` + labels + `" --region {{.Region}} --no-enable-basic-auth --cluster-version {{.KubernetesVersion}} ` +
 			`--machine-type {{.MachineType}} --disk-type pd-ssd --disk-size 50 ` +
 			`--local-ssd-count {{.LocalSsdCount}} --scopes {{.GcpScopes}} --num-nodes {{.NodeCountPerZone}} ` +
@@ -328,7 +328,7 @@ func (d *GKEDriver) create() error {
 	} else {
 		// Autopilot cluster.
 		log.Println("autopilot cluster enabled")
-		createGKEClusterCommand = `gcloud beta container --quiet --project {{.GCloudProject}} clusters create-auto {{.ClusterName}} ` +
+		createGKEClusterCommand = `gcloud container --quiet --project {{.GCloudProject}} clusters create-auto {{.ClusterName}} ` +
 			`--region {{.Region}} --cluster-version {{.KubernetesVersion}} ` +
 			`--scopes {{.GcpScopes}} --network projects/{{.GCloudProject}}/global/networks/default ` +
 			strings.Join(opts, " ")
@@ -344,7 +344,7 @@ func (d *GKEDriver) create() error {
 
 	// Since gcloud doesn't support labels at creation time for autopilot clusters, update the labels after creation.
 	if d.plan.Gke.Autopilot {
-		return exec.NewCommand(`gcloud beta container --quiet --project {{.GCloudProject}} clusters update {{.ClusterName}} --region {{.Region}} --update-labels="` + labels + `"`).
+		return exec.NewCommand(`gcloud container --quiet --project {{.GCloudProject}} clusters update {{.ClusterName}} --region {{.Region}} --update-labels="` + labels + `"`).
 			AsTemplate(d.ctx).
 			Run()
 	}
@@ -454,7 +454,7 @@ func (d *GKEDriver) delete() error {
 		}
 
 		log.Println("Deleting cluster...")
-		cmd := "gcloud beta --quiet --project {{.GCloudProject}} container clusters delete {{.ClusterName}} --region {{.Region}}"
+		cmd := "gcloud --quiet --project {{.GCloudProject}} container clusters delete {{.ClusterName}} --region {{.Region}}"
 		if err := exec.NewCommand(cmd).AsTemplate(d.ctx).Run(); err != nil {
 			lastErr = err
 			log.Printf("Error deleting cluster: %v", err)
