@@ -41,6 +41,7 @@ func Validate(p *StackConfigPolicy, old *StackConfigPolicy) (admission.Warnings,
 }
 
 func (p *StackConfigPolicy) validate() (admission.Warnings, error) {
+	warnings := admission.Warnings(p.GetWarnings())
 	var errors field.ErrorList
 
 	for _, dc := range defaultChecks {
@@ -51,9 +52,9 @@ func (p *StackConfigPolicy) validate() (admission.Warnings, error) {
 
 	if len(errors) > 0 {
 		validationLog.V(1).Info("failed validation", "errors", errors)
-		return nil, apierrors.NewInvalid(groupKind, p.Name, errors)
+		return warnings, apierrors.NewInvalid(groupKind, p.Name, errors)
 	}
-	return nil, nil
+	return warnings, nil
 }
 
 func (p *StackConfigPolicy) GetWarnings() []string {

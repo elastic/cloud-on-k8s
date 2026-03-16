@@ -40,7 +40,10 @@ func Validate(m *PackageRegistry, old *PackageRegistry) (admission.Warnings, err
 }
 
 func (m *PackageRegistry) validate() (admission.Warnings, error) {
-	var errors field.ErrorList
+	var (
+		errors   field.ErrorList
+		warnings admission.Warnings
+	)
 
 	for _, dc := range defaultChecks {
 		if err := dc(m); err != nil {
@@ -48,10 +51,17 @@ func (m *PackageRegistry) validate() (admission.Warnings, error) {
 		}
 	}
 
-	if len(errors) > 0 {
-		return nil, apierrors.NewInvalid(groupKind, m.Name, errors)
+	deprecationWarning, deprecationErrors := checkIfVersionDeprecated(m)
+	// No nil check needed here, as append handles this properly.
+	errors = append(errors, deprecationErrors...)
+	if deprecationWarning != "" {
+		warnings = append(warnings, deprecationWarning)
 	}
-	return nil, nil
+
+	if len(errors) > 0 {
+		return warnings, apierrors.NewInvalid(groupKind, m.Name, errors)
+	}
+	return warnings, nil
 }
 
 func checkNoUnknownFields(epr *PackageRegistry) field.ErrorList {
@@ -64,4 +74,8 @@ func checkNameLength(epr *PackageRegistry) field.ErrorList {
 
 func checkSupportedVersion(epr *PackageRegistry) field.ErrorList {
 	return commonv1.CheckSupportedStackVersion(epr.Spec.Version, version.SupportedPackageRegistryVersions)
+}
+
+func checkIfVersionDeprecated(epr *PackageRegistry) (string, field.ErrorList) {
+	return commonv1.CheckDeprecatedStackVersion(epr.Spec.Version)
 }

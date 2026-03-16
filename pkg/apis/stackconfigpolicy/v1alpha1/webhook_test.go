@@ -105,6 +105,21 @@ func TestWebhook(t *testing.T) {
 			),
 		},
 		{
+			Name:      "create-with-deprecated-secure-settings",
+			Operation: admissionv1.Create,
+			Object: func(t *testing.T, uid string) []byte {
+				t.Helper()
+				m := mkStackConfigPolicy(uid)
+				m.Spec.SecureSettings = []commonv1.SecretSource{
+					{SecretName: "my-secret"},
+				}
+				return serialize(t, m)
+			},
+			Check: test.ValidationWebhookSucceededWithWarnings(
+				policyv1alpha1.SpecSecureSettingsDeprecated,
+			),
+		},
+		{
 			Name:      "create-duplicate-mountpaths",
 			Operation: admissionv1.Create,
 			Object: func(t *testing.T, uid string) []byte {

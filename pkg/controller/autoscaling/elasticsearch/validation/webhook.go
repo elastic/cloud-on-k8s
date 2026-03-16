@@ -35,6 +35,9 @@ func RegisterWebhook(mgr ctrl.Manager, validateStorageClass bool, licenseChecker
 		validateStorageClass: validateStorageClass,
 		licenseChecker:       licenseChecker,
 	}
+	// License checking is handled inside validations() rather than the wrapper,
+	// because ValidateElasticsearchAutoscaler is also called from the reconciler
+	// where the wrapper is not in the path.
 	v := commonwebhook.NewResourceValidator[*v1alpha1.ElasticsearchAutoscaler](nil, managedNamespaces, inner)
 	esalog.Info("Registering ElasticsearchAutoscaler validating webhook", "path", webhookPath)
 	wh := admission.WithValidator[*v1alpha1.ElasticsearchAutoscaler](mgr.GetScheme(), v)

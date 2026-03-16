@@ -81,9 +81,13 @@ func TestWebhook(t *testing.T) {
 				epr.Spec.Version = "7.14.0"
 				return serialize(t, epr)
 			},
-			Check: test.ValidationWebhookFailed(
-				`spec.version: Invalid value: "7.14.0": Unsupported version: version 7.14.0 is lower than the lowest supported version of 7.17.8`,
-			),
+			Check: func(t *testing.T, response *admissionv1.AdmissionResponse) {
+				t.Helper()
+				require.False(t, response.Allowed)
+				require.Contains(t, response.Result.Message, "7.14.0")
+				require.NotEmpty(t, response.Warnings, "expected deprecation warning alongside version rejection")
+				require.Contains(t, response.Warnings[0], "Version 7.14.0 is EOL")
+			},
 		},
 		{
 			Name:      "unsupported-version-lower",

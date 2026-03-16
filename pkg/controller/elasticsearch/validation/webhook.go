@@ -36,6 +36,9 @@ func RegisterWebhook(mgr ctrl.Manager, validateStorageClass bool, exposedNodeLab
 		exposedNodeLabels:    exposedNodeLabels,
 		licenseChecker:       licenseChecker,
 	}
+	// License checking is handled inside validations() rather than the wrapper,
+	// because ValidateElasticsearch is also called from the reconciler where the
+	// wrapper is not in the path.
 	v := commonwebhook.NewResourceValidator[*esv1.Elasticsearch](nil, managedNamespaces, inner)
 	eslog.Info("Registering Elasticsearch validating webhook", "path", webhookPath)
 	wh := admission.WithValidator[*esv1.Elasticsearch](mgr.GetScheme(), v)
@@ -56,6 +59,10 @@ func (v *validator) ValidateCreate(ctx context.Context, es *esv1.Elasticsearch) 
 
 func (v *validator) ValidateUpdate(ctx context.Context, oldObj, newObj *esv1.Elasticsearch) (admission.Warnings, error) {
 	eslog.V(1).Info("validate update", "name", newObj.Name)
+
+	// Ensure we get the warnings from the validation function
+	warnings, validationErr := ValidateElasticsearch(ctx, *newObj, v.licenseChecker, v.exposedNodeLabels)
+
 	var errs field.ErrorList
 	for _, val := range updateValidations(ctx, v.client, v.validateStorageClass) {
 		if err := val(*oldObj, *newObj); err != nil {
@@ -63,11 +70,11 @@ func (v *validator) ValidateUpdate(ctx context.Context, oldObj, newObj *esv1.Ela
 		}
 	}
 	if len(errs) > 0 {
-		return nil, apierrors.NewInvalid(
+		return warnings, apierrors.NewInvalid(
 			schema.GroupKind{Group: "elasticsearch.k8s.elastic.co", Kind: esv1.Kind},
 			newObj.Name, errs)
 	}
-	return ValidateElasticsearch(ctx, *newObj, v.licenseChecker, v.exposedNodeLabels)
+	return warnings, validationErr
 }
 
 func (v *validator) ValidateDelete(_ context.Context, _ *esv1.Elasticsearch) (admission.Warnings, error) {

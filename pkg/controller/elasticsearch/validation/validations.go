@@ -58,7 +58,13 @@ func updateValidations(ctx context.Context, k8sClient k8s.Client, validateStorag
 	}
 }
 
-// validations are the validation funcs that apply to creates or updates
+// validations are the validation funcs that apply to creates or updates.
+//
+// The license check is intentionally kept here even though the webhook wrapper
+// (commonwebhook.NewResourceValidator) performs the same annotation-based check.
+// ValidateElasticsearch is also called directly from the reconciler
+// (elasticsearch_controller.go) to guard against invalid specs when webhooks
+// are not configured, and that path does not go through the wrapper.
 func validations(ctx context.Context, checker license.Checker, exposedNodeLabels NodeLabels) []validation {
 	return []validation{
 		func(proposed esv1.Elasticsearch) field.ErrorList {
@@ -382,7 +388,7 @@ func validLicenseLevel(ctx context.Context, es esv1.Elasticsearch, checker licen
 	ok, err := license.HasRequestedLicenseLevel(ctx, es.Annotations, checker)
 	if err != nil {
 		ulog.FromContext(ctx).Error(err, "while checking license level during validation")
-		return nil // ignore the error here
+		return nil
 	}
 	if !ok {
 		errs = append(errs, field.Invalid(field.NewPath("metadata").Child("annotations").Child(license.Annotation), "enterprise", "Enterprise license required but ECK operator is running on a Basic license"))

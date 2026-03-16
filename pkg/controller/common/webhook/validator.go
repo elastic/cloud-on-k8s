@@ -133,6 +133,5 @@ func (f *funcValidator[T]) ValidateUpdate(_ context.Context, oldObj, newObj T) (
 }
 
 func (f *funcValidator[T]) ValidateDelete(_ context.Context, obj T) (admission.Warnings, error) {
-	var zero T
-	return f.validate(obj, zero)
+	return nil, nil
 }

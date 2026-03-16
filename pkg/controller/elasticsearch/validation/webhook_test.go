@@ -16,6 +16,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/webhook/admission"
 
 	esv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/elasticsearch/v1"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/license"
 	commonwebhook "github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/webhook"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/k8s"
 )
@@ -34,11 +35,12 @@ func Test_validator_Handle(t *testing.T) {
 		validateStorageClass bool
 	}
 	tests := []struct {
-		name        string
-		fields      fields
-		req         admission.Request
-		wantAllowed bool
-		wantMessage string
+		name         string
+		fields       fields
+		req          admission.Request
+		wantAllowed  bool
+		wantMessage  string
+		wantWarnings []string
 	}{
 		{
 			name: "accept valid creation",
@@ -193,7 +195,32 @@ func Test_validator_Handle(t *testing.T) {
 					}),
 				}},
 			},
-			wantAllowed: true,
+			wantAllowed:  true,
+			wantWarnings: []string{"Version 7.9.0 is EOL and support for it will be removed in a future release of the ECK operator"},
+		},
+		{
+			name: "reject downgrade on deprecated version but still return warnings",
+			fields: fields{
+				client: k8s.NewFakeClient(),
+			},
+			req: admission.Request{AdmissionRequest: admissionv1.AdmissionRequest{
+				Operation: admissionv1.Update,
+				OldObject: runtime.RawExtension{
+					Raw: asJSON(&esv1.Elasticsearch{
+						ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: "name"},
+						Spec:       esv1.ElasticsearchSpec{Version: "7.10.0", NodeSets: []esv1.NodeSet{{Name: "set1", Count: 3}}},
+					}),
+				},
+				Object: runtime.RawExtension{
+					Raw: asJSON(&esv1.Elasticsearch{
+						ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: "name"},
+						Spec:       esv1.ElasticsearchSpec{Version: "7.9.0", NodeSets: []esv1.NodeSet{{Name: "set1", Count: 3}}},
+					}),
+				},
+			}},
+			wantAllowed:  false,
+			wantMessage:  noDowngradesMsg,
+			wantWarnings: []string{"Version 7.9.0 is EOL and support for it will be removed in a future release of the ECK operator"},
 		},
 	}
 	for _, tt := range tests {
@@ -201,6 +228,7 @@ func Test_validator_Handle(t *testing.T) {
 			inner := &validator{
 				client:               tt.fields.client,
 				validateStorageClass: tt.fields.validateStorageClass,
+				licenseChecker:       license.MockLicenseChecker{},
 			}
 			v := commonwebhook.NewResourceValidator[*esv1.Elasticsearch](nil, []string{"ns"}, inner)
 			wh := admission.WithValidator[*esv1.Elasticsearch](k8s.Scheme(), v)
@@ -208,6 +236,9 @@ func Test_validator_Handle(t *testing.T) {
 			require.Equal(t, tt.wantAllowed, got.Allowed)
 			if !got.Allowed {
 				require.Contains(t, got.Result.Message, tt.wantMessage)
+			}
+			if len(tt.wantWarnings) > 0 {
+				require.Equal(t, tt.wantWarnings, got.Warnings)
 			}
 		})
 	}

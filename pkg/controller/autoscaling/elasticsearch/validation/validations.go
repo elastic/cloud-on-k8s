@@ -24,7 +24,13 @@ import (
 
 type validation func(autoscaler v1alpha1.ElasticsearchAutoscaler) (field.ErrorList, error)
 
-// validations are the validation funcs that apply to creates or updates
+// validations are the validation funcs that apply to creates or updates.
+//
+// The license check is intentionally kept here even though the webhook wrapper
+// (commonwebhook.NewResourceValidator) performs the same annotation-based check.
+// ValidateElasticsearchAutoscaler is also called directly from the reconciler
+// (controller.go) to guard against invalid specs when webhooks are not
+// configured, and that path does not go through the wrapper.
 func validations(ctx context.Context, k8sClient k8s.Client, checker license.Checker) []validation {
 	return []validation{
 		func(proposed v1alpha1.ElasticsearchAutoscaler) (field.ErrorList, error) {
@@ -123,10 +129,11 @@ func validLicenseLevel(ctx context.Context, esa v1alpha1.ElasticsearchAutoscaler
 	ok, err := license.HasRequestedLicenseLevel(ctx, esa.Annotations, checker)
 	if err != nil {
 		ulog.FromContext(ctx).Error(err, "while checking license level during validation")
-		return errs, nil // ignore the error here
+		return errs, nil
 	}
 	if !ok {
 		errs = append(errs, field.Invalid(field.NewPath("metadata").Child("annotations").Child(license.Annotation), "enterprise", "Enterprise license required but ECK operator is running on a Basic license"))
 	}
 	return errs, nil
 }
+
