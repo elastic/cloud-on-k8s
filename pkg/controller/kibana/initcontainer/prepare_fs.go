@@ -68,7 +68,7 @@ func ConfigVolume(kb kbv1.Kibana) volume.SecretVolume {
 }
 
 // NewInitContainer creates an init container to handle kibana configuration and plugins persistence.
-func NewInitContainer(kb kbv1.Kibana, setDefaultSecurityContext bool) (corev1.Container, error) {
+func NewInitContainer(kb kbv1.Kibana) (corev1.Container, error) {
 	container := corev1.Container{
 		ImagePullPolicy: corev1.PullIfNotPresent,
 		Name:            kbvolume.InitContainerName,
@@ -80,14 +80,6 @@ func NewInitContainer(kb kbv1.Kibana, setDefaultSecurityContext bool) (corev1.Co
 			PluginsSharedVolume.InitContainerVolumeMount(),
 		},
 		Resources: defaultResources,
-	}
-
-	if setDefaultSecurityContext {
-		container.SecurityContext = &corev1.SecurityContext{
-			SeccompProfile: &corev1.SeccompProfile{
-				Type: corev1.SeccompProfileTypeRuntimeDefault,
-			},
-		}
 	}
 
 	return container, nil
