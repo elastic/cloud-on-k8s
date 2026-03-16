@@ -49,8 +49,10 @@ func Validate(k *Kibana, old *Kibana) (admission.Warnings, error) {
 }
 
 func (k *Kibana) validate(old *Kibana) (admission.Warnings, error) {
-	var errors field.ErrorList
-	var warnings admission.Warnings
+	var (
+		errors   field.ErrorList
+		warnings admission.Warnings
+	)
 
 	deprecatedWarnings, deprecatedErrors := checkIfVersionDeprecated(k)
 	if len(deprecatedErrors) > 0 {

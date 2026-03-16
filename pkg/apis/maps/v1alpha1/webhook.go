@@ -40,8 +40,10 @@ func Validate(m *ElasticMapsServer, old *ElasticMapsServer) (admission.Warnings,
 }
 
 func (m *ElasticMapsServer) validate() (admission.Warnings, error) {
-	var errors field.ErrorList
-	var warnings admission.Warnings
+	var (
+		errors   field.ErrorList
+		warnings admission.Warnings
+	)
 
 	for _, dc := range defaultChecks {
 		if err := dc(m); err != nil {

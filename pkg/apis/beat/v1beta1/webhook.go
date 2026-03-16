@@ -26,8 +26,10 @@ func Validate(b *Beat, old *Beat) (admission.Warnings, error) {
 }
 
 func (b *Beat) validate(old *Beat) (admission.Warnings, error) {
-	var errors field.ErrorList
-	var warnings admission.Warnings
+	var (
+		errors   field.ErrorList
+		warnings admission.Warnings
+	)
 
 	// deprecation check
 	deprecationWarning, deprecationError := checkIfVersionDeprecated(b)

@@ -43,13 +43,12 @@ func (a *Agent) validate(old *Agent) (admission.Warnings, error) {
 	warnings := a.warnings()
 	var errors field.ErrorList
 
-	// depreciation check
-	depreciationWarnings, depreciationErrors := checkIfVersionDeprecated(a)
-	if depreciationErrors != nil {
-		errors = append(errors, depreciationErrors...)
+	deprecationWarnings, deprecationErrors := checkIfVersionDeprecated(a)
+	if deprecationErrors != nil {
+		errors = append(errors, deprecationErrors...)
 	}
-	if depreciationWarnings != "" {
-		warnings = append(warnings, depreciationWarnings)
+	if deprecationWarnings != "" {
+		warnings = append(warnings, deprecationWarnings)
 	}
 
 	if old != nil {

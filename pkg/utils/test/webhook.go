@@ -74,10 +74,36 @@ func ValidationWebhookFailed(causeRegexes ...string) func(*testing.T, *admission
 	}
 }
 
+// ValidationWebhookFailedWithWarnings returns a check function that asserts the admission request was denied,
+// the denial causes match the provided causeRegexes, and the response warnings match the provided warningRegexes.
+func ValidationWebhookFailedWithWarnings(causeRegexes []string, warningRegexes []string) func(*testing.T, *admissionv1.AdmissionResponse) {
+	return func(t *testing.T, response *admissionv1.AdmissionResponse) {
+		t.Helper()
+		ValidationWebhookFailed(causeRegexes...)(t, response)
+		require.Len(t, response.Warnings, len(warningRegexes), "unexpected number of warnings: %v", response.Warnings)
+		for _, wr := range warningRegexes {
+			found := false
+			t.Logf("Checking for existence of warning: %s", wr)
+			for _, warning := range response.Warnings {
+				match, err := regexp.MatchString(wr, warning)
+				require.NoError(t, err, "Match '%s' returned error: %v", wr, err)
+				if match {
+					found = true
+					break
+				}
+			}
+			require.True(t, found, "[%s] is not present in warning list", wr)
+		}
+	}
+}
+
+// ValidationWebhookSucceededWithWarnings returns a check function that asserts the admission request was
+// allowed and that the response warnings match exactly the provided regexes (one regex per warning, in any order).
 func ValidationWebhookSucceededWithWarnings(warningsRegexes ...string) func(*testing.T, *admissionv1.AdmissionResponse) {
 	return func(t *testing.T, response *admissionv1.AdmissionResponse) {
 		t.Helper()
 		require.True(t, response.Allowed, "Request denied: %s", response.Result.Reason)
+		require.Len(t, response.Warnings, len(warningsRegexes), "unexpected number of warnings: %v", response.Warnings)
 		for _, wr := range warningsRegexes {
 			found := false
 			t.Logf("Checking for existence of: %s", wr)

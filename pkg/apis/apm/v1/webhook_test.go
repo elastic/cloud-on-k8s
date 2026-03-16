@@ -232,6 +232,26 @@ func TestWebhook(t *testing.T) {
 				`spec.elasticsearchRef: Forbidden: Invalid association reference: serviceName or namespace can only be used in combination with name, not with secretName`,
 			),
 		},
+		{
+			Name:      "deprecated-version-downgrade-warning-and-denial",
+			Operation: admissionv1.Update,
+			OldObject: func(t *testing.T, uid string) []byte {
+				t.Helper()
+				apm := mkApmServer(uid)
+				apm.Spec.Version = "7.12.0"
+				return serialize(t, apm)
+			},
+			Object: func(t *testing.T, uid string) []byte {
+				t.Helper()
+				apm := mkApmServer(uid)
+				apm.Spec.Version = "7.10.0"
+				return serialize(t, apm)
+			},
+			Check: test.ValidationWebhookFailedWithWarnings(
+				[]string{`spec.version: Forbidden: Version downgrades are not supported`},
+				[]string{`Version 7.10.0 is EOL and support for it will be removed in a future release of the ECK operator`},
+			),
+		},
 	}
 
 	handler := test.NewValidationWebhookHandler(apmv1.Validate)

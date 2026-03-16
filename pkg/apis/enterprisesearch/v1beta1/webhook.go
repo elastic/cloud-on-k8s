@@ -41,8 +41,10 @@ func Validate(ent *EnterpriseSearch, old *EnterpriseSearch) (admission.Warnings,
 }
 
 func (ent *EnterpriseSearch) validate(old *EnterpriseSearch) (admission.Warnings, error) {
-	var errors field.ErrorList
-	var warnings admission.Warnings
+	var (
+		errors   field.ErrorList
+		warnings admission.Warnings
+	)
 
 	// check if the version is deprecated
 	deprecationWarnings, deprecationErrors := checkIfVersionDeprecated(ent)

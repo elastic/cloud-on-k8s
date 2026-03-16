@@ -48,16 +48,17 @@ func Validate(as *ApmServer, old *ApmServer) (admission.Warnings, error) {
 }
 
 func (as *ApmServer) validate(old *ApmServer) (admission.Warnings, error) {
-	var errors field.ErrorList
-	var warnings admission.Warnings
+	var (
+		errors   field.ErrorList
+		warnings admission.Warnings
+	)
 
-	// depreciation check
-	depreciationWarnings, depreciationErrors := checkIfVersionDeprecated(as)
-	if depreciationErrors != nil {
-		errors = append(errors, depreciationErrors...)
+	deprecationWarnings, deprecationErrors := checkIfVersionDeprecated(as)
+	if deprecationErrors != nil {
+		errors = append(errors, deprecationErrors...)
 	}
-	if depreciationWarnings != "" {
-		warnings = append(warnings, depreciationWarnings)
+	if deprecationWarnings != "" {
+		warnings = append(warnings, deprecationWarnings)
 	}
 
 	if old != nil {

@@ -10,6 +10,7 @@ import (
 	"k8s.io/apimachinery/pkg/util/validation/field"
 	"sigs.k8s.io/controller-runtime/pkg/webhook/admission"
 
+	commonv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/common/v1"
 	ulog "github.com/elastic/cloud-on-k8s/v3/pkg/utils/log"
 )
 
@@ -25,29 +26,41 @@ var eslog = ulog.Log.WithName("es-validation")
 // Validate validates an Elasticsearch resource, optionally against an old version for update validations.
 func Validate(es *Elasticsearch, old *Elasticsearch) (admission.Warnings, error) {
 	eslog.V(1).Info("validate", "name", es.Name)
+
+	var (
+		errs     field.ErrorList
+		warnings admission.Warnings
+	)
+
+	deprecationWarning, deprecationErrors := commonv1.CheckDeprecatedStackVersion(es.Spec.Version)
+	if len(deprecationErrors) > 0 {
+		errs = append(errs, deprecationErrors...)
+	}
+	if deprecationWarning != "" {
+		warnings = append(warnings, deprecationWarning)
+	}
+
 	if old != nil {
-		var errs field.ErrorList
 		for _, val := range updateValidations {
 			if err := val(old, es); err != nil {
 				errs = append(errs, err...)
 			}
 		}
 		if len(errs) > 0 {
-			return nil, apierrors.NewInvalid(
+			return warnings, apierrors.NewInvalid(
 				schema.GroupKind{Group: "elasticsearch.k8s.elastic.co", Kind: "Elasticsearch"},
 				es.Name, errs)
 		}
 	}
-	return es.validateElasticsearch()
-}
 
-func (es *Elasticsearch) validateElasticsearch() (admission.Warnings, error) {
-	if errs := es.check(validations); len(errs) > 0 {
-		return nil, apierrors.NewInvalid(
-			schema.GroupKind{Group: "elasticsearch.k8s.elastic.co", Kind: "Elasticsearch"},
-			es.Name,
-			errs,
-		)
+	if validationErrs := es.check(validations); len(validationErrs) > 0 {
+		errs = append(errs, validationErrs...)
 	}
-	return nil, nil
+
+	if len(errs) > 0 {
+		return warnings, apierrors.NewInvalid(
+			schema.GroupKind{Group: "elasticsearch.k8s.elastic.co", Kind: "Elasticsearch"},
+			es.Name, errs)
+	}
+	return warnings, nil
 }
