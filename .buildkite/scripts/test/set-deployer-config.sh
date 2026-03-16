@@ -28,7 +28,9 @@ ROOT="$WD/../../.."
 # running multiple containers with file watchers.
 if [[ "${E2E_PROVIDER:-}" == "kind" || "${E2E_PROVIDER:-}" == "k3d" ]]; then
     if command -v sysctl &> /dev/null; then
-        sudo sysctl -w fs.inotify.max_user_instances=512 2>/dev/null || true
+        if ! out="$(sudo sysctl -w fs.inotify.max_user_instances=512 2>&1)"; then
+            echo "Warning: failed to set fs.inotify.max_user_instances=512: ${out}" >&2
+        fi
     else
         echo "Warning: sysctl not found, cannot increase inotify limits" >&2
     fi
