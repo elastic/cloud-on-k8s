@@ -52,6 +52,9 @@ const (
 type stepFunc func() error
 
 func doRun(flags runFlags) error {
+	// DEBUG: log file descriptor limits
+	logUlimits()
+
 	helper := &helper{
 		runFlags:       flags,
 		kubectlWrapper: command.NewKubectl(flags.kubeConfig),
@@ -664,40 +667,54 @@ func streamTestJobOutput(
 				streamErrors <- err
 				continue // retry
 			}
-			defer stream.Close()
 
-			pastPreviousLogStream := false
-			scan := bufio.NewScanner(stream)
-			for scan.Scan() {
-				line := scan.Bytes()
+			// Process this stream - must close before retry to avoid leaking file descriptors.
+			lastTimestamp = processLogStream(stream, timestampExtractor, writer, streamErrors, lastTimestamp)
+			stream.Close()
+			log.Info("Log stream ended", "pod_name", streamProvider)
 
-				timestamp, err := timestampExtractor(line)
-				if err != nil {
-					streamErrors <- err
-					continue
-				}
-
-				// don't re-write logs that have been already written in a previous log stream attempt
-				if !pastPreviousLogStream && !timestamp.After(lastTimestamp) {
-					continue
-				}
-
-				// new log to process
-				pastPreviousLogStream = true
-				lastTimestamp = timestamp
-				if _, err := writer.Write([]byte(string(line) + "\n")); err != nil {
-					streamErrors <- err
-					return
-				}
-			}
-			if err := scan.Err(); err != nil {
-				log.Error(err, "Log stream ended", "pod_name", streamProvider)
-			} else {
-				log.Info("Log stream ended", "pod_name", streamProvider)
-			}
 			// retry
 		}
 	}
+}
+
+// processLogStream reads logs from a stream and writes them to the writer.
+// Returns the timestamp of the last processed log entry.
+func processLogStream(
+	stream io.ReadCloser,
+	timestampExtractor timestampExtractor,
+	writer io.Writer,
+	streamErrors chan<- error,
+	lastTimestamp time.Time,
+) time.Time {
+	pastPreviousLogStream := false
+	scan := bufio.NewScanner(stream)
+	for scan.Scan() {
+		line := scan.Bytes()
+
+		timestamp, err := timestampExtractor(line)
+		if err != nil {
+			streamErrors <- err
+			continue
+		}
+
+		// don't re-write logs that have been already written in a previous log stream attempt
+		if !pastPreviousLogStream && !timestamp.After(lastTimestamp) {
+			continue
+		}
+
+		// new log to process
+		pastPreviousLogStream = true
+		lastTimestamp = timestamp
+		if _, err := writer.Write([]byte(string(line) + "\n")); err != nil {
+			streamErrors <- err
+			return lastTimestamp
+		}
+	}
+	if err := scan.Err(); err != nil {
+		log.Error(err, "Log stream scan error")
+	}
+	return lastTimestamp
 }
 
 type GoLangJSONLogLine struct {
@@ -708,7 +725,12 @@ type GoLangJSONLogLine struct {
 func goLangTestTimestampParser(line []byte) (time.Time, error) {
 	var logLine GoLangJSONLogLine
 	if err := json.Unmarshal(line, &logLine); err != nil {
-		return time.Time{}, err
+		// DEBUG: show the failing line (truncated to 200 chars)
+		preview := string(line)
+		if len(preview) > 200 {
+			preview = preview[:200] + "..."
+		}
+		return time.Time{}, fmt.Errorf("failed to parse JSON log line %q: %w", preview, err)
 	}
 	timestamp, err := time.Parse(time.RFC3339Nano, logLine.Time)
 	if err != nil {
@@ -853,4 +875,15 @@ func (h *helper) runECKDiagnostics() {
 	if err := cmd.Run(); err != nil {
 		log.Error(err, "Failed to run eck-diagnostics")
 	}
+}
+
+// logUlimits logs the current file descriptor limits for debugging.
+// DEBUG: Remove this function before merging.
+func logUlimits() {
+	var rLimit syscall.Rlimit
+	if err := syscall.Getrlimit(syscall.RLIMIT_NOFILE, &rLimit); err != nil {
+		fmt.Printf("DEBUG: failed to get RLIMIT_NOFILE: %v\n", err)
+		return
+	}
+	fmt.Printf("DEBUG: File descriptor limits - soft: %d, hard: %d\n", rLimit.Cur, rLimit.Max)
 }
