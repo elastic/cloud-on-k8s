@@ -175,7 +175,7 @@ func NewPodTemplateSpec(
 	}
 
 	var additionalInitEnvVars []corev1.EnvVar
-	if kb.Spec.PackageRegistryRef.IsDefined() {
+	if kb.Spec.PackageRegistryRef.IsSet() {
 		userNodeExtraCACerts := getUserNodeExtraCACerts(kb)
 		builder, err = withEPRCertsVolume(
 			builder,

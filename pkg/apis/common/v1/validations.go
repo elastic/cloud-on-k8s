@@ -119,6 +119,16 @@ func CheckAssociationRefs(path *field.Path, refs ...ObjectSelector) field.ErrorL
 	return nil
 }
 
+// CheckLocalAssociationRefs checks that the given local association references are valid.
+func CheckLocalAssociationRefs(path *field.Path, refs ...LocalObjectSelector) field.ErrorList {
+	for _, ref := range refs {
+		if err := ref.IsValid(); err != nil {
+			return field.ErrorList{field.Forbidden(path, fmt.Sprintf("Invalid association reference: %s", err))}
+		}
+	}
+	return nil
+}
+
 func ParseVersion(ver string) (*version.Version, field.ErrorList) {
 	v, err := version.Parse(ver)
 	if err != nil {

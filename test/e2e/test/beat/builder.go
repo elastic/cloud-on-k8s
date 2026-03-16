@@ -348,9 +348,9 @@ func (b Builder) GetMetricsCluster() *types.NamespacedName {
 }
 
 func (b Builder) GetLogsCluster() *types.NamespacedName {
-	if len(b.Beat.Spec.Monitoring.Metrics.ElasticsearchRefs) == 0 {
+	if len(b.Beat.Spec.Monitoring.Logs.ElasticsearchRefs) == 0 {
 		return nil
 	}
-	metricsCluster := b.Beat.Spec.Monitoring.Logs.ElasticsearchRefs[0].NamespacedName()
-	return &metricsCluster
+	logsCluster := b.Beat.Spec.Monitoring.Logs.ElasticsearchRefs[0].NamespacedName()
+	return &logsCluster
 }

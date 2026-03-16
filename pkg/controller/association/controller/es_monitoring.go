@@ -60,7 +60,7 @@ func esMonitoringAssociationInfo() association.AssociationInfo {
 		AssociationResourceNamespaceLabelName: eslabel.ClusterNamespaceLabelName,
 
 		ElasticsearchUserCreation: &association.ElasticsearchUserCreation{
-			ElasticsearchRef: func(c k8s.Client, association commonv1.Association) (bool, commonv1.ObjectSelector, error) {
+			ElasticsearchRef: func(c k8s.Client, association commonv1.Association) (bool, commonv1.AssociationRef, error) {
 				return true, association.AssociationRef(), nil
 			},
 			UserSecretSuffix: "beat-es-mon-user",

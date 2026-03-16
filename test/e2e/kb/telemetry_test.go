@@ -96,5 +96,4 @@ func TestTelemetry(t *testing.T) {
 	}
 
 	test.Sequence(nil, stepsFn, esBuilder, kbBuilder).RunSequential(t)
-
 }

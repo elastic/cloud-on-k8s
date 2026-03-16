@@ -45,7 +45,7 @@ func IsConfiguredIfSet(ctx context.Context, association commonv1.Association, r 
 	if err != nil {
 		return false, err
 	}
-	if (&ref).IsDefined() && !assocConf.IsConfigured() {
+	if ref.IsSet() && !assocConf.IsConfigured() {
 		k8s.EmitEventf(
 			r,
 			association,
@@ -58,7 +58,7 @@ func IsConfiguredIfSet(ctx context.Context, association commonv1.Association, r 
 			"kind", association.GetObjectKind().GroupVersionKind().Kind,
 			"namespace", association.GetNamespace(),
 			"name", association.GetName(),
-			"ref_namespace", ref.Namespace,
+			"ref_namespace", ref.GetNamespace(),
 			"ref_name", ref.NameOrSecretName(),
 		)
 		return false, nil
@@ -131,7 +131,7 @@ const UnknownVersion = "unknown_version"
 func AllowVersion(resourceVersion version.Version, associated commonv1.Associated, logger logr.Logger, recorder toolsevents.EventRecorder) (bool, error) {
 	for _, assoc := range associated.GetAssociations() {
 		assocRef := assoc.AssociationRef()
-		if !assocRef.IsDefined() {
+		if !assocRef.IsSet() {
 			// no association specified, move on
 			continue
 		}
@@ -142,7 +142,7 @@ func AllowVersion(resourceVersion version.Version, associated commonv1.Associate
 		if assocConf == nil || assocConf.Version == "" {
 			// no conf reported yet, this may be the initial resource creation
 			logger.Info("Delaying version deployment since the version of an associated resource is not reported yet",
-				"version", resourceVersion, "ref_namespace", assocRef.Namespace, "ref_name", assocRef.NameOrSecretName())
+				"version", resourceVersion, "ref_namespace", assocRef.GetNamespace(), "ref_name", assocRef.NameOrSecretName())
 			return false, nil
 		}
 		if assocConf.Version == UnknownVersion {
@@ -164,7 +164,7 @@ func AllowVersion(resourceVersion version.Version, associated commonv1.Associate
 			// the desired version of the reconciled resource (example: Kibana)
 			logger.Info("Delaying version deployment since a referenced resource is not upgraded yet",
 				"version", resourceVersion, "ref_version", refVer,
-				"ref_type", assoc.AssociationType(), "ref_namespace", assocRef.Namespace, "ref_name", assocRef.NameOrSecretName())
+				"ref_type", assoc.AssociationType(), "ref_namespace", assocRef.GetNamespace(), "ref_name", assocRef.NameOrSecretName())
 			k8s.EmitEventf(recorder, associated, corev1.EventTypeWarning, events.EventReasonDelayed, events.EventActionVersionCheck,
 				"Delaying deployment of version %s since the referenced %s is not upgraded yet", resourceVersion, assoc.AssociationType())
 			return false, nil

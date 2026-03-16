@@ -125,7 +125,7 @@ func (dc *DataIntegrityCheck) Init() error {
 		if err != nil {
 			return fmt.Errorf("failed to index document %d/%d: %w", i, dc.docCount, err)
 		}
-		defer resp.Body.Close()
+		resp.Body.Close() // Close immediately in loop to avoid leaking file descriptors
 	}
 	return nil
 }

@@ -233,7 +233,7 @@ func (f fleetAPI) setupFleet(ctx context.Context) error {
 }
 
 func maybeReconcileFleetEnrollment(params Params, result *reconciler.Results) EnrollmentAPIKey {
-	if !params.Agent.Spec.KibanaRef.IsDefined() {
+	if !params.Agent.Spec.KibanaRef.IsSet() {
 		return EnrollmentAPIKey{}
 	}
 

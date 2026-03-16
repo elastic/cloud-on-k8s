@@ -94,8 +94,8 @@ func (b Builder) WithNamespace(namespace string) Builder {
 	return b
 }
 
-func (b Builder) Ref() commonv1.ObjectSelector {
-	return commonv1.ObjectSelector{
+func (b Builder) Ref() commonv1.LocalObjectSelector {
+	return commonv1.LocalObjectSelector{
 		Name:      b.EPR.Name,
 		Namespace: b.EPR.Namespace,
 	}

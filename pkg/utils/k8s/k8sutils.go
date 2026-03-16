@@ -303,8 +303,8 @@ func CompareStorageRequests(initial corev1.VolumeResourceRequirements, updated c
 }
 
 // IsLabelSelectorEmpty returns true if the label selector has no match criteria.
-func IsLabelSelectorEmpty(selector metav1.LabelSelector) bool {
-	return len(selector.MatchExpressions) == 0 && len(selector.MatchLabels) == 0
+func IsLabelSelectorEmpty(selector *metav1.LabelSelector) bool {
+	return selector == nil || (len(selector.MatchExpressions) == 0 && len(selector.MatchLabels) == 0)
 }
 
 // NamespaceFilterFunc returns a function that checks if a namespace is allowed.
@@ -315,7 +315,7 @@ func NamespaceFilterFunc(
 	selector metav1.LabelSelector,
 ) (func(namespace string) bool, error) {
 	// No selector = pass everything through
-	if IsLabelSelectorEmpty(selector) {
+	if IsLabelSelectorEmpty(&selector) {
 		return func(string) bool { return true }, nil
 	}
 

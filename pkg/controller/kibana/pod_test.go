@@ -383,7 +383,7 @@ func TestNewPodTemplateSpec(t *testing.T) {
 					},
 					Spec: kbv1.KibanaSpec{
 						Version: "7.1.0",
-						PackageRegistryRef: commonv1.ObjectSelector{
+						PackageRegistryRef: commonv1.LocalObjectSelector{
 							Name: "test-epr",
 						},
 						PodTemplate: corev1.PodTemplateSpec{
@@ -461,7 +461,7 @@ func TestWithEPRCertsVolume(t *testing.T) {
 				},
 				Spec: kbv1.KibanaSpec{
 					Version: "7.1.0",
-					PackageRegistryRef: commonv1.ObjectSelector{
+					PackageRegistryRef: commonv1.LocalObjectSelector{
 						Name: "test-epr",
 					},
 				},
@@ -485,7 +485,7 @@ func TestWithEPRCertsVolume(t *testing.T) {
 					},
 					Spec: kbv1.KibanaSpec{
 						Version: "7.1.0",
-						PackageRegistryRef: commonv1.ObjectSelector{
+						PackageRegistryRef: commonv1.LocalObjectSelector{
 							Name: "test-epr",
 						},
 					},
@@ -511,7 +511,7 @@ func TestWithEPRCertsVolume(t *testing.T) {
 					},
 					Spec: kbv1.KibanaSpec{
 						Version: "7.1.0",
-						PackageRegistryRef: commonv1.ObjectSelector{
+						PackageRegistryRef: commonv1.LocalObjectSelector{
 							Name: "test-epr",
 						},
 						PodTemplate: corev1.PodTemplateSpec{

@@ -21,7 +21,7 @@ type mockUnmanagedAssociation struct {
 	supportsAuthAPIKey bool
 }
 
-func (m mockUnmanagedAssociation) AssociationRef() commonv1.ObjectSelector {
+func (m mockUnmanagedAssociation) AssociationRef() commonv1.AssociationRef {
 	return m.objSelector
 }
 

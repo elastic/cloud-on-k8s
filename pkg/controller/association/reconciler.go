@@ -97,7 +97,7 @@ type AssociationInfo struct { //nolint:revive
 type ElasticsearchUserCreation struct {
 	// ElasticsearchRef is a function which returns the maybe transitive Elasticsearch reference (eg. APMServer -> Kibana -> Elasticsearch).
 	// In the case of a transitive reference this is used to create the Elasticsearch user.
-	ElasticsearchRef func(c k8s.Client, association commonv1.Association) (bool, commonv1.ObjectSelector, error)
+	ElasticsearchRef func(c k8s.Client, association commonv1.Association) (bool, commonv1.AssociationRef, error)
 	// UserSecretSuffix is used as a suffix in the name of the secret holding user data in the associated namespace.
 	UserSecretSuffix string
 	// ESUserRole is the role to use for the Elasticsearch user created by the association.
@@ -246,7 +246,7 @@ func (r *Reconciler) reconcileAssociation(ctx context.Context, association commo
 	}
 
 	if assocRef.IsExternal() {
-		log.V(1).Info("Association with an unmanaged resource", "name", association.Associated().GetName(), "ref_name", assocRef.Name)
+		log.V(1).Info("Association with an unmanaged resource", "name", association.Associated().GetName(), "ref_name", assocRef.NameOrSecretName())
 		// external reference, update association conf to associate the unmanaged resource
 		expectedAssocConf, err := r.ExpectedConfigFromUnmanagedAssociation(association)
 		if err != nil {
@@ -287,7 +287,7 @@ func (r *Reconciler) reconcileAssociation(ctx context.Context, association commo
 	if err != nil {
 		// the Service may not have been created by the resource controller yet
 		if apierrors.IsNotFound(err) {
-			log.Info("Associated resource Service is not available yet", "error", err, "name", association.Associated().GetName(), "ref_name", assocRef.Name)
+			log.Info("Associated resource Service is not available yet", "error", err, "name", association.Associated().GetName(), "ref_name", assocRef.NameOrSecretName())
 			return commonv1.AssociationPending, nil
 		}
 		return commonv1.AssociationPending, err
@@ -331,9 +331,9 @@ func (r *Reconciler) reconcileAssociation(ctx context.Context, association commo
 
 	if esAssocRef.IsExternal() {
 		log.V(1).Info("Association with a transitive unmanaged Elasticsearch, skip user creation",
-			"name", association.Associated().GetName(), "ref_name", assocRef.Name, "es_ref_name", esAssocRef.Name)
+			"name", association.Associated().GetName(), "ref_name", assocRef.NameOrSecretName(), "es_ref_name", esAssocRef.NameOrSecretName())
 		// this a transitive unmanaged Elasticsearch, no user creation, update the association conf as such
-		expectedAssocConf.AuthSecretName = esAssocRef.SecretName
+		expectedAssocConf.AuthSecretName = esAssocRef.GetSecretName()
 		expectedAssocConf.AuthSecretKey = authPasswordUnmanagedSecretKey
 		return r.updateAssocConf(ctx, expectedAssocConf, association)
 	}
@@ -422,7 +422,7 @@ func (r *Reconciler) reconcileAssociation(ctx context.Context, association commo
 func (r *Reconciler) getElasticsearch(
 	ctx context.Context,
 	association commonv1.Association,
-	elasticsearchRef commonv1.ObjectSelector,
+	elasticsearchRef commonv1.AssociationRef,
 ) (esv1.Elasticsearch, commonv1.AssociationStatus, error) {
 	span, ctx := apm.StartSpan(ctx, "get_elasticsearch", tracing.SpanTypeApp)
 	defer span.End()

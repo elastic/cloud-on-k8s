@@ -233,6 +233,47 @@ func TestCompareStorageRequests(t *testing.T) {
 	}
 }
 
+func TestIsLabelSelectorEmpty(t *testing.T) {
+	tests := []struct {
+		name     string
+		selector *metav1.LabelSelector
+		want     bool
+	}{
+		{
+			name:     "nil selector",
+			selector: nil,
+			want:     true,
+		},
+		{
+			name:     "empty selector",
+			selector: &metav1.LabelSelector{},
+			want:     true,
+		},
+		{
+			name: "selector with match labels",
+			selector: &metav1.LabelSelector{
+				MatchLabels: map[string]string{"app": "es"},
+			},
+			want: false,
+		},
+		{
+			name: "selector with match expressions",
+			selector: &metav1.LabelSelector{
+				MatchExpressions: []metav1.LabelSelectorRequirement{
+					{Key: "team", Operator: metav1.LabelSelectorOpExists},
+				},
+			},
+			want: false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			assert.Equal(t, tt.want, IsLabelSelectorEmpty(tt.selector))
+		})
+	}
+}
+
 func TestObjectExists(t *testing.T) {
 	type args struct {
 		c             Client

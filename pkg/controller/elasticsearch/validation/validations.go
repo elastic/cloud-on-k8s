@@ -10,6 +10,8 @@ import (
 	"net"
 	"strings"
 
+	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/util/sets"
 	"k8s.io/apimachinery/pkg/util/validation/field"
 
 	commonv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/common/v1"
@@ -24,23 +26,25 @@ import (
 )
 
 const (
-	cfgInvalidMsg                          = "Configuration invalid"
-	duplicateNodeSets                      = "NodeSet names must be unique"
-	invalidNamesErrMsg                     = "Elasticsearch configuration would generate resources with invalid names"
-	invalidSanIPErrMsg                     = "Invalid SAN IP address. Must be a valid IPv4 address"
-	masterRequiredMsg                      = "Elasticsearch needs to have at least one master node"
-	mixedRoleConfigMsg                     = "Detected a combination of node.roles and %s. Use only node.roles"
-	noDowngradesMsg                        = "Downgrades are not supported"
-	nodeRolesInOldVersionMsg               = "node.roles setting is not available in this version of Elasticsearch"
-	parseStoredVersionErrMsg               = "Cannot parse current Elasticsearch version. String format must be {major}.{minor}.{patch}[-{label}]"
-	parseVersionErrMsg                     = "Cannot parse Elasticsearch version. String format must be {major}.{minor}.{patch}[-{label}]"
-	pvcNotMountedErrMsg                    = "volume claim declared but volume not mounted in any container. Note that the Elasticsearch data volume should be named 'elasticsearch-data'"
-	unsupportedConfigErrMsg                = "Configuration setting is reserved for internal use. User-configured use is unsupported"
-	unsupportedUpgradeMsg                  = "Unsupported version upgrade path. Check the Elasticsearch documentation for supported upgrade paths."
-	unsupportedVersionMsg                  = "Unsupported version"
-	notAllowedNodesLabelMsg                = "Node label not in the exposed node labels list"
-	unsupportedClientAuthenticationMsg     = "Mandatory client authentication is not supported"
-	autoscalingAnnotationUnsupportedErrMsg = "autoscaling annotation is no longer supported"
+	cfgInvalidMsg                            = "Configuration invalid"
+	duplicateNodeSets                        = "NodeSet names must be unique"
+	invalidNamesErrMsg                       = "Elasticsearch configuration would generate resources with invalid names"
+	invalidSanIPErrMsg                       = "Invalid SAN IP address. Must be a valid IPv4 address"
+	conflictingZoneAwarenessTopologyKeys     = "All zone-aware NodeSets must use the same topologyKey"
+	zoneAwarenessAffinityInNoIntersectionMsg = "Required node affinity In values have no intersection with the configured zone-awareness zones; the operator injects an additional In expression for the zones, so pods will be permanently unschedulable"
+	masterRequiredMsg                        = "Elasticsearch needs to have at least one master node"
+	mixedRoleConfigMsg                       = "Detected a combination of node.roles and %s. Use only node.roles"
+	noDowngradesMsg                          = "Downgrades are not supported"
+	nodeRolesInOldVersionMsg                 = "node.roles setting is not available in this version of Elasticsearch"
+	parseStoredVersionErrMsg                 = "Cannot parse current Elasticsearch version. String format must be {major}.{minor}.{patch}[-{label}]"
+	parseVersionErrMsg                       = "Cannot parse Elasticsearch version. String format must be {major}.{minor}.{patch}[-{label}]"
+	pvcNotMountedErrMsg                      = "volume claim declared but volume not mounted in any container. Note that the Elasticsearch data volume should be named 'elasticsearch-data'"
+	unsupportedConfigErrMsg                  = "Configuration setting is reserved for internal use. User-configured use is unsupported"
+	unsupportedUpgradeMsg                    = "Unsupported version upgrade path. Check the Elasticsearch documentation for supported upgrade paths."
+	unsupportedVersionMsg                    = "Unsupported version"
+	notAllowedNodesLabelMsg                  = "Node label not in the exposed node labels list"
+	unsupportedClientAuthenticationMsg       = "Mandatory client authentication is not supported"
+	autoscalingAnnotationUnsupportedErrMsg   = "autoscaling annotation is no longer supported"
 )
 
 type validation func(esv1.Elasticsearch) field.ErrorList
@@ -64,6 +68,8 @@ func validations(ctx context.Context, checker license.Checker, exposedNodeLabels
 		func(proposed esv1.Elasticsearch) field.ErrorList {
 			return validNodeLabels(proposed, exposedNodeLabels)
 		},
+		validZoneAwarenessTopologyKeys,
+		validZoneAwarenessAffinityInCompatibility,
 		noUnknownFields,
 		validName,
 		hasCorrectNodeRoles,
@@ -80,9 +86,19 @@ func validations(ctx context.Context, checker license.Checker, exposedNodeLabels
 	}
 }
 
+// validNodeLabels checks that all node labels requested via the downward-node-labels annotation
+// and all zone-awareness-derived topology keys are permitted by the operator's exposed-node-labels policy.
+// Zone-awareness topology keys are only validated when the policy is configured (non-empty), so that
+// zone awareness works out of the box when no exposed-node-labels restriction is in place.
 func validNodeLabels(proposed esv1.Elasticsearch, exposedNodeLabels NodeLabels) field.ErrorList {
 	var errs field.ErrorList
-	for _, nodeLabel := range proposed.DownwardNodeLabels() {
+	annotationValue := ""
+	if proposed.Annotations != nil {
+		annotationValue = proposed.Annotations[esv1.DownwardNodeLabelsAnnotation]
+	}
+	// firstly validate the downward-node-labels annotations
+	annotationLabels := esv1.ParseDownwardNodeLabels(annotationValue)
+	for nodeLabel := range annotationLabels {
 		if exposedNodeLabels.IsAllowed(nodeLabel) {
 			continue
 		}
@@ -94,6 +110,150 @@ func validNodeLabels(proposed esv1.Elasticsearch, exposedNodeLabels NodeLabels) 
 				notAllowedNodesLabelMsg,
 			),
 		)
+	}
+
+	// then validate the zone-awareness-derived topology keys
+	if len(exposedNodeLabels) > 0 {
+		for i, nodeSet := range proposed.Spec.NodeSets {
+			if nodeSet.ZoneAwareness == nil {
+				continue
+			}
+			topologyKey := nodeSet.ZoneAwareness.TopologyKeyOrDefault()
+			if exposedNodeLabels.IsAllowed(topologyKey) {
+				continue
+			}
+			errs = append(
+				errs,
+				field.Invalid(
+					field.NewPath("spec").Child("nodeSets").Index(i).Child("zoneAwareness", "topologyKey"),
+					topologyKey,
+					notAllowedNodesLabelMsg,
+				),
+			)
+		}
+	}
+
+	return errs
+}
+
+// validZoneAwarenessTopologyKeys rejects configurations where zone-aware NodeSets
+// use different topology keys. Since the operator generates a single init script for all nodeSets
+// that waits for all topology keys to be present, all zone-aware NodeSets must use the same topology key.
+func validZoneAwarenessTopologyKeys(es esv1.Elasticsearch) field.ErrorList {
+	var errs field.ErrorList
+	topologyKeys := sets.New[string]()
+
+	for _, nodeSet := range es.Spec.NodeSets {
+		if nodeSet.ZoneAwareness == nil {
+			continue
+		}
+		topologyKeys.Insert(nodeSet.ZoneAwareness.TopologyKeyOrDefault())
+	}
+
+	if topologyKeys.Len() <= 1 {
+		return nil
+	}
+
+	// If we end up here, we have multiple zone-aware NodeSets with different topology keys.
+	for i, nodeSet := range es.Spec.NodeSets {
+		if nodeSet.ZoneAwareness == nil {
+			continue
+		}
+		errs = append(
+			errs,
+			field.Invalid(
+				field.NewPath("spec").Child("nodeSets").Index(i).Child("zoneAwareness", "topologyKey"),
+				nodeSet.ZoneAwareness.TopologyKeyOrDefault(),
+				conflictingZoneAwarenessTopologyKeys,
+			),
+		)
+	}
+	return errs
+}
+
+// nodeSelectorExpressionRef captures a required node affinity match expression that
+// targets a zone-awareness topology key. It is used by both hard validations (e.g.
+// conflicting In values) and warnings (e.g. DoesNotExist, NotIn) to reference the
+// exact field path, the resolved topology key, and any values from the expression.
+type nodeSelectorExpressionRef struct {
+	path        *field.Path
+	topologyKey string
+	values      []string
+}
+
+// findMatchingNodeAffinityExpressions returns required node affinity match expressions
+// in the given NodeSet that match the specified topology key and operator.
+func findMatchingNodeAffinityExpressions(nodeSetIdx int, nodeSet esv1.NodeSet, topologyKey string, operator corev1.NodeSelectorOperator) []nodeSelectorExpressionRef {
+	affinity := nodeSet.PodTemplate.Spec.Affinity
+	if affinity == nil || affinity.NodeAffinity == nil || affinity.NodeAffinity.RequiredDuringSchedulingIgnoredDuringExecution == nil {
+		return nil
+	}
+	var refs []nodeSelectorExpressionRef
+	for j, term := range affinity.NodeAffinity.RequiredDuringSchedulingIgnoredDuringExecution.NodeSelectorTerms {
+		for k, expression := range term.MatchExpressions {
+			if expression.Key != topologyKey || expression.Operator != operator {
+				continue
+			}
+			refs = append(refs, nodeSelectorExpressionRef{
+				path:        field.NewPath("spec").Child("nodeSets").Index(nodeSetIdx).Child("podTemplate", "spec", "affinity", "nodeAffinity", "requiredDuringSchedulingIgnoredDuringExecution", "nodeSelectorTerms").Index(j).Child("matchExpressions").Index(k),
+				topologyKey: topologyKey,
+				values:      expression.Values,
+			})
+		}
+	}
+	return refs
+}
+
+// findNodeSelectorExpressionsForZoneAwarenessTopologyKey returns required node affinity
+// match expressions that use the provided operator on the effective zone-awareness
+// topology key for each NodeSet.
+func findNodeSelectorExpressionsForZoneAwarenessTopologyKey(es esv1.Elasticsearch, operator corev1.NodeSelectorOperator) []nodeSelectorExpressionRef {
+	nodeSets := esv1.NodeSetList(es.Spec.NodeSets)
+	if !nodeSets.HasZoneAwareness() {
+		return nil
+	}
+	clusterTopologyKey := nodeSets.ZoneAwarenessTopologyKey()
+
+	refs := make([]nodeSelectorExpressionRef, 0, len(es.Spec.NodeSets))
+	for i, nodeSet := range es.Spec.NodeSets {
+		// Non-zone-aware NodeSets still get the cluster topology key injected at
+		// runtime (as an Exists requirement), so we validate against that key.
+		// Zone-aware NodeSets use their own configured key.
+		topologyKey := clusterTopologyKey
+		if nodeSet.ZoneAwareness != nil {
+			topologyKey = nodeSet.ZoneAwareness.TopologyKeyOrDefault()
+		}
+		refs = append(refs, findMatchingNodeAffinityExpressions(i, nodeSet, topologyKey, operator)...)
+	}
+	return refs
+}
+
+// validZoneAwarenessAffinityInCompatibility rejects configurations where a zone-aware
+// NodeSet specifies explicit zones and also has a required node affinity In expression
+// on the same topology key whose values share no intersection with the configured zones.
+// The operator injects an additional In expression for the configured zones, so the
+// AND of both In expressions yields an empty set, making pods permanently unschedulable.
+//
+// Known gaps not covered by affinity-vs-zone-awareness validations:
+//   - DoesNotExist on the topology key: handled as a warning (see warnings.go) because
+//     when multiple node selector terms are OR'd, other terms may still allow scheduling.
+//   - NotIn on the topology key that excludes all real zone values: cannot validate without
+//     cluster topology knowledge; handled as a warning (see warnings.go).
+//   - PreferredDuringScheduling affinity is soft and intentionally not checked.
+func validZoneAwarenessAffinityInCompatibility(es esv1.Elasticsearch) field.ErrorList {
+	var errs field.ErrorList
+	for i, nodeSet := range es.Spec.NodeSets {
+		if nodeSet.ZoneAwareness == nil || len(nodeSet.ZoneAwareness.Zones) == 0 {
+			continue
+		}
+		topologyKey := nodeSet.ZoneAwareness.TopologyKeyOrDefault()
+		zones := sets.New[string](nodeSet.ZoneAwareness.Zones...)
+
+		for _, ref := range findMatchingNodeAffinityExpressions(i, nodeSet, topologyKey, corev1.NodeSelectorOpIn) {
+			if zones.Intersection(sets.New[string](ref.values...)).Len() == 0 {
+				errs = append(errs, field.Invalid(ref.path, ref.values, zoneAwarenessAffinityInNoIntersectionMsg))
+			}
+		}
 	}
 	return errs
 }
