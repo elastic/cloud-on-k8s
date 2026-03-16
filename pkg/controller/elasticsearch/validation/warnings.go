@@ -5,14 +5,21 @@
 package validation
 
 import (
+	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/util/validation/field"
 
 	esv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/elasticsearch/v1"
 	common "github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/settings"
 )
 
+const (
+	zoneAwarenessAffinityDoesNotExistWarningMsg = "Zone awareness injects an Exists requirement for the topology key; DoesNotExist on the same key makes this node selector term unsatisfiable, though other OR'd terms may still allow scheduling"
+	zoneAwarenessAffinityNotInWarningMsg        = "Zone awareness may conflict with required node affinity using NotIn on the topology key; this can make pods unschedulable depending on node labels"
+)
+
 var warnings = []validation{
 	noUnsupportedSettings,
+	validZoneAwarenessAffinityWarnings,
 }
 
 func noUnsupportedSettings(es esv1.Elasticsearch) field.ErrorList {
@@ -54,6 +61,25 @@ func validateClientAuthentication(config *common.CanonicalConfig, index int) fie
 			value, unsupportedClientAuthenticationMsg))
 	}
 	return errs
+}
+
+// validZoneAwarenessAffinityWarnings produces warnings for required node affinity that
+// may conflict with zone-awareness topology labels:
+//   - DoesNotExist on the topology key makes the containing node selector term
+//     unsatisfiable because the operator injects an Exists requirement for the same key.
+//     When multiple terms are OR'd, other terms may still allow scheduling, so this is a
+//     warning rather than a hard error.
+//   - NotIn on the topology key may make pods unschedulable depending on actual node
+//     labels, but cannot be fully validated without cluster topology knowledge.
+func validZoneAwarenessAffinityWarnings(es esv1.Elasticsearch) field.ErrorList {
+	var warnings field.ErrorList
+	for _, ref := range findNodeSelectorExpressionsForZoneAwarenessTopologyKey(es, corev1.NodeSelectorOpDoesNotExist) {
+		warnings = append(warnings, field.Invalid(ref.path, ref.topologyKey, zoneAwarenessAffinityDoesNotExistWarningMsg))
+	}
+	for _, ref := range findNodeSelectorExpressionsForZoneAwarenessTopologyKey(es, corev1.NodeSelectorOpNotIn) {
+		warnings = append(warnings, field.Invalid(ref.path, ref.topologyKey, zoneAwarenessAffinityNotInWarningMsg))
+	}
+	return warnings
 }
 
 func CheckForWarnings(es esv1.Elasticsearch) error {

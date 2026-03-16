@@ -181,6 +181,7 @@ func (b Builder) BuildResourcesList() (nodespec.ResourcesList, error) {
 			nil,
 			false,
 			false,
+			false,
 		)
 		if err != nil {
 			return nil, err
