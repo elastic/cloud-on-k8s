@@ -45,6 +45,12 @@ Run `make check-requisites` to check that all dependencies are installed.
   make switch-kind bootstrap-cloud
   ```
 
+  > **Note for Linux users:** If you encounter "too many open files" errors from the operator (e.g., `failed to create fsnotify watcher`), you may need to increase inotify limits:
+  > ```bash
+  > sudo sysctl -w fs.inotify.max_user_instances=512
+  > ```
+  > Docker Desktop on macOS typically has higher defaults (8192), so this is usually only needed on Linux with stock distro settings.
+
 * Cloud providers
 
   Use [deployer](/hack/deployer/README.md) (note that some [one time configuration](/hack/deployer/README.md#typical-usage) is required):
