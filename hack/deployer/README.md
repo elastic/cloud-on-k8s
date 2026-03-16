@@ -9,7 +9,6 @@ Deployer is the provisioning tool that aims to be the interface to multiple Kube
 * GKE
 
   * Install [Google Cloud SDK](https://cloud.google.com/sdk/install)
-  * Install Google Cloud SDK beta components by running `gcloud components install beta`
   * Make sure that container registry authentication is correctly configured as described [here](https://cloud.google.com/container-registry/docs/advanced-authentication)
   * Set `GCLOUD_PROJECT` to the name of the GCloud project you wish to use
   * (optional) Set `CLOUDSDK_CONFIG` to a directory which should be used for gcloud SDK if you don't want to have the default one overwritten.
