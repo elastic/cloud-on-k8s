@@ -23,6 +23,17 @@ set -eu
 WD="$(cd "$(dirname "$0")"; pwd)"
 ROOT="$WD/../../.."
 
+# Increase inotify max_user_instances for Kind/k3d clusters to prevent "too many open files"
+# errors from controller-runtime's fsnotify watchers. The default (128) is too low when
+# running multiple containers with file watchers.
+if [[ "${E2E_PROVIDER:-}" == "kind" || "${E2E_PROVIDER:-}" == "k3d" ]]; then
+    if command -v sysctl &> /dev/null; then
+        sudo sysctl -w fs.inotify.max_user_instances=512 2>/dev/null || true
+    else
+        echo "Warning: sysctl not found, cannot increase inotify limits" >&2
+    fi
+fi
+
 w()  { echo "$@" >> "$ROOT/deployer-config.yml"; }
 
 write_deployer_config() {
