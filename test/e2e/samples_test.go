@@ -74,7 +74,7 @@ func createBuilders(t *testing.T, decoder *helper.YAMLDecoder, sampleFile, testN
 				WithSuffix(suffix).
 				WithElasticsearchRef(tweakServiceRef(b.Kibana.Spec.ElasticsearchRef, suffix)).
 				WithEnterpriseSearchRef(tweakServiceRef(b.Kibana.Spec.EnterpriseSearchRef, suffix)).
-				WithPackageRegistryRef(tweakServiceRef(b.Kibana.Spec.PackageRegistryRef, suffix)).
+				WithPackageRegistryRef(tweakLocalServiceRef(b.Kibana.Spec.PackageRegistryRef, suffix)).
 				WithRestrictedSecurityContext().
 				WithLabel(run.TestNameLabel, fullTestName).
 				WithPodLabel(run.TestNameLabel, fullTestName)
@@ -140,6 +140,16 @@ func createBuilders(t *testing.T, decoder *helper.YAMLDecoder, sampleFile, testN
 func tweakServiceRef(ref commonv1.ObjectSelector, suffix string) commonv1.ObjectSelector {
 	// All the objects defined in the YAML file will have a random test suffix added to prevent clashes with previous runs.
 	// This necessitates changing the Elasticsearch reference to match the suffixed name.
+	if ref.Name != "" {
+		ref.Name = ref.Name + "-" + suffix
+	}
+
+	return ref
+}
+
+func tweakLocalServiceRef(ref commonv1.LocalObjectSelector, suffix string) commonv1.LocalObjectSelector {
+	// All the objects defined in the YAML file will have a random test suffix added to prevent clashes with previous runs.
+	// This necessitates changing the reference to match the suffixed name.
 	if ref.Name != "" {
 		ref.Name = ref.Name + "-" + suffix
 	}

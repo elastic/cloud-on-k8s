@@ -337,7 +337,7 @@ func TestWebhook(t *testing.T) {
 			Object: func(t *testing.T, uid string) []byte {
 				t.Helper()
 				ent := mkKibana(uid)
-				ent.Spec.PackageRegistryRef = commonv1.ObjectSelector{Name: "epr", Namespace: "esns"}
+				ent.Spec.PackageRegistryRef = commonv1.LocalObjectSelector{Name: "epr", Namespace: "esns"}
 				return serialize(t, ent)
 			},
 			Check: test.ValidationWebhookSucceeded,

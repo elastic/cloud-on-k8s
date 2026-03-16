@@ -74,7 +74,7 @@ func (r *Reconciler) reconcileWatches(ctx context.Context, associated types.Name
 		ref := association.AssociationRef()
 		return types.NamespacedName{
 			Name:      certificates.PublicCertsSecretName(r.AssociationInfo.ReferencedResourceNamer, ref.NameOrSecretName()),
-			Namespace: ref.Namespace,
+			Namespace: ref.GetNamespace(),
 		}
 	}); err != nil {
 		return err
@@ -85,8 +85,8 @@ func (r *Reconciler) reconcileWatches(ctx context.Context, associated types.Name
 	if err := ReconcileWatch(associated, filterWithServiceName(associations), r.watches.Services, serviceWatchName(associated), func(association commonv1.Association) types.NamespacedName {
 		ref := association.AssociationRef()
 		return types.NamespacedName{
-			Name:      ref.ServiceName,
-			Namespace: ref.Namespace,
+			Name:      ref.GetServiceName(),
+			Namespace: ref.GetNamespace(),
 		}
 	}); err != nil {
 		return err
@@ -95,7 +95,7 @@ func (r *Reconciler) reconcileWatches(ctx context.Context, associated types.Name
 	// watch the Elasticsearch user secret in the Elasticsearch namespace, if needed
 	if r.ElasticsearchUserCreation != nil {
 		if err := ReconcileWatch(associated, managedElasticRef, r.watches.Secrets, esUserWatchName(associated), func(association commonv1.Association) types.NamespacedName {
-			return UserKey(association, association.AssociationRef().Namespace, r.ElasticsearchUserCreation.UserSecretSuffix)
+			return UserKey(association, association.AssociationRef().GetNamespace(), r.ElasticsearchUserCreation.UserSecretSuffix)
 		}); err != nil {
 			return err
 		}

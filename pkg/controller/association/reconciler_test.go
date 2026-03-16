@@ -56,7 +56,7 @@ var (
 			if err := c.Get(context.Background(), esRef.NamespacedName(), &es); err != nil {
 				return "", err
 			}
-			serviceName := esRef.ServiceName
+			serviceName := esRef.GetServiceName()
 			if serviceName == "" {
 				serviceName = services.ExternalServiceName(es.Name)
 			}
@@ -94,7 +94,7 @@ var (
 		AssociationResourceNameLabelName:      "elasticsearch.k8s.elastic.co/cluster-name",
 		AssociationResourceNamespaceLabelName: "elasticsearch.k8s.elastic.co/cluster-namespace",
 		ElasticsearchUserCreation: &ElasticsearchUserCreation{
-			ElasticsearchRef: func(c k8s.Client, association commonv1.Association) (bool, commonv1.ObjectSelector, error) {
+			ElasticsearchRef: func(c k8s.Client, association commonv1.Association) (bool, commonv1.AssociationRef, error) {
 				return true, association.AssociationRef(), nil
 			},
 			UserSecretSuffix: "kibana-user",
@@ -532,14 +532,14 @@ func TestReconciler_Reconcile_noESAuth(t *testing.T) {
 		ReferencedObjTemplate: func() client.Object { return &entv1.EnterpriseSearch{} },
 		ExternalServiceURL: func(c k8s.Client, assoc commonv1.Association) (string, error) {
 			entRef := assoc.AssociationRef()
-			if !entRef.IsDefined() {
+			if !entRef.IsSet() {
 				return "", nil
 			}
 			ent := entv1.EnterpriseSearch{}
 			if err := c.Get(context.Background(), entRef.NamespacedName(), &ent); err != nil {
 				return "", err
 			}
-			serviceName := entRef.ServiceName
+			serviceName := entRef.GetServiceName()
 			if serviceName == "" {
 				serviceName = "entname-ent-http"
 			}
@@ -828,7 +828,7 @@ func TestReconciler_Reconcile_MultiRef(t *testing.T) {
 		},
 		ExternalServiceURL: func(c k8s.Client, association commonv1.Association) (string, error) {
 			esRef := association.AssociationRef()
-			if !esRef.IsDefined() {
+			if !esRef.IsSet() {
 				return "", nil
 			}
 			es := esv1.Elasticsearch{}
@@ -851,7 +851,7 @@ func TestReconciler_Reconcile_MultiRef(t *testing.T) {
 		AssociationResourceNameLabelName:      eslabel.ClusterNameLabelName,
 		AssociationResourceNamespaceLabelName: eslabel.ClusterNamespaceLabelName,
 		ElasticsearchUserCreation: &ElasticsearchUserCreation{
-			ElasticsearchRef: func(c k8s.Client, association commonv1.Association) (bool, commonv1.ObjectSelector, error) {
+			ElasticsearchRef: func(c k8s.Client, association commonv1.Association) (bool, commonv1.AssociationRef, error) {
 				return true, association.AssociationRef(), nil
 			},
 			UserSecretSuffix: "agent-user",
@@ -1088,14 +1088,14 @@ func TestReconciler_Reconcile_Transitive_Associations(t *testing.T) {
 		},
 		ExternalServiceURL: func(c k8s.Client, assoc commonv1.Association) (string, error) {
 			fleetServerRef := assoc.AssociationRef()
-			if !fleetServerRef.IsDefined() {
+			if !fleetServerRef.IsSet() {
 				return "", nil
 			}
 			fleetServer := agentv1alpha1.Agent{}
 			if err := c.Get(context.Background(), fleetServerRef.NamespacedName(), &fleetServer); err != nil {
 				return "", err
 			}
-			serviceName := fleetServerRef.ServiceName
+			serviceName := fleetServerRef.GetServiceName()
 			if serviceName == "" {
 				serviceName = agentNamer.Suffix(fleetServer.Name, "http")
 			}
@@ -1128,7 +1128,7 @@ func TestReconciler_Reconcile_Transitive_Associations(t *testing.T) {
 				return nil, err
 			}
 			fleetServerRef := assoc.AssociationRef()
-			if !fleetServerRef.IsDefined() {
+			if !fleetServerRef.IsSet() {
 				return nil, nil
 			}
 			var fleetServer agentv1alpha1.Agent
