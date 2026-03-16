@@ -14,7 +14,6 @@ import (
 
 	commonv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/common/v1"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/version"
-	ulog "github.com/elastic/cloud-on-k8s/v3/pkg/utils/log"
 )
 
 const (
@@ -23,8 +22,7 @@ const (
 )
 
 var (
-	groupKind     = schema.GroupKind{Group: GroupVersion.Group, Kind: Kind}
-	validationLog = ulog.Log.WithName("apm-v1-validation")
+	groupKind = schema.GroupKind{Group: GroupVersion.Group, Kind: Kind}
 
 	// ApmAgentConfigurationMinVersion is the minimum required version to establish an association with Kibana
 	ApmAgentConfigurationMinVersion = version.MustParse("7.5.1")

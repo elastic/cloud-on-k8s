@@ -8,10 +8,7 @@ import (
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/util/validation/field"
-
 	"sigs.k8s.io/controller-runtime/pkg/webhook/admission"
-
-	ulog "github.com/elastic/cloud-on-k8s/v3/pkg/utils/log"
 )
 
 const (
@@ -19,10 +16,7 @@ const (
 	WebhookPath = "/validate-beat-k8s-elastic-co-v1beta1-beat"
 )
 
-var (
-	groupKind     = schema.GroupKind{Group: GroupVersion.Group, Kind: Kind}
-	validationLog = ulog.Log.WithName("beat-v1beta1-validation")
-)
+var groupKind = schema.GroupKind{Group: GroupVersion.Group, Kind: Kind}
 
 // +kubebuilder:webhook:path=/validate-beat-k8s-elastic-co-v1beta1-beat,mutating=false,failurePolicy=ignore,groups=beat.k8s.elastic.co,resources=beats,verbs=create;update,versions=v1beta1,name=elastic-beat-validation-v1beta1.k8s.elastic.co,sideEffects=None,admissionReviewVersions=v1,matchPolicy=Exact
 

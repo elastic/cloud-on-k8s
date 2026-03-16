@@ -12,7 +12,6 @@ import (
 
 	commonv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/common/v1"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/version"
-	ulog "github.com/elastic/cloud-on-k8s/v3/pkg/utils/log"
 )
 
 const (
@@ -21,8 +20,7 @@ const (
 )
 
 var (
-	groupKind     = schema.GroupKind{Group: GroupVersion.Group, Kind: "Kibana"}
-	validationLog = ulog.Log.WithName("kibana-v1beta1-validation")
+	groupKind = schema.GroupKind{Group: GroupVersion.Group, Kind: "Kibana"}
 
 	defaultChecks = []func(*Kibana) field.ErrorList{
 		checkNoUnknownFields,
