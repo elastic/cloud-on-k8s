@@ -29,10 +29,10 @@ var autoopslog = ulog.Log.WithName("autoops-validation")
 
 // RegisterWebhook registers the AutoOpsAgentPolicy validating webhook with the manager.
 func RegisterWebhook(mgr ctrl.Manager, licenseChecker license.Checker, managedNamespaces []string) {
-	inner := &validator{
+	autoopsValidator := &validator{
 		licenseChecker: licenseChecker,
 	}
-	v := commonwebhook.NewResourceValidator[*autoopsv1alpha1.AutoOpsAgentPolicy](nil, managedNamespaces, inner)
+	v := commonwebhook.NewResourceValidator[*autoopsv1alpha1.AutoOpsAgentPolicy](nil, managedNamespaces, autoopsValidator)
 	autoopslog.Info("Registering AutoOpsAgentPolicy validating webhook", "path", webhookPath)
 	wh := admission.WithValidator[*autoopsv1alpha1.AutoOpsAgentPolicy](mgr.GetScheme(), v)
 	mgr.GetWebhookServer().Register(webhookPath, wh)

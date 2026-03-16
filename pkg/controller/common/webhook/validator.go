@@ -19,36 +19,37 @@ import (
 	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/set"
 )
 
-// ValidateFunc is the per-resource validation callback used by Pattern A resources.
+// ValidateFunc is the per-resource validation callback.
 // obj is the object being validated, old is nil/zero on create.
 type ValidateFunc[T runtime.Object] func(obj T, old T) (admission.Warnings, error)
 
 // ResourceValidator implements admission.Validator[T] by wrapping an inner
 // validator with namespace filtering and license checking. It can wrap either
-// a simple ValidateFunc (via funcValidator) or a full admission.Validator[T]
-// for resources with richer validation needs (k8s client, etc).
+// a simple ValidateFunc (via funcValidator) or a full admission.Validator[T].
 type ResourceValidator[T runtime.Object] struct {
-	inner             admission.Validator[T]
+	validator         admission.Validator[T]
 	managedNamespaces set.StringSet
 	licenseChecker    license.Checker
 }
 
 // NewResourceValidator wraps an admission.Validator[T] with namespace
-// filtering and license checking.
+// filtering and license checking. This is currently used for Logstash,
+// Elasticsearch, ElasticsearchAutoscaling, and AutoOps only.
 func NewResourceValidator[T runtime.Object](
 	licenseChecker license.Checker,
 	managedNamespaces []string,
-	inner admission.Validator[T],
+	validator admission.Validator[T],
 ) *ResourceValidator[T] {
 	return &ResourceValidator[T]{
-		inner:             inner,
+		validator:         validator,
 		managedNamespaces: set.Make(managedNamespaces...),
 		licenseChecker:    licenseChecker,
 	}
 }
 
 // NewResourceFuncValidator wraps a ValidateFunc[T] with namespace filtering
-// and license checking. This is the common case for Pattern A resources.
+// and license checking. This is the common case for CRDs outside of
+// Logstash, Elasticsearch, ElasticsearchAutoscaling, and AutoOps.
 func NewResourceFuncValidator[T runtime.Object](
 	licenseChecker license.Checker,
 	managedNamespaces []string,
@@ -61,21 +62,21 @@ func (v *ResourceValidator[T]) ValidateCreate(ctx context.Context, obj T) (admis
 	if skip, err := v.preValidate(ctx, obj); skip || err != nil {
 		return nil, err
 	}
-	return v.inner.ValidateCreate(ctx, obj)
+	return v.validator.ValidateCreate(ctx, obj)
 }
 
 func (v *ResourceValidator[T]) ValidateUpdate(ctx context.Context, oldObj, newObj T) (admission.Warnings, error) {
 	if skip, err := v.preValidate(ctx, newObj); skip || err != nil {
 		return nil, err
 	}
-	return v.inner.ValidateUpdate(ctx, oldObj, newObj)
+	return v.validator.ValidateUpdate(ctx, oldObj, newObj)
 }
 
 func (v *ResourceValidator[T]) ValidateDelete(ctx context.Context, obj T) (admission.Warnings, error) {
 	if skip, _ := v.preValidate(ctx, obj); skip {
 		return nil, nil
 	}
-	return v.inner.ValidateDelete(ctx, obj)
+	return v.validator.ValidateDelete(ctx, obj)
 }
 
 // preValidate checks namespace filtering and license requirements.
