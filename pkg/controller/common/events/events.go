@@ -48,8 +48,8 @@ const (
 	EventActionValidation = "Validation"
 	// EventActionAggregation describes the aggregation step the controller was taking when the event was triggered.
 	EventActionAggregation = "Aggregation"
-	// EventActionCertificateReconciliation describes the certificate reconciliation step the controller was taking.
-	// when the event was triggered
+	// EventActionCertificateReconciliation describes the certificate reconciliation step the controller was taking
+	// when the event was triggered.
 	EventActionCertificateReconciliation = "CertificateReconciliation"
 	// EventActionStatusUpdate describes the status update step the controller was taking when the event was triggered.
 	EventActionStatusUpdate = "StatusUpdate"
