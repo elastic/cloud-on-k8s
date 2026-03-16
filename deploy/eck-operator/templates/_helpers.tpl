@@ -171,6 +171,7 @@ updating docs/operating-eck/eck-permissions.asciidoc file.
   - ""
   resources:
   - pods
+  - events
   - persistentvolumeclaims
   - secrets
   - services

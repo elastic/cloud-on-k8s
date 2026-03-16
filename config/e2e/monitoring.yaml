@@ -403,6 +403,7 @@ rules:
       - nodes/metrics
       - nodes/proxy
       - nodes/stats
+      - events
     verbs:
       - get
       - watch

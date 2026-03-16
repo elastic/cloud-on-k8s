@@ -76,6 +76,7 @@ tests:
           value:
           - nodes
           - namespaces
+          - events
           - pods
       - equal:
           path: rules[0].verbs

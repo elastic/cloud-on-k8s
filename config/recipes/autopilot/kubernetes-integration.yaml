@@ -397,6 +397,7 @@ rules:
   - nodes/proxy
   - nodes/stats
   - services
+  - events
   verbs:
   - get
   - watch

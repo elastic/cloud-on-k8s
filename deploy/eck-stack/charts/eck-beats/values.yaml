@@ -171,6 +171,7 @@ clusterRole: {}
 #  rules:
 #  - apiGroups: [""]
 #    resources:
+#    - events
 #    - pods
 #    - namespaces
 #    - nodes

@@ -81,6 +81,7 @@ rules:
       - ""
     resources:
       - pods
+      - events
       - persistentvolumeclaims
       - secrets
       - services

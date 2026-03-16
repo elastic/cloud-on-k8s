@@ -106,6 +106,7 @@ rules:
       - secrets
       - persistentvolumeclaims
       - configmaps
+      - events
       - serviceaccounts
       # to create resources defined in recipes
       - namespaces

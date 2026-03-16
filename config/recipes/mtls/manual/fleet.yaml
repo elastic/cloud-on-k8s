@@ -403,6 +403,7 @@ rules:
   - pods
   - nodes
   - namespaces
+  - events
   - services
   - configmaps
   - persistentvolumes

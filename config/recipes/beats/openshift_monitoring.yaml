@@ -154,6 +154,7 @@ rules:
   resources:
   - nodes
   - namespaces
+  - events
   - pods
   verbs:
   - get

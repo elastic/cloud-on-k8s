@@ -271,6 +271,7 @@ rules:
   - pods
   - nodes
   - namespaces
+  - events
   - services
   - configmaps
   verbs:

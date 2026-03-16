@@ -34,6 +34,7 @@ rules:
   resources:
   - nodes
   - namespaces
+  - events
   - pods
   verbs:
   - get
@@ -118,6 +119,7 @@ rules:
   - nodes/metrics
   - nodes/proxy
   - nodes/stats
+  - events
   verbs:
   - get
   - watch
