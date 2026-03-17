@@ -136,4 +136,3 @@ func validLicenseLevel(ctx context.Context, esa v1alpha1.ElasticsearchAutoscaler
 	}
 	return errs, nil
 }
-

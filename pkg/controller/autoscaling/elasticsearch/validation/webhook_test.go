@@ -55,7 +55,6 @@ func TestValidateElasticsearchAutoscaler(t *testing.T) {
 						},
 					},
 				},
-
 			},
 			wantValidationError: ptr.To[string]("Autoscaling annotation is no longer supported"),
 		},
@@ -80,7 +79,6 @@ func TestValidateElasticsearchAutoscaler(t *testing.T) {
 						},
 					},
 				},
-
 			},
 			wantValidationError: ptr.To[string]("ML nodes must be in a dedicated autoscaling policy"),
 		},
@@ -105,7 +103,6 @@ func TestValidateElasticsearchAutoscaler(t *testing.T) {
 						},
 					},
 				},
-
 			},
 		},
 		{
@@ -136,7 +133,6 @@ func TestValidateElasticsearchAutoscaler(t *testing.T) {
 						},
 					},
 				},
-
 			},
 			wantValidationError: ptr.To[string]("Invalid value: [\"ml\"]: roles must be used in at least one nodeSet"),
 		},
@@ -168,7 +164,6 @@ func TestValidateElasticsearchAutoscaler(t *testing.T) {
 						},
 					},
 				},
-
 			},
 			wantValidationError: ptr.To[string]("Invalid value: \"ml_policy\": policy is duplicated"),
 		},
@@ -193,7 +188,6 @@ func TestValidateElasticsearchAutoscaler(t *testing.T) {
 						},
 					},
 				},
-
 			},
 			wantValidationError: ptr.To[string]("cannot parse nodeSet configuration: node.roles must be set"),
 		},
@@ -223,7 +217,6 @@ func TestValidateElasticsearchAutoscaler(t *testing.T) {
 						},
 					},
 				},
-
 			},
 			wantValidationError: ptr.To[string]("min quantity must be greater than 2G"),
 		},
@@ -247,7 +240,6 @@ func TestValidateElasticsearchAutoscaler(t *testing.T) {
 						},
 					},
 				},
-
 			},
 			wantValidationError: ptr.To[string]("name: Required value: name is mandatory"),
 		},
@@ -272,7 +264,6 @@ func TestValidateElasticsearchAutoscaler(t *testing.T) {
 						},
 					},
 				},
-
 			},
 			wantValidationError: ptr.To[string]("roles: Required value: roles field is mandatory and must not be empty"),
 		},
@@ -302,7 +293,6 @@ func TestValidateElasticsearchAutoscaler(t *testing.T) {
 						},
 					},
 				},
-
 			},
 			wantValidationError: ptr.To[string]("spec.policies[0].resources.nodeCount.max: Invalid value: 0: max count must be greater than 0"),
 		},
@@ -332,7 +322,6 @@ func TestValidateElasticsearchAutoscaler(t *testing.T) {
 						},
 					},
 				},
-
 			},
 			wantValidationError: ptr.To[string]("spec.policies[0].resources.nodeCount.min: Invalid value: -1: min count must be equal or greater than 0"),
 		},
@@ -362,7 +351,6 @@ func TestValidateElasticsearchAutoscaler(t *testing.T) {
 						},
 					},
 				},
-
 			},
 			wantValidationError: ptr.To[string]("spec.policies[0].resources.nodeCount.max: Invalid value: 0: max count must be greater than 0"),
 		},
@@ -392,7 +380,6 @@ func TestValidateElasticsearchAutoscaler(t *testing.T) {
 						},
 					},
 				},
-
 			},
 		},
 		{
@@ -421,7 +408,6 @@ func TestValidateElasticsearchAutoscaler(t *testing.T) {
 						},
 					},
 				},
-
 			},
 			wantValidationError: ptr.To[string]("spec.policies[0].resources.nodeCount.max: Invalid value: 4: max node count must be an integer greater or equal than the min node count"),
 		},
@@ -451,7 +437,6 @@ func TestValidateElasticsearchAutoscaler(t *testing.T) {
 						},
 					},
 				},
-
 			},
 			wantValidationError: ptr.To[string]("spec.policies[0].cpu.max: Invalid value: \"2\": max quantity must be greater or equal than min quantity"),
 		},
@@ -477,7 +462,6 @@ func TestValidateElasticsearchAutoscaler(t *testing.T) {
 						},
 					},
 				},
-
 			},
 			wantValidationError: nil, // we do support configurations in which the volume claim is not the default (as long as there's only one)
 		},
@@ -502,7 +486,6 @@ func TestValidateElasticsearchAutoscaler(t *testing.T) {
 						},
 					},
 				},
-
 			},
 			wantValidationError: ptr.To[string]("ElasticsearchAutoscaler.autoscaling.k8s.elastic.co \"esa\" is invalid: Elasticsearch.spec.nodeSets[0]: Invalid value: [\"volume1\",\"volume2\"]: autoscaling supports only one volume claim"),
 		},
@@ -540,7 +523,6 @@ func TestValidateElasticsearchAutoscaler(t *testing.T) {
 						},
 					},
 				},
-
 			},
 			wantValidationError: nil,
 		},
@@ -588,7 +570,6 @@ func TestValidateElasticsearchAutoscaler(t *testing.T) {
 						},
 					},
 				},
-
 			},
 			wantValidationError: ptr.To[string]("ElasticsearchAutoscaler.autoscaling.k8s.elastic.co \"esa\" is invalid: spec.policies[2].name: Invalid value: \"ml\": ML nodes must be in a dedicated NodeSet"),
 		},
@@ -656,4 +637,3 @@ func volumeClaimTemplates(volumeClaims []string) []corev1.PersistentVolumeClaim 
 	}
 	return volumeClaimTemplates
 }
-
