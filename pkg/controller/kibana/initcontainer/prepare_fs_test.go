@@ -29,7 +29,7 @@ func TestNewInitContainer(t *testing.T) {
 	olderKibana := defaultKibana
 	olderKibana.Spec.Version = "7.8.0"
 	type args struct {
-		kb                        kbv1.Kibana
+		kb kbv1.Kibana
 	}
 	tests := []struct {
 		name    string
@@ -40,7 +40,7 @@ func TestNewInitContainer(t *testing.T) {
 		{
 			name: "newer Kibana without default security context includes plugins volume",
 			args: args{
-				kb:                        defaultKibana,
+				kb: defaultKibana,
 			},
 			want: corev1.Container{
 				ImagePullPolicy: corev1.PullIfNotPresent,
@@ -69,7 +69,7 @@ func TestNewInitContainer(t *testing.T) {
 		{
 			name: "older Kibana without default security context includes plugins volume",
 			args: args{
-				kb:                        olderKibana,
+				kb: olderKibana,
 			},
 			want: corev1.Container{
 				ImagePullPolicy: corev1.PullIfNotPresent,
