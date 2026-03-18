@@ -28,7 +28,7 @@ const (
 
 var eslog = ulog.Log.WithName("es-validation")
 
-// RegisterWebhook will register the Elasticsearch validating webhook.
+// RegisterWebhook registers the Elasticsearch validating webhook.
 func RegisterWebhook(mgr ctrl.Manager, validateStorageClass bool, exposedNodeLabels NodeLabels, licenseChecker license.Checker, managedNamespaces []string) {
 	inner := &validator{
 		client:               mgr.GetClient(),
@@ -36,9 +36,8 @@ func RegisterWebhook(mgr ctrl.Manager, validateStorageClass bool, exposedNodeLab
 		exposedNodeLabels:    exposedNodeLabels,
 		licenseChecker:       licenseChecker,
 	}
-	// License checking is handled inside validations() rather than the wrapper,
-	// because ValidateElasticsearch is also called from the reconciler where the
-	// wrapper is not in the path.
+	// License checks run inside validations(), so we pass nil here
+	// (the reconciler calls ValidateElasticsearch directly).
 	v := commonwebhook.NewResourceValidator[*esv1.Elasticsearch](nil, managedNamespaces, inner)
 	eslog.Info("Registering Elasticsearch validating webhook", "path", webhookPath)
 	wh := admission.WithValidator[*esv1.Elasticsearch](mgr.GetScheme(), v)

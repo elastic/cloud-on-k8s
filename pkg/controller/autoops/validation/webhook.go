@@ -32,9 +32,8 @@ func RegisterWebhook(mgr ctrl.Manager, licenseChecker license.Checker, managedNa
 	autoopsValidator := &validator{
 		licenseChecker: licenseChecker,
 	}
-	// License checking is handled inside validations() rather than the wrapper,
-	// because Validate is also called from the reconciler where the wrapper is
-	// not in the path.
+	// License checks run inside validations(), so we pass nil here
+	// (the reconciler calls Validate directly).
 	v := commonwebhook.NewResourceValidator[*autoopsv1alpha1.AutoOpsAgentPolicy](nil, managedNamespaces, autoopsValidator)
 	autoopslog.Info("Registering AutoOpsAgentPolicy validating webhook", "path", webhookPath)
 	wh := admission.WithValidator[*autoopsv1alpha1.AutoOpsAgentPolicy](mgr.GetScheme(), v)
