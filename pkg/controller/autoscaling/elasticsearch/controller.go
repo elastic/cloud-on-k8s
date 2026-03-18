@@ -27,6 +27,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/autoscaling/elasticsearch/status"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/autoscaling/elasticsearch/validation"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/events"
 	commonesclient "github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/esclient"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/license"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/operator"
@@ -157,7 +158,8 @@ func (r *ReconcileElasticsearchAutoscaler) Reconcile(ctx context.Context, reques
 	}
 
 	// Validate the autoscaling specification
-	if validationErr, runtimeErr := validation.ValidateElasticsearchAutoscaler(ctx, r.Client, esa, r.licenseChecker); validationErr != nil || runtimeErr != nil {
+	warnings, validationErr, runtimeErr := validation.ValidateElasticsearchAutoscaler(ctx, r.Client, esa, r.licenseChecker)
+	if validationErr != nil || runtimeErr != nil {
 		if validationErr != nil {
 			log.Error(
 				validationErr,
@@ -177,6 +179,9 @@ func (r *ReconcileElasticsearchAutoscaler) Reconcile(ctx context.Context, reques
 		err := errors.NewAggregate([]error{validationErr, runtimeErr})
 		_, _ = r.reportAsUnhealthy(ctx, log, esa, err.Error())
 		return reconcile.Result{}, tracing.CaptureError(ctx, err)
+	}
+	for _, warning := range warnings {
+		r.recorder.Eventf(&esa, corev1.EventTypeWarning, events.EventReasonValidation, warning)
 	}
 
 	// Get autoscaling policies and the associated node sets.

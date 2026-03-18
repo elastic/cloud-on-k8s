@@ -51,7 +51,7 @@ type validator struct {
 
 func (v *validator) validate(ctx context.Context, esa *v1alpha1.ElasticsearchAutoscaler) (admission.Warnings, error) {
 	esalog.V(1).Info("validate autoscaler", "name", esa.Name, "namespace", esa.Namespace)
-	validationError, runtimeErr := ValidateElasticsearchAutoscaler(ctx, v.client, *esa, v.licenseChecker)
+	admWarnings, validationError, runtimeErr := ValidateElasticsearchAutoscaler(ctx, v.client, *esa, v.licenseChecker)
 	if runtimeErr != nil {
 		esalog.Error(
 			runtimeErr,
@@ -60,7 +60,7 @@ func (v *validator) validate(ctx context.Context, esa *v1alpha1.ElasticsearchAut
 			"esa_name", esa.Name,
 		)
 	}
-	return nil, validationError
+	return admWarnings, validationError
 }
 
 func (v *validator) ValidateCreate(ctx context.Context, esa *v1alpha1.ElasticsearchAutoscaler) (admission.Warnings, error) {
@@ -81,16 +81,16 @@ func ValidateElasticsearchAutoscaler(
 	k8sClient k8s.Client,
 	esa v1alpha1.ElasticsearchAutoscaler,
 	checker license.Checker,
-) (validationError error, runtimeError error) {
+) (warnings admission.Warnings, validationError error, runtimeError error) {
 	validationErrors, runtimeError := check(esa, validations(ctx, k8sClient, checker))
 	if len(validationErrors) > 0 {
-		return apierrors.NewInvalid(
+		return nil, apierrors.NewInvalid(
 			schema.GroupKind{Group: "autoscaling.k8s.elastic.co", Kind: v1alpha1.Kind},
 			esa.Name,
 			validationErrors,
 		), runtimeError
 	}
-	return nil, runtimeError
+	return nil, nil, runtimeError
 }
 
 func check(esa v1alpha1.ElasticsearchAutoscaler, validations []validation) (field.ErrorList, error) {

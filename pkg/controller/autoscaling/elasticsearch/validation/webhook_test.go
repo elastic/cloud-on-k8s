@@ -582,7 +582,7 @@ func TestValidateElasticsearchAutoscaler(t *testing.T) {
 			} else {
 				k8sClient = k8s.NewFakeClient()
 			}
-			validationError, runtimeError := ValidateElasticsearchAutoscaler(context.TODO(), k8sClient, tt.args.esa, license.MockLicenseChecker{EnterpriseEnabled: true})
+			_, validationError, runtimeError := ValidateElasticsearchAutoscaler(context.TODO(), k8sClient, tt.args.esa, license.MockLicenseChecker{EnterpriseEnabled: true})
 			if (validationError != nil) != (tt.wantValidationError != nil) {
 				t.Errorf("ValidateElasticsearchAutoscaler() validationError = %v, wantValidationError %v", validationError, tt.wantValidationError)
 			}

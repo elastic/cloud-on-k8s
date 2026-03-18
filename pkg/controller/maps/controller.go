@@ -289,10 +289,14 @@ func (r *ReconcileMapsServer) validate(ctx context.Context, ems emsv1alpha1.Elas
 	span, vctx := apm.StartSpan(ctx, "validate", tracing.SpanTypeApp)
 	defer span.End()
 
-	if _, err := emsv1alpha1.Validate(&ems, nil); err != nil {
+	warnings, err := emsv1alpha1.Validate(&ems, nil)
+	if err != nil {
 		ulog.FromContext(ctx).Error(err, "Validation failed")
 		k8s.MaybeEmitErrorEvent(r.recorder, err, &ems, events.EventReasonValidation, err.Error())
 		return tracing.CaptureError(vctx, err)
+	}
+	for _, warning := range warnings {
+		r.recorder.Event(&ems, corev1.EventTypeWarning, events.EventReasonValidation, warning)
 	}
 
 	return nil

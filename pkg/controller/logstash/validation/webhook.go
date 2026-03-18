@@ -48,7 +48,7 @@ type validator struct {
 
 func (v *validator) ValidateCreate(_ context.Context, ls *lsv1alpha1.Logstash) (admission.Warnings, error) {
 	lslog.V(1).Info("validate create", "name", ls.Name)
-	return nil, ValidateLogstash(ls)
+	return ValidateLogstash(ls)
 }
 
 func (v *validator) ValidateUpdate(ctx context.Context, oldObj, newObj *lsv1alpha1.Logstash) (admission.Warnings, error) {
@@ -64,7 +64,7 @@ func (v *validator) ValidateUpdate(ctx context.Context, oldObj, newObj *lsv1alph
 			schema.GroupKind{Group: "logstash.k8s.elastic.co", Kind: lsv1alpha1.Kind},
 			newObj.Name, errs)
 	}
-	return nil, ValidateLogstash(newObj)
+	return ValidateLogstash(newObj)
 }
 
 func (v *validator) ValidateDelete(_ context.Context, _ *lsv1alpha1.Logstash) (admission.Warnings, error) {
@@ -72,14 +72,16 @@ func (v *validator) ValidateDelete(_ context.Context, _ *lsv1alpha1.Logstash) (a
 }
 
 // ValidateLogstash validates a Logstash instance against a set of validation funcs.
-func ValidateLogstash(ls *lsv1alpha1.Logstash) error {
+// Returns any admission warnings plus an error if validation fails.
+// TODO: wire deprecation warnings into validations() so this can return non-nil warnings.
+func ValidateLogstash(ls *lsv1alpha1.Logstash) (admission.Warnings, error) {
 	errs := check(ls, validations())
 	if len(errs) > 0 {
-		return apierrors.NewInvalid(
+		return nil, apierrors.NewInvalid(
 			schema.GroupKind{Group: "logstash.k8s.elastic.co", Kind: lsv1alpha1.Kind},
 			ls.Name,
 			errs,
 		)
 	}
-	return nil
+	return nil, nil
 }

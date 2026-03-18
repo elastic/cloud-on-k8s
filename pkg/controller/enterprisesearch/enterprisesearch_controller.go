@@ -278,10 +278,14 @@ func (r *ReconcileEnterpriseSearch) validate(ctx context.Context, ent *entv1.Ent
 	span, vctx := apm.StartSpan(ctx, "validate", tracing.SpanTypeApp)
 	defer span.End()
 
-	if _, err := entv1.Validate(ent, nil); err != nil {
+	warnings, err := entv1.Validate(ent, nil)
+	if err != nil {
 		ulog.FromContext(ctx).Error(err, "Validation failed")
 		k8s.MaybeEmitErrorEvent(r.recorder, err, ent, events.EventReasonValidation, err.Error())
 		return tracing.CaptureError(vctx, err)
+	}
+	for _, warning := range warnings {
+		r.recorder.Event(ent, corev1.EventTypeWarning, events.EventReasonValidation, warning)
 	}
 
 	return nil

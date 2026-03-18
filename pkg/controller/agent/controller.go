@@ -221,10 +221,14 @@ func (r *ReconcileAgent) validate(ctx context.Context, agent agentv1alpha1.Agent
 	defer tracing.Span(&ctx)()
 
 	// Run create validations only as update validations require old object which we don't have here.
-	if _, err := agentv1alpha1.Validate(&agent, nil); err != nil {
+	warnings, err := agentv1alpha1.Validate(&agent, nil)
+	if err != nil {
 		logconf.FromContext(ctx).Error(err, "Validation failed")
 		k8s.MaybeEmitErrorEvent(r.recorder, err, &agent, events.EventReasonValidation, err.Error())
 		return tracing.CaptureError(ctx, err)
+	}
+	for _, warning := range warnings {
+		r.recorder.Event(&agent, corev1.EventTypeWarning, events.EventReasonValidation, warning)
 	}
 	return nil
 }

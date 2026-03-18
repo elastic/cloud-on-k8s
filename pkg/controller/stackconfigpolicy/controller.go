@@ -547,10 +547,14 @@ func (r *ReconcileStackConfigPolicy) validate(ctx context.Context, policy *polic
 	span, vctx := apm.StartSpan(ctx, "validate", tracing.SpanTypeApp)
 	defer span.End()
 
-	if _, err := policyv1alpha1.Validate(policy, nil); err != nil {
+	warnings, err := policyv1alpha1.Validate(policy, nil)
+	if err != nil {
 		ulog.FromContext(ctx).Error(err, "Validation failed")
 		k8s.MaybeEmitErrorEvent(r.recorder, err, policy, events.EventReasonValidation, err.Error())
 		return tracing.CaptureError(vctx, err)
+	}
+	for _, warning := range warnings {
+		r.recorder.Event(policy, corev1.EventTypeWarning, events.EventReasonValidation, warning)
 	}
 
 	return nil
