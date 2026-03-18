@@ -367,18 +367,20 @@ func Test_validSanIP(t *testing.T) {
 			name: "valid SAN IPs: OK",
 			es: esv1.Elasticsearch{
 				Spec: esv1.ElasticsearchSpec{
-					HTTP: commonv1.HTTPConfig{
-						TLS: commonv1.TLSOptions{
-							SelfSignedCertificate: &commonv1.SelfSignedCertificate{
-								SubjectAlternativeNames: []commonv1.SubjectAlternativeName{
-									{
-										IP: validIP,
-									},
-									{
-										IP: validIP2,
-									},
-									{
-										IP: validIPv6,
+					HTTP: commonv1.HTTPConfigWithClientOptions{
+						TLS: commonv1.TLSWithClientOptions{
+							TLSOptions: commonv1.TLSOptions{
+								SelfSignedCertificate: &commonv1.SelfSignedCertificate{
+									SubjectAlternativeNames: []commonv1.SubjectAlternativeName{
+										{
+											IP: validIP,
+										},
+										{
+											IP: validIP2,
+										},
+										{
+											IP: validIPv6,
+										},
 									},
 								},
 							},
@@ -392,15 +394,17 @@ func Test_validSanIP(t *testing.T) {
 			name: "invalid SAN IPs: NOT OK",
 			es: esv1.Elasticsearch{
 				Spec: esv1.ElasticsearchSpec{
-					HTTP: commonv1.HTTPConfig{
-						TLS: commonv1.TLSOptions{
-							SelfSignedCertificate: &commonv1.SelfSignedCertificate{
-								SubjectAlternativeNames: []commonv1.SubjectAlternativeName{
-									{
-										IP: invalidIP,
-									},
-									{
-										IP: validIP2,
+					HTTP: commonv1.HTTPConfigWithClientOptions{
+						TLS: commonv1.TLSWithClientOptions{
+							TLSOptions: commonv1.TLSOptions{
+								SelfSignedCertificate: &commonv1.SelfSignedCertificate{
+									SubjectAlternativeNames: []commonv1.SubjectAlternativeName{
+										{
+											IP: invalidIP,
+										},
+										{
+											IP: validIP2,
+										},
 									},
 								},
 							},

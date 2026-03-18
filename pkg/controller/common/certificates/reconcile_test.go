@@ -27,7 +27,7 @@ var (
 		Validity:     DefaultCertValidity,
 		RotateBefore: DefaultRotateBefore,
 	}
-	labels = map[string]string{
+	testLabels = map[string]string{
 		"foo": "bar",
 	}
 	// tested on Elasticsearch but could be any resource
@@ -53,7 +53,7 @@ func TestReconcileCAAndHTTPCerts(t *testing.T) {
 		Owner:                 &obj,
 		TLSOptions:            commonv1.TLSOptions{},
 		Namer:                 esv1.ESNamer,
-		Metadata:              metadata.Metadata{Labels: labels},
+		Metadata:              metadata.Metadata{Labels: testLabels},
 		Services:              nil,
 		CACertRotation:        rotation,
 		CertRotation:          rotation,
@@ -87,7 +87,7 @@ func TestReconcileCAAndHTTPCerts(t *testing.T) {
 		require.Len(t, caCerts.Data, 2)
 		require.NotEmpty(t, caCerts.Data[CertFileName])
 		require.NotEmpty(t, caCerts.Data[KeyFileName])
-		require.Equal(t, labels, caCerts.Labels)
+		require.Equal(t, testLabels, caCerts.Labels)
 
 		var internalCerts corev1.Secret
 		err = c.Get(context.Background(), types.NamespacedName{Namespace: obj.Namespace, Name: InternalCertsSecretName(esv1.ESNamer, obj.Name)}, &internalCerts)
@@ -96,7 +96,7 @@ func TestReconcileCAAndHTTPCerts(t *testing.T) {
 		require.NotEmpty(t, internalCerts.Data[CAFileName])
 		require.NotEmpty(t, internalCerts.Data[CertFileName])
 		require.NotEmpty(t, internalCerts.Data[KeyFileName])
-		require.Equal(t, labels, internalCerts.Labels)
+		require.Equal(t, testLabels, internalCerts.Labels)
 
 		var publicCerts corev1.Secret
 		err = c.Get(context.Background(), types.NamespacedName{Namespace: obj.Namespace, Name: PublicCertsSecretName(esv1.ESNamer, obj.Name)}, &publicCerts)

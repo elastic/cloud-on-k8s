@@ -23,6 +23,8 @@ import (
 	policyv1alpha1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/stackconfigpolicy/v1alpha1"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/association"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/annotation"
+	commoncerts "github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/certificates"
 	commondriver "github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/driver"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/events"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/keystore"
@@ -58,10 +60,12 @@ var (
 )
 
 // ReconcileSharedResources contains the reconciliation logic shared by both stateful and stateless Elasticsearch drivers.
+// clientAuthenticationRequired indicates whether client certificate authentication is required based on the ES configuration.
 func ReconcileSharedResources(
 	ctx context.Context,
 	d commondriver.Interface,
 	params driver.Parameters,
+	clientAuthenticationRequired bool,
 ) (*ReconcileState, *reconciler.Results) {
 	results := reconciler.NewResult(ctx)
 	log := ulog.FromContext(ctx)
@@ -77,7 +81,7 @@ func ReconcileSharedResources(
 	meta := metadata.Propagate(&es, metadata.Metadata{Labels: label.NewLabels(k8s.ExtractNamespacedName(&es))})
 
 	// Reconcile the scripts ConfigMap.
-	if err := configmap.ReconcileScriptsConfigMap(ctx, client, es, meta); err != nil {
+	if err := configmap.ReconcileScriptsConfigMap(ctx, client, es, meta, clientAuthenticationRequired); err != nil {
 		return nil, results.WithError(err)
 	}
 
@@ -156,6 +160,15 @@ func ReconcileSharedResources(
 		return nil, results
 	}
 
+	// Reconcile operator client certificate and trust bundle of client certificates.
+	operatorClientCert, clientCertResults := certificates.ReconcileOperatorClientCertAndTrustBundle(
+		ctx, d, &es, clientAuthenticationRequired, params.OperatorParameters.CertRotation, meta,
+	)
+	results.WithResults(clientCertResults)
+	if clientCertResults.HasError() {
+		return nil, results
+	}
+
 	// Start the ES observer
 	minVersion, err := version.MinInPods(resourcesState.CurrentPods, label.VersionLabelName)
 	if err != nil {
@@ -178,6 +191,7 @@ func ReconcileSharedResources(
 			controllerUser,
 			*minVersion,
 			trustedHTTPCertificates,
+			operatorClientCert,
 		),
 		hasEndpoints,
 	)
@@ -223,6 +237,7 @@ func ReconcileSharedResources(
 		controllerUser,
 		*minVersion,
 		trustedHTTPCertificates,
+		operatorClientCert,
 	)
 
 	// use unknown health as a proxy for a cluster not responding to requests
@@ -461,4 +476,29 @@ func esReachableConditionMessage(internalService *corev1.Service, isServiceReady
 	default:
 		return fmt.Sprintf("Service %s/%s has endpoints", internalService.Namespace, internalService.Name)
 	}
+}
+
+// DeleteClientCertResources deletes the client certificate resources (operator client cert secret,
+// trust bundle secret, and the client-authentication-required annotation) when client certificate
+// authentication is no longer required. This should only be called after all pods have rolled
+// to the new configuration without client authentication.
+func DeleteClientCertResources(ctx context.Context, c k8s.Client, es *esv1.Elasticsearch) error {
+	// Remove the client-authentication-required annotation
+	if err := annotation.RemoveClientAuthenticationRequiredAnnotation(ctx, c, es); err != nil {
+		return err
+	}
+
+	// Delete the operator client certificate secret
+	if err := k8s.DeleteSecretIfExists(ctx, c, types.NamespacedName{
+		Namespace: es.Namespace,
+		Name:      commoncerts.OperatorClientCertSecretName(esv1.ESNamer, es.Name),
+	}); err != nil {
+		return err
+	}
+
+	// Delete the client certificate trust bundle secret
+	return k8s.DeleteSecretIfExists(ctx, c, types.NamespacedName{
+		Namespace: es.Namespace,
+		Name:      commoncerts.ClientCertTrustBundleSecretName(esv1.ESNamer, es.Name),
+	})
 }

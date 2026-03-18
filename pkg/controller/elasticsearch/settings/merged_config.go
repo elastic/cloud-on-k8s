@@ -7,6 +7,8 @@ package settings
 import (
 	"fmt"
 	"path"
+	"slices"
+	"strings"
 
 	corev1 "k8s.io/api/core/v1"
 
@@ -40,11 +42,11 @@ func NewMergedESConfig(
 	clusterName string,
 	ver version.Version,
 	ipFamily corev1.IPFamily,
-	httpConfig commonv1.HTTPConfig,
+	httpConfig commonv1.HTTPConfigWithClientOptions,
 	userConfig commonv1.Config,
 	esConfigFromStackConfigPolicy *common.CanonicalConfig,
 	remoteClusterServerEnabled, remoteClusterClientEnabled bool,
-	clusterHasZoneAwareness bool,
+	clusterHasZoneAwareness, clientAuthenticationRequired bool,
 ) (CanonicalConfig, error) {
 	userCfg, err := common.NewCanonicalConfigFrom(userConfig.Data)
 	if err != nil {
@@ -61,6 +63,15 @@ func NewMergedESConfig(
 	if err != nil {
 		return CanonicalConfig{}, err
 	}
+
+	// When client authentication is enabled, ensure the trust bundle is included in certificate_authorities.
+	// This is done after merging to preserve any user-specified CAs (append-only).
+	if clientAuthenticationRequired {
+		if err := appendClientTrustBundle(config); err != nil {
+			return CanonicalConfig{}, err
+		}
+	}
+
 	return CanonicalConfig{config}, nil
 }
 
@@ -124,7 +135,7 @@ func baseConfig(clusterName string, ver version.Version, ipFamily corev1.IPFamil
 }
 
 // xpackConfig returns the configuration bit related to XPack settings
-func xpackConfig(ver version.Version, httpCfg commonv1.HTTPConfig, remoteClusterServerEnabled, remoteClusterClientEnabled bool) *CanonicalConfig {
+func xpackConfig(ver version.Version, httpCfg commonv1.HTTPConfigWithClientOptions, remoteClusterServerEnabled, remoteClusterClientEnabled bool) *CanonicalConfig {
 	// enable x-pack security, including TLS
 	cfg := map[string]any{
 		// x-pack security general settings
@@ -152,6 +163,10 @@ func xpackConfig(ver version.Version, httpCfg commonv1.HTTPConfig, remoteCluster
 			path.Join(volume.RemoteCertificateAuthoritiesSecretVolumeMountPath, certificates.CAFileName),
 		},
 		esv1.XPackSecurityHttpSslCertificateAuthorities: path.Join(volume.HTTPCertificatesSecretVolumeMountPath, certificates.CAFileName),
+	}
+
+	if httpCfg.TLS.Client.Authentication {
+		cfg[esv1.XPackSecurityHttpSslClientAuthentication] = "required"
 	}
 
 	if remoteClusterServerEnabled {
@@ -189,4 +204,87 @@ func xpackConfig(ver version.Version, httpCfg commonv1.HTTPConfig, remoteCluster
 	}
 
 	return &CanonicalConfig{common.MustCanonicalConfig(cfg)}
+}
+
+// HasClientAuthenticationRequired checks whether the given config has xpack.security.http.ssl.client_authentication set to "required".
+func HasClientAuthenticationRequired(cfg CanonicalConfig) bool {
+	val, err := cfg.String(esv1.XPackSecurityHttpSslClientAuthentication)
+	if err != nil {
+		return false
+	}
+	return val == "required"
+}
+
+// appendClientTrustBundle appends the client trust bundle path to the HTTP SSL certificate authorities.
+// This preserves any user-specified CAs while ensuring the trust bundle is included.
+func appendClientTrustBundle(config *common.CanonicalConfig) error {
+	trustBundlePath := path.Join(volume.ClientCertificatesTrustBundleMountPath, certificates.ClientCertificatesTrustBundleFileName)
+
+	// Unpack the config to get the current value
+	var cfg map[string]any
+	if err := config.Unpack(&cfg); err != nil {
+		return fmt.Errorf("failed to unpack config: %w", err)
+	}
+
+	var casToMerge []string //nolint:prealloc
+	var existingCAs []string
+	if existing, ok := getNestedValue(cfg, esv1.XPackSecurityHttpSslCertificateAuthorities); ok {
+		switch v := existing.(type) {
+		case nil:
+			// esv1.XPackSecurityHttpSslCertificateAuthorities doesn't exist
+		case string:
+			existingCAs = []string{v}
+			// If esv1.XPackSecurityHttpSslCertificateAuthorities is set as a single string
+			// capture it in casToMerge because MergeWith below will overwrite it.
+			casToMerge = []string{v}
+		case []string:
+			existingCAs = v
+		case []any:
+			for i, item := range v {
+				s, ok := item.(string)
+				if !ok {
+					return fmt.Errorf("%s[%d]: expected string, got %T", esv1.XPackSecurityHttpSslCertificateAuthorities, i, item)
+				}
+				existingCAs = append(existingCAs, s)
+			}
+		default:
+			return fmt.Errorf("%s: expected string or []string, got %T", esv1.XPackSecurityHttpSslCertificateAuthorities, existing)
+		}
+	}
+
+	// Check if trust bundle path is already present
+	if slices.Contains(existingCAs, trustBundlePath) {
+		return nil // Already present, nothing to do
+	}
+
+	// Append trust bundle path and merge as a new config to handle type conversion properly
+	casToMerge = append(casToMerge, trustBundlePath)
+	trustBundleConfig, err := common.NewCanonicalConfigFrom(map[string]any{
+		esv1.XPackSecurityHttpSslCertificateAuthorities: casToMerge,
+	})
+	if err != nil {
+		return fmt.Errorf("failed to create trust bundle config: %w", err)
+	}
+	if err := config.MergeWith(trustBundleConfig); err != nil {
+		return fmt.Errorf("failed to merge trust bundle config: %w", err)
+	}
+	return nil
+}
+
+// getNestedValue traverses a nested map structure using a dot-separated key path.
+func getNestedValue(cfg map[string]any, key string) (any, bool) {
+	parts := strings.Split(key, ".")
+	current := any(cfg)
+
+	for _, part := range parts {
+		m, ok := current.(map[string]any)
+		if !ok {
+			return nil, false
+		}
+		current, ok = m[part]
+		if !ok {
+			return nil, false
+		}
+	}
+	return current, true
 }

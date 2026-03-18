@@ -6,6 +6,7 @@ package certificates
 
 import (
 	"context"
+	"crypto/tls"
 	"crypto/x509"
 	"time"
 
@@ -14,6 +15,7 @@ import (
 
 	commonv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/common/v1"
 	esv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/elasticsearch/v1"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/annotation"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/certificates"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/driver"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/events"
@@ -55,7 +57,7 @@ func ReconcileHTTP(
 		K8sClient:      driver.K8sClient(),
 		DynamicWatches: driver.DynamicWatches(),
 		Owner:          &es,
-		TLSOptions:     es.Spec.HTTP.TLS,
+		TLSOptions:     es.Spec.HTTP.TLS.TLSOptions,
 		ExtraHTTPSANs:  extraHTTPSANs,
 		Namer:          esv1.ESNamer,
 		Metadata:       meta,
@@ -78,7 +80,71 @@ func ReconcileHTTP(
 		return nil, results.WithError(err)
 	}
 
-	return trustedHTTPCertificates, nil
+	return trustedHTTPCertificates, results
+}
+
+// ReconcileOperatorClientCertAndTrustBundle reconciles the operator client certificate and trust bundle of client
+// certificates. It decides internally whether reconciliation is needed based on the clientAuthenticationRequired flag
+// and the presence of the client-authentication-required annotation on the ES resource.
+// When client authentication is enabled, the annotation is set to signal association controllers.
+// Returns nil certificate (without error) when client authentication is not in use.
+func ReconcileOperatorClientCertAndTrustBundle(
+	ctx context.Context,
+	driver driver.Interface,
+	es *esv1.Elasticsearch,
+	clientAuthenticationRequired bool,
+	certRotation certificates.RotationParams,
+	meta metadata.Metadata,
+) (*tls.Certificate, *reconciler.Results) {
+	span, ctx := apm.StartSpan(ctx, "reconcile_client_certs", tracing.SpanTypeApp)
+	defer span.End()
+
+	results := reconciler.NewResult(ctx)
+
+	if !clientAuthenticationRequired && !annotation.HasClientAuthenticationRequired(es) {
+		return nil, results
+	}
+
+	if clientAuthenticationRequired {
+		if err := annotation.SetClientAuthenticationRequiredAnnotation(ctx, driver.K8sClient(), es); err != nil {
+			return nil, results.WithError(err)
+		}
+	}
+
+	certReconciler := certificates.Reconciler{
+		K8sClient:    driver.K8sClient(),
+		Owner:        es,
+		Namer:        esv1.ESNamer,
+		Metadata:     meta,
+		CertRotation: certRotation,
+	}
+
+	operatorClientCertSecret, err := certReconciler.ReconcileOperatorCertificate(ctx)
+	if err != nil {
+		k8s.MaybeEmitErrorEvent(driver.Recorder(), err, es, events.EventReconciliationError, "Client certificate reconciliation error: %v", err)
+		return nil, results.WithError(err)
+	}
+
+	primaryCert, err := certificates.GetPrimaryCertificate(operatorClientCertSecret.CertPem())
+	if err != nil {
+		return nil, results.WithError(err)
+	}
+	results.WithReconciliationState(
+		reconciler.
+			RequeueAfter(certificates.ShouldRotateIn(time.Now(), primaryCert.NotAfter, certRotation.RotateBefore)).
+			ReconciliationComplete(),
+	)
+
+	if err := certReconciler.ReconcileTrustBundle(ctx, esv1.Kind, operatorClientCertSecret); err != nil {
+		return nil, results.WithError(err)
+	}
+
+	operatorClientCert, err := certificates.ParseTLSCertificate(operatorClientCertSecret.Secret)
+	if err != nil {
+		return nil, results.WithError(err)
+	}
+
+	return operatorClientCert, results
 }
 
 // ReconcileTransport reconciles the transport layer certificates of a cluster.

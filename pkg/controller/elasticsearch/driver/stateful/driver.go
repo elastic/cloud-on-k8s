@@ -11,6 +11,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 
 	commondriver "github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/driver"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/events"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/reconciler"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/driver"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/driver/shared"
@@ -30,16 +31,30 @@ var _ commondriver.Interface = (*Driver)(nil)
 
 // Reconcile fulfills the Driver interface and reconciles the cluster resources.
 func (d *Driver) Reconcile(ctx context.Context) *reconciler.Results {
-	// Reconcile resources which are common to all drivers.
-	shared, results := shared.ReconcileSharedResources(ctx, d, d.Parameters)
-	if results.HasError() {
-		return results
+	results := reconciler.NewResult(ctx)
+
+	// Resolve configuration first. This computes merged configs for all NodeSets
+	// (including StackConfigPolicy) and detects clientAuthenticationRequired early,
+	// before we create the ES client.
+	resolvedConfig, err := ResolveConfig(ctx, d.Client, d.ES, d.OperatorParameters.IPFamily)
+	if err != nil {
+		return results.WithError(err)
 	}
-	defer shared.ESClient.Close()
+	if resolvedConfig.ClientAuthenticationOverrideWarning != "" {
+		d.ReconcileState.AddEvent(corev1.EventTypeWarning, events.EventReasonValidation, resolvedConfig.ClientAuthenticationOverrideWarning)
+	}
+
+	// Reconcile resources which are common to all drivers.
+	sharedState, sharedResults := shared.ReconcileSharedResources(ctx, d, d.Parameters, resolvedConfig.ClientAuthenticationRequired)
+	if sharedResults.HasError() {
+		return results.WithResults(sharedResults)
+	}
+	defer sharedState.ESClient.Close()
+	results.WithResults(sharedResults)
 
 	// Stateful specific: Service accounts hint
 	results.WithError(d.maybeSetServiceAccountsOrchestrationHint(
-		ctx, shared.ESReachable, shared.ESClient, shared.ResourcesState))
+		ctx, sharedState.ESReachable, sharedState.ESClient, sharedState.ResourcesState))
 
 	// Stateful specific: Suspended pods
 	// We want to reconcile suspended Pods before we start reconciling node specs as this is considered a debugging and
@@ -50,8 +65,8 @@ func (d *Driver) Reconcile(ctx context.Context) *reconciler.Results {
 
 	// Stateful specific: Node specs (StatefulSets, upgrades, downscales)
 	return results.WithResults(d.reconcileNodeSpecs(
-		ctx, shared.ESReachable, shared.ESClient, d.ReconcileState,
-		*shared.ResourcesState, shared.KeystoreResources, shared.Meta))
+		ctx, sharedState.ESReachable, sharedState.ESClient, d.ReconcileState,
+		*sharedState.ResourcesState, sharedState.KeystoreResources, sharedState.Meta, resolvedConfig))
 }
 
 // names returns the names of the given pods.

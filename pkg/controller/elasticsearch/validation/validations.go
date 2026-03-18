@@ -44,7 +44,6 @@ const (
 	unsupportedUpgradeMsg                    = "Unsupported version upgrade path. Check the Elasticsearch documentation for supported upgrade paths."
 	unsupportedVersionMsg                    = "Unsupported version"
 	notAllowedNodesLabelMsg                  = "Node label not in the exposed node labels list"
-	unsupportedClientAuthenticationMsg       = "Mandatory client authentication is not supported"
 	autoscalingAnnotationUnsupportedErrMsg   = "autoscaling annotation is no longer supported"
 	restartTriggerRemovedWarningMsg          = "Removing the restart-trigger annotation does not cancel an in-progress rolling restart; pods not yet restarted will still be restarted with the previous trigger value."
 	restartTriggerUnchangedWarningMsg        = "Restart-trigger value unchanged; no new rolling restart will be triggered if pods already have this value."

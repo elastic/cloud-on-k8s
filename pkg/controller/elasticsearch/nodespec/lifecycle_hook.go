@@ -12,6 +12,7 @@ import (
 
 	v1 "k8s.io/api/core/v1"
 
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/certificates"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/label"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/user"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/volume"
@@ -69,7 +70,7 @@ global_dns_error_cnt=0
 
 function request() {
   local status exit
-  status=$(curl -k -sS -o "${resp_body}" -w "%{http_code}" "$@")
+  status=$(curl -k -sS -o "${resp_body}" -w "%{http_code}"{{with .InternalClientCertPath}} --cert "{{.}}" --key "{{$.InternalClientKeyPath}}"{{end}} "$@")
   exit=$?
   if [ "$exit" -ne 0 ] || [ "$status" -lt 200 ] || [ "$status" -gt 299 ]; then
     # track curl DNS errors separately
@@ -217,7 +218,7 @@ done
 delayed_exit
 `))
 
-func RenderPreStopHookScript(svcURL string) (string, error) {
+func RenderPreStopHookScript(svcURL string, clientAuthenticationRequired bool) (string, error) {
 	vars := map[string]string{
 		"PreStopUserName":         user.PreStopUserName,
 		"PreStopUserPasswordPath": filepath.Join(volume.PodMountedUsersSecretMountPath, user.PreStopUserName),
@@ -227,6 +228,10 @@ func RenderPreStopHookScript(svcURL string) (string, error) {
 		"ServiceURL":       svcURL,
 		"LabelsFile":       filepath.Join(volume.DownwardAPIMountPath, volume.LabelsFile),
 		"VersionLabelName": label.VersionLabelName,
+	}
+	if clientAuthenticationRequired {
+		vars["InternalClientCertPath"] = filepath.Join(volume.InternalClientCertMountPath, certificates.CertFileName)
+		vars["InternalClientKeyPath"] = filepath.Join(volume.InternalClientCertMountPath, certificates.KeyFileName)
 	}
 	var script bytes.Buffer
 	err := preStopHookScriptTemplate.Execute(&script, vars)

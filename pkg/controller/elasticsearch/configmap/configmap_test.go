@@ -34,11 +34,12 @@ func TestReconcileScriptsConfigMap(t *testing.T) {
 	}
 
 	tests := []struct {
-		name           string
-		initialObjects []client.Object
-		meta           metadata.Metadata
-		wantErr        bool
-		validate       func(t *testing.T, client k8s.Client)
+		name                         string
+		initialObjects               []client.Object
+		meta                         metadata.Metadata
+		clientAuthenticationRequired bool
+		wantErr                      bool
+		validate                     func(t *testing.T, client k8s.Client)
 	}{
 		{
 			name:           "creates a new config map when it doesn't exist",
@@ -108,6 +109,35 @@ func TestReconcileScriptsConfigMap(t *testing.T) {
 				assert.Contains(t, updatedConfigMap.Data, initcontainer.PrepareFsScriptConfigKey)
 			},
 		},
+		{
+			name:                         "pre-stop script includes client cert args when client auth required",
+			clientAuthenticationRequired: true,
+			meta:                         metadata.Metadata{Labels: map[string]string{"test": "true"}},
+			validate: func(t *testing.T, client k8s.Client) {
+				t.Helper()
+				var cm corev1.ConfigMap
+				err := client.Get(context.Background(), types.NamespacedName{Namespace: namespace, Name: configMapName}, &cm)
+				assert.NoError(t, err)
+				script := cm.Data[nodespec.PreStopHookScriptConfigKey]
+				assert.Contains(t, script, "--cert")
+				assert.Contains(t, script, "--key")
+				assert.Contains(t, script, "client-cert/tls.crt")
+			},
+		},
+		{
+			name:                         "pre-stop script does not include client cert args when client auth not required",
+			clientAuthenticationRequired: false,
+			meta:                         metadata.Metadata{Labels: map[string]string{"test": "true"}},
+			validate: func(t *testing.T, client k8s.Client) {
+				t.Helper()
+				var cm corev1.ConfigMap
+				err := client.Get(context.Background(), types.NamespacedName{Namespace: namespace, Name: configMapName}, &cm)
+				assert.NoError(t, err)
+				script := cm.Data[nodespec.PreStopHookScriptConfigKey]
+				assert.NotContains(t, script, "--cert")
+				assert.NotContains(t, script, "--key")
+			},
+		},
 	}
 
 	for _, tt := range tests {
@@ -116,7 +146,7 @@ func TestReconcileScriptsConfigMap(t *testing.T) {
 			mockClient := k8s.NewFakeClient(tt.initialObjects...)
 
 			// Run the function
-			err := ReconcileScriptsConfigMap(context.Background(), mockClient, es, tt.meta)
+			err := ReconcileScriptsConfigMap(context.Background(), mockClient, es, tt.meta, tt.clientAuthenticationRequired)
 
 			// Check error
 			if tt.wantErr {
