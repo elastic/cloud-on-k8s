@@ -170,12 +170,22 @@ func Test_checkIfVersionDeprecated(t *testing.T) {
 		want    string
 	}{
 		{
-			name:    "not deprecated",
-			version: "7.17.0",
+			name:    "not deprecated - greater than max deprecated version",
+			version: "8.0.1",
 			want:    "",
 		},
 		{
-			name:    "deprecated",
+			name:    "deprecated - equal to max deprecated version",
+			version: "7.17.29",
+			want:    "Version 7.17.29 is EOL and support for it will be removed in a future release of the ECK operator",
+		},
+		{
+			name:    "deprecated - equal to min deprecated version",
+			version: "7.0.0",
+			want:    "Version 7.0.0 is EOL and support for it will be removed in a future release of the ECK operator",
+		},
+		{
+			name:    "deprecated - middle of the pack",
 			version: "7.4.0",
 			want:    "Version 7.4.0 is EOL and support for it will be removed in a future release of the ECK operator",
 		},

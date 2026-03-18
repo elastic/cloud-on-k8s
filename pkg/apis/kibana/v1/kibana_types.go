@@ -79,7 +79,7 @@ type KibanaSpec struct {
 	ElasticsearchRef commonv1.ObjectSelector `json:"elasticsearchRef,omitempty"`
 
 	// PackageRegistryRef is a reference to an Elastic Package Registry running in the same Kubernetes cluster.
-	PackageRegistryRef commonv1.ObjectSelector `json:"packageRegistryRef,omitempty"`
+	PackageRegistryRef commonv1.LocalObjectSelector `json:"packageRegistryRef,omitempty"`
 
 	// EnterpriseSearchRef is a reference to an EnterpriseSearch running in the same Kubernetes cluster.
 	// Kibana provides the default Enterprise Search UI starting version 7.14.
@@ -169,23 +169,23 @@ func (k *Kibana) Associated() commonv1.Associated {
 func (k *Kibana) GetAssociations() []commonv1.Association {
 	associations := make([]commonv1.Association, 0)
 
-	if k.Spec.ElasticsearchRef.IsDefined() {
+	if k.Spec.ElasticsearchRef.IsSet() {
 		associations = append(associations, &KibanaEsAssociation{
 			Kibana: k,
 		})
 	}
-	if k.Spec.EnterpriseSearchRef.IsDefined() {
+	if k.Spec.EnterpriseSearchRef.IsSet() {
 		associations = append(associations, &KibanaEntAssociation{
 			Kibana: k,
 		})
 	}
-	if k.Spec.PackageRegistryRef.IsDefined() {
+	if k.Spec.PackageRegistryRef.IsSet() {
 		associations = append(associations, &KibanaEPRAssociation{
 			Kibana: k,
 		})
 	}
 	for _, ref := range k.Spec.Monitoring.Metrics.ElasticsearchRefs {
-		if ref.IsDefined() {
+		if ref.IsSet() {
 			associations = append(associations, &KbMonitoringAssociation{
 				Kibana: k,
 				ref:    ref.WithDefaultNamespace(k.Namespace),
@@ -193,7 +193,7 @@ func (k *Kibana) GetAssociations() []commonv1.Association {
 		}
 	}
 	for _, ref := range k.Spec.Monitoring.Logs.ElasticsearchRefs {
-		if ref.IsDefined() {
+		if ref.IsSet() {
 			associations = append(associations, &KbMonitoringAssociation{
 				Kibana: k,
 				ref:    ref.WithDefaultNamespace(k.Namespace),
@@ -207,25 +207,25 @@ func (k *Kibana) GetAssociations() []commonv1.Association {
 func (k *Kibana) AssociationStatusMap(typ commonv1.AssociationType) commonv1.AssociationStatusMap {
 	switch typ {
 	case commonv1.ElasticsearchAssociationType:
-		if k.Spec.ElasticsearchRef.IsDefined() {
+		if k.Spec.ElasticsearchRef.IsSet() {
 			return commonv1.NewSingleAssociationStatusMap(k.Status.ElasticsearchAssociationStatus)
 		}
 	case commonv1.EntAssociationType:
-		if k.Spec.EnterpriseSearchRef.IsDefined() {
+		if k.Spec.EnterpriseSearchRef.IsSet() {
 			return commonv1.NewSingleAssociationStatusMap(k.Status.EnterpriseSearchAssociationStatus)
 		}
 	case commonv1.PackageRegistryAssociationType:
-		if k.Spec.PackageRegistryRef.IsDefined() {
+		if k.Spec.PackageRegistryRef.IsSet() {
 			return commonv1.NewSingleAssociationStatusMap(k.Status.PackageRegistryAssociationStatus)
 		}
 	case commonv1.KbMonitoringAssociationType:
 		for _, esRef := range k.Spec.Monitoring.Metrics.ElasticsearchRefs {
-			if esRef.IsDefined() {
+			if esRef.IsSet() {
 				return k.Status.MonitoringAssociationStatus
 			}
 		}
 		for _, esRef := range k.Spec.Monitoring.Logs.ElasticsearchRefs {
-			if esRef.IsDefined() {
+			if esRef.IsSet() {
 				return k.Status.MonitoringAssociationStatus
 			}
 		}
@@ -315,7 +315,7 @@ func (kbes *KibanaEsAssociation) AssociationType() commonv1.AssociationType {
 	return commonv1.ElasticsearchAssociationType
 }
 
-func (kbes *KibanaEsAssociation) AssociationRef() commonv1.ObjectSelector {
+func (kbes *KibanaEsAssociation) AssociationRef() commonv1.AssociationRef {
 	return kbes.Spec.ElasticsearchRef.WithDefaultNamespace(kbes.Namespace)
 }
 
@@ -370,7 +370,7 @@ func (kbent *KibanaEntAssociation) AssociationType() commonv1.AssociationType {
 	return commonv1.EntAssociationType
 }
 
-func (kbent *KibanaEntAssociation) AssociationRef() commonv1.ObjectSelector {
+func (kbent *KibanaEntAssociation) AssociationRef() commonv1.AssociationRef {
 	return kbent.Spec.EnterpriseSearchRef.WithDefaultNamespace(kbent.Namespace)
 }
 
@@ -424,7 +424,7 @@ func (kbmon *KbMonitoringAssociation) AssociationType() commonv1.AssociationType
 	return commonv1.KbMonitoringAssociationType
 }
 
-func (kbmon *KbMonitoringAssociation) AssociationRef() commonv1.ObjectSelector {
+func (kbmon *KbMonitoringAssociation) AssociationRef() commonv1.AssociationRef {
 	return kbmon.ref
 }
 
@@ -484,7 +484,7 @@ func (kbepr *KibanaEPRAssociation) AssociationType() commonv1.AssociationType {
 	return commonv1.PackageRegistryAssociationType
 }
 
-func (kbepr *KibanaEPRAssociation) AssociationRef() commonv1.ObjectSelector {
+func (kbepr *KibanaEPRAssociation) AssociationRef() commonv1.AssociationRef {
 	return kbepr.Spec.PackageRegistryRef.WithDefaultNamespace(kbepr.Namespace)
 }
 

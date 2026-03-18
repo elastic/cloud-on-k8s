@@ -350,12 +350,7 @@ func TestDriverDeploymentParams(t *testing.T) {
 			want: func() deployment.Params {
 				p := expectedDeploymentParams()
 				p.PodTemplateSpec.Labels["kibana.k8s.elastic.co/version"] = "7.17.0"
-				p.PodTemplateSpec.Spec.SecurityContext = &corev1.PodSecurityContext{
-					FSGroup: ptr.To[int64](1000),
-					SeccompProfile: &corev1.SeccompProfile{
-						Type: corev1.SeccompProfileTypeRuntimeDefault,
-					},
-				}
+				p.PodTemplateSpec.Spec.SecurityContext = &defaultPodSecurityContext
 				return p
 			}(),
 			wantErr: false,
@@ -542,7 +537,7 @@ func expectedDeploymentParams() deployment.Params {
 						ImagePullPolicy: corev1.PullIfNotPresent,
 						Image:           "my-image",
 						Command:         []string{"/usr/bin/env", "bash", "-c", "/mnt/elastic-internal/scripts/init.sh"},
-						SecurityContext: nil,
+						SecurityContext: &defaultSecurityContext,
 						Env: []corev1.EnvVar{
 							{Name: settings.EnvPodIP, Value: "", ValueFrom: &corev1.EnvVarSource{
 								FieldRef: &corev1.ObjectFieldSelector{APIVersion: "v1", FieldPath: "status.podIP"},
@@ -945,7 +940,7 @@ func TestDriver_buildVolumes(t *testing.T) {
 					},
 					Spec: kbv1.KibanaSpec{
 						Version: "7.10.0",
-						PackageRegistryRef: commonv1.ObjectSelector{
+						PackageRegistryRef: commonv1.LocalObjectSelector{
 							Name: "test-epr",
 						},
 					},
@@ -987,7 +982,7 @@ func TestDriver_buildVolumes(t *testing.T) {
 						ElasticsearchRef: commonv1.ObjectSelector{
 							Name: "test-es",
 						},
-						PackageRegistryRef: commonv1.ObjectSelector{
+						PackageRegistryRef: commonv1.LocalObjectSelector{
 							Name: "test-epr",
 						},
 					},

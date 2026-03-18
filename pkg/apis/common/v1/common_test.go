@@ -201,9 +201,9 @@ func TestObjectSelector_WithDefaultNamespace(t *testing.T) {
 }
 
 func TestObjectSelector_IsDefined(t *testing.T) {
-	assert.Equal(t, true, (&ObjectSelector{Name: "n"}).IsDefined())
-	assert.Equal(t, true, (&ObjectSelector{SecretName: "s"}).IsDefined())
-	assert.Equal(t, false, (&ObjectSelector{}).IsDefined())
+	assert.Equal(t, true, (&ObjectSelector{Name: "n"}).IsSet())
+	assert.Equal(t, true, (&ObjectSelector{SecretName: "s"}).IsSet())
+	assert.Equal(t, false, (&ObjectSelector{}).IsSet())
 }
 
 func TestObjectSelector_IsExternal(t *testing.T) {
@@ -307,6 +307,81 @@ func TestObjectSelector_IsValid(t *testing.T) {
 		{
 			name: "serviceName: KO",
 			objectSelector: ObjectSelector{
+				ServiceName: "c",
+			},
+			wantErr: true,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := tt.objectSelector.IsValid(); (got != nil) != tt.wantErr {
+				t.Errorf("IsValid() = %+v, want %+v", got, tt.wantErr)
+			}
+		})
+	}
+}
+
+func TestLocalObjectSelector_IsValid(t *testing.T) {
+	tests := []struct {
+		name           string
+		objectSelector LocalObjectSelector
+		wantErr        bool
+	}{
+		{
+			name:           "empty object: OK",
+			objectSelector: LocalObjectSelector{},
+			wantErr:        false,
+		},
+		{
+			name: "name only: OK",
+			objectSelector: LocalObjectSelector{
+				Name: "a",
+			},
+			wantErr: false,
+		},
+		{
+			name: "name and namespace: OK",
+			objectSelector: LocalObjectSelector{
+				Name:      "a",
+				Namespace: "b",
+			},
+			wantErr: false,
+		},
+		{
+			name: "name and serviceName: OK",
+			objectSelector: LocalObjectSelector{
+				Name:        "a",
+				ServiceName: "c",
+			},
+			wantErr: false,
+		},
+		{
+			name: "name, namespace and serviceName: OK",
+			objectSelector: LocalObjectSelector{
+				Name:        "a",
+				Namespace:   "b",
+				ServiceName: "c",
+			},
+			wantErr: false,
+		},
+		{
+			name: "serviceName without name: KO",
+			objectSelector: LocalObjectSelector{
+				ServiceName: "c",
+			},
+			wantErr: true,
+		},
+		{
+			name: "namespace without name: KO",
+			objectSelector: LocalObjectSelector{
+				Namespace: "b",
+			},
+			wantErr: true,
+		},
+		{
+			name: "namespace and serviceName without name: KO",
+			objectSelector: LocalObjectSelector{
+				Namespace:   "b",
 				ServiceName: "c",
 			},
 			wantErr: true,

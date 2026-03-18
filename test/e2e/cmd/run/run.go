@@ -650,40 +650,54 @@ func streamTestJobOutput(
 				streamErrors <- err
 				continue // retry
 			}
-			defer stream.Close()
 
-			pastPreviousLogStream := false
-			scan := bufio.NewScanner(stream)
-			for scan.Scan() {
-				line := scan.Bytes()
+			// Process this stream - must close before retry to avoid leaking file descriptors.
+			lastTimestamp = processLogStream(stream, timestampExtractor, writer, streamErrors, lastTimestamp)
+			stream.Close()
+			log.Info("Log stream ended", "pod_name", streamProvider)
 
-				timestamp, err := timestampExtractor(line)
-				if err != nil {
-					streamErrors <- err
-					continue
-				}
-
-				// don't re-write logs that have been already written in a previous log stream attempt
-				if !pastPreviousLogStream && !timestamp.After(lastTimestamp) {
-					continue
-				}
-
-				// new log to process
-				pastPreviousLogStream = true
-				lastTimestamp = timestamp
-				if _, err := writer.Write([]byte(string(line) + "\n")); err != nil {
-					streamErrors <- err
-					return
-				}
-			}
-			if err := scan.Err(); err != nil {
-				log.Error(err, "Log stream ended", "pod_name", streamProvider)
-			} else {
-				log.Info("Log stream ended", "pod_name", streamProvider)
-			}
 			// retry
 		}
 	}
+}
+
+// processLogStream reads logs from a stream and writes them to the writer.
+// Returns the timestamp of the last processed log entry.
+func processLogStream(
+	stream io.ReadCloser,
+	timestampExtractor timestampExtractor,
+	writer io.Writer,
+	streamErrors chan<- error,
+	lastTimestamp time.Time,
+) time.Time {
+	pastPreviousLogStream := false
+	scan := bufio.NewScanner(stream)
+	for scan.Scan() {
+		line := scan.Bytes()
+
+		timestamp, err := timestampExtractor(line)
+		if err != nil {
+			streamErrors <- err
+			continue
+		}
+
+		// don't re-write logs that have been already written in a previous log stream attempt
+		if !pastPreviousLogStream && !timestamp.After(lastTimestamp) {
+			continue
+		}
+
+		// new log to process
+		pastPreviousLogStream = true
+		lastTimestamp = timestamp
+		if _, err := writer.Write([]byte(string(line) + "\n")); err != nil {
+			streamErrors <- err
+			return lastTimestamp
+		}
+	}
+	if err := scan.Err(); err != nil {
+		log.Error(err, "Log stream scan error")
+	}
+	return lastTimestamp
 }
 
 type GoLangJSONLogLine struct {

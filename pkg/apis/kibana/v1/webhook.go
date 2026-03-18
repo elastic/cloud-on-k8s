@@ -34,7 +34,6 @@ var (
 		checkSupportedVersion,
 		checkMonitoring,
 		checkAssociations,
-		checkPackageRegistryRefSecret,
 	}
 
 	updateChecks = []func(old, curr *Kibana) field.ErrorList{
@@ -112,7 +111,7 @@ func checkNoDowngrade(prev, curr *Kibana) field.ErrorList {
 func checkMonitoring(k *Kibana) field.ErrorList {
 	errs := validations.Validate(k, k.Spec.Version, validations.MinStackVersion)
 	// Kibana must be associated to an Elasticsearch when monitoring metrics are enabled
-	if monitoring.IsMetricsDefined(k) && !k.Spec.ElasticsearchRef.IsDefined() {
+	if monitoring.IsMetricsDefined(k) && !k.Spec.ElasticsearchRef.IsSet() {
 		errs = append(errs, field.Invalid(field.NewPath("spec").Child("elasticsearchRef"), k.Spec.ElasticsearchRef,
 			validations.InvalidKibanaElasticsearchRefForStackMonitoringMsg))
 	}
@@ -125,13 +124,6 @@ func checkAssociations(k *Kibana) field.ErrorList {
 	err2 := commonv1.CheckAssociationRefs(monitoringPath.Child("logs"), k.GetMonitoringLogsRefs()...)
 	err3 := commonv1.CheckAssociationRefs(field.NewPath("spec").Child("elasticsearchRef"), k.Spec.ElasticsearchRef)
 	err4 := commonv1.CheckAssociationRefs(field.NewPath("spec").Child("enterpriseSearchRef"), k.Spec.EnterpriseSearchRef)
-	err5 := commonv1.CheckAssociationRefs(field.NewPath("spec").Child("packageRegistryRef"), k.Spec.PackageRegistryRef)
+	err5 := commonv1.CheckLocalAssociationRefs(field.NewPath("spec").Child("packageRegistryRef"), k.Spec.PackageRegistryRef)
 	return append(err1, append(err2, append(err3, append(err4, err5...)...)...)...)
-}
-
-func checkPackageRegistryRefSecret(k *Kibana) field.ErrorList {
-	if k.Spec.PackageRegistryRef.SecretName == "" {
-		return nil
-	}
-	return field.ErrorList{field.Forbidden(field.NewPath("spec").Child("packageRegistryRef").Child("secretName"), "secretName is not supported")}
 }

@@ -58,14 +58,14 @@ func AddApmKibana(mgr manager.Manager, accessReviewer rbac.AccessReviewer, param
 
 func getKibanaExternalURL(c k8s.Client, assoc commonv1.Association) (string, error) {
 	kibanaRef := assoc.AssociationRef()
-	if !kibanaRef.IsDefined() {
+	if !kibanaRef.IsSet() {
 		return "", nil
 	}
 	kb := kbv1.Kibana{}
 	if err := c.Get(context.Background(), kibanaRef.NamespacedName(), &kb); err != nil {
 		return "", err
 	}
-	serviceName := kibanaRef.ServiceName
+	serviceName := kibanaRef.GetServiceName()
 	if serviceName == "" {
 		serviceName = kbv1.HTTPService(kb.Name)
 	}
@@ -124,9 +124,9 @@ func referencedKibanaStatusVersion(c k8s.Client, kbAssociation commonv1.Associat
 }
 
 // getElasticsearchFromKibana returns the Elasticsearch reference in which the user must be created for this association.
-func getElasticsearchFromKibana(c k8s.Client, association commonv1.Association) (bool, commonv1.ObjectSelector, error) {
+func getElasticsearchFromKibana(c k8s.Client, association commonv1.Association) (bool, commonv1.AssociationRef, error) {
 	kibanaRef := association.AssociationRef()
-	if !kibanaRef.IsDefined() {
+	if !kibanaRef.IsSet() {
 		return false, commonv1.ObjectSelector{}, nil
 	}
 
