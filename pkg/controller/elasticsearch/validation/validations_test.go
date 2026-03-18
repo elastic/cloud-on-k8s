@@ -17,6 +17,7 @@ import (
 
 	commonv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/common/v1"
 	esv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/elasticsearch/v1"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/license"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/label"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/k8s"
 )
@@ -1329,5 +1330,71 @@ func es(v string) esv1.Elasticsearch {
 			Name:      "foo",
 		},
 		Spec: esv1.ElasticsearchSpec{Version: v},
+	}
+}
+
+func Test_validClientAuthentication(t *testing.T) {
+	tests := []struct {
+		name              string
+		es                esv1.Elasticsearch
+		enterpriseEnabled bool
+		expectErrors      bool
+	}{
+		{
+			name: "client authentication disabled: OK regardless of license",
+			es: esv1.Elasticsearch{
+				Spec: esv1.ElasticsearchSpec{
+					Version: "8.17.0",
+					HTTP: commonv1.HTTPConfigWithClientOptions{
+						TLS: commonv1.TLSWithClientOptions{
+							Client: commonv1.ClientOptions{Authentication: false},
+						},
+					},
+				},
+			},
+			enterpriseEnabled: false,
+			expectErrors:      false,
+		},
+		{
+			name: "client authentication enabled with enterprise license: OK",
+			es: esv1.Elasticsearch{
+				Spec: esv1.ElasticsearchSpec{
+					Version: "8.17.0",
+					HTTP: commonv1.HTTPConfigWithClientOptions{
+						TLS: commonv1.TLSWithClientOptions{
+							Client: commonv1.ClientOptions{Authentication: true},
+						},
+					},
+				},
+			},
+			enterpriseEnabled: true,
+			expectErrors:      false,
+		},
+		{
+			name: "client authentication enabled without enterprise license: NOK",
+			es: esv1.Elasticsearch{
+				Spec: esv1.ElasticsearchSpec{
+					Version: "8.17.0",
+					HTTP: commonv1.HTTPConfigWithClientOptions{
+						TLS: commonv1.TLSWithClientOptions{
+							Client: commonv1.ClientOptions{Authentication: true},
+						},
+					},
+				},
+			},
+			enterpriseEnabled: false,
+			expectErrors:      true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			checker := license.MockLicenseChecker{EnterpriseEnabled: tt.enterpriseEnabled}
+			actual := validClientAuthentication(context.Background(), tt.es, checker)
+			actualErrors := len(actual) > 0
+			if tt.expectErrors != actualErrors {
+				t.Errorf("failed validClientAuthentication(). Name: %v, actual %v, wanted errors: %v", tt.name, actual, tt.expectErrors)
+			}
+		})
 	}
 }

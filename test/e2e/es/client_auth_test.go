@@ -27,6 +27,10 @@ import (
 // TestClientAuthRequired tests that when client authentication is enabled via the spec field,
 // ECK manages self-signed client certificates and the cluster is healthy.
 func TestClientAuthRequired(t *testing.T) {
+	if test.Ctx().TestLicense == "" {
+		t.Skip("Skipping client authentication test: no enterprise test license configured")
+	}
+
 	esName := "test-mtls-required"
 	esNamespace := test.Ctx().ManagedNamespace(0)
 
@@ -34,12 +38,14 @@ func TestClientAuthRequired(t *testing.T) {
 		WithESMasterDataNodes(1, elasticsearch.DefaultResources).
 		WithClientAuthenticationRequired()
 
+	esWithLicense := test.LicenseTestBuilder(esBuilder)
+
 	k := test.NewK8sClientOrFatal()
 
 	test.StepList{}.
-		WithSteps(esBuilder.InitTestSteps(k)).
-		WithSteps(esBuilder.CreationTestSteps(k)).
-		WithSteps(test.CheckTestSteps(esBuilder, k)).
+		WithSteps(esWithLicense.InitTestSteps(k)).
+		WithSteps(esWithLicense.CreationTestSteps(k)).
+		WithSteps(test.CheckTestSteps(esWithLicense, k)).
 		WithSteps(test.StepList{
 			{
 				Name: "Verify client-certificate-required annotation is set",
@@ -108,19 +114,25 @@ func TestClientAuthRequired(t *testing.T) {
 				}),
 			},
 		}).
-		WithSteps(esBuilder.DeletionTestSteps(k)).
+		WithSteps(esWithLicense.DeletionTestSteps(k)).
 		RunSequential(t)
 }
 
 // TestClientAuthRequiredTransition tests transitioning from no client authentication to required and back to disabled.
 // Verifies the cluster remains healthy and client cert secrets are created and cleaned up across transitions.
 func TestClientAuthRequiredTransition(t *testing.T) {
+	if test.Ctx().TestLicense == "" {
+		t.Skip("Skipping client authentication test: no enterprise test license configured")
+	}
+
 	esName := "test-mtls-transition"
 	esNamespace := test.Ctx().ManagedNamespace(0)
 
 	// Start with client_authentication disabled (default)
 	initialBuilder := elasticsearch.NewBuilder(esName).
 		WithESMasterDataNodes(3, elasticsearch.DefaultResources)
+
+	initialWithLicense := test.LicenseTestBuilder(initialBuilder)
 
 	// Phase 1: transition to client_authentication: required
 	enabledBuilder := initialBuilder.DeepCopy()
@@ -234,10 +246,10 @@ func TestClientAuthRequiredTransition(t *testing.T) {
 	}
 
 	test.StepList{}.
-		// Create with client auth disabled
-		WithSteps(initialBuilder.InitTestSteps(k)).
-		WithSteps(initialBuilder.CreationTestSteps(k)).
-		WithSteps(test.CheckTestSteps(initialBuilder, k)).
+		// Create with client auth disabled (with license)
+		WithSteps(initialWithLicense.InitTestSteps(k)).
+		WithSteps(initialWithLicense.CreationTestSteps(k)).
+		WithSteps(test.CheckTestSteps(initialWithLicense, k)).
 		WithSteps(verifyClientCertResourcesRemoved).
 		// Phase 1: enable client authentication
 		// Annotate pods before mutation so CheckExpectedPodsEventuallyReady can verify all pods are rolled.
@@ -251,6 +263,6 @@ func TestClientAuthRequiredTransition(t *testing.T) {
 		WithSteps(disabledBuilder.UpgradeTestSteps(k)).
 		WithSteps(test.CheckTestSteps(*disabledBuilder, k)).
 		WithSteps(verifyClientCertResourcesRemoved).
-		WithSteps(initialBuilder.DeletionTestSteps(k)).
+		WithSteps(initialWithLicense.DeletionTestSteps(k)).
 		RunSequential(t)
 }

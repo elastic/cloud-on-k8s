@@ -85,6 +85,9 @@ func validations(ctx context.Context, checker license.Checker, exposedNodeLabels
 		func(proposed esv1.Elasticsearch) field.ErrorList {
 			return validLicenseLevel(ctx, proposed, checker)
 		},
+		func(proposed esv1.Elasticsearch) field.ErrorList {
+			return validClientAuthentication(ctx, proposed, checker)
+		},
 	}
 }
 
@@ -603,4 +606,24 @@ func validateRestartTriggerWarnings(ctx context.Context, k8sClient k8s.Client, o
 	}
 
 	return ""
+}
+
+func validClientAuthentication(ctx context.Context, es esv1.Elasticsearch, checker license.Checker) field.ErrorList {
+	if !es.Spec.HTTP.TLS.Client.Authentication {
+		return nil
+	}
+	enabled, err := checker.EnterpriseFeaturesEnabled(ctx)
+	if err != nil {
+		ulog.FromContext(ctx).Error(err, "while checking enterprise features during client authentication validation")
+		return nil
+	}
+	if !enabled {
+		return field.ErrorList{
+			field.Forbidden(
+				field.NewPath("spec").Child("http", "tls", "client", "authentication"),
+				"client certificate authentication is an enterprise feature. Enterprise features are disabled",
+			),
+		}
+	}
+	return nil
 }
