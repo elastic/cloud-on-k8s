@@ -77,10 +77,12 @@ func CheckSupportedStackVersion(ver string, supported version.MinMaxVersion) fie
 }
 
 // CheckDeprecatedStackVersion checks that the given version is not deprecated.
+// Parse errors are silently ignored and return no warning; the caller is expected
+// to also run CheckSupportedStackVersion which will surface the parse error.
 func CheckDeprecatedStackVersion(ver string) (string, field.ErrorList) {
 	v, err := ParseVersion(ver)
 	if err != nil {
-		return "", err
+		return "", nil
 	}
 
 	if err := version.DeprecatedVersions.WithinRange(*v); err == nil {

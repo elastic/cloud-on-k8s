@@ -53,6 +53,77 @@ func TestWebhook(t *testing.T) {
 			},
 			Check: test.ValidationWebhookSucceeded,
 		},
+		{
+			Name:      "invalid-version-single-cause",
+			Operation: admissionv1.Create,
+			Object: func(t *testing.T, uid string) []byte {
+				t.Helper()
+				b := mkBeat(uid)
+				b.Spec.Version = "7.x"
+				return serialize(t, b)
+			},
+			Check: func(t *testing.T, response *admissionv1.AdmissionResponse) {
+				t.Helper()
+				test.ValidationWebhookFailed(`spec.version: Invalid value: "7.x": Invalid version`)(t, response)
+				require.Len(t, response.Result.Details.Causes, 1, "invalid version should produce exactly one cause, not duplicate parse errors")
+			},
+		},
+		{
+			Name:      "update-valid",
+			Operation: admissionv1.Update,
+			OldObject: func(t *testing.T, uid string) []byte {
+				t.Helper()
+				b := mkBeat(uid)
+				b.Spec.Version = "8.2.3"
+				return serialize(t, b)
+			},
+			Object: func(t *testing.T, uid string) []byte {
+				t.Helper()
+				b := mkBeat(uid)
+				b.Spec.Version = "8.3.0"
+				return serialize(t, b)
+			},
+			Check: test.ValidationWebhookSucceeded,
+		},
+		{
+			Name:      "version-downgrade",
+			Operation: admissionv1.Update,
+			OldObject: func(t *testing.T, uid string) []byte {
+				t.Helper()
+				b := mkBeat(uid)
+				b.Spec.Version = "8.3.0"
+				return serialize(t, b)
+			},
+			Object: func(t *testing.T, uid string) []byte {
+				t.Helper()
+				b := mkBeat(uid)
+				b.Spec.Version = "8.2.3"
+				return serialize(t, b)
+			},
+			Check: test.ValidationWebhookFailed(
+				`spec.version: Forbidden: Version downgrades are not supported`,
+			),
+		},
+		{
+			Name:      "version-downgrade-deprecated-target",
+			Operation: admissionv1.Update,
+			OldObject: func(t *testing.T, uid string) []byte {
+				t.Helper()
+				b := mkBeat(uid)
+				b.Spec.Version = "8.0.0"
+				return serialize(t, b)
+			},
+			Object: func(t *testing.T, uid string) []byte {
+				t.Helper()
+				b := mkBeat(uid)
+				b.Spec.Version = "7.10.0"
+				return serialize(t, b)
+			},
+			Check: test.ValidationWebhookFailedWithWarnings(
+				[]string{`spec.version: Forbidden: Version downgrades are not supported`},
+				[]string{`Version 7.10.0 is EOL and support for it will be removed in a future release of the ECK operator`},
+			),
+		},
 	}
 
 	handler := test.NewValidationWebhookHandler(beatv1beta1.Validate)

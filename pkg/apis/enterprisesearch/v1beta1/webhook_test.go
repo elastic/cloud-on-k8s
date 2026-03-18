@@ -149,6 +149,26 @@ func TestWebhook(t *testing.T) {
 			),
 		},
 		{
+			Name:      "deprecated-version-downgrade",
+			Operation: admissionv1.Update,
+			OldObject: func(t *testing.T, uid string) []byte {
+				t.Helper()
+				ent := mkEnterpriseSearch(uid)
+				ent.Spec.Version = "8.0.0"
+				return serialize(t, ent)
+			},
+			Object: func(t *testing.T, uid string) []byte {
+				t.Helper()
+				ent := mkEnterpriseSearch(uid)
+				ent.Spec.Version = "7.10.0"
+				return serialize(t, ent)
+			},
+			Check: test.ValidationWebhookFailedWithWarnings(
+				[]string{`spec.version: Forbidden: Version downgrades are not supported`},
+				[]string{`Version 7.10.0 is EOL and support for it will be removed in a future release of the ECK operator`},
+			),
+		},
+		{
 			Name:      "version-downgrade-with-override",
 			Operation: admissionv1.Update,
 			OldObject: func(t *testing.T, uid string) []byte {
