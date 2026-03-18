@@ -145,7 +145,7 @@ func TestWebhook(t *testing.T) {
 
 	handler := test.NewValidationWebhookHandler(policyv1alpha1.Validate)
 	gvk := metav1.GroupVersionKind{Group: policyv1alpha1.GroupVersion.Group, Version: policyv1alpha1.GroupVersion.Version, Kind: policyv1alpha1.Kind}
-	test.RunValidationWebhookTests(t, gvk, handler, testCases...)
+	test.RunValidationWebhookTests(t, gvk, "stackconfigpolicies", handler, testCases...)
 }
 
 func mkStackConfigPolicy(uid string) *policyv1alpha1.StackConfigPolicy {

@@ -121,7 +121,7 @@ func TestWebhook(t *testing.T) {
 
 	handler := test.NewValidationWebhookHandler(agentv1alpha1.Validate)
 	gvk := metav1.GroupVersionKind{Group: agentv1alpha1.GroupVersion.Group, Version: agentv1alpha1.GroupVersion.Version, Kind: agentv1alpha1.Kind}
-	test.RunValidationWebhookTests(t, gvk, handler, testCases...)
+	test.RunValidationWebhookTests(t, gvk, "agents", handler, testCases...)
 }
 
 func mkAgent(uid string) *agentv1alpha1.Agent {

@@ -187,31 +187,29 @@ func Test_validator_Handle(t *testing.T) {
 			fields: fields{
 				client: k8s.NewFakeClient(),
 			},
-			args: args{
-				req: admission.Request{AdmissionRequest: admissionv1.AdmissionRequest{
-					Operation: admissionv1.Create,
-					Object: runtime.RawExtension{
-						Raw: asJSON(&esv1.Elasticsearch{
-							ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: "name"},
-							Spec: esv1.ElasticsearchSpec{
-								Version: "8.9.0",
-								NodeSets: []esv1.NodeSet{
-									{
-										Name:          "set1",
-										Count:         3,
-										ZoneAwareness: &esv1.ZoneAwareness{},
-										PodTemplate: corev1.PodTemplateSpec{
-											Spec: corev1.PodSpec{
-												Affinity: &corev1.Affinity{
-													NodeAffinity: &corev1.NodeAffinity{
-														RequiredDuringSchedulingIgnoredDuringExecution: &corev1.NodeSelector{
-															NodeSelectorTerms: []corev1.NodeSelectorTerm{
-																{
-																	MatchExpressions: []corev1.NodeSelectorRequirement{
-																		{
-																			Key:      esv1.DefaultZoneAwarenessTopologyKey,
-																			Operator: corev1.NodeSelectorOpDoesNotExist,
-																		},
+			req: admission.Request{AdmissionRequest: admissionv1.AdmissionRequest{
+				Operation: admissionv1.Create,
+				Object: runtime.RawExtension{
+					Raw: asJSON(&esv1.Elasticsearch{
+						ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: "name"},
+						Spec: esv1.ElasticsearchSpec{
+							Version: "8.9.0",
+							NodeSets: []esv1.NodeSet{
+								{
+									Name:          "set1",
+									Count:         3,
+									ZoneAwareness: &esv1.ZoneAwareness{},
+									PodTemplate: corev1.PodTemplateSpec{
+										Spec: corev1.PodSpec{
+											Affinity: &corev1.Affinity{
+												NodeAffinity: &corev1.NodeAffinity{
+													RequiredDuringSchedulingIgnoredDuringExecution: &corev1.NodeSelector{
+														NodeSelectorTerms: []corev1.NodeSelectorTerm{
+															{
+																MatchExpressions: []corev1.NodeSelectorRequirement{
+																	{
+																		Key:      esv1.DefaultZoneAwarenessTopologyKey,
+																		Operator: corev1.NodeSelectorOpDoesNotExist,
 																	},
 																},
 															},
@@ -223,43 +221,41 @@ func Test_validator_Handle(t *testing.T) {
 									},
 								},
 							},
-						}),
-					}},
-				},
+						},
+					}),
+				}},
 			},
-			want: admission.Allowed(""),
+			wantAllowed: true,
 		},
 		{
 			name: "reject creation when zone-awareness zones conflict with In affinity values",
 			fields: fields{
 				client: k8s.NewFakeClient(),
 			},
-			args: args{
-				req: admission.Request{AdmissionRequest: admissionv1.AdmissionRequest{
-					Operation: admissionv1.Create,
-					Object: runtime.RawExtension{
-						Raw: asJSON(&esv1.Elasticsearch{
-							ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: "name"},
-							Spec: esv1.ElasticsearchSpec{
-								Version: "8.9.0",
-								NodeSets: []esv1.NodeSet{
-									{
-										Name:          "set1",
-										Count:         3,
-										ZoneAwareness: &esv1.ZoneAwareness{Zones: []string{"us-east-1a", "us-east-1b"}},
-										PodTemplate: corev1.PodTemplateSpec{
-											Spec: corev1.PodSpec{
-												Affinity: &corev1.Affinity{
-													NodeAffinity: &corev1.NodeAffinity{
-														RequiredDuringSchedulingIgnoredDuringExecution: &corev1.NodeSelector{
-															NodeSelectorTerms: []corev1.NodeSelectorTerm{
-																{
-																	MatchExpressions: []corev1.NodeSelectorRequirement{
-																		{
-																			Key:      esv1.DefaultZoneAwarenessTopologyKey,
-																			Operator: corev1.NodeSelectorOpIn,
-																			Values:   []string{"us-east-1c"},
-																		},
+			req: admission.Request{AdmissionRequest: admissionv1.AdmissionRequest{
+				Operation: admissionv1.Create,
+				Object: runtime.RawExtension{
+					Raw: asJSON(&esv1.Elasticsearch{
+						ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: "name"},
+						Spec: esv1.ElasticsearchSpec{
+							Version: "8.9.0",
+							NodeSets: []esv1.NodeSet{
+								{
+									Name:          "set1",
+									Count:         3,
+									ZoneAwareness: &esv1.ZoneAwareness{Zones: []string{"us-east-1a", "us-east-1b"}},
+									PodTemplate: corev1.PodTemplateSpec{
+										Spec: corev1.PodSpec{
+											Affinity: &corev1.Affinity{
+												NodeAffinity: &corev1.NodeAffinity{
+													RequiredDuringSchedulingIgnoredDuringExecution: &corev1.NodeSelector{
+														NodeSelectorTerms: []corev1.NodeSelectorTerm{
+															{
+																MatchExpressions: []corev1.NodeSelectorRequirement{
+																	{
+																		Key:      esv1.DefaultZoneAwarenessTopologyKey,
+																		Operator: corev1.NodeSelectorOpIn,
+																		Values:   []string{"us-east-1c"},
 																	},
 																},
 															},
@@ -271,11 +267,12 @@ func Test_validator_Handle(t *testing.T) {
 									},
 								},
 							},
-						}),
-					}},
-				},
+						},
+					}),
+				}},
 			},
-			want: admission.Denied(zoneAwarenessAffinityInNoIntersectionMsg),
+			wantAllowed: false,
+			wantMessage: zoneAwarenessAffinityInNoIntersectionMsg,
 		},
 		{
 			name: "accept valid creation with warnings due to deprecated version",

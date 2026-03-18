@@ -81,6 +81,7 @@ func (v *ResourceValidator[T]) ValidateDelete(ctx context.Context, obj T) (admis
 
 // preValidate checks namespace filtering and license requirements.
 // Returns (true, nil) to skip validation (allow), or (false, error) to deny.
+// When the object is in an unmanaged namespace, no errors/warnings are returned.
 func (v *ResourceValidator[T]) preValidate(ctx context.Context, obj T) (skip bool, err error) {
 	whlog := ulog.FromContext(ctx).WithName("common-webhook")
 
@@ -94,6 +95,8 @@ func (v *ResourceValidator[T]) preValidate(ctx context.Context, obj T) (skip boo
 	}
 
 	if v.licenseChecker != nil {
+		// If the license check fails, the request is denied and
+		// no further warnings/errors from validations are returned.
 		errorList := hasRequestedLicenseLevel(ctx, obj, v.licenseChecker)
 		if len(errorList) > 0 {
 			req, reqErr := admission.RequestFromContext(ctx)
@@ -112,10 +115,11 @@ func (v *ResourceValidator[T]) preValidate(ctx context.Context, obj T) (skip boo
 
 // RegisterResourceWebhook creates a ResourceValidator wrapping a ValidateFunc
 // and registers it as a validating webhook at the specified path.
-func RegisterResourceWebhook[T runtime.Object](mgr ctrl.Manager, path string, checker license.Checker, managedNamespaces []string, validate ValidateFunc[T]) {
+func RegisterResourceWebhook[T runtime.Object](mgr ctrl.Manager, path string, checker license.Checker, managedNamespaces []string, validate ValidateFunc[T], resourceName string) {
 	v := NewResourceFuncValidator(checker, managedNamespaces, validate)
 	wh := admission.WithValidator[T](mgr.GetScheme(), v)
 	mgr.GetWebhookServer().Register(path, wh)
+	ulog.Log.Info("Registering validating webhook", "resource", resourceName, "path", path)
 }
 
 // funcValidator adapts a ValidateFunc into an admission.Validator[T].
@@ -123,6 +127,11 @@ type funcValidator[T runtime.Object] struct {
 	validate ValidateFunc[T]
 }
 
+// ValidateCreate validates a new object. The "old" parameter passed to the
+// underlying ValidateFunc is the zero value of T. For pointer types (*Agent,
+// *ApmServer, etc.) this is nil, so nil-checks in validation code work as
+// expected. For value types, the zero value would be a real struct, so this
+// implementation assumes T is always a pointer type.
 func (f *funcValidator[T]) ValidateCreate(_ context.Context, obj T) (admission.Warnings, error) {
 	var zero T
 	return f.validate(obj, zero)

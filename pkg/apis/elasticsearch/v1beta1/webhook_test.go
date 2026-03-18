@@ -134,7 +134,7 @@ func TestWebhook(t *testing.T) {
 
 	handler := test.NewValidationWebhookHandler(esv1beta1.Validate)
 	gvk := metav1.GroupVersionKind{Group: esv1beta1.GroupVersion.Group, Version: esv1beta1.GroupVersion.Version, Kind: "Elasticsearch"}
-	test.RunValidationWebhookTests(t, gvk, handler, testCases...)
+	test.RunValidationWebhookTests(t, gvk, "elasticsearches", handler, testCases...)
 }
 
 func mkElasticsearch(uid string) *esv1beta1.Elasticsearch {

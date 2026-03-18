@@ -57,7 +57,7 @@ func TestWebhook(t *testing.T) {
 
 	handler := test.NewValidationWebhookHandler(beatv1beta1.Validate)
 	gvk := metav1.GroupVersionKind{Group: beatv1beta1.GroupVersion.Group, Version: beatv1beta1.GroupVersion.Version, Kind: beatv1beta1.Kind}
-	test.RunValidationWebhookTests(t, gvk, handler, testCases...)
+	test.RunValidationWebhookTests(t, gvk, "beats", handler, testCases...)
 }
 
 func mkBeat(uid string) *beatv1beta1.Beat {

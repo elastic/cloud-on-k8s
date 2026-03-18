@@ -32,11 +32,3 @@ func noUnsupportedSettings(es *Elasticsearch) field.ErrorList {
 	}
 	return errs
 }
-
-func (es *Elasticsearch) CheckForWarnings() error {
-	warnings := es.check(warnings)
-	if len(warnings) > 0 {
-		return warnings.ToAggregate()
-	}
-	return nil
-}

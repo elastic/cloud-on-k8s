@@ -124,16 +124,17 @@ func ValidationWebhookSucceededWithWarnings(warningsRegexes ...string) func(*tes
 // NewValidationWebhookHandler creates an http.Handler for validation webhook tests
 // using the upstream admission.Validator[T] interface.
 func NewValidationWebhookHandler[T runtime.Object](validate webhook.ValidateFunc[T]) http.Handler {
+	// Register the ECK types into the global scheme. Idempotent because of the use of once.Do.
 	controllerscheme.SetupScheme()
 	validator := webhook.NewResourceFuncValidator[T](license.MockLicenseChecker{}, nil, validate)
 	return admission.WithValidator[T](clientgoscheme.Scheme, validator)
 }
 
 // RunValidationWebhookTests runs a series of ValidationWebhookTestCases against an http.Handler.
+// The resource parameter should be the plural resource name (e.g., "agents", "apmservers").
 //
 //nolint:thelper
-func RunValidationWebhookTests(t *testing.T, gvk metav1.GroupVersionKind, handler http.Handler, tests ...ValidationWebhookTestCase) {
-	controllerscheme.SetupScheme()
+func RunValidationWebhookTests(t *testing.T, gvk metav1.GroupVersionKind, resource string, handler http.Handler, tests ...ValidationWebhookTestCase) {
 	decoder := serializer.NewCodecFactory(clientgoscheme.Scheme).UniversalDeserializer()
 
 	server := httptest.NewServer(handler)
@@ -150,7 +151,7 @@ func RunValidationWebhookTests(t *testing.T, gvk metav1.GroupVersionKind, handle
 				Request: &admissionv1.AdmissionRequest{
 					UID:       types.UID(uid),
 					Kind:      gvk,
-					Resource:  metav1.GroupVersionResource{Group: gvk.Group, Version: gvk.Version, Resource: gvk.Kind},
+					Resource:  metav1.GroupVersionResource{Group: gvk.Group, Version: gvk.Version, Resource: resource},
 					Operation: tc.Operation,
 					Object:    runtime.RawExtension{Raw: tc.Object(t, uid)},
 				},

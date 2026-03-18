@@ -60,7 +60,7 @@ func (v *validator) ValidateCreate(ctx context.Context, es *esv1.Elasticsearch) 
 func (v *validator) ValidateUpdate(ctx context.Context, oldObj, newObj *esv1.Elasticsearch) (admission.Warnings, error) {
 	eslog.V(1).Info("validate update", "name", newObj.Name)
 
-	// Ensure we get the warnings from the validation function
+	// Ensure we get the warnings from the validation function such that warnings are returned even on denial.
 	warnings, validationErr := ValidateElasticsearch(ctx, *newObj, v.licenseChecker, v.exposedNodeLabels)
 
 	var errs field.ErrorList
@@ -83,7 +83,17 @@ func (v *validator) ValidateDelete(_ context.Context, _ *esv1.Elasticsearch) (ad
 
 // ValidateElasticsearch validates an Elasticsearch instance against a set of validation funcs.
 func ValidateElasticsearch(ctx context.Context, es esv1.Elasticsearch, checker license.Checker, exposedNodeLabels NodeLabels) (admission.Warnings, error) {
-	warning, errs := check(es, validations(ctx, checker, exposedNodeLabels))
+	admWarnings, err := runChecks(es, validations(ctx, checker, exposedNodeLabels), nil)
+	if err != nil {
+		return nil, err
+	}
+	return runChecks(es, warnings, admWarnings)
+}
+
+// runChecks executes the given validations against the Elasticsearch resource.
+// It returns any warning message and an error if validation fails.
+func runChecks(es esv1.Elasticsearch, validations []validation, admWarnings admission.Warnings) (admission.Warnings, error) {
+	warning, errs := check(es, validations)
 	if len(errs) > 0 {
 		return nil, apierrors.NewInvalid(
 			schema.GroupKind{Group: "elasticsearch.k8s.elastic.co", Kind: esv1.Kind},
@@ -92,7 +102,7 @@ func ValidateElasticsearch(ctx context.Context, es esv1.Elasticsearch, checker l
 		)
 	}
 	if warning != "" {
-		return admission.Warnings{warning}, nil
+		admWarnings = append(admWarnings, warning)
 	}
-	return nil, nil
+	return admWarnings, nil
 }

@@ -12,7 +12,6 @@ import (
 
 	commonv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/common/v1"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/version"
-	ulog "github.com/elastic/cloud-on-k8s/v3/pkg/utils/log"
 )
 
 const (
@@ -21,8 +20,7 @@ const (
 )
 
 var (
-	groupKind     = schema.GroupKind{Group: GroupVersion.Group, Kind: Kind}
-	validationLog = ulog.Log.WithName("packageregistry-v1alpha1-validation")
+	groupKind = schema.GroupKind{Group: GroupVersion.Group, Kind: Kind}
 
 	defaultChecks = []func(*PackageRegistry) field.ErrorList{
 		checkNoUnknownFields,
@@ -33,9 +31,8 @@ var (
 
 // +kubebuilder:webhook:path=/validate-epr-k8s-elastic-co-v1alpha1-packageregistry,mutating=false,failurePolicy=ignore,groups=packageregistry.k8s.elastic.co,resources=packageregistry,verbs=create;update,versions=v1alpha1,name=elastic-epr-validation-v1alpha1.k8s.elastic.co,sideEffects=None,admissionReviewVersions=v1,matchPolicy=Exact
 
-// Validate is called to validate a PackageRegistry resource.
-func Validate(m *PackageRegistry, old *PackageRegistry) (admission.Warnings, error) {
-	validationLog.V(1).Info("Validate", "name", m.Name)
+// Validate is called to validate a PackageRegistry resource. There's no update-specific checks, so the old parameter is ignored.
+func Validate(m *PackageRegistry, _ *PackageRegistry) (admission.Warnings, error) {
 	return m.validate()
 }
 

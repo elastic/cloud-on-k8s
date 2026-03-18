@@ -87,18 +87,18 @@ func setupWebhook(
 
 	checker := commonlicense.NewLicenseChecker(mgr.GetClient(), params.OperatorNamespace)
 	// setup webhooks for supported types
-	commonwebhook.RegisterResourceWebhook(mgr, agentv1alpha1.WebhookPath, checker, managedNamespaces, agentv1alpha1.Validate)
-	commonwebhook.RegisterResourceWebhook(mgr, apmv1.WebhookPath, checker, managedNamespaces, apmv1.Validate)
-	commonwebhook.RegisterResourceWebhook(mgr, apmv1beta1.WebhookPath, checker, managedNamespaces, apmv1beta1.Validate)
-	commonwebhook.RegisterResourceWebhook(mgr, beatv1beta1.WebhookPath, checker, managedNamespaces, beatv1beta1.Validate)
-	commonwebhook.RegisterResourceWebhook(mgr, entv1.WebhookPath, checker, managedNamespaces, entv1.Validate)
-	commonwebhook.RegisterResourceWebhook(mgr, entv1beta1.WebhookPath, checker, managedNamespaces, entv1beta1.Validate)
-	commonwebhook.RegisterResourceWebhook(mgr, esv1beta1.WebhookPath, checker, managedNamespaces, esv1beta1.Validate)
-	commonwebhook.RegisterResourceWebhook(mgr, kbv1.WebhookPath, checker, managedNamespaces, kbv1.Validate)
-	commonwebhook.RegisterResourceWebhook(mgr, kbv1beta1.WebhookPath, checker, managedNamespaces, kbv1beta1.Validate)
-	commonwebhook.RegisterResourceWebhook(mgr, emsv1alpha1.WebhookPath, checker, managedNamespaces, emsv1alpha1.Validate)
-	commonwebhook.RegisterResourceWebhook(mgr, eprv1alpha1.WebhookPath, checker, managedNamespaces, eprv1alpha1.Validate)
-	commonwebhook.RegisterResourceWebhook(mgr, policyv1alpha1.WebhookPath, checker, managedNamespaces, policyv1alpha1.Validate)
+	commonwebhook.RegisterResourceWebhook(mgr, agentv1alpha1.WebhookPath, checker, managedNamespaces, agentv1alpha1.Validate, "Agent")
+	commonwebhook.RegisterResourceWebhook(mgr, apmv1.WebhookPath, checker, managedNamespaces, apmv1.Validate, "APM Server")
+	commonwebhook.RegisterResourceWebhook(mgr, apmv1beta1.WebhookPath, checker, managedNamespaces, apmv1beta1.Validate, "APM Server")
+	commonwebhook.RegisterResourceWebhook(mgr, beatv1beta1.WebhookPath, checker, managedNamespaces, beatv1beta1.Validate, "Beat")
+	commonwebhook.RegisterResourceWebhook(mgr, entv1.WebhookPath, checker, managedNamespaces, entv1.Validate, "Enterprise Search")
+	commonwebhook.RegisterResourceWebhook(mgr, entv1beta1.WebhookPath, checker, managedNamespaces, entv1beta1.Validate, "Enterprise Search")
+	commonwebhook.RegisterResourceWebhook(mgr, esv1beta1.WebhookPath, checker, managedNamespaces, esv1beta1.Validate, "Elasticsearch")
+	commonwebhook.RegisterResourceWebhook(mgr, kbv1.WebhookPath, checker, managedNamespaces, kbv1.Validate, "Kibana")
+	commonwebhook.RegisterResourceWebhook(mgr, kbv1beta1.WebhookPath, checker, managedNamespaces, kbv1beta1.Validate, "Kibana")
+	commonwebhook.RegisterResourceWebhook(mgr, emsv1alpha1.WebhookPath, checker, managedNamespaces, emsv1alpha1.Validate, "Elastic Maps Server")
+	commonwebhook.RegisterResourceWebhook(mgr, eprv1alpha1.WebhookPath, checker, managedNamespaces, eprv1alpha1.Validate, "Package Registry")
+	commonwebhook.RegisterResourceWebhook(mgr, policyv1alpha1.WebhookPath, checker, managedNamespaces, policyv1alpha1.Validate, "Stack Config Policy")
 
 	// Logstash, Elasticsearch, ElasticsearchAutoscaling, and AutoOps validating webhooks are wired up
 	// differently in order to access the k8s client or license checker directly.

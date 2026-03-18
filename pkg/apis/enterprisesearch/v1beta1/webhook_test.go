@@ -172,7 +172,7 @@ func TestWebhook(t *testing.T) {
 
 	handler := test.NewValidationWebhookHandler(entv1beta1.Validate)
 	gvk := metav1.GroupVersionKind{Group: entv1beta1.GroupVersion.Group, Version: entv1beta1.GroupVersion.Version, Kind: entv1beta1.Kind}
-	test.RunValidationWebhookTests(t, gvk, handler, testCases...)
+	test.RunValidationWebhookTests(t, gvk, "enterprisesearches", handler, testCases...)
 }
 
 func mkEnterpriseSearch(uid string) *entv1beta1.EnterpriseSearch {

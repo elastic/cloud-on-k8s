@@ -14,7 +14,6 @@ import (
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/stackmon/monitoring"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/stackmon/validations"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/version"
-	ulog "github.com/elastic/cloud-on-k8s/v3/pkg/utils/log"
 )
 
 const (
@@ -25,8 +24,7 @@ const (
 // +kubebuilder:webhook:path=/validate-kibana-k8s-elastic-co-v1-kibana,mutating=false,failurePolicy=ignore,groups=kibana.k8s.elastic.co,resources=kibanas,verbs=create;update,versions=v1,name=elastic-kb-validation-v1.k8s.elastic.co,sideEffects=None,admissionReviewVersions=v1,matchPolicy=Exact
 
 var (
-	groupKind     = schema.GroupKind{Group: GroupVersion.Group, Kind: Kind}
-	validationLog = ulog.Log.WithName("kibana-v1-validation")
+	groupKind = schema.GroupKind{Group: GroupVersion.Group, Kind: Kind}
 
 	defaultChecks = []func(*Kibana) field.ErrorList{
 		checkNoUnknownFields,
@@ -43,7 +41,6 @@ var (
 
 // Validate validates a Kibana resource. old is nil on create.
 func Validate(k *Kibana, old *Kibana) (admission.Warnings, error) {
-	validationLog.V(1).Info("Validate", "name", k.Name)
 	return k.validate(old)
 }
 

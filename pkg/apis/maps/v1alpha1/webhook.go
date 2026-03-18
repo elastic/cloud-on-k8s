@@ -12,7 +12,6 @@ import (
 
 	commonv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/common/v1"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/version"
-	ulog "github.com/elastic/cloud-on-k8s/v3/pkg/utils/log"
 )
 
 const (
@@ -21,8 +20,7 @@ const (
 )
 
 var (
-	groupKind     = schema.GroupKind{Group: GroupVersion.Group, Kind: Kind}
-	validationLog = ulog.Log.WithName("maps-v1alpha1-validation")
+	groupKind = schema.GroupKind{Group: GroupVersion.Group, Kind: Kind}
 
 	defaultChecks = []func(*ElasticMapsServer) field.ErrorList{
 		checkNoUnknownFields,
@@ -34,8 +32,8 @@ var (
 
 // +kubebuilder:webhook:path=/validate-ems-k8s-elastic-co-v1alpha1-mapsservers,mutating=false,failurePolicy=ignore,groups=maps.k8s.elastic.co,resources=mapsservers,verbs=create;update,versions=v1alpha1,name=elastic-ems-validation-v1alpha1.k8s.elastic.co,sideEffects=None,admissionReviewVersions=v1,matchPolicy=Exact
 
-// Validate is called by the validating webhook to validate an ElasticMapsServer resource.
-func Validate(m *ElasticMapsServer, old *ElasticMapsServer) (admission.Warnings, error) {
+// Validate is called by the validating webhook to validate an ElasticMapsServer resource. There's no update-specific checks, so the old parameter is ignored.
+func Validate(m *ElasticMapsServer, _ *ElasticMapsServer) (admission.Warnings, error) {
 	return m.validate()
 }
 
@@ -62,7 +60,6 @@ func (m *ElasticMapsServer) validate() (admission.Warnings, error) {
 	}
 
 	if len(errors) > 0 {
-		validationLog.V(1).Info("failed validation", "errors", errors)
 		return warnings, apierrors.NewInvalid(groupKind, m.Name, errors)
 	}
 	return warnings, nil
