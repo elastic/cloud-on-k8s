@@ -76,8 +76,7 @@ func init() {
 	drivers[OCPDriverID] = &OCPDriverFactory{}
 }
 
-type OCPDriverFactory struct {
-}
+type OCPDriverFactory struct{}
 
 type runtimeState struct {
 	// Authenticated tracks authentication against the GCloud API to avoid double authentication.
@@ -200,7 +199,7 @@ func (d *OCPDriver) create() error {
 	}
 
 	installConfig := filepath.Join(d.runtimeState.ClusterStateDir, "install-config.yaml")
-	err := os.WriteFile(installConfig, tpl.Bytes(), 0600)
+	err := os.WriteFile(installConfig, tpl.Bytes(), 0o600)
 	if err != nil {
 		return err
 	}
@@ -465,7 +464,7 @@ func (d *OCPDriver) runInstallerCommand(action string) error {
 		-e GOOGLE_APPLICATION_CREDENTIALS={{.GCloudCredsPath}} \
 		-e HOME=/home \
 		{{.OCPToolsDockerImage}} \
-		/openshift-install {{.Action}} cluster --log-level warn --dir /home/{{.ClusterStateDirBase}}`)
+		/openshift-install {{.Action}} cluster --log-level debug --dir /home/{{.ClusterStateDirBase}}`)
 	return cmd.AsTemplate(params).Run()
 }
 
