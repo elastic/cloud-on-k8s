@@ -279,7 +279,7 @@ func (ctx *upgradeCtx) pendingPodsMessage() string {
 
 func (ctx *upgradeCtx) deleteAllMessage() string {
 	if ctx.isAnnotationTriggeredRestart {
-		return "Deleting pod for cluster rolling restart"
+		return "Deleting pod for full cluster restart"
 	}
 
 	return "Deleting pod for full cluster upgrade"
