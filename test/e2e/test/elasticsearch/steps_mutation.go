@@ -77,6 +77,31 @@ func (b Builder) UpgradeTestSteps(k *test.K8sClient) test.StepList {
 	}
 }
 
+func (b Builder) RollingRestartTestSteps(k *test.K8sClient) test.StepList {
+	return test.StepList{
+		test.Step{
+			Name: "Elasticsearch pods should have the restart trigger annotation",
+			Test: test.Eventually(func() error {
+				pods, err := k.GetPods(test.ESPodListOptions(b.Elasticsearch.Namespace, b.Elasticsearch.Name)...)
+				if err != nil {
+					return err
+				}
+
+				for _, p := range pods {
+					if p.Annotations[esv1.RestartTriggerAnnotation] != b.Elasticsearch.Annotations[esv1.RestartTriggerAnnotation] {
+						return errors.New("rolling restart incomplete")
+					}
+				}
+
+				return nil
+			}),
+			Skip: func() bool {
+				return !b.TriggersRollingRestart()
+			},
+		},
+	}
+}
+
 func (b Builder) MutationTestSteps(k *test.K8sClient) test.StepList {
 	var clusterIDBeforeMutation string
 	var clusterGenerationBeforeMutation, clusterObservedGenerationBeforeMutation int64
@@ -141,6 +166,7 @@ func (b Builder) MutationTestSteps(k *test.K8sClient) test.StepList {
 	//nolint:thelper
 	steps = steps.WithSteps(AnnotatePodsWithBuilderHash(*mutatedFrom, k)).
 		WithSteps(b.UpgradeTestSteps(k)).
+		WithSteps(b.RollingRestartTestSteps(k)).
 		WithSteps(b.CheckK8sTestSteps(k)).
 		WithSteps(b.CheckStackTestSteps(k)).
 		WithSteps(test.StepList{

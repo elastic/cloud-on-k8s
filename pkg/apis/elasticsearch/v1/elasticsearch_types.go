@@ -5,7 +5,9 @@
 package v1
 
 import (
+	"fmt"
 	"strings"
+	"time"
 
 	"github.com/blang/semver/v4"
 	corev1 "k8s.io/api/core/v1"
@@ -44,6 +46,14 @@ const (
 	// TransportCertDisabledAnnotationName is the annotation that indicates that ECK-managed transport certs have been disabled for the Pod.
 	TransportCertDisabledAnnotationName = "elasticsearch.k8s.elastic.co/self-signed-transport-cert-disabled"
 
+	// RestartTriggerAnnotation allows users to trigger a graceful rolling restart by setting or changing this
+	// annotation value on the Elasticsearch resource. The value is propagated to pod annotations, causing the
+	// StatefulSet template hash to change and all pods to become upgrade candidates.
+	RestartTriggerAnnotation = "eck.k8s.elastic.co/restart-trigger"
+	// RestartAllocationDelayAnnotation configures the allocation_delay passed to the Elasticsearch node shutdown
+	// API during rolling restarts and upgrades. The value must be a valid Go duration string (e.g. "5m", "1h").
+	RestartAllocationDelayAnnotation = "eck.k8s.elastic.co/restart-allocation-delay"
+
 	// Kind is inferred from the struct name using reflection in SchemeBuilder.Register()
 	// we duplicate it as a constant here for practical purposes.
 	Kind = "Elasticsearch"
@@ -60,6 +70,28 @@ func AreServiceAccountsSupported(version string) (bool, error) {
 		return false, err
 	}
 	return esVersion.GTE(ServiceAccountMinVersion), nil
+}
+
+// GetRestartAllocationDelayAnnotation reads the RestartAllocationDelayAnnotation from the given annotations
+// and returns the parsed duration. Returns nil if the annotation is absent or empty.
+// Returns an error if the value is not a valid Go duration string or is negative.
+func GetRestartAllocationDelayAnnotation(annotations map[string]string) (*time.Duration, error) {
+	v, found := annotations[RestartAllocationDelayAnnotation]
+	if !found || v == "" {
+		return nil, nil
+	}
+
+	d, err := time.ParseDuration(v)
+	switch {
+	case err != nil:
+		return nil, fmt.Errorf("error while parsing restart-allocation-delay annotation %s: %w", v, err)
+	case d < 0:
+		return nil, fmt.Errorf("negative restart-allocation-delay annotation: %s", v)
+	case d >= 0:
+		return &d, nil
+	}
+
+	return nil, nil
 }
 
 // +kubebuilder:object:root=true
@@ -232,7 +264,6 @@ type RemoteCluster struct {
 	APIKey *RemoteClusterAPIKey `json:"apiKey,omitempty"`
 
 	// TODO: Allow the user to specify some options (transport.compress, transport.ping_schedule)
-
 }
 
 func (r RemoteCluster) ConfigHash() string {

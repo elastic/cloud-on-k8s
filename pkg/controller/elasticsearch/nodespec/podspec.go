@@ -41,7 +41,7 @@ const (
 	defaultFsGroup                    = 1000
 	log4j2FormatMsgNoLookupsParamName = "-Dlog4j2.formatMsgNoLookups"
 	// ConfigHashAnnotationName is an annotation used to store a hash of the Elasticsearch configuration.
-	configHashAnnotationName = "elasticsearch.k8s.elastic.co/config-hash"
+	ConfigHashAnnotationName = "elasticsearch.k8s.elastic.co/config-hash"
 )
 
 // Starting 8.0.0, the Elasticsearch container does not run with the root user anymore. As a result,
@@ -64,6 +64,7 @@ func BuildPodTemplateSpec(
 	setDefaultSecurityContext bool,
 	policyConfig PolicyConfig,
 	meta metadata.Metadata,
+	actualPodsRestartTriggerAnnotationValue string,
 ) (corev1.PodTemplateSpec, error) {
 	ver, err := version.Parse(es.Spec.Version)
 	if err != nil {
@@ -112,7 +113,7 @@ func BuildPodTemplateSpec(
 	if err := client.Get(ctx, types.NamespacedName{Namespace: es.Namespace, Name: esv1.ScriptsConfigMap(es.Name)}, esScripts); err != nil {
 		return corev1.PodTemplateSpec{}, err
 	}
-	annotations := buildAnnotations(es, cfg, keystoreResources, getScriptsConfigMapContent(esScripts), policyConfig.PolicyAnnotations)
+	annotations := buildAnnotations(es, cfg, keystoreResources, getScriptsConfigMapContent(esScripts), policyConfig.PolicyAnnotations, actualPodsRestartTriggerAnnotationValue)
 
 	// Attempt to detect if the default data directory is mounted in a volume.
 	// If not, it could be a bug, a misconfiguration, or a custom storage configuration that requires the user to
@@ -217,6 +218,7 @@ func buildAnnotations(
 	keystoreResources *keystore.Resources,
 	scriptsContent string,
 	policyAnnotations map[string]string,
+	actualPodsRestartTriggerAnnotationValue string,
 ) map[string]string {
 	// start from our defaults
 	annotations := map[string]string{
@@ -244,8 +246,23 @@ func buildAnnotations(
 		annotations[esv1.TransportCertDisabledAnnotationName] = "true"
 	}
 
+	// if the restart annotation is set, add it to pods' annotations.
+	restartTrigger := es.Annotations[esv1.RestartTriggerAnnotation]
+	if restartTrigger == "" {
+		// if restart annotation is missing but it was previously present on pods,
+		// keep the old one, to avoid restarting when the annotation is deleted by user.
+		if actualPodsRestartTriggerAnnotationValue != "" {
+			restartTrigger = actualPodsRestartTriggerAnnotationValue
+		}
+	}
+	// RestartTriggerAnnotation is not part of the config hash to distinguish between
+	// spec changes and pod rotation caused by the restart annotation later on.
+	if restartTrigger != "" {
+		annotations[esv1.RestartTriggerAnnotation] = restartTrigger
+	}
+
 	// set the annotation in place
-	annotations[configHashAnnotationName] = fmt.Sprint(configHash.Sum32())
+	annotations[ConfigHashAnnotationName] = fmt.Sprint(configHash.Sum32())
 
 	// set policy annotations
 	maps.Merge(annotations, policyAnnotations)

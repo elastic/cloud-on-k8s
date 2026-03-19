@@ -65,7 +65,7 @@ This page lists the third-party dependencies used to build {{eck}} from the main
 
 | Name | Version | Licence |
 | --- | --- | --- |
-| [cel.dev/expr](https://cel.dev/expr) | v0.24.0 | Apache-2.0 |
+| [cel.dev/expr](https://cel.dev/expr) | v0.25.1 | Apache-2.0 |
 | [github.com/Masterminds/goutils](https://github.com/Masterminds/goutils) | v1.1.1 | Apache-2.0 |
 | [github.com/Masterminds/semver/v3](https://github.com/Masterminds/semver) | v3.4.0 | MIT |
 | [github.com/antlr4-go/antlr/v4](https://github.com/antlr4-go/antlr) | v4.13.0 | BSD-3-Clause |
@@ -196,7 +196,7 @@ This page lists the third-party dependencies used to build {{eck}} from the main
 | [gonum.org/v1/gonum](https://github.com/gonum/gonum) | v0.16.0 | BSD-3-Clause |
 | [google.golang.org/genproto/googleapis/api](https://google.golang.org/genproto/googleapis/api) | v0.0.0-20260128011058-8636f8732409 | Apache-2.0 |
 | [google.golang.org/genproto/googleapis/rpc](https://google.golang.org/genproto/googleapis/rpc) | v0.0.0-20260128011058-8636f8732409 | Apache-2.0 |
-| [google.golang.org/grpc](https://google.golang.org/grpc) | v1.78.0 | Apache-2.0 |
+| [google.golang.org/grpc](https://google.golang.org/grpc) | v1.79.3 | Apache-2.0 |
 | [google.golang.org/protobuf](https://google.golang.org/protobuf) | v1.36.11 | BSD-3-Clause |
 | [gopkg.in/check.v1](https://gopkg.in/check.v1) | v1.0.0-20201130134442-10cb98267c6c | BSD-2-Clause |
 | [gopkg.in/evanphx/json-patch.v4](https://gopkg.in/evanphx/json-patch.v4) | v4.13.0 | BSD-3-Clause |

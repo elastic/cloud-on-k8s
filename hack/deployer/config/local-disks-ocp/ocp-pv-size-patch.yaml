@@ -1,0 +1,15 @@
+# OCP: fewer PVs (6×10 GiB) to fit on the root disk (no local SSD on e2 instances).
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: local-volume-provisioner
+spec:
+  template:
+    spec:
+      initContainers:
+        - name: disk-mounts
+          env:
+            - name: PV_SIZE_GB
+              value: "10"
+            - name: PV_COUNT
+              value: "6"

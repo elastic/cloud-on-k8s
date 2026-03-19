@@ -78,6 +78,12 @@ func BuildExpectedResources(
 		return nil, err
 	}
 
+	// we retrieve the current pods restart trigger annotation.
+	actualPodsRestartTriggerAnnotationValue, err := es_sset.GetActualPodsRestartTriggerAnnotationForCluster(client, es)
+	if err != nil {
+		return nil, err
+	}
+
 	for _, nodeSpec := range es.Spec.NodeSets {
 		// build es config
 		userCfg := commonv1.Config{}
@@ -100,7 +106,7 @@ func BuildExpectedResources(
 		}
 
 		// build stateful set and associated headless service
-		statefulSet, err := BuildStatefulSet(ctx, client, es, nodeSpec, cfg, keystoreResources, existingStatefulSets, setDefaultSecurityContext, policyConfig, meta)
+		statefulSet, err := BuildStatefulSet(ctx, client, es, nodeSpec, cfg, keystoreResources, existingStatefulSets, setDefaultSecurityContext, policyConfig, meta, actualPodsRestartTriggerAnnotationValue)
 		if err != nil {
 			return nil, err
 		}

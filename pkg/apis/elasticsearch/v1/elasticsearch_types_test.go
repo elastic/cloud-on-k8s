@@ -128,6 +128,7 @@ func TestElasticsearchCluster_IsMarkedForDeletion(t *testing.T) {
 		})
 	}
 }
+
 func Test_GetMaxSurgeOrDefault(t *testing.T) {
 	tests := []struct {
 		name     string
@@ -438,6 +439,57 @@ func TestElasticsearch_DisabledPredicates(t *testing.T) {
 	}
 }
 
+func TestGetRestartAllocationDelayAnnotation(t *testing.T) {
+	tests := []struct {
+		name        string
+		annotations map[string]string
+		want        *time.Duration
+		wantErr     bool
+	}{
+		{
+			name:        "annotation not present",
+			annotations: map[string]string{},
+			want:        nil,
+		},
+		{
+			name:        "annotation empty string",
+			annotations: map[string]string{RestartAllocationDelayAnnotation: ""},
+			want:        nil,
+		},
+		{
+			name:        "valid duration",
+			annotations: map[string]string{RestartAllocationDelayAnnotation: "5m"},
+			want:        ptr.To(5 * time.Minute),
+		},
+		{
+			name:        "zero duration",
+			annotations: map[string]string{RestartAllocationDelayAnnotation: "0s"},
+			want:        ptr.To(0 * time.Second),
+		},
+		{
+			name:        "negative duration",
+			annotations: map[string]string{RestartAllocationDelayAnnotation: "-1m"},
+			wantErr:     true,
+		},
+		{
+			name:        "invalid duration",
+			annotations: map[string]string{RestartAllocationDelayAnnotation: "not-a-duration"},
+			wantErr:     true,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, err := GetRestartAllocationDelayAnnotation(tt.annotations)
+			if tt.wantErr {
+				require.Error(t, err)
+				return
+			}
+			require.NoError(t, err)
+			assert.Equal(t, tt.want, got)
+		})
+	}
+}
+
 // Test_AssociationConfs tests that if the association configuration map in an associated object is cleared, then
 // AssociationConf() is rebuilt from the annotation.
 func Test_AssociationConfs(t *testing.T) {
@@ -471,9 +523,11 @@ func Test_AssociationConfs(t *testing.T) {
 					ElasticsearchRefs: []commonv1.ObjectSelector{metricsEsRef},
 				},
 				Logs: commonv1.LogsMonitoring{
-					ElasticsearchRefs: []commonv1.ObjectSelector{{
-						Name:      "logs",
-						Namespace: "default"},
+					ElasticsearchRefs: []commonv1.ObjectSelector{
+						{
+							Name:      "logs",
+							Namespace: "default",
+						},
 					},
 				},
 			},
