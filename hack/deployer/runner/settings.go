@@ -37,6 +37,8 @@ type Plan struct {
 	ServiceAccount          bool            `yaml:"serviceAccount"`
 	EnforceSecurityPolicies bool            `yaml:"enforceSecurityPolicies"`
 	DiskSetup               string          `yaml:"diskSetup"`
+	// DryRun when true causes cleanup to only log what would be deleted without actually deleting.
+	DryRun bool `yaml:"-"`
 }
 
 // BucketSettings encapsulates settings for cloud storage bucket provisioning.

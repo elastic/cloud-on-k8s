@@ -596,6 +596,10 @@ func (d *OCPDriver) Cleanup(prefix string, olderThan time.Duration) error {
 			log.Printf("Could not extract cluster name from infra ID %s, skipping", infraID)
 			continue
 		}
+		if d.plan.DryRun {
+			log.Printf("[dry-run] Would delete cluster %s (infra ID %s)", clusterName, infraID)
+			continue
+		}
 		d.plan.ClusterName = clusterName
 		d.plan.Ocp.InfraID = infraID
 		d.plan.Operation = DeleteAction

@@ -17,13 +17,14 @@ func CleanupCommand() *cobra.Command {
 		configFile, clientBuildDefDir, plansFile *string
 		olderThan                                time.Duration
 		clusterPrefix                            string
+		dryRun                                   bool
 	)
 
 	var cleanupCmd = &cobra.Command{
 		Use:   "cleanup",
 		Short: "Runs the cleanup operation to cleanup clusters older than the given duration in the given provider.",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return cleanup(*configFile, *plansFile, clusterPrefix, *clientBuildDefDir, olderThan)
+			return cleanup(*configFile, *plansFile, clusterPrefix, *clientBuildDefDir, olderThan, dryRun)
 		},
 	}
 
@@ -31,23 +32,20 @@ func CleanupCommand() *cobra.Command {
 
 	cleanupCmd.Flags().DurationVar(&olderThan, "older-than", 24*time.Hour, `The minimum age of the clusters to be deleted (valid time units are "s", "m", "h")`)
 	cleanupCmd.Flags().StringVar(&clusterPrefix, "cluster-prefix", "eck-e2e", "The E2E Cluster prefix to use for querying for clusters to cleanup.")
+	cleanupCmd.Flags().BoolVar(&dryRun, "dry-run", true, "Only log what would be deleted without actually deleting.")
 
 	return cleanupCmd
 }
 
 // cleanup will attempt to cleanup any clusters older than given 'olderThan' duration.
-func cleanup(configFile, plansFile, clusterPrefix, clientBuildDefDir string, olderThan time.Duration) error {
+func cleanup(configFile, plansFile, clusterPrefix, clientBuildDefDir string, olderThan time.Duration, dryRun bool) error {
 	plans, runConfig, err := runner.ParseFiles(plansFile, configFile)
 	if err != nil {
 		return err
 	}
-	driver, err := runner.GetDriver(plans.Plans, runConfig, clientBuildDefDir)
+	driver, err := runner.GetDriverWithOptions(plans.Plans, runConfig, clientBuildDefDir, runner.DriverOptions{DryRun: dryRun})
 	if err != nil {
 		return err
 	}
-	err = driver.Cleanup(clusterPrefix, olderThan)
-	if err != nil {
-		return err
-	}
-	return nil
+	return driver.Cleanup(clusterPrefix, olderThan)
 }
