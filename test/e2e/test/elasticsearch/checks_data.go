@@ -183,7 +183,7 @@ func dataIntegrityReplicas(b Builder) int {
 		// a 1 node cluster can only be green if shards have no replicas
 		return 0
 	}
-	if b.TriggersRollingUpgrade() {
+	if b.TriggersRollingUpgrade() || b.TriggersRollingRestart() {
 		// a rolling upgrade will happen during the mutation: nodes will go down
 		// we need at least 1 replica per shard for the cluster to remain green during the operation
 		return 1
