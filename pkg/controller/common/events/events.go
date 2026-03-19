@@ -46,12 +46,12 @@ const (
 const (
 	// EventActionValidation describes the validation step the controller was taking when the event was triggered.
 	EventActionValidation = "Validation"
-	// EventActionAggregation describes the aggregation step the controller was taking when the event was triggered.
-	EventActionAggregation = "Aggregation"
+	// EventActionReconciliation describes the reconciliation step the controller was taking when the event was triggered.
+	EventActionReconciliation = "Reconciliation"
 	// EventActionCertificateReconciliation describes the certificate reconciliation step the controller was taking
 	// when the event was triggered.
 	EventActionCertificateReconciliation = "CertificateReconciliation"
-	// EventActionStatusUpdate describes the status update step the controller was taking when the event was triggered.
+	// EventActionStatusUpdate s used when the resource health has changed or the controller fails to update the status sub-resource.
 	EventActionStatusUpdate = "StatusUpdate"
 	// EventActionVersionCheck describes the version check step the controller was taking when the event was triggered.
 	EventActionVersionCheck = "VersionCheck"
@@ -67,8 +67,8 @@ const (
 	EventActionShutdown = "Shutdown"
 	// EventActionUpscale describes the upscale step the controller was taking when the event was triggered.
 	EventActionUpscale = "Upscale"
-	// EventActionConfiguration describes the configuration step the controller was taking when the event was triggered.
-	EventActionConfiguration = "Configuration"
+	// EventActionUserConfiguration describes the step to configure user-specified settings that the controller was taking when the event was triggered.
+	EventActionUserConfiguration = "UserConfiguration"
 	// EventActionVersionUpgrade describes the version upgrade step the controller was taking when the event was triggered.
 	EventActionVersionUpgrade = "VersionUpgrade"
 	// EventActionEnrollment describes the enrollment step the controller was taking when the event was triggered.
@@ -95,10 +95,10 @@ const (
 	EventActionAssociationPreconditionCheck = "AssociationPreconditionCheck"
 	// EventActionConfigSecretValidation describes the config secret validation step the controller was taking when the event was triggered.
 	EventActionConfigSecretValidation = "ConfigSecretValidation"
-	// EventActionOnlineReconciliation describes the online reconciliation step the controller was taking when the event was triggered.
-	EventActionOnlineReconciliation = "OnlineReconciliation"
-	// EventActionOfflineReconciliation describes the offline reconciliation step the controller was taking when the event was triggered.
-	EventActionOfflineReconciliation = "OfflineReconciliation"
+	// EventActionAutoscalingOnline is used when the autoscaling controller reconciles with a reachable Elasticsearch autoscaling API.
+	EventActionAutoscalingOnline = "AutoscalingOnlineReconciliation"
+	// EventActionAutoscalingOffline describes the offline reconciliation step the controller was taking when the event was triggered.
+	EventActionAutoscalingOffline = "AutoscalingOfflineReconciliation"
 	// EventActionDistributionCheck describes the distribution check step the controller was taking when the event was triggered.
 	EventActionDistributionCheck = "DistributionCheck"
 )

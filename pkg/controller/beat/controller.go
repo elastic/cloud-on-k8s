@@ -160,7 +160,7 @@ func (r *ReconcileBeat) Reconcile(ctx context.Context, request reconcile.Request
 	}
 
 	res, err := results.Aggregate()
-	k8s.MaybeEmitErrorEventf(r.recorder, err, &beat, events.EventReconciliationError, events.EventActionAggregation, "Reconciliation error: %v", err)
+	k8s.MaybeEmitErrorEventf(r.recorder, err, &beat, events.EventReconciliationError, events.EventActionReconciliation, "Reconciliation error: %v", err)
 
 	return res, err
 }

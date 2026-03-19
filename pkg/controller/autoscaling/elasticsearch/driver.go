@@ -197,7 +197,7 @@ func (r *baseReconcileAutoscaling) attemptOnlineReconciliation(
 	}
 
 	// Emit the K8S events
-	status.EmitEvents(es, r.recorder, events.EventActionOnlineReconciliation, statusBuilder.Build())
+	status.EmitEvents(es, r.recorder, events.EventActionAutoscalingOnline, statusBuilder.Build())
 
 	// Update the Elasticsearch resource with the calculated resources.
 	if err := reconcileElasticsearch(log, &es, nextClusterResources); err != nil {
@@ -244,7 +244,7 @@ func (r *baseReconcileAutoscaling) doOfflineReconciliation(
 	}
 
 	// Emit the K8S events
-	status.EmitEvents(es, r.recorder, events.EventActionOfflineReconciliation, statusBuilder.Build())
+	status.EmitEvents(es, r.recorder, events.EventActionAutoscalingOffline, statusBuilder.Build())
 
 	// Update the Elasticsearch manifest
 	if err := reconcileElasticsearch(log, &es, clusterNodeSetsResources); err != nil {

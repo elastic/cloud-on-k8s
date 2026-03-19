@@ -203,7 +203,7 @@ func (r *ReconcileKibana) doReconcile(ctx context.Context, request reconcile.Req
 	results := driver.Reconcile(ctx, &state, kb, r.params)
 
 	result, err = results.WithError(err).Aggregate()
-	k8s.MaybeEmitErrorEventf(r.recorder, err, kb, events.EventReconciliationError, events.EventActionAggregation, "Reconciliation error: %v", err)
+	k8s.MaybeEmitErrorEventf(r.recorder, err, kb, events.EventReconciliationError, events.EventActionReconciliation, "Reconciliation error: %v", err)
 	return result, err
 }
 

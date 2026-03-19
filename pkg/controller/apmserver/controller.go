@@ -286,7 +286,7 @@ func (r *ReconcileApmServer) doReconcile(ctx context.Context, as *apmv1.ApmServe
 	state.UpdateApmServerExternalService(*svc)
 
 	_, err = results.WithError(err).Aggregate()
-	k8s.MaybeEmitErrorEventf(r.recorder, err, as, events.EventReconciliationError, events.EventActionAggregation, "Reconciliation error: %v", err)
+	k8s.MaybeEmitErrorEventf(r.recorder, err, as, events.EventReconciliationError, events.EventActionReconciliation, "Reconciliation error: %v", err)
 	return results, state
 }
 

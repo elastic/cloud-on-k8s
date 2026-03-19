@@ -217,13 +217,13 @@ func handleSecretNotFound(log logr.Logger, recorder toolsevents.EventRecorder, e
 	msg := "referenced secret not found"
 	// logging with info level since this may be expected if the secret is not in the cache yet
 	log.Info(msg, "namespace", es.Namespace, "es_name", es.Name, "secret_name", secretName)
-	k8s.EmitEventf(recorder, &es, corev1.EventTypeWarning, events.EventReasonUnexpected, events.EventActionConfiguration, "%s: %s", msg, secretName)
+	k8s.EmitEventf(recorder, &es, corev1.EventTypeWarning, events.EventReasonUnexpected, events.EventActionUserConfiguration, "%s: %s", msg, secretName)
 }
 
 func handleInvalidSecretData(log logr.Logger, recorder toolsevents.EventRecorder, es esv1.Elasticsearch, secretName string, err error) {
 	msg := "invalid data in secret"
 	log.Error(err, msg, "namespace", es.Namespace, "es_name", es.Name, "secret_name", secretName)
-	k8s.EmitEventf(recorder, &es, corev1.EventTypeWarning, events.EventReasonUnexpected, events.EventActionConfiguration, "%s %s/%s: %s", msg, es.Namespace, secretName, err.Error())
+	k8s.EmitEventf(recorder, &es, corev1.EventTypeWarning, events.EventReasonUnexpected, events.EventActionUserConfiguration, "%s %s/%s: %s", msg, es.Namespace, secretName, err.Error())
 }
 func handlePotentialMisconfiguration(log logr.Logger, recorder toolsevents.EventRecorder, es esv1.Elasticsearch, secret corev1.Secret) {
 	keys := make([]string, 0, len(secret.Data))
@@ -233,5 +233,5 @@ func handlePotentialMisconfiguration(log logr.Logger, recorder toolsevents.Event
 	sort.Strings(keys)
 	msg := fmt.Sprintf("potential misconfigured custom user in secret %s/%s: found keys %s expected keys %s", secret.Namespace, secret.Name, keys, basicAuthSecretKeys)
 	log.Info(msg, "namespace", es.Namespace, "es_name", es.Name)
-	k8s.EmitEvent(recorder, &es, corev1.EventTypeWarning, events.EventReasonUnexpected, events.EventActionConfiguration, msg)
+	k8s.EmitEvent(recorder, &es, corev1.EventTypeWarning, events.EventReasonUnexpected, events.EventActionUserConfiguration, msg)
 }

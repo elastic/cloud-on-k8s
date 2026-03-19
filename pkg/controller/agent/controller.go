@@ -173,7 +173,7 @@ func (r *ReconcileAgent) Reconcile(ctx context.Context, request reconcile.Reques
 	}
 
 	result, err := results.Aggregate()
-	k8s.MaybeEmitErrorEventf(r.recorder, err, agent, events.EventReconciliationError, events.EventActionAggregation, "Reconciliation error: %v", err)
+	k8s.MaybeEmitErrorEventf(r.recorder, err, agent, events.EventReconciliationError, events.EventActionReconciliation, "Reconciliation error: %v", err)
 
 	return result, err
 }
