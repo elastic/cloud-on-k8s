@@ -6,7 +6,10 @@ package shared
 
 import (
 	"context"
+	cryptorand "crypto/rand"
+	"crypto/rsa"
 	"crypto/x509"
+	"crypto/x509/pkix"
 	"fmt"
 	"net"
 	"net/http"
@@ -15,6 +18,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
@@ -25,35 +29,27 @@ import (
 	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
-	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/user"
-
-	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/initcontainer"
-	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/nodespec"
-
-	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/network"
-
-	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/services"
-
 	commonv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/common/v1"
+	esv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/elasticsearch/v1"
+	policyv1alpha1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/stackconfigpolicy/v1alpha1"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/certificates"
 	commondriver "github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/driver"
+	commonlicense "github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/license"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/metadata"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/operator"
 	commonversion "github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/version"
 	watches2 "github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/watches"
 	client2 "github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/client"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/driver"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/initcontainer"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/label"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/network"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/nodespec"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/observer"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/reconcile"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/services"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/user"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/version"
-	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/cryptutil"
-
-	"github.com/stretchr/testify/assert"
-
-	esv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/elasticsearch/v1"
-	policyv1alpha1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/stackconfigpolicy/v1alpha1"
-	commonlicense "github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/license"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/k8s"
 )
 
@@ -490,7 +486,7 @@ func TestReconcileSharedResources(t *testing.T) {
 				services.ExternalServiceName(clusterName): getExpectedService(&standardElasticsearch, external, "1"),
 				services.InternalServiceName(clusterName): getExpectedService(&standardElasticsearch, internal, "1"),
 			},
-			expectedSecrets:    getExpectedSecrets(&standardElasticsearch, "1"),
+			expectedSecrets:    mustGetExpectedSecrets(t, &standardElasticsearch, "1"),
 			expectedConfigMaps: mustGetExpectedConfigMaps(t, &standardElasticsearch, "1"),
 			expectedState: &ReconcileState{
 				Meta: metadata.Metadata{
@@ -524,14 +520,14 @@ func TestReconcileSharedResources(t *testing.T) {
 			actualIsReconciled, _ := results.IsReconciled()
 			assert.EqualValues(t, tt.reconciliationExpected, actualIsReconciled, "Expected reconciliation to be %v, got %v", tt.reconciliationExpected, actualIsReconciled)
 
-			// Ensure expected secrets are created
+			// Ensure expected secrets are created and match expected structure/content
 			actualSecrets := &corev1.SecretList{}
 			assert.NoError(t, k8sClient.List(context.Background(), actualSecrets, client.InNamespace(namespace)))
 			assert.Len(t, actualSecrets.Items, len(tt.expectedSecrets), "Unexpected number of secrets created")
-			for _, secret := range actualSecrets.Items {
-				_, ok := tt.expectedSecrets[secret.Name]
-				assert.Truef(t, ok, "Unexpected secret [%s] created", secret.Name)
-				//assert.Equalf(t, expectedSecret, secret, "secret [%s] did not match expectations", secret.Name)
+			for _, actualSecret := range actualSecrets.Items {
+				expectedSecret, ok := tt.expectedSecrets[actualSecret.Name]
+				assert.Truef(t, ok, "Unexpected secret [%s] created", actualSecret.Name)
+				assertSecretMatchesExpected(t, expectedSecret, actualSecret)
 			}
 
 			// Ensure expected ES client is created
@@ -578,6 +574,31 @@ func getHTTPCACerts(secrets map[string]corev1.Secret) []*x509.Certificate {
 	return certs
 }
 
+// isCertOrCaSecret returns true for secrets whose Data is generated at reconciliation time
+// and cannot be matched byte-for-byte, such as certificate secrets.
+func isCertOrCaSecret(secretName string) bool {
+	return strings.Contains(secretName, "-ca") ||
+		strings.Contains(secretName, "-certs")
+}
+
+// assertSecretMatchesExpected verifies that actual secret matches expected name, namespace, required
+// labels, and data. For secrets with generated content (certs, hashed users) only required Data keys
+// and non-empty values are asserted; for others Data must match exactly.
+func assertSecretMatchesExpected(t *testing.T, expected, actual corev1.Secret) {
+	t.Helper()
+	assert.Equalf(t, expected.ObjectMeta.Name, actual.ObjectMeta.Name, "secret %s has incorrect object metadata", actual.Name)
+	assert.Equalf(t, expected.Type, actual.Type, "secret %s has incorrect type", actual.Name)
+	if isCertOrCaSecret(expected.Name) {
+		for key := range expected.Data {
+			actualVal, ok := actual.Data[key]
+			assert.Truef(t, ok, "secret [%s] missing Data key %q", expected.Name, key)
+			assert.NotEmptyf(t, actualVal, "secret [%s] Data key %q must be non-empty", expected.Name, key)
+		}
+	} else {
+		assert.Equalf(t, expected.Data, actual.Data, "secret [%s] Data", expected.Name)
+	}
+}
+
 func getServiceAccountTokenSecret(es *esv1.Elasticsearch) *corev1.Secret {
 	return &corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
@@ -616,6 +637,7 @@ func generateRemoteCAs(namespace, name string, quantity int) []client.Object {
 }
 
 func mustGetExpectedConfigMaps(t *testing.T, es *esv1.Elasticsearch, resourceVersion string) map[string]corev1.ConfigMap {
+	t.Helper()
 	labels := getLabels(es)
 	ownerReferences := getOwnerReferences(es)
 
@@ -656,89 +678,21 @@ func mustGetExpectedConfigMaps(t *testing.T, es *esv1.Elasticsearch, resourceVer
 	}
 }
 
-func getExpectedSecrets(es *esv1.Elasticsearch, resourceVersion string) map[string]corev1.Secret {
-	// 9 baseline
+func mustGetExpectedSecrets(t *testing.T, es *esv1.Elasticsearch, resourceVersion string) map[string]corev1.Secret {
+	t.Helper()
 	labels := getLabels(es)
 	labels["eck.k8s.elastic.co/credentials"] = "true"
 	labels["eck.k8s.elastic.co/owner-kind"] = ""
 	labels["eck.k8s.elastic.co/owner-name"] = es.Name
 	labels["eck.k8s.elastic.co/owner-namespace"] = es.Namespace
 
-	serviceAccountTokenSecret := getServiceAccountTokenSecret(es)
+	// Certificate secrets reproduced from ReconcileSharedResources (HTTP, transport, remote CA)
+	certSecrets := mustBuildTestCertificateSecrets(t, es, labels, resourceVersion)
 
-	return map[string]corev1.Secret{
+	// Non-certificate secrets (users, roles, service account token)
+	serviceAccountTokenSecret := getServiceAccountTokenSecret(es)
+	result := map[string]corev1.Secret{
 		serviceAccountTokenSecret.Name: *serviceAccountTokenSecret,
-		fmt.Sprintf("%s-es-transport-ca-internal", es.Name): {
-			ObjectMeta: metav1.ObjectMeta{
-				Name:            fmt.Sprintf("%s-es-transport-ca-internal", es.Name),
-				Namespace:       es.Namespace,
-				ResourceVersion: resourceVersion,
-				Labels:          labels,
-			},
-			Data: map[string][]byte{
-				"tls.crt": []byte("autogenerated"),
-				"tls.key": []byte("autogenerated"),
-			},
-		},
-		fmt.Sprintf("%s-es-transport-certs-public", es.Name): {
-			ObjectMeta: metav1.ObjectMeta{
-				Name:            fmt.Sprintf("%s-es-transport-certs-public", es.Name),
-				Namespace:       es.Namespace,
-				ResourceVersion: resourceVersion,
-				Labels:          labels,
-			},
-			Data: map[string][]byte{
-				"ca.crt": []byte("autogenerated"),
-			},
-		},
-		fmt.Sprintf("%s-es-http-ca-internal", es.Name): {
-			ObjectMeta: metav1.ObjectMeta{
-				Name:            fmt.Sprintf("%s-es-http-ca-internal", es.Name),
-				Namespace:       es.Namespace,
-				ResourceVersion: resourceVersion,
-				Labels:          labels,
-			},
-			Data: map[string][]byte{
-				"tls.crt": []byte("autogenerated"),
-				"tls.key": []byte("autogenerated"),
-			},
-		},
-		fmt.Sprintf("%s-es-http-certs-internal", es.Name): {
-			ObjectMeta: metav1.ObjectMeta{
-				Name:            fmt.Sprintf("%s-es-http-certs-internal", es.Name),
-				Namespace:       es.Namespace,
-				ResourceVersion: resourceVersion,
-				Labels:          labels,
-			},
-			Data: map[string][]byte{
-				"ca.crt":  []byte("autogenerated"),
-				"tls.crt": []byte("autogenerated"),
-				"tls.key": []byte("autogenerated"),
-			},
-		},
-		fmt.Sprintf("%s-es-http-certs-public", es.Name): {
-			ObjectMeta: metav1.ObjectMeta{
-				Name:            fmt.Sprintf("%s-es-http-certs-public", es.Name),
-				Namespace:       es.Namespace,
-				ResourceVersion: resourceVersion,
-				Labels:          labels,
-			},
-			Data: map[string][]byte{
-				"ca.crt":  []byte("autogenerated"),
-				"tls.crt": []byte("autogenerated"),
-			},
-		},
-		fmt.Sprintf("%s-es-remote-ca", es.Name): {
-			ObjectMeta: metav1.ObjectMeta{
-				Name:            fmt.Sprintf("%s-es-es-remote-ca", es.Name),
-				Namespace:       es.Namespace,
-				ResourceVersion: resourceVersion,
-				Labels:          labels,
-			},
-			Data: map[string][]byte{
-				"ca.crt": []byte("autogenerated"),
-			},
-		},
 		esv1.RolesAndFileRealmSecret(es.Name): {
 			ObjectMeta: metav1.ObjectMeta{
 				Name:            esv1.RolesAndFileRealmSecret(es.Name),
@@ -747,10 +701,10 @@ func getExpectedSecrets(es *esv1.Elasticsearch, resourceVersion string) map[stri
 				Labels:          labels,
 			},
 			Data: map[string][]byte{
-				"users":          []byte("autogenerated"),
-				"users_roles":    []byte("autogenerated"),
-				"roles.yml":      []byte("autogenerated"),
-				"service_tokens": []byte("autogenerated"),
+				"users":          []byte(userHashes),
+				"users_roles":    []byte(userRoles),
+				"roles.yml":      []byte(defaultRoles),
+				"service_tokens": []byte("autogenerated:autogenerated\n"),
 			},
 		},
 		esv1.InternalUsersSecret(es.Name): {
@@ -780,6 +734,150 @@ func getExpectedSecrets(es *esv1.Elasticsearch, resourceVersion string) map[stri
 			},
 		},
 	}
+	for k, v := range certSecrets {
+		result[k] = v
+	}
+	return result
+}
+
+// mustBuildTestCertificateSecrets reproduces the certificate secrets created by ReconcileSharedResources
+// (HTTP CA internal, HTTP internal/public certs, Transport CA internal, Transport public, Remote CA)
+// from a given Elasticsearch object. Used to build expected secrets in tests with valid PEM data.
+func mustBuildTestCertificateSecrets(t *testing.T, es *esv1.Elasticsearch, labels map[string]string, resourceVersion string) map[string]corev1.Secret {
+	t.Helper()
+	validity := 365 * 24 * time.Hour
+
+	// HTTP CA (self-signed) - same as certificates.ReconcileCAAndHTTPCerts
+	httpCA, err := certificates.NewSelfSignedCA(certificates.CABuilderOptions{
+		Subject:  pkix.Name{CommonName: es.Name + "-es-http-ca"},
+		ExpireIn: &validity,
+	})
+	require.NoError(t, err)
+
+	// HTTP leaf cert signed by HTTP CA - same structure as ensureInternalSelfSignedCertificateSecretContents
+	httpLeafKey, err := rsa.GenerateKey(cryptorand.Reader, 2048)
+	require.NoError(t, err)
+	cn := es.Name + "-es-http." + es.Namespace + ".es.local"
+	httpLeafTemplate := certificates.ValidatedCertificateTemplate(x509.Certificate{
+		Subject:            pkix.Name{CommonName: cn, OrganizationalUnit: []string{es.Name}},
+		DNSNames:           []string{cn, es.Name + "-es-http"},
+		NotBefore:          time.Now().Add(-10 * time.Minute),
+		NotAfter:           time.Now().Add(validity),
+		PublicKey:          httpLeafKey.Public(),
+		PublicKeyAlgorithm: x509.RSA,
+		SignatureAlgorithm: x509.SHA256WithRSA,
+		KeyUsage:           x509.KeyUsageDigitalSignature | x509.KeyUsageKeyEncipherment,
+		ExtKeyUsage:        []x509.ExtKeyUsage{x509.ExtKeyUsageServerAuth, x509.ExtKeyUsageClientAuth},
+	})
+	httpLeafDER, err := httpCA.CreateCertificate(httpLeafTemplate)
+	require.NoError(t, err)
+	httpLeafPEM := certificates.EncodePEMCert(httpLeafDER, httpCA.Cert.Raw)
+	httpCAPEM := certificates.EncodePEMCert(httpCA.Cert.Raw)
+	httpLeafKeyPEM, err := certificates.EncodePEMPrivateKey(httpLeafKey)
+	require.NoError(t, err)
+	httpCAKeyPEM, err := certificates.EncodePEMPrivateKey(httpCA.PrivateKey)
+	require.NoError(t, err)
+
+	// Transport CA (self-signed) - same as transport.ReconcileOrRetrieveCA
+	transportCA, err := certificates.NewSelfSignedCA(certificates.CABuilderOptions{
+		Subject:  pkix.Name{CommonName: es.Name + "-es-transport-ca"},
+		ExpireIn: &validity,
+	})
+	require.NoError(t, err)
+	transportCAKeyPEM, err := certificates.EncodePEMPrivateKey(transportCA.PrivateKey)
+	require.NoError(t, err)
+	transportCACertPEM := certificates.EncodePEMCert(transportCA.Cert.Raw)
+
+	// Remote CA secret - when no remote clusters, contains transport CA (remoteca.Reconcile)
+	remoteCAContent := certificates.EncodePEMCert(transportCA.Cert.Raw)
+
+	secrets := make(map[string]corev1.Secret)
+
+	// HTTP CA internal
+	secrets[certificates.CAInternalSecretName(esv1.ESNamer, es.Name, certificates.HTTPCAType)] = corev1.Secret{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:            certificates.CAInternalSecretName(esv1.ESNamer, es.Name, certificates.HTTPCAType),
+			Namespace:       es.Namespace,
+			ResourceVersion: resourceVersion,
+			Labels:          labels,
+		},
+		Data: map[string][]byte{
+			certificates.CertFileName: httpCAPEM,
+			certificates.KeyFileName:  httpCAKeyPEM,
+		},
+	}
+
+	// HTTP internal certs (CA + leaf chain and key)
+	secrets[certificates.InternalCertsSecretName(esv1.ESNamer, es.Name)] = corev1.Secret{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:            certificates.InternalCertsSecretName(esv1.ESNamer, es.Name),
+			Namespace:       es.Namespace,
+			ResourceVersion: resourceVersion,
+			Labels:          labels,
+		},
+		Data: map[string][]byte{
+			certificates.CAFileName:   httpCAPEM,
+			certificates.CertFileName: httpLeafPEM,
+			certificates.KeyFileName:  httpLeafKeyPEM,
+		},
+	}
+
+	// HTTP public certs (CA + leaf chain, no key)
+	secrets[certificates.PublicCertsSecretName(esv1.ESNamer, es.Name)] = corev1.Secret{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:            certificates.PublicCertsSecretName(esv1.ESNamer, es.Name),
+			Namespace:       es.Namespace,
+			ResourceVersion: resourceVersion,
+			Labels:          labels,
+		},
+		Data: map[string][]byte{
+			certificates.CAFileName:   httpCAPEM,
+			certificates.CertFileName: httpLeafPEM,
+		},
+	}
+
+	// Transport CA internal
+	secrets[certificates.CAInternalSecretName(esv1.ESNamer, es.Name, certificates.TransportCAType)] = corev1.Secret{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:            certificates.CAInternalSecretName(esv1.ESNamer, es.Name, certificates.TransportCAType),
+			Namespace:       es.Namespace,
+			ResourceVersion: resourceVersion,
+			Labels:          labels,
+		},
+		Data: map[string][]byte{
+			certificates.CertFileName: transportCACertPEM,
+			certificates.KeyFileName:  transportCAKeyPEM,
+		},
+	}
+
+	// Transport certs public (CA only)
+	secrets[certificates.PublicTransportCertsSecretName(esv1.ESNamer, es.Name)] = corev1.Secret{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:            certificates.PublicTransportCertsSecretName(esv1.ESNamer, es.Name),
+			Namespace:       es.Namespace,
+			ResourceVersion: resourceVersion,
+			Labels:          labels,
+		},
+		Data: map[string][]byte{
+			certificates.CAFileName: transportCACertPEM,
+		},
+	}
+
+	// Remote CA (concatenated remote CAs or self transport CA when none)
+	remoteCAName := esv1.RemoteCaSecretName(es.Name)
+	secrets[remoteCAName] = corev1.Secret{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:            remoteCAName,
+			Namespace:       es.Namespace,
+			ResourceVersion: resourceVersion,
+			Labels:          labels,
+		},
+		Data: map[string][]byte{
+			certificates.CAFileName: remoteCAContent,
+		},
+	}
+
+	return secrets
 }
 
 func getExpectedService(es *esv1.Elasticsearch, st serviceType, resourceVersion string) corev1.Service {
@@ -917,14 +1015,18 @@ func (s *staticPasswordGenerator) Generate(_ context.Context) ([]byte, error) {
 	return []byte(staticPassword), nil
 }
 
-func mustGetParams(t *testing.T, esServer *httptest.Server, numRemoteCAs int, initK8sObjects ...client.Object) driver.Parameters {
-	watches := watches2.NewDynamicWatches()
-	passwordHasher, err := cryptutil.NewPasswordHasher(8)
-	require.NoError(t, err)
+type staticPasswordHasher struct{}
 
+func (s *staticPasswordHasher) ReuseOrGenerateHash(password, _ []byte) ([]byte, error) {
+	return password, nil
+}
+
+func mustGetParams(t *testing.T, esServer *httptest.Server, numRemoteCAs int, initK8sObjects ...client.Object) driver.Parameters {
+	t.Helper()
+	watches := watches2.NewDynamicWatches()
 	operatorParams := operator.Parameters{
 		PasswordGenerator: &staticPasswordGenerator{},
-		PasswordHasher:    passwordHasher,
+		PasswordHasher:    &staticPasswordHasher{},
 		GlobalCA:          nil,
 		CACertRotation: certificates.RotationParams{
 			Validity:     120 * time.Hour,
@@ -957,8 +1059,999 @@ func mustGetParams(t *testing.T, esServer *httptest.Server, numRemoteCAs int, in
 }
 
 func mustParseVersion(t *testing.T, version string) commonversion.Version {
+	t.Helper()
 	v, err := commonversion.Parse(version)
 	require.NoError(t, err)
 
 	return v
 }
+
+const userRoles = `elastic-internal_cluster_manage:elastic-internal-pre-stop
+elastic_internal_diagnostics_v85:elastic-internal-diagnostics
+elastic_internal_probe_user:elastic-internal-probe
+remote_monitoring_collector:elastic-internal-monitoring
+superuser:elastic,elastic-internal
+`
+
+const userHashes = `elastic-internal-diagnostics:password
+elastic-internal-monitoring:password
+elastic-internal-pre-stop:password
+elastic-internal-probe:password
+elastic-internal:password
+elastic:password
+`
+
+const defaultRoles = `eck_apm_agent_user_role:
+    cluster: []
+    indices: []
+    applications:
+        - application: kibana-.kibana
+          privileges:
+            - feature_apm.read
+          resources:
+            - space:default
+    metadata: {}
+eck_apm_user_role_v7:
+    cluster:
+        - monitor
+        - manage_ilm
+        - manage_index_templates
+    indices:
+        - names:
+            - apm-*
+          privileges:
+            - manage
+            - write
+            - create_index
+    applications: []
+    metadata: {}
+eck_apm_user_role_v75:
+    cluster:
+        - monitor
+        - manage_ilm
+        - manage_api_key
+    indices:
+        - names:
+            - apm-*
+          privileges:
+            - manage
+            - create_doc
+            - create_index
+    applications: []
+    metadata: {}
+eck_apm_user_role_v80:
+    cluster:
+        - cluster:monitor/main
+        - manage_index_templates
+    indices:
+        - names:
+            - traces-apm*
+            - metrics-apm*
+            - logs-apm*
+          privileges:
+            - auto_configure
+            - create_doc
+        - names:
+            - traces-apm.sampled-*
+          privileges:
+            - maintenance
+            - monitor
+            - read
+    applications: []
+    metadata: {}
+eck_apm_user_role_v87:
+    cluster:
+        - cluster:monitor/main
+        - manage_index_templates
+    indices:
+        - names:
+            - traces-apm*
+            - metrics-apm*
+            - logs-apm*
+          privileges:
+            - auto_configure
+            - create_doc
+        - names:
+            - traces-apm.sampled-*
+          privileges:
+            - maintenance
+            - monitor
+            - read
+        - names:
+            - .apm-agent-configuration
+            - .apm-source-map
+          privileges:
+            - read
+          allow_restricted_indices: true
+    applications: []
+    metadata: {}
+eck_autoops_user_role:
+    cluster:
+        - monitor
+        - read_ilm
+        - read_slm
+    indices:
+        - names:
+            - '*'
+          privileges:
+            - monitor
+            - view_index_metadata
+          allow_restricted_indices: true
+    applications: []
+    metadata: {}
+eck_beat_es_auditbeat_role_v70:
+    cluster:
+        - manage_index_templates
+        - monitor
+        - manage_ilm
+        - manage_ml
+        - manage_pipeline
+    indices:
+        - names:
+            - auditbeat-*
+            - logs-*
+          privileges:
+            - manage
+            - read
+            - index
+            - create_index
+    applications: []
+    metadata: {}
+eck_beat_es_auditbeat_role_v73:
+    cluster:
+        - monitor
+        - manage_ilm
+        - manage_ml
+        - read_ilm
+        - manage_pipeline
+    indices:
+        - names:
+            - auditbeat-*
+            - logs-*
+          privileges:
+            - manage
+            - read
+            - index
+            - view_index_metadata
+            - create_index
+    applications: []
+    metadata: {}
+eck_beat_es_auditbeat_role_v75:
+    cluster:
+        - monitor
+        - manage_ilm
+        - manage_ml
+        - read_ilm
+        - cluster:admin/ingest/pipeline/get
+    indices:
+        - names:
+            - auditbeat-*
+            - logs-*
+          privileges:
+            - manage
+            - read
+            - create_doc
+            - view_index_metadata
+            - create_index
+    applications: []
+    metadata: {}
+eck_beat_es_auditbeat_role_v77:
+    cluster:
+        - monitor
+        - manage_ilm
+        - manage_ml
+        - read_ilm
+        - cluster:admin/ingest/pipeline/get
+    indices:
+        - names:
+            - auditbeat-*
+            - logs-*
+          privileges:
+            - manage
+            - read
+            - create_doc
+            - view_index_metadata
+            - create_index
+    applications: []
+    metadata: {}
+eck_beat_es_filebeat_role_v70:
+    cluster:
+        - manage_index_templates
+        - monitor
+        - manage_ilm
+        - manage_ml
+        - manage_pipeline
+    indices:
+        - names:
+            - filebeat-*
+            - logs-*
+          privileges:
+            - manage
+            - read
+            - index
+            - create_index
+    applications: []
+    metadata: {}
+eck_beat_es_filebeat_role_v73:
+    cluster:
+        - monitor
+        - manage_ilm
+        - manage_ml
+        - read_ilm
+        - manage_pipeline
+    indices:
+        - names:
+            - filebeat-*
+            - logs-*
+          privileges:
+            - manage
+            - read
+            - index
+            - view_index_metadata
+            - create_index
+    applications: []
+    metadata: {}
+eck_beat_es_filebeat_role_v75:
+    cluster:
+        - monitor
+        - manage_ilm
+        - manage_ml
+        - read_ilm
+        - cluster:admin/ingest/pipeline/get
+    indices:
+        - names:
+            - filebeat-*
+            - logs-*
+          privileges:
+            - manage
+            - read
+            - create_doc
+            - view_index_metadata
+            - create_index
+    applications: []
+    metadata: {}
+eck_beat_es_filebeat_role_v77:
+    cluster:
+        - monitor
+        - manage_ilm
+        - manage_ml
+        - read_ilm
+        - cluster:admin/ingest/pipeline/get
+    indices:
+        - names:
+            - filebeat-*
+            - logs-*
+          privileges:
+            - manage
+            - read
+            - create_doc
+            - view_index_metadata
+            - create_index
+    applications: []
+    metadata: {}
+eck_beat_es_heartbeat_role_v70:
+    cluster:
+        - manage_index_templates
+        - monitor
+        - manage_ilm
+        - manage_ml
+        - manage_pipeline
+    indices:
+        - names:
+            - heartbeat-*
+            - synthetics-*
+          privileges:
+            - manage
+            - read
+            - index
+            - create_index
+    applications: []
+    metadata: {}
+eck_beat_es_heartbeat_role_v73:
+    cluster:
+        - monitor
+        - manage_ilm
+        - manage_ml
+        - read_ilm
+        - manage_pipeline
+    indices:
+        - names:
+            - heartbeat-*
+            - synthetics-*
+          privileges:
+            - manage
+            - read
+            - index
+            - view_index_metadata
+            - create_index
+    applications: []
+    metadata: {}
+eck_beat_es_heartbeat_role_v75:
+    cluster:
+        - monitor
+        - manage_ilm
+        - manage_ml
+        - read_ilm
+        - cluster:admin/ingest/pipeline/get
+    indices:
+        - names:
+            - heartbeat-*
+            - synthetics-*
+          privileges:
+            - manage
+            - read
+            - create_doc
+            - view_index_metadata
+            - create_index
+    applications: []
+    metadata: {}
+eck_beat_es_heartbeat_role_v77:
+    cluster:
+        - monitor
+        - manage_ilm
+        - manage_ml
+        - read_ilm
+        - cluster:admin/ingest/pipeline/get
+    indices:
+        - names:
+            - heartbeat-*
+            - synthetics-*
+          privileges:
+            - manage
+            - read
+            - create_doc
+            - view_index_metadata
+            - create_index
+    applications: []
+    metadata: {}
+eck_beat_es_journalbeat_role_v70:
+    cluster:
+        - manage_index_templates
+        - monitor
+        - manage_ilm
+        - manage_ml
+        - manage_pipeline
+    indices:
+        - names:
+            - journalbeat-*
+            - ""
+          privileges:
+            - manage
+            - read
+            - index
+            - create_index
+    applications: []
+    metadata: {}
+eck_beat_es_journalbeat_role_v73:
+    cluster:
+        - monitor
+        - manage_ilm
+        - manage_ml
+        - read_ilm
+        - manage_pipeline
+    indices:
+        - names:
+            - journalbeat-*
+            - ""
+          privileges:
+            - manage
+            - read
+            - index
+            - view_index_metadata
+            - create_index
+    applications: []
+    metadata: {}
+eck_beat_es_journalbeat_role_v75:
+    cluster:
+        - monitor
+        - manage_ilm
+        - manage_ml
+        - read_ilm
+        - cluster:admin/ingest/pipeline/get
+    indices:
+        - names:
+            - journalbeat-*
+            - ""
+          privileges:
+            - manage
+            - read
+            - create_doc
+            - view_index_metadata
+            - create_index
+    applications: []
+    metadata: {}
+eck_beat_es_journalbeat_role_v77:
+    cluster:
+        - monitor
+        - manage_ilm
+        - manage_ml
+        - read_ilm
+        - cluster:admin/ingest/pipeline/get
+    indices:
+        - names:
+            - journalbeat-*
+            - ""
+          privileges:
+            - manage
+            - read
+            - create_doc
+            - view_index_metadata
+            - create_index
+    applications: []
+    metadata: {}
+eck_beat_es_metricbeat_role_v70:
+    cluster:
+        - manage_index_templates
+        - monitor
+        - manage_ilm
+        - manage_ml
+        - manage_pipeline
+    indices:
+        - names:
+            - metricbeat-*
+            - metrics-*
+          privileges:
+            - manage
+            - read
+            - index
+            - create_index
+    applications: []
+    metadata: {}
+eck_beat_es_metricbeat_role_v73:
+    cluster:
+        - monitor
+        - manage_ilm
+        - manage_ml
+        - read_ilm
+        - manage_pipeline
+    indices:
+        - names:
+            - metricbeat-*
+            - metrics-*
+          privileges:
+            - manage
+            - read
+            - index
+            - view_index_metadata
+            - create_index
+    applications: []
+    metadata: {}
+eck_beat_es_metricbeat_role_v75:
+    cluster:
+        - monitor
+        - manage_ilm
+        - manage_ml
+        - read_ilm
+        - cluster:admin/ingest/pipeline/get
+    indices:
+        - names:
+            - metricbeat-*
+            - metrics-*
+          privileges:
+            - manage
+            - read
+            - create_doc
+            - view_index_metadata
+            - create_index
+    applications: []
+    metadata: {}
+eck_beat_es_metricbeat_role_v77:
+    cluster:
+        - monitor
+        - manage_ilm
+        - manage_ml
+        - read_ilm
+        - cluster:admin/ingest/pipeline/get
+    indices:
+        - names:
+            - metricbeat-*
+            - metrics-*
+          privileges:
+            - manage
+            - read
+            - create_doc
+            - view_index_metadata
+            - create_index
+    applications: []
+    metadata: {}
+eck_beat_es_packetbeat_role_v70:
+    cluster:
+        - manage_index_templates
+        - monitor
+        - manage_ilm
+        - manage_ml
+        - manage_pipeline
+    indices:
+        - names:
+            - packetbeat-*
+            - logs-*
+          privileges:
+            - manage
+            - read
+            - index
+            - create_index
+    applications: []
+    metadata: {}
+eck_beat_es_packetbeat_role_v73:
+    cluster:
+        - monitor
+        - manage_ilm
+        - manage_ml
+        - read_ilm
+        - manage_pipeline
+    indices:
+        - names:
+            - packetbeat-*
+            - logs-*
+          privileges:
+            - manage
+            - read
+            - index
+            - view_index_metadata
+            - create_index
+    applications: []
+    metadata: {}
+eck_beat_es_packetbeat_role_v75:
+    cluster:
+        - monitor
+        - manage_ilm
+        - manage_ml
+        - read_ilm
+        - cluster:admin/ingest/pipeline/get
+    indices:
+        - names:
+            - packetbeat-*
+            - logs-*
+          privileges:
+            - manage
+            - read
+            - create_doc
+            - view_index_metadata
+            - create_index
+    applications: []
+    metadata: {}
+eck_beat_es_packetbeat_role_v77:
+    cluster:
+        - monitor
+        - manage_ilm
+        - manage_ml
+        - read_ilm
+        - cluster:admin/ingest/pipeline/get
+    indices:
+        - names:
+            - packetbeat-*
+            - logs-*
+          privileges:
+            - manage
+            - read
+            - create_doc
+            - view_index_metadata
+            - create_index
+    applications: []
+    metadata: {}
+eck_beat_kibana_auditbeat_role_v70:
+    cluster:
+        - manage_index_templates
+        - monitor
+        - manage_ilm
+        - manage_ml
+    indices:
+        - names:
+            - auditbeat-*
+            - logs-*
+          privileges:
+            - manage
+            - read
+    applications: []
+    metadata: {}
+eck_beat_kibana_auditbeat_role_v73:
+    cluster:
+        - monitor
+        - manage_ilm
+        - manage_ml
+    indices:
+        - names:
+            - auditbeat-*
+            - logs-*
+          privileges:
+            - manage
+            - read
+    applications: []
+    metadata: {}
+eck_beat_kibana_auditbeat_role_v77:
+    cluster:
+        - monitor
+        - manage_ilm
+        - manage_ml
+    indices:
+        - names:
+            - auditbeat-*
+            - logs-*
+          privileges:
+            - manage
+            - read
+    applications: []
+    metadata: {}
+eck_beat_kibana_filebeat_role_v70:
+    cluster:
+        - manage_index_templates
+        - monitor
+        - manage_ilm
+        - manage_ml
+    indices:
+        - names:
+            - filebeat-*
+            - logs-*
+          privileges:
+            - manage
+            - read
+    applications: []
+    metadata: {}
+eck_beat_kibana_filebeat_role_v73:
+    cluster:
+        - monitor
+        - manage_ilm
+        - manage_ml
+    indices:
+        - names:
+            - filebeat-*
+            - logs-*
+          privileges:
+            - manage
+            - read
+    applications: []
+    metadata: {}
+eck_beat_kibana_filebeat_role_v77:
+    cluster:
+        - monitor
+        - manage_ilm
+        - manage_ml
+    indices:
+        - names:
+            - filebeat-*
+            - logs-*
+          privileges:
+            - manage
+            - read
+    applications: []
+    metadata: {}
+eck_beat_kibana_heartbeat_role_v70:
+    cluster:
+        - manage_index_templates
+        - monitor
+        - manage_ilm
+        - manage_ml
+    indices:
+        - names:
+            - heartbeat-*
+            - synthetics-*
+          privileges:
+            - manage
+            - read
+    applications: []
+    metadata: {}
+eck_beat_kibana_heartbeat_role_v73:
+    cluster:
+        - monitor
+        - manage_ilm
+        - manage_ml
+    indices:
+        - names:
+            - heartbeat-*
+            - synthetics-*
+          privileges:
+            - manage
+            - read
+    applications: []
+    metadata: {}
+eck_beat_kibana_heartbeat_role_v77:
+    cluster:
+        - monitor
+        - manage_ilm
+        - manage_ml
+    indices:
+        - names:
+            - heartbeat-*
+            - synthetics-*
+          privileges:
+            - manage
+            - read
+    applications: []
+    metadata: {}
+eck_beat_kibana_journalbeat_role_v70:
+    cluster:
+        - manage_index_templates
+        - monitor
+        - manage_ilm
+        - manage_ml
+    indices:
+        - names:
+            - journalbeat-*
+            - ""
+          privileges:
+            - manage
+            - read
+    applications: []
+    metadata: {}
+eck_beat_kibana_journalbeat_role_v73:
+    cluster:
+        - monitor
+        - manage_ilm
+        - manage_ml
+    indices:
+        - names:
+            - journalbeat-*
+            - ""
+          privileges:
+            - manage
+            - read
+    applications: []
+    metadata: {}
+eck_beat_kibana_journalbeat_role_v77:
+    cluster:
+        - monitor
+        - manage_ilm
+        - manage_ml
+    indices:
+        - names:
+            - journalbeat-*
+            - ""
+          privileges:
+            - manage
+            - read
+    applications: []
+    metadata: {}
+eck_beat_kibana_metricbeat_role_v70:
+    cluster:
+        - manage_index_templates
+        - monitor
+        - manage_ilm
+        - manage_ml
+    indices:
+        - names:
+            - metricbeat-*
+            - metrics-*
+          privileges:
+            - manage
+            - read
+    applications: []
+    metadata: {}
+eck_beat_kibana_metricbeat_role_v73:
+    cluster:
+        - monitor
+        - manage_ilm
+        - manage_ml
+    indices:
+        - names:
+            - metricbeat-*
+            - metrics-*
+          privileges:
+            - manage
+            - read
+    applications: []
+    metadata: {}
+eck_beat_kibana_metricbeat_role_v77:
+    cluster:
+        - monitor
+        - manage_ilm
+        - manage_ml
+    indices:
+        - names:
+            - metricbeat-*
+            - metrics-*
+          privileges:
+            - manage
+            - read
+    applications: []
+    metadata: {}
+eck_beat_kibana_packetbeat_role_v70:
+    cluster:
+        - manage_index_templates
+        - monitor
+        - manage_ilm
+        - manage_ml
+    indices:
+        - names:
+            - packetbeat-*
+            - logs-*
+          privileges:
+            - manage
+            - read
+    applications: []
+    metadata: {}
+eck_beat_kibana_packetbeat_role_v73:
+    cluster:
+        - monitor
+        - manage_ilm
+        - manage_ml
+    indices:
+        - names:
+            - packetbeat-*
+            - logs-*
+          privileges:
+            - manage
+            - read
+    applications: []
+    metadata: {}
+eck_beat_kibana_packetbeat_role_v77:
+    cluster:
+        - monitor
+        - manage_ilm
+        - manage_ml
+    indices:
+        - names:
+            - packetbeat-*
+            - logs-*
+          privileges:
+            - manage
+            - read
+    applications: []
+    metadata: {}
+eck_fleet_admin_user_role:
+    cluster: []
+    indices: []
+    applications:
+        - application: kibana-.kibana
+          privileges:
+            - feature_fleet.all
+            - feature_fleetv2.all
+          resources:
+            - '*'
+    metadata: {}
+eck_logstash_user_role:
+    cluster:
+        - monitor
+        - manage_ilm
+        - read_ilm
+        - manage_logstash_pipelines
+        - manage_index_templates
+        - cluster:admin/ingest/pipeline/get
+    indices:
+        - names:
+            - logstash
+            - logstash-*
+            - ecs-logstash
+            - ecs-logstash-*
+            - logs-*
+            - metrics-*
+            - synthetics-*
+            - traces-*
+          privileges:
+            - manage
+            - write
+            - create_index
+            - read
+            - view_index_metadata
+    applications: []
+    metadata: {}
+eck_stack_mon_user_role:
+    cluster:
+        - monitor
+        - manage_index_templates
+        - manage_ingest_pipelines
+        - manage_ilm
+        - read_ilm
+        - cluster:admin/xpack/watcher/watch/put
+        - cluster:admin/xpack/watcher/watch/delete
+    indices:
+        - names:
+            - .monitoring-*
+          privileges:
+            - all
+        - names:
+            - metricbeat-*
+          privileges:
+            - manage
+            - read
+            - create_doc
+            - view_index_metadata
+            - create_index
+        - names:
+            - filebeat-*
+          privileges:
+            - manage
+            - read
+            - create_doc
+            - view_index_metadata
+            - create_index
+    applications: []
+    metadata: {}
+elastic-internal_cluster_manage:
+    cluster:
+        - manage
+    indices: []
+    applications: []
+    metadata: {}
+elastic_internal_diagnostics_v80:
+    cluster:
+        - monitor
+        - monitor_snapshot
+        - manage
+        - read_ilm
+        - manage_security
+    indices:
+        - names:
+            - '*'
+          privileges:
+            - monitor
+            - read
+            - view_index_metadata
+          allow_restricted_indices: true
+    applications:
+        - application: kibana-.kibana
+          privileges:
+            - feature_ml.read
+            - feature_siem.read
+            - feature_siem.read_alerts
+            - feature_siem.policy_management_read
+            - feature_siem.endpoint_list_read
+            - feature_siem.trusted_applications_read
+            - feature_siem.event_filters_read
+            - feature_siem.host_isolation_exceptions_read
+            - feature_siem.blocklist_read
+            - feature_siem.actions_log_management_read
+            - feature_securitySolutionCases.read
+            - feature_securitySolutionAssistant.read
+            - feature_actions.read
+            - feature_builtInAlerts.read
+            - feature_fleet.all
+            - feature_fleetv2.all
+            - feature_osquery.read
+            - feature_indexPatterns.read
+            - feature_discover.read
+            - feature_dashboard.read
+            - feature_maps.read
+            - feature_visualize.read
+          resources:
+            - '*'
+    metadata: {}
+elastic_internal_diagnostics_v85:
+    cluster:
+        - monitor
+        - monitor_snapshot
+        - manage
+        - read_ilm
+        - read_security
+    indices:
+        - names:
+            - '*'
+          privileges:
+            - monitor
+            - read
+            - view_index_metadata
+          allow_restricted_indices: true
+    applications:
+        - application: kibana-.kibana
+          privileges:
+            - feature_ml.read
+            - feature_siem.read
+            - feature_siem.read_alerts
+            - feature_siem.policy_management_read
+            - feature_siem.endpoint_list_read
+            - feature_siem.trusted_applications_read
+            - feature_siem.event_filters_read
+            - feature_siem.host_isolation_exceptions_read
+            - feature_siem.blocklist_read
+            - feature_siem.actions_log_management_read
+            - feature_securitySolutionCases.read
+            - feature_securitySolutionAssistant.read
+            - feature_actions.read
+            - feature_builtInAlerts.read
+            - feature_fleet.all
+            - feature_fleetv2.all
+            - feature_osquery.read
+            - feature_indexPatterns.read
+            - feature_discover.read
+            - feature_dashboard.read
+            - feature_maps.read
+            - feature_visualize.read
+          resources:
+            - '*'
+    metadata: {}
+elastic_internal_probe_user:
+    cluster:
+        - monitor
+    indices: []
+    applications: []
+    metadata: {}
+`
