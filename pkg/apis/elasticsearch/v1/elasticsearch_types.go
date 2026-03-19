@@ -5,7 +5,6 @@
 package v1
 
 import (
-	"errors"
 	"fmt"
 	"strings"
 	"time"
@@ -94,8 +93,6 @@ func GetRestartAllocationDelayAnnotation(annotations map[string]string) (*time.D
 
 	return nil, nil
 }
-
-var errNegativeRestartAllocationDelay = errors.New("negative restart-allocation-delay annotation")
 
 // +kubebuilder:object:root=true
 

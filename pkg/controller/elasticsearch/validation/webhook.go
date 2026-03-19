@@ -63,7 +63,7 @@ func (wh *validatingWebhook) validateCreate(ctx context.Context, es esv1.Elastic
 		warnings = append(warnings, warn)
 	}
 
-	if allocationDelayWarning := validateRestartAllocationDelayWarnings(ctx, es); allocationDelayWarning != "" {
+	if allocationDelayWarning := validateRestartAllocationDelayWarnings(es); allocationDelayWarning != "" {
 		warnings = append(warnings, allocationDelayWarning)
 	}
 
@@ -98,7 +98,7 @@ func (wh *validatingWebhook) validateUpdate(ctx context.Context, prev esv1.Elast
 		warnings = append(warnings, restartTriggerWarning)
 	}
 
-	if allocationDelayWarning := validateRestartAllocationDelayWarnings(ctx, curr); allocationDelayWarning != "" {
+	if allocationDelayWarning := validateRestartAllocationDelayWarnings(curr); allocationDelayWarning != "" {
 		warnings = append(warnings, allocationDelayWarning)
 	}
 
