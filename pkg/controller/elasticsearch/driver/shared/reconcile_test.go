@@ -532,9 +532,10 @@ func TestReconcileSharedResources(t *testing.T) {
 
 			// Ensure expected ES client is created
 			assert.NotNil(t, s.ESClient, "Expected non-nil ES client")
-			// HasProperties inherently asserts expected certificates, user credentials, URL, and version
-			//expectedCACerts := getHTTPCACerts(tt.expectedSecrets)
-			//assert.True(t, s.ESClient.HasProperties(mustParseVersion(t, "9.3.1"), client2.BasicAuth{Name: user.ControllerUserName, Password: staticPassword}, tt.params.URLProvider, expectedCACerts[:3]), "Generated Elasticsearch client does not have expected properties")
+			// HasProperties inherently asserts expected certificates, user credentials, URL, and version were set
+			// correctly on the client
+			expectedClientCerts := mustGetClientCerts(t, tt.params.Client, tt.params.ES)
+			assert.True(t, s.ESClient.HasProperties(mustParseVersion(t, "9.3.1"), client2.BasicAuth{Name: user.ControllerUserName, Password: staticPassword}, tt.params.URLProvider, expectedClientCerts), "Generated Elasticsearch client does not have expected properties")
 
 			// Ensure expected services are created
 			actualServices := &corev1.ServiceList{}
@@ -559,19 +560,17 @@ func TestReconcileSharedResources(t *testing.T) {
 	}
 }
 
-func getHTTPCACerts(secrets map[string]corev1.Secret) []*x509.Certificate {
-	certs := make([]*x509.Certificate, 0, 3) // public, internal, internal-ca
-	for name, secret := range secrets {
-		if strings.Contains(name, "http") {
-			for k, v := range secret.Data {
-				if k == "ca.crt" {
-					certs = append(certs, &x509.Certificate{Raw: v})
-				}
-			}
-		}
-	}
+func mustGetClientCerts(t *testing.T, client k8s.Client, es esv1.Elasticsearch) []*x509.Certificate {
+	var internalCertSecret corev1.Secret
+	err := client.Get(context.Background(), types.NamespacedName{Namespace: es.Namespace, Name: certificates.InternalCertsSecretName(esv1.ESNamer, es.Name)}, &internalCertSecret)
+	require.NoError(t, err, "error getting internal HTTP certificate secret")
 
-	return certs
+	internalCert, err := certificates.NewCertificatesSecret(internalCertSecret)
+	require.NoError(t, err, "error parsing internal HTTP certificate secret")
+
+	clientCerts, err := certificates.ParsePEMCerts(internalCert.CertChain())
+	require.NoError(t, err, "error parsing internal HTTP certificate chain")
+	return clientCerts
 }
 
 // isCertOrCaSecret returns true for secrets whose Data is generated at reconciliation time
