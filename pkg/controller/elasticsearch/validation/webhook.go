@@ -54,9 +54,20 @@ type validatingWebhook struct {
 	managedNamespaces    set.StringSet
 }
 
-func (wh *validatingWebhook) validateCreate(ctx context.Context, es esv1.Elasticsearch) (string, error) {
+func (wh *validatingWebhook) validateCreate(ctx context.Context, es esv1.Elasticsearch) ([]string, error) {
 	eslog.V(1).Info("validate create", "name", es.Name)
-	return ValidateElasticsearch(ctx, es, wh.licenseChecker, wh.exposedNodeLabels)
+	var warnings []string
+
+	warn, err := ValidateElasticsearch(ctx, es, wh.licenseChecker, wh.exposedNodeLabels)
+	if warn != "" {
+		warnings = append(warnings, warn)
+	}
+
+	if allocationDelayWarning := validateRestartAllocationDelayWarnings(ctx, es); allocationDelayWarning != "" {
+		warnings = append(warnings, allocationDelayWarning)
+	}
+
+	return warnings, err
 }
 
 func (wh *validatingWebhook) validateUpdate(ctx context.Context, prev esv1.Elasticsearch, curr esv1.Elasticsearch) ([]string, error) {
@@ -87,6 +98,10 @@ func (wh *validatingWebhook) validateUpdate(ctx context.Context, prev esv1.Elast
 		warnings = append(warnings, restartTriggerWarning)
 	}
 
+	if allocationDelayWarning := validateRestartAllocationDelayWarnings(ctx, curr); allocationDelayWarning != "" {
+		warnings = append(warnings, allocationDelayWarning)
+	}
+
 	return warnings, nil
 }
 
@@ -112,7 +127,7 @@ func (wh *validatingWebhook) Handle(ctx context.Context, req admission.Request) 
 		}
 
 		if len(warnings) > 0 {
-			return admission.Allowed("").WithWarnings(warnings)
+			return admission.Allowed("").WithWarnings(warnings...)
 		}
 
 		return admission.Allowed("")

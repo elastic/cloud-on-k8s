@@ -5,7 +5,10 @@
 package v1
 
 import (
+	"errors"
+	"fmt"
 	"strings"
+	"time"
 
 	"github.com/blang/semver/v4"
 	corev1 "k8s.io/api/core/v1"
@@ -69,6 +72,30 @@ func AreServiceAccountsSupported(version string) (bool, error) {
 	}
 	return esVersion.GTE(ServiceAccountMinVersion), nil
 }
+
+// GetRestartAllocationDelayAnnotation reads the RestartAllocationDelayAnnotation from the given annotations
+// and returns the parsed duration. Returns nil if the annotation is absent or empty.
+// Returns an error if the value is not a valid Go duration string or is negative.
+func GetRestartAllocationDelayAnnotation(annotations map[string]string) (*time.Duration, error) {
+	v, found := annotations[RestartAllocationDelayAnnotation]
+	if !found || v == "" {
+		return nil, nil
+	}
+
+	d, err := time.ParseDuration(v)
+	switch {
+	case err != nil:
+		return nil, fmt.Errorf("error while parsing restart-allocation-delay annotation %s: %w", v, err)
+	case d < 0:
+		return nil, fmt.Errorf("negative restart-allocation-delay annotation: %s", v)
+	case d >= 0:
+		return &d, nil
+	}
+
+	return nil, nil
+}
+
+var errNegativeRestartAllocationDelay = errors.New("negative restart-allocation-delay annotation")
 
 // +kubebuilder:object:root=true
 
@@ -240,7 +267,6 @@ type RemoteCluster struct {
 	APIKey *RemoteClusterAPIKey `json:"apiKey,omitempty"`
 
 	// TODO: Allow the user to specify some options (transport.compress, transport.ping_schedule)
-
 }
 
 func (r RemoteCluster) ConfigHash() string {

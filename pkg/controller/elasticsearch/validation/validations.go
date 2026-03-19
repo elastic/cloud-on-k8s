@@ -553,6 +553,15 @@ func validLicenseLevel(ctx context.Context, es esv1.Elasticsearch, checker licen
 	return errs
 }
 
+func validateRestartAllocationDelayWarnings(ctx context.Context, es esv1.Elasticsearch) string {
+	_, err := esv1.GetRestartAllocationDelayAnnotation(es.Annotations)
+	if err != nil {
+		return fmt.Sprintf("restart-allocation-delay annotation will be ignored due to error: %s", err.Error())
+	}
+
+	return ""
+}
+
 func validateRestartTriggerWarnings(ctx context.Context, k8sClient k8s.Client, oldCR, newCR esv1.Elasticsearch) string {
 	oldRestartTrigger := oldCR.Annotations[esv1.RestartTriggerAnnotation]
 	newRestartTrigger := newCR.Annotations[esv1.RestartTriggerAnnotation]

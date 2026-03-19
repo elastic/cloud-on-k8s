@@ -255,6 +255,8 @@ func buildAnnotations(
 			restartTrigger = actualPodsRestartTriggerAnnotationValue
 		}
 	}
+	// RestartTriggerAnnotation is not part of the config hash to distinguish between
+	// spec changes and pod rotation caused by the restart annotation later on.
 	if restartTrigger != "" {
 		annotations[esv1.RestartTriggerAnnotation] = restartTrigger
 	}

@@ -526,16 +526,9 @@ func shutdownReasonAndAllocationDelay(es esv1.Elasticsearch, isAnnotationTrigger
 	}
 
 	var allocationDelay *time.Duration
-	if v, ok := es.Annotations[esv1.RestartAllocationDelayAnnotation]; ok && v != "" {
-		d, err := time.ParseDuration(v)
-		switch {
-		case err != nil:
-			log.Error(err, "Failed to parse restart-allocation-delay annotation, ignoring", "value", v)
-		case d < 0:
-			log.V(1).Info("Negative restart-allocation-delay annotation, ignoring", "value", v)
-		default:
-			allocationDelay = &d
-		}
+	allocationDelay, err := esv1.GetRestartAllocationDelayAnnotation(es.Annotations)
+	if err != nil {
+		log.Error(err, "ignoring restart-allocation-delay annotation due to error")
 	}
 
 	return reason, allocationDelay

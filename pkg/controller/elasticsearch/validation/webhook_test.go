@@ -70,14 +70,16 @@ func Test_validatingWebhook_Handle(t *testing.T) {
 				client: k8s.NewFakeClient(),
 			},
 			args: args{
-				req: admission.Request{AdmissionRequest: admissionv1.AdmissionRequest{
-					Operation: admissionv1.Create,
-					Object: runtime.RawExtension{
-						Raw: asJSON(&esv1.Elasticsearch{
-							ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: "name"},
-							Spec:       esv1.ElasticsearchSpec{Version: "8.9.0", NodeSets: []esv1.NodeSet{{Name: "set1", Count: 3}}},
-						}),
-					}},
+				req: admission.Request{
+					AdmissionRequest: admissionv1.AdmissionRequest{
+						Operation: admissionv1.Create,
+						Object: runtime.RawExtension{
+							Raw: asJSON(&esv1.Elasticsearch{
+								ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: "name"},
+								Spec:       esv1.ElasticsearchSpec{Version: "8.9.0", NodeSets: []esv1.NodeSet{{Name: "set1", Count: 3}}},
+							}),
+						},
+					},
 				},
 			},
 			want: admission.Allowed(""),
@@ -88,14 +90,16 @@ func Test_validatingWebhook_Handle(t *testing.T) {
 				client: k8s.NewFakeClient(),
 			},
 			args: args{
-				req: admission.Request{AdmissionRequest: admissionv1.AdmissionRequest{
-					Operation: admissionv1.Create,
-					Object: runtime.RawExtension{
-						Raw: asJSON(&esv1.Elasticsearch{
-							ObjectMeta: metav1.ObjectMeta{Namespace: "unmanaged", Name: "name"},
-							Spec:       esv1.ElasticsearchSpec{Version: "8.9.0", NodeSets: []esv1.NodeSet{{Name: "set1", Count: 3}}},
-						}),
-					}},
+				req: admission.Request{
+					AdmissionRequest: admissionv1.AdmissionRequest{
+						Operation: admissionv1.Create,
+						Object: runtime.RawExtension{
+							Raw: asJSON(&esv1.Elasticsearch{
+								ObjectMeta: metav1.ObjectMeta{Namespace: "unmanaged", Name: "name"},
+								Spec:       esv1.ElasticsearchSpec{Version: "8.9.0", NodeSets: []esv1.NodeSet{{Name: "set1", Count: 3}}},
+							}),
+						},
+					},
 				},
 			},
 			want: admission.Allowed(""),
@@ -106,14 +110,16 @@ func Test_validatingWebhook_Handle(t *testing.T) {
 				client: k8s.NewFakeClient(),
 			},
 			args: args{
-				req: admission.Request{AdmissionRequest: admissionv1.AdmissionRequest{
-					Operation: admissionv1.Create,
-					Object: runtime.RawExtension{
-						Raw: asJSON(&esv1.Elasticsearch{
-							ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: "es"},
-							Spec:       esv1.ElasticsearchSpec{NodeSets: []esv1.NodeSet{{Name: "set1", Count: 3}}},
-						}),
-					}},
+				req: admission.Request{
+					AdmissionRequest: admissionv1.AdmissionRequest{
+						Operation: admissionv1.Create,
+						Object: runtime.RawExtension{
+							Raw: asJSON(&esv1.Elasticsearch{
+								ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: "es"},
+								Spec:       esv1.ElasticsearchSpec{NodeSets: []esv1.NodeSet{{Name: "set1", Count: 3}}},
+							}),
+						},
+					},
 				},
 			},
 			want: admission.Denied(parseVersionErrMsg),
@@ -220,29 +226,31 @@ func Test_validatingWebhook_Handle(t *testing.T) {
 				client: k8s.NewFakeClient(),
 			},
 			args: args{
-				req: admission.Request{AdmissionRequest: admissionv1.AdmissionRequest{
-					Operation: admissionv1.Create,
-					Object: runtime.RawExtension{
-						Raw: asJSON(&esv1.Elasticsearch{
-							ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: "name"},
-							Spec: esv1.ElasticsearchSpec{
-								Version: "8.9.0",
-								NodeSets: []esv1.NodeSet{
-									{
-										Name:          "set1",
-										Count:         3,
-										ZoneAwareness: &esv1.ZoneAwareness{},
-										PodTemplate: corev1.PodTemplateSpec{
-											Spec: corev1.PodSpec{
-												Affinity: &corev1.Affinity{
-													NodeAffinity: &corev1.NodeAffinity{
-														RequiredDuringSchedulingIgnoredDuringExecution: &corev1.NodeSelector{
-															NodeSelectorTerms: []corev1.NodeSelectorTerm{
-																{
-																	MatchExpressions: []corev1.NodeSelectorRequirement{
-																		{
-																			Key:      esv1.DefaultZoneAwarenessTopologyKey,
-																			Operator: corev1.NodeSelectorOpDoesNotExist,
+				req: admission.Request{
+					AdmissionRequest: admissionv1.AdmissionRequest{
+						Operation: admissionv1.Create,
+						Object: runtime.RawExtension{
+							Raw: asJSON(&esv1.Elasticsearch{
+								ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: "name"},
+								Spec: esv1.ElasticsearchSpec{
+									Version: "8.9.0",
+									NodeSets: []esv1.NodeSet{
+										{
+											Name:          "set1",
+											Count:         3,
+											ZoneAwareness: &esv1.ZoneAwareness{},
+											PodTemplate: corev1.PodTemplateSpec{
+												Spec: corev1.PodSpec{
+													Affinity: &corev1.Affinity{
+														NodeAffinity: &corev1.NodeAffinity{
+															RequiredDuringSchedulingIgnoredDuringExecution: &corev1.NodeSelector{
+																NodeSelectorTerms: []corev1.NodeSelectorTerm{
+																	{
+																		MatchExpressions: []corev1.NodeSelectorRequirement{
+																			{
+																				Key:      esv1.DefaultZoneAwarenessTopologyKey,
+																				Operator: corev1.NodeSelectorOpDoesNotExist,
+																			},
 																		},
 																	},
 																},
@@ -254,9 +262,9 @@ func Test_validatingWebhook_Handle(t *testing.T) {
 										},
 									},
 								},
-							},
-						}),
-					}},
+							}),
+						},
+					},
 				},
 			},
 			want: admission.Allowed(""),
@@ -267,30 +275,32 @@ func Test_validatingWebhook_Handle(t *testing.T) {
 				client: k8s.NewFakeClient(),
 			},
 			args: args{
-				req: admission.Request{AdmissionRequest: admissionv1.AdmissionRequest{
-					Operation: admissionv1.Create,
-					Object: runtime.RawExtension{
-						Raw: asJSON(&esv1.Elasticsearch{
-							ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: "name"},
-							Spec: esv1.ElasticsearchSpec{
-								Version: "8.9.0",
-								NodeSets: []esv1.NodeSet{
-									{
-										Name:          "set1",
-										Count:         3,
-										ZoneAwareness: &esv1.ZoneAwareness{Zones: []string{"us-east-1a", "us-east-1b"}},
-										PodTemplate: corev1.PodTemplateSpec{
-											Spec: corev1.PodSpec{
-												Affinity: &corev1.Affinity{
-													NodeAffinity: &corev1.NodeAffinity{
-														RequiredDuringSchedulingIgnoredDuringExecution: &corev1.NodeSelector{
-															NodeSelectorTerms: []corev1.NodeSelectorTerm{
-																{
-																	MatchExpressions: []corev1.NodeSelectorRequirement{
-																		{
-																			Key:      esv1.DefaultZoneAwarenessTopologyKey,
-																			Operator: corev1.NodeSelectorOpIn,
-																			Values:   []string{"us-east-1c"},
+				req: admission.Request{
+					AdmissionRequest: admissionv1.AdmissionRequest{
+						Operation: admissionv1.Create,
+						Object: runtime.RawExtension{
+							Raw: asJSON(&esv1.Elasticsearch{
+								ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: "name"},
+								Spec: esv1.ElasticsearchSpec{
+									Version: "8.9.0",
+									NodeSets: []esv1.NodeSet{
+										{
+											Name:          "set1",
+											Count:         3,
+											ZoneAwareness: &esv1.ZoneAwareness{Zones: []string{"us-east-1a", "us-east-1b"}},
+											PodTemplate: corev1.PodTemplateSpec{
+												Spec: corev1.PodSpec{
+													Affinity: &corev1.Affinity{
+														NodeAffinity: &corev1.NodeAffinity{
+															RequiredDuringSchedulingIgnoredDuringExecution: &corev1.NodeSelector{
+																NodeSelectorTerms: []corev1.NodeSelectorTerm{
+																	{
+																		MatchExpressions: []corev1.NodeSelectorRequirement{
+																			{
+																				Key:      esv1.DefaultZoneAwarenessTopologyKey,
+																				Operator: corev1.NodeSelectorOpIn,
+																				Values:   []string{"us-east-1c"},
+																			},
 																		},
 																	},
 																},
@@ -302,9 +312,9 @@ func Test_validatingWebhook_Handle(t *testing.T) {
 										},
 									},
 								},
-							},
-						}),
-					}},
+							}),
+						},
+					},
 				},
 			},
 			want: admission.Denied(zoneAwarenessAffinityInNoIntersectionMsg),
@@ -315,14 +325,16 @@ func Test_validatingWebhook_Handle(t *testing.T) {
 				client: k8s.NewFakeClient(),
 			},
 			args: args{
-				req: admission.Request{AdmissionRequest: admissionv1.AdmissionRequest{
-					Operation: admissionv1.Create,
-					Object: runtime.RawExtension{
-						Raw: asJSON(&esv1.Elasticsearch{
-							ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: "name"},
-							Spec:       esv1.ElasticsearchSpec{Version: "7.9.0", NodeSets: []esv1.NodeSet{{Name: "set1", Count: 3}}},
-						}),
-					}},
+				req: admission.Request{
+					AdmissionRequest: admissionv1.AdmissionRequest{
+						Operation: admissionv1.Create,
+						Object: runtime.RawExtension{
+							Raw: asJSON(&esv1.Elasticsearch{
+								ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: "name"},
+								Spec:       esv1.ElasticsearchSpec{Version: "7.9.0", NodeSets: []esv1.NodeSet{{Name: "set1", Count: 3}}},
+							}),
+						},
+					},
 				},
 			},
 			want:         admission.Allowed(""),
@@ -491,6 +503,71 @@ func Test_validatingWebhook_Handle(t *testing.T) {
 			wantWarnings: []string{
 				"Version 7.9.0 is EOL and support for it will be removed in a future release of the ECK operator",
 				restartTriggerRemovedWarningMsg,
+			},
+		},
+		{
+			name: "restart allocation delay warning on update",
+			fields: fields{
+				client: k8s.NewFakeClient(
+					esPod("ns", "name", "pod-0", ""),
+					esPod("ns", "name", "pod-1", ""),
+				),
+			},
+			args: args{
+				req: admission.Request{AdmissionRequest: admissionv1.AdmissionRequest{
+					Operation: admissionv1.Update,
+					OldObject: runtime.RawExtension{
+						Raw: asJSON(&esv1.Elasticsearch{
+							ObjectMeta: metav1.ObjectMeta{
+								Namespace: "ns",
+								Name:      "name",
+							},
+							Spec: esv1.ElasticsearchSpec{Version: "8.19.0", NodeSets: []esv1.NodeSet{{Name: "set1", Count: 3}}},
+						}),
+					},
+					Object: runtime.RawExtension{
+						Raw: asJSON(&esv1.Elasticsearch{
+							ObjectMeta: metav1.ObjectMeta{
+								Namespace:   "ns",
+								Name:        "name",
+								Annotations: map[string]string{esv1.RestartAllocationDelayAnnotation: "-10s"},
+							},
+							Spec: esv1.ElasticsearchSpec{Version: "8.19.0", NodeSets: []esv1.NodeSet{{Name: "set1", Count: 3}}},
+						}),
+					},
+				}},
+			},
+			want: admission.Allowed(""),
+			wantWarnings: []string{
+				"restart-allocation-delay annotation will be ignored due to error: negative restart-allocation-delay annotation: -10s",
+			},
+		},
+		{
+			name: "restart allocation delay warning on create",
+			fields: fields{
+				client: k8s.NewFakeClient(
+					esPod("ns", "name", "pod-0", ""),
+					esPod("ns", "name", "pod-1", ""),
+				),
+			},
+			args: args{
+				req: admission.Request{AdmissionRequest: admissionv1.AdmissionRequest{
+					Operation: admissionv1.Create,
+					Object: runtime.RawExtension{
+						Raw: asJSON(&esv1.Elasticsearch{
+							ObjectMeta: metav1.ObjectMeta{
+								Namespace:   "ns",
+								Name:        "name",
+								Annotations: map[string]string{esv1.RestartAllocationDelayAnnotation: "-10s"},
+							},
+							Spec: esv1.ElasticsearchSpec{Version: "8.19.0", NodeSets: []esv1.NodeSet{{Name: "set1", Count: 3}}},
+						}),
+					},
+				}},
+			},
+			want: admission.Allowed(""),
+			wantWarnings: []string{
+				"restart-allocation-delay annotation will be ignored due to error: negative restart-allocation-delay annotation: -10s",
 			},
 		},
 	}
