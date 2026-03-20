@@ -15,7 +15,6 @@ import (
 	"crypto/x509"
 	"crypto/x509/pkix"
 	"fmt"
-	"maps"
 	"slices"
 	"strings"
 	"time"
@@ -29,6 +28,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/reconciler"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/k8s"
 	ulog "github.com/elastic/cloud-on-k8s/v3/pkg/utils/log"
+	utilmaps "github.com/elastic/cloud-on-k8s/v3/pkg/utils/maps"
 )
 
 const (
@@ -78,42 +78,28 @@ func (r Reconciler) ReconcileClientCertificate(
 		Name:      secretName,
 	}
 
-	var secret *corev1.Secret
-	var err error
-	if secret, err = k8s.GetSecretIfExists(ctx, r.K8sClient, secretNSN); err != nil {
+	// Build the expected secret with correct metadata
+	expected := corev1.Secret{
+		ObjectMeta: k8s.ToObjectMeta(secretNSN),
+		Data:       make(map[string][]byte),
+	}
+	expected.Labels = utilmaps.Merge(r.Metadata.Labels, extraLabels)
+	expected.Annotations = r.Metadata.Annotations
+
+	// Seed with existing data so ensureClientCertificateSecretContents can
+	// reuse still-valid certificates and keys instead of regenerating them.
+	if existing, err := k8s.GetSecretIfExists(ctx, r.K8sClient, secretNSN); err != nil {
 		return nil, err
-	}
-
-	if secret == nil {
-		secret = &corev1.Secret{
-			ObjectMeta: k8s.ToObjectMeta(types.NamespacedName{
-				Namespace: ownerNSN.Namespace,
-				Name:      secretName,
-			}),
-		}
-	}
-
-	if secret.Labels == nil {
-		secret.Labels = make(map[string]string)
-	}
-	maps.Copy(secret.Labels, r.Metadata.Labels)
-	maps.Copy(secret.Labels, extraLabels)
-
-	if secret.Annotations == nil {
-		secret.Annotations = make(map[string]string)
-	}
-	maps.Copy(secret.Annotations, r.Metadata.Annotations)
-
-	if secret.Data == nil {
-		secret.Data = make(map[string][]byte)
+	} else if existing != nil {
+		expected.Data = existing.Data
 	}
 
 	// Check and update certificate data
-	if err := ensureClientCertificateSecretContents(ctx, secret, commonName, orgUnit, r.CertRotation); err != nil {
+	if err := ensureClientCertificateSecretContents(ctx, &expected, commonName, orgUnit, r.CertRotation); err != nil {
 		return nil, err
 	}
 
-	reconciledSecret, err := reconciler.ReconcileSecret(ctx, r.K8sClient, *secret, r.Owner)
+	reconciledSecret, err := reconciler.ReconcileSecret(ctx, r.K8sClient, expected, r.Owner)
 	if err != nil {
 		return nil, err
 	}
