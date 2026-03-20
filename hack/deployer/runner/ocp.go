@@ -608,10 +608,11 @@ func (d *OCPDriver) Cleanup(prefix string, olderThan time.Duration) error {
 
 	// Map each infra ID back to a cluster name and run destroy.
 	// The infra ID is {clusterName}-{5alphanumChars}. We extract the cluster name by matching
-	// the full infra ID pattern and stripping the 5-char suffix. Infra IDs from internal OCP
-	// component SAs (e.g. cloud-credentials, openshift-machine-api) contain a double dash "--"
-	// and won't match.
-	infraIDRE := regexp.MustCompile(`^(` + regexp.QuoteMeta(prefix) + `-ocp-[a-z0-9]+(?:-[a-z0-9]+)*)-[a-z0-9]{5}$`)
+	// the full infra ID pattern and capturing everything before the 5-char suffix. Internal OCP
+	// component SAs (e.g. eck-e2e-ocp--cloud-crede-lhtvg) are filtered out because the regex
+	// requires at least one alphanumeric char between each dash ([a-z0-9]+), rejecting the
+	// double dash ("--") present in their names.
+	infraIDRE := buildInfraIDRegexp(prefix)
 	var deleted, failed, skipped int
 	for _, infraID := range infraIDSlice {
 		matches := infraIDRE.FindStringSubmatch(infraID)
@@ -673,6 +674,8 @@ func listInfraIDsFromServiceAccounts(params map[string]any) ([]string, error) {
 		return nil, err
 	}
 
+	// Multiple SAs share the same infra ID (master, worker, bootstrap). We only need to check
+	// keys for one of them since they are all created at the same time.
 	seen := set.Make()
 	for i, email := range emails {
 		matches := ocpServiceAccountRE.FindStringSubmatch(email)
@@ -708,12 +711,21 @@ func listInfraIDsFromServiceAccounts(params map[string]any) ([]string, error) {
 	return seen.AsSlice(), nil
 }
 
+// buildInfraIDRegexp returns a compiled regexp that matches an OCP infra ID and captures
+// the cluster name in group 1. The infra ID format is {clusterName}-{5alphanumChars}.
+func buildInfraIDRegexp(prefix string) *regexp.Regexp {
+	return regexp.MustCompile(`^(` + regexp.QuoteMeta(prefix) + `-ocp-[a-z0-9]+(?:-[a-z0-9]+)*)-[a-z0-9]{5}$`)
+}
+
 // ocpMetadata is the minimal metadata.json structure required by openshift-install destroy.
 type ocpMetadata struct {
 	ClusterName string       `json:"clusterName"`
-	ClusterID   string       `json:"clusterID"`
-	InfraID     string       `json:"infraID"`
-	GCP         *gcpMetadata `json:"gcp,omitempty"`
+	// ClusterID is a UUID assigned during creation. It is only used for telemetry, not for
+	// resource lookup, so it is left empty in synthetic metadata. The field is kept (without
+	// omitempty) to match the schema that openshift-install expects.
+	ClusterID string       `json:"clusterID"`
+	InfraID   string       `json:"infraID"`
+	GCP       *gcpMetadata `json:"gcp,omitempty"`
 }
 
 type gcpMetadata struct {
