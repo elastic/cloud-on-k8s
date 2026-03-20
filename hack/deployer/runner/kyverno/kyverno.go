@@ -25,7 +25,7 @@ var policiesManifest string
 var GKEPolicies string
 
 const (
-	waitForKyvernoDeployment = `wait deployment kyverno -n kyverno --for condition=Available=True --timeout=15m`
+	waitForKyvernoDeployment = `wait deployment kyverno -n kyverno --for condition=Available=True --timeout=20m`
 )
 
 func Install(globalKubectlOptions ...string) error {
