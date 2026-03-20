@@ -51,7 +51,7 @@ const (
 	// EventActionCertificateReconciliation describes the certificate reconciliation step the controller was taking
 	// when the event was triggered.
 	EventActionCertificateReconciliation = "CertificateReconciliation"
-	// EventActionStatusUpdate s used when the resource health has changed or the controller fails to update the status sub-resource.
+	// EventActionStatusUpdate is used when the resource health has changed or the controller fails to update the status sub-resource.
 	EventActionStatusUpdate = "StatusUpdate"
 	// EventActionVersionCheck describes the version check step the controller was taking when the event was triggered.
 	EventActionVersionCheck = "VersionCheck"
