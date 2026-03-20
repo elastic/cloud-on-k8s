@@ -479,7 +479,7 @@ ClientOptions configures client certificate authentication for incoming connecti
 
 | Field | Description |
 | --- | --- |
-| *`authentication`* __boolean__ | Authentication enables client authentication. |
+| *`authentication`* __boolean__ | Authentication enables client authentication (enterprise-only feature). |
 
 
 ### Config  [#config]

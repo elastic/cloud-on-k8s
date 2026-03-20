@@ -341,7 +341,7 @@ func (tls TLSWithClientOptions) Enabled() bool {
 
 // ClientOptions configures client certificate authentication for incoming connections.
 type ClientOptions struct {
-	// Authentication enables client authentication.
+	// Authentication enables client authentication (enterprise-only feature).
 	Authentication bool `json:"authentication,omitempty"`
 }
 

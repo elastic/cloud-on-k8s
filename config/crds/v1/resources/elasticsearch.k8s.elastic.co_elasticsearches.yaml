@@ -487,7 +487,8 @@ spec:
                         description: Client holds client configuration options.
                         properties:
                           authentication:
-                            description: Authentication enables client authentication.
+                            description: Authentication enables client authentication
+                              (enterprise-only feature).
                             type: boolean
                         type: object
                       selfSignedCertificate:
