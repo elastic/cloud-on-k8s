@@ -719,7 +719,7 @@ func buildInfraIDRegexp(prefix string) *regexp.Regexp {
 
 // ocpMetadata is the minimal metadata.json structure required by openshift-install destroy.
 type ocpMetadata struct {
-	ClusterName string       `json:"clusterName"`
+	ClusterName string `json:"clusterName"`
 	// ClusterID is a UUID assigned during creation. It is only used for telemetry, not for
 	// resource lookup, so it is left empty in synthetic metadata. The field is kept (without
 	// omitempty) to match the schema that openshift-install expects.
