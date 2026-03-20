@@ -119,9 +119,15 @@ func TestReconcileScriptsConfigMap(t *testing.T) {
 				err := client.Get(context.Background(), types.NamespacedName{Namespace: namespace, Name: configMapName}, &cm)
 				assert.NoError(t, err)
 				script := cm.Data[nodespec.PreStopHookScriptConfigKey]
-				assert.Contains(t, script, "--cert")
-				assert.Contains(t, script, "--key")
+				// CLIENT_CERT variable is set up
+				assert.Contains(t, script, "CLIENT_CERT=")
+				assert.Contains(t, script, `"${CLIENT_CERT[@]}"`)
+				// primary: internal client cert
 				assert.Contains(t, script, "client-cert/tls.crt")
+				assert.Contains(t, script, "client-cert/tls.key")
+				// fallback: internal HTTP certificates
+				assert.Contains(t, script, "http-certs/tls.crt")
+				assert.Contains(t, script, "http-certs/tls.key")
 			},
 		},
 		{
@@ -134,6 +140,8 @@ func TestReconcileScriptsConfigMap(t *testing.T) {
 				err := client.Get(context.Background(), types.NamespacedName{Namespace: namespace, Name: configMapName}, &cm)
 				assert.NoError(t, err)
 				script := cm.Data[nodespec.PreStopHookScriptConfigKey]
+				assert.NotContains(t, script, "CLIENT_CERT=")
+				assert.NotContains(t, script, `"${CLIENT_CERT[@]}"`)
 				assert.NotContains(t, script, "--cert")
 				assert.NotContains(t, script, "--key")
 			},

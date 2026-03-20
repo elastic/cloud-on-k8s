@@ -70,7 +70,7 @@ global_dns_error_cnt=0
 
 function request() {
   local status exit
-  status=$(curl -k -sS -o "${resp_body}" -w "%{http_code}"{{with .InternalClientCertPath}} --cert "{{.}}" --key "{{$.InternalClientKeyPath}}"{{end}} "$@")
+  status=$(curl -k -sS -o "${resp_body}" -w "%{http_code}" "$@")
   exit=$?
   if [ "$exit" -ne 0 ] || [ "$status" -lt 200 ] || [ "$status" -gt 299 ]; then
     # track curl DNS errors separately
@@ -170,10 +170,24 @@ else
   delayed_exit
 fi
 
+{{- if .ClientAuthEnabled}}
+# setup client certificate authentication if certificates are available
+if [ -f "{{.InternalClientCertPath}}" ]; then
+  # client certificates are mounted by the operator for client authentication
+  CLIENT_CERT=("--cert" "{{.InternalClientCertPath}}" "--key" "{{.InternalClientKeyPath}}")
+elif [ -f "{{.HTTPCertPath}}" ]; then
+  # fallback for when a node transitions from client authentication disabled to enabled:
+  # use the internal HTTP certificates which should be signed by the CA trusted by Elasticsearch
+  CLIENT_CERT=("--cert" "{{.HTTPCertPath}}" "--key" "{{.HTTPKeyPath}}")
+else
+  CLIENT_CERT=()
+fi
+{{- end}}
+
 ES_URL="{{.ServiceURL}}"
 
 log "retrieving node ID"
-if ! retry "$retries_count" request -X GET "${ES_URL}/_cat/nodes?full_id=true&h=id,name" "${BASIC_AUTH[@]}"
+if ! retry "$retries_count" request -X GET "${ES_URL}/_cat/nodes?full_id=true&h=id,name" "${BASIC_AUTH[@]}"{{if .ClientAuthEnabled}} "${CLIENT_CERT[@]}"{{end}}
 then
   error_exit "failed to retrieve nodes"
 fi
@@ -184,7 +198,7 @@ then
 fi
 
 # check if there is an ongoing shutdown request
-if ! request -X GET "${ES_URL}/_nodes/${NODE_ID}/shutdown" "${BASIC_AUTH[@]}"
+if ! request -X GET "${ES_URL}/_nodes/${NODE_ID}/shutdown" "${BASIC_AUTH[@]}"{{if .ClientAuthEnabled}} "${CLIENT_CERT[@]}"{{end}}
 then
   error_exit "failed to retrieve shutdown status"
 fi
@@ -195,7 +209,7 @@ if grep -q -v '"nodes":\[\]' "$resp_body"; then
 fi
 
 log "initiating node shutdown"
-if ! retry "$retries_count" request -X PUT "${ES_URL}/_nodes/${NODE_ID}/shutdown" "${BASIC_AUTH[@]}" -H 'Content-Type: application/json' -d"
+if ! retry "$retries_count" request -X PUT "${ES_URL}/_nodes/${NODE_ID}/shutdown" "${BASIC_AUTH[@]}"{{if .ClientAuthEnabled}} "${CLIENT_CERT[@]}"{{end}} -H 'Content-Type: application/json' -d"
 {
   \"type\": \"${shutdown_type}\",
   \"reason\": \"pre-stop hook\"
@@ -207,7 +221,7 @@ fi
 while :
 do
   log "waiting for node shutdown to complete"
-  if request -X GET "${ES_URL}/_nodes/${NODE_ID}/shutdown" "${BASIC_AUTH[@]}" &&
+  if request -X GET "${ES_URL}/_nodes/${NODE_ID}/shutdown" "${BASIC_AUTH[@]}"{{if .ClientAuthEnabled}} "${CLIENT_CERT[@]}"{{end}} &&
     grep -q -v 'IN_PROGRESS\|STALLED' "$resp_body"
   then
     break
@@ -230,8 +244,11 @@ func RenderPreStopHookScript(svcURL string, clientAuthenticationRequired bool) (
 		"VersionLabelName": label.VersionLabelName,
 	}
 	if clientAuthenticationRequired {
+		vars["ClientAuthEnabled"] = "true"
 		vars["InternalClientCertPath"] = filepath.Join(volume.InternalClientCertMountPath, certificates.CertFileName)
 		vars["InternalClientKeyPath"] = filepath.Join(volume.InternalClientCertMountPath, certificates.KeyFileName)
+		vars["HTTPCertPath"] = filepath.Join(volume.HTTPCertificatesSecretVolumeMountPath, certificates.CertFileName)
+		vars["HTTPKeyPath"] = filepath.Join(volume.HTTPCertificatesSecretVolumeMountPath, certificates.KeyFileName)
 	}
 	var script bytes.Buffer
 	err := preStopHookScriptTemplate.Execute(&script, vars)
