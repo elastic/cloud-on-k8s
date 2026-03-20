@@ -77,11 +77,17 @@ pullSecret: '{{.PullSecret}}'`
 )
 
 // ocpServiceAccountRE extracts the infra ID from an OCP service account email.
-// OCP creates two service accounts per cluster, suffixed by role:
+// OCP creates service accounts per cluster with a single-char role suffix:
 //
 //	{infraID}-m@{project}.iam.gserviceaccount.com  (master)
 //	{infraID}-w@{project}.iam.gserviceaccount.com  (worker)
-var ocpServiceAccountRE = regexp.MustCompile(`^(.+)-[mw]@`)
+//	{infraID}-b@{project}.iam.gserviceaccount.com  (bootstrap)
+//
+// When the infra ID is too long (GCP enforces a 30-char limit on SA IDs),
+// the role suffix is omitted and the SA name is the infra ID itself:
+//
+//	{infraID}@{project}.iam.gserviceaccount.com
+var ocpServiceAccountRE = regexp.MustCompile(`^(.+?)(?:-[bmw])?@`)
 
 func init() {
 	drivers[OCPDriverID] = &OCPDriverFactory{}
@@ -589,13 +595,20 @@ func (d *OCPDriver) Cleanup(prefix string, olderThan time.Duration) error {
 	log.Printf("Found %d orphaned infra ID(s) to clean up: %v", len(infraIDSlice), infraIDSlice)
 
 	// Map each infra ID back to a cluster name and run destroy.
-	clusterNameRE := regexp.MustCompile(regexp.QuoteMeta(prefix) + `-ocp-[a-z]+-\d+`)
+	// The infra ID is {clusterName}-{5alphanumChars}. We extract the cluster name by matching
+	// the full infra ID pattern and stripping the 5-char suffix. Infra IDs from internal OCP
+	// component SAs (e.g. cloud-credentials, openshift-machine-api) contain a double dash "--"
+	// and won't match.
+	infraIDRE := regexp.MustCompile(`^(` + regexp.QuoteMeta(prefix) + `-ocp-[a-z0-9]+(?:-[a-z0-9]+)*)-[a-z0-9]{5}$`)
+	var deleted, failed, skipped int
 	for _, infraID := range infraIDSlice {
-		clusterName := clusterNameRE.FindString(infraID)
-		if clusterName == "" {
-			log.Printf("Could not extract cluster name from infra ID %s, skipping", infraID)
+		matches := infraIDRE.FindStringSubmatch(infraID)
+		if len(matches) < 2 {
+			log.Printf("Skipping %s: internal OCP component, will be cleaned up with its parent cluster", infraID)
+			skipped++
 			continue
 		}
+		clusterName := matches[1]
 		if d.plan.DryRun {
 			log.Printf("[dry-run] Would delete cluster %s (infra ID %s)", clusterName, infraID)
 			continue
@@ -605,9 +618,12 @@ func (d *OCPDriver) Cleanup(prefix string, olderThan time.Duration) error {
 		d.plan.Operation = DeleteAction
 		if err = d.Execute(); err != nil {
 			log.Printf("while deleting cluster %s (infra ID %s): %v", clusterName, infraID, err)
+			failed++
 			continue
 		}
+		deleted++
 	}
+	log.Printf("Cleanup complete: %d deleted, %d failed, %d skipped", deleted, failed, skipped)
 	return nil
 }
 
@@ -650,7 +666,7 @@ func listInfraIDsFromServiceAccounts(params map[string]any) ([]string, error) {
 	}
 
 	seen := set.Make()
-	for _, email := range emails {
+	for i, email := range emails {
 		matches := ocpServiceAccountRE.FindStringSubmatch(email)
 		if len(matches) < 2 {
 			log.Printf("warning: could not extract infra ID from service account %s", email)
@@ -662,7 +678,7 @@ func listInfraIDsFromServiceAccounts(params map[string]any) ([]string, error) {
 			continue
 		}
 
-		// Check if this SA has any key older than the cutoff date.
+		log.Printf("Checking keys for service account %s (%d/%d)", email, i+1, len(emails))
 		keysCmd := fmt.Sprintf(
 			`gcloud iam service-accounts keys list --verbosity error `+
 				`--iam-account=%s `+
