@@ -226,7 +226,7 @@ func ensureClientCertificateSecretContents(
 	rotationParam RotationParams,
 ) error {
 	log := ulog.FromContext(ctx)
-	privateKey := getExistingPrivateKey(ctx, secret)
+	privateKey := privateKeyIfValid(ctx, secret)
 	if privateKey == nil {
 		generatedPrivateKey, err := rsa.GenerateKey(cryptorand.Reader, 2048)
 		if err != nil {
@@ -244,7 +244,7 @@ func ensureClientCertificateSecretContents(
 		secret.Data[KeyFileName] = encodedKey
 	}
 
-	existingCertBytes := getClientCertificate(ctx, secret, commonName, rotationParam.RotateBefore)
+	existingCertBytes := clientCertificateIfValid(ctx, secret, commonName, rotationParam.RotateBefore)
 	if existingCertBytes == nil {
 		log.Info(
 			"Issuing new client certificate",
@@ -267,9 +267,9 @@ func ensureClientCertificateSecretContents(
 	return nil
 }
 
-// getClientCertificate returns the client certificate from the provided Secret if it's valid.
+// clientCertificateIfValid returns the client certificate from the provided Secret if it's valid.
 // Returns nil if the certificate needs to be re-issued.
-func getClientCertificate(
+func clientCertificateIfValid(
 	ctx context.Context,
 	secret *corev1.Secret,
 	commonName string,
@@ -305,7 +305,7 @@ func getClientCertificate(
 		return nil
 	}
 
-	privateKey := getExistingPrivateKey(ctx, secret)
+	privateKey := privateKeyIfValid(ctx, secret)
 	if privateKey == nil {
 		log.V(1).Info("No valid private key in secret, will re-issue",
 			"namespace", secret.Namespace, "secret_name", secret.Name)
@@ -320,9 +320,9 @@ func getClientCertificate(
 	return cert.Raw
 }
 
-// getExistingPrivateKey parses the existing private key from the secret.
+// privateKeyIfValid parses the existing private key from the secret.
 // Returns nil if the key is missing or cannot be parsed.
-func getExistingPrivateKey(ctx context.Context, secret *corev1.Secret) crypto.Signer {
+func privateKeyIfValid(ctx context.Context, secret *corev1.Secret) crypto.Signer {
 	keyPEM, ok := secret.Data[KeyFileName]
 	if !ok || len(keyPEM) == 0 {
 		return nil
