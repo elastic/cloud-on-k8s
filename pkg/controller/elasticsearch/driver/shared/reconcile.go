@@ -23,8 +23,6 @@ import (
 	policyv1alpha1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/stackconfigpolicy/v1alpha1"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/association"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common"
-	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/annotation"
-	commoncerts "github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/certificates"
 	commondriver "github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/driver"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/events"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/keystore"
@@ -476,29 +474,4 @@ func esReachableConditionMessage(internalService *corev1.Service, isServiceReady
 	default:
 		return fmt.Sprintf("Service %s/%s has endpoints", internalService.Namespace, internalService.Name)
 	}
-}
-
-// DeleteClientCertResources deletes the client certificate resources (operator client cert secret,
-// trust bundle secret, and the client-authentication-required annotation) when client certificate
-// authentication is no longer required. This should only be called after all pods have rolled
-// to the new configuration without client authentication.
-func DeleteClientCertResources(ctx context.Context, c k8s.Client, es *esv1.Elasticsearch) error {
-	// Remove the client-authentication-required annotation
-	if err := annotation.RemoveClientAuthenticationRequiredAnnotation(ctx, c, es); err != nil {
-		return err
-	}
-
-	// Delete the operator client certificate secret
-	if err := k8s.DeleteSecretIfExists(ctx, c, types.NamespacedName{
-		Namespace: es.Namespace,
-		Name:      commoncerts.OperatorClientCertSecretName(esv1.ESNamer, es.Name),
-	}); err != nil {
-		return err
-	}
-
-	// Delete the client certificate trust bundle secret
-	return k8s.DeleteSecretIfExists(ctx, c, types.NamespacedName{
-		Namespace: es.Namespace,
-		Name:      commoncerts.ClientCertTrustBundleSecretName(esv1.ESNamer, es.Name),
-	})
 }

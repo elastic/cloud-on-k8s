@@ -23,6 +23,7 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/annotation"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/labels"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/name"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/reconciler"
@@ -390,4 +391,31 @@ func LoadOperatorClientCertIfExists(ctx context.Context, c k8s.Client, namer nam
 		return nil, nil
 	}
 	return ParseTLSCertificate(*secret)
+}
+
+// DeleteClientCertResources deletes the client certificate resources (operator client cert secret,
+// trust bundle secret, and the client-authentication-required annotation) when client certificate
+// authentication is no longer required. This should only be called after all pods have rolled
+// to the new configuration without client authentication.
+func DeleteClientCertResources(ctx context.Context, c k8s.Client, owner client.Object, namer name.Namer) error {
+	// Remove the client-authentication-required annotation
+	if err := annotation.RemoveClientAuthenticationRequiredAnnotation(ctx, c, owner); err != nil {
+		return err
+	}
+
+	ownerNSN := k8s.ExtractNamespacedName(owner)
+
+	// Delete the operator client certificate secret
+	if err := k8s.DeleteSecretIfExists(ctx, c, types.NamespacedName{
+		Namespace: ownerNSN.Namespace,
+		Name:      OperatorClientCertSecretName(namer, ownerNSN.Name),
+	}); err != nil {
+		return err
+	}
+
+	// Delete the client certificate trust bundle secret
+	return k8s.DeleteSecretIfExists(ctx, c, types.NamespacedName{
+		Namespace: ownerNSN.Namespace,
+		Name:      ClientCertTrustBundleSecretName(namer, ownerNSN.Name),
+	})
 }

@@ -13,6 +13,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 
 	esv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/elasticsearch/v1"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/certificates"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/events"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/keystore"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/metadata"
@@ -224,7 +225,7 @@ func (d *Driver) reconcileNodeSpecs(
 		}
 
 		if !resolvedConfig.ClientAuthenticationRequired {
-			if err := shared.DeleteClientCertResources(ctx, d.Client, &d.ES); err != nil {
+			if err := certificates.DeleteClientCertResources(ctx, d.Client, &d.ES, esv1.ESNamer); err != nil {
 				return results.WithError(err)
 			}
 		}

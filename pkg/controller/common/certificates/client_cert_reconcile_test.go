@@ -19,6 +19,7 @@ import (
 	commonv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/common/v1"
 	esv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/elasticsearch/v1"
 	kbv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/kibana/v1"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/annotation"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/labels"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/metadata"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/reconciler"
@@ -400,5 +401,58 @@ func TestBuildTrustBundleFromSecrets(t *testing.T) {
 
 		bundle := buildTrustBundleFromSecrets(context.Background(), secrets)
 		require.Equal(t, "CERT-1\nCERT-2\n", string(bundle))
+	})
+}
+
+func TestDeleteClientCertResources(t *testing.T) {
+	ctx := context.Background()
+	esName := "my-es"
+	esNS := "my-ns"
+
+	operatorCertSecretName := OperatorClientCertSecretName(esv1.ESNamer, esName)
+	trustBundleSecretName := ClientCertTrustBundleSecretName(esv1.ESNamer, esName)
+
+	t.Run("deletes annotation, operator cert secret, and trust bundle secret", func(t *testing.T) {
+		es := &esv1.Elasticsearch{
+			ObjectMeta: metav1.ObjectMeta{
+				Namespace:   esNS,
+				Name:        esName,
+				Annotations: map[string]string{annotation.ClientAuthenticationRequiredAnnotation: "true"},
+			},
+		}
+		operatorCertSecret := &corev1.Secret{
+			ObjectMeta: metav1.ObjectMeta{Namespace: esNS, Name: operatorCertSecretName},
+		}
+		trustBundleSecret := &corev1.Secret{
+			ObjectMeta: metav1.ObjectMeta{Namespace: esNS, Name: trustBundleSecretName},
+		}
+
+		c := k8s.NewFakeClient(es, operatorCertSecret, trustBundleSecret)
+		require.NoError(t, DeleteClientCertResources(ctx, c, es, esv1.ESNamer))
+
+		// annotation removed
+		var updatedES esv1.Elasticsearch
+		require.NoError(t, c.Get(ctx, types.NamespacedName{Namespace: esNS, Name: esName}, &updatedES))
+		require.False(t, annotation.HasClientAuthenticationRequired(&updatedES))
+
+		// operator cert secret deleted
+		var s corev1.Secret
+		err := c.Get(ctx, types.NamespacedName{Namespace: esNS, Name: operatorCertSecretName}, &s)
+		require.True(t, apierrors.IsNotFound(err))
+
+		// trust bundle secret deleted
+		err = c.Get(ctx, types.NamespacedName{Namespace: esNS, Name: trustBundleSecretName}, &s)
+		require.True(t, apierrors.IsNotFound(err))
+	})
+
+	t.Run("no-op when resources already absent", func(t *testing.T) {
+		es := &esv1.Elasticsearch{
+			ObjectMeta: metav1.ObjectMeta{
+				Namespace: esNS,
+				Name:      esName,
+			},
+		}
+		c := k8s.NewFakeClient(es)
+		require.NoError(t, DeleteClientCertResources(ctx, c, es, esv1.ESNamer))
 	})
 }
