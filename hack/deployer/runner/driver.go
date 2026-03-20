@@ -55,23 +55,12 @@ func GetPlan(plans []Plan, config RunConfig, clientBuildDefDir string) (Plan, er
 	return plan, nil
 }
 
-// DriverOptions holds optional settings that can be passed when creating a driver.
-type DriverOptions struct {
-	DryRun bool
-}
-
-// GetDriver picks plan based on the run config and returns the appropriate driver.
+// GetDriver picks plan based on the run config and returns the appropriate driver
 func GetDriver(plans []Plan, config RunConfig, clientBuildDefDir string) (Driver, error) {
-	return GetDriverWithOptions(plans, config, clientBuildDefDir, DriverOptions{})
-}
-
-// GetDriverWithOptions picks plan based on the run config and returns the appropriate driver with the given options.
-func GetDriverWithOptions(plans []Plan, config RunConfig, clientBuildDefDir string, opts DriverOptions) (Driver, error) {
 	plan, err := GetPlan(plans, config, clientBuildDefDir)
 	if err != nil {
 		return nil, err
 	}
-	plan.DryRun = opts.DryRun
 
 	driverFactory, err := chooseFactory(plan.Provider)
 	if err != nil {

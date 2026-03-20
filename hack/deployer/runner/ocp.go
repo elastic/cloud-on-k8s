@@ -621,10 +621,6 @@ func (d *OCPDriver) Cleanup(prefix string, olderThan time.Duration) error {
 			continue
 		}
 		clusterName := matches[1]
-		if d.plan.DryRun {
-			log.Printf("[dry-run] Would delete cluster %s (infra ID %s)", clusterName, infraID)
-			continue
-		}
 		d.plan.ClusterName = clusterName
 		d.plan.Ocp.InfraID = infraID
 		d.plan.Operation = DeleteAction
