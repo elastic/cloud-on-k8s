@@ -19,38 +19,19 @@ import (
 	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/k8s"
 )
 
-// ResolvedConfig holds all pre-computed configuration needed for reconciliation.
-// Computing this early allows us to detect clientAuthenticationRequired before creating the ES client,
-// and avoids duplicate config computation in BuildExpectedResources.
-type ResolvedConfig struct {
-	// NodeSetConfigs contains the merged configuration for each NodeSet.
-	NodeSetConfigs []nodespec.NodeSetConfig
-
-	// ClientAuthenticationRequired indicates whether client certificate authentication is required
-	// based on the merged configuration.
-	ClientAuthenticationRequired bool
-
-	// PolicyConfig contains StackConfigPolicy settings.
-	PolicyConfig nodespec.PolicyConfig
-
-	// ClientAuthenticationOverrideWarning is set when spec.http.tls.client.authentication is enabled
-	// but StackConfigPolicy overrides xpack.security.http.ssl.client_authentication to a non-required value.
-	ClientAuthenticationOverrideWarning string
-}
-
 // ResolveConfig computes the merged Elasticsearch configuration for all NodeSets,
 // including StackConfigPolicy settings. This is called early in the reconciliation
 // to determine clientAuthenticationRequired before creating the ES client.
-func ResolveConfig(ctx context.Context, client k8s.Client, es esv1.Elasticsearch, ipFamily corev1.IPFamily) (ResolvedConfig, error) {
+func ResolveConfig(ctx context.Context, client k8s.Client, es esv1.Elasticsearch, ipFamily corev1.IPFamily) (nodespec.ResolvedConfig, error) {
 	ver, err := version.Parse(es.Spec.Version)
 	if err != nil {
-		return ResolvedConfig{}, err
+		return nodespec.ResolvedConfig{}, err
 	}
 
 	// Get policy config from StackConfigPolicy
 	policyConfig, err := nodespec.GetPolicyConfig(ctx, client, es)
 	if err != nil {
-		return ResolvedConfig{}, err
+		return nodespec.ResolvedConfig{}, err
 	}
 
 	clientAuthenticationOverrideWarning := clientAuthenticationSpecIneffectiveWarning(
@@ -73,7 +54,7 @@ func ResolveConfig(ctx context.Context, client k8s.Client, es esv1.Elasticsearch
 		if clientAuthenticationOverrideWarning == "" {
 			userCanonicalCfg, err := commonsettings.NewCanonicalConfigFrom(userCfg.Data)
 			if err != nil {
-				return ResolvedConfig{}, err
+				return nodespec.ResolvedConfig{}, err
 			}
 			clientAuthenticationOverrideWarning = clientAuthenticationSpecIneffectiveWarning(
 				es.Spec.HTTP.TLS.Client.Authentication,
@@ -89,7 +70,7 @@ func ResolveConfig(ctx context.Context, client k8s.Client, es esv1.Elasticsearch
 			false,
 		)
 		if err != nil {
-			return ResolvedConfig{}, err
+			return nodespec.ResolvedConfig{}, err
 		}
 		if settings.HasClientAuthenticationRequired(cfg) {
 			clientAuthenticationRequired = true
@@ -98,7 +79,7 @@ func ResolveConfig(ctx context.Context, client k8s.Client, es esv1.Elasticsearch
 	}
 
 	// Second pass: build final configs with the determined client certificate validation state.
-	nodeSetConfigs := make([]nodespec.NodeSetConfig, 0, len(es.Spec.NodeSets))
+	nodeSetConfigs := make(map[string]settings.CanonicalConfig, len(es.Spec.NodeSets))
 	for _, nodeSpec := range es.Spec.NodeSets {
 		userCfg := commonv1.Config{}
 		if nodeSpec.Config != nil {
@@ -111,15 +92,12 @@ func ResolveConfig(ctx context.Context, client k8s.Client, es esv1.Elasticsearch
 			clientAuthenticationRequired,
 		)
 		if err != nil {
-			return ResolvedConfig{}, err
+			return nodespec.ResolvedConfig{}, err
 		}
-		nodeSetConfigs = append(nodeSetConfigs, nodespec.NodeSetConfig{
-			NodeSetName: nodeSpec.Name,
-			Config:      cfg,
-		})
+		nodeSetConfigs[nodeSpec.Name] = cfg
 	}
 
-	return ResolvedConfig{
+	return nodespec.ResolvedConfig{
 		NodeSetConfigs:                      nodeSetConfigs,
 		ClientAuthenticationRequired:        clientAuthenticationRequired,
 		PolicyConfig:                        policyConfig,

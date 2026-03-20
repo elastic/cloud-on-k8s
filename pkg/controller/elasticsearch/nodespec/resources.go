@@ -52,14 +52,27 @@ func (l ResourcesList) ExpectedNodeCount() int32 {
 	return l.StatefulSets().ExpectedNodeCount()
 }
 
-// NodeSetConfig holds the pre-computed merged configuration for a single NodeSet.
-type NodeSetConfig struct {
-	NodeSetName string
-	Config      settings.CanonicalConfig
+// ResolvedConfig holds all pre-computed configuration needed for reconciliation.
+// Computing this early allows us to detect clientAuthenticationRequired before creating the ES client,
+// and avoids duplicate config computation in BuildExpectedResources.
+type ResolvedConfig struct {
+	// NodeSetConfigs contains the merged configuration for each NodeSet, keyed by NodeSet name.
+	NodeSetConfigs map[string]settings.CanonicalConfig
+
+	// ClientAuthenticationRequired indicates whether client certificate authentication is required
+	// based on the merged configuration.
+	ClientAuthenticationRequired bool
+
+	// PolicyConfig contains StackConfigPolicy settings.
+	PolicyConfig PolicyConfig
+
+	// ClientAuthenticationOverrideWarning is set when spec.http.tls.client.authentication is enabled
+	// but StackConfigPolicy overrides xpack.security.http.ssl.client_authentication to a non-required value.
+	ClientAuthenticationOverrideWarning string
 }
 
 // BuildExpectedResources builds the expected Kubernetes resources for all NodeSets.
-// It uses pre-computed configs from nodeSetConfigs (computed early in reconciliation)
+// It uses pre-computed configs from ResolvedConfig (computed early in reconciliation)
 // to avoid duplicate config computation.
 func BuildExpectedResources(
 	ctx context.Context,
@@ -69,9 +82,7 @@ func BuildExpectedResources(
 	existingStatefulSets es_sset.StatefulSetList,
 	setDefaultSecurityContext bool,
 	meta metadata.Metadata,
-	nodeSetConfigs []NodeSetConfig,
-	clientAuthenticationRequired bool,
-	policyConfig PolicyConfig,
+	resolvedConfig ResolvedConfig,
 ) (ResourcesList, error) {
 	nodesResources := make(ResourcesList, 0, len(es.Spec.NodeSets))
 
@@ -81,14 +92,13 @@ func BuildExpectedResources(
 		return nil, err
 	}
 
-	for i, nodeSpec := range es.Spec.NodeSets {
-		// Get the pre-computed config for this NodeSet
-		if i >= len(nodeSetConfigs) || nodeSetConfigs[i].NodeSetName != nodeSpec.Name {
-			return nil, fmt.Errorf("nodeSetConfigs mismatch: expected config for %s at index %d", nodeSpec.Name, i)
+	for _, nodeSpec := range es.Spec.NodeSets {
+		cfg, ok := resolvedConfig.NodeSetConfigs[nodeSpec.Name]
+		if !ok {
+			return nil, fmt.Errorf("no pre-computed config for NodeSet %s", nodeSpec.Name)
 		}
-		cfg := nodeSetConfigs[i].Config
 
-		statefulSet, err := BuildStatefulSet(ctx, client, es, nodeSpec, cfg, keystoreResources, existingStatefulSets, setDefaultSecurityContext, policyConfig, meta, actualPodsRestartTriggerAnnotationValue, clientAuthenticationRequired)
+		statefulSet, err := BuildStatefulSet(ctx, client, es, nodeSpec, cfg, keystoreResources, existingStatefulSets, setDefaultSecurityContext, resolvedConfig.PolicyConfig, meta, actualPodsRestartTriggerAnnotationValue, resolvedConfig.ClientAuthenticationRequired)
 		if err != nil {
 			return nil, err
 		}

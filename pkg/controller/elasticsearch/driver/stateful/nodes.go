@@ -42,7 +42,7 @@ func (d *Driver) reconcileNodeSpecs(
 	resourcesState reconcile.ResourcesState,
 	keystoreResources *keystore.Resources,
 	meta metadata.Metadata,
-	resolvedConfig ResolvedConfig,
+	resolvedConfig nodespec.ResolvedConfig,
 ) *reconciler.Results {
 	span, ctx := apm.StartSpan(ctx, "reconcile_node_spec", tracing.SpanTypeApp)
 	defer span.End()
@@ -87,7 +87,7 @@ func (d *Driver) reconcileNodeSpecs(
 	}
 
 	// Build expected resources using pre-computed configs from ResolvedConfig.
-	expectedResources, err := nodespec.BuildExpectedResources(ctx, d.Client, d.ES, keystoreResources, actualStatefulSets, d.OperatorParameters.SetDefaultSecurityContext, meta, resolvedConfig.NodeSetConfigs, resolvedConfig.ClientAuthenticationRequired, resolvedConfig.PolicyConfig)
+	expectedResources, err := nodespec.BuildExpectedResources(ctx, d.Client, d.ES, keystoreResources, actualStatefulSets, d.OperatorParameters.SetDefaultSecurityContext, meta, resolvedConfig)
 	if err != nil {
 		return results.WithError(err)
 	}
