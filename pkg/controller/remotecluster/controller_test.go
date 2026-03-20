@@ -10,17 +10,15 @@ import (
 	"slices"
 	"testing"
 
-	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/remotecluster/keystore"
-
 	"github.com/google/go-cmp/cmp"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/util/uuid"
-
 	"github.com/stretchr/testify/assert"
+
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
-	"k8s.io/client-go/tools/record"
+	"k8s.io/apimachinery/pkg/util/uuid"
+	toolsevents "k8s.io/client-go/tools/events"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
@@ -29,6 +27,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/license"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/watches"
 	esclient "github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/client"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/remotecluster/keystore"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/k8s"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/net"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/rbac"
@@ -902,7 +901,7 @@ func TestRemoteCluster_Reconcile(t *testing.T) {
 				accessReviewer: tt.fields.accessReviewer,
 				watches:        w,
 				licenseChecker: tt.fields.licenseChecker,
-				recorder:       record.NewFakeRecorder(10),
+				recorder:       toolsevents.NewFakeRecorder(10),
 				esClientProvider: func(_ context.Context, _ k8s.Client, _ net.Dialer, _ esv1.Elasticsearch) (esclient.Client, error) {
 					return fakeESClient, nil
 				},

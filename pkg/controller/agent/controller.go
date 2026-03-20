@@ -13,7 +13,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/types"
-	"k8s.io/client-go/tools/record"
+	toolsevents "k8s.io/client-go/tools/events"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
 	"sigs.k8s.io/controller-runtime/pkg/handler"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
@@ -54,7 +54,7 @@ func newReconciler(mgr manager.Manager, params operator.Parameters) *ReconcileAg
 	client := mgr.GetClient()
 	return &ReconcileAgent{
 		Client:         client,
-		recorder:       mgr.GetEventRecorderFor(controllerName),
+		recorder:       mgr.GetEventRecorder(controllerName),
 		dynamicWatches: watches.NewDynamicWatches(),
 		Parameters:     params,
 	}
@@ -132,7 +132,7 @@ var _ reconcile.Reconciler = (*ReconcileAgent)(nil)
 // ReconcileAgent reconciles an Agent object
 type ReconcileAgent struct {
 	k8s.Client
-	recorder       record.EventRecorder
+	recorder       toolsevents.EventRecorder
 	dynamicWatches watches.DynamicWatches
 	operator.Parameters
 	// iteration is the number of times this controller has run its Reconcile method
@@ -173,7 +173,7 @@ func (r *ReconcileAgent) Reconcile(ctx context.Context, request reconcile.Reques
 	}
 
 	result, err := results.Aggregate()
-	k8s.MaybeEmitErrorEvent(r.recorder, err, agent, events.EventReconciliationError, "Reconciliation error: %v", err)
+	k8s.MaybeEmitErrorEventf(r.recorder, err, agent, events.EventReconciliationError, events.EventActionReconciliation, "Reconciliation error: %v", err)
 
 	return result, err
 }
@@ -223,7 +223,7 @@ func (r *ReconcileAgent) validate(ctx context.Context, agent agentv1alpha1.Agent
 	// Run create validations only as update validations require old object which we don't have here.
 	if _, err := agent.ValidateCreate(); err != nil {
 		logconf.FromContext(ctx).Error(err, "Validation failed")
-		k8s.MaybeEmitErrorEvent(r.recorder, err, &agent, events.EventReasonValidation, err.Error())
+		k8s.MaybeEmitErrorEvent(r.recorder, err, &agent, events.EventReasonValidation, events.EventActionValidation, err.Error())
 		return tracing.CaptureError(ctx, err)
 	}
 	return nil

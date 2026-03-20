@@ -14,7 +14,7 @@ import (
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
-	"k8s.io/client-go/tools/record"
+	toolsevents "k8s.io/client-go/tools/events"
 
 	commonv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/common/v1"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/driver"
@@ -133,7 +133,7 @@ func reconcileSecureSettings(
 	return &secret, nil
 }
 
-func retrieveUserSecrets(ctx context.Context, c k8s.Client, recorder record.EventRecorder, hasKeystore HasKeystore, userSecretSources []commonv1.NamespacedSecretSource) ([]corev1.Secret, error) {
+func retrieveUserSecrets(ctx context.Context, c k8s.Client, recorder toolsevents.EventRecorder, hasKeystore HasKeystore, userSecretSources []commonv1.NamespacedSecretSource) ([]corev1.Secret, error) {
 	userSecrets := make([]corev1.Secret, 0, len(userSecretSources))
 	for _, userSecretsRef := range userSecretSources {
 		// retrieve the secret referenced by the user in the same namespace
@@ -150,7 +150,7 @@ func retrieveUserSecrets(ctx context.Context, c k8s.Client, recorder record.Even
 	return userSecrets, nil
 }
 
-func retrieveUserSecret(ctx context.Context, c k8s.Client, recorder record.EventRecorder, hasKeystore HasKeystore, secretSrc commonv1.NamespacedSecretSource) (*corev1.Secret, bool, error) {
+func retrieveUserSecret(ctx context.Context, c k8s.Client, recorder toolsevents.EventRecorder, hasKeystore HasKeystore, secretSrc commonv1.NamespacedSecretSource) (*corev1.Secret, bool, error) {
 	secretNamespace := secretSrc.Namespace
 	secretName := secretSrc.SecretName
 	var userSecret corev1.Secret
@@ -158,7 +158,7 @@ func retrieveUserSecret(ctx context.Context, c k8s.Client, recorder record.Event
 	if err != nil && apierrors.IsNotFound(err) {
 		msg := "Secure settings secret not found"
 		ulog.FromContext(ctx).Info(msg, "namespace", secretNamespace, "secret_name", secretName)
-		recorder.Event(hasKeystore, corev1.EventTypeWarning, events.EventReasonUnexpected, fmt.Sprintf("%s: %s/%s", msg, secretNamespace, secretName))
+		k8s.EmitEventf(recorder, hasKeystore, corev1.EventTypeWarning, events.EventReasonUnexpected, events.EventActionGetSecret, "%s: %s/%s", msg, secretNamespace, secretName)
 		return nil, false, nil
 	} else if err != nil {
 		return nil, false, err

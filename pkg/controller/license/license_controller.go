@@ -15,7 +15,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	utilerrors "k8s.io/apimachinery/pkg/util/errors"
-	"k8s.io/client-go/tools/record"
+	toolsevents "k8s.io/client-go/tools/events"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
 	"sigs.k8s.io/controller-runtime/pkg/handler"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
@@ -80,7 +80,7 @@ func newReconciler(mgr manager.Manager, params operator.Parameters) *ReconcileLi
 		Client:     c,
 		Parameters: params,
 		checker:    license.NewLicenseChecker(c, params.OperatorNamespace),
-		recorder:   mgr.GetEventRecorderFor(name),
+		recorder:   mgr.GetEventRecorder(name),
 	}
 }
 
@@ -141,7 +141,7 @@ type ReconcileLicenses struct {
 	// iteration is the number of times this controller has run its Reconcile method
 	iteration uint64
 	checker   license.Checker
-	recorder  record.EventRecorder
+	recorder  toolsevents.EventRecorder
 }
 
 // findLicense tries to find the best Elastic stack license available.
@@ -157,11 +157,11 @@ func (r *ReconcileLicenses) findLicense(ctx context.Context, c k8s.Client, check
 	return license.BestMatch(ctx, minVersion, licenseList, valid)
 }
 
-func recordInvalidLicenseEvents(errs []error, recorder record.EventRecorder) {
+func recordInvalidLicenseEvents(errs []error, recorder toolsevents.EventRecorder) {
 	for _, err := range errs {
 		var licenseErr *license.Error
 		if errors.As(err, &licenseErr) {
-			recorder.Event(licenseErr.Source, corev1.EventTypeWarning, events.EventReasonInvalidLicense, err.Error())
+			k8s.EmitEvent(recorder, licenseErr.Source, corev1.EventTypeWarning, events.EventReasonInvalidLicense, events.EventActionLicenseCheck, err.Error())
 		}
 	}
 }
