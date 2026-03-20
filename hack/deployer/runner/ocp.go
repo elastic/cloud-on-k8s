@@ -242,7 +242,12 @@ func (d *OCPDriver) delete() error {
 	// No need to check whether this `rm` command succeeds
 	_ = exec.NewCommand("gcloud storage rm -r gs://{{.OCPStateBucket}}/{{.ClusterName}}").AsTemplate(d.bucketParams()).WithoutStreaming().Run()
 	d.runtimeState.SafeToDeleteWorkdir = true
-	return d.removeKubeconfig()
+	// Only remove kubeconfig when it was merged by this deployer (normal create/delete flow).
+	// During cleanup the cluster was created by a different CI job, there is no local kubeconfig to remove.
+	if d.plan.Ocp.InfraID == "" {
+		return d.removeKubeconfig()
+	}
+	return nil
 }
 
 func (d *OCPDriver) GetCredentials() error {
@@ -482,12 +487,19 @@ func (d *OCPDriver) bucketParams() map[string]any {
 }
 
 func (d *OCPDriver) runInstallerCommand(action string) error {
+	// Use warn level for create (cluster credentials are logged at info level),
+	// info level for destroy (useful to see which resources are being deleted).
+	logLevel := "warn"
+	if action == "destroy" {
+		logLevel = "info"
+	}
 	params := map[string]any{
 		"ClusterStateDirBase": filepath.Base(d.runtimeState.ClusterStateDir),
 		"SharedVolume":        env.SharedVolumeName(),
 		"GCloudCredsPath":     filepath.Join("/home", GCPDir, ServiceAccountFilename),
 		"OCPToolsDockerImage": d.runtimeState.ClientImage,
 		"Action":              action,
+		"LogLevel":            logLevel,
 	}
 	// We are mounting the shared volume into the installer container and configure it to be the HOME directory
 	// this is mainly so that the GCloud tooling picks up the authentication information correctly as the base image is
@@ -499,7 +511,7 @@ func (d *OCPDriver) runInstallerCommand(action string) error {
 		-e GOOGLE_APPLICATION_CREDENTIALS={{.GCloudCredsPath}} \
 		-e HOME=/home \
 		{{.OCPToolsDockerImage}} \
-		/openshift-install {{.Action}} cluster --log-level warn --dir /home/{{.ClusterStateDirBase}}`)
+		/openshift-install {{.Action}} cluster --log-level {{.LogLevel}} --dir /home/{{.ClusterStateDirBase}}`)
 	return cmd.AsTemplate(params).Run()
 }
 
