@@ -38,7 +38,7 @@ func Install(globalKubectlOptions ...string) error {
 	defer os.RemoveAll(dir)
 
 	log.Println("Installing Kyverno")
-	if err := apply(k, dir, installerManifest, "install.yaml", "--server-side"); err != nil {
+	if err := apply(k, dir, installerManifest, "install.yaml"); err != nil {
 		return err
 	}
 	log.Println("Waiting for Kyverno Pod to be ready...")
@@ -47,7 +47,7 @@ func Install(globalKubectlOptions ...string) error {
 	}
 
 	log.Println("Installing Kyverno policies")
-	if err := apply(k, dir, policiesManifest, "policies.yaml", ""); err != nil {
+	if err := apply(k, dir, policiesManifest, "policies.yaml"); err != nil {
 		return err
 	}
 
@@ -55,13 +55,12 @@ func Install(globalKubectlOptions ...string) error {
 	return nil
 }
 
-func apply(k *Kubectl, workDir string, content string, tmpFilename string, args string) error {
+func apply(k *Kubectl, workDir string, content string, tmpFilename string) error {
 	path := filepath.Join(workDir, tmpFilename)
-	if err := os.WriteFile(path, []byte(content), 0o600); err != nil {
+	if err := os.WriteFile(path, []byte(content), 0600); err != nil {
 		return err
 	}
-
-	return k.NewCommand(fmt.Sprintf(`apply %s -f %s`, args, path)).Run()
+	return k.NewCommand(fmt.Sprintf(`apply -f %s`, path)).Run()
 }
 
 type Kubectl struct {
