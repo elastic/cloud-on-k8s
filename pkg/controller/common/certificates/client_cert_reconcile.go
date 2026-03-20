@@ -6,6 +6,7 @@ package certificates
 
 import (
 	"bytes"
+	"cmp"
 	"context"
 	"crypto"
 	cryptorand "crypto/rand"
@@ -15,7 +16,8 @@ import (
 	"crypto/x509/pkix"
 	"fmt"
 	"maps"
-	"sort"
+	"slices"
+	"strings"
 	"time"
 
 	corev1 "k8s.io/api/core/v1"
@@ -190,11 +192,11 @@ func discoverClientCertSecrets(ctx context.Context, c k8s.Client, ownerName, own
 func buildTrustBundleFromSecrets(ctx context.Context, secrets []corev1.Secret) []byte {
 	log := ulog.FromContext(ctx)
 
-	sort.Slice(secrets, func(i, j int) bool {
-		if secrets[i].Namespace != secrets[j].Namespace {
-			return secrets[i].Namespace < secrets[j].Namespace
-		}
-		return secrets[i].Name < secrets[j].Name
+	slices.SortFunc(secrets, func(a, b corev1.Secret) int {
+		return cmp.Or(
+			strings.Compare(a.Namespace, b.Namespace),
+			strings.Compare(a.Name, b.Name),
+		)
 	})
 
 	var buf bytes.Buffer
