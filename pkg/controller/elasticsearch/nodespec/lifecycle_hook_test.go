@@ -26,12 +26,12 @@ func TestRenderPreStopHookScript(t *testing.T) {
 		{
 			name:                         "without client authentication",
 			clientAuthenticationRequired: false,
-			goldenFile:                   "pre_stop_hook.sh",
+			goldenFile:                   "pre_stop_hook.golden",
 		},
 		{
 			name:                         "with client authentication",
 			clientAuthenticationRequired: true,
-			goldenFile:                   "pre_stop_hook_client_auth.sh",
+			goldenFile:                   "pre_stop_hook_client_auth.golden",
 		},
 	}
 
