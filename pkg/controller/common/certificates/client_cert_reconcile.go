@@ -398,11 +398,6 @@ func LoadOperatorClientCertIfExists(ctx context.Context, c k8s.Client, namer nam
 // authentication is no longer required. This should only be called after all pods have rolled
 // to the new configuration without client authentication.
 func DeleteClientCertResources(ctx context.Context, c k8s.Client, owner client.Object, namer name.Namer) error {
-	// Remove the client-authentication-required annotation
-	if err := annotation.RemoveClientAuthenticationRequiredAnnotation(ctx, c, owner); err != nil {
-		return err
-	}
-
 	ownerNSN := k8s.ExtractNamespacedName(owner)
 
 	// Delete the operator client certificate secret
@@ -414,8 +409,17 @@ func DeleteClientCertResources(ctx context.Context, c k8s.Client, owner client.O
 	}
 
 	// Delete the client certificate trust bundle secret
-	return k8s.DeleteSecretIfExists(ctx, c, types.NamespacedName{
+	if err := k8s.DeleteSecretIfExists(ctx, c, types.NamespacedName{
 		Namespace: ownerNSN.Namespace,
 		Name:      ClientCertTrustBundleSecretName(namer, ownerNSN.Name),
-	})
+	}); err != nil {
+		return err
+	}
+
+	// Remove the client-authentication-required annotation
+	if err := annotation.RemoveClientAuthenticationRequiredAnnotation(ctx, c, owner); err != nil {
+		return err
+	}
+
+	return nil
 }

@@ -7,6 +7,8 @@ package certificates
 import (
 	"context"
 	"crypto/x509"
+	"fmt"
+	"slices"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -15,6 +17,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/client/interceptor"
 
 	commonv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/common/v1"
 	esv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/elasticsearch/v1"
@@ -405,54 +408,89 @@ func TestBuildTrustBundleFromSecrets(t *testing.T) {
 }
 
 func TestDeleteClientCertResources(t *testing.T) {
-	ctx := context.Background()
 	esName := "my-es"
 	esNS := "my-ns"
 
-	operatorCertSecretName := OperatorClientCertSecretName(esv1.ESNamer, esName)
-	trustBundleSecretName := ClientCertTrustBundleSecretName(esv1.ESNamer, esName)
+	operatorCertSecret := &corev1.Secret{
+		ObjectMeta: metav1.ObjectMeta{Namespace: esNS, Name: OperatorClientCertSecretName(esv1.ESNamer, esName)},
+	}
+	trustBundleSecret := &corev1.Secret{
+		ObjectMeta: metav1.ObjectMeta{Namespace: esNS, Name: ClientCertTrustBundleSecretName(esv1.ESNamer, esName)},
+	}
 
-	t.Run("deletes annotation, operator cert secret, and trust bundle secret", func(t *testing.T) {
-		es := &esv1.Elasticsearch{
-			ObjectMeta: metav1.ObjectMeta{
-				Namespace:   esNS,
-				Name:        esName,
-				Annotations: map[string]string{annotation.ClientAuthenticationRequiredAnnotation: "true"},
+	tests := []struct {
+		name                  string
+		extraInitialObjs      []client.Object
+		interceptorFuncs      *interceptor.Funcs
+		wantErr               bool
+		wantAnnotationPresent bool
+	}{
+		{
+			name:             "deletes annotation, operator cert secret, and trust bundle secret",
+			extraInitialObjs: []client.Object{operatorCertSecret, trustBundleSecret},
+		},
+		{
+			name: "no-op when resources already absent",
+		},
+		{
+			name:             "annotation preserved when operator cert secret deletion fails",
+			extraInitialObjs: []client.Object{operatorCertSecret, trustBundleSecret},
+			interceptorFuncs: &interceptor.Funcs{
+				Delete: func(ctx context.Context, c client.WithWatch, obj client.Object, opts ...client.DeleteOption) error {
+					if obj.GetName() == operatorCertSecret.GetName() {
+						return fmt.Errorf("simulated delete failure")
+					}
+					return c.Delete(ctx, obj, opts...)
+				},
 			},
-		}
-		operatorCertSecret := &corev1.Secret{
-			ObjectMeta: metav1.ObjectMeta{Namespace: esNS, Name: operatorCertSecretName},
-		}
-		trustBundleSecret := &corev1.Secret{
-			ObjectMeta: metav1.ObjectMeta{Namespace: esNS, Name: trustBundleSecretName},
-		}
-
-		c := k8s.NewFakeClient(es, operatorCertSecret, trustBundleSecret)
-		require.NoError(t, DeleteClientCertResources(ctx, c, es, esv1.ESNamer))
-
-		// annotation removed
-		var updatedES esv1.Elasticsearch
-		require.NoError(t, c.Get(ctx, types.NamespacedName{Namespace: esNS, Name: esName}, &updatedES))
-		require.False(t, annotation.HasClientAuthenticationRequired(&updatedES))
-
-		// operator cert secret deleted
-		var s corev1.Secret
-		err := c.Get(ctx, types.NamespacedName{Namespace: esNS, Name: operatorCertSecretName}, &s)
-		require.True(t, apierrors.IsNotFound(err))
-
-		// trust bundle secret deleted
-		err = c.Get(ctx, types.NamespacedName{Namespace: esNS, Name: trustBundleSecretName}, &s)
-		require.True(t, apierrors.IsNotFound(err))
-	})
-
-	t.Run("no-op when resources already absent", func(t *testing.T) {
-		es := &esv1.Elasticsearch{
-			ObjectMeta: metav1.ObjectMeta{
-				Namespace: esNS,
-				Name:      esName,
+			wantErr:               true,
+			wantAnnotationPresent: true,
+		},
+		{
+			name:             "annotation preserved when trust bundle secret deletion fails",
+			extraInitialObjs: []client.Object{operatorCertSecret, trustBundleSecret},
+			interceptorFuncs: &interceptor.Funcs{
+				Delete: func(ctx context.Context, c client.WithWatch, obj client.Object, opts ...client.DeleteOption) error {
+					if obj.GetName() == trustBundleSecret.GetName() {
+						return fmt.Errorf("simulated delete failure")
+					}
+					return c.Delete(ctx, obj, opts...)
+				},
 			},
-		}
-		c := k8s.NewFakeClient(es)
-		require.NoError(t, DeleteClientCertResources(ctx, c, es, esv1.ESNamer))
-	})
+			wantErr:               true,
+			wantAnnotationPresent: true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			es := &esv1.Elasticsearch{
+				ObjectMeta: metav1.ObjectMeta{
+					Namespace: esNS,
+					Name:      esName,
+					Annotations: map[string]string{
+						annotation.ClientAuthenticationRequiredAnnotation: "true",
+					},
+				},
+			}
+
+			ctx := context.Background()
+			builder := k8s.NewFakeClientBuilder(slices.Concat([]client.Object{es}, tt.extraInitialObjs)...)
+			if tt.interceptorFuncs != nil {
+				builder = builder.WithInterceptorFuncs(*tt.interceptorFuncs)
+			}
+			c := builder.Build()
+
+			err := DeleteClientCertResources(ctx, c, es, esv1.ESNamer)
+			if tt.wantErr {
+				require.Error(t, err)
+			} else {
+				require.NoError(t, err)
+			}
+
+			var updatedES esv1.Elasticsearch
+			require.NoError(t, c.Get(ctx, types.NamespacedName{Namespace: esNS, Name: esName}, &updatedES))
+			require.Equal(t, tt.wantAnnotationPresent, annotation.HasClientAuthenticationRequired(&updatedES))
+		})
+	}
 }
