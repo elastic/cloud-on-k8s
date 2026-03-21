@@ -8,7 +8,6 @@ import (
 	"bytes"
 	"path"
 	"reflect"
-	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -576,21 +575,4 @@ func TestHasClientAuthenticationRequired(t *testing.T) {
 			require.Equal(t, tt.want, HasClientAuthenticationRequired(cfg))
 		})
 	}
-}
-
-// testGetNestedValue traverses a nested map using a dot-separated key path.
-func testGetNestedValue(cfg map[string]any, key string) (any, bool) {
-	parts := strings.Split(key, ".")
-	current := any(cfg)
-	for _, part := range parts {
-		m, ok := current.(map[string]any)
-		if !ok {
-			return nil, false
-		}
-		current, ok = m[part]
-		if !ok {
-			return nil, false
-		}
-	}
-	return current, true
 }

@@ -7,7 +7,6 @@ package stateful
 
 import (
 	"context"
-	"time"
 
 	corev1 "k8s.io/api/core/v1"
 
@@ -16,12 +15,6 @@ import (
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/reconciler"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/driver"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/driver/shared"
-)
-
-const (
-	enterpriseFeaturesDisabledRequeue = 5 * time.Minute
-
-	enterpriseFeaturesDisabledMsg = "Client certificate authentication is an enterprise feature. Enterprise features are disabled"
 )
 
 // Driver is the stateful Elasticsearch driver implementation using StatefulSets.

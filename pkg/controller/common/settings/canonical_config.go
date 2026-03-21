@@ -174,7 +174,7 @@ func (c *CanonicalConfig) AppendString(key, value string) error {
 	}
 
 	existing, _ := getNestedValue(cfg, key)
-	var values []string
+	values := make([]string, 0, 1)
 	switch v := existing.(type) {
 	case nil:
 		// key doesn't exist yet

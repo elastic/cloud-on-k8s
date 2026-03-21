@@ -629,7 +629,9 @@ func TestCanonicalConfig_AppendString(t *testing.T) {
 			case []any:
 				var strs []string
 				for _, item := range v {
-					strs = append(strs, item.(string))
+					s, ok := item.(string)
+					require.True(t, ok, "expected string, got %T", item)
+					strs = append(strs, s)
 				}
 				require.Equal(t, tt.wantVals, strs)
 			default:
