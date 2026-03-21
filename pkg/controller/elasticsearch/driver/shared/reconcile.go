@@ -159,13 +159,13 @@ func ReconcileSharedResources(
 	}
 
 	// Reconcile operator client certificate and trust bundle of client certificates.
+	// Unlike the HTTP cert reconciliation above, a failure here does not prevent subsequent steps:
+	// the ES client is still created (without a client cert), esReachable becomes false if client auth
+	// is required, and subsequent steps should handle that gracefully with a requeue.
 	operatorClientCert, clientCertResults := certificates.ReconcileOperatorClientCertAndTrustBundle(
 		ctx, d, &es, clientAuthenticationRequired, params.OperatorParameters.CertRotation, meta,
 	)
 	results.WithResults(clientCertResults)
-	if clientCertResults.HasError() {
-		return nil, results
-	}
 
 	// Start the ES observer
 	minVersion, err := version.MinInPods(resourcesState.CurrentPods, label.VersionLabelName)
