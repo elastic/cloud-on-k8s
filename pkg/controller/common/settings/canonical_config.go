@@ -5,7 +5,9 @@
 package settings
 
 import (
+	"fmt"
 	"reflect"
+	"slices"
 	"sort"
 	"strconv"
 	"strings"
@@ -123,6 +125,19 @@ func (c *CanonicalConfig) String(key string) (string, error) {
 	return c.asUCfg().String(key, -1, Options...)
 }
 
+func (c *CanonicalConfig) UnpackChild(key string, cfg any) error {
+	if reflect.ValueOf(cfg).Kind() != reflect.Ptr {
+		panic("UnpackChild expects a struct pointer as argument")
+	}
+
+	childCfg, err := c.asUCfg().Child(key, -1, Options...)
+	if err != nil {
+		return err
+	}
+
+	return childCfg.Unpack(cfg, Options...)
+}
+
 // Unpack returns a typed config given a struct pointer.
 func (c *CanonicalConfig) Unpack(cfg any) error {
 	if reflect.ValueOf(cfg).Kind() != reflect.Ptr {
@@ -144,6 +159,55 @@ func (c *CanonicalConfig) MergeWith(cfgs ...*CanonicalConfig) error {
 		}
 	}
 	return nil
+}
+
+// AppendString appends value to the given key, handling the case where the key
+// may currently hold a scalar string or an array. If the value is already present, this is a no-op.
+func (c *CanonicalConfig) AppendString(key, value string) error {
+	if c == nil {
+		return errors.New("config is nil")
+	}
+
+	var cfg map[string]any
+	if err := c.Unpack(&cfg); err != nil {
+		return err
+	}
+
+	existing, _ := getNestedValue(cfg, key)
+	var values []string
+	switch v := existing.(type) {
+	case nil:
+		// key doesn't exist yet
+	case string:
+		if v == value {
+			return nil
+		}
+		// scalar string must be preserved since MergeWith would overwrite it
+		values = []string{v}
+	case []string:
+		if slices.Contains(v, value) {
+			return nil
+		}
+	case []any:
+		for i, item := range v {
+			s, ok := item.(string)
+			if !ok {
+				return fmt.Errorf("%s[%d]: expected string, got %T", key, i, item)
+			}
+			if s == value {
+				return nil
+			}
+		}
+	default:
+		return fmt.Errorf("%s: expected string or []string, got %T", key, existing)
+	}
+
+	values = append(values, value)
+	toMerge, err := NewCanonicalConfigFrom(map[string]any{key: values})
+	if err != nil {
+		return err
+	}
+	return c.MergeWith(toMerge)
 }
 
 // HasKeys returns all keys in c that are also in keys
@@ -322,6 +386,24 @@ func asUntypedSlice(l, r any) ([]any, []any, error) {
 		return nil, nil, errors.Errorf("slice assertion failed for l: %t r: %t", ok, ok2)
 	}
 	return lhs, rhs, nil
+}
+
+// getNestedValue traverses a nested map structure using a dot-separated key path.
+func getNestedValue(cfg map[string]any, key string) (any, bool) {
+	parts := strings.Split(key, ".")
+	current := any(cfg)
+
+	for _, part := range parts {
+		m, ok := current.(map[string]any)
+		if !ok {
+			return nil, false
+		}
+		current, ok = m[part]
+		if !ok {
+			return nil, false
+		}
+	}
+	return current, true
 }
 
 func (c *CanonicalConfig) asUCfg() *ucfg.Config {

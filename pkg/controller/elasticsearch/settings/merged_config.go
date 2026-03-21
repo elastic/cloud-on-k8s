@@ -7,8 +7,6 @@ package settings
 import (
 	"fmt"
 	"path"
-	"slices"
-	"strings"
 
 	corev1 "k8s.io/api/core/v1"
 
@@ -218,73 +216,8 @@ func HasClientAuthenticationRequired(cfg CanonicalConfig) bool {
 // appendClientTrustBundle appends the client trust bundle path to the HTTP SSL certificate authorities.
 // This preserves any user-specified CAs while ensuring the trust bundle is included.
 func appendClientTrustBundle(config *common.CanonicalConfig) error {
-	trustBundlePath := path.Join(volume.ClientCertificatesTrustBundleMountPath, certificates.ClientCertificatesTrustBundleFileName)
-
-	// Unpack the config to get the current value
-	var cfg map[string]any
-	if err := config.Unpack(&cfg); err != nil {
-		return fmt.Errorf("failed to unpack config: %w", err)
-	}
-
-	var casToMerge []string //nolint:prealloc
-	var existingCAs []string
-	if existing, ok := getNestedValue(cfg, esv1.XPackSecurityHttpSslCertificateAuthorities); ok {
-		switch v := existing.(type) {
-		case nil:
-			// esv1.XPackSecurityHttpSslCertificateAuthorities doesn't exist
-		case string:
-			existingCAs = []string{v}
-			// If esv1.XPackSecurityHttpSslCertificateAuthorities is set as a single string
-			// capture it in casToMerge because MergeWith below will overwrite it.
-			casToMerge = []string{v}
-		case []string:
-			existingCAs = v
-		case []any:
-			for i, item := range v {
-				s, ok := item.(string)
-				if !ok {
-					return fmt.Errorf("%s[%d]: expected string, got %T", esv1.XPackSecurityHttpSslCertificateAuthorities, i, item)
-				}
-				existingCAs = append(existingCAs, s)
-			}
-		default:
-			return fmt.Errorf("%s: expected string or []string, got %T", esv1.XPackSecurityHttpSslCertificateAuthorities, existing)
-		}
-	}
-
-	// Check if trust bundle path is already present
-	if slices.Contains(existingCAs, trustBundlePath) {
-		return nil // Already present, nothing to do
-	}
-
-	// Append trust bundle path and merge as a new config to handle type conversion properly
-	casToMerge = append(casToMerge, trustBundlePath)
-	trustBundleConfig, err := common.NewCanonicalConfigFrom(map[string]any{
-		esv1.XPackSecurityHttpSslCertificateAuthorities: casToMerge,
-	})
-	if err != nil {
-		return fmt.Errorf("failed to create trust bundle config: %w", err)
-	}
-	if err := config.MergeWith(trustBundleConfig); err != nil {
-		return fmt.Errorf("failed to merge trust bundle config: %w", err)
-	}
-	return nil
-}
-
-// getNestedValue traverses a nested map structure using a dot-separated key path.
-func getNestedValue(cfg map[string]any, key string) (any, bool) {
-	parts := strings.Split(key, ".")
-	current := any(cfg)
-
-	for _, part := range parts {
-		m, ok := current.(map[string]any)
-		if !ok {
-			return nil, false
-		}
-		current, ok = m[part]
-		if !ok {
-			return nil, false
-		}
-	}
-	return current, true
+	return config.AppendString(
+		esv1.XPackSecurityHttpSslCertificateAuthorities,
+		path.Join(volume.ClientCertificatesTrustBundleMountPath, certificates.ClientCertificatesTrustBundleFileName),
+	)
 }

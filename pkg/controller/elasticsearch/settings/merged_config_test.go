@@ -8,6 +8,7 @@ import (
 	"bytes"
 	"path"
 	"reflect"
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -476,7 +477,7 @@ func Test_appendClientTrustBundle(t *testing.T) {
 			name: "invalid certificate_authorities entries",
 			cfg: map[string]any{
 				esv1.XPackSecurityHttpSslCertificateAuthorities: []any{
-					clientTrustBundle,
+					"/some/other/ca.crt",
 					1234, // invalid
 				},
 			},
@@ -527,14 +528,17 @@ func Test_appendClientTrustBundle(t *testing.T) {
 				return
 			}
 			require.NoError(t, err)
-			var cfgMap map[string]any
-			require.NoError(t, cfg.Unpack(&cfgMap))
-			cas, _ := getNestedValue(cfgMap, esv1.XPackSecurityHttpSslCertificateAuthorities)
-			kind := reflect.TypeOf(cas).Kind()
-			if kind != reflect.Array && kind != reflect.Slice {
-				assert.EqualValues(t, tt.expectedCAs, cas)
-			} else {
-				assert.ElementsMatch(t, tt.expectedCAs, cas)
+			switch reflect.TypeOf(tt.expectedCAs).Kind() {
+			case reflect.String:
+				ca, err := cfg.String(esv1.XPackSecurityHttpSslCertificateAuthorities)
+				require.NoError(t, err)
+				assert.EqualValues(t, tt.expectedCAs, ca)
+			case reflect.Array, reflect.Slice:
+				var CAs []any
+				require.NoError(t, cfg.UnpackChild(esv1.XPackSecurityHttpSslCertificateAuthorities, &CAs))
+				assert.ElementsMatch(t, tt.expectedCAs, CAs)
+			default:
+				t.Fatalf("unexpected type of CAs")
 			}
 		})
 	}
@@ -572,4 +576,21 @@ func TestHasClientAuthenticationRequired(t *testing.T) {
 			require.Equal(t, tt.want, HasClientAuthenticationRequired(cfg))
 		})
 	}
+}
+
+// testGetNestedValue traverses a nested map using a dot-separated key path.
+func testGetNestedValue(cfg map[string]any, key string) (any, bool) {
+	parts := strings.Split(key, ".")
+	current := any(cfg)
+	for _, part := range parts {
+		m, ok := current.(map[string]any)
+		if !ok {
+			return nil, false
+		}
+		current, ok = m[part]
+		if !ok {
+			return nil, false
+		}
+	}
+	return current, true
 }
