@@ -222,7 +222,7 @@ func ensureClientCertificateSecretContents(
 		privateKey = generatedPrivateKey
 
 		// Use PKCS#8 encoding for client certificate keys to ensure compatibility with
-		// all elastic stack components
+		// all Elastic Stack components.
 		// Note: Some Java-based applications, such as Logstash, require PKCS#8 format.
 		encodedKey, err := EncodePEMPKCS8PrivateKey(privateKey)
 		if err != nil {
