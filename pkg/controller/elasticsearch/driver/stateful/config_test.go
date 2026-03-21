@@ -85,7 +85,7 @@ func Test_detectClientAuthenticationRequired(t *testing.T) {
 		},
 		{
 			name: "enterprise enabled: warning when user manual config overrides to optional",
-			es: newES(true, &commonv1.Config{Data: map[string]interface{}{
+			es: newES(true, &commonv1.Config{Data: map[string]any{
 				esv1.XPackSecurityHttpSslClientAuthentication: "optional",
 			}}),
 			enterpriseFeaturesEnabled: true,
