@@ -227,11 +227,8 @@ func GetSecretIfExists(ctx context.Context, c Client, key types.NamespacedName) 
 // DeleteSecretIfExists deletes the secret identified by key if exists.
 func DeleteSecretIfExists(ctx context.Context, c Client, key types.NamespacedName) error {
 	secret, err := GetSecretIfExists(ctx, c, key)
-	if err != nil {
+	if err != nil || secret == nil {
 		return err
-	}
-	if secret == nil {
-		return nil
 	}
 
 	err = c.Delete(ctx, secret)

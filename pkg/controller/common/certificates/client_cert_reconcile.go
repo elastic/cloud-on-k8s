@@ -384,11 +384,8 @@ func ParseTLSCertificate(secret corev1.Secret) (*tls.Certificate, error) {
 func LoadOperatorClientCertIfExists(ctx context.Context, c k8s.Client, namer name.Namer, namespace, ownerName string) (*tls.Certificate, error) {
 	secretName := OperatorClientCertSecretName(namer, ownerName)
 	secret, err := k8s.GetSecretIfExists(ctx, c, types.NamespacedName{Namespace: namespace, Name: secretName})
-	if err != nil {
+	if err != nil || secret == nil {
 		return nil, err
-	}
-	if secret == nil {
-		return nil, nil
 	}
 	return ParseTLSCertificate(*secret)
 }
