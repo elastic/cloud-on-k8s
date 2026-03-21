@@ -608,6 +608,11 @@ func validateRestartTriggerWarnings(ctx context.Context, k8sClient k8s.Client, o
 	return ""
 }
 
+// validClientAuthentication checks that client certificate authentication is only enabled with an enterprise license.
+// This intentionally only gates spec.http.tls.client.authentication (the ECK-managed path) and does not check
+// the raw config path (xpack.security.http.ssl.client_authentication) for two reasons:
+// 1. Gating the raw config path would be a breaking change for users who manually configured client auth before this feature.
+// 2. StackConfigPolicy-driven client auth uses the raw config path and is already gated by its own enterprise license check.
 func validClientAuthentication(ctx context.Context, es esv1.Elasticsearch, checker license.Checker) field.ErrorList {
 	if !es.Spec.HTTP.TLS.Client.Authentication {
 		return nil
@@ -621,7 +626,7 @@ func validClientAuthentication(ctx context.Context, es esv1.Elasticsearch, check
 		return field.ErrorList{
 			field.Forbidden(
 				field.NewPath("spec").Child("http", "tls", "client", "authentication"),
-				"client certificate authentication is an enterprise feature. Enterprise features are disabled",
+				"client certificate authentication requires an enterprise license",
 			),
 		}
 	}
