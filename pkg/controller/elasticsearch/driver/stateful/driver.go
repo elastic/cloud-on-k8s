@@ -16,7 +16,6 @@ import (
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/reconciler"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/driver"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/driver/shared"
-	ulog "github.com/elastic/cloud-on-k8s/v3/pkg/utils/log"
 )
 
 const (
@@ -41,7 +40,7 @@ var _ commondriver.Interface = (*Driver)(nil)
 func (d *Driver) Reconcile(ctx context.Context) *reconciler.Results {
 	results := reconciler.NewResult(ctx)
 
-	enabled, err := d.LicenseChecker.EnterpriseFeaturesEnabled(ctx)
+	enterpriseFeaturesEnabled, err := d.LicenseChecker.EnterpriseFeaturesEnabled(ctx)
 	if err != nil {
 		return results.WithError(err)
 	}
@@ -49,16 +48,9 @@ func (d *Driver) Reconcile(ctx context.Context) *reconciler.Results {
 	// Resolve configuration first. This computes merged configs for all NodeSets
 	// (including StackConfigPolicy) and detects clientAuthenticationRequired early,
 	// before we create the ES client.
-	resolvedConfig, err := ResolveConfig(ctx, d.Client, d.ES, d.OperatorParameters.IPFamily)
+	resolvedConfig, err := ResolveConfig(ctx, d.Client, d.ES, d.OperatorParameters.IPFamily, enterpriseFeaturesEnabled)
 	if err != nil {
 		return results.WithError(err)
-	}
-
-	if resolvedConfig.ClientAuthenticationRequired && !enabled {
-		log := ulog.FromContext(ctx)
-		log.Info(enterpriseFeaturesDisabledMsg, "namespace", d.ES.Namespace, "es_name", d.ES.Name)
-		d.ReconcileState.AddEvent(corev1.EventTypeWarning, events.EventReconciliationError, enterpriseFeaturesDisabledMsg)
-		return results.WithRequeue(enterpriseFeaturesDisabledRequeue)
 	}
 
 	if resolvedConfig.ClientAuthenticationOverrideWarning != "" {

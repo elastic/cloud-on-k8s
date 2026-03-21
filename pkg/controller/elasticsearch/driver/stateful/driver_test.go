@@ -9,20 +9,10 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
-	corev1 "k8s.io/api/core/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/utils/ptr"
 
-	commonv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/common/v1"
-	esv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/elasticsearch/v1"
-	commonlicense "github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/license"
-	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/operator"
 	esclient "github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/client"
-	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/driver"
-	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/reconcile"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/user"
-	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/k8s"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/set"
 )
 
@@ -173,57 +163,4 @@ func (f *fakeSecurityClient) withFileTokens(namespacedService, tokenName string,
 	}
 	f.serviceAccountCredentials[namespacedService] = serviceAccountCredential
 	return f
-}
-
-func TestDriver_Reconcile_ClientAuthenticationWithoutEnterpriseLicense(t *testing.T) {
-	es := esv1.Elasticsearch{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      "test-es",
-			Namespace: "default",
-		},
-		Spec: esv1.ElasticsearchSpec{
-			Version: "8.17.0",
-			HTTP: commonv1.HTTPConfigWithClientOptions{
-				TLS: commonv1.TLSWithClientOptions{
-					Client: commonv1.ClientOptions{
-						Authentication: true,
-					},
-				},
-			},
-			NodeSets: []esv1.NodeSet{
-				{
-					Name:  "default",
-					Count: 1,
-				},
-			},
-		},
-	}
-
-	reconcileState, err := reconcile.NewState(es)
-	require.NoError(t, err)
-
-	d := &Driver{
-		BaseDriver: driver.BaseDriver{
-			Parameters: driver.Parameters{
-				ES:             es,
-				Client:         k8s.NewFakeClient(&es),
-				LicenseChecker: commonlicense.MockLicenseChecker{EnterpriseEnabled: false},
-				ReconcileState: reconcileState,
-				OperatorParameters: operator.Parameters{
-					IPFamily: corev1.IPv4Protocol,
-				},
-			},
-		},
-	}
-
-	results := d.Reconcile(context.Background())
-	result, err := results.Aggregate()
-
-	require.NoError(t, err, "should not return an error, just requeue")
-	assert.Equal(t, enterpriseFeaturesDisabledRequeue, result.RequeueAfter, "should requeue after 5 minutes")
-
-	events := reconcileState.Events()
-	require.Len(t, events, 1, "expected exactly one event")
-	assert.Equal(t, "ReconciliationError", events[0].Reason)
-	assert.Equal(t, enterpriseFeaturesDisabledMsg, events[0].Message)
 }
