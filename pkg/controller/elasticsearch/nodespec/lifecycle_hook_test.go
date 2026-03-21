@@ -5,15 +5,11 @@
 package nodespec
 
 import (
-	"flag"
-	"os"
-	"path/filepath"
 	"testing"
 
+	"github.com/gkampitakis/go-snaps/snaps"
 	"github.com/stretchr/testify/require"
 )
-
-var updateGolden = flag.Bool("update-golden", false, "update golden files")
 
 func TestRenderPreStopHookScript(t *testing.T) {
 	const svcURL = "https://test-es-http.default.svc:9200"
@@ -21,17 +17,14 @@ func TestRenderPreStopHookScript(t *testing.T) {
 	tests := []struct {
 		name                         string
 		clientAuthenticationRequired bool
-		goldenFile                   string
 	}{
 		{
 			name:                         "without client authentication",
 			clientAuthenticationRequired: false,
-			goldenFile:                   "pre_stop_hook.golden",
 		},
 		{
 			name:                         "with client authentication",
 			clientAuthenticationRequired: true,
-			goldenFile:                   "pre_stop_hook_client_auth.golden",
 		},
 	}
 
@@ -39,17 +32,7 @@ func TestRenderPreStopHookScript(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			got, err := RenderPreStopHookScript(svcURL, tt.clientAuthenticationRequired)
 			require.NoError(t, err)
-
-			goldenPath := filepath.Join("testdata", tt.goldenFile)
-
-			if *updateGolden {
-				require.NoError(t, os.WriteFile(goldenPath, []byte(got), 0644))
-				return
-			}
-
-			want, err := os.ReadFile(goldenPath)
-			require.NoError(t, err)
-			require.Equal(t, string(want), got, "rendered script does not match golden file %s; run with -update-golden to update", tt.goldenFile)
+			snaps.MatchSnapshot(t, got)
 		})
 	}
 }
