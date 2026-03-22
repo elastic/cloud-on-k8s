@@ -15,6 +15,7 @@ import (
 	"crypto/x509"
 	"crypto/x509/pkix"
 	"fmt"
+	"maps"
 	"slices"
 	"strings"
 	"time"
@@ -84,7 +85,7 @@ func (r Reconciler) ReconcileClientCertificate(
 		ObjectMeta: k8s.ToObjectMeta(secretNSN),
 		Data:       make(map[string][]byte),
 	}
-	expected.Labels = utilmaps.Merge(r.Metadata.Labels, extraLabels)
+	expected.Labels = utilmaps.Merge(maps.Clone(r.Metadata.Labels), extraLabels)
 	expected.Annotations = r.Metadata.Annotations
 
 	// Seed with existing data so ensureClientCertificateSecretContents can
