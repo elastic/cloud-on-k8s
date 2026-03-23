@@ -109,6 +109,15 @@ func (v *Verifier) ValidSignature(l EnterpriseLicense) error {
 	return nil
 }
 
+// fingerprintResult represents the outcome of a fingerprint check.
+type fingerprintResult int
+
+const (
+	fingerprintUnparseable fingerprintResult = iota // format not recognized
+	fingerprintMismatch                             // parsed successfully but doesn't match
+	fingerprintMatch                                // parsed and matches
+)
+
 // checkKeyFingerprint compares the embedded public key fingerprint against the verifier's
 // public key. The fingerprint format depends on the license signature version:
 //   - v1–v3: base64-encoded, AES-ECB-encrypted DER public key
@@ -117,58 +126,54 @@ func (v *Verifier) ValidSignature(l EnterpriseLicense) error {
 // Returns a specific error if the keys differ, indicating the wrong license type was used.
 // Returns nil if the fingerprint cannot be decoded, deferring to the RSA signature check.
 func (v *Verifier) checkKeyFingerprint(fingerprint []byte) error {
-	if v.checkKeyFingerprintSHA256(fingerprint) || v.checkKeyFingerprintEncrypted(fingerprint) {
-		return nil
-	}
-	// If at least one method could parse the fingerprint but it didn't match, report the mismatch.
-	// We detect "parseable but mismatched" by trying the formats again — if either parse step
-	// succeeds (returns a non-nil result) but didn't match above, the key is wrong.
-	if v.canParseAsSHA256Fingerprint(fingerprint) || v.canParseAsEncryptedFingerprint(fingerprint) {
-		return errors.New("license signature was issued for a different product; ensure you are using an Orchestration license, not an Elastic Stack license")
+	for _, check := range []func([]byte) fingerprintResult{
+		v.matchKeyFingerprintSHA256,
+		v.matchKeyFingerprintEncrypted,
+	} {
+		switch check(fingerprint) {
+		case fingerprintMatch:
+			return nil
+		case fingerprintMismatch:
+			return errors.New("license signature was issued for a different product; ensure you are using an Orchestration license, not an Elastic Stack license")
+		}
 	}
 	// Fingerprint could not be parsed in any known format; fall through to RSA verification.
 	return nil
 }
 
-// checkKeyFingerprintSHA256 returns true if fingerprint is a 32-byte SHA-256 hash
-// that matches the verifier's public key (v4+ format).
-func (v *Verifier) checkKeyFingerprintSHA256(fingerprint []byte) bool {
+// matchKeyFingerprintSHA256 checks if fingerprint is a 32-byte SHA-256 hash
+// of the verifier's public key (v4+ format).
+func (v *Verifier) matchKeyFingerprintSHA256(fingerprint []byte) fingerprintResult {
 	if len(fingerprint) != sha256.Size {
-		return false
+		return fingerprintUnparseable
 	}
 	pubKeyBytes, err := x509.MarshalPKIXPublicKey(v.PublicKey)
 	if err != nil {
-		return false
+		return fingerprintUnparseable
 	}
 	expected := sha256.Sum256(pubKeyBytes)
-	return bytes.Equal(fingerprint, expected[:])
-}
-
-// canParseAsSHA256Fingerprint returns true if the fingerprint looks like a valid SHA-256 hash
-// (i.e., is exactly 32 bytes), regardless of whether it matches.
-func (v *Verifier) canParseAsSHA256Fingerprint(fingerprint []byte) bool {
-	return len(fingerprint) == sha256.Size
-}
-
-// checkKeyFingerprintEncrypted returns true if fingerprint is a base64-encoded, AES-ECB-encrypted
-// DER public key that matches the verifier's public key (v1–v3 format).
-func (v *Verifier) checkKeyFingerprintEncrypted(fingerprint []byte) bool {
-	fingerprintKey := v.decodeEncryptedFingerprint(fingerprint)
-	if fingerprintKey == nil {
-		return false
+	if bytes.Equal(fingerprint, expected[:]) {
+		return fingerprintMatch
 	}
-	return fingerprintKey.Equal(v.PublicKey)
+	return fingerprintMismatch
 }
 
-// canParseAsEncryptedFingerprint returns true if the fingerprint can be decoded and parsed
-// as an encrypted public key, regardless of whether it matches.
-func (v *Verifier) canParseAsEncryptedFingerprint(fingerprint []byte) bool {
-	return v.decodeEncryptedFingerprint(fingerprint) != nil
+// matchKeyFingerprintEncrypted checks if fingerprint is a base64-encoded, AES-ECB-encrypted
+// DER public key that matches the verifier's public key (v1–v3 format).
+func (v *Verifier) matchKeyFingerprintEncrypted(fingerprint []byte) fingerprintResult {
+	fingerprintKey := decodeEncryptedFingerprint(fingerprint)
+	if fingerprintKey == nil {
+		return fingerprintUnparseable
+	}
+	if fingerprintKey.Equal(v.PublicKey) {
+		return fingerprintMatch
+	}
+	return fingerprintMismatch
 }
 
 // decodeEncryptedFingerprint attempts to base64-decode, AES-ECB-decrypt, and parse the
 // fingerprint as a DER-encoded RSA public key. Returns nil if any step fails.
-func (v *Verifier) decodeEncryptedFingerprint(fingerprint []byte) *rsa.PublicKey {
+func decodeEncryptedFingerprint(fingerprint []byte) *rsa.PublicKey {
 	encPubKeyBytes, err := base64.StdEncoding.DecodeString(string(fingerprint))
 	if err != nil {
 		return nil

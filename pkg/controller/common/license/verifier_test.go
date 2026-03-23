@@ -140,6 +140,24 @@ func TestCheckKeyFingerprint_SHA256_Match(t *testing.T) {
 	require.NoError(t, verifier.checkKeyFingerprint(fingerprint[:]))
 }
 
+func TestCheckKeyFingerprint_Unparseable_FallsThrough(t *testing.T) {
+	// An unparseable fingerprint (not 32 bytes, not valid base64/AES/DER) should return nil,
+	// deferring to the RSA signature check rather than erroring.
+	privKey, err := rsa.GenerateKey(rand.Reader, 2048)
+	require.NoError(t, err)
+
+	verifier := &Verifier{PublicKey: &privKey.PublicKey}
+
+	// Garbage bytes: not 32 bytes (so not SHA-256) and not valid base64 (so not encrypted format)
+	require.NoError(t, verifier.checkKeyFingerprint([]byte("not-a-valid-fingerprint")))
+
+	// 50 random bytes: not 32 bytes and unlikely to be valid base64 -> AES -> DER
+	garbage := make([]byte, 50)
+	_, err = rand.Read(garbage)
+	require.NoError(t, err)
+	require.NoError(t, verifier.checkKeyFingerprint(garbage))
+}
+
 func TestValidSignature_TamperedContent_SameKey(t *testing.T) {
 	// A license signed with the correct key but with content modified afterwards
 	// should produce the generic "verification failed" error, not the "wrong product" error.
