@@ -170,7 +170,7 @@ func TestValidSignature_ErrorMessages(t *testing.T) {
 			errContains: "different product",
 		},
 		{
-			name: "tampered content with correct key produces verification failed error",
+			name:     "tampered content with correct key produces verification failed error",
 			verifier: &Verifier{PublicKey: &signerKey.PublicKey},
 			license: func() EnterpriseLicense {
 				l := withSignature(licenseFixtureV4, sig)
