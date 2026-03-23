@@ -10,10 +10,6 @@ import (
 	common "github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/settings"
 )
 
-var warnings = []validation{
-	noUnsupportedSettings,
-}
-
 func noUnsupportedSettings(es *Elasticsearch) field.ErrorList {
 	var errs field.ErrorList
 	for i, nodeSet := range es.Spec.NodeSets {

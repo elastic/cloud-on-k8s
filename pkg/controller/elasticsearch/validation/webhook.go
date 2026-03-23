@@ -13,6 +13,7 @@ import (
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/webhook/admission"
 
+	commonv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/common/v1"
 	esv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/elasticsearch/v1"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/license"
 	commonwebhook "github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/webhook"
@@ -53,7 +54,9 @@ type validator struct {
 
 func (v *validator) ValidateCreate(ctx context.Context, es *esv1.Elasticsearch) (admission.Warnings, error) {
 	eslog.V(1).Info("validate create", "name", es.Name)
-	return ValidateElasticsearch(ctx, *es, v.licenseChecker, v.exposedNodeLabels)
+	warnings, err := ValidateElasticsearch(ctx, *es, v.licenseChecker, v.exposedNodeLabels)
+	warnings = append(warnings, SettingsWarnings(*es)...)
+	return warnings, err
 }
 
 func (v *validator) ValidateUpdate(ctx context.Context, oldObj, newObj *esv1.Elasticsearch) (admission.Warnings, error) {
@@ -61,6 +64,7 @@ func (v *validator) ValidateUpdate(ctx context.Context, oldObj, newObj *esv1.Ela
 
 	// Ensure we get the warnings from the validation function such that warnings are returned even on denial.
 	warnings, validationErr := ValidateElasticsearch(ctx, *newObj, v.licenseChecker, v.exposedNodeLabels)
+	warnings = append(warnings, SettingsWarnings(*newObj)...)
 
 	var errs field.ErrorList
 	for _, val := range updateValidations(ctx, v.client, v.validateStorageClass) {
@@ -82,26 +86,31 @@ func (v *validator) ValidateDelete(_ context.Context, _ *esv1.Elasticsearch) (ad
 
 // ValidateElasticsearch validates an Elasticsearch instance against a set of validation funcs.
 func ValidateElasticsearch(ctx context.Context, es esv1.Elasticsearch, checker license.Checker, exposedNodeLabels NodeLabels) (admission.Warnings, error) {
-	admWarnings, err := runChecks(es, validations(ctx, checker, exposedNodeLabels), nil)
-	if err != nil {
+	if err := runChecks(es, validations(ctx, checker, exposedNodeLabels)); err != nil {
 		return nil, err
 	}
-	return runChecks(es, warnings, admWarnings)
+	var admWarnings admission.Warnings
+	if deprecationWarning, _ := commonv1.CheckDeprecatedStackVersion(es.Spec.Version); deprecationWarning != "" {
+		admWarnings = append(admWarnings, deprecationWarning)
+	}
+	for _, val := range warnings {
+		for _, fieldErr := range val(es) {
+			admWarnings = append(admWarnings, fieldErr.Detail)
+		}
+	}
+	return admWarnings, nil
 }
 
 // runChecks executes the given validations against the Elasticsearch resource.
-// It returns any warning message and an error if validation fails.
-func runChecks(es esv1.Elasticsearch, validations []validation, admWarnings admission.Warnings) (admission.Warnings, error) {
-	warning, errs := check(es, validations)
+// It returns an error if any validation fails.
+func runChecks(es esv1.Elasticsearch, validations []validation) error {
+	errs := check(es, validations)
 	if len(errs) > 0 {
-		return nil, apierrors.NewInvalid(
+		return apierrors.NewInvalid(
 			schema.GroupKind{Group: "elasticsearch.k8s.elastic.co", Kind: esv1.Kind},
 			es.Name,
 			errs,
 		)
 	}
-	if warning != "" {
-		admWarnings = append(admWarnings, warning)
-	}
-	return admWarnings, nil
+	return nil
 }

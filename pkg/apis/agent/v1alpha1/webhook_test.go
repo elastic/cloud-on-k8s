@@ -42,6 +42,7 @@ func TestWebhook(t *testing.T) {
 			},
 			Check: test.ValidationWebhookSucceededWithWarnings(
 				fmt.Sprintf("%s %s/%s: %s", agentv1alpha1.Kind, "", "webhook-test", agentv1alpha1.MissingPolicyIDMessage),
+				`Version 7.17.0 is EOL and support for it will be removed in a future release of the ECK operator`,
 			),
 		},
 		{

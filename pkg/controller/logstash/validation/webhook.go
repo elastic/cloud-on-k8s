@@ -13,6 +13,7 @@ import (
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/webhook/admission"
 
+	commonv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/common/v1"
 	lsv1alpha1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/logstash/v1alpha1"
 	commonwebhook "github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/webhook"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/k8s"
@@ -59,12 +60,14 @@ func (v *validator) ValidateUpdate(ctx context.Context, oldObj, newObj *lsv1alph
 			errs = append(errs, err...)
 		}
 	}
+	warnings, valErr := ValidateLogstash(newObj)
 	if len(errs) > 0 {
-		return nil, apierrors.NewInvalid(
+		// If we already have validation errors, we are only interested in the warnings from ValidateLogstash.
+		return warnings, apierrors.NewInvalid(
 			schema.GroupKind{Group: "logstash.k8s.elastic.co", Kind: lsv1alpha1.Kind},
 			newObj.Name, errs)
 	}
-	return ValidateLogstash(newObj)
+	return warnings, valErr
 }
 
 func (v *validator) ValidateDelete(_ context.Context, _ *lsv1alpha1.Logstash) (admission.Warnings, error) {
@@ -73,15 +76,20 @@ func (v *validator) ValidateDelete(_ context.Context, _ *lsv1alpha1.Logstash) (a
 
 // ValidateLogstash validates a Logstash instance against a set of validation funcs.
 // Returns any admission warnings plus an error if validation fails.
-// TODO: wire deprecation warnings into validations() so this can return non-nil warnings.
 func ValidateLogstash(ls *lsv1alpha1.Logstash) (admission.Warnings, error) {
+	var warnings admission.Warnings
+	// CheckDeprecatedStackVersion's second return is field.ErrorList; it is always nil
+	// (parse/unsupported-version failures are handled by validations(), not here).
+	if w, _ := commonv1.CheckDeprecatedStackVersion(ls.Spec.Version); w != "" {
+		warnings = admission.Warnings{w}
+	}
 	errs := check(ls, validations())
 	if len(errs) > 0 {
-		return nil, apierrors.NewInvalid(
+		return warnings, apierrors.NewInvalid(
 			schema.GroupKind{Group: "logstash.k8s.elastic.co", Kind: lsv1alpha1.Kind},
 			ls.Name,
 			errs,
 		)
 	}
-	return nil, nil
+	return warnings, nil
 }

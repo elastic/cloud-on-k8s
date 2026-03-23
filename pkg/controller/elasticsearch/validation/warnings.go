@@ -5,9 +5,13 @@
 package validation
 
 import (
+	"fmt"
+
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/util/validation/field"
+	"sigs.k8s.io/controller-runtime/pkg/webhook/admission"
 
+	commonv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/common/v1"
 	esv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/elasticsearch/v1"
 	common "github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/settings"
 )
@@ -82,10 +86,25 @@ func validZoneAwarenessAffinityWarnings(es esv1.Elasticsearch) field.ErrorList {
 	return warnings
 }
 
+// SettingsWarnings converts noUnsupportedSettings errors into admission warnings
+// so they can be surfaced at apply time without rejecting the request.
+func SettingsWarnings(es esv1.Elasticsearch) admission.Warnings {
+	errs := noUnsupportedSettings(es)
+	if len(errs) == 0 {
+		return nil
+	}
+	w := make(admission.Warnings, len(errs))
+	for i, e := range errs {
+		w[i] = fmt.Sprintf("%s: %s", e.Field, e.Detail)
+	}
+	return w
+}
+
 func CheckForWarnings(es esv1.Elasticsearch) error {
-	warnings, errors := check(es, warnings)
-	if warnings != "" {
-		warningError := field.ErrorList{field.Invalid(field.NewPath("spec").Child("version"), es.Spec.Version, warnings)}
+	deprecationWarning, _ := commonv1.CheckDeprecatedStackVersion(es.Spec.Version)
+	errors := check(es, warnings)
+	if deprecationWarning != "" {
+		warningError := field.ErrorList{field.Invalid(field.NewPath("spec").Child("version"), es.Spec.Version, deprecationWarning)}
 		errors = append(errors, warningError...)
 	}
 	if len(errors) > 0 {

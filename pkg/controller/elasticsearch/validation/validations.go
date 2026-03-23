@@ -264,20 +264,14 @@ func validZoneAwarenessAffinityInCompatibility(es esv1.Elasticsearch) field.Erro
 	return errs
 }
 
-func check(es esv1.Elasticsearch, validations []validation) (string, field.ErrorList) {
+func check(es esv1.Elasticsearch, validations []validation) field.ErrorList {
 	var errs field.ErrorList
 	for _, val := range validations {
 		if err := val(es); err != nil {
 			errs = append(errs, err...)
 		}
 	}
-
-	// check if Elasticsearch version is deprecated
-	warnings, deprecatedErrors := commonv1.CheckDeprecatedStackVersion(es.Spec.Version)
-	if len(deprecatedErrors) > 0 {
-		errs = append(errs, deprecatedErrors...)
-	}
-	return warnings, errs
+	return errs
 }
 
 // noUnknownFields checks whether the last applied config annotation contains json with unknown fields.
