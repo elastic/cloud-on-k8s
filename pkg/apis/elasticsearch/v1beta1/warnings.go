@@ -5,7 +5,10 @@
 package v1beta1
 
 import (
+	"fmt"
+
 	"k8s.io/apimachinery/pkg/util/validation/field"
+	"sigs.k8s.io/controller-runtime/pkg/webhook/admission"
 
 	common "github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/settings"
 )
@@ -27,4 +30,18 @@ func noUnsupportedSettings(es *Elasticsearch) field.ErrorList {
 		}
 	}
 	return errs
+}
+
+// SettingsWarnings converts noUnsupportedSettings errors into admission warnings
+// so they can be surfaced at apply time without rejecting the request.
+func SettingsWarnings(es *Elasticsearch) admission.Warnings {
+	errs := noUnsupportedSettings(es)
+	if len(errs) == 0 {
+		return nil
+	}
+	w := make(admission.Warnings, len(errs))
+	for i, e := range errs {
+		w[i] = fmt.Sprintf("%s: %s", e.Field, e.Detail)
+	}
+	return w
 }

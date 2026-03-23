@@ -13,6 +13,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 
+	commonv1beta1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/common/v1beta1"
 	esv1beta1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/elasticsearch/v1beta1"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/test"
 )
@@ -40,6 +41,23 @@ func TestWebhook(t *testing.T) {
 			},
 			Check: test.ValidationWebhookSucceededWithWarnings(
 				`Version 7.10.0 is EOL and support for it will be removed in a future release of the ECK operator`,
+			),
+		},
+		{
+			Name:      "create-unsupported-setting-warning",
+			Operation: admissionv1.Create,
+			Object: func(t *testing.T, uid string) []byte {
+				t.Helper()
+				es := mkElasticsearch(uid)
+				es.Spec.NodeSets[0].Config = &commonv1beta1.Config{
+					Data: map[string]any{
+						esv1beta1.ClusterInitialMasterNodes: "foo",
+					},
+				}
+				return serialize(t, es)
+			},
+			Check: test.ValidationWebhookSucceededWithWarnings(
+				`spec\.nodeSets\[0\]\.config\.cluster\.initial_master_nodes`,
 			),
 		},
 		{

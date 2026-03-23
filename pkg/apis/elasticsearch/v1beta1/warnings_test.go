@@ -7,6 +7,9 @@ package v1beta1
 import (
 	"testing"
 
+	"github.com/stretchr/testify/require"
+	"sigs.k8s.io/controller-runtime/pkg/webhook/admission"
+
 	common "github.com/elastic/cloud-on-k8s/v3/pkg/apis/common/v1beta1"
 )
 
@@ -131,6 +134,47 @@ func Test_noUnsupportedSettings(t *testing.T) {
 			if tt.expectErrors != actualErrors {
 				t.Errorf("failed noUnsupportedSettings(). Name: %v, actual %v, wanted: %v, value: %v", tt.name, actual, tt.expectErrors, tt.es.Spec.Version)
 			}
+		})
+	}
+}
+
+func TestSettingsWarnings(t *testing.T) {
+	tests := []struct {
+		name string
+		es   *Elasticsearch
+		want admission.Warnings
+	}{
+		{
+			name: "empty when no unsupported settings",
+			es:   es("7.0.0"),
+			want: nil,
+		},
+		{
+			name: "forbidden settings become warning strings",
+			es: &Elasticsearch{
+				Spec: ElasticsearchSpec{
+					Version: "7.0.0",
+					NodeSets: []NodeSet{
+						{
+							Config: &common.Config{
+								Data: map[string]any{
+									ClusterInitialMasterNodes: "foo",
+								},
+							},
+							Count: 1,
+						},
+					},
+				},
+			},
+			want: admission.Warnings{
+				`spec.nodeSets[0].config.cluster.initial_master_nodes: Configuration setting is reserved for internal use. User-configured use is unsupported`,
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := SettingsWarnings(tt.es)
+			require.Equal(t, tt.want, got)
 		})
 	}
 }
