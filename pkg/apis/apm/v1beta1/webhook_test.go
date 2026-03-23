@@ -136,7 +136,7 @@ func TestWebhook(t *testing.T) {
 			),
 		},
 		{
-			Name:      "deprecated version",
+			Name:      "deprecated-version",
 			Operation: admissionv1.Create,
 			Object: func(t *testing.T, uid string) []byte {
 				t.Helper()
@@ -149,7 +149,7 @@ func TestWebhook(t *testing.T) {
 			),
 		},
 		{
-			Name:      "version-downgrade with override",
+			Name:      "version-downgrade-with-override",
 			Operation: admissionv1.Update,
 			OldObject: func(t *testing.T, uid string) []byte {
 				t.Helper()

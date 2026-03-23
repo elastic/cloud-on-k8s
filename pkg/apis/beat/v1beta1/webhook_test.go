@@ -20,7 +20,7 @@ import (
 func TestWebhook(t *testing.T) {
 	testCases := []test.ValidationWebhookTestCase{
 		{
-			Name:      "create valid",
+			Name:      "create-valid",
 			Operation: admissionv1.Create,
 			Object: func(t *testing.T, uid string) []byte {
 				t.Helper()
@@ -30,7 +30,7 @@ func TestWebhook(t *testing.T) {
 			Check: test.ValidationWebhookSucceeded,
 		},
 		{
-			Name:      "create deprecated version",
+			Name:      "create-deprecated-version",
 			Operation: admissionv1.Create,
 			Object: func(t *testing.T, uid string) []byte {
 				t.Helper()
@@ -43,7 +43,7 @@ func TestWebhook(t *testing.T) {
 			),
 		},
 		{
-			Name:      "create non deprecated version no warning",
+			Name:      "create-non-deprecated-version-no-warning",
 			Operation: admissionv1.Create,
 			Object: func(t *testing.T, uid string) []byte {
 				t.Helper()
