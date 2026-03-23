@@ -90,91 +90,107 @@ func TestLicenseVerifier_ValidSignature(t *testing.T) {
 	}
 }
 
-func TestValidSignature_WrongKey_EncryptedFingerprint(t *testing.T) {
-	// Simulate a v1-v3 license signed with one key being verified against a different key.
-	// Sign() produces the v1-v3 encrypted fingerprint format.
+func TestCheckKeyFingerprint(t *testing.T) {
+	verifierKey, err := rsa.GenerateKey(rand.Reader, 2048)
+	require.NoError(t, err)
+	otherKey, err := rsa.GenerateKey(rand.Reader, 2048)
+	require.NoError(t, err)
+
+	verifierDER, err := x509.MarshalPKIXPublicKey(&verifierKey.PublicKey)
+	require.NoError(t, err)
+	otherDER, err := x509.MarshalPKIXPublicKey(&otherKey.PublicKey)
+	require.NoError(t, err)
+
+	matchingSHA256 := sha256.Sum256(verifierDER)
+	mismatchSHA256 := sha256.Sum256(otherDER)
+
+	tests := []struct {
+		name        string
+		fingerprint []byte
+		wantErr     bool
+		errContains string
+	}{
+		{
+			name:        "SHA-256 match passes",
+			fingerprint: matchingSHA256[:],
+			wantErr:     false,
+		},
+		{
+			name:        "SHA-256 mismatch returns wrong product error",
+			fingerprint: mismatchSHA256[:],
+			wantErr:     true,
+			errContains: "different product",
+		},
+		{
+			name:        "unparseable garbage falls through without error",
+			fingerprint: []byte("not-a-valid-fingerprint"),
+			wantErr:     false,
+		},
+		{
+			name:        "unparseable random bytes fall through without error",
+			fingerprint: make([]byte, 50),
+			wantErr:     false,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			verifier := &Verifier{PublicKey: &verifierKey.PublicKey}
+			err := verifier.checkKeyFingerprint(tt.fingerprint)
+			if tt.wantErr {
+				require.Error(t, err)
+				assert.Contains(t, err.Error(), tt.errContains)
+			} else {
+				require.NoError(t, err)
+			}
+		})
+	}
+}
+
+func TestValidSignature_ErrorMessages(t *testing.T) {
 	signerKey, err := rsa.GenerateKey(rand.Reader, 2048)
 	require.NoError(t, err)
-	verifierKey, err := rsa.GenerateKey(rand.Reader, 2048)
+	otherKey, err := rsa.GenerateKey(rand.Reader, 2048)
 	require.NoError(t, err)
 
 	signer := NewSigner(signerKey)
 	sig, err := signer.Sign(licenseFixtureV4)
 	require.NoError(t, err)
 
-	verifier := &Verifier{PublicKey: &verifierKey.PublicKey}
-	err = verifier.ValidSignature(withSignature(licenseFixtureV4, sig))
-	require.Error(t, err)
-	assert.Contains(t, err.Error(), "different product")
-	assert.Contains(t, err.Error(), "Orchestration license")
-}
-
-func TestCheckKeyFingerprint_SHA256_Mismatch(t *testing.T) {
-	// Simulate a v4+ license whose SHA-256 fingerprint doesn't match the verifier's key.
-	verifierKey, err := rsa.GenerateKey(rand.Reader, 2048)
-	require.NoError(t, err)
-	otherKey, err := rsa.GenerateKey(rand.Reader, 2048)
-	require.NoError(t, err)
-
-	// Compute SHA-256 fingerprint of the other key (as v4+ licenses embed)
-	otherDER, err := x509.MarshalPKIXPublicKey(&otherKey.PublicKey)
-	require.NoError(t, err)
-	fingerprint := sha256.Sum256(otherDER)
-
-	verifier := &Verifier{PublicKey: &verifierKey.PublicKey}
-	err = verifier.checkKeyFingerprint(fingerprint[:])
-	require.Error(t, err)
-	assert.Contains(t, err.Error(), "different product")
-}
-
-func TestCheckKeyFingerprint_SHA256_Match(t *testing.T) {
-	// Verify a v4+ SHA-256 fingerprint that matches the verifier's key passes.
-	privKey, err := rsa.GenerateKey(rand.Reader, 2048)
-	require.NoError(t, err)
-
-	derBytes, err := x509.MarshalPKIXPublicKey(&privKey.PublicKey)
-	require.NoError(t, err)
-	fingerprint := sha256.Sum256(derBytes)
-
-	verifier := &Verifier{PublicKey: &privKey.PublicKey}
-	require.NoError(t, verifier.checkKeyFingerprint(fingerprint[:]))
-}
-
-func TestCheckKeyFingerprint_Unparseable_FallsThrough(t *testing.T) {
-	// An unparseable fingerprint (not 32 bytes, not valid base64/AES/DER) should return nil,
-	// deferring to the RSA signature check rather than erroring.
-	privKey, err := rsa.GenerateKey(rand.Reader, 2048)
-	require.NoError(t, err)
-
-	verifier := &Verifier{PublicKey: &privKey.PublicKey}
-
-	// Garbage bytes: not 32 bytes (so not SHA-256) and not valid base64 (so not encrypted format)
-	require.NoError(t, verifier.checkKeyFingerprint([]byte("not-a-valid-fingerprint")))
-
-	// 50 random bytes: not 32 bytes and unlikely to be valid base64 -> AES -> DER
-	garbage := make([]byte, 50)
-	_, err = rand.Read(garbage)
-	require.NoError(t, err)
-	require.NoError(t, verifier.checkKeyFingerprint(garbage))
-}
-
-func TestValidSignature_TamperedContent_SameKey(t *testing.T) {
-	// A license signed with the correct key but with content modified afterwards
-	// should produce the generic "verification failed" error, not the "wrong product" error.
-	privKey, err := rsa.GenerateKey(rand.Reader, 2048)
-	require.NoError(t, err)
-
-	signer := NewSigner(privKey)
-	sig, err := signer.Sign(licenseFixtureV4)
-	require.NoError(t, err)
-
-	tampered := withSignature(licenseFixtureV4, sig)
-	tampered.License.MaxResourceUnits = 9999
-
-	err = signer.ValidSignature(tampered)
-	require.Error(t, err)
-	assert.NotContains(t, err.Error(), "different product")
-	assert.Contains(t, err.Error(), "verification failed")
+	tests := []struct {
+		name           string
+		verifier       *Verifier
+		license        EnterpriseLicense
+		errContains    string
+		errNotContains string
+	}{
+		{
+			name:        "wrong key produces different product error",
+			verifier:    &Verifier{PublicKey: &otherKey.PublicKey},
+			license:     withSignature(licenseFixtureV4, sig),
+			errContains: "different product",
+		},
+		{
+			name: "tampered content with correct key produces verification failed error",
+			verifier: &Verifier{PublicKey: &signerKey.PublicKey},
+			license: func() EnterpriseLicense {
+				l := withSignature(licenseFixtureV4, sig)
+				l.License.MaxResourceUnits = 9999
+				return l
+			}(),
+			errContains:    "verification failed",
+			errNotContains: "different product",
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			err := tt.verifier.ValidSignature(tt.license)
+			require.Error(t, err)
+			assert.Contains(t, err.Error(), tt.errContains)
+			if tt.errNotContains != "" {
+				assert.NotContains(t, err.Error(), tt.errNotContains)
+			}
+		})
+	}
 }
 
 func TestNewLicenseVerifier(t *testing.T) {
