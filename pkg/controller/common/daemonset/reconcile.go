@@ -74,7 +74,12 @@ func Reconcile(
 				hash.GetTemplateHashLabel(reconciled.Labels) != hash.GetTemplateHashLabel(expected.Labels)
 		},
 		UpdateReconciled: func() {
-			expected.DeepCopyInto(reconciled)
+			// set expected annotations and labels, but don't remove existing ones
+			// that may have been defaulted or set by a user/admin on the existing resource
+			reconciled.Labels = maps.Merge(reconciled.Labels, expected.Labels)
+			reconciled.Annotations = maps.Merge(reconciled.Annotations, expected.Annotations)
+			// overwrite the spec but leave the status intact
+			reconciled.Spec = expected.Spec
 		},
 	})
 	return *reconciled, err
