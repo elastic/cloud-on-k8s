@@ -8,9 +8,13 @@ import (
 	"context"
 	"crypto/rand"
 	"crypto/rsa"
+	"crypto/sha256"
 	"crypto/x509"
 	"encoding/base64"
+	"encoding/json"
+	"os"
 	"reflect"
+	"strings"
 	"testing"
 	"time"
 
@@ -84,6 +88,75 @@ func TestLicenseVerifier_ValidSignature(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestValidSignature_WrongKey_EncryptedFingerprint(t *testing.T) {
+	// Simulate a v1-v3 license signed with one key being verified against a different key.
+	// Sign() produces the v1-v3 encrypted fingerprint format.
+	signerKey, err := rsa.GenerateKey(rand.Reader, 2048)
+	require.NoError(t, err)
+	verifierKey, err := rsa.GenerateKey(rand.Reader, 2048)
+	require.NoError(t, err)
+
+	signer := NewSigner(signerKey)
+	sig, err := signer.Sign(licenseFixtureV4)
+	require.NoError(t, err)
+
+	verifier := &Verifier{PublicKey: &verifierKey.PublicKey}
+	err = verifier.ValidSignature(withSignature(licenseFixtureV4, sig))
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "different product")
+	assert.Contains(t, err.Error(), "Orchestration license")
+}
+
+func TestCheckKeyFingerprint_SHA256_Mismatch(t *testing.T) {
+	// Simulate a v4+ license whose SHA-256 fingerprint doesn't match the verifier's key.
+	verifierKey, err := rsa.GenerateKey(rand.Reader, 2048)
+	require.NoError(t, err)
+	otherKey, err := rsa.GenerateKey(rand.Reader, 2048)
+	require.NoError(t, err)
+
+	// Compute SHA-256 fingerprint of the other key (as v4+ licenses embed)
+	otherDER, err := x509.MarshalPKIXPublicKey(&otherKey.PublicKey)
+	require.NoError(t, err)
+	fingerprint := sha256.Sum256(otherDER)
+
+	verifier := &Verifier{PublicKey: &verifierKey.PublicKey}
+	err = verifier.checkKeyFingerprint(fingerprint[:])
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "different product")
+}
+
+func TestCheckKeyFingerprint_SHA256_Match(t *testing.T) {
+	// Verify a v4+ SHA-256 fingerprint that matches the verifier's key passes.
+	privKey, err := rsa.GenerateKey(rand.Reader, 2048)
+	require.NoError(t, err)
+
+	derBytes, err := x509.MarshalPKIXPublicKey(&privKey.PublicKey)
+	require.NoError(t, err)
+	fingerprint := sha256.Sum256(derBytes)
+
+	verifier := &Verifier{PublicKey: &privKey.PublicKey}
+	require.NoError(t, verifier.checkKeyFingerprint(fingerprint[:]))
+}
+
+func TestValidSignature_TamperedContent_SameKey(t *testing.T) {
+	// A license signed with the correct key but with content modified afterwards
+	// should produce the generic "verification failed" error, not the "wrong product" error.
+	privKey, err := rsa.GenerateKey(rand.Reader, 2048)
+	require.NoError(t, err)
+
+	signer := NewSigner(privKey)
+	sig, err := signer.Sign(licenseFixtureV4)
+	require.NoError(t, err)
+
+	tampered := withSignature(licenseFixtureV4, sig)
+	tampered.License.MaxResourceUnits = 9999
+
+	err = signer.ValidSignature(tampered)
+	require.Error(t, err)
+	assert.NotContains(t, err.Error(), "different product")
+	assert.Contains(t, err.Error(), "verification failed")
 }
 
 func TestNewLicenseVerifier(t *testing.T) {
@@ -267,4 +340,55 @@ func TestVerifier_Valid(t *testing.T) {
 			}
 		})
 	}
+}
+
+// TestRealWorldLicenseFingerprint tests the fingerprint check against real license files.
+// Set the following environment variables to run:
+//
+//	TEST_ORCHESTRATION_LICENSE_PATH - path to a JSON orchestration/ECK license file
+//	TEST_STACK_LICENSE_PATH         - path to a JSON Elastic Stack license file
+//	TEST_LICENSE_PUBKEY_PATH        - path to the DER-encoded public key for the orchestration license
+//
+// Note: in dev environments, both license types may share the same signing key. In that case,
+// the Stack license will pass the fingerprint check but fail RSA content verification
+// (the improved fallback message still applies). In production, different signing keys
+// would trigger the "different product" fingerprint error.
+func TestRealWorldLicenseFingerprint(t *testing.T) {
+	orchPath := os.Getenv("TEST_ORCHESTRATION_LICENSE_PATH")
+	stackPath := os.Getenv("TEST_STACK_LICENSE_PATH")
+	pubKeyPath := os.Getenv("TEST_LICENSE_PUBKEY_PATH")
+	if orchPath == "" || stackPath == "" || pubKeyPath == "" {
+		t.Skip("set TEST_ORCHESTRATION_LICENSE_PATH, TEST_STACK_LICENSE_PATH, and TEST_LICENSE_PUBKEY_PATH to run this test")
+	}
+
+	pubKeyBytes, err := os.ReadFile(pubKeyPath)
+	require.NoError(t, err)
+	verifier, err := NewVerifier(pubKeyBytes)
+	require.NoError(t, err)
+
+	t.Run("orchestration license passes signature check", func(t *testing.T) {
+		lic := loadLicenseFromFile(t, orchPath)
+		require.NoError(t, verifier.ValidSignature(lic))
+	})
+
+	t.Run("stack license fails signature check", func(t *testing.T) {
+		lic := loadLicenseFromFile(t, stackPath)
+		err := verifier.ValidSignature(lic)
+		require.Error(t, err)
+		// The error is either "different product" (production: different signing keys)
+		// or "verification failed" (dev: same signing key, different content format).
+		errMsg := err.Error()
+		assert.True(t,
+			strings.Contains(errMsg, "different product") || strings.Contains(errMsg, "verification failed"),
+			"expected either a fingerprint mismatch or a signature verification failure, got: %v", err)
+	})
+}
+
+func loadLicenseFromFile(t *testing.T, path string) EnterpriseLicense {
+	t.Helper()
+	data, err := os.ReadFile(path)
+	require.NoError(t, err)
+	var lic EnterpriseLicense
+	require.NoError(t, json.Unmarshal(data, &lic))
+	return lic
 }

@@ -10,12 +10,14 @@ import (
 	"crypto"
 	"crypto/rand"
 	"crypto/rsa"
+	"crypto/sha256"
 	"crypto/sha512"
 	"crypto/x509"
 	"encoding/base64"
 	"encoding/binary"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"io"
 	"time"
 
@@ -97,9 +99,89 @@ func (v *Verifier) ValidSignature(l EnterpriseLicense) error {
 	if err != nil {
 		return err
 	}
-	// TODO optional pubkey fingerprint check
+	if err := v.checkKeyFingerprint(pubKeyFingerprint); err != nil {
+		return err
+	}
 	hashed := sha512.Sum512(contentBytes)
-	return rsa.VerifyPKCS1v15(v.PublicKey, crypto.SHA512, hashed[:], signedContentSig)
+	if err := rsa.VerifyPKCS1v15(v.PublicKey, crypto.SHA512, hashed[:], signedContentSig); err != nil {
+		return fmt.Errorf("license signature verification failed: %w; ensure you are using an Orchestration license (not an Elastic Stack license) and consult the ECK licensing documentation", err)
+	}
+	return nil
+}
+
+// checkKeyFingerprint compares the embedded public key fingerprint against the verifier's
+// public key. The fingerprint format depends on the license signature version:
+//   - v1–v3: base64-encoded, AES-ECB-encrypted DER public key
+//   - v4+:   raw SHA-256 hash of the DER public key bytes
+//
+// Returns a specific error if the keys differ, indicating the wrong license type was used.
+// Returns nil if the fingerprint cannot be decoded, deferring to the RSA signature check.
+func (v *Verifier) checkKeyFingerprint(fingerprint []byte) error {
+	if v.checkKeyFingerprintSHA256(fingerprint) || v.checkKeyFingerprintEncrypted(fingerprint) {
+		return nil
+	}
+	// If at least one method could parse the fingerprint but it didn't match, report the mismatch.
+	// We detect "parseable but mismatched" by trying the formats again — if either parse step
+	// succeeds (returns a non-nil result) but didn't match above, the key is wrong.
+	if v.canParseAsSHA256Fingerprint(fingerprint) || v.canParseAsEncryptedFingerprint(fingerprint) {
+		return errors.New("license signature was issued for a different product; ensure you are using an Orchestration license, not an Elastic Stack license")
+	}
+	// Fingerprint could not be parsed in any known format; fall through to RSA verification.
+	return nil
+}
+
+// checkKeyFingerprintSHA256 returns true if fingerprint is a 32-byte SHA-256 hash
+// that matches the verifier's public key (v4+ format).
+func (v *Verifier) checkKeyFingerprintSHA256(fingerprint []byte) bool {
+	if len(fingerprint) != sha256.Size {
+		return false
+	}
+	pubKeyBytes, err := x509.MarshalPKIXPublicKey(v.PublicKey)
+	if err != nil {
+		return false
+	}
+	expected := sha256.Sum256(pubKeyBytes)
+	return bytes.Equal(fingerprint, expected[:])
+}
+
+// canParseAsSHA256Fingerprint returns true if the fingerprint looks like a valid SHA-256 hash
+// (i.e., is exactly 32 bytes), regardless of whether it matches.
+func (v *Verifier) canParseAsSHA256Fingerprint(fingerprint []byte) bool {
+	return len(fingerprint) == sha256.Size
+}
+
+// checkKeyFingerprintEncrypted returns true if fingerprint is a base64-encoded, AES-ECB-encrypted
+// DER public key that matches the verifier's public key (v1–v3 format).
+func (v *Verifier) checkKeyFingerprintEncrypted(fingerprint []byte) bool {
+	fingerprintKey := v.decodeEncryptedFingerprint(fingerprint)
+	if fingerprintKey == nil {
+		return false
+	}
+	return fingerprintKey.Equal(v.PublicKey)
+}
+
+// canParseAsEncryptedFingerprint returns true if the fingerprint can be decoded and parsed
+// as an encrypted public key, regardless of whether it matches.
+func (v *Verifier) canParseAsEncryptedFingerprint(fingerprint []byte) bool {
+	return v.decodeEncryptedFingerprint(fingerprint) != nil
+}
+
+// decodeEncryptedFingerprint attempts to base64-decode, AES-ECB-decrypt, and parse the
+// fingerprint as a DER-encoded RSA public key. Returns nil if any step fails.
+func (v *Verifier) decodeEncryptedFingerprint(fingerprint []byte) *rsa.PublicKey {
+	encPubKeyBytes, err := base64.StdEncoding.DecodeString(string(fingerprint))
+	if err != nil {
+		return nil
+	}
+	derBytes, err := decryptWithAESECB(encPubKeyBytes)
+	if err != nil {
+		return nil
+	}
+	key, err := ParsePubKey(derBytes)
+	if err != nil {
+		return nil
+	}
+	return key
 }
 
 // NewVerifier creates a new license verifier from a DER encoded public key.
