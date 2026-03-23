@@ -10,7 +10,7 @@ import (
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/client-go/tools/record"
+	toolsevents "k8s.io/client-go/tools/events"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	commonv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/common/v1"
@@ -138,7 +138,7 @@ package_paths:
 		t.Run(tt.name, func(t *testing.T) {
 			d := ReconcilePackageRegistry{
 				Client:         k8s.NewFakeClient(tt.args.runtimeObjs...),
-				recorder:       record.NewFakeRecorder(10),
+				recorder:       toolsevents.NewFakeRecorder(10),
 				dynamicWatches: watches.NewDynamicWatches(),
 			}
 

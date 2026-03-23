@@ -16,7 +16,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/meta"
 	"k8s.io/apimachinery/pkg/types"
-	"k8s.io/client-go/tools/record"
+	toolsevents "k8s.io/client-go/tools/events"
 
 	commonv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/common/v1"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/events"
@@ -25,7 +25,7 @@ import (
 	ulog "github.com/elastic/cloud-on-k8s/v3/pkg/utils/log"
 )
 
-func AreConfiguredIfSet(ctx context.Context, associations []commonv1.Association, r record.EventRecorder) (bool, error) {
+func AreConfiguredIfSet(ctx context.Context, associations []commonv1.Association, r toolsevents.EventRecorder) (bool, error) {
 	allAssociationsConfigured := true
 	for _, association := range associations {
 		isAssocConfigured, err := IsConfiguredIfSet(ctx, association, r)
@@ -39,18 +39,20 @@ func AreConfiguredIfSet(ctx context.Context, associations []commonv1.Association
 
 // IsConfiguredIfSet checks if an association is set in the spec and if it has been configured by an association controller.
 // This is used to prevent the deployment of an associated resource while the association is not yet fully configured.
-func IsConfiguredIfSet(ctx context.Context, association commonv1.Association, r record.EventRecorder) (bool, error) {
+func IsConfiguredIfSet(ctx context.Context, association commonv1.Association, r toolsevents.EventRecorder) (bool, error) {
 	ref := association.AssociationRef()
 	assocConf, err := association.AssociationConf()
 	if err != nil {
 		return false, err
 	}
 	if ref.IsSet() && !assocConf.IsConfigured() {
-		r.Event(
+		k8s.EmitEventf(
+			r,
 			association,
 			corev1.EventTypeWarning,
 			events.EventAssociationError,
-			fmt.Sprintf("Association backend for %s is not configured", association.AssociationType()),
+			events.EventActionAssociationConfiguration,
+			"Association backend for %s is not configured", association.AssociationType(),
 		)
 		ulog.FromContext(ctx).Info("Association not established: skipping association resource reconciliation",
 			"kind", association.GetObjectKind().GroupVersionKind().Kind,
@@ -126,7 +128,7 @@ const UnknownVersion = "unknown_version"
 // For example: Kibana in version 7.8.0 cannot be deployed if its Elasticsearch association reports version 7.7.0.
 // A difference in the patch version is ignored: Kibana 7.8.1+ can be deployed alongside Elasticsearch 7.8.0.
 // Referenced resources version is parsed from the association conf annotation.
-func AllowVersion(resourceVersion version.Version, associated commonv1.Associated, logger logr.Logger, recorder record.EventRecorder) (bool, error) {
+func AllowVersion(resourceVersion version.Version, associated commonv1.Associated, logger logr.Logger, recorder toolsevents.EventRecorder) (bool, error) {
 	for _, assoc := range associated.GetAssociations() {
 		assocRef := assoc.AssociationRef()
 		if !assocRef.IsSet() {
@@ -163,8 +165,8 @@ func AllowVersion(resourceVersion version.Version, associated commonv1.Associate
 			logger.Info("Delaying version deployment since a referenced resource is not upgraded yet",
 				"version", resourceVersion, "ref_version", refVer,
 				"ref_type", assoc.AssociationType(), "ref_namespace", assocRef.GetNamespace(), "ref_name", assocRef.NameOrSecretName())
-			recorder.Event(associated, corev1.EventTypeWarning, events.EventReasonDelayed,
-				fmt.Sprintf("Delaying deployment of version %s since the referenced %s is not upgraded yet", resourceVersion, assoc.AssociationType()))
+			k8s.EmitEventf(recorder, associated, corev1.EventTypeWarning, events.EventReasonDelayed, events.EventActionVersionCheck,
+				"Delaying deployment of version %s since the referenced %s is not upgraded yet", resourceVersion, assoc.AssociationType())
 			return false, nil
 		}
 	}

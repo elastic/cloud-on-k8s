@@ -9,13 +9,13 @@ package apm
 import (
 	"context"
 	"fmt"
+	"regexp"
 	"testing"
 
 	corev1 "k8s.io/api/core/v1"
 
 	apmv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/apm/v1"
 	commonv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/common/v1"
-	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/annotation"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/events"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/version"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/k8s"
@@ -24,6 +24,8 @@ import (
 	"github.com/elastic/cloud-on-k8s/v3/test/e2e/test/elasticsearch"
 	"github.com/elastic/cloud-on-k8s/v3/test/e2e/test/kibana"
 )
+
+var associationEventRegex = regexp.MustCompile(`Association status changed from \[(.+?)] to \[(.+?)]`)
 
 // TestCrossNSAssociation tests associating Elasticsearch and an APM Server running in different namespaces.
 func TestCrossNSAssociation(t *testing.T) {
@@ -213,14 +215,15 @@ func TestAPMAssociationWhenReferencedESDisappears(t *testing.T) {
 						case evt.Type == corev1.EventTypeNormal && evt.Reason == events.EventAssociationStatusChange:
 							// build expected string and use it for comparisons with actual
 							establishedString := commonv1.NewSingleAssociationStatusMap(commonv1.AssociationEstablished).String()
-							prevStatusString, currStatusString := annotation.ExtractAssociationStatusStrings(evt.ObjectMeta)
 
-							if prevStatusString == establishedString && currStatusString != prevStatusString {
-								assocLostEventSeen = true
-							}
-
-							if currStatusString == establishedString {
-								assocEstablishedEventSeen = true
+							m := associationEventRegex.FindStringSubmatch(evt.Note)
+							if m != nil {
+								if m[1] == establishedString && m[2] != establishedString {
+									assocLostEventSeen = true
+								}
+								if m[2] == establishedString {
+									assocEstablishedEventSeen = true
+								}
 							}
 						case evt.Type == corev1.EventTypeWarning && evt.Reason == events.EventAssociationError:
 							noBackendEventSeen = true

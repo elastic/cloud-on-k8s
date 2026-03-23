@@ -7,7 +7,7 @@ package driver
 import (
 	"context"
 
-	"k8s.io/client-go/tools/record"
+	toolsevents "k8s.io/client-go/tools/events"
 
 	esv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/elasticsearch/v1"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/expectations"
@@ -42,7 +42,7 @@ type Parameters struct {
 	Version version.Version
 	// Client is used to access the Kubernetes API.
 	Client   k8s.Client
-	Recorder record.EventRecorder
+	Recorder toolsevents.EventRecorder
 
 	// LicenseChecker is used for some features to check if an appropriate license is setup
 	LicenseChecker commonlicense.Checker
@@ -75,6 +75,6 @@ func (d *BaseDriver) DynamicWatches() watches.DynamicWatches {
 }
 
 // Recorder returns the event recorder. Implements commondriver.Interface.
-func (d *BaseDriver) Recorder() record.EventRecorder {
+func (d *BaseDriver) Recorder() toolsevents.EventRecorder {
 	return d.Parameters.Recorder
 }
