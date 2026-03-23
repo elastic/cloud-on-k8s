@@ -5,7 +5,6 @@
 package v1beta1_test
 
 import (
-	"encoding/json"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -25,7 +24,7 @@ func TestWebhook(t *testing.T) {
 			Object: func(t *testing.T, uid string) []byte {
 				t.Helper()
 				b := mkBeat(uid)
-				return serialize(t, b)
+				return test.MustMarshalJSON(t, b)
 			},
 			Check: test.ValidationWebhookSucceeded,
 		},
@@ -36,7 +35,7 @@ func TestWebhook(t *testing.T) {
 				t.Helper()
 				b := mkBeat(uid)
 				b.Spec.Version = "7.10.0"
-				return serialize(t, b)
+				return test.MustMarshalJSON(t, b)
 			},
 			Check: test.ValidationWebhookSucceededWithWarnings(
 				`Version 7.10.0 is EOL and support for it will be removed in a future release of the ECK operator`,
@@ -49,7 +48,7 @@ func TestWebhook(t *testing.T) {
 				t.Helper()
 				b := mkBeat(uid)
 				b.Spec.Version = "8.2.3"
-				return serialize(t, b)
+				return test.MustMarshalJSON(t, b)
 			},
 			Check: test.ValidationWebhookSucceeded,
 		},
@@ -60,7 +59,7 @@ func TestWebhook(t *testing.T) {
 				t.Helper()
 				b := mkBeat(uid)
 				b.Spec.Version = "7.x"
-				return serialize(t, b)
+				return test.MustMarshalJSON(t, b)
 			},
 			Check: func(t *testing.T, response *admissionv1.AdmissionResponse) {
 				t.Helper()
@@ -75,13 +74,13 @@ func TestWebhook(t *testing.T) {
 				t.Helper()
 				b := mkBeat(uid)
 				b.Spec.Version = "8.2.3"
-				return serialize(t, b)
+				return test.MustMarshalJSON(t, b)
 			},
 			Object: func(t *testing.T, uid string) []byte {
 				t.Helper()
 				b := mkBeat(uid)
 				b.Spec.Version = "8.3.0"
-				return serialize(t, b)
+				return test.MustMarshalJSON(t, b)
 			},
 			Check: test.ValidationWebhookSucceeded,
 		},
@@ -92,13 +91,13 @@ func TestWebhook(t *testing.T) {
 				t.Helper()
 				b := mkBeat(uid)
 				b.Spec.Version = "8.3.0"
-				return serialize(t, b)
+				return test.MustMarshalJSON(t, b)
 			},
 			Object: func(t *testing.T, uid string) []byte {
 				t.Helper()
 				b := mkBeat(uid)
 				b.Spec.Version = "8.2.3"
-				return serialize(t, b)
+				return test.MustMarshalJSON(t, b)
 			},
 			Check: test.ValidationWebhookFailed(
 				`spec.version: Forbidden: Version downgrades are not supported`,
@@ -111,13 +110,13 @@ func TestWebhook(t *testing.T) {
 				t.Helper()
 				b := mkBeat(uid)
 				b.Spec.Version = "8.0.0"
-				return serialize(t, b)
+				return test.MustMarshalJSON(t, b)
 			},
 			Object: func(t *testing.T, uid string) []byte {
 				t.Helper()
 				b := mkBeat(uid)
 				b.Spec.Version = "7.10.0"
-				return serialize(t, b)
+				return test.MustMarshalJSON(t, b)
 			},
 			Check: test.ValidationWebhookFailedWithWarnings(
 				[]string{`spec.version: Forbidden: Version downgrades are not supported`},
@@ -143,13 +142,4 @@ func mkBeat(uid string) *beatv1beta1.Beat {
 			DaemonSet: &beatv1beta1.DaemonSetSpec{},
 		},
 	}
-}
-
-func serialize(t *testing.T, b *beatv1beta1.Beat) []byte {
-	t.Helper()
-
-	objBytes, err := json.Marshal(b)
-	require.NoError(t, err)
-
-	return objBytes
 }

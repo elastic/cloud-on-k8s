@@ -5,10 +5,8 @@
 package v1beta1_test
 
 import (
-	"encoding/json"
 	"testing"
 
-	"github.com/stretchr/testify/require"
 	admissionv1 "k8s.io/api/admission/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
@@ -26,7 +24,7 @@ func TestWebhook(t *testing.T) {
 			Object: func(t *testing.T, uid string) []byte {
 				t.Helper()
 				es := mkElasticsearch(uid)
-				return serialize(t, es)
+				return test.MustMarshalJSON(t, es)
 			},
 			Check: test.ValidationWebhookSucceeded,
 		},
@@ -37,7 +35,7 @@ func TestWebhook(t *testing.T) {
 				t.Helper()
 				es := mkElasticsearch(uid)
 				es.Spec.Version = "7.10.0"
-				return serialize(t, es)
+				return test.MustMarshalJSON(t, es)
 			},
 			Check: test.ValidationWebhookSucceededWithWarnings(
 				`Version 7.10.0 is EOL and support for it will be removed in a future release of the ECK operator`,
@@ -54,7 +52,7 @@ func TestWebhook(t *testing.T) {
 						esv1beta1.ClusterInitialMasterNodes: "foo",
 					},
 				}
-				return serialize(t, es)
+				return test.MustMarshalJSON(t, es)
 			},
 			Check: test.ValidationWebhookSucceededWithWarnings(
 				`spec\.nodeSets\[0\]\.config\.cluster\.initial_master_nodes`,
@@ -67,7 +65,7 @@ func TestWebhook(t *testing.T) {
 				t.Helper()
 				es := mkElasticsearch(uid)
 				es.Spec.NodeSets[0].Count = 0
-				return serialize(t, es)
+				return test.MustMarshalJSON(t, es)
 			},
 			Check: test.ValidationWebhookFailed(
 				`spec.nodeSets: Invalid value`,
@@ -80,13 +78,13 @@ func TestWebhook(t *testing.T) {
 				t.Helper()
 				es := mkElasticsearch(uid)
 				es.Spec.Version = "8.15.0"
-				return serialize(t, es)
+				return test.MustMarshalJSON(t, es)
 			},
 			Object: func(t *testing.T, uid string) []byte {
 				t.Helper()
 				es := mkElasticsearch(uid)
 				es.Spec.Version = "8.16.0"
-				return serialize(t, es)
+				return test.MustMarshalJSON(t, es)
 			},
 			Check: test.ValidationWebhookSucceeded,
 		},
@@ -97,13 +95,13 @@ func TestWebhook(t *testing.T) {
 				t.Helper()
 				es := mkElasticsearch(uid)
 				es.Spec.Version = "8.16.0"
-				return serialize(t, es)
+				return test.MustMarshalJSON(t, es)
 			},
 			Object: func(t *testing.T, uid string) []byte {
 				t.Helper()
 				es := mkElasticsearch(uid)
 				es.Spec.Version = "8.15.0"
-				return serialize(t, es)
+				return test.MustMarshalJSON(t, es)
 			},
 			Check: test.ValidationWebhookFailed(
 				`spec.version: Invalid value: "8.15.0": Downgrades are not supported`,
@@ -116,13 +114,13 @@ func TestWebhook(t *testing.T) {
 				t.Helper()
 				es := mkElasticsearch(uid)
 				es.Spec.Version = "7.10.0"
-				return serialize(t, es)
+				return test.MustMarshalJSON(t, es)
 			},
 			Object: func(t *testing.T, uid string) []byte {
 				t.Helper()
 				es := mkElasticsearch(uid)
 				es.Spec.Version = "7.10.0"
-				return serialize(t, es)
+				return test.MustMarshalJSON(t, es)
 			},
 			Check: test.ValidationWebhookSucceededWithWarnings(
 				`Version 7.10.0 is EOL and support for it will be removed in a future release of the ECK operator`,
@@ -135,13 +133,13 @@ func TestWebhook(t *testing.T) {
 				t.Helper()
 				es := mkElasticsearch(uid)
 				es.Spec.Version = "7.12.0"
-				return serialize(t, es)
+				return test.MustMarshalJSON(t, es)
 			},
 			Object: func(t *testing.T, uid string) []byte {
 				t.Helper()
 				es := mkElasticsearch(uid)
 				es.Spec.Version = "7.10.0"
-				return serialize(t, es)
+				return test.MustMarshalJSON(t, es)
 			},
 			Check: test.ValidationWebhookFailedWithWarnings(
 				[]string{`spec.version: Invalid value: "7.10.0": Downgrades are not supported`},
@@ -168,13 +166,4 @@ func mkElasticsearch(uid string) *esv1beta1.Elasticsearch {
 			},
 		},
 	}
-}
-
-func serialize(t *testing.T, es *esv1beta1.Elasticsearch) []byte {
-	t.Helper()
-
-	objBytes, err := json.Marshal(es)
-	require.NoError(t, err)
-
-	return objBytes
 }

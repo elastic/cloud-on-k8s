@@ -5,11 +5,9 @@
 package v1alpha1_test
 
 import (
-	"encoding/json"
 	"fmt"
 	"testing"
 
-	"github.com/stretchr/testify/require"
 	admissionv1 "k8s.io/api/admission/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
@@ -26,7 +24,7 @@ func TestWebhook(t *testing.T) {
 			Object: func(t *testing.T, uid string) []byte {
 				t.Helper()
 				a := mkAgent(uid)
-				return serialize(t, a)
+				return test.MustMarshalJSON(t, a)
 			},
 			Check: test.ValidationWebhookSucceeded,
 		},
@@ -38,7 +36,7 @@ func TestWebhook(t *testing.T) {
 				a := mkAgent(uid)
 				a.Spec.Mode = agentv1alpha1.AgentFleetMode
 				a.Spec.FleetServerEnabled = true
-				return serialize(t, a)
+				return test.MustMarshalJSON(t, a)
 			},
 			Check: test.ValidationWebhookSucceededWithWarnings(
 				fmt.Sprintf("%s %s/%s: %s", agentv1alpha1.Kind, "", "webhook-test", agentv1alpha1.MissingPolicyIDMessage),
@@ -54,7 +52,7 @@ func TestWebhook(t *testing.T) {
 				a.Spec.Mode = agentv1alpha1.AgentFleetMode
 				a.Spec.FleetServerEnabled = true
 				a.Spec.PolicyID = "my-policy"
-				return serialize(t, a)
+				return test.MustMarshalJSON(t, a)
 			},
 			Check: test.ValidationWebhookSucceeded,
 		},
@@ -65,7 +63,7 @@ func TestWebhook(t *testing.T) {
 				t.Helper()
 				a := mkAgent(uid)
 				a.Spec.Mode = agentv1alpha1.AgentStandaloneMode
-				return serialize(t, a)
+				return test.MustMarshalJSON(t, a)
 			},
 			Check: test.ValidationWebhookSucceeded,
 		},
@@ -76,7 +74,7 @@ func TestWebhook(t *testing.T) {
 				t.Helper()
 				a := mkAgent(uid)
 				a.Spec.Version = "7.14.0"
-				return serialize(t, a)
+				return test.MustMarshalJSON(t, a)
 			},
 			Check: test.ValidationWebhookSucceededWithWarnings(
 				`Version 7.14.0 is EOL and support for it will be removed in a future release of the ECK operator`,
@@ -91,7 +89,7 @@ func TestWebhook(t *testing.T) {
 				a.Spec.Version = "7.14.0"
 				a.Spec.Mode = agentv1alpha1.AgentFleetMode
 				a.Spec.FleetServerEnabled = true
-				return serialize(t, a)
+				return test.MustMarshalJSON(t, a)
 			},
 			Check: test.ValidationWebhookSucceededWithWarnings(
 				fmt.Sprintf("%s %s/%s: %s", agentv1alpha1.Kind, "", "webhook-test", agentv1alpha1.MissingPolicyIDMessage),
@@ -105,13 +103,13 @@ func TestWebhook(t *testing.T) {
 				t.Helper()
 				a := mkAgent(uid)
 				a.Spec.Version = "7.12.0"
-				return serialize(t, a)
+				return test.MustMarshalJSON(t, a)
 			},
 			Object: func(t *testing.T, uid string) []byte {
 				t.Helper()
 				a := mkAgent(uid)
 				a.Spec.Version = "7.10.0"
-				return serialize(t, a)
+				return test.MustMarshalJSON(t, a)
 			},
 			Check: test.ValidationWebhookFailedWithWarnings(
 				[]string{`spec.version: Forbidden: Version downgrades are not supported`},
@@ -136,13 +134,4 @@ func mkAgent(uid string) *agentv1alpha1.Agent {
 			DaemonSet: &agentv1alpha1.DaemonSetSpec{},
 		},
 	}
-}
-
-func serialize(t *testing.T, a *agentv1alpha1.Agent) []byte {
-	t.Helper()
-
-	objBytes, err := json.Marshal(a)
-	require.NoError(t, err)
-
-	return objBytes
 }

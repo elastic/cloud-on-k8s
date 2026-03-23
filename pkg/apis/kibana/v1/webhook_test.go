@@ -5,11 +5,9 @@
 package v1_test
 
 import (
-	"encoding/json"
 	"strings"
 	"testing"
 
-	"github.com/stretchr/testify/require"
 	admissionv1 "k8s.io/api/admission/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -28,7 +26,7 @@ func TestWebhook(t *testing.T) {
 			Object: func(t *testing.T, uid string) []byte {
 				t.Helper()
 				k := mkKibana(uid)
-				return serialize(t, k)
+				return test.MustMarshalJSON(t, k)
 			},
 			Check: test.ValidationWebhookSucceeded,
 		},
@@ -41,7 +39,7 @@ func TestWebhook(t *testing.T) {
 				k.SetAnnotations(map[string]string{
 					corev1.LastAppliedConfigAnnotation: `{"metadata":{"name": "ekesn", "namespace": "default", "uid": "e7a18cfb-b017-475c-8da2-1ec941b1f285", "creationTimestamp":"2020-03-24T13:43:20Z" },"spec":{"version":"7.6.1", "unknown": "UNKNOWN"}}`,
 				})
-				return serialize(t, k)
+				return test.MustMarshalJSON(t, k)
 			},
 			Check: test.ValidationWebhookFailed(
 				`"unknown": unknown field found in the kubectl.kubernetes.io/last-applied-configuration annotation is unknown`,
@@ -54,7 +52,7 @@ func TestWebhook(t *testing.T) {
 				t.Helper()
 				k := mkKibana(uid)
 				k.SetName(strings.Repeat("x", 100))
-				return serialize(t, k)
+				return test.MustMarshalJSON(t, k)
 			},
 			Check: test.ValidationWebhookFailed(
 				`metadata.name: Too long: may not be more than 36 bytes`,
@@ -67,7 +65,7 @@ func TestWebhook(t *testing.T) {
 				t.Helper()
 				k := mkKibana(uid)
 				k.Spec.Version = "7.x"
-				return serialize(t, k)
+				return test.MustMarshalJSON(t, k)
 			},
 			Check: test.ValidationWebhookFailed(
 				`spec.version: Invalid value: "7.x": Invalid version: No Major.Minor.Patch elements found`,
@@ -80,7 +78,7 @@ func TestWebhook(t *testing.T) {
 				t.Helper()
 				k := mkKibana(uid)
 				k.Spec.Version = "7.10.0"
-				return serialize(t, k)
+				return test.MustMarshalJSON(t, k)
 			},
 			Check: test.ValidationWebhookSucceededWithWarnings(
 				`Version 7.10.0 is EOL and support for it will be removed in a future release of the ECK operator`,
@@ -93,7 +91,7 @@ func TestWebhook(t *testing.T) {
 				t.Helper()
 				k := mkKibana(uid)
 				k.Spec.Version = "3.1.2"
-				return serialize(t, k)
+				return test.MustMarshalJSON(t, k)
 			},
 			Check: test.ValidationWebhookFailed(
 				`spec.version: Invalid value: "3.1.2": Unsupported version: version 3.1.2 is lower than the lowest supported version`,
@@ -106,7 +104,7 @@ func TestWebhook(t *testing.T) {
 				t.Helper()
 				k := mkKibana(uid)
 				k.Spec.Version = "300.1.2"
-				return serialize(t, k)
+				return test.MustMarshalJSON(t, k)
 			},
 			Check: test.ValidationWebhookFailed(
 				`spec.version: Invalid value: "300.1.2": Unsupported version: version 300.1.2 is higher than the highest supported version`,
@@ -119,13 +117,13 @@ func TestWebhook(t *testing.T) {
 				t.Helper()
 				k := mkKibana(uid)
 				k.Spec.Version = "8.5.1"
-				return serialize(t, k)
+				return test.MustMarshalJSON(t, k)
 			},
 			Object: func(t *testing.T, uid string) []byte {
 				t.Helper()
 				k := mkKibana(uid)
 				k.Spec.Version = "8.6.1"
-				return serialize(t, k)
+				return test.MustMarshalJSON(t, k)
 			},
 			Check: test.ValidationWebhookSucceeded,
 		},
@@ -136,13 +134,13 @@ func TestWebhook(t *testing.T) {
 				t.Helper()
 				k := mkKibana(uid)
 				k.Spec.Version = "8.6.1"
-				return serialize(t, k)
+				return test.MustMarshalJSON(t, k)
 			},
 			Object: func(t *testing.T, uid string) []byte {
 				t.Helper()
 				k := mkKibana(uid)
 				k.Spec.Version = "8.5.1"
-				return serialize(t, k)
+				return test.MustMarshalJSON(t, k)
 			},
 			Check: test.ValidationWebhookFailed(
 				`spec.version: Forbidden: Version downgrades are not supported`,
@@ -155,7 +153,7 @@ func TestWebhook(t *testing.T) {
 				t.Helper()
 				k := mkKibana(uid)
 				k.Spec.Version = "8.6.1"
-				return serialize(t, k)
+				return test.MustMarshalJSON(t, k)
 			},
 			Object: func(t *testing.T, uid string) []byte {
 				t.Helper()
@@ -164,7 +162,7 @@ func TestWebhook(t *testing.T) {
 				k.Annotations = map[string]string{
 					commonv1.DisableDowngradeValidationAnnotation: "true",
 				}
-				return serialize(t, k)
+				return test.MustMarshalJSON(t, k)
 			},
 			Check: test.ValidationWebhookSucceeded,
 		},
@@ -175,7 +173,7 @@ func TestWebhook(t *testing.T) {
 				t.Helper()
 				ent := mkKibana(uid)
 				ent.Spec.ElasticsearchRef = commonv1.ObjectSelector{Name: "esname"}
-				return serialize(t, ent)
+				return test.MustMarshalJSON(t, ent)
 			},
 			Check: test.ValidationWebhookSucceeded,
 		},
@@ -186,7 +184,7 @@ func TestWebhook(t *testing.T) {
 				t.Helper()
 				ent := mkKibana(uid)
 				ent.Spec.ElasticsearchRef = commonv1.ObjectSelector{Name: "esname", Namespace: "esns"}
-				return serialize(t, ent)
+				return test.MustMarshalJSON(t, ent)
 			},
 			Check: test.ValidationWebhookSucceeded,
 		},
@@ -197,7 +195,7 @@ func TestWebhook(t *testing.T) {
 				t.Helper()
 				ent := mkKibana(uid)
 				ent.Spec.ElasticsearchRef = commonv1.ObjectSelector{Name: "esname", ServiceName: "esns"}
-				return serialize(t, ent)
+				return test.MustMarshalJSON(t, ent)
 			},
 			Check: test.ValidationWebhookSucceeded,
 		},
@@ -208,7 +206,7 @@ func TestWebhook(t *testing.T) {
 				t.Helper()
 				ent := mkKibana(uid)
 				ent.Spec.ElasticsearchRef = commonv1.ObjectSelector{SecretName: "esname"}
-				return serialize(t, ent)
+				return test.MustMarshalJSON(t, ent)
 			},
 			Check: test.ValidationWebhookSucceeded,
 		},
@@ -219,7 +217,7 @@ func TestWebhook(t *testing.T) {
 				t.Helper()
 				kb := mkKibana(uid)
 				kb.Spec.ElasticsearchRef = commonv1.ObjectSelector{SecretName: "esname", Name: "esname"}
-				return serialize(t, kb)
+				return test.MustMarshalJSON(t, kb)
 			},
 			Check: test.ValidationWebhookFailed(
 				`spec.elasticsearchRef: Forbidden: Invalid association reference: specify name or secretName, not both`,
@@ -232,7 +230,7 @@ func TestWebhook(t *testing.T) {
 				t.Helper()
 				kb := mkKibana(uid)
 				kb.Spec.ElasticsearchRef = commonv1.ObjectSelector{SecretName: "esname", Namespace: "esns"}
-				return serialize(t, kb)
+				return test.MustMarshalJSON(t, kb)
 			},
 			Check: test.ValidationWebhookFailed(
 				`spec.elasticsearchRef: Forbidden: Invalid association reference: serviceName or namespace can only be used in combination with name, not with secretName`,
@@ -245,7 +243,7 @@ func TestWebhook(t *testing.T) {
 				t.Helper()
 				kb := mkKibana(uid)
 				kb.Spec.ElasticsearchRef = commonv1.ObjectSelector{SecretName: "esname", ServiceName: "esname"}
-				return serialize(t, kb)
+				return test.MustMarshalJSON(t, kb)
 			},
 			Check: test.ValidationWebhookFailed(
 				`spec.elasticsearchRef: Forbidden: Invalid association reference: serviceName or namespace can only be used in combination with name, not with secretName`,
@@ -260,7 +258,7 @@ func TestWebhook(t *testing.T) {
 				ent.Spec.Version = "7.17.0"
 				ent.Spec.Monitoring = commonv1.Monitoring{Metrics: commonv1.MetricsMonitoring{ElasticsearchRefs: []commonv1.ObjectSelector{{Name: "esmonname", Namespace: "esmonns"}}}}
 				ent.Spec.ElasticsearchRef = commonv1.ObjectSelector{Name: "esname", Namespace: "esns"}
-				return serialize(t, ent)
+				return test.MustMarshalJSON(t, ent)
 			},
 			Check: test.ValidationWebhookSucceeded,
 		},
@@ -276,7 +274,7 @@ func TestWebhook(t *testing.T) {
 					Logs:    commonv1.LogsMonitoring{ElasticsearchRefs: []commonv1.ObjectSelector{{SecretName: "es2monname"}}},
 				}
 				ent.Spec.ElasticsearchRef = commonv1.ObjectSelector{Name: "esname", Namespace: "esns"}
-				return serialize(t, ent)
+				return test.MustMarshalJSON(t, ent)
 			},
 			Check: test.ValidationWebhookSucceeded,
 		},
@@ -289,7 +287,7 @@ func TestWebhook(t *testing.T) {
 				ent.Spec.Version = "7.13.0"
 				ent.Spec.Monitoring = commonv1.Monitoring{Metrics: commonv1.MetricsMonitoring{ElasticsearchRefs: []commonv1.ObjectSelector{{Name: "esmonname", Namespace: "esmonns"}}}}
 				ent.Spec.ElasticsearchRef = commonv1.ObjectSelector{Name: "esname", Namespace: "esns"}
-				return serialize(t, ent)
+				return test.MustMarshalJSON(t, ent)
 			},
 			Check: test.ValidationWebhookFailed(
 				`spec.version: Invalid value: "7.13.0": Unsupported version for Stack Monitoring. Required >= 7.14.0.`,
@@ -307,7 +305,7 @@ func TestWebhook(t *testing.T) {
 					Logs:    commonv1.LogsMonitoring{ElasticsearchRefs: []commonv1.ObjectSelector{{SecretName: "es2monname"}}},
 				}
 				ent.Spec.ElasticsearchRef = commonv1.ObjectSelector{Name: "esname", Namespace: "esns"}
-				return serialize(t, ent)
+				return test.MustMarshalJSON(t, ent)
 			},
 			Check: test.ValidationWebhookFailed(
 				`spec.monitoring.metrics: Forbidden: Invalid association reference: specify name or secretName, not both`,
@@ -325,7 +323,7 @@ func TestWebhook(t *testing.T) {
 					Logs:    commonv1.LogsMonitoring{ElasticsearchRefs: []commonv1.ObjectSelector{{SecretName: "es2monname", ServiceName: "xx"}}},
 				}
 				ent.Spec.ElasticsearchRef = commonv1.ObjectSelector{Name: "esname", Namespace: "esns"}
-				return serialize(t, ent)
+				return test.MustMarshalJSON(t, ent)
 			},
 			Check: test.ValidationWebhookFailed(
 				`spec.monitoring.logs: Forbidden: Invalid association reference: serviceName or namespace can only be used in combination with name, not with secretName`,
@@ -338,7 +336,7 @@ func TestWebhook(t *testing.T) {
 				t.Helper()
 				ent := mkKibana(uid)
 				ent.Spec.PackageRegistryRef = commonv1.LocalObjectSelector{Name: "epr", Namespace: "esns"}
-				return serialize(t, ent)
+				return test.MustMarshalJSON(t, ent)
 			},
 			Check: test.ValidationWebhookSucceeded,
 		},
@@ -359,13 +357,4 @@ func mkKibana(uid string) *kbv1.Kibana {
 			Version: "7.17.0",
 		},
 	}
-}
-
-func serialize(t *testing.T, k *kbv1.Kibana) []byte {
-	t.Helper()
-
-	objBytes, err := json.Marshal(k)
-	require.NoError(t, err)
-
-	return objBytes
 }

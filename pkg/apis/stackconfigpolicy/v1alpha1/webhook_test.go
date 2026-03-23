@@ -5,11 +5,9 @@
 package v1alpha1_test
 
 import (
-	"encoding/json"
 	"strings"
 	"testing"
 
-	"github.com/stretchr/testify/require"
 	admissionv1 "k8s.io/api/admission/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -38,7 +36,7 @@ func TestWebhook(t *testing.T) {
 						MountPath:  "/usr/test2",
 					},
 				}
-				return serialize(t, m)
+				return test.MustMarshalJSON(t, m)
 			},
 			Check: test.ValidationWebhookSucceeded,
 		},
@@ -52,7 +50,7 @@ func TestWebhook(t *testing.T) {
 				m.Spec.Kibana = policyv1alpha1.KibanaConfigPolicySpec{
 					Config: &commonv1.Config{Data: map[string]any{"a": "b"}},
 				}
-				return serialize(t, m)
+				return test.MustMarshalJSON(t, m)
 			},
 			Check: test.ValidationWebhookSucceeded,
 		},
@@ -68,7 +66,7 @@ func TestWebhook(t *testing.T) {
 						"spec":{"unknown": "blurb"}
 					}`,
 				})
-				return serialize(t, m)
+				return test.MustMarshalJSON(t, m)
 			},
 			Check: test.ValidationWebhookFailed(
 				`"unknown": unknown field found in the kubectl.kubernetes.io/last-applied-configuration annotation is unknown`,
@@ -81,7 +79,7 @@ func TestWebhook(t *testing.T) {
 				t.Helper()
 				m := mkStackConfigPolicy(uid)
 				m.SetName(strings.Repeat("x", 100))
-				return serialize(t, m)
+				return test.MustMarshalJSON(t, m)
 			},
 			Check: test.ValidationWebhookFailed(
 				`metadata.name: Too long: may not be more than 36 bytes`,
@@ -98,7 +96,7 @@ func TestWebhook(t *testing.T) {
 					SnapshotLifecyclePolicies: &commonv1.Config{Data: nil},
 					ClusterSettings:           &commonv1.Config{Data: map[string]any{}},
 				}
-				return serialize(t, m)
+				return test.MustMarshalJSON(t, m)
 			},
 			Check: test.ValidationWebhookFailed(
 				"One out of Elasticsearch or Kibana settings is mandatory, both must not be empty",
@@ -113,7 +111,7 @@ func TestWebhook(t *testing.T) {
 				m.Spec.SecureSettings = []commonv1.SecretSource{
 					{SecretName: "my-secret"},
 				}
-				return serialize(t, m)
+				return test.MustMarshalJSON(t, m)
 			},
 			Check: test.ValidationWebhookSucceededWithWarnings(
 				policyv1alpha1.SpecSecureSettingsDeprecated,
@@ -135,7 +133,7 @@ func TestWebhook(t *testing.T) {
 						MountPath:  "/usr/test",
 					},
 				}
-				return serialize(t, m)
+				return test.MustMarshalJSON(t, m)
 			},
 			Check: test.ValidationWebhookFailed(
 				"SecretMounts cannot have duplicate mount paths",
@@ -160,13 +158,4 @@ func mkStackConfigPolicy(uid string) *policyv1alpha1.StackConfigPolicy {
 			},
 		},
 	}
-}
-
-func serialize(t *testing.T, policy *policyv1alpha1.StackConfigPolicy) []byte {
-	t.Helper()
-
-	objBytes, err := json.Marshal(policy)
-	require.NoError(t, err)
-
-	return objBytes
 }

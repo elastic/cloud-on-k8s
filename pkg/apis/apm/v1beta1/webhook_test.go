@@ -5,11 +5,9 @@
 package v1beta1_test
 
 import (
-	"encoding/json"
 	"strings"
 	"testing"
 
-	"github.com/stretchr/testify/require"
 	admissionv1 "k8s.io/api/admission/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -28,7 +26,7 @@ func TestWebhook(t *testing.T) {
 			Object: func(t *testing.T, uid string) []byte {
 				t.Helper()
 				apm := mkApmServer(uid)
-				return serialize(t, apm)
+				return test.MustMarshalJSON(t, apm)
 			},
 			Check: test.ValidationWebhookSucceeded,
 		},
@@ -41,7 +39,7 @@ func TestWebhook(t *testing.T) {
 				apm.SetAnnotations(map[string]string{
 					corev1.LastAppliedConfigAnnotation: `{"metadata":{"name": "ekesn", "namespace": "default", "uid": "e7a18cfb-b017-475c-8da2-1ec941b1f285", "creationTimestamp":"2020-03-24T13:43:20Z" },"spec":{"version":"7.6.1", "unknown": "UNKNOWN"}}`,
 				})
-				return serialize(t, apm)
+				return test.MustMarshalJSON(t, apm)
 			},
 			Check: test.ValidationWebhookFailed(
 				`"unknown": unknown field found in the kubectl.kubernetes.io/last-applied-configuration annotation is unknown`,
@@ -54,7 +52,7 @@ func TestWebhook(t *testing.T) {
 				t.Helper()
 				apm := mkApmServer(uid)
 				apm.SetName(strings.Repeat("x", 100))
-				return serialize(t, apm)
+				return test.MustMarshalJSON(t, apm)
 			},
 			Check: test.ValidationWebhookFailed(
 				`metadata.name: Too long: may not be more than 36 bytes`,
@@ -67,7 +65,7 @@ func TestWebhook(t *testing.T) {
 				t.Helper()
 				apm := mkApmServer(uid)
 				apm.Spec.Version = "7.x"
-				return serialize(t, apm)
+				return test.MustMarshalJSON(t, apm)
 			},
 			Check: test.ValidationWebhookFailed(
 				`spec.version: Invalid value: "7.x": Invalid version: No Major.Minor.Patch elements found`,
@@ -80,7 +78,7 @@ func TestWebhook(t *testing.T) {
 				t.Helper()
 				apm := mkApmServer(uid)
 				apm.Spec.Version = "3.1.2"
-				return serialize(t, apm)
+				return test.MustMarshalJSON(t, apm)
 			},
 			Check: test.ValidationWebhookFailed(
 				`spec.version: Invalid value: "3.1.2": Unsupported version: version 3.1.2 is lower than the lowest supported version`,
@@ -93,7 +91,7 @@ func TestWebhook(t *testing.T) {
 				t.Helper()
 				apm := mkApmServer(uid)
 				apm.Spec.Version = "300.1.2"
-				return serialize(t, apm)
+				return test.MustMarshalJSON(t, apm)
 			},
 			Check: test.ValidationWebhookFailed(
 				`spec.version: Invalid value: "300.1.2": Unsupported version: version 300.1.2 is higher than the highest supported version`,
@@ -106,13 +104,13 @@ func TestWebhook(t *testing.T) {
 				t.Helper()
 				apm := mkApmServer(uid)
 				apm.Spec.Version = "8.5.1"
-				return serialize(t, apm)
+				return test.MustMarshalJSON(t, apm)
 			},
 			Object: func(t *testing.T, uid string) []byte {
 				t.Helper()
 				apm := mkApmServer(uid)
 				apm.Spec.Version = "8.6.1"
-				return serialize(t, apm)
+				return test.MustMarshalJSON(t, apm)
 			},
 			Check: test.ValidationWebhookSucceeded,
 		},
@@ -123,13 +121,13 @@ func TestWebhook(t *testing.T) {
 				t.Helper()
 				apm := mkApmServer(uid)
 				apm.Spec.Version = "8.6.1"
-				return serialize(t, apm)
+				return test.MustMarshalJSON(t, apm)
 			},
 			Object: func(t *testing.T, uid string) []byte {
 				t.Helper()
 				apm := mkApmServer(uid)
 				apm.Spec.Version = "8.5.1"
-				return serialize(t, apm)
+				return test.MustMarshalJSON(t, apm)
 			},
 			Check: test.ValidationWebhookFailed(
 				`spec.version: Forbidden: Version downgrades are not supported`,
@@ -142,7 +140,7 @@ func TestWebhook(t *testing.T) {
 				t.Helper()
 				apm := mkApmServer(uid)
 				apm.Spec.Version = "7.4.0"
-				return serialize(t, apm)
+				return test.MustMarshalJSON(t, apm)
 			},
 			Check: test.ValidationWebhookSucceededWithWarnings(
 				`Version 7.4.0 is EOL and support for it will be removed in a future release of the ECK operator`,
@@ -155,7 +153,7 @@ func TestWebhook(t *testing.T) {
 				t.Helper()
 				apm := mkApmServer(uid)
 				apm.Spec.Version = "8.6.1"
-				return serialize(t, apm)
+				return test.MustMarshalJSON(t, apm)
 			},
 			Object: func(t *testing.T, uid string) []byte {
 				t.Helper()
@@ -164,7 +162,7 @@ func TestWebhook(t *testing.T) {
 				apm.Annotations = map[string]string{
 					commonv1.DisableDowngradeValidationAnnotation: "true",
 				}
-				return serialize(t, apm)
+				return test.MustMarshalJSON(t, apm)
 			},
 			Check: test.ValidationWebhookSucceeded,
 		},
@@ -175,13 +173,13 @@ func TestWebhook(t *testing.T) {
 				t.Helper()
 				apm := mkApmServer(uid)
 				apm.Spec.Version = "7.10.0"
-				return serialize(t, apm)
+				return test.MustMarshalJSON(t, apm)
 			},
 			Object: func(t *testing.T, uid string) []byte {
 				t.Helper()
 				apm := mkApmServer(uid)
 				apm.Spec.Version = "7.10.0"
-				return serialize(t, apm)
+				return test.MustMarshalJSON(t, apm)
 			},
 			Check: test.ValidationWebhookSucceededWithWarnings(
 				`Version 7.10.0 is EOL and support for it will be removed in a future release of the ECK operator`,
@@ -194,13 +192,13 @@ func TestWebhook(t *testing.T) {
 				t.Helper()
 				apm := mkApmServer(uid)
 				apm.Spec.Version = "7.12.0"
-				return serialize(t, apm)
+				return test.MustMarshalJSON(t, apm)
 			},
 			Object: func(t *testing.T, uid string) []byte {
 				t.Helper()
 				apm := mkApmServer(uid)
 				apm.Spec.Version = "7.10.0"
-				return serialize(t, apm)
+				return test.MustMarshalJSON(t, apm)
 			},
 			Check: test.ValidationWebhookFailedWithWarnings(
 				[]string{`spec.version: Forbidden: Version downgrades are not supported`},
@@ -224,13 +222,4 @@ func mkApmServer(uid string) *apmv1beta1.ApmServer {
 			Version: "7.17.1",
 		},
 	}
-}
-
-func serialize(t *testing.T, apm *apmv1beta1.ApmServer) []byte {
-	t.Helper()
-
-	objBytes, err := json.Marshal(apm)
-	require.NoError(t, err)
-
-	return objBytes
 }
