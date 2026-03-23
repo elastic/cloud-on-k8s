@@ -232,6 +232,95 @@ func Test_applyLinkedLicense(t *testing.T) {
 	}
 }
 
+// fakeReconcileClient wraps an esclient.Client and tracks StartBasic calls.
+type fakeReconcileClient struct {
+	esclient.Client
+	startBasicCalled bool
+}
+
+func (f *fakeReconcileClient) StartBasic(_ context.Context) (esclient.StartBasicResponse, error) {
+	f.startBasicCalled = true
+	return esclient.StartBasicResponse{}, nil
+}
+
+func TestReconcile_BasicLicenseCluster(t *testing.T) {
+	tests := []struct {
+		name           string
+		licenseType    string
+		currentLicense esclient.License
+		wantStartBasic bool
+		wantErr        bool
+	}{
+		{
+			name:        "basic cluster with enterprise license: should call startBasic",
+			licenseType: "basic",
+			currentLicense: esclient.License{
+				Type: string(esclient.ElasticsearchLicenseTypeEnterprise),
+			},
+			wantStartBasic: true,
+		},
+		{
+			name:        "basic cluster with platinum license: should call startBasic",
+			licenseType: "basic",
+			currentLicense: esclient.License{
+				Type: string(esclient.ElasticsearchLicenseTypePlatinum),
+			},
+			wantStartBasic: true,
+		},
+		{
+			name:        "basic cluster already basic: no-op",
+			licenseType: "basic",
+			currentLicense: esclient.License{
+				Type: string(esclient.ElasticsearchLicenseTypeBasic),
+			},
+			wantStartBasic: false,
+		},
+		{
+			name:        "basic cluster with trial: tolerate trial",
+			licenseType: "basic",
+			currentLicense: esclient.License{
+				Type: string(esclient.ElasticsearchLicenseTypeTrial),
+			},
+			wantStartBasic: false,
+		},
+		{
+			name:        "non-basic cluster: delegates to applyLinkedLicense (no secret, already basic)",
+			licenseType: "",
+			currentLicense: esclient.License{
+				Type: string(esclient.ElasticsearchLicenseTypeBasic),
+			},
+			wantStartBasic: false,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			es := esv1.Elasticsearch{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "test",
+					Namespace: "default",
+				},
+				Spec: esv1.ElasticsearchSpec{
+					LicenseType: tt.licenseType,
+				},
+			}
+			mockClient := esclient.NewMockClient(version.MustParse("8.0.0"), func(req *http.Request) *http.Response {
+				// The non-basic test case delegates to applyLinkedLicense which won't make HTTP calls
+				// when no license secret exists and current license is basic.
+				panic("unexpected HTTP call")
+			})
+			updater := &fakeReconcileClient{Client: mockClient}
+			c := k8s.NewFakeClient()
+			err := Reconcile(context.Background(), c, es, updater, tt.currentLicense)
+			if tt.wantErr {
+				require.Error(t, err)
+			} else {
+				require.NoError(t, err)
+			}
+			require.Equal(t, tt.wantStartBasic, updater.startBasicCalled)
+		})
+	}
+}
+
 func Test_checkEsLicense(t *testing.T) {
 	tests := []struct {
 		name        string

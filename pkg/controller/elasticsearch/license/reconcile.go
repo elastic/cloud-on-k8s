@@ -22,6 +22,14 @@ func Reconcile(
 	clusterClient esclient.Client,
 	currentLicense esclient.License,
 ) error {
+	// If the cluster is configured for a basic license, ensure it runs on basic.
+	if esCluster.Spec.IsBasicLicense() {
+		if !isBasic(currentLicense) && !isTrial(currentLicense) {
+			return startBasic(ctx, clusterClient)
+		}
+		return nil
+	}
+
 	clusterName := k8s.ExtractNamespacedName(&esCluster)
 	return applyLinkedLicense(ctx, c, clusterName, clusterClient, currentLicense)
 }

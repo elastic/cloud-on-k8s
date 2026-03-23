@@ -207,6 +207,20 @@ func (r *ReconcileLicenses) reconcileClusterLicense(ctx context.Context, cluster
 	log := ulog.FromContext(ctx)
 
 	var noResult time.Time
+
+	// If the cluster is configured for a basic license, do not create a cluster license secret.
+	// Delete any existing one to ensure the ES license reconciler will revert to basic.
+	if cluster.Spec.IsBasicLicense() {
+		log.V(1).Info("Cluster configured for basic license, removing cluster license secret if present",
+			"namespace", cluster.Namespace, "es_name", cluster.Name)
+		clusterLicenseNSN := types.NamespacedName{
+			Namespace: cluster.Namespace,
+			Name:      esv1.LicenseSecretName(cluster.Name),
+		}
+		err := k8s.DeleteSecretIfExists(ctx, r.Client, clusterLicenseNSN)
+		return noResult, false, err
+	}
+
 	minVersion, err := r.minVersion(cluster)
 	if err != nil {
 		return noResult, true, err

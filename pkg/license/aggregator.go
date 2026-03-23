@@ -14,8 +14,10 @@ import (
 	"github.com/pkg/errors"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
+	"k8s.io/apimachinery/pkg/types"
 
 	apmv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/apm/v1"
+	commonv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/common/v1"
 	esv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/elasticsearch/v1"
 	entv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/enterprisesearch/v1"
 	kbv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/kibana/v1"
@@ -35,11 +37,17 @@ type aggregator struct {
 	client k8s.Client
 }
 
-type aggregate func(ctx context.Context) (managedMemory, error)
+type aggregate func(ctx context.Context, basicClusters map[types.NamespacedName]bool) (managedMemory, error)
 
-// aggregateMemory aggregates the total memory of all Elastic managed components
+// aggregateMemory aggregates the total memory of all Elastic managed components.
+// Clusters configured with a basic license and their associated resources are excluded.
 func (a aggregator) aggregateMemory(ctx context.Context) (memoryUsage, error) {
 	usage := newMemoryUsage()
+
+	basicClusters, err := a.basicLicensedClusters(ctx)
+	if err != nil {
+		return memoryUsage{}, err
+	}
 
 	for _, f := range []aggregate{
 		a.aggregateElasticsearchMemory,
@@ -48,7 +56,7 @@ func (a aggregator) aggregateMemory(ctx context.Context) (memoryUsage, error) {
 		a.aggregateEnterpriseSearchMemory,
 		a.aggregateLogstashMemory,
 	} {
-		memory, err := f(ctx)
+		memory, err := f(ctx, basicClusters)
 		if err != nil {
 			return memoryUsage{}, err
 		}
@@ -58,7 +66,48 @@ func (a aggregator) aggregateMemory(ctx context.Context) (memoryUsage, error) {
 	return usage, nil
 }
 
-func (a aggregator) aggregateElasticsearchMemory(ctx context.Context) (managedMemory, error) {
+// basicLicensedClusters returns the set of Elasticsearch clusters configured with a basic license.
+func (a aggregator) basicLicensedClusters(ctx context.Context) (map[types.NamespacedName]bool, error) {
+	var esList esv1.ElasticsearchList
+	if err := a.client.List(ctx, &esList); err != nil {
+		return nil, errors.Wrap(err, "failed to list Elasticsearch clusters for license check")
+	}
+	result := make(map[types.NamespacedName]bool)
+	for _, es := range esList.Items {
+		if es.Spec.IsBasicLicense() {
+			result[types.NamespacedName{Namespace: es.Namespace, Name: es.Name}] = true
+		}
+	}
+	return result, nil
+}
+
+// isReferencingBasicCluster returns true if the given ElasticsearchRef points to a basic-licensed cluster.
+func isReferencingBasicCluster(ref commonv1.ObjectSelector, resourceNamespace string, basicClusters map[types.NamespacedName]bool) bool {
+	if ref.Name == "" {
+		return false
+	}
+	ns := ref.Namespace
+	if ns == "" {
+		ns = resourceNamespace
+	}
+	return basicClusters[types.NamespacedName{Namespace: ns, Name: ref.Name}]
+}
+
+// allRefsBasic returns true if all Elasticsearch references point to basic-licensed clusters.
+// Returns true if there are no references (no enterprise cluster to bill against).
+func allRefsBasic(refs []lsv1alpha1.ElasticsearchCluster, resourceNamespace string, basicClusters map[types.NamespacedName]bool) bool {
+	if len(refs) == 0 {
+		return false
+	}
+	for _, ref := range refs {
+		if !isReferencingBasicCluster(ref.ObjectSelector, resourceNamespace, basicClusters) {
+			return false
+		}
+	}
+	return true
+}
+
+func (a aggregator) aggregateElasticsearchMemory(ctx context.Context, basicClusters map[types.NamespacedName]bool) (managedMemory, error) {
 	var esList esv1.ElasticsearchList
 	err := a.client.List(context.Background(), &esList)
 	if err != nil {
@@ -67,6 +116,9 @@ func (a aggregator) aggregateElasticsearchMemory(ctx context.Context) (managedMe
 
 	var total resource.Quantity
 	for _, es := range esList.Items {
+		if es.Spec.IsBasicLicense() {
+			continue
+		}
 		for _, nodeSet := range es.Spec.NodeSets {
 			mem, err := containerMemLimits(
 				nodeSet.PodTemplate.Spec.Containers,
@@ -87,7 +139,7 @@ func (a aggregator) aggregateElasticsearchMemory(ctx context.Context) (managedMe
 	return managedMemory{total, elasticsearchKey}, nil
 }
 
-func (a aggregator) aggregateEnterpriseSearchMemory(ctx context.Context) (managedMemory, error) {
+func (a aggregator) aggregateEnterpriseSearchMemory(ctx context.Context, basicClusters map[types.NamespacedName]bool) (managedMemory, error) {
 	var entList entv1.EnterpriseSearchList
 	err := a.client.List(context.Background(), &entList)
 	if err != nil {
@@ -96,6 +148,9 @@ func (a aggregator) aggregateEnterpriseSearchMemory(ctx context.Context) (manage
 
 	var total resource.Quantity
 	for _, ent := range entList.Items {
+		if isReferencingBasicCluster(ent.Spec.ElasticsearchRef, ent.Namespace, basicClusters) {
+			continue
+		}
 		mem, err := containerMemLimits(
 			ent.Spec.PodTemplate.Spec.Containers,
 			entv1.EnterpriseSearchContainerName,
@@ -114,7 +169,7 @@ func (a aggregator) aggregateEnterpriseSearchMemory(ctx context.Context) (manage
 	return managedMemory{total, entSearchKey}, nil
 }
 
-func (a aggregator) aggregateKibanaMemory(ctx context.Context) (managedMemory, error) {
+func (a aggregator) aggregateKibanaMemory(ctx context.Context, basicClusters map[types.NamespacedName]bool) (managedMemory, error) {
 	var kbList kbv1.KibanaList
 	err := a.client.List(context.Background(), &kbList)
 	if err != nil {
@@ -123,6 +178,9 @@ func (a aggregator) aggregateKibanaMemory(ctx context.Context) (managedMemory, e
 
 	var total resource.Quantity
 	for _, kb := range kbList.Items {
+		if isReferencingBasicCluster(kb.Spec.ElasticsearchRef, kb.Namespace, basicClusters) {
+			continue
+		}
 		mem, err := containerMemLimits(
 			kb.Spec.PodTemplate.Spec.Containers,
 			kbv1.KibanaContainerName,
@@ -141,7 +199,7 @@ func (a aggregator) aggregateKibanaMemory(ctx context.Context) (managedMemory, e
 	return managedMemory{total, kibanaKey}, nil
 }
 
-func (a aggregator) aggregateLogstashMemory(ctx context.Context) (managedMemory, error) {
+func (a aggregator) aggregateLogstashMemory(ctx context.Context, basicClusters map[types.NamespacedName]bool) (managedMemory, error) {
 	var lsList lsv1alpha1.LogstashList
 	err := a.client.List(context.Background(), &lsList)
 	if err != nil {
@@ -150,6 +208,9 @@ func (a aggregator) aggregateLogstashMemory(ctx context.Context) (managedMemory,
 
 	var total resource.Quantity
 	for _, ls := range lsList.Items {
+		if allRefsBasic(ls.Spec.ElasticsearchRefs, ls.Namespace, basicClusters) {
+			continue
+		}
 		mem, err := containerMemLimits(
 			ls.Spec.PodTemplate.Spec.Containers,
 			lsv1alpha1.LogstashContainerName,
@@ -168,7 +229,7 @@ func (a aggregator) aggregateLogstashMemory(ctx context.Context) (managedMemory,
 	return managedMemory{total, logstashKey}, nil
 }
 
-func (a aggregator) aggregateApmServerMemory(ctx context.Context) (managedMemory, error) {
+func (a aggregator) aggregateApmServerMemory(ctx context.Context, basicClusters map[types.NamespacedName]bool) (managedMemory, error) {
 	var asList apmv1.ApmServerList
 	err := a.client.List(context.Background(), &asList)
 	if err != nil {
@@ -177,6 +238,9 @@ func (a aggregator) aggregateApmServerMemory(ctx context.Context) (managedMemory
 
 	var total resource.Quantity
 	for _, as := range asList.Items {
+		if isReferencingBasicCluster(as.Spec.ElasticsearchRef, as.Namespace, basicClusters) {
+			continue
+		}
 		mem, err := containerMemLimits(
 			as.Spec.PodTemplate.Spec.Containers,
 			apmv1.ApmServerContainerName,

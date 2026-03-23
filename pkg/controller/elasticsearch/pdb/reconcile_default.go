@@ -42,7 +42,7 @@ func Reconcile(
 	statefulSets sset.StatefulSetList,
 	meta metadata.Metadata) error {
 	licenseChecker := lic.NewLicenseChecker(k8sClient, operatorNamespace)
-	enterpriseEnabled, err := licenseChecker.EnterpriseFeaturesEnabled(ctx)
+	enterpriseEnabled, err := lic.EnterpriseFeaturesEnabledForCluster(ctx, licenseChecker, es.Spec.IsBasicLicense())
 	if err != nil {
 		return fmt.Errorf("while checking license during pdb reconciliation: %w", err)
 	}

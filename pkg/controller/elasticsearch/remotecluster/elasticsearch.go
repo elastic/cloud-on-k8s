@@ -48,7 +48,7 @@ func UpdateSettings(
 	span, _ := apm.StartSpan(ctx, "update_remote_clusters", tracing.SpanTypeApp)
 	defer span.End()
 
-	enabled, err := licenseChecker.EnterpriseFeaturesEnabled(ctx)
+	enabled, err := license.EnterpriseFeaturesEnabledForCluster(ctx, licenseChecker, es.Spec.IsBasicLicense())
 	if err != nil {
 		return true, err
 	}
