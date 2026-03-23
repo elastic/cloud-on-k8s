@@ -18,7 +18,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/types"
-	"k8s.io/client-go/tools/record"
+	toolsevents "k8s.io/client-go/tools/events"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
 	"sigs.k8s.io/controller-runtime/pkg/handler"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
@@ -62,7 +62,7 @@ func newReconciler(mgr manager.Manager, params operator.Parameters) *ReconcileEn
 	client := mgr.GetClient()
 	return &ReconcileEnterpriseSearch{
 		Client:         client,
-		recorder:       mgr.GetEventRecorderFor(controllerName),
+		recorder:       mgr.GetEventRecorder(controllerName),
 		dynamicWatches: watches.NewDynamicWatches(),
 		Parameters:     params,
 	}
@@ -117,7 +117,7 @@ var _ reconcile.Reconciler = (*ReconcileEnterpriseSearch)(nil)
 // ReconcileEnterpriseSearch reconciles an ApmServer object
 type ReconcileEnterpriseSearch struct {
 	k8s.Client
-	recorder       record.EventRecorder
+	recorder       toolsevents.EventRecorder
 	dynamicWatches watches.DynamicWatches
 	operator.Parameters
 	// iteration is the number of times this controller has run its Reconcile method
@@ -132,7 +132,7 @@ func (r *ReconcileEnterpriseSearch) DynamicWatches() watches.DynamicWatches {
 	return r.dynamicWatches
 }
 
-func (r *ReconcileEnterpriseSearch) Recorder() record.EventRecorder {
+func (r *ReconcileEnterpriseSearch) Recorder() toolsevents.EventRecorder {
 	return r.recorder
 }
 
@@ -220,7 +220,7 @@ func (r *ReconcileEnterpriseSearch) doReconcile(ctx context.Context, ent entv1.E
 	}.ReconcileCAAndHTTPCerts(ctx)
 	if results.HasError() {
 		_, err := results.Aggregate()
-		k8s.MaybeEmitErrorEvent(r.recorder, err, &ent, events.EventReconciliationError, "Certificate reconciliation error: %v", err)
+		k8s.MaybeEmitErrorEventf(r.recorder, err, &ent, events.EventReconciliationError, events.EventActionCertificateReconciliation, "Certificate reconciliation error: %v", err)
 		return results, status
 	}
 
@@ -281,11 +281,11 @@ func (r *ReconcileEnterpriseSearch) validate(ctx context.Context, ent *entv1.Ent
 	warnings, err := entv1.Validate(ent, nil)
 	if err != nil {
 		ulog.FromContext(ctx).Error(err, "Validation failed")
-		k8s.MaybeEmitErrorEvent(r.recorder, err, ent, events.EventReasonValidation, err.Error())
+		k8s.MaybeEmitErrorEvent(r.recorder, err, ent, events.EventReasonValidation, events.EventActionValidation, err.Error())
 		return tracing.CaptureError(vctx, err)
 	}
 	for _, warning := range warnings {
-		r.recorder.Event(ent, corev1.EventTypeWarning, events.EventReasonValidation, warning)
+		k8s.EmitEvent(r.recorder, ent, corev1.EventTypeWarning, events.EventReasonValidation, events.EventActionValidation, warning)
 	}
 
 	return nil
@@ -311,7 +311,7 @@ func (r *ReconcileEnterpriseSearch) updateStatus(ctx context.Context, ent entv1.
 		return nil // nothing to do
 	}
 	if status.IsDegraded(ent.Status.DeploymentStatus) {
-		r.recorder.Event(&ent, corev1.EventTypeWarning, events.EventReasonUnhealthy, "Enterprise Search health degraded")
+		k8s.EmitEvent(r.recorder, &ent, corev1.EventTypeWarning, events.EventReasonUnhealthy, events.EventActionStatusUpdate, "Enterprise Search health degraded")
 	}
 	ulog.FromContext(ctx).V(1).Info("Updating status",
 		"iteration", atomic.LoadUint64(&r.iteration),

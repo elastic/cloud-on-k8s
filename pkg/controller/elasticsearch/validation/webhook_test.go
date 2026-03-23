@@ -19,6 +19,7 @@ import (
 	esv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/elasticsearch/v1"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/license"
 	commonwebhook "github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/webhook"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/label"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/k8s"
 )
 
@@ -28,6 +29,24 @@ func asJSON(obj any) []byte {
 		panic(err)
 	}
 	return data
+}
+
+func esPod(namespace, clusterName, name, triggerValue string) *corev1.Pod {
+	p := &corev1.Pod{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      name,
+			Namespace: namespace,
+			Labels: map[string]string{
+				label.ClusterNameLabelName: clusterName,
+			},
+		},
+	}
+	if triggerValue != "" {
+		p.Annotations = map[string]string{
+			esv1.RestartTriggerAnnotation: triggerValue,
+		}
+	}
+	return p
 }
 
 func Test_validator_Handle(t *testing.T) {
@@ -187,6 +206,7 @@ func Test_validator_Handle(t *testing.T) {
 			fields: fields{
 				client: k8s.NewFakeClient(),
 			},
+			wantWarnings: []string{zoneAwarenessAffinityDoesNotExistWarningMsg},
 			req: admission.Request{AdmissionRequest: admissionv1.AdmissionRequest{
 				Operation: admissionv1.Create,
 				Object: runtime.RawExtension{
@@ -292,6 +312,222 @@ func Test_validator_Handle(t *testing.T) {
 			wantWarnings: []string{"Version 7.9.0 is EOL and support for it will be removed in a future release of the ECK operator"},
 		},
 		{
+			name: "update: restart-trigger annotation removed while restart in progress emits warning",
+			fields: fields{
+				client: k8s.NewFakeClient(
+					esPod("ns", "name", "pod-0", "v1"),
+					esPod("ns", "name", "pod-1", "old-value"),
+				),
+			},
+			req: admission.Request{AdmissionRequest: admissionv1.AdmissionRequest{
+				Operation: admissionv1.Update,
+				OldObject: runtime.RawExtension{
+					Raw: asJSON(&esv1.Elasticsearch{
+						ObjectMeta: metav1.ObjectMeta{
+							Namespace:   "ns",
+							Name:        "name",
+							Annotations: map[string]string{esv1.RestartTriggerAnnotation: "v1"},
+						},
+						Spec: esv1.ElasticsearchSpec{Version: "8.9.0", NodeSets: []esv1.NodeSet{{Name: "set1", Count: 3}}},
+					}),
+				},
+				Object: runtime.RawExtension{
+					Raw: asJSON(&esv1.Elasticsearch{
+						ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: "name"},
+						Spec:       esv1.ElasticsearchSpec{Version: "8.9.0", NodeSets: []esv1.NodeSet{{Name: "set1", Count: 3}}},
+					}),
+				},
+			}},
+			wantAllowed:  true,
+			wantWarnings: []string{restartTriggerRemovedWarningMsg},
+		},
+		{
+			name: "update: restart-trigger annotation removed, no restart in progress, no warning",
+			fields: fields{
+				client: k8s.NewFakeClient(
+					esPod("ns", "name", "pod-0", "v1"),
+					esPod("ns", "name", "pod-1", "v1"),
+				),
+			},
+			req: admission.Request{AdmissionRequest: admissionv1.AdmissionRequest{
+				Operation: admissionv1.Update,
+				OldObject: runtime.RawExtension{
+					Raw: asJSON(&esv1.Elasticsearch{
+						ObjectMeta: metav1.ObjectMeta{
+							Namespace:   "ns",
+							Name:        "name",
+							Annotations: map[string]string{esv1.RestartTriggerAnnotation: "v1"},
+						},
+						Spec: esv1.ElasticsearchSpec{Version: "8.9.0", NodeSets: []esv1.NodeSet{{Name: "set1", Count: 3}}},
+					}),
+				},
+				Object: runtime.RawExtension{
+					Raw: asJSON(&esv1.Elasticsearch{
+						ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: "name"},
+						Spec:       esv1.ElasticsearchSpec{Version: "8.9.0", NodeSets: []esv1.NodeSet{{Name: "set1", Count: 3}}},
+					}),
+				},
+			}},
+			wantAllowed: true,
+		},
+		{
+			name: "update: restart-trigger annotation re-added with value pods already have emits warning",
+			fields: fields{
+				client: k8s.NewFakeClient(
+					esPod("ns", "name", "pod-0", "v1"),
+					esPod("ns", "name", "pod-1", "v1"),
+				),
+			},
+			req: admission.Request{AdmissionRequest: admissionv1.AdmissionRequest{
+				Operation: admissionv1.Update,
+				OldObject: runtime.RawExtension{
+					Raw: asJSON(&esv1.Elasticsearch{
+						ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: "name"},
+						Spec:       esv1.ElasticsearchSpec{Version: "8.9.0", NodeSets: []esv1.NodeSet{{Name: "set1", Count: 3}}},
+					}),
+				},
+				Object: runtime.RawExtension{
+					Raw: asJSON(&esv1.Elasticsearch{
+						ObjectMeta: metav1.ObjectMeta{
+							Namespace:   "ns",
+							Name:        "name",
+							Annotations: map[string]string{esv1.RestartTriggerAnnotation: "v1"},
+						},
+						Spec: esv1.ElasticsearchSpec{Version: "8.9.0", NodeSets: []esv1.NodeSet{{Name: "set1", Count: 3}}},
+					}),
+				},
+			}},
+			wantAllowed:  true,
+			wantWarnings: []string{restartTriggerUnchangedWarningMsg},
+		},
+		{
+			name: "update: restart-trigger annotation changed to new value, no warning",
+			fields: fields{
+				client: k8s.NewFakeClient(
+					esPod("ns", "name", "pod-0", "v1"),
+					esPod("ns", "name", "pod-1", "v1"),
+				),
+			},
+			req: admission.Request{AdmissionRequest: admissionv1.AdmissionRequest{
+				Operation: admissionv1.Update,
+				OldObject: runtime.RawExtension{
+					Raw: asJSON(&esv1.Elasticsearch{
+						ObjectMeta: metav1.ObjectMeta{
+							Namespace:   "ns",
+							Name:        "name",
+							Annotations: map[string]string{esv1.RestartTriggerAnnotation: "v1"},
+						},
+						Spec: esv1.ElasticsearchSpec{Version: "8.9.0", NodeSets: []esv1.NodeSet{{Name: "set1", Count: 3}}},
+					}),
+				},
+				Object: runtime.RawExtension{
+					Raw: asJSON(&esv1.Elasticsearch{
+						ObjectMeta: metav1.ObjectMeta{
+							Namespace:   "ns",
+							Name:        "name",
+							Annotations: map[string]string{esv1.RestartTriggerAnnotation: "v2"},
+						},
+						Spec: esv1.ElasticsearchSpec{Version: "8.9.0", NodeSets: []esv1.NodeSet{{Name: "set1", Count: 3}}},
+					}),
+				},
+			}},
+			wantAllowed: true,
+		},
+		{
+			name: "update: deprecated version + restart-trigger removal warning are both returned",
+			fields: fields{
+				client: k8s.NewFakeClient(
+					esPod("ns", "name", "pod-0", "v1"),
+					esPod("ns", "name", "pod-1", "old-value"),
+				),
+			},
+			req: admission.Request{AdmissionRequest: admissionv1.AdmissionRequest{
+				Operation: admissionv1.Update,
+				OldObject: runtime.RawExtension{
+					Raw: asJSON(&esv1.Elasticsearch{
+						ObjectMeta: metav1.ObjectMeta{
+							Namespace:   "ns",
+							Name:        "name",
+							Annotations: map[string]string{esv1.RestartTriggerAnnotation: "v1"},
+						},
+						Spec: esv1.ElasticsearchSpec{Version: "7.9.0", NodeSets: []esv1.NodeSet{{Name: "set1", Count: 3}}},
+					}),
+				},
+				Object: runtime.RawExtension{
+					Raw: asJSON(&esv1.Elasticsearch{
+						ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: "name"},
+						Spec:       esv1.ElasticsearchSpec{Version: "7.9.0", NodeSets: []esv1.NodeSet{{Name: "set1", Count: 3}}},
+					}),
+				},
+			}},
+			wantAllowed: true,
+			wantWarnings: []string{
+				"Version 7.9.0 is EOL and support for it will be removed in a future release of the ECK operator",
+				restartTriggerRemovedWarningMsg,
+			},
+		},
+		{
+			name: "restart allocation delay warning on update",
+			fields: fields{
+				client: k8s.NewFakeClient(
+					esPod("ns", "name", "pod-0", ""),
+					esPod("ns", "name", "pod-1", ""),
+				),
+			},
+			req: admission.Request{AdmissionRequest: admissionv1.AdmissionRequest{
+				Operation: admissionv1.Update,
+				OldObject: runtime.RawExtension{
+					Raw: asJSON(&esv1.Elasticsearch{
+						ObjectMeta: metav1.ObjectMeta{
+							Namespace: "ns",
+							Name:      "name",
+						},
+						Spec: esv1.ElasticsearchSpec{Version: "8.19.0", NodeSets: []esv1.NodeSet{{Name: "set1", Count: 3}}},
+					}),
+				},
+				Object: runtime.RawExtension{
+					Raw: asJSON(&esv1.Elasticsearch{
+						ObjectMeta: metav1.ObjectMeta{
+							Namespace:   "ns",
+							Name:        "name",
+							Annotations: map[string]string{esv1.RestartAllocationDelayAnnotation: "-10s"},
+						},
+						Spec: esv1.ElasticsearchSpec{Version: "8.19.0", NodeSets: []esv1.NodeSet{{Name: "set1", Count: 3}}},
+					}),
+				},
+			}},
+			wantAllowed: true,
+			wantWarnings: []string{
+				"restart-allocation-delay annotation will be ignored due to error: negative restart-allocation-delay annotation: -10s",
+			},
+		},
+		{
+			name: "restart allocation delay warning on create",
+			fields: fields{
+				client: k8s.NewFakeClient(
+					esPod("ns", "name", "pod-0", ""),
+					esPod("ns", "name", "pod-1", ""),
+				),
+			},
+			req: admission.Request{AdmissionRequest: admissionv1.AdmissionRequest{
+				Operation: admissionv1.Create,
+				Object: runtime.RawExtension{
+					Raw: asJSON(&esv1.Elasticsearch{
+						ObjectMeta: metav1.ObjectMeta{
+							Namespace:   "ns",
+							Name:        "name",
+							Annotations: map[string]string{esv1.RestartAllocationDelayAnnotation: "-10s"},
+						},
+						Spec: esv1.ElasticsearchSpec{Version: "8.19.0", NodeSets: []esv1.NodeSet{{Name: "set1", Count: 3}}},
+					}),
+				},
+			}},
+			wantAllowed: true,
+			wantWarnings: []string{
+				"restart-allocation-delay annotation will be ignored due to error: negative restart-allocation-delay annotation: -10s",
+			},
+		},
+		{
 			name: "reject downgrade on deprecated version but still return warnings",
 			fields: fields{
 				client: k8s.NewFakeClient(),
@@ -330,8 +566,14 @@ func Test_validator_Handle(t *testing.T) {
 			if !got.Allowed {
 				require.Contains(t, got.Result.Message, tt.wantMessage)
 			}
-			if len(tt.wantWarnings) > 0 {
-				require.Equal(t, tt.wantWarnings, got.Warnings)
+			normalize := func(w []string) []string {
+				if len(w) == 0 {
+					return nil
+				}
+				return w
+			}
+			if len(tt.wantWarnings) > 0 || len(got.Warnings) > 0 {
+				require.Equal(t, normalize(tt.wantWarnings), normalize(got.Warnings))
 			}
 		})
 	}

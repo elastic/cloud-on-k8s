@@ -12,7 +12,7 @@ import (
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
-	"k8s.io/client-go/tools/record"
+	toolsevents "k8s.io/client-go/tools/events"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
 	"github.com/stretchr/testify/require"
@@ -174,7 +174,7 @@ func TestReconcileBeat_Reconcile(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			r := &ReconcileBeat{
 				Client:         tt.Client,
-				recorder:       record.NewFakeRecorder(100),
+				recorder:       toolsevents.NewFakeRecorder(100),
 				dynamicWatches: watches.NewDynamicWatches(),
 				Parameters:     operator.Parameters{},
 			}

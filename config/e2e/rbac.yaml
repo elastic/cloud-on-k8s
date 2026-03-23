@@ -403,6 +403,18 @@ rules:
       - get
       - list
   - apiGroups:
+      - events.k8s.io
+    resources:
+      - events
+    verbs:
+      - get
+      - list
+      - watch
+      - create
+      - update
+      - patch
+      - delete
+  - apiGroups:
       - autoops.k8s.elastic.co
     resources:
       - autoopsagentpolicies

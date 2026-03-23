@@ -408,6 +408,13 @@ rules:
       - get
       - watch
       - list
+  - apiGroups: ["events.k8s.io"]
+    resources:
+      - events
+    verbs:
+      - get
+      - watch
+      - list
   - apiGroups: ["batch"]
     resources:
       - jobs

@@ -13,7 +13,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
-	"k8s.io/client-go/tools/record"
+	toolsevents "k8s.io/client-go/tools/events"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
 	"github.com/elastic/cloud-on-k8s/v3/pkg/about"
@@ -133,13 +133,13 @@ func TestReconcileMapsServer_Reconcile(t *testing.T) {
 			name: "License missing or invalid ",
 			reconciler: ReconcileMapsServer{
 				Client:         k8s.NewFakeClient(&emsFixture),
-				recorder:       record.NewFakeRecorder(10),
+				recorder:       toolsevents.NewFakeRecorder(10),
 				dynamicWatches: watches.NewDynamicWatches(),
 				licenseChecker: license.MockLicenseChecker{EnterpriseEnabled: false},
 				Parameters:     operator.Parameters{OperatorInfo: about.OperatorInfo{BuildInfo: about.BuildInfo{Version: "1.6.0"}}},
 			},
 			post: func(r ReconcileMapsServer) {
-				e := <-r.recorder.(*record.FakeRecorder).Events //nolint:forcetypeassert
+				e := <-r.recorder.(*toolsevents.FakeRecorder).Events //nolint:forcetypeassert
 				require.Equal(t, "Warning ReconciliationError Elastic Maps Server is an enterprise feature. Enterprise features are disabled", e)
 
 				// observedGeneration should have been updated
@@ -165,7 +165,7 @@ func TestReconcileMapsServer_Reconcile(t *testing.T) {
 					},
 				}),
 				licenseChecker: license.MockLicenseChecker{EnterpriseEnabled: true},
-				recorder:       record.NewFakeRecorder(10),
+				recorder:       toolsevents.NewFakeRecorder(10),
 			},
 			post: func(r ReconcileMapsServer) {
 				// observedGeneration should have been updated
@@ -192,10 +192,10 @@ func TestReconcileMapsServer_Reconcile(t *testing.T) {
 				}),
 				dynamicWatches: watches.NewDynamicWatches(),
 				licenseChecker: license.MockLicenseChecker{EnterpriseEnabled: true},
-				recorder:       record.NewFakeRecorder(10),
+				recorder:       toolsevents.NewFakeRecorder(10),
 			},
 			post: func(r ReconcileMapsServer) {
-				e := <-r.recorder.(*record.FakeRecorder).Events //nolint:forcetypeassert
+				e := <-r.recorder.(*toolsevents.FakeRecorder).Events //nolint:forcetypeassert
 				require.Equal(t, "Warning AssociationError Association backend for elasticsearch is not configured", e)
 
 				// observedGeneration should have been updated
@@ -225,12 +225,12 @@ func TestReconcileMapsServer_Reconcile(t *testing.T) {
 				}),
 				dynamicWatches: watches.NewDynamicWatches(),
 				licenseChecker: license.MockLicenseChecker{EnterpriseEnabled: true},
-				recorder:       record.NewFakeRecorder(10),
+				recorder:       toolsevents.NewFakeRecorder(10),
 			},
 			post: func(r ReconcileMapsServer) {
-				e := <-r.recorder.(*record.FakeRecorder).Events //nolint:forcetypeassert
+				e := <-r.recorder.(*toolsevents.FakeRecorder).Events //nolint:forcetypeassert
 				require.Equal(t, "Warning Validation Version 7.12.0 is EOL and support for it will be removed in a future release of the ECK operator", e)
-				e = <-r.recorder.(*record.FakeRecorder).Events //nolint:forcetypeassert
+				e = <-r.recorder.(*toolsevents.FakeRecorder).Events //nolint:forcetypeassert
 				require.Equal(t, "Warning Delayed Delaying deployment of version 7.12.0 since the referenced elasticsearch is not upgraded yet", e)
 
 				// observedGeneration should have been updated
@@ -244,7 +244,7 @@ func TestReconcileMapsServer_Reconcile(t *testing.T) {
 			name: "Happy path: first reconciliation",
 			reconciler: ReconcileMapsServer{
 				Client:         k8s.NewFakeClient(&emsFixture),
-				recorder:       record.NewFakeRecorder(10),
+				recorder:       toolsevents.NewFakeRecorder(10),
 				dynamicWatches: watches.NewDynamicWatches(),
 				licenseChecker: license.MockLicenseChecker{EnterpriseEnabled: true},
 				Parameters:     operator.Parameters{OperatorInfo: about.OperatorInfo{BuildInfo: about.BuildInfo{Version: "1.6.0"}}},
