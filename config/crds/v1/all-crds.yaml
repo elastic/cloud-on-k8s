@@ -4555,6 +4555,16 @@ spec:
               image:
                 description: Image is the Elasticsearch Docker image to deploy.
                 type: string
+              licenseType:
+                description: |-
+                  LicenseType specifies the desired Elasticsearch license type for this cluster.
+                  When set to "basic", the cluster will run on the free basic license even if the operator
+                  has an enterprise license installed. When empty or set to "enterprise", the cluster will
+                  use the best available license from the operator's license pool.
+                enum:
+                - basic
+                - enterprise
+                type: string
               monitoring:
                 description: |-
                   Monitoring enables you to collect and ship log and monitoring data of this Elasticsearch cluster.

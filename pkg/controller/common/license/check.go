@@ -133,6 +133,16 @@ func (lc checker) ValidOperatorLicenseKeyType(ctx context.Context) (OperatorLice
 	return licType, nil
 }
 
+// EnterpriseFeaturesEnabledForCluster checks if enterprise features should be enabled for a
+// specific cluster. Returns false if the cluster's spec explicitly requests a basic license,
+// regardless of the operator-level license. Otherwise delegates to the global checker.
+func EnterpriseFeaturesEnabledForCluster(ctx context.Context, checker Checker, isBasicLicense bool) (bool, error) {
+	if isBasicLicense {
+		return false, nil
+	}
+	return checker.EnterpriseFeaturesEnabled(ctx)
+}
+
 type MockLicenseChecker struct {
 	EnterpriseEnabled bool
 }

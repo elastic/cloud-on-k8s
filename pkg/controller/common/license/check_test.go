@@ -137,6 +137,47 @@ func TestChecker_EnterpriseFeaturesEnabled(t *testing.T) {
 	}
 }
 
+func TestEnterpriseFeaturesEnabledForCluster(t *testing.T) {
+	tests := []struct {
+		name           string
+		isBasicLicense bool
+		checker        Checker
+		want           bool
+	}{
+		{
+			name:           "basic license annotation, enterprise operator: disabled",
+			isBasicLicense: true,
+			checker:        MockLicenseChecker{EnterpriseEnabled: true},
+			want:           false,
+		},
+		{
+			name:           "basic license annotation, basic operator: disabled",
+			isBasicLicense: true,
+			checker:        MockLicenseChecker{EnterpriseEnabled: false},
+			want:           false,
+		},
+		{
+			name:           "not basic, enterprise operator: enabled",
+			isBasicLicense: false,
+			checker:        MockLicenseChecker{EnterpriseEnabled: true},
+			want:           true,
+		},
+		{
+			name:           "not basic, basic operator: disabled",
+			isBasicLicense: false,
+			checker:        MockLicenseChecker{EnterpriseEnabled: false},
+			want:           false,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, err := EnterpriseFeaturesEnabledForCluster(context.Background(), tt.checker, tt.isBasicLicense)
+			require.NoError(t, err)
+			require.Equal(t, tt.want, got)
+		})
+	}
+}
+
 func Test_CurrentEnterpriseLicense(t *testing.T) {
 	privKey, err := x509.ParsePKCS1PrivateKey(privateKeyFixture)
 	require.NoError(t, err)

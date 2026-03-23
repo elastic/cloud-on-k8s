@@ -80,6 +80,17 @@ var cluster = &esv1.Elasticsearch{
 	},
 }
 
+var basicCluster = &esv1.Elasticsearch{
+	ObjectMeta: metav1.ObjectMeta{
+		Name:      "basic-cluster",
+		Namespace: "namespace",
+	},
+	Spec: esv1.ElasticsearchSpec{
+		Version:     "8.0.0",
+		LicenseType: "basic",
+	},
+}
+
 func enterpriseLicense(t *testing.T, licenseType client.ElasticsearchLicenseType, maxNodes int, expired bool) *corev1.Secret {
 	t.Helper()
 	expiry := time.Now().Add(31 * 24 * time.Hour)
@@ -172,6 +183,42 @@ func TestReconcileLicenses_reconcileInternal(t *testing.T) {
 			k8sResources: []crclient.Object{
 				enterpriseLicense(t, client.ElasticsearchLicenseTypePlatinum, 1, true),
 				cluster,
+			},
+			wantErr:            "",
+			wantClusterLicense: false,
+			wantRequeueAfter:   false,
+		},
+		{
+			name:    "basic license cluster: no cluster license created even with valid enterprise license",
+			cluster: basicCluster,
+			k8sResources: []crclient.Object{
+				enterpriseLicense(t, client.ElasticsearchLicenseTypePlatinum, 1, false),
+				basicCluster,
+			},
+			wantErr:            "",
+			wantClusterLicense: false,
+			wantRequeueAfter:   false,
+		},
+		{
+			name:    "basic license cluster: existing cluster license is deleted",
+			cluster: basicCluster,
+			k8sResources: []crclient.Object{
+				enterpriseLicense(t, client.ElasticsearchLicenseTypePlatinum, 1, false),
+				basicCluster,
+				&corev1.Secret{ObjectMeta: metav1.ObjectMeta{
+					Name:      esv1.LicenseSecretName("basic-cluster"),
+					Namespace: "namespace",
+				}},
+			},
+			wantErr:            "",
+			wantClusterLicense: false,
+			wantRequeueAfter:   false,
+		},
+		{
+			name:    "basic license cluster without enterprise license: no license created",
+			cluster: basicCluster,
+			k8sResources: []crclient.Object{
+				basicCluster,
 			},
 			wantErr:            "",
 			wantClusterLicense: false,

@@ -572,3 +572,24 @@ func Test_AssociationConfs(t *testing.T) {
 	}
 	assert.Equal(t, 2, len(esMon.AssocConfs))
 }
+
+func TestElasticsearchSpec_IsBasicLicense(t *testing.T) {
+	tests := []struct {
+		name        string
+		licenseType string
+		want        bool
+	}{
+		{name: "empty (default)", licenseType: "", want: false},
+		{name: "basic", licenseType: "basic", want: true},
+		{name: "Basic (mixed case)", licenseType: "Basic", want: true},
+		{name: "BASIC (upper case)", licenseType: "BASIC", want: true},
+		{name: "enterprise", licenseType: "enterprise", want: false},
+		{name: "Enterprise (mixed case)", licenseType: "Enterprise", want: false},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			es := ElasticsearchSpec{LicenseType: tt.licenseType}
+			assert.Equal(t, tt.want, es.IsBasicLicense())
+		})
+	}
+}

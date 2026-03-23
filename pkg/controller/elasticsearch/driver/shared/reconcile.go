@@ -390,7 +390,7 @@ func maybeReconcileEmptyFileSettingsSecret(ctx context.Context, c k8s.Client, li
 	}
 
 	log := ulog.FromContext(ctx)
-	enabled, err := licenseChecker.EnterpriseFeaturesEnabled(ctx)
+	enabled, err := commonlicense.EnterpriseFeaturesEnabledForCluster(ctx, licenseChecker, es.Spec.IsBasicLicense())
 	if err != nil {
 		return false, err
 	}

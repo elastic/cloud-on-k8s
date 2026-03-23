@@ -183,6 +183,19 @@ type ElasticsearchSpec struct {
 
 	// RevisionHistoryLimit is the number of revisions to retain to allow rollback in the underlying StatefulSets.
 	RevisionHistoryLimit *int32 `json:"revisionHistoryLimit,omitempty"`
+
+	// LicenseType specifies the desired Elasticsearch license type for this cluster.
+	// When set to "basic", the cluster will run on the free basic license even if the operator
+	// has an enterprise license installed. When empty or set to "enterprise", the cluster will
+	// use the best available license from the operator's license pool.
+	// +kubebuilder:validation:Optional
+	// +kubebuilder:validation:Enum=basic;enterprise
+	LicenseType string `json:"licenseType,omitempty"`
+}
+
+// IsBasicLicense returns true if the cluster is explicitly configured for a basic license.
+func (es ElasticsearchSpec) IsBasicLicense() bool {
+	return strings.ToLower(es.LicenseType) == "basic"
 }
 
 type RemoteClusterServer struct {
