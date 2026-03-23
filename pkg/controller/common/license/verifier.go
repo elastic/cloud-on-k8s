@@ -135,6 +135,8 @@ func (v *Verifier) checkKeyFingerprint(fingerprint []byte) error {
 			return nil
 		case fingerprintMismatch:
 			return errors.New("license signature was issued for a different product; ensure you are using an Orchestration license, not an Elastic Stack license")
+		case fingerprintUnparseable:
+			// fingerprint format not recognized by this check; try the next one
 		}
 	}
 	// Fingerprint could not be parsed in any known format; fall through to RSA verification.
