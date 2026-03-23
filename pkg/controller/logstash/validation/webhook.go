@@ -54,15 +54,18 @@ func (v *validator) ValidateCreate(_ context.Context, ls *lsv1alpha1.Logstash) (
 
 func (v *validator) ValidateUpdate(ctx context.Context, oldObj, newObj *lsv1alpha1.Logstash) (admission.Warnings, error) {
 	lslog.V(1).Info("validate update", "name", newObj.Name)
+
+	// Match Elasticsearch: run full validation on the new object first so warnings are collected before
+	// update-only checks; when update-only checks fail, return those errors but keep prior warnings.
+	warnings, valErr := ValidateLogstash(newObj)
+
 	var errs field.ErrorList
 	for _, val := range updateValidations(ctx, v.client, v.validateStorageClass) {
 		if err := val(oldObj, newObj); err != nil {
 			errs = append(errs, err...)
 		}
 	}
-	warnings, valErr := ValidateLogstash(newObj)
 	if len(errs) > 0 {
-		// If we already have validation errors, we are only interested in the warnings from ValidateLogstash.
 		return warnings, apierrors.NewInvalid(
 			schema.GroupKind{Group: "logstash.k8s.elastic.co", Kind: lsv1alpha1.Kind},
 			newObj.Name, errs)
