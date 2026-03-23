@@ -39,9 +39,9 @@ func SettingsWarnings(es *Elasticsearch) admission.Warnings {
 	if len(errs) == 0 {
 		return nil
 	}
-	w := make(admission.Warnings, len(errs))
+	warnings := make(admission.Warnings, len(errs))
 	for i, e := range errs {
-		w[i] = fmt.Sprintf("%s: %s", e.Field, e.Detail)
+		warnings[i] = fmt.Sprintf("%s: %s", e.Field, e.Detail)
 	}
-	return w
+	return warnings
 }
