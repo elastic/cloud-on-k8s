@@ -13,6 +13,7 @@ import (
 	"net/http/pprof"
 	"os"
 	"path/filepath"
+	"runtime/debug"
 	"strconv"
 	"strings"
 	"time"
@@ -448,9 +449,7 @@ func doRun(_ *cobra.Command, _ []string) error {
 
 func startOperator(ctx context.Context) error {
 	log.V(1).Info("Effective configuration", "values", viper.AllSettings())
-	if fips140.Enabled() {
-		log.Info("operator runs in FIPS mode")
-	}
+	fipsLog()
 
 	// update GOMAXPROCS to container cpu limit if necessary
 	_, err := maxprocs.Set(maxprocs.Logger(func(s string, i ...any) {
@@ -1141,4 +1140,30 @@ func reconcileWebhookCertsAndAddController(ctx context.Context, mgr manager.Mana
 	}
 
 	return webhook.Add(mgr, webhookParams, clientset, wh, tracer)
+}
+
+func fipsLog() {
+	var fipsType string
+	defer func() {
+		if fipsType != "" {
+			log.Info("operator runs in FIPS mode", "type", fipsType)
+		}
+	}()
+
+	if buildInfo, buildInfoOK := debug.ReadBuildInfo(); buildInfoOK {
+		for _, s := range buildInfo.Settings {
+			if s.Key != "GOEXPERIMENT" {
+				continue
+			}
+			if strings.Contains(s.Value, "boringcrypto") {
+				fipsType = "boringcrypto"
+				return
+			}
+			break
+		}
+	}
+
+	if fips140.Enabled() {
+		fipsType = "native"
+	}
 }
