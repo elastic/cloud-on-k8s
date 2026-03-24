@@ -16,7 +16,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
-	"k8s.io/client-go/tools/record"
+	toolsevents "k8s.io/client-go/tools/events"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
 	licensing "github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/license"
@@ -305,7 +305,7 @@ func TestReconcileTrials_Reconcile(t *testing.T) {
 			r := &ReconcileTrials{
 				Client:     tt.fields.Client,
 				Parameters: operator.Parameters{OperatorNamespace: testNs},
-				recorder:   record.NewFakeRecorder(10),
+				recorder:   toolsevents.NewFakeRecorder(10),
 				trialState: tt.fields.trialState,
 			}
 			_, err := r.Reconcile(context.Background(), reconcile.Request{
@@ -434,7 +434,7 @@ func TestReconcileTrials_reconcileTrialStatus(t *testing.T) {
 			r := &ReconcileTrials{
 				Client:     tt.fields.Client,
 				Parameters: operator.Parameters{OperatorNamespace: testNs},
-				recorder:   record.NewFakeRecorder(10),
+				recorder:   toolsevents.NewFakeRecorder(10),
 				trialState: tt.fields.trialState,
 			}
 			if err := r.reconcileTrialStatus(context.Background(), trialLicenseNsn, tt.fields.license); (err != nil) != tt.wantErr {

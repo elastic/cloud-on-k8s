@@ -13,7 +13,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
-	"k8s.io/client-go/tools/record"
+	toolsevents "k8s.io/client-go/tools/events"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
 	agentv1alpha1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/agent/v1alpha1"
@@ -196,27 +196,27 @@ func TestAreConfiguredIfSet(t *testing.T) {
 	tests := []struct {
 		name         string
 		associations []commonv1.Association
-		recorder     *record.FakeRecorder
+		recorder     *toolsevents.FakeRecorder
 		wantEvent    bool
 		want         bool
 	}{
 		{
 			name:         "All associations are configured",
-			recorder:     record.NewFakeRecorder(100),
+			recorder:     toolsevents.NewFakeRecorder(100),
 			associations: newTestAPMServer().withElasticsearchRef().withElasticsearchAssoc().withKibanaRef().withKibanaAssoc().build().GetAssociations(),
 			wantEvent:    false,
 			want:         true,
 		},
 		{
 			name:         "One association is not configured",
-			recorder:     record.NewFakeRecorder(100),
+			recorder:     toolsevents.NewFakeRecorder(100),
 			associations: newTestAPMServer().withElasticsearchRef().withElasticsearchAssoc().withKibanaRef().build().GetAssociations(),
 			wantEvent:    true,
 			want:         false,
 		},
 		{
 			name:         "All associations are not configured",
-			recorder:     record.NewFakeRecorder(100),
+			recorder:     toolsevents.NewFakeRecorder(100),
 			associations: newTestAPMServer().withElasticsearchRef().withKibanaRef().build().GetAssociations(),
 			wantEvent:    true,
 			want:         false,
@@ -537,7 +537,7 @@ func TestAllowVersion(t *testing.T) {
 	}
 	for _, tt := range tests {
 		logger := ulog.Log.WithValues("a", "b")
-		recorder := record.NewFakeRecorder(10)
+		recorder := toolsevents.NewFakeRecorder(10)
 		t.Run(tt.name, func(t *testing.T) {
 			if got, err := AllowVersion(tt.args.resourceVersion, tt.args.associated, logger, recorder); err != nil && got != tt.want {
 				t.Errorf("AllowVersion() = %v, want %v", got, tt.want)

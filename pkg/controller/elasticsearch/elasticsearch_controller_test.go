@@ -9,7 +9,7 @@ import (
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
-	"k8s.io/client-go/tools/record"
+	toolsevents "k8s.io/client-go/tools/events"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
@@ -26,7 +26,7 @@ import (
 func newTestReconciler(objects ...client.Object) *ReconcileElasticsearch {
 	r := &ReconcileElasticsearch{
 		Client:   k8s.NewFakeClient(objects...),
-		recorder: record.NewFakeRecorder(100),
+		recorder: toolsevents.NewFakeRecorder(100),
 	}
 	return r
 }

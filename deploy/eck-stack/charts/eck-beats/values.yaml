@@ -179,6 +179,13 @@ clusterRole: {}
 #    - get
 #    - watch
 #    - list
+#  - apiGroups: ["events.k8s.io"]
+#    resources:
+#    - events
+#    verbs:
+#    - get
+#    - watch
+#    - list
 
 # extraObjects allows injecting additional Kubernetes resources into the chart.
 # These resources will be created/deleted alongside the chart release.
