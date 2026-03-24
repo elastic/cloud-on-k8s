@@ -449,8 +449,7 @@ func doRun(_ *cobra.Command, _ []string) error {
 func startOperator(ctx context.Context) error {
 	log.V(1).Info("Effective configuration", "values", viper.AllSettings())
 	if fips140.Enabled() {
-		// fips140.Version() requires go1.26 or later, but it is safe to assume that cmd/manager package is not imported downstream.
-		log.Info("operator runs in FIPS mode", "version", fips140.Version(), "enforced", fips140.Enforced())
+		log.Info("operator runs in FIPS mode", "enforced", fips140.Enforced())
 	}
 
 	// update GOMAXPROCS to container cpu limit if necessary
