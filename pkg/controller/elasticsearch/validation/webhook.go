@@ -56,9 +56,6 @@ func (v *validator) ValidateCreate(ctx context.Context, es *esv1.Elasticsearch) 
 	eslog.V(1).Info("validate create", "name", es.Name)
 	warnings, err := ValidateElasticsearch(ctx, *es, v.licenseChecker, v.exposedNodeLabels)
 	warnings = append(warnings, SettingsWarnings(*es)...)
-	if w := validateRestartAllocationDelayWarnings(*es); w != "" {
-		warnings = append(warnings, w)
-	}
 	return warnings, err
 }
 
@@ -69,9 +66,6 @@ func (v *validator) ValidateUpdate(ctx context.Context, oldObj, newObj *esv1.Ela
 	warnings, validationErr := ValidateElasticsearch(ctx, *newObj, v.licenseChecker, v.exposedNodeLabels)
 	warnings = append(warnings, SettingsWarnings(*newObj)...)
 	if w := validateRestartTriggerWarnings(ctx, v.client, *oldObj, *newObj); w != "" {
-		warnings = append(warnings, w)
-	}
-	if w := validateRestartAllocationDelayWarnings(*newObj); w != "" {
 		warnings = append(warnings, w)
 	}
 
@@ -106,6 +100,9 @@ func ValidateElasticsearch(ctx context.Context, es esv1.Elasticsearch, checker l
 		for _, fieldErr := range val(es) {
 			admWarnings = append(admWarnings, fieldErr.Detail)
 		}
+	}
+	if w := validateRestartAllocationDelayWarnings(es); w != "" {
+		admWarnings = append(admWarnings, w)
 	}
 	return admWarnings, nil
 }
