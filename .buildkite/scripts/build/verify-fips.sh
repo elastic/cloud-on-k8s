@@ -6,33 +6,57 @@
 
 set -euo pipefail
 
-if [[ $# -ne 1 ]]; then
-  echo "Usage: ${0} <binary>" >&2
+if [[ $# -lt 1 || $# -gt 2 ]]; then
+  echo "Usage: ${0} [native|boringcrypto] <binary>" >&2
   exit 1
 fi
 
-binary="${1}"
+fips_type="${1}"
+binary="${2}"
+
+if [[ "${fips_type}" != "native" && "${fips_type}" != "boringcrypto" ]]; then
+  echo "Error: fips type must be 'native' or 'boringcrypto', got '${fips_type}'" >&2
+  exit 1
+fi
 
 if [[ ! -f "${binary}" ]]; then
   echo "Error: file not found: ${binary}" >&2
   exit 1
 fi
 
-output=$(go version -m "${binary}" 2>&1)
+
 rc=0
 
-if ! echo "${output}" | grep -q -- '-X runtime.godebugDefault=fips140=on'; then
-  echo "FAIL: missing ldflags '-X runtime.godebugDefault=fips140=on'" >&2
-  rc=1
+if [[ "${fips_type}" == "native" ]]; then
+  output=$(go version -m "${binary}" 2>&1)
+
+  if ! echo "${output}" | grep -F -q -- '-X runtime.godebugDefault=fips140=on'; then
+    echo "FAIL: missing ldflags '-X runtime.godebugDefault=fips140=on'" >&2
+    rc=1
+  fi
+
+  if ! echo "${output}" | grep -F -q -- 'GOFIPS140=v1.0.0'; then
+    echo "FAIL: missing build setting 'GOFIPS140=v1.0.0'" >&2
+    rc=1
+  fi
 fi
 
-if ! echo "${output}" | grep -q 'GOFIPS140=latest'; then
-  echo "FAIL: missing build setting 'GOFIPS140=latest'" >&2
-  rc=1
+if [[ "${fips_type}" == "boringcrypto" ]]; then
+  go_ver_output=$(go version -m "${binary}" 2>&1)
+  if ! echo "${go_ver_output}" | grep -F -q -- '-X:boringcrypto'; then
+    echo "FAIL: binary does not have boringcrypto in golang version string" >&2
+    rc=1
+  fi
+
+  go_tool_nm_output=$(go tool nm "${binary}" 2>&1)
+  if ! echo "${go_tool_nm_output}" | grep -F -q -- 'crypto/internal/boring._Cfunc__goboringcrypto_'; then
+    echo "FAIL: binary does not have BoringCrypto linked" >&2
+    rc=1
+  fi
 fi
 
 if [[ $rc -eq 0 ]]; then
-  echo "OK: FIPS 140 build settings verified"
+  echo "OK: FIPS 140 (${fips_type}) build settings verified"
 fi
 
 exit $rc

@@ -85,18 +85,27 @@ tidy:
 go-build-elastic-operator:
 	go build \
 		-mod readonly \
-		-ldflags '$(GO_LDFLAGS) $(GO_LDFLAGS_EXTRA)' -tags="$(GO_TAGS)" -a \
+		-ldflags '$(GO_LDFLAGS) $(GO_LDFLAGS_EXTRA)' -tags='$(GO_TAGS)' -a \
 		-o elastic-operator github.com/elastic/cloud-on-k8s/v3/cmd
 
 go-build: go-generate
+go-build: export CGO_ENABLED=0
 go-build: go-build-elastic-operator
 
 go-build-fips: go-generate
-go-build-fips: export GOFIPS140=latest
+go-build-fips: export CGO_ENABLED=0
+go-build-fips: export GOFIPS140=v1.0.0
 go-build-fips: GO_LDFLAGS_EXTRA=-X runtime.godebugDefault=fips140=on
 go-build-fips: go-build-elastic-operator
 go-build-fips:
-	./.buildkite/scripts/build/verify-fips.sh ./elastic-operator
+	./.buildkite/scripts/build/verify-fips.sh native ./elastic-operator
+
+go-build-fips-boringcrypto: go-generate
+go-build-fips-boringcrypto: export CGO_ENABLED=1
+go-build-fips-boringcrypto: export GOEXPERIMENT=boringcrypto
+go-build-fips-boringcrypto: go-build-elastic-operator
+go-build-fips-boringcrypto:
+	./.buildkite/scripts/build/verify-fips.sh boringcrypto ./elastic-operator
 
 reattach-pv:
 	# just check that reattach-pv still compiles

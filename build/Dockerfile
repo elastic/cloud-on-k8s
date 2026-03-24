@@ -25,7 +25,7 @@ COPY .buildkite/scripts/build/verify-fips.sh .buildkite/scripts/build/verify-fip
 
 # Build
 RUN --mount=type=cache,mode=0755,target=/go/pkg/mod \
-      CGO_ENABLED=0 GOOS=linux LICENSE_PUBKEY=/$LICENSE_PUBKEY make ${MAKE_BUILD_RECIPE}
+    GOOS=linux LICENSE_PUBKEY=/$LICENSE_PUBKEY make ${MAKE_BUILD_RECIPE}
 
 # ---------------------------------------------
 # Copy the operator binary into a lighter image

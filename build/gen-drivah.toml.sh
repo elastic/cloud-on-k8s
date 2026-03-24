@@ -112,7 +112,8 @@ main() {
         # FIPS build
         if [[ "$flavor" =~ -fips ]]; then
                 name="$name-fips"
-                make_build_recipe='go-build-fips'
+                # TODO: when golang native FIPS is certified, replace this recipe with `go-build-fips`
+                make_build_recipe='go-build-fips-boringcrypto'
         fi
 
         # write the image name with the latest stable tag (except the 'dev' flavor) for CVE scan
