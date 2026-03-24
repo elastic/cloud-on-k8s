@@ -91,7 +91,7 @@ go-build-elastic-operator:
 go-build: go-generate
 go-build: go-build-elastic-operator
 
-#go-build-fips: go-generate
+go-build-fips: go-generate
 go-build-fips: export GOFIPS140=latest
 go-build-fips: GO_LDFLAGS_EXTRA=-X runtime.godebugDefault=fips140=on
 go-build-fips: go-build-elastic-operator
