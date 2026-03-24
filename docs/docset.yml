@@ -3,8 +3,6 @@ products:
   - id: cloud-kubernetes
 exclude:
   - design/**/*.md
-  - reference/api-reference/main.md
-  - reference/third-party-dependencies/main.md
 cross_links:
   - apm-agent-go
   - docs-content
