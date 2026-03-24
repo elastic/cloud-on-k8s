@@ -1164,6 +1164,8 @@ func fipsLog() {
 	}
 
 	if fips140.Enabled() {
+		// when go.mod bumps to go 1.26 and later fips140.Enforced() and fips140.Version()
+		// can also be added to log.
 		fipsType = "native"
 	}
 }

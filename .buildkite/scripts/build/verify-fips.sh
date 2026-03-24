@@ -28,14 +28,14 @@ fi
 rc=0
 
 if [[ "${fips_type}" == "native" ]]; then
-  output=$(go version -m "${binary}" 2>&1)
+  go_ver_output=$(go version -m "${binary}" 2>&1)
 
-  if ! echo "${output}" | grep -F -q -- '-X runtime.godebugDefault=fips140=on'; then
+  if [[ "${go_ver_output}" != *'-X runtime.godebugDefault=fips140=on'* ]]; then
     echo "FAIL: missing ldflags '-X runtime.godebugDefault=fips140=on'" >&2
     rc=1
   fi
 
-  if ! echo "${output}" | grep -F -q -- 'GOFIPS140=v1.0.0'; then
+  if [[ "${go_ver_output}" != *'GOFIPS140=v1.0.0'* ]]; then
     echo "FAIL: missing build setting 'GOFIPS140=v1.0.0'" >&2
     rc=1
   fi
@@ -43,13 +43,13 @@ fi
 
 if [[ "${fips_type}" == "boringcrypto" ]]; then
   go_ver_output=$(go version -m "${binary}" 2>&1)
-  if ! echo "${go_ver_output}" | grep -F -q -- '-X:boringcrypto'; then
+  if [[ "${go_ver_output}" != *'-X:boringcrypto'* ]]; then
     echo "FAIL: binary does not have boringcrypto in golang version string" >&2
     rc=1
   fi
 
   go_tool_nm_output=$(go tool nm "${binary}" 2>&1)
-  if ! echo "${go_tool_nm_output}" | grep -F -q -- 'crypto/internal/boring._Cfunc__goboringcrypto_'; then
+  if [[ "${go_tool_nm_output}" != *'Cfunc__goboringcrypto_'* ]]; then
     echo "FAIL: binary does not have BoringCrypto linked" >&2
     rc=1
   fi
