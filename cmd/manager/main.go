@@ -447,7 +447,10 @@ func doRun(_ *cobra.Command, _ []string) error {
 }
 
 func startOperator(ctx context.Context) error {
-	log.V(1).Info("Effective configuration", "values", viper.AllSettings(), "fips", fips140.Enabled())
+	log.V(1).Info("Effective configuration", "values", viper.AllSettings())
+	if fips140.Enabled() {
+		log.Info("operator runs in FIPS mode", "enforced", fips140.Enforced())
+	}
 
 	// update GOMAXPROCS to container cpu limit if necessary
 	_, err := maxprocs.Set(maxprocs.Logger(func(s string, i ...any) {
