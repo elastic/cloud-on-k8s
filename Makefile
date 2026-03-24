@@ -95,6 +95,8 @@ go-build: go-build-elastic-operator
 go-build-fips: export GOFIPS140=latest
 go-build-fips: GO_LDFLAGS_EXTRA=-X runtime.godebugDefault=fips140=on
 go-build-fips: go-build-elastic-operator
+go-build-fips:
+	./.buildkite/scripts/build/verify-fips.sh ./elastic-operator
 
 reattach-pv:
 	# just check that reattach-pv still compiles

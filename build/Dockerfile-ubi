@@ -21,6 +21,7 @@ COPY config/eck.yaml .
 COPY pkg/ pkg/
 COPY cmd/ cmd/
 COPY build/$LICENSE_PUBKEY /$LICENSE_PUBKEY
+COPY .buildkite/scripts/build/verify-fips.sh .buildkite/scripts/build/verify-fips.sh
 
 # Build
 RUN --mount=type=cache,mode=0755,target=/go/pkg/mod \
