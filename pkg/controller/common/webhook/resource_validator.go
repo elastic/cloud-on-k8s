@@ -122,7 +122,7 @@ func RegisterResourceWebhook[T runtime.Object](mgr ctrl.Manager, path string, ch
 	ulog.Log.Info("Registering validating webhook", "resource", resourceName, "path", path)
 }
 
-// funcValidator adapts a ValidateFunc into an admission.Validator[T].
+// funcValidator implements admission.Validator[T] by delegating to a ValidateFunc.
 type funcValidator[T runtime.Object] struct {
 	validate ValidateFunc[T]
 }
