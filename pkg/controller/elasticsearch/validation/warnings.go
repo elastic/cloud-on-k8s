@@ -22,8 +22,18 @@ const (
 )
 
 var warnings = []validation{
+	deprecatedStackVersionWarning,
 	noUnsupportedSettings,
 	validZoneAwarenessAffinityWarnings,
+}
+
+// deprecatedStackVersionWarning returns a field error when the stack version is deprecated (EOL).
+func deprecatedStackVersionWarning(es esv1.Elasticsearch) field.ErrorList {
+	deprecationWarning, _ := commonv1.CheckDeprecatedStackVersion(es.Spec.Version)
+	if deprecationWarning == "" {
+		return nil
+	}
+	return field.ErrorList{field.Invalid(field.NewPath("spec").Child("version"), es.Spec.Version, deprecationWarning)}
 }
 
 func noUnsupportedSettings(es esv1.Elasticsearch) field.ErrorList {
@@ -101,12 +111,7 @@ func validateSettingsWarnings(es esv1.Elasticsearch) admission.Warnings {
 }
 
 func CheckForWarnings(es esv1.Elasticsearch) error {
-	deprecationWarning, _ := commonv1.CheckDeprecatedStackVersion(es.Spec.Version)
 	errors := check(es, warnings)
-	if deprecationWarning != "" {
-		warningError := field.ErrorList{field.Invalid(field.NewPath("spec").Child("version"), es.Spec.Version, deprecationWarning)}
-		errors = append(errors, warningError...)
-	}
 	if len(errors) > 0 {
 		return errors.ToAggregate()
 	}

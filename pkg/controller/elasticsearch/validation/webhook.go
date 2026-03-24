@@ -13,7 +13,6 @@ import (
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/webhook/admission"
 
-	commonv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/common/v1"
 	esv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/elasticsearch/v1"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/license"
 	commonwebhook "github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/webhook"
@@ -90,9 +89,6 @@ func ValidateElasticsearch(ctx context.Context, es esv1.Elasticsearch, checker l
 		return nil, err
 	}
 	var admWarnings admission.Warnings
-	if deprecationWarning, _ := commonv1.CheckDeprecatedStackVersion(es.Spec.Version); deprecationWarning != "" {
-		admWarnings = append(admWarnings, deprecationWarning)
-	}
 	for _, val := range warnings {
 		for _, fieldErr := range val(es) {
 			admWarnings = append(admWarnings, fieldErr.Detail)
