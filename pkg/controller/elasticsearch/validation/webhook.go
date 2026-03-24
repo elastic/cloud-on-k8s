@@ -54,9 +54,7 @@ type validator struct {
 
 func (v *validator) ValidateCreate(ctx context.Context, es *esv1.Elasticsearch) (admission.Warnings, error) {
 	eslog.V(1).Info("validate create", "name", es.Name)
-	warnings, err := ValidateElasticsearch(ctx, *es, v.licenseChecker, v.exposedNodeLabels)
-	warnings = append(warnings, SettingsWarnings(*es)...)
-	return warnings, err
+	return ValidateElasticsearch(ctx, *es, v.licenseChecker, v.exposedNodeLabels)
 }
 
 func (v *validator) ValidateUpdate(ctx context.Context, oldObj, newObj *esv1.Elasticsearch) (admission.Warnings, error) {
@@ -64,7 +62,6 @@ func (v *validator) ValidateUpdate(ctx context.Context, oldObj, newObj *esv1.Ela
 
 	// Ensure we get the warnings from the validation function such that warnings are returned even on denial.
 	warnings, validationErr := ValidateElasticsearch(ctx, *newObj, v.licenseChecker, v.exposedNodeLabels)
-	warnings = append(warnings, SettingsWarnings(*newObj)...)
 	if w := validateRestartTriggerWarnings(ctx, v.client, *oldObj, *newObj); w != "" {
 		warnings = append(warnings, w)
 	}
@@ -87,7 +84,7 @@ func (v *validator) ValidateDelete(_ context.Context, _ *esv1.Elasticsearch) (ad
 	return nil, nil
 }
 
-// ValidateElasticsearch validates an Elasticsearch instance against a set of validation funcs.
+// ValidateElasticsearch validates an Elasticsearch instance against a set of validation funcs returning warnings and an error if validation fails.
 func ValidateElasticsearch(ctx context.Context, es esv1.Elasticsearch, checker license.Checker, exposedNodeLabels NodeLabels) (admission.Warnings, error) {
 	if err := runChecks(es, validations(ctx, checker, exposedNodeLabels)); err != nil {
 		return nil, err
@@ -104,6 +101,7 @@ func ValidateElasticsearch(ctx context.Context, es esv1.Elasticsearch, checker l
 	if w := validateRestartAllocationDelayWarnings(es); w != "" {
 		admWarnings = append(admWarnings, w)
 	}
+	admWarnings = append(admWarnings, validateSettingsWarnings(es)...)
 	return admWarnings, nil
 }
 

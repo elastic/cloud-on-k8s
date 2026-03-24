@@ -86,9 +86,9 @@ func validZoneAwarenessAffinityWarnings(es esv1.Elasticsearch) field.ErrorList {
 	return warnings
 }
 
-// SettingsWarnings converts noUnsupportedSettings errors into admission warnings
+// validateSettingsWarnings converts noUnsupportedSettings errors into admission warnings
 // so they can be surfaced at apply time without rejecting the request.
-func SettingsWarnings(es esv1.Elasticsearch) admission.Warnings {
+func validateSettingsWarnings(es esv1.Elasticsearch) admission.Warnings {
 	errs := noUnsupportedSettings(es)
 	if len(errs) == 0 {
 		return nil
