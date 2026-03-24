@@ -40,6 +40,7 @@ generate_drivah_config() {
     local tag=$2
     local go_tags=$3
     local license_pubkey=$4
+    local make_build_recipe=$5
 
     # add 'stable' tag without sha1 for snapshots
     if [[ "$tag" =~ "SNAPSHOT" ]]; then
@@ -61,6 +62,7 @@ SHA1 = "${SHA1}"
 GO_TAGS = "${go_tags}"
 SNAPSHOT = "${SNAPSHOT}"
 LICENSE_PUBKEY = "$license_pubkey"
+MAKE_BUILD_RECIPE = "${make_build_recipe}"
 END
 }
 
@@ -86,6 +88,7 @@ main() {
         container_file_path=$HERE/Dockerfile
         go_tags=$GO_TAGS
         license_pubkey=$LICENSE_PUBKEY
+        make_build_recipe='go-build'
 
         name="$IMAGE_NAME"
         tag="$IMAGE_TAG"
@@ -109,7 +112,7 @@ main() {
         # FIPS build
         if [[ "$flavor" =~ -fips ]]; then
                 name="$name-fips"
-                go_tags="$go_tags,goexperiment.boringcrypto"
+                make_build_recipe='go-build-fips'
         fi
 
         # write the image name with the latest stable tag (except the 'dev' flavor) for CVE scan
@@ -130,7 +133,7 @@ main() {
         # generate drivah.toml and copy Dockerfile
         echo "# -- build: $name:$tag"
         mkdir -p "$HERE/$flavor"
-        generate_drivah_config "$name" "$tag" "$go_tags" "$license_pubkey" > "$HERE/$flavor/drivah.toml"
+        generate_drivah_config "$name" "$tag" "$go_tags" "$license_pubkey" "$make_build_recipe" > "$HERE/$flavor/drivah.toml"
         cp -f "$container_file_path" "$HERE/$flavor/Dockerfile"
 
     done

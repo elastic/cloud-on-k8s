@@ -82,11 +82,19 @@ dependencies: tidy
 tidy:
 	go mod tidy
 
-go-build: go-generate
+go-build-elastic-operator:
 	go build \
 		-mod readonly \
-		-ldflags "$(GO_LDFLAGS)" -tags="$(GO_TAGS)" -a \
-		 -o elastic-operator github.com/elastic/cloud-on-k8s/v3/cmd
+		-ldflags '$(GO_LDFLAGS) $(GO_LDFLAGS_EXTRA)' -tags="$(GO_TAGS)" -a \
+		-o elastic-operator github.com/elastic/cloud-on-k8s/v3/cmd
+
+go-build: go-generate
+go-build: go-build-elastic-operator
+
+#go-build-fips: go-generate
+go-build-fips: export GOFIPS140=latest
+go-build-fips: GO_LDFLAGS_EXTRA=-X runtime.godebugDefault=fips140=on
+go-build-fips: go-build-elastic-operator
 
 reattach-pv:
 	# just check that reattach-pv still compiles

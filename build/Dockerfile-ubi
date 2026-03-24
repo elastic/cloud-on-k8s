@@ -6,6 +6,7 @@ ARG SHA1
 ARG SNAPSHOT
 ARG GO_TAGS
 ARG LICENSE_PUBKEY
+ARG MAKE_BUILD_RECIPE
 
 WORKDIR /go/src/github.com/elastic/cloud-on-k8s
 
@@ -23,7 +24,7 @@ COPY build/$LICENSE_PUBKEY /$LICENSE_PUBKEY
 
 # Build
 RUN --mount=type=cache,mode=0755,target=/go/pkg/mod \
-      CGO_ENABLED=0 GOOS=linux LICENSE_PUBKEY=/$LICENSE_PUBKEY make go-build
+      CGO_ENABLED=0 GOOS=linux LICENSE_PUBKEY=/$LICENSE_PUBKEY make ${MAKE_BUILD_RECIPE}
 
 # ---------------------------------------------
 # Copy the operator binary into a lighter image
