@@ -6,7 +6,7 @@
 
 set -euo pipefail
 
-if [[ $# -lt 1 || $# -gt 2 ]]; then
+if [[ $# -ne 2 ]]; then
   echo "Usage: ${0} [native|boringcrypto] <binary>" >&2
   exit 1
 fi

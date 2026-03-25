@@ -1143,20 +1143,13 @@ func reconcileWebhookCertsAndAddController(ctx context.Context, mgr manager.Mana
 }
 
 func fipsLog() {
-	var fipsType string
-	defer func() {
-		if fipsType != "" {
-			log.Info("operator runs in FIPS mode", "type", fipsType)
-		}
-	}()
-
 	if buildInfo, buildInfoOK := debug.ReadBuildInfo(); buildInfoOK {
 		for _, s := range buildInfo.Settings {
 			if s.Key != "GOEXPERIMENT" {
 				continue
 			}
 			if strings.Contains(s.Value, "boringcrypto") {
-				fipsType = "boringcrypto"
+				log.Info("operator runs in FIPS mode", "type", "boringcrypto")
 				return
 			}
 			break
@@ -1166,6 +1159,9 @@ func fipsLog() {
 	if fips140.Enabled() {
 		// when go.mod bumps to go 1.26 and later fips140.Enforced() and fips140.Version()
 		// can also be added to log.
-		fipsType = "native"
+		log.Info("operator runs in FIPS mode", "type", "native")
+		return
 	}
+
+	log.Info("operator runs without FIPS mode")
 }
