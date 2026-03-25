@@ -64,7 +64,6 @@ GO_TAGS = "${go_tags}"
 SNAPSHOT = "${SNAPSHOT}"
 LICENSE_PUBKEY = "$license_pubkey"
 MAKE_BUILD_RECIPE = "${make_build_recipe}"
-IMAGE_STAGE = ${image_stage}
 
 [docker]
 build_flags = ["--target=${image_stage}"]
