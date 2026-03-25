@@ -85,6 +85,8 @@ COPY --from=builder /go/src/github.com/elastic/cloud-on-k8s/eck.yaml         /co
 # Copy NOTICE.txt and LICENSE.txt into the image
 COPY *.txt /licenses/
 
+USER 65532
+
 ENTRYPOINT ["/elastic-operator"]
 CMD ["manager"]
 # ---------------------------------------------

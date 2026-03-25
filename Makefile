@@ -381,12 +381,13 @@ docker-push-operator: docker-build-operator
 
 # build amd64 image for dev purposes
 BUILD_PLATFORM ?= "linux/amd64"
+DOCKER_BUILD_TARGET ?= static
 MAKE_BUILD_RECIPE ?= go-build
-OPERATOR_DOCKER_FILE ?= build/Dockerfile
 docker-build-operator:
 	docker buildx build . \
-	 	-f $(OPERATOR_DOCKER_FILE) \
+		-f build/Dockerfile \
 		--progress=plain \
+		--target=$(DOCKER_BUILD_TARGET) \
 		--build-arg MAKE_BUILD_RECIPE='$(MAKE_BUILD_RECIPE)' \
 		--build-arg GO_LDFLAGS='$(GO_LDFLAGS)' \
 		--build-arg GO_TAGS='$(GO_TAGS)' \
