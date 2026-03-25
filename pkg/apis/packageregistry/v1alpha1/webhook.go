@@ -29,7 +29,7 @@ var (
 	}
 )
 
-// +kubebuilder:webhook:path=/validate-epr-k8s-elastic-co-v1alpha1-packageregistry,mutating=false,failurePolicy=ignore,groups=packageregistry.k8s.elastic.co,resources=packageregistry,verbs=create;update,versions=v1alpha1,name=elastic-epr-validation-v1alpha1.k8s.elastic.co,sideEffects=None,admissionReviewVersions=v1,matchPolicy=Exact
+// +kubebuilder:webhook:path=/validate-epr-k8s-elastic-co-v1alpha1-packageregistry,mutating=false,failurePolicy=ignore,groups=packageregistry.k8s.elastic.co,resources=packageregistries,verbs=create;update,versions=v1alpha1,name=elastic-epr-validation-v1alpha1.k8s.elastic.co,sideEffects=None,admissionReviewVersions=v1,matchPolicy=Exact
 
 // Validate is called to validate a PackageRegistry resource. There's no update-specific checks, so the old parameter is ignored.
 func Validate(m *PackageRegistry, _ *PackageRegistry) (admission.Warnings, error) {

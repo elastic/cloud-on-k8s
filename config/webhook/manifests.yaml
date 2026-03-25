@@ -191,7 +191,7 @@ webhooks:
     - CREATE
     - UPDATE
     resources:
-    - packageregistry
+    - packageregistries
   sideEffects: None
 - admissionReviewVersions:
   - v1
