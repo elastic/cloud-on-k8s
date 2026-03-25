@@ -41,7 +41,7 @@ generate_drivah_config() {
     local go_tags=$3
     local license_pubkey=$4
     local make_build_recipe=$5
-    local image_stage=$6
+    local image_target=$6
 
     # add 'stable' tag without sha1 for snapshots
     if [[ "$tag" =~ "SNAPSHOT" ]]; then
@@ -66,10 +66,10 @@ LICENSE_PUBKEY = "$license_pubkey"
 MAKE_BUILD_RECIPE = "${make_build_recipe}"
 
 [docker]
-build_flags = ["--target=${image_stage}"]
+build_flags = ["--target=${image_target}"]
 
 [buildah]
-build_flags = ["--target=${image_stage}"]
+build_flags = ["--target=${image_target}"]
 END
 }
 
@@ -95,7 +95,7 @@ main() {
         go_tags=$GO_TAGS
         license_pubkey=$LICENSE_PUBKEY
         make_build_recipe='go-build'
-        image_stage='static'
+        image_target='static'
 
         name="$IMAGE_NAME"
         tag="$IMAGE_TAG"
@@ -114,7 +114,7 @@ main() {
         # UBI build
         if [[ "$flavor" =~ -ubi ]]; then
             name="$name-ubi"
-            image_stage='ubi'
+            image_target='ubi'
         fi
         # FIPS build
         if [[ "$flavor" =~ -fips ]]; then
@@ -125,7 +125,7 @@ main() {
             # if the image is fips && non-ubi, we need the dynamic stage of docker file.
             # This should be removed once the golang native FIPS gets certified.
             if [[ ! "$flavor" =~ -ubi ]]; then
-                image_stage='dynamic'
+                image_target='dynamic'
             fi
         fi
 
@@ -147,7 +147,7 @@ main() {
         # generate drivah.toml and copy Dockerfile
         echo "# -- build: $name:$tag"
         mkdir -p "$HERE/$flavor"
-        generate_drivah_config "$name" "$tag" "$go_tags" "$license_pubkey" "$make_build_recipe" "$image_stage" > "$HERE/$flavor/drivah.toml"
+        generate_drivah_config "$name" "$tag" "$go_tags" "$license_pubkey" "$make_build_recipe" "$image_target" > "$HERE/$flavor/drivah.toml"
         cp -f "${HERE}/Dockerfile" "$HERE/$flavor/Dockerfile"
 
     done
