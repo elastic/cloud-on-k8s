@@ -85,6 +85,67 @@ func TestWebhook(t *testing.T) {
 			),
 		},
 		{
+			Name:      "deprecated-at-lowest-supported-7-11-0",
+			Operation: admissionv1.Create,
+			Object: func(t *testing.T, uid string) []byte {
+				t.Helper()
+				m := mkMaps(uid)
+				m.Spec.Version = "7.11.0"
+				return test.MustMarshalJSON(t, m)
+			},
+			Check: test.ValidationWebhookSucceededWithWarnings(
+				`Version 7.11.0 is EOL and support for it will be removed in a future release of the ECK operator`,
+			),
+		},
+		{
+			Name:      "create-8-0-0-no-deprecation-warning",
+			Operation: admissionv1.Create,
+			Object: func(t *testing.T, uid string) []byte {
+				t.Helper()
+				m := mkMaps(uid)
+				m.Spec.Version = "8.0.0"
+				return test.MustMarshalJSON(t, m)
+			},
+			Check: test.ValidationWebhookSucceeded,
+		},
+		{
+			Name:      "update-deprecated-same-version-label-change-still-warns",
+			Operation: admissionv1.Update,
+			OldObject: func(t *testing.T, uid string) []byte {
+				t.Helper()
+				m := mkMaps(uid)
+				m.Spec.Version = "7.14.0"
+				return test.MustMarshalJSON(t, m)
+			},
+			Object: func(t *testing.T, uid string) []byte {
+				t.Helper()
+				m := mkMaps(uid)
+				m.Spec.Version = "7.14.0"
+				m.Labels = map[string]string{"warmed": "restart"}
+				return test.MustMarshalJSON(t, m)
+			},
+			Check: test.ValidationWebhookSucceededWithWarnings(
+				`Version 7.14.0 is EOL and support for it will be removed in a future release of the ECK operator`,
+			),
+		},
+		{
+			Name:      "update-from-deprecated-to-supported-clears-deprecation-warning",
+			Operation: admissionv1.Update,
+			OldObject: func(t *testing.T, uid string) []byte {
+				t.Helper()
+				m := mkMaps(uid)
+				m.Spec.Version = "7.14.0"
+				return test.MustMarshalJSON(t, m)
+			},
+			Object: func(t *testing.T, uid string) []byte {
+				t.Helper()
+				m := mkMaps(uid)
+				m.Spec.Version = "8.12.0"
+				return test.MustMarshalJSON(t, m)
+			},
+			Check: test.ValidationWebhookSucceeded,
+		},
+		{
 			Name:      "unsupported-version-lower",
 			Operation: admissionv1.Create,
 			Object: func(t *testing.T, uid string) []byte {

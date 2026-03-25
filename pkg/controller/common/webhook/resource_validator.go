@@ -35,6 +35,10 @@ type ResourceValidator[T runtime.Object] struct {
 // NewResourceValidator wraps an admission.Validator[T] with namespace
 // filtering and license checking. This is currently used for Logstash,
 // Elasticsearch, ElasticsearchAutoscaling, and AutoOps only.
+//
+// Pass nil for licenseChecker only when the inner validator performs license
+// enforcement itself (so ResourceValidator.preValidate does not run a second
+// check).
 func NewResourceValidator[T runtime.Object](
 	licenseChecker license.Checker,
 	managedNamespaces []string,

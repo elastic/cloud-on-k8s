@@ -42,6 +42,30 @@ func TestWebhook(t *testing.T) {
 			),
 		},
 		{
+			Name:      "deprecated-at-lowest-supported-7-0-0",
+			Operation: admissionv1.Create,
+			Object: func(t *testing.T, uid string) []byte {
+				t.Helper()
+				b := mkBeat(uid)
+				b.Spec.Version = "7.0.0"
+				return test.MustMarshalJSON(t, b)
+			},
+			Check: test.ValidationWebhookSucceededWithWarnings(
+				`Version 7.0.0 is EOL and support for it will be removed in a future release of the ECK operator`,
+			),
+		},
+		{
+			Name:      "create-8-0-0-no-deprecation-warning",
+			Operation: admissionv1.Create,
+			Object: func(t *testing.T, uid string) []byte {
+				t.Helper()
+				b := mkBeat(uid)
+				b.Spec.Version = "8.0.0"
+				return test.MustMarshalJSON(t, b)
+			},
+			Check: test.ValidationWebhookSucceeded,
+		},
+		{
 			Name:      "create-non-deprecated-version-no-warning",
 			Operation: admissionv1.Create,
 			Object: func(t *testing.T, uid string) []byte {
@@ -74,6 +98,43 @@ func TestWebhook(t *testing.T) {
 				t.Helper()
 				b := mkBeat(uid)
 				b.Spec.Version = "8.2.3"
+				return test.MustMarshalJSON(t, b)
+			},
+			Object: func(t *testing.T, uid string) []byte {
+				t.Helper()
+				b := mkBeat(uid)
+				b.Spec.Version = "8.3.0"
+				return test.MustMarshalJSON(t, b)
+			},
+			Check: test.ValidationWebhookSucceeded,
+		},
+		{
+			Name:      "update-deprecated-same-version-label-change-still-warns",
+			Operation: admissionv1.Update,
+			OldObject: func(t *testing.T, uid string) []byte {
+				t.Helper()
+				b := mkBeat(uid)
+				b.Spec.Version = "7.10.0"
+				return test.MustMarshalJSON(t, b)
+			},
+			Object: func(t *testing.T, uid string) []byte {
+				t.Helper()
+				b := mkBeat(uid)
+				b.Spec.Version = "7.10.0"
+				b.Labels = map[string]string{"warmed": "restart"}
+				return test.MustMarshalJSON(t, b)
+			},
+			Check: test.ValidationWebhookSucceededWithWarnings(
+				`Version 7.10.0 is EOL and support for it will be removed in a future release of the ECK operator`,
+			),
+		},
+		{
+			Name:      "update-from-deprecated-to-supported-clears-deprecation-warning",
+			Operation: admissionv1.Update,
+			OldObject: func(t *testing.T, uid string) []byte {
+				t.Helper()
+				b := mkBeat(uid)
+				b.Spec.Version = "7.10.0"
 				return test.MustMarshalJSON(t, b)
 			},
 			Object: func(t *testing.T, uid string) []byte {

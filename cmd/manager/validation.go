@@ -100,8 +100,9 @@ func setupWebhook(
 	commonwebhook.RegisterResourceWebhook(mgr, eprv1alpha1.WebhookPath, checker, managedNamespaces, eprv1alpha1.Validate, "Package Registry")
 	commonwebhook.RegisterResourceWebhook(mgr, policyv1alpha1.WebhookPath, checker, managedNamespaces, policyv1alpha1.Validate, "Stack Config Policy")
 
-	// Logstash, Elasticsearch, ElasticsearchAutoscaling, and AutoOps validating webhooks are wired up
-	// differently in order to access the k8s client or license checker directly.
+	// Logstash, Elasticsearch v1, ElasticsearchAutoscaling, and AutoOps validating webhooks are wired up
+	// separately so their validators can use the API client and/or embed license checks. Elasticsearch
+	// v1beta1 remains in the RegisterResourceWebhook list above because it only needs a ValidateFunc.
 	esvalidation.RegisterWebhook(mgr, params.ValidateStorageClass, exposedNodeLabels, checker, managedNamespaces)
 	esavalidation.RegisterWebhook(mgr, params.ValidateStorageClass, checker, managedNamespaces)
 	lsvalidation.RegisterWebhook(mgr, params.ValidateStorageClass, managedNamespaces)

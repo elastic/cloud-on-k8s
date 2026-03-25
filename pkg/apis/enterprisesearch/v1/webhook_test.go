@@ -98,6 +98,67 @@ func TestWebhook(t *testing.T) {
 			),
 		},
 		{
+			Name:      "deprecated-at-lowest-supported-7-7-0",
+			Operation: admissionv1.Create,
+			Object: func(t *testing.T, uid string) []byte {
+				t.Helper()
+				ent := mkEnterpriseSearch(uid)
+				ent.Spec.Version = "7.7.0"
+				return test.MustMarshalJSON(t, ent)
+			},
+			Check: test.ValidationWebhookSucceededWithWarnings(
+				`Version 7.7.0 is EOL and support for it will be removed in a future release of the ECK operator`,
+			),
+		},
+		{
+			Name:      "create-8-0-0-no-deprecation-warning",
+			Operation: admissionv1.Create,
+			Object: func(t *testing.T, uid string) []byte {
+				t.Helper()
+				ent := mkEnterpriseSearch(uid)
+				ent.Spec.Version = "8.0.0"
+				return test.MustMarshalJSON(t, ent)
+			},
+			Check: test.ValidationWebhookSucceeded,
+		},
+		{
+			Name:      "update-deprecated-same-version-label-change-still-warns",
+			Operation: admissionv1.Update,
+			OldObject: func(t *testing.T, uid string) []byte {
+				t.Helper()
+				ent := mkEnterpriseSearch(uid)
+				ent.Spec.Version = "7.10.0"
+				return test.MustMarshalJSON(t, ent)
+			},
+			Object: func(t *testing.T, uid string) []byte {
+				t.Helper()
+				ent := mkEnterpriseSearch(uid)
+				ent.Spec.Version = "7.10.0"
+				ent.Labels = map[string]string{"warmed": "restart"}
+				return test.MustMarshalJSON(t, ent)
+			},
+			Check: test.ValidationWebhookSucceededWithWarnings(
+				`Version 7.10.0 is EOL and support for it will be removed in a future release of the ECK operator`,
+			),
+		},
+		{
+			Name:      "update-from-deprecated-to-supported-clears-deprecation-warning",
+			Operation: admissionv1.Update,
+			OldObject: func(t *testing.T, uid string) []byte {
+				t.Helper()
+				ent := mkEnterpriseSearch(uid)
+				ent.Spec.Version = "7.10.0"
+				return test.MustMarshalJSON(t, ent)
+			},
+			Object: func(t *testing.T, uid string) []byte {
+				t.Helper()
+				ent := mkEnterpriseSearch(uid)
+				ent.Spec.Version = "8.7.1"
+				return test.MustMarshalJSON(t, ent)
+			},
+			Check: test.ValidationWebhookSucceeded,
+		},
+		{
 			Name:      "unsupported-version-higher",
 			Operation: admissionv1.Create,
 			Object: func(t *testing.T, uid string) []byte {
@@ -225,6 +286,26 @@ func TestWebhook(t *testing.T) {
 			},
 			Check: test.ValidationWebhookFailed(
 				`spec.elasticsearchRef: Forbidden: Invalid association reference: serviceName or namespace can only be used in combination with name, not with secretName`,
+			),
+		},
+		{
+			Name:      "deprecated-version-downgrade-warning-and-denial",
+			Operation: admissionv1.Update,
+			OldObject: func(t *testing.T, uid string) []byte {
+				t.Helper()
+				ent := mkEnterpriseSearch(uid)
+				ent.Spec.Version = "7.12.0"
+				return test.MustMarshalJSON(t, ent)
+			},
+			Object: func(t *testing.T, uid string) []byte {
+				t.Helper()
+				ent := mkEnterpriseSearch(uid)
+				ent.Spec.Version = "7.10.0"
+				return test.MustMarshalJSON(t, ent)
+			},
+			Check: test.ValidationWebhookFailedWithWarnings(
+				[]string{`spec.version: Forbidden: Version downgrades are not supported`},
+				[]string{`Version 7.10.0 is EOL and support for it will be removed in a future release of the ECK operator`},
 			),
 		},
 	}

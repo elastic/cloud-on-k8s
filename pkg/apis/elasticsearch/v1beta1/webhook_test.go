@@ -42,6 +42,68 @@ func TestWebhook(t *testing.T) {
 			),
 		},
 		{
+			Name:      "deprecated-at-lowest-supported-7-0-0",
+			Operation: admissionv1.Create,
+			Object: func(t *testing.T, uid string) []byte {
+				t.Helper()
+				es := mkElasticsearch(uid)
+				es.Spec.Version = "7.0.0"
+				return test.MustMarshalJSON(t, es)
+			},
+			Check: test.ValidationWebhookSucceededWithWarnings(
+				`Version 7.0.0 is EOL and support for it will be removed in a future release of the ECK operator`,
+			),
+		},
+		{
+			Name:      "create-8-0-0-no-deprecation-warning",
+			Operation: admissionv1.Create,
+			Object: func(t *testing.T, uid string) []byte {
+				t.Helper()
+				es := mkElasticsearch(uid)
+				es.Spec.Version = "8.0.0"
+				return test.MustMarshalJSON(t, es)
+			},
+			Check: test.ValidationWebhookSucceeded,
+		},
+		{
+			Name:      "update-deprecated-same-version-label-change-still-warns",
+			Operation: admissionv1.Update,
+			OldObject: func(t *testing.T, uid string) []byte {
+				t.Helper()
+				es := mkElasticsearch(uid)
+				es.Spec.Version = "7.10.0"
+				return test.MustMarshalJSON(t, es)
+			},
+			Object: func(t *testing.T, uid string) []byte {
+				t.Helper()
+				es := mkElasticsearch(uid)
+				es.Spec.Version = "7.10.0"
+				es.Labels = map[string]string{"warmed": "restart"}
+				return test.MustMarshalJSON(t, es)
+			},
+			Check: test.ValidationWebhookSucceededWithWarnings(
+				`Version 7.10.0 is EOL and support for it will be removed in a future release of the ECK operator`,
+			),
+		},
+		{
+			Name:      "update-from-deprecated-to-supported-clears-deprecation-warning",
+			Operation: admissionv1.Update,
+			OldObject: func(t *testing.T, uid string) []byte {
+				t.Helper()
+				es := mkElasticsearch(uid)
+				// Lowest 7.x version that offers a direct upgrade path to 8.x (see pkg/controller/elasticsearch/version).
+				es.Spec.Version = "7.17.0"
+				return test.MustMarshalJSON(t, es)
+			},
+			Object: func(t *testing.T, uid string) []byte {
+				t.Helper()
+				es := mkElasticsearch(uid)
+				es.Spec.Version = "8.16.0"
+				return test.MustMarshalJSON(t, es)
+			},
+			Check: test.ValidationWebhookSucceeded,
+		},
+		{
 			Name:      "create-unsupported-setting-warning",
 			Operation: admissionv1.Create,
 			Object: func(t *testing.T, uid string) []byte {
