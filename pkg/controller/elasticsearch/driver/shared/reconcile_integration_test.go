@@ -13,11 +13,13 @@ import (
 	"crypto/rsa"
 	"crypto/x509"
 	"crypto/x509/pkix"
+	"encoding/json"
 	"fmt"
 	"maps"
 	"net"
 	"net/http"
 	"net/http/httptest"
+	"strconv"
 	"strings"
 	"testing"
 	"time"
@@ -36,21 +38,24 @@ import (
 	esv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/elasticsearch/v1"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/certificates"
 	commondriver "github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/driver"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/license"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/metadata"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/operator"
 	commonversion "github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/version"
 	commonwatches "github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/watches"
 	esclient "github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/client"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/driver"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/filesettings"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/initcontainer"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/label"
-	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/network"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/nodespec"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/observer"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/reconcile"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/services"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/user"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/user/filerealm"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/version"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/volume"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/k8s"
 )
 
@@ -63,7 +68,7 @@ const (
 	remote
 )
 
-var baseElasticsearch = esv1.Elasticsearch{
+var baseStatefulElasticsearch = esv1.Elasticsearch{
 	ObjectMeta: metav1.ObjectMeta{
 		Name: "test-es", Namespace: "test-ns",
 		ResourceVersion: "1",
@@ -72,9 +77,8 @@ var baseElasticsearch = esv1.Elasticsearch{
 		OwnerReferences: []metav1.OwnerReference{
 			{
 				APIVersion: "operator.elastic.co/v1",
-				Kind:       "Elasticsearch",
-				Name:       "test-es",
-				UID:        "test-es-uid",
+				Name:       "test-es-owner",
+				UID:        "test-es-owner-uid",
 			},
 		},
 	},
@@ -125,17 +129,17 @@ func TestReconcileSharedResources(t *testing.T) {
 	}{
 		{
 			name: "happy path - new Elasticsearch with no remote cluster",
-			params: mustGetParams(t, esServer, services.InternalServiceURL(baseElasticsearch), 0,
-				&baseElasticsearch,
-				getPod(&baseElasticsearch, esServer.Listener.Addr(), baseElasticsearch.Labels[label.VersionLabelName]),
+			params: mustBuildParams(t, esServer, baseStatefulElasticsearch.Spec.Version, services.InternalServiceURL(baseStatefulElasticsearch), 0,
+				&baseStatefulElasticsearch,
+				mustBuildNewPod(t, &baseStatefulElasticsearch, esServer.Listener.Addr(), baseStatefulElasticsearch.Labels[label.VersionLabelName]),
 			),
 			expectedServices: map[string]corev1.Service{
-				esv1.TransportService(clusterName):        getExpectedService(&baseElasticsearch, transport, "1"),
-				services.ExternalServiceName(clusterName): getExpectedService(&baseElasticsearch, external, "1"),
-				services.InternalServiceName(clusterName): getExpectedService(&baseElasticsearch, internal, "1"),
+				esv1.TransportService(clusterName):        newService(&baseStatefulElasticsearch, transport, "1"),
+				services.ExternalServiceName(clusterName): newService(&baseStatefulElasticsearch, external, "1"),
+				services.InternalServiceName(clusterName): newService(&baseStatefulElasticsearch, internal, "1"),
 			},
-			expectedSecrets:    mustGetExpectedSecrets(t, &baseElasticsearch, "1", 0),
-			expectedConfigMaps: mustGetExpectedConfigMaps(t, &baseElasticsearch, "1", esServer),
+			expectedSecrets:    mustBuildExpectedSecrets(t, &baseStatefulElasticsearch, "1", 0),
+			expectedConfigMaps: mustGetExpectedConfigMaps(t, &baseStatefulElasticsearch, "1", esServer),
 			expectedState: &ReconcileState{
 				Meta: metadata.Metadata{
 					Labels: map[string]string{
@@ -152,23 +156,23 @@ func TestReconcileSharedResources(t *testing.T) {
 		{
 			name: "happy path - remote cluster service created when remote cluster server enabled",
 			params: func() driver.Parameters {
-				p := mustGetParams(t, esServer, services.InternalServiceURL(baseElasticsearch), 1,
-					&baseElasticsearch,
-					getPod(&baseElasticsearch, esServer.Listener.Addr(), baseElasticsearch.Labels[label.VersionLabelName]),
+				p := mustBuildParams(t, esServer, baseStatefulElasticsearch.Spec.Version, services.InternalServiceURL(baseStatefulElasticsearch), 1,
+					&baseStatefulElasticsearch,
+					mustBuildNewPod(t, &baseStatefulElasticsearch, esServer.Listener.Addr(), baseStatefulElasticsearch.Labels[label.VersionLabelName]),
 				)
-				es := baseElasticsearch.DeepCopy()
+				es := baseStatefulElasticsearch.DeepCopy()
 				es.Spec.RemoteClusterServer.Enabled = true
 				p.ES = *es
 				return p
 			}(),
 			expectedServices: map[string]corev1.Service{
-				esv1.TransportService(clusterName):             getExpectedService(&baseElasticsearch, transport, "1"),
-				services.ExternalServiceName(clusterName):      getExpectedService(&baseElasticsearch, external, "1"),
-				services.InternalServiceName(clusterName):      getExpectedService(&baseElasticsearch, internal, "1"),
-				services.RemoteClusterServiceName(clusterName): getExpectedService(&baseElasticsearch, remote, "1"),
+				esv1.TransportService(clusterName):             newService(&baseStatefulElasticsearch, transport, "1"),
+				services.ExternalServiceName(clusterName):      newService(&baseStatefulElasticsearch, external, "1"),
+				services.InternalServiceName(clusterName):      newService(&baseStatefulElasticsearch, internal, "1"),
+				services.RemoteClusterServiceName(clusterName): newService(&baseStatefulElasticsearch, remote, "1"),
 			},
-			expectedSecrets:    mustGetExpectedSecrets(t, &baseElasticsearch, "1", 1),
-			expectedConfigMaps: mustGetExpectedConfigMaps(t, &baseElasticsearch, "1", esServer),
+			expectedSecrets:    mustBuildExpectedSecrets(t, &baseStatefulElasticsearch, "1", 1),
+			expectedConfigMaps: mustGetExpectedConfigMaps(t, &baseStatefulElasticsearch, "1", esServer),
 			expectedState: &ReconcileState{
 				Meta: metadata.Metadata{
 					Labels: map[string]string{
@@ -184,9 +188,9 @@ func TestReconcileSharedResources(t *testing.T) {
 		},
 		{
 			name: "orphaned secret referencing a deleted pod is garbage collected",
-			params: mustGetParams(t, esServer, services.InternalServiceURL(baseElasticsearch), 0,
-				&baseElasticsearch,
-				getPod(&baseElasticsearch, esServer.Listener.Addr(), baseElasticsearch.Labels[label.VersionLabelName]),
+			params: mustBuildParams(t, esServer, baseStatefulElasticsearch.Spec.Version, services.InternalServiceURL(baseStatefulElasticsearch), 0,
+				&baseStatefulElasticsearch,
+				mustBuildNewPod(t, &baseStatefulElasticsearch, esServer.Listener.Addr(), baseStatefulElasticsearch.Labels[label.VersionLabelName]),
 				// A secret with a PodName label pointing to a pod that does not exist.
 				// Zero CreationTimestamp means IsTooYoungForGC returns false, allowing deletion.
 				&corev1.Secret{
@@ -202,12 +206,12 @@ func TestReconcileSharedResources(t *testing.T) {
 				},
 			),
 			expectedServices: map[string]corev1.Service{
-				esv1.TransportService(clusterName):        getExpectedService(&baseElasticsearch, transport, "1"),
-				services.ExternalServiceName(clusterName): getExpectedService(&baseElasticsearch, external, "1"),
-				services.InternalServiceName(clusterName): getExpectedService(&baseElasticsearch, internal, "1"),
+				esv1.TransportService(clusterName):        newService(&baseStatefulElasticsearch, transport, "1"),
+				services.ExternalServiceName(clusterName): newService(&baseStatefulElasticsearch, external, "1"),
+				services.InternalServiceName(clusterName): newService(&baseStatefulElasticsearch, internal, "1"),
 			},
-			expectedSecrets:    mustGetExpectedSecrets(t, &baseElasticsearch, "1", 0),
-			expectedConfigMaps: mustGetExpectedConfigMaps(t, &baseElasticsearch, "1", esServer),
+			expectedSecrets:    mustBuildExpectedSecrets(t, &baseStatefulElasticsearch, "1", 0),
+			expectedConfigMaps: mustGetExpectedConfigMaps(t, &baseStatefulElasticsearch, "1", esServer),
 			expectedState: &ReconcileState{
 				Meta: metadata.Metadata{
 					Labels: map[string]string{
@@ -224,16 +228,16 @@ func TestReconcileSharedResources(t *testing.T) {
 		{
 			name: "failure state - no pods with master label prevents reconciliation",
 			// nil listeningServer because there's no pod
-			params: mustGetParams(t, nil, services.InternalServiceURL(baseElasticsearch), 0,
-				&baseElasticsearch,
+			params: mustBuildParams(t, nil, baseStatefulElasticsearch.Spec.Version, services.InternalServiceURL(baseStatefulElasticsearch), 0,
+				&baseStatefulElasticsearch,
 			),
 			expectedServices: map[string]corev1.Service{
-				esv1.TransportService(clusterName):        getExpectedService(&baseElasticsearch, transport, "1"),
-				services.ExternalServiceName(clusterName): getExpectedService(&baseElasticsearch, external, "1"),
-				services.InternalServiceName(clusterName): getExpectedService(&baseElasticsearch, internal, "1"),
+				esv1.TransportService(clusterName):        newService(&baseStatefulElasticsearch, transport, "1"),
+				services.ExternalServiceName(clusterName): newService(&baseStatefulElasticsearch, external, "1"),
+				services.InternalServiceName(clusterName): newService(&baseStatefulElasticsearch, internal, "1"),
 			},
-			expectedSecrets:    mustGetExpectedSecrets(t, &baseElasticsearch, "1", 0),
-			expectedConfigMaps: mustGetExpectedConfigMaps(t, &baseElasticsearch, "1", nil),
+			expectedSecrets:    mustBuildExpectedSecrets(t, &baseStatefulElasticsearch, "1", 0),
+			expectedConfigMaps: mustGetExpectedConfigMaps(t, &baseStatefulElasticsearch, "1", nil),
 			expectedState: &ReconcileState{
 				Meta: metadata.Metadata{
 					Labels: map[string]string{
@@ -250,17 +254,17 @@ func TestReconcileSharedResources(t *testing.T) {
 		{
 			name: "failure state - a pod exists but is not listening",
 			// nil listeningServer because the pod is not listening
-			params: mustGetParams(t, nil, services.InternalServiceURL(baseElasticsearch), 0,
-				&baseElasticsearch,
-				getPod(&baseElasticsearch, esServer.Listener.Addr(), baseElasticsearch.Labels[label.VersionLabelName]),
+			params: mustBuildParams(t, nil, baseStatefulElasticsearch.Spec.Version, services.InternalServiceURL(baseStatefulElasticsearch), 0,
+				&baseStatefulElasticsearch,
+				mustBuildNewPod(t, &baseStatefulElasticsearch, esServer.Listener.Addr(), baseStatefulElasticsearch.Labels[label.VersionLabelName]),
 			),
 			expectedServices: map[string]corev1.Service{
-				esv1.TransportService(clusterName):        getExpectedService(&baseElasticsearch, transport, "1"),
-				services.ExternalServiceName(clusterName): getExpectedService(&baseElasticsearch, external, "1"),
-				services.InternalServiceName(clusterName): getExpectedService(&baseElasticsearch, internal, "1"),
+				esv1.TransportService(clusterName):        newService(&baseStatefulElasticsearch, transport, "1"),
+				services.ExternalServiceName(clusterName): newService(&baseStatefulElasticsearch, external, "1"),
+				services.InternalServiceName(clusterName): newService(&baseStatefulElasticsearch, internal, "1"),
 			},
-			expectedSecrets:    mustGetExpectedSecrets(t, &baseElasticsearch, "1", 0),
-			expectedConfigMaps: mustGetExpectedConfigMaps(t, &baseElasticsearch, "1", esServer),
+			expectedSecrets:    mustBuildExpectedSecrets(t, &baseStatefulElasticsearch, "1", 0),
+			expectedConfigMaps: mustGetExpectedConfigMaps(t, &baseStatefulElasticsearch, "1", esServer),
 			expectedState: &ReconcileState{
 				Meta: metadata.Metadata{
 					Labels: map[string]string{
@@ -277,18 +281,18 @@ func TestReconcileSharedResources(t *testing.T) {
 		{
 			name: "failure state - a pod is running an unsupported version halts returns an error",
 			// nil listeningServer because the pod is not listening
-			params: mustGetParams(t, nil, services.InternalServiceURL(baseElasticsearch), 0,
-				&baseElasticsearch,
-				getPod(&baseElasticsearch, esServer.Listener.Addr(), "6.0.0"),
+			params: mustBuildParams(t, nil, baseStatefulElasticsearch.Spec.Version, services.InternalServiceURL(baseStatefulElasticsearch), 0,
+				&baseStatefulElasticsearch,
+				mustBuildNewPod(t, &baseStatefulElasticsearch, esServer.Listener.Addr(), "6.0.0"),
 			),
 			expectedServices: map[string]corev1.Service{
-				esv1.TransportService(clusterName):        getExpectedService(&baseElasticsearch, transport, "1"),
-				services.ExternalServiceName(clusterName): getExpectedService(&baseElasticsearch, external, "1"),
-				services.InternalServiceName(clusterName): getExpectedService(&baseElasticsearch, internal, "1"),
+				esv1.TransportService(clusterName):        newService(&baseStatefulElasticsearch, transport, "1"),
+				services.ExternalServiceName(clusterName): newService(&baseStatefulElasticsearch, external, "1"),
+				services.InternalServiceName(clusterName): newService(&baseStatefulElasticsearch, internal, "1"),
 			},
-			expectedSecrets: mustGetExpectedSecrets(t, &baseElasticsearch, "1", 0),
+			expectedSecrets: mustBuildExpectedSecrets(t, &baseStatefulElasticsearch, "1", 0),
 			expectedConfigMaps: func() map[string]corev1.ConfigMap {
-				defaultConfigMaps := mustGetExpectedConfigMaps(t, &baseElasticsearch, "1", esServer)
+				defaultConfigMaps := mustGetExpectedConfigMaps(t, &baseStatefulElasticsearch, "1", esServer)
 				delete(defaultConfigMaps, esv1.UnicastHostsConfigMap(clusterName))
 				return defaultConfigMaps
 			}(),
@@ -399,6 +403,7 @@ func assertSecretMatchesExpected(t *testing.T, expected, actual corev1.Secret) {
 	if isCertOrCaSecret(expected.Name) {
 		actualCertData := make([]byte, 0, 1000)
 		expectedCertData := make([]byte, 0, 1000)
+		assert.Lenf(t, actual.Data, len(expected.Data), "secret [%s] Data has unexpected number of items", actual.Name)
 		for name, cert := range actual.Data {
 			expectedCert, ok := expected.Data[name]
 			require.Truef(t, ok, "actual has Data key %q missing from expected secret %s", name, expected.Name)
@@ -419,12 +424,29 @@ func assertSecretMatchesExpected(t *testing.T, expected, actual corev1.Secret) {
 			assert.Equalf(t, expectedCert.DNSNames, actualCert.DNSNames, "secret %s cert DNSNames set incorrectly", actual.Name)
 			assert.Equalf(t, expectedCert.Issuer, actualCert.Issuer, "secret %s cert Issuer set incorrectly", actual.Name)
 		}
+	} else if strings.Contains(actual.Name, "file-settings") {
+		// The file-settings secret contains a version timestamp so equality check will always fail
+		var actualSettings filesettings.Settings
+		err := json.Unmarshal(actual.Data[filesettings.SettingsSecretKey], &actualSettings)
+		assert.NoErrorf(t, err, "error unmarshalling actual secret %s file-settings", actual.Name)
+		var expectedSettings filesettings.Settings
+		err = json.Unmarshal(expected.Data[filesettings.SettingsSecretKey], &expectedSettings)
+		assert.NoErrorf(t, err, "error unmarshalling expected secret %s file-settings", expected.Name)
+
+		assert.Equalf(t, expectedSettings.State, actualSettings.State, "secret [%s] file-settings State is incorrect", actual.Name)
+		assert.Equalf(t, expectedSettings.Metadata.Compatibility, actualSettings.Metadata.Compatibility, "secret [%s] file-settings Metadata is incorrect", actual.Name)
+
+		// Approximation of version time should be within the last minute
+		msInt, err := strconv.ParseInt(actualSettings.Metadata.Version, 10, 64)
+		assert.NoErrorf(t, err, "error parsing actual secret %s file-settings Version into int64", actual.Name)
+		actualVersion := time.UnixMilli(msInt)
+		assert.Truef(t, actualVersion.After(time.Now().Add(-1*time.Minute)), "secret %s file-settings Version is too old", actual.Name)
 	} else {
-		assert.Equalf(t, expected.Data, actual.Data, "secret [%s] Data", expected.Name)
+		assert.Equalf(t, expected.Data, actual.Data, "secret [%s] Data is incorrect", actual.Name)
 	}
 }
 
-func getServiceAccountTokenSecret(es *esv1.Elasticsearch) *corev1.Secret {
+func newServiceAccountTokenSecret(es *esv1.Elasticsearch) *corev1.Secret {
 	return &corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      fmt.Sprintf("%s-es-token-xxxxx", es.Name),
@@ -444,8 +466,11 @@ func getServiceAccountTokenSecret(es *esv1.Elasticsearch) *corev1.Secret {
 
 func mustGetExpectedConfigMaps(t *testing.T, es *esv1.Elasticsearch, resourceVersion string, esServer *httptest.Server) map[string]corev1.ConfigMap {
 	t.Helper()
-	labels := getLabels(es)
-	ownerReferences := getOwnerReferences(es)
+	labels := label.NewLabels(types.NamespacedName{
+		Namespace: es.Namespace,
+		Name:      es.Name,
+	})
+	ownerReferences := newOwnerReference(es)
 
 	fsScript, err := initcontainer.RenderPrepareFsScript(es.DownwardNodeLabels())
 	require.NoError(t, err, "error rendering FS script")
@@ -484,19 +509,22 @@ func mustGetExpectedConfigMaps(t *testing.T, es *esv1.Elasticsearch, resourceVer
 				OwnerReferences: ownerReferences,
 			},
 			Data: map[string]string{
-				"unicast_hosts.txt": host,
+				volume.UnicastHostsFile: host,
 			},
 		},
 	}
 }
 
-// mustGetExpectedSecrets builds the map of secrets we expect in the namespace after ReconcileSharedResources.
+// mustBuildExpectedSecrets builds the map of secrets we expect in the namespace after ReconcileSharedResources.
 // User/role material uses fixed fixtures; certificate secrets and any other reconciler-generated secrets (keystore,
 // file-settings, per-node transport certs, remote CA fixtures, etc.) are read from the client so they match the
 // reconciliation output byte-for-byte.
-func mustGetExpectedSecrets(t *testing.T, es *esv1.Elasticsearch, resourceVersion string, numRemoteCAs int) map[string]corev1.Secret {
+func mustBuildExpectedSecrets(t *testing.T, es *esv1.Elasticsearch, resourceVersion string, numRemoteCAs int) map[string]corev1.Secret {
 	t.Helper()
-	labels := getLabels(es)
+	labels := label.NewLabels(types.NamespacedName{
+		Namespace: es.Namespace,
+		Name:      es.Name,
+	})
 	labels["eck.k8s.elastic.co/credentials"] = "true"
 	labels["eck.k8s.elastic.co/owner-kind"] = ""
 	labels["eck.k8s.elastic.co/owner-name"] = es.Name
@@ -506,7 +534,12 @@ func mustGetExpectedSecrets(t *testing.T, es *esv1.Elasticsearch, resourceVersio
 	certSecrets := mustBuildExpectedCertificateSecrets(t, es, labels, resourceVersion, numRemoteCAs)
 
 	// Non-certificate secrets (users, roles, service account token)
-	serviceAccountTokenSecret := getServiceAccountTokenSecret(es)
+	serviceAccountTokenSecret := newServiceAccountTokenSecret(es)
+	fileSettings := filesettings.NewEmptySettings(time.Now().Unix())
+	fileSettingsData, err := json.Marshal(fileSettings)
+	require.NoError(t, err, "error marshalling file-settings")
+
+	filerealm.New()
 	result := map[string]corev1.Secret{
 		serviceAccountTokenSecret.Name: *serviceAccountTokenSecret,
 		esv1.RolesAndFileRealmSecret(es.Name): {
@@ -517,10 +550,10 @@ func mustGetExpectedSecrets(t *testing.T, es *esv1.Elasticsearch, resourceVersio
 				Labels:          labels,
 			},
 			Data: map[string][]byte{
-				"users":          []byte(userHashes),
-				"users_roles":    []byte(userRoles),
-				"roles.yml":      []byte(defaultRoles),
-				"service_tokens": []byte("token-name:hash\n"),
+				filerealm.UsersFile:        []byte(userHashes),
+				filerealm.UsersRolesFile:   []byte(userRoles),
+				user.RolesFile:             mustGetPredefinedRoles(t),
+				user.ServiceTokensFileName: []byte("token-name:hash\n"),
 			},
 		},
 		esv1.InternalUsersSecret(es.Name): {
@@ -549,10 +582,28 @@ func mustGetExpectedSecrets(t *testing.T, es *esv1.Elasticsearch, resourceVersio
 				user.ElasticUserName: []byte(staticPassword),
 			},
 		},
+		esv1.FileSettingsSecretName(es.Name): {
+			ObjectMeta: metav1.ObjectMeta{
+				Name:            esv1.FileSettingsSecretName(es.Name),
+				Namespace:       es.Namespace,
+				ResourceVersion: resourceVersion,
+				Labels:          labels,
+			},
+			Data: map[string][]byte{
+				filesettings.SettingsSecretKey: fileSettingsData,
+			},
+		},
 	}
 	maps.Copy(result, certSecrets)
 
 	return result
+}
+
+func mustGetPredefinedRoles(t *testing.T) []byte {
+	t.Helper()
+	predefinedRoles, err := user.PredefinedRoles.FileBytes()
+	require.NoError(t, err, "error reading predefined roles")
+	return predefinedRoles
 }
 
 // mustBuildExpectedCertificateSecrets reproduces the certificate secrets created by ReconcileSharedResources
@@ -759,43 +810,46 @@ func mustGenerateRemoteCASecrets(t *testing.T, namespace, name string, quantity 
 	return secretsToCreate
 }
 
-func getExpectedService(es *esv1.Elasticsearch, st serviceType, resourceVersion string) corev1.Service {
-	serviceName := getServiceName(st, es.Name)
-	publishNotReadyAddresses := false
-	clusterIP := ""
-	if st == transport || st == remote {
-		clusterIP = corev1.ClusterIPNone
-		publishNotReadyAddresses = true
+func newService(es *esv1.Elasticsearch, st serviceType, resourceVersion string) corev1.Service {
+	md := metadata.Metadata{
+		Labels: label.NewLabels(types.NamespacedName{
+			Namespace: es.Namespace,
+			Name:      es.Name,
+		}),
+		Annotations: nil,
 	}
 
-	labels := getLabels(es)
-
-	return corev1.Service{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:            serviceName,
-			Namespace:       es.Namespace,
-			Labels:          labels,
-			ResourceVersion: resourceVersion,
-			OwnerReferences: getOwnerReferences(es),
-		},
-		Spec: corev1.ServiceSpec{
-			Ports:                    []corev1.ServicePort{getPortForService(st)},
-			Selector:                 labels,
-			ClusterIP:                clusterIP,
-			Type:                     corev1.ServiceTypeClusterIP,
-			PublishNotReadyAddresses: publishNotReadyAddresses,
-		},
+	var service corev1.Service
+	switch st {
+	case transport:
+		service = *services.NewTransportService(*es, md)
+	case external:
+		service = *services.NewExternalService(*es, md)
+	case internal:
+		service = *services.NewInternalService(*es, md)
+	case remote:
+		service = *services.NewRemoteClusterService(*es, md)
 	}
+
+	service.ObjectMeta.OwnerReferences = newOwnerReference(es)
+	service.ObjectMeta.ResourceVersion = resourceVersion
+	return service
 }
 
-func getPod(es *esv1.Elasticsearch, addr net.Addr, version string) *corev1.Pod {
+func mustBuildNewPod(t *testing.T, es *esv1.Elasticsearch, addr net.Addr, version string) *corev1.Pod {
 	ip := strings.Split(addr.String(), ":")[0]
 	podName := fmt.Sprintf("%s-%s", es.Name, uuid.NewUUID()[:6])
 	statefulSetName := es.Labels[label.StatefulSetNameLabelName]
-	labels := getLabels(es)
-	labels[string(label.NodeTypesMasterLabelName)] = "true"
+	ver := mustParseVersion(t, version)
+	labels := label.NewPodLabels(
+		types.NamespacedName{Namespace: es.Namespace, Name: es.Name},
+		statefulSetName,
+		ver,
+		&esv1.Node{
+			Master: ptr.To[bool](true),
+		},
+		"https")
 
-	labels[label.VersionLabelName] = version
 	return &corev1.Pod{
 		Status: corev1.PodStatus{
 			PodIP: ip,
@@ -826,14 +880,7 @@ func getPod(es *esv1.Elasticsearch, addr net.Addr, version string) *corev1.Pod {
 	}
 }
 
-func getLabels(es *esv1.Elasticsearch) map[string]string {
-	return map[string]string{
-		label.ClusterNameLabelName:   es.Name,
-		"common.k8s.elastic.co/type": "elasticsearch",
-	}
-}
-
-func getOwnerReferences(es *esv1.Elasticsearch) []metav1.OwnerReference {
+func newOwnerReference(es *esv1.Elasticsearch) []metav1.OwnerReference {
 	return []metav1.OwnerReference{{
 		APIVersion:         "elasticsearch.k8s.elastic.co/v1",
 		Kind:               "Elasticsearch",
@@ -842,49 +889,6 @@ func getOwnerReferences(es *esv1.Elasticsearch) []metav1.OwnerReference {
 		Controller:         ptr.To(true),
 		BlockOwnerDeletion: ptr.To(true),
 	}}
-}
-
-func getServiceName(st serviceType, clusterName string) string {
-	switch st {
-	case transport:
-		return services.TransportServiceName(clusterName)
-	case external:
-		return services.ExternalServiceName(clusterName)
-	case internal:
-		return services.InternalServiceName(clusterName)
-	case remote:
-		return services.RemoteClusterServiceName(clusterName)
-	}
-	return ""
-}
-
-func getPortForService(st serviceType) corev1.ServicePort {
-	switch st {
-	case transport:
-		return corev1.ServicePort{
-			Name:     "tls-transport",
-			Protocol: corev1.ProtocolTCP,
-			Port:     network.TransportPort,
-		}
-	case external:
-		return corev1.ServicePort{
-			Name: "http",
-			Port: network.HTTPPort,
-		}
-	case internal:
-		return corev1.ServicePort{
-			Name:     "https",
-			Protocol: corev1.ProtocolTCP,
-			Port:     network.HTTPPort,
-		}
-	case remote:
-		return corev1.ServicePort{
-			Name:     "rcs",
-			Protocol: corev1.ProtocolTCP,
-			Port:     network.RemoteClusterPort,
-		}
-	}
-	return corev1.ServicePort{}
 }
 
 const staticPassword = "password"
@@ -901,7 +905,7 @@ func (s *staticPasswordHasher) ReuseOrGenerateHash(password, _ []byte) ([]byte, 
 	return password, nil
 }
 
-func mustGetParams(t *testing.T, listeningServer *httptest.Server, defaultURL string, numRemoteCAs int, initK8sObjects ...client.Object) driver.Parameters {
+func mustBuildParams(t *testing.T, listeningServer *httptest.Server, ver string, defaultURL string, numRemoteCAs int, initK8sObjects ...client.Object) driver.Parameters {
 	t.Helper()
 	watches := commonwatches.NewDynamicWatches()
 	operatorParams := operator.Parameters{
@@ -918,7 +922,7 @@ func mustGetParams(t *testing.T, listeningServer *httptest.Server, defaultURL st
 		},
 	}
 
-	state, err := reconcile.NewState(baseElasticsearch)
+	state, err := reconcile.NewState(baseStatefulElasticsearch)
 	require.NoError(t, err)
 
 	// Because we don't have a clean way of mocking the kubernetes DNS resolution, Elasticsearch will never be reachable
@@ -928,12 +932,15 @@ func mustGetParams(t *testing.T, listeningServer *httptest.Server, defaultURL st
 		urlProvider = esclient.NewStaticURLProvider(listeningServer.URL) // required to get a response from the mock server
 	}
 
-	baselineObjects := append(mustGenerateRemoteCASecrets(t, baseElasticsearch.Namespace, baseElasticsearch.Name, numRemoteCAs), getServiceAccountTokenSecret(&baseElasticsearch))
+	baselineObjects := append(mustGenerateRemoteCASecrets(t, baseStatefulElasticsearch.Namespace, baseStatefulElasticsearch.Name, numRemoteCAs), newServiceAccountTokenSecret(&baseStatefulElasticsearch))
 	initK8sObjects = append(initK8sObjects, baselineObjects...)
 
+	k8sClient := k8s.NewFakeClient(initK8sObjects...)
 	return driver.Parameters{
-		Client:             k8s.NewFakeClient(initK8sObjects...),
-		ES:                 baseElasticsearch,
+		Client:             k8sClient,
+		ES:                 baseStatefulElasticsearch,
+		Version:            mustParseVersion(t, ver),
+		LicenseChecker:     license.NewLicenseChecker(k8sClient, "operator-namespace"),
 		ReconcileState:     state,
 		DynamicWatches:     watches,
 		OperatorParameters: operatorParams,
@@ -964,979 +971,4 @@ elastic-internal-pre-stop:password
 elastic-internal-probe:password
 elastic-internal:password
 elastic:password
-`
-
-const defaultRoles = `eck_apm_agent_user_role:
-    cluster: []
-    indices: []
-    applications:
-        - application: kibana-.kibana
-          privileges:
-            - feature_apm.read
-          resources:
-            - space:default
-    metadata: {}
-eck_apm_user_role_v7:
-    cluster:
-        - monitor
-        - manage_ilm
-        - manage_index_templates
-    indices:
-        - names:
-            - apm-*
-          privileges:
-            - manage
-            - write
-            - create_index
-    applications: []
-    metadata: {}
-eck_apm_user_role_v75:
-    cluster:
-        - monitor
-        - manage_ilm
-        - manage_api_key
-    indices:
-        - names:
-            - apm-*
-          privileges:
-            - manage
-            - create_doc
-            - create_index
-    applications: []
-    metadata: {}
-eck_apm_user_role_v80:
-    cluster:
-        - cluster:monitor/main
-        - manage_index_templates
-    indices:
-        - names:
-            - traces-apm*
-            - metrics-apm*
-            - logs-apm*
-          privileges:
-            - auto_configure
-            - create_doc
-        - names:
-            - traces-apm.sampled-*
-          privileges:
-            - maintenance
-            - monitor
-            - read
-    applications: []
-    metadata: {}
-eck_apm_user_role_v87:
-    cluster:
-        - cluster:monitor/main
-        - manage_index_templates
-    indices:
-        - names:
-            - traces-apm*
-            - metrics-apm*
-            - logs-apm*
-          privileges:
-            - auto_configure
-            - create_doc
-        - names:
-            - traces-apm.sampled-*
-          privileges:
-            - maintenance
-            - monitor
-            - read
-        - names:
-            - .apm-agent-configuration
-            - .apm-source-map
-          privileges:
-            - read
-          allow_restricted_indices: true
-    applications: []
-    metadata: {}
-eck_autoops_user_role:
-    cluster:
-        - monitor
-        - read_ilm
-        - read_slm
-    indices:
-        - names:
-            - '*'
-          privileges:
-            - monitor
-            - view_index_metadata
-          allow_restricted_indices: true
-    applications: []
-    metadata: {}
-eck_beat_es_auditbeat_role_v70:
-    cluster:
-        - manage_index_templates
-        - monitor
-        - manage_ilm
-        - manage_ml
-        - manage_pipeline
-    indices:
-        - names:
-            - auditbeat-*
-            - logs-*
-          privileges:
-            - manage
-            - read
-            - index
-            - create_index
-    applications: []
-    metadata: {}
-eck_beat_es_auditbeat_role_v73:
-    cluster:
-        - monitor
-        - manage_ilm
-        - manage_ml
-        - read_ilm
-        - manage_pipeline
-    indices:
-        - names:
-            - auditbeat-*
-            - logs-*
-          privileges:
-            - manage
-            - read
-            - index
-            - view_index_metadata
-            - create_index
-    applications: []
-    metadata: {}
-eck_beat_es_auditbeat_role_v75:
-    cluster:
-        - monitor
-        - manage_ilm
-        - manage_ml
-        - read_ilm
-        - cluster:admin/ingest/pipeline/get
-    indices:
-        - names:
-            - auditbeat-*
-            - logs-*
-          privileges:
-            - manage
-            - read
-            - create_doc
-            - view_index_metadata
-            - create_index
-    applications: []
-    metadata: {}
-eck_beat_es_auditbeat_role_v77:
-    cluster:
-        - monitor
-        - manage_ilm
-        - manage_ml
-        - read_ilm
-        - cluster:admin/ingest/pipeline/get
-    indices:
-        - names:
-            - auditbeat-*
-            - logs-*
-          privileges:
-            - manage
-            - read
-            - create_doc
-            - view_index_metadata
-            - create_index
-    applications: []
-    metadata: {}
-eck_beat_es_filebeat_role_v70:
-    cluster:
-        - manage_index_templates
-        - monitor
-        - manage_ilm
-        - manage_ml
-        - manage_pipeline
-    indices:
-        - names:
-            - filebeat-*
-            - logs-*
-          privileges:
-            - manage
-            - read
-            - index
-            - create_index
-    applications: []
-    metadata: {}
-eck_beat_es_filebeat_role_v73:
-    cluster:
-        - monitor
-        - manage_ilm
-        - manage_ml
-        - read_ilm
-        - manage_pipeline
-    indices:
-        - names:
-            - filebeat-*
-            - logs-*
-          privileges:
-            - manage
-            - read
-            - index
-            - view_index_metadata
-            - create_index
-    applications: []
-    metadata: {}
-eck_beat_es_filebeat_role_v75:
-    cluster:
-        - monitor
-        - manage_ilm
-        - manage_ml
-        - read_ilm
-        - cluster:admin/ingest/pipeline/get
-    indices:
-        - names:
-            - filebeat-*
-            - logs-*
-          privileges:
-            - manage
-            - read
-            - create_doc
-            - view_index_metadata
-            - create_index
-    applications: []
-    metadata: {}
-eck_beat_es_filebeat_role_v77:
-    cluster:
-        - monitor
-        - manage_ilm
-        - manage_ml
-        - read_ilm
-        - cluster:admin/ingest/pipeline/get
-    indices:
-        - names:
-            - filebeat-*
-            - logs-*
-          privileges:
-            - manage
-            - read
-            - create_doc
-            - view_index_metadata
-            - create_index
-    applications: []
-    metadata: {}
-eck_beat_es_heartbeat_role_v70:
-    cluster:
-        - manage_index_templates
-        - monitor
-        - manage_ilm
-        - manage_ml
-        - manage_pipeline
-    indices:
-        - names:
-            - heartbeat-*
-            - synthetics-*
-          privileges:
-            - manage
-            - read
-            - index
-            - create_index
-    applications: []
-    metadata: {}
-eck_beat_es_heartbeat_role_v73:
-    cluster:
-        - monitor
-        - manage_ilm
-        - manage_ml
-        - read_ilm
-        - manage_pipeline
-    indices:
-        - names:
-            - heartbeat-*
-            - synthetics-*
-          privileges:
-            - manage
-            - read
-            - index
-            - view_index_metadata
-            - create_index
-    applications: []
-    metadata: {}
-eck_beat_es_heartbeat_role_v75:
-    cluster:
-        - monitor
-        - manage_ilm
-        - manage_ml
-        - read_ilm
-        - cluster:admin/ingest/pipeline/get
-    indices:
-        - names:
-            - heartbeat-*
-            - synthetics-*
-          privileges:
-            - manage
-            - read
-            - create_doc
-            - view_index_metadata
-            - create_index
-    applications: []
-    metadata: {}
-eck_beat_es_heartbeat_role_v77:
-    cluster:
-        - monitor
-        - manage_ilm
-        - manage_ml
-        - read_ilm
-        - cluster:admin/ingest/pipeline/get
-    indices:
-        - names:
-            - heartbeat-*
-            - synthetics-*
-          privileges:
-            - manage
-            - read
-            - create_doc
-            - view_index_metadata
-            - create_index
-    applications: []
-    metadata: {}
-eck_beat_es_journalbeat_role_v70:
-    cluster:
-        - manage_index_templates
-        - monitor
-        - manage_ilm
-        - manage_ml
-        - manage_pipeline
-    indices:
-        - names:
-            - journalbeat-*
-            - ""
-          privileges:
-            - manage
-            - read
-            - index
-            - create_index
-    applications: []
-    metadata: {}
-eck_beat_es_journalbeat_role_v73:
-    cluster:
-        - monitor
-        - manage_ilm
-        - manage_ml
-        - read_ilm
-        - manage_pipeline
-    indices:
-        - names:
-            - journalbeat-*
-            - ""
-          privileges:
-            - manage
-            - read
-            - index
-            - view_index_metadata
-            - create_index
-    applications: []
-    metadata: {}
-eck_beat_es_journalbeat_role_v75:
-    cluster:
-        - monitor
-        - manage_ilm
-        - manage_ml
-        - read_ilm
-        - cluster:admin/ingest/pipeline/get
-    indices:
-        - names:
-            - journalbeat-*
-            - ""
-          privileges:
-            - manage
-            - read
-            - create_doc
-            - view_index_metadata
-            - create_index
-    applications: []
-    metadata: {}
-eck_beat_es_journalbeat_role_v77:
-    cluster:
-        - monitor
-        - manage_ilm
-        - manage_ml
-        - read_ilm
-        - cluster:admin/ingest/pipeline/get
-    indices:
-        - names:
-            - journalbeat-*
-            - ""
-          privileges:
-            - manage
-            - read
-            - create_doc
-            - view_index_metadata
-            - create_index
-    applications: []
-    metadata: {}
-eck_beat_es_metricbeat_role_v70:
-    cluster:
-        - manage_index_templates
-        - monitor
-        - manage_ilm
-        - manage_ml
-        - manage_pipeline
-    indices:
-        - names:
-            - metricbeat-*
-            - metrics-*
-          privileges:
-            - manage
-            - read
-            - index
-            - create_index
-    applications: []
-    metadata: {}
-eck_beat_es_metricbeat_role_v73:
-    cluster:
-        - monitor
-        - manage_ilm
-        - manage_ml
-        - read_ilm
-        - manage_pipeline
-    indices:
-        - names:
-            - metricbeat-*
-            - metrics-*
-          privileges:
-            - manage
-            - read
-            - index
-            - view_index_metadata
-            - create_index
-    applications: []
-    metadata: {}
-eck_beat_es_metricbeat_role_v75:
-    cluster:
-        - monitor
-        - manage_ilm
-        - manage_ml
-        - read_ilm
-        - cluster:admin/ingest/pipeline/get
-    indices:
-        - names:
-            - metricbeat-*
-            - metrics-*
-          privileges:
-            - manage
-            - read
-            - create_doc
-            - view_index_metadata
-            - create_index
-    applications: []
-    metadata: {}
-eck_beat_es_metricbeat_role_v77:
-    cluster:
-        - monitor
-        - manage_ilm
-        - manage_ml
-        - read_ilm
-        - cluster:admin/ingest/pipeline/get
-    indices:
-        - names:
-            - metricbeat-*
-            - metrics-*
-          privileges:
-            - manage
-            - read
-            - create_doc
-            - view_index_metadata
-            - create_index
-    applications: []
-    metadata: {}
-eck_beat_es_packetbeat_role_v70:
-    cluster:
-        - manage_index_templates
-        - monitor
-        - manage_ilm
-        - manage_ml
-        - manage_pipeline
-    indices:
-        - names:
-            - packetbeat-*
-            - logs-*
-          privileges:
-            - manage
-            - read
-            - index
-            - create_index
-    applications: []
-    metadata: {}
-eck_beat_es_packetbeat_role_v73:
-    cluster:
-        - monitor
-        - manage_ilm
-        - manage_ml
-        - read_ilm
-        - manage_pipeline
-    indices:
-        - names:
-            - packetbeat-*
-            - logs-*
-          privileges:
-            - manage
-            - read
-            - index
-            - view_index_metadata
-            - create_index
-    applications: []
-    metadata: {}
-eck_beat_es_packetbeat_role_v75:
-    cluster:
-        - monitor
-        - manage_ilm
-        - manage_ml
-        - read_ilm
-        - cluster:admin/ingest/pipeline/get
-    indices:
-        - names:
-            - packetbeat-*
-            - logs-*
-          privileges:
-            - manage
-            - read
-            - create_doc
-            - view_index_metadata
-            - create_index
-    applications: []
-    metadata: {}
-eck_beat_es_packetbeat_role_v77:
-    cluster:
-        - monitor
-        - manage_ilm
-        - manage_ml
-        - read_ilm
-        - cluster:admin/ingest/pipeline/get
-    indices:
-        - names:
-            - packetbeat-*
-            - logs-*
-          privileges:
-            - manage
-            - read
-            - create_doc
-            - view_index_metadata
-            - create_index
-    applications: []
-    metadata: {}
-eck_beat_kibana_auditbeat_role_v70:
-    cluster:
-        - manage_index_templates
-        - monitor
-        - manage_ilm
-        - manage_ml
-    indices:
-        - names:
-            - auditbeat-*
-            - logs-*
-          privileges:
-            - manage
-            - read
-    applications: []
-    metadata: {}
-eck_beat_kibana_auditbeat_role_v73:
-    cluster:
-        - monitor
-        - manage_ilm
-        - manage_ml
-    indices:
-        - names:
-            - auditbeat-*
-            - logs-*
-          privileges:
-            - manage
-            - read
-    applications: []
-    metadata: {}
-eck_beat_kibana_auditbeat_role_v77:
-    cluster:
-        - monitor
-        - manage_ilm
-        - manage_ml
-    indices:
-        - names:
-            - auditbeat-*
-            - logs-*
-          privileges:
-            - manage
-            - read
-    applications: []
-    metadata: {}
-eck_beat_kibana_filebeat_role_v70:
-    cluster:
-        - manage_index_templates
-        - monitor
-        - manage_ilm
-        - manage_ml
-    indices:
-        - names:
-            - filebeat-*
-            - logs-*
-          privileges:
-            - manage
-            - read
-    applications: []
-    metadata: {}
-eck_beat_kibana_filebeat_role_v73:
-    cluster:
-        - monitor
-        - manage_ilm
-        - manage_ml
-    indices:
-        - names:
-            - filebeat-*
-            - logs-*
-          privileges:
-            - manage
-            - read
-    applications: []
-    metadata: {}
-eck_beat_kibana_filebeat_role_v77:
-    cluster:
-        - monitor
-        - manage_ilm
-        - manage_ml
-    indices:
-        - names:
-            - filebeat-*
-            - logs-*
-          privileges:
-            - manage
-            - read
-    applications: []
-    metadata: {}
-eck_beat_kibana_heartbeat_role_v70:
-    cluster:
-        - manage_index_templates
-        - monitor
-        - manage_ilm
-        - manage_ml
-    indices:
-        - names:
-            - heartbeat-*
-            - synthetics-*
-          privileges:
-            - manage
-            - read
-    applications: []
-    metadata: {}
-eck_beat_kibana_heartbeat_role_v73:
-    cluster:
-        - monitor
-        - manage_ilm
-        - manage_ml
-    indices:
-        - names:
-            - heartbeat-*
-            - synthetics-*
-          privileges:
-            - manage
-            - read
-    applications: []
-    metadata: {}
-eck_beat_kibana_heartbeat_role_v77:
-    cluster:
-        - monitor
-        - manage_ilm
-        - manage_ml
-    indices:
-        - names:
-            - heartbeat-*
-            - synthetics-*
-          privileges:
-            - manage
-            - read
-    applications: []
-    metadata: {}
-eck_beat_kibana_journalbeat_role_v70:
-    cluster:
-        - manage_index_templates
-        - monitor
-        - manage_ilm
-        - manage_ml
-    indices:
-        - names:
-            - journalbeat-*
-            - ""
-          privileges:
-            - manage
-            - read
-    applications: []
-    metadata: {}
-eck_beat_kibana_journalbeat_role_v73:
-    cluster:
-        - monitor
-        - manage_ilm
-        - manage_ml
-    indices:
-        - names:
-            - journalbeat-*
-            - ""
-          privileges:
-            - manage
-            - read
-    applications: []
-    metadata: {}
-eck_beat_kibana_journalbeat_role_v77:
-    cluster:
-        - monitor
-        - manage_ilm
-        - manage_ml
-    indices:
-        - names:
-            - journalbeat-*
-            - ""
-          privileges:
-            - manage
-            - read
-    applications: []
-    metadata: {}
-eck_beat_kibana_metricbeat_role_v70:
-    cluster:
-        - manage_index_templates
-        - monitor
-        - manage_ilm
-        - manage_ml
-    indices:
-        - names:
-            - metricbeat-*
-            - metrics-*
-          privileges:
-            - manage
-            - read
-    applications: []
-    metadata: {}
-eck_beat_kibana_metricbeat_role_v73:
-    cluster:
-        - monitor
-        - manage_ilm
-        - manage_ml
-    indices:
-        - names:
-            - metricbeat-*
-            - metrics-*
-          privileges:
-            - manage
-            - read
-    applications: []
-    metadata: {}
-eck_beat_kibana_metricbeat_role_v77:
-    cluster:
-        - monitor
-        - manage_ilm
-        - manage_ml
-    indices:
-        - names:
-            - metricbeat-*
-            - metrics-*
-          privileges:
-            - manage
-            - read
-    applications: []
-    metadata: {}
-eck_beat_kibana_packetbeat_role_v70:
-    cluster:
-        - manage_index_templates
-        - monitor
-        - manage_ilm
-        - manage_ml
-    indices:
-        - names:
-            - packetbeat-*
-            - logs-*
-          privileges:
-            - manage
-            - read
-    applications: []
-    metadata: {}
-eck_beat_kibana_packetbeat_role_v73:
-    cluster:
-        - monitor
-        - manage_ilm
-        - manage_ml
-    indices:
-        - names:
-            - packetbeat-*
-            - logs-*
-          privileges:
-            - manage
-            - read
-    applications: []
-    metadata: {}
-eck_beat_kibana_packetbeat_role_v77:
-    cluster:
-        - monitor
-        - manage_ilm
-        - manage_ml
-    indices:
-        - names:
-            - packetbeat-*
-            - logs-*
-          privileges:
-            - manage
-            - read
-    applications: []
-    metadata: {}
-eck_fleet_admin_user_role:
-    cluster: []
-    indices: []
-    applications:
-        - application: kibana-.kibana
-          privileges:
-            - feature_fleet.all
-            - feature_fleetv2.all
-          resources:
-            - '*'
-    metadata: {}
-eck_logstash_user_role:
-    cluster:
-        - monitor
-        - manage_ilm
-        - read_ilm
-        - manage_logstash_pipelines
-        - manage_index_templates
-        - cluster:admin/ingest/pipeline/get
-    indices:
-        - names:
-            - logstash
-            - logstash-*
-            - ecs-logstash
-            - ecs-logstash-*
-            - logs-*
-            - metrics-*
-            - synthetics-*
-            - traces-*
-          privileges:
-            - manage
-            - write
-            - create_index
-            - read
-            - view_index_metadata
-    applications: []
-    metadata: {}
-eck_stack_mon_user_role:
-    cluster:
-        - monitor
-        - manage_index_templates
-        - manage_ingest_pipelines
-        - manage_ilm
-        - read_ilm
-        - cluster:admin/xpack/watcher/watch/put
-        - cluster:admin/xpack/watcher/watch/delete
-    indices:
-        - names:
-            - .monitoring-*
-          privileges:
-            - all
-        - names:
-            - metricbeat-*
-          privileges:
-            - manage
-            - read
-            - create_doc
-            - view_index_metadata
-            - create_index
-        - names:
-            - filebeat-*
-          privileges:
-            - manage
-            - read
-            - create_doc
-            - view_index_metadata
-            - create_index
-    applications: []
-    metadata: {}
-elastic-internal_cluster_manage:
-    cluster:
-        - manage
-    indices: []
-    applications: []
-    metadata: {}
-elastic_internal_diagnostics_v80:
-    cluster:
-        - monitor
-        - monitor_snapshot
-        - manage
-        - read_ilm
-        - manage_security
-    indices:
-        - names:
-            - '*'
-          privileges:
-            - monitor
-            - read
-            - view_index_metadata
-          allow_restricted_indices: true
-    applications:
-        - application: kibana-.kibana
-          privileges:
-            - feature_ml.read
-            - feature_siem.read
-            - feature_siem.read_alerts
-            - feature_siem.policy_management_read
-            - feature_siem.endpoint_list_read
-            - feature_siem.trusted_applications_read
-            - feature_siem.event_filters_read
-            - feature_siem.host_isolation_exceptions_read
-            - feature_siem.blocklist_read
-            - feature_siem.actions_log_management_read
-            - feature_securitySolutionCases.read
-            - feature_securitySolutionAssistant.read
-            - feature_actions.read
-            - feature_builtInAlerts.read
-            - feature_fleet.all
-            - feature_fleetv2.all
-            - feature_osquery.read
-            - feature_indexPatterns.read
-            - feature_discover.read
-            - feature_dashboard.read
-            - feature_maps.read
-            - feature_visualize.read
-          resources:
-            - '*'
-    metadata: {}
-elastic_internal_diagnostics_v85:
-    cluster:
-        - monitor
-        - monitor_snapshot
-        - manage
-        - read_ilm
-        - read_security
-    indices:
-        - names:
-            - '*'
-          privileges:
-            - monitor
-            - read
-            - view_index_metadata
-          allow_restricted_indices: true
-    applications:
-        - application: kibana-.kibana
-          privileges:
-            - feature_ml.read
-            - feature_siem.read
-            - feature_siem.read_alerts
-            - feature_siem.policy_management_read
-            - feature_siem.endpoint_list_read
-            - feature_siem.trusted_applications_read
-            - feature_siem.event_filters_read
-            - feature_siem.host_isolation_exceptions_read
-            - feature_siem.blocklist_read
-            - feature_siem.actions_log_management_read
-            - feature_securitySolutionCases.read
-            - feature_securitySolutionAssistant.read
-            - feature_actions.read
-            - feature_builtInAlerts.read
-            - feature_fleet.all
-            - feature_fleetv2.all
-            - feature_osquery.read
-            - feature_indexPatterns.read
-            - feature_discover.read
-            - feature_dashboard.read
-            - feature_maps.read
-            - feature_visualize.read
-          resources:
-            - '*'
-    metadata: {}
-elastic_internal_probe_user:
-    cluster:
-        - monitor
-    indices: []
-    applications: []
-    metadata: {}
 `
