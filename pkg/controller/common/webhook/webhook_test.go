@@ -238,6 +238,81 @@ func Test_ResourceValidator_Handle(t *testing.T) {
 			},
 		},
 		{
+			name: "update agent is denied but still returns warnings from the inner validator (funcValidator.ValidateUpdate)",
+			fields: fields{
+				managedNamespaces: set.Make("elastic"),
+				validate: func(newObj *agentv1alpha1.Agent, oldObj *agentv1alpha1.Agent) (admission.Warnings, error) {
+					if oldObj == nil || oldObj.Name == "" {
+						return nil, apierrors.NewBadRequest("expected non-nil old object on update")
+					}
+					errs := field.ErrorList{
+						field.Forbidden(field.NewPath("spec").Child("someField"), "denied on update"),
+					}
+					return admission.Warnings{"some warning on update"}, apierrors.NewInvalid(
+						schema.GroupKind{Group: "agent.k8s.elastic.co", Kind: "Agent"},
+						newObj.Name,
+						errs,
+					)
+				},
+			},
+			req: admission.Request{
+				AdmissionRequest: admissionv1.AdmissionRequest{
+					Operation: admissionv1.Update,
+					OldObject: runtime.RawExtension{
+						Raw: asJSON(&agentv1alpha1.Agent{
+							ObjectMeta: metav1.ObjectMeta{
+								Name:      "testAgent",
+								Namespace: "elastic",
+							},
+							Spec: agentv1alpha1.AgentSpec{
+								Version:    "8.10.0",
+								Deployment: &agentv1alpha1.DeploymentSpec{},
+								PolicyID:   "a-policy",
+							},
+						}),
+					},
+					Object: runtime.RawExtension{
+						Raw: asJSON(&agentv1alpha1.Agent{
+							ObjectMeta: metav1.ObjectMeta{
+								Name:      "testAgent",
+								Namespace: "elastic",
+							},
+							Spec: agentv1alpha1.AgentSpec{
+								Version:    "8.10.0",
+								Deployment: &agentv1alpha1.DeploymentSpec{},
+								PolicyID:   "a-policy",
+							},
+						}),
+					},
+				},
+			},
+			want: admission.Response{
+				AdmissionResponse: admissionv1.AdmissionResponse{
+					Allowed:  false,
+					Warnings: []string{"some warning on update"},
+					Result: &metav1.Status{
+						Status:  metav1.StatusFailure,
+						Message: `Agent.agent.k8s.elastic.co "testAgent" is invalid: spec.someField: Forbidden: denied on update`,
+						Reason:  "Invalid",
+						Details: &metav1.StatusDetails{
+							Name:  "testAgent",
+							Group: "agent.k8s.elastic.co",
+							Kind:  "Agent",
+							Causes: []metav1.StatusCause{
+								{
+									Type:    "FieldValueForbidden",
+									Message: `Forbidden: denied on update`,
+									Field:   "spec.someField",
+								},
+							},
+							RetryAfterSeconds: 0,
+						},
+						Code: 422,
+					},
+				},
+			},
+		},
+		{
 			name: "delete agent is always allowed",
 			fields: fields{
 				managedNamespaces: set.Make("elastic"),
