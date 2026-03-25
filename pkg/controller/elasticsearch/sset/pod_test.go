@@ -101,6 +101,133 @@ func TestGetActualMastersForCluster(t *testing.T) {
 	require.Equal(t, "pod0", masters[0].GetName())
 }
 
+func TestGetActualPodsRestartTriggerAnnotationForCluster(t *testing.T) {
+	es := esv1.Elasticsearch{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "clus0",
+			Namespace: "ns0",
+		},
+	}
+
+	tests := []struct {
+		name    string
+		objs    []client.Object
+		want    string
+		wantErr bool
+	}{
+		{
+			name: "no pods in the cluster",
+			objs: nil,
+			want: "",
+		},
+		{
+			name: "single pod with no annotations",
+			objs: []client.Object{
+				getPodSample("pod0", "ns0", "sset0", "clus0", "0"),
+			},
+			want: "",
+		},
+		{
+			name: "single pod with restart-trigger annotation",
+			objs: []client.Object{
+				withAnnotations(
+					getPodSample("pod0", "ns0", "sset0", "clus0", "0"),
+					map[string]string{esv1.RestartTriggerAnnotation: "2026-01-14T12:00:00Z"},
+				),
+			},
+			want: "2026-01-14T12:00:00Z",
+		},
+		{
+			name: "multiple pods, all with same annotation",
+			objs: []client.Object{
+				withAnnotations(
+					getPodSample("pod0", "ns0", "sset0", "clus0", "0"),
+					map[string]string{esv1.RestartTriggerAnnotation: "2026-01-14T12:00:00Z"},
+				),
+				withAnnotations(
+					getPodSample("pod1", "ns0", "sset0", "clus0", "0"),
+					map[string]string{esv1.RestartTriggerAnnotation: "2026-01-14T12:00:00Z"},
+				),
+			},
+			want: "2026-01-14T12:00:00Z",
+		},
+		{
+			name: "multiple pods, returns highest annotation value",
+			objs: []client.Object{
+				withAnnotations(
+					getPodSample("pod0", "ns0", "sset0", "clus0", "0"),
+					map[string]string{esv1.RestartTriggerAnnotation: "2026-01-01T00:00:00Z"},
+				),
+				withAnnotations(
+					getPodSample("pod1", "ns0", "sset0", "clus0", "0"),
+					map[string]string{esv1.RestartTriggerAnnotation: "2026-06-15T00:00:00Z"},
+				),
+				withAnnotations(
+					getPodSample("pod2", "ns0", "sset0", "clus0", "0"),
+					map[string]string{esv1.RestartTriggerAnnotation: "2026-03-10T00:00:00Z"},
+				),
+			},
+			want: "2026-06-15T00:00:00Z",
+		},
+		{
+			name: "mix of pods with and without annotation",
+			objs: []client.Object{
+				getPodSample("pod0", "ns0", "sset0", "clus0", "0"),
+				withAnnotations(
+					getPodSample("pod1", "ns0", "sset0", "clus0", "0"),
+					map[string]string{esv1.RestartTriggerAnnotation: "trigger-v1"},
+				),
+			},
+			want: "trigger-v1",
+		},
+		{
+			name: "pods in different namespace are ignored",
+			objs: []client.Object{
+				withAnnotations(
+					getPodSample("pod0", "ns0", "sset0", "clus0", "0"),
+					map[string]string{esv1.RestartTriggerAnnotation: "a"},
+				),
+				withAnnotations(
+					getPodSample("pod1", "ns1", "sset0", "clus0", "0"),
+					map[string]string{esv1.RestartTriggerAnnotation: "z"},
+				),
+			},
+			want: "a",
+		},
+		{
+			name: "pods in different cluster are ignored",
+			objs: []client.Object{
+				withAnnotations(
+					getPodSample("pod0", "ns0", "sset0", "clus0", "0"),
+					map[string]string{esv1.RestartTriggerAnnotation: "a"},
+				),
+				withAnnotations(
+					getPodSample("pod1", "ns0", "sset0", "clus1", "0"),
+					map[string]string{esv1.RestartTriggerAnnotation: "z"},
+				),
+			},
+			want: "a",
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			c := k8s.NewFakeClient(tt.objs...)
+			got, err := GetActualPodsRestartTriggerAnnotationForCluster(c, es)
+			if tt.wantErr {
+				require.Error(t, err)
+				return
+			}
+			require.NoError(t, err)
+			assert.Equal(t, tt.want, got)
+		})
+	}
+}
+
+func withAnnotations(pod *corev1.Pod, annotations map[string]string) *corev1.Pod {
+	pod.Annotations = annotations
+	return pod
+}
+
 func getSsetSample(name, namespace, clusterName string) appsv1.StatefulSet {
 	return sset.TestSset{
 		Name:        name,

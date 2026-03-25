@@ -4926,6 +4926,25 @@ spec:
                             type: object
                         type: object
                       type: array
+                    zoneAwareness:
+                      description: ZoneAwareness enables automatic topology-aware
+                        scheduling and shard-awareness configuration.
+                      properties:
+                        topologyKey:
+                          description: |-
+                            TopologyKey is the key of node labels used for zone-aware placement.
+                            Defaults to "topology.kubernetes.io/zone".
+                          type: string
+                        zones:
+                          description: |-
+                            Zones optionally restrict scheduling to the listed topology values.
+                            If empty, Pods can be scheduled in any topology value for the selected topologyKey.
+                          items:
+                            type: string
+                          minItems: 1
+                          type: array
+                          x-kubernetes-list-type: set
+                      type: object
                   required:
                   - name
                   type: object
@@ -9014,18 +9033,6 @@ spec:
                   namespace:
                     description: Namespace of the Kubernetes object. If empty, defaults
                       to the current namespace.
-                    type: string
-                  secretName:
-                    description: |-
-                      SecretName is the name of an existing Kubernetes secret that contains connection information for associating an
-                      Elastic resource not managed by the operator.
-                      The referenced secret must contain the following:
-                      - `url`: the URL to reach the Elastic resource
-                      - `username`: the username of the user to be authenticated to the Elastic resource
-                      - `password`: the password of the user to be authenticated to the Elastic resource
-                      - `ca.crt`: the CA certificate in PEM format (optional)
-                      - `api-key`: the key to authenticate against the Elastic resource instead of a username and password (supported only for `elasticsearchRefs` in AgentSpec and in BeatSpec)
-                      This field cannot be used in combination with the other fields name, namespace or serviceName.
                     type: string
                   serviceName:
                     description: |-

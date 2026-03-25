@@ -83,7 +83,7 @@ func CheckDeprecatedStackVersion(ver string) (string, field.ErrorList) {
 		return "", err
 	}
 
-	if v.GTE(version.DeprecatedVersions.Min) && v.LT(version.DeprecatedVersions.Max) {
+	if err := version.DeprecatedVersions.WithinRange(*v); err == nil {
 		return fmt.Sprintf("Version %s is EOL and support for it will be removed in a future release of the ECK operator", ver), nil
 	}
 
@@ -111,6 +111,16 @@ func CheckNoDowngrade(prev, curr string) field.ErrorList {
 
 // CheckAssociationRefs checks that the given association references are valid.
 func CheckAssociationRefs(path *field.Path, refs ...ObjectSelector) field.ErrorList {
+	for _, ref := range refs {
+		if err := ref.IsValid(); err != nil {
+			return field.ErrorList{field.Forbidden(path, fmt.Sprintf("Invalid association reference: %s", err))}
+		}
+	}
+	return nil
+}
+
+// CheckLocalAssociationRefs checks that the given local association references are valid.
+func CheckLocalAssociationRefs(path *field.Path, refs ...LocalObjectSelector) field.ErrorList {
 	for _, ref := range refs {
 		if err := ref.IsValid(); err != nil {
 			return field.ErrorList{field.Forbidden(path, fmt.Sprintf("Invalid association reference: %s", err))}

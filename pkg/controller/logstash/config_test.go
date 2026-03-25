@@ -12,7 +12,7 @@ import (
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/client-go/tools/record"
+	toolsevents "k8s.io/client-go/tools/events"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	commonv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/common/v1"
@@ -169,7 +169,7 @@ config:
 			params := Params{
 				Context:       context.Background(),
 				Client:        k8s.NewFakeClient(tt.args.runtimeObjs...),
-				EventRecorder: record.NewFakeRecorder(10),
+				EventRecorder: toolsevents.NewFakeRecorder(10),
 				Watches:       watches.NewDynamicWatches(),
 				Logstash:      tt.args.logstash,
 			}
@@ -556,7 +556,7 @@ func Test_resolveAPIServerConfig(t *testing.T) {
 			params := Params{
 				Context:       context.Background(),
 				Client:        k8s.NewFakeClient(tt.args.runtimeObjs...),
-				EventRecorder: record.NewFakeRecorder(10),
+				EventRecorder: toolsevents.NewFakeRecorder(10),
 				Watches:       watches.NewDynamicWatches(),
 				Logstash:      tt.args.logstash,
 			}

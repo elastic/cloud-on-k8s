@@ -41,6 +41,14 @@ rules:
   - list
   - watch
 - apiGroups:
+  - events.k8s.io
+  resources:
+  - events
+  verbs:
+  - get
+  - list
+  - watch
+- apiGroups:
   - "extensions"
   resources:
   - replicasets
@@ -111,6 +119,14 @@ rules:
   - nodes/metrics
   - nodes/proxy
   - nodes/stats
+  - events
+  verbs:
+  - get
+  - watch
+  - list
+- apiGroups:
+  - events.k8s.io
+  resources:
   - events
   verbs:
   - get

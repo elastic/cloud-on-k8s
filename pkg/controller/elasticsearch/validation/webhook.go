@@ -54,12 +54,23 @@ type validatingWebhook struct {
 	managedNamespaces    set.StringSet
 }
 
-func (wh *validatingWebhook) validateCreate(ctx context.Context, es esv1.Elasticsearch) (string, error) {
+func (wh *validatingWebhook) validateCreate(ctx context.Context, es esv1.Elasticsearch) ([]string, error) {
 	eslog.V(1).Info("validate create", "name", es.Name)
-	return ValidateElasticsearch(ctx, es, wh.licenseChecker, wh.exposedNodeLabels)
+	var warnings []string
+
+	warn, err := ValidateElasticsearch(ctx, es, wh.licenseChecker, wh.exposedNodeLabels)
+	if warn != "" {
+		warnings = append(warnings, warn)
+	}
+
+	if allocationDelayWarning := validateRestartAllocationDelayWarnings(es); allocationDelayWarning != "" {
+		warnings = append(warnings, allocationDelayWarning)
+	}
+
+	return warnings, err
 }
 
-func (wh *validatingWebhook) validateUpdate(ctx context.Context, prev esv1.Elasticsearch, curr esv1.Elasticsearch) (string, error) {
+func (wh *validatingWebhook) validateUpdate(ctx context.Context, prev esv1.Elasticsearch, curr esv1.Elasticsearch) ([]string, error) {
 	eslog.V(1).Info("validate update", "name", curr.Name)
 	var errs field.ErrorList
 	for _, val := range updateValidations(ctx, wh.client, wh.validateStorageClass) {
@@ -68,11 +79,30 @@ func (wh *validatingWebhook) validateUpdate(ctx context.Context, prev esv1.Elast
 		}
 	}
 	if len(errs) > 0 {
-		return "", apierrors.NewInvalid(
+		return nil, apierrors.NewInvalid(
 			schema.GroupKind{Group: "elasticsearch.k8s.elastic.co", Kind: esv1.Kind},
 			curr.Name, errs)
 	}
-	return ValidateElasticsearch(ctx, curr, wh.licenseChecker, wh.exposedNodeLabels)
+
+	var warnings []string
+
+	ew, err := ValidateElasticsearch(ctx, curr, wh.licenseChecker, wh.exposedNodeLabels)
+	if ew != "" {
+		warnings = append(warnings, ew)
+	}
+	if err != nil {
+		return warnings, err
+	}
+
+	if restartTriggerWarning := validateRestartTriggerWarnings(ctx, wh.client, prev, curr); restartTriggerWarning != "" {
+		warnings = append(warnings, restartTriggerWarning)
+	}
+
+	if allocationDelayWarning := validateRestartAllocationDelayWarnings(curr); allocationDelayWarning != "" {
+		warnings = append(warnings, allocationDelayWarning)
+	}
+
+	return warnings, nil
 }
 
 // Handle is called when any request is sent to the webhook, satisfying the admission.Handler interface.
@@ -97,7 +127,7 @@ func (wh *validatingWebhook) Handle(ctx context.Context, req admission.Request) 
 		}
 
 		if len(warnings) > 0 {
-			return admission.Allowed("").WithWarnings(warnings)
+			return admission.Allowed("").WithWarnings(warnings...)
 		}
 
 		return admission.Allowed("")
@@ -116,7 +146,7 @@ func (wh *validatingWebhook) Handle(ctx context.Context, req admission.Request) 
 		}
 
 		if len(warnings) > 0 {
-			return admission.Allowed("").WithWarnings(warnings)
+			return admission.Allowed("").WithWarnings(warnings...)
 		}
 	}
 

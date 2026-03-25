@@ -29,7 +29,7 @@ This page lists the third-party dependencies used to build {{eck}} from the main
 | [github.com/davecgh/go-spew](https://github.com/davecgh/go-spew) | v1.1.2-0.20180830191138-d8f796af33cc | ISC |
 | [github.com/elastic/go-ucfg](https://github.com/elastic/go-ucfg) | v0.9.1 | Apache-2.0 |
 | [github.com/ghodss/yaml](https://github.com/ghodss/yaml) | v1.0.0 | MIT |
-| [github.com/gkampitakis/go-snaps](https://github.com/gkampitakis/go-snaps) | v0.5.20 | MIT |
+| [github.com/gkampitakis/go-snaps](https://github.com/gkampitakis/go-snaps) | v0.5.21 | MIT |
 | [github.com/go-logr/logr](https://github.com/go-logr/logr) | v1.4.3 | Apache-2.0 |
 | [github.com/go-test/deep](https://github.com/go-test/deep) | v1.1.1 | MIT |
 | [github.com/gobuffalo/flect](https://github.com/gobuffalo/flect) | v1.0.3 | MIT |
@@ -49,13 +49,13 @@ This page lists the third-party dependencies used to build {{eck}} from the main
 | [github.com/spf13/pflag](https://github.com/spf13/pflag) | v1.0.10 | BSD-3-Clause |
 | [github.com/spf13/viper](https://github.com/spf13/viper) | v1.21.0 | MIT |
 | [github.com/stretchr/testify](https://github.com/stretchr/testify) | v1.11.1 | MIT |
-| [go.elastic.co/apm/module/apmelasticsearch/v2](https://go.elastic.co/apm/module/apmelasticsearch/v2) | v2.7.4 | Apache-2.0 |
-| [go.elastic.co/apm/module/apmhttp/v2](https://go.elastic.co/apm/module/apmhttp/v2) | v2.7.4 | Apache-2.0 |
-| [go.elastic.co/apm/module/apmzap/v2](https://go.elastic.co/apm/module/apmzap/v2) | v2.7.4 | Apache-2.0 |
-| [go.elastic.co/apm/v2](https://go.elastic.co/apm/v2) | v2.7.4 | Apache-2.0 |
+| [go.elastic.co/apm/module/apmelasticsearch/v2](https://go.elastic.co/apm/module/apmelasticsearch/v2) | v2.7.5 | Apache-2.0 |
+| [go.elastic.co/apm/module/apmhttp/v2](https://go.elastic.co/apm/module/apmhttp/v2) | v2.7.5 | Apache-2.0 |
+| [go.elastic.co/apm/module/apmzap/v2](https://go.elastic.co/apm/module/apmzap/v2) | v2.7.5 | Apache-2.0 |
+| [go.elastic.co/apm/v2](https://go.elastic.co/apm/v2) | v2.7.5 | Apache-2.0 |
 | [go.uber.org/automaxprocs](https://go.uber.org/automaxprocs) | v1.6.0 | MIT |
 | [go.uber.org/zap](https://go.uber.org/zap) | v1.27.1 | MIT |
-| [golang.org/x/crypto](https://golang.org/x/crypto) | v0.48.0 | BSD-3-Clause |
+| [golang.org/x/crypto](https://golang.org/x/crypto) | v0.49.0 | BSD-3-Clause |
 | [golang.org/x/exp](https://golang.org/x/exp) | v0.0.0-20240808152545-0cdaa3abc0fa | BSD-3-Clause |
 | [google.golang.org/api](https://google.golang.org/api) | v0.271.0 | BSD-3-Clause |
 | [gopkg.in/yaml.v3](https://gopkg.in/yaml.v3) | v3.0.1 | MIT |
@@ -235,8 +235,8 @@ This page lists the third-party dependencies used to build {{eck}} from the main
 | [golang.org/x/oauth2](https://golang.org/x/oauth2) | v0.36.0 | BSD-3-Clause |
 | [golang.org/x/sync](https://golang.org/x/sync) | v0.20.0 | BSD-3-Clause |
 | [golang.org/x/sys](https://golang.org/x/sys) | v0.42.0 | BSD-3-Clause |
-| [golang.org/x/term](https://golang.org/x/term) | v0.40.0 | BSD-3-Clause |
-| [golang.org/x/text](https://golang.org/x/text) | v0.34.0 | BSD-3-Clause |
+| [golang.org/x/term](https://golang.org/x/term) | v0.41.0 | BSD-3-Clause |
+| [golang.org/x/text](https://golang.org/x/text) | v0.35.0 | BSD-3-Clause |
 | [golang.org/x/time](https://golang.org/x/time) | v0.15.0 | BSD-3-Clause |
 | [golang.org/x/tools](https://golang.org/x/tools) | v0.42.0 | BSD-3-Clause |
 | [golang.org/x/tools/go/expect](https://golang.org/x/tools/go/expect) | v0.1.1-deprecated | BSD-3-Clause |
@@ -246,7 +246,7 @@ This page lists the third-party dependencies used to build {{eck}} from the main
 | [google.golang.org/genproto](https://google.golang.org/genproto) | v0.0.0-20260128011058-8636f8732409 | Apache-2.0 |
 | [google.golang.org/genproto/googleapis/api](https://google.golang.org/genproto/googleapis/api) | v0.0.0-20260203192932-546029d2fa20 | Apache-2.0 |
 | [google.golang.org/genproto/googleapis/rpc](https://google.golang.org/genproto/googleapis/rpc) | v0.0.0-20260226221140-a57be14db171 | Apache-2.0 |
-| [google.golang.org/grpc](https://google.golang.org/grpc) | v1.79.2 | Apache-2.0 |
+| [google.golang.org/grpc](https://google.golang.org/grpc) | v1.79.3 | Apache-2.0 |
 | [google.golang.org/protobuf](https://google.golang.org/protobuf) | v1.36.11 | BSD-3-Clause |
 | [gopkg.in/check.v1](https://gopkg.in/check.v1) | v1.0.0-20201130134442-10cb98267c6c | BSD-2-Clause |
 | [gopkg.in/evanphx/json-patch.v4](https://gopkg.in/evanphx/json-patch.v4) | v4.13.0 | BSD-3-Clause |

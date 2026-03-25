@@ -18,7 +18,7 @@ require (
 	github.com/davecgh/go-spew v1.1.2-0.20180830191138-d8f796af33cc
 	github.com/elastic/go-ucfg v0.9.1
 	github.com/ghodss/yaml v1.0.0
-	github.com/gkampitakis/go-snaps v0.5.20
+	github.com/gkampitakis/go-snaps v0.5.21
 	github.com/go-logr/logr v1.4.3
 	github.com/go-test/deep v1.1.1
 	github.com/gobuffalo/flect v1.0.3
@@ -38,13 +38,13 @@ require (
 	github.com/spf13/pflag v1.0.10
 	github.com/spf13/viper v1.21.0
 	github.com/stretchr/testify v1.11.1
-	go.elastic.co/apm/module/apmelasticsearch/v2 v2.7.4
-	go.elastic.co/apm/module/apmhttp/v2 v2.7.4
-	go.elastic.co/apm/module/apmzap/v2 v2.7.4
-	go.elastic.co/apm/v2 v2.7.4
+	go.elastic.co/apm/module/apmelasticsearch/v2 v2.7.5
+	go.elastic.co/apm/module/apmhttp/v2 v2.7.5
+	go.elastic.co/apm/module/apmzap/v2 v2.7.5
+	go.elastic.co/apm/v2 v2.7.5
 	go.uber.org/automaxprocs v1.6.0
 	go.uber.org/zap v1.27.1
-	golang.org/x/crypto v0.48.0
+	golang.org/x/crypto v0.49.0
 	golang.org/x/exp v0.0.0-20240808152545-0cdaa3abc0fa
 	google.golang.org/api v0.271.0
 	gopkg.in/yaml.v3 v3.0.1
@@ -193,15 +193,15 @@ require (
 	golang.org/x/oauth2 v0.36.0 // indirect
 	golang.org/x/sync v0.20.0 // indirect
 	golang.org/x/sys v0.42.0 // indirect
-	golang.org/x/term v0.40.0 // indirect
-	golang.org/x/text v0.34.0 // indirect
+	golang.org/x/term v0.41.0 // indirect
+	golang.org/x/text v0.35.0 // indirect
 	golang.org/x/time v0.15.0 // indirect
 	golang.org/x/tools v0.42.0 // indirect
 	gomodules.xyz/jsonpatch/v2 v2.4.0 // indirect
 	google.golang.org/genproto v0.0.0-20260128011058-8636f8732409 // indirect
 	google.golang.org/genproto/googleapis/api v0.0.0-20260203192932-546029d2fa20 // indirect
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20260226221140-a57be14db171 // indirect
-	google.golang.org/grpc v1.79.2 // indirect
+	google.golang.org/grpc v1.79.3 // indirect
 	google.golang.org/protobuf v1.36.11 // indirect
 	gopkg.in/evanphx/json-patch.v4 v4.13.0 // indirect
 	gopkg.in/inf.v0 v0.9.1 // indirect

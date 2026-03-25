@@ -146,6 +146,13 @@ func NewPodTemplateSpec(
 		builder.WithVolumes(volume.Volume()).WithVolumeMounts(volume.VolumeMount())
 	}
 
+	initContainer, err := initcontainer.NewInitContainer(kb)
+	if err != nil {
+		return corev1.PodTemplateSpec{}, err
+	}
+
+	builder.WithInitContainers(initContainer)
+
 	// Kibana 7.5.0 and above support running with a read-only root filesystem,
 	// but require a temporary volume to be mounted at /tmp for some reporting features
 	// and a plugin volume mounted at /usr/share/kibana/plugins. Also needed is an
@@ -162,20 +169,13 @@ func NewPodTemplateSpec(
 			WithVolumes(TempVolume.Volume()).WithVolumeMounts(TempVolume.VolumeMount())
 	}
 
-	initContainer, err := initcontainer.NewInitContainer(kb, setDefaultSecurityContext)
-	if err != nil {
-		return corev1.PodTemplateSpec{}, err
-	}
-
-	builder.WithInitContainers(initContainer)
-
 	if keystore != nil {
 		builder.WithVolumes(keystore.Volume).
 			WithInitContainers(keystore.InitContainer)
 	}
 
 	var additionalInitEnvVars []corev1.EnvVar
-	if kb.Spec.PackageRegistryRef.IsDefined() {
+	if kb.Spec.PackageRegistryRef.IsSet() {
 		userNodeExtraCACerts := getUserNodeExtraCACerts(kb)
 		builder, err = withEPRCertsVolume(
 			builder,

@@ -66,7 +66,7 @@ func getClusterName(assoc commonv1.Association) (string, error) {
 	if !ok {
 		return "", errors.New("cannot cast association to LogstashESAssociation")
 	}
-	return lses.ClusterName, nil
+	return lses.ElasticsearchCluster.ClusterName, nil
 }
 
 func normalize(nn string) string {

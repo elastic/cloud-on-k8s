@@ -6,12 +6,15 @@ package runner
 
 import (
 	"bytes"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
 	"log"
 	"os"
 	"path/filepath"
+	"regexp"
+	"slices"
 	"strings"
 	"text/template"
 	"time"
@@ -19,6 +22,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/v3/hack/deployer/exec"
 	"github.com/elastic/cloud-on-k8s/v3/hack/deployer/runner/bucket"
 	"github.com/elastic/cloud-on-k8s/v3/hack/deployer/runner/env"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/set"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/vault"
 )
 
@@ -72,12 +76,24 @@ platform:
 pullSecret: '{{.PullSecret}}'`
 )
 
+// ocpServiceAccountRE extracts the infra ID from an OCP service account email.
+// OCP creates service accounts per cluster with a single-char role suffix:
+//
+//	{infraID}-m@{project}.iam.gserviceaccount.com  (master)
+//	{infraID}-w@{project}.iam.gserviceaccount.com  (worker)
+//	{infraID}-b@{project}.iam.gserviceaccount.com  (bootstrap)
+//
+// When the infra ID is too long (GCP enforces a 30-char limit on SA IDs),
+// the role suffix is omitted and the SA name is the infra ID itself:
+//
+//	{infraID}@{project}.iam.gserviceaccount.com
+var ocpServiceAccountRE = regexp.MustCompile(`^(.+?)(?:-[bmw])?@`)
+
 func init() {
 	drivers[OCPDriverID] = &OCPDriverFactory{}
 }
 
-type OCPDriverFactory struct {
-}
+type OCPDriverFactory struct{}
 
 type runtimeState struct {
 	// Authenticated tracks authentication against the GCloud API to avoid double authentication.
@@ -200,7 +216,7 @@ func (d *OCPDriver) create() error {
 	}
 
 	installConfig := filepath.Join(d.runtimeState.ClusterStateDir, "install-config.yaml")
-	err := os.WriteFile(installConfig, tpl.Bytes(), 0600)
+	err := os.WriteFile(installConfig, tpl.Bytes(), 0o600)
 	if err != nil {
 		return err
 	}
@@ -225,7 +241,12 @@ func (d *OCPDriver) delete() error {
 	// No need to check whether this `rm` command succeeds
 	_ = exec.NewCommand("gcloud storage rm -r gs://{{.OCPStateBucket}}/{{.ClusterName}}").AsTemplate(d.bucketParams()).WithoutStreaming().Run()
 	d.runtimeState.SafeToDeleteWorkdir = true
-	return d.removeKubeconfig()
+	// Only remove kubeconfig when it was merged by this deployer (normal create/delete flow).
+	// During cleanup the cluster was created by a different CI job, there is no local kubeconfig to remove.
+	if d.plan.Ocp.InfraID == "" {
+		return d.removeKubeconfig()
+	}
+	return nil
 }
 
 func (d *OCPDriver) GetCredentials() error {
@@ -409,6 +430,17 @@ func (d *OCPDriver) uploadClusterState() error {
 	return err
 }
 
+// downloadClusterState syncs the OCP installer state from the GCS bucket to the local work directory.
+// If the remote state does not exist, the error is swallowed and nil is returned, leaving the work
+// directory empty. An empty work directory causes currentStatus() to return NotFound — the expected
+// state for a new cluster creation or when the state was lost after a failed create.
+//
+// During cleanup (delete operation) this is problematic: an empty work directory causes Execute to
+// skip deletion ("cluster doesn't exist"), leaving orphaned GCP resources behind. As a last resort,
+// when the operation is a delete and an InfraID has been set on the plan (only done by Cleanup,
+// which extracts it from running instance names), a synthetic metadata.json is written to the work
+// directory instead. This is the minimum required for openshift-install destroy to locate and delete
+// all GCP resources associated with the infra ID.
 func (d *OCPDriver) downloadClusterState() error {
 	cmd := "gcloud storage rsync gs://{{.OCPStateBucket}}/{{.ClusterName}} {{.ClusterStateDir}} -r --delete-unmatched-destination-objects"
 	doesNotExist, err := exec.NewCommand(cmd).
@@ -418,6 +450,12 @@ func (d *OCPDriver) downloadClusterState() error {
 		OutputContainsAny("BucketNotFoundException", "does not name a directory, bucket, or bucket subdir", "Did not find existing container")
 	if doesNotExist {
 		log.Printf("No remote cluster state found")
+		// During cleanup (delete with an infra ID), write a synthetic metadata.json as a
+		// last resort so that openshift-install destroy can still locate and delete GCP resources.
+		if d.plan.Operation == DeleteAction && d.plan.Ocp.InfraID != "" {
+			log.Printf("Infra ID %s available, generating synthetic metadata.json as fallback", d.plan.Ocp.InfraID)
+			return d.writeMetadataJSON()
+		}
 		return nil // swallow this error as it is expected if no cluster has been created yet
 	}
 	return err
@@ -448,12 +486,19 @@ func (d *OCPDriver) bucketParams() map[string]any {
 }
 
 func (d *OCPDriver) runInstallerCommand(action string) error {
+	// Use warn level for create (cluster credentials are logged at info level),
+	// info level for destroy (useful to see which resources are being deleted).
+	logLevel := "warn"
+	if action == "destroy" {
+		logLevel = "info"
+	}
 	params := map[string]any{
 		"ClusterStateDirBase": filepath.Base(d.runtimeState.ClusterStateDir),
 		"SharedVolume":        env.SharedVolumeName(),
 		"GCloudCredsPath":     filepath.Join("/home", GCPDir, ServiceAccountFilename),
 		"OCPToolsDockerImage": d.runtimeState.ClientImage,
 		"Action":              action,
+		"LogLevel":            logLevel,
 	}
 	// We are mounting the shared volume into the installer container and configure it to be the HOME directory
 	// this is mainly so that the GCloud tooling picks up the authentication information correctly as the base image is
@@ -465,7 +510,7 @@ func (d *OCPDriver) runInstallerCommand(action string) error {
 		-e GOOGLE_APPLICATION_CREDENTIALS={{.GCloudCredsPath}} \
 		-e HOME=/home \
 		{{.OCPToolsDockerImage}} \
-		/openshift-install {{.Action}} cluster --log-level warn --dir /home/{{.ClusterStateDirBase}}`)
+		/openshift-install {{.Action}} cluster --log-level {{.LogLevel}} --dir /home/{{.ClusterStateDirBase}}`)
 	return cmd.AsTemplate(params).Run()
 }
 
@@ -533,26 +578,183 @@ func (d *OCPDriver) Cleanup(prefix string, olderThan time.Duration) error {
 	}
 	params["GCloudProject"] = d.plan.Ocp.GCloudProject
 
-	zonesCmd := `gcloud compute zones list --verbosity error --filter='region:https://www.googleapis.com/compute/v1/projects/{{.GCloudProject}}/regions/{{.Region}}' --format="value(selfLink.name())"`
+	zonesCmd := `gcloud compute zones list --verbosity error ` +
+		`--filter='region:https://www.googleapis.com/compute/v1/projects/{{.GCloudProject}}/regions/{{.Region}}' ` +
+		`--format="value(selfLink.name())"`
 	zones, err := exec.NewCommand(zonesCmd).AsTemplate(params).WithoutStreaming().OutputList()
 	if err != nil {
 		return err
 	}
 	params["Zones"] = strings.Join(zones, ",")
 
-	cmd := `gcloud compute instances list --verbosity error --zones={{.Zones}} --filter="name~'^{{.E2EClusterNamePrefix}}-ocp.*' AND status=RUNNING" --format=json | jq -r --arg d "{{.Date}}" 'map(select(.creationTimestamp | . <= $d))|.[].name' | grep -o '{{.E2EClusterNamePrefix}}-ocp-[a-z]*-[0-9]*' | sort | uniq`
-	clustersToDelete, err := exec.NewCommand(cmd).AsTemplate(params).WithoutStreaming().OutputList()
+	// Discover orphaned infra IDs from multiple GCP resource types.
+	// Each source returns infra IDs filtered by the cutoff date.
+	fromInstances, err := listInfraIDsFromInstances(params)
+	if err != nil {
+		return err
+	}
+	fromNetworks, err := listInfraIDsFromNetworks(params)
+	if err != nil {
+		return err
+	}
+	fromSAs, err := listInfraIDsFromServiceAccounts(params)
 	if err != nil {
 		return err
 	}
 
-	for _, cluster := range clustersToDelete {
-		d.plan.ClusterName = cluster
-		d.plan.Operation = DeleteAction
-		if err = d.Execute(); err != nil {
-			log.Printf("while deleting cluster %s: %v", cluster, err.Error())
+	// Merge all discovered infra IDs, deduplicating.
+	allInfraIDs := set.Make(slices.Concat(fromInstances, fromNetworks, fromSAs)...)
+	if allInfraIDs.Count() == 0 {
+		log.Printf("No orphaned OCP clusters found")
+		return nil
+	}
+	infraIDSlice := allInfraIDs.AsSlice()
+	log.Printf("Found %d orphaned infra ID(s) to clean up: %v", len(infraIDSlice), infraIDSlice)
+
+	// Map each infra ID back to a cluster name and run destroy.
+	// The infra ID is {clusterName}-{5alphanumChars}. We extract the cluster name by matching
+	// the full infra ID pattern and capturing everything before the 5-char suffix. Internal OCP
+	// component SAs (e.g. eck-e2e-ocp--cloud-crede-lhtvg) are filtered out because the regex
+	// requires at least one alphanumeric char between each dash ([a-z0-9]+), rejecting the
+	// double dash ("--") present in their names.
+	infraIDRE := buildInfraIDRegexp(prefix)
+	var deleted, failed, skipped int
+	for _, infraID := range infraIDSlice {
+		matches := infraIDRE.FindStringSubmatch(infraID)
+		if len(matches) < 2 {
+			log.Printf("Skipping %s: internal OCP component, will be cleaned up with its parent cluster", infraID)
+			skipped++
 			continue
 		}
+		clusterName := matches[1]
+		d.plan.ClusterName = clusterName
+		d.plan.Ocp.InfraID = infraID
+		d.plan.Operation = DeleteAction
+		if err = d.Execute(); err != nil {
+			log.Printf("while deleting cluster %s (infra ID %s): %v", clusterName, infraID, err)
+			failed++
+			continue
+		}
+		deleted++
 	}
+	log.Printf("Cleanup complete: %d deleted, %d failed, %d skipped", deleted, failed, skipped)
 	return nil
+}
+
+// listInfraIDsFromInstances returns infra IDs extracted from running GCP instances
+// that are older than the cutoff date and match the cluster name prefix.
+func listInfraIDsFromInstances(params map[string]any) ([]string, error) {
+	cmd := `gcloud compute instances list --verbosity error ` +
+		`--zones={{.Zones}} ` +
+		`--filter="name~'^{{.E2EClusterNamePrefix}}-ocp' AND status=RUNNING AND creationTimestamp<='{{.Date}}'" ` +
+		`--format="value(name)" ` +
+		`| sed -E 's/-(master-[0-9]+|bootstrap|worker-.*)$//' | sort | uniq`
+	return exec.NewCommand(cmd).AsTemplate(params).WithoutStreaming().OutputList()
+}
+
+// listInfraIDsFromNetworks returns infra IDs extracted from GCP networks
+// that are older than the cutoff date and match the cluster name prefix.
+// Networks are created early during OCP installation and deleted last,
+// making them a reliable signal for orphaned clusters.
+func listInfraIDsFromNetworks(params map[string]any) ([]string, error) {
+	cmd := `gcloud compute networks list --verbosity error ` +
+		`--filter="name~'^{{.E2EClusterNamePrefix}}-ocp' AND creationTimestamp<='{{.Date}}'" ` +
+		`--format="value(name)" ` +
+		`| sed 's/-network$//' | sort | uniq`
+	return exec.NewCommand(cmd).AsTemplate(params).WithoutStreaming().OutputList()
+}
+
+// listInfraIDsFromServiceAccounts returns infra IDs extracted from GCP service accounts
+// that match the cluster name prefix and have at least one key older than the cutoff date.
+// Service accounts don't expose a creation timestamp in the IAM API, so we use the oldest
+// key's validAfterTime as a proxy.
+func listInfraIDsFromServiceAccounts(params map[string]any) ([]string, error) {
+	// List all service accounts matching the prefix.
+	listCmd := `gcloud iam service-accounts list --verbosity error ` +
+		`--filter="email~'{{.E2EClusterNamePrefix}}-ocp'" ` +
+		`--format="value(email)" ` +
+		`--project={{.GCloudProject}}`
+	emails, err := exec.NewCommand(listCmd).AsTemplate(params).WithoutStreaming().OutputList()
+	if err != nil {
+		return nil, err
+	}
+
+	// Multiple SAs share the same infra ID (master, worker, bootstrap). We only need to check
+	// keys for one of them since they are all created at the same time.
+	seen := set.Make()
+	for i, email := range emails {
+		matches := ocpServiceAccountRE.FindStringSubmatch(email)
+		if len(matches) < 2 {
+			log.Printf("warning: could not extract infra ID from service account %s", email)
+			continue
+		}
+		infraID := matches[1]
+
+		if seen.Has(infraID) {
+			continue
+		}
+
+		log.Printf("Checking keys for service account %s (%d/%d)", email, i+1, len(emails))
+		keysCmd := fmt.Sprintf(
+			`gcloud iam service-accounts keys list --verbosity error `+
+				`--iam-account=%s `+
+				`--filter="validAfterTime<='{{.Date}}'" `+
+				`--format="value(name)" `+
+				`--managed-by=user `+
+				`--project={{.GCloudProject}}`,
+			email,
+		)
+		keys, err := exec.NewCommand(keysCmd).AsTemplate(params).WithoutStreaming().OutputList()
+		if err != nil {
+			log.Printf("warning: could not list keys for %s: %v", email, err)
+			continue
+		}
+		if len(keys) > 0 {
+			seen.Add(infraID)
+		}
+	}
+	return seen.AsSlice(), nil
+}
+
+// buildInfraIDRegexp returns a compiled regexp that matches an OCP infra ID and captures
+// the cluster name in group 1. The infra ID format is {clusterName}-{5alphanumChars}.
+func buildInfraIDRegexp(prefix string) *regexp.Regexp {
+	return regexp.MustCompile(`^(` + regexp.QuoteMeta(prefix) + `-ocp-[a-z0-9]+(?:-[a-z0-9]+)*)-[a-z0-9]{5}$`)
+}
+
+// ocpMetadata is the minimal metadata.json structure required by openshift-install destroy.
+type ocpMetadata struct {
+	ClusterName string `json:"clusterName"`
+	// ClusterID is a UUID assigned during creation. It is only used for telemetry, not for
+	// resource lookup, so it is left empty in synthetic metadata. The field is kept (without
+	// omitempty) to match the schema that openshift-install expects.
+	ClusterID string       `json:"clusterID"`
+	InfraID   string       `json:"infraID"`
+	GCP       *gcpMetadata `json:"gcp,omitempty"`
+}
+
+type gcpMetadata struct {
+	Region    string `json:"region"`
+	ProjectID string `json:"projectID"`
+}
+
+// writeMetadataJSON creates a synthetic metadata.json in the cluster state directory
+// so that openshift-install destroy can locate and delete GCP resources by infra ID,
+// even when the original installer state is missing from the GCS bucket.
+func (d *OCPDriver) writeMetadataJSON() error {
+	meta := ocpMetadata{
+		ClusterName: d.plan.ClusterName,
+		InfraID:     d.plan.Ocp.InfraID,
+		GCP: &gcpMetadata{
+			Region:    d.plan.Ocp.Region,
+			ProjectID: d.plan.Ocp.GCloudProject,
+		},
+	}
+	data, err := json.MarshalIndent(meta, "", "  ")
+	if err != nil {
+		return fmt.Errorf("while marshalling metadata.json: %w", err)
+	}
+	metadataPath := filepath.Join(d.runtimeState.ClusterStateDir, "metadata.json")
+	log.Printf("Writing synthetic metadata.json for infra ID %s to %s", d.plan.Ocp.InfraID, metadataPath)
+	return os.WriteFile(metadataPath, data, 0600)
 }
