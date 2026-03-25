@@ -8,6 +8,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/util/validation/field"
 
@@ -174,6 +175,69 @@ func Test_noUnsupportedSettings(t *testing.T) {
 			}
 		})
 	}
+}
+
+func Test_settingsWarningsAndErrors(t *testing.T) {
+	t.Run("invalid canonical config is blocking not a warning", func(t *testing.T) {
+		es := esv1.Elasticsearch{
+			Spec: esv1.ElasticsearchSpec{
+				Version: "8.16.0",
+				NodeSets: []esv1.NodeSet{{
+					Count: 1,
+					Config: &commonv1.Config{
+						Data: map[string]any{
+							"a":   map[string]any{"b": 1},
+							"a.b": 2,
+						},
+					},
+				}},
+			},
+		}
+		warns, blocking := settingsWarningsAndErrors(es)
+		require.Empty(t, warns)
+		require.Len(t, blocking, 1)
+		require.Equal(t, field.ErrorTypeInvalid, blocking[0].Type)
+		require.Equal(t, cfgInvalidMsg, blocking[0].Detail)
+	})
+	t.Run("forbidden reserved keys stay warnings only", func(t *testing.T) {
+		es := esv1.Elasticsearch{
+			Spec: esv1.ElasticsearchSpec{
+				Version: "8.16.0",
+				NodeSets: []esv1.NodeSet{{
+					Count: 1,
+					Config: &commonv1.Config{
+						Data: map[string]any{
+							esv1.ClusterInitialMasterNodes: "foo",
+						},
+					},
+				}},
+			},
+		}
+		warns, blocking := settingsWarningsAndErrors(es)
+		require.Empty(t, blocking)
+		require.Len(t, warns, 1)
+		require.Contains(t, warns[0], unsupportedConfigErrMsg)
+	})
+	t.Run("mandatory client authentication is blocking", func(t *testing.T) {
+		es := esv1.Elasticsearch{
+			Spec: esv1.ElasticsearchSpec{
+				Version: "8.16.0",
+				NodeSets: []esv1.NodeSet{{
+					Count: 1,
+					Config: &commonv1.Config{
+						Data: map[string]any{
+							esv1.XPackSecurityHttpSslClientAuthentication: "required",
+						},
+					},
+				}},
+			},
+		}
+		warns, blocking := settingsWarningsAndErrors(es)
+		require.Empty(t, warns)
+		require.Len(t, blocking, 1)
+		require.Equal(t, field.ErrorTypeInvalid, blocking[0].Type)
+		require.Equal(t, unsupportedClientAuthenticationMsg, blocking[0].Detail)
+	})
 }
 
 func Test_validZoneAwarenessAffinityWarnings(t *testing.T) {

@@ -32,16 +32,31 @@ func noUnsupportedSettings(es *Elasticsearch) field.ErrorList {
 	return errs
 }
 
-// SettingsWarnings converts noUnsupportedSettings errors into admission warnings
-// so they can be surfaced at apply time without rejecting the request.
-func SettingsWarnings(es *Elasticsearch) admission.Warnings {
-	errs := noUnsupportedSettings(es)
-	if len(errs) == 0 {
-		return nil
+// settingsWarningsAndErrors splits noUnsupportedSettings results. Reserved-key
+// violations (Forbidden) are surfaced as non-blocking admission warnings;
+// unparsable or invalid config from NewCanonicalConfigFrom (Invalid) must still
+// deny the request.
+func settingsWarningsAndErrors(es *Elasticsearch) (admission.Warnings, field.ErrorList) {
+	var (
+		warnings admission.Warnings
+		blocking field.ErrorList
+	)
+	for _, e := range noUnsupportedSettings(es) {
+		switch e.Type {
+		case field.ErrorTypeForbidden:
+			warnings = append(warnings, fmt.Sprintf("%s: %s", e.Field, e.Detail))
+		case field.ErrorTypeInvalid:
+			blocking = append(blocking, e)
+		default:
+			blocking = append(blocking, e)
+		}
 	}
-	warnings := make(admission.Warnings, len(errs))
-	for i, e := range errs {
-		warnings[i] = fmt.Sprintf("%s: %s", e.Field, e.Detail)
-	}
-	return warnings
+	return warnings, blocking
+}
+
+// settingsWarnings converts unsupported reserved-key findings into admission
+// warnings. Invalid configuration (see settingsWarningsAndErrors) is excluded.
+func settingsWarnings(es *Elasticsearch) admission.Warnings {
+	w, _ := settingsWarningsAndErrors(es)
+	return w
 }

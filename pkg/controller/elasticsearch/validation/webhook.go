@@ -97,7 +97,15 @@ func ValidateElasticsearch(ctx context.Context, es esv1.Elasticsearch, checker l
 	if w := validateRestartAllocationDelayWarnings(es); w != "" {
 		admWarnings = append(admWarnings, w)
 	}
-	admWarnings = append(admWarnings, validateSettingsWarnings(es)...)
+	settingWarns, settingErrs := settingsWarningsAndErrors(es)
+	admWarnings = append(admWarnings, settingWarns...)
+	if len(settingErrs) > 0 {
+		return admWarnings, apierrors.NewInvalid(
+			schema.GroupKind{Group: "elasticsearch.k8s.elastic.co", Kind: esv1.Kind},
+			es.Name,
+			settingErrs,
+		)
+	}
 	return admWarnings, nil
 }
 

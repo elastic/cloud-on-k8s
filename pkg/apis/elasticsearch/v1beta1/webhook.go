@@ -39,7 +39,9 @@ func Validate(es *Elasticsearch, old *Elasticsearch) (admission.Warnings, error)
 	if deprecationWarning != "" {
 		warnings = append(warnings, deprecationWarning)
 	}
-	warnings = append(warnings, SettingsWarnings(es)...)
+	settingWarns, settingErrs := settingsWarningsAndErrors(es)
+	warnings = append(warnings, settingWarns...)
+	errs = append(errs, settingErrs...)
 
 	if old != nil {
 		for _, val := range updateValidations {

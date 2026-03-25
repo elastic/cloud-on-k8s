@@ -121,6 +121,22 @@ func TestWebhook(t *testing.T) {
 			),
 		},
 		{
+			Name:      "create-conflicting-dotted-config-denied",
+			Operation: admissionv1.Create,
+			Object: func(t *testing.T, uid string) []byte {
+				t.Helper()
+				es := mkElasticsearch(uid)
+				es.Spec.NodeSets[0].Config = &commonv1beta1.Config{
+					Data: map[string]any{
+						"a":   map[string]any{"b": 1},
+						"a.b": 2,
+					},
+				}
+				return test.MustMarshalJSON(t, es)
+			},
+			Check: test.ValidationWebhookFailed(`Configuration invalid`),
+		},
+		{
 			Name:      "create-no-master",
 			Operation: admissionv1.Create,
 			Object: func(t *testing.T, uid string) []byte {

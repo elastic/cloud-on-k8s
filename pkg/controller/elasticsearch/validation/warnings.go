@@ -23,7 +23,6 @@ const (
 
 var warnings = []validation{
 	deprecatedStackVersionWarning,
-	noUnsupportedSettings,
 	validZoneAwarenessAffinityWarnings,
 }
 
@@ -96,24 +95,40 @@ func validZoneAwarenessAffinityWarnings(es esv1.Elasticsearch) field.ErrorList {
 	return warnings
 }
 
-// validateSettingsWarnings converts noUnsupportedSettings errors into admission warnings
-// so they can be surfaced at apply time without rejecting the request.
-func validateSettingsWarnings(es esv1.Elasticsearch) admission.Warnings {
-	errs := noUnsupportedSettings(es)
-	if len(errs) == 0 {
-		return nil
+// settingsWarningsAndErrors splits noUnsupportedSettings results. Reserved-key
+// violations (Forbidden) are surfaced as non-blocking admission warnings;
+// Invalid config (unparseable canonical config, unsupported client auth, etc.)
+// must deny admission.
+func settingsWarningsAndErrors(es esv1.Elasticsearch) (admission.Warnings, field.ErrorList) {
+	var (
+		admissionWarnings admission.Warnings
+		blocking          field.ErrorList
+	)
+	for _, e := range noUnsupportedSettings(es) {
+		switch e.Type {
+		case field.ErrorTypeForbidden:
+			admissionWarnings = append(admissionWarnings, fmt.Sprintf("%s: %s", e.Field, e.Detail))
+		case field.ErrorTypeInvalid:
+			blocking = append(blocking, e)
+		default:
+			blocking = append(blocking, e)
+		}
 	}
-	warnings := make(admission.Warnings, len(errs))
-	for i, e := range errs {
-		warnings[i] = fmt.Sprintf("%s: %s", e.Field, e.Detail)
-	}
-	return warnings
+	return admissionWarnings, blocking
 }
 
 func CheckForWarnings(es esv1.Elasticsearch) error {
-	errors := check(es, warnings)
-	if len(errors) > 0 {
-		return errors.ToAggregate()
+	var errs field.ErrorList
+	for _, val := range warnings {
+		errs = append(errs, val(es)...)
+	}
+	for _, e := range noUnsupportedSettings(es) {
+		if e.Type == field.ErrorTypeForbidden {
+			errs = append(errs, e)
+		}
+	}
+	if len(errs) > 0 {
+		return errs.ToAggregate()
 	}
 	return nil
 }

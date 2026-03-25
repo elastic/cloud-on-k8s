@@ -8,6 +8,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/require"
+	"k8s.io/apimachinery/pkg/util/validation/field"
 	"sigs.k8s.io/controller-runtime/pkg/webhook/admission"
 
 	common "github.com/elastic/cloud-on-k8s/v3/pkg/apis/common/v1beta1"
@@ -170,11 +171,77 @@ func TestSettingsWarnings(t *testing.T) {
 				`spec.nodeSets[0].config.cluster.initial_master_nodes: Configuration setting is reserved for internal use. User-configured use is unsupported`,
 			},
 		},
+		{
+			name: "unparsable config does not produce settings warnings",
+			es: &Elasticsearch{
+				Spec: ElasticsearchSpec{
+					Version: "7.0.0",
+					NodeSets: []NodeSet{
+						{
+							Config: &common.Config{
+								Data: map[string]any{
+									"a":   map[string]any{"b": 1},
+									"a.b": 2,
+								},
+							},
+							Count: 1,
+						},
+					},
+				},
+			},
+			want: nil,
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got := SettingsWarnings(tt.es)
+			got := settingsWarnings(tt.es)
 			require.Equal(t, tt.want, got)
 		})
 	}
+}
+
+func Test_settingsWarningsAndErrors(t *testing.T) {
+	t.Run("invalid canonical config is blocking not a warning", func(t *testing.T) {
+		// Conflicting nested and dotted keys make ucfg.NewFrom fail inside
+		// NewCanonicalConfigFrom (see settings.NewCanonicalConfigFrom); that
+		// must surface as Invalid, not as a non-blocking admission warning.
+		es := &Elasticsearch{
+			Spec: ElasticsearchSpec{
+				Version: "8.16.0",
+				NodeSets: []NodeSet{{
+					Count: 1,
+					Config: &common.Config{
+						Data: map[string]any{
+							"a":   map[string]any{"b": 1},
+							"a.b": 2,
+						},
+					},
+				}},
+			},
+		}
+		warns, blocking := settingsWarningsAndErrors(es)
+		require.Empty(t, warns)
+		require.Len(t, blocking, 1)
+		require.Equal(t, field.ErrorTypeInvalid, blocking[0].Type)
+		require.Equal(t, cfgInvalidMsg, blocking[0].Detail)
+	})
+	t.Run("forbidden reserved keys stay warnings only", func(t *testing.T) {
+		es := &Elasticsearch{
+			Spec: ElasticsearchSpec{
+				Version: "8.16.0",
+				NodeSets: []NodeSet{{
+					Count: 1,
+					Config: &common.Config{
+						Data: map[string]any{
+							ClusterInitialMasterNodes: "foo",
+						},
+					},
+				}},
+			},
+		}
+		warns, blocking := settingsWarningsAndErrors(es)
+		require.Empty(t, blocking)
+		require.Len(t, warns, 1)
+		require.Contains(t, warns[0], unsupportedConfigErrMsg)
+	})
 }
