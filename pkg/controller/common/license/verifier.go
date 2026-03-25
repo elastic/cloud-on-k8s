@@ -104,10 +104,12 @@ func (v *Verifier) ValidSignature(l EnterpriseLicense) error {
 	}
 	hashed := sha512.Sum512(contentBytes)
 	if err := rsa.VerifyPKCS1v15(v.PublicKey, crypto.SHA512, hashed[:], signedContentSig); err != nil {
-		return fmt.Errorf("license signature verification failed: %w; ensure you are using an Orchestration license (not an Elastic Stack license) and consult the ECK licensing documentation", err)
+		return fmt.Errorf("license signature verification failed: %w; %s", err, wrongLicenseTypeHint)
 	}
 	return nil
 }
+
+const wrongLicenseTypeHint = "ensure you are using an Orchestration license (not an Elastic Stack license) and consult the ECK licensing documentation"
 
 // fingerprintResult represents the outcome of a fingerprint check.
 type fingerprintResult int
@@ -134,7 +136,7 @@ func (v *Verifier) checkKeyFingerprint(fingerprint []byte) error {
 		case fingerprintMatch:
 			return nil
 		case fingerprintMismatch:
-			return errors.New("license signature was issued for a different product; ensure you are using an Orchestration license, not an Elastic Stack license")
+			return fmt.Errorf("license signature was issued for a different product; %s", wrongLicenseTypeHint)
 		case fingerprintUnparseable:
 			// fingerprint format not recognized by this check; try the next one
 		}
