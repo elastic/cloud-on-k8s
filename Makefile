@@ -376,18 +376,24 @@ switch-k3d:
 ##  --    Docker images    --  ##
 #################################
 
+docker-push-operator: DOCKER_BUILDX_ARGS=--push
+docker-push-operator: docker-build-operator
+
 # build amd64 image for dev purposes
 BUILD_PLATFORM ?= "linux/amd64"
-docker-push-operator:
+MAKE_BUILD_RECIPE ?= go-build
+OPERATOR_DOCKER_FILE ?= build/Dockerfile
+docker-build-operator:
 	docker buildx build . \
-	 	-f build/Dockerfile \
+	 	-f $(OPERATOR_DOCKER_FILE) \
 		--progress=plain \
+		--build-arg MAKE_BUILD_RECIPE='$(MAKE_BUILD_RECIPE)' \
 		--build-arg GO_LDFLAGS='$(GO_LDFLAGS)' \
 		--build-arg GO_TAGS='$(GO_TAGS)' \
 		--build-arg VERSION='$(VERSION)' \
+		--build-arg LICENSE_PUBKEY='$(LICENSE_PUBKEY)' \
 		--platform $(BUILD_PLATFORM) \
-		--push \
-		-t $(OPERATOR_IMAGE)
+		$(DOCKER_BUILDX_ARGS) -t $(OPERATOR_IMAGE)
 
 drivah-generate-operator:
 	@ build/gen-drivah.toml.sh
