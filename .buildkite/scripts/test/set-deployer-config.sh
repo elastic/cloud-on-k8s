@@ -24,20 +24,6 @@ set -eu
 WD="$(cd "$(dirname "$0")"; pwd)"
 ROOT="$WD/../../.."
 
-# Increase inotify limits for Kind/k3d clusters to prevent "too many open files" errors
-# from controller-runtime's fsnotify watchers. Only needed on the host VM for DinD setups.
-if [[ "${E2E_PROVIDER:-}" == "kind" || "${E2E_PROVIDER:-}" == "k3d" ]]; then
-    echo "Current inotify limits:"
-    cat /proc/sys/fs/inotify/max_user_watches 2>/dev/null || echo "  max_user_watches: unknown"
-    cat /proc/sys/fs/inotify/max_user_instances 2>/dev/null || echo "  max_user_instances: unknown"
-    
-    if command -v sysctl &> /dev/null; then
-        echo "Increasing inotify limits for $E2E_PROVIDER..."
-        sudo sysctl -w fs.inotify.max_user_watches=524288 2>/dev/null || true
-        sudo sysctl -w fs.inotify.max_user_instances=512 2>/dev/null || true
-    fi
-fi
-
 w()  { echo "$@" >> "$ROOT/deployer-config.yml"; }
 
 write_deployer_config() {
