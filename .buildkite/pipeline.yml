@@ -77,12 +77,16 @@ steps:
           DRIVAH_AMD_AGENT_MEMORY: "5G"
           RECURSIVE: true
           SIGN_IMAGES: false
-      - label: ":buildkite: verify images"
-        key: "operator-image-verify-step"
-        commands:
-          - .buildkite/scripts/build/image-verify.sh
-        agents:
-          image: docker.elastic.co/ci-agent-images/cloud-k8s-operator/buildkite-agent:5b4d55c2
+
+
+  - label: ":buildkite: verify images"
+    key: "operator-image-verify-step"
+    depends_on:
+      - "operator-image-build"
+    commands:
+      - .buildkite/scripts/build/image-verify.sh
+    agents:
+      image: docker.elastic.co/ci-agent-images/cloud-k8s-operator/buildkite-agent:5b4d55c2
 
 
   - group: build e2e-tests

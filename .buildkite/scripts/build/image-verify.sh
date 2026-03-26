@@ -7,7 +7,9 @@
 set -euo pipefail
 
 main() {
-  for img in $(buildkite-agent meta-data get images-to-sign); do
+  local images
+  images=$(buildkite-agent meta-data get images-to-sign)
+  for img in ${images}; do
     echo "verifying ${img}"
     docker run --rm "${img}" --version
   done
