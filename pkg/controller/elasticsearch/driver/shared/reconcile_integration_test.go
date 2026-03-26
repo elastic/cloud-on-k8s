@@ -7,15 +7,12 @@
 package shared
 
 import (
-	"bytes"
 	"context"
-	cryptorand "crypto/rand"
 	"crypto/rsa"
 	"crypto/x509"
 	"crypto/x509/pkix"
 	"encoding/json"
 	"fmt"
-	"maps"
 	"net"
 	"net/http"
 	"net/http/httptest"
@@ -28,6 +25,8 @@ import (
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/labels"
+	"k8s.io/apimachinery/pkg/selection"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/uuid"
 	toolsevents "k8s.io/client-go/tools/events"
@@ -123,6 +122,7 @@ func TestReconcileSharedResources(t *testing.T) {
 		expectReconciliation bool
 		expectESClient       bool
 		expectedServices     map[string]corev1.Service
+		expectedCerts        map[string]expectedCertData
 		expectedSecrets      map[string]corev1.Secret
 		expectedConfigMaps   map[string]corev1.ConfigMap
 		expectError          bool
@@ -138,7 +138,8 @@ func TestReconcileSharedResources(t *testing.T) {
 				services.ExternalServiceName(clusterName): newService(&baseStatefulElasticsearch, external, "1"),
 				services.InternalServiceName(clusterName): newService(&baseStatefulElasticsearch, internal, "1"),
 			},
-			expectedSecrets:    mustBuildExpectedSecrets(t, &baseStatefulElasticsearch, "1", 0),
+			expectedCerts:      buildExpectedCertData(baseStatefulElasticsearch, 0),
+			expectedSecrets:    mustBuildExpectedSecrets(t, &baseStatefulElasticsearch, "1"),
 			expectedConfigMaps: mustGetExpectedConfigMaps(t, &baseStatefulElasticsearch, "1", esServer),
 			expectedState: &ReconcileState{
 				Meta: metadata.Metadata{
@@ -171,7 +172,8 @@ func TestReconcileSharedResources(t *testing.T) {
 				services.InternalServiceName(clusterName):      newService(&baseStatefulElasticsearch, internal, "1"),
 				services.RemoteClusterServiceName(clusterName): newService(&baseStatefulElasticsearch, remote, "1"),
 			},
-			expectedSecrets:    mustBuildExpectedSecrets(t, &baseStatefulElasticsearch, "1", 1),
+			expectedCerts:      buildExpectedCertData(baseStatefulElasticsearch, 1),
+			expectedSecrets:    mustBuildExpectedSecrets(t, &baseStatefulElasticsearch, "1"),
 			expectedConfigMaps: mustGetExpectedConfigMaps(t, &baseStatefulElasticsearch, "1", esServer),
 			expectedState: &ReconcileState{
 				Meta: metadata.Metadata{
@@ -210,7 +212,8 @@ func TestReconcileSharedResources(t *testing.T) {
 				services.ExternalServiceName(clusterName): newService(&baseStatefulElasticsearch, external, "1"),
 				services.InternalServiceName(clusterName): newService(&baseStatefulElasticsearch, internal, "1"),
 			},
-			expectedSecrets:    mustBuildExpectedSecrets(t, &baseStatefulElasticsearch, "1", 0),
+			expectedCerts:      buildExpectedCertData(baseStatefulElasticsearch, 0),
+			expectedSecrets:    mustBuildExpectedSecrets(t, &baseStatefulElasticsearch, "1"),
 			expectedConfigMaps: mustGetExpectedConfigMaps(t, &baseStatefulElasticsearch, "1", esServer),
 			expectedState: &ReconcileState{
 				Meta: metadata.Metadata{
@@ -236,7 +239,8 @@ func TestReconcileSharedResources(t *testing.T) {
 				services.ExternalServiceName(clusterName): newService(&baseStatefulElasticsearch, external, "1"),
 				services.InternalServiceName(clusterName): newService(&baseStatefulElasticsearch, internal, "1"),
 			},
-			expectedSecrets:    mustBuildExpectedSecrets(t, &baseStatefulElasticsearch, "1", 0),
+			expectedCerts:      buildExpectedCertData(baseStatefulElasticsearch, 0),
+			expectedSecrets:    mustBuildExpectedSecrets(t, &baseStatefulElasticsearch, "1"),
 			expectedConfigMaps: mustGetExpectedConfigMaps(t, &baseStatefulElasticsearch, "1", nil),
 			expectedState: &ReconcileState{
 				Meta: metadata.Metadata{
@@ -263,7 +267,8 @@ func TestReconcileSharedResources(t *testing.T) {
 				services.ExternalServiceName(clusterName): newService(&baseStatefulElasticsearch, external, "1"),
 				services.InternalServiceName(clusterName): newService(&baseStatefulElasticsearch, internal, "1"),
 			},
-			expectedSecrets:    mustBuildExpectedSecrets(t, &baseStatefulElasticsearch, "1", 0),
+			expectedCerts:      buildExpectedCertData(baseStatefulElasticsearch, 0),
+			expectedSecrets:    mustBuildExpectedSecrets(t, &baseStatefulElasticsearch, "1"),
 			expectedConfigMaps: mustGetExpectedConfigMaps(t, &baseStatefulElasticsearch, "1", esServer),
 			expectedState: &ReconcileState{
 				Meta: metadata.Metadata{
@@ -290,7 +295,13 @@ func TestReconcileSharedResources(t *testing.T) {
 				services.ExternalServiceName(clusterName): newService(&baseStatefulElasticsearch, external, "1"),
 				services.InternalServiceName(clusterName): newService(&baseStatefulElasticsearch, internal, "1"),
 			},
-			expectedSecrets: mustBuildExpectedSecrets(t, &baseStatefulElasticsearch, "1", 0),
+			expectedCerts: buildExpectedCertData(baseStatefulElasticsearch, 0),
+			expectedSecrets: func() map[string]corev1.Secret {
+				// fails before file settings secret is created
+				baseSecrets := mustBuildExpectedSecrets(t, &baseStatefulElasticsearch, "1")
+				delete(baseSecrets, esv1.FileSettingsSecretName(baseStatefulElasticsearch.Name))
+				return baseSecrets
+			}(),
 			expectedConfigMaps: func() map[string]corev1.ConfigMap {
 				defaultConfigMaps := mustGetExpectedConfigMaps(t, &baseStatefulElasticsearch, "1", esServer)
 				delete(defaultConfigMaps, esv1.UnicastHostsConfigMap(clusterName))
@@ -338,13 +349,21 @@ func TestReconcileSharedResources(t *testing.T) {
 			assert.Equal(t, tt.expectError, results.HasError(), "expected error on results")
 
 			// Ensure expected secrets are created and match expected structure/content
-			actualSecrets := &corev1.SecretList{}
-			assert.NoError(t, k8sClient.List(context.Background(), actualSecrets, client.InNamespace(namespace)))
-			assert.Len(t, actualSecrets.Items, len(tt.expectedSecrets), "Unexpected number of secrets created")
+			actualSecrets := mustGetActualSecrets(t, k8sClient, namespace)
+			expectedSecrets := len(tt.expectedSecrets) + len(tt.expectedCerts)
+			assert.Lenf(t, actualSecrets.Items, expectedSecrets, "Expected %d secrets but got %d", expectedSecrets, len(actualSecrets.Items))
 			for _, actualSecret := range actualSecrets.Items {
-				expectedSecret, ok := tt.expectedSecrets[actualSecret.Name]
-				assert.Truef(t, ok, "Unexpected secret [%s] created", actualSecret.Name)
-				assertSecretMatchesExpected(t, expectedSecret, actualSecret)
+				expectedSecret, expectedSecretFound := tt.expectedSecrets[actualSecret.Name]
+				expectedCert, expectedCertFound := tt.expectedCerts[actualSecret.Name]
+				require.Falsef(t, expectedSecretFound && expectedCertFound, "Secret [%s] should only be defined once in the expectations", actualSecret.Name)
+
+				if expectedSecretFound {
+					assertSecretEquality(t, expectedSecret, actualSecret)
+				}
+
+				if expectedCertFound {
+					assertCertificatesEqual(t, expectedCert, actualSecret)
+				}
 			}
 
 			// Ensure expected services are created
@@ -370,6 +389,211 @@ func TestReconcileSharedResources(t *testing.T) {
 	}
 }
 
+func buildExpectedCertData(es esv1.Elasticsearch, numRemoteCAs int) map[string]expectedCertData {
+	httpCACommonName := es.Name + "-http"
+	httpCommonName := es.Name + "-es-http.test-ns.es.local"
+	httpCAIssuer := pkix.Name{
+		OrganizationalUnit: []string{es.Name},
+		CommonName:         httpCACommonName,
+		Names: []pkix.AttributeTypeAndValue{
+			{
+				Type:  certificates.OrganizationalUnitIdentifier,
+				Value: es.Name,
+			},
+			{
+				Type:  certificates.CommonNameObjectIdentifier,
+				Value: httpCACommonName,
+			},
+		},
+	}
+	httpSubject := pkix.Name{
+		OrganizationalUnit: []string{es.Name},
+		CommonName:         httpCommonName,
+		Names: []pkix.AttributeTypeAndValue{
+			{
+				Type:  certificates.OrganizationalUnitIdentifier,
+				Value: es.Name,
+			},
+			{
+				Type:  certificates.CommonNameObjectIdentifier,
+				Value: httpCommonName,
+			},
+		},
+	}
+
+	transportCACommonName := es.Name + "-transport"
+	transportIssuer := pkix.Name{
+		OrganizationalUnit: []string{es.Name},
+		CommonName:         transportCACommonName,
+		Names: []pkix.AttributeTypeAndValue{
+			{
+				Type:  certificates.OrganizationalUnitIdentifier,
+				Value: es.Name,
+			},
+			{
+				Type:  certificates.CommonNameObjectIdentifier,
+				Value: transportCACommonName,
+			},
+		},
+	}
+	cd := map[string]expectedCertData{
+		// http ca internal
+		certificates.CAInternalSecretName(esv1.ESNamer, es.Name, certificates.HTTPCAType): {
+			certificates.CertFileName: {
+				{
+					issuer:   httpCAIssuer,
+					subject:  httpCAIssuer,
+					isCA:     true,
+					dnsNames: nil,
+				},
+			},
+			certificates.KeyFileName: {},
+		},
+		// http certs internal
+		certificates.InternalCertsSecretName(esv1.ESNamer, es.Name): {
+			certificates.CertFileName: {
+				{
+					issuer:  httpCAIssuer,
+					subject: httpSubject,
+					isCA:    false,
+					dnsNames: []string{
+						httpCommonName,
+						es.Name + "-es-http",
+						es.Name + "-es-http.test-ns.svc",
+						es.Name + "-es-http.test-ns",
+						es.Name + "-es-internal-http.test-ns.svc",
+						es.Name + "-es-internal-http.test-ns",
+					},
+				},
+				{
+					issuer:   httpCAIssuer,
+					subject:  httpCAIssuer,
+					isCA:     true,
+					dnsNames: nil,
+				},
+			},
+			certificates.KeyFileName: {},
+			certificates.CAFileName: {
+				{
+					issuer:  httpCAIssuer,
+					subject: httpCAIssuer,
+					isCA:    true,
+				},
+			},
+		},
+		// http certs public
+		certificates.PublicCertsSecretName(esv1.ESNamer, es.Name): {
+			certificates.CertFileName: {
+				{
+					issuer:  httpCAIssuer,
+					subject: httpSubject,
+					isCA:    false,
+					dnsNames: []string{
+						httpCommonName,
+						es.Name + "-es-http",
+						es.Name + "-es-http.test-ns.svc",
+						es.Name + "-es-http.test-ns",
+						es.Name + "-es-internal-http.test-ns.svc",
+						es.Name + "-es-internal-http.test-ns",
+					},
+				},
+				{
+					issuer:   httpCAIssuer,
+					subject:  httpCAIssuer,
+					isCA:     true,
+					dnsNames: nil,
+				},
+			},
+			certificates.CAFileName: {
+				{
+					issuer:   httpCAIssuer,
+					subject:  httpCAIssuer,
+					isCA:     true,
+					dnsNames: nil,
+				},
+			},
+		},
+		// transport ca internal
+		certificates.CAInternalSecretName(esv1.ESNamer, es.Name, certificates.TransportCAType): {
+			certificates.CertFileName: {
+				{
+					issuer:   transportIssuer,
+					subject:  transportIssuer,
+					isCA:     true,
+					dnsNames: nil,
+				},
+			},
+			certificates.KeyFileName: {},
+		},
+		// transport certs public
+		certificates.PublicTransportCertsSecretName(esv1.ESNamer, es.Name): {
+			certificates.CAFileName: {
+				{
+					issuer:   transportIssuer,
+					subject:  transportIssuer,
+					isCA:     true,
+					dnsNames: nil,
+				},
+			},
+		},
+		// remote ca
+		esv1.RemoteCaSecretName(es.Name): {
+			certificates.CAFileName: {
+				{
+					issuer:   transportIssuer,
+					subject:  transportIssuer,
+					isCA:     true,
+					dnsNames: nil,
+				},
+			},
+		},
+	}
+
+	if numRemoteCAs > 0 {
+		data := make([]certData, 0, numRemoteCAs)
+		for i := range numRemoteCAs {
+			commonName := fmt.Sprintf("%s-remote-ca-%d", es.Name, i)
+			remoteCAIssuer := pkix.Name{
+				CommonName:         commonName,
+				OrganizationalUnit: []string{fmt.Sprintf("%s-%d", es.Name, i)},
+				Names: []pkix.AttributeTypeAndValue{
+					{
+						Type:  certificates.OrganizationalUnitIdentifier,
+						Value: fmt.Sprintf("%s-%d", es.Name, i),
+					},
+					{
+						Type:  certificates.CommonNameObjectIdentifier,
+						Value: commonName,
+					},
+				},
+			}
+			data = append(data, certData{
+				issuer:   remoteCAIssuer,
+				subject:  remoteCAIssuer,
+				isCA:     true,
+				dnsNames: nil,
+			})
+		}
+		cd[esv1.RemoteCaSecretName(es.Name)] = expectedCertData{
+			certificates.CAFileName: data,
+		}
+	}
+
+	return cd
+}
+
+// mustGetActualSecrets gets all actual secrets created by ReconcileSharedResources, excluding the test-generated
+// secrets with the label common.k8s.elastic.co/type=remote-ca
+func mustGetActualSecrets(t *testing.T, k8sClient k8s.Client, namespace string) *corev1.SecretList {
+	t.Helper()
+	actualSecrets := &corev1.SecretList{}
+	requirement, err := labels.NewRequirement(commonv1.TypeLabelName, selection.NotIn, []string{"remote-ca"})
+	require.NoErrorf(t, err, "Failed to create requirement for type label: %v", err)
+	selector := labels.NewSelector().Add(*requirement)
+	require.NoError(t, k8sClient.List(context.Background(), actualSecrets, client.InNamespace(namespace), client.MatchingLabelsSelector{Selector: selector}))
+	return actualSecrets
+}
+
 // mustGetClientCerts gets the HTTP certificate secrets for the given Elasticsearch's namespace and parses
 // them into a slice of x509.Certificate references.
 func mustGetClientCerts(t *testing.T, client k8s.Client, es esv1.Elasticsearch) []*x509.Certificate {
@@ -393,38 +617,42 @@ func isCertOrCaSecret(secretName string) bool {
 		strings.Contains(secretName, "-certs")
 }
 
-// assertSecretMatchesExpected verifies that actual secret matches expected secrets. For certificate secrets with
-// generated content, data fields are checked for equality except for NotBefore and NotAfter which are time-dependent.
-// NotBefore and NotAfter are only validated that time.Now is within that range; for others Data must match exactly.
-func assertSecretMatchesExpected(t *testing.T, expected, actual corev1.Secret) {
-	t.Helper()
+func assertCertificatesEqual(t *testing.T, expected expectedCertData, actual corev1.Secret) {
+	assert.Lenf(t, actual.Data, len(expected), "secret [%s] Data has unexpected number of items", actual.Name)
+	for name, cert := range actual.Data {
+		expectedCerts, ok := expected[name]
+		require.Truef(t, ok, "actual has Data key %q missing from expected secret %s", name, actual.Name)
+		if name == certificates.KeyFileName {
+			key, err := certificates.ParsePEMPrivateKey(cert)
+			assert.NoErrorf(t, err, "error parsing secret %s %s key", actual.Name, name)
+			rsaKey, ok := key.(*rsa.PrivateKey)
+			assert.Truef(t, ok, "secret %s %s key is not an RSA private key", actual.Name, name)
+			assert.NoErrorf(t, rsaKey.Validate(), "secret %s %s key is invalid", actual.Name, name)
+		} else {
+			actualCerts, err := certificates.ParsePEMCerts(cert)
+			assert.NoErrorf(t, err, "error parsing secret %s %s cert", actual.Name, name)
+			require.Greaterf(t, len(actualCerts), 0, "secret %s %s cert should have at least 1 PEM cert", actual.Name, name)
+			require.Lenf(t, actualCerts, len(expectedCerts), "secret %s %s cert expected %d PEM certs", actual.Name, name, len(expectedCerts))
+			for i, actualCert := range actualCerts {
+				expectedCert := expectedCerts[i]
+				assert.Truef(t, actualCert.NotAfter.After(time.Now()), "secret %s %s %d cert is expired", actual.Name, name, i)
+				assert.Truef(t, actualCert.NotBefore.Before(time.Now()), "secret %s %s %d cert NotBefore set incorrectly", actual.Name, name, i)
+				assert.Equalf(t, expectedCert.isCA, actualCert.IsCA, "secret %s %s %d cert IsCA set incorrectly", actual.Name, name, i)
+				assert.Equalf(t, expectedCert.dnsNames, actualCert.DNSNames, "secret %s %s %d cert DNSNames set incorrectly", actual.Name, name, i)
+				assert.Equalf(t, expectedCert.issuer, actualCert.Issuer, "secret %s %s %d cert Issuer set incorrectly", actual.Name, name, i)
+				assert.Equalf(t, expectedCert.subject, actualCert.Subject, "secret %s %s %d cert Subject set incorrectly", actual.Name, name, i)
+			}
+
+		}
+	}
+}
+
+// assertSecretEquality verifies that actual non-certificate secrets match expected non-certificate secrets.
+// Certificate secrets are returned for later validation.
+func assertSecretEquality(t *testing.T, expected, actual corev1.Secret) {
 	assert.Equalf(t, expected.ObjectMeta.Name, actual.ObjectMeta.Name, "secret %s has incorrect object metadata", actual.Name)
 	assert.Equalf(t, expected.Type, actual.Type, "secret %s has incorrect type", actual.Name)
-	if isCertOrCaSecret(expected.Name) {
-		actualCertData := make([]byte, 0, 1000)
-		expectedCertData := make([]byte, 0, 1000)
-		assert.Lenf(t, actual.Data, len(expected.Data), "secret [%s] Data has unexpected number of items", actual.Name)
-		for name, cert := range actual.Data {
-			expectedCert, ok := expected.Data[name]
-			require.Truef(t, ok, "actual has Data key %q missing from expected secret %s", name, expected.Name)
-			// This should put the certs in the same order for comparison later
-			actualCertData = append(actualCertData, cert...)
-			expectedCertData = append(expectedCertData, expectedCert...)
-		}
-		actualCerts, err := certificates.ParsePEMCerts(actualCertData)
-		assert.NoErrorf(t, err, "error parsing secret %s cert chain", actual.Name)
-		expectedCerts, err := certificates.ParsePEMCerts(expectedCertData)
-		require.NoError(t, err, "error parsing secret %s cert chain", expected.Name)
-
-		for i, actualCert := range actualCerts {
-			assert.Truef(t, actualCert.NotAfter.After(time.Now()), "secret %s cert is expired", actual.Name)
-			assert.Truef(t, actualCert.NotBefore.Before(time.Now()), "secret %s cert NotBefore set incorrectly", actual.Name)
-			expectedCert := expectedCerts[i]
-			assert.Equalf(t, expectedCert.IsCA, actualCert.IsCA, "secret %s cert IsCA set incorrectly", actual.Name)
-			assert.Equalf(t, expectedCert.DNSNames, actualCert.DNSNames, "secret %s cert DNSNames set incorrectly", actual.Name)
-			assert.Equalf(t, expectedCert.Issuer, actualCert.Issuer, "secret %s cert Issuer set incorrectly", actual.Name)
-		}
-	} else if strings.Contains(actual.Name, "file-settings") {
+	if strings.Contains(actual.Name, "file-settings") {
 		// The file-settings secret contains a version timestamp so equality check will always fail
 		var actualSettings filesettings.Settings
 		err := json.Unmarshal(actual.Data[filesettings.SettingsSecretKey], &actualSettings)
@@ -515,11 +743,9 @@ func mustGetExpectedConfigMaps(t *testing.T, es *esv1.Elasticsearch, resourceVer
 	}
 }
 
-// mustBuildExpectedSecrets builds the map of secrets we expect in the namespace after ReconcileSharedResources.
-// User/role material uses fixed fixtures; certificate secrets and any other reconciler-generated secrets (keystore,
-// file-settings, per-node transport certs, remote CA fixtures, etc.) are read from the client so they match the
-// reconciliation output byte-for-byte.
-func mustBuildExpectedSecrets(t *testing.T, es *esv1.Elasticsearch, resourceVersion string, numRemoteCAs int) map[string]corev1.Secret {
+// mustBuildExpectedSecrets builds the map of non-certificate secrets we expect in the namespace after ReconcileSharedResources.
+// User/role material uses fixed fixtures
+func mustBuildExpectedSecrets(t *testing.T, es *esv1.Elasticsearch, resourceVersion string) map[string]corev1.Secret {
 	t.Helper()
 	labels := label.NewLabels(types.NamespacedName{
 		Namespace: es.Namespace,
@@ -529,9 +755,6 @@ func mustBuildExpectedSecrets(t *testing.T, es *esv1.Elasticsearch, resourceVers
 	labels["eck.k8s.elastic.co/owner-kind"] = ""
 	labels["eck.k8s.elastic.co/owner-name"] = es.Name
 	labels["eck.k8s.elastic.co/owner-namespace"] = es.Namespace
-
-	// Certificate secrets reproduced from ReconcileSharedResources (HTTP, transport, remote CA)
-	certSecrets := mustBuildExpectedCertificateSecrets(t, es, labels, resourceVersion, numRemoteCAs)
 
 	// Non-certificate secrets (users, roles, service account token)
 	serviceAccountTokenSecret := newServiceAccountTokenSecret(es)
@@ -594,7 +817,6 @@ func mustBuildExpectedSecrets(t *testing.T, es *esv1.Elasticsearch, resourceVers
 			},
 		},
 	}
-	maps.Copy(result, certSecrets)
 
 	return result
 }
@@ -604,175 +826,6 @@ func mustGetPredefinedRoles(t *testing.T) []byte {
 	predefinedRoles, err := user.PredefinedRoles.FileBytes()
 	require.NoError(t, err, "error reading predefined roles")
 	return predefinedRoles
-}
-
-// mustBuildExpectedCertificateSecrets reproduces the certificate secrets created by ReconcileSharedResources
-// (HTTP CA internal, HTTP internal/public certs, Transport CA internal, Transport public, Remote CA)
-// from a given Elasticsearch object. Used to build expected secrets in tests with valid PEM data.
-func mustBuildExpectedCertificateSecrets(t *testing.T, es *esv1.Elasticsearch, labels map[string]string, resourceVersion string, numRemoteCAs int) map[string]corev1.Secret {
-	t.Helper()
-	validity := 365 * 24 * time.Hour
-
-	// HTTP CA (self-signed) - same as certificates.ReconcileCAAndHTTPCerts
-	httpCA, err := certificates.NewSelfSignedCA(certificates.CABuilderOptions{
-		Subject: pkix.Name{
-			CommonName:         fmt.Sprintf("%s-%s", es.Name, certificates.HTTPCAType),
-			OrganizationalUnit: []string{es.Name},
-		},
-		ExpireIn: &validity,
-	})
-	require.NoError(t, err)
-
-	// HTTP leaf cert signed by HTTP CA - same structure as ensureInternalSelfSignedCertificateSecretContents
-	httpLeafKey, err := rsa.GenerateKey(cryptorand.Reader, 2048)
-	require.NoError(t, err)
-	commonName := es.Name + "-es-http." + es.Namespace + ".es.local"
-	httpLeafTemplate := certificates.ValidatedCertificateTemplate(x509.Certificate{
-		Subject: pkix.Name{
-			CommonName:         commonName,
-			OrganizationalUnit: []string{es.Name},
-		},
-		DNSNames: []string{
-			commonName,
-			es.Name + "-es-http",
-			es.Name + "-es-http.test-ns.svc",
-			es.Name + "-es-http.test-ns",
-			es.Name + "-es-internal-http.test-ns.svc",
-			es.Name + "-es-internal-http.test-ns",
-		},
-		NotBefore:          time.Now(),
-		NotAfter:           time.Now().Add(validity),
-		PublicKey:          httpLeafKey.Public(),
-		PublicKeyAlgorithm: x509.RSA,
-		SignatureAlgorithm: x509.SHA256WithRSA,
-		KeyUsage:           x509.KeyUsageDigitalSignature | x509.KeyUsageKeyEncipherment,
-		ExtKeyUsage:        []x509.ExtKeyUsage{x509.ExtKeyUsageServerAuth, x509.ExtKeyUsageClientAuth},
-	})
-	httpLeafDER, err := httpCA.CreateCertificate(httpLeafTemplate)
-	require.NoError(t, err)
-	httpLeafPEM := certificates.EncodePEMCert(httpLeafDER, httpCA.Cert.Raw)
-	httpCAPEM := certificates.EncodePEMCert(httpCA.Cert.Raw)
-	httpLeafKeyPEM, err := certificates.EncodePEMPrivateKey(httpLeafKey)
-	require.NoError(t, err)
-	httpCAKeyPEM, err := certificates.EncodePEMPrivateKey(httpCA.PrivateKey)
-	require.NoError(t, err)
-
-	// Transport CA (self-signed) - same as transport.ReconcileOrRetrieveCA
-	transportCA, err := certificates.NewSelfSignedCA(certificates.CABuilderOptions{
-		Subject: pkix.Name{
-			CommonName:         es.Name + "-transport",
-			OrganizationalUnit: []string{es.Name},
-		},
-		ExpireIn: &validity,
-	})
-	require.NoError(t, err)
-	transportCAKeyPEM, err := certificates.EncodePEMPrivateKey(transportCA.PrivateKey)
-	require.NoError(t, err)
-	transportCACertPEM := certificates.EncodePEMCert(transportCA.Cert.Raw)
-
-	secrets := make(map[string]corev1.Secret)
-
-	// HTTP CA internal
-	secrets[certificates.CAInternalSecretName(esv1.ESNamer, es.Name, certificates.HTTPCAType)] = corev1.Secret{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:            certificates.CAInternalSecretName(esv1.ESNamer, es.Name, certificates.HTTPCAType),
-			Namespace:       es.Namespace,
-			ResourceVersion: resourceVersion,
-			Labels:          labels,
-		},
-		Data: map[string][]byte{
-			certificates.CertFileName: httpCAPEM,
-			certificates.KeyFileName:  httpCAKeyPEM,
-		},
-	}
-
-	// HTTP internal certs (CA + leaf chain and key)
-	secrets[certificates.InternalCertsSecretName(esv1.ESNamer, es.Name)] = corev1.Secret{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:            certificates.InternalCertsSecretName(esv1.ESNamer, es.Name),
-			Namespace:       es.Namespace,
-			ResourceVersion: resourceVersion,
-			Labels:          labels,
-		},
-		Data: map[string][]byte{
-			certificates.CAFileName:   httpCAPEM,
-			certificates.CertFileName: httpLeafPEM,
-			certificates.KeyFileName:  httpLeafKeyPEM,
-		},
-	}
-
-	// HTTP public certs (CA + leaf chain, no key)
-	secrets[certificates.PublicCertsSecretName(esv1.ESNamer, es.Name)] = corev1.Secret{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:            certificates.PublicCertsSecretName(esv1.ESNamer, es.Name),
-			Namespace:       es.Namespace,
-			ResourceVersion: resourceVersion,
-			Labels:          labels,
-		},
-		Data: map[string][]byte{
-			certificates.CAFileName:   httpCAPEM,
-			certificates.CertFileName: httpLeafPEM,
-		},
-	}
-
-	// Transport CA internal
-	secrets[certificates.CAInternalSecretName(esv1.ESNamer, es.Name, certificates.TransportCAType)] = corev1.Secret{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:            certificates.CAInternalSecretName(esv1.ESNamer, es.Name, certificates.TransportCAType),
-			Namespace:       es.Namespace,
-			ResourceVersion: resourceVersion,
-			Labels:          labels,
-		},
-		Data: map[string][]byte{
-			certificates.CertFileName: transportCACertPEM,
-			certificates.KeyFileName:  transportCAKeyPEM,
-		},
-	}
-
-	// Transport certs public (CA only)
-	secrets[certificates.PublicTransportCertsSecretName(esv1.ESNamer, es.Name)] = corev1.Secret{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:            certificates.PublicTransportCertsSecretName(esv1.ESNamer, es.Name),
-			Namespace:       es.Namespace,
-			ResourceVersion: resourceVersion,
-			Labels:          labels,
-		},
-		Data: map[string][]byte{
-			certificates.CAFileName: transportCACertPEM,
-		},
-	}
-
-	var remoteCAData []byte
-	if numRemoteCAs > 0 {
-		remoteCAs := mustGenerateRemoteCASecrets(t, es.Namespace, es.Name, numRemoteCAs)
-		allRemoteCAData := make([][]byte, 0, len(remoteCAs))
-		for _, remoteCA := range remoteCAs {
-			remoteCASecret, ok := remoteCA.(*corev1.Secret)
-			require.True(t, ok, "remote CA [%s] is not a corev1.Secret", remoteCA.GetName())
-			secrets[remoteCASecret.Name] = *remoteCASecret
-			allRemoteCAData = append(allRemoteCAData, remoteCASecret.Data[certificates.CAFileName])
-		}
-		remoteCAData = bytes.Join(allRemoteCAData, nil)
-	} else {
-		// Remote CA secret - when no remote clusters, contains transport CA (remoteca.Reconcile)
-		remoteCAData = transportCACertPEM
-	}
-
-	// Remote CA (concatenated remote CAs or self transport CA when none)
-	remoteCAName := esv1.RemoteCaSecretName(es.Name)
-	secrets[remoteCAName] = corev1.Secret{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:            remoteCAName,
-			Namespace:       es.Namespace,
-			ResourceVersion: resourceVersion,
-			Labels:          labels,
-		},
-		Data: map[string][]byte{
-			certificates.CAFileName: remoteCAData,
-		},
-	}
-
-	return secrets
 }
 
 func mustGenerateRemoteCASecrets(t *testing.T, namespace, name string, quantity int) []client.Object {
@@ -786,23 +839,24 @@ func mustGenerateRemoteCASecrets(t *testing.T, namespace, name string, quantity 
 		ca, err := certificates.NewSelfSignedCA(certificates.CABuilderOptions{
 			Subject: pkix.Name{
 				CommonName:         fmt.Sprintf("%s-remote-ca-%d", name, i),
-				OrganizationalUnit: []string{name},
+				OrganizationalUnit: []string{fmt.Sprintf("%s-%d", name, i)},
 			},
 			ExpireIn: &validity,
 		})
 		require.NoError(t, err, "error generating remote CA")
+		caCertPEM := certificates.EncodePEMCert(ca.Cert.Raw)
 
 		secretsToCreate[i] = &corev1.Secret{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      fmt.Sprintf("remote-ca-%s-%d", name, i),
 				Namespace: namespace,
 				Labels: map[string]string{
-					label.ClusterNameLabelName:   name,
-					"common.k8s.elastic.co/type": "remote-ca",
+					label.ClusterNameLabelName: name,
+					commonv1.TypeLabelName:     "remote-ca",
 				},
 			},
 			Data: map[string][]byte{
-				certificates.CAFileName: ca.Cert.Raw,
+				certificates.CAFileName: caCertPEM,
 			},
 		}
 	}
@@ -837,6 +891,7 @@ func newService(es *esv1.Elasticsearch, st serviceType, resourceVersion string) 
 }
 
 func mustBuildNewPod(t *testing.T, es *esv1.Elasticsearch, addr net.Addr, version string) *corev1.Pod {
+	t.Helper()
 	ip := strings.Split(addr.String(), ":")[0]
 	podName := fmt.Sprintf("%s-%s", es.Name, uuid.NewUUID()[:6])
 	statefulSetName := es.Labels[label.StatefulSetNameLabelName]
@@ -891,6 +946,15 @@ func newOwnerReference(es *esv1.Elasticsearch) []metav1.OwnerReference {
 	}}
 }
 
+type expectedCertData map[string][]certData
+
+type certData struct {
+	issuer   pkix.Name
+	subject  pkix.Name
+	isCA     bool
+	dnsNames []string
+}
+
 const staticPassword = "password"
 
 type staticPasswordGenerator struct{}
@@ -932,7 +996,10 @@ func mustBuildParams(t *testing.T, listeningServer *httptest.Server, ver string,
 		urlProvider = esclient.NewStaticURLProvider(listeningServer.URL) // required to get a response from the mock server
 	}
 
-	baselineObjects := append(mustGenerateRemoteCASecrets(t, baseStatefulElasticsearch.Namespace, baseStatefulElasticsearch.Name, numRemoteCAs), newServiceAccountTokenSecret(&baseStatefulElasticsearch))
+	remoteCAs := mustGenerateRemoteCASecrets(t, baseStatefulElasticsearch.Namespace, baseStatefulElasticsearch.Name, numRemoteCAs)
+	serviceAccountSecret := newServiceAccountTokenSecret(&baseStatefulElasticsearch)
+
+	baselineObjects := append(remoteCAs, serviceAccountSecret)
 	initK8sObjects = append(initK8sObjects, baselineObjects...)
 
 	k8sClient := k8s.NewFakeClient(initK8sObjects...)
