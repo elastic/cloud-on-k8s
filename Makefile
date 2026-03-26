@@ -92,20 +92,22 @@ go-build: go-generate
 go-build: export CGO_ENABLED=0
 go-build: go-build-elastic-operator
 
+# If GOFIPS140 or runtime.godebugDefault=fips140 value is changed,
+# the .buildkite/scripts/build/verify-fips-binary.sh should be adjusted accordingly.
 go-build-fips: go-generate
 go-build-fips: export CGO_ENABLED=0
 go-build-fips: export GOFIPS140=v1.0.0
 go-build-fips: GO_LDFLAGS_EXTRA=-X runtime.godebugDefault=fips140=on
 go-build-fips: go-build-elastic-operator
 go-build-fips:
-	./.buildkite/scripts/build/verify-fips.sh native ./elastic-operator
+	./.buildkite/scripts/build/verify-fips-binary.sh native ./elastic-operator
 
 go-build-fips-boringcrypto: go-generate
 go-build-fips-boringcrypto: export CGO_ENABLED=1
 go-build-fips-boringcrypto: export GOEXPERIMENT=boringcrypto
 go-build-fips-boringcrypto: go-build-elastic-operator
 go-build-fips-boringcrypto:
-	./.buildkite/scripts/build/verify-fips.sh boringcrypto ./elastic-operator
+	./.buildkite/scripts/build/verify-fips-binary.sh boringcrypto ./elastic-operator
 
 reattach-pv:
 	# just check that reattach-pv still compiles

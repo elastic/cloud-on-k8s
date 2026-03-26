@@ -122,7 +122,7 @@ main() {
             # TODO: when golang native FIPS is certified, replace this recipe with `go-build-fips`
             make_build_recipe='go-build-fips-boringcrypto'
 
-            # if the image is fips && non-ubi, we need the dynamic stage of docker file.
+            # if the image is FIPS && non-ubi, we need the dynamic stage of docker file.
             # This should be removed once the golang native FIPS gets certified.
             if [[ ! "$flavor" =~ -ubi ]]; then
                 image_target='dynamic'
