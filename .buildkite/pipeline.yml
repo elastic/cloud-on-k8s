@@ -86,7 +86,7 @@ steps:
     commands:
       - .buildkite/scripts/build/image-verify.sh
     agents:
-      image: docker.elastic.co/ci-agent-images/cloud-k8s-operator/buildkite-agent:5b4d55c2
+      image: "docker.elastic.co/ci-agent-images/serverless-docker-builder:0.11.0@sha256:b59bd1dea06b89a7e5767724bebba04f73ccb21b05b0f028efe40aa701b55621"
 
 
   - group: build e2e-tests
