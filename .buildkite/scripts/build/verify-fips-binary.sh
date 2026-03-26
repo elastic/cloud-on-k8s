@@ -43,7 +43,7 @@ fi
 
 if [[ "${fips_type}" == "boringcrypto" ]]; then
   go_ver_output=$(go version -m "${binary}" 2>&1)
-  if [[ "${go_ver_output}" != *'-X:boringcrypto'* ]]; then
+  if [[ "${go_ver_output}" != *'X:boringcrypto'* ]]; then
     echo "FAIL: binary does not have boringcrypto in golang version string" >&2
     rc=1
   fi
