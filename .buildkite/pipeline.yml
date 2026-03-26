@@ -78,6 +78,17 @@ steps:
           RECURSIVE: true
           SIGN_IMAGES: false
 
+
+  - label: ":buildkite: verify images"
+    key: "operator-image-verify-step"
+    depends_on:
+      - "operator-image-build"
+    commands:
+      - .buildkite/scripts/build/image-verify.sh
+    agents:
+      provider: "gcp"
+
+
   - group: build e2e-tests
     key: "e2e-tests-image-build"
     steps:
