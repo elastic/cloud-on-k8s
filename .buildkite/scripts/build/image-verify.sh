@@ -8,7 +8,7 @@ set -euo pipefail
 
 main() {
   local images
-  images=$(buildkite-agent meta-data get images-to-sign)
+  images=$(buildkite-agent meta-data get images-to-scan)
   for img in ${images}; do
     echo "=============================================="
     echo "Verifying: ${img}"
