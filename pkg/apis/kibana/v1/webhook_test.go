@@ -285,6 +285,21 @@ func TestWebhook(t *testing.T) {
 			),
 		},
 		{
+			Name:      "deprecated-version-invalid-es-ref-warning-and-denial",
+			Operation: admissionv1.Create,
+			Object: func(t *testing.T, uid string) []byte {
+				t.Helper()
+				kb := mkKibana(uid)
+				kb.Spec.Version = "7.10.0"
+				kb.Spec.ElasticsearchRef = commonv1.ObjectSelector{SecretName: "esname", Name: "esname"}
+				return test.MustMarshalJSON(t, kb)
+			},
+			Check: test.ValidationWebhookFailedWithWarnings(
+				[]string{`spec.elasticsearchRef: Forbidden: Invalid association reference: specify name or secretName, not both`},
+				[]string{`Version 7.10.0 is EOL and support for it will be removed in a future release of the ECK operator`},
+			),
+		},
+		{
 			Name:      "invalid-secret-es-ref-secret-and-namespace",
 			Operation: admissionv1.Create,
 			Object: func(t *testing.T, uid string) []byte {

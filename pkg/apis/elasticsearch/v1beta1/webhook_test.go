@@ -121,6 +121,25 @@ func TestWebhook(t *testing.T) {
 			),
 		},
 		{
+			Name:      "create-deprecated-version-unsupported-setting-multiple-warnings",
+			Operation: admissionv1.Create,
+			Object: func(t *testing.T, uid string) []byte {
+				t.Helper()
+				es := mkElasticsearch(uid)
+				es.Spec.Version = "7.10.0"
+				es.Spec.NodeSets[0].Config = &commonv1beta1.Config{
+					Data: map[string]any{
+						esv1beta1.ClusterInitialMasterNodes: "foo",
+					},
+				}
+				return test.MustMarshalJSON(t, es)
+			},
+			Check: test.ValidationWebhookSucceededWithWarnings(
+				`spec\.nodeSets\[0\]\.config\.cluster\.initial_master_nodes`,
+				`Version 7.10.0 is EOL and support for it will be removed in a future release of the ECK operator`,
+			),
+		},
+		{
 			Name:      "create-conflicting-dotted-config-denied",
 			Operation: admissionv1.Create,
 			Object: func(t *testing.T, uid string) []byte {
@@ -135,6 +154,26 @@ func TestWebhook(t *testing.T) {
 				return test.MustMarshalJSON(t, es)
 			},
 			Check: test.ValidationWebhookFailed(`Configuration invalid`),
+		},
+		{
+			Name:      "create-deprecated-version-conflicting-config-warning-and-denial",
+			Operation: admissionv1.Create,
+			Object: func(t *testing.T, uid string) []byte {
+				t.Helper()
+				es := mkElasticsearch(uid)
+				es.Spec.Version = "7.10.0"
+				es.Spec.NodeSets[0].Config = &commonv1beta1.Config{
+					Data: map[string]any{
+						"a":   map[string]any{"b": 1},
+						"a.b": 2,
+					},
+				}
+				return test.MustMarshalJSON(t, es)
+			},
+			Check: test.ValidationWebhookFailedWithWarnings(
+				[]string{`Configuration invalid`},
+				[]string{`Version 7.10.0 is EOL and support for it will be removed in a future release of the ECK operator`},
+			),
 		},
 		{
 			Name:      "create-no-master",

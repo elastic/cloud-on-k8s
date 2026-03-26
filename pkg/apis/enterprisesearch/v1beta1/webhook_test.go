@@ -59,6 +59,21 @@ func TestWebhook(t *testing.T) {
 			),
 		},
 		{
+			Name:      "deprecated-version-long-name-warning-and-denial",
+			Operation: admissionv1.Create,
+			Object: func(t *testing.T, uid string) []byte {
+				t.Helper()
+				ent := mkEnterpriseSearch(uid)
+				ent.Spec.Version = "7.10.0"
+				ent.SetName(strings.Repeat("x", 100))
+				return test.MustMarshalJSON(t, ent)
+			},
+			Check: test.ValidationWebhookFailedWithWarnings(
+				[]string{`metadata.name: Too long: may not be more than 36 bytes`},
+				[]string{`Version 7.10.0 is EOL and support for it will be removed in a future release of the ECK operator`},
+			),
+		},
+		{
 			Name:      "invalid-version",
 			Operation: admissionv1.Create,
 			Object: func(t *testing.T, uid string) []byte {

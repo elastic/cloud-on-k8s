@@ -182,6 +182,27 @@ func TestWebhook(t *testing.T) {
 				[]string{`Version 7.10.0 is EOL and support for it will be removed in a future release of the ECK operator`},
 			),
 		},
+		{
+			Name:      "update-downgrade-and-default-errors",
+			Operation: admissionv1.Update,
+			OldObject: func(t *testing.T, uid string) []byte {
+				t.Helper()
+				a := mkAgent(uid)
+				a.Spec.Version = "8.10.0"
+				return test.MustMarshalJSON(t, a)
+			},
+			Object: func(t *testing.T, uid string) []byte {
+				t.Helper()
+				a := mkAgent(uid)
+				a.Spec.Version = "8.0.0"
+				a.Spec.Deployment = &agentv1alpha1.DeploymentSpec{}
+				return test.MustMarshalJSON(t, a)
+			},
+			Check: test.ValidationWebhookFailed(
+				`spec.version: Forbidden: Version downgrades are not supported`,
+				`Specify at most one of \[daemonSet, deployment\]`,
+			),
+		},
 	}
 
 	handler := test.NewValidationWebhookHandler(agentv1alpha1.Validate)

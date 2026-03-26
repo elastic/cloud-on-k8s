@@ -103,14 +103,9 @@ func (v *ResourceValidator[T]) preValidate(ctx context.Context, obj T) (skip boo
 		// no further warnings/errors from validations are returned.
 		errorList := hasRequestedLicenseLevel(ctx, obj, v.licenseChecker)
 		if len(errorList) > 0 {
-			req, reqErr := admission.RequestFromContext(ctx)
-			if reqErr != nil {
-				return false, apierrors.NewInvalid(schema.GroupKind{}, name, errorList)
-			}
-			return false, apierrors.NewInvalid(schema.GroupKind{
-				Group: req.Kind.Group,
-				Kind:  req.Kind.Kind,
-			}, req.Name, errorList)
+			gvk := obj.GetObjectKind().GroupVersionKind()
+			gk := schema.GroupKind{Group: gvk.Group, Kind: gvk.Kind}
+			return false, apierrors.NewInvalid(gk, name, errorList)
 		}
 	}
 
