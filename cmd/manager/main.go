@@ -6,12 +6,14 @@ package manager
 
 import (
 	"context"
+	"crypto/fips140"
 	"errors"
 	"fmt"
 	"net/http"
 	"net/http/pprof"
 	"os"
 	"path/filepath"
+	"runtime/debug"
 	"strconv"
 	"strings"
 	"time"
@@ -447,6 +449,7 @@ func doRun(_ *cobra.Command, _ []string) error {
 
 func startOperator(ctx context.Context) error {
 	log.V(1).Info("Effective configuration", "values", viper.AllSettings())
+	fipsLog()
 
 	// update GOMAXPROCS to container cpu limit if necessary
 	_, err := maxprocs.Set(maxprocs.Logger(func(s string, i ...interface{}) {
@@ -1137,4 +1140,28 @@ func reconcileWebhookCertsAndAddController(ctx context.Context, mgr manager.Mana
 	}
 
 	return webhook.Add(mgr, webhookParams, clientset, wh, tracer)
+}
+
+func fipsLog() {
+	if buildInfo, buildInfoOK := debug.ReadBuildInfo(); buildInfoOK {
+		for _, s := range buildInfo.Settings {
+			if s.Key != "GOEXPERIMENT" {
+				continue
+			}
+			if strings.Contains(s.Value, "boringcrypto") {
+				log.Info("operator runs in FIPS mode", "type", "boringcrypto")
+				return
+			}
+			break
+		}
+	}
+
+	if fips140.Enabled() {
+		// when go.mod bumps to go 1.26 and later fips140.Enforced() and fips140.Version()
+		// can also be added to log.
+		log.Info("operator runs in FIPS mode", "type", "native")
+		return
+	}
+
+	log.Info("operator runs without FIPS mode")
 }
