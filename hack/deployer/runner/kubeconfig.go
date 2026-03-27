@@ -28,15 +28,19 @@ func mergeKubeconfig(kubeConfig string) error {
 		// if no just copy it over
 		return copyFile(kubeConfig, hostKubeconfig)
 	}
-	// 3. merge: load both configs and upsert new entries into existing ones.
-	// New entries take precedence for same-named clusters/users/contexts (e.g. a
-	// recreated kind cluster now listening on a different port).
+	// 3. merge and write back atomically.
 	log.Printf("Merging kubeconfig %s into %s", kubeConfig, hostKubeconfig)
-	newCfg, err := clientcmd.LoadFromFile(kubeConfig)
+	return mergeKubeconfigFiles(kubeConfig, hostKubeconfig)
+}
+
+// mergeKubeconfigFiles loads both kubeconfig files, upserts new entries into existing ones
+// (new entries take precedence for same-named clusters/users/contexts), and writes back atomically.
+func mergeKubeconfigFiles(newPath, existingPath string) error {
+	newCfg, err := clientcmd.LoadFromFile(newPath)
 	if err != nil {
 		return err
 	}
-	existingCfg, err := clientcmd.LoadFromFile(hostKubeconfig)
+	existingCfg, err := clientcmd.LoadFromFile(existingPath)
 	if err != nil {
 		return err
 	}
@@ -45,12 +49,11 @@ func mergeKubeconfig(kubeConfig string) error {
 	maps.Copy(existingCfg.Contexts, newCfg.Contexts)
 	existingCfg.CurrentContext = newCfg.CurrentContext
 
-	// 4. write back atomically via a temp file + rename to avoid partial-write corruption.
 	data, err := clientcmd.Write(*existingCfg)
 	if err != nil {
 		return err
 	}
-	tmp, err := os.CreateTemp(filepath.Dir(hostKubeconfig), "kubeconfig-tmp")
+	tmp, err := os.CreateTemp(filepath.Dir(existingPath), "kubeconfig-tmp")
 	if err != nil {
 		return err
 	}
@@ -66,7 +69,7 @@ func mergeKubeconfig(kubeConfig string) error {
 		os.Remove(tmp.Name())
 		return err
 	}
-	return os.Rename(tmp.Name(), hostKubeconfig)
+	return os.Rename(tmp.Name(), existingPath)
 }
 
 func removeKubeconfig(context, clusterName, userName string) error {
