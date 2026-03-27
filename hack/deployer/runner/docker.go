@@ -5,13 +5,14 @@
 package runner
 
 import (
+	"context"
 	"fmt"
 	"os/exec"
 )
 
 // checkDockerAvailable verifies that the Docker daemon is reachable.
 func checkDockerAvailable() error {
-	if err := exec.Command("docker", "info").Run(); err != nil {
+	if err := exec.CommandContext(context.Background(), "docker", "info").Run(); err != nil {
 		return fmt.Errorf("docker not available (is the daemon running?): %w", err)
 	}
 	return nil
