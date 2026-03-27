@@ -8,6 +8,7 @@ import (
 	"errors"
 	"fmt"
 	"log"
+	"maps"
 	"os"
 	"path/filepath"
 
@@ -39,15 +40,9 @@ func mergeKubeconfig(kubeConfig string) error {
 	if err != nil {
 		return err
 	}
-	for k, v := range newCfg.Clusters {
-		existingCfg.Clusters[k] = v
-	}
-	for k, v := range newCfg.AuthInfos {
-		existingCfg.AuthInfos[k] = v
-	}
-	for k, v := range newCfg.Contexts {
-		existingCfg.Contexts[k] = v
-	}
+	maps.Copy(existingCfg.Clusters, newCfg.Clusters)
+	maps.Copy(existingCfg.AuthInfos, newCfg.AuthInfos)
+	maps.Copy(existingCfg.Contexts, newCfg.Contexts)
 	existingCfg.CurrentContext = newCfg.CurrentContext
 
 	// 4. write back atomically via a temp file + rename to avoid partial-write corruption.
