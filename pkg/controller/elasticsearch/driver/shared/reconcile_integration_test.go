@@ -140,7 +140,7 @@ func TestReconcileSharedResources(t *testing.T) {
 			},
 			expectedCerts:      buildExpectedCertData(baseStatefulElasticsearch, 0),
 			expectedSecrets:    mustBuildExpectedSecrets(t, &baseStatefulElasticsearch, "1"),
-			expectedConfigMaps: mustGetExpectedConfigMaps(t, &baseStatefulElasticsearch, "1", esServer),
+			expectedConfigMaps: mustBuildExpectedConfigMaps(t, &baseStatefulElasticsearch, "1", esServer),
 			expectedState: &ReconcileState{
 				Meta: metadata.Metadata{
 					Labels: map[string]string{
@@ -174,7 +174,7 @@ func TestReconcileSharedResources(t *testing.T) {
 			},
 			expectedCerts:      buildExpectedCertData(baseStatefulElasticsearch, 1),
 			expectedSecrets:    mustBuildExpectedSecrets(t, &baseStatefulElasticsearch, "1"),
-			expectedConfigMaps: mustGetExpectedConfigMaps(t, &baseStatefulElasticsearch, "1", esServer),
+			expectedConfigMaps: mustBuildExpectedConfigMaps(t, &baseStatefulElasticsearch, "1", esServer),
 			expectedState: &ReconcileState{
 				Meta: metadata.Metadata{
 					Labels: map[string]string{
@@ -214,7 +214,7 @@ func TestReconcileSharedResources(t *testing.T) {
 			},
 			expectedCerts:      buildExpectedCertData(baseStatefulElasticsearch, 0),
 			expectedSecrets:    mustBuildExpectedSecrets(t, &baseStatefulElasticsearch, "1"),
-			expectedConfigMaps: mustGetExpectedConfigMaps(t, &baseStatefulElasticsearch, "1", esServer),
+			expectedConfigMaps: mustBuildExpectedConfigMaps(t, &baseStatefulElasticsearch, "1", esServer),
 			expectedState: &ReconcileState{
 				Meta: metadata.Metadata{
 					Labels: map[string]string{
@@ -241,7 +241,7 @@ func TestReconcileSharedResources(t *testing.T) {
 			},
 			expectedCerts:      buildExpectedCertData(baseStatefulElasticsearch, 0),
 			expectedSecrets:    mustBuildExpectedSecrets(t, &baseStatefulElasticsearch, "1"),
-			expectedConfigMaps: mustGetExpectedConfigMaps(t, &baseStatefulElasticsearch, "1", nil),
+			expectedConfigMaps: mustBuildExpectedConfigMaps(t, &baseStatefulElasticsearch, "1", nil),
 			expectedState: &ReconcileState{
 				Meta: metadata.Metadata{
 					Labels: map[string]string{
@@ -269,7 +269,7 @@ func TestReconcileSharedResources(t *testing.T) {
 			},
 			expectedCerts:      buildExpectedCertData(baseStatefulElasticsearch, 0),
 			expectedSecrets:    mustBuildExpectedSecrets(t, &baseStatefulElasticsearch, "1"),
-			expectedConfigMaps: mustGetExpectedConfigMaps(t, &baseStatefulElasticsearch, "1", esServer),
+			expectedConfigMaps: mustBuildExpectedConfigMaps(t, &baseStatefulElasticsearch, "1", esServer),
 			expectedState: &ReconcileState{
 				Meta: metadata.Metadata{
 					Labels: map[string]string{
@@ -303,7 +303,7 @@ func TestReconcileSharedResources(t *testing.T) {
 				return baseSecrets
 			}(),
 			expectedConfigMaps: func() map[string]corev1.ConfigMap {
-				defaultConfigMaps := mustGetExpectedConfigMaps(t, &baseStatefulElasticsearch, "1", esServer)
+				defaultConfigMaps := mustBuildExpectedConfigMaps(t, &baseStatefulElasticsearch, "1", esServer)
 				delete(defaultConfigMaps, esv1.UnicastHostsConfigMap(clusterName))
 				return defaultConfigMaps
 			}(),
@@ -610,13 +610,6 @@ func mustGetClientCerts(t *testing.T, client k8s.Client, es esv1.Elasticsearch) 
 	return clientCerts
 }
 
-// isCertOrCaSecret returns true for secrets whose Data is generated at reconciliation time
-// and cannot be matched byte-for-byte, such as certificate secrets.
-func isCertOrCaSecret(secretName string) bool {
-	return strings.Contains(secretName, "-ca") ||
-		strings.Contains(secretName, "-certs")
-}
-
 func assertCertificatesEqual(t *testing.T, expected expectedCertData, actual corev1.Secret) {
 	assert.Lenf(t, actual.Data, len(expected), "secret [%s] Data has unexpected number of items", actual.Name)
 	for name, cert := range actual.Data {
@@ -692,7 +685,7 @@ func newServiceAccountTokenSecret(es *esv1.Elasticsearch) *corev1.Secret {
 	}
 }
 
-func mustGetExpectedConfigMaps(t *testing.T, es *esv1.Elasticsearch, resourceVersion string, esServer *httptest.Server) map[string]corev1.ConfigMap {
+func mustBuildExpectedConfigMaps(t *testing.T, es *esv1.Elasticsearch, resourceVersion string, esServer *httptest.Server) map[string]corev1.ConfigMap {
 	t.Helper()
 	labels := label.NewLabels(types.NamespacedName{
 		Namespace: es.Namespace,
@@ -762,7 +755,6 @@ func mustBuildExpectedSecrets(t *testing.T, es *esv1.Elasticsearch, resourceVers
 	fileSettingsData, err := json.Marshal(fileSettings)
 	require.NoError(t, err, "error marshalling file-settings")
 
-	filerealm.New()
 	result := map[string]corev1.Secret{
 		serviceAccountTokenSecret.Name: *serviceAccountTokenSecret,
 		esv1.RolesAndFileRealmSecret(es.Name): {
