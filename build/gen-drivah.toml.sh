@@ -40,6 +40,8 @@ generate_drivah_config() {
     local tag=$2
     local go_tags=$3
     local license_pubkey=$4
+    local make_build_recipe=$5
+    local image_target=$6
 
     # add 'stable' tag without sha1 for snapshots
     if [[ "$tag" =~ "SNAPSHOT" ]]; then
@@ -61,6 +63,13 @@ SHA1 = "${SHA1}"
 GO_TAGS = "${go_tags}"
 SNAPSHOT = "${SNAPSHOT}"
 LICENSE_PUBKEY = "$license_pubkey"
+MAKE_BUILD_RECIPE = "${make_build_recipe}"
+
+[docker]
+build_flags = ["--target=${image_target}"]
+
+[buildah]
+build_flags = ["--target=${image_target}"]
 END
 }
 
@@ -83,9 +92,10 @@ main() {
     IFS=","; for flavor in $BUILD_FLAVORS; do
 
         # default vars reset at each iteration
-        container_file_path=$HERE/Dockerfile
         go_tags=$GO_TAGS
         license_pubkey=$LICENSE_PUBKEY
+        make_build_recipe='go-build'
+        image_target='static'
 
         name="$IMAGE_NAME"
         tag="$IMAGE_TAG"
@@ -97,19 +107,26 @@ main() {
         fi
         # DEV license public key build
         if [[ "$flavor" =~ -dev ]]; then
-                tag="$tag-dev"
-                license_pubkey=dev-license.key
-                BUILD_LICENSE_PUBKEY=dev
+            tag="$tag-dev"
+            license_pubkey=dev-license.key
+            BUILD_LICENSE_PUBKEY=dev
         fi
         # UBI build
         if [[ "$flavor" =~ -ubi ]]; then
-                name="$name-ubi"
-                container_file_path=$HERE/Dockerfile-ubi
+            name="$name-ubi"
+            image_target='ubi'
         fi
         # FIPS build
         if [[ "$flavor" =~ -fips ]]; then
-                name="$name-fips"
-                go_tags="$go_tags,goexperiment.boringcrypto"
+            name="$name-fips"
+            # TODO: when golang native FIPS is certified, replace this recipe with `go-build-fips`
+            make_build_recipe='go-build-fips-boringcrypto'
+
+            # if the image is FIPS && non-ubi, we need the dynamic stage of docker file.
+            # This should be removed once the golang native FIPS gets certified.
+            if [[ ! "$flavor" =~ -ubi ]]; then
+                image_target='dynamic'
+            fi
         fi
 
         # write the image name with the latest stable tag (except the 'dev' flavor) for CVE scan
@@ -130,8 +147,8 @@ main() {
         # generate drivah.toml and copy Dockerfile
         echo "# -- build: $name:$tag"
         mkdir -p "$HERE/$flavor"
-        generate_drivah_config "$name" "$tag" "$go_tags" "$license_pubkey" > "$HERE/$flavor/drivah.toml"
-        cp -f "$container_file_path" "$HERE/$flavor/Dockerfile"
+        generate_drivah_config "$name" "$tag" "$go_tags" "$license_pubkey" "$make_build_recipe" "$image_target" > "$HERE/$flavor/drivah.toml"
+        cp -f "${HERE}/Dockerfile" "$HERE/$flavor/Dockerfile"
 
     done
 
