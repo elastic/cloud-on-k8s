@@ -5,26 +5,26 @@
 package runner
 
 import (
-	"errors"
 	"os"
+	"os/exec"
+	"strings"
 )
 
 const defaultDockerSocket = "/var/run/docker.sock"
 
-var homeDockerSocket = os.ExpandEnv("${HOME}/.docker/run/docker.sock")
-
 func getDockerSocket() (string, error) {
-	sck, err := followLink(defaultDockerSocket)
-	if err == nil { // if *not* error, return the socket
-		return sck, nil
+	// Ask the Docker CLI for the active context endpoint, which covers Docker Desktop,
+	// Colima, Rancher Desktop, etc. without hardcoding runtime-specific paths.
+	out, err := exec.Command("docker", "context", "inspect", "--format", "{{.Endpoints.docker.Host}}").Output()
+	if err == nil {
+		// Strip the unix:// scheme to get the raw path.
+		path := strings.TrimPrefix(strings.TrimSpace(string(out)), "unix://")
+		if path != "" {
+			return followLink(path)
+		}
 	}
-
-	hsc, hErr := followLink(homeDockerSocket)
-	if hErr != nil {
-		return "", errors.Join(err, hErr)
-	}
-
-	return hsc, nil
+	// Fall back to the default socket location (typical in CI and Linux environments).
+	return followLink(defaultDockerSocket)
 }
 
 func followLink(path string) (string, error) {
