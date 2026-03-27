@@ -71,7 +71,7 @@ type KindDriverFactory struct{}
 var _ DriverFactory = (*KindDriverFactory)(nil)
 
 func (k KindDriverFactory) Create(plan Plan) (Driver, error) {
-	if _, err := getDockerSocket(); err != nil {
+	if err := checkDockerAvailable(); err != nil {
 		return nil, err
 	}
 	return &KindDriver{

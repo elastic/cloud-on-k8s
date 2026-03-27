@@ -5,38 +5,14 @@
 package runner
 
 import (
-	"os"
+	"fmt"
 	"os/exec"
-	"strings"
 )
 
-const defaultDockerSocket = "/var/run/docker.sock"
-
-func getDockerSocket() (string, error) {
-	// Ask the Docker CLI for the active context endpoint, which covers Docker Desktop,
-	// Colima, Rancher Desktop, etc. without hardcoding runtime-specific paths.
-	out, err := exec.Command("docker", "context", "inspect", "--format", "{{.Endpoints.docker.Host}}").Output()
-	if err == nil {
-		// Strip the unix:// scheme to get the raw path.
-		path := strings.TrimPrefix(strings.TrimSpace(string(out)), "unix://")
-		if path != "" {
-			return followLink(path)
-		}
+// checkDockerAvailable verifies that the Docker daemon is reachable.
+func checkDockerAvailable() error {
+	if err := exec.Command("docker", "info").Run(); err != nil {
+		return fmt.Errorf("docker not available (is the daemon running?): %w", err)
 	}
-	// Fall back to the default socket location (typical in CI and Linux environments).
-	return followLink(defaultDockerSocket)
-}
-
-func followLink(path string) (string, error) {
-	info, err := os.Lstat(path)
-	if err != nil {
-		return path, err
-	}
-
-	// if the file is not link, return the path.
-	if info.Mode()&os.ModeSymlink == 0 {
-		return path, nil
-	}
-
-	return os.Readlink(path)
+	return nil
 }
