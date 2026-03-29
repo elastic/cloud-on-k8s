@@ -19,7 +19,7 @@ import (
 	"go.elastic.co/apm/module/apmhttp/v2"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/types"
-	"k8s.io/client-go/tools/record"
+	toolsevents "k8s.io/client-go/tools/events"
 
 	agentv1alpha1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/agent/v1alpha1"
 	commonv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/common/v1"
@@ -246,9 +246,9 @@ func maybeReconcileFleetEnrollment(params Params, result *reconciler.Results) En
 	}
 	if !reachable {
 		// we requeue if Kibana is unavailable: surface this condition to the user
-		message := "Delaying deployment of Elastic Agent in Fleet Mode as Kibana is not available yet"
+		const message = "Delaying deployment of Elastic Agent in Fleet Mode as Kibana is not available yet"
 		log.Info(message)
-		params.EventRecorder.Event(&params.Agent, corev1.EventTypeWarning, events.EventReasonDelayed, message)
+		k8s.EmitEvent(params.EventRecorder, &params.Agent, corev1.EventTypeWarning, events.EventReasonDelayed, events.EventActionAccessCheck, message)
 		result.WithRequeue()
 		return EnrollmentAPIKey{}
 	}
@@ -268,15 +268,15 @@ func maybeReconcileFleetEnrollment(params Params, result *reconciler.Results) En
 	)
 	switch {
 	case commonhttp.IsUnauthorized(err):
-		message := "ECK cannot setup Fleet enrollment. Waiting for Kibana credentials. This should be a transient issue."
+		const message = "ECK cannot setup Fleet enrollment. Waiting for Kibana credentials. This should be a transient issue."
 		log.V(1).Info(err.Error())
 		log.Info(message)
-		params.EventRecorder.Event(&params.Agent, corev1.EventTypeWarning, events.EventReasonDelayed, message)
+		k8s.EmitEvent(params.EventRecorder, &params.Agent, corev1.EventTypeWarning, events.EventReasonDelayed, events.EventActionAssociationPreconditionCheck, message)
 		result.WithRequeue()
 	case commonhttp.IsNotFound(err):
 		message := fmt.Sprintf("ECK cannot setup Fleet enrollment. This is likely a mis-configuration. %s", err.Error())
 		log.Info(message)
-		params.EventRecorder.Event(&params.Agent, corev1.EventTypeWarning, events.EventReasonUnexpected, message)
+		k8s.EmitEvent(params.EventRecorder, &params.Agent, corev1.EventTypeWarning, events.EventReasonUnexpected, events.EventActionEnrollment, message)
 		result.WithRequeue()
 	case err != nil:
 		result.WithError(err)
@@ -354,11 +354,11 @@ FindOrCreate:
 	return key, nil
 }
 
-func findPolicyID(ctx context.Context, recorder record.EventRecorder, agent agentv1alpha1.Agent, api fleetAPI) (string, error) {
+func findPolicyID(ctx context.Context, recorder toolsevents.EventRecorder, agent agentv1alpha1.Agent, api fleetAPI) (string, error) {
 	if agent.Spec.PolicyID != "" {
 		return agent.Spec.PolicyID, nil
 	}
-	recorder.Event(&agent, corev1.EventTypeWarning, events.EventReasonValidation, agentv1alpha1.MissingPolicyIDMessage)
+	k8s.EmitEvent(recorder, &agent, corev1.EventTypeWarning, events.EventReasonValidation, events.EventActionPolicyRetrieval, agentv1alpha1.MissingPolicyIDMessage)
 	ulog.FromContext(ctx).Info(agentv1alpha1.MissingPolicyIDMessage)
 	if agent.Spec.FleetServerEnabled {
 		return api.defaultFleetServerPolicyID(ctx)

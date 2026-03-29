@@ -191,6 +191,13 @@ rules:
   - get
   - watch
   - list
+- apiGroups: ["events.k8s.io"]
+  resources:
+  - events
+  verbs:
+  - get
+  - watch
+  - list
 - apiGroups: ["coordination.k8s.io"]
   resources:
   - leases

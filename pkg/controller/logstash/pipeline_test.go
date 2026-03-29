@@ -11,7 +11,7 @@ import (
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/client-go/tools/record"
+	toolsevents "k8s.io/client-go/tools/events"
 
 	commonv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/common/v1"
 	logstashv1alpha1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/logstash/v1alpha1"
@@ -102,7 +102,7 @@ func Test_buildPipeline(t *testing.T) {
 			params := Params{
 				Context:       context.Background(),
 				Client:        tt.client,
-				EventRecorder: &record.FakeRecorder{},
+				EventRecorder: &toolsevents.FakeRecorder{},
 				Watches:       watches.NewDynamicWatches(),
 				Logstash: logstashv1alpha1.Logstash{
 					Spec: logstashv1alpha1.LogstashSpec{

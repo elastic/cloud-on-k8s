@@ -20,7 +20,6 @@ import (
 func newElasticsearchClient(
 	ctx context.Context,
 	params driver.Parameters,
-	urlProvider esclient.URLProvider,
 	user esclient.BasicAuth,
 	v version.Version,
 	caCerts []*x509.Certificate,
@@ -29,7 +28,7 @@ func newElasticsearchClient(
 	return esclient.NewElasticsearchClient(
 		params.OperatorParameters.Dialer,
 		k8s.ExtractNamespacedName(&params.ES),
-		urlProvider,
+		params.URLProvider,
 		user,
 		v,
 		caCerts,
@@ -42,16 +41,15 @@ func newElasticsearchClient(
 func elasticsearchClientProvider(
 	ctx context.Context,
 	params driver.Parameters,
-	urlProvider esclient.URLProvider,
 	user esclient.BasicAuth,
 	v version.Version,
 	caCerts []*x509.Certificate,
 	clientCert *tls.Certificate,
 ) func(existingEsClient esclient.Client) esclient.Client {
 	return func(existingEsClient esclient.Client) esclient.Client {
-		if existingEsClient != nil && existingEsClient.HasProperties(v, user, urlProvider, caCerts, clientCert) {
+		if existingEsClient != nil && existingEsClient.HasProperties(v, user, params.URLProvider, caCerts, clientCert) {
 			return existingEsClient
 		}
-		return newElasticsearchClient(ctx, params, urlProvider, user, v, caCerts, clientCert)
+		return newElasticsearchClient(ctx, params, user, v, caCerts, clientCert)
 	}
 }

@@ -5,11 +5,6 @@
 package annotation
 
 const (
-	// CurrAssocStatusAnnotation describes the currently observed association status of an object.
-	CurrAssocStatusAnnotation = "association.k8s.elastic.co/current-status"
-	// PrevAssocStatusAnnotation describes the previously observed association status of an object.
-	PrevAssocStatusAnnotation = "association.k8s.elastic.co/previous-status"
-
 	// UpdateAnnotation is the name of the annotation applied to pods to force kubelet to resync secrets
 	UpdateAnnotation = "update.k8s.elastic.co/timestamp"
 

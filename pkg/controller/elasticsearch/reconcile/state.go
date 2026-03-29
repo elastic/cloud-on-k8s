@@ -165,9 +165,9 @@ func (s *State) UpdateMinRunningVersion(
 
 // UpdateElasticsearchInvalidWithEvent is a convenient method to set the phase to esv1.ElasticsearchResourceInvalid
 // and generate an event at the same time.
-func (s *State) UpdateElasticsearchInvalidWithEvent(msg string) {
+func (s *State) UpdateElasticsearchInvalidWithEvent(action, msg string) {
 	s.status.Phase = esv1.ElasticsearchResourceInvalid
-	s.AddEvent(corev1.EventTypeWarning, events.EventReasonValidation, msg)
+	s.AddEvent(corev1.EventTypeWarning, events.EventReasonValidation, action, msg)
 }
 
 // Apply takes the current Elasticsearch status, compares it to the previous status, and updates the status accordingly.
@@ -180,7 +180,7 @@ func (s *State) Apply() ([]events.Event, *esv1.Elasticsearch) {
 		return s.Events(), nil
 	}
 	if current.IsDegraded(previous) {
-		s.AddEvent(corev1.EventTypeWarning, events.EventReasonUnhealthy, "Elasticsearch cluster health degraded")
+		s.AddEvent(corev1.EventTypeWarning, events.EventReasonUnhealthy, events.EventActionStatusUpdate, "Elasticsearch cluster health degraded")
 	}
 	s.cluster.Status = current
 	return s.Events(), &s.cluster
