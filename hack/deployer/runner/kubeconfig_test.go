@@ -28,16 +28,16 @@ func TestMergeKubeconfigFiles(t *testing.T) {
 					"kind-test": {Server: "https://127.0.0.1:12345"},
 				},
 				AuthInfos:      map[string]*clientcmdapi.AuthInfo{"kind-test": {}},
-				Contexts:        map[string]*clientcmdapi.Context{"kind-test": {Cluster: "kind-test", AuthInfo: "kind-test"}},
-				CurrentContext:  "kind-test",
+				Contexts:       map[string]*clientcmdapi.Context{"kind-test": {Cluster: "kind-test", AuthInfo: "kind-test"}},
+				CurrentContext: "kind-test",
 			},
 			new: &clientcmdapi.Config{
 				Clusters: map[string]*clientcmdapi.Cluster{
 					"kind-test": {Server: "https://127.0.0.1:54321"},
 				},
 				AuthInfos:      map[string]*clientcmdapi.AuthInfo{"kind-test": {}},
-				Contexts:        map[string]*clientcmdapi.Context{"kind-test": {Cluster: "kind-test", AuthInfo: "kind-test"}},
-				CurrentContext:  "kind-test",
+				Contexts:       map[string]*clientcmdapi.Context{"kind-test": {Cluster: "kind-test", AuthInfo: "kind-test"}},
+				CurrentContext: "kind-test",
 			},
 			verify: func(t *testing.T, result *clientcmdapi.Config) {
 				t.Helper()
