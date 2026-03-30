@@ -47,7 +47,7 @@ func (d *Driver) Reconcile(ctx context.Context) *reconciler.Results {
 	}
 
 	if resolvedConfig.ClientAuthenticationOverrideWarning != "" {
-		d.ReconcileState.AddEvent(corev1.EventTypeWarning, events.EventReasonValidation, resolvedConfig.ClientAuthenticationOverrideWarning)
+		d.ReconcileState.AddEvent(corev1.EventTypeWarning, events.EventReasonValidation, events.EventActionValidation, resolvedConfig.ClientAuthenticationOverrideWarning)
 	}
 
 	// Reconcile resources which are common to all drivers.

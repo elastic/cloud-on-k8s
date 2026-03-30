@@ -121,7 +121,6 @@ func ReconcileOperatorClientCertAndTrustBundle(
 
 	operatorClientCertSecret, err := certReconciler.ReconcileOperatorCertificate(ctx)
 	if err != nil {
-		k8s.MaybeEmitErrorEvent(driver.Recorder(), err, es, events.EventReconciliationError, "Client certificate reconciliation error: %v", err)
 		return nil, results.WithError(err)
 	}
 

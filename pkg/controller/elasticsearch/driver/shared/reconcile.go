@@ -166,6 +166,11 @@ func ReconcileSharedResources(
 	operatorClientCert, clientCertResults := certificates.ReconcileOperatorClientCertAndTrustBundle(
 		ctx, d, &es, clientAuthenticationRequired, params.OperatorParameters.CertRotation, meta,
 	)
+	if clientCertResults.HasError() {
+		_, err := clientCertResults.Aggregate()
+		k8s.MaybeEmitErrorEventf(d.Recorder(), err, &es, events.EventReconciliationError, events.EventActionCertificateReconciliation,
+			"Operator client certificate and trust bundle reconciliation error: %v", err)
+	}
 	results.WithResults(clientCertResults)
 
 	// Start the ES observer
