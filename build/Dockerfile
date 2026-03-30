@@ -1,11 +1,13 @@
+# ---------------------------------------------
 # Build the operator binary
-FROM docker.elastic.co/wolfi/go:1.26.1-r1@sha256:876ff1538500be35ac1f71582384fc5f962222547de115386c85dbde55d8d2f8 AS builder
+FROM docker.elastic.co/wolfi/go:1.26.1-r1@sha256:ab19e4d30f60a6f0c21f010bf93c32549d6484571269245a6231032d4cff5972 AS builder
 
 ARG VERSION
 ARG SHA1
 ARG SNAPSHOT
 ARG GO_TAGS
 ARG LICENSE_PUBKEY
+ARG MAKE_BUILD_RECIPE=go-build
 
 WORKDIR /go/src/github.com/elastic/cloud-on-k8s
 
@@ -20,14 +22,16 @@ COPY config/eck.yaml .
 COPY pkg/ pkg/
 COPY cmd/ cmd/
 COPY build/$LICENSE_PUBKEY /$LICENSE_PUBKEY
+COPY .buildkite/scripts/build/verify-fips-binary.sh .buildkite/scripts/build/verify-fips-binary.sh
 
 # Build
 RUN --mount=type=cache,mode=0755,target=/go/pkg/mod \
-      CGO_ENABLED=0 GOOS=linux LICENSE_PUBKEY=/$LICENSE_PUBKEY make go-build
+    GOOS=linux LICENSE_PUBKEY=/$LICENSE_PUBKEY make ${MAKE_BUILD_RECIPE}
+# ---------------------------------------------
 
 # ---------------------------------------------
-# Copy the operator binary into a lighter image
-FROM docker.elastic.co/wolfi/static:latest@sha256:2fdfacc8d61164aa9e20909dceec7cc28b9feb66580e8e1a65b9f2443c53b61b
+# static - Default image for static binary
+FROM docker.elastic.co/wolfi/static:latest@sha256:2fdfacc8d61164aa9e20909dceec7cc28b9feb66580e8e1a65b9f2443c53b61b AS static
 
 ARG VERSION
 
@@ -35,7 +39,7 @@ ARG VERSION
 LABEL io.k8s.description="Elastic Cloud on Kubernetes automates the deployment, provisioning, management, and orchestration of Elasticsearch, Kibana, APM Server, Beats, and Enterprise Search on Kubernetes" \
       io.k8s.display-name="Elastic Cloud on Kubernetes" \
       org.opencontainers.image.authors="eck@elastic.co" \
-      org.opencontainers.image.base.name="gcr.io/distroless/static:nonroot" \
+      org.opencontainers.image.base.name="docker.elastic.co/wolfi/static" \
       org.opencontainers.image.description="Elastic Cloud on Kubernetes automates the deployment, provisioning, management, and orchestration of Elasticsearch, Kibana, APM Server, Beats, and Enterprise Search on Kubernetes" \
       org.opencontainers.image.documentation="https://www.elastic.co/guide/en/cloud-on-k8s/" \
       org.opencontainers.image.licenses="Elastic-License-2.0" \
@@ -53,3 +57,66 @@ COPY *.txt /licenses/
 
 ENTRYPOINT ["/elastic-operator"]
 CMD ["manager"]
+# ---------------------------------------------
+
+# ---------------------------------------------
+# dynamic - Image for non-static binary (FIPS boringcrypto)
+FROM cgr.dev/chainguard/glibc-dynamic:latest@sha256:4fd32c47d5d83cb2bc5045f6d2a76458fb3a68c148ddc32841e452df5afe0279 AS dynamic
+
+ARG VERSION
+
+# Add common ECK labels and OCI annotations to image
+LABEL io.k8s.description="Elastic Cloud on Kubernetes automates the deployment, provisioning, management, and orchestration of Elasticsearch, Kibana, APM Server, Beats, and Enterprise Search on Kubernetes" \
+      io.k8s.display-name="Elastic Cloud on Kubernetes" \
+      org.opencontainers.image.authors="eck@elastic.co" \
+      org.opencontainers.image.base.name="cgr.dev/chainguard/glibc-dynamic" \
+      org.opencontainers.image.description="Elastic Cloud on Kubernetes automates the deployment, provisioning, management, and orchestration of Elasticsearch, Kibana, APM Server, Beats, and Enterprise Search on Kubernetes" \
+      org.opencontainers.image.documentation="https://www.elastic.co/guide/en/cloud-on-k8s/" \
+      org.opencontainers.image.licenses="Elastic-License-2.0" \
+      org.opencontainers.image.source="https://github.com/elastic/cloud-on-k8s/" \
+      org.opencontainers.image.title="Elastic Cloud on Kubernetes" \
+      org.opencontainers.image.vendor="Elastic" \
+      org.opencontainers.image.version="$VERSION" \
+      org.opencontainers.image.url="https://github.com/elastic/cloud-on-k8s/"
+
+COPY --from=builder /go/src/github.com/elastic/cloud-on-k8s/elastic-operator /elastic-operator
+COPY --from=builder /go/src/github.com/elastic/cloud-on-k8s/eck.yaml         /conf/eck.yaml
+
+# Copy NOTICE.txt and LICENSE.txt into the image
+COPY *.txt /licenses/
+
+# This user id aligns with the wolfi/static image.
+USER 65532
+
+ENTRYPOINT ["/elastic-operator"]
+CMD ["manager"]
+# ---------------------------------------------
+
+# ---------------------------------------------
+# ubi - Image that uses ubi-micro as base
+FROM registry.access.redhat.com/ubi9/ubi-micro:9.7-1773894938 AS ubi
+
+ARG VERSION
+
+# Add required ECK labels and override labels from base image
+LABEL name="Elastic Cloud on Kubernetes" \
+      io.k8s.display-name="Elastic Cloud on Kubernetes" \
+      maintainer="eck@elastic.co" \
+      vendor="Elastic" \
+      version="$VERSION" \
+      url="https://www.elastic.co/guide/en/cloud-on-k8s/" \
+      summary="Run Elasticsearch, Kibana, APM Server, Enterprise Search, and Beats on Kubernetes and OpenShift" \
+      description="Elastic Cloud on Kubernetes automates the deployment, provisioning, management, and orchestration of Elasticsearch, Kibana, APM Server, Beats, and Enterprise Search on Kubernetes" \
+      io.k8s.description="Elastic Cloud on Kubernetes automates the deployment, provisioning, management, and orchestration of Elasticsearch, Kibana, APM Server, Beats, and Enterprise Search on Kubernetes"
+
+COPY --from=builder /go/src/github.com/elastic/cloud-on-k8s/elastic-operator .
+COPY --from=builder /go/src/github.com/elastic/cloud-on-k8s/eck.yaml         /conf/eck.yaml
+
+# Copy NOTICE.txt and LICENSE.txt into the image
+COPY *.txt /licenses/
+
+USER 1001
+
+ENTRYPOINT ["./elastic-operator"]
+CMD ["manager"]
+# ---------------------------------------------

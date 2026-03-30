@@ -1,0 +1,10 @@
+# Kind: same as local-disks (non-AWS patch) plus smaller PVs for Kind/Docker Desktop.
+resources:
+  - ../local-disks
+patches:
+  - target:
+      group: apps
+      version: v1
+      kind: DaemonSet
+      name: local-volume-provisioner
+    path: kind-pv-size-patch.yaml

@@ -7,7 +7,6 @@ package runner
 import (
 	"errors"
 	"fmt"
-	"io/fs"
 	"log"
 	"os"
 	"path/filepath"
@@ -139,32 +138,43 @@ func (k *KindDriver) create() error {
 		return err
 	}
 
-	// Get kubeconfig from kind
+	// Kind runs inside a Docker container, so the kubeconfig is not automatically added to
+	// ~/.kube/config (unlike GKE/EKS/AKS which update the default kubeconfig during creation).
+	// Merge it so that subsequent plain kubectl calls (setupDisks, kyverno.Install, etc.) work.
 	kubeCfg, err := k.getKubeConfig()
 	if err != nil {
 		return err
 	}
 	defer os.Remove(kubeCfg.Name())
 
-	// Delete standard storage class but ignore error if not found
-	if err := kubectl("--kubeconfig", kubeCfg.Name(), "delete", "storageclass", "standard"); err != nil {
+	if err := mergeKubeconfig(kubeCfg.Name()); err != nil {
 		return err
 	}
 
-	tmpStorageClass, err := k.createTmpStorageClass()
-	if err != nil {
+	// mergeKubeconfig preserves the current-context from the existing host kubeconfig.
+	// Explicitly switch to the Kind cluster to avoid targeting a previously selected cluster.
+	if err := kubectl("config", "use-context", fmt.Sprintf("kind-%s", k.plan.ClusterName)); err != nil {
 		return err
 	}
 
-	defer os.Remove(tmpStorageClass)
-
-	if k.plan.EnforceSecurityPolicies {
-		if err := kyverno.Install("--kubeconfig", kubeCfg.Name()); err != nil {
+	// Delete standard storage class (replaced by e2e-default from the local-disks overlay).
+	if k.plan.DiskSetup != "" {
+		if err := kubectl("delete", "storageclass", "standard"); err != nil {
 			return err
 		}
 	}
 
-	return kubectl("--kubeconfig", kubeCfg.Name(), "apply", "-f", tmpStorageClass)
+	if err := setupDisks(k.plan); err != nil {
+		return err
+	}
+
+	if k.plan.EnforceSecurityPolicies {
+		if err := kyverno.Install(); err != nil {
+			return err
+		}
+	}
+
+	return nil
 }
 
 func (k *KindDriver) inContainerName(file *os.File) string {
@@ -283,12 +293,6 @@ func (k *KindDriver) GetCredentials() error {
 	}
 	defer os.Remove(config.Name())
 	return mergeKubeconfig(config.Name())
-}
-
-func (k *KindDriver) createTmpStorageClass() (string, error) {
-	tmpFile := filepath.Join(os.TempDir(), storageClassFileName)
-	err := os.WriteFile(tmpFile, []byte(storageClass), fs.ModePerm)
-	return tmpFile, err
 }
 
 func (k *KindDriver) ensureClientImage() error {

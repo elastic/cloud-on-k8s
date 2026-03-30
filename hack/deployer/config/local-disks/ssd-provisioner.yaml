@@ -88,6 +88,35 @@ data:
     # does not see a stale attachment. We set loop= before each losetup; the trap runs when a
     # command fails (shell ERR) and runs losetup -d on that device if it is still a block device.
     trap 'if [ -n "$loop" ] && [ -b "$loop" ]; then losetup -d "$loop" 2>/dev/null || true; fi' ERR
+    # losetup wrapper: creates missing /dev/loop* device nodes on demand.
+    # On VMs, /dev is devtmpfs and the kernel auto-creates nodes — this is a no-op.
+    # In Kind, nodes are Docker containers where /dev is a plain tmpfs populated with a
+    # static snapshot at container start. When losetup -f asks /dev/loop-control for a new
+    # device number, the kernel creates the node on the host's devtmpfs but not in the
+    # container's tmpfs. See https://github.com/kubernetes-sigs/kind/issues/1248
+    # Retries handle races when Kind nodes (containers on one kernel) compete for the same
+    # loop device pool: another pod can grab a device between probe and attach.
+    losetup_attach() {
+      local out dev minor attempt=0
+      while [ $attempt -lt 5 ]; do
+        out=$(losetup -f 2>&1) || true
+        dev=$(printf '%s' "$out" | grep -o '/dev/loop[0-9]*' | head -1) || true
+        if [ -n "$dev" ] && [ ! -e "$dev" ]; then
+          minor="${dev#/dev/loop}"
+          echo "Device node $dev missing in container (tmpfs /dev), creating it" >&2
+          mknod "$dev" b 7 "$minor" 2>/dev/null || true
+        fi
+        # The attach may get a different device than the one we probed (TOCTOU: another
+        # pod on the same kernel can grab it in between). If that happens the attach fails
+        # and the retry loop re-probes, creating the new device node on the next iteration.
+        if losetup -f --show "$1" 2>/dev/null; then
+          return 0
+        fi
+        attempt=$((attempt + 1))
+        echo "losetup_attach: attempt $attempt failed, retrying..." >&2
+      done
+      losetup -f --show "$1"
+    }
     # When format.sh is skipped (GKE/AKS kustomize overlay), ssd0 does not exist; pvs is created by the loop.
     mkdir -p /mnt/disks/ssd0
     for i in $(seq 1 $PV_COUNT); do
@@ -102,14 +131,14 @@ data:
       if [ ! -f "${img}" ]; then
         echo "Creating sparse file ${img} size ${PV_SIZE_GB}G"
         truncate -s "${PV_SIZE_GB}G" "${img}"
-        loop=$(losetup -f --show "${img}")
+        loop=$(losetup_attach "${img}")
         echo "Formatting ${loop} as ext4"
         mkfs.ext4 -m 0 -F "${loop}"
         # Flush ext4 superblock to the backing file before detach so the kernel sees it on reattach.
         sync
         losetup -d "${loop}"
       fi
-      loop=$(losetup -f --show "${img}")
+      loop=$(losetup_attach "${img}")
       mount -t ext4 -o defaults,noatime,nobarrier "${loop}" "${mount_point}"
       echo "Mounted ${loop} at ${mount_point}"
     done

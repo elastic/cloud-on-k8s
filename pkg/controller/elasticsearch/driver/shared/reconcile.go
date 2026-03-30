@@ -67,6 +67,7 @@ func ReconcileSharedResources(
 	log := ulog.FromContext(ctx)
 	es := params.ES
 	client := params.Client
+	urlProvider := params.URLProvider
 
 	// Garbage collect secrets attached to this cluster that we don't need anymore.
 	if err := cleanup.DeleteOrphanedSecrets(ctx, client, es); err != nil {
@@ -165,7 +166,6 @@ func ReconcileSharedResources(
 		minVersion = &params.Version
 	}
 
-	urlProvider := services.NewElasticsearchURLProvider(es, client)
 	hasEndpoints := urlProvider.HasEndpoints()
 
 	observedState := params.Observers.ObservedStateResolver(
@@ -174,7 +174,6 @@ func ReconcileSharedResources(
 		elasticsearchClientProvider(
 			ctx,
 			params,
-			urlProvider,
 			controllerUser,
 			*minVersion,
 			trustedHTTPCertificates,
@@ -219,7 +218,6 @@ func ReconcileSharedResources(
 	esClient := newElasticsearchClient(
 		ctx,
 		params,
-		urlProvider,
 		controllerUser,
 		*minVersion,
 		trustedHTTPCertificates,
