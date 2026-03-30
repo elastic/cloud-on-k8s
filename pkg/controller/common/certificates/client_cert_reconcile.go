@@ -358,7 +358,9 @@ func createClientCertTemplate(
 		ExtKeyUsage: []x509.ExtKeyUsage{
 			x509.ExtKeyUsageClientAuth,
 		},
-		PublicKey: publicKey,
+		BasicConstraintsValid: true,
+		IsCA:                  false,
+		PublicKey:             publicKey,
 	})
 	return &template
 }
