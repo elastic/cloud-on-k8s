@@ -43,6 +43,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/label"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/observer"
 	esreconcile "github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/reconcile"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/services"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/user"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/validation"
 	esversion "github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/version"
@@ -297,6 +298,7 @@ func (r *ReconcileElasticsearch) internalReconcile(
 		ReconcileState:     reconcileState,
 		Client:             r.Client,
 		Recorder:           r.recorder,
+		URLProvider:        services.NewElasticsearchURLProvider(es, r.Client),
 		Version:            ver,
 		Expectations:       r.expectations.ForCluster(k8s.ExtractNamespacedName(&es)),
 		Observers:          r.esObservers,
