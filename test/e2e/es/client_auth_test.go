@@ -10,9 +10,9 @@ import (
 	"context"
 	"crypto/x509"
 	"fmt"
+	"slices"
 	"testing"
 
-	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/types"
@@ -140,11 +140,15 @@ func verifyClientCertResourcesExist(t *testing.T, k *test.K8sClient, namespace, 
 					return fmt.Errorf("no certificates found in client cert secret")
 				}
 				cert := certs[0]
-				require.Contains(t, cert.ExtKeyUsage, x509.ExtKeyUsageClientAuth)
-				require.Equal(t, cert.Subject.CommonName, cert.Issuer.CommonName)
-
-				// No ca.crt should be present
-				require.Empty(t, secret.Data[certificates.CAFileName])
+				if !slices.Contains(cert.ExtKeyUsage, x509.ExtKeyUsageClientAuth) {
+					return fmt.Errorf("certificate does not have ClientAuth extended key usage")
+				}
+				if cert.Subject.CommonName != cert.Issuer.CommonName {
+					return fmt.Errorf("certificate is not self-signed: subject CN %q != issuer CN %q", cert.Subject.CommonName, cert.Issuer.CommonName)
+				}
+				if len(secret.Data[certificates.CAFileName]) > 0 {
+					return fmt.Errorf("ca.crt should not be present in client cert secret")
+				}
 				return nil
 			}),
 		},
