@@ -86,7 +86,7 @@ func (r Reconciler) ReconcileClientCertificate(
 		Data:       make(map[string][]byte),
 	}
 	expected.Labels = utilmaps.Merge(maps.Clone(r.Metadata.Labels), extraLabels)
-	expected.Annotations = r.Metadata.Annotations
+	expected.Annotations = maps.Clone(r.Metadata.Annotations)
 
 	// Seed with existing data so ensureClientCertificateSecretContents can
 	// reuse still-valid certificates and keys instead of regenerating them.
@@ -144,8 +144,8 @@ func (r Reconciler) ReconcileTrustBundle(ctx context.Context, ownerKind string, 
 			ClientCertificatesTrustBundleFileName: bundleData,
 		},
 	}
-	expected.Labels = r.Metadata.Labels
-	expected.Annotations = r.Metadata.Annotations
+	expected.Labels = maps.Clone(r.Metadata.Labels)
+	expected.Annotations = maps.Clone(r.Metadata.Annotations)
 
 	_, err = reconciler.ReconcileSecret(ctx, r.K8sClient, expected, r.Owner)
 	return err
