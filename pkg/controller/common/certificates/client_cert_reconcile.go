@@ -214,71 +214,72 @@ func ensureClientCertificateSecretContents(
 	rotationParam RotationParams,
 ) error {
 	log := ulog.FromContext(ctx)
-	privateKey := privateKeyIfValid(ctx, secret)
-	if privateKey == nil {
-		generatedPrivateKey, err := rsa.GenerateKey(cryptorand.Reader, 2048)
-		if err != nil {
-			return err
-		}
-		privateKey = generatedPrivateKey
 
-		// Use PKCS#8 encoding for client certificate keys to ensure compatibility with
-		// all Elastic Stack components.
-		// Note: Some Java-based applications, such as Logstash, require PKCS#8 format.
-		encodedKey, err := EncodePEMPKCS8PrivateKey(privateKey)
-		if err != nil {
-			return err
-		}
-		secret.Data[KeyFileName] = encodedKey
+	if isClientCertificateValid(ctx, secret, commonName, rotationParam.RotateBefore) {
+		return nil
 	}
 
-	existingCertBytes := clientCertificateIfValid(ctx, secret, commonName, rotationParam.RotateBefore)
-	if existingCertBytes == nil {
-		log.Info(
-			"Issuing new client certificate",
-			"secret_namespace", secret.Namespace,
-			"secret_name", secret.Name,
-			"common_name", commonName,
-		)
+	log.Info(
+		"Issuing new client certificate",
+		"secret_namespace", secret.Namespace,
+		"secret_name", secret.Name,
+		"common_name", commonName,
+	)
 
-		certTemplate := createClientCertTemplate(commonName, orgUnit, privateKey.Public(), rotationParam.Validity)
-		certBytes, err := createSelfSignedClientCert(*certTemplate, privateKey)
-		if err != nil {
-			return err
-		}
-
-		secret.Data[CertFileName] = EncodePEMCert(certBytes)
+	privateKey, err := rsa.GenerateKey(cryptorand.Reader, 2048)
+	if err != nil {
+		return err
 	}
 
-	delete(secret.Data, CAFileName)
+	// Use PKCS#8 encoding for client certificate keys to ensure compatibility with
+	// all Elastic Stack components.
+	// Note: Some Java-based applications, such as Logstash, require PKCS#8 format.
+	encodedKey, err := EncodePEMPKCS8PrivateKey(privateKey)
+	if err != nil {
+		return err
+	}
+	secret.Data[KeyFileName] = encodedKey
+
+	certTemplate := createClientCertTemplate(commonName, orgUnit, privateKey.Public(), rotationParam.Validity)
+	certBytes, err := createSelfSignedClientCert(*certTemplate, privateKey)
+	if err != nil {
+		return err
+	}
+
+	secret.Data[CertFileName] = EncodePEMCert(certBytes)
 
 	return nil
 }
 
-// clientCertificateIfValid returns the client certificate from the provided Secret if it's valid.
-// Returns nil if the certificate needs to be re-issued.
-func clientCertificateIfValid(
+// isClientCertificateValid returns true if the secret contains a valid client certificate
+// and private key pair that does not need to be re-issued.
+func isClientCertificateValid(
 	ctx context.Context,
 	secret *corev1.Secret,
 	commonName string,
 	certReconcileBefore time.Duration,
-) []byte {
+) bool {
 	log := ulog.FromContext(ctx)
+
+	privateKey := privateKeyIfValid(ctx, secret)
+	if privateKey == nil {
+		return false
+	}
 
 	certData, ok := secret.Data[CertFileName]
 	if !ok || len(certData) == 0 {
-		return nil
+		return false
 	}
 
 	certs, err := ParsePEMCerts(certData)
 	if err != nil {
 		log.Error(err, "Invalid certificate data found, issuing new certificate",
 			"secret_namespace", secret.Namespace, "secret_name", secret.Name)
-		return nil
+		return false
 	}
 
 	if len(certs) == 0 {
-		return nil
+		return false
 	}
 
 	cert := certs[0]
@@ -286,26 +287,20 @@ func clientCertificateIfValid(
 	if cert.Subject.CommonName != commonName {
 		log.V(1).Info("Certificate CommonName mismatch, will re-issue",
 			"expected", commonName, "actual", cert.Subject.CommonName)
-		return nil
+		return false
 	}
 
 	if !CertIsValid(ctx, *cert, certReconcileBefore) {
-		return nil
+		return false
 	}
 
-	privateKey := privateKeyIfValid(ctx, secret)
-	if privateKey == nil {
-		log.V(1).Info("No valid private key in secret, will re-issue",
-			"secret_namespace", secret.Namespace, "secret_name", secret.Name)
-		return nil
-	}
 	if !PrivateMatchesPublicKey(ctx, cert.PublicKey, privateKey) {
 		log.V(1).Info("Certificate public key does not match private key in secret, will re-issue",
 			"secret_namespace", secret.Namespace, "secret_name", secret.Name)
-		return nil
+		return false
 	}
 
-	return cert.Raw
+	return true
 }
 
 // privateKeyIfValid parses the existing private key from the secret.
@@ -317,7 +312,8 @@ func privateKeyIfValid(ctx context.Context, secret *corev1.Secret) crypto.Signer
 	}
 	key, err := ParsePEMPrivateKey(keyPEM)
 	if err != nil {
-		ulog.FromContext(ctx).Error(err, "Failed to parse existing private key, will generate new one")
+		ulog.FromContext(ctx).Error(err, "Failed to parse private key",
+			"secret_namespace", secret.Namespace, "secret_name", secret.Name)
 		return nil
 	}
 	return key

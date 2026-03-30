@@ -102,27 +102,6 @@ func TestReconcileClientCertificate_OperatorCert(t *testing.T) {
 		require.Equal(t, secret1.Data[CertFileName], secret2.Data[CertFileName])
 		require.Equal(t, secret1.Data[KeyFileName], secret2.Data[KeyFileName])
 	})
-
-	t.Run("removes ca.crt if present from legacy secret", func(t *testing.T) {
-		c := k8s.NewFakeClient()
-		r := newTestReconciler(c, owner, nil)
-
-		secret1, err := r.ReconcileClientCertificate(context.Background(), secretName, internalClientCertCommonName, owner.Name, nil)
-		require.NoError(t, err)
-
-		var existingSecret corev1.Secret
-		err = c.Get(context.Background(), types.NamespacedName{Namespace: "ns", Name: secretName}, &existingSecret)
-		require.NoError(t, err)
-		existingSecret.Data[CAFileName] = []byte("old-ca-data")
-		err = c.Update(context.Background(), &existingSecret)
-		require.NoError(t, err)
-
-		secret2, err := r.ReconcileClientCertificate(context.Background(), secretName, internalClientCertCommonName, owner.Name, nil)
-		require.NoError(t, err)
-		require.Empty(t, secret2.Data[CAFileName])
-		require.Equal(t, secret1.Data[CertFileName], secret2.Data[CertFileName])
-		require.Equal(t, secret1.Data[KeyFileName], secret2.Data[KeyFileName])
-	})
 }
 
 func TestReconcileClientCertificate_WithExtraLabels(t *testing.T) {
