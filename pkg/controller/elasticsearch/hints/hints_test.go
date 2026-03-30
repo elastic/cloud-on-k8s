@@ -60,8 +60,8 @@ func TestNewFromAnnotations(t *testing.T) {
 
 func TestOrchestrationsHints_Merge(t *testing.T) {
 	type fields struct {
-		NoTransientSettings        bool
-		ClientCertificateInScripts bool
+		NoTransientSettings bool
+		MTLSAware           bool
 	}
 	type args struct {
 		other OrchestrationsHints
@@ -112,31 +112,31 @@ func TestOrchestrationsHints_Merge(t *testing.T) {
 			want: OrchestrationsHints{NoTransientSettings: true},
 		},
 		{
-			name: "ClientCertificateInScripts: f|t",
+			name: "MTLSAware: f|t",
 			fields: fields{
 				NoTransientSettings: false,
 			},
 			args: args{
-				other: OrchestrationsHints{ClientCertificateInScripts: true},
+				other: OrchestrationsHints{MTLSAware: true},
 			},
-			want: OrchestrationsHints{ClientCertificateInScripts: true},
+			want: OrchestrationsHints{MTLSAware: true},
 		},
 		{
-			name: "ClientCertificateInScripts: t|f (never cleared)",
+			name: "MTLSAware: t|f (never cleared)",
 			fields: fields{
-				ClientCertificateInScripts: true,
+				MTLSAware: true,
 			},
 			args: args{
-				other: OrchestrationsHints{ClientCertificateInScripts: false},
+				other: OrchestrationsHints{MTLSAware: false},
 			},
-			want: OrchestrationsHints{ClientCertificateInScripts: true},
+			want: OrchestrationsHints{MTLSAware: true},
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			oh := OrchestrationsHints{
-				NoTransientSettings:        tt.fields.NoTransientSettings,
-				ClientCertificateInScripts: tt.fields.ClientCertificateInScripts,
+				NoTransientSettings: tt.fields.NoTransientSettings,
+				MTLSAware:           tt.fields.MTLSAware,
 			}
 			if got := oh.Merge(tt.args.other); !reflect.DeepEqual(got, tt.want) {
 				t.Errorf("Merge() = %v, want %v", got, tt.want)

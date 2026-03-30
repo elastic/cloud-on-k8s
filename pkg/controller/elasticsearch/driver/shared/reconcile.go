@@ -89,13 +89,13 @@ func ReconcileSharedResources(
 	// only when client certificate authentication is enabled.
 	if clientAuthenticationRequired || !bootstrap.AnnotatedForBootstrap(es) {
 		params.ReconcileState.UpdateOrchestrationHints(
-			hints.OrchestrationsHints{ClientCertificateInScripts: true},
+			hints.OrchestrationsHints{MTLSAware: true},
 		)
 	}
-	clientCertificateInScripts := params.ReconcileState.OrchestrationHints().ClientCertificateInScripts
+	mtlsAware := params.ReconcileState.OrchestrationHints().MTLSAware
 
 	// Reconcile the scripts ConfigMap.
-	if err := configmap.ReconcileScriptsConfigMap(ctx, client, es, meta, clientCertificateInScripts); err != nil {
+	if err := configmap.ReconcileScriptsConfigMap(ctx, client, es, meta, mtlsAware); err != nil {
 		return nil, results.WithError(err)
 	}
 

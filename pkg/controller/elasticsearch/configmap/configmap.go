@@ -33,7 +33,7 @@ func ReconcileScriptsConfigMap(
 	c k8s.Client,
 	es esv1.Elasticsearch,
 	meta metadata.Metadata,
-	clientCertificateInScripts bool,
+	mtlsAware bool,
 ) error {
 	span, ctx := apm.StartSpan(ctx, "reconcile_scripts", tracing.SpanTypeApp)
 	defer span.End()
@@ -43,7 +43,7 @@ func ReconcileScriptsConfigMap(
 		return err
 	}
 
-	preStopScript, err := nodespec.RenderPreStopHookScript(services.InternalServiceURL(es), clientCertificateInScripts)
+	preStopScript, err := nodespec.RenderPreStopHookScript(services.InternalServiceURL(es), mtlsAware)
 	if err != nil {
 		return err
 	}
