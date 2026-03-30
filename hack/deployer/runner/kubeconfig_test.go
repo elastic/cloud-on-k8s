@@ -40,6 +40,7 @@ func TestMergeKubeconfigFiles(t *testing.T) {
 				CurrentContext:  "kind-test",
 			},
 			verify: func(t *testing.T, result *clientcmdapi.Config) {
+				t.Helper()
 				if got := result.Clusters["kind-test"].Server; got != "https://127.0.0.1:54321" {
 					t.Errorf("expected new server URL, got %s", got)
 				}
@@ -69,6 +70,7 @@ func TestMergeKubeconfigFiles(t *testing.T) {
 				CurrentContext: "kind-new",
 			},
 			verify: func(t *testing.T, result *clientcmdapi.Config) {
+				t.Helper()
 				if _, ok := result.Clusters["production"]; !ok {
 					t.Error("production cluster was lost during merge")
 				}
@@ -98,6 +100,7 @@ func TestMergeKubeconfigFiles(t *testing.T) {
 				CurrentContext: "new",
 			},
 			verify: func(t *testing.T, result *clientcmdapi.Config) {
+				t.Helper()
 				if result.CurrentContext != "new" {
 					t.Errorf("expected current-context new, got %s", result.CurrentContext)
 				}
