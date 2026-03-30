@@ -182,10 +182,12 @@ integration: clean
 
 integration-xml: GO_TAGS += integration
 integration-xml: clean
-	@ for pkg in $$(grep 'go:build integration' -rl | grep _test.go | xargs -n1 dirname | uniq); do \
+	@ exit_code=0; \
+	for pkg in $$(grep 'go:build integration' -rl | grep _test.go | xargs -n1 dirname | uniq); do \
 	KUBEBUILDER_ASSETS=/usr/local/bin ECK_TEST_LOG_LEVEL=$(LOG_VERBOSITY) \
-		gotestsum --junitfile integration-tests.xml -- $$(pwd)/$$pkg -tags='$(GO_TAGS)' -cover $(TEST_OPTS) ; \
-	done
+		gotestsum --junitfile integration-tests-$$(basename $$pkg).xml -- $$(pwd)/$$pkg -tags='$(GO_TAGS)' -cover $(TEST_OPTS) || exit_code=$$? ; \
+	done; \
+	exit $$exit_code
 
 lint:
 	GOGC=40 golangci-lint run --verbose
