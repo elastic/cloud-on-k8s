@@ -40,8 +40,10 @@ func (a *Agent) warnings() []string {
 }
 
 func (a *Agent) validate(old *Agent) (admission.Warnings, error) {
-	warnings := a.warnings()
-	var errors field.ErrorList
+	var (
+		errors   field.ErrorList
+		warnings admission.Warnings
+	)
 
 	deprecationWarnings, deprecationErrors := checkIfVersionDeprecated(a)
 	if deprecationErrors != nil {
@@ -50,6 +52,7 @@ func (a *Agent) validate(old *Agent) (admission.Warnings, error) {
 	if deprecationWarnings != "" {
 		warnings = append(warnings, deprecationWarnings)
 	}
+	warnings = append(warnings, a.warnings()...)
 
 	if old != nil {
 		for _, uc := range updateChecks {
