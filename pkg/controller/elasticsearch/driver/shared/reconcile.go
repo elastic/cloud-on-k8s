@@ -80,12 +80,14 @@ func ReconcileSharedResources(
 	// Extract the metadata that should be propagated to children.
 	meta := metadata.Propagate(&es, metadata.Metadata{Labels: label.NewLabels(k8s.ExtractNamespacedName(&es))})
 
-	// When client auth is enabled for the first time, set the orchestration hint so the pre-stop hook
-	// script permanently includes client certificate flags. This avoids a race condition during the
-	// disable transition where kubelet may hot-reload the updated ConfigMap (without client cert flags)
-	// into old pods before they are terminated. The file-existence checks in the script make the flags
-	// a no-op when certificate files are not mounted.
-	if clientAuthenticationRequired {
+	// Set the client certificate in scripts orchestration hint so the pre-stop hook script permanently
+	// includes client certificate flags. This avoids a race condition during the disable transition
+	// where kubelet may hot-reload the updated ConfigMap (without client cert flags) into old pods
+	// before they are terminated. The file-existence checks in the script make the flags a no-op
+	// when certificate files are not mounted.
+	// For new clusters (not yet bootstrapped), always set the hint. For existing clusters, set it
+	// only when client certificate authentication is enabled.
+	if clientAuthenticationRequired || !bootstrap.AnnotatedForBootstrap(es) {
 		params.ReconcileState.UpdateOrchestrationHints(
 			params.ReconcileState.OrchestrationHints().Merge(hints.OrchestrationsHints{ClientCertificateInScripts: true}),
 		)

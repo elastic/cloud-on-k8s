@@ -978,7 +978,9 @@ func mustBuildParams(t *testing.T, listeningServer *httptest.Server, ver string,
 		},
 	}
 
-	state, err := reconcile.NewState(baseStatefulElasticsearch)
+	// Deep-copy to avoid cross-test contamination of the shared baseStatefulElasticsearch annotations map.
+	es := *baseStatefulElasticsearch.DeepCopy()
+	state, err := reconcile.NewState(es)
 	require.NoError(t, err)
 
 	// Because we don't have a clean way of mocking the kubernetes DNS resolution, Elasticsearch will never be reachable
@@ -997,7 +999,7 @@ func mustBuildParams(t *testing.T, listeningServer *httptest.Server, ver string,
 	k8sClient := k8s.NewFakeClient(initK8sObjects...)
 	return driver.Parameters{
 		Client:             k8sClient,
-		ES:                 baseStatefulElasticsearch,
+		ES:                 es,
 		Version:            mustParseVersion(t, ver),
 		LicenseChecker:     license.NewLicenseChecker(k8sClient, "operator-namespace"),
 		ReconcileState:     state,

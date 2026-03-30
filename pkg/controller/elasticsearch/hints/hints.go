@@ -57,13 +57,10 @@ func (oh OrchestrationsHints) AsAnnotation() (map[string]string, error) {
 }
 
 // NewFromAnnotations creates new orchestration hints from annotation metadata coming from the Elasticsearch resource.
-// For new clusters (no existing hints annotation), ClientCertificateInScripts defaults to true so the pre-stop
-// hook script includes client certificate flags from the start, avoiding a race condition if client authentication
-// is later enabled and then disabled.
 func NewFromAnnotations(ann map[string]string) (OrchestrationsHints, error) {
 	jsonStr, exists := ann[OrchestrationsHintsAnnotation]
 	if !exists {
-		return OrchestrationsHints{ClientCertificateInScripts: true}, nil
+		return OrchestrationsHints{}, nil
 	}
 	var hs OrchestrationsHints
 	if err := json.Unmarshal([]byte(jsonStr), &hs); err != nil {

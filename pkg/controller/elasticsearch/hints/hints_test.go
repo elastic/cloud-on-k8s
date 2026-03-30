@@ -30,9 +30,9 @@ func TestNewFromAnnotations(t *testing.T) {
 			wantErr: false,
 		},
 		{
-			name:    "OK, no annotation defaults ClientCertificateInScripts to true",
+			name:    "OK, no annotation",
 			args:    args{},
-			want:    OrchestrationsHints{ClientCertificateInScripts: true},
+			want:    OrchestrationsHints{NoTransientSettings: false},
 			wantErr: false,
 		},
 		{
