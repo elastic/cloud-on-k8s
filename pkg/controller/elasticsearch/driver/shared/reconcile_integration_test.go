@@ -82,7 +82,7 @@ var baseStatefulElasticsearch = esv1.Elasticsearch{
 		},
 	},
 	Spec: esv1.ElasticsearchSpec{
-		HTTP: commonv1.HTTPConfig{
+		HTTP: commonv1.HTTPConfigWithClientOptions{
 			Service: commonv1.ServiceTemplate{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "test-es-es-internal-http",
@@ -323,7 +323,7 @@ func TestReconcileSharedResources(t *testing.T) {
 				FakeRecorder: toolsevents.NewFakeRecorder(1000),
 			}
 
-			s, results := ReconcileSharedResources(context.Background(), testDriver, tt.params)
+			s, results := ReconcileSharedResources(context.Background(), testDriver, tt.params, false)
 			if tt.expectedState != nil {
 				assert.NotNil(t, s, "Expected non-nil state")
 				assert.EqualValues(t, tt.expectedState.ESReachable, s.ESReachable)
@@ -339,7 +339,7 @@ func TestReconcileSharedResources(t *testing.T) {
 					expectedVersion = tt.params.Version
 				}
 				expectedClientCerts := mustGetClientCerts(t, tt.params.Client, tt.params.ES)
-				assert.True(t, s.ESClient.HasProperties(expectedVersion, esclient.BasicAuth{Name: user.ControllerUserName, Password: staticPassword}, tt.params.URLProvider, expectedClientCerts), "Generated Elasticsearch client does not have expected properties")
+				assert.True(t, s.ESClient.HasProperties(expectedVersion, esclient.BasicAuth{Name: user.ControllerUserName, Password: staticPassword}, tt.params.URLProvider, expectedClientCerts, nil), "Generated Elasticsearch client does not have expected properties")
 			} else {
 				assert.Nil(t, s, "Expected nil state")
 			}
@@ -695,7 +695,7 @@ func mustBuildExpectedConfigMaps(t *testing.T, es *esv1.Elasticsearch, resourceV
 
 	fsScript, err := initcontainer.RenderPrepareFsScript(es.DownwardNodeLabels())
 	require.NoError(t, err, "error rendering FS script")
-	preStopScript, err := nodespec.RenderPreStopHookScript(services.InternalServiceURL(*es))
+	preStopScript, err := nodespec.RenderPreStopHookScript(services.InternalServiceURL(*es), true)
 	require.NoError(t, err, "error rendering preStop script")
 
 	host := ""
