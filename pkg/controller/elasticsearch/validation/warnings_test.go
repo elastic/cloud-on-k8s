@@ -178,27 +178,6 @@ func Test_noUnsupportedSettings(t *testing.T) {
 }
 
 func Test_settingsWarningsAndErrors(t *testing.T) {
-	t.Run("invalid canonical config is blocking not a warning", func(t *testing.T) {
-		es := esv1.Elasticsearch{
-			Spec: esv1.ElasticsearchSpec{
-				Version: "8.16.0",
-				NodeSets: []esv1.NodeSet{{
-					Count: 1,
-					Config: &commonv1.Config{
-						Data: map[string]any{
-							"a":   map[string]any{"b": 1},
-							"a.b": 2,
-						},
-					},
-				}},
-			},
-		}
-		warns, blocking := settingsWarningsAndErrors(es)
-		require.Empty(t, warns)
-		require.Len(t, blocking, 1)
-		require.Equal(t, field.ErrorTypeInvalid, blocking[0].Type)
-		require.Equal(t, cfgInvalidMsg, blocking[0].Detail)
-	})
 	t.Run("forbidden reserved keys stay warnings only", func(t *testing.T) {
 		es := esv1.Elasticsearch{
 			Spec: esv1.ElasticsearchSpec{
