@@ -102,6 +102,9 @@ type OCPSettings struct {
 	PullSecret    string `yaml:"pullSecret"`
 	LocalSsdCount int    `yaml:"localSsdCount"`
 	NodeCount     int    `yaml:"nodeCount"`
+	// InfraID is the OCP infrastructure ID, set during cleanup when reconstructing
+	// metadata.json for clusters whose GCS state is missing.
+	InfraID string `yaml:"-"`
 }
 
 // EKSSettings are specific to Amazon EKS.

@@ -67,6 +67,7 @@ func ReconcileSharedResources(
 	log := ulog.FromContext(ctx)
 	es := params.ES
 	client := params.Client
+	urlProvider := params.URLProvider
 
 	// Garbage collect secrets attached to this cluster that we don't need anymore.
 	if err := cleanup.DeleteOrphanedSecrets(ctx, client, es); err != nil {
@@ -165,7 +166,6 @@ func ReconcileSharedResources(
 		minVersion = &params.Version
 	}
 
-	urlProvider := services.NewElasticsearchURLProvider(es, client)
 	hasEndpoints := urlProvider.HasEndpoints()
 
 	observedState := params.Observers.ObservedStateResolver(
@@ -174,7 +174,6 @@ func ReconcileSharedResources(
 		elasticsearchClientProvider(
 			ctx,
 			params,
-			urlProvider,
 			controllerUser,
 			*minVersion,
 			trustedHTTPCertificates,
@@ -219,7 +218,6 @@ func ReconcileSharedResources(
 	esClient := newElasticsearchClient(
 		ctx,
 		params,
-		urlProvider,
 		controllerUser,
 		*minVersion,
 		trustedHTTPCertificates,
@@ -246,7 +244,7 @@ func ReconcileSharedResources(
 				// unsupported distribution, let's update the phase to "invalid" and stop the reconciliation
 				params.ReconcileState.
 					UpdateWithPhase(esv1.ElasticsearchResourceInvalid).
-					AddEvent(corev1.EventTypeWarning, events.EventReasonUnexpected, fmt.Sprintf("%s: %s", msg, err.Error()))
+					AddEvent(corev1.EventTypeWarning, events.EventReasonUnexpected, events.EventActionLicenseCheck, fmt.Sprintf("%s: %s", msg, err.Error()))
 				esClient.Close()
 				return nil, results.WithError(errors.Wrap(err, strings.ToLower(msg[0:1])+msg[1:]))
 			}
@@ -256,7 +254,7 @@ func ReconcileSharedResources(
 		if err != nil {
 			msg := "Could not verify license, re-queuing"
 			log.Info(msg, "err", err, "namespace", es.Namespace, "es_name", es.Name)
-			params.ReconcileState.AddEvent(corev1.EventTypeWarning, events.EventReasonUnexpected, fmt.Sprintf("%s: %s", msg, err.Error()))
+			params.ReconcileState.AddEvent(corev1.EventTypeWarning, events.EventReasonUnexpected, events.EventActionLicenseCheck, fmt.Sprintf("%s: %s", msg, err.Error()))
 			results.WithReconciliationState(DefaultRequeue.WithReason(msg))
 		}
 	}
@@ -271,7 +269,7 @@ func ReconcileSharedResources(
 			// will be logged by the client
 			if hasKnownHealthState {
 				log.Info(msg, "err", err, "namespace", es.Namespace, "es_name", es.Name)
-				params.ReconcileState.AddEvent(corev1.EventTypeWarning, events.EventReasonUnexpected, fmt.Sprintf("%s: %s", msg, err.Error()))
+				params.ReconcileState.AddEvent(corev1.EventTypeWarning, events.EventReasonUnexpected, events.EventActionLicenseCheck, fmt.Sprintf("%s: %s", msg, err.Error()))
 			}
 			results.WithReconciliationState(DefaultRequeue.WithReason(msg))
 		}
@@ -283,7 +281,7 @@ func ReconcileSharedResources(
 		msg := "Could not update remote clusters in Elasticsearch settings, re-queuing"
 		if err != nil {
 			log.Info(msg, "err", err, "namespace", es.Namespace, "es_name", es.Name)
-			params.ReconcileState.AddEvent(corev1.EventTypeWarning, events.EventReasonUnexpected, msg)
+			params.ReconcileState.AddEvent(corev1.EventTypeWarning, events.EventReasonUnexpected, events.EventActionRemoteClusterConfiguration, msg)
 			results.WithError(err)
 		}
 		if requeue {

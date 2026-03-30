@@ -12,7 +12,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
-	"k8s.io/client-go/tools/record"
+	toolsevents "k8s.io/client-go/tools/events"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	apmv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/apm/v1"
@@ -525,7 +525,7 @@ func TestReconcileApmServer_deploymentParams(t *testing.T) {
 			w := watches.NewDynamicWatches()
 			r := &ReconcileApmServer{
 				Client:         client,
-				recorder:       record.NewFakeRecorder(100),
+				recorder:       toolsevents.NewFakeRecorder(100),
 				dynamicWatches: w,
 				Parameters:     operator.Parameters{SetDefaultSecurityContext: tt.args.setDefaultSecurityContext},
 			}

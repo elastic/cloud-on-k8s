@@ -19,7 +19,7 @@ import (
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
-	"k8s.io/client-go/tools/record"
+	toolsevents "k8s.io/client-go/tools/events"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/interceptor"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
@@ -652,7 +652,7 @@ func TestAutoOpsAgentPolicyReconciler_internalReconcileResourceErrorsAndSkipped(
 				Client:           k8sClient,
 				esClientProvider: esClientProvider,
 				accessReviewer:   tt.accessReviewer,
-				recorder:         record.NewFakeRecorder(10),
+				recorder:         toolsevents.NewFakeRecorder(10),
 				params: operator.Parameters{
 					Dialer: &fakeDialer{},
 				},
@@ -1039,7 +1039,7 @@ func TestAutoOpsAgentPolicyReconciler_accessRevokedCleanup(t *testing.T) {
 			Client:           k8sClient,
 			esClientProvider: esClientProvider,
 			accessReviewer:   accessReviewer,
-			recorder:         record.NewFakeRecorder(10),
+			recorder:         toolsevents.NewFakeRecorder(10),
 			params: operator.Parameters{
 				Dialer: &fakeDialer{},
 			},
