@@ -196,7 +196,7 @@ func buildTrustBundleFromSecrets(ctx context.Context, secrets []corev1.Secret) [
 			continue
 		}
 		buf.Write(certData)
-		if len(certData) > 0 && certData[len(certData)-1] != '\n' {
+		if certData[len(certData)-1] != '\n' {
 			buf.WriteByte('\n')
 		}
 	}
