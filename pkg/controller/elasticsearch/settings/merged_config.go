@@ -204,8 +204,13 @@ func xpackConfig(ver version.Version, httpCfg commonv1.HTTPConfigWithClientOptio
 	return &CanonicalConfig{common.MustCanonicalConfig(cfg)}
 }
 
-// HasClientAuthenticationRequired checks whether the given config has xpack.security.http.ssl.client_authentication set to "required".
+// HasClientAuthenticationRequired checks whether the given config effectively requires client certificate authentication.
+// Returns false if HTTP SSL is explicitly disabled, since client authentication has no effect without TLS.
 func HasClientAuthenticationRequired(cfg CanonicalConfig) bool {
+	// Client authentication is ineffective when HTTP SSL is explicitly disabled.
+	if sslEnabled, err := cfg.String(esv1.XPackSecurityHttpSslEnabled); err == nil && sslEnabled == "false" {
+		return false
+	}
 	val, err := cfg.String(esv1.XPackSecurityHttpSslClientAuthentication)
 	if err != nil {
 		return false

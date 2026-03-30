@@ -1385,6 +1385,24 @@ func Test_validClientAuthentication(t *testing.T) {
 			enterpriseEnabled: false,
 			expectErrors:      true,
 		},
+		{
+			name: "client authentication enabled with TLS disabled: NOK",
+			es: esv1.Elasticsearch{
+				Spec: esv1.ElasticsearchSpec{
+					Version: "8.17.0",
+					HTTP: commonv1.HTTPConfigWithClientOptions{
+						TLS: commonv1.TLSWithClientOptions{
+							TLSOptions: commonv1.TLSOptions{
+								SelfSignedCertificate: &commonv1.SelfSignedCertificate{Disabled: true},
+							},
+							Client: commonv1.ClientOptions{Authentication: true},
+						},
+					},
+				},
+			},
+			enterpriseEnabled: true,
+			expectErrors:      true,
+		},
 	}
 
 	for _, tt := range tests {

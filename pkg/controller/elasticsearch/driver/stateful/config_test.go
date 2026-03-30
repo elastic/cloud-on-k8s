@@ -103,6 +103,27 @@ func Test_detectClientAuthenticationRequired(t *testing.T) {
 			enterpriseFeaturesEnabled: true,
 			wantRequired:              true,
 		},
+		{
+			name: "enterprise enabled: warning when policy disables SSL",
+			es:   newES(true, nil),
+			policyConfig: nodespec.PolicyConfig{
+				ElasticsearchConfig: commonsettings.MustCanonicalConfig(map[string]any{
+					esv1.XPackSecurityHttpSslEnabled: "false",
+				}),
+			},
+			enterpriseFeaturesEnabled: true,
+			wantRequired:              false,
+			wantWarningContains:       esv1.XPackSecurityHttpSslEnabled,
+		},
+		{
+			name: "enterprise enabled: warning when user manual config disables SSL",
+			es: newES(true, &commonv1.Config{Data: map[string]any{
+				esv1.XPackSecurityHttpSslEnabled: "false",
+			}}),
+			enterpriseFeaturesEnabled: true,
+			wantRequired:              false,
+			wantWarningContains:       esv1.XPackSecurityHttpSslEnabled,
+		},
 	}
 
 	for _, tt := range tests {

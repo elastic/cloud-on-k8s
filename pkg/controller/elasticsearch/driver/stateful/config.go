@@ -125,11 +125,21 @@ func detectClientAuthenticationRequired(
 }
 
 // clientAuthenticationSpecIneffectiveWarning returns a non-empty warning when spec.http.tls.client.authentication
-// is true but the given configuration override sets xpack.security.http.ssl.client_authentication to a non-required value.
+// is true but the given configuration override either sets xpack.security.http.ssl.client_authentication to a
+// non-required value or disables HTTP SSL entirely via xpack.security.http.ssl.enabled: false.
 // source identifies the origin of the override (e.g. "StackConfigPolicy", "manual") and is included in the warning.
 func clientAuthenticationSpecIneffectiveWarning(specClientAuthenticationEnabled bool, overrideCfg *commonsettings.CanonicalConfig, source string) string {
 	if !specClientAuthenticationEnabled {
 		return ""
+	}
+
+	if val, found := configString(overrideCfg, esv1.XPackSecurityHttpSslEnabled); found && val == "false" {
+		return fmt.Sprintf(
+			"spec.http.tls.client.authentication is ineffective due to %s configuration: %s is set to %q",
+			source,
+			esv1.XPackSecurityHttpSslEnabled,
+			val,
+		)
 	}
 
 	if val, found := configString(overrideCfg, esv1.XPackSecurityHttpSslClientAuthentication); found && val != "required" {

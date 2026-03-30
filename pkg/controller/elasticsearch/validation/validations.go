@@ -617,6 +617,15 @@ func validClientAuthentication(ctx context.Context, es esv1.Elasticsearch, check
 	if !es.Spec.HTTP.TLS.Client.Authentication {
 		return nil
 	}
+	if !es.Spec.HTTP.TLS.Enabled() {
+		return field.ErrorList{
+			field.Invalid(
+				field.NewPath("spec").Child("http", "tls", "client", "authentication"),
+				true,
+				"client certificate authentication requires TLS to be enabled",
+			),
+		}
+	}
 	enabled, err := checker.EnterpriseFeaturesEnabled(ctx)
 	if err != nil {
 		ulog.FromContext(ctx).Error(err, "while checking enterprise features during client authentication validation")
