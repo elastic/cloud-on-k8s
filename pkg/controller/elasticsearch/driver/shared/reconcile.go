@@ -89,7 +89,7 @@ func ReconcileSharedResources(
 	// only when client certificate authentication is enabled.
 	if clientAuthenticationRequired || !bootstrap.AnnotatedForBootstrap(es) {
 		params.ReconcileState.UpdateOrchestrationHints(
-			params.ReconcileState.OrchestrationHints().Merge(hints.OrchestrationsHints{ClientCertificateInScripts: true}),
+			hints.OrchestrationsHints{ClientCertificateInScripts: true},
 		)
 	}
 	clientCertificateInScripts := params.ReconcileState.OrchestrationHints().ClientCertificateInScripts
