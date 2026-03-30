@@ -192,7 +192,7 @@ func buildTrustBundleFromSecrets(ctx context.Context, secrets []corev1.Secret) [
 		certData := secret.Data[CertFileName]
 		if len(certData) == 0 {
 			log.V(1).Info("Skipping secret with no certificate data",
-				"namespace", secret.Namespace, "name", secret.Name)
+				"secret_namespace", secret.Namespace, "secret_name", secret.Name)
 			continue
 		}
 		buf.Write(certData)
@@ -236,7 +236,7 @@ func ensureClientCertificateSecretContents(
 	if existingCertBytes == nil {
 		log.Info(
 			"Issuing new client certificate",
-			"namespace", secret.Namespace,
+			"secret_namespace", secret.Namespace,
 			"secret_name", secret.Name,
 			"common_name", commonName,
 		)
@@ -273,7 +273,7 @@ func clientCertificateIfValid(
 	certs, err := ParsePEMCerts(certData)
 	if err != nil {
 		log.Error(err, "Invalid certificate data found, issuing new certificate",
-			"namespace", secret.Namespace, "secret_name", secret.Name)
+			"secret_namespace", secret.Namespace, "secret_name", secret.Name)
 		return nil
 	}
 
@@ -296,12 +296,12 @@ func clientCertificateIfValid(
 	privateKey := privateKeyIfValid(ctx, secret)
 	if privateKey == nil {
 		log.V(1).Info("No valid private key in secret, will re-issue",
-			"namespace", secret.Namespace, "secret_name", secret.Name)
+			"secret_namespace", secret.Namespace, "secret_name", secret.Name)
 		return nil
 	}
 	if !PrivateMatchesPublicKey(ctx, cert.PublicKey, privateKey) {
 		log.V(1).Info("Certificate public key does not match private key in secret, will re-issue",
-			"namespace", secret.Namespace, "secret_name", secret.Name)
+			"secret_namespace", secret.Namespace, "secret_name", secret.Name)
 		return nil
 	}
 

@@ -27,11 +27,7 @@ func SetClientAuthenticationRequiredAnnotation(ctx context.Context, k8sClient k8
 		return nil // already set correctly
 	}
 
-	ulog.FromContext(ctx).Info(
-		"Setting client-authentication-required annotation",
-		"namespace", obj.GetNamespace(),
-		"name", obj.GetName(),
-	)
+	ulog.FromContext(ctx).Info("Setting client-authentication-required annotation")
 
 	existingAnnotations := obj.GetAnnotations()
 	if existingAnnotations == nil {
@@ -49,11 +45,7 @@ func RemoveClientAuthenticationRequiredAnnotation(ctx context.Context, k8sClient
 		return nil // already set correctly
 	}
 
-	ulog.FromContext(ctx).Info(
-		"Removing client-authentication-required annotation",
-		"namespace", obj.GetNamespace(),
-		"name", obj.GetName(),
-	)
+	ulog.FromContext(ctx).Info("Removing client-authentication-required annotation")
 
 	existingAnnotations := obj.GetAnnotations()
 	delete(existingAnnotations, ClientAuthenticationRequiredAnnotation)
