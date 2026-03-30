@@ -26,14 +26,21 @@ type OrchestrationsHints struct {
 	// controllers should then rely on regular users until the value is true.
 	ServiceAccounts *optional.Bool    `json:"service_accounts,omitempty"`
 	DesiredNodes    *DesiredNodesHint `json:"desired_nodes,omitempty"`
+
+	// ClientCertificateInScripts controls whether the pre-stop hook script includes client certificate
+	// flags (with file-existence fallbacks) to avoid a race condition during the disable transition where
+	// kubelet may hot-reload the updated ConfigMap before pods are terminated. Defaults to true for new clusters.
+	// For existing clusters, it is set to true only when client certificate authentication is enabled.
+	ClientCertificateInScripts bool `json:"client_certificate_in_scripts,omitempty"`
 }
 
 // Merge merges the hints in other into the receiver.
 func (oh OrchestrationsHints) Merge(other OrchestrationsHints) OrchestrationsHints {
 	return OrchestrationsHints{
-		NoTransientSettings: oh.NoTransientSettings || other.NoTransientSettings,
-		ServiceAccounts:     oh.ServiceAccounts.Or(other.ServiceAccounts),
-		DesiredNodes:        oh.DesiredNodes.ReplaceWith(other.DesiredNodes),
+		NoTransientSettings:        oh.NoTransientSettings || other.NoTransientSettings,
+		ServiceAccounts:            oh.ServiceAccounts.Or(other.ServiceAccounts),
+		DesiredNodes:               oh.DesiredNodes.ReplaceWith(other.DesiredNodes),
+		ClientCertificateInScripts: oh.ClientCertificateInScripts || other.ClientCertificateInScripts,
 	}
 }
 
@@ -50,10 +57,13 @@ func (oh OrchestrationsHints) AsAnnotation() (map[string]string, error) {
 }
 
 // NewFromAnnotations creates new orchestration hints from annotation metadata coming from the Elasticsearch resource.
+// For new clusters (no existing hints annotation), ClientCertificateInScripts defaults to true so the pre-stop
+// hook script includes client certificate flags from the start, avoiding a race condition if client authentication
+// is later enabled and then disabled.
 func NewFromAnnotations(ann map[string]string) (OrchestrationsHints, error) {
 	jsonStr, exists := ann[OrchestrationsHintsAnnotation]
 	if !exists {
-		return OrchestrationsHints{}, nil
+		return OrchestrationsHints{ClientCertificateInScripts: true}, nil
 	}
 	var hs OrchestrationsHints
 	if err := json.Unmarshal([]byte(jsonStr), &hs); err != nil {

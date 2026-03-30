@@ -30,9 +30,9 @@ func TestNewFromAnnotations(t *testing.T) {
 			wantErr: false,
 		},
 		{
-			name:    "OK, no annotation",
+			name:    "OK, no annotation defaults ClientCertificateInScripts to true",
 			args:    args{},
-			want:    OrchestrationsHints{NoTransientSettings: false},
+			want:    OrchestrationsHints{ClientCertificateInScripts: true},
 			wantErr: false,
 		},
 		{
@@ -60,7 +60,8 @@ func TestNewFromAnnotations(t *testing.T) {
 
 func TestOrchestrationsHints_Merge(t *testing.T) {
 	type fields struct {
-		NoTransientSettings bool
+		NoTransientSettings        bool
+		ClientCertificateInScripts bool
 	}
 	type args struct {
 		other OrchestrationsHints
@@ -72,7 +73,7 @@ func TestOrchestrationsHints_Merge(t *testing.T) {
 		want   OrchestrationsHints
 	}{
 		{
-			name: "f|f",
+			name: "NoTransientSettings: f|f",
 			fields: fields{
 				NoTransientSettings: false,
 			},
@@ -82,7 +83,7 @@ func TestOrchestrationsHints_Merge(t *testing.T) {
 			want: OrchestrationsHints{NoTransientSettings: false},
 		},
 		{
-			name: "t|f",
+			name: "NoTransientSettings: t|f",
 			fields: fields{
 				NoTransientSettings: true,
 			},
@@ -91,7 +92,7 @@ func TestOrchestrationsHints_Merge(t *testing.T) {
 			},
 			want: OrchestrationsHints{NoTransientSettings: true},
 		}, {
-			name: "f|t",
+			name: "NoTransientSettings: f|t",
 			fields: fields{
 				NoTransientSettings: false,
 			},
@@ -101,7 +102,7 @@ func TestOrchestrationsHints_Merge(t *testing.T) {
 			want: OrchestrationsHints{NoTransientSettings: true},
 		},
 		{
-			name: "t|t",
+			name: "NoTransientSettings: t|t",
 			fields: fields{
 				NoTransientSettings: true,
 			},
@@ -110,11 +111,32 @@ func TestOrchestrationsHints_Merge(t *testing.T) {
 			},
 			want: OrchestrationsHints{NoTransientSettings: true},
 		},
+		{
+			name: "ClientCertificateInScripts: f|t",
+			fields: fields{
+				NoTransientSettings: false,
+			},
+			args: args{
+				other: OrchestrationsHints{ClientCertificateInScripts: true},
+			},
+			want: OrchestrationsHints{ClientCertificateInScripts: true},
+		},
+		{
+			name: "ClientCertificateInScripts: t|f (never cleared)",
+			fields: fields{
+				ClientCertificateInScripts: true,
+			},
+			args: args{
+				other: OrchestrationsHints{ClientCertificateInScripts: false},
+			},
+			want: OrchestrationsHints{ClientCertificateInScripts: true},
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			oh := OrchestrationsHints{
-				NoTransientSettings: tt.fields.NoTransientSettings,
+				NoTransientSettings:        tt.fields.NoTransientSettings,
+				ClientCertificateInScripts: tt.fields.ClientCertificateInScripts,
 			}
 			if got := oh.Merge(tt.args.other); !reflect.DeepEqual(got, tt.want) {
 				t.Errorf("Merge() = %v, want %v", got, tt.want)

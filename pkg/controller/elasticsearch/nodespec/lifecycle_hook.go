@@ -170,7 +170,7 @@ else
   delayed_exit
 fi
 
-{{- if .ClientAuthEnabled}}
+{{- if .ClientCertificateInScripts}}
 # setup client certificate authentication if certificates are available
 if [ -f "{{.InternalClientCertPath}}" ]; then
   # client certificates are mounted by the operator for client authentication
@@ -187,7 +187,7 @@ fi
 ES_URL="{{.ServiceURL}}"
 
 log "retrieving node ID"
-if ! retry "$retries_count" request -X GET "${ES_URL}/_cat/nodes?full_id=true&h=id,name" "${BASIC_AUTH[@]}"{{if .ClientAuthEnabled}} "${CLIENT_CERT[@]}"{{end}}
+if ! retry "$retries_count" request -X GET "${ES_URL}/_cat/nodes?full_id=true&h=id,name" "${BASIC_AUTH[@]}"{{if .ClientCertificateInScripts}} "${CLIENT_CERT[@]}"{{end}}
 then
   error_exit "failed to retrieve nodes"
 fi
@@ -198,7 +198,7 @@ then
 fi
 
 # check if there is an ongoing shutdown request
-if ! request -X GET "${ES_URL}/_nodes/${NODE_ID}/shutdown" "${BASIC_AUTH[@]}"{{if .ClientAuthEnabled}} "${CLIENT_CERT[@]}"{{end}}
+if ! request -X GET "${ES_URL}/_nodes/${NODE_ID}/shutdown" "${BASIC_AUTH[@]}"{{if .ClientCertificateInScripts}} "${CLIENT_CERT[@]}"{{end}}
 then
   error_exit "failed to retrieve shutdown status"
 fi
@@ -209,7 +209,7 @@ if grep -q -v '"nodes":\[\]' "$resp_body"; then
 fi
 
 log "initiating node shutdown"
-if ! retry "$retries_count" request -X PUT "${ES_URL}/_nodes/${NODE_ID}/shutdown" "${BASIC_AUTH[@]}"{{if .ClientAuthEnabled}} "${CLIENT_CERT[@]}"{{end}} -H 'Content-Type: application/json' -d"
+if ! retry "$retries_count" request -X PUT "${ES_URL}/_nodes/${NODE_ID}/shutdown" "${BASIC_AUTH[@]}"{{if .ClientCertificateInScripts}} "${CLIENT_CERT[@]}"{{end}} -H 'Content-Type: application/json' -d"
 {
   \"type\": \"${shutdown_type}\",
   \"reason\": \"pre-stop hook\"
@@ -221,7 +221,7 @@ fi
 while :
 do
   log "waiting for node shutdown to complete"
-  if request -X GET "${ES_URL}/_nodes/${NODE_ID}/shutdown" "${BASIC_AUTH[@]}"{{if .ClientAuthEnabled}} "${CLIENT_CERT[@]}"{{end}} &&
+  if request -X GET "${ES_URL}/_nodes/${NODE_ID}/shutdown" "${BASIC_AUTH[@]}"{{if .ClientCertificateInScripts}} "${CLIENT_CERT[@]}"{{end}} &&
     grep -q -v 'IN_PROGRESS\|STALLED' "$resp_body"
   then
     break
@@ -232,7 +232,7 @@ done
 delayed_exit
 `))
 
-func RenderPreStopHookScript(svcURL string, clientAuthenticationRequired bool) (string, error) {
+func RenderPreStopHookScript(svcURL string, clientCertificateInScripts bool) (string, error) {
 	vars := map[string]string{
 		"PreStopUserName":         user.PreStopUserName,
 		"PreStopUserPasswordPath": filepath.Join(volume.PodMountedUsersSecretMountPath, user.PreStopUserName),
@@ -243,8 +243,8 @@ func RenderPreStopHookScript(svcURL string, clientAuthenticationRequired bool) (
 		"LabelsFile":       filepath.Join(volume.DownwardAPIMountPath, volume.LabelsFile),
 		"VersionLabelName": label.VersionLabelName,
 	}
-	if clientAuthenticationRequired {
-		vars["ClientAuthEnabled"] = "true"
+	if clientCertificateInScripts {
+		vars["ClientCertificateInScripts"] = "true"
 		vars["InternalClientCertPath"] = filepath.Join(volume.InternalClientCertMountPath, certificates.CertFileName)
 		vars["InternalClientKeyPath"] = filepath.Join(volume.InternalClientCertMountPath, certificates.KeyFileName)
 		vars["HTTPCertPath"] = filepath.Join(volume.HTTPCertificatesSecretVolumeMountPath, certificates.CertFileName)

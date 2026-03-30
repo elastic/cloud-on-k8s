@@ -34,12 +34,12 @@ func TestReconcileScriptsConfigMap(t *testing.T) {
 	}
 
 	tests := []struct {
-		name                         string
-		initialObjects               []client.Object
-		meta                         metadata.Metadata
-		clientAuthenticationRequired bool
-		wantErr                      bool
-		validate                     func(t *testing.T, client k8s.Client)
+		name                       string
+		initialObjects             []client.Object
+		meta                       metadata.Metadata
+		clientCertificateInScripts bool
+		wantErr                    bool
+		validate                   func(t *testing.T, client k8s.Client)
 	}{
 		{
 			name:           "creates a new config map when it doesn't exist",
@@ -110,9 +110,9 @@ func TestReconcileScriptsConfigMap(t *testing.T) {
 			},
 		},
 		{
-			name:                         "pre-stop script includes client cert args when client auth required",
-			clientAuthenticationRequired: true,
-			meta:                         metadata.Metadata{Labels: map[string]string{"test": "true"}},
+			name:                       "pre-stop script includes client cert args when client auth required",
+			clientCertificateInScripts: true,
+			meta:                       metadata.Metadata{Labels: map[string]string{"test": "true"}},
 			validate: func(t *testing.T, client k8s.Client) {
 				t.Helper()
 				var cm corev1.ConfigMap
@@ -131,9 +131,9 @@ func TestReconcileScriptsConfigMap(t *testing.T) {
 			},
 		},
 		{
-			name:                         "pre-stop script does not include client cert args when client auth not required",
-			clientAuthenticationRequired: false,
-			meta:                         metadata.Metadata{Labels: map[string]string{"test": "true"}},
+			name:                       "pre-stop script does not include client cert args when client auth not required",
+			clientCertificateInScripts: false,
+			meta:                       metadata.Metadata{Labels: map[string]string{"test": "true"}},
 			validate: func(t *testing.T, client k8s.Client) {
 				t.Helper()
 				var cm corev1.ConfigMap
@@ -154,7 +154,7 @@ func TestReconcileScriptsConfigMap(t *testing.T) {
 			mockClient := k8s.NewFakeClient(tt.initialObjects...)
 
 			// Run the function
-			err := ReconcileScriptsConfigMap(context.Background(), mockClient, es, tt.meta, tt.clientAuthenticationRequired)
+			err := ReconcileScriptsConfigMap(context.Background(), mockClient, es, tt.meta, tt.clientCertificateInScripts)
 
 			// Check error
 			if tt.wantErr {

@@ -37,6 +37,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/configmap"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/driver"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/filesettings"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/hints"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/initcontainer"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/label"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/license"
@@ -79,8 +80,20 @@ func ReconcileSharedResources(
 	// Extract the metadata that should be propagated to children.
 	meta := metadata.Propagate(&es, metadata.Metadata{Labels: label.NewLabels(k8s.ExtractNamespacedName(&es))})
 
+	// When client auth is enabled for the first time, set the orchestration hint so the pre-stop hook
+	// script permanently includes client certificate flags. This avoids a race condition during the
+	// disable transition where kubelet may hot-reload the updated ConfigMap (without client cert flags)
+	// into old pods before they are terminated. The file-existence checks in the script make the flags
+	// a no-op when certificate files are not mounted.
+	if clientAuthenticationRequired {
+		params.ReconcileState.UpdateOrchestrationHints(
+			params.ReconcileState.OrchestrationHints().Merge(hints.OrchestrationsHints{ClientCertificateInScripts: true}),
+		)
+	}
+	clientCertificateInScripts := params.ReconcileState.OrchestrationHints().ClientCertificateInScripts
+
 	// Reconcile the scripts ConfigMap.
-	if err := configmap.ReconcileScriptsConfigMap(ctx, client, es, meta, clientAuthenticationRequired); err != nil {
+	if err := configmap.ReconcileScriptsConfigMap(ctx, client, es, meta, clientCertificateInScripts); err != nil {
 		return nil, results.WithError(err)
 	}
 
