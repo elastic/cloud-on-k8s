@@ -36,6 +36,8 @@ endif
 REGISTRY            ?= docker.elastic.co
 
 export SNAPSHOT     ?= true
+# ?= keeps the variable recursively expanded, so the $(shell) would re-run on every reference.
+# Splitting into ?= then := ensures the shell command runs at most once and the result is cached.
 VERSION             ?= $(shell cat VERSION)
 export VERSION      := $(VERSION)
 SHA1                ?= $(shell git rev-parse --short=8 --verify HEAD)
