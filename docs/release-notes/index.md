@@ -19,7 +19,7 @@ ECK 3.3.2 fixes the previous implementation of ECK with fips mode enabled that w
 
 ### Features and enhancements [elastic-cloud-kubernetes-332-features-and-enhancements]
 
-- Migrate to native Golang FIPS 140-3 mode [#9263](https://github.com/elastic/cloud-on-k8s/pull/9263)
+- Migrate to native Go FIPS 140-3 mode [#9263](https://github.com/elastic/cloud-on-k8s/pull/9263)
 
 :::{dropdown} Updated dependencies
 
