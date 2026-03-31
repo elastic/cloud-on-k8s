@@ -40,7 +40,7 @@ func (s *staticURLProvider) Equals(other URLProvider) bool {
 }
 
 func (s *staticURLProvider) HasEndpoints() bool {
-	return true
+	return s.url != ""
 }
 
 var _ URLProvider = (*staticURLProvider)(nil)

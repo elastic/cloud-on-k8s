@@ -16,6 +16,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/reconciler"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/version"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/watches"
+	esclient "github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/client"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/observer"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/reconcile"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/k8s"
@@ -43,6 +44,9 @@ type Parameters struct {
 	// Client is used to access the Kubernetes API.
 	Client   k8s.Client
 	Recorder toolsevents.EventRecorder
+
+	// URLProvider is used to get the URL of the Elasticsearch cluster.
+	URLProvider esclient.URLProvider
 
 	// LicenseChecker is used for some features to check if an appropriate license is setup
 	LicenseChecker commonlicense.Checker

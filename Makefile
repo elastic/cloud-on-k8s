@@ -82,11 +82,32 @@ dependencies: tidy
 tidy:
 	go mod tidy
 
-go-build: go-generate
+go-build-elastic-operator:
 	go build \
 		-mod readonly \
-		-ldflags "$(GO_LDFLAGS)" -tags="$(GO_TAGS)" -a \
-		 -o elastic-operator github.com/elastic/cloud-on-k8s/v3/cmd
+		-ldflags '$(GO_LDFLAGS) $(GO_LDFLAGS_EXTRA)' -tags='$(GO_TAGS)' -a \
+		-o elastic-operator github.com/elastic/cloud-on-k8s/v3/cmd
+
+go-build: go-generate
+go-build: export CGO_ENABLED=0
+go-build: go-build-elastic-operator
+
+# If GOFIPS140 or runtime.godebugDefault=fips140 value is changed,
+# the .buildkite/scripts/build/verify-fips-binary.sh should be adjusted accordingly.
+go-build-fips: go-generate
+go-build-fips: export CGO_ENABLED=0
+go-build-fips: export GOFIPS140=v1.0.0
+go-build-fips: GO_LDFLAGS_EXTRA=-X runtime.godebugDefault=fips140=on
+go-build-fips: go-build-elastic-operator
+go-build-fips:
+	./.buildkite/scripts/build/verify-fips-binary.sh native ./elastic-operator
+
+go-build-fips-boringcrypto: go-generate
+go-build-fips-boringcrypto: export CGO_ENABLED=1
+go-build-fips-boringcrypto: export GOEXPERIMENT=boringcrypto
+go-build-fips-boringcrypto: go-build-elastic-operator
+go-build-fips-boringcrypto:
+	./.buildkite/scripts/build/verify-fips-binary.sh boringcrypto ./elastic-operator
 
 reattach-pv:
 	# just check that reattach-pv still compiles
@@ -161,10 +182,12 @@ integration: clean
 
 integration-xml: GO_TAGS += integration
 integration-xml: clean
-	@ for pkg in $$(grep 'go:build integration' -rl | grep _test.go | xargs -n1 dirname | uniq); do \
+	@ exit_code=0; \
+	for pkg in $$(grep 'go:build integration' -rl | grep _test.go | xargs -n1 dirname | uniq); do \
 	KUBEBUILDER_ASSETS=/usr/local/bin ECK_TEST_LOG_LEVEL=$(LOG_VERBOSITY) \
-		gotestsum --junitfile integration-tests.xml -- $$(pwd)/$$pkg -tags='$(GO_TAGS)' -cover $(TEST_OPTS) ; \
-	done
+		gotestsum --junitfile integration-tests-$$(basename $$pkg).xml -- $$(pwd)/$$pkg -tags='$(GO_TAGS)' -cover $(TEST_OPTS) || exit_code=$$? ; \
+	done; \
+	exit $$exit_code
 
 lint:
 	GOGC=40 golangci-lint run --verbose
@@ -357,18 +380,25 @@ switch-k3d:
 ##  --    Docker images    --  ##
 #################################
 
+docker-push-operator: DOCKER_BUILDX_ARGS=--push
+docker-push-operator: docker-build-operator
+
 # build amd64 image for dev purposes
 BUILD_PLATFORM ?= "linux/amd64"
-docker-push-operator:
+DOCKER_BUILD_TARGET ?= static
+MAKE_BUILD_RECIPE ?= go-build
+docker-build-operator:
 	docker buildx build . \
-	 	-f build/Dockerfile \
+		-f build/Dockerfile \
 		--progress=plain \
+		--target=$(DOCKER_BUILD_TARGET) \
+		--build-arg MAKE_BUILD_RECIPE='$(MAKE_BUILD_RECIPE)' \
 		--build-arg GO_LDFLAGS='$(GO_LDFLAGS)' \
 		--build-arg GO_TAGS='$(GO_TAGS)' \
 		--build-arg VERSION='$(VERSION)' \
+		--build-arg LICENSE_PUBKEY='$(LICENSE_PUBKEY)' \
 		--platform $(BUILD_PLATFORM) \
-		--push \
-		-t $(OPERATOR_IMAGE)
+		$(DOCKER_BUILDX_ARGS) -t $(OPERATOR_IMAGE)
 
 drivah-generate-operator:
 	@ build/gen-drivah.toml.sh
