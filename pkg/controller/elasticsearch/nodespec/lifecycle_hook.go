@@ -170,7 +170,6 @@ else
   delayed_exit
 fi
 
-{{- if .MTLSAware}}
 # setup client certificate authentication if certificates are available
 if [ -f "{{.InternalClientCertPath}}" ]; then
   # client certificates are mounted by the operator for client authentication
@@ -182,12 +181,11 @@ elif [ -f "{{.HTTPCertPath}}" ]; then
 else
   CLIENT_CERT=()
 fi
-{{- end}}
 
 ES_URL="{{.ServiceURL}}"
 
 log "retrieving node ID"
-if ! retry "$retries_count" request -X GET "${ES_URL}/_cat/nodes?full_id=true&h=id,name" "${BASIC_AUTH[@]}"{{if .MTLSAware}} "${CLIENT_CERT[@]}"{{end}}
+if ! retry "$retries_count" request -X GET "${ES_URL}/_cat/nodes?full_id=true&h=id,name" "${BASIC_AUTH[@]}" "${CLIENT_CERT[@]}"
 then
   error_exit "failed to retrieve nodes"
 fi
@@ -198,7 +196,7 @@ then
 fi
 
 # check if there is an ongoing shutdown request
-if ! request -X GET "${ES_URL}/_nodes/${NODE_ID}/shutdown" "${BASIC_AUTH[@]}"{{if .MTLSAware}} "${CLIENT_CERT[@]}"{{end}}
+if ! request -X GET "${ES_URL}/_nodes/${NODE_ID}/shutdown" "${BASIC_AUTH[@]}" "${CLIENT_CERT[@]}"
 then
   error_exit "failed to retrieve shutdown status"
 fi
@@ -209,7 +207,7 @@ if grep -q -v '"nodes":\[\]' "$resp_body"; then
 fi
 
 log "initiating node shutdown"
-if ! retry "$retries_count" request -X PUT "${ES_URL}/_nodes/${NODE_ID}/shutdown" "${BASIC_AUTH[@]}"{{if .MTLSAware}} "${CLIENT_CERT[@]}"{{end}} -H 'Content-Type: application/json' -d"
+if ! retry "$retries_count" request -X PUT "${ES_URL}/_nodes/${NODE_ID}/shutdown" "${BASIC_AUTH[@]}" "${CLIENT_CERT[@]}" -H 'Content-Type: application/json' -d"
 {
   \"type\": \"${shutdown_type}\",
   \"reason\": \"pre-stop hook\"
@@ -221,7 +219,7 @@ fi
 while :
 do
   log "waiting for node shutdown to complete"
-  if request -X GET "${ES_URL}/_nodes/${NODE_ID}/shutdown" "${BASIC_AUTH[@]}"{{if .MTLSAware}} "${CLIENT_CERT[@]}"{{end}} &&
+  if request -X GET "${ES_URL}/_nodes/${NODE_ID}/shutdown" "${BASIC_AUTH[@]}" "${CLIENT_CERT[@]}" &&
     grep -q -v 'IN_PROGRESS\|STALLED' "$resp_body"
   then
     break
@@ -232,23 +230,20 @@ done
 delayed_exit
 `))
 
-func RenderPreStopHookScript(svcURL string, mtlsAware bool) (string, error) {
+func RenderPreStopHookScript(svcURL string) (string, error) {
 	vars := map[string]string{
 		"PreStopUserName":         user.PreStopUserName,
 		"PreStopUserPasswordPath": filepath.Join(volume.PodMountedUsersSecretMountPath, user.PreStopUserName),
 		// edge case: protocol change (http/https) combined with external node shutdown might not work out well due to
 		// script propagation delays. But it is not a legitimate production use case as users are not expected to change
 		// protocol on production systems
-		"ServiceURL":       svcURL,
-		"LabelsFile":       filepath.Join(volume.DownwardAPIMountPath, volume.LabelsFile),
-		"VersionLabelName": label.VersionLabelName,
-	}
-	if mtlsAware {
-		vars["MTLSAware"] = "true"
-		vars["InternalClientCertPath"] = filepath.Join(volume.InternalClientCertMountPath, certificates.CertFileName)
-		vars["InternalClientKeyPath"] = filepath.Join(volume.InternalClientCertMountPath, certificates.KeyFileName)
-		vars["HTTPCertPath"] = filepath.Join(volume.HTTPCertificatesSecretVolumeMountPath, certificates.CertFileName)
-		vars["HTTPKeyPath"] = filepath.Join(volume.HTTPCertificatesSecretVolumeMountPath, certificates.KeyFileName)
+		"ServiceURL":             svcURL,
+		"LabelsFile":             filepath.Join(volume.DownwardAPIMountPath, volume.LabelsFile),
+		"VersionLabelName":       label.VersionLabelName,
+		"InternalClientCertPath": filepath.Join(volume.InternalClientCertMountPath, certificates.CertFileName),
+		"InternalClientKeyPath":  filepath.Join(volume.InternalClientCertMountPath, certificates.KeyFileName),
+		"HTTPCertPath":           filepath.Join(volume.HTTPCertificatesSecretVolumeMountPath, certificates.CertFileName),
+		"HTTPKeyPath":            filepath.Join(volume.HTTPCertificatesSecretVolumeMountPath, certificates.KeyFileName),
 	}
 	var script bytes.Buffer
 	err := preStopHookScriptTemplate.Execute(&script, vars)

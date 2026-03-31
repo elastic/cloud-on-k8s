@@ -12,27 +12,7 @@ import (
 )
 
 func TestRenderPreStopHookScript(t *testing.T) {
-	const svcURL = "https://test-es-http.default.svc:9200"
-
-	tests := []struct {
-		name                         string
-		clientAuthenticationRequired bool
-	}{
-		{
-			name:                         "without client authentication",
-			clientAuthenticationRequired: false,
-		},
-		{
-			name:                         "with client authentication",
-			clientAuthenticationRequired: true,
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			got, err := RenderPreStopHookScript(svcURL, tt.clientAuthenticationRequired)
-			require.NoError(t, err)
-			snaps.MatchSnapshot(t, got)
-		})
-	}
+	got, err := RenderPreStopHookScript("https://test-es-http.default.svc:9200")
+	require.NoError(t, err)
+	snaps.MatchSnapshot(t, got)
 }

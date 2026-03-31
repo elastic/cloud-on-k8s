@@ -37,7 +37,6 @@ func TestReconcileScriptsConfigMap(t *testing.T) {
 		name           string
 		initialObjects []client.Object
 		meta           metadata.Metadata
-		mtlsAware      bool
 		wantErr        bool
 		validate       func(t *testing.T, client k8s.Client)
 	}{
@@ -110,9 +109,8 @@ func TestReconcileScriptsConfigMap(t *testing.T) {
 			},
 		},
 		{
-			name:      "pre-stop script includes client cert args when client auth required",
-			mtlsAware: true,
-			meta:      metadata.Metadata{Labels: map[string]string{"test": "true"}},
+			name: "pre-stop script always includes client cert args",
+			meta: metadata.Metadata{Labels: map[string]string{"test": "true"}},
 			validate: func(t *testing.T, client k8s.Client) {
 				t.Helper()
 				var cm corev1.ConfigMap
@@ -130,22 +128,6 @@ func TestReconcileScriptsConfigMap(t *testing.T) {
 				assert.Contains(t, script, "http-certs/tls.key")
 			},
 		},
-		{
-			name:      "pre-stop script does not include client cert args when client auth not required",
-			mtlsAware: false,
-			meta:      metadata.Metadata{Labels: map[string]string{"test": "true"}},
-			validate: func(t *testing.T, client k8s.Client) {
-				t.Helper()
-				var cm corev1.ConfigMap
-				err := client.Get(context.Background(), types.NamespacedName{Namespace: namespace, Name: configMapName}, &cm)
-				assert.NoError(t, err)
-				script := cm.Data[nodespec.PreStopHookScriptConfigKey]
-				assert.NotContains(t, script, "CLIENT_CERT=")
-				assert.NotContains(t, script, `"${CLIENT_CERT[@]}"`)
-				assert.NotContains(t, script, "--cert")
-				assert.NotContains(t, script, "--key")
-			},
-		},
 	}
 
 	for _, tt := range tests {
@@ -154,7 +136,7 @@ func TestReconcileScriptsConfigMap(t *testing.T) {
 			mockClient := k8s.NewFakeClient(tt.initialObjects...)
 
 			// Run the function
-			err := ReconcileScriptsConfigMap(context.Background(), mockClient, es, tt.meta, tt.mtlsAware)
+			err := ReconcileScriptsConfigMap(context.Background(), mockClient, es, tt.meta)
 
 			// Check error
 			if tt.wantErr {

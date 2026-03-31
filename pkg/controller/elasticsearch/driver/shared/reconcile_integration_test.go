@@ -695,7 +695,7 @@ func mustBuildExpectedConfigMaps(t *testing.T, es *esv1.Elasticsearch, resourceV
 
 	fsScript, err := initcontainer.RenderPrepareFsScript(es.DownwardNodeLabels())
 	require.NoError(t, err, "error rendering FS script")
-	preStopScript, err := nodespec.RenderPreStopHookScript(services.InternalServiceURL(*es), true)
+	preStopScript, err := nodespec.RenderPreStopHookScript(services.InternalServiceURL(*es))
 	require.NoError(t, err, "error rendering preStop script")
 
 	host := ""

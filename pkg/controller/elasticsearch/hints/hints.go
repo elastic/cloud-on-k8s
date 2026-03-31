@@ -26,24 +26,6 @@ type OrchestrationsHints struct {
 	// controllers should then rely on regular users until the value is true.
 	ServiceAccounts *optional.Bool    `json:"service_accounts,omitempty"`
 	DesiredNodes    *DesiredNodesHint `json:"desired_nodes,omitempty"`
-
-	// MTLSAware controls whether the pre-stop hook script includes client
-	// certificate flags (with file-existence fallbacks). Once set to true, this hint is never
-	// cleared — it is sticky via OR-based Merge.
-	//
-	// Stickiness avoids a race during the mTLS enable/disable transition: kubelet may hot-reload an
-	// updated ConfigMap (without client cert flags) into old pods before they are terminated.
-	// The file-existence checks in the script make those flags a no-op when cert files are not
-	// mounted, so retaining them is always safe.
-	//
-	// New clusters (not yet bootstrapped) have this set to true at first reconciliation, so the
-	// script includes cert flags from the start and is immune to the race on any future mTLS
-	// enable/disable cycle.
-	//
-	// Existing clusters default to false (the field is absent from the hints annotation) to avoid
-	// a fleet-wide rolling restart on operator upgrade for clusters that don't use mTLS. Once
-	// mTLS is first enabled, the hint is set to true and remains so.
-	MTLSAware bool `json:"mtls_aware,omitempty"`
 }
 
 // Merge merges the hints in other into the receiver.
@@ -52,7 +34,6 @@ func (oh OrchestrationsHints) Merge(other OrchestrationsHints) OrchestrationsHin
 		NoTransientSettings: oh.NoTransientSettings || other.NoTransientSettings,
 		ServiceAccounts:     oh.ServiceAccounts.Or(other.ServiceAccounts),
 		DesiredNodes:        oh.DesiredNodes.ReplaceWith(other.DesiredNodes),
-		MTLSAware:           oh.MTLSAware || other.MTLSAware,
 	}
 }
 

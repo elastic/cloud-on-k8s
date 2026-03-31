@@ -28,13 +28,7 @@ import (
 // ReconcileScriptsConfigMap reconciles a configmap containing scripts and related configuration used by
 // init containers and readiness probe. The scripts ConfigMap content feeds into the pod-template config
 // hash, so any change to the rendered scripts (including label ordering) will trigger a rolling restart.
-func ReconcileScriptsConfigMap(
-	ctx context.Context,
-	c k8s.Client,
-	es esv1.Elasticsearch,
-	meta metadata.Metadata,
-	mtlsAware bool,
-) error {
+func ReconcileScriptsConfigMap(ctx context.Context, c k8s.Client, es esv1.Elasticsearch, meta metadata.Metadata) error {
 	span, ctx := apm.StartSpan(ctx, "reconcile_scripts", tracing.SpanTypeApp)
 	defer span.End()
 
@@ -43,7 +37,7 @@ func ReconcileScriptsConfigMap(
 		return err
 	}
 
-	preStopScript, err := nodespec.RenderPreStopHookScript(services.InternalServiceURL(es), mtlsAware)
+	preStopScript, err := nodespec.RenderPreStopHookScript(services.InternalServiceURL(es))
 	if err != nil {
 		return err
 	}
