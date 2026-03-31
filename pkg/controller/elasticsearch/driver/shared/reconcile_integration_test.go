@@ -12,6 +12,7 @@ import (
 	"crypto/x509"
 	"crypto/x509/pkix"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net"
 	"net/http"
@@ -189,6 +190,51 @@ func TestReconcileSharedResources(t *testing.T) {
 			expectESClient:       true,
 		},
 		{
+			name: "failure generating remote-ca secret does not block remaining reconciliation",
+			params: func() driver.Parameters {
+				p := mustBuildParams(t, esServer, baseStatefulElasticsearch.Spec.Version, services.InternalServiceURL(baseStatefulElasticsearch), 1,
+					&baseStatefulElasticsearch,
+					mustBuildNewPod(t, &baseStatefulElasticsearch, esServer.Listener.Addr(), baseStatefulElasticsearch.Labels[label.VersionLabelName]),
+				)
+				es := baseStatefulElasticsearch.DeepCopy()
+				es.Spec.RemoteClusterServer.Enabled = true
+				p.ES = *es
+
+				remoteCASecretKey := types.NamespacedName{Namespace: es.Namespace, Name: esv1.RemoteCaSecretName(es.Name)}
+				p.Client = &fakeClient{
+					Client: p.Client,
+					errors: map[client.ObjectKey]error{remoteCASecretKey: errors.New("beep boop I'm an error")},
+				}
+
+				return p
+			}(),
+			expectedServices: map[string]corev1.Service{
+				esv1.TransportService(clusterName):             newService(&baseStatefulElasticsearch, transport, "1"),
+				services.ExternalServiceName(clusterName):      newService(&baseStatefulElasticsearch, external, "1"),
+				services.InternalServiceName(clusterName):      newService(&baseStatefulElasticsearch, internal, "1"),
+				services.RemoteClusterServiceName(clusterName): newService(&baseStatefulElasticsearch, remote, "1"),
+			},
+			expectedCerts: func() map[string]expectedCertData {
+				baseCertData := buildExpectedCertData(baseStatefulElasticsearch, 1)
+				delete(baseCertData, esv1.RemoteCaSecretName(baseStatefulElasticsearch.Name))
+				return baseCertData
+			}(),
+			expectedSecrets:    mustBuildExpectedSecrets(t, &baseStatefulElasticsearch, "1"),
+			expectedConfigMaps: mustBuildExpectedConfigMaps(t, &baseStatefulElasticsearch, "1", esServer),
+			expectedState: &ReconcileState{
+				Meta: metadata.Metadata{
+					Labels: map[string]string{
+						label.ClusterNameLabelName:   clusterName,
+						"common.k8s.elastic.co/type": "elasticsearch",
+					},
+					Annotations: nil,
+				},
+				ESReachable: true, // still reachable despite remoteca secret creation failure
+			},
+			expectReconciliation: false, // false because results.incomplete is true due to the remoteca secret creation failure
+			expectESClient:       true,
+		},
+		{
 			name: "orphaned secret referencing a deleted pod is garbage collected",
 			params: mustBuildParams(t, esServer, baseStatefulElasticsearch.Spec.Version, services.InternalServiceURL(baseStatefulElasticsearch), 0,
 				&baseStatefulElasticsearch,
@@ -325,7 +371,7 @@ func TestReconcileSharedResources(t *testing.T) {
 
 			s, results := ReconcileSharedResources(context.Background(), testDriver, tt.params)
 			if tt.expectedState != nil {
-				assert.NotNil(t, s, "Expected non-nil state")
+				require.NotNil(t, s, "Expected non-nil state")
 				assert.EqualValues(t, tt.expectedState.ESReachable, s.ESReachable)
 				assert.EqualValues(t, tt.expectedState.KeystoreResources, s.KeystoreResources)
 				assert.EqualValues(t, tt.expectedState.Meta, s.Meta)
@@ -635,7 +681,6 @@ func assertCertificatesEqual(t *testing.T, expected expectedCertData, actual cor
 				assert.Equalf(t, expectedCert.issuer, actualCert.Issuer, "secret %s %s %d cert Issuer set incorrectly", actual.Name, name, i)
 				assert.Equalf(t, expectedCert.subject, actualCert.Subject, "secret %s %s %d cert Subject set incorrectly", actual.Name, name, i)
 			}
-
 		}
 	}
 }
@@ -1016,6 +1061,28 @@ func mustParseVersion(t *testing.T, version string) commonversion.Version {
 
 	return v
 }
+
+type fakeClient struct {
+	k8s.Client
+	errors map[client.ObjectKey]error
+}
+
+func (f *fakeClient) Get(_ context.Context, key client.ObjectKey, obj client.Object, _ ...client.GetOption) error {
+	if err := f.errors[key]; err != nil {
+		return err
+	}
+	return f.Client.Get(context.Background(), key, obj)
+}
+
+func (f *fakeClient) Create(_ context.Context, obj client.Object, _ ...client.CreateOption) error {
+	key := client.ObjectKey{Namespace: obj.GetNamespace(), Name: obj.GetName()}
+	if err := f.errors[key]; err != nil {
+		return err
+	}
+	return f.Client.Create(context.Background(), obj)
+}
+
+var _ k8s.Client = (*fakeClient)(nil)
 
 const userRoles = `elastic-internal_cluster_manage:elastic-internal-pre-stop
 elastic_internal_diagnostics_v85:elastic-internal-diagnostics
