@@ -19,6 +19,7 @@ import (
 
 const (
 	keystorePasswordEnvVar       = "KEYSTORE_PASSWORD"
+	keystorePasswordFileEnvVar   = "KEYSTORE_PASSWORD_FILE"
 	keystorePassphraseFileEnvVar = "ES_KEYSTORE_PASSPHRASE_FILE" //nolint:gosec // Environment variable name, not a secret value.
 )
 
@@ -59,7 +60,7 @@ func AnyNodeSetFIPSEnabled(nodeSets []esv1.NodeSet, policyConfig *common.Canonic
 }
 
 // HasUserProvidedKeystorePassword returns true if the user has set
-// KEYSTORE_PASSWORD or ES_KEYSTORE_PASSPHRASE_FILE on the Elasticsearch
+// KEYSTORE_PASSWORD, KEYSTORE_PASSWORD_FILE, or ES_KEYSTORE_PASSPHRASE_FILE on the Elasticsearch
 // container in their pod template. It checks both explicit env entries and
 // envFrom sources by resolving referenced ConfigMaps and Secrets.
 func HasUserProvidedKeystorePassword(ctx context.Context, c k8s.Client, namespace string, podTemplate corev1.PodTemplateSpec) (bool, error) {
@@ -68,7 +69,7 @@ func HasUserProvidedKeystorePassword(ctx context.Context, c k8s.Client, namespac
 			continue
 		}
 		for _, env := range container.Env {
-			if env.Name == keystorePasswordEnvVar || env.Name == keystorePassphraseFileEnvVar {
+			if env.Name == keystorePasswordEnvVar || env.Name == keystorePasswordFileEnvVar || env.Name == keystorePassphraseFileEnvVar {
 				return true, nil
 			}
 		}
@@ -105,7 +106,7 @@ func AnyNodeSetHasUserProvidedKeystorePassword(
 
 // envFromContainsKeystorePassword resolves the ConfigMaps and Secrets
 // referenced by the given envFrom entries and returns true if any of them
-// would inject KEYSTORE_PASSWORD or ES_KEYSTORE_PASSPHRASE_FILE.
+// would inject KEYSTORE_PASSWORD, KEYSTORE_PASSWORD_FILE, or ES_KEYSTORE_PASSPHRASE_FILE.
 func envFromContainsKeystorePassword(ctx context.Context, c k8s.Client, namespace string, sources []corev1.EnvFromSource) (bool, error) {
 	for _, src := range sources {
 		if src.ConfigMapRef != nil {
@@ -146,7 +147,7 @@ func envFromContainsKeystorePassword(ctx context.Context, c k8s.Client, namespac
 func envFromKeyMatches(prefix string, data map[string]string) bool {
 	for key := range data {
 		name := prefix + key
-		if name == keystorePasswordEnvVar || name == keystorePassphraseFileEnvVar {
+		if name == keystorePasswordEnvVar || name == keystorePasswordFileEnvVar || name == keystorePassphraseFileEnvVar {
 			return true
 		}
 	}

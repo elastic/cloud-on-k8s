@@ -5,6 +5,7 @@
 package shared
 
 import (
+	"context"
 	"testing"
 
 	corev1 "k8s.io/api/core/v1"
@@ -14,10 +15,16 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
+	commonv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/common/v1"
 	esv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/elasticsearch/v1"
 	policyv1alpha1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/stackconfigpolicy/v1alpha1"
 	commonlicense "github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/license"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/metadata"
+	commonversion "github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/version"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/nodespec"
+	esversion "github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/version"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/k8s"
 )
 
@@ -371,6 +378,69 @@ func Test_maybeReconcileEmptyFileSettingsSecret(t *testing.T) {
 				assert.NoError(t, secretErr, "expected no error at getting file-settings secret")
 			} else {
 				assert.True(t, apierrors.IsNotFound(secretErr), "expected IsNotFound error at getting file-settings secret")
+			}
+		})
+	}
+}
+
+func TestReconcileFIPSKeystoreSecretVersionGate(t *testing.T) {
+	fipsConfig := commonv1.NewConfig(map[string]any{
+		"xpack.security.fips_mode.enabled": true,
+	})
+	es := esv1.Elasticsearch{
+		ObjectMeta: metav1.ObjectMeta{
+			Namespace: "ns",
+			Name:      "es",
+		},
+		Spec: esv1.ElasticsearchSpec{
+			NodeSets: []esv1.NodeSet{
+				{
+					Name:   "default",
+					Config: &fipsConfig,
+				},
+			},
+		},
+	}
+
+	tests := []struct {
+		name         string
+		esVersion    commonversion.Version
+		wantSecret   bool
+		wantSecretID string
+	}{
+		{
+			name:         "below minimum version does not reconcile secret",
+			esVersion:    commonversion.MinFor(9, 3, 0),
+			wantSecret:   false,
+			wantSecretID: esv1.FIPSKeystorePasswordSecret(es.Name),
+		},
+		{
+			name:         "minimum version reconciles secret",
+			esVersion:    esversion.FIPSKeystorePasswordMinVersion,
+			wantSecret:   true,
+			wantSecretID: esv1.FIPSKeystorePasswordSecret(es.Name),
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			c := k8s.NewFakeClient(&es)
+
+			secret, err := reconcileFIPSKeystoreSecret(context.Background(), c, es, tt.esVersion, metadata.Metadata{}, nodespec.PolicyConfig{})
+			require.NoError(t, err)
+			if tt.wantSecret {
+				require.NotNil(t, secret)
+				require.Equal(t, tt.wantSecretID, secret.Name)
+			} else {
+				require.Nil(t, secret)
+			}
+
+			var stored corev1.Secret
+			err = c.Get(context.Background(), types.NamespacedName{Namespace: es.Namespace, Name: tt.wantSecretID}, &stored)
+			if tt.wantSecret {
+				require.NoError(t, err)
+			} else {
+				require.True(t, apierrors.IsNotFound(err))
 			}
 		})
 	}

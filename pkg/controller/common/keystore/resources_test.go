@@ -114,6 +114,7 @@ func TestReconcileResources(t *testing.T) {
 		client                  k8s.Client
 		kb                      kbv1.Kibana
 		initContainerParameters InitContainerParameters
+		wantErrMsg              string
 		wantNil                 bool
 		wantContainers          *corev1.Container
 		wantHash                string
@@ -269,6 +270,10 @@ echo "Keystore initialization successful."
 				FakeRecorder: record.NewFakeRecorder(1000),
 			}
 			resources, err := ReconcileResources(context.Background(), testDriver, &tt.kb, kbNamer, metadata.Metadata{}, tt.initContainerParameters)
+			if tt.wantErrMsg != "" {
+				require.ErrorContains(t, err, tt.wantErrMsg)
+				return
+			}
 			require.NoError(t, err)
 			if tt.wantNil {
 				require.Nil(t, resources)

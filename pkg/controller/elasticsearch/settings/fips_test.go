@@ -121,6 +121,20 @@ func TestHasUserProvidedKeystorePassword(t *testing.T) {
 			want: true,
 		},
 		{
+			name: "contains KEYSTORE_PASSWORD_FILE",
+			podTemplate: corev1.PodTemplateSpec{
+				Spec: corev1.PodSpec{
+					Containers: []corev1.Container{
+						{
+							Name: esv1.ElasticsearchContainerName,
+							Env:  []corev1.EnvVar{{Name: "KEYSTORE_PASSWORD_FILE", Value: "/mnt/secret/keystore-password"}},
+						},
+					},
+				},
+			},
+			want: true,
+		},
+		{
 			name: "contains ES_KEYSTORE_PASSPHRASE_FILE",
 			podTemplate: corev1.PodTemplateSpec{
 				Spec: corev1.PodSpec{
@@ -202,6 +216,30 @@ func TestHasUserProvidedKeystorePassword(t *testing.T) {
 							EnvFrom: []corev1.EnvFromSource{
 								{SecretRef: &corev1.SecretEnvSource{
 									LocalObjectReference: corev1.LocalObjectReference{Name: "my-secret"},
+								}},
+							},
+						},
+					},
+				},
+			},
+			want: true,
+		},
+		{
+			name: "envFrom Secret containing KEYSTORE_PASSWORD_FILE",
+			objects: []client.Object{
+				&corev1.Secret{
+					ObjectMeta: metav1.ObjectMeta{Namespace: namespace, Name: "my-secret-password-file"},
+					Data:       map[string][]byte{"KEYSTORE_PASSWORD_FILE": []byte("/mnt/secret/keystore-password")},
+				},
+			},
+			podTemplate: corev1.PodTemplateSpec{
+				Spec: corev1.PodSpec{
+					Containers: []corev1.Container{
+						{
+							Name: esv1.ElasticsearchContainerName,
+							EnvFrom: []corev1.EnvFromSource{
+								{SecretRef: &corev1.SecretEnvSource{
+									LocalObjectReference: corev1.LocalObjectReference{Name: "my-secret-password-file"},
 								}},
 							},
 						},

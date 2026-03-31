@@ -11,6 +11,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	esv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/elasticsearch/v1"
@@ -29,14 +30,23 @@ const (
 	// KeystorePasswordKey is the key used in the FIPS keystore password secret.
 	KeystorePasswordKey = "keystore-password"
 
-	VolumeName = "fips-keystore-password"
-	MountPath  = "/mnt/elastic-internal/fips-keystore-password"
-	// PasswordFile is the mounted file path containing the keystore password.
-	PasswordFile = MountPath + "/keystore-password"
+	SourceVolumeName = "fips-keystore-password"
+	SourceMountPath  = "/mnt/elastic-internal/fips-keystore-password"
+	// SourcePasswordFile is the mounted Secret file path read by the keystore init container.
+	SourcePasswordFile = SourceMountPath + "/keystore-password"
 
-	esKeystorePassphraseFileEnvVar = "ES_KEYSTORE_PASSPHRASE_FILE" //nolint:gosec // Environment variable name, not a secret.
+	keystorePasswordFileEnvVar = "KEYSTORE_PASSWORD_FILE"
 
 	generatedPasswordLength = 24
+)
+
+const (
+	// VolumeName is the source Secret volume name used for init-container consumption.
+	VolumeName = SourceVolumeName
+	// MountPath is the source Secret mount path used for init-container consumption.
+	MountPath = SourceMountPath
+	// PasswordFile is the source Secret password file path used by the init script.
+	PasswordFile = SourcePasswordFile
 )
 
 // ReconcileKeystorePasswordSecret ensures the FIPS keystore password Secret
@@ -99,35 +109,44 @@ func DeleteKeystorePasswordSecret(ctx context.Context, c k8s.Client, es esv1.Ela
 	}))
 }
 
-// InjectKeystorePassword adds the FIPS keystore password Secret volume,
-// volume mounts, and ES_KEYSTORE_PASSPHRASE_FILE env var to the pod template.
-// It modifies both the Elasticsearch container and the keystore init container.
+// InjectKeystorePassword adds the FIPS keystore password Secret volume and
+// KEYSTORE_PASSWORD_FILE env var to the pod template. It modifies both the
+// Elasticsearch container and the keystore init container.
 func InjectKeystorePassword(builder *defaults.PodTemplateBuilder, secretName string) *defaults.PodTemplateBuilder {
-	fipsPasswordVolume := corev1.Volume{
-		Name: VolumeName,
+	sourcePasswordVolume := corev1.Volume{
+		Name: SourceVolumeName,
 		VolumeSource: corev1.VolumeSource{
 			Secret: &corev1.SecretVolumeSource{
-				SecretName: secretName,
+				SecretName:  secretName,
+				DefaultMode: ptr.To[int32](0400),
 			},
 		},
 	}
-	fipsPasswordMount := corev1.VolumeMount{
-		Name:      VolumeName,
-		MountPath: MountPath,
+	sourcePasswordMount := corev1.VolumeMount{
+		Name:      SourceVolumeName,
+		MountPath: SourceMountPath,
 		ReadOnly:  true,
 	}
 
+	// Main Elasticsearch container wiring:
+	// - add the Secret volume to the pod and mount it on the main container
+	// - set KEYSTORE_PASSWORD_FILE so docker-entrypoint reads from the Secret file
 	builder = builder.
-		WithVolumes(fipsPasswordVolume).
-		WithVolumeMounts(fipsPasswordMount).
-		WithEnv(corev1.EnvVar{Name: esKeystorePassphraseFileEnvVar, Value: PasswordFile})
+		WithVolumes(sourcePasswordVolume).
+		WithVolumeMounts(sourcePasswordMount).
+		WithEnv(corev1.EnvVar{
+			Name:  keystorePasswordFileEnvVar,
+			Value: SourcePasswordFile,
+		})
 
+	// Keystore init container wiring:
+	// - mount the source Secret path so the init script can read SourcePasswordFile
 	for i := range builder.PodTemplate.Spec.InitContainers {
 		if builder.PodTemplate.Spec.InitContainers[i].Name != keystore.InitContainerName {
 			continue
 		}
 		builder.PodTemplate.Spec.InitContainers[i] = container.NewDefaulter(&builder.PodTemplate.Spec.InitContainers[i]).
-			WithVolumeMounts([]corev1.VolumeMount{fipsPasswordMount}).
+			WithVolumeMounts([]corev1.VolumeMount{sourcePasswordMount}).
 			Container()
 	}
 

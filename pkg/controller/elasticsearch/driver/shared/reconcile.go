@@ -49,6 +49,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/settings"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/stackmon"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/user"
+	esversion "github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/version"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/stackconfigpolicy"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/k8s"
 	ulog "github.com/elastic/cloud-on-k8s/v3/pkg/utils/log"
@@ -325,7 +326,7 @@ func ReconcileSharedResources(
 		esClient.Close()
 		return nil, results.WithError(err)
 	}
-	fipsKeystorePasswordSecret, err := reconcileFIPSKeystoreSecret(ctx, client, es, meta, policyConfig)
+	fipsKeystorePasswordSecret, err := reconcileFIPSKeystoreSecret(ctx, client, es, params.Version, meta, policyConfig)
 	if err != nil {
 		esClient.Close()
 		return nil, results.WithError(err)
@@ -479,6 +480,7 @@ func reconcileFIPSKeystoreSecret(
 	ctx context.Context,
 	client k8s.Client,
 	es esv1.Elasticsearch,
+	esVersion version.Version,
 	meta metadata.Metadata,
 	policyConfig nodespec.PolicyConfig,
 ) (*corev1.Secret, error) {
@@ -488,6 +490,9 @@ func reconcileFIPSKeystoreSecret(
 	}
 	if !fipsEnabled {
 		return nil, fips.DeleteKeystorePasswordSecret(ctx, client, es)
+	}
+	if esVersion.LT(esversion.FIPSKeystorePasswordMinVersion) {
+		return nil, nil
 	}
 	userOverride, err := settings.AnyNodeSetHasUserProvidedKeystorePassword(ctx, client, es.Namespace, es.Spec.NodeSets)
 	if err != nil || userOverride {

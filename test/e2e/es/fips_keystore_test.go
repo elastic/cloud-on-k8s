@@ -64,7 +64,7 @@ func TestFIPSKeystoreUserOverrideSkipsManagement(t *testing.T) {
 				fipsSetting: true,
 			},
 		}).
-		WithEnvironmentVariable("ES_KEYSTORE_PASSPHRASE_FILE", userPassphraseFile)
+		WithEnvironmentVariable("KEYSTORE_PASSWORD_FILE", userPassphraseFile)
 
 	steps := test.StepList{}.
 		WithSteps(b.InitTestSteps(k)).
@@ -230,17 +230,22 @@ func checkFIPSPodTemplateInjectedStep(k *test.K8sClient, es esv1.Elasticsearch, 
 				return vm.Name == esfips.VolumeName && vm.MountPath == esfips.MountPath
 			})
 			mainHasPassphraseEnv := slices.ContainsFunc(esContainer.Env, func(e corev1.EnvVar) bool {
-				return e.Name == "ES_KEYSTORE_PASSPHRASE_FILE" && e.Value == esfips.PasswordFile
+				return e.Name == "KEYSTORE_PASSWORD_FILE" &&
+					e.Value == esfips.PasswordFile
+			})
+			mainHasPasswordEnvFromSecret := slices.ContainsFunc(esContainer.Env, func(e corev1.EnvVar) bool {
+				return e.Name == "KEYSTORE_PASSWORD" && e.ValueFrom != nil && e.ValueFrom.SecretKeyRef != nil
 			})
 			script := strings.Join(keystoreInitContainer.Command, " ")
-			scriptHasFIPS := strings.Contains(script, "create -p") && strings.Contains(script, `KEYSTORE_PASSWORD=$(cat "`)
+			scriptHasFIPS := strings.Contains(script, "create -p") &&
+				strings.Contains(script, `KEYSTORE_PASSWORD=$(cat "`)
 
 			if expectUserOverride {
 				if hasFIPSVolume || mainHasFIPSMount || initHasFIPSMount || scriptHasFIPS {
 					return fmt.Errorf("operator-managed FIPS wiring unexpectedly present in pod template")
 				}
-				if !slices.ContainsFunc(esContainer.Env, func(e corev1.EnvVar) bool { return e.Name == "ES_KEYSTORE_PASSPHRASE_FILE" }) {
-					return fmt.Errorf("expected user-provided ES_KEYSTORE_PASSPHRASE_FILE env var to be present")
+				if !slices.ContainsFunc(esContainer.Env, func(e corev1.EnvVar) bool { return e.Name == "KEYSTORE_PASSWORD_FILE" }) {
+					return fmt.Errorf("expected user-provided KEYSTORE_PASSWORD_FILE env var to be present")
 				}
 				return nil
 			}
@@ -255,7 +260,10 @@ func checkFIPSPodTemplateInjectedStep(k *test.K8sClient, es esv1.Elasticsearch, 
 				return fmt.Errorf("missing %s mount on init container", esfips.MountPath)
 			}
 			if !mainHasPassphraseEnv {
-				return fmt.Errorf("missing ES_KEYSTORE_PASSPHRASE_FILE=%s env var", esfips.PasswordFile)
+				return fmt.Errorf("missing KEYSTORE_PASSWORD_FILE=%s env var", esfips.PasswordFile)
+			}
+			if mainHasPasswordEnvFromSecret {
+				return fmt.Errorf("unexpected KEYSTORE_PASSWORD secret env var on Elasticsearch container")
 			}
 			if !scriptHasFIPS {
 				return fmt.Errorf("expected FIPS-aware keystore init script, got command %q", script)

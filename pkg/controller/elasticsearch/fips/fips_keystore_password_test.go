@@ -210,27 +210,28 @@ func TestInjectKeystorePassword(t *testing.T) {
 			builder := defaults.NewPodTemplateBuilder(tt.podTemplate, esv1.ElasticsearchContainerName)
 			builder = InjectKeystorePassword(builder, "es-es-fips-keystore-password")
 
-			var injectedVolume *corev1.Volume
+			var sourceVolume *corev1.Volume
 			for i := range builder.PodTemplate.Spec.Volumes {
-				if builder.PodTemplate.Spec.Volumes[i].Name == VolumeName {
-					injectedVolume = &builder.PodTemplate.Spec.Volumes[i]
-					break
+				if builder.PodTemplate.Spec.Volumes[i].Name == SourceVolumeName {
+					sourceVolume = &builder.PodTemplate.Spec.Volumes[i]
 				}
 			}
-			require.NotNil(t, injectedVolume)
-			require.NotNil(t, injectedVolume.Secret)
-			require.Equal(t, "es-es-fips-keystore-password", injectedVolume.Secret.SecretName)
+			require.NotNil(t, sourceVolume)
+			require.NotNil(t, sourceVolume.Secret)
+			require.Equal(t, "es-es-fips-keystore-password", sourceVolume.Secret.SecretName)
+			require.NotNil(t, sourceVolume.Secret.DefaultMode)
+			require.Equal(t, int32(0400), *sourceVolume.Secret.DefaultMode)
 
 			mainContainer := builder.MainContainer()
 			require.NotNil(t, mainContainer)
 			require.Contains(t, mainContainer.VolumeMounts, corev1.VolumeMount{
-				Name:      VolumeName,
-				MountPath: MountPath,
+				Name:      SourceVolumeName,
+				MountPath: SourceMountPath,
 				ReadOnly:  true,
 			})
 			require.Contains(t, mainContainer.Env, corev1.EnvVar{
-				Name:  "ES_KEYSTORE_PASSPHRASE_FILE",
-				Value: PasswordFile,
+				Name:  "KEYSTORE_PASSWORD_FILE",
+				Value: SourcePasswordFile,
 			})
 
 			var keystoreInitContainer *corev1.Container
@@ -242,8 +243,8 @@ func TestInjectKeystorePassword(t *testing.T) {
 			}
 			require.NotNil(t, keystoreInitContainer)
 			require.Contains(t, keystoreInitContainer.VolumeMounts, corev1.VolumeMount{
-				Name:      VolumeName,
-				MountPath: MountPath,
+				Name:      SourceVolumeName,
+				MountPath: SourceMountPath,
 				ReadOnly:  true,
 			})
 		})
