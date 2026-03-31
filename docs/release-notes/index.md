@@ -13,13 +13,13 @@ Review the changes, fixes, and more in each release of Elastic Cloud on Kubernet
 
 ### Release Highlights
 
-#### Migrate to native Golang FIPS 140-3 mode
+#### Migrate to native Go FIPS 140-3 mode
 
-ECK 3.3.2 fixes the previous implementation of ECK FIPS by migrating to native Golang FIPS 140-3 mode that was introduced in Go 1.24.
+ECK 3.3.2 fixes the previous implementation of ECK FIPS by migrating to native Go FIPS 140-3 mode that was introduced in Go 1.24.
 
 ### Features and enhancements [elastic-cloud-kubernetes-332-features-and-enhancements]
 
-- Migrate to native Golang FIPS 140-3 mode [#9263](https://github.com/elastic/cloud-on-k8s/pull/9263)
+- Migrate to native Go FIPS 140-3 mode [#9263](https://github.com/elastic/cloud-on-k8s/pull/9263)
 
 :::{dropdown} Updated dependencies
 
