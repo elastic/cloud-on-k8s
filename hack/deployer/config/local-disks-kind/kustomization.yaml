@@ -8,3 +8,9 @@ patches:
       kind: DaemonSet
       name: local-volume-provisioner
     path: kind-pv-size-patch.yaml
+  - target:
+      group: storage.k8s.io
+      version: v1
+      kind: StorageClass
+      name: e2e-default
+    path: kind-default-sc-patch.yaml
