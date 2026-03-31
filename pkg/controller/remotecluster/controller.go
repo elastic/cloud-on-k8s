@@ -13,7 +13,7 @@ import (
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/sets"
-	"k8s.io/client-go/tools/record"
+	toolsevents "k8s.io/client-go/tools/events"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
@@ -63,7 +63,7 @@ func NewReconciler(mgr manager.Manager, accessReviewer rbac.AccessReviewer, para
 		accessReviewer:   accessReviewer,
 		keystoreProvider: keystore.NewProvider(c),
 		watches:          watches.NewDynamicWatches(),
-		recorder:         mgr.GetEventRecorderFor(name),
+		recorder:         mgr.GetEventRecorder(name),
 		licenseChecker:   license.NewLicenseChecker(c, params.OperatorNamespace),
 		Parameters:       params,
 		esClientProvider: commonesclient.NewClient,
@@ -77,7 +77,7 @@ type ReconcileRemoteClusters struct {
 	k8s.Client
 	operator.Parameters
 	accessReviewer   rbac.AccessReviewer
-	recorder         record.EventRecorder
+	recorder         toolsevents.EventRecorder
 	watches          watches.DynamicWatches
 	licenseChecker   license.Checker
 	esClientProvider commonesclient.Provider
@@ -361,7 +361,7 @@ func getExpectedRemoteClientsFor(
 
 	// AddKey remote clusters declared in the Spec
 	for _, remoteCluster := range associatedEs.Spec.RemoteClusters {
-		if !remoteCluster.ElasticsearchRef.IsDefined() {
+		if !remoteCluster.ElasticsearchRef.IsSet() {
 			continue
 		}
 		esRef := remoteCluster.ElasticsearchRef.WithDefaultNamespace(associatedEs.Namespace)
@@ -376,7 +376,7 @@ func getExpectedRemoteClientsFor(
 	// Seek for Elasticsearch resources where this cluster is declared as a remote cluster
 	for _, es := range list.Items {
 		for _, remoteCluster := range es.Spec.RemoteClusters {
-			if !remoteCluster.ElasticsearchRef.IsDefined() {
+			if !remoteCluster.ElasticsearchRef.IsSet() {
 				continue
 			}
 			esRef := remoteCluster.ElasticsearchRef.WithDefaultNamespace(es.Namespace)

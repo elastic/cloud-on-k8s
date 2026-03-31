@@ -48,14 +48,14 @@ func AddKibanaEnt(mgr manager.Manager, accessReviewer rbac.AccessReviewer, param
 
 func getEntExternalURL(c k8s.Client, assoc commonv1.Association) (string, error) {
 	entRef := assoc.AssociationRef()
-	if !entRef.IsDefined() {
+	if !entRef.IsSet() {
 		return "", nil
 	}
 	ent := entv1.EnterpriseSearch{}
 	if err := c.Get(context.Background(), entRef.NamespacedName(), &ent); err != nil {
 		return "", err
 	}
-	serviceName := entRef.ServiceName
+	serviceName := entRef.GetServiceName()
 	if serviceName == "" {
 		serviceName = entctl.HTTPServiceName(ent.Name)
 	}

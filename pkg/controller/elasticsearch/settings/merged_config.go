@@ -20,10 +20,19 @@ import (
 	netutil "github.com/elastic/cloud-on-k8s/v3/pkg/utils/net"
 )
 
-// the name of the ES attribute indicating the pod's current k8s node
-const nodeAttrK8sNodeName = "k8s_node_name"
+const (
+	// the name of the ES attribute indicating the pod's current k8s node
+	nodeAttrK8sNodeName = "k8s_node_name"
+	// the name of the ES attribute indicating the pod's current zone
+	nodeAttrZone = "zone"
+	// the format of the environment variable reference
+	envVarReferenceFormat = "${%s}"
+)
 
-var nodeAttrNodeName = fmt.Sprintf("%s.%s", esv1.NodeAttr, nodeAttrK8sNodeName)
+var (
+	nodeAttrNodeName = fmt.Sprintf("%s.%s", esv1.NodeAttr, nodeAttrK8sNodeName)
+	nodeAttrZoneName = fmt.Sprintf("%s.%s", esv1.NodeAttr, nodeAttrZone)
+)
 
 // NewMergedESConfig merges user provided Elasticsearch configuration with configuration derived from the given
 // parameters. The user provided config overrides have precedence over the ECK config.
@@ -35,6 +44,7 @@ func NewMergedESConfig(
 	userConfig commonv1.Config,
 	esConfigFromStackConfigPolicy *common.CanonicalConfig,
 	remoteClusterServerEnabled, remoteClusterClientEnabled bool,
+	clusterHasZoneAwareness bool,
 ) (CanonicalConfig, error) {
 	userCfg, err := common.NewCanonicalConfigFrom(userConfig.Data)
 	if err != nil {
@@ -43,6 +53,7 @@ func NewMergedESConfig(
 
 	config := baseConfig(clusterName, ver, ipFamily, remoteClusterServerEnabled).CanonicalConfig
 	err = config.MergeWith(
+		zoneAwarenessConfig(clusterHasZoneAwareness).CanonicalConfig,
 		xpackConfig(ver, httpConfig, remoteClusterServerEnabled, remoteClusterClientEnabled).CanonicalConfig,
 		userCfg,
 		esConfigFromStackConfigPolicy,
@@ -51,6 +62,27 @@ func NewMergedESConfig(
 		return CanonicalConfig{}, err
 	}
 	return CanonicalConfig{config}, nil
+}
+
+// zoneAwarenessConfig returns the ES configuration related to zone awareness.
+// *Note* in the case of zone awareness being enabled for nodeSets within the cluster, but one or more nodeSets
+// do not have the zoneAwareness field configured, we will still add the following configuration for consistency:
+//
+// - node.attr.zone: ${ZONE}
+// - cluster.routing.allocation.awareness.attributes: k8s_node_name,zone
+//
+// In this case, ${ZONE} will be set to the either the first topology key defined for other nodeSets, or fallback
+// to the default topology key [topology.kubernetes.io/zone].
+func zoneAwarenessConfig(clusterHasZoneAwareness bool) *CanonicalConfig {
+	if !clusterHasZoneAwareness {
+		cfg := NewCanonicalConfig()
+		return &cfg
+	}
+	cfg := map[string]any{}
+	zoneEnvVarRef := fmt.Sprintf(envVarReferenceFormat, EnvZone)
+	cfg[nodeAttrZoneName] = zoneEnvVarRef
+	cfg[esv1.ShardAwarenessAttributes] = fmt.Sprintf("%s,%s", nodeAttrK8sNodeName, nodeAttrZone)
+	return &CanonicalConfig{common.MustCanonicalConfig(cfg)}
 }
 
 // baseConfig returns the base ES configuration to apply for the given cluster

@@ -13,7 +13,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/client-go/tools/record"
+	toolsevents "k8s.io/client-go/tools/events"
 
 	commonv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/common/v1"
 	kbv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/kibana/v1"
@@ -267,7 +267,7 @@ echo "Keystore initialization successful."
 			testDriver := driver.TestDriver{
 				Client:       tt.client,
 				Watches:      watches2.NewDynamicWatches(),
-				FakeRecorder: record.NewFakeRecorder(1000),
+				FakeRecorder: toolsevents.NewFakeRecorder(1000),
 			}
 			resources, err := ReconcileResources(context.Background(), testDriver, &tt.kb, kbNamer, metadata.Metadata{}, tt.initContainerParameters)
 			if tt.wantErrMsg != "" {

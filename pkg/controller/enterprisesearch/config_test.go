@@ -13,7 +13,7 @@ import (
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/client-go/tools/record"
+	toolsevents "k8s.io/client-go/tools/events"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	commonv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/common/v1"
@@ -102,7 +102,7 @@ func Test_parseConfigRef(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			c := k8s.NewFakeClient(tt.secrets...)
 			w := watches.NewDynamicWatches()
-			driver := &ReconcileEnterpriseSearch{dynamicWatches: w, Client: c, recorder: record.NewFakeRecorder(10)}
+			driver := &ReconcileEnterpriseSearch{dynamicWatches: w, Client: c, recorder: toolsevents.NewFakeRecorder(10)}
 			got, err := parseConfigRef(driver, tt.ent)
 			if tt.wantErr {
 				require.Error(t, err)
@@ -572,7 +572,7 @@ func TestReconcileConfig(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			driver := &ReconcileEnterpriseSearch{
 				Client:         k8s.NewFakeClient(tt.runtimeObjs...),
-				recorder:       record.NewFakeRecorder(10),
+				recorder:       toolsevents.NewFakeRecorder(10),
 				dynamicWatches: watches.NewDynamicWatches(),
 			}
 
@@ -754,7 +754,7 @@ secret_session_key: alreadysetsessionkey
 		t.Run(tt.name, func(t *testing.T) {
 			driver := &ReconcileEnterpriseSearch{
 				Client:         k8s.NewFakeClient(tt.runtimeObjs...),
-				recorder:       record.NewFakeRecorder(10),
+				recorder:       toolsevents.NewFakeRecorder(10),
 				dynamicWatches: watches.NewDynamicWatches(),
 			}
 
@@ -888,7 +888,7 @@ func TestReconcileConfig_ReadinessProbe(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			driver := &ReconcileEnterpriseSearch{
 				Client:         k8s.NewFakeClient(tt.runtimeObjs...),
-				recorder:       record.NewFakeRecorder(10),
+				recorder:       toolsevents.NewFakeRecorder(10),
 				dynamicWatches: watches.NewDynamicWatches(),
 			}
 

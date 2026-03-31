@@ -125,7 +125,7 @@ func (b Builder) WithEnterpriseSearchRef(ref commonv1.ObjectSelector) Builder {
 	return b
 }
 
-func (b Builder) WithPackageRegistryRef(ref commonv1.ObjectSelector) Builder {
+func (b Builder) WithPackageRegistryRef(ref commonv1.LocalObjectSelector) Builder {
 	b.Kibana.Spec.PackageRegistryRef = ref
 	return b
 }
@@ -353,8 +353,8 @@ func (b Builder) RuntimeObjects() []client.Object {
 	return []client.Object{&b.Kibana}
 }
 
-func (b Builder) ElasticsearchRef() commonv1.ObjectSelector {
-	if b.ExternalElasticsearchRef.IsDefined() {
+func (b Builder) ElasticsearchRef() commonv1.AssociationRef {
+	if b.ExternalElasticsearchRef.IsSet() {
 		return b.ExternalElasticsearchRef
 	}
 	// if no external Elasticsearch cluster is defined, use the ElasticsearchRef

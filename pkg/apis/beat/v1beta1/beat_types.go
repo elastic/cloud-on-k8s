@@ -181,11 +181,11 @@ type Beat struct {
 func (b *Beat) AssociationStatusMap(typ commonv1.AssociationType) commonv1.AssociationStatusMap {
 	switch typ {
 	case commonv1.ElasticsearchAssociationType:
-		if b.Spec.ElasticsearchRef.IsDefined() {
+		if b.Spec.ElasticsearchRef.IsSet() {
 			return commonv1.NewSingleAssociationStatusMap(b.Status.ElasticsearchAssociationStatus)
 		}
 	case commonv1.KibanaAssociationType:
-		if b.Spec.KibanaRef.IsDefined() {
+		if b.Spec.KibanaRef.IsSet() {
 			return commonv1.NewSingleAssociationStatusMap(b.Status.KibanaAssociationStatus)
 		}
 	case commonv1.BeatMonitoringAssociationType:
@@ -227,18 +227,18 @@ func (b *Beat) ElasticServiceAccount() (commonv1.ServiceAccountName, error) {
 func (b *Beat) GetAssociations() []commonv1.Association {
 	associations := make([]commonv1.Association, 0)
 
-	if b.Spec.ElasticsearchRef.IsDefined() {
+	if b.Spec.ElasticsearchRef.IsSet() {
 		associations = append(associations, &BeatESAssociation{
 			Beat: b,
 		})
 	}
-	if b.Spec.KibanaRef.IsDefined() {
+	if b.Spec.KibanaRef.IsSet() {
 		associations = append(associations, &BeatKibanaAssociation{
 			Beat: b,
 		})
 	}
 	for _, ref := range b.Spec.Monitoring.Metrics.ElasticsearchRefs {
-		if ref.IsDefined() {
+		if ref.IsSet() {
 			associations = append(associations, &BeatMonitoringAssociation{
 				Beat: b,
 				ref:  ref.WithDefaultNamespace(b.Namespace),
@@ -246,7 +246,7 @@ func (b *Beat) GetAssociations() []commonv1.Association {
 		}
 	}
 	for _, ref := range b.Spec.Monitoring.Logs.ElasticsearchRefs {
-		if ref.IsDefined() {
+		if ref.IsSet() {
 			associations = append(associations, &BeatMonitoringAssociation{
 				Beat: b,
 				ref:  ref.WithDefaultNamespace(b.Namespace),
@@ -301,7 +301,7 @@ func (b *BeatESAssociation) AssociationType() commonv1.AssociationType {
 	return commonv1.ElasticsearchAssociationType
 }
 
-func (b *BeatESAssociation) AssociationRef() commonv1.ObjectSelector {
+func (b *BeatESAssociation) AssociationRef() commonv1.AssociationRef {
 	return b.Spec.ElasticsearchRef.WithDefaultNamespace(b.Namespace)
 }
 
@@ -353,7 +353,7 @@ func (b *BeatKibanaAssociation) AssociationType() commonv1.AssociationType {
 	return commonv1.KibanaAssociationType
 }
 
-func (b *BeatKibanaAssociation) AssociationRef() commonv1.ObjectSelector {
+func (b *BeatKibanaAssociation) AssociationRef() commonv1.AssociationRef {
 	return b.Spec.KibanaRef.WithDefaultNamespace(b.Namespace)
 }
 
@@ -422,7 +422,7 @@ func (beatmon *BeatMonitoringAssociation) AssociationType() commonv1.Association
 	return commonv1.BeatMonitoringAssociationType
 }
 
-func (beatmon *BeatMonitoringAssociation) AssociationRef() commonv1.ObjectSelector {
+func (beatmon *BeatMonitoringAssociation) AssociationRef() commonv1.AssociationRef {
 	return beatmon.ref
 }
 

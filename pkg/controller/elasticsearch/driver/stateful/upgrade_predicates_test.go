@@ -907,6 +907,35 @@ func TestUpgradePodsDeletion_Delete(t *testing.T) {
 			wantShardsAllocationDisabled: false,
 		},
 		{
+			name: "Allow deletion if green even if shards are relocating (early return for green)",
+			fields: fields{
+				esVersion: "7.5.0",
+				upgradeTestPods: newUpgradeTestPods(
+					newTestPod("masters-0").withRoles(esv1.MasterRole, esv1.DataRole).isHealthy(true).needsUpgrade(true).isInCluster(true).withVersion("7.4.0"),
+					newTestPod("masters-1").withRoles(esv1.MasterRole, esv1.DataRole).isHealthy(true).needsUpgrade(true).isInCluster(true).withVersion("7.4.0"),
+					newTestPod("masters-2").withRoles(esv1.MasterRole, esv1.DataRole).isHealthy(true).needsUpgrade(false).isInCluster(true).withVersion("7.5.0"),
+				),
+				maxUnavailable: 1,
+				// GREEN cluster - should skip per-shard checks and allow deletion
+				health: client.Health{Status: esv1.ElasticsearchGreenHealth, RelocatingShards: 1},
+				shardLister: migration.NewFakeShardLister(client.Shards{
+					// Same shard setup as yellow test above - but with GREEN status, deletion should be allowed
+					client.Shard{
+						Index:    "index_a",
+						Shard:    "0",
+						State:    "RELOCATING",
+						NodeName: "masters-2",
+						Type:     "p",
+					},
+				}),
+				podFilter: nothing,
+			},
+			// With GREEN status, the require_started_replica predicate returns early and allows deletion
+			deleted:                      []string{"masters-1"},
+			wantErr:                      false,
+			wantShardsAllocationDisabled: true,
+		},
+		{
 			name: "Allow deletion if yellow and if a shard has no replica",
 			fields: fields{
 				esVersion: "7.5.0",
@@ -1140,7 +1169,7 @@ func TestUpgradePodsDeletion_Delete(t *testing.T) {
 			esClient := &fakeESClient{version: version.MustParse(tt.fields.esVersion), Shutdowns: tt.fields.shutdowns}
 			k8sClient := k8s.NewFakeClient(
 				tt.fields.upgradeTestPods.toClientObjects(tt.fields.esVersion, tt.fields.maxUnavailable, tt.fields.podFilter, tt.fields.esAnnotations)...)
-			nodeShutdown := shutdown.NewNodeShutdown(esClient, tt.fields.upgradeTestPods.podNamesToESNodeID(), client.Restart, "", crlog.Log)
+			nodeShutdown := shutdown.NewNodeShutdown(esClient, tt.fields.upgradeTestPods.podNamesToESNodeID(), client.Restart, "", nil, crlog.Log)
 			es := tt.fields.upgradeTestPods.toES(tt.fields.esVersion, tt.fields.maxUnavailable, tt.fields.esAnnotations)
 			ctx := upgradeCtx{
 				parentCtx:       context.Background(),

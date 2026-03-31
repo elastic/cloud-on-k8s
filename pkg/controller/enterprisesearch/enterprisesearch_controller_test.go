@@ -13,7 +13,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
-	"k8s.io/client-go/tools/record"
+	toolsevents "k8s.io/client-go/tools/events"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
@@ -75,7 +75,7 @@ func TestReconcileEnterpriseSearch_Reconcile_AssociationNotConfigured(t *testing
 			ElasticsearchRef: commonv1.ObjectSelector{Namespace: "ns", Name: "es"},
 		},
 	}
-	fakeRecorder := record.NewFakeRecorder(10)
+	fakeRecorder := toolsevents.NewFakeRecorder(10)
 	r := &ReconcileEnterpriseSearch{
 		Client:         k8s.NewFakeClient(&sample),
 		dynamicWatches: watches.NewDynamicWatches(),
@@ -93,7 +93,7 @@ func TestReconcileEnterpriseSearch_Reconcile_AssociationNotConfigured(t *testing
 func TestReconcileEnterpriseSearch_Reconcile_InvalidResource(t *testing.T) {
 	// spec.Version missing from the spec
 	sample := entv1.EnterpriseSearch{ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: "sample"}}
-	fakeRecorder := record.NewFakeRecorder(10)
+	fakeRecorder := toolsevents.NewFakeRecorder(10)
 	r := &ReconcileEnterpriseSearch{
 		Client:   k8s.NewFakeClient(&sample),
 		recorder: fakeRecorder,
@@ -117,7 +117,7 @@ func TestReconcileEnterpriseSearch_Reconcile_Create_Update_Resources(t *testing.
 	r := &ReconcileEnterpriseSearch{
 		Client:         k8s.NewFakeClient(&sample),
 		dynamicWatches: watches.NewDynamicWatches(),
-		recorder:       record.NewFakeRecorder(10),
+		recorder:       toolsevents.NewFakeRecorder(10),
 		Parameters: operator.Parameters{
 			OperatorInfo: about.OperatorInfo{BuildInfo: about.BuildInfo{Version: "1.0.0"}},
 		},
@@ -266,7 +266,7 @@ func TestReconcileEnterpriseSearch_doReconcile_AssociationDelaysVersionUpgrade(t
 	r := &ReconcileEnterpriseSearch{
 		Client:         k8s.NewFakeClient(&ent, &es, &esTLSCertsSecret, &esAuthSecret, &entSearchPod),
 		dynamicWatches: watches.NewDynamicWatches(),
-		recorder:       record.NewFakeRecorder(10),
+		recorder:       toolsevents.NewFakeRecorder(10),
 		Parameters: operator.Parameters{
 			OperatorInfo: about.OperatorInfo{BuildInfo: about.BuildInfo{Version: "1.0.0"}},
 		},
@@ -527,7 +527,7 @@ func TestReconcileEnterpriseSearch_updateStatus(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			ulog.ChangeVerbosity(1)
 			c := &fakeClientStatusCall{Client: k8s.NewFakeClient(&tt.ent)}
-			fakeRecorder := record.NewFakeRecorder(10)
+			fakeRecorder := toolsevents.NewFakeRecorder(10)
 			r := &ReconcileEnterpriseSearch{
 				Client:   c,
 				recorder: fakeRecorder,

@@ -5,14 +5,20 @@
 package validation
 
 import (
+	"context"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/util/validation/field"
+
+	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	commonv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/common/v1"
 	esv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/elasticsearch/v1"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/label"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/k8s"
 )
 
 func Test_checkNodeSetNameUniqueness(t *testing.T) {
@@ -568,9 +574,9 @@ func Test_validNodeLabels(t *testing.T) {
 		exposedNodeLabels []string
 	}
 	tests := []struct {
-		name         string
-		args         args
-		expectErrors bool
+		name           string
+		args           args
+		expectedFields []string
 	}{
 		{
 			name: "Invalid node label",
@@ -582,7 +588,9 @@ func Test_validNodeLabels(t *testing.T) {
 				},
 				exposedNodeLabels: []string{"topology.kubernetes.io/*"},
 			},
-			expectErrors: true, // "failure-domain.beta.kubernetes.io/zone" does not match "topology.kubernetes.io/*"
+			expectedFields: []string{
+				field.NewPath("metadata").Child("annotations", esv1.DownwardNodeLabelsAnnotation).String(),
+			},
 		},
 		{
 			name: "Valid node label",
@@ -595,16 +603,389 @@ func Test_validNodeLabels(t *testing.T) {
 				exposedNodeLabels: []string{"topology.kubernetes.io/*", "failure-domain.beta.kubernetes.io/*"},
 			},
 		},
+		{
+			name: "Zone awareness default topology key allowed without exposed-node-labels",
+			args: args{
+				proposed: esv1.Elasticsearch{
+					Spec: esv1.ElasticsearchSpec{
+						NodeSets: []esv1.NodeSet{
+							{
+								Name:          "default",
+								ZoneAwareness: &esv1.ZoneAwareness{},
+							},
+						},
+					},
+				},
+			},
+		},
+		{
+			name: "Zone awareness custom topology key allowed without exposed-node-labels",
+			args: args{
+				proposed: esv1.Elasticsearch{
+					Spec: esv1.ElasticsearchSpec{
+						NodeSets: []esv1.NodeSet{
+							{
+								Name: "default",
+								ZoneAwareness: &esv1.ZoneAwareness{
+									TopologyKey: "custom.io/rack",
+								},
+							},
+						},
+					},
+				},
+			},
+		},
+		{
+			name: "Zone awareness custom topology key rejected when not in exposed-node-labels",
+			args: args{
+				proposed: esv1.Elasticsearch{
+					Spec: esv1.ElasticsearchSpec{
+						NodeSets: []esv1.NodeSet{
+							{
+								Name: "default",
+								ZoneAwareness: &esv1.ZoneAwareness{
+									TopologyKey: "custom.io/rack",
+								},
+							},
+						},
+					},
+				},
+				exposedNodeLabels: []string{"topology.kubernetes.io/.*"},
+			},
+			expectedFields: []string{
+				field.NewPath("spec").Child("nodeSets").Index(0).Child("zoneAwareness", "topologyKey").String(),
+			},
+		},
+		{
+			name: "Zone awareness default topology key allowed when in exposed-node-labels",
+			args: args{
+				proposed: esv1.Elasticsearch{
+					Spec: esv1.ElasticsearchSpec{
+						NodeSets: []esv1.NodeSet{
+							{
+								Name:          "default",
+								ZoneAwareness: &esv1.ZoneAwareness{},
+							},
+						},
+					},
+				},
+				exposedNodeLabels: []string{"topology.kubernetes.io/.*"},
+			},
+		},
+		{
+			name: "Zone awareness custom topology key allowed when in exposed-node-labels",
+			args: args{
+				proposed: esv1.Elasticsearch{
+					Spec: esv1.ElasticsearchSpec{
+						NodeSets: []esv1.NodeSet{
+							{
+								Name: "default",
+								ZoneAwareness: &esv1.ZoneAwareness{
+									TopologyKey: "custom.io/rack",
+								},
+							},
+						},
+					},
+				},
+				exposedNodeLabels: []string{"custom.io/.*"},
+			},
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			exposedNodeLabels, err := NewExposedNodeLabels(tt.args.exposedNodeLabels)
 			assert.NoError(t, err)
 			actual := validNodeLabels(tt.args.proposed, exposedNodeLabels)
-			actualErrors := len(actual) > 0
-			if tt.expectErrors != actualErrors {
-				t.Errorf("failed validNodeLabels(), actual %v, wanted: %v", actualErrors, tt.expectErrors)
+			actualFields := make([]string, len(actual))
+			for i, err := range actual {
+				actualFields[i] = err.Field
 			}
+			assert.ElementsMatch(t, tt.expectedFields, actualFields)
+		})
+	}
+}
+
+func Test_validZoneAwarenessTopologyKeys(t *testing.T) {
+	tests := []struct {
+		name         string
+		es           esv1.Elasticsearch
+		expectErrors bool
+	}{
+		{
+			name: "no zone awareness configured",
+			es: esv1.Elasticsearch{
+				Spec: esv1.ElasticsearchSpec{
+					NodeSets: []esv1.NodeSet{
+						{Name: "a"},
+						{Name: "b"},
+					},
+				},
+			},
+		},
+		{
+			name: "default topology key is consistent across nodesets",
+			es: esv1.Elasticsearch{
+				Spec: esv1.ElasticsearchSpec{
+					NodeSets: []esv1.NodeSet{
+						{Name: "a", ZoneAwareness: &esv1.ZoneAwareness{}},
+						{Name: "b", ZoneAwareness: &esv1.ZoneAwareness{TopologyKey: esv1.DefaultZoneAwarenessTopologyKey}},
+					},
+				},
+			},
+		},
+		{
+			name: "custom topology key is consistent across nodesets",
+			es: esv1.Elasticsearch{
+				Spec: esv1.ElasticsearchSpec{
+					NodeSets: []esv1.NodeSet{
+						{Name: "a", ZoneAwareness: &esv1.ZoneAwareness{TopologyKey: "custom.io/rack"}},
+						{Name: "b", ZoneAwareness: &esv1.ZoneAwareness{TopologyKey: "custom.io/rack"}},
+					},
+				},
+			},
+		},
+		{
+			name: "mixed default and custom topology keys are rejected even when all nodesets are explicit",
+			es: esv1.Elasticsearch{
+				Spec: esv1.ElasticsearchSpec{
+					NodeSets: []esv1.NodeSet{
+						{Name: "a", ZoneAwareness: &esv1.ZoneAwareness{}},
+						{Name: "b", ZoneAwareness: &esv1.ZoneAwareness{TopologyKey: "custom.io/rack"}},
+					},
+				},
+			},
+			expectErrors: true,
+		},
+		{
+			name: "mixed custom topology keys are rejected even when all nodesets are explicit",
+			es: esv1.Elasticsearch{
+				Spec: esv1.ElasticsearchSpec{
+					NodeSets: []esv1.NodeSet{
+						{Name: "a", ZoneAwareness: &esv1.ZoneAwareness{TopologyKey: "custom.io/room"}},
+						{Name: "b", ZoneAwareness: &esv1.ZoneAwareness{TopologyKey: "custom.io/rack"}},
+					},
+				},
+			},
+			expectErrors: true,
+		},
+		{
+			name: "single topology key with non-zoneAware nodeset is allowed",
+			es: esv1.Elasticsearch{
+				Spec: esv1.ElasticsearchSpec{
+					NodeSets: []esv1.NodeSet{
+						{Name: "a", ZoneAwareness: &esv1.ZoneAwareness{TopologyKey: "custom.io/rack"}},
+						{Name: "b"},
+					},
+				},
+			},
+		},
+		{
+			name: "ambiguous mixed topology keys are rejected when at least one nodeset is non-zoneAware",
+			es: esv1.Elasticsearch{
+				Spec: esv1.ElasticsearchSpec{
+					NodeSets: []esv1.NodeSet{
+						{Name: "a", ZoneAwareness: &esv1.ZoneAwareness{TopologyKey: "custom.io/rack"}},
+						{Name: "b", ZoneAwareness: &esv1.ZoneAwareness{TopologyKey: "custom.io/room"}},
+						{Name: "c"},
+					},
+				},
+			},
+			expectErrors: true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			errs := validZoneAwarenessTopologyKeys(tt.es)
+			hasErrors := len(errs) > 0
+			assert.Equal(t, tt.expectErrors, hasErrors)
+		})
+	}
+}
+
+func Test_validZoneAwarenessAffinityInCompatibility(t *testing.T) {
+	requiredAffinityWithInExpression := func(key string, values []string) *corev1.Affinity {
+		return &corev1.Affinity{
+			NodeAffinity: &corev1.NodeAffinity{
+				RequiredDuringSchedulingIgnoredDuringExecution: &corev1.NodeSelector{
+					NodeSelectorTerms: []corev1.NodeSelectorTerm{
+						{
+							MatchExpressions: []corev1.NodeSelectorRequirement{
+								{Key: key, Operator: corev1.NodeSelectorOpIn, Values: values},
+							},
+						},
+					},
+				},
+			},
+		}
+	}
+
+	topologyExprPath := func(nodeSetIndex int) string {
+		return field.NewPath("spec").Child("nodeSets").Index(nodeSetIndex).Child("podTemplate", "spec", "affinity", "nodeAffinity", "requiredDuringSchedulingIgnoredDuringExecution", "nodeSelectorTerms").Index(0).Child("matchExpressions").Index(0).String()
+	}
+
+	tests := []struct {
+		name           string
+		es             esv1.Elasticsearch
+		expectedFields []string
+	}{
+		{
+			name: "rejects In with no intersection with configured zones",
+			es: esv1.Elasticsearch{
+				Spec: esv1.ElasticsearchSpec{
+					NodeSets: []esv1.NodeSet{
+						{
+							Name:          "za",
+							ZoneAwareness: &esv1.ZoneAwareness{Zones: []string{"us-east-1a", "us-east-1b"}},
+							PodTemplate: corev1.PodTemplateSpec{
+								Spec: corev1.PodSpec{
+									Affinity: requiredAffinityWithInExpression(esv1.DefaultZoneAwarenessTopologyKey, []string{"us-east-1c"}),
+								},
+							},
+						},
+					},
+				},
+			},
+			expectedFields: []string{topologyExprPath(0)},
+		},
+		{
+			name: "rejects In with no intersection on custom topology key",
+			es: esv1.Elasticsearch{
+				Spec: esv1.ElasticsearchSpec{
+					NodeSets: []esv1.NodeSet{
+						{
+							Name: "za",
+							ZoneAwareness: &esv1.ZoneAwareness{
+								TopologyKey: "custom.io/rack",
+								Zones:       []string{"rack-1", "rack-2"},
+							},
+							PodTemplate: corev1.PodTemplateSpec{
+								Spec: corev1.PodSpec{
+									Affinity: requiredAffinityWithInExpression("custom.io/rack", []string{"rack-3", "rack-4"}),
+								},
+							},
+						},
+					},
+				},
+			},
+			expectedFields: []string{topologyExprPath(0)},
+		},
+		{
+			name: "allows In with partial intersection (user restricts to subset of zones)",
+			es: esv1.Elasticsearch{
+				Spec: esv1.ElasticsearchSpec{
+					NodeSets: []esv1.NodeSet{
+						{
+							Name:          "za",
+							ZoneAwareness: &esv1.ZoneAwareness{Zones: []string{"us-east-1a", "us-east-1b", "us-east-1c"}},
+							PodTemplate: corev1.PodTemplateSpec{
+								Spec: corev1.PodSpec{
+									Affinity: requiredAffinityWithInExpression(esv1.DefaultZoneAwarenessTopologyKey, []string{"us-east-1a"}),
+								},
+							},
+						},
+					},
+				},
+			},
+		},
+		{
+			name: "allows In with exact match of zones",
+			es: esv1.Elasticsearch{
+				Spec: esv1.ElasticsearchSpec{
+					NodeSets: []esv1.NodeSet{
+						{
+							Name:          "za",
+							ZoneAwareness: &esv1.ZoneAwareness{Zones: []string{"us-east-1a", "us-east-1b"}},
+							PodTemplate: corev1.PodTemplateSpec{
+								Spec: corev1.PodSpec{
+									Affinity: requiredAffinityWithInExpression(esv1.DefaultZoneAwarenessTopologyKey, []string{"us-east-1a", "us-east-1b"}),
+								},
+							},
+						},
+					},
+				},
+			},
+		},
+		{
+			name: "allows In on unrelated key",
+			es: esv1.Elasticsearch{
+				Spec: esv1.ElasticsearchSpec{
+					NodeSets: []esv1.NodeSet{
+						{
+							Name:          "za",
+							ZoneAwareness: &esv1.ZoneAwareness{Zones: []string{"us-east-1a"}},
+							PodTemplate: corev1.PodTemplateSpec{
+								Spec: corev1.PodSpec{
+									Affinity: requiredAffinityWithInExpression("nodepool", []string{"pool-x"}),
+								},
+							},
+						},
+					},
+				},
+			},
+		},
+		{
+			name: "skips nodesets without explicit zones (operator injects Exists, not In)",
+			es: esv1.Elasticsearch{
+				Spec: esv1.ElasticsearchSpec{
+					NodeSets: []esv1.NodeSet{
+						{
+							Name:          "za-no-zones",
+							ZoneAwareness: &esv1.ZoneAwareness{},
+							PodTemplate: corev1.PodTemplateSpec{
+								Spec: corev1.PodSpec{
+									Affinity: requiredAffinityWithInExpression(esv1.DefaultZoneAwarenessTopologyKey, []string{"us-east-1c"}),
+								},
+							},
+						},
+					},
+				},
+			},
+		},
+		{
+			name: "skips non-zone-aware nodesets even in zone-aware cluster",
+			es: esv1.Elasticsearch{
+				Spec: esv1.ElasticsearchSpec{
+					NodeSets: []esv1.NodeSet{
+						{
+							Name:          "za",
+							ZoneAwareness: &esv1.ZoneAwareness{Zones: []string{"us-east-1a"}},
+						},
+						{
+							Name: "plain",
+							PodTemplate: corev1.PodTemplateSpec{
+								Spec: corev1.PodSpec{
+									Affinity: requiredAffinityWithInExpression(esv1.DefaultZoneAwarenessTopologyKey, []string{"us-east-1c"}),
+								},
+							},
+						},
+					},
+				},
+			},
+		},
+		{
+			name: "no affinity configured",
+			es: esv1.Elasticsearch{
+				Spec: esv1.ElasticsearchSpec{
+					NodeSets: []esv1.NodeSet{
+						{
+							Name:          "za",
+							ZoneAwareness: &esv1.ZoneAwareness{Zones: []string{"us-east-1a"}},
+						},
+					},
+				},
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			errs := validZoneAwarenessAffinityInCompatibility(tt.es)
+			actualFields := make([]string, len(errs))
+			for i, err := range errs {
+				actualFields[i] = err.Field
+			}
+			assert.ElementsMatch(t, tt.expectedFields, actualFields)
 		})
 	}
 }
@@ -844,6 +1225,145 @@ func Test_fipsModeConsistencyWarning(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			assert.Equal(t, tt.want, fipsModeConsistencyWarning(tt.es))
+		})
+	}
+}
+
+func Test_validateRestartTriggerWarnings(t *testing.T) {
+	const clusterName = "foo"
+	const clusterNamespace = "default"
+
+	esCR := func(triggerValue string) esv1.Elasticsearch {
+		cr := esv1.Elasticsearch{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      clusterName,
+				Namespace: clusterNamespace,
+			},
+		}
+		if triggerValue != "" {
+			cr.Annotations = map[string]string{
+				esv1.RestartTriggerAnnotation: triggerValue,
+			}
+		}
+		return cr
+	}
+
+	pod := func(name, triggerValue string) *corev1.Pod {
+		p := &corev1.Pod{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      name,
+				Namespace: clusterNamespace,
+				Labels: map[string]string{
+					label.ClusterNameLabelName: clusterName,
+				},
+			},
+		}
+		if triggerValue != "" {
+			p.Annotations = map[string]string{
+				esv1.RestartTriggerAnnotation: triggerValue,
+			}
+		}
+		return p
+	}
+
+	tests := []struct {
+		name        string
+		oldCR       esv1.Elasticsearch
+		newCR       esv1.Elasticsearch
+		pods        []client.Object
+		wantWarning string
+	}{
+		{
+			name:        "no annotation on old or new: no warning",
+			oldCR:       esCR(""),
+			newCR:       esCR(""),
+			wantWarning: "",
+		},
+		{
+			name:        "annotation unchanged (same value): no warning",
+			oldCR:       esCR("v1"),
+			newCR:       esCR("v1"),
+			wantWarning: "",
+		},
+		{
+			name:        "annotation changed to a new value (both set): no warning",
+			oldCR:       esCR("v1"),
+			newCR:       esCR("v2"),
+			wantWarning: "",
+		},
+		{
+			name:        "annotation removed, no restart in progress: no warning",
+			oldCR:       esCR("v1"),
+			newCR:       esCR(""),
+			pods:        []client.Object{pod("pod-0", "v1"), pod("pod-1", "v1")},
+			wantWarning: "",
+		},
+		{
+			name:        "annotation removed while restart in progress: removal warning",
+			oldCR:       esCR("v1"),
+			newCR:       esCR(""),
+			pods:        []client.Object{pod("pod-0", "v1"), pod("pod-1", "old-value")},
+			wantWarning: restartTriggerRemovedWarningMsg,
+		},
+		{
+			name:        "annotation removed, no pods have the old value: restart in progress, removal warning",
+			oldCR:       esCR("v1"),
+			newCR:       esCR(""),
+			pods:        []client.Object{pod("pod-0", "v0"), pod("pod-1", "v0")},
+			wantWarning: restartTriggerRemovedWarningMsg,
+		},
+		{
+			name:        "annotation set for the first time, pods have no annotation: no warning",
+			oldCR:       esCR(""),
+			newCR:       esCR("v1"),
+			pods:        []client.Object{pod("pod-0", ""), pod("pod-1", "")},
+			wantWarning: "",
+		},
+		{
+			name:        "annotation re-added with value pods already have: unchanged warning",
+			oldCR:       esCR(""),
+			newCR:       esCR("v1"),
+			pods:        []client.Object{pod("pod-0", "v1"), pod("pod-1", "v1")},
+			wantWarning: restartTriggerUnchangedWarningMsg,
+		},
+		{
+			name:        "annotation set from empty to value different from pods: no warning",
+			oldCR:       esCR(""),
+			newCR:       esCR("v2"),
+			pods:        []client.Object{pod("pod-0", "v1"), pod("pod-1", "v1")},
+			wantWarning: "",
+		},
+		{
+			name:        "annotation re-added matches lexicographically largest pod value: unchanged warning",
+			oldCR:       esCR(""),
+			newCR:       esCR("v2"),
+			pods:        []client.Object{pod("pod-0", "v1"), pod("pod-1", "v2")},
+			wantWarning: restartTriggerUnchangedWarningMsg,
+		},
+		{
+			name:        "annotation removed, no pods in cluster: no warning",
+			oldCR:       esCR("v1"),
+			newCR:       esCR(""),
+			pods:        nil,
+			wantWarning: "",
+		},
+		{
+			name:        "annotation set from empty, no pods in cluster: no warning",
+			oldCR:       esCR(""),
+			newCR:       esCR("v1"),
+			pods:        nil,
+			wantWarning: "",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			objs := make([]client.Object, len(tt.pods))
+			copy(objs, tt.pods)
+			client := k8s.NewFakeClient(objs...)
+
+			got := validateRestartTriggerWarnings(context.Background(), client, tt.oldCR, tt.newCR)
+			assert.Equal(t, tt.wantWarning, got)
 		})
 	}
 }

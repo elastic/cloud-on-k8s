@@ -84,7 +84,7 @@ func (ctx *upgradeCtx) Delete() ([]corev1.Pod, error) {
 			return deletedPods, err
 		}
 
-		if err := deletePod(ctx.parentCtx, ctx.client, ctx.ES, podToDelete, ctx.expectations, ctx.reconcileState, "Deleting pod for rolling upgrade"); err != nil {
+		if err := deletePod(ctx.parentCtx, ctx.client, ctx.ES, podToDelete, ctx.expectations, ctx.reconcileState, ctx.deletePodMessage()); err != nil {
 			return deletedPods, err
 		}
 		deletedPods = append(deletedPods, podToDelete)
@@ -119,14 +119,14 @@ func (ctx *upgradeCtx) DeleteAll() ([]corev1.Pod, error) {
 	}
 
 	if len(nonReadyPods) > 0 {
-		ulog.FromContext(ctx.parentCtx).Info("Not all Pods are ready for a full cluster upgrade", "pods", nonReadyPods, "namespace", ctx.ES.Namespace, "es_name", ctx.ES.Name)
-		ctx.reconcileState.RecordNodesToBeUpgradedWithMessage(k8s.PodNames(ctx.podsToUpgrade), "Not all Pods are ready for a full cluster upgrade")
+		ulog.FromContext(ctx.parentCtx).Info(ctx.pendingPodsMessage(), "pods", nonReadyPods, "namespace", ctx.ES.Namespace, "es_name", ctx.ES.Name)
+		ctx.reconcileState.RecordNodesToBeUpgradedWithMessage(k8s.PodNames(ctx.podsToUpgrade), ctx.pendingPodsMessage())
 		return nil, nil
 	}
 
 	var deletedPods []corev1.Pod
 	for _, podToDelete := range ctx.podsToUpgrade {
-		if err := deletePod(ctx.parentCtx, ctx.client, ctx.ES, podToDelete, ctx.expectations, ctx.reconcileState, "Deleting Pod for full cluster upgrade"); err != nil {
+		if err := deletePod(ctx.parentCtx, ctx.client, ctx.ES, podToDelete, ctx.expectations, ctx.reconcileState, ctx.deleteAllMessage()); err != nil {
 			// an error during deletion violates the "delete all or nothing" invariant but there is no way around it
 			return deletedPods, err
 		}
@@ -267,4 +267,28 @@ func runPredicates(
 	}
 	// All predicates passed!
 	return nil, nil
+}
+
+func (ctx *upgradeCtx) pendingPodsMessage() string {
+	if ctx.isAnnotationTriggeredRestart {
+		return "Not all pods are ready for a cluster rolling restart"
+	}
+
+	return "Not all pods are ready for a full cluster upgrade"
+}
+
+func (ctx *upgradeCtx) deleteAllMessage() string {
+	if ctx.isAnnotationTriggeredRestart {
+		return "Deleting pod for full cluster restart"
+	}
+
+	return "Deleting pod for full cluster upgrade"
+}
+
+func (ctx *upgradeCtx) deletePodMessage() string {
+	if ctx.isAnnotationTriggeredRestart {
+		return "Deleting pod for rolling restart"
+	}
+
+	return "Deleting pod for rolling upgrade"
 }

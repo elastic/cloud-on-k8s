@@ -11,6 +11,7 @@ import (
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/types"
 
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/hash"
 )
@@ -150,6 +151,27 @@ type Associated interface {
 	SetAssociationStatusMap(typ AssociationType, statusMap AssociationStatusMap) error
 }
 
+// AssociationRef defines an interface that captures a reference to a resource.
+// +kubebuilder:object:generate=false
+type AssociationRef interface {
+	// IsExternal returns true when the reference points to an external resource not managed by the operator.
+	IsExternal() bool
+	// IsSet returns true if the reference has a name or secret name set.
+	IsSet() bool
+	// GetName returns the name of the referenced resource.
+	GetName() string
+	// GetNamespace returns the namespace of the referenced resource.
+	GetNamespace() string
+	// GetSecretName returns the secret name (useful for external/unmanaged associations).
+	GetSecretName() string
+	// GetServiceName returns the service name of the referenced resource.
+	GetServiceName() string
+	// NamespacedName returns the NamespacedName of the referenced resource.
+	NamespacedName() types.NamespacedName
+	// NameOrSecretName returns the name or the secret name of the reference.
+	NameOrSecretName() string
+}
+
 // Association interface helps to manage the Spec fields involved in an association.
 // +kubebuilder:object:generate=false
 type Association interface {
@@ -167,7 +189,7 @@ type Association interface {
 
 	// AssociationRef is a reference to the associated resource. If defined with a Name then the Namespace is expected
 	// to be set in the returned object.
-	AssociationRef() ObjectSelector
+	AssociationRef() AssociationRef
 
 	// AssociationConfAnnotationName is the name of the annotation used to define the config for the associated resource.
 	// It is used by the association controller to store the configuration and by the controller which is

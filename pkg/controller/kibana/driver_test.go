@@ -19,7 +19,7 @@ import (
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
-	"k8s.io/client-go/tools/record"
+	toolsevents "k8s.io/client-go/tools/events"
 	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
@@ -187,7 +187,7 @@ func Test_getStrategyType(t *testing.T) {
 				client = k8s.NewFailingClient(errors.New("client error"))
 			}
 
-			d, err := newDriver(client, w, record.NewFakeRecorder(100), kb, corev1.IPv4Protocol)
+			d, err := newDriver(client, w, toolsevents.NewFakeRecorder(100), kb, corev1.IPv4Protocol)
 			assert.NoError(t, err)
 
 			strategy, err := d.getStrategyType(kb)
@@ -350,12 +350,7 @@ func TestDriverDeploymentParams(t *testing.T) {
 			want: func() deployment.Params {
 				p := expectedDeploymentParams()
 				p.PodTemplateSpec.Labels["kibana.k8s.elastic.co/version"] = "7.17.0"
-				p.PodTemplateSpec.Spec.SecurityContext = &corev1.PodSecurityContext{
-					FSGroup: ptr.To[int64](1000),
-					SeccompProfile: &corev1.SeccompProfile{
-						Type: corev1.SeccompProfileTypeRuntimeDefault,
-					},
-				}
+				p.PodTemplateSpec.Spec.SecurityContext = &defaultPodSecurityContext
 				return p
 			}(),
 			wantErr: false,
@@ -387,7 +382,7 @@ func TestDriverDeploymentParams(t *testing.T) {
 			client := k8s.NewFakeClient(initialObjects...)
 			w := watches.NewDynamicWatches()
 
-			d, err := newDriver(client, w, record.NewFakeRecorder(100), kb, corev1.IPv4Protocol)
+			d, err := newDriver(client, w, toolsevents.NewFakeRecorder(100), kb, corev1.IPv4Protocol)
 			require.NoError(t, err)
 
 			got, err := d.deploymentParams(context.Background(), kb, tt.args.policyAnnotations, "", tt.args.setDefaultSecurityContextFlag, metadata.Propagate(kb, metadata.Metadata{Labels: kb.GetIdentityLabels()}))
@@ -433,7 +428,7 @@ func TestMinSupportedVersion(t *testing.T) {
 			client := k8s.NewFakeClient(defaultInitialObjects()...)
 			w := watches.NewDynamicWatches()
 
-			_, err := newDriver(client, w, record.NewFakeRecorder(100), kb, corev1.IPv4Protocol)
+			_, err := newDriver(client, w, toolsevents.NewFakeRecorder(100), kb, corev1.IPv4Protocol)
 			if tc.wantErr {
 				require.Error(t, err)
 			} else {
@@ -542,7 +537,7 @@ func expectedDeploymentParams() deployment.Params {
 						ImagePullPolicy: corev1.PullIfNotPresent,
 						Image:           "my-image",
 						Command:         []string{"/usr/bin/env", "bash", "-c", "/mnt/elastic-internal/scripts/init.sh"},
-						SecurityContext: nil,
+						SecurityContext: &defaultSecurityContext,
 						Env: []corev1.EnvVar{
 							{Name: settings.EnvPodIP, Value: "", ValueFrom: &corev1.EnvVarSource{
 								FieldRef: &corev1.ObjectFieldSelector{APIVersion: "v1", FieldPath: "status.podIP"},
@@ -945,7 +940,7 @@ func TestDriver_buildVolumes(t *testing.T) {
 					},
 					Spec: kbv1.KibanaSpec{
 						Version: "7.10.0",
-						PackageRegistryRef: commonv1.ObjectSelector{
+						PackageRegistryRef: commonv1.LocalObjectSelector{
 							Name: "test-epr",
 						},
 					},
@@ -987,7 +982,7 @@ func TestDriver_buildVolumes(t *testing.T) {
 						ElasticsearchRef: commonv1.ObjectSelector{
 							Name: "test-es",
 						},
-						PackageRegistryRef: commonv1.ObjectSelector{
+						PackageRegistryRef: commonv1.LocalObjectSelector{
 							Name: "test-epr",
 						},
 					},

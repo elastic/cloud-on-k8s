@@ -317,7 +317,7 @@ func getRelatedEsAssoc(params Params) (commonv1.Association, error) {
 		if err != nil {
 			return nil, err
 		}
-	} else if params.Agent.Spec.FleetServerRef.IsDefined() {
+	} else if params.Agent.Spec.FleetServerRef.IsSet() {
 		// As the reference chain is: Elastic Agent ---> Fleet Server ---> Elasticsearch,
 		// we need first to identify the Fleet Server and then identify its reference to Elasticsearch.
 		fsAssociation, err := association.SingleAssociationOfType(params.Agent.GetAssociations(), commonv1.FleetServerAssociationType)
@@ -481,7 +481,7 @@ func certificatesDir(association commonv1.Association) string {
 	return fmt.Sprintf(
 		"/mnt/elastic-internal/%s-association/%s/%s/certs",
 		association.AssociationType(),
-		ref.Namespace,
+		ref.GetNamespace(),
 		ref.NameOrSecretName(),
 	)
 }
@@ -512,7 +512,7 @@ func getFleetModeEnvVars(
 
 func getFleetSetupKibanaEnvVars(fleetToken EnrollmentAPIKey) func(agent agentv1alpha1.Agent) (map[string]string, error) {
 	return func(agent agentv1alpha1.Agent) (map[string]string, error) {
-		if !agent.Spec.KibanaRef.IsDefined() {
+		if !agent.Spec.KibanaRef.IsSet() {
 			return map[string]string{}, nil
 		}
 
@@ -532,7 +532,7 @@ func getFleetSetupFleetEnvVars(client k8s.Client, fleetToken EnrollmentAPIKey, f
 	return func(agent agentv1alpha1.Agent) (map[string]string, error) {
 		fleetCfg := map[string]string{}
 
-		if agent.Spec.KibanaRef.IsDefined() {
+		if agent.Spec.KibanaRef.IsSet() {
 			fleetCfg[FleetEnroll] = "true"
 		}
 
@@ -554,10 +554,10 @@ func getFleetSetupFleetEnvVars(client k8s.Client, fleetToken EnrollmentAPIKey, f
 				fleetCfg[FleetCA] = path.Join(FleetCertsMountPath, certificates.CAFileName)
 			}
 			// Fleet Server needs a policy ID to bootstrap itself unless a policy marked as default is used.
-			if agent.Spec.KibanaRef.IsDefined() && !fleetToken.isEmpty() {
+			if agent.Spec.KibanaRef.IsSet() && !fleetToken.isEmpty() {
 				fleetCfg[FleetServerPolicyID] = fleetToken.PolicyID
 			}
-		} else if agent.Spec.FleetServerRef.IsDefined() {
+		} else if agent.Spec.FleetServerRef.IsSet() {
 			assoc, err := association.SingleAssociationOfType(agent.GetAssociations(), commonv1.FleetServerAssociationType)
 			if err != nil {
 				return nil, err
@@ -604,7 +604,7 @@ func getFleetSetupFleetServerEnvVars(ctx context.Context, client k8s.Client) fun
 			fleetServerCfg[FleetServerPortEnv] = fmt.Sprintf("%d", FleetServerPort)
 		}
 
-		esExpected := len(agent.Spec.ElasticsearchRefs) > 0 && agent.Spec.ElasticsearchRefs[0].IsDefined()
+		esExpected := len(agent.Spec.ElasticsearchRefs) > 0 && agent.Spec.ElasticsearchRefs[0].IsSet()
 		if esExpected {
 			esConnectionSettings, _, err := extractPodConnectionSettings(ctx, agent, client, commonv1.ElasticsearchAssociationType)
 			if err != nil {
