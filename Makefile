@@ -36,9 +36,14 @@ endif
 REGISTRY            ?= docker.elastic.co
 
 export SNAPSHOT     ?= true
-export VERSION      ?= $(shell cat VERSION)
-export SHA1         ?= $(shell git rev-parse --short=8 --verify HEAD)
-export ARCH         ?= $(shell uname -m | sed -e "s|x86_|amd|" -e "s|aarch|arm|")
+# `export` + `?=` + `shell` keeps the variables recursively expanded and thus a huge amount of shell invocations.
+# Splitting into ?= then := ensures the shell command runs at most once and the result is cached.
+VERSION             ?= $(shell cat VERSION)
+export VERSION      := $(VERSION)
+SHA1                ?= $(shell git rev-parse --short=8 --verify HEAD)
+export SHA1         := $(SHA1)
+ARCH                ?= $(shell uname -m | sed -e "s|x86_|amd|" -e "s|aarch|arm|")
+export ARCH         := $(ARCH)
 
 # for dev, suffix image name with current user name
 IMAGE_SUFFIX        ?= -$(subst _,,$(shell whoami))
