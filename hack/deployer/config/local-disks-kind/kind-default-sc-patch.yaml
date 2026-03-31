@@ -1,0 +1,6 @@
+apiVersion: storage.k8s.io/v1
+kind: StorageClass
+metadata:
+  name: e2e-default
+  annotations:
+    storageclass.kubernetes.io/is-default-class: "true"
