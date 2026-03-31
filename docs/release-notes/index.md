@@ -13,13 +13,13 @@ Review the changes, fixes, and more in each release of Elastic Cloud on Kubernet
 
 ### Release Highlights
 
-#### Fix the FIPS BoringCrypto build of ECK
+#### Fix ECK FIPS build
 
-ECK 3.3.2 fixes the previous implementation of ECK with fips mode enabled that was incorrectly activating FIPS mode during the build process.
+ECK 3.3.2 fixes the FIPS build by correctly enabling the BoringCrypto experiment via `GOEXPERIMENT=boringcrypto`. This release also adds preliminary support for native Go FIPS 140-3 mode (introduced in Go 1.24), which will be enabled in a future release once the module is certified.
 
 ### Features and enhancements [elastic-cloud-kubernetes-332-features-and-enhancements]
 
-- Migrate to native Go FIPS 140-3 mode [#9263](https://github.com/elastic/cloud-on-k8s/pull/9263)
+- Fix FIPS build and add native Go FIPS 140-3 support [#9263](https://github.com/elastic/cloud-on-k8s/pull/9263)
 
 :::{dropdown} Updated dependencies
 
