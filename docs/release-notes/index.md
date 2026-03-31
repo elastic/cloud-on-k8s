@@ -13,9 +13,9 @@ Review the changes, fixes, and more in each release of Elastic Cloud on Kubernet
 
 ### Release Highlights
 
-#### Migrate to native Golang FIPS 140-3 mode
+#### Fix the FIPS BoringCrypto build of ECK
 
-ECK 3.3.2 fixes the previous implementation of ECK FIPS by migrating to native Golang FIPS 140-3 mode that was introduced in Go 1.24.
+ECK 3.3.2 fixes the previous implementation of ECK with fips mode enabled that was incorrectly activating FIPS mode during the build process.
 
 ### Features and enhancements [elastic-cloud-kubernetes-332-features-and-enhancements]
 
