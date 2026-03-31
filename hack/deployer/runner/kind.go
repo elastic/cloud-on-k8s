@@ -7,7 +7,6 @@ package runner
 import (
 	"errors"
 	"fmt"
-	"io/fs"
 	"log"
 	"os"
 	"path/filepath"
@@ -71,22 +70,19 @@ type KindDriverFactory struct{}
 var _ DriverFactory = (*KindDriverFactory)(nil)
 
 func (k KindDriverFactory) Create(plan Plan) (Driver, error) {
-	dockerSocket, err := getDockerSocket()
-	if err != nil {
+	if err := checkDockerAvailable(); err != nil {
 		return nil, err
 	}
 	return &KindDriver{
-		plan:         plan,
-		vaultClient:  vault.NewClientProvider(),
-		dockerSocket: dockerSocket,
+		plan:        plan,
+		vaultClient: vault.NewClientProvider(),
 	}, nil
 }
 
 type KindDriver struct {
-	plan         Plan
-	clientImage  string
-	vaultClient  vault.ClientProvider
-	dockerSocket string
+	plan        Plan
+	clientImage string
+	vaultClient vault.ClientProvider
 }
 
 func (k *KindDriver) Execute() error {
@@ -97,6 +93,9 @@ func (k *KindDriver) Execute() error {
 	switch k.plan.Operation {
 	case CreateAction:
 		if err := k.create(); err != nil {
+			return err
+		}
+		if err := k.GetCredentials(); err != nil {
 			return err
 		}
 		if err := createBucketIfConfigured(k.plan, k.newBucketManager); err != nil {
@@ -139,32 +138,43 @@ func (k *KindDriver) create() error {
 		return err
 	}
 
-	// Get kubeconfig from kind
+	// Kind runs inside a Docker container, so the kubeconfig is not automatically added to
+	// ~/.kube/config (unlike GKE/EKS/AKS which update the default kubeconfig during creation).
+	// Merge it so that subsequent plain kubectl calls (setupDisks, kyverno.Install, etc.) work.
 	kubeCfg, err := k.getKubeConfig()
 	if err != nil {
 		return err
 	}
 	defer os.Remove(kubeCfg.Name())
 
-	// Delete standard storage class but ignore error if not found
-	if err := kubectl("--kubeconfig", kubeCfg.Name(), "delete", "storageclass", "standard"); err != nil {
+	if err := mergeKubeconfig(kubeCfg.Name()); err != nil {
 		return err
 	}
 
-	tmpStorageClass, err := k.createTmpStorageClass()
-	if err != nil {
+	// mergeKubeconfig preserves the current-context from the existing host kubeconfig.
+	// Explicitly switch to the Kind cluster to avoid targeting a previously selected cluster.
+	if err := kubectl("config", "use-context", fmt.Sprintf("kind-%s", k.plan.ClusterName)); err != nil {
 		return err
 	}
 
-	defer os.Remove(tmpStorageClass)
-
-	if k.plan.EnforceSecurityPolicies {
-		if err := kyverno.Install("--kubeconfig", kubeCfg.Name()); err != nil {
+	// Delete standard storage class (replaced by e2e-default from the local-disks overlay).
+	if k.plan.DiskSetup != "" {
+		if err := kubectl("delete", "storageclass", "standard"); err != nil {
 			return err
 		}
 	}
 
-	return kubectl("--kubeconfig", kubeCfg.Name(), "apply", "-f", tmpStorageClass)
+	if err := setupDisks(k.plan); err != nil {
+		return err
+	}
+
+	if k.plan.EnforceSecurityPolicies {
+		if err := kyverno.Install(); err != nil {
+			return err
+		}
+	}
+
+	return nil
 }
 
 func (k *KindDriver) inContainerName(file *os.File) string {
@@ -231,13 +241,19 @@ func (k *KindDriver) cmd(args ...string) *exec.Command {
 		"Args":            args,
 	}
 
-	// We need the docker socket so that kind can bootstrap
+	// We need the docker socket so that kind can bootstrap.
+	// The source path /var/run/docker.sock is evaluated by the Docker daemon (inside the Colima/Docker VM),
+	// so it always resolves to the actual daemon socket regardless of the macOS-visible socket path.
+	// DOCKER_HOST is explicitly set to override any host env var pointing at a macOS-side socket path.
 	// --userns=host to support Docker daemon host configured to run containers only in user namespaces
 	cmd := exec.NewCommand(`docker run --rm \
 		--userns=host \
 		-v {{.SharedVolume}}:/home \
-		-v /var/run/docker.sock:` + k.dockerSocket + ` \
+		-v /var/run/docker.sock:/var/run/docker.sock \
 		-e HOME=/home \
+		-e DOCKER_HOST=unix:///var/run/docker.sock \
+		-e KUBECONFIG=/tmp/kubeconfig \
+		-e DOCKER_CONFIG=/tmp/docker-config \
 		{{.KindClientImage}} \
 		kind {{Join .Args " "}} --name {{.ClusterName}}`)
 	return cmd.AsTemplate(params)
@@ -283,12 +299,6 @@ func (k *KindDriver) GetCredentials() error {
 	}
 	defer os.Remove(config.Name())
 	return mergeKubeconfig(config.Name())
-}
-
-func (k *KindDriver) createTmpStorageClass() (string, error) {
-	tmpFile := filepath.Join(os.TempDir(), storageClassFileName)
-	err := os.WriteFile(tmpFile, []byte(storageClass), fs.ModePerm)
-	return tmpFile, err
 }
 
 func (k *KindDriver) ensureClientImage() error {
