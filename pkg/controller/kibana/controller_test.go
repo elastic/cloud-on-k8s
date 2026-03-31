@@ -16,7 +16,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
-	"k8s.io/client-go/tools/record"
+	toolsevents "k8s.io/client-go/tools/events"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
@@ -336,7 +336,7 @@ func TestReconcileKibana_Reconcile(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			r := &ReconcileKibana{
 				Client:         tt.fields.Client,
-				recorder:       record.NewFakeRecorder(100),
+				recorder:       toolsevents.NewFakeRecorder(100),
 				dynamicWatches: watches.NewDynamicWatches(),
 				params:         operator.Parameters{},
 			}

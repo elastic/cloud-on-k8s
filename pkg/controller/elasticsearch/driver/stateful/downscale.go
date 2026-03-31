@@ -255,6 +255,7 @@ func calculatePerformableDownscale(
 				AddEvent(
 					corev1.EventTypeWarning,
 					events.EventReasonStalled,
+					events.EventActionShutdown,
 					fmt.Sprintf("Requested topology change is stalled. User intervention maybe required if this condition persists. %s", response.Explanation),
 				)
 			// no need to check other nodes since we remove them in order and this one isn't ready anyway
@@ -265,6 +266,7 @@ func calculatePerformableDownscale(
 				AddEvent(
 					corev1.EventTypeNormal,
 					events.EventReasonDelayed,
+					events.EventActionShutdown,
 					"Requested topology change delayed by data migration. Ensure index settings allow node removal.",
 				)
 			// no need to check other nodes since we remove them in order and this one isn't ready anyway

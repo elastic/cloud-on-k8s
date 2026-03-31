@@ -13,7 +13,7 @@ import (
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
-	"k8s.io/client-go/tools/record"
+	toolsevents "k8s.io/client-go/tools/events"
 
 	esv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/elasticsearch/v1"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/metadata"
@@ -35,7 +35,7 @@ func init() {
 
 func TestReconcileUsersAndRoles(t *testing.T) {
 	c := k8s.NewFakeClient(append(sampleUserProvidedFileRealmSecrets, sampleUserProvidedRolesSecret...)...)
-	controllerUser, err := ReconcileUsersAndRoles(context.Background(), c, sampleEsWithAuth, initDynamicWatches(), record.NewFakeRecorder(10), testPasswordHasher, fixtures.MustTestRandomGenerator(16), metadata.Metadata{})
+	controllerUser, err := ReconcileUsersAndRoles(context.Background(), c, sampleEsWithAuth, initDynamicWatches(), toolsevents.NewFakeRecorder(10), testPasswordHasher, fixtures.MustTestRandomGenerator(16), metadata.Metadata{})
 	require.NoError(t, err)
 	require.NotEmpty(t, controllerUser.Password)
 	var reconciledSecret corev1.Secret
@@ -115,7 +115,7 @@ func Test_aggregateFileRealm(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			c := k8s.NewFakeClient(sampleUserProvidedFileRealmSecrets...)
-			fileRealm, controllerUser, err := aggregateFileRealm(context.Background(), c, tt.es, initDynamicWatches(), record.NewFakeRecorder(10), testPasswordHasher, fixtures.MustTestRandomGenerator(16), metadata.Metadata{})
+			fileRealm, controllerUser, err := aggregateFileRealm(context.Background(), c, tt.es, initDynamicWatches(), toolsevents.NewFakeRecorder(10), testPasswordHasher, fixtures.MustTestRandomGenerator(16), metadata.Metadata{})
 			require.NoError(t, err)
 			require.NotEmpty(t, controllerUser.Password)
 			actualUsers := fileRealm.UserNames()
@@ -129,7 +129,7 @@ func Test_aggregateFileRealm(t *testing.T) {
 
 func Test_aggregateRoles(t *testing.T) {
 	c := k8s.NewFakeClient(sampleUserProvidedRolesSecret...)
-	roles, err := aggregateRoles(context.Background(), c, sampleEsWithAuth, initDynamicWatches(), record.NewFakeRecorder(10))
+	roles, err := aggregateRoles(context.Background(), c, sampleEsWithAuth, initDynamicWatches(), toolsevents.NewFakeRecorder(10))
 	require.NoError(t, err)
 	require.Len(t, roles, 57)
 	require.Contains(t, roles, ProbeUserRole, ClusterManageRole, "role1", "role2")

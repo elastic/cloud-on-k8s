@@ -21,6 +21,7 @@ import (
 	esv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/elasticsearch/v1"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/association"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/deployment"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/events"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/reconciler"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/version"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/k8s"
@@ -35,7 +36,7 @@ func (r *AgentPolicyReconciler) doReconcile(ctx context.Context, policy autoopsv
 
 	// run validation in case the webhook is disabled
 	if err := r.validate(ctx, &policy); err != nil {
-		state.UpdateInvalidPhaseWithEvent(err.Error())
+		state.UpdateInvalidPhaseWithEvent(events.EventActionValidation, err.Error())
 		return results.WithError(err)
 	}
 
@@ -62,7 +63,7 @@ func (r *AgentPolicyReconciler) internalReconcile(
 		Name:      policy.Spec.AutoOpsRef.SecretName,
 	}); err != nil {
 		log.Error(err, "while validating configuration secret", "namespace", policy.Namespace, "name", policy.Spec.AutoOpsRef.SecretName)
-		state.UpdateInvalidPhaseWithEvent(err.Error())
+		state.UpdateInvalidPhaseWithEvent(events.EventActionConfigSecretValidation, err.Error())
 		return results.WithError(err)
 	}
 

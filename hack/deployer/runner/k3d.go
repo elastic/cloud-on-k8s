@@ -39,25 +39,22 @@ type K3dDriverFactory struct{}
 var _ DriverFactory = (*K3dDriverFactory)(nil)
 
 func (k K3dDriverFactory) Create(plan Plan) (Driver, error) {
-	dockerSocket, err := getDockerSocket()
-	if err != nil {
+	if err := checkDockerAvailable(); err != nil {
 		return nil, err
 	}
 	return &K3dDriver{
-		plan:         plan,
-		vaultClient:  vault.NewClientProvider(),
-		clientImage:  plan.K3d.ClientImage,
-		nodeImage:    plan.K3d.NodeImage,
-		dockerSocket: dockerSocket,
+		plan:        plan,
+		vaultClient: vault.NewClientProvider(),
+		clientImage: plan.K3d.ClientImage,
+		nodeImage:   plan.K3d.NodeImage,
 	}, nil
 }
 
 type K3dDriver struct {
-	plan         Plan
-	clientImage  string
-	vaultClient  vault.ClientProvider
-	nodeImage    string
-	dockerSocket string
+	plan        Plan
+	clientImage string
+	vaultClient vault.ClientProvider
+	nodeImage   string
 }
 
 func (k *K3dDriver) Execute() error {
@@ -159,12 +156,16 @@ func (k *K3dDriver) cmd(args ...string) *exec.Command {
 		"Args":           args,
 	}
 
-	// We need the docker socket so that k3d can bootstrap
+	// We need the docker socket so that k3d can bootstrap.
+	// The source path /var/run/docker.sock is evaluated by the Docker daemon (inside the Colima/Docker VM),
+	// so it always resolves to the actual daemon socket regardless of the macOS-visible socket path.
+	// DOCKER_HOST is explicitly set to override any host env var pointing at a macOS-side socket path.
 	// --userns=host to support Docker daemon host configured to run containers only in user namespaces
 	command := `docker run --rm \
 		--userns=host \
-		-v /var/run/docker.sock:` + k.dockerSocket + ` \
+		-v /var/run/docker.sock:/var/run/docker.sock \
 		-e HOME=/home \
+		-e DOCKER_HOST=unix:///var/run/docker.sock \
 		-e PATH=/ \
 		{{.K3dClientImage}} \
 		{{Join .Args " "}} {{.ClusterName}}`

@@ -13,7 +13,7 @@ import (
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/sets"
-	"k8s.io/client-go/tools/record"
+	toolsevents "k8s.io/client-go/tools/events"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
@@ -63,7 +63,7 @@ func NewReconciler(mgr manager.Manager, accessReviewer rbac.AccessReviewer, para
 		accessReviewer:   accessReviewer,
 		keystoreProvider: keystore.NewProvider(c),
 		watches:          watches.NewDynamicWatches(),
-		recorder:         mgr.GetEventRecorderFor(name),
+		recorder:         mgr.GetEventRecorder(name),
 		licenseChecker:   license.NewLicenseChecker(c, params.OperatorNamespace),
 		Parameters:       params,
 		esClientProvider: commonesclient.NewClient,
@@ -77,7 +77,7 @@ type ReconcileRemoteClusters struct {
 	k8s.Client
 	operator.Parameters
 	accessReviewer   rbac.AccessReviewer
-	recorder         record.EventRecorder
+	recorder         toolsevents.EventRecorder
 	watches          watches.DynamicWatches
 	licenseChecker   license.Checker
 	esClientProvider commonesclient.Provider

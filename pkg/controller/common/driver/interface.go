@@ -5,7 +5,7 @@
 package driver
 
 import (
-	"k8s.io/client-go/tools/record"
+	toolsevents "k8s.io/client-go/tools/events"
 
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/watches"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/k8s"
@@ -15,14 +15,14 @@ import (
 type Interface interface {
 	K8sClient() k8s.Client
 	DynamicWatches() watches.DynamicWatches
-	Recorder() record.EventRecorder
+	Recorder() toolsevents.EventRecorder
 }
 
 // TestDriver is a struct implementing the common driver interface for testing purposes.
 type TestDriver struct {
 	Client       k8s.Client
 	Watches      watches.DynamicWatches
-	FakeRecorder *record.FakeRecorder
+	FakeRecorder *toolsevents.FakeRecorder
 }
 
 // K8sClient returns the kubernetes client from the APM Server reconciler.
@@ -37,7 +37,7 @@ func (t TestDriver) DynamicWatches() watches.DynamicWatches {
 
 // Recorder returns the Kubernetes recorder that is responsible for recording and reporting
 // events from the APM Server reconciler.
-func (t TestDriver) Recorder() record.EventRecorder {
+func (t TestDriver) Recorder() toolsevents.EventRecorder {
 	return t.FakeRecorder
 }
 
