@@ -179,11 +179,11 @@ func k8sSecretAnnotation(secretName, secretNamespace, annotation string) (string
 	return strings.TrimSpace(output), nil
 }
 
-// createK8sSecret creates a Kubernetes Secret with the provided data map.
+// CreateK8sSecret creates a Kubernetes Secret with the provided data map.
 // The managed-by=eck-deployer label is included in the Secret at creation time.
 // The caller (driver) must ensure the current kubectl context points to the correct cluster
 // by calling GetCredentials() before any bucket operations.
-func createK8sSecret(secretName, secretNamespace string, data map[string]string, annotations map[string]string) error {
+func CreateK8sSecret(secretName, secretNamespace string, data map[string]string, annotations map[string]string) error {
 	log.Printf("Creating Kubernetes Secret %s/%s for bucket credentials...", secretNamespace, secretName)
 
 	// Ensure namespace exists

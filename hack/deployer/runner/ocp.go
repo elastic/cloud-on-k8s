@@ -108,9 +108,11 @@ type runtimeState struct {
 }
 
 type OCPDriver struct {
-	plan         Plan
-	runtimeState runtimeState
-	vaultClient  vault.Client
+	plan                    Plan
+	runtimeState            runtimeState
+	vaultClient             vault.Client
+	cachedBucketSecretData  map[string]string
+	cachedBucketAnnotations map[string]string
 }
 
 func (*OCPDriverFactory) Create(plan Plan) (Driver, error) {
@@ -129,8 +131,57 @@ func (d *OCPDriver) setup() []func() error {
 		d.ensureWorkDir,
 		d.authToGCP,
 		d.ensurePullSecret,
+		d.readBucketCredentials,
 		d.downloadClusterState,
 	}
+}
+
+// readBucketCredentials reads Vault bucket credentials early, before cluster creation,
+// to avoid Vault token expiry during long-running OCP cluster provisioning.
+// The cached data is used by newBucketManager to create the K8s Secret without re-reading Vault.
+func (d *OCPDriver) readBucketCredentials() error {
+	if d.plan.Bucket == nil || !d.plan.Bucket.FromVault {
+		return nil
+	}
+	vaultPath, ok := bucket.StatelessVaultPaths[OCPDriverID]
+	if !ok {
+		return fmt.Errorf("no stateless bucket Vault path configured for provider %q", OCPDriverID)
+	}
+	log.Printf("Pre-reading bucket credentials from Vault path: %s", vaultPath)
+	// OCP uses GCS (runs on GCP). Read the same keys as VaultManager.readGCSCredentials.
+	values, err := vault.GetMany(d.vaultClient, vaultPath, "bucket", "project", "credentials_file")
+	if err != nil {
+		return fmt.Errorf("while pre-reading bucket credentials from Vault: %w", err)
+	}
+	bucketName, project, credentialsFile := values[0], values[1], values[2]
+	d.cachedBucketSecretData = map[string]string{
+		"gcs.client.default.credentials_file": credentialsFile,
+	}
+	d.cachedBucketAnnotations = map[string]string{
+		bucket.AnnotationProvider: bucket.ProviderGCS,
+		bucket.AnnotationBucket:   bucketName,
+		bucket.AnnotationProject:  project,
+		bucket.AnnotationSource:   "vault",
+	}
+	log.Printf("Pre-read GCS credentials from Vault: bucket=%s, project=%s", bucketName, project)
+	return nil
+}
+
+// cachedBucketManager implements bucket.Manager using pre-read credentials.
+// Used when Vault credentials are read early to avoid token expiry.
+type cachedBucketManager struct {
+	secretName, secretNamespace string
+	secretData                  map[string]string
+	annotations                 map[string]string
+}
+
+func (c *cachedBucketManager) Create() error {
+	return bucket.CreateK8sSecret(c.secretName, c.secretNamespace, c.secretData, c.annotations)
+}
+
+func (c *cachedBucketManager) Delete() error {
+	log.Printf("Skipping bucket deletion for pre-read Vault-managed bucket")
+	return nil
 }
 
 func (d *OCPDriver) Execute() error {
@@ -533,9 +584,18 @@ func (d *OCPDriver) baseDomain() string {
 }
 
 func (d *OCPDriver) newBucketManager() (bucket.Manager, error) {
-	// Use VaultManager for pre-provisioned buckets
+	// Use cached credentials if pre-read during setup (avoids Vault token expiry).
+	if d.cachedBucketSecretData != nil {
+		return &cachedBucketManager{
+			secretName:      bucket.StatelessSecretName,
+			secretNamespace: bucket.StatelessSecretNamespace,
+			secretData:      d.cachedBucketSecretData,
+			annotations:     d.cachedBucketAnnotations,
+		}, nil
+	}
+	// Should not happen: readBucketCredentials in setup() always caches when FromVault is set.
 	if d.plan.Bucket.FromVault {
-		return newVaultBucketManager(OCPDriverID, d.vaultClient)
+		return nil, fmt.Errorf("bucket.fromVault is set but credentials were not pre-read during setup")
 	}
 
 	// Use GCSManager for dynamic bucket creation

@@ -96,7 +96,7 @@ func (m *VaultManager) Create() error {
 		return fmt.Errorf("while reading credentials from Vault: %w", err)
 	}
 
-	return createK8sSecret(m.cfg.SecretName, m.cfg.SecretNamespace, secretData, annotations)
+	return CreateK8sSecret(m.cfg.SecretName, m.cfg.SecretNamespace, secretData, annotations)
 }
 
 // Delete is a no-op for VaultManager since we don't own the bucket.
