@@ -2,7 +2,7 @@ module github.com/elastic/cloud-on-k8s/v3
 
 go 1.25.0
 
-toolchain go1.25.7
+toolchain go1.25.8
 
 require (
 	dario.cat/mergo v1.0.2
