@@ -197,7 +197,7 @@ func Test_settingsWarningsAndErrors(t *testing.T) {
 		require.Len(t, warns, 1)
 		require.Contains(t, warns[0], unsupportedConfigErrMsg)
 	})
-	t.Run("mandatory client authentication is blocking", func(t *testing.T) {
+	t.Run("mandatory client authentication is warning only", func(t *testing.T) {
 		es := esv1.Elasticsearch{
 			Spec: esv1.ElasticsearchSpec{
 				Version: "8.16.0",
@@ -212,10 +212,9 @@ func Test_settingsWarningsAndErrors(t *testing.T) {
 			},
 		}
 		warns, blocking := settingsWarningsAndErrors(es)
-		require.Empty(t, warns)
-		require.Len(t, blocking, 1)
-		require.Equal(t, field.ErrorTypeInvalid, blocking[0].Type)
-		require.Equal(t, unsupportedClientAuthenticationMsg, blocking[0].Detail)
+		require.Empty(t, blocking)
+		require.Len(t, warns, 1)
+		require.Contains(t, warns[0], unsupportedClientAuthenticationMsg)
 	})
 }
 

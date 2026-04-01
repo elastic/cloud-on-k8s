@@ -61,6 +61,9 @@ func validateSettings(config *common.CanonicalConfig, index int) field.ErrorList
 	return errs
 }
 
+// validateClientAuthentication reports mandatory HTTP client authentication
+// (value "required") as a Forbidden field error so admission surfaces it as a
+// warning, not a denial.
 func validateClientAuthentication(config *common.CanonicalConfig, index int) field.ErrorList {
 	forbiddenValue := "required" // we allow 'none' and 'optional' but 'required' is not supported
 
@@ -70,8 +73,8 @@ func validateClientAuthentication(config *common.CanonicalConfig, index int) fie
 		return errs
 	}
 	if value == forbiddenValue {
-		errs = append(errs, field.Invalid(field.NewPath("spec").Child("nodeSets").Index(index).Child("config").Child(esv1.XPackSecurityHttpSslClientAuthentication),
-			value, unsupportedClientAuthenticationMsg))
+		errs = append(errs, field.Forbidden(field.NewPath("spec").Child("nodeSets").Index(index).Child("config").Child(esv1.XPackSecurityHttpSslClientAuthentication),
+			unsupportedClientAuthenticationMsg))
 	}
 	return errs
 }
@@ -96,9 +99,9 @@ func validZoneAwarenessAffinityWarnings(es esv1.Elasticsearch) field.ErrorList {
 }
 
 // settingsWarningsAndErrors splits noUnsupportedSettings results. Reserved-key
-// violations (Forbidden) are surfaced as non-blocking admission warnings;
-// Invalid config (unparseable canonical config, unsupported client auth, etc.)
-// must deny admission.
+// violations and unsupported xpack.security.http.ssl.client_authentication
+// values (Forbidden) are surfaced as non-blocking admission warnings; Invalid
+// config (unparseable canonical config) must deny admission.
 func settingsWarningsAndErrors(es esv1.Elasticsearch) (admission.Warnings, field.ErrorList) {
 	var (
 		admissionWarnings admission.Warnings
