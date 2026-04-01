@@ -34,8 +34,7 @@ func RegisterWebhook(mgr ctrl.Manager, validateStorageClass bool, managedNamespa
 		client:               mgr.GetClient(),
 		validateStorageClass: validateStorageClass,
 	}
-	// License checks run inside validations(), so we pass nil here
-	// (the reconciler calls validate directly).
+	// Logstash has no license-dependent validation, so we pass nil here.
 	v := commonwebhook.NewResourceValidator[*lsv1alpha1.Logstash](nil, managedNamespaces, inner)
 	lslog.Info("Registering Logstash validating webhook", "path", webhookPath)
 	wh := admission.WithValidator[*lsv1alpha1.Logstash](mgr.GetScheme(), v)
