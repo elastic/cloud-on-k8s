@@ -82,7 +82,7 @@ var baseStatefulElasticsearch = esv1.Elasticsearch{
 		},
 	},
 	Spec: esv1.ElasticsearchSpec{
-		HTTP: commonv1.HTTPConfig{
+		HTTP: commonv1.HTTPConfigWithClientOptions{
 			Service: commonv1.ServiceTemplate{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "test-es-es-internal-http",
@@ -323,7 +323,7 @@ func TestReconcileSharedResources(t *testing.T) {
 				FakeRecorder: toolsevents.NewFakeRecorder(1000),
 			}
 
-			s, results := ReconcileSharedResources(context.Background(), testDriver, tt.params)
+			s, results := ReconcileSharedResources(context.Background(), testDriver, tt.params, false)
 			if tt.expectedState != nil {
 				assert.NotNil(t, s, "Expected non-nil state")
 				assert.EqualValues(t, tt.expectedState.ESReachable, s.ESReachable)
@@ -339,7 +339,7 @@ func TestReconcileSharedResources(t *testing.T) {
 					expectedVersion = tt.params.Version
 				}
 				expectedClientCerts := mustGetClientCerts(t, tt.params.Client, tt.params.ES)
-				assert.True(t, s.ESClient.HasProperties(expectedVersion, esclient.BasicAuth{Name: user.ControllerUserName, Password: staticPassword}, tt.params.URLProvider, expectedClientCerts), "Generated Elasticsearch client does not have expected properties")
+				assert.True(t, s.ESClient.HasProperties(expectedVersion, esclient.BasicAuth{Name: user.ControllerUserName, Password: staticPassword}, tt.params.URLProvider, expectedClientCerts, nil), "Generated Elasticsearch client does not have expected properties")
 			} else {
 				assert.Nil(t, s, "Expected nil state")
 			}
@@ -978,7 +978,9 @@ func mustBuildParams(t *testing.T, listeningServer *httptest.Server, ver string,
 		},
 	}
 
-	state, err := reconcile.NewState(baseStatefulElasticsearch)
+	// Deep-copy to avoid cross-test contamination of the shared baseStatefulElasticsearch annotations map.
+	es := *baseStatefulElasticsearch.DeepCopy()
+	state, err := reconcile.NewState(es)
 	require.NoError(t, err)
 
 	// Because we don't have a clean way of mocking the kubernetes DNS resolution, Elasticsearch will never be reachable
@@ -997,7 +999,7 @@ func mustBuildParams(t *testing.T, listeningServer *httptest.Server, ver string,
 	k8sClient := k8s.NewFakeClient(initK8sObjects...)
 	return driver.Parameters{
 		Client:             k8sClient,
-		ES:                 baseStatefulElasticsearch,
+		ES:                 es,
 		Version:            mustParseVersion(t, ver),
 		LicenseChecker:     license.NewLicenseChecker(k8sClient, "operator-namespace"),
 		ReconcileState:     state,

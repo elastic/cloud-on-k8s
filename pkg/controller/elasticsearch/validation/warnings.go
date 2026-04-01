@@ -47,7 +47,6 @@ func noUnsupportedSettings(es esv1.Elasticsearch) field.ErrorList {
 			continue
 		}
 		errs = append(errs, validateSettings(config, i)...)
-		errs = append(errs, validateClientAuthentication(config, i)...)
 	}
 	return errs
 }
@@ -58,6 +57,7 @@ func validateSettings(config *common.CanonicalConfig, index int) field.ErrorList
 	for _, setting := range unsupported {
 		errs = append(errs, field.Forbidden(field.NewPath("spec").Child("nodeSets").Index(index).Child("config").Child(setting), unsupportedConfigErrMsg))
 	}
+	errs = append(errs, validateClientAuthentication(config, index)...)
 	return errs
 }
 
@@ -65,7 +65,7 @@ func validateSettings(config *common.CanonicalConfig, index int) field.ErrorList
 // (value "required") as a Forbidden field error so admission surfaces it as a
 // warning, not a denial.
 func validateClientAuthentication(config *common.CanonicalConfig, index int) field.ErrorList {
-	forbiddenValue := "required" // we allow 'none' and 'optional' but 'required' is not supported
+	const forbiddenValue = "required" // we allow 'none' and 'optional' but 'required' is not supported
 
 	var errs field.ErrorList
 	value, err := config.String(esv1.XPackSecurityHttpSslClientAuthentication)

@@ -222,6 +222,11 @@ func (b Builder) WithCustomHTTPCerts(name string) Builder {
 	return b
 }
 
+func (b Builder) WithClientAuthenticationRequired() Builder {
+	b.Elasticsearch.Spec.HTTP.TLS.Client.Authentication = true
+	return b
+}
+
 func (b Builder) WithGlobalCA(v bool) Builder {
 	b.GlobalCA = v
 	return b

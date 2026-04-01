@@ -47,10 +47,12 @@ func TestReconcileAutoOpsAgentPolicy_deploymentParams(t *testing.T) {
 		},
 		Spec: esv1.ElasticsearchSpec{
 			Version: "9.1.0",
-			HTTP: commonv1.HTTPConfig{
-				TLS: commonv1.TLSOptions{
-					SelfSignedCertificate: &commonv1.SelfSignedCertificate{
-						Disabled: true,
+			HTTP: commonv1.HTTPConfigWithClientOptions{
+				TLS: commonv1.TLSWithClientOptions{
+					TLSOptions: commonv1.TLSOptions{
+						SelfSignedCertificate: &commonv1.SelfSignedCertificate{
+							Disabled: true,
+						},
 					},
 				},
 			},

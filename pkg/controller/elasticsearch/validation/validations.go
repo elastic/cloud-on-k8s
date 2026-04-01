@@ -41,10 +41,10 @@ const (
 	parseVersionErrMsg                       = "Cannot parse Elasticsearch version. String format must be {major}.{minor}.{patch}[-{label}]"
 	pvcNotMountedErrMsg                      = "volume claim declared but volume not mounted in any container. Note that the Elasticsearch data volume should be named 'elasticsearch-data'"
 	unsupportedConfigErrMsg                  = "Configuration setting is reserved for internal use. User-configured use is unsupported"
+	unsupportedClientAuthenticationMsg       = "HTTP client authentication mode \"required\" is not supported when set via nodeSet configuration; use spec.http.tls.client.authentication (enterprise license) instead"
 	unsupportedUpgradeMsg                    = "Unsupported version upgrade path. Check the Elasticsearch documentation for supported upgrade paths."
 	unsupportedVersionMsg                    = "Unsupported version"
 	notAllowedNodesLabelMsg                  = "Node label not in the exposed node labels list"
-	unsupportedClientAuthenticationMsg       = "Mandatory client authentication is not supported"
 	autoscalingAnnotationUnsupportedErrMsg   = "autoscaling annotation is no longer supported"
 	restartTriggerRemovedWarningMsg          = "Removing the restart-trigger annotation does not cancel an in-progress rolling restart; pods not yet restarted will still be restarted with the previous trigger value."
 	restartTriggerUnchangedWarningMsg        = "Restart-trigger value unchanged; no new rolling restart will be triggered if pods already have this value."
@@ -91,6 +91,9 @@ func validations(ctx context.Context, checker license.Checker, exposedNodeLabels
 		supportsRemoteClusterUsingAPIKey,
 		func(proposed esv1.Elasticsearch) field.ErrorList {
 			return validLicenseLevel(ctx, proposed, checker)
+		},
+		func(proposed esv1.Elasticsearch) field.ErrorList {
+			return validClientAuthentication(ctx, proposed, checker)
 		},
 	}
 }
@@ -604,4 +607,38 @@ func validateRestartTriggerWarnings(ctx context.Context, k8sClient k8s.Client, o
 	}
 
 	return ""
+}
+
+// validClientAuthentication checks that client certificate authentication is only enabled with an enterprise license.
+// This intentionally only gates spec.http.tls.client.authentication (the ECK-managed path) and does not check
+// the raw config path (xpack.security.http.ssl.client_authentication) for two reasons:
+// 1. Gating the raw config path would be a breaking change for users who manually configured client auth before this feature.
+// 2. StackConfigPolicy-driven client auth uses the raw config path and is already gated by its own enterprise license check.
+func validClientAuthentication(ctx context.Context, es esv1.Elasticsearch, checker license.Checker) field.ErrorList {
+	if !es.Spec.HTTP.TLS.Client.Authentication {
+		return nil
+	}
+	if !es.Spec.HTTP.TLS.Enabled() {
+		return field.ErrorList{
+			field.Invalid(
+				field.NewPath("spec").Child("http", "tls", "client", "authentication"),
+				true,
+				"client certificate authentication requires TLS to be enabled",
+			),
+		}
+	}
+	enabled, err := checker.EnterpriseFeaturesEnabled(ctx)
+	if err != nil {
+		ulog.FromContext(ctx).Error(err, "while checking enterprise features during client authentication validation")
+		return nil
+	}
+	if !enabled {
+		return field.ErrorList{
+			field.Forbidden(
+				field.NewPath("spec").Child("http", "tls", "client", "authentication"),
+				"client certificate authentication requires an enterprise license",
+			),
+		}
+	}
+	return nil
 }
