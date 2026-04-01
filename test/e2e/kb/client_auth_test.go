@@ -31,6 +31,10 @@ import (
 // TestClientAuthRequiredTransition tests that when Elasticsearch transitions from client authentication
 // required to disabled, Kibana remains healthy and its client certificate secrets are cleaned up.
 func TestClientAuthRequiredTransition(t *testing.T) {
+	if test.Ctx().TestLicense == "" {
+		t.Skip("Skipping client authentication test: no enterprise test license configured")
+	}
+
 	name := "test-kb-mtls-trans"
 	namespace := test.Ctx().ManagedNamespace(0)
 
@@ -42,19 +46,17 @@ func TestClientAuthRequiredTransition(t *testing.T) {
 		WithElasticsearchRef(esBuilder.Ref()).
 		WithNodeCount(1)
 
-	// Wrap the initial ES builder with a PostCheckSteps to verify client cert secret exists after creation.
-	esWithCheck := test.WrappedBuilder{
-		BuildingThis: esBuilder,
-		PostCheckSteps: func(k *test.K8sClient) test.StepList {
-			return test.StepList{
-				{
-					Name: "Verify Kibana client certificate secret exists",
-					Test: test.Eventually(func() error {
-						return verifyClientCertSecretCount(k, namespace, esBuilder.Elasticsearch.Name, 1)
-					}),
-				},
-			}
-		},
+	// Wrap the ES builder with license setup and PostCheckSteps to verify client cert secret exists.
+	esWithLicense := test.LicenseTestBuilder(esBuilder)
+	esWithLicense.PostCheckSteps = func(k *test.K8sClient) test.StepList {
+		return test.StepList{
+			{
+				Name: "Verify Kibana client certificate secret exists",
+				Test: test.Eventually(func() error {
+					return verifyClientCertSecretCount(k, namespace, esBuilder.Elasticsearch.Name, 1)
+				}),
+			},
+		}
 	}
 
 	// Transition ES to client auth disabled.
@@ -97,12 +99,16 @@ func TestClientAuthRequiredTransition(t *testing.T) {
 		},
 	}
 
-	test.RunMutations(t, []test.Builder{esWithCheck, kbBuilder}, []test.Builder{esMutatedWrapped})
+	test.RunMutations(t, []test.Builder{esWithLicense, kbBuilder}, []test.Builder{esMutatedWrapped})
 }
 
 // TestClientAuthRequiredCustomCertificate tests that Kibana works with a user-provided client certificate
 // when Elasticsearch requires client authentication.
 func TestClientAuthRequiredCustomCertificate(t *testing.T) {
+	if test.Ctx().TestLicense == "" {
+		t.Skip("Skipping client authentication test: no enterprise test license configured")
+	}
+
 	name := "test-kb-mtls-custom"
 	namespace := test.Ctx().ManagedNamespace(0)
 	userCertSecretName := name + "-user-client-cert"
@@ -207,7 +213,7 @@ func TestClientAuthRequiredCustomCertificate(t *testing.T) {
 		}
 	})
 
-	test.BeforeAfterSequence(before, after, esBuilder, kbWrapped).RunSequential(t)
+	test.BeforeAfterSequence(before, after, test.LicenseTestBuilder(esBuilder), kbWrapped).RunSequential(t)
 }
 
 // verifyClientCertSecretCount verifies the number of client certificate secrets
