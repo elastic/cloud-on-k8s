@@ -119,19 +119,3 @@ func settingsWarningsAndErrors(es esv1.Elasticsearch) (admission.Warnings, field
 	}
 	return admissionWarnings, blocking
 }
-
-func CheckForWarnings(es esv1.Elasticsearch) error {
-	var errs field.ErrorList
-	for _, val := range warnings {
-		errs = append(errs, val(es)...)
-	}
-	for _, e := range noUnsupportedSettings(es) {
-		if e.Type == field.ErrorTypeForbidden {
-			errs = append(errs, e)
-		}
-	}
-	if len(errs) > 0 {
-		return errs.ToAggregate()
-	}
-	return nil
-}
