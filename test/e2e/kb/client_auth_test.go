@@ -8,16 +8,8 @@ package kb
 
 import (
 	"context"
-	"crypto/ecdsa"
-	"crypto/elliptic"
-	cryptorand "crypto/rand"
-	"crypto/x509"
-	"crypto/x509/pkix"
-	"encoding/pem"
 	"fmt"
-	"math/big"
 	"testing"
-	"time"
 
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
@@ -32,6 +24,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/reconciler"
 	"github.com/elastic/cloud-on-k8s/v3/test/e2e/test"
 	"github.com/elastic/cloud-on-k8s/v3/test/e2e/test/elasticsearch"
+	"github.com/elastic/cloud-on-k8s/v3/test/e2e/test/helper"
 	"github.com/elastic/cloud-on-k8s/v3/test/e2e/test/kibana"
 )
 
@@ -49,67 +42,62 @@ func TestClientAuthRequiredTransition(t *testing.T) {
 		WithElasticsearchRef(esBuilder.Ref()).
 		WithNodeCount(1)
 
-	k := test.NewK8sClientOrFatal()
+	// Wrap the initial ES builder with a PostCheckSteps to verify client cert secret exists after creation.
+	esWithCheck := test.WrappedBuilder{
+		BuildingThis: esBuilder,
+		PostCheckSteps: func(k *test.K8sClient) test.StepList {
+			return test.StepList{
+				{
+					Name: "Verify Kibana client certificate secret exists",
+					Test: test.Eventually(func() error {
+						return verifyClientCertSecretCount(k, namespace, esBuilder.Elasticsearch.Name, 1)
+					}),
+				},
+			}
+		},
+	}
 
-	// Phase 1: create ES with client auth + Kibana, verify healthy and client cert secret exists
-	steps := test.StepList{}.
-		WithSteps(esBuilder.InitTestSteps(k)).
-		WithSteps(kbBuilder.InitTestSteps(k)).
-		WithSteps(esBuilder.CreationTestSteps(k)).
-		WithSteps(kbBuilder.CreationTestSteps(k)).
-		WithSteps(test.CheckTestSteps(esBuilder, k)).
-		WithSteps(test.CheckTestSteps(kbBuilder, k)).
-		WithSteps(test.StepList{
-			{
-				Name: "Verify Kibana client certificate secret exists",
-				Test: test.Eventually(func() error {
-					return verifyClientCertSecretCount(k, namespace, esBuilder.Elasticsearch.Name, 1)
-				}),
-			},
-		})
-
-	// Phase 2: transition ES to client auth disabled
-	esMutated := esBuilder.DeepCopy()
+	// Transition ES to client auth disabled.
+	esMutated := esBuilder.DeepCopy().WithMutatedFrom(&esBuilder)
 	esMutated.Elasticsearch.Spec.HTTP.TLS.Client.Authentication = false
-	esMutated.MutatedFrom = &esBuilder
 
-	steps = steps.
-		WithSteps(esMutated.UpgradeTestSteps(k)).
-		WithSteps(test.CheckTestSteps(*esMutated, k)).
-		// Wait for all Kibana pods to be ready after ES transition before checking cleanup.
-		WithSteps(test.CheckTestSteps(kbBuilder, k)).
-		WithSteps(test.StepList{
-			{
-				Name: "Verify Kibana client certificate secret is deleted",
-				Test: test.Eventually(func() error {
-					return verifyClientCertSecretCount(k, namespace, esBuilder.Elasticsearch.Name, 0)
-				}),
-			},
-			{
-				Name: "Verify Kibana has no client cert in association conf",
-				Test: test.Eventually(func() error {
-					var kb kbv1.Kibana
-					if err := k.Client.Get(context.Background(), types.NamespacedName{
-						Namespace: namespace,
-						Name:      kbBuilder.Kibana.Name,
-					}, &kb); err != nil {
-						return err
-					}
-					assocConf, err := kb.EsAssociation().AssociationConf()
-					if err != nil {
-						return err
-					}
-					if assocConf.ClientCertIsConfigured() {
-						return fmt.Errorf("Kibana association conf should not have a client cert secret after ES transition, got %s", assocConf.GetClientCertSecretName())
-					}
-					return nil
-				}),
-			},
-		}).
-		WithSteps(kbBuilder.DeletionTestSteps(k)).
-		WithSteps(esBuilder.DeletionTestSteps(k))
+	esMutatedWrapped := test.WrappedBuilder{
+		BuildingThis: esMutated,
+		PostMutationSteps: func(k *test.K8sClient) test.StepList {
+			// First wait for all Kibana pods to be ready after ES transition before checking cleanup.
+			return test.CheckTestSteps(kbBuilder, k).
+				WithSteps(test.StepList{
+					{
+						Name: "Verify Kibana client certificate secret is deleted",
+						Test: test.Eventually(func() error {
+							return verifyClientCertSecretCount(k, namespace, esBuilder.Elasticsearch.Name, 0)
+						}),
+					},
+					{
+						Name: "Verify Kibana has no client cert in association conf",
+						Test: test.Eventually(func() error {
+							var kb kbv1.Kibana
+							if err := k.Client.Get(context.Background(), types.NamespacedName{
+								Namespace: namespace,
+								Name:      kbBuilder.Kibana.Name,
+							}, &kb); err != nil {
+								return err
+							}
+							assocConf, err := kb.EsAssociation().AssociationConf()
+							if err != nil {
+								return err
+							}
+							if assocConf.ClientCertIsConfigured() {
+								return fmt.Errorf("kibana association conf should not have a client cert secret after ES transition, got %s", assocConf.GetClientCertSecretName())
+							}
+							return nil
+						}),
+					},
+				})
+		},
+	}
 
-	steps.RunSequential(t)
+	test.RunMutations(t, []test.Builder{esWithCheck, kbBuilder}, []test.Builder{esMutatedWrapped})
 }
 
 // TestClientAuthRequiredCustomCertificate tests that Kibana works with a user-provided client certificate
@@ -131,14 +119,61 @@ func TestClientAuthRequiredCustomCertificate(t *testing.T) {
 		WithClientCertificateSecret(userCertSecretName).
 		WithNodeCount(1)
 
-	k := test.NewK8sClientOrFatal()
+	// Wrap the Kibana builder to add post-check verification steps.
+	kbWrapped := test.WrappedBuilder{
+		BuildingThis: kbBuilder,
+		PostCheckSteps: func(k *test.K8sClient) test.StepList {
+			return test.StepList{
+				{
+					Name: "Verify Kibana association conf has client cert configured",
+					Test: test.Eventually(func() error {
+						var kb kbv1.Kibana
+						if err := k.Client.Get(context.Background(), types.NamespacedName{
+							Namespace: namespace,
+							Name:      kbBuilder.Kibana.Name,
+						}, &kb); err != nil {
+							return err
+						}
+						assocConf, err := kb.EsAssociation().AssociationConf()
+						if err != nil {
+							return err
+						}
+						if !assocConf.ClientCertIsConfigured() {
+							return fmt.Errorf("Kibana association conf should have a client cert secret configured")
+						}
+						return nil
+					}),
+				},
+				{
+					Name: "Verify managed client certificate secret exists with user cert data",
+					Test: test.Eventually(func() error {
+						secrets, err := listClientCertSecrets(k, namespace, esBuilder.Elasticsearch.Name)
+						if err != nil {
+							return err
+						}
+						if len(secrets) != 1 {
+							return fmt.Errorf("expected 1 client cert secret, got %d", len(secrets))
+						}
+						secret := secrets[0]
+						if _, ok := secret.Data[certificates.CertFileName]; !ok {
+							return fmt.Errorf("managed client cert secret is missing %s", certificates.CertFileName)
+						}
+						if _, ok := secret.Data[certificates.KeyFileName]; !ok {
+							return fmt.Errorf("managed client cert secret is missing %s", certificates.KeyFileName)
+						}
+						return nil
+					}),
+				},
+			}
+		},
+	}
 
 	before := test.StepsFunc(func(k *test.K8sClient) test.StepList {
 		return test.StepList{
 			{
 				Name: "Create user-provided client certificate secret",
 				Test: func(t *testing.T) {
-					certPEM, keyPEM := generateSelfSignedClientCert(t, name)
+					certPEM, keyPEM := helper.GenerateSelfSignedClientCert(t, name)
 					secret := corev1.Secret{
 						ObjectMeta: metav1.ObjectMeta{
 							Name:      userCertSecretName,
@@ -172,62 +207,7 @@ func TestClientAuthRequiredCustomCertificate(t *testing.T) {
 		}
 	})
 
-	steps := test.StepList{}
-	steps = steps.WithSteps(before(k))
-	steps = steps.
-		WithSteps(esBuilder.InitTestSteps(k)).
-		WithSteps(kbBuilder.InitTestSteps(k)).
-		WithSteps(esBuilder.CreationTestSteps(k)).
-		WithSteps(kbBuilder.CreationTestSteps(k)).
-		WithSteps(test.CheckTestSteps(esBuilder, k)).
-		WithSteps(test.CheckTestSteps(kbBuilder, k)).
-		WithSteps(test.StepList{
-			{
-				Name: "Verify Kibana association conf has client cert configured",
-				Test: test.Eventually(func() error {
-					var kb kbv1.Kibana
-					if err := k.Client.Get(context.Background(), types.NamespacedName{
-						Namespace: namespace,
-						Name:      kbBuilder.Kibana.Name,
-					}, &kb); err != nil {
-						return err
-					}
-					assocConf, err := kb.EsAssociation().AssociationConf()
-					if err != nil {
-						return err
-					}
-					if !assocConf.ClientCertIsConfigured() {
-						return fmt.Errorf("Kibana association conf should have a client cert secret configured")
-					}
-					return nil
-				}),
-			},
-			{
-				Name: "Verify managed client certificate secret exists with user cert data",
-				Test: test.Eventually(func() error {
-					secrets, err := listClientCertSecrets(k, namespace, esBuilder.Elasticsearch.Name)
-					if err != nil {
-						return err
-					}
-					if len(secrets) != 1 {
-						return fmt.Errorf("expected 1 client cert secret, got %d", len(secrets))
-					}
-					secret := secrets[0]
-					if _, ok := secret.Data[certificates.CertFileName]; !ok {
-						return fmt.Errorf("managed client cert secret is missing %s", certificates.CertFileName)
-					}
-					if _, ok := secret.Data[certificates.KeyFileName]; !ok {
-						return fmt.Errorf("managed client cert secret is missing %s", certificates.KeyFileName)
-					}
-					return nil
-				}),
-			},
-		}).
-		WithSteps(kbBuilder.DeletionTestSteps(k)).
-		WithSteps(esBuilder.DeletionTestSteps(k))
-	steps = steps.WithSteps(after(k))
-
-	steps.RunSequential(t)
+	test.BeforeAfterSequence(before, after, esBuilder, kbWrapped).RunSequential(t)
 }
 
 // verifyClientCertSecretCount verifies the number of client certificate secrets
@@ -260,39 +240,4 @@ func listClientCertSecrets(k *test.K8sClient, namespace, esName string) ([]corev
 		}
 	}
 	return filtered, nil
-}
-
-// generateSelfSignedClientCert generates a self-signed client certificate and returns PEM-encoded cert and key.
-func generateSelfSignedClientCert(t *testing.T, cn string) (certPEM, keyPEM []byte) {
-	t.Helper()
-
-	privateKey, err := ecdsa.GenerateKey(elliptic.P256(), cryptorand.Reader)
-	require.NoError(t, err)
-
-	serial, err := cryptorand.Int(cryptorand.Reader, new(big.Int).Lsh(big.NewInt(1), 128))
-	require.NoError(t, err)
-
-	template := x509.Certificate{
-		SerialNumber: serial,
-		Subject: pkix.Name{
-			CommonName:         cn,
-			OrganizationalUnit: []string{"eck-e2e-test"},
-		},
-		NotBefore:          time.Now().Add(-10 * time.Minute),
-		NotAfter:           time.Now().Add(24 * time.Hour),
-		KeyUsage:           x509.KeyUsageDigitalSignature,
-		ExtKeyUsage:        []x509.ExtKeyUsage{x509.ExtKeyUsageClientAuth},
-		SignatureAlgorithm: x509.ECDSAWithSHA256,
-	}
-
-	certDER, err := x509.CreateCertificate(cryptorand.Reader, &template, &template, privateKey.Public(), privateKey)
-	require.NoError(t, err)
-
-	certPEM = pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: certDER})
-
-	keyDER, err := x509.MarshalECPrivateKey(privateKey)
-	require.NoError(t, err)
-	keyPEM = pem.EncodeToMemory(&pem.Block{Type: "EC PRIVATE KEY", Bytes: keyDER})
-
-	return certPEM, keyPEM
 }
