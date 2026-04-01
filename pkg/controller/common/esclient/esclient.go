@@ -68,6 +68,16 @@ func NewClient(
 		return nil, err
 	}
 
+	// Load operator client certificate for client certificate validation if the secret exists.
+	// We check secret existence rather than the annotation because the annotation may be
+	// removed before old ES pods (still requiring client certs) are fully replaced.
+	// The secret lifecycle is managed by the ES controller: created when client cert validation is enabled,
+	// cleaned up only after ES is confirmed reachable without it.
+	clientCert, err := certificates.LoadOperatorClientCertIfExists(ctx, c, esv1.ESNamer, es.Namespace, es.Name)
+	if err != nil {
+		return nil, fmt.Errorf("failed loading client certificate: %w", err)
+	}
+
 	return esclient.NewElasticsearchClient(
 		dialer,
 		k8s.ExtractNamespacedName(&es),
@@ -78,6 +88,7 @@ func NewClient(
 		},
 		v,
 		caCerts,
+		clientCert,
 		esclient.Timeout(ctx, es),
 		dev.Enabled,
 	), nil

@@ -10,6 +10,7 @@ import (
 	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 
 	esv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/elasticsearch/v1"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/certificates"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/version"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/client"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/services"
@@ -62,7 +63,7 @@ func NewElasticsearchClient(es esv1.Elasticsearch, k *test.K8sClient) (client.Cl
 
 // NewElasticsearchClientWithUser returns an ES client for the given ES cluster with the given basic auth user.
 func NewElasticsearchClientWithUser(es esv1.Elasticsearch, k *test.K8sClient, user client.BasicAuth) (client.Client, error) {
-	caCert, err := k.GetHTTPCerts(esv1.ESNamer, es.Namespace, es.Name)
+	caCerts, err := k.GetHTTPCerts(esv1.ESNamer, es.Namespace, es.Name)
 	if err != nil {
 		return nil, err
 	}
@@ -74,13 +75,21 @@ func NewElasticsearchClientWithUser(es esv1.Elasticsearch, k *test.K8sClient, us
 	if err != nil {
 		return nil, err
 	}
+
+	// Try to get operator client certificate if it exists
+	clientCert, err := certificates.LoadOperatorClientCertIfExists(context.Background(), k.Client, esv1.ESNamer, es.Namespace, es.Name)
+	if err != nil {
+		return nil, err
+	}
+
 	esClient := client.NewElasticsearchClient(
 		dialer,
 		k8s.ExtractNamespacedName(&es),
 		services.NewElasticsearchURLProvider(es, k.Client),
 		user,
 		v,
-		caCert,
+		caCerts,
+		clientCert,
 		client.Timeout(context.Background(), es),
 		true,
 	)

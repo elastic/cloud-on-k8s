@@ -65,6 +65,16 @@ func EncodePEMCert(certBlocks ...[]byte) []byte {
 	return buf.Bytes()
 }
 
+// EncodePEMPKCS8PrivateKey encodes a private key in PKCS#8 DER format, wrapped in a PEM block.
+// PKCS#8 is widely supported by Java-based applications and other non-Go TLS implementations.
+func EncodePEMPKCS8PrivateKey(privateKey crypto.Signer) ([]byte, error) {
+	b, err := x509.MarshalPKCS8PrivateKey(privateKey)
+	if err != nil {
+		return nil, err
+	}
+	return pem.EncodeToMemory(&pem.Block{Type: pkcs8PrivateKeyType, Bytes: b}), nil
+}
+
 // EncodePEMPrivateKey encodes the given private key in the PEM format
 func EncodePEMPrivateKey(privateKey crypto.Signer) ([]byte, error) {
 	pemBlock, err := pemBlockForKey(privateKey)

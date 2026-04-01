@@ -40,11 +40,11 @@ func NewMergedESConfig(
 	clusterName string,
 	ver version.Version,
 	ipFamily corev1.IPFamily,
-	httpConfig commonv1.HTTPConfig,
+	httpConfig commonv1.HTTPConfigWithClientOptions,
 	userConfig commonv1.Config,
 	esConfigFromStackConfigPolicy *common.CanonicalConfig,
 	remoteClusterServerEnabled, remoteClusterClientEnabled bool,
-	clusterHasZoneAwareness bool,
+	clusterHasZoneAwareness, clientAuthenticationRequired bool,
 ) (CanonicalConfig, error) {
 	userCfg, err := common.NewCanonicalConfigFrom(userConfig.Data)
 	if err != nil {
@@ -61,6 +61,15 @@ func NewMergedESConfig(
 	if err != nil {
 		return CanonicalConfig{}, err
 	}
+
+	// When client authentication is enabled, ensure the trust bundle is included in certificate_authorities.
+	// This is done after merging to preserve any user-specified CAs (append-only).
+	if clientAuthenticationRequired {
+		if err := appendClientTrustBundle(config); err != nil {
+			return CanonicalConfig{}, err
+		}
+	}
+
 	return CanonicalConfig{config}, nil
 }
 
@@ -124,7 +133,7 @@ func baseConfig(clusterName string, ver version.Version, ipFamily corev1.IPFamil
 }
 
 // xpackConfig returns the configuration bit related to XPack settings
-func xpackConfig(ver version.Version, httpCfg commonv1.HTTPConfig, remoteClusterServerEnabled, remoteClusterClientEnabled bool) *CanonicalConfig {
+func xpackConfig(ver version.Version, httpCfg commonv1.HTTPConfigWithClientOptions, remoteClusterServerEnabled, remoteClusterClientEnabled bool) *CanonicalConfig {
 	// enable x-pack security, including TLS
 	cfg := map[string]any{
 		// x-pack security general settings
@@ -152,6 +161,10 @@ func xpackConfig(ver version.Version, httpCfg commonv1.HTTPConfig, remoteCluster
 			path.Join(volume.RemoteCertificateAuthoritiesSecretVolumeMountPath, certificates.CAFileName),
 		},
 		esv1.XPackSecurityHttpSslCertificateAuthorities: path.Join(volume.HTTPCertificatesSecretVolumeMountPath, certificates.CAFileName),
+	}
+
+	if httpCfg.TLS.Client.Authentication {
+		cfg[esv1.XPackSecurityHttpSslClientAuthentication] = "required"
 	}
 
 	if remoteClusterServerEnabled {
@@ -189,4 +202,27 @@ func xpackConfig(ver version.Version, httpCfg commonv1.HTTPConfig, remoteCluster
 	}
 
 	return &CanonicalConfig{common.MustCanonicalConfig(cfg)}
+}
+
+// HasClientAuthenticationRequired checks whether the given config effectively requires client certificate authentication.
+// Returns false if HTTP SSL is explicitly disabled, since client authentication has no effect without TLS.
+func HasClientAuthenticationRequired(cfg CanonicalConfig) bool {
+	// Client authentication is ineffective when HTTP SSL is explicitly disabled.
+	if sslEnabled, err := cfg.String(esv1.XPackSecurityHttpSslEnabled); err == nil && sslEnabled == "false" {
+		return false
+	}
+	val, err := cfg.String(esv1.XPackSecurityHttpSslClientAuthentication)
+	if err != nil {
+		return false
+	}
+	return val == "required"
+}
+
+// appendClientTrustBundle appends the client trust bundle path to the HTTP SSL certificate authorities.
+// This preserves any user-specified CAs while ensuring the trust bundle is included.
+func appendClientTrustBundle(config *common.CanonicalConfig) error {
+	return config.AppendString(
+		esv1.XPackSecurityHttpSslCertificateAuthorities,
+		path.Join(volume.ClientCertificatesTrustBundleMountPath, certificates.ClientCertificatesTrustBundleFileName),
+	)
 }
