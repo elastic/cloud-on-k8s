@@ -17,6 +17,10 @@ Known issues are significant defects or limitations that may impact your impleme
 
 :::
 
+## 3.3.2 [elastic-cloud-kubernetes-332-known-issues]
+
+There are no known issues in ECK 3.3.2
+
 ## 3.3.1 [elastic-cloud-kubernetes-331-known-issues]
 
 :::{dropdown} AutoOps - Enterprise license expiring may cause policy phase to be set to `Invalid` prior to 9.2.4
