@@ -8,8 +8,11 @@ import (
 	"errors"
 	"fmt"
 	"log"
+	"maps"
 	"os"
 	"path/filepath"
+
+	"k8s.io/client-go/tools/clientcmd"
 
 	"github.com/elastic/cloud-on-k8s/v3/hack/deployer/exec"
 )
@@ -25,16 +28,48 @@ func mergeKubeconfig(kubeConfig string) error {
 		// if no just copy it over
 		return copyFile(kubeConfig, hostKubeconfig)
 	}
-	// 3. if there is existing configuration  attempt to merge both
-	merged, err := exec.NewCommand("kubectl config view --flatten").
-		WithLog("Merging kubeconfig with").
-		WithoutStreaming().
-		WithVariable("KUBECONFIG", fmt.Sprintf("%s:%s", hostKubeconfig, kubeConfig)).
-		Output()
+	// 3. merge and write back atomically.
+	log.Printf("Merging kubeconfig %s into %s", kubeConfig, hostKubeconfig)
+	return mergeKubeconfigFiles(kubeConfig, hostKubeconfig)
+}
+
+// mergeKubeconfigFiles loads both kubeconfig files, upserts new entries into existing ones
+// (new entries take precedence for same-named clusters/users/contexts), and writes back atomically.
+func mergeKubeconfigFiles(newPath, existingPath string) error {
+	newCfg, err := clientcmd.LoadFromFile(newPath)
 	if err != nil {
 		return err
 	}
-	return os.WriteFile(hostKubeconfig, []byte(merged), 0600)
+	existingCfg, err := clientcmd.LoadFromFile(existingPath)
+	if err != nil {
+		return err
+	}
+	maps.Copy(existingCfg.Clusters, newCfg.Clusters)
+	maps.Copy(existingCfg.AuthInfos, newCfg.AuthInfos)
+	maps.Copy(existingCfg.Contexts, newCfg.Contexts)
+	existingCfg.CurrentContext = newCfg.CurrentContext
+
+	data, err := clientcmd.Write(*existingCfg)
+	if err != nil {
+		return err
+	}
+	tmp, err := os.CreateTemp(filepath.Dir(existingPath), "kubeconfig-tmp")
+	if err != nil {
+		return err
+	}
+	if _, err := tmp.Write(data); err != nil {
+		os.Remove(tmp.Name())
+		return err
+	}
+	if err := tmp.Close(); err != nil {
+		os.Remove(tmp.Name())
+		return err
+	}
+	if err := os.Chmod(tmp.Name(), 0600); err != nil {
+		os.Remove(tmp.Name())
+		return err
+	}
+	return os.Rename(tmp.Name(), existingPath)
 }
 
 func removeKubeconfig(context, clusterName, userName string) error {
