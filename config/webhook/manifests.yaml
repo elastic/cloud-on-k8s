@@ -128,7 +128,7 @@ webhooks:
     - CREATE
     - UPDATE
     resources:
-    - elasticmapsservers
+    - mapsservers
   sideEffects: None
 - admissionReviewVersions:
   - v1
