@@ -60,9 +60,12 @@ func (a *Agent) validate(old *Agent) (admission.Warnings, error) {
 				errors = append(errors, err...)
 			}
 		}
+
+		if len(errors) > 0 {
+			return warnings, apierrors.NewInvalid(groupKind, a.Name, errors)
+		}
 	}
 
-	// Also run default checks after update checks to ensure we return the most relevant errors.
 	for _, dc := range defaultChecks {
 		if err := dc(a); err != nil {
 			errors = append(errors, err...)

@@ -183,7 +183,9 @@ func TestWebhook(t *testing.T) {
 			),
 		},
 		{
-			Name:      "update-downgrade-and-default-errors",
+			// On update, failures from updateChecks (e.g. downgrade) return before defaultChecks,
+			// consistent with Kibana and other ECK validating webhooks.
+			Name:      "update-downgrade-skips-default-checks",
 			Operation: admissionv1.Update,
 			OldObject: func(t *testing.T, uid string) []byte {
 				t.Helper()
@@ -200,7 +202,6 @@ func TestWebhook(t *testing.T) {
 			},
 			Check: test.ValidationWebhookFailed(
 				`spec.version: Forbidden: Version downgrades are not supported`,
-				`Specify at most one of \[daemonSet, deployment\]`,
 			),
 		},
 	}
