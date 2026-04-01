@@ -149,9 +149,5 @@ func ReconcileTransport(
 		results.WithReconciliationState(reconciler.RequeueAfter(reconciler.DefaultRequeue))
 	}
 
-	if results.WithResults(transportResults).HasError() {
-		return results
-	}
-
-	return results
+	return results.WithResults(transportResults)
 }
