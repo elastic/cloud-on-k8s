@@ -569,6 +569,14 @@ func TestHasClientAuthenticationRequired(t *testing.T) {
 			cfg:  map[string]any{},
 			want: false,
 		},
+		{
+			name: "required but ssl disabled returns false",
+			cfg: map[string]any{
+				esv1.XPackSecurityHttpSslClientAuthentication: "required",
+				esv1.XPackSecurityHttpSslEnabled:              "false",
+			},
+			want: false,
+		},
 	} {
 		t.Run(tt.name, func(t *testing.T) {
 			cfg := CanonicalConfig{common.MustCanonicalConfig(tt.cfg)}
