@@ -43,7 +43,6 @@ func AddMapsES(mgr manager.Manager, accessReviewer rbac.AccessReviewer, params o
 		ExternalServiceURL:        getElasticsearchExternalURL,
 		AssociationType:           commonv1.ElasticsearchAssociationType,
 		ReferencedResourceNamer:   esv1.ESNamer,
-		ReferencedResourceKind:    esv1.Kind,
 		AssociationName:           "ems-es",
 		AssociatedShortName:       "ems",
 		Labels: func(associated types.NamespacedName) map[string]string {

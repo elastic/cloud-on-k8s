@@ -89,11 +89,6 @@ type AssociationInfo struct { //nolint:revive
 	// pointing to the Beat resource).
 	AssociationResourceNamespaceLabelName string
 
-	// ReferencedResourceKind is the CRD Kind of the referenced resource (e.g. "Elasticsearch").
-	// It must match the value used by WatchSoftOwnedSecrets on the server controller to ensure
-	// soft-owner labels on client certificate secrets trigger server reconciliation.
-	ReferencedResourceKind string
-
 	// ElasticsearchUserCreation specifies settings to create an Elasticsearch user as part of the association.
 	// May be nil if no user creation is required.
 	ElasticsearchUserCreation *ElasticsearchUserCreation
@@ -144,6 +139,9 @@ type Reconciler struct {
 	recorder       toolsevents.EventRecorder
 	watches        watches.DynamicWatches
 	operator.Parameters
+	// referencedResourceKind is the CRD Kind of the referenced resource (e.g. "Elasticsearch"),
+	// derived from the scheme at controller setup time via ReferencedObjTemplate.
+	referencedResourceKind string
 	// iteration is the number of times this controller has run its Reconcile method
 	iteration uint64
 }

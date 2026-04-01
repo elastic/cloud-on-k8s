@@ -90,7 +90,6 @@ var (
 			return es.Status.Version, false, nil
 		},
 		AssociationType:                       "elasticsearch",
-		ReferencedResourceKind:                esv1.Kind,
 		AssociationConfAnnotationNameBase:     "association.k8s.elastic.co/es-conf",
 		AssociationResourceNameLabelName:      "elasticsearch.k8s.elastic.co/cluster-name",
 		AssociationResourceNamespaceLabelName: "elasticsearch.k8s.elastic.co/cluster-namespace",
@@ -281,6 +280,7 @@ func testReconciler(runtimeObjs ...client.Object) Reconciler {
 			},
 			PasswordGenerator: fixtures.MustTestRandomGenerator(24),
 		},
+		referencedResourceKind: esv1.Kind,
 	}
 }
 

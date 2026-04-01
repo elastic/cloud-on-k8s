@@ -29,7 +29,6 @@ func AddKibanaEnt(mgr manager.Manager, accessReviewer rbac.AccessReviewer, param
 		ExternalServiceURL:        getEntExternalURL,
 		ReferencedResourceVersion: referencedEntStatusVersion,
 		ReferencedResourceNamer:   entv1.Namer,
-		ReferencedResourceKind:    entv1.Kind,
 		AssociationName:           "kb-ent",
 		AssociatedShortName:       "kb",
 		AssociationType:           commonv1.EntAssociationType,

@@ -30,7 +30,6 @@ func AddKibanaEPR(mgr manager.Manager, accessReviewer rbac.AccessReviewer, param
 		ExternalServiceURL:        getEPRExternalURL,
 		ReferencedResourceVersion: referencedEPRStatusVersion,
 		ReferencedResourceNamer:   eprv1alpha1.Namer,
-		ReferencedResourceKind:    eprv1alpha1.Kind,
 		AssociationName:           "kb-epr",
 		AssociatedShortName:       "kb",
 		AssociationType:           commonv1.PackageRegistryAssociationType,

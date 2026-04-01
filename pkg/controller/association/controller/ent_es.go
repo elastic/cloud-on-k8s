@@ -40,7 +40,6 @@ func AddEntES(mgr manager.Manager, accessReviewer rbac.AccessReviewer, params op
 		AssociationType:           commonv1.ElasticsearchAssociationType,
 		ExternalServiceURL:        getElasticsearchExternalURL,
 		ReferencedResourceNamer:   esv1.ESNamer,
-		ReferencedResourceKind:    esv1.Kind,
 		AssociationName:           "ent-es",
 		AssociatedShortName:       "ent",
 		Labels: func(associated types.NamespacedName) map[string]string {

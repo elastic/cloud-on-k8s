@@ -39,7 +39,6 @@ func AddAgentES(mgr manager.Manager, accessReviewer rbac.AccessReviewer, params 
 		ReferencedResourceVersion: referencedElasticsearchStatusVersion,
 		ExternalServiceURL:        getElasticsearchExternalURL,
 		ReferencedResourceNamer:   esv1.ESNamer,
-		ReferencedResourceKind:    esv1.Kind,
 		AssociationName:           "agent-es",
 		AssociatedShortName:       "agent",
 		Labels: func(associated types.NamespacedName) map[string]string {

@@ -65,7 +65,7 @@ func (r *Reconciler) reconcileClientCertificate(
 	extraLabels := map[string]string{
 		reconciler.SoftOwnerNameLabel:      ref.GetName(),
 		reconciler.SoftOwnerNamespaceLabel: ref.GetNamespace(),
-		reconciler.SoftOwnerKindLabel:      r.ReferencedResourceKind,
+		reconciler.SoftOwnerKindLabel:      r.referencedResourceKind,
 		labels.ClientCertificateLabelName:  "true",
 	}
 
