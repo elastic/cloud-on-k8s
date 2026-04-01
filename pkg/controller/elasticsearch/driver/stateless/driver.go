@@ -29,7 +29,7 @@ var _ commondriver.Interface = (*Driver)(nil)
 // Reconcile fulfills the Driver interface and reconciles the cluster resources.
 func (d *Driver) Reconcile(ctx context.Context) *reconciler.Results {
 	// One call does all shared work
-	shared, results := shared.ReconcileSharedResources(ctx, d, d.Parameters)
+	shared, results := shared.ReconcileSharedResources(ctx, d, d.Parameters, false)
 	if results.HasError() {
 		return results
 	}

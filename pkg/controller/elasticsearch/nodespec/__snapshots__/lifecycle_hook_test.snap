@@ -1,33 +1,5 @@
-// Copyright Elasticsearch B.V. and/or licensed to Elasticsearch B.V. under one
-// or more contributor license agreements. Licensed under the Elastic License 2.0;
-// you may not use this file except in compliance with the Elastic License 2.0.
-
-package nodespec
-
-import (
-	"bytes"
-	"path"
-	"path/filepath"
-	"text/template"
-
-	v1 "k8s.io/api/core/v1"
-
-	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/certificates"
-	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/label"
-	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/user"
-	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/volume"
-)
-
-func NewPreStopHook() *v1.LifecycleHandler {
-	return &v1.LifecycleHandler{
-		Exec: &v1.ExecAction{
-			Command: []string{"bash", "-c", path.Join(volume.ScriptsVolumeMountPath, PreStopHookScriptConfigKey)}},
-	}
-}
-
-const PreStopHookScriptConfigKey = "pre-stop-hook-script.sh"
-
-var preStopHookScriptTemplate = template.Must(template.New("pre-stop").Parse(`#!/usr/bin/env bash
+[TestRenderPreStopHookScript - 1]
+#!/usr/bin/env bash
 
 set -uo pipefail
 
@@ -148,9 +120,9 @@ function supports_node_shutdown() {
 }
 
 version=""
-if [[ -f "{{.LabelsFile}}" ]]; then
+if [[ -f "/mnt/elastic-internal/downward-api/labels" ]]; then
   # get Elasticsearch version from the downward API
-  version=$(grep "{{.VersionLabelName}}" "{{.LabelsFile}}" | cut -d '=' -f 2)
+  version=$(grep "elasticsearch.k8s.elastic.co/version" "/mnt/elastic-internal/downward-api/labels" | cut -d '=' -f 2)
   # remove quotes
   version=$(echo "${version}" | tr -d '"')
 fi
@@ -161,9 +133,9 @@ if ! supports_node_shutdown "$version"; then
 fi
 
 # setup basic auth if credentials are available
-if [ -f "{{.PreStopUserPasswordPath}}" ]; then
-  PROBE_PASSWORD=$(<"{{.PreStopUserPasswordPath}}")
-  BASIC_AUTH=("-u" "{{.PreStopUserName}}:${PROBE_PASSWORD}")
+if [ -f "/mnt/elastic-internal/pod-mounted-users/elastic-internal-pre-stop" ]; then
+  PROBE_PASSWORD=$(<"/mnt/elastic-internal/pod-mounted-users/elastic-internal-pre-stop")
+  BASIC_AUTH=("-u" "elastic-internal-pre-stop:${PROBE_PASSWORD}")
 else
   # typically the case on upgrades from versions that did not have this script yet and the necessary volume mounts are missing
   log "no API credentials available, will not attempt node shutdown orchestration from pre-stop hook"
@@ -171,18 +143,18 @@ else
 fi
 
 # setup client certificate authentication if certificates are available
-if [ -f "{{.InternalClientCertPath}}" ]; then
+if [ -f "/usr/share/elasticsearch/config/client-cert/tls.crt" ]; then
   # client certificates are mounted by the operator for client authentication
-  CLIENT_CERT=("--cert" "{{.InternalClientCertPath}}" "--key" "{{.InternalClientKeyPath}}")
-elif [ -f "{{.HTTPCertPath}}" ]; then
+  CLIENT_CERT=("--cert" "/usr/share/elasticsearch/config/client-cert/tls.crt" "--key" "/usr/share/elasticsearch/config/client-cert/tls.key")
+elif [ -f "/usr/share/elasticsearch/config/http-certs/tls.crt" ]; then
   # fallback for when a node transitions from client authentication disabled to enabled:
   # use the internal HTTP certificates which should be signed by the CA trusted by Elasticsearch
-  CLIENT_CERT=("--cert" "{{.HTTPCertPath}}" "--key" "{{.HTTPKeyPath}}")
+  CLIENT_CERT=("--cert" "/usr/share/elasticsearch/config/http-certs/tls.crt" "--key" "/usr/share/elasticsearch/config/http-certs/tls.key")
 else
   CLIENT_CERT=()
 fi
 
-ES_URL="{{.ServiceURL}}"
+ES_URL="https://test-es-http.default.svc:9200"
 
 log "retrieving node ID"
 if ! retry "$retries_count" request -X GET "${ES_URL}/_cat/nodes?full_id=true&h=id,name" "${BASIC_AUTH[@]}" "${CLIENT_CERT[@]}"
@@ -228,24 +200,5 @@ do
 done
 
 delayed_exit
-`))
 
-func RenderPreStopHookScript(svcURL string) (string, error) {
-	vars := map[string]string{
-		"PreStopUserName":         user.PreStopUserName,
-		"PreStopUserPasswordPath": filepath.Join(volume.PodMountedUsersSecretMountPath, user.PreStopUserName),
-		// edge case: protocol change (http/https) combined with external node shutdown might not work out well due to
-		// script propagation delays. But it is not a legitimate production use case as users are not expected to change
-		// protocol on production systems
-		"ServiceURL":             svcURL,
-		"LabelsFile":             filepath.Join(volume.DownwardAPIMountPath, volume.LabelsFile),
-		"VersionLabelName":       label.VersionLabelName,
-		"InternalClientCertPath": filepath.Join(volume.InternalClientCertMountPath, certificates.CertFileName),
-		"InternalClientKeyPath":  filepath.Join(volume.InternalClientCertMountPath, certificates.KeyFileName),
-		"HTTPCertPath":           filepath.Join(volume.HTTPCertificatesSecretVolumeMountPath, certificates.CertFileName),
-		"HTTPKeyPath":            filepath.Join(volume.HTTPCertificatesSecretVolumeMountPath, certificates.KeyFileName),
-	}
-	var script bytes.Buffer
-	err := preStopHookScriptTemplate.Execute(&script, vars)
-	return script.String(), err
-}
+---

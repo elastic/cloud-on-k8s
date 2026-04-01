@@ -20,4 +20,8 @@ const (
 
 	ElasticsearchConfigAndSecretMountsHashAnnotation = "policy.k8s.elastic.co/elasticsearch-config-mounts-hash" //nolint:gosec
 	SourceSecretAnnotationName                       = "policy.k8s.elastic.co/source-secret-name"               //nolint:gosec
+
+	// ClientAuthenticationRequiredAnnotation is set on a server resource (e.g. Elasticsearch) to signal that
+	// client authentication is required.
+	ClientAuthenticationRequiredAnnotation = "eck.k8s.elastic.co/client-authentication-required"
 )

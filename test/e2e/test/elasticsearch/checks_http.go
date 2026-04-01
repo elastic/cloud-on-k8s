@@ -9,6 +9,7 @@ import (
 	"crypto/x509"
 
 	esv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/elasticsearch/v1"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/certificates"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/version"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/client"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/reconcile"
@@ -41,6 +42,12 @@ func CheckHTTPConnectivityWithCA(es esv1.Elasticsearch, k *test.K8sClient, caCer
 		return err
 	}
 
+	// Load operator client certificate if it exists (needed when client authentication is required).
+	clientCert, err := certificates.LoadOperatorClientCertIfExists(context.Background(), k.Client, esv1.ESNamer, es.Namespace, es.Name)
+	if err != nil {
+		return err
+	}
+
 	for _, p := range reconcile.AvailableElasticsearchNodes(pods) {
 		url := services.ElasticsearchPodURL(p)
 		esClient := client.NewElasticsearchClient(
@@ -50,6 +57,7 @@ func CheckHTTPConnectivityWithCA(es esv1.Elasticsearch, k *test.K8sClient, caCer
 			user,
 			v,
 			caCert,
+			clientCert,
 			client.Timeout(context.Background(), es),
 			true,
 		)

@@ -91,7 +91,7 @@ func init() {
 	validatedCertificateTemplate := createValidatedHTTPCertificateTemplate(
 		k8s.ExtractNamespacedName(&testES),
 		esv1.ESNamer,
-		testES.Spec.HTTP.TLS,
+		testES.Spec.HTTP.TLS.TLSOptions,
 		[]commonv1.SubjectAlternativeName{},
 		[]corev1.Service{testSvc},
 		testCSR,
@@ -407,10 +407,12 @@ func TestReconcileInternalHTTPCerts(t *testing.T) {
 				es: esv1.Elasticsearch{
 					ObjectMeta: metav1.ObjectMeta{Name: "test-es-name", Namespace: "test-namespace"},
 					Spec: esv1.ElasticsearchSpec{
-						HTTP: commonv1.HTTPConfig{
-							TLS: commonv1.TLSOptions{
-								Certificate: commonv1.SecretRef{
-									SecretName: "my-cert",
+						HTTP: commonv1.HTTPConfigWithClientOptions{
+							TLS: commonv1.TLSWithClientOptions{
+								TLSOptions: commonv1.TLSOptions{
+									Certificate: commonv1.SecretRef{
+										SecretName: "my-cert",
+									},
 								},
 							},
 						},
@@ -442,10 +444,12 @@ func TestReconcileInternalHTTPCerts(t *testing.T) {
 				es: esv1.Elasticsearch{
 					ObjectMeta: metav1.ObjectMeta{Name: "test-es-name", Namespace: "test-namespace"},
 					Spec: esv1.ElasticsearchSpec{
-						HTTP: commonv1.HTTPConfig{
-							TLS: commonv1.TLSOptions{
-								Certificate: commonv1.SecretRef{
-									SecretName: "my-cert",
+						HTTP: commonv1.HTTPConfigWithClientOptions{
+							TLS: commonv1.TLSWithClientOptions{
+								TLSOptions: commonv1.TLSOptions{
+									Certificate: commonv1.SecretRef{
+										SecretName: "my-cert",
+									},
 								},
 							},
 						},
@@ -477,10 +481,12 @@ func TestReconcileInternalHTTPCerts(t *testing.T) {
 				es: esv1.Elasticsearch{
 					ObjectMeta: metav1.ObjectMeta{Name: "test-es-name", Namespace: "test-namespace"},
 					Spec: esv1.ElasticsearchSpec{
-						HTTP: commonv1.HTTPConfig{
-							TLS: commonv1.TLSOptions{
-								Certificate: commonv1.SecretRef{
-									SecretName: "my-cert",
+						HTTP: commonv1.HTTPConfigWithClientOptions{
+							TLS: commonv1.TLSWithClientOptions{
+								TLSOptions: commonv1.TLSOptions{
+									Certificate: commonv1.SecretRef{
+										SecretName: "my-cert",
+									},
 								},
 							},
 						},
@@ -521,7 +527,7 @@ func TestReconcileInternalHTTPCerts(t *testing.T) {
 				K8sClient:      c,
 				DynamicWatches: w,
 				Owner:          &tt.args.es,
-				TLSOptions:     tt.args.es.Spec.HTTP.TLS,
+				TLSOptions:     tt.args.es.Spec.HTTP.TLS.TLSOptions,
 				Namer:          esv1.ESNamer,
 				Metadata:       metadata.Metadata{},
 				Services:       tt.args.services,
@@ -563,21 +569,23 @@ func Test_createValidatedHTTPCertificateTemplate(t *testing.T) {
 				es: esv1.Elasticsearch{
 					ObjectMeta: metav1.ObjectMeta{Namespace: "test", Name: "test"},
 					Spec: esv1.ElasticsearchSpec{
-						HTTP: commonv1.HTTPConfig{
-							TLS: commonv1.TLSOptions{
-								SelfSignedCertificate: &commonv1.SelfSignedCertificate{
-									SubjectAlternativeNames: []commonv1.SubjectAlternativeName{
-										{
-											DNS: sanDNS1,
-										},
-										{
-											DNS: sanDNS2,
-										},
-										{
-											IP: sanIP1,
-										},
-										{
-											IP: sanIPv6,
+						HTTP: commonv1.HTTPConfigWithClientOptions{
+							TLS: commonv1.TLSWithClientOptions{
+								TLSOptions: commonv1.TLSOptions{
+									SelfSignedCertificate: &commonv1.SelfSignedCertificate{
+										SubjectAlternativeNames: []commonv1.SubjectAlternativeName{
+											{
+												DNS: sanDNS1,
+											},
+											{
+												DNS: sanDNS2,
+											},
+											{
+												IP: sanIP1,
+											},
+											{
+												IP: sanIPv6,
+											},
 										},
 									},
 								},
@@ -625,7 +633,7 @@ func Test_createValidatedHTTPCertificateTemplate(t *testing.T) {
 			got := createValidatedHTTPCertificateTemplate(
 				k8s.ExtractNamespacedName(&tt.args.es),
 				esv1.ESNamer,
-				tt.args.es.Spec.HTTP.TLS,
+				tt.args.es.Spec.HTTP.TLS.TLSOptions,
 				tt.args.extraHTTPSANs,
 				tt.args.svcs,
 				&x509.CertificateRequest{},
@@ -640,12 +648,14 @@ func Test_createValidatedHTTPCertificateTemplate(t *testing.T) {
 
 func Test_getHTTPCertificate(t *testing.T) {
 	esWithSAN := testES.DeepCopy()
-	esWithSAN.Spec.HTTP = commonv1.HTTPConfig{
-		TLS: commonv1.TLSOptions{
-			SelfSignedCertificate: &commonv1.SelfSignedCertificate{
-				SubjectAlternativeNames: []commonv1.SubjectAlternativeName{
-					{
-						DNS: "search.example.com",
+	esWithSAN.Spec.HTTP = commonv1.HTTPConfigWithClientOptions{
+		TLS: commonv1.TLSWithClientOptions{
+			TLSOptions: commonv1.TLSOptions{
+				SelfSignedCertificate: &commonv1.SelfSignedCertificate{
+					SubjectAlternativeNames: []commonv1.SubjectAlternativeName{
+						{
+							DNS: "search.example.com",
+						},
 					},
 				},
 			},
@@ -730,7 +740,7 @@ func Test_getHTTPCertificate(t *testing.T) {
 				context.Background(),
 				k8s.ExtractNamespacedName(&tt.args.es),
 				esv1.ESNamer,
-				tt.args.es.Spec.HTTP.TLS,
+				tt.args.es.Spec.HTTP.TLS.TLSOptions,
 				tt.args.controllerSANs,
 				&tt.args.secret,
 				[]corev1.Service{testSvc},
@@ -783,7 +793,7 @@ func Test_ensureInternalSelfSignedCertificateSecretContents_UpdatesCAChainWhenLe
 		secret,
 		k8s.ExtractNamespacedName(&testES),
 		esv1.ESNamer,
-		testES.Spec.HTTP.TLS,
+		testES.Spec.HTTP.TLS.TLSOptions,
 		nil,
 		[]corev1.Service{testSvc},
 		rotatedCA,
