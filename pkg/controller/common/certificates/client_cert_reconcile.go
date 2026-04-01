@@ -396,6 +396,13 @@ func LoadOperatorClientCertIfExists(ctx context.Context, c k8s.Client, namer nam
 func DeleteClientCertResources(ctx context.Context, c k8s.Client, owner client.Object, namer name.Namer) error {
 	ownerNSN := k8s.ExtractNamespacedName(owner)
 
+	// Remove the annotation first: orphaned secrets are harmless (GC'd via owner references),
+	// but an orphaned annotation actively misleads association controllers into thinking
+	// client certificates are still required.
+	if err := annotation.RemoveClientAuthenticationRequiredAnnotation(ctx, c, owner); err != nil {
+		return err
+	}
+
 	// Delete the operator client certificate secret
 	if err := k8s.DeleteSecretIfExists(ctx, c, types.NamespacedName{
 		Namespace: ownerNSN.Namespace,
@@ -409,11 +416,6 @@ func DeleteClientCertResources(ctx context.Context, c k8s.Client, owner client.O
 		Namespace: ownerNSN.Namespace,
 		Name:      ClientCertTrustBundleSecretName(namer, ownerNSN.Name),
 	}); err != nil {
-		return err
-	}
-
-	// Remove the client-authentication-required annotation
-	if err := annotation.RemoveClientAuthenticationRequiredAnnotation(ctx, c, owner); err != nil {
 		return err
 	}
 

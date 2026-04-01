@@ -412,7 +412,7 @@ func TestDeleteClientCertResources(t *testing.T) {
 			name: "no-op when resources already absent",
 		},
 		{
-			name:             "annotation preserved when operator cert secret deletion fails",
+			name:             "annotation removed even when operator cert secret deletion fails",
 			extraInitialObjs: []client.Object{operatorCertSecret, trustBundleSecret},
 			interceptorFuncs: &interceptor.Funcs{
 				Delete: func(ctx context.Context, c client.WithWatch, obj client.Object, opts ...client.DeleteOption) error {
@@ -423,10 +423,10 @@ func TestDeleteClientCertResources(t *testing.T) {
 				},
 			},
 			wantErr:               true,
-			wantAnnotationPresent: true,
+			wantAnnotationPresent: false,
 		},
 		{
-			name:             "annotation preserved when trust bundle secret deletion fails",
+			name:             "annotation removed even when trust bundle secret deletion fails",
 			extraInitialObjs: []client.Object{operatorCertSecret, trustBundleSecret},
 			interceptorFuncs: &interceptor.Funcs{
 				Delete: func(ctx context.Context, c client.WithWatch, obj client.Object, opts ...client.DeleteOption) error {
@@ -437,7 +437,7 @@ func TestDeleteClientCertResources(t *testing.T) {
 				},
 			},
 			wantErr:               true,
-			wantAnnotationPresent: true,
+			wantAnnotationPresent: false,
 		},
 	}
 
