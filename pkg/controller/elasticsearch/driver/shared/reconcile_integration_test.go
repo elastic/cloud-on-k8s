@@ -373,7 +373,6 @@ func TestReconcileSharedResources(t *testing.T) {
 			if tt.expectedState != nil {
 				require.NotNil(t, s, "Expected non-nil state")
 				assert.EqualValues(t, tt.expectedState.ESReachable, s.ESReachable)
-				assert.EqualValues(t, tt.expectedState.KeystoreResources, s.KeystoreResources)
 				assert.EqualValues(t, tt.expectedState.Meta, s.Meta)
 
 				// Ensure expected ES client is created
@@ -796,10 +795,6 @@ func mustBuildExpectedSecrets(t *testing.T, es *esv1.Elasticsearch, resourceVers
 
 	// Non-certificate secrets (users, roles, service account token)
 	serviceAccountTokenSecret := newServiceAccountTokenSecret(es)
-	fileSettings := filesettings.NewEmptySettings(time.Now().Unix())
-	fileSettingsData, err := json.Marshal(fileSettings)
-	require.NoError(t, err, "error marshalling file-settings")
-
 	result := map[string]corev1.Secret{
 		serviceAccountTokenSecret.Name: *serviceAccountTokenSecret,
 		esv1.RolesAndFileRealmSecret(es.Name): {
@@ -842,17 +837,7 @@ func mustBuildExpectedSecrets(t *testing.T, es *esv1.Elasticsearch, resourceVers
 				user.ElasticUserName: []byte(staticPassword),
 			},
 		},
-		esv1.FileSettingsSecretName(es.Name): {
-			ObjectMeta: metav1.ObjectMeta{
-				Name:            esv1.FileSettingsSecretName(es.Name),
-				Namespace:       es.Namespace,
-				ResourceVersion: resourceVersion,
-				Labels:          labels,
-			},
-			Data: map[string][]byte{
-				filesettings.SettingsSecretKey: fileSettingsData,
-			},
-		},
+		// File settings secret is now created by the driver (stateful/stateless), not by ReconcileSharedResources.
 	}
 
 	return result

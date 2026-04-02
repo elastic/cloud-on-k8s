@@ -18,14 +18,12 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	controller "sigs.k8s.io/controller-runtime/pkg/reconcile"
 
-	commonv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/common/v1"
 	esv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/elasticsearch/v1"
 	policyv1alpha1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/stackconfigpolicy/v1alpha1"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/association"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common"
 	commondriver "github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/driver"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/events"
-	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/keystore"
 	commonlicense "github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/license"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/metadata"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/reconciler"
@@ -37,12 +35,10 @@ import (
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/configmap"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/driver"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/filesettings"
-	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/initcontainer"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/label"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/license"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/reconcile"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/remotecluster"
-	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/securitycontext"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/services"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/settings"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/stackmon"
@@ -313,46 +309,6 @@ func ReconcileSharedResources(
 		return nil, results.WithError(err)
 	}
 
-	// File settings
-	if params.Version.GTE(filesettings.FileBasedSettingsMinPreVersion) {
-		requeue, err := maybeReconcileEmptyFileSettingsSecret(ctx, client, params.LicenseChecker, &es, params.OperatorParameters.OperatorNamespace)
-		if err != nil {
-			esClient.Close()
-			return nil, results.WithError(err)
-		} else if requeue {
-			results.WithReconciliationState(
-				DefaultRequeue.WithReason(
-					fmt.Sprintf("This cluster is targeted by at least one StackConfigPolicy, expecting Secret %s to be created by StackConfigPolicy controller",
-						esv1.FileSettingsSecretName(es.Name)),
-				),
-			)
-		}
-	}
-
-	// Keystore
-	keystoreParams := initcontainer.KeystoreParams
-	keystoreSecurityContext := securitycontext.For(params.Version, true)
-	keystoreParams.SecurityContext = &keystoreSecurityContext
-
-	remoteClusterAPIKeys, err := apiKeyStoreSecretSource(ctx, &es, client)
-	if err != nil {
-		esClient.Close()
-		return nil, results.WithError(err)
-	}
-	keystoreResources, err := keystore.ReconcileResources(
-		ctx,
-		d,
-		&es,
-		esv1.ESNamer,
-		meta,
-		keystoreParams,
-		remoteClusterAPIKeys...,
-	)
-	if err != nil {
-		esClient.Close()
-		return nil, results.WithError(err)
-	}
-
 	// Cluster UUID
 	requeue, err := bootstrap.ReconcileClusterUUID(ctx, client, &es, esClient, esReachable)
 	if err != nil {
@@ -381,21 +337,20 @@ func ReconcileSharedResources(
 	}
 
 	return &ReconcileState{
-		Meta:              meta,
-		ResourcesState:    resourcesState,
-		ESClient:          esClient,
-		ESReachable:       esReachable,
-		KeystoreResources: keystoreResources,
+		Meta:           meta,
+		ResourcesState: resourcesState,
+		ESClient:       esClient,
+		ESReachable:    esReachable,
 	}, results
 }
 
-// maybeReconcileEmptyFileSettingsSecret reconciles an empty file-settings secret for this ES cluster
-// based on license status and StackConfigPolicy targeting. When enterprise features are disabled always
+// MaybeReconcileEmptyFileSettingsSecret reconciles an empty file-settings secret for this ES cluster
+// based on license status and StackConfigPolicy targeting. When enterprise features are disabled it always
 // creates an empty file-settings secret. When enterprise features are enabled and at least one StackConfigPolicy
-// targets this cluster returns true to requeue and doesn't create the empty file-settings secret. If no
-// StackConfigPolicy targets this cluster it creates an empty file-settings secret. Note: This logic here prevents
-// the race condition described in https://github.com/elastic/cloud-on-k8s/issues/8912.
-func maybeReconcileEmptyFileSettingsSecret(ctx context.Context, c k8s.Client, licenseChecker commonlicense.Checker, es *esv1.Elasticsearch, operatorNamespace string) (bool, error) {
+// targets this cluster it returns true to requeue (deferring to the SCP controller). If no StackConfigPolicy
+// targets this cluster it creates an empty file-settings secret.
+// See https://github.com/elastic/cloud-on-k8s/issues/8912.
+func MaybeReconcileEmptyFileSettingsSecret(ctx context.Context, c k8s.Client, licenseChecker commonlicense.Checker, es *esv1.Elasticsearch, operatorNamespace string) (bool, error) {
 	// Check if file-settings secret already exists
 	var currentSecret corev1.Secret
 	if err := c.Get(ctx, types.NamespacedName{Namespace: es.Namespace, Name: esv1.FileSettingsSecretName(es.Name)}, &currentSecret); err == nil {
@@ -445,26 +400,6 @@ func maybeReconcileEmptyFileSettingsSecret(ctx context.Context, c k8s.Client, li
 
 	// No policies target this cluster, so ES controller should create the empty secret
 	return false, filesettings.ReconcileEmptyFileSettingsSecret(ctx, c, *es, true)
-}
-
-// apiKeyStoreSecretSource returns the Secret that holds the remote API keys.
-func apiKeyStoreSecretSource(ctx context.Context, es *esv1.Elasticsearch, c k8s.Client) ([]commonv1.NamespacedSecretSource, error) {
-	secretName := types.NamespacedName{
-		Name:      esv1.RemoteAPIKeysSecretName(es.Name),
-		Namespace: es.Namespace,
-	}
-	if err := c.Get(ctx, secretName, &corev1.Secret{}); err != nil {
-		if k8serrors.IsNotFound(err) {
-			return nil, nil
-		}
-		return nil, err
-	}
-	return []commonv1.NamespacedSecretSource{
-		{
-			Namespace:  es.Namespace,
-			SecretName: secretName.Name,
-		},
-	}, nil
 }
 
 // esReachableConditionMessage returns a message describing the Elasticsearch reachability condition.
