@@ -4612,6 +4612,15 @@ spec:
               image:
                 description: Image is the Elasticsearch Docker image to deploy.
                 type: string
+              mode:
+                description: |-
+                  Mode selects the deployment mode for this Elasticsearch cluster.
+                  "stateful" (default) uses persistent local volumes for data storage.
+                  "stateless" uses an external object store for data storage.
+                enum:
+                - stateful
+                - stateless
+                type: string
               monitoring:
                 description: |-
                   Monitoring enables you to collect and ship log and monitoring data of this Elasticsearch cluster.
@@ -4733,6 +4742,16 @@ spec:
                         for the Pods belonging to this NodeSet.
                       type: object
                       x-kubernetes-preserve-unknown-fields: true
+                    tier:
+                      description: |-
+                        Tier explicitly maps this NodeSet to a stateless tier (index, search, master, or ml).
+                        Only valid when spec.mode is "stateless". If omitted in stateless mode, the tier is inferred from the NodeSet name.
+                      enum:
+                      - index
+                      - search
+                      - master
+                      - ml
+                      type: string
                     volumeClaimTemplates:
                       description: |-
                         VolumeClaimTemplates is a list of persistent volume claims to be used by each Pod in this NodeSet.
@@ -5007,6 +5026,37 @@ spec:
                   type: object
                 minItems: 1
                 type: array
+              objectStore:
+                description: |-
+                  ObjectStore configures the external object store for stateless Elasticsearch.
+                  Required when mode is "stateless", forbidden when mode is "stateful".
+                properties:
+                  basePath:
+                    description: |-
+                      BasePath is the path prefix within the bucket.
+                      If not specified, defaults to <namespace>/<name> to prevent data collisions when multiple clusters share the same bucket.
+                    type: string
+                  bucket:
+                    description: Bucket is the name of the storage bucket.
+                    minLength: 1
+                    type: string
+                  client:
+                    description: |-
+                      Client is the named client configuration in elasticsearch.yml.
+                      Defaults to "default" if not specified.
+                    type: string
+                  type:
+                    description: Type is the object store backend type (s3, gcs, or
+                      azure).
+                    enum:
+                    - s3
+                    - gcs
+                    - azure
+                    type: string
+                required:
+                - bucket
+                - type
+                type: object
               podDisruptionBudget:
                 description: |-
                   PodDisruptionBudget provides access to the default Pod disruption budget(s) for the Elasticsearch cluster.
