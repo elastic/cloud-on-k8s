@@ -34,9 +34,8 @@ var (
 
 func TestValidateElasticsearchAutoscaler(t *testing.T) {
 	type args struct {
-		esa     v1alpha1.ElasticsearchAutoscaler
-		es      *esv1.Elasticsearch
-		checker license.Checker
+		esa v1alpha1.ElasticsearchAutoscaler
+		es  *esv1.Elasticsearch
 	}
 	tests := []struct {
 		name                string
@@ -56,7 +55,6 @@ func TestValidateElasticsearchAutoscaler(t *testing.T) {
 						},
 					},
 				},
-				checker: yesCheck,
 			},
 			wantValidationError: ptr.To[string]("Autoscaling annotation is no longer supported"),
 		},
@@ -81,7 +79,6 @@ func TestValidateElasticsearchAutoscaler(t *testing.T) {
 						},
 					},
 				},
-				checker: yesCheck,
 			},
 			wantValidationError: ptr.To[string]("ML nodes must be in a dedicated autoscaling policy"),
 		},
@@ -106,7 +103,6 @@ func TestValidateElasticsearchAutoscaler(t *testing.T) {
 						},
 					},
 				},
-				checker: yesCheck,
 			},
 		},
 		{
@@ -137,7 +133,6 @@ func TestValidateElasticsearchAutoscaler(t *testing.T) {
 						},
 					},
 				},
-				checker: yesCheck,
 			},
 			wantValidationError: ptr.To[string]("Invalid value: [\"ml\"]: roles must be used in at least one nodeSet"),
 		},
@@ -169,7 +164,6 @@ func TestValidateElasticsearchAutoscaler(t *testing.T) {
 						},
 					},
 				},
-				checker: yesCheck,
 			},
 			wantValidationError: ptr.To[string]("Invalid value: \"ml_policy\": policy is duplicated"),
 		},
@@ -194,7 +188,6 @@ func TestValidateElasticsearchAutoscaler(t *testing.T) {
 						},
 					},
 				},
-				checker: yesCheck,
 			},
 			wantValidationError: ptr.To[string]("cannot parse nodeSet configuration: node.roles must be set"),
 		},
@@ -224,7 +217,6 @@ func TestValidateElasticsearchAutoscaler(t *testing.T) {
 						},
 					},
 				},
-				checker: yesCheck,
 			},
 			wantValidationError: ptr.To[string]("min quantity must be greater than 2G"),
 		},
@@ -248,7 +240,6 @@ func TestValidateElasticsearchAutoscaler(t *testing.T) {
 						},
 					},
 				},
-				checker: yesCheck,
 			},
 			wantValidationError: ptr.To[string]("name: Required value: name is mandatory"),
 		},
@@ -273,7 +264,6 @@ func TestValidateElasticsearchAutoscaler(t *testing.T) {
 						},
 					},
 				},
-				checker: yesCheck,
 			},
 			wantValidationError: ptr.To[string]("roles: Required value: roles field is mandatory and must not be empty"),
 		},
@@ -303,7 +293,6 @@ func TestValidateElasticsearchAutoscaler(t *testing.T) {
 						},
 					},
 				},
-				checker: yesCheck,
 			},
 			wantValidationError: ptr.To[string]("spec.policies[0].resources.nodeCount.max: Invalid value: 0: max count must be greater than 0"),
 		},
@@ -333,7 +322,6 @@ func TestValidateElasticsearchAutoscaler(t *testing.T) {
 						},
 					},
 				},
-				checker: yesCheck,
 			},
 			wantValidationError: ptr.To[string]("spec.policies[0].resources.nodeCount.min: Invalid value: -1: min count must be equal or greater than 0"),
 		},
@@ -363,7 +351,6 @@ func TestValidateElasticsearchAutoscaler(t *testing.T) {
 						},
 					},
 				},
-				checker: yesCheck,
 			},
 			wantValidationError: ptr.To[string]("spec.policies[0].resources.nodeCount.max: Invalid value: 0: max count must be greater than 0"),
 		},
@@ -393,7 +380,6 @@ func TestValidateElasticsearchAutoscaler(t *testing.T) {
 						},
 					},
 				},
-				checker: yesCheck,
 			},
 		},
 		{
@@ -422,7 +408,6 @@ func TestValidateElasticsearchAutoscaler(t *testing.T) {
 						},
 					},
 				},
-				checker: yesCheck,
 			},
 			wantValidationError: ptr.To[string]("spec.policies[0].resources.nodeCount.max: Invalid value: 4: max node count must be an integer greater or equal than the min node count"),
 		},
@@ -452,7 +437,6 @@ func TestValidateElasticsearchAutoscaler(t *testing.T) {
 						},
 					},
 				},
-				checker: yesCheck,
 			},
 			wantValidationError: ptr.To[string]("spec.policies[0].cpu.max: Invalid value: \"2\": max quantity must be greater or equal than min quantity"),
 		},
@@ -478,7 +462,6 @@ func TestValidateElasticsearchAutoscaler(t *testing.T) {
 						},
 					},
 				},
-				checker: yesCheck,
 			},
 			wantValidationError: nil, // we do support configurations in which the volume claim is not the default (as long as there's only one)
 		},
@@ -503,7 +486,6 @@ func TestValidateElasticsearchAutoscaler(t *testing.T) {
 						},
 					},
 				},
-				checker: yesCheck,
 			},
 			wantValidationError: ptr.To[string]("ElasticsearchAutoscaler.autoscaling.k8s.elastic.co \"esa\" is invalid: Elasticsearch.spec.nodeSets[0]: Invalid value: [\"volume1\",\"volume2\"]: autoscaling supports only one volume claim"),
 		},
@@ -541,7 +523,6 @@ func TestValidateElasticsearchAutoscaler(t *testing.T) {
 						},
 					},
 				},
-				checker: yesCheck,
 			},
 			wantValidationError: nil,
 		},
@@ -589,7 +570,6 @@ func TestValidateElasticsearchAutoscaler(t *testing.T) {
 						},
 					},
 				},
-				checker: yesCheck,
 			},
 			wantValidationError: ptr.To[string]("ElasticsearchAutoscaler.autoscaling.k8s.elastic.co \"esa\" is invalid: spec.policies[2].name: Invalid value: \"ml\": ML nodes must be in a dedicated NodeSet"),
 		},
@@ -602,7 +582,7 @@ func TestValidateElasticsearchAutoscaler(t *testing.T) {
 			} else {
 				k8sClient = k8s.NewFakeClient()
 			}
-			validationError, runtimeError := ValidateElasticsearchAutoscaler(context.TODO(), k8sClient, tt.args.esa, tt.args.checker)
+			_, validationError, runtimeError := ValidateElasticsearchAutoscaler(context.TODO(), k8sClient, tt.args.esa, license.MockLicenseChecker{EnterpriseEnabled: true})
 			if (validationError != nil) != (tt.wantValidationError != nil) {
 				t.Errorf("ValidateElasticsearchAutoscaler() validationError = %v, wantValidationError %v", validationError, tt.wantValidationError)
 			}
@@ -657,37 +637,3 @@ func volumeClaimTemplates(volumeClaims []string) []corev1.PersistentVolumeClaim 
 	}
 	return volumeClaimTemplates
 }
-
-// -- Fake license checker
-
-var (
-	yesCheck = &fakeChecker{
-		enterpriseFeaturesEnabled: true,
-		valid:                     true,
-		operatorLicenseType:       license.LicenseTypeEnterprise,
-	}
-)
-
-type fakeChecker struct {
-	enterpriseFeaturesEnabled bool
-	valid                     bool
-	operatorLicenseType       license.OperatorLicenseType
-}
-
-func (f fakeChecker) CurrentEnterpriseLicense(_ context.Context) (*license.EnterpriseLicense, error) {
-	panic("not implemented")
-}
-
-func (f fakeChecker) EnterpriseFeaturesEnabled(_ context.Context) (bool, error) {
-	return f.enterpriseFeaturesEnabled, nil
-}
-
-func (f fakeChecker) Valid(_ context.Context, _ license.EnterpriseLicense) (bool, error) {
-	return f.valid, nil
-}
-
-func (f fakeChecker) ValidOperatorLicenseKeyType(_ context.Context) (license.OperatorLicenseType, error) {
-	return f.operatorLicenseType, nil
-}
-
-var _ license.Checker = (*fakeChecker)(nil)

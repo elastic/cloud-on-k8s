@@ -398,7 +398,10 @@ func TestReconcileStackConfigPolicy_Reconcile(t *testing.T) {
 			},
 			post: func(r ReconcileStackConfigPolicy, recorder toolsevents.FakeRecorder) {
 				events := fetchEvents(&recorder)
-				assert.ElementsMatch(t, []string{"Warning Unexpected invalid version to configure resource Elasticsearch ns/test-es: actual 8.0.0, expected >= 8.6.1"}, events)
+				assert.ElementsMatch(t, []string{
+					"Warning Validation StackConfigPolicy ns/test-policy: spec.SecureSettings is deprecated, secure settings must be set per application",
+					"Warning Unexpected invalid version to configure resource Elasticsearch ns/test-es: actual 8.0.0, expected >= 8.6.1",
+				}, events)
 
 				policy := r.getPolicy(t, k8s.ExtractNamespacedName(&policyFixture))
 				assert.Equal(t, 1, policy.Status.Resources)

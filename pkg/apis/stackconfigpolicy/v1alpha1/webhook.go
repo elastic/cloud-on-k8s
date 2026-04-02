@@ -8,24 +8,21 @@ import (
 	"fmt"
 
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
-	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/util/validation/field"
+	"sigs.k8s.io/controller-runtime/pkg/webhook/admission"
 
 	commonv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/common/v1"
-	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/webhook/admission"
-	ulog "github.com/elastic/cloud-on-k8s/v3/pkg/utils/log"
 )
 
 const (
-	// webhookPath is the HTTP path for the StackConfigPolicy validating webhook.
-	webhookPath                  = "/validate-scp-k8s-elastic-co-v1alpha1-stackconfigpolicies"
+	// WebhookPath is the HTTP path for the StackConfigPolicy validating webhook.
+	WebhookPath                  = "/validate-scp-k8s-elastic-co-v1alpha1-stackconfigpolicies"
 	SpecSecureSettingsDeprecated = "spec.SecureSettings is deprecated, secure settings must be set per application"
 )
 
 var (
-	groupKind     = schema.GroupKind{Group: GroupVersion.Group, Kind: Kind}
-	validationLog = ulog.Log.WithName("scp-v1alpha1-validation")
+	groupKind = schema.GroupKind{Group: GroupVersion.Group, Kind: Kind}
 
 	defaultChecks = []func(*StackConfigPolicy) field.ErrorList{
 		checkNoUnknownFields,
@@ -36,35 +33,13 @@ var (
 
 // +kubebuilder:webhook:path=/validate-scp-k8s-elastic-co-v1alpha1-stackconfigpolicies,mutating=false,failurePolicy=ignore,groups=stackconfigpolicy.k8s.elastic.co,resources=stackconfigpolicies,verbs=create;update,versions=v1alpha1,name=elastic-scp-validation-v1alpha1.k8s.elastic.co,sideEffects=None,admissionReviewVersions=v1,matchPolicy=Exact
 
-var _ admission.Validator = (*StackConfigPolicy)(nil)
-
-// ValidateCreate is called by the validating webhook to validate the create operation.
-// Satisfies the webhook.Validator interface.
-func (p *StackConfigPolicy) ValidateCreate() (admission.Warnings, error) {
-	validationLog.V(1).Info("Validate create", "name", p.Name)
+// Validate validates the StackConfigPolicy. There's no update-specific checks, so the old parameter is ignored.
+func Validate(p *StackConfigPolicy, _ *StackConfigPolicy) (admission.Warnings, error) {
 	return p.validate()
-}
-
-// ValidateDelete is called by the validating webhook to validate the delete operation.
-// Satisfies the webhook.Validator interface.
-func (p *StackConfigPolicy) ValidateDelete() (admission.Warnings, error) {
-	validationLog.V(1).Info("Validate delete", "name", p.Name)
-	return nil, nil
-}
-
-// ValidateUpdate is called by the validating webhook to validate the update operation.
-// Satisfies the webhook.Validator interface.
-func (p *StackConfigPolicy) ValidateUpdate(_ runtime.Object) (admission.Warnings, error) {
-	validationLog.V(1).Info("Validate update", "name", p.Name)
-	return p.validate()
-}
-
-// WebhookPath returns the HTTP path used by the validating webhook.
-func (p *StackConfigPolicy) WebhookPath() string {
-	return webhookPath
 }
 
 func (p *StackConfigPolicy) validate() (admission.Warnings, error) {
+	warnings := admission.Warnings(p.GetWarnings())
 	var errors field.ErrorList
 
 	for _, dc := range defaultChecks {
@@ -74,10 +49,9 @@ func (p *StackConfigPolicy) validate() (admission.Warnings, error) {
 	}
 
 	if len(errors) > 0 {
-		validationLog.V(1).Info("failed validation", "errors", errors)
-		return nil, apierrors.NewInvalid(groupKind, p.Name, errors)
+		return warnings, apierrors.NewInvalid(groupKind, p.Name, errors)
 	}
-	return nil, nil
+	return warnings, nil
 }
 
 func (p *StackConfigPolicy) GetWarnings() []string {

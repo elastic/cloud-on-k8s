@@ -294,10 +294,14 @@ func (r *ReconcileApmServer) validate(ctx context.Context, as *apmv1.ApmServer) 
 	span, vctx := apm.StartSpan(ctx, "validate", tracing.SpanTypeApp)
 	defer span.End()
 
-	if _, err := as.ValidateCreate(); err != nil {
+	warnings, err := apmv1.Validate(as, nil)
+	if err != nil {
 		log.Error(err, "Validation failed")
 		k8s.MaybeEmitErrorEvent(r.recorder, err, as, events.EventReasonValidation, events.EventActionValidation, err.Error())
 		return tracing.CaptureError(vctx, err)
+	}
+	for _, warning := range warnings {
+		k8s.EmitEvent(r.recorder, as, corev1.EventTypeWarning, events.EventReasonValidation, events.EventActionValidation, warning)
 	}
 
 	return nil
