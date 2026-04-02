@@ -20,7 +20,7 @@ spec:
     type: s3
     bucket: my-es-bucket
     # client: default        # optional, named client configuration in elasticsearch.yml
-    # basePath: my/base/path # optional, defaults to <namespace>/<name>
+    # basePath: my/base/path # optional, path prefix within the bucket
   # Object store credentials are managed through secureSettings.
   # The secret should contain the keystore entries expected by Elasticsearch,
   # e.g. s3.client.default.access_key and s3.client.default.secret_key for S3.
