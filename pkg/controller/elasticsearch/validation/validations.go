@@ -58,6 +58,7 @@ func updateValidations(ctx context.Context, k8sClient k8s.Client, validateStorag
 	return []updateValidation{
 		noDowngrades,
 		validUpgradePath,
+		noModeChange,
 		func(current esv1.Elasticsearch, proposed esv1.Elasticsearch) field.ErrorList {
 			return validPVCModification(ctx, current, proposed, k8sClient, validateStorageClass)
 		},
@@ -82,6 +83,7 @@ func validations(ctx context.Context, checker license.Checker, exposedNodeLabels
 		validMonitoring,
 		validAssociations,
 		supportsRemoteClusterUsingAPIKey,
+		validModeSpecificConfig,
 		func(proposed esv1.Elasticsearch) field.ErrorList {
 			return validLicenseLevel(ctx, proposed, checker)
 		},
@@ -380,7 +382,7 @@ func hasCorrectNodeRoles(es esv1.Elasticsearch) field.ErrorList {
 		seenMaster = seenMaster || (cfg.Node.IsConfiguredWithRole(esv1.MasterRole) && !cfg.Node.IsConfiguredWithRole(esv1.VotingOnlyRole) && ns.Count > 0)
 	}
 
-	if !seenMaster {
+	if !seenMaster && !es.IsStateless() {
 		errs = append(errs, field.Required(field.NewPath("spec").Child("nodeSets"), masterRequiredMsg))
 	}
 

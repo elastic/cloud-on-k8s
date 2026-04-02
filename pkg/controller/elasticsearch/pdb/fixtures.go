@@ -125,6 +125,9 @@ func (b Builder) buildStatefulSet(name string, replicas int32, nodeRoles []esv1.
 			continue
 		case esv1.VotingOnlyRole:
 			continue
+		case esv1.IndexRole, esv1.SearchRole:
+			// stateless-specific roles, not applicable to PDB fixtures
+			continue
 		}
 	}
 

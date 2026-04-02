@@ -31,6 +31,12 @@ const (
 	VotingOnlyRole          NodeRole = "voting_only"
 )
 
+// Stateless specific roles.
+const (
+	IndexRole  NodeRole = "index"
+	SearchRole NodeRole = "search"
+)
+
 const (
 	NodeData                = "node.data"
 	NodeIngest              = "node.ingest"
@@ -56,6 +62,8 @@ type Node struct {
 	Transform           *bool    `config:"transform"`             // available as of 7.7.0
 	RemoteClusterClient *bool    `config:"remote_cluster_client"` // available as of 7.7.0
 	Roles               []string `config:"roles"`                 // available as of 7.9.0, takes priority over the other fields if non-nil
+	Index               *bool    `config:"index"`                 // stateless-specific
+	Search              *bool    `config:"search"`                // stateless-specific
 	VotingOnly          *bool    `config:"voting_only"`           // available as of 7.3.0
 }
 
@@ -132,6 +140,10 @@ func (n *Node) IsConfiguredWithRole(role NodeRole) bool {
 		return ptr.Deref(n.VotingOnly, false)
 	case CoordinatingRole:
 		return n.Roles != nil && len(n.Roles) == 0
+	case IndexRole:
+		return ptr.Deref(n.Index, false)
+	case SearchRole:
+		return ptr.Deref(n.Search, false)
 	}
 
 	// This point should never be reached. The default is to assume that a node has all roles except voting_only.

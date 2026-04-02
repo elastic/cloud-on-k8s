@@ -20,6 +20,7 @@ const (
 var warnings = []validation{
 	noUnsupportedSettings,
 	validZoneAwarenessAffinityWarnings,
+	statelessNodeRolesWarning,
 }
 
 func noUnsupportedSettings(es esv1.Elasticsearch) field.ErrorList {
