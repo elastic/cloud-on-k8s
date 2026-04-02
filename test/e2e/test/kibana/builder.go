@@ -116,7 +116,15 @@ func (b Builder) WithSuffix(suffix string) Builder {
 }
 
 func (b Builder) WithElasticsearchRef(ref commonv1.ObjectSelector) Builder {
-	b.Kibana.Spec.ElasticsearchRef = ref
+	b.Kibana.Spec.ElasticsearchRef = commonv1.ElasticsearchSelector{
+		ObjectSelector:              ref,
+		ClientCertificateSecretName: b.Kibana.Spec.ElasticsearchRef.ClientCertificateSecretName,
+	}
+	return b
+}
+
+func (b Builder) WithClientCertificateSecret(secretName string) Builder {
+	b.Kibana.Spec.ElasticsearchRef.ClientCertificateSecretName = secretName
 	return b
 }
 

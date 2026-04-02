@@ -112,10 +112,10 @@ func TestReconcileClientCertificate_WithExtraLabels(t *testing.T) {
 			UID:       "test-uid",
 		},
 		Spec: kbv1.KibanaSpec{
-			ElasticsearchRef: commonv1.ObjectSelector{
+			ElasticsearchRef: commonv1.ElasticsearchSelector{ObjectSelector: commonv1.ObjectSelector{
 				Name:      "my-es",
 				Namespace: "es-ns",
-			},
+			}},
 		},
 	}
 	secretName := "my-kibana-es-test-client-cert"

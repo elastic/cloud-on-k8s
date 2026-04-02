@@ -74,6 +74,11 @@ type LocalObjectSelector struct {
 	ServiceName string `json:"serviceName,omitempty"`
 }
 
+// GetClientCertificateSecretName always returns empty string as LocalObjectSelector does not support client certificates.
+func (o LocalObjectSelector) GetClientCertificateSecretName() string {
+	return ""
+}
+
 // WithDefaultNamespace adds a default namespace to a given LocalObjectSelector if none is set.
 func (o LocalObjectSelector) WithDefaultNamespace(defaultNamespace string) LocalObjectSelector {
 	if len(o.Namespace) > 0 {
@@ -178,6 +183,11 @@ type ObjectSelector struct {
 	SecretName string `json:"secretName,omitempty"`
 }
 
+// GetClientCertificateSecretName always returns empty string as ObjectSelector does not support client certificates.
+func (o ObjectSelector) GetClientCertificateSecretName() string {
+	return ""
+}
+
 // WithDefaultNamespace adds a default namespace to a given ObjectSelector if none is set.
 func (o ObjectSelector) WithDefaultNamespace(defaultNamespace string) ObjectSelector {
 	if len(o.Namespace) > 0 {
@@ -272,6 +282,46 @@ func (o ObjectSelector) ToID() string {
 		return fmt.Sprintf("%s-%s", o.Namespace, o.NameOrSecretName())
 	}
 	return o.NameOrSecretName()
+}
+
+// ElasticsearchSelector defines a reference to an Elasticsearch cluster managed by the operator
+// or a Secret describing an external cluster not managed by the operator.
+type ElasticsearchSelector struct {
+	ObjectSelector `json:",inline"`
+
+	// ClientCertificateSecretName is the name of an existing Kubernetes secret containing a client certificate
+	// (tls.crt) and private key (tls.key) for client authentication to the referenced resource.
+	// This field is only relevant when the referenced Elasticsearch cluster has client authentication enabled.
+	// If not specified and the referenced resource requires client authentication, ECK will auto-generate a
+	// client certificate.
+	ClientCertificateSecretName string `json:"clientCertificateSecretName,omitempty"`
+}
+
+// GetClientCertificateSecretName returns the name of the client certificate secret.
+func (e ElasticsearchSelector) GetClientCertificateSecretName() string {
+	return e.ClientCertificateSecretName
+}
+
+// IsValid validates the ElasticsearchSelector, including the embedded ObjectSelector.
+func (e ElasticsearchSelector) IsValid() error {
+	if err := e.ObjectSelector.IsValid(); err != nil {
+		return err
+	}
+	if e.Name == "" && e.ClientCertificateSecretName != "" {
+		return errors.New("clientCertificateSecretName can only be used in combination with name")
+	}
+	return nil
+}
+
+// WithDefaultNamespace adds a default namespace to a given ElasticsearchSelector if none is set.
+func (e ElasticsearchSelector) WithDefaultNamespace(defaultNamespace string) ElasticsearchSelector {
+	if len(e.Namespace) > 0 {
+		return e
+	}
+	return ElasticsearchSelector{
+		ObjectSelector:              e.ObjectSelector.WithDefaultNamespace(defaultNamespace),
+		ClientCertificateSecretName: e.ClientCertificateSecretName,
+	}
 }
 
 // HTTPConfig holds the HTTP layer configuration for resources.
