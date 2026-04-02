@@ -211,10 +211,14 @@ func (r *ReconcileKibana) validate(ctx context.Context, kb *kbv1.Kibana) error {
 	span, vctx := apm.StartSpan(ctx, "validate", tracing.SpanTypeApp)
 	defer span.End()
 
-	if _, err := kb.ValidateCreate(); err != nil {
+	warnings, err := kbv1.Validate(kb, nil)
+	if err != nil {
 		ulog.FromContext(ctx).Error(err, "Validation failed")
 		k8s.MaybeEmitErrorEvent(r.recorder, err, kb, events.EventReasonValidation, events.EventActionValidation, err.Error())
 		return tracing.CaptureError(vctx, err)
+	}
+	for _, warning := range warnings {
+		k8s.EmitEvent(r.recorder, kb, corev1.EventTypeWarning, events.EventReasonValidation, events.EventActionValidation, warning)
 	}
 
 	return nil

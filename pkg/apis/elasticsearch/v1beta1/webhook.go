@@ -5,75 +5,65 @@
 package v1beta1
 
 import (
-	"errors"
-
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
-	runtime "k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/util/validation/field"
+	"sigs.k8s.io/controller-runtime/pkg/webhook/admission"
 
-	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/webhook/admission"
+	commonv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/common/v1"
 	ulog "github.com/elastic/cloud-on-k8s/v3/pkg/utils/log"
 )
 
 const (
-	// webhookPath is the HTTP path for the Elasticsearch validating webhook.
-	webhookPath = "/validate-elasticsearch-k8s-elastic-co-v1beta1-elasticsearch"
+	// WebhookPath is the HTTP path for the Elasticsearch validating webhook.
+	WebhookPath = "/validate-elasticsearch-k8s-elastic-co-v1beta1-elasticsearch"
 )
 
 // +kubebuilder:webhook:path=/validate-elasticsearch-k8s-elastic-co-v1beta1-elasticsearch,mutating=false,failurePolicy=ignore,groups=elasticsearch.k8s.elastic.co,resources=elasticsearches,verbs=create;update,versions=v1beta1,name=elastic-es-validation-v1beta1.k8s.elastic.co,sideEffects=None,admissionReviewVersions=v1,matchPolicy=Exact
 
 var eslog = ulog.Log.WithName("es-validation")
 
-var _ admission.Validator = (*Elasticsearch)(nil)
+// Validate validates an Elasticsearch resource, optionally against an old version for update validations.
+func Validate(es *Elasticsearch, old *Elasticsearch) (admission.Warnings, error) {
+	eslog.V(1).Info("validate", "name", es.Name)
 
-// ValidateCreate is called by the validating webhook to validate the create operation.
-// Satisfies the webhook.Validator interface.
-func (es *Elasticsearch) ValidateCreate() (admission.Warnings, error) {
-	eslog.V(1).Info("validate create", "name", es.Name)
-	return es.validateElasticsearch()
-}
+	var (
+		errs     field.ErrorList
+		warnings admission.Warnings
+	)
 
-// ValidateDelete is required to implement webhook.Validator, but we do not actually validate deletes.
-func (es *Elasticsearch) ValidateDelete() (admission.Warnings, error) {
-	return nil, nil
-}
-
-// ValidateUpdate is called by the validating webhook to validate the update operation.
-// Satisfies the webhook.Validator interface.
-func (es *Elasticsearch) ValidateUpdate(old runtime.Object) (admission.Warnings, error) {
-	eslog.V(1).Info("validate update", "name", es.Name)
-	oldEs, ok := old.(*Elasticsearch)
-	if !ok {
-		return nil, errors.New("cannot cast old object to Elasticsearch type")
+	deprecationWarning, deprecationErrors := commonv1.CheckDeprecatedStackVersion(es.Spec.Version)
+	if len(deprecationErrors) > 0 {
+		errs = append(errs, deprecationErrors...)
 	}
+	if deprecationWarning != "" {
+		warnings = append(warnings, deprecationWarning)
+	}
+	settingWarns, settingErrs := settingsWarningsAndErrors(es)
+	warnings = append(warnings, settingWarns...)
+	errs = append(errs, settingErrs...)
 
-	var errs field.ErrorList
-	for _, val := range updateValidations {
-		if err := val(oldEs, es); err != nil {
-			errs = append(errs, err...)
+	if old != nil {
+		for _, val := range updateValidations {
+			if err := val(old, es); err != nil {
+				errs = append(errs, err...)
+			}
+		}
+		if len(errs) > 0 {
+			return warnings, apierrors.NewInvalid(
+				schema.GroupKind{Group: "elasticsearch.k8s.elastic.co", Kind: "Elasticsearch"},
+				es.Name, errs)
 		}
 	}
+
+	if validationErrs := es.check(validations); len(validationErrs) > 0 {
+		errs = append(errs, validationErrs...)
+	}
+
 	if len(errs) > 0 {
-		return nil, apierrors.NewInvalid(
+		return warnings, apierrors.NewInvalid(
 			schema.GroupKind{Group: "elasticsearch.k8s.elastic.co", Kind: "Elasticsearch"},
 			es.Name, errs)
 	}
-	return es.validateElasticsearch()
-}
-
-// WebhookPath returns the HTTP path used by the validating webhook.
-func (es *Elasticsearch) WebhookPath() string {
-	return webhookPath
-}
-
-func (es *Elasticsearch) validateElasticsearch() (admission.Warnings, error) {
-	if errs := es.check(validations); len(errs) > 0 {
-		return nil, apierrors.NewInvalid(
-			schema.GroupKind{Group: "elasticsearch.k8s.elastic.co", Kind: "Elasticsearch"},
-			es.Name,
-			errs,
-		)
-	}
-	return nil, nil
+	return warnings, nil
 }

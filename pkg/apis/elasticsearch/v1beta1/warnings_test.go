@@ -7,6 +7,9 @@ package v1beta1
 import (
 	"testing"
 
+	"github.com/stretchr/testify/require"
+	"sigs.k8s.io/controller-runtime/pkg/webhook/admission"
+
 	common "github.com/elastic/cloud-on-k8s/v3/pkg/apis/common/v1beta1"
 )
 
@@ -133,4 +136,87 @@ func Test_noUnsupportedSettings(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestSettingsWarnings(t *testing.T) {
+	tests := []struct {
+		name string
+		es   *Elasticsearch
+		want admission.Warnings
+	}{
+		{
+			name: "empty when no unsupported settings",
+			es:   es("7.0.0"),
+			want: nil,
+		},
+		{
+			name: "forbidden settings become warning strings",
+			es: &Elasticsearch{
+				Spec: ElasticsearchSpec{
+					Version: "7.0.0",
+					NodeSets: []NodeSet{
+						{
+							Config: &common.Config{
+								Data: map[string]any{
+									ClusterInitialMasterNodes: "foo",
+								},
+							},
+							Count: 1,
+						},
+					},
+				},
+			},
+			want: admission.Warnings{
+				`spec.nodeSets[0].config.cluster.initial_master_nodes: Configuration setting is reserved for internal use. User-configured use is unsupported`,
+			},
+		},
+		{
+			name: "unparsable config does not produce settings warnings",
+			es: &Elasticsearch{
+				Spec: ElasticsearchSpec{
+					Version: "7.0.0",
+					NodeSets: []NodeSet{
+						{
+							Config: &common.Config{
+								Data: map[string]any{
+									"a":   map[string]any{"b": 1},
+									"a.b": 2,
+								},
+							},
+							Count: 1,
+						},
+					},
+				},
+			},
+			want: nil,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := settingsWarnings(tt.es)
+			require.Equal(t, tt.want, got)
+		})
+	}
+}
+
+func Test_settingsWarningsAndErrors(t *testing.T) {
+	t.Run("forbidden reserved keys stay warnings only", func(t *testing.T) {
+		es := &Elasticsearch{
+			Spec: ElasticsearchSpec{
+				Version: "8.16.0",
+				NodeSets: []NodeSet{{
+					Count: 1,
+					Config: &common.Config{
+						Data: map[string]any{
+							ClusterInitialMasterNodes: "foo",
+						},
+					},
+				}},
+			},
+		}
+		warns, blocking := settingsWarningsAndErrors(es)
+		require.Empty(t, blocking)
+		require.Len(t, warns, 1)
+		require.Contains(t, warns[0], unsupportedConfigErrMsg)
+	})
 }
