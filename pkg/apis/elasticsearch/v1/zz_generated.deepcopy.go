@@ -477,6 +477,11 @@ func (in *Node) DeepCopyInto(out *Node) {
 		*out = make([]string, len(*in))
 		copy(*out, *in)
 	}
+	if in.VotingOnly != nil {
+		in, out := &in.VotingOnly, &out.VotingOnly
+		*out = new(bool)
+		**out = **in
+	}
 	if in.Index != nil {
 		in, out := &in.Index, &out.Index
 		*out = new(bool)
@@ -484,11 +489,6 @@ func (in *Node) DeepCopyInto(out *Node) {
 	}
 	if in.Search != nil {
 		in, out := &in.Search, &out.Search
-		*out = new(bool)
-		**out = **in
-	}
-	if in.VotingOnly != nil {
-		in, out := &in.VotingOnly, &out.VotingOnly
 		*out = new(bool)
 		**out = **in
 	}

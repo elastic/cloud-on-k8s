@@ -62,9 +62,12 @@ type Node struct {
 	Transform           *bool    `config:"transform"`             // available as of 7.7.0
 	RemoteClusterClient *bool    `config:"remote_cluster_client"` // available as of 7.7.0
 	Roles               []string `config:"roles"`                 // available as of 7.9.0, takes priority over the other fields if non-nil
-	Index               *bool    `config:"index"`                 // stateless-specific
-	Search              *bool    `config:"search"`                // stateless-specific
 	VotingOnly          *bool    `config:"voting_only"`           // available as of 7.3.0
+
+	// Serverless
+
+	Index  *bool `config:"index"`
+	Search *bool `config:"search"`
 }
 
 // CanContainData returns true if a node can contain data, it returns false otherwise.
