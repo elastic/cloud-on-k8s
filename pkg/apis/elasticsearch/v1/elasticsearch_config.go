@@ -64,7 +64,7 @@ type Node struct {
 	Roles               []string `config:"roles"`                 // available as of 7.9.0, takes priority over the other fields if non-nil
 	VotingOnly          *bool    `config:"voting_only"`           // available as of 7.3.0
 
-	// Serverless
+	// Stateless
 
 	Index  *bool `config:"index"`
 	Search *bool `config:"search"`
