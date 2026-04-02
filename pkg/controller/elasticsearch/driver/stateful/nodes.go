@@ -13,6 +13,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 
 	esv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/elasticsearch/v1"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/certificates"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/events"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/keystore"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/metadata"
@@ -41,6 +42,7 @@ func (d *Driver) reconcileNodeSpecs(
 	resourcesState reconcile.ResourcesState,
 	keystoreResources *keystore.Resources,
 	meta metadata.Metadata,
+	resolvedConfig nodespec.ResolvedConfig,
 ) *reconciler.Results {
 	span, ctx := apm.StartSpan(ctx, "reconcile_node_spec", tracing.SpanTypeApp)
 	defer span.End()
@@ -84,7 +86,8 @@ func (d *Driver) reconcileNodeSpecs(
 		return results.WithError(err)
 	}
 
-	expectedResources, err := nodespec.BuildExpectedResources(ctx, d.Client, d.ES, keystoreResources, actualStatefulSets, d.OperatorParameters.IPFamily, d.OperatorParameters.SetDefaultSecurityContext, meta)
+	// Build expected resources using pre-computed configs from ResolvedConfig.
+	expectedResources, err := nodespec.BuildExpectedResources(ctx, d.Client, d.ES, keystoreResources, actualStatefulSets, d.OperatorParameters.SetDefaultSecurityContext, meta, resolvedConfig)
 	if err != nil {
 		return results.WithError(err)
 	}
@@ -219,6 +222,12 @@ func (d *Driver) reconcileNodeSpecs(
 	if esReachable && isNodeSpecsReconciled {
 		if err := d.maybeRemoveTransientSettings(ctx, esClient); err != nil {
 			return results.WithError(err)
+		}
+
+		if !resolvedConfig.ClientAuthenticationRequired {
+			if err := certificates.DeleteClientCertResources(ctx, d.Client, &d.ES, esv1.ESNamer); err != nil {
+				return results.WithError(err)
+			}
 		}
 	}
 

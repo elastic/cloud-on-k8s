@@ -4,7 +4,7 @@ metadata:
   name: d
 spec:
   count: 1
-  version: 9.3.0
+  version: 9.3.2
   config:
     queue.type: persisted
   pipelines:

@@ -108,6 +108,26 @@ func TestReconcileScriptsConfigMap(t *testing.T) {
 				assert.Contains(t, updatedConfigMap.Data, initcontainer.PrepareFsScriptConfigKey)
 			},
 		},
+		{
+			name: "pre-stop script always includes client cert args",
+			meta: metadata.Metadata{Labels: map[string]string{"test": "true"}},
+			validate: func(t *testing.T, client k8s.Client) {
+				t.Helper()
+				var cm corev1.ConfigMap
+				err := client.Get(context.Background(), types.NamespacedName{Namespace: namespace, Name: configMapName}, &cm)
+				assert.NoError(t, err)
+				script := cm.Data[nodespec.PreStopHookScriptConfigKey]
+				// CLIENT_CERT variable is set up
+				assert.Contains(t, script, "CLIENT_CERT=")
+				assert.Contains(t, script, `"${CLIENT_CERT[@]}"`)
+				// primary: internal client cert
+				assert.Contains(t, script, "client-cert/tls.crt")
+				assert.Contains(t, script, "client-cert/tls.key")
+				// fallback: internal HTTP certificates
+				assert.Contains(t, script, "http-certs/tls.crt")
+				assert.Contains(t, script, "http-certs/tls.key")
+			},
+		},
 	}
 
 	for _, tt := range tests {

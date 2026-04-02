@@ -71,7 +71,8 @@ func CheckHTTPCertificateAuthority(b Builder, k *test.K8sClient) test.Step {
 			return nil
 		}),
 		Skip: func() bool {
-			return b.GlobalCA
+			// Skip when using custom HTTP certs (user-defined CA) or global CA
+			return b.Elasticsearch.Spec.HTTP.TLS.Certificate.SecretName != "" || b.GlobalCA
 		},
 	}
 }
@@ -172,8 +173,8 @@ func CheckSecrets(b Builder, k *test.K8sClient) test.Step {
 			})
 		}
 
-		// unless a globally shared CA is used a CA secret should exist for the HTTP layer
-		if !b.GlobalCA {
+		// unless a globally shared CA or custom HTTP certs are used, a CA secret should exist for the HTTP layer
+		if !b.GlobalCA && b.Elasticsearch.Spec.HTTP.TLS.Certificate.SecretName == "" {
 			expected = append(expected,
 				test.ExpectedSecret{
 					Name: esName + "-es-http-ca-internal",
@@ -226,7 +227,7 @@ func CheckPodCertificates(b Builder, k *test.K8sClient) test.Step {
 }
 
 // getTransportCert retrieves the certificate of the CA and the transport certificate
-func getTransportCert(k *test.K8sClient, esNamespace, statefulSetName, podName string) (caCert, transportCert []*x509.Certificate, err error) {
+func getTransportCert(k *test.K8sClient, esNamespace, statefulSetName, podName string) (caCerts, transportCerts []*x509.Certificate, err error) {
 	var secret corev1.Secret
 	key := types.NamespacedName{
 		Namespace: esNamespace,
@@ -239,7 +240,7 @@ func getTransportCert(k *test.K8sClient, esNamespace, statefulSetName, podName s
 	if !exists || len(caCertBytes) == 0 {
 		return nil, nil, fmt.Errorf("no value found for secret %s", certificates.CAFileName)
 	}
-	caCert, err = certificates.ParsePEMCerts(caCertBytes)
+	caCerts, err = certificates.ParsePEMCerts(caCertBytes)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -247,7 +248,7 @@ func getTransportCert(k *test.K8sClient, esNamespace, statefulSetName, podName s
 	if !exists || len(transportCertBytes) == 0 {
 		return nil, nil, fmt.Errorf("no value found for secret %s", transport.PodCertFileName(podName))
 	}
-	transportCert, err = certificates.ParsePEMCerts(transportCertBytes)
+	transportCerts, err = certificates.ParsePEMCerts(transportCertBytes)
 	if err != nil {
 		return nil, nil, err
 	}
