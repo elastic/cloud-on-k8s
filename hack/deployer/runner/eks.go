@@ -11,6 +11,7 @@ import (
 	"log"
 	"os"
 	"path/filepath"
+	"strings"
 	"text/template"
 	"time"
 
@@ -66,6 +67,11 @@ func init() {
 type EKSDriverFactory struct{}
 
 func (e EKSDriverFactory) Create(plan Plan) (Driver, error) {
+	c, err := vault.NewClient()
+	if err != nil {
+		return nil, err
+	}
+
 	return &EKSDriver{
 		plan: plan,
 		ctx: map[string]any{
@@ -78,15 +84,17 @@ func (e EKSDriverFactory) Create(plan Plan) (Driver, error) {
 			"WorkDir":           plan.Eks.WorkDir,
 			"Tags":              elasticTags,
 		},
+		vaultClient: c,
 	}, nil
 }
 
 var _ DriverFactory = (*EKSDriverFactory)(nil)
 
 type EKSDriver struct {
-	plan    Plan
-	cleanUp []func()
-	ctx     map[string]any
+	plan        Plan
+	cleanUp     []func()
+	ctx         map[string]any
+	vaultClient vault.Client
 }
 
 func (e *EKSDriver) newCmd(cmd string) *exec.Command {
@@ -264,6 +272,17 @@ func (e *EKSDriver) writeAWSCredentials() error {
 }
 
 func (e *EKSDriver) newBucketManager() (bucket.Manager, error) {
+	// Use VaultManager for pre-provisioned buckets
+	if e.plan.Bucket.FromVault {
+		// Determine if this is EKS ARM based on plan ID
+		providerID := EKSDriverID
+		if strings.Contains(e.plan.Id, "arm") {
+			providerID = "eks-arm"
+		}
+		return newVaultBucketManager(providerID, e.vaultClient)
+	}
+
+	// Use S3Manager for dynamic bucket creation
 	cfg, err := newBucketConfig(e.plan, e.ctx, e.plan.Eks.Region)
 	if err != nil {
 		return nil, err

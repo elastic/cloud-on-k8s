@@ -470,6 +470,8 @@ export E2E_JSON            ?= false
 TEST_TIMEOUT               ?= 15m
 E2E_SKIP_CLEANUP           ?= false
 E2E_DEPLOY_CHAOS_JOB       ?= false
+# Defaults to STATELESS env var set by the Buildkite pipeline (via set-deployer-config.sh).
+E2E_STATELESS              ?= $(or $(STATELESS),false)
 # go build constraints potentially restricting the tests to run
 E2E_TAGS                   ?= e2e
 # tags conveying information about the test environment to the test runner
@@ -499,7 +501,8 @@ e2e-run: go-generate
 		--monitoring-secrets=$(MONITORING_SECRETS) \
 		--skip-cleanup=$(E2E_SKIP_CLEANUP) \
 		--deploy-chaos-job=$(E2E_DEPLOY_CHAOS_JOB) \
-		--test-env-tags=$(E2E_TEST_ENV_TAGS)
+		--test-env-tags=$(E2E_TEST_ENV_TAGS) \
+		--stateless=$(E2E_STATELESS)
 
 e2e-generate-xml:
 	@ hack/ci/generate-junit-xml-report.sh e2e-tests.json

@@ -31,6 +31,9 @@ import (
 // fixed decider to generate scaling events, other deciders, like storage deciders or ML deciders are not exercised.
 // Note that only the node count and the memory limit of the deployed Pods are validated for now, see https://github.com/elastic/cloud-on-k8s/issues/4411.
 func TestAutoscaling(t *testing.T) {
+	// Autoscaling is only available for stateful Elasticsearch
+	test.SkipIfStateless(t, "autoscaling requires stateful Elasticsearch")
+
 	// only execute this test if we have a test license to work with
 	if test.Ctx().TestLicense == "" {
 		t.SkipNow()

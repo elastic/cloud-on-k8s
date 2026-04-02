@@ -208,6 +208,12 @@ func (d *AKSDriver) delete() error {
 }
 
 func (d *AKSDriver) newBucketManager() (bucket.Manager, error) {
+	// Use VaultManager for pre-provisioned buckets
+	if d.plan.Bucket.FromVault {
+		return newVaultBucketManager(AKSDriverID, d.vaultClient)
+	}
+
+	// Use AzureManager for dynamic bucket creation
 	if err := bucket.ValidateShellArg(d.plan.Aks.ResourceGroup, "resource group"); err != nil {
 		return nil, err
 	}
