@@ -27,8 +27,8 @@ const (
 )
 
 var (
-	objectStorePath    = field.NewPath("spec").Child("objectStore")
-	modePath           = field.NewPath("spec").Child("mode")
+	objectStorePath = field.NewPath("spec").Child("objectStore")
+	modePath        = field.NewPath("spec").Child("mode")
 	// TODO: update to the actual minimum version that supports stateless once confirmed.
 	statelessMinVersion = version.MinFor(9, 4, 0)
 )
@@ -116,9 +116,9 @@ func validateStatelessConfig(es esv1.Elasticsearch) field.ErrorList {
 		}
 		switch tier {
 		case esv1.IndexTier:
-			hasIndex = true
+			hasIndex = hasIndex || ns.Count > 0
 		case esv1.SearchTier:
-			hasSearch = true
+			hasSearch = hasSearch || ns.Count > 0
 		case esv1.MasterTier, esv1.MLTier:
 			// valid tiers that don't affect the index/search requirement
 		}

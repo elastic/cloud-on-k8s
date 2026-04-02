@@ -128,6 +128,38 @@ func Test_validModeSpecificConfig(t *testing.T) {
 			wantMsgs:   []string{statelessMinVersionMsg},
 		},
 		{
+			name: "stateless: index tier with count 0 does not satisfy requirement",
+			es: esv1.Elasticsearch{
+				Spec: esv1.ElasticsearchSpec{
+					Version:     "9.4.0",
+					Mode:        esv1.ElasticsearchModeStateless,
+					ObjectStore: &esv1.ObjectStoreConfig{Type: esv1.ObjectStoreTypeS3, Bucket: "b"},
+					NodeSets: []esv1.NodeSet{
+						{Name: "index", Count: 0},
+						{Name: "search", Count: 2},
+					},
+				},
+			},
+			wantErrors: 1,
+			wantMsgs:   []string{tierIndexRequiredMsg},
+		},
+		{
+			name: "stateless: search tier with count 0 does not satisfy requirement",
+			es: esv1.Elasticsearch{
+				Spec: esv1.ElasticsearchSpec{
+					Version:     "9.4.0",
+					Mode:        esv1.ElasticsearchModeStateless,
+					ObjectStore: &esv1.ObjectStoreConfig{Type: esv1.ObjectStoreTypeS3, Bucket: "b"},
+					NodeSets: []esv1.NodeSet{
+						{Name: "index", Count: 1},
+						{Name: "search", Count: 0},
+					},
+				},
+			},
+			wantErrors: 1,
+			wantMsgs:   []string{tierSearchRequiredMsg},
+		},
+		{
 			name: "stateless: valid minimal config",
 			es: esv1.Elasticsearch{
 				Spec: esv1.ElasticsearchSpec{

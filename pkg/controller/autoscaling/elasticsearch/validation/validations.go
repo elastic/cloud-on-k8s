@@ -62,7 +62,7 @@ func noStatelessElasticsearch(ctx context.Context, esa v1alpha1.ElasticsearchAut
 		if apierrors.IsNotFound(err) {
 			return nil, nil
 		}
-		return nil, nil
+		return nil, err
 	}
 	if es.IsStateless() {
 		return field.ErrorList{field.Forbidden(
