@@ -17,6 +17,38 @@ Known issues are significant defects or limitations that may impact your impleme
 
 :::
 
+## 3.3.2 [elastic-cloud-kubernetes-332-known-issues]
+
+There are no known issues in ECK 3.3.2
+
+## 3.3.1 [elastic-cloud-kubernetes-331-known-issues]
+
+:::{dropdown} AutoOps - Enterprise license expiring may cause policy phase to be set to `Invalid` prior to 9.2.4
+
+In clusters running AutoOps Agent versions earlier than 9.2.4, an Enterprise license expiring may cause the policy phase to be set to `Invalid`. In this state, the AutoOps Agent stops sending data to AutoOps because the policy no longer passes validation on the controller.
+
+**Workaround**
+
+Renew or restore the Enterprise license so that the AutoOps policy can be validated again. To prevent this issue in the future, upgrade the AutoOps Agent to version 9.2.4 or later.
+
+:::
+
+## 3.3.0 [elastic-cloud-kubernetes-330-known-issues]
+
+:::{dropdown} Stack Config Policies - File settings may not reload correctly on {{es}} versions prior to 8.11.0
+
+{{es}} versions prior to 8.11.0 contain a bug where updates to file-based cluster settings may not be reloaded correctly when the file changes. This is caused by an {{es}} issue where new keys in file-settings are incorrectly deleted during file monitoring and reload operations.
+
+When using Stack Config Policies with affected {{es}} versions, updated settings may not appear correctly when querying the `_cluster/settings` endpoint, even though the Stack Config Policy has been updated. Making an additional manual update to the Stack Config Policy may trigger the settings to reload correctly.
+
+This issue was fixed in {{es}} 8.11.0 via [elasticsearch#99212](https://github.com/elastic/elasticsearch/pull/99212).
+
+**Workaround**
+
+Use {{es}} version 8.11.0 or later when deploying Stack Config Policies.
+
+:::
+
 ## 3.2.0 [elastic-cloud-kubernetes-320-known-issues]
 
 :::{dropdown} Elastic Agent fails with "cipher: message authentication failed" on ECK 3.2.0 re-upgrade
