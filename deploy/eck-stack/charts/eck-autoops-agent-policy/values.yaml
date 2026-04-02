@@ -51,7 +51,7 @@ autoOpsRef: {}
 # config: {}
 
 # Image is the AutoOps Agent Docker image to deploy.
-# image: "docker.elastic.co/elastic-agent/elastic-otel-collector-wolfi:9.3.0-SNAPSHOT"
+# image: "docker.elastic.co/elastic-agent/elastic-otel-collector-wolfi:9.4.0-SNAPSHOT"
 
 # RevisionHistoryLimit is the number of revisions to retain to allow rollback in the underlying Deployment.
 # revisionHistoryLimit: 2

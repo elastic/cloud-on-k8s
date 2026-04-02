@@ -122,7 +122,7 @@ kind: Elasticsearch
 metadata:
   name: elasticsearch
 spec:
-  version: 9.3.0
+  version: 9.3.2
   http:
     tls:
       certificate:
@@ -142,7 +142,7 @@ kind: Kibana
 metadata:
   name: kibana
 spec:
-  version: 9.3.0
+  version: 9.3.2
   count: 1
   elasticsearchRef:
     name: elasticsearch
@@ -165,7 +165,7 @@ metadata:
   name: metricbeat
 spec:
   type: metricbeat
-  version: 9.3.0
+  version: 9.3.2
   elasticsearchRef:
     name: elasticsearch
   kibanaRef:

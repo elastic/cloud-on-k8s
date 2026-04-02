@@ -26,6 +26,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/certificates/transport"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/nodespec"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/k8s"
+	ulog "github.com/elastic/cloud-on-k8s/v3/pkg/utils/log"
 )
 
 // ReconcileHTTP reconciles the HTTP layer certificates of a cluster.
@@ -159,6 +160,7 @@ func ReconcileTransport(
 	span, ctx := apm.StartSpan(ctx, "reconcile_transport_certs", tracing.SpanTypeApp)
 	defer span.End()
 
+	log := ulog.FromContext(ctx)
 	results := reconciler.NewResult(ctx)
 
 	// Maybe retrieve user defined additional trusted CAs from a config map.
@@ -206,12 +208,11 @@ func ReconcileTransport(
 
 	// reconcile remote clusters certificate authorities
 	if err := remoteca.Reconcile(ctx, driver.K8sClient(), es, *transportCA, meta); err != nil {
-		results.WithError(err)
+		log.Error(err, "Failed to reconcile remote certificate authorities")
+		k8s.MaybeEmitErrorEventf(driver.Recorder(), err, &es, events.EventReasonUnexpected,
+			events.EventActionCertificateReconciliation, "Remote certificate authority reconciliation error: %v", err)
+		results.WithReconciliationState(reconciler.RequeueAfter(reconciler.DefaultRequeue))
 	}
 
-	if results.WithResults(transportResults).HasError() {
-		return results
-	}
-
-	return results
+	return results.WithResults(transportResults)
 }

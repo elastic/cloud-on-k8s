@@ -14,6 +14,10 @@ Breaking changes can impact your Elastic applications, potentially disrupting no
 % **Action**<br> Steps for mitigating deprecation impact.
 % ::::
 
+## 3.3.2 [elastic-cloud-kubernetes-332-breaking-changes]
+
+There are no breaking changes for ECK 3.3.2
+
 ## 3.3.1 [elastic-cloud-kubernetes-331-breaking-changes]
 
 There are no breaking changes for ECK 3.3.1
